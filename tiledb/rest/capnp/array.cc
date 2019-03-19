@@ -35,6 +35,7 @@
 #include "tiledb/rest/capnp/array.h"
 #include "capnp/compat/json.h"
 #include "capnp/serialize.h"
+#include "tiledb/rest/capnp/utils.h"
 #include "tiledb/sm/enums/array_type.h"
 #include "tiledb/sm/enums/compressor.h"
 #include "tiledb/sm/enums/datatype.h"
@@ -46,6 +47,7 @@
 
 namespace tiledb {
 namespace rest {
+namespace capnp {
 
 tiledb::sm::Status filter_to_capnp(
     const tiledb::sm::Filter* f, Filter::Builder* filterBuilder) {
@@ -150,12 +152,13 @@ std::unique_ptr<tiledb::sm::Filter> filter_from_capnp(
   return filter;
   STATS_FUNC_OUT(serialization_filter_from_capnp);
 }
+
 tiledb::sm::Status filter_pipeline_to_capnp(
     const tiledb::sm::FilterPipeline* f,
     FilterPipeline::Builder* filterPipelineBuilder) {
   STATS_FUNC_IN(serialization_filter_pipeline_to_capnp);
   if (f != nullptr) {
-    capnp::List<Filter>::Builder filterList =
+    ::capnp::List<Filter>::Builder filterList =
         filterPipelineBuilder->initFilters(f->size());
     for (unsigned index = 0; index < f->size(); index++) {
       tiledb::sm::Filter* filter = f->get_filter(index);
@@ -175,7 +178,8 @@ std::unique_ptr<tiledb::sm::FilterPipeline> filter_pipeline_from_capnp(
       std::unique_ptr<tiledb::sm::FilterPipeline>(
           new tiledb::sm::FilterPipeline());
   if (filterPipelineReader->hasFilters()) {
-    capnp::List<Filter>::Reader filterList = filterPipelineReader->getFilters();
+    ::capnp::List<Filter>::Reader filterList =
+        filterPipelineReader->getFilters();
     for (const Filter::Reader& filter : filterList) {
       std::unique_ptr<tiledb::sm::Filter> f = filter_from_capnp(&filter);
       filterPipeline->add_filter(*f);
@@ -243,60 +247,12 @@ tiledb::sm::Status dimension_to_capnp(
     DomainArray::Builder domain = dimensionBuilder->initDomain();
     Dimension::TileExtent::Builder tile_extent =
         dimensionBuilder->initTileExtent();
-    switch (d->type()) {
-      case tiledb::sm::Datatype::INT8:
-        domain.setInt8(kj::arrayPtr(static_cast<int8_t*>(d->domain()), 2));
-        if (d->tile_extent() != nullptr)
-          tile_extent.setInt8(*static_cast<int8_t*>(d->tile_extent()));
-        break;
-      case tiledb::sm::Datatype::UINT8:
-        domain.setUint8(kj::arrayPtr(static_cast<uint8_t*>(d->domain()), 2));
-        if (d->tile_extent() != nullptr)
-          tile_extent.setUint8(*static_cast<uint8_t*>(d->tile_extent()));
-        break;
-      case tiledb::sm::Datatype::INT16:
-        domain.setInt16(kj::arrayPtr(static_cast<int16_t*>(d->domain()), 2));
-        if (d->tile_extent() != nullptr)
-          tile_extent.setInt16(*static_cast<int16_t*>(d->tile_extent()));
-        break;
-      case tiledb::sm::Datatype::UINT16:
-        domain.setUint16(kj::arrayPtr(static_cast<uint16_t*>(d->domain()), 2));
-        if (d->tile_extent() != nullptr)
-          tile_extent.setUint16(*static_cast<uint16_t*>(d->tile_extent()));
-        break;
-      case tiledb::sm::Datatype::INT32:
-        domain.setInt32(kj::arrayPtr(static_cast<int32_t*>(d->domain()), 2));
-        if (d->tile_extent() != nullptr)
-          tile_extent.setInt32(*static_cast<int32_t*>(d->tile_extent()));
-        break;
-      case tiledb::sm::Datatype::UINT32:
-        domain.setUint32(kj::arrayPtr(static_cast<uint32_t*>(d->domain()), 2));
-        if (d->tile_extent() != nullptr)
-          tile_extent.setUint32(*static_cast<uint32_t*>(d->tile_extent()));
-        break;
-      case tiledb::sm::Datatype::INT64:
-        domain.setInt64(kj::arrayPtr(static_cast<int64_t*>(d->domain()), 2));
-        if (d->tile_extent() != nullptr)
-          tile_extent.setInt64(*static_cast<int64_t*>(d->tile_extent()));
-        break;
-      case tiledb::sm::Datatype::UINT64:
-        domain.setUint64(kj::arrayPtr(static_cast<uint64_t*>(d->domain()), 2));
-        if (d->tile_extent() != nullptr)
-          tile_extent.setUint64(*static_cast<uint64_t*>(d->tile_extent()));
-        break;
-      case tiledb::sm::Datatype::FLOAT32:
-        domain.setFloat32(kj::arrayPtr(static_cast<float*>(d->domain()), 2));
-        if (d->tile_extent() != nullptr)
-          tile_extent.setFloat32(*static_cast<float*>(d->tile_extent()));
-        break;
-      case tiledb::sm::Datatype::FLOAT64:
-        domain.setFloat64(kj::arrayPtr(static_cast<double*>(d->domain()), 2));
-        if (d->tile_extent() != nullptr)
-          tile_extent.setFloat64(*static_cast<double*>(d->tile_extent()));
-        break;
-      default:
-        break;
-    }
+    RETURN_NOT_OK(
+        utils::set_capnp_array_ptr(domain, d->type(), d->domain(), 2));
+    if (d->tile_extent() != nullptr)
+      RETURN_NOT_OK(
+          utils::set_capnp_scalar(tile_extent, d->type(), d->tile_extent()));
+
     return tiledb::sm::Status::Ok();
   }
   return tiledb::sm::Status::Error("Dimension passed was null");
@@ -533,7 +489,7 @@ tiledb::sm::Status domain_to_capnp(
     domainBuilder->setType(tiledb::sm::datatype_str(d->type()));
     domainBuilder->setTileOrder(tiledb::sm::layout_str(d->tile_order()));
     domainBuilder->setCellOrder(tiledb::sm::layout_str(d->cell_order()));
-    capnp::List<Dimension>::Builder dimensions =
+    ::capnp::List<Dimension>::Builder dimensions =
         domainBuilder->initDimensions(d->dim_num());
     for (unsigned int i = 0; i < d->dim_num(); i++) {
       Dimension::Builder dimensionBuilder = dimensions[i];
@@ -609,11 +565,11 @@ tiledb::sm::Status array_schema_to_capnp(
     if (!status.ok())
       return status;
 
-    capnp::List<Attribute>::Builder attributes =
+    ::capnp::List<Attribute>::Builder attributes =
         arraySchemaBuilder->initAttributes(a->attribute_num());
 
     for (size_t i = 0; i < a->attribute_num(); i++) {
-      ::Attribute::Builder attributeBuilder = attributes[i];
+      rest::capnp::Attribute::Builder attributeBuilder = attributes[i];
       status = attribute_to_capnp(a->attribute(i), &attributeBuilder);
       if (!status.ok())
         return status;
@@ -686,7 +642,7 @@ std::unique_ptr<tiledb::sm::ArraySchema> array_schema_from_capnp(
     a->set_cell_var_offsets_filter_pipeline(filters.get());
   }
 
-  capnp::List<Attribute>::Reader attributes = arraySchema->getAttributes();
+  ::capnp::List<Attribute>::Reader attributes = arraySchema->getAttributes();
   for (auto attr : attributes) {
     auto attribute = attribute_from_capnp(&attr);
     if (attribute->name().substr(0, 2) !=
@@ -708,6 +664,7 @@ std::unique_ptr<tiledb::sm::ArraySchema> array_schema_from_capnp(
   return a;
   STATS_FUNC_OUT(serialization_array_schema_from_capnp);
 }
+
 tiledb::sm::Status array_schema_serialize(
     tiledb::sm::ArraySchema* array_schema,
     tiledb::sm::SerializationType serialize_type,
@@ -715,7 +672,7 @@ tiledb::sm::Status array_schema_serialize(
     uint64_t* serialized_string_length) {
   STATS_FUNC_IN(serialization_array_schema_serialize);
   try {
-    capnp::MallocMessageBuilder message;
+    ::capnp::MallocMessageBuilder message;
     ArraySchema::Builder arraySchemaBuilder = message.initRoot<ArraySchema>();
     tiledb::sm::Status status =
         array_schema_to_capnp(array_schema, &arraySchemaBuilder);
@@ -726,7 +683,7 @@ tiledb::sm::Status array_schema_serialize(
 
     switch (serialize_type) {
       case tiledb::sm::SerializationType::JSON: {
-        capnp::JsonCodec json;
+        ::capnp::JsonCodec json;
         kj::String capnp_json = json.encode(arraySchemaBuilder);
         // size does not include needed null terminator, so add +1
         *serialized_string_length = capnp_json.size() + 1;
@@ -735,7 +692,7 @@ tiledb::sm::Status array_schema_serialize(
         break;
       }
       case tiledb::sm::SerializationType::CAPNP: {
-        kj::Array<capnp::word> protomessage = messageToFlatArray(message);
+        kj::Array<::capnp::word> protomessage = messageToFlatArray(message);
         kj::ArrayPtr<const char> message_chars = protomessage.asChars();
         *serialized_string = new char[message_chars.size()];
         memcpy(*serialized_string, message_chars.begin(), message_chars.size());
@@ -770,31 +727,31 @@ tiledb::sm::Status array_schema_deserialize(
 
     switch (serialize_type) {
       case tiledb::sm::SerializationType::JSON: {
-        capnp::JsonCodec json;
-        capnp::MallocMessageBuilder message_builder;
-        ::ArraySchema::Builder array_schema_builder =
-            message_builder.initRoot<::ArraySchema>();
+        ::capnp::JsonCodec json;
+        ::capnp::MallocMessageBuilder message_builder;
+        rest::capnp::ArraySchema::Builder array_schema_builder =
+            message_builder.initRoot<rest::capnp::ArraySchema>();
         json.decode(kj::StringPtr(serialized_string), array_schema_builder);
-        ::ArraySchema::Reader array_schema_reader =
+        rest::capnp::ArraySchema::Reader array_schema_reader =
             array_schema_builder.asReader();
         decoded_array_schema =
-            tiledb::rest::array_schema_from_capnp(&array_schema_reader);
+            rest::capnp::array_schema_from_capnp(&array_schema_reader);
         break;
       }
       case tiledb::sm::SerializationType::CAPNP: {
         const kj::byte* mBytes =
             reinterpret_cast<const kj::byte*>(serialized_string);
-        capnp::FlatArrayMessageReader reader(kj::arrayPtr(
-            reinterpret_cast<const capnp::word*>(mBytes),
-            serialized_string_length / sizeof(capnp::word)));
+        ::capnp::FlatArrayMessageReader reader(kj::arrayPtr(
+            reinterpret_cast<const ::capnp::word*>(mBytes),
+            serialized_string_length / sizeof(::capnp::word)));
         // capnp::FlatArrayMessageReader reader(kj::arrayPtr<const
         // kj::byte>(reinterpret_cast<const kj::byte*>(serialized_string),
         // serialized_string_length));
 
         ArraySchema::Reader array_schema_reader =
-            reader.getRoot<::ArraySchema>();
+            reader.getRoot<rest::capnp::ArraySchema>();
         decoded_array_schema =
-            tiledb::rest::array_schema_from_capnp(&array_schema_reader);
+            rest::capnp::array_schema_from_capnp(&array_schema_reader);
 
         break;
       }
@@ -826,5 +783,7 @@ tiledb::sm::Status array_schema_deserialize(
   return tiledb::sm::Status::Ok();
   STATS_FUNC_OUT(serialization_array_schema_deserialize);
 }
+
+}  // namespace capnp
 }  // namespace rest
 }  // namespace tiledb

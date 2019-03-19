@@ -121,14 +121,14 @@ class Tile {
    * Serialize a writer to capnp format
    * @return unique_prt with capnp message;
    */
-  Status capnp(::Tile::Builder* tileBuilder) const;
+  Status capnp(rest::capnp::Tile::Builder* tileBuilder) const;
 
   /**
    * Deserialize from a capnp message
    * @param writerBuilder
    * @return
    */
-  Status from_capnp(::Tile::Reader* tileReader);
+  Status from_capnp(rest::capnp::Tile::Reader* tileReader);
 
   /**
    * Tile initializer.

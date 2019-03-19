@@ -72,7 +72,7 @@ tiledb::sm::Status get_array_schema_from_rest(
   if (returned_data.memory == nullptr || returned_data.size == 0)
     return tiledb::sm::Status::Error("Server returned no data!");
 
-  tiledb::sm::Status status = array_schema_deserialize(
+  tiledb::sm::Status status = rest::capnp::array_schema_deserialize(
       array_schema,
       serialization_type,
       returned_data.memory,
@@ -90,7 +90,7 @@ tiledb::sm::Status post_array_schema_to_rest(
     tiledb::sm::ArraySchema* array_schema) {
   STATS_FUNC_IN(serialization_post_array_schema_to_rest);
   struct MemoryStruct data = {nullptr, 0};
-  tiledb::sm::Status status = array_schema_serialize(
+  tiledb::sm::Status status = rest::capnp::array_schema_serialize(
       array_schema, serialization_type, &data.memory, (uint64_t*)&data.size);
   if (!status.ok()) {
     if (data.memory != nullptr)
@@ -207,12 +207,12 @@ tiledb::sm::Status get_array_non_empty_domain(
     return tiledb::sm::Status::Error("Server returned no data!");
 
   // Currently only json data is supported, so let's decode it here.
-  capnp::JsonCodec json;
-  capnp::MallocMessageBuilder message_builder;
-  ::NonEmptyDomain::Builder nonEmptyDomainBuilder =
-      message_builder.initRoot<::NonEmptyDomain>();
+  ::capnp::JsonCodec json;
+  ::capnp::MallocMessageBuilder message_builder;
+  rest::capnp::NonEmptyDomain::Builder nonEmptyDomainBuilder =
+      message_builder.initRoot<rest::capnp::NonEmptyDomain>();
   json.decode(kj::StringPtr(returned_data.memory), nonEmptyDomainBuilder);
-  ::NonEmptyDomain::Reader nonEmptyDomainReader =
+  rest::capnp::NonEmptyDomain::Reader nonEmptyDomainReader =
       nonEmptyDomainBuilder.asReader();
   *is_empty = nonEmptyDomainReader.getIsEmpty();
 
@@ -220,13 +220,13 @@ tiledb::sm::Status get_array_non_empty_domain(
 
   // If there is a nonEmptyDomain we need to set domain variables
   if (nonEmptyDomainReader.hasNonEmptyDomain()) {
-    ::Map<capnp::Text, ::DomainArray>::Reader nonEmptyDomainList =
-        nonEmptyDomainReader.getNonEmptyDomain();
+    rest::capnp::Map<::capnp::Text, rest::capnp::DomainArray>::Reader
+        nonEmptyDomainList = nonEmptyDomainReader.getNonEmptyDomain();
 
     size_t domainPosition = 0;
     // Loop through dimension's domain in order
     for (auto entry : nonEmptyDomainList.getEntries()) {
-      ::DomainArray::Reader domainArrayReader = entry.getValue();
+      rest::capnp::DomainArray::Reader domainArrayReader = entry.getValue();
       switch (domainType) {
         case tiledb::sm::Datatype::INT8: {
           if (domainArrayReader.hasInt8()) {
@@ -350,8 +350,8 @@ tiledb::sm::Status submit_query_to_rest(
   STATS_FUNC_IN(serialization_submit_query_to_rest);
   // Serialize data to send
   struct MemoryStruct data = {nullptr, 0};
-  tiledb::sm::Status status =
-      query_serialize(query, serialization_type, &data.memory, (uint64_t*)&data.size);
+  tiledb::sm::Status status = rest::capnp::query_serialize(
+      query, serialization_type, &data.memory, (uint64_t*)&data.size);
   if (!status.ok()) {
     if (data.memory != nullptr)
       delete[] data.memory;
@@ -390,7 +390,7 @@ tiledb::sm::Status submit_query_to_rest(
     return tiledb::sm::Status::Error("Server returned no data!");
 
   // Deserialize data returned
-  status = query_deserialize(
+  status = rest::capnp::query_deserialize(
       query, serialization_type, returned_data.memory, returned_data.size);
   free(returned_data.memory);
 
@@ -407,8 +407,8 @@ tiledb::sm::Status finalize_query_to_rest(
   STATS_FUNC_IN(serialization_finalize_query_to_rest);
   // Serialize data to send
   struct MemoryStruct data = {nullptr, 0};
-  tiledb::sm::Status status =
-      query_serialize(query, serialization_type, &data.memory, (uint64_t*)&data.size);
+  tiledb::sm::Status status = rest::capnp::query_serialize(
+      query, serialization_type, &data.memory, (uint64_t*)&data.size);
   if (!status.ok()) {
     if (data.memory != nullptr)
       delete[] data.memory;
@@ -445,7 +445,7 @@ tiledb::sm::Status finalize_query_to_rest(
   if (returned_data.memory == nullptr || returned_data.size == 0)
     return tiledb::sm::Status::Error("Server returned no data!");
   // Deserialize data returned
-  status = query_deserialize(
+  status = rest::capnp::query_deserialize(
       query, serialization_type, returned_data.memory, returned_data.size);
   free(returned_data.memory);
   return status;

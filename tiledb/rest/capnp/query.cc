@@ -41,6 +41,7 @@
 
 namespace tiledb {
 namespace rest {
+namespace capnp {
 
 tiledb::sm::Status query_serialize(
     tiledb::sm::Query* query,
@@ -49,7 +50,7 @@ tiledb::sm::Status query_serialize(
     uint64_t* serialized_string_length) {
   STATS_FUNC_IN(serialization_query_serialize);
   try {
-    capnp::MallocMessageBuilder message;
+    ::capnp::MallocMessageBuilder message;
     Query::Builder query_builder = message.initRoot<Query>();
     tiledb::sm::Status status = query->capnp(&query_builder);
 
@@ -59,7 +60,7 @@ tiledb::sm::Status query_serialize(
 
     switch (serialize_type) {
       case tiledb::sm::SerializationType::JSON: {
-        capnp::JsonCodec json;
+        ::capnp::JsonCodec json;
         kj::String capnp_json = json.encode(query_builder);
         // size does not include needed null terminator, so add +1
         *serialized_string_length = capnp_json.size() + 1;
@@ -68,7 +69,7 @@ tiledb::sm::Status query_serialize(
         break;
       }
       case tiledb::sm::SerializationType::CAPNP: {
-        kj::Array<capnp::word> protomessage = messageToFlatArray(message);
+        kj::Array<::capnp::word> protomessage = messageToFlatArray(message);
         kj::ArrayPtr<const char> message_chars = protomessage.asChars();
         *serialized_string = new char[message_chars.size()];
         memcpy(*serialized_string, message_chars.begin(), message_chars.size());
@@ -100,27 +101,28 @@ tiledb::sm::Status query_deserialize(
   try {
     switch (serialize_type) {
       case tiledb::sm::SerializationType::JSON: {
-        capnp::JsonCodec json;
-        capnp::MallocMessageBuilder message_builder;
-        ::Query::Builder query_builder = message_builder.initRoot<::Query>();
+        ::capnp::JsonCodec json;
+        ::capnp::MallocMessageBuilder message_builder;
+        rest::capnp::Query::Builder query_builder =
+            message_builder.initRoot<rest::capnp::Query>();
         json.decode(kj::StringPtr(serialized_string), query_builder);
-        ::Query::Reader query_reader = query_builder.asReader();
+        rest::capnp::Query::Reader query_reader = query_builder.asReader();
         return query->from_capnp(&query_reader);
         break;
       }
       case tiledb::sm::SerializationType::CAPNP: {
-        capnp::ReaderOptions readerOptions;
+        ::capnp::ReaderOptions readerOptions;
         // Set limit to 10GI this should be a config option
         readerOptions.traversalLimitInWords = uint64_t(1024) * 1024 * 1024 * 10;
         const kj::byte* mBytes =
             reinterpret_cast<const kj::byte*>(serialized_string);
-        capnp::FlatArrayMessageReader reader(
+        ::capnp::FlatArrayMessageReader reader(
             kj::arrayPtr(
-                reinterpret_cast<const capnp::word*>(mBytes),
-                serialized_string_length / sizeof(capnp::word)),
+                reinterpret_cast<const ::capnp::word*>(mBytes),
+                serialized_string_length / sizeof(::capnp::word)),
             readerOptions);
 
-        Query::Reader query_reader = reader.getRoot<::Query>();
+        Query::Reader query_reader = reader.getRoot<rest::capnp::Query>();
 
         return query->from_capnp(&query_reader);
         break;
@@ -139,5 +141,7 @@ tiledb::sm::Status query_deserialize(
   return tiledb::sm::Status::Ok();
   STATS_FUNC_OUT(serialization_query_deserialize);
 }
+
+}  // namespace capnp
 }  // namespace rest
 }  // namespace tiledb

@@ -85,12 +85,12 @@ AttributeBuffer Writer::buffer(const std::string& attribute) const {
   return attrbuf->second;
 }
 
-Status Writer::capnp(::Writer::Builder* writerBuilder) const {
+Status Writer::capnp(rest::capnp::Writer::Builder* writerBuilder) const {
   STATS_FUNC_IN(serialization_writer_capnp);
-  ::GlobalWriteState::Builder globalWriteStateBuilder =
+  rest::capnp::GlobalWriteState::Builder globalWriteStateBuilder =
       writerBuilder->initGlobalWriteState();
   if (global_write_state_ != nullptr) {
-    ::MapInt64::Builder cellsWriterBuilder =
+    rest::capnp::MapInt64::Builder cellsWriterBuilder =
         globalWriteStateBuilder.initCellsWritten();
     auto cellsWritenEntries = cellsWriterBuilder.initEntries(
         global_write_state_->cells_written_.size());
@@ -102,18 +102,19 @@ Status Writer::capnp(::Writer::Builder* writerBuilder) const {
       i++;
     }
 
-    ::Map<capnp::Text, ::capnp::List<::Tile>>::Builder lastTilesBuilder =
-        globalWriteStateBuilder.initLastTiles();
+    rest::capnp::Map<capnp::Text, ::capnp::List<rest::capnp::Tile>>::Builder
+        lastTilesBuilder = globalWriteStateBuilder.initLastTiles();
     auto lastTileEntries =
         lastTilesBuilder.initEntries(global_write_state_->last_tiles_.size());
     i = 0;
     for (auto lastTile : global_write_state_->last_tiles_) {
-      ::Map<capnp::Text, ::capnp::List<::Tile>>::Entry::Builder entry =
-          lastTileEntries[i];
+      rest::capnp::Map<capnp::Text, ::capnp::List<rest::capnp::Tile>>::Entry::
+          Builder entry = lastTileEntries[i];
       entry.setKey(lastTile.first);
-      ::capnp::List<::Tile>::Builder lastTileBulder = entry.initValue(2);
-      ::Tile::Builder tileBuilder0 = lastTileBulder[0];
-      ::Tile::Builder tileBuilder1 = lastTileBulder[1];
+      ::capnp::List<rest::capnp::Tile>::Builder lastTileBulder =
+          entry.initValue(2);
+      rest::capnp::Tile::Builder tileBuilder0 = lastTileBulder[0];
+      rest::capnp::Tile::Builder tileBuilder1 = lastTileBulder[1];
       Status status = lastTile.second.first.capnp(&tileBuilder0);
       if (!status.ok())
         return status;
@@ -124,7 +125,7 @@ Status Writer::capnp(::Writer::Builder* writerBuilder) const {
     }
 
     if (this->global_write_state_->frag_meta_ != nullptr) {
-      ::FragmentMetadata::Builder fragmentMetadatBuilder =
+      rest::capnp::FragmentMetadata::Builder fragmentMetadatBuilder =
           globalWriteStateBuilder.initFragmentMetadata();
       this->global_write_state_->frag_meta_->capnp(&fragmentMetadatBuilder);
     }
@@ -180,7 +181,7 @@ Status Writer::get_buffer(
   return Status::Ok();
 }
 
-Status Writer::from_capnp(::Writer::Reader* writerReader) {
+Status Writer::from_capnp(rest::capnp::Writer::Reader* writerReader) {
   STATS_FUNC_IN(serialization_writer_from_capnp);
   Status status = Status::Ok();
 
@@ -188,28 +189,28 @@ Status Writer::from_capnp(::Writer::Reader* writerReader) {
     set_fragment_uri(URI(writerReader->getFragmentUri().cStr()));
 
   if (writerReader->hasGlobalWriteState()) {
-    ::GlobalWriteState::Reader globalWriteStateReader =
+    rest::capnp::GlobalWriteState::Reader globalWriteStateReader =
         writerReader->getGlobalWriteState();
     if (globalWriteStateReader.hasFragmentMetadata() ||
         globalWriteStateReader.hasCellsWritten() ||
         globalWriteStateReader.hasLastTiles()) {
       global_write_state_.reset(new GlobalWriteState);
-      ::MapInt64::Reader cellsWritten =
+      rest::capnp::MapInt64::Reader cellsWritten =
           globalWriteStateReader.getCellsWritten();
       for (auto it : cellsWritten.getEntries()) {
         global_write_state_->cells_written_.emplace(it.getKey(), it.getValue());
       }
-      ::Map<capnp::Text, capnp::List<::Tile>>::Reader lastTiles =
-          globalWriteStateReader.getLastTiles();
+      rest::capnp::Map<capnp::Text, capnp::List<rest::capnp::Tile>>::Reader
+          lastTiles = globalWriteStateReader.getLastTiles();
       for (auto it : lastTiles.getEntries()) {
         Tile new_tile1;
-        ::Tile::Reader lastTileReader1 = it.getValue()[0];
+        rest::capnp::Tile::Reader lastTileReader1 = it.getValue()[0];
         status = new_tile1.from_capnp(&lastTileReader1);
         if (!status.ok())
           return status;
 
         Tile new_tile2;
-        ::Tile::Reader lastTileReader2 = it.getValue()[1];
+        rest::capnp::Tile::Reader lastTileReader2 = it.getValue()[1];
         status = new_tile2.from_capnp(&lastTileReader2);
         if (!status.ok())
           return status;
@@ -220,7 +221,7 @@ Status Writer::from_capnp(::Writer::Reader* writerReader) {
 
       // Create fragments
       if (globalWriteStateReader.hasFragmentMetadata()) {
-        ::FragmentMetadata::Reader fragmentMetadataReader =
+        rest::capnp::FragmentMetadata::Reader fragmentMetadataReader =
             globalWriteStateReader.getFragmentMetadata();
 
         URI uri = fragment_uri_;

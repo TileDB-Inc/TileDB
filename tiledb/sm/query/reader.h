@@ -348,7 +348,7 @@ class Reader {
    * @param writerBuilder
    * @return  Status
    */
-  Status capnp(::QueryReader::Builder* queryReaderBuilder) const;
+  Status capnp(rest::capnp::QueryReader::Builder* queryReaderBuilder) const;
 
   /**
    * Returns `true` if the query was incomplete, i.e., if all subarray
@@ -362,7 +362,7 @@ class Reader {
    * @param writerReader
    * @return Status
    */
-  Status from_capnp(::QueryReader::Reader* queryReader);
+  Status from_capnp(rest::capnp::QueryReader::Reader* queryReader);
 
   /**
    * Retrieves the buffer of a fixed-sized attribute.

@@ -31,6 +31,7 @@
  */
 
 #include "tiledb/sm/array/array.h"
+#include "tiledb/rest/capnp/utils.h"
 #include "tiledb/rest/curl/client.h"
 #include "tiledb/sm/encryption/encryption.h"
 #include "tiledb/sm/enums/serialization_type.h"
@@ -120,7 +121,7 @@ const URI& Array::array_uri() const {
   return array_uri_;
 }
 
-Status Array::capnp(::Array::Builder* arrayBuilder) const {
+Status Array::capnp(rest::capnp::Array::Builder* arrayBuilder) const {
   STATS_FUNC_IN(serialization_array_to_capnp);
   // arrayBuilder->setQueryType(query_type_str(this->open_array_->query_type()));
   arrayBuilder->setUri(this->array_uri_.to_string());
@@ -131,102 +132,38 @@ Status Array::capnp(::Array::Builder* arrayBuilder) const {
   arrayBuilder->setEncryptionType(
       encryption_type_str(this->encryption_key_.encryption_type()));
   if (!this->last_max_buffer_sizes_.empty()) {
-    ::MapMaxBufferSizes::Builder lastMaxBufferSizesBuilder =
+    rest::capnp::MapMaxBufferSizes::Builder lastMaxBufferSizesBuilder =
         arrayBuilder->initLastMaxBufferSizes();
-    capnp::List<MapMaxBufferSizes::Entry>::Builder entries =
+    capnp::List<rest::capnp::MapMaxBufferSizes::Entry>::Builder entries =
         lastMaxBufferSizesBuilder.initEntries(
             this->last_max_buffer_sizes_.size());
     size_t i = 0;
     for (auto maxBufferSize : this->last_max_buffer_sizes_) {
-      ::MapMaxBufferSizes::Entry::Builder entry = entries[i++];
+      rest::capnp::MapMaxBufferSizes::Entry::Builder entry = entries[i++];
       entry.setKey(maxBufferSize.first);
-      ::MaxBufferSize::Builder maxBufferSizeBuilder = entry.initValue();
+      rest::capnp::MaxBufferSize::Builder maxBufferSizeBuilder =
+          entry.initValue();
       maxBufferSizeBuilder.setBufferOffsetSize(maxBufferSize.second.first);
       maxBufferSizeBuilder.setBufferSize(maxBufferSize.second.second);
     }
 
-    if (this->last_max_buffer_sizes_subarray_ != nullptr) {
-      ::DomainArray::Builder subarray =
-          arrayBuilder->initLastMaxBufferSizesSubarray();
-      switch (this->array_schema()->domain()->type()) {
-        case Datatype::INT8: {
-          subarray.setInt8(kj::arrayPtr(
-              static_cast<const int8_t*>(this->last_max_buffer_sizes_subarray_),
-              this->array_schema()->dim_num() * 2));
-          break;
-        }
-        case Datatype::UINT8: {
-          subarray.setUint8(kj::arrayPtr(
-              static_cast<const uint8_t*>(
-                  this->last_max_buffer_sizes_subarray_),
-              this->array_schema()->dim_num() * 2));
-          break;
-        }
-        case Datatype::INT16: {
-          subarray.setInt16(kj::arrayPtr(
-              static_cast<const int16_t*>(
-                  this->last_max_buffer_sizes_subarray_),
-              this->array_schema()->dim_num() * 2));
-          break;
-        }
-        case Datatype::UINT16: {
-          subarray.setUint16(kj::arrayPtr(
-              static_cast<const uint16_t*>(
-                  this->last_max_buffer_sizes_subarray_),
-              this->array_schema()->dim_num() * 2));
-          break;
-        }
-        case Datatype::INT32: {
-          subarray.setInt32(kj::arrayPtr(
-              static_cast<const int32_t*>(
-                  this->last_max_buffer_sizes_subarray_),
-              this->array_schema()->dim_num() * 2));
-          break;
-        }
-        case Datatype::UINT32: {
-          subarray.setUint32(kj::arrayPtr(
-              static_cast<const uint32_t*>(
-                  this->last_max_buffer_sizes_subarray_),
-              this->array_schema()->dim_num() * 2));
-          break;
-        }
-        case Datatype::INT64: {
-          subarray.setInt64(kj::arrayPtr(
-              static_cast<const int64_t*>(
-                  this->last_max_buffer_sizes_subarray_),
-              this->array_schema()->dim_num() * 2));
-          break;
-        }
-        case Datatype::UINT64: {
-          subarray.setUint64(kj::arrayPtr(
-              static_cast<const uint64_t*>(
-                  this->last_max_buffer_sizes_subarray_),
-              this->array_schema()->dim_num() * 2));
-          break;
-        }
-        case Datatype::FLOAT32: {
-          subarray.setFloat32(kj::arrayPtr(
-              static_cast<const float*>(this->last_max_buffer_sizes_subarray_),
-              this->array_schema()->dim_num() * 2));
-          break;
-        }
-        case Datatype::FLOAT64: {
-          subarray.setFloat64(kj::arrayPtr(
-              static_cast<const double*>(this->last_max_buffer_sizes_subarray_),
-              this->array_schema()->dim_num() * 2));
-          break;
-        }
-        default: {
-          return Status::Error("Unknown/Unsupported domain datatype in capnp");
-        }
-      }
+    if (last_max_buffer_sizes_subarray_ != nullptr) {
+      auto subarray_builder = arrayBuilder->initLastMaxBufferSizesSubarray();
+      const auto* schema = array_schema();
+      RETURN_NOT_OK(rest::capnp::utils::set_capnp_array_ptr(
+          subarray_builder,
+          schema->domain()->type(),
+          last_max_buffer_sizes_subarray_,
+          schema->dim_num() * 2));
     }
   }
+
   return Status::Ok();
+
   STATS_FUNC_OUT(serialization_array_to_capnp);
 }
 
-tiledb::sm::Status Array::from_capnp(::Array::Reader array) {
+tiledb::sm::Status Array::from_capnp(rest::capnp::Array::Reader array) {
   STATS_FUNC_IN(serialization_array_from_capnp);
   this->timestamp_ = array.getTimestamp();
   this->array_uri_ = tiledb::sm::URI(array.getUri().cStr());
@@ -261,12 +198,12 @@ tiledb::sm::Status Array::from_capnp(::Array::Reader array) {
   }
 
   if (array.hasLastMaxBufferSizes()) {
-    ::MapMaxBufferSizes::Reader lastMaxBufferSizesBuilder =
+    rest::capnp::MapMaxBufferSizes::Reader lastMaxBufferSizesBuilder =
         array.getLastMaxBufferSizes();
     if (lastMaxBufferSizesBuilder.hasEntries()) {
-      capnp::List<MapMaxBufferSizes::Entry>::Reader entries =
+      capnp::List<rest::capnp::MapMaxBufferSizes::Entry>::Reader entries =
           lastMaxBufferSizesBuilder.getEntries();
-      for (::MapMaxBufferSizes::Entry::Reader entry : entries) {
+      for (rest::capnp::MapMaxBufferSizes::Entry::Reader entry : entries) {
         this->last_max_buffer_sizes_.emplace(
             entry.getKey().cStr(),
             std::make_pair(
@@ -277,7 +214,7 @@ tiledb::sm::Status Array::from_capnp(::Array::Reader array) {
   }
 
   if (array.hasLastMaxBufferSizesSubarray()) {
-    ::DomainArray::Reader lastMaxBuffserSizesSubArray =
+    rest::capnp::DomainArray::Reader lastMaxBuffserSizesSubArray =
         array.getLastMaxBufferSizesSubarray();
     switch (this->array_schema()->domain()->type()) {
       case Datatype::INT8: {
@@ -495,7 +432,15 @@ Status Array::open(
   RETURN_NOT_OK(
       encryption_key_.set_key(encryption_type, encryption_key, key_length));
 
-  if (query_type == QueryType::READ) {
+  if (remote_) {
+    Config config = storage_manager_->config();
+    RETURN_NOT_OK(tiledb::rest::get_array_schema_from_rest(
+        &config,
+        rest_server_,
+        array_uri_.to_string(),
+        serialization_type_,
+        &array_schema_));
+  } else if (query_type == QueryType::READ) {
     timestamp_ = utils::time::timestamp_now_ms();
     RETURN_NOT_OK(storage_manager_->array_open_for_reads(
         array_uri_,

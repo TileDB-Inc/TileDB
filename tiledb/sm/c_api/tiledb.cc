@@ -2136,7 +2136,7 @@ int tiledb_array_schema_serialize(
   if (sanity_check(ctx, array_schema) == TILEDB_ERR)
     return TILEDB_ERR;
 
-  auto st = tiledb::rest::array_schema_serialize(
+  auto st = tiledb::rest::capnp::array_schema_serialize(
       array_schema->array_schema_,
       (tiledb::sm::SerializationType)serialize_type,
       serialized_string,
@@ -2168,7 +2168,7 @@ int tiledb_array_schema_deserialize(
     save_error(ctx, st);
     return TILEDB_OOM;
   }
-  auto st = tiledb::rest::array_schema_deserialize(
+  auto st = tiledb::rest::capnp::array_schema_deserialize(
       &((*array_schema)->array_schema_),
       (tiledb::sm::SerializationType)serialize_type,
       serialized_string,
@@ -2524,7 +2524,7 @@ int tiledb_query_serialize(
   if (sanity_check(ctx, query) == TILEDB_ERR)
     return TILEDB_ERR;
 
-  tiledb::sm::Status st = tiledb::rest::query_serialize(
+  tiledb::sm::Status st = tiledb::rest::capnp::query_serialize(
       query->query_,
       (tiledb::sm::SerializationType)serialize_type,
       serialized_string,
@@ -2551,7 +2551,7 @@ int tiledb_query_deserialize(
   if (sanity_check(ctx, query) == TILEDB_ERR)
     return TILEDB_ERR;
 
-  tiledb::sm::Status st = tiledb::rest::query_deserialize(
+  tiledb::sm::Status st = tiledb::rest::capnp::query_deserialize(
       query->query_,
       (tiledb::sm::SerializationType)serialize_type,
       serialized_string,

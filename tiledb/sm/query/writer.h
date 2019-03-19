@@ -136,7 +136,7 @@ class Writer {
    * @param writerBuilder
    * @return  Status
    */
-  Status capnp(::Writer::Builder* writerBuilder) const;
+  Status capnp(rest::capnp::Writer::Builder* writerBuilder) const;
 
   /** Finalizes the reader. */
   Status finalize();
@@ -177,7 +177,7 @@ class Writer {
    * @param writerReader
    * @return Status
    */
-  Status from_capnp(::Writer::Reader* writeReader);
+  Status from_capnp(rest::capnp::Writer::Reader* writeReader);
 
   /** Initializes the writer. */
   Status init();

@@ -48,6 +48,8 @@
 
 namespace tiledb {
 namespace rest {
+namespace capnp {
+
 tiledb::sm::Status filter_to_capnp(
     const tiledb::sm::Filter* f, Filter::Builder* filterBuilder);
 std::unique_ptr<tiledb::sm::Filter> filter_from_capnp(
@@ -144,6 +146,8 @@ tiledb::sm::Status array_schema_deserialize(
     tiledb::sm::SerializationType serialize_type,
     const char* serialized_string,
     const uint64_t serialized_string_length);
+
+}  // namespace capnp
 }  // namespace rest
 }  // namespace tiledb
 #endif  // TILEDB_REST_CAPNP_ARRAY_H

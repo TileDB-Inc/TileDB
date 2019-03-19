@@ -175,7 +175,7 @@ class Query {
    *
    * @return
    */
-  Status capnp(::Query::Builder* queryBuilder) const;
+  Status capnp(rest::capnp::Query::Builder* queryBuilder) const;
 
   /**
    * Check the validity of the provided buffer offsets for a variable attribute.
@@ -231,7 +231,7 @@ class Query {
    * @param query
    * @return
    */
-  tiledb::sm::Status from_capnp(::Query::Reader* query);
+  Status from_capnp(rest::capnp::Query::Reader* query);
 
   /**
    * Returns `true` if the query has results. Applicable only to read

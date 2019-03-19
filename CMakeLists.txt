@@ -175,6 +175,10 @@ else()
     add_compile_options(-DDEBUG -g3 -gdwarf-3 --coverage)
   endif()
 
+  # CapnProto 0.6.1 contains some unused parameter warnings that we need to
+  # ignore in order to allow for Werror builds.
+  add_compile_options(-Wno-unused-parameter)
+
   # Use -Wno-literal-suffix on Linux with C++ sources.
   if (NOT CMAKE_CXX_COMPILER_ID MATCHES "Clang")
     add_compile_options($<$<COMPILE_LANGUAGE:CXX>:-Wno-literal-suffix>)

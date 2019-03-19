@@ -38,6 +38,14 @@ install:
         sudo apt-get install libpng-dev;
       fi
 
+    # TODO: Linking with CapnProto (?) caused linker issues on the Travis macOS
+    # build images:
+    #   dyld: Symbol not found: __cg_jpeg_resync_to_restart
+    #   Expected in: /usr/local/lib/libJPEG.dylib
+    - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then
+        brew uninstall --ignore-dependencies gdal giflib libjpeg libtiff libpng;
+      fi
+
     # Set up arguments for bootstrap.sh
     - bootstrap_args="--enable=verbose,static-tiledb";
       if [[ "$TILEDB_HDFS" == "ON" ]]; then

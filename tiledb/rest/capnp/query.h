@@ -40,6 +40,8 @@
 
 namespace tiledb {
 namespace rest {
+namespace capnp {
+
 /**
  * Serialize a query
  *
@@ -68,6 +70,8 @@ tiledb::sm::Status query_deserialize(
     tiledb::sm::SerializationType serialize_type,
     const char* serialized_string,
     const uint64_t serialized_string_length);
+
+}  // namespace capnp
 }  // namespace rest
 }  // namespace tiledb
 #endif  // TILEDB_REST_CAPNP_QUERY_H

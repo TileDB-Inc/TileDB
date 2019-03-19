@@ -89,7 +89,8 @@ class FragmentMetadata {
    * @param builder
    * @return  Status of fragment
    */
-  Status capnp(::FragmentMetadata::Builder* fragmentMetadataBuilder) const;
+  Status capnp(
+      rest::capnp::FragmentMetadata::Builder* fragmentMetadataBuilder) const;
 
   /** Returns the number of cells in the tile at the input position. */
   uint64_t cell_num(uint64_t tile_pos) const;
@@ -252,7 +253,8 @@ class FragmentMetadata {
    * @param writerBuilder
    * @return
    */
-  Status from_capnp(::FragmentMetadata::Reader* fragmentMetadataReader);
+  Status from_capnp(
+      rest::capnp::FragmentMetadata::Reader* fragmentMetadataReader);
 
   /**
    * Given as input global tile coordinates, it retrieves the tile position

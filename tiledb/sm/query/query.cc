@@ -32,6 +32,7 @@
 
 #include "tiledb/sm/query/query.h"
 #include "tiledb/rest/capnp/array.h"
+#include "tiledb/rest/capnp/utils.h"
 #include "tiledb/rest/curl/client.h"
 #include "tiledb/sm/array/array.h"
 #include "tiledb/sm/misc/logger.h"
@@ -260,7 +261,7 @@ Status Query::check_var_attr_offsets(
   return Status::Ok();
 }
 
-Status Query::capnp(::Query::Builder* queryBuilder) const {
+Status Query::capnp(rest::capnp::Query::Builder* queryBuilder) const {
   STATS_FUNC_IN(serialization_query_capnp);
 
   queryBuilder->setType(query_type_str(this->type()));
@@ -268,86 +269,27 @@ Status Query::capnp(::Query::Builder* queryBuilder) const {
   queryBuilder->setStatus(query_status_str(this->status()));
 
   if (this->array_ != nullptr) {
-    ::Array::Builder arrayBuilder = queryBuilder->initArray();
+    rest::capnp::Array::Builder arrayBuilder = queryBuilder->initArray();
     this->array_->capnp(&arrayBuilder);
   }
 
-  ::DomainArray::Builder subarrayBuilder = queryBuilder->initSubarray();
+  // Serialize subarray
+  rest::capnp::DomainArray::Builder subarrayBuilder =
+      queryBuilder->initSubarray();
   if (this->array_schema() != nullptr) {
-    if (this->array_schema()->domain() == nullptr)
+    const auto* schema = array_schema();
+    if (schema->domain() == nullptr)
       return tiledb::sm::Status::Error(
           "Domain was null from array schema in query::capnp()");
-    switch (this->array_schema()->domain()->type()) {
-      case tiledb::sm::Datatype::INT8: {
-        auto subarray = this->subarray<int8_t>();
-        if (subarray.size() > 0)
-          subarrayBuilder.setInt8(
-              kj::arrayPtr(subarray.data(), subarray.size()));
-        break;
-      }
-      case tiledb::sm::Datatype::UINT8: {
-        auto subarray = this->subarray<uint8_t>();
-        if (subarray.size() > 0)
-          subarrayBuilder.setUint8(
-              kj::arrayPtr(subarray.data(), subarray.size()));
-        break;
-      }
-      case tiledb::sm::Datatype::INT16: {
-        auto subarray = this->subarray<int16_t>();
-        if (subarray.size() > 0)
-          subarrayBuilder.setInt16(
-              kj::arrayPtr(subarray.data(), subarray.size()));
-        break;
-      }
-      case tiledb::sm::Datatype::UINT16: {
-        auto subarray = this->subarray<uint16_t>();
-        if (subarray.size() > 0)
-          subarrayBuilder.setUint16(
-              kj::arrayPtr(subarray.data(), subarray.size()));
-        break;
-      }
-      case tiledb::sm::Datatype::INT32: {
-        auto subarray = this->subarray<int32_t>();
-        if (subarray.size() > 0)
-          subarrayBuilder.setInt32(
-              kj::arrayPtr(subarray.data(), subarray.size()));
-        break;
-      }
-      case tiledb::sm::Datatype::UINT32: {
-        auto subarray = this->subarray<uint32_t>();
-        if (subarray.size() > 0)
-          subarrayBuilder.setUint32(
-              kj::arrayPtr(subarray.data(), subarray.size()));
-        break;
-      }
-      case tiledb::sm::Datatype::INT64: {
-        auto subarray = this->subarray<int64_t>();
-        if (subarray.size() > 0)
-          subarrayBuilder.setInt64(
-              kj::arrayPtr(subarray.data(), subarray.size()));
-        break;
-      }
-      case tiledb::sm::Datatype::UINT64: {
-        auto subarray = this->subarray<uint64_t>();
-        if (subarray.size() > 0)
-          subarrayBuilder.setUint64(
-              kj::arrayPtr(subarray.data(), subarray.size()));
-        break;
-      }
-      case tiledb::sm::Datatype::FLOAT32: {
-        auto subarray = this->subarray<float>();
-        if (subarray.size() > 0)
-          subarrayBuilder.setFloat32(
-              kj::arrayPtr(subarray.data(), subarray.size()));
-        break;
-      }
-      case tiledb::sm::Datatype::FLOAT64: {
-        auto subarray = this->subarray<double>();
-        if (subarray.size() > 0)
-          subarrayBuilder.setFloat64(
-              kj::arrayPtr(subarray.data(), subarray.size()));
-        break;
-      }
+
+    const auto domain_type = schema->domain()->type();
+    const void* subarray =
+        type_ == QueryType::READ ? reader_.subarray() : writer_.subarray();
+    const uint64_t subarray_size = 2 * schema->coords_size();
+    const uint64_t subarray_length =
+        subarray_size / datatype_size(schema->coords_type());
+
+    switch (domain_type) {
       case tiledb::sm::Datatype::CHAR:
       case tiledb::sm::Datatype::STRING_ASCII:
       case tiledb::sm::Datatype::STRING_UTF8:
@@ -356,16 +298,21 @@ Status Query::capnp(::Query::Builder* queryBuilder) const {
       case tiledb::sm::Datatype::STRING_UCS2:
       case tiledb::sm::Datatype::STRING_UCS4:
       case tiledb::sm::Datatype::ANY:
-        // Not supported domain type
-        return Status::Error("Unspported domain type");
+        // String dimensions not yet supported
+        return Status::RestError(
+            "Cannot serialize query subarray; unsupported domain type");
+      default:
+        if (subarray != nullptr)
+          RETURN_NOT_OK(rest::capnp::utils::set_capnp_array_ptr(
+              subarrayBuilder, domain_type, subarray, subarray_length));
         break;
     }
   }
 
   std::vector<std::string> attributes = this->attributes();
 
-  Map<::capnp::Text, ::AttributeBuffer>::Builder attributeBuffersBuilder =
-      queryBuilder->initBuffers();
+  rest::capnp::Map<::capnp::Text, rest::capnp::AttributeBuffer>::Builder
+      attributeBuffersBuilder = queryBuilder->initBuffers();
   auto buffers = attributeBuffersBuilder.initEntries(attributes.size());
   // for (auto attribute_name : attributes) {
   for (uint64_t i = 0; i < attributes.size(); i++) {
@@ -380,179 +327,52 @@ Status Query::capnp(::Query::Builder* queryBuilder) const {
     const tiledb::sm::Attribute* attribute =
         this->array_schema()->attribute(attribute_name);
     if (attribute != nullptr) {
-      Map<capnp::Text, ::AttributeBuffer>::Entry::Builder entryBuilder =
-          buffers[i];
-      ::AttributeBuffer::Builder attributeBuffer = entryBuilder.initValue();
+      rest::capnp::Map<capnp::Text, rest::capnp::AttributeBuffer>::Entry::
+          Builder entryBuilder = buffers[i];
+      rest::capnp::AttributeBuffer::Builder attributeBuffer =
+          entryBuilder.initValue();
       entryBuilder.setKey(attribute_name);
       attributeBuffer.setType(datatype_str(attribute->type()));
-      switch (attribute->type()) {
-        case tiledb::sm::Datatype::INT8: {
-          auto buffer = this->buffer<int8_t>(attribute_name);
-          // If buffer is null, skip
-          if (buffer.second.first == nullptr || buffer.second.second == 0)
-            break;
 
-          attributeBuffer.initBuffer().setInt8(
-              kj::arrayPtr(buffer.second.first, buffer.second.second));
-          if (buffer.first.first != nullptr)
-            attributeBuffer.setBufferOffset(
-                kj::arrayPtr(buffer.first.first, buffer.first.second));
-          break;
-        }
-        case tiledb::sm::Datatype::STRING_ASCII:
-        case tiledb::sm::Datatype::STRING_UTF8:
-        case tiledb::sm::Datatype::UINT8: {
-          auto buffer = this->buffer<uint8_t>(attribute_name);
-          // If buffer is null, skip
-          if (buffer.second.first == nullptr || buffer.second.second == 0)
-            break;
-
-          attributeBuffer.initBuffer().setUint8(
-              kj::arrayPtr(buffer.second.first, buffer.second.second));
-          if (buffer.first.first != nullptr)
-            attributeBuffer.setBufferOffset(
-                kj::arrayPtr(buffer.first.first, buffer.first.second));
-          break;
-        }
-        case tiledb::sm::Datatype::INT16: {
-          auto buffer = this->buffer<int16_t>(attribute_name);
-          // If buffer is null, skip
-          if (buffer.second.first == nullptr || buffer.second.second == 0)
-            break;
-
-          attributeBuffer.initBuffer().setInt16(
-              kj::arrayPtr(buffer.second.first, buffer.second.second));
-          if (buffer.first.first != nullptr)
-            attributeBuffer.setBufferOffset(
-                kj::arrayPtr(buffer.first.first, buffer.first.second));
-          break;
-        }
-        case tiledb::sm::Datatype::STRING_UTF16:
-        case tiledb::sm::Datatype::STRING_UCS2:
-        case tiledb::sm::Datatype::UINT16: {
-          auto buffer = this->buffer<uint16_t>(attribute_name);
-          // If buffer is null, skip
-          if (buffer.second.first == nullptr || buffer.second.second == 0)
-            break;
-
-          attributeBuffer.initBuffer().setUint16(
-              kj::arrayPtr(buffer.second.first, buffer.second.second));
-          if (buffer.first.first != nullptr)
-            attributeBuffer.setBufferOffset(
-                kj::arrayPtr(buffer.first.first, buffer.first.second));
-          break;
-        }
-        case tiledb::sm::Datatype::INT32: {
-          auto buffer = this->buffer<int32_t>(attribute_name);
-          // If buffer is null, skip
-          if (buffer.second.first == nullptr || buffer.second.second == 0)
-            break;
-
-          attributeBuffer.initBuffer().setInt32(
-              kj::arrayPtr(buffer.second.first, buffer.second.second));
-          if (buffer.first.first != nullptr)
-            attributeBuffer.setBufferOffset(
-                kj::arrayPtr(buffer.first.first, buffer.first.second));
-          break;
-        }
-        case tiledb::sm::Datatype::STRING_UTF32:
-        case tiledb::sm::Datatype::STRING_UCS4:
-        case tiledb::sm::Datatype::UINT32: {
-          auto buffer = this->buffer<uint32_t>(attribute_name);
-          // If buffer is null, skip
-          if (buffer.second.first == nullptr || buffer.second.second == 0)
-            break;
-
-          attributeBuffer.initBuffer().setUint32(
-              kj::arrayPtr(buffer.second.first, buffer.second.second));
-          if (buffer.first.first != nullptr)
-            attributeBuffer.setBufferOffset(
-                kj::arrayPtr(buffer.first.first, buffer.first.second));
-          break;
-        }
-        case tiledb::sm::Datatype::INT64: {
-          auto buffer = this->buffer<int64_t>(attribute_name);
-          // If buffer is null, skip
-          if (buffer.second.first == nullptr || buffer.second.second == 0)
-            break;
-
-          attributeBuffer.initBuffer().setInt64(
-              kj::arrayPtr(buffer.second.first, buffer.second.second));
-          if (buffer.first.first != nullptr)
-            attributeBuffer.setBufferOffset(
-                kj::arrayPtr(buffer.first.first, buffer.first.second));
-          break;
-        }
-        case tiledb::sm::Datatype::UINT64: {
-          auto buffer = this->buffer<uint64_t>(attribute_name);
-          // If buffer is null, skip
-          if (buffer.second.first == nullptr || buffer.second.second == 0)
-            break;
-
-          attributeBuffer.initBuffer().setUint64(
-              kj::arrayPtr(buffer.second.first, buffer.second.second));
-          if (buffer.first.first != nullptr)
-            attributeBuffer.setBufferOffset(
-                kj::arrayPtr(buffer.first.first, buffer.first.second));
-          break;
-        }
-        case tiledb::sm::Datatype::FLOAT32: {
-          auto buffer = this->buffer<float>(attribute_name);
-          // If buffer is null, skip
-          if (buffer.second.first == nullptr || buffer.second.second == 0)
-            break;
-
-          attributeBuffer.initBuffer().setFloat32(
-              kj::arrayPtr(buffer.second.first, buffer.second.second));
-          if (buffer.first.first != nullptr)
-            attributeBuffer.setBufferOffset(
-                kj::arrayPtr(buffer.first.first, buffer.first.second));
-          break;
-        }
-        case tiledb::sm::Datatype::FLOAT64: {
-          auto buffer = this->buffer<double>(attribute_name);
-          // If buffer is null, skip
-          if (buffer.second.first == nullptr || buffer.second.second == 0)
-            break;
-
-          attributeBuffer.initBuffer().setFloat64(
-              kj::arrayPtr(buffer.second.first, buffer.second.second));
-          if (buffer.first.first != nullptr)
-            attributeBuffer.setBufferOffset(
-                kj::arrayPtr(buffer.first.first, buffer.first.second));
-          break;
-        }
-        case tiledb::sm::Datatype::CHAR: {
-          auto buffer = this->buffer<char>(attribute_name);
-          // If buffer is null, skip
-          if (buffer.second.first == nullptr || buffer.second.second == 0)
-            break;
-
-          const capnp::Data::Reader data(
-              reinterpret_cast<kj::byte*>(buffer.second.first),
-              buffer.second.second);
-          attributeBuffer.initBuffer().setChar(data);
-          if (buffer.first.first != nullptr)
-            attributeBuffer.setBufferOffset(
-                kj::arrayPtr(buffer.first.first, buffer.first.second));
-          break;
-        }
-        case tiledb::sm::Datatype::ANY:
-          // Not supported datatype for buffer
-          return Status::Error("Any datatype not support for serialization");
-          break;
+      auto attr_type = attribute->type();
+      auto buff = type_ == QueryType::READ ? reader_.buffer(attribute_name) :
+                                             writer_.buffer(attribute_name);
+      if (attribute->var_size() &&
+          (buff.buffer_var_ != nullptr && buff.buffer_var_size_ != nullptr)) {
+        // Variable-sized attribute.
+        if (buff.buffer_ == nullptr || buff.buffer_size_ == nullptr)
+          return Status::RestError(
+              "Cannot serialize query; variable-length attribute has no offset "
+              "buffer set.");
+        // Var-length data
+        size_t buff_length =
+            (*buff.buffer_var_size_) / datatype_size(attr_type);
+        auto builder = attributeBuffer.initBuffer();
+        RETURN_NOT_OK(rest::capnp::utils::set_capnp_array_ptr(
+            builder, attr_type, buff.buffer_var_, buff_length));
+        // Offsets
+        attributeBuffer.setBufferOffset(kj::arrayPtr(
+            static_cast<const uint64_t*>(buff.buffer_),
+            (*buff.buffer_size_) / sizeof(uint64_t)));
+      } else if (buff.buffer_ != nullptr && buff.buffer_size_ != nullptr) {
+        // Fixed-size attribute.
+        size_t buff_length = (*buff.buffer_size_) / datatype_size(attr_type);
+        auto builder = attributeBuffer.initBuffer();
+        RETURN_NOT_OK(rest::capnp::utils::set_capnp_array_ptr(
+            builder, attr_type, buff.buffer_, buff_length));
       }
     }
   }
 
   if (this->layout() == tiledb::sm::Layout::GLOBAL_ORDER &&
       this->type() == tiledb::sm::QueryType::WRITE) {
-    ::Writer::Builder writerBuilder = queryBuilder->initWriter();
+    rest::capnp::Writer::Builder writerBuilder = queryBuilder->initWriter();
     auto status = writer_.capnp(&writerBuilder);
     if (!status.ok())
       return status;
   } else if (this->type() == tiledb::sm::QueryType::READ) {
-    ::QueryReader::Builder queryReaderBuilder = queryBuilder->initReader();
+    rest::capnp::QueryReader::Builder queryReaderBuilder =
+        queryBuilder->initReader();
     auto status = reader_.capnp(&queryReaderBuilder);
     if (!status.ok())
       return status;
@@ -562,7 +382,7 @@ Status Query::capnp(::Query::Builder* queryBuilder) const {
   STATS_FUNC_OUT(serialization_query_capnp);
 }
 
-tiledb::sm::Status Query::from_capnp(::Query::Reader* query) {
+tiledb::sm::Status Query::from_capnp(rest::capnp::Query::Reader* query) {
   STATS_FUNC_IN(serialization_query_from_capnp);
   tiledb::sm::Status status;
 
@@ -601,7 +421,7 @@ tiledb::sm::Status Query::from_capnp(::Query::Reader* query) {
     status = this->set_subarray(nullptr);
   } else {
     // Set subarray
-    ::DomainArray::Reader subarrayReader = query->getSubarray();
+    rest::capnp::DomainArray::Reader subarrayReader = query->getSubarray();
     switch (array_schema()->domain()->type()) {
       case tiledb::sm::Datatype::INT8: {
         if (subarrayReader.hasInt8()) {
@@ -723,7 +543,8 @@ tiledb::sm::Status Query::from_capnp(::Query::Reader* query) {
   }
 
   if (query->hasBuffers()) {
-    Map<capnp::Text, ::AttributeBuffer>::Reader buffers = query->getBuffers();
+    rest::capnp::Map<capnp::Text, rest::capnp::AttributeBuffer>::Reader
+        buffers = query->getBuffers();
     for (auto bufferMap : buffers.getEntries()) {
       // empty key name means this object is empty, we should skip it.
       // Need to handle serialization better and no make empty objects
@@ -761,7 +582,7 @@ tiledb::sm::Status Query::from_capnp(::Query::Reader* query) {
             bufferMap.getKey().cStr(), &existingBuffer, &existingBufferSize);
       }
 
-      ::AttributeBuffer::Reader buffer = bufferMap.getValue();
+      rest::capnp::AttributeBuffer::Reader buffer = bufferMap.getValue();
       uint64_t type_size = tiledb::sm::datatype_size(attr->type());
       Datatype buffer_datatype = Datatype::ANY;
       status = datatype_enum(buffer.getType().cStr(), &buffer_datatype);
@@ -774,7 +595,8 @@ tiledb::sm::Status Query::from_capnp(::Query::Reader* query) {
             "datatype. " +
             datatype_str(attr->type()) + " != " + buffer.getType().cStr());
 
-      ::AttributeBuffer::Buffer::Reader bufferReader = buffer.getBuffer();
+      rest::capnp::AttributeBuffer::Buffer::Reader bufferReader =
+          buffer.getBuffer();
 
       switch (attr->type()) {
         case tiledb::sm::Datatype::INT8: {
@@ -1553,11 +1375,11 @@ tiledb::sm::Status Query::from_capnp(::Query::Reader* query) {
 
   // This has to come after set_subarray because they remove global write state
   if (this->type() == tiledb::sm::QueryType::WRITE && query->hasWriter()) {
-    ::Writer::Reader writerReader = query->getWriter();
+    rest::capnp::Writer::Reader writerReader = query->getWriter();
     status = writer_.from_capnp(&writerReader);
   } else if (
       this->type() == tiledb::sm::QueryType::READ && query->hasReader()) {
-    ::QueryReader::Reader queryReader = query->getReader();
+    rest::capnp::QueryReader::Reader queryReader = query->getReader();
     status = reader_.from_capnp(&queryReader);
   }
   if (!status.ok())

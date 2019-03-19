@@ -26,64 +26,47 @@
 #
 # Finds the Capnp library, installing with an ExternalProject as necessary.
 # This module defines:
-#   - CAPNP_INCLUDE_DIR, directory containing headers
-#   - CAPNP_LIBRARIES, the Capnp library path
 #   - CAPNP_FOUND, whether Capnp has been found
-#   - The Capnp::Capnp imported target
+#   - The CapnProto::{capnp,kj,capnp-json} imported targets
 
 # Include some common helper functions.
 include(TileDBCommon)
 
-# Search the path set during the superbuild for the EP.
-set(CAPNP_PATHS ${TILEDB_EP_INSTALL_PREFIX})
+# If the EP was built, it will install the CapnProtoConfig.cmake file, which we
+# can use with find_package. CMake uses CMAKE_PREFIX_PATH to locate find
+# modules.
+set(CMAKE_PREFIX_PATH ${CMAKE_PREFIX_PATH} "${TILEDB_EP_INSTALL_PREFIX}")
 
-find_path(CAPNP_INCLUDE_DIR
-  NAMES capnp/serialize.h
-  PATHS ${CAPNP_PATHS}
-  PATH_SUFFIXES include
-  ${TILEDB_DEPS_NO_DEFAULT_PATH}
-)
+# First try the CMake find module.
+find_package(CapnProto QUIET ${TILEDB_DEPS_NO_DEFAULT_PATH})
+set(CAPNP_FOUND ${CapnProto_FOUND})
 
-set(CAPNP_LIBS capnp kj capnp-json)
-set(REQUIRED_VARS)
-foreach(LIB ${CAPNP_LIBS})
-# Link statically if installed with the EP.
-if (TILEDB_USE_STATIC_CAPNP)
-  find_library(CAPNP_LIB_${LIB} lib${LIB}${CMAKE_STATIC_LIBRARY_SUFFIX}
-          PATHS ${CAPNP_PATHS}
-          PATH_SUFFIXES lib lib64
-          ${TILEDB_DEPS_NO_DEFAULT_PATH}
-          )
-  LIST(APPEND REQUIRED_VARS "CAPNP_LIB_${LIB}")
-else()
-  find_library(CAPNP_LIB_${LIB} lib${LIB}
-          PATHS ${CAPNP_PATHS}
-          PATH_SUFFIXES lib lib64 bin
-          ${TILEDB_DEPS_NO_DEFAULT_PATH}
-          )
-  LIST(APPEND REQUIRED_VARS "CAPNP_LIB_${LIB}")
-endif()
-endforeach()
-
-include(FindPackageHandleStandardArgs)
-FIND_PACKAGE_HANDLE_STANDARD_ARGS(Capnp
-  REQUIRED_VARS ${REQUIRED_VARS} CAPNP_INCLUDE_DIR
-)
-
+# If not found, add it as an external project
 if (NOT CAPNP_FOUND)
   if (TILEDB_SUPERBUILD)
-    message(STATUS "Adding CAPNP as an external project")
+    message(STATUS "Adding Capnp as an external project")
+
+    if (WIN32)
+      set(CFLAGS_DEF "")
+      set(CXXFLAGS_DEF "")
+    else()
+      set(CFLAGS_DEF "-DCMAKE_C_FLAGS=-fPIC")
+      set(CXXFLAGS_DEF "-DCMAKE_CXX_FLAGS=-fPIC")
+    endif()
+
     ExternalProject_Add(ep_capnp
       PREFIX "externals"
       URL "https://github.com/capnproto/capnproto/archive/v0.6.1.tar.gz"
       URL_HASH SHA1=2aec1f83cc4851ae58e1419c87f11f8aa63a9392
       CONFIGURE_COMMAND
         ${CMAKE_COMMAND}
-        ${ARCH_SPEC}
-        -DCMAKE_INSTALL_PREFIX=${TILEDB_EP_INSTALL_PREFIX}
-        -DCMAKE_CXX_FLAGS=-fPIC
-        -DCMAKE_C_FLAGS=-fPIC
-        ${TILEDB_EP_BASE}/src/ep_capnp/c++
+          ${ARCH_SPEC}
+          -DCMAKE_INSTALL_PREFIX=${TILEDB_EP_INSTALL_PREFIX}
+          -DCMAKE_BUILD_TYPE=Release
+          -DBUILD_TESTING=OFF
+          ${CXXFLAGS_DEF}
+          ${CFLAGS_DEF}
+          ${TILEDB_EP_BASE}/src/ep_capnp/c++
       UPDATE_COMMAND ""
       LOG_DOWNLOAD TRUE
       LOG_CONFIGURE TRUE
@@ -91,45 +74,26 @@ if (NOT CAPNP_FOUND)
       LOG_INSTALL TRUE
     )
 
-    if (WIN32)
-      # capnp.{dll,lib} gets installed in lib dir; move it to bin.
-      ExternalProject_Add_Step(ep_capnp move_dll
-        DEPENDEES INSTALL
-        COMMAND
-          ${CMAKE_COMMAND} -E rename
-            ${TILEDB_EP_INSTALL_PREFIX}/lib/capnp.dll
-            ${TILEDB_EP_INSTALL_PREFIX}/bin/capnp.dll &&
-          ${CMAKE_COMMAND} -E rename
-            ${TILEDB_EP_INSTALL_PREFIX}/lib/capnp.lib
-            ${TILEDB_EP_INSTALL_PREFIX}/bin/capnp.lib
-          ${CMAKE_COMMAND} -E rename
-            ${TILEDB_EP_INSTALL_PREFIX}/lib/kj.dll
-            ${TILEDB_EP_INSTALL_PREFIX}/bin/kj.dll &&
-          ${CMAKE_COMMAND} -E rename
-            ${TILEDB_EP_INSTALL_PREFIX}/lib/kj.lib
-            ${TILEDB_EP_INSTALL_PREFIX}/bin/kj.lib
-      )
-    endif()
-
     list(APPEND TILEDB_EXTERNAL_PROJECTS ep_capnp)
     list(APPEND FORWARD_EP_CMAKE_ARGS
-      -DTILEDB_USE_STATIC_CAPNP=TRUE
+      -DTILEDB_CAPNP_EP_BUILT=TRUE
     )
   else()
     message(FATAL_ERROR "Unable to find Capnp")
   endif()
 endif()
 
-if(CAPNP_FOUND)
-  foreach(LIB ${CAPNP_LIBS})
-    add_library(Capnp::${LIB} UNKNOWN IMPORTED)
-    set_target_properties(Capnp::${LIB} PROPERTIES
-            IMPORTED_LOCATION "${CAPNP_LIB_${LIB}}"
-            INTERFACE_INCLUDE_DIRECTORIES "${CAPNP_INCLUDE_DIR}"
-            )
+if (CAPNP_FOUND)
+  # List of all required Capnp libraries.
+  set(CAPNP_LIB_NAMES capnp kj capnp-json)
+  foreach(LIB ${CAPNP_LIB_NAMES})
+    if (NOT TARGET CapnProto::${LIB})
+      message(FATAL_ERROR "Required target CapnProto::${LIB} not defined")
+    endif()
+    message(STATUS "Found CapnProto lib: ${LIB}")
     # If we built a static EP, install it if required.
-    if (TILEDB_USE_STATIC_CAPNP AND TILEDB_INSTALL_STATIC_DEPS)
-      install_target_libs(Capnp::${LIB})
+    if (TILEDB_CAPNP_EP_BUILT AND TILEDB_INSTALL_STATIC_DEPS)
+      install_target_libs(CapnProto::${LIB})
     endif()
   endforeach()
 endif()

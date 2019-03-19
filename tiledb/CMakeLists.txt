@@ -271,9 +271,9 @@ find_package(Curl_EP REQUIRED)
 if (NOT WIN32)
   # No Curl required on Windows.
   target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
-          INTERFACE
-          Curl::Curl
-          )
+    INTERFACE
+    Curl::Curl
+  )
 endif()
 
 # S3 dependencies
@@ -349,9 +349,9 @@ target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
     Spdlog::Spdlog
     Zlib::Zlib
     Zstd::Zstd
-    Capnp::capnp
-    Capnp::capnp-json
-    Capnp::kj
+    CapnProto::capnp
+    CapnProto::capnp-json
+    CapnProto::kj
 )
 if (NOT WIN32)
   target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
@@ -428,9 +428,9 @@ if (TILEDB_STATIC)
   append_dep_lib(TBB::tbb)
   append_dep_lib(Zlib::Zlib)
   append_dep_lib(Zstd::Zstd)
-  append_dep_lib(Capnp::capnp)
-  append_dep_lib(Capnp::capnp-json)
-  append_dep_lib(Capnp::kj)
+  append_dep_lib(CapnProto::capnp)
+  append_dep_lib(CapnProto::capnp-json)
+  append_dep_lib(CapnProto::kj)
   append_dep_lib(OpenSSL::SSL)
   append_dep_lib(OpenSSL::Crypto)
   append_dep_lib(AWSSDK::aws-cpp-sdk-s3)

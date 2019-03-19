@@ -72,9 +72,10 @@ class Array {
   /** Returns the array URI. */
   const URI& array_uri() const;
 
-  Status capnp(::Array::Builder* arrayBuilder) const;
+  Status capnp(rest::capnp::Array::Builder* arrayBuilder) const;
 
-  tiledb::sm::Status from_capnp(::Array::Reader array);
+  Status from_capnp(rest::capnp::Array::Reader array);
+
   /**
    * Computes an upper bound on the buffer sizes required for a read
    * query, for a given subarray and set of attributes.

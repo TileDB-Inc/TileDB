@@ -31,6 +31,7 @@
  */
 
 #include "tiledb/sm/tile/tile.h"
+#include "tiledb/rest/capnp/utils.h"
 #include "tiledb/sm/misc/logger.h"
 #include "tiledb/sm/misc/stats.h"
 
@@ -124,79 +125,21 @@ Tile& Tile::operator=(Tile&& tile) {
 /*               API              */
 /* ****************************** */
 
-Status Tile::capnp(::Tile::Builder* tileBuilder) const {
+Status Tile::capnp(rest::capnp::Tile::Builder* tileBuilder) const {
   STATS_FUNC_IN(serialization_tile_capnp);
+
   tileBuilder->setType(datatype_str(this->type()));
   tileBuilder->setCellSize(this->cell_size());
   tileBuilder->setDimNum(this->dim_num());
 
-  ::Tile::Buffer::Builder bufferBuilder = tileBuilder->initBuffer();
-
-  if (this->buffer() != nullptr) {
-    uint64_t type_size = datatype_size(this->type());
-    switch (this->type()) {
-      case tiledb::sm::Datatype::INT8:
-        bufferBuilder.setInt8(kj::arrayPtr(
-            static_cast<int8_t*>(this->buffer()->data()),
-            this->buffer()->size() / type_size));
-        break;
-      case tiledb::sm::Datatype::STRING_ASCII:
-      case tiledb::sm::Datatype::STRING_UTF8:
-      case tiledb::sm::Datatype::UINT8:
-        bufferBuilder.setUint8(kj::arrayPtr(
-            static_cast<uint8_t*>(this->buffer()->data()),
-            this->buffer()->size() / type_size));
-        break;
-      case tiledb::sm::Datatype::INT16:
-        bufferBuilder.setInt16(kj::arrayPtr(
-            static_cast<int16_t*>(this->buffer()->data()),
-            this->buffer()->size() / type_size));
-        break;
-      case tiledb::sm::Datatype::STRING_UTF16:
-      case tiledb::sm::Datatype::STRING_UCS2:
-      case tiledb::sm::Datatype::UINT16:
-        bufferBuilder.setUint16(kj::arrayPtr(
-            static_cast<uint16_t*>(this->buffer()->data()),
-            this->buffer()->size() / type_size));
-        break;
-      case tiledb::sm::Datatype::INT32:
-        bufferBuilder.setInt32(kj::arrayPtr(
-            static_cast<int32_t*>(this->buffer()->data()),
-            this->buffer()->size() / type_size));
-        break;
-      case tiledb::sm::Datatype::STRING_UTF32:
-      case tiledb::sm::Datatype::STRING_UCS4:
-      case tiledb::sm::Datatype::UINT32:
-        bufferBuilder.setUint32(kj::arrayPtr(
-            static_cast<uint32_t*>(this->buffer()->data()),
-            this->buffer()->size() / type_size));
-        break;
-      case tiledb::sm::Datatype::INT64:
-        bufferBuilder.setInt64(kj::arrayPtr(
-            static_cast<int64_t*>(this->buffer()->data()),
-            this->buffer()->size() / type_size));
-        break;
-      case tiledb::sm::Datatype::UINT64:
-        bufferBuilder.setUint64(kj::arrayPtr(
-            static_cast<uint64_t*>(this->buffer()->data()),
-            this->buffer()->size() / type_size));
-        break;
-      case tiledb::sm::Datatype::FLOAT32:
-        bufferBuilder.setFloat32(kj::arrayPtr(
-            static_cast<float*>(this->buffer()->data()),
-            this->buffer()->size() / type_size));
-        break;
-      case tiledb::sm::Datatype::FLOAT64:
-        bufferBuilder.setFloat64(kj::arrayPtr(
-            static_cast<double*>(this->buffer()->data()),
-            this->buffer()->size() / type_size));
-        break;
-      default:
-        break;
-    }
+  if (buffer_ != nullptr) {
+    auto bufferBuilder = tileBuilder->initBuffer();
+    RETURN_NOT_OK(rest::capnp::utils::set_capnp_array_ptr(
+        bufferBuilder, type_, buffer_, buffer_->size() / datatype_size(type_)));
   }
 
   return Status::Ok();
+
   STATS_FUNC_OUT(serialization_tile_capnp);
 }
 
@@ -222,7 +165,7 @@ Status Tile::init(
   return Status::Ok();
 }
 
-Status Tile::from_capnp(::Tile::Reader* tileReader) {
+Status Tile::from_capnp(rest::capnp::Tile::Reader* tileReader) {
   STATS_FUNC_IN(serialization_tile_from_capnp);
   Status status = Status::Ok();
 
@@ -238,7 +181,7 @@ Status Tile::from_capnp(::Tile::Reader* tileReader) {
 
   if (tileReader->getBuffer().totalSize().wordCount > 0) {
     uint64_t type_size = datatype_size(this->type());
-    ::Tile::Buffer::Reader bufferReader = tileReader->getBuffer();
+    rest::capnp::Tile::Buffer::Reader bufferReader = tileReader->getBuffer();
     switch (this->type()) {
       case tiledb::sm::Datatype::INT8: {
         if (bufferReader.hasInt8()) {

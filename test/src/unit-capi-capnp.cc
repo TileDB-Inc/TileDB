@@ -49,7 +49,7 @@
 #include "tiledb/sm/misc/utils.h"
 
 struct ArraySchemaCapnp {
-  // Filesystem related
+// Filesystem related
 #ifdef _WIN32
   const std::string FILE_URI_PREFIX = "";
   const std::string FILE_TEMP_DIR =

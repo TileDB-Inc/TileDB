@@ -31,6 +31,7 @@
  */
 
 #include "tiledb/sm/query/reader.h"
+#include "tiledb/rest/capnp/utils.h"
 #include "tiledb/sm/misc/comparators.h"
 #include "tiledb/sm/misc/logger.h"
 #include "tiledb/sm/misc/parallel_functions.h"
@@ -118,13 +119,15 @@ AttributeBuffer Reader::buffer(const std::string& attribute) const {
   return attrbuf->second;
 }
 
-Status Reader::capnp(::QueryReader::Builder* queryReaderBuilder) const {
+Status Reader::capnp(
+    rest::capnp::QueryReader::Builder* queryReaderBuilder) const {
   if (!this->fragment_metadata_.empty()) {
-    capnp::List<::FragmentMetadata>::Builder fragmentMetadataBuilder =
-        queryReaderBuilder->initFragmentMetadata(
+    capnp::List<rest::capnp::FragmentMetadata>::Builder
+        fragmentMetadataBuilder = queryReaderBuilder->initFragmentMetadata(
             this->fragment_metadata_.size());
     for (size_t i = 0; i < this->fragment_metadata_.size(); i++) {
-      ::FragmentMetadata::Builder builder = fragmentMetadataBuilder[i];
+      rest::capnp::FragmentMetadata::Builder builder =
+          fragmentMetadataBuilder[i];
       Status st = this->fragment_metadata_[i]->capnp(&builder);
       if (!st.ok())
         return st;
@@ -132,7 +135,8 @@ Status Reader::capnp(::QueryReader::Builder* queryReaderBuilder) const {
   }
 
   if (this->read_state_.initialized_ == true) {
-    ::ReadState::Builder readStateBuilder = queryReaderBuilder->initReadState();
+    rest::capnp::ReadState::Builder readStateBuilder =
+        queryReaderBuilder->initReadState();
 
     readStateBuilder.setInitialized(this->read_state_.initialized_);
     readStateBuilder.setOverflowed(this->read_state_.overflowed_);
@@ -140,82 +144,20 @@ Status Reader::capnp(::QueryReader::Builder* queryReaderBuilder) const {
     auto coords_type = array_schema_->coords_type();
     auto subarray_size = 2 * this->array_schema()->coords_size();
     if (this->read_state_.cur_subarray_partition_ != nullptr) {
-      ::DomainArray::Builder curSubarrayPartitionBuilder =
+      rest::capnp::DomainArray::Builder curSubarrayPartitionBuilder =
           readStateBuilder.initCurSubarrayPartition();
-      // Allocate subarray
-      switch (coords_type) {
-        case Datatype::INT8: {
-          curSubarrayPartitionBuilder.setInt8(kj::arrayPtr(
-              static_cast<int8_t*>(this->read_state_.cur_subarray_partition_),
-              subarray_size));
-          break;
-        }
-        case Datatype::UINT8: {
-          curSubarrayPartitionBuilder.setUint8(kj::arrayPtr(
-              static_cast<uint8_t*>(this->read_state_.cur_subarray_partition_),
-              subarray_size));
-          break;
-        }
-        case Datatype::INT16: {
-          curSubarrayPartitionBuilder.setInt16(kj::arrayPtr(
-              static_cast<int16_t*>(this->read_state_.cur_subarray_partition_),
-              subarray_size));
-          break;
-        }
-        case Datatype::UINT16: {
-          curSubarrayPartitionBuilder.setUint16(kj::arrayPtr(
-              static_cast<uint16_t*>(this->read_state_.cur_subarray_partition_),
-              subarray_size));
-          break;
-        }
-        case Datatype::INT32: {
-          curSubarrayPartitionBuilder.setInt32(kj::arrayPtr(
-              static_cast<int32_t*>(this->read_state_.cur_subarray_partition_),
-              subarray_size));
-          break;
-        }
-        case Datatype::UINT32: {
-          curSubarrayPartitionBuilder.setUint32(kj::arrayPtr(
-              static_cast<uint32_t*>(this->read_state_.cur_subarray_partition_),
-              subarray_size));
-          break;
-        }
-        case Datatype::INT64: {
-          curSubarrayPartitionBuilder.setInt64(kj::arrayPtr(
-              static_cast<int64_t*>(this->read_state_.cur_subarray_partition_),
-              subarray_size));
-          break;
-        }
-        case Datatype::UINT64: {
-          curSubarrayPartitionBuilder.setUint64(kj::arrayPtr(
-              static_cast<uint64_t*>(this->read_state_.cur_subarray_partition_),
-              subarray_size));
-          break;
-        }
-        case Datatype::FLOAT32: {
-          curSubarrayPartitionBuilder.setFloat32(kj::arrayPtr(
-              static_cast<float*>(this->read_state_.cur_subarray_partition_),
-              subarray_size));
-          break;
-        }
-        case Datatype::FLOAT64: {
-          curSubarrayPartitionBuilder.setFloat64(kj::arrayPtr(
-              static_cast<double*>(this->read_state_.cur_subarray_partition_),
-              subarray_size));
-          break;
-        }
-        default: {
-          return Status::ReaderError(
-              "Unknown datatype for current subarray partition in capnp");
-        }
-      }
+      RETURN_NOT_OK(rest::capnp::utils::set_capnp_array_ptr(
+          curSubarrayPartitionBuilder,
+          coords_type,
+          read_state_.cur_subarray_partition_,
+          subarray_size));
     }
 
     if (!this->read_state_.subarray_partitions_.empty()) {
       auto subarray_length = 2 * this->array_schema()->dim_num();
       // SubarrayPartitions
-      ::ReadState::SubarrayPartitions::Builder subarrayPartitionsBuilder =
-          readStateBuilder.initSubarrayPartitions();
+      rest::capnp::ReadState::SubarrayPartitions::Builder
+          subarrayPartitionsBuilder = readStateBuilder.initSubarrayPartitions();
       size_t subarrayPartitionsSize =
           this->read_state_.subarray_partitions_.size();
       switch (coords_type) {
@@ -396,9 +338,9 @@ Status Reader::get_buffer(
   return Status::Ok();
 }
 
-Status Reader::from_capnp(::QueryReader::Reader* queryReader) {
+Status Reader::from_capnp(rest::capnp::QueryReader::Reader* queryReader) {
   if (queryReader->hasFragmentMetadata()) {
-    capnp::List<::FragmentMetadata>::Reader fragmentMetadataReader =
+    capnp::List<rest::capnp::FragmentMetadata>::Reader fragmentMetadataReader =
         queryReader->getFragmentMetadata();
     // Clear existing fragmentMetadata so we can use deserialized data
     this->fragment_metadata_.clear();
@@ -418,12 +360,13 @@ Status Reader::from_capnp(::QueryReader::Reader* queryReader) {
   }
 
   if (queryReader->hasReadState()) {
-    ::ReadState::Reader readStateReader = queryReader->getReadState();
+    rest::capnp::ReadState::Reader readStateReader =
+        queryReader->getReadState();
 
     this->read_state_.initialized_ = readStateReader.getInitialized();
     this->read_state_.overflowed_ = readStateReader.getOverflowed();
 
-    ::DomainArray::Reader curSubarrayPartitionReader =
+    rest::capnp::DomainArray::Reader curSubarrayPartitionReader =
         readStateReader.getCurSubarrayPartition();
     // Allocate subarray
     auto subarray_size = 2 * this->array_schema_->coords_size();
@@ -621,8 +564,8 @@ Status Reader::from_capnp(::QueryReader::Reader* queryReader) {
     }
 
     // SubarrayPartitions
-    ::ReadState::SubarrayPartitions::Reader subarrayPartitionsReader =
-        readStateReader.getSubarrayPartitions();
+    rest::capnp::ReadState::SubarrayPartitions::Reader
+        subarrayPartitionsReader = readStateReader.getSubarrayPartitions();
     switch (coords_type) {
       case Datatype::INT8: {
         if (subarrayPartitionsReader.hasInt8()) {
