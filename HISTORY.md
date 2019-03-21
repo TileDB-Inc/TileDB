@@ -35,6 +35,7 @@
 * Added `Domain::has_dimension()`
 * Added constructor overloads for `Array` and `Map` to take a `std::string` encryption key.
 * Added overloads for `{Array,Map}::{open,create,consolidate}` to take a `std::string` encryption key.
+* Added untyped overloads for `Query::set_buffer()`.
 
 ## Breaking changes
 

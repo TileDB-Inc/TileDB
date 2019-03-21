@@ -543,16 +543,9 @@ class Query {
    **/
   template <typename T>
   Query& set_buffer(const std::string& attr, T* buff, uint64_t nelements) {
-    if (attr != TILEDB_COORDS) {
+    if (attr != TILEDB_COORDS)
       impl::type_check<T>(schema_.attribute(attr).type());
-    }
-    auto ctx = ctx_.get();
-    auto size = nelements * sizeof(T);
-    buff_sizes_[attr] = std::pair<uint64_t, uint64_t>(0, size);
-    element_sizes_[attr] = sizeof(T);
-    ctx.handle_error(tiledb_query_set_buffer(
-        ctx, query_.get(), attr.c_str(), buff, &(buff_sizes_[attr].second)));
-    return *this;
+    return set_buffer(attr, buff, nelements, sizeof(T));
   }
 
   /**
@@ -567,13 +560,33 @@ class Query {
    * query.set_buffer("a1", data_a1);
    * @endcode
    *
-   * @tparam Vec buffer. Should always be a vector type of the attribute type.
+   * @tparam T Attribute value type
    * @param attr Attribute name
    * @param buf Buffer vector with elements of the attribute type.
    **/
-  template <typename Vec>
-  Query& set_buffer(const std::string& attr, Vec& buf) {
-    return set_buffer(attr, buf.data(), buf.size());
+  template <typename T>
+  Query& set_buffer(const std::string& attr, std::vector<T>& buf) {
+    return set_buffer(attr, buf.data(), buf.size(), sizeof(T));
+  }
+
+  /**
+   * Sets a buffer for a fixed-sized attribute.
+   *
+   * @note This unsafe version does not perform type checking; the given buffer
+   * is assumed to be the correct type, and the size of an element in the given
+   * buffer is assumed to be the size of the datatype of the attribute.
+   *
+   * @param attr Attribute name
+   * @param buff Buffer array pointer with elements of the attribute type.
+   * @param nelements Number of array elements in buffer
+   **/
+  Query& set_buffer(const std::string& attr, void* buff, uint64_t nelements) {
+    // Compute element size (in bytes).
+    size_t element_size =
+        attr == TILEDB_COORDS ?
+            tiledb_datatype_size(schema_.domain().type()) :
+            tiledb_datatype_size(schema_.attribute(attr).type());
+    return set_buffer(attr, buff, nelements, element_size);
   }
 
   /**
@@ -610,20 +623,34 @@ class Query {
       T* data,
       uint64_t data_nelements) {
     impl::type_check<T>(schema_.attribute(attr).type());
-    auto ctx = ctx_.get();
-    auto data_size = data_nelements * sizeof(T);
-    auto offset_size = offset_nelements * sizeof(uint64_t);
-    element_sizes_[attr] = sizeof(T);
-    buff_sizes_[attr] = std::pair<uint64_t, uint64_t>(offset_size, data_size);
-    ctx.handle_error(tiledb_query_set_buffer_var(
-        ctx,
-        query_.get(),
-        attr.c_str(),
-        offsets,
-        &(buff_sizes_[attr].first),
-        (void*)data,
-        &(buff_sizes_[attr].second)));
-    return *this;
+    return set_buffer(
+        attr, offsets, offset_nelements, data, data_nelements, sizeof(T));
+  }
+
+  /**
+   * Sets a buffer for a variable-sized attribute.
+   *
+   * @note This unsafe version does not perform type checking; the given buffer
+   * is assumed to be the correct type, and the size of an element in the given
+   * buffer is assumed to be the size of the datatype of the attribute.
+   *
+   * @param attr Attribute name
+   * @param offsets Offsets array pointer where a new element begins in the data
+   *        buffer.
+   * @param offsets_nelements Number of elements in offsets buffer.
+   * @param data Buffer array pointer with elements of the attribute type.
+   * @param data_nelements Number of array elements in data buffer.
+   **/
+  Query& set_buffer(
+      const std::string& attr,
+      uint64_t* offsets,
+      uint64_t offset_nelements,
+      void* data,
+      uint64_t data_nelements) {
+    // Compute element size (in bytes).
+    size_t element_size = tiledb_datatype_size(schema_.attribute(attr).type());
+    return set_buffer(
+        attr, offsets, offset_nelements, data, data_nelements, element_size);
   }
 
   /**
@@ -639,7 +666,7 @@ class Query {
    * query.set_buffer("a1", offsets_a1, data_a1);
    * @endcode
    *
-   * @tparam Vec buffer type. Should always be a vector of the attribute type.
+   * @tparam T Attribute value type
    * @param attr Attribute name
    * @param offsets Offsets where a new element begins in the data buffer.
    * @param data Buffer vector with elements of the attribute type.
@@ -647,24 +674,50 @@ class Query {
    *        an attribute of type std::string should have a buffer Vec type of
    *        std::string, where the values of each cell are concatenated.
    **/
-  template <typename Vec>
+  template <typename T>
   Query& set_buffer(
-      const std::string& attr, std::vector<uint64_t>& offsets, Vec& data) {
+      const std::string& attr,
+      std::vector<uint64_t>& offsets,
+      std::vector<T>& data) {
+    impl::type_check<T>(schema_.attribute(attr).type());
     return set_buffer(
-        attr, offsets.data(), offsets.size(), &data[0], data.size());
+        attr, offsets.data(), offsets.size(), &data[0], data.size(), sizeof(T));
   }
 
   /**
    * Sets a buffer for a variable-sized attribute.
-
-   * @tparam Vec buffer type. Should always be a vector of the attribute type.
+   *
+   * @tparam T Attribute value type
    * @param attr Attribute name
    * @param buf pair of offset, data buffers
    **/
-  template <typename Vec>
+  template <typename T>
   Query& set_buffer(
-      const std::string& attr, std::pair<std::vector<uint64_t>, Vec>& buf) {
+      const std::string& attr,
+      std::pair<std::vector<uint64_t>, std::vector<T>>& buf) {
+    impl::type_check<T>(schema_.attribute(attr).type());
     return set_buffer(attr, buf.first, buf.second);
+  }
+
+  /**
+   * Sets a buffer for a string-typed variable-sized attribute.
+   *
+   * @param attr Attribute name
+   * @param offsets Offsets where a new element begins in the data buffer.
+   * @param data Pre-allocated string buffer.
+   **/
+  Query& set_buffer(
+      const std::string& attr,
+      std::vector<uint64_t>& offsets,
+      std::string& data) {
+    impl::type_check<char>(schema_.attribute(attr).type());
+    return set_buffer(
+        attr,
+        offsets.data(),
+        offsets.size(),
+        &data[0],
+        data.size(),
+        sizeof(char));
   }
 
   /* ********************************* */
@@ -739,6 +792,64 @@ class Query {
   /* ********************************* */
   /*          PRIVATE METHODS          */
   /* ********************************* */
+
+  /**
+   * Sets a buffer for a fixed-sized attribute.
+   *
+   * @param attr Attribute name
+   * @param buff Buffer array pointer with elements of the attribute type.
+   * @param nelements Number of array elements.
+   * @param element_size Size of array elements (in bytes).
+   **/
+  Query& set_buffer(
+      const std::string& attr,
+      void* buff,
+      uint64_t nelements,
+      size_t element_size) {
+    auto ctx = ctx_.get();
+    size_t size = nelements * element_size;
+    buff_sizes_[attr] = std::pair<uint64_t, uint64_t>(0, size);
+    element_sizes_[attr] = element_size;
+    ctx.handle_error(tiledb_query_set_buffer(
+        ctx, query_.get(), attr.c_str(), buff, &(buff_sizes_[attr].second)));
+    return *this;
+  }
+
+  /**
+   * Sets a buffer for a variable-sized attribute.
+   *
+   * @tparam T Attribute value type
+   * @param attr Attribute name
+   * @param offsets Offsets array pointer where a new element begins in the data
+   *        buffer.
+   * @param offsets_nelements Number of elements in offsets buffer.
+   * @param data Buffer array pointer with elements of the attribute type.
+   *        For variable sized attributes, the buffer should be flattened.
+   * @param data_nelements Number of array elements in data buffer.
+   * @param element_size Size of data array elements (in bytes).
+   **/
+  Query& set_buffer(
+      const std::string& attr,
+      uint64_t* offsets,
+      uint64_t offset_nelements,
+      void* data,
+      uint64_t data_nelements,
+      size_t element_size) {
+    auto ctx = ctx_.get();
+    auto data_size = data_nelements * element_size;
+    auto offset_size = offset_nelements * sizeof(uint64_t);
+    element_sizes_[attr] = element_size;
+    buff_sizes_[attr] = std::pair<uint64_t, uint64_t>(offset_size, data_size);
+    ctx.handle_error(tiledb_query_set_buffer_var(
+        ctx,
+        query_.get(),
+        attr.c_str(),
+        offsets,
+        &(buff_sizes_[attr].first),
+        data,
+        &(buff_sizes_[attr].second)));
+    return *this;
+  }
 };
 
 /* ********************************* */
