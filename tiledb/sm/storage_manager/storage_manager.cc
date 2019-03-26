@@ -1017,8 +1017,8 @@ Status StorageManager::is_file(const URI& uri, bool* is_file) const {
 }
 
 Status StorageManager::is_fragment(const URI& uri, bool* is_fragment) const {
-  RETURN_NOT_OK(TileIO::is_generic_tile(
-      this, uri.join_path(constants::fragment_metadata_filename), is_fragment));
+  RETURN_NOT_OK(vfs_->is_file(
+      uri.join_path(constants::fragment_metadata_filename), is_fragment));
   return Status::Ok();
 }
 
