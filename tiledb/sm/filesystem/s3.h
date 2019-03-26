@@ -303,6 +303,31 @@ class S3 {
 
  private:
   /* ********************************* */
+  /*         PRIVATE DATATYPES         */
+  /* ********************************* */
+
+  /**
+   * This struct wraps the context state of a pending multipart upload request.
+   */
+  struct MakeUploadPartCtx {
+    /** Constructor. */
+    MakeUploadPartCtx(
+        Aws::S3::Model::UploadPartOutcomeCallable&&
+            in_upload_part_outcome_callable,
+        const int in_upload_part_num)
+        : upload_part_outcome_callable(
+              std::move(in_upload_part_outcome_callable))
+        , upload_part_num(in_upload_part_num) {
+    }
+
+    /** The AWS future to wait on for a pending upload part request. */
+    Aws::S3::Model::UploadPartOutcomeCallable upload_part_outcome_callable;
+
+    /** The part number of the pending upload part request. */
+    const int upload_part_num;
+  };
+
+  /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
   /* ********************************* */
 
@@ -481,21 +506,33 @@ class S3 {
       const URI& uri, const void* buffer, uint64_t length, bool last_part);
 
   /**
-   * Issues a multipart upload request.
+   * Issues an async multipart upload request.
    *
    * @param uri The URI of the S3 file to be written to.
    * @param buffer The input buffer.
    * @param length The size of the input buffer.
    * @param upload_id The ID of the upload.
    * @param upload_part_num The part number of the upload.
-   * @return Status
+   * @return MakeUploadPartCtx
    */
-  Status make_upload_part_req(
-      const URI& uri,
+  MakeUploadPartCtx make_upload_part_req(
+      const Aws::Http::URI& aws_uri,
       const void* buffer,
       uint64_t length,
       const Aws::String& upload_id,
       int upload_part_num);
+
+  /**
+   * Waits for an async multipart upload request to complete.
+   *
+   * @param uri The URI of the S3 file to be written to.
+   * @param uri_path The URI path.
+   * @param MakeUploadPartCtx The context of the pending multipart upload
+   * request.
+   * @return Status
+   */
+  Status get_make_upload_part_req(
+      const URI& uri, const std::string& uri_path, MakeUploadPartCtx& ctx);
 };
 
 }  // namespace sm

@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2018 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2019 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -36,6 +36,7 @@
 #include <fstream>
 #include <iostream>
 
+#include "tiledb/sm/filesystem/s3_thread_pool_executor.h"
 #include "tiledb/sm/misc/logger.h"
 #include "tiledb/sm/misc/stats.h"
 #include "tiledb/sm/misc/utils.h"
@@ -113,6 +114,8 @@ Status S3::init(const Config::S3Params& s3_config, ThreadPool* thread_pool) {
 
   client_config_ = std::unique_ptr<Aws::Client::ClientConfiguration>(
       new Aws::Client::ClientConfiguration);
+  client_config_->executor =
+      std::make_shared<S3ThreadPoolExecutor>(thread_pool);
   auto& config = *client_config_.get();
   if (!s3_config.region_.empty())
     config.region = s3_config.region_.c_str();
@@ -853,14 +856,13 @@ Status S3::write_multipart(
         Status::S3Error("Length not evenly divisible by part length"));
   }
 
-  Aws::Http::URI aws_uri = uri.c_str();
-  auto& path = aws_uri.GetPath();
-  std::string path_c_str = path.c_str();
+  const Aws::Http::URI aws_uri(uri.c_str());
+  const std::string uri_path(aws_uri.GetPath().c_str());
 
   // Take a lock protecting the shared multipart data structures
   std::unique_lock<std::mutex> multipart_lck(multipart_upload_mtx_);
 
-  if (multipart_upload_IDs_.find(path_c_str) == multipart_upload_IDs_.end()) {
+  if (multipart_upload_IDs_.find(uri_path) == multipart_upload_IDs_.end()) {
     // Delete file if it exists (overwrite) and initiate multipart request
     if (is_object(uri))
       RETURN_NOT_OK(remove_object(uri));
@@ -871,67 +873,70 @@ Status S3::write_multipart(
   }
 
   // Get the upload ID
-  auto upload_id = multipart_upload_IDs_[path_c_str];
+  const auto upload_id = multipart_upload_IDs_[uri_path];
 
   // Assign the part number(s), and make the write request.
   if (num_ops == 1) {
-    int part_num = multipart_upload_part_number_[path_c_str]++;
+    int part_num = multipart_upload_part_number_[uri_path]++;
 
     // Unlock, as make_upload_part_req will reaquire as necessary.
     multipart_lck.unlock();
 
-    return make_upload_part_req(uri, buffer, length, upload_id, part_num);
+    auto ctx =
+        make_upload_part_req(aws_uri, buffer, length, upload_id, part_num);
+    return get_make_upload_part_req(uri, uri_path, ctx);
   } else {
     STATS_COUNTER_ADD(vfs_s3_write_num_parallelized, 1);
 
-    std::vector<std::future<Status>> results;
+    std::vector<MakeUploadPartCtx> ctx_vec;
+    ctx_vec.reserve(num_ops);
     uint64_t bytes_per_op = multipart_part_size_;
-    int part_num_base = multipart_upload_part_number_[path_c_str];
+    int part_num_base = multipart_upload_part_number_[uri_path];
     for (uint64_t i = 0; i < num_ops; i++) {
       uint64_t begin = i * bytes_per_op,
                end = std::min((i + 1) * bytes_per_op - 1, length - 1);
       uint64_t thread_nbytes = end - begin + 1;
       auto thread_buffer = reinterpret_cast<const char*>(buffer) + begin;
       int part_num = static_cast<int>(part_num_base + i);
-      results.push_back(vfs_thread_pool_->enqueue(
-          [this, &uri, thread_buffer, thread_nbytes, &upload_id, part_num]() {
-            return make_upload_part_req(
-                uri, thread_buffer, thread_nbytes, upload_id, part_num);
-          }));
+      auto ctx = make_upload_part_req(
+          aws_uri, thread_buffer, thread_nbytes, upload_id, part_num);
+      ctx_vec.emplace_back(std::move(ctx));
     }
-    multipart_upload_part_number_[path_c_str] += num_ops;
+    multipart_upload_part_number_[uri_path] += num_ops;
 
     // Unlock, so the threads can take the lock as necessary.
     multipart_lck.unlock();
-    Status st = vfs_thread_pool_->wait_all(results);
-    if (!st.ok()) {
+
+    Status aggregate_st = Status::Ok();
+    for (auto& ctx : ctx_vec) {
+      const Status st = get_make_upload_part_req(uri, uri_path, ctx);
+      if (!st.ok()) {
+        aggregate_st = st;
+      }
+    }
+
+    if (!aggregate_st.ok()) {
       std::stringstream errmsg;
-      errmsg << "S3 parallel write multipart error; " << st.message();
+      errmsg << "S3 parallel write multipart error; " << aggregate_st.message();
       LOG_STATUS(Status::S3Error(errmsg.str()));
     }
-    return st;
+    return aggregate_st;
   }
   STATS_FUNC_OUT(vfs_s3_write_multipart);
 }
 
-Status S3::make_upload_part_req(
-    const URI& uri,
-    const void* buffer,
-    uint64_t length,
+S3::MakeUploadPartCtx S3::make_upload_part_req(
+    const Aws::Http::URI& aws_uri,
+    const void* const buffer,
+    const uint64_t length,
     const Aws::String& upload_id,
-    int upload_part_num) {
-  RETURN_NOT_OK(init_client());
-
-  Aws::Http::URI aws_uri = uri.c_str();
-  auto& path = aws_uri.GetPath();
-  std::string path_c_str = path.c_str();
-
+    const int upload_part_num) {
   auto stream = std::shared_ptr<Aws::IOStream>(
       new boost::interprocess::bufferstream((char*)buffer, length));
 
   Aws::S3::Model::UploadPartRequest upload_part_request;
   upload_part_request.SetBucket(aws_uri.GetAuthority());
-  upload_part_request.SetKey(path);
+  upload_part_request.SetKey(aws_uri.GetPath());
   upload_part_request.SetPartNumber(upload_part_num);
   upload_part_request.SetUploadId(upload_id);
   upload_part_request.SetBody(stream);
@@ -941,7 +946,17 @@ Status S3::make_upload_part_req(
 
   auto upload_part_outcome_callable =
       client_->UploadPartCallable(upload_part_request);
-  auto upload_part_outcome = upload_part_outcome_callable.get();
+
+  MakeUploadPartCtx ctx(
+      std::move(upload_part_outcome_callable), upload_part_num);
+  return ctx;
+}
+
+Status S3::get_make_upload_part_req(
+    const URI& uri, const std::string& uri_path, MakeUploadPartCtx& ctx) {
+  RETURN_NOT_OK(init_client());
+
+  auto upload_part_outcome = ctx.upload_part_outcome_callable.get();
   if (!upload_part_outcome.IsSuccess()) {
     return LOG_STATUS(Status::S3Error(
         std::string("Failed to upload part of S3 object '") + uri.c_str() +
@@ -950,11 +965,11 @@ Status S3::make_upload_part_req(
 
   Aws::S3::Model::CompletedPart completed_part;
   completed_part.SetETag(upload_part_outcome.GetResult().GetETag());
-  completed_part.SetPartNumber(upload_part_num);
+  completed_part.SetPartNumber(ctx.upload_part_num);
 
   {
     std::unique_lock<std::mutex> lck(multipart_upload_mtx_);
-    multipart_upload_completed_parts_[path_c_str][upload_part_num] =
+    multipart_upload_completed_parts_[uri_path][ctx.upload_part_num] =
         completed_part;
   }
 
