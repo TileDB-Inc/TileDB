@@ -138,6 +138,7 @@ set(TILEDB_CORE_SOURCES
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/misc/utils.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/misc/uuid.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/misc/win_constants.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/misc/work_arounds.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/query.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/reader.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/writer.cc
@@ -268,6 +269,9 @@ if (TILEDB_S3)
     INTERFACE
       AWSSDK::aws-cpp-sdk-s3
       AWSSDK::aws-cpp-sdk-core
+      AWSSDK::aws-c-event-stream
+      AWSSDK::aws-checksums
+      AWSSDK::aws-c-common
   )
   if (NOT WIN32)
     # No Curl required on Windows.
@@ -408,6 +412,9 @@ if (TILEDB_STATIC)
   append_dep_lib(OpenSSL::Crypto)
   append_dep_lib(AWSSDK::aws-cpp-sdk-s3)
   append_dep_lib(AWSSDK::aws-cpp-sdk-core)
+  append_dep_lib(AWSSDK::aws-c-event-stream)
+  append_dep_lib(AWSSDK::aws-checksums)
+  append_dep_lib(AWSSDK::aws-c-common)
 
   # Spdlog is a special case because it is header-only.
   string(CONCAT TILEDB_STATIC_DEP_STRING
