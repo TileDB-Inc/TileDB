@@ -264,6 +264,10 @@ Status Query::check_var_attr_offsets(
 Status Query::capnp(rest::capnp::Query::Builder* queryBuilder) const {
   STATS_FUNC_IN(serialization_query_capnp);
 
+  if (layout_ == Layout::GLOBAL_ORDER)
+    return LOG_STATUS(Status::QueryError(
+        "Cannot serialize; global order serialization not supported."));
+
   queryBuilder->setType(query_type_str(this->type()));
   queryBuilder->setLayout(layout_str(this->layout()));
   queryBuilder->setStatus(query_status_str(this->status()));
@@ -1518,9 +1522,11 @@ Status Query::submit() {  // Do nothing if the query is completed or failed
 Status Query::submit_async(
     std::function<void(void*)> callback, void* callback_data) {
   RETURN_NOT_OK(init());
-  if (array_->is_remote()) {
-    return Status::QueryError("submit_async not supported for remote queries");
-  }
+  if (array_->is_remote())
+    return LOG_STATUS(
+        Status::QueryError("Error in async query submission; async queries not "
+                           "supported for remote arrays."));
+
   callback_ = callback;
   callback_data_ = callback_data;
   return storage_manager_->query_submit_async(this);

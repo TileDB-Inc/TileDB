@@ -30,6 +30,7 @@
  *
  * This file implements curl client helper functions.
  */
+
 #include "tiledb/rest/curl/client.h"
 #include "capnp/compat/json.h"
 #include "tiledb/rest/capnp/array.h"
@@ -37,181 +38,163 @@
 #include "tiledb/rest/capnp/tiledb-rest.capnp.h"
 #include "tiledb/rest/curl/curl.h"
 #include "tiledb/sm/misc/stats.h"
+
 namespace tiledb {
 namespace rest {
+
+/**
+ * Calls curl_easy_init(), wrapping the returned object in a safe pointer
+ * that will be cleaned up automatically.
+ */
+std::unique_ptr<CURL, decltype(&curl_easy_cleanup)> init_curl_safe() {
+  return std::unique_ptr<CURL, decltype(&curl_easy_cleanup)>(
+      curl_easy_init(), curl_easy_cleanup);
+}
+
 tiledb::sm::Status get_array_schema_from_rest(
-    tiledb::sm::Config* config,
-    std::string rest_server,
-    std::string uri,
+    const tiledb::sm::Config* config,
+    const std::string& rest_server,
+    const std::string& uri,
     tiledb::sm::SerializationType serialization_type,
     tiledb::sm::ArraySchema** array_schema) {
   STATS_FUNC_IN(serialization_get_array_schema_from_rest);
-  // init the curl session
-  CURL* curl = curl_easy_init();
 
   const char* organization;
-  tiledb::sm::Status res = config->get("rest.organization", &organization);
-  if (!res.ok())
-    return res;
+  RETURN_NOT_OK(config->get("rest.organization", &organization));
+  if (organization == nullptr)
+    return LOG_STATUS(tiledb::sm::Status::RestError(
+        "Error getting array schema from REST; "
+        "config param rest.organization cannot be null."));
 
-  char* uri_escaped = curl_easy_escape(curl, uri.c_str(), uri.length());
+  // Escape the URL and make a copy
+  auto curl = init_curl_safe();
+  char* uri_escaped = curl_easy_escape(curl.get(), uri.c_str(), uri.length());
   std::string url = std::string(rest_server) + "/v1/arrays/" + organization +
                     "/" + uri_escaped;
   curl_free(uri_escaped);
 
-  struct MemoryStruct returned_data = {nullptr, 0};
-  res = get_data(curl, config, url, serialization_type, &returned_data);
-  curl_easy_cleanup(curl);
-  // Check for errors
-  if (!res.ok()) {
-    if (returned_data.memory != nullptr)
-      std::free(returned_data.memory);
-    return res;
-  }
+  // Get the data
+  tiledb::sm::Buffer returned_data;
+  RETURN_NOT_OK(curl::get_data(
+      curl.get(), config, url, serialization_type, &returned_data));
+  if (returned_data.data() == nullptr || returned_data.size() == 0)
+    return LOG_STATUS(tiledb::sm::Status::RestError(
+        "Error getting array schema from REST; server returned no data."));
 
-  if (returned_data.memory == nullptr || returned_data.size == 0)
-    return tiledb::sm::Status::Error("Server returned no data!");
+  return rest::capnp::array_schema_deserialize(
+      array_schema, serialization_type, returned_data);
 
-  tiledb::sm::Status status = rest::capnp::array_schema_deserialize(
-      array_schema,
-      serialization_type,
-      returned_data.memory,
-      returned_data.size);
-  free(returned_data.memory);
-  return status;
   STATS_FUNC_OUT(serialization_get_array_schema_from_rest);
 }
 
 tiledb::sm::Status post_array_schema_to_rest(
-    tiledb::sm::Config* config,
-    std::string rest_server,
-    std::string uri,
+    const tiledb::sm::Config* config,
+    const std::string& rest_server,
+    const std::string& uri,
     tiledb::sm::SerializationType serialization_type,
     tiledb::sm::ArraySchema* array_schema) {
   STATS_FUNC_IN(serialization_post_array_schema_to_rest);
-  struct MemoryStruct data = {nullptr, 0};
-  tiledb::sm::Status status = rest::capnp::array_schema_serialize(
-      array_schema, serialization_type, &data.memory, (uint64_t*)&data.size);
-  if (!status.ok()) {
-    if (data.memory != nullptr)
-      delete[] data.memory;
-    return status;
-  }
-  // init the curl session
-  CURL* curl = curl_easy_init();
 
   const char* organization;
-  tiledb::sm::Status res = config->get("rest.organization", &organization);
-  if (!res.ok())
-    return res;
+  RETURN_NOT_OK(config->get("rest.organization", &organization));
+  if (organization == nullptr)
+    return LOG_STATUS(tiledb::sm::Status::RestError(
+        "Error posting array schema to REST; "
+        "config param rest.organization cannot be null."));
 
-  // Build the url
-  char* uri_escaped = curl_easy_escape(curl, uri.c_str(), uri.length());
+  tiledb::sm::Buffer serialized;
+  RETURN_NOT_OK(rest::capnp::array_schema_serialize(
+      array_schema, serialization_type, &serialized));
+
+  // Escape the URL and make a copy
+  auto curl = init_curl_safe();
+  char* uri_escaped = curl_easy_escape(curl.get(), uri.c_str(), uri.length());
   std::string url = std::string(rest_server) + "/v1/arrays/" + organization +
                     "/" + uri_escaped;
   curl_free(uri_escaped);
 
-  struct MemoryStruct returned_data = {nullptr, 0};
-  res = post_data(curl, config, url, serialization_type, &data, &returned_data);
-  /* Check for errors */
-  curl_easy_cleanup(curl);
-  // Cleanup initial data
-  delete[] data.memory;
-  if (!res.ok()) {
-    if (returned_data.memory != nullptr)
-      std::free(returned_data.memory);
-    return res;
-  }
+  tiledb::sm::Buffer returned_data;
+  return curl::post_data(
+      curl.get(), config, url, serialization_type, &serialized, &returned_data);
 
-  std::free(returned_data.memory);
-  delete[] data.memory;
-  return tiledb::sm::Status::Ok();
   STATS_FUNC_OUT(serialization_post_array_schema_to_rest);
 }
 
-tiledb::sm::Status delete_array_schema_from_rest(
-    tiledb::sm::Config* config,
-    std::string rest_server,
-    std::string uri,
+tiledb::sm::Status deregister_array_from_rest(
+    const tiledb::sm::Config* config,
+    const std::string& rest_server,
+    const std::string& uri,
     tiledb::sm::SerializationType serialization_type) {
-  STATS_FUNC_IN(serialization_delete_array_schema_from_rest);
-  // init the curl session
-  CURL* curl = curl_easy_init();
-
   const char* organization;
-  tiledb::sm::Status res = config->get("rest.organization", &organization);
-  if (!res.ok())
-    return res;
+  RETURN_NOT_OK(config->get("rest.organization", &organization));
+  if (organization == nullptr)
+    return LOG_STATUS(tiledb::sm::Status::RestError(
+        "Error deregistering array schema on REST; "
+        "config param rest.organization cannot be null."));
 
-  char* uri_escaped = curl_easy_escape(curl, uri.c_str(), uri.length());
+  // Escape the URL and make a copy
+  auto curl = init_curl_safe();
+  char* uri_escaped = curl_easy_escape(curl.get(), uri.c_str(), uri.length());
   std::string url = std::string(rest_server) + "/v1/arrays/" + organization +
-                    "/" + uri_escaped;
+                    "/" + uri_escaped + "/deregister";
   curl_free(uri_escaped);
 
-  struct MemoryStruct returned_data = {nullptr, 0};
-  res = delete_data(curl, config, url, serialization_type, &returned_data);
-  curl_easy_cleanup(curl);
-  // Check for errors
-  if (!res.ok()) {
-    if (returned_data.memory != nullptr)
-      std::free(returned_data.memory);
-    return res;
-  }
-
-  free(returned_data.memory);
-  return tiledb::sm::Status::Ok();
-  STATS_FUNC_OUT(serialization_delete_array_schema_from_rest);
+  tiledb::sm::Buffer returned_data;
+  return curl::delete_data(
+      curl.get(), config, url, serialization_type, &returned_data);
 }
 
 tiledb::sm::Status get_array_non_empty_domain(
-    tiledb::sm::Config* config,
-    std::string rest_server,
+    const tiledb::sm::Config* config,
+    const std::string& rest_server,
     tiledb::sm::Array* array,
     void* domain,
     bool* is_empty) {
   STATS_FUNC_IN(serialization_get_array_non_empty_domain);
-  // init the curl session
-  CURL* curl = curl_easy_init();
 
   if (array == nullptr)
-    return tiledb::sm::Status::Error(
-        "Error in get array non_empty_domain, openArray passed was null");
-
+    return LOG_STATUS(tiledb::sm::Status::RestError(
+        "Cannot get array non-empty domain; array is null"));
   if (array->array_uri().to_string().empty())
-    return tiledb::sm::Status::Error(
-        "Error in get array non_empty_domain, array uri is null");
+    return LOG_STATUS(tiledb::sm::Status::RestError(
+        "Cannot get array non-empty domain; array URI is empty"));
 
   const char* organization;
-  tiledb::sm::Status res = config->get("rest.organization", &organization);
-  if (!res.ok())
-    return res;
+  RETURN_NOT_OK(config->get("rest.organization", &organization));
+  if (organization == nullptr)
+    return LOG_STATUS(tiledb::sm::Status::RestError(
+        "Cannot get array non-empty domain; "
+        "config param rest.organization cannot be null."));
 
-  std::string uri = array->array_uri().to_string();
-  char* uri_escaped = curl_easy_escape(curl, uri.c_str(), uri.length());
+  // Escape the URL and make a copy
+  auto curl = init_curl_safe();
+  const std::string& uri = array->array_uri().to_string();
+  char* uri_escaped = curl_easy_escape(curl.get(), uri.c_str(), uri.length());
   std::string url = std::string(rest_server) + "/v1/arrays/" + organization +
                     "/" + uri_escaped + "/non_empty_domain";
   curl_free(uri_escaped);
 
-  struct MemoryStruct returned_data;
-  res = get_data(
-      curl, config, url, tiledb::sm::SerializationType::JSON, &returned_data);
-  curl_easy_cleanup(curl);
-  // Check for errors
-  if (!res.ok()) {
-    if (returned_data.memory != nullptr)
-      std::free(returned_data.memory);
-    return res;
-  }
+  tiledb::sm::Buffer returned_data;
+  RETURN_NOT_OK(curl::get_data(
+      curl.get(),
+      config,
+      url,
+      tiledb::sm::SerializationType::JSON,
+      &returned_data));
 
-  if (returned_data.memory == nullptr || returned_data.size == 0)
-    return tiledb::sm::Status::Error("Server returned no data!");
+  if (returned_data.data() == nullptr || returned_data.size() == 0)
+    return LOG_STATUS(
+        tiledb::sm::Status::RestError("Error getting array non-empty domain "
+                                      "from REST; server returned no data."));
 
   // Currently only json data is supported, so let's decode it here.
   ::capnp::JsonCodec json;
   ::capnp::MallocMessageBuilder message_builder;
   rest::capnp::NonEmptyDomain::Builder nonEmptyDomainBuilder =
       message_builder.initRoot<rest::capnp::NonEmptyDomain>();
-  json.decode(kj::StringPtr(returned_data.memory), nonEmptyDomainBuilder);
+  json.decode(
+      kj::StringPtr(static_cast<const char*>(returned_data.data())),
+      nonEmptyDomainBuilder);
   rest::capnp::NonEmptyDomain::Reader nonEmptyDomainReader =
       nonEmptyDomainBuilder.asReader();
   *is_empty = nonEmptyDomainReader.getIsEmpty();
@@ -342,113 +325,88 @@ tiledb::sm::Status get_array_non_empty_domain(
 }
 
 tiledb::sm::Status submit_query_to_rest(
-    tiledb::sm::Config* config,
-    std::string rest_server,
-    std::string uri,
+    const tiledb::sm::Config* config,
+    const std::string& rest_server,
+    const std::string& uri,
     tiledb::sm::SerializationType serialization_type,
     tiledb::sm::Query* query) {
   STATS_FUNC_IN(serialization_submit_query_to_rest);
-  // Serialize data to send
-  struct MemoryStruct data = {nullptr, 0};
-  tiledb::sm::Status status = rest::capnp::query_serialize(
-      query, serialization_type, &data.memory, (uint64_t*)&data.size);
-  if (!status.ok()) {
-    if (data.memory != nullptr)
-      delete[] data.memory;
-    return status;
-  }
-
-  // init the curl session
-  CURL* curl = curl_easy_init();
 
   const char* organization;
-  tiledb::sm::Status res = config->get("rest.organization", &organization);
-  if (!res.ok())
-    return res;
+  RETURN_NOT_OK(config->get("rest.organization", &organization));
+  if (organization == nullptr)
+    return LOG_STATUS(tiledb::sm::Status::RestError(
+        "Error submitting query to REST; "
+        "config param rest.organization cannot be null."));
 
-  // Build the url
-  char* uri_escaped = curl_easy_escape(curl, uri.c_str(), uri.length());
+  // Serialize data to send
+  tiledb::sm::Buffer serialized;
+  RETURN_NOT_OK(
+      rest::capnp::query_serialize(query, serialization_type, &serialized));
+
+  // Escape the URL and make a copy
+  auto curl = init_curl_safe();
+  char* uri_escaped = curl_easy_escape(curl.get(), uri.c_str(), uri.length());
   std::string url = std::string(rest_server) + "/v1/arrays/" + organization +
                     "/" + uri_escaped + "/query/submit?type=" +
                     tiledb::sm::query_type_str(query->type());
   curl_free(uri_escaped);
 
-  struct MemoryStruct returned_data = {nullptr, 0};
-  res = post_data(curl, config, url, serialization_type, &data, &returned_data);
+  tiledb::sm::Buffer returned_data;
+  auto st = curl::post_data(
+      curl.get(), config, url, serialization_type, &serialized, &returned_data);
 
-  // Cleanup initial data
-  curl_easy_cleanup(curl);
-  /* Check for errors */
-  delete[] data.memory;
-  if (!res.ok()) {
-    if (returned_data.memory != nullptr)
-      std::free(returned_data.memory);
-    return res;
-  }
-
-  if (returned_data.memory == nullptr || returned_data.size == 0)
-    return tiledb::sm::Status::Error("Server returned no data!");
+  if (returned_data.data() == nullptr || returned_data.size() == 0)
+    return LOG_STATUS(tiledb::sm::Status::RestError(
+        "Error submitting query to REST; server returned no data."));
 
   // Deserialize data returned
-  status = rest::capnp::query_deserialize(
-      query, serialization_type, returned_data.memory, returned_data.size);
-  free(returned_data.memory);
+  return rest::capnp::query_deserialize(
+      query, serialization_type, returned_data);
 
-  return status;
   STATS_FUNC_OUT(serialization_submit_query_to_rest);
 }
 
 tiledb::sm::Status finalize_query_to_rest(
-    tiledb::sm::Config* config,
-    std::string rest_server,
-    std::string uri,
+    const tiledb::sm::Config* config,
+    const std::string& rest_server,
+    const std::string& uri,
     tiledb::sm::SerializationType serialization_type,
     tiledb::sm::Query* query) {
   STATS_FUNC_IN(serialization_finalize_query_to_rest);
-  // Serialize data to send
-  struct MemoryStruct data = {nullptr, 0};
-  tiledb::sm::Status status = rest::capnp::query_serialize(
-      query, serialization_type, &data.memory, (uint64_t*)&data.size);
-  if (!status.ok()) {
-    if (data.memory != nullptr)
-      delete[] data.memory;
-    return status;
-  }
-
-  // init the curl session
-  CURL* curl = curl_easy_init();
 
   const char* organization;
-  tiledb::sm::Status res = config->get("rest.organization", &organization);
-  if (!res.ok())
-    return res;
+  RETURN_NOT_OK(config->get("rest.organization", &organization));
+  if (organization == nullptr)
+    return LOG_STATUS(tiledb::sm::Status::RestError(
+        "Cannot finalize query; "
+        "config param rest.organization cannot be null."));
 
-  // Build the url
-  char* uri_escaped = curl_easy_escape(curl, uri.c_str(), uri.length());
+  // Serialize data to send
+  tiledb::sm::Buffer serialized;
+  RETURN_NOT_OK(
+      rest::capnp::query_serialize(query, serialization_type, &serialized));
+
+  // Escape the URL and make a copy
+  auto curl = init_curl_safe();
+  char* uri_escaped = curl_easy_escape(curl.get(), uri.c_str(), uri.length());
   std::string url = std::string(rest_server) + "/v1/arrays/" + organization +
                     "/" + uri_escaped + "/query/finalize?type=" +
                     tiledb::sm::query_type_str(query->type());
   curl_free(uri_escaped);
 
-  struct MemoryStruct returned_data = {nullptr, 0};
-  res = post_data(curl, config, url, serialization_type, &data, &returned_data);
-  curl_easy_cleanup(curl);
-  // Cleanup initial data
-  delete[] data.memory;
-  /* Check for errors */
-  if (!res.ok()) {
-    if (returned_data.memory != nullptr)
-      std::free(returned_data.memory);
-    return res;
-  }
+  tiledb::sm::Buffer returned_data;
+  auto st = curl::post_data(
+      curl.get(), config, url, serialization_type, &serialized, &returned_data);
 
-  if (returned_data.memory == nullptr || returned_data.size == 0)
-    return tiledb::sm::Status::Error("Server returned no data!");
+  if (returned_data.data() == nullptr || returned_data.size() == 0)
+    return LOG_STATUS(tiledb::sm::Status::RestError(
+        "Error finalizing query; server returned no data."));
+
   // Deserialize data returned
-  status = rest::capnp::query_deserialize(
-      query, serialization_type, returned_data.memory, returned_data.size);
-  free(returned_data.memory);
-  return status;
+  return rest::capnp::query_deserialize(
+      query, serialization_type, returned_data);
+
   STATS_FUNC_OUT(serialization_finalize_query_to_rest);
 }
 

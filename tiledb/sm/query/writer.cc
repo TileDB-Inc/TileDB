@@ -87,49 +87,6 @@ AttributeBuffer Writer::buffer(const std::string& attribute) const {
 
 Status Writer::capnp(rest::capnp::Writer::Builder* writerBuilder) const {
   STATS_FUNC_IN(serialization_writer_capnp);
-  rest::capnp::GlobalWriteState::Builder globalWriteStateBuilder =
-      writerBuilder->initGlobalWriteState();
-  if (global_write_state_ != nullptr) {
-    rest::capnp::MapInt64::Builder cellsWriterBuilder =
-        globalWriteStateBuilder.initCellsWritten();
-    auto cellsWritenEntries = cellsWriterBuilder.initEntries(
-        global_write_state_->cells_written_.size());
-    size_t i = 0;
-    for (auto it : global_write_state_->cells_written_) {
-      auto entry = cellsWritenEntries[i];
-      entry.setKey(it.first);
-      entry.setValue(it.second);
-      i++;
-    }
-
-    rest::capnp::Map<capnp::Text, ::capnp::List<rest::capnp::Tile>>::Builder
-        lastTilesBuilder = globalWriteStateBuilder.initLastTiles();
-    auto lastTileEntries =
-        lastTilesBuilder.initEntries(global_write_state_->last_tiles_.size());
-    i = 0;
-    for (auto lastTile : global_write_state_->last_tiles_) {
-      rest::capnp::Map<capnp::Text, ::capnp::List<rest::capnp::Tile>>::Entry::
-          Builder entry = lastTileEntries[i];
-      entry.setKey(lastTile.first);
-      ::capnp::List<rest::capnp::Tile>::Builder lastTileBulder =
-          entry.initValue(2);
-      rest::capnp::Tile::Builder tileBuilder0 = lastTileBulder[0];
-      rest::capnp::Tile::Builder tileBuilder1 = lastTileBulder[1];
-      Status status = lastTile.second.first.capnp(&tileBuilder0);
-      if (!status.ok())
-        return status;
-      status = lastTile.second.second.capnp(&tileBuilder1);
-      if (!status.ok())
-        return status;
-      i++;
-    }
-
-    if (this->global_write_state_->frag_meta_ != nullptr) {
-      rest::capnp::FragmentMetadata::Builder fragmentMetadatBuilder =
-          globalWriteStateBuilder.initFragmentMetadata();
-      this->global_write_state_->frag_meta_->capnp(&fragmentMetadatBuilder);
-    }
-  }
   writerBuilder->setCheckCoordDups(check_coord_dups_);
   writerBuilder->setDedupCoords(dedup_coords_);
   writerBuilder->setInitialized(initialized_);
@@ -187,56 +144,6 @@ Status Writer::from_capnp(rest::capnp::Writer::Reader* writerReader) {
 
   if (writerReader->hasFragmentUri())
     set_fragment_uri(URI(writerReader->getFragmentUri().cStr()));
-
-  if (writerReader->hasGlobalWriteState()) {
-    rest::capnp::GlobalWriteState::Reader globalWriteStateReader =
-        writerReader->getGlobalWriteState();
-    if (globalWriteStateReader.hasFragmentMetadata() ||
-        globalWriteStateReader.hasCellsWritten() ||
-        globalWriteStateReader.hasLastTiles()) {
-      global_write_state_.reset(new GlobalWriteState);
-      rest::capnp::MapInt64::Reader cellsWritten =
-          globalWriteStateReader.getCellsWritten();
-      for (auto it : cellsWritten.getEntries()) {
-        global_write_state_->cells_written_.emplace(it.getKey(), it.getValue());
-      }
-      rest::capnp::Map<capnp::Text, capnp::List<rest::capnp::Tile>>::Reader
-          lastTiles = globalWriteStateReader.getLastTiles();
-      for (auto it : lastTiles.getEntries()) {
-        Tile new_tile1;
-        rest::capnp::Tile::Reader lastTileReader1 = it.getValue()[0];
-        status = new_tile1.from_capnp(&lastTileReader1);
-        if (!status.ok())
-          return status;
-
-        Tile new_tile2;
-        rest::capnp::Tile::Reader lastTileReader2 = it.getValue()[1];
-        status = new_tile2.from_capnp(&lastTileReader2);
-        if (!status.ok())
-          return status;
-
-        std::pair<Tile, Tile> lastTile = std::make_pair(new_tile1, new_tile2);
-        global_write_state_->last_tiles_.emplace(it.getKey(), lastTile);
-      }
-
-      // Create fragments
-      if (globalWriteStateReader.hasFragmentMetadata()) {
-        rest::capnp::FragmentMetadata::Reader fragmentMetadataReader =
-            globalWriteStateReader.getFragmentMetadata();
-
-        URI uri = fragment_uri_;
-        global_write_state_->frag_meta_ = std::make_shared<FragmentMetadata>(
-            array_schema_,
-            array_schema_->array_type() == ArrayType::DENSE,
-            uri,
-            this->array_->timestamp());
-        status = global_write_state_->frag_meta_->from_capnp(
-            &fragmentMetadataReader);
-        if (!status.ok())
-          return status;
-      }
-    }
-  }
 
   check_coord_dups_ = writerReader->getCheckCoordDups();
   dedup_coords_ = writerReader->getDedupCoords();

@@ -52,6 +52,7 @@ Configuration:
     --enable-verbose                enable verbose status messages
     --enable-hdfs                   enables the hdfs storage backend
     --enable-s3                     enables the s3 storage backend
+    --enable-serialization          enables query serialization support
     --enable=arg1,arg2...           same as "--enable-arg1 --enable-arg2 ..."
 
     
@@ -86,6 +87,7 @@ tiledb_tbb="ON"
 tiledb_stats="ON"
 tiledb_static="OFF"
 tiledb_disable_avx2=""
+tiledb_serialization="OFF"
 enable_multiple=""
 while test $# != 0; do
     case "$1" in
@@ -108,6 +110,7 @@ while test $# != 0; do
     --enable-verbose) tiledb_verbose="ON";;
     --enable-hdfs) tiledb_hdfs="ON";;
     --enable-s3) tiledb_s3="ON";;
+    --enable-serialization) tiledb_serialization="ON";;
     --enable=*) s=`arg "$1"`
                 enable_multiple="$s";;
     --help) usage ;;
@@ -124,6 +127,7 @@ for en in "${enables[@]}"; do
     coverage) build_type="Coverage";;
     verbose) tiledb_verbose="ON";;
     s3) tiledb_s3="ON";;
+    serialization) tiledb_serialization="ON";;
     hdfs) tiledb_hdfs="ON";;
     static-tiledb) tiledb_static="ON";;
     *) die "Unknown option: --enable-$en" ;;
@@ -168,6 +172,7 @@ ${cmake} -DCMAKE_BUILD_TYPE=${build_type} \
     -DTILEDB_VERBOSE=${tiledb_verbose} \
     -DTILEDB_HDFS=${tiledb_hdfs} \
     -DTILEDB_S3=${tiledb_s3} \
+    -DTILEDB_SERIALIZATION=${tiledb_serialization} \
     -DTILEDB_WERROR=${tiledb_werror} \
     -DTILEDB_CPP_API=${tiledb_cpp_api} \
     -DTILEDB_TBB=${tiledb_tbb} \

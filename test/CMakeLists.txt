@@ -118,7 +118,6 @@ endif()
 
 if (TILEDB_TESTS_ENABLE_REST)
   list(APPEND TILEDB_TEST_SOURCES
-    src/unit-capi-rest.cc
     src/unit-capi-rest-dense_array.cc
   )
 endif()
@@ -168,6 +167,10 @@ endif()
 
 if (TILEDB_TBB)
   target_compile_definitions(tiledb_unit PRIVATE -DHAVE_TBB)
+endif()
+
+if (TILEDB_SERIALIZATION)
+  target_compile_definitions(tiledb_unit PRIVATE -DTILEDB_SERIALIZATION)
 endif()
 
 # This is necessary only because we are linking directly to the core objects.

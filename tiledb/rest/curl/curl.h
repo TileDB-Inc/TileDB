@@ -28,7 +28,7 @@
  *
  * @section DESCRIPTION
  *
- * This file defines curl fetch functions.
+ * This file defines high-level libcurl helper functions.
  */
 
 #ifndef TILEDB_REST_CURL_HPP
@@ -37,45 +37,14 @@
 #include <curl/curl.h>
 #include <cstdlib>
 #include <string>
+#include "tiledb/sm/buffer/buffer.h"
 #include "tiledb/sm/enums/serialization_type.h"
 #include "tiledb/sm/storage_manager/config.h"
 
-// TODO: replace this with config option
-#define CURL_MAX_RETRIES 3
+namespace tiledb {
+namespace curl {
 
 /**
- * Structure for curl return data
- */
-struct MemoryStruct {
-  char* memory;
-  size_t size;
-};
-
-/**
- *
- * Helper callback function from libcurl examples
- *
- * @param contents
- * @param size
- * @param nmemb
- * @param userp
- * @return
- */
-size_t WriteMemoryCallback(
-    void* contents, size_t size, size_t nmemb, void* userp);
-
-/**
- * Help to make url fetches
- * @param curl pointer to curl instance
- * @param url to post/get
- * @param fetch data for response
- * @return
- */
-CURLcode curl_fetch_url(
-    CURL* curl, const char* url, struct MemoryStruct* fetch);
-
-/**
- *
  * Simple wrapper for posting data to server
  *
  * @param curl instance
@@ -87,11 +56,11 @@ CURLcode curl_fetch_url(
  */
 tiledb::sm::Status post_data(
     CURL* curl,
-    tiledb::sm::Config* config,
-    std::string url,
+    const tiledb::sm::Config* config,
+    const std::string& url,
     tiledb::sm::SerializationType serialization_type,
-    MemoryStruct* data,
-    MemoryStruct* returned_data);
+    tiledb::sm::Buffer* data,
+    tiledb::sm::Buffer* returned_data);
 
 /**
  * Simple wrapper for getting data from server
@@ -105,13 +74,13 @@ tiledb::sm::Status post_data(
  */
 tiledb::sm::Status get_data(
     CURL* curl,
-    tiledb::sm::Config* config,
-    std::string url,
+    const tiledb::sm::Config* config,
+    const std::string& url,
     tiledb::sm::SerializationType serialization_type,
-    MemoryStruct* returned_data);
+    tiledb::sm::Buffer* returned_data);
 
 /**
- * Simple wraper for sending delete requests to server
+ * Simple wrapper for sending delete requests to server
  * @param curl instance
  * @param config tiledb config used to get auth information
  * @param url to get
@@ -121,8 +90,12 @@ tiledb::sm::Status get_data(
  */
 tiledb::sm::Status delete_data(
     CURL* curl,
-    tiledb::sm::Config* config,
-    std::string url,
+    const tiledb::sm::Config* config,
+    const std::string& url,
     tiledb::sm::SerializationType serialization_type,
-    MemoryStruct* returned_data);
+    tiledb::sm::Buffer* returned_data);
+
+}  // namespace curl
+}  // namespace tiledb
+
 #endif  // TILEDB_REST_CURL_HPP

@@ -119,6 +119,23 @@ Status Filter::deserialize(ConstBuffer* buff, Filter** filter) {
   return Status::Ok();
 }
 
+Status Filter::deserialize(
+    const FilterSerializer* serializer, std::unique_ptr<Filter>* filter) {
+  FilterType type;
+  RETURN_NOT_OK(serializer->get_type(&type));
+
+  auto* f = create(type);
+  if (f == nullptr)
+    return LOG_STATUS(Status::FilterError("Deserialization error."));
+
+  // Subclass-specific options
+  RETURN_NOT_OK_ELSE(f->deserialize_impl(serializer), delete f);
+
+  filter->reset(f);
+
+  return Status::Ok();
+}
+
 // ===== FORMAT =====
 // filter type (uint8_t)
 // filter metadata num bytes (uint32_t -- may be 0)
@@ -148,6 +165,13 @@ Status Filter::serialize(Buffer* buff) const {
   return Status::Ok();
 }
 
+Status Filter::serialize(FilterSerializer* serializer) const {
+  RETURN_NOT_OK(serializer->set_type(type_));
+  // Subclass-specific options:
+  RETURN_NOT_OK(serialize_impl(serializer));
+  return Status::Ok();
+}
+
 Status Filter::get_option_impl(FilterOption option, void* value) const {
   (void)option;
   (void)value;
@@ -165,8 +189,18 @@ Status Filter::deserialize_impl(ConstBuffer* buff) {
   return Status::Ok();
 }
 
+Status Filter::deserialize_impl(const FilterSerializer* serializer) {
+  (void)serializer;
+  return Status::Ok();
+}
+
 Status Filter::serialize_impl(Buffer* buff) const {
   (void)buff;
+  return Status::Ok();
+}
+
+Status Filter::serialize_impl(FilterSerializer* serializer) const {
+  (void)serializer;
   return Status::Ok();
 }
 

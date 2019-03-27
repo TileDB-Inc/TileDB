@@ -46,9 +46,9 @@ namespace capnp {
 tiledb::sm::Status query_serialize(
     tiledb::sm::Query* query,
     tiledb::sm::SerializationType serialize_type,
-    char** serialized_string,
-    uint64_t* serialized_string_length) {
+    tiledb::sm::Buffer* serialized_buffer) {
   STATS_FUNC_IN(serialization_query_serialize);
+
   try {
     ::capnp::MallocMessageBuilder message;
     Query::Builder query_builder = message.initRoot<Query>();
@@ -58,22 +58,27 @@ tiledb::sm::Status query_serialize(
       return tiledb::sm::Status::Error(
           "Could not serialize query: " + status.to_string());
 
+    serialized_buffer->reset_size();
+    serialized_buffer->reset_offset();
+
     switch (serialize_type) {
       case tiledb::sm::SerializationType::JSON: {
         ::capnp::JsonCodec json;
         kj::String capnp_json = json.encode(query_builder);
+        const auto json_len = capnp_json.size();
+        const char nul = '\0';
         // size does not include needed null terminator, so add +1
-        *serialized_string_length = capnp_json.size() + 1;
-        *serialized_string = new char[*serialized_string_length];
-        strcpy(*serialized_string, capnp_json.cStr());
+        RETURN_NOT_OK(serialized_buffer->realloc(json_len + 1));
+        RETURN_NOT_OK(serialized_buffer->write(capnp_json.cStr(), json_len))
+        RETURN_NOT_OK(serialized_buffer->write(&nul, 1));
         break;
       }
       case tiledb::sm::SerializationType::CAPNP: {
         kj::Array<::capnp::word> protomessage = messageToFlatArray(message);
         kj::ArrayPtr<const char> message_chars = protomessage.asChars();
-        *serialized_string = new char[message_chars.size()];
-        memcpy(*serialized_string, message_chars.begin(), message_chars.size());
-        *serialized_string_length = message_chars.size();
+        const auto nbytes = message_chars.size();
+        RETURN_NOT_OK(serialized_buffer->realloc(nbytes));
+        RETURN_NOT_OK(serialized_buffer->write(message_chars.begin(), nbytes));
         break;
       }
       default: {
@@ -89,15 +94,16 @@ tiledb::sm::Status query_serialize(
         std::string("Error serializing query: ") + e.what());
   }
   return tiledb::sm::Status::Ok();
+
   STATS_FUNC_OUT(serialization_query_serialize);
 }
 
 tiledb::sm::Status query_deserialize(
     tiledb::sm::Query* query,
     tiledb::sm::SerializationType serialize_type,
-    const char* serialized_string,
-    const uint64_t serialized_string_length) {
+    const tiledb::sm::Buffer& serialized_buffer) {
   STATS_FUNC_IN(serialization_query_deserialize);
+
   try {
     switch (serialize_type) {
       case tiledb::sm::SerializationType::JSON: {
@@ -105,7 +111,9 @@ tiledb::sm::Status query_deserialize(
         ::capnp::MallocMessageBuilder message_builder;
         rest::capnp::Query::Builder query_builder =
             message_builder.initRoot<rest::capnp::Query>();
-        json.decode(kj::StringPtr(serialized_string), query_builder);
+        json.decode(
+            kj::StringPtr(static_cast<const char*>(serialized_buffer.data())),
+            query_builder);
         rest::capnp::Query::Reader query_reader = query_builder.asReader();
         return query->from_capnp(&query_reader);
         break;
@@ -115,11 +123,11 @@ tiledb::sm::Status query_deserialize(
         // Set limit to 10GI this should be a config option
         readerOptions.traversalLimitInWords = uint64_t(1024) * 1024 * 1024 * 10;
         const kj::byte* mBytes =
-            reinterpret_cast<const kj::byte*>(serialized_string);
+            reinterpret_cast<const kj::byte*>(serialized_buffer.data());
         ::capnp::FlatArrayMessageReader reader(
             kj::arrayPtr(
                 reinterpret_cast<const ::capnp::word*>(mBytes),
-                serialized_string_length / sizeof(::capnp::word)),
+                serialized_buffer.size() / sizeof(::capnp::word)),
             readerOptions);
 
         Query::Reader query_reader = reader.getRoot<rest::capnp::Query>();
@@ -139,6 +147,7 @@ tiledb::sm::Status query_deserialize(
         std::string("Error deserializing query: ") + e.what());
   }
   return tiledb::sm::Status::Ok();
+
   STATS_FUNC_OUT(serialization_query_deserialize);
 }
 

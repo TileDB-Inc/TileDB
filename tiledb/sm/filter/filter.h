@@ -37,6 +37,7 @@
 #include "tiledb/sm/enums/filter_type.h"
 #include "tiledb/sm/filter/filter_buffer.h"
 #include "tiledb/sm/misc/status.h"
+#include "tiledb/sm/serialization/filter_serializer.h"
 
 namespace tiledb {
 namespace sm {
@@ -80,6 +81,16 @@ class Filter {
    * @return Status
    */
   static Status deserialize(ConstBuffer* buff, Filter** filter);
+
+  /**
+   * Deserializes a new Filter instance from the given serializer.
+   *
+   * @param serializer The serializer to deserialize from.
+   * @param filter Set to the newly allocated filter instance.
+   * @return Status
+   */
+  static Status deserialize(
+      const FilterSerializer* serializer, std::unique_ptr<Filter>* filter);
 
   /**
    * Gets an option from this filter.
@@ -142,12 +153,20 @@ class Filter {
   Status set_option(FilterOption option, const void* value);
 
   /**
-   * Serializes the filter metadata into a binary buffer.
+   * Serializes the filter metadata into a binary buffer for persisting.
    *
    * @param buff The buffer to serialize the data into.
    * @return Status
    */
   Status serialize(Buffer* buff) const;
+
+  /**
+   * Serializes the filter into a Serializer for transmission.
+   *
+   * @param serializer The serializer
+   * @return Status
+   */
+  Status serialize(FilterSerializer* serializer) const;
 
   /** Sets the pipeline instance that executes this filter. */
   void set_pipeline(const FilterPipeline* pipeline);
@@ -181,6 +200,14 @@ class Filter {
    */
   virtual Status deserialize_impl(ConstBuffer* buff);
 
+  /**
+   * Deserializes the subclass-specific data from a Serializer.
+   *
+   * @param serializer The serializer
+   * @return Status
+   */
+  virtual Status deserialize_impl(const FilterSerializer* serializer);
+
   /** Optional subclass specific get_option method. */
   virtual Status get_option_impl(FilterOption option, void* value) const;
 
@@ -198,6 +225,14 @@ class Filter {
    * @return Status
    */
   virtual Status serialize_impl(Buffer* buff) const;
+
+  /**
+   * Serializes the filter options into a Serializer for transmission.
+   *
+   * @param serializer The serializer
+   * @return Status
+   */
+  virtual Status serialize_impl(FilterSerializer* serializer) const;
 };
 
 }  // namespace sm

@@ -82,6 +82,8 @@ option(TILEDB_STATS "Enables internal TileDB statistics gathering." ON)
 option(TILEDB_STATIC "Enables building TileDB as a static library." OFF)
 option(TILEDB_TESTS "If true, enables building the TileDB unit test suite" ON)
 option(TILEDB_TOOLS "If true, enables building the TileDB tools" OFF)
+option(TILEDB_SERIALIZATION "If true, enables building with support for query serialization" OFF)
+
 set(TILEDB_INSTALL_LIBDIR "" CACHE STRING "If non-empty, install TileDB library to this directory instead of CMAKE_INSTALL_LIBDIR.")
 
 if (WIN32 AND NOT TILEDB_TBB_SHARED)

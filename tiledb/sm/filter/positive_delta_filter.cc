@@ -329,8 +329,21 @@ Status PositiveDeltaFilter::deserialize_impl(ConstBuffer* buff) {
   return Status::Ok();
 }
 
+Status PositiveDeltaFilter::deserialize_impl(
+    const FilterSerializer* serializer) {
+  RETURN_NOT_OK(serializer->get_option(
+      FilterOption::POSITIVE_DELTA_MAX_WINDOW, &max_window_size_));
+  return Status::Ok();
+}
+
 Status PositiveDeltaFilter::serialize_impl(Buffer* buff) const {
   RETURN_NOT_OK(buff->write(&max_window_size_, sizeof(uint32_t)));
+  return Status::Ok();
+}
+
+Status PositiveDeltaFilter::serialize_impl(FilterSerializer* serializer) const {
+  RETURN_NOT_OK(serializer->set_option(
+      FilterOption::POSITIVE_DELTA_MAX_WINDOW, &max_window_size_));
   return Status::Ok();
 }
 

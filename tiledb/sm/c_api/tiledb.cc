@@ -2136,16 +2136,23 @@ int tiledb_array_schema_serialize(
   if (sanity_check(ctx, array_schema) == TILEDB_ERR)
     return TILEDB_ERR;
 
+  tiledb::sm::Buffer buffer;
   auto st = tiledb::rest::capnp::array_schema_serialize(
       array_schema->array_schema_,
       (tiledb::sm::SerializationType)serialize_type,
-      serialized_string,
-      serialized_string_length);
+      &buffer);
   if (!st.ok()) {
     LOG_STATUS(st);
     save_error(ctx, st);
     return TILEDB_ERR;
   }
+
+  // TODO(ttd): This memcpy can be removed once the serialization C API
+  // consumes a tiledb_buffer_t.
+  *serialized_string = (char*)std::malloc(buffer.size());
+  *serialized_string_length = buffer.size();
+  std::memcpy(*serialized_string, buffer.data(), buffer.size());
+
   return TILEDB_OK;
 }
 
@@ -2168,11 +2175,16 @@ int tiledb_array_schema_deserialize(
     save_error(ctx, st);
     return TILEDB_OOM;
   }
+
+  // TODO(ttd): This buffer wrapper can be removed once the serialization C API
+  // consumes a tiledb_buffer_t.
+  tiledb::sm::Buffer buffer(
+      (void*)serialized_string, serialized_string_length, false);
+
   auto st = tiledb::rest::capnp::array_schema_deserialize(
       &((*array_schema)->array_schema_),
       (tiledb::sm::SerializationType)serialize_type,
-      serialized_string,
-      serialized_string_length);
+      buffer);
   if (!st.ok()) {
     LOG_STATUS(st);
     save_error(ctx, st);
@@ -2524,16 +2536,21 @@ int tiledb_query_serialize(
   if (sanity_check(ctx, query) == TILEDB_ERR)
     return TILEDB_ERR;
 
+  tiledb::sm::Buffer buffer;
   tiledb::sm::Status st = tiledb::rest::capnp::query_serialize(
-      query->query_,
-      (tiledb::sm::SerializationType)serialize_type,
-      serialized_string,
-      serialized_string_length);
+      query->query_, (tiledb::sm::SerializationType)serialize_type, &buffer);
   if (!st.ok()) {
     LOG_STATUS(st);
     save_error(ctx, st);
     return TILEDB_ERR;
   }
+
+  // TODO(ttd): This memcpy can be removed once the serialization C API
+  // consumes a tiledb_buffer_t.
+  *serialized_string = (char*)std::malloc(buffer.size());
+  *serialized_string_length = buffer.size();
+  std::memcpy(*serialized_string, buffer.data(), buffer.size());
+
   return TILEDB_OK;
 }
 
@@ -2551,11 +2568,13 @@ int tiledb_query_deserialize(
   if (sanity_check(ctx, query) == TILEDB_ERR)
     return TILEDB_ERR;
 
+  // TODO(ttd): This buffer wrapper can be removed once the serialization C API
+  // consumes a tiledb_buffer_t.
+  tiledb::sm::Buffer buffer(
+      (void*)serialized_string, serialized_string_length, false);
+
   tiledb::sm::Status st = tiledb::rest::capnp::query_deserialize(
-      query->query_,
-      (tiledb::sm::SerializationType)serialize_type,
-      serialized_string,
-      serialized_string_length);
+      query->query_, (tiledb::sm::SerializationType)serialize_type, buffer);
   if (!st.ok()) {
     LOG_STATUS(st);
     save_error(ctx, st);

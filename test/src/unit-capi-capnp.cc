@@ -289,6 +289,8 @@ void ArraySchemaCapnp::remove_temp_dir(const std::string& path) {
     REQUIRE(tiledb_vfs_remove_dir(ctx_, vfs_, path.c_str()) == TILEDB_OK);
 }
 
+#ifdef TILEDB_SERIALIZATION
+
 TEST_CASE_METHOD(
     ArraySchemaCapnp,
     "C API: Test array schema capnp serialization",
@@ -546,3 +548,38 @@ TEST_CASE_METHOD(
   tiledb_query_free(&query_returned);
   remove_temp_dir(temp_dir);
 }
+
+#else
+
+TEST_CASE_METHOD(
+    ArraySchemaCapnp,
+    "C API: Test array schema serialization",
+    "[capi], [capnp]") {
+  tiledb_array_schema_t* array_schema = create_array_schema();
+
+  tiledb_array_schema_t* array_schema_returned;
+  char* data;
+  uint64_t data_size = 0;
+  int rc = tiledb_array_schema_serialize(
+      ctx_,
+      array_schema,
+      (tiledb_serialization_type_t)tiledb::sm::SerializationType::CAPNP,
+      &data,
+      &data_size);
+  // Eventually should be a runtime error when serialization is disabled in the
+  // build.
+  REQUIRE(rc == TILEDB_OK);
+
+  rc = tiledb_array_schema_deserialize(
+      ctx_,
+      &array_schema_returned,
+      (tiledb_serialization_type_t)tiledb::sm::SerializationType::CAPNP,
+      data,
+      data_size);
+  REQUIRE(rc == TILEDB_ERR);
+
+  tiledb_array_schema_free(&array_schema);
+  std::free(data);
+}
+
+#endif  // TILEDB_SERIALIZATION

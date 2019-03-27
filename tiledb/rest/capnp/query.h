@@ -47,29 +47,24 @@ namespace capnp {
  *
  * @param query Query to serialize
  * @param serialize_type format to serialize to
- * @param serialized_string where serialziation will be stored, note this might
- * bytes
- * @param serialized_string_length
+ * @param serialized_buffer Buffer to store serialized query
  */
 tiledb::sm::Status query_serialize(
     tiledb::sm::Query* query,
     tiledb::sm::SerializationType serialize_type,
-    char** serialized_string,
-    uint64_t* serialized_string_length);
+    tiledb::sm::Buffer* serialized_buffer);
 
 /**
  * Deserialize a query
  *
  * @param query Query to deserialize into
  * @param serialize_type format to deserialize from
- * @param serialized_string where the serialziation is stored
- * @param serialized_string_length
+ * @param serialized_buffer Buffer storing serialized query
  */
 tiledb::sm::Status query_deserialize(
     tiledb::sm::Query* query,
     tiledb::sm::SerializationType serialize_type,
-    const char* serialized_string,
-    const uint64_t serialized_string_length);
+    const tiledb::sm::Buffer& serialized_buffer);
 
 }  // namespace capnp
 }  // namespace rest

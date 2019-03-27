@@ -44,114 +44,11 @@
 #include "tiledb/sm/misc/constants.h"
 #include "tiledb/sm/misc/logger.h"
 #include "tiledb/sm/misc/stats.h"
+#include "tiledb/sm/serialization/filter_serializer.h"
 
 namespace tiledb {
 namespace rest {
 namespace capnp {
-
-tiledb::sm::Status filter_to_capnp(
-    const tiledb::sm::Filter* f, Filter::Builder* filterBuilder) {
-  STATS_FUNC_IN(serialization_filter_to_capnp);
-  if (f != nullptr) {
-    tiledb::sm::FilterType filterType = f->type();
-    filterBuilder->setType(filter_type_str(filterType));
-    switch (filterType) {
-      case tiledb::sm::FilterType::FILTER_GZIP:
-      case tiledb::sm::FilterType::FILTER_ZSTD:
-      case tiledb::sm::FilterType::FILTER_LZ4:
-      case tiledb::sm::FilterType::FILTER_RLE:
-      case tiledb::sm::FilterType::FILTER_BZIP2:
-      case tiledb::sm::FilterType::FILTER_DOUBLE_DELTA: {
-        int32_t compressorLevel = 0;
-        f->get_option(
-            tiledb::sm::FilterOption::COMPRESSION_LEVEL, &compressorLevel);
-        Filter::Data::Builder data = filterBuilder->initData();
-        data.setInt32(compressorLevel);
-        break;
-      }
-      case tiledb::sm::FilterType::FILTER_BIT_WIDTH_REDUCTION: {
-        uint32_t bitWidthMaxWindow = 0;
-        f->get_option(
-            tiledb::sm::FilterOption::BIT_WIDTH_MAX_WINDOW, &bitWidthMaxWindow);
-        Filter::Data::Builder data = filterBuilder->initData();
-        data.setUint32(bitWidthMaxWindow);
-        break;
-      }
-      case tiledb::sm::FilterType::FILTER_POSITIVE_DELTA: {
-        uint32_t positiveDeltaMaxWindow = 0;
-        f->get_option(
-            tiledb::sm::FilterOption::POSITIVE_DELTA_MAX_WINDOW,
-            &positiveDeltaMaxWindow);
-        Filter::Data::Builder data = filterBuilder->initData();
-        data.setUint32(positiveDeltaMaxWindow);
-        break;
-      }
-      case tiledb::sm::FilterType::FILTER_BITSHUFFLE:
-      case tiledb::sm::FilterType::FILTER_BYTESHUFFLE:
-      case tiledb::sm::FilterType::FILTER_NONE:
-        break;
-      default:
-        break;
-    }
-    return tiledb::sm::Status::Ok();
-  }
-  return tiledb::sm::Status::Error("Filter passed was null");
-  STATS_FUNC_OUT(serialization_filter_to_capnp);
-}
-
-std::unique_ptr<tiledb::sm::Filter> filter_from_capnp(
-    const Filter::Reader* filterReader) {
-  STATS_FUNC_IN(serialization_filter_from_capnp);
-  tiledb::sm::FilterType filterType = tiledb::sm::FilterType::FILTER_NONE;
-  auto st =
-      tiledb::sm::filter_type_enum(filterReader->getType().cStr(), &filterType);
-  if (!st.ok()) {
-    LOG_STATUS(st);
-    return static_cast<std::unique_ptr<tiledb::sm::Filter>>(nullptr);
-  }
-  std::unique_ptr<tiledb::sm::Filter> filter =
-      std::unique_ptr<tiledb::sm::Filter>(
-          tiledb::sm::Filter::create(filterType));
-  Filter::Data::Reader data = filterReader->getData();
-  switch (filterType) {
-    case tiledb::sm::FilterType::FILTER_GZIP:
-    case tiledb::sm::FilterType::FILTER_ZSTD:
-    case tiledb::sm::FilterType::FILTER_LZ4:
-    case tiledb::sm::FilterType::FILTER_RLE:
-    case tiledb::sm::FilterType::FILTER_BZIP2:
-    case tiledb::sm::FilterType::FILTER_DOUBLE_DELTA: {
-      if (data.isInt32()) {
-        int32_t value = data.getInt32();
-        filter->set_option(tiledb::sm::FilterOption::COMPRESSION_LEVEL, &value);
-      }
-      break;
-    }
-    case tiledb::sm::FilterType::FILTER_BIT_WIDTH_REDUCTION: {
-      if (data.isUint32()) {
-        int32_t value = data.getUint32();
-        filter->set_option(
-            tiledb::sm::FilterOption::BIT_WIDTH_MAX_WINDOW, &value);
-      }
-      break;
-    }
-    case tiledb::sm::FilterType::FILTER_POSITIVE_DELTA: {
-      if (data.isUint32()) {
-        int32_t value = data.getUint32();
-        filter->set_option(
-            tiledb::sm::FilterOption::POSITIVE_DELTA_MAX_WINDOW, &value);
-      }
-      break;
-    }
-    case tiledb::sm::FilterType::FILTER_BITSHUFFLE:
-    case tiledb::sm::FilterType::FILTER_BYTESHUFFLE:
-    case tiledb::sm::FilterType::FILTER_NONE:
-      break;
-    default:
-      break;
-  }
-  return filter;
-  STATS_FUNC_OUT(serialization_filter_from_capnp);
-}
 
 tiledb::sm::Status filter_pipeline_to_capnp(
     const tiledb::sm::FilterPipeline* f,
@@ -163,7 +60,9 @@ tiledb::sm::Status filter_pipeline_to_capnp(
     for (unsigned index = 0; index < f->size(); index++) {
       tiledb::sm::Filter* filter = f->get_filter(index);
       Filter::Builder filterBuilder = filterList[index];
-      filter_to_capnp(filter, &filterBuilder);
+      tiledb::sm::FilterSerializer serializer;
+      RETURN_NOT_OK(serializer.init(&filterBuilder));
+      RETURN_NOT_OK(filter->serialize(&serializer));
     }
     return tiledb::sm::Status::Ok();
   }
@@ -171,21 +70,23 @@ tiledb::sm::Status filter_pipeline_to_capnp(
   STATS_FUNC_OUT(serialization_filter_pipeline_to_capnp);
 }
 
-std::unique_ptr<tiledb::sm::FilterPipeline> filter_pipeline_from_capnp(
-    FilterPipeline::Reader* filterPipelineReader) {
+tiledb::sm::Status filter_pipeline_from_capnp(
+    FilterPipeline::Reader* filterPipelineReader,
+    std::unique_ptr<tiledb::sm::FilterPipeline>* filterPipeline) {
   STATS_FUNC_IN(serialization_filter_pipeline_from_capnp);
-  std::unique_ptr<tiledb::sm::FilterPipeline> filterPipeline =
-      std::unique_ptr<tiledb::sm::FilterPipeline>(
-          new tiledb::sm::FilterPipeline());
+  filterPipeline->reset(new tiledb::sm::FilterPipeline);
   if (filterPipelineReader->hasFilters()) {
     ::capnp::List<Filter>::Reader filterList =
         filterPipelineReader->getFilters();
-    for (const Filter::Reader& filter : filterList) {
-      std::unique_ptr<tiledb::sm::Filter> f = filter_from_capnp(&filter);
-      filterPipeline->add_filter(*f);
+    for (const Filter::Reader& filterReader : filterList) {
+      tiledb::sm::FilterSerializer serializer;
+      RETURN_NOT_OK(serializer.init(&filterReader));
+      std::unique_ptr<tiledb::sm::Filter> filter;
+      RETURN_NOT_OK(tiledb::sm::Filter::deserialize(&serializer, &filter));
+      RETURN_NOT_OK((*filterPipeline)->add_filter(*filter));
     }
   }
-  return filterPipeline;
+  return tiledb::sm::Status::Ok();
   STATS_FUNC_OUT(serialization_filter_pipeline_from_capnp);
 }
 
@@ -223,8 +124,10 @@ std::unique_ptr<tiledb::sm::Attribute> attribute_from_capnp(
   // Set filter pipelines
   if (attribute->hasFilterPipeline()) {
     FilterPipeline::Reader filterPiperline = attribute->getFilterPipeline();
-    std::unique_ptr<tiledb::sm::FilterPipeline> filters =
-        filter_pipeline_from_capnp(&filterPiperline);
+    std::unique_ptr<tiledb::sm::FilterPipeline> filters;
+    if (!filter_pipeline_from_capnp(&filterPiperline, &filters).ok()) {
+      return static_cast<std::unique_ptr<tiledb::sm::Attribute>>(nullptr);
+    }
     a->set_filter_pipeline(filters.get());
   }
 
@@ -628,8 +531,12 @@ std::unique_ptr<tiledb::sm::ArraySchema> array_schema_from_capnp(
   if (arraySchema->hasCoordsFilterPipeline()) {
     FilterPipeline::Reader filterPiperline =
         arraySchema->getCoordsFilterPipeline();
-    std::unique_ptr<tiledb::sm::FilterPipeline> filters =
-        filter_pipeline_from_capnp(&filterPiperline);
+    std::unique_ptr<tiledb::sm::FilterPipeline> filters;
+    st = filter_pipeline_from_capnp(&filterPiperline, &filters);
+    if (!st.ok()) {
+      LOG_STATUS(st);
+      return static_cast<std::unique_ptr<tiledb::sm::ArraySchema>>(nullptr);
+    }
     a->set_coords_filter_pipeline(filters.get());
   }
 
@@ -637,8 +544,12 @@ std::unique_ptr<tiledb::sm::ArraySchema> array_schema_from_capnp(
   if (arraySchema->hasOffsetFilterPipeline()) {
     FilterPipeline::Reader filterPiperline =
         arraySchema->getOffsetFilterPipeline();
-    std::unique_ptr<tiledb::sm::FilterPipeline> filters =
-        filter_pipeline_from_capnp(&filterPiperline);
+    std::unique_ptr<tiledb::sm::FilterPipeline> filters;
+    st = filter_pipeline_from_capnp(&filterPiperline, &filters);
+    if (!st.ok()) {
+      LOG_STATUS(st);
+      return static_cast<std::unique_ptr<tiledb::sm::ArraySchema>>(nullptr);
+    }
     a->set_cell_var_offsets_filter_pipeline(filters.get());
   }
 
@@ -665,9 +576,9 @@ std::unique_ptr<tiledb::sm::ArraySchema> array_schema_from_capnp(
 tiledb::sm::Status array_schema_serialize(
     tiledb::sm::ArraySchema* array_schema,
     tiledb::sm::SerializationType serialize_type,
-    char** serialized_string,
-    uint64_t* serialized_string_length) {
+    tiledb::sm::Buffer* serialized_buffer) {
   STATS_FUNC_IN(serialization_array_schema_serialize);
+
   try {
     ::capnp::MallocMessageBuilder message;
     ArraySchema::Builder arraySchemaBuilder = message.initRoot<ArraySchema>();
@@ -678,22 +589,27 @@ tiledb::sm::Status array_schema_serialize(
       return tiledb::sm::Status::Error(
           "Could not serialize array_schema: " + status.to_string());
 
+    serialized_buffer->reset_size();
+    serialized_buffer->reset_offset();
+
     switch (serialize_type) {
       case tiledb::sm::SerializationType::JSON: {
         ::capnp::JsonCodec json;
         kj::String capnp_json = json.encode(arraySchemaBuilder);
+        const auto json_len = capnp_json.size();
+        const char nul = '\0';
         // size does not include needed null terminator, so add +1
-        *serialized_string_length = capnp_json.size() + 1;
-        *serialized_string = new char[*serialized_string_length];
-        strcpy(*serialized_string, capnp_json.cStr());
+        RETURN_NOT_OK(serialized_buffer->realloc(json_len + 1));
+        RETURN_NOT_OK(serialized_buffer->write(capnp_json.cStr(), json_len))
+        RETURN_NOT_OK(serialized_buffer->write(&nul, 1));
         break;
       }
       case tiledb::sm::SerializationType::CAPNP: {
         kj::Array<::capnp::word> protomessage = messageToFlatArray(message);
         kj::ArrayPtr<const char> message_chars = protomessage.asChars();
-        *serialized_string = new char[message_chars.size()];
-        memcpy(*serialized_string, message_chars.begin(), message_chars.size());
-        *serialized_string_length = message_chars.size();
+        const auto nbytes = message_chars.size();
+        RETURN_NOT_OK(serialized_buffer->realloc(nbytes));
+        RETURN_NOT_OK(serialized_buffer->write(message_chars.begin(), nbytes));
         break;
       }
       default: {
@@ -710,15 +626,16 @@ tiledb::sm::Status array_schema_serialize(
         std::string("Error serializing array schema: ") + e.what());
   }
   return tiledb::sm::Status::Ok();
+
   STATS_FUNC_OUT(serialization_array_schema_serialize);
 }
 
 tiledb::sm::Status array_schema_deserialize(
     tiledb::sm::ArraySchema** array_schema,
     tiledb::sm::SerializationType serialize_type,
-    const char* serialized_string,
-    const uint64_t serialized_string_length) {
+    const tiledb::sm::Buffer& serialized_buffer) {
   STATS_FUNC_IN(serialization_array_schema_deserialize);
+
   try {
     std::unique_ptr<tiledb::sm::ArraySchema> decoded_array_schema = nullptr;
 
@@ -728,7 +645,9 @@ tiledb::sm::Status array_schema_deserialize(
         ::capnp::MallocMessageBuilder message_builder;
         rest::capnp::ArraySchema::Builder array_schema_builder =
             message_builder.initRoot<rest::capnp::ArraySchema>();
-        json.decode(kj::StringPtr(serialized_string), array_schema_builder);
+        json.decode(
+            kj::StringPtr(static_cast<const char*>(serialized_buffer.data())),
+            array_schema_builder);
         rest::capnp::ArraySchema::Reader array_schema_reader =
             array_schema_builder.asReader();
         decoded_array_schema =
@@ -736,15 +655,11 @@ tiledb::sm::Status array_schema_deserialize(
         break;
       }
       case tiledb::sm::SerializationType::CAPNP: {
-        const kj::byte* mBytes =
-            reinterpret_cast<const kj::byte*>(serialized_string);
+        const auto mBytes =
+            reinterpret_cast<const kj::byte*>(serialized_buffer.data());
         ::capnp::FlatArrayMessageReader reader(kj::arrayPtr(
             reinterpret_cast<const ::capnp::word*>(mBytes),
-            serialized_string_length / sizeof(::capnp::word)));
-        // capnp::FlatArrayMessageReader reader(kj::arrayPtr<const
-        // kj::byte>(reinterpret_cast<const kj::byte*>(serialized_string),
-        // serialized_string_length));
-
+            serialized_buffer.size() / sizeof(::capnp::word)));
         ArraySchema::Reader array_schema_reader =
             reader.getRoot<rest::capnp::ArraySchema>();
         decoded_array_schema =
@@ -778,6 +693,7 @@ tiledb::sm::Status array_schema_deserialize(
         std::string("Error serializing array schema: ") + e.what());
   }
   return tiledb::sm::Status::Ok();
+
   STATS_FUNC_OUT(serialization_array_schema_deserialize);
 }
 

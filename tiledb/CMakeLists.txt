@@ -151,6 +151,7 @@ set(TILEDB_CORE_SOURCES
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/writer.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/dense_cell_range_iter.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/rtree/rtree.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/filter_serializer.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/storage_manager/context.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/storage_manager/config.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/storage_manager/config_iter.cc
@@ -251,6 +252,11 @@ endif()
 if (TILEDB_STATS)
   add_definitions(-DTILEDB_STATS)
   message(STATUS "The TileDB library is compiled with stats enabled.")
+endif()
+
+if (TILEDB_SERIALIZATION)
+  add_definitions(-DTILEDB_SERIALIZATION)
+  message(STATUS "The TileDB library is compiled with query serialization enabled.")
 endif()
 
 ############################################################

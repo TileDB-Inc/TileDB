@@ -147,6 +147,9 @@ class BitWidthReductionFilter : public Filter {
   /** Deserializes this filter's metadata from the given buffer. */
   Status deserialize_impl(ConstBuffer* buff) override;
 
+  /** Deserializes this filter's options from given serializer. */
+  Status deserialize_impl(const FilterSerializer* serializer) override;
+
   /** Gets an option from this filter. */
   Status get_option_impl(FilterOption option, void* value) const override;
 
@@ -185,6 +188,9 @@ class BitWidthReductionFilter : public Filter {
 
   /** Serializes this filter's metadata to the given buffer. */
   Status serialize_impl(Buffer* buff) const override;
+
+  /** Serializes this filter's options to the given serializer. */
+  Status serialize_impl(FilterSerializer* serializer) const override;
 
   /**
    * Writes the given value of type T to the given buffer after compressing

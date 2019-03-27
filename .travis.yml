@@ -17,6 +17,9 @@ matrix:
     - os: linux
       env: TILEDB_S3="ON"
 
+    - os: linux
+      env: TILEDB_SERIALIZATION="ON"
+
     - os: osx
 
 before_install:
@@ -56,7 +59,10 @@ install:
       fi;
       if [[ "$TILEDB_TBB" == "OFF" ]]; then
         bootstrap_args="${bootstrap_args} --disable-tbb";
-      fi
+      fi;
+      if [[ "$TILEDB_SERIALIZATION" == "ON" ]]; then
+        bootstrap_args="${bootstrap_args} --enable-serialization";
+      fi;
 
     # Start HDFS server if enabled
     - if [[ "$TILEDB_HDFS" == "ON" ]]; then

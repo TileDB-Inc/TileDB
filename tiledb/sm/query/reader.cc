@@ -121,19 +121,6 @@ AttributeBuffer Reader::buffer(const std::string& attribute) const {
 
 Status Reader::capnp(
     rest::capnp::QueryReader::Builder* queryReaderBuilder) const {
-  if (!this->fragment_metadata_.empty()) {
-    capnp::List<rest::capnp::FragmentMetadata>::Builder
-        fragmentMetadataBuilder = queryReaderBuilder->initFragmentMetadata(
-            this->fragment_metadata_.size());
-    for (size_t i = 0; i < this->fragment_metadata_.size(); i++) {
-      rest::capnp::FragmentMetadata::Builder builder =
-          fragmentMetadataBuilder[i];
-      Status st = this->fragment_metadata_[i]->capnp(&builder);
-      if (!st.ok())
-        return st;
-    }
-  }
-
   if (this->read_state_.initialized_ == true) {
     rest::capnp::ReadState::Builder readStateBuilder =
         queryReaderBuilder->initReadState();
@@ -339,26 +326,6 @@ Status Reader::get_buffer(
 }
 
 Status Reader::from_capnp(rest::capnp::QueryReader::Reader* queryReader) {
-  if (queryReader->hasFragmentMetadata()) {
-    capnp::List<rest::capnp::FragmentMetadata>::Reader fragmentMetadataReader =
-        queryReader->getFragmentMetadata();
-    // Clear existing fragmentMetadata so we can use deserialized data
-    this->fragment_metadata_.clear();
-    for (auto fragmentReader : fragmentMetadataReader) {
-      // TODO: Memory leak! Fragment metadata is never deleted.. would be nice
-      // to change these to shared ptr's
-      FragmentMetadata* fragment = new FragmentMetadata(
-          this->array_schema(),
-          this->array_schema()->array_type() == ArrayType::DENSE,
-          URI(""),
-          this->array_->timestamp());
-      Status st = fragment->from_capnp(&fragmentReader);
-      if (!st.ok())
-        return st;
-      this->fragment_metadata_.push_back(fragment);
-    }
-  }
-
   if (queryReader->hasReadState()) {
     rest::capnp::ReadState::Reader readStateReader =
         queryReader->getReadState();

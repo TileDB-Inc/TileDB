@@ -235,6 +235,10 @@ void ArraySchemaFx::delete_array(const std::string& path) {
 
 int ArraySchemaFx::array_create_wrapper(
     const std::string& path, tiledb_array_schema_t* array_schema) {
+#ifndef TILEDB_SERIALIZATION
+  return tiledb_array_create(ctx_, path.c_str(), array_schema);
+#endif
+
   if (!serialize_array_schema) {
     return tiledb_array_create(ctx_, path.c_str(), array_schema);
   }
@@ -290,6 +294,10 @@ int ArraySchemaFx::array_create_wrapper(
 
 int ArraySchemaFx::array_schema_load_wrapper(
     const std::string& path, tiledb_array_schema_t** array_schema) {
+#ifndef TILEDB_SERIALIZATION
+  return tiledb_array_schema_load(ctx_, path.c_str(), array_schema);
+#endif
+
   if (!serialize_array_schema) {
     return tiledb_array_schema_load(ctx_, path.c_str(), array_schema);
   }
@@ -346,6 +354,10 @@ int ArraySchemaFx::array_schema_load_wrapper(
 
 int ArraySchemaFx::array_get_schema_wrapper(
     tiledb_array_t* array, tiledb_array_schema_t** array_schema) {
+#ifndef TILEDB_SERIALIZATION
+  return tiledb_array_get_schema(ctx_, array, array_schema);
+#endif
+
   if (!serialize_array_schema) {
     return tiledb_array_get_schema(ctx_, array, array_schema);
   }
@@ -401,6 +413,10 @@ int ArraySchemaFx::array_get_schema_wrapper(
 
 int ArraySchemaFx::array_schema_get_domain_wrapper(
     tiledb_array_schema_t* array_schema, tiledb_domain_t** domain) {
+#ifndef TILEDB_SERIALIZATION
+  return tiledb_array_schema_get_domain(ctx_, array_schema, domain);
+#endif
+
   if (!serialize_array_schema) {
     return tiledb_array_schema_get_domain(ctx_, array_schema, domain);
   }

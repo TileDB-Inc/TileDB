@@ -2721,16 +2721,26 @@ void DenseArrayFx::check_non_empty_domain(const std::string& path) {
 int DenseArrayFx::submit_query_wrapper(
     const std::string& array_uri, tiledb_query_t* query) {
   if (serialize_query) {
-    // Store the query type
+    // Store the query type and layout
     tiledb_query_type_t query_type;
+    tiledb_layout_t layout;
     REQUIRE(tiledb_query_get_type(ctx_, query, &query_type) == TILEDB_OK);
+    REQUIRE(tiledb_query_get_layout(ctx_, query, &layout) == TILEDB_OK);
 
     // Serialize the query
     char* buff = nullptr;
     uint64_t buff_len = 0;
-    REQUIRE(
-        tiledb_query_serialize(ctx_, query, TILEDB_CAPNP, &buff, &buff_len) ==
-        TILEDB_OK);
+    int rc =
+        tiledb_query_serialize(ctx_, query, TILEDB_CAPNP, &buff, &buff_len);
+
+    // Global order queries are not (yet) supported for serialization. Just
+    // check that serialization is an error, and then execute the regular query.
+    if (layout == TILEDB_GLOBAL_ORDER) {
+      REQUIRE(rc == TILEDB_ERR);
+      return tiledb_query_submit(ctx_, query);
+    } else {
+      REQUIRE(rc == TILEDB_OK);
+    }
 
     // Open a new array instance.
     tiledb_array_t* new_array = nullptr;
@@ -2749,7 +2759,7 @@ int DenseArrayFx::submit_query_wrapper(
     std::free(buff);
 
     // Submit the new query.
-    int rc = tiledb_query_submit(ctx_, new_query);
+    rc = tiledb_query_submit(ctx_, new_query);
 
     // Serialize the new query and deserialize into the original query.
     REQUIRE(
