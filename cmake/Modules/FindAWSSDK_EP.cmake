@@ -65,6 +65,9 @@ if (NOT AWSSDK_FOUND)
     if (TARGET ep_openssl)
       list(APPEND DEPENDS ep_openssl)
     endif()
+    if (TARGET ep_zlib)
+      list(APPEND DEPENDS ep_zlib)
+    endif()
 
     ExternalProject_Add(ep_awssdk
       PREFIX "externals"
