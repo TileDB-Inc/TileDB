@@ -645,13 +645,10 @@ std::unique_ptr<tiledb::sm::ArraySchema> array_schema_from_capnp(
   ::capnp::List<Attribute>::Reader attributes = arraySchema->getAttributes();
   for (auto attr : attributes) {
     auto attribute = attribute_from_capnp(&attr);
-    if (attribute->name().substr(0, 2) !=
-        tiledb::sm::constants::special_name_prefix) {
-      st = a->add_attribute(attribute.get());
-      if (!st.ok()) {
-        LOG_STATUS(st);
-        return static_cast<std::unique_ptr<tiledb::sm::ArraySchema>>(nullptr);
-      }
+    st = a->add_attribute(attribute.get(), false);
+    if (!st.ok()) {
+      LOG_STATUS(st);
+      return static_cast<std::unique_ptr<tiledb::sm::ArraySchema>>(nullptr);
     }
   }
 

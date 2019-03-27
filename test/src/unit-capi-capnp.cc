@@ -107,6 +107,7 @@ struct ArraySchemaCapnp {
   ~ArraySchemaCapnp();
   void set_supported_fs();
   tiledb_array_schema_t* create_array_schema();
+  tiledb_array_schema_t* create_array_schema_sparse();
   tiledb_array_schema_t* create_array_schema_simple();
   void create_temp_dir(const std::string& path);
   void remove_temp_dir(const std::string& path);
@@ -162,6 +163,47 @@ void ArraySchemaCapnp::set_supported_fs() {
 tiledb_array_schema_t* ArraySchemaCapnp::create_array_schema() {
   tiledb_array_schema_t* array_schema;
   int rc = tiledb_array_schema_alloc(ctx_, TILEDB_DENSE, &array_schema);
+  REQUIRE(rc == TILEDB_OK);
+
+  // Create dimensions
+  tiledb_dimension_t* d1;
+  rc = tiledb_dimension_alloc(
+      ctx_, "", TILEDB_INT64, &DIM_DOMAIN[0], &TILE_EXTENTS[0], &d1);
+  REQUIRE(rc == TILEDB_OK);
+
+  // Set domain
+  tiledb_domain_t* domain;
+  rc = tiledb_domain_alloc(ctx_, &domain);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_domain_add_dimension(ctx_, domain, d1);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_array_schema_set_domain(ctx_, array_schema, domain);
+  REQUIRE(rc == TILEDB_OK);
+
+  // Set attribute
+  tiledb_attribute_t* attr1;
+  rc = tiledb_attribute_alloc(ctx_, "", ATTR_TYPE, &attr1);
+  REQUIRE(rc == TILEDB_OK);
+  tiledb_attribute_t* attr2;
+  rc = tiledb_attribute_alloc(ctx_, "a1", ATTR_TYPE, &attr2);
+  REQUIRE(rc == TILEDB_OK);
+
+  rc = tiledb_array_schema_add_attribute(ctx_, array_schema, attr1);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_array_schema_add_attribute(ctx_, array_schema, attr2);
+  REQUIRE(rc == TILEDB_OK);
+
+  tiledb_attribute_free(&attr1);
+  tiledb_attribute_free(&attr2);
+  tiledb_dimension_free(&d1);
+  tiledb_domain_free(&domain);
+
+  return array_schema;
+}
+
+tiledb_array_schema_t* ArraySchemaCapnp::create_array_schema_sparse() {
+  tiledb_array_schema_t* array_schema;
+  int rc = tiledb_array_schema_alloc(ctx_, TILEDB_SPARSE, &array_schema);
   REQUIRE(rc == TILEDB_OK);
 
   // Create dimensions
@@ -279,6 +321,155 @@ TEST_CASE_METHOD(
       (tiledb_serialization_type_t)tiledb::sm::SerializationType::CAPNP,
       data,
       data_size);
+  REQUIRE(rc == TILEDB_OK);
+
+  // Layout should be the same
+  tiledb_layout_t layout, layout_returned;
+  rc = tiledb_array_schema_get_cell_order(ctx_, array_schema, &layout);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_array_schema_get_cell_order(
+      ctx_, array_schema_returned, &layout_returned);
+  REQUIRE(rc == TILEDB_OK);
+  REQUIRE(layout == layout_returned);
+
+  // Capacity should be the same
+  uint64_t cap, cap_returned;
+  rc = tiledb_array_schema_get_capacity(ctx_, array_schema, &cap);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_array_schema_get_capacity(
+      ctx_, array_schema_returned, &cap_returned);
+  REQUIRE(rc == TILEDB_OK);
+  REQUIRE(cap == cap_returned);
+
+  // Two attributes were created, a named and an anonymous
+  // Anonymous attribute cannot make it to the other side
+  // since it gets a default name (constants::default_attr_name)
+  // which is prefixed (__attr)
+  uint32_t attr_num, attr_num_returned;
+  rc = tiledb_array_schema_get_attribute_num(ctx_, array_schema, &attr_num);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_array_schema_get_attribute_num(
+      ctx_, array_schema_returned, &attr_num_returned);
+  REQUIRE(rc == TILEDB_OK);
+  REQUIRE(attr_num == attr_num_returned);
+
+  // Retrieve domains
+  tiledb_domain_t* domain;
+  tiledb_array_schema_get_domain(ctx_, array_schema, &domain);
+  REQUIRE(rc == TILEDB_OK);
+  tiledb_domain_t* domain_returned;
+  tiledb_array_schema_get_domain(ctx_, array_schema_returned, &domain_returned);
+  REQUIRE(rc == TILEDB_OK);
+
+  // Number of dimensions should be the same
+  uint32_t ndim, ndim_returned;
+  rc = tiledb_domain_get_ndim(ctx_, domain, &ndim);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_domain_get_ndim(ctx_, domain_returned, &ndim_returned);
+  REQUIRE(rc == TILEDB_OK);
+  REQUIRE(ndim == ndim_returned);
+
+  // Check if there is an anonymous dimension
+  tiledb_dimension_t* dim;
+  rc = tiledb_domain_get_dimension_from_name(ctx_, domain, "", &dim);
+  REQUIRE(rc == TILEDB_OK);
+  tiledb_dimension_t* dim_returned;
+  rc = tiledb_domain_get_dimension_from_name(
+      ctx_, domain_returned, "", &dim_returned);
+  REQUIRE(rc == TILEDB_OK);
+
+  tiledb_array_schema_free(&array_schema);
+  tiledb_array_schema_free(&array_schema_returned);
+  remove_temp_dir(temp_dir);
+}
+
+TEST_CASE_METHOD(
+    ArraySchemaCapnp,
+    "C API: Test sparse array schema capnp serialization",
+    "[capi], [capnp]") {
+  // Create array schema
+  tiledb_array_schema_t* array_schema = create_array_schema_sparse();
+  // Create array schema to post
+
+  std::string temp_dir = FILE_URI_PREFIX + FILE_TEMP_DIR;
+  create_temp_dir(temp_dir);
+
+  // Create and write sparse array
+  std::string uri = temp_dir + "capnp_serialization_sparse_test";
+
+  // Load array schema from the rest server
+  tiledb_array_schema_t* array_schema_returned;
+  char* data;
+  uint64_t data_size = 0;
+  int rc = tiledb_array_schema_serialize(
+      ctx_,
+      array_schema,
+      (tiledb_serialization_type_t)tiledb::sm::SerializationType::CAPNP,
+      &data,
+      &data_size);
+  REQUIRE(rc == TILEDB_OK);
+
+  rc = tiledb_array_schema_deserialize(
+      ctx_,
+      &array_schema_returned,
+      (tiledb_serialization_type_t)tiledb::sm::SerializationType::CAPNP,
+      data,
+      data_size);
+  REQUIRE(rc == TILEDB_OK);
+
+  // Layout should be the same
+  tiledb_layout_t layout, layout_returned;
+  rc = tiledb_array_schema_get_cell_order(ctx_, array_schema, &layout);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_array_schema_get_cell_order(
+      ctx_, array_schema_returned, &layout_returned);
+  REQUIRE(rc == TILEDB_OK);
+  REQUIRE(layout == layout_returned);
+
+  // Capacity should be the same
+  uint64_t cap, cap_returned;
+  rc = tiledb_array_schema_get_capacity(ctx_, array_schema, &cap);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_array_schema_get_capacity(
+      ctx_, array_schema_returned, &cap_returned);
+  REQUIRE(rc == TILEDB_OK);
+  REQUIRE(cap == cap_returned);
+
+  // Two attributes were created, a named and an anonymous
+  // Anonymous attribute cannot make it to the other side
+  // since it gets a default name (constants::default_attr_name)
+  // which is prefixed (__attr)
+  uint32_t attr_num, attr_num_returned;
+  rc = tiledb_array_schema_get_attribute_num(ctx_, array_schema, &attr_num);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_array_schema_get_attribute_num(
+      ctx_, array_schema_returned, &attr_num_returned);
+  REQUIRE(rc == TILEDB_OK);
+  REQUIRE(attr_num == attr_num_returned);
+
+  // Retrieve domains
+  tiledb_domain_t* domain;
+  tiledb_array_schema_get_domain(ctx_, array_schema, &domain);
+  REQUIRE(rc == TILEDB_OK);
+  tiledb_domain_t* domain_returned;
+  tiledb_array_schema_get_domain(ctx_, array_schema_returned, &domain_returned);
+  REQUIRE(rc == TILEDB_OK);
+
+  // Number of dimensions should be the same
+  uint32_t ndim, ndim_returned;
+  rc = tiledb_domain_get_ndim(ctx_, domain, &ndim);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_domain_get_ndim(ctx_, domain_returned, &ndim_returned);
+  REQUIRE(rc == TILEDB_OK);
+  REQUIRE(ndim == ndim_returned);
+
+  // Check if there is an anonymous dimension
+  tiledb_dimension_t* dim;
+  rc = tiledb_domain_get_dimension_from_name(ctx_, domain, "", &dim);
+  REQUIRE(rc == TILEDB_OK);
+  tiledb_dimension_t* dim_returned;
+  rc = tiledb_domain_get_dimension_from_name(
+      ctx_, domain_returned, "", &dim_returned);
   REQUIRE(rc == TILEDB_OK);
 
   tiledb_array_schema_free(&array_schema);
