@@ -57,7 +57,6 @@
 #include <aws/s3/model/CompleteMultipartUploadRequest.h>
 #include <aws/s3/model/CopyObjectRequest.h>
 #include <aws/s3/model/CreateBucketRequest.h>
-#include <aws/s3/model/CreateMultipartUploadRequest.h>
 #include <aws/s3/model/DeleteBucketRequest.h>
 #include <aws/s3/model/DeleteObjectRequest.h>
 #include <aws/s3/model/GetBucketLocationRequest.h>
@@ -327,6 +326,42 @@ class S3 {
     const int upload_part_num;
   };
 
+  /** Contains all state associated with a multipart upload transaction. */
+  struct MultiPartUploadState {
+    /** Constructor. */
+    MultiPartUploadState(
+        const int in_part_number,
+        Aws::String&& in_bucket,
+        Aws::String&& in_key,
+        Aws::String&& in_upload_id,
+        std::map<int, Aws::S3::Model::CompletedPart>&& in_completed_parts)
+        : part_number(in_part_number)
+        , bucket(std::move(in_bucket))
+        , key(std::move(in_key))
+        , upload_id(std::move(in_upload_id))
+        , completed_parts(std::move(in_completed_parts))
+        , st(Status::Ok()) {
+    }
+
+    /** The current part number. */
+    int part_number;
+
+    /** The AWS bucket. */
+    Aws::String bucket;
+
+    /** The AWS key. */
+    Aws::String key;
+
+    /** The AWS upload id. */
+    Aws::String upload_id;
+
+    /** Maps each part number to its completed part state. */
+    std::map<int, Aws::S3::Model::CompletedPart> completed_parts;
+
+    /** The overall status of the multipart request. */
+    Status st;
+  };
+
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
   /* ********************************* */
@@ -355,26 +390,11 @@ class S3 {
   /** AWS options. */
   Aws::SDKOptions options_;
 
-  /** Used in multi-part uploads. */
-  std::unordered_map<std::string, Aws::String> multipart_upload_IDs_;
+  /** Maps a file name to its multipart upload state. */
+  std::unordered_map<std::string, MultiPartUploadState>
+      multipart_upload_states_;
 
-  /** Used in multi-part uploads. */
-  std::unordered_map<std::string, int> multipart_upload_part_number_;
-
-  /** Used in multi-part uploads. */
-  std::
-      unordered_map<std::string, Aws::S3::Model::CompleteMultipartUploadRequest>
-          multipart_upload_request_;
-
-  /** Used in multi-part uploads. */
-  std::unordered_map<std::string, Aws::S3::Model::CompletedMultipartUpload>
-      multipart_upload_;
-
-  /** Map of object path -> part number -> CompletedPart struct. */
-  std::unordered_map<std::string, std::map<int, Aws::S3::Model::CompletedPart>>
-      multipart_upload_completed_parts_;
-
-  /** Protects multi-part upload data structures. */
+  /** Protects 'multipart_upload_states_'. */
   std::mutex multipart_upload_mtx_;
 
   /** The maximum number of parallel operations issued. */
@@ -489,6 +509,41 @@ class S3 {
 
   /** Waits for the bucket to be created. */
   bool wait_for_bucket_to_be_created(const URI& bucket_uri) const;
+
+  /**
+   * Builds and returns a CompleteMultipartUploadRequest for completing an
+   * in-progress multipart upload.
+   *
+   * @param state The state of an in-progress multipart upload transaction.
+   * @return CompleteMultipartUploadRequest
+   */
+  Aws::S3::Model::CompleteMultipartUploadRequest
+  make_multipart_complete_request(const MultiPartUploadState& state);
+
+  /**
+   * Builds and returns a AbortMultipartUploadRequest for aborting an
+   * in-progress multipart upload.
+   *
+   * @param state The state of an in-progress multipart upload transaction.
+   * @return AbortMultipartUploadRequest
+   */
+  Aws::S3::Model::AbortMultipartUploadRequest make_multipart_abort_request(
+      const MultiPartUploadState& state);
+
+  /**
+   * Helper routine for finalizing a flush from either a complete or abort
+   * request.
+   *
+   * @param outcome The returned outcome from the complete or abort request.
+   * @param uri The URI of the S3 file to be written to.
+   * @param buff The file buffer associated with 'uri'.
+   * @return Status
+   */
+  template <typename R, typename E>
+  Status finish_flush_object(
+      const Aws::Utils::Outcome<R, E>& outcome,
+      const URI& uri,
+      Buffer* const buff);
 
   /**
    * Writes the input buffer to a file by issuing one or more multipart upload

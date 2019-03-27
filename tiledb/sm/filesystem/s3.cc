@@ -32,11 +32,14 @@
 
 #ifdef HAVE_S3
 
+#include <aws/s3/model/AbortMultipartUploadRequest.h>
+#include <aws/s3/model/CreateMultipartUploadRequest.h>
 #include <boost/interprocess/streams/bufferstream.hpp>
 #include <fstream>
 #include <iostream>
 
 #include "tiledb/sm/filesystem/s3_thread_pool_executor.h"
+#include "tiledb/sm/global_state/unit_test_config.h"
 #include "tiledb/sm/misc/logger.h"
 #include "tiledb/sm/misc/stats.h"
 #include "tiledb/sm/misc/utils.h"
@@ -214,17 +217,27 @@ Status S3::remove_bucket(const URI& bucket) const {
 Status S3::disconnect() {
   RETURN_NOT_OK(init_client());
 
-  for (const auto& record : multipart_upload_request_) {
-    auto completed_multipart_upload = multipart_upload_[record.first];
-    auto complete_multipart_upload_request = record.second;
-    complete_multipart_upload_request.WithMultipartUpload(
-        completed_multipart_upload);
-    auto complete_multipart_upload_outcome =
-        client_->CompleteMultipartUpload(complete_multipart_upload_request);
-    if (!complete_multipart_upload_outcome.IsSuccess()) {
-      return LOG_STATUS(Status::S3Error(
-          std::string("Failed to disconnect and flush S3 objects. ") +
-          outcome_error_message(complete_multipart_upload_outcome)));
+  for (auto& kv : multipart_upload_states_) {
+    const MultiPartUploadState& state = kv.second;
+
+    if (state.st.ok()) {
+      Aws::S3::Model::CompleteMultipartUploadRequest complete_request =
+          make_multipart_complete_request(state);
+      auto outcome = client_->CompleteMultipartUpload(complete_request);
+      if (!outcome.IsSuccess()) {
+        return LOG_STATUS(Status::S3Error(
+            std::string("Failed to disconnect and flush S3 objects. ") +
+            outcome_error_message(outcome)));
+      }
+    } else {
+      Aws::S3::Model::AbortMultipartUploadRequest abort_request =
+          make_multipart_abort_request(state);
+      auto outcome = client_->AbortMultipartUpload(abort_request);
+      if (!outcome.IsSuccess()) {
+        return LOG_STATUS(Status::S3Error(
+            std::string("Failed to disconnect and flush S3 objects. ") +
+            outcome_error_message(outcome)));
+      }
     }
   }
   Aws::ShutdownAPI(options_);
@@ -247,66 +260,94 @@ Status S3::flush_object(const URI& uri) {
         std::string("URI is not an S3 URI: " + uri.to_string())));
   }
 
-  // Flush and delete file buffer
+  // Flush and delete file buffer. For multipart requests, we must
+  // continue even if 'flush_file_buffer' fails. In that scenario,
+  // we will send an abort request.
   auto buff = (Buffer*)nullptr;
   RETURN_NOT_OK(get_file_buffer(uri, &buff));
-  RETURN_NOT_OK(flush_file_buffer(uri, buff, true));
+  const Status flush_st = flush_file_buffer(uri, buff, true);
 
   Aws::Http::URI aws_uri = uri.c_str();
   std::string path_c_str = aws_uri.GetPath().c_str();
 
-  // Take a lock protecting the shared multipart data structures
+  // Take a lock protecting 'multipart_upload_states_'.
   std::unique_lock<std::mutex> multipart_lck(multipart_upload_mtx_);
 
   // Do nothing - empty object
-  auto multipart_upload_it = multipart_upload_.find(path_c_str);
-  if (multipart_upload_it == multipart_upload_.end())
+  auto state_iter = multipart_upload_states_.find(path_c_str);
+  if (state_iter == multipart_upload_states_.end()) {
+    RETURN_NOT_OK(flush_st);
     return Status::Ok();
+  }
 
-  // Get the completed upload object
-  auto completed_multipart_upload = multipart_upload_it->second;
+  const MultiPartUploadState& state = state_iter->second;
 
+  if (state.st.ok()) {
+    Aws::S3::Model::CompleteMultipartUploadRequest complete_request =
+        make_multipart_complete_request(state);
+    auto outcome = client_->CompleteMultipartUpload(complete_request);
+
+    auto bucket = state.bucket;
+    auto key = state.key;
+    multipart_lck.unlock();
+
+    wait_for_object_to_propagate(move(bucket), move(key));
+
+    return finish_flush_object(std::move(outcome), uri, buff);
+  } else {
+    Aws::S3::Model::AbortMultipartUploadRequest abort_request =
+        make_multipart_abort_request(state);
+    auto outcome = client_->AbortMultipartUpload(abort_request);
+
+    multipart_lck.unlock();
+
+    return finish_flush_object(std::move(outcome), uri, buff);
+  }
+}
+
+Aws::S3::Model::CompleteMultipartUploadRequest
+S3::make_multipart_complete_request(const MultiPartUploadState& state) {
   // Add all the completed parts (sorted by part number) to the upload object.
-  auto completed_parts_it = multipart_upload_completed_parts_.find(path_c_str);
-  if (completed_parts_it == multipart_upload_completed_parts_.end()) {
-    return LOG_STATUS(Status::S3Error(
-        "Unable to find completed parts list for S3 object " +
-        uri.to_string()));
-  }
-  for (auto& tup : completed_parts_it->second) {
-    Aws::S3::Model::CompletedPart& part = std::get<1>(tup);
-    completed_multipart_upload.AddParts(part);
+  Aws::S3::Model::CompletedMultipartUpload completed_upload;
+  for (auto& tup : state.completed_parts) {
+    const Aws::S3::Model::CompletedPart& part = std::get<1>(tup);
+    completed_upload.AddParts(part);
   }
 
-  auto multipart_upload_request_it = multipart_upload_request_.find(path_c_str);
-  auto complete_multipart_upload_request = multipart_upload_request_it->second;
-  complete_multipart_upload_request.WithMultipartUpload(
-      completed_multipart_upload);
-  auto complete_multipart_upload_outcome =
-      client_->CompleteMultipartUpload(complete_multipart_upload_request);
+  Aws::S3::Model::CompleteMultipartUploadRequest complete_request;
+  complete_request.SetBucket(state.bucket);
+  complete_request.SetKey(state.key);
+  complete_request.SetUploadId(state.upload_id);
+  return complete_request.WithMultipartUpload(std::move(completed_upload));
+}
 
-  // Release lock while we wait for the file to flush.
+Aws::S3::Model::AbortMultipartUploadRequest S3::make_multipart_abort_request(
+    const MultiPartUploadState& state) {
+  Aws::S3::Model::AbortMultipartUploadRequest abort_request;
+  abort_request.SetBucket(state.bucket);
+  abort_request.SetKey(state.key);
+  abort_request.SetUploadId(state.upload_id);
+  return abort_request;
+}
+
+template <typename R, typename E>
+Status S3::finish_flush_object(
+    const Aws::Utils::Outcome<R, E>& outcome,
+    const URI& uri,
+    Buffer* const buff) {
+  Aws::Http::URI aws_uri = uri.c_str();
+
+  std::unique_lock<std::mutex> multipart_lck(multipart_upload_mtx_);
+  multipart_upload_states_.erase(aws_uri.GetPath().c_str());
   multipart_lck.unlock();
 
-  wait_for_object_to_propagate(
-      complete_multipart_upload_request.GetBucket(),
-      complete_multipart_upload_request.GetKey());
-
-  multipart_lck.lock();
-
-  multipart_upload_IDs_.erase(path_c_str);
-  multipart_upload_part_number_.erase(path_c_str);
-  multipart_upload_request_.erase(multipart_upload_request_it);
-  multipart_upload_.erase(multipart_upload_it);
-  multipart_upload_completed_parts_.erase(path_c_str);
   file_buffers_.erase(uri.to_string());
   delete buff;
 
-  //  fails when flushing directories or removed files
-  if (!complete_multipart_upload_outcome.IsSuccess()) {
+  if (!outcome.IsSuccess()) {
     return LOG_STATUS(Status::S3Error(
         std::string("Failed to flush S3 object ") + uri.c_str() +
-        outcome_error_message(complete_multipart_upload_outcome)));
+        outcome_error_message(outcome)));
   }
 
   return Status::Ok();
@@ -712,8 +753,10 @@ Status S3::flush_file_buffer(const URI& uri, Buffer* buff, bool last_part) {
   RETURN_NOT_OK(init_client());
 
   if (buff->size() > 0) {
-    RETURN_NOT_OK(write_multipart(uri, buff->data(), buff->size(), last_part));
+    const Status st =
+        write_multipart(uri, buff->data(), buff->size(), last_part);
     buff->reset_size();
+    RETURN_NOT_OK(st);
   }
 
   return Status::Ok();
@@ -753,22 +796,15 @@ Status S3::initiate_multipart_request(Aws::Http::URI aws_uri) {
         path_c_str + outcome_error_message(multipart_upload_outcome)));
   }
 
-  multipart_upload_IDs_[path_c_str] =
-      multipart_upload_outcome.GetResult().GetUploadId();
-  multipart_upload_part_number_[path_c_str] = 1;
+  MultiPartUploadState state(
+      1,
+      Aws::String(aws_uri.GetAuthority()),
+      Aws::String(path),
+      Aws::String(multipart_upload_outcome.GetResult().GetUploadId()),
+      std::map<int, Aws::S3::Model::CompletedPart>());
 
-  Aws::S3::Model::CompleteMultipartUploadRequest
-      complete_multipart_upload_request;
-  complete_multipart_upload_request.SetBucket(aws_uri.GetAuthority());
-  complete_multipart_upload_request.SetKey(path);
-  complete_multipart_upload_request.SetUploadId(
-      multipart_upload_IDs_[path_c_str]);
-
-  Aws::S3::Model::CompletedMultipartUpload completed_multipart_upload;
-  multipart_upload_[path_c_str] = completed_multipart_upload;
-  multipart_upload_request_[path_c_str] = complete_multipart_upload_request;
-  multipart_upload_completed_parts_[path_c_str] =
-      std::map<int, Aws::S3::Model::CompletedPart>();
+  assert(multipart_upload_states_.count(path_c_str) == 0);
+  multipart_upload_states_.emplace(std::move(path_c_str), std::move(state));
 
   return Status::Ok();
 }
@@ -862,22 +898,28 @@ Status S3::write_multipart(
   // Take a lock protecting the shared multipart data structures
   std::unique_lock<std::mutex> multipart_lck(multipart_upload_mtx_);
 
-  if (multipart_upload_IDs_.find(uri_path) == multipart_upload_IDs_.end()) {
+  auto state_iter = multipart_upload_states_.find(uri_path);
+  if (state_iter == multipart_upload_states_.end()) {
     // Delete file if it exists (overwrite) and initiate multipart request
     if (is_object(uri))
       RETURN_NOT_OK(remove_object(uri));
-    Status st = initiate_multipart_request(aws_uri);
+    const Status st = initiate_multipart_request(aws_uri);
     if (!st.ok()) {
       return st;
     }
+
+    state_iter = multipart_upload_states_.find(uri_path);
+    assert(state_iter != multipart_upload_states_.end());
   }
 
+  MultiPartUploadState* const state = &state_iter->second;
+
   // Get the upload ID
-  const auto upload_id = multipart_upload_IDs_[uri_path];
+  const auto upload_id = state->upload_id;
 
   // Assign the part number(s), and make the write request.
   if (num_ops == 1) {
-    int part_num = multipart_upload_part_number_[uri_path]++;
+    const int part_num = state->part_number++;
 
     // Unlock, as make_upload_part_req will reaquire as necessary.
     multipart_lck.unlock();
@@ -890,8 +932,8 @@ Status S3::write_multipart(
 
     std::vector<MakeUploadPartCtx> ctx_vec;
     ctx_vec.reserve(num_ops);
-    uint64_t bytes_per_op = multipart_part_size_;
-    int part_num_base = multipart_upload_part_number_[uri_path];
+    const uint64_t bytes_per_op = multipart_part_size_;
+    const int part_num_base = state->part_number;
     for (uint64_t i = 0; i < num_ops; i++) {
       uint64_t begin = i * bytes_per_op,
                end = std::min((i + 1) * bytes_per_op - 1, length - 1);
@@ -902,7 +944,7 @@ Status S3::write_multipart(
           aws_uri, thread_buffer, thread_nbytes, upload_id, part_num);
       ctx_vec.emplace_back(std::move(ctx));
     }
-    multipart_upload_part_number_[uri_path] += num_ops;
+    state->part_number += num_ops;
 
     // Unlock, so the threads can take the lock as necessary.
     multipart_lck.unlock();
@@ -957,10 +999,23 @@ Status S3::get_make_upload_part_req(
   RETURN_NOT_OK(init_client());
 
   auto upload_part_outcome = ctx.upload_part_outcome_callable.get();
-  if (!upload_part_outcome.IsSuccess()) {
-    return LOG_STATUS(Status::S3Error(
+  bool success = upload_part_outcome.IsSuccess();
+
+  static const UnitTestConfig& unit_test_cfg = UnitTestConfig::instance();
+  if (unit_test_cfg.s3_fail_every_nth_upload_request.is_set() &&
+      ctx.upload_part_num %
+              unit_test_cfg.s3_fail_every_nth_upload_request.get() ==
+          0) {
+    success = false;
+  }
+
+  if (!success) {
+    std::unique_lock<std::mutex> lck(multipart_upload_mtx_);
+    auto state_iter = multipart_upload_states_.find(uri_path);
+    state_iter->second.st = Status::S3Error(
         std::string("Failed to upload part of S3 object '") + uri.c_str() +
-        outcome_error_message(upload_part_outcome)));
+        outcome_error_message(upload_part_outcome));
+    return LOG_STATUS(state_iter->second.st);
   }
 
   Aws::S3::Model::CompletedPart completed_part;
@@ -969,8 +1024,9 @@ Status S3::get_make_upload_part_req(
 
   {
     std::unique_lock<std::mutex> lck(multipart_upload_mtx_);
-    multipart_upload_completed_parts_[uri_path][ctx.upload_part_num] =
-        completed_part;
+    auto state_iter = multipart_upload_states_.find(uri_path);
+    state_iter->second.completed_parts.emplace(
+        ctx.upload_part_num, std::move(completed_part));
   }
 
   STATS_COUNTER_ADD(vfs_s3_num_parts_written, 1);

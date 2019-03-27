@@ -34,6 +34,7 @@
 
 #include "catch.hpp"
 #include "tiledb/sm/filesystem/s3.h"
+#include "tiledb/sm/global_state/unit_test_config.h"
 #include "tiledb/sm/misc/thread_pool.h"
 #include "tiledb/sm/misc/utils.h"
 #include "tiledb/sm/storage_manager/config.h"
@@ -258,6 +259,33 @@ TEST_CASE_METHOD(S3Fx, "Test S3 filesystem, file I/O", "[s3]") {
     }
   }
   CHECK(allok);
+}
+
+TEST_CASE_METHOD(S3Fx, "Test S3 multiupload abort path", "[s3]") {
+  // Prepare a large buffer
+  uint64_t buffer_size = 100 * 1024 * 1024;
+  auto write_buffer = new char[buffer_size];
+  for (uint64_t i = 0; i < buffer_size; i++)
+    write_buffer[i] = (char)('a' + (i % 26));
+
+  for (const int nth_failure : {2, 5, 10}) {
+    UnitTestConfig::instance().s3_fail_every_nth_upload_request.set(
+        nth_failure);
+
+    // Write one large file, the write will fail
+    auto largefile =
+        TEST_DIR + "failed_largefile_" + std::to_string(nth_failure);
+    CHECK(!s3_.write(URI(largefile), write_buffer, buffer_size).ok());
+
+    // Before flushing, the file does not exist
+    CHECK(!s3_.is_object(URI(largefile)));
+
+    // Flush the file
+    CHECK(s3_.flush_object(URI(largefile)).ok());
+
+    // After flushing, the file does not exist
+    CHECK(!s3_.is_object(URI(largefile)));
+  }
 }
 
 #endif
