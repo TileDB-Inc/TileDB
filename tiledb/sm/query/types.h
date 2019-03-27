@@ -71,6 +71,10 @@ struct AttributeBuffer {
    * potentially altered by the query).
    */
   uint64_t original_buffer_var_size_;
+  /**
+   * Vector of extra-attributes buffers
+   */
+  std::vector<AttributeBuffer> extra_attr_buffers_;
 
   /** Constructor. */
   AttributeBuffer() {

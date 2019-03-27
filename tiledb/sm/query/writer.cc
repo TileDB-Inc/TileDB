@@ -1283,6 +1283,59 @@ Status Writer::init_global_write_state() {
   STATS_FUNC_OUT(writer_init_global_write_state);
 }
 
+// extra-attribute init_tile functions
+Status Writer::init_tile(const std::string& attribute, const uint extra_idx, Tile* tile) const {
+  // For easy reference
+  auto domain = array_schema_->domain();
+  // Get extra_attribute handles
+  auto attr_it = attribute_map_.find(attribute);
+  auto attr = attr_it->second->extra_attr[extra_idx];
+  auto cell_val_num = attr->cell_val_num();
+  auto type = attr->type();
+
+  // Variable-sized cell
+  auto cell_size = (cell_val_num == constants::var_num) ?
+  constants::var_size :
+  cell_val_num * datatype_size(type);
+
+  auto capacity = array_schema_->capacity();
+  auto is_coords = (attribute == constants::coords);
+  auto dim_num = (is_coords) ? array_schema_->dim_num() : 0;
+  auto cell_num_per_tile =
+      (has_coords()) ? capacity : domain->cell_num_per_tile();
+  auto tile_size = cell_num_per_tile * cell_size;
+
+  // Initialize
+  RETURN_NOT_OK(tile->init(
+      constants::format_version, type, tile_size, cell_size, dim_num));
+
+  return Status::Ok();
+}
+
+Status Writer::init_tile(
+    const std::string& attribute, const uint extra_idx, Tile* tile, Tile* tile_var) const {
+  // For easy reference
+  auto domain = array_schema_->domain();
+  auto capacity = array_schema_->capacity();
+  auto attr_it = attribute_map_.find(attribute);
+  auto attr = attr_it->second->extra_attr[extra_idx];
+  auto type = attr->type();
+  auto cell_num_per_tile =
+      (has_coords()) ? capacity : domain->cell_num_per_tile();
+  auto tile_size = cell_num_per_tile * constants::cell_var_offset_size;
+
+  // Initialize
+  RETURN_NOT_OK(tile->init(
+      constants::format_version,
+      constants::cell_var_offset_type,
+      tile_size,
+      constants::cell_var_offset_size,
+      0));
+  RETURN_NOT_OK(tile_var->init(
+      constants::format_version, type, tile_size, datatype_size(type), 0));
+  return Status::Ok();
+}
+
 Status Writer::init_tile(const std::string& attribute, Tile* tile) const {
   // For easy reference
   auto domain = array_schema_->domain();
@@ -1875,9 +1928,166 @@ Status Writer::prepare_tiles(
     const std::vector<uint64_t>& cell_pos,
     const std::set<uint64_t>& coord_dups,
     std::vector<Tile>* tiles) const {
-  return array_schema_->var_size(attribute) ?
-             prepare_tiles_var(attribute, cell_pos, coord_dups, tiles) :
-             prepare_tiles_fixed(attribute, cell_pos, coord_dups, tiles);
+  // Get the AttributeBuffer
+  auto it_ab = attr_buffers_.find(attribute);
+  auto it_a = attributes_.find(attribute);
+
+  // prepare core attribute
+  RETURN_NOT_OK(array_schema_->var_size(attribute) ?
+                prepare_tiles_var(attribute, cell_pos, coord_dups, tiles) :
+                prepare_tiles_fixed(attribute, cell_pos, coord_dups, tiles));
+
+  if (!it_ab->second->extra_attr_buffers.empty()) {
+    for (auto ab_idx = 0; ab_idx < it_ab->second->extra_attr_buffers_.size; ab_idx++) {
+      std::vector <Tile> intermediate_tiles;
+      // prepare extra attributes
+      RETURN_NOT_OK(it_a->second->extra_attr_[ab_idx].var_size() ?
+                    prepare_extra_tiles_var(attribute, ab_idx, cell_pos, coord_dups, &intermediate_tiles) :
+                    prepare_extra_tiles_fixed(attribute, ab_idx, cell_pos, coord_dups, &intermediate_tiles));
+      // merge resultant tiles with intermediate tiles
+      tiles->reserve(tiles->size() + intermediate_tiles.size());
+      tiles->insert(tiles->end(), intermediate_tiles.begin(), intermediate_tiles.end());
+    }
+  }
+  return Status::Ok();
+}
+
+Status Writer::prepare_extra_tiles_fixed(
+    const std::string& attribute,
+    const uint  extra_idx,
+    const std::vector<uint64_t>& cell_pos,
+    const std::set<uint64_t>& coord_dups,
+    std::vector<Tile>* tiles) const {
+  STATS_FUNC_IN(writer_prepare_tiles_fixed);
+
+  // Trivial case
+  if (cell_pos.empty())
+    return Status::Ok();
+
+  // For easy reference
+  auto it = attr_buffers_.find(attribute);
+  auto buffer = (unsigned char*)it->second.extra_attr_buffers_[extra_idx].buffer_;
+  auto cell_num = (uint64_t)cell_pos.size();
+  auto capacity = array_schema_->capacity();
+  auto dups_num = coord_dups.size();
+  auto tile_num = utils::math::ceil(cell_num - dups_num, capacity);
+  // auto cell_size = array_schema_->cell_size(attribute); /* original code */
+  // Get extra_attribute handles
+  auto attr_it = attribute_map_.find(attribute);
+  auto attr = attr_it->second.extra_attr_[extra_idx];
+  auto cell_val_num = attr->cell_val_num();
+  auto type = attr->type();
+
+  attr->tile_num_ = tile_num;
+
+  // Variable-sized cell
+  auto cell_size (cell_val_num == constants::var_num) ?
+         constants::var_size :
+         cell_val_num * datatype_size(type);
+
+  // Initialize tiles
+  tiles->resize(tile_num);
+  for (auto& tile : (*tiles))
+    RETURN_NOT_OK(init_tile(attribute, extra_idx, &tile));
+
+  // Write all cells one by one
+  if (dups_num == 0) {
+    for (uint64_t i = 0, tile_idx = 0; i < cell_num; ++i) {
+      if ((*tiles)[tile_idx].full())
+        ++tile_idx;
+
+      RETURN_NOT_OK((*tiles)[tile_idx].write(
+          buffer + cell_pos[i] * cell_size, cell_size));
+    }
+  } else {
+    for (uint64_t i = 0, tile_idx = 0; i < cell_num; ++i) {
+      if (coord_dups.find(cell_pos[i]) != coord_dups.end())
+        continue;
+
+      if ((*tiles)[tile_idx].full())
+        ++tile_idx;
+
+      RETURN_NOT_OK((*tiles)[tile_idx].write(
+          buffer + cell_pos[i] * cell_size, cell_size));
+    }
+  }
+
+  return Status::Ok();
+
+  STATS_FUNC_OUT(writer_prepare_tiles_fixed);
+}
+
+Status Writer::prepare_extra_tiles_var(
+    const std::string& attribute,
+    const uint extra_idx;
+    const std::vector<uint64_t>& cell_pos,
+    const std::set<uint64_t>& coord_dups,
+    std::vector<Tile>* tiles) const {
+  STATS_FUNC_IN(writer_prepare_tiles_var);
+
+  // For easy reference
+  auto it = attr_buffers_.find(attribute);
+  auto buffer = (uint64_t*)it->second.extra_attr_buffers_[extra_idx].buffer_;
+  auto buffer_var = (unsigned char*)it->second.extra_attr_buffers_[extra_idx].buffer_var_;
+  auto buffer_var_size = it->second.extra_attr_buffers_[extra_idx].buffer_var_size_;
+  auto cell_num = (uint64_t)cell_pos.size();
+  auto capacity = array_schema_->capacity();
+  auto dups_num = coord_dups.size();
+  auto tile_num = utils::math::ceil(cell_num - dups_num, capacity);
+  auto attr_it = attribute_map_.find(attribute);
+  auto attr = attr_it->second.extra_attr_[extra_idx];
+  attr->tile_num_ = 2 * tile_num;
+
+  uint64_t offset;
+  uint64_t var_size;
+
+  // Initialize tiles
+  tiles->resize(2 * tile_num);
+  auto tiles_len = tiles->size();
+  for (uint64_t i = 0; i < tiles_len; i += 2)
+    RETURN_NOT_OK(init_tile(attribute, extra_idx, &((*tiles)[i]), &((*tiles)[i + 1])));
+
+  // Write all cells one by one
+  if (dups_num == 0) {
+    for (uint64_t i = 0, tile_idx = 0; i < cell_num; ++i) {
+      if ((*tiles)[tile_idx].full())
+        tile_idx += 2;
+
+      // Write offset
+      offset = (*tiles)[tile_idx + 1].size();
+      RETURN_NOT_OK((*tiles)[tile_idx].write(&offset, sizeof(offset)));
+
+      // Write var-sized value
+      var_size = (cell_pos[i] == cell_num - 1) ?
+                 *buffer_var_size - buffer[cell_pos[i]] :
+                 buffer[cell_pos[i] + 1] - buffer[cell_pos[i]];
+      RETURN_NOT_OK((*tiles)[tile_idx + 1].write(
+          &buffer_var[buffer[cell_pos[i]]], var_size));
+    }
+  } else {
+    for (uint64_t i = 0, tile_idx = 0; i < cell_num; ++i) {
+      if (coord_dups.find(cell_pos[i]) != coord_dups.end())
+        continue;
+
+      if ((*tiles)[tile_idx].full())
+        tile_idx += 2;
+
+      // Write offset
+      offset = (*tiles)[tile_idx + 1].size();
+      RETURN_NOT_OK((*tiles)[tile_idx].write(&offset, sizeof(offset)));
+
+      // Write var-sized value
+      var_size = (cell_pos[i] == cell_num - 1) ?
+                 *buffer_var_size - buffer[cell_pos[i]] :
+                 buffer[cell_pos[i] + 1] - buffer[cell_pos[i]];
+      RETURN_NOT_OK((*tiles)[tile_idx + 1].write(
+          &buffer_var[buffer[cell_pos[i]]], var_size));
+    }
+  }
+
+  return Status::Ok();
+
+  STATS_FUNC_OUT(writer_prepare_tiles_var);
 }
 
 Status Writer::prepare_tiles_fixed(
@@ -1899,6 +2109,8 @@ Status Writer::prepare_tiles_fixed(
   auto dups_num = coord_dups.size();
   auto tile_num = utils::math::ceil(cell_num - dups_num, capacity);
   auto cell_size = array_schema_->cell_size(attribute);
+  auto attr_it = attribute_map_.find(attribute);
+  attr_it->second.tile_num_ = tile_num;
 
   // Initialize tiles
   tiles->resize(tile_num);
@@ -1950,6 +2162,8 @@ Status Writer::prepare_tiles_var(
   auto tile_num = utils::math::ceil(cell_num - dups_num, capacity);
   uint64_t offset;
   uint64_t var_size;
+  auto attr_it = attribute_map_.find(attribute);
+  attr_it->second.tile_num_ = 2 * tile_num;
 
   // Initialize tiles
   tiles->resize(2 * tile_num);
@@ -2221,11 +2435,32 @@ Status Writer::write_all_tiles(
   for (uint64_t i = 0; i < num_attributes; i++) {
     const auto& attr = attributes_[i];
     auto& tiles = attribute_tiles[i];
+    auto tile_num = attribute_map_.find(attr)->second.tile_num_;
+    std::vector<Tile> core_tiles(tile_num);
+    core_tiles.insert(core_tiles.begin(), (*tiles), (*tiles) + tile_num);
     tasks.push_back(
         storage_manager_->writer_thread_pool()->enqueue([&, this]() {
-          RETURN_CANCEL_OR_ERROR(write_tiles(attr, frag_meta, tiles));
+          RETURN_CANCEL_OR_ERROR(write_tiles(attr, frag_meta, &core_tiles));
           return Status::Ok();
         }));
+
+    // determine if we have extra-attributes to write
+    if (core_tiles.size() < tile_num) {
+      auto tile_start = tile_num;
+      auto attribute = attribute_map_.find(attr);
+      for (auto extra_idx = 0; extra_idx < attribute->second.extra_attr_.size(); extra_idx) {
+        tile_num = attribute->second.extra_attr_[extra_idx].tile_num_;
+        auto name = attribute->second.extra_attr_[extra_idx].name();
+        auto tile_end = tile_start + tile_num;
+        std::vector<Tile> extra_tiles(tile_num);
+        extra_tiles.insert(extra_tiles.begin(), (*tiles)+tile_start, (*tiles)+tile_end);
+        tasks.push_back(
+            storage_manager_->writer_thread_pool()->enqueue([&, this]() {
+              RETURN_CANCEL_OR_ERROR(write_extra_tiles(name, extra_idx, &extra_tiles));
+              return Status::Ok();
+            }));
+        tile_start = tile_end + 1;
+    }
   }
 
   // Wait for writes and check all statuses
@@ -2242,6 +2477,53 @@ Status Writer::write_all_tiles(
 Status Writer::write_tiles(
     const std::string& attribute,
     FragmentMetadata* frag_meta,
+    const std::vector<Tile>& tiles) const {
+  // Handle zero tiles
+  if (tiles.empty())
+    return Status::Ok();
+
+  // For easy reference
+  bool var_size = array_schema_->var_size(attribute);
+  auto attr_uri = frag_meta->attr_uri(attribute);
+  auto attr_var_uri = var_size ? frag_meta->attr_var_uri(attribute) : URI("");
+
+  // Write tiles
+  auto tile_num = tiles.size();
+  for (size_t i = 0, tile_id = 0; i < tile_num; ++i, ++tile_id) {
+    RETURN_NOT_OK(storage_manager_->write(attr_uri, tiles[i].buffer()));
+    frag_meta->set_tile_offset(attribute, tile_id, tiles[i].buffer()->size());
+
+    STATS_COUNTER_ADD(writer_num_bytes_written, tiles[i].buffer()->size());
+
+    if (var_size) {
+      ++i;
+
+      RETURN_NOT_OK(storage_manager_->write(attr_var_uri, tiles[i].buffer()));
+      frag_meta->set_tile_var_offset(
+          attribute, tile_id, tiles[i].buffer()->size());
+      frag_meta->set_tile_var_size(
+          attribute, tile_id, tiles[i].pre_filtered_size());
+
+      STATS_COUNTER_ADD(writer_num_bytes_written, tiles[i].buffer()->size());
+    }
+  }
+
+  // Close files, except in the case of global order
+  if (layout_ != Layout::GLOBAL_ORDER) {
+    RETURN_NOT_OK(storage_manager_->close_file(frag_meta->attr_uri(attribute)));
+    if (var_size)
+      RETURN_NOT_OK(
+          storage_manager_->close_file(frag_meta->attr_var_uri(attribute)));
+  }
+
+  STATS_COUNTER_ADD(writer_num_attr_tiles_written, tile_num);
+
+  return Status::Ok();
+}
+
+Status Writer::write_extra_tiles(
+    const std::string& attribute,
+    const uint attr_idx,
     const std::vector<Tile>& tiles) const {
   // Handle zero tiles
   if (tiles.empty())

@@ -168,6 +168,13 @@ class Attribute {
 
   /** The attribute type. */
   Datatype type_;
+
+  /** The number of tiles used for the attribute pointed by object */
+  uint64_t tile_num_;
+
+  /** Extra attributes attached to this attribute */
+  std::vector<Attribute> extra_attr_;
+
 };
 
 }  // namespace sm
