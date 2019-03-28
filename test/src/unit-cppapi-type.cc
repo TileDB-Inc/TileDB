@@ -56,6 +56,59 @@ TEST_CASE("C++ API: Types", "[cppapi]") {
   CHECK_THROWS(impl::type_check<MyData>(TILEDB_INT8));
   CHECK_NOTHROW(impl::type_check<MyData>(TILEDB_CHAR, sizeof(MyData)));
 
+  // static char arrays are ok for tiledb string types as long as the static
+  // lengths are equal
+  CHECK_THROWS(impl::type_check<char[10]>(TILEDB_STRING_ASCII, 9));
+  CHECK_NOTHROW(impl::type_check<char[10]>(TILEDB_STRING_ASCII, 10));
+  CHECK_NOTHROW(
+      impl::type_check<char[10]>(TILEDB_STRING_ASCII, TILEDB_VAR_NUM));
+
+  // const string data pointer should succeed
+  CHECK_NOTHROW(
+      impl::type_check<const char*>(TILEDB_STRING_ASCII, TILEDB_VAR_NUM));
+  CHECK_NOTHROW(
+      impl::type_check<const char*>(TILEDB_STRING_UTF8, TILEDB_VAR_NUM));
+  CHECK_NOTHROW(
+      impl::type_check<const char*>(TILEDB_STRING_UTF16, TILEDB_VAR_NUM));
+  CHECK_NOTHROW(
+      impl::type_check<const char*>(TILEDB_STRING_UCS2, TILEDB_VAR_NUM));
+  CHECK_NOTHROW(
+      impl::type_check<const char*>(TILEDB_STRING_UTF32, TILEDB_VAR_NUM));
+  CHECK_NOTHROW(
+      impl::type_check<const char*>(TILEDB_STRING_UCS4, TILEDB_VAR_NUM));
+
+  // std::basic_string type typecheck should succeed for tiledb string types
+  CHECK_NOTHROW(
+      impl::type_check<std::string>(TILEDB_STRING_ASCII, TILEDB_VAR_NUM));
+  CHECK_NOTHROW(
+      impl::type_check<std::string>(TILEDB_STRING_UTF8, TILEDB_VAR_NUM));
+  CHECK_NOTHROW(
+      impl::type_check<std::u16string>(TILEDB_STRING_UTF16, TILEDB_VAR_NUM));
+  CHECK_NOTHROW(
+      impl::type_check<std::u16string>(TILEDB_STRING_UCS2, TILEDB_VAR_NUM));
+  CHECK_NOTHROW(
+      impl::type_check<std::u32string>(TILEDB_STRING_UTF32, TILEDB_VAR_NUM));
+  CHECK_NOTHROW(
+      impl::type_check<std::u32string>(TILEDB_STRING_UCS4, TILEDB_VAR_NUM));
+
+  // std:: container types of char datatypes should succeed for tiledb string
+  // types
+  CHECK_THROWS(impl::type_check<std::vector<int8_t>>(
+      TILEDB_STRING_ASCII, TILEDB_VAR_NUM));
+  CHECK_THROWS(impl::type_check<std::vector<uint8_t>>(
+      TILEDB_STRING_ASCII, TILEDB_VAR_NUM));
+  CHECK_THROWS(impl::type_check<std::vector<uint32_t>>(
+      TILEDB_STRING_ASCII, TILEDB_VAR_NUM));
+  CHECK_THROWS(impl::type_check<std::vector<int8_t>>(
+      TILEDB_STRING_UTF8, TILEDB_VAR_NUM));
+  CHECK_THROWS(impl::type_check<std::vector<uint8_t>>(
+      TILEDB_STRING_UTF8, TILEDB_VAR_NUM));
+  CHECK_THROWS(impl::type_check<std::vector<uint32_t>>(
+      TILEDB_STRING_UTF8, TILEDB_VAR_NUM));
+
+  CHECK_NOTHROW(
+      impl::type_check<std::vector<char>>(TILEDB_STRING_ASCII, TILEDB_VAR_NUM));
+
   auto a1 = Attribute::create<int>(ctx, "a1");
   auto a2 = Attribute::create<float>(ctx, "a2");
   auto a3 = Attribute::create<float[5]>(ctx, "a3");

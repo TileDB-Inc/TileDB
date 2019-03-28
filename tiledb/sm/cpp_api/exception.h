@@ -72,10 +72,23 @@ struct AttributeError : public TileDBError {
 
 namespace impl {
 
+// 'identity' used only to remove warning C4127 for MSVC compilers
+template <typename T>
+const T& identity(const T& t) {
+  return t;
+}
+
 /** Checks if the input type complies with the template type. */
 template <typename T, typename Handler = TypeHandler<T>>
 inline void type_check(tiledb_datatype_t type, unsigned num = 0) {
-  if (Handler::tiledb_type != type) {
+  if (tiledb_string_type(type)) {
+    if (Handler::tiledb_type != identity(TILEDB_CHAR)) {
+      throw TypeError(
+          "Static type (" + impl::type_to_str(Handler::tiledb_type) +
+          ") does not match expected container type CHAR for tiledb type (" +
+          impl::type_to_str(type) + ")");
+    }
+  } else if (Handler::tiledb_type != type) {
     throw TypeError(
         "Static type (" + impl::type_to_str(Handler::tiledb_type) +
         ") does not match expected type (" + impl::type_to_str(type) + ")");
