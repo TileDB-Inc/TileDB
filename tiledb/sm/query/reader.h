@@ -872,6 +872,15 @@ class Reader {
   Status dense_read();
 
   /**
+   * Performs a read on a dense array.
+   *
+   * @tparam The domain type.
+   * @return Status
+   */
+  template <class T>
+  Status dense_read_2();
+
+  /**
    * Fills the coordinate buffer with coordinates. Applicable only to dense
    * arrays when the user explicitly requests the coordinates to be
    * materialized.

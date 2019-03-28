@@ -434,8 +434,6 @@ template <class T>
 Status Reader::read_2() {
   STATS_FUNC_IN(reader_read);
 
-  assert(!array_schema_->dense());
-
   // Get next partition
   if (!read_state_2_.unsplittable_)
     RETURN_NOT_OK(read_state_2_.next());
@@ -452,8 +450,10 @@ Status Reader::read_2() {
     reset_buffer_sizes();
 
     // Perform read
-    // TODO: add dense reads
-    sparse_read_2<T>();
+    if (array_schema_->dense())
+      dense_read_2<T>();
+    else
+      sparse_read_2<T>();
 
     // In the case of overflow, we need to split the current partition
     // without advancing to the next partition
@@ -1641,6 +1641,117 @@ Status Reader::dense_read() {
     RETURN_CANCEL_OR_ERROR(dedup_coords<T>(&coords));
   }
   tile_coords.reset(nullptr);
+
+  // For each tile, initialize a dense cell range iterator per
+  // (dense) fragment
+  std::vector<std::vector<DenseCellRangeIter<T>>> dense_frag_its;
+  std::unordered_map<uint64_t, std::pair<uint64_t, std::vector<T>>>
+      overlapping_tile_idx_coords;
+  RETURN_CANCEL_OR_ERROR(init_tile_fragment_dense_cell_range_iters(
+      &dense_frag_its, &overlapping_tile_idx_coords));
+
+  // Get the cell ranges
+  std::list<DenseCellRange<T>> dense_cell_ranges;
+  DenseCellRangeIter<T> it(domain, subarray, layout_);
+  RETURN_CANCEL_OR_ERROR(it.begin());
+  while (!it.end()) {
+    auto o_it = overlapping_tile_idx_coords.find(it.tile_idx());
+    assert(o_it != overlapping_tile_idx_coords.end());
+    RETURN_CANCEL_OR_ERROR(compute_dense_cell_ranges<T>(
+        &(o_it->second.second)[0],
+        dense_frag_its[o_it->second.first],
+        it.range_start(),
+        it.range_end(),
+        &dense_cell_ranges));
+    ++it;
+  }
+
+  // Compute overlapping dense tile indexes
+  OverlappingTileVec dense_tiles;
+  OverlappingCellRangeList overlapping_cell_ranges;
+  RETURN_CANCEL_OR_ERROR(compute_dense_overlapping_tiles_and_cell_ranges<T>(
+      dense_cell_ranges, coords, &dense_tiles, &overlapping_cell_ranges));
+  coords.clear();
+  dense_cell_ranges.clear();
+  overlapping_tile_idx_coords.clear();
+
+  // Read dense tiles
+  RETURN_CANCEL_OR_ERROR(read_all_tiles(&dense_tiles, false));
+
+  // Filter dense tiles
+  RETURN_CANCEL_OR_ERROR(filter_all_tiles(&dense_tiles, false));
+
+  // Copy cells
+  for (const auto& attr : attributes_) {
+    if (read_state_.overflowed_)
+      break;
+
+    if (attr != constants::coords)  // Skip coordinates
+      RETURN_CANCEL_OR_ERROR(copy_cells(attr, overlapping_cell_ranges));
+  }
+
+  // Fill coordinates if the user requested them
+  if (!read_state_.overflowed_ && has_coords())
+    RETURN_CANCEL_OR_ERROR(fill_coords<T>());
+
+  return Status::Ok();
+
+  STATS_FUNC_OUT(reader_dense_read);
+}
+
+template <>
+Status Reader::dense_read_2<float>() {
+  // Not applicable to real domains
+  assert(false);
+  return Status::Ok();
+}
+
+template <>
+Status Reader::dense_read_2<double>() {
+  // Not applicable to real domains
+  assert(false);
+  return Status::Ok();
+}
+
+template <class T>
+Status Reader::dense_read_2() {
+  STATS_FUNC_IN(reader_dense_read);
+
+  // For easy reference
+  auto domain = array_schema_->domain();
+  auto subarray_len = 2 * array_schema_->dim_num();
+  std::vector<T> subarray;
+  subarray.resize(subarray_len);
+  for (size_t i = 0; i < subarray_len; ++i)
+    subarray[i] = ((T*)read_state_.cur_subarray_partition_)[i];
+
+  // Get overlapping sparse tile indexes
+  OverlappingTileVec sparse_tiles;
+  RETURN_CANCEL_OR_ERROR(compute_overlapping_tiles<T>(&sparse_tiles));
+
+  // Read sparse tiles
+  RETURN_CANCEL_OR_ERROR(read_all_tiles(&sparse_tiles));
+
+  // Filter sparse tiles
+  RETURN_CANCEL_OR_ERROR(filter_all_tiles(&sparse_tiles));
+
+  // Compute the read coordinates for all sparse fragments
+  OverlappingCoordsVec<T> coords;
+  RETURN_CANCEL_OR_ERROR(compute_overlapping_coords<T>(sparse_tiles, &coords));
+
+  // Compute the tile coordinates for all overlapping coordinates (for sorting).
+  std::unique_ptr<T[]> tile_coords(nullptr);
+  RETURN_CANCEL_OR_ERROR(compute_tile_coords<T>(&tile_coords, &coords));
+
+  // Sort and dedup the coordinates (not applicable to the global order
+  // layout for a single fragment)
+  if (!(fragment_metadata_.size() == 1 && layout_ == Layout::GLOBAL_ORDER)) {
+    RETURN_CANCEL_OR_ERROR(sort_coords<T>(&coords));
+    RETURN_CANCEL_OR_ERROR(dedup_coords<T>(&coords));
+  }
+  tile_coords.reset(nullptr);
+
+  // TODO
 
   // For each tile, initialize a dense cell range iterator per
   // (dense) fragment

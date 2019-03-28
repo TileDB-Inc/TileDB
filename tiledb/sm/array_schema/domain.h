@@ -518,7 +518,7 @@ class Domain {
    */
   template <
       class T,
-      class = typename std::enable_if<std::is_integral<T>::value>::type>
+      typename std::enable_if<std::is_integral<T>::value, T>::type* = nullptr>
   uint64_t tile_num(const T* range) const {
     // For easy reference
     auto tile_extents = static_cast<const T*>(tile_extents_);
