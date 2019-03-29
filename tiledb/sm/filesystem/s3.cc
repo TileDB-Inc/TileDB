@@ -117,8 +117,6 @@ Status S3::init(const Config::S3Params& s3_config, ThreadPool* thread_pool) {
 
   client_config_ = std::unique_ptr<Aws::Client::ClientConfiguration>(
       new Aws::Client::ClientConfiguration);
-  client_config_->executor =
-      std::make_shared<S3ThreadPoolExecutor>(thread_pool);
   auto& config = *client_config_.get();
   if (!s3_config.region_.empty())
     config.region = s3_config.region_.c_str();
