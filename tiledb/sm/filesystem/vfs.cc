@@ -969,7 +969,7 @@ Status VFS::sync(const URI& uri) {
 #endif
   }
   return LOG_STATUS(
-      Status::VFSError("Unsupported URI schemes: " + uri.to_string()));
+      Status::VFSError("Unsupported URI scheme: " + uri.to_string()));
 
   STATS_FUNC_OUT(vfs_sync);
 }
