@@ -681,6 +681,10 @@ TEST_CASE(
   auto reloaded_schema = array.schema();
 
   REQUIRE(reloaded_schema.attribute_num() == 1);
+
+  array.close();
+  if (vfs.is_dir(array_name))
+    vfs.remove_dir(array_name);
 }
 
 TEST_CASE("C++ API: Open array at", "[cppapi], [cppapi-open-array-at]") {
