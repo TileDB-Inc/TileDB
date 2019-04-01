@@ -1,7 +1,7 @@
 <a href="https://tiledb.io"><img src="https://github.com/TileDB-Inc/TileDB/raw/dev/doc/source/_static/tileDB_uppercase_600_112.png" alt="TileDB logo" width="400"></a>
 
 [![Travis](https://travis-ci.org/TileDB-Inc/TileDB.svg?branch=dev)](https://travis-ci.org/TileDB-Inc/TileDB)
-[![Appveyor](https://ci.appveyor.com/api/projects/status/kb9h9r5xulk6j53c/branch/dev?svg=true)](https://ci.appveyor.com/project/StavrosPapadopoulos/tiledb/branch/dev)
+[![Appveyor](https://ci.appveyor.com/api/projects/status/vni4366j5ys6fvpy?svg=true)](https://ci.appveyor.com/project/TileDB-Inc/tiledb)
 [![Documentation Status](https://readthedocs.com/projects/tiledb-inc-tiledb/badge/?version=latest)](https://docs.tiledb.io/en/latest/?badge=latest)
 
 **Array data management made fast and easy.**
