@@ -122,7 +122,7 @@ class UnitTestConfig {
   };
 
   /** For every nth multipart upload request, return a non-OK status. */
-  Attribute<uint> s3_fail_every_nth_upload_request;
+  Attribute<unsigned int> s3_fail_every_nth_upload_request;
 
  private:
   /** Constructor. */
