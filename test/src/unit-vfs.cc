@@ -154,6 +154,7 @@ TEST_CASE("VFS: Test read batching", "[vfs]") {
     REQUIRE(stats::all_stats.vfs_read_call_count == 2);
     REQUIRE(
         stats::all_stats.counter_vfs_read_total_bytes == 2 * sizeof(uint32_t));
+    REQUIRE(vfs->terminate().ok());
   }
 
   SECTION("- Limit amplification") {
@@ -208,6 +209,7 @@ TEST_CASE("VFS: Test read batching", "[vfs]") {
     REQUIRE(stats::all_stats.vfs_read_call_count == 1);
     REQUIRE(
         stats::all_stats.counter_vfs_read_total_bytes == 3 * sizeof(uint32_t));
+    REQUIRE(vfs->terminate().ok());
   }
 
   REQUIRE(vfs->is_file(testfile, &exists).ok());

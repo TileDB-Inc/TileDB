@@ -56,19 +56,35 @@ class S3ThreadPoolExecutor : public Aws::Utils::Threading::Executor {
   S3ThreadPoolExecutor(S3ThreadPoolExecutor&&) = delete;
   S3ThreadPoolExecutor& operator=(S3ThreadPoolExecutor&&) = delete;
 
+  /**
+   * Waits for all outstanding tasks to complete and prevents scheduling of
+   * all future tasks.
+   *
+   * @return Status
+   */
+  Status Stop();
+
  protected:
   /** Derived from base class. */
   bool SubmitToThread(std::function<void()>&&) override;
 
  private:
+  /**
+   * Identifies the current state of this class.
+   */
+  enum State { RUNNING, STOPPING, STOPPED };
+
   /** The underlying threadpool. */
   ThreadPool* const thread_pool_;
+
+  /** The current state. */
+  State state_;
 
   /** All future handles associated with outstanding tasks. */
   std::unordered_set<std::shared_ptr<std::future<Status>>> tasks_;
 
-  /** Protects 'tasks_'. */
-  std::mutex tasks_lock_;
+  /** Protects 'state_' and 'tasks_'. */
+  std::mutex lock_;
 };
 
 }  // namespace sm

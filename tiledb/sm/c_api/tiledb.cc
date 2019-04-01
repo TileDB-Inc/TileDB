@@ -3884,6 +3884,11 @@ int32_t tiledb_vfs_alloc(
 }
 
 void tiledb_vfs_free(tiledb_vfs_t** vfs) {
+  const tiledb::sm::Status st = (*vfs)->vfs_->terminate();
+  if (!st.ok()) {
+    LOG_STATUS(st);
+  }
+
   if (vfs != nullptr && *vfs != nullptr) {
     delete (*vfs)->vfs_;
     delete *vfs;
