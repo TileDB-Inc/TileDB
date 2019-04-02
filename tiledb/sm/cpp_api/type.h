@@ -272,6 +272,19 @@ inline std::string type_to_str(tiledb_datatype_t type) {
   return "";
 }
 
+inline bool tiledb_string_type(tiledb_datatype_t type) {
+  switch (type) {
+    case TILEDB_STRING_ASCII:
+    case TILEDB_STRING_UTF8:
+    case TILEDB_STRING_UTF16:
+    case TILEDB_STRING_UTF32:
+    case TILEDB_STRING_UCS2:
+    case TILEDB_STRING_UCS4:
+      return true;
+    default:
+      return false;
+  }
+}
 /**
  * A type handler provides a mapping from a C++ type to a TileDB
  * representation.
