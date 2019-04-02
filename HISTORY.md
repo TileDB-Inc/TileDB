@@ -1,6 +1,16 @@
 # In progress
 
 ## New features
+## Improvements
+## Bug fixes
+## API additions
+## Breaking changes
+
+# TileDB v1.5.0 Release Notes
+
+The 1.5.0 release focuses on stability, performance, and usability improvements, as well a new consolidation algorithm.
+
+## New features
 
 * Added an advanced, tunable consolidation algorithm. [#1101](https://github.com/TileDB-Inc/TileDB/pull/1101)
 
