@@ -24,6 +24,7 @@
 * Preserve anonymous attributes in `ArraySchema` copy constructor. [#1144](https://github.com/TileDB-Inc/TileDB/pull/1144)
 * Fix non-virtual destructors in C++ API. [#1153](https://github.com/TileDB-Inc/TileDB/pull/1153)
 * Added zlib dependency to AWS SDK EP. [#1165](https://github.com/TileDB-Inc/TileDB/pull/1165)
+* Fixed a hang in the 'S3::ls()'. [#1183](https://github.com/TileDB-Inc/TileDB/pull/1182)
 * Many other small and miscellaneous bug fixes.
 
 ## API additions
