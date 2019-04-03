@@ -252,6 +252,25 @@ class Query {
       const std::string& attribute, void* buffer, uint64_t* buffer_size);
 
   /**
+   * Sets an extra buffer for a fixed-sized attribute.
+   *
+   * @param attribute The attribute to set the buffer for.
+   * @param suffix The suffix to attach to identify the extra buffer
+   * @param buffer The buffer that either have the input data to be written,
+   *     or will hold the data to be read.
+   * @param buffer_size In the case of writes, this is the size of `buffer`
+   *     in bytes. In the case of reads, this initially contains the allocated
+   *     size of `buffer`, but after the termination of the function
+   *     it will contain the size of the useful (read) data in `buffer`.
+   * @return Status
+   */
+  Status set_extra_buffer(
+      const std::string& attribute,
+      const std::string& suffix,
+      void* buffer,
+      uint64_t* buffer_size);
+
+  /**
    * Sets the buffer for a var-sized attribute.
    *
    * @param attribute The attribute to set the buffer for.

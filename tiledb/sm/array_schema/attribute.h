@@ -146,6 +146,12 @@ class Attribute {
   /** Returns the attribute type. */
   Datatype type() const;
 
+  /** Enable extra buffer name */
+  Status enable_extra_buffer(const std::string& extra_buffer_name);
+
+  /** Returns vector of enabled extra buffer names */
+  const std::vector<std::string> get_enabled_extra_buffers() const;
+
   /**
    * Returns *true* if this is a variable-sized attribute, and *false*
    * otherwise.
@@ -169,12 +175,8 @@ class Attribute {
   /** The attribute type. */
   Datatype type_;
 
-  /** The number of tiles used for the attribute pointed by object */
-  uint64_t tile_num_;
-
-  /** Extra attributes attached to this attribute */
-  std::vector<Attribute> extra_attr_;
-
+  /** Vector of extra buffer names enabled for attribute */
+  std::vector<std::string> enabled_extra_buffer_;
 };
 
 }  // namespace sm

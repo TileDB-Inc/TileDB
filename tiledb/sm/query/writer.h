@@ -210,6 +210,21 @@ class Writer {
       void* buffer_val,
       uint64_t* buffer_val_size);
 
+  /**
+   * Sets a fixed-sized extra buffer to an attribute.
+   *
+   * @param attribute The attribute to set the buffer for.
+   * @param suffix The suffix to attach to identify the extra buffer
+   * @param buffer The buffer that has the input data to be written.
+   * @param buffer_size The size of `buffer` in bytes.
+   * @return Status
+   */
+  Status set_extra_buffer(
+      const std::string& attribute,
+      const std::string& suffix,
+      void* buffer,
+      uint64_t* buffer_size);
+
   /** Sets the fragment URI. Applicable only to write queries. */
   void set_fragment_uri(const URI& fragment_uri);
 
@@ -264,7 +279,7 @@ class Writer {
   std::vector<std::string> attributes_;
 
   /** Maps attribute names to their buffers. */
-  std::unordered_map<std::string, AttributeBuffer> attr_buffers_;
+  std::unordered_map<std::string, std::vector<AttributeBuffer>> attr_buffers_;
 
   /**
    * Meaningful only when `dedup_coords_` is `false`.
@@ -529,6 +544,30 @@ class Writer {
   Status init_global_write_state();
 
   /**
+   * Initializes a fixed-sized tile for an extra attribute.
+   *
+   * @param attribute The attribute the tile belongs to.
+   * @param attr_buffer The attribute buffer the tile belongs to.
+   * @param tile The tile to be initialized.
+   * @return Status
+   */
+  Status init_tile(
+      const std::string& attribute,
+      const AttributeBuffer attr_buffer,
+      Tile* tile) const;
+
+  /**
+   * Initializes a var-sized tile for an extra attribute.
+   *
+   * @param attr_buffer The attribute buffer the tile belongs to.
+   * @param tile The offsets tile to be initialized.
+   * @param tile_var The var-sized data tile to be initialized.
+   * @return Status
+   */
+  Status init_tile(
+      const AttributeBuffer attr_buffer, Tile* tile, Tile* tile_var) const;
+
+  /**
    * Initializes a fixed-sized tile.
    *
    * @param attribute The attribute the tile belongs to.
@@ -706,7 +745,7 @@ class Writer {
       const std::string& attribute,
       const std::vector<uint64_t>& cell_pos,
       const std::set<uint64_t>& coord_dups,
-      std::vector<Tile>* tiles) const;
+      std::vector<Tile>* tiles);
 
   /**
    * It prepares the tiles, re-organizing the cells from the user
@@ -714,15 +753,18 @@ class Writer {
    * to fixed-sized attributes.
    *
    * @param attribute The attribute to prepare the tiles for.
+   * @param attr_buffer The attribute buffer associated with the
+   *     tiles to prepare
    * @param cell_pos The positions that resulted from sorting and
    *     according to which the cells must be re-arranged.
    * @param coord_dups The set with the positions
    *     of duplicate coordinates/cells.
-   * @param tiles The tiles to be created.
+   * @param tiles  The tiles to be created.
    * @return Status
    */
   Status prepare_tiles_fixed(
       const std::string& attribute,
+      const AttributeBuffer attr_buffer,
       const std::vector<uint64_t>& cell_pos,
       const std::set<uint64_t>& coord_dups,
       std::vector<Tile>* tiles) const;
@@ -732,16 +774,17 @@ class Writer {
    * buffers based on the input sorted positions. Applicable only
    * to var-sized attributes.
    *
-   * @param attribute The attribute to prepare the tiles for.
+   * @param attr_buffer The attribute buffer associated with the
+   *     tiles to prepare
    * @param cell_pos The positions that resulted from sorting and
    *     according to which the cells must be re-arranged.
    * @param coord_dups The set with the positions
    *     of duplicate coordinates/cells.
-   * @param tiles The tiles to be created.
+   * @param tiles  The tiles to be created.
    * @return Status
    */
   Status prepare_tiles_var(
-      const std::string& attribute,
+      const AttributeBuffer attr_buffer,
       const std::vector<uint64_t>& cell_pos,
       const std::set<uint64_t>& coord_dups,
       std::vector<Tile>* tiles) const;
@@ -844,12 +887,14 @@ class Writer {
    * Writes the input tiles for the input attribute to storage.
    *
    * @param attribute The attribute the tiles belong to.
+   * @param attr_buffer The buffer the tiles are associated with
    * @param frag_meta The fragment metadata.
    * @param tiles The tiles to be written.
    * @return Status
    */
   Status write_tiles(
       const std::string& attribute,
+      const AttributeBuffer* attr_buffer,
       FragmentMetadata* frag_meta,
       const std::vector<Tile>& tiles) const;
 };

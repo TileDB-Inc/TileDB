@@ -300,6 +300,16 @@ Status Query::set_buffer(
       attribute, buffer_off, buffer_off_size, buffer_val, buffer_val_size);
 }
 
+Status Query::set_extra_buffer(
+    const std::string& attribute,
+    const std::string& suffix,
+    void* buffer,
+    uint64_t* buffer_size) {
+  if (type_ == QueryType::WRITE)
+    return writer_.set_extra_buffer(attribute, suffix, buffer, buffer_size);
+  return LOG_STATUS(Status::QueryError("Reader does not support set_extra_buffer()"));
+}
+
 Status Query::set_layout(Layout layout) {
   layout_ = layout;
   if (type_ == QueryType::WRITE)

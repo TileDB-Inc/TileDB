@@ -71,10 +71,22 @@ struct AttributeBuffer {
    * potentially altered by the query).
    */
   uint64_t original_buffer_var_size_;
-  /**
-   * Vector of extra-attributes buffers
-   */
-  std::vector<AttributeBuffer> extra_attr_buffers_;
+
+  // support for multiple/extra buffers per attribute
+  /** suffix for URI */
+  std::string suffix_;
+
+  /** Datatype stored in buffer */
+  Datatype type_;
+
+  /** Number of values per cell */
+  unsigned int cell_val_num_;
+
+  /** Size of cell in bytes*/
+  uint64_t cell_size_;
+
+  /** Number of tiles taken up by buffer */
+  uint64_t tile_cnt_;
 
   /** Constructor. */
   AttributeBuffer() {
@@ -82,11 +94,15 @@ struct AttributeBuffer {
     buffer_var_ = nullptr;
     buffer_size_ = nullptr;
     buffer_var_size_ = nullptr;
+    suffix_ = "";
+    cell_val_num_ = 0;
+    cell_size_ = 0;
     original_buffer_size_ = 0;
     original_buffer_var_size_ = 0;
+    tile_cnt_ = 0;
   }
 
-  /** Constructor. */
+  /** Constructor. For use by reader without extra buffer support */
   AttributeBuffer(
       void* buffer,
       void* buffer_var,
@@ -95,10 +111,63 @@ struct AttributeBuffer {
       : buffer_(buffer)
       , buffer_var_(buffer_var)
       , buffer_size_(buffer_size)
-      , buffer_var_size_(buffer_var_size) {
+      , buffer_var_size_(buffer_var_size)
+      , suffix_("")
+      , cell_val_num_(0)
+      , cell_size_(0) {
     original_buffer_size_ = *buffer_size;
     original_buffer_var_size_ =
         (buffer_var_size_ != nullptr) ? *buffer_var_size : 0;
+    tile_cnt_ = 0;
+  }
+
+  /** Constructor. For use by writer with extra buffer support */
+  AttributeBuffer(
+      void* buffer,
+      void* buffer_var,
+      uint64_t* buffer_size,
+      uint64_t* buffer_var_size,
+      std::string suffix,
+      unsigned int cell_val_num,
+      uint64_t cell_size,
+      Datatype type)
+      : buffer_(buffer)
+      , buffer_var_(buffer_var)
+      , buffer_size_(buffer_size)
+      , buffer_var_size_(buffer_var_size)
+      , suffix_(suffix)
+      , type_(type)
+      , cell_val_num_(cell_val_num)
+      , cell_size_(cell_size) {
+    original_buffer_size_ = *buffer_size;
+    original_buffer_var_size_ =
+        (buffer_var_size_ != nullptr) ? *buffer_var_size : 0;
+    tile_cnt_ = 0;
+  }
+
+  // Accessors for fields in struct
+  bool var_size() const {
+    return cell_val_num_ == constants::var_num;
+  }
+
+  unsigned int cell_val_num() const {
+    return cell_val_num_;
+  }
+
+  uint64_t cell_size() const {
+    return cell_size_;
+  }
+
+  Datatype type() const {
+    return type_;
+  }
+
+  void set_tile_cnt(uint64_t count) {
+    tile_cnt_ = count;
+  }
+
+  uint64_t tile_cnt() const {
+    return tile_cnt_;
   }
 };
 }  // namespace sm
