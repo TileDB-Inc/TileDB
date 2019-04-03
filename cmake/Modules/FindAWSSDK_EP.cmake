@@ -71,12 +71,12 @@ if (NOT AWSSDK_FOUND)
 
     ExternalProject_Add(ep_awssdk
       PREFIX "externals"
-      URL "https://github.com/aws/aws-sdk-cpp/archive/1.4.23.zip"
-      URL_HASH SHA1=32030b0fc44d956c1f0dc606044d555c155d40a6
+      URL "https://github.com/aws/aws-sdk-cpp/archive/1.7.81.zip"
+      URL_HASH SHA1=ea35fe7dcdace59014ebfd917f8cd696461c5413
       CMAKE_ARGS
         -DCMAKE_BUILD_TYPE=Release
         -DENABLE_TESTING=OFF
-        -DBUILD_ONLY=s3\\;core
+        -DBUILD_ONLY=s3\\$<SEMICOLON>core
         -DBUILD_SHARED_LIBS=OFF
         -DCMAKE_INSTALL_BINDIR=lib
         -DENABLE_UNITY_BUILD=ON
@@ -102,6 +102,9 @@ endif ()
 if (AWSSDK_FOUND)
   set(AWS_SERVICES s3)
   AWSSDK_DETERMINE_LIBS_TO_LINK(AWS_SERVICES AWS_LINKED_LIBS)
+  list(APPEND AWS_LINKED_LIBS aws-c-common
+                              aws-c-event-stream
+                              aws-checksums)
   foreach (LIB ${AWS_LINKED_LIBS})
     find_library("AWS_FOUND_${LIB}"
       NAMES ${LIB}
