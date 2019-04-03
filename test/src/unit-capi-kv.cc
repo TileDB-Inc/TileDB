@@ -133,6 +133,17 @@ KVFx::KVFx() {
     REQUIRE(error == nullptr);
 #endif
   }
+  // Disable caching because deleted fragments are not correctly invalidated
+  // in the cache.
+  REQUIRE(
+      tiledb_config_set(
+          config, "sm.fragment_metadata_cache_size", "0", &error) == TILEDB_OK);
+  REQUIRE(
+      tiledb_config_set(config, "sm.tile_cache_size", "0", &error) ==
+      TILEDB_OK);
+  REQUIRE(
+      tiledb_config_set(config, "sm.array_schema_cache_size", "0", &error) ==
+      TILEDB_OK);
   REQUIRE(tiledb_ctx_alloc(config, &ctx_) == TILEDB_OK);
   REQUIRE(error == nullptr);
   vfs_ = nullptr;
