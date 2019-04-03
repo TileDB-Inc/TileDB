@@ -33,6 +33,7 @@
  * This program explores the various TileDB VFS tools.
  */
 
+#include <inttypes.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -70,7 +71,13 @@ void dirs_files() {
   // Getting the file size
   uint64_t file_size;
   tiledb_vfs_file_size(ctx, vfs, "dir_A/file_A", &file_size);
-  printf("File size for 'dir_A/file_A': %llu\n", file_size);
+  char format_buf[256];
+  snprintf(
+      format_buf,
+      sizeof(format_buf),
+      "File size for 'dir_A/file_A': %%%s\n",
+      PRIu64);
+  printf(format_buf, file_size);
 
   // Moving files (moving directories is similar)
   printf("Moving file 'dir_A/file_A' to 'dir_A/file_B'\n");

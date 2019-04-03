@@ -903,7 +903,10 @@ Status StorageManager::get_fragment_info(
   uint64_t timestamp;
   assert(fragment_name.find_last_of('_') != std::string::npos);
   auto t_str = fragment_name.substr(fragment_name.find_last_of('_') + 1);
-  sscanf(t_str.c_str(), "%lld", (long long int*)&timestamp);
+  sscanf(
+      t_str.c_str(),
+      (std::string("%") + std::string(PRId64)).c_str(),
+      (long long int*)&timestamp);
 
   // Get fragment size
   uint64_t size;
@@ -1813,7 +1816,10 @@ void StorageManager::get_sorted_fragment_uris(
     // Get timestamp in the end of the name after '_'
     assert(fragment_name.find_last_of('_') != std::string::npos);
     t_str = fragment_name.substr(fragment_name.find_last_of('_') + 1);
-    sscanf(t_str.c_str(), "%lld", (long long int*)&t);
+    sscanf(
+        t_str.c_str(),
+        (std::string("%") + std::string(PRId64)).c_str(),
+        (long long int*)&t);
     if (t <= timestamp)
       sorted_fragment_uris->emplace_back(t, uri);
   }
