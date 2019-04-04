@@ -215,7 +215,7 @@ Status VFS::touch(const URI& uri) const {
 }
 
 Status VFS::cancel_all_tasks() {
-  thread_pool_->cancel_all_tasks();
+  cancelable_tasks_.cancel_all_tasks();
   return Status::Ok();
 }
 
@@ -602,11 +602,7 @@ Status VFS::init(const Config::VFSParams& vfs_params) {
 
   vfs_params_ = vfs_params;
 
-  thread_pool_ = std::unique_ptr<ThreadPool>(new (std::nothrow) ThreadPool());
-  if (thread_pool_.get() == nullptr) {
-    return LOG_STATUS(Status::VFSError("Could not allocate VFS thread pool."));
-  }
-  RETURN_NOT_OK(thread_pool_->init(vfs_params.num_threads_));
+  RETURN_NOT_OK(thread_pool_.init(vfs_params.num_threads_));
 
 #ifdef HAVE_HDFS
   hdfs_ = std::unique_ptr<hdfs::HDFS>(new (std::nothrow) hdfs::HDFS());
@@ -617,13 +613,13 @@ Status VFS::init(const Config::VFSParams& vfs_params) {
 #endif
 
 #ifdef HAVE_S3
-  RETURN_NOT_OK(s3_.init(vfs_params.s3_params_, thread_pool_.get()));
+  RETURN_NOT_OK(s3_.init(vfs_params.s3_params_, &thread_pool_));
 #endif
 
 #ifdef WIN32
-  win_.init(vfs_params, thread_pool_.get());
+  win_.init(vfs_params, &thread_pool_);
 #else
-  posix_.init(vfs_params, thread_pool_.get());
+  posix_.init(vfs_params, &thread_pool_);
 #endif
 
   return Status::Ok();
@@ -774,7 +770,7 @@ Status VFS::move_dir(const URI& old_uri, const URI& new_uri) {
 }
 
 Status VFS::read(
-    const URI& uri, uint64_t offset, void* buffer, uint64_t nbytes) const {
+    const URI& uri, uint64_t offset, void* buffer, uint64_t nbytes) {
   STATS_FUNC_IN(vfs_read);
   STATS_COUNTER_ADD(vfs_read_total_bytes, nbytes);
 
@@ -798,12 +794,14 @@ Status VFS::read(
       uint64_t thread_nbytes = end - begin + 1;
       uint64_t thread_offset = offset + begin;
       auto thread_buffer = reinterpret_cast<char*>(buffer) + begin;
-      results.push_back(thread_pool_->enqueue(
+      auto task = cancelable_tasks_.enqueue(
+          &thread_pool_,
           [this, uri, thread_offset, thread_buffer, thread_nbytes]() {
             return read_impl(uri, thread_offset, thread_buffer, thread_nbytes);
-          }));
+          });
+      results.push_back(std::move(task));
     }
-    Status st = thread_pool_->wait_all(results);
+    Status st = thread_pool_.wait_all(results);
     if (!st.ok()) {
       std::stringstream errmsg;
       errmsg << "VFS parallel read error '" << uri.to_string() << "'; "
@@ -817,7 +815,7 @@ Status VFS::read(
 }
 
 Status VFS::read_impl(
-    const URI& uri, uint64_t offset, void* buffer, uint64_t nbytes) const {
+    const URI& uri, uint64_t offset, void* buffer, uint64_t nbytes) {
   if (uri.is_file()) {
 #ifdef _WIN32
     return win_.read(uri.to_path(), offset, buffer, nbytes);
@@ -846,7 +844,7 @@ Status VFS::read_impl(
 
 Status VFS::read_all(
     const URI& uri,
-    const std::vector<std::tuple<uint64_t, void*, uint64_t>>& regions) const {
+    const std::vector<std::tuple<uint64_t, void*, uint64_t>>& regions) {
   STATS_FUNC_IN(vfs_read_all);
   STATS_COUNTER_ADD(vfs_read_all_total_regions, regions.size());
 

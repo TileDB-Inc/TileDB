@@ -75,6 +75,10 @@ bool S3ThreadPoolExecutor::SubmitToThread(std::function<void()>&& fn) {
   };
 
   *task_ptr = thread_pool_->enqueue(wrapped_fn);
+  if (!task_ptr->valid()) {
+    return false;
+  }
+
   std::unique_lock<std::mutex> lock_guard(tasks_lock_);
   tasks_.emplace(std::move(task_ptr));
   lock_guard.unlock();

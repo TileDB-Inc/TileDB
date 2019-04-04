@@ -32,6 +32,7 @@
 
 #include <atomic>
 #include <catch.hpp>
+#include "tiledb/sm/misc/cancelable_tasks.h"
 #include "tiledb/sm/misc/thread_pool.h"
 
 using namespace tiledb::sm;
@@ -94,11 +95,12 @@ TEST_CASE("ThreadPool: Test no wait", "[threadpool]") {
     REQUIRE(pool.init(4).ok());
     std::atomic<int> result(0);
     for (int i = 0; i < 5; i++) {
-      pool.enqueue([&result]() {
+      std::future<Status> task = pool.enqueue([&result]() {
         result++;
         std::this_thread::sleep_for(std::chrono::seconds(1));
         return Status::Ok();
       });
+      CHECK(task.valid());
     }
     // There may be an error logged when the pool is destroyed if there are
     // outstanding tasks, but everything should still complete.
@@ -109,12 +111,13 @@ TEST_CASE(
     "ThreadPool: Test pending task cancellation", "[threadpool], [cancel]") {
   SECTION("- No cancellation callback") {
     ThreadPool pool;
+    CancelableTasks cancelable_tasks;
     REQUIRE(pool.init(2).ok());
     std::atomic<int> result(0);
     std::vector<std::future<Status>> tasks;
 
     for (int i = 0; i < 5; i++) {
-      tasks.push_back(pool.enqueue([&result]() {
+      tasks.push_back(cancelable_tasks.enqueue(&pool, [&result]() {
         std::this_thread::sleep_for(std::chrono::seconds(2));
         result++;
         return Status::Ok();
@@ -123,7 +126,7 @@ TEST_CASE(
 
     // Because the thread pool has 2 threads, the first two will probably be
     // executing at this point, but some will still be queued.
-    pool.cancel_all_tasks();
+    cancelable_tasks.cancel_all_tasks();
 
     // The result is the number of threads that returned Ok (were not
     // cancelled).
@@ -138,12 +141,14 @@ TEST_CASE(
 
   SECTION("- With cancellation callback") {
     ThreadPool pool;
+    CancelableTasks cancelable_tasks;
     REQUIRE(pool.init(2).ok());
     std::atomic<int> result(0), num_cancelled(0);
     std::vector<std::future<Status>> tasks;
 
     for (int i = 0; i < 5; i++) {
-      tasks.push_back(pool.enqueue(
+      tasks.push_back(cancelable_tasks.enqueue(
+          &pool,
           [&result]() {
             std::this_thread::sleep_for(std::chrono::seconds(2));
             result++;
@@ -154,7 +159,7 @@ TEST_CASE(
 
     // Because the thread pool has 2 threads, the first two will probably be
     // executing at this point, but some will still be queued.
-    pool.cancel_all_tasks();
+    cancelable_tasks.cancel_all_tasks();
 
     // The result is the number of threads that returned Ok (were not
     // cancelled).
@@ -177,8 +182,7 @@ TEST_CASE("ThreadPool: Test enqueue with empty pool", "[threadpool]") {
     return Status::Ok();
   });
 
-  Status st = status.get();
-  CHECK(!st.ok());
+  CHECK(!status.valid());
   CHECK(result == 0);
 }
 

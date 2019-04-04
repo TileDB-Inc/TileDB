@@ -65,34 +65,13 @@ class ThreadPool {
   Status init(uint64_t num_threads = 1);
 
   /**
-   * Cancel all queued tasks, causing them to return error statuses.
-   * This does not terminate the threads. Cancelled tasks are guaranteed not to
-   * begin execution of their tasks, as currently running tasks are not able to
-   * be cancelled (only queued tasks).
-   */
-  void cancel_all_tasks();
-
-  /**
-   * Enqueue a new task to be executed by a thread.
+   * Enqueue a new task to be executed by a thread. If the returned
+   * `future` object is valid, `function` is guaranteed to execute.
    *
    * @param function Task function to execute.
    * @return Future for the return value of the task.
    */
-  std::future<Status> enqueue(const std::function<Status()>& function);
-
-  /**
-   * Enqueue a new task to be executed by a thread with a custom callback
-   * made if the task is cancelled before it can execute.
-   *
-   * Note: the on_cancel callback is made from a thread in the pool.
-   *
-   * @param function Task function to execute.
-   * @param on_cancel Cancellation callback function to make on cancel.
-   * @return Future for the return value of the task.
-   */
-  std::future<Status> enqueue(
-      const std::function<Status()>& function,
-      const std::function<void()>& on_cancel);
+  std::future<Status> enqueue(std::function<Status()>&& function);
 
   /** Return the number of threads in this pool. */
   uint64_t num_threads() const;
@@ -120,11 +99,9 @@ class ThreadPool {
 
   std::condition_variable queue_cv_;
 
-  bool should_cancel_;
-
   bool should_terminate_;
 
-  std::queue<std::packaged_task<Status(bool)>> task_queue_;
+  std::queue<std::packaged_task<Status()>> task_queue_;
 
   std::vector<std::thread> threads_;
 
