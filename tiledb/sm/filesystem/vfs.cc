@@ -799,7 +799,7 @@ Status VFS::read(
       uint64_t thread_offset = offset + begin;
       auto thread_buffer = reinterpret_cast<char*>(buffer) + begin;
       results.push_back(thread_pool_->enqueue(
-          [this, &uri, thread_offset, thread_buffer, thread_nbytes]() {
+          [this, uri, thread_offset, thread_buffer, thread_nbytes]() {
             return read_impl(uri, thread_offset, thread_buffer, thread_nbytes);
           }));
     }
