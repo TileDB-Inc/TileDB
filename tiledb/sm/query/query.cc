@@ -383,13 +383,6 @@ Status Query::capnp(::Query::Builder* queryBuilder) const {
   // for (auto attribute_name : attributes) {
   for (uint64_t i = 0; i < attributes.size(); i++) {
     std::string attribute_name = attributes[i];
-    // TODO: We have to skip special attrs, which include anonymous ones
-    // because we can't call add_attribute() for a special attr name, we need
-    // to figure out how to add these to a array schema nicely.
-    if (attribute_name.substr(0, 2) ==
-        tiledb::sm::constants::special_name_prefix) {
-      continue;
-    }
     const tiledb::sm::Attribute* attribute =
         this->array_schema()->attribute(attribute_name);
     if (attribute != nullptr) {
@@ -743,13 +736,6 @@ tiledb::sm::Status Query::from_capnp(::Query::Reader* query) {
       if (std::string(bufferMap.getKey().cStr()).empty())
         continue;
 
-      // TODO: We have to skip special attrs, which include anonymous ones
-      // because we can't call add_attribute() for a special attr name, we
-      // need to figure out how to add these to a array schema nicely.
-      if (std::string(bufferMap.getKey().cStr()).substr(0, 2) ==
-          tiledb::sm::constants::special_name_prefix) {
-        continue;
-      }
       const tiledb::sm::Attribute* attr =
           array_schema()->attribute(bufferMap.getKey().cStr());
       if (attr == nullptr) {
