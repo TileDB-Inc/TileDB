@@ -213,6 +213,14 @@ class Query {
     return *this;
   }
 
+  /** Returns the layout of the query. */
+  tiledb_layout_t query_layout() const {
+    auto& ctx = ctx_.get();
+    tiledb_layout_t query_layout;
+    ctx.handle_error(tiledb_query_get_layout(ctx, query_.get(), &query_layout));
+    return query_layout;
+  }
+
   /** Returns the query status. */
   Status query_status() const {
     tiledb_query_status_t status;

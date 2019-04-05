@@ -3,7 +3,17 @@
 ## New features
 ## Improvements
 ## Bug fixes
+
 ## API additions
+
+### C API
+
+* Added function `tiledb_query_get_layout`
+
+### C++ API
+
+* Added function `Query::query_layout()`
+
 ## Breaking changes
 
 # TileDB v1.5.0 Release Notes
