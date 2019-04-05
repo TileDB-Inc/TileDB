@@ -627,6 +627,18 @@ Status VFS::init(const Config::VFSParams& vfs_params) {
   STATS_FUNC_OUT(vfs_init);
 }
 
+Status VFS::terminate() {
+  STATS_FUNC_IN(vfs_terminate);
+
+#ifdef HAVE_S3
+  return s3_.disconnect();
+#endif
+
+  return Status::Ok();
+
+  STATS_FUNC_OUT(vfs_terminate);
+}
+
 Status VFS::ls(const URI& parent, std::vector<URI>* uris) const {
   STATS_FUNC_IN(vfs_ls);
 

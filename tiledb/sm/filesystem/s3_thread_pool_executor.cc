@@ -41,12 +41,22 @@ namespace tiledb {
 namespace sm {
 
 S3ThreadPoolExecutor::S3ThreadPoolExecutor(ThreadPool* const thread_pool)
-    : thread_pool_(thread_pool) {
+    : thread_pool_(thread_pool)
+    , state_(State::RUNNING) {
   assert(thread_pool_);
 }
 
 S3ThreadPoolExecutor::~S3ThreadPoolExecutor() {
-  std::unique_lock<std::mutex> lock_guard(tasks_lock_);
+  assert(state_ == State::STOPPED);
+  assert(tasks_.empty());
+}
+
+Status S3ThreadPoolExecutor::Stop() {
+  Status ret_st = Status::Ok();
+
+  std::unique_lock<std::mutex> lock_guard(lock_);
+  assert(state_ == State::RUNNING);
+  state_ = State::STOPPING;
   std::unordered_set<std::shared_ptr<std::future<Status>>> tasks =
       std::move(tasks_);
   tasks_.clear();
@@ -54,9 +64,19 @@ S3ThreadPoolExecutor::~S3ThreadPoolExecutor() {
 
   // Wait for all outstanding tasks to complete.
   for (auto& task : tasks) {
+    assert(task.valid());
     task->wait();
-    assert(task->get().ok());
+    const Status st = task->get();
+    if (!st.ok()) {
+      ret_st = st;
+    }
   }
+
+  lock_guard.lock();
+  state_ = State::STOPPED;
+  lock_guard.unlock();
+
+  return ret_st;
 }
 
 bool S3ThreadPoolExecutor::SubmitToThread(std::function<void()>&& fn) {
@@ -65,21 +85,25 @@ bool S3ThreadPoolExecutor::SubmitToThread(std::function<void()>&& fn) {
   auto wrapped_fn = [this, fn, task_ptr]() -> Status {
     fn();
 
-    std::unique_lock<std::mutex> lock_guard(tasks_lock_);
-    // If 'tasks_' is empty, the S3ThreadPoolExecutor instance is destructing.
-    if (!tasks_.empty()) {
+    std::unique_lock<std::mutex> lock_guard(lock_);
+    assert(state_ != State::STOPPED);
+    if (state_ == State::RUNNING) {
       tasks_.erase(task_ptr);
     }
     lock_guard.unlock();
     return Status::Ok();
   };
 
+  std::unique_lock<std::mutex> lock_guard(lock_);
+  if (state_ != State::RUNNING) {
+    return false;
+  }
+
   *task_ptr = thread_pool_->enqueue(wrapped_fn);
   if (!task_ptr->valid()) {
     return false;
   }
 
-  std::unique_lock<std::mutex> lock_guard(tasks_lock_);
   tasks_.emplace(std::move(task_ptr));
   lock_guard.unlock();
 

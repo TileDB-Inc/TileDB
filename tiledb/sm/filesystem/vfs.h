@@ -251,6 +251,15 @@ class VFS {
   Status init(const Config::VFSParams& vfs_params);
 
   /**
+   * Terminates the virtual system. Must only be called if init() returned
+   * successfully. The behavior is undefined if not successfully invoked prior
+   * to destructing this object.
+   *
+   * @return Status
+   */
+  Status terminate();
+
+  /**
    * Retrieves all the URIs that have the first input as parent.
    *
    * @param parent The target directory to list.

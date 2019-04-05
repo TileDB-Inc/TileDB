@@ -77,7 +77,6 @@ StorageManager::~StorageManager() {
   delete array_schema_cache_;
   delete fragment_metadata_cache_;
   delete tile_cache_;
-  delete vfs_;
 
   // Release all filelocks and delete all opened arrays for reads
   for (auto& open_array_it : open_arrays_for_reads_) {
@@ -95,6 +94,13 @@ StorageManager::~StorageManager() {
     if (filelock != INVALID_FILELOCK)
       vfs_->filelock_unlock(lock_uri, filelock);
   }
+
+  const Status st = vfs_->terminate();
+  if (!st.ok()) {
+    LOG_STATUS(Status::StorageManagerError("Failed to terminate VFS."));
+  }
+
+  delete vfs_;
 }
 
 /* ****************************** */

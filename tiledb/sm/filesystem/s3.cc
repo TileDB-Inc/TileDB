@@ -38,7 +38,6 @@
 #include <fstream>
 #include <iostream>
 
-#include "tiledb/sm/filesystem/s3_thread_pool_executor.h"
 #include "tiledb/sm/global_state/unit_test_config.h"
 #include "tiledb/sm/misc/logger.h"
 #include "tiledb/sm/misc/stats.h"
@@ -84,13 +83,17 @@ static std::once_flag aws_lib_initialized;
 /*     CONSTRUCTORS & DESTRUCTORS    */
 /* ********************************* */
 
-S3::S3() {
-  client_ = nullptr;
-  max_parallel_ops_ = 1;
-  multipart_part_size_ = 0;
+S3::S3()
+    : state_(State::UNINITIALIZED)
+    , file_buffer_size_(0)
+    , max_parallel_ops_(1)
+    , multipart_part_size_(0)
+    , vfs_thread_pool_(nullptr)
+    , use_virtual_addressing_(false) {
 }
 
 S3::~S3() {
+  assert(state_ == State::DISCONNECTED);
   for (auto& buff : file_buffers_)
     delete buff.second;
 }
@@ -99,7 +102,10 @@ S3::~S3() {
 /*                 API               */
 /* ********************************* */
 
-Status S3::init(const Config::S3Params& s3_config, ThreadPool* thread_pool) {
+Status S3::init(
+    const Config::S3Params& s3_config, ThreadPool* const thread_pool) {
+  assert(state_ == State::UNINITIALIZED);
+
   if (thread_pool == nullptr) {
     return LOG_STATUS(
         Status::S3Error("Can't initialize with null thread pool."));
@@ -117,6 +123,8 @@ Status S3::init(const Config::S3Params& s3_config, ThreadPool* thread_pool) {
 
   client_config_ = std::unique_ptr<Aws::Client::ClientConfiguration>(
       new Aws::Client::ClientConfiguration);
+  s3_tp_executor_ = std::make_shared<S3ThreadPoolExecutor>(thread_pool);
+  client_config_->executor = s3_tp_executor_;
   auto& config = *client_config_.get();
   if (!s3_config.region_.empty())
     config.region = s3_config.region_.c_str();
@@ -152,6 +160,7 @@ Status S3::init(const Config::S3Params& s3_config, ThreadPool* thread_pool) {
         new Aws::Auth::AWSCredentials(access_key_id, secret_access_key));
   }
 
+  state_ = State::INITIALIZED;
   return Status::Ok();
 }
 
@@ -213,6 +222,12 @@ Status S3::remove_bucket(const URI& bucket) const {
 }
 
 Status S3::disconnect() {
+  Status ret_st = Status::Ok();
+
+  if (state_ == State::UNINITIALIZED) {
+    return ret_st;
+  }
+
   RETURN_NOT_OK(init_client());
 
   for (auto& kv : multipart_upload_states_) {
@@ -223,24 +238,37 @@ Status S3::disconnect() {
           make_multipart_complete_request(state);
       auto outcome = client_->CompleteMultipartUpload(complete_request);
       if (!outcome.IsSuccess()) {
-        return LOG_STATUS(Status::S3Error(
+        const Status st = LOG_STATUS(Status::S3Error(
             std::string("Failed to disconnect and flush S3 objects. ") +
             outcome_error_message(outcome)));
+        if (!st.ok()) {
+          ret_st = st;
+        }
       }
     } else {
       Aws::S3::Model::AbortMultipartUploadRequest abort_request =
           make_multipart_abort_request(state);
       auto outcome = client_->AbortMultipartUpload(abort_request);
       if (!outcome.IsSuccess()) {
-        return LOG_STATUS(Status::S3Error(
+        const Status st = LOG_STATUS(Status::S3Error(
             std::string("Failed to disconnect and flush S3 objects. ") +
             outcome_error_message(outcome)));
+        if (!st.ok()) {
+          ret_st = st;
+        }
       }
     }
   }
-  Aws::ShutdownAPI(options_);
 
-  return Status::Ok();
+  if (s3_tp_executor_) {
+    const Status st = s3_tp_executor_->Stop();
+    if (!st.ok()) {
+      ret_st = st;
+    }
+  }
+
+  state_ = State::DISCONNECTED;
+  return ret_st;
 }
 
 Status S3::empty_bucket(const URI& bucket) const {
@@ -685,6 +713,8 @@ Status S3::write(const URI& uri, const void* buffer, uint64_t length) {
 /* ********************************* */
 
 Status S3::init_client() const {
+  assert(state_ == State::INITIALIZED);
+
   std::lock_guard<std::mutex> lck(client_init_mtx_);
 
   if (client_.get() != nullptr)

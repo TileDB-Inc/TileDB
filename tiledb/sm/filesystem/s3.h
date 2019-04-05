@@ -35,6 +35,7 @@
 
 #ifdef HAVE_S3
 #include "tiledb/sm/buffer/buffer.h"
+#include "tiledb/sm/filesystem/s3_thread_pool_executor.h"
 #include "tiledb/sm/misc/constants.h"
 #include "tiledb/sm/misc/status.h"
 #include "tiledb/sm/misc/thread_pool.h"
@@ -306,6 +307,11 @@ class S3 {
   /* ********************************* */
 
   /**
+   * Identifies the current state of this class.
+   */
+  enum State { UNINITIALIZED, INITIALIZED, DISCONNECTED };
+
+  /**
    * This struct wraps the context state of a pending multipart upload request.
    */
   struct MakeUploadPartCtx {
@@ -366,6 +372,9 @@ class S3 {
   /*         PRIVATE ATTRIBUTES        */
   /* ********************************* */
 
+  /** The current state. */
+  State state_;
+
   /**
    * The lazily-initialized S3 client. This is mutable so that nominally const
    * functions can call init_client().
@@ -380,6 +389,9 @@ class S3 {
 
   /** Configuration object used to initialize the client. */
   std::unique_ptr<Aws::Client::ClientConfiguration> client_config_;
+
+  /** The executor  used by 'client_'. */
+  std::shared_ptr<S3ThreadPoolExecutor> s3_tp_executor_;
 
   /** Credentials object used to initialize the client. */
   std::unique_ptr<Aws::Auth::AWSCredentials> client_creds_;
