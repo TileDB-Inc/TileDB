@@ -522,3 +522,49 @@ TEST_CASE_METHOD(
   test_get_buffer_read(array_name);
   remove_temp_dir(temp_dir);
 }
+
+TEST_CASE_METHOD(
+    QueryFx,
+    "C API: Test query get layout",
+    "[capi], [query], [query-get-layout]") {
+  std::string temp_dir = FILE_URI_PREFIX + FILE_TEMP_DIR;
+  std::string array_name = temp_dir + "query_get_layout";
+  create_temp_dir(temp_dir);
+  create_array(array_name);
+
+  tiledb_array_t* array;
+  int rc = tiledb_array_alloc(ctx_, array_name.c_str(), &array);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_array_open(ctx_, array, TILEDB_READ);
+  REQUIRE(rc == TILEDB_OK);
+
+  tiledb_query_t* query;
+  rc = tiledb_query_alloc(ctx_, array, TILEDB_READ, &query);
+  REQUIRE(rc == TILEDB_OK);
+  tiledb_layout_t layout;
+  rc = tiledb_query_get_layout(ctx_, query, &layout);
+  REQUIRE(rc == TILEDB_OK);
+  REQUIRE(layout == TILEDB_ROW_MAJOR);
+  rc = tiledb_query_set_layout(ctx_, query, TILEDB_COL_MAJOR);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_query_get_layout(ctx_, query, &layout);
+  REQUIRE(rc == TILEDB_OK);
+  REQUIRE(layout == TILEDB_COL_MAJOR);
+  rc = tiledb_query_set_layout(ctx_, query, TILEDB_GLOBAL_ORDER);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_query_get_layout(ctx_, query, &layout);
+  REQUIRE(rc == TILEDB_OK);
+  REQUIRE(layout == TILEDB_GLOBAL_ORDER);
+  rc = tiledb_query_set_layout(ctx_, query, TILEDB_UNORDERED);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_query_get_layout(ctx_, query, &layout);
+  REQUIRE(rc == TILEDB_OK);
+  REQUIRE(layout == TILEDB_UNORDERED);
+
+  rc = tiledb_array_close(ctx_, array);
+  REQUIRE(rc == TILEDB_OK);
+
+  tiledb_query_free(&query);
+  tiledb_array_free(&array);
+  remove_temp_dir(temp_dir);
+}

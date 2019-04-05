@@ -2626,6 +2626,24 @@ TILEDB_EXPORT int32_t tiledb_query_get_status(
 TILEDB_EXPORT int32_t tiledb_query_get_type(
     tiledb_ctx_t* ctx, tiledb_query_t* query, tiledb_query_type_t* query_type);
 
+/**
+ * Retrieves the query layout.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * tiledb_layout_t query_layout;
+ * tiledb_query_get_layout(ctx, query, &query_layout);
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param query The query.
+ * @param query_layout The query layout to be retrieved.
+ * @return `TILEDB_OK` upon success, and `TILEDB_ERR` upon error.
+ */
+TILEDB_EXPORT int32_t tiledb_query_get_layout(
+    tiledb_ctx_t* ctx, tiledb_query_t* query, tiledb_layout_t* query_layout);
+
 /* ********************************* */
 /*               ARRAY               */
 /* ********************************* */

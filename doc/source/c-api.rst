@@ -339,6 +339,8 @@ Query
     :project: TileDB-C
 .. doxygenfunction:: tiledb_query_get_type
     :project: TileDB-C
+.. doxygenfunction:: tiledb_query_get_layout
+    :project: TileDB-C
 .. doxygenfunction:: tiledb_query_has_results
     :project: TileDB-C
 

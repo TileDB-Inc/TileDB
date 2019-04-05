@@ -2282,6 +2282,17 @@ int32_t tiledb_query_get_type(
   return TILEDB_OK;
 }
 
+int32_t tiledb_query_get_layout(
+    tiledb_ctx_t* ctx, tiledb_query_t* query, tiledb_layout_t* query_layout) {
+  // Sanity check
+  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, query) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  *query_layout = static_cast<tiledb_layout_t>(query->query_->layout());
+
+  return TILEDB_OK;
+}
+
 /* ****************************** */
 /*              ARRAY             */
 /* ****************************** */
