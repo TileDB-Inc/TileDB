@@ -696,7 +696,8 @@ Status StorageManager::array_xunlock(const URI& array_uri) {
 }
 
 Status StorageManager::async_push_query(Query* query) {
-  async_thread_pool_->enqueue(
+  cancelable_tasks_.enqueue(
+      &async_thread_pool_,
       [this, query]() {
         // Process query.
         Status st = query_submit(query);
@@ -728,7 +729,7 @@ Status StorageManager::cancel_all_tasks() {
   // Handle the cancellation.
   if (handle_cancel) {
     // Cancel any queued tasks.
-    async_thread_pool_->cancel_all_tasks();
+    cancelable_tasks_.cancel_all_tasks();
     vfs_->cancel_all_tasks();
 
     // Wait for in-progress queries to finish.
@@ -973,12 +974,9 @@ Status StorageManager::init(Config* config) {
   array_schema_cache_ = new LRUCache(sm_params.array_schema_cache_size_);
   fragment_metadata_cache_ =
       new LRUCache(sm_params.fragment_metadata_cache_size_);
-  async_thread_pool_ = std::unique_ptr<ThreadPool>(new ThreadPool());
-  RETURN_NOT_OK(async_thread_pool_->init(sm_params.num_async_threads_));
-  reader_thread_pool_ = std::unique_ptr<ThreadPool>(new ThreadPool());
-  RETURN_NOT_OK(reader_thread_pool_->init(sm_params.num_reader_threads_));
-  writer_thread_pool_ = std::unique_ptr<ThreadPool>(new ThreadPool());
-  RETURN_NOT_OK(writer_thread_pool_->init(sm_params.num_writer_threads_));
+  RETURN_NOT_OK(async_thread_pool_.init(sm_params.num_async_threads_));
+  RETURN_NOT_OK(reader_thread_pool_.init(sm_params.num_reader_threads_));
+  RETURN_NOT_OK(writer_thread_pool_.init(sm_params.num_writer_threads_));
   tile_cache_ = new LRUCache(sm_params.tile_cache_size_);
   vfs_ = new VFS();
   RETURN_NOT_OK(vfs_->init(config_.vfs_params()));
@@ -1420,8 +1418,8 @@ Status StorageManager::read(
   return Status::Ok();
 }
 
-ThreadPool* StorageManager::reader_thread_pool() const {
-  return reader_thread_pool_.get();
+ThreadPool* StorageManager::reader_thread_pool() {
+  return &reader_thread_pool_;
 }
 
 Status StorageManager::store_array_schema(
@@ -1515,8 +1513,8 @@ Status StorageManager::sync(const URI& uri) {
   return vfs_->sync(uri);
 }
 
-ThreadPool* StorageManager::writer_thread_pool() const {
-  return writer_thread_pool_.get();
+ThreadPool* StorageManager::writer_thread_pool() {
+  return &writer_thread_pool_;
 }
 
 VFS* StorageManager::vfs() const {

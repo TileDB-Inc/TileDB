@@ -586,7 +586,7 @@ class StorageManager {
       bool* in_cache) const;
 
   /** Returns the Reader thread pool. */
-  ThreadPool* reader_thread_pool() const;
+  ThreadPool* reader_thread_pool();
 
   /**
    * Reads from a file into the input buffer.
@@ -628,7 +628,7 @@ class StorageManager {
   Status sync(const URI& uri);
 
   /** Returns the Writer thread pool. */
-  ThreadPool* writer_thread_pool() const;
+  ThreadPool* writer_thread_pool();
 
   /** Returns the virtual filesystem object. */
   VFS* vfs() const;
@@ -752,13 +752,17 @@ class StorageManager {
   std::condition_variable queries_in_progress_cv_;
 
   /** The storage manager's thread pool for async queries. */
-  std::unique_ptr<ThreadPool> async_thread_pool_;
+  ThreadPool async_thread_pool_;
 
   /** The storage manager's thread pool for Readers. */
-  std::unique_ptr<ThreadPool> reader_thread_pool_;
+  ThreadPool reader_thread_pool_;
 
   /** The storage manager's thread pool for Writers. */
-  std::unique_ptr<ThreadPool> writer_thread_pool_;
+  ThreadPool writer_thread_pool_;
+
+  /** Tracks all scheduled tasks that can be safely cancelled before execution.
+   */
+  CancelableTasks cancelable_tasks_;
 
   /** A tile cache. */
   LRUCache* tile_cache_;

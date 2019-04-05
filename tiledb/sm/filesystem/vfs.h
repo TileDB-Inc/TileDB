@@ -39,6 +39,7 @@
 #include "tiledb/sm/filesystem/filelock.h"
 #include "tiledb/sm/filesystem/posix.h"
 #include "tiledb/sm/filesystem/win.h"
+#include "tiledb/sm/misc/cancelable_tasks.h"
 #include "tiledb/sm/misc/status.h"
 #include "tiledb/sm/misc/thread_pool.h"
 #include "tiledb/sm/misc/uri.h"
@@ -285,8 +286,7 @@ class VFS {
    * @param nbytes Number of bytes to read.
    * @return Status
    */
-  Status read(
-      const URI& uri, uint64_t offset, void* buffer, uint64_t nbytes) const;
+  Status read(const URI& uri, uint64_t offset, void* buffer, uint64_t nbytes);
 
   /**
    * Reads multiple regions from a file.
@@ -298,7 +298,7 @@ class VFS {
    */
   Status read_all(
       const URI& uri,
-      const std::vector<std::tuple<uint64_t, void*, uint64_t>>& regions) const;
+      const std::vector<std::tuple<uint64_t, void*, uint64_t>>& regions);
 
   /** Checks if a given filesystem is supported. */
   bool supports_fs(Filesystem fs) const;
@@ -407,7 +407,10 @@ class VFS {
   std::set<Filesystem> supported_fs_;
 
   /** Thread pool for parallel I/O operations. */
-  std::unique_ptr<ThreadPool> thread_pool_;
+  ThreadPool thread_pool_;
+
+  /** Wrapper for tracking and canceling certain tasks on 'thread_pool' */
+  CancelableTasks cancelable_tasks_;
 
   /**
    * Groups the given vector of regions to be read into a possibly smaller
@@ -432,7 +435,7 @@ class VFS {
    * @return Status
    */
   Status read_impl(
-      const URI& uri, uint64_t offset, void* buffer, uint64_t nbytes) const;
+      const URI& uri, uint64_t offset, void* buffer, uint64_t nbytes);
 
   /**
    * Increment the lock count of the given URI.

@@ -129,6 +129,7 @@ set(TILEDB_CORE_SOURCES
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/kv/kv.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/kv/kv_item.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/kv/kv_iter.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/misc/cancelable_tasks.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/misc/constants.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/misc/logger.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/misc/stats.cc
