@@ -12,8 +12,10 @@ strategy:
       variables:
       TILEDB_HDFS: ON
       CXX: g++
-    #mac:
-    #  imageName: 'macOS-10.13'
+    mac:
+      imageName: 'macOS-10.13'
+      TILEDB_S3: ON
+      CXX: clang++
     #windows:
     #  imageName: 'vs2017-win2016'
   maxParallel: 4

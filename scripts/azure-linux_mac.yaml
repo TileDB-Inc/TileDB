@@ -33,8 +33,19 @@ fi
 
 # Start minio server if S3 is enabled
 if [[ "$TILEDB_S3" == "ON" ]]; then
-  source scripts/install-minio.sh;
-  source scripts/run-minio.sh;
+  if [[ "$AGENT_OS" == "Linux" ]]; then
+    source scripts/install-minio.sh;
+    source scripts/run-minio.sh;
+  else
+    export AWS_ACCESS_KEY_ID=minio
+    export AWS_SECRET_ACCESS_KEY=miniosecretkey
+    export MINIO_ACCESS_KEY=$AWS_ACCESS_KEY
+    export MINIO_SECRET_KEY=$AWS_SECRET_ACCESS_KEY
+    # use minio repo rather than cask,
+    # as recommended by minio
+    brew install minio/stable/minio
+    minio server /tmp/minio-data &
+  fi
 fi
 
 mkdir -p $BUILD_REPOSITORY_LOCALPATH/build && cd $BUILD_REPOSITORY_LOCALPATH/build
