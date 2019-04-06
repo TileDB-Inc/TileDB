@@ -365,6 +365,14 @@ if (WIN32)
   endforeach()
 endif()
 
+# macOS specific libraries
+if(APPLE)
+  if(TILEDB_S3)
+    # this is a transitive dependency for statically linking S3 SDK
+    target_link_libraries(TILEDB_CORE_OBJECTS_ILIB INTERFACE "-framework CoreFoundation")
+  endif()
+endif()
+
 # Copy over dependency info (e.g. include directories) to the core objects.
 target_compile_definitions(TILEDB_CORE_OBJECTS
   PRIVATE
