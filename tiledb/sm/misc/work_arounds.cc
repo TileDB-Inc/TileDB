@@ -33,6 +33,8 @@
 // This is a work-around for a gcc bug that was fixed in v6.0:
 // https://bugs.launchpad.net/ubuntu/+source/gcc-5/+bug/1568899
 //
+// We've also seen this issue on gcc v7.
+//
 // The C++ AWS SDK v1.7 introduced this bug into our build because it
 // references the hidden gcc symbol '__cpu_model'. To fix this, we
 // redefine it here with public visibility.
@@ -42,7 +44,7 @@
 //
 // For reference, the gcc definition can be found here:
 // https://github.com/gcc-mirror/gcc/blob/d353bf189d2bbaf4059f402ee4d2a5ea074c349f/libgcc/config/i386/cpuinfo.c
-#if __GNUC__ > 0 && __GNUC__ < 6
+#if __GNUC__ > 0
 __attribute__((visibility("default"))) struct __processor_model {
   unsigned int __cpu_vendor;
   unsigned int __cpu_type;
