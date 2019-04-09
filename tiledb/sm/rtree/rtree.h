@@ -137,9 +137,30 @@ class RTree {
   /*      PRIVATE TYPE DEFINITIONS     */
   /* ********************************* */
 
-  /** A level of the RTree. */
+  /**
+   * The RTree is composed of nodes and is constructed bottom up
+   * such that each node has exactly `fanout_` children. The
+   * construction algorithm attempts to create a full tree and,
+   * therefore, all nodes have `fanout_` children except for the
+   * "rightmost" nodes which may contain less.
+   *
+   * The nodes at the same height of the tree form a level of
+   * the tree. Also each node simply contains up to `fanout_`
+   * MBRs.
+   *
+   * A `Level` object serializes the contents of the nodes at
+   * the same tree level, that is it serializes all the MBRs
+   * of all those nodes. Since we know the `fanout_` and the
+   * number of levels, as well as the fact that the tree is from
+   * left-to-right complete, we can easily infer which MBRs
+   * in the `Level` object correspond to which node of that level.
+   *
+   * Note that the `Level` objects are stored in a simple vector
+   * `levels_`, where the first level is the root. This is how
+   * we can infer which tree level each `Level` object corresponds to.
+   */
   struct Level {
-    /** Number of MBRs in the level. */
+    /** Number of MBRs in the level (across all nodes in the level). */
     uint64_t mbr_num_ = 0;
     /** The serialized MBRs of the level, in the form
      * ``(low_1, high_1), ..., (low_d, high_d)`` where ``d`` is
@@ -148,11 +169,15 @@ class RTree {
     std::vector<uint8_t> mbrs_;
   };
 
-  /** Defines an R-Tree entry. */
+  /** Defines an R-Tree level entry, which corresponds to a node
+   * at a particular level. It stores the level the entry belongs
+   * to, as well as the starting index of the first MBR in the
+   * corresponding R-Tree node.
+   */
   struct Entry {
-    /** The level where the "node" is. */
+    /** The level of the node the entry corresponds to. */
     uint64_t level_;
-    /** The index of the MBR where the "node" starts. */
+    /** The index of the first MBR of the corresponding node. */
     uint64_t mbr_idx_;
   };
 
