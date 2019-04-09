@@ -36,8 +36,8 @@
 #include <fstream>
 #include <iostream>
 
-#include <aws/core/utils/logging/DefaultLogSystem.h>
 #include <aws/core/utils/logging/AWSLogging.h>
+#include <aws/core/utils/logging/ConsoleLogSystem.h>
 
 #include "tiledb/sm/misc/logger.h"
 #include "tiledb/sm/misc/stats.h"
@@ -108,8 +108,8 @@ Status S3::init(const Config::S3Params& s3_config, ThreadPool* thread_pool) {
   std::call_once(aws_lib_initialized, [this]() {
     Aws::InitAPI(options_);
     Aws::Utils::Logging::InitializeAWSLogging(
-        Aws::MakeShared<Aws::Utils::Logging::DefaultLogSystem>(
-            "TileDBS3", Aws::Utils::Logging::LogLevel::Trace, "tiledb_"));
+        Aws::MakeShared<Aws::Utils::Logging::ConsoleLogSystem>(
+            Aws::Utils::Logging::LogLevel::Warn));
   });
 
   vfs_thread_pool_ = thread_pool;
