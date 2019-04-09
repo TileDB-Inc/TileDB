@@ -590,6 +590,8 @@ along with their description and default values.
     ``"vfs.s3.proxy_scheme"``                 ``"https"``             The S3 proxy scheme.
     ``"vfs.s3.proxy_username"``               ``""``                  The S3 proxy username.
     ``"vfs.s3.region"``                       ``"us-east-1"``         The S3 region.
+    ``"vfs.s3.aws_access_key_id"``            ``""``                  The AWS access key id (AWS_ACCESS_KEY_ID)
+    ``"vfs.s3.aws_secret_access_key"``        ``""``                  The AWS access secret (AWS_SECRET_ACCESS_KEY)
     ``"vfs.s3.request_timeout_ms"``           ``"3000"``              The request timeout in ms. Any ``long`` value is
                                                                       acceptable.
     ``"vfs.s3.scheme"``                       ``"https"``             The S3 scheme.
