@@ -497,7 +497,7 @@ Status S3::ls(
       // The documentation states that "GetNextMarker" will be non-empty only
       // when the delimiter in the request is non-empty. When the delimiter is
       // non-empty, we must used the last returned key as the next marker.
-      std::string next_marker =
+      Aws::String next_marker =
           !delimiter.empty() ?
               list_objects_outcome.GetResult().GetNextMarker() :
               list_objects_outcome.GetResult().GetContents().back().GetKey();
