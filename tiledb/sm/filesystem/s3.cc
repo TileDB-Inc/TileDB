@@ -36,6 +36,9 @@
 #include <fstream>
 #include <iostream>
 
+#include <aws/core/utils/logging/DefaultLogSystem.h>
+#include <aws/core/utils/logging/AWSLogging.h>
+
 #include "tiledb/sm/misc/logger.h"
 #include "tiledb/sm/misc/stats.h"
 #include "tiledb/sm/misc/utils.h"
@@ -102,7 +105,12 @@ Status S3::init(const Config::S3Params& s3_config, ThreadPool* thread_pool) {
   }
 
   // Initialize the library once per process.
-  std::call_once(aws_lib_initialized, [this]() { Aws::InitAPI(options_); });
+  std::call_once(aws_lib_initialized, [this]() {
+    Aws::InitAPI(options_);
+    Aws::Utils::Logging::InitializeAWSLogging(
+        Aws::MakeShared<Aws::Utils::Logging::DefaultLogSystem>(
+            "TileDBS3", Aws::Utils::Logging::LogLevel::Trace, "tiledb_"));
+  });
 
   vfs_thread_pool_ = thread_pool;
   max_parallel_ops_ = s3_config.max_parallel_ops_;
