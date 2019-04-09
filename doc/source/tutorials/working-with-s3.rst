@@ -33,7 +33,7 @@ First, we need to set up an AWS account and generate access keys.
 
 7. Upon successful creation, the next page will show the user along with two keys: ``Access key ID`` and ``Secret access key``. Write down both these keys.
 
-8. Export these keys to your environment from a console:
+8a. Export these keys to your environment from a console:
 
 .. content-tabs::
 
@@ -61,10 +61,19 @@ First, we need to set up an AWS account and generate access keys.
          set AWS_ACCESS_KEY_ID=<your-access-key-id>
          set AWS_SECRET_ACCESS_KEY=<your-secret-access-key>
 
-Now you are ready to start writing TileDB programs! When creating a TileDB
-context or a VFS object, you need to set up a configuration object with the
-following parameters for AWS S3 (supposing that your S3 buckets are on region
-``us-east-1`` - you can set an arbitrary region):
+8b. Or, set the following keys in a configuration object:
+
+.. table:: TileDB AWS S3 access settings
+    :widths: auto
+
+    ===================================   =================
+    **Parameter**                         **Default Value**
+    -----------------------------------   -----------------
+    ``"vfs.s3.aws_access_key_id"``        ``""``
+    ``"vfs.s3.aws_secret_access_key"``    ``""``
+    ===================================   =================
+
+Now you are ready to start writing TileDB programs! When creating a TileDB context or a VFS object, you need to set up a configuration object with the following parameters for AWS S3 (supposing that your S3 buckets are on region ``us-east-`` - you can set an arbitrary region).
 
 .. table:: TileDB AWS S3 config settings
     :widths: auto
