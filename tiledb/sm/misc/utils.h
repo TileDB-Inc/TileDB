@@ -219,7 +219,7 @@ bool rect_in_rect(const T* rect_a, const T* rect_b, unsigned int dim_num);
  */
 template <class T>
 void compute_mbr_union(
-    unsigned dim_num, T* mbrs, uint64_t mbr_num, T* mbr_union);
+    unsigned dim_num, const T* mbrs, uint64_t mbr_num, T* mbr_union);
 
 /**
  * Expands the input MBR so that it encompasses the input coordinates.

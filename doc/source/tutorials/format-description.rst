@@ -9,7 +9,7 @@ describes the tile-based format shared by all files written by TileDB
 to each tile for filtering. The second section describes the byte format of
 the tile data written in each file in a TileDB array.
 
-The current TileDB format version number is **2** (``uint32_t``).
+The current TileDB format version number is **3** (``uint32_t``).
 
 .. note::
 
