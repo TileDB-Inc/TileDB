@@ -115,7 +115,7 @@ AttributeBuffer Reader::buffer(const std::string& attribute) const {
   auto attrbuf = attr_buffers_.find(attribute);
   if (attrbuf == attr_buffers_.end())
     return AttributeBuffer{};
-  return attrbuf->second;
+  return attrbuf->second[0];
 }
 
 bool Reader::incomplete() const {
@@ -137,8 +137,8 @@ Status Reader::get_buffer(
     *buffer = nullptr;
     *buffer_size = nullptr;
   } else {
-    *buffer = it->second.buffer_;
-    *buffer_size = it->second.buffer_size_;
+    *buffer = it->second[0].buffer_;
+    *buffer_size = it->second[0].buffer_size_;
   }
 
   return Status::Ok();
@@ -157,10 +157,10 @@ Status Reader::get_buffer(
     *buffer_val = nullptr;
     *buffer_val_size = nullptr;
   } else {
-    *buffer_off = (uint64_t*)it->second.buffer_;
-    *buffer_off_size = it->second.buffer_size_;
-    *buffer_val = it->second.buffer_var_;
-    *buffer_val_size = it->second.buffer_var_size_;
+    *buffer_off = (uint64_t*)it->second[0].buffer_;
+    *buffer_off_size = it->second[0].buffer_size_;
+    *buffer_val = it->second[0].buffer_var_;
+    *buffer_val_size = it->second[0].buffer_var_size_;
   }
 
   return Status::Ok();
@@ -246,9 +246,13 @@ Status Reader::next_subarray_partition() {
   // Prepare buffer sizes map
   std::unordered_map<std::string, std::pair<uint64_t, uint64_t>>
       buffer_sizes_map;
-  for (const auto& it : attr_buffers_) {
-    buffer_sizes_map[it.first] = std::pair<uint64_t, uint64_t>(
-        it.second.original_buffer_size_, it.second.original_buffer_var_size_);
+  for (const auto& it_buffers : attr_buffers_) {
+    for (const auto& it_buffer : it_buffers.second) {
+      buffer_sizes_map[it_buffers.first + it_buffer.suffix_] =
+          std::pair<uint64_t, uint64_t>(
+              it_buffer.original_buffer_size_,
+              it_buffer.original_buffer_var_size_);
+    }
   }
 
   // Loop until a new partition whose result fit in the buffers is found
@@ -343,9 +347,11 @@ Status Reader::next_subarray_partition() {
 }
 
 bool Reader::no_results() const {
-  for (const auto& it : attr_buffers_) {
-    if (*(it.second.buffer_size_) != 0)
-      return false;
+  for (const auto& it_buffers : attr_buffers_) {
+    for (const auto& it_buffer : it_buffers.second) {
+      if (*(it_buffer.buffer_size_) != 0)
+        return false;
+    }
   }
   return true;
 }
@@ -529,9 +535,19 @@ Status Reader::set_buffer(
     read_state_2_.partitioner_.set_result_budget(
         attribute.c_str(), *buffer_size);
 
-  // Set attribute buffer
-  attr_buffers_[attribute] =
-      AttributeBuffer(buffer, nullptr, buffer_size, nullptr);
+  // setup attribute buffer
+  auto buffer_cell_val_num = (attribute == constants::coords) ?
+                                 0 :
+                                 array_schema_->cell_val_num(attribute);
+  attr_buffers_[attribute].push_back(AttributeBuffer(
+      buffer,
+      nullptr,
+      buffer_size,
+      nullptr,
+      "",
+      buffer_cell_val_num,
+      array_schema_->cell_size(attribute),
+      array_schema_->type(attribute)));
 
   return Status::Ok();
 }
@@ -584,8 +600,71 @@ Status Reader::set_buffer(
         attribute.c_str(), *buffer_off_size, *buffer_val_size);
 
   // Set attribute buffer
-  attr_buffers_[attribute] =
-      AttributeBuffer(buffer_off, buffer_val, buffer_off_size, buffer_val_size);
+  attr_buffers_[attribute].push_back(AttributeBuffer(
+      buffer_off,
+      buffer_val,
+      buffer_off_size,
+      buffer_val_size,
+      "",
+      array_schema_->cell_val_num(attribute),
+      array_schema_->cell_size(attribute),
+      array_schema_->type(attribute)));
+
+  return Status::Ok();
+}
+
+Status Reader::set_extra_buffer(
+    const std::string& attribute,
+    const std::string& suffix,
+    void* buffer,
+    uint64_t* buffer_size) {
+  // Check buffer
+  if (buffer == nullptr || buffer_size == nullptr)
+    return LOG_STATUS(Status::WriterError(
+        "Cannot set extra buffer; Buffer or buffer size is null"));
+
+  // Array schema must exist
+  if (array_schema_ == nullptr)
+    return LOG_STATUS(
+        Status::WriterError("Cannot set extra buffer; Array schema not set"));
+
+  // Check that attribute exists
+  if (attribute != constants::coords &&
+      array_schema_->attribute(attribute) == nullptr)
+    return LOG_STATUS(
+        Status::WriterError("Cannot set extra buffer; Invalid attribute"));
+
+  // Error if setting a new attribute after initialization
+  bool attr_exists = attr_buffers_.find(attribute) != attr_buffers_.end();
+  if (!attr_exists)
+    return LOG_STATUS(Status::WriterError(
+        std::string("Cannot set extra buffer for new attribute '") + attribute +
+        "'."));
+
+  // Figure out cell_val_num, cell_size and type based on suffix
+  // For now we fix to made up values for "__TEST"
+  Datatype type;
+  unsigned cell_val_num;
+  uint64_t cell_size;
+
+  if (suffix == "__TEST") {
+    type = Datatype::UINT8;
+    cell_val_num = array_schema_->cell_val_num(attribute);
+    cell_size = cell_val_num * datatype_size(type);
+  } else {
+    return LOG_STATUS(Status::WriterError(
+        std::string("Extra Buffer name) '" + suffix + "' not recognized.")));
+  }
+
+  attr_buffers_[attribute].push_back(AttributeBuffer(
+      buffer,
+      nullptr,
+      buffer_size,
+      nullptr,
+      suffix,
+      cell_val_num,
+      cell_size,
+      type));
 
   return Status::Ok();
 }
@@ -1185,11 +1264,12 @@ Status Reader::compute_overlapping_tiles(OverlappingTileVec* tiles) const {
     auto mbrs = (const std::vector<void*>*)nullptr;
     RETURN_NOT_OK(fragment_metadata_[i]->mbrs(*encryption_key, &mbrs));
     auto mbr_num = (uint64_t)mbrs->size();
+
     for (uint64_t j = 0; j < mbr_num; ++j) {
       if (utils::geometry::overlap(
               &subarray[0], (const T*)((*mbrs)[j]), dim_num, &full_overlap)) {
-        auto tile = std::unique_ptr<OverlappingTile>(
-            new OverlappingTile(i, j, attributes_, full_overlap));
+        auto tile = std::unique_ptr<OverlappingTile>(new OverlappingTile(
+            array_schema_, i, j, attributes_, full_overlap));
         tiles->push_back(std::move(tile));
       }
     }
@@ -1314,21 +1394,30 @@ Status Reader::copy_cells(
     return Status::Ok();
   }
 
-  if (array_schema_->var_size(attribute))
-    return copy_var_cells(attribute, cell_ranges);
-  return copy_fixed_cells(attribute, cell_ranges);
+  auto buffers = attr_buffers_.find(attribute);
+  for (auto& it_buffer : buffers->second) {
+    if (it_buffer.var_size()) {
+      RETURN_NOT_OK(copy_var_cells(
+          attribute + it_buffer.suffix_, it_buffer, cell_ranges));
+    } else {
+      RETURN_NOT_OK(copy_fixed_cells(
+          attribute + it_buffer.suffix_, it_buffer, cell_ranges));
+    }
+  }
+  return Status::Ok();
 }
 
 Status Reader::copy_fixed_cells(
-    const std::string& attribute, const OverlappingCellRangeList& cell_ranges) {
+    const std::string& attribute,
+    const AttributeBuffer& attr_buffer,
+    const OverlappingCellRangeList& cell_ranges) {
   STATS_FUNC_IN(reader_copy_fixed_cells);
 
   // For easy reference
-  auto it = attr_buffers_.find(attribute);
-  auto buffer = (unsigned char*)it->second.buffer_;
-  auto buffer_size = it->second.buffer_size_;
-  auto cell_size = array_schema_->cell_size(attribute);
-  auto type = array_schema_->type(attribute);
+  auto buffer = (unsigned char*)attr_buffer.buffer_;
+  auto buffer_size = attr_buffer.buffer_size_;
+  auto cell_size = attr_buffer.cell_size();
+  auto type = attr_buffer.type();
   auto fill_size = datatype_size(type);
   auto fill_value = constants::fill_value(type);
   assert(fill_value != nullptr);
@@ -1379,7 +1468,7 @@ Status Reader::copy_fixed_cells(
     RETURN_NOT_OK(st);
 
   // Update buffer offsets
-  *(attr_buffers_[attribute].buffer_size_) = buffer_offset;
+  *(attr_buffer.buffer_size_) = buffer_offset;
   STATS_COUNTER_ADD(reader_num_fixed_cell_bytes_copied, buffer_offset);
 
   return Status::Ok();
@@ -1388,17 +1477,18 @@ Status Reader::copy_fixed_cells(
 }
 
 Status Reader::copy_var_cells(
-    const std::string& attribute, const OverlappingCellRangeList& cell_ranges) {
+    const std::string& attribute,
+    const AttributeBuffer& attr_buffer,
+    const OverlappingCellRangeList& cell_ranges) {
   STATS_FUNC_IN(reader_copy_var_cells);
 
   // For easy reference
-  auto it = attr_buffers_.find(attribute);
-  auto buffer = (unsigned char*)it->second.buffer_;
-  auto buffer_var = (unsigned char*)it->second.buffer_var_;
-  auto buffer_size = it->second.buffer_size_;
-  auto buffer_var_size = it->second.buffer_var_size_;
+  auto buffer = (unsigned char*)attr_buffer.buffer_;
+  auto buffer_var = (unsigned char*)attr_buffer.buffer_var_;
+  auto buffer_size = attr_buffer.buffer_size_;
+  auto buffer_var_size = attr_buffer.buffer_var_size_;
   uint64_t offset_size = constants::cell_var_offset_size;
-  auto type = array_schema_->type(attribute);
+  auto type = attr_buffer.type();
   auto fill_size = datatype_size(type);
   auto fill_value = constants::fill_value(type);
   assert(fill_value != nullptr);
@@ -1477,8 +1567,8 @@ Status Reader::copy_var_cells(
     RETURN_NOT_OK(st);
 
   // Update buffer offsets
-  *(attr_buffers_[attribute].buffer_size_) = total_offset_size;
-  *(attr_buffers_[attribute].buffer_var_size_) = total_var_size;
+  *(attr_buffer.buffer_size_) = total_offset_size;
+  *(attr_buffer.buffer_var_size_) = total_var_size;
   STATS_COUNTER_ADD(
       reader_num_var_cell_bytes_copied, total_offset_size + total_var_size);
 
@@ -1706,9 +1796,9 @@ Status Reader::fill_coords() {
   // For easy reference
   auto it = attr_buffers_.find(constants::coords);
   assert(it != attr_buffers_.end());
-  auto coords_buff = it->second.buffer_;
+  auto coords_buff = it->second[0].buffer_;
   auto coords_buff_offset = (uint64_t)0;
-  auto coords_buff_size = *(it->second.buffer_size_);
+  auto coords_buff_size = *(it->second[0].buffer_size_);
   auto domain = array_schema_->domain();
   auto cell_order = array_schema_->cell_order();
   auto subarray_len = 2 * array_schema_->dim_num();
@@ -1741,7 +1831,7 @@ Status Reader::fill_coords() {
   }
 
   // Update the coords buffer size
-  *(it->second.buffer_size_) = coords_buff_offset;
+  *(it->second[0].buffer_size_) = coords_buff_offset;
 
   return Status::Ok();
 
@@ -1818,7 +1908,15 @@ Status Reader::filter_all_tiles(
       all_attributes.begin(),
       all_attributes.end(),
       [this, &tiles](const std::string& attr) {
-        RETURN_CANCEL_OR_ERROR(filter_tiles(attr, tiles));
+        if (attr != constants::coords) {
+          // read tiles for all buffers of an attribute
+          auto buffers = attr_buffers_.find(attr);
+          for (auto& it_buffer : buffers->second)
+            RETURN_CANCEL_OR_ERROR(
+                filter_eb_tiles(attr + it_buffer.suffix_, &it_buffer, tiles));
+        } else {
+          RETURN_CANCEL_OR_ERROR(filter_tiles(attr, tiles));
+        }
         return Status::Ok();
       });
 
@@ -1910,6 +2008,64 @@ Status Reader::filter_tile(
   STATS_COUNTER_ADD(reader_num_bytes_after_filtering, tile->size());
 
   return Status::Ok();
+}
+
+Status Reader::filter_eb_tiles(
+    const std::string& attribute,
+    const AttributeBuffer* attr_buffer,
+    OverlappingTileVec* tiles) const {
+  STATS_FUNC_IN(reader_filter_tiles);
+
+  auto var_size = attr_buffer->var_size();
+  auto num_tiles = static_cast<uint64_t>(tiles->size());
+  auto encryption_key = array_->encryption_key();
+
+  auto statuses = parallel_for(0, num_tiles, [&, this](uint64_t i) {
+    auto& tile = (*tiles)[i];
+    auto it = tile->attr_tiles_.find(attribute);
+    // Skip non-existent attributes (e.g. coords in the dense case).
+    if (it == tile->attr_tiles_.end())
+      return Status::Ok();
+
+    // Get information about the tile in its fragment
+    auto& fragment = fragment_metadata_[tile->fragment_idx_];
+    auto tile_attr_uri = fragment->attr_uri(attribute);
+    uint64_t tile_attr_offset;
+    RETURN_NOT_OK(fragment->file_offset(
+        *encryption_key, attribute, tile->tile_idx_, &tile_attr_offset));
+
+    auto& tile_pair = it->second;
+    auto& t = tile_pair.first;
+    auto& t_var = tile_pair.second;
+
+    if (!t.filtered()) {
+      // Decompress, etc.
+      RETURN_NOT_OK(filter_tile(attribute, &t, var_size));
+      RETURN_NOT_OK(storage_manager_->write_to_cache(
+          tile_attr_uri, tile_attr_offset, t.buffer()));
+    }
+
+    if (var_size && !t_var.filtered()) {
+      auto tile_attr_var_uri = fragment->attr_var_uri(attribute);
+      uint64_t tile_attr_var_offset;
+      RETURN_NOT_OK(fragment->file_var_offset(
+          *encryption_key, attribute, tile->tile_idx_, &tile_attr_var_offset));
+
+      // Decompress, etc.
+      RETURN_NOT_OK(filter_tile(attribute, &t_var, false));
+      RETURN_NOT_OK(storage_manager_->write_to_cache(
+          tile_attr_var_uri, tile_attr_var_offset, t_var.buffer()));
+    }
+
+    return Status::Ok();
+  });
+
+  for (const auto& st : statuses)
+    RETURN_CANCEL_OR_ERROR(st);
+
+  return Status::Ok();
+
+  STATS_FUNC_OUT(reader_filter_tiles);
 }
 
 template <class T>
@@ -2013,16 +2169,18 @@ Status Reader::init_read_state() {
 
 Status Reader::init_read_state_2() {
   // Set result size budget
-  for (const auto& a : attr_buffers_) {
-    auto attr_name = a.first;
-    auto buffer_size = a.second.buffer_size_;
-    auto buffer_var_size = a.second.buffer_var_size_;
-    if (!array_schema_->var_size(a.first)) {
-      RETURN_NOT_OK(read_state_2_.partitioner_.set_result_budget(
-          attr_name.c_str(), *buffer_size));
-    } else {
-      RETURN_NOT_OK(read_state_2_.partitioner_.set_result_budget(
-          attr_name.c_str(), *buffer_size, *buffer_var_size));
+  for (const auto& it_buffers : attr_buffers_) {
+    for (const auto& a : it_buffers.second) {
+      auto attr_name = it_buffers.first + a.suffix_;
+      auto buffer_size = a.buffer_size_;
+      auto buffer_var_size = a.buffer_var_size_;
+      if (!a.var_size()) {
+        RETURN_NOT_OK(read_state_2_.partitioner_.set_result_budget(
+            attr_name.c_str(), *buffer_size));
+      } else {
+        RETURN_NOT_OK(read_state_2_.partitioner_.set_result_budget(
+            attr_name.c_str(), *buffer_size, *buffer_var_size));
+      }
     }
   }
 
@@ -2194,8 +2352,17 @@ Status Reader::read_all_tiles(
 
   // Read the tiles asynchronously.
   std::vector<std::future<Status>> tasks;
-  for (const auto& attr : all_attributes)
-    RETURN_CANCEL_OR_ERROR(read_tiles(attr, tiles, &tasks));
+  for (const auto& attr : all_attributes) {
+    if (attr != constants::coords) {
+      // read tiles for all buffers of an attribute
+      auto buffers = attr_buffers_.find(attr);
+      for (auto& it_buffer : buffers->second)
+        RETURN_CANCEL_OR_ERROR(
+            read_eb_tiles(attr + it_buffer.suffix_, &it_buffer, tiles, &tasks));
+    } else {
+      RETURN_CANCEL_OR_ERROR(read_tiles(attr, tiles, &tasks));
+    }
+  }
 
   // Wait for the reads to finish and check statuses.
   auto statuses =
@@ -2347,11 +2514,134 @@ Status Reader::read_tiles(
   return Status::Ok();
 }
 
+Status Reader::read_eb_tiles(
+    const std::string& attribute,
+    const AttributeBuffer* attr_buffer,
+    OverlappingTileVec* tiles,
+    std::vector<std::future<Status>>* tasks) const {
+  // For each tile, read from its fragment.
+  bool var_size = attr_buffer->var_size();
+  auto num_tiles = static_cast<uint64_t>(tiles->size());
+  auto encryption_key = array_->encryption_key();
+
+  // Populate the list of regions per file to be read.
+  std::map<URI, std::vector<std::tuple<uint64_t, void*, uint64_t>>> all_regions;
+  for (uint64_t i = 0; i < num_tiles; i++) {
+    auto& tile = (*tiles)[i];
+    auto it = tile->attr_tiles_.find(attribute);
+    if (it == tile->attr_tiles_.end()) {
+      return LOG_STATUS(
+          Status::ReaderError("Invalid tile map for attribute " + attribute));
+    }
+
+    // Initialize the tile(s)
+    auto& tile_pair = it->second;
+    auto& t = tile_pair.first;
+    auto& t_var = tile_pair.second;
+    auto& fragment = fragment_metadata_[tile->fragment_idx_];
+    auto format_version = fragment->format_version();
+    if (!var_size) {
+      RETURN_NOT_OK(init_tile(format_version, attribute, &t));
+    } else {
+      RETURN_NOT_OK(init_tile(format_version, attribute, &t, &t_var));
+    }
+
+    // Get information about the tile in its fragment
+    auto tile_attr_uri = fragment->attr_uri(attribute);
+    uint64_t tile_attr_offset;
+    RETURN_NOT_OK(fragment->file_offset(
+        *encryption_key, attribute, tile->tile_idx_, &tile_attr_offset));
+    auto tile_size = fragment->tile_size(attribute, tile->tile_idx_);
+    uint64_t tile_persisted_size;
+    RETURN_NOT_OK(fragment->persisted_tile_size(
+        *encryption_key, attribute, tile->tile_idx_, &tile_persisted_size));
+
+    // Try the cache first.
+    bool cache_hit;
+    RETURN_NOT_OK(storage_manager_->read_from_cache(
+        tile_attr_uri, tile_attr_offset, t.buffer(), tile_size, &cache_hit));
+    if (cache_hit) {
+      t.set_filtered(true);
+      STATS_COUNTER_ADD(reader_attr_tile_cache_hits, 1);
+    } else {
+      // Add the region of the fragment to be read.
+      RETURN_NOT_OK(t.buffer()->realloc(tile_persisted_size));
+      t.buffer()->set_size(tile_persisted_size);
+      t.buffer()->reset_offset();
+      all_regions[tile_attr_uri].emplace_back(
+          tile_attr_offset, t.buffer()->data(), tile_persisted_size);
+
+      STATS_COUNTER_ADD(reader_num_tile_bytes_read, tile_persisted_size);
+    }
+
+    if (var_size) {
+      auto tile_attr_var_uri = fragment->attr_var_uri(attribute);
+      uint64_t tile_attr_var_offset;
+      RETURN_NOT_OK(fragment->file_var_offset(
+          *encryption_key, attribute, tile->tile_idx_, &tile_attr_var_offset));
+      uint64_t tile_var_size;
+      RETURN_NOT_OK(fragment->tile_var_size(
+          *encryption_key, attribute, tile->tile_idx_, &tile_var_size));
+      uint64_t tile_var_persisted_size;
+      RETURN_NOT_OK(fragment->persisted_tile_var_size(
+          *encryption_key,
+          attribute,
+          tile->tile_idx_,
+          &tile_var_persisted_size));
+
+      RETURN_NOT_OK(storage_manager_->read_from_cache(
+          tile_attr_var_uri,
+          tile_attr_var_offset,
+          t_var.buffer(),
+          tile_var_size,
+          &cache_hit));
+
+      if (cache_hit) {
+        t_var.set_filtered(true);
+        STATS_COUNTER_ADD(reader_attr_tile_cache_hits, 1);
+      } else {
+        // Add the region of the fragment to be read.
+        RETURN_NOT_OK(t_var.buffer()->realloc(tile_var_persisted_size));
+        t_var.buffer()->set_size(tile_var_persisted_size);
+        t_var.buffer()->reset_offset();
+        all_regions[tile_attr_var_uri].emplace_back(
+            tile_attr_var_offset,
+            t_var.buffer()->data(),
+            tile_var_persisted_size);
+
+        STATS_COUNTER_ADD(reader_num_tile_bytes_read, tile_var_persisted_size);
+        STATS_COUNTER_ADD(reader_num_var_cell_bytes_read, tile_persisted_size);
+        STATS_COUNTER_ADD(
+            reader_num_var_cell_bytes_read, tile_var_persisted_size);
+      }
+    } else {
+      STATS_COUNTER_ADD_IF(
+          !cache_hit, reader_num_fixed_cell_bytes_read, tile_persisted_size);
+    }
+  }
+
+  // Enqueue all regions to be read.
+  for (const auto& item : all_regions) {
+    RETURN_NOT_OK(storage_manager_->vfs()->read_all(
+        item.first,
+        item.second,
+        storage_manager_->reader_thread_pool(),
+        tasks));
+  }
+
+  STATS_COUNTER_ADD(
+      reader_num_attr_tiles_touched, ((var_size ? 2 : 1) * num_tiles));
+
+  return Status::Ok();
+}
+
 void Reader::reset_buffer_sizes() {
-  for (auto& it : attr_buffers_) {
-    *(it.second.buffer_size_) = it.second.original_buffer_size_;
-    if (it.second.buffer_var_size_ != nullptr)
-      *(it.second.buffer_var_size_) = it.second.original_buffer_var_size_;
+  for (auto& it_buffers : attr_buffers_) {
+    for (auto& it_buffer : it_buffers.second) {
+      *(it_buffer.buffer_size_) = it_buffer.original_buffer_size_;
+      if (it_buffer.buffer_var_size_ != nullptr)
+        *(it_buffer.buffer_var_size_) = it_buffer.original_buffer_var_size_;
+    }
   }
 }
 
@@ -2532,11 +2822,13 @@ Status Reader::sparse_read_2() {
 }
 
 void Reader::zero_out_buffer_sizes() {
-  for (auto& attr_buffer : attr_buffers_) {
-    if (attr_buffer.second.buffer_size_ != nullptr)
-      *(attr_buffer.second.buffer_size_) = 0;
-    if (attr_buffer.second.buffer_var_size_ != nullptr)
-      *(attr_buffer.second.buffer_var_size_) = 0;
+  for (auto& it_buffers : attr_buffers_) {
+    for (auto& it_buffer : it_buffers.second) {
+      if (it_buffer.buffer_size_ != nullptr)
+        *(it_buffer.buffer_size_) = 0;
+      if (it_buffer.buffer_var_size_ != nullptr)
+        *(it_buffer.buffer_var_size_) = 0;
+    }
   }
 }
 

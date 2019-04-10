@@ -159,6 +159,7 @@ class Reader {
 
     /** Constructor. */
     OverlappingTile(
+        const ArraySchema* array_schema,
         unsigned fragment_idx,
         uint64_t tile_idx,
         const std::vector<std::string>& attributes,
@@ -168,8 +169,31 @@ class Reader {
         , full_overlap_(full_overlap) {
       attr_tiles_[constants::coords] = std::make_pair(Tile(), Tile());
       for (const auto& attr : attributes) {
-        if (attr != constants::coords)
+        if (attr != constants::coords) {
           attr_tiles_[attr] = std::make_pair(Tile(), Tile());
+
+          auto extras =
+              array_schema->attribute(attr)->get_enabled_extra_buffers();
+          for (auto it_eb : extras) {
+            attr_tiles_[attr + it_eb] = std::make_pair(Tile(), Tile());
+          }
+        }
+      }
+    }
+
+    OverlappingTile(
+        unsigned fragment_idx,
+        uint64_t tile_idx,
+        const std::vector<std::string>& attributes,
+        bool full_overlap = false)
+        : fragment_idx_(fragment_idx)
+        , tile_idx_(tile_idx)
+        , full_overlap_(full_overlap) {
+      attr_tiles_[constants::coords] = std::make_pair(Tile(), Tile());
+      for (const auto& attr : attributes) {
+        if (attr != constants::coords) {
+          attr_tiles_[attr] = std::make_pair(Tile(), Tile());
+        }
       }
     }
   };
@@ -460,6 +484,23 @@ class Reader {
       void* buffer_val,
       uint64_t* buffer_val_size);
 
+  /**
+   * Sets an extra buffer for a fixed-sized buffer.
+   *
+   * @param attribute The attribute to set the buffer for.
+   * @param suffix The suffix for the extra buffer name
+   * @param buffer The buffer that will hold the data to be read.
+   * @param buffer_size This initially contains the allocated
+   *     size of `buffer`, but after the termination of the function
+   *     it will contain the size of the useful (read) data in `buffer`.
+   * @return Status
+   */
+  Status set_extra_buffer(
+      const std::string& attribute,
+      const std::string& suffix,
+      void* buffer,
+      uint64_t* buffer_size);
+
   /** Sets the fragment metadata. */
   void set_fragment_metadata(
       const std::vector<FragmentMetadata*>& fragment_metadata);
@@ -528,7 +569,7 @@ class Reader {
   std::vector<std::string> attributes_;
 
   /** Maps attribute names to their buffers. */
-  std::unordered_map<std::string, AttributeBuffer> attr_buffers_;
+  std::unordered_map<std::string, std::vector<AttributeBuffer>> attr_buffers_;
 
   /** The fragment metadata. */
   std::vector<FragmentMetadata*> fragment_metadata_;
@@ -799,27 +840,31 @@ class Reader {
       const OverlappingCellRangeList& cell_ranges);
 
   /**
-   * Copies the cells for the input **fixed-sized** attribute and cell
-   * ranges, into the corresponding result buffers.
+   * Copies the cells for the input **fixed-sized** attribute, attribute buffer
+   * and cell ranges, into the corresponding result buffers.
    *
    * @param attribute The targeted attribute.
+   * @param attr_buffer The AttributeBuffer to copy the data into.
    * @param cell_ranges The cell ranges to copy cells for.
    * @return Status
    */
   Status copy_fixed_cells(
       const std::string& attribute,
+      const AttributeBuffer& attr_buffer,
       const OverlappingCellRangeList& cell_ranges);
 
   /**
-   * Copies the cells for the input **var-sized** attribute and cell
-   * ranges, into the corresponding result buffers.
+   * Copies the cells for the input **var-sized** attribute, attribute buffer
+   * and cell ranges, into the corresponding result buffers.
    *
    * @param attribute The targeted attribute.
+   * @param attr_buffer The AttributeBuffer to copy the data into.
    * @param cell_ranges The cell ranges to copy cells for.
    * @return Status
    */
   Status copy_var_cells(
       const std::string& attribute,
+      const AttributeBuffer& attr_buffer,
       const OverlappingCellRangeList& cell_ranges);
 
   /**
@@ -951,6 +996,20 @@ class Reader {
    */
   Status filter_tile(
       const std::string& attribute, Tile* tile, bool offsets) const;
+
+  /**
+   * Filters the tiles on a particular attribute and buffer from all input
+   * fragments based on the tile info in `tiles`.
+   *
+   * @param attribute Attribute whose tiles will be filtered
+   * @param attr_buffer Attribute buffer where the tiles will be filtered into
+   * @param tiles Vector containing the tiles to be filtered
+   * @return Status
+   */
+  Status filter_eb_tiles(
+      const std::string& attribute,
+      const AttributeBuffer* attr_buffer,
+      OverlappingTileVec* tiles) const;
 
   /**
    * Gets all the coordinates of the input tile into `coords`.
@@ -1095,6 +1154,22 @@ class Reader {
    */
   Status read_tiles(
       const std::string& attribute,
+      OverlappingTileVec* tiles,
+      std::vector<std::future<Status>>* tasks) const;
+
+  /**
+   * Retrieves the tiles on a particular attribute and attribute buffer from all
+   * input fragments based on the tile info in `tiles`.
+   *
+   * @param attr The attribute name.
+   * @param attr_buffer The attribute buffer the data will eventually be copied
+   * into
+   * @param tiles The retrieved tiles will be stored in `tiles`.
+   * @return Status
+   */
+  Status read_eb_tiles(
+      const std::string& attribute,
+      const AttributeBuffer* attr_buffer,
       OverlappingTileVec* tiles,
       std::vector<std::future<Status>>* tasks) const;
 

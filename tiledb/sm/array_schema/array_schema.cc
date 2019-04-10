@@ -513,7 +513,7 @@ Status ArraySchema::deserialize(ConstBuffer* buff, bool is_kv) {
   RETURN_NOT_OK(buff->read(&attribute_num, sizeof(uint32_t)));
   for (uint32_t i = 0; i < attribute_num; ++i) {
     auto attr = new Attribute();
-    RETURN_NOT_OK_ELSE(attr->deserialize(buff), delete attr);
+    RETURN_NOT_OK_ELSE(attr->deserialize(buff, version_), delete attr);
     attributes_.emplace_back(attr);
   }
 

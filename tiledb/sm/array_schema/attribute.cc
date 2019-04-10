@@ -100,7 +100,8 @@ int Attribute::compression_level() const {
 // type (uint8_t)
 // cell_val_num (uint32_t)
 // filter_pipeline (see FilterPipeline::serialize)
-Status Attribute::deserialize(ConstBuffer* buff) {
+// enabled_extra_buffer (std:vector <string>) version >= 3
+Status Attribute::deserialize(ConstBuffer* buff, uint32_t version) {
   // Load attribute name
   uint32_t attribute_name_size;
   RETURN_NOT_OK(buff->read(&attribute_name_size, sizeof(uint32_t)));
@@ -118,16 +119,18 @@ Status Attribute::deserialize(ConstBuffer* buff) {
   // Load filter pipeline
   RETURN_NOT_OK(filters_.deserialize(buff));
 
-  // Load extra buffer names
-  uint32_t number_of_ebs;
-  RETURN_NOT_OK(buff->read(&number_of_ebs, sizeof(uint32_t)));
-  for (uint32_t i = 0; i < number_of_ebs; i++) {
-    uint32_t eb_name_size;
-    std::string eb_name;
-    RETURN_NOT_OK(buff->read(&eb_name_size, sizeof(uint32_t)));
-    eb_name.resize(eb_name_size);
-    RETURN_NOT_OK(buff->read(&eb_name[0], eb_name_size));
-    enabled_extra_buffer_.push_back(eb_name);
+  if (version >= 3) {
+    // Load extra buffer names
+    uint32_t number_of_ebs;
+    RETURN_NOT_OK(buff->read(&number_of_ebs, sizeof(uint32_t)));
+    for (uint32_t i = 0; i < number_of_ebs; i++) {
+      uint32_t eb_name_size;
+      std::string eb_name;
+      RETURN_NOT_OK(buff->read(&eb_name_size, sizeof(uint32_t)));
+      eb_name.resize(eb_name_size);
+      RETURN_NOT_OK(buff->read(&eb_name[0], eb_name_size));
+      enabled_extra_buffer_.push_back(eb_name);
+    }
   }
 
   return Status::Ok();
@@ -166,6 +169,7 @@ bool Attribute::is_anonymous() const {
 // type (uint8_t)
 // cell_val_num (uint32_t)
 // filter_pipeline (see FilterPipeline::serialize)
+// enabled_extra_buffer (std:vector <string>)
 Status Attribute::serialize(Buffer* buff) {
   // Write attribute name
   auto attribute_name_size = (uint32_t)name_.size();
@@ -185,7 +189,7 @@ Status Attribute::serialize(Buffer* buff) {
   // Write extra buffer names
   auto number_of_ebs = (uint32_t)enabled_extra_buffer_.size();
   RETURN_NOT_OK(buff->write(&number_of_ebs, sizeof(uint32_t)));
-  for (auto it_eb_name: enabled_extra_buffer_) {
+  for (auto it_eb_name : enabled_extra_buffer_) {
     auto eb_name_size = it_eb_name.size();
     RETURN_NOT_OK(buff->write(&eb_name_size, sizeof(uint32_t)));
     RETURN_NOT_OK(buff->write(it_eb_name.c_str(), eb_name_size));

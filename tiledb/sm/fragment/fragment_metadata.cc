@@ -85,8 +85,9 @@ FragmentMetadata::FragmentMetadata(
     for (auto it_extra_buffer_name :
          attributes[i]->get_enabled_extra_buffers()) {
       // initializing extra buffer uri
-      attribute_uri_map_[attr_name + it_extra_buffer_name] = fragment_uri_.join_path(
-          attr_name + it_extra_buffer_name + constants::file_suffix);
+      attribute_uri_map_[attr_name + it_extra_buffer_name] =
+          fragment_uri_.join_path(
+              attr_name + it_extra_buffer_name + constants::file_suffix);
     }
   }
   attribute_idx_map_[constants::coords] = array_schema_->attribute_num();

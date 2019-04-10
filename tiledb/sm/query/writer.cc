@@ -331,8 +331,7 @@ Status Writer::set_extra_buffer(
     cell_size = cell_val_num * datatype_size(type);
   } else {
     return LOG_STATUS(Status::WriterError(
-        std::string("Extra Buffer name) '" + suffix +
-                    "' not recognized.")));
+        std::string("Extra Buffer name) '" + suffix + "' not recognized.")));
   }
 
   attr_buffers_[attribute].push_back(AttributeBuffer(

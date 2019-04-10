@@ -307,7 +307,8 @@ Status Query::set_extra_buffer(
     uint64_t* buffer_size) {
   if (type_ == QueryType::WRITE)
     return writer_.set_extra_buffer(attribute, suffix, buffer, buffer_size);
-  return LOG_STATUS(Status::QueryError("Reader does not support set_extra_buffer()"));
+  return LOG_STATUS(
+      Status::QueryError("Reader does not support set_extra_buffer()"));
 }
 
 Status Query::set_layout(Layout layout) {

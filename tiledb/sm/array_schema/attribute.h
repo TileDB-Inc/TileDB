@@ -98,9 +98,10 @@ class Attribute {
    * Populates the object members from the data in the input binary buffer.
    *
    * @param buff The buffer to deserialize from.
+   * @param version Version of the data being deserialized
    * @return Status
    */
-  Status deserialize(ConstBuffer* buff);
+  Status deserialize(ConstBuffer* buff, const uint32_t version);
 
   /** Dumps the attribute contents in ASCII form in the selected output. */
   void dump(FILE* out) const;
