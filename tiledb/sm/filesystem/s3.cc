@@ -495,31 +495,43 @@ Status S3::read(
         std::string("URI is not an S3 URI: " + uri.to_string())));
   }
 
-  Aws::Http::URI aws_uri = uri.c_str();
-  Aws::S3::Model::GetObjectRequest get_object_request;
-  get_object_request.WithBucket(aws_uri.GetAuthority())
-      .WithKey(aws_uri.GetPath());
-  get_object_request.SetRange(("bytes=" + std::to_string(offset) + "-" +
-                               std::to_string(offset + length - 1))
-                                  .c_str());
-  get_object_request.SetResponseStreamFactory([buffer, length]() {
-    auto streamBuf = new boost::interprocess::bufferbuf((char*)buffer, length);
-    return Aws::New<Aws::IOStream>(
-        constants::s3_allocation_tag.c_str(), streamBuf);
-  });
+  const unsigned num_retries = 3;
+  const unsigned retry_wait_ms = 5000;
+  Status st = Status::Ok();
 
-  auto get_object_outcome = client_->GetObject(get_object_request);
-  if (!get_object_outcome.IsSuccess()) {
-    return LOG_STATUS(Status::S3Error(
-        std::string("Failed to read S3 object ") + uri.c_str() +
-        outcome_error_message(get_object_outcome)));
-  }
-  if ((uint64_t)get_object_outcome.GetResult().GetContentLength() != length) {
-    return LOG_STATUS(Status::S3Error(
-        std::string("Read operation returned different size of bytes.")));
+  for (unsigned i = 0; i < num_retries; i++) {
+    Aws::Http::URI aws_uri = uri.c_str();
+    Aws::S3::Model::GetObjectRequest get_object_request;
+    get_object_request.WithBucket(aws_uri.GetAuthority())
+        .WithKey(aws_uri.GetPath());
+    get_object_request.SetRange(("bytes=" + std::to_string(offset) + "-" +
+                                 std::to_string(offset + length - 1))
+                                    .c_str());
+    get_object_request.SetResponseStreamFactory([buffer, length]() {
+      auto streamBuf =
+          new boost::interprocess::bufferbuf((char*)buffer, length);
+      return Aws::New<Aws::IOStream>(
+          constants::s3_allocation_tag.c_str(), streamBuf);
+    });
+
+    auto get_object_outcome = client_->GetObject(get_object_request);
+    if (!get_object_outcome.IsSuccess()) {
+      st = Status::S3Error(
+          std::string("Failed to read S3 object ") + uri.c_str() +
+          outcome_error_message(get_object_outcome));
+    } else if (
+        (uint64_t)get_object_outcome.GetResult().GetContentLength() != length) {
+      st = Status::S3Error(
+          std::string("Read operation returned different size of bytes."));
+    } else {
+      st = Status::Ok();
+      break;
+    }
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(retry_wait_ms));
   }
 
-  return Status::Ok();
+  return st;
 }
 
 Status S3::remove_object(const URI& uri) const {
