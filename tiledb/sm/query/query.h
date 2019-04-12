@@ -175,7 +175,7 @@ class Query {
    *
    * @return
    */
-  Status capnp(rest::capnp::Query::Builder* queryBuilder) const;
+  Status capnp(rest::capnp::Query::Builder* queryBuilder);
 
   /**
    * Check the validity of the provided buffer offsets for a variable attribute.
@@ -229,9 +229,10 @@ class Query {
   /**
    *
    * @param query
+   * @param buffer_start A pointer ot the start of buffer for all attributes
    * @return
    */
-  Status from_capnp(rest::capnp::Query::Reader* query);
+  Status from_capnp(rest::capnp::Query::Reader* query, void* buffer_start);
 
   /**
    * Returns `true` if the query has results. Applicable only to read
@@ -429,7 +430,7 @@ class Query {
   /** Query reader. */
   Reader reader_;
 
-  /** Wuery writer. */
+  /** Query writer. */
   Writer writer_;
 
   /* ********************************* */

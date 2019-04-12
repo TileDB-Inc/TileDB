@@ -2756,7 +2756,8 @@ int DenseArrayFx::submit_query_wrapper(
     REQUIRE(
         tiledb_query_deserialize(
             ctx_, new_query, TILEDB_CAPNP, buff, buff_len) == TILEDB_OK);
-    std::free(buff);
+    // TODO: Certain Tests do not pass if the following is enabled
+    // std::free(buff);
 
     // Submit the new query.
     rc = tiledb_query_submit(ctx_, new_query);
@@ -2773,7 +2774,8 @@ int DenseArrayFx::submit_query_wrapper(
     REQUIRE(tiledb_array_close(ctx_, new_array) == TILEDB_OK);
     tiledb_query_free(&new_query);
     tiledb_array_free(&new_array);
-    std::free(buff);
+    // TODO: Certain Tests do not pass if the following is enabled
+    // std::free(buff);
 
     return rc;
   } else {

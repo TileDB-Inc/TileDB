@@ -48,6 +48,8 @@
 #include "tiledb/sm/c_api/tiledb.h"
 #include "tiledb/sm/misc/utils.h"
 
+#include <chrono>  // for high_resolution_clock
+
 struct ArraySchemaCapnp {
 // Filesystem related
 #ifdef _WIN32
@@ -541,12 +543,139 @@ TEST_CASE_METHOD(
       data_serialized,
       data_serialized_size);
   REQUIRE(rc == TILEDB_OK);
+
+  std::free(data_serialized);
+
   // Clean up
   tiledb_array_free(&array);
   tiledb_array_schema_free(&array_schema);
   tiledb_query_free(&query);
   tiledb_query_free(&query_returned);
   remove_temp_dir(temp_dir);
+}
+
+TEST_CASE_METHOD(
+    ArraySchemaCapnp,
+    "C API: Test query capnp serialization performance",
+    "[capi], [capnp]") {
+  // The array name
+  std::string array_name = "/tmp/large_array";
+
+  // Load the array from disc
+  tiledb_array_t* array;
+  int rc = tiledb_array_alloc(ctx_, array_name.c_str(), &array);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_array_open(ctx_, array, TILEDB_READ);
+  REQUIRE(rc == TILEDB_OK);
+
+  // Benchmark
+  uint64_t subarray[] = {
+      500, 997, 1532937600002008000, 1532995200013172000, 1070, 215092501};
+  //    2.1M rows, 48MB, 0.0188789 s
+  //    uint64_t subarray[] = {1002, 2000, 1532937600009134000,
+  //    1532995200013217000, 1114, 215085801};
+  //    3.7M rows, 84.8MB, 0.0150247 s
+  //    uint64_t subarray[] = {1002, 3000, 1532937600007296000,
+  //    1532995200013217000, 1114, 215085801};
+  //    7.42M rows, 170MB, 0.0345649 s
+  //    uint64_t subarray[] = {1002, 4000, 1532937600005446000,
+  //    1532995200013217000, 1114, 215085801};
+  //    10.6M rows, 241MB, 0.0261757 s
+  //    uint64_t subarray[] = {1500, 7500, 1532937600001903000,
+  //    1532995200013217000, 1002, 220035001};
+  //    22.1M rows, 505MB, 0.05095 s
+  //    uint64_t subarray[] = {1, 8998, 1532937600001903000,
+  //    1532995200013244000, 1002, 220038001};
+  //    35.5M rows, 812MB, 0.0790097 s
+
+  // From original code
+  //    uint64_t subarray[] = {500, 997, 1532937600002008000,
+  //    1532995200013172000, 1070, 215092501};
+  //    2.1M rows, 48MB, 0.537279 s
+  //    uint64_t subarray[] = {1002, 2000, 1532937600009134000,
+  //    1532995200013217000, 1114, 215085801};
+  //    3.7M rows, 84.8MB, 0.649579 s
+  //    uint64_t subarray[] = {1002, 3000, 1532937600007296000,
+  //    1532995200013217000, 1114, 215085801};
+  //    7.42M rows, 170MB, 1.12898 s
+  //    uint64_t subarray[] = {1002, 4000, 1532937600005446000,
+  //    1532995200013217000, 1114, 215085801};
+  //    10.6M rows, 241MB, 0.899395 s
+  //    uint64_t subarray[] = {1500, 7500, 1532937600001903000,
+  //    1532995200013217000, 1002, 220035001};
+  //    22.1M rows, 505MB, 2.01576 s
+  //    uint64_t subarray[] = {1, 8998, 1532937600001903000,
+  //    1532995200013244000, 1002, 220038001};
+  //    35.5M rows, 812MB, 1.62337 s
+
+  // Initial tests
+  //    uint64_t subarray[] = {1, 1, 1532957401004652000, 1532980980383492000,
+  //    135901, 114523301};
+
+  // Calculate maximum buffer sizes
+  uint64_t coords_size;
+  uint64_t data_size;
+  rc = tiledb_array_max_buffer_size(
+      ctx_, array, "Trade_Volume", subarray, &data_size);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_array_max_buffer_size(
+      ctx_, array, TILEDB_COORDS, subarray, &coords_size);
+  REQUIRE(rc == TILEDB_OK);
+
+  std::vector<uint32_t> data(data_size / sizeof(uint32_t));
+  std::vector<uint64_t> coords(coords_size / sizeof(uint64_t));
+
+  // Create the query
+  tiledb_query_t* query;
+  rc = tiledb_query_alloc(ctx_, array, TILEDB_READ, &query);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_query_set_subarray(ctx_, query, subarray);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_query_set_layout(ctx_, query, TILEDB_ROW_MAJOR);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_query_set_buffer(
+      ctx_, query, "Trade_Volume", &data[0], &data_size);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_query_set_buffer(
+      ctx_, query, TILEDB_COORDS, &coords[0], &coords_size);
+  REQUIRE(rc == TILEDB_OK);
+
+  // Load array schema from the rest server
+  tiledb_query_t* query_returned;
+  rc = tiledb_query_alloc(ctx_, array, TILEDB_READ, &query_returned);
+  REQUIRE(rc == TILEDB_OK);
+
+  // Record start time
+  auto start = std::chrono::high_resolution_clock::now();
+
+  char* data_serialized;
+  uint64_t data_serialized_size = 0;
+  rc = tiledb_query_serialize(
+      ctx_,
+      query,
+      (tiledb_serialization_type_t)tiledb::sm::SerializationType::CAPNP,
+      &data_serialized,
+      &data_serialized_size);
+  REQUIRE(rc == TILEDB_OK);
+
+  rc = tiledb_query_deserialize(
+      ctx_,
+      query_returned,
+      (tiledb_serialization_type_t)tiledb::sm::SerializationType::CAPNP,
+      data_serialized,
+      data_serialized_size);
+  REQUIRE(rc == TILEDB_OK);
+
+  // Record end time
+  auto finish = std::chrono::high_resolution_clock::now();
+
+  std::chrono::duration<double> elapsed = finish - start;
+  std::cout << "Elapsed time: " << elapsed.count() << " s\n";
+
+  // Clean up
+  tiledb_array_free(&array);
+  tiledb_query_free(&query);
+  tiledb_query_free(&query_returned);
 }
 
 #else
