@@ -61,6 +61,16 @@ steps:
     if [[ "$TILEDB_DEBUG" == "ON" ]]; then
       bootstrap_args="${bootstrap_args} --enable-debug";
     fi
+    if [[ "$TILEDB_CI_ASAN" == "ON" ]]; then
+      # Add address sanitizer flag if necessary
+      env ASAN_OPTIONS=detect_leaks=0
+      bootstrap_args="${bootstrap_args} --enable-sanitizer=address --enable-debug";
+    fi
+    if [[ "$TILEDB_CI_TSAN" == "ON" ]]; then
+      # Add thread sanitizer flag if necessary
+      bootstrap_args="${bootstrap_args} --enable-sanitizer=thread --enable-debug";
+    fi
+
     # displayName: 'Install dependencies'
 
     mkdir -p $BUILD_REPOSITORY_LOCALPATH/build
