@@ -3,6 +3,7 @@
 ## Bug fixes
 
 * S3 SDK build error fix. [#1201](https://github.com/TileDB-Inc/TileDB/pull/1201)
+* Fixed thread safety issue with ZStd compressor. [#1208](https://github.com/TileDB-Inc/TileDB/pull/1208)
 
 # TileDB v1.5.0 Release Notes
 
