@@ -1,3 +1,9 @@
+# TileDB v1.5.1 Release Notes
+
+## Bug fixes
+
+* S3 SDK build error fix. [#1201](https://github.com/TileDB-Inc/TileDB/pull/1201)
+
 # TileDB v1.5.0 Release Notes
 
 The 1.5.0 release focuses on stability, performance, and usability improvements, as well a new consolidation algorithm.
