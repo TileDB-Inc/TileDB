@@ -4,6 +4,8 @@
 ## Improvements
 ## Bug fixes
 
+* Fixed thread safety issue with ZStd compressor. [#1208](https://github.com/TileDB-Inc/TileDB/pull/1208)
+
 ## API additions
 
 ### C API

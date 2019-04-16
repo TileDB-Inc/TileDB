@@ -49,8 +49,16 @@ Status ZStd::compress(
     return LOG_STATUS(Status::CompressionError(
         "Failed compressing with ZStd; invalid buffer format"));
 
+  // Create context
+  std::unique_ptr<ZSTD_CCtx, decltype(&ZSTD_freeCCtx)> ctx(
+      ZSTD_createCCtx(), ZSTD_freeCCtx);
+  if (ctx.get() == nullptr)
+    return LOG_STATUS(Status::CompressionError(
+        std::string("ZStd compression failed; could not allocate context.")));
+
   // Compress
-  uint64_t zstd_ret = ZSTD_compress(
+  uint64_t zstd_ret = ZSTD_compressCCtx(
+      ctx.get(),
       output_buffer->cur_data(),
       output_buffer->free_space(),
       input_buffer->data(),
@@ -82,8 +90,16 @@ Status ZStd::decompress(
     return LOG_STATUS(Status::CompressionError(
         "Failed decompressing with ZStd; invalid buffer format"));
 
+  // Create context
+  std::unique_ptr<ZSTD_DCtx, decltype(&ZSTD_freeDCtx)> ctx(
+      ZSTD_createDCtx(), ZSTD_freeDCtx);
+  if (ctx.get() == nullptr)
+    return LOG_STATUS(Status::CompressionError(
+        std::string("ZStd decompression failed; could not allocate context.")));
+
   // Decompress
-  uint64_t zstd_ret = ZSTD_decompress(
+  uint64_t zstd_ret = ZSTD_decompressDCtx(
+      ctx.get(),
       output_buffer->cur_data(),
       output_buffer->free_space(),
       input_buffer->data(),
