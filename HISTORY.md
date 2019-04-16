@@ -1,5 +1,9 @@
 # TileDB v1.5.1 Release Notes
 
+## Improvements
+
+* Better handling of `{C,CXX}FLAGS` during the build. [#1209](https://github.com/TileDB-Inc/TileDB/pull/1209)
+
 ## Bug fixes
 
 * S3 SDK build error fix. [#1201](https://github.com/TileDB-Inc/TileDB/pull/1201)
