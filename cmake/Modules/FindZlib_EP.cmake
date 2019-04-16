@@ -78,7 +78,7 @@ if (NOT ZLIB_FOUND)
     if (WIN32)
       set(CFLAGS_DEF "")
     else()
-      set(CFLAGS_DEF "-DCMAKE_C_FLAGS=-fPIC")
+      set(CFLAGS_DEF "${CMAKE_C_FLAGS} -fPIC")
     endif()
 
     ExternalProject_Add(ep_zlib
@@ -89,7 +89,7 @@ if (NOT ZLIB_FOUND)
       CMAKE_ARGS
         -DCMAKE_INSTALL_PREFIX=${TILEDB_EP_INSTALL_PREFIX}
         -DCMAKE_BUILD_TYPE=Release
-        ${CFLAGS_DEF}
+        "-DCMAKE_C_FLAGS=${CFLAGS_DEF}"
       UPDATE_COMMAND ""
       LOG_DOWNLOAD TRUE
       LOG_CONFIGURE TRUE

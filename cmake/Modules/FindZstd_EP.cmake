@@ -80,9 +80,9 @@ if (NOT ZSTD_FOUND)
 
     if (WIN32)
       set(ARCH_SPEC -A X64)
-      set(LDFLAGS_DEF "")
+      set(CFLAGS_DEF "")
     else()
-      set(LDFLAGS_DEF "-DCMAKE_C_FLAGS=-fPIC")
+      set(CFLAGS_DEF "${CMAKE_C_FLAGS} -fPIC")
     endif()
 
     ExternalProject_Add(ep_zstd
@@ -92,7 +92,7 @@ if (NOT ZSTD_FOUND)
       CONFIGURE_COMMAND
         ${CMAKE_COMMAND}
         ${ARCH_SPEC}
-        ${LDFLAGS_DEF}
+        "-DCMAKE_C_FLAGS=${CFLAGS_DEF}"
         -DCMAKE_BUILD_TYPE=Release
         -DCMAKE_INSTALL_PREFIX=${TILEDB_EP_INSTALL_PREFIX}
         ${TILEDB_EP_BASE}/src/ep_zstd/build/cmake
