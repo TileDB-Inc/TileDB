@@ -15,6 +15,7 @@ strategy:
     mac:
       imageName: 'macOS-10.13'
       TILEDB_S3: ON
+      TILEDB_DEBUG: ON
       CXX: clang++
     #windows:
     #  imageName: 'vs2017-win2016'
