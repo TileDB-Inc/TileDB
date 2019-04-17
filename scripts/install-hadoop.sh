@@ -33,17 +33,12 @@ die() {
 
 function update_apt_repo  {
   sudo apt-get install -y software-properties-common wget &&
-    sudo apt-get purge -y openjdk* &&
-    echo debconf shared/accepted-oracle-license-v1-1 select true | sudo debconf-set-selections &&
-    echo debconf shared/accepted-oracle-license-v1-1 seen true | sudo debconf-set-selections &&
-    sudo add-apt-repository -y ppa:webupd8team/java &&
     sudo apt-get update -y
     sudo apt-get install curl
 } 
 
 function install_java {
-  sudo apt-get install -y oracle-java8-installer &&
-    sudo apt-get install -y oracle-java8-set-default
+  sudo apt-get install openjdk-8-jre
 }
 
 function install_hadoop {
