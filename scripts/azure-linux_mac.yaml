@@ -24,6 +24,9 @@ fi;
 if [[ "$TILEDB_TBB" == "OFF" ]]; then
   bootstrap_args="${bootstrap_args} --disable-tbb";
 fi
+if [[ "$TILEDB_DEBUG" == "ON" ]]; then
+  bootstrap_args="${bootstrap_args} --enable-debug";
+fi
 
 # Start HDFS server if enabled
 if [[ "$TILEDB_HDFS" == "ON" ]]; then

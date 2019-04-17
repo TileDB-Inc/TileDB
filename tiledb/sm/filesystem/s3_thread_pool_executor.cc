@@ -64,7 +64,7 @@ Status S3ThreadPoolExecutor::Stop() {
 
   // Wait for all outstanding tasks to complete.
   for (auto& task : tasks) {
-    assert(task.valid());
+    assert(task->valid());
     task->wait();
     const Status st = task->get();
     if (!st.ok()) {
