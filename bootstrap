@@ -43,6 +43,7 @@ Configuration:
     --disable-tests                 disables building the TileDB tests
     --disable-tbb                   disables use of TBB for parallelization
     --disable-stats                 disables internal TileDB statistics
+    --disable-avx2                  disables use of AVX2 instructions
     --enable-static-tiledb          enables building TileDB as a static library
     --enable-sanitizer=SAN          enable sanitizer (clang only)
                                     (address|memory|thread|undefined)
@@ -84,6 +85,7 @@ tiledb_force_all_deps="OFF"
 tiledb_tbb="ON"
 tiledb_stats="ON"
 tiledb_static="OFF"
+tiledb_disable_avx2=""
 enable_multiple=""
 while test $# != 0; do
     case "$1" in
@@ -97,6 +99,7 @@ while test $# != 0; do
     --disable-cpp-api) tiledb_cpp_api="OFF";;
     --disable-tbb) tiledb_tbb="OFF";;
     --disable-stats) tiledb_stats="OFF";;
+    --disable-avx2) tiledb_disable_avx2="-DCOMPILER_SUPPORTS_AVX2=FALSE";;
     --enable-static-tiledb) tiledb_static="ON";;
     --enable-sanitizer=*) san=`arg "$1"`
                 sanitizer="$san";;
@@ -173,6 +176,7 @@ ${cmake} -DCMAKE_BUILD_TYPE=${build_type} \
     -DTILEDB_TESTS=${tiledb_tests} \
     -DTILEDB_FORCE_ALL_DEPS=${tiledb_force_all_deps} \
     -DSANITIZER=${sanitizer} \
+    ${tiledb_disable_avx2} \
     ${source_dir} || die "failed to configure the project"
 
 echo 'bootstrap success. Run "make" to build, "make check" to test, or "make -C tiledb install" to install.'

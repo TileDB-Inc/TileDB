@@ -2,6 +2,9 @@
 
 ## New features
 ## Improvements
+
+* Better handling of `{C,CXX}FLAGS` during the build. [#1209](https://github.com/TileDB-Inc/TileDB/pull/1209)
+
 ## Bug fixes
 
 * Fixed thread safety issue with ZStd compressor. [#1208](https://github.com/TileDB-Inc/TileDB/pull/1208)
