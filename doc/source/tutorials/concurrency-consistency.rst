@@ -77,7 +77,7 @@ queries.
       .. code-block:: python
 
         ### An atomic write operation ###
-        with tiledb.DenseArray(ctx, array_name, mode='w') as A:
+        with tiledb.DenseArray(array_name, mode='w') as A:
             data = np.array(...)
             A[:] = data
 
@@ -142,7 +142,7 @@ filesystem level.
       .. code-block:: python
 
          ### An atomic read operation ###
-         with tiledb.DenseArray(ctx, array_name, mode='r') as A:
+         with tiledb.DenseArray(array_name, mode='r') as A:
              data = A[:]
 
 Reads in the multi-processing setting are completely independent
@@ -299,10 +299,10 @@ We illustrate an example using the code snippet below.
       .. code-block:: python
 
         # Open the array for reads
-        A_r = tiledb.DenseArray(ctx, array_name, mode='r')
+        A_r = tiledb.DenseArray(array_name, mode='r')
 
         # Open the array for writes and write something
-        A_w = tiledb.DenseArray(ctx, array_name, mode='w')
+        A_w = tiledb.DenseArray(array_name, mode='w')
         data_w = np.array(...)
         A_w[:] = data_w
 

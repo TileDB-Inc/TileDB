@@ -71,10 +71,9 @@ in the consolidation function as follows:
 
       .. code-block:: python
 
-         ctx = tiledb.Ctx()
          config = tiledb.Config()
          config["sm.consolidation.steps"] = 3;
-         tiledb.consolidate(ctx, array_name, config)
+         tiledb.consolidate(array_name, config)
 
 Now let us focus on a single step, during which the algorithm
 must select and consolidate a subset of fragments based on

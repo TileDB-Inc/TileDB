@@ -33,10 +33,8 @@ a ``2x2`` space tiling.
 
       .. code-block:: python
 
-         ctx = tiledb.Ctx()
-         dom = tiledb.Domain(ctx,
-                   tiledb.Dim(ctx, name="rows", domain=(-2, 1), tile=2, dtype=np.int32),
-                   tiledb.Dim(ctx, name="cols", domain=(-1, 2), tile=2, dtype=np.int32))
+         dom = tiledb.Domain(tiledb.Dim(name="rows", domain=(-2, 1), tile=2, dtype=np.int32),
+                             tiledb.Dim(name="cols", domain=(-1, 2), tile=2, dtype=np.int32))
 
 This creates the 2D array shown in the figure below.
 
@@ -83,10 +81,8 @@ We can create such a domain very easily as follows:
 
       .. code-block:: python
 
-         ctx = tiledb.Ctx()
-         dom = tiledb.Domain(ctx,
-                   tiledb.Dim(ctx, name="lon", domain=(-180.0, 180.0), tile=0.1, dtype=np.float32),
-                   tiledb.Dim(ctx, name="lat", domain=(-90.0, 90.0), tile=0.1, dtype=np.float32))
+         dom = tiledb.Domain(tiledb.Dim(name="lon", domain=(-180.0, 180.0), tile=0.1, dtype=np.float32),
+                             tiledb.Dim(name="lat", domain=(-90.0, 90.0), tile=0.1, dtype=np.float32))
 
 The figure below shows how such an array looks like. Observe that each non-empty cell
 is now better perceived as a **point** in the domain. Also notice that in the figure

@@ -58,7 +58,7 @@ context or VFS object as follows:
         config_ctx = ctx.config()
 
         # Set/get config to/from VFS
-        vfs = tiledb.VFS(ctx, config)
+        vfs = tiledb.VFS(config, ctx=ctx)
         config_vfs = vfs.config()
 
 Running the ``vfs`` code example we get the output shown below.

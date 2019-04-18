@@ -159,13 +159,9 @@ which are then set on attributes in the array schema.
 
       .. code-block:: python
 
-        # Create a TileDB context
-        ctx = tiledb.Ctx()
-
         # The array will be 4x4 with dimensions "rows" and "cols", with domain [1,4].
-        dom = tiledb.Domain(ctx,
-                            tiledb.Dim(ctx, name="rows", domain=(1, 4), tile=4, dtype=np.int32),
-                            tiledb.Dim(ctx, name="cols", domain=(1, 4), tile=4, dtype=np.int32))
+        dom = tiledb.Domain(tiledb.Dim(name="rows", domain=(1, 4), tile=4, dtype=np.int32),
+                            tiledb.Dim(name="cols", domain=(1, 4), tile=4, dtype=np.int32))
 
       Attribute ``a1`` will be filtered by bit width reduction followed by Zstd
       compression. First, create filter objects for the two filtering
@@ -173,8 +169,8 @@ which are then set on attributes in the array schema.
 
       .. code-block:: python
 
-        bit_width_reduction = tiledb.BitWidthReductionFilter(ctx)
-        compression_zstd = tiledb.ZstdFilter(ctx)
+        bit_width_reduction = tiledb.BitWidthReductionFilter()
+        compression_zstd = tiledb.ZstdFilter()
 
       Next, create a ``FilterList`` object with the two filters. Note that
       the order you specify filter objects to a ``FilterList`` is the order that
@@ -182,22 +178,22 @@ which are then set on attributes in the array schema.
 
       .. code-block:: python
 
-        a1_filters = tiledb.FilterList(ctx, [bit_width_reduction, compression_zstd])
+        a1_filters = tiledb.FilterList([bit_width_reduction, compression_zstd])
 
       Attribute ``a2`` will be filtered just with a single gzip compression
       filter:
 
       .. code-block:: python
 
-        a2_filters = tiledb.FilterList(ctx, [tiledb.GzipFilter(ctx)])
+        a2_filters = tiledb.FilterList([tiledb.GzipFilter()])
 
       Add the attributes to the array schema and create the array:
 
       .. code-block:: python
 
-        schema = tiledb.ArraySchema(ctx, domain=dom, sparse=True,
-                                    attrs=[tiledb.Attr(ctx, name="a1", dtype=np.uint32, filters=a1_filters),
-                                           tiledb.Attr(ctx, name="a2", dtype=np.int32, filters=a2_filters)])
+        schema = tiledb.ArraySchema(domain=dom, sparse=True,
+                                    attrs=[tiledb.Attr(name="a1", dtype=np.uint32, filters=a1_filters),
+                                           tiledb.Attr(name="a2", dtype=np.int32, filters=a2_filters)])
         tiledb.SparseArray.create(array_name, schema)
 
       TileDB also allows you to set filter lists to be used on the offsets data
@@ -207,8 +203,8 @@ which are then set on attributes in the array schema.
 
       .. code-block:: python
 
-        offsets_filters = [tiledb.PositiveDeltaFilter(ctx), tiledb.BitWidthReductionFilter(ctx), tiledb.ZstdFilter(ctx)]
-        schema = tiledb.ArraySchema(ctx, domain=dom, sparse=True,
+        offsets_filters = [tiledb.PositiveDeltaFilter(), tiledb.BitWidthReductionFilter(), tiledb.ZstdFilter()]
+        schema = tiledb.ArraySchema(domain=dom, sparse=True,
                                     offsets_filters=offsets_filters,
                                     attrs=[...]])
 
@@ -262,7 +258,7 @@ compression.
 
       .. code-block:: python
 
-        compression_bzip2 = tiledb.Bzip2Filter(ctx, level=5)
+        compression_bzip2 = tiledb.Bzip2Filter(level=5)
 
       You can also retrieve option values from filters:
 
@@ -460,6 +456,5 @@ a filter list:
 
       .. code-block:: python
 
-        ctx = tiledb.Ctx()
         # Use a max chunk size of 10,000 bytes for this filter list:
-        filter_list = tiledb.FilterList(ctx, [tiledb.GzipFilter(ctx)], chunksize=10000)
+        filter_list = tiledb.FilterList([tiledb.GzipFilter()], chunksize=10000)
