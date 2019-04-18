@@ -91,12 +91,11 @@ suppose for the sake of demonstration that the compressed array consumes 10 GB.
 
       .. code-block:: python
 
-       dom = tiledb.Domain(ctx,
-                           tiledb.Dim(ctx, name="rows", domain=(1, 1000000), tile=1000000, dtype=np.int32),
-                           tiledb.Dim(ctx, name="cols", domain=(1, 1000000), tile=1000000, dtype=np.int32))
-       schema = tiledb.ArraySchema(ctx, domain=dom, sparse=False,
+       dom = tiledb.Domain(tiledb.Dim(name="rows", domain=(1, 1000000), tile=1000000, dtype=np.int32),
+                           tiledb.Dim(name="cols", domain=(1, 1000000), tile=1000000, dtype=np.int32))
+       schema = tiledb.ArraySchema(domain=dom, sparse=False,
                                    cell_order='row-major', tile_order='row-major',
-                                   attrs=[tiledb.Attr(ctx, name="a", dtype=np.int32)])
+                                   attrs=[tiledb.Attr(name="a", dtype=np.int32)])
        tiledb.DenseArray.create(array_name, schema)
 
 Now suppose we wish to read a tiny ``2x2`` subarray from this large array as shown in
@@ -138,9 +137,8 @@ in the dimension constructor.
 
       .. code-block:: python
 
-       dom = tiledb.Domain(ctx,
-                           tiledb.Dim(ctx, name="rows", domain=(1, 1000000), tile=3, dtype=np.int32),
-                           tiledb.Dim(ctx, name="cols", domain=(1, 1000000), tile=2, dtype=np.int32))
+       dom = tiledb.Domain(tiledb.Dim(name="rows", domain=(1, 1000000), tile=3, dtype=np.int32),
+                           tiledb.Dim(name="cols", domain=(1, 1000000), tile=2, dtype=np.int32))
 
 This means that we define the **tile extent** for dimension ``rows`` to be equal to
 ``3`` (this used to be ``1000000``), and the tile extent for dimension ``cols`` to

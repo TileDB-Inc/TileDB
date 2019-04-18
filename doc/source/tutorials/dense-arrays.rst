@@ -141,18 +141,16 @@ Creating a dense array
       .. code-block:: python
 
          # Don't forget to 'import numpy as np'
-         ctx = tiledb.Ctx()
-         dom = tiledb.Domain(ctx,
-                   tiledb.Dim(ctx, name="rows", domain=(1, 4), tile=4, dtype=np.int32),
-                   tiledb.Dim(ctx, name="cols", domain=(1, 4), tile=4, dtype=np.int32))
+         dom = tiledb.Domain(tiledb.Dim(name="rows", domain=(1, 4), tile=4, dtype=np.int32),
+                             tiledb.Dim(name="cols", domain=(1, 4), tile=4, dtype=np.int32))
 
       Next we create the schema object, attaching the domain and a single attribute ``a``
       that will hold a single integer for each cell:
 
       .. code-block:: python
 
-         schema = tiledb.ArraySchema(ctx, domain=dom, sparse=False,
-                                     attrs=[tiledb.Attr(ctx, name="a", dtype=np.int32)])
+         schema = tiledb.ArraySchema(domain=dom, sparse=False,
+                                     attrs=[tiledb.Attr(name="a", dtype=np.int32)])
 
 .. note::
 
@@ -254,8 +252,7 @@ To start, prepare the data to be written:
 
       .. code-block:: python
 
-         ctx = tiledb.Ctx()
-         with tiledb.DenseArray(ctx, array_name, mode='w') as A:
+         with tiledb.DenseArray(array_name, mode='w') as A:
              A[:] = data
 
       By default, the Python API issues the write query in row-major layout.
@@ -326,8 +323,7 @@ then the three selected columns of row ``2``).
 
       .. code-block:: python
 
-         ctx = tiledb.Ctx()
-         with tiledb.DenseArray(ctx, array_name, mode='r') as A:
+         with tiledb.DenseArray(array_name, mode='r') as A:
              # Slice only rows 1, 2 and cols 2, 3, 4.
              data = A[1:3, 2:5]
              print(data["a"])
