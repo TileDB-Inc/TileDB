@@ -7,6 +7,8 @@ Types
 -----
 .. doxygentypedef:: tiledb_array_t
     :project: TileDB-C
+.. doxygentypedef:: tiledb_buffer_t
+    :project: TileDB-C
 .. doxygentypedef:: tiledb_config_t
     :project: TileDB-C
 .. doxygentypedef:: tiledb_config_iter_t
@@ -483,6 +485,19 @@ Key-value Iterator
 .. doxygenfunction:: tiledb_kv_iter_done
     :project: TileDB-C
 .. doxygenfunction:: tiledb_kv_iter_reset
+    :project: TileDB-C
+
+Buffer
+------
+.. doxygenfunction:: tiledb_buffer_alloc
+    :project: TileDB-C
+.. doxygenfunction:: tiledb_buffer_free
+    :project: TileDB-C
+.. doxygenfunction:: tiledb_buffer_get_type
+    :project: TileDB-C
+.. doxygenfunction:: tiledb_buffer_set_type
+    :project: TileDB-C
+.. doxygenfunction:: tiledb_buffer_get_size
     :project: TileDB-C
 
 Object Management
