@@ -662,11 +662,12 @@ Status Consolidator::compute_next_to_consolidate(
       } else if (i + j >= col_num) {  // Non-valid entries
         m_sizes[i][j] = UINT64_MAX;
         m_union[i][j].clear();
+        m_union[i][j].shrink_to_fit();
       } else {  // Every other row is computed using the previous row
         auto ratio = (float)fragments[i + j - 1].fragment_size_ /
                      fragments[i + j].fragment_size_;
         ratio = (ratio <= 1.0f) ? ratio : 1.0f / ratio;
-        if (ratio >= size_ratio) {
+        if (ratio >= size_ratio && (m_sizes[i - 1][j] != UINT64_MAX)) {
           m_sizes[i][j] = m_sizes[i - 1][j] + fragments[i + j].fragment_size_;
           std::memcpy(&m_union[i][j][0], &m_union[i - 1][j][0], domain_size);
           utils::geometry::expand_mbr_with_mbr<T>(
