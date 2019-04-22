@@ -9,11 +9,13 @@
 
 * Fixed thread safety issue with ZStd compressor. [#1208](https://github.com/TileDB-Inc/TileDB/pull/1208)
 * Fixed crash in consolidation due to accessing invalid entry [#1213](https://github.com/TileDB-Inc/TileDB/pull/1213)
+
 ## API additions
 
 ### C API
 
 * Added function `tiledb_query_get_layout`
+* Added datatype `tiledb_buffer_t` and functions `tiledb_buffer_{alloc,free,get_type,set_type,get_size}`.
 
 ### C++ API
 

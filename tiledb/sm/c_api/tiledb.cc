@@ -98,6 +98,11 @@ struct tiledb_array_t {
   tiledb::sm::Array* array_ = nullptr;
 };
 
+struct tiledb_buffer_t {
+  tiledb::sm::Datatype datatype_ = tiledb::sm::Datatype::UINT8;
+  tiledb::sm::Buffer* buffer_ = nullptr;
+};
+
 struct tiledb_config_t {
   tiledb::sm::Config* config_ = nullptr;
 };
@@ -198,6 +203,16 @@ static bool create_error(tiledb_error_t** error, const tiledb::sm::Status& st) {
 inline int32_t sanity_check(tiledb_ctx_t* ctx, const tiledb_array_t* array) {
   if (array == nullptr || array->array_ == nullptr) {
     auto st = tiledb::sm::Status::Error("Invalid TileDB array object");
+    LOG_STATUS(st);
+    save_error(ctx, st);
+    return TILEDB_ERR;
+  }
+  return TILEDB_OK;
+}
+
+inline int32_t sanity_check(tiledb_ctx_t* ctx, const tiledb_buffer_t* buffer) {
+  if (buffer == nullptr || buffer->buffer_ == nullptr) {
+    auto st = tiledb::sm::Status::Error("Invalid TileDB buffer object");
     LOG_STATUS(st);
     save_error(ctx, st);
     return TILEDB_ERR;
@@ -451,6 +466,82 @@ void tiledb_error_free(tiledb_error_t** err) {
     delete (*err);
     *err = nullptr;
   }
+}
+
+/* ********************************* */
+/*              BUFFER               */
+/* ********************************* */
+
+int32_t tiledb_buffer_alloc(tiledb_ctx_t* ctx, tiledb_buffer_t** buffer) {
+  if (sanity_check(ctx) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  // Create a buffer struct
+  *buffer = new (std::nothrow) tiledb_buffer_t;
+  if (*buffer == nullptr) {
+    auto st =
+        tiledb::sm::Status::Error("Failed to allocate TileDB buffer object");
+    LOG_STATUS(st);
+    save_error(ctx, st);
+    return TILEDB_OOM;
+  }
+
+  // Create a new buffer object
+  (*buffer)->buffer_ = new (std::nothrow) tiledb::sm::Buffer();
+  if ((*buffer)->buffer_ == nullptr) {
+    delete *buffer;
+    auto st =
+        tiledb::sm::Status::Error("Failed to allocate TileDB buffer object");
+    LOG_STATUS(st);
+    save_error(ctx, st);
+    return TILEDB_OOM;
+  }
+
+  // Success
+  return TILEDB_OK;
+}
+
+void tiledb_buffer_free(tiledb_buffer_t** buffer) {
+  if (buffer != nullptr && *buffer != nullptr) {
+    delete (*buffer)->buffer_;
+    delete (*buffer);
+    *buffer = nullptr;
+  }
+}
+
+int32_t tiledb_buffer_set_type(
+    tiledb_ctx_t* ctx, tiledb_buffer_t* buffer, tiledb_datatype_t datatype) {
+  if (sanity_check(ctx) == TILEDB_ERR ||
+      sanity_check(ctx, buffer) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  buffer->datatype_ = static_cast<tiledb::sm::Datatype>(datatype);
+
+  return TILEDB_OK;
+}
+
+int32_t tiledb_buffer_get_type(
+    tiledb_ctx_t* ctx,
+    const tiledb_buffer_t* buffer,
+    tiledb_datatype_t* datatype) {
+  if (sanity_check(ctx) == TILEDB_ERR ||
+      sanity_check(ctx, buffer) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  *datatype = static_cast<tiledb_datatype_t>(buffer->datatype_);
+
+  return TILEDB_OK;
+}
+
+int32_t tiledb_buffer_get_size(
+    tiledb_ctx_t* ctx, const tiledb_buffer_t* buffer, uint64_t* num_bytes) {
+  if (sanity_check(ctx) == TILEDB_ERR ||
+      sanity_check(ctx, buffer) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  *num_bytes = buffer->buffer_->size();
+
+  return TILEDB_OK;
 }
 
 /* ****************************** */

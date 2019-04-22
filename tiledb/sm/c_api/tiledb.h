@@ -223,6 +223,9 @@ TILEDB_EXPORT void tiledb_version(int32_t* major, int32_t* minor, int32_t* rev);
 /** An array object. */
 typedef struct tiledb_array_t tiledb_array_t;
 
+/** A generic buffer object. */
+typedef struct tiledb_buffer_t tiledb_buffer_t;
+
 /** A config object. */
 typedef struct tiledb_config_t tiledb_config_t;
 
@@ -317,6 +320,106 @@ tiledb_error_message(tiledb_error_t* err, const char** errmsg);
  * @param err The TileDB error object.
  */
 TILEDB_EXPORT void tiledb_error_free(tiledb_error_t** err);
+
+/* ********************************* */
+/*              BUFFER               */
+/* ********************************* */
+
+/**
+ * Creates an empty buffer object.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * tiledb_buffer_t* buffer;
+ * tiledb_buffer_alloc(ctx, &buffer);
+ * @endcode
+ *
+ * @param ctx TileDB context
+ * @param buffer The buffer to be created
+ * @return `TILEDB_OK` for success and `TILEDB_OOM` or `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t
+tiledb_buffer_alloc(tiledb_ctx_t* ctx, tiledb_buffer_t** buffer);
+
+/**
+ * Destroys a TileDB buffer, freeing associated memory.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * tiledb_buffer_t* buffer;
+ * tiledb_buffer_alloc(ctx, &buffer);
+ * tiledb_buffer_free(&buffer);
+ * @endcode
+ *
+ * @param buffer The buffer to be destroyed.
+ */
+TILEDB_EXPORT void tiledb_buffer_free(tiledb_buffer_t** buffer);
+
+/**
+ * Sets a datatype for the given buffer. The default datatype is `TILEDB_UINT8`.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * tiledb_buffer_t* buffer;
+ * tiledb_buffer_alloc(ctx, &buffer);
+ * tiledb_buffer_set_type(ctx, buffer, TILEDB_INT32);
+ * @endcode
+ *
+ * @param ctx TileDB context
+ * @param buffer TileDB buffer instance
+ * @param datatype The datatype to set on the buffer.
+ * @return `TILEDB_OK` for success or `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_buffer_set_type(
+    tiledb_ctx_t* ctx, tiledb_buffer_t* buffer, tiledb_datatype_t datatype);
+
+/**
+ * Gets the datatype from the given buffer.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * tiledb_datatype_t type;
+ * tiledb_buffer_get_type(ctx, buffer, &type);
+ * @endcode
+ *
+ * @param ctx TileDB context
+ * @param buffer TileDB buffer instance
+ * @param datatype Set to the datatype of the buffer.
+ * @return `TILEDB_OK` for success or `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_buffer_get_type(
+    tiledb_ctx_t* ctx,
+    const tiledb_buffer_t* buffer,
+    tiledb_datatype_t* datatype);
+
+/**
+ * Gets the current number of bytes in the specified buffer object.
+ *
+ * @note For string buffers allocated by TileDB, the number of bytes includes
+ * the terminating NULL byte.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * tiledb_buffer_t* buffer;
+ * tiledb_buffer_alloc(ctx, &buffer);
+ * uint64_t num_bytes;
+ * tiledb_buffer_get_size(ctx, buffer, &num_bytes);
+ * // num_bytes == 0 because the buffer is currently empty.
+ * tiledb_buffer_free(&buffer);
+ * @endcode
+ *
+ * @param ctx TileDB context
+ * @param buffer TileDB buffer instance
+ * @param num_bytes Set to the number of bytes in the buffer.
+ * @return `TILEDB_OK` for success or `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_buffer_get_size(
+    tiledb_ctx_t* ctx, const tiledb_buffer_t* buffer, uint64_t* num_bytes);
 
 /* ********************************* */
 /*              CONFIG               */
