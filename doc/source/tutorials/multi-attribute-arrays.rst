@@ -93,9 +93,9 @@ however that ``a2`` is defined to store **two** float values per cell.
 
       .. code-block:: python
 
-         schema = tiledb.ArraySchema(ctx, domain=dom, sparse=False,
-                                     attrs=[tiledb.Attr(ctx, name="a1", dtype=np.uint8),
-                                            tiledb.Attr(ctx, name="a2",
+         schema = tiledb.ArraySchema(domain=dom, sparse=False,
+                                     attrs=[tiledb.Attr(name="a1", dtype=np.uint8),
+                                            tiledb.Attr(name="a2",
                                                         dtype=np.dtype([("", np.float32), ("", np.float32)]))])
 
       We use a ``np.uint8`` to store the character value in ``a1``.
@@ -149,8 +149,7 @@ with ``(2.1, 2.2)`` in ``data_a2``, etc.
 
       .. code-block:: python
 
-         ctx = tiledb.Ctx()
-         with tiledb.DenseArray(ctx, array_name, mode='w') as A:
+         with tiledb.DenseArray(array_name, mode='w') as A:
              data_a1 = np.array((list(map(ord, ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h',
                                                 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p']))))
              data_a2 = np.array(([(1.1, 1.2), (2.1, 2.2), (3.1, 3.2), (4.1, 4.2),
@@ -220,8 +219,7 @@ We focus on subarray ``[1,2], [2,4]``.
 
       .. code-block:: python
 
-         ctx = tiledb.Ctx()
-         with tiledb.DenseArray(ctx, array_name, mode='r') as A:
+         with tiledb.DenseArray(array_name, mode='r') as A:
              # Slice only rows 1, 2 and cols 2, 3, 4.
              data = A[1:3, 2:5]
 
@@ -274,8 +272,7 @@ is not true during reads.
 
       .. code-block:: python
 
-          ctx = tiledb.Ctx()
-          with tiledb.DenseArray(ctx, array_name, mode='r') as A:
+          with tiledb.DenseArray(array_name, mode='r') as A:
               data = A.query(attrs=["a1"])[1:3, 2:5]
 
 If you compile and run the example of this tutorial as shown below, you should

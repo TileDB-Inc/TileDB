@@ -126,9 +126,8 @@ Here is how we wrote to the array:
 
       .. code-block:: python
 
-        ctx = tiledb.Ctx()
         # Open the array and write to it.
-        with tiledb.SparseArray(ctx, array_name, mode='w') as A:
+        with tiledb.SparseArray(array_name, mode='w') as A:
             # Write some simple data to cells (1, 1), (2, 4) and (2, 3).
             I, J = [1, 2, 2], [1, 4, 3]
             data = np.array(([1, 2, 3]));

@@ -115,9 +115,8 @@ Creating a KV store
 
       .. code-block:: python
 
-         ctx = tiledb.Ctx()
-         schema = tiledb.KVSchema(ctx, attrs=[tiledb.Attr(ctx, name="a1", dtype=bytes)])
-         tiledb.KV.create(ctx, array_name, schema)
+         schema = tiledb.KVSchema(attrs=[tiledb.Attr(name="a1", dtype=bytes)])
+         tiledb.KV.create(array_name, schema)
 
       .. warning::
 
@@ -172,8 +171,7 @@ You can write to a TileDB KV store as follows:
 
       .. code-block:: python
 
-         ctx = tiledb.Ctx()
-         A = tiledb.KV(ctx, array_name)
+         A = tiledb.KV(array_name)
          A["key_1"] = "1"
          A["key_2"] = "2"
          A["key_3"] = "3"
@@ -250,8 +248,7 @@ You can read from a KV store as follows:
 
       .. code-block:: python
 
-         ctx = tiledb.Ctx()
-         A = tiledb.KV(ctx, array_name)
+         A = tiledb.KV(array_name)
          print("key_1: %s" % A["key_1"])
          print("key_2: %s" % A["key_2"])
          print("key_3: %s" % A["key_3"])
@@ -284,8 +281,7 @@ retrieves the items in *random order*):
 
       .. code-block:: python
 
-         ctx = tiledb.Ctx()
-         A = tiledb.KV(ctx, array_name)
+         A = tiledb.KV(array_name)
          for p in A:
              print("key: '%s', value: '%s'" % (p[0], p[1]))
 

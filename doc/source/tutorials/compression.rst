@@ -53,10 +53,10 @@ attribute upon array creation.
 
       .. code-block:: python
 
-        ctx = tiledb.Ctx()
-        attr = tiledb.Attr(ctx, name="a", dtype=np.int32,
-                           filters=tiledb.FilterList(ctx, [tiledb.GzipFilter(ctx)]))
-        schema = tiledb.ArraySchema(ctx, domain=dom, sparse=False, attrs=[attr])
+        attr = tiledb.Attr(name="a", dtype=np.int32,
+                           filters=tiledb.FilterList([tiledb.GzipFilter()]))
+        schema = tiledb.ArraySchema(attrs=[attr], domain=dom),
+                                    sparse=False)
 
 TileDB offers a variety of compressors to choose from (see below). Moreover, you
 can adjust the compression level (by setting the ``TILEDB_COMPRESSION_LEVEL``
@@ -83,7 +83,7 @@ tiles as follows (the default is ZSTD with default compression level):
 
       .. code-block:: python
 
-        schema = tiledb.ArraySchema(..., coords_filters=tiledb.FilterList(ctx, [tiledb.LZ4Filter(ctx)]))
+        schema = tiledb.ArraySchema(..., coords_filters=tiledb.FilterList([tiledb.LZ4Filter()]))
 
 To maximize the effect of compression on coordinates, TileDB first
 unzips the coordinates tuples and groups the coordinates along
@@ -115,7 +115,7 @@ data tiles (the default is ZSTD with default compression level):
 
       .. code-block:: python
 
-        schema = tiledb.ArraySchema(..., offsets_filters=tiledb.FilterList(ctx, [tiledb.Bzip2Filter(ctx)]))
+        schema = tiledb.ArraySchema(..., offsets_filters=tiledb.FilterList([tiledb.Bzip2Filter()]))
 
 Choosing a compressor
 ---------------------

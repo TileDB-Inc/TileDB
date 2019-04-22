@@ -105,8 +105,7 @@ its VFS functionality, e.g.,
 
       .. code-block:: python
 
-        ctx = tiledb.Ctx()
-        vfs = tiledb.VFS(ctx)
+        vfs = tiledb.VFS()
 
         vfs.create_bucket("s3://my_bucket");
         vfs.remove_bucket("s3://my_bucket");

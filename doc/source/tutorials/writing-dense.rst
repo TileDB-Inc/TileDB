@@ -116,8 +116,7 @@ Here is how we wrote to the array:
 
       .. code-block:: python
 
-       ctx = tiledb.Ctx()
-       with tiledb.DenseArray(ctx, array_name, mode='w') as A:
+       with tiledb.DenseArray(array_name, mode='w') as A:
            data = np.array(([1, 2, 3, 4],
                             [5, 6, 7, 8],
                             [9, 10, 11, 12],
@@ -155,9 +154,8 @@ array, i.e., subarray ``[1,2], [1,4]``:
 
       .. code-block:: python
 
-       ctx = tiledb.Ctx()
        # Open the array and write to it.
-       with tiledb.DenseArray(ctx, array_name, mode='w') as A:
+       with tiledb.DenseArray(array_name, mode='w') as A:
            data = np.array(([1, 2, 3, 4],
                             [5, 6, 7, 8]))
            A[1:3, 1,5] = data
@@ -276,9 +274,8 @@ with ``2x2`` space tiling. We then write only subarray
 
       .. code-block:: python
 
-       ctx = tiledb.Ctx()
        # Open the array and write to it.
-       with tiledb.DenseArray(ctx, array_name, mode='w') as A:
+       with tiledb.DenseArray(array_name, mode='w') as A:
            # Write to [2,3], [1,2]
            data = np.array(([1, 2], [3, 4]))
            A[2:4, 1:3] = data
@@ -439,9 +436,8 @@ code example ``writing_dense_multiple``):
 
       .. code-block:: python
 
-       ctx = tiledb.Ctx()
        # Open the array and write to it.
-       with tiledb.DenseArray(ctx, array_name, mode='w') as A:
+       with tiledb.DenseArray(array_name, mode='w') as A:
            # First write
            data = np.array(([1, 2], [3, 4]))
            A[1:3, 1:3] = data
@@ -688,11 +684,11 @@ order*.
 
 We illustrate with an example. Consider you have a ``4x3`` array
 with ``2x2`` space tiling, as shown in the figure below. The
-domain contains two entrire tiles (upper left and lower left)
+domain contains two entire tiles (upper left and lower left)
 and two partial tiles (upper right and lower right). In this
 case, you can write in global order in subarray ``[1,4], [1,2]``,
 but choose another layout (e.g., row-major) for ``[1,4], [3,3]``.
-This is done in code example ``writing_dense_global_expanison`` in two
+This is done in code example ``writingdenseglobalexpansioncpp`` in two
 writes, which are also shown in the figure below.
 
 

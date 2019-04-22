@@ -347,8 +347,7 @@ as it is blocking by default):
 
       .. code-block:: python
 
-         ctx = tiledb.Ctx()
-         tiledb.consolidate(ctx, array_name)
+         tiledb.consolidate(array_name)
 
 Rerunning the above example as shown below (providing ``consolidate`` as input
 to the program) consolidates the three fragments into one before reading.

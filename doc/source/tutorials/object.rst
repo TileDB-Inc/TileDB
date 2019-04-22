@@ -56,8 +56,7 @@ a group simply as follows:
 
       .. code-block:: python
 
-        ctx = tiledb.Ctx()
-        tiledb.group_create(ctx, "my_group")
+        tiledb.group_create("my_group")
 
 Listing the ``my_group`` directory, you get the following:
 
@@ -93,8 +92,7 @@ marked as "invalid".
 
       .. code-block:: python
 
-       ctx = tiledb.Ctx()
-       type = tiledb.object_type(ctx, path)
+       type = tiledb.object_type(path)
 
 
 Listing the object hierarchy
@@ -159,18 +157,16 @@ every visited object. This is demonstrated in the code snippet below:
 
       .. code-block:: python
 
-        ctx = tiledb.Ctx()
-
         # List children
         print("\nListing hierarchy:")
-        tiledb.ls(ctx, path, lambda obj_path, obj_type: print(obj_path, obj_type))
+        tiledb.ls(path, lambda obj_path, obj_type: print(obj_path, obj_type))
 
         # Walk in a path with a pre- and post-order traversal
         print("\nPreorder traversal:")
-        tiledb.walk(ctx, path, lambda obj_path, obj_type: print(obj_path, obj_type))  # Default order is preorder
+        tiledb.walk(path, lambda obj_path, obj_type: print(obj_path, obj_type))  # Default order is preorder
 
         print("\nPostorder traversal:")
-        tiledb.walk(ctx, path, lambda obj_path, obj_type: print(obj_path, obj_type), "postorder")
+        tiledb.walk(path, lambda obj_path, obj_type: print(obj_path, obj_type), "postorder")
 
 In the ``object`` code example, we initially create the following hierarchy:
 
@@ -268,7 +264,7 @@ You can rename TileDB objects as follows:
 
       .. code-block:: python
 
-        tiledb.move(ctx, "my_group", "my_group_2")
+        tiledb.move("my_group", "my_group_2")
 
 .. note::
 
@@ -292,7 +288,7 @@ You can remove TileDB objects as follows:
 
       .. code-block:: python
 
-        tiledb.remove(ctx, "my_group_2/dense_arrays")
+        tiledb.remove("my_group_2/dense_arrays")
 
 Running the ``object`` code example, we get the
 output shown below. Observe the listing after ``my_group`` got
