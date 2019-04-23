@@ -490,13 +490,12 @@ Status S3::ls(
 
     is_done = !list_objects_outcome.GetResult().GetIsTruncated();
     if (!is_done) {
-      // If the response was truncated, it must contain at least one returned
-      // object.
-      assert(!list_objects_outcome.GetResult().GetContents().empty());
-
       // The documentation states that "GetNextMarker" will be non-empty only
       // when the delimiter in the request is non-empty. When the delimiter is
       // non-empty, we must used the last returned key as the next marker.
+      assert(
+          !delimiter.empty() ||
+          !list_objects_outcome.GetResult().GetContents().empty());
       Aws::String next_marker =
           !delimiter.empty() ?
               list_objects_outcome.GetResult().GetNextMarker() :
