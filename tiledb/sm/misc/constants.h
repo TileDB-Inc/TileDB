@@ -458,6 +458,9 @@ extern const std::string s3_allocation_tag;
 /** Use virtual addressing (false for minio, true for AWS S3). */
 extern const bool s3_use_virtual_addressing;
 
+/** Use multipart upload (false for GCS, true for AWS S3). */
+extern const bool s3_use_multipart_upload;
+
 /** Connect timeout in milliseconds. */
 extern const long s3_connect_timeout_ms;
 

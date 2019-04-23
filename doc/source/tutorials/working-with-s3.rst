@@ -92,6 +92,37 @@ Now you are ready to start writing TileDB programs! When creating a TileDB conte
     However, we suggest to always check whether the default values are the desired ones
     for your application.
 
+GCS
+---
+
+.. warning::
+
+   TileDB GCS support is experimental. Our test suite passes and we have done limited
+   experiments with large arrays; however, we have not used GCS extensively and
+   recommend thoroughly testing writes up to the largest expected object sizes.
+
+TileDB supports the `Google Cloud Storage S3 compatibility mode
+<https://cloud.google.com/storage/docs/interoperability>`_. GCS S3 compatibility
+`does not support multipart uploads <https://cloud.google.com/storage/docs/migrating#methods-comparison>`_,
+therefore we have added a configuration option to disable multipart uploads and
+use single ``PutObject`` requests instead. Uploads in this mode may be slower
+than comparable operations using AWS S3. Currently, ``vfs.s3.multipart_part_size``
+should be set to a value larger than the expected file size, up to available
+memory or backend limits (the maximum object size for GCS is 5 TB).
+
+
+.. table:: TileDB GCS config settings
+    :widths: auto
+
+    ====================================   =======================
+    **Parameter**                          **Value**
+    ------------------------------------   -----------------------
+    ``"vfs.s3.region"``                    ``"(region must be configured!)"``
+    ``"vfs.s3.use_multipart_upload"``      ``"false"``
+    ``"vfs.s3.multipart_part_size"``       ``5000000000000``
+    ``"vfs.s3.max_parallel_ops"``          ``1``
+    ====================================   =======================
+
 minio
 -----
 

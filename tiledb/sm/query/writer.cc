@@ -1035,8 +1035,7 @@ Status Writer::finalize_global_write_state() {
       global_write_state_.reset(nullptr);
       std::stringstream ss;
       ss << "Failed to finalize global write state; Number "
-         << "of cells written ("
-         << cells_written
+         << "of cells written (" << cells_written
          << ") is different from the number of cells expected ("
          << array_schema_->domain()->cell_num<T>((T*)subarray_)
          << ") for the query subarray";

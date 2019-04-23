@@ -106,6 +106,7 @@ class Config {
     std::string scheme_;
     std::string endpoint_override_;
     bool use_virtual_addressing_;
+    bool use_multipart_upload_;
     uint64_t max_parallel_ops_;
     uint64_t multipart_part_size_;
     long connect_timeout_ms_;
@@ -125,6 +126,7 @@ class Config {
       scheme_ = constants::s3_scheme;
       endpoint_override_ = constants::s3_endpoint_override;
       use_virtual_addressing_ = constants::s3_use_virtual_addressing;
+      use_multipart_upload_ = constants::s3_use_multipart_upload;
       max_parallel_ops_ = constants::s3_max_parallel_ops;
       multipart_part_size_ = constants::s3_multipart_part_size;
       connect_timeout_ms_ = constants::s3_connect_timeout_ms;
@@ -333,6 +335,10 @@ class Config {
    *    The S3 use of virtual addressing (`true` or `false`), if S3 is
    *    enabled. <br>
    *    **Default**: true
+   * - `vfs.s3.use_multipart_upload` <br>
+   *    The S3 use of multipart upload (`true` or `false`), if S3 is
+   *    enabled. <br>
+   *    **Default**: true
    * - `vfs.s3.max_parallel_ops` <br>
    *    The maximum number of S3 backend parallel operations. <br>
    *    **Default**: `vfs.num_threads`
@@ -525,6 +531,9 @@ class Config {
 
   /** Sets the S3 virtual addressing. */
   Status set_vfs_s3_use_virtual_addressing(const std::string& value);
+
+  /** Sets the S3 virtual addressing. */
+  Status set_vfs_s3_use_multipart_upload(const std::string& value);
 
   /** Sets the maximum number of parallel S3 operations. */
   Status set_vfs_s3_max_parallel_ops(const std::string& value);

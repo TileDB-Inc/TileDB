@@ -82,6 +82,7 @@ set(TILEDB_TEST_SOURCES
   src/unit-lru_cache.cc
   src/unit-rtree.cc
   src/unit-s3.cc
+  src/unit-s3-no-multipart.cc
   src/unit-status.cc
   src/unit-tbb.cc
   src/unit-threadpool.cc

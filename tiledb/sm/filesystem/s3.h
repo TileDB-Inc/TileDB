@@ -123,7 +123,7 @@ class S3 {
   Status empty_bucket(const URI& bucket) const;
 
   /**
-   * Flushes an object to S3, finalizing the multpart upload.
+   * Flushes an object to S3, finalizing the multipart upload.
    *
    * @param uri The URI of the object to be flushed.
    * @return Status
@@ -427,6 +427,9 @@ class S3 {
   /** Whether or not to use virtual addressing. */
   bool use_virtual_addressing_;
 
+  /** Whether or not to use multipart upload. */
+  bool use_multipart_upload_;
+
   /* ********************************* */
   /*          PRIVATE METHODS          */
   /* ********************************* */
@@ -558,9 +561,24 @@ class S3 {
       Buffer* const buff);
 
   /**
+   * Writes the input buffer to a file by issuing one PutObject
+   * request. If the file does not exist, then it is created. If the file
+   * exists then it is appended to.
+   *
+   * @param uri The URI of the S3 file to be written to.
+   * @param buffer The input buffer.
+   * @param length The size of the input buffer.
+   * @return Status
+   */
+  Status flush_direct(const URI& uri);
+
+  /**
    * Writes the input buffer to a file by issuing one or more multipart upload
    * requests. If the file does not exist, then it is created. If the file
-   * exists then it is appended to.
+   * exists then it is appended to. This command will upload chunks of an
+   * in-progress write each time the parallelisation buffer size is exceeded
+   * (calculated as product of  `multipart_part_size`` * ``max_parallel_ops``
+   *  configuration options).
    *
    * @param uri The URI of the S3 file to be written to.
    * @param buffer The input buffer.

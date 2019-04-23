@@ -89,7 +89,8 @@ S3::S3()
     , max_parallel_ops_(1)
     , multipart_part_size_(0)
     , vfs_thread_pool_(nullptr)
-    , use_virtual_addressing_(false) {
+    , use_virtual_addressing_(false)
+    , use_multipart_upload_(true) {
 }
 
 S3::~S3() {
@@ -120,6 +121,7 @@ Status S3::init(
   file_buffer_size_ = multipart_part_size_ * max_parallel_ops_;
   region_ = s3_config.region_;
   use_virtual_addressing_ = s3_config.use_virtual_addressing_;
+  use_multipart_upload_ = s3_config.use_multipart_upload_;
 
   client_config_ = std::unique_ptr<Aws::Client::ClientConfiguration>(
       new Aws::Client::ClientConfiguration);
@@ -280,7 +282,9 @@ Status S3::empty_bucket(const URI& bucket) const {
 
 Status S3::flush_object(const URI& uri) {
   RETURN_NOT_OK(init_client());
-
+  if (!use_multipart_upload_) {
+    return flush_direct(uri);
+  }
   if (!uri.is_s3()) {
     return LOG_STATUS(Status::S3Error(
         std::string("URI is not an S3 URI: " + uri.to_string())));
@@ -682,27 +686,38 @@ Status S3::write(const URI& uri, const void* buffer, uint64_t length) {
   uint64_t nbytes_filled;
   RETURN_NOT_OK(fill_file_buffer(buff, buffer, length, &nbytes_filled));
 
-  // Flush file buffer
-  if (buff->size() == file_buffer_size_)
-    RETURN_NOT_OK(flush_file_buffer(uri, buff, is_last_part));
-
-  // Write chunks
-  uint64_t new_length = length - nbytes_filled;
-  uint64_t offset = nbytes_filled;
-  while (new_length > 0) {
-    if (new_length >= file_buffer_size_) {
-      RETURN_NOT_OK(write_multipart(
-          uri, (char*)buffer + offset, file_buffer_size_, is_last_part));
-      offset += file_buffer_size_;
-      new_length -= file_buffer_size_;
-    } else {
-      RETURN_NOT_OK(fill_file_buffer(
-          buff, (char*)buffer + offset, new_length, &nbytes_filled));
-      offset += nbytes_filled;
-      new_length -= nbytes_filled;
-    }
+  if ((!use_multipart_upload_) && (nbytes_filled != length)) {
+    std::stringstream errmsg;
+    errmsg << "Direct write failed! " << nbytes_filled
+           << " bytes written to buffer, " << length << " bytes requested.";
+    return LOG_STATUS(Status::S3Error(errmsg.str()));
   }
-  assert(offset == length);
+
+  // Flush file buffer
+  // multipart objects will flush whenever the writes exceed file_buffer_size_
+  // write_direct should just append to buffer and upload later
+  if (use_multipart_upload_) {
+    if (buff->size() == file_buffer_size_)
+      RETURN_NOT_OK(flush_file_buffer(uri, buff, is_last_part));
+
+    uint64_t new_length = length - nbytes_filled;
+    uint64_t offset = nbytes_filled;
+    // Write chunks
+    while (new_length > 0) {
+      if (new_length >= file_buffer_size_) {
+        RETURN_NOT_OK(write_multipart(
+            uri, (char*)buffer + offset, file_buffer_size_, is_last_part));
+        offset += file_buffer_size_;
+        new_length -= file_buffer_size_;
+      } else {
+        RETURN_NOT_OK(fill_file_buffer(
+            buff, (char*)buffer + offset, new_length, &nbytes_filled));
+        offset += nbytes_filled;
+        new_length -= nbytes_filled;
+      }
+    }
+    assert(offset == length);
+  }
 
   return Status::Ok();
 }
@@ -791,7 +806,6 @@ std::string S3::remove_front_slash(const std::string& path) const {
 
 Status S3::flush_file_buffer(const URI& uri, Buffer* buff, bool last_part) {
   RETURN_NOT_OK(init_client());
-
   if (buff->size() > 0) {
     const Status st =
         write_multipart(uri, buff->data(), buff->size(), last_part);
@@ -910,6 +924,60 @@ bool S3::wait_for_bucket_to_be_created(const URI& bucket_uri) const {
         std::chrono::milliseconds(constants::s3_attempt_sleep_ms));
   }
   return false;
+}
+
+Status S3::flush_direct(const URI& uri) {
+  // STATS_FUNC_IN(vfs_s3_write_direct); // <TODO>
+
+  RETURN_NOT_OK(init_client());
+
+  // Get file buffer
+  auto buff = (Buffer*)nullptr;
+  RETURN_NOT_OK(get_file_buffer(uri, &buff));
+
+  const Aws::Http::URI aws_uri(uri.c_str());
+  const std::string uri_path(aws_uri.GetPath().c_str());
+
+  Aws::S3::Model::PutObjectRequest put_object_request;
+
+  auto stream = std::shared_ptr<Aws::IOStream>(
+      new boost::interprocess::bufferstream((char*)buff->data(), buff->size()));
+
+  put_object_request.SetBody(stream);
+  put_object_request.SetContentLength(buff->size());
+
+  // we only want to hash once, and must do it after setting the body
+  auto md5_hash =
+      Aws::Utils::HashingUtils::CalculateMD5(*put_object_request.GetBody());
+
+  put_object_request.SetContentMD5(
+      Aws::Utils::HashingUtils::Base64Encode(md5_hash));
+  put_object_request.SetContentType("application/octet-stream");
+  put_object_request.SetBucket(aws_uri.GetAuthority());
+  put_object_request.SetKey(aws_uri.GetPath());
+
+  auto put_object_outcome = client_->PutObject(put_object_request);
+  if (!put_object_outcome.IsSuccess()) {
+    return LOG_STATUS(Status::S3Error(
+        std::string("Cannot write object '") + uri.c_str() +
+        outcome_error_message(put_object_outcome)));
+  }
+
+  // verify the MD5 hash of the result
+  // note the etag is hex-encoded not base64
+  Aws::StringStream md5_hex;
+  md5_hex << "\"" << Aws::Utils::HashingUtils::HexEncode(md5_hash) << "\"";
+  if (md5_hex.str() != put_object_outcome.GetResult().GetETag()) {
+    return LOG_STATUS(
+        Status::S3Error("Object uploaded successfully, but MD5 hash does not "
+                        "match result from server!' "));
+  }
+
+  wait_for_object_to_propagate(
+      put_object_request.GetBucket(), put_object_request.GetKey());
+
+  return Status::Ok();
+  // STATS_FUNC_OUT(vfs_s3_write_direct);
 }
 
 Status S3::write_multipart(
