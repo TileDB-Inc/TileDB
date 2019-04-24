@@ -55,6 +55,7 @@ template <class T>
 DenseCellRangeIter<T>::DenseCellRangeIter() {
   domain_ = nullptr;
   end_ = true;
+  tile_overlap_ = false;
 }
 
 template <class T>
@@ -64,6 +65,7 @@ DenseCellRangeIter<T>::DenseCellRangeIter(
     , subarray_(subarray)
     , layout_(layout) {
   end_ = true;
+  tile_overlap_ = false;
 }
 
 /* ****************************** */

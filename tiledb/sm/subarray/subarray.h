@@ -280,7 +280,9 @@ class Subarray {
 
   /**
    * Returns the range coordinates (for all dimensions) given a flattened
-   * 1D range id.
+   * 1D range id. The range coordinates is a tuple with an index
+   * per dimension that uniquely identify a multi-dimensional
+   * subarray range.
    */
   std::vector<uint64_t> get_range_coords(uint64_t range_idx) const;
 

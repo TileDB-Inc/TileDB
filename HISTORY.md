@@ -1,16 +1,15 @@
-# In progress
+# In Progress
 
 ## New features
+
+* Added support for multi-range reads (non-continuous range slicing) for sparse arrays.
 
 ## Improvements
 
 * Better handling of `{C,CXX}FLAGS` during the build. [#1209](https://github.com/TileDB-Inc/TileDB/pull/1209)
 * Removed fragment metadata caching.
 * Removed array schema caching.
-* If a subarray is set to an array before opening, only metadata of the fragments whose empty domain overlaps with that subarray are loaded upon array opening.
 * The tile MBR in the in-memory fragment metadata are organized into an R-Tree, speeding up tile overlap operations during subarray reads.
-* Added an advanced, tunable consolidation algorithm
-* Small tiles are now batched for larger VFS read operations, improving read performance in some cases.
 
 ## Bug fixes
 
@@ -21,6 +20,10 @@
 
 ### C API
 
+* Added functions `tiledb_subarray_partitoner_{next, get_current, done}`.
+* Added object `tiledb_subarray_partitioner_t` and functions `tiledb_subarray_partitoner_{alloc, free, set_result_budget, set_result_budget_var, get_result_budget, get_result_budget_var}`.
+* Added functions `tiledb_subarray_{get_est_result_size, get_est_result_size_var}`.
+* Added object `tiledb_subarray_t` and functions `tiledb_subarray_{alloc, free, get_layout, get_type, get_ndim, get_domain, add_range, get_range_num, get_range}`.
 * Added function `tiledb_query_get_layout`
 * Added datatype `tiledb_buffer_t` and functions `tiledb_buffer_{alloc,free,get_type,set_type,get_size}`.
 
@@ -65,10 +68,6 @@ The 1.5.0 release focuses on stability, performance, and usability improvements,
 
 ### C API
 
-* Added functions `tiledb_subarray_partitoner_{next, get_current, done}`.
-* Added object `tiledb_subarray_partitioner_t` and functions `tiledb_subarray_partitoner_{alloc, free, set_result_budget, set_result_budget_var, get_result_budget, get_result_budget_var}`.
-* Added functions `tiledb_subarray_{get_est_result_size, get_est_result_size_var}`.
-* Added object `tiledb_subarray_t` and functions `tiledb_subarray_{alloc, free, get_layout, get_type, get_ndim, get_domain, add_range, get_range_num, get_range}`.
 * Added function `tiledb_vfs_dir_size`.
 * Added function `tiledb_vfs_ls`.
 * Added config params `vfs.max_batch_read_size` and `vfs.max_batch_read_amplification`.
