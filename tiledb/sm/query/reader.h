@@ -39,6 +39,7 @@
 #include "tiledb/sm/misc/status.h"
 #include "tiledb/sm/query/dense_cell_range_iter.h"
 #include "tiledb/sm/query/types.h"
+#include "tiledb/sm/subarray/subarray_partitioner.h"
 #include "tiledb/sm/tile/tile.h"
 
 #include <future>
@@ -93,6 +94,48 @@ class Reader {
     bool unsplittable_;
   };
 
+  struct ReadState2 {
+    /**
+     * True if the query led to a result that does not fit in
+     * the user buffers.
+     */
+    bool overflowed_ = false;
+    /**
+     * ``true`` if a ``Subarray`` object has been set to the reader,
+     * which indicates that the new (multi-range subarray) read
+     * algorithm will be used.
+     */
+    bool set_ = false;
+    /** The subarray partitioner. */
+    SubarrayPartitioner partitioner_;
+    /**
+     * ``true`` if the next partition cannot be retrieved from the
+     * partitioner, because it reaches a partition that is unsplittable.
+     */
+    bool unsplittable_ = false;
+
+    /** ``true`` if there are no more partitions. */
+    bool done() const {
+      return partitioner_.done();
+    }
+
+    /** Retrieves the next partition from the partitioner. */
+    Status next() {
+      return partitioner_.next(&unsplittable_);
+    }
+
+    /**
+     * Splits the current partition and updates the state, retrieving
+     * a new current partition. This function is typically called
+     * by the reader when the current partition was estimated to fit
+     * the results, but that was not eventually true.
+     */
+    template <class T>
+    Status split_current() {
+      return partitioner_.split_current<T>(&unsplittable_);
+    }
+  };
+
   /**
    * For each fixed-sized attributes, the second tile in the pair is ignored.
    * For var-sized attributes, the first is the offsets tile and the second is
@@ -133,6 +176,9 @@ class Reader {
 
   /** A vector of overlapping tiles. */
   typedef std::vector<std::unique_ptr<OverlappingTile>> OverlappingTileVec;
+
+  /** A map (fragment_idx, tile_idx) -> pos in OverlappingTileVec. */
+  typedef std::map<std::pair<unsigned, uint64_t>, size_t> OverlappingTileMap;
 
   /** A cell range belonging to a particular overlapping tile. */
   struct OverlappingCellRange {
@@ -213,7 +259,7 @@ class Reader {
    * Type alias for a list of OverlappingCoords.
    */
   template <typename T>
-  using OverlappingCoordsList = std::vector<OverlappingCoords<T>>;
+  using OverlappingCoordsVec = std::vector<OverlappingCoords<T>>;
 
   /** A cell range produced by the dense read algorithm. */
   template <class T>
@@ -303,12 +349,6 @@ class Reader {
    */
   bool incomplete() const;
 
-  /** Returns the number of fragments involved in the (read) query. */
-  unsigned fragment_num() const;
-
-  /** Returns a vector with the fragment URIs. */
-  std::vector<URI> fragment_uris() const;
-
   /**
    * Retrieves the buffer of a fixed-sized attribute.
    *
@@ -364,6 +404,13 @@ class Reader {
 
   /** Performs a read query using its set members. */
   Status read();
+
+  /** Performs a read query (applicable when setting a Subarray). */
+  Status read_2();
+
+  /** Performs a read query (applicable when setting a Subarray). */
+  template <class T>
+  Status read_2();
 
   /** Sets the array. */
   void set_array(const Array* array);
@@ -455,6 +502,14 @@ class Reader {
    */
   Status set_subarray(const void* subarray);
 
+  /**
+   * Sets the query subarray.
+   *
+   * @param subarray The subarray to be set.
+   * @return Status
+   */
+  Status set_subarray(const Subarray& subarray);
+
   /** Returns the subarray. */
   void* subarray() const;
 
@@ -488,6 +543,9 @@ class Reader {
   /** To handle incomplete read queries. */
   ReadState read_state_;
 
+  /** Read state for Subarray queries. */
+  ReadState2 read_state_2_;
+
   /**
    * If `true`, then the dense array will be read in "sparse mode", i.e.,
    * the sparse read algorithm will be executing, returning results only
@@ -498,12 +556,31 @@ class Reader {
   /** The storage manager. */
   StorageManager* storage_manager_;
 
+  /**
+   * The memory budget for the fixed-sized attributes and the offsets
+   * of the var-sized attributes.
+   */
+  uint64_t memory_budget_;
+
+  /** The memory budget for the var-sized attributes. */
+  uint64_t memory_budget_var_;
+
   /* ********************************* */
   /*           PRIVATE METHODS         */
   /* ********************************* */
 
   /** Clears the read state. */
   void clear_read_state();
+
+  /**
+   * Deletes the tiles on a particular attribute from all input fragments
+   * based on the tile info in `tiles`.
+   *
+   * @param attr The attribute name.
+   * @param tiles The tiles will be deleted from `tiles`.
+   * @return void
+   */
+  void clear_tiles(const std::string& attr, OverlappingTileVec* tiles) const;
 
   /**
    * Compute the maximal cell ranges of contiguous cell positions.
@@ -515,7 +592,7 @@ class Reader {
    */
   template <class T>
   Status compute_cell_ranges(
-      const OverlappingCoordsList<T>& coords,
+      const OverlappingCoordsVec<T>& coords,
       OverlappingCellRangeList* cell_ranges) const;
 
   /**
@@ -557,7 +634,7 @@ class Reader {
   template <class T>
   Status compute_dense_overlapping_tiles_and_cell_ranges(
       const std::list<DenseCellRange<T>>& dense_cell_ranges,
-      const OverlappingCoordsList<T>& coords,
+      const OverlappingCoordsVec<T>& coords,
       OverlappingTileVec* tiles,
       OverlappingCellRangeList* overlapping_cell_ranges);
 
@@ -571,7 +648,7 @@ class Reader {
    */
   template <class T>
   Status compute_overlapping_coords(
-      const OverlappingTileVec& tiles, OverlappingCoordsList<T>* coords) const;
+      const OverlappingTileVec& tiles, OverlappingCoordsVec<T>* coords) const;
 
   /**
    * Retrieves the coordinates that overlap the subarray from the input
@@ -584,7 +661,82 @@ class Reader {
    */
   template <class T>
   Status compute_overlapping_coords(
-      const OverlappingTile* tile, OverlappingCoordsList<T>* coords) const;
+      const OverlappingTile* tile, OverlappingCoordsVec<T>* coords) const;
+
+  /**
+   * Retrieves the coordinates that overlap the input N-dimensional range
+   * from the input overlapping tile.
+   *
+   * @tparam T The coords type.
+   * @param The overlapping tile.
+   * @param range An N-dimensional range (where N is equal to the number
+   *     of dimensions of the array).
+   * @param coords The overlapping coordinates to retrieve.
+   * @return Status
+   */
+  template <class T>
+  Status compute_overlapping_coords_2(
+      const OverlappingTile* tile,
+      const std::vector<const T*>& range,
+      OverlappingCoordsVec<T>* coords) const;
+
+  /**
+   * Computes the coordinates overlapping with each range of the query
+   * subarray.
+   *
+   * @tparam T The domain type.
+   * @param single_fragment For each range, it indicates whereas all
+   *     overlapping tiles come from a single fragment.
+   * @param tiles The tiles to read the coordinates from.
+   * @param tile_map This is an auxialiary map that helps finding the
+   *     tiles overlapping with each range.
+   * @param range_coords The overlapping coordinates to be retrieved.
+   *     It contains a vector for each range of the subarray.
+   * @return Status
+   */
+  template <class T>
+  Status compute_range_coords(
+      const std::vector<bool>& single_fragment,
+      const OverlappingTileVec& tiles,
+      const OverlappingTileMap& tile_map,
+      std::vector<OverlappingCoordsVec<T>>* range_coords);
+
+  /**
+   * Computes the coordinates overlapping with a given range of the query
+   * subarray.
+   *
+   * @tparam T The domain type.
+   * @param range_idx The range to focus on.
+   * @param tiles The tiles to read the coordinates from.
+   * @param tile_map This is an auxialiary map that helps finding the
+   *     tiles overlapping with each range.
+   * @param range_coords The overlapping coordinates to be retrieved.
+   *     It contains a vector for each range of the subarray.
+   * @return Status
+   */
+  template <class T>
+  Status compute_range_coords(
+      uint64_t range_idx,
+      const OverlappingTileVec& tiles,
+      const OverlappingTileMap& tile_map,
+      OverlappingCoordsVec<T>* range_coords);
+
+  /**
+   * Computes the final subarray overlapping coordinates, which will be
+   * deduplicated and sorted on the specified subarray layout.
+   *
+   * @tparam T The domain type.
+   * @param range_coords The overlapping coordinates for each subarray range.
+   * @param coords The result coordinates to be retrieved.
+   * @return Status
+   *
+   * @note the function will try to gradually clean up ``range_coords`` as
+   *     it is done processing its elements to quickly reclaim memory.
+   */
+  template <class T>
+  Status compute_subarray_coords(
+      std::vector<OverlappingCoordsVec<T>>* range_coords,
+      OverlappingCoordsVec<T>* coords);
 
   /**
    * Computes info about the overlapping tiles, such as which fragment they
@@ -596,6 +748,28 @@ class Reader {
    */
   template <class T>
   Status compute_overlapping_tiles(OverlappingTileVec* tiles) const;
+
+  /**
+   * Computes info about the overlapping tiles, such as which fragment they
+   * belong to, the tile index and the type of overlap. The tile vector
+   * contains unique info about the tiles. The function also computes
+   * a map from fragment index and tile id to an overlapping tile to keep
+   * track of the unique tile info for subarray ranges that overlap with
+   * common tiles.
+   *
+   * @tparam T The coords type.
+   * @param tiles The tiles to be computed.
+   * @param tile_map The tile map to be computed.
+   * @param single_fragment Each element corresponds to a range of the
+   *     subarray and is set to ``true`` if all the overlapping
+   *     tiles come from a single fragment for that range.
+   * @return Status
+   */
+  template <class T>
+  Status compute_overlapping_tiles_2(
+      OverlappingTileVec* tiles,
+      OverlappingTileMap* tile_map,
+      std::vector<bool>* single_fragment) const;
 
   /**
    * Computes the tile coordinates for each OverlappingCoords and populates
@@ -610,7 +784,7 @@ class Reader {
   template <class T>
   Status compute_tile_coords(
       std::unique_ptr<T[]>* all_tile_coords,
-      OverlappingCoordsList<T>* coords) const;
+      OverlappingCoordsVec<T>* coords) const;
 
   /**
    * Copies the cells for the input attribute and cell ranges, into
@@ -683,7 +857,7 @@ class Reader {
    * @return Status
    */
   template <class T>
-  Status dedup_coords(OverlappingCoordsList<T>* coords) const;
+  Status dedup_coords(OverlappingCoordsVec<T>* coords) const;
 
   /** Performs a read on a dense array. */
   Status dense_read();
@@ -696,6 +870,15 @@ class Reader {
    */
   template <class T>
   Status dense_read();
+
+  /**
+   * Performs a read on a dense array.
+   *
+   * @tparam The domain type.
+   * @return Status
+   */
+  template <class T>
+  Status dense_read_2();
 
   /**
    * Fills the coordinate buffer with coordinates. Applicable only to dense
@@ -788,7 +971,7 @@ class Reader {
    */
   template <class T>
   Status get_all_coords(
-      const OverlappingTile* tile, OverlappingCoordsList<T>* coords) const;
+      const OverlappingTile* tile, OverlappingCoordsVec<T>* coords) const;
 
   /**
    * Handles the coordinates that fall between `start` and `end`.
@@ -820,8 +1003,8 @@ class Reader {
       uint64_t* start,
       uint64_t end,
       uint64_t coords_size,
-      const OverlappingCoordsList<T>& coords,
-      typename OverlappingCoordsList<T>::const_iterator* coords_it,
+      const OverlappingCoordsVec<T>& coords,
+      typename OverlappingCoordsVec<T>::const_iterator* coords_it,
       uint64_t* coords_pos,
       unsigned* coords_fidx,
       std::vector<T>* coords_tile_coords,
@@ -832,6 +1015,9 @@ class Reader {
 
   /** Initializes the read state. */
   Status init_read_state();
+
+  /** Initializes the read state. */
+  Status init_read_state_2();
 
   /**
    * Initializes a fixed-sized tile.
@@ -898,6 +1084,16 @@ class Reader {
    * Retrieves the tiles on a particular attribute from all input fragments
    * based on the tile info in `tiles`.
    *
+   * @param attr The attribute name.
+   * @param tiles The retrieved tiles will be stored in `tiles`.
+   * @return Status
+   */
+  Status read_tiles(const std::string& attr, OverlappingTileVec* tiles) const;
+
+  /**
+   * Retrieves the tiles on a particular attribute from all input fragments
+   * based on the tile info in `tiles`.
+   *
    * The reads are done asynchronously, and futures for each read operation are
    * added to the output parameter.
    *
@@ -919,14 +1115,24 @@ class Reader {
   void reset_buffer_sizes();
 
   /**
-   * Sorts the input coordinates according to the input layout.
+   * Sorts the input coordinates according to the subarray layout.
    *
    * @tparam T The coords type.
    * @param coords The coordinates to sort.
    * @return Status
    */
   template <class T>
-  Status sort_coords(OverlappingCoordsList<T>* coords) const;
+  Status sort_coords(OverlappingCoordsVec<T>* coords) const;
+
+  /**
+   * Sorts the input coordinates according to the subarray layout.
+   *
+   * @tparam T The coords type.
+   * @param coords The coordinates to sort.
+   * @return Status
+   */
+  template <class T>
+  Status sort_coords_2(OverlappingCoordsVec<T>* coords) const;
 
   /** Performs a read on a sparse array. */
   Status sparse_read();
@@ -939,6 +1145,15 @@ class Reader {
    */
   template <class T>
   Status sparse_read();
+
+  /**
+   * Performs a read on a sparse array.
+   *
+   * @tparam The domain type.
+   * @return Status
+   */
+  template <class T>
+  Status sparse_read_2();
 
   /** Zeroes out the user buffer sizes, indicating an empty result. */
   void zero_out_buffer_sizes();

@@ -33,6 +33,7 @@
 #include "catch.hpp"
 #include "tiledb/sm/c_api/tiledb.h"
 
+#include <tiledb/sm/misc/constants.h>
 #include <cstring>
 #include <fstream>
 #include <iostream>
@@ -58,7 +59,7 @@ void check_load_correct_file() {
   ofs << "   # comment line\n";
   ofs << "sm.tile_cache_size 1000\n";
   ofs << "# another comment line\n";
-  ofs << "sm.array_schema_cache_size 1000 # some comment\n";
+  ofs << "sm.num_async_threads 10 # some comment\n";
   ofs << "#    last comment line\n";
   ofs.close();
 
@@ -111,7 +112,7 @@ void check_load_incorrect_file_missing_value() {
   ofs << "   # comment line\n";
   ofs << "sm.tile_cache_size    \n";
   ofs << "# another comment line\n";
-  ofs << "sm.array_schema_cache_size 1000\n";
+  ofs << "sm.num_async_threads 10\n";
   ofs << "#    last comment line\n";
   ofs.close();
 
@@ -141,7 +142,7 @@ void check_load_incorrect_file_extra_word() {
   ofs << "   # comment line\n";
   ofs << "sm.tile_cache_size 1000\n";
   ofs << "# another comment line\n";
-  ofs << "sm.array_schema_cache_size 1000 some comment\n";
+  ofs << "sm.num_async_threads 10 some comment\n";
   ofs << "#    last comment line\n";
   ofs.close();
 
@@ -189,7 +190,6 @@ void check_save_to_file() {
   REQUIRE(rc == TILEDB_OK);
 
   std::stringstream ss;
-  ss << "sm.array_schema_cache_size 10000000\n";
   ss << "sm.check_coord_dups true\n";
   ss << "sm.check_coord_oob true\n";
   ss << "sm.check_global_order true\n";
@@ -201,7 +201,8 @@ void check_save_to_file() {
   ss << "sm.consolidation.steps 4294967295\n";
   ss << "sm.dedup_coords false\n";
   ss << "sm.enable_signal_handlers true\n";
-  ss << "sm.fragment_metadata_cache_size 10000000\n";
+  ss << "sm.memory_budget 5368709120\n";
+  ss << "sm.memory_budget_var 10737418240\n";
   ss << "sm.num_async_threads 1\n";
   ss << "sm.num_reader_threads 1\n";
   ss << "sm.num_tbb_threads -1\n";
@@ -209,8 +210,8 @@ void check_save_to_file() {
   ss << "sm.tile_cache_size 10000000\n";
   ss << "vfs.file.max_parallel_ops " << std::thread::hardware_concurrency()
      << "\n";
-  ss << "vfs.max_batch_read_amplification 1\n";
-  ss << "vfs.max_batch_read_size 104857600\n";
+  ss << "vfs.min_batch_gap 512000\n";
+  ss << "vfs.min_batch_size 20971520\n";
   ss << "vfs.min_parallel_size 10485760\n";
   ss << "vfs.num_threads " << std::thread::hardware_concurrency() << "\n";
   ss << "vfs.s3.connect_max_tries 5\n";
@@ -357,9 +358,6 @@ TEST_CASE("C API: Test config iter", "[capi], [config]") {
   rc = tiledb_config_set(config, "sm.tile_cache_size", "100", &error);
   CHECK(rc == TILEDB_OK);
   CHECK(error == nullptr);
-  rc = tiledb_config_set(config, "sm.array_schema_cache_size", "1000", &error);
-  CHECK(rc == TILEDB_OK);
-  CHECK(error == nullptr);
   rc = tiledb_config_set(config, "vfs.s3.scheme", "https", &error);
   CHECK(rc == TILEDB_OK);
   CHECK(error == nullptr);
@@ -374,8 +372,8 @@ TEST_CASE("C API: Test config iter", "[capi], [config]") {
   all_param_values["sm.check_coord_oob"] = "true";
   all_param_values["sm.check_global_order"] = "true";
   all_param_values["sm.tile_cache_size"] = "100";
-  all_param_values["sm.array_schema_cache_size"] = "1000";
-  all_param_values["sm.fragment_metadata_cache_size"] = "10000000";
+  all_param_values["sm.memory_budget"] = "5368709120";
+  all_param_values["sm.memory_budget_var"] = "10737418240";
   all_param_values["sm.enable_signal_handlers"] = "true";
   all_param_values["sm.num_async_threads"] = "1";
   all_param_values["sm.num_reader_threads"] = "1";
@@ -389,9 +387,9 @@ TEST_CASE("C API: Test config iter", "[capi], [config]") {
   all_param_values["sm.consolidation.step_size_ratio"] = "0";
   all_param_values["vfs.num_threads"] =
       std::to_string(std::thread::hardware_concurrency());
+  all_param_values["vfs.min_batch_gap"] = "512000";
+  all_param_values["vfs.min_batch_size"] = "20971520";
   all_param_values["vfs.min_parallel_size"] = "10485760";
-  all_param_values["vfs.max_batch_read_amplification"] = "1";
-  all_param_values["vfs.max_batch_read_size"] = "104857600";
   all_param_values["vfs.file.max_parallel_ops"] =
       std::to_string(std::thread::hardware_concurrency());
   all_param_values["vfs.s3.scheme"] = "https";
@@ -419,9 +417,9 @@ TEST_CASE("C API: Test config iter", "[capi], [config]") {
   std::map<std::string, std::string> vfs_param_values;
   vfs_param_values["num_threads"] =
       std::to_string(std::thread::hardware_concurrency());
+  vfs_param_values["min_batch_gap"] = "512000";
+  vfs_param_values["min_batch_size"] = "20971520";
   vfs_param_values["min_parallel_size"] = "10485760";
-  vfs_param_values["max_batch_read_amplification"] = "1";
-  vfs_param_values["max_batch_read_size"] = "104857600";
   vfs_param_values["file.max_parallel_ops"] =
       std::to_string(std::thread::hardware_concurrency());
   vfs_param_values["s3.scheme"] = "https";

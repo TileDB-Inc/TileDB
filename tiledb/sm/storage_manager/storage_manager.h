@@ -204,6 +204,7 @@ class StorageManager {
    * Computes an estimate on the buffer sizes required for a read
    * query, for a given subarray and set of attributes.
    *
+   * @parma encryption_key The key the array got opened with.
    * @param array_schema The array schema
    * @param fragment_metadata The fragment metadata of the array.
    * @param subarray The subarray to focus on. Note that it must have the same
@@ -215,6 +216,7 @@ class StorageManager {
    * @return Status
    */
   Status array_compute_est_read_buffer_sizes(
+      const EncryptionKey& encryption_key,
       const ArraySchema* array_schema,
       const std::vector<FragmentMetadata*>& fragment_metadata,
       const void* subarray,
@@ -436,29 +438,13 @@ class StorageManager {
    * @param object_type This is either ARRAY or KEY_VALUE.
    * @param encryption_key The encryption key to use.
    * @param array_schema The array schema to be retrieved.
-   * @param in_cache Set to true if the schema was cached.
    * @return Status
    */
   Status load_array_schema(
       const URI& array_uri,
       ObjectType object_type,
       const EncryptionKey& encryption_key,
-      ArraySchema** array_schema,
-      bool* in_cache);
-
-  /**
-   * Loads the fragment metadata of an array from persistent storage into
-   * memory.
-   *
-   * @param metadata The fragment metadata to be loaded.
-   * @param encryption_key The encryption key to use.
-   * @param in_cache Set to true if the metadata was retrieved from the cache
-   * @return Status
-   */
-  Status load_fragment_metadata(
-      FragmentMetadata* metadata,
-      const EncryptionKey& encryption_key,
-      bool* in_cache);
+      ArraySchema** array_schema);
 
   /** Removes a TileDB object (group, array, kv). */
   Status object_remove(const char* path) const;
@@ -611,16 +597,6 @@ class StorageManager {
   Status store_array_schema(
       ArraySchema* array_schema, const EncryptionKey& encryption_key);
 
-  /**
-   * Stores the fragment metadata into persistent storage.
-   *
-   * @param metadata The fragment metadata to be stored.
-   * @param encryption_key The encryption key to use.
-   * @return Status
-   */
-  Status store_fragment_metadata(
-      FragmentMetadata* metadata, const EncryptionKey& encryption_key);
-
   /** Closes a file, flushing its contents to persistent storage. */
   Status close_file(const URI& uri);
 
@@ -656,6 +632,16 @@ class StorageManager {
    */
   Status write(const URI& uri, Buffer* buffer) const;
 
+  /**
+   * Writes the input data into a URI file.
+   *
+   * @param uri The file to write into.
+   * @param data The data to write.
+   * @param size The data size in bytes.
+   * @return Status.
+   */
+  Status write(const URI& uri, void* data, uint64_t size) const;
+
  private:
   /* ********************************* */
   /*        PRIVATE DATATYPES          */
@@ -688,9 +674,6 @@ class StorageManager {
   /*        PRIVATE ATTRIBUTES         */
   /* ********************************* */
 
-  /** An array schema cache. */
-  LRUCache* array_schema_cache_;
-
   /** Set to true when tasks are being cancelled. */
   bool cancellation_in_progress_;
 
@@ -713,34 +696,20 @@ class StorageManager {
   /** Stores exclusive filelocks for arrays. */
   std::unordered_map<std::string, filelock_t> xfilelocks_;
 
-  /** A fragment metadata cache. */
-  LRUCache* fragment_metadata_cache_;
-
   /** Mutex for managing OpenArray objects for reads. */
   std::mutex open_array_for_reads_mtx_;
 
   /** Mutex for managing OpenArray objects for writes. */
   std::mutex open_array_for_writes_mtx_;
 
-  /** Mutex protecting open_arrays_encryption_keys_. */
-  std::mutex open_arrays_encryption_keys_mtx_;
+  /** Mutex for managing exclusive locks. */
+  std::mutex xlock_mtx_;
 
   /** Stores the currently open arrays for reads. */
   std::map<std::string, OpenArray*> open_arrays_for_reads_;
 
   /** Stores the currently open arrays for writes. */
   std::map<std::string, OpenArray*> open_arrays_for_writes_;
-
-  /**
-   * Map of array URI -> encryption key validation instance for arrays that have
-   * been opened with an encryption key. This does not store the actual keys.
-   *
-   * Note: there is no difference when opening arrays for reads or writes. This
-   * map is insert-only (items not removed when arrays are closed) because
-   * the encryption key does not (and should not) ever change.
-   */
-  std::map<std::string, std::unique_ptr<EncryptionKeyValidation>>
-      open_arrays_encryption_keys_;
 
   /** Count of the number of queries currently in progress. */
   uint64_t queries_in_progress_;
@@ -797,6 +766,7 @@ class StorageManager {
    * query, for a given subarray and set of attributes.
    *
    * @tparam T The domain type
+   * @parma encryption_key The key the array got opened with.
    * @param array_schema The array schema.
    * @param fragment_metadata The fragment metadata of the array.
    * @param subarray The subarray to focus on. Note that it must have the same
@@ -809,6 +779,7 @@ class StorageManager {
    */
   template <class T>
   Status array_compute_est_read_buffer_sizes(
+      const EncryptionKey& encryption_key,
       const ArraySchema* array_schema,
       const std::vector<FragmentMetadata*>& fragment_metadata,
       const T* subarray,
@@ -832,21 +803,6 @@ class StorageManager {
       const EncryptionKey& encryption_key,
       OpenArray** open_array);
 
-  /**
-   * Checks that the given encryption key is valid for the given array. Returns
-   * an error if the key is invalid.
-   *
-   * @param schema Array schema
-   * @param encryption_key The encryption key to check.
-   * @param was_cache_hit If true, also returns an error if the encryption key
-   *    was not used before (sanity check).
-   * @return Status
-   */
-  Status check_array_encryption_key(
-      const ArraySchema* schema,
-      const EncryptionKey& encryption_key,
-      bool was_cache_hit);
-
   /** Decrement the count of in-progress queries. */
   void decrement_in_progress();
 
@@ -864,15 +820,13 @@ class StorageManager {
    * @param object_type This is either ARRAY or KEY_VALUE.
    * @param open_array The open array object.
    * @param encryption_key The encryption key to use.
-   * @param in_cache Set to true if the schema was retrieved from the cache.
    * @return Status
    */
   Status load_array_schema(
       const URI& array_uri,
       ObjectType object_type,
       OpenArray* open_array,
-      const EncryptionKey& encryption_key,
-      bool* in_cache);
+      const EncryptionKey& encryption_key);
 
   /**
    * Loads the fragment metadata of an open array given a vector of
@@ -886,7 +840,6 @@ class StorageManager {
    * @param encryption_key The encryption key to use.
    * @param fragments_to_load The fragments whose metadata to load. This
    *     is a vector of pairs (timestamp, URI).
-   * @param in_cache Set to true if any metdata was retrieved from the cache
    * @param fragment_metadata The fragment metadata retrieved in a
    *     vector.
    * @return Status
@@ -895,7 +848,6 @@ class StorageManager {
       OpenArray* open_array,
       const EncryptionKey& encryption_key,
       const std::vector<std::pair<uint64_t, URI>>& fragments_to_load,
-      bool* in_cache,
       std::vector<FragmentMetadata*>* fragment_metadata);
 
   /**
@@ -905,7 +857,7 @@ class StorageManager {
    * `timestamp` are considered. The sorted fragment URIs are stored in
    * the second input, including the fragment timestamps.
    */
-  void get_sorted_fragment_uris(
+  Status get_sorted_fragment_uris(
       const std::vector<URI>& fragment_uris,
       uint64_t timestamp,
       std::vector<std::pair<uint64_t, URI>>* sorted_fragment_uris) const;

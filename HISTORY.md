@@ -1,9 +1,16 @@
-# In progress
+# In Progress
 
 ## New features
+
+* Added support for multi-range reads (non-continuous range slicing) for sparse arrays.
+
 ## Improvements
 
 * Better handling of `{C,CXX}FLAGS` during the build. [#1209](https://github.com/TileDB-Inc/TileDB/pull/1209)
+* Removed fragment metadata caching.
+* Removed array schema caching.
+* The tile MBR in the in-memory fragment metadata are organized into an R-Tree, speeding up tile overlap operations during subarray reads.
+* Improved encryption key validation process when opening already open arrays. Fixes issue with indefinite growing of the URI to encryption key mapping in `StorageManager` (the mapping is no longer needed). 
 
 ## Bug fixes
 
@@ -14,6 +21,10 @@
 
 ### C API
 
+* Added functions `tiledb_subarray_partitoner_{next, get_current, done}`.
+* Added object `tiledb_subarray_partitioner_t` and functions `tiledb_subarray_partitoner_{alloc, free, set_result_budget, set_result_budget_var, get_result_budget, get_result_budget_var}`.
+* Added functions `tiledb_subarray_{get_est_result_size, get_est_result_size_var}`.
+* Added object `tiledb_subarray_t` and functions `tiledb_subarray_{alloc, free, get_layout, get_type, get_ndim, get_domain, add_range, get_range_num, get_range}`.
 * Added function `tiledb_query_get_layout`
 * Added datatype `tiledb_buffer_t` and functions `tiledb_buffer_{alloc,free,get_type,set_type,get_size}`.
 

@@ -477,6 +477,17 @@ namespace geometry {
 
 template <class T>
 inline bool coords_in_rect(
+    const T* coords, const std::vector<const T*>& rect, unsigned int dim_num) {
+  for (unsigned int i = 0; i < dim_num; ++i) {
+    if (coords[i] < rect[i][0] || coords[i] > rect[i][1])
+      return false;
+  }
+
+  return true;
+}
+
+template <class T>
+inline bool coords_in_rect(
     const T* coords, const T* rect, unsigned int dim_num) {
   for (unsigned int i = 0; i < dim_num; ++i) {
     if (coords[i] < rect[2 * i] || coords[i] > rect[2 * i + 1])
@@ -497,6 +508,22 @@ inline bool rect_in_rect(
   }
 
   return true;
+}
+
+template <class T>
+void compute_mbr_union(
+    unsigned dim_num, const T* mbrs, uint64_t mbr_num, T* mbr_union) {
+  // Sanity check
+  if (dim_num == 0 || mbr_num == 0)
+    return;
+
+  // Set the first rectangle to the union
+  auto mbr_size = 2 * dim_num * sizeof(T);
+  std::memcpy(mbr_union, mbrs, mbr_size);
+
+  // Expand the union with every other MBR
+  for (uint64_t i = 1; i < mbr_num; ++i)
+    expand_mbr_with_mbr<T>(mbr_union, &mbrs[i * 2 * dim_num], dim_num);
 }
 
 template <class T>
@@ -578,6 +605,13 @@ double coverage(const T* a, const T* b, unsigned dim_num) {
     } else {
       auto a_range = double(a[2 * i + 1]) - a[2 * i] + add;
       auto b_range = double(b[2 * i + 1]) - b[2 * i] + add;
+      if (std::numeric_limits<T>::is_integer) {
+        auto max = std::numeric_limits<T>::max();
+        if (a_range == 0)
+          a_range = std::nextafter(a_range, max);
+        if (b_range == 0)
+          b_range = std::nextafter(b_range, max);
+      }
       c *= a_range / b_range;
     }
   }
@@ -621,6 +655,23 @@ uint64_t ceil(uint64_t x, uint64_t y) {
   return x / y + (x % y != 0);
 }
 
+double log(double b, double x) {
+  return ::log(x) / ::log(b);
+}
+
+template <class T>
+T safe_mul(T a, T b) {
+  T prod = a * b;
+
+  // Check for overflow only for integers
+  if (std::is_integral<T>::value) {
+    if (prod / a != b)  // Overflow
+      return std::numeric_limits<T>::max();
+  }
+
+  return prod;
+}
+
 }  // namespace math
 
 // Explicit template instantiations
@@ -647,6 +698,47 @@ template bool coords_in_rect<uint32_t>(
     const uint32_t* coords, const uint32_t* subarray, unsigned int dim_num);
 template bool coords_in_rect<uint64_t>(
     const uint64_t* coords, const uint64_t* subarray, unsigned int dim_num);
+
+template bool coords_in_rect<int>(
+    const int* corrds,
+    const std::vector<const int*>& subarray,
+    unsigned int dim_num);
+template bool coords_in_rect<int64_t>(
+    const int64_t* corrds,
+    const std::vector<const int64_t*>& subarray,
+    unsigned int dim_num);
+template bool coords_in_rect<float>(
+    const float* coords,
+    const std::vector<const float*>& subarray,
+    unsigned int dim_num);
+template bool coords_in_rect<double>(
+    const double* coords,
+    const std::vector<const double*>& subarray,
+    unsigned int dim_num);
+template bool coords_in_rect<int8_t>(
+    const int8_t* coords,
+    const std::vector<const int8_t*>& subarray,
+    unsigned int dim_num);
+template bool coords_in_rect<uint8_t>(
+    const uint8_t* coords,
+    const std::vector<const uint8_t*>& subarray,
+    unsigned int dim_num);
+template bool coords_in_rect<int16_t>(
+    const int16_t* coords,
+    const std::vector<const int16_t*>& subarray,
+    unsigned int dim_num);
+template bool coords_in_rect<uint16_t>(
+    const uint16_t* coords,
+    const std::vector<const uint16_t*>& subarray,
+    unsigned int dim_num);
+template bool coords_in_rect<uint32_t>(
+    const uint32_t* coords,
+    const std::vector<const uint32_t*>& subarray,
+    unsigned int dim_num);
+template bool coords_in_rect<uint64_t>(
+    const uint64_t* coords,
+    const std::vector<const uint64_t*>& subarray,
+    unsigned int dim_num);
 
 template bool rect_in_rect<int>(
     const int* rect_a, const int* rect_b, unsigned int dim_num);
@@ -824,7 +916,64 @@ template double coverage<float>(
 template double coverage<double>(
     const double* a, const double* b, unsigned dim_num);
 
+template void compute_mbr_union<int8_t>(
+    unsigned dim_num, const int8_t* mbrs, uint64_t mbr_num, int8_t* mbr_union);
+template void compute_mbr_union<uint8_t>(
+    unsigned dim_num,
+    const uint8_t* mbrs,
+    uint64_t mbr_num,
+    uint8_t* mbr_union);
+template void compute_mbr_union<int16_t>(
+    unsigned dim_num,
+    const int16_t* mbrs,
+    uint64_t mbr_num,
+    int16_t* mbr_union);
+template void compute_mbr_union<uint16_t>(
+    unsigned dim_num,
+    const uint16_t* mbrs,
+    uint64_t mbr_num,
+    uint16_t* mbr_union);
+template void compute_mbr_union<int32_t>(
+    unsigned dim_num,
+    const int32_t* mbrs,
+    uint64_t mbr_num,
+    int32_t* mbr_union);
+template void compute_mbr_union<uint32_t>(
+    unsigned dim_num,
+    const uint32_t* mbrs,
+    uint64_t mbr_num,
+    uint32_t* mbr_union);
+template void compute_mbr_union<int64_t>(
+    unsigned dim_num,
+    const int64_t* mbrs,
+    uint64_t mbr_num,
+    int64_t* mbr_union);
+template void compute_mbr_union<uint64_t>(
+    unsigned dim_num,
+    const uint64_t* mbrs,
+    uint64_t mbr_num,
+    uint64_t* mbr_union);
+template void compute_mbr_union<float>(
+    unsigned dim_num, const float* mbrs, uint64_t mbr_num, float* mbr_union);
+template void compute_mbr_union<double>(
+    unsigned dim_num, const double* mbrs, uint64_t mbr_num, double* mbr_union);
+
 }  // namespace geometry
+
+namespace math {
+
+template int8_t safe_mul<int8_t>(int8_t a, int8_t b);
+template uint8_t safe_mul<uint8_t>(uint8_t a, uint8_t b);
+template int16_t safe_mul<int16_t>(int16_t a, int16_t b);
+template uint16_t safe_mul<uint16_t>(uint16_t a, uint16_t b);
+template int32_t safe_mul<int32_t>(int32_t a, int32_t b);
+template uint32_t safe_mul<uint32_t>(uint32_t a, uint32_t b);
+template int64_t safe_mul<int64_t>(int64_t a, int64_t b);
+template uint64_t safe_mul<uint64_t>(uint64_t a, uint64_t b);
+template float safe_mul<float>(float a, float b);
+template double safe_mul<double>(double a, double b);
+
+}  // namespace math
 
 }  // namespace utils
 

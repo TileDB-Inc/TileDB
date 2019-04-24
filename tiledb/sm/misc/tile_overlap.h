@@ -1,7 +1,5 @@
 /**
- * @file   tiledb
- *
- * @author Ravi Gaddipati
+ * @file   tile_overlap.h
  *
  * @section LICENSE
  *
@@ -29,35 +27,32 @@
  *
  * @section DESCRIPTION
  *
- * This file declares the C++ API for TileDB.
+ * This file defines struct TileOverlap.
  */
 
-#ifndef TILEDB_CPP_H
-#define TILEDB_CPP_H
+#ifndef TILEDB_TILE_OVERLAP_H
+#define TILEDB_TILE_OVERLAP_H
 
-#include "array.h"
-#include "array_schema.h"
-#include "attribute.h"
-#include "config.h"
-#include "context.h"
-#include "deleter.h"
-#include "dimension.h"
-#include "domain.h"
-#include "exception.h"
-#include "filter.h"
-#include "filter_list.h"
-#include "group.h"
-#include "map.h"
-#include "map_schema.h"
-#include "object.h"
-#include "object_iter.h"
-#include "query.h"
-#include "schema_base.h"
-#include "stats.h"
-#include "subarray.h"
-#include "tiledb.h"
-#include "utils.h"
-#include "version.h"
-#include "vfs.h"
+namespace tiledb {
+namespace sm {
 
-#endif  // TILEDB_CPP_H
+/**
+ * A simple struct that stores tile overlap info from a single
+ * fragment with a single range within a subarray.
+ */
+struct TileOverlap {
+  /**
+   * A vector of pairs ``(overlapping tile id, ratio).``
+   * The ``ratio`` is defined as the ratio of the volume of the overlap over
+   * the total tile volume. This is a number in [0.0, 1.0]. An overlap of 1.0
+   * indicates full overlap and 0.0 no overlap at all.
+   */
+  std::vector<std::pair<uint64_t, double>> tiles_;
+  /** Ranges of tile ids that lie completely inside the subarray range. */
+  std::vector<std::pair<uint64_t, uint64_t>> tile_ranges_;
+};
+
+}  // namespace sm
+}  // namespace tiledb
+
+#endif  // TILEDB_TILE_OVERLAP_H

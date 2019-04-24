@@ -38,11 +38,15 @@
 #include "tiledb/sm/buffer/buffer.h"
 #include "tiledb/sm/enums/query_type.h"
 #include "tiledb/sm/misc/status.h"
+#include "tiledb/sm/rtree/rtree.h"
 
+#include <mutex>
 #include <vector>
 
 namespace tiledb {
 namespace sm {
+
+class StorageManager;
 
 /** Stores the metadata structures of a fragment. */
 class FragmentMetadata {
@@ -54,6 +58,7 @@ class FragmentMetadata {
   /**
    * Constructor.
    *
+   * @param storage_manager A storage manager instance.
    * @param array_schema The schema of the array the fragment belongs to.
    * @param dense Indicates whether the fragment is dense or sparse.
    * @param fragment_uri The fragment URI.
@@ -61,6 +66,7 @@ class FragmentMetadata {
    * timestamps are in ms elapsed since 1970-01-01 00:00:00 +0000 (UTC).
    */
   FragmentMetadata(
+      StorageManager* storage_manager,
       const ArraySchema* array_schema,
       bool dense,
       const URI& fragment_uri,
@@ -85,6 +91,7 @@ class FragmentMetadata {
    * bounds is added to those in `buffer_sizes`.
    *
    * @tparam T The coordinates type.
+   * @param encryption_key The encryption key the array was opened with.
    * @param subarray The targeted subarray.
    * @param buffer_sizes The upper bounds will be added to this map. The latter
    *     maps an attribute to a buffer size pair. For fix-sized attributes, only
@@ -94,9 +101,10 @@ class FragmentMetadata {
    */
   template <class T>
   Status add_max_buffer_sizes(
+      const EncryptionKey& encryption_key,
       const T* subarray,
       std::unordered_map<std::string, std::pair<uint64_t, uint64_t>>*
-          buffer_sizes) const;
+          buffer_sizes);
 
   /**
    * Computes an upper bound on the buffer sizes needed when reading a subarray
@@ -105,6 +113,7 @@ class FragmentMetadata {
    * case.
    *
    * @tparam T The coordinates type.
+   * @param encryption_key The encryption key the array was opened with.
    * @param subarray The targeted subarray.
    * @param buffer_sizes The upper bounds will be added to this map. The latter
    *     maps an attribute to a buffer size pair. For fix-sized attributes, only
@@ -114,9 +123,10 @@ class FragmentMetadata {
    */
   template <class T>
   Status add_max_buffer_sizes_dense(
+      const EncryptionKey& encryption_key,
       const T* subarray,
       std::unordered_map<std::string, std::pair<uint64_t, uint64_t>>*
-          buffer_sizes) const;
+          buffer_sizes);
 
   /**
    * Computes an upper bound on the buffer sizes needed when reading a subarray
@@ -125,6 +135,7 @@ class FragmentMetadata {
    * case.
    *
    * @tparam T The coordinates type.
+   * @param encryption_key The encryption key the array was opened with.
    * @param subarray The targeted subarray.
    * @param buffer_sizes The upper bounds will be added to this map. The latter
    *     maps an attribute to a buffer size pair. For fix-sized attributes, only
@@ -134,9 +145,10 @@ class FragmentMetadata {
    */
   template <class T>
   Status add_max_buffer_sizes_sparse(
+      const EncryptionKey& encryption_key,
       const T* subarray,
       std::unordered_map<std::string, std::pair<uint64_t, uint64_t>>*
-          buffer_sizes) const;
+          buffer_sizes);
 
   /**
    * Computes an estimate on the buffer sizes needed when reading a subarray
@@ -144,6 +156,7 @@ class FragmentMetadata {
    * bounds is added to those in `buffer_sizes`.
    *
    * @tparam T The coordinates type.
+   * @param encryption_key The encryption key the array was opened with.
    * @param subarray The targeted subarray.
    * @param buffer_sizes The upper bounds will be added to this map. The latter
    *     maps an attribute to a buffer size pair. For fix-sized attributes, only
@@ -153,9 +166,9 @@ class FragmentMetadata {
    */
   template <class T>
   Status add_est_read_buffer_sizes(
+      const EncryptionKey& encryption_key,
       const T* subarray,
-      std::unordered_map<std::string, std::pair<double, double>>* buffer_sizes)
-      const;
+      std::unordered_map<std::string, std::pair<double, double>>* buffer_sizes);
 
   /**
    * Computes an estimate on the buffer sizes needed when reading a subarray
@@ -164,6 +177,7 @@ class FragmentMetadata {
    * case.
    *
    * @tparam T The coordinates type.
+   * @param encryption_key The encryption key the array was opened with.
    * @param subarray The targeted subarray.
    * @param buffer_sizes The upper bounds will be added to this map. The latter
    *     maps an attribute to a buffer size pair. For fix-sized attributes, only
@@ -173,9 +187,9 @@ class FragmentMetadata {
    */
   template <class T>
   Status add_est_read_buffer_sizes_dense(
+      const EncryptionKey& encryption_key,
       const T* subarray,
-      std::unordered_map<std::string, std::pair<double, double>>* buffer_sizes)
-      const;
+      std::unordered_map<std::string, std::pair<double, double>>* buffer_sizes);
 
   /**
    * Computes an estimate on the buffer sizes needed when reading a subarray
@@ -184,6 +198,7 @@ class FragmentMetadata {
    * case.
    *
    * @tparam T The coordinates type.
+   * @param encryption_key The encryption key the array was opened with.
    * @param subarray The targeted subarray.
    * @param buffer_sizes The upper bounds will be added to this map. The latter
    *     maps an attribute to a buffer size pair. For fix-sized attributes, only
@@ -193,9 +208,17 @@ class FragmentMetadata {
    */
   template <class T>
   Status add_est_read_buffer_sizes_sparse(
+      const EncryptionKey& encryption_key,
       const T* subarray,
-      std::unordered_map<std::string, std::pair<double, double>>* buffer_sizes)
-      const;
+      std::unordered_map<std::string, std::pair<double, double>>* buffer_sizes);
+
+  /**
+   * Returns the ids (positions) of the tiles overlapping `subarray`, along with
+   * with the coverage of the overlap.
+   */
+  template <class T>
+  std::vector<std::pair<uint64_t, double>> compute_overlapping_tile_ids_cov(
+      const T* subarray) const;
 
   /**
    * Returns ture if the corresponding fragment is dense, and false if it
@@ -203,25 +226,14 @@ class FragmentMetadata {
    */
   bool dense() const;
 
-  /**
-   * Loads the fragment metadata structures from the input binary buffer.
-   *
-   * @param buff The binary buffer to deserialize from.
-   * @return Status
-   */
-  Status deserialize(ConstBuffer* buff);
-
   /** Returns the (expanded) domain in which the fragment is constrained. */
   const void* domain() const;
 
-  /** Returns the size of the input attribute. */
-  uint64_t file_sizes(const std::string& attribute) const;
-
-  /** Returns the size of the input variable attribute. */
-  uint64_t file_var_sizes(const std::string& attribute) const;
-
   /** Returns the format version of this fragment. */
   uint32_t format_version() const;
+
+  /** Retrieves the fragment size. */
+  Status fragment_size(uint64_t* size) const;
 
   /** Returns the fragment URI. */
   const URI& fragment_uri() const;
@@ -249,28 +261,19 @@ class FragmentMetadata {
   /** Returns the number of cells in the last tile. */
   uint64_t last_tile_cell_num() const;
 
-  /** Returns the MBRs. */
-  const std::vector<void*>& mbrs() const;
+  /** Loads the basic metadata from storage. */
+  Status load(const EncryptionKey& encryption_key);
+
+  /** Stores all the metadata to storage. */
+  Status store(const EncryptionKey& encryption_key);
+
+  /** Retrieves the MBRs. */
+  // TODO: Remove after the new dense read algorithm is in
+  Status mbrs(
+      const EncryptionKey& encryption_key, const std::vector<void*>** mbrs);
 
   /** Returns the non-empty domain in which the fragment is constrained. */
   const void* non_empty_domain() const;
-
-  /**
-   * Serializes the metadata structures into a binary buffer.
-   *
-   * @param buff The buffer to serialize into.
-   * @return Status
-   */
-  Status serialize(Buffer* buff);
-
-  /**
-   * Sets the input tile's bounding coordinates in the fragment metadata.
-   *
-   * @param tile The tile index whose bounding coords will be set.
-   * @param bounding_coords The bounding coordinates to be set.
-   * @return void
-   */
-  void set_bounding_coords(uint64_t tile, const void* bounding_coords);
 
   /**
    * Simply sets the number of cells for the last tile.
@@ -371,50 +374,74 @@ class FragmentMetadata {
   URI attr_var_uri(const std::string& attribute) const;
 
   /**
-   * Returns the starting offset of the input tile of input attribute
+   * Retrieves the starting offset of the input tile of input attribute
    * in the file. If the attribute is var-sized, it returns the starting
    * offset of the offsets tile.
    *
+   * @param encryption_key The key the array got opened with.
    * @param attribute The input attribute.
    * @param tile_idx The index of the tile in the metadata.
-   * @return The file offset.
+   * @param offset The file offset to be retrieved.
+   * @return Status
    */
-  uint64_t file_offset(const std::string& attribute, uint64_t tile_idx) const;
+  Status file_offset(
+      const EncryptionKey& encryption_key,
+      const std::string& attribute,
+      uint64_t tile_idx,
+      uint64_t* offset);
 
   /**
-   * Returns the starting offset of the input tile of input attribute
+   * Retrieves the starting offset of the input tile of input attribute
    * in the file. The attribute must be var-sized.
    *
+   * @param encryption_key The key the array got opened with.
    * @param attribute_id The input attribute.
    * @param tile_idx The index of the tile in the metadata.
-   * @return The file offset.
+   * @param offset The file offset to be retrieved.
+   * @return Status
    */
-  uint64_t file_var_offset(
-      const std::string& attribute, uint64_t tile_idx) const;
+  Status file_var_offset(
+      const EncryptionKey& encryption_key,
+      const std::string& attribute,
+      uint64_t tile_idx,
+      uint64_t* offset);
 
   /**
-   * Returns the size of the tile when it is persisted (e.g. the size of the
+   * Retrieves the size of the tile when it is persisted (e.g. the size of the
    * compressed tile on disk) for a given attribute and tile index. If the
    * attribute is var-sized, this will return the persisted size of the offsets
    * tile.
    *
+   * @param encryption_key The key the array got opened with.
    * @param attribute The input attribute.
    * @param tile_idx The index of the tile in the metadata.
-   * @return The tile size.
+   * @param tile_size The tile size to be retrieved.
+   * @return Status
    */
-  uint64_t persisted_tile_size(
-      const std::string& attribute, uint64_t tile_idx) const;
+  Status persisted_tile_size(
+      const EncryptionKey& encryption_key,
+      const std::string& attribute,
+      uint64_t tile_idx,
+      uint64_t* tile_size);
 
   /**
-   * Returns the size of the tile when it is persisted (e.g. the size of the
+   * Retrieves the size of the tile when it is persisted (e.g. the size of the
    * compressed tile on disk) for a given var-sized attribute and tile index.
    *
+   * @param encryption_key The key the array got opened with.
    * @param attribute The inout attribute.
    * @param tile_idx The index of the tile in the metadata.
-   * @return The tile size.
+   * @param tile_size The tile size to be retrieved.
+   * @return Status
    */
-  uint64_t persisted_tile_var_size(
-      const std::string& attribute, uint64_t tile_idx) const;
+  Status persisted_tile_var_size(
+      const EncryptionKey& encryption_key,
+      const std::string& attribute,
+      uint64_t tile_idx,
+      uint64_t* tile_size);
+
+  /** Retrieves the RTree. */
+  Status rtree(const EncryptionKey& encryption_key, const RTree** rtree);
 
   /**
    * Returns the (uncompressed) tile size for a given attribute
@@ -428,14 +455,20 @@ class FragmentMetadata {
   uint64_t tile_size(const std::string& attribute, uint64_t tile_idx) const;
 
   /**
-   * Returns the (uncompressed) tile size for a given var-sized attribute
+   * Retrieves the (uncompressed) tile size for a given var-sized attribute
    * and tile index.
    *
+   * @param encryption_key The key the array got opened with.
    * @param attribute The input attribute.
    * @param tile_idx The index of the tile in the metadata.
-   * @return The tile size.
+   * @param tile_size The tile size to be retrieved.
+   * @return Status
    */
-  uint64_t tile_var_size(const std::string& attribute, uint64_t tile_idx) const;
+  Status tile_var_size(
+      const EncryptionKey& encryption_key,
+      const std::string& attribute,
+      uint64_t tile_idx,
+      uint64_t* tile_size);
 
   /** The creation timestamp of the fragment. */
   uint64_t timestamp() const;
@@ -448,8 +481,40 @@ class FragmentMetadata {
 
  private:
   /* ********************************* */
+  /*          TYPE DEFINITIONS         */
+  /* ********************************* */
+
+  /**
+   * Stores the start offsets of the generic tiles stored in the
+   * metadata file, each separately storing the various metadata
+   * (e.g., basic, mbrs, etc).
+   */
+  struct GenericTileOffsets {
+    uint64_t basic_ = 0;
+    uint64_t rtree_ = 0;
+    uint64_t mbrs_ = 0;
+    std::vector<uint64_t> tile_offsets_;
+    std::vector<uint64_t> tile_var_offsets_;
+    std::vector<uint64_t> tile_var_sizes_;
+  };
+
+  /** Keeps track of which metadata is loaded. */
+  struct LoadedMetadata {
+    bool basic_ = false;
+    bool generic_tile_offsets_ = false;
+    bool rtree_ = false;
+    bool mbrs_ = false;
+    std::vector<bool> tile_offsets_;
+    std::vector<bool> tile_var_offsets_;
+    std::vector<bool> tile_var_sizes_;
+  };
+
+  /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
   /* ********************************* */
+
+  /** The storage manager. */
+  StorageManager* storage_manager_;
 
   /** The array schema */
   const ArraySchema* array_schema_;
@@ -489,8 +554,18 @@ class FragmentMetadata {
   /** Number of cells in the last tile (meaningful only in the sparse case). */
   uint64_t last_tile_cell_num_;
 
+  /** Number of sparse tiles. */
+  uint64_t sparse_tile_num_;
+
+  /** Keeps track of which metadata has been loaded. */
+  LoadedMetadata loaded_metadata_;
+
+  // TODO(sp): remove after the new dense algorithm is implemented
   /** The MBRs (applicable only to the sparse case with irregular tiles). */
   std::vector<void*> mbrs_;
+
+  /** Local mutex for thread-safety. */
+  std::mutex mtx_;
 
   /** The offsets of the next tile for each attribute. */
   std::vector<uint64_t> next_tile_offsets_;
@@ -503,6 +578,9 @@ class FragmentMetadata {
    * type of the domain must be the same as the type of the array coordinates.
    */
   void* non_empty_domain_;
+
+  /** An RTree for the MBRs. */
+  RTree rtree_;
 
   /**
    * The tile index base which is added to tile indices in setter functions.
@@ -534,6 +612,9 @@ class FragmentMetadata {
   /** The creation timestamp of the fragment. */
   uint64_t timestamp_;
 
+  /** Stores the generic tile offsets, facilitating loading. */
+  GenericTileOffsets gt_offsets_;
+
   /* ********************************* */
   /*           PRIVATE METHODS         */
   /* ********************************* */
@@ -542,13 +623,8 @@ class FragmentMetadata {
   template <class T>
   std::vector<uint64_t> compute_overlapping_tile_ids(const T* subarray) const;
 
-  /**
-   * Returns the ids (positions) of the tiles overlapping `subarray`, along with
-   * with the coverage of the overlap.
-   */
-  template <class T>
-  std::vector<std::pair<uint64_t, double>> compute_overlapping_tile_ids_cov(
-      const T* subarray) const;
+  /** Creates an RTree (stored in `rtree_`) on top of `mbrs_`. */
+  Status create_rtree();
 
   /**
    * Retrieves the tile domain for the input `subarray` based on the expanded
@@ -571,6 +647,27 @@ class FragmentMetadata {
    */
   template <class T>
   Status expand_non_empty_domain(const T* mbr);
+
+  /** Loads the basic metadata from storage. */
+  Status load_basic(const EncryptionKey& encryption_key);
+
+  /** Loads the R-tree from storage. */
+  Status load_rtree(const EncryptionKey& encryption_key);
+
+  /** Loads the MBRs from storage. */
+  Status load_mbrs(const EncryptionKey& encryption_key);
+
+  /** Loads the tile offsets for the input attribute from storage. */
+  Status load_tile_offsets(
+      const EncryptionKey& encryption_key, unsigned attr_id);
+
+  /** Loads the variable tile offsets for the input attribute from storage. */
+  Status load_tile_var_offsets(
+      const EncryptionKey& encryption_key, unsigned attr_id);
+
+  /** Loads the variable tile sizes for the input attribute from storage. */
+  Status load_tile_var_sizes(
+      const EncryptionKey& encryption_key, unsigned attr_id);
 
   /**
    * Loads the bounding coordinates from the fragment metadata buffer.
@@ -611,12 +708,14 @@ class FragmentMetadata {
   Status load_non_empty_domain(ConstBuffer* buff);
 
   /**
-   * Loads the tile offsets from the fragment metadata buffer.
-   *
-   * @param buff Metadata buffer.
-   * @return Status
+   * Loads the tile offsets for the input attribute from the input buffer.
    */
   Status load_tile_offsets(ConstBuffer* buff);
+
+  /**
+   * Loads the tile offsets for the input attribute from the input buffer.
+   */
+  Status load_tile_offsets(unsigned attr_id, ConstBuffer* buff);
 
   /**
    * Loads the variable tile offsets from the fragment metadata buffer.
@@ -627,6 +726,11 @@ class FragmentMetadata {
   Status load_tile_var_offsets(ConstBuffer* buff);
 
   /**
+   * Loads the variable tile offsets for the input attribute from the buffer.
+   */
+  Status load_tile_var_offsets(unsigned attr_id, ConstBuffer* buff);
+
+  /**
    * Loads the variable tile sizes from the fragment metadata.
    *
    * @param buff Metadata buffer.
@@ -634,73 +738,104 @@ class FragmentMetadata {
    */
   Status load_tile_var_sizes(ConstBuffer* buff);
 
+  /**
+   * Loads the variable tile sizes for the input attribute from the buffer.
+   */
+  Status load_tile_var_sizes(unsigned attr_id, ConstBuffer* buff);
+
   /** Loads the format version from the buffer. */
   Status load_version(ConstBuffer* buff);
 
-  /**
-   * Writes the bounding coordinates to the fragment metadata buffer.
-   *
-   * @param buff Metadata buffer.
-   * @return Status
-   */
-  Status write_bounding_coords(Buffer* buff);
+  /** Loads the number of sparse tiles from the buffer. */
+  Status load_sparse_tile_num(ConstBuffer* buff);
 
-  /** Writes the sizes of each attribute file in the buffer. */
+  /**
+   * Retrieves the size of the generic tile starting at the input offset.
+   */
+  Status get_generic_tile_size(uint64_t offset, uint64_t* size);
+
+  /**
+   * Loads the offsets of each generic tile (to be used to load the basic
+   * metadata, mbrs, tile offsets, etc. - each written in a separate generic
+   * tile).
+   */
+  Status load_generic_tile_offsets();
+
+  /** Loads the basic metadata from storage (version 2 or before). */
+  Status load_v2(const EncryptionKey& encryption_key);
+
+  /** Loads the basic metadata from storage (version 3). */
+  Status load_v3(const EncryptionKey& encryption_key);
+
+  /** Writes the sizes of each attribute file to the buffer. */
   Status write_file_sizes(Buffer* buff);
 
-  /** Writes the sizes of each variable attribute file in the buffer. */
+  /** Writes the sizes of each variable attribute file to the buffer. */
   Status write_file_var_sizes(Buffer* buff);
 
   /**
    * Writes the cell number of the last tile to the fragment metadata buffer.
-   *
-   * @param buff Metadata buffer.
-   * @return Status
    */
   Status write_last_tile_cell_num(Buffer* buff);
 
-  /**
-   * Writes the MBRs to the fragment metadata buffer.
-   *
-   * @param buff Metadata buffer.
-   * @return Status
-   */
+  /** Writes the R-tree to storage. */
+  Status store_rtree(const EncryptionKey& encryption_key);
+
+  /** Writes the MBRs to storage. */
+  Status store_mbrs(const EncryptionKey& encryption_key);
+
+  /** Writes the R-tree to the input buffer. */
+  Status write_rtree(Buffer* buff);
+
+  /** Writes the MBRs to the input buffer. */
   Status write_mbrs(Buffer* buff);
 
-  /**
-   * Writes the non-empty domain to the fragment metadata buffer.
-   *
-   * @param buff Metadata buffer.
-   * @return Status
-   */
+  /** Writes the non-empty domain to the input buffer. */
   Status write_non_empty_domain(Buffer* buff);
 
-  /**
-   * Writes the tile offsets to the fragment metadata buffer.
-   *
-   * @param buff Metadata buffer.
-   * @return Status
-   */
-  Status write_tile_offsets(Buffer* buff);
+  /** Writes the tile offsets of the input attribute to storage. */
+  Status store_tile_offsets(
+      unsigned attr_id, const EncryptionKey& encryption_key);
 
-  /**
-   * Writes the variable tile offsets to the fragment metadata buffer.
-   *
-   * @param buff Metadata buffer.
-   * @return Status
-   */
-  Status write_tile_var_offsets(Buffer* buff);
+  /** Writes the tile offsets of the input attribut$ to the input buffer. */
+  Status write_tile_offsets(unsigned attr_id, Buffer* buff);
 
-  /**
-   * Writes the variable tile sizes to the fragment metadata buffer.
-   *
-   * @param buff Metadata buffer.
-   * @return Status
-   */
-  Status write_tile_var_sizes(Buffer* buff);
+  /** Writes the variable tile offsets of the input attribute to storage. */
+  Status store_tile_var_offsets(
+      unsigned attr_id, const EncryptionKey& encryption_key);
+
+  /** Writes the variable tile offsets of the input attribute to the buffer. */
+  Status write_tile_var_offsets(unsigned attr_id, Buffer* buff);
+
+  /** Writes the variable tile sizes for the input attribute to the buffer. */
+  Status store_tile_var_sizes(
+      unsigned attr_id, const EncryptionKey& encryption_key);
+
+  /** Writes the variable tile sizes to storage. */
+  Status write_tile_var_sizes(unsigned attr_id, Buffer* buff);
 
   /** Writes the format version to the buffer. */
   Status write_version(Buffer* buff);
+
+  /** Writes the number of sparse tiles to the buffer. */
+  Status write_sparse_tile_num(Buffer* buff);
+
+  /** Writes the basic metadata to storage. */
+  Status store_basic(const EncryptionKey& encryption_key);
+
+  /**
+   * Reads the contents of a generic tile starting at the input offset,
+   * and stores them into buffer ``buff``.
+   */
+  Status read_generic_tile_from_file(
+      const EncryptionKey& encryption_key, uint64_t offset, Buffer* buff) const;
+
+  /**
+   * Writes the contents of the input buffer as a separate
+   * generic tile to the metadata file.
+   */
+  Status write_generic_tile_to_file(
+      const EncryptionKey& encryption_key, Buffer* buff) const;
 };
 
 }  // namespace sm

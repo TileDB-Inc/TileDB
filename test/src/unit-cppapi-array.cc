@@ -554,10 +554,6 @@ TEST_CASE("C++ API: Encrypted array", "[cppapi], [encryption]") {
   array.open(TILEDB_WRITE, TILEDB_AES_256_GCM, key, key_len);
   REQUIRE(Array::encryption_type(ctx, array_name) == TILEDB_AES_256_GCM);
 
-  REQUIRE_THROWS_AS(
-      [&]() { Array array2(ctx, array_name, TILEDB_WRITE); }(),
-      tiledb::TileDBError);
-
   Query query(ctx, array);
   query.set_layout(TILEDB_ROW_MAJOR);
   std::vector<int> a_values = {1, 2, 3, 4};
@@ -614,7 +610,8 @@ TEST_CASE("C++ API: Encrypted array", "[cppapi], [encryption]") {
 }
 
 TEST_CASE(
-    "C++ API: Encrypted array, std::string key", "[cppapi], [encryption]") {
+    "C++ API: Encrypted array, std::string key",
+    "[cppapi][encryption][cppapi-encryption]") {
   Context ctx;
   VFS vfs(ctx);
   const std::string array_name = "cpp_unit_array";
