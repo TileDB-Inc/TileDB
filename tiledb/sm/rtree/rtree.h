@@ -54,10 +54,6 @@ namespace sm {
 class RTree {
  public:
   /* ********************************* */
-  /*           TYPE DEFINITIONS        */
-  /* ********************************* */
-
-  /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
 
@@ -68,6 +64,7 @@ class RTree {
    * Constructor. This admits a list of sorted MBRs that will
    * constitute the leaf level of the tree. The constructor will
    * construct bottom up the tree based on these ``mbrs``.
+   * The input MBRs will be copied into the leaf level.
    */
   RTree(
       Datatype type,
@@ -82,13 +79,13 @@ class RTree {
   RTree(const RTree& rtree);
 
   /** Move constructor. */
-  RTree(RTree&& rtree);
+  RTree(RTree&& rtree) noexcept;
 
   /** Copy-assign operator. This performs a deep copy. */
   RTree& operator=(const RTree& rtree);
 
   /** Move-assign operator. */
-  RTree& operator=(RTree&& rtree);
+  RTree& operator=(RTree&& rtree) noexcept;
 
   /* ********************************* */
   /*                 API               */

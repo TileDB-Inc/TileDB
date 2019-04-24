@@ -144,7 +144,7 @@ class Subarray {
   Subarray(const Subarray& subarray);
 
   /** Move constructor. */
-  Subarray(Subarray&& subarray);
+  Subarray(Subarray&& subarray) noexcept;
 
   /** Destructor. */
   ~Subarray() = default;

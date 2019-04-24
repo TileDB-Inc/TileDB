@@ -76,7 +76,7 @@ RTree::RTree(const RTree& rtree)
   swap(clone);
 }
 
-RTree::RTree(RTree&& rtree)
+RTree::RTree(RTree&& rtree) noexcept
     : RTree() {
   swap(rtree);
 }
@@ -88,7 +88,7 @@ RTree& RTree::operator=(const RTree& rtree) {
   return *this;
 }
 
-RTree& RTree::operator=(RTree&& rtree) {
+RTree& RTree::operator=(RTree&& rtree) noexcept {
   swap(rtree);
 
   return *this;

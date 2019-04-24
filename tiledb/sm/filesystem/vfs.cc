@@ -858,7 +858,7 @@ Status VFS::read_all(
     const URI& uri,
     const std::vector<std::tuple<uint64_t, void*, uint64_t>>& regions,
     ThreadPool* thread_pool,
-    std::vector<std::future<Status>>* tasks) const {
+    std::vector<std::future<Status>>* tasks) {
   STATS_FUNC_IN(vfs_read_all);
   STATS_COUNTER_ADD(vfs_read_all_total_regions, regions.size());
 

@@ -79,7 +79,7 @@ Subarray::Subarray(const Subarray& subarray)
   swap(clone);
 }
 
-Subarray::Subarray(Subarray&& subarray)
+Subarray::Subarray(Subarray&& subarray) noexcept
     : Subarray() {
   // Swap with the argument
   swap(subarray);
@@ -783,13 +783,13 @@ Status Subarray::compute_tile_overlap() {
   auto encryption_key = array_->encryption_key();
 
   // Compute estimated tile overlap in parallel over fragments and ranges
-  auto rtree = (const RTree*)nullptr;
   auto statuses = parallel_for_2d(
       0, fragment_num, 0, range_num, [&](unsigned i, unsigned j) {
         auto range = this->range<T>(j);
         if (meta[i]->dense()) {  // Dense fragment
           tile_overlap_[i][j] = get_tile_overlap<T>(range, i);
         } else {  // Sparse fragment
+          auto rtree = (const RTree*)nullptr;
           RETURN_NOT_OK(meta[i]->rtree(*encryption_key, &rtree));
           tile_overlap_[i][j] = rtree->get_tile_overlap<T>(range);
         }

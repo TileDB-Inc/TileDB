@@ -570,12 +570,14 @@ TEST_CASE_METHOD(
     rc = tiledb_array_get_schema(ctx_, array, &read_schema);
     REQUIRE(rc == TILEDB_OK);
 
-    // Opening an already open array does not require a key
+    // Opening an already open array without a key should fail
     tiledb_array_t* array2;
     rc = tiledb_array_alloc(ctx_, array_name.c_str(), &array2);
     REQUIRE(rc == TILEDB_OK);
     rc = tiledb_array_open(ctx_, array2, TILEDB_READ);
-    REQUIRE(rc == TILEDB_OK);
+    REQUIRE(rc == TILEDB_ERR);
+
+    // Opening an array with a bad key should fail
     rc = tiledb_array_open_with_key(
         ctx_, array2, TILEDB_READ, TILEDB_AES_256_GCM, bad_key, key_len);
     REQUIRE(rc == TILEDB_ERR);

@@ -221,5 +221,7 @@ TEST_CASE("VFS: Test read batching", "[vfs]") {
 
   REQUIRE(vfs->is_file(testfile, &exists).ok());
   if (exists)
-    vfs->remove_file(testfile);
+    REQUIRE(vfs->remove_file(testfile).ok());
+
+  REQUIRE(vfs->terminate().ok());
 }

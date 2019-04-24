@@ -610,7 +610,8 @@ TEST_CASE("C++ API: Encrypted array", "[cppapi], [encryption]") {
 }
 
 TEST_CASE(
-    "C++ API: Encrypted array, std::string key", "[cppapi], [encryption]") {
+    "C++ API: Encrypted array, std::string key",
+    "[cppapi][encryption][cppapi-encryption]") {
   Context ctx;
   VFS vfs(ctx);
   const std::string array_name = "cpp_unit_array";

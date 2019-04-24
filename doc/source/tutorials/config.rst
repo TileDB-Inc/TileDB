@@ -569,7 +569,7 @@ along with their description and default values.
                                                                       operations (any backend), per VFS instance.
     ``"vfs.file.max_parallel_ops"``           ``vfs.num_threads``     The maximum number of parallel operations on
                                                                       objects with ``file:///`` URIs.
-    ``"vfs.min_batch_gap"``                  ``"512000"``             The minimum number of bytes between two VFS
+    ``"vfs.min_batch_gap"``                   ``"512000"``            The minimum number of bytes between two VFS
                                                                       read batches.
     ``"vfs.min_batch_size"``                  ``"20971520"``          The minimum number of bytes in a VFS
                                                                       read operation.
