@@ -654,7 +654,8 @@ Status StorageManager::array_xlock(const URI& array_uri) {
   // Get exclusive lock for processes through a filelock
   filelock_t filelock = INVALID_FILELOCK;
   auto lock_uri = array_uri.join_path(constants::filelock_name);
-  RETURN_NOT_OK(vfs_->filelock_lock(lock_uri, &filelock, false));
+  RETURN_NOT_OK_ELSE(
+      vfs_->filelock_lock(lock_uri, &filelock, false), xlock_mtx_.unlock());
   xfilelocks_[array_uri.to_string()] = filelock;
 
   return Status::Ok();

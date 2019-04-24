@@ -211,7 +211,7 @@ Status FragmentMetadata::add_max_buffer_sizes_dense(
         buffer_sizes) {
   // Calculate the ids of all tiles overlapping with subarray
   auto tids = compute_overlapping_tile_ids(subarray);
-  uint64_t size;
+  uint64_t size = 0;
 
   // Compute buffer sizes
   for (auto& tid : tids) {
@@ -282,7 +282,7 @@ Status FragmentMetadata::add_est_read_buffer_sizes_dense(
     std::unordered_map<std::string, std::pair<double, double>>* buffer_sizes) {
   // Calculate the ids and coverage of all tiles overlapping with subarray
   auto tids_cov = compute_overlapping_tile_ids_cov(subarray);
-  uint64_t size;
+  uint64_t size = 0;
 
   // Compute buffer sizes
   for (auto& tid_cov : tids_cov) {
