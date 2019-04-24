@@ -40,6 +40,7 @@
 #include <vector>
 
 #include "tiledb/sm/array_schema/array_schema.h"
+#include "tiledb/sm/encryption/encryption_key_validation.h"
 #include "tiledb/sm/filesystem/vfs.h"
 #include "tiledb/sm/fragment/fragment_metadata.h"
 #include "tiledb/sm/misc/uri.h"
@@ -80,6 +81,14 @@ class OpenArray {
 
   /** Returns the array URI. */
   const URI& array_uri() const;
+
+  /**
+   * If it is the first time this function is called, the input key
+   * is set to the open array without explicitly storing the key
+   * for future validity checks. Otherwise, the input key is securely
+   * checked if it matches the already set one.
+   */
+  Status set_encryption_key(const EncryptionKey& encryption_key);
 
   /** Returns the counter. */
   uint64_t cnt() const;
@@ -164,6 +173,9 @@ class OpenArray {
 
   /** Counts how many times the array has been opened. */
   uint64_t cnt_;
+
+  /** Used to validate keys when opening an already opened array. */
+  EncryptionKeyValidation key_validation_;
 
   /** Filelock handle. */
   filelock_t filelock_;

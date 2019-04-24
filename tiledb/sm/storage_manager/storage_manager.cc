@@ -288,14 +288,18 @@ Status StorageManager::array_open_for_writes(
   {
     std::lock_guard<std::mutex> lock{open_array_for_writes_mtx_};
 
-    // Find the open array entry
+    // Find the open array entry and check key correctness
     auto it = open_arrays_for_writes_.find(array_uri.to_string());
     if (it != open_arrays_for_writes_.end()) {
+      RETURN_NOT_OK(it->second->set_encryption_key(encryption_key));
       open_array = it->second;
     } else {  // Create a new entry
       open_array = new OpenArray(array_uri, QueryType::WRITE);
+      RETURN_NOT_OK_ELSE(
+          open_array->set_encryption_key(encryption_key), delete open_array);
       open_arrays_for_writes_[array_uri.to_string()] = open_array;
     }
+
     // Lock the array and increment counter
     open_array->mtx_lock();
     open_array->cnt_incr();
@@ -347,6 +351,7 @@ Status StorageManager::array_reopen(
           std::string("Cannot reopen array ") + array_uri.to_string() +
           "; Array not open"));
     }
+    RETURN_NOT_OK(it->second->set_encryption_key(encryption_key));
     open_array = it->second;
 
     // Lock the array
@@ -1505,12 +1510,16 @@ Status StorageManager::array_open_without_fragments(
     std::lock_guard<std::mutex> lock{open_array_for_reads_mtx_};
     std::lock_guard<std::mutex> xlock{xlock_mtx_};
 
-    // Find the open array entry
+    // Find the open array entry and check encryption key
     auto it = open_arrays_for_reads_.find(array_uri.to_string());
     if (it != open_arrays_for_reads_.end()) {
+      RETURN_NOT_OK(it->second->set_encryption_key(encryption_key));
       *open_array = it->second;
     } else {  // Create a new entry
       *open_array = new OpenArray(array_uri, QueryType::READ);
+      RETURN_NOT_OK_ELSE(
+          (*open_array)->set_encryption_key(encryption_key),
+          delete *open_array);
       open_arrays_for_reads_[array_uri.to_string()] = *open_array;
     }
     // Lock the array and increment counter

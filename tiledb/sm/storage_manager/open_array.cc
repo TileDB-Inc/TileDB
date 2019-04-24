@@ -68,6 +68,10 @@ const URI& OpenArray::array_uri() const {
   return array_uri_;
 }
 
+Status OpenArray::set_encryption_key(const EncryptionKey& encryption_key) {
+  return key_validation_.check_encryption_key(encryption_key);
+}
+
 uint64_t OpenArray::cnt() const {
   return cnt_;
 }
