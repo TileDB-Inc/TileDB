@@ -126,4 +126,10 @@ if (AWSSDK_FOUND)
     endif()
 
   endforeach ()
+
+  # the AWSSDK does not include links to some transitive dependencies
+  # ref: github<dot>com/aws<slash>aws-sdk-cpp/issues/1074#issuecomment-466252911
+  if (WIN32)
+    list(APPEND AWS_EXTRA_LIBS userenv ws2_32 wininet winhttp bcrypt version)
+  endif()
 endif ()
