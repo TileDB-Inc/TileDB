@@ -825,13 +825,10 @@ class FragmentMetadata {
 
   /**
    * Reads the contents of a generic tile starting at the input offset,
-   * and stores them into an allocated buffer ``buff``. It is the
-   * responsibility of the user to deallocate ``buff``.
+   * and stores them into buffer ``buff``.
    */
   Status read_generic_tile_from_file(
-      const EncryptionKey& encryption_key,
-      uint64_t offset,
-      Buffer** buff) const;
+      const EncryptionKey& encryption_key, uint64_t offset, Buffer* buff) const;
 
   /**
    * Writes the contents of the input buffer as a separate

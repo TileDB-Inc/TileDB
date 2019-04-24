@@ -560,6 +560,9 @@ TILEDB_EXPORT void tiledb_config_free(tiledb_config_t** config);
  * - `vfs.min_batch_size` <br>
  *    The minimum number of bytes in a VFS read operation<br>
  *    **Default**: 20MB
+ * - `vfs.min_batch_gap` <br>
+ *    The minimum number of bytes between two VFS read batches.<br>
+ *    **Default**: 500KB
  * - `vfs.file.max_parallel_ops` <br>
  *    The maximum number of parallel operations on objects with `file:///`
  *    URIs. <br>
