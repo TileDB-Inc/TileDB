@@ -1,4 +1,4 @@
-# In progress
+# In Progress
 
 ## New features
 ## Improvements
@@ -17,6 +17,56 @@
 
 ### C API
 
+* Added function `tiledb_query_get_layout`
+* Added datatype `tiledb_buffer_t` and functions `tiledb_buffer_{alloc,free,get_type,set_type,get_size}`.
+
+### C++ API
+
+* Added function `Query::query_layout()`
+
+## Breaking changes
+
+# TileDB v1.5.0 Release Notes
+
+The 1.5.0 release focuses on stability, performance, and usability improvements, as well a new consolidation algorithm.
+
+## New features
+
+* Added an advanced, tunable consolidation algorithm. [#1101](https://github.com/TileDB-Inc/TileDB/pull/1101)
+
+* Added support for multi-range reads (non-continuous range slicing) for sparse arrays.
+
+## Improvements
+
+* Small tiles are now batched for larger VFS read operations, improving read performance in some cases. [#1093](https://github.com/TileDB-Inc/TileDB/pull/1093)
+* POSIX error messages are included in log messages. [#1076](https://github.com/TileDB-Inc/TileDB/pull/1076)
+* Added `tiledb` command-line tool with several supported actions. [#1081](https://github.com/TileDB-Inc/TileDB/pull/1081)
+* Added build flag to disable internal statistics. [#1111](https://github.com/TileDB-Inc/TileDB/pull/1111)
+* Improved memory overhead slightly by lazily allocating memory before checking the tile cache. [#1141](https://github.com/TileDB-Inc/TileDB/pull/1141)
+* Improved tile cache utilization by removing erroneous use of cache for metadata. [#1151](https://github.com/TileDB-Inc/TileDB/pull/1151)
+* S3 multi-part uploads are aborted on error. [#1166](https://github.com/TileDB-Inc/TileDB/pull/1166)
+
+## Bug fixes
+
+* Bug fix when reading from a sparse array with real domain. Also added some checks on NaN and INF. [#1100](https://github.com/TileDB-Inc/TileDB/pull/1100)
+* Fixed C++ API functions `group_by_cell` and `ungroup_var_buffer` to treat offsets in units of bytes. [#1047](https://github.com/TileDB-Inc/TileDB/pull/1047)
+* Several HDFS test build errors fixed. [#1092](https://github.com/TileDB-Inc/TileDB/pull/1092)
+* Fixed incorrect indexing in `parallel_for`. [#1105](https://github.com/TileDB-Inc/TileDB/pull/1105)
+* Fixed incorrect filter statistics counters. [#1112](https://github.com/TileDB-Inc/TileDB/pull/1112)
+* Preserve anonymous attributes in `ArraySchema` copy constructor. [#1144](https://github.com/TileDB-Inc/TileDB/pull/1144)
+* Fix non-virtual destructors in C++ API. [#1153](https://github.com/TileDB-Inc/TileDB/pull/1153)
+* Added zlib dependency to AWS SDK EP. [#1165](https://github.com/TileDB-Inc/TileDB/pull/1165)
+* Fixed a hang in the 'S3::ls()'. [#1183](https://github.com/TileDB-Inc/TileDB/pull/1182)
+* Many other small and miscellaneous bug fixes.
+
+## API additions
+
+### C API
+
+* Added functions `tiledb_subarray_partitoner_{next, get_current, done}`.
+* Added object `tiledb_subarray_partitioner_t` and functions `tiledb_subarray_partitoner_{alloc, free, set_result_budget, set_result_budget_var, get_result_budget, get_result_budget_var}`.
+* Added functions `tiledb_subarray_{get_est_result_size, get_est_result_size_var}`.
+* Added object `tiledb_subarray_t` and functions `tiledb_subarray_{alloc, free, get_layout, get_type, get_ndim, get_domain, add_range, get_range_num, get_range}`.
 * Added function `tiledb_query_get_layout`
 * Added datatype `tiledb_buffer_t` and functions `tiledb_buffer_{alloc,free,get_type,set_type,get_size}`.
 
@@ -61,10 +111,6 @@ The 1.5.0 release focuses on stability, performance, and usability improvements,
 
 ### C API
 
-* Added functions `tiledb_subarray_partitoner_{next, get_current, done}`.
-* Added object `tiledb_subarray_partitioner_t` and functions `tiledb_subarray_partitoner_{alloc, free, set_result_budget, set_result_budget_var, get_result_budget, get_result_budget_var}`.
-* Added functions `tiledb_subarray_{get_est_result_size, get_est_result_size_var}`.
-* Added object `tiledb_subarray_t` and functions `tiledb_subarray_{alloc, free, get_layout, get_type, get_ndim, get_domain, add_range, get_range_num, get_range}`.
 * Added function `tiledb_vfs_dir_size`.
 * Added function `tiledb_vfs_ls`.
 * Added config params `vfs.max_batch_read_size` and `vfs.max_batch_read_amplification`.

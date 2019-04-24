@@ -862,6 +862,9 @@ Status VFS::read_all(
   STATS_FUNC_IN(vfs_read_all);
   STATS_COUNTER_ADD(vfs_read_all_total_regions, regions.size());
 
+  // Ensure no deadlock due to shared threadpool
+  assert(thread_pool != &thread_pool_);
+
   if (regions.empty())
     return Status::Ok();
 

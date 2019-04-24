@@ -814,6 +814,7 @@ Subarray Subarray::clone() const {
   clone.tile_overlap_ = tile_overlap_;
   clone.result_est_size_computed_ = result_est_size_computed_;
   clone.tile_overlap_computed_ = tile_overlap_computed_;
+  clone.est_result_size_ = est_result_size_;
 
   return clone;
 }
@@ -895,6 +896,7 @@ void Subarray::swap(Subarray& subarray) {
   std::swap(tile_overlap_, subarray.tile_overlap_);
   std::swap(result_est_size_computed_, subarray.result_est_size_computed_);
   std::swap(tile_overlap_computed_, subarray.tile_overlap_computed_);
+  std::swap(est_result_size_, subarray.est_result_size_);
 }
 
 // Explicit instantiations

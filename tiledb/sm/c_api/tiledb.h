@@ -3498,7 +3498,7 @@ TILEDB_EXPORT int32_t tiledb_subarray_get_range_num(
     uint64_t* range_num);
 
 /**
- * Retrieves the number of ranges of the subarray along a given dimension.
+ * Retrieves a specific range of the subarray along a given dimension.
  *
  * **Example:**
  *
@@ -3784,7 +3784,7 @@ TILEDB_EXPORT int32_t tiledb_subarray_partitioner_get_current(
 TILEDB_EXPORT int32_t tiledb_subarray_partitioner_next(
     tiledb_ctx_t* ctx,
     const tiledb_subarray_partitioner_t* partitioner,
-    int* unsplittable);
+    int32_t* unsplittable);
 
 /**
  * Checks if the partitioner is done producing partitions.
@@ -3797,7 +3797,7 @@ TILEDB_EXPORT int32_t tiledb_subarray_partitioner_next(
 TILEDB_EXPORT int32_t tiledb_subarray_partitioner_done(
     tiledb_ctx_t* ctx,
     const tiledb_subarray_partitioner_t* partitioner,
-    int* done);
+    int32_t* done);
 
 /* ********************************* */
 /*          OBJECT MANAGEMENT        */

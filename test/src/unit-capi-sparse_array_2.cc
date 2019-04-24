@@ -2086,7 +2086,8 @@ void SparseArrayFx2::check_sparse_array_no_results(
 
   // Prepare the buffers that will store the result
   uint64_t buffer_size;
-  rc = tiledb_array_max_buffer_size(ctx_, array, "a1", subarray, &buffer_size);
+  uint64_t s[] = {1, 2, 1, 2};
+  rc = tiledb_array_max_buffer_size(ctx_, array, "a1", s, &buffer_size);
   CHECK(rc == TILEDB_OK);
 
   auto buffer = new int[buffer_size / sizeof(int)];
