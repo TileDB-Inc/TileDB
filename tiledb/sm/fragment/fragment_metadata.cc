@@ -851,11 +851,11 @@ Status FragmentMetadata::load_basic(const EncryptionKey& encryption_key) {
   if (loaded_metadata_.basic_)
     return Status::Ok();
 
-  auto buff = (Buffer*)nullptr;
+  Buffer buff;
   RETURN_NOT_OK(
       read_generic_tile_from_file(encryption_key, gt_offsets_.basic_, &buff));
 
-  ConstBuffer cbuff(buff);
+  ConstBuffer cbuff(&buff);
   RETURN_NOT_OK(load_version(&cbuff));
   RETURN_NOT_OK(load_non_empty_domain(&cbuff));
   RETURN_NOT_OK(load_sparse_tile_num(&cbuff));
@@ -876,8 +876,6 @@ Status FragmentMetadata::load_basic(const EncryptionKey& encryption_key) {
 
   loaded_metadata_.basic_ = true;
 
-  delete buff;
-
   return Status::Ok();
 }
 
@@ -889,16 +887,14 @@ Status FragmentMetadata::load_rtree(const EncryptionKey& encryption_key) {
   if (loaded_metadata_.rtree_)
     return Status::Ok();
 
-  auto buff = (Buffer*)nullptr;
+  Buffer buff;
   RETURN_NOT_OK(
       read_generic_tile_from_file(encryption_key, gt_offsets_.rtree_, &buff));
 
-  ConstBuffer cbuff(buff);
+  ConstBuffer cbuff(&buff);
   RETURN_NOT_OK(rtree_.deserialize(&cbuff));
 
   loaded_metadata_.rtree_ = true;
-
-  delete buff;
 
   return Status::Ok();
 }
@@ -911,16 +907,14 @@ Status FragmentMetadata::load_mbrs(const EncryptionKey& encryption_key) {
   if (loaded_metadata_.mbrs_)
     return Status::Ok();
 
-  auto buff = (Buffer*)nullptr;
+  Buffer buff;
   RETURN_NOT_OK(
       read_generic_tile_from_file(encryption_key, gt_offsets_.mbrs_, &buff));
 
-  ConstBuffer cbuff(buff);
+  ConstBuffer cbuff(&buff);
   RETURN_NOT_OK(load_mbrs(&cbuff));
 
   loaded_metadata_.mbrs_ = true;
-
-  delete buff;
 
   return Status::Ok();
 }
@@ -934,16 +928,14 @@ Status FragmentMetadata::load_tile_offsets(
   if (loaded_metadata_.tile_offsets_[attr_id])
     return Status::Ok();
 
-  auto buff = (Buffer*)nullptr;
+  Buffer buff;
   RETURN_NOT_OK(read_generic_tile_from_file(
       encryption_key, gt_offsets_.tile_offsets_[attr_id], &buff));
 
-  ConstBuffer cbuff(buff);
+  ConstBuffer cbuff(&buff);
   RETURN_NOT_OK(load_tile_offsets(attr_id, &cbuff));
 
   loaded_metadata_.tile_offsets_[attr_id] = true;
-
-  delete buff;
 
   return Status::Ok();
 }
@@ -957,16 +949,14 @@ Status FragmentMetadata::load_tile_var_offsets(
   if (loaded_metadata_.tile_var_offsets_[attr_id])
     return Status::Ok();
 
-  auto buff = (Buffer*)nullptr;
+  Buffer buff;
   RETURN_NOT_OK(read_generic_tile_from_file(
       encryption_key, gt_offsets_.tile_var_offsets_[attr_id], &buff));
 
-  ConstBuffer cbuff(buff);
+  ConstBuffer cbuff(&buff);
   RETURN_NOT_OK(load_tile_var_offsets(attr_id, &cbuff));
 
   loaded_metadata_.tile_var_offsets_[attr_id] = true;
-
-  delete buff;
 
   return Status::Ok();
 }
@@ -980,16 +970,14 @@ Status FragmentMetadata::load_tile_var_sizes(
   if (loaded_metadata_.tile_var_sizes_[attr_id])
     return Status::Ok();
 
-  auto buff = (Buffer*)nullptr;
+  Buffer buff;
   RETURN_NOT_OK(read_generic_tile_from_file(
       encryption_key, gt_offsets_.tile_var_sizes_[attr_id], &buff));
 
-  ConstBuffer cbuff(buff);
+  ConstBuffer cbuff(&buff);
   RETURN_NOT_OK(load_tile_var_sizes(attr_id, &cbuff));
 
   loaded_metadata_.tile_var_sizes_[attr_id] = true;
-
-  delete buff;
 
   return Status::Ok();
 }
@@ -1607,7 +1595,7 @@ Status FragmentMetadata::write_non_empty_domain(Buffer* buff) {
 }
 
 Status FragmentMetadata::read_generic_tile_from_file(
-    const EncryptionKey& encryption_key, uint64_t offset, Buffer** buff) const {
+    const EncryptionKey& encryption_key, uint64_t offset, Buffer* buff) const {
   URI fragment_metadata_uri = fragment_uri_.join_path(
       std::string(constants::fragment_metadata_filename));
 
@@ -1615,8 +1603,7 @@ Status FragmentMetadata::read_generic_tile_from_file(
   TileIO tile_io(storage_manager_, fragment_metadata_uri);
   auto tile = (Tile*)nullptr;
   RETURN_NOT_OK(tile_io.read_generic(&tile, offset, encryption_key));
-  tile->disown_buff();
-  *buff = tile->buffer();
+  tile->buffer()->swap(*buff);
   delete tile;
 
   return Status::Ok();
