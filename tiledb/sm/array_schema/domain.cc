@@ -1120,45 +1120,86 @@ uint64_t Domain::get_cell_pos_col(const T* coords) const {
   auto domain = static_cast<const T*>(domain_);
   auto tile_extents = static_cast<const T*>(tile_extents_);
 
-  // Calculate cell offsets
-  std::vector<uint64_t> cell_offsets;
-  cell_offsets.push_back(1);
-  for (unsigned int i = 1; i < dim_num_; ++i) {
-    // Per dimension
-    uint64_t cell_num = tile_extents[i - 1];
-    cell_offsets.push_back(cell_offsets.back() * cell_num);
-  }
-
-  // Calculate position
-  T coords_norm;  // Normalized coordinates inside the tile
   uint64_t pos = 0;
-  for (unsigned int i = 0; i < dim_num_; ++i) {
-    coords_norm = (coords[i] - domain[2 * i]);
-    coords_norm -= (coords_norm / tile_extents[i]) * tile_extents[i];
-    pos += coords_norm * cell_offsets[i];
+  T coords_norm;  // Normalized coordinates inside the tile
+
+  // Special-case for low dimensions to an unrolled version of the default loop.
+  switch (dim_num_) {
+    case 1:
+      coords_norm = (coords[0] - domain[2 * 0]);
+      coords_norm -= (coords_norm / tile_extents[0]) * tile_extents[0];
+      pos += coords_norm * 1;
+      break;
+    case 2:
+      coords_norm = (coords[0] - domain[2 * 0]);
+      coords_norm -= (coords_norm / tile_extents[0]) * tile_extents[0];
+      pos += coords_norm * 1;
+
+      coords_norm = (coords[1] - domain[2 * 1]);
+      coords_norm -= (coords_norm / tile_extents[1]) * tile_extents[1];
+      pos += coords_norm * 1 * tile_extents[0];
+      break;
+    case 3:
+      coords_norm = (coords[0] - domain[2 * 0]);
+      coords_norm -= (coords_norm / tile_extents[0]) * tile_extents[0];
+      pos += coords_norm * 1;
+
+      coords_norm = (coords[1] - domain[2 * 1]);
+      coords_norm -= (coords_norm / tile_extents[1]) * tile_extents[1];
+      pos += coords_norm * 1 * tile_extents[0];
+
+      coords_norm = (coords[2] - domain[2 * 2]);
+      coords_norm -= (coords_norm / tile_extents[2]) * tile_extents[2];
+      pos += coords_norm * 1 * tile_extents[0] * tile_extents[1];
+      break;
+    default: {
+      uint64_t cell_offset = 1;
+      for (unsigned int i = 0; i < dim_num_; ++i) {
+        coords_norm = (coords[i] - domain[2 * i]);
+        coords_norm -= (coords_norm / tile_extents[i]) * tile_extents[i];
+        pos += coords_norm * cell_offset;
+        cell_offset *= tile_extents[i];
+      }
+      break;
+    }
   }
 
-  // Return
   return pos;
 }
 
 template <class T>
 uint64_t Domain::get_cell_pos_col(const T* subarray, const T* coords) const {
-  // Calculate cell offsets
-  std::vector<uint64_t> cell_offsets;
-  cell_offsets.push_back(1);
-  for (unsigned int i = 1; i < dim_num_; ++i) {
-    // Per dimension
-    uint64_t cell_num = subarray[2 * (i - 1) + 1] - subarray[2 * (i - 1)] + 1;
-    cell_offsets.push_back(cell_offsets.back() * cell_num);
+  uint64_t pos = 0;
+
+  // Special-case for low dimensions to an unrolled version of the default loop.
+  switch (dim_num_) {
+    case 1:
+      pos += (coords[0] - subarray[2 * 0]) * 1;
+      break;
+    case 2: {
+      const uint64_t cell_num_0 = subarray[2 * 0 + 1] - subarray[2 * 0] + 1;
+      pos += (coords[0] - subarray[2 * 0]) * 1;
+      pos += (coords[1] - subarray[2 * 1]) * 1 * cell_num_0;
+      break;
+    }
+    case 3: {
+      const uint64_t cell_num_0 = subarray[2 * 0 + 1] - subarray[2 * 0] + 1;
+      const uint64_t cell_num_1 = subarray[2 * 1 + 1] - subarray[2 * 1] + 1;
+      pos += (coords[0] - subarray[2 * 0]) * 1;
+      pos += (coords[1] - subarray[2 * 1]) * 1 * cell_num_0;
+      pos += (coords[2] - subarray[2 * 2]) * 1 * cell_num_0 * cell_num_1;
+      break;
+    }
+    default: {
+      uint64_t cell_offset = 1;
+      for (unsigned int i = 0; i < dim_num_; ++i) {
+        pos += (coords[i] - subarray[2 * i]) * cell_offset;
+        cell_offset *= subarray[2 * i + 1] - subarray[2 * i] + 1;
+      }
+      break;
+    }
   }
 
-  // Calculate position
-  uint64_t pos = 0;
-  for (unsigned int i = 0; i < dim_num_; ++i)
-    pos += (coords[i] - subarray[2 * i]) * cell_offsets[i];
-
-  // Return
   return pos;
 }
 
@@ -1168,55 +1209,107 @@ uint64_t Domain::get_cell_pos_row(const T* coords) const {
   auto domain = static_cast<const T*>(domain_);
   auto tile_extents = static_cast<const T*>(tile_extents_);
 
-  // Calculate cell offsets
-  std::vector<uint64_t> cell_offsets;
-  cell_offsets.push_back(1);
-  if (dim_num_ > 1) {
-    for (unsigned int i = dim_num_ - 2;; --i) {
-      // Per dimension
-      uint64_t cell_num = tile_extents[i + 1];
-      cell_offsets.push_back(cell_offsets.back() * cell_num);
-      if (i == 0)
-        break;
+  uint64_t pos = 0;
+  T coords_norm;  // Normalized coordinates inside the tile
+
+  // Special-case for low dimensions to an unrolled version of the default loop.
+  switch (dim_num_) {
+    case 1:
+      coords_norm = (coords[0] - domain[2 * 0]);
+      coords_norm -= (coords_norm / tile_extents[0]) * tile_extents[0];
+      pos += coords_norm;
+      break;
+    case 2:
+      coords_norm = (coords[0] - domain[2 * 0]);
+      coords_norm -= (coords_norm / tile_extents[0]) * tile_extents[0];
+      pos += coords_norm * tile_extents[1];
+
+      coords_norm = (coords[1] - domain[2 * 1]);
+      coords_norm -= (coords_norm / tile_extents[1]) * tile_extents[1];
+      pos += coords_norm * 1;
+      break;
+    case 3:
+      coords_norm = (coords[0] - domain[2 * 0]);
+      coords_norm -= (coords_norm / tile_extents[0]) * tile_extents[0];
+      pos += coords_norm * tile_extents[1] * tile_extents[2];
+
+      coords_norm = (coords[1] - domain[2 * 1]);
+      coords_norm -= (coords_norm / tile_extents[1]) * tile_extents[1];
+      pos += coords_norm * tile_extents[2];
+
+      coords_norm = (coords[2] - domain[2 * 2]);
+      coords_norm -= (coords_norm / tile_extents[2]) * tile_extents[2];
+      pos += coords_norm * 1;
+      break;
+    default: {
+      // Calculate initial cell_offset
+      uint64_t cell_offset = 1;
+      for (unsigned int i = 1; i < dim_num_; ++i)
+        cell_offset *= tile_extents[i];
+
+      // Calculate position
+      for (unsigned int i = 0; i < dim_num_; ++i) {
+        coords_norm = (coords[i] - domain[2 * i]);
+        coords_norm -= (coords_norm / tile_extents[i]) * tile_extents[i];
+        pos += coords_norm * cell_offset;
+        if (i < dim_num_ - 1)
+          cell_offset /= tile_extents[i + 1];
+      }
+      break;
     }
   }
-  std::reverse(cell_offsets.begin(), cell_offsets.end());
 
-  // Calculate position
-  T coords_norm;  // Normalized coordinates inside the tile
-  uint64_t pos = 0;
-  for (unsigned int i = 0; i < dim_num_; ++i) {
-    coords_norm = (coords[i] - domain[2 * i]);
-    coords_norm -= (coords_norm / tile_extents[i]) * tile_extents[i];
-    pos += coords_norm * cell_offsets[i];
-  }
-
-  // Return
   return pos;
 }
 
 template <class T>
 uint64_t Domain::get_cell_pos_row(const T* subarray, const T* coords) const {
-  // Calculate cell offsets
-  std::vector<uint64_t> cell_offsets;
-  cell_offsets.push_back(1);
-  if (dim_num_ > 1) {
-    for (unsigned int i = dim_num_ - 2;; --i) {
-      // Per dimension
-      uint64_t cell_num = subarray[2 * (i + 1) + 1] - subarray[2 * (i + 1)] + 1;
-      cell_offsets.push_back(cell_offsets.back() * cell_num);
-      if (i == 0)
-        break;
+  uint64_t pos = 0;
+
+  // Special-case for low dimensions to an unrolled version of the default loop.
+  switch (dim_num_) {
+    case 1:
+      pos += (coords[0] - subarray[2 * 0]) * 1;
+      break;
+    case 2: {
+      const uint64_t cell_num_0 =
+          subarray[2 * (0 + 1) + 1] - subarray[2 * (0 + 1)] + 1;
+      pos += (coords[0] - subarray[2 * 0]) * cell_num_0;
+      pos += (coords[1] - subarray[2 * 1]) * 1;
+      break;
+    }
+    case 3: {
+      const uint64_t cell_num_0 =
+          subarray[2 * (0 + 1) + 1] - subarray[2 * (0 + 1)] + 1;
+      const uint64_t cell_num_1 =
+          subarray[2 * (1 + 1) + 1] - subarray[2 * (1 + 1)] + 1;
+      pos += (coords[0] - subarray[2 * 0]) * cell_num_0 * cell_num_1;
+      pos += (coords[1] - subarray[2 * 1]) * cell_num_1;
+      pos += (coords[2] - subarray[2 * 2]) * 1;
+      break;
+    }
+    default: {
+      // Calculate initial cell_offset
+      uint64_t cell_offset = 1;
+      for (unsigned int i = 0; i < dim_num_ - 1; ++i) {
+        const uint64_t cell_num_i =
+            subarray[2 * (i + 1) + 1] - subarray[2 * (i + 1)] + 1;
+        cell_offset *= cell_num_i;
+      }
+
+      // Calculate position
+      for (unsigned int i = 0; i < dim_num_; ++i) {
+        pos += (coords[i] - subarray[2 * i]) * cell_offset;
+        if (i < dim_num_ - 1) {
+          const uint64_t cell_num_i =
+              subarray[2 * (i + 1) + 1] - subarray[2 * (i + 1)] + 1;
+          cell_offset /= cell_num_i;
+        }
+      }
+      break;
     }
   }
-  std::reverse(cell_offsets.begin(), cell_offsets.end());
 
-  // Calculate position
-  uint64_t pos = 0;
-  for (unsigned int i = 0; i < dim_num_; ++i)
-    pos += (coords[i] - subarray[2 * i]) * cell_offsets[i];
-
-  // Return
   return pos;
 }
 
