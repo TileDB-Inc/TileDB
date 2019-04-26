@@ -54,9 +54,6 @@ steps:
     fi;
     if [[ "$TILEDB_S3" == "ON" ]]; then
       bootstrap_args="${bootstrap_args} --enable-s3";
-      # system libcurl on ubuntu 16.04 is linked against libssl1.0
-      # probably good to have one test doing full bootstrap anyway.
-      bootstrap_args="${bootstrap_args} --force-build-all-deps";
     fi;
     if [[ "$TILEDB_TBB" == "OFF" ]]; then
       bootstrap_args="${bootstrap_args} --disable-tbb";
@@ -65,19 +62,6 @@ steps:
       bootstrap_args="${bootstrap_args} --enable-debug";
     fi
     # displayName: 'Install dependencies'
-
-    # - bash: |
-    # Set up arguments for bootstrap.sh
-    bootstrap_args="--enable=verbose,static-tiledb";
-    if [[ "$TILEDB_HDFS" == "ON" ]]; then
-      bootstrap_args="${bootstrap_args} --enable-hdfs";
-    fi;
-    if [[ "$TILEDB_S3" == "ON" ]]; then
-      bootstrap_args="${bootstrap_args} --enable-s3";
-    fi;
-    if [[ "$TILEDB_TBB" == "OFF" ]]; then
-      bootstrap_args="${bootstrap_args} --disable-tbb";
-    fi
 
     mkdir -p $BUILD_REPOSITORY_LOCALPATH/build
     cd $BUILD_REPOSITORY_LOCALPATH/build
@@ -100,6 +84,7 @@ steps:
       docker ps -a
     fi
 
+    make -j4 -C tiledb tiledb_unit
     make check
 
     # - bash: |

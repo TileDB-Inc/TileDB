@@ -16,7 +16,6 @@ jobs:
       macOS:
         imageName: 'macOS-10.13'
         TILEDB_S3: ON
-        TILEDB_DEBUG: ON
         CXX: clang++
     maxParallel: 4
   pool:
