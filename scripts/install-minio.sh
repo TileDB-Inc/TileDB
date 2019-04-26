@@ -39,7 +39,9 @@ install_yum_pkgs() {
 }
 
 install_brew_pkgs() {
-  brew install docker
+  # use minio repo rather than cask,
+  # as recommended by minio
+  brew install minio/stable/minio
 }
 
 install_deps() {

@@ -73,9 +73,10 @@ test_script:
     if ($LastExitCode -ne 0) {
        Write-Host "C API example failed."
        $host.SetShouldExit($LastExitCode)
+    } else {
+       # Remove the output directory created by the example
+       rm -Recurse -Force quickstart_dense
     }
-
-    rm -Recurse -Force quickstart_dense
 
     try {
       .\examples\cpp_api\Release\quickstart_dense_cpp.exe

@@ -1,6 +1,7 @@
 <a href="https://tiledb.io"><img src="https://github.com/TileDB-Inc/TileDB/raw/dev/doc/source/_static/tileDB_uppercase_600_112.png" alt="TileDB logo" width="400"></a>
 
 [![Travis](https://travis-ci.org/TileDB-Inc/TileDB.svg?branch=dev)](https://travis-ci.org/TileDB-Inc/TileDB)
+[![Azure Pipelines](https://dev.azure.com/TileDB-Inc/CI/_apis/build/status/TileDB-Inc.TileDB?branchName=dev)](https://dev.azure.com/TileDB-Inc/CI/_build/latest?definitionId=2&branchName=dev)
 [![Appveyor](https://ci.appveyor.com/api/projects/status/vni4366j5ys6fvpy?svg=true)](https://ci.appveyor.com/project/TileDB-Inc/tiledb)
 [![Documentation Status](https://readthedocs.com/projects/tiledb-inc-tiledb/badge/?version=latest)](https://docs.tiledb.io/en/latest/?badge=latest)
 

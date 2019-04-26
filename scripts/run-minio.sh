@@ -31,6 +31,14 @@ die() {
   echo "$@" 1>&2 ; popd 2>/dev/null; exit 1
 }
 
+run_cask_minio() {
+  export MINIO_ACCESS_KEY=minio
+  export MINIO_SECRET_KEY=miniosecretkey
+
+  minio server --address localhost:9999 /tmp/minio-data &
+  [[ "$?" -eq "0" ]] || die "could not run minio server"
+}
+
 run_docker_minio() {
   mkdir -p /tmp/minio-data
   docker run -e MINIO_ACCESS_KEY=minio -e MINIO_SECRET_KEY=miniosecretkey \
@@ -43,8 +51,12 @@ export_aws_keys() {
 }
 
 run() {
-  run_docker_minio
   export_aws_keys
+  if [[ "$AGENT_OS" == "Darwin" ]]; then
+    run_cask_minio
+  else
+    run_docker_minio
+  fi
 }
 
-run 
+run

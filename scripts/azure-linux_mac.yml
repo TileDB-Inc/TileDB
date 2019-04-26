@@ -1,0 +1,175 @@
+steps:
+- bash: |
+    set -e pipefail
+    # Install doxygen *before* running cmake
+    sudo apt-get install doxygen
+  condition: eq(variables['Agent.OS'], 'Linux')
+  displayName: 'Install doxygen (linux only)'
+
+
+- bash: |
+    set -e pipefail
+    # Install clang-format (v5.0)
+    sudo scripts/install-clangformat.sh
+    src=$BUILD_REPOSITORY_LOCALPATH
+    cd $src
+    $src/scripts/run-clang-format.sh $src clang-format-5.0 0 \
+      $(find $src/tiledb $src/test/src $src/examples $src/tools \
+       -name "*.cc" -or -name "*.c" -or -name "*.h")
+  condition: eq(variables['Agent.OS'], 'Linux')
+  displayName: 'Check formatting (linux only)'
+
+
+- bash: |
+    # azure bash does not treat intermediate failure as error
+    # https://github.com/Microsoft/azure-pipelines-yaml/issues/135
+    set -e pipefail
+
+    git clone https://github.com/TileDB-Inc/TileDB-Unit-Test-Arrays.git test/inputs/arrays/read_compatibility_test
+    #   displayName: 'Clone Unit-Test-Arrays'
+
+    # - bash: |
+    # Start HDFS server if enabled
+    if [[ "$TILEDB_HDFS" == "ON" ]]; then
+      # - ssh to localhost is required for HDFS launch...
+      # - /home/vsts has permissions g+w and is owned by user 'docker'
+      #   for VSTS purposes, so disable ssh strictness
+      sudo sed -i "s/StrictModes\ yes/StrictModes\ no/g" /etc/ssh/sshd_config
+
+      source scripts/install-hadoop.sh
+      source scripts/run-hadoop.sh
+    fi
+
+    # Start minio server if S3 is enabled
+    if [[ "$TILEDB_S3" == "ON" ]]; then
+      source scripts/install-minio.sh;
+      source scripts/run-minio.sh;
+    fi
+    # displayName: 'Install and start servers {HDFS|minio}'
+
+    # Set up arguments for bootstrap.sh
+    bootstrap_args="--enable=verbose,static-tiledb";
+    if [[ "$TILEDB_HDFS" == "ON" ]]; then
+      bootstrap_args="${bootstrap_args} --enable-hdfs";
+    fi;
+    if [[ "$TILEDB_S3" == "ON" ]]; then
+      bootstrap_args="${bootstrap_args} --enable-s3";
+    fi;
+    if [[ "$TILEDB_TBB" == "OFF" ]]; then
+      bootstrap_args="${bootstrap_args} --disable-tbb";
+    fi
+    if [[ "$TILEDB_DEBUG" == "ON" ]]; then
+      bootstrap_args="${bootstrap_args} --enable-debug";
+    fi
+    # displayName: 'Install dependencies'
+
+    mkdir -p $BUILD_REPOSITORY_LOCALPATH/build
+    cd $BUILD_REPOSITORY_LOCALPATH/build
+
+    # Configure and build TileDB
+    $BUILD_REPOSITORY_LOCALPATH/bootstrap $bootstrap_args
+
+    make -j4
+    make examples -j4
+    make -C tiledb install
+
+    #- bash: |
+    cd $BUILD_REPOSITORY_LOCALPATH/build
+    ls -la
+    printenv
+
+    if [[ ( "$AGENT_OS" == "Linux" && "$TILEDB_S3" == "ON" ) ]]; then
+      # make sure docker is still running...
+      printenv
+      docker ps -a
+    fi
+
+    make -j4 -C tiledb tiledb_unit
+    make check
+
+    # - bash: |
+    pushd $BUILD_REPOSITORY_LOCALPATH/examples/cmake_project
+    mkdir build && cd build
+    cmake -DCMAKE_PREFIX_PATH=$BUILD_REPOSITORY_LOCALPATH/dist .. && make
+    ./ExampleExe
+    ./ExampleExe_static
+    popd
+    # Build and run the PNG ingestion example.
+    if [[ "$AGENT_OS" == "Linux" ]]; then
+      # libpng (example dependency)
+      sudo apt-get install libpng-dev
+
+      pushd $BUILD_REPOSITORY_LOCALPATH/examples/png_ingestion;
+      mkdir build && cd build;
+      cmake -DCMAKE_PREFIX_PATH=$BUILD_REPOSITORY_LOCALPATH/dist .. && make;
+      ./tiledb_png $BUILD_REPOSITORY_LOCALPATH/doc/source/figures/Scarlet-Macaw-small.png /tmp/pngarray output.png;
+      popd;
+    fi
+
+    # Build the benchmarks (but do not run them).
+    pushd $BUILD_REPOSITORY_LOCALPATH/test/benchmarking && \
+      mkdir build && cd build && \
+      cmake -DCMAKE_PREFIX_PATH=$BUILD_REPOSITORY_LOCALPATH/dist ../src && make && \
+    popd
+
+    testfile=$(mktemp)
+    mv $testfile $testfile.cc
+    testfile=$testfile.cc
+    cat <<EOF > $testfile
+    #include <assert.h>
+    #include <tiledb/tiledb.h>
+    #include <tiledb/version.h>
+    int main(int argc, char **argv) {
+      int major = 0;
+      int minor = 0;
+      int patch = 0;
+      tiledb_version(&major,&minor,&patch);
+      auto version = tiledb::version();
+      assert(major == std::get<0>(version));
+      return 0;
+    }
+    EOF
+    if [[ "$AGENT_OS" == "Linux" ]]; then
+      export LD_LIBRARY_PATH=$BUILD_REPOSITORY_LOCALPATH/dist/lib:/usr/local/lib:$LD_LIBRARY_PATH
+    else
+      export DYLD_LIBRARY_PATH=$BUILD_REPOSITORY_LOCALPATH/dist/lib:/usr/local/lib:$DYLD_LIBRARY_PATH
+    fi
+    $CXX -std=c++11 -g -O0 -Wall -Werror -I$BUILD_REPOSITORY_LOCALPATH/dist/include -L$BUILD_REPOSITORY_LOCALPATH/dist/lib $testfile -o $testfile.exe -ltiledb && \
+    $testfile.exe && \
+    rm -f $testfile $testfile.exe
+
+    ps -U $(whoami) -o comm= | sort | uniq
+    #  displayName: 'Build examples, PNG test, and benchmarks (build-only)'
+  displayName: 'Build and test libtiledb'
+
+
+- bash: |
+    set -e pipefail
+    # Display log files if the build failed
+    echo "Dumping log files for failed build"
+    echo "----------------------------------"
+    for f in $(find $BUILD_REPOSITORY_LOCALPATH/build -name *.log);
+      do echo "------"
+         echo $f
+         echo "======"
+         cat $f
+      done;
+  condition: failed() # only run this job if the build step failed
+  displayName: "Print log files (failed build only)"
+
+
+# Need this for virtualenv
+- task: UsePythonVersion@0
+  inputs:
+    versionSpec: '3.x'
+
+- bash: |
+    set -e pipefail
+    python -m pip install --upgrade pip virtualenv
+
+    # Build the documentation (this does not deploy to RTD).
+    pushd $BUILD_REPOSITORY_LOCALPATH/doc;
+    ./local-build.sh;
+    popd;
+  condition: eq(variables['Agent.OS'], 'Linux')
+  displayName: 'Build docs (no deployment)'
