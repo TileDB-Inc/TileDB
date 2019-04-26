@@ -174,7 +174,6 @@ function setup_environment {
   export HADOOP_HOME=/usr/local/hadoop/home
   sudo sed -i -- 's/JAVA_HOME=\${JAVA_HOME}/JAVA_HOME=\$(readlink -f \/usr\/bin\/java | sed "s:bin\/java::")/' \
        $HADOOP_HOME/etc/hadoop/hadoop-env.sh
-
   setup_core_xml &&
     setup_mapred_xml &&
     setup_hdfs_xml || die "error in generating xml configuration files"

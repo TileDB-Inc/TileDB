@@ -101,7 +101,6 @@ steps:
     fi
 
     make check
-    # run it again here to make sure invocaton says in sync
 
     # - bash: |
     pushd $BUILD_REPOSITORY_LOCALPATH/examples/cmake_project
@@ -163,7 +162,7 @@ steps:
     set -e pipefail
     # Display log files if the build failed
     echo "Dumping log files for failed build"
-    echo ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>"
+    echo "----------------------------------"
     for f in $(find $BUILD_REPOSITORY_LOCALPATH/build -name *.log);
       do echo "------"
          echo $f

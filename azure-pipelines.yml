@@ -1,6 +1,3 @@
-trigger:
-- ihn/az_ci_asan
-
 jobs:
 - job:
   strategy:
@@ -26,3 +23,17 @@ jobs:
     vmImage: $(imageName)
   steps:
   - template: scripts/azure-linux_mac.yml
+
+- job: Windows
+  strategy:
+    matrix:
+      VS2015:
+        imageName: 'vs2015-win2012r2'
+        TILEDB_S3: ON
+      VS2017:
+        imageName: 'vs2017-win2016'
+        TILEDB_S3: ON
+  pool:
+    vmImage: $(imageName)
+  steps:
+  - template: scripts/azure-windows.yml

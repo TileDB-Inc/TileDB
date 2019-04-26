@@ -43,7 +43,6 @@ run_docker_minio() {
   mkdir -p /tmp/minio-data
   docker run -e MINIO_ACCESS_KEY=minio -e MINIO_SECRET_KEY=miniosecretkey \
        -d -p 9999:9000 minio/minio server /tmp/minio-data || die "could not run docker minio"
-  docker ps
 }
 
 export_aws_keys() {
