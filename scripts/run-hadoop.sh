@@ -6,8 +6,7 @@
 # Copyright (c) 2019 TileDB, Inc.
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
-# of this software and associated documentation files (the "Software"), to deal
-# in the Software without restriction, including without limitation the rights
+# of this software and associated documentation files (the "Software"), to deal # in the Software without restriction, including without limitation the rights
 # to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
 # copies of the Software, and to permit persons to whom the Software is
 # furnished to do so, subject to the following conditions:
@@ -31,6 +30,18 @@ die() {
   echo "$@" 1>&2 ; popd 2>/dev/null; exit 1
 }
 
+super_export() {
+  # exports to current shell and environment
+  # persists across task steps in azure
+  # args:
+  #   var: variable name
+  #   val: variable value
+  var=$1
+  val=$2
+  export $var="$val"
+  echo "##vso[task.setvariable variable=$var;]$val"
+}
+
 function restart_hadoop {
   export HADOOP_HOME=/usr/local/hadoop/home
   $HADOOP_HOME/sbin/stop-dfs.sh || die "error stopping datanode"
@@ -42,11 +53,12 @@ function run {
   restart_hadoop || die "error restarting hadoop"
 }
 
-run
+super_export JAVA_HOME $(readlink -n \/etc\/alternatives\/java | sed "s:\/bin\/java::")
+super_export HADOOP_HOME /usr/local/hadoop/home
+super_export HADOOP_LIB "$HADOOP_HOME/lib/native/"
+super_export LD_LIBRARY_PATH "$HADOOP_LIB:$JAVA_HOME/lib/amd64/server/"
+super_export CLASSPATH `$HADOOP_HOME/bin/hadoop classpath --glob`
+super_export PATH "${HADOOP_HOME}/bin/":$PATH
 
-export JAVA_HOME=$(readlink -n \/etc\/alternatives\/java | sed "s:\/bin\/java::")
-export HADOOP_HOME=/usr/local/hadoop/home
-export HADOOP_LIB="$HADOOP_HOME/lib/native/"
-export LD_LIBRARY_PATH="$HADOOP_LIB:$JAVA_HOME/lib/amd64/server/"
-export CLASSPATH=`$HADOOP_HOME/bin/hadoop classpath --glob`
-export PATH="${HADOOP_HOME}/bin/":$PATH
+#
+run
