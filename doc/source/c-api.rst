@@ -549,7 +549,9 @@ Buffer
     :project: TileDB-C
 .. doxygenfunction:: tiledb_buffer_set_type
     :project: TileDB-C
-.. doxygenfunction:: tiledb_buffer_get_size
+.. doxygenfunction:: tiledb_buffer_get_data
+    :project: TileDB-C
+.. doxygenfunction:: tiledb_buffer_set_data
     :project: TileDB-C
 
 Object Management

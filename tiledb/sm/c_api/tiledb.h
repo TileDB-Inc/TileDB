@@ -403,7 +403,8 @@ TILEDB_EXPORT int32_t tiledb_buffer_get_type(
     tiledb_datatype_t* datatype);
 
 /**
- * Gets the current number of bytes in the specified buffer object.
+ * Gets a pointer to the current allocation and the current number of bytes in
+ * the specified buffer object.
  *
  * @note For string buffers allocated by TileDB, the number of bytes includes
  * the terminating NULL byte.
@@ -413,9 +414,10 @@ TILEDB_EXPORT int32_t tiledb_buffer_get_type(
  * @code{.c}
  * tiledb_buffer_t* buffer;
  * tiledb_buffer_alloc(ctx, &buffer);
+ * void* data;
  * uint64_t num_bytes;
- * tiledb_buffer_get_size(ctx, buffer, &num_bytes);
- * // num_bytes == 0 because the buffer is currently empty.
+ * tiledb_buffer_get_data(ctx, buffer, &data, num_bytes);
+ * // data == NULL and num_bytes == 0 because the buffer is currently empty.
  * tiledb_buffer_free(&buffer);
  * @endcode
  *
@@ -424,8 +426,47 @@ TILEDB_EXPORT int32_t tiledb_buffer_get_type(
  * @param num_bytes Set to the number of bytes in the buffer.
  * @return `TILEDB_OK` for success or `TILEDB_ERR` for error.
  */
-TILEDB_EXPORT int32_t tiledb_buffer_get_size(
-    tiledb_ctx_t* ctx, const tiledb_buffer_t* buffer, uint64_t* num_bytes);
+TILEDB_EXPORT int32_t tiledb_buffer_get_data(
+    tiledb_ctx_t* ctx,
+    const tiledb_buffer_t* buffer,
+    void** data,
+    uint64_t* num_bytes);
+
+/**
+ * Sets (wraps) a pre-allocated region of memory with the given buffer object.
+ * This does not perform a copy.
+ *
+ * @note The TileDB buffer object does not take ownership of the allocation
+ * set with this function. That means the call to `tiledb_buffer_free` will not
+ * free a user allocation set via `tiledb_buffer_set_buffer`.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * tiledb_buffer_t* buffer;
+ * tiledb_buffer_alloc(ctx, &buffer);
+ *
+ * void* my_data = malloc(100);
+ * tiledb_buffer_set_data(ctx, buffer, my_data, 100);
+ *
+ * void* data;
+ * uint64_t num_bytes;
+ * tiledb_buffer_get_data(ctx, buffer, &data, num_bytes);
+ * assert(data == my_data);
+ * assert(num_bytes == 100);
+ *
+ * tiledb_buffer_free(&buffer);
+ * free(my_data);
+ * @endcode
+ *
+ * @param ctx TileDB context
+ * @param buffer TileDB buffer instance
+ * @param data Pre-allocated region of memory to wrap with this buffer.
+ * @param size Size (in bytes) of the region pointed to by data.
+ * @return `TILEDB_OK` for success or `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_buffer_set_data(
+    tiledb_ctx_t* ctx, tiledb_buffer_t* buffer, void* data, uint64_t size);
 
 /* ********************************* */
 /*              CONFIG               */

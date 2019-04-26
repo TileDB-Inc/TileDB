@@ -567,13 +567,36 @@ int32_t tiledb_buffer_get_type(
   return TILEDB_OK;
 }
 
-int32_t tiledb_buffer_get_size(
-    tiledb_ctx_t* ctx, const tiledb_buffer_t* buffer, uint64_t* num_bytes) {
+int32_t tiledb_buffer_get_data(
+    tiledb_ctx_t* ctx,
+    const tiledb_buffer_t* buffer,
+    void** data,
+    uint64_t* num_bytes) {
   if (sanity_check(ctx) == TILEDB_ERR ||
       sanity_check(ctx, buffer) == TILEDB_ERR)
     return TILEDB_ERR;
 
+  *data = buffer->buffer_->data();
   *num_bytes = buffer->buffer_->size();
+
+  return TILEDB_OK;
+}
+
+int32_t tiledb_buffer_set_data(
+    tiledb_ctx_t* ctx, tiledb_buffer_t* buffer, void* data, uint64_t size) {
+  if (sanity_check(ctx) == TILEDB_ERR ||
+      sanity_check(ctx, buffer) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  // Create a temporary Buffer object as a wrapper.
+  tiledb::sm::Buffer tmp_buffer(data, size, false);
+
+  // Swap with the given buffer.
+  if (SAVE_ERROR_CATCH(ctx, buffer->buffer_->swap(tmp_buffer)))
+    return TILEDB_ERR;
+
+  // 'tmp_buffer' now destructs, freeing the old allocation (if any) of the
+  // given buffer.
 
   return TILEDB_OK;
 }
