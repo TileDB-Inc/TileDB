@@ -267,6 +267,8 @@ Status Config::set(const std::string& param, const std::string& value) {
     RETURN_NOT_OK(set_vfs_s3_proxy_username(value));
   } else if (param == "vfs.s3.proxy_password") {
     RETURN_NOT_OK(set_vfs_s3_proxy_password(value));
+  } else if (param == "vfs.s3.logging_level") {
+    RETURN_NOT_OK(set_vfs_s3_logging_level(value));
   } else if (param == "vfs.hdfs.name_node") {
     RETURN_NOT_OK(set_vfs_hdfs_name_node(value));
   } else if (param == "vfs.hdfs.username") {
@@ -451,6 +453,11 @@ Status Config::unset(const std::string& param) {
     vfs_params_.s3_params_.aws_secret_access_key = "";
     value << vfs_params_.s3_params_.aws_secret_access_key;
     param_values_["vfs.s3.aws_secret_access_key"] = value.str();
+    value.str(std::string());
+  } else if (param == "vfs.s3.logging_level") {
+    vfs_params_.s3_params_.logging_level_ = constants::s3_logging_level;
+    value << vfs_params_.s3_params_.logging_level_;
+    param_values_["vfs.s3.logging_level"] = value.str();
     value.str(std::string());
   } else if (param == "vfs.s3.scheme") {
     vfs_params_.s3_params_.scheme_ = constants::s3_scheme;
@@ -735,6 +742,10 @@ void Config::set_default_param_values() {
 
   value << vfs_params_.s3_params_.proxy_password_;
   param_values_["vfs.s3.proxy_password"] = value.str();
+  value.str(std::string());
+
+  value << vfs_params_.s3_params_.logging_level_;
+  param_values_["vfs.s3.logging_level"] = value.str();
   value.str(std::string());
 
   value << vfs_params_.hdfs_params_.name_node_uri_;
@@ -1099,6 +1110,11 @@ Status Config::set_vfs_s3_proxy_username(const std::string& value) {
 
 Status Config::set_vfs_s3_proxy_password(const std::string& value) {
   vfs_params_.s3_params_.proxy_password_ = value;
+  return Status::Ok();
+}
+
+Status Config::set_vfs_s3_logging_level(const std::string& value) {
+  vfs_params_.s3_params_.logging_level_ = value;
   return Status::Ok();
 }
 

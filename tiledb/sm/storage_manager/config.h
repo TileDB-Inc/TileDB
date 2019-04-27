@@ -136,6 +136,7 @@ class Config {
     std::string proxy_password_;
     std::string aws_access_key_id;
     std::string aws_secret_access_key;
+    std::string logging_level_;
 
     S3Params() {
       region_ = constants::s3_region;
@@ -156,6 +157,7 @@ class Config {
       proxy_password_ = constants::s3_proxy_password;
       aws_access_key_id = constants::aws_access_key_id;
       aws_secret_access_key = constants::aws_secret_access_key;
+      logging_level_ = constants::s3_logging_level;
     }
   };
 
@@ -383,6 +385,11 @@ class Config {
    *    The scale factor for exponential backofff when connecting to S3.
    *    Any `long` value is acceptable. <br>
    *    **Default**: 25
+   * - `vfs.s3.logging_level` <br>
+   *    The AWS SDK logging level. This is a process-global setting. The
+   *    configuration of the most recently constructed context will set
+   *    process state. Log files are written to the process working directory.
+   *    **Default**: ""
    * - `vfs.s3.request_timeout_ms` <br>
    *    The request timeout in ms. Any `long` value is acceptable. <br>
    *    **Default**: 3000
@@ -595,7 +602,7 @@ class Config {
   /** Sets the S3 virtual addressing. */
   Status set_vfs_s3_use_virtual_addressing(const std::string& value);
 
-  /** Sets the S3 virtual addressing. */
+  /** Sets the S3 multipart upload boolean. */
   Status set_vfs_s3_use_multipart_upload(const std::string& value);
 
   /** Sets the maximum number of parallel S3 operations. */
@@ -612,6 +619,9 @@ class Config {
 
   /** Sets the S3 connect scale factor for exponential backoff. */
   Status set_vfs_s3_connect_scale_factor(const std::string& value);
+
+  /** Sets the S3 logging level. */
+  Status set_vfs_s3_logging_level(const std::string& value);
 
   /** Sets the S3 request timeout in milliseconds. */
   Status set_vfs_s3_request_timeout_ms(const std::string& value);
