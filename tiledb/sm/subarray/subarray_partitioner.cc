@@ -72,7 +72,8 @@ SubarrayPartitioner::SubarrayPartitioner(const SubarrayPartitioner& partitioner)
   swap(clone);
 }
 
-SubarrayPartitioner::SubarrayPartitioner(SubarrayPartitioner&& partitioner)
+SubarrayPartitioner::SubarrayPartitioner(
+    SubarrayPartitioner&& partitioner) noexcept
     : SubarrayPartitioner() {
   swap(partitioner);
 }
@@ -86,7 +87,7 @@ SubarrayPartitioner& SubarrayPartitioner::operator=(
 }
 
 SubarrayPartitioner& SubarrayPartitioner::operator=(
-    SubarrayPartitioner&& partitioner) {
+    SubarrayPartitioner&& partitioner) noexcept {
   swap(partitioner);
 
   return *this;
@@ -109,7 +110,7 @@ Status SubarrayPartitioner::get_result_budget(
   // Check attribute name
   if (attr_name == nullptr)
     return LOG_STATUS(Status::SubarrayPartitionerError(
-        "Cannot get result budget; Invalid attribute"));
+        "Cannot get result budget; Attribute name cannot be null"));
 
   if (attr_name != constants::coords) {
     // Check attribute name
@@ -133,7 +134,9 @@ Status SubarrayPartitioner::get_result_budget(
   auto b_it = budget_.find(attr_name);
   if (b_it == budget_.end())
     return LOG_STATUS(Status::SubarrayPartitionerError(
-        "Cannot get result budget; Budget not set for the input attribute"));
+        std::string(
+            "Cannot get result budget; Budget not set for attribute '") +
+        attr_name + "'"));
 
   // Get budget
   *budget = b_it->second.size_fixed_;
@@ -146,7 +149,7 @@ Status SubarrayPartitioner::get_result_budget(
   // Check attribute name
   if (attr_name == nullptr)
     return LOG_STATUS(Status::SubarrayPartitionerError(
-        "Cannot get result budget; Invalid attribute"));
+        "Cannot get result budget; Attribute name cannot be null"));
 
   if (attr_name == constants::coords)
     return LOG_STATUS(Status::SubarrayPartitionerError(
@@ -172,7 +175,9 @@ Status SubarrayPartitioner::get_result_budget(
   auto b_it = budget_.find(attr_name);
   if (b_it == budget_.end())
     return LOG_STATUS(Status::SubarrayPartitionerError(
-        "Cannot get result budget; Budget not set for the input attribute"));
+        std::string(
+            "Cannot get result budget; Budget not set for attribute '") +
+        attr_name + "'"));
 
   // Get budget
   *budget_off = b_it->second.size_fixed_;
@@ -239,7 +244,10 @@ Status SubarrayPartitioner::next(bool* unsplittable) {
   RETURN_NOT_OK(compute_current_start_end<T>(&interval_found));
 
   // Single-range partition that must be split
-  if (!interval_found && subarray_.layout() == Layout::UNORDERED)
+  // Note: this applies only to UNORDERED and GLOBAL_ORDER layouts,
+  // since otherwise we may have to calibrate the range start and end
+  if (!interval_found && (subarray_.layout() == Layout::UNORDERED ||
+                          subarray_.layout() == Layout::GLOBAL_ORDER))
     return next_from_single_range<T>(unsplittable);
 
   // An interval of whole ranges that may need calibration
@@ -264,14 +272,15 @@ Status SubarrayPartitioner::set_result_budget(
   // Check attribute name
   if (attr_name == nullptr)
     return LOG_STATUS(Status::SubarrayPartitionerError(
-        "Cannot set result budget; Invalid attribute"));
+        "Cannot set result budget; Attribute name cannot be null"));
 
   if (attr_name != constants::coords) {
     // Check attribute
     auto attr = subarray_.array()->array_schema()->attribute(attr_name);
     if (attr == nullptr)
       return LOG_STATUS(Status::SubarrayPartitionerError(
-          "Cannot set result budget; Invalid attribute"));
+          std::string("Cannot set result budget; Invalid attribute '") +
+          attr_name + "'"));
 
     // Check if the attribute is fixed-sized
     if (attr->var_size())
@@ -289,7 +298,7 @@ Status SubarrayPartitioner::set_result_budget(
   // Check attribute name
   if (attr_name == nullptr)
     return LOG_STATUS(Status::SubarrayPartitionerError(
-        "Cannot set result budget; Invalid attribute"));
+        "Cannot set result budget; Attribute name cannot be null"));
 
   if (attr_name == constants::coords)
     return LOG_STATUS(Status::SubarrayPartitionerError(
@@ -299,7 +308,8 @@ Status SubarrayPartitioner::set_result_budget(
   auto attr = subarray_.array()->array_schema()->attribute(attr_name);
   if (attr == nullptr)
     return LOG_STATUS(Status::SubarrayPartitionerError(
-        "Cannot set result budget; Invalid attribute"));
+        std::string("Cannot set result budget; Invalid attribute '") +
+        attr_name + "'"));
 
   // Check if the attribute is var-sized
   if (!attr->var_size())
@@ -357,11 +367,17 @@ Status SubarrayPartitioner::split_current(bool* unsplittable) {
 /* ****************************** */
 
 void SubarrayPartitioner::calibrate_current_start_end(bool* must_split_slab) {
-  auto start_coords = subarray_.get_range_coords(current_.start_);
-  auto end_coords = subarray_.get_range_coords(current_.end_);
-
   // Initialize (may be reset below)
   *must_split_slab = false;
+
+  // Special case of single range and global layout
+  if (subarray_.layout() == Layout::GLOBAL_ORDER) {
+    assert(current_.start_ == current_.end_);
+    return;
+  }
+
+  auto start_coords = subarray_.get_range_coords(current_.start_);
+  auto end_coords = subarray_.get_range_coords(current_.end_);
 
   std::vector<uint64_t> range_num;
   auto dim_num = subarray_.dim_num();
@@ -475,11 +491,10 @@ Status SubarrayPartitioner::compute_current_start_end(bool* found) {
           attr_name, current_.end_, var_size, &est_size));
       auto& cur_size = cur_sizes[attr_name];
       auto& mem_size = mem_sizes[attr_name];
-      cur_size.size_fixed_ += est_size.size_fixed_;
-      cur_size.size_var_ += est_size.size_var_;
-      mem_size.size_fixed_ += est_size.mem_size_fixed_;
-      mem_size.size_var_ += est_size.mem_size_var_;
-
+      cur_size.size_fixed_ += (uint64_t)ceil(est_size.size_fixed_);
+      cur_size.size_var_ += (uint64_t)ceil(est_size.size_var_);
+      mem_size.size_fixed_ += (uint64_t)ceil(est_size.mem_size_fixed_);
+      mem_size.size_var_ += (uint64_t)ceil(est_size.mem_size_var_);
       if (cur_size.size_fixed_ > budget_it.second.size_fixed_ ||
           cur_size.size_var_ > budget_it.second.size_var_ ||
           mem_size.size_fixed_ > memory_budget_ ||
@@ -505,6 +520,58 @@ Status SubarrayPartitioner::compute_current_start_end(bool* found) {
   return Status::Ok();
 }
 
+template <class T>
+void SubarrayPartitioner::compute_splitting_point_on_tiles(
+    const Subarray& range,
+    unsigned* splitting_dim,
+    T* splitting_point,
+    bool* unsplittable) {
+  assert(range.layout() == Layout::GLOBAL_ORDER);
+  *unsplittable = true;
+
+  // For easy reference
+  auto array_schema = subarray_.array()->array_schema();
+  auto domain = (const T*)array_schema->domain()->domain();
+  auto tile_extents = (const T*)array_schema->domain()->tile_extents();
+  auto dim_num = subarray_.array()->array_schema()->dim_num();
+  auto layout = subarray_.array()->array_schema()->tile_order();
+  const void* r_v;
+  *splitting_dim = UINT32_MAX;
+
+  // Trivial case
+  if (tile_extents == nullptr)
+    return;
+
+  std::vector<unsigned> dims;
+  if (layout == Layout::ROW_MAJOR) {
+    for (unsigned i = 0; i < dim_num; ++i)
+      dims.push_back(i);
+  } else {
+    for (unsigned i = 0; i < dim_num; ++i)
+      dims.push_back(dim_num - i - 1);
+  }
+
+  // Compute splitting dimension and point
+  for (auto i : dims) {
+    range.get_range(i, 0, &r_v);
+    auto r = (T*)r_v;
+    auto tiles_apart = floor(((r[1] - domain[2 * i]) / tile_extents[i])) -
+                       floor(((r[0] - domain[2 * i]) / tile_extents[i]));
+    if (tiles_apart != 0) {
+      *splitting_dim = i;
+      T mid = r[0] + MAX(1, floor(tiles_apart / 2)) * tile_extents[i];
+      T floored_mid = array_schema->domain()->floor_to_tile(mid, i);
+      if (std::numeric_limits<T>::is_integer)
+        *splitting_point = floored_mid - 1;
+      else
+        *splitting_point =
+            std::nextafter(floored_mid, std::numeric_limits<T>::lowest());
+      *unsplittable = false;
+      break;
+    }
+  }
+}
+
 // TODO (sp): in the future this can be more sophisticated, taking into
 // TODO (sp): account MBRs (i.e., the distirbution of the data) as well
 template <class T>
@@ -513,12 +580,25 @@ void SubarrayPartitioner::compute_splitting_point_single_range(
     unsigned* splitting_dim,
     T* splitting_point,
     bool* unsplittable) {
+  // Special case for global order
+  if (subarray_.layout() == Layout::GLOBAL_ORDER) {
+    compute_splitting_point_on_tiles(
+        range, splitting_dim, splitting_point, unsplittable);
+
+    if (!*unsplittable)
+      return;  // Splitting dim/point found
+    // Else `range` is contained within a tile.
+    // The rest of the function will find the splitting dim/point
+  }
+
   // For easy reference
-  auto layout = subarray_.layout();
   auto dim_num = subarray_.array()->array_schema()->dim_num();
   auto cell_order = subarray_.array()->array_schema()->cell_order();
   assert(!range.is_unary());
-  layout = (layout == Layout::UNORDERED) ? cell_order : layout;
+  auto layout = subarray_.layout();
+  layout = (layout == Layout::UNORDERED || layout == Layout::GLOBAL_ORDER) ?
+               cell_order :
+               layout;
   const void* r_v;
   *splitting_dim = UINT32_MAX;
 
@@ -539,7 +619,9 @@ void SubarrayPartitioner::compute_splitting_point_single_range(
       *splitting_dim = i;
       *splitting_point = r[0] + (r[1] - r[0]) / 2;
       *unsplittable = !std::memcmp(splitting_point, &r[1], sizeof(T));
-      break;
+      if (!*unsplittable)
+        break;  // Splitting dim/point found
+      // Else continue to the next dimension
     }
   }
 

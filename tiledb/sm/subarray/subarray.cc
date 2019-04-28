@@ -467,7 +467,11 @@ std::vector<uint64_t> Subarray::get_range_coords(uint64_t range_idx) const {
     }
     std::reverse(ret.begin(), ret.end());
   } else {
-    assert(false);
+    // Global order - single range
+    assert(layout == Layout::GLOBAL_ORDER);
+    assert(range_num() == 1);
+    for (unsigned i = 0; i < dim_num; ++i)
+      ret.push_back(0);
   }
 
   return ret;
@@ -515,7 +519,10 @@ std::vector<const T*> Subarray::range(uint64_t range_idx) const {
     }
     std::reverse(ret.begin(), ret.end());
   } else {
-    assert(false);
+    assert(layout == Layout::GLOBAL_ORDER);
+    assert(range_num() == 1);
+    for (unsigned i = 0; i < dim_num; ++i)
+      ret.push_back((T*)ranges_[i].get_range(0));
   }
 
   return ret;
@@ -598,7 +605,14 @@ void Subarray::compute_range_offsets() {
     }
     std::reverse(range_offsets_.begin(), range_offsets_.end());
   } else {
-    assert(false);
+    // Global order - single range
+    assert(layout == Layout::GLOBAL_ORDER);
+    assert(range_num() == 1);
+    range_offsets_.push_back(1);
+    if (dim_num > 1) {
+      for (unsigned int i = 1; i < dim_num; ++i)
+        range_offsets_.push_back(1);
+    }
   }
 }
 
@@ -784,7 +798,7 @@ Status Subarray::compute_tile_overlap() {
 
   // Compute estimated tile overlap in parallel over fragments and ranges
   auto statuses = parallel_for_2d(
-      0, fragment_num, 0, range_num, [&](unsigned i, unsigned j) {
+      0, fragment_num, 0, range_num, [&](unsigned i, uint64_t j) {
         auto range = this->range<T>(j);
         if (meta[i]->dense()) {  // Dense fragment
           tile_overlap_[i][j] = get_tile_overlap<T>(range, i);

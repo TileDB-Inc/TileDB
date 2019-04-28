@@ -40,6 +40,7 @@ list(APPEND TILEDB_CORE_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../tiledb/sm/c_
 # Gather the test source files
 set(TILEDB_TEST_SOURCES
   src/helpers.h
+  src/helpers.cc
   src/unit-backwards_compat.cc
   src/unit-buffer.cc
   src/unit-capi-any.cc
@@ -69,7 +70,6 @@ set(TILEDB_TEST_SOURCES
   src/unit-capi-sparse_real_2.cc
   src/unit-capi-string.cc
   src/unit-capi-subarray.cc
-  src/unit-capi-subarray_partitioner.cc
   src/unit-capi-uri.cc
   src/unit-capi-version.cc
   src/unit-capi-vfs.cc
@@ -84,6 +84,9 @@ set(TILEDB_TEST_SOURCES
   src/unit-s3.cc
   src/unit-s3-no-multipart.cc
   src/unit-status.cc
+  src/unit-SubarrayPartitioner-dense.cc
+  src/unit-SubarrayPartitioner-error.cc
+  src/unit-SubarrayPartitioner-sparse.cc
   src/unit-tbb.cc
   src/unit-threadpool.cc
   src/unit-uri.cc

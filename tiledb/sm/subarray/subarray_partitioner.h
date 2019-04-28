@@ -73,7 +73,7 @@ class SubarrayPartitioner {
   SubarrayPartitioner();
 
   /** Constructor. */
-  SubarrayPartitioner(const Subarray& subarray);
+  explicit SubarrayPartitioner(const Subarray& subarray);
 
   /** Destructor. */
   ~SubarrayPartitioner();
@@ -82,13 +82,13 @@ class SubarrayPartitioner {
   SubarrayPartitioner(const SubarrayPartitioner& partitioner);
 
   /** Move constructor. */
-  SubarrayPartitioner(SubarrayPartitioner&& partitioner);
+  SubarrayPartitioner(SubarrayPartitioner&& partitioner) noexcept;
 
   /** Copy-assign operator. This performs a deep copy. */
   SubarrayPartitioner& operator=(const SubarrayPartitioner& partitioner);
 
   /** Move-assign operator. */
-  SubarrayPartitioner& operator=(SubarrayPartitioner&& partitioner);
+  SubarrayPartitioner& operator=(SubarrayPartitioner&& partitioner) noexcept;
 
   /* ********************************* */
   /*                 API               */
@@ -308,6 +308,19 @@ class SubarrayPartitioner {
    */
   template <class T>
   Status compute_current_start_end(bool* found);
+
+  /**
+   * Applicable only when the `range` layout is GLOBAL_ORDER.
+   * Computes the splitting point and dimension for the input range.
+   * If `range` is whithin a single space tile, then `unsplittable`
+   * is set to `true`.
+   */
+  template <class T>
+  void compute_splitting_point_on_tiles(
+      const Subarray& range,
+      unsigned* splitting_dim,
+      T* splitting_point,
+      bool* unsplittable);
 
   /**
    * Computes the splitting point and dimension for the input range.

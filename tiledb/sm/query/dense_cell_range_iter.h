@@ -61,7 +61,7 @@ class DenseCellRangeIter {
    * Constructor.
    *
    * @param domain The array domain.
-   * @param subarray The subarray the iterator will focuse on.
+   * @param subarray The subarray the iterator will focus on.
    * @param layout The layout in which the cell ranges will be iterated on.
    */
   DenseCellRangeIter(
