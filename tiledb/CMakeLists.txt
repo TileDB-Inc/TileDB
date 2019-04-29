@@ -47,6 +47,12 @@ set(TILEDB_PUBLIC_HEADERS
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/c_api/tiledb_version.h
 )
 
+if (TILEDB_SERIALIZATION)
+  list(APPEND TILEDB_PUBLIC_HEADERS
+    ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/c_api/tiledb_serialization.h
+  )
+endif()
+
 if (TILEDB_CPP_API)
   list(APPEND TILEDB_PUBLIC_HEADERS
     ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/tiledb
@@ -82,11 +88,6 @@ endif()
 
 # List of all core source files
 set(TILEDB_CORE_SOURCES
-  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/rest/capnp/array.cc
-  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/rest/capnp/query.cc
-  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/rest/capnp/tiledb-rest.capnp.c++
-  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/rest/curl/client.cc
-  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/rest/curl/curl.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/array/array.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/array_schema/array_schema.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/array_schema/attribute.cc
@@ -128,6 +129,7 @@ set(TILEDB_CORE_SOURCES
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/filter/positive_delta_filter.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/fragment/fragment_metadata.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/global_state/global_state.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/global_state/libcurl_state.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/global_state/openssl_state.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/global_state/signal_handlers.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/global_state/tbb_state.cc
@@ -150,8 +152,10 @@ set(TILEDB_CORE_SOURCES
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/reader.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/writer.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/dense_cell_range_iter.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/rest/rest_client.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/rtree/rtree.cc
-  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/filter_serializer.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/array_schema.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/query.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/storage_manager/context.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/storage_manager/config.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/storage_manager/config_iter.cc
@@ -164,6 +168,13 @@ set(TILEDB_CORE_SOURCES
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/tile/tile.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/tile/tile_io.cc
 )
+
+if (TILEDB_SERIALIZATION)
+  list(APPEND TILEDB_CORE_SOURCES
+    ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/rest/curl.cc
+    ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/tiledb-rest.capnp.c++
+  )
+endif()
 
 # 'External' source files included in the source tree.
 set(TILEDB_EXTERNALS_INCLUDE_DIRS
@@ -273,15 +284,6 @@ if (NOT WIN32)
   find_package(OpenSSL_EP REQUIRED)
 endif()
 
-find_package(Curl_EP REQUIRED)
-if (NOT WIN32)
-  # No Curl required on Windows.
-  target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
-    INTERFACE
-    Curl::Curl
-  )
-endif()
-
 # S3 dependencies
 if (TILEDB_S3)
   message(STATUS "The TileDB library is compiled with S3 support.")
@@ -295,6 +297,18 @@ if (TILEDB_S3)
       AWSSDK::aws-c-common
   )
   add_definitions(-DHAVE_S3)
+endif()
+
+# Libcurl
+if (TILEDB_S3 OR TILEDB_SERIALIZATION)
+  if (NOT WIN32)
+    # No Curl required on Windows.
+    find_package(Curl_EP REQUIRED)
+    target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
+      INTERFACE
+        Curl::Curl
+    )
+  endif()
 endif()
 
 # HDFS dependencies
@@ -315,6 +329,17 @@ if (TILEDB_TBB)
       TBB::tbb
   )
   add_definitions(-DHAVE_TBB)
+endif()
+
+# Serialization
+if (TILEDB_SERIALIZATION)
+  find_package(Capnp_EP REQUIRED)
+  target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
+    INTERFACE
+      CapnProto::capnp
+      CapnProto::capnp-json
+      CapnProto::kj
+  )
 endif()
 
 # Sanitizer linker flags
@@ -347,7 +372,6 @@ find_package(LZ4_EP REQUIRED)
 find_package(Spdlog_EP REQUIRED)
 find_package(Zlib_EP REQUIRED)
 find_package(Zstd_EP REQUIRED)
-find_package(Capnp_EP REQUIRED)
 target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
   INTERFACE
     Bzip2::Bzip2
@@ -355,9 +379,6 @@ target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
     Spdlog::Spdlog
     Zlib::Zlib
     Zstd::Zstd
-    CapnProto::capnp
-    CapnProto::capnp-json
-    CapnProto::kj
 )
 if (NOT WIN32)
   target_link_libraries(TILEDB_CORE_OBJECTS_ILIB

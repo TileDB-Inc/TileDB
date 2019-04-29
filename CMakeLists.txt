@@ -91,6 +91,10 @@ if (WIN32 AND NOT TILEDB_TBB_SHARED)
   set(TILEDB_TBB_SHARED ON)
 endif()
 
+if (WIN32 AND TILEDB_SERIALIZATION)
+  message(FATAL_ERROR "Serialization support not yet supported on Windows.")
+endif()
+
 ############################################################
 # Superbuild setup
 ############################################################
@@ -177,9 +181,11 @@ else()
     add_compile_options(-DDEBUG -g3 -gdwarf-3 --coverage)
   endif()
 
-  # CapnProto 0.6.1 contains some unused parameter warnings that we need to
-  # ignore in order to allow for Werror builds.
-  add_compile_options(-Wno-unused-parameter)
+  if (TILEDB_SERIALIZATION)
+    # CapnProto 0.6.1 contains some unused parameter warnings that we need to
+    # ignore in order to allow for Werror builds.
+    add_compile_options(-Wno-unused-parameter)
+  endif()
 
   # Use -Wno-literal-suffix on Linux with C++ sources.
   if (NOT CMAKE_CXX_COMPILER_ID MATCHES "Clang")

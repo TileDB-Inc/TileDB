@@ -158,6 +158,53 @@ TEST_CASE("URI: Test URI to path", "[uri]") {
 #endif
 }
 
+TEST_CASE("URI: Test schemes", "[uri]") {
+  CHECK(URI("path/to/dir").is_file());
+  CHECK(URI("file:///path/to/dir").is_file());
+
+  CHECK(URI("s3://bucket/dir").is_s3());
+  CHECK(URI("http://bucket/dir").is_s3());
+  CHECK(URI("https://bucket/dir").is_s3());
+
+  CHECK(URI("hdfs://namenode/dir").is_hdfs());
+
+  CHECK(URI("tiledb://namespace/array").is_tiledb());
+}
+
+TEST_CASE("URI: Test REST components", "[uri]") {
+  std::string ns, array;
+
+  CHECK(!URI("").get_rest_components(&ns, &array).ok());
+  CHECK(!URI("abc").get_rest_components(&ns, &array).ok());
+  CHECK(!URI("path/to/dir").get_rest_components(&ns, &array).ok());
+  CHECK(!URI("/path/to/dir").get_rest_components(&ns, &array).ok());
+  CHECK(!URI("file:///path/to/dir").get_rest_components(&ns, &array).ok());
+  CHECK(!URI("s3://bucket/dir").get_rest_components(&ns, &array).ok());
+  CHECK(!URI("http://bucket/dir").get_rest_components(&ns, &array).ok());
+  CHECK(!URI("https://bucket/dir").get_rest_components(&ns, &array).ok());
+  CHECK(!URI("hdfs://namenode/dir").get_rest_components(&ns, &array).ok());
+
+  CHECK(URI("tiledb://namespace/array").get_rest_components(&ns, &array).ok());
+  CHECK(ns == "namespace");
+  CHECK(array == "array");
+  CHECK(URI("tiledb://namespace/array/uri")
+            .get_rest_components(&ns, &array)
+            .ok());
+  CHECK(ns == "namespace");
+  CHECK(array == "array/uri");
+  CHECK(URI("tiledb://namespace/s3://bucket/dir")
+            .get_rest_components(&ns, &array)
+            .ok());
+  CHECK(ns == "namespace");
+  CHECK(array == "s3://bucket/dir");
+
+  CHECK(!URI("tiledb:///array").get_rest_components(&ns, &array).ok());
+  CHECK(!URI("tiledb://ns").get_rest_components(&ns, &array).ok());
+  CHECK(!URI("tiledb://ns/").get_rest_components(&ns, &array).ok());
+  CHECK(!URI("tiledb://").get_rest_components(&ns, &array).ok());
+  CHECK(!URI("tiledb:///").get_rest_components(&ns, &array).ok());
+}
+
 #ifdef _WIN32
 
 TEST_CASE("URI: Test Windows paths", "[uri]") {

@@ -31,12 +31,11 @@
  */
 
 #include "tiledb/sm/array/array.h"
-#include "tiledb/rest/capnp/utils.h"
-#include "tiledb/rest/curl/client.h"
 #include "tiledb/sm/encryption/encryption.h"
 #include "tiledb/sm/enums/serialization_type.h"
 #include "tiledb/sm/misc/logger.h"
 #include "tiledb/sm/misc/stats.h"
+#include "tiledb/sm/rest/rest_client.h"
 
 #include <cassert>
 #include <iostream>
@@ -61,46 +60,9 @@ Array::Array(const URI& array_uri, StorageManager* storage_manager)
     , storage_manager_(storage_manager) {
   is_open_ = false;
   array_schema_ = nullptr;
-  remote_ = false;
   timestamp_ = 0;
   last_max_buffer_sizes_subarray_ = nullptr;
-}
-
-Array::Array(const URI& array_uri, StorageManager* storage_manager, bool remote)
-    : array_uri_(array_uri)
-    , storage_manager_(storage_manager)
-    , remote_(remote) {
-  is_open_ = false;
-  timestamp_ = 0;
-  last_max_buffer_sizes_subarray_ = nullptr;
-
-  tiledb::sm::Status st = tiledb::sm::serialization_type_enum(
-      tiledb::sm::constants::serialization_default_format,
-      &serialization_type_);
-  if (!st.ok()) {
-    LOG_STATUS(st);
-  }
-  const char* config_serialization_type = nullptr;
-  Config config = this->storage_manager_->config();
-  st = config.get(
-      "rest.server_serialization_format", &config_serialization_type);
-  if (!st.ok()) {
-    LOG_STATUS(st);
-  }
-  if (config_serialization_type != nullptr) {
-    st = tiledb::sm::serialization_type_enum(
-        config_serialization_type, &serialization_type_);
-    if (!st.ok()) {
-      LOG_STATUS(st);
-    }
-  }
-
-  const char* config_rest_server = nullptr;
-  st = config.get("rest.server_address", &config_rest_server);
-  if (!st.ok()) {
-    LOG_STATUS(st);
-  }
-  this->rest_server_ = config_rest_server;
+  remote_ = array_uri.is_tiledb();
 };
 
 Array::~Array() {
@@ -121,263 +83,6 @@ const URI& Array::array_uri() const {
   return array_uri_;
 }
 
-Status Array::capnp(rest::capnp::Array::Builder* arrayBuilder) const {
-  STATS_FUNC_IN(serialization_array_to_capnp);
-  // arrayBuilder->setQueryType(query_type_str(this->open_array_->query_type()));
-  arrayBuilder->setUri(this->array_uri_.to_string());
-  arrayBuilder->setTimestamp(this->timestamp());
-  arrayBuilder->setEncryptionKey(kj::arrayPtr(
-      static_cast<const kj::byte*>(this->encryption_key_.key().data()),
-      this->encryption_key_.key().size()));
-  arrayBuilder->setEncryptionType(
-      encryption_type_str(this->encryption_key_.encryption_type()));
-  if (!this->last_max_buffer_sizes_.empty()) {
-    rest::capnp::MapMaxBufferSizes::Builder lastMaxBufferSizesBuilder =
-        arrayBuilder->initLastMaxBufferSizes();
-    capnp::List<rest::capnp::MapMaxBufferSizes::Entry>::Builder entries =
-        lastMaxBufferSizesBuilder.initEntries(
-            this->last_max_buffer_sizes_.size());
-    size_t i = 0;
-    for (auto maxBufferSize : this->last_max_buffer_sizes_) {
-      rest::capnp::MapMaxBufferSizes::Entry::Builder entry = entries[i++];
-      entry.setKey(maxBufferSize.first);
-      rest::capnp::MaxBufferSize::Builder maxBufferSizeBuilder =
-          entry.initValue();
-      maxBufferSizeBuilder.setBufferOffsetSize(maxBufferSize.second.first);
-      maxBufferSizeBuilder.setBufferSize(maxBufferSize.second.second);
-    }
-
-    if (last_max_buffer_sizes_subarray_ != nullptr) {
-      auto subarray_builder = arrayBuilder->initLastMaxBufferSizesSubarray();
-      const auto* schema = array_schema();
-      RETURN_NOT_OK(rest::capnp::utils::set_capnp_array_ptr(
-          subarray_builder,
-          schema->domain()->type(),
-          last_max_buffer_sizes_subarray_,
-          schema->dim_num() * 2));
-    }
-  }
-
-  return Status::Ok();
-
-  STATS_FUNC_OUT(serialization_array_to_capnp);
-}
-
-tiledb::sm::Status Array::from_capnp(rest::capnp::Array::Reader array) {
-  STATS_FUNC_IN(serialization_array_from_capnp);
-  this->timestamp_ = array.getTimestamp();
-  this->array_uri_ = tiledb::sm::URI(array.getUri().cStr());
-
-  /*  // set default encryption to avoid uninitialized warnings
-    QueryType queryType = QueryType::READ;
-    auto st = query_type_enum(array.getQueryType(), &queryType);
-    if (!st.ok()) {
-      return st;
-    }*/
-
-  /*  if (this->open_array_ != nullptr) {
-      tiledb::sm::ArraySchema *arraySchema = new
-    tiledb::sm::ArraySchema(this->array_schema()); delete this->open_array_;
-      this->open_array_ = new tiledb::sm::OpenArray(this->array_uri_,
-    queryType); this->open_array_->set_array_schema(arraySchema);
-    }*/
-
-  // set default encryption to avoid uninitialized warnings
-  EncryptionType encryptionType = EncryptionType::NO_ENCRYPTION;
-  auto st = encryption_type_enum(array.getEncryptionType(), &encryptionType);
-  if (!st.ok()) {
-    return st;
-  }
-
-  st = this->encryption_key_.set_key(
-      encryptionType,
-      array.getEncryptionKey().begin(),
-      array.getEncryptionKey().size());
-  if (!st.ok()) {
-    return st;
-  }
-
-  if (array.hasLastMaxBufferSizes()) {
-    rest::capnp::MapMaxBufferSizes::Reader lastMaxBufferSizesBuilder =
-        array.getLastMaxBufferSizes();
-    if (lastMaxBufferSizesBuilder.hasEntries()) {
-      capnp::List<rest::capnp::MapMaxBufferSizes::Entry>::Reader entries =
-          lastMaxBufferSizesBuilder.getEntries();
-      for (rest::capnp::MapMaxBufferSizes::Entry::Reader entry : entries) {
-        this->last_max_buffer_sizes_.emplace(
-            entry.getKey().cStr(),
-            std::make_pair(
-                entry.getValue().getBufferOffsetSize(),
-                entry.getValue().getBufferSize()));
-      }
-    }
-  }
-
-  if (array.hasLastMaxBufferSizesSubarray()) {
-    rest::capnp::DomainArray::Reader lastMaxBuffserSizesSubArray =
-        array.getLastMaxBufferSizesSubarray();
-    switch (this->array_schema()->domain()->type()) {
-      case Datatype::INT8: {
-        if (lastMaxBuffserSizesSubArray.hasInt8()) {
-          auto lastMaxBuffserSizesSubArrayList =
-              lastMaxBuffserSizesSubArray.getInt8();
-          int8_t* lastMaxBuffserSizesSubArrayLocal =
-              new int8_t[lastMaxBuffserSizesSubArrayList.size()];
-          for (size_t i = 0; i < lastMaxBuffserSizesSubArrayList.size(); i++)
-            lastMaxBuffserSizesSubArrayLocal[i] =
-                lastMaxBuffserSizesSubArrayList[i];
-
-          this->last_max_buffer_sizes_subarray_ =
-              lastMaxBuffserSizesSubArrayLocal;
-        }
-        break;
-      }
-      case Datatype::UINT8: {
-        if (lastMaxBuffserSizesSubArray.hasUint8()) {
-          auto lastMaxBuffserSizesSubArrayList =
-              lastMaxBuffserSizesSubArray.getUint8();
-          uint8_t* lastMaxBuffserSizesSubArrayLocal =
-              new uint8_t[lastMaxBuffserSizesSubArrayList.size()];
-          for (size_t i = 0; i < lastMaxBuffserSizesSubArrayList.size(); i++)
-            lastMaxBuffserSizesSubArrayLocal[i] =
-                lastMaxBuffserSizesSubArrayList[i];
-
-          this->last_max_buffer_sizes_subarray_ =
-              lastMaxBuffserSizesSubArrayLocal;
-        }
-        break;
-      }
-      case Datatype::INT16: {
-        if (lastMaxBuffserSizesSubArray.hasInt16()) {
-          auto lastMaxBuffserSizesSubArrayList =
-              lastMaxBuffserSizesSubArray.getInt16();
-          int16_t* lastMaxBuffserSizesSubArrayLocal =
-              new int16_t[lastMaxBuffserSizesSubArrayList.size()];
-          for (size_t i = 0; i < lastMaxBuffserSizesSubArrayList.size(); i++)
-            lastMaxBuffserSizesSubArrayLocal[i] =
-                lastMaxBuffserSizesSubArrayList[i];
-
-          this->last_max_buffer_sizes_subarray_ =
-              lastMaxBuffserSizesSubArrayLocal;
-        }
-        break;
-      }
-      case Datatype::UINT16: {
-        if (lastMaxBuffserSizesSubArray.hasUint16()) {
-          auto lastMaxBuffserSizesSubArrayList =
-              lastMaxBuffserSizesSubArray.getUint16();
-          uint16_t* lastMaxBuffserSizesSubArrayLocal =
-              new uint16_t[lastMaxBuffserSizesSubArrayList.size()];
-          for (size_t i = 0; i < lastMaxBuffserSizesSubArrayList.size(); i++)
-            lastMaxBuffserSizesSubArrayLocal[i] =
-                lastMaxBuffserSizesSubArrayList[i];
-
-          this->last_max_buffer_sizes_subarray_ =
-              lastMaxBuffserSizesSubArrayLocal;
-        }
-        break;
-      }
-      case Datatype::INT32: {
-        if (lastMaxBuffserSizesSubArray.hasInt32()) {
-          auto lastMaxBuffserSizesSubArrayList =
-              lastMaxBuffserSizesSubArray.getInt32();
-          int32_t* lastMaxBuffserSizesSubArrayLocal =
-              new int32_t[lastMaxBuffserSizesSubArrayList.size()];
-          for (size_t i = 0; i < lastMaxBuffserSizesSubArrayList.size(); i++)
-            lastMaxBuffserSizesSubArrayLocal[i] =
-                lastMaxBuffserSizesSubArrayList[i];
-
-          this->last_max_buffer_sizes_subarray_ =
-              lastMaxBuffserSizesSubArrayLocal;
-        }
-        break;
-      }
-      case Datatype::UINT32: {
-        if (lastMaxBuffserSizesSubArray.hasUint32()) {
-          auto lastMaxBuffserSizesSubArrayList =
-              lastMaxBuffserSizesSubArray.getUint32();
-          uint32_t* lastMaxBuffserSizesSubArrayLocal =
-              new uint32_t[lastMaxBuffserSizesSubArrayList.size()];
-          for (size_t i = 0; i < lastMaxBuffserSizesSubArrayList.size(); i++)
-            lastMaxBuffserSizesSubArrayLocal[i] =
-                lastMaxBuffserSizesSubArrayList[i];
-
-          this->last_max_buffer_sizes_subarray_ =
-              lastMaxBuffserSizesSubArrayLocal;
-        }
-        break;
-      }
-      case Datatype::INT64: {
-        if (lastMaxBuffserSizesSubArray.hasInt64()) {
-          auto lastMaxBuffserSizesSubArrayList =
-              lastMaxBuffserSizesSubArray.getInt64();
-          int64_t* lastMaxBuffserSizesSubArrayLocal =
-              new int64_t[lastMaxBuffserSizesSubArrayList.size()];
-          for (size_t i = 0; i < lastMaxBuffserSizesSubArrayList.size(); i++)
-            lastMaxBuffserSizesSubArrayLocal[i] =
-                lastMaxBuffserSizesSubArrayList[i];
-
-          this->last_max_buffer_sizes_subarray_ =
-              lastMaxBuffserSizesSubArrayLocal;
-        }
-        break;
-      }
-      case Datatype::UINT64: {
-        if (lastMaxBuffserSizesSubArray.hasUint64()) {
-          auto lastMaxBuffserSizesSubArrayList =
-              lastMaxBuffserSizesSubArray.getUint64();
-          uint64_t* lastMaxBuffserSizesSubArrayLocal =
-              new uint64_t[lastMaxBuffserSizesSubArrayList.size()];
-          for (size_t i = 0; i < lastMaxBuffserSizesSubArrayList.size(); i++)
-            lastMaxBuffserSizesSubArrayLocal[i] =
-                lastMaxBuffserSizesSubArrayList[i];
-
-          this->last_max_buffer_sizes_subarray_ =
-              lastMaxBuffserSizesSubArrayLocal;
-        }
-        break;
-      }
-      case Datatype::FLOAT32: {
-        if (lastMaxBuffserSizesSubArray.hasFloat32()) {
-          auto lastMaxBuffserSizesSubArrayList =
-              lastMaxBuffserSizesSubArray.getFloat32();
-          float* lastMaxBuffserSizesSubArrayLocal =
-              new float[lastMaxBuffserSizesSubArrayList.size()];
-          for (size_t i = 0; i < lastMaxBuffserSizesSubArrayList.size(); i++)
-            lastMaxBuffserSizesSubArrayLocal[i] =
-                lastMaxBuffserSizesSubArrayList[i];
-
-          this->last_max_buffer_sizes_subarray_ =
-              lastMaxBuffserSizesSubArrayLocal;
-        }
-        break;
-      }
-      case Datatype::FLOAT64: {
-        if (lastMaxBuffserSizesSubArray.hasFloat64()) {
-          auto lastMaxBuffserSizesSubArrayList =
-              lastMaxBuffserSizesSubArray.getFloat64();
-          double* lastMaxBuffserSizesSubArrayLocal =
-              new double[lastMaxBuffserSizesSubArrayList.size()];
-          for (size_t i = 0; i < lastMaxBuffserSizesSubArrayList.size(); i++)
-            lastMaxBuffserSizesSubArrayLocal[i] =
-                lastMaxBuffserSizesSubArrayList[i];
-
-          this->last_max_buffer_sizes_subarray_ =
-              lastMaxBuffserSizesSubArrayLocal;
-        }
-        break;
-      }
-      default: {
-        return Status::Error(
-            "Unknown/Unsupported domain datatype in from_capnp");
-      }
-    }
-  }
-
-  return Status::Ok();
-  STATS_FUNC_OUT(serialization_array_from_capnp);
-}
-
 Status Array::compute_max_buffer_sizes(
     const void* subarray,
     const std::vector<std::string>& attributes,
@@ -395,10 +100,12 @@ Status Array::compute_max_buffer_sizes(
     return LOG_STATUS(
         Status::ArrayError("Cannot compute max read buffer sizes; "
                            "Array was not opened in read mode"));
-  if (remote_) {
-    return tiledb::sm::Status::ArrayError(
-        "compute_max_buffer_sizes not implemented for remote arrays");
-  }
+
+  // Error on remote arrays (user must handle incomplete queries).
+  if (remote_)
+    return LOG_STATUS(
+        Status::ArrayError("Cannot compute max read buffer sizes; not "
+                           "supported for remote arrays."));
 
   // Check attributes
   RETURN_NOT_OK(array_schema_->check_attributes(attributes));
@@ -428,18 +135,21 @@ Status Array::open(
     return LOG_STATUS(
         Status::ArrayError("Cannot open array; Array already open"));
 
+  if (remote_ && encryption_type != EncryptionType::NO_ENCRYPTION)
+    return LOG_STATUS(Status::ArrayError(
+        "Cannot open array; encrypted remote arrays are not supported."));
+
   // Copy the key bytes.
   RETURN_NOT_OK(
       encryption_key_.set_key(encryption_type, encryption_key, key_length));
 
   if (remote_) {
-    Config config = storage_manager_->config();
-    RETURN_NOT_OK(tiledb::rest::get_array_schema_from_rest(
-        &config,
-        rest_server_,
-        array_uri_.to_string(),
-        serialization_type_,
-        &array_schema_));
+    auto rest_client = storage_manager_->rest_client();
+    if (rest_client == nullptr)
+      return LOG_STATUS(Status::ArrayError(
+          "Cannot open array; remote array with no REST client."));
+    RETURN_NOT_OK(
+        rest_client->get_array_schema_from_rest(array_uri_, &array_schema_));
   } else if (query_type == QueryType::READ) {
     timestamp_ = utils::time::timestamp_now_ms();
     RETURN_NOT_OK(storage_manager_->array_open_for_reads(
@@ -478,6 +188,10 @@ Status Array::open(
         Status::ArrayError("Cannot open array with fragments; The array can "
                            "opened at a timestamp only in read mode"));
 
+  if (remote_ && encryption_type != EncryptionType::NO_ENCRYPTION)
+    return LOG_STATUS(Status::ArrayError(
+        "Cannot open array; encrypted remote arrays are not supported."));
+
   // Copy the key bytes.
   RETURN_NOT_OK(
       encryption_key_.set_key(encryption_type, encryption_key, key_length));
@@ -486,13 +200,12 @@ Status Array::open(
 
   query_type_ = QueryType::READ;
   if (remote_) {
-    Config config = this->storage_manager_->config();
-    RETURN_NOT_OK(tiledb::rest::get_array_schema_from_rest(
-        &config,
-        rest_server_,
-        array_uri_.to_string(),
-        serialization_type_,
-        &array_schema_));
+    auto rest_client = storage_manager_->rest_client();
+    if (rest_client == nullptr)
+      return LOG_STATUS(Status::ArrayError(
+          "Cannot open array; remote array with no REST client."));
+    RETURN_NOT_OK(
+        rest_client->get_array_schema_from_rest(array_uri_, &array_schema_));
   } else {
     // Open the array.
     RETURN_NOT_OK(storage_manager_->array_open_for_reads(
@@ -525,6 +238,10 @@ Status Array::open(
         Status::ArrayError("Cannot open array at timestamp; The array can "
                            "opened at a timestamp only in read mode"));
 
+  if (remote_ && encryption_type != EncryptionType::NO_ENCRYPTION)
+    return LOG_STATUS(Status::ArrayError(
+        "Cannot open array; encrypted remote arrays are not supported."));
+
   // Copy the key bytes.
   RETURN_NOT_OK(
       encryption_key_.set_key(encryption_type, encryption_key, key_length));
@@ -533,13 +250,12 @@ Status Array::open(
 
   query_type_ = query_type;
   if (remote_) {
-    Config config = this->storage_manager_->config();
-    RETURN_NOT_OK(tiledb::rest::get_array_schema_from_rest(
-        &config,
-        rest_server_,
-        array_uri_.to_string(),
-        serialization_type_,
-        &array_schema_));
+    auto rest_client = storage_manager_->rest_client();
+    if (rest_client == nullptr)
+      return LOG_STATUS(Status::ArrayError(
+          "Cannot open array; remote array with no REST client."));
+    RETURN_NOT_OK(
+        rest_client->get_array_schema_from_rest(array_uri_, &array_schema_));
   } else {
     // Open the array.
     RETURN_NOT_OK(storage_manager_->array_open_for_reads(
@@ -563,10 +279,14 @@ Status Array::close() {
 
   is_open_ = false;
   clear_last_max_buffer_sizes();
-  array_schema_ = nullptr;
   fragment_metadata_.clear();
 
-  if (!remote_) {
+  if (remote_) {
+    // Storage manager does not own the array schema for remote arrays.
+    delete array_schema_;
+    array_schema_ = nullptr;
+  } else {
+    array_schema_ = nullptr;
     if (query_type_ == QueryType::READ) {
       RETURN_NOT_OK(storage_manager_->array_close_for_reads(array_uri_));
     } else {
@@ -723,14 +443,6 @@ const EncryptionKey& Array::get_encryption_key() const {
   return encryption_key_;
 }
 
-const std::string Array::get_rest_server() const {
-  return rest_server_;
-}
-
-SerializationType Array::get_serialization_type() const {
-  return serialization_type_;
-}
-
 Status Array::reopen() {
   return reopen(utils::time::timestamp_now_ms());
 }
@@ -754,10 +466,10 @@ Status Array::reopen(uint64_t timestamp) {
 
   if (remote_) {
     return open(
-        this->query_type_,
-        this->encryption_key_.encryption_type(),
-        this->encryption_key_.key().data(),
-        this->encryption_key_.key().size());
+        query_type_,
+        encryption_key_.encryption_type(),
+        encryption_key_.key().data(),
+        encryption_key_.key().size());
   }
   return storage_manager_->array_reopen(
       array_uri_,
@@ -772,6 +484,18 @@ uint64_t Array::timestamp() const {
   return timestamp_;
 }
 
+Status Array::set_timestamp(uint64_t timestamp) {
+  std::unique_lock<std::mutex> lck(mtx_);
+  timestamp_ = timestamp;
+  return Status::Ok();
+}
+
+Status Array::set_uri(const std::string& uri) {
+  std::unique_lock<std::mutex> lck(mtx_);
+  array_uri_ = URI(uri);
+  return Status::Ok();
+}
+
 /* ********************************* */
 /*          PRIVATE METHODS          */
 /* ********************************* */
@@ -783,6 +507,10 @@ void Array::clear_last_max_buffer_sizes() {
 }
 
 Status Array::compute_max_buffer_sizes(const void* subarray) {
+  if (remote_)
+    return LOG_STATUS(Status::ArrayError(
+        "Cannot compute max buffer sizes; not supported for remote arrays."));
+
   // Allocate space for max buffer sizes subarray
   auto subarray_size = 2 * array_schema_->coords_size();
   if (last_max_buffer_sizes_subarray_ == nullptr) {
@@ -790,11 +518,6 @@ Status Array::compute_max_buffer_sizes(const void* subarray) {
     if (last_max_buffer_sizes_subarray_ == nullptr)
       return LOG_STATUS(Status::ArrayError(
           "Cannot compute max buffer sizes; Subarray allocation failed"));
-  }
-
-  if (remote_) {
-    return tiledb::sm::Status::ArrayError(
-        "compute_max_buffer_sizes not implemented for remote arrays");
   }
 
   // Compute max buffer sizes

@@ -31,6 +31,7 @@
  */
 
 #include "tiledb/sm/global_state/global_state.h"
+#include "tiledb/sm/global_state/libcurl_state.h"
 #include "tiledb/sm/global_state/openssl_state.h"
 #include "tiledb/sm/global_state/signal_handlers.h"
 #include "tiledb/sm/global_state/tbb_state.h"
@@ -67,6 +68,8 @@ Status GlobalState::initialize(Config* config) {
     }
     RETURN_NOT_OK(Watchdog::GetWatchdog().initialize());
     RETURN_NOT_OK(init_openssl());
+    RETURN_NOT_OK(init_libcurl());
+
     initialized_ = true;
   }
 

@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2018 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2019 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -42,13 +42,13 @@ namespace tiledb {
 namespace sm {
 
 /** Defines the query type. */
-enum class SerializationType : char {
+enum class SerializationType : uint8_t {
 #define TILEDB_SERIALIZATION_TYPE_ENUM(id) id
 #include "tiledb/sm/c_api/tiledb_enum.h"
 #undef TILEDB_SERIALIZATION_TYPE_ENUM
 };
 
-/** Returns the string representation of the input query type. */
+/** Returns the string representation of the input serialization type. */
 inline const std::string& serialization_type_str(
     SerializationType serialization_type) {
   switch (serialization_type) {
@@ -62,7 +62,7 @@ inline const std::string& serialization_type_str(
   }
 }
 
-/** Returns the query type given a string representation. */
+/** Returns the serialization type given a string representation. */
 inline Status serialization_type_enum(
     const std::string& serialization_type_str,
     SerializationType* serialization_type) {

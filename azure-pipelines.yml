@@ -22,6 +22,10 @@ jobs:
         TILEDB_CI_ASAN: ON
         TILEDB_TBB: OFF
         CXX: g++-7
+      linux_serialization:
+        imageName: 'ubuntu-16.04'
+        TILEDB_SERIALIZATION: ON
+        CXX: g++
     maxParallel: 4
   pool:
     vmImage: $(imageName)

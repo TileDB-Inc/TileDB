@@ -145,6 +145,31 @@ class URI {
   bool is_s3() const;
 
   /**
+   * Checks if the input path is TileDB.
+   *
+   * @param path The path to be checked.
+   * @return The result of the check.
+   */
+  static bool is_tiledb(const std::string& path);
+
+  /**
+   * Checks if the URI is TileDB.
+   *
+   * @return The result of the check.
+   */
+  bool is_tiledb() const;
+
+  /**
+   * Checks the TileDB REST URI for validity and returns its components.
+   *
+   * @param array_namespace Set to the namespace of the input URI
+   * @param array_uri Set to the array URI of the input URI.
+   * @return Status
+   */
+  Status get_rest_components(
+      std::string* array_namespace, std::string* array_uri) const;
+
+  /**
    * Joins the URI with the input path.
    *
    * @param path The path to append.

@@ -379,17 +379,5 @@ Status CompressionFilter::deserialize_impl(ConstBuffer* buff) {
   return Status::Ok();
 }
 
-Status CompressionFilter::deserialize_impl(const FilterSerializer* serializer) {
-  RETURN_NOT_OK(
-      serializer->get_option(FilterOption::COMPRESSION_LEVEL, &level_));
-  return Status::Ok();
-}
-
-Status CompressionFilter::serialize_impl(FilterSerializer* serializer) const {
-  RETURN_NOT_OK(
-      serializer->set_option(FilterOption::COMPRESSION_LEVEL, &level_));
-  return Status::Ok();
-}
-
 }  // namespace sm
 }  // namespace tiledb

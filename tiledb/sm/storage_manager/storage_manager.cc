@@ -41,6 +41,7 @@
 #include "tiledb/sm/misc/parallel_functions.h"
 #include "tiledb/sm/misc/stats.h"
 #include "tiledb/sm/misc/utils.h"
+#include "tiledb/sm/rest/rest_client.h"
 #include "tiledb/sm/storage_manager/storage_manager.h"
 #include "tiledb/sm/tile/tile_io.h"
 
@@ -948,6 +949,7 @@ Status StorageManager::init(Config* config) {
   tile_cache_ = new LRUCache(sm_params.tile_cache_size_);
   vfs_ = new VFS();
   RETURN_NOT_OK(vfs_->init(config_.vfs_params()));
+  RETURN_NOT_OK(init_rest_client());
   auto& global_state = global_state::GlobalState::GetGlobalState();
   RETURN_NOT_OK(global_state.initialize(config));
   global_state.register_storage_manager(this);
@@ -955,6 +957,10 @@ Status StorageManager::init(Config* config) {
   STATS_COUNTER_ADD(sm_contexts_created, 1);
 
   return Status::Ok();
+}
+
+RestClient* StorageManager::rest_client() const {
+  return rest_client_.get();
 }
 
 void StorageManager::increment_in_progress() {
@@ -1357,6 +1363,17 @@ void StorageManager::wait_for_zero_in_progress() {
   std::unique_lock<std::mutex> lck(queries_in_progress_mtx_);
   queries_in_progress_cv_.wait(
       lck, [this]() { return queries_in_progress_ == 0; });
+}
+
+Status StorageManager::init_rest_client() {
+  const char* server_address;
+  RETURN_NOT_OK(config_.get("rest.server_address", &server_address));
+  if (server_address != nullptr) {
+    rest_client_.reset(new RestClient);
+    RETURN_NOT_OK(rest_client_->init(&config_));
+  }
+
+  return Status::Ok();
 }
 
 Status StorageManager::write_to_cache(

@@ -39,7 +39,6 @@
 #include "tiledb/sm/misc/status.h"
 
 #include <cinttypes>
-#include <memory>
 
 namespace tiledb {
 namespace sm {

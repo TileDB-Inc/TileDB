@@ -31,6 +31,7 @@
  */
 
 #include "tiledb/sm/storage_manager/config.h"
+#include "tiledb/sm/enums/serialization_type.h"
 #include "tiledb/sm/misc/constants.h"
 #include "tiledb/sm/misc/logger.h"
 #include "tiledb/sm/misc/utils.h"
@@ -52,7 +53,11 @@ const std::set<std::string> Config::unserialized_params_ = {
     "vfs.s3.proxy_username",
     "vfs.s3.proxy_password",
     "vfs.s3.aws_access_key_id",
-    "vfs.s3.aws_secret_access_key"};
+    "vfs.s3.aws_secret_access_key",
+    "rest.username",
+    "rest.password",
+    "rest.token",
+};
 
 /* ****************************** */
 /*   CONSTRUCTORS & DESTRUCTORS   */
@@ -178,8 +183,6 @@ Status Config::set(const std::string& param, const std::string& value) {
     RETURN_NOT_OK(set_rest_password(value));
   } else if (param == "rest.token") {
     RETURN_NOT_OK(set_rest_token(value));
-  } else if (param == "rest.organization") {
-    RETURN_NOT_OK(set_rest_organization(value));
   } else if (param == "sm.dedup_coords") {
     RETURN_NOT_OK(set_sm_dedup_coords(value));
   } else if (param == "sm.check_coord_dups") {
@@ -302,7 +305,7 @@ Status Config::unset(const std::string& param) {
   if (param == "rest.server_serialization_format") {
     rest_params_.server_serialization_format_ =
         constants::serialization_default_format;
-    value << rest_params_.server_serialization_format_;
+    value << serialization_type_str(rest_params_.server_serialization_format_);
     param_values_["rest.server_serialization_format"] = value.str();
     value.str(std::string());
   } else if (param == "sm.dedup_coords") {
@@ -553,7 +556,7 @@ Status Config::unset(const std::string& param) {
 void Config::set_default_param_values() {
   std::stringstream value;
 
-  value << rest_params_.server_serialization_format_;
+  value << serialization_type_str(rest_params_.server_serialization_format_);
   param_values_["rest.server_serialization_format"] = value.str();
   value.str(std::string());
 
@@ -755,7 +758,10 @@ Status Config::set_rest_server_address(const std::string& value) {
 }
 
 Status Config::set_rest_server_serialization_format(const std::string& value) {
-  rest_params_.server_serialization_format_ = value;
+  SerializationType serialization_type =
+      constants::serialization_default_format;
+  RETURN_NOT_OK(serialization_type_enum(value, &serialization_type));
+  rest_params_.server_serialization_format_ = serialization_type;
 
   return Status::Ok();
 }
@@ -773,12 +779,6 @@ Status Config::set_rest_password(const std::string& value) {
 
 Status Config::set_rest_token(const std::string& value) {
   rest_params_.token_ = value;
-
-  return Status::Ok();
-}
-
-Status Config::set_rest_organization(const std::string& value) {
-  rest_params_.organization_ = value;
 
   return Status::Ok();
 }

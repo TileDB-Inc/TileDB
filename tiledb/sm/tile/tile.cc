@@ -32,7 +32,6 @@
 
 #include "tiledb/sm/tile/tile.h"
 #include "tiledb/sm/misc/logger.h"
-#include "tiledb/sm/misc/stats.h"
 
 #include <iostream>
 

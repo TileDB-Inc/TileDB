@@ -31,7 +31,6 @@
  */
 
 #include "tiledb/sm/query/writer.h"
-#include "tiledb/rest/capnp/tiledb-rest.capnp.h"
 #include "tiledb/sm/misc/comparators.h"
 #include "tiledb/sm/misc/logger.h"
 #include "tiledb/sm/misc/parallel_functions.h"
@@ -85,17 +84,6 @@ AttributeBuffer Writer::buffer(const std::string& attribute) const {
   return attrbuf->second;
 }
 
-Status Writer::capnp(rest::capnp::Writer::Builder* writerBuilder) const {
-  STATS_FUNC_IN(serialization_writer_capnp);
-  writerBuilder->setCheckCoordDups(check_coord_dups_);
-  writerBuilder->setDedupCoords(dedup_coords_);
-  writerBuilder->setInitialized(initialized_);
-  if (fragment_uri_.to_string() != "")
-    writerBuilder->setFragmentUri(fragment_uri_.to_string());
-  return Status::Ok();
-  STATS_FUNC_OUT(serialization_writer_capnp);
-}
-
 Status Writer::finalize() {
   if (global_write_state_ != nullptr)
     return finalize_global_write_state();
@@ -138,18 +126,28 @@ Status Writer::get_buffer(
   return Status::Ok();
 }
 
-Status Writer::from_capnp(rest::capnp::Writer::Reader* writerReader) {
-  STATS_FUNC_IN(serialization_writer_from_capnp);
-  Status status = Status::Ok();
+bool Writer::get_check_coord_dups() const {
+  return check_coord_dups_;
+}
 
-  if (writerReader->hasFragmentUri())
-    set_fragment_uri(URI(writerReader->getFragmentUri().cStr()));
+bool Writer::get_check_coord_oob() const {
+  return check_coord_oob_;
+}
 
-  check_coord_dups_ = writerReader->getCheckCoordDups();
-  dedup_coords_ = writerReader->getDedupCoords();
-  initialized_ = writerReader->getInitialized();
-  return status;
-  STATS_FUNC_OUT(serialization_writer_from_capnp);
+bool Writer::get_dedup_coords() const {
+  return dedup_coords_;
+}
+
+void Writer::set_check_coord_dups(bool b) {
+  check_coord_dups_ = b;
+}
+
+void Writer::set_check_coord_oob(bool b) {
+  check_coord_oob_ = b;
+}
+
+void Writer::set_dedup_coords(bool b) {
+  dedup_coords_ = b;
 }
 
 Status Writer::init() {
@@ -199,11 +197,6 @@ Layout Writer::layout() const {
 
 void Writer::set_array(const Array* array) {
   array_ = array;
-}
-
-void Writer::reset_global_write_state() {
-  if (global_write_state_ != nullptr)
-    global_write_state_.reset(nullptr);
 }
 
 void Writer::set_array_schema(const ArraySchema* array_schema) {

@@ -28,7 +28,7 @@
  *
  * @section DESCRIPTION
  *
- * Tests the `tiledb::sm::FilterPipeline` class.
+ * Tests the `FilterPipeline` class.
  */
 
 #include "tiledb/sm/array_schema/array_schema.h"

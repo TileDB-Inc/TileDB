@@ -491,22 +491,8 @@ Status BitWidthReductionFilter::deserialize_impl(ConstBuffer* buff) {
   return Status::Ok();
 }
 
-Status BitWidthReductionFilter::deserialize_impl(
-    const FilterSerializer* serializer) {
-  RETURN_NOT_OK(serializer->get_option(
-      FilterOption::BIT_WIDTH_MAX_WINDOW, &max_window_size_));
-  return Status::Ok();
-}
-
 Status BitWidthReductionFilter::serialize_impl(Buffer* buff) const {
   RETURN_NOT_OK(buff->write(&max_window_size_, sizeof(uint32_t)));
-  return Status::Ok();
-}
-
-Status BitWidthReductionFilter::serialize_impl(
-    FilterSerializer* serializer) const {
-  RETURN_NOT_OK(serializer->set_option(
-      FilterOption::BIT_WIDTH_MAX_WINDOW, &max_window_size_));
   return Status::Ok();
 }
 

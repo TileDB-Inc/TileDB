@@ -34,7 +34,6 @@
 #define TILEDB_ARRAY_H
 
 #include "tiledb/sm/encryption/encryption_key.h"
-#include "tiledb/sm/enums/serialization_type.h"
 #include "tiledb/sm/misc/status.h"
 #include "tiledb/sm/storage_manager/open_array.h"
 #include "tiledb/sm/storage_manager/storage_manager.h"
@@ -56,9 +55,6 @@ class Array {
   /** Constructor. */
   Array(const URI& array_uri, StorageManager* storage_manager);
 
-  /** Constructor. */
-  Array(const URI& array_uri, StorageManager* storage_manager, bool remote);
-
   /** Destructor. */
   ~Array();
 
@@ -71,10 +67,6 @@ class Array {
 
   /** Returns the array URI. */
   const URI& array_uri() const;
-
-  Status capnp(rest::capnp::Array::Builder* arrayBuilder) const;
-
-  Status from_capnp(rest::capnp::Array::Reader array);
 
   /**
    * Computes an upper bound on the buffer sizes required for a read
@@ -209,16 +201,6 @@ class Array {
   const EncryptionKey& get_encryption_key() const;
 
   /**
-   * Returns rest server url, only set if array is remote
-   */
-  const std::string get_rest_server() const;
-
-  /**
-   * Returns serialization type used for rest server communication
-   */
-  SerializationType get_serialization_type() const;
-
-  /**
    * Re-opens the array. This effectively updates the "view" of the array,
    * by loading the fragments potentially written after the last time
    * the array was opened. Errors if the array is not open.
@@ -238,6 +220,12 @@ class Array {
 
   /** Returns the timestamp at which the array was opened. */
   uint64_t timestamp() const;
+
+  /** Directly set the timestamp value. */
+  Status set_timestamp(uint64_t timestamp);
+
+  /** Directly set the array URI. */
+  Status set_uri(const std::string& uri);
 
  private:
   /* ********************************* */
@@ -290,14 +278,8 @@ class Array {
   /** Mutex for thread-safety. */
   mutable std::mutex mtx_;
 
-  /** defines if the array is remote */
+  /** True if the array is remote (has `tiledb://` URI scheme). */
   bool remote_;
-
-  /** Serialization typed used for array rest communication */
-  SerializationType serialization_type_;
-
-  /** url of rest server for array */
-  std::string rest_server_;
 
   /* ********************************* */
   /*          PRIVATE METHODS          */

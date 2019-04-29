@@ -179,6 +179,11 @@ class Query {
   /*                API                */
   /* ********************************* */
 
+  /** Returns a shared pointer to the C TileDB query object. */
+  std::shared_ptr<tiledb_query_t> ptr() const {
+    return query_;
+  }
+
   /** Returns the query type (read or write). */
   tiledb_query_type_t query_type() const {
     auto& ctx = ctx_.get();

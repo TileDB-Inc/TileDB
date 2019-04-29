@@ -39,7 +39,9 @@
 #endif
 #include "test/src/helpers.h"
 #include "tiledb/sm/c_api/tiledb.h"
+#include "tiledb/sm/c_api/tiledb_serialization.h"
 #include "tiledb/sm/misc/utils.h"
+#include "tiledb/sm/serialization/query.h"
 
 #include <array>
 #include <cassert>
@@ -123,7 +125,8 @@ struct DenseArrayFx {
 
   /**
    * Helper method that wraps tiledb_query_submit() and inserts a serialization
-   * step, if query serialization is enabled.
+   * step, if query serialization is enabled. The added serialization steps
+   * are designed to closely mimic the behavior of the REST server.
    */
   int submit_query_wrapper(const std::string& array_uri, tiledb_query_t* query);
 
@@ -2720,67 +2723,203 @@ void DenseArrayFx::check_non_empty_domain(const std::string& path) {
 
 int DenseArrayFx::submit_query_wrapper(
     const std::string& array_uri, tiledb_query_t* query) {
-  if (serialize_query) {
-    // Store the query type and layout
-    tiledb_query_type_t query_type;
-    tiledb_layout_t layout;
-    REQUIRE(tiledb_query_get_type(ctx_, query, &query_type) == TILEDB_OK);
-    REQUIRE(tiledb_query_get_layout(ctx_, query, &layout) == TILEDB_OK);
+#ifndef TILEDB_SERIALIZATION
+  return tiledb_query_submit(ctx_, query);
+#endif
 
-    // Serialize the query
-    char* buff = nullptr;
-    uint64_t buff_len = 0;
-    int rc =
-        tiledb_query_serialize(ctx_, query, TILEDB_CAPNP, &buff, &buff_len);
+  if (!serialize_query)
+    return tiledb_query_submit(ctx_, query);
 
-    // Global order queries are not (yet) supported for serialization. Just
-    // check that serialization is an error, and then execute the regular query.
-    if (layout == TILEDB_GLOBAL_ORDER) {
-      REQUIRE(rc == TILEDB_ERR);
-      return tiledb_query_submit(ctx_, query);
-    } else {
-      REQUIRE(rc == TILEDB_OK);
+  // Get the query type and layout
+  tiledb_query_type_t query_type;
+  tiledb_layout_t layout;
+  REQUIRE(tiledb_query_get_type(ctx_, query, &query_type) == TILEDB_OK);
+  REQUIRE(tiledb_query_get_layout(ctx_, query, &layout) == TILEDB_OK);
+
+  // Serialize the query (client-side).
+  tiledb_buffer_t* buff1;
+  REQUIRE(tiledb_buffer_alloc(ctx_, &buff1) == TILEDB_OK);
+  int rc = tiledb_serialize_query(ctx_, query, TILEDB_CAPNP, 1, buff1);
+
+  // Global order queries are not (yet) supported for serialization. Just
+  // check that serialization is an error, and then execute the regular query.
+  if (layout == TILEDB_GLOBAL_ORDER) {
+    REQUIRE(rc == TILEDB_ERR);
+    tiledb_buffer_free(&buff1);
+    return tiledb_query_submit(ctx_, query);
+  } else {
+    REQUIRE(rc == TILEDB_OK);
+  }
+
+  // Copy the data to a temporary memory region ("send over the network").
+  uint64_t buff1_size;
+  void* buff1_data;
+  REQUIRE(
+      tiledb_buffer_get_data(ctx_, buff1, &buff1_data, &buff1_size) ==
+      TILEDB_OK);
+  void* buff1_copy = std::malloc(buff1_size);
+  REQUIRE(buff1_copy != nullptr);
+  std::memcpy(buff1_copy, buff1_data, buff1_size);
+  tiledb_buffer_free(&buff1);
+
+  // Create a new buffer that wraps the data from the temporary buffer.
+  // This mimics what the REST server side would do.
+  tiledb_buffer_t* buff2;
+  REQUIRE(tiledb_buffer_alloc(ctx_, &buff2) == TILEDB_OK);
+  REQUIRE(
+      tiledb_buffer_set_data(ctx_, buff2, buff1_copy, buff1_size) == TILEDB_OK);
+
+  // Open a new array instance.
+  tiledb_array_t* new_array = nullptr;
+  REQUIRE(tiledb_array_alloc(ctx_, array_uri.c_str(), &new_array) == TILEDB_OK);
+  REQUIRE(tiledb_array_open(ctx_, new_array, query_type) == TILEDB_OK);
+
+  // Create a new query and deserialize from the buffer (server-side)
+  tiledb_query_t* new_query = nullptr;
+  REQUIRE(
+      tiledb_query_alloc(ctx_, new_array, query_type, &new_query) == TILEDB_OK);
+  REQUIRE(
+      tiledb_deserialize_query(ctx_, buff2, TILEDB_CAPNP, 0, new_query) ==
+      TILEDB_OK);
+
+  // Next, for reads, allocate buffers for the new query.
+  std::vector<void*> to_free;
+  if (query_type == TILEDB_READ) {
+    tiledb_array_schema_t* schema;
+    REQUIRE(tiledb_array_get_schema(ctx_, new_array, &schema) == TILEDB_OK);
+    uint32_t num_attributes;
+    REQUIRE(
+        tiledb_array_schema_get_attribute_num(ctx_, schema, &num_attributes) ==
+        TILEDB_OK);
+    for (uint32_t i = 0; i < num_attributes; i++) {
+      tiledb_attribute_t* attr;
+      REQUIRE(
+          tiledb_array_schema_get_attribute_from_index(
+              ctx_, schema, i, &attr) == TILEDB_OK);
+      const char* name;
+      REQUIRE(tiledb_attribute_get_name(ctx_, attr, &name) == TILEDB_OK);
+      uint32_t cell_num;
+      REQUIRE(
+          tiledb_attribute_get_cell_val_num(ctx_, attr, &cell_num) ==
+          TILEDB_OK);
+      bool var_len = cell_num == TILEDB_VAR_NUM;
+
+      if (var_len) {
+        void* buff;
+        uint64_t* buff_size;
+        uint64_t* offset_buff;
+        uint64_t* offset_buff_size;
+        REQUIRE(
+            tiledb_query_get_buffer_var(
+                ctx_,
+                new_query,
+                name,
+                &offset_buff,
+                &offset_buff_size,
+                &buff,
+                &buff_size) == TILEDB_OK);
+        // Buffers will always be null after deserialization on server side
+        REQUIRE(buff == nullptr);
+        REQUIRE(offset_buff == nullptr);
+        if (buff_size != nullptr) {
+          // Buffer size was set for the attribute; allocate one of the
+          // appropriate size.
+          buff = std::malloc(*buff_size);
+          offset_buff = (uint64_t*)std::malloc(*offset_buff_size);
+          to_free.push_back(buff);
+          to_free.push_back(offset_buff);
+
+          REQUIRE(
+              tiledb_query_set_buffer_var(
+                  ctx_,
+                  new_query,
+                  name,
+                  offset_buff,
+                  offset_buff_size,
+                  buff,
+                  buff_size) == TILEDB_OK);
+        }
+      } else {
+        void* buff;
+        uint64_t* buff_size;
+        REQUIRE(
+            tiledb_query_get_buffer(ctx_, new_query, name, &buff, &buff_size) ==
+            TILEDB_OK);
+        // Buffers will always be null after deserialization on server side
+        REQUIRE(buff == nullptr);
+        if (buff_size != nullptr) {
+          // Buffer size was set for the attribute; allocate one of the
+          // appropriate size.
+          buff = std::malloc(*buff_size);
+          to_free.push_back(buff);
+          REQUIRE(
+              tiledb_query_set_buffer(ctx_, new_query, name, buff, buff_size) ==
+              TILEDB_OK);
+        }
+      }
+
+      // Repeat for coords
+      void* buff;
+      uint64_t* buff_size;
+      REQUIRE(
+          tiledb_query_get_buffer(
+              ctx_, new_query, TILEDB_COORDS, &buff, &buff_size) == TILEDB_OK);
+      if (buff_size != nullptr) {
+        buff = std::malloc(*buff_size);
+        to_free.push_back(buff);
+        REQUIRE(
+            tiledb_query_set_buffer(
+                ctx_, new_query, TILEDB_COORDS, buff, buff_size) == TILEDB_OK);
+      }
+
+      tiledb_attribute_free(&attr);
     }
 
-    // Open a new array instance.
-    tiledb_array_t* new_array = nullptr;
-    REQUIRE(
-        tiledb_array_alloc(ctx_, array_uri.c_str(), &new_array) == TILEDB_OK);
-    REQUIRE(tiledb_array_open(ctx_, new_array, query_type) == TILEDB_OK);
-
-    // Create a new query and deserialize from the buffer.
-    tiledb_query_t* new_query = nullptr;
-    REQUIRE(
-        tiledb_query_alloc(ctx_, new_array, query_type, &new_query) ==
-        TILEDB_OK);
-    REQUIRE(
-        tiledb_query_deserialize(
-            ctx_, new_query, TILEDB_CAPNP, buff, buff_len) == TILEDB_OK);
-    // TODO: Certain Tests do not pass if the following is enabled
-    // std::free(buff);
-
-    // Submit the new query.
-    rc = tiledb_query_submit(ctx_, new_query);
-
-    // Serialize the new query and deserialize into the original query.
-    REQUIRE(
-        tiledb_query_serialize(
-            ctx_, new_query, TILEDB_CAPNP, &buff, &buff_len) == TILEDB_OK);
-    REQUIRE(
-        tiledb_query_deserialize(ctx_, query, TILEDB_CAPNP, buff, buff_len) ==
-        TILEDB_OK);
-
-    // Clean up.
-    REQUIRE(tiledb_array_close(ctx_, new_array) == TILEDB_OK);
-    tiledb_query_free(&new_query);
-    tiledb_array_free(&new_array);
-    // TODO: Certain Tests do not pass if the following is enabled
-    // std::free(buff);
-
-    return rc;
-  } else {
-    return tiledb_query_submit(ctx_, query);
+    tiledb_array_schema_free(&schema);
   }
+
+  // Submit the new query ("on the server").
+  rc = tiledb_query_submit(ctx_, new_query);
+
+  // Serialize the new query and "send it over the network" (server-side)
+  tiledb_buffer_t* buff3;
+  REQUIRE(tiledb_buffer_alloc(ctx_, &buff3) == TILEDB_OK);
+  REQUIRE(
+      tiledb_serialize_query(ctx_, new_query, TILEDB_CAPNP, 0, buff3) ==
+      TILEDB_OK);
+  uint64_t buff3_size;
+  void* buff3_data;
+  REQUIRE(
+      tiledb_buffer_get_data(ctx_, buff3, &buff3_data, &buff3_size) ==
+      TILEDB_OK);
+  void* buff3_copy = std::malloc(buff3_size);
+  REQUIRE(buff3_copy != nullptr);
+  std::memcpy(buff3_copy, buff3_data, buff3_size);
+  tiledb_buffer_free(&buff2);
+  tiledb_buffer_free(&buff3);
+
+  // Create a new buffer that wraps the data from the temporary buffer.
+  tiledb_buffer_t* buff4;
+  REQUIRE(tiledb_buffer_alloc(ctx_, &buff4) == TILEDB_OK);
+  REQUIRE(
+      tiledb_buffer_set_data(ctx_, buff4, buff3_copy, buff3_size) == TILEDB_OK);
+
+  // Deserialize into the original query. Client-side
+  REQUIRE(
+      tiledb_deserialize_query(ctx_, buff4, TILEDB_CAPNP, 1, query) ==
+      TILEDB_OK);
+
+  // Clean up.
+  REQUIRE(tiledb_array_close(ctx_, new_array) == TILEDB_OK);
+  tiledb_query_free(&new_query);
+  tiledb_array_free(&new_array);
+  tiledb_buffer_free(&buff4);
+  std::free(buff1_copy);
+  std::free(buff3_copy);
+  for (void* b : to_free)
+    std::free(b);
+
+  return rc;
 }
 
 std::string DenseArrayFx::random_bucket_name(const std::string& prefix) {
@@ -2877,6 +3016,13 @@ TEST_CASE_METHOD(
     DenseArrayFx,
     "C API: Test dense array, sparse writes",
     "[capi], [dense], [dense-sparse-writes]") {
+  SECTION("- No serialization") {
+    serialize_query = false;
+  }
+  SECTION("- Serialization") {
+    serialize_query = true;
+  }
+
   if (supports_s3_) {
     // S3
     create_temp_dir(S3_TEMP_DIR);
@@ -2947,6 +3093,13 @@ TEST_CASE_METHOD(
     DenseArrayFx,
     "C API: Test dense array, return coordinates",
     "[capi], [dense], [return-coords]") {
+  SECTION("- No serialization") {
+    serialize_query = false;
+  }
+  SECTION("- Serialization") {
+    serialize_query = true;
+  }
+
   std::string temp_dir;
   if (supports_s3_) {
     temp_dir = S3_TEMP_DIR;
@@ -2964,6 +3117,13 @@ TEST_CASE_METHOD(
     DenseArrayFx,
     "C API: Test dense array, non-empty domain",
     "[capi], [dense], [dense-non-empty]") {
+  SECTION("- No serialization") {
+    serialize_query = false;
+  }
+  SECTION("- Serialization") {
+    serialize_query = true;
+  }
+
   std::string temp_dir = FILE_URI_PREFIX + FILE_TEMP_DIR;
   create_temp_dir(temp_dir);
   check_non_empty_domain(temp_dir);
@@ -2974,6 +3134,13 @@ TEST_CASE_METHOD(
     DenseArrayFx,
     "C API: Test dense array, invalid set query buffer",
     "[capi], [dense], [dense-invalid-set-query-buffer]") {
+  SECTION("- No serialization") {
+    serialize_query = false;
+  }
+  SECTION("- Serialization") {
+    serialize_query = true;
+  }
+
   std::string temp_dir = FILE_URI_PREFIX + FILE_TEMP_DIR;
   create_temp_dir(temp_dir);
 
@@ -3233,6 +3400,13 @@ TEST_CASE_METHOD(
     DenseArrayFx,
     "C API: Test dense array, reset read subarray",
     "[capi], [dense], [reset-read-subarray]") {
+  SECTION("- No serialization") {
+    serialize_query = false;
+  }
+  SECTION("- Serialization") {
+    serialize_query = true;
+  }
+
   std::string temp_dir = FILE_URI_PREFIX + FILE_TEMP_DIR;
   std::string array_name = temp_dir + "reset_read_subarray";
   create_temp_dir(temp_dir);
@@ -3294,6 +3468,13 @@ TEST_CASE_METHOD(
     DenseArrayFx,
     "C API: Test dense array, reset write subarray",
     "[capi], [dense], [reset-write-subarray]") {
+  SECTION("- No serialization") {
+    serialize_query = false;
+  }
+  SECTION("- Serialization") {
+    serialize_query = true;
+  }
+
   std::string temp_dir = FILE_URI_PREFIX + FILE_TEMP_DIR;
   std::string array_name = temp_dir + "reset_write_subarray";
   create_temp_dir(temp_dir);
@@ -3396,6 +3577,13 @@ TEST_CASE_METHOD(
     DenseArrayFx,
     "C API: Test dense array, URI ending in a slash",
     "[capi], [dense], [uri-ending-slash]") {
+  SECTION("- No serialization") {
+    serialize_query = false;
+  }
+  SECTION("- Serialization") {
+    serialize_query = true;
+  }
+
   std::string temp_dir = FILE_URI_PREFIX + FILE_TEMP_DIR;
   std::string array_name = temp_dir + "with_ending_slash/";
   create_temp_dir(temp_dir);
@@ -3515,6 +3703,13 @@ TEST_CASE_METHOD(
     "C API: Test dense array, read subarrays with empty areas around sparse "
     "cells",
     "[capi], [dense], [dense-read-empty], [dense-read-empty-sparse]") {
+  SECTION("- No serialization") {
+    serialize_query = false;
+  }
+  SECTION("- Serialization") {
+    serialize_query = true;
+  }
+
   std::string temp_dir = FILE_URI_PREFIX + FILE_TEMP_DIR;
   std::string array_name = temp_dir + "dense_read_empty_sparse/";
   create_temp_dir(temp_dir);
@@ -3933,6 +4128,13 @@ TEST_CASE_METHOD(
     DenseArrayFx,
     "C API: Test dense array, check if coords exist in unordered writes",
     "[capi], [dense], [dense-coords-exist-unordered]") {
+  SECTION("- No serialization") {
+    serialize_query = false;
+  }
+  SECTION("- Serialization") {
+    serialize_query = true;
+  }
+
   std::string array_name =
       FILE_URI_PREFIX + FILE_TEMP_DIR + "dense_coords_exist_unordered";
   std::string temp_dir = FILE_URI_PREFIX + FILE_TEMP_DIR;

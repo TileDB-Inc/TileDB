@@ -49,7 +49,6 @@ set(TILEDB_TEST_SOURCES
   src/unit-capi-async.cc
   src/unit-capi-array.cc
   src/unit-capi-buffer.cc
-  src/unit-capi-capnp.cc
   src/unit-capi-config.cc
   src/unit-capi-consolidation.cc
   src/unit-capi-dense_array.cc
@@ -104,7 +103,6 @@ if (TILEDB_CPP_API)
     src/unit-cppapi-array.cc
     src/unit-cppapi-config.cc
     src/unit-cppapi-filter.cc
-    src/unit-cppapi-json.cc
     src/unit-cppapi-map.cc
     src/unit-cppapi-query.cc
     src/unit-cppapi-schema.cc
@@ -113,6 +111,12 @@ if (TILEDB_CPP_API)
     src/unit-cppapi-updates.cc
     src/unit-cppapi-util.cc
     src/unit-cppapi-vfs.cc
+  )
+endif()
+
+if (TILEDB_SERIALIZATION)
+  list(APPEND TILEDB_TEST_SOURCES
+    src/unit-capi-serialized_queries.cc
   )
 endif()
 

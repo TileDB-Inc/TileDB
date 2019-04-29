@@ -33,7 +33,6 @@
 #ifndef TILEDB_READER_H
 #define TILEDB_READER_H
 
-#include "tiledb/rest/capnp/tiledb-rest.capnp.h"
 #include "tiledb/sm/array_schema/array_schema.h"
 #include "tiledb/sm/filter/filter_pipeline.h"
 #include "tiledb/sm/fragment/fragment_metadata.h"
@@ -344,25 +343,11 @@ class Reader {
   AttributeBuffer buffer(const std::string& attribute) const;
 
   /**
-   * Serialize a writer to capnp format
-   * @param writerBuilder
-   * @return  Status
-   */
-  Status capnp(rest::capnp::QueryReader::Builder* queryReaderBuilder) const;
-
-  /**
    * Returns `true` if the query was incomplete, i.e., if all subarray
    * partitions in the read state have not been processed or there
    * was some buffer overflow.
    */
   bool incomplete() const;
-
-  /**
-   * Deserialize from a capnp message
-   * @param writerReader
-   * @return Status
-   */
-  Status from_capnp(rest::capnp::QueryReader::Reader* queryReader);
 
   /**
    * Retrieves the buffer of a fixed-sized attribute.
@@ -417,6 +402,12 @@ class Reader {
   /** Returns `true` if no results were retrieved after a query. */
   bool no_results() const;
 
+  /** Returns the current read state. */
+  const ReadState* read_state() const;
+
+  /** Returns the current read state. */
+  ReadState* read_state();
+
   /** Performs a read query using its set members. */
   Status read();
 
@@ -444,10 +435,14 @@ class Reader {
    * @param buffer_size This initially contains the allocated
    *     size of `buffer`, but after the termination of the function
    *     it will contain the size of the useful (read) data in `buffer`.
+   * @param check_null_buffers If true (default), null buffers are not allowed.
    * @return Status
    */
   Status set_buffer(
-      const std::string& attribute, void* buffer, uint64_t* buffer_size);
+      const std::string& attribute,
+      void* buffer,
+      uint64_t* buffer_size,
+      bool check_null_buffers = true);
 
   /**
    * Sets the buffer for a var-sized attribute.
@@ -466,6 +461,7 @@ class Reader {
    *     the allocated size of `buffer_val`, but after the termination of the
    *     function it will contain the size of the useful (read) data in
    *     `buffer_val`.
+   * @param check_null_buffers If true (default), null buffers are not allowed.
    * @return Status
    */
   Status set_buffer(
@@ -473,7 +469,8 @@ class Reader {
       uint64_t* buffer_off,
       uint64_t* buffer_off_size,
       void* buffer_val,
-      uint64_t* buffer_val_size);
+      uint64_t* buffer_val_size,
+      bool check_null_buffers = true);
 
   /** Sets the fragment metadata. */
   void set_fragment_metadata(

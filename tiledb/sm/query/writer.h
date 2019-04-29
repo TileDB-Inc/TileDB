@@ -33,7 +33,6 @@
 #ifndef TILEDB_WRITER_H
 #define TILEDB_WRITER_H
 
-#include "tiledb/rest/capnp/tiledb-rest.capnp.h"
 #include "tiledb/sm/array_schema/array_schema.h"
 #include "tiledb/sm/filter/filter_pipeline.h"
 #include "tiledb/sm/fragment/fragment_metadata.h"
@@ -131,13 +130,6 @@ class Writer {
    */
   AttributeBuffer buffer(const std::string& attribute) const;
 
-  /**
-   * Serialize a writer to capnp format
-   * @param writerBuilder
-   * @return  Status
-   */
-  Status capnp(rest::capnp::Writer::Builder* writerBuilder) const;
-
   /** Finalizes the reader. */
   Status finalize();
 
@@ -172,12 +164,14 @@ class Writer {
       void** buffer_val,
       uint64_t** buffer_val_size) const;
 
-  /**
-   * Deserialize from a capnp message
-   * @param writerReader
-   * @return Status
-   */
-  Status from_capnp(rest::capnp::Writer::Reader* writeReader);
+  /** Returns current setting of check_coord_dups_ */
+  bool get_check_coord_dups() const;
+
+  /** Returns current setting of check_coord_oob_ */
+  bool get_check_coord_oob() const;
+
+  /** Returns current setting of dedup_coords_ */
+  bool get_dedup_coords() const;
 
   /** Initializes the writer. */
   Status init();
@@ -187,11 +181,6 @@ class Writer {
 
   /** Sets the array. */
   void set_array(const Array* array);
-
-  /**
-   * Reset fragment metadata
-   */
-  void reset_global_write_state();
 
   /*
    * Sets the array schema. If the array is a kv store, then this
@@ -229,6 +218,15 @@ class Writer {
       uint64_t* buffer_off_size,
       void* buffer_val,
       uint64_t* buffer_val_size);
+
+  /** Sets current setting of check_coord_dups_ */
+  void set_check_coord_dups(bool b);
+
+  /** Sets current setting of check_coord_oob_ */
+  void set_check_coord_oob(bool b);
+
+  /** Sets current setting of dedup_coords_ */
+  void set_dedup_coords(bool b);
 
   /** Sets the fragment URI. Applicable only to write queries. */
   void set_fragment_uri(const URI& fragment_uri);
