@@ -110,18 +110,19 @@ steps:
 
   displayName: "Test"
 
-# use the ArchiveFiles task because 7z is not available in vs2015 image
-- task: ArchiveFiles@2
-  inputs:
-    rootFolderOrFile: '$(Agent.BuildDirectory)\s\dist'
-    includeRootFolder: false
-    archiveType: 'zip'
-    archiveFile: '$(Build.ArtifactStagingDirectory)/tiledb-windows-x64-$(Build.SourceVersion).zip'
-    replaceExistingArchive: true
-    verbose: # Optional
+
+  #- task: ArchiveFiles@2
+  #  inputs:
+  #    rootFolderOrFile: '$(Agent.BuildDirectory)\s\dist'
+  #    includeRootFolder: false
+  #    archiveType: 'zip'
+  #    archiveFile: '$(Build.ArtifactStagingDirectory)/tiledb-windows-x64-$(Build.SourceVersion).zip'
+  #    replaceExistingArchive: true
+  #    verbose: # Optional
 
 - task: PublishBuildArtifacts@1
   inputs:
-    pathtoPublish: '$(Build.ArtifactStagingDirectory)/tiledb-windows-x64-$(Build.SourceVersion).zip'
-    artifactName: tiledb-windows-x64.zip
+    #pathtoPublish: '$(Build.ArtifactStagingDirectory)/tiledb-windows-x64-$(Build.SourceVersion).zip'
+    pathtoPublish: '$(Agent.BuildDirectory)\s\dist\'
+    artifactName: 'tiledb-windows-x64-$(Build.SourceVersion)'
   condition: and(succeeded(), eq(variables['imageName'], 'vs2015-win2012r2'))
