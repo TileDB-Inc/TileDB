@@ -68,8 +68,8 @@ if (NOT AWSSDK_FOUND)
 
     ExternalProject_Add(ep_awssdk
       PREFIX "externals"
-      URL "https://github.com/aws/aws-sdk-cpp/archive/1.7.85.zip"
-      URL_HASH SHA1=c108ccf61fb19858374da0b3877afaed3e78520e
+      URL "https://github.com/aws/aws-sdk-cpp/archive/1.7.94.zip"
+      URL_HASH SHA1=171c0fa56e880d15c6b369cf66ec7eae4bf63659
       CMAKE_ARGS
         -DCMAKE_BUILD_TYPE=Release
         -DENABLE_TESTING=OFF
@@ -108,7 +108,7 @@ if (AWSSDK_FOUND)
       PATHS ${AWSSDK_LIB_DIR}
       ${TILEDB_DEPS_NO_DEFAULT_PATH}
     )
-    message(STATUS "Found AWS lib: ${LIB}")
+    message(STATUS "Found AWS lib: ${LIB} (${AWS_FOUND_${LIB}})")
     if (NOT TARGET AWSSDK::${LIB})
       add_library(AWSSDK::${LIB} UNKNOWN IMPORTED)
       set_target_properties(AWSSDK::${LIB} PROPERTIES
