@@ -91,8 +91,8 @@ if (NOT CURL_FOUND AND TILEDB_SUPERBUILD)
 
   ExternalProject_Add(ep_curl
     PREFIX "externals"
-    URL "https://curl.haxx.se/download/curl-7.59.0.zip"
-    URL_HASH SHA1=4558ff1b78396c57cf176e03f702ae87378fd776
+    URL "https://curl.haxx.se/download/curl-7.64.1.tar.gz"
+    URL_HASH SHA1=54ee48d81eb9f90d3efdc6cdf964bd0a23abc364
     CONFIGURE_COMMAND
       ${CMAKE_CURRENT_BINARY_DIR}/configure-curl.sh
       ${TILEDB_EP_BASE}/src/ep_curl/configure
