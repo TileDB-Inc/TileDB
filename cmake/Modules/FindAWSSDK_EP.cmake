@@ -102,7 +102,12 @@ if (AWSSDK_FOUND)
   list(APPEND AWS_LINKED_LIBS aws-c-common
                               aws-c-event-stream
                               aws-checksums)
+
   foreach (LIB ${AWS_LINKED_LIBS})
+    if (NOT ${LIB} MATCHES "aws-*")
+      continue()
+    endif()
+
     find_library("AWS_FOUND_${LIB}"
       NAMES ${LIB}
       PATHS ${AWSSDK_LIB_DIR}
