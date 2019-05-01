@@ -225,6 +225,7 @@ void check_save_to_file() {
   ss << "vfs.s3.region us-east-1\n";
   ss << "vfs.s3.request_timeout_ms 3000\n";
   ss << "vfs.s3.scheme https\n";
+  ss << "vfs.s3.use_multipart_upload true\n";
   ss << "vfs.s3.use_virtual_addressing true\n";
 
   std::ifstream ifs("test_config.txt");
@@ -398,6 +399,7 @@ TEST_CASE("C API: Test config iter", "[capi], [config]") {
   all_param_values["vfs.s3.aws_secret_access_key"] = "";
   all_param_values["vfs.s3.endpoint_override"] = "";
   all_param_values["vfs.s3.use_virtual_addressing"] = "true";
+  all_param_values["vfs.s3.use_multipart_upload"] = "true";
   all_param_values["vfs.s3.max_parallel_ops"] =
       std::to_string(std::thread::hardware_concurrency());
   all_param_values["vfs.s3.multipart_part_size"] = "5242880";
@@ -428,6 +430,7 @@ TEST_CASE("C API: Test config iter", "[capi], [config]") {
   vfs_param_values["s3.aws_secret_access_key"] = "";
   vfs_param_values["s3.endpoint_override"] = "";
   vfs_param_values["s3.use_virtual_addressing"] = "true";
+  vfs_param_values["s3.use_multipart_upload"] = "true";
   vfs_param_values["s3.max_parallel_ops"] =
       std::to_string(std::thread::hardware_concurrency());
   vfs_param_values["s3.multipart_part_size"] = "5242880";
@@ -451,6 +454,7 @@ TEST_CASE("C API: Test config iter", "[capi], [config]") {
   s3_param_values["aws_secret_access_key"] = "";
   s3_param_values["endpoint_override"] = "";
   s3_param_values["use_virtual_addressing"] = "true";
+  s3_param_values["use_multipart_upload"] = "true";
   s3_param_values["max_parallel_ops"] =
       std::to_string(std::thread::hardware_concurrency());
   s3_param_values["multipart_part_size"] = "5242880";
@@ -576,5 +580,15 @@ TEST_CASE(
   rc =
       tiledb_config_set(config, "vfs.s3.use_virtual_addressing", "False", &err);
   CHECK(rc == TILEDB_OK);
+
+  rc = tiledb_config_set(config, "vfs.s3.use_multipart_upload", "TRUE", &err);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_config_set(config, "vfs.s3.use_multipart_upload", "True", &err);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_config_set(config, "vfs.s3.use_multipart_upload", "FALSE", &err);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_config_set(config, "vfs.s3.use_multipart_upload", "False", &err);
+  CHECK(rc == TILEDB_OK);
+
   tiledb_config_free(&config);
 }

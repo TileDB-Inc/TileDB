@@ -1033,10 +1033,13 @@ Status Writer::finalize_global_write_state() {
     if (cells_written != array_schema_->domain()->cell_num<T>((T*)subarray_)) {
       storage_manager_->vfs()->remove_dir(meta->fragment_uri());
       global_write_state_.reset(nullptr);
-      return LOG_STATUS(Status::WriterError(
-          "Failed to finalize global write state; Number "
-          "of cells written is different from the number of "
-          "cells expected for the query subarray"));
+      std::stringstream ss;
+      ss << "Failed to finalize global write state; Number "
+         << "of cells written (" << cells_written
+         << ") is different from the number of cells expected ("
+         << array_schema_->domain()->cell_num<T>((T*)subarray_)
+         << ") for the query subarray";
+      return LOG_STATUS(Status::WriterError(ss.str()));
     }
   }
 

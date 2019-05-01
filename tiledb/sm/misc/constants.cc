@@ -476,6 +476,9 @@ const std::string s3_allocation_tag = "TileDB";
 /** Use virtual addressing (false for minio, true for AWS S3). */
 const bool s3_use_virtual_addressing = true;
 
+/** Use virtual addressing (true). */
+const bool s3_use_multipart_upload = true;
+
 /** Connect timeout in milliseconds. */
 const long s3_connect_timeout_ms = 3000;
 

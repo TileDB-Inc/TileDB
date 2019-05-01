@@ -346,6 +346,10 @@ class Config {
    *    The S3 use of virtual addressing (`true` or `false`), if S3 is
    *    enabled. <br>
    *    **Default**: true
+   * - `vfs.s3.use_virtual_addressing` <br>
+   *    The S3 use of virtual addressing (`true` or `false`), if S3 is
+   *    enabled. <br>
+   *    **Default**: true
    * - `vfs.s3.max_parallel_ops` <br>
    *    The maximum number of S3 backend parallel operations. <br>
    *    **Default**: `vfs.num_threads`
