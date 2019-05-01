@@ -103,6 +103,10 @@ if (AWSSDK_FOUND)
   set(AWS_SERVICES s3)
   AWSSDK_DETERMINE_LIBS_TO_LINK(AWS_SERVICES AWS_LINKED_LIBS)
   foreach (LIB ${AWS_LINKED_LIBS})
+    if (NOT ${LIB} MATCHES "aws-*")
+      continue()
+    endif()
+
     find_library("AWS_FOUND_${LIB}"
       NAMES ${LIB}
       PATHS ${AWSSDK_LIB_DIR}
