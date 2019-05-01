@@ -73,6 +73,7 @@ if (NOT CURL_FOUND AND TILEDB_SUPERBUILD)
 
   if (TARGET ep_openssl)
     set(DEPENDS ep_openssl)
+    set(with_ssl "--with-ssl=${TILEDB_EP_INSTALL_PREFIX}")
   endif()
 
   set(TILEDB_CURL_LIBS "-ldl -lpthread")
@@ -101,7 +102,7 @@ if (NOT CURL_FOUND AND TILEDB_SUPERBUILD)
         --enable-shared=no
         --disable-ldap
         --with-pic=yes
-        --with-ssl=${TILEDB_EP_INSTALL_PREFIX}
+        ${with_ssl}
     BUILD_IN_SOURCE TRUE
     BUILD_COMMAND $(MAKE)
     INSTALL_COMMAND $(MAKE) install
