@@ -40,16 +40,55 @@ TEST_CASE("C API: Test buffer", "[capi], [buffer]") {
   tiledb_buffer_t* buffer;
   REQUIRE(tiledb_buffer_alloc(ctx, &buffer) == TILEDB_OK);
 
-  uint64_t size = 123;
-  REQUIRE(tiledb_buffer_get_size(ctx, buffer, &size) == TILEDB_OK);
-  REQUIRE(size == 0);
+  SECTION("- Check size and data pointer") {
+    void* data;
+    uint64_t size = 123;
+    REQUIRE(tiledb_buffer_get_data(ctx, buffer, &data, &size) == TILEDB_OK);
+    REQUIRE(data == nullptr);
+    REQUIRE(size == 0);
+  }
 
-  tiledb_datatype_t type;
-  REQUIRE(tiledb_buffer_get_type(ctx, buffer, &type) == TILEDB_OK);
-  REQUIRE(type == TILEDB_UINT8);
-  REQUIRE(tiledb_buffer_set_type(ctx, buffer, TILEDB_INT32) == TILEDB_OK);
-  REQUIRE(tiledb_buffer_get_type(ctx, buffer, &type) == TILEDB_OK);
-  REQUIRE(type == TILEDB_INT32);
+  SECTION("- Check get/set datatype") {
+    tiledb_datatype_t type;
+    REQUIRE(tiledb_buffer_get_type(ctx, buffer, &type) == TILEDB_OK);
+    REQUIRE(type == TILEDB_UINT8);
+    REQUIRE(tiledb_buffer_set_type(ctx, buffer, TILEDB_INT32) == TILEDB_OK);
+    REQUIRE(tiledb_buffer_get_type(ctx, buffer, &type) == TILEDB_OK);
+    REQUIRE(type == TILEDB_INT32);
+  }
+
+  SECTION("- Check get/set buffer") {
+    const unsigned alloc_size = 123;
+    void* alloc = std::malloc(alloc_size);
+    REQUIRE(
+        tiledb_buffer_set_data(ctx, buffer, alloc, alloc_size) == TILEDB_OK);
+
+    // Check size/data
+    void* data;
+    uint64_t size = 123;
+    REQUIRE(tiledb_buffer_get_data(ctx, buffer, &data, &size) == TILEDB_OK);
+    REQUIRE(data == alloc);
+    REQUIRE(size == alloc_size);
+
+    // Check it works to set again
+    REQUIRE(
+        tiledb_buffer_set_data(ctx, buffer, alloc, alloc_size) == TILEDB_OK);
+
+    // Buffers can alias
+    tiledb_buffer_t* buffer2;
+    REQUIRE(tiledb_buffer_alloc(ctx, &buffer2) == TILEDB_OK);
+    REQUIRE(
+        tiledb_buffer_set_data(ctx, buffer2, alloc, alloc_size) == TILEDB_OK);
+    tiledb_buffer_free(&buffer2);
+
+    // Check setting to nullptr works
+    REQUIRE(tiledb_buffer_set_data(ctx, buffer, nullptr, 0) == TILEDB_OK);
+    REQUIRE(tiledb_buffer_get_data(ctx, buffer, &data, &size) == TILEDB_OK);
+    REQUIRE(size == 0);
+    REQUIRE(data == nullptr);
+
+    std::free(alloc);
+  }
 
   tiledb_buffer_free(&buffer);
   tiledb_ctx_free(&ctx);

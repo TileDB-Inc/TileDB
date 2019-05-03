@@ -29,7 +29,7 @@
 * Added functions `tiledb_subarray_{get_est_result_size, get_est_result_size_var}`.
 * Added object `tiledb_subarray_t` and functions `tiledb_subarray_{alloc, free, get_layout, get_type, get_ndim, get_domain, add_range, get_range_num, get_range}`.
 * Added function `tiledb_query_get_layout`
-* Added datatype `tiledb_buffer_t` and functions `tiledb_buffer_{alloc,free,get_type,set_type,get_size}`.
+* Added datatype `tiledb_buffer_t` and functions `tiledb_buffer_{alloc,free,get_type,set_type,get_data,set_data}`.
 
 ### C++ API
 
