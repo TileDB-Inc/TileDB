@@ -132,6 +132,18 @@ Layout Domain::cell_order() const {
   return cell_order_;
 }
 
+template <class T>
+T Domain::floor_to_tile(T value, unsigned dim_idx) const {
+  auto domain = (T*)domain_;
+  auto tile_extents = (T*)tile_extents_;
+
+  if (tile_extents_ == nullptr)
+    return domain[2 * dim_idx];
+
+  uint64_t div = (value - domain[2 * dim_idx]) / tile_extents[dim_idx];
+  return (T)div * tile_extents[dim_idx] + domain[2 * dim_idx];
+}
+
 Layout Domain::tile_order() const {
   return tile_order_;
 }
@@ -1061,6 +1073,10 @@ void Domain::compute_tile_offsets() {
 
 template <class T>
 void Domain::compute_tile_offsets() {
+  //  // Non-applicable to real domains
+  //  if(!std::is_integral<T>())
+  //    return;
+
   // Applicable only to non-NULL space tiles
   if (tile_extents_ == nullptr)
     return;
@@ -1100,18 +1116,6 @@ std::string Domain::default_dimension_name(unsigned int i) const {
   std::stringstream ss;
   ss << constants::default_dim_name << "_" << i;
   return ss.str();
-}
-
-template <class T>
-T Domain::floor_to_tile(T value, unsigned dim_idx) const {
-  auto domain = (T*)domain_;
-  auto tile_extents = (T*)tile_extents_;
-
-  if (tile_extents_ == nullptr)
-    return domain[2 * dim_idx];
-
-  uint64_t div = (value - domain[2 * dim_idx]) / tile_extents[dim_idx];
-  return (T)div * tile_extents[dim_idx] + domain[2 * dim_idx];
 }
 
 template <class T>
@@ -1839,6 +1843,27 @@ template uint64_t Domain::get_cell_pos_row<int64_t>(
     const int64_t* subarray, const int64_t* coords) const;
 template uint64_t Domain::get_cell_pos_row<uint64_t>(
     const uint64_t* subarray, const uint64_t* coords) const;
+
+template int8_t Domain::floor_to_tile<int8_t>(
+    int8_t value, unsigned dim_idx) const;
+template uint8_t Domain::floor_to_tile<uint8_t>(
+    uint8_t value, unsigned dim_idx) const;
+template int16_t Domain::floor_to_tile<int16_t>(
+    int16_t value, unsigned dim_idx) const;
+template uint16_t Domain::floor_to_tile<uint16_t>(
+    uint16_t value, unsigned dim_idx) const;
+template int32_t Domain::floor_to_tile<int32_t>(
+    int32_t value, unsigned dim_idx) const;
+template uint32_t Domain::floor_to_tile<uint32_t>(
+    uint32_t value, unsigned dim_idx) const;
+template int64_t Domain::floor_to_tile<int64_t>(
+    int64_t value, unsigned dim_idx) const;
+template uint64_t Domain::floor_to_tile<uint64_t>(
+    uint64_t value, unsigned dim_idx) const;
+template float Domain::floor_to_tile<float>(
+    float value, unsigned dim_idx) const;
+template double Domain::floor_to_tile<double>(
+    double value, unsigned dim_idx) const;
 
 }  // namespace sm
 }  // namespace tiledb
