@@ -1,0 +1,324 @@
+/**
+ * @file   cell_slab_iter.inc
+ *
+ * @section LICENSE
+ *
+ * The MIT License
+ *
+ * @copyright Copyright (c) 2017-2019 TileDB, Inc.
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+ * THE SOFTWARE.
+ *
+ * @section DESCRIPTION
+ *
+ * This file implements class CellSlabIter.
+ */
+
+#include "tiledb/sm/subarray/cell_slab_iter.h"
+#include "tiledb/sm/array/array.h"
+#include "tiledb/sm/misc/logger.h"
+
+#include <cassert>
+#include <iostream>
+
+namespace tiledb {
+namespace sm {
+
+/* ****************************** */
+/*   CONSTRUCTORS & DESTRUCTORS   */
+/* ****************************** */
+
+template <class T>
+CellSlabIter<T>::CellSlabIter() {
+  subarray_ = nullptr;
+  end_ = true;
+}
+
+template <class T>
+CellSlabIter<T>::CellSlabIter(const Subarray* subarray)
+    : subarray_(subarray) {
+  end_ = true;
+}
+
+/* ****************************** */
+/*               API              */
+/* ****************************** */
+
+template <class T>
+Status CellSlabIter<T>::begin() {
+  if (subarray_ == nullptr)
+    return Status::Ok();
+
+  RETURN_NOT_OK(sanity_check());
+  cell_slab_.init(subarray_->dim_num());
+  RETURN_NOT_OK(init_ranges());
+  init_coords();
+  init_cell_slab_lengths();
+  update_cell_slab();
+
+  end_ = false;
+
+  return Status::Ok();
+}
+
+template <class T>
+typename CellSlabIter<T>::CellSlab CellSlabIter<T>::cell_slab() const {
+  return cell_slab_;
+}
+
+template <class T>
+bool CellSlabIter<T>::end() const {
+  return end_;
+}
+
+template <class T>
+void CellSlabIter<T>::operator++() {
+  // If at the end, do nothing
+  if (end_)
+    return;
+
+  // Advance the iterator
+  if (subarray_->layout() == Layout::ROW_MAJOR)
+    advance_row();
+  else
+    advance_col();
+
+  if (end_) {
+    cell_slab_.reset();
+    return;
+  }
+
+  update_cell_slab();
+}
+
+/* ****************************** */
+/*          PRIVATE METHODS       */
+/* ****************************** */
+
+template <class T>
+void CellSlabIter<T>::advance_col() {
+  auto dim_num = (int)subarray_->dim_num();
+
+  for (int i = 0; i < dim_num; ++i) {
+    cell_slab_coords_[i] += (i == 0) ? cell_slab_lengths_[range_coords_[i]] : 1;
+    if (cell_slab_coords_[i] > ranges_[i][range_coords_[i]].end_) {
+      ++range_coords_[i];
+      cell_slab_coords_[i] = ranges_[i][range_coords_[i]].start_;
+    }
+
+    if (range_coords_[i] < (T)ranges_[i].size()) {
+      break;
+    } else {
+      // The iterator has reached the end
+      if (i == dim_num - 1) {
+        end_ = true;
+        return;
+      }
+
+      range_coords_[i] = 0;
+      cell_slab_coords_[i] = ranges_[i][0].start_;
+    }
+  }
+}
+
+template <class T>
+void CellSlabIter<T>::advance_row() {
+  auto dim_num = (int)subarray_->dim_num();
+
+  for (int i = dim_num - 1; i >= 0; --i) {
+    cell_slab_coords_[i] +=
+        (i == dim_num - 1) ? cell_slab_lengths_[range_coords_[i]] : 1;
+    if (cell_slab_coords_[i] > ranges_[i][range_coords_[i]].end_) {
+      ++range_coords_[i];
+      cell_slab_coords_[i] = ranges_[i][range_coords_[i]].start_;
+    }
+
+    if (range_coords_[i] < (T)ranges_[i].size()) {
+      break;
+    } else {
+      // The iterator has reached the end
+      if (i == 0) {
+        end_ = true;
+        return;
+      }
+
+      range_coords_[i] = 0;
+      cell_slab_coords_[i] = ranges_[i][0].start_;
+    }
+  }
+}
+
+template <class T>
+void CellSlabIter<T>::create_ranges(
+    const T* range,
+    T tile_extent,
+    T dim_domain_start,
+    std::vector<Range>* ranges) {
+  T tile_start = (range[0] - dim_domain_start) / tile_extent;
+  T tile_end = (range[1] - dim_domain_start) / tile_extent;
+
+  // The range falls int he same tile
+  if (tile_start == tile_end) {
+    ranges->emplace_back(range[0], range[1], tile_start);
+  } else {  // We need to split the range
+    T start = range[0];
+    T end;
+    for (T i = tile_start; i < tile_end; ++i) {
+      end = (i + 1) * tile_extent + dim_domain_start - 1;
+      ranges->emplace_back(start, end, i);
+      start = end + 1;
+    }
+    ranges->emplace_back(start, range[1], tile_end);
+  }
+}
+
+template <class T>
+void CellSlabIter<T>::init_cell_slab_lengths() {
+  auto layout = subarray_->layout();
+  auto dim_num = subarray_->dim_num();
+
+  if (layout == Layout::ROW_MAJOR) {
+    auto range_num = ranges_[dim_num - 1].size();
+    cell_slab_lengths_.resize(range_num);
+    for (size_t i = 0; i < range_num; ++i)
+      cell_slab_lengths_[i] =
+          ranges_[dim_num - 1][i].end_ - ranges_[dim_num - 1][i].start_ + 1;
+  } else {
+    assert(layout == Layout::COL_MAJOR);
+    auto range_num = ranges_[0].size();
+    cell_slab_lengths_.resize(range_num);
+    for (size_t i = 0; i < range_num; ++i)
+      cell_slab_lengths_[i] = ranges_[0][i].end_ - ranges_[0][i].start_ + 1;
+  }
+}
+
+template <class T>
+void CellSlabIter<T>::init_coords() {
+  auto dim_num = subarray_->dim_num();
+
+  range_coords_.resize(dim_num);
+  cell_slab_coords_.resize(dim_num);
+  for (unsigned i = 0; i < dim_num; ++i) {
+    range_coords_[i] = 0;
+    cell_slab_coords_[i] = ranges_[i][0].start_;
+  }
+}
+
+template <class T>
+Status CellSlabIter<T>::init_ranges() {
+  // For easy reference
+  auto dim_num = subarray_->dim_num();
+  auto array_schema = subarray_->array()->array_schema();
+  auto array_domain = (T*)array_schema->domain()->domain();
+  auto tile_extents = (T*)array_schema->domain()->tile_extents();
+  uint64_t range_num;
+  const T* range;
+  T tile_extent, dim_domain_start;
+
+  ranges_.resize(dim_num);
+  for (unsigned i = 0; i < dim_num; ++i) {
+    RETURN_NOT_OK(subarray_->get_range_num(i, &range_num));
+    ranges_[i].reserve(range_num);
+    tile_extent = tile_extents[i];
+    dim_domain_start = array_domain[2 * i];
+    for (uint64_t j = 0; j < range_num; ++j) {
+      RETURN_NOT_OK(subarray_->get_range(i, j, (const void**)&range));
+      create_ranges(range, tile_extent, dim_domain_start, &ranges_[i]);
+    }
+  }
+
+  return Status::Ok();
+}
+
+template <class T>
+Status CellSlabIter<T>::sanity_check() const {
+  assert(subarray_ != nullptr);
+
+  // Check layout
+  auto layout = subarray_->layout();
+  if (layout != Layout::ROW_MAJOR && layout != Layout::COL_MAJOR)
+    return LOG_STATUS(Status::CellSlabIterError(
+        "Unsupported subarray layout; the iterator supports only row-major and "
+        "column-major layouts"));
+
+  // Check type
+  bool error;
+  switch (subarray_->type()) {
+    case Datatype::INT8:
+      error = !std::is_same<T, int8_t>::value;
+      break;
+    case Datatype::UINT8:
+      error = !std::is_same<T, uint8_t>::value;
+      break;
+    case Datatype::INT16:
+      error = !std::is_same<T, int16_t>::value;
+      break;
+    case Datatype::UINT16:
+      error = !std::is_same<T, uint16_t>::value;
+      break;
+    case Datatype::INT32:
+      error = !std::is_same<T, int32_t>::value;
+      break;
+    case Datatype::UINT32:
+      error = !std::is_same<T, uint32_t>::value;
+      break;
+    case Datatype::INT64:
+      error = !std::is_same<T, int64_t>::value;
+      break;
+    case Datatype::UINT64:
+      error = !std::is_same<T, uint64_t>::value;
+      break;
+    default:
+      error = true;
+      assert(false);
+  }
+
+  if (error)
+    return LOG_STATUS(Status::CellSlabIterError(
+        "Datatype mismatch between cell slab iterator and subarray"));
+
+  return Status::Ok();
+}
+
+template <class T>
+void CellSlabIter<T>::update_cell_slab() {
+  auto dim_num = subarray_->dim_num();
+  auto layout = subarray_->layout();
+
+  for (unsigned i = 0; i < dim_num; ++i) {
+    cell_slab_.tile_coords_[i] = ranges_[i][range_coords_[i]].tile_coord_;
+    cell_slab_.coords_[i] = cell_slab_coords_[i];
+  }
+  cell_slab_.length_ = (layout == Layout::ROW_MAJOR) ?
+                           cell_slab_lengths_[range_coords_[dim_num - 1]] :
+                           cell_slab_lengths_[range_coords_[0]];
+}
+
+// Explicit template instantiations
+template class CellSlabIter<int8_t>;
+template class CellSlabIter<uint8_t>;
+template class CellSlabIter<int16_t>;
+template class CellSlabIter<uint16_t>;
+template class CellSlabIter<int>;
+template class CellSlabIter<unsigned>;
+template class CellSlabIter<int64_t>;
+template class CellSlabIter<uint64_t>;
+
+}  // namespace sm
+}  // namespace tiledb

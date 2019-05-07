@@ -210,6 +210,9 @@ std::string Status::code_to_string() const {
     case StatusCode::RTreeError:
       type = "[TileDB::RTree] Error";
       break;
+    case StatusCode::CellSlabIterError:
+      type = "[TileDB::CellSlabIter] Error";
+      break;
     default:
       type = "[TileDB::?] Error:";
   }
