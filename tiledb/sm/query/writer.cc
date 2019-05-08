@@ -428,6 +428,9 @@ Status Writer::check_coord_dups(const std::vector<uint64_t>& cell_pos) const {
   auto coords_size = array_schema_->coords_size();
   auto coords_num = cell_pos.size();
 
+  if (coords_num < 2)
+    return Status::Ok();
+
   for (uint64_t i = 1; i < coords_num; ++i) {
     if (!memcmp(
             coords_buff + cell_pos[i] * coords_size,
@@ -455,6 +458,9 @@ Status Writer::check_coord_dups() const {
   auto coords_buff_size = *coords_buff_it->second.buffer_size_;
   auto coords_size = array_schema_->coords_size();
   auto coords_num = coords_buff_size / coords_size;
+
+  if (coords_num < 2)
+    return Status::Ok();
 
   for (uint64_t i = 1; i < coords_num; ++i) {
     if (!memcmp(
@@ -525,6 +531,9 @@ Status Writer::check_coord_oob() const {
   auto coords_num = coords_buff_size / array_schema_->coords_size();
   auto dim_num = array_schema_->dim_num();
   auto domain = (T*)array_schema_->domain()->domain();
+
+  if (coords_num == 0)
+    return Status::Ok();
 
   // Check if all coordinates fall in the domain in parallel
   auto statuses = parallel_for(0, coords_num, [&](uint64_t i) {
@@ -608,6 +617,9 @@ Status Writer::check_global_order() const {
   auto coords_num = coords_buff_size / array_schema_->coords_size();
   auto dim_num = array_schema_->dim_num();
   auto domain = array_schema_->domain();
+
+  if (coords_num < 2)
+    return Status::Ok();
 
   // Check if all coordinates fall in the domain in parallel
   auto statuses = parallel_for(0, coords_num - 1, [&](uint64_t i) {
