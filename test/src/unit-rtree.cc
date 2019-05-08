@@ -37,7 +37,7 @@
 
 using namespace tiledb::sm;
 
-TEST_CASE("RTree: Test R-Tree, basic functions", "[rtree][rtree-empty]") {
+TEST_CASE("RTree: Test R-Tree, basic functions", "[rtree][basic]") {
   // Empty tree
   RTree rtree0;
   CHECK(rtree0.height() == 0);
@@ -51,15 +51,17 @@ TEST_CASE("RTree: Test R-Tree, basic functions", "[rtree][rtree-empty]") {
   CHECK(tile_overlap.tiles_.empty());
 
   // 1D
-  std::vector<void*> mbrs;
-  int m[] = {1, 3, 5, 10, 20, 22};
+  std::vector<void*> mbrs_1d;
+  int m1[] = {1, 3, 5, 10, 20, 22};
+  mbrs_1d.resize(3);
   for (int i = 0; i < 3; ++i)
-    mbrs.push_back(&m[2 * i]);
-  RTree rtree1(Datatype::INT32, 1, 3, mbrs);
+    mbrs_1d[i] = &m1[2 * i];
+  RTree rtree1(Datatype::INT32, 1, 3, mbrs_1d);
   CHECK(rtree1.height() == 2);
   CHECK(rtree1.subtree_leaf_num(0) == 3);
   CHECK(rtree1.subtree_leaf_num(1) == 1);
   CHECK(rtree1.subtree_leaf_num(2) == 0);
+
   std::vector<const int*> range1;
   int mbr1[] = {5, 10};
   int r1_no_left[] = {0, 1};
@@ -98,7 +100,12 @@ TEST_CASE("RTree: Test R-Tree, basic functions", "[rtree][rtree-empty]") {
   CHECK(ratio1 == 0.0);
 
   // 2D
-  RTree rtree2(Datatype::INT64, 2, 5, mbrs);
+  std::vector<void*> mbrs_2d;
+  int64_t m2[] = {1, 3, 5, 10, 20, 22, 24, 25, 11, 15, 30, 31};
+  mbrs_2d.resize(3);
+  for (int i = 0; i < 3; ++i)
+    mbrs_2d[i] = &m2[4 * i];
+  RTree rtree2(Datatype::INT64, 2, 5, mbrs_2d);
   CHECK(rtree2.height() == 2);
   CHECK(rtree2.dim_num() == 2);
   CHECK(rtree2.fanout() == 5);
@@ -124,7 +131,12 @@ TEST_CASE("RTree: Test R-Tree, basic functions", "[rtree][rtree-empty]") {
   CHECK(ratio2 == (4.0 / 6) * (2.0 / 8));
 
   // Float datatype
-  RTree rtreef(Datatype::FLOAT32, 1, 5, mbrs);
+  std::vector<void*> mbrs_f;
+  float mf[] = {1.0f, 3.0f, 5.0f, 10.0f, 20.0f, 22.0f};
+  mbrs_f.resize(3);
+  for (int i = 0; i < 3; ++i)
+    mbrs_f[i] = &mf[2 * i];
+  RTree rtreef(Datatype::FLOAT32, 1, 5, mbrs_f);
   std::vector<const float*> rangef;
   float mbrf[] = {5.0f, 10.0f};
   float rf_no_left[] = {0.0, 1.0};
@@ -158,11 +170,12 @@ TEST_CASE("RTree: Test R-Tree, basic functions", "[rtree][rtree-empty]") {
   CHECK(ratiof == 0.0);
 }
 
-TEST_CASE("RTree: Test 1D R-tree, height 2", "[rtree][rtree-1d][rtree-1d-2]") {
+TEST_CASE("RTree: Test 1D R-tree, height 2", "[rtree][1d][2h]") {
   int m[] = {1, 3, 5, 10, 20, 22};
   std::vector<void*> mbrs;
+  mbrs.resize(3);
   for (int i = 0; i < 3; ++i)
-    mbrs.push_back(&m[2 * i]);
+    mbrs[i] = &m[2 * i];
 
   // Build tree
   RTree rtree(Datatype::INT32, 1, 3, mbrs);
@@ -203,7 +216,7 @@ TEST_CASE("RTree: Test 1D R-tree, height 2", "[rtree][rtree-1d][rtree-1d-2]") {
   CHECK(overlap.tiles_[1].second == 2.0 / 3);
 }
 
-TEST_CASE("RTree: Test 1D R-tree, height 3", "[rtree][rtree-1d][rtree-1d-3]") {
+TEST_CASE("RTree: Test 1D R-tree, height 3", "[rtree][1d][3h]") {
   int m[] = {1, 3, 5, 10, 20, 22, 30, 35, 36, 38, 40, 49, 50, 51, 65, 69};
   std::vector<void*> mbrs;
   for (size_t i = 0; i < sizeof(m) / (2 * sizeof(int)); ++i)
@@ -269,7 +282,7 @@ TEST_CASE("RTree: Test 1D R-tree, height 3", "[rtree][rtree-1d][rtree-1d-3]") {
   CHECK(overlap.tiles_[0].second == 3.0 / 6);
 }
 
-TEST_CASE("RTree: Test 2D R-tree, height 2", "[rtree][rtree-2d][rtree-2d-2]") {
+TEST_CASE("RTree: Test 2D R-tree, height 2", "[rtree][2d][2h]") {
   int m[] = {1, 3, 2, 4, 5, 7, 6, 9, 10, 12, 10, 15};
   std::vector<void*> mbrs;
   for (size_t i = 0; i < sizeof(m) / (4 * sizeof(int)); ++i)
@@ -317,7 +330,7 @@ TEST_CASE("RTree: Test 2D R-tree, height 2", "[rtree][rtree-2d][rtree-2d-2]") {
   CHECK(overlap.tiles_[1].second == 3.0 / 6);
 }
 
-TEST_CASE("RTree: Test 2D R-tree, height 3", "[rtree][rtree-2d][rtree-2d-3]") {
+TEST_CASE("RTree: Test 2D R-tree, height 3", "[rtree][2d][3h]") {
   int m[] = {1,  3,  2,  4,  5,  7,  6,  9,  10, 12, 10, 15,
              11, 15, 20, 22, 16, 16, 23, 23, 19, 20, 24, 26,
              25, 28, 30, 32, 30, 35, 35, 37, 40, 42, 40, 42};
