@@ -75,9 +75,9 @@ TEST_CASE_METHOD(LRUCacheFx, "Unit-test class LRUCache", "[lru_cache]") {
   CHECK(!success);
 
   // Prepare some vectors
-  auto v1 = new int[3];
-  auto v2 = new int[3];
-  auto v3 = new int[3];
+  auto v1 = static_cast<int*>(std::malloc(sizeof(int) * 3));
+  auto v2 = static_cast<int*>(std::malloc(sizeof(int) * 3));
+  auto v3 = static_cast<int*>(std::malloc(sizeof(int) * 3));
   for (int i = 0; i < 3; ++i) {
     v1[i] = i;
     v2[i] = 3 + i;
@@ -127,7 +127,7 @@ TEST_CASE_METHOD(LRUCacheFx, "Unit-test class LRUCache", "[lru_cache]") {
   CHECK(!st.ok());
 
   // Test eviction
-  auto v4 = new int[5];
+  auto v4 = static_cast<int*>(std::malloc(sizeof(int) * 5));
   st = lru_cache_->insert("v4", v4, 5 * sizeof(int));
   CHECK(st.ok());
 
@@ -142,8 +142,10 @@ TEST_CASE_METHOD(LRUCacheFx, "Unit-test class LRUCache", "[lru_cache]") {
 }
 
 TEST_CASE_METHOD(LRUCacheFx, "LRUCache item invalidation", "[lru_cache]") {
-  auto v1 = new int[3]{1, 2, 3};
-  auto v2 = new int[3]{4, 5, 6};
+  auto v1 = static_cast<int*>(std::malloc(sizeof(int) * 3));
+  v1[0] = 1; v1[1] = 2; v1[2] = 3;
+  auto v2 = static_cast<int*>(std::malloc(sizeof(int) * 3));
+  v2[0] = 4; v2[1] = 5; v2[2] = 6;
   Status st = lru_cache_->insert("v1", &v1[0], 3 * sizeof(int));
   CHECK(st.ok());
   st = lru_cache_->insert("v2", &v2[0], 3 * sizeof(int));
@@ -166,8 +168,10 @@ TEST_CASE_METHOD(LRUCacheFx, "LRUCache item invalidation", "[lru_cache]") {
   CHECK(!success);
   CHECK(check_key_order("v2"));
 
-  auto v3 = new int[3]{7, 8, 9};
-  auto v4 = new int[3]{10, 11, 12};
+  auto v3 = static_cast<int*>(std::malloc(sizeof(int) * 3));
+  v3[0] = 7; v3[1] = 8; v3[2] = 9;
+  auto v4 = static_cast<int*>(std::malloc(sizeof(int) * 3));
+  v4[0] = 10; v4[1] = 11; v4[2] = 12;
   st = lru_cache_->insert("v3", &v3[0], 3 * sizeof(int));
   CHECK(st.ok());
   st = lru_cache_->insert("v4", &v4[0], 3 * sizeof(int));

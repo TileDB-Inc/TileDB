@@ -1727,7 +1727,7 @@ void SparseArrayFx2::check_sparse_array_global_with_duplicates_dedup(
   rc = tiledb_query_set_buffer(
       ctx, query, attributes[3], r_buffers[4], &r_buffer_sizes[4]);
   CHECK(rc == TILEDB_OK);
-
+  
   // Create subarray
   tiledb_subarray_t* subarray;
   rc = tiledb_subarray_alloc(ctx_, array, TILEDB_ROW_MAJOR, &subarray);
@@ -2086,7 +2086,8 @@ void SparseArrayFx2::check_sparse_array_no_results(
 
   // Prepare the buffers that will store the result
   uint64_t buffer_size;
-  rc = tiledb_array_max_buffer_size(ctx_, array, "a1", subarray, &buffer_size);
+  uint64_t sub[] = {1,2,1,2};
+  rc = tiledb_array_max_buffer_size(ctx_, array, "a1", sub, &buffer_size);
   CHECK(rc == TILEDB_OK);
 
   auto buffer = new int[buffer_size / sizeof(int)];

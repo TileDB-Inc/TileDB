@@ -1522,7 +1522,6 @@ inline void MapItem::set(const T& v) {
   if (map_->schema_.attribute_num() != 1)
     throw TileDBError(
         "Attribute name must be defined for maps with >1 attribute.");
-  operator[](map_->schema_.attribute(0).name()) = v;
 }
 
 template <typename T>

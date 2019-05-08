@@ -20,6 +20,7 @@ examples/bin/*
 examples/obj/*
 scripts/deps-staging/*
 .idea
+.vscode
 *temp*
 *.DS_Store
 doc/venv

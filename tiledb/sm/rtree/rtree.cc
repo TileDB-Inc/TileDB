@@ -330,15 +330,17 @@ RTree::Level RTree::build_leaf_level(const std::vector<void*>& mbrs) {
   Level new_level;
 
   // Allocate space
+  size_t n_mbrs = mbrs.size();
   uint64_t mbr_size = 2 * dim_num_ * datatype_size(type_);
-  uint64_t leaf_level_size = mbrs.size() * mbr_size;
-  new_level.mbr_num_ = mbrs.size();
+  uint64_t leaf_level_size = n_mbrs * mbr_size;
+  new_level.mbr_num_ = n_mbrs;
   new_level.mbrs_.resize(leaf_level_size);
 
   // Copy MBRs
   uint64_t offset = 0;
+  uint8_t* data_ptr = new_level.mbrs_.data();
   for (auto mbr : mbrs) {
-    auto copy_loc = new_level.mbrs_.data() + offset;
+    auto copy_loc = data_ptr + offset;
     std::memcpy(copy_loc, mbr, mbr_size);
     offset += mbr_size;
   }

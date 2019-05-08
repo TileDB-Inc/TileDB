@@ -53,9 +53,9 @@ TEST_CASE("RTree: Test R-Tree, basic functions", "[rtree][rtree-empty]") {
 
   // 1D
   std::vector<void*> mbrs;
-  int m[] = {1, 3, 5, 10, 20, 22};
+  int m1[] = {1, 3, 5, 10, 20, 22};
   for (int i = 0; i < 3; ++i)
-    mbrs.push_back(&m[2 * i]);
+    mbrs.push_back(&m1[2 * i]);
   RTree rtree1(Datatype::INT32, 1, 3, mbrs);
   CHECK(rtree1.height() == 2);
   CHECK(rtree1.subtree_leaf_num(0) == 3);
@@ -99,6 +99,11 @@ TEST_CASE("RTree: Test R-Tree, basic functions", "[rtree][rtree-empty]") {
   CHECK(ratio1 == 0.0);
 
   // 2D
+  mbrs.clear();
+  int64_t m2[] = {1, 3, 2, 4, 5, 7, 6, 9, 10, 12, 10, 15};
+  for (size_t i = 0; i < sizeof(m2) / (4 * sizeof(int64_t)); ++i) {
+    mbrs.push_back(&m2[4 * i]);
+  }
   RTree rtree2(Datatype::INT64, 2, 5, mbrs);
   CHECK(rtree2.height() == 2);
   CHECK(rtree2.dim_num() == 2);
