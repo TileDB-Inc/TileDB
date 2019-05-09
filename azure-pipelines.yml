@@ -17,6 +17,11 @@ jobs:
         imageName: 'macOS-10.13'
         TILEDB_S3: ON
         CXX: clang++
+      linux_asan:
+        imageName: 'ubuntu-16.04'
+        TILEDB_CI_ASAN: ON
+        TILEDB_TBB: OFF
+        CXX: g++-7
     maxParallel: 4
   pool:
     vmImage: $(imageName)
