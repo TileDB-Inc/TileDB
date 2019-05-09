@@ -247,7 +247,7 @@ TEST_CASE(
       Domain domain = array->schema().domain();
       uint64_t coordLength = domain.ndim();
       uint64_t coordsSize = tiledb_datatype_size(domain.type()) * coordLength;
-      void* coordinates = malloc(coordLength);
+      void* coordinates = malloc(coordsSize);
       void* expectedCoordinates =
           malloc(tiledb_datatype_size(domain.type()) * coordLength);
       switch (domain.type()) {
