@@ -112,18 +112,6 @@ class OpenArray {
   Status file_unlock(VFS* vfs);
 
   /**
-   * Returns the fragment metadata. In case the array was opened for writes,
-   * an empty vector is returned. In case of reads, all the fragment metadata
-   * loaded at or before the input timestamp will be returned.
-   *
-   * @param timestamp The timestamp at or before the result fragment metadata
-   *     got loaded into the open array.
-   * @return A vector with the requested metadata. The metadata is sorted
-   *     in ascending time order.
-   */
-  std::vector<FragmentMetadata*> fragment_metadata(uint64_t timestamp) const;
-
-  /**
    * Returns the `FragmentMetadata` object of the input fragment URI,
    * or `nullptr` if the fragment metadata do no exist.
    */
@@ -190,13 +178,14 @@ class OpenArray {
   std::unordered_map<std::string, FragmentMetadata*> fragment_metadata_set_;
 
   /**
-   * A mutex used to lock the array when loading the array metadata and
-   * any fragment metadata structures from the disk.
+   * A mutex used to lock the array for thread-safe open/close of the array
+   * by the StorageManager.
    */
   mutable std::mutex mtx_;
 
   /**
-   * A mutex used for local process-safety in the object.
+   * A mutex used to protect private instance variables (e.g. fragment
+   * metadata).
    */
   mutable std::mutex local_mtx_;
 
