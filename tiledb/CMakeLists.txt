@@ -307,7 +307,7 @@ if (TILEDB_S3 OR TILEDB_SERIALIZATION)
     find_package(Curl_EP REQUIRED)
     target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
       INTERFACE
-        Curl::Curl
+        CURL::libcurl
     )
   endif()
 endif()
@@ -451,7 +451,7 @@ if (TILEDB_STATIC)
   endmacro()
 
   append_dep_lib(Bzip2::Bzip2)
-  append_dep_lib(Curl::Curl)
+  append_dep_lib(CURL::libcurl)
   append_dep_lib(LZ4::LZ4)
   append_dep_lib(TBB::tbb)
   append_dep_lib(Zlib::Zlib)

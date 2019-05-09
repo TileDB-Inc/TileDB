@@ -37,8 +37,13 @@ include(TileDBCommon)
 # Search the path set during the superbuild for the EP.
 set(CURL_PATHS ${TILEDB_EP_INSTALL_PREFIX})
 
+# If the EP was built, it will install the CURLConfig.cmake file, which we
+# can use with find_package. CMake uses CMAKE_PREFIX_PATH to locate find
+# modules.
+set(CMAKE_PREFIX_PATH ${CMAKE_PREFIX_PATH} "${TILEDB_EP_INSTALL_PREFIX}")
+
 # First try the CMake-provided find script.
-find_package(CURL QUIET ${TILEDB_DEPS_NO_DEFAULT_PATH})
+find_package(CURL QUIET ${TILEDB_DEPS_NO_DEFAULT_PATH} CONFIG)
 
 # Next try finding the superbuild external project
 if (NOT CURL_FOUND)
@@ -94,18 +99,14 @@ if (NOT CURL_FOUND AND TILEDB_SUPERBUILD)
     PREFIX "externals"
     URL "https://curl.haxx.se/download/curl-7.64.1.tar.gz"
     URL_HASH SHA1=54ee48d81eb9f90d3efdc6cdf964bd0a23abc364
-    CONFIGURE_COMMAND
-      ${CMAKE_CURRENT_BINARY_DIR}/configure-curl.sh
-      ${TILEDB_EP_BASE}/src/ep_curl/configure
-        --prefix=${TILEDB_EP_INSTALL_PREFIX}
-        --enable-optimize
-        --enable-shared=no
-        --disable-ldap
-        --with-pic=yes
-        ${with_ssl}
-    BUILD_IN_SOURCE TRUE
-    BUILD_COMMAND $(MAKE)
-    INSTALL_COMMAND $(MAKE) install
+    CMAKE_ARGS
+    -DCMAKE_INSTALL_PREFIX=${TILEDB_EP_INSTALL_PREFIX}
+    -DCMAKE_BUILD_TYPE=Release
+    -DBUILD_SHARED_LIBS=OFF
+    -DCURL_DISABLE_LDAP=ON
+    -DCURL_DISABLE_LDAPS=ON
+    -DCMAKE_POSITION_INDEPENDENT_CODE:BOOL=true
+    "-DCMAKE_C_FLAGS=${CFLAGS_DEF}"
     UPDATE_COMMAND ""
     LOG_DOWNLOAD TRUE
     LOG_CONFIGURE TRUE
@@ -119,16 +120,30 @@ if (NOT CURL_FOUND AND TILEDB_SUPERBUILD)
   )
 endif()
 
-if (CURL_FOUND AND NOT TARGET Curl::Curl)
-  message(STATUS "Found Curl: ${CURL_LIBRARIES}")
-  add_library(Curl::Curl UNKNOWN IMPORTED)
-  set_target_properties(Curl::Curl PROPERTIES
-    IMPORTED_LOCATION "${CURL_LIBRARIES}"
-    INTERFACE_INCLUDE_DIRECTORIES "${CURL_INCLUDE_DIR};${CURL_INCLUDE_DIRS}"
-  )
+if (CURL_FOUND)
+  message(STATUS "Found CURL: ${CURL_LIBRARIES} (found version \"${CURL_VERSION}\")")
+
+    # If the libcurl target is missing this is an older version of curl found, don't attempt to use cmake target
+    if (NOT TARGET CURL::libcurl)
+      message(WARNING "cmake libcurl target not found, static linking against libcurl will result in missing symbols")
+      add_library(CURL::libcurl UNKNOWN IMPORTED)
+      set_target_properties(CURL::libcurl PROPERTIES
+        IMPORTED_LOCATION "${CURL_LIBRARIES}"
+        INTERFACE_INCLUDE_DIRECTORIES "${CURL_INCLUDE_DIR};${CURL_INCLUDE_DIRS}"
+      )
+    # If the CURL::libcurl target exists this is new enough curl version to rely on the cmake target properties
+    else()
+      get_target_property(LIBCURL_TYPE CURL::libcurl TYPE)
+      # CURL_STATICLIB is missing for curl versions <7.61.1
+      if(CURL_VERSION VERSION_LESS 7.61.1 AND LIBCURL_TYPE STREQUAL "STATIC_LIBRARY")
+        set_target_properties(CURL::libcurl PROPERTIES
+                INTERFACE_COMPILE_DEFINITIONS CURL_STATICLIB)
+      endif()
+    endif()
+
 endif()
 
 # If we built a static EP, install it if required.
 if (TILEDB_CURL_EP_BUILT AND TILEDB_INSTALL_STATIC_DEPS)
-  install_target_libs(Curl::Curl)
+  install_target_libs(CURL::libcurl)
 endif()
