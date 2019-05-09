@@ -85,7 +85,7 @@ void OpenArray::cnt_incr() {
 }
 
 bool OpenArray::is_empty(uint64_t timestamp) const {
-  std::lock_guard<std::mutex> lck(mtx_);
+  std::lock_guard<std::mutex> lck(local_mtx_);
   return fragment_metadata_.empty() ||
          (*fragment_metadata_.cbegin())->timestamp() > timestamp;
 }
@@ -107,23 +107,8 @@ Status OpenArray::file_unlock(VFS* vfs) {
   return Status::Ok();
 }
 
-std::vector<FragmentMetadata*> OpenArray::fragment_metadata(
-    uint64_t timestamp) const {
-  if (query_type_ == QueryType::WRITE)
-    return std::vector<FragmentMetadata*>();
-
-  std::vector<FragmentMetadata*> ret;
-  for (auto& metadata : fragment_metadata_) {
-    if (metadata->timestamp() <= timestamp)
-      ret.push_back(metadata);
-    else
-      break;
-  }
-
-  return ret;
-}
-
 FragmentMetadata* OpenArray::fragment_metadata(const URI& uri) const {
+  std::lock_guard<std::mutex> lock(local_mtx_);
   auto it = fragment_metadata_set_.find(uri.to_string());
   return (it == fragment_metadata_set_.end()) ? nullptr : it->second;
 }

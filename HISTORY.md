@@ -20,6 +20,7 @@
 * Fixed thread safety issue with ZStd compressor. [#1208](https://github.com/TileDB-Inc/TileDB/pull/1208)
 * Fixed crash in consolidation due to accessing invalid entry [#1213](https://github.com/TileDB-Inc/TileDB/pull/1213)
 * Fixed minor bug when writing in global order with empty buffers.
+* Fixed thread safety issue in opening arrays.
 
 ## API additions
 
