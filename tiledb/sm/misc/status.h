@@ -115,7 +115,8 @@ enum class StatusCode : char {
   ContextError,
   SubarrayError,
   SubarrayPartitionerError,
-  RTreeError
+  RTreeError,
+  CellSlabIterError,
 };
 
 class Status {
@@ -346,6 +347,11 @@ class Status {
   /** Return a RTreeError error class Status with a given message **/
   static Status RTreeError(const std::string& msg) {
     return Status(StatusCode::RTreeError, msg, -1);
+  }
+
+  /** Return a CellSlabIterError error class Status with a given message **/
+  static Status CellSlabIterError(const std::string& msg) {
+    return Status(StatusCode::CellSlabIterError, msg, -1);
   }
 
   /** Returns true iff the status indicates success **/
