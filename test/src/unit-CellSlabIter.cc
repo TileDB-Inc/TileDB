@@ -65,8 +65,7 @@ struct CellSlabIterFx {
 
   template <class T>
   void check_iter(
-      const Subarray& subarray,
-      const std::vector<typename CellSlabIter<T>::CellSlab>& c_cell_slabs);
+      const Subarray& subarray, const std::vector<CellSlab<T>>& c_cell_slabs);
 };
 
 CellSlabIterFx::CellSlabIterFx() {
@@ -106,8 +105,7 @@ CellSlabIterFx::~CellSlabIterFx() {
 
 template <class T>
 void CellSlabIterFx::check_iter(
-    const Subarray& subarray,
-    const std::vector<typename CellSlabIter<T>::CellSlab>& c_cell_slabs) {
+    const Subarray& subarray, const std::vector<CellSlab<T>>& c_cell_slabs) {
   CellSlabIter<T> iter(&subarray);
   CHECK(iter.end());
   CHECK(iter.begin().ok());
@@ -320,13 +318,17 @@ TEST_CASE_METHOD(
   SubarrayRanges<uint64_t> ranges = {{5, 15, 3, 5, 11, 14}};
   Layout subarray_layout = Layout::ROW_MAJOR;
   create_subarray(array_->array_, ranges, subarray_layout, &subarray);
+  subarray.compute_tile_coords<uint64_t>();
+
+  uint64_t tile_coords_0[] = {0};
+  uint64_t tile_coords_1[] = {1};
 
   // Check iterator
-  std::vector<CellSlabIter<uint64_t>::CellSlab> c_cell_slabs = {
-      CellSlabIter<uint64_t>::CellSlab({0}, {5}, 6),
-      CellSlabIter<uint64_t>::CellSlab({1}, {11}, 5),
-      CellSlabIter<uint64_t>::CellSlab({0}, {3}, 3),
-      CellSlabIter<uint64_t>::CellSlab({1}, {11}, 4),
+  std::vector<CellSlab<uint64_t>> c_cell_slabs = {
+      CellSlab<uint64_t>(tile_coords_0, {5}, 6),
+      CellSlab<uint64_t>(tile_coords_1, {11}, 5),
+      CellSlab<uint64_t>(tile_coords_0, {3}, 3),
+      CellSlab<uint64_t>(tile_coords_1, {11}, 4),
   };
   check_iter<uint64_t>(subarray, c_cell_slabs);
 
@@ -360,65 +362,71 @@ TEST_CASE_METHOD(
       2);
 
   Layout subarray_layout = Layout::ROW_MAJOR;
-  std::vector<CellSlabIter<uint64_t>::CellSlab> c_cell_slabs;
+  std::vector<CellSlab<uint64_t>> c_cell_slabs;
+  uint64_t tile_coords_0_0[] = {0, 0};
+  uint64_t tile_coords_0_1[] = {0, 1};
+  uint64_t tile_coords_0_2[] = {0, 2};
+  uint64_t tile_coords_1_0[] = {1, 0};
+  uint64_t tile_coords_1_1[] = {1, 1};
+  uint64_t tile_coords_1_2[] = {1, 2};
 
   SECTION("- row-major") {
     subarray_layout = Layout::ROW_MAJOR;
     c_cell_slabs = {
-        CellSlabIter<uint64_t>::CellSlab({0, 0}, {2, 1}, 2),
-        CellSlabIter<uint64_t>::CellSlab({0, 1}, {2, 5}, 2),
-        CellSlabIter<uint64_t>::CellSlab({0, 2}, {2, 7}, 2),
-        CellSlabIter<uint64_t>::CellSlab({0, 0}, {3, 1}, 2),
-        CellSlabIter<uint64_t>::CellSlab({0, 1}, {3, 5}, 2),
-        CellSlabIter<uint64_t>::CellSlab({0, 2}, {3, 7}, 2),
-        CellSlabIter<uint64_t>::CellSlab({0, 0}, {4, 1}, 2),
-        CellSlabIter<uint64_t>::CellSlab({0, 1}, {4, 5}, 2),
-        CellSlabIter<uint64_t>::CellSlab({0, 2}, {4, 7}, 2),
-        CellSlabIter<uint64_t>::CellSlab({0, 0}, {3, 1}, 2),
-        CellSlabIter<uint64_t>::CellSlab({0, 1}, {3, 5}, 2),
-        CellSlabIter<uint64_t>::CellSlab({0, 2}, {3, 7}, 2),
-        CellSlabIter<uint64_t>::CellSlab({0, 0}, {4, 1}, 2),
-        CellSlabIter<uint64_t>::CellSlab({0, 1}, {4, 5}, 2),
-        CellSlabIter<uint64_t>::CellSlab({0, 2}, {4, 7}, 2),
-        CellSlabIter<uint64_t>::CellSlab({0, 0}, {5, 1}, 2),
-        CellSlabIter<uint64_t>::CellSlab({0, 1}, {5, 5}, 2),
-        CellSlabIter<uint64_t>::CellSlab({0, 2}, {5, 7}, 2),
-        CellSlabIter<uint64_t>::CellSlab({1, 0}, {6, 1}, 2),
-        CellSlabIter<uint64_t>::CellSlab({1, 1}, {6, 5}, 2),
-        CellSlabIter<uint64_t>::CellSlab({1, 2}, {6, 7}, 2),
-        CellSlabIter<uint64_t>::CellSlab({1, 0}, {7, 1}, 2),
-        CellSlabIter<uint64_t>::CellSlab({1, 1}, {7, 5}, 2),
-        CellSlabIter<uint64_t>::CellSlab({1, 2}, {7, 7}, 2),
-        CellSlabIter<uint64_t>::CellSlab({1, 0}, {8, 1}, 2),
-        CellSlabIter<uint64_t>::CellSlab({1, 1}, {8, 5}, 2),
-        CellSlabIter<uint64_t>::CellSlab({1, 2}, {8, 7}, 2),
-        CellSlabIter<uint64_t>::CellSlab({1, 0}, {9, 1}, 2),
-        CellSlabIter<uint64_t>::CellSlab({1, 1}, {9, 5}, 2),
-        CellSlabIter<uint64_t>::CellSlab({1, 2}, {9, 7}, 2),
+        CellSlab<uint64_t>(tile_coords_0_0, {2, 1}, 2),
+        CellSlab<uint64_t>(tile_coords_0_1, {2, 5}, 2),
+        CellSlab<uint64_t>(tile_coords_0_2, {2, 7}, 2),
+        CellSlab<uint64_t>(tile_coords_0_0, {3, 1}, 2),
+        CellSlab<uint64_t>(tile_coords_0_1, {3, 5}, 2),
+        CellSlab<uint64_t>(tile_coords_0_2, {3, 7}, 2),
+        CellSlab<uint64_t>(tile_coords_0_0, {4, 1}, 2),
+        CellSlab<uint64_t>(tile_coords_0_1, {4, 5}, 2),
+        CellSlab<uint64_t>(tile_coords_0_2, {4, 7}, 2),
+        CellSlab<uint64_t>(tile_coords_0_0, {3, 1}, 2),
+        CellSlab<uint64_t>(tile_coords_0_1, {3, 5}, 2),
+        CellSlab<uint64_t>(tile_coords_0_2, {3, 7}, 2),
+        CellSlab<uint64_t>(tile_coords_0_0, {4, 1}, 2),
+        CellSlab<uint64_t>(tile_coords_0_1, {4, 5}, 2),
+        CellSlab<uint64_t>(tile_coords_0_2, {4, 7}, 2),
+        CellSlab<uint64_t>(tile_coords_0_0, {5, 1}, 2),
+        CellSlab<uint64_t>(tile_coords_0_1, {5, 5}, 2),
+        CellSlab<uint64_t>(tile_coords_0_2, {5, 7}, 2),
+        CellSlab<uint64_t>(tile_coords_1_0, {6, 1}, 2),
+        CellSlab<uint64_t>(tile_coords_1_1, {6, 5}, 2),
+        CellSlab<uint64_t>(tile_coords_1_2, {6, 7}, 2),
+        CellSlab<uint64_t>(tile_coords_1_0, {7, 1}, 2),
+        CellSlab<uint64_t>(tile_coords_1_1, {7, 5}, 2),
+        CellSlab<uint64_t>(tile_coords_1_2, {7, 7}, 2),
+        CellSlab<uint64_t>(tile_coords_1_0, {8, 1}, 2),
+        CellSlab<uint64_t>(tile_coords_1_1, {8, 5}, 2),
+        CellSlab<uint64_t>(tile_coords_1_2, {8, 7}, 2),
+        CellSlab<uint64_t>(tile_coords_1_0, {9, 1}, 2),
+        CellSlab<uint64_t>(tile_coords_1_1, {9, 5}, 2),
+        CellSlab<uint64_t>(tile_coords_1_2, {9, 7}, 2),
     };
   }
 
   SECTION("- col-major") {
     subarray_layout = Layout::COL_MAJOR;
     c_cell_slabs = {
-        CellSlabIter<uint64_t>::CellSlab({0, 0}, {2, 1}, 3),
-        CellSlabIter<uint64_t>::CellSlab({0, 0}, {3, 1}, 3),
-        CellSlabIter<uint64_t>::CellSlab({1, 0}, {6, 1}, 4),
-        CellSlabIter<uint64_t>::CellSlab({0, 0}, {2, 2}, 3),
-        CellSlabIter<uint64_t>::CellSlab({0, 0}, {3, 2}, 3),
-        CellSlabIter<uint64_t>::CellSlab({1, 0}, {6, 2}, 4),
-        CellSlabIter<uint64_t>::CellSlab({0, 1}, {2, 5}, 3),
-        CellSlabIter<uint64_t>::CellSlab({0, 1}, {3, 5}, 3),
-        CellSlabIter<uint64_t>::CellSlab({1, 1}, {6, 5}, 4),
-        CellSlabIter<uint64_t>::CellSlab({0, 1}, {2, 6}, 3),
-        CellSlabIter<uint64_t>::CellSlab({0, 1}, {3, 6}, 3),
-        CellSlabIter<uint64_t>::CellSlab({1, 1}, {6, 6}, 4),
-        CellSlabIter<uint64_t>::CellSlab({0, 2}, {2, 7}, 3),
-        CellSlabIter<uint64_t>::CellSlab({0, 2}, {3, 7}, 3),
-        CellSlabIter<uint64_t>::CellSlab({1, 2}, {6, 7}, 4),
-        CellSlabIter<uint64_t>::CellSlab({0, 2}, {2, 8}, 3),
-        CellSlabIter<uint64_t>::CellSlab({0, 2}, {3, 8}, 3),
-        CellSlabIter<uint64_t>::CellSlab({1, 2}, {6, 8}, 4),
+        CellSlab<uint64_t>(tile_coords_0_0, {2, 1}, 3),
+        CellSlab<uint64_t>(tile_coords_0_0, {3, 1}, 3),
+        CellSlab<uint64_t>(tile_coords_1_0, {6, 1}, 4),
+        CellSlab<uint64_t>(tile_coords_0_0, {2, 2}, 3),
+        CellSlab<uint64_t>(tile_coords_0_0, {3, 2}, 3),
+        CellSlab<uint64_t>(tile_coords_1_0, {6, 2}, 4),
+        CellSlab<uint64_t>(tile_coords_0_1, {2, 5}, 3),
+        CellSlab<uint64_t>(tile_coords_0_1, {3, 5}, 3),
+        CellSlab<uint64_t>(tile_coords_1_1, {6, 5}, 4),
+        CellSlab<uint64_t>(tile_coords_0_1, {2, 6}, 3),
+        CellSlab<uint64_t>(tile_coords_0_1, {3, 6}, 3),
+        CellSlab<uint64_t>(tile_coords_1_1, {6, 6}, 4),
+        CellSlab<uint64_t>(tile_coords_0_2, {2, 7}, 3),
+        CellSlab<uint64_t>(tile_coords_0_2, {3, 7}, 3),
+        CellSlab<uint64_t>(tile_coords_1_2, {6, 7}, 4),
+        CellSlab<uint64_t>(tile_coords_0_2, {2, 8}, 3),
+        CellSlab<uint64_t>(tile_coords_0_2, {3, 8}, 3),
+        CellSlab<uint64_t>(tile_coords_1_2, {6, 8}, 4),
     };
   }
 
@@ -430,6 +438,8 @@ TEST_CASE_METHOD(
       {1, 2, 5, 8},
   };
   create_subarray(array_->array_, ranges, subarray_layout, &subarray);
+  subarray.compute_tile_coords<uint64_t>();
+
   check_iter<uint64_t>(subarray, c_cell_slabs);
 
   close_array(ctx_, array_);

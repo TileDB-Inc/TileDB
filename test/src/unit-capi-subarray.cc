@@ -41,13 +41,13 @@
 const uint64_t DIM_DOMAIN[4] = {1, 10, 1, 10};
 
 /** Tests for C API subarray. */
-struct SubarrayFx {
+struct CSubarrayFx {
   // TileDB context
   tiledb_ctx_t* ctx_;
 
   // Constructors/destructor
-  SubarrayFx();
-  ~SubarrayFx();
+  CSubarrayFx();
+  ~CSubarrayFx();
 
   // Functions
   void create_dense_array(const std::string& array_name);
@@ -78,30 +78,30 @@ struct SubarrayFx {
   bool is_array(const std::string& array_name);
 };
 
-SubarrayFx::SubarrayFx() {
+CSubarrayFx::CSubarrayFx() {
   ctx_ = nullptr;
   REQUIRE(tiledb_ctx_alloc(nullptr, &ctx_) == TILEDB_OK);
 }
 
-SubarrayFx::~SubarrayFx() {
+CSubarrayFx::~CSubarrayFx() {
   tiledb_ctx_free(&ctx_);
   CHECK(ctx_ == nullptr);
 }
 
-bool SubarrayFx::is_array(const std::string& array_name) {
+bool CSubarrayFx::is_array(const std::string& array_name) {
   tiledb_object_t type = TILEDB_INVALID;
   REQUIRE(tiledb_object_type(ctx_, array_name.c_str(), &type) == TILEDB_OK);
   return type == TILEDB_ARRAY || type == TILEDB_KEY_VALUE;
 }
 
-void SubarrayFx::remove_array(const std::string& array_name) {
+void CSubarrayFx::remove_array(const std::string& array_name) {
   if (!is_array(array_name))
     return;
 
   CHECK(tiledb_object_remove(ctx_, array_name.c_str()) == TILEDB_OK);
 }
 
-void SubarrayFx::create_dense_array(const std::string& array_name) {
+void CSubarrayFx::create_dense_array(const std::string& array_name) {
   // Create dimensions
   uint64_t dim_domain[] = {1, 10, 1, 10};
   uint64_t tile_extents[] = {2, 2};
@@ -173,7 +173,7 @@ void SubarrayFx::create_dense_array(const std::string& array_name) {
   tiledb_array_schema_free(&array_schema);
 }
 
-void SubarrayFx::create_sparse_array(
+void CSubarrayFx::create_sparse_array(
     const std::string& array_name, const uint64_t* dim_domain) {
   // Create dimensions
   uint64_t tile_extents[] = {2, 2};
@@ -245,7 +245,7 @@ void SubarrayFx::create_sparse_array(
   tiledb_array_schema_free(&array_schema);
 }
 
-void SubarrayFx::create_sparse_array_1d(
+void CSubarrayFx::create_sparse_array_1d(
     const std::string& array_name,
     const uint64_t* dim_domain,
     tiledb_layout_t layout) {
@@ -312,7 +312,7 @@ void SubarrayFx::create_sparse_array_1d(
   tiledb_array_schema_free(&array_schema);
 }
 
-void SubarrayFx::create_sparse_array_2d(
+void CSubarrayFx::create_sparse_array_2d(
     const std::string& array_name,
     const uint64_t* dim_domain,
     tiledb_layout_t layout) {
@@ -386,7 +386,7 @@ void SubarrayFx::create_sparse_array_2d(
   tiledb_array_schema_free(&array_schema);
 }
 
-void SubarrayFx::create_sparse_array_real(const std::string& array_name) {
+void CSubarrayFx::create_sparse_array_real(const std::string& array_name) {
   // Create dimensions
   double dim_domain[] = {1, 10, 1, 10};
   double tile_extents[] = {2, 2};
@@ -448,7 +448,7 @@ void SubarrayFx::create_sparse_array_real(const std::string& array_name) {
   tiledb_array_schema_free(&array_schema);
 }
 
-void SubarrayFx::write_dense_array(
+void CSubarrayFx::write_dense_array(
     const std::string& array_name,
     const std::vector<uint64_t>& domain,
     const std::vector<int>& a,
@@ -501,7 +501,7 @@ void SubarrayFx::write_dense_array(
   tiledb_query_free(&query);
 }
 
-void SubarrayFx::write_sparse_array(
+void CSubarrayFx::write_sparse_array(
     const std::string& array_name,
     const std::vector<uint64_t>& coords,
     const std::vector<int>& a,
@@ -558,9 +558,9 @@ void SubarrayFx::write_sparse_array(
 }
 
 TEST_CASE_METHOD(
-    SubarrayFx,
+    CSubarrayFx,
     "C API: Test subarray, sparse, basic API usage and errors",
-    "[capi], [subarray], [subarray-sparse], [subarray-sparse-basic]") {
+    "[capi][c_subarray][sparse][basic]") {
   std::string array_name = "subarray_sparse_basic";
   remove_array(array_name);
   create_sparse_array(array_name);
@@ -694,9 +694,9 @@ TEST_CASE_METHOD(
 }
 
 TEST_CASE_METHOD(
-    SubarrayFx,
+    CSubarrayFx,
     "C API: Test subarray, sparse, check default (empty) subarray",
-    "[capi], [subarray], [subarray-sparse], [subarray-sparse-default]") {
+    "[capi][c_subarray][sparse][default]") {
   std::string array_name = "subarray_sparse_default";
   remove_array(array_name);
   create_sparse_array(array_name);
@@ -747,10 +747,9 @@ TEST_CASE_METHOD(
 }
 
 TEST_CASE_METHOD(
-    SubarrayFx,
+    CSubarrayFx,
     "C API: Test subarray, sparse, check NaN ranges",
-    "[capi][subarray][subarray-sparse][subarray-sparse-errors]"
-    "[subarray-sparse-nan]") {
+    "[capi][c_subarray][sparse][errors][nan]") {
   std::string array_name = "subarray_sparse_nan";
   remove_array(array_name);
   create_sparse_array_real(array_name);
@@ -785,11 +784,10 @@ TEST_CASE_METHOD(
 }
 
 TEST_CASE_METHOD(
-    SubarrayFx,
+    CSubarrayFx,
     "C API: Test subarray, sparse, check errors in setting the subarray to "
     "query",
-    "[capi][subarray][subarray-sparse][subarray-sparse-errors]"
-    "[subarray-sparse-errors-query]") {
+    "[capi][c_subarray][sparse][errors][query]") {
   std::string array_name = "subarray_sparse_query_set";
   std::string array_name_inv = "subarray_sparse_query_inv";
   remove_array(array_name);
@@ -856,10 +854,9 @@ TEST_CASE_METHOD(
 }
 
 TEST_CASE_METHOD(
-    SubarrayFx,
+    CSubarrayFx,
     "C API: Test subarray, sparse, result estimation, empty tree",
-    "[capi][subarray][subarray-sparse][subarray-sparse-result-estimation]"
-    "[subarray-sparse-result-estimation-0]") {
+    "[capi][c_subarray][sparse][result-estimation][0]") {
   std::string array_name = "subarray_sparse_result_estimation_0";
   remove_array(array_name);
   create_sparse_array_1d(array_name);
@@ -912,10 +909,9 @@ TEST_CASE_METHOD(
 }
 
 TEST_CASE_METHOD(
-    SubarrayFx,
+    CSubarrayFx,
     "C API: Test subarray, sparse, 1D, result estimation, height 2",
-    "[capi][subarray][subarray-sparse][subarray-sparse-result-estimation-1d]"
-    "[subarray-sparse-result-estimation-1d-2]") {
+    "[capi][c_subarray][sparse][result-estimation][1d][2]") {
   std::string array_name = "subarray_sparse_result_estimation_1d_2";
   remove_array(array_name);
 
@@ -1195,10 +1191,9 @@ TEST_CASE_METHOD(
 }
 
 TEST_CASE_METHOD(
-    SubarrayFx,
+    CSubarrayFx,
     "C API: Test subarray, sparse, 1D, result estimation, height 3",
-    "[capi][subarray][subarray-sparse][subarray-sparse-result-estimation-1d]"
-    "[subarray-sparse-result-estimation-1d-3]") {
+    "[capi][c_subarray][sparse][result-estimation][1d][3]") {
   std::string array_name = "subarray_sparse_result_estimation_1d_3";
   remove_array(array_name);
 
@@ -1603,10 +1598,9 @@ TEST_CASE_METHOD(
 }
 
 TEST_CASE_METHOD(
-    SubarrayFx,
+    CSubarrayFx,
     "C API: Test subarray, sparse, 2D, result estimation, height 2",
-    "[capi][subarray][subarray-sparse][subarray-sparse-result-estimation-2d]"
-    "[subarray-sparse-result-estimation-2d-2]") {
+    "[capi][c_subarray][sparse][result-estimation][2d][2]") {
   std::string array_name = "subarray_sparse_result_estimation_2d_2";
   remove_array(array_name);
 
@@ -1930,9 +1924,9 @@ TEST_CASE_METHOD(
 }
 
 TEST_CASE_METHOD(
-    SubarrayFx,
+    CSubarrayFx,
     "C API: Test subarray, dense, basic API usage and errors",
-    "[capi], [subarray], [subarray-dense], [subarray-dense-basic]") {
+    "[capi][c_subarray][dense][basic]") {
   std::string array_name = "subarray_dense_basic";
   remove_array(array_name);
   create_dense_array(array_name);
@@ -2070,9 +2064,9 @@ TEST_CASE_METHOD(
 }
 
 TEST_CASE_METHOD(
-    SubarrayFx,
+    CSubarrayFx,
     "C API: Test subarray, dense, check default (empty) subarray",
-    "[capi], [subarray], [subarray-dense], [subarray-dense-default]") {
+    "[capi][c_subarray][dense][default]") {
   std::string array_name = "subarray_dense_default";
   remove_array(array_name);
   create_dense_array(array_name);
@@ -2123,11 +2117,10 @@ TEST_CASE_METHOD(
 }
 
 TEST_CASE_METHOD(
-    SubarrayFx,
+    CSubarrayFx,
     "C API: Test subarray, dense, check errors in setting the subarray to "
     "query",
-    "[capi][subarray][subarray-dense][subarray-dense-errors]"
-    "[subarray-dense-errors-query]") {
+    "[capi][c_subarray][dense][errors][query]") {
   std::string array_name = "subarray_dense_query_set";
   std::string array_name_inv = "subarray_dense_query_inv";
   remove_array(array_name);
@@ -2193,10 +2186,9 @@ TEST_CASE_METHOD(
 }
 
 TEST_CASE_METHOD(
-    SubarrayFx,
+    CSubarrayFx,
     "C API: Test subarray, dense, result estimation, empty array",
-    "[capi][subarray][subarray-dense][subarray-dense-result-estimation]"
-    "[subarray-dense-result-estimation-0]") {
+    "[capi][c_subarray][dense][result-estimation][0]") {
   std::string array_name = "subarray_dense_result_estimation_0";
   remove_array(array_name);
   create_dense_array(array_name);
@@ -2249,10 +2241,9 @@ TEST_CASE_METHOD(
 }
 
 TEST_CASE_METHOD(
-    SubarrayFx,
+    CSubarrayFx,
     "C API: Test subarray, dense, result estimation, 1 range, full tile",
-    "[capi][subarray][subarray-dense][subarray-dense-est]"
-    "[subarray-dense-est][subarray-dense-est-1r-full-tile]") {
+    "[capi][c_subarray][dense][est][1r][full-tile]") {
   std::string array_name = "subarray_dense_est_1r_full_tile";
   remove_array(array_name);
 
@@ -2308,10 +2299,9 @@ TEST_CASE_METHOD(
 }
 
 TEST_CASE_METHOD(
-    SubarrayFx,
+    CSubarrayFx,
     "C API: Test subarray, dense, result estimation, 1 range, 2 full tiles",
-    "[capi][subarray][subarray-dense][subarray-dense-est]"
-    "[subarray-dense-est][subarray-dense-est-1r-2-full-tiles]") {
+    "[capi][c_subarray][dense][est][1r][2-full-tiles]") {
   std::string array_name = "subarray_dense_est_1r_2_full_tiles";
   remove_array(array_name);
 
@@ -2378,10 +2368,9 @@ TEST_CASE_METHOD(
 }
 
 TEST_CASE_METHOD(
-    SubarrayFx,
+    CSubarrayFx,
     "C API: Test subarray, dense, result estimation, 1 range, partial tiles",
-    "[capi][subarray][subarray-dense][subarray-dense-est]"
-    "[subarray-dense-est][subarray-dense-est-1r-2-full-tiles]") {
+    "[capi][c_subarray][dense][est][1r][2-full-tiles]") {
   std::string array_name = "subarray_dense_est_1r_2_full_tiles";
   remove_array(array_name);
 
@@ -2448,10 +2437,9 @@ TEST_CASE_METHOD(
 }
 
 TEST_CASE_METHOD(
-    SubarrayFx,
+    CSubarrayFx,
     "C API: Test subarray, dense, result estimation, multiple ranges",
-    "[capi][subarray][subarray-dense][subarray-dense-est]"
-    "[subarray-dense-est][subarray-dense-est-nr]") {
+    "[capi][c_subarray][dense][est][nr]") {
   std::string array_name = "subarray_dense_est_nr";
   remove_array(array_name);
 
@@ -2524,10 +2512,9 @@ TEST_CASE_METHOD(
 }
 
 TEST_CASE_METHOD(
-    SubarrayFx,
+    CSubarrayFx,
     "C API: Test subarray, dense, result estimation, non-coinciding domain",
-    "[capi][subarray][subarray-dense][subarray-dense-est]"
-    "[subarray-dense-est][subarray-dense-est-non-coinciding]") {
+    "[capi][c_subarray][dense][est][non-coinciding]") {
   std::string array_name = "subarray_dense_est_non_coinciding";
   remove_array(array_name);
 
@@ -2600,10 +2587,9 @@ TEST_CASE_METHOD(
 }
 
 TEST_CASE_METHOD(
-    SubarrayFx,
+    CSubarrayFx,
     "C API: Test subarray, dense, result estimation, 1 range, 2 dense frags",
-    "[capi][subarray][subarray-dense][subarray-dense-est]"
-    "[subarray-dense-est][subarray-dense-est-1r-2-dense-frags]") {
+    "[capi][c_subarray][dense][est][1r][2-dense-frags]") {
   std::string array_name = "subarray_dense_est_1r_2_dense_frags";
   remove_array(array_name);
 
@@ -2672,10 +2658,9 @@ TEST_CASE_METHOD(
 }
 
 TEST_CASE_METHOD(
-    SubarrayFx,
+    CSubarrayFx,
     "C API: Test subarray, dense, result estimation, 1 range, mixed frags",
-    "[capi][subarray][subarray-dense][subarray-dense-est]"
-    "[subarray-dense-est][subarray-dense-est-1r-mixed-frags]") {
+    "[capi][c_subarray][dense][est][1r][mixed-frags]") {
   std::string array_name = "subarray_dense_est_1r_mixed_frags";
   remove_array(array_name);
 
