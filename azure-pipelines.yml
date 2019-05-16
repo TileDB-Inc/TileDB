@@ -1,31 +1,43 @@
-trigger:
-- azure-pipelines
+jobs:
+- job:
+  strategy:
+    matrix:
+      linux:
+        imageName: 'ubuntu-16.04'
+        CXX: g++
+      linux_s3:
+        imageName: 'ubuntu-16.04'
+        TILEDB_S3: ON
+        CXX: g++
+      linux_hdfs:
+        imageName: 'ubuntu-16.04'
+        TILEDB_HDFS: ON
+        CXX: g++
+      macOS:
+        imageName: 'macOS-10.13'
+        TILEDB_S3: ON
+        CXX: clang++
+      linux_asan:
+        imageName: 'ubuntu-16.04'
+        TILEDB_CI_ASAN: ON
+        TILEDB_TBB: OFF
+        CXX: g++-7
+    maxParallel: 4
+  pool:
+    vmImage: $(imageName)
+  steps:
+  - template: scripts/azure-linux_mac.yml
 
-strategy:
-  matrix:
-    linux_s3:
-      imageName: 'ubuntu-16.04'
-      TILEDB_S3: ON
-      CXX: g++
-    linux_hdfs:
-      imageName: 'ubuntu-16.04'
-      variables:
-      TILEDB_HDFS: ON
-      CXX: g++
-    #mac:
-    #  imageName: 'macOS-10.13'
-    #windows:
-    #  imageName: 'vs2017-win2016'
-  maxParallel: 4
-
-pool:
-  vmImage: $(imageName)
-
-steps:
-- script: |
-    git clone https://github.com/TileDB-Inc/TileDB-Unit-Test-Arrays.git test/inputs/arrays/read_compatibility_test
-  displayName: 'Clone Unit-Test-Arrays'
-
-- bash: scripts/azure-linux_mac.yaml
-  displayName: 'Install, build, and test for Linux/Mac'
-  condition: ne(variables['Agent.OS'], 'Windows_NT')
+- job: Windows
+  strategy:
+    matrix:
+      VS2015:
+        imageName: 'vs2015-win2012r2'
+        TILEDB_S3: ON
+      VS2017:
+        imageName: 'vs2017-win2016'
+        TILEDB_S3: ON
+  pool:
+    vmImage: $(imageName)
+  steps:
+  - template: scripts/azure-windows.yml

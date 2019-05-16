@@ -1,0 +1,128 @@
+steps:
+- powershell: |
+    mkdir $env:AGENT_BUILDDIRECTORY\build
+    cd $env:AGENT_BUILDDIRECTORY\build
+
+    if ($env:imageName -eq "vs2015-win2012r2") {
+      $env:Path += ";C:\Program Files (x86)\Microsoft Visual Studio 14.0\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin"
+    } elseif ($env:imageName -eq "vs2017-win2016") {
+      $env:Path += ";C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin"
+    } else {
+      Write-Host "Unknown image name: '$($env:imageName)'"
+      $host.SetShouldExit(1)
+    }
+
+    if ($env:TILEDB_S3 -eq "true") {
+      & "$env:BUILD_SOURCESDIRECTORY\bootstrap.ps1" -EnableS3 -EnableVerbose -EnableStaticTileDB
+      & "$env:BUILD_SOURCESDIRECTORY\scripts\install-minio.ps1"
+    } else {
+      & "$env:BUILD_SOURCESDIRECTORY\bootstrap.ps1" -EnableVerbose -EnableStaticTileDB
+    }
+
+    if ($LastExitCode -ne 0) {
+       Write-Host "Bootstrap failed."
+       $host.SetShouldExit($LastExitCode)
+    }
+
+    cmake --build . --config Release -- /verbosity:minimal
+
+    if ($LastExitCode -ne 0) {
+       Write-Host "Build failed."
+       $host.SetShouldExit($LastExitCode)
+    }
+  displayName: "Build"
+
+- powershell: |
+    cd $env:AGENT_BUILDDIRECTORY\build\tiledb
+
+    cmake --build . --target check --config Release -- /verbosity:minimal
+
+    if ($LastExitCode -ne 0) {
+       Write-Host "Tests failed."
+       $host.SetShouldExit($LastExitCode)
+    }
+
+    cmake --build . --target examples --config Release -- /verbosity:minimal
+
+    if ($LastExitCode -ne 0) {
+       Write-Host "Examples failed to build."
+       $host.SetShouldExit($LastExitCode)
+    }
+
+    cmake --build . --target install --config Release
+
+    if ($LastExitCode -ne 0) {
+       Write-Host "Installation failed."
+       $host.SetShouldExit($LastExitCode)
+    }
+
+    $env:Path += ";$env:AGENT_BUILDDIRECTORY\s\dist\bin;$env:AGENT_BUILDDIRECTORY\build\externals\install\bin"
+
+    ls .\examples\c_api\Release
+
+    try {
+       .\examples\c_api\Release\quickstart_dense_c.exe
+    } catch {
+       Write-Host "C API example failed. Error:"
+       Write-Host $_
+       $host.SetShouldExit(1)
+    }
+
+    if ($LastExitCode -ne 0) {
+      Write-Host "C API example failed."
+      Write-Host $_
+      $host.SetShouldExit($LastExitCode)
+    }
+
+    rm -Recurse -Force quickstart_dense_array
+
+    try {
+      .\examples\cpp_api\Release\quickstart_dense_cpp.exe
+    } catch {
+       Write-Host "C++ API example failed."
+       $host.SetShouldExit(1)
+    }
+
+    if ($LastExitCode -ne 0) {
+       Write-Host "C++ API example failed."
+       $host.SetShouldExit($LastExitCode)
+    }
+
+    # Build examples
+    cd $env:AGENT_BUILDDIRECTORY\s\examples\cmake_project
+
+    mkdir build
+
+    cd build
+
+    # Build zip artifact
+    cmake -A X64 -DCMAKE_PREFIX_PATH="$env:AGENT_BUILDDIRECTORY\s\dist" ..
+
+    cmake --build . --config Release -- /verbosity:minimal
+
+    .\Release\ExampleExe.exe
+
+    .\Release\ExampleExe_static.exe
+
+    #cd $env:AGENT_BUILDDIRECTORY
+
+    #7z a tiledb-windows-x64.zip $env:AGENT_BUILDDIRECTORY\s\dist
+
+  displayName: "Test"
+
+
+  #- task: ArchiveFiles@2
+  #  inputs:
+  #    rootFolderOrFile: '$(Agent.BuildDirectory)\s\dist'
+  #    includeRootFolder: false
+  #    archiveType: 'zip'
+  #    archiveFile: '$(Build.ArtifactStagingDirectory)/tiledb-windows-x64-$(Build.SourceVersion).zip'
+  #    replaceExistingArchive: true
+  #    verbose: # Optional
+
+- task: PublishBuildArtifacts@1
+  inputs:
+    #pathtoPublish: '$(Build.ArtifactStagingDirectory)/tiledb-windows-x64-$(Build.SourceVersion).zip'
+    pathtoPublish: '$(Agent.BuildDirectory)\s\dist\'
+    artifactName: 'tiledb-windows-x64-$(Build.SourceVersion)'
+  condition: and(succeeded(), eq(variables['imageName'], 'vs2015-win2012r2'))
