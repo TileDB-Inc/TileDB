@@ -36,6 +36,7 @@
 
 #include "tiledb/sm/array/array.h"
 #include "tiledb/sm/array_schema/array_schema.h"
+#include "tiledb/sm/buffer/buffer_list.h"
 #include "tiledb/sm/filesystem/vfs_file_handle.h"
 #include "tiledb/sm/filter/compression_filter.h"
 #include "tiledb/sm/filter/filter_pipeline.h"
@@ -56,6 +57,10 @@ struct tiledb_array_t {
 struct tiledb_buffer_t {
   tiledb::sm::Datatype datatype_ = tiledb::sm::Datatype::UINT8;
   tiledb::sm::Buffer* buffer_ = nullptr;
+};
+
+struct tiledb_buffer_list_t {
+  tiledb::sm::BufferList* buffer_list_ = nullptr;
 };
 
 struct tiledb_config_t {
