@@ -57,6 +57,8 @@ enum class FilterType : uint8_t {
 /** Returns the string representation of the input filter type. */
 inline const std::string& filter_type_str(FilterType filter_type) {
   switch (filter_type) {
+    case FilterType::FILTER_NONE:
+      return constants::filter_none_str;
     case FilterType::FILTER_GZIP:
       return constants::gzip_str;
     case FilterType::FILTER_ZSTD:
@@ -69,6 +71,14 @@ inline const std::string& filter_type_str(FilterType filter_type) {
       return constants::bzip2_str;
     case FilterType::FILTER_DOUBLE_DELTA:
       return constants::double_delta_str;
+    case FilterType::FILTER_BIT_WIDTH_REDUCTION:
+      return constants::filter_bit_width_reduction_str;
+    case FilterType::FILTER_BITSHUFFLE:
+      return constants::filter_bitshuffle_str;
+    case FilterType::FILTER_BYTESHUFFLE:
+      return constants::filter_byteshuffle_str;
+    case FilterType::FILTER_POSITIVE_DELTA:
+      return constants::filter_positive_delta_str;
     default:
       assert(0);
       return constants::empty_str;
@@ -78,7 +88,9 @@ inline const std::string& filter_type_str(FilterType filter_type) {
 /** Returns the filter type given a string representation. */
 inline Status filter_type_enum(
     const std::string& filter_type_str, FilterType* filter_type) {
-  if (filter_type_str == constants::gzip_str)
+  if (filter_type_str == constants::filter_none_str)
+    *filter_type = FilterType::FILTER_NONE;
+  else if (filter_type_str == constants::gzip_str)
     *filter_type = FilterType::FILTER_GZIP;
   else if (filter_type_str == constants::zstd_str)
     *filter_type = FilterType::FILTER_ZSTD;
@@ -90,6 +102,14 @@ inline Status filter_type_enum(
     *filter_type = FilterType::FILTER_BZIP2;
   else if (filter_type_str == constants::double_delta_str)
     *filter_type = FilterType::FILTER_DOUBLE_DELTA;
+  else if (filter_type_str == constants::filter_bit_width_reduction_str)
+    *filter_type = FilterType::FILTER_BIT_WIDTH_REDUCTION;
+  else if (filter_type_str == constants::filter_bitshuffle_str)
+    *filter_type = FilterType::FILTER_BITSHUFFLE;
+  else if (filter_type_str == constants::filter_byteshuffle_str)
+    *filter_type = FilterType::FILTER_BYTESHUFFLE;
+  else if (filter_type_str == constants::filter_positive_delta_str)
+    *filter_type = FilterType::FILTER_POSITIVE_DELTA;
   else {
     return Status::Error("Invalid FilterType " + filter_type_str);
   }

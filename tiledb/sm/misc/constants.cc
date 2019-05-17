@@ -51,6 +51,7 @@
 
 #include "tiledb/sm/enums/compressor.h"
 #include "tiledb/sm/enums/datatype.h"
+#include "tiledb/sm/enums/serialization_type.h"
 
 namespace tiledb {
 namespace sm {
@@ -329,6 +330,15 @@ const std::string no_encryption_str = "NO_ENCRYPTION";
 /** String describing AES_256_GCM. */
 const std::string aes_256_gcm_str = "AES_256_GCM";
 
+/** TILEDB_JSON **/
+const std::string serialization_type_json_str = "JSON";
+
+/** TILEDB_CAPNP **/
+const std::string serialization_type_capnp_str = "CAPNP";
+
+/** The default format for serialization. */
+const SerializationType serialization_default_format = SerializationType::CAPNP;
+
 /** String describing GZIP. */
 const std::string gzip_str = "GZIP";
 
@@ -346,6 +356,21 @@ const std::string bzip2_str = "BZIP2";
 
 /** String describing DOUBLE_DELTA. */
 const std::string double_delta_str = "DOUBLE_DELTA";
+
+/** String describing FILTER_NONE. */
+const std::string filter_none_str = "NONE";
+
+/** String describing FILTER_BIT_WIDTH_REDUCTION. */
+const std::string filter_bit_width_reduction_str = "BIT_WIDTH_REDUCTION";
+
+/** String describing FILTER_BITSHUFFLE. */
+const std::string filter_bitshuffle_str = "BITSHUFFLE";
+
+/** String describing FILTER_BYTESHUFFLE. */
+const std::string filter_byteshuffle_str = "BYTESHUFFLE";
+
+/** String describing FILTER_POSITIVE_DELTA. */
+const std::string filter_positive_delta_str = "POSITIVE_DELTA";
 
 /** The string representation for type int32. */
 const std::string int32_str = "INT32";

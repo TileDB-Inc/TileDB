@@ -64,6 +64,7 @@ namespace sm {
 
 class Array;
 class Consolidator;
+class RestClient;
 
 /** The storage manager that manages pretty much everything in TileDB. */
 class StorageManager {
@@ -371,6 +372,12 @@ class StorageManager {
    * @return Status
    */
   Status init(Config* config);
+
+  /**
+   * If the storage manager was configured with a REST server, return the
+   * client instance. Else, return nullptr.
+   */
+  RestClient* rest_client() const;
 
   /**
    * Checks if the input URI represents an array.
@@ -742,6 +749,9 @@ class StorageManager {
    */
   VFS* vfs_;
 
+  /** The rest client (may be null if none was configured). */
+  std::unique_ptr<RestClient> rest_client_;
+
   /* ********************************* */
   /*         PRIVATE METHODS           */
   /* ********************************* */
@@ -864,6 +874,9 @@ class StorageManager {
 
   /** Block until there are zero in-progress queries. */
   void wait_for_zero_in_progress();
+
+  /** Initializes a REST client, if one was configured. */
+  Status init_rest_client();
 };
 
 }  // namespace sm

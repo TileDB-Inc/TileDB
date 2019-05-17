@@ -47,6 +47,12 @@ set(TILEDB_PUBLIC_HEADERS
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/c_api/tiledb_version.h
 )
 
+if (TILEDB_SERIALIZATION)
+  list(APPEND TILEDB_PUBLIC_HEADERS
+    ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/c_api/tiledb_serialization.h
+  )
+endif()
+
 if (TILEDB_CPP_API)
   list(APPEND TILEDB_PUBLIC_HEADERS
     ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/tiledb
@@ -123,6 +129,7 @@ set(TILEDB_CORE_SOURCES
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/filter/positive_delta_filter.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/fragment/fragment_metadata.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/global_state/global_state.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/global_state/libcurl_state.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/global_state/openssl_state.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/global_state/signal_handlers.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/global_state/tbb_state.cc
@@ -145,7 +152,10 @@ set(TILEDB_CORE_SOURCES
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/reader.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/writer.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/dense_cell_range_iter.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/rest/rest_client.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/rtree/rtree.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/array_schema.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/query.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/storage_manager/context.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/storage_manager/config.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/storage_manager/config_iter.cc
@@ -158,6 +168,13 @@ set(TILEDB_CORE_SOURCES
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/tile/tile.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/tile/tile_io.cc
 )
+
+if (TILEDB_SERIALIZATION)
+  list(APPEND TILEDB_CORE_SOURCES
+    ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/rest/curl.cc
+    ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/tiledb-rest.capnp.c++
+  )
+endif()
 
 # 'External' source files included in the source tree.
 set(TILEDB_EXTERNALS_INCLUDE_DIRS
@@ -248,6 +265,11 @@ if (TILEDB_STATS)
   message(STATUS "The TileDB library is compiled with stats enabled.")
 endif()
 
+if (TILEDB_SERIALIZATION)
+  add_definitions(-DTILEDB_SERIALIZATION)
+  message(STATUS "The TileDB library is compiled with query serialization enabled.")
+endif()
+
 ############################################################
 # Dependencies: set up includes/linking
 ############################################################
@@ -265,7 +287,6 @@ endif()
 # S3 dependencies
 if (TILEDB_S3)
   message(STATUS "The TileDB library is compiled with S3 support.")
-  find_package(Curl_EP REQUIRED)
   find_package(AWSSDK_EP REQUIRED COMPONENTS s3)
   target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
     INTERFACE
@@ -275,15 +296,19 @@ if (TILEDB_S3)
       AWSSDK::aws-checksums
       AWSSDK::aws-c-common
   )
+  add_definitions(-DHAVE_S3)
+endif()
 
+# Libcurl
+if (TILEDB_S3 OR TILEDB_SERIALIZATION)
   if (NOT WIN32)
     # No Curl required on Windows.
+    find_package(Curl_EP REQUIRED)
     target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
       INTERFACE
         Curl::Curl
     )
   endif()
-  add_definitions(-DHAVE_S3)
 endif()
 
 # HDFS dependencies
@@ -304,6 +329,17 @@ if (TILEDB_TBB)
       TBB::tbb
   )
   add_definitions(-DHAVE_TBB)
+endif()
+
+# Serialization
+if (TILEDB_SERIALIZATION)
+  find_package(Capnp_EP REQUIRED)
+  target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
+    INTERFACE
+      CapnProto::capnp
+      CapnProto::capnp-json
+      CapnProto::kj
+  )
 endif()
 
 # Sanitizer linker flags
@@ -419,6 +455,9 @@ if (TILEDB_STATIC)
   append_dep_lib(TBB::tbb)
   append_dep_lib(Zlib::Zlib)
   append_dep_lib(Zstd::Zstd)
+  append_dep_lib(CapnProto::capnp)
+  append_dep_lib(CapnProto::capnp-json)
+  append_dep_lib(CapnProto::kj)
   append_dep_lib(OpenSSL::SSL)
   append_dep_lib(OpenSSL::Crypto)
   append_dep_lib(AWSSDK::aws-cpp-sdk-s3)

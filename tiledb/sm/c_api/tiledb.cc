@@ -34,6 +34,7 @@
 #include "tiledb/sm/c_api/tiledb.h"
 #include "tiledb/sm/array/array.h"
 #include "tiledb/sm/array_schema/array_schema.h"
+#include "tiledb/sm/c_api/tiledb_serialization.h"
 #include "tiledb/sm/c_api/tiledb_struct_def.h"
 #include "tiledb/sm/cpp_api/core_interface.h"
 #include "tiledb/sm/filesystem/vfs_file_handle.h"
@@ -46,6 +47,9 @@
 #include "tiledb/sm/misc/stats.h"
 #include "tiledb/sm/misc/utils.h"
 #include "tiledb/sm/query/query.h"
+#include "tiledb/sm/rest/rest_client.h"
+#include "tiledb/sm/serialization/array_schema.h"
+#include "tiledb/sm/serialization/query.h"
 #include "tiledb/sm/storage_manager/config.h"
 #include "tiledb/sm/storage_manager/config_iter.h"
 #include "tiledb/sm/storage_manager/context.h"
@@ -1728,29 +1732,58 @@ int32_t tiledb_array_schema_load_with_key(
     return TILEDB_OOM;
   }
 
-  // Create key
-  tiledb::sm::EncryptionKey key;
-  if (SAVE_ERROR_CATCH(
-          ctx,
-          key.set_key(
-              static_cast<tiledb::sm::EncryptionType>(encryption_type),
-              encryption_key,
-              key_length)))
-    return TILEDB_ERR;
-
-  // Load array schema
-  auto storage_manager = ctx->ctx_->storage_manager();
-  if (SAVE_ERROR_CATCH(
-          ctx,
-          storage_manager->load_array_schema(
-              tiledb::sm::URI(array_uri),
-              tiledb::sm::ObjectType::ARRAY,
-              key,
-              &((*array_schema)->array_schema_)))) {
-    delete *array_schema;
+  // Check array name
+  tiledb::sm::URI uri(array_uri);
+  if (uri.is_invalid()) {
+    auto st = tiledb::sm::Status::Error(
+        "Failed to load array schema; Invalid array URI");
+    LOG_STATUS(st);
+    save_error(ctx, st);
     return TILEDB_ERR;
   }
 
+  if (uri.is_tiledb()) {
+    // Check REST client
+    auto rest_client = ctx->ctx_->storage_manager()->rest_client();
+    if (rest_client == nullptr) {
+      auto st = tiledb::sm::Status::Error(
+          "Failed to load array schema; remote array with no REST client.");
+      LOG_STATUS(st);
+      save_error(ctx, st);
+      return TILEDB_ERR;
+    }
+
+    if (SAVE_ERROR_CATCH(
+            ctx,
+            rest_client->get_array_schema_from_rest(
+                uri, &(*array_schema)->array_schema_))) {
+      delete *array_schema;
+      return TILEDB_ERR;
+    }
+  } else {
+    // Create key
+    tiledb::sm::EncryptionKey key;
+    if (SAVE_ERROR_CATCH(
+            ctx,
+            key.set_key(
+                static_cast<tiledb::sm::EncryptionType>(encryption_type),
+                encryption_key,
+                key_length)))
+      return TILEDB_ERR;
+
+    // Load array schema
+    auto storage_manager = ctx->ctx_->storage_manager();
+    if (SAVE_ERROR_CATCH(
+            ctx,
+            storage_manager->load_array_schema(
+                uri,
+                tiledb::sm::ObjectType::ARRAY,
+                key,
+                &((*array_schema)->array_schema_)))) {
+      delete *array_schema;
+      return TILEDB_ERR;
+    }
+  }
   return TILEDB_OK;
 }
 
@@ -2636,23 +2669,49 @@ int32_t tiledb_array_create_with_key(
     return TILEDB_ERR;
   }
 
-  // Create key
-  tiledb::sm::EncryptionKey key;
-  if (SAVE_ERROR_CATCH(
-          ctx,
-          key.set_key(
-              static_cast<tiledb::sm::EncryptionType>(encryption_type),
-              encryption_key,
-              key_length)))
-    return TILEDB_ERR;
+  if (uri.is_tiledb()) {
+    // Check unencrypted
+    if (encryption_type != TILEDB_NO_ENCRYPTION) {
+      auto st = tiledb::sm::Status::Error(
+          "Failed to create array; encrypted remote arrays are not supported.");
+      LOG_STATUS(st);
+      save_error(ctx, st);
+      return TILEDB_ERR;
+    }
 
-  // Create the array
-  if (SAVE_ERROR_CATCH(
-          ctx,
-          ctx->ctx_->storage_manager()->array_create(
-              uri, array_schema->array_schema_, key)))
-    return TILEDB_ERR;
+    // Check REST client
+    auto rest_client = ctx->ctx_->storage_manager()->rest_client();
+    if (rest_client == nullptr) {
+      auto st = tiledb::sm::Status::Error(
+          "Failed to create array; remote array with no REST client.");
+      LOG_STATUS(st);
+      save_error(ctx, st);
+      return TILEDB_ERR;
+    }
 
+    if (SAVE_ERROR_CATCH(
+            ctx,
+            rest_client->post_array_schema_to_rest(
+                uri, array_schema->array_schema_)))
+      return TILEDB_ERR;
+  } else {
+    // Create key
+    tiledb::sm::EncryptionKey key;
+    if (SAVE_ERROR_CATCH(
+            ctx,
+            key.set_key(
+                static_cast<tiledb::sm::EncryptionType>(encryption_type),
+                encryption_key,
+                key_length)))
+      return TILEDB_ERR;
+
+    // Create the array
+    if (SAVE_ERROR_CATCH(
+            ctx,
+            ctx->ctx_->storage_manager()->array_create(
+                uri, array_schema->array_schema_, key)))
+      return TILEDB_ERR;
+  }
   return TILEDB_OK;
 }
 
@@ -2693,11 +2752,29 @@ int32_t tiledb_array_get_non_empty_domain(
 
   bool is_empty_b;
 
-  if (SAVE_ERROR_CATCH(
-          ctx,
-          ctx->ctx_->storage_manager()->array_get_non_empty_domain(
-              array->array_, domain, &is_empty_b)))
-    return TILEDB_ERR;
+  if (array->array_->is_remote()) {
+    // Check REST client
+    auto rest_client = ctx->ctx_->storage_manager()->rest_client();
+    if (rest_client == nullptr) {
+      auto st = tiledb::sm::Status::Error(
+          "Failed to get non-empty domain; remote array with no REST client.");
+      LOG_STATUS(st);
+      save_error(ctx, st);
+      return TILEDB_ERR;
+    }
+
+    if (SAVE_ERROR_CATCH(
+            ctx,
+            rest_client->get_array_non_empty_domain(
+                array->array_, domain, &is_empty_b)))
+      return TILEDB_ERR;
+  } else {
+    if (SAVE_ERROR_CATCH(
+            ctx,
+            ctx->ctx_->storage_manager()->array_get_non_empty_domain(
+                array->array_, domain, &is_empty_b)))
+      return TILEDB_ERR;
+  }
 
   *is_empty = (int32_t)is_empty_b;
 
@@ -4605,6 +4682,184 @@ int32_t tiledb_stats_free_str(char** out) {
     std::free(*out);
     *out = nullptr;
   }
+  return TILEDB_OK;
+}
+
+/* ****************************** */
+/*          Serialization         */
+/* ****************************** */
+
+int32_t tiledb_serialize_array_schema(
+    tiledb_ctx_t* ctx,
+    const tiledb_array_schema_t* array_schema,
+    tiledb_serialization_type_t serialize_type,
+    int32_t client_side,
+    tiledb_buffer_t* buffer) {
+  // Currently unused:
+  (void)client_side;
+
+  // Sanity check
+  if (sanity_check(ctx) == TILEDB_ERR ||
+      sanity_check(ctx, array_schema) == TILEDB_ERR ||
+      sanity_check(ctx, buffer) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  if (SAVE_ERROR_CATCH(
+          ctx,
+          tiledb::sm::serialization::array_schema_serialize(
+              array_schema->array_schema_,
+              (tiledb::sm::SerializationType)serialize_type,
+              buffer->buffer_)))
+    return TILEDB_ERR;
+
+  return TILEDB_OK;
+}
+
+int32_t tiledb_deserialize_array_schema(
+    tiledb_ctx_t* ctx,
+    const tiledb_buffer_t* buffer,
+    tiledb_serialization_type_t serialize_type,
+    int32_t client_side,
+    tiledb_array_schema_t** array_schema) {
+  // Currently unused:
+  (void)client_side;
+
+  // Sanity check
+  if (sanity_check(ctx) == TILEDB_ERR ||
+      sanity_check(ctx, buffer) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  // Create array schema struct
+  *array_schema = new (std::nothrow) tiledb_array_schema_t;
+  if (*array_schema == nullptr) {
+    auto st = tiledb::sm::Status::Error(
+        "Failed to allocate TileDB array schema object");
+    LOG_STATUS(st);
+    save_error(ctx, st);
+    return TILEDB_OOM;
+  }
+
+  if (SAVE_ERROR_CATCH(
+          ctx,
+          tiledb::sm::serialization::array_schema_deserialize(
+              &((*array_schema)->array_schema_),
+              (tiledb::sm::SerializationType)serialize_type,
+              *buffer->buffer_))) {
+    delete *array_schema;
+    return TILEDB_ERR;
+  }
+
+  return TILEDB_OK;
+}
+
+int32_t tiledb_serialize_query(
+    tiledb_ctx_t* ctx,
+    const tiledb_query_t* query,
+    tiledb_serialization_type_t serialize_type,
+    int32_t client_side,
+    tiledb_buffer_t* buffer) {
+  // Sanity check
+  if (sanity_check(ctx) == TILEDB_ERR ||
+      sanity_check(ctx, query) == TILEDB_ERR ||
+      sanity_check(ctx, buffer) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  if (SAVE_ERROR_CATCH(
+          ctx,
+          tiledb::sm::serialization::query_serialize(
+              query->query_,
+              (tiledb::sm::SerializationType)serialize_type,
+              client_side == 1,
+              buffer->buffer_)))
+    return TILEDB_ERR;
+
+  return TILEDB_OK;
+}
+
+int32_t tiledb_deserialize_query(
+    tiledb_ctx_t* ctx,
+    const tiledb_buffer_t* buffer,
+    tiledb_serialization_type_t serialize_type,
+    int32_t client_side,
+    tiledb_query_t* query) {
+  // Sanity check
+  if (sanity_check(ctx) == TILEDB_ERR ||
+      sanity_check(ctx, query) == TILEDB_ERR ||
+      sanity_check(ctx, buffer) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  if (SAVE_ERROR_CATCH(
+          ctx,
+          tiledb::sm::serialization::query_deserialize(
+              *buffer->buffer_,
+              (tiledb::sm::SerializationType)serialize_type,
+              client_side == 1,
+              query->query_)))
+    return TILEDB_ERR;
+
+  return TILEDB_OK;
+}
+
+int32_t tiledb_serialize_array_nonempty_domain(
+    tiledb_ctx_t* ctx,
+    const tiledb_array_t* array,
+    const void* nonempty_domain,
+    int32_t is_empty,
+    tiledb_serialization_type_t serialize_type,
+    int32_t client_side,
+    tiledb_buffer_t* buffer) {
+  // Currently unused:
+  (void)client_side;
+
+  // Sanity check
+  if (sanity_check(ctx) == TILEDB_ERR ||
+      sanity_check(ctx, array) == TILEDB_ERR ||
+      sanity_check(ctx, buffer) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  if (SAVE_ERROR_CATCH(
+          ctx,
+          tiledb::sm::serialization::nonempty_domain_serialize(
+              array->array_,
+              nonempty_domain,
+              is_empty,
+              (tiledb::sm::SerializationType)serialize_type,
+              buffer->buffer_)))
+    return TILEDB_ERR;
+
+  return TILEDB_OK;
+}
+
+int32_t tiledb_deserialize_array_nonempty_domain(
+    tiledb_ctx_t* ctx,
+    const tiledb_array_t* array,
+    const tiledb_buffer_t* buffer,
+    tiledb_serialization_type_t serialize_type,
+    int32_t client_side,
+    void* nonempty_domain,
+    int32_t* is_empty) {
+  // Currently unused:
+  (void)client_side;
+
+  // Sanity check
+  if (sanity_check(ctx) == TILEDB_ERR ||
+      sanity_check(ctx, array) == TILEDB_ERR ||
+      sanity_check(ctx, buffer) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  bool is_empty_bool;
+  if (SAVE_ERROR_CATCH(
+          ctx,
+          tiledb::sm::serialization::nonempty_domain_deserialize(
+              array->array_,
+              *buffer->buffer_,
+              (tiledb::sm::SerializationType)serialize_type,
+              nonempty_domain,
+              &is_empty_bool)))
+    return TILEDB_ERR;
+
+  *is_empty = is_empty_bool ? 1 : 0;
+
   return TILEDB_OK;
 }
 

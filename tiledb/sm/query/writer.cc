@@ -126,6 +126,30 @@ Status Writer::get_buffer(
   return Status::Ok();
 }
 
+bool Writer::get_check_coord_dups() const {
+  return check_coord_dups_;
+}
+
+bool Writer::get_check_coord_oob() const {
+  return check_coord_oob_;
+}
+
+bool Writer::get_dedup_coords() const {
+  return dedup_coords_;
+}
+
+void Writer::set_check_coord_dups(bool b) {
+  check_coord_dups_ = b;
+}
+
+void Writer::set_check_coord_oob(bool b) {
+  check_coord_oob_ = b;
+}
+
+void Writer::set_dedup_coords(bool b) {
+  dedup_coords_ = b;
+}
+
 Status Writer::init() {
   // Sanity checks
   if (storage_manager_ == nullptr)

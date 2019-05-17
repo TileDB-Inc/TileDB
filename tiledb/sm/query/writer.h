@@ -164,6 +164,15 @@ class Writer {
       void** buffer_val,
       uint64_t** buffer_val_size) const;
 
+  /** Returns current setting of check_coord_dups_ */
+  bool get_check_coord_dups() const;
+
+  /** Returns current setting of check_coord_oob_ */
+  bool get_check_coord_oob() const;
+
+  /** Returns current setting of dedup_coords_ */
+  bool get_dedup_coords() const;
+
   /** Initializes the writer. */
   Status init();
 
@@ -209,6 +218,15 @@ class Writer {
       uint64_t* buffer_off_size,
       void* buffer_val,
       uint64_t* buffer_val_size);
+
+  /** Sets current setting of check_coord_dups_ */
+  void set_check_coord_dups(bool b);
+
+  /** Sets current setting of check_coord_oob_ */
+  void set_check_coord_oob(bool b);
+
+  /** Sets current setting of dedup_coords_ */
+  void set_dedup_coords(bool b);
 
   /** Sets the fragment URI. Applicable only to write queries. */
   void set_fragment_uri(const URI& fragment_uri);

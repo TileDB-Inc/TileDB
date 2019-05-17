@@ -143,6 +143,18 @@ STATS_DEFINE_FUNC_STAT(vfs_supports_fs)
 STATS_DEFINE_FUNC_STAT(vfs_sync)
 STATS_DEFINE_FUNC_STAT(vfs_terminate)
 STATS_DEFINE_FUNC_STAT(vfs_write)
+// Serialization
+STATS_DEFINE_FUNC_STAT(serialization_array_schema_serialize)
+STATS_DEFINE_FUNC_STAT(serialization_array_schema_deserialize)
+STATS_DEFINE_FUNC_STAT(serialization_query_serialize)
+STATS_DEFINE_FUNC_STAT(serialization_query_deserialize)
+// REST
+STATS_DEFINE_FUNC_STAT(rest_array_create)
+STATS_DEFINE_FUNC_STAT(rest_array_get_schema)
+STATS_DEFINE_FUNC_STAT(rest_query_submit)
+STATS_DEFINE_FUNC_STAT(rest_curl_get)
+STATS_DEFINE_FUNC_STAT(rest_curl_post)
+STATS_DEFINE_FUNC_STAT(rest_curl_delete)
 #endif
 
 #ifdef STATS_INIT_FUNC_STAT
@@ -258,6 +270,18 @@ STATS_INIT_FUNC_STAT(vfs_terminate)
 STATS_INIT_FUNC_STAT(vfs_write)
 STATS_INIT_FUNC_STAT(vfs_s3_fill_file_buffer)
 STATS_INIT_FUNC_STAT(vfs_s3_write_multipart)
+// Serialization
+STATS_INIT_FUNC_STAT(serialization_array_schema_serialize)
+STATS_INIT_FUNC_STAT(serialization_array_schema_deserialize)
+STATS_INIT_FUNC_STAT(serialization_query_serialize)
+STATS_INIT_FUNC_STAT(serialization_query_deserialize)
+// REST
+STATS_INIT_FUNC_STAT(rest_array_create)
+STATS_INIT_FUNC_STAT(rest_array_get_schema)
+STATS_INIT_FUNC_STAT(rest_query_submit)
+STATS_INIT_FUNC_STAT(rest_curl_get)
+STATS_INIT_FUNC_STAT(rest_curl_post)
+STATS_INIT_FUNC_STAT(rest_curl_delete)
 #endif
 
 #ifdef STATS_REPORT_FUNC_STAT
@@ -373,6 +397,18 @@ STATS_REPORT_FUNC_STAT(vfs_terminate)
 STATS_REPORT_FUNC_STAT(vfs_write)
 STATS_REPORT_FUNC_STAT(vfs_s3_fill_file_buffer)
 STATS_REPORT_FUNC_STAT(vfs_s3_write_multipart)
+// Serialization
+STATS_REPORT_FUNC_STAT(serialization_array_schema_serialize)
+STATS_REPORT_FUNC_STAT(serialization_array_schema_deserialize)
+STATS_REPORT_FUNC_STAT(serialization_query_serialize)
+STATS_REPORT_FUNC_STAT(serialization_query_deserialize)
+// REST
+STATS_REPORT_FUNC_STAT(rest_array_create)
+STATS_REPORT_FUNC_STAT(rest_array_get_schema)
+STATS_REPORT_FUNC_STAT(rest_query_submit)
+STATS_REPORT_FUNC_STAT(rest_curl_get)
+STATS_REPORT_FUNC_STAT(rest_curl_post)
+STATS_REPORT_FUNC_STAT(rest_curl_delete)
 #endif
 
 #ifdef STATS_DEFINE_COUNTER_STAT

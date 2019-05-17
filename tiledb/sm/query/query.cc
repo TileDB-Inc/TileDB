@@ -33,6 +33,8 @@
 #include "tiledb/sm/query/query.h"
 #include "tiledb/sm/array/array.h"
 #include "tiledb/sm/misc/logger.h"
+#include "tiledb/sm/misc/stats.h"
+#include "tiledb/sm/rest/rest_client.h"
 
 #include <cassert>
 #include <iostream>
@@ -81,6 +83,14 @@ Query::~Query() = default;
 /*               API              */
 /* ****************************** */
 
+const Array* Query::array() const {
+  return array_;
+}
+
+Array* Query::array() {
+  return array_;
+}
+
 const ArraySchema* Query::array_schema() const {
   if (type_ == QueryType::WRITE)
     return writer_.array_schema();
@@ -93,9 +103,27 @@ std::vector<std::string> Query::attributes() const {
   return reader_.attributes();
 }
 
+AttributeBuffer Query::attribute_buffer(
+    const std::string& attribute_name) const {
+  if (type_ == QueryType::WRITE)
+    return writer_.buffer(attribute_name);
+  return reader_.buffer(attribute_name);
+}
+
 Status Query::finalize() {
   if (status_ == QueryStatus::UNINITIALIZED)
     return Status::Ok();
+
+  if (array_->is_remote()) {
+    auto rest_client = storage_manager_->rest_client();
+    if (rest_client == nullptr)
+      return LOG_STATUS(Status::QueryError(
+          "Error in query finalize; remote array with no rest client."));
+
+    array_->array_schema()->set_array_uri(array_->array_uri());
+
+    return rest_client->finalize_query_to_rest(array_->array_uri(), this);
+  }
 
   RETURN_NOT_OK(writer_.finalize());
   status_ = QueryStatus::COMPLETED;
@@ -156,6 +184,12 @@ Status Query::get_buffer(
         normalized, buffer_off, buffer_off_size, buffer_val, buffer_val_size);
   return reader_.get_buffer(
       normalized, buffer_off, buffer_off_size, buffer_val, buffer_val_size);
+}
+
+Status Query::get_attr_serialization_state(
+    const std::string& attribute, SerializationState::AttrState** state) {
+  *state = &serialization_state_.attribute_states[attribute];
+  return Status::Ok();
 }
 
 bool Query::has_results() const {
@@ -280,11 +314,30 @@ Status Query::process() {
   return Status::Ok();
 }
 
+const Reader* Query::reader() const {
+  return &reader_;
+}
+
+Reader* Query::reader() {
+  return &reader_;
+}
+
+const Writer* Query::writer() const {
+  return &writer_;
+}
+
+Writer* Query::writer() {
+  return &writer_;
+}
+
 Status Query::set_buffer(
-    const std::string& attribute, void* buffer, uint64_t* buffer_size) {
+    const std::string& attribute,
+    void* buffer,
+    uint64_t* buffer_size,
+    bool check_null_buffers) {
   if (type_ == QueryType::WRITE)
     return writer_.set_buffer(attribute, buffer, buffer_size);
-  return reader_.set_buffer(attribute, buffer, buffer_size);
+  return reader_.set_buffer(attribute, buffer, buffer_size, check_null_buffers);
 }
 
 Status Query::set_buffer(
@@ -292,12 +345,18 @@ Status Query::set_buffer(
     uint64_t* buffer_off,
     uint64_t* buffer_off_size,
     void* buffer_val,
-    uint64_t* buffer_val_size) {
+    uint64_t* buffer_val_size,
+    bool check_null_buffers) {
   if (type_ == QueryType::WRITE)
     return writer_.set_buffer(
         attribute, buffer_off, buffer_off_size, buffer_val, buffer_val_size);
   return reader_.set_buffer(
-      attribute, buffer_off, buffer_off_size, buffer_val, buffer_val_size);
+      attribute,
+      buffer_off,
+      buffer_off_size,
+      buffer_val,
+      buffer_val_size,
+      check_null_buffers);
 }
 
 Status Query::set_layout(Layout layout) {
@@ -313,6 +372,10 @@ Status Query::set_sparse_mode(bool sparse_mode) {
         "Cannot set sparse mode; Only applicable to read queries"));
 
   return reader_.set_sparse_mode(sparse_mode);
+}
+
+void Query::set_status(QueryStatus status) {
+  status_ = status;
 }
 
 Status Query::set_subarray(const void* subarray) {
@@ -347,6 +410,16 @@ Status Query::set_subarray(const Subarray& subarray) {
 }
 
 Status Query::submit() {  // Do nothing if the query is completed or failed
+  if (array_->is_remote()) {
+    auto rest_client = storage_manager_->rest_client();
+    if (rest_client == nullptr)
+      return LOG_STATUS(Status::QueryError(
+          "Error in query submission; remote array with no rest client."));
+
+    array_->array_schema()->set_array_uri(array_->array_uri());
+
+    return rest_client->submit_query_to_rest(array_->array_uri(), this);
+  }
   RETURN_NOT_OK(init());
   return storage_manager_->query_submit(this);
 }
@@ -354,6 +427,11 @@ Status Query::submit() {  // Do nothing if the query is completed or failed
 Status Query::submit_async(
     std::function<void(void*)> callback, void* callback_data) {
   RETURN_NOT_OK(init());
+  if (array_->is_remote())
+    return LOG_STATUS(
+        Status::QueryError("Error in async query submission; async queries not "
+                           "supported for remote arrays."));
+
   callback_ = callback;
   callback_data_ = callback_data;
   return storage_manager_->query_submit_async(this);
@@ -361,6 +439,10 @@ Status Query::submit_async(
 
 QueryStatus Query::status() const {
   return status_;
+}
+
+const void* Query::subarray() const {
+  return type_ == QueryType::READ ? reader_.subarray() : writer_.subarray();
 }
 
 QueryType Query::type() const {

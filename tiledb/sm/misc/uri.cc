@@ -65,7 +65,7 @@ URI::URI(const std::string& path) {
     uri_ = "";
   else if (URI::is_file(path))
     uri_ = VFS::abs_path(path);
-  else if (URI::is_hdfs(path) || URI::is_s3(path))
+  else if (URI::is_hdfs(path) || URI::is_s3(path) || URI::is_tiledb(path))
     uri_ = path;
   else
     uri_ = "";
@@ -139,6 +139,42 @@ bool URI::is_s3() const {
          utils::parse::starts_with(uri_, "https://");
 }
 
+bool URI::is_tiledb(const std::string& path) {
+  return utils::parse::starts_with(path, "tiledb://");
+}
+
+bool URI::is_tiledb() const {
+  return utils::parse::starts_with(uri_, "tiledb://");
+}
+
+Status URI::get_rest_components(
+    std::string* array_namespace, std::string* array_uri) const {
+  const std::string prefix = "tiledb://";
+  const auto error_st = Status::RestError(
+      "Invalid URI for REST service; expected format is "
+      "'tiledb://<namespace>/<array-name>' or "
+      "'tiledb://<namespace>/<array-uri>'.");
+
+  if (!is_tiledb() || uri_.empty() || uri_.find(prefix) == std::string::npos ||
+      uri_.size() <= prefix.size())
+    return LOG_STATUS(error_st);
+
+  // Find '/' between namespace and array uri.
+  auto slash = uri_.find('/', prefix.size());
+  if (slash == std::string::npos)
+    return LOG_STATUS(error_st);
+
+  auto namespace_len = slash - prefix.size();
+  auto array_len = uri_.size() - (slash + 1);
+  if (namespace_len == 0 || array_len == 0)
+    return LOG_STATUS(error_st);
+
+  *array_namespace = uri_.substr(prefix.size(), namespace_len);
+  *array_uri = uri_.substr(slash + 1, array_len);
+
+  return Status::Ok();
+}
+
 URI URI::join_path(const std::string& path) const {
   // Check for empty strings.
   if (path.empty()) {
@@ -187,7 +223,7 @@ std::string URI::to_path(const std::string& uri) {
 #endif
   }
 
-  if (is_hdfs(uri) || is_s3(uri))
+  if (is_hdfs(uri) || is_s3(uri) || is_tiledb(uri))
     return uri;
 
   // Error

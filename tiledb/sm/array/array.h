@@ -169,6 +169,9 @@ class Array {
   /** Returns `true` if the array is open. */
   bool is_open() const;
 
+  /** Returns `true` if the array is remote */
+  bool is_remote() const;
+
   /** Retrieves the array schema. Errors if the array is not open. */
   Status get_array_schema(ArraySchema** array_schema) const;
 
@@ -217,6 +220,12 @@ class Array {
 
   /** Returns the timestamp at which the array was opened. */
   uint64_t timestamp() const;
+
+  /** Directly set the timestamp value. */
+  Status set_timestamp(uint64_t timestamp);
+
+  /** Directly set the array URI. */
+  Status set_uri(const std::string& uri);
 
  private:
   /* ********************************* */
@@ -268,6 +277,9 @@ class Array {
 
   /** Mutex for thread-safety. */
   mutable std::mutex mtx_;
+
+  /** True if the array is remote (has `tiledb://` URI scheme). */
+  bool remote_;
 
   /* ********************************* */
   /*          PRIVATE METHODS          */

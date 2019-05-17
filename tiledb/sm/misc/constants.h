@@ -41,6 +41,7 @@ namespace sm {
 
 enum class Datatype : uint8_t;
 enum class Compressor : uint8_t;
+enum class SerializationType : uint8_t;
 
 namespace constants {
 
@@ -279,6 +280,9 @@ extern const int num_tbb_threads;
 /** The tile cache size. */
 extern const uint64_t tile_cache_size;
 
+/** The default format for serialization. */
+extern const SerializationType serialization_default_format;
+
 /** Empty String reference **/
 extern const std::string empty_str;
 
@@ -312,6 +316,12 @@ extern const std::string no_encryption_str;
 /** String describing AES_256_GCM. */
 extern const std::string aes_256_gcm_str;
 
+/** TILEDB_JSON **/
+extern const std::string serialization_type_json_str;
+
+/** TILEDB_CAPNP **/
+extern const std::string serialization_type_capnp_str;
+
 /** String describing GZIP. */
 extern const std::string gzip_str;
 
@@ -329,6 +339,21 @@ extern const std::string bzip2_str;
 
 /** String describing DOUBLE_DELTA. */
 extern const std::string double_delta_str;
+
+/** String describing FILTER_NONE. */
+extern const std::string filter_none_str;
+
+/** String describing FILTER_BIT_WIDTH_REDUCTION. */
+extern const std::string filter_bit_width_reduction_str;
+
+/** String describing FILTER_BITSHUFFLE. */
+extern const std::string filter_bitshuffle_str;
+
+/** String describing FILTER_BYTESHUFFLE. */
+extern const std::string filter_byteshuffle_str;
+
+/** String describing FILTER_POSITIVE_DELTA. */
+extern const std::string filter_positive_delta_str;
 
 /** The string representation for type int32. */
 extern const std::string int32_str;

@@ -31,6 +31,7 @@
  */
 
 #include "tiledb/sm/storage_manager/config.h"
+#include "tiledb/sm/enums/serialization_type.h"
 #include "tiledb/sm/misc/constants.h"
 #include "tiledb/sm/misc/logger.h"
 #include "tiledb/sm/misc/utils.h"
@@ -52,7 +53,11 @@ const std::set<std::string> Config::unserialized_params_ = {
     "vfs.s3.proxy_username",
     "vfs.s3.proxy_password",
     "vfs.s3.aws_access_key_id",
-    "vfs.s3.aws_secret_access_key"};
+    "vfs.s3.aws_secret_access_key",
+    "rest.username",
+    "rest.password",
+    "rest.token",
+};
 
 /* ****************************** */
 /*   CONSTRUCTORS & DESTRUCTORS   */
@@ -145,6 +150,10 @@ Status Config::save_to_file(const std::string& filename) {
   return Status::Ok();
 }
 
+Config::RESTParams Config::rest_params() const {
+  return rest_params_;
+}
+
 Config::SMParams Config::sm_params() const {
   return sm_params_;
 }
@@ -164,7 +173,17 @@ Config::S3Params Config::s3_params() const {
 Status Config::set(const std::string& param, const std::string& value) {
   param_values_[param] = value;
 
-  if (param == "sm.dedup_coords") {
+  if (param == "rest.server_address") {
+    RETURN_NOT_OK(set_rest_server_address(value));
+  } else if (param == "rest.server_serialization_format") {
+    RETURN_NOT_OK(set_rest_server_serialization_format(value));
+  } else if (param == "rest.username") {
+    RETURN_NOT_OK(set_rest_username(value));
+  } else if (param == "rest.password") {
+    RETURN_NOT_OK(set_rest_password(value));
+  } else if (param == "rest.token") {
+    RETURN_NOT_OK(set_rest_token(value));
+  } else if (param == "sm.dedup_coords") {
     RETURN_NOT_OK(set_sm_dedup_coords(value));
   } else if (param == "sm.check_coord_dups") {
     RETURN_NOT_OK(set_sm_check_coord_dups(value));
@@ -283,7 +302,13 @@ Status Config::unset(const std::string& param) {
   std::stringstream value;
 
   // Set back to default
-  if (param == "sm.dedup_coords") {
+  if (param == "rest.server_serialization_format") {
+    rest_params_.server_serialization_format_ =
+        constants::serialization_default_format;
+    value << serialization_type_str(rest_params_.server_serialization_format_);
+    param_values_["rest.server_serialization_format"] = value.str();
+    value.str(std::string());
+  } else if (param == "sm.dedup_coords") {
     sm_params_.dedup_coords_ = constants::dedup_coords;
     value << (sm_params_.dedup_coords_ ? "true" : "false");
     param_values_["sm.dedup_coords"] = value.str();
@@ -531,6 +556,10 @@ Status Config::unset(const std::string& param) {
 void Config::set_default_param_values() {
   std::stringstream value;
 
+  value << serialization_type_str(rest_params_.server_serialization_format_);
+  param_values_["rest.server_serialization_format"] = value.str();
+  value.str(std::string());
+
   value << (sm_params_.dedup_coords_ ? "true" : "false");
   param_values_["sm.dedup_coords"] = value.str();
   value.str(std::string());
@@ -719,6 +748,38 @@ Status Config::parse_bool(const std::string& value, bool* result) {
   } else {
     return Status::ConfigError("cannot parse boolean value: " + value);
   }
+  return Status::Ok();
+}
+
+Status Config::set_rest_server_address(const std::string& value) {
+  rest_params_.server_address_ = value;
+
+  return Status::Ok();
+}
+
+Status Config::set_rest_server_serialization_format(const std::string& value) {
+  SerializationType serialization_type =
+      constants::serialization_default_format;
+  RETURN_NOT_OK(serialization_type_enum(value, &serialization_type));
+  rest_params_.server_serialization_format_ = serialization_type;
+
+  return Status::Ok();
+}
+
+Status Config::set_rest_username(const std::string& value) {
+  rest_params_.username_ = value;
+  return Status::Ok();
+}
+
+Status Config::set_rest_password(const std::string& value) {
+  rest_params_.password_ = value;
+
+  return Status::Ok();
+}
+
+Status Config::set_rest_token(const std::string& value) {
+  rest_params_.token_ = value;
+
   return Status::Ok();
 }
 

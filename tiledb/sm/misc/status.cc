@@ -213,6 +213,12 @@ std::string Status::code_to_string() const {
     case StatusCode::CellSlabIterError:
       type = "[TileDB::CellSlabIter] Error";
       break;
+    case StatusCode::RestError:
+      type = "[TileDB::REST] Error";
+      break;
+    case StatusCode::SerializationError:
+      type = "[TileDB::Serialization] Error";
+      break;
     default:
       type = "[TileDB::?] Error:";
   }

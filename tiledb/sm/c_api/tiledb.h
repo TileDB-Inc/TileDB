@@ -677,6 +677,26 @@ TILEDB_EXPORT void tiledb_config_free(tiledb_config_t** config);
  *    HDFS kerb ticket cache path. <br>
  *    **Default**: ""
  *
+ * <br>
+ *
+ * - `rest.server_address` <br>
+ *    URL for REST server to use for remote arrays. <br>
+ *    **Default**: ""
+ * - `rest.server_serialization_format` <br>
+ *    Serialization format to use for remote array requests (CAPNP or
+ *    JSON). <br>
+ *    **Default**: "CAPNP"
+ * - `rest.username` <br>
+ *    Username for login to REST server (a token can be used instead). <br>
+ *    **Default**: ""
+ * - `rest.password` <br>
+ *    Password for login to REST server. <br>
+ *    **Default**: ""
+ * - `rest.token` <br>
+ *    Authentication token for REST server (used instead of
+ *    username/password). <br>
+ *    **Default**: ""
+ *
  * **Example:**
  *
  * @code{.c}

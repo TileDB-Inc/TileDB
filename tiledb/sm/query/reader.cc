@@ -162,7 +162,6 @@ Status Reader::get_buffer(
     *buffer_val = it->second.buffer_var_;
     *buffer_val_size = it->second.buffer_var_size_;
   }
-
   return Status::Ok();
 }
 
@@ -350,6 +349,14 @@ bool Reader::no_results() const {
   return true;
 }
 
+const Reader::ReadState* Reader::read_state() const {
+  return &read_state_;
+}
+
+Reader::ReadState* Reader::read_state() {
+  return &read_state_;
+}
+
 Status Reader::read() {
   STATS_FUNC_IN(reader_read);
 
@@ -488,9 +495,12 @@ void Reader::set_array_schema(const ArraySchema* array_schema) {
 }
 
 Status Reader::set_buffer(
-    const std::string& attribute, void* buffer, uint64_t* buffer_size) {
+    const std::string& attribute,
+    void* buffer,
+    uint64_t* buffer_size,
+    bool check_null_buffers) {
   // Check buffer
-  if (buffer == nullptr || buffer_size == nullptr)
+  if (check_null_buffers && (buffer == nullptr || buffer_size == nullptr))
     return LOG_STATUS(Status::ReaderError(
         "Cannot set buffer; Buffer or buffer size is null"));
 
@@ -541,10 +551,12 @@ Status Reader::set_buffer(
     uint64_t* buffer_off,
     uint64_t* buffer_off_size,
     void* buffer_val,
-    uint64_t* buffer_val_size) {
+    uint64_t* buffer_val_size,
+    bool check_null_buffers) {
   // Check buffer
-  if (buffer_off == nullptr || buffer_off_size == nullptr ||
-      buffer_val == nullptr || buffer_val_size == nullptr)
+  if (check_null_buffers &&
+      (buffer_off == nullptr || buffer_off_size == nullptr ||
+       buffer_val == nullptr || buffer_val_size == nullptr))
     return LOG_STATUS(Status::ReaderError(
         "Cannot set buffer; Buffer or buffer size is null"));
 

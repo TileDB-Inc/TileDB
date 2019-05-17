@@ -82,11 +82,17 @@ option(TILEDB_STATS "Enables internal TileDB statistics gathering." ON)
 option(TILEDB_STATIC "Enables building TileDB as a static library." OFF)
 option(TILEDB_TESTS "If true, enables building the TileDB unit test suite" ON)
 option(TILEDB_TOOLS "If true, enables building the TileDB tools" OFF)
+option(TILEDB_SERIALIZATION "If true, enables building with support for query serialization" OFF)
+
 set(TILEDB_INSTALL_LIBDIR "" CACHE STRING "If non-empty, install TileDB library to this directory instead of CMAKE_INSTALL_LIBDIR.")
 
 if (WIN32 AND NOT TILEDB_TBB_SHARED)
   message(WARNING "Static TBB build not supported on Windows. Continuing with TILEDB_TBB_SHARED=ON.")
   set(TILEDB_TBB_SHARED ON)
+endif()
+
+if (WIN32 AND TILEDB_SERIALIZATION)
+  message(FATAL_ERROR "Serialization support not yet supported on Windows.")
 endif()
 
 ############################################################
@@ -173,6 +179,12 @@ else()
     add_compile_options(-DNDEBUG -O3)
   elseif (CMAKE_BUILD_TYPE MATCHES "Coverage")
     add_compile_options(-DDEBUG -g3 -gdwarf-3 --coverage)
+  endif()
+
+  if (TILEDB_SERIALIZATION)
+    # CapnProto 0.6.1 contains some unused parameter warnings that we need to
+    # ignore in order to allow for Werror builds.
+    add_compile_options(-Wno-unused-parameter)
   endif()
 
   # Use -Wno-literal-suffix on Linux with C++ sources.

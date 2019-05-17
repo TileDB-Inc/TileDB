@@ -28,8 +28,9 @@
 
 find_package(Catch_EP REQUIRED)
 
-# This option not exposed in bootstrap script.
+# These options not exposed in bootstrap script.
 option(TILEDB_TESTS_AWS_S3_CONFIG "Use an S3 config appropriate for AWS in tests" OFF)
+option(TILEDB_TESTS_ENABLE_REST "Enables REST tests (requires running REST server)" OFF)
 
 # Include TileDB core header directories
 set(TILEDB_CORE_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/..")
@@ -113,6 +114,18 @@ if (TILEDB_CPP_API)
   )
 endif()
 
+if (TILEDB_SERIALIZATION)
+  list(APPEND TILEDB_TEST_SOURCES
+    src/unit-capi-serialized_queries.cc
+  )
+endif()
+
+if (TILEDB_TESTS_ENABLE_REST)
+  list(APPEND TILEDB_TEST_SOURCES
+    src/unit-capi-rest-dense_array.cc
+  )
+endif()
+
 # unit test executable
 add_executable(
   tiledb_unit EXCLUDE_FROM_ALL
@@ -158,6 +171,10 @@ endif()
 
 if (TILEDB_TBB)
   target_compile_definitions(tiledb_unit PRIVATE -DHAVE_TBB)
+endif()
+
+if (TILEDB_SERIALIZATION)
+  target_compile_definitions(tiledb_unit PRIVATE -DTILEDB_SERIALIZATION)
 endif()
 
 # This is necessary only because we are linking directly to the core objects.

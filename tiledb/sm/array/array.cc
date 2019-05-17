@@ -32,7 +32,10 @@
 
 #include "tiledb/sm/array/array.h"
 #include "tiledb/sm/encryption/encryption.h"
+#include "tiledb/sm/enums/serialization_type.h"
 #include "tiledb/sm/misc/logger.h"
+#include "tiledb/sm/misc/stats.h"
+#include "tiledb/sm/rest/rest_client.h"
 
 #include <cassert>
 #include <iostream>
@@ -59,7 +62,8 @@ Array::Array(const URI& array_uri, StorageManager* storage_manager)
   array_schema_ = nullptr;
   timestamp_ = 0;
   last_max_buffer_sizes_subarray_ = nullptr;
-}
+  remote_ = array_uri.is_tiledb();
+};
 
 Array::~Array() {
   std::free(last_max_buffer_sizes_subarray_);
@@ -97,6 +101,12 @@ Status Array::compute_max_buffer_sizes(
         Status::ArrayError("Cannot compute max read buffer sizes; "
                            "Array was not opened in read mode"));
 
+  // Error on remote arrays (user must handle incomplete queries).
+  if (remote_)
+    return LOG_STATUS(
+        Status::ArrayError("Cannot compute max read buffer sizes; not "
+                           "supported for remote arrays."));
+
   // Check attributes
   RETURN_NOT_OK(array_schema_->check_attributes(attributes));
 
@@ -125,11 +135,22 @@ Status Array::open(
     return LOG_STATUS(
         Status::ArrayError("Cannot open array; Array already open"));
 
+  if (remote_ && encryption_type != EncryptionType::NO_ENCRYPTION)
+    return LOG_STATUS(Status::ArrayError(
+        "Cannot open array; encrypted remote arrays are not supported."));
+
   // Copy the key bytes.
   RETURN_NOT_OK(
       encryption_key_.set_key(encryption_type, encryption_key, key_length));
 
-  if (query_type == QueryType::READ) {
+  if (remote_) {
+    auto rest_client = storage_manager_->rest_client();
+    if (rest_client == nullptr)
+      return LOG_STATUS(Status::ArrayError(
+          "Cannot open array; remote array with no REST client."));
+    RETURN_NOT_OK(
+        rest_client->get_array_schema_from_rest(array_uri_, &array_schema_));
+  } else if (query_type == QueryType::READ) {
     timestamp_ = utils::time::timestamp_now_ms();
     RETURN_NOT_OK(storage_manager_->array_open_for_reads(
         array_uri_,
@@ -167,21 +188,34 @@ Status Array::open(
         Status::ArrayError("Cannot open array with fragments; The array can "
                            "opened at a timestamp only in read mode"));
 
+  if (remote_ && encryption_type != EncryptionType::NO_ENCRYPTION)
+    return LOG_STATUS(Status::ArrayError(
+        "Cannot open array; encrypted remote arrays are not supported."));
+
   // Copy the key bytes.
   RETURN_NOT_OK(
       encryption_key_.set_key(encryption_type, encryption_key, key_length));
 
   timestamp_ = utils::time::timestamp_now_ms();
 
-  // Open the array.
-  RETURN_NOT_OK(storage_manager_->array_open_for_reads(
-      array_uri_,
-      fragments,
-      encryption_key_,
-      &array_schema_,
-      &fragment_metadata_));
-
   query_type_ = QueryType::READ;
+  if (remote_) {
+    auto rest_client = storage_manager_->rest_client();
+    if (rest_client == nullptr)
+      return LOG_STATUS(Status::ArrayError(
+          "Cannot open array; remote array with no REST client."));
+    RETURN_NOT_OK(
+        rest_client->get_array_schema_from_rest(array_uri_, &array_schema_));
+  } else {
+    // Open the array.
+    RETURN_NOT_OK(storage_manager_->array_open_for_reads(
+        array_uri_,
+        fragments,
+        encryption_key_,
+        &array_schema_,
+        &fragment_metadata_));
+  }
+
   is_open_ = true;
 
   return Status::Ok();
@@ -204,21 +238,34 @@ Status Array::open(
         Status::ArrayError("Cannot open array at timestamp; The array can "
                            "opened at a timestamp only in read mode"));
 
+  if (remote_ && encryption_type != EncryptionType::NO_ENCRYPTION)
+    return LOG_STATUS(Status::ArrayError(
+        "Cannot open array; encrypted remote arrays are not supported."));
+
   // Copy the key bytes.
   RETURN_NOT_OK(
       encryption_key_.set_key(encryption_type, encryption_key, key_length));
 
   timestamp_ = timestamp;
 
-  // Open the array.
-  RETURN_NOT_OK(storage_manager_->array_open_for_reads(
-      array_uri_,
-      timestamp_,
-      encryption_key_,
-      &array_schema_,
-      &fragment_metadata_));
-
   query_type_ = query_type;
+  if (remote_) {
+    auto rest_client = storage_manager_->rest_client();
+    if (rest_client == nullptr)
+      return LOG_STATUS(Status::ArrayError(
+          "Cannot open array; remote array with no REST client."));
+    RETURN_NOT_OK(
+        rest_client->get_array_schema_from_rest(array_uri_, &array_schema_));
+  } else {
+    // Open the array.
+    RETURN_NOT_OK(storage_manager_->array_open_for_reads(
+        array_uri_,
+        timestamp_,
+        encryption_key_,
+        &array_schema_,
+        &fragment_metadata_));
+  }
+
   is_open_ = true;
 
   return Status::Ok();
@@ -232,13 +279,19 @@ Status Array::close() {
 
   is_open_ = false;
   clear_last_max_buffer_sizes();
-  array_schema_ = nullptr;
   fragment_metadata_.clear();
 
-  if (query_type_ == QueryType::READ) {
-    RETURN_NOT_OK(storage_manager_->array_close_for_reads(array_uri_));
+  if (remote_) {
+    // Storage manager does not own the array schema for remote arrays.
+    delete array_schema_;
+    array_schema_ = nullptr;
   } else {
-    RETURN_NOT_OK(storage_manager_->array_close_for_writes(array_uri_));
+    array_schema_ = nullptr;
+    if (query_type_ == QueryType::READ) {
+      RETURN_NOT_OK(storage_manager_->array_close_for_reads(array_uri_));
+    } else {
+      RETURN_NOT_OK(storage_manager_->array_close_for_writes(array_uri_));
+    }
   }
 
   return Status::Ok();
@@ -252,6 +305,10 @@ bool Array::is_empty() const {
 bool Array::is_open() const {
   std::unique_lock<std::mutex> lck(mtx_);
   return is_open_;
+}
+
+bool Array::is_remote() const {
+  return remote_;
 }
 
 std::vector<FragmentMetadata*> Array::fragment_metadata() const {
@@ -407,6 +464,13 @@ Status Array::reopen(uint64_t timestamp) {
   timestamp_ = timestamp;
   fragment_metadata_.clear();
 
+  if (remote_) {
+    return open(
+        query_type_,
+        encryption_key_.encryption_type(),
+        encryption_key_.key().data(),
+        encryption_key_.key().size());
+  }
   return storage_manager_->array_reopen(
       array_uri_,
       timestamp_,
@@ -420,6 +484,18 @@ uint64_t Array::timestamp() const {
   return timestamp_;
 }
 
+Status Array::set_timestamp(uint64_t timestamp) {
+  std::unique_lock<std::mutex> lck(mtx_);
+  timestamp_ = timestamp;
+  return Status::Ok();
+}
+
+Status Array::set_uri(const std::string& uri) {
+  std::unique_lock<std::mutex> lck(mtx_);
+  array_uri_ = URI(uri);
+  return Status::Ok();
+}
+
 /* ********************************* */
 /*          PRIVATE METHODS          */
 /* ********************************* */
@@ -431,6 +507,10 @@ void Array::clear_last_max_buffer_sizes() {
 }
 
 Status Array::compute_max_buffer_sizes(const void* subarray) {
+  if (remote_)
+    return LOG_STATUS(Status::ArrayError(
+        "Cannot compute max buffer sizes; not supported for remote arrays."));
+
   // Allocate space for max buffer sizes subarray
   auto subarray_size = 2 * array_schema_->coords_size();
   if (last_max_buffer_sizes_subarray_ == nullptr) {
