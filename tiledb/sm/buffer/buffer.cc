@@ -57,13 +57,13 @@ Buffer::Buffer() {
   owns_data_ = true;
 }
 
-Buffer::Buffer(void* data, uint64_t size, bool owns_data)
-    : data_(data)
-    , owns_data_(owns_data)
-    , size_(size) {
+Buffer::Buffer(void* data, uint64_t size)
+    : Buffer() {
   offset_ = 0;
   alloced_size_ = 0;
   owns_data_ = false;
+  data_ = data;
+  size_ = size;
 }
 
 Buffer::Buffer(const Buffer& buff) {

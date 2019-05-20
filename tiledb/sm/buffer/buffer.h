@@ -53,15 +53,16 @@ class Buffer {
   Buffer();
 
   /**
-   * Constructor. Initializes a buffer with the input data and size.
+   * Constructor.
    *
-   * @param data The internal data of the buffer.
-   * @param size The size of the data.
-   * @param owns_data Indicates whether the object will own the data,
-   *     i.e., if it has permission to reallocate the data and
-   *     is responsible for freeing it.
+   * Initializes the buffer to "wrap" the input data and size. The buffer being
+   * constructed does not make a copy of the input data, and thus does not own
+   * it.
+   *
+   * @param data The data for the buffer to wrap.
+   * @param size The size (in bytes) of the data.
    */
-  Buffer(void* data, uint64_t size, bool owns_data);
+  Buffer(void* data, uint64_t size);
 
   /**
    * Copy constructor.

@@ -130,7 +130,7 @@ TEST_CASE("Buffer: Test swap", "[buffer]") {
   CHECK(std::memcmp(buff2.data(), &data1, sizeof(data1)) == 0);
 
   char data3[] = {9};
-  Buffer buff3(data3, sizeof(data3), false);
+  Buffer buff3(data3, sizeof(data3));
   CHECK(!buff3.owns_data());
   st = buff1.swap(buff3);
   REQUIRE(st.ok());

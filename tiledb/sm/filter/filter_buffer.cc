@@ -47,7 +47,7 @@ FilterBuffer::BufferOrView::BufferOrView(
   is_view_ = true;
   underlying_buffer_ = buffer;
   view_ = std::unique_ptr<Buffer>(
-      new Buffer((char*)buffer->data() + offset, nbytes, false));
+      new Buffer((char*)buffer->data() + offset, nbytes));
 }
 
 FilterBuffer::BufferOrView::BufferOrView(BufferOrView&& other) {
@@ -74,7 +74,7 @@ FilterBuffer::BufferOrView FilterBuffer::BufferOrView::get_view(
     BufferOrView new_view(underlying_buffer_);
     new_view.is_view_ = true;
     new_view.view_ = std::unique_ptr<Buffer>(
-        new Buffer((char*)view_->data() + offset, nbytes, false));
+        new Buffer((char*)view_->data() + offset, nbytes));
     return new_view;
   } else {
     return BufferOrView(underlying_buffer_, offset, nbytes);
@@ -123,7 +123,7 @@ Status FilterBuffer::init(void* data, uint64_t nbytes) {
     return LOG_STATUS(Status::FilterError(
         "FilterBuffer error; cannot init buffer: read-only."));
 
-  std::shared_ptr<Buffer> buffer(new Buffer(data, nbytes, false));
+  std::shared_ptr<Buffer> buffer(new Buffer(data, nbytes));
   offset_ = 0;
   buffers_.emplace_back(buffer);
   current_relative_offset_ = 0;

@@ -493,7 +493,7 @@ int32_t tiledb_buffer_set_data(
     return TILEDB_ERR;
 
   // Create a temporary Buffer object as a wrapper.
-  tiledb::sm::Buffer tmp_buffer(data, size, false);
+  tiledb::sm::Buffer tmp_buffer(data, size);
 
   // Swap with the given buffer.
   if (SAVE_ERROR_CATCH(ctx, buffer->buffer_->swap(tmp_buffer)))
