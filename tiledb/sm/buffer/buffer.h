@@ -63,8 +63,18 @@ class Buffer {
    */
   Buffer(void* data, uint64_t size, bool owns_data);
 
-  /** Copy constructor. */
+  /**
+   * Copy constructor.
+   *
+   * If the given buffer owns its data, this new buffer will make its own copy
+   * of the given buffer's allocation. If the given buffer does not own its
+   * data, this new buffer will wrap the allocation without owning or
+   * copying it.
+   */
   Buffer(const Buffer& buff);
+
+  /** Move constructor. */
+  Buffer(Buffer&& buff);
 
   /** Destructor. */
   ~Buffer();
@@ -220,8 +230,11 @@ class Buffer {
    */
   Status write_with_shift(ConstBuffer* buff, uint64_t offset);
 
-  /** Copy operator. */
+  /** Copy-assign operator. */
   Buffer& operator=(const Buffer& buff);
+
+  /** Move-assign operator. */
+  Buffer& operator=(Buffer&& buff);
 
  private:
   /* ********************************* */

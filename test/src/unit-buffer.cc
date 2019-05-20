@@ -145,3 +145,44 @@ TEST_CASE("Buffer: Test swap", "[buffer]") {
   CHECK(buff3.alloced_size() == 5);
   CHECK(std::memcmp(buff3.data(), &data2, sizeof(data2)) == 0);
 }
+
+TEST_CASE("Buffer: Test move", "[buffer]") {
+  // Write a char array
+  Status st;
+  char data1[3] = {1, 2, 3};
+  Buffer buff1;
+  st = buff1.write(data1, sizeof(data1));
+  REQUIRE(st.ok());
+  CHECK(buff1.owns_data());
+  CHECK(buff1.offset() == 3);
+  CHECK(buff1.size() == sizeof(data1));
+  CHECK(buff1.alloced_size() == 3);
+  CHECK(std::memcmp(buff1.data(), &data1, sizeof(data1)) == 0);
+
+  // Move constructor
+  Buffer b = std::move(buff1);
+  CHECK(b.owns_data());
+  CHECK(b.offset() == 3);
+  CHECK(b.size() == 3);
+  CHECK(b.alloced_size() == 3);
+  CHECK(std::memcmp(b.data(), &data1, sizeof(data1)) == 0);
+  CHECK(buff1.owns_data());
+  CHECK(buff1.offset() == 0);
+  CHECK(buff1.size() == 0);
+  CHECK(buff1.alloced_size() == 0);
+  CHECK(buff1.data() == nullptr);
+
+  // Move-assign
+  Buffer b2;
+  b2 = std::move(b);
+  CHECK(b2.owns_data());
+  CHECK(b2.offset() == 3);
+  CHECK(b2.size() == 3);
+  CHECK(b2.alloced_size() == 3);
+  CHECK(std::memcmp(b2.data(), &data1, sizeof(data1)) == 0);
+  CHECK(b.owns_data());
+  CHECK(b.offset() == 0);
+  CHECK(b.size() == 0);
+  CHECK(b.alloced_size() == 0);
+  CHECK(b.data() == nullptr);
+}

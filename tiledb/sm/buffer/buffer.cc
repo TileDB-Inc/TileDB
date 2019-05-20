@@ -67,12 +67,27 @@ Buffer::Buffer(void* data, uint64_t size, bool owns_data)
 }
 
 Buffer::Buffer(const Buffer& buff) {
-  alloced_size_ = 0;
-  data_ = nullptr;
-  size_ = 0;
-  offset_ = 0;
-  owns_data_ = true;
-  *this = buff;
+  alloced_size_ = buff.alloced_size_;
+  offset_ = buff.offset_;
+  owns_data_ = buff.owns_data_;
+  size_ = buff.size_;
+
+  if (buff.owns_data_) {
+    if (buff.data_ == nullptr) {
+      data_ = nullptr;
+    } else {
+      data_ = std::malloc(alloced_size_);
+      assert(data_);
+      std::memcpy(data_, buff.data_, buff.alloced_size_);
+    }
+  } else {
+    data_ = buff.data_;
+  }
+}
+
+Buffer::Buffer(Buffer&& buff)
+    : Buffer() {
+  swap(buff);
 }
 
 Buffer::~Buffer() {
@@ -271,27 +286,18 @@ Status Buffer::write_with_shift(ConstBuffer* buff, uint64_t offset) {
 }
 
 Buffer& Buffer::operator=(const Buffer& buff) {
+  // Clear any existing allocation.
   clear();
 
-  owns_data_ = buff.owns_data_;
+  // Create a copy and swap with the copy.
+  Buffer tmp(buff);
+  swap(tmp);
 
-  if (!buff.owns_data_) {
-    data_ = buff.data_;
-  } else {
-    if (buff.data() != nullptr)
-      data_ = std::malloc(buff.alloced_size_);
-    if (data_ != nullptr) {
-      std::memcpy(data_, buff.data_, buff.alloced_size_);
-      alloced_size_ = buff.alloced_size_;
-      size_ = buff.size_;
-      offset_ = buff.offset_;
-    } else {
-      alloced_size_ = 0;
-      size_ = 0;
-      offset_ = 0;
-    }
-  }
+  return *this;
+}
 
+Buffer& Buffer::operator=(Buffer&& buff) {
+  swap(buff);
   return *this;
 }
 
