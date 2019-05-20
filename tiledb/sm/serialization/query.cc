@@ -500,12 +500,17 @@ Status query_serialize(
     Query* query,
     SerializationType serialize_type,
     bool clientside,
-    Buffer* serialized_buffer) {
+    BufferList* serialized_buffer) {
   STATS_FUNC_IN(serialization_query_serialize);
 
   if (serialize_type == SerializationType::JSON)
     return LOG_STATUS(Status::SerializationError(
         "Cannot serialize query; json format not supported."));
+
+  const auto* array_schema = query->array_schema();
+  if (array_schema == nullptr || query->array() == nullptr)
+    return LOG_STATUS(Status::SerializationError(
+        "Cannot serialize; array or array schema is null."));
 
   try {
     ::capnp::MallocMessageBuilder message;
@@ -517,22 +522,18 @@ Status query_serialize(
         (clientside && query->type() == QueryType::WRITE) ||
         (!clientside && query->type() == QueryType::READ);
 
-    serialized_buffer->reset_size();
-    serialized_buffer->reset_offset();
-
-    uint64_t total_fixed_len_bytes =
-        query_builder.getTotalFixedLengthBufferBytes();
-    uint64_t total_var_len_bytes = query_builder.getTotalVarLenBufferBytes();
     switch (serialize_type) {
       case SerializationType::JSON: {
         ::capnp::JsonCodec json;
         kj::String capnp_json = json.encode(query_builder);
         const auto json_len = capnp_json.size();
         const char nul = '\0';
+        Buffer header;
         // size does not include needed null terminator, so add +1
-        RETURN_NOT_OK(serialized_buffer->realloc(json_len + 1));
-        RETURN_NOT_OK(serialized_buffer->write(capnp_json.cStr(), json_len))
-        RETURN_NOT_OK(serialized_buffer->write(&nul, 1));
+        RETURN_NOT_OK(header.realloc(json_len + 1));
+        RETURN_NOT_OK(header.write(capnp_json.cStr(), json_len))
+        RETURN_NOT_OK(header.write(&nul, 1));
+        RETURN_NOT_OK(serialized_buffer->add_buffer(std::move(header)));
         // TODO: At this point the buffer data should also be serialized.
         break;
       }
@@ -540,19 +541,12 @@ Status query_serialize(
         kj::Array<::capnp::word> protomessage = messageToFlatArray(message);
         kj::ArrayPtr<const char> message_chars = protomessage.asChars();
 
-        auto total_nbytes = message_chars.size();
-        if (serialize_buffers)
-          total_nbytes += total_fixed_len_bytes + total_var_len_bytes;
-
         // Write the serialized query
-        RETURN_NOT_OK(serialized_buffer->realloc(total_nbytes));
-        RETURN_NOT_OK(serialized_buffer->write(
-            message_chars.begin(), message_chars.size()));
-
-        const auto* array_schema = query->array_schema();
-        if (array_schema == nullptr || query->array() == nullptr)
-          return LOG_STATUS(Status::SerializationError(
-              "Cannot serialize; array or array schema is null."));
+        Buffer header;
+        RETURN_NOT_OK(header.realloc(message_chars.size()));
+        RETURN_NOT_OK(
+            header.write(message_chars.begin(), message_chars.size()));
+        RETURN_NOT_OK(serialized_buffer->add_buffer(std::move(header)));
 
         // Iterate over attributes and concatenate buffers to end of message.
         if (serialize_buffers) {
@@ -586,9 +580,12 @@ Status query_serialize(
                     buffer_size == nullptr)
                   return LOG_STATUS(Status::SerializationError(
                       "Cannot serialize; unexpected null buffers."));
-                RETURN_NOT_OK(serialized_buffer->write(
-                    offset_buffer, *offset_buffer_size));
-                RETURN_NOT_OK(serialized_buffer->write(buffer, *buffer_size));
+
+                Buffer offsets(offset_buffer, *offset_buffer_size);
+                Buffer data(buffer, *buffer_size);
+                RETURN_NOT_OK(
+                    serialized_buffer->add_buffer(std::move(offsets)));
+                RETURN_NOT_OK(serialized_buffer->add_buffer(std::move(data)));
               }
             } else {
               // Fixed size attribute buffer
@@ -601,7 +598,9 @@ Status query_serialize(
                 if (buffer_size == nullptr)
                   return LOG_STATUS(Status::SerializationError(
                       "Cannot serialize; unexpected null buffer size."));
-                RETURN_NOT_OK(serialized_buffer->write(buffer, *buffer_size));
+
+                Buffer data(buffer, *buffer_size);
+                RETURN_NOT_OK(serialized_buffer->add_buffer(std::move(data)));
               }
             }
           }
@@ -694,7 +693,7 @@ Status query_deserialize(
 
 #else
 
-Status query_serialize(Query*, SerializationType, bool, Buffer*) {
+Status query_serialize(Query*, SerializationType, bool, BufferList*) {
   return LOG_STATUS(Status::SerializationError(
       "Cannot serialize; serialization not enabled."));
 }

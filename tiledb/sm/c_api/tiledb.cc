@@ -4918,14 +4918,27 @@ int32_t tiledb_serialize_query(
       sanity_check(ctx, buffer) == TILEDB_ERR)
     return TILEDB_ERR;
 
+  // TODO: remove this when C API uses a buffer_list_t
+  tiledb::sm::BufferList buffer_list;
+
   if (SAVE_ERROR_CATCH(
           ctx,
           tiledb::sm::serialization::query_serialize(
               query->query_,
               (tiledb::sm::SerializationType)serialize_type,
               client_side == 1,
-              buffer->buffer_)))
+              &buffer_list)))
     return TILEDB_ERR;
+
+  // TODO: remove this when C API uses a buffer_list_t
+  const auto total_size = buffer_list.total_size();
+  if (SAVE_ERROR_CATCH(ctx, buffer->buffer_->realloc(total_size)))
+    return TILEDB_ERR;
+  buffer_list.reset_offset();
+  if (SAVE_ERROR_CATCH(
+          ctx, buffer_list.read(buffer->buffer_->data(), total_size)))
+    return TILEDB_ERR;
+  buffer->buffer_->set_size(total_size);
 
   return TILEDB_OK;
 }

@@ -70,6 +70,36 @@ size_t write_memory_callback(
   return content_nbytes;
 }
 
+/**
+ * Callback for reading data to POST.
+ *
+ * This is called by libcurl when there is data from a BufferList being POSTed.
+ *
+ * @param dest Destination buffer to read into
+ * @param size Size of a member in the dest buffer
+ * @param nmemb Max number of members in the dest buffer
+ * @param userdata User data attached to the callback (in our case will point to
+ *      a BufferList instance)
+ * @return Number of bytes copied into the dest buffer
+ */
+size_t buffer_list_read_memory_callback(
+    void* dest, size_t size, size_t nmemb, void* userdata) {
+  auto buffer_list = static_cast<BufferList*>(userdata);
+  const size_t max_nbytes = size * nmemb;
+
+  // The buffer list tracks the current offset internally.
+  uint64_t num_read = 0;
+  auto st = buffer_list->read_at_most(dest, max_nbytes, &num_read);
+  if (!st.ok()) {
+    LOG_ERROR(
+        "Cannot copy libcurl POST data; BufferList read failed: " +
+        st.to_string());
+    return CURL_READFUNC_ABORT;
+  }
+
+  return num_read;
+}
+
 Curl::Curl()
     : config_(nullptr)
     , curl_(nullptr, curl_easy_cleanup) {
@@ -246,7 +276,7 @@ Status Curl::check_curl_errors(
 Status Curl::post_data(
     const std::string& url,
     SerializationType serialization_type,
-    Buffer* data,
+    const BufferList* data,
     Buffer* returned_data) {
   STATS_FUNC_IN(rest_curl_post);
 
@@ -257,7 +287,7 @@ Status Curl::post_data(
 
   // TODO: If you post more than 2GB, use CURLOPT_POSTFIELDSIZE_LARGE.
   const uint64_t post_size_limit = uint64_t(2) * 1024 * 1024 * 1024;
-  if (data->size() > post_size_limit)
+  if (data->total_size() > post_size_limit)
     return LOG_STATUS(
         Status::RestError("Error posting data; buffer size > 2GB"));
 
@@ -270,8 +300,10 @@ Status Curl::post_data(
 
   /* HTTP PUT please */
   curl_easy_setopt(curl, CURLOPT_POST, 1L);
-  curl_easy_setopt(curl, CURLOPT_POSTFIELDS, data->data());
-  curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, data->size());
+  curl_easy_setopt(
+      curl, CURLOPT_READFUNCTION, buffer_list_read_memory_callback);
+  curl_easy_setopt(curl, CURLOPT_READDATA, data);
+  curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, data->total_size());
 
   /* pass our list of custom made headers */
   curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
