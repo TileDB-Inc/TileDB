@@ -425,8 +425,8 @@ Status query_from_capnp(
       if (type == QueryType::READ) {
         // On reads, just set null pointers with accurate size so that the
         // server can introspect and allocate properly sized buffers separately.
-        Buffer offsets_buff(nullptr, fixedlen_size, false);
-        Buffer varlen_buff(nullptr, varlen_size, false);
+        Buffer offsets_buff(nullptr, fixedlen_size);
+        Buffer varlen_buff(nullptr, varlen_size);
         attr_state->fixed_len_size = fixedlen_size;
         attr_state->var_len_size = varlen_size;
         attr_state->fixed_len_data.swap(offsets_buff);
@@ -449,8 +449,8 @@ Status query_from_capnp(
           auto* offsets = reinterpret_cast<uint64_t*>(attribute_buffer_start);
           auto* varlen_data = attribute_buffer_start + fixedlen_size;
           attribute_buffer_start += fixedlen_size + varlen_size;
-          Buffer offsets_buff(offsets, fixedlen_size, false);
-          Buffer varlen_buff(varlen_data, varlen_size, false);
+          Buffer offsets_buff(offsets, fixedlen_size);
+          Buffer varlen_buff(varlen_data, varlen_size);
           attr_state->fixed_len_size = fixedlen_size;
           attr_state->var_len_size = varlen_size;
           attr_state->fixed_len_data.swap(offsets_buff);
@@ -464,8 +464,8 @@ Status query_from_capnp(
         } else {
           auto* data = attribute_buffer_start;
           attribute_buffer_start += fixedlen_size;
-          Buffer buff(data, fixedlen_size, false);
-          Buffer varlen_buff(nullptr, 0, false);
+          Buffer buff(data, fixedlen_size);
+          Buffer varlen_buff(nullptr, 0);
           attr_state->fixed_len_size = fixedlen_size;
           attr_state->var_len_size = varlen_size;
           attr_state->fixed_len_data.swap(buff);
