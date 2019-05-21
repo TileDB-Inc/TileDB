@@ -4911,15 +4911,15 @@ int32_t tiledb_serialize_query(
     const tiledb_query_t* query,
     tiledb_serialization_type_t serialize_type,
     int32_t client_side,
-    tiledb_buffer_t* buffer) {
+    tiledb_buffer_list_t** buffer_list) {
   // Sanity check
-  if (sanity_check(ctx) == TILEDB_ERR ||
-      sanity_check(ctx, query) == TILEDB_ERR ||
-      sanity_check(ctx, buffer) == TILEDB_ERR)
+  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, query) == TILEDB_ERR)
     return TILEDB_ERR;
 
-  // TODO: remove this when C API uses a buffer_list_t
-  tiledb::sm::BufferList buffer_list;
+  // Allocate a buffer list
+  if (tiledb_buffer_list_alloc(ctx, buffer_list) == TILEDB_ERR ||
+      sanity_check(ctx, *buffer_list) == TILEDB_ERR)
+    return TILEDB_ERR;
 
   if (SAVE_ERROR_CATCH(
           ctx,
@@ -4927,18 +4927,8 @@ int32_t tiledb_serialize_query(
               query->query_,
               (tiledb::sm::SerializationType)serialize_type,
               client_side == 1,
-              &buffer_list)))
+              (*buffer_list)->buffer_list_)))
     return TILEDB_ERR;
-
-  // TODO: remove this when C API uses a buffer_list_t
-  const auto total_size = buffer_list.total_size();
-  if (SAVE_ERROR_CATCH(ctx, buffer->buffer_->realloc(total_size)))
-    return TILEDB_ERR;
-  buffer_list.reset_offset();
-  if (SAVE_ERROR_CATCH(
-          ctx, buffer_list.read(buffer->buffer_->data(), total_size)))
-    return TILEDB_ERR;
-  buffer->buffer_->set_size(total_size);
 
   return TILEDB_OK;
 }

@@ -88,14 +88,21 @@ TILEDB_EXPORT int32_t tiledb_deserialize_array_schema(
     tiledb_array_schema_t** array_schema);
 
 /**
- * Serializes the given query
+ * Serializes the given query.
+ *
+ * Where possible the serialization is zero-copy. The returned buffer list
+ * contains an ordered list of pointers to buffers that logically contain the
+ * entire serialized query when concatenated.
+ *
+ * @note The caller must free the returned `tiledb_buffer_list_t`.
  *
  * @param ctx The TileDB context.
  * @param query The query.
  * @param serialization_type Type of serialization to use
  * @param client_side If set to 1, deserialize from "client-side" perspective.
  *    Else, "server-side."
- * @param buffer Buffer to serialize to
+ * @param buffer_list Will be set to a newly allocated buffer list containing
+ *    the serialized query.
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
 TILEDB_EXPORT int32_t tiledb_serialize_query(
@@ -103,7 +110,7 @@ TILEDB_EXPORT int32_t tiledb_serialize_query(
     const tiledb_query_t* query,
     tiledb_serialization_type_t serialize_type,
     int32_t client_side,
-    tiledb_buffer_t* buffer);
+    tiledb_buffer_list_t** buffer_list);
 
 /**
  * Deserializes into an existing query from the given buffer.

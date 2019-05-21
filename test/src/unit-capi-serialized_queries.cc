@@ -173,17 +173,19 @@ struct SerializationFx {
       Query& query,
       std::vector<uint8_t>* serialized,
       bool clientside) {
+    // Serialize
+    tiledb_buffer_list_t* buff_list;
+    ctx.handle_error(tiledb_serialize_query(
+        ctx, query.ptr().get(), TILEDB_CAPNP, clientside ? 1 : 0, &buff_list));
+
+    // Flatten
     tiledb_buffer_t* c_buff;
-    ctx.handle_error(tiledb_buffer_alloc(ctx, &c_buff));
+    ctx.handle_error(tiledb_buffer_list_flatten(ctx, buff_list, &c_buff));
 
     // Wrap in a safe pointer
     auto deleter = [](tiledb_buffer_t* b) { tiledb_buffer_free(&b); };
     std::unique_ptr<tiledb_buffer_t, decltype(deleter)> buff_ptr(
         c_buff, deleter);
-
-    // Serialize
-    ctx.handle_error(tiledb_serialize_query(
-        ctx, query.ptr().get(), TILEDB_CAPNP, clientside ? 1 : 0, c_buff));
 
     // Copy into user vector
     void* data;

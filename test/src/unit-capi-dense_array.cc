@@ -2737,21 +2737,22 @@ int DenseArrayFx::submit_query_wrapper(
   REQUIRE(tiledb_query_get_layout(ctx_, query, &layout) == TILEDB_OK);
 
   // Serialize the query (client-side).
-  tiledb_buffer_t* buff1;
-  REQUIRE(tiledb_buffer_alloc(ctx_, &buff1) == TILEDB_OK);
-  int rc = tiledb_serialize_query(ctx_, query, TILEDB_CAPNP, 1, buff1);
+  tiledb_buffer_list_t* buff_list1;
+  int rc = tiledb_serialize_query(ctx_, query, TILEDB_CAPNP, 1, &buff_list1);
 
   // Global order queries are not (yet) supported for serialization. Just
   // check that serialization is an error, and then execute the regular query.
   if (layout == TILEDB_GLOBAL_ORDER) {
     REQUIRE(rc == TILEDB_ERR);
-    tiledb_buffer_free(&buff1);
+    tiledb_buffer_list_free(&buff_list1);
     return tiledb_query_submit(ctx_, query);
   } else {
     REQUIRE(rc == TILEDB_OK);
   }
 
   // Copy the data to a temporary memory region ("send over the network").
+  tiledb_buffer_t* buff1;
+  REQUIRE(tiledb_buffer_list_flatten(ctx_, buff_list1, &buff1) == TILEDB_OK);
   uint64_t buff1_size;
   void* buff1_data;
   REQUIRE(
@@ -2882,11 +2883,12 @@ int DenseArrayFx::submit_query_wrapper(
   rc = tiledb_query_submit(ctx_, new_query);
 
   // Serialize the new query and "send it over the network" (server-side)
-  tiledb_buffer_t* buff3;
-  REQUIRE(tiledb_buffer_alloc(ctx_, &buff3) == TILEDB_OK);
+  tiledb_buffer_list_t* buff_list2;
   REQUIRE(
-      tiledb_serialize_query(ctx_, new_query, TILEDB_CAPNP, 0, buff3) ==
+      tiledb_serialize_query(ctx_, new_query, TILEDB_CAPNP, 0, &buff_list2) ==
       TILEDB_OK);
+  tiledb_buffer_t* buff3;
+  REQUIRE(tiledb_buffer_list_flatten(ctx_, buff_list2, &buff3) == TILEDB_OK);
   uint64_t buff3_size;
   void* buff3_data;
   REQUIRE(
@@ -2914,6 +2916,8 @@ int DenseArrayFx::submit_query_wrapper(
   tiledb_query_free(&new_query);
   tiledb_array_free(&new_array);
   tiledb_buffer_free(&buff4);
+  tiledb_buffer_list_free(&buff_list1);
+  tiledb_buffer_list_free(&buff_list2);
   std::free(buff1_copy);
   std::free(buff3_copy);
   for (void* b : to_free)
