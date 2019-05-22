@@ -147,6 +147,17 @@ inline int32_t sanity_check(tiledb_ctx_t* ctx, const tiledb_buffer_t* buffer) {
   return TILEDB_OK;
 }
 
+inline int32_t sanity_check(
+    tiledb_ctx_t* ctx, const tiledb_buffer_list_t* buffer_list) {
+  if (buffer_list == nullptr || buffer_list->buffer_list_ == nullptr) {
+    auto st = tiledb::sm::Status::Error("Invalid TileDB buffer list object");
+    LOG_STATUS(st);
+    save_error(ctx, st);
+    return TILEDB_ERR;
+  }
+  return TILEDB_OK;
+}
+
 inline int32_t sanity_check(tiledb_config_t* config, tiledb_error_t** error) {
   if (config == nullptr || config->config_ == nullptr) {
     auto st =
@@ -501,6 +512,149 @@ int32_t tiledb_buffer_set_data(
 
   // 'tmp_buffer' now destructs, freeing the old allocation (if any) of the
   // given buffer.
+
+  return TILEDB_OK;
+}
+
+/* ********************************* */
+/*            BUFFER LIST            */
+/* ********************************* */
+
+int32_t tiledb_buffer_list_alloc(
+    tiledb_ctx_t* ctx, tiledb_buffer_list_t** buffer_list) {
+  if (sanity_check(ctx) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  // Create a buffer list struct
+  *buffer_list = new (std::nothrow) tiledb_buffer_list_t;
+  if (*buffer_list == nullptr) {
+    auto st = tiledb::sm::Status::Error(
+        "Failed to allocate TileDB buffer list object");
+    LOG_STATUS(st);
+    save_error(ctx, st);
+    return TILEDB_OOM;
+  }
+
+  // Create a new buffer_list object
+  (*buffer_list)->buffer_list_ = new (std::nothrow) tiledb::sm::BufferList;
+  if ((*buffer_list)->buffer_list_ == nullptr) {
+    delete *buffer_list;
+    auto st = tiledb::sm::Status::Error(
+        "Failed to allocate TileDB buffer list object");
+    LOG_STATUS(st);
+    save_error(ctx, st);
+    return TILEDB_OOM;
+  }
+
+  // Success
+  return TILEDB_OK;
+}
+
+void tiledb_buffer_list_free(tiledb_buffer_list_t** buffer_list) {
+  if (buffer_list != nullptr && *buffer_list != nullptr) {
+    delete (*buffer_list)->buffer_list_;
+    delete (*buffer_list);
+    *buffer_list = nullptr;
+  }
+}
+
+int32_t tiledb_buffer_list_get_num_buffers(
+    tiledb_ctx_t* ctx,
+    const tiledb_buffer_list_t* buffer_list,
+    uint64_t* num_buffers) {
+  // Sanity check
+  if (sanity_check(ctx) == TILEDB_ERR ||
+      sanity_check(ctx, buffer_list) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  *num_buffers = buffer_list->buffer_list_->num_buffers();
+
+  return TILEDB_OK;
+}
+
+int32_t tiledb_buffer_list_get_buffer(
+    tiledb_ctx_t* ctx,
+    const tiledb_buffer_list_t* buffer_list,
+    uint64_t buffer_idx,
+    tiledb_buffer_t** buffer) {
+  // Sanity check
+  if (sanity_check(ctx) == TILEDB_ERR ||
+      sanity_check(ctx, buffer_list) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  // Get the underlying buffer
+  tiledb::sm::Buffer* b;
+  if (SAVE_ERROR_CATCH(
+          ctx, buffer_list->buffer_list_->get_buffer(buffer_idx, &b)))
+    return TILEDB_ERR;
+
+  // Create a buffer struct
+  *buffer = new (std::nothrow) tiledb_buffer_t;
+  if (*buffer == nullptr) {
+    auto st =
+        tiledb::sm::Status::Error("Failed to allocate TileDB buffer object");
+    LOG_STATUS(st);
+    save_error(ctx, st);
+    return TILEDB_OOM;
+  }
+
+  // Set the buffer pointer to a non-owning wrapper of the underlying buffer
+  (*buffer)->buffer_ =
+      new (std::nothrow) tiledb::sm::Buffer(b->data(), b->size());
+  if ((*buffer)->buffer_ == nullptr) {
+    delete *buffer;
+    auto st =
+        tiledb::sm::Status::Error("Failed to allocate TileDB buffer object");
+    LOG_STATUS(st);
+    save_error(ctx, st);
+    return TILEDB_OOM;
+  }
+
+  return TILEDB_OK;
+}
+
+int32_t tiledb_buffer_list_get_total_size(
+    tiledb_ctx_t* ctx,
+    const tiledb_buffer_list_t* buffer_list,
+    uint64_t* total_size) {
+  // Sanity check
+  if (sanity_check(ctx) == TILEDB_ERR ||
+      sanity_check(ctx, buffer_list) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  *total_size = buffer_list->buffer_list_->total_size();
+
+  return TILEDB_OK;
+}
+
+int32_t tiledb_buffer_list_flatten(
+    tiledb_ctx_t* ctx,
+    const tiledb_buffer_list_t* buffer_list,
+    tiledb_buffer_t** buffer) {
+  // Sanity check
+  if (sanity_check(ctx) == TILEDB_ERR ||
+      sanity_check(ctx, buffer_list) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  // Create a buffer instance
+  if (tiledb_buffer_alloc(ctx, buffer) == TILEDB_ERR ||
+      sanity_check(ctx, *buffer) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  // Resize the dest buffer
+  const auto nbytes = buffer_list->buffer_list_->total_size();
+  if (SAVE_ERROR_CATCH(ctx, (*buffer)->buffer_->realloc(nbytes)))
+    return TILEDB_ERR;
+
+  // Read all into the dest buffer
+  buffer_list->buffer_list_->reset_offset();
+  if (SAVE_ERROR_CATCH(
+          ctx,
+          buffer_list->buffer_list_->read((*buffer)->buffer_->data(), nbytes)))
+    return TILEDB_ERR;
+
+  // Set the result size
+  (*buffer)->buffer_->set_size(nbytes);
 
   return TILEDB_OK;
 }

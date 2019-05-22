@@ -44,6 +44,7 @@ set(TILEDB_TEST_SOURCES
   src/helpers.cc
   src/unit-backwards_compat.cc
   src/unit-buffer.cc
+  src/unit-bufferlist.cc
   src/unit-capi-any.cc
   src/unit-capi-array_schema.cc
   src/unit-capi-async.cc

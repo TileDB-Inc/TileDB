@@ -9,6 +9,8 @@ Types
     :project: TileDB-C
 .. doxygentypedef:: tiledb_buffer_t
     :project: TileDB-C
+.. doxygentypedef:: tiledb_buffer_list_t
+    :project: TileDB-C
 .. doxygentypedef:: tiledb_config_t
     :project: TileDB-C
 .. doxygentypedef:: tiledb_config_iter_t
@@ -527,6 +529,21 @@ Buffer
 .. doxygenfunction:: tiledb_buffer_get_data
     :project: TileDB-C
 .. doxygenfunction:: tiledb_buffer_set_data
+    :project: TileDB-C
+
+BufferList
+----------
+.. doxygenfunction:: tiledb_buffer_list_alloc
+    :project: TileDB-C
+.. doxygenfunction:: tiledb_buffer_list_free
+    :project: TileDB-C
+.. doxygenfunction:: tiledb_buffer_list_get_num_buffers
+    :project: TileDB-C
+.. doxygenfunction:: tiledb_buffer_list_get_total_size
+    :project: TileDB-C
+.. doxygenfunction:: tiledb_buffer_list_get_buffer
+    :project: TileDB-C
+.. doxygenfunction:: tiledb_buffer_list_flatten
     :project: TileDB-C
 
 Object Management
