@@ -3705,7 +3705,6 @@ TEST_CASE_METHOD(
 // Test selected read/write layout computed internally based
 // on fragments whose domain does not coincide the space tiling.
 // In this case, the non-empty domain should be expanded.
-// This test should not allow any fragment subset consolidation
 TEST_CASE_METHOD(
     ConsolidationFx,
     "C API: Test consolidation, fragments that don't coincide with space tiles "
@@ -3749,7 +3748,7 @@ TEST_CASE_METHOD(
   get_dir_num_struct data = {ctx_, vfs_, 0};
   rc = tiledb_vfs_ls(ctx_, vfs_, DENSE_VECTOR_NAME, &get_dir_num, &data);
   CHECK(rc == TILEDB_OK);
-  CHECK(data.dir_num == 4);
+  CHECK(data.dir_num == 3);
 
   tiledb_config_free(&config);
   remove_dense_vector();

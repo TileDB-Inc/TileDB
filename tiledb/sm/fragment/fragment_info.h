@@ -51,6 +51,13 @@ struct FragmentInfo {
   uint64_t fragment_size_;
   /** The fragment's non-empty domain. */
   std::vector<uint8_t> non_empty_domain_;
+  /**
+   * The fragment's expanded non-empty domain (in a way that
+   * it coincides with tile boundaries. Applicable only to
+   * dense fragments. For sparse fragments, the expanded
+   * domain is the same as the non-empty domain.
+   */
+  std::vector<uint8_t> expanded_non_empty_domain_;
 
   /** Constructor. */
   FragmentInfo() {
@@ -66,12 +73,14 @@ struct FragmentInfo {
       bool sparse,
       uint64_t timestamp,
       uint64_t fragment_size,
-      const std::vector<uint8_t>& non_empty_domain)
+      const std::vector<uint8_t>& non_empty_domain,
+      const std::vector<uint8_t>& expanded_non_empty_domain)
       : uri_(uri)
       , sparse_(sparse)
       , timestamp_(timestamp)
       , fragment_size_(fragment_size)
-      , non_empty_domain_(non_empty_domain) {
+      , non_empty_domain_(non_empty_domain)
+      , expanded_non_empty_domain_(expanded_non_empty_domain) {
   }
 
   /** Copy constructor. */
@@ -111,6 +120,7 @@ struct FragmentInfo {
     clone.timestamp_ = timestamp_;
     clone.fragment_size_ = fragment_size_;
     clone.non_empty_domain_ = non_empty_domain_;
+    clone.expanded_non_empty_domain_ = expanded_non_empty_domain_;
     return clone;
   }
 
@@ -121,6 +131,7 @@ struct FragmentInfo {
     std::swap(timestamp_, info.timestamp_);
     std::swap(fragment_size_, info.fragment_size_);
     std::swap(non_empty_domain_, info.non_empty_domain_);
+    std::swap(expanded_non_empty_domain_, info.expanded_non_empty_domain_);
   }
 };
 

@@ -480,7 +480,7 @@ TEST_CASE(
 
 TEST_CASE(
     "C++ API: Consolidation of sequential fragment writes",
-    "[cppapi], [consolidation-sequential]") {
+    "[cppapi][consolidation][sequential]") {
   Context ctx;
   VFS vfs(ctx);
   const std::string array_name = "cpp_unit_array";
@@ -505,10 +505,17 @@ TEST_CASE(
   // this fragment write caused crash during consolidation
   //   https://github.com/TileDB-Inc/TileDB/issues/1205
   //   https://github.com/TileDB-Inc/TileDB/issues/1212
-  query_w.set_buffer("", data).set_subarray({3, 4}).submit();
+  query_w.set_buffer("", data).set_subarray({4, 5}).submit();
   query_w.finalize();
   array_w.close();
   Array::consolidate(ctx, array_name);
+
+  // Note: vfs.ls returns all the files and directories in the array
+  // folder, which contains one file for the array schema and one
+  // for the array lock. Therefore, the number of fragments is
+  // what ls returns minus 2.
+  auto frag_num = vfs.ls(array_name).size() - 2;
+  CHECK(frag_num == 1);
 
   if (vfs.is_dir(array_name))
     vfs.remove_dir(array_name);

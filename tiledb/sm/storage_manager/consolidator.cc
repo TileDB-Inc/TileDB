@@ -139,8 +139,9 @@ bool Consolidator::are_consolidatable(
       utils::geometry::cell_num<T>(union_non_empty_domains, dim_num);
   uint64_t sum_cell_num = 0;
   for (size_t i = start; i <= end; ++i) {
+    // fragments(StorageManager)
     sum_cell_num += utils::geometry::cell_num<T>(
-        (T*)&fragments[i].non_empty_domain_[0], dim_num);
+        (T*)&fragments[i].expanded_non_empty_domain_[0], dim_num);
   }
 
   return (double(union_cell_num) / sum_cell_num) <= config_.amplification_;
