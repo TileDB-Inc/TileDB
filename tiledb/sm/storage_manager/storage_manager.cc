@@ -876,9 +876,26 @@ Status StorageManager::get_fragment_info(
     RETURN_NOT_OK(load_fragment_metadata(&metadata, encryption_key, &in_cache));
     std::memcpy(non_empty_domain, metadata.non_empty_domain(), domain_size);
 
+    // Compute expanded non-empty domain only for dense fragments
+    std::vector<uint8_t> expanded_non_empty_domain;
+    expanded_non_empty_domain.resize(domain_size);
+    std::memcpy(
+        &expanded_non_empty_domain[0],
+        metadata.non_empty_domain(),
+        domain_size);
+    if (!sparse)
+      array_schema->domain()->expand_domain(
+          (void*)&expanded_non_empty_domain[0]);
+
     // Push new fragment info
     fragment_info->emplace_back(
-        uri.second, sparse, uri.first, size, non_empty_domain, domain_size);
+        uri.second,
+        sparse,
+        uri.first,
+        size,
+        non_empty_domain,
+        domain_size,
+        expanded_non_empty_domain);
   }
 
   // Clean up
@@ -921,6 +938,14 @@ Status StorageManager::get_fragment_info(
       FragmentMetadata(array_schema, !sparse, fragment_uri, timestamp);
   RETURN_NOT_OK(load_fragment_metadata(&metadata, encryption_key, &in_cache));
 
+  // Compute expanded non-empty domain only for dense fragments
+  std::vector<uint8_t> expanded_non_empty_domain;
+  expanded_non_empty_domain.resize(domain_size);
+  std::memcpy(
+      &expanded_non_empty_domain[0], metadata.non_empty_domain(), domain_size);
+  if (!sparse)
+    array_schema->domain()->expand_domain((void*)&expanded_non_empty_domain[0]);
+
   // Set fragment info
   *fragment_info = FragmentInfo(
       fragment_uri,
@@ -928,7 +953,8 @@ Status StorageManager::get_fragment_info(
       timestamp,
       size,
       metadata.non_empty_domain(),
-      domain_size);
+      domain_size,
+      expanded_non_empty_domain);
 
   return Status::Ok();
 }

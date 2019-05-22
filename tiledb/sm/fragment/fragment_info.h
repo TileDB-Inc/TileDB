@@ -53,6 +53,13 @@ struct FragmentInfo {
   void* non_empty_domain_;
   /** The size in bytes of non_empty_domain_.  */
   uint64_t non_empty_domain_size_;
+  /**
+   * The fragment's expanded non-empty domain (in a way that
+   * it coincides with tile boundaries. Applicable only to
+   * dense fragments. For sparse fragments, the expanded
+   * domain is the same as the non-empty domain.
+   */
+  std::vector<uint8_t> expanded_non_empty_domain_;
 
   /** Constructor. */
   FragmentInfo() {
@@ -71,12 +78,14 @@ struct FragmentInfo {
       uint64_t timestamp,
       uint64_t fragment_size,
       const void* non_empty_domain,
-      uint64_t non_empty_domain_size)
+      uint64_t non_empty_domain_size,
+      const std::vector<uint8_t>& expanded_non_empty_domain)
       : uri_(uri)
       , sparse_(sparse)
       , timestamp_(timestamp)
       , fragment_size_(fragment_size)
-      , non_empty_domain_size_(non_empty_domain_size) {
+      , non_empty_domain_size_(non_empty_domain_size)
+      , expanded_non_empty_domain_(expanded_non_empty_domain) {
     non_empty_domain_ = std::malloc(non_empty_domain_size);
     std::memcpy(non_empty_domain_, non_empty_domain, non_empty_domain_size);
   }
@@ -130,6 +139,7 @@ struct FragmentInfo {
       std::memcpy(
           clone.non_empty_domain_, non_empty_domain_, non_empty_domain_size_);
     }
+    clone.expanded_non_empty_domain_ = expanded_non_empty_domain_;
 
     return clone;
   }
@@ -142,6 +152,7 @@ struct FragmentInfo {
     std::swap(fragment_size_, info.fragment_size_);
     std::swap(non_empty_domain_, info.non_empty_domain_);
     std::swap(non_empty_domain_size_, info.non_empty_domain_size_);
+    std::swap(expanded_non_empty_domain_, info.expanded_non_empty_domain_);
   }
 };
 
