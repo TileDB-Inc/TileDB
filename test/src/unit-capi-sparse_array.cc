@@ -59,7 +59,6 @@ struct SparseArrayFx {
   const tiledb_datatype_t DIM_TYPE = TILEDB_INT64;
   const tiledb_array_type_t ARRAY_TYPE = TILEDB_SPARSE;
   int COMPRESSION_LEVEL = -1;
-  const std::string HDFS_TEMP_DIR = "hdfs:///tiledb_test/";
   const std::string S3_PREFIX = "s3://";
   const std::string S3_BUCKET = S3_PREFIX + random_bucket_name("tiledb") + "/";
   const std::string S3_TEMP_DIR = S3_BUCKET + "tiledb_test/";
@@ -84,7 +83,6 @@ struct SparseArrayFx {
 
   // Supported filesystems
   bool supports_s3_;
-  bool supports_hdfs_;
 
   // Functions
   SparseArrayFx();
@@ -245,8 +243,6 @@ SparseArrayFx::SparseArrayFx() {
   create_temp_dir(FILE_URI_PREFIX + FILE_TEMP_DIR);
   if (supports_s3_)
     create_temp_dir(S3_TEMP_DIR);
-  if (supports_hdfs_)
-    create_temp_dir(HDFS_TEMP_DIR);
 }
 
 SparseArrayFx::~SparseArrayFx() {
@@ -262,8 +258,6 @@ SparseArrayFx::~SparseArrayFx() {
           tiledb_vfs_remove_bucket(ctx_, vfs_, S3_BUCKET.c_str()) == TILEDB_OK);
     }
   }
-  if (supports_hdfs_)
-    remove_temp_dir(HDFS_TEMP_DIR);
 
   tiledb_vfs_free(&vfs_);
   tiledb_ctx_free(&ctx_);
@@ -277,9 +271,6 @@ void SparseArrayFx::set_supported_fs() {
   int rc = tiledb_ctx_is_supported_fs(ctx, TILEDB_S3, &is_supported);
   REQUIRE(rc == TILEDB_OK);
   supports_s3_ = (bool)is_supported;
-  rc = tiledb_ctx_is_supported_fs(ctx, TILEDB_HDFS, &is_supported);
-  REQUIRE(rc == TILEDB_OK);
-  supports_hdfs_ = (bool)is_supported;
 
   tiledb_ctx_free(&ctx);
 }
@@ -2129,11 +2120,6 @@ TEST_CASE_METHOD(
       array_name = S3_TEMP_DIR + ARRAY;
       check_sorted_reads(
           array_name, TILEDB_FILTER_NONE, TILEDB_ROW_MAJOR, TILEDB_ROW_MAJOR);
-    } else if (supports_hdfs_) {
-      // HDFS
-      array_name = HDFS_TEMP_DIR + ARRAY;
-      check_sorted_reads(
-          array_name, TILEDB_FILTER_NONE, TILEDB_ROW_MAJOR, TILEDB_ROW_MAJOR);
     } else {
       // File
       array_name = FILE_URI_PREFIX + FILE_TEMP_DIR + ARRAY;
@@ -2146,11 +2132,6 @@ TEST_CASE_METHOD(
     if (supports_s3_) {
       // S3
       array_name = S3_TEMP_DIR + ARRAY;
-      check_sorted_reads(
-          array_name, TILEDB_FILTER_NONE, TILEDB_COL_MAJOR, TILEDB_COL_MAJOR);
-    } else if (supports_hdfs_) {
-      // HDFS
-      array_name = HDFS_TEMP_DIR + ARRAY;
       check_sorted_reads(
           array_name, TILEDB_FILTER_NONE, TILEDB_COL_MAJOR, TILEDB_COL_MAJOR);
     } else {
@@ -2167,11 +2148,6 @@ TEST_CASE_METHOD(
       array_name = S3_TEMP_DIR + ARRAY;
       check_sorted_reads(
           array_name, TILEDB_FILTER_NONE, TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR);
-    } else if (supports_hdfs_) {
-      // HDFS
-      array_name = HDFS_TEMP_DIR + ARRAY;
-      check_sorted_reads(
-          array_name, TILEDB_FILTER_NONE, TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR);
     } else {
       // File
       array_name = FILE_URI_PREFIX + FILE_TEMP_DIR + ARRAY;
@@ -2184,11 +2160,6 @@ TEST_CASE_METHOD(
     if (supports_s3_) {
       // S3
       array_name = S3_TEMP_DIR + ARRAY;
-      check_sorted_reads(
-          array_name, TILEDB_FILTER_GZIP, TILEDB_ROW_MAJOR, TILEDB_ROW_MAJOR);
-    } else if (supports_hdfs_) {
-      // HDFS
-      array_name = HDFS_TEMP_DIR + ARRAY;
       check_sorted_reads(
           array_name, TILEDB_FILTER_GZIP, TILEDB_ROW_MAJOR, TILEDB_ROW_MAJOR);
     } else {
@@ -2205,11 +2176,6 @@ TEST_CASE_METHOD(
       array_name = S3_TEMP_DIR + ARRAY;
       check_sorted_reads(
           array_name, TILEDB_FILTER_GZIP, TILEDB_COL_MAJOR, TILEDB_COL_MAJOR);
-    } else if (supports_hdfs_) {
-      // HDFS
-      array_name = HDFS_TEMP_DIR + ARRAY;
-      check_sorted_reads(
-          array_name, TILEDB_FILTER_GZIP, TILEDB_COL_MAJOR, TILEDB_COL_MAJOR);
     } else {
       // File
       array_name = FILE_URI_PREFIX + FILE_TEMP_DIR + ARRAY;
@@ -2222,11 +2188,6 @@ TEST_CASE_METHOD(
     if (supports_s3_) {
       // S3
       array_name = S3_TEMP_DIR + ARRAY;
-      check_sorted_reads(
-          array_name, TILEDB_FILTER_GZIP, TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR);
-    } else if (supports_hdfs_) {
-      // HDFS
-      array_name = HDFS_TEMP_DIR + ARRAY;
       check_sorted_reads(
           array_name, TILEDB_FILTER_GZIP, TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR);
     } else {
@@ -2243,11 +2204,6 @@ TEST_CASE_METHOD(
       array_name = S3_TEMP_DIR + ARRAY;
       check_sorted_reads(
           array_name, TILEDB_FILTER_BZIP2, TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR);
-    } else if (supports_hdfs_) {
-      // HDFS
-      array_name = HDFS_TEMP_DIR + ARRAY;
-      check_sorted_reads(
-          array_name, TILEDB_FILTER_BZIP2, TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR);
     } else {
       // File
       array_name = FILE_URI_PREFIX + FILE_TEMP_DIR + ARRAY;
@@ -2260,11 +2216,6 @@ TEST_CASE_METHOD(
     if (supports_s3_) {
       // S3
       array_name = S3_TEMP_DIR + ARRAY;
-      check_sorted_reads(
-          array_name, TILEDB_FILTER_LZ4, TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR);
-    } else if (supports_hdfs_) {
-      // HDFS
-      array_name = HDFS_TEMP_DIR + ARRAY;
       check_sorted_reads(
           array_name, TILEDB_FILTER_LZ4, TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR);
     } else {
@@ -2281,11 +2232,6 @@ TEST_CASE_METHOD(
       array_name = S3_TEMP_DIR + ARRAY;
       check_sorted_reads(
           array_name, TILEDB_FILTER_RLE, TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR);
-    } else if (supports_hdfs_) {
-      // HDFS
-      array_name = HDFS_TEMP_DIR + ARRAY;
-      check_sorted_reads(
-          array_name, TILEDB_FILTER_RLE, TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR);
     } else {
       // File
       array_name = FILE_URI_PREFIX + FILE_TEMP_DIR + ARRAY;
@@ -2300,11 +2246,6 @@ TEST_CASE_METHOD(
       array_name = S3_TEMP_DIR + ARRAY;
       check_sorted_reads(
           array_name, TILEDB_FILTER_ZSTD, TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR);
-    } else if (supports_hdfs_) {
-      // HDFS
-      array_name = HDFS_TEMP_DIR + ARRAY;
-      check_sorted_reads(
-          array_name, TILEDB_FILTER_ZSTD, TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR);
     } else {
       // File
       array_name = FILE_URI_PREFIX + FILE_TEMP_DIR + ARRAY;
@@ -2317,14 +2258,6 @@ TEST_CASE_METHOD(
     if (supports_s3_) {
       // S3
       array_name = S3_TEMP_DIR + ARRAY;
-      check_sorted_reads(
-          array_name,
-          TILEDB_FILTER_DOUBLE_DELTA,
-          TILEDB_ROW_MAJOR,
-          TILEDB_COL_MAJOR);
-    } else if (supports_hdfs_) {
-      // HDFS
-      array_name = HDFS_TEMP_DIR + ARRAY;
       check_sorted_reads(
           array_name,
           TILEDB_FILTER_DOUBLE_DELTA,
@@ -2757,11 +2690,6 @@ TEST_CASE_METHOD(
   if (supports_s3_) {
     // S3
     array_name = S3_TEMP_DIR + ARRAY;
-    check_sorted_reads(
-        array_name, TILEDB_FILTER_BZIP2, TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR);
-  } else if (supports_hdfs_) {
-    // HDFS
-    array_name = HDFS_TEMP_DIR + ARRAY;
     check_sorted_reads(
         array_name, TILEDB_FILTER_BZIP2, TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR);
   } else {
