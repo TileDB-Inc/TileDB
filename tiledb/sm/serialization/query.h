@@ -33,6 +33,7 @@
 #ifndef TILEDB_SERIALIZATION_QUERY_H
 #define TILEDB_SERIALIZATION_QUERY_H
 
+#include "tiledb/sm/buffer/buffer_list.h"
 #include "tiledb/sm/enums/serialization_type.h"
 #include "tiledb/sm/query/query.h"
 
@@ -51,7 +52,7 @@ Status query_serialize(
     Query* query,
     SerializationType serialize_type,
     bool clientside,
-    Buffer* serialized_buffer);
+    BufferList* serialized_buffer);
 
 /**
  * Deserialize a query

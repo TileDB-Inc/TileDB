@@ -4911,11 +4911,14 @@ int32_t tiledb_serialize_query(
     const tiledb_query_t* query,
     tiledb_serialization_type_t serialize_type,
     int32_t client_side,
-    tiledb_buffer_t* buffer) {
+    tiledb_buffer_list_t** buffer_list) {
   // Sanity check
-  if (sanity_check(ctx) == TILEDB_ERR ||
-      sanity_check(ctx, query) == TILEDB_ERR ||
-      sanity_check(ctx, buffer) == TILEDB_ERR)
+  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, query) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  // Allocate a buffer list
+  if (tiledb_buffer_list_alloc(ctx, buffer_list) == TILEDB_ERR ||
+      sanity_check(ctx, *buffer_list) == TILEDB_ERR)
     return TILEDB_ERR;
 
   if (SAVE_ERROR_CATCH(
@@ -4924,7 +4927,7 @@ int32_t tiledb_serialize_query(
               query->query_,
               (tiledb::sm::SerializationType)serialize_type,
               client_side == 1,
-              buffer->buffer_)))
+              (*buffer_list)->buffer_list_)))
     return TILEDB_ERR;
 
   return TILEDB_OK;

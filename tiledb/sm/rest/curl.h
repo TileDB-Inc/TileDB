@@ -40,6 +40,7 @@
 #include <string>
 
 #include "tiledb/sm/buffer/buffer.h"
+#include "tiledb/sm/buffer/buffer_list.h"
 #include "tiledb/sm/enums/serialization_type.h"
 #include "tiledb/sm/storage_manager/config.h"
 
@@ -86,7 +87,7 @@ class Curl {
   Status post_data(
       const std::string& url,
       SerializationType serialization_type,
-      Buffer* data,
+      const BufferList* data,
       Buffer* returned_data);
 
   /**

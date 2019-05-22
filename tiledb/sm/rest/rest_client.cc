@@ -102,9 +102,12 @@ Status RestClient::post_array_schema_to_rest(
     const URI& uri, ArraySchema* array_schema) {
   STATS_FUNC_IN(rest_array_create);
 
-  Buffer serialized;
+  Buffer buff;
   RETURN_NOT_OK(serialization::array_schema_serialize(
-      array_schema, serialization_type_, &serialized));
+      array_schema, serialization_type_, &buff));
+  // Wrap in a list
+  BufferList serialized;
+  RETURN_NOT_OK(serialized.add_buffer(std::move(buff)));
 
   // Init curl and form the URL
   Curl curlc;
@@ -173,7 +176,7 @@ Status RestClient::submit_query_to_rest(const URI& uri, Query* query) {
   STATS_FUNC_IN(rest_query_submit);
 
   // Serialize data to send
-  Buffer serialized;
+  BufferList serialized;
   RETURN_NOT_OK(serialization::query_serialize(
       query, serialization_type_, true, &serialized));
 
@@ -203,7 +206,7 @@ Status RestClient::submit_query_to_rest(const URI& uri, Query* query) {
 
 Status RestClient::finalize_query_to_rest(const URI& uri, Query* query) {
   // Serialize data to send
-  Buffer serialized;
+  BufferList serialized;
   RETURN_NOT_OK(serialization::query_serialize(
       query, serialization_type_, true, &serialized));
 

@@ -525,11 +525,12 @@ void IncompleteFx::check_dense_incomplete_serialized() {
   REQUIRE(rc == TILEDB_OK);
 
   // Serialize/deserialize into new query using new array (client-side)
-  tiledb_buffer_t* buff;
-  rc = tiledb_buffer_alloc(ctx_, &buff);
-  REQUIRE(rc == TILEDB_OK);
+  tiledb_buffer_list_t* buff_list;
   REQUIRE(
-      tiledb_serialize_query(ctx_, query, TILEDB_CAPNP, 1, buff) == TILEDB_OK);
+      tiledb_serialize_query(ctx_, query, TILEDB_CAPNP, 1, &buff_list) ==
+      TILEDB_OK);
+  tiledb_buffer_t* buff;
+  REQUIRE(tiledb_buffer_list_flatten(ctx_, buff_list, &buff) == TILEDB_OK);
   tiledb_array_t* array2;
   rc = tiledb_array_alloc(ctx_, DENSE_ARRAY_NAME, &array2);
   CHECK(rc == TILEDB_OK);
@@ -553,11 +554,11 @@ void IncompleteFx::check_dense_incomplete_serialized() {
   REQUIRE(rc == TILEDB_OK);
 
   // Deserialize back to the original query.
+  tiledb_buffer_list_t* buff_list2;
+  rc = tiledb_serialize_query(ctx_, query2, TILEDB_CAPNP, 0, &buff_list2);
+  REQUIRE(rc == TILEDB_OK);
   tiledb_buffer_t* buff2;
-  rc = tiledb_buffer_alloc(ctx_, &buff2);
-  REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_serialize_query(ctx_, query2, TILEDB_CAPNP, 0, buff2);
-  REQUIRE(rc == TILEDB_OK);
+  REQUIRE(tiledb_buffer_list_flatten(ctx_, buff_list2, &buff2) == TILEDB_OK);
   // Client-side
   rc = tiledb_deserialize_query(ctx_, buff2, TILEDB_CAPNP, 1, query);
   REQUIRE(rc == TILEDB_OK);
@@ -580,6 +581,8 @@ void IncompleteFx::check_dense_incomplete_serialized() {
   tiledb_query_free(&query2);
   tiledb_buffer_free(&buff);
   tiledb_buffer_free(&buff2);
+  tiledb_buffer_list_free(&buff_list);
+  tiledb_buffer_list_free(&buff_list2);
 
   // Check buffer
   int c_buffer_a1[2] = {0, 1};
