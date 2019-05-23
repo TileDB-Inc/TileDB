@@ -88,6 +88,22 @@ class RestClient {
   Status get_array_non_empty_domain(Array* array, void* domain, bool* is_empty);
 
   /**
+   * Get array's max buffer sizes from rest server.
+   *
+   * @param uri URI of array
+   * @param schema Array schema of array
+   * @param subarray Subrray to get max buffer sizes for
+   * @param buffer_sizes Will be populated with max buffer sizes
+   * @return Status
+   */
+  Status get_array_max_buffer_sizes(
+      const URI& uri,
+      const ArraySchema* schema,
+      const void* subarray,
+      std::unordered_map<std::string, std::pair<uint64_t, uint64_t>>*
+          buffer_sizes);
+
+  /**
    * Post a data query to rest server
    *
    * @param uri of array being queried
@@ -114,6 +130,21 @@ class RestClient {
 
   /** Serialization type. */
   SerializationType serialization_type_;
+
+  /**
+   * Returns a string representation of the given subarray. The format is:
+   *
+   *   "dim0min,dim0max,dim1min,dim1max,..."
+   *
+   * @param schema Array schema to use for domain information
+   * @param subarray Subarray to convert to string
+   * @param subarray_str Will be set to the CSV string
+   * @return Status
+   */
+  static Status subarray_to_str(
+      const ArraySchema* schema,
+      const void* subarray,
+      std::string* subarray_str);
 };
 
 }  // namespace sm

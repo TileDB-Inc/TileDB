@@ -172,6 +172,41 @@ Status RestClient::get_array_non_empty_domain(
   return Status::Ok();
 }
 
+Status RestClient::get_array_max_buffer_sizes(
+    const URI& uri,
+    const ArraySchema* schema,
+    const void* subarray,
+    std::unordered_map<std::string, std::pair<uint64_t, uint64_t>>*
+        buffer_sizes) {
+  // Convert subarray to string for query parameter
+  std::string subarray_str;
+  RETURN_NOT_OK(subarray_to_str(schema, subarray, &subarray_str));
+  std::string subarray_query_param =
+      subarray_str.empty() ? "" : ("?subarray=" + subarray_str);
+
+  // Init curl and form the URL
+  Curl curlc;
+  RETURN_NOT_OK(curlc.init(config_));
+  std::string array_ns, array_uri;
+  RETURN_NOT_OK(uri.get_rest_components(&array_ns, &array_uri));
+  std::string url = rest_server_ + "/v1/arrays/" + array_ns + "/" +
+                    curlc.url_escape(array_uri) + "/max_buffer_sizes" +
+                    subarray_query_param;
+
+  // Get the data
+  Buffer returned_data;
+  RETURN_NOT_OK(curlc.get_data(url, serialization_type_, &returned_data));
+
+  if (returned_data.data() == nullptr || returned_data.size() == 0)
+    return LOG_STATUS(
+        Status::RestError("Error getting array max buffer sizes "
+                          "from REST; server returned no data."));
+
+  // Deserialize data returned
+  return serialization::max_buffer_sizes_deserialize(
+      schema, returned_data, serialization_type_, buffer_sizes);
+}
+
 Status RestClient::submit_query_to_rest(const URI& uri, Query* query) {
   STATS_FUNC_IN(rest_query_submit);
 
@@ -232,6 +267,66 @@ Status RestClient::finalize_query_to_rest(const URI& uri, Query* query) {
       returned_data, serialization_type_, true, query);
 }
 
+Status RestClient::subarray_to_str(
+    const ArraySchema* schema,
+    const void* subarray,
+    std::string* subarray_str) {
+  const auto coords_type = schema->coords_type();
+  const auto dim_num = schema->dim_num();
+  const auto subarray_nelts = 2 * dim_num;
+
+  if (subarray == nullptr) {
+    *subarray_str = "";
+    return Status::Ok();
+  }
+
+  std::stringstream ss;
+  for (unsigned i = 0; i < subarray_nelts; i++) {
+    switch (coords_type) {
+      case Datatype::INT8:
+        ss << ((const int8_t*)subarray)[i];
+        break;
+      case Datatype::UINT8:
+        ss << ((const uint8_t*)subarray)[i];
+        break;
+      case Datatype::INT16:
+        ss << ((const int16_t*)subarray)[i];
+        break;
+      case Datatype::UINT16:
+        ss << ((const uint16_t*)subarray)[i];
+        break;
+      case Datatype::INT32:
+        ss << ((const int32_t*)subarray)[i];
+        break;
+      case Datatype::UINT32:
+        ss << ((const uint32_t*)subarray)[i];
+        break;
+      case Datatype::INT64:
+        ss << ((const int64_t*)subarray)[i];
+        break;
+      case Datatype::UINT64:
+        ss << ((const uint64_t*)subarray)[i];
+        break;
+      case Datatype::FLOAT32:
+        ss << ((const float*)subarray)[i];
+        break;
+      case Datatype::FLOAT64:
+        ss << ((const double*)subarray)[i];
+        break;
+      default:
+        return LOG_STATUS(Status::RestError(
+            "Error converting subarray to string; unhandled datatype."));
+    }
+
+    if (i < subarray_nelts - 1)
+      ss << ",";
+  }
+
+  *subarray_str = ss.str();
+
+  return Status::Ok();
+}
+
 #else
 
 RestClient::RestClient() {
@@ -261,6 +356,15 @@ Status RestClient::deregister_array_from_rest(const URI&) {
 }
 
 Status RestClient::get_array_non_empty_domain(Array*, void*, bool*) {
+  return LOG_STATUS(
+      Status::RestError("Cannot use rest client; serialization not enabled."));
+}
+
+Status RestClient::get_array_max_buffer_sizes(
+    const URI&,
+    const ArraySchema*,
+    const void*,
+    std::unordered_map<std::string, std::pair<uint64_t, uint64_t>>*) {
   return LOG_STATUS(
       Status::RestError("Cannot use rest client; serialization not enabled."));
 }

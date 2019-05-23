@@ -5020,6 +5020,36 @@ int32_t tiledb_deserialize_array_nonempty_domain(
   return TILEDB_OK;
 }
 
+int32_t tiledb_serialize_array_max_buffer_sizes(
+    tiledb_ctx_t* ctx,
+    const tiledb_array_t* array,
+    const void* subarray,
+    tiledb_serialization_type_t serialize_type,
+    tiledb_buffer_t** buffer) {
+  // Sanity check
+  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, array) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  // Allocate buffer
+  if (tiledb_buffer_alloc(ctx, buffer) == TILEDB_ERR ||
+      sanity_check(ctx, *buffer) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  // Serialize
+  if (SAVE_ERROR_CATCH(
+          ctx,
+          tiledb::sm::serialization::max_buffer_sizes_serialize(
+              array->array_,
+              subarray,
+              (tiledb::sm::SerializationType)serialize_type,
+              (*buffer)->buffer_))) {
+    tiledb_buffer_free(buffer);
+    return TILEDB_ERR;
+  }
+
+  return TILEDB_OK;
+}
+
 /* ****************************** */
 /*            C++ API             */
 /* ****************************** */

@@ -65,6 +65,19 @@ Status nonempty_domain_deserialize(
     void* nonempty_domain,
     bool* is_empty);
 
+Status max_buffer_sizes_serialize(
+    Array* array,
+    const void* subarray,
+    SerializationType serialize_type,
+    Buffer* serialized_buffer);
+
+Status max_buffer_sizes_deserialize(
+    const ArraySchema* schema,
+    const Buffer& serialized_buffer,
+    SerializationType serialize_type,
+    std::unordered_map<std::string, std::pair<uint64_t, uint64_t>>*
+        buffer_sizes);
+
 }  // namespace serialization
 }  // namespace sm
 }  // namespace tiledb
