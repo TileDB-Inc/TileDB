@@ -43,6 +43,7 @@
 #include <cmath>
 #include <iostream>
 #include <memory>
+#include <set>
 #include <vector>
 
 namespace tiledb {
@@ -156,7 +157,7 @@ class Subarray {
   Subarray& operator=(const Subarray& subarray);
 
   /** Move-assign operator. */
-  Subarray& operator=(Subarray&& subarray);
+  Subarray& operator=(Subarray&& subarray) noexcept;
 
   /* ********************************* */
   /*                 API               */
@@ -318,11 +319,41 @@ class Subarray {
   template <class T>
   std::vector<const T*> range(uint64_t range_idx) const;
 
+  /**
+   * Returns the (unique) coordinates of all the tiles that the subarray
+   * ranges intersect with.
+   */
+  const std::vector<std::vector<uint8_t>>& tile_coords() const;
+
+  /**
+   * Given the input tile coordinates, it returns a pointer to a tile
+   * coords vector in `tile_coords_` (casted to `T`). This is typically
+   * to avoid storing a tile coords vector in numerous cell slabs (and
+   * instead store only a pointer to the tile coordinates vector
+   * stored once in the subarray instance).
+   *
+   * `aux` should be of the same byte size as `tile_coords`. It is used
+   * to avoid repeated allocations of the auxiliary vector need for
+   * converting the `tile_coords` vector of type `T` to a vector of
+   * type `uint8_t` before searching for `tile_coords` in `tile_coords_`.
+   */
+  template <class T>
+  const T* tile_coords_ptr(
+      const std::vector<T>& tile_coords, std::vector<uint8_t>* aux) const;
+
   /** Returns the tile overlap of the subarray. */
   const std::vector<std::vector<TileOverlap>>& tile_overlap() const;
 
   /** Returns the subarray domain type. */
   Datatype type() const;
+
+  /**
+   * Compute `tile_coords_` and `tile_coords_map_`.
+   *
+   * @tparam T The subarray datatype.
+   */
+  template <class T>
+  void compute_tile_coords();
 
  private:
   /* ********************************* */
@@ -423,6 +454,15 @@ class Subarray {
    *  been computed.
    */
   bool tile_overlap_computed_;
+
+  /**
+   * The tile coordinates that the subarray overlaps with. Note that
+   * the datatype must be casted to the datatype of the subarray upon use.
+   */
+  std::vector<std::vector<uint8_t>> tile_coords_;
+
+  /** A map (tile coords) -> (vector element poistion in `tile_coords_`). */
+  std::map<std::vector<uint8_t>, size_t> tile_coords_map_;
 
   /* ********************************* */
   /*           PRIVATE METHODS         */

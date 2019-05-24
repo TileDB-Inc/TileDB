@@ -94,7 +94,7 @@ Subarray& Subarray::operator=(const Subarray& subarray) {
   return *this;
 }
 
-Subarray& Subarray::operator=(Subarray&& subarray) {
+Subarray& Subarray::operator=(Subarray&& subarray) noexcept {
   // Swap with the argument
   swap(subarray);
 
@@ -528,12 +528,85 @@ std::vector<const T*> Subarray::range(uint64_t range_idx) const {
   return ret;
 }
 
+const std::vector<std::vector<uint8_t>>& Subarray::tile_coords() const {
+  return tile_coords_;
+}
+
 const std::vector<std::vector<TileOverlap>>& Subarray::tile_overlap() const {
   return tile_overlap_;
 }
 
 Datatype Subarray::type() const {
   return array_->array_schema()->domain()->type();
+}
+
+template <class T>
+void Subarray::compute_tile_coords() {
+  std::vector<std::set<T>> coords_set;
+  auto array_schema = array_->array_schema();
+  auto domain = (const T*)array_schema->domain()->domain();
+  auto dim_num = this->dim_num();
+  auto tile_extents = (const T*)array_schema->domain()->tile_extents();
+  uint64_t tile_start, tile_end;
+
+  // Compute unique tile coords per dimension
+  coords_set.resize(dim_num);
+  for (unsigned i = 0; i < dim_num; ++i) {
+    for (uint64_t j = 0; j < ranges_[i].range_num(); ++j) {
+      auto r = (const T*)ranges_[i].get_range(j);
+      tile_start = (r[0] - domain[2 * i]) / tile_extents[i];
+      tile_end = (r[1] - domain[2 * i]) / tile_extents[i];
+      for (uint64_t t = tile_start; t <= tile_end; ++t)
+        coords_set[i].insert(t);
+    }
+  }
+
+  // Compute `tile_coords_`
+  std::vector<typename std::set<T>::iterator> iters;
+  size_t tile_coords_num = 1;
+  for (unsigned i = 0; i < dim_num; ++i) {
+    iters.push_back(coords_set[i].begin());
+    tile_coords_num *= coords_set[i].size();
+  }
+
+  tile_coords_.resize(tile_coords_num);
+  std::vector<uint8_t> coords;
+  auto coords_size = array_schema->coords_size();
+  coords.resize(coords_size);
+  size_t coord_size = sizeof(T);
+  size_t tile_coords_pos = 0;
+  while (iters[0] != coords_set[0].end()) {
+    for (unsigned i = 0; i < dim_num; ++i)
+      std::memcpy(&(coords[i * coord_size]), &(*iters[i]), coord_size);
+    tile_coords_[tile_coords_pos++] = coords;
+
+    // Advance the iterators
+    auto d = (int)dim_num - 1;
+    while (d >= 0) {
+      iters[d]++;
+      if (iters[d] != coords_set[d].end())
+        break;
+      if (d > 0)
+        iters[d] = coords_set[d].begin();
+      d--;
+    }
+  }
+
+  // Compute `tile_coords_map_`
+  for (size_t i = 0; i < tile_coords_.size(); ++i, ++tile_coords_pos)
+    tile_coords_map_[tile_coords_[i]] = i;
+}
+
+template <class T>
+const T* Subarray::tile_coords_ptr(
+    const std::vector<T>& tile_coords,
+    std::vector<uint8_t>* aux_tile_coords) const {
+  auto coords_size = array_->array_schema()->coords_size();
+  std::memcpy(&((*aux_tile_coords)[0]), &tile_coords[0], coords_size);
+  auto it = tile_coords_map_.find(*aux_tile_coords);
+  if (it == tile_coords_map_.end())
+    return nullptr;
+  return (const T*)&(tile_coords_[it->second][0]);
 }
 
 /* ****************************** */
@@ -945,6 +1018,40 @@ template uint64_t Subarray::cell_num<int64_t>(uint64_t range_idx) const;
 template uint64_t Subarray::cell_num<uint64_t>(uint64_t range_idx) const;
 template uint64_t Subarray::cell_num<float>(uint64_t range_idx) const;
 template uint64_t Subarray::cell_num<double>(uint64_t range_idx) const;
+
+template void Subarray::compute_tile_coords<int8_t>();
+template void Subarray::compute_tile_coords<uint8_t>();
+template void Subarray::compute_tile_coords<int16_t>();
+template void Subarray::compute_tile_coords<uint16_t>();
+template void Subarray::compute_tile_coords<int32_t>();
+template void Subarray::compute_tile_coords<uint32_t>();
+template void Subarray::compute_tile_coords<int64_t>();
+template void Subarray::compute_tile_coords<uint64_t>();
+
+template const int8_t* Subarray::tile_coords_ptr<int8_t>(
+    const std::vector<int8_t>& tile_coords,
+    std::vector<uint8_t>* aux_tile_coords) const;
+template const uint8_t* Subarray::tile_coords_ptr<uint8_t>(
+    const std::vector<uint8_t>& tile_coords,
+    std::vector<uint8_t>* aux_tile_coords) const;
+template const int16_t* Subarray::tile_coords_ptr<int16_t>(
+    const std::vector<int16_t>& tile_coords,
+    std::vector<uint8_t>* aux_tile_coords) const;
+template const uint16_t* Subarray::tile_coords_ptr<uint16_t>(
+    const std::vector<uint16_t>& tile_coords,
+    std::vector<uint8_t>* aux_tile_coords) const;
+template const int32_t* Subarray::tile_coords_ptr<int32_t>(
+    const std::vector<int32_t>& tile_coords,
+    std::vector<uint8_t>* aux_tile_coords) const;
+template const uint32_t* Subarray::tile_coords_ptr<uint32_t>(
+    const std::vector<uint32_t>& tile_coords,
+    std::vector<uint8_t>* aux_tile_coords) const;
+template const int64_t* Subarray::tile_coords_ptr<int64_t>(
+    const std::vector<int64_t>& tile_coords,
+    std::vector<uint8_t>* aux_tile_coords) const;
+template const uint64_t* Subarray::tile_coords_ptr<uint64_t>(
+    const std::vector<uint64_t>& tile_coords,
+    std::vector<uint8_t>* aux_tile_coords) const;
 
 }  // namespace sm
 }  // namespace tiledb

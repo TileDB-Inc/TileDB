@@ -21,6 +21,9 @@ steps:
 
 
 - bash: |
+    # DELETEME work-around for https://github.com/microsoft/azure-pipelines-image-generation/issues/969
+    sudo chown root.root /
+
     # azure bash does not treat intermediate failure as error
     # https://github.com/Microsoft/azure-pipelines-yaml/issues/135
     set -e pipefail

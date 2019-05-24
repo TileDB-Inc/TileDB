@@ -83,15 +83,19 @@ set(TILEDB_TEST_SOURCES
   src/unit-filter-pipeline.cc
   src/unit-hdfs-filesystem.cc
   src/unit-lru_cache.cc
+  src/unit-Reader.cc
+  src/unit-ResultCellSlabIter.cc
   src/unit-rtree.cc
   src/unit-s3.cc
   src/unit-s3-no-multipart.cc
   src/unit-status.cc
+  src/unit-Subarray.cc
   src/unit-SubarrayPartitioner-dense.cc
   src/unit-SubarrayPartitioner-error.cc
   src/unit-SubarrayPartitioner-sparse.cc
   src/unit-tbb.cc
   src/unit-threadpool.cc
+  src/unit-TileDomain.cc
   src/unit-uri.cc
   src/unit-uuid.cc
   src/unit-vfs.cc

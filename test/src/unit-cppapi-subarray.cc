@@ -36,7 +36,7 @@
 
 using namespace tiledb;
 
-TEST_CASE("C++ API: Test subarray", "[cppapi], [sparse], [subarray]") {
+TEST_CASE("C++ API: Test subarray", "[cppapi][sparse][cpp_subarray]") {
   const std::string array_name = "cpp_unit_array";
   Context ctx;
   VFS vfs(ctx);

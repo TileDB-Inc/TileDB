@@ -33,6 +33,7 @@
 #ifndef TILEDB_CELL_SLAB_ITER_H
 #define TILEDB_CELL_SLAB_ITER_H
 
+#include "tiledb/sm/subarray/cell_slab.h"
 #include "tiledb/sm/subarray/subarray.h"
 
 namespace tiledb {
@@ -108,61 +109,6 @@ class CellSlabIter {
   /*          TYPE DEFINITIONS         */
   /* ********************************* */
 
-  /** The iterator returns cell slabs of this form. */
-  struct CellSlab {
-    /** The (global) coordinates of the tile the cell slab belongs to. */
-    std::vector<T> tile_coords_;
-    /** The (global) coordinates of the cell slab start. */
-    std::vector<T> coords_;
-    /** The cell slab length. */
-    uint64_t length_ = UINT64_MAX;
-
-    /** Default constructor. */
-    CellSlab() = default;
-
-    /** Constructor. */
-    CellSlab(
-        const std::vector<T>& tile_coords,
-        const std::vector<T>& coords,
-        uint64_t length)
-        : tile_coords_(tile_coords)
-        , coords_(coords)
-        , length_(length) {
-    }
-
-    /** Simple initializer. */
-    void init(unsigned int dim_num) {
-      tile_coords_.resize(dim_num);
-      coords_.resize(dim_num);
-      length_ = UINT64_MAX;
-    }
-
-    /** Resets the cell sab. */
-    void reset() {
-      tile_coords_.clear();
-      coords_.clear();
-      length_ = UINT64_MAX;
-    }
-
-    /** Equality operator. */
-    bool operator==(const CellSlab& cell_slab) const {
-      return (
-          cell_slab.tile_coords_ == tile_coords_ &&
-          cell_slab.coords_ == coords_ && cell_slab.length_ == length_);
-    }
-
-    /** For debugging. */
-    void print() const {
-      std::cout << "tile coords: ";
-      for (const auto& tc : tile_coords_)
-        std::cout << tc << " ";
-      std::cout << "\ncell coords: ";
-      for (const auto& c : coords_)
-        std::cout << c << " ";
-      std::cout << "\nlength: " << length_ << "\n";
-    }
-  };
-
   /**
    * Stores information about a range along a single dimension. The
    * whole range resides in a single tile.
@@ -210,7 +156,7 @@ class CellSlabIter {
   Status begin();
 
   /** Returns the current cell slab. */
-  CellSlab cell_slab() const;
+  CellSlab<T> cell_slab() const;
 
   /** Checks if the iterator has reached the end. */
   bool end() const;
@@ -232,7 +178,7 @@ class CellSlabIter {
   /* ********************************* */
 
   /** The current cell slab. */
-  CellSlab cell_slab_;
+  CellSlab<T> cell_slab_;
 
   /**
    * The coordinates of the current range that the next
@@ -258,6 +204,12 @@ class CellSlabIter {
 
   /** The subarray the cell slab iterator will work on. */
   const Subarray* subarray_;
+
+  /** Auxiliary tile coordinates to avoid repeated allocations. */
+  std::vector<T> aux_tile_coords_;
+
+  /** Auxiliary tile coordinates to avoid repeated allocations. */
+  std::vector<uint8_t> aux_tile_coords_2_;
 
   /* ********************************* */
   /*           PRIVATE METHODS         */

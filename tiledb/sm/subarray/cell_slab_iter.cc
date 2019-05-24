@@ -1,5 +1,5 @@
 /**
- * @file   cell_slab_iter.inc
+ * @file   cell_slab_iter.cc
  *
  * @section LICENSE
  *
@@ -54,6 +54,10 @@ template <class T>
 CellSlabIter<T>::CellSlabIter(const Subarray* subarray)
     : subarray_(subarray) {
   end_ = true;
+  if (subarray != nullptr) {
+    aux_tile_coords_.resize(subarray->dim_num());
+    aux_tile_coords_2_.resize(subarray->array()->array_schema()->coords_size());
+  }
 }
 
 /* ****************************** */
@@ -78,7 +82,7 @@ Status CellSlabIter<T>::begin() {
 }
 
 template <class T>
-typename CellSlabIter<T>::CellSlab CellSlabIter<T>::cell_slab() const {
+CellSlab<T> CellSlabIter<T>::cell_slab() const {
   return cell_slab_;
 }
 
@@ -119,7 +123,8 @@ void CellSlabIter<T>::advance_col() {
     cell_slab_coords_[i] += (i == 0) ? cell_slab_lengths_[range_coords_[i]] : 1;
     if (cell_slab_coords_[i] > ranges_[i][range_coords_[i]].end_) {
       ++range_coords_[i];
-      cell_slab_coords_[i] = ranges_[i][range_coords_[i]].start_;
+      if (range_coords_[i] < (T)ranges_[i].size())
+        cell_slab_coords_[i] = ranges_[i][range_coords_[i]].start_;
     }
 
     if (range_coords_[i] < (T)ranges_[i].size()) {
@@ -146,7 +151,8 @@ void CellSlabIter<T>::advance_row() {
         (i == dim_num - 1) ? cell_slab_lengths_[range_coords_[i]] : 1;
     if (cell_slab_coords_[i] > ranges_[i][range_coords_[i]].end_) {
       ++range_coords_[i];
-      cell_slab_coords_[i] = ranges_[i][range_coords_[i]].start_;
+      if (range_coords_[i] < (T)ranges_[i].size())
+        cell_slab_coords_[i] = ranges_[i][range_coords_[i]].start_;
     }
 
     if (range_coords_[i] < (T)ranges_[i].size()) {
@@ -302,9 +308,11 @@ void CellSlabIter<T>::update_cell_slab() {
   auto layout = subarray_->layout();
 
   for (unsigned i = 0; i < dim_num; ++i) {
-    cell_slab_.tile_coords_[i] = ranges_[i][range_coords_[i]].tile_coord_;
+    aux_tile_coords_[i] = ranges_[i][range_coords_[i]].tile_coord_;
     cell_slab_.coords_[i] = cell_slab_coords_[i];
   }
+  cell_slab_.tile_coords_ =
+      subarray_->tile_coords_ptr(aux_tile_coords_, &aux_tile_coords_2_);
   cell_slab_.length_ = (layout == Layout::ROW_MAJOR) ?
                            cell_slab_lengths_[range_coords_[dim_num - 1]] :
                            cell_slab_lengths_[range_coords_[0]];

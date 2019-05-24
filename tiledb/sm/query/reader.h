@@ -34,10 +34,12 @@
 #define TILEDB_READER_H
 
 #include "tiledb/sm/array_schema/array_schema.h"
+#include "tiledb/sm/array_schema/tile_domain.h"
 #include "tiledb/sm/filter/filter_pipeline.h"
 #include "tiledb/sm/fragment/fragment_metadata.h"
 #include "tiledb/sm/misc/status.h"
 #include "tiledb/sm/query/dense_cell_range_iter.h"
+#include "tiledb/sm/query/result_space_tile.h"
 #include "tiledb/sm/query/types.h"
 #include "tiledb/sm/subarray/subarray_partitioner.h"
 #include "tiledb/sm/tile/tile.h"
@@ -150,7 +152,7 @@ class Reader {
     /** The tile index in the fragment. */
     uint64_t tile_idx_;
     /** `true` if the overlap is full, and `false` if it is partial. */
-    bool full_overlap_;
+    bool full_overlap_;  // TODO: this will probably be unnecessary
     /**
      * Maps attribute names to attribute tiles. Note that the coordinates
      * are a special attribute as well.
@@ -181,7 +183,7 @@ class Reader {
   typedef std::map<std::pair<unsigned, uint64_t>, size_t> OverlappingTileMap;
 
   /** A cell range belonging to a particular overlapping tile. */
-  struct OverlappingCellRange {
+  struct OverlappingCellRange {  // TODO: rename
     /**
      * The tile the cell range belongs to. If `nullptr`, then this is
      * an "empty" cell range, to be filled with the default empty
@@ -524,6 +526,34 @@ class Reader {
 
   /** Returns the subarray. */
   void* subarray() const;
+
+  /* ********************************* */
+  /*          STATIC FUNCTIONS         */
+  /* ********************************* */
+
+  /**
+   * Computes a mapping (tile coordinates) -> (result space tile).
+   * The produced result space tiles will contain information only
+   * about fragments that will contribute results. Specifically, if
+   * a fragment is completely covered by a more recent fragment
+   * in a particular space tile, then it will certainly not contribute
+   * results and, thus, no information about that fragment is included
+   * in the space tile.
+   *
+   * @tparam T The datatype of the tile domains.
+   * @param tile_coords The unique coordinates of the tiles that intersect
+   *     a subarray.
+   * @param frag_tile_domains The tile domains of each fragment. These
+   *     are assumed to be ordered from the most recent to the oldest
+   *     fragment.
+   * @param result_space_tiles The result space tiles to be produced
+   *     by the function.
+   */
+  template <class T>
+  static void compute_result_space_tiles(
+      const std::vector<std::vector<uint8_t>>& tile_coords,
+      const std::vector<TileDomain<T>>& frag_tile_domains,
+      std::map<const T*, ResultSpaceTile<T>>* result_space_tiles);
 
  private:
   /* ********************************* */
