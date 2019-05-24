@@ -108,6 +108,7 @@ struct DenseArrayRESTFx {
   void check_simultaneous_writes(const std::string& path);
   void create_dense_array(const std::string& array_name);
   void create_dense_array_1_attribute(const std::string& array_name);
+  void write_dense_array(const std::string& array_name);
   void write_dense_array_missing_attributes(const std::string& array_name);
   static std::string random_bucket_name(const std::string& prefix);
 
@@ -1175,6 +1176,87 @@ void DenseArrayRESTFx::create_dense_array_1_attribute(
   tiledb_array_schema_free(&array_schema);
 }
 
+void DenseArrayRESTFx::write_dense_array(const std::string& array_name) {
+  // Set attributes
+  const char* attributes[] = {"a1", "a2", "a3"};
+
+  // Prepare cell buffers
+  // clang-format off
+  int buffer_a1[] = {
+      0,  1,  2,  3, 4,  5,  6,  7,
+      8,  9,  10, 11, 12, 13, 14, 15
+  };
+  uint64_t buffer_a2[] = {
+      0,  1,  3,  6, 10, 11, 13, 16,
+      20, 21, 23, 26, 30, 31, 33, 36
+  };
+  char buffer_var_a2[] =
+      "abbcccdddd"
+      "effggghhhh"
+      "ijjkkkllll"
+      "mnnooopppp";
+  float buffer_a3[] = {
+      0.1f,  0.2f,  1.1f,  1.2f,  2.1f,  2.2f,  3.1f,  3.2f,
+      4.1f,  4.2f,  5.1f,  5.2f,  6.1f,  6.2f,  7.1f,  7.2f,
+      8.1f,  8.2f,  9.1f,  9.2f,  10.1f, 10.2f, 11.1f, 11.2f,
+      12.1f, 12.2f, 13.1f, 13.2f, 14.1f, 14.2f, 15.1f, 15.2f,
+  };
+  void* buffers[] = { buffer_a1, buffer_a2, buffer_var_a2, buffer_a3 };
+  uint64_t buffer_sizes[] =
+      {
+          sizeof(buffer_a1),
+          sizeof(buffer_a2),
+          sizeof(buffer_var_a2)-1,  // No need to store the last '\0' character
+          sizeof(buffer_a3)
+      };
+  // clang-format on
+
+  // Open array
+  tiledb_array_t* array;
+  int rc = tiledb_array_alloc(ctx_, array_name.c_str(), &array);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_array_open(ctx_, array, TILEDB_WRITE);
+  CHECK(rc == TILEDB_OK);
+
+  // Create query
+  tiledb_query_t* query;
+  rc = tiledb_query_alloc(ctx_, array, TILEDB_WRITE, &query);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_layout(ctx_, query, TILEDB_ROW_MAJOR);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_buffer(
+      ctx_, query, attributes[0], buffers[0], &buffer_sizes[0]);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_buffer_var(
+      ctx_,
+      query,
+      attributes[1],
+      (uint64_t*)buffers[1],
+      &buffer_sizes[1],
+      buffers[2],
+      &buffer_sizes[2]);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_buffer(
+      ctx_, query, attributes[2], buffers[3], &buffer_sizes[3]);
+  CHECK(rc == TILEDB_OK);
+
+  // Submit query
+  rc = tiledb_query_submit(ctx_, query);
+  CHECK(rc == TILEDB_OK);
+
+  // Finalize query
+  rc = tiledb_query_finalize(ctx_, query);
+  CHECK(rc == TILEDB_OK);
+
+  // Close array
+  rc = tiledb_array_close(ctx_, array);
+  CHECK(rc == TILEDB_OK);
+
+  // Clean up
+  tiledb_array_free(&array);
+  tiledb_query_free(&query);
+}
+
 void DenseArrayRESTFx::write_dense_array_missing_attributes(
     const std::string& array_name) {
   // Set attributes
@@ -1965,6 +2047,109 @@ TEST_CASE_METHOD(
   REQUIRE(is_empty == 0);
   for (unsigned i = 0; i < 4; i++)
     REQUIRE(nonempty_domain[i] == subarray[i]);
+
+  // Clean up
+  REQUIRE(tiledb_array_close(ctx_, array) == TILEDB_OK);
+  tiledb_array_free(&array);
+
+  remove_temp_dir(FILE_URI_PREFIX + FILE_TEMP_DIR);
+}
+
+TEST_CASE_METHOD(
+    DenseArrayRESTFx,
+    "C API: REST Test dense array, get max buffer sizes",
+    "[capi], [dense], [rest]") {
+  std::string array_name = TILEDB_URI_PREFIX + FILE_URI_PREFIX + FILE_TEMP_DIR +
+                           "max_buffer_sizes_array";
+  create_temp_dir(FILE_URI_PREFIX + FILE_TEMP_DIR);
+  create_dense_array(array_name);
+
+  // Check max buffer sizes with empty array
+  tiledb_array_t* array;
+  int rc = tiledb_array_alloc(ctx_, array_name.c_str(), &array);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_array_open(ctx_, array, TILEDB_READ);
+  CHECK(rc == TILEDB_OK);
+  std::array<uint64_t, 4> subarray_check{1, 4, 1, 4};
+  uint64_t buff_size = 0;
+  REQUIRE(
+      tiledb_array_max_buffer_size(
+          ctx_, array, "a1", subarray_check.data(), &buff_size) == TILEDB_OK);
+  REQUIRE(buff_size == 0);
+  REQUIRE(
+      tiledb_array_max_buffer_size(
+          ctx_, array, TILEDB_COORDS, subarray_check.data(), &buff_size) ==
+      TILEDB_OK);
+  REQUIRE(buff_size == 0);
+  REQUIRE(tiledb_array_close(ctx_, array) == TILEDB_OK);
+  tiledb_array_free(&array);
+
+  // Write array
+  write_dense_array(array_name);
+
+  // Check max buffer sizes for whole domain
+  rc = tiledb_array_alloc(ctx_, array_name.c_str(), &array);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_array_open(ctx_, array, TILEDB_READ);
+  CHECK(rc == TILEDB_OK);
+  subarray_check = {1, 4, 1, 4};
+  uint64_t num_cells = (subarray_check[1] - subarray_check[0] + 1) *
+                       (subarray_check[3] - subarray_check[2] + 1);
+  REQUIRE(
+      tiledb_array_max_buffer_size(
+          ctx_, array, "a1", subarray_check.data(), &buff_size) == TILEDB_OK);
+  REQUIRE(buff_size == num_cells * sizeof(int32_t));
+  REQUIRE(
+      tiledb_array_max_buffer_size(
+          ctx_, array, "a2", subarray_check.data(), &buff_size) == TILEDB_ERR);
+  uint64_t buff_off_size = 0;
+  REQUIRE(
+      tiledb_array_max_buffer_size_var(
+          ctx_,
+          array,
+          "a2",
+          subarray_check.data(),
+          &buff_off_size,
+          &buff_size) == TILEDB_OK);
+  REQUIRE(buff_off_size == num_cells * sizeof(uint64_t));
+  REQUIRE(buff_size == 56);
+  REQUIRE(
+      tiledb_array_max_buffer_size(
+          ctx_, array, "a3", subarray_check.data(), &buff_size) == TILEDB_OK);
+  REQUIRE(buff_size == num_cells * 2 * sizeof(float));
+  REQUIRE(
+      tiledb_array_max_buffer_size(
+          ctx_, array, TILEDB_COORDS, subarray_check.data(), &buff_size) ==
+      TILEDB_OK);
+  REQUIRE(buff_size == num_cells * 2 * sizeof(uint64_t));
+
+  // Check again with different subarray
+  subarray_check = {2, 3, 2, 3};
+  num_cells = (subarray_check[1] - subarray_check[0] + 1) *
+              (subarray_check[3] - subarray_check[2] + 1);
+  REQUIRE(
+      tiledb_array_max_buffer_size(
+          ctx_, array, "a1", subarray_check.data(), &buff_size) == TILEDB_OK);
+  REQUIRE(buff_size == num_cells * sizeof(int32_t));
+  REQUIRE(
+      tiledb_array_max_buffer_size_var(
+          ctx_,
+          array,
+          "a2",
+          subarray_check.data(),
+          &buff_off_size,
+          &buff_size) == TILEDB_OK);
+  REQUIRE(buff_off_size == num_cells * sizeof(uint64_t));
+  REQUIRE(buff_size == 44);
+  REQUIRE(
+      tiledb_array_max_buffer_size(
+          ctx_, array, "a3", subarray_check.data(), &buff_size) == TILEDB_OK);
+  REQUIRE(buff_size == num_cells * 2 * sizeof(float));
+  REQUIRE(
+      tiledb_array_max_buffer_size(
+          ctx_, array, TILEDB_COORDS, subarray_check.data(), &buff_size) ==
+      TILEDB_OK);
+  REQUIRE(buff_size == num_cells * 2 * sizeof(uint64_t));
 
   // Clean up
   REQUIRE(tiledb_array_close(ctx_, array) == TILEDB_OK);

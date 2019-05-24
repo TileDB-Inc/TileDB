@@ -561,7 +561,7 @@ Status nonempty_domain_serialize(
         "Error serializing nonempty domain; nonempty domain is null."));
 
   const auto* schema = array->array_schema();
-  if (nonempty_domain == nullptr)
+  if (schema == nullptr)
     return LOG_STATUS(Status::SerializationError(
         "Error serializing nonempty domain; array schema is null."));
 
@@ -632,7 +632,7 @@ Status nonempty_domain_deserialize(
         "Error deserializing nonempty domain; nonempty domain is null."));
 
   const auto* schema = array->array_schema();
-  if (nonempty_domain == nullptr)
+  if (schema == nullptr)
     return LOG_STATUS(Status::SerializationError(
         "Error deserializing nonempty domain; array schema is null."));
 
@@ -698,6 +698,182 @@ Status nonempty_domain_deserialize(
   return Status::Ok();
 }
 
+Status max_buffer_sizes_serialize(
+    Array* array,
+    const void* subarray,
+    SerializationType serialize_type,
+    Buffer* serialized_buffer) {
+  const auto* schema = array->array_schema();
+  if (schema == nullptr)
+    return LOG_STATUS(Status::SerializationError(
+        "Error serializing max buffer sizes; array schema is null."));
+
+  try {
+    // Serialize
+    ::capnp::MallocMessageBuilder message;
+    auto builder = message.initRoot<capnp::MaxBufferSizes>();
+
+    // Get all attribute names including coords
+    const auto& attrs = schema->attributes();
+    std::set<std::string> attr_names;
+    attr_names.insert(constants::coords);
+    for (const auto* a : attrs)
+      attr_names.insert(a->name());
+
+    // Get max buffer size for each attribute from the given Array instance
+    // and serialize it.
+    auto max_buffer_sizes_builder =
+        builder.initMaxBufferSizes(attr_names.size());
+    size_t i = 0;
+    for (const auto& attr_name : attr_names) {
+      bool var_size =
+          attr_name != constants::coords && schema->var_size(attr_name);
+      auto max_buffer_size_builder = max_buffer_sizes_builder[i++];
+      max_buffer_size_builder.setAttribute(attr_name);
+
+      if (var_size) {
+        uint64_t offset_bytes, data_bytes;
+        RETURN_NOT_OK(array->get_max_buffer_size(
+            attr_name.c_str(), subarray, &offset_bytes, &data_bytes));
+        max_buffer_size_builder.setOffsetBytes(offset_bytes);
+        max_buffer_size_builder.setDataBytes(data_bytes);
+      } else {
+        uint64_t data_bytes;
+        RETURN_NOT_OK(array->get_max_buffer_size(
+            attr_name.c_str(), subarray, &data_bytes));
+        max_buffer_size_builder.setOffsetBytes(0);
+        max_buffer_size_builder.setDataBytes(data_bytes);
+      }
+    }
+
+    // Copy to buffer
+    serialized_buffer->reset_size();
+    serialized_buffer->reset_offset();
+
+    switch (serialize_type) {
+      case SerializationType::JSON: {
+        ::capnp::JsonCodec json;
+        kj::String capnp_json = json.encode(builder);
+        const auto json_len = capnp_json.size();
+        const char nul = '\0';
+        // size does not include needed null terminator, so add +1
+        RETURN_NOT_OK(serialized_buffer->realloc(json_len + 1));
+        RETURN_NOT_OK(serialized_buffer->write(capnp_json.cStr(), json_len))
+        RETURN_NOT_OK(serialized_buffer->write(&nul, 1));
+        break;
+      }
+      case SerializationType::CAPNP: {
+        kj::Array<::capnp::word> protomessage = messageToFlatArray(message);
+        kj::ArrayPtr<const char> message_chars = protomessage.asChars();
+        const auto nbytes = message_chars.size();
+        RETURN_NOT_OK(serialized_buffer->realloc(nbytes));
+        RETURN_NOT_OK(serialized_buffer->write(message_chars.begin(), nbytes));
+        break;
+      }
+      default: {
+        return LOG_STATUS(Status::SerializationError(
+            "Error serializing max buffer sizes; Unknown serialization type "
+            "passed"));
+      }
+    }
+
+  } catch (kj::Exception& e) {
+    return LOG_STATUS(Status::SerializationError(
+        "Error serializing max buffer sizes; kj::Exception: " +
+        std::string(e.getDescription().cStr())));
+  } catch (std::exception& e) {
+    return LOG_STATUS(Status::SerializationError(
+        "Error serializing max buffer sizes; exception " +
+        std::string(e.what())));
+  }
+
+  return Status::Ok();
+}
+
+Status max_buffer_sizes_deserialize(
+    const ArraySchema* schema,
+    const Buffer& serialized_buffer,
+    SerializationType serialize_type,
+    std::unordered_map<std::string, std::pair<uint64_t, uint64_t>>*
+        buffer_sizes) {
+  if (schema == nullptr)
+    return LOG_STATUS(Status::SerializationError(
+        "Error deserializing max buffer sizes; array schema is null."));
+
+  try {
+    switch (serialize_type) {
+      case SerializationType::JSON: {
+        ::capnp::JsonCodec json;
+        ::capnp::MallocMessageBuilder message_builder;
+        auto builder = message_builder.initRoot<capnp::MaxBufferSizes>();
+        json.decode(
+            kj::StringPtr(static_cast<const char*>(serialized_buffer.data())),
+            builder);
+        auto reader = builder.asReader();
+
+        // Deserialize
+        auto max_buffer_sizes_reader = reader.getMaxBufferSizes();
+        const size_t num_max_buffer_sizes = max_buffer_sizes_reader.size();
+        for (size_t i = 0; i < num_max_buffer_sizes; i++) {
+          auto max_buffer_size_reader = max_buffer_sizes_reader[i];
+          std::string attribute = max_buffer_size_reader.getAttribute();
+          uint64_t offset_size = max_buffer_size_reader.getOffsetBytes();
+          uint64_t data_size = max_buffer_size_reader.getDataBytes();
+
+          if (attribute == constants::coords || !schema->var_size(attribute)) {
+            (*buffer_sizes)[attribute] = std::make_pair(data_size, 0);
+          } else {
+            (*buffer_sizes)[attribute] = std::make_pair(offset_size, data_size);
+          }
+        }
+
+        break;
+      }
+      case SerializationType::CAPNP: {
+        const auto mBytes =
+            reinterpret_cast<const kj::byte*>(serialized_buffer.data());
+        ::capnp::FlatArrayMessageReader msg_reader(kj::arrayPtr(
+            reinterpret_cast<const ::capnp::word*>(mBytes),
+            serialized_buffer.size() / sizeof(::capnp::word)));
+        auto reader = msg_reader.getRoot<capnp::MaxBufferSizes>();
+
+        // Deserialize
+        auto max_buffer_sizes_reader = reader.getMaxBufferSizes();
+        const size_t num_max_buffer_sizes = max_buffer_sizes_reader.size();
+        for (size_t i = 0; i < num_max_buffer_sizes; i++) {
+          auto max_buffer_size_reader = max_buffer_sizes_reader[i];
+          std::string attribute = max_buffer_size_reader.getAttribute();
+          uint64_t offset_size = max_buffer_size_reader.getOffsetBytes();
+          uint64_t data_size = max_buffer_size_reader.getDataBytes();
+
+          if (attribute == constants::coords || !schema->var_size(attribute)) {
+            (*buffer_sizes)[attribute] = std::make_pair(data_size, 0);
+          } else {
+            (*buffer_sizes)[attribute] = std::make_pair(offset_size, data_size);
+          }
+        }
+
+        break;
+      }
+      default: {
+        return LOG_STATUS(Status::SerializationError(
+            "Error deserializing max buffer sizes; Unknown serialization type "
+            "passed"));
+      }
+    }
+  } catch (kj::Exception& e) {
+    return LOG_STATUS(Status::SerializationError(
+        "Error deserializing max buffer sizes; kj::Exception: " +
+        std::string(e.getDescription().cStr())));
+  } catch (std::exception& e) {
+    return LOG_STATUS(Status::SerializationError(
+        "Error deserializing max buffer sizes; exception " +
+        std::string(e.what())));
+  }
+
+  return Status::Ok();
+}
+
 #else
 
 Status array_schema_serialize(ArraySchema*, SerializationType, Buffer*) {
@@ -719,6 +895,21 @@ Status nonempty_domain_serialize(
 
 Status nonempty_domain_deserialize(
     const Array*, const Buffer&, SerializationType, void*, bool*) {
+  return LOG_STATUS(Status::SerializationError(
+      "Cannot serialize; serialization not enabled."));
+}
+
+Status max_buffer_sizes_serialize(
+    Array*, const void*, SerializationType, Buffer*) {
+  return LOG_STATUS(Status::SerializationError(
+      "Cannot serialize; serialization not enabled."));
+}
+
+Status max_buffer_sizes_deserialize(
+    const ArraySchema*,
+    const Buffer&,
+    SerializationType,
+    std::unordered_map<std::string, std::pair<uint64_t, uint64_t>>*) {
   return LOG_STATUS(Status::SerializationError(
       "Cannot serialize; serialization not enabled."));
 }

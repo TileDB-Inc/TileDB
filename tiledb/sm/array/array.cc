@@ -507,10 +507,6 @@ void Array::clear_last_max_buffer_sizes() {
 }
 
 Status Array::compute_max_buffer_sizes(const void* subarray) {
-  if (remote_)
-    return LOG_STATUS(Status::ArrayError(
-        "Cannot compute max buffer sizes; not supported for remote arrays."));
-
   // Allocate space for max buffer sizes subarray
   auto subarray_size = 2 * array_schema_->coords_size();
   if (last_max_buffer_sizes_subarray_ == nullptr) {
@@ -547,6 +543,15 @@ Status Array::compute_max_buffer_sizes(
     const void* subarray,
     std::unordered_map<std::string, std::pair<uint64_t, uint64_t>>*
         buffer_sizes) const {
+  if (remote_) {
+    auto rest_client = storage_manager_->rest_client();
+    if (rest_client == nullptr)
+      return LOG_STATUS(Status::ArrayError(
+          "Cannot get max buffer sizes; remote array with no REST client."));
+    return rest_client->get_array_max_buffer_sizes(
+        array_uri_, array_schema_, subarray, buffer_sizes);
+  }
+
   // Return if there are no metadata
   if (fragment_metadata_.empty())
     return Status::Ok();

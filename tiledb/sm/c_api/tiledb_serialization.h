@@ -177,6 +177,26 @@ TILEDB_EXPORT int32_t tiledb_deserialize_array_nonempty_domain(
     void* nonempty_domain,
     int32_t* is_empty);
 
+/**
+ * Serializes the array max buffer sizes information into the given buffer.
+ *
+ * @note The caller must free the returned `tiledb_buffer_t`.
+ *
+ * @param ctx The TileDB context.
+ * @param array Array to which the subarray belongs to
+ * @param subarray The subarray to use for max buffer size calculation.
+ * @param serialization_type Type of serialization to use
+ * @param buffer Will be set to a newly allocated buffer containing the
+ *      serialized max buffer sizes.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_serialize_array_max_buffer_sizes(
+    tiledb_ctx_t* ctx,
+    const tiledb_array_t* array,
+    const void* subarray,
+    tiledb_serialization_type_t serialize_type,
+    tiledb_buffer_t** buffer);
+
 #ifdef __cplusplus
 }
 #endif
