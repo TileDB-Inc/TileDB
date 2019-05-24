@@ -177,6 +177,24 @@ void create_subarray(
     tiledb::sm::Subarray* subarray);
 
 /**
+ * Creates a subarray for the input array.
+ *
+ * @tparam T The datatype of the subarray domain.
+ * @param ctx The TileDB context.
+ * @param array The input array.
+ * @param ranges The ranges of the subarray to be created.
+ * @param layout The layout of the subarray.
+ * @param subarray The subarray to be set.
+ */
+template <class T>
+void create_subarray(
+    tiledb_ctx_t* ctx,
+    tiledb_array_t* array,
+    const SubarrayRanges<T>& ranges,
+    tiledb_layout_t layout,
+    tiledb_subarray_t** subarray);
+
+/**
  * Helper method that creates a TileDB context and a VFS object.
  *
  * @param s3_supported Indicates whether S3 is supported or not.
@@ -262,6 +280,20 @@ void write_array(
     tiledb_ctx_t* ctx,
     const std::string& array_name,
     tiledb_layout_t layout,
+    const AttrBuffers& attr_buffers);
+
+/**
+ * Performs a single read to an array.
+ *
+ * @param ctx The TileDB context.
+ * @param array The input array.
+ * @param subarray The query subarray.
+ * @param attr_buffers The attribute buffers to be read.
+ */
+void read_array(
+    tiledb_ctx_t* ctx,
+    tiledb_array_t* array,
+    tiledb_subarray_t* subarray,
     const AttrBuffers& attr_buffers);
 
 #endif

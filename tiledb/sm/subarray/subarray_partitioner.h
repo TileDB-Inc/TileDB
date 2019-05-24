@@ -95,7 +95,7 @@ class SubarrayPartitioner {
   /* ********************************* */
 
   /** Returns the current partition. */
-  const Subarray& current() const;
+  Subarray& current();
 
   /**
    * Returns ``true`` if there are no more partitions, i.e., if the

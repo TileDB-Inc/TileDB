@@ -65,6 +65,25 @@ class RowCmp {
    * @param b The second coordinate.
    * @return `true` if `a` precedes `b` and `false` otherwise.
    */
+  bool operator()(const ResultCoords<T>& a, const ResultCoords<T>& b) const {
+    for (unsigned int i = 0; i < dim_num_; ++i) {
+      if (a.coords_[i] < b.coords_[i])
+        return true;
+      if (a.coords_[i] > b.coords_[i])
+        return false;
+      // else a.coords_[i] == b.coords_[i] --> continue
+    }
+
+    return false;
+  }
+
+  /**
+   * Comparison operator.
+   *
+   * @param a The first coordinate.
+   * @param b The second coordinate.
+   * @return `true` if `a` precedes `b` and `false` otherwise.
+   */
   bool operator()(
       const Reader::OverlappingCoords<T>& a,
       const Reader::OverlappingCoords<T>& b) const {
@@ -95,6 +114,28 @@ class ColCmp {
    */
   ColCmp(unsigned dim_num)
       : dim_num_(dim_num) {
+  }
+
+  /**
+   * Comparison operator.
+   *
+   * @param a The first coordinate.
+   * @param b The second coordinate.
+   * @return `true` if `a` precedes `b` and `false` otherwise.
+   */
+  bool operator()(const ResultCoords<T>& a, const ResultCoords<T>& b) const {
+    for (unsigned int i = dim_num_ - 1;; --i) {
+      if (a.coords_[i] < b.coords_[i])
+        return true;
+      if (a.coords_[i] > b.coords_[i])
+        return false;
+      // else a.coords_[i] == b.coords_[i] --> continue
+
+      if (i == 0)
+        break;
+    }
+
+    return false;
   }
 
   /**
@@ -136,7 +177,9 @@ class GlobalCmp {
   /**
    * Constructor.
    *
-   * @param dim_num The number of dimensions of the coords.
+   * @param domain The array domain.
+   * @param buff The buffer containing the actual values, used
+   *     in positional comparisons.
    */
   GlobalCmp(const Domain* domain, const T* buff = nullptr)
       : domain_(domain)
@@ -154,6 +197,29 @@ class GlobalCmp {
   bool operator()(
       const Reader::OverlappingCoords<T>& a,
       const Reader::OverlappingCoords<T>& b) const {
+    // Compare tile order first
+    auto tile_cmp =
+        domain_->tile_order_cmp_tile_coords<T>(a.tile_coords_, b.tile_coords_);
+
+    if (tile_cmp == -1)
+      return true;
+    if (tile_cmp == 1)
+      return false;
+    // else tile_cmp == 0 --> continue
+
+    // Compare cell order
+    auto cell_cmp = domain_->cell_order_cmp(a.coords_, b.coords_);
+    return cell_cmp == -1;
+  }
+
+  /**
+   * Comparison operator for a vector of `OverlappingCoords`.
+   *
+   * @param a The first coordinate.
+   * @param b The second coordinate.
+   * @return `true` if `a` precedes `b` and `false` otherwise.
+   */
+  bool operator()(const ResultCoords<T>& a, const ResultCoords<T>& b) const {
     // Compare tile order first
     auto tile_cmp =
         domain_->tile_order_cmp_tile_coords<T>(a.tile_coords_, b.tile_coords_);

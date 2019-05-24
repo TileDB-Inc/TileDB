@@ -406,6 +406,9 @@ class FragmentMetadata {
       uint64_t tile_idx,
       uint64_t* offset);
 
+  /** Returns the MBR of the input tile. */
+  const void* mbr(uint64_t tile_idx) const;
+
   /**
    * Retrieves the size of the tile when it is persisted (e.g. the size of the
    * compressed tile on disk) for a given attribute and tile index. If the

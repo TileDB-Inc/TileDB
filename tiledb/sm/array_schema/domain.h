@@ -512,6 +512,16 @@ class Domain {
    */
   Status set_null_tile_extents_to_range();
 
+  /**
+   * Based on the input subarray layout and the domain's cell layout
+   * and tile extents, this returns the number of cells that each
+   * pair of adjacent cells in a result cell slab (produced during the
+   * read algorithm for that subarray) are apart. If it is
+   * `UINT64_MAX`, then the cells in the result cell slabs are contiguous.
+   */
+  template <class T>
+  uint64_t stride(Layout subarray_layout) const;
+
   /** Returns the tile extents. */
   const void* tile_extents() const;
 

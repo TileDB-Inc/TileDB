@@ -644,6 +644,10 @@ Status FragmentMetadata::file_var_offset(
   return Status::Ok();
 }
 
+const void* FragmentMetadata::mbr(uint64_t tile_idx) const {
+  return rtree_.leaf(tile_idx);
+}
+
 Status FragmentMetadata::persisted_tile_size(
     const EncryptionKey& encryption_key,
     const std::string& attribute,

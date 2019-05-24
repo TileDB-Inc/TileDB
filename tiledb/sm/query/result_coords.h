@@ -56,7 +56,7 @@ struct ResultCoords {
    * sparse_read/dense_read, so the lifetime of this struct must not exceed
    * the scope of those functions.
    */
-  const ResultTile* tile_;
+  ResultTile* tile_;
   /** The coordinates. */
   const T* coords_;
   /** The coordinates of the tile in the global logical space. */
@@ -67,7 +67,7 @@ struct ResultCoords {
   bool valid_;
 
   /** Constructor. */
-  ResultCoords(const ResultTile* tile, const T* coords, uint64_t pos)
+  ResultCoords(ResultTile* tile, const T* coords, uint64_t pos)
       : tile_(tile)
       , coords_(coords)
       , tile_coords_(nullptr)

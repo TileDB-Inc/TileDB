@@ -3243,16 +3243,7 @@ int32_t tiledb_subarray_alloc(
     return TILEDB_ERR;
   }
 
-  // TODO: Revisit these checks
-  // Layout checks
-  if (layout == TILEDB_GLOBAL_ORDER) {
-    auto st = tiledb::sm::Status::Error(
-        "Failed to create TileDB subarray object; GLOBAL_ORDER is not a valid "
-        "subarray layout");
-    LOG_STATUS(st);
-    save_error(ctx, st);
-    return TILEDB_ERR;
-  }
+  // Layout check
   bool dense = array->array_->array_schema()->dense();
   if (dense && layout == TILEDB_UNORDERED) {
     auto st = tiledb::sm::Status::Error(

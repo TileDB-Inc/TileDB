@@ -77,11 +77,14 @@ class ResultCellSlabIter {
    * @param result_coords These are definite sparse fragment results,
    *     which will be used to appropriately "break" dense cell slabs
    *     when producing the final result cell slabs.
+   * @param result_coords_pos The position in `result_coords` the
+   *     iterator will start iterating on.
    */
   ResultCellSlabIter(
       const Subarray* subarray,
-      const std::map<const T*, ResultSpaceTile<T>>& result_space_tiles,
-      const std::vector<ResultCoords<T>>& result_coords);
+      std::map<const T*, ResultSpaceTile<T>>* result_space_tiles,
+      std::vector<ResultCoords<T>>* result_coords,
+      uint64_t result_coords_pos = 0);
 
   /** Destructor. */
   ~ResultCellSlabIter() = default;
@@ -94,11 +97,22 @@ class ResultCellSlabIter {
   Status begin();
 
   /** Returns the current result cell slab. */
-  ResultCellSlab<T> result_cell_slab() const;
+  ResultCellSlab result_cell_slab() const;
 
   /** Checks if the iterator has reached the end. */
   bool end() const {
     return end_;
+  }
+
+  /**
+   * Returns the current result coordinates position.
+   * Useful when multiple iterators are used (e.g., one per tile)
+   * and we need to pass the current result coordinates position from
+   * one iterator as the starting result coordinates position to the
+   * next iterator.
+   */
+  uint64_t result_coords_pos() const {
+    return result_coords_pos_;
   }
 
   /** Advances the iterator to the next cell slab. */
@@ -133,7 +147,7 @@ class ResultCellSlabIter {
    * The iterator will first serve all slabs in this vector,
    * before proceeding to get the next cell slab from `CellSlabIter`.
    */
-  std::vector<ResultCellSlab<T>> result_cell_slabs_;
+  std::vector<ResultCellSlab> result_cell_slabs_;
 
   /**
    * Position in `result_cell_slabs_` indicating the next
@@ -145,13 +159,20 @@ class ResultCellSlabIter {
    * The map to the result space tiles, given a pointer to the
    * tile coordinates.
    * */
-  const std::map<const T*, ResultSpaceTile<T>>& result_space_tiles_;
+  std::map<const T*, ResultSpaceTile<T>>* result_space_tiles_;
 
   /** The result sparse fragment coordinates. */
-  const std::vector<ResultCoords<T>>& result_coords_;
+  std::vector<ResultCoords<T>>* result_coords_;
 
   /** Current position to be explored in `result_coords_`. */
   size_t result_coords_pos_;
+
+  /**
+   * The initial position in the result coordinates the
+   * iterator was constructed with. When invoking `begin`,
+   * `result_coords_pos_` will be reset to this value.
+   */
+  size_t init_result_coords_pos_;
 
   /* ********************************* */
   /*           PRIVATE METHODS         */
@@ -228,8 +249,7 @@ class ResultCellSlabIter {
    * it creates result cell slabs based on dense fragments in the dense array.
    */
   void compute_result_cell_slabs_dense(
-      const CellSlab<T>& cell_slab,
-      const ResultSpaceTile<T>& result_space_tile);
+      const CellSlab<T>& cell_slab, ResultSpaceTile<T>* result_space_tile);
 
   /**
    * Given the input result space tile and list of cell slabs to process,
@@ -240,7 +260,7 @@ class ResultCellSlabIter {
   void compute_result_cell_slabs_empty(
       const ResultSpaceTile<T>& result_space_tile,
       const std::list<CellSlab<T>>& to_process,
-      std::vector<ResultCellSlab<T>>* result_cell_slabs);
+      std::vector<ResultCellSlab>* result_cell_slabs);
 
   /**
    * Splits the input cell slab into up to two new cell slabs based on the
