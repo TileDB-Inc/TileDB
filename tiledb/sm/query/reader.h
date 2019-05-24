@@ -39,6 +39,8 @@
 #include "tiledb/sm/fragment/fragment_metadata.h"
 #include "tiledb/sm/misc/status.h"
 #include "tiledb/sm/query/dense_cell_range_iter.h"
+#include "tiledb/sm/query/result_cell_slab.h"
+#include "tiledb/sm/query/result_coords.h"
 #include "tiledb/sm/query/result_space_tile.h"
 #include "tiledb/sm/query/types.h"
 #include "tiledb/sm/subarray/subarray_partitioner.h"
@@ -183,7 +185,7 @@ class Reader {
   typedef std::map<std::pair<unsigned, uint64_t>, size_t> OverlappingTileMap;
 
   /** A cell range belonging to a particular overlapping tile. */
-  struct OverlappingCellRange {  // TODO: rename
+  struct OverlappingCellRange {  // TODO: remove
     /**
      * The tile the cell range belongs to. If `nullptr`, then this is
      * an "empty" cell range, to be filled with the default empty
@@ -555,6 +557,96 @@ class Reader {
       const std::vector<TileDomain<T>>& frag_tile_domains,
       std::map<const T*, ResultSpaceTile<T>>* result_space_tiles);
 
+  /**
+   * Computes the result cell slabs for the input subarray, given the
+   * input result coordinates (retrieved from the sparse fragments).
+   * The function also computes and stores the results space tiles
+   * in `result_space_tiles`. This needs to be preserved throughout
+   * the cell copying operations, since this structure stores all
+   * the relevant result tiles for the dense fragments.
+   *
+   * @tparam T The domain datatype.
+   * @param subarray The input subarray.
+   * @param result_space_tiles The result space tiles computed by the
+   *     function, which store the result tiles from the dense fragments.
+   * @param result_coords The result coordinates produced by the sparse
+   *     fragments.
+   * @param result_tiles This will store pointers to the result tiles
+   *     of both dense and sparse fragments.
+   * @param result_cell_slabs The returned result cell slabs.
+   */
+  template <class T>
+  void compute_result_cell_slabs(
+      const Subarray& subarray,
+      std::map<const T*, ResultSpaceTile<T>>* result_space_tiles,
+      std::vector<ResultCoords<T>>* result_coords,
+      std::vector<ResultTile*>* result_tiles,
+      std::vector<ResultCellSlab>* result_cell_slabs) const;
+
+  /**
+   * Computes the result cell slabs for the input subarray, given the
+   * input result coordinates (retrieved from the sparse fragments).
+   * The function also computes and stores the results space tiles
+   * in `result_space_tiles`. This needs to be preserved throughout
+   * the cell copying operations, since this structure stores all
+   * the relevant result tiles for the dense fragments. Applicable
+   * only to row-/col-major subarray layouts.
+   *
+   * @tparam T The domain datatype.
+   * @param subarray The input subarray.
+   * @param result_coords The result coordinates produced by the sparse
+   *     fragments.
+   * @param result_coords_pos The position in `result_coords` to be
+   *     passed to the result cell slab iterator in the function.
+   *     This practically keeps track of the sparse coordinate results
+   *     already processed in successive calls of this function.
+   *     The function updates this value with the current position
+   *     returned by the iterator at the end of its process.
+   * @param result_space_tiles The result space tiles computed by the
+   *     function, which store the result tiles from the dense fragments.
+   * @param result_tiles This will store pointers to the result tiles
+   *     of both dense and sparse fragments.
+   * @param frag_tile_set Stores the unique pairs (frag_idx, tile_idx)
+   *     for all result tiles.
+   * @param result_cell_slabs The returned result cell slabs.
+   */
+  template <class T>
+  void compute_result_cell_slabs_row_col(
+      const Subarray& subarray,
+      std::map<const T*, ResultSpaceTile<T>>* result_space_tiles,
+      std::vector<ResultCoords<T>>* result_coords,
+      uint64_t* result_coords_pos,
+      std::vector<ResultTile*>* result_tiles,
+      std::set<std::pair<unsigned, uint64_t>>* frag_tile_set,
+      std::vector<ResultCellSlab>* result_cell_slabs) const;
+
+  /**
+   * Computes the result cell slabs for the input subarray, given the
+   * input result coordinates (retrieved from the sparse fragments).
+   * The function also computes and stores the results space tiles
+   * in `result_space_tiles`. This needs to be preserved throughout
+   * the cell copying operations, since this structure stores all
+   * the relevant result tiles for the dense fragments. Applicable
+   * only to global order subarray layouts.
+   *
+   * @tparam T The domain datatype.
+   * @param subarray The input subarray.
+   * @param result_coords The result coordinates produced by the sparse
+   *     fragments.
+   * @param result_space_tiles The result space tiles computed by the
+   *     function, which store the result tiles from the dense fragments.
+   * @param result_tiles This will store pointers to the result tiles
+   *     of both dense and sparse fragments.
+   * @param result_cell_slabs The returned result cell slabs.
+   */
+  template <class T>
+  void compute_result_cell_slabs_global(
+      const Subarray& subarray,
+      std::map<const T*, ResultSpaceTile<T>>* result_space_tiles,
+      std::vector<ResultCoords<T>>* result_coords,
+      std::vector<ResultTile*>* result_tiles,
+      std::vector<ResultCellSlab>* result_cell_slabs) const;
+
  private:
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
@@ -623,6 +715,17 @@ class Reader {
    * @return void
    */
   void clear_tiles(const std::string& attr, OverlappingTileVec* tiles) const;
+
+  /**
+   * Deletes the tiles on the input attribute from the result tiles.
+   *
+   * @param attr The attribute name.
+   * @param result_tiles The result tiles to delete from.
+   * @return void
+   */
+  void clear_tiles(
+      const std::string& attr,
+      const std::vector<ResultTile*>& result_tiles) const;
 
   /**
    * Compute the maximal cell ranges of contiguous cell positions.
@@ -723,6 +826,25 @@ class Reader {
       OverlappingCoordsVec<T>* coords) const;
 
   /**
+   * Retrieves the coordinates that overlap the input N-dimensional range
+   * from the input result tile.
+   *
+   * @tparam T The coords type.
+   * @param frag_idx The id of the fragment that the result tile belongs to.
+   * @param The result tile.
+   * @param range An N-dimensional range (where N is equal to the number
+   *     of dimensions of the array).
+   * @param result_coords The overlapping coordinates to retrieve.
+   * @return Status
+   */
+  template <class T>
+  Status compute_range_result_coords(
+      unsigned frag_idx,
+      ResultTile* tile,
+      const std::vector<const T*>& range,
+      std::vector<ResultCoords<T>>* result_coords) const;
+
+  /**
    * Computes the coordinates overlapping with each range of the query
    * subarray.
    *
@@ -742,6 +864,27 @@ class Reader {
       const OverlappingTileVec& tiles,
       const OverlappingTileMap& tile_map,
       std::vector<OverlappingCoordsVec<T>>* range_coords);
+
+  /**
+   * Computes the result coordinates for each range of the query
+   * subarray.
+   *
+   * @tparam T The domain type.
+   * @param single_fragment For each range, it indicates whether all
+   *     result coordinates come from a single fragment.
+   * @param result_tile_map This is an auxialiary map that helps finding the
+   *     result tiles of each range.
+   * @param result_tiles The result tiles to read the coordinates from.
+   * @param range_result_coords The result coordinates to be retrieved.
+   *     It contains a vector for each range of the subarray.
+   * @return Status
+   */
+  template <class T>
+  Status compute_range_result_coords(
+      const std::vector<bool>& single_fragment,
+      const std::map<std::pair<unsigned, uint64_t>, size_t>& result_tile_map,
+      std::vector<ResultTile>* result_tiles,
+      std::vector<std::vector<ResultCoords<T>>>* range_result_coords);
 
   /**
    * Computes the coordinates overlapping with a given range of the query
@@ -764,6 +907,26 @@ class Reader {
       OverlappingCoordsVec<T>* range_coords);
 
   /**
+   * Computes the result coordinates of a given range of the query
+   * subarray.
+   *
+   * @tparam T The domain type.
+   * @param range_idx The range to focus on.
+   * @param result_tile_map This is an auxialiary map that helps finding the
+   *     result_tiles overlapping with each range.
+   * @param result_tiles The result tiles to read the coordinates from.
+   * @param range_result_coords The result coordinates to be retrieved.
+   *     It contains a vector for each range of the subarray.
+   * @return Status
+   */
+  template <class T>
+  Status compute_range_result_coords(
+      uint64_t range_idx,
+      const std::map<std::pair<unsigned, uint64_t>, size_t>& result_tile_map,
+      std::vector<ResultTile>* result_tiles,
+      std::vector<ResultCoords<T>>* range_result_coords);
+
+  /**
    * Computes the final subarray overlapping coordinates, which will be
    * deduplicated and sorted on the specified subarray layout.
    *
@@ -779,6 +942,29 @@ class Reader {
   Status compute_subarray_coords(
       std::vector<OverlappingCoordsVec<T>>* range_coords,
       OverlappingCoordsVec<T>* coords);
+
+  /**
+   * Computes the final subarray result coordinates, which will be
+   * deduplicated and sorted on the specified subarray layout.
+   *
+   * @tparam T The domain type.
+   * @param range_result_coords The result coordinates for each subarray range.
+   * @param tile_coords If the subarray layout is global order, this
+   *     function will store the unique tile coordinates of the subarray
+   *     coordinates in `tile_coords`. Then the element of `coords` will
+   *     store only pointers to the unique tile coordinates.
+   * @param result_coords The final (subarray) result coordinates to be
+   * retrieved.
+   * @return Status
+   *
+   * @note the function will try to gradually clean up ``range_result_coords``
+   *     as it is done processing its elements to quickly reclaim memory.
+   */
+  template <class T>
+  Status compute_subarray_coords(
+      std::vector<std::vector<ResultCoords<T>>>* range_result_coords,
+      std::vector<std::vector<T>>* tile_coords,
+      std::vector<ResultCoords<T>>* result_coords);
 
   /**
    * Computes info about the overlapping tiles, such as which fragment they
@@ -811,7 +997,29 @@ class Reader {
   Status compute_overlapping_tiles_2(
       OverlappingTileVec* tiles,
       OverlappingTileMap* tile_map,
-      std::vector<bool>* single_fragment) const;
+      std::vector<bool>* single_fragment);
+
+  /**
+   * Computes info about the sparse result tiles, such as which fragment they
+   * belong to, the tile index and the type of overlap. The tile vector
+   * contains unique info about the tiles. The function also computes
+   * a map from fragment index and tile id to a result tile to keep
+   * track of the unique result  tile info for subarray ranges that overlap
+   * with common tiles.
+   *
+   * @tparam T The coords type.
+   * @param result_tiles The result tiles to be computed.
+   * @param result_tile_map The result tile map to be computed.
+   * @param single_fragment Each element corresponds to a range of the
+   *     subarray and is set to ``true`` if all the overlapping
+   *     tiles come from a single fragment for that range.
+   * @return Status
+   */
+  template <class T>
+  Status compute_sparse_result_tiles(
+      std::vector<ResultTile>* result_tiles,
+      std::map<std::pair<unsigned, uint64_t>, size_t>* result_tile_map,
+      std::vector<bool>* single_fragment);
 
   /**
    * Computes the tile coordinates for each OverlappingCoords and populates
@@ -829,6 +1037,22 @@ class Reader {
       OverlappingCoordsVec<T>* coords) const;
 
   /**
+   * Computes the sparse tile coordinates. It stores the unique tile
+   * coordinates in `tile_coords`, and then it stores pointers to
+   * those tile coordinates in the elements of`result_coords`.
+   *
+   * @tparam T The domain data type.
+   * @param result_coords The result coordinates.
+   * @param tile_coords The unique tile coordinates of the result
+   *     coordinates.
+   * @return
+   */
+  template <class T>
+  Status compute_sparse_tile_coords(
+      std::vector<ResultCoords<T>>* result_coords,
+      std::vector<std::vector<T>>* tile_coords) const;
+
+  /**
    * Copies the cells for the input attribute and cell ranges, into
    * the corresponding result buffers.
    *
@@ -839,6 +1063,22 @@ class Reader {
   Status copy_cells(
       const std::string& attribute,
       const OverlappingCellRangeList& cell_ranges);
+
+  /**
+   * Copies the cells for the input attribute and result cell slabs, into
+   * the corresponding result buffers.
+   *
+   * @param attribute The targeted attribute.
+   * @param stride If it is `UINT64_MAX`, then the cells in the result
+   *     cell slabs are all contiguous. Otherwise, each cell in the
+   *     result cell slabs are `stride` cells apart from each other.
+   * @param result_cell_slabs The result cell slabs to copy cells for.
+   * @return Status
+   */
+  Status copy_cells(
+      const std::string& attribute,
+      uint64_t stride,
+      const std::vector<ResultCellSlab>& result_cell_slabs);
 
   /**
    * Copies the cells for the input **fixed-sized** attribute and cell
@@ -853,6 +1093,22 @@ class Reader {
       const OverlappingCellRangeList& cell_ranges);
 
   /**
+   * Copies the cells for the input **fixed-sized** attribute and result
+   * cell slabs, into the corresponding result buffers.
+   *
+   * @param attribute The targeted attribute.
+   * @param stride If it is `UINT64_MAX`, then the cells in the result
+   *     cell slabs are all contiguous. Otherwise, each cell in the
+   *     result cell slabs are `stride` cells apart from each other.
+   * @param result_cell_slabs The result cell slabs to copy cells for.
+   * @return Status
+   */
+  Status copy_fixed_cells(
+      const std::string& attribute,
+      uint64_t stride,
+      const std::vector<ResultCellSlab>& result_cell_slabs);
+
+  /**
    * Copies the cells for the input **var-sized** attribute and cell
    * ranges, into the corresponding result buffers.
    *
@@ -863,6 +1119,22 @@ class Reader {
   Status copy_var_cells(
       const std::string& attribute,
       const OverlappingCellRangeList& cell_ranges);
+
+  /**
+   * Copies the cells for the input **var-sized** attribute and result
+   * cell slabs, into the corresponding result buffers.
+   *
+   * @param attribute The targeted attribute.
+   * @param stride If it is `UINT64_MAX`, then the cells in the result
+   *     cell slabs are all contiguous. Otherwise, each cell in the
+   *     result cell slabs are `stride` cells apart from each other.
+   * @param result_cell_slabs The result cell slabs to copy cells for.
+   * @return Status
+   */
+  Status copy_var_cells(
+      const std::string& attribute,
+      uint64_t stride,
+      const std::vector<ResultCellSlab>& result_cell_slabs);
 
   /**
    * Computes offsets into destination buffers for the given attribute's offset
@@ -891,6 +1163,64 @@ class Reader {
       uint64_t* total_var_size) const;
 
   /**
+   * Computes offsets into destination buffers for the given attribute's offset
+   * and variable-length data, for the given list of result cell slabs.
+   *
+   * @param attribute The variable-length attribute
+   * @param stride If it is `UINT64_MAX`, then the cells in the result
+   *     cell slabs are all contiguous. Otherwise, each cell in the
+   *     result cell slabs are `stride` cells apart from each other.
+   * @param result_cell_slabs The result cell slabs to compute destinations for.
+   * @param offset_offsets_per_cs Output to hold one vector per result cell
+   *    slab, and one element per cell in the slab. The elements are the
+   *    destination offsets for the attribute's offsets.
+   * @param var_offsets_per_cs Output to hold one vector per result cell slab,
+   *    and one element per cell in the slab. The elements are the destination
+   *    offsets for the attribute's variable-length data.
+   * @param total_offset_size Output set to the total size in bytes of the
+   *    offsets in the given list of result cell slabs.
+   * @param total_var_size Output set to the total size in bytes of the
+   *    attribute's variable-length in the given list of result cell slabs.
+   * @return Status
+   */
+  Status compute_var_cell_destinations(
+      const std::string& attribute,
+      uint64_t stride,
+      const std::vector<ResultCellSlab>& result_cell_slabs,
+      std::vector<std::vector<uint64_t>>* offset_offsets_per_cs,
+      std::vector<std::vector<uint64_t>>* var_offsets_per_cs,
+      uint64_t* total_offset_size,
+      uint64_t* total_var_size) const;
+
+  /**
+   * Computes the result space tiles based on the input subarray.
+   *
+   * @tparam T The domain datatype.
+   * @param subarray The input subarray.
+   * @param result_space_tiles The result space tiles to be computed.
+   */
+  template <class T>
+  void compute_result_space_tiles(
+      const Subarray& subarray,
+      std::map<const T*, ResultSpaceTile<T>>* result_space_tiles) const;
+
+  /**
+   * Computes the result coordinates from the sparse fragments.
+   *
+   * @param result_tiles This will store the unique result tiles.
+   * @param tile_coords If the subarray layout is global order, this
+   *     function will store the unique tile coordinates of the subarray
+   *     coordinates in `tile_coords`. Then the element of `result_coords`
+   *     will store only pointers to the unique tile coordinates.
+   * @param result_coords This will store the result coordinates.
+   */
+  template <class T>
+  Status compute_result_coords(
+      std::vector<ResultTile>* result_tiles,
+      std::vector<std::vector<T>>* tile_coords,
+      std::vector<ResultCoords<T>>* result_coords);
+
+  /**
    * Deduplicates the input coordinates, breaking ties giving preference
    * to the largest fragment index (i.e., it prefers more recent fragments).
    *
@@ -900,6 +1230,17 @@ class Reader {
    */
   template <class T>
   Status dedup_coords(OverlappingCoordsVec<T>* coords) const;
+
+  /**
+   * Deduplicates the input result coordinates, breaking ties giving preference
+   * to the largest fragment index (i.e., it prefers more recent fragments).
+   *
+   * @tparam T The coords type.
+   * @param result_coords The result coordinates to dedup.
+   * @return Status
+   */
+  template <class T>
+  Status dedup_result_coords(std::vector<ResultCoords<T>>* result_coords) const;
 
   /** Performs a read on a dense array. */
   Status dense_read();
@@ -934,6 +1275,58 @@ class Reader {
   Status fill_coords();
 
   /**
+   * Fills the coordinate buffer with coordinates. Applicable only to dense
+   * arrays when the user explicitly requests the coordinates to be
+   * materialized.
+   *
+   * @tparam T The domain type.
+   * @param subarray The input subarray.
+   * @return Status
+   */
+  template <class T>
+  Status fill_dense_coords(const Subarray& subarray);
+
+  /**
+   * Fills the coordinate buffer with coordinates. Applicable only to dense
+   * arrays when the user explicitly requests the coordinates to be
+   * materialized. Also applicable only to global order.
+   *
+   * @tparam T The domain type.
+   * @param subarray The input subarray.
+   * @param coords_buff The coordinates buffer to be filled.
+   * @param coords_buff_size The size of the coordinates buffer.
+   * @param coords_buff_offset The offset in the coordinates buffer the filling
+   *     will start from.
+   * @return Status
+   */
+  template <class T>
+  Status fill_dense_coords_global(
+      const Subarray& subarray,
+      void* coords_buff,
+      uint64_t coords_buff_size,
+      uint64_t* coords_buff_offset);
+
+  /**
+   * Fills the coordinate buffer with coordinates. Applicable only to dense
+   * arrays when the user explicitly requests the coordinates to be
+   * materialized. Also applicable only to row-/col-major order.
+   *
+   * @tparam T The domain type.
+   * @param subarray The input subarray.
+   * @param coords_buff The coordinates buffer to be filled.
+   * @param coords_buff_size The size of the coordinates buffer.
+   * @param coords_buff_offset The offset in the coordinates buffer the filling
+   *     will start from.
+   * @return Status
+   */
+  template <class T>
+  Status fill_dense_coords_row_col(
+      const Subarray& subarray,
+      void* coords_buff,
+      uint64_t coords_buff_size,
+      uint64_t* coords_buff_offset);
+
+  /**
    * Fills coordinates in the input buffer for a particular cell slab, following
    * a row-major layout. For instance, if the starting coordinate are
    * [3, 1] and the number of coords to be written is 3, this function will
@@ -947,7 +1340,7 @@ class Reader {
    * @param offset The offset in `buff` where the write will begin.
    */
   template <class T>
-  void fill_coords_row_slab(
+  void fill_dense_coords_row_slab(
       const T* start, uint64_t num, void* buff, uint64_t* offset) const;
 
   /**
@@ -964,7 +1357,7 @@ class Reader {
    * @param offset The offset in `buff` where the write will begin.
    */
   template <class T>
-  void fill_coords_col_slab(
+  void fill_dense_coords_col_slab(
       const T* start, uint64_t num, void* buff, uint64_t* offset) const;
 
   /**
@@ -991,6 +1384,18 @@ class Reader {
       const std::string& attribute, OverlappingTileVec* tiles) const;
 
   /**
+   * Filters the tiles on a particular attribute from all input fragments
+   * based on the tile info in `result_tiles`.
+   *
+   * @param attribute Attribute whose tiles will be filtered
+   * @param result_tiles Vector containing the tiles to be filtered
+   * @return Status
+   */
+  Status filter_tiles(
+      const std::string& attribute,
+      const std::vector<ResultTile*>& result_tiles) const;
+
+  /**
    * Runs the input tile for the input attribute through the filter pipeline.
    * The tile buffer is modified to contain the output of the pipeline.
    *
@@ -1014,6 +1419,18 @@ class Reader {
   template <class T>
   Status get_all_coords(
       const OverlappingTile* tile, OverlappingCoordsVec<T>* coords) const;
+
+  /**
+   * Gets all the result coordinates of the input tile into `result_coords`.
+   *
+   * @tparam T The coords type.
+   * @param result_tile The result tile to read the coordinates from.
+   * @param result_coords The result coordinates to copy into.
+   * @return Status
+   */
+  template <class T>
+  Status get_all_result_coords(
+      ResultTile* tile, std::vector<ResultCoords<T>>* result_coords) const;
 
   /**
    * Handles the coordinates that fall between `start` and `end`.
@@ -1133,6 +1550,19 @@ class Reader {
   Status read_tiles(const std::string& attr, OverlappingTileVec* tiles) const;
 
   /**
+   * Retrieves the tiles on a particular attribute and stores it in the
+   * appropriate result tile.
+   *
+   * @param attr The attribute name.
+   * @param result_tiles The retrieved tiles will be stored inside the
+   *     `ResultTile` instances in this vector.
+   * @return Status
+   */
+  Status read_tiles(
+      const std::string& attr,
+      const std::vector<ResultTile*>& result_tiles) const;
+
+  /**
    * Retrieves the tiles on a particular attribute from all input fragments
    * based on the tile info in `tiles`.
    *
@@ -1147,6 +1577,24 @@ class Reader {
   Status read_tiles(
       const std::string& attribute,
       OverlappingTileVec* tiles,
+      std::vector<std::future<Status>>* tasks) const;
+
+  /**
+   * Retrieves the tiles on a particular attribute and stores it in the
+   * appropriate result tile.
+   *
+   * The reads are done asynchronously, and futures for each read operation are
+   * added to the output parameter.
+   *
+   * @param attribute The attribute name.
+   * @param result_tiles The retrieved tiles will be stored inside the
+   *     `ResultTile` instances in this vector.
+   * @param tasks Vector to hold futures for the read tasks.
+   * @return Status
+   */
+  Status read_tiles(
+      const std::string& attribute,
+      const std::vector<ResultTile*>& result_tiles,
       std::vector<std::future<Status>>* tasks) const;
 
   /**
@@ -1176,6 +1624,16 @@ class Reader {
   template <class T>
   Status sort_coords_2(OverlappingCoordsVec<T>* coords) const;
 
+  /**
+   * Sorts the input result coordinates according to the subarray layout.
+   *
+   * @tparam T The coords type.
+   * @param result_coords The coordinates to sort.
+   * @return Status
+   */
+  template <class T>
+  Status sort_result_coords(std::vector<ResultCoords<T>>* result_coords) const;
+
   /** Performs a read on a sparse array. */
   Status sparse_read();
 
@@ -1199,6 +1657,20 @@ class Reader {
 
   /** Zeroes out the user buffer sizes, indicating an empty result. */
   void zero_out_buffer_sizes();
+
+  /**
+   * Returns true if the input tile's MBR of the input fragment is fully
+   * covered by the non-empty domain of a more recent fragment.
+   */
+  template <class T>
+  bool sparse_tile_overwritten(unsigned frag_idx, uint64_t tile_idx) const;
+
+  /**
+   * Returns true if the input coordinates of the input fragment is
+   * covered by the non-empty domain of a more recent fragment.
+   */
+  template <class T>
+  bool coords_overwritten(unsigned frag_idx, const T* coords) const;
 };
 
 }  // namespace sm

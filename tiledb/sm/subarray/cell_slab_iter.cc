@@ -338,10 +338,12 @@ template class CellSlabIter<int8_t>;
 template class CellSlabIter<uint8_t>;
 template class CellSlabIter<int16_t>;
 template class CellSlabIter<uint16_t>;
-template class CellSlabIter<int>;
-template class CellSlabIter<unsigned>;
+template class CellSlabIter<int32_t>;
+template class CellSlabIter<uint32_t>;
 template class CellSlabIter<int64_t>;
 template class CellSlabIter<uint64_t>;
+template class CellSlabIter<float>;
+template class CellSlabIter<double>;
 
 }  // namespace sm
 }  // namespace tiledb

@@ -55,10 +55,13 @@ namespace sm {
 template <class T>
 ResultCellSlabIter<T>::ResultCellSlabIter(
     const Subarray* subarray,
-    const std::map<const T*, ResultSpaceTile<T>>& result_space_tiles,
-    const std::vector<ResultCoords<T>>& result_coords)
+    std::map<const T*, ResultSpaceTile<T>>* result_space_tiles,
+    std::vector<ResultCoords<T>>* result_coords,
+    uint64_t result_coords_pos)
     : result_space_tiles_(result_space_tiles)
-    , result_coords_(result_coords) {
+    , result_coords_(result_coords)
+    , result_coords_pos_(result_coords_pos)
+    , init_result_coords_pos_(result_coords_pos) {
   domain_ = (subarray != nullptr) ?
                 subarray->array()->array_schema()->domain() :
                 nullptr;
@@ -76,14 +79,14 @@ template <class T>
 Status ResultCellSlabIter<T>::begin() {
   end_ = true;
   RETURN_NOT_OK(cell_slab_iter_.begin());
-  result_coords_pos_ = 0;
+  result_coords_pos_ = init_result_coords_pos_;
   update_result_cell_slab();
 
   return Status::Ok();
 }
 
 template <class T>
-ResultCellSlab<T> ResultCellSlabIter<T>::result_cell_slab() const {
+ResultCellSlab ResultCellSlabIter<T>::result_cell_slab() const {
   assert(result_cell_slabs_pos_ < result_cell_slabs_.size());
   return result_cell_slabs_[result_cell_slabs_pos_];
 }
@@ -207,9 +210,9 @@ template <class T>
 void ResultCellSlabIter<T>::compute_result_cell_slabs(
     const CellSlab<T>& cell_slab) {
   // Find the result space tile
-  auto it = result_space_tiles_.find(cell_slab.tile_coords_);
-  assert(it != result_space_tiles_.end());
-  const auto& result_space_tile = it->second;
+  auto it = result_space_tiles_->find(cell_slab.tile_coords_);
+  assert(it != result_space_tiles_->end());
+  auto& result_space_tile = it->second;
 
   // Note: this functions assumes that `result_coords_` are certain
   // results (i.e., appropriate filtering has already taken place).
@@ -224,25 +227,25 @@ void ResultCellSlabIter<T>::compute_result_cell_slabs(
   bool must_break = false;
 
   size_t i;
-  for (; result_coords_pos_ < result_coords_.size(); ++result_coords_pos_) {
+  for (; result_coords_pos_ < result_coords_->size(); ++result_coords_pos_) {
     // For easy reference
     i = result_coords_pos_;
 
     // Ignore if the result coordinates are invalid
-    if (!result_coords_[i].valid_)
+    if (!(*result_coords_)[i].valid_)
       continue;
 
     // Check overlap
     for (unsigned d = 0; d < dim_num; ++d) {
       if (d != slab_dim) {
         // No overlap
-        if (result_coords_[i].coords_[d] != cell_slab_copy.coords_[d]) {
+        if ((*result_coords_)[i].coords_[d] != cell_slab_copy.coords_[d]) {
           must_break = true;
           break;
         }
       } else if (
-          result_coords_[i].coords_[d] < slab_start ||
-          result_coords_[i].coords_[d] > slab_end) {
+          (*result_coords_)[i].coords_[d] < slab_start ||
+          (*result_coords_)[i].coords_[d] > slab_end) {
         must_break = true;
         break;
       }
@@ -252,18 +255,19 @@ void ResultCellSlabIter<T>::compute_result_cell_slabs(
       break;
 
     // Add left slab
-    if (result_coords_[i].coords_[slab_dim] > slab_start) {
-      cell_slab_copy.length_ = result_coords_[i].coords_[slab_dim] -
+    if ((*result_coords_)[i].coords_[slab_dim] > slab_start) {
+      cell_slab_copy.length_ = (*result_coords_)[i].coords_[slab_dim] -
                                cell_slab_copy.coords_[slab_dim];
-      compute_result_cell_slabs_dense(cell_slab_copy, result_space_tile);
+      compute_result_cell_slabs_dense(cell_slab_copy, &result_space_tile);
     }
 
     // Add result
     result_cell_slabs_.emplace_back(
-        result_coords_[i].tile_, result_coords_[i].pos_, 1);
+        (*result_coords_)[i].tile_, (*result_coords_)[i].pos_, 1);
 
     // Update cell slab copy
-    cell_slab_copy.coords_[slab_dim] = result_coords_[i].coords_[slab_dim] + 1;
+    cell_slab_copy.coords_[slab_dim] =
+        (*result_coords_)[i].coords_[slab_dim] + 1;
     cell_slab_copy.length_ = slab_end - cell_slab_copy.coords_[slab_dim] + 1;
     slab_start = cell_slab_copy.coords_[slab_dim];
     slab_end = (T)(slab_start + cell_slab_copy.length_ - 1);
@@ -273,18 +277,17 @@ void ResultCellSlabIter<T>::compute_result_cell_slabs(
   auto cell_slab_end = (T)(cell_slab.coords_[slab_dim] + cell_slab.length_ - 1);
   if (slab_start <= cell_slab_end) {
     cell_slab_copy.length_ = slab_end - slab_start + 1;
-    compute_result_cell_slabs_dense(cell_slab_copy, result_space_tile);
+    compute_result_cell_slabs_dense(cell_slab_copy, &result_space_tile);
   }
 }
 
 template <class T>
 void ResultCellSlabIter<T>::compute_result_cell_slabs_dense(
-    const CellSlab<T>& cell_slab, const ResultSpaceTile<T>& result_space_tile) {
+    const CellSlab<T>& cell_slab, ResultSpaceTile<T>* result_space_tile) {
   std::list<CellSlab<T>> to_process;
   to_process.push_back(cell_slab);
-
-  const auto& frag_domains = result_space_tile.frag_domains_;
-  const auto& result_tiles = result_space_tile.result_tiles_;
+  const auto& frag_domains = result_space_tile->frag_domains_;
+  auto& result_tiles = result_space_tile->result_tiles_;
   auto dim_num = domain_->dim_num();
   std::vector<T> slab_overlap;
   slab_overlap.resize(dim_num);
@@ -292,8 +295,7 @@ void ResultCellSlabIter<T>::compute_result_cell_slabs_dense(
   uint64_t overlap_length, start;
   CellSlab<T> p1, p2;
   bool two_slabs;
-  ResultCellSlab<T> new_result_cell_slab;
-  std::vector<ResultCellSlab<T>> result_cell_slabs;
+  std::vector<ResultCellSlab> result_cell_slabs;
 
   // Process all slabs in the `to_process` list for each fragment
   // in the result space tile
@@ -310,7 +312,7 @@ void ResultCellSlabIter<T>::compute_result_cell_slabs_dense(
 
       // Compute new result cell slab
       compute_cell_slab_start(
-          &slab_overlap[0], result_space_tile.start_coords_, &start);
+          &slab_overlap[0], result_space_tile->start_coords_, &start);
       auto tit = result_tiles.find(fd.first);
       assert(tit != result_tiles.end());
       result_cell_slabs.emplace_back(&(tit->second), start, overlap_length);
@@ -333,7 +335,7 @@ void ResultCellSlabIter<T>::compute_result_cell_slabs_dense(
 
   // Append temporary results for empty cell slabs
   compute_result_cell_slabs_empty(
-      result_space_tile, to_process, &result_cell_slabs);
+      *result_space_tile, to_process, &result_cell_slabs);
 
   // Sort the temporary result cell slabs on starting position
   std::sort(result_cell_slabs.begin(), result_cell_slabs.end());
@@ -349,7 +351,7 @@ template <class T>
 void ResultCellSlabIter<T>::compute_result_cell_slabs_empty(
     const ResultSpaceTile<T>& result_space_tile,
     const std::list<CellSlab<T>>& to_process,
-    std::vector<ResultCellSlab<T>>* result_cell_slabs) {
+    std::vector<ResultCellSlab>* result_cell_slabs) {
   // Nothing to process
   if (to_process.empty())
     return;
@@ -434,10 +436,12 @@ template class ResultCellSlabIter<int8_t>;
 template class ResultCellSlabIter<uint8_t>;
 template class ResultCellSlabIter<int16_t>;
 template class ResultCellSlabIter<uint16_t>;
-template class ResultCellSlabIter<int>;
-template class ResultCellSlabIter<unsigned>;
+template class ResultCellSlabIter<int32_t>;
+template class ResultCellSlabIter<uint32_t>;
 template class ResultCellSlabIter<int64_t>;
 template class ResultCellSlabIter<uint64_t>;
+template class ResultCellSlabIter<float>;
+template class ResultCellSlabIter<double>;
 
 }  // namespace sm
 }  // namespace tiledb

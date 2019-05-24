@@ -61,6 +61,9 @@ TEST_CASE("RTree: Test R-Tree, basic functions", "[rtree][basic]") {
   CHECK(rtree1.subtree_leaf_num(0) == 3);
   CHECK(rtree1.subtree_leaf_num(1) == 1);
   CHECK(rtree1.subtree_leaf_num(2) == 0);
+  CHECK(!std::memcmp(rtree1.leaf(0), &m1[0], 2 * sizeof(int)));
+  CHECK(!std::memcmp(rtree1.leaf(1), &m1[2], 2 * sizeof(int)));
+  CHECK(!std::memcmp(rtree1.leaf(2), &m1[4], 2 * sizeof(int)));
 
   std::vector<const int*> range1;
   int mbr1[] = {5, 10};
@@ -110,6 +113,9 @@ TEST_CASE("RTree: Test R-Tree, basic functions", "[rtree][basic]") {
   CHECK(rtree2.dim_num() == 2);
   CHECK(rtree2.fanout() == 5);
   CHECK(rtree2.type() == Datatype::INT64);
+  CHECK(!std::memcmp(rtree2.leaf(0), &m2[0], 4 * sizeof(int64_t)));
+  CHECK(!std::memcmp(rtree2.leaf(1), &m2[4], 4 * sizeof(int64_t)));
+  CHECK(!std::memcmp(rtree2.leaf(2), &m2[8], 4 * sizeof(int64_t)));
   std::vector<const int64_t*> range2;
   int64_t mbr2[] = {5, 10, 2, 9};
   int64_t r2_no[] = {6, 7, 10, 12};

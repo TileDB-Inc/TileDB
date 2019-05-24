@@ -166,6 +166,15 @@ unsigned RTree::height() const {
   return (unsigned)levels_.size();
 }
 
+const void* RTree::leaf(uint64_t leaf_idx) const {
+  if (leaf_idx >= levels_.back().mbr_num_)
+    return nullptr;
+  assert(leaf_idx < levels_.back().mbr_num_);
+
+  uint64_t mbr_size = 2 * dim_num_ * datatype_size(type_);
+  return (const void*)&(levels_.back().mbrs_[leaf_idx * mbr_size]);
+}
+
 template <class T>
 double RTree::range_overlap(
     const std::vector<const T*>& range, const T* mbr) const {

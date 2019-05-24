@@ -271,6 +271,26 @@ void create_subarray(
   *subarray = ret;
 }
 
+template <class T>
+void create_subarray(
+    tiledb_ctx_t* ctx,
+    tiledb_array_t* array,
+    const SubarrayRanges<T>& ranges,
+    tiledb_layout_t layout,
+    tiledb_subarray_t** subarray) {
+  int rc = tiledb_subarray_alloc(ctx, array, layout, subarray);
+  CHECK(rc == TILEDB_OK);
+
+  auto dim_num = (unsigned)ranges.size();
+  for (unsigned i = 0; i < dim_num; ++i) {
+    auto dim_range_num = ranges[i].size() / 2;
+    for (size_t j = 0; j < dim_range_num; ++j) {
+      rc = tiledb_subarray_add_range(ctx, *subarray, i, &ranges[i][2 * j]);
+      CHECK(rc == TILEDB_OK);
+    }
+  }
+}
+
 void get_supported_fs(bool* s3_supported, bool* hdfs_supported) {
   tiledb_ctx_t* ctx = nullptr;
   REQUIRE(tiledb_ctx_alloc(nullptr, &ctx) == TILEDB_OK);
@@ -327,6 +347,9 @@ int set_attribute_compression_filter(
     tiledb_attribute_t* attr,
     tiledb_filter_type_t compressor,
     int32_t level) {
+  if (compressor == TILEDB_FILTER_NONE)
+    return TILEDB_OK;
+
   tiledb_filter_t* filter;
   int rc = tiledb_filter_alloc(ctx, compressor, &filter);
   REQUIRE(rc == TILEDB_OK);
@@ -405,6 +428,55 @@ void write_array(
   tiledb_query_free(&query);
 }
 
+void read_array(
+    tiledb_ctx_t* ctx,
+    tiledb_array_t* array,
+    tiledb_subarray_t* subarray,
+    const AttrBuffers& attr_buffers) {
+  // Create query
+  tiledb_query_t* query;
+  int rc = tiledb_query_alloc(ctx, array, TILEDB_READ, &query);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_subarray_2(ctx, query, subarray);
+  CHECK(rc == TILEDB_OK);
+
+  // Set buffers
+  for (const auto& b : attr_buffers) {
+    if (b.second.var_ == nullptr) {  // Fixed-sized
+      rc = tiledb_query_set_buffer(
+          ctx,
+          query,
+          b.first.c_str(),
+          b.second.fixed_,
+          (uint64_t*)&(b.second.fixed_size_));
+      CHECK(rc == TILEDB_OK);
+    } else {  // Var-sized
+      rc = tiledb_query_set_buffer_var(
+          ctx,
+          query,
+          b.first.c_str(),
+          (uint64_t*)b.second.fixed_,
+          (uint64_t*)&(b.second.fixed_size_),
+          b.second.var_,
+          (uint64_t*)&(b.second.var_size_));
+      CHECK(rc == TILEDB_OK);
+    }
+  }
+
+  // Submit query
+  rc = tiledb_query_submit(ctx, query);
+  CHECK(rc == TILEDB_OK);
+
+  // Check status
+  tiledb_query_status_t status;
+  rc = tiledb_query_get_status(ctx, query, &status);
+  CHECK(rc == TILEDB_OK);
+  CHECK(status == TILEDB_COMPLETED);
+
+  // Clean up
+  tiledb_query_free(&query);
+}
+
 // Explicit template instantiations
 
 template void check_subarray<int8_t>(
@@ -478,6 +550,67 @@ template void create_subarray<double>(
     const SubarrayRanges<double>& ranges,
     tiledb::sm::Layout layout,
     tiledb::sm::Subarray* subarray);
+
+template void create_subarray<int8_t>(
+    tiledb_ctx_t* ctx,
+    tiledb_array_t* array,
+    const SubarrayRanges<int8_t>& ranges,
+    tiledb_layout_t layout,
+    tiledb_subarray_t** subarray);
+template void create_subarray<uint8_t>(
+    tiledb_ctx_t* ctx,
+    tiledb_array_t* array,
+    const SubarrayRanges<uint8_t>& ranges,
+    tiledb_layout_t layout,
+    tiledb_subarray_t** subarray);
+template void create_subarray<int16_t>(
+    tiledb_ctx_t* ctx,
+    tiledb_array_t* array,
+    const SubarrayRanges<int16_t>& ranges,
+    tiledb_layout_t layout,
+    tiledb_subarray_t** subarray);
+template void create_subarray<uint16_t>(
+    tiledb_ctx_t* ctx,
+    tiledb_array_t* array,
+    const SubarrayRanges<uint16_t>& ranges,
+    tiledb_layout_t layout,
+    tiledb_subarray_t** subarray);
+template void create_subarray<int32_t>(
+    tiledb_ctx_t* ctx,
+    tiledb_array_t* array,
+    const SubarrayRanges<int32_t>& ranges,
+    tiledb_layout_t layout,
+    tiledb_subarray_t** subarray);
+template void create_subarray<uint32_t>(
+    tiledb_ctx_t* ctx,
+    tiledb_array_t* array,
+    const SubarrayRanges<uint32_t>& ranges,
+    tiledb_layout_t layout,
+    tiledb_subarray_t** subarray);
+template void create_subarray<int64_t>(
+    tiledb_ctx_t* ctx,
+    tiledb_array_t* array,
+    const SubarrayRanges<int64_t>& ranges,
+    tiledb_layout_t layout,
+    tiledb_subarray_t** subarray);
+template void create_subarray<uint64_t>(
+    tiledb_ctx_t* ctx,
+    tiledb_array_t* array,
+    const SubarrayRanges<uint64_t>& ranges,
+    tiledb_layout_t layout,
+    tiledb_subarray_t** subarray);
+template void create_subarray<float>(
+    tiledb_ctx_t* ctx,
+    tiledb_array_t* array,
+    const SubarrayRanges<float>& ranges,
+    tiledb_layout_t layout,
+    tiledb_subarray_t** subarray);
+template void create_subarray<double>(
+    tiledb_ctx_t* ctx,
+    tiledb_array_t* array,
+    const SubarrayRanges<double>& ranges,
+    tiledb_layout_t layout,
+    tiledb_subarray_t** subarray);
 
 template void check_partitions<int8_t>(
     tiledb::sm::SubarrayPartitioner& partitioner,

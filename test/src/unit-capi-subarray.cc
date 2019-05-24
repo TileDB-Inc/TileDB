@@ -577,10 +577,6 @@ TEST_CASE_METHOD(
   rc = tiledb_array_open(ctx_, array, TILEDB_READ);
   CHECK(rc == TILEDB_OK);
 
-  // Allocate subarray with an opened array in GLOBAL_ORDER layout
-  rc = tiledb_subarray_alloc(ctx_, array, TILEDB_GLOBAL_ORDER, &subarray);
-  CHECK(rc == TILEDB_ERR);
-
   // Allocate subarray with an opened array
   rc = tiledb_subarray_alloc(ctx_, array, TILEDB_UNORDERED, &subarray);
   CHECK(rc == TILEDB_OK);
@@ -1945,10 +1941,6 @@ TEST_CASE_METHOD(
 
   // Allocate subarray with an opened array in UNORDERED layout
   rc = tiledb_subarray_alloc(ctx_, array, TILEDB_UNORDERED, &subarray);
-  CHECK(rc == TILEDB_ERR);
-
-  // Allocate subarray with an opened array in GLOBAL_ORDER layout
-  rc = tiledb_subarray_alloc(ctx_, array, TILEDB_GLOBAL_ORDER, &subarray);
   CHECK(rc == TILEDB_ERR);
 
   // Permitted allocation

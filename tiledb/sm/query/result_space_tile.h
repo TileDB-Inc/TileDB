@@ -98,6 +98,23 @@ struct ResultSpaceTile {
     return start_coords_ == rst.start_coords_ &&
            result_tiles_ == rst.result_tiles_;
   }
+
+  /**
+   * Prints information about the result tile (mainly for debugging
+   * purposes).
+   */
+  void print() {
+    std::cout << "Start coords:\n";
+    for (auto c : start_coords_)
+      std::cout << c << " ";
+    std::cout << "\n";
+
+    std::cout << "Result tiles:\n";
+    for (auto it : result_tiles_) {
+      std::cout << "fragment id: " << it.first << "\n";
+      it.second.print();
+    }
+  }
 };
 
 }  // namespace sm
