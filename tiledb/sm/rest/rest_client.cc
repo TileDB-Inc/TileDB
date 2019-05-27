@@ -48,7 +48,8 @@ namespace sm {
 
 RestClient::RestClient()
     : config_(nullptr)
-    , serialization_type_(constants::serialization_default_format) {
+    , serialization_type_(constants::serialization_default_format)
+    , resubmit_incomplete_(true) {
 }
 
 Status RestClient::init(const Config* config) {
@@ -69,6 +70,10 @@ Status RestClient::init(const Config* config) {
   RETURN_NOT_OK(config_->get("rest.server_serialization_format", &c_str));
   if (c_str != nullptr)
     RETURN_NOT_OK(serialization_type_enum(c_str, &serialization_type_));
+
+  RETURN_NOT_OK(config_->get("rest.resubmit_incomplete", &c_str));
+  if (c_str != nullptr)
+    RETURN_NOT_OK(utils::parse::convert(c_str, &resubmit_incomplete_));
 
   return Status::Ok();
 }
@@ -210,7 +215,32 @@ Status RestClient::get_array_max_buffer_sizes(
 Status RestClient::submit_query_to_rest(const URI& uri, Query* query) {
   STATS_FUNC_IN(rest_query_submit);
 
-  // Serialize data to send
+  // Local state tracking for the current offsets into the user's query buffers.
+  // This allows resubmission of incomplete queries while appending to the
+  // same user buffers.
+  std::unordered_map<std::string, serialization::QueryBufferCopyState>
+      copy_state;
+
+  do {
+    // Repeatedly resubmit the query for incomplete reads, if enabled.
+    RETURN_NOT_OK(post_query_submit(uri, query, &copy_state));
+  } while (query->status() == QueryStatus::INCOMPLETE && resubmit_incomplete_);
+
+  // Now need to update the buffer sizes to the actual copied data size so that
+  // the user can check the result size on reads.
+  RETURN_NOT_OK(update_attribute_buffer_sizes(copy_state, query));
+
+  return Status::Ok();
+
+  STATS_FUNC_OUT(rest_query_submit);
+}
+
+Status RestClient::post_query_submit(
+    const URI& uri,
+    Query* query,
+    std::unordered_map<std::string, serialization::QueryBufferCopyState>*
+        copy_state) {
+  // Serialize query to send
   BufferList serialized;
   RETURN_NOT_OK(serialization::query_serialize(
       query, serialization_type_, true, &serialized));
@@ -232,11 +262,13 @@ Status RestClient::submit_query_to_rest(const URI& uri, Query* query) {
     return LOG_STATUS(Status::RestError(
         "Error submitting query to REST; server returned no data."));
 
-  // Deserialize data returned
-  return serialization::query_deserialize(
-      returned_data, serialization_type_, true, query);
+  // Deserialize data returned. If the user buffers are too small to
+  // accomodate the attribute data when deserializing read queries, this will
+  // return an error status.
+  RETURN_NOT_OK(serialization::query_deserialize(
+      returned_data, serialization_type_, true, copy_state, query));
 
-  STATS_FUNC_OUT(rest_query_submit);
+  return Status::Ok();
 }
 
 Status RestClient::finalize_query_to_rest(const URI& uri, Query* query) {
@@ -264,7 +296,7 @@ Status RestClient::finalize_query_to_rest(const URI& uri, Query* query) {
 
   // Deserialize data returned
   return serialization::query_deserialize(
-      returned_data, serialization_type_, true, query);
+      returned_data, serialization_type_, true, nullptr, query);
 }
 
 Status RestClient::subarray_to_str(
@@ -323,6 +355,68 @@ Status RestClient::subarray_to_str(
   }
 
   *subarray_str = ss.str();
+
+  return Status::Ok();
+}
+
+Status RestClient::update_attribute_buffer_sizes(
+    const std::unordered_map<std::string, serialization::QueryBufferCopyState>&
+        copy_state,
+    Query* query) const {
+  // Applicable only to reads
+  if (query->type() != QueryType::READ)
+    return Status::Ok();
+
+  const auto schema = query->array_schema();
+  if (schema == nullptr)
+    return LOG_STATUS(Status::RestError(
+        "Error updating attribute buffer sizes; array schema is null"));
+
+  const auto attrs = query->attributes();
+  std::set<std::string> attr_names;
+  attr_names.insert(constants::coords);
+  for (const auto& name : attrs)
+    attr_names.insert(name);
+
+  for (const auto& attr_name : attr_names) {
+    const bool is_coords = attr_name == constants::coords;
+    const auto* attr = schema->attribute(attr_name);
+    if (!is_coords && attr == nullptr)
+      return LOG_STATUS(Status::RestError(
+          "Error updating attribute buffer sizes; no attribute object for '" +
+          attr_name + "'"));
+
+    // Skip attributes that were not a part of the copy process.
+    auto copy_state_it = copy_state.find(attr_name);
+    if (copy_state_it == copy_state.end())
+      continue;
+    auto attr_state = copy_state_it->second;
+
+    const bool var_size = !is_coords && attr->var_size();
+    if (var_size) {
+      uint64_t* offset_buffer = nullptr;
+      uint64_t* offset_buffer_size = nullptr;
+      void* buffer = nullptr;
+      uint64_t* buffer_size = nullptr;
+      RETURN_NOT_OK(query->get_buffer(
+          attr_name.c_str(),
+          &offset_buffer,
+          &offset_buffer_size,
+          &buffer,
+          &buffer_size));
+      if (offset_buffer_size != nullptr)
+        *offset_buffer_size = attr_state.offset_size;
+      if (buffer_size != nullptr)
+        *buffer_size = attr_state.data_size;
+    } else {
+      void* buffer = nullptr;
+      uint64_t* buffer_size = nullptr;
+      RETURN_NOT_OK(
+          query->get_buffer(attr_name.c_str(), &buffer, &buffer_size));
+      if (buffer_size != nullptr)
+        *buffer_size = attr_state.data_size;
+    }
+  }
 
   return Status::Ok();
 }

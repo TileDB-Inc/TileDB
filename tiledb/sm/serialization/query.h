@@ -42,6 +42,24 @@ namespace sm {
 namespace serialization {
 
 /**
+ * Contains state related to copying data into user's query buffers for an
+ * attribute.
+ */
+struct QueryBufferCopyState {
+  /** Accumulated number of bytes copied into user's offset buffer. */
+  uint64_t offset_size;
+
+  /** Accumulated number of bytes copied into user's data buffer. */
+  uint64_t data_size;
+
+  /** Constructor. */
+  QueryBufferCopyState()
+      : offset_size(0)
+      , data_size(0) {
+  }
+};
+
+/**
  * Serialize a query
  *
  * @param query Query to serialize
@@ -55,16 +73,24 @@ Status query_serialize(
     BufferList* serialized_buffer);
 
 /**
- * Deserialize a query
+ * Deserialize a query. This takes a buffer containing serialized query
+ * information (read state, attribute data, query status, etc) and updates the
+ * given query to be equivalent to the serialized query.
  *
+ * @param serialized_buffer Buffer containing serialized query
+ * @param serialize_type Serialization type of serialized query
+ * @param clientside Whether deserialization should be performed from a client
+ *      or server perspective
+ * @param copy_state Map of copy state per attribute. If this is null, the
+ *      query's buffer sizes are updated directly. If it is not null, the buffer
+ *      sizes are not modified but the entries in the map are.
  * @param query Query to deserialize into
- * @param serialize_type format to deserialize from
- * @param serialized_buffer Buffer storing serialized query
  */
 Status query_deserialize(
     const Buffer& serialized_buffer,
     SerializationType serialize_type,
     bool clientside,
+    std::unordered_map<std::string, QueryBufferCopyState>* copy_state,
     Query* query);
 
 }  // namespace serialization

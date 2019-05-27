@@ -843,6 +843,10 @@ TILEDB_EXPORT void tiledb_config_free(tiledb_config_t** config);
  *    Authentication token for REST server (used instead of
  *    username/password). <br>
  *    **Default**: ""
+ * - `rest.resubmit_incomplete` <br>
+ *    If true, incomplete queries received from server are automatically
+ *    resubmitted before returning to user control. <br>
+ *    **Default**: "true"
  *
  * **Example:**
  *

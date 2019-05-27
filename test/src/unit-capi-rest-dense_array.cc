@@ -1944,6 +1944,36 @@ TEST_CASE_METHOD(
     DenseArrayRESTFx,
     "C API: REST Test dense array, incomplete reads",
     "[capi], [dense], [rest], [incomplete]") {
+  // Disable incomplete resubmission
+  tiledb_ctx_free(&ctx_);
+  tiledb_error_t* error;
+  tiledb_config_t* config;
+  tiledb_config_alloc(&config, &error);
+  REQUIRE(
+      tiledb_config_set(config, "rest.resubmit_incomplete", "false", &error) ==
+      TILEDB_OK);
+
+  // Keep other REST server parameters the same
+  REQUIRE(
+      tiledb_config_set(
+          config, "rest.server_address", rest_server_uri_.c_str(), &error) ==
+      TILEDB_OK);
+  REQUIRE(
+      tiledb_config_set(
+          config, "rest.server_serialization_format", "CAPNP", &error) ==
+      TILEDB_OK);
+  REQUIRE(
+      tiledb_config_set(
+          config, "rest.username", rest_server_username_.c_str(), &error) ==
+      TILEDB_OK);
+  REQUIRE(
+      tiledb_config_set(
+          config, "rest.password", rest_server_password_.c_str(), &error) ==
+      TILEDB_OK);
+
+  REQUIRE(tiledb_ctx_alloc(config, &ctx_) == TILEDB_OK);
+  tiledb_config_free(&config);
+
   if (supports_s3_) {
     // S3
     create_temp_dir(S3_TEMP_DIR);

@@ -277,6 +277,7 @@ Status query_from_capnp(
     const capnp::Query::Reader& query_reader,
     bool clientside,
     void* buffer_start,
+    std::unordered_map<std::string, QueryBufferCopyState>* copy_state,
     Query* query) {
   using namespace tiledb::sm;
 
@@ -347,6 +348,12 @@ Status query_from_capnp(
     const uint64_t fixedlen_size = buffer_header.getFixedLenBufferSizeInBytes();
     const uint64_t varlen_size = buffer_header.getVarLenBufferSizeInBytes();
 
+    // Get current copy state for the attribute (contains destination offsets
+    // for memcpy into user buffers).
+    QueryBufferCopyState* attr_copy_state = nullptr;
+    if (copy_state != nullptr)
+      attr_copy_state = &(*copy_state)[attribute_name];
+
     // Get any buffers already set on this query object.
     uint64_t* existing_offset_buffer = nullptr;
     uint64_t* existing_offset_buffer_size = nullptr;
@@ -378,9 +385,20 @@ Status query_from_capnp(
         return LOG_STATUS(Status::SerializationError(
             "Error deserializing read query; buffer not set for attribute '" +
             attribute_name + "'."));
-      if ((var_size && (*existing_offset_buffer_size < fixedlen_size ||
-                        *existing_buffer_size < varlen_size)) ||
-          (!var_size && *existing_buffer_size < fixedlen_size)) {
+
+      // Check sizes
+      const uint64_t curr_data_size =
+          attr_copy_state == nullptr ? 0 : attr_copy_state->data_size;
+      const uint64_t data_size_left = *existing_buffer_size - curr_data_size;
+      const uint64_t curr_offset_size =
+          attr_copy_state == nullptr ? 0 : attr_copy_state->offset_size;
+      const uint64_t offset_size_left =
+          existing_offset_buffer_size == nullptr ?
+              0 :
+              *existing_offset_buffer_size - curr_offset_size;
+      if ((var_size && (offset_size_left < fixedlen_size ||
+                        data_size_left < varlen_size)) ||
+          (!var_size && data_size_left < fixedlen_size)) {
         return LOG_STATUS(Status::SerializationError(
             "Error deserializing read query; buffer too small for attribute "
             "'" +
@@ -391,25 +409,36 @@ Status query_from_capnp(
       // nothing to do.
       if (type == QueryType::READ) {
         if (var_size) {
+          char* offset_dest = (char*)existing_offset_buffer + curr_offset_size;
+          char* data_dest = (char*)existing_buffer + curr_data_size;
           // Var size attribute; buffers already set.
-          std::memcpy(
-              existing_offset_buffer, attribute_buffer_start, fixedlen_size);
+          std::memcpy(offset_dest, attribute_buffer_start, fixedlen_size);
           attribute_buffer_start += fixedlen_size;
-          std::memcpy(existing_buffer, attribute_buffer_start, varlen_size);
+          std::memcpy(data_dest, attribute_buffer_start, varlen_size);
           attribute_buffer_start += varlen_size;
 
-          // Need to update the buffer size to the actual data size so that
-          // the user can check the result size on reads.
-          *existing_offset_buffer_size = fixedlen_size;
-          *existing_buffer_size = varlen_size;
+          if (attr_copy_state == nullptr) {
+            // Set the size directly on the query (so user can introspect on
+            // result size).
+            *existing_offset_buffer_size = fixedlen_size;
+            *existing_buffer_size = varlen_size;
+          } else {
+            // Accumulate total bytes copied (caller's responsibility to
+            // eventually update the query).
+            attr_copy_state->offset_size += fixedlen_size;
+            attr_copy_state->data_size += varlen_size;
+          }
         } else {
           // Fixed size attribute; buffers already set.
-          std::memcpy(existing_buffer, attribute_buffer_start, fixedlen_size);
+          char* data_dest = (char*)existing_buffer + curr_data_size;
+          std::memcpy(data_dest, attribute_buffer_start, fixedlen_size);
           attribute_buffer_start += fixedlen_size;
 
-          // Need to update the buffer size to the actual data size so that
-          // the user can check the result size on reads.
-          *existing_buffer_size = fixedlen_size;
+          if (attr_copy_state == nullptr) {
+            *existing_buffer_size = fixedlen_size;
+          } else {
+            attr_copy_state->data_size += fixedlen_size;
+          }
         }
       }
     } else {
@@ -630,6 +659,7 @@ Status query_deserialize(
     const Buffer& serialized_buffer,
     SerializationType serialize_type,
     bool clientside,
+    std::unordered_map<std::string, QueryBufferCopyState>* copy_state,
     Query* query) {
   STATS_FUNC_IN(serialization_query_deserialize);
 
@@ -648,7 +678,8 @@ Status query_deserialize(
             kj::StringPtr(static_cast<const char*>(serialized_buffer.data())),
             query_builder);
         capnp::Query::Reader query_reader = query_builder.asReader();
-        return query_from_capnp(query_reader, clientside, nullptr, query);
+        return query_from_capnp(
+            query_reader, clientside, nullptr, copy_state, query);
       }
       case SerializationType::CAPNP: {
         // Capnp FlatArrayMessageReader requires 64-bit alignment.
@@ -672,7 +703,8 @@ Status query_deserialize(
         // was concatenated after the CapnP message on serialization).
         auto attribute_buffer_start = reader.getEnd();
         auto buffer_start = const_cast<::capnp::word*>(attribute_buffer_start);
-        return query_from_capnp(query_reader, clientside, buffer_start, query);
+        return query_from_capnp(
+            query_reader, clientside, buffer_start, copy_state, query);
       }
       default:
         return LOG_STATUS(Status::SerializationError(
@@ -698,7 +730,12 @@ Status query_serialize(Query*, SerializationType, bool, BufferList*) {
       "Cannot serialize; serialization not enabled."));
 }
 
-Status query_deserialize(const Buffer&, SerializationType, bool, Query*) {
+Status query_deserialize(
+    const Buffer&,
+    SerializationType,
+    bool,
+    std::unordered_map<std::string, QueryBufferCopyState>*,
+    Query*) {
   return LOG_STATUS(Status::SerializationError(
       "Cannot serialize; serialization not enabled."));
 }
