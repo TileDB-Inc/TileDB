@@ -119,6 +119,15 @@ Status Curl::init(const Config* config) {
     return LOG_STATUS(Status::RestError(
         "Error initializing libcurl; failed to set CURLOPT_NOSIGNAL"));
 
+  // For human-readable error messages
+  RETURN_NOT_OK(curl_error_buffer_.realloc(CURL_ERROR_SIZE));
+  std::memset(curl_error_buffer_.data(), 0, CURL_ERROR_SIZE);
+  rc = curl_easy_setopt(
+      curl_.get(), CURLOPT_ERRORBUFFER, curl_error_buffer_.data());
+  if (rc != CURLE_OK)
+    return LOG_STATUS(Status::RestError(
+        "Error initializing libcurl; failed to set CURLOPT_ERRORBUFFER"));
+
   return Status::Ok();
 }
 
@@ -255,22 +264,39 @@ Status Curl::check_curl_errors(
   if (curl_code != CURLE_OK || http_code >= 400) {
     // TODO: Should see if message has error data object
     std::stringstream msg;
-    msg << "Error in curl " << operation << " operation ; HTTP code "
-        << http_code << "; ";
+    msg << "Error in libcurl " << operation
+        << " operation: libcurl error message '" << get_curl_errstr(curl_code)
+        << "'; HTTP code " << http_code << "; ";
     if (returned_data->size() > 0) {
-      msg << " response data '"
+      msg << "server response data '"
           << std::string(
                  reinterpret_cast<const char*>(returned_data->data()),
                  returned_data->size())
           << "'.";
     } else {
-      msg << " server response was empty.";
+      msg << "server response was empty.";
     }
 
     return LOG_STATUS(Status::RestError(msg.str()));
   }
 
   return Status::Ok();
+}
+
+std::string Curl::get_curl_errstr(CURLcode curl_code) const {
+  if (curl_code == CURLE_OK)
+    return "CURLE_OK";
+
+  // First check the error buffer for a detailed message.
+  auto err_str_ptr = static_cast<const char*>(curl_error_buffer_.data());
+  size_t err_str_len = 0;
+  while (err_str_len < CURL_ERROR_SIZE && err_str_ptr[err_str_len] != '\0')
+    err_str_len++;
+  if (err_str_len > 0 && err_str_len < CURL_ERROR_SIZE)
+    return std::string(err_str_ptr, err_str_len);
+
+  // Fall back to a generic error message
+  return std::string(curl_easy_strerror(curl_code));
 }
 
 Status Curl::post_data(

@@ -124,6 +124,9 @@ class Curl {
   /** Underlying C curl instance. */
   std::unique_ptr<CURL, decltype(&curl_easy_cleanup)> curl_;
 
+  /** String buffer that will be used by libcurl to store error messages. */
+  Buffer curl_error_buffer_;
+
   /**
    * Sets authorization (token or username+password) on the curl instance using
    * the given config instance.
@@ -168,6 +171,14 @@ class Curl {
       CURLcode curl_code,
       const std::string& operation,
       const Buffer* returned_data) const;
+
+  /**
+   * Gets as detailed an error message as possible from libcurl.
+   *
+   * @param curl_code Curl return code to check for errors
+   * @return Possibly empty error message string
+   */
+  std::string get_curl_errstr(CURLcode curl_code) const;
 };
 
 }  // namespace sm
