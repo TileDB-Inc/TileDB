@@ -481,9 +481,6 @@ class Config {
   /** Populates `param_values_` map with the default values. */
   void set_default_param_values();
 
-  /** Normalizes and parses a string boolean value **/
-  Status parse_bool(const std::string& value, bool* result);
-
   /** Sets the dedup coordinates parameter. */
   Status set_sm_dedup_coords(const std::string& value);
 

@@ -738,19 +738,6 @@ void Config::set_default_param_values() {
   value.str(std::string());
 }
 
-Status Config::parse_bool(const std::string& value, bool* result) {
-  std::string lvalue = value;
-  std::transform(lvalue.begin(), lvalue.end(), lvalue.begin(), ::tolower);
-  if (lvalue == "true") {
-    *result = true;
-  } else if (lvalue == "false") {
-    *result = false;
-  } else {
-    return Status::ConfigError("cannot parse boolean value: " + value);
-  }
-  return Status::Ok();
-}
-
 Status Config::set_rest_server_address(const std::string& value) {
   rest_params_.server_address_ = value;
 
@@ -785,7 +772,7 @@ Status Config::set_rest_token(const std::string& value) {
 
 Status Config::set_sm_dedup_coords(const std::string& value) {
   bool v = false;
-  if (!parse_bool(value, &v).ok()) {
+  if (!utils::parse::convert(value, &v).ok()) {
     return LOG_STATUS(Status::ConfigError(
         "Cannot set parameter; Invalid dedup coords value"));
   }
@@ -795,7 +782,7 @@ Status Config::set_sm_dedup_coords(const std::string& value) {
 
 Status Config::set_sm_check_coord_dups(const std::string& value) {
   bool v = false;
-  if (!parse_bool(value, &v).ok()) {
+  if (!utils::parse::convert(value, &v).ok()) {
     return LOG_STATUS(Status::ConfigError(
         "Cannot set parameter; Invalid check coords duplicates value"));
   }
@@ -805,7 +792,7 @@ Status Config::set_sm_check_coord_dups(const std::string& value) {
 
 Status Config::set_sm_check_coord_oob(const std::string& value) {
   bool v = false;
-  if (!parse_bool(value, &v).ok()) {
+  if (!utils::parse::convert(value, &v).ok()) {
     return LOG_STATUS(Status::ConfigError(
         "Cannot set parameter; Invalid check out-of-bounds coords value"));
   }
@@ -815,7 +802,7 @@ Status Config::set_sm_check_coord_oob(const std::string& value) {
 
 Status Config::set_sm_check_global_order(const std::string& value) {
   bool v = false;
-  if (!parse_bool(value, &v).ok()) {
+  if (!utils::parse::convert(value, &v).ok()) {
     return LOG_STATUS(Status::ConfigError(
         "Cannot set parameter; Invalid check global order value"));
   }
@@ -825,7 +812,7 @@ Status Config::set_sm_check_global_order(const std::string& value) {
 
 Status Config::set_sm_enable_signal_handlers(const std::string& value) {
   bool v;
-  RETURN_NOT_OK(parse_bool(value, &v));
+  RETURN_NOT_OK(utils::parse::convert(value, &v));
   sm_params_.enable_signal_handlers_ = v;
 
   return Status::Ok();
@@ -1005,7 +992,7 @@ Status Config::set_vfs_s3_endpoint_override(const std::string& value) {
 
 Status Config::set_vfs_s3_use_virtual_addressing(const std::string& value) {
   bool v = false;
-  if (!parse_bool(value, &v).ok()) {
+  if (!utils::parse::convert(value, &v).ok()) {
     return LOG_STATUS(Status::ConfigError(
         "Cannot set parameter; Invalid S3 virtual addressing value"));
   }
@@ -1015,7 +1002,7 @@ Status Config::set_vfs_s3_use_virtual_addressing(const std::string& value) {
 
 Status Config::set_vfs_s3_use_multipart_upload(const std::string& value) {
   bool v = false;
-  if (!parse_bool(value, &v).ok()) {
+  if (!utils::parse::convert(value, &v).ok()) {
     return LOG_STATUS(Status::ConfigError(
         "Cannot set parameter; Invalid S3 multipart mode value"));
   }

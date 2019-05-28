@@ -37,6 +37,7 @@
 #include "tiledb/sm/enums/serialization_type.h"
 #include "tiledb/sm/misc/status.h"
 #include "tiledb/sm/query/query.h"
+#include "tiledb/sm/serialization/query.h"
 
 namespace tiledb {
 namespace sm {
@@ -122,6 +123,10 @@ class RestClient {
   Status finalize_query_to_rest(const URI& uri, Query* query);
 
  private:
+  /* ********************************* */
+  /*        PRIVATE ATTRIBUTES         */
+  /* ********************************* */
+
   /** The TileDB config options (contains server and auth info). */
   const Config* config_;
 
@@ -130,6 +135,44 @@ class RestClient {
 
   /** Serialization type. */
   SerializationType serialization_type_;
+
+  /**
+   * If true (the default), automatically resubmit incomplete queries. This
+   * allows the server to return less data than the user buffers indicated, in
+   * which case the rest client can simply resubmit the incomplete query
+   * transparently to the user.
+   *
+   * When this is turned on, it is currently an error if the user buffers on the
+   * client are too small to receive all data received from the server
+   * (regardless of how many times the query is resubmitted).
+   */
+  bool resubmit_incomplete_;
+
+  /* ********************************* */
+  /*         PRIVATE METHODS           */
+  /* ********************************* */
+
+  /**
+   * POSTs a query submit request to the REST server and deserializes the
+   * response into the same query object.
+   *
+   * For read queries, this also updates the given copy state with the number of
+   * bytes copied for each attribute, which allows for automatic resubmission of
+   * incomplete queries while concatenating to the user buffers.
+   *
+   * @param uri URI of array being queried
+   * @param query Query to send to server and store results in, this will be
+   *    modified.
+   * @param copy_state Map of copy state per attribute. As attribute data is
+   *    copied into user buffers on reads, the state of each attribute in this
+   *    map is updated accordingly.
+   * @return
+   */
+  Status post_query_submit(
+      const URI& uri,
+      Query* query,
+      std::unordered_map<std::string, serialization::QueryBufferCopyState>*
+          copy_state);
 
   /**
    * Returns a string representation of the given subarray. The format is:
@@ -145,6 +188,20 @@ class RestClient {
       const ArraySchema* schema,
       const void* subarray,
       std::string* subarray_str);
+
+  /**
+   * Sets the buffer sizes on the given query using the given state mapping (per
+   * attribute). Applicable only when deserializing read queries on the client.
+   *
+   * @param copy_state State map of attribute to buffer sizes.
+   * @param query Query to update buffers for
+   * @return Status
+   */
+  Status update_attribute_buffer_sizes(
+      const std::unordered_map<
+          std::string,
+          serialization::QueryBufferCopyState>& copy_state,
+      Query* query) const;
 };
 
 }  // namespace sm
