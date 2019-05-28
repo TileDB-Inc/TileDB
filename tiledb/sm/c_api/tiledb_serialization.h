@@ -54,12 +54,15 @@ typedef enum {
 /**
  * Serializes the given array schema.
  *
+ * @note The caller must free the returned `tiledb_buffer_t`.
+ *
  * @param ctx The TileDB context.
  * @param array_schema The array schema to serialize.
  * @param serialization_type Type of serialization to use
  * @param client_side If set to 1, deserialize from "client-side" perspective.
  *    Else, "server-side."
- * @param buffer Buffer to serialize to
+ * @param buffer Will be set to a newly allocated buffer containing the
+ *      serialized max buffer sizes.
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
 TILEDB_EXPORT int32_t tiledb_serialize_array_schema(
@@ -67,7 +70,7 @@ TILEDB_EXPORT int32_t tiledb_serialize_array_schema(
     const tiledb_array_schema_t* array_schema,
     tiledb_serialization_type_t serialize_type,
     int32_t client_side,
-    tiledb_buffer_t* buffer);
+    tiledb_buffer_t** buffer);
 
 /**
  * Deserializes a new array schema from the given buffer.
@@ -136,6 +139,8 @@ TILEDB_EXPORT int32_t tiledb_deserialize_query(
 /**
  * Serializes the given non-empty domain information into the given buffer.
  *
+ * @note The caller must free the returned `tiledb_buffer_t`.
+ *
  * @param ctx The TileDB context.
  * @param array Array to which the domain belongs to
  * @param nonempty_domain The domain to serialize
@@ -143,7 +148,8 @@ TILEDB_EXPORT int32_t tiledb_deserialize_query(
  * @param serialization_type Type of serialization to use
  * @param client_side If set to 1, serialize from "client-side" perspective.
  *    Else, "server-side."
- * @param buffer Buffer to serialize to
+ * @param buffer Will be set to a newly allocated buffer containing the
+ *      serialized max buffer sizes.
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
 TILEDB_EXPORT int32_t tiledb_serialize_array_nonempty_domain(
@@ -153,7 +159,7 @@ TILEDB_EXPORT int32_t tiledb_serialize_array_nonempty_domain(
     int32_t is_empty,
     tiledb_serialization_type_t serialize_type,
     int32_t client_side,
-    tiledb_buffer_t* buffer);
+    tiledb_buffer_t** buffer);
 
 /**
  * Deserializes non-empty domain information from the given buffer.

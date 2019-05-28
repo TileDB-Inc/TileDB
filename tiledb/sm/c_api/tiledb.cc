@@ -4848,14 +4848,18 @@ int32_t tiledb_serialize_array_schema(
     const tiledb_array_schema_t* array_schema,
     tiledb_serialization_type_t serialize_type,
     int32_t client_side,
-    tiledb_buffer_t* buffer) {
+    tiledb_buffer_t** buffer) {
   // Currently unused:
   (void)client_side;
 
   // Sanity check
   if (sanity_check(ctx) == TILEDB_ERR ||
-      sanity_check(ctx, array_schema) == TILEDB_ERR ||
-      sanity_check(ctx, buffer) == TILEDB_ERR)
+      sanity_check(ctx, array_schema) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  // Create buffer
+  if (tiledb_buffer_alloc(ctx, buffer) != TILEDB_OK ||
+      sanity_check(ctx, *buffer) == TILEDB_ERR)
     return TILEDB_ERR;
 
   if (SAVE_ERROR_CATCH(
@@ -4863,7 +4867,7 @@ int32_t tiledb_serialize_array_schema(
           tiledb::sm::serialization::array_schema_serialize(
               array_schema->array_schema_,
               (tiledb::sm::SerializationType)serialize_type,
-              buffer->buffer_)))
+              (*buffer)->buffer_)))
     return TILEDB_ERR;
 
   return TILEDB_OK;
@@ -4917,7 +4921,7 @@ int32_t tiledb_serialize_query(
     return TILEDB_ERR;
 
   // Allocate a buffer list
-  if (tiledb_buffer_list_alloc(ctx, buffer_list) == TILEDB_ERR ||
+  if (tiledb_buffer_list_alloc(ctx, buffer_list) != TILEDB_OK ||
       sanity_check(ctx, *buffer_list) == TILEDB_ERR)
     return TILEDB_ERR;
 
@@ -4965,14 +4969,17 @@ int32_t tiledb_serialize_array_nonempty_domain(
     int32_t is_empty,
     tiledb_serialization_type_t serialize_type,
     int32_t client_side,
-    tiledb_buffer_t* buffer) {
+    tiledb_buffer_t** buffer) {
   // Currently unused:
   (void)client_side;
 
   // Sanity check
-  if (sanity_check(ctx) == TILEDB_ERR ||
-      sanity_check(ctx, array) == TILEDB_ERR ||
-      sanity_check(ctx, buffer) == TILEDB_ERR)
+  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, array) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  // Create buffer
+  if (tiledb_buffer_alloc(ctx, buffer) != TILEDB_OK ||
+      sanity_check(ctx, *buffer) == TILEDB_ERR)
     return TILEDB_ERR;
 
   if (SAVE_ERROR_CATCH(
@@ -4982,7 +4989,7 @@ int32_t tiledb_serialize_array_nonempty_domain(
               nonempty_domain,
               is_empty,
               (tiledb::sm::SerializationType)serialize_type,
-              buffer->buffer_)))
+              (*buffer)->buffer_)))
     return TILEDB_ERR;
 
   return TILEDB_OK;
@@ -5032,7 +5039,7 @@ int32_t tiledb_serialize_array_max_buffer_sizes(
     return TILEDB_ERR;
 
   // Allocate buffer
-  if (tiledb_buffer_alloc(ctx, buffer) == TILEDB_ERR ||
+  if (tiledb_buffer_alloc(ctx, buffer) != TILEDB_OK ||
       sanity_check(ctx, *buffer) == TILEDB_ERR)
     return TILEDB_ERR;
 
