@@ -78,7 +78,6 @@ inline const std::string& compressor_str(Compressor type) {
     case Compressor::DOUBLE_DELTA:
       return constants::double_delta_str;
     default:
-      assert(0);
       return constants::empty_str;
   }
 }

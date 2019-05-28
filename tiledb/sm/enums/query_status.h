@@ -63,7 +63,6 @@ inline const std::string& query_status_str(QueryStatus query_status) {
     case QueryStatus::UNINITIALIZED:
       return constants::query_status_uninitialized_str;
     default:
-      assert(0);
       return constants::empty_str;
   }
 }

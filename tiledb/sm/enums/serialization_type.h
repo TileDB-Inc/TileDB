@@ -57,7 +57,6 @@ inline const std::string& serialization_type_str(
     case SerializationType::CAPNP:
       return constants::serialization_type_capnp_str;
     default:
-      assert(0);
       return constants::empty_str;
   }
 }

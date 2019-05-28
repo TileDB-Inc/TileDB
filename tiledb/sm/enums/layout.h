@@ -61,7 +61,6 @@ inline const std::string& layout_str(Layout layout) {
     case Layout::UNORDERED:
       return constants::unordered_str;
     default:
-      assert(0);
       return constants::empty_str;
   }
 }

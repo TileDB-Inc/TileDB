@@ -47,6 +47,27 @@ typedef enum {
 #undef TILEDB_SERIALIZATION_TYPE_ENUM
 } tiledb_serialization_type_t;
 
+/**
+ * Returns a string representation of the given serialization type.
+ *
+ * @param serialization_type Serialization type
+ * @param str Set to point to a constant string representation of the
+ * serialization type
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_serialization_type_to_str(
+    tiledb_serialization_type_t serialization_type, const char** str);
+
+/**
+ * Parses a serialization type from the given string.
+ *
+ * @param str String representation to parse
+ * @param serialization_type Set to the parsed serialization type
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_serialization_type_from_str(
+    const char* str, tiledb_serialization_type_t* serialization_type);
+
 /* ****************************** */
 /*          Serialization         */
 /* ****************************** */

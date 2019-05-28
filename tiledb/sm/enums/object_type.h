@@ -43,6 +43,39 @@ enum class ObjectType : uint8_t {
 #undef TILEDB_OBJECT_TYPE_ENUM
 };
 
+/** Returns the string representation of the input object type. */
+inline const std::string& object_type_str(ObjectType object_type) {
+  switch (object_type) {
+    case ObjectType::INVALID:
+      return constants::object_type_invalid_str;
+    case ObjectType::GROUP:
+      return constants::object_type_group_str;
+    case ObjectType::ARRAY:
+      return constants::object_type_array_str;
+    case ObjectType::KEY_VALUE:
+      return constants::object_type_key_value_str;
+    default:
+      return constants::empty_str;
+  }
+}
+
+/** Returns the object type given a string representation. */
+inline Status object_type_enum(
+    const std::string& object_type_str, ObjectType* object_type) {
+  if (object_type_str == constants::object_type_invalid_str)
+    *object_type = ObjectType::INVALID;
+  else if (object_type_str == constants::object_type_group_str)
+    *object_type = ObjectType::GROUP;
+  else if (object_type_str == constants::object_type_array_str)
+    *object_type = ObjectType::ARRAY;
+  else if (object_type_str == constants::object_type_key_value_str)
+    *object_type = ObjectType::KEY_VALUE;
+  else
+    return Status::Error("Invalid ObjectType " + object_type_str);
+
+  return Status::Ok();
+}
+
 }  // namespace sm
 }  // namespace tiledb
 

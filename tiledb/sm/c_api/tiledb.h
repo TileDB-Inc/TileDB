@@ -151,6 +151,255 @@ typedef enum {
 } tiledb_vfs_mode_t;
 
 /* ****************************** */
+/*       ENUMS TO/FROM STR        */
+/* ****************************** */
+
+/**
+ * Returns a string representation of the given query type.
+ *
+ * @param query_type Query type
+ * @param str Set to point to a constant string representation of the query type
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t
+tiledb_query_type_to_str(tiledb_query_type_t query_type, const char** str);
+
+/**
+ * Parses a query type from the given string.
+ *
+ * @param str String representation to parse
+ * @param query_type Set to the parsed query type
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t
+tiledb_query_type_from_str(const char* str, tiledb_query_type_t* query_type);
+
+/**
+ * Returns a string representation of the given object type.
+ *
+ * @param object_type Object type
+ * @param str Set to point to a constant string representation of the object
+ * type
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t
+tiledb_object_type_to_str(tiledb_object_t object_type, const char** str);
+
+/**
+ * Parses a object type from the given string.
+ *
+ * @param str String representation to parse
+ * @param object_type Set to the parsed object type
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t
+tiledb_object_type_from_str(const char* str, tiledb_object_t* object_type);
+
+/**
+ * Returns a string representation of the given filesystem.
+ *
+ * @param filesystem Filesystem
+ * @param str Set to point to a constant string representation of the filesystem
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t
+tiledb_filesystem_to_str(tiledb_filesystem_t filesystem, const char** str);
+
+/**
+ * Parses a filesystem from the given string.
+ *
+ * @param str String representation to parse
+ * @param filesystem Set to the parsed filesystem
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t
+tiledb_filesystem_from_str(const char* str, tiledb_filesystem_t* filesystem);
+
+/**
+ * Returns a string representation of the given datatype.
+ *
+ * @param datatype Datatype
+ * @param str Set to point to a constant string representation of the datatype
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t
+tiledb_datatype_to_str(tiledb_datatype_t datatype, const char** str);
+
+/**
+ * Parses a datatype from the given string.
+ *
+ * @param str String representation to parse
+ * @param datatype Set to the parsed datatype
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t
+tiledb_datatype_from_str(const char* str, tiledb_datatype_t* datatype);
+
+/**
+ * Returns a string representation of the given array type.
+ *
+ * @param array_type Array type
+ * @param str Set to point to a constant string representation of the array type
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t
+tiledb_array_type_to_str(tiledb_array_type_t array_type, const char** str);
+
+/**
+ * Parses a array type from the given string.
+ *
+ * @param str String representation to parse
+ * @param array_type Set to the parsed array type
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t
+tiledb_array_type_from_str(const char* str, tiledb_array_type_t* array_type);
+
+/**
+ * Returns a string representation of the given layout.
+ *
+ * @param layout Layout
+ * @param str Set to point to a constant string representation of the layout
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t
+tiledb_layout_to_str(tiledb_layout_t layout, const char** str);
+
+/**
+ * Parses a layout from the given string.
+ *
+ * @param str String representation to parse
+ * @param layout Set to the parsed layout
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t
+tiledb_layout_from_str(const char* str, tiledb_layout_t* layout);
+
+/**
+ * Returns a string representation of the given filter type.
+ *
+ * @param filter_type Filter type
+ * @param str Set to point to a constant string representation of the filter
+ * type
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t
+tiledb_filter_type_to_str(tiledb_filter_type_t filter_type, const char** str);
+
+/**
+ * Parses a filter type from the given string.
+ *
+ * @param str String representation to parse
+ * @param filter_type Set to the parsed filter type
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t
+tiledb_filter_type_from_str(const char* str, tiledb_filter_type_t* filter_type);
+
+/**
+ * Returns a string representation of the given filter option.
+ *
+ * @param filter_option Filter option
+ * @param str Set to point to a constant string representation of the filter
+ * option
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_filter_option_to_str(
+    tiledb_filter_option_t filter_option, const char** str);
+
+/**
+ * Parses a filter option from the given string.
+ *
+ * @param str String representation to parse
+ * @param filter_option Set to the parsed filter option
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_filter_option_from_str(
+    const char* str, tiledb_filter_option_t* filter_option);
+
+/**
+ * Returns a string representation of the given encryption type.
+ *
+ * @param encryption_type Encryption type
+ * @param str Set to point to a constant string representation of the encryption
+ * type
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_encryption_type_to_str(
+    tiledb_encryption_type_t encryption_type, const char** str);
+
+/**
+ * Parses a encryption type from the given string.
+ *
+ * @param str String representation to parse
+ * @param encryption_type Set to the parsed encryption type
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_encryption_type_from_str(
+    const char* str, tiledb_encryption_type_t* encryption_type);
+
+/**
+ * Returns a string representation of the given query status.
+ *
+ * @param query_status Query status
+ * @param str Set to point to a constant string representation of the query
+ * status
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_query_status_to_str(
+    tiledb_query_status_t query_status, const char** str);
+
+/**
+ * Parses a query status from the given string.
+ *
+ * @param str String representation to parse
+ * @param query_status Set to the parsed query status
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_query_status_from_str(
+    const char* str, tiledb_query_status_t* query_status);
+
+/**
+ * Returns a string representation of the given walk order.
+ *
+ * @param walk_order Walk order
+ * @param str Set to point to a constant string representation of the walk order
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t
+tiledb_walk_order_to_str(tiledb_walk_order_t walk_order, const char** str);
+
+/**
+ * Parses a walk order from the given string.
+ *
+ * @param str String representation to parse
+ * @param walk_order Set to the parsed walk order
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t
+tiledb_walk_order_from_str(const char* str, tiledb_walk_order_t* walk_order);
+
+/**
+ * Returns a string representation of the given VFS mode.
+ *
+ * @param vfs_mode VFS mode
+ * @param str Set to point to a constant string representation of the VFS mode
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t
+tiledb_vfs_mode_to_str(tiledb_vfs_mode_t vfs_mode, const char** str);
+
+/**
+ * Parses a VFS mode from the given string.
+ *
+ * @param str String representation to parse
+ * @param vfs_mode Set to the parsed VFS mode
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t
+tiledb_vfs_mode_from_str(const char* str, tiledb_vfs_mode_t* vfs_mode);
+
+/* ****************************** */
 /*            CONSTANTS           */
 /* ****************************** */
 

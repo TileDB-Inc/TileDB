@@ -56,7 +56,6 @@ inline const std::string& encryption_type_str(EncryptionType encryption_type) {
     case EncryptionType::AES_256_GCM:
       return constants::aes_256_gcm_str;
     default:
-      assert(0);
       return constants::empty_str;
   }
 }

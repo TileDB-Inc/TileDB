@@ -56,7 +56,6 @@ inline const std::string& query_type_str(QueryType query_type) {
     case QueryType::WRITE:
       return constants::query_type_write_str;
     default:
-      assert(0);
       return constants::empty_str;
   }
 }
