@@ -69,11 +69,6 @@ URI::URI(const std::string& path) {
     uri_ = path;
   else
     uri_ = "";
-
-  if (uri_.length() > constants::uri_max_len) {
-    LOG_ERROR("URI '" + uri_ + "' exceeds length limit.");
-    uri_ = "";
-  }
 }
 
 URI::~URI() = default;

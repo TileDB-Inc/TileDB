@@ -234,9 +234,6 @@ const float vfs_max_batch_read_amplification = 1.0;
 /** The default maximum number of parallel file:/// operations. */
 const uint64_t vfs_file_max_parallel_ops = vfs_num_threads;
 
-/** The maximum name length. */
-const uint32_t uri_max_len = 256;
-
 /** The maximum file path length (depending on platform). */
 #ifndef _WIN32
 const uint32_t path_max_len = PATH_MAX;

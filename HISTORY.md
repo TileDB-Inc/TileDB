@@ -1,5 +1,9 @@
 # TileDB v1.5.2 Release Notes
 
+## Improvements
+
+* Removed 256-character length limit from URIs. [#1288](https://github.com/TileDB-Inc/TileDB/pull/1288)
+
 ## Bug fixes
 
 * Bug fix with amplification factor in consolidation. [#1275](https://github.com/TileDB-Inc/TileDB/pull/1275)

@@ -77,11 +77,11 @@ TEST_CASE("URI: Test file URIs", "[uri]") {
   uri = URI("file://path");
   CHECK(uri.is_invalid());
   uri =
-      URI("file:///path/is/too/long/long/long/long/long/long/long/long/long/"
+      URI("file:///path/is/quite/long/long/long/long/long/long/long/long/long/"
           "long/long/long/long/long/long/long/long/long/long/long/long/long/"
           "long/long/long/long/long/long/long/long/long/long/long/long/long/"
           "long/long/long/long/long/long/long/long/long/long/long/long/long");
-  CHECK(uri.is_invalid());
+  CHECK(!uri.is_invalid());
   uri = URI("");
   CHECK(uri.is_invalid());
 

@@ -221,9 +221,6 @@ extern const float vfs_max_batch_read_amplification;
 /** The default maximum number of parallel file:/// operations. */
 extern const uint64_t vfs_file_max_parallel_ops;
 
-/** The maximum name length. */
-extern const uint32_t uri_max_len;
-
 /** The maximum file path length (depending on platform). */
 extern const uint32_t path_max_len;
 
