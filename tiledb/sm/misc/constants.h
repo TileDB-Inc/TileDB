@@ -253,9 +253,6 @@ extern const uint64_t vfs_file_max_parallel_ops;
 /** Whether or not filelocks are enabled for VFS. */
 extern const bool vfs_file_enable_filelocks;
 
-/** The maximum name length. */
-extern const uint32_t uri_max_len;
-
 /** The maximum file path length (depending on platform). */
 extern const uint32_t path_max_len;
 
