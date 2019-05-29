@@ -61,6 +61,222 @@
 #include <sstream>
 
 /* ****************************** */
+/*       ENUMS TO/FROM STR        */
+/* ****************************** */
+
+int32_t tiledb_query_type_to_str(
+    tiledb_query_type_t query_type, const char** str) {
+  const auto& strval =
+      tiledb::sm::query_type_str((tiledb::sm::QueryType)query_type);
+  *str = strval.c_str();
+  return strval.empty() ? TILEDB_ERR : TILEDB_OK;
+}
+
+int32_t tiledb_query_type_from_str(
+    const char* str, tiledb_query_type_t* query_type) {
+  tiledb::sm::QueryType val = tiledb::sm::QueryType::READ;
+  if (!tiledb::sm::query_type_enum(str, &val).ok())
+    return TILEDB_ERR;
+  *query_type = (tiledb_query_type_t)val;
+  return TILEDB_OK;
+}
+
+int32_t tiledb_object_type_to_str(
+    tiledb_object_t object_type, const char** str) {
+  const auto& strval =
+      tiledb::sm::object_type_str((tiledb::sm::ObjectType)object_type);
+  *str = strval.c_str();
+  return strval.empty() ? TILEDB_ERR : TILEDB_OK;
+}
+
+int32_t tiledb_object_type_from_str(
+    const char* str, tiledb_object_t* object_type) {
+  tiledb::sm::ObjectType val = tiledb::sm::ObjectType::INVALID;
+  if (!tiledb::sm::object_type_enum(str, &val).ok())
+    return TILEDB_ERR;
+  *object_type = (tiledb_object_t)val;
+  return TILEDB_OK;
+}
+
+int32_t tiledb_filesystem_to_str(
+    tiledb_filesystem_t filesystem, const char** str) {
+  const auto& strval =
+      tiledb::sm::filesystem_str((tiledb::sm::Filesystem)filesystem);
+  *str = strval.c_str();
+  return strval.empty() ? TILEDB_ERR : TILEDB_OK;
+}
+
+int32_t tiledb_filesystem_from_str(
+    const char* str, tiledb_filesystem_t* filesystem) {
+  tiledb::sm::Filesystem val = tiledb::sm::Filesystem::S3;
+  if (!tiledb::sm::filesystem_enum(str, &val).ok())
+    return TILEDB_ERR;
+  *filesystem = (tiledb_filesystem_t)val;
+  return TILEDB_OK;
+}
+
+int32_t tiledb_datatype_to_str(tiledb_datatype_t datatype, const char** str) {
+  const auto& strval = tiledb::sm::datatype_str((tiledb::sm::Datatype)datatype);
+  *str = strval.c_str();
+  return strval.empty() ? TILEDB_ERR : TILEDB_OK;
+}
+
+int32_t tiledb_datatype_from_str(const char* str, tiledb_datatype_t* datatype) {
+  tiledb::sm::Datatype val = tiledb::sm::Datatype::UINT8;
+  if (!tiledb::sm::datatype_enum(str, &val).ok())
+    return TILEDB_ERR;
+  *datatype = (tiledb_datatype_t)val;
+  return TILEDB_OK;
+}
+
+int32_t tiledb_array_type_to_str(
+    tiledb_array_type_t array_type, const char** str) {
+  const auto& strval =
+      tiledb::sm::array_type_str((tiledb::sm::ArrayType)array_type);
+  *str = strval.c_str();
+  return strval.empty() ? TILEDB_ERR : TILEDB_OK;
+}
+
+int32_t tiledb_array_type_from_str(
+    const char* str, tiledb_array_type_t* array_type) {
+  tiledb::sm::ArrayType val = tiledb::sm::ArrayType::DENSE;
+  if (!tiledb::sm::array_type_enum(str, &val).ok())
+    return TILEDB_ERR;
+  *array_type = (tiledb_array_type_t)val;
+  return TILEDB_OK;
+}
+
+int32_t tiledb_layout_to_str(tiledb_layout_t layout, const char** str) {
+  const auto& strval = tiledb::sm::layout_str((tiledb::sm::Layout)layout);
+  *str = strval.c_str();
+  return strval.empty() ? TILEDB_ERR : TILEDB_OK;
+}
+
+int32_t tiledb_layout_from_str(const char* str, tiledb_layout_t* layout) {
+  tiledb::sm::Layout val = tiledb::sm::Layout::ROW_MAJOR;
+  if (!tiledb::sm::layout_enum(str, &val).ok())
+    return TILEDB_ERR;
+  *layout = (tiledb_layout_t)val;
+  return TILEDB_OK;
+}
+
+int32_t tiledb_filter_type_to_str(
+    tiledb_filter_type_t filter_type, const char** str) {
+  const auto& strval =
+      tiledb::sm::filter_type_str((tiledb::sm::FilterType)filter_type);
+  *str = strval.c_str();
+  return strval.empty() ? TILEDB_ERR : TILEDB_OK;
+}
+
+int32_t tiledb_filter_type_from_str(
+    const char* str, tiledb_filter_type_t* filter_type) {
+  tiledb::sm::FilterType val = tiledb::sm::FilterType::FILTER_NONE;
+  if (!tiledb::sm::filter_type_enum(str, &val).ok())
+    return TILEDB_ERR;
+  *filter_type = (tiledb_filter_type_t)val;
+  return TILEDB_OK;
+}
+
+int32_t tiledb_filter_option_to_str(
+    tiledb_filter_option_t filter_option, const char** str) {
+  const auto& strval =
+      tiledb::sm::filter_option_str((tiledb::sm::FilterOption)filter_option);
+  *str = strval.c_str();
+  return strval.empty() ? TILEDB_ERR : TILEDB_OK;
+}
+
+int32_t tiledb_filter_option_from_str(
+    const char* str, tiledb_filter_option_t* filter_option) {
+  tiledb::sm::FilterOption val = tiledb::sm::FilterOption::COMPRESSION_LEVEL;
+  if (!tiledb::sm::filter_option_enum(str, &val).ok())
+    return TILEDB_ERR;
+  *filter_option = (tiledb_filter_option_t)val;
+  return TILEDB_OK;
+}
+
+int32_t tiledb_encryption_type_to_str(
+    tiledb_encryption_type_t encryption_type, const char** str) {
+  const auto& strval = tiledb::sm::encryption_type_str(
+      (tiledb::sm::EncryptionType)encryption_type);
+  *str = strval.c_str();
+  return strval.empty() ? TILEDB_ERR : TILEDB_OK;
+}
+
+int32_t tiledb_encryption_type_from_str(
+    const char* str, tiledb_encryption_type_t* encryption_type) {
+  tiledb::sm::EncryptionType val = tiledb::sm::EncryptionType::NO_ENCRYPTION;
+  if (!tiledb::sm::encryption_type_enum(str, &val).ok())
+    return TILEDB_ERR;
+  *encryption_type = (tiledb_encryption_type_t)val;
+  return TILEDB_OK;
+}
+
+int32_t tiledb_query_status_to_str(
+    tiledb_query_status_t query_status, const char** str) {
+  const auto& strval =
+      tiledb::sm::query_status_str((tiledb::sm::QueryStatus)query_status);
+  *str = strval.c_str();
+  return strval.empty() ? TILEDB_ERR : TILEDB_OK;
+}
+
+int32_t tiledb_query_status_from_str(
+    const char* str, tiledb_query_status_t* query_status) {
+  tiledb::sm::QueryStatus val = tiledb::sm::QueryStatus::UNINITIALIZED;
+  if (!tiledb::sm::query_status_enum(str, &val).ok())
+    return TILEDB_ERR;
+  *query_status = (tiledb_query_status_t)val;
+  return TILEDB_OK;
+}
+
+int32_t tiledb_serialization_type_to_str(
+    tiledb_serialization_type_t serialization_type, const char** str) {
+  const auto& strval = tiledb::sm::serialization_type_str(
+      (tiledb::sm::SerializationType)serialization_type);
+  *str = strval.c_str();
+  return strval.empty() ? TILEDB_ERR : TILEDB_OK;
+}
+
+int32_t tiledb_serialization_type_from_str(
+    const char* str, tiledb_serialization_type_t* serialization_type) {
+  tiledb::sm::SerializationType val = tiledb::sm::SerializationType::CAPNP;
+  if (!tiledb::sm::serialization_type_enum(str, &val).ok())
+    return TILEDB_ERR;
+  *serialization_type = (tiledb_serialization_type_t)val;
+  return TILEDB_OK;
+}
+
+int32_t tiledb_walk_order_to_str(
+    tiledb_walk_order_t walk_order, const char** str) {
+  const auto& strval =
+      tiledb::sm::walkorder_str((tiledb::sm::WalkOrder)walk_order);
+  *str = strval.c_str();
+  return strval.empty() ? TILEDB_ERR : TILEDB_OK;
+}
+
+int32_t tiledb_walk_order_from_str(
+    const char* str, tiledb_walk_order_t* walk_order) {
+  tiledb::sm::WalkOrder val = tiledb::sm::WalkOrder::PREORDER;
+  if (!tiledb::sm::walkorder_enum(str, &val).ok())
+    return TILEDB_ERR;
+  *walk_order = (tiledb_walk_order_t)val;
+  return TILEDB_OK;
+}
+
+int32_t tiledb_vfs_mode_to_str(tiledb_vfs_mode_t vfs_mode, const char** str) {
+  const auto& strval = tiledb::sm::vfsmode_str((tiledb::sm::VFSMode)vfs_mode);
+  *str = strval.c_str();
+  return strval.empty() ? TILEDB_ERR : TILEDB_OK;
+}
+
+int32_t tiledb_vfs_mode_from_str(const char* str, tiledb_vfs_mode_t* vfs_mode) {
+  tiledb::sm::VFSMode val = tiledb::sm::VFSMode::VFS_READ;
+  if (!tiledb::sm::vfsmode_enum(str, &val).ok())
+    return TILEDB_ERR;
+  *vfs_mode = (tiledb_vfs_mode_t)val;
+  return TILEDB_OK;
+}
+
+/* ****************************** */
 /*            CONSTANTS           */
 /* ****************************** */
 

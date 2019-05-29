@@ -34,6 +34,8 @@
 #ifndef TILEDB_FILESYSTEM_H
 #define TILEDB_FILESYSTEM_H
 
+#include "tiledb/sm/misc/constants.h"
+
 namespace tiledb {
 namespace sm {
 
@@ -43,6 +45,31 @@ enum class Filesystem : uint8_t {
 #include "tiledb/sm/c_api/tiledb_enum.h"
 #undef TILEDB_FILESYSTEM_ENUM
 };
+
+/** Returns the string representation of the input filesystem type. */
+inline const std::string& filesystem_str(Filesystem filesystem_type) {
+  switch (filesystem_type) {
+    case Filesystem::HDFS:
+      return constants::filesystem_type_hdfs_str;
+    case Filesystem::S3:
+      return constants::filesystem_type_s3_str;
+    default:
+      return constants::empty_str;
+  }
+}
+
+/** Returns the filesystem type given a string representation. */
+inline Status filesystem_enum(
+    const std::string& filesystem_type_str, Filesystem* filesystem_type) {
+  if (filesystem_type_str == constants::filesystem_type_hdfs_str)
+    *filesystem_type = Filesystem::HDFS;
+  else if (filesystem_type_str == constants::filesystem_type_s3_str)
+    *filesystem_type = Filesystem::S3;
+  else
+    return Status::Error("Invalid Filesystem " + filesystem_type_str);
+
+  return Status::Ok();
+}
 
 }  // namespace sm
 }  // namespace tiledb

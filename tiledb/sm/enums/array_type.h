@@ -57,7 +57,6 @@ inline const std::string& array_type_str(ArrayType array_type) {
     case ArrayType::SPARSE:
       return constants::sparse_str;
     default:
-      assert(0);
       return constants::empty_str;
   }
 }

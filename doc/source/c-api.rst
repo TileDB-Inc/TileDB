@@ -105,6 +105,57 @@ Enumerations
 .. doxygenenum:: tiledb_encryption_type_t
     :project: TileDB-C
 
+Enumeration String Conversion
+-----------------------------
+.. doxygenfunction:: tiledb_query_type_to_str
+    :project: TileDB-C
+.. doxygenfunction:: tiledb_query_type_from_str
+    :project: TileDB-C
+.. doxygenfunction:: tiledb_object_type_to_str
+    :project: TileDB-C
+.. doxygenfunction:: tiledb_object_type_from_str
+    :project: TileDB-C
+.. doxygenfunction:: tiledb_filesystem_to_str
+    :project: TileDB-C
+.. doxygenfunction:: tiledb_filesystem_from_str
+    :project: TileDB-C
+.. doxygenfunction:: tiledb_datatype_to_str
+    :project: TileDB-C
+.. doxygenfunction:: tiledb_datatype_from_str
+    :project: TileDB-C
+.. doxygenfunction:: tiledb_array_type_to_str
+    :project: TileDB-C
+.. doxygenfunction:: tiledb_array_type_from_str
+    :project: TileDB-C
+.. doxygenfunction:: tiledb_layout_to_str
+    :project: TileDB-C
+.. doxygenfunction:: tiledb_layout_from_str
+    :project: TileDB-C
+.. doxygenfunction:: tiledb_filter_type_to_str
+    :project: TileDB-C
+.. doxygenfunction:: tiledb_filter_type_from_str
+    :project: TileDB-C
+.. doxygenfunction:: tiledb_filter_option_to_str
+    :project: TileDB-C
+.. doxygenfunction:: tiledb_filter_option_from_str
+    :project: TileDB-C
+.. doxygenfunction:: tiledb_encryption_type_to_str
+    :project: TileDB-C
+.. doxygenfunction:: tiledb_encryption_type_from_str
+    :project: TileDB-C
+.. doxygenfunction:: tiledb_query_status_to_str
+    :project: TileDB-C
+.. doxygenfunction:: tiledb_query_status_from_str
+    :project: TileDB-C
+.. doxygenfunction:: tiledb_walk_order_to_str
+    :project: TileDB-C
+.. doxygenfunction:: tiledb_walk_order_from_str
+    :project: TileDB-C
+.. doxygenfunction:: tiledb_vfs_mode_to_str
+    :project: TileDB-C
+.. doxygenfunction:: tiledb_vfs_mode_from_str
+    :project: TileDB-C
+
 Context
 -------
 .. doxygenfunction:: tiledb_ctx_alloc

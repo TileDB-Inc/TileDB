@@ -32,6 +32,7 @@
 * Added function `tiledb_query_get_layout`
 * Added datatype `tiledb_buffer_t` and functions `tiledb_buffer_{alloc,free,get_type,set_type,get_data,set_data}`.
 * Added datatype `tiledb_buffer_list_t` and functions `tiledb_buffer_list_{alloc,free,get_num_buffers,get_total_size,get_buffer,flatten}`.
+* Added string conversion functions `tiledb_*_to_str()` and `tiledb_*_from_str()` for all public enum types.
 
 ### C++ API
 

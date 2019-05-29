@@ -80,7 +80,6 @@ inline const std::string& filter_type_str(FilterType filter_type) {
     case FilterType::FILTER_POSITIVE_DELTA:
       return constants::filter_positive_delta_str;
     default:
-      assert(0);
       return constants::empty_str;
   }
 }

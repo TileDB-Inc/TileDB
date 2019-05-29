@@ -34,6 +34,8 @@
 #ifndef TILEDB_VFS_MODE_H
 #define TILEDB_VFS_MODE_H
 
+#include "tiledb/sm/misc/constants.h"
+
 namespace tiledb {
 namespace sm {
 
@@ -42,6 +44,34 @@ enum class VFSMode : uint8_t {
 #include "tiledb/sm/c_api/tiledb_enum.h"
 #undef TILEDB_VFS_MODE_ENUM
 };
+
+/** Returns the string representation of the input vfsmode type. */
+inline const std::string& vfsmode_str(VFSMode vfsmode) {
+  switch (vfsmode) {
+    case VFSMode::VFS_READ:
+      return constants::vfsmode_read_str;
+    case VFSMode::VFS_WRITE:
+      return constants::vfsmode_write_str;
+    case VFSMode::VFS_APPEND:
+      return constants::vfsmode_append_str;
+    default:
+      return constants::empty_str;
+  }
+}
+
+/** Returns the vfsmode given a string representation. */
+inline Status vfsmode_enum(const std::string& vfsmode_str, VFSMode* vfsmode) {
+  if (vfsmode_str == constants::vfsmode_read_str)
+    *vfsmode = VFSMode::VFS_READ;
+  else if (vfsmode_str == constants::vfsmode_write_str)
+    *vfsmode = VFSMode::VFS_WRITE;
+  else if (vfsmode_str == constants::vfsmode_append_str)
+    *vfsmode = VFSMode::VFS_APPEND;
+  else
+    return Status::Error("Invalid VFSMode " + vfsmode_str);
+
+  return Status::Ok();
+}
 
 }  // namespace sm
 }  // namespace tiledb

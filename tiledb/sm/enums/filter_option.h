@@ -48,6 +48,38 @@ enum class FilterOption : uint8_t {
 #undef TILEDB_FILTER_OPTION_ENUM
 };
 
+/** Returns the string representation of the input FilterOption type. */
+inline const std::string& filter_option_str(FilterOption filter_option_) {
+  switch (filter_option_) {
+    case FilterOption::COMPRESSION_LEVEL:
+      return constants::filter_option_compression_level_str;
+    case FilterOption::BIT_WIDTH_MAX_WINDOW:
+      return constants::filter_option_bit_width_max_window_str;
+    case FilterOption::POSITIVE_DELTA_MAX_WINDOW:
+      return constants::filter_option_positive_delta_max_window_str;
+    default:
+      return constants::empty_str;
+  }
+}
+
+/** Returns the FilterOption type given a string representation. */
+inline Status filter_option_enum(
+    const std::string& filter_option_str, FilterOption* filter_option_) {
+  if (filter_option_str == constants::filter_option_compression_level_str)
+    *filter_option_ = FilterOption::COMPRESSION_LEVEL;
+  else if (
+      filter_option_str == constants::filter_option_bit_width_max_window_str)
+    *filter_option_ = FilterOption::BIT_WIDTH_MAX_WINDOW;
+  else if (
+      filter_option_str ==
+      constants::filter_option_positive_delta_max_window_str)
+    *filter_option_ = FilterOption::POSITIVE_DELTA_MAX_WINDOW;
+  else
+    return Status::Error("Invalid FilterOption " + filter_option_str);
+
+  return Status::Ok();
+}
+
 }  // namespace sm
 }  // namespace tiledb
 

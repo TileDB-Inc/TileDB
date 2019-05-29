@@ -372,6 +372,18 @@ const std::string filter_byteshuffle_str = "BYTESHUFFLE";
 /** String describing FILTER_POSITIVE_DELTA. */
 const std::string filter_positive_delta_str = "POSITIVE_DELTA";
 
+/** The string representation for FilterOption type compression_level. */
+const std::string filter_option_compression_level_str = "COMPRESSION_LEVEL";
+
+/** The string representation for FilterOption type bit_width_max_window. */
+const std::string filter_option_bit_width_max_window_str =
+    "BIT_WIDTH_MAX_WINDOW";
+
+/** The string representation for FilterOption type positive_delta_max_window.
+ */
+const std::string filter_option_positive_delta_max_window_str =
+    "POSITIVE_DELTA_MAX_WINDOW";
+
 /** The string representation for type int32. */
 const std::string int32_str = "INT32";
 
@@ -446,6 +458,39 @@ const std::string unordered_str = "unordered";
 
 /** The string representation of null. */
 const std::string null_str = "null";
+
+/** The string representation for object type invalid. */
+const std::string object_type_invalid_str = "INVALID";
+
+/** The string representation for object type group. */
+const std::string object_type_group_str = "GROUP";
+
+/** The string representation for object type array. */
+const std::string object_type_array_str = "ARRAY";
+
+/** The string representation for object type key_value. */
+const std::string object_type_key_value_str = "KEY_VALUE";
+
+/** The string representation for filesystem type hdfs. */
+const std::string filesystem_type_hdfs_str = "HDFS";
+
+/** The string representation for filesystem type s3. */
+const std::string filesystem_type_s3_str = "S3";
+
+/** The string representation for WalkOrder preorder. */
+const std::string walkorder_preorder_str = "PREORDER";
+
+/** The string representation for WalkOrder postorder. */
+const std::string walkorder_postorder_str = "POSTORDER";
+
+/** The string representation for VFSMode read. */
+const std::string vfsmode_read_str = "VFS_READ";
+
+/** The string representation for VFSMode write. */
+const std::string vfsmode_write_str = "VFS_WRITE";
+
+/** The string representation for VFSMode append. */
+const std::string vfsmode_append_str = "VFS_APPEND";
 
 /** The version in format { major, minor, revision }. */
 const int32_t library_version[3] = {

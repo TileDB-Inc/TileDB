@@ -134,7 +134,6 @@ inline const std::string& datatype_str(Datatype type) {
     case Datatype::ANY:
       return constants::any_str;
     default:
-      assert(0);
       return constants::empty_str;
   }
 }

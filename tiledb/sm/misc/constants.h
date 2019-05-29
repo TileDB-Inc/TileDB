@@ -355,6 +355,16 @@ extern const std::string filter_byteshuffle_str;
 /** String describing FILTER_POSITIVE_DELTA. */
 extern const std::string filter_positive_delta_str;
 
+/** The string representation for FilterOption type compression_level. */
+extern const std::string filter_option_compression_level_str;
+
+/** The string representation for FilterOption type bit_width_max_window. */
+extern const std::string filter_option_bit_width_max_window_str;
+
+/** The string representation for FilterOption type positive_delta_max_window.
+ */
+extern const std::string filter_option_positive_delta_max_window_str;
+
 /** The string representation for type int32. */
 extern const std::string int32_str;
 
@@ -429,6 +439,39 @@ extern const std::string unordered_str;
 
 /** The string representation of null. */
 extern const std::string null_str;
+
+/** The string representation for object type invalid. */
+extern const std::string object_type_invalid_str;
+
+/** The string representation for object type group. */
+extern const std::string object_type_group_str;
+
+/** The string representation for object type array. */
+extern const std::string object_type_array_str;
+
+/** The string representation for object type key_value. */
+extern const std::string object_type_key_value_str;
+
+/** The string representation for filesystem type hdfs. */
+extern const std::string filesystem_type_hdfs_str;
+
+/** The string representation for filesystem type s3. */
+extern const std::string filesystem_type_s3_str;
+
+/** The string representation for WalkOrder preorder. */
+extern const std::string walkorder_preorder_str;
+
+/** The string representation for WalkOrder postorder. */
+extern const std::string walkorder_postorder_str;
+
+/** The string representation for VFSMode read. */
+extern const std::string vfsmode_read_str;
+
+/** The string representation for VFSMode write. */
+extern const std::string vfsmode_write_str;
+
+/** The string representation for VFSMode append. */
+extern const std::string vfsmode_append_str;
 
 /** The TileDB library version in format { major, minor, revision }. */
 extern const int32_t library_version[3];

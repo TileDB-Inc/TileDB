@@ -34,6 +34,8 @@
 #ifndef TILEDB_WALK_ORDER_H
 #define TILEDB_WALK_ORDER_H
 
+#include "tiledb/sm/misc/constants.h"
+
 namespace tiledb {
 namespace sm {
 
@@ -42,6 +44,31 @@ enum class WalkOrder : uint8_t {
 #include "tiledb/sm/c_api/tiledb_enum.h"
 #undef TILEDB_WALK_ORDER_ENUM
 };
+
+/** Returns the string representation of the input walkorder type. */
+inline const std::string& walkorder_str(WalkOrder walkorder) {
+  switch (walkorder) {
+    case WalkOrder::PREORDER:
+      return constants::walkorder_preorder_str;
+    case WalkOrder::POSTORDER:
+      return constants::walkorder_postorder_str;
+    default:
+      return constants::empty_str;
+  }
+}
+
+/** Returns the walkorder given a string representation. */
+inline Status walkorder_enum(
+    const std::string& walkorder_str, WalkOrder* walkorder) {
+  if (walkorder_str == constants::walkorder_preorder_str)
+    *walkorder = WalkOrder::PREORDER;
+  else if (walkorder_str == constants::walkorder_postorder_str)
+    *walkorder = WalkOrder::POSTORDER;
+  else
+    return Status::Error("Invalid WalkOrder " + walkorder_str);
+
+  return Status::Ok();
+}
 
 }  // namespace sm
 }  // namespace tiledb
