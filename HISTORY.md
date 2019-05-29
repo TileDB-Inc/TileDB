@@ -7,6 +7,7 @@
 ## Bug fixes
 
 * Bug fix with amplification factor in consolidation. [#1275](https://github.com/TileDB-Inc/TileDB/pull/1275)
+* Fixed floating point exception when writing fixed-length attributes with a large cell value number. [#1289](https://github.com/TileDB-Inc/TileDB/pull/1289)
 
 # TileDB v1.5.1 Release Notes
 
