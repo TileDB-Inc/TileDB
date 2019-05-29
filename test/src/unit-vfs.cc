@@ -225,3 +225,96 @@ TEST_CASE("VFS: Test read batching", "[vfs]") {
 
   REQUIRE(vfs->terminate().ok());
 }
+
+#ifdef _WIN32
+
+TEST_CASE("VFS: Test long paths (Win32)", "[vfs][windows]") {
+  std::unique_ptr<VFS> vfs(new VFS);
+  std::string tmpdir_base = tiledb::sm::Win::current_dir() + "\\tiledb_test\\";
+  REQUIRE(vfs->create_dir(URI(tmpdir_base)).ok());
+
+  SECTION("- Deep hierarchy") {
+    // On some Windows platforms, the path length of a directory must be <= 248
+    // chars. On others (that have opted in to a configuration that allows
+    // long paths) the limit is ~32,767. Here we check for either case.
+    std::string tmpdir = tmpdir_base;
+    bool success = true;
+    while (tmpdir.size() < 512) {
+      tmpdir += "subdir\\";
+      success &= vfs->create_dir(URI(tmpdir)).ok();
+    }
+
+    if (success) {
+      // Check we can create files within the deep hierarchy
+      URI testfile(tmpdir + "file.txt");
+      REQUIRE(!testfile.is_invalid());
+      bool exists = false;
+      REQUIRE(vfs->is_file(testfile, &exists).ok());
+      if (exists)
+        REQUIRE(vfs->remove_file(testfile).ok());
+      REQUIRE(vfs->touch(testfile).ok());
+      REQUIRE(vfs->remove_file(testfile).ok());
+    } else {
+      // Don't check anything; directory creation failed.
+    }
+  }
+
+  SECTION("- Too long name") {
+    std::string name;
+    for (unsigned i = 0; i < 256; i++)
+      name += "x";
+
+    // Creating the URI is invalid on Win32 (failure to canonicalize path)
+    URI testfile(tmpdir_base + name);
+    REQUIRE(testfile.is_invalid());
+  }
+
+  REQUIRE(vfs->remove_dir(URI(tmpdir_base)).ok());
+}
+
+#else
+
+TEST_CASE("VFS: Test long posix paths", "[vfs]") {
+  std::unique_ptr<VFS> vfs(new VFS);
+  std::string tmpdir_base = Posix::current_dir() + "/tiledb_test/";
+  REQUIRE(vfs->create_dir(URI(tmpdir_base)).ok());
+
+  SECTION("- Deep hierarchy") {
+    // Create a nested path with a long total length
+    std::string tmpdir = tmpdir_base;
+    while (tmpdir.size() < 512) {
+      tmpdir += "subdir/";
+      REQUIRE(vfs->create_dir(URI(tmpdir)).ok());
+    }
+
+    // Check we can create files within the deep hierarchy
+    URI testfile("file://" + tmpdir + "file.txt");
+    REQUIRE(!testfile.is_invalid());
+    bool exists = false;
+    REQUIRE(vfs->is_file(testfile, &exists).ok());
+    if (exists)
+      REQUIRE(vfs->remove_file(testfile).ok());
+    REQUIRE(vfs->touch(testfile).ok());
+    REQUIRE(vfs->remove_file(testfile).ok());
+  }
+
+  SECTION("- Too long name") {
+    // This may not be long enough on some filesystems to pass the fail check.
+    std::string name;
+    for (unsigned i = 0; i < 256; i++)
+      name += "x";
+
+    // Creating the URI and checking its existence is fine
+    URI testfile("file://" + tmpdir_base + name);
+    REQUIRE(!testfile.is_invalid());
+    bool exists = false;
+    REQUIRE(vfs->is_file(testfile, &exists).ok());
+
+    // Creating the file is not
+    REQUIRE(!vfs->touch(testfile).ok());
+  }
+
+  REQUIRE(vfs->remove_dir(URI(tmpdir_base)).ok());
+}
+
+#endif

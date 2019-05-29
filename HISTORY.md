@@ -14,6 +14,7 @@
 * Improved dense write performance in some benchmarks. [#1229](https://github.com/TileDB-Inc/TileDB/pull/1229)
 * Support for direct writes without using the S3 multi-part API. Allows writing to
   Google Cloud Storage S3 compatibility mode. [#1219](https://github.com/TileDB-Inc/TileDB/pull/1219)
+* Removed 256-character length limit from URIs.
 
 ## Bug fixes
 
