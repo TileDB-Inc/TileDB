@@ -979,3 +979,62 @@ TEST_CASE(
   if (vfs.is_dir(array_name))
     vfs.remove_dir(array_name);
 }
+
+TEST_CASE("C++ API: Write cell with large cell val num", "[cppapi][sparse]") {
+  const std::string array_name = "cpp_unit_array";
+  Context ctx;
+  VFS vfs(ctx);
+
+  if (vfs.is_dir(array_name))
+    vfs.remove_dir(array_name);
+
+  // Create array with a large fixed-length attribute
+  const size_t cell_val_num = 70000;
+  auto attr = Attribute::create<int>(ctx, "a")
+                  .set_cell_val_num(cell_val_num)
+                  .set_filter_list(FilterList(ctx).add_filter(
+                      Filter(ctx, TILEDB_FILTER_BZIP2)));
+  Array::create(
+      array_name,
+      ArraySchema(ctx, TILEDB_SPARSE)
+          .set_domain(Domain(ctx).add_dimension(
+              Dimension::create<uint32_t>(ctx, "cols", {{0, 9}}, 5)))
+          .set_order({{TILEDB_COL_MAJOR, TILEDB_COL_MAJOR}})
+          .add_attribute(attr));
+
+  // Write a single cell (this used to crash because of
+  // https://github.com/TileDB-Inc/TileDB/issues/1155)
+  std::vector<int> data_w(cell_val_num);
+  std::vector<uint32_t> coords_w = {4};
+  for (auto i = 0u; i < cell_val_num; i++)
+    data_w[i] = 2 * i;
+
+  Array array_w(ctx, array_name, TILEDB_WRITE);
+  Query query_w(ctx, array_w);
+  query_w.set_layout(TILEDB_UNORDERED)
+      .set_buffer("a", data_w)
+      .set_coordinates(coords_w)
+      .submit();
+  query_w.finalize();
+  array_w.close();
+
+  // Read and check results
+  std::vector<int> data_r(cell_val_num, -1);
+  std::vector<uint32_t> coords_r = {4};
+  Array array_r(ctx, array_name, TILEDB_READ);
+  Query query_r(ctx, array_r);
+  query_r.set_layout(TILEDB_ROW_MAJOR)
+      .set_buffer("a", data_r)
+      .set_coordinates(coords_r);
+  REQUIRE(query_r.submit() == Query::Status::COMPLETE);
+
+  auto result_num = query_r.result_buffer_elements()["a"].second;
+  REQUIRE(result_num == cell_val_num);
+  for (int i = 0; i < (int)cell_val_num; i++)
+    REQUIRE(data_r[i] == 2 * i);
+
+  array_r.close();
+
+  if (vfs.is_dir(array_name))
+    vfs.remove_dir(array_name);
+}

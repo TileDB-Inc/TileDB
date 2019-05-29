@@ -23,6 +23,7 @@
 * Fixed crash in consolidation due to accessing invalid entry [#1213](https://github.com/TileDB-Inc/TileDB/pull/1213)
 * Fixed minor bug when writing in global order with empty buffers.
 * Fixed thread safety issue in opening arrays.
+* Fixed floating point exception when writing fixed-length attributes with a large cell value number.
 
 ## API additions
 

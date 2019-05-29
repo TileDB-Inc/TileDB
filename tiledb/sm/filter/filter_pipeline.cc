@@ -94,9 +94,11 @@ Status FilterPipeline::compute_tile_chunks(
   auto dim_tile_size = tile->size() / dim_num;
   auto dim_cell_size = tile->cell_size() / dim_num;
 
-  // Compute a chunk size as a multiple of the cell size.
+  // Compute a chunk size as a multiple of the cell size, ensuring that the
+  // chunk contains always at least 1 cell.
   uint64_t chunk_size = std::min((uint64_t)max_chunk_size_, dim_tile_size);
   chunk_size = chunk_size / dim_cell_size * dim_cell_size;
+  chunk_size = std::max(chunk_size, dim_cell_size);
   if (chunk_size > std::numeric_limits<uint32_t>::max())
     return LOG_STATUS(
         Status::FilterError("Filter error; chunk size exceeds uint32_t"));
