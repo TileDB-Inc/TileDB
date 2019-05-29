@@ -250,6 +250,9 @@ extern const uint64_t vfs_min_batch_size;
 /** The default maximum number of parallel file:/// operations. */
 extern const uint64_t vfs_file_max_parallel_ops;
 
+/** Whether or not filelocks are enabled for VFS. */
+extern const bool vfs_file_enable_filelocks;
+
 /** The maximum name length. */
 extern const uint32_t uri_max_len;
 

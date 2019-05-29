@@ -327,6 +327,10 @@ class Config {
    *    The maximum number of parallel operations on objects with `file:///`
    *    URIs. <br>
    *    **Default**: `vfs.num_threads`
+   * - `vfs.file.enable_filelocks` <br>
+   *    If set to `false`, file locking operations are no-ops for `file:///`
+   *    URIs in VFS. <br>
+   *    **Default**: `true`
    * - `vfs.s3.region` <br>
    *    The S3 region, if S3 is enabled. <br>
    *    **Default**: us-east-1

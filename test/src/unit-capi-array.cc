@@ -1264,3 +1264,118 @@ TEST_CASE_METHOD(
 
   remove_temp_dir(FILE_URI_PREFIX + FILE_TEMP_DIR);
 }
+
+TEST_CASE_METHOD(
+    ArrayFx,
+    "C API: Test array with no filelocks",
+    "[capi], [array], [array-no-filelocks]") {
+  std::string temp_dir;
+  if (supports_s3_)
+    temp_dir = S3_TEMP_DIR;
+  else if (supports_hdfs_)
+    temp_dir = HDFS_TEMP_DIR;
+  else
+    temp_dir = FILE_URI_PREFIX + FILE_TEMP_DIR;
+
+  std::string array_name = temp_dir + "array-no-filelocks";
+
+  // Create new TileDB context with file lock config disabled, rest the same.
+  tiledb_ctx_free(&ctx_);
+  tiledb_vfs_free(&vfs_);
+
+  tiledb_config_t* config = nullptr;
+  tiledb_error_t* error = nullptr;
+  REQUIRE(tiledb_config_alloc(&config, &error) == TILEDB_OK);
+  REQUIRE(error == nullptr);
+  REQUIRE(
+      tiledb_config_set(config, "vfs.file.enable_filelocks", "false", &error) ==
+      TILEDB_OK);
+  REQUIRE(error == nullptr);
+  if (supports_s3_) {
+#ifndef TILEDB_TESTS_AWS_S3_CONFIG
+    REQUIRE(
+        tiledb_config_set(
+            config, "vfs.s3.endpoint_override", "localhost:9999", &error) ==
+        TILEDB_OK);
+    REQUIRE(
+        tiledb_config_set(config, "vfs.s3.scheme", "http", &error) ==
+        TILEDB_OK);
+    REQUIRE(
+        tiledb_config_set(
+            config, "vfs.s3.use_virtual_addressing", "false", &error) ==
+        TILEDB_OK);
+    REQUIRE(error == nullptr);
+#endif
+  }
+  REQUIRE(tiledb_ctx_alloc(config, &ctx_) == TILEDB_OK);
+  REQUIRE(error == nullptr);
+  REQUIRE(tiledb_vfs_alloc(ctx_, config, &vfs_) == TILEDB_OK);
+  tiledb_config_free(&config);
+
+  create_temp_dir(temp_dir);
+
+  create_dense_vector(array_name);
+
+  // Prepare cell buffers
+  int buffer_a1[] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
+  uint64_t buffer_a1_size = sizeof(buffer_a1);
+
+  // Open array
+  tiledb_array_t* array;
+  int rc = tiledb_array_alloc(ctx_, array_name.c_str(), &array);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_array_open(ctx_, array, TILEDB_WRITE);
+  CHECK(rc == TILEDB_OK);
+
+  // Submit query
+  tiledb_query_t* query;
+  rc = tiledb_query_alloc(ctx_, array, TILEDB_WRITE, &query);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_layout(ctx_, query, TILEDB_GLOBAL_ORDER);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_buffer(ctx_, query, "a", buffer_a1, &buffer_a1_size);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_submit(ctx_, query);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_finalize(ctx_, query);
+  CHECK(rc == TILEDB_OK);
+
+  // Close array and clean up
+  rc = tiledb_array_close(ctx_, array);
+  CHECK(rc == TILEDB_OK);
+  tiledb_array_free(&array);
+  tiledb_query_free(&query);
+
+  int buffer_read[10];
+  uint64_t buffer_read_size = sizeof(buffer_read);
+
+  // Open array
+  rc = tiledb_array_alloc(ctx_, array_name.c_str(), &array);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_array_open(ctx_, array, TILEDB_READ);
+  CHECK(rc == TILEDB_OK);
+
+  // Submit query
+  rc = tiledb_query_alloc(ctx_, array, TILEDB_READ, &query);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_layout(ctx_, query, TILEDB_ROW_MAJOR);
+  CHECK(rc == TILEDB_OK);
+  rc =
+      tiledb_query_set_buffer(ctx_, query, "a", buffer_read, &buffer_read_size);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_submit(ctx_, query);
+  CHECK(rc == TILEDB_OK);
+
+  // Close array and clean up
+  rc = tiledb_array_close(ctx_, array);
+  CHECK(rc == TILEDB_OK);
+  tiledb_array_free(&array);
+  tiledb_query_free(&query);
+
+  // Check correctness
+  int buffer_read_c[] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
+  CHECK(!std::memcmp(buffer_read, buffer_read_c, sizeof(buffer_read_c)));
+  CHECK(buffer_read_size == sizeof(buffer_read_c));
+
+  remove_temp_dir(temp_dir);
+}

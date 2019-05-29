@@ -229,6 +229,8 @@ Status Config::set(const std::string& param, const std::string& value) {
     RETURN_NOT_OK(set_vfs_min_batch_size(value));
   } else if (param == "vfs.file.max_parallel_ops") {
     RETURN_NOT_OK(set_vfs_file_max_parallel_ops(value));
+  } else if (param == "vfs.file.enable_filelocks") {
+    RETURN_NOT_OK(set_vfs_file_enable_filelocks(value));
   } else if (param == "vfs.s3.region") {
     RETURN_NOT_OK(set_vfs_s3_region(value));
   } else if (param == "vfs.s3.aws_access_key_id") {
@@ -428,6 +430,12 @@ Status Config::unset(const std::string& param) {
         constants::vfs_file_max_parallel_ops;
     value << vfs_params_.file_params_.max_parallel_ops_;
     param_values_["vfs.file.max_parallel_ops"] = value.str();
+    value.str(std::string());
+  } else if (param == "vfs.file.enable_filelocks") {
+    vfs_params_.file_params_.enable_filelocks_ =
+        constants::vfs_file_enable_filelocks;
+    value << (vfs_params_.file_params_.enable_filelocks_ ? "true" : "false");
+    param_values_["vfs.file.enable_filelocks"] = value.str();
     value.str(std::string());
   } else if (param == "vfs.s3.region") {
     vfs_params_.s3_params_.region_ = constants::s3_region;
@@ -650,6 +658,10 @@ void Config::set_default_param_values() {
 
   value << vfs_params_.file_params_.max_parallel_ops_;
   param_values_["vfs.file.max_parallel_ops"] = value.str();
+  value.str(std::string());
+
+  value << (vfs_params_.file_params_.enable_filelocks_ ? "true" : "false");
+  param_values_["vfs.file.enable_filelocks"] = value.str();
   value.str(std::string());
 
   value << vfs_params_.s3_params_.region_;
@@ -958,6 +970,14 @@ Status Config::set_vfs_file_max_parallel_ops(const std::string& value) {
   uint64_t v;
   RETURN_NOT_OK(utils::parse::convert(value, &v));
   vfs_params_.file_params_.max_parallel_ops_ = v;
+
+  return Status::Ok();
+}
+
+Status Config::set_vfs_file_enable_filelocks(const std::string& value) {
+  bool v;
+  RETURN_NOT_OK(utils::parse::convert(value, &v));
+  vfs_params_.file_params_.enable_filelocks_ = v;
 
   return Status::Ok();
 }
