@@ -262,6 +262,9 @@ const uint64_t vfs_min_batch_size = 20 * 1024 * 1024;
 /** The default maximum number of parallel file:/// operations. */
 const uint64_t vfs_file_max_parallel_ops = vfs_num_threads;
 
+/** Whether or not filelocks are enabled for VFS. */
+const bool vfs_file_enable_filelocks = true;
+
 /** The maximum name length. */
 const uint32_t uri_max_len = 256;
 

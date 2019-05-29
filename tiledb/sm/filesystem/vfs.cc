@@ -356,6 +356,9 @@ Status VFS::remove_file(const URI& uri) const {
 Status VFS::filelock_lock(const URI& uri, filelock_t* fd, bool shared) const {
   STATS_FUNC_IN(vfs_filelock_lock);
 
+  if (!vfs_params_.file_params_.enable_filelocks_)
+    return Status::Ok();
+
   // Hold the lock while updating counts and performing the lock.
   std::unique_lock<std::mutex> lck(filelock_mtx_);
 
@@ -394,6 +397,9 @@ Status VFS::filelock_lock(const URI& uri, filelock_t* fd, bool shared) const {
 
 Status VFS::filelock_unlock(const URI& uri, filelock_t fd) const {
   STATS_FUNC_IN(vfs_filelock_unlock);
+
+  if (!vfs_params_.file_params_.enable_filelocks_)
+    return Status::Ok();
 
   // Hold the lock while updating counts and performing the unlock.
   std::unique_lock<std::mutex> lck(filelock_mtx_);

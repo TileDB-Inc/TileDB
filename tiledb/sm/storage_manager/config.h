@@ -173,9 +173,11 @@ class Config {
 
   struct FileParams {
     uint64_t max_parallel_ops_;
+    bool enable_filelocks_;
 
     FileParams() {
       max_parallel_ops_ = constants::vfs_file_max_parallel_ops;
+      enable_filelocks_ = constants::vfs_file_enable_filelocks;
     }
   };
 
@@ -335,6 +337,10 @@ class Config {
    *    The maximum number of parallel operations on objects with `file:///`
    *    URIs. <br>
    *    **Default**: `vfs.num_threads`
+   * - `vfs.file.enable_filelocks` <br>
+   *    If set to `false`, file locking operations are no-ops for `file:///`
+   *    URIs in VFS. <br>
+   *    **Default**: `true`
    * - `vfs.s3.region` <br>
    *    The S3 region, if S3 is enabled. <br>
    *    **Default**: us-east-1
@@ -567,6 +573,9 @@ class Config {
 
   /** Sets the max number of allowed file:/// parallel operations. */
   Status set_vfs_file_max_parallel_ops(const std::string& value);
+
+  /** Sets the file locking enabled state. */
+  Status set_vfs_file_enable_filelocks(const std::string& value);
 
   /** Sets the S3 region. */
   Status set_vfs_s3_region(const std::string& value);

@@ -209,6 +209,7 @@ void check_save_to_file() {
   ss << "sm.num_tbb_threads -1\n";
   ss << "sm.num_writer_threads 1\n";
   ss << "sm.tile_cache_size 10000000\n";
+  ss << "vfs.file.enable_filelocks true\n";
   ss << "vfs.file.max_parallel_ops " << std::thread::hardware_concurrency()
      << "\n";
   ss << "vfs.min_batch_gap 512000\n";
@@ -395,6 +396,7 @@ TEST_CASE("C API: Test config iter", "[capi], [config]") {
   all_param_values["vfs.min_parallel_size"] = "10485760";
   all_param_values["vfs.file.max_parallel_ops"] =
       std::to_string(std::thread::hardware_concurrency());
+  all_param_values["vfs.file.enable_filelocks"] = "true";
   all_param_values["vfs.s3.scheme"] = "https";
   all_param_values["vfs.s3.region"] = "us-east-1";
   all_param_values["vfs.s3.aws_access_key_id"] = "";
@@ -426,6 +428,7 @@ TEST_CASE("C API: Test config iter", "[capi], [config]") {
   vfs_param_values["min_parallel_size"] = "10485760";
   vfs_param_values["file.max_parallel_ops"] =
       std::to_string(std::thread::hardware_concurrency());
+  vfs_param_values["file.enable_filelocks"] = "true";
   vfs_param_values["s3.scheme"] = "https";
   vfs_param_values["s3.region"] = "us-east-1";
   vfs_param_values["s3.aws_access_key_id"] = "";
