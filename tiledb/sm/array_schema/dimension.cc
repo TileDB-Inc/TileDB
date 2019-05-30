@@ -265,6 +265,20 @@ Status Dimension::set_null_tile_extent_to_range() {
       return set_null_tile_extent_to_range<uint32_t>();
     case Datatype::UINT64:
       return set_null_tile_extent_to_range<uint64_t>();
+    case Datatype::DATETIME_YEAR:
+    case Datatype::DATETIME_MONTH:
+    case Datatype::DATETIME_WEEK:
+    case Datatype::DATETIME_DAY:
+    case Datatype::DATETIME_HR:
+    case Datatype::DATETIME_MIN:
+    case Datatype::DATETIME_SEC:
+    case Datatype::DATETIME_MS:
+    case Datatype::DATETIME_US:
+    case Datatype::DATETIME_NS:
+    case Datatype::DATETIME_PS:
+    case Datatype::DATETIME_FS:
+    case Datatype::DATETIME_AS:
+      return set_null_tile_extent_to_range<int64_t>();
     default:
       return LOG_STATUS(
           Status::DimensionError("Cannot set null tile extent to domain range; "
@@ -343,6 +357,20 @@ Status Dimension::check_domain() const {
       return check_domain<float>();
     case Datatype::FLOAT64:
       return check_domain<double>();
+    case Datatype::DATETIME_YEAR:
+    case Datatype::DATETIME_MONTH:
+    case Datatype::DATETIME_WEEK:
+    case Datatype::DATETIME_DAY:
+    case Datatype::DATETIME_HR:
+    case Datatype::DATETIME_MIN:
+    case Datatype::DATETIME_SEC:
+    case Datatype::DATETIME_MS:
+    case Datatype::DATETIME_US:
+    case Datatype::DATETIME_NS:
+    case Datatype::DATETIME_PS:
+    case Datatype::DATETIME_FS:
+    case Datatype::DATETIME_AS:
+      return check_domain<int64_t>();
     default:
       return LOG_STATUS(Status::DimensionError(
           "Domain check failed; Invalid dimension domain type"));
@@ -371,6 +399,20 @@ Status Dimension::check_tile_extent() const {
       return check_tile_extent<float>();
     case Datatype::FLOAT64:
       return check_tile_extent<double>();
+    case Datatype::DATETIME_YEAR:
+    case Datatype::DATETIME_MONTH:
+    case Datatype::DATETIME_WEEK:
+    case Datatype::DATETIME_DAY:
+    case Datatype::DATETIME_HR:
+    case Datatype::DATETIME_MIN:
+    case Datatype::DATETIME_SEC:
+    case Datatype::DATETIME_MS:
+    case Datatype::DATETIME_US:
+    case Datatype::DATETIME_NS:
+    case Datatype::DATETIME_PS:
+    case Datatype::DATETIME_FS:
+    case Datatype::DATETIME_AS:
+      return check_tile_extent<int64_t>();
     default:
       return LOG_STATUS(Status::DimensionError(
           "Tile extent check failed; Invalid dimension domain type"));

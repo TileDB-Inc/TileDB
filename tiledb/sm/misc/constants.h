@@ -419,6 +419,45 @@ extern const std::string string_ucs4_str;
 /** The string representation for type ANY. */
 extern const std::string any_str;
 
+/** The string representation for type DATETIME_YEAR. */
+extern const std::string datetime_year_str;
+
+/** The string representation for type DATETIME_MONTH. */
+extern const std::string datetime_month_str;
+
+/** The string representation for type DATETIME_WEEK. */
+extern const std::string datetime_week_str;
+
+/** The string representation for type DATETIME_DAY. */
+extern const std::string datetime_day_str;
+
+/** The string representation for type DATETIME_HR. */
+extern const std::string datetime_hr_str;
+
+/** The string representation for type DATETIME_MIN. */
+extern const std::string datetime_min_str;
+
+/** The string representation for type DATETIME_SEC. */
+extern const std::string datetime_sec_str;
+
+/** The string representation for type DATETIME_MS. */
+extern const std::string datetime_ms_str;
+
+/** The string representation for type DATETIME_US. */
+extern const std::string datetime_us_str;
+
+/** The string representation for type DATETIME_NS. */
+extern const std::string datetime_ns_str;
+
+/** The string representation for type DATETIME_PS. */
+extern const std::string datetime_ps_str;
+
+/** The string representation for type DATETIME_FS. */
+extern const std::string datetime_fs_str;
+
+/** The string representation for type DATETIME_AS. */
+extern const std::string datetime_as_str;
+
 /** The string representation for the dense array type. */
 extern const std::string dense_str;
 

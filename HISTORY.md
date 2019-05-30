@@ -3,6 +3,7 @@
 ## New features
 
 * Added support for multi-range reads (non-continuous range slicing) for sparse arrays.
+* Added support for datetime domains and attributes.
 
 ## Improvements
 
@@ -36,6 +37,7 @@
 * Added datatype `tiledb_buffer_list_t` and functions `tiledb_buffer_list_{alloc,free,get_num_buffers,get_total_size,get_buffer,flatten}`.
 * Added string conversion functions `tiledb_*_to_str()` and `tiledb_*_from_str()` for all public enum types.
 * Added config param `vfs.file.enable_filelocks`
+* Added datatypes `TILEDB_DATETIME_*`
 
 ### C++ API
 

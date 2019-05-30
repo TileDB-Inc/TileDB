@@ -88,6 +88,20 @@ inline uint64_t datatype_size(Datatype type) {
       return sizeof(uint32_t);
     case Datatype::ANY:
       return sizeof(uint8_t);
+    case Datatype::DATETIME_YEAR:
+    case Datatype::DATETIME_MONTH:
+    case Datatype::DATETIME_WEEK:
+    case Datatype::DATETIME_DAY:
+    case Datatype::DATETIME_HR:
+    case Datatype::DATETIME_MIN:
+    case Datatype::DATETIME_SEC:
+    case Datatype::DATETIME_MS:
+    case Datatype::DATETIME_US:
+    case Datatype::DATETIME_NS:
+    case Datatype::DATETIME_PS:
+    case Datatype::DATETIME_FS:
+    case Datatype::DATETIME_AS:
+      return sizeof(int64_t);
   }
 
   assert(false);
@@ -133,6 +147,32 @@ inline const std::string& datatype_str(Datatype type) {
       return constants::string_ucs4_str;
     case Datatype::ANY:
       return constants::any_str;
+    case Datatype::DATETIME_YEAR:
+      return constants::datetime_year_str;
+    case Datatype::DATETIME_MONTH:
+      return constants::datetime_month_str;
+    case Datatype::DATETIME_WEEK:
+      return constants::datetime_week_str;
+    case Datatype::DATETIME_DAY:
+      return constants::datetime_day_str;
+    case Datatype::DATETIME_HR:
+      return constants::datetime_hr_str;
+    case Datatype::DATETIME_MIN:
+      return constants::datetime_min_str;
+    case Datatype::DATETIME_SEC:
+      return constants::datetime_sec_str;
+    case Datatype::DATETIME_MS:
+      return constants::datetime_ms_str;
+    case Datatype::DATETIME_US:
+      return constants::datetime_us_str;
+    case Datatype::DATETIME_NS:
+      return constants::datetime_ns_str;
+    case Datatype::DATETIME_PS:
+      return constants::datetime_ps_str;
+    case Datatype::DATETIME_FS:
+      return constants::datetime_fs_str;
+    case Datatype::DATETIME_AS:
+      return constants::datetime_as_str;
     default:
       return constants::empty_str;
   }
@@ -177,6 +217,32 @@ inline Status datatype_enum(
     *datatype = Datatype::STRING_UCS4;
   else if (datatype_str == constants::any_str)
     *datatype = Datatype::ANY;
+  else if (datatype_str == constants::datetime_year_str)
+    *datatype = Datatype::DATETIME_YEAR;
+  else if (datatype_str == constants::datetime_month_str)
+    *datatype = Datatype::DATETIME_MONTH;
+  else if (datatype_str == constants::datetime_week_str)
+    *datatype = Datatype::DATETIME_WEEK;
+  else if (datatype_str == constants::datetime_day_str)
+    *datatype = Datatype::DATETIME_DAY;
+  else if (datatype_str == constants::datetime_hr_str)
+    *datatype = Datatype::DATETIME_HR;
+  else if (datatype_str == constants::datetime_min_str)
+    *datatype = Datatype::DATETIME_MIN;
+  else if (datatype_str == constants::datetime_sec_str)
+    *datatype = Datatype::DATETIME_SEC;
+  else if (datatype_str == constants::datetime_ms_str)
+    *datatype = Datatype::DATETIME_MS;
+  else if (datatype_str == constants::datetime_us_str)
+    *datatype = Datatype::DATETIME_US;
+  else if (datatype_str == constants::datetime_ns_str)
+    *datatype = Datatype::DATETIME_NS;
+  else if (datatype_str == constants::datetime_ps_str)
+    *datatype = Datatype::DATETIME_PS;
+  else if (datatype_str == constants::datetime_fs_str)
+    *datatype = Datatype::DATETIME_FS;
+  else if (datatype_str == constants::datetime_as_str)
+    *datatype = Datatype::DATETIME_AS;
   else {
     return Status::Error("Invalid Datatype " + datatype_str);
   }
@@ -198,6 +264,18 @@ inline bool datatype_is_integer(Datatype type) {
       type == Datatype::INT16 || type == Datatype::UINT16 ||
       type == Datatype::INT32 || type == Datatype::UINT32 ||
       type == Datatype::INT64 || type == Datatype::UINT64);
+}
+
+/** Returns true if the input datatype is a datetime type. */
+inline bool datatype_is_datetime(Datatype type) {
+  return (
+      type == Datatype::DATETIME_YEAR || type == Datatype::DATETIME_MONTH ||
+      type == Datatype::DATETIME_WEEK || type == Datatype::DATETIME_DAY ||
+      type == Datatype::DATETIME_HR || type == Datatype::DATETIME_MIN ||
+      type == Datatype::DATETIME_SEC || type == Datatype::DATETIME_MS ||
+      type == Datatype::DATETIME_US || type == Datatype::DATETIME_NS ||
+      type == Datatype::DATETIME_PS || type == Datatype::DATETIME_FS ||
+      type == Datatype::DATETIME_AS);
 }
 
 }  // namespace sm

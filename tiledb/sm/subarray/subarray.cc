@@ -137,6 +137,20 @@ Status Subarray::add_range(uint32_t dim_idx, const void* range) {
       return add_range<float>(dim_idx, (const float*)range);
     case Datatype::FLOAT64:
       return add_range<double>(dim_idx, (const double*)range);
+    case Datatype::DATETIME_YEAR:
+    case Datatype::DATETIME_MONTH:
+    case Datatype::DATETIME_WEEK:
+    case Datatype::DATETIME_DAY:
+    case Datatype::DATETIME_HR:
+    case Datatype::DATETIME_MIN:
+    case Datatype::DATETIME_SEC:
+    case Datatype::DATETIME_MS:
+    case Datatype::DATETIME_US:
+    case Datatype::DATETIME_NS:
+    case Datatype::DATETIME_PS:
+    case Datatype::DATETIME_FS:
+    case Datatype::DATETIME_AS:
+      return add_range<int64_t>(dim_idx, (const int64_t*)range);
     default:
       return LOG_STATUS(Status::SubarrayError(
           "Cannot add range to dimension; Unsupported subarray domain type"));
@@ -207,6 +221,20 @@ Status Subarray::compute_tile_overlap() {
       return compute_tile_overlap<float>();
     case Datatype::FLOAT64:
       return compute_tile_overlap<double>();
+    case Datatype::DATETIME_YEAR:
+    case Datatype::DATETIME_MONTH:
+    case Datatype::DATETIME_WEEK:
+    case Datatype::DATETIME_DAY:
+    case Datatype::DATETIME_HR:
+    case Datatype::DATETIME_MIN:
+    case Datatype::DATETIME_SEC:
+    case Datatype::DATETIME_MS:
+    case Datatype::DATETIME_US:
+    case Datatype::DATETIME_NS:
+    case Datatype::DATETIME_PS:
+    case Datatype::DATETIME_FS:
+    case Datatype::DATETIME_AS:
+      return compute_tile_overlap<int64_t>();
     default:
       return LOG_STATUS(Status::SubarrayError(
           "Failed to compute tile overlap; unsupported domain type"));
@@ -715,6 +743,20 @@ Status Subarray::compute_est_result_size() {
       return compute_est_result_size<float>();
     case Datatype::FLOAT64:
       return compute_est_result_size<double>();
+    case Datatype::DATETIME_YEAR:
+    case Datatype::DATETIME_MONTH:
+    case Datatype::DATETIME_WEEK:
+    case Datatype::DATETIME_DAY:
+    case Datatype::DATETIME_HR:
+    case Datatype::DATETIME_MIN:
+    case Datatype::DATETIME_SEC:
+    case Datatype::DATETIME_MS:
+    case Datatype::DATETIME_US:
+    case Datatype::DATETIME_NS:
+    case Datatype::DATETIME_PS:
+    case Datatype::DATETIME_FS:
+    case Datatype::DATETIME_AS:
+      return compute_est_result_size<int64_t>();
     default:
       return LOG_STATUS(Status::SubarrayError(
           "Cannot compute estimated results size; unsupported domain type"));

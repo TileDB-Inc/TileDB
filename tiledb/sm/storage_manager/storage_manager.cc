@@ -470,6 +470,25 @@ Status StorageManager::array_compute_est_read_buffer_sizes(
           fragment_metadata,
           static_cast<const uint64_t*>(subarray),
           buffer_sizes);
+    case Datatype::DATETIME_YEAR:
+    case Datatype::DATETIME_MONTH:
+    case Datatype::DATETIME_WEEK:
+    case Datatype::DATETIME_DAY:
+    case Datatype::DATETIME_HR:
+    case Datatype::DATETIME_MIN:
+    case Datatype::DATETIME_SEC:
+    case Datatype::DATETIME_MS:
+    case Datatype::DATETIME_US:
+    case Datatype::DATETIME_NS:
+    case Datatype::DATETIME_PS:
+    case Datatype::DATETIME_FS:
+    case Datatype::DATETIME_AS:
+      return array_compute_est_read_buffer_sizes<int64_t>(
+          encryption_key,
+          array_schema,
+          fragment_metadata,
+          static_cast<const int64_t*>(subarray),
+          buffer_sizes);
     default:
       return LOG_STATUS(
           Status::StorageManagerError("Cannot compute estimate for read buffer "
@@ -610,6 +629,22 @@ Status StorageManager::array_get_non_empty_domain(
     case Datatype::UINT64:
       array_get_non_empty_domain<uint64_t>(
           metadata, dim_num, static_cast<uint64_t*>(domain));
+      break;
+    case Datatype::DATETIME_YEAR:
+    case Datatype::DATETIME_MONTH:
+    case Datatype::DATETIME_WEEK:
+    case Datatype::DATETIME_DAY:
+    case Datatype::DATETIME_HR:
+    case Datatype::DATETIME_MIN:
+    case Datatype::DATETIME_SEC:
+    case Datatype::DATETIME_MS:
+    case Datatype::DATETIME_US:
+    case Datatype::DATETIME_NS:
+    case Datatype::DATETIME_PS:
+    case Datatype::DATETIME_FS:
+    case Datatype::DATETIME_AS:
+      array_get_non_empty_domain<int64_t>(
+          metadata, dim_num, static_cast<int64_t*>(domain));
       break;
     default:
       return LOG_STATUS(Status::StorageManagerError(

@@ -88,6 +88,32 @@
     TILEDB_DATATYPE_ENUM(STRING_UCS4) = 16,
     /** This can be any datatype. Must store (type tag, value) pairs. */
     TILEDB_DATATYPE_ENUM(ANY) = 17,
+    /** Datetime with year resolution */
+    TILEDB_DATATYPE_ENUM(DATETIME_YEAR) = 18,
+    /** Datetime with month resolution */
+    TILEDB_DATATYPE_ENUM(DATETIME_MONTH) = 19,
+    /** Datetime with week resolution */
+    TILEDB_DATATYPE_ENUM(DATETIME_WEEK) = 20,
+    /** Datetime with day resolution */
+    TILEDB_DATATYPE_ENUM(DATETIME_DAY) = 21,
+    /** Datetime with hour resolution */
+    TILEDB_DATATYPE_ENUM(DATETIME_HR) = 22,
+    /** Datetime with minute resolution */
+    TILEDB_DATATYPE_ENUM(DATETIME_MIN) = 23,
+    /** Datetime with second resolution */
+    TILEDB_DATATYPE_ENUM(DATETIME_SEC) = 24,
+    /** Datetime with millisecond resolution */
+    TILEDB_DATATYPE_ENUM(DATETIME_MS) = 25,
+    /** Datetime with microsecond resolution */
+    TILEDB_DATATYPE_ENUM(DATETIME_US) = 26,
+    /** Datetime with nanosecond resolution */
+    TILEDB_DATATYPE_ENUM(DATETIME_NS) = 27,
+    /** Datetime with picosecond resolution */
+    TILEDB_DATATYPE_ENUM(DATETIME_PS) = 28,
+    /** Datetime with femtosecond resolution */
+    TILEDB_DATATYPE_ENUM(DATETIME_FS) = 29,
+    /** Datetime with attosecond resolution */
+    TILEDB_DATATYPE_ENUM(DATETIME_AS) = 30,
 #endif
 
 #ifdef TILEDB_ARRAY_TYPE_ENUM

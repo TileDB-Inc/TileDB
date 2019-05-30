@@ -438,6 +438,45 @@ const std::string string_ucs4_str = "STRING_UCS4";
 /** The string representation for type ANY. */
 const std::string any_str = "ANY";
 
+/** The string representation for type DATETIME_YEAR. */
+const std::string datetime_year_str = "DATETIME_YEAR";
+
+/** The string representation for type DATETIME_MONTH. */
+const std::string datetime_month_str = "DATETIME_MONTH";
+
+/** The string representation for type DATETIME_WEEK. */
+const std::string datetime_week_str = "DATETIME_WEEK";
+
+/** The string representation for type DATETIME_DAY. */
+const std::string datetime_day_str = "DATETIME_DAY";
+
+/** The string representation for type DATETIME_HR. */
+const std::string datetime_hr_str = "DATETIME_HR";
+
+/** The string representation for type DATETIME_MIN. */
+const std::string datetime_min_str = "DATETIME_MIN";
+
+/** The string representation for type DATETIME_SEC. */
+const std::string datetime_sec_str = "DATETIME_SEC";
+
+/** The string representation for type DATETIME_MS. */
+const std::string datetime_ms_str = "DATETIME_MS";
+
+/** The string representation for type DATETIME_US. */
+const std::string datetime_us_str = "DATETIME_US";
+
+/** The string representation for type DATETIME_NS. */
+const std::string datetime_ns_str = "DATETIME_NS";
+
+/** The string representation for type DATETIME_PS. */
+const std::string datetime_ps_str = "DATETIME_PS";
+
+/** The string representation for type DATETIME_FS. */
+const std::string datetime_fs_str = "DATETIME_FS";
+
+/** The string representation for type DATETIME_AS. */
+const std::string datetime_as_str = "DATETIME_AS";
+
 /** The string representation for the dense array type. */
 const std::string dense_str = "dense";
 
@@ -650,6 +689,20 @@ const void* fill_value(Datatype type) {
       return &constants::empty_ucs2;
     case Datatype::STRING_UCS4:
       return &constants::empty_ucs4;
+    case Datatype::DATETIME_YEAR:
+    case Datatype::DATETIME_MONTH:
+    case Datatype::DATETIME_WEEK:
+    case Datatype::DATETIME_DAY:
+    case Datatype::DATETIME_HR:
+    case Datatype::DATETIME_MIN:
+    case Datatype::DATETIME_SEC:
+    case Datatype::DATETIME_MS:
+    case Datatype::DATETIME_US:
+    case Datatype::DATETIME_NS:
+    case Datatype::DATETIME_PS:
+    case Datatype::DATETIME_FS:
+    case Datatype::DATETIME_AS:
+      return &constants::empty_int64;
   }
 
   return nullptr;

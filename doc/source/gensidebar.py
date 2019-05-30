@@ -105,6 +105,7 @@ def generate_sidebar(conf, conf_api):
     write('Writing Dense Arrays', 'tutorials/writing-dense')
     write('Reading Arrays', 'tutorials/reading')
     write('Negative and Real Domains', 'tutorials/neg-real')
+    write('Datetimes', 'tutorials/datetimes')
     write('Key-value Store', 'tutorials/kv')
     write('Object Management', 'tutorials/object')
     write('Virtual Filesystem', 'tutorials/vfs')

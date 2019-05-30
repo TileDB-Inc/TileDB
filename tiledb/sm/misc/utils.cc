@@ -275,6 +275,23 @@ std::string domain_str(const void* domain, Datatype type) {
       domain_uint64 = static_cast<const uint64_t*>(domain);
       ss << "[" << domain_uint64[0] << "," << domain_uint64[1] << "]";
       return ss.str();
+    case Datatype::DATETIME_YEAR:
+    case Datatype::DATETIME_MONTH:
+    case Datatype::DATETIME_WEEK:
+    case Datatype::DATETIME_DAY:
+    case Datatype::DATETIME_HR:
+    case Datatype::DATETIME_MIN:
+    case Datatype::DATETIME_SEC:
+    case Datatype::DATETIME_MS:
+    case Datatype::DATETIME_US:
+    case Datatype::DATETIME_NS:
+    case Datatype::DATETIME_PS:
+    case Datatype::DATETIME_FS:
+    case Datatype::DATETIME_AS:
+      domain_int64 = static_cast<const int64_t*>(domain);
+      ss << "[" << domain_int64[0] << "," << domain_int64[1] << "]";
+      return ss.str();
+
     case Datatype::CHAR:
     case Datatype::STRING_ASCII:
     case Datatype::STRING_UTF8:
@@ -350,6 +367,23 @@ std::string tile_extent_str(const void* tile_extent, Datatype type) {
       tile_extent_uint64 = static_cast<const uint64_t*>(tile_extent);
       ss << *tile_extent_uint64;
       return ss.str();
+    case Datatype::DATETIME_YEAR:
+    case Datatype::DATETIME_MONTH:
+    case Datatype::DATETIME_WEEK:
+    case Datatype::DATETIME_DAY:
+    case Datatype::DATETIME_HR:
+    case Datatype::DATETIME_MIN:
+    case Datatype::DATETIME_SEC:
+    case Datatype::DATETIME_MS:
+    case Datatype::DATETIME_US:
+    case Datatype::DATETIME_NS:
+    case Datatype::DATETIME_PS:
+    case Datatype::DATETIME_FS:
+    case Datatype::DATETIME_AS:
+      tile_extent_int64 = static_cast<const int64_t*>(tile_extent);
+      ss << *tile_extent_int64;
+      return ss.str();
+
     case Datatype::CHAR:
     case Datatype::STRING_ASCII:
     case Datatype::STRING_UTF8:
