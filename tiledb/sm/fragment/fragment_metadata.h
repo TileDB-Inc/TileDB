@@ -267,6 +267,9 @@ class FragmentMetadata {
   /** Stores all the metadata to storage. */
   Status store(const EncryptionKey& encryption_key);
 
+  /** Returns the MBRs of the fragment. Used in format version <=2. */
+  const std::vector<void*> mbrs() const;
+
   /** Retrieves the MBRs. */
   // TODO: Remove after the new dense read algorithm is in
   Status mbrs(

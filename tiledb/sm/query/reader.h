@@ -117,6 +117,10 @@ class Reader {
      * partitioner, because it reaches a partition that is unsplittable.
      */
     bool unsplittable_ = false;
+    /** A single-range subarray. */
+    void* subarray_ = nullptr;
+    /** True if the reader has been initialized. */
+    bool initialized_ = false;
 
     /** ``true`` if there are no more partitions. */
     bool done() const {
@@ -545,6 +549,7 @@ class Reader {
    * @tparam T The datatype of the tile domains.
    * @param tile_coords The unique coordinates of the tiles that intersect
    *     a subarray.
+   * @param array_tile_domain The array tile domain.
    * @param frag_tile_domains The tile domains of each fragment. These
    *     are assumed to be ordered from the most recent to the oldest
    *     fragment.
@@ -554,6 +559,7 @@ class Reader {
   template <class T>
   static void compute_result_space_tiles(
       const std::vector<std::vector<uint8_t>>& tile_coords,
+      const TileDomain<T>& array_tile_domain,
       const std::vector<TileDomain<T>>& frag_tile_domains,
       std::map<const T*, ResultSpaceTile<T>>* result_space_tiles);
 
@@ -739,6 +745,19 @@ class Reader {
   Status compute_cell_ranges(
       const OverlappingCoordsVec<T>& coords,
       OverlappingCellRangeList* cell_ranges) const;
+
+  /**
+   * Compute the maximal cell slabs of contiguous sparse coordinates.
+   *
+   * @tparam T The coords type.
+   * @param coords The coordinates to compute the slabs from.
+   * @param result_cell_slabs The result cell slabs to compute.
+   * @return Status
+   */
+  template <class T>
+  Status compute_result_cell_slabs(
+      const std::vector<ResultCoords<T>>& result_coords,
+      std::vector<ResultCellSlab>* result_cell_slabs) const;
 
   /**
    * For the given cell range, it computes all the result dense cell ranges
@@ -951,10 +970,10 @@ class Reader {
    * @param range_result_coords The result coordinates for each subarray range.
    * @param tile_coords If the subarray layout is global order, this
    *     function will store the unique tile coordinates of the subarray
-   *     coordinates in `tile_coords`. Then the element of `coords` will
+   *     coordinates in `tile_coords`. Then the element of `result_coords` will
    *     store only pointers to the unique tile coordinates.
    * @param result_coords The final (subarray) result coordinates to be
-   * retrieved.
+   *     retrieved.
    * @return Status
    *
    * @note the function will try to gradually clean up ``range_result_coords``
@@ -1629,10 +1648,12 @@ class Reader {
    *
    * @tparam T The coords type.
    * @param result_coords The coordinates to sort.
+   * @param layout The layout to sort into.
    * @return Status
    */
   template <class T>
-  Status sort_result_coords(std::vector<ResultCoords<T>>* result_coords) const;
+  Status sort_result_coords(
+      std::vector<ResultCoords<T>>* result_coords, Layout layout) const;
 
   /** Performs a read on a sparse array. */
   Status sparse_read();

@@ -176,12 +176,11 @@ const void* RTree::leaf(uint64_t leaf_idx) const {
 }
 
 template <class T>
-double RTree::range_overlap(
-    const std::vector<const T*>& range, const T* mbr) const {
+double RTree::range_overlap(const std::vector<const T*>& range, const T* mbr) {
   double ratio = 1.0;
-  assert(range.size() == dim_num_);
+  auto dim_num = (unsigned)range.size();
 
-  for (unsigned i = 0; i < dim_num_; ++i) {
+  for (unsigned i = 0; i < dim_num; ++i) {
     assert(range[i][0] <= range[i][1]);
     assert(mbr[2 * i] <= mbr[2 * i + 1]);
 
@@ -434,25 +433,25 @@ template TileOverlap RTree::get_tile_overlap<double>(
     const std::vector<const double*>& range) const;
 
 template double RTree::range_overlap<int8_t>(
-    const std::vector<const int8_t*>& range, const int8_t* mbr) const;
+    const std::vector<const int8_t*>& range, const int8_t* mbr);
 template double RTree::range_overlap<uint8_t>(
-    const std::vector<const uint8_t*>& range, const uint8_t* mbr) const;
+    const std::vector<const uint8_t*>& range, const uint8_t* mbr);
 template double RTree::range_overlap<int16_t>(
-    const std::vector<const int16_t*>& range, const int16_t* mbr) const;
+    const std::vector<const int16_t*>& range, const int16_t* mbr);
 template double RTree::range_overlap<uint16_t>(
-    const std::vector<const uint16_t*>& range, const uint16_t* mbr) const;
+    const std::vector<const uint16_t*>& range, const uint16_t* mbr);
 template double RTree::range_overlap<int32_t>(
-    const std::vector<const int32_t*>& range, const int32_t* mbr) const;
+    const std::vector<const int32_t*>& range, const int32_t* mbr);
 template double RTree::range_overlap<uint32_t>(
-    const std::vector<const uint32_t*>& range, const uint32_t* mbr) const;
+    const std::vector<const uint32_t*>& range, const uint32_t* mbr);
 template double RTree::range_overlap<int64_t>(
-    const std::vector<const int64_t*>& range, const int64_t* mbr) const;
+    const std::vector<const int64_t*>& range, const int64_t* mbr);
 template double RTree::range_overlap<uint64_t>(
-    const std::vector<const uint64_t*>& range, const uint64_t* mbr) const;
+    const std::vector<const uint64_t*>& range, const uint64_t* mbr);
 template double RTree::range_overlap<float>(
-    const std::vector<const float*>& range, const float* mbr) const;
+    const std::vector<const float*>& range, const float* mbr);
 template double RTree::range_overlap<double>(
-    const std::vector<const double*>& range, const double* mbr) const;
+    const std::vector<const double*>& range, const double* mbr);
 
 }  // namespace sm
 }  // namespace tiledb

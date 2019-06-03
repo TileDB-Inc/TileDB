@@ -103,17 +103,15 @@ struct ResultSpaceTile {
    * Prints information about the result tile (mainly for debugging
    * purposes).
    */
-  void print() {
+  void print() const {
     std::cout << "Start coords:\n";
     for (auto c : start_coords_)
       std::cout << c << " ";
     std::cout << "\n";
 
     std::cout << "Result tiles:\n";
-    for (auto it : result_tiles_) {
-      std::cout << "fragment id: " << it.first << "\n";
+    for (const auto& it : result_tiles_)
       it.second.print();
-    }
   }
 };
 
