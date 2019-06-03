@@ -115,7 +115,7 @@ class RTree {
    * of the volume of the overlap over the volume of the MBR.
    */
   template <class T>
-  double range_overlap(const std::vector<const T*>& range, const T* mbr) const;
+  static double range_overlap(const std::vector<const T*>& range, const T* mbr);
 
   /**
    * Returns the number of leaves that are stored in a (full) subtree

@@ -3192,7 +3192,7 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     SparseArrayFx2,
     "C API: Test sparse array 2, multi-subarray, 2D, complete",
-    "[capi], [sparse-2], [sparse-2-multi-subarray-2d-complete]") {
+    "[capi][sparse-2][MR][2D][complete]") {
   std::string array_name =
       FILE_URI_PREFIX + FILE_TEMP_DIR + "sparse_multi_subarray_2d_complete";
   remove_array(array_name);

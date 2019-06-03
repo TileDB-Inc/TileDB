@@ -564,6 +564,10 @@ Status FragmentMetadata::store(const EncryptionKey& encryption_key) {
   return st;
 }
 
+const std::vector<void*> FragmentMetadata::mbrs() const {
+  return mbrs_;
+}
+
 // TODO (sp): remove when the new dense algorithm is in
 Status FragmentMetadata::mbrs(
     const EncryptionKey& encryption_key, const std::vector<void*>** mbrs) {
@@ -690,7 +694,7 @@ Status FragmentMetadata::persisted_tile_var_size(
 Status FragmentMetadata::rtree(
     const EncryptionKey& encryption_key, const RTree** rtree) {
   RETURN_NOT_OK(load_rtree(encryption_key));
-  *rtree = &rtree_;
+  *rtree = (version_ <= 2) ? nullptr : &rtree_;
   return Status::Ok();
 }
 
@@ -898,6 +902,9 @@ Status FragmentMetadata::load_basic(const EncryptionKey& encryption_key) {
 }
 
 Status FragmentMetadata::load_rtree(const EncryptionKey& encryption_key) {
+  if (version_ <= 2)
+    return Status::Ok();
+
   RETURN_NOT_OK(load_generic_tile_offsets());
 
   std::lock_guard<std::mutex> lock(mtx_);
@@ -918,6 +925,9 @@ Status FragmentMetadata::load_rtree(const EncryptionKey& encryption_key) {
 }
 
 Status FragmentMetadata::load_mbrs(const EncryptionKey& encryption_key) {
+  if (version_ <= 2)
+    return Status::Ok();
+
   RETURN_NOT_OK(load_generic_tile_offsets());
 
   std::lock_guard<std::mutex> lock(mtx_);
@@ -939,6 +949,9 @@ Status FragmentMetadata::load_mbrs(const EncryptionKey& encryption_key) {
 
 Status FragmentMetadata::load_tile_offsets(
     const EncryptionKey& encryption_key, unsigned attr_id) {
+  if (version_ <= 2)
+    return Status::Ok();
+
   RETURN_NOT_OK(load_generic_tile_offsets());
 
   std::lock_guard<std::mutex> lock(mtx_);
@@ -960,6 +973,9 @@ Status FragmentMetadata::load_tile_offsets(
 
 Status FragmentMetadata::load_tile_var_offsets(
     const EncryptionKey& encryption_key, unsigned attr_id) {
+  if (version_ <= 2)
+    return Status::Ok();
+
   RETURN_NOT_OK(load_generic_tile_offsets());
 
   std::lock_guard<std::mutex> lock(mtx_);
@@ -981,6 +997,9 @@ Status FragmentMetadata::load_tile_var_offsets(
 
 Status FragmentMetadata::load_tile_var_sizes(
     const EncryptionKey& encryption_key, unsigned attr_id) {
+  if (version_ <= 2)
+    return Status::Ok();
+
   RETURN_NOT_OK(load_generic_tile_offsets());
 
   std::lock_guard<std::mutex> lock(mtx_);
@@ -1394,6 +1413,9 @@ Status FragmentMetadata::get_generic_tile_size(
 }
 
 Status FragmentMetadata::load_generic_tile_offsets() {
+  if (version_ <= 2)
+    return Status::Ok();
+
   std::lock_guard<std::mutex> lock(mtx_);
 
   if (loaded_metadata_.generic_tile_offsets_)

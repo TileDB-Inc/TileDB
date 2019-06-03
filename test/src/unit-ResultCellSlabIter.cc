@@ -148,9 +148,9 @@ void ResultCellSlabIterFx::create_result_space_tiles(
     const std::vector<std::vector<T>>& domain_slices,
     const std::vector<std::vector<uint8_t>>& tile_coords,
     std::map<const T*, ResultSpaceTile<T>>* result_space_tiles) {
-  std::vector<TileDomain<T>> tile_domains;
+  std::vector<TileDomain<T>> frag_tile_domains;
   for (size_t i = 0; i < domain_slices.size(); ++i) {
-    tile_domains.emplace_back(
+    frag_tile_domains.emplace_back(
         (unsigned)(domain_slices.size() - i),
         dim_num,
         domain,
@@ -158,8 +158,10 @@ void ResultCellSlabIterFx::create_result_space_tiles(
         tile_extents,
         layout);
   }
+  TileDomain<T> array_tile_domain(
+      UINT32_MAX, dim_num, domain, domain, tile_extents, layout);
   Reader::compute_result_space_tiles<T>(
-      tile_coords, tile_domains, result_space_tiles);
+      tile_coords, array_tile_domain, frag_tile_domains, result_space_tiles);
 }
 
 /* ********************************* */

@@ -84,6 +84,22 @@ struct ResultCoords {
   bool valid() const {
     return valid_;
   }
+
+  /** Mainly for debugging. */
+  void print() const {
+    if (tile_ == nullptr) {
+      std::cout << "null tile\n";
+    } else {
+      std::cout << "frag_idx: " << tile_->frag_idx_ << "\n";
+      std::cout << "tile_idx: " << tile_->tile_idx_ << "\n";
+    }
+    std::cout << "pos: " << pos_ << "\n";
+    std::cout << "valid: " << valid_ << "\n";
+    if (coords_ != nullptr)
+      std::cout << "first coord: " << coords_[0] << "\n";
+    if (tile_coords_ != nullptr)
+      std::cout << "first tile coord: " << tile_coords_[0] << "\n";
+  }
 };
 
 }  // namespace sm

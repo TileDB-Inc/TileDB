@@ -63,7 +63,7 @@ TEST_CASE(
 
 TEST_CASE(
     "Backwards compatibility: Test reading 1.4.0 array with non-split coords",
-    "[backwards-compat]") {
+    "[backwards-compat][non-split-coords]") {
   Context ctx;
   std::string array_uri(arrays_dir + "/non_split_coords_v1_4_0");
   Array array(ctx, array_uri, TILEDB_READ);

@@ -1049,16 +1049,24 @@ void IncompleteFx::check_sparse_until_complete() {
   // Check status
   rc = tiledb_query_get_status(ctx_, query, &status);
   CHECK(rc == TILEDB_OK);
-  CHECK(status == TILEDB_COMPLETED);
+  CHECK(status == TILEDB_INCOMPLETE);
 
   // Check buffer
   c_buffer_a1[0] = 1;
   CHECK(!memcmp(buffer_a1, c_buffer_a1, sizeof(c_buffer_a1)));
   CHECK(buffer_sizes[0] == sizeof(int));
 
-  // Finalize query
-  rc = tiledb_query_finalize(ctx_, query);
+  // Submit query
+  rc = tiledb_query_submit(ctx_, query);
   REQUIRE(rc == TILEDB_OK);
+
+  // Check status
+  rc = tiledb_query_get_status(ctx_, query, &status);
+  CHECK(rc == TILEDB_OK);
+  CHECK(status == TILEDB_COMPLETED);
+
+  // Check buffer
+  CHECK(buffer_sizes[0] == 0);
 
   // Close array
   rc = tiledb_array_close(ctx_, array);
@@ -1208,7 +1216,7 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     IncompleteFx,
     "C API: Test incomplete read queries, sparse",
-    "[capi], [incomplete], [incomplete]") {
+    "[capi][incomplete][sparse]") {
   remove_sparse_array();
   create_sparse_array();
   write_sparse_full();

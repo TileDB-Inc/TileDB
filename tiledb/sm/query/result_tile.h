@@ -94,7 +94,7 @@ struct ResultTile {
   }
 
   /** Prints some information (mainly for debugging purposes). */
-  void print() {
+  void print() const {
     std::cout << "Fragment id: " << frag_idx_ << "\n";
     std::cout << "Tile id: " << tile_idx_ << "\n";
   }
