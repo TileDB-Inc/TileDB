@@ -290,6 +290,21 @@ Status CellSlabIter<T>::sanity_check() const {
     case Datatype::UINT64:
       error = !std::is_same<T, uint64_t>::value;
       break;
+    case Datatype::DATETIME_YEAR:
+    case Datatype::DATETIME_MONTH:
+    case Datatype::DATETIME_WEEK:
+    case Datatype::DATETIME_DAY:
+    case Datatype::DATETIME_HR:
+    case Datatype::DATETIME_MIN:
+    case Datatype::DATETIME_SEC:
+    case Datatype::DATETIME_MS:
+    case Datatype::DATETIME_US:
+    case Datatype::DATETIME_NS:
+    case Datatype::DATETIME_PS:
+    case Datatype::DATETIME_FS:
+    case Datatype::DATETIME_AS:
+      error = !std::is_same<T, int64_t>::value;
+      break;
     default:
       error = true;
       assert(false);

@@ -74,6 +74,20 @@ Status DoubleDelta::compress(
       return DoubleDelta::compress<uint64_t>(input_buffer, output_buffer);
     case Datatype::CHAR:
       return DoubleDelta::compress<char>(input_buffer, output_buffer);
+    case Datatype::DATETIME_YEAR:
+    case Datatype::DATETIME_MONTH:
+    case Datatype::DATETIME_WEEK:
+    case Datatype::DATETIME_DAY:
+    case Datatype::DATETIME_HR:
+    case Datatype::DATETIME_MIN:
+    case Datatype::DATETIME_SEC:
+    case Datatype::DATETIME_MS:
+    case Datatype::DATETIME_US:
+    case Datatype::DATETIME_NS:
+    case Datatype::DATETIME_PS:
+    case Datatype::DATETIME_FS:
+    case Datatype::DATETIME_AS:
+      return DoubleDelta::compress<int64_t>(input_buffer, output_buffer);
     case Datatype::STRING_ASCII:
     case Datatype::STRING_UTF8:
     case Datatype::STRING_UTF16:
@@ -121,6 +135,20 @@ Status DoubleDelta::decompress(
       return DoubleDelta::decompress<uint64_t>(input_buffer, output_buffer);
     case Datatype::CHAR:
       return DoubleDelta::decompress<char>(input_buffer, output_buffer);
+    case Datatype::DATETIME_YEAR:
+    case Datatype::DATETIME_MONTH:
+    case Datatype::DATETIME_WEEK:
+    case Datatype::DATETIME_DAY:
+    case Datatype::DATETIME_HR:
+    case Datatype::DATETIME_MIN:
+    case Datatype::DATETIME_SEC:
+    case Datatype::DATETIME_MS:
+    case Datatype::DATETIME_US:
+    case Datatype::DATETIME_NS:
+    case Datatype::DATETIME_PS:
+    case Datatype::DATETIME_FS:
+    case Datatype::DATETIME_AS:
+      return DoubleDelta::decompress<int64_t>(input_buffer, output_buffer);
     case Datatype::STRING_ASCII:
     case Datatype::STRING_UTF8:
     case Datatype::STRING_UTF16:

@@ -431,6 +431,20 @@ Status Reader::read_2() {
       return read_2<float>();
     case Datatype::FLOAT64:
       return read_2<double>();
+    case Datatype::DATETIME_YEAR:
+    case Datatype::DATETIME_MONTH:
+    case Datatype::DATETIME_WEEK:
+    case Datatype::DATETIME_DAY:
+    case Datatype::DATETIME_HR:
+    case Datatype::DATETIME_MIN:
+    case Datatype::DATETIME_SEC:
+    case Datatype::DATETIME_MS:
+    case Datatype::DATETIME_US:
+    case Datatype::DATETIME_NS:
+    case Datatype::DATETIME_PS:
+    case Datatype::DATETIME_FS:
+    case Datatype::DATETIME_AS:
+      return read_2<int64_t>();
     default:
       return LOG_STATUS(
           Status::ReaderError("Cannot read; Unsupported domain type"));
@@ -1667,6 +1681,20 @@ Status Reader::dense_read() {
       return dense_read<int64_t>();
     case Datatype::UINT64:
       return dense_read<uint64_t>();
+    case Datatype::DATETIME_YEAR:
+    case Datatype::DATETIME_MONTH:
+    case Datatype::DATETIME_WEEK:
+    case Datatype::DATETIME_DAY:
+    case Datatype::DATETIME_HR:
+    case Datatype::DATETIME_MIN:
+    case Datatype::DATETIME_SEC:
+    case Datatype::DATETIME_MS:
+    case Datatype::DATETIME_US:
+    case Datatype::DATETIME_NS:
+    case Datatype::DATETIME_PS:
+    case Datatype::DATETIME_FS:
+    case Datatype::DATETIME_AS:
+      return dense_read<int64_t>();
     default:
       return LOG_STATUS(
           Status::ReaderError("Cannot read; Unsupported domain type"));
@@ -2604,6 +2632,20 @@ Status Reader::sparse_read() {
       return sparse_read<float>();
     case Datatype::FLOAT64:
       return sparse_read<double>();
+    case Datatype::DATETIME_YEAR:
+    case Datatype::DATETIME_MONTH:
+    case Datatype::DATETIME_WEEK:
+    case Datatype::DATETIME_DAY:
+    case Datatype::DATETIME_HR:
+    case Datatype::DATETIME_MIN:
+    case Datatype::DATETIME_SEC:
+    case Datatype::DATETIME_MS:
+    case Datatype::DATETIME_US:
+    case Datatype::DATETIME_NS:
+    case Datatype::DATETIME_PS:
+    case Datatype::DATETIME_FS:
+    case Datatype::DATETIME_AS:
+      return sparse_read<int64_t>();
     default:
       return LOG_STATUS(
           Status::ReaderError("Cannot read; Unsupported domain type"));

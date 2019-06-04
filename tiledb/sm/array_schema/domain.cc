@@ -171,6 +171,20 @@ Status Domain::split_subarray(
       return split_subarray<float>(subarray, layout, subarray_1, subarray_2);
     case Datatype::FLOAT64:
       return split_subarray<double>(subarray, layout, subarray_1, subarray_2);
+    case Datatype::DATETIME_YEAR:
+    case Datatype::DATETIME_MONTH:
+    case Datatype::DATETIME_WEEK:
+    case Datatype::DATETIME_DAY:
+    case Datatype::DATETIME_HR:
+    case Datatype::DATETIME_MIN:
+    case Datatype::DATETIME_SEC:
+    case Datatype::DATETIME_MS:
+    case Datatype::DATETIME_US:
+    case Datatype::DATETIME_NS:
+    case Datatype::DATETIME_PS:
+    case Datatype::DATETIME_FS:
+    case Datatype::DATETIME_AS:
+      return split_subarray<int64_t>(subarray, layout, subarray_1, subarray_2);
     default:
       return LOG_STATUS(Status::DomainError(
           "Cannot split subarray; Unsupported domain type"));
@@ -408,6 +422,20 @@ uint64_t Domain::cell_num(const void* domain) const {
       return cell_num<float>(static_cast<const float*>(domain));
     case Datatype::FLOAT64:
       return cell_num<double>(static_cast<const double*>(domain));
+    case Datatype::DATETIME_YEAR:
+    case Datatype::DATETIME_MONTH:
+    case Datatype::DATETIME_WEEK:
+    case Datatype::DATETIME_DAY:
+    case Datatype::DATETIME_HR:
+    case Datatype::DATETIME_MIN:
+    case Datatype::DATETIME_SEC:
+    case Datatype::DATETIME_MS:
+    case Datatype::DATETIME_US:
+    case Datatype::DATETIME_NS:
+    case Datatype::DATETIME_PS:
+    case Datatype::DATETIME_FS:
+    case Datatype::DATETIME_AS:
+      return cell_num<int64_t>(static_cast<const int64_t*>(domain));
     default:
       assert(false);
       return 0;
@@ -561,6 +589,21 @@ void Domain::expand_domain(void* domain) const {
       break;
     case Datatype::UINT64:
       expand_domain<uint64_t>(static_cast<uint64_t*>(domain));
+      break;
+    case Datatype::DATETIME_YEAR:
+    case Datatype::DATETIME_MONTH:
+    case Datatype::DATETIME_WEEK:
+    case Datatype::DATETIME_DAY:
+    case Datatype::DATETIME_HR:
+    case Datatype::DATETIME_MIN:
+    case Datatype::DATETIME_SEC:
+    case Datatype::DATETIME_MS:
+    case Datatype::DATETIME_US:
+    case Datatype::DATETIME_NS:
+    case Datatype::DATETIME_PS:
+    case Datatype::DATETIME_FS:
+    case Datatype::DATETIME_AS:
+      expand_domain<int64_t>(static_cast<int64_t*>(domain));
       break;
     default:  // Non-applicable to non-integer domains
       break;
@@ -822,6 +865,20 @@ uint64_t Domain::tile_num(const void* range) const {
       return tile_num<uint32_t>(static_cast<const uint32_t*>(range));
     case Datatype::UINT64:
       return tile_num<uint64_t>(static_cast<const uint64_t*>(range));
+    case Datatype::DATETIME_YEAR:
+    case Datatype::DATETIME_MONTH:
+    case Datatype::DATETIME_WEEK:
+    case Datatype::DATETIME_DAY:
+    case Datatype::DATETIME_HR:
+    case Datatype::DATETIME_MIN:
+    case Datatype::DATETIME_SEC:
+    case Datatype::DATETIME_MS:
+    case Datatype::DATETIME_US:
+    case Datatype::DATETIME_NS:
+    case Datatype::DATETIME_PS:
+    case Datatype::DATETIME_FS:
+    case Datatype::DATETIME_AS:
+      return tile_num<int64_t>(static_cast<const int64_t*>(range));
     case Datatype::FLOAT32:
     case Datatype::FLOAT64:
       // Operation not supported for float domains
@@ -948,6 +1005,21 @@ void Domain::compute_cell_num_per_tile() {
     case Datatype::UINT64:
       compute_cell_num_per_tile<uint64_t>();
       break;
+    case Datatype::DATETIME_YEAR:
+    case Datatype::DATETIME_MONTH:
+    case Datatype::DATETIME_WEEK:
+    case Datatype::DATETIME_DAY:
+    case Datatype::DATETIME_HR:
+    case Datatype::DATETIME_MIN:
+    case Datatype::DATETIME_SEC:
+    case Datatype::DATETIME_MS:
+    case Datatype::DATETIME_US:
+    case Datatype::DATETIME_NS:
+    case Datatype::DATETIME_PS:
+    case Datatype::DATETIME_FS:
+    case Datatype::DATETIME_AS:
+      compute_cell_num_per_tile<int64_t>();
+      break;
     default:
       return;
   }
@@ -1001,6 +1073,21 @@ void Domain::compute_tile_domain() {
       break;
     case Datatype::UINT64:
       compute_tile_domain<uint64_t>();
+      break;
+    case Datatype::DATETIME_YEAR:
+    case Datatype::DATETIME_MONTH:
+    case Datatype::DATETIME_WEEK:
+    case Datatype::DATETIME_DAY:
+    case Datatype::DATETIME_HR:
+    case Datatype::DATETIME_MIN:
+    case Datatype::DATETIME_SEC:
+    case Datatype::DATETIME_MS:
+    case Datatype::DATETIME_US:
+    case Datatype::DATETIME_NS:
+    case Datatype::DATETIME_PS:
+    case Datatype::DATETIME_FS:
+    case Datatype::DATETIME_AS:
+      compute_tile_domain<int64_t>();
       break;
     default:
       assert(0);
@@ -1065,6 +1152,21 @@ void Domain::compute_tile_offsets() {
       break;
     case Datatype::UINT64:
       compute_tile_offsets<uint64_t>();
+      break;
+    case Datatype::DATETIME_YEAR:
+    case Datatype::DATETIME_MONTH:
+    case Datatype::DATETIME_WEEK:
+    case Datatype::DATETIME_DAY:
+    case Datatype::DATETIME_HR:
+    case Datatype::DATETIME_MIN:
+    case Datatype::DATETIME_SEC:
+    case Datatype::DATETIME_MS:
+    case Datatype::DATETIME_US:
+    case Datatype::DATETIME_NS:
+    case Datatype::DATETIME_PS:
+    case Datatype::DATETIME_FS:
+    case Datatype::DATETIME_AS:
+      compute_tile_offsets<int64_t>();
       break;
     default:
       assert(0);

@@ -130,6 +130,20 @@ Status FragmentMetadata::set_mbr(uint64_t tile, const void* mbr) {
       return set_mbr<float>(tile, static_cast<const float*>(mbr));
     case Datatype::FLOAT64:
       return set_mbr<double>(tile, static_cast<const double*>(mbr));
+    case Datatype::DATETIME_YEAR:
+    case Datatype::DATETIME_MONTH:
+    case Datatype::DATETIME_WEEK:
+    case Datatype::DATETIME_DAY:
+    case Datatype::DATETIME_HR:
+    case Datatype::DATETIME_MIN:
+    case Datatype::DATETIME_SEC:
+    case Datatype::DATETIME_MS:
+    case Datatype::DATETIME_US:
+    case Datatype::DATETIME_NS:
+    case Datatype::DATETIME_PS:
+    case Datatype::DATETIME_FS:
+    case Datatype::DATETIME_AS:
+      return set_mbr<int64_t>(tile, static_cast<const int64_t*>(mbr));
     default:
       return LOG_STATUS(Status::FragmentMetadataError(
           "Cannot append mbr; Unsupported coordinates type"));

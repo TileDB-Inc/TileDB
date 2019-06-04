@@ -183,6 +183,21 @@ Status Consolidator::consolidate(
     case Datatype::FLOAT64:
       return consolidate<double>(
           array_schema, encryption_type, encryption_key, key_length);
+    case Datatype::DATETIME_YEAR:
+    case Datatype::DATETIME_MONTH:
+    case Datatype::DATETIME_WEEK:
+    case Datatype::DATETIME_DAY:
+    case Datatype::DATETIME_HR:
+    case Datatype::DATETIME_MIN:
+    case Datatype::DATETIME_SEC:
+    case Datatype::DATETIME_MS:
+    case Datatype::DATETIME_US:
+    case Datatype::DATETIME_NS:
+    case Datatype::DATETIME_PS:
+    case Datatype::DATETIME_FS:
+    case Datatype::DATETIME_AS:
+      return consolidate<int64_t>(
+          array_schema, encryption_type, encryption_key, key_length);
     default:
       return LOG_STATUS(
           Status::ConsolidatorError("Cannot consolidate; Invalid domain type"));

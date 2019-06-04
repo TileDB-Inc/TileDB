@@ -231,45 +231,9 @@ struct tiledb_to_type<TILEDB_FLOAT64> {
 
 /** Convert a tiledb datatype to a str. */
 inline std::string type_to_str(tiledb_datatype_t type) {
-  switch (type) {
-    case TILEDB_INT8:
-      return "INT8";
-    case TILEDB_UINT8:
-      return "UINT8";
-    case TILEDB_INT16:
-      return "INT16";
-    case TILEDB_UINT16:
-      return "UINT16";
-    case TILEDB_INT32:
-      return "INT32";
-    case TILEDB_UINT32:
-      return "UINT32";
-    case TILEDB_INT64:
-      return "INT64";
-    case TILEDB_UINT64:
-      return "UINT64";
-    case TILEDB_FLOAT32:
-      return "FLOAT32";
-    case TILEDB_FLOAT64:
-      return "FLOAT64";
-    case TILEDB_CHAR:
-      return "CHAR";
-    case TILEDB_STRING_ASCII:
-      return "STRING_ASCII";
-    case TILEDB_STRING_UTF8:
-      return "STRING_UTF8";
-    case TILEDB_STRING_UTF16:
-      return "STRING_UTF16";
-    case TILEDB_STRING_UTF32:
-      return "STRING_UTF32";
-    case TILEDB_STRING_UCS2:
-      return "STRING_UCS2";
-    case TILEDB_STRING_UCS4:
-      return "STRING_UCS4";
-    case TILEDB_ANY:
-      return "ANY";
-  }
-  return "";
+  const char* c_str;
+  tiledb_datatype_to_str(type, &c_str);
+  return std::string(c_str);
 }
 
 inline bool tiledb_string_type(tiledb_datatype_t type) {
@@ -285,6 +249,28 @@ inline bool tiledb_string_type(tiledb_datatype_t type) {
       return false;
   }
 }
+
+inline bool tiledb_datetime_type(tiledb_datatype_t type) {
+  switch (type) {
+    case TILEDB_DATETIME_YEAR:
+    case TILEDB_DATETIME_MONTH:
+    case TILEDB_DATETIME_WEEK:
+    case TILEDB_DATETIME_DAY:
+    case TILEDB_DATETIME_HR:
+    case TILEDB_DATETIME_MIN:
+    case TILEDB_DATETIME_SEC:
+    case TILEDB_DATETIME_MS:
+    case TILEDB_DATETIME_US:
+    case TILEDB_DATETIME_NS:
+    case TILEDB_DATETIME_PS:
+    case TILEDB_DATETIME_FS:
+    case TILEDB_DATETIME_AS:
+      return true;
+    default:
+      return false;
+  }
+}
+
 /**
  * A type handler provides a mapping from a C++ type to a TileDB
  * representation.

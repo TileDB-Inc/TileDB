@@ -67,47 +67,11 @@ inline size_t type_size(tiledb_datatype_t type) {
   return tiledb_datatype_size(type);
 }
 
-/** Convert a tiledb_datatype_t to a string repersentation. **/
+/** Convert a tiledb_datatype_t to a string representation. **/
 inline std::string to_str(const tiledb_datatype_t& type) {
-  switch (type) {
-    case TILEDB_CHAR:
-      return "char";
-    case TILEDB_INT8:
-      return "int8";
-    case TILEDB_UINT8:
-      return "uint8";
-    case TILEDB_INT16:
-      return "int16";
-    case TILEDB_UINT16:
-      return "uint16";
-    case TILEDB_INT32:
-      return "int32";
-    case TILEDB_UINT32:
-      return "uint32";
-    case TILEDB_INT64:
-      return "int64";
-    case TILEDB_UINT64:
-      return "uint64";
-    case TILEDB_FLOAT32:
-      return "float32";
-    case TILEDB_FLOAT64:
-      return "float64";
-    case TILEDB_STRING_ASCII:
-      return "string_ascii";
-    case TILEDB_STRING_UTF8:
-      return "string_utf8";
-    case TILEDB_STRING_UTF16:
-      return "string_utf16";
-    case TILEDB_STRING_UTF32:
-      return "string_utf32";
-    case TILEDB_STRING_UCS2:
-      return "string_ucs2";
-    case TILEDB_STRING_UCS4:
-      return "string_ucs4";
-    case TILEDB_ANY:
-      return "any";
-  }
-  return "";
+  const char* c_str = nullptr;
+  tiledb_datatype_to_str(type, &c_str);
+  return std::string(c_str);
 }
 
 }  // namespace impl

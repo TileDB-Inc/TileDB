@@ -121,6 +121,21 @@ Status BitWidthReductionFilter::run_forward(
     case Datatype::UINT64:
       return run_forward<uint64_t>(
           input_metadata, input, output_metadata, output);
+    case Datatype::DATETIME_YEAR:
+    case Datatype::DATETIME_MONTH:
+    case Datatype::DATETIME_WEEK:
+    case Datatype::DATETIME_DAY:
+    case Datatype::DATETIME_HR:
+    case Datatype::DATETIME_MIN:
+    case Datatype::DATETIME_SEC:
+    case Datatype::DATETIME_MS:
+    case Datatype::DATETIME_US:
+    case Datatype::DATETIME_NS:
+    case Datatype::DATETIME_PS:
+    case Datatype::DATETIME_FS:
+    case Datatype::DATETIME_AS:
+      return run_forward<int64_t>(
+          input_metadata, input, output_metadata, output);
     default:
       return LOG_STATUS(
           Status::FilterError("Cannot filter; Unsupported input type"));
@@ -267,6 +282,21 @@ Status BitWidthReductionFilter::run_reverse(
           input_metadata, input, output_metadata, output);
     case Datatype::UINT64:
       return run_reverse<uint64_t>(
+          input_metadata, input, output_metadata, output);
+    case Datatype::DATETIME_YEAR:
+    case Datatype::DATETIME_MONTH:
+    case Datatype::DATETIME_WEEK:
+    case Datatype::DATETIME_DAY:
+    case Datatype::DATETIME_HR:
+    case Datatype::DATETIME_MIN:
+    case Datatype::DATETIME_SEC:
+    case Datatype::DATETIME_MS:
+    case Datatype::DATETIME_US:
+    case Datatype::DATETIME_NS:
+    case Datatype::DATETIME_PS:
+    case Datatype::DATETIME_FS:
+    case Datatype::DATETIME_AS:
+      return run_reverse<int64_t>(
           input_metadata, input, output_metadata, output);
     default:
       return LOG_STATUS(

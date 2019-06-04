@@ -483,6 +483,20 @@ Status Query::check_subarray(const void* subarray) const {
       return check_subarray<float>(static_cast<const float*>(subarray));
     case Datatype::FLOAT64:
       return check_subarray<double>(static_cast<const double*>(subarray));
+    case Datatype::DATETIME_YEAR:
+    case Datatype::DATETIME_MONTH:
+    case Datatype::DATETIME_WEEK:
+    case Datatype::DATETIME_DAY:
+    case Datatype::DATETIME_HR:
+    case Datatype::DATETIME_MIN:
+    case Datatype::DATETIME_SEC:
+    case Datatype::DATETIME_MS:
+    case Datatype::DATETIME_US:
+    case Datatype::DATETIME_NS:
+    case Datatype::DATETIME_PS:
+    case Datatype::DATETIME_FS:
+    case Datatype::DATETIME_AS:
+      return check_subarray<int64_t>(static_cast<const int64_t*>(subarray));
     case Datatype::CHAR:
     case Datatype::STRING_ASCII:
     case Datatype::STRING_UTF8:

@@ -224,6 +224,28 @@ TEST_CASE(
             }
             break;
           }
+          case TILEDB_DATETIME_YEAR:
+          case TILEDB_DATETIME_MONTH:
+          case TILEDB_DATETIME_WEEK:
+          case TILEDB_DATETIME_DAY:
+          case TILEDB_DATETIME_HR:
+          case TILEDB_DATETIME_MIN:
+          case TILEDB_DATETIME_SEC:
+          case TILEDB_DATETIME_MS:
+          case TILEDB_DATETIME_US:
+          case TILEDB_DATETIME_NS:
+          case TILEDB_DATETIME_PS:
+          case TILEDB_DATETIME_FS:
+          case TILEDB_DATETIME_AS: {
+            if (attr.second.variable_sized()) {
+              query.set_buffer(
+                  attributeName, offsets, 1, static_cast<int64_t*>(values), 1);
+            } else {
+              query.set_buffer(attributeName, static_cast<int64_t*>(values), 1);
+            }
+            break;
+          }
+
           case TILEDB_CHAR:
           case TILEDB_STRING_ASCII:
           case TILEDB_STRING_UTF8:
@@ -374,6 +396,22 @@ TEST_CASE(
           }
           case TILEDB_FLOAT64: {
             REQUIRE(static_cast<double*>(buffer.second)[0] == 1);
+            break;
+          }
+          case TILEDB_DATETIME_YEAR:
+          case TILEDB_DATETIME_MONTH:
+          case TILEDB_DATETIME_WEEK:
+          case TILEDB_DATETIME_DAY:
+          case TILEDB_DATETIME_HR:
+          case TILEDB_DATETIME_MIN:
+          case TILEDB_DATETIME_SEC:
+          case TILEDB_DATETIME_MS:
+          case TILEDB_DATETIME_US:
+          case TILEDB_DATETIME_NS:
+          case TILEDB_DATETIME_PS:
+          case TILEDB_DATETIME_FS:
+          case TILEDB_DATETIME_AS: {
+            REQUIRE(static_cast<int64_t*>(buffer.second)[0] == 1);
             break;
           }
           case TILEDB_CHAR:

@@ -172,6 +172,22 @@ class Dimension {
         df64 = static_cast<double*>(domain);
         ss << df64[0] << "," << df64[1];
         break;
+      case TILEDB_DATETIME_YEAR:
+      case TILEDB_DATETIME_MONTH:
+      case TILEDB_DATETIME_WEEK:
+      case TILEDB_DATETIME_DAY:
+      case TILEDB_DATETIME_HR:
+      case TILEDB_DATETIME_MIN:
+      case TILEDB_DATETIME_SEC:
+      case TILEDB_DATETIME_MS:
+      case TILEDB_DATETIME_US:
+      case TILEDB_DATETIME_NS:
+      case TILEDB_DATETIME_PS:
+      case TILEDB_DATETIME_FS:
+      case TILEDB_DATETIME_AS:
+        di64 = static_cast<int64_t*>(domain);
+        ss << di64[0] << "," << di64[1];
+        break;
       case TILEDB_CHAR:
       case TILEDB_STRING_ASCII:
       case TILEDB_STRING_UTF8:
@@ -256,6 +272,22 @@ class Dimension {
       case TILEDB_FLOAT64:
         tf64 = static_cast<double*>(tile_extent);
         ss << *tf64;
+        break;
+      case TILEDB_DATETIME_YEAR:
+      case TILEDB_DATETIME_MONTH:
+      case TILEDB_DATETIME_WEEK:
+      case TILEDB_DATETIME_DAY:
+      case TILEDB_DATETIME_HR:
+      case TILEDB_DATETIME_MIN:
+      case TILEDB_DATETIME_SEC:
+      case TILEDB_DATETIME_MS:
+      case TILEDB_DATETIME_US:
+      case TILEDB_DATETIME_NS:
+      case TILEDB_DATETIME_PS:
+      case TILEDB_DATETIME_FS:
+      case TILEDB_DATETIME_AS:
+        ti64 = static_cast<int64_t*>(tile_extent);
+        ss << *ti64;
         break;
       case TILEDB_CHAR:
       case TILEDB_STRING_ASCII:
@@ -346,6 +378,26 @@ class Dimension {
         DataT::tiledb_num == 1,
         "Dimension types cannot be compound, use arithmetic type.");
     return create_impl(ctx, name, DataT::tiledb_type, &domain, nullptr);
+  }
+
+  /**
+   * Factory function for creating a new dimension (non typechecked).
+   *
+   * @param ctx The TileDB context.
+   * @param name The dimension name.
+   * @param datatype The dimension datatype.
+   * @param domain The dimension domain. A pair [lower,upper] of inclusive
+   *    bounds.
+   * @param extent The tile extent on the dimension.
+   * @return A new `Dimension` object.
+   */
+  static Dimension create(
+      const Context& ctx,
+      const std::string& name,
+      tiledb_datatype_t datatype,
+      const void* domain,
+      const void* extent) {
+    return create_impl(ctx, name, datatype, domain, extent);
   }
 
  private:

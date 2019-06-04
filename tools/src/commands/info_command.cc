@@ -313,6 +313,20 @@ std::tuple<double, double, double, double> InfoCommand::get_mbr(
       return get_mbr<float>(mbr);
     case Datatype::FLOAT64:
       return get_mbr<double>(mbr);
+    case Datatype::DATETIME_YEAR:
+    case Datatype::DATETIME_MONTH:
+    case Datatype::DATETIME_WEEK:
+    case Datatype::DATETIME_DAY:
+    case Datatype::DATETIME_HR:
+    case Datatype::DATETIME_MIN:
+    case Datatype::DATETIME_SEC:
+    case Datatype::DATETIME_MS:
+    case Datatype::DATETIME_US:
+    case Datatype::DATETIME_NS:
+    case Datatype::DATETIME_PS:
+    case Datatype::DATETIME_FS:
+    case Datatype::DATETIME_AS:
+      return get_mbr<int64_t>(mbr);
     default:
       throw std::invalid_argument(
           "Cannot get MBR; Unsupported coordinates type");
