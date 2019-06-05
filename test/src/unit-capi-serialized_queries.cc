@@ -176,11 +176,16 @@ struct SerializationFx {
     // Serialize
     tiledb_buffer_list_t* buff_list;
     ctx.handle_error(tiledb_serialize_query(
-        ctx, query.ptr().get(), TILEDB_CAPNP, clientside ? 1 : 0, &buff_list));
+        ctx.ptr().get(),
+        query.ptr().get(),
+        TILEDB_CAPNP,
+        clientside ? 1 : 0,
+        &buff_list));
 
     // Flatten
     tiledb_buffer_t* c_buff;
-    ctx.handle_error(tiledb_buffer_list_flatten(ctx, buff_list, &c_buff));
+    ctx.handle_error(
+        tiledb_buffer_list_flatten(ctx.ptr().get(), buff_list, &c_buff));
 
     // Wrap in a safe pointer
     auto deleter = [](tiledb_buffer_t* b) { tiledb_buffer_free(&b); };
@@ -190,7 +195,8 @@ struct SerializationFx {
     // Copy into user vector
     void* data;
     uint64_t num_bytes;
-    ctx.handle_error(tiledb_buffer_get_data(ctx, c_buff, &data, &num_bytes));
+    ctx.handle_error(
+        tiledb_buffer_get_data(ctx.ptr().get(), c_buff, &data, &num_bytes));
     serialized->clear();
     serialized->insert(
         serialized->end(),
@@ -208,7 +214,7 @@ struct SerializationFx {
       Query* query,
       bool clientside) {
     tiledb_buffer_t* c_buff;
-    ctx.handle_error(tiledb_buffer_alloc(ctx, &c_buff));
+    ctx.handle_error(tiledb_buffer_alloc(ctx.ptr().get(), &c_buff));
 
     // Wrap in a safe pointer
     auto deleter = [](tiledb_buffer_t* b) { tiledb_buffer_free(&b); };
@@ -216,14 +222,18 @@ struct SerializationFx {
         c_buff, deleter);
 
     ctx.handle_error(tiledb_buffer_set_data(
-        ctx,
+        ctx.ptr().get(),
         c_buff,
         reinterpret_cast<void*>(&serialized[0]),
         static_cast<uint64_t>(serialized.size())));
 
     // Deserialize
     ctx.handle_error(tiledb_deserialize_query(
-        ctx, c_buff, TILEDB_CAPNP, clientside ? 1 : 0, query->ptr().get()));
+        ctx.ptr().get(),
+        c_buff,
+        TILEDB_CAPNP,
+        clientside ? 1 : 0,
+        query->ptr().get()));
   }
 
   /**
