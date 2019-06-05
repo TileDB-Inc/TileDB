@@ -72,6 +72,10 @@ steps:
       # Add thread sanitizer flag if necessary
       bootstrap_args="${bootstrap_args} --enable-sanitizer=thread --enable-debug";
     fi
+    if [[ "$TILEDB_SERIALIZATION" == "ON" ]]; then
+      # Add serialization flag if necessary
+      bootstrap_args="${bootstrap_args} --enable-serialization";
+    fi
 
     # displayName: 'Install dependencies'
 
