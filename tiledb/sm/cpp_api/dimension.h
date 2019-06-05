@@ -85,7 +85,8 @@ class Dimension {
   const std::string name() const {
     const char* name;
     auto& ctx = ctx_.get();
-    ctx.handle_error(tiledb_dimension_get_name(ctx, dim_.get(), &name));
+    ctx.handle_error(
+        tiledb_dimension_get_name(ctx.ptr().get(), dim_.get(), &name));
     return name;
   }
 
@@ -93,7 +94,8 @@ class Dimension {
   tiledb_datatype_t type() const {
     tiledb_datatype_t type;
     auto& ctx = ctx_.get();
-    ctx.handle_error(tiledb_dimension_get_type(ctx, dim_.get(), &type));
+    ctx.handle_error(
+        tiledb_dimension_get_type(ctx.ptr().get(), dim_.get(), &type));
     return type;
   }
 
@@ -308,11 +310,6 @@ class Dimension {
     return dim_;
   }
 
-  /** Auxiliary operator for getting the underlying C TileDB object. */
-  operator tiledb_dimension_t*() const {
-    return dim_.get();
-  }
-
   /* ********************************* */
   /*          STATIC FUNCTIONS         */
   /* ********************************* */
@@ -422,7 +419,8 @@ class Dimension {
   void* _domain() const {
     auto& ctx = ctx_.get();
     void* domain;
-    ctx.handle_error(tiledb_dimension_get_domain(ctx, dim_.get(), &domain));
+    ctx.handle_error(
+        tiledb_dimension_get_domain(ctx.ptr().get(), dim_.get(), &domain));
     return domain;
   }
 
@@ -430,8 +428,8 @@ class Dimension {
   void* _tile_extent() const {
     void* tile_extent;
     auto& ctx = ctx_.get();
-    ctx.handle_error(
-        tiledb_dimension_get_tile_extent(ctx, dim_.get(), &tile_extent));
+    ctx.handle_error(tiledb_dimension_get_tile_extent(
+        ctx.ptr().get(), dim_.get(), &tile_extent));
     return tile_extent;
   }
 
@@ -451,7 +449,7 @@ class Dimension {
       const void* tile_extent) {
     tiledb_dimension_t* d;
     ctx.handle_error(tiledb_dimension_alloc(
-        ctx, name.c_str(), type, domain, tile_extent, &d));
+        ctx.ptr().get(), name.c_str(), type, domain, tile_extent, &d));
     return Dimension(ctx, d);
   }
 };

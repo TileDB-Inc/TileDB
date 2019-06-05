@@ -93,7 +93,7 @@ class Domain {
   explicit Domain(const Context& ctx)
       : ctx_(ctx) {
     tiledb_domain_t* domain;
-    ctx.handle_error(tiledb_domain_alloc(ctx, &domain));
+    ctx.handle_error(tiledb_domain_alloc(ctx.ptr().get(), &domain));
     domain_ = std::shared_ptr<tiledb_domain_t>(domain, deleter_);
   }
 
@@ -156,14 +156,15 @@ class Domain {
    */
   void dump(FILE* out = stdout) const {
     auto& ctx = ctx_.get();
-    ctx.handle_error(tiledb_domain_dump(ctx, domain_.get(), out));
+    ctx.handle_error(tiledb_domain_dump(ctx.ptr().get(), domain_.get(), out));
   }
 
   /** Returns the domain type. */
   tiledb_datatype_t type() const {
     auto& ctx = ctx_.get();
     tiledb_datatype_t type;
-    ctx.handle_error(tiledb_domain_get_type(ctx, domain_.get(), &type));
+    ctx.handle_error(
+        tiledb_domain_get_type(ctx.ptr().get(), domain_.get(), &type));
     return type;
   }
 
@@ -171,20 +172,22 @@ class Domain {
   unsigned ndim() const {
     auto& ctx = ctx_.get();
     unsigned n;
-    ctx.handle_error(tiledb_domain_get_ndim(ctx, domain_.get(), &n));
+    ctx.handle_error(
+        tiledb_domain_get_ndim(ctx.ptr().get(), domain_.get(), &n));
     return n;
   }
 
   /** Returns the current set of dimensions in the domain. */
   std::vector<Dimension> dimensions() const {
     auto& ctx = ctx_.get();
+    tiledb_ctx_t* c_ctx = ctx.ptr().get();
     unsigned int ndim;
     tiledb_dimension_t* dimptr;
     std::vector<Dimension> dims;
-    ctx.handle_error(tiledb_domain_get_ndim(ctx, domain_.get(), &ndim));
+    ctx.handle_error(tiledb_domain_get_ndim(c_ctx, domain_.get(), &ndim));
     for (unsigned int i = 0; i < ndim; ++i) {
       ctx.handle_error(tiledb_domain_get_dimension_from_index(
-          ctx, domain_.get(), i, &dimptr));
+          c_ctx, domain_.get(), i, &dimptr));
       dims.emplace_back(Dimension(ctx, dimptr));
     }
     return dims;
@@ -206,7 +209,8 @@ class Domain {
    */
   Domain& add_dimension(const Dimension& d) {
     auto& ctx = ctx_.get();
-    ctx.handle_error(tiledb_domain_add_dimension(ctx, domain_.get(), d));
+    ctx.handle_error(tiledb_domain_add_dimension(
+        ctx.ptr().get(), domain_.get(), d.ptr().get()));
     return *this;
   }
 
@@ -245,18 +249,13 @@ class Domain {
     auto& ctx = ctx_.get();
     int32_t has_dim;
     ctx.handle_error(tiledb_domain_has_dimension(
-        ctx, domain_.get(), name.c_str(), &has_dim));
+        ctx.ptr().get(), domain_.get(), name.c_str(), &has_dim));
     return has_dim == 1;
   }
 
   /** Returns a shared pointer to the C TileDB domain object. */
   std::shared_ptr<tiledb_domain_t> ptr() const {
     return domain_;
-  }
-
-  /** Auxiliary operator for getting the underlying C TileDB object. */
-  operator tiledb_domain_t*() const {
-    return domain_.get();
   }
 
  private:

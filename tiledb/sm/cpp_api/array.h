@@ -121,14 +121,15 @@ class Array {
       uint32_t key_length)
       : ctx_(ctx)
       , schema_(ArraySchema(ctx, (tiledb_array_schema_t*)nullptr)) {
+    tiledb_ctx_t* c_ctx = ctx.ptr().get();
     tiledb_array_t* array;
-    ctx.handle_error(tiledb_array_alloc(ctx, array_uri.c_str(), &array));
+    ctx.handle_error(tiledb_array_alloc(c_ctx, array_uri.c_str(), &array));
     array_ = std::shared_ptr<tiledb_array_t>(array, deleter_);
     ctx.handle_error(tiledb_array_open_with_key(
-        ctx, array, query_type, encryption_type, encryption_key, key_length));
+        c_ctx, array, query_type, encryption_type, encryption_key, key_length));
 
     tiledb_array_schema_t* array_schema;
-    ctx.handle_error(tiledb_array_get_schema(ctx, array, &array_schema));
+    ctx.handle_error(tiledb_array_get_schema(c_ctx, array, &array_schema));
     schema_ = ArraySchema(ctx, array_schema);
   }
 
@@ -241,11 +242,12 @@ class Array {
       uint64_t timestamp)
       : ctx_(ctx)
       , schema_(ArraySchema(ctx, (tiledb_array_schema_t*)nullptr)) {
+    tiledb_ctx_t* c_ctx = ctx.ptr().get();
     tiledb_array_t* array;
-    ctx.handle_error(tiledb_array_alloc(ctx, array_uri.c_str(), &array));
+    ctx.handle_error(tiledb_array_alloc(c_ctx, array_uri.c_str(), &array));
     array_ = std::shared_ptr<tiledb_array_t>(array, deleter_);
     ctx.handle_error(tiledb_array_open_at_with_key(
-        ctx,
+        c_ctx,
         array,
         query_type,
         encryption_type,
@@ -254,7 +256,7 @@ class Array {
         timestamp));
 
     tiledb_array_schema_t* array_schema;
-    ctx.handle_error(tiledb_array_get_schema(ctx, array, &array_schema));
+    ctx.handle_error(tiledb_array_get_schema(c_ctx, array, &array_schema));
     schema_ = ArraySchema(ctx, array_schema);
   }
 
@@ -296,7 +298,8 @@ class Array {
   bool is_open() const {
     auto& ctx = ctx_.get();
     int open = 0;
-    ctx.handle_error(tiledb_array_is_open(ctx, array_.get(), &open));
+    ctx.handle_error(
+        tiledb_array_is_open(ctx.ptr().get(), array_.get(), &open));
     return bool(open);
   }
 
@@ -304,7 +307,7 @@ class Array {
   std::string uri() const {
     auto& ctx = ctx_.get();
     const char* uri = nullptr;
-    ctx.handle_error(tiledb_array_get_uri(ctx, array_.get(), &uri));
+    ctx.handle_error(tiledb_array_get_uri(ctx.ptr().get(), array_.get(), &uri));
     return std::string(uri);
   }
 
@@ -312,18 +315,14 @@ class Array {
   ArraySchema schema() const {
     auto& ctx = ctx_.get();
     tiledb_array_schema_t* schema;
-    ctx.handle_error(tiledb_array_get_schema(ctx, array_.get(), &schema));
+    ctx.handle_error(
+        tiledb_array_get_schema(ctx.ptr().get(), array_.get(), &schema));
     return ArraySchema(ctx, schema);
   }
 
   /** Returns a shared pointer to the C TileDB array object. */
   std::shared_ptr<tiledb_array_t> ptr() const {
     return array_;
-  }
-
-  /** Auxiliary operator for getting the underlying C TileDB object. */
-  operator tiledb_array_t*() const {
-    return array_.get();
   }
 
   /**
@@ -381,15 +380,17 @@ class Array {
       const void* encryption_key,
       uint32_t key_length) {
     auto& ctx = ctx_.get();
+    tiledb_ctx_t* c_ctx = ctx.ptr().get();
     ctx.handle_error(tiledb_array_open_with_key(
-        ctx,
+        c_ctx,
         array_.get(),
         query_type,
         encryption_type,
         encryption_key,
         key_length));
     tiledb_array_schema_t* array_schema;
-    ctx.handle_error(tiledb_array_get_schema(ctx, array_.get(), &array_schema));
+    ctx.handle_error(
+        tiledb_array_get_schema(c_ctx, array_.get(), &array_schema));
     schema_ = ArraySchema(ctx, array_schema);
   }
 
@@ -473,8 +474,9 @@ class Array {
       uint32_t key_length,
       uint64_t timestamp) {
     auto& ctx = ctx_.get();
+    tiledb_ctx_t* c_ctx = ctx.ptr().get();
     ctx.handle_error(tiledb_array_open_at_with_key(
-        ctx,
+        c_ctx,
         array_.get(),
         query_type,
         encryption_type,
@@ -482,7 +484,8 @@ class Array {
         key_length,
         timestamp));
     tiledb_array_schema_t* array_schema;
-    ctx.handle_error(tiledb_array_get_schema(ctx, array_.get(), &array_schema));
+    ctx.handle_error(
+        tiledb_array_get_schema(c_ctx, array_.get(), &array_schema));
     schema_ = ArraySchema(ctx, array_schema);
   }
 
@@ -528,9 +531,11 @@ class Array {
    */
   void reopen() {
     auto& ctx = ctx_.get();
-    ctx.handle_error(tiledb_array_reopen(ctx, array_.get()));
+    tiledb_ctx_t* c_ctx = ctx.ptr().get();
+    ctx.handle_error(tiledb_array_reopen(c_ctx, array_.get()));
     tiledb_array_schema_t* array_schema;
-    ctx.handle_error(tiledb_array_get_schema(ctx, array_.get(), &array_schema));
+    ctx.handle_error(
+        tiledb_array_get_schema(c_ctx, array_.get(), &array_schema));
     schema_ = ArraySchema(ctx, array_schema);
   }
 
@@ -550,9 +555,11 @@ class Array {
    */
   void reopen_at(uint64_t timestamp) {
     auto& ctx = ctx_.get();
-    ctx.handle_error(tiledb_array_reopen_at(ctx, array_.get(), timestamp));
+    tiledb_ctx_t* c_ctx = ctx.ptr().get();
+    ctx.handle_error(tiledb_array_reopen_at(c_ctx, array_.get(), timestamp));
     tiledb_array_schema_t* array_schema;
-    ctx.handle_error(tiledb_array_get_schema(ctx, array_.get(), &array_schema));
+    ctx.handle_error(
+        tiledb_array_get_schema(c_ctx, array_.get(), &array_schema));
     schema_ = ArraySchema(ctx, array_schema);
   }
 
@@ -560,7 +567,8 @@ class Array {
   uint64_t timestamp() const {
     auto& ctx = ctx_.get();
     uint64_t timestamp;
-    ctx.handle_error(tiledb_array_get_timestamp(ctx, array_.get(), &timestamp));
+    ctx.handle_error(
+        tiledb_array_get_timestamp(ctx.ptr().get(), array_.get(), &timestamp));
     return timestamp;
   }
 
@@ -575,7 +583,7 @@ class Array {
    */
   void close() {
     auto& ctx = ctx_.get();
-    ctx.handle_error(tiledb_array_close(ctx, array_.get()));
+    ctx.handle_error(tiledb_array_close(ctx.ptr().get(), array_.get()));
   }
 
   /**
@@ -632,7 +640,7 @@ class Array {
       uint32_t key_length,
       const Config& config = Config()) {
     ctx.handle_error(tiledb_array_consolidate_with_key(
-        ctx,
+        ctx.ptr().get(),
         uri.c_str(),
         encryption_type,
         encryption_key,
@@ -707,9 +715,15 @@ class Array {
       const void* encryption_key,
       uint32_t key_length) {
     auto& ctx = schema.context();
-    ctx.handle_error(tiledb_array_schema_check(ctx, schema));
+    tiledb_ctx_t* c_ctx = ctx.ptr().get();
+    ctx.handle_error(tiledb_array_schema_check(c_ctx, schema.ptr().get()));
     ctx.handle_error(tiledb_array_create_with_key(
-        ctx, uri.c_str(), schema, encryption_type, encryption_key, key_length));
+        c_ctx,
+        uri.c_str(),
+        schema.ptr().get(),
+        encryption_type,
+        encryption_key,
+        key_length));
   }
 
   // clang-format off
@@ -754,8 +768,8 @@ class Array {
   static tiledb_encryption_type_t encryption_type(
       const Context& ctx, const std::string& array_uri) {
     tiledb_encryption_type_t encryption_type;
-    ctx.handle_error(
-        tiledb_array_encryption_type(ctx, array_uri.c_str(), &encryption_type));
+    ctx.handle_error(tiledb_array_encryption_type(
+        ctx.ptr().get(), array_uri.c_str(), &encryption_type));
     return encryption_type;
   }
 
@@ -790,7 +804,7 @@ class Array {
 
     auto& ctx = ctx_.get();
     ctx.handle_error(tiledb_array_get_non_empty_domain(
-        ctx, array_.get(), buf.data(), &empty));
+        ctx.ptr().get(), array_.get(), buf.data(), &empty));
 
     if (empty)
       return ret;
@@ -841,6 +855,7 @@ class Array {
   std::unordered_map<std::string, std::pair<uint64_t, uint64_t>>
   max_buffer_elements(const std::vector<T>& subarray) {
     auto ctx = ctx_.get();
+    tiledb_ctx_t* c_ctx = ctx.ptr().get();
     impl::type_check<T>(schema_.domain().type(), 1);
 
     // Handle attributes
@@ -856,7 +871,7 @@ class Array {
       if (var) {
         uint64_t size_off, size_val;
         ctx.handle_error(tiledb_array_max_buffer_size_var(
-            ctx,
+            c_ctx,
             array_.get(),
             name.c_str(),
             subarray.data(),
@@ -866,7 +881,7 @@ class Array {
             size_off / TILEDB_OFFSET_SIZE, size_val / type_size);
       } else {
         ctx.handle_error(tiledb_array_max_buffer_size(
-            ctx, array_.get(), name.c_str(), subarray.data(), &attr_size));
+            c_ctx, array_.get(), name.c_str(), subarray.data(), &attr_size));
         ret[a.first] = std::pair<uint64_t, uint64_t>(0, attr_size / type_size);
       }
     }
@@ -874,7 +889,7 @@ class Array {
     // Handle coordinates
     type_size = tiledb_datatype_size(schema_.domain().type());
     ctx.handle_error(tiledb_array_max_buffer_size(
-        ctx, array_.get(), TILEDB_COORDS, subarray.data(), &attr_size));
+        c_ctx, array_.get(), TILEDB_COORDS, subarray.data(), &attr_size));
     ret[TILEDB_COORDS] =
         std::pair<uint64_t, uint64_t>(0, attr_size / type_size);
 
@@ -885,8 +900,8 @@ class Array {
   tiledb_query_type_t query_type() const {
     auto& ctx = ctx_.get();
     tiledb_query_type_t query_type;
-    ctx.handle_error(
-        tiledb_array_get_query_type(ctx, array_.get(), &query_type));
+    ctx.handle_error(tiledb_array_get_query_type(
+        ctx.ptr().get(), array_.get(), &query_type));
     return query_type;
   }
 

@@ -137,7 +137,8 @@ class Attribute {
   std::string name() const {
     auto& ctx = ctx_.get();
     const char* name;
-    ctx.handle_error(tiledb_attribute_get_name(ctx, attr_.get(), &name));
+    ctx.handle_error(
+        tiledb_attribute_get_name(ctx.ptr().get(), attr_.get(), &name));
     return name;
   }
 
@@ -145,7 +146,8 @@ class Attribute {
   tiledb_datatype_t type() const {
     auto& ctx = ctx_.get();
     tiledb_datatype_t type;
-    ctx.handle_error(tiledb_attribute_get_type(ctx, attr_.get(), &type));
+    ctx.handle_error(
+        tiledb_attribute_get_type(ctx.ptr().get(), attr_.get(), &type));
     return type;
   }
 
@@ -169,8 +171,8 @@ class Attribute {
   uint64_t cell_size() const {
     auto& ctx = ctx_.get();
     uint64_t cell_size;
-    ctx.handle_error(
-        tiledb_attribute_get_cell_size(ctx, attr_.get(), &cell_size));
+    ctx.handle_error(tiledb_attribute_get_cell_size(
+        ctx.ptr().get(), attr_.get(), &cell_size));
     return cell_size;
   }
 
@@ -195,7 +197,8 @@ class Attribute {
   unsigned cell_val_num() const {
     auto& ctx = ctx_.get();
     unsigned num;
-    ctx.handle_error(tiledb_attribute_get_cell_val_num(ctx, attr_.get(), &num));
+    ctx.handle_error(
+        tiledb_attribute_get_cell_val_num(ctx.ptr().get(), attr_.get(), &num));
     return num;
   }
 
@@ -217,7 +220,8 @@ class Attribute {
    */
   Attribute& set_cell_val_num(unsigned num) {
     auto& ctx = ctx_.get();
-    ctx.handle_error(tiledb_attribute_set_cell_val_num(ctx, attr_.get(), num));
+    ctx.handle_error(
+        tiledb_attribute_set_cell_val_num(ctx.ptr().get(), attr_.get(), num));
     return *this;
   }
 
@@ -235,8 +239,8 @@ class Attribute {
   FilterList filter_list() const {
     auto& ctx = ctx_.get();
     tiledb_filter_list_t* filter_list;
-    ctx.handle_error(
-        tiledb_attribute_get_filter_list(ctx, attr_.get(), &filter_list));
+    ctx.handle_error(tiledb_attribute_get_filter_list(
+        ctx.ptr().get(), attr_.get(), &filter_list));
     return FilterList(ctx, filter_list);
   }
 
@@ -250,19 +254,14 @@ class Attribute {
    */
   Attribute& set_filter_list(const FilterList& filter_list) {
     auto& ctx = ctx_.get();
-    ctx.handle_error(
-        tiledb_attribute_set_filter_list(ctx, attr_.get(), filter_list));
+    ctx.handle_error(tiledb_attribute_set_filter_list(
+        ctx.ptr().get(), attr_.get(), filter_list.ptr().get()));
     return *this;
   }
 
   /** Returns the C TileDB attribute object pointer. */
   std::shared_ptr<tiledb_attribute_t> ptr() const {
     return attr_;
-  }
-
-  /** Auxiliary operator for getting the underlying C TileDB object. */
-  operator tiledb_attribute_t*() const {
-    return attr_.get();
   }
 
   /**
@@ -273,7 +272,7 @@ class Attribute {
    */
   void dump(FILE* out = stdout) const {
     ctx_.get().handle_error(
-        tiledb_attribute_dump(ctx_.get(), attr_.get(), out));
+        tiledb_attribute_dump(ctx_.get().ptr().get(), attr_.get(), out));
   }
 
   /* ********************************* */
@@ -360,7 +359,8 @@ class Attribute {
   void init_from_type(const std::string& name, tiledb_datatype_t type) {
     tiledb_attribute_t* attr;
     auto& ctx = ctx_.get();
-    ctx.handle_error(tiledb_attribute_alloc(ctx, name.c_str(), type, &attr));
+    ctx.handle_error(
+        tiledb_attribute_alloc(ctx.ptr().get(), name.c_str(), type, &attr));
     attr_ = std::shared_ptr<tiledb_attribute_t>(attr, deleter_);
   }
 };
