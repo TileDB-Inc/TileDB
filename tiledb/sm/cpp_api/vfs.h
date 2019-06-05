@@ -386,77 +386,87 @@ class VFS {
   /** Creates an object-store bucket with the input URI. */
   void create_bucket(const std::string& uri) const {
     auto& ctx = ctx_.get();
-    ctx.handle_error(tiledb_vfs_create_bucket(ctx, vfs_.get(), uri.c_str()));
+    ctx.handle_error(
+        tiledb_vfs_create_bucket(ctx.ptr().get(), vfs_.get(), uri.c_str()));
   }
 
   /** Deletes an object-store bucket with the input URI. */
   void remove_bucket(const std::string& uri) const {
     auto& ctx = ctx_.get();
-    ctx.handle_error(tiledb_vfs_remove_bucket(ctx, vfs_.get(), uri.c_str()));
+    ctx.handle_error(
+        tiledb_vfs_remove_bucket(ctx.ptr().get(), vfs_.get(), uri.c_str()));
   }
 
   /** Checks if an object-store bucket with the input URI exists. */
   bool is_bucket(const std::string& uri) const {
     auto& ctx = ctx_.get();
     int ret;
-    ctx.handle_error(tiledb_vfs_is_bucket(ctx, vfs_.get(), uri.c_str(), &ret));
+    ctx.handle_error(
+        tiledb_vfs_is_bucket(ctx.ptr().get(), vfs_.get(), uri.c_str(), &ret));
     return (bool)ret;
   }
 
   /** Empty a bucket **/
   void empty_bucket(const std::string& bucket) const {
     auto& ctx = ctx_.get();
-    ctx.handle_error(tiledb_vfs_empty_bucket(ctx, vfs_.get(), bucket.c_str()));
+    ctx.handle_error(
+        tiledb_vfs_empty_bucket(ctx.ptr().get(), vfs_.get(), bucket.c_str()));
   }
 
   /** Check if a bucket is empty **/
   bool is_empty_bucket(const std::string& bucket) const {
     auto& ctx = ctx_.get();
     int empty;
-    ctx.handle_error(
-        tiledb_vfs_is_empty_bucket(ctx, vfs_.get(), bucket.c_str(), &empty));
+    ctx.handle_error(tiledb_vfs_is_empty_bucket(
+        ctx.ptr().get(), vfs_.get(), bucket.c_str(), &empty));
     return empty == 0;
   }
 
   /** Creates a directory with the input URI. */
   void create_dir(const std::string& uri) const {
     auto& ctx = ctx_.get();
-    ctx.handle_error(tiledb_vfs_create_dir(ctx, vfs_.get(), uri.c_str()));
+    ctx.handle_error(
+        tiledb_vfs_create_dir(ctx.ptr().get(), vfs_.get(), uri.c_str()));
   }
 
   /** Checks if a directory with the input URI exists. */
   bool is_dir(const std::string& uri) const {
     auto& ctx = ctx_.get();
     int ret;
-    ctx.handle_error(tiledb_vfs_is_dir(ctx, vfs_.get(), uri.c_str(), &ret));
+    ctx.handle_error(
+        tiledb_vfs_is_dir(ctx.ptr().get(), vfs_.get(), uri.c_str(), &ret));
     return (bool)ret;
   }
 
   /** Removes a directory (recursively) with the input URI. */
   void remove_dir(const std::string& uri) const {
     auto& ctx = ctx_.get();
-    ctx.handle_error(tiledb_vfs_remove_dir(ctx, vfs_.get(), uri.c_str()));
+    ctx.handle_error(
+        tiledb_vfs_remove_dir(ctx.ptr().get(), vfs_.get(), uri.c_str()));
   }
 
   /** Checks if a file with the input URI exists. */
   bool is_file(const std::string& uri) const {
     auto& ctx = ctx_.get();
     int ret;
-    ctx.handle_error(tiledb_vfs_is_file(ctx, vfs_.get(), uri.c_str(), &ret));
+    ctx.handle_error(
+        tiledb_vfs_is_file(ctx.ptr().get(), vfs_.get(), uri.c_str(), &ret));
     return (bool)ret;
   }
 
   /** Deletes a file with the input URI. */
   void remove_file(const std::string& uri) const {
     auto& ctx = ctx_.get();
-    ctx.handle_error(tiledb_vfs_remove_file(ctx, vfs_.get(), uri.c_str()));
+    ctx.handle_error(
+        tiledb_vfs_remove_file(ctx.ptr().get(), vfs_.get(), uri.c_str()));
   }
 
   /** Retrieves the size of a directory with the input URI. */
   uint64_t dir_size(const std::string& uri) const {
     uint64_t ret;
     auto& ctx = ctx_.get();
-    ctx.handle_error(tiledb_vfs_dir_size(ctx, vfs_.get(), uri.c_str(), &ret));
+    ctx.handle_error(
+        tiledb_vfs_dir_size(ctx.ptr().get(), vfs_.get(), uri.c_str(), &ret));
     return ret;
   }
 
@@ -467,8 +477,8 @@ class VFS {
   std::vector<std::string> ls(const std::string& uri) const {
     std::vector<std::string> ret;
     auto& ctx = ctx_.get();
-    ctx.handle_error(
-        tiledb_vfs_ls(ctx, vfs_.get(), uri.c_str(), ls_getter, &ret));
+    ctx.handle_error(tiledb_vfs_ls(
+        ctx.ptr().get(), vfs_.get(), uri.c_str(), ls_getter, &ret));
     return ret;
   }
 
@@ -476,7 +486,8 @@ class VFS {
   uint64_t file_size(const std::string& uri) const {
     uint64_t ret;
     auto& ctx = ctx_.get();
-    ctx.handle_error(tiledb_vfs_file_size(ctx, vfs_.get(), uri.c_str(), &ret));
+    ctx.handle_error(
+        tiledb_vfs_file_size(ctx.ptr().get(), vfs_.get(), uri.c_str(), &ret));
     return ret;
   }
 
@@ -484,20 +495,21 @@ class VFS {
   void move_file(const std::string& old_uri, const std::string& new_uri) const {
     auto& ctx = ctx_.get();
     ctx.handle_error(tiledb_vfs_move_file(
-        ctx, vfs_.get(), old_uri.c_str(), new_uri.c_str()));
+        ctx.ptr().get(), vfs_.get(), old_uri.c_str(), new_uri.c_str()));
   }
 
   /** Renames a TileDB directory from an old URI to a new URI. */
   void move_dir(const std::string& old_uri, const std::string& new_uri) const {
     auto& ctx = ctx_.get();
-    ctx.handle_error(
-        tiledb_vfs_move_dir(ctx, vfs_.get(), old_uri.c_str(), new_uri.c_str()));
+    ctx.handle_error(tiledb_vfs_move_dir(
+        ctx.ptr().get(), vfs_.get(), old_uri.c_str(), new_uri.c_str()));
   }
 
   /** Touches a file with the input URI, i.e., creates a new empty file. */
   void touch(const std::string& uri) const {
     auto& ctx = ctx_.get();
-    ctx.handle_error(tiledb_vfs_touch(ctx, vfs_.get(), uri.c_str()));
+    ctx.handle_error(
+        tiledb_vfs_touch(ctx.ptr().get(), vfs_.get(), uri.c_str()));
   }
 
   /** Get the underlying context **/
@@ -558,7 +570,7 @@ class VFS {
   /** Creates a TileDB C VFS object, using the input config. */
   void create_vfs(tiledb_config_t* config) {
     tiledb_vfs_t* vfs;
-    int rc = tiledb_vfs_alloc(ctx_.get(), config, &vfs);
+    int rc = tiledb_vfs_alloc(ctx_.get().ptr().get(), config, &vfs);
     if (rc != TILEDB_OK)
       throw std::runtime_error(
           "[TileDB::C++API] Error: Failed to create VFS object");
@@ -591,7 +603,8 @@ inline VFSFilebuf* VFSFilebuf::open(
 
   tiledb_vfs_fh_t* fh;
   auto& ctx = vfs_.get().context();
-  if (tiledb_vfs_open(ctx, vfs_.get().ptr().get(), uri.c_str(), mode, &fh) !=
+  if (tiledb_vfs_open(
+          ctx.ptr().get(), vfs_.get().ptr().get(), uri.c_str(), mode, &fh) !=
       TILEDB_OK) {
     return nullptr;
   }
@@ -607,7 +620,7 @@ inline VFSFilebuf* VFSFilebuf::open(
 inline VFSFilebuf* VFSFilebuf::close() {
   if (is_open()) {
     auto& ctx = vfs_.get().context();
-    ctx.handle_error(tiledb_vfs_close(ctx, fh_.get()));
+    ctx.handle_error(tiledb_vfs_close(ctx.ptr().get(), fh_.get()));
   }
   uri_ = "";
   fh_ = nullptr;
@@ -625,8 +638,11 @@ inline std::streamsize VFSFilebuf::xsgetn(char_type* s, std::streamsize n) {
     return traits_type::eof();
   auto& ctx = vfs_.get().context();
   if (tiledb_vfs_read(
-          ctx, fh_.get(), offset_, s, static_cast<uint64_t>(readlen)) !=
-      TILEDB_OK) {
+          ctx.ptr().get(),
+          fh_.get(),
+          offset_,
+          s,
+          static_cast<uint64_t>(readlen)) != TILEDB_OK) {
     return traits_type::eof();
   }
 
@@ -639,7 +655,8 @@ inline std::streamsize VFSFilebuf::xsputn(
   if (offset_ != 0 && offset_ != file_size())
     return traits_type::eof();
   auto& ctx = vfs_.get().context();
-  if (tiledb_vfs_write(ctx, fh_.get(), s, static_cast<uint64_t>(n)) !=
+  if (tiledb_vfs_write(
+          ctx.ptr().get(), fh_.get(), s, static_cast<uint64_t>(n)) !=
       TILEDB_OK) {
     return traits_type::eof();
   }

@@ -75,7 +75,8 @@ class Filter {
   Filter(const Context& ctx, tiledb_filter_type_t filter_type)
       : ctx_(ctx) {
     tiledb_filter_t* filter;
-    ctx.handle_error(tiledb_filter_alloc(ctx, filter_type, &filter));
+    ctx.handle_error(
+        tiledb_filter_alloc(ctx.ptr().get(), filter_type, &filter));
     filter_ = std::shared_ptr<tiledb_filter_t>(filter, deleter_);
   }
 
@@ -99,11 +100,6 @@ class Filter {
   /* ********************************* */
   /*                 API               */
   /* ********************************* */
-
-  /** Auxiliary operator for getting the underlying C TileDB object. */
-  operator tiledb_filter_t*() const {
-    return filter_.get();
-  }
 
   /** Returns a shared pointer to the C TileDB domain object. */
   std::shared_ptr<tiledb_filter_t> ptr() const {
@@ -135,8 +131,8 @@ class Filter {
   Filter& set_option(tiledb_filter_option_t option, T value) {
     auto& ctx = ctx_.get();
     option_value_typecheck<T>(option);
-    ctx.handle_error(
-        tiledb_filter_set_option(ctx, filter_.get(), option, &value));
+    ctx.handle_error(tiledb_filter_set_option(
+        ctx.ptr().get(), filter_.get(), option, &value));
     return *this;
   }
 
@@ -164,8 +160,8 @@ class Filter {
    */
   Filter& set_option(tiledb_filter_option_t option, const void* value) {
     auto& ctx = ctx_.get();
-    ctx.handle_error(
-        tiledb_filter_set_option(ctx, filter_.get(), option, value));
+    ctx.handle_error(tiledb_filter_set_option(
+        ctx.ptr().get(), filter_.get(), option, value));
     return *this;
   }
 
@@ -197,8 +193,8 @@ class Filter {
   void get_option(tiledb_filter_option_t option, T* value) {
     auto& ctx = ctx_.get();
     option_value_typecheck<T>(option);
-    ctx.handle_error(
-        tiledb_filter_get_option(ctx, filter_.get(), option, value));
+    ctx.handle_error(tiledb_filter_get_option(
+        ctx.ptr().get(), filter_.get(), option, value));
   }
 
   /**
@@ -227,15 +223,16 @@ class Filter {
    */
   void get_option(tiledb_filter_option_t option, void* value) {
     auto& ctx = ctx_.get();
-    ctx.handle_error(
-        tiledb_filter_get_option(ctx, filter_.get(), option, value));
+    ctx.handle_error(tiledb_filter_get_option(
+        ctx.ptr().get(), filter_.get(), option, value));
   }
 
   /** Gets the filter type of this filter. */
   tiledb_filter_type_t filter_type() const {
     auto& ctx = ctx_.get();
     tiledb_filter_type_t type;
-    ctx.handle_error(tiledb_filter_get_type(ctx, filter_.get(), &type));
+    ctx.handle_error(
+        tiledb_filter_get_type(ctx.ptr().get(), filter_.get(), &type));
     return type;
   }
 

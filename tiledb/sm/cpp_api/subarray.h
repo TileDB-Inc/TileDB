@@ -70,7 +70,8 @@ class Subarray {
   explicit Subarray(const Context& ctx, Array& array, tiledb_layout_t layout)
       : ctx_(ctx) {
     tiledb_subarray_t* subarray;
-    ctx.handle_error(tiledb_subarray_alloc(ctx, array, layout, &subarray));
+    ctx.handle_error(tiledb_subarray_alloc(
+        ctx.ptr().get(), array.ptr().get(), layout, &subarray));
     subarray_ = std::shared_ptr<tiledb_subarray_t>(subarray, deleter_);
   }
 
@@ -108,8 +109,8 @@ class Subarray {
    */
   Subarray& add_range(uint32_t dim_idx, const void* range) {
     auto& ctx = ctx_.get();
-    ctx.handle_error(
-        tiledb_subarray_add_range(ctx, subarray_.get(), dim_idx, range));
+    ctx.handle_error(tiledb_subarray_add_range(
+        ctx.ptr().get(), subarray_.get(), dim_idx, range));
     return *this;
   }
 
@@ -131,7 +132,7 @@ class Subarray {
     auto& ctx = ctx_.get();
     uint64_t size = 0;
     ctx.handle_error(tiledb_subarray_get_est_result_size(
-        ctx, subarray_.get(), attr_name.c_str(), &size));
+        ctx.ptr().get(), subarray_.get(), attr_name.c_str(), &size));
     return size;
   }
 
@@ -157,18 +158,17 @@ class Subarray {
     auto& ctx = ctx_.get();
     uint64_t size_off = 0, size_val = 0;
     ctx.handle_error(tiledb_subarray_get_est_result_size_var(
-        ctx, subarray_.get(), attr_name.c_str(), &size_off, &size_val));
+        ctx.ptr().get(),
+        subarray_.get(),
+        attr_name.c_str(),
+        &size_off,
+        &size_val));
     return std::make_pair(size_off / sizeof(uint64_t), size_val);
   }
 
   /** Returns a shared pointer to the C TileDB subarray object. */
   std::shared_ptr<tiledb_subarray_t> ptr() const {
     return subarray_;
-  }
-
-  /** Auxiliary operator for getting the underlying C TileDB object. */
-  operator tiledb_subarray_t*() const {
-    return subarray_.get();
   }
 
  private:

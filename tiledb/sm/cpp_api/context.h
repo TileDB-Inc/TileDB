@@ -93,7 +93,7 @@ class Context {
    */
   explicit Context(const Config& config) {
     tiledb_ctx_t* ctx;
-    if (tiledb_ctx_alloc(config, &ctx) != TILEDB_OK)
+    if (tiledb_ctx_alloc(config.ptr().get(), &ctx) != TILEDB_OK)
       throw TileDBError("[TileDB::C++API] Error: Failed to create context");
     ctx_ = std::shared_ptr<tiledb_ctx_t>(ctx, Context::free);
     error_handler_ = default_error_handler;
@@ -142,11 +142,6 @@ class Context {
   /** Returns the C TileDB context object. */
   std::shared_ptr<tiledb_ctx_t> ptr() const {
     return ctx_;
-  }
-
-  /** Auxiliary operator for getting the underlying C TileDB object. */
-  operator tiledb_ctx_t*() const {
-    return ctx_.get();
   }
 
   /**

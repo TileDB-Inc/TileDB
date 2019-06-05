@@ -213,11 +213,6 @@ class Config {
     return config_;
   }
 
-  /** Auxiliary operator for getting the underlying C TileDB object. */
-  operator tiledb_config_t*() const {
-    return config_.get();
-  }
-
   /** Sets a config parameter.
    *
    * **Parameters**

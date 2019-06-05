@@ -212,9 +212,10 @@ class ObjectIter {
     ObjGetterData data(objs, array_, group_, kv_);
     if (recursive_) {
       ctx.handle_error(tiledb_object_walk(
-          ctx, root_.c_str(), walk_order_, obj_getter, &data));
+          ctx.ptr().get(), root_.c_str(), walk_order_, obj_getter, &data));
     } else {
-      ctx.handle_error(tiledb_object_ls(ctx, root_.c_str(), obj_getter, &data));
+      ctx.handle_error(
+          tiledb_object_ls(ctx.ptr().get(), root_.c_str(), obj_getter, &data));
     }
 
     return iterator(objs);

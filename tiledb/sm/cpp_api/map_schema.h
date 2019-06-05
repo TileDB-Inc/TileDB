@@ -78,7 +78,7 @@ class MapSchema : public Schema {
   explicit MapSchema(const Context& ctx)
       : Schema(ctx) {
     tiledb_kv_schema_t* schema;
-    ctx.handle_error(tiledb_kv_schema_alloc(ctx, &schema));
+    ctx.handle_error(tiledb_kv_schema_alloc(ctx.ptr().get(), &schema));
     schema_ = std::shared_ptr<tiledb_kv_schema_t>(schema, deleter_);
   }
 
@@ -110,7 +110,7 @@ class MapSchema : public Schema {
       : Schema(ctx) {
     tiledb_kv_schema_t* schema;
     ctx.handle_error(tiledb_kv_schema_load_with_key(
-        ctx,
+        ctx.ptr().get(),
         uri.c_str(),
         encryption_type,
         encryption_key,
@@ -159,11 +159,6 @@ class MapSchema : public Schema {
   /*                API                */
   /* ********************************* */
 
-  /** Auxiliary operator for getting the underlying C TileDB object. */
-  operator tiledb_kv_schema_t*() const {
-    return schema_.get();
-  }
-
   /**
    * Dumps the map schema in an ASCII representation to an output.
    *
@@ -171,7 +166,8 @@ class MapSchema : public Schema {
    */
   void dump(FILE* out = stdout) const override {
     auto& ctx = ctx_.get();
-    ctx.handle_error(tiledb_kv_schema_dump(ctx, schema_.get(), out));
+    ctx.handle_error(
+        tiledb_kv_schema_dump(ctx.ptr().get(), schema_.get(), out));
   }
 
   /**
@@ -189,8 +185,8 @@ class MapSchema : public Schema {
    */
   MapSchema& add_attribute(const Attribute& attr) override {
     auto& ctx = ctx_.get();
-    ctx.handle_error(
-        tiledb_kv_schema_add_attribute(ctx, schema_.get(), attr.ptr().get()));
+    ctx.handle_error(tiledb_kv_schema_add_attribute(
+        ctx.ptr().get(), schema_.get(), attr.ptr().get()));
     return *this;
   }
 
@@ -220,7 +216,7 @@ class MapSchema : public Schema {
    */
   void check() const override {
     auto& ctx = ctx_.get();
-    ctx.handle_error(tiledb_kv_schema_check(ctx, schema_.get()));
+    ctx.handle_error(tiledb_kv_schema_check(ctx.ptr().get(), schema_.get()));
   }
 
   /**
@@ -230,14 +226,15 @@ class MapSchema : public Schema {
    */
   std::unordered_map<std::string, Attribute> attributes() const override {
     auto& ctx = ctx_.get();
+    tiledb_ctx_t* c_ctx = ctx.ptr().get();
     tiledb_attribute_t* attrptr;
     unsigned int nattr;
     std::unordered_map<std::string, Attribute> attrs;
     ctx.handle_error(
-        tiledb_kv_schema_get_attribute_num(ctx, schema_.get(), &nattr));
+        tiledb_kv_schema_get_attribute_num(c_ctx, schema_.get(), &nattr));
     for (unsigned int i = 0; i < nattr; ++i) {
       ctx.handle_error(tiledb_kv_schema_get_attribute_from_index(
-          ctx, schema_.get(), i, &attrptr));
+          c_ctx, schema_.get(), i, &attrptr));
       auto attr = Attribute(ctx_, attrptr);
       attrs.emplace(
           std::pair<std::string, Attribute>(attr.name(), std::move(attr)));
@@ -249,8 +246,8 @@ class MapSchema : public Schema {
   unsigned attribute_num() const override {
     auto& ctx = context();
     unsigned num;
-    ctx.handle_error(
-        tiledb_kv_schema_get_attribute_num(ctx, schema_.get(), &num));
+    ctx.handle_error(tiledb_kv_schema_get_attribute_num(
+        ctx.ptr().get(), schema_.get(), &num));
     return num;
   }
 
@@ -264,7 +261,7 @@ class MapSchema : public Schema {
     auto& ctx = ctx_.get();
     tiledb_attribute_t* attr;
     ctx.handle_error(tiledb_kv_schema_get_attribute_from_name(
-        ctx, schema_.get(), name.c_str(), &attr));
+        ctx.ptr().get(), schema_.get(), name.c_str(), &attr));
     return {ctx, attr};
   }
   /**
@@ -279,7 +276,7 @@ class MapSchema : public Schema {
     auto& ctx = ctx_.get();
     tiledb_attribute_t* attr;
     ctx.handle_error(tiledb_kv_schema_get_attribute_from_index(
-        ctx, schema_.get(), i, &attr));
+        ctx.ptr().get(), schema_.get(), i, &attr));
     return {ctx, attr};
   }
 
@@ -293,7 +290,7 @@ class MapSchema : public Schema {
     auto& ctx = ctx_.get();
     int32_t has_attr;
     ctx.handle_error(tiledb_kv_schema_has_attribute(
-        ctx, schema_.get(), name.c_str(), &has_attr));
+        ctx.ptr().get(), schema_.get(), name.c_str(), &has_attr));
     return has_attr == 1;
   }
 
@@ -305,8 +302,8 @@ class MapSchema : public Schema {
    */
   MapSchema& set_capacity(uint64_t capacity) {
     auto& ctx = ctx_.get();
-    ctx.handle_error(
-        tiledb_kv_schema_set_capacity(ctx, schema_.get(), capacity));
+    ctx.handle_error(tiledb_kv_schema_set_capacity(
+        ctx.ptr().get(), schema_.get(), capacity));
     return *this;
   }
 
@@ -314,8 +311,8 @@ class MapSchema : public Schema {
   uint64_t capacity() const {
     auto& ctx = ctx_.get();
     uint64_t capacity;
-    ctx.handle_error(
-        tiledb_kv_schema_get_capacity(ctx, schema_.get(), &capacity));
+    ctx.handle_error(tiledb_kv_schema_get_capacity(
+        ctx.ptr().get(), schema_.get(), &capacity));
     return capacity;
   }
 

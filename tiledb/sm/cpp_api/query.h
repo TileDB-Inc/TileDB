@@ -132,7 +132,8 @@ class Query {
       : ctx_(ctx)
       , schema_(array.schema()) {
     tiledb_query_t* q;
-    ctx.handle_error(tiledb_query_alloc(ctx, array, type, &q));
+    ctx.handle_error(
+        tiledb_query_alloc(ctx.ptr().get(), array.ptr().get(), type, &q));
     query_ = std::shared_ptr<tiledb_query_t>(q, deleter_);
   }
 
@@ -166,7 +167,8 @@ class Query {
       , schema_(array.schema()) {
     tiledb_query_t* q;
     auto type = array.query_type();
-    ctx.handle_error(tiledb_query_alloc(ctx, array, type, &q));
+    ctx.handle_error(
+        tiledb_query_alloc(ctx.ptr().get(), array.ptr().get(), type, &q));
     query_ = std::shared_ptr<tiledb_query_t>(q, deleter_);
   }
 
@@ -188,7 +190,8 @@ class Query {
   tiledb_query_type_t query_type() const {
     auto& ctx = ctx_.get();
     tiledb_query_type_t query_type;
-    ctx.handle_error(tiledb_query_get_type(ctx, query_.get(), &query_type));
+    ctx.handle_error(
+        tiledb_query_get_type(ctx.ptr().get(), query_.get(), &query_type));
     return query_type;
   }
 
@@ -215,7 +218,8 @@ class Query {
    */
   Query& set_layout(tiledb_layout_t layout) {
     auto& ctx = ctx_.get();
-    ctx.handle_error(tiledb_query_set_layout(ctx, query_.get(), layout));
+    ctx.handle_error(
+        tiledb_query_set_layout(ctx.ptr().get(), query_.get(), layout));
     return *this;
   }
 
@@ -223,7 +227,8 @@ class Query {
   tiledb_layout_t query_layout() const {
     auto& ctx = ctx_.get();
     tiledb_layout_t query_layout;
-    ctx.handle_error(tiledb_query_get_layout(ctx, query_.get(), &query_layout));
+    ctx.handle_error(
+        tiledb_query_get_layout(ctx.ptr().get(), query_.get(), &query_layout));
     return query_layout;
   }
 
@@ -231,7 +236,8 @@ class Query {
   Status query_status() const {
     tiledb_query_status_t status;
     auto& ctx = ctx_.get();
-    ctx.handle_error(tiledb_query_get_status(ctx, query_.get(), &status));
+    ctx.handle_error(
+        tiledb_query_get_status(ctx.ptr().get(), query_.get(), &status));
     return to_status(status);
   }
 
@@ -242,7 +248,8 @@ class Query {
   bool has_results() const {
     int ret;
     auto& ctx = ctx_.get();
-    ctx.handle_error(tiledb_query_has_results(ctx, query_.get(), &ret));
+    ctx.handle_error(
+        tiledb_query_has_results(ctx.ptr().get(), query_.get(), &ret));
     return (bool)ret;
   }
 
@@ -267,7 +274,7 @@ class Query {
    */
   Status submit() {
     auto& ctx = ctx_.get();
-    ctx.handle_error(tiledb_query_submit(ctx, query_.get()));
+    ctx.handle_error(tiledb_query_submit(ctx.ptr().get(), query_.get()));
     return query_status();
   }
 
@@ -291,7 +298,7 @@ class Query {
     std::function<void(void*)> wrapper = [&](void*) { callback(); };
     auto& ctx = ctx_.get();
     ctx.handle_error(tiledb::impl::tiledb_query_submit_async_func(
-        ctx, query_.get(), &wrapper, nullptr));
+        ctx.ptr().get(), query_.get(), &wrapper, nullptr));
   }
 
   /**
@@ -318,7 +325,7 @@ class Query {
    */
   void finalize() {
     auto& ctx = ctx_.get();
-    ctx.handle_error(tiledb_query_finalize(ctx, query_.get()));
+    ctx.handle_error(tiledb_query_finalize(ctx.ptr().get(), query_.get()));
   }
 
   /**
@@ -418,7 +425,8 @@ class Query {
           "Subarray should have num_dims * 2 values: (low, high) for each "
           "dimension.");
     }
-    ctx.handle_error(tiledb_query_set_subarray(ctx, query_.get(), pairs));
+    ctx.handle_error(
+        tiledb_query_set_subarray(ctx.ptr().get(), query_.get(), pairs));
     subarray_cell_num_ = pairs[1] - pairs[0] + 1;
     for (unsigned i = 2; i < size - 1; i += 2) {
       subarray_cell_num_ *= (pairs[i + 1] - pairs[i] + 1);
@@ -524,7 +532,8 @@ class Query {
    */
   Query& set_subarray(Subarray& subarray) {
     auto& ctx = ctx_.get();
-    ctx.handle_error(tiledb_query_set_subarray_2(ctx, query_.get(), subarray));
+    ctx.handle_error(tiledb_query_set_subarray_2(
+        ctx.ptr().get(), query_.get(), subarray.ptr().get()));
     return *this;
   }
 
@@ -862,7 +871,11 @@ class Query {
     buff_sizes_[attr] = std::pair<uint64_t, uint64_t>(0, size);
     element_sizes_[attr] = element_size;
     ctx.handle_error(tiledb_query_set_buffer(
-        ctx, query_.get(), attr.c_str(), buff, &(buff_sizes_[attr].second)));
+        ctx.ptr().get(),
+        query_.get(),
+        attr.c_str(),
+        buff,
+        &(buff_sizes_[attr].second)));
     return *this;
   }
 
@@ -892,7 +905,7 @@ class Query {
     element_sizes_[attr] = element_size;
     buff_sizes_[attr] = std::pair<uint64_t, uint64_t>(offset_size, data_size);
     ctx.handle_error(tiledb_query_set_buffer_var(
-        ctx,
+        ctx.ptr().get(),
         query_.get(),
         attr.c_str(),
         offsets,

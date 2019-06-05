@@ -116,7 +116,7 @@ class MapItem {
 
     auto& ctx = ctx_.get();
     ctx.handle_error(tiledb_kv_item_set_value(
-        ctx,
+        ctx.ptr().get(),
         item_.get(),
         attr.c_str(),
         DataT::data(val),
@@ -139,7 +139,7 @@ class MapItem {
     uint64_t size;
 
     ctx.handle_error(tiledb_kv_item_get_key(
-        ctx, item_.get(), (const void**)&buf, &type, &size));
+        ctx.ptr().get(), item_.get(), (const void**)&buf, &type, &size));
 
     impl::type_check<T>(type, unsigned(size / sizeof(T)));
     T key;
@@ -155,8 +155,8 @@ class MapItem {
     const void* key;
     tiledb_datatype_t type;
     uint64_t size;
-    ctx.handle_error(
-        tiledb_kv_item_get_key(ctx, item_.get(), &key, &type, &size));
+    ctx.handle_error(tiledb_kv_item_get_key(
+        ctx.ptr().get(), item_.get(), &key, &type, &size));
     return {type, size};
   }
 
@@ -268,8 +268,9 @@ class MapItem {
       : ctx_(ctx)
       , map_(map) {
     tiledb_kv_item_t* p;
-    ctx.handle_error(tiledb_kv_item_alloc(ctx, &p));
-    ctx.handle_error(tiledb_kv_item_set_key(ctx, p, key, type, size));
+    ctx.handle_error(tiledb_kv_item_alloc(ctx.ptr().get(), &p));
+    ctx.handle_error(
+        tiledb_kv_item_set_key(ctx.ptr().get(), p, key, type, size));
     item_ = std::shared_ptr<tiledb_kv_item_t>(p, deleter_);
   }
 
@@ -682,14 +683,15 @@ class Map {
       uint32_t key_length)
       : schema_(MapSchema(ctx, (tiledb_kv_schema_t*)nullptr))
       , uri_(uri) {
+    tiledb_ctx_t* c_ctx = ctx.ptr().get();
     tiledb_kv_t* kv;
-    ctx.handle_error(tiledb_kv_alloc(ctx, uri.c_str(), &kv));
+    ctx.handle_error(tiledb_kv_alloc(c_ctx, uri.c_str(), &kv));
     kv_ = std::shared_ptr<tiledb_kv_t>(kv, deleter_);
     ctx.handle_error(tiledb_kv_open_with_key(
-        ctx, kv, query_type, encryption_type, encryption_key, key_length));
+        c_ctx, kv, query_type, encryption_type, encryption_key, key_length));
 
     tiledb_kv_schema_t* kv_schema;
-    ctx.handle_error(tiledb_kv_get_schema(ctx, kv, &kv_schema));
+    ctx.handle_error(tiledb_kv_get_schema(c_ctx, kv, &kv_schema));
     schema_ = MapSchema(ctx, kv_schema);
   }
 
@@ -766,11 +768,12 @@ class Map {
       uint64_t timestamp)
       : schema_(MapSchema(ctx, (tiledb_kv_schema_t*)nullptr))
       , uri_(uri) {
+    tiledb_ctx_t* c_ctx = ctx.ptr().get();
     tiledb_kv_t* kv;
-    ctx.handle_error(tiledb_kv_alloc(ctx, uri.c_str(), &kv));
+    ctx.handle_error(tiledb_kv_alloc(c_ctx, uri.c_str(), &kv));
     kv_ = std::shared_ptr<tiledb_kv_t>(kv, deleter_);
     ctx.handle_error(tiledb_kv_open_at_with_key(
-        ctx,
+        c_ctx,
         kv,
         query_type,
         encryption_type,
@@ -779,7 +782,7 @@ class Map {
         timestamp));
 
     tiledb_kv_schema_t* kv_schema;
-    ctx.handle_error(tiledb_kv_get_schema(ctx, kv, &kv_schema));
+    ctx.handle_error(tiledb_kv_get_schema(c_ctx, kv, &kv_schema));
     schema_ = MapSchema(ctx, kv_schema);
   }
 
@@ -873,7 +876,7 @@ class Map {
     auto& ctx = context();
 
     ctx.handle_error(tiledb_kv_has_key(
-        ctx,
+        ctx.ptr().get(),
         kv_.get(),
         DataT::data(key),
         DataT::tiledb_type,
@@ -907,7 +910,7 @@ class Map {
     tiledb_kv_item_t* item;
 
     ctx.handle_error(tiledb_kv_get_item(
-        ctx,
+        ctx.ptr().get(),
         kv_.get(),
         DataT::data(key),
         DataT::tiledb_type,
@@ -949,14 +952,15 @@ class Map {
    */
   Map& add_item(const MapItem& item) {
     auto& ctx = schema_.context();
-    ctx.handle_error(tiledb_kv_add_item(ctx, kv_.get(), item.ptr().get()));
+    ctx.handle_error(
+        tiledb_kv_add_item(ctx.ptr().get(), kv_.get(), item.ptr().get()));
     return *this;
   }
 
   /** Flush any buffered items to storage. **/
   void flush() {
     auto& ctx = context();
-    ctx.handle_error(tiledb_kv_flush(ctx, kv_.get()));
+    ctx.handle_error(tiledb_kv_flush(ctx.ptr().get(), kv_.get()));
   }
 
   /** Get the schema of the map. **/
@@ -999,7 +1003,7 @@ class Map {
       uint32_t key_length) {
     auto& ctx = context();
     ctx.handle_error(tiledb_kv_open_with_key(
-        ctx,
+        ctx.ptr().get(),
         kv_.get(),
         query_type,
         encryption_type,
@@ -1007,7 +1011,8 @@ class Map {
         key_length));
 
     tiledb_kv_schema_t* kv_schema;
-    ctx.handle_error(tiledb_kv_get_schema(ctx, kv_.get(), &kv_schema));
+    ctx.handle_error(
+        tiledb_kv_get_schema(ctx.ptr().get(), kv_.get(), &kv_schema));
     schema_ = MapSchema(ctx, kv_schema);
   }
 
@@ -1068,7 +1073,7 @@ class Map {
       uint64_t timestamp) {
     auto& ctx = context();
     ctx.handle_error(tiledb_kv_open_at_with_key(
-        ctx,
+        ctx.ptr().get(),
         kv_.get(),
         query_type,
         encryption_type,
@@ -1077,7 +1082,8 @@ class Map {
         timestamp));
 
     tiledb_kv_schema_t* kv_schema;
-    ctx.handle_error(tiledb_kv_get_schema(ctx, kv_.get(), &kv_schema));
+    ctx.handle_error(
+        tiledb_kv_get_schema(ctx.ptr().get(), kv_.get(), &kv_schema));
     schema_ = MapSchema(ctx, kv_schema);
   }
 
@@ -1110,7 +1116,7 @@ class Map {
   bool is_open() const {
     auto& ctx = context();
     int open = 0;
-    ctx.handle_error(tiledb_kv_is_open(ctx, kv_.get(), &open));
+    ctx.handle_error(tiledb_kv_is_open(ctx.ptr().get(), kv_.get(), &open));
     return bool(open);
   }
 
@@ -1131,9 +1137,10 @@ class Map {
    */
   void reopen() {
     auto& ctx = context();
-    ctx.handle_error(tiledb_kv_reopen(ctx, kv_.get()));
+    ctx.handle_error(tiledb_kv_reopen(ctx.ptr().get(), kv_.get()));
     tiledb_kv_schema_t* kv_schema;
-    ctx.handle_error(tiledb_kv_get_schema(ctx, kv_.get(), &kv_schema));
+    ctx.handle_error(
+        tiledb_kv_get_schema(ctx.ptr().get(), kv_.get(), &kv_schema));
     schema_ = MapSchema(ctx, kv_schema);
   }
 
@@ -1150,9 +1157,11 @@ class Map {
    */
   void reopen_at(uint64_t timestamp) {
     auto& ctx = context();
-    ctx.handle_error(tiledb_kv_reopen_at(ctx, kv_.get(), timestamp));
+    ctx.handle_error(
+        tiledb_kv_reopen_at(ctx.ptr().get(), kv_.get(), timestamp));
     tiledb_kv_schema_t* kv_schema;
-    ctx.handle_error(tiledb_kv_get_schema(ctx, kv_.get(), &kv_schema));
+    ctx.handle_error(
+        tiledb_kv_get_schema(ctx.ptr().get(), kv_.get(), &kv_schema));
     schema_ = MapSchema(ctx, kv_schema);
   }
 
@@ -1160,7 +1169,8 @@ class Map {
   uint64_t timestamp() const {
     auto& ctx = context();
     uint64_t timestamp;
-    ctx.handle_error(tiledb_kv_get_timestamp(ctx, kv_.get(), &timestamp));
+    ctx.handle_error(
+        tiledb_kv_get_timestamp(ctx.ptr().get(), kv_.get(), &timestamp));
     return timestamp;
   }
 
@@ -1170,7 +1180,7 @@ class Map {
    */
   void close() {
     auto& ctx = context();
-    ctx.handle_error(tiledb_kv_close(ctx, kv_.get()));
+    ctx.handle_error(tiledb_kv_close(ctx.ptr().get(), kv_.get()));
   }
 
   /** Returns a shared pointer to the C TileDB kv object. */
@@ -1186,7 +1196,7 @@ class Map {
   bool is_dirty() {
     int ret;
     auto& ctx = context();
-    ctx.handle_error(tiledb_kv_is_dirty(ctx, kv_.get(), &ret));
+    ctx.handle_error(tiledb_kv_is_dirty(ctx.ptr().get(), kv_.get(), &ret));
     return (bool)ret;
   }
 
@@ -1242,7 +1252,7 @@ class Map {
     auto& ctx = schema.context();
     schema.check();
     ctx.handle_error(tiledb_kv_create_with_key(
-        ctx,
+        ctx.ptr().get(),
         uri.c_str(),
         schema.ptr().get(),
         encryption_type,
@@ -1429,7 +1439,7 @@ class Map {
       uint32_t key_length,
       const Config& config = Config()) {
     ctx.handle_error(tiledb_kv_consolidate_with_key(
-        ctx,
+        ctx.ptr().get(),
         uri.c_str(),
         encryption_type,
         encryption_key,
@@ -1478,8 +1488,8 @@ class Map {
   static tiledb_encryption_type_t encryption_type(
       const Context& ctx, const std::string& uri) {
     tiledb_encryption_type_t encryption_type;
-    ctx.handle_error(
-        tiledb_kv_encryption_type(ctx, uri.c_str(), &encryption_type));
+    ctx.handle_error(tiledb_kv_encryption_type(
+        ctx.ptr().get(), uri.c_str(), &encryption_type));
     return encryption_type;
   }
 
@@ -1512,6 +1522,7 @@ T MapItem::get(const std::string& attr) const {
   using DataT = typename impl::TypeHandler<T>;
 
   const Context& ctx = ctx_.get();
+  tiledb_ctx_t* c_ctx = ctx.ptr().get();
 
   tiledb_kv_item_t* item;
   const void* key;
@@ -1519,17 +1530,17 @@ T MapItem::get(const std::string& attr) const {
   uint64_t size;
 
   ctx.handle_error(
-      tiledb_kv_item_get_key(ctx, item_.get(), &key, &type, &size));
+      tiledb_kv_item_get_key(c_ctx, item_.get(), &key, &type, &size));
 
   ctx.handle_error(
-      tiledb_kv_get_item(ctx, map_->ptr().get(), key, type, size, &item));
+      tiledb_kv_get_item(c_ctx, map_->ptr().get(), key, type, size, &item));
   std::unique_ptr<tiledb_kv_item_t, decltype(deleter_)> item_ptr(
       item, deleter_);
 
   typename DataT::value_type* vdata;
 
   ctx.handle_error(tiledb_kv_item_get_value(
-      ctx, item, attr.c_str(), (const void**)&vdata, &type, &size));
+      c_ctx, item, attr.c_str(), (const void**)&vdata, &type, &size));
 
   auto num = static_cast<unsigned>(size / sizeof(typename DataT::value_type));
   impl::type_check<T>(type);  // Just check type
@@ -1544,17 +1555,18 @@ template <typename T>
 std::pair<const T*, uint64_t> MapItem::get_ptr(const std::string& attr) const {
   using DataT = typename impl::TypeHandler<T>;
   const Context& ctx = ctx_.get();
+  tiledb_ctx_t* c_ctx = ctx.ptr().get();
   tiledb_kv_item_t* ret;
   const void* key;
   tiledb_datatype_t type;
   uint64_t size;
   ctx.handle_error(
-      tiledb_kv_item_get_key(ctx, item_.get(), &key, &type, &size));
+      tiledb_kv_item_get_key(c_ctx, item_.get(), &key, &type, &size));
   ctx.handle_error(
-      tiledb_kv_get_item(ctx, map_->ptr().get(), key, type, size, &ret));
+      tiledb_kv_get_item(c_ctx, map_->ptr().get(), key, type, size, &ret));
   typename DataT::value_type* vdata;
   ctx.handle_error(tiledb_kv_item_get_value(
-      ctx, ret, attr.c_str(), (const void**)&vdata, &type, &size));
+      c_ctx, ret, attr.c_str(), (const void**)&vdata, &type, &size));
   auto num = static_cast<unsigned>(size / sizeof(typename DataT::value_type));
   impl::type_check<T>(type);  // Just check type
   return std::pair<const T*, uint64_t>(vdata, num);
@@ -1616,7 +1628,8 @@ inline MapIter::MapIter(Map& map, bool end)
   if (!end && map.ptr() != nullptr) {
     auto& ctx = map_->context();
     tiledb_kv_iter_t* kv_iter;
-    ctx.handle_error(tiledb_kv_iter_alloc(ctx, map_->ptr().get(), &kv_iter));
+    ctx.handle_error(
+        tiledb_kv_iter_alloc(ctx.ptr().get(), map_->ptr().get(), &kv_iter));
     iter_ = std::shared_ptr<tiledb_kv_iter_t>(kv_iter, deleter_);
     this->operator++();
   }
@@ -1624,15 +1637,16 @@ inline MapIter::MapIter(Map& map, bool end)
 
 inline MapIter& MapIter::operator++() {
   auto& ctx = map_->context();
+  tiledb_ctx_t* c_ctx = ctx.ptr().get();
   if (done_)
     return *this;
-  ctx.handle_error(tiledb_kv_iter_done(ctx, iter_.get(), &done_));
+  ctx.handle_error(tiledb_kv_iter_done(c_ctx, iter_.get(), &done_));
   if (done_)
     return *this;
   tiledb_kv_item_t* p;
-  ctx.handle_error(tiledb_kv_iter_here(ctx, iter_.get(), &p));
+  ctx.handle_error(tiledb_kv_iter_here(c_ctx, iter_.get(), &p));
   item_ = std::unique_ptr<MapItem>(new MapItem(ctx, &p, map_));
-  ctx.handle_error(tiledb_kv_iter_next(ctx, iter_.get()));
+  ctx.handle_error(tiledb_kv_iter_next(c_ctx, iter_.get()));
   if (limit_type_) {
     auto t = item_->key_info();
     if (t.first != type_ ||
@@ -1645,7 +1659,7 @@ inline MapIter& MapIter::operator++() {
 inline void MapIter::reset() {
   done_ = false;
   auto& ctx = map_->context();
-  ctx.handle_error(tiledb_kv_iter_reset(ctx, iter_.get()));
+  ctx.handle_error(tiledb_kv_iter_reset(ctx.ptr().get(), iter_.get()));
   this->operator++();
 }
 

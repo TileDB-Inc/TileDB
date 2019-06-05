@@ -45,6 +45,10 @@
 
 ## Breaking changes
 
+### C++ API
+
+* Removed cast operators of C++ API objects to their underlying C API objects. This helps prevent inadvertent memory issues such as double-frees.
+
 # TileDB v1.5.0 Release Notes
 
 The 1.5.0 release focuses on stability, performance, and usability improvements, as well a new consolidation algorithm.

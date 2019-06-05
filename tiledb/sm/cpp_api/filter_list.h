@@ -75,7 +75,7 @@ class FilterList {
   FilterList(const Context& ctx)
       : ctx_(ctx) {
     tiledb_filter_list_t* filter_list;
-    ctx.handle_error(tiledb_filter_list_alloc(ctx, &filter_list));
+    ctx.handle_error(tiledb_filter_list_alloc(ctx.ptr().get(), &filter_list));
     filter_list_ = std::shared_ptr<tiledb_filter_list_t>(filter_list, deleter_);
   }
 
@@ -100,11 +100,6 @@ class FilterList {
   /*                 API               */
   /* ********************************* */
 
-  /** Auxiliary operator for getting the underlying C TileDB object. */
-  operator tiledb_filter_list_t*() const {
-    return filter_list_.get();
-  }
-
   /** Returns a shared pointer to the C TileDB domain object. */
   std::shared_ptr<tiledb_filter_list_t> ptr() const {
     return filter_list_;
@@ -127,8 +122,8 @@ class FilterList {
    */
   FilterList& add_filter(const Filter& filter) {
     auto& ctx = ctx_.get();
-    ctx.handle_error(
-        tiledb_filter_list_add_filter(ctx, filter_list_.get(), filter));
+    ctx.handle_error(tiledb_filter_list_add_filter(
+        ctx.ptr().get(), filter_list_.get(), filter.ptr().get()));
     return *this;
   }
 
@@ -154,7 +149,7 @@ class FilterList {
     auto& ctx = ctx_.get();
     tiledb_filter_t* filter;
     ctx.handle_error(tiledb_filter_list_get_filter_from_index(
-        ctx, filter_list_.get(), filter_index, &filter));
+        ctx.ptr().get(), filter_list_.get(), filter_index, &filter));
     return Filter(ctx, filter);
   }
 
@@ -167,7 +162,7 @@ class FilterList {
     auto& ctx = ctx_.get();
     uint32_t max_chunk_size;
     ctx.handle_error(tiledb_filter_list_get_max_chunk_size(
-        ctx, filter_list_.get(), &max_chunk_size));
+        ctx.ptr().get(), filter_list_.get(), &max_chunk_size));
     return max_chunk_size;
   }
 
@@ -188,8 +183,8 @@ class FilterList {
   uint32_t nfilters() const {
     auto& ctx = ctx_.get();
     uint32_t nfilters;
-    ctx.handle_error(
-        tiledb_filter_list_get_nfilters(ctx, filter_list_.get(), &nfilters));
+    ctx.handle_error(tiledb_filter_list_get_nfilters(
+        ctx.ptr().get(), filter_list_.get(), &nfilters));
     return nfilters;
   }
 
@@ -202,7 +197,7 @@ class FilterList {
   FilterList& set_max_chunk_size(uint32_t max_chunk_size) {
     auto& ctx = ctx_.get();
     ctx.handle_error(tiledb_filter_list_set_max_chunk_size(
-        ctx, filter_list_.get(), max_chunk_size));
+        ctx.ptr().get(), filter_list_.get(), max_chunk_size));
     return *this;
   }
 

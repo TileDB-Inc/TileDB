@@ -152,7 +152,7 @@ class Object {
    */
   static Object object(const Context& ctx, const std::string& uri) {
     tiledb_object_t type;
-    ctx.handle_error(tiledb_object_type(ctx, uri.c_str(), &type));
+    ctx.handle_error(tiledb_object_type(ctx.ptr().get(), uri.c_str(), &type));
     Object ret(type, uri);
     return ret;
   }
@@ -164,7 +164,7 @@ class Object {
    * @param uri The path to the object to be removed.
    */
   static void remove(const Context& ctx, const std::string& uri) {
-    ctx.handle_error(tiledb_object_remove(ctx, uri.c_str()));
+    ctx.handle_error(tiledb_object_remove(ctx.ptr().get(), uri.c_str()));
   }
 
   /**
@@ -177,7 +177,8 @@ class Object {
       const Context& ctx,
       const std::string& old_uri,
       const std::string& new_uri) {
-    ctx.handle_error(tiledb_object_move(ctx, old_uri.c_str(), new_uri.c_str()));
+    ctx.handle_error(
+        tiledb_object_move(ctx.ptr().get(), old_uri.c_str(), new_uri.c_str()));
   }
 
  private:

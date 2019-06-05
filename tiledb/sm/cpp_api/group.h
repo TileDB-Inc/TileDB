@@ -49,7 +49,7 @@ namespace tiledb {
  * @return void
  */
 inline void create_group(const Context& ctx, const std::string& group) {
-  ctx.handle_error(tiledb_group_create(ctx, group.c_str()));
+  ctx.handle_error(tiledb_group_create(ctx.ptr().get(), group.c_str()));
 }
 
 }  // namespace tiledb
