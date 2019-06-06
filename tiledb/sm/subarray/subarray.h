@@ -121,6 +121,58 @@ class Subarray {
     uint64_t mem_size_var_;
   };
 
+  /**
+   * Stores a set of 1D ranges.
+   */
+  struct Ranges {
+    /** A buffer where all the ranges are appended to. */
+    Buffer buffer_;
+
+    /**
+     * ``true`` if it has the default entire-domain range
+     * that must be replaced the first time a new range
+     * is added.
+     */
+    bool has_default_range_ = false;
+
+    /** The size in bytes of a range. */
+    uint64_t range_size_;
+
+    /** The datatype of the ranges. */
+    Datatype type_;
+
+    /** Constructor. */
+    explicit Ranges(Datatype type)
+        : type_(type) {
+      range_size_ = 2 * datatype_size(type_);
+    }
+
+    /** Adds a range to the buffer. */
+    void add_range(const void* range, bool is_default = false) {
+      if (is_default) {
+        buffer_.write(range, range_size_);
+        has_default_range_ = true;
+      } else {
+        if (has_default_range_) {
+          buffer_.clear();
+          has_default_range_ = false;
+        }
+        buffer_.write(range, range_size_);
+      }
+    }
+
+    /** Gets the range at the give index. */
+    const void* get_range(uint64_t idx) const {
+      assert(idx < range_num());
+      return buffer_.data(idx * range_size_);
+    }
+
+    /** Return the number of ranges in this object. */
+    uint64_t range_num() const {
+      return buffer_.size() / range_size_;
+    }
+  };
+
   /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
@@ -331,6 +383,24 @@ class Subarray {
   std::vector<const T*> range(uint64_t range_idx) const;
 
   /**
+   * Returns the `Ranges` for the given dimension index.
+   * @note Intended for serialization only
+   */
+  const Ranges* ranges_for_dim(uint32_t dim_idx) const;
+
+  /**
+   * Directly sets the `Ranges` for the given dimension index, making a deep
+   * copy of the given `Ranges` instance.
+   *
+   * @param dim_idx Index of dimension to set
+   * @param ranges Ranges instance that will be copied and set
+   * @return Status
+   *
+   * @note Intended for serialization only
+   */
+  Status set_ranges_for_dim(uint32_t dim_idx, const Ranges& ranges);
+
+  /**
    * Returns the (unique) coordinates of all the tiles that the subarray
    * ranges intersect with.
    */
@@ -368,62 +438,6 @@ class Subarray {
   void compute_tile_coords();
 
  private:
-  /* ********************************* */
-  /*      PRIVATE TYPE DEFINITIONS     */
-  /* ********************************* */
-
-  /**
-   * Stores a set of 1D ranges.
-   */
-  struct Ranges {
-    /** A buffer where all the ranges are appended to. */
-    Buffer buffer_;
-
-    /**
-     * ``true`` if it has the default entire-domain range
-     * that must be replaced the first time a new range
-     * is added.
-     */
-    bool has_default_range_ = false;
-
-    /** The size in bytes of a range. */
-    uint64_t range_size_;
-
-    /** The datatype of the ranges. */
-    Datatype type_;
-
-    /** Constructor. */
-    explicit Ranges(Datatype type)
-        : type_(type) {
-      range_size_ = 2 * datatype_size(type_);
-    }
-
-    /** Adds a range to the buffer. */
-    void add_range(const void* range, bool is_default = false) {
-      if (is_default) {
-        buffer_.write(range, range_size_);
-        has_default_range_ = true;
-      } else {
-        if (has_default_range_) {
-          buffer_.clear();
-          has_default_range_ = false;
-        }
-        buffer_.write(range, range_size_);
-      }
-    }
-
-    /** Gets the range at the give index. */
-    const void* get_range(uint64_t idx) const {
-      assert(idx < range_num());
-      return buffer_.data(idx * range_size_);
-    }
-
-    /** Return the number of ranges in this object. */
-    uint64_t range_num() const {
-      return buffer_.size() / range_size_;
-    }
-  };
-
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
   /* ********************************* */

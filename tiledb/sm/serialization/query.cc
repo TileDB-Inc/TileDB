@@ -70,6 +70,14 @@ Status writer_to_capnp(
   writer_builder->setCheckCoordOOB(writer.get_check_coord_oob());
   writer_builder->setDedupCoords(writer.get_dedup_coords());
 
+  const auto* schema = writer.array_schema();
+  const auto* subarray = writer.subarray();
+  if (subarray != nullptr) {
+    auto subarray_builder = writer_builder->initSubarray();
+    RETURN_NOT_OK(
+        utils::serialize_subarray(subarray_builder, schema, subarray));
+  }
+
   return Status::Ok();
 }
 
@@ -79,126 +87,291 @@ Status writer_from_capnp(
   writer->set_check_coord_oob(writer_reader.getCheckCoordOOB());
   writer->set_dedup_coords(writer_reader.getDedupCoords());
 
+  const auto* schema = writer->array_schema();
+  // For sparse writes we want to explicitly set subarray to nullptr.
+  const bool sparse_write =
+      !schema->dense() || writer->layout() == Layout::UNORDERED;
+  if (writer_reader.hasSubarray() && !sparse_write) {
+    auto subarray_reader = writer_reader.getSubarray();
+    void* subarray = nullptr;
+    RETURN_NOT_OK(
+        utils::deserialize_subarray(subarray_reader, schema, &subarray));
+    RETURN_NOT_OK_ELSE(writer->set_subarray(subarray), std::free(subarray));
+    std::free(subarray);
+  } else {
+    RETURN_NOT_OK(writer->set_subarray(nullptr));
+  }
+
+  return Status::Ok();
+}
+
+Status subarray_to_capnp(
+    const Subarray* subarray, capnp::Subarray::Builder* builder) {
+  builder->setLayout(layout_str(subarray->layout()));
+
+  const uint32_t dim_num = subarray->dim_num();
+  auto ranges_builder = builder->initRanges(dim_num);
+  for (uint32_t i = 0; i < dim_num; i++) {
+    auto range_builder = ranges_builder[i];
+    const auto* ranges = subarray->ranges_for_dim(i);
+    range_builder.setType(datatype_str(ranges->type_));
+    range_builder.setHasDefaultRange(ranges->has_default_range_);
+    range_builder.setBuffer(kj::arrayPtr(
+        static_cast<const uint8_t*>(ranges->buffer_.data()),
+        ranges->buffer_.size()));
+  }
+
+  return Status::Ok();
+}
+
+Status subarray_from_capnp(
+    const capnp::Subarray::Reader& reader, Subarray* subarray) {
+  auto ranges_reader = reader.getRanges();
+  uint32_t dim_num = ranges_reader.size();
+  for (uint32_t i = 0; i < dim_num; i++) {
+    auto range_reader = ranges_reader[i];
+    Datatype type = Datatype::UINT8;
+    RETURN_NOT_OK(datatype_enum(range_reader.getType(), &type));
+
+    Subarray::Ranges ranges(type);
+    auto data_ptr = range_reader.getBuffer();
+    RETURN_NOT_OK(ranges.buffer_.realloc(data_ptr.size()));
+    RETURN_NOT_OK(
+        ranges.buffer_.write((void*)data_ptr.begin(), data_ptr.size()));
+    ranges.has_default_range_ = range_reader.getHasDefaultRange();
+
+    RETURN_NOT_OK(subarray->set_ranges_for_dim(i, ranges));
+  }
+
+  return Status::Ok();
+}
+
+Status subarray_partitioner_to_capnp(
+    const ArraySchema* schema,
+    const SubarrayPartitioner& partitioner,
+    capnp::SubarrayPartitioner::Builder* builder) {
+  // Subarray
+  auto subarray_builder = builder->initSubarray();
+  RETURN_NOT_OK(subarray_to_capnp(partitioner.subarray(), &subarray_builder));
+
+  // Per-attr mem budgets
+  const auto* attr_budgets = partitioner.get_attr_result_budgets();
+  if (!attr_budgets->empty()) {
+    auto mem_budgets_builder = builder->initBudget(attr_budgets->size());
+    size_t attr_idx = 0;
+    for (const auto& pair : (*attr_budgets)) {
+      const std::string& attr_name = pair.first;
+      auto budget_builder = mem_budgets_builder[attr_idx];
+      budget_builder.setAttribute(attr_name);
+      if (attr_name == constants::coords || !schema->var_size(attr_name)) {
+        budget_builder.setOffsetBytes(0);
+        budget_builder.setDataBytes(pair.second.size_fixed_);
+      } else {
+        budget_builder.setOffsetBytes(pair.second.size_fixed_);
+        budget_builder.setDataBytes(pair.second.size_var_);
+      }
+      attr_idx++;
+    }
+  }
+
+  // Current partition info
+  const auto* partition_info = partitioner.current_partition_info();
+  auto info_builder = builder->initCurrent();
+  auto info_subarray_builder = info_builder.initSubarray();
+  RETURN_NOT_OK(
+      subarray_to_capnp(&partition_info->partition_, &info_subarray_builder));
+  info_builder.setStart(partition_info->start_);
+  info_builder.setEnd(partition_info->end_);
+  info_builder.setSplitMultiRange(partition_info->split_multi_range_);
+
+  // Partitioner state
+  const auto* state = partitioner.state();
+  auto state_builder = builder->initState();
+  state_builder.setStart(state->start_);
+  state_builder.setEnd(state->end_);
+  auto single_range_builder =
+      state_builder.initSingleRange(state->single_range_.size());
+  size_t sr_idx = 0;
+  for (const auto& subarray : state->single_range_) {
+    auto b = single_range_builder[sr_idx];
+    RETURN_NOT_OK(subarray_to_capnp(&subarray, &b));
+    sr_idx++;
+  }
+  auto multi_range_builder =
+      state_builder.initMultiRange(state->multi_range_.size());
+  size_t m_idx = 0;
+  for (const auto& subarray : state->multi_range_) {
+    auto b = multi_range_builder[m_idx];
+    RETURN_NOT_OK(subarray_to_capnp(&subarray, &b));
+    m_idx++;
+  }
+
+  // Overall mem budget
+  uint64_t mem_budget, mem_budget_var;
+  RETURN_NOT_OK(partitioner.get_memory_budget(&mem_budget, &mem_budget_var));
+  builder->setMemoryBudget(mem_budget);
+  builder->setMemoryBudgetVar(mem_budget_var);
+
+  return Status::Ok();
+}
+
+Status subarray_partitioner_from_capnp(
+    const Array* array,
+    const capnp::SubarrayPartitioner::Reader& reader,
+    SubarrayPartitioner* partitioner) {
+  // Get subarray layout first
+  Layout layout = Layout::ROW_MAJOR;
+  auto subarray_reader = reader.getSubarray();
+  RETURN_NOT_OK(layout_enum(subarray_reader.getLayout(), &layout));
+
+  // Subarray, which is used to initialize the partitioner.
+  Subarray subarray(array, layout);
+  RETURN_NOT_OK(subarray_from_capnp(reader.getSubarray(), &subarray));
+  *partitioner = SubarrayPartitioner(subarray);
+
+  // Per-attr mem budgets
+  if (reader.hasBudget()) {
+    const ArraySchema* schema = array->array_schema();
+    auto mem_budgets_reader = reader.getBudget();
+    auto num_attrs = mem_budgets_reader.size();
+    for (size_t i = 0; i < num_attrs; i++) {
+      auto mem_budget_reader = mem_budgets_reader[i];
+      std::string attr_name = mem_budget_reader.getAttribute();
+      if (attr_name == constants::coords || !schema->var_size(attr_name)) {
+        RETURN_NOT_OK(partitioner->set_result_budget(
+            attr_name.c_str(), mem_budget_reader.getDataBytes()));
+      } else {
+        RETURN_NOT_OK(partitioner->set_result_budget(
+            attr_name.c_str(),
+            mem_budget_reader.getOffsetBytes(),
+            mem_budget_reader.getDataBytes()));
+      }
+    }
+  }
+
+  // Current partition info
+  auto partition_info_reader = reader.getCurrent();
+  auto* partition_info = partitioner->current_partition_info();
+  partition_info->start_ = partition_info_reader.getStart();
+  partition_info->end_ = partition_info_reader.getEnd();
+  partition_info->split_multi_range_ =
+      partition_info_reader.getSplitMultiRange();
+  partition_info->partition_ = Subarray(array, layout);
+  RETURN_NOT_OK(subarray_from_capnp(
+      partition_info_reader.getSubarray(), &partition_info->partition_));
+
+  // Partitioner state
+  auto state_reader = reader.getState();
+  auto* state = partitioner->state();
+  state->start_ = state_reader.getStart();
+  state->end_ = state_reader.getEnd();
+  auto sr_reader = state_reader.getSingleRange();
+  const unsigned num_sr = sr_reader.size();
+  for (unsigned i = 0; i < num_sr; i++) {
+    auto subarray_reader = sr_reader[i];
+    state->single_range_.emplace_back(array, layout);
+    Subarray& subarray = state->single_range_.back();
+    RETURN_NOT_OK(subarray_from_capnp(subarray_reader, &subarray));
+  }
+  auto m_reader = state_reader.getMultiRange();
+  const unsigned num_m = m_reader.size();
+  for (unsigned i = 0; i < num_m; i++) {
+    auto subarray_reader = m_reader[i];
+    state->multi_range_.emplace_back(array, layout);
+    Subarray& subarray = state->multi_range_.back();
+    RETURN_NOT_OK(subarray_from_capnp(subarray_reader, &subarray));
+  }
+
+  // Overall mem budget
+  RETURN_NOT_OK(partitioner->set_memory_budget(
+      reader.getMemoryBudget(), reader.getMemoryBudgetVar()));
+
+  return Status::Ok();
+}
+
+Status read_state_to_capnp(
+    const ArraySchema* schema,
+    const Reader& reader,
+    capnp::QueryReader::Builder* builder) {
+  auto read_state = reader.read_state();
+  auto read_state_builder = builder->initReadState();
+  read_state_builder.setOverflowed(read_state->overflowed_);
+  read_state_builder.setUnsplittable(read_state->unsplittable_);
+  read_state_builder.setInitialized(read_state->initialized_);
+
+  if (read_state->initialized_) {
+    auto partitioner_builder = read_state_builder.initSubarrayPartitioner();
+    RETURN_NOT_OK(subarray_partitioner_to_capnp(
+        schema, read_state->partitioner_, &partitioner_builder));
+  }
+
+  return Status::Ok();
+}
+
+Status read_state_from_capnp(
+    const Array* array,
+    const capnp::ReadState::Reader& read_state_reader,
+    Reader* reader) {
+  auto read_state = reader->read_state();
+
+  read_state->overflowed_ = read_state_reader.getOverflowed();
+  read_state->unsplittable_ = read_state_reader.getUnsplittable();
+  read_state->initialized_ = read_state_reader.getInitialized();
+
+  // Subarray partitioner
+  if (read_state_reader.hasSubarrayPartitioner()) {
+    RETURN_NOT_OK(subarray_partitioner_from_capnp(
+        array,
+        read_state_reader.getSubarrayPartitioner(),
+        &read_state->partitioner_));
+  }
+
   return Status::Ok();
 }
 
 Status reader_to_capnp(
     const Reader& reader, capnp::QueryReader::Builder* reader_builder) {
-  // TODO (ttd): re-enable
-  (void)reader;
-  (void)reader_builder;
-
-  /*
-  auto read_state = reader.read_state();
   auto array_schema = reader.array_schema();
 
-  if (!read_state->initialized_)
-    return Status::Ok();
-
-  auto read_state_builder = reader_builder->initReadState();
-  read_state_builder.setInitialized(read_state->initialized_);
-  read_state_builder.setOverflowed(read_state->overflowed_);
-  read_state_builder.setUnsplittable(read_state->unsplittable_);
+  // Subarray layout
+  const auto& layout = layout_str(reader.layout());
+  reader_builder->setLayout(layout);
 
   // Subarray
-  if (read_state->subarray_ != nullptr) {
-    auto subarray_builder = read_state_builder.initSubarray();
-    RETURN_NOT_OK(utils::serialize_subarray(
-        subarray_builder, array_schema, read_state->subarray_));
-  }
+  auto subarray_builder = reader_builder->initSubarray();
+  RETURN_NOT_OK(subarray_to_capnp(reader.subarray(), &subarray_builder));
 
-  // Current partition
-  if (read_state->cur_subarray_partition_ != nullptr) {
-    auto subarray_builder = read_state_builder.initCurSubarrayPartition();
-    RETURN_NOT_OK(utils::serialize_subarray(
-        subarray_builder, array_schema, read_state->cur_subarray_partition_));
-  }
-
-  // Subarray partitions
-  if (!read_state->subarray_partitions_.empty()) {
-    auto partitions_builder = read_state_builder.initSubarrayPartitions(
-        read_state->subarray_partitions_.size());
-    size_t i = 0;
-    for (const void* subarray : read_state->subarray_partitions_) {
-      capnp::DomainArray::Builder builder = partitions_builder[i];
-      RETURN_NOT_OK(utils::serialize_subarray(builder, array_schema, subarray));
-      i++;
-    }
-  }
-   */
+  // Read state
+  RETURN_NOT_OK(read_state_to_capnp(array_schema, reader, reader_builder));
 
   return Status::Ok();
 }
 
 Status reader_from_capnp(
     const capnp::QueryReader::Reader& reader_reader, Reader* reader) {
-  // TODO(ttd): re-enable
-  (void)reader_reader;
-  (void)reader;
-  return Status::Ok();
+  auto array = reader->array();
 
-  /*
-  if (!reader_reader.hasReadState())
-    return Status::Ok();
+  // Layout
+  Layout layout = Layout::ROW_MAJOR;
+  RETURN_NOT_OK(layout_enum(reader_reader.getLayout(), &layout));
+  RETURN_NOT_OK(reader->set_layout(layout));
 
-  auto read_state_reader = reader_reader.getReadState();
-  auto read_state = reader->read_state();
-  auto array_schema = reader->array_schema();
+  // Subarray
+  Subarray subarray(array, layout);
+  auto subarray_reader = reader_reader.getSubarray();
+  RETURN_NOT_OK(subarray_from_capnp(subarray_reader, &subarray));
+  RETURN_NOT_OK(reader->set_subarray(subarray));
 
-  read_state->initialized_ = read_state_reader.getInitialized();
-  read_state->overflowed_ = read_state_reader.getOverflowed();
-  read_state->unsplittable_ = read_state_reader.getUnsplittable();
-
-  // Deserialize subarray
-  std::free(read_state->subarray_);
-  read_state->subarray_ = nullptr;
-  if (read_state_reader.hasSubarray()) {
-    auto subarray_reader = read_state_reader.getSubarray();
-    RETURN_NOT_OK(utils::deserialize_subarray(
-        subarray_reader, array_schema, &read_state->subarray_));
-  }
-
-  // Deserialize current partition
-  std::free(read_state->cur_subarray_partition_);
-  read_state->cur_subarray_partition_ = nullptr;
-  if (read_state_reader.hasCurSubarrayPartition()) {
-    auto subarray_reader = read_state_reader.getCurSubarrayPartition();
-    RETURN_NOT_OK(utils::deserialize_subarray(
-        subarray_reader, array_schema, &read_state->cur_subarray_partition_));
-  }
-
-  // Deserialize partitions
-  for (auto* subarray : read_state->subarray_partitions_)
-    std::free(subarray);
-  read_state->subarray_partitions_.clear();
-  if (read_state_reader.hasSubarrayPartitions()) {
-    auto partitions_reader = read_state_reader.getSubarrayPartitions();
-    const size_t num_partitions = partitions_reader.size();
-    for (size_t i = 0; i < num_partitions; i++) {
-      auto subarray_reader = partitions_reader[i];
-      void* partition;
-      RETURN_NOT_OK(utils::deserialize_subarray(
-          subarray_reader, array_schema, &partition));
-      read_state->subarray_partitions_.push_back(partition);
-    }
-  }
-   */
+  // Read state
+  if (reader_reader.hasReadState())
+    RETURN_NOT_OK(
+        read_state_from_capnp(array, reader_reader.getReadState(), reader))
 
   return Status::Ok();
 }
 
 Status query_to_capnp(
     const Query& query, capnp::Query::Builder* query_builder) {
-  // TODO(ttd): re-enable
-  (void)query;
-  (void)query_builder;
-
-  return Status::Ok();
-
-  /*
-
-  using namespace tiledb::sm;
-
   // For easy reference
   auto layout = query.layout();
   auto type = query.type();
@@ -231,14 +404,6 @@ Status query_to_capnp(
   if (query.array() != nullptr) {
     auto builder = query_builder->initArray();
     RETURN_NOT_OK(array_to_capnp(*array, &builder));
-  }
-
-  // Serialize subarray
-  const void* subarray = query.subarray();
-  if (subarray != nullptr) {
-    auto subarray_builder = query_builder->initSubarray();
-    RETURN_NOT_OK(
-        utils::serialize_subarray(subarray_builder, schema, subarray));
   }
 
   // Serialize attribute buffer metadata
@@ -292,7 +457,6 @@ Status query_to_capnp(
   }
 
   return Status::Ok();
-   */
 }
 
 Status query_from_capnp(
@@ -335,20 +499,6 @@ Status query_from_capnp(
 
   // Deserialize array instance.
   RETURN_NOT_OK(array_from_capnp(query_reader.getArray(), array));
-
-  // Deserialize and set subarray.
-  const bool sparse_write = !schema->dense() || layout == Layout::UNORDERED;
-  if (sparse_write) {
-    // Sparse writes cannot have a subarray; clear it here.
-    RETURN_NOT_OK(query->set_subarray(nullptr));
-  } else {
-    auto subarray_reader = query_reader.getSubarray();
-    void* subarray;
-    RETURN_NOT_OK(
-        utils::deserialize_subarray(subarray_reader, schema, &subarray));
-    RETURN_NOT_OK_ELSE(query->set_subarray(subarray), std::free(subarray));
-    std::free(subarray);
-  }
 
   // Deserialize and set attribute buffers.
   if (!query_reader.hasAttributeBufferHeaders())

@@ -65,115 +65,6 @@ class SubarrayPartitioner {
     uint64_t size_var_;
   };
 
-  /* ********************************* */
-  /*     CONSTRUCTORS & DESTRUCTORS    */
-  /* ********************************* */
-
-  /** Constructor. */
-  SubarrayPartitioner();
-
-  /** Constructor. */
-  explicit SubarrayPartitioner(const Subarray& subarray);
-
-  /** Destructor. */
-  ~SubarrayPartitioner();
-
-  /** Copy constructor. This performs a deep copy. */
-  SubarrayPartitioner(const SubarrayPartitioner& partitioner);
-
-  /** Move constructor. */
-  SubarrayPartitioner(SubarrayPartitioner&& partitioner) noexcept;
-
-  /** Copy-assign operator. This performs a deep copy. */
-  SubarrayPartitioner& operator=(const SubarrayPartitioner& partitioner);
-
-  /** Move-assign operator. */
-  SubarrayPartitioner& operator=(SubarrayPartitioner&& partitioner) noexcept;
-
-  /* ********************************* */
-  /*                 API               */
-  /* ********************************* */
-
-  /** Returns the current partition. */
-  Subarray& current();
-
-  /**
-   * Returns ``true`` if there are no more partitions, i.e., if the
-   * partitioner iterator is done.
-   */
-  bool done() const;
-
-  /** Gets result size budget (in bytes) for the input fixed-sized attribute. */
-  Status get_result_budget(const char* attr_name, uint64_t* budget);
-
-  /** Gets result size budget (in bytes) for the input var-sized attribute. */
-  Status get_result_budget(
-      const char* attr_name, uint64_t* budget_off, uint64_t* budget_val);
-
-  /**
-   * Gets the memory budget (in bytes).
-   *
-   * @param budget The budget for the fixed-sized attributes and the
-   *     offsets of the var-sized attributes.
-   * @param budget_var The budget for the var-sized attributes.
-   * @return Status
-   */
-  Status get_memory_budget(uint64_t* budget, uint64_t* budget_var);
-
-  /**
-   * The partitioner iterates over the partitions of the subarray it is
-   * associated with. This function advances to compute the next partition
-   * based on the specified budget. If this cannot be retrieved because
-   * the current partition cannot be split further (typically because it
-   * is a single cell whose estimated result does not fit in the budget),
-   * then the function does not advance to the next partition and sets
-   * ``unsplittable`` to ``true``.
-   */
-  Status next(bool* unsplittable);
-
-  /**
-   * The partitioner iterates over the partitions of the subarray it is
-   * associated with. This function advances to compute the next partition
-   * based on the specified budget. If this cannot be retrieved because
-   * the current partition cannot be split further (typically because it
-   * is a single cell whose estimated result does not fit in the budget),
-   * then the function does not advance to the next partition and sets
-   * ``unsplittable`` to ``true``.
-   */
-  template <class T>
-  Status next(bool* unsplittable);
-
-  /**
-   * Sets the memory budget (in bytes).
-   *
-   * @param budget The budget for the fixed-sized attributes and the
-   *     offsets of the var-sized attributes.
-   * @param budget_var The budget for the var-sized attributes.
-   * @return Status
-   */
-  Status set_memory_budget(uint64_t budget, uint64_t budget_var);
-
-  /** Sets result size budget (in bytes) for the input fixed-sized attribute. */
-  Status set_result_budget(const char* attr_name, uint64_t budget);
-
-  /** Sets result size budget (in bytes) for the input var-sized attribute. */
-  Status set_result_budget(
-      const char* attr_name, uint64_t budget_off, uint64_t budget_val);
-
-  /**
-   * Splits the current partition and updates the state, retrieving
-   * a new current partition. This function is typically called
-   * by the reader when the current partition was estimated to fit
-   * the results, but that was not eventually true.
-   */
-  template <class T>
-  Status split_current(bool* unsplittable);
-
- private:
-  /* ********************************* */
-  /*      PRIVATE TYPE DEFINITIONS     */
-  /* ********************************* */
-
   /**
    * Stores information about the current partition. A partition is
    * always a ``Subarray`` object. In addition to that object, this
@@ -246,6 +137,136 @@ class SubarrayPartitioner {
     std::list<Subarray> multi_range_;
   };
 
+  /* ********************************* */
+  /*     CONSTRUCTORS & DESTRUCTORS    */
+  /* ********************************* */
+
+  /** Constructor. */
+  SubarrayPartitioner();
+
+  /** Constructor. */
+  explicit SubarrayPartitioner(const Subarray& subarray);
+
+  /** Destructor. */
+  ~SubarrayPartitioner();
+
+  /** Copy constructor. This performs a deep copy. */
+  SubarrayPartitioner(const SubarrayPartitioner& partitioner);
+
+  /** Move constructor. */
+  SubarrayPartitioner(SubarrayPartitioner&& partitioner) noexcept;
+
+  /** Copy-assign operator. This performs a deep copy. */
+  SubarrayPartitioner& operator=(const SubarrayPartitioner& partitioner);
+
+  /** Move-assign operator. */
+  SubarrayPartitioner& operator=(SubarrayPartitioner&& partitioner) noexcept;
+
+  /* ********************************* */
+  /*                 API               */
+  /* ********************************* */
+
+  /** Returns the current partition. */
+  Subarray& current();
+
+  /** Returns the current partition info. */
+  const PartitionInfo* current_partition_info() const;
+
+  /** Returns the current partition info. */
+  PartitionInfo* current_partition_info();
+
+  /**
+   * Returns ``true`` if there are no more partitions, i.e., if the
+   * partitioner iterator is done.
+   */
+  bool done() const;
+
+  /** Gets result size budget (in bytes) for the input fixed-sized attribute. */
+  Status get_result_budget(const char* attr_name, uint64_t* budget) const;
+
+  /** Gets result size budget (in bytes) for the input var-sized attribute. */
+  Status get_result_budget(
+      const char* attr_name, uint64_t* budget_off, uint64_t* budget_val) const;
+
+  /**
+   * Returns a pointer to mapping containing all attribute result budgets that
+   * have been set.
+   */
+  const std::unordered_map<std::string, ResultBudget>* get_attr_result_budgets()
+      const;
+
+  /**
+   * Gets the memory budget (in bytes).
+   *
+   * @param budget The budget for the fixed-sized attributes and the
+   *     offsets of the var-sized attributes.
+   * @param budget_var The budget for the var-sized attributes.
+   * @return Status
+   */
+  Status get_memory_budget(uint64_t* budget, uint64_t* budget_var) const;
+
+  /**
+   * The partitioner iterates over the partitions of the subarray it is
+   * associated with. This function advances to compute the next partition
+   * based on the specified budget. If this cannot be retrieved because
+   * the current partition cannot be split further (typically because it
+   * is a single cell whose estimated result does not fit in the budget),
+   * then the function does not advance to the next partition and sets
+   * ``unsplittable`` to ``true``.
+   */
+  Status next(bool* unsplittable);
+
+  /**
+   * The partitioner iterates over the partitions of the subarray it is
+   * associated with. This function advances to compute the next partition
+   * based on the specified budget. If this cannot be retrieved because
+   * the current partition cannot be split further (typically because it
+   * is a single cell whose estimated result does not fit in the budget),
+   * then the function does not advance to the next partition and sets
+   * ``unsplittable`` to ``true``.
+   */
+  template <class T>
+  Status next(bool* unsplittable);
+
+  /**
+   * Sets the memory budget (in bytes).
+   *
+   * @param budget The budget for the fixed-sized attributes and the
+   *     offsets of the var-sized attributes.
+   * @param budget_var The budget for the var-sized attributes.
+   * @return Status
+   */
+  Status set_memory_budget(uint64_t budget, uint64_t budget_var);
+
+  /** Sets result size budget (in bytes) for the input fixed-sized attribute. */
+  Status set_result_budget(const char* attr_name, uint64_t budget);
+
+  /** Sets result size budget (in bytes) for the input var-sized attribute. */
+  Status set_result_budget(
+      const char* attr_name, uint64_t budget_off, uint64_t budget_val);
+
+  /**
+   * Splits the current partition and updates the state, retrieving
+   * a new current partition. This function is typically called
+   * by the reader when the current partition was estimated to fit
+   * the results, but that was not eventually true.
+   */
+  template <class T>
+  Status split_current(bool* unsplittable);
+
+  /** Returns the state. */
+  const State* state() const;
+
+  /** Returns the state. */
+  State* state();
+
+  /** Returns the subarray. */
+  const Subarray* subarray() const;
+
+  /** Returns the subarray. */
+  Subarray* subarray();
+
+ private:
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
   /* ********************************* */

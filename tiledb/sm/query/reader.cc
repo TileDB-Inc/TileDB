@@ -100,6 +100,10 @@ Reader::~Reader() = default;
 /*               API              */
 /* ****************************** */
 
+const Array* Reader::array() const {
+  return array_;
+}
+
 const ArraySchema* Reader::array_schema() const {
   return array_schema_;
 }
@@ -197,6 +201,14 @@ bool Reader::no_results() const {
       return false;
   }
   return true;
+}
+
+const Reader::ReadState* Reader::read_state() const {
+  return &read_state_;
+}
+
+Reader::ReadState* Reader::read_state() {
+  return &read_state_;
 }
 
 Status Reader::read() {
@@ -463,6 +475,10 @@ Status Reader::set_subarray(const Subarray& subarray) {
   layout_ = subarray.layout();
 
   return Status::Ok();
+}
+
+const Subarray* Reader::subarray() const {
+  return &subarray_;
 }
 
 /* ********************************* */

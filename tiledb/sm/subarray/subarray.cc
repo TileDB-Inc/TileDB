@@ -586,6 +586,16 @@ std::vector<const T*> Subarray::range(uint64_t range_idx) const {
   return ret;
 }
 
+const Subarray::Ranges* Subarray::ranges_for_dim(uint32_t dim_idx) const {
+  return &ranges_[dim_idx];
+}
+
+Status Subarray::set_ranges_for_dim(uint32_t dim_idx, const Ranges& ranges) {
+  ranges_.resize(dim_idx + 1, Ranges(type()));
+  ranges_[dim_idx] = ranges;
+  return Status::Ok();
+}
+
 const std::vector<std::vector<uint8_t>>& Subarray::tile_coords() const {
   return tile_coords_;
 }

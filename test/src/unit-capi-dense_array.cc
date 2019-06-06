@@ -2940,13 +2940,9 @@ TEST_CASE_METHOD(
   SECTION("- No serialization") {
     serialize_query_ = false;
   }
-
-  /*
-  //TODO(ttd): re-enable
   SECTION("- Serialization") {
     serialize_query_ = true;
   }
-  */
 
   if (supports_s3_) {
     // S3
@@ -2973,12 +2969,9 @@ TEST_CASE_METHOD(
   SECTION("- No serialization") {
     serialize_query_ = false;
   }
-  /*
-  //TODO(ttd): re-enable
   SECTION("- Serialization") {
     serialize_query_ = true;
   }
-  */
 
   if (supports_s3_) {
     // S3
@@ -3003,12 +2996,9 @@ TEST_CASE_METHOD(
   SECTION("- No serialization") {
     serialize_query_ = false;
   }
-  /*
-  //TODO(ttd): re-enable
   SECTION("- Serialization") {
     serialize_query_ = true;
   }
-  */
 
   if (supports_s3_) {
     // S3
@@ -3035,12 +3025,9 @@ TEST_CASE_METHOD(
   SECTION("- No serialization") {
     serialize_query_ = false;
   }
-  /*
-  //TODO(ttd): re-enable
   SECTION("- Serialization") {
     serialize_query_ = true;
   }
-  */
 
   if (supports_s3_) {
     // S3
@@ -3067,12 +3054,9 @@ TEST_CASE_METHOD(
   SECTION("- No serialization") {
     serialize_query_ = false;
   }
-  /*
-  //TODO(ttd): re-enable
   SECTION("- Serialization") {
     serialize_query_ = true;
   }
-  */
 
   std::string temp_dir;
   if (supports_s3_) {
@@ -3094,12 +3078,9 @@ TEST_CASE_METHOD(
   SECTION("- No serialization") {
     serialize_query_ = false;
   }
-  /*
-  //TODO(ttd): re-enable
   SECTION("- Serialization") {
     serialize_query_ = true;
   }
-  */
 
   std::string temp_dir;
   if (supports_s3_) {
@@ -3121,12 +3102,9 @@ TEST_CASE_METHOD(
   SECTION("- No serialization") {
     serialize_query_ = false;
   }
-  /*
-  //TODO(ttd): re-enable
   SECTION("- Serialization") {
     serialize_query_ = true;
   }
-  */
 
   std::string temp_dir;
   if (supports_s3_) {
@@ -3148,12 +3126,9 @@ TEST_CASE_METHOD(
   SECTION("- No serialization") {
     serialize_query_ = false;
   }
-  /*
-  //TODO(ttd): re-enable
   SECTION("- Serialization") {
     serialize_query_ = true;
   }
-  */
 
   std::string temp_dir = FILE_URI_PREFIX + FILE_TEMP_DIR;
   create_temp_dir(temp_dir);
@@ -3168,12 +3143,9 @@ TEST_CASE_METHOD(
   SECTION("- No serialization") {
     serialize_query_ = false;
   }
-  /*
-  //TODO(ttd): re-enable
   SECTION("- Serialization") {
     serialize_query_ = true;
   }
-  */
 
   std::string temp_dir = FILE_URI_PREFIX + FILE_TEMP_DIR;
   create_temp_dir(temp_dir);
@@ -3437,12 +3409,9 @@ TEST_CASE_METHOD(
   SECTION("- No serialization") {
     serialize_query_ = false;
   }
-  /*
-  //TODO(ttd): re-enable
   SECTION("- Serialization") {
     serialize_query_ = true;
   }
-  */
 
   std::string temp_dir = FILE_URI_PREFIX + FILE_TEMP_DIR;
   std::string array_name = temp_dir + "reset_read_subarray";
@@ -3508,12 +3477,9 @@ TEST_CASE_METHOD(
   SECTION("- No serialization") {
     serialize_query_ = false;
   }
-  /*
-  //TODO(ttd): re-enable
   SECTION("- Serialization") {
     serialize_query_ = true;
   }
-  */
 
   std::string temp_dir = FILE_URI_PREFIX + FILE_TEMP_DIR;
   std::string array_name = temp_dir + "reset_write_subarray";
@@ -3620,12 +3586,9 @@ TEST_CASE_METHOD(
   SECTION("- No serialization") {
     serialize_query_ = false;
   }
-  /*
-  //TODO(ttd): re-enable
   SECTION("- Serialization") {
     serialize_query_ = true;
   }
-  */
 
   std::string temp_dir = FILE_URI_PREFIX + FILE_TEMP_DIR;
   std::string array_name = temp_dir + "with_ending_slash/";
@@ -3643,12 +3606,9 @@ TEST_CASE_METHOD(
   SECTION("- No serialization") {
     serialize_query_ = false;
   }
-  /*
-  //TODO(ttd): re-enable
   SECTION("- Serialization") {
     serialize_query_ = true;
   }
-  */
 
   std::string temp_dir = FILE_URI_PREFIX + FILE_TEMP_DIR;
   std::string array_name = temp_dir + "dense_write_missing_attributes/";
@@ -3665,12 +3625,9 @@ TEST_CASE_METHOD(
   SECTION("- No serialization") {
     serialize_query_ = false;
   }
-  /*
-  //TODO(ttd): re-enable
   SECTION("- Serialization") {
     serialize_query_ = true;
   }
-  */
 
   std::string temp_dir = FILE_URI_PREFIX + FILE_TEMP_DIR;
   std::string array_name = temp_dir + "dense_read_empty/";
@@ -3755,12 +3712,9 @@ TEST_CASE_METHOD(
   SECTION("- No serialization") {
     serialize_query_ = false;
   }
-  /*
-  //TODO(ttd): re-enable
   SECTION("- Serialization") {
     serialize_query_ = true;
   }
-  */
 
   std::string temp_dir = FILE_URI_PREFIX + FILE_TEMP_DIR;
   std::string array_name = temp_dir + "dense_read_empty_sparse/";
@@ -3852,12 +3806,9 @@ TEST_CASE_METHOD(
   SECTION("- No serialization") {
     serialize_query_ = false;
   }
-  /*
-  //TODO(ttd): re-enable
   SECTION("- Serialization") {
     serialize_query_ = true;
   }
-  */
 
   std::string temp_dir = FILE_URI_PREFIX + FILE_TEMP_DIR;
   std::string array_name = temp_dir + "dense_read_empty_merge/";
@@ -3941,12 +3892,9 @@ TEST_CASE_METHOD(
   SECTION("- No serialization") {
     serialize_query_ = false;
   }
-  /*
-  //TODO(ttd): re-enable
   SECTION("- Serialization") {
     serialize_query_ = true;
   }
-  */
 
   std::string temp_dir = FILE_URI_PREFIX + FILE_TEMP_DIR;
   std::string array_name = temp_dir + "dense_multi_fragment/";
@@ -4050,12 +3998,9 @@ TEST_CASE_METHOD(
   SECTION("- No serialization") {
     serialize_query_ = false;
   }
-  /*
-  //TODO(ttd): re-enable
   SECTION("- Serialization") {
     serialize_query_ = true;
   }
-  */
 
   std::string temp_dir = FILE_URI_PREFIX + FILE_TEMP_DIR;
   std::string array_name = temp_dir + "dense_is_open/";
@@ -4097,12 +4042,9 @@ TEST_CASE_METHOD(
   SECTION("- No serialization") {
     serialize_query_ = false;
   }
-  /*
-  //TODO(ttd): re-enable
   SECTION("- Serialization") {
     serialize_query_ = true;
   }
-  */
 
   std::string temp_dir = FILE_URI_PREFIX + FILE_TEMP_DIR;
   std::string array_name = temp_dir + "dense_get_schema/";
@@ -4139,12 +4081,9 @@ TEST_CASE_METHOD(
   SECTION("- No serialization") {
     serialize_query_ = false;
   }
-  /*
-  //TODO(ttd): re-enable
   SECTION("- Serialization") {
     serialize_query_ = true;
   }
-  */
 
   std::string array_name =
       FILE_URI_PREFIX + FILE_TEMP_DIR + "dense_set_subarray_sparse";
@@ -4198,12 +4137,9 @@ TEST_CASE_METHOD(
   SECTION("- No serialization") {
     serialize_query_ = false;
   }
-  /*
-  //TODO(ttd): re-enable
   SECTION("- Serialization") {
     serialize_query_ = true;
   }
-  */
 
   std::string array_name =
       FILE_URI_PREFIX + FILE_TEMP_DIR + "dense_coords_exist_unordered";
@@ -4276,12 +4212,9 @@ TEST_CASE_METHOD(
   SECTION("- No serialization") {
     serialize_query_ = false;
   }
-  /*
-  //TODO(ttd): re-enable
   SECTION("- Serialization") {
     serialize_query_ = true;
   }
-  */
 
   std::string array_name =
       FILE_URI_PREFIX + FILE_TEMP_DIR + "dense-col-updates";

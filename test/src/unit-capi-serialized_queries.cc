@@ -311,120 +311,30 @@ struct SerializationFx {
 
 }  // namespace
 
-/*
- // TODO(ttd): re-enable after fixing the new state serialization
-
 TEST_CASE_METHOD(
-  SerializationFx,
-  "Query serialization, dense",
-  "[query], [dense], [serialization]") {
-create_array(TILEDB_DENSE);
-write_dense_array();
+    SerializationFx,
+    "Query serialization, dense",
+    "[query], [dense], [serialization]") {
+  create_array(TILEDB_DENSE);
+  write_dense_array();
 
-SECTION("- Read all") {
-  Array array(ctx, array_uri, TILEDB_READ);
-  Query query(ctx, array);
-  std::vector<uint32_t> a1(1000);
-  std::vector<uint32_t> a2(1000);
-  std::vector<char> a3_data(1000 * 100);
-  std::vector<uint64_t> a3_offsets(1000);
-  std::vector<int32_t> subarray = {1, 10, 1, 10};
+  SECTION("- Read all") {
+    Array array(ctx, array_uri, TILEDB_READ);
+    Query query(ctx, array);
+    std::vector<uint32_t> a1(1000);
+    std::vector<uint32_t> a2(1000);
+    std::vector<char> a3_data(1000 * 100);
+    std::vector<uint64_t> a3_offsets(1000);
+    std::vector<int32_t> subarray = {1, 10, 1, 10};
 
-  query.set_subarray(subarray);
-  query.set_buffer("a1", a1);
-  query.set_buffer("a2", a2);
-  query.set_buffer("a3", a3_offsets, a3_data);
+    query.set_subarray(subarray);
+    query.set_buffer("a1", a1);
+    query.set_buffer("a2", a2);
+    query.set_buffer("a3", a3_offsets, a3_data);
 
-  // Serialize into a copy (client side).
-  std::vector<uint8_t> serialized;
-  serialize_query(ctx, query, &serialized, true);
-
-  // Deserialize into a new query and allocate buffers (server side).
-  Array array2(ctx, array_uri, TILEDB_READ);
-  Query query2(ctx, array2);
-  deserialize_query(ctx, serialized, &query2, false);
-  auto to_free = allocate_query_buffers(ctx, array2, &query2);
-
-  // Submit and serialize results (server side).
-  query2.submit();
-  serialize_query(ctx, query2, &serialized, false);
-
-  // Deserialize into original query (client side).
-  deserialize_query(ctx, serialized, &query, true);
-  REQUIRE(query.query_status() == Query::Status::COMPLETE);
-
-  auto result_el = query.result_buffer_elements();
-  REQUIRE(result_el["a1"].second == 100);
-  REQUIRE(result_el["a2"].second == 200);
-  REQUIRE(result_el["a3"].first == 100);
-  REQUIRE(result_el["a3"].second == 5050);
-
-  for (void* b : to_free)
-    std::free(b);
-}
-
-SECTION("- Read subarray") {
-  Array array(ctx, array_uri, TILEDB_READ);
-  Query query(ctx, array);
-  std::vector<uint32_t> a1(1000);
-  std::vector<uint32_t> a2(1000);
-  std::vector<char> a3_data(1000 * 100);
-  std::vector<uint64_t> a3_offsets(1000);
-  std::vector<int32_t> subarray = {3, 4, 3, 4};
-
-  query.set_subarray(subarray);
-  query.set_buffer("a1", a1);
-  query.set_buffer("a2", a2);
-  query.set_buffer("a3", a3_offsets, a3_data);
-
-  // Serialize into a copy (client side).
-  std::vector<uint8_t> serialized;
-  serialize_query(ctx, query, &serialized, true);
-
-  // Deserialize into a new query and allocate buffers (server side).
-  Array array2(ctx, array_uri, TILEDB_READ);
-  Query query2(ctx, array2);
-  deserialize_query(ctx, serialized, &query2, false);
-  auto to_free = allocate_query_buffers(ctx, array2, &query2);
-
-  // Submit and serialize results (server side).
-  query2.submit();
-  serialize_query(ctx, query2, &serialized, false);
-
-  // Deserialize into original query (client side).
-  deserialize_query(ctx, serialized, &query, true);
-  REQUIRE(query.query_status() == Query::Status::COMPLETE);
-
-  auto result_el = query.result_buffer_elements();
-  REQUIRE(result_el["a1"].second == 4);
-  REQUIRE(result_el["a2"].second == 8);
-  REQUIRE(result_el["a3"].first == 4);
-  REQUIRE(result_el["a3"].second == 114);
-
-  for (void* b : to_free)
-    std::free(b);
-}
-
-SECTION("- Incomplete read") {
-  Array array(ctx, array_uri, TILEDB_READ);
-  Query query(ctx, array);
-  std::vector<uint32_t> a1(4);
-  std::vector<uint32_t> a2(4);
-  std::vector<char> a3_data(60);
-  std::vector<uint64_t> a3_offsets(4);
-  std::vector<int32_t> subarray = {3, 4, 3, 4};
-  query.set_subarray(subarray);
-
-  auto set_buffers = [&](Query& q) {
-    q.set_buffer("a1", a1);
-    q.set_buffer("a2", a2);
-    q.set_buffer("a3", a3_offsets, a3_data);
-  };
-
-  auto serialize_and_submit = [&](Query& q) {
     // Serialize into a copy (client side).
     std::vector<uint8_t> serialized;
-    serialize_query(ctx, q, &serialized, true);
+    serialize_query(ctx, query, &serialized, true);
 
     // Deserialize into a new query and allocate buffers (server side).
     Array array2(ctx, array_uri, TILEDB_READ);
@@ -437,94 +347,179 @@ SECTION("- Incomplete read") {
     serialize_query(ctx, query2, &serialized, false);
 
     // Deserialize into original query (client side).
-    deserialize_query(ctx, serialized, &q, true);
+    deserialize_query(ctx, serialized, &query, true);
+    REQUIRE(query.query_status() == Query::Status::COMPLETE);
+
+    auto result_el = query.result_buffer_elements();
+    REQUIRE(result_el["a1"].second == 100);
+    REQUIRE(result_el["a2"].second == 200);
+    REQUIRE(result_el["a3"].first == 100);
+    REQUIRE(result_el["a3"].second == 5050);
 
     for (void* b : to_free)
       std::free(b);
-  };
+  }
 
-  // Submit initial query.
-  set_buffers(query);
-  serialize_and_submit(query);
-  REQUIRE(query.query_status() == Query::Status::INCOMPLETE);
+  SECTION("- Read subarray") {
+    Array array(ctx, array_uri, TILEDB_READ);
+    Query query(ctx, array);
+    std::vector<uint32_t> a1(1000);
+    std::vector<uint32_t> a2(1000);
+    std::vector<char> a3_data(1000 * 100);
+    std::vector<uint64_t> a3_offsets(1000);
+    std::vector<int32_t> subarray = {3, 4, 3, 4};
 
-  auto result_el = query.result_buffer_elements();
-  REQUIRE(result_el["a1"].second == 2);
-  REQUIRE(result_el["a2"].second == 4);
-  REQUIRE(result_el["a3"].first == 2);
-  REQUIRE(result_el["a3"].second == 47);
+    query.set_subarray(subarray);
+    query.set_buffer("a1", a1);
+    query.set_buffer("a2", a2);
+    query.set_buffer("a3", a3_offsets, a3_data);
 
-  // Reset buffers, serialize and resubmit
-  set_buffers(query);
-  serialize_and_submit(query);
+    // Serialize into a copy (client side).
+    std::vector<uint8_t> serialized;
+    serialize_query(ctx, query, &serialized, true);
 
-  REQUIRE(query.query_status() == Query::Status::INCOMPLETE);
-  result_el = query.result_buffer_elements();
-  REQUIRE(result_el["a1"].second == 1);
-  REQUIRE(result_el["a2"].second == 2);
-  REQUIRE(result_el["a3"].first == 1);
-  REQUIRE(result_el["a3"].second == 33);
+    // Deserialize into a new query and allocate buffers (server side).
+    Array array2(ctx, array_uri, TILEDB_READ);
+    Query query2(ctx, array2);
+    deserialize_query(ctx, serialized, &query2, false);
+    auto to_free = allocate_query_buffers(ctx, array2, &query2);
 
-  // Reset buffers, serialize and resubmit
-  set_buffers(query);
-  serialize_and_submit(query);
+    // Submit and serialize results (server side).
+    query2.submit();
+    serialize_query(ctx, query2, &serialized, false);
 
-  REQUIRE(query.query_status() == Query::Status::COMPLETE);
-  result_el = query.result_buffer_elements();
-  REQUIRE(result_el["a1"].second == 1);
-  REQUIRE(result_el["a2"].second == 2);
-  REQUIRE(result_el["a3"].first == 1);
-  REQUIRE(result_el["a3"].second == 34);
-}
+    // Deserialize into original query (client side).
+    deserialize_query(ctx, serialized, &query, true);
+    REQUIRE(query.query_status() == Query::Status::COMPLETE);
+
+    auto result_el = query.result_buffer_elements();
+    REQUIRE(result_el["a1"].second == 4);
+    REQUIRE(result_el["a2"].second == 8);
+    REQUIRE(result_el["a3"].first == 4);
+    REQUIRE(result_el["a3"].second == 114);
+
+    for (void* b : to_free)
+      std::free(b);
+  }
+
+  SECTION("- Incomplete read") {
+    Array array(ctx, array_uri, TILEDB_READ);
+    Query query(ctx, array);
+    std::vector<uint32_t> a1(4);
+    std::vector<uint32_t> a2(4);
+    std::vector<char> a3_data(60);
+    std::vector<uint64_t> a3_offsets(4);
+    std::vector<int32_t> subarray = {3, 4, 3, 4};
+    query.set_subarray(subarray);
+
+    auto set_buffers = [&](Query& q) {
+      q.set_buffer("a1", a1);
+      q.set_buffer("a2", a2);
+      q.set_buffer("a3", a3_offsets, a3_data);
+    };
+
+    auto serialize_and_submit = [&](Query& q) {
+      // Serialize into a copy (client side).
+      std::vector<uint8_t> serialized;
+      serialize_query(ctx, q, &serialized, true);
+
+      // Deserialize into a new query and allocate buffers (server side).
+      Array array2(ctx, array_uri, TILEDB_READ);
+      Query query2(ctx, array2);
+      deserialize_query(ctx, serialized, &query2, false);
+      auto to_free = allocate_query_buffers(ctx, array2, &query2);
+
+      // Submit and serialize results (server side).
+      query2.submit();
+      serialize_query(ctx, query2, &serialized, false);
+
+      // Deserialize into original query (client side).
+      deserialize_query(ctx, serialized, &q, true);
+
+      for (void* b : to_free)
+        std::free(b);
+    };
+
+    // Submit initial query.
+    set_buffers(query);
+    serialize_and_submit(query);
+    REQUIRE(query.query_status() == Query::Status::INCOMPLETE);
+
+    auto result_el = query.result_buffer_elements();
+    REQUIRE(result_el["a1"].second == 2);
+    REQUIRE(result_el["a2"].second == 4);
+    REQUIRE(result_el["a3"].first == 2);
+    REQUIRE(result_el["a3"].second == 47);
+
+    // Reset buffers, serialize and resubmit
+    set_buffers(query);
+    serialize_and_submit(query);
+
+    REQUIRE(query.query_status() == Query::Status::INCOMPLETE);
+    result_el = query.result_buffer_elements();
+    REQUIRE(result_el["a1"].second == 1);
+    REQUIRE(result_el["a2"].second == 2);
+    REQUIRE(result_el["a3"].first == 1);
+    REQUIRE(result_el["a3"].second == 33);
+
+    // Reset buffers, serialize and resubmit
+    set_buffers(query);
+    serialize_and_submit(query);
+
+    REQUIRE(query.query_status() == Query::Status::COMPLETE);
+    result_el = query.result_buffer_elements();
+    REQUIRE(result_el["a1"].second == 1);
+    REQUIRE(result_el["a2"].second == 2);
+    REQUIRE(result_el["a3"].first == 1);
+    REQUIRE(result_el["a3"].second == 34);
+  }
 }
 
 TEST_CASE_METHOD(
-  SerializationFx,
-  "Query serialization, sparse",
-  "[query], [sparse], [serialization]") {
-create_array(TILEDB_SPARSE);
-write_sparse_array();
+    SerializationFx,
+    "Query serialization, sparse",
+    "[query], [sparse], [serialization]") {
+  create_array(TILEDB_SPARSE);
+  write_sparse_array();
 
-SECTION("- Read all") {
-  Array array(ctx, array_uri, TILEDB_READ);
-  Query query(ctx, array);
-  std::vector<int32_t> coords(1000);
-  std::vector<uint32_t> a1(1000);
-  std::vector<uint32_t> a2(1000);
-  std::vector<char> a3_data(1000 * 100);
-  std::vector<uint64_t> a3_offsets(1000);
-  std::vector<int32_t> subarray = {1, 10, 1, 10};
+  SECTION("- Read all") {
+    Array array(ctx, array_uri, TILEDB_READ);
+    Query query(ctx, array);
+    std::vector<int32_t> coords(1000);
+    std::vector<uint32_t> a1(1000);
+    std::vector<uint32_t> a2(1000);
+    std::vector<char> a3_data(1000 * 100);
+    std::vector<uint64_t> a3_offsets(1000);
+    std::vector<int32_t> subarray = {1, 10, 1, 10};
 
-  query.set_subarray(subarray);
-  query.set_coordinates(coords);
-  query.set_buffer("a1", a1);
-  query.set_buffer("a2", a2);
-  query.set_buffer("a3", a3_offsets, a3_data);
+    query.set_subarray(subarray);
+    query.set_coordinates(coords);
+    query.set_buffer("a1", a1);
+    query.set_buffer("a2", a2);
+    query.set_buffer("a3", a3_offsets, a3_data);
 
-  // Serialize into a copy and submit.
-  std::vector<uint8_t> serialized;
-  serialize_query(ctx, query, &serialized, true);
-  Array array2(ctx, array_uri, TILEDB_READ);
-  Query query2(ctx, array2);
-  deserialize_query(ctx, serialized, &query2, false);
-  auto to_free = allocate_query_buffers(ctx, array2, &query2);
-  query2.submit();
-  serialize_query(ctx, query2, &serialized, false);
+    // Serialize into a copy and submit.
+    std::vector<uint8_t> serialized;
+    serialize_query(ctx, query, &serialized, true);
+    Array array2(ctx, array_uri, TILEDB_READ);
+    Query query2(ctx, array2);
+    deserialize_query(ctx, serialized, &query2, false);
+    auto to_free = allocate_query_buffers(ctx, array2, &query2);
+    query2.submit();
+    serialize_query(ctx, query2, &serialized, false);
 
-  // Deserialize into original query
-  deserialize_query(ctx, serialized, &query, true);
-  REQUIRE(query.query_status() == Query::Status::COMPLETE);
+    // Deserialize into original query
+    deserialize_query(ctx, serialized, &query, true);
+    REQUIRE(query.query_status() == Query::Status::COMPLETE);
 
-  auto result_el = query.result_buffer_elements();
-  REQUIRE(result_el[TILEDB_COORDS].second == 20);
-  REQUIRE(result_el["a1"].second == 10);
-  REQUIRE(result_el["a2"].second == 20);
-  REQUIRE(result_el["a3"].first == 10);
-  REQUIRE(result_el["a3"].second == 55);
+    auto result_el = query.result_buffer_elements();
+    REQUIRE(result_el[TILEDB_COORDS].second == 20);
+    REQUIRE(result_el["a1"].second == 10);
+    REQUIRE(result_el["a2"].second == 20);
+    REQUIRE(result_el["a3"].first == 10);
+    REQUIRE(result_el["a3"].second == 55);
 
-  for (void* b : to_free)
-    std::free(b);
+    for (void* b : to_free)
+      std::free(b);
+  }
 }
-}
-
- */
