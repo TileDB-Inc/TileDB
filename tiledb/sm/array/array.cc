@@ -143,6 +143,9 @@ Status Array::open(
   RETURN_NOT_OK(
       encryption_key_.set_key(encryption_type, encryption_key, key_length));
 
+  timestamp_ =
+      query_type == QueryType::READ ? utils::time::timestamp_now_ms() : 0;
+
   if (remote_) {
     auto rest_client = storage_manager_->rest_client();
     if (rest_client == nullptr)
@@ -151,7 +154,6 @@ Status Array::open(
     RETURN_NOT_OK(
         rest_client->get_array_schema_from_rest(array_uri_, &array_schema_));
   } else if (query_type == QueryType::READ) {
-    timestamp_ = utils::time::timestamp_now_ms();
     RETURN_NOT_OK(storage_manager_->array_open_for_reads(
         array_uri_,
         timestamp_,
@@ -159,7 +161,6 @@ Status Array::open(
         &array_schema_,
         &fragment_metadata_));
   } else {
-    timestamp_ = 0;
     RETURN_NOT_OK(storage_manager_->array_open_for_writes(
         array_uri_, encryption_key_, &array_schema_));
   }

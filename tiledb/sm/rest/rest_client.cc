@@ -240,6 +240,12 @@ Status RestClient::post_query_submit(
     Query* query,
     std::unordered_map<std::string, serialization::QueryBufferCopyState>*
         copy_state) {
+  // Get array
+  const Array* array = query->array();
+  if (array == nullptr)
+    return LOG_STATUS(
+        Status::RestError("Error submitting query to REST; null array."));
+
   // Serialize query to send
   BufferList serialized;
   RETURN_NOT_OK(serialization::query_serialize(
@@ -253,6 +259,10 @@ Status RestClient::post_query_submit(
   std::string url = rest_server_ + "/v1/arrays/" + array_ns + "/" +
                     curlc.url_escape(array_uri) +
                     "/query/submit?type=" + query_type_str(query->type());
+
+  // Remote array reads always supply the timestamp.
+  if (query->type() == QueryType::READ)
+    url += "&open_at=" + std::to_string(array->timestamp());
 
   Buffer returned_data;
   RETURN_NOT_OK(
