@@ -441,10 +441,6 @@ QueryStatus Query::status() const {
   return status_;
 }
 
-const void* Query::subarray() const {
-  return type_ == QueryType::READ ? reader_.subarray() : writer_.subarray();
-}
-
 QueryType Query::type() const {
   return type_;
 }

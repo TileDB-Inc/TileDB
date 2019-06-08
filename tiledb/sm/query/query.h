@@ -333,9 +333,6 @@ class Query {
   /** Returns the query status. */
   QueryStatus status() const;
 
-  /** Returns the subarray. */
-  const void* subarray() const;
-
   /** Returns the query type. */
   QueryType type() const;
 

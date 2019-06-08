@@ -1228,14 +1228,19 @@ TEST_CASE_METHOD(
 }
 
 #ifdef TILEDB_SERIALIZATION
+
+/*
+ // TODO(ttd): re-enable
+
 TEST_CASE_METHOD(
     IncompleteFx,
     "C API: Test incomplete read queries, dense, serialized",
-    "[capi], [incomplete], [dense-incomplete]") {
+    "[capi][incomplete][dense][serialization]") {
   remove_dense_array();
   create_dense_array();
   write_dense_full();
   check_dense_incomplete_serialized();
   remove_dense_array();
 }
+ */
 #endif
