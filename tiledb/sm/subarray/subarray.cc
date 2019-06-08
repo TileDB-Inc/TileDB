@@ -1009,22 +1009,8 @@ Status Subarray::compute_tile_overlap() {
         if (meta[i]->dense()) {  // Dense fragment
           tile_overlap_[i][j] = get_tile_overlap<T>(range, i);
         } else {  // Sparse fragment
-          auto rtree = (const RTree*)nullptr;
-          RETURN_NOT_OK(meta[i]->rtree(*encryption_key, &rtree));
-          if (rtree != nullptr) {  // Format version > 2
-            tile_overlap_[i][j] = rtree->get_tile_overlap<T>(range);
-          } else {  // Format version <= 2 - use linear scan over MBRs
-            auto mbrs = meta[i]->mbrs();
-            auto mbr_num = mbrs.size();
-            for (size_t t = 0; t < mbr_num; ++t) {
-              auto m = (const T*)mbrs[t];
-              auto overlap = RTree::range_overlap<T>(range, m);
-              if (overlap > 0.0) {
-                auto to = std::pair<uint64_t, double>(t, overlap);
-                tile_overlap_[i][j].tiles_.push_back(to);
-              }
-            }
-          }
+          RETURN_NOT_OK(meta[i]->get_tile_overlap<T>(
+              *encryption_key, range, &(tile_overlap_[i][j])));
         }
         return Status::Ok();
       });

@@ -386,6 +386,30 @@ const URI& FragmentMetadata::fragment_uri() const {
 }
 
 template <class T>
+Status FragmentMetadata::get_tile_overlap(
+    const EncryptionKey& encryption_key,
+    const std::vector<const T*>& range,
+    TileOverlap* tile_overlap) {
+  if (version_ > 2) {
+    RETURN_NOT_OK(load_rtree(encryption_key));
+    *tile_overlap = rtree_.get_tile_overlap<T>(range);
+    return Status::Ok();
+  }
+
+  auto mbr_num = mbrs_.size();
+  for (size_t t = 0; t < mbr_num; ++t) {
+    auto m = (const T*)mbrs_[t];
+    auto overlap = RTree::range_overlap<T>(range, m);
+    if (overlap > 0.0) {
+      auto to = std::pair<uint64_t, double>(t, overlap);
+      tile_overlap->tiles_.push_back(to);
+    }
+  }
+
+  return Status::Ok();
+}
+
+template <class T>
 uint64_t FragmentMetadata::get_tile_pos(const T* tile_coords) const {
   // For easy reference
   auto dim_num = array_schema_->dim_num();
@@ -566,14 +590,6 @@ Status FragmentMetadata::store(const EncryptionKey& encryption_key) {
 
 const std::vector<void*> FragmentMetadata::mbrs() const {
   return mbrs_;
-}
-
-// TODO (sp): remove when the new dense algorithm is in
-Status FragmentMetadata::mbrs(
-    const EncryptionKey& encryption_key, const std::vector<void*>** mbrs) {
-  RETURN_NOT_OK(load_mbrs(encryption_key))
-  *mbrs = &mbrs_;
-  return Status::Ok();
 }
 
 const void* FragmentMetadata::non_empty_domain() const {
@@ -1925,6 +1941,47 @@ template uint64_t FragmentMetadata::get_tile_pos<int64_t>(
     const int64_t* tile_coords) const;
 template uint64_t FragmentMetadata::get_tile_pos<uint64_t>(
     const uint64_t* tile_coords) const;
+
+template Status FragmentMetadata::get_tile_overlap<int8_t>(
+    const EncryptionKey& encryption_key,
+    const std::vector<const int8_t*>& range,
+    TileOverlap* tile_overlap);
+template Status FragmentMetadata::get_tile_overlap<uint8_t>(
+    const EncryptionKey& encryption_key,
+    const std::vector<const uint8_t*>& range,
+    TileOverlap* tile_overlap);
+template Status FragmentMetadata::get_tile_overlap<int16_t>(
+    const EncryptionKey& encryption_key,
+    const std::vector<const int16_t*>& range,
+    TileOverlap* tile_overlap);
+template Status FragmentMetadata::get_tile_overlap<uint16_t>(
+    const EncryptionKey& encryption_key,
+    const std::vector<const uint16_t*>& range,
+    TileOverlap* tile_overlap);
+template Status FragmentMetadata::get_tile_overlap<int32_t>(
+    const EncryptionKey& encryption_key,
+    const std::vector<const int32_t*>& range,
+    TileOverlap* tile_overlap);
+template Status FragmentMetadata::get_tile_overlap<uint32_t>(
+    const EncryptionKey& encryption_key,
+    const std::vector<const uint32_t*>& range,
+    TileOverlap* tile_overlap);
+template Status FragmentMetadata::get_tile_overlap<int64_t>(
+    const EncryptionKey& encryption_key,
+    const std::vector<const int64_t*>& range,
+    TileOverlap* tile_overlap);
+template Status FragmentMetadata::get_tile_overlap<uint64_t>(
+    const EncryptionKey& encryption_key,
+    const std::vector<const uint64_t*>& range,
+    TileOverlap* tile_overlap);
+template Status FragmentMetadata::get_tile_overlap<float>(
+    const EncryptionKey& encryption_key,
+    const std::vector<const float*>& range,
+    TileOverlap* tile_overlap);
+template Status FragmentMetadata::get_tile_overlap<double>(
+    const EncryptionKey& encryption_key,
+    const std::vector<const double*>& range,
+    TileOverlap* tile_overlap);
 
 }  // namespace sm
 }  // namespace tiledb
