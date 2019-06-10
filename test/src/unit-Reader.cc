@@ -143,18 +143,20 @@ TEST_CASE_METHOD(
   std::vector<int32_t> domain_slice_1 = {3, 4, 1, 12};
   std::vector<int32_t> domain_slice_2 = {4, 5, 2, 4};
   std::vector<int32_t> domain_slice_3 = {5, 7, 1, 9};
-  std::vector<TileDomain<int32_t>> tile_domains;
-  tile_domains.emplace_back(TileDomain<int32_t>(
+  std::vector<TileDomain<int32_t>> frag_tile_domains;
+  frag_tile_domains.emplace_back(TileDomain<int32_t>(
       3, dim_num, &domain[0], &domain_slice_3[0], &tile_extents[0], layout));
-  tile_domains.emplace_back(TileDomain<int32_t>(
+  frag_tile_domains.emplace_back(TileDomain<int32_t>(
       2, dim_num, &domain[0], &domain_slice_2[0], &tile_extents[0], layout));
-  tile_domains.emplace_back(TileDomain<int32_t>(
+  frag_tile_domains.emplace_back(TileDomain<int32_t>(
       1, dim_num, &domain[0], &domain_slice_1[0], &tile_extents[0], layout));
+  TileDomain<int32_t> array_tile_domain(
+      UINT32_MAX, dim_num, &domain[0], &domain[0], &tile_extents[0], layout);
 
   // Compute result space tiles map
   std::map<const int32_t*, ResultSpaceTile<int32_t>> result_space_tiles;
   Reader::compute_result_space_tiles<int32_t>(
-      tile_coords, tile_domains, &result_space_tiles);
+      tile_coords, array_tile_domain, frag_tile_domains, &result_space_tiles);
   CHECK(result_space_tiles.size() == 6);
 
   // Result tiles for fragment #1

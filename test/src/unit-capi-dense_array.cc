@@ -82,7 +82,7 @@ struct DenseArrayFx {
    * If true, queries are serialized before submission, to test the
    * serialization paths.
    */
-  bool serialize_query = false;
+  bool serialize_query_ = false;
 
   // TileDB context and VFS
   tiledb_ctx_t* ctx_;
@@ -2727,7 +2727,7 @@ int DenseArrayFx::submit_query_wrapper(
   return tiledb_query_submit(ctx_, query);
 #endif
 
-  if (!serialize_query)
+  if (!serialize_query_)
     return tiledb_query_submit(ctx_, query);
 
   // Get the query type and layout
@@ -2934,13 +2934,19 @@ std::string DenseArrayFx::random_bucket_name(const std::string& prefix) {
 }
 
 TEST_CASE_METHOD(
-    DenseArrayFx, "C API: Test dense array, sorted reads", "[capi], [dense]") {
+    DenseArrayFx,
+    "C API: Test dense array, sorted reads",
+    "[capi][dense][sorted_reads]") {
   SECTION("- No serialization") {
-    serialize_query = false;
+    serialize_query_ = false;
   }
+
+  /*
+  //TODO(ttd): re-enable
   SECTION("- Serialization") {
-    serialize_query = true;
+    serialize_query_ = true;
   }
+  */
 
   if (supports_s3_) {
     // S3
@@ -2965,11 +2971,14 @@ TEST_CASE_METHOD(
     "C API: Test dense array, invalid number of cells in dense writes",
     "[capi], [dense]") {
   SECTION("- No serialization") {
-    serialize_query = false;
+    serialize_query_ = false;
   }
+  /*
+  //TODO(ttd): re-enable
   SECTION("- Serialization") {
-    serialize_query = true;
+    serialize_query_ = true;
   }
+  */
 
   if (supports_s3_) {
     // S3
@@ -2992,11 +3001,14 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     DenseArrayFx, "C API: Test dense array, sorted writes", "[capi], [dense]") {
   SECTION("- No serialization") {
-    serialize_query = false;
+    serialize_query_ = false;
   }
+  /*
+  //TODO(ttd): re-enable
   SECTION("- Serialization") {
-    serialize_query = true;
+    serialize_query_ = true;
   }
+  */
 
   if (supports_s3_) {
     // S3
@@ -3019,13 +3031,16 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     DenseArrayFx,
     "C API: Test dense array, sparse writes",
-    "[capi], [dense], [dense-sparse-writes]") {
+    "[capi][dense][sparse_writes]") {
   SECTION("- No serialization") {
-    serialize_query = false;
+    serialize_query_ = false;
   }
+  /*
+  //TODO(ttd): re-enable
   SECTION("- Serialization") {
-    serialize_query = true;
+    serialize_query_ = true;
   }
+  */
 
   if (supports_s3_) {
     // S3
@@ -3050,11 +3065,14 @@ TEST_CASE_METHOD(
     "C API: Test dense array, simultaneous writes",
     "[capi], [dense], [dense-simultaneous-writes]") {
   SECTION("- No serialization") {
-    serialize_query = false;
+    serialize_query_ = false;
   }
+  /*
+  //TODO(ttd): re-enable
   SECTION("- Serialization") {
-    serialize_query = true;
+    serialize_query_ = true;
   }
+  */
 
   std::string temp_dir;
   if (supports_s3_) {
@@ -3074,11 +3092,14 @@ TEST_CASE_METHOD(
     "C API: Test dense array, cancel and retry writes",
     "[capi], [dense], [async], [cancel]") {
   SECTION("- No serialization") {
-    serialize_query = false;
+    serialize_query_ = false;
   }
+  /*
+  //TODO(ttd): re-enable
   SECTION("- Serialization") {
-    serialize_query = true;
+    serialize_query_ = true;
   }
+  */
 
   std::string temp_dir;
   if (supports_s3_) {
@@ -3098,11 +3119,14 @@ TEST_CASE_METHOD(
     "C API: Test dense array, return coordinates",
     "[capi], [dense], [return-coords]") {
   SECTION("- No serialization") {
-    serialize_query = false;
+    serialize_query_ = false;
   }
+  /*
+  //TODO(ttd): re-enable
   SECTION("- Serialization") {
-    serialize_query = true;
+    serialize_query_ = true;
   }
+  */
 
   std::string temp_dir;
   if (supports_s3_) {
@@ -3122,11 +3146,14 @@ TEST_CASE_METHOD(
     "C API: Test dense array, non-empty domain",
     "[capi], [dense], [dense-non-empty]") {
   SECTION("- No serialization") {
-    serialize_query = false;
+    serialize_query_ = false;
   }
+  /*
+  //TODO(ttd): re-enable
   SECTION("- Serialization") {
-    serialize_query = true;
+    serialize_query_ = true;
   }
+  */
 
   std::string temp_dir = FILE_URI_PREFIX + FILE_TEMP_DIR;
   create_temp_dir(temp_dir);
@@ -3137,19 +3164,22 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     DenseArrayFx,
     "C API: Test dense array, invalid set query buffer",
-    "[capi], [dense], [dense-invalid-set-query-buffer]") {
+    "[capi][dense][invalid_set_query_buffer]") {
   SECTION("- No serialization") {
-    serialize_query = false;
+    serialize_query_ = false;
   }
+  /*
+  //TODO(ttd): re-enable
   SECTION("- Serialization") {
-    serialize_query = true;
+    serialize_query_ = true;
   }
+  */
 
   std::string temp_dir = FILE_URI_PREFIX + FILE_TEMP_DIR;
   create_temp_dir(temp_dir);
 
   // Create and write dense array
-  std::string array_name = temp_dir + "dense_non_empty_domain";
+  std::string array_name = temp_dir + "dense_invalid_set_query_buffer";
   create_dense_array(array_name);
   write_dense_array(array_name);
 
@@ -3403,13 +3433,16 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     DenseArrayFx,
     "C API: Test dense array, reset read subarray",
-    "[capi], [dense], [reset-read-subarray]") {
+    "[capi][dense][reset_read_subarray]") {
   SECTION("- No serialization") {
-    serialize_query = false;
+    serialize_query_ = false;
   }
+  /*
+  //TODO(ttd): re-enable
   SECTION("- Serialization") {
-    serialize_query = true;
+    serialize_query_ = true;
   }
+  */
 
   std::string temp_dir = FILE_URI_PREFIX + FILE_TEMP_DIR;
   std::string array_name = temp_dir + "reset_read_subarray";
@@ -3473,11 +3506,14 @@ TEST_CASE_METHOD(
     "C API: Test dense array, reset write subarray",
     "[capi], [dense], [reset-write-subarray]") {
   SECTION("- No serialization") {
-    serialize_query = false;
+    serialize_query_ = false;
   }
+  /*
+  //TODO(ttd): re-enable
   SECTION("- Serialization") {
-    serialize_query = true;
+    serialize_query_ = true;
   }
+  */
 
   std::string temp_dir = FILE_URI_PREFIX + FILE_TEMP_DIR;
   std::string array_name = temp_dir + "reset_write_subarray";
@@ -3582,11 +3618,14 @@ TEST_CASE_METHOD(
     "C API: Test dense array, URI ending in a slash",
     "[capi], [dense], [uri-ending-slash]") {
   SECTION("- No serialization") {
-    serialize_query = false;
+    serialize_query_ = false;
   }
+  /*
+  //TODO(ttd): re-enable
   SECTION("- Serialization") {
-    serialize_query = true;
+    serialize_query_ = true;
   }
+  */
 
   std::string temp_dir = FILE_URI_PREFIX + FILE_TEMP_DIR;
   std::string array_name = temp_dir + "with_ending_slash/";
@@ -3602,11 +3641,14 @@ TEST_CASE_METHOD(
     "C API: Test dense array, missing attributes in writes",
     "[capi], [dense], [dense-write-missing-attributes]") {
   SECTION("- No serialization") {
-    serialize_query = false;
+    serialize_query_ = false;
   }
+  /*
+  //TODO(ttd): re-enable
   SECTION("- Serialization") {
-    serialize_query = true;
+    serialize_query_ = true;
   }
+  */
 
   std::string temp_dir = FILE_URI_PREFIX + FILE_TEMP_DIR;
   std::string array_name = temp_dir + "dense_write_missing_attributes/";
@@ -3619,13 +3661,16 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     DenseArrayFx,
     "C API: Test dense array, read subarrays with empty cells",
-    "[capi], [dense], [dense-read-empty]") {
+    "[capi][dense][read_empty]") {
   SECTION("- No serialization") {
-    serialize_query = false;
+    serialize_query_ = false;
   }
+  /*
+  //TODO(ttd): re-enable
   SECTION("- Serialization") {
-    serialize_query = true;
+    serialize_query_ = true;
   }
+  */
 
   std::string temp_dir = FILE_URI_PREFIX + FILE_TEMP_DIR;
   std::string array_name = temp_dir + "dense_read_empty/";
@@ -3706,13 +3751,16 @@ TEST_CASE_METHOD(
     DenseArrayFx,
     "C API: Test dense array, read subarrays with empty areas around sparse "
     "cells",
-    "[capi], [dense], [dense-read-empty], [dense-read-empty-sparse]") {
+    "[capi][dense][read_empty_sparse]") {
   SECTION("- No serialization") {
-    serialize_query = false;
+    serialize_query_ = false;
   }
+  /*
+  //TODO(ttd): re-enable
   SECTION("- Serialization") {
-    serialize_query = true;
+    serialize_query_ = true;
   }
+  */
 
   std::string temp_dir = FILE_URI_PREFIX + FILE_TEMP_DIR;
   std::string array_name = temp_dir + "dense_read_empty_sparse/";
@@ -3802,11 +3850,14 @@ TEST_CASE_METHOD(
     "adjacent cell ranges",
     "[capi], [dense], [dense-read-empty], [dense-read-empty-merge]") {
   SECTION("- No serialization") {
-    serialize_query = false;
+    serialize_query_ = false;
   }
+  /*
+  //TODO(ttd): re-enable
   SECTION("- Serialization") {
-    serialize_query = true;
+    serialize_query_ = true;
   }
+  */
 
   std::string temp_dir = FILE_URI_PREFIX + FILE_TEMP_DIR;
   std::string array_name = temp_dir + "dense_read_empty_merge/";
@@ -3888,11 +3939,14 @@ TEST_CASE_METHOD(
     "C API: Test dense array, multi-fragment reads",
     "[capi], [dense], [dense-multi-fragment]") {
   SECTION("- No serialization") {
-    serialize_query = false;
+    serialize_query_ = false;
   }
+  /*
+  //TODO(ttd): re-enable
   SECTION("- Serialization") {
-    serialize_query = true;
+    serialize_query_ = true;
   }
+  */
 
   std::string temp_dir = FILE_URI_PREFIX + FILE_TEMP_DIR;
   std::string array_name = temp_dir + "dense_multi_fragment/";
@@ -3994,11 +4048,14 @@ TEST_CASE_METHOD(
     "C API: Test dense array, check if open",
     "[capi], [dense], [dense-is-open]") {
   SECTION("- No serialization") {
-    serialize_query = false;
+    serialize_query_ = false;
   }
+  /*
+  //TODO(ttd): re-enable
   SECTION("- Serialization") {
-    serialize_query = true;
+    serialize_query_ = true;
   }
+  */
 
   std::string temp_dir = FILE_URI_PREFIX + FILE_TEMP_DIR;
   std::string array_name = temp_dir + "dense_is_open/";
@@ -4038,11 +4095,14 @@ TEST_CASE_METHOD(
     "C API: Test dense array, get schema from opened array",
     "[capi], [dense], [dense-get-schema]") {
   SECTION("- No serialization") {
-    serialize_query = false;
+    serialize_query_ = false;
   }
+  /*
+  //TODO(ttd): re-enable
   SECTION("- Serialization") {
-    serialize_query = true;
+    serialize_query_ = true;
   }
+  */
 
   std::string temp_dir = FILE_URI_PREFIX + FILE_TEMP_DIR;
   std::string array_name = temp_dir + "dense_get_schema/";
@@ -4077,11 +4137,14 @@ TEST_CASE_METHOD(
     "C API: Test dense array, set subarray in sparse writes should error",
     "[capi], [dense], [dense-set-subarray-sparse]") {
   SECTION("- No serialization") {
-    serialize_query = false;
+    serialize_query_ = false;
   }
+  /*
+  //TODO(ttd): re-enable
   SECTION("- Serialization") {
-    serialize_query = true;
+    serialize_query_ = true;
   }
+  */
 
   std::string array_name =
       FILE_URI_PREFIX + FILE_TEMP_DIR + "dense_set_subarray_sparse";
@@ -4133,11 +4196,14 @@ TEST_CASE_METHOD(
     "C API: Test dense array, check if coords exist in unordered writes",
     "[capi], [dense], [dense-coords-exist-unordered]") {
   SECTION("- No serialization") {
-    serialize_query = false;
+    serialize_query_ = false;
   }
+  /*
+  //TODO(ttd): re-enable
   SECTION("- Serialization") {
-    serialize_query = true;
+    serialize_query_ = true;
   }
+  */
 
   std::string array_name =
       FILE_URI_PREFIX + FILE_TEMP_DIR + "dense_coords_exist_unordered";
@@ -4208,11 +4274,14 @@ TEST_CASE_METHOD(
     "C API: Test dense array, read in col-major after updates",
     "[capi], [dense], [dense-col-updates]") {
   SECTION("- No serialization") {
-    serialize_query = false;
+    serialize_query_ = false;
   }
+  /*
+  //TODO(ttd): re-enable
   SECTION("- Serialization") {
-    serialize_query = true;
+    serialize_query_ = true;
   }
+  */
 
   std::string array_name =
       FILE_URI_PREFIX + FILE_TEMP_DIR + "dense-col-updates";
@@ -4369,7 +4438,7 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     DenseArrayFx,
     "C API: Test dense vector, mixed dense and sparse fragments",
-    "[capi], [dense], [dense-mixed]") {
+    "[capi][dense][mixed]") {
   std::string path;
   if (supports_s3_) {
     path = S3_TEMP_DIR;

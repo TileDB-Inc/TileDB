@@ -56,7 +56,7 @@ struct ResultCoords {
    * sparse_read/dense_read, so the lifetime of this struct must not exceed
    * the scope of those functions.
    */
-  const ResultTile* tile_;
+  ResultTile* tile_;
   /** The coordinates. */
   const T* coords_;
   /** The coordinates of the tile in the global logical space. */
@@ -67,7 +67,7 @@ struct ResultCoords {
   bool valid_;
 
   /** Constructor. */
-  ResultCoords(const ResultTile* tile, const T* coords, uint64_t pos)
+  ResultCoords(ResultTile* tile, const T* coords, uint64_t pos)
       : tile_(tile)
       , coords_(coords)
       , tile_coords_(nullptr)
@@ -83,6 +83,22 @@ struct ResultCoords {
   /** Return true if this instance is valid. */
   bool valid() const {
     return valid_;
+  }
+
+  /** Mainly for debugging. */
+  void print() const {
+    if (tile_ == nullptr) {
+      std::cout << "null tile\n";
+    } else {
+      std::cout << "frag_idx: " << tile_->frag_idx_ << "\n";
+      std::cout << "tile_idx: " << tile_->tile_idx_ << "\n";
+    }
+    std::cout << "pos: " << pos_ << "\n";
+    std::cout << "valid: " << valid_ << "\n";
+    if (coords_ != nullptr)
+      std::cout << "first coord: " << coords_[0] << "\n";
+    if (tile_coords_ != nullptr)
+      std::cout << "first tile coord: " << tile_coords_[0] << "\n";
   }
 };
 

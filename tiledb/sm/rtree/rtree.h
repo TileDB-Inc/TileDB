@@ -107,12 +107,15 @@ class RTree {
   /** Returns the tree height. */
   unsigned height() const;
 
+  /** Returns the leaf MBR with the input index. */
+  const void* leaf(uint64_t leaf_idx) const;
+
   /**
    * Returns the overlap between a range and an RTree MBR, as the ratio
    * of the volume of the overlap over the volume of the MBR.
    */
   template <class T>
-  double range_overlap(const std::vector<const T*>& range, const T* mbr) const;
+  static double range_overlap(const std::vector<const T*>& range, const T* mbr);
 
   /**
    * Returns the number of leaves that are stored in a (full) subtree

@@ -836,6 +836,24 @@ Status Domain::set_null_tile_extents_to_range() {
   return Status::Ok();
 }
 
+template <class T>
+uint64_t Domain::stride(Layout subarray_layout) const {
+  if (dim_num_ == 1 || subarray_layout == Layout::GLOBAL_ORDER ||
+      subarray_layout == cell_order_)
+    return UINT64_MAX;
+
+  uint64_t ret = 1;
+  if (cell_order_ == Layout::ROW_MAJOR) {
+    for (unsigned i = 1; i < dim_num_; ++i)
+      ret *= *(const T*)tile_extent(i);
+  } else {  // COL_MAJOR
+    for (unsigned i = 0; i < dim_num_ - 1; ++i)
+      ret *= *(const T*)tile_extent(i);
+  }
+
+  return ret;
+}
+
 const void* Domain::tile_extent(unsigned int i) const {
   if (i > dim_num_)
     return nullptr;
@@ -1966,6 +1984,17 @@ template float Domain::floor_to_tile<float>(
     float value, unsigned dim_idx) const;
 template double Domain::floor_to_tile<double>(
     double value, unsigned dim_idx) const;
+
+template uint64_t Domain::stride<int8_t>(Layout subarray_layout) const;
+template uint64_t Domain::stride<uint8_t>(Layout subarray_layout) const;
+template uint64_t Domain::stride<int16_t>(Layout subarray_layout) const;
+template uint64_t Domain::stride<uint16_t>(Layout subarray_layout) const;
+template uint64_t Domain::stride<int32_t>(Layout subarray_layout) const;
+template uint64_t Domain::stride<uint32_t>(Layout subarray_layout) const;
+template uint64_t Domain::stride<int64_t>(Layout subarray_layout) const;
+template uint64_t Domain::stride<uint64_t>(Layout subarray_layout) const;
+template uint64_t Domain::stride<float>(Layout subarray_layout) const;
+template uint64_t Domain::stride<double>(Layout subarray_layout) const;
 
 }  // namespace sm
 }  // namespace tiledb

@@ -148,9 +148,9 @@ void ResultCellSlabIterFx::create_result_space_tiles(
     const std::vector<std::vector<T>>& domain_slices,
     const std::vector<std::vector<uint8_t>>& tile_coords,
     std::map<const T*, ResultSpaceTile<T>>* result_space_tiles) {
-  std::vector<TileDomain<T>> tile_domains;
+  std::vector<TileDomain<T>> frag_tile_domains;
   for (size_t i = 0; i < domain_slices.size(); ++i) {
-    tile_domains.emplace_back(
+    frag_tile_domains.emplace_back(
         (unsigned)(domain_slices.size() - i),
         dim_num,
         domain,
@@ -158,8 +158,10 @@ void ResultCellSlabIterFx::create_result_space_tiles(
         tile_extents,
         layout);
   }
+  TileDomain<T> array_tile_domain(
+      UINT32_MAX, dim_num, domain, domain, tile_extents, layout);
   Reader::compute_result_space_tiles<T>(
-      tile_coords, tile_domains, result_space_tiles);
+      tile_coords, array_tile_domain, frag_tile_domains, result_space_tiles);
 }
 
 /* ********************************* */
@@ -173,7 +175,8 @@ TEST_CASE_METHOD(
   Subarray* subarray = nullptr;
   std::map<const int32_t*, ResultSpaceTile<int32_t>> result_space_tiles;
   std::vector<ResultCoords<int32_t>> result_coords;
-  ResultCellSlabIter<int32_t> iter(subarray, result_space_tiles, result_coords);
+  ResultCellSlabIter<int32_t> iter(
+      subarray, &result_space_tiles, &result_coords);
   CHECK(iter.end());
   CHECK(iter.begin().ok());
   CHECK(iter.end());
@@ -227,7 +230,7 @@ TEST_CASE_METHOD(
   // Check iterator
   std::vector<ResultCoords<uint64_t>> result_coords;
   ResultCellSlabIter<uint64_t> iter(
-      &subarray, result_space_tiles, result_coords);
+      &subarray, &result_space_tiles, &result_coords);
   std::vector<std::vector<uint64_t>> c_result_cell_slabs = {
       {1, 0, 4, 6},
       {1, 1, 0, 5},
@@ -285,7 +288,7 @@ TEST_CASE_METHOD(
   // Check iterator
   std::vector<ResultCoords<uint64_t>> result_coords;
   ResultCellSlabIter<uint64_t> iter(
-      &subarray, result_space_tiles, result_coords);
+      &subarray, &result_space_tiles, &result_coords);
   std::vector<std::vector<uint64_t>> c_result_cell_slabs = {
       {UINT64_MAX, 0, 4, 6},
       {UINT64_MAX, 1, 0, 5},
@@ -343,7 +346,7 @@ TEST_CASE_METHOD(
   // Check iterator
   std::vector<ResultCoords<uint64_t>> result_coords;
   ResultCellSlabIter<uint64_t> iter(
-      &subarray, result_space_tiles, result_coords);
+      &subarray, &result_space_tiles, &result_coords);
   std::vector<std::vector<uint64_t>> c_result_cell_slabs = {
       {2, 0, 4, 6},
       {2, 1, 0, 2},
@@ -425,7 +428,7 @@ TEST_CASE_METHOD(
 
   // Check iterator
   ResultCellSlabIter<uint64_t> iter(
-      &subarray, result_space_tiles, result_coords);
+      &subarray, &result_space_tiles, &result_coords);
   std::vector<std::vector<uint64_t>> c_result_cell_slabs = {
       {2, 0, 1, 1},
       {1, 0, 3, 1},
@@ -609,7 +612,7 @@ TEST_CASE_METHOD(
 
   // Check iterator
   ResultCellSlabIter<uint64_t> iter(
-      &subarray, result_space_tiles, result_coords);
+      &subarray, &result_space_tiles, &result_coords);
   check_iter<uint64_t>(&iter, c_result_cell_slabs);
 
   close_array(ctx_, array_);
@@ -778,7 +781,7 @@ TEST_CASE_METHOD(
 
   // Check iterator
   ResultCellSlabIter<uint64_t> iter(
-      &subarray, result_space_tiles, result_coords);
+      &subarray, &result_space_tiles, &result_coords);
   check_iter<uint64_t>(&iter, c_result_cell_slabs);
 
   close_array(ctx_, array_);
@@ -960,7 +963,7 @@ TEST_CASE_METHOD(
 
   // Check iterator
   ResultCellSlabIter<uint64_t> iter(
-      &subarray, result_space_tiles, result_coords);
+      &subarray, &result_space_tiles, &result_coords);
   check_iter<uint64_t>(&iter, c_result_cell_slabs);
 
   close_array(ctx_, array_);
@@ -1196,7 +1199,7 @@ TEST_CASE_METHOD(
 
   // Check iterator
   ResultCellSlabIter<uint64_t> iter(
-      &subarray, result_space_tiles, result_coords);
+      &subarray, &result_space_tiles, &result_coords);
   check_iter<uint64_t>(&iter, c_result_cell_slabs);
 
   close_array(ctx_, array_);

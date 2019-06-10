@@ -221,6 +221,14 @@ class Subarray {
       bool var_size,
       ResultSize* result_size) const;
 
+  /**
+   * Returns a cropped version of the subarray, constrained in the
+   * tile with the input coordinates. The new subarray will have
+   * the input `layout`.
+   */
+  template <class T>
+  Subarray crop_to_tile(const T* tile_coords, Layout layout) const;
+
   /** Returns the number of dimensions of the subarray. */
   uint32_t dim_num() const;
 
@@ -300,6 +308,9 @@ class Subarray {
   template <class T>
   Subarray get_subarray(uint64_t start, uint64_t end) const;
 
+  /** Sets the array layout. */
+  void set_layout(Layout layout);
+
   /** Returns the subarray layout. */
   Layout layout() const;
 
@@ -348,7 +359,8 @@ class Subarray {
   Datatype type() const;
 
   /**
-   * Compute `tile_coords_` and `tile_coords_map_`.
+   * Compute `tile_coords_` and `tile_coords_map_`. The coordinates will
+   * be sorted on the array tile order.
    *
    * @tparam T The subarray datatype.
    */
@@ -439,7 +451,7 @@ class Subarray {
    * ``True`` if the estimated result size for all attributes has been
    * computed.
    */
-  bool result_est_size_computed_;
+  bool est_result_size_computed_;
 
   /**
    * Stores info about the overlap of the subarray with tiles
@@ -503,6 +515,24 @@ class Subarray {
   /** Computes the estimated result size for all attributes. */
   template <class T>
   Status compute_est_result_size();
+
+  /**
+   * Compute `tile_coords_` and `tile_coords_map_`. The coordinates will
+   * be sorted on col-major tile order.
+   *
+   * @tparam T The subarray datatype.
+   */
+  template <class T>
+  void compute_tile_coords_col();
+
+  /**
+   * Compute `tile_coords_` and `tile_coords_map_`. The coordinates will
+   * be sorted on row-major tile order.
+   *
+   * @tparam T The subarray datatype.
+   */
+  template <class T>
+  void compute_tile_coords_row();
 
   /**
    * Computes the tile overlap with all subarray ranges for

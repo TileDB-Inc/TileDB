@@ -239,6 +239,17 @@ class FragmentMetadata {
   const URI& fragment_uri() const;
 
   /**
+   * Retrieves the overlap of all MBRs with the input range, which is given
+   * as a vector of [low, high] intervals per dimension. The encryption
+   * key is needed because certain metadata may have to be loaded on-the-fly.
+   */
+  template <class T>
+  Status get_tile_overlap(
+      const EncryptionKey& encryption_key,
+      const std::vector<const T*>& range,
+      TileOverlap* tile_overlap);
+
+  /**
    * Given as input global tile coordinates, it retrieves the tile position
    * within the fragment.
    *
@@ -267,10 +278,8 @@ class FragmentMetadata {
   /** Stores all the metadata to storage. */
   Status store(const EncryptionKey& encryption_key);
 
-  /** Retrieves the MBRs. */
-  // TODO: Remove after the new dense read algorithm is in
-  Status mbrs(
-      const EncryptionKey& encryption_key, const std::vector<void*>** mbrs);
+  /** Returns the MBRs of the fragment. Used in format version <=2. */
+  const std::vector<void*> mbrs() const;
 
   /** Returns the non-empty domain in which the fragment is constrained. */
   const void* non_empty_domain() const;
@@ -405,6 +414,9 @@ class FragmentMetadata {
       const std::string& attribute,
       uint64_t tile_idx,
       uint64_t* offset);
+
+  /** Returns the MBR of the input tile. */
+  const void* mbr(uint64_t tile_idx) const;
 
   /**
    * Retrieves the size of the tile when it is persisted (e.g. the size of the

@@ -84,6 +84,11 @@ Status writer_from_capnp(
 
 Status reader_to_capnp(
     const Reader& reader, capnp::QueryReader::Builder* reader_builder) {
+  // TODO (ttd): re-enable
+  (void)reader;
+  (void)reader_builder;
+
+  /*
   auto read_state = reader.read_state();
   auto array_schema = reader.array_schema();
 
@@ -120,12 +125,19 @@ Status reader_to_capnp(
       i++;
     }
   }
+   */
 
   return Status::Ok();
 }
 
 Status reader_from_capnp(
     const capnp::QueryReader::Reader& reader_reader, Reader* reader) {
+  // TODO(ttd): re-enable
+  (void)reader_reader;
+  (void)reader;
+  return Status::Ok();
+
+  /*
   if (!reader_reader.hasReadState())
     return Status::Ok();
 
@@ -170,12 +182,21 @@ Status reader_from_capnp(
       read_state->subarray_partitions_.push_back(partition);
     }
   }
+   */
 
   return Status::Ok();
 }
 
 Status query_to_capnp(
     const Query& query, capnp::Query::Builder* query_builder) {
+  // TODO(ttd): re-enable
+  (void)query;
+  (void)query_builder;
+
+  return Status::Ok();
+
+  /*
+
   using namespace tiledb::sm;
 
   // For easy reference
@@ -271,6 +292,7 @@ Status query_to_capnp(
   }
 
   return Status::Ok();
+   */
 }
 
 Status query_from_capnp(

@@ -3102,7 +3102,7 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     ConsolidationFx,
     "C API: Test consolidation, sparse",
-    "[capi], [consolidation], [sparse-consolidation]") {
+    "[capi][consolidation][sparse]") {
   remove_sparse_array();
   create_sparse_array();
 
@@ -3137,7 +3137,7 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     ConsolidationFx,
     "C API: Test consolidation, KV",
-    "[capi], [consolidation], [kv], [consolidation-kv]") {
+    "[capi][consolidation][kv]") {
   remove_kv();
   create_kv();
 
@@ -3924,8 +3924,7 @@ TEST_CASE_METHOD(
     ConsolidationFx,
     "C API: Test advanced consolidation, dense array mixing both sparse and "
     "dense fragments",
-    "[capi], [consolidation], [consolidation-adv], "
-    "[consolidation-adv-dense-mixed]") {
+    "[capi][consolidation][adv][mixed]") {
   remove_dense_vector();
   create_dense_vector();
   write_dense_vector_4_fragments_mixed();

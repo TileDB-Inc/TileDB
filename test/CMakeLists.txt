@@ -53,6 +53,7 @@ set(TILEDB_TEST_SOURCES
   src/unit-capi-config.cc
   src/unit-capi-consolidation.cc
   src/unit-capi-dense_array.cc
+  src/unit-capi-dense_array_2.cc
   src/unit-capi-dense_neg.cc
   src/unit-capi-dense_vector.cc
   src/unit-capi-enum_values.cc
@@ -64,7 +65,6 @@ set(TILEDB_TEST_SOURCES
   src/unit-capi-object_mgmt.cc
   src/unit-capi-query.cc
   src/unit-capi-sparse_array.cc
-  src/unit-capi-sparse_array_2.cc
   src/unit-capi-sparse_neg.cc
   src/unit-capi-sparse_neg_2.cc
   src/unit-capi-sparse_real.cc

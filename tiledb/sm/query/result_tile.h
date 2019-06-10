@@ -92,6 +92,12 @@ struct ResultTile {
   bool operator==(const ResultTile& rt) const {
     return frag_idx_ == rt.frag_idx_ && tile_idx_ == rt.tile_idx_;
   }
+
+  /** Prints some information (mainly for debugging purposes). */
+  void print() const {
+    std::cout << "Fragment id: " << frag_idx_ << "\n";
+    std::cout << "Tile id: " << tile_idx_ << "\n";
+  }
 };
 
 }  // namespace sm

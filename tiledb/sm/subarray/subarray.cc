@@ -55,7 +55,7 @@ namespace sm {
 Subarray::Subarray() {
   array_ = nullptr;
   layout_ = Layout::UNORDERED;
-  result_est_size_computed_ = false;
+  est_result_size_computed_ = false;
   tile_overlap_computed_ = false;
 }
 
@@ -66,7 +66,7 @@ Subarray::Subarray(const Array* array, Layout layout)
   auto domain_type = array->array_schema()->domain()->type();
   for (uint32_t i = 0; i < dim_num; ++i)
     ranges_.emplace_back(domain_type);
-  result_est_size_computed_ = false;
+  est_result_size_computed_ = false;
   tile_overlap_computed_ = false;
   add_default_ranges();
 }
@@ -194,7 +194,7 @@ void Subarray::clear() {
   ranges_.clear();
   range_offsets_.clear();
   tile_overlap_.clear();
-  result_est_size_computed_ = false;
+  est_result_size_computed_ = false;
   tile_overlap_computed_ = false;
 }
 
@@ -241,6 +241,32 @@ Status Subarray::compute_tile_overlap() {
   }
 
   return Status::Ok();
+}
+
+template <class T>
+Subarray Subarray::crop_to_tile(const T* tile_coords, Layout layout) const {
+  Subarray ret(array_, layout);
+  const void* range;
+  T new_range[2];
+  bool overlaps;
+
+  // Get tile subarray based on the input coordinates
+  std::vector<T> tile_subarray(2 * dim_num());
+  array_->array_schema()->domain()->get_tile_subarray(
+      tile_coords, &tile_subarray[0]);
+
+  // Compute cropped subarray
+  for (unsigned d = 0; d < dim_num(); ++d) {
+    for (size_t r = 0; r < ranges_[d].range_num(); ++r) {
+      get_range(d, r, &range);
+      utils::geometry::overlap(
+          (const T*)range, &tile_subarray[2 * d], 1, new_range, &overlaps);
+      if (overlaps)
+        ret.add_range(d, new_range);
+    }
+  }
+
+  return ret;
 }
 
 uint32_t Subarray::dim_num() const {
@@ -347,6 +373,10 @@ bool Subarray::is_unary(uint64_t range_idx) const {
   }
 
   return true;
+}
+
+void Subarray::set_layout(Layout layout) {
+  layout_ = layout;
 }
 
 Layout Subarray::layout() const {
@@ -570,59 +600,10 @@ Datatype Subarray::type() const {
 
 template <class T>
 void Subarray::compute_tile_coords() {
-  std::vector<std::set<T>> coords_set;
-  auto array_schema = array_->array_schema();
-  auto domain = (const T*)array_schema->domain()->domain();
-  auto dim_num = this->dim_num();
-  auto tile_extents = (const T*)array_schema->domain()->tile_extents();
-  uint64_t tile_start, tile_end;
-
-  // Compute unique tile coords per dimension
-  coords_set.resize(dim_num);
-  for (unsigned i = 0; i < dim_num; ++i) {
-    for (uint64_t j = 0; j < ranges_[i].range_num(); ++j) {
-      auto r = (const T*)ranges_[i].get_range(j);
-      tile_start = (r[0] - domain[2 * i]) / tile_extents[i];
-      tile_end = (r[1] - domain[2 * i]) / tile_extents[i];
-      for (uint64_t t = tile_start; t <= tile_end; ++t)
-        coords_set[i].insert(t);
-    }
-  }
-
-  // Compute `tile_coords_`
-  std::vector<typename std::set<T>::iterator> iters;
-  size_t tile_coords_num = 1;
-  for (unsigned i = 0; i < dim_num; ++i) {
-    iters.push_back(coords_set[i].begin());
-    tile_coords_num *= coords_set[i].size();
-  }
-
-  tile_coords_.resize(tile_coords_num);
-  std::vector<uint8_t> coords;
-  auto coords_size = array_schema->coords_size();
-  coords.resize(coords_size);
-  size_t coord_size = sizeof(T);
-  size_t tile_coords_pos = 0;
-  while (iters[0] != coords_set[0].end()) {
-    for (unsigned i = 0; i < dim_num; ++i)
-      std::memcpy(&(coords[i * coord_size]), &(*iters[i]), coord_size);
-    tile_coords_[tile_coords_pos++] = coords;
-
-    // Advance the iterators
-    auto d = (int)dim_num - 1;
-    while (d >= 0) {
-      iters[d]++;
-      if (iters[d] != coords_set[d].end())
-        break;
-      if (d > 0)
-        iters[d] = coords_set[d].begin();
-      d--;
-    }
-  }
-
-  // Compute `tile_coords_map_`
-  for (size_t i = 0; i < tile_coords_.size(); ++i, ++tile_coords_pos)
-    tile_coords_map_[tile_coords_[i]] = i;
+  if (array_->array_schema()->tile_order() == Layout::ROW_MAJOR)
+    compute_tile_coords_row<T>();
+  else
+    compute_tile_coords_col<T>();
 }
 
 template <class T>
@@ -655,7 +636,7 @@ Status Subarray::add_range(uint32_t dim_idx, const T* range) {
   assert(dim_idx < array_->array_schema()->dim_num());
 
   // Must reset the result size and tile overlap
-  result_est_size_computed_ = false;
+  est_result_size_computed_ = false;
   tile_overlap_computed_ = false;
 
   // Check for NaN
@@ -668,7 +649,7 @@ Status Subarray::add_range(uint32_t dim_idx, const T* range) {
                               "bound cannot be larger than the higher bound"));
 
   // Check range against the domain
-  auto domain = (T*)array_->array_schema()->domain()->domain();
+  auto domain = (const T*)array_->array_schema()->domain()->domain();
   if (range[0] < domain[2 * dim_idx] || range[1] > domain[2 * dim_idx + 1])
     return LOG_STATUS(
         Status::SubarrayError("Cannot add range to dimension; Range must be in "
@@ -718,7 +699,7 @@ void Subarray::compute_range_offsets() {
 }
 
 Status Subarray::compute_est_result_size() {
-  if (result_est_size_computed_)
+  if (est_result_size_computed_)
     return Status::Ok();
 
   auto type = array_->array_schema()->domain()->type();
@@ -767,7 +748,7 @@ Status Subarray::compute_est_result_size() {
 
 template <class T>
 Status Subarray::compute_est_result_size() {
-  if (result_est_size_computed_)
+  if (est_result_size_computed_)
     return Status::Ok();
 
   RETURN_NOT_OK(compute_tile_overlap<T>());
@@ -819,7 +800,7 @@ Status Subarray::compute_est_result_size() {
         (a == attribute_num) ? constants::coords : attributes[a]->name();
     est_result_size_[attr_name] = est_result_size_vec[a];
   }
-  result_est_size_computed_ = true;
+  est_result_size_computed_ = true;
 
   return Status::Ok();
 }
@@ -896,6 +877,120 @@ Status Subarray::compute_est_result_size(
 }
 
 template <class T>
+void Subarray::compute_tile_coords_col() {
+  std::vector<std::set<T>> coords_set;
+  auto array_schema = array_->array_schema();
+  auto domain = (const T*)array_schema->domain()->domain();
+  auto dim_num = (int)this->dim_num();
+  auto tile_extents = (const T*)array_schema->domain()->tile_extents();
+  uint64_t tile_start, tile_end;
+
+  // Compute unique tile coords per dimension
+  coords_set.resize(dim_num);
+  for (int i = 0; i < dim_num; ++i) {
+    for (uint64_t j = 0; j < ranges_[i].range_num(); ++j) {
+      auto r = (const T*)ranges_[i].get_range(j);
+      tile_start = (r[0] - domain[2 * i]) / tile_extents[i];
+      tile_end = (r[1] - domain[2 * i]) / tile_extents[i];
+      for (uint64_t t = tile_start; t <= tile_end; ++t)
+        coords_set[i].insert(t);
+    }
+  }
+
+  // Compute `tile_coords_`
+  std::vector<typename std::set<T>::iterator> iters;
+  size_t tile_coords_num = 1;
+  for (int i = 0; i < dim_num; ++i) {
+    iters.push_back(coords_set[i].begin());
+    tile_coords_num *= coords_set[i].size();
+  }
+
+  tile_coords_.resize(tile_coords_num);
+  std::vector<uint8_t> coords;
+  auto coords_size = array_schema->coords_size();
+  coords.resize(coords_size);
+  size_t coord_size = sizeof(T);
+  size_t tile_coords_pos = 0;
+  while (iters[dim_num - 1] != coords_set[dim_num - 1].end()) {
+    for (int i = 0; i < dim_num; ++i)
+      std::memcpy(&(coords[i * coord_size]), &(*iters[i]), coord_size);
+    tile_coords_[tile_coords_pos++] = coords;
+
+    // Advance the iterators
+    auto d = 0;
+    while (d < dim_num) {
+      iters[d]++;
+      if (iters[d] != coords_set[d].end())
+        break;
+      if (d < dim_num - 1)
+        iters[d] = coords_set[d].begin();
+      d++;
+    }
+  }
+
+  // Compute `tile_coords_map_`
+  for (size_t i = 0; i < tile_coords_.size(); ++i, ++tile_coords_pos)
+    tile_coords_map_[tile_coords_[i]] = i;
+}
+
+template <class T>
+void Subarray::compute_tile_coords_row() {
+  std::vector<std::set<T>> coords_set;
+  auto array_schema = array_->array_schema();
+  auto domain = (const T*)array_schema->domain()->domain();
+  auto dim_num = this->dim_num();
+  auto tile_extents = (const T*)array_schema->domain()->tile_extents();
+  uint64_t tile_start, tile_end;
+
+  // Compute unique tile coords per dimension
+  coords_set.resize(dim_num);
+  for (unsigned i = 0; i < dim_num; ++i) {
+    for (uint64_t j = 0; j < ranges_[i].range_num(); ++j) {
+      auto r = (const T*)ranges_[i].get_range(j);
+      tile_start = (r[0] - domain[2 * i]) / tile_extents[i];
+      tile_end = (r[1] - domain[2 * i]) / tile_extents[i];
+      for (uint64_t t = tile_start; t <= tile_end; ++t)
+        coords_set[i].insert(t);
+    }
+  }
+
+  // Compute `tile_coords_`
+  std::vector<typename std::set<T>::iterator> iters;
+  size_t tile_coords_num = 1;
+  for (unsigned i = 0; i < dim_num; ++i) {
+    iters.push_back(coords_set[i].begin());
+    tile_coords_num *= coords_set[i].size();
+  }
+
+  tile_coords_.resize(tile_coords_num);
+  std::vector<uint8_t> coords;
+  auto coords_size = array_schema->coords_size();
+  coords.resize(coords_size);
+  size_t coord_size = sizeof(T);
+  size_t tile_coords_pos = 0;
+  while (iters[0] != coords_set[0].end()) {
+    for (unsigned i = 0; i < dim_num; ++i)
+      std::memcpy(&(coords[i * coord_size]), &(*iters[i]), coord_size);
+    tile_coords_[tile_coords_pos++] = coords;
+
+    // Advance the iterators
+    auto d = (int)dim_num - 1;
+    while (d >= 0) {
+      iters[d]++;
+      if (iters[d] != coords_set[d].end())
+        break;
+      if (d > 0)
+        iters[d] = coords_set[d].begin();
+      d--;
+    }
+  }
+
+  // Compute `tile_coords_map_`
+  for (size_t i = 0; i < tile_coords_.size(); ++i, ++tile_coords_pos)
+    tile_coords_map_[tile_coords_[i]] = i;
+}
+
+template <class T>
 Status Subarray::compute_tile_overlap() {
   if (tile_overlap_computed_)
     return Status::Ok();
@@ -918,9 +1013,8 @@ Status Subarray::compute_tile_overlap() {
         if (meta[i]->dense()) {  // Dense fragment
           tile_overlap_[i][j] = get_tile_overlap<T>(range, i);
         } else {  // Sparse fragment
-          auto rtree = (const RTree*)nullptr;
-          RETURN_NOT_OK(meta[i]->rtree(*encryption_key, &rtree));
-          tile_overlap_[i][j] = rtree->get_tile_overlap<T>(range);
+          RETURN_NOT_OK(meta[i]->get_tile_overlap<T>(
+              *encryption_key, range, &(tile_overlap_[i][j])));
         }
         return Status::Ok();
       });
@@ -941,7 +1035,7 @@ Subarray Subarray::clone() const {
   clone.ranges_ = ranges_;
   clone.range_offsets_ = range_offsets_;
   clone.tile_overlap_ = tile_overlap_;
-  clone.result_est_size_computed_ = result_est_size_computed_;
+  clone.est_result_size_computed_ = est_result_size_computed_;
   clone.tile_overlap_computed_ = tile_overlap_computed_;
   clone.est_result_size_ = est_result_size_;
 
@@ -1023,7 +1117,7 @@ void Subarray::swap(Subarray& subarray) {
   std::swap(ranges_, subarray.ranges_);
   std::swap(range_offsets_, subarray.range_offsets_);
   std::swap(tile_overlap_, subarray.tile_overlap_);
-  std::swap(result_est_size_computed_, subarray.result_est_size_computed_);
+  std::swap(est_result_size_computed_, subarray.est_result_size_computed_);
   std::swap(tile_overlap_computed_, subarray.tile_overlap_computed_);
   std::swap(est_result_size_, subarray.est_result_size_);
 }
@@ -1069,6 +1163,8 @@ template void Subarray::compute_tile_coords<int32_t>();
 template void Subarray::compute_tile_coords<uint32_t>();
 template void Subarray::compute_tile_coords<int64_t>();
 template void Subarray::compute_tile_coords<uint64_t>();
+template void Subarray::compute_tile_coords<float>();
+template void Subarray::compute_tile_coords<double>();
 
 template const int8_t* Subarray::tile_coords_ptr<int8_t>(
     const std::vector<int8_t>& tile_coords,
@@ -1094,6 +1190,33 @@ template const int64_t* Subarray::tile_coords_ptr<int64_t>(
 template const uint64_t* Subarray::tile_coords_ptr<uint64_t>(
     const std::vector<uint64_t>& tile_coords,
     std::vector<uint8_t>* aux_tile_coords) const;
+template const float* Subarray::tile_coords_ptr<float>(
+    const std::vector<float>& tile_coords,
+    std::vector<uint8_t>* aux_tile_coords) const;
+template const double* Subarray::tile_coords_ptr<double>(
+    const std::vector<double>& tile_coords,
+    std::vector<uint8_t>* aux_tile_coords) const;
+
+template Subarray Subarray::crop_to_tile<int8_t>(
+    const int8_t* tile_coords, Layout layout) const;
+template Subarray Subarray::crop_to_tile<uint8_t>(
+    const uint8_t* tile_coords, Layout layout) const;
+template Subarray Subarray::crop_to_tile<int16_t>(
+    const int16_t* tile_coords, Layout layout) const;
+template Subarray Subarray::crop_to_tile<uint16_t>(
+    const uint16_t* tile_coords, Layout layout) const;
+template Subarray Subarray::crop_to_tile<int32_t>(
+    const int32_t* tile_coords, Layout layout) const;
+template Subarray Subarray::crop_to_tile<uint32_t>(
+    const uint32_t* tile_coords, Layout layout) const;
+template Subarray Subarray::crop_to_tile<int64_t>(
+    const int64_t* tile_coords, Layout layout) const;
+template Subarray Subarray::crop_to_tile<uint64_t>(
+    const uint64_t* tile_coords, Layout layout) const;
+template Subarray Subarray::crop_to_tile<float>(
+    const float* tile_coords, Layout layout) const;
+template Subarray Subarray::crop_to_tile<double>(
+    const double* tile_coords, Layout layout) const;
 
 }  // namespace sm
 }  // namespace tiledb

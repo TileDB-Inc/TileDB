@@ -174,6 +174,114 @@ TEST_CASE_METHOD(
     SubarrayFx,
     "Subarray: Test tile coords, 2D",
     "[Subarray][2d][tile_coords]") {
+  tiledb_layout_t tile_order = TILEDB_ROW_MAJOR;
+  uint64_t domain[] = {1, 10};
+  uint64_t tile_extent_1 = 2;
+  uint64_t tile_extent_2 = 5;
+  std::vector<std::vector<uint8_t>> c_tile_coords;
+  std::vector<uint8_t> tile_coords_el;
+  auto coords_size = 2 * sizeof(uint64_t);
+  uint64_t tile_coords_0_0[] = {0, 0};
+  uint64_t tile_coords_0_1[] = {0, 1};
+  uint64_t tile_coords_2_0[] = {2, 0};
+  uint64_t tile_coords_2_1[] = {2, 1};
+  uint64_t tile_coords_3_0[] = {3, 0};
+  uint64_t tile_coords_3_1[] = {3, 1};
+  uint64_t tile_coords_4_0[] = {4, 0};
+  uint64_t tile_coords_4_1[] = {4, 1};
+
+  SECTION("tile: row") {
+    tile_order = TILEDB_ROW_MAJOR;
+    tile_coords_el.resize(coords_size);
+    std::memcpy(&tile_coords_el[0], tile_coords_0_0, 2 * sizeof(uint64_t));
+    c_tile_coords.push_back(tile_coords_el);
+    std::memcpy(&tile_coords_el[0], tile_coords_0_1, 2 * sizeof(uint64_t));
+    c_tile_coords.push_back(tile_coords_el);
+    std::memcpy(&tile_coords_el[0], tile_coords_2_0, 2 * sizeof(uint64_t));
+    c_tile_coords.push_back(tile_coords_el);
+    std::memcpy(&tile_coords_el[0], tile_coords_2_1, 2 * sizeof(uint64_t));
+    c_tile_coords.push_back(tile_coords_el);
+    std::memcpy(&tile_coords_el[0], tile_coords_3_0, 2 * sizeof(uint64_t));
+    c_tile_coords.push_back(tile_coords_el);
+    std::memcpy(&tile_coords_el[0], tile_coords_3_1, 2 * sizeof(uint64_t));
+    c_tile_coords.push_back(tile_coords_el);
+    std::memcpy(&tile_coords_el[0], tile_coords_4_0, 2 * sizeof(uint64_t));
+    c_tile_coords.push_back(tile_coords_el);
+    std::memcpy(&tile_coords_el[0], tile_coords_4_1, 2 * sizeof(uint64_t));
+    c_tile_coords.push_back(tile_coords_el);
+  }
+
+  SECTION("tile: col") {
+    tile_order = TILEDB_COL_MAJOR;
+    tile_coords_el.resize(coords_size);
+    std::memcpy(&tile_coords_el[0], tile_coords_0_0, 2 * sizeof(uint64_t));
+    c_tile_coords.push_back(tile_coords_el);
+    std::memcpy(&tile_coords_el[0], tile_coords_2_0, 2 * sizeof(uint64_t));
+    c_tile_coords.push_back(tile_coords_el);
+    std::memcpy(&tile_coords_el[0], tile_coords_3_0, 2 * sizeof(uint64_t));
+    c_tile_coords.push_back(tile_coords_el);
+    std::memcpy(&tile_coords_el[0], tile_coords_4_0, 2 * sizeof(uint64_t));
+    c_tile_coords.push_back(tile_coords_el);
+    std::memcpy(&tile_coords_el[0], tile_coords_0_1, 2 * sizeof(uint64_t));
+    c_tile_coords.push_back(tile_coords_el);
+    std::memcpy(&tile_coords_el[0], tile_coords_2_1, 2 * sizeof(uint64_t));
+    c_tile_coords.push_back(tile_coords_el);
+    std::memcpy(&tile_coords_el[0], tile_coords_3_1, 2 * sizeof(uint64_t));
+    c_tile_coords.push_back(tile_coords_el);
+    std::memcpy(&tile_coords_el[0], tile_coords_4_1, 2 * sizeof(uint64_t));
+    c_tile_coords.push_back(tile_coords_el);
+  }
+
+  create_array(
+      ctx_,
+      array_name_,
+      TILEDB_DENSE,
+      {"d1", "d2"},
+      {TILEDB_UINT64, TILEDB_UINT64},
+      {domain, domain},
+      {&tile_extent_1, &tile_extent_2},
+      {"a", "b"},
+      {TILEDB_INT32, TILEDB_INT32},
+      {1, TILEDB_VAR_NUM},
+      {::Compressor(TILEDB_FILTER_LZ4, -1),
+       ::Compressor(TILEDB_FILTER_LZ4, -1)},
+      tile_order,
+      TILEDB_ROW_MAJOR,
+      2);
+
+  open_array(ctx_, array_, TILEDB_READ);
+
+  Subarray subarray;
+  SubarrayRanges<uint64_t> ranges = {{2, 2, 6, 10}, {2, 6, 5, 10}};
+  Layout subarray_layout = Layout::ROW_MAJOR;
+  create_subarray(array_->array_, ranges, subarray_layout, &subarray);
+  subarray.compute_tile_coords<uint64_t>();
+
+  auto tile_coords = subarray.tile_coords();
+  CHECK(tile_coords == c_tile_coords);
+
+  // Check tile coordinates ptr
+  std::vector<uint8_t> aux_tile_coords;
+  aux_tile_coords.resize(coords_size);
+  auto tile_coords_ptr =
+      subarray.tile_coords_ptr<uint64_t>({2, 0}, &aux_tile_coords);
+  CHECK(tile_coords_ptr[0] == tile_coords_2_0[0]);
+  CHECK(tile_coords_ptr[1] == tile_coords_2_0[1]);
+  tile_coords_ptr =
+      subarray.tile_coords_ptr<uint64_t>({3, 1}, &aux_tile_coords);
+  CHECK(tile_coords_ptr[0] == tile_coords_3_1[0]);
+  CHECK(tile_coords_ptr[1] == tile_coords_3_1[1]);
+  tile_coords_ptr =
+      subarray.tile_coords_ptr<uint64_t>({10, 10}, &aux_tile_coords);
+  CHECK(tile_coords_ptr == nullptr);
+
+  close_array(ctx_, array_);
+}
+
+TEST_CASE_METHOD(
+    SubarrayFx,
+    "Subarray: Test crop to tile, 2D",
+    "[Subarray][2d][crop_to_tile]") {
   uint64_t domain[] = {1, 10};
   uint64_t tile_extent_1 = 2;
   uint64_t tile_extent_2 = 5;
@@ -197,58 +305,24 @@ TEST_CASE_METHOD(
   open_array(ctx_, array_, TILEDB_READ);
 
   Subarray subarray;
-  SubarrayRanges<uint64_t> ranges = {{2, 2, 6, 10}, {2, 6, 5, 10}};
+  SubarrayRanges<uint64_t> ranges = {{2, 10, 6, 10}, {2, 6, 5, 10}};
   Layout subarray_layout = Layout::ROW_MAJOR;
   create_subarray(array_->array_, ranges, subarray_layout, &subarray);
-  subarray.compute_tile_coords<uint64_t>();
 
-  // Prepare correct tile coordinates
-  std::vector<std::vector<uint8_t>> c_tile_coords;
-  std::vector<uint8_t> tile_coords_el;
-  auto coords_size = 2 * sizeof(uint64_t);
-  tile_coords_el.resize(coords_size);
-  uint64_t tile_coords_0_0[] = {0, 0};
-  uint64_t tile_coords_0_1[] = {0, 1};
-  uint64_t tile_coords_2_0[] = {2, 0};
-  uint64_t tile_coords_2_1[] = {2, 1};
-  uint64_t tile_coords_3_0[] = {3, 0};
-  uint64_t tile_coords_3_1[] = {3, 1};
-  uint64_t tile_coords_4_0[] = {4, 0};
-  uint64_t tile_coords_4_1[] = {4, 1};
-  std::memcpy(&tile_coords_el[0], tile_coords_0_0, 2 * sizeof(uint64_t));
-  c_tile_coords.push_back(tile_coords_el);
-  std::memcpy(&tile_coords_el[0], tile_coords_0_1, 2 * sizeof(uint64_t));
-  c_tile_coords.push_back(tile_coords_el);
-  std::memcpy(&tile_coords_el[0], tile_coords_2_0, 2 * sizeof(uint64_t));
-  c_tile_coords.push_back(tile_coords_el);
-  std::memcpy(&tile_coords_el[0], tile_coords_2_1, 2 * sizeof(uint64_t));
-  c_tile_coords.push_back(tile_coords_el);
-  std::memcpy(&tile_coords_el[0], tile_coords_3_0, 2 * sizeof(uint64_t));
-  c_tile_coords.push_back(tile_coords_el);
-  std::memcpy(&tile_coords_el[0], tile_coords_3_1, 2 * sizeof(uint64_t));
-  c_tile_coords.push_back(tile_coords_el);
-  std::memcpy(&tile_coords_el[0], tile_coords_4_0, 2 * sizeof(uint64_t));
-  c_tile_coords.push_back(tile_coords_el);
-  std::memcpy(&tile_coords_el[0], tile_coords_4_1, 2 * sizeof(uint64_t));
-  c_tile_coords.push_back(tile_coords_el);
-
-  auto tile_coords = subarray.tile_coords();
-  CHECK(tile_coords == c_tile_coords);
-
-  // Check tile coordinates ptr
-  std::vector<uint8_t> aux_tile_coords;
-  aux_tile_coords.resize(coords_size);
-  auto tile_coords_ptr =
-      subarray.tile_coords_ptr<uint64_t>({2, 0}, &aux_tile_coords);
-  CHECK(tile_coords_ptr[0] == tile_coords_2_0[0]);
-  CHECK(tile_coords_ptr[1] == tile_coords_2_0[1]);
-  tile_coords_ptr =
-      subarray.tile_coords_ptr<uint64_t>({3, 1}, &aux_tile_coords);
-  CHECK(tile_coords_ptr[0] == tile_coords_3_1[0]);
-  CHECK(tile_coords_ptr[1] == tile_coords_3_1[1]);
-  tile_coords_ptr =
-      subarray.tile_coords_ptr<uint64_t>({10, 10}, &aux_tile_coords);
-  CHECK(tile_coords_ptr == nullptr);
+  std::vector<uint64_t> tile_coords = {1, 0};
+  std::vector<uint64_t> c_range_0_0 = {3, 4};
+  std::vector<uint64_t> c_range_1_0 = {2, 5};
+  std::vector<uint64_t> c_range_1_1 = {5, 5};
+  auto cropped_subarray =
+      subarray.crop_to_tile(&tile_coords[0], Layout::ROW_MAJOR);
+  const void* range = nullptr;
+  CHECK(cropped_subarray.range_num() == 2);
+  CHECK(cropped_subarray.get_range(0, 0, &range).ok());
+  CHECK(!memcmp(range, &c_range_0_0[0], 2 * sizeof(uint64_t)));
+  CHECK(cropped_subarray.get_range(1, 0, &range).ok());
+  CHECK(!memcmp(range, &c_range_1_0[0], 2 * sizeof(uint64_t)));
+  CHECK(cropped_subarray.get_range(1, 1, &range).ok());
+  CHECK(!memcmp(range, &c_range_1_1[0], 2 * sizeof(uint64_t)));
 
   close_array(ctx_, array_);
 }

@@ -97,7 +97,7 @@ SubarrayPartitioner& SubarrayPartitioner::operator=(
 /*               API              */
 /* ****************************** */
 
-const Subarray& SubarrayPartitioner::current() const {
+Subarray& SubarrayPartitioner::current() {
   return current_.partition_;
 }
 
