@@ -91,8 +91,6 @@ Reader::Reader() {
   storage_manager_ = nullptr;
   layout_ = Layout::ROW_MAJOR;
   sparse_mode_ = false;
-  read_state_.subarray_set_ = false;
-  read_state_.subarray_ = nullptr;
   read_state_.initialized_ = false;
 }
 
@@ -296,6 +294,7 @@ Status Reader::read() {
 
 void Reader::set_array(const Array* array) {
   array_ = array;
+  subarray_ = Subarray(array, Layout::ROW_MAJOR);
 }
 
 void Reader::set_array_schema(const ArraySchema* array_schema) {
@@ -409,6 +408,7 @@ void Reader::set_fragment_metadata(
 
 Status Reader::set_layout(Layout layout) {
   layout_ = layout;
+  subarray_.set_layout(layout);
 
   return Status::Ok();
 }
@@ -440,24 +440,16 @@ void Reader::set_storage_manager(StorageManager* storage_manager) {
 }
 
 Status Reader::set_subarray(const void* subarray) {
-  std::free(read_state_.subarray_);
-  auto subarray_size = 2 * array_schema_->coords_size();
-  read_state_.subarray_ = std::malloc(subarray_size);
-  if (read_state_.subarray_ == nullptr)
-    return LOG_STATUS(Status::ReaderError(
-        "Memory allocation for read state subarray failed"));
+  Subarray new_subarray(array_, layout_);
+  if (subarray != nullptr) {
+    auto dim_num = array_schema_->dim_num();
+    auto coord_size = datatype_size(array_schema_->coords_type());
+    auto s = (unsigned char*)subarray;
+    for (unsigned i = 0; i < dim_num; ++i)
+      RETURN_NOT_OK(new_subarray.add_range(i, (void*)(s + 2 * i * coord_size)));
+  }
 
-  if (subarray != nullptr)
-    std::memcpy(read_state_.subarray_, subarray, subarray_size);
-  else
-    std::memcpy(
-        read_state_.subarray_,
-        array_schema_->domain()->domain(),
-        subarray_size);
-
-  read_state_.subarray_set_ = false;
-
-  return Status::Ok();
+  return set_subarray(new_subarray);
 }
 
 Status Reader::set_subarray(const Subarray& subarray) {
@@ -467,11 +459,8 @@ Status Reader::set_subarray(const Subarray& subarray) {
         Status::ReaderError("Cannot set subarray; Multi-range subarrays with "
                             "global order layout are not supported"));
 
-  read_state_.partitioner_ = SubarrayPartitioner(subarray);
-  read_state_.overflowed_ = false;
-  read_state_.unsplittable_ = false;
+  subarray_ = subarray;
   layout_ = subarray.layout();
-  read_state_.subarray_set_ = true;
 
   return Status::Ok();
 }
@@ -1591,21 +1580,9 @@ bool Reader::has_coords() const {
 }
 
 Status Reader::init_read_state() {
-  // Optionally set subarray
-  if (!read_state_.subarray_set_) {
-    Subarray subarray(array_, layout_);
-    if (read_state_.subarray_ != nullptr) {
-      auto dim_num = array_schema_->dim_num();
-      auto coord_size = datatype_size(array_schema_->coords_type());
-      auto s = (unsigned char*)read_state_.subarray_;
-      for (unsigned i = 0; i < dim_num; ++i)
-        subarray.add_range(i, (void*)(s + 2 * i * coord_size));
-      std::free(read_state_.subarray_);
-      read_state_.subarray_ = nullptr;
-    }
-
-    RETURN_NOT_OK(set_subarray(subarray));
-  }
+  read_state_.partitioner_ = SubarrayPartitioner(subarray_);
+  read_state_.overflowed_ = false;
+  read_state_.unsplittable_ = false;
 
   // Set result size budget
   for (const auto& a : attr_buffers_) {

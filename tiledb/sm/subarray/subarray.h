@@ -308,6 +308,9 @@ class Subarray {
   template <class T>
   Subarray get_subarray(uint64_t start, uint64_t end) const;
 
+  /** Sets the array layout. */
+  void set_layout(Layout layout);
+
   /** Returns the subarray layout. */
   Layout layout() const;
 
@@ -448,7 +451,7 @@ class Subarray {
    * ``True`` if the estimated result size for all attributes has been
    * computed.
    */
-  bool result_est_size_computed_;
+  bool est_result_size_computed_;
 
   /**
    * Stores info about the overlap of the subarray with tiles

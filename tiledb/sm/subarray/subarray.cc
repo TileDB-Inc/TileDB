@@ -55,7 +55,7 @@ namespace sm {
 Subarray::Subarray() {
   array_ = nullptr;
   layout_ = Layout::UNORDERED;
-  result_est_size_computed_ = false;
+  est_result_size_computed_ = false;
   tile_overlap_computed_ = false;
 }
 
@@ -66,7 +66,7 @@ Subarray::Subarray(const Array* array, Layout layout)
   auto domain_type = array->array_schema()->domain()->type();
   for (uint32_t i = 0; i < dim_num; ++i)
     ranges_.emplace_back(domain_type);
-  result_est_size_computed_ = false;
+  est_result_size_computed_ = false;
   tile_overlap_computed_ = false;
   add_default_ranges();
 }
@@ -194,7 +194,7 @@ void Subarray::clear() {
   ranges_.clear();
   range_offsets_.clear();
   tile_overlap_.clear();
-  result_est_size_computed_ = false;
+  est_result_size_computed_ = false;
   tile_overlap_computed_ = false;
 }
 
@@ -373,6 +373,10 @@ bool Subarray::is_unary(uint64_t range_idx) const {
   }
 
   return true;
+}
+
+void Subarray::set_layout(Layout layout) {
+  layout_ = layout;
 }
 
 Layout Subarray::layout() const {
@@ -632,7 +636,7 @@ Status Subarray::add_range(uint32_t dim_idx, const T* range) {
   assert(dim_idx < array_->array_schema()->dim_num());
 
   // Must reset the result size and tile overlap
-  result_est_size_computed_ = false;
+  est_result_size_computed_ = false;
   tile_overlap_computed_ = false;
 
   // Check for NaN
@@ -695,7 +699,7 @@ void Subarray::compute_range_offsets() {
 }
 
 Status Subarray::compute_est_result_size() {
-  if (result_est_size_computed_)
+  if (est_result_size_computed_)
     return Status::Ok();
 
   auto type = array_->array_schema()->domain()->type();
@@ -744,7 +748,7 @@ Status Subarray::compute_est_result_size() {
 
 template <class T>
 Status Subarray::compute_est_result_size() {
-  if (result_est_size_computed_)
+  if (est_result_size_computed_)
     return Status::Ok();
 
   RETURN_NOT_OK(compute_tile_overlap<T>());
@@ -796,7 +800,7 @@ Status Subarray::compute_est_result_size() {
         (a == attribute_num) ? constants::coords : attributes[a]->name();
     est_result_size_[attr_name] = est_result_size_vec[a];
   }
-  result_est_size_computed_ = true;
+  est_result_size_computed_ = true;
 
   return Status::Ok();
 }
@@ -1031,7 +1035,7 @@ Subarray Subarray::clone() const {
   clone.ranges_ = ranges_;
   clone.range_offsets_ = range_offsets_;
   clone.tile_overlap_ = tile_overlap_;
-  clone.result_est_size_computed_ = result_est_size_computed_;
+  clone.est_result_size_computed_ = est_result_size_computed_;
   clone.tile_overlap_computed_ = tile_overlap_computed_;
   clone.est_result_size_ = est_result_size_;
 
@@ -1113,7 +1117,7 @@ void Subarray::swap(Subarray& subarray) {
   std::swap(ranges_, subarray.ranges_);
   std::swap(range_offsets_, subarray.range_offsets_);
   std::swap(tile_overlap_, subarray.tile_overlap_);
-  std::swap(result_est_size_computed_, subarray.result_est_size_computed_);
+  std::swap(est_result_size_computed_, subarray.est_result_size_computed_);
   std::swap(tile_overlap_computed_, subarray.tile_overlap_computed_);
   std::swap(est_result_size_, subarray.est_result_size_);
 }

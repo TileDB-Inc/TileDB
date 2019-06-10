@@ -70,11 +70,6 @@ class Reader {
      * the user buffers.
      */
     bool overflowed_ = false;
-    /**
-     * ``true`` if a ``Subarray`` object has been set to the reader,
-     * instead of a `void*` one.
-     */
-    bool subarray_set_ = false;
     /** The subarray partitioner. */
     SubarrayPartitioner partitioner_;
     /**
@@ -82,8 +77,6 @@ class Reader {
      * partitioner, because it reaches a partition that is unsplittable.
      */
     bool unsplittable_ = false;
-    /** A single-range subarray. */
-    void* subarray_ = nullptr;
     /** True if the reader has been initialized. */
     bool initialized_ = false;
 
@@ -445,11 +438,7 @@ class Reader {
   /** The fragment metadata. */
   std::vector<FragmentMetadata*> fragment_metadata_;
 
-  /**
-   * The layout of the cells in the result of the subarray. Note
-   * that this may not be the same as what the user set to the
-   * query, as the Reader may calibrate it to boost performance.
-   */
+  /** The layout of the cells in the result of the subarray. */
   Layout layout_;
 
   /** Read state. */
@@ -464,6 +453,9 @@ class Reader {
 
   /** The storage manager. */
   StorageManager* storage_manager_;
+
+  /** The query subarray (initially the whole domain by default). */
+  Subarray subarray_;
 
   /**
    * The memory budget for the fixed-sized attributes and the offsets
