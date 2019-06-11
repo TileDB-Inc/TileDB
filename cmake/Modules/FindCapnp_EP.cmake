@@ -41,6 +41,9 @@ set(CMAKE_PREFIX_PATH ${CMAKE_PREFIX_PATH} "${TILEDB_EP_INSTALL_PREFIX}")
 find_package(CapnProto QUIET ${TILEDB_DEPS_NO_DEFAULT_PATH})
 set(CAPNP_FOUND ${CapnProto_FOUND})
 
+# needed for cherry-pick
+find_package(Git REQUIRED)
+
 # If not found, add it as an external project
 if (NOT CAPNP_FOUND)
   if (TILEDB_SUPERBUILD)
@@ -54,10 +57,14 @@ if (NOT CAPNP_FOUND)
       set(CXXFLAGS_DEF "${CMAKE_CXX_FLAGS} -fPIC")
     endif()
 
+    # we cherry-pick fdbf035619 to fix installation on windowsa
+    #   https://github.com/capnproto/capnproto/commit/fdbf035619ab2f9e25173bb7361e7e19a52e0fa1
     ExternalProject_Add(ep_capnp
       PREFIX "externals"
-      URL "https://github.com/capnproto/capnproto/archive/v0.6.1.tar.gz"
-      URL_HASH SHA1=2aec1f83cc4851ae58e1419c87f11f8aa63a9392
+      #URL "https://github.com/capnproto/capnproto/archive/v0.6.1.tar.gz"
+      #URL_HASH SHA1=2aec1f83cc4851ae58e1419c87f11f8aa63a9392
+      GIT_REPOSITORY "https://github.com/capnproto/capnproto.git"
+      GIT_TAG "v0.6.1"
       CONFIGURE_COMMAND
         ${CMAKE_COMMAND}
           ${ARCH_SPEC}
@@ -67,6 +74,8 @@ if (NOT CAPNP_FOUND)
           "-DCMAKE_C_FLAGS=${CFLAGS_DEF}"
           "-DCMAKE_CXX_FLAGS=${CXXFLAGS_DEF}"
           ${TILEDB_EP_BASE}/src/ep_capnp/c++
+      PATCH_COMMAND 
+        ${GIT_EXECUTABLE} cherry-pick fdbf035619
       UPDATE_COMMAND ""
       LOG_DOWNLOAD TRUE
       LOG_CONFIGURE TRUE

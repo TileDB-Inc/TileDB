@@ -32,6 +32,9 @@ Enable verbose status messages.
 .PARAMETER EnableS3
 Enables building with the S3 storage backend.
 
+.PARAMETER EnableSerialization
+Enables building with serialization support.
+
 .PARAMETER EnableStaticTileDB
 Enables building TileDB as a static library.
 
@@ -70,6 +73,7 @@ Param(
     [switch]$EnableCoverage,
     [switch]$EnableVerbose,
     [switch]$EnableS3,
+    [switch]$EnableSerialization,
     [switch]$EnableStaticTileDB,
     [switch]$EnableTools,
     [switch]$DisableWerror,
@@ -116,6 +120,11 @@ if ($EnableVerbose.IsPresent) {
 $UseS3 = "OFF"
 if ($EnableS3.IsPresent) {
     $UseS3 = "ON"
+}
+
+$UseSerialization = "OFF"
+if ($EnableSerialization.IsPresent) {
+    $UseSerialization = "ON"
 }
 
 $Werror = "ON"
@@ -186,7 +195,7 @@ if ($CMakeGenerator -eq $null) {
 
 # Run CMake.
 # We use Invoke-Expression so we can echo the command to the user.
-$CommandString = "cmake -A X64 -DCMAKE_BUILD_TYPE=$BuildType -DCMAKE_INSTALL_PREFIX=""$InstallPrefix"" -DCMAKE_PREFIX_PATH=""$DependencyDir"" -DMSVC_MP_FLAG=""/MP$BuildProcesses"" -DTILEDB_VERBOSE=$Verbosity -DTILEDB_S3=$UseS3 -DTILEDB_WERROR=$Werror -DTILEDB_CPP_API=$CppApi -DTILEDB_TESTS=$Tests -DTILEDB_TBB=$TBB -DTILEDB_TBB_SHARED=ON -DTILEDB_STATS=$Stats -DTILEDB_STATIC=$TileDBStatic -DTILEDB_TOOLS=$TileDBTools $GeneratorFlag ""$SourceDirectory"""
+$CommandString = "cmake -A X64 -DCMAKE_BUILD_TYPE=$BuildType -DCMAKE_INSTALL_PREFIX=""$InstallPrefix"" -DCMAKE_PREFIX_PATH=""$DependencyDir"" -DMSVC_MP_FLAG=""/MP$BuildProcesses"" -DTILEDB_VERBOSE=$Verbosity -DTILEDB_S3=$UseS3 -DTILEDB_SERIALIZATION=$UseSerialization -DTILEDB_WERROR=$Werror -DTILEDB_CPP_API=$CppApi -DTILEDB_TESTS=$Tests -DTILEDB_TBB=$TBB -DTILEDB_TBB_SHARED=ON -DTILEDB_STATS=$Stats -DTILEDB_STATIC=$TileDBStatic $GeneratorFlag ""$SourceDirectory"""
 Write-Host $CommandString
 Write-Host
 Invoke-Expression "$CommandString"

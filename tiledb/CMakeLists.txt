@@ -302,14 +302,11 @@ endif()
 
 # Libcurl
 if (TILEDB_S3 OR TILEDB_SERIALIZATION)
-  if (NOT WIN32)
-    # No Curl required on Windows.
-    find_package(Curl_EP REQUIRED)
-    target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
-      INTERFACE
-        CURL::libcurl
-    )
-  endif()
+  find_package(Curl_EP REQUIRED)
+  target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
+    INTERFACE
+      CURL::libcurl
+  )
 endif()
 
 # HDFS dependencies

@@ -72,10 +72,6 @@ endif()
 if (NOT CURL_FOUND AND TILEDB_SUPERBUILD)
   message(STATUS "Adding Curl as an external project")
 
-  if (WIN32)
-    message(FATAL_ERROR "Curl external project unimplemented on Windows.")
-  endif()
-
   if (TARGET ep_openssl)
     set(DEPENDS ep_openssl)
     set(with_ssl "--with-ssl=${TILEDB_EP_INSTALL_PREFIX}")
@@ -94,6 +90,10 @@ if (NOT CURL_FOUND AND TILEDB_SUPERBUILD)
       OWNER_READ OWNER_WRITE OWNER_EXECUTE
       GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE
   )
+
+  if (WIN32)
+    set(USE_WINSSL "-DCMAKE_USE_WINSSL=ON")
+  endif()
 
   ExternalProject_Add(ep_curl
     PREFIX "externals"

@@ -111,9 +111,9 @@ if (WIN32 AND NOT TILEDB_TBB_SHARED)
   set(TILEDB_TBB_SHARED ON)
 endif()
 
-if (WIN32 AND TILEDB_SERIALIZATION)
-  message(FATAL_ERROR "Serialization support not yet supported on Windows.")
-endif()
+#if (WIN32 AND TILEDB_SERIALIZATION)
+#  message(FATAL_ERROR "Serialization support not yet supported on Windows.")
+#endif()
 
 ############################################################
 # Superbuild setup
