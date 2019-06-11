@@ -121,6 +121,9 @@ class Reader {
   /*                 API               */
   /* ********************************* */
 
+  /** Returns the array. */
+  const Array* array() const;
+
   /** Returns the array schema. */
   const ArraySchema* array_schema() const;
 
@@ -186,6 +189,12 @@ class Reader {
 
   /** Returns `true` if no results were retrieved after a query. */
   bool no_results() const;
+
+  /** Returns the current read state. */
+  const ReadState* read_state() const;
+
+  /** Returns the current read state. */
+  ReadState* read_state();
 
   /** Performs a read query using its set members. */
   Status read();
@@ -297,6 +306,9 @@ class Reader {
    * @return Status
    */
   Status set_subarray(const Subarray& subarray);
+
+  /** Returns the query subarray. */
+  const Subarray* subarray() const;
 
   /* ********************************* */
   /*          STATIC FUNCTIONS         */

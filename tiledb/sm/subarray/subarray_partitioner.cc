@@ -101,12 +101,22 @@ Subarray& SubarrayPartitioner::current() {
   return current_.partition_;
 }
 
+const SubarrayPartitioner::PartitionInfo*
+SubarrayPartitioner::current_partition_info() const {
+  return &current_;
+}
+
+SubarrayPartitioner::PartitionInfo*
+SubarrayPartitioner::current_partition_info() {
+  return &current_;
+}
+
 bool SubarrayPartitioner::done() const {
   return subarray_.empty() || state_.start_ > state_.end_;
 }
 
 Status SubarrayPartitioner::get_result_budget(
-    const char* attr_name, uint64_t* budget) {
+    const char* attr_name, uint64_t* budget) const {
   // Check attribute name
   if (attr_name == nullptr)
     return LOG_STATUS(Status::SubarrayPartitionerError(
@@ -145,7 +155,7 @@ Status SubarrayPartitioner::get_result_budget(
 }
 
 Status SubarrayPartitioner::get_result_budget(
-    const char* attr_name, uint64_t* budget_off, uint64_t* budget_val) {
+    const char* attr_name, uint64_t* budget_off, uint64_t* budget_val) const {
   // Check attribute name
   if (attr_name == nullptr)
     return LOG_STATUS(Status::SubarrayPartitionerError(
@@ -186,8 +196,13 @@ Status SubarrayPartitioner::get_result_budget(
   return Status::Ok();
 }
 
+const std::unordered_map<std::string, SubarrayPartitioner::ResultBudget>*
+SubarrayPartitioner::get_attr_result_budgets() const {
+  return &budget_;
+}
+
 Status SubarrayPartitioner::get_memory_budget(
-    uint64_t* budget, uint64_t* budget_var) {
+    uint64_t* budget, uint64_t* budget_var) const {
   *budget = memory_budget_;
   *budget_var = memory_budget_var_;
   return Status::Ok();
@@ -374,6 +389,22 @@ Status SubarrayPartitioner::split_current(bool* unsplittable) {
   state_.single_range_.push_front(current_.partition_);
   split_top_single_range<T>(unsplittable);
   return next_from_single_range<T>(unsplittable);
+}
+
+const SubarrayPartitioner::State* SubarrayPartitioner::state() const {
+  return &state_;
+}
+
+SubarrayPartitioner::State* SubarrayPartitioner::state() {
+  return &state_;
+}
+
+const Subarray* SubarrayPartitioner::subarray() const {
+  return &subarray_;
+}
+
+Subarray* SubarrayPartitioner::subarray() {
+  return &subarray_;
 }
 
 /* ****************************** */
