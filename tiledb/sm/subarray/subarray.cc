@@ -159,6 +159,71 @@ Status Subarray::add_range(uint32_t dim_idx, const void* range) {
   return Status::Ok();
 }
 
+Status Subarray::add_range(
+    uint32_t dim_idx, const void* start, const void* end) {
+  if (start == nullptr || end == nullptr)
+    return LOG_STATUS(Status::SubarrayError(
+        "Cannot add range to dimension; Range start/end cannot be null"));
+
+  auto dim_num = array_->array_schema()->dim_num();
+  if (dim_idx >= dim_num)
+    return LOG_STATUS(Status::SubarrayError(
+        "Cannot add range to dimension; Invalid dimension index"));
+
+  auto type = array_->array_schema()->domain()->type();
+  switch (type) {
+    case Datatype::INT8:
+      return add_range<int8_t>(
+          dim_idx, (const int8_t*)start, (const int8_t*)end);
+    case Datatype::UINT8:
+      return add_range<uint8_t>(
+          dim_idx, (const uint8_t*)start, (const uint8_t*)end);
+    case Datatype::INT16:
+      return add_range<int16_t>(
+          dim_idx, (const int16_t*)start, (const int16_t*)end);
+    case Datatype::UINT16:
+      return add_range<uint16_t>(
+          dim_idx, (const uint16_t*)start, (const uint16_t*)end);
+    case Datatype::INT32:
+      return add_range<int32_t>(
+          dim_idx, (const int32_t*)start, (const int32_t*)end);
+    case Datatype::UINT32:
+      return add_range<uint32_t>(
+          dim_idx, (const uint32_t*)start, (const uint32_t*)end);
+    case Datatype::INT64:
+      return add_range<int64_t>(
+          dim_idx, (const int64_t*)start, (const int64_t*)end);
+    case Datatype::UINT64:
+      return add_range<uint64_t>(
+          dim_idx, (const uint64_t*)start, (const uint64_t*)end);
+    case Datatype::FLOAT32:
+      return add_range<float>(dim_idx, (const float*)start, (const float*)end);
+    case Datatype::FLOAT64:
+      return add_range<double>(
+          dim_idx, (const double*)start, (const double*)end);
+    case Datatype::DATETIME_YEAR:
+    case Datatype::DATETIME_MONTH:
+    case Datatype::DATETIME_WEEK:
+    case Datatype::DATETIME_DAY:
+    case Datatype::DATETIME_HR:
+    case Datatype::DATETIME_MIN:
+    case Datatype::DATETIME_SEC:
+    case Datatype::DATETIME_MS:
+    case Datatype::DATETIME_US:
+    case Datatype::DATETIME_NS:
+    case Datatype::DATETIME_PS:
+    case Datatype::DATETIME_FS:
+    case Datatype::DATETIME_AS:
+      return add_range<int64_t>(
+          dim_idx, (const int64_t*)start, (const int64_t*)end);
+    default:
+      return LOG_STATUS(Status::SubarrayError(
+          "Cannot add range to dimension; Unsupported subarray domain type"));
+  }
+
+  return Status::Ok();
+}
+
 const Array* Subarray::array() const {
   return array_;
 }
@@ -302,6 +367,27 @@ Status Subarray::get_range(
         Status::SubarrayError("Cannot get range; Invalid range index"));
 
   *range = ranges_[dim_idx].get_range(range_idx);
+
+  return Status::Ok();
+}
+
+Status Subarray::get_range(
+    uint32_t dim_idx,
+    uint64_t range_idx,
+    const void** start,
+    const void** end) const {
+  auto dim_num = array_->array_schema()->dim_num();
+  if (dim_idx >= dim_num)
+    return LOG_STATUS(
+        Status::SubarrayError("Cannot get range; Invalid dimension index"));
+
+  auto range_num = ranges_[dim_idx].range_num();
+  if (range_idx >= range_num)
+    return LOG_STATUS(
+        Status::SubarrayError("Cannot get range; Invalid range index"));
+
+  *start = ranges_[dim_idx].get_range_start(range_idx);
+  *end = ranges_[dim_idx].get_range_end(range_idx);
 
   return Status::Ok();
 }
@@ -661,6 +747,37 @@ Status Subarray::add_range(uint32_t dim_idx, const T* range) {
   // Check range against the domain
   auto domain = (const T*)array_->array_schema()->domain()->domain();
   if (range[0] < domain[2 * dim_idx] || range[1] > domain[2 * dim_idx + 1])
+    return LOG_STATUS(
+        Status::SubarrayError("Cannot add range to dimension; Range must be in "
+                              "the domain the subarray is constructed from"));
+
+  // Add the range
+  ranges_[dim_idx].add_range(range);
+
+  return Status::Ok();
+}
+
+template <class T>
+Status Subarray::add_range(uint32_t dim_idx, const T* start, const T* end) {
+  assert(dim_idx < array_->array_schema()->dim_num());
+  T range[] = {*start, *end};
+
+  // Must reset the result size and tile overlap
+  est_result_size_computed_ = false;
+  tile_overlap_computed_ = false;
+
+  // Check for NaN
+  RETURN_NOT_OK(check_nan<T>(range));
+
+  // Check range bounds
+  if (*start > *end)
+    return LOG_STATUS(
+        Status::SubarrayError("Cannot add range to dimension; Range "
+                              "start cannot be larger than the range end"));
+
+  // Check range against the domain
+  auto domain = (const T*)array_->array_schema()->domain()->domain();
+  if (*start < domain[2 * dim_idx] || *end > domain[2 * dim_idx + 1])
     return LOG_STATUS(
         Status::SubarrayError("Cannot add range to dimension; Range must be in "
                               "the domain the subarray is constructed from"));

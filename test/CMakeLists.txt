@@ -64,6 +64,7 @@ set(TILEDB_TEST_SOURCES
   src/unit-capi-kv.cc
   src/unit-capi-object_mgmt.cc
   src/unit-capi-query.cc
+  src/unit-capi-query_2.cc
   src/unit-capi-sparse_array.cc
   src/unit-capi-sparse_neg.cc
   src/unit-capi-sparse_neg_2.cc
@@ -71,7 +72,6 @@ set(TILEDB_TEST_SOURCES
   src/unit-capi-stats.cc
   src/unit-capi-sparse_real_2.cc
   src/unit-capi-string.cc
-  src/unit-capi-subarray.cc
   src/unit-capi-uri.cc
   src/unit-capi-version.cc
   src/unit-capi-vfs.cc

@@ -107,10 +107,6 @@ struct tiledb_query_t {
   tiledb::sm::Query* query_ = nullptr;
 };
 
-struct tiledb_subarray_t {
-  tiledb::sm::Subarray* subarray_ = nullptr;
-};
-
 struct tiledb_kv_schema_t {
   tiledb::sm::ArraySchema* array_schema_ = nullptr;
 };

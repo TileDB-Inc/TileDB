@@ -29,8 +29,6 @@ Types
     :project: TileDB-C
 .. doxygentypedef:: tiledb_query_t
     :project: TileDB-C
-.. doxygentypedef:: tiledb_subarray_t
-    :project: TileDB-C
 .. doxygentypedef:: tiledb_filter_t
     :project: TileDB-C
 .. doxygentypedef:: tiledb_filter_list_t
@@ -400,30 +398,15 @@ Query
     :project: TileDB-C
 .. doxygenfunction:: tiledb_query_has_results
     :project: TileDB-C
-
-Subarray
---------
-.. doxygenfunction:: tiledb_subarray_alloc
+.. doxygenfunction:: tiledb_query_add_range
     :project: TileDB-C
-.. doxygenfunction:: tiledb_subarray_free
+.. doxygenfunction:: tiledb_query_get_range
     :project: TileDB-C
-.. doxygenfunction:: tiledb_subarray_get_type
+.. doxygenfunction:: tiledb_query_get_range_num
     :project: TileDB-C
-.. doxygenfunction:: tiledb_subarray_get_layout
+.. doxygenfunction:: tiledb_query_get_est_result_size
     :project: TileDB-C
-.. doxygenfunction:: tiledb_subarray_get_ndim
-    :project: TileDB-C
-.. doxygenfunction:: tiledb_subarray_get_domain
-    :project: TileDB-C
-.. doxygenfunction:: tiledb_subarray_add_range
-    :project: TileDB-C
-.. doxygenfunction:: tiledb_subarray_get_range
-    :project: TileDB-C
-.. doxygenfunction:: tiledb_subarray_get_range_num
-    :project: TileDB-C
-.. doxygenfunction:: tiledb_subarray_get_est_result_size
-    :project: TileDB-C
-.. doxygenfunction:: tiledb_subarray_get_est_result_size_var
+.. doxygenfunction:: tiledb_query_get_est_result_size_var
     :project: TileDB-C
 
 Filter

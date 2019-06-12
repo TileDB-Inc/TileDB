@@ -315,12 +315,8 @@ TEST_CASE_METHOD(
   open_array(ctx_, array_, TILEDB_READ);
 
   // Create subarray
-  tiledb_subarray_t* subarray;
   SubarrayRanges<uint64_t> ranges = {{1, 10}};
-  create_subarray(ctx_, array_, ranges, TILEDB_ROW_MAJOR, &subarray);
-
-  // Read from the array
-  read_array(ctx_, array_, subarray, attr_buffers);
+  read_array(ctx_, array_, ranges, TILEDB_ROW_MAJOR, attr_buffers);
 
   // Check results
   std::vector<int> c_a = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
@@ -365,7 +361,6 @@ TEST_CASE_METHOD(
   CHECK(coords == c_coords);
 
   // Clean up
-  tiledb_subarray_free(&subarray);
   close_array(ctx_, array_);
 }
 
@@ -400,13 +395,9 @@ TEST_CASE_METHOD(
   // Open array
   open_array(ctx_, array_, TILEDB_READ);
 
-  // Create subarray
-  tiledb_subarray_t* subarray;
+  // Read
   SubarrayRanges<uint64_t> ranges = {{1, 10}};
-  create_subarray(ctx_, array_, ranges, TILEDB_ROW_MAJOR, &subarray);
-
-  // Read from the array
-  read_array(ctx_, array_, subarray, attr_buffers);
+  read_array(ctx_, array_, ranges, TILEDB_ROW_MAJOR, attr_buffers);
 
   // Check results
   std::vector<int> c_a = {1, 102, 103, 4, 5, 106, 7, 8, 9, 10};
@@ -449,7 +440,6 @@ TEST_CASE_METHOD(
   CHECK(coords == c_coords);
 
   // Clean up
-  tiledb_subarray_free(&subarray);
   close_array(ctx_, array_);
 }
 
@@ -485,13 +475,9 @@ TEST_CASE_METHOD(
   // Open array
   open_array(ctx_, array_, TILEDB_READ);
 
-  // Create subarray
-  tiledb_subarray_t* subarray;
+  // Read
   SubarrayRanges<uint64_t> ranges = {{1, 10}};
-  create_subarray(ctx_, array_, ranges, TILEDB_ROW_MAJOR, &subarray);
-
-  // Read from the array
-  read_array(ctx_, array_, subarray, attr_buffers);
+  read_array(ctx_, array_, ranges, TILEDB_ROW_MAJOR, attr_buffers);
 
   // Check results
   std::vector<int> c_a = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
@@ -537,7 +523,6 @@ TEST_CASE_METHOD(
   CHECK(coords == c_coords);
 
   // Clean up
-  tiledb_subarray_free(&subarray);
   close_array(ctx_, array_);
 }
 
@@ -668,13 +653,9 @@ TEST_CASE_METHOD(
                 3, 1, 3, 2, 4, 1, 4, 2, 3, 3, 3, 4, 4, 3, 4, 4};
   }
 
-  // Create subarray
-  tiledb_subarray_t* subarray;
+  // Read
   SubarrayRanges<uint64_t> ranges = {{1, 4}, {1, 4}};
-  create_subarray(ctx_, array_, ranges, subarray_layout, &subarray);
-
-  // Read from the array
-  read_array(ctx_, array_, subarray, attr_buffers);
+  read_array(ctx_, array_, ranges, subarray_layout, attr_buffers);
 
   // Check results
   CHECK(a == c_a);
@@ -685,7 +666,6 @@ TEST_CASE_METHOD(
   CHECK(coords == c_coords);
 
   // Clean up
-  tiledb_subarray_free(&subarray);
   close_array(ctx_, array_);
 }
 
@@ -700,23 +680,35 @@ TEST_CASE_METHOD(
   // Open array
   open_array(ctx_, array_, TILEDB_READ);
 
-  tiledb_layout_t subarray_layout = TILEDB_GLOBAL_ORDER;
-  subarray_layout = TILEDB_GLOBAL_ORDER;
-
   // Create subarray
-  tiledb_subarray_t* subarray;
   SubarrayRanges<uint64_t> ranges = {{1, 4, 1, 3}, {1, 4}};
-  create_subarray(ctx_, array_, ranges, subarray_layout, &subarray);
+  (void)ranges;
 
   // Create query
   tiledb_query_t* query;
   int rc = tiledb_query_alloc(ctx_, array_, TILEDB_READ, &query);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_subarray_2(ctx_, query, subarray);
+  rc = tiledb_query_set_layout(ctx_, query, TILEDB_GLOBAL_ORDER);
+  CHECK(rc == TILEDB_OK);
+
+  // Set a multi-range subarray
+  uint64_t start = 1, end = 1;
+  rc = tiledb_query_add_range(ctx_, query, 0, &start, &end, nullptr);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_add_range(ctx_, query, 0, &start, &end, nullptr);
+  CHECK(rc == TILEDB_OK);
+
+  // Set buffers
+  int a[10];
+  uint64_t a_size = sizeof(a);
+  rc = tiledb_query_set_buffer(ctx_, query, "a", a, &a_size);
+  CHECK(rc == TILEDB_OK);
+
+  // This should fail upon submit!
+  rc = tiledb_query_submit(ctx_, query);
   CHECK(rc == TILEDB_ERR);
 
   // Clean up
-  tiledb_subarray_free(&subarray);
   tiledb_query_free(&query);
   close_array(ctx_, array_);
 }
@@ -849,13 +841,9 @@ TEST_CASE_METHOD(
                 3, 1, 3, 2, 4, 1, 4, 2, 3, 3, 3, 4, 4, 3, 4, 4};
   }
 
-  // Create subarray
-  tiledb_subarray_t* subarray;
-  SubarrayRanges<uint64_t> ranges = {{1, 4}, {1, 4}};
-  create_subarray(ctx_, array_, ranges, subarray_layout, &subarray);
-
   // Read from the array
-  read_array(ctx_, array_, subarray, attr_buffers);
+  SubarrayRanges<uint64_t> ranges = {{1, 4}, {1, 4}};
+  read_array(ctx_, array_, ranges, subarray_layout, attr_buffers);
 
   // Check results
   CHECK(a == c_a);
@@ -866,7 +854,6 @@ TEST_CASE_METHOD(
   CHECK(coords == c_coords);
 
   // Clean up
-  tiledb_subarray_free(&subarray);
   close_array(ctx_, array_);
 }
 
@@ -968,13 +955,9 @@ TEST_CASE_METHOD(
                 1, 3, 2, 3, 3, 3, 4, 3, 1, 4, 2, 4, 3, 4, 4, 4};
   }
 
-  // Create subarray
-  tiledb_subarray_t* subarray;
-  SubarrayRanges<uint64_t> ranges = {{1, 1, 2, 2, 3, 3, 4, 4}, {1, 4}};
-  create_subarray(ctx_, array_, ranges, subarray_layout, &subarray);
-
   // Read from the array
-  read_array(ctx_, array_, subarray, attr_buffers);
+  SubarrayRanges<uint64_t> ranges = {{1, 1, 2, 2, 3, 3, 4, 4}, {1, 4}};
+  read_array(ctx_, array_, ranges, subarray_layout, attr_buffers);
 
   // Check results
   CHECK(a == c_a);
@@ -985,6 +968,5 @@ TEST_CASE_METHOD(
   CHECK(coords == c_coords);
 
   // Clean up
-  tiledb_subarray_free(&subarray);
   close_array(ctx_, array_);
 }
