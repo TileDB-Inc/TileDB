@@ -321,17 +321,6 @@ void SparseRealFx2::read_sparse_array(const std::string& path) {
   rc = tiledb_array_open(ctx_, array, TILEDB_READ);
   CHECK(rc == TILEDB_OK);
 
-  // Create some subarray
-  float s0[] = {-180.0f, 180.0f};
-  float s1[] = {-90.0f, 90.0f};
-  tiledb_subarray_t* subarray;
-  rc = tiledb_subarray_alloc(ctx_, array, TILEDB_ROW_MAJOR, &subarray);
-  REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_subarray_add_range(ctx_, subarray, 0, s0);
-  REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_subarray_add_range(ctx_, subarray, 1, s1);
-  REQUIRE(rc == TILEDB_OK);
-
   int a[16];
   uint64_t a_size = sizeof(a);
   float coords[32];
@@ -339,8 +328,17 @@ void SparseRealFx2::read_sparse_array(const std::string& path) {
   tiledb_query_t* query;
   rc = tiledb_query_alloc(ctx_, array, TILEDB_READ, &query);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_set_subarray_2(ctx_, query, subarray);
+
+  // Create some subarray
+  float s0[] = {-180.0f, 180.0f};
+  float s1[] = {-90.0f, 90.0f};
+  rc = tiledb_query_set_layout(ctx_, query, TILEDB_ROW_MAJOR);
   REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_query_add_range(ctx_, query, 0, &s0[0], &s0[1], nullptr);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_query_add_range(ctx_, query, 1, &s1[0], &s1[1], nullptr);
+  REQUIRE(rc == TILEDB_OK);
+
   rc = tiledb_query_set_buffer(ctx_, query, "a", a, &a_size);
   REQUIRE(rc == TILEDB_OK);
   rc =
@@ -377,17 +375,6 @@ void SparseRealFx2::read_sparse_array_next_partition_bug(
   rc = tiledb_array_open(ctx_, array, TILEDB_READ);
   CHECK(rc == TILEDB_OK);
 
-  // Create some subarray
-  float s0[] = {-180.0f, 180.0f};
-  float s1[] = {-90.0f, 90.0f};
-  tiledb_subarray_t* subarray;
-  rc = tiledb_subarray_alloc(ctx_, array, TILEDB_ROW_MAJOR, &subarray);
-  REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_subarray_add_range(ctx_, subarray, 0, s0);
-  REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_subarray_add_range(ctx_, subarray, 1, s1);
-  REQUIRE(rc == TILEDB_OK);
-
   int a[1];
   uint64_t a_size = sizeof(a);
   float coords[8];
@@ -395,8 +382,17 @@ void SparseRealFx2::read_sparse_array_next_partition_bug(
   tiledb_query_t* query;
   rc = tiledb_query_alloc(ctx_, array, TILEDB_READ, &query);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_set_subarray_2(ctx_, query, subarray);
+
+  // Set some subarray
+  float s0[] = {-180.0f, 180.0f};
+  float s1[] = {-90.0f, 90.0f};
+  rc = tiledb_query_set_layout(ctx_, query, TILEDB_ROW_MAJOR);
   REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_query_add_range(ctx_, query, 0, &s0[0], &s0[1], nullptr);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_query_add_range(ctx_, query, 1, &s1[0], &s1[1], nullptr);
+  REQUIRE(rc == TILEDB_OK);
+
   rc = tiledb_query_set_buffer(ctx_, query, "a", a, &a_size);
   REQUIRE(rc == TILEDB_OK);
   rc =
@@ -474,12 +470,9 @@ TEST_CASE_METHOD(
   // Create some subarray
   float s0[] = {-180.0f, std::numeric_limits<float>::quiet_NaN()};
   float s1[] = {-90.0f, std::numeric_limits<float>::infinity()};
-  tiledb_subarray_t* subarray;
-  rc = tiledb_subarray_alloc(ctx_, array, TILEDB_ROW_MAJOR, &subarray);
-  REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_subarray_add_range(ctx_, subarray, 0, s0);
+  rc = tiledb_query_add_range(ctx_, query, 0, &s0[0], &s0[1], nullptr);
   REQUIRE(rc == TILEDB_ERR);
-  rc = tiledb_subarray_add_range(ctx_, subarray, 1, s1);
+  rc = tiledb_query_add_range(ctx_, query, 1, &s1[0], &s1[1], nullptr);
   REQUIRE(rc == TILEDB_ERR);
 
   // Clean up
@@ -512,17 +505,6 @@ TEST_CASE_METHOD(
   rc = tiledb_array_open(ctx_, array, TILEDB_READ);
   CHECK(rc == TILEDB_OK);
 
-  // Create some subarray
-  float s0[] = {-23.5f, -23.5f};
-  float s1[] = {-20.0f, -20.0f};
-  tiledb_subarray_t* subarray;
-  rc = tiledb_subarray_alloc(ctx_, array, TILEDB_ROW_MAJOR, &subarray);
-  REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_subarray_add_range(ctx_, subarray, 0, s0);
-  REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_subarray_add_range(ctx_, subarray, 1, s1);
-  REQUIRE(rc == TILEDB_OK);
-
   int a[1];
   uint64_t a_size = sizeof(a);
   float coords[2];
@@ -530,8 +512,17 @@ TEST_CASE_METHOD(
   tiledb_query_t* query;
   rc = tiledb_query_alloc(ctx_, array, TILEDB_READ, &query);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_set_subarray_2(ctx_, query, subarray);
+
+  // Set some subarray
+  float s0[] = {-23.5f, -23.5f};
+  float s1[] = {-20.0f, -20.0f};
+  rc = tiledb_query_set_layout(ctx_, query, TILEDB_ROW_MAJOR);
   REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_query_add_range(ctx_, query, 0, &s0[0], &s0[1], nullptr);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_query_add_range(ctx_, query, 1, &s1[0], &s1[1], nullptr);
+  REQUIRE(rc == TILEDB_OK);
+
   rc = tiledb_query_set_buffer(ctx_, query, "a", a, &a_size);
   REQUIRE(rc == TILEDB_OK);
   rc =

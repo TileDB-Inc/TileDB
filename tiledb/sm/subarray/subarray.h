@@ -161,10 +161,22 @@ class Subarray {
       }
     }
 
-    /** Gets the range at the give index. */
+    /** Gets the range at the given index. */
     const void* get_range(uint64_t idx) const {
       assert(idx < range_num());
       return buffer_.data(idx * range_size_);
+    }
+
+    /** Gets the range start at the given index. */
+    const void* get_range_start(uint64_t idx) const {
+      assert(idx < range_num());
+      return buffer_.data(idx * range_size_);
+    }
+
+    /** Gets the range end at the given index. */
+    const void* get_range_end(uint64_t idx) const {
+      assert(idx < range_num());
+      return buffer_.data(idx * range_size_ + range_size_ / 2);
     }
 
     /** Return the number of ranges in this object. */
@@ -219,6 +231,12 @@ class Subarray {
   Status add_range(uint32_t dim_idx, const void* range);
 
   /**
+   * Adds a range along the dimension with the given index, in the
+   * form of (start, end).
+   */
+  Status add_range(uint32_t dim_idx, const void* start, const void* end);
+
+  /**
    * Adds a range along the dimension with the given index.
    *
    * @tparam T The subarray domain type.
@@ -228,6 +246,13 @@ class Subarray {
    */
   template <class T>
   Status add_range(uint32_t dim_idx, const T* range);
+
+  /**
+   * Adds a range along the dimension with the given index, in the
+   * form of (start, end).
+   */
+  template <class T>
+  Status add_range(uint32_t dim_idx, const T* start, const T* end);
 
   /** Returns the array the subarray is associated with. */
   const Array* array() const;
@@ -293,6 +318,16 @@ class Subarray {
   /** Retrieves a range of a given dimension at a given range index. */
   Status get_range(
       uint32_t dim_idx, uint64_t range_idx, const void** range) const;
+
+  /**
+   * Retrieves a range of a given dimension at a given range index.
+   * The range is in the form (start, end).
+   */
+  Status get_range(
+      uint32_t dim_idx,
+      uint64_t range_idx,
+      const void** start,
+      const void** end) const;
 
   /** Retrieves the number of ranges on the given dimension index. */
   Status get_range_num(uint32_t dim_idx, uint64_t* range_num) const;

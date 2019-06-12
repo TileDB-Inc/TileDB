@@ -1,5 +1,5 @@
 /**
- * @file   unit-capi-subarray.cc
+ * @file   unit-capi-query_2.cc
  *
  * @section LICENSE
  *
@@ -41,13 +41,13 @@
 const uint64_t DIM_DOMAIN[4] = {1, 10, 1, 10};
 
 /** Tests for C API subarray. */
-struct CSubarrayFx {
+struct Query2Fx {
   // TileDB context
   tiledb_ctx_t* ctx_;
 
   // Constructors/destructor
-  CSubarrayFx();
-  ~CSubarrayFx();
+  Query2Fx();
+  ~Query2Fx();
 
   // Functions
   void create_dense_array(const std::string& array_name);
@@ -78,30 +78,30 @@ struct CSubarrayFx {
   bool is_array(const std::string& array_name);
 };
 
-CSubarrayFx::CSubarrayFx() {
+Query2Fx::Query2Fx() {
   ctx_ = nullptr;
   REQUIRE(tiledb_ctx_alloc(nullptr, &ctx_) == TILEDB_OK);
 }
 
-CSubarrayFx::~CSubarrayFx() {
+Query2Fx::~Query2Fx() {
   tiledb_ctx_free(&ctx_);
   CHECK(ctx_ == nullptr);
 }
 
-bool CSubarrayFx::is_array(const std::string& array_name) {
+bool Query2Fx::is_array(const std::string& array_name) {
   tiledb_object_t type = TILEDB_INVALID;
   REQUIRE(tiledb_object_type(ctx_, array_name.c_str(), &type) == TILEDB_OK);
   return type == TILEDB_ARRAY || type == TILEDB_KEY_VALUE;
 }
 
-void CSubarrayFx::remove_array(const std::string& array_name) {
+void Query2Fx::remove_array(const std::string& array_name) {
   if (!is_array(array_name))
     return;
 
   CHECK(tiledb_object_remove(ctx_, array_name.c_str()) == TILEDB_OK);
 }
 
-void CSubarrayFx::create_dense_array(const std::string& array_name) {
+void Query2Fx::create_dense_array(const std::string& array_name) {
   // Create dimensions
   uint64_t dim_domain[] = {1, 10, 1, 10};
   uint64_t tile_extents[] = {2, 2};
@@ -173,7 +173,7 @@ void CSubarrayFx::create_dense_array(const std::string& array_name) {
   tiledb_array_schema_free(&array_schema);
 }
 
-void CSubarrayFx::create_sparse_array(
+void Query2Fx::create_sparse_array(
     const std::string& array_name, const uint64_t* dim_domain) {
   // Create dimensions
   uint64_t tile_extents[] = {2, 2};
@@ -245,7 +245,7 @@ void CSubarrayFx::create_sparse_array(
   tiledb_array_schema_free(&array_schema);
 }
 
-void CSubarrayFx::create_sparse_array_1d(
+void Query2Fx::create_sparse_array_1d(
     const std::string& array_name,
     const uint64_t* dim_domain,
     tiledb_layout_t layout) {
@@ -312,7 +312,7 @@ void CSubarrayFx::create_sparse_array_1d(
   tiledb_array_schema_free(&array_schema);
 }
 
-void CSubarrayFx::create_sparse_array_2d(
+void Query2Fx::create_sparse_array_2d(
     const std::string& array_name,
     const uint64_t* dim_domain,
     tiledb_layout_t layout) {
@@ -386,7 +386,7 @@ void CSubarrayFx::create_sparse_array_2d(
   tiledb_array_schema_free(&array_schema);
 }
 
-void CSubarrayFx::create_sparse_array_real(const std::string& array_name) {
+void Query2Fx::create_sparse_array_real(const std::string& array_name) {
   // Create dimensions
   double dim_domain[] = {1, 10, 1, 10};
   double tile_extents[] = {2, 2};
@@ -448,7 +448,7 @@ void CSubarrayFx::create_sparse_array_real(const std::string& array_name) {
   tiledb_array_schema_free(&array_schema);
 }
 
-void CSubarrayFx::write_dense_array(
+void Query2Fx::write_dense_array(
     const std::string& array_name,
     const std::vector<uint64_t>& domain,
     const std::vector<int>& a,
@@ -470,6 +470,7 @@ void CSubarrayFx::write_dense_array(
   rc = tiledb_query_alloc(ctx_, array, TILEDB_WRITE, &query);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_subarray(ctx_, query, &domain[0]);
+  CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_layout(ctx_, query, TILEDB_ROW_MAJOR);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_buffer(ctx_, query, "a", (void*)a.data(), &a_size);
@@ -501,7 +502,7 @@ void CSubarrayFx::write_dense_array(
   tiledb_query_free(&query);
 }
 
-void CSubarrayFx::write_sparse_array(
+void Query2Fx::write_sparse_array(
     const std::string& array_name,
     const std::vector<uint64_t>& coords,
     const std::vector<int>& a,
@@ -558,9 +559,9 @@ void CSubarrayFx::write_sparse_array(
 }
 
 TEST_CASE_METHOD(
-    CSubarrayFx,
+    Query2Fx,
     "C API: Test subarray, sparse, basic API usage and errors",
-    "[capi][c_subarray][sparse][basic]") {
+    "[capi][query_2][sparse][basic]") {
   std::string array_name = "subarray_sparse_basic";
   remove_array(array_name);
   create_sparse_array(array_name);
@@ -569,130 +570,122 @@ TEST_CASE_METHOD(
   tiledb_array_t* array;
   int rc = tiledb_array_alloc(ctx_, array_name.c_str(), &array);
   CHECK(rc == TILEDB_OK);
-  tiledb_subarray_t* subarray = nullptr;
-  rc = tiledb_subarray_alloc(ctx_, array, TILEDB_UNORDERED, &subarray);
-  CHECK(rc == TILEDB_ERR);
 
   // Open array
   rc = tiledb_array_open(ctx_, array, TILEDB_READ);
   CHECK(rc == TILEDB_OK);
 
-  // Allocate subarray with an opened array
-  rc = tiledb_subarray_alloc(ctx_, array, TILEDB_UNORDERED, &subarray);
+  // Create query
+  tiledb_query_t* query;
+  rc = tiledb_query_alloc(ctx_, array, TILEDB_READ, &query);
   CHECK(rc == TILEDB_OK);
 
-  // Get layout
+  // Set/Get layout
+  rc = tiledb_query_set_layout(ctx_, query, TILEDB_UNORDERED);
+  CHECK(rc == TILEDB_OK);
   tiledb_layout_t layout;
-  rc = tiledb_subarray_get_layout(ctx_, subarray, &layout);
+  rc = tiledb_query_get_layout(ctx_, query, &layout);
   CHECK(rc == TILEDB_OK);
   CHECK(layout == TILEDB_UNORDERED);
 
-  // Get type and ndim
-  tiledb_datatype_t type;
-  uint32_t dim_num;
-  rc = tiledb_subarray_get_type(ctx_, subarray, &type);
-  CHECK(rc == TILEDB_OK);
-  CHECK(type == TILEDB_UINT64);
-  rc = tiledb_subarray_get_ndim(ctx_, subarray, &dim_num);
-  CHECK(rc == TILEDB_OK);
-  CHECK(dim_num == 2);
-
-  // Get domain
-  const void* dom;
-  uint64_t domain[] = {1, 10, 1, 10};
-  rc = tiledb_subarray_get_domain(ctx_, subarray, &dom);
-  CHECK(rc == TILEDB_OK);
-  CHECK(std::memcmp(dom, domain, sizeof(domain)) == 0);
-
   // Check getting range num from an invalid dimension index
   uint64_t range_num;
-  rc = tiledb_subarray_get_range_num(ctx_, subarray, 2, &range_num);
+  rc = tiledb_query_get_range_num(ctx_, query, 2, &range_num);
   CHECK(rc == TILEDB_ERR);
 
   // Check getting range from an invalid dimension index
-  const void* range;
-  rc = tiledb_subarray_get_range(ctx_, subarray, 2, 0, &range);
+  const void *start, *end, *stride;
+  rc = tiledb_query_get_range(ctx_, query, 2, 0, &start, &end, &stride);
   CHECK(rc == TILEDB_ERR);
 
   // Check getting range from an invalid range index
-  rc = tiledb_subarray_get_range(ctx_, subarray, 0, 1, &range);
+  rc = tiledb_query_get_range(ctx_, query, 0, 1, &start, &end, &stride);
   CHECK(rc == TILEDB_ERR);
 
   // Add null range
-  rc = tiledb_subarray_add_range(ctx_, subarray, 0, nullptr);
+  uint64_t v = 0;
+  rc = tiledb_query_add_range(ctx_, query, 0, &v, nullptr, nullptr);
+  CHECK(rc == TILEDB_ERR);
+  rc = tiledb_query_add_range(ctx_, query, 0, nullptr, &v, nullptr);
+  CHECK(rc == TILEDB_ERR);
+
+  // Add non-null stride
+  rc = tiledb_query_add_range(ctx_, query, 0, &v, &v, &v);
   CHECK(rc == TILEDB_ERR);
 
   // Add ranges outside the subarray domain
   uint64_t inv_r1[] = {0, 0};
-  rc = tiledb_subarray_add_range(ctx_, subarray, 0, &inv_r1[0]);
+  rc = tiledb_query_add_range(ctx_, query, 0, &inv_r1[0], &inv_r1[1], nullptr);
   CHECK(rc == TILEDB_ERR);
   uint64_t inv_r2[] = {0, 20};
-  rc = tiledb_subarray_add_range(ctx_, subarray, 1, &inv_r2[0]);
+  rc = tiledb_query_add_range(ctx_, query, 1, &inv_r2[0], &inv_r2[1], nullptr);
   CHECK(rc == TILEDB_ERR);
   uint64_t inv_r3[] = {11, 20};
-  rc = tiledb_subarray_add_range(ctx_, subarray, 1, &inv_r3[0]);
+  rc = tiledb_query_add_range(ctx_, query, 1, &inv_r3[0], &inv_r3[1], nullptr);
   CHECK(rc == TILEDB_ERR);
 
   // Add range with invalid end points
   uint64_t inv_r4[] = {5, 4};
-  rc = tiledb_subarray_add_range(ctx_, subarray, 0, &inv_r4[0]);
+  rc = tiledb_query_add_range(ctx_, query, 0, &inv_r4[0], &inv_r4[1], nullptr);
   CHECK(rc == TILEDB_ERR);
 
   // Add valid ranges
   uint64_t r1[] = {1, 3};
-  rc = tiledb_subarray_add_range(ctx_, subarray, 0, &r1[0]);
+  rc = tiledb_query_add_range(ctx_, query, 0, &r1[0], &r1[1], nullptr);
   CHECK(rc == TILEDB_OK);
   uint64_t r2[] = {2, 8};
-  rc = tiledb_subarray_add_range(ctx_, subarray, 0, &r2[0]);
+  rc = tiledb_query_add_range(ctx_, query, 0, &r2[0], &r2[1], nullptr);
   CHECK(rc == TILEDB_OK);
   uint64_t r3[] = {2, 2};
-  rc = tiledb_subarray_add_range(ctx_, subarray, 1, &r3[0]);
+  rc = tiledb_query_add_range(ctx_, query, 1, &r3[0], &r3[1], nullptr);
   CHECK(rc == TILEDB_OK);
 
   // Check range num
-  rc = tiledb_subarray_get_range_num(ctx_, subarray, 0, &range_num);
+  rc = tiledb_query_get_range_num(ctx_, query, 0, &range_num);
   CHECK(rc == TILEDB_OK);
   CHECK(range_num == 2);
-  rc = tiledb_subarray_get_range_num(ctx_, subarray, 1, &range_num);
+  rc = tiledb_query_get_range_num(ctx_, query, 1, &range_num);
   CHECK(rc == TILEDB_OK);
   CHECK(range_num == 1);
 
   // Check getting range from an invalid range index
-  rc = tiledb_subarray_get_range(ctx_, subarray, 0, 2, &range);
+  rc = tiledb_query_get_range(ctx_, query, 0, 2, &start, &end, &stride);
   CHECK(rc == TILEDB_ERR);
-  rc = tiledb_subarray_get_range(ctx_, subarray, 1, 1, &range);
+  rc = tiledb_query_get_range(ctx_, query, 1, 1, &start, &end, &stride);
   CHECK(rc == TILEDB_ERR);
 
   // Check ranges
-  const uint64_t *r00, *r01, *r10;
-  rc = tiledb_subarray_get_range(ctx_, subarray, 0, 0, (const void**)&r00);
+  rc = tiledb_query_get_range(ctx_, query, 0, 0, &start, &end, &stride);
   CHECK(rc == TILEDB_OK);
-  CHECK(r00[0] == 1);
-  CHECK(r00[1] == 3);
-  rc = tiledb_subarray_get_range(ctx_, subarray, 0, 1, (const void**)&r01);
+  CHECK(*(uint64_t*)start == 1);
+  CHECK(*(uint64_t*)end == 3);
+  CHECK(stride == nullptr);
+  rc = tiledb_query_get_range(ctx_, query, 0, 1, &start, &end, &stride);
   CHECK(rc == TILEDB_OK);
-  CHECK(r01[0] == 2);
-  CHECK(r01[1] == 8);
-  rc = tiledb_subarray_get_range(ctx_, subarray, 1, 0, (const void**)&r10);
+  CHECK(*(uint64_t*)start == 2);
+  CHECK(*(uint64_t*)end == 8);
+  CHECK(stride == nullptr);
+  rc = tiledb_query_get_range(ctx_, query, 1, 0, &start, &end, &stride);
   CHECK(rc == TILEDB_OK);
-  CHECK(r10[0] == 2);
-  CHECK(r10[1] == 2);
+  CHECK(*(uint64_t*)start == 2);
+  CHECK(*(uint64_t*)end == 2);
+  CHECK(stride == nullptr);
 
   // Clean-up
   rc = tiledb_array_close(ctx_, array);
   CHECK(rc == TILEDB_OK);
   tiledb_array_free(&array);
   CHECK(array == nullptr);
-  tiledb_subarray_free(&subarray);
-  CHECK(subarray == nullptr);
+  tiledb_query_free(&query);
+  CHECK(query == nullptr);
 
   remove_array(array_name);
 }
 
 TEST_CASE_METHOD(
-    CSubarrayFx,
+    Query2Fx,
     "C API: Test subarray, sparse, check default (empty) subarray",
-    "[capi][c_subarray][sparse][default]") {
+    "[capi][query_2][sparse][default]") {
   std::string array_name = "subarray_sparse_default";
   remove_array(array_name);
   create_sparse_array(array_name);
@@ -706,46 +699,50 @@ TEST_CASE_METHOD(
   rc = tiledb_array_open(ctx_, array, TILEDB_READ);
   CHECK(rc == TILEDB_OK);
 
-  // Allocate subarray with an opened array
-  tiledb_subarray_t* subarray = nullptr;
-  rc = tiledb_subarray_alloc(ctx_, array, TILEDB_UNORDERED, &subarray);
+  // Create query
+  tiledb_query_t* query = nullptr;
+  rc = tiledb_query_alloc(ctx_, array, TILEDB_READ, &query);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_layout(ctx_, query, TILEDB_UNORDERED);
   CHECK(rc == TILEDB_OK);
 
-  // Check that there are no ranges initially
+  // Check that there is a single range initially per dimension
   uint64_t range_num;
-  rc = tiledb_subarray_get_range_num(ctx_, subarray, 0, &range_num);
+  rc = tiledb_query_get_range_num(ctx_, query, 0, &range_num);
   CHECK(rc == TILEDB_OK);
   CHECK(range_num == 1);
-  rc = tiledb_subarray_get_range_num(ctx_, subarray, 1, &range_num);
+  rc = tiledb_query_get_range_num(ctx_, query, 1, &range_num);
   CHECK(rc == TILEDB_OK);
   CHECK(range_num == 1);
 
   // Check ranges
-  const uint64_t *r1, *r2;
-  rc = tiledb_subarray_get_range(ctx_, subarray, 0, 0, (const void**)&r1);
+  const void *start, *end, *stride;
+  rc = tiledb_query_get_range(ctx_, query, 0, 0, &start, &end, &stride);
   CHECK(rc == TILEDB_OK);
-  CHECK(r1[0] == 1);
-  CHECK(r1[1] == 10);
-  rc = tiledb_subarray_get_range(ctx_, subarray, 1, 0, (const void**)&r2);
+  CHECK(*(uint64_t*)start == 1);
+  CHECK(*(uint64_t*)end == 10);
+  CHECK(stride == nullptr);
+  rc = tiledb_query_get_range(ctx_, query, 1, 0, &start, &end, &stride);
   CHECK(rc == TILEDB_OK);
-  CHECK(r2[0] == 1);
-  CHECK(r2[1] == 10);
+  CHECK(*(uint64_t*)start == 1);
+  CHECK(*(uint64_t*)end == 10);
+  CHECK(stride == nullptr);
 
   // Clean-up
   rc = tiledb_array_close(ctx_, array);
   CHECK(rc == TILEDB_OK);
   tiledb_array_free(&array);
   CHECK(array == nullptr);
-  tiledb_subarray_free(&subarray);
-  CHECK(subarray == nullptr);
+  tiledb_query_free(&query);
+  CHECK(query == nullptr);
 
   remove_array(array_name);
 }
 
 TEST_CASE_METHOD(
-    CSubarrayFx,
+    Query2Fx,
     "C API: Test subarray, sparse, check NaN ranges",
-    "[capi][c_subarray][sparse][errors][nan]") {
+    "[capi][query_2][sparse][errors][nan]") {
   std::string array_name = "subarray_sparse_nan";
   remove_array(array_name);
   create_sparse_array_real(array_name);
@@ -756,16 +753,20 @@ TEST_CASE_METHOD(
   CHECK(rc == TILEDB_OK);
   rc = tiledb_array_open(ctx_, array, TILEDB_READ);
   CHECK(rc == TILEDB_OK);
-  tiledb_subarray_t* subarray = nullptr;
-  rc = tiledb_subarray_alloc(ctx_, array, TILEDB_UNORDERED, &subarray);
+
+  // Create query
+  tiledb_query_t* query = nullptr;
+  rc = tiledb_query_alloc(ctx_, array, TILEDB_READ, &query);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_layout(ctx_, query, TILEDB_UNORDERED);
   CHECK(rc == TILEDB_OK);
 
   // Add range with NaN
   double range[] = {std::numeric_limits<double>::quiet_NaN(), 10};
-  rc = tiledb_subarray_add_range(ctx_, subarray, 0, range);
+  rc = tiledb_query_add_range(ctx_, query, 0, &range[0], &range[1], nullptr);
   CHECK(rc == TILEDB_ERR);
   double range2[] = {1.3, 4.2};
-  rc = tiledb_subarray_add_range(ctx_, subarray, 0, range2);
+  rc = tiledb_query_add_range(ctx_, query, 0, &range2[0], &range2[0], nullptr);
   CHECK(rc == TILEDB_OK);
 
   // Clean-up
@@ -773,86 +774,16 @@ TEST_CASE_METHOD(
   CHECK(rc == TILEDB_OK);
   tiledb_array_free(&array);
   CHECK(array == nullptr);
-  tiledb_subarray_free(&subarray);
-  CHECK(subarray == nullptr);
-
-  remove_array(array_name);
-}
-
-TEST_CASE_METHOD(
-    CSubarrayFx,
-    "C API: Test subarray, sparse, check errors in setting the subarray to "
-    "query",
-    "[capi][c_subarray][sparse][errors][query]") {
-  std::string array_name = "subarray_sparse_query_set";
-  std::string array_name_inv = "subarray_sparse_query_inv";
-  remove_array(array_name);
-  remove_array(array_name_inv);
-  create_sparse_array(array_name);
-  uint64_t dom[] = {1, 2, 1, 3};
-  create_sparse_array(array_name_inv, dom);
-
-  // Open array
-  tiledb_array_t* array;
-  int rc = tiledb_array_alloc(ctx_, array_name.c_str(), &array);
-  CHECK(rc == TILEDB_OK);
-  rc = tiledb_array_open(ctx_, array, TILEDB_READ);
-  CHECK(rc == TILEDB_OK);
-
-  // Open invalid array
-  tiledb_array_t* array_inv;
-  rc = tiledb_array_alloc(ctx_, array_name_inv.c_str(), &array_inv);
-  CHECK(rc == TILEDB_OK);
-  rc = tiledb_array_open(ctx_, array_inv, TILEDB_READ);
-  CHECK(rc == TILEDB_OK);
-
-  // Create subarray for invalid array
-  tiledb_subarray_t* subarray_inv = nullptr;
-  rc = tiledb_subarray_alloc(ctx_, array_inv, TILEDB_UNORDERED, &subarray_inv);
-  CHECK(rc == TILEDB_OK);
-
-  // Create query for correct array
-  tiledb_query_t* query;
-  rc = tiledb_query_alloc(ctx_, array, TILEDB_READ, &query);
-  CHECK(rc == TILEDB_OK);
-
-  // Set invalid subarray to correct array
-  rc = tiledb_query_set_subarray_2(ctx_, query, subarray_inv);
-  CHECK(rc == TILEDB_ERR);
-
-  // Create subarray for correct array
-  tiledb_subarray_t* subarray = nullptr;
-  rc = tiledb_subarray_alloc(ctx_, array, TILEDB_UNORDERED, &subarray);
-  CHECK(rc == TILEDB_OK);
-
-  // Set correct subarray to correct array
-  rc = tiledb_query_set_subarray_2(ctx_, query, subarray);
-  CHECK(rc == TILEDB_OK);
-
-  // Clean-up
-  rc = tiledb_array_close(ctx_, array);
-  CHECK(rc == TILEDB_OK);
-  tiledb_array_free(&array);
-  CHECK(array == nullptr);
-  rc = tiledb_array_close(ctx_, array_inv);
-  CHECK(rc == TILEDB_OK);
-  tiledb_array_free(&array_inv);
-  CHECK(array_inv == nullptr);
-  tiledb_subarray_free(&subarray_inv);
-  CHECK(subarray_inv == nullptr);
-  tiledb_subarray_free(&subarray);
-  CHECK(subarray == nullptr);
   tiledb_query_free(&query);
   CHECK(query == nullptr);
 
   remove_array(array_name);
-  remove_array(array_name_inv);
 }
 
 TEST_CASE_METHOD(
-    CSubarrayFx,
+    Query2Fx,
     "C API: Test subarray, sparse, result estimation, empty tree",
-    "[capi][c_subarray][sparse][result-estimation][0]") {
+    "[capi][query_2][sparse][result-estimation][0]") {
   std::string array_name = "subarray_sparse_result_estimation_0";
   remove_array(array_name);
   create_sparse_array_1d(array_name);
@@ -864,31 +795,33 @@ TEST_CASE_METHOD(
   rc = tiledb_array_open(ctx_, array, TILEDB_READ);
   CHECK(rc == TILEDB_OK);
 
-  // Create subarray
-  tiledb_subarray_t* subarray = nullptr;
-  rc = tiledb_subarray_alloc(ctx_, array, TILEDB_UNORDERED, &subarray);
+  // Create query
+  tiledb_query_t* query = nullptr;
+  rc = tiledb_query_alloc(ctx_, array, TILEDB_READ, &query);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_layout(ctx_, query, TILEDB_UNORDERED);
   CHECK(rc == TILEDB_OK);
 
   uint64_t size, size_off, size_val;
 
   // Simple checks
-  rc = tiledb_subarray_get_est_result_size(ctx_, subarray, "b", &size);
+  rc = tiledb_query_get_est_result_size(ctx_, query, "b", &size);
   CHECK(rc == TILEDB_ERR);
-  rc = tiledb_subarray_get_est_result_size_var(
-      ctx_, subarray, "a", &size_off, &size_val);
+  rc = tiledb_query_get_est_result_size_var(
+      ctx_, query, "a", &size_off, &size_val);
   CHECK(rc == TILEDB_ERR);
-  rc = tiledb_subarray_get_est_result_size(ctx_, subarray, "foo", &size);
+  rc = tiledb_query_get_est_result_size(ctx_, query, "foo", &size);
   CHECK(rc == TILEDB_ERR);
-  rc = tiledb_subarray_get_est_result_size_var(
-      ctx_, subarray, "foo", &size_off, &size_val);
+  rc = tiledb_query_get_est_result_size_var(
+      ctx_, query, "foo", &size_off, &size_val);
   CHECK(rc == TILEDB_ERR);
 
   // Get estimated result size
-  rc = tiledb_subarray_get_est_result_size(ctx_, subarray, "a", &size);
+  rc = tiledb_query_get_est_result_size(ctx_, query, "a", &size);
   CHECK(rc == TILEDB_OK);
   CHECK(size == 0);
-  rc = tiledb_subarray_get_est_result_size_var(
-      ctx_, subarray, "b", &size_off, &size_val);
+  rc = tiledb_query_get_est_result_size_var(
+      ctx_, query, "b", &size_off, &size_val);
   CHECK(rc == TILEDB_OK);
   CHECK(size_off == 0);
   CHECK(size_val == 0);
@@ -898,16 +831,16 @@ TEST_CASE_METHOD(
   CHECK(rc == TILEDB_OK);
   tiledb_array_free(&array);
   CHECK(array == nullptr);
-  tiledb_subarray_free(&subarray);
-  CHECK(subarray == nullptr);
+  tiledb_query_free(&query);
+  CHECK(query == nullptr);
 
   remove_array(array_name);
 }
 
 TEST_CASE_METHOD(
-    CSubarrayFx,
+    Query2Fx,
     "C API: Test subarray, sparse, 1D, result estimation, height 2",
-    "[capi][c_subarray][sparse][result-estimation][1d][2]") {
+    "[capi][query_2][sparse][result-estimation][1d][2]") {
   std::string array_name = "subarray_sparse_result_estimation_1d_2";
   remove_array(array_name);
 
@@ -922,7 +855,7 @@ TEST_CASE_METHOD(
                                  11 * sizeof(int)};
   std::vector<int> b_val = {1, 2, 2, 3, 3, 3, 4, 4, 4, 5, 5, 6, 6, 6, 6};
   tiledb_array_t* array = nullptr;
-  tiledb_subarray_t* subarray = nullptr;
+  tiledb_query_t* query = nullptr;
   uint64_t size, size_off, size_val;
 
   SECTION("- row-major") {
@@ -936,23 +869,24 @@ TEST_CASE_METHOD(
     rc = tiledb_array_open(ctx_, array, TILEDB_READ);
     CHECK(rc == TILEDB_OK);
 
-    // Create subarray
-    rc = tiledb_subarray_alloc(ctx_, array, TILEDB_UNORDERED, &subarray);
+    // Create query
+    rc = tiledb_query_alloc(ctx_, array, TILEDB_READ, &query);
+    CHECK(rc == TILEDB_OK);
+    rc = tiledb_query_set_layout(ctx_, query, TILEDB_UNORDERED);
     CHECK(rc == TILEDB_OK);
 
     SECTION("-- Full overlap") {
       uint64_t r[] = {1, 20};
-      rc = tiledb_subarray_add_range(ctx_, subarray, 0, &r[0]);
+      rc = tiledb_query_add_range(ctx_, query, 0, &r[0], &r[1], nullptr);
       CHECK(rc == TILEDB_OK);
-      rc = tiledb_subarray_get_est_result_size(
-          ctx_, subarray, TILEDB_COORDS, &size);
+      rc = tiledb_query_get_est_result_size(ctx_, query, TILEDB_COORDS, &size);
       CHECK(rc == TILEDB_OK);
       CHECK(size == 6 * sizeof(uint64_t));
-      rc = tiledb_subarray_get_est_result_size(ctx_, subarray, "a", &size);
+      rc = tiledb_query_get_est_result_size(ctx_, query, "a", &size);
       CHECK(rc == TILEDB_OK);
       CHECK(size == 6 * sizeof(int));
-      rc = tiledb_subarray_get_est_result_size_var(
-          ctx_, subarray, "b", &size_off, &size_val);
+      rc = tiledb_query_get_est_result_size_var(
+          ctx_, query, "b", &size_off, &size_val);
       CHECK(rc == TILEDB_OK);
       CHECK(size_off == 6 * sizeof(uint64_t));
       CHECK(size_val == 15 * sizeof(int));
@@ -960,17 +894,16 @@ TEST_CASE_METHOD(
 
     SECTION("-- No overlap, 1 range") {
       uint64_t r[] = {20, 30};
-      rc = tiledb_subarray_add_range(ctx_, subarray, 0, &r[0]);
+      rc = tiledb_query_add_range(ctx_, query, 0, &r[0], &r[1], nullptr);
       CHECK(rc == TILEDB_OK);
-      rc = tiledb_subarray_get_est_result_size(
-          ctx_, subarray, TILEDB_COORDS, &size);
-      CHECK(rc == TILEDB_OK);
-      CHECK(size == 0);
-      rc = tiledb_subarray_get_est_result_size(ctx_, subarray, "a", &size);
+      rc = tiledb_query_get_est_result_size(ctx_, query, TILEDB_COORDS, &size);
       CHECK(rc == TILEDB_OK);
       CHECK(size == 0);
-      rc = tiledb_subarray_get_est_result_size_var(
-          ctx_, subarray, "b", &size_off, &size_val);
+      rc = tiledb_query_get_est_result_size(ctx_, query, "a", &size);
+      CHECK(rc == TILEDB_OK);
+      CHECK(size == 0);
+      rc = tiledb_query_get_est_result_size_var(
+          ctx_, query, "b", &size_off, &size_val);
       CHECK(rc == TILEDB_OK);
       CHECK(size_off == 0);
       CHECK(size_val == 0);
@@ -978,20 +911,19 @@ TEST_CASE_METHOD(
 
     SECTION("-- No overlap, 2 ranges") {
       uint64_t r1[] = {1, 1};
-      rc = tiledb_subarray_add_range(ctx_, subarray, 0, &r1[0]);
+      rc = tiledb_query_add_range(ctx_, query, 0, &r1[0], &r1[1], nullptr);
       CHECK(rc == TILEDB_OK);
       uint64_t r2[] = {20, 30};
-      rc = tiledb_subarray_add_range(ctx_, subarray, 0, &r2[0]);
+      rc = tiledb_query_add_range(ctx_, query, 0, &r2[0], &r2[1], nullptr);
       CHECK(rc == TILEDB_OK);
-      rc = tiledb_subarray_get_est_result_size(
-          ctx_, subarray, TILEDB_COORDS, &size);
-      CHECK(rc == TILEDB_OK);
-      CHECK(size == 0);
-      rc = tiledb_subarray_get_est_result_size(ctx_, subarray, "a", &size);
+      rc = tiledb_query_get_est_result_size(ctx_, query, TILEDB_COORDS, &size);
       CHECK(rc == TILEDB_OK);
       CHECK(size == 0);
-      rc = tiledb_subarray_get_est_result_size_var(
-          ctx_, subarray, "b", &size_off, &size_val);
+      rc = tiledb_query_get_est_result_size(ctx_, query, "a", &size);
+      CHECK(rc == TILEDB_OK);
+      CHECK(size == 0);
+      rc = tiledb_query_get_est_result_size_var(
+          ctx_, query, "b", &size_off, &size_val);
       CHECK(rc == TILEDB_OK);
       CHECK(size_off == 0);
       CHECK(size_val == 0);
@@ -999,17 +931,16 @@ TEST_CASE_METHOD(
 
     SECTION("-- Partial overlap, 1 range") {
       uint64_t r[] = {3, 6};
-      rc = tiledb_subarray_add_range(ctx_, subarray, 0, &r[0]);
+      rc = tiledb_query_add_range(ctx_, query, 0, &r[0], &r[1], nullptr);
       CHECK(rc == TILEDB_OK);
-      rc = tiledb_subarray_get_est_result_size(
-          ctx_, subarray, TILEDB_COORDS, &size);
+      rc = tiledb_query_get_est_result_size(ctx_, query, TILEDB_COORDS, &size);
       CHECK(rc == TILEDB_OK);
       CHECK(size == (uint64_t)((2.0 / 3 + 2.0 / 6) * (2 * sizeof(uint64_t))));
-      rc = tiledb_subarray_get_est_result_size(ctx_, subarray, "a", &size);
+      rc = tiledb_query_get_est_result_size(ctx_, query, "a", &size);
       CHECK(rc == TILEDB_OK);
       CHECK(size == (uint64_t)((2.0 / 3 + 2.0 / 6) * (2 * sizeof(int))));
-      rc = tiledb_subarray_get_est_result_size_var(
-          ctx_, subarray, "b", &size_off, &size_val);
+      rc = tiledb_query_get_est_result_size_var(
+          ctx_, query, "b", &size_off, &size_val);
       CHECK(rc == TILEDB_OK);
       CHECK(
           size_off == (uint64_t)((2.0 / 3 + 2.0 / 6) * (2 * sizeof(uint64_t))));
@@ -1021,29 +952,28 @@ TEST_CASE_METHOD(
 
     SECTION("-- Partial overlap, 2 ranges") {
       uint64_t r1[] = {3, 6};
-      rc = tiledb_subarray_add_range(ctx_, subarray, 0, &r1[0]);
+      rc = tiledb_query_add_range(ctx_, query, 0, &r1[0], &r1[1], nullptr);
       CHECK(rc == TILEDB_OK);
       uint64_t r2[] = {10, 12};
-      rc = tiledb_subarray_add_range(ctx_, subarray, 0, &r2[0]);
+      rc = tiledb_query_add_range(ctx_, query, 0, &r2[0], &r2[1], nullptr);
       CHECK(rc == TILEDB_OK);
-      rc = tiledb_subarray_get_est_result_size(
-          ctx_, subarray, TILEDB_COORDS, &size);
+      rc = tiledb_query_get_est_result_size(ctx_, query, TILEDB_COORDS, &size);
       CHECK(rc == TILEDB_OK);
-      uint64_t coords_size = (uint64_t)ceil(
+      auto coords_size = (uint64_t)ceil(
           (2.0 / 3 + 3.0 / 6 + 1.0 / 7) * (2 * sizeof(uint64_t)));
       CHECK(size == coords_size);
-      rc = tiledb_subarray_get_est_result_size(ctx_, subarray, "a", &size);
+      rc = tiledb_query_get_est_result_size(ctx_, query, "a", &size);
       CHECK(rc == TILEDB_OK);
-      uint64_t a_size =
+      auto a_size =
           (uint64_t)ceil((2.0 / 3 + 3.0 / 6 + 1.0 / 7) * (2 * sizeof(int)));
       CHECK(size == a_size);
-      rc = tiledb_subarray_get_est_result_size_var(
-          ctx_, subarray, "b", &size_off, &size_val);
+      rc = tiledb_query_get_est_result_size_var(
+          ctx_, query, "b", &size_off, &size_val);
       CHECK(rc == TILEDB_OK);
-      uint64_t b_off_size = (uint64_t)ceil(
+      auto b_off_size = (uint64_t)ceil(
           (2.0 / 3 + 3.0 / 6 + 1.0 / 7) * (2 * sizeof(uint64_t)));
       CHECK(size_off == b_off_size);
-      uint64_t b_val_size = (uint64_t)ceil(
+      auto b_val_size = (uint64_t)ceil(
           (2.0 / 3) * (3 * sizeof(int)) + (3.0 / 6) * (6 * sizeof(int)) +
           (1.0 / 7) * (6 * sizeof(int)));
       CHECK(size_val == b_val_size);
@@ -1062,22 +992,21 @@ TEST_CASE_METHOD(
     CHECK(rc == TILEDB_OK);
 
     // Create subarray
-    rc = tiledb_subarray_alloc(ctx_, array, TILEDB_UNORDERED, &subarray);
+    rc = tiledb_query_alloc(ctx_, array, TILEDB_READ, &query);
     CHECK(rc == TILEDB_OK);
 
     SECTION("-- Full overlap") {
       uint64_t r[] = {1, 20};
-      rc = tiledb_subarray_add_range(ctx_, subarray, 0, &r[0]);
+      rc = tiledb_query_add_range(ctx_, query, 0, &r[0], &r[1], nullptr);
       CHECK(rc == TILEDB_OK);
-      rc = tiledb_subarray_get_est_result_size(
-          ctx_, subarray, TILEDB_COORDS, &size);
+      rc = tiledb_query_get_est_result_size(ctx_, query, TILEDB_COORDS, &size);
       CHECK(rc == TILEDB_OK);
       CHECK(size == 6 * sizeof(uint64_t));
-      rc = tiledb_subarray_get_est_result_size(ctx_, subarray, "a", &size);
+      rc = tiledb_query_get_est_result_size(ctx_, query, "a", &size);
       CHECK(rc == TILEDB_OK);
       CHECK(size == 6 * sizeof(int));
-      rc = tiledb_subarray_get_est_result_size_var(
-          ctx_, subarray, "b", &size_off, &size_val);
+      rc = tiledb_query_get_est_result_size_var(
+          ctx_, query, "b", &size_off, &size_val);
       CHECK(rc == TILEDB_OK);
       CHECK(size_off == 6 * sizeof(uint64_t));
       CHECK(size_val == 15 * sizeof(int));
@@ -1085,17 +1014,16 @@ TEST_CASE_METHOD(
 
     SECTION("-- No overlap, 1 range") {
       uint64_t r[] = {20, 30};
-      rc = tiledb_subarray_add_range(ctx_, subarray, 0, &r[0]);
+      rc = tiledb_query_add_range(ctx_, query, 0, &r[0], &r[1], nullptr);
       CHECK(rc == TILEDB_OK);
-      rc = tiledb_subarray_get_est_result_size(
-          ctx_, subarray, TILEDB_COORDS, &size);
-      CHECK(rc == TILEDB_OK);
-      CHECK(size == 0);
-      rc = tiledb_subarray_get_est_result_size(ctx_, subarray, "a", &size);
+      rc = tiledb_query_get_est_result_size(ctx_, query, TILEDB_COORDS, &size);
       CHECK(rc == TILEDB_OK);
       CHECK(size == 0);
-      rc = tiledb_subarray_get_est_result_size_var(
-          ctx_, subarray, "b", &size_off, &size_val);
+      rc = tiledb_query_get_est_result_size(ctx_, query, "a", &size);
+      CHECK(rc == TILEDB_OK);
+      CHECK(size == 0);
+      rc = tiledb_query_get_est_result_size_var(
+          ctx_, query, "b", &size_off, &size_val);
       CHECK(rc == TILEDB_OK);
       CHECK(size_off == 0);
       CHECK(size_val == 0);
@@ -1103,20 +1031,19 @@ TEST_CASE_METHOD(
 
     SECTION("-- No overlap, 2 ranges") {
       uint64_t r1[] = {1, 1};
-      rc = tiledb_subarray_add_range(ctx_, subarray, 0, &r1[0]);
+      rc = tiledb_query_add_range(ctx_, query, 0, &r1[0], &r1[1], nullptr);
       CHECK(rc == TILEDB_OK);
       uint64_t r2[] = {20, 30};
-      rc = tiledb_subarray_add_range(ctx_, subarray, 0, &r2[0]);
+      rc = tiledb_query_add_range(ctx_, query, 0, &r2[0], &r2[1], nullptr);
       CHECK(rc == TILEDB_OK);
-      rc = tiledb_subarray_get_est_result_size(
-          ctx_, subarray, TILEDB_COORDS, &size);
-      CHECK(rc == TILEDB_OK);
-      CHECK(size == 0);
-      rc = tiledb_subarray_get_est_result_size(ctx_, subarray, "a", &size);
+      rc = tiledb_query_get_est_result_size(ctx_, query, TILEDB_COORDS, &size);
       CHECK(rc == TILEDB_OK);
       CHECK(size == 0);
-      rc = tiledb_subarray_get_est_result_size_var(
-          ctx_, subarray, "b", &size_off, &size_val);
+      rc = tiledb_query_get_est_result_size(ctx_, query, "a", &size);
+      CHECK(rc == TILEDB_OK);
+      CHECK(size == 0);
+      rc = tiledb_query_get_est_result_size_var(
+          ctx_, query, "b", &size_off, &size_val);
       CHECK(rc == TILEDB_OK);
       CHECK(size_off == 0);
       CHECK(size_val == 0);
@@ -1124,17 +1051,16 @@ TEST_CASE_METHOD(
 
     SECTION("-- Partial overlap, 1 range") {
       uint64_t r[] = {3, 6};
-      rc = tiledb_subarray_add_range(ctx_, subarray, 0, &r[0]);
+      rc = tiledb_query_add_range(ctx_, query, 0, &r[0], &r[1], nullptr);
       CHECK(rc == TILEDB_OK);
-      rc = tiledb_subarray_get_est_result_size(
-          ctx_, subarray, TILEDB_COORDS, &size);
+      rc = tiledb_query_get_est_result_size(ctx_, query, TILEDB_COORDS, &size);
       CHECK(rc == TILEDB_OK);
       CHECK(size == (uint64_t)((2.0 / 3 + 2.0 / 6) * (2 * sizeof(uint64_t))));
-      rc = tiledb_subarray_get_est_result_size(ctx_, subarray, "a", &size);
+      rc = tiledb_query_get_est_result_size(ctx_, query, "a", &size);
       CHECK(rc == TILEDB_OK);
       CHECK(size == (uint64_t)((2.0 / 3 + 2.0 / 6) * (2 * sizeof(int))));
-      rc = tiledb_subarray_get_est_result_size_var(
-          ctx_, subarray, "b", &size_off, &size_val);
+      rc = tiledb_query_get_est_result_size_var(
+          ctx_, query, "b", &size_off, &size_val);
       CHECK(rc == TILEDB_OK);
       CHECK(
           size_off == (uint64_t)((2.0 / 3 + 2.0 / 6) * (2 * sizeof(uint64_t))));
@@ -1146,29 +1072,28 @@ TEST_CASE_METHOD(
 
     SECTION("-- Partial overlap, 2 ranges") {
       uint64_t r1[] = {3, 6};
-      rc = tiledb_subarray_add_range(ctx_, subarray, 0, &r1[0]);
+      rc = tiledb_query_add_range(ctx_, query, 0, &r1[0], &r1[1], nullptr);
       CHECK(rc == TILEDB_OK);
       uint64_t r2[] = {10, 12};
-      rc = tiledb_subarray_add_range(ctx_, subarray, 0, &r2[0]);
+      rc = tiledb_query_add_range(ctx_, query, 0, &r2[0], &r2[1], nullptr);
       CHECK(rc == TILEDB_OK);
-      rc = tiledb_subarray_get_est_result_size(
-          ctx_, subarray, TILEDB_COORDS, &size);
+      rc = tiledb_query_get_est_result_size(ctx_, query, TILEDB_COORDS, &size);
       CHECK(rc == TILEDB_OK);
-      uint64_t coords_size = (uint64_t)ceil(
+      auto coords_size = (uint64_t)ceil(
           (2.0 / 3 + 3.0 / 6 + 1.0 / 7) * (2 * sizeof(uint64_t)));
       CHECK(size == coords_size);
-      rc = tiledb_subarray_get_est_result_size(ctx_, subarray, "a", &size);
+      rc = tiledb_query_get_est_result_size(ctx_, query, "a", &size);
       CHECK(rc == TILEDB_OK);
-      uint64_t a_size =
+      auto a_size =
           (uint64_t)ceil((2.0 / 3 + 3.0 / 6 + 1.0 / 7) * (2 * sizeof(int)));
       CHECK(size == a_size);
-      rc = tiledb_subarray_get_est_result_size_var(
-          ctx_, subarray, "b", &size_off, &size_val);
+      rc = tiledb_query_get_est_result_size_var(
+          ctx_, query, "b", &size_off, &size_val);
       CHECK(rc == TILEDB_OK);
-      uint64_t b_off_size = (uint64_t)ceil(
+      auto b_off_size = (uint64_t)ceil(
           (2.0 / 3 + 3.0 / 6 + 1.0 / 7) * (2 * sizeof(uint64_t)));
       CHECK(size_off == b_off_size);
-      uint64_t b_val_size = (uint64_t)ceil(
+      auto b_val_size = (uint64_t)ceil(
           (2.0 / 3) * (3 * sizeof(int)) + (3.0 / 6) * (6 * sizeof(int)) +
           (1.0 / 7) * (6 * sizeof(int)));
       CHECK(size_val == b_val_size);
@@ -1180,16 +1105,16 @@ TEST_CASE_METHOD(
   CHECK(rc == TILEDB_OK);
   tiledb_array_free(&array);
   CHECK(array == nullptr);
-  tiledb_subarray_free(&subarray);
-  CHECK(subarray == nullptr);
+  tiledb_query_free(&query);
+  CHECK(query == nullptr);
 
   remove_array(array_name);
 }
 
 TEST_CASE_METHOD(
-    CSubarrayFx,
+    Query2Fx,
     "C API: Test subarray, sparse, 1D, result estimation, height 3",
-    "[capi][c_subarray][sparse][result-estimation][1d][3]") {
+    "[capi][query_2][sparse][result-estimation][1d][3]") {
   std::string array_name = "subarray_sparse_result_estimation_1d_3";
   remove_array(array_name);
 
@@ -1209,7 +1134,7 @@ TEST_CASE_METHOD(
   std::vector<int> b_val = {
       1, 2, 2, 3, 3, 4, 4, 5, 5, 5, 6, 6, 6, 6, 7, 8, 9, 9, 10};
   tiledb_array_t* array = nullptr;
-  tiledb_subarray_t* subarray = nullptr;
+  tiledb_query_t* query = nullptr;
   uint64_t size, size_off, size_val;
 
   SECTION("- row-major") {
@@ -1224,22 +1149,21 @@ TEST_CASE_METHOD(
     CHECK(rc == TILEDB_OK);
 
     // Create subarray
-    rc = tiledb_subarray_alloc(ctx_, array, TILEDB_UNORDERED, &subarray);
+    rc = tiledb_query_alloc(ctx_, array, TILEDB_READ, &query);
     CHECK(rc == TILEDB_OK);
 
     SECTION("-- Full overlap") {
       uint64_t r[] = {1, 27};
-      rc = tiledb_subarray_add_range(ctx_, subarray, 0, &r[0]);
+      rc = tiledb_query_add_range(ctx_, query, 0, &r[0], &r[1], nullptr);
       CHECK(rc == TILEDB_OK);
-      rc = tiledb_subarray_get_est_result_size(
-          ctx_, subarray, TILEDB_COORDS, &size);
+      rc = tiledb_query_get_est_result_size(ctx_, query, TILEDB_COORDS, &size);
       CHECK(rc == TILEDB_OK);
       CHECK(size == 10 * sizeof(uint64_t));
-      rc = tiledb_subarray_get_est_result_size(ctx_, subarray, "a", &size);
+      rc = tiledb_query_get_est_result_size(ctx_, query, "a", &size);
       CHECK(rc == TILEDB_OK);
       CHECK(size == 10 * sizeof(int));
-      rc = tiledb_subarray_get_est_result_size_var(
-          ctx_, subarray, "b", &size_off, &size_val);
+      rc = tiledb_query_get_est_result_size_var(
+          ctx_, query, "b", &size_off, &size_val);
       CHECK(rc == TILEDB_OK);
       CHECK(size_off == 10 * sizeof(uint64_t));
       CHECK(size_val == 19 * sizeof(int));
@@ -1247,17 +1171,16 @@ TEST_CASE_METHOD(
 
     SECTION("-- No overlap, 1 range") {
       uint64_t r[] = {30, 40};
-      rc = tiledb_subarray_add_range(ctx_, subarray, 0, &r[0]);
+      rc = tiledb_query_add_range(ctx_, query, 0, &r[0], &r[1], nullptr);
       CHECK(rc == TILEDB_OK);
-      rc = tiledb_subarray_get_est_result_size(
-          ctx_, subarray, TILEDB_COORDS, &size);
-      CHECK(rc == TILEDB_OK);
-      CHECK(size == 0);
-      rc = tiledb_subarray_get_est_result_size(ctx_, subarray, "a", &size);
+      rc = tiledb_query_get_est_result_size(ctx_, query, TILEDB_COORDS, &size);
       CHECK(rc == TILEDB_OK);
       CHECK(size == 0);
-      rc = tiledb_subarray_get_est_result_size_var(
-          ctx_, subarray, "b", &size_off, &size_val);
+      rc = tiledb_query_get_est_result_size(ctx_, query, "a", &size);
+      CHECK(rc == TILEDB_OK);
+      CHECK(size == 0);
+      rc = tiledb_query_get_est_result_size_var(
+          ctx_, query, "b", &size_off, &size_val);
       CHECK(rc == TILEDB_OK);
       CHECK(size_off == 0);
       CHECK(size_val == 0);
@@ -1265,20 +1188,19 @@ TEST_CASE_METHOD(
 
     SECTION("-- No overlap, 2 ranges") {
       uint64_t r1[] = {1, 1};
-      rc = tiledb_subarray_add_range(ctx_, subarray, 0, &r1[0]);
+      rc = tiledb_query_add_range(ctx_, query, 0, &r1[0], &r1[1], nullptr);
       CHECK(rc == TILEDB_OK);
       uint64_t r2[] = {30, 40};
-      rc = tiledb_subarray_add_range(ctx_, subarray, 0, &r2[0]);
+      rc = tiledb_query_add_range(ctx_, query, 0, &r2[0], &r2[1], nullptr);
       CHECK(rc == TILEDB_OK);
-      rc = tiledb_subarray_get_est_result_size(
-          ctx_, subarray, TILEDB_COORDS, &size);
-      CHECK(rc == TILEDB_OK);
-      CHECK(size == 0);
-      rc = tiledb_subarray_get_est_result_size(ctx_, subarray, "a", &size);
+      rc = tiledb_query_get_est_result_size(ctx_, query, TILEDB_COORDS, &size);
       CHECK(rc == TILEDB_OK);
       CHECK(size == 0);
-      rc = tiledb_subarray_get_est_result_size_var(
-          ctx_, subarray, "b", &size_off, &size_val);
+      rc = tiledb_query_get_est_result_size(ctx_, query, "a", &size);
+      CHECK(rc == TILEDB_OK);
+      CHECK(size == 0);
+      rc = tiledb_query_get_est_result_size_var(
+          ctx_, query, "b", &size_off, &size_val);
       CHECK(rc == TILEDB_OK);
       CHECK(size_off == 0);
       CHECK(size_val == 0);
@@ -1286,54 +1208,52 @@ TEST_CASE_METHOD(
 
     SECTION("-- Overlap only tiles, 1 range") {
       uint64_t r[] = {3, 6};
-      rc = tiledb_subarray_add_range(ctx_, subarray, 0, &r[0]);
+      rc = tiledb_query_add_range(ctx_, query, 0, &r[0], &r[1], nullptr);
       CHECK(rc == TILEDB_OK);
-      rc = tiledb_subarray_get_est_result_size(
-          ctx_, subarray, TILEDB_COORDS, &size);
+      rc = tiledb_query_get_est_result_size(ctx_, query, TILEDB_COORDS, &size);
       CHECK(rc == TILEDB_OK);
-      uint64_t coords_size =
+      auto coords_size =
           (uint64_t)ceil((2.0 / 3 + 2.0 / 6) * (2 * sizeof(uint64_t)));
       CHECK(size == coords_size);
-      rc = tiledb_subarray_get_est_result_size(ctx_, subarray, "a", &size);
+      rc = tiledb_query_get_est_result_size(ctx_, query, "a", &size);
       CHECK(rc == TILEDB_OK);
-      uint64_t a_size = (uint64_t)ceil((2.0 / 3 + 2.0 / 6) * (2 * sizeof(int)));
+      auto a_size = (uint64_t)ceil((2.0 / 3 + 2.0 / 6) * (2 * sizeof(int)));
       CHECK(size == a_size);
-      rc = tiledb_subarray_get_est_result_size_var(
-          ctx_, subarray, "b", &size_off, &size_val);
+      rc = tiledb_query_get_est_result_size_var(
+          ctx_, query, "b", &size_off, &size_val);
       CHECK(rc == TILEDB_OK);
-      uint64_t b_off_size =
+      auto b_off_size =
           (uint64_t)ceil((2.0 / 3 + 2.0 / 6) * (2 * sizeof(uint64_t)));
       CHECK(size_off == b_off_size);
-      uint64_t b_val_size = (uint64_t)ceil(
+      auto b_val_size = (uint64_t)ceil(
           (2.0 / 3) * (3 * sizeof(int)) + (2.0 / 6) * (4 * sizeof(int)));
       CHECK(size_val == b_val_size);
     }
 
     SECTION("-- Overlap only tiles, 2 ranges") {
       uint64_t r1[] = {3, 6};
-      rc = tiledb_subarray_add_range(ctx_, subarray, 0, &r1[0]);
+      rc = tiledb_query_add_range(ctx_, query, 0, &r1[0], &r1[1], nullptr);
       CHECK(rc == TILEDB_OK);
       uint64_t r2[] = {23, 24};
-      rc = tiledb_subarray_add_range(ctx_, subarray, 0, &r2[0]);
+      rc = tiledb_query_add_range(ctx_, query, 0, &r2[0], &r2[1], nullptr);
       CHECK(rc == TILEDB_OK);
-      rc = tiledb_subarray_get_est_result_size(
-          ctx_, subarray, TILEDB_COORDS, &size);
+      rc = tiledb_query_get_est_result_size(ctx_, query, TILEDB_COORDS, &size);
       CHECK(rc == TILEDB_OK);
-      uint64_t coords_size = (uint64_t)ceil(
+      auto coords_size = (uint64_t)ceil(
           (2.0 / 3 + 2.0 / 6 + 2.0 / 4) * (2 * sizeof(uint64_t)));
       CHECK(size == coords_size);
-      rc = tiledb_subarray_get_est_result_size(ctx_, subarray, "a", &size);
+      rc = tiledb_query_get_est_result_size(ctx_, query, "a", &size);
       CHECK(rc == TILEDB_OK);
-      uint64_t a_size =
+      auto a_size =
           (uint64_t)ceil((2.0 / 3 + 2.0 / 6 + 2.0 / 4) * (2 * sizeof(int)));
       CHECK(size == a_size);
-      rc = tiledb_subarray_get_est_result_size_var(
-          ctx_, subarray, "b", &size_off, &size_val);
+      rc = tiledb_query_get_est_result_size_var(
+          ctx_, query, "b", &size_off, &size_val);
       CHECK(rc == TILEDB_OK);
-      uint64_t b_off_size = (uint64_t)ceil(
+      auto b_off_size = (uint64_t)ceil(
           (2.0 / 3 + 2.0 / 6 + 2.0 / 4) * (2 * sizeof(uint64_t)));
       CHECK(size_off == b_off_size);
-      uint64_t b_val_size = (uint64_t)ceil(
+      auto b_val_size = (uint64_t)ceil(
           (2.0 / 3) * (3 * sizeof(int)) + (2.0 / 6) * (4 * sizeof(int)) +
           (1.0 / 4) * (2 * sizeof(int)) + (1.0 / 4) * (3 * sizeof(int)));
       CHECK(size_val == b_val_size);
@@ -1341,17 +1261,16 @@ TEST_CASE_METHOD(
 
     SECTION("-- Overlap only tile ranges, 1 range") {
       uint64_t r[] = {2, 18};
-      rc = tiledb_subarray_add_range(ctx_, subarray, 0, &r[0]);
+      rc = tiledb_query_add_range(ctx_, query, 0, &r[0], &r[1], nullptr);
       CHECK(rc == TILEDB_OK);
-      rc = tiledb_subarray_get_est_result_size(
-          ctx_, subarray, TILEDB_COORDS, &size);
+      rc = tiledb_query_get_est_result_size(ctx_, query, TILEDB_COORDS, &size);
       CHECK(rc == TILEDB_OK);
       CHECK(size == 6 * sizeof(uint64_t));
-      rc = tiledb_subarray_get_est_result_size(ctx_, subarray, "a", &size);
+      rc = tiledb_query_get_est_result_size(ctx_, query, "a", &size);
       CHECK(rc == TILEDB_OK);
       CHECK(size == 6 * sizeof(int));
-      rc = tiledb_subarray_get_est_result_size_var(
-          ctx_, subarray, "b", &size_off, &size_val);
+      rc = tiledb_query_get_est_result_size_var(
+          ctx_, query, "b", &size_off, &size_val);
       CHECK(rc == TILEDB_OK);
       CHECK(size_off == 6 * sizeof(uint64_t));
       CHECK(size_val == 14 * sizeof(int));
@@ -1359,20 +1278,19 @@ TEST_CASE_METHOD(
 
     SECTION("-- Overlap only tile ranges, 2 ranges") {
       uint64_t r1[] = {2, 18};
-      rc = tiledb_subarray_add_range(ctx_, subarray, 0, &r1[0]);
+      rc = tiledb_query_add_range(ctx_, query, 0, &r1[0], &r1[1], nullptr);
       CHECK(rc == TILEDB_OK);
       uint64_t r2[] = {19, 28};
-      rc = tiledb_subarray_add_range(ctx_, subarray, 0, &r2[0]);
+      rc = tiledb_query_add_range(ctx_, query, 0, &r2[0], &r2[1], nullptr);
       CHECK(rc == TILEDB_OK);
-      rc = tiledb_subarray_get_est_result_size(
-          ctx_, subarray, TILEDB_COORDS, &size);
+      rc = tiledb_query_get_est_result_size(ctx_, query, TILEDB_COORDS, &size);
       CHECK(rc == TILEDB_OK);
       CHECK(size == 10 * sizeof(uint64_t));
-      rc = tiledb_subarray_get_est_result_size(ctx_, subarray, "a", &size);
+      rc = tiledb_query_get_est_result_size(ctx_, query, "a", &size);
       CHECK(rc == TILEDB_OK);
       CHECK(size == 10 * sizeof(int));
-      rc = tiledb_subarray_get_est_result_size_var(
-          ctx_, subarray, "b", &size_off, &size_val);
+      rc = tiledb_query_get_est_result_size_var(
+          ctx_, query, "b", &size_off, &size_val);
       CHECK(rc == TILEDB_OK);
       CHECK(size_off == 10 * sizeof(uint64_t));
       CHECK(size_val == 19 * sizeof(int));
@@ -1380,17 +1298,16 @@ TEST_CASE_METHOD(
 
     SECTION("-- Overlap tiles and tile ranges") {
       uint64_t r[] = {2, 20};
-      rc = tiledb_subarray_add_range(ctx_, subarray, 0, &r[0]);
+      rc = tiledb_query_add_range(ctx_, query, 0, &r[0], &r[1], nullptr);
       CHECK(rc == TILEDB_OK);
-      rc = tiledb_subarray_get_est_result_size(
-          ctx_, subarray, TILEDB_COORDS, &size);
+      rc = tiledb_query_get_est_result_size(ctx_, query, TILEDB_COORDS, &size);
       CHECK(rc == TILEDB_OK);
       CHECK(size == (6 + (1.0 / 4) * 2) * sizeof(uint64_t));
-      rc = tiledb_subarray_get_est_result_size(ctx_, subarray, "a", &size);
+      rc = tiledb_query_get_est_result_size(ctx_, query, "a", &size);
       CHECK(rc == TILEDB_OK);
       CHECK(size == (6 + (1.0 / 4) * 2) * sizeof(int));
-      rc = tiledb_subarray_get_est_result_size_var(
-          ctx_, subarray, "b", &size_off, &size_val);
+      rc = tiledb_query_get_est_result_size_var(
+          ctx_, query, "b", &size_off, &size_val);
       CHECK(rc == TILEDB_OK);
       CHECK(size_off == (6 + (1.0 / 4) * 2) * sizeof(uint64_t));
       CHECK(size_val == 14 * sizeof(int) + (1.0 / 4) * 2 * sizeof(int));
@@ -1409,22 +1326,21 @@ TEST_CASE_METHOD(
     CHECK(rc == TILEDB_OK);
 
     // Create subarray
-    rc = tiledb_subarray_alloc(ctx_, array, TILEDB_UNORDERED, &subarray);
+    rc = tiledb_query_alloc(ctx_, array, TILEDB_READ, &query);
     CHECK(rc == TILEDB_OK);
 
     SECTION("-- Full overlap") {
       uint64_t r[] = {1, 27};
-      rc = tiledb_subarray_add_range(ctx_, subarray, 0, &r[0]);
+      rc = tiledb_query_add_range(ctx_, query, 0, &r[0], &r[1], nullptr);
       CHECK(rc == TILEDB_OK);
-      rc = tiledb_subarray_get_est_result_size(
-          ctx_, subarray, TILEDB_COORDS, &size);
+      rc = tiledb_query_get_est_result_size(ctx_, query, TILEDB_COORDS, &size);
       CHECK(rc == TILEDB_OK);
       CHECK(size == 10 * sizeof(uint64_t));
-      rc = tiledb_subarray_get_est_result_size(ctx_, subarray, "a", &size);
+      rc = tiledb_query_get_est_result_size(ctx_, query, "a", &size);
       CHECK(rc == TILEDB_OK);
       CHECK(size == 10 * sizeof(int));
-      rc = tiledb_subarray_get_est_result_size_var(
-          ctx_, subarray, "b", &size_off, &size_val);
+      rc = tiledb_query_get_est_result_size_var(
+          ctx_, query, "b", &size_off, &size_val);
       CHECK(rc == TILEDB_OK);
       CHECK(size_off == 10 * sizeof(uint64_t));
       CHECK(size_val == 19 * sizeof(int));
@@ -1432,17 +1348,16 @@ TEST_CASE_METHOD(
 
     SECTION("-- No overlap, 1 range") {
       uint64_t r[] = {30, 40};
-      rc = tiledb_subarray_add_range(ctx_, subarray, 0, &r[0]);
+      rc = tiledb_query_add_range(ctx_, query, 0, &r[0], &r[1], nullptr);
       CHECK(rc == TILEDB_OK);
-      rc = tiledb_subarray_get_est_result_size(
-          ctx_, subarray, TILEDB_COORDS, &size);
-      CHECK(rc == TILEDB_OK);
-      CHECK(size == 0);
-      rc = tiledb_subarray_get_est_result_size(ctx_, subarray, "a", &size);
+      rc = tiledb_query_get_est_result_size(ctx_, query, TILEDB_COORDS, &size);
       CHECK(rc == TILEDB_OK);
       CHECK(size == 0);
-      rc = tiledb_subarray_get_est_result_size_var(
-          ctx_, subarray, "b", &size_off, &size_val);
+      rc = tiledb_query_get_est_result_size(ctx_, query, "a", &size);
+      CHECK(rc == TILEDB_OK);
+      CHECK(size == 0);
+      rc = tiledb_query_get_est_result_size_var(
+          ctx_, query, "b", &size_off, &size_val);
       CHECK(rc == TILEDB_OK);
       CHECK(size_off == 0);
       CHECK(size_val == 0);
@@ -1450,20 +1365,19 @@ TEST_CASE_METHOD(
 
     SECTION("-- No overlap, 2 ranges") {
       uint64_t r1[] = {1, 1};
-      rc = tiledb_subarray_add_range(ctx_, subarray, 0, &r1[0]);
+      rc = tiledb_query_add_range(ctx_, query, 0, &r1[0], &r1[1], nullptr);
       CHECK(rc == TILEDB_OK);
       uint64_t r2[] = {30, 40};
-      rc = tiledb_subarray_add_range(ctx_, subarray, 0, &r2[0]);
+      rc = tiledb_query_add_range(ctx_, query, 0, &r2[0], &r2[1], nullptr);
       CHECK(rc == TILEDB_OK);
-      rc = tiledb_subarray_get_est_result_size(
-          ctx_, subarray, TILEDB_COORDS, &size);
-      CHECK(rc == TILEDB_OK);
-      CHECK(size == 0);
-      rc = tiledb_subarray_get_est_result_size(ctx_, subarray, "a", &size);
+      rc = tiledb_query_get_est_result_size(ctx_, query, TILEDB_COORDS, &size);
       CHECK(rc == TILEDB_OK);
       CHECK(size == 0);
-      rc = tiledb_subarray_get_est_result_size_var(
-          ctx_, subarray, "b", &size_off, &size_val);
+      rc = tiledb_query_get_est_result_size(ctx_, query, "a", &size);
+      CHECK(rc == TILEDB_OK);
+      CHECK(size == 0);
+      rc = tiledb_query_get_est_result_size_var(
+          ctx_, query, "b", &size_off, &size_val);
       CHECK(rc == TILEDB_OK);
       CHECK(size_off == 0);
       CHECK(size_val == 0);
@@ -1471,54 +1385,52 @@ TEST_CASE_METHOD(
 
     SECTION("-- Overlap only tiles, 1 range") {
       uint64_t r[] = {3, 6};
-      rc = tiledb_subarray_add_range(ctx_, subarray, 0, &r[0]);
+      rc = tiledb_query_add_range(ctx_, query, 0, &r[0], &r[1], nullptr);
       CHECK(rc == TILEDB_OK);
-      rc = tiledb_subarray_get_est_result_size(
-          ctx_, subarray, TILEDB_COORDS, &size);
+      rc = tiledb_query_get_est_result_size(ctx_, query, TILEDB_COORDS, &size);
       CHECK(rc == TILEDB_OK);
-      uint64_t coords_size =
+      auto coords_size =
           (uint64_t)ceil((2.0 / 3 + 2.0 / 6) * (2 * sizeof(uint64_t)));
       CHECK(size == coords_size);
-      rc = tiledb_subarray_get_est_result_size(ctx_, subarray, "a", &size);
+      rc = tiledb_query_get_est_result_size(ctx_, query, "a", &size);
       CHECK(rc == TILEDB_OK);
-      uint64_t a_size = (uint64_t)ceil((2.0 / 3 + 2.0 / 6) * (2 * sizeof(int)));
+      auto a_size = (uint64_t)ceil((2.0 / 3 + 2.0 / 6) * (2 * sizeof(int)));
       CHECK(size == a_size);
-      rc = tiledb_subarray_get_est_result_size_var(
-          ctx_, subarray, "b", &size_off, &size_val);
+      rc = tiledb_query_get_est_result_size_var(
+          ctx_, query, "b", &size_off, &size_val);
       CHECK(rc == TILEDB_OK);
-      uint64_t b_off_size =
+      auto b_off_size =
           (uint64_t)ceil((2.0 / 3 + 2.0 / 6) * (2 * sizeof(uint64_t)));
       CHECK(size_off == b_off_size);
-      uint64_t b_val_size = (uint64_t)ceil(
+      auto b_val_size = (uint64_t)ceil(
           (2.0 / 3) * (3 * sizeof(int)) + (2.0 / 6) * (4 * sizeof(int)));
       CHECK(size_val == b_val_size);
     }
 
     SECTION("-- Overlap only tiles, 2 ranges") {
       uint64_t r1[] = {3, 6};
-      rc = tiledb_subarray_add_range(ctx_, subarray, 0, &r1[0]);
+      rc = tiledb_query_add_range(ctx_, query, 0, &r1[0], &r1[1], nullptr);
       CHECK(rc == TILEDB_OK);
       uint64_t r2[] = {23, 24};
-      rc = tiledb_subarray_add_range(ctx_, subarray, 0, &r2[0]);
+      rc = tiledb_query_add_range(ctx_, query, 0, &r2[0], &r2[1], nullptr);
       CHECK(rc == TILEDB_OK);
-      rc = tiledb_subarray_get_est_result_size(
-          ctx_, subarray, TILEDB_COORDS, &size);
+      rc = tiledb_query_get_est_result_size(ctx_, query, TILEDB_COORDS, &size);
       CHECK(rc == TILEDB_OK);
-      uint64_t coords_size = (uint64_t)ceil(
+      auto coords_size = (uint64_t)ceil(
           (2.0 / 3 + 2.0 / 6 + 2.0 / 4) * (2 * sizeof(uint64_t)));
       CHECK(size == coords_size);
-      rc = tiledb_subarray_get_est_result_size(ctx_, subarray, "a", &size);
+      rc = tiledb_query_get_est_result_size(ctx_, query, "a", &size);
       CHECK(rc == TILEDB_OK);
-      uint64_t a_size =
+      auto a_size =
           (uint64_t)ceil((2.0 / 3 + 2.0 / 6 + 2.0 / 4) * (2 * sizeof(int)));
       CHECK(size == a_size);
-      rc = tiledb_subarray_get_est_result_size_var(
-          ctx_, subarray, "b", &size_off, &size_val);
+      rc = tiledb_query_get_est_result_size_var(
+          ctx_, query, "b", &size_off, &size_val);
       CHECK(rc == TILEDB_OK);
-      uint64_t b_off_size = (uint64_t)ceil(
+      auto b_off_size = (uint64_t)ceil(
           (2.0 / 3 + 2.0 / 6 + 2.0 / 4) * (2 * sizeof(uint64_t)));
       CHECK(size_off == b_off_size);
-      uint64_t b_val_size = (uint64_t)ceil(
+      auto b_val_size = (uint64_t)ceil(
           (2.0 / 3) * (3 * sizeof(int)) + (2.0 / 6) * (4 * sizeof(int)) +
           (1.0 / 4) * (2 * sizeof(int)) + (1.0 / 4) * (3 * sizeof(int)));
       CHECK(size_val == b_val_size);
@@ -1526,17 +1438,16 @@ TEST_CASE_METHOD(
 
     SECTION("-- Overlap only tile ranges, 1 range") {
       uint64_t r[] = {2, 18};
-      rc = tiledb_subarray_add_range(ctx_, subarray, 0, &r[0]);
+      rc = tiledb_query_add_range(ctx_, query, 0, &r[0], &r[1], nullptr);
       CHECK(rc == TILEDB_OK);
-      rc = tiledb_subarray_get_est_result_size(
-          ctx_, subarray, TILEDB_COORDS, &size);
+      rc = tiledb_query_get_est_result_size(ctx_, query, TILEDB_COORDS, &size);
       CHECK(rc == TILEDB_OK);
       CHECK(size == 6 * sizeof(uint64_t));
-      rc = tiledb_subarray_get_est_result_size(ctx_, subarray, "a", &size);
+      rc = tiledb_query_get_est_result_size(ctx_, query, "a", &size);
       CHECK(rc == TILEDB_OK);
       CHECK(size == 6 * sizeof(int));
-      rc = tiledb_subarray_get_est_result_size_var(
-          ctx_, subarray, "b", &size_off, &size_val);
+      rc = tiledb_query_get_est_result_size_var(
+          ctx_, query, "b", &size_off, &size_val);
       CHECK(rc == TILEDB_OK);
       CHECK(size_off == 6 * sizeof(uint64_t));
       CHECK(size_val == 14 * sizeof(int));
@@ -1544,20 +1455,19 @@ TEST_CASE_METHOD(
 
     SECTION("-- Overlap only tile ranges, 2 ranges") {
       uint64_t r1[] = {2, 18};
-      rc = tiledb_subarray_add_range(ctx_, subarray, 0, &r1[0]);
+      rc = tiledb_query_add_range(ctx_, query, 0, &r1[0], &r1[1], nullptr);
       CHECK(rc == TILEDB_OK);
       uint64_t r2[] = {19, 28};
-      rc = tiledb_subarray_add_range(ctx_, subarray, 0, &r2[0]);
+      rc = tiledb_query_add_range(ctx_, query, 0, &r2[0], &r2[1], nullptr);
       CHECK(rc == TILEDB_OK);
-      rc = tiledb_subarray_get_est_result_size(
-          ctx_, subarray, TILEDB_COORDS, &size);
+      rc = tiledb_query_get_est_result_size(ctx_, query, TILEDB_COORDS, &size);
       CHECK(rc == TILEDB_OK);
       CHECK(size == 10 * sizeof(uint64_t));
-      rc = tiledb_subarray_get_est_result_size(ctx_, subarray, "a", &size);
+      rc = tiledb_query_get_est_result_size(ctx_, query, "a", &size);
       CHECK(rc == TILEDB_OK);
       CHECK(size == 10 * sizeof(int));
-      rc = tiledb_subarray_get_est_result_size_var(
-          ctx_, subarray, "b", &size_off, &size_val);
+      rc = tiledb_query_get_est_result_size_var(
+          ctx_, query, "b", &size_off, &size_val);
       CHECK(rc == TILEDB_OK);
       CHECK(size_off == 10 * sizeof(uint64_t));
       CHECK(size_val == 19 * sizeof(int));
@@ -1565,17 +1475,16 @@ TEST_CASE_METHOD(
 
     SECTION("-- Overlap tiles and tile ranges") {
       uint64_t r[] = {2, 20};
-      rc = tiledb_subarray_add_range(ctx_, subarray, 0, &r[0]);
+      rc = tiledb_query_add_range(ctx_, query, 0, &r[0], &r[1], nullptr);
       CHECK(rc == TILEDB_OK);
-      rc = tiledb_subarray_get_est_result_size(
-          ctx_, subarray, TILEDB_COORDS, &size);
+      rc = tiledb_query_get_est_result_size(ctx_, query, TILEDB_COORDS, &size);
       CHECK(rc == TILEDB_OK);
       CHECK(size == (6 + (1.0 / 4) * 2) * sizeof(uint64_t));
-      rc = tiledb_subarray_get_est_result_size(ctx_, subarray, "a", &size);
+      rc = tiledb_query_get_est_result_size(ctx_, query, "a", &size);
       CHECK(rc == TILEDB_OK);
       CHECK(size == (6 + (1.0 / 4) * 2) * sizeof(int));
-      rc = tiledb_subarray_get_est_result_size_var(
-          ctx_, subarray, "b", &size_off, &size_val);
+      rc = tiledb_query_get_est_result_size_var(
+          ctx_, query, "b", &size_off, &size_val);
       CHECK(rc == TILEDB_OK);
       CHECK(size_off == (6 + (1.0 / 4) * 2) * sizeof(uint64_t));
       CHECK(size_val == 14 * sizeof(int) + (1.0 / 4) * 2 * sizeof(int));
@@ -1587,16 +1496,16 @@ TEST_CASE_METHOD(
   CHECK(rc == TILEDB_OK);
   tiledb_array_free(&array);
   CHECK(array == nullptr);
-  tiledb_subarray_free(&subarray);
-  CHECK(subarray == nullptr);
+  tiledb_query_free(&query);
+  CHECK(query == nullptr);
 
   remove_array(array_name);
 }
 
 TEST_CASE_METHOD(
-    CSubarrayFx,
+    Query2Fx,
     "C API: Test subarray, sparse, 2D, result estimation, height 2",
-    "[capi][c_subarray][sparse][result-estimation][2d][2]") {
+    "[capi][query_2][sparse][result-estimation][2d][2]") {
   std::string array_name = "subarray_sparse_result_estimation_2d_2";
   remove_array(array_name);
 
@@ -1611,7 +1520,7 @@ TEST_CASE_METHOD(
                                  11 * sizeof(int)};
   std::vector<int> b_val = {1, 2, 2, 3, 3, 3, 4, 4, 4, 5, 5, 6, 6, 6, 6};
   tiledb_array_t* array = nullptr;
-  tiledb_subarray_t* subarray = nullptr;
+  tiledb_query_t* query = nullptr;
   uint64_t size, size_off, size_val;
 
   SECTION("- row-major") {
@@ -1626,24 +1535,23 @@ TEST_CASE_METHOD(
     CHECK(rc == TILEDB_OK);
 
     // Create subarray
-    rc = tiledb_subarray_alloc(ctx_, array, TILEDB_UNORDERED, &subarray);
+    rc = tiledb_query_alloc(ctx_, array, TILEDB_READ, &query);
     CHECK(rc == TILEDB_OK);
 
     SECTION("-- Full overlap") {
       uint64_t r[] = {1, 10, 1, 10};
-      rc = tiledb_subarray_add_range(ctx_, subarray, 0, &r[0]);
+      rc = tiledb_query_add_range(ctx_, query, 0, &r[0], &r[1], nullptr);
       CHECK(rc == TILEDB_OK);
-      rc = tiledb_subarray_add_range(ctx_, subarray, 1, &r[2]);
+      rc = tiledb_query_add_range(ctx_, query, 1, &r[2], &r[3], nullptr);
       CHECK(rc == TILEDB_OK);
-      rc = tiledb_subarray_get_est_result_size(
-          ctx_, subarray, TILEDB_COORDS, &size);
+      rc = tiledb_query_get_est_result_size(ctx_, query, TILEDB_COORDS, &size);
       CHECK(rc == TILEDB_OK);
       CHECK(size == 6 * 2 * sizeof(uint64_t));
-      rc = tiledb_subarray_get_est_result_size(ctx_, subarray, "a", &size);
+      rc = tiledb_query_get_est_result_size(ctx_, query, "a", &size);
       CHECK(rc == TILEDB_OK);
       CHECK(size == 6 * sizeof(int));
-      rc = tiledb_subarray_get_est_result_size_var(
-          ctx_, subarray, "b", &size_off, &size_val);
+      rc = tiledb_query_get_est_result_size_var(
+          ctx_, query, "b", &size_off, &size_val);
       CHECK(rc == TILEDB_OK);
       CHECK(size_off == 6 * sizeof(uint64_t));
       CHECK(size_val == 15 * sizeof(int));
@@ -1651,19 +1559,18 @@ TEST_CASE_METHOD(
 
     SECTION("-- No overlap, 1 range") {
       uint64_t r[] = {1, 2, 7, 8};
-      rc = tiledb_subarray_add_range(ctx_, subarray, 0, &r[0]);
+      rc = tiledb_query_add_range(ctx_, query, 0, &r[0], &r[1], nullptr);
       CHECK(rc == TILEDB_OK);
-      rc = tiledb_subarray_add_range(ctx_, subarray, 1, &r[2]);
+      rc = tiledb_query_add_range(ctx_, query, 1, &r[2], &r[3], nullptr);
       CHECK(rc == TILEDB_OK);
-      rc = tiledb_subarray_get_est_result_size(
-          ctx_, subarray, TILEDB_COORDS, &size);
-      CHECK(rc == TILEDB_OK);
-      CHECK(size == 0);
-      rc = tiledb_subarray_get_est_result_size(ctx_, subarray, "a", &size);
+      rc = tiledb_query_get_est_result_size(ctx_, query, TILEDB_COORDS, &size);
       CHECK(rc == TILEDB_OK);
       CHECK(size == 0);
-      rc = tiledb_subarray_get_est_result_size_var(
-          ctx_, subarray, "b", &size_off, &size_val);
+      rc = tiledb_query_get_est_result_size(ctx_, query, "a", &size);
+      CHECK(rc == TILEDB_OK);
+      CHECK(size == 0);
+      rc = tiledb_query_get_est_result_size_var(
+          ctx_, query, "b", &size_off, &size_val);
       CHECK(rc == TILEDB_OK);
       CHECK(size_off == 0);
       CHECK(size_val == 0);
@@ -1671,26 +1578,25 @@ TEST_CASE_METHOD(
 
     SECTION("-- No overlap, 4 ranges") {
       uint64_t r11[] = {1, 2};
-      rc = tiledb_subarray_add_range(ctx_, subarray, 0, &r11[0]);
+      rc = tiledb_query_add_range(ctx_, query, 0, &r11[0], &r11[1], nullptr);
       CHECK(rc == TILEDB_OK);
       uint64_t r12[] = {5, 6};
-      rc = tiledb_subarray_add_range(ctx_, subarray, 0, &r12[0]);
+      rc = tiledb_query_add_range(ctx_, query, 0, &r12[0], &r12[1], nullptr);
       CHECK(rc == TILEDB_OK);
       uint64_t r21[] = {6, 7};
-      rc = tiledb_subarray_add_range(ctx_, subarray, 1, &r21[0]);
+      rc = tiledb_query_add_range(ctx_, query, 1, &r21[0], &r21[1], nullptr);
       CHECK(rc == TILEDB_OK);
       uint64_t r22[] = {9, 10};
-      rc = tiledb_subarray_add_range(ctx_, subarray, 1, &r22[0]);
+      rc = tiledb_query_add_range(ctx_, query, 1, &r22[0], &r22[1], nullptr);
       CHECK(rc == TILEDB_OK);
-      rc = tiledb_subarray_get_est_result_size(
-          ctx_, subarray, TILEDB_COORDS, &size);
-      CHECK(rc == TILEDB_OK);
-      CHECK(size == 0);
-      rc = tiledb_subarray_get_est_result_size(ctx_, subarray, "a", &size);
+      rc = tiledb_query_get_est_result_size(ctx_, query, TILEDB_COORDS, &size);
       CHECK(rc == TILEDB_OK);
       CHECK(size == 0);
-      rc = tiledb_subarray_get_est_result_size_var(
-          ctx_, subarray, "b", &size_off, &size_val);
+      rc = tiledb_query_get_est_result_size(ctx_, query, "a", &size);
+      CHECK(rc == TILEDB_OK);
+      CHECK(size == 0);
+      rc = tiledb_query_get_est_result_size_var(
+          ctx_, query, "b", &size_off, &size_val);
       CHECK(rc == TILEDB_OK);
       CHECK(size_off == 0);
       CHECK(size_val == 0);
@@ -1698,31 +1604,30 @@ TEST_CASE_METHOD(
 
     SECTION("-- Partial overlap, 1 range") {
       uint64_t r[] = {2, 3, 5, 6};
-      rc = tiledb_subarray_add_range(ctx_, subarray, 0, &r[0]);
+      rc = tiledb_query_add_range(ctx_, query, 0, &r[0], &r[1], nullptr);
       CHECK(rc == TILEDB_OK);
-      rc = tiledb_subarray_add_range(ctx_, subarray, 1, &r[2]);
+      rc = tiledb_query_add_range(ctx_, query, 1, &r[2], &r[3], nullptr);
       CHECK(rc == TILEDB_OK);
-      rc = tiledb_subarray_get_est_result_size(
-          ctx_, subarray, TILEDB_COORDS, &size);
+      rc = tiledb_query_get_est_result_size(ctx_, query, TILEDB_COORDS, &size);
       CHECK(rc == TILEDB_OK);
-      uint64_t coords_size = (uint64_t)ceil(
+      auto coords_size = (uint64_t)ceil(
           (1.0 / 2) * (1.0 / 4) * 4 * sizeof(uint64_t) +
           1.0 * (2.0 / 7) * 4 * sizeof(uint64_t));
       CHECK(size == coords_size);
-      rc = tiledb_subarray_get_est_result_size(ctx_, subarray, "a", &size);
+      rc = tiledb_query_get_est_result_size(ctx_, query, "a", &size);
       CHECK(rc == TILEDB_OK);
-      uint64_t a_size = (uint64_t)ceil(
+      auto a_size = (uint64_t)ceil(
           (1.0 / 2) * (1.0 / 4) * 2 * sizeof(int) +
           1.0 * (2.0 / 7) * 2 * sizeof(int));
       CHECK(size == a_size);
-      rc = tiledb_subarray_get_est_result_size_var(
-          ctx_, subarray, "b", &size_off, &size_val);
+      rc = tiledb_query_get_est_result_size_var(
+          ctx_, query, "b", &size_off, &size_val);
       CHECK(rc == TILEDB_OK);
-      uint64_t b_off_size = (uint64_t)ceil(
+      auto b_off_size = (uint64_t)ceil(
           (1.0 / 2) * (1.0 / 4) * 2 * sizeof(uint64_t) +
           1.0 * (2.0 / 7) * 2 * sizeof(uint64_t));
       CHECK(size_off == b_off_size);
-      uint64_t b_val_size = (uint64_t)ceil(
+      auto b_val_size = (uint64_t)ceil(
           (1.0 / 2) * (1.0 / 4) * 3 * sizeof(int) +
           1.0 * (2.0 / 7) * 6 * sizeof(int));
       CHECK(size_val == b_val_size);
@@ -1730,35 +1635,34 @@ TEST_CASE_METHOD(
 
     SECTION("-- Partial overlap, 4 ranges") {
       uint64_t r11[] = {1, 2};
-      rc = tiledb_subarray_add_range(ctx_, subarray, 0, &r11[0]);
+      rc = tiledb_query_add_range(ctx_, query, 0, &r11[0], &r11[1], nullptr);
       CHECK(rc == TILEDB_OK);
       uint64_t r12[] = {4, 4};
-      rc = tiledb_subarray_add_range(ctx_, subarray, 0, &r12[0]);
+      rc = tiledb_query_add_range(ctx_, query, 0, &r12[0], &r12[1], nullptr);
       CHECK(rc == TILEDB_OK);
       uint64_t r21[] = {1, 2};
-      rc = tiledb_subarray_add_range(ctx_, subarray, 1, &r21[0]);
+      rc = tiledb_query_add_range(ctx_, query, 1, &r21[0], &r21[1], nullptr);
       CHECK(rc == TILEDB_OK);
       uint64_t r22[] = {7, 8};
-      rc = tiledb_subarray_add_range(ctx_, subarray, 1, &r22[0]);
+      rc = tiledb_query_add_range(ctx_, query, 1, &r22[0], &r22[1], nullptr);
       CHECK(rc == TILEDB_OK);
-      rc = tiledb_subarray_get_est_result_size(
-          ctx_, subarray, TILEDB_COORDS, &size);
-      uint64_t coords_size = (uint64_t)ceil(
+      rc = tiledb_query_get_est_result_size(ctx_, query, TILEDB_COORDS, &size);
+      auto coords_size = (uint64_t)ceil(
           (1.0 / 4) * 4 * sizeof(uint64_t) + (3.0 / 7) * 4 * sizeof(uint64_t));
       CHECK(rc == TILEDB_OK);
       CHECK(size == coords_size);
-      rc = tiledb_subarray_get_est_result_size(ctx_, subarray, "a", &size);
+      rc = tiledb_query_get_est_result_size(ctx_, query, "a", &size);
       CHECK(rc == TILEDB_OK);
-      uint64_t a_size = (uint64_t)ceil(
+      auto a_size = (uint64_t)ceil(
           (1.0 / 4) * 2 * sizeof(int) + (3.0 / 7) * 2 * sizeof(int));
       CHECK(size == a_size);
-      rc = tiledb_subarray_get_est_result_size_var(
-          ctx_, subarray, "b", &size_off, &size_val);
+      rc = tiledb_query_get_est_result_size_var(
+          ctx_, query, "b", &size_off, &size_val);
       CHECK(rc == TILEDB_OK);
-      uint64_t b_off_size = (uint64_t)ceil(
+      auto b_off_size = (uint64_t)ceil(
           (1.0 / 4) * 2 * sizeof(uint64_t) + (3.0 / 7) * 2 * sizeof(uint64_t));
       CHECK(size_off == b_off_size);
-      uint64_t b_val_size = (uint64_t)ceil(
+      auto b_val_size = (uint64_t)ceil(
           (1.0 / 4) * 3 * sizeof(int) + (3.0 / 7) * 6 * sizeof(int));
       CHECK(size_val == b_val_size);
     }
@@ -1776,24 +1680,23 @@ TEST_CASE_METHOD(
     CHECK(rc == TILEDB_OK);
 
     // Create subarray
-    rc = tiledb_subarray_alloc(ctx_, array, TILEDB_UNORDERED, &subarray);
+    rc = tiledb_query_alloc(ctx_, array, TILEDB_READ, &query);
     CHECK(rc == TILEDB_OK);
 
     SECTION("-- Full overlap") {
       uint64_t r[] = {1, 10, 1, 10};
-      rc = tiledb_subarray_add_range(ctx_, subarray, 0, &r[0]);
+      rc = tiledb_query_add_range(ctx_, query, 0, &r[0], &r[1], nullptr);
       CHECK(rc == TILEDB_OK);
-      rc = tiledb_subarray_add_range(ctx_, subarray, 1, &r[2]);
+      rc = tiledb_query_add_range(ctx_, query, 1, &r[2], &r[3], nullptr);
       CHECK(rc == TILEDB_OK);
-      rc = tiledb_subarray_get_est_result_size(
-          ctx_, subarray, TILEDB_COORDS, &size);
+      rc = tiledb_query_get_est_result_size(ctx_, query, TILEDB_COORDS, &size);
       CHECK(rc == TILEDB_OK);
       CHECK(size == 6 * 2 * sizeof(uint64_t));
-      rc = tiledb_subarray_get_est_result_size(ctx_, subarray, "a", &size);
+      rc = tiledb_query_get_est_result_size(ctx_, query, "a", &size);
       CHECK(rc == TILEDB_OK);
       CHECK(size == 6 * sizeof(int));
-      rc = tiledb_subarray_get_est_result_size_var(
-          ctx_, subarray, "b", &size_off, &size_val);
+      rc = tiledb_query_get_est_result_size_var(
+          ctx_, query, "b", &size_off, &size_val);
       CHECK(rc == TILEDB_OK);
       CHECK(size_off == 6 * sizeof(uint64_t));
       CHECK(size_val == 15 * sizeof(int));
@@ -1801,19 +1704,18 @@ TEST_CASE_METHOD(
 
     SECTION("-- No overlap, 1 range") {
       uint64_t r[] = {1, 2, 7, 8};
-      rc = tiledb_subarray_add_range(ctx_, subarray, 0, &r[0]);
+      rc = tiledb_query_add_range(ctx_, query, 0, &r[0], &r[1], nullptr);
       CHECK(rc == TILEDB_OK);
-      rc = tiledb_subarray_add_range(ctx_, subarray, 1, &r[2]);
+      rc = tiledb_query_add_range(ctx_, query, 1, &r[2], &r[3], nullptr);
       CHECK(rc == TILEDB_OK);
-      rc = tiledb_subarray_get_est_result_size(
-          ctx_, subarray, TILEDB_COORDS, &size);
-      CHECK(rc == TILEDB_OK);
-      CHECK(size == 0);
-      rc = tiledb_subarray_get_est_result_size(ctx_, subarray, "a", &size);
+      rc = tiledb_query_get_est_result_size(ctx_, query, TILEDB_COORDS, &size);
       CHECK(rc == TILEDB_OK);
       CHECK(size == 0);
-      rc = tiledb_subarray_get_est_result_size_var(
-          ctx_, subarray, "b", &size_off, &size_val);
+      rc = tiledb_query_get_est_result_size(ctx_, query, "a", &size);
+      CHECK(rc == TILEDB_OK);
+      CHECK(size == 0);
+      rc = tiledb_query_get_est_result_size_var(
+          ctx_, query, "b", &size_off, &size_val);
       CHECK(rc == TILEDB_OK);
       CHECK(size_off == 0);
       CHECK(size_val == 0);
@@ -1821,26 +1723,25 @@ TEST_CASE_METHOD(
 
     SECTION("-- No overlap, 4 ranges") {
       uint64_t r11[] = {1, 2};
-      rc = tiledb_subarray_add_range(ctx_, subarray, 0, &r11[0]);
+      rc = tiledb_query_add_range(ctx_, query, 0, &r11[0], &r11[1], nullptr);
       CHECK(rc == TILEDB_OK);
       uint64_t r12[] = {5, 6};
-      rc = tiledb_subarray_add_range(ctx_, subarray, 0, &r12[0]);
+      rc = tiledb_query_add_range(ctx_, query, 0, &r12[0], &r12[1], nullptr);
       CHECK(rc == TILEDB_OK);
       uint64_t r21[] = {6, 7};
-      rc = tiledb_subarray_add_range(ctx_, subarray, 1, &r21[0]);
+      rc = tiledb_query_add_range(ctx_, query, 1, &r21[0], &r21[1], nullptr);
       CHECK(rc == TILEDB_OK);
       uint64_t r22[] = {9, 10};
-      rc = tiledb_subarray_add_range(ctx_, subarray, 1, &r22[0]);
+      rc = tiledb_query_add_range(ctx_, query, 1, &r22[0], &r22[1], nullptr);
       CHECK(rc == TILEDB_OK);
-      rc = tiledb_subarray_get_est_result_size(
-          ctx_, subarray, TILEDB_COORDS, &size);
-      CHECK(rc == TILEDB_OK);
-      CHECK(size == 0);
-      rc = tiledb_subarray_get_est_result_size(ctx_, subarray, "a", &size);
+      rc = tiledb_query_get_est_result_size(ctx_, query, TILEDB_COORDS, &size);
       CHECK(rc == TILEDB_OK);
       CHECK(size == 0);
-      rc = tiledb_subarray_get_est_result_size_var(
-          ctx_, subarray, "b", &size_off, &size_val);
+      rc = tiledb_query_get_est_result_size(ctx_, query, "a", &size);
+      CHECK(rc == TILEDB_OK);
+      CHECK(size == 0);
+      rc = tiledb_query_get_est_result_size_var(
+          ctx_, query, "b", &size_off, &size_val);
       CHECK(rc == TILEDB_OK);
       CHECK(size_off == 0);
       CHECK(size_val == 0);
@@ -1848,61 +1749,57 @@ TEST_CASE_METHOD(
 
     SECTION("-- Partial overlap, 1 range") {
       uint64_t r[] = {2, 3, 5, 6};
-      rc = tiledb_subarray_add_range(ctx_, subarray, 0, &r[0]);
+      rc = tiledb_query_add_range(ctx_, query, 0, &r[0], &r[1], nullptr);
       CHECK(rc == TILEDB_OK);
-      rc = tiledb_subarray_add_range(ctx_, subarray, 1, &r[2]);
+      rc = tiledb_query_add_range(ctx_, query, 1, &r[2], &r[3], nullptr);
       CHECK(rc == TILEDB_OK);
-      rc = tiledb_subarray_get_est_result_size(
-          ctx_, subarray, TILEDB_COORDS, &size);
+      rc = tiledb_query_get_est_result_size(ctx_, query, TILEDB_COORDS, &size);
       CHECK(rc == TILEDB_OK);
-      uint64_t coords_size =
-          (uint64_t)ceil(1.0 * (1.0 / 3) * 4 * sizeof(uint64_t));
+      auto coords_size = (uint64_t)ceil(1.0 * (1.0 / 3) * 4 * sizeof(uint64_t));
       CHECK(size == coords_size);
-      rc = tiledb_subarray_get_est_result_size(ctx_, subarray, "a", &size);
+      rc = tiledb_query_get_est_result_size(ctx_, query, "a", &size);
       CHECK(rc == TILEDB_OK);
-      uint64_t a_size = (uint64_t)ceil(1.0 * (1.0 / 3) * 2 * sizeof(int));
+      auto a_size = (uint64_t)ceil(1.0 * (1.0 / 3) * 2 * sizeof(int));
       CHECK(size == a_size);
-      rc = tiledb_subarray_get_est_result_size_var(
-          ctx_, subarray, "b", &size_off, &size_val);
+      rc = tiledb_query_get_est_result_size_var(
+          ctx_, query, "b", &size_off, &size_val);
       CHECK(rc == TILEDB_OK);
-      uint64_t b_off_size =
-          (uint64_t)ceil(1.0 * (1.0 / 3) * 2 * sizeof(uint64_t));
+      auto b_off_size = (uint64_t)ceil(1.0 * (1.0 / 3) * 2 * sizeof(uint64_t));
       CHECK(size_off == b_off_size);
-      uint64_t b_val_size = (uint64_t)ceil(1.0 * (1.0 / 3) * 5 * sizeof(int));
+      auto b_val_size = (uint64_t)ceil(1.0 * (1.0 / 3) * 5 * sizeof(int));
       CHECK(size_val == b_val_size);
     }
 
     SECTION("-- Partial overlap, 4 ranges") {
       uint64_t r11[] = {1, 2};
-      rc = tiledb_subarray_add_range(ctx_, subarray, 0, &r11[0]);
+      rc = tiledb_query_add_range(ctx_, query, 0, &r11[0], &r11[1], nullptr);
       CHECK(rc == TILEDB_OK);
       uint64_t r12[] = {4, 4};
-      rc = tiledb_subarray_add_range(ctx_, subarray, 0, &r12[0]);
+      rc = tiledb_query_add_range(ctx_, query, 0, &r12[0], &r12[1], nullptr);
       CHECK(rc == TILEDB_OK);
       uint64_t r21[] = {1, 2};
-      rc = tiledb_subarray_add_range(ctx_, subarray, 1, &r21[0]);
+      rc = tiledb_query_add_range(ctx_, query, 1, &r21[0], &r21[1], nullptr);
       CHECK(rc == TILEDB_OK);
       uint64_t r22[] = {7, 8};
-      rc = tiledb_subarray_add_range(ctx_, subarray, 1, &r22[0]);
+      rc = tiledb_query_add_range(ctx_, query, 1, &r22[0], &r22[1], nullptr);
       CHECK(rc == TILEDB_OK);
-      rc = tiledb_subarray_get_est_result_size(
-          ctx_, subarray, TILEDB_COORDS, &size);
-      uint64_t coords_size = (uint64_t)ceil(
+      rc = tiledb_query_get_est_result_size(ctx_, query, TILEDB_COORDS, &size);
+      auto coords_size = (uint64_t)ceil(
           (6.0 / 8) * 4 * sizeof(uint64_t) + (2.0 / 6) * 4 * sizeof(uint64_t));
       CHECK(rc == TILEDB_OK);
       CHECK(size == coords_size);
-      rc = tiledb_subarray_get_est_result_size(ctx_, subarray, "a", &size);
+      rc = tiledb_query_get_est_result_size(ctx_, query, "a", &size);
       CHECK(rc == TILEDB_OK);
-      uint64_t a_size = (uint64_t)ceil(
+      auto a_size = (uint64_t)ceil(
           (6.0 / 8) * 2 * sizeof(int) + (2.0 / 6) * 2 * sizeof(int));
       CHECK(size == a_size);
-      rc = tiledb_subarray_get_est_result_size_var(
-          ctx_, subarray, "b", &size_off, &size_val);
+      rc = tiledb_query_get_est_result_size_var(
+          ctx_, query, "b", &size_off, &size_val);
       CHECK(rc == TILEDB_OK);
-      uint64_t b_off_size = (uint64_t)ceil(
+      auto b_off_size = (uint64_t)ceil(
           (6.0 / 8) * 2 * sizeof(uint64_t) + (2.0 / 6) * 2 * sizeof(uint64_t));
       CHECK(size_off == b_off_size);
-      uint64_t b_val_size = (uint64_t)ceil(
+      auto b_val_size = (uint64_t)ceil(
           (6.0 / 8) * 3 * sizeof(int) + (2.0 / 6) * 7 * sizeof(int));
       CHECK(size_val == b_val_size);
     }
@@ -1913,274 +1810,16 @@ TEST_CASE_METHOD(
   CHECK(rc == TILEDB_OK);
   tiledb_array_free(&array);
   CHECK(array == nullptr);
-  tiledb_subarray_free(&subarray);
-  CHECK(subarray == nullptr);
-
-  remove_array(array_name);
-}
-
-TEST_CASE_METHOD(
-    CSubarrayFx,
-    "C API: Test subarray, dense, basic API usage and errors",
-    "[capi][c_subarray][dense][basic]") {
-  std::string array_name = "subarray_dense_basic";
-  remove_array(array_name);
-  create_dense_array(array_name);
-
-  // Allocate subarray with an unopened array
-  tiledb_array_t* array;
-  int rc = tiledb_array_alloc(ctx_, array_name.c_str(), &array);
-  CHECK(rc == TILEDB_OK);
-  tiledb_subarray_t* subarray = nullptr;
-  rc = tiledb_subarray_alloc(ctx_, array, TILEDB_UNORDERED, &subarray);
-  CHECK(rc == TILEDB_ERR);
-
-  // Open array
-  rc = tiledb_array_open(ctx_, array, TILEDB_READ);
-  CHECK(rc == TILEDB_OK);
-
-  // Allocate subarray with an opened array in UNORDERED layout
-  rc = tiledb_subarray_alloc(ctx_, array, TILEDB_UNORDERED, &subarray);
-  CHECK(rc == TILEDB_ERR);
-
-  // Permitted allocation
-  rc = tiledb_subarray_alloc(ctx_, array, TILEDB_ROW_MAJOR, &subarray);
-  CHECK(rc == TILEDB_OK);
-
-  // Get layout
-  tiledb_layout_t layout;
-  rc = tiledb_subarray_get_layout(ctx_, subarray, &layout);
-  CHECK(rc == TILEDB_OK);
-  CHECK(layout == TILEDB_ROW_MAJOR);
-
-  // Get type and ndim
-  tiledb_datatype_t type;
-  uint32_t dim_num;
-  rc = tiledb_subarray_get_type(ctx_, subarray, &type);
-  CHECK(rc == TILEDB_OK);
-  CHECK(type == TILEDB_UINT64);
-  rc = tiledb_subarray_get_ndim(ctx_, subarray, &dim_num);
-  CHECK(rc == TILEDB_OK);
-  CHECK(dim_num == 2);
-
-  // Get domain
-  const void* dom;
-  uint64_t domain[] = {1, 10, 1, 10};
-  rc = tiledb_subarray_get_domain(ctx_, subarray, &dom);
-  CHECK(rc == TILEDB_OK);
-  CHECK(std::memcmp(dom, domain, sizeof(domain)) == 0);
-
-  // Check getting range num from an invalid dimension index
-  uint64_t range_num;
-  rc = tiledb_subarray_get_range_num(ctx_, subarray, 2, &range_num);
-  CHECK(rc == TILEDB_ERR);
-
-  // Check getting range from an invalid dimension index
-  const void* range;
-  rc = tiledb_subarray_get_range(ctx_, subarray, 2, 0, &range);
-  CHECK(rc == TILEDB_ERR);
-
-  // Check getting range from an invalid range index
-  rc = tiledb_subarray_get_range(ctx_, subarray, 0, 1, &range);
-  CHECK(rc == TILEDB_ERR);
-
-  // Add null range
-  rc = tiledb_subarray_add_range(ctx_, subarray, 0, nullptr);
-  CHECK(rc == TILEDB_ERR);
-
-  // Add ranges outside the subarray domain
-  uint64_t inv_r1[] = {0, 0};
-  rc = tiledb_subarray_add_range(ctx_, subarray, 0, &inv_r1[0]);
-  CHECK(rc == TILEDB_ERR);
-  uint64_t inv_r2[] = {0, 20};
-  rc = tiledb_subarray_add_range(ctx_, subarray, 1, &inv_r2[0]);
-  CHECK(rc == TILEDB_ERR);
-  uint64_t inv_r3[] = {11, 20};
-  rc = tiledb_subarray_add_range(ctx_, subarray, 1, &inv_r3[0]);
-  CHECK(rc == TILEDB_ERR);
-
-  // Add range with invalid end points
-  uint64_t inv_r4[] = {5, 4};
-  rc = tiledb_subarray_add_range(ctx_, subarray, 0, &inv_r4[0]);
-  CHECK(rc == TILEDB_ERR);
-
-  // Add valid ranges
-  uint64_t r1[] = {1, 3};
-  rc = tiledb_subarray_add_range(ctx_, subarray, 0, &r1[0]);
-  CHECK(rc == TILEDB_OK);
-  uint64_t r2[] = {2, 8};
-  rc = tiledb_subarray_add_range(ctx_, subarray, 0, &r2[0]);
-  CHECK(rc == TILEDB_OK);
-  uint64_t r3[] = {2, 2};
-  rc = tiledb_subarray_add_range(ctx_, subarray, 1, &r3[0]);
-  CHECK(rc == TILEDB_OK);
-
-  // Check range num
-  rc = tiledb_subarray_get_range_num(ctx_, subarray, 0, &range_num);
-  CHECK(rc == TILEDB_OK);
-  CHECK(range_num == 2);
-  rc = tiledb_subarray_get_range_num(ctx_, subarray, 1, &range_num);
-  CHECK(rc == TILEDB_OK);
-  CHECK(range_num == 1);
-
-  // Check getting range from an invalid range index
-  rc = tiledb_subarray_get_range(ctx_, subarray, 0, 2, &range);
-  CHECK(rc == TILEDB_ERR);
-  rc = tiledb_subarray_get_range(ctx_, subarray, 1, 1, &range);
-  CHECK(rc == TILEDB_ERR);
-
-  // Check ranges
-  const uint64_t *r00, *r01, *r10;
-  rc = tiledb_subarray_get_range(ctx_, subarray, 0, 0, (const void**)&r00);
-  CHECK(rc == TILEDB_OK);
-  CHECK(r00[0] == 1);
-  CHECK(r00[1] == 3);
-  rc = tiledb_subarray_get_range(ctx_, subarray, 0, 1, (const void**)&r01);
-  CHECK(rc == TILEDB_OK);
-  CHECK(r01[0] == 2);
-  CHECK(r01[1] == 8);
-  rc = tiledb_subarray_get_range(ctx_, subarray, 1, 0, (const void**)&r10);
-  CHECK(rc == TILEDB_OK);
-  CHECK(r10[0] == 2);
-  CHECK(r10[1] == 2);
-
-  // Clean-up
-  rc = tiledb_array_close(ctx_, array);
-  CHECK(rc == TILEDB_OK);
-  tiledb_array_free(&array);
-  CHECK(array == nullptr);
-  tiledb_subarray_free(&subarray);
-  CHECK(subarray == nullptr);
-
-  remove_array(array_name);
-}
-
-TEST_CASE_METHOD(
-    CSubarrayFx,
-    "C API: Test subarray, dense, check default (empty) subarray",
-    "[capi][c_subarray][dense][default]") {
-  std::string array_name = "subarray_dense_default";
-  remove_array(array_name);
-  create_dense_array(array_name);
-
-  // Allocate subarray with an unopened array
-  tiledb_array_t* array;
-  int rc = tiledb_array_alloc(ctx_, array_name.c_str(), &array);
-  CHECK(rc == TILEDB_OK);
-
-  // Open array
-  rc = tiledb_array_open(ctx_, array, TILEDB_READ);
-  CHECK(rc == TILEDB_OK);
-
-  // Allocate subarray with an opened array
-  tiledb_subarray_t* subarray = nullptr;
-  rc = tiledb_subarray_alloc(ctx_, array, TILEDB_ROW_MAJOR, &subarray);
-  CHECK(rc == TILEDB_OK);
-
-  // Check that there are no ranges initially
-  uint64_t range_num;
-  rc = tiledb_subarray_get_range_num(ctx_, subarray, 0, &range_num);
-  CHECK(rc == TILEDB_OK);
-  CHECK(range_num == 1);
-  rc = tiledb_subarray_get_range_num(ctx_, subarray, 1, &range_num);
-  CHECK(rc == TILEDB_OK);
-  CHECK(range_num == 1);
-
-  // Check ranges
-  const uint64_t *r1, *r2;
-  rc = tiledb_subarray_get_range(ctx_, subarray, 0, 0, (const void**)&r1);
-  CHECK(rc == TILEDB_OK);
-  CHECK(r1[0] == 1);
-  CHECK(r1[1] == 10);
-  rc = tiledb_subarray_get_range(ctx_, subarray, 1, 0, (const void**)&r2);
-  CHECK(rc == TILEDB_OK);
-  CHECK(r2[0] == 1);
-  CHECK(r2[1] == 10);
-
-  // Clean-up
-  rc = tiledb_array_close(ctx_, array);
-  CHECK(rc == TILEDB_OK);
-  tiledb_array_free(&array);
-  CHECK(array == nullptr);
-  tiledb_subarray_free(&subarray);
-  CHECK(subarray == nullptr);
-
-  remove_array(array_name);
-}
-
-TEST_CASE_METHOD(
-    CSubarrayFx,
-    "C API: Test subarray, dense, check errors in setting the subarray to "
-    "query",
-    "[capi][c_subarray][dense][errors][query]") {
-  std::string array_name = "subarray_dense_query_set";
-  std::string array_name_inv = "subarray_dense_query_inv";
-  remove_array(array_name);
-  remove_array(array_name_inv);
-  create_dense_array(array_name);
-  create_dense_array(array_name_inv);
-
-  // Open array
-  tiledb_array_t* array;
-  int rc = tiledb_array_alloc(ctx_, array_name.c_str(), &array);
-  CHECK(rc == TILEDB_OK);
-  rc = tiledb_array_open(ctx_, array, TILEDB_READ);
-  CHECK(rc == TILEDB_OK);
-
-  // Open invalid array
-  tiledb_array_t* array_inv;
-  rc = tiledb_array_alloc(ctx_, array_name_inv.c_str(), &array_inv);
-  CHECK(rc == TILEDB_OK);
-  rc = tiledb_array_open(ctx_, array_inv, TILEDB_READ);
-  CHECK(rc == TILEDB_OK);
-
-  // Create subarray for invalid array
-  tiledb_subarray_t* subarray_inv = nullptr;
-  rc = tiledb_subarray_alloc(ctx_, array_inv, TILEDB_ROW_MAJOR, &subarray_inv);
-  CHECK(rc == TILEDB_OK);
-
-  // Create query for correct array
-  tiledb_query_t* query;
-  rc = tiledb_query_alloc(ctx_, array, TILEDB_READ, &query);
-  CHECK(rc == TILEDB_OK);
-
-  // Set invalid subarray to correct array
-  rc = tiledb_query_set_subarray_2(ctx_, query, subarray_inv);
-  CHECK(rc == TILEDB_ERR);
-
-  // Create subarray for correct array
-  tiledb_subarray_t* subarray = nullptr;
-  rc = tiledb_subarray_alloc(ctx_, array, TILEDB_COL_MAJOR, &subarray);
-  CHECK(rc == TILEDB_OK);
-
-  // Set correct subarray to correct array
-  rc = tiledb_query_set_subarray_2(ctx_, query, subarray);
-  CHECK(rc == TILEDB_OK);
-
-  // Clean-up
-  rc = tiledb_array_close(ctx_, array);
-  CHECK(rc == TILEDB_OK);
-  tiledb_array_free(&array);
-  CHECK(array == nullptr);
-  rc = tiledb_array_close(ctx_, array_inv);
-  CHECK(rc == TILEDB_OK);
-  tiledb_array_free(&array_inv);
-  CHECK(array_inv == nullptr);
-  tiledb_subarray_free(&subarray_inv);
-  CHECK(subarray_inv == nullptr);
-  tiledb_subarray_free(&subarray);
-  CHECK(subarray == nullptr);
   tiledb_query_free(&query);
   CHECK(query == nullptr);
 
   remove_array(array_name);
-  remove_array(array_name_inv);
 }
 
 TEST_CASE_METHOD(
-    CSubarrayFx,
+    Query2Fx,
     "C API: Test subarray, dense, result estimation, empty array",
-    "[capi][c_subarray][dense][result-estimation][0]") {
+    "[capi][query_2][dense][result-estimation][0]") {
   std::string array_name = "subarray_dense_result_estimation_0";
   remove_array(array_name);
   create_dense_array(array_name);
@@ -2192,31 +1831,31 @@ TEST_CASE_METHOD(
   rc = tiledb_array_open(ctx_, array, TILEDB_READ);
   CHECK(rc == TILEDB_OK);
 
-  // Create subarray
-  tiledb_subarray_t* subarray = nullptr;
-  rc = tiledb_subarray_alloc(ctx_, array, TILEDB_ROW_MAJOR, &subarray);
+  // Create query
+  tiledb_query_t* query = nullptr;
+  rc = tiledb_query_alloc(ctx_, array, TILEDB_READ, &query);
   CHECK(rc == TILEDB_OK);
 
   uint64_t size, size_off, size_val;
 
   // Simple checks
-  rc = tiledb_subarray_get_est_result_size(ctx_, subarray, "b", &size);
+  rc = tiledb_query_get_est_result_size(ctx_, query, "b", &size);
   CHECK(rc == TILEDB_ERR);
-  rc = tiledb_subarray_get_est_result_size_var(
-      ctx_, subarray, "a", &size_off, &size_val);
+  rc = tiledb_query_get_est_result_size_var(
+      ctx_, query, "a", &size_off, &size_val);
   CHECK(rc == TILEDB_ERR);
-  rc = tiledb_subarray_get_est_result_size(ctx_, subarray, "foo", &size);
+  rc = tiledb_query_get_est_result_size(ctx_, query, "foo", &size);
   CHECK(rc == TILEDB_ERR);
-  rc = tiledb_subarray_get_est_result_size_var(
-      ctx_, subarray, "foo", &size_off, &size_val);
+  rc = tiledb_query_get_est_result_size_var(
+      ctx_, query, "foo", &size_off, &size_val);
   CHECK(rc == TILEDB_ERR);
 
   // Get estimated result size
-  rc = tiledb_subarray_get_est_result_size(ctx_, subarray, "a", &size);
+  rc = tiledb_query_get_est_result_size(ctx_, query, "a", &size);
   CHECK(rc == TILEDB_OK);
   CHECK(size == 0);
-  rc = tiledb_subarray_get_est_result_size_var(
-      ctx_, subarray, "b", &size_off, &size_val);
+  rc = tiledb_query_get_est_result_size_var(
+      ctx_, query, "b", &size_off, &size_val);
   CHECK(rc == TILEDB_OK);
   CHECK(size_off == 0);
   CHECK(size_val == 0);
@@ -2226,16 +1865,16 @@ TEST_CASE_METHOD(
   CHECK(rc == TILEDB_OK);
   tiledb_array_free(&array);
   CHECK(array == nullptr);
-  tiledb_subarray_free(&subarray);
-  CHECK(subarray == nullptr);
+  tiledb_query_free(&query);
+  CHECK(query == nullptr);
 
   remove_array(array_name);
 }
 
 TEST_CASE_METHOD(
-    CSubarrayFx,
+    Query2Fx,
     "C API: Test subarray, dense, result estimation, 1 range, full tile",
-    "[capi][c_subarray][dense][est][1r][full-tile]") {
+    "[capi][query_2][dense][est][1r][full-tile]") {
   std::string array_name = "subarray_dense_est_1r_full_tile";
   remove_array(array_name);
 
@@ -2261,20 +1900,21 @@ TEST_CASE_METHOD(
   rc = tiledb_array_open(ctx_, array, TILEDB_READ);
   CHECK(rc == TILEDB_OK);
 
-  // Create subarray
-  tiledb_subarray_t* subarray = nullptr;
-  rc = tiledb_subarray_alloc(ctx_, array, TILEDB_ROW_MAJOR, &subarray);
+  // Create query
+  tiledb_query_t* query = nullptr;
+  rc = tiledb_query_alloc(ctx_, array, TILEDB_READ, &query);
   CHECK(rc == TILEDB_OK);
+
   uint64_t r[] = {1, 2};
-  rc = tiledb_subarray_add_range(ctx_, subarray, 0, &r[0]);
+  rc = tiledb_query_add_range(ctx_, query, 0, &r[0], &r[1], nullptr);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_subarray_add_range(ctx_, subarray, 1, &r[0]);
+  rc = tiledb_query_add_range(ctx_, query, 1, &r[0], &r[1], nullptr);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_subarray_get_est_result_size(ctx_, subarray, "a", &size);
+  rc = tiledb_query_get_est_result_size(ctx_, query, "a", &size);
   CHECK(rc == TILEDB_OK);
   CHECK(size == 4 * sizeof(int));
-  rc = tiledb_subarray_get_est_result_size_var(
-      ctx_, subarray, "b", &size_off, &size_val);
+  rc = tiledb_query_get_est_result_size_var(
+      ctx_, query, "b", &size_off, &size_val);
   CHECK(rc == TILEDB_OK);
   CHECK(size_off == 4 * sizeof(uint64_t));
   CHECK(size_val == 9 * sizeof(int));
@@ -2284,16 +1924,16 @@ TEST_CASE_METHOD(
   CHECK(rc == TILEDB_OK);
   tiledb_array_free(&array);
   CHECK(array == nullptr);
-  tiledb_subarray_free(&subarray);
-  CHECK(subarray == nullptr);
+  tiledb_query_free(&query);
+  CHECK(query == nullptr);
 
   remove_array(array_name);
 }
 
 TEST_CASE_METHOD(
-    CSubarrayFx,
+    Query2Fx,
     "C API: Test subarray, dense, result estimation, 1 range, 2 full tiles",
-    "[capi][c_subarray][dense][est][1r][2-full-tiles]") {
+    "[capi][query_2][dense][est][1r][2-full-tiles]") {
   std::string array_name = "subarray_dense_est_1r_2_full_tiles";
   remove_array(array_name);
 
@@ -2321,29 +1961,22 @@ TEST_CASE_METHOD(
   rc = tiledb_array_open(ctx_, array, TILEDB_READ);
   CHECK(rc == TILEDB_OK);
 
-  // Create subarray
-  tiledb_subarray_t* subarray = nullptr;
-
-  SECTION("- row-major") {
-    rc = tiledb_subarray_alloc(ctx_, array, TILEDB_ROW_MAJOR, &subarray);
-  }
-
-  SECTION("- col-major") {
-    rc = tiledb_subarray_alloc(ctx_, array, TILEDB_COL_MAJOR, &subarray);
-  }
+  // Create query
+  tiledb_query_t* query = nullptr;
+  rc = tiledb_query_alloc(ctx_, array, TILEDB_READ, &query);
 
   CHECK(rc == TILEDB_OK);
   uint64_t r1[] = {1, 2};
-  rc = tiledb_subarray_add_range(ctx_, subarray, 0, &r1[0]);
+  rc = tiledb_query_add_range(ctx_, query, 0, &r1[0], &r1[1], nullptr);
   uint64_t r2[] = {1, 4};
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_subarray_add_range(ctx_, subarray, 1, &r2[0]);
+  rc = tiledb_query_add_range(ctx_, query, 1, &r2[0], &r2[1], nullptr);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_subarray_get_est_result_size(ctx_, subarray, "a", &size);
+  rc = tiledb_query_get_est_result_size(ctx_, query, "a", &size);
   CHECK(rc == TILEDB_OK);
   CHECK(size == 8 * sizeof(int));
-  rc = tiledb_subarray_get_est_result_size_var(
-      ctx_, subarray, "b", &size_off, &size_val);
+  rc = tiledb_query_get_est_result_size_var(
+      ctx_, query, "b", &size_off, &size_val);
   CHECK(rc == TILEDB_OK);
   CHECK(size_off == 8 * sizeof(uint64_t));
   CHECK(size_val == 16 * sizeof(int));
@@ -2353,16 +1986,16 @@ TEST_CASE_METHOD(
   CHECK(rc == TILEDB_OK);
   tiledb_array_free(&array);
   CHECK(array == nullptr);
-  tiledb_subarray_free(&subarray);
-  CHECK(subarray == nullptr);
+  tiledb_query_free(&query);
+  CHECK(query == nullptr);
 
   remove_array(array_name);
 }
 
 TEST_CASE_METHOD(
-    CSubarrayFx,
+    Query2Fx,
     "C API: Test subarray, dense, result estimation, 1 range, partial tiles",
-    "[capi][c_subarray][dense][est][1r][2-full-tiles]") {
+    "[capi][query_2][dense][est][1r][2-full-tiles]") {
   std::string array_name = "subarray_dense_est_1r_2_full_tiles";
   remove_array(array_name);
 
@@ -2390,29 +2023,22 @@ TEST_CASE_METHOD(
   rc = tiledb_array_open(ctx_, array, TILEDB_READ);
   CHECK(rc == TILEDB_OK);
 
-  // Create subarray
-  tiledb_subarray_t* subarray = nullptr;
-
-  SECTION("- row-major") {
-    rc = tiledb_subarray_alloc(ctx_, array, TILEDB_ROW_MAJOR, &subarray);
-  }
-
-  SECTION("- col-major") {
-    rc = tiledb_subarray_alloc(ctx_, array, TILEDB_COL_MAJOR, &subarray);
-  }
+  // Create query
+  tiledb_query_t* query = nullptr;
+  rc = tiledb_query_alloc(ctx_, array, TILEDB_READ, &query);
 
   CHECK(rc == TILEDB_OK);
   uint64_t r1[] = {2, 2};
-  rc = tiledb_subarray_add_range(ctx_, subarray, 0, &r1[0]);
+  rc = tiledb_query_add_range(ctx_, query, 0, &r1[0], &r1[1], nullptr);
   uint64_t r2[] = {1, 3};
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_subarray_add_range(ctx_, subarray, 1, &r2[0]);
+  rc = tiledb_query_add_range(ctx_, query, 1, &r2[0], &r2[1], nullptr);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_subarray_get_est_result_size(ctx_, subarray, "a", &size);
+  rc = tiledb_query_get_est_result_size(ctx_, query, "a", &size);
   CHECK(rc == TILEDB_OK);
   CHECK(size == 3 * sizeof(int));
-  rc = tiledb_subarray_get_est_result_size_var(
-      ctx_, subarray, "b", &size_off, &size_val);
+  rc = tiledb_query_get_est_result_size_var(
+      ctx_, query, "b", &size_off, &size_val);
   CHECK(rc == TILEDB_OK);
   CHECK(size_off == 3 * sizeof(uint64_t));
   CHECK(size_val == 6 * sizeof(int));
@@ -2422,16 +2048,16 @@ TEST_CASE_METHOD(
   CHECK(rc == TILEDB_OK);
   tiledb_array_free(&array);
   CHECK(array == nullptr);
-  tiledb_subarray_free(&subarray);
-  CHECK(subarray == nullptr);
+  tiledb_query_free(&query);
+  CHECK(query == nullptr);
 
   remove_array(array_name);
 }
 
 TEST_CASE_METHOD(
-    CSubarrayFx,
+    Query2Fx,
     "C API: Test subarray, dense, result estimation, multiple ranges",
-    "[capi][c_subarray][dense][est][nr]") {
+    "[capi][query_2][dense][est][nr]") {
   std::string array_name = "subarray_dense_est_nr";
   remove_array(array_name);
 
@@ -2459,35 +2085,28 @@ TEST_CASE_METHOD(
   rc = tiledb_array_open(ctx_, array, TILEDB_READ);
   CHECK(rc == TILEDB_OK);
 
-  // Create subarray
-  tiledb_subarray_t* subarray = nullptr;
-
-  SECTION("- row-major") {
-    rc = tiledb_subarray_alloc(ctx_, array, TILEDB_ROW_MAJOR, &subarray);
-  }
-
-  SECTION("- col-major") {
-    rc = tiledb_subarray_alloc(ctx_, array, TILEDB_COL_MAJOR, &subarray);
-  }
+  // Create query
+  tiledb_query_t* query = nullptr;
+  rc = tiledb_query_alloc(ctx_, array, TILEDB_READ, &query);
 
   CHECK(rc == TILEDB_OK);
   uint64_t r11[] = {1, 1};
   uint64_t r12[] = {2, 2};
-  rc = tiledb_subarray_add_range(ctx_, subarray, 0, &r11[0]);
+  rc = tiledb_query_add_range(ctx_, query, 0, &r11[0], &r11[1], nullptr);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_subarray_add_range(ctx_, subarray, 0, &r12[0]);
+  rc = tiledb_query_add_range(ctx_, query, 0, &r12[0], &r12[1], nullptr);
   uint64_t r21[] = {1, 1};
   uint64_t r22[] = {3, 4};
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_subarray_add_range(ctx_, subarray, 1, &r21[0]);
+  rc = tiledb_query_add_range(ctx_, query, 1, &r21[0], &r21[1], nullptr);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_subarray_add_range(ctx_, subarray, 1, &r22[0]);
+  rc = tiledb_query_add_range(ctx_, query, 1, &r22[0], &r22[1], nullptr);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_subarray_get_est_result_size(ctx_, subarray, "a", &size);
+  rc = tiledb_query_get_est_result_size(ctx_, query, "a", &size);
   CHECK(rc == TILEDB_OK);
   CHECK(size == 6 * sizeof(int));
-  rc = tiledb_subarray_get_est_result_size_var(
-      ctx_, subarray, "b", &size_off, &size_val);
+  rc = tiledb_query_get_est_result_size_var(
+      ctx_, query, "b", &size_off, &size_val);
   CHECK(rc == TILEDB_OK);
   CHECK(size_off == 6 * sizeof(uint64_t));
   CHECK(size_val == 12 * sizeof(int));
@@ -2497,16 +2116,16 @@ TEST_CASE_METHOD(
   CHECK(rc == TILEDB_OK);
   tiledb_array_free(&array);
   CHECK(array == nullptr);
-  tiledb_subarray_free(&subarray);
-  CHECK(subarray == nullptr);
+  tiledb_query_free(&query);
+  CHECK(query == nullptr);
 
   remove_array(array_name);
 }
 
 TEST_CASE_METHOD(
-    CSubarrayFx,
+    Query2Fx,
     "C API: Test subarray, dense, result estimation, non-coinciding domain",
-    "[capi][c_subarray][dense][est][non-coinciding]") {
+    "[capi][query_2][dense][est][non-coinciding]") {
   std::string array_name = "subarray_dense_est_non_coinciding";
   remove_array(array_name);
 
@@ -2534,35 +2153,28 @@ TEST_CASE_METHOD(
   rc = tiledb_array_open(ctx_, array, TILEDB_READ);
   CHECK(rc == TILEDB_OK);
 
-  // Create subarray
-  tiledb_subarray_t* subarray = nullptr;
-
-  SECTION("- row-major") {
-    rc = tiledb_subarray_alloc(ctx_, array, TILEDB_ROW_MAJOR, &subarray);
-  }
-
-  SECTION("- col-major") {
-    rc = tiledb_subarray_alloc(ctx_, array, TILEDB_COL_MAJOR, &subarray);
-  }
+  // Create query
+  tiledb_query_t* query = nullptr;
+  rc = tiledb_query_alloc(ctx_, array, TILEDB_READ, &query);
 
   CHECK(rc == TILEDB_OK);
   uint64_t r11[] = {2, 2};
   uint64_t r12[] = {3, 3};
-  rc = tiledb_subarray_add_range(ctx_, subarray, 0, &r11[0]);
+  rc = tiledb_query_add_range(ctx_, query, 0, &r11[0], &r11[1], nullptr);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_subarray_add_range(ctx_, subarray, 0, &r12[0]);
+  rc = tiledb_query_add_range(ctx_, query, 0, &r12[0], &r12[1], nullptr);
   uint64_t r21[] = {1, 1};
   uint64_t r22[] = {3, 4};
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_subarray_add_range(ctx_, subarray, 1, &r21[0]);
+  rc = tiledb_query_add_range(ctx_, query, 1, &r21[0], &r21[1], nullptr);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_subarray_add_range(ctx_, subarray, 1, &r22[0]);
+  rc = tiledb_query_add_range(ctx_, query, 1, &r22[0], &r22[1], nullptr);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_subarray_get_est_result_size(ctx_, subarray, "a", &size);
+  rc = tiledb_query_get_est_result_size(ctx_, query, "a", &size);
   CHECK(rc == TILEDB_OK);
   CHECK(size == 6 * sizeof(int));
-  rc = tiledb_subarray_get_est_result_size_var(
-      ctx_, subarray, "b", &size_off, &size_val);
+  rc = tiledb_query_get_est_result_size_var(
+      ctx_, query, "b", &size_off, &size_val);
   CHECK(rc == TILEDB_OK);
   CHECK(size_off == 6 * sizeof(uint64_t));
   CHECK(size_val == (0.25 * 5 + 0.5 * 8 + 0.25 * 7 + 0.5 * 4) * sizeof(int));
@@ -2572,16 +2184,16 @@ TEST_CASE_METHOD(
   CHECK(rc == TILEDB_OK);
   tiledb_array_free(&array);
   CHECK(array == nullptr);
-  tiledb_subarray_free(&subarray);
-  CHECK(subarray == nullptr);
+  tiledb_query_free(&query);
+  CHECK(query == nullptr);
 
   remove_array(array_name);
 }
 
 TEST_CASE_METHOD(
-    CSubarrayFx,
+    Query2Fx,
     "C API: Test subarray, dense, result estimation, 1 range, 2 dense frags",
-    "[capi][c_subarray][dense][est][1r][2-dense-frags]") {
+    "[capi][query_2][dense][est][1r][2-dense-frags]") {
   std::string array_name = "subarray_dense_est_1r_2_dense_frags";
   remove_array(array_name);
 
@@ -2611,29 +2223,22 @@ TEST_CASE_METHOD(
   rc = tiledb_array_open(ctx_, array, TILEDB_READ);
   CHECK(rc == TILEDB_OK);
 
-  // Create subarray
-  tiledb_subarray_t* subarray = nullptr;
-
-  SECTION("- row-major") {
-    rc = tiledb_subarray_alloc(ctx_, array, TILEDB_ROW_MAJOR, &subarray);
-  }
-
-  SECTION("- col-major") {
-    rc = tiledb_subarray_alloc(ctx_, array, TILEDB_COL_MAJOR, &subarray);
-  }
+  // Create query
+  tiledb_query_t* query = nullptr;
+  rc = tiledb_query_alloc(ctx_, array, TILEDB_READ, &query);
 
   CHECK(rc == TILEDB_OK);
   uint64_t r1[] = {2, 3};
-  rc = tiledb_subarray_add_range(ctx_, subarray, 0, &r1[0]);
+  rc = tiledb_query_add_range(ctx_, query, 0, &r1[0], &r1[1], nullptr);
   uint64_t r2[] = {1, 3};
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_subarray_add_range(ctx_, subarray, 1, &r2[0]);
+  rc = tiledb_query_add_range(ctx_, query, 1, &r2[0], &r2[1], nullptr);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_subarray_get_est_result_size(ctx_, subarray, "a", &size);
+  rc = tiledb_query_get_est_result_size(ctx_, query, "a", &size);
   CHECK(rc == TILEDB_OK);
   CHECK(size == 6 * sizeof(int));
-  rc = tiledb_subarray_get_est_result_size_var(
-      ctx_, subarray, "b", &size_off, &size_val);
+  rc = tiledb_query_get_est_result_size_var(
+      ctx_, query, "b", &size_off, &size_val);
   CHECK(rc == TILEDB_OK);
   CHECK(size_off == 6 * sizeof(uint64_t));
   CHECK(size_val == 12 * sizeof(int));
@@ -2643,16 +2248,16 @@ TEST_CASE_METHOD(
   CHECK(rc == TILEDB_OK);
   tiledb_array_free(&array);
   CHECK(array == nullptr);
-  tiledb_subarray_free(&subarray);
-  CHECK(subarray == nullptr);
+  tiledb_query_free(&query);
+  CHECK(query == nullptr);
 
   remove_array(array_name);
 }
 
 TEST_CASE_METHOD(
-    CSubarrayFx,
+    Query2Fx,
     "C API: Test subarray, dense, result estimation, 1 range, mixed frags",
-    "[capi][c_subarray][dense][est][1r][mixed-frags]") {
+    "[capi][query_2][dense][est][1r][mixed-frags]") {
   std::string array_name = "subarray_dense_est_1r_mixed_frags";
   remove_array(array_name);
 
@@ -2685,29 +2290,22 @@ TEST_CASE_METHOD(
   rc = tiledb_array_open(ctx_, array, TILEDB_READ);
   CHECK(rc == TILEDB_OK);
 
-  // Create subarray
-  tiledb_subarray_t* subarray = nullptr;
-
-  SECTION("- row-major") {
-    rc = tiledb_subarray_alloc(ctx_, array, TILEDB_ROW_MAJOR, &subarray);
-  }
-
-  SECTION("- col-major") {
-    rc = tiledb_subarray_alloc(ctx_, array, TILEDB_COL_MAJOR, &subarray);
-  }
+  // Create query
+  tiledb_query_t* query = nullptr;
+  rc = tiledb_query_alloc(ctx_, array, TILEDB_READ, &query);
 
   CHECK(rc == TILEDB_OK);
   uint64_t r1[] = {1, 2};
-  rc = tiledb_subarray_add_range(ctx_, subarray, 0, &r1[0]);
+  rc = tiledb_query_add_range(ctx_, query, 0, &r1[0], &r1[1], nullptr);
   uint64_t r2[] = {1, 3};
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_subarray_add_range(ctx_, subarray, 1, &r2[0]);
+  rc = tiledb_query_add_range(ctx_, query, 1, &r2[0], &r2[1], nullptr);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_subarray_get_est_result_size(ctx_, subarray, "a", &size);
+  rc = tiledb_query_get_est_result_size(ctx_, query, "a", &size);
   CHECK(rc == TILEDB_OK);
   CHECK(size == 6 * sizeof(int));
-  rc = tiledb_subarray_get_est_result_size_var(
-      ctx_, subarray, "b", &size_off, &size_val);
+  rc = tiledb_query_get_est_result_size_var(
+      ctx_, query, "b", &size_off, &size_val);
   CHECK(rc == TILEDB_OK);
   CHECK(size_off == 6 * sizeof(uint64_t));
   CHECK(size_val == ceil((12 + 0.666667 * 2) * sizeof(int)));
@@ -2717,8 +2315,8 @@ TEST_CASE_METHOD(
   CHECK(rc == TILEDB_OK);
   tiledb_array_free(&array);
   CHECK(array == nullptr);
-  tiledb_subarray_free(&subarray);
-  CHECK(subarray == nullptr);
+  tiledb_query_free(&query);
+  CHECK(query == nullptr);
 
   remove_array(array_name);
 }

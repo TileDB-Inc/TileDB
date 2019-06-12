@@ -366,14 +366,6 @@ void SparseNegFx2::read_sparse_vector(const std::string& path) {
   rc = tiledb_array_open(ctx_, array, TILEDB_READ);
   CHECK(rc == TILEDB_OK);
 
-  // Create some subarray
-  int64_t s0[] = {-1, 2};
-  tiledb_subarray_t* subarray;
-  rc = tiledb_subarray_alloc(ctx_, array, TILEDB_ROW_MAJOR, &subarray);
-  REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_subarray_add_range(ctx_, subarray, 0, s0);
-  REQUIRE(rc == TILEDB_OK);
-
   int a[2];
   uint64_t a_size = sizeof(a);
   int64_t coords[2];
@@ -381,8 +373,14 @@ void SparseNegFx2::read_sparse_vector(const std::string& path) {
   tiledb_query_t* query;
   rc = tiledb_query_alloc(ctx_, array, TILEDB_READ, &query);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_set_subarray_2(ctx_, query, subarray);
+
+  // Set some subarray
+  int64_t s0[] = {-1, 2};
+  rc = tiledb_query_set_layout(ctx_, query, TILEDB_ROW_MAJOR);
   REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_query_add_range(ctx_, query, 0, &s0[0], &s0[1], nullptr);
+  REQUIRE(rc == TILEDB_OK);
+
   rc = tiledb_query_set_buffer(ctx_, query, "a", a, &a_size);
   REQUIRE(rc == TILEDB_OK);
   rc =
@@ -417,17 +415,6 @@ void SparseNegFx2::read_sparse_array_row(const std::string& path) {
   rc = tiledb_array_open(ctx_, array, TILEDB_READ);
   CHECK(rc == TILEDB_OK);
 
-  // Create some subarray
-  int64_t s0[] = {-2, 1};
-  int64_t s1[] = {-2, 1};
-  tiledb_subarray_t* subarray;
-  rc = tiledb_subarray_alloc(ctx_, array, TILEDB_ROW_MAJOR, &subarray);
-  REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_subarray_add_range(ctx_, subarray, 0, s0);
-  REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_subarray_add_range(ctx_, subarray, 1, s1);
-  REQUIRE(rc == TILEDB_OK);
-
   int a[4];
   uint64_t a_size = sizeof(a);
   int64_t coords[8];
@@ -440,8 +427,17 @@ void SparseNegFx2::read_sparse_array_row(const std::string& path) {
   rc =
       tiledb_query_set_buffer(ctx_, query, TILEDB_COORDS, coords, &coords_size);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_set_subarray_2(ctx_, query, subarray);
+
+  // Create some subarray
+  int64_t s0[] = {-2, 1};
+  int64_t s1[] = {-2, 1};
+  rc = tiledb_query_set_layout(ctx_, query, TILEDB_ROW_MAJOR);
   REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_query_add_range(ctx_, query, 0, &s0[0], &s0[1], nullptr);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_query_add_range(ctx_, query, 1, &s1[0], &s1[1], nullptr);
+  REQUIRE(rc == TILEDB_OK);
+
   rc = tiledb_query_submit(ctx_, query);
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_query_finalize(ctx_, query);
@@ -471,17 +467,6 @@ void SparseNegFx2::read_sparse_array_col(const std::string& path) {
   rc = tiledb_array_open(ctx_, array, TILEDB_READ);
   CHECK(rc == TILEDB_OK);
 
-  // Create some subarray
-  int64_t s0[] = {-2, 1};
-  int64_t s1[] = {-2, 1};
-  tiledb_subarray_t* subarray;
-  rc = tiledb_subarray_alloc(ctx_, array, TILEDB_COL_MAJOR, &subarray);
-  REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_subarray_add_range(ctx_, subarray, 0, s0);
-  REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_subarray_add_range(ctx_, subarray, 1, s1);
-  REQUIRE(rc == TILEDB_OK);
-
   int a[4];
   uint64_t a_size = sizeof(a);
   int64_t coords[8];
@@ -494,8 +479,17 @@ void SparseNegFx2::read_sparse_array_col(const std::string& path) {
   rc =
       tiledb_query_set_buffer(ctx_, query, TILEDB_COORDS, coords, &coords_size);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_set_subarray_2(ctx_, query, subarray);
+
+  // Set some subarray
+  int64_t s0[] = {-2, 1};
+  int64_t s1[] = {-2, 1};
+  rc = tiledb_query_set_layout(ctx_, query, TILEDB_COL_MAJOR);
   REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_query_add_range(ctx_, query, 0, &s0[0], &s0[1], nullptr);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_query_add_range(ctx_, query, 1, &s1[0], &s0[1], nullptr);
+  REQUIRE(rc == TILEDB_OK);
+
   rc = tiledb_query_submit(ctx_, query);
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_query_finalize(ctx_, query);

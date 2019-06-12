@@ -41,7 +41,6 @@
 #include "core_interface.h"
 #include "deleter.h"
 #include "exception.h"
-#include "subarray.h"
 #include "tiledb.h"
 #include "type.h"
 #include "utils.h"
@@ -396,6 +395,147 @@ class Query {
   }
 
   /**
+   * Adds a 1D range along a subarray dimension, in the form
+   * (start, end, stride). The datatype of the range
+   * must be the same as the dimension datatype.
+   *
+   * **Example:**
+   *
+   * @code{.cpp}
+   * // Set a 1D range on dimension 0, assuming the domain type is int64.
+   * int64_t start = 10;
+   * int64_t end = 20;
+   * // Stride is optional
+   * subarray.add_range(0, start, end);
+   * @endcode
+   *
+   * @tparam T The dimension datatype
+   * @param dim_idx The index of the dimension to add the range to.
+   * @param start The range start to add.
+   * @param end The range end to add.
+   * @param stride The range stride to add.
+   * @return Reference to this Query
+   */
+  template <class T>
+  Query& add_range(
+      uint32_t dim_idx,
+      const T* start,
+      const T* end,
+      const T* stride = nullptr) {
+    impl::type_check<T>(schema_.domain().type());
+    auto& ctx = ctx_.get();
+    ctx.handle_error(tiledb_query_add_range(
+        ctx.ptr().get(), query_.get(), dim_idx, start, end, stride));
+    return *this;
+  }
+
+  /**
+   * Retrieves the number of ranges for a given dimension.
+   *
+   * **Example:**
+   *
+   * @code{.cpp}
+   * unsigned dim_idx = 0;
+   * uint64_t range_num = query.range_num(dim_idx);
+   * @endcode
+   *
+   * @param dim_idx The dimension index.
+   * @return The number of ranges.
+   */
+  uint64_t range_num(unsigned dim_idx) const {
+    auto& ctx = ctx_.get();
+    uint64_t range_num;
+    ctx.handle_error(tiledb_query_get_range_num(
+        ctx.ptr().get(), query_.get(), dim_idx, &range_num));
+    return range_num;
+  }
+
+  /**
+   * Retrieves a range for a given dimension and range id.
+   * The template datatype must be the same as that of the
+   * underlying array.
+   *
+   * **Example:**
+   *
+   * @code{.cpp}
+   * unsigned dim_idx = 0;
+   * unsigned range_idx = 0;
+   * auto range = query.range<int32_t>(dim_idx, range_idx);
+   * @endcode
+   *
+   * @tparam T The dimension datatype.
+   * @param dim_idx The dimension index.
+   * @param range_idx The range index.
+   * @return A triplet of the form (start, end, stride).
+   */
+  template <class T>
+  std::array<T, 3> range(unsigned dim_idx, uint64_t range_idx) {
+    impl::type_check<T>(schema_.domain().type());
+    auto& ctx = ctx_.get();
+    const void *start, *end, *stride;
+    ctx.handle_error(tiledb_query_get_range(
+        ctx.ptr().get(),
+        query_.get(),
+        dim_idx,
+        range_idx,
+        &start,
+        &end,
+        &stride));
+    std::array<T, 3> ret = {{*(const T*)start,
+                             *(const T*)end,
+                             (stride == nullptr) ? 0 : *(const T*)stride}};
+    return ret;
+  }
+
+  /**
+   * Retrieves the estimated result size for a fixed-size attribute.
+   *
+   * **Example:**
+   *
+   * @code{.cpp}
+   * uint64_t est_size = query.est_result_size("attr1");
+   * @endcode
+   *
+   * @param attr_name The attribute name.
+   * @return The estimated size in bytes.
+   */
+  uint64_t est_result_size(const std::string& attr_name) const {
+    auto& ctx = ctx_.get();
+    uint64_t size = 0;
+    ctx.handle_error(tiledb_query_get_est_result_size(
+        ctx.ptr().get(), query_.get(), attr_name.c_str(), &size));
+    return size;
+  }
+
+  /**
+   * Retrieves the estimated result size for a variable-size attribute.
+   *
+   * **Example:**
+   *
+   * @code{.cpp}
+   * std::pair<uint64_t, uint64_t> est_size =
+   *     query.est_result_size("attr1");
+   * @endcode
+   *
+   * @param attr_name The attribute name.
+   * @return A pair with first element containing the estimated number of
+   *    result offsets, and second element containing the estimated number of
+   *    result value bytes.
+   */
+  std::pair<uint64_t, uint64_t> est_result_size_var(
+      const std::string& attr_name) const {
+    auto& ctx = ctx_.get();
+    uint64_t size_off = 0, size_val = 0;
+    ctx.handle_error(tiledb_query_get_est_result_size_var(
+        ctx.ptr().get(),
+        query_.get(),
+        attr_name.c_str(),
+        &size_off,
+        &size_val));
+    return std::make_pair(size_off / sizeof(uint64_t), size_val);
+  }
+
+  /**
    * Sets a subarray, defined in the order dimensions were added.
    * Coordinates are inclusive. For the case of writes, this is meaningful only
    * for dense arrays, and specifically dense writes.
@@ -497,44 +637,6 @@ class Query {
           buf.push_back(p[1]);
         });
     return set_subarray(buf);
-  }
-
-  /**
-   * Sets a subarray, defined using the given Subarray object.
-   *
-   * **Example:**
-   * @code{.cpp}
-   * tiledb::Array array(ctx, array_name, TILEDB_READ);
-   * tiledb::Query query(ctx, array);
-   * tiledb::Subarray subarray(ctx, array, TILEDB_UNORDERED);
-   *
-   * // Read the cell (0, 0) from a 2D array.
-   * int range[] = { 0, 0 };
-   * subarray.add_range(0, range);
-   * subarray.add_range(1, range);
-   *
-   * query.set_subarray(subarray);
-   * @endcode
-   *
-   * @param subarray The Subarray to set
-   * @return Reference to this Query
-   *
-   * @note Setting a subarray object to the query does not work with
-   *     writes. This function will output an error if the query was
-   *     created in write mode.
-   *
-   * @note Setting a subarray object to the query does not work for
-   *     dense arrays. This function will output an error if the
-   *     query was created for a dense array.
-   *
-   * @note Setting a subarray object to the query does not work for
-   *     any layout other than `TILEDB_UNORDERED`.
-   */
-  Query& set_subarray(Subarray& subarray) {
-    auto& ctx = ctx_.get();
-    ctx.handle_error(tiledb_query_set_subarray_2(
-        ctx.ptr().get(), query_.get(), subarray.ptr().get()));
-    return *this;
   }
 
   /**

@@ -104,6 +104,37 @@ const Array* Reader::array() const {
   return array_;
 }
 
+Status Reader::add_range(
+    unsigned dim_idx, const void* start, const void* end, const void* stride) {
+  if (stride != nullptr)
+    return LOG_STATUS(Status::ReaderError(
+        "Cannot add range; Setting range stride is currently unsupported"));
+  return subarray_.add_range(dim_idx, start, end);
+}
+
+Status Reader::get_range_num(unsigned dim_idx, uint64_t* range_num) const {
+  return subarray_.get_range_num(dim_idx, range_num);
+}
+
+Status Reader::get_range(
+    unsigned dim_idx,
+    uint64_t range_idx,
+    const void** start,
+    const void** end,
+    const void** stride) const {
+  *stride = nullptr;
+  return subarray_.get_range(dim_idx, range_idx, start, end);
+}
+
+Status Reader::get_est_result_size(const char* attr_name, uint64_t* size) {
+  return subarray_.get_est_result_size(attr_name, size);
+}
+
+Status Reader::get_est_result_size(
+    const char* attr_name, uint64_t* size_off, uint64_t* size_val) {
+  return subarray_.get_est_result_size(attr_name, size_off, size_val);
+}
+
 const ArraySchema* Reader::array_schema() const {
   return array_schema_;
 }
@@ -1596,6 +1627,12 @@ bool Reader::has_coords() const {
 }
 
 Status Reader::init_read_state() {
+  // Check subarray
+  if (subarray_.layout() == Layout::GLOBAL_ORDER && subarray_.range_num() != 1)
+    return LOG_STATUS(
+        Status::ReaderError("Cannot initialize read state; Multi-range "
+                            "subarrays do not support global order"));
+
   read_state_.partitioner_ = SubarrayPartitioner(subarray_);
   read_state_.overflowed_ = false;
   read_state_.unsplittable_ = false;

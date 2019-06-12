@@ -69,6 +69,61 @@ Writer::~Writer() {
 /*               API              */
 /* ****************************** */
 
+Status Writer::add_range(
+    unsigned dim_idx, const void* start, const void* end, const void* stride) {
+  // TODO(sp): Handle this properly
+  (void)dim_idx;
+  (void)start;
+  (void)end;
+  (void)stride;
+  return LOG_STATUS(Status::WriterError(
+      "Cannot add range; Operation currently unsupported for write queries"));
+}
+
+Status Writer::get_range_num(unsigned dim_idx, uint64_t* range_num) const {
+  // TODO(sp): Handle this properly
+  (void)dim_idx;
+  (void)range_num;
+  return LOG_STATUS(
+      Status::WriterError("Cannot get number of ranges; Operation currently "
+                          "unsupported for write queries"));
+}
+
+Status Writer::get_range(
+    unsigned dim_idx,
+    uint64_t range_idx,
+    const void** start,
+    const void** end,
+    const void** stride) const {
+  // TODO(sp): Handle this properly
+  (void)dim_idx;
+  (void)range_idx;
+  (void)start;
+  (void)end;
+  (void)stride;
+  return LOG_STATUS(
+      Status::WriterError("Cannot get range; Operation currently "
+                          "unsupported for write queries"));
+}
+
+Status Writer::get_est_result_size(const char* attr_name, uint64_t* size) {
+  (void)attr_name;
+  (void)size;
+  return LOG_STATUS(
+      Status::WriterError("Cannot get estimated result size; This operation "
+                          "is not supported for write queries"));
+}
+
+Status Writer::get_est_result_size(
+    const char* attr_name, uint64_t* size_off, uint64_t* size_val) {
+  (void)attr_name;
+  (void)size_off;
+  (void)size_val;
+  return LOG_STATUS(
+      Status::WriterError("Cannot get estimated result size; This operation "
+                          "is not supported for write queries"));
+}
+
 const ArraySchema* Writer::array_schema() const {
   return array_schema_;
 }

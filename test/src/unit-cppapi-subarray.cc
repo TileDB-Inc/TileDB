@@ -36,7 +36,7 @@
 
 using namespace tiledb;
 
-TEST_CASE("C++ API: Test subarray", "[cppapi][sparse][cpp_subarray]") {
+TEST_CASE("C++ API: Test subarray", "[cppapi][sparse][subarray]") {
   const std::string array_name = "cpp_unit_array";
   Context ctx;
   VFS vfs(ctx);
@@ -68,18 +68,15 @@ TEST_CASE("C++ API: Test subarray", "[cppapi][sparse][cpp_subarray]") {
   SECTION("- Read single cell") {
     Array array(ctx, array_name, TILEDB_READ);
     Query query(ctx, array);
-    Subarray subarray(ctx, array, TILEDB_UNORDERED);
     int range[] = {0, 0};
-    subarray.add_range(0, range);
-    subarray.add_range(1, range);
+    query.add_range(0, &range[0], &range[1]);
+    query.add_range(1, &range[0], &range[1]);
 
-    auto est_size = subarray.est_result_size("a");
+    auto est_size = query.est_result_size("a");
     REQUIRE(est_size == 1);
 
     std::vector<int> data(est_size);
-    query.set_subarray(subarray)
-        .set_layout(TILEDB_ROW_MAJOR)
-        .set_buffer("a", data);
+    query.set_layout(TILEDB_ROW_MAJOR).set_buffer("a", data);
     query.submit();
     REQUIRE(query.result_buffer_elements()["a"].second == 1);
     REQUIRE(data[0] == 1);
@@ -88,18 +85,16 @@ TEST_CASE("C++ API: Test subarray", "[cppapi][sparse][cpp_subarray]") {
   SECTION("- Read single range") {
     Array array(ctx, array_name, TILEDB_READ);
     Query query(ctx, array);
-    Subarray subarray(ctx, array, TILEDB_UNORDERED);
     int range[] = {1, 2};
-    subarray.add_range(0, range);
-    subarray.add_range(1, range);
+    query.add_range(0, &range[0], &range[1]).add_range(1, &range[0], &range[1]);
 
-    auto est_size = subarray.est_result_size("a");
+    auto est_size = query.est_result_size("a");
     REQUIRE(est_size == 4);
+    std::pair<uint64_t, uint64_t> est_size_var;
+    CHECK_THROWS(est_size_var = query.est_result_size_var("a"));
 
     std::vector<int> data(est_size);
-    query.set_subarray(subarray)
-        .set_layout(TILEDB_ROW_MAJOR)
-        .set_buffer("a", data);
+    query.set_layout(TILEDB_ROW_MAJOR).set_buffer("a", data);
     query.submit();
     REQUIRE(query.result_buffer_elements()["a"].second == 2);
     REQUIRE(data[0] == 2);
@@ -109,20 +104,34 @@ TEST_CASE("C++ API: Test subarray", "[cppapi][sparse][cpp_subarray]") {
   SECTION("- Read two cells") {
     Array array(ctx, array_name, TILEDB_READ);
     Query query(ctx, array);
-    Subarray subarray(ctx, array, TILEDB_UNORDERED);
     int range0[] = {0, 0}, range1[] = {2, 2};
-    subarray.add_range(0, range0);
-    subarray.add_range(1, range0);
-    subarray.add_range(0, range1);
-    subarray.add_range(1, range1);
+    query.add_range(0, &range0[0], &range0[1]);
+    query.add_range(1, &range0[0], &range0[1]);
+    query.add_range(0, &range1[0], &range1[1]);
+    query.add_range(1, &range1[0], &range1[1]);
 
-    auto est_size = subarray.est_result_size("a");
+    int64_t inv_range[] = {0, 1};
+    CHECK_THROWS(query.add_range(1, &inv_range[0], &inv_range[1]));
+
+    // Get range
+    auto range = query.range<int>(0, 0);
+    CHECK(range[0] == 0);
+    CHECK(range[1] == 0);
+    CHECK(range[2] == 0);
+    range = query.range<int>(1, 1);
+    CHECK(range[0] == 2);
+    CHECK(range[1] == 2);
+    CHECK(range[2] == 0);
+
+    CHECK_THROWS(range = query.range<int>(1, 3));
+    std::array<int64_t, 3> range2 = {{0, 0, 0}};
+    CHECK_THROWS(range2 = query.range<int64_t>(1, 1));
+
+    auto est_size = query.est_result_size("a");
     REQUIRE(est_size == 4);
 
     std::vector<int> data(est_size);
-    query.set_subarray(subarray)
-        .set_layout(TILEDB_UNORDERED)
-        .set_buffer("a", data);
+    query.set_layout(TILEDB_UNORDERED).set_buffer("a", data);
     query.submit();
     REQUIRE(query.result_buffer_elements()["a"].second == 2);
     REQUIRE(data[0] == 1);
@@ -132,18 +141,15 @@ TEST_CASE("C++ API: Test subarray", "[cppapi][sparse][cpp_subarray]") {
   SECTION("- Read two regions") {
     Array array(ctx, array_name, TILEDB_READ);
     Query query(ctx, array);
-    Subarray subarray(ctx, array, TILEDB_UNORDERED);
     int range0[] = {0, 1}, range1[] = {2, 3};
-    subarray.add_range(0, range0);
-    subarray.add_range(1, range0);
-    subarray.add_range(0, range1);
-    subarray.add_range(1, range1);
+    query.add_range(0, &range0[0], &range0[1]);
+    query.add_range(1, &range0[0], &range0[1]);
+    query.add_range(0, &range1[0], &range1[1]);
+    query.add_range(1, &range1[0], &range1[1]);
 
-    auto est_size = subarray.est_result_size("a");
+    auto est_size = query.est_result_size("a");
     std::vector<int> data(est_size);
-    query.set_subarray(subarray)
-        .set_layout(TILEDB_UNORDERED)
-        .set_buffer("a", data);
+    query.set_layout(TILEDB_UNORDERED).set_buffer("a", data);
     query.submit();
     REQUIRE(query.result_buffer_elements()["a"].second == 4);
     REQUIRE(data[0] == 1);
@@ -158,7 +164,7 @@ TEST_CASE("C++ API: Test subarray", "[cppapi][sparse][cpp_subarray]") {
 
 TEST_CASE(
     "C++ API: Test subarray (incomplete)",
-    "[cppapi], [sparse], [cppapi-subarray], [incomplete]") {
+    "[cppapi][sparse][subarray][incomplete]") {
   const std::string array_name = "cpp_unit_array";
   Context ctx;
   VFS vfs(ctx);
@@ -196,17 +202,21 @@ TEST_CASE(
   // Open array for reading
   Array array(ctx, array_name, TILEDB_READ);
   Query query(ctx, array);
-  query.set_layout(TILEDB_GLOBAL_ORDER);
+  query.set_layout(TILEDB_UNORDERED);
 
   // Set up subarray for read
   int row_range[] = {0, 1};
   int col_range0[] = {12277, 13499};
   int col_range1[] = {13500, 17486};
-  Subarray subarray(ctx, array, TILEDB_UNORDERED);
-  subarray.add_range(0, row_range);
-  subarray.add_range(1, col_range0);
-  subarray.add_range(1, col_range1);
-  query.set_subarray(subarray);
+  query.add_range(0, &row_range[0], &row_range[1]);
+  query.add_range(1, &col_range0[0], &col_range0[1]);
+  query.add_range(1, &col_range1[0], &col_range1[1]);
+
+  // Test range num
+  auto range_num = query.range_num(0);
+  CHECK(range_num == 1);
+  range_num = query.range_num(1);
+  CHECK(range_num == 2);
 
   // Allocate buffers large enough to hold 2 cells at a time.
   std::vector<char> data(2, '\0');
@@ -299,7 +309,7 @@ TEST_CASE(
 
 TEST_CASE(
     "C++ API: Test subarray (incomplete overlapping)",
-    "[cppapi], [sparse], [cppapi-subarray], [incomplete]") {
+    "[cppapi][sparse][subarray][incomplete]") {
   const std::string array_name = "cpp_unit_array";
   Context ctx;
   VFS vfs(ctx);
@@ -342,11 +352,10 @@ TEST_CASE(
   int row_range[] = {1, 1};
   int col_range0[] = {12277, 12277};
   int col_range1[] = {12277, 13160};
-  Subarray subarray(ctx, array, TILEDB_UNORDERED);
-  subarray.add_range(0, row_range);
-  subarray.add_range(1, col_range0);
-  subarray.add_range(1, col_range1);
-  query.set_subarray(subarray);
+  query.add_range(0, &row_range[0], &row_range[1]);
+  query.add_range(1, &col_range0[0], &col_range0[1]);
+  query.add_range(1, &col_range1[0], &col_range1[1]);
+  query.set_layout(TILEDB_UNORDERED);
 
   // Allocate buffers large enough to hold 2 cells at a time.
   std::vector<char> data(2, '\0');

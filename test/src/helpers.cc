@@ -271,26 +271,6 @@ void create_subarray(
   *subarray = ret;
 }
 
-template <class T>
-void create_subarray(
-    tiledb_ctx_t* ctx,
-    tiledb_array_t* array,
-    const SubarrayRanges<T>& ranges,
-    tiledb_layout_t layout,
-    tiledb_subarray_t** subarray) {
-  int rc = tiledb_subarray_alloc(ctx, array, layout, subarray);
-  CHECK(rc == TILEDB_OK);
-
-  auto dim_num = (unsigned)ranges.size();
-  for (unsigned i = 0; i < dim_num; ++i) {
-    auto dim_range_num = ranges[i].size() / 2;
-    for (size_t j = 0; j < dim_range_num; ++j) {
-      rc = tiledb_subarray_add_range(ctx, *subarray, i, &ranges[i][2 * j]);
-      CHECK(rc == TILEDB_OK);
-    }
-  }
-}
-
 void get_supported_fs(bool* s3_supported, bool* hdfs_supported) {
   tiledb_ctx_t* ctx = nullptr;
   REQUIRE(tiledb_ctx_alloc(nullptr, &ctx) == TILEDB_OK);
@@ -428,17 +408,29 @@ void write_array(
   tiledb_query_free(&query);
 }
 
+template <class T>
 void read_array(
     tiledb_ctx_t* ctx,
     tiledb_array_t* array,
-    tiledb_subarray_t* subarray,
+    const SubarrayRanges<T>& ranges,
+    tiledb_layout_t layout,
     const AttrBuffers& attr_buffers) {
   // Create query
   tiledb_query_t* query;
   int rc = tiledb_query_alloc(ctx, array, TILEDB_READ, &query);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_subarray_2(ctx, query, subarray);
+  rc = tiledb_query_set_layout(ctx, query, layout);
   CHECK(rc == TILEDB_OK);
+
+  auto dim_num = (unsigned)ranges.size();
+  for (unsigned i = 0; i < dim_num; ++i) {
+    auto dim_range_num = ranges[i].size() / 2;
+    for (size_t j = 0; j < dim_range_num; ++j) {
+      rc = tiledb_query_add_range(
+          ctx, query, i, &ranges[i][2 * j], &ranges[i][2 * j + 1], nullptr);
+      CHECK(rc == TILEDB_OK);
+    }
+  }
 
   // Set buffers
   for (const auto& b : attr_buffers) {
@@ -551,67 +543,6 @@ template void create_subarray<double>(
     tiledb::sm::Layout layout,
     tiledb::sm::Subarray* subarray);
 
-template void create_subarray<int8_t>(
-    tiledb_ctx_t* ctx,
-    tiledb_array_t* array,
-    const SubarrayRanges<int8_t>& ranges,
-    tiledb_layout_t layout,
-    tiledb_subarray_t** subarray);
-template void create_subarray<uint8_t>(
-    tiledb_ctx_t* ctx,
-    tiledb_array_t* array,
-    const SubarrayRanges<uint8_t>& ranges,
-    tiledb_layout_t layout,
-    tiledb_subarray_t** subarray);
-template void create_subarray<int16_t>(
-    tiledb_ctx_t* ctx,
-    tiledb_array_t* array,
-    const SubarrayRanges<int16_t>& ranges,
-    tiledb_layout_t layout,
-    tiledb_subarray_t** subarray);
-template void create_subarray<uint16_t>(
-    tiledb_ctx_t* ctx,
-    tiledb_array_t* array,
-    const SubarrayRanges<uint16_t>& ranges,
-    tiledb_layout_t layout,
-    tiledb_subarray_t** subarray);
-template void create_subarray<int32_t>(
-    tiledb_ctx_t* ctx,
-    tiledb_array_t* array,
-    const SubarrayRanges<int32_t>& ranges,
-    tiledb_layout_t layout,
-    tiledb_subarray_t** subarray);
-template void create_subarray<uint32_t>(
-    tiledb_ctx_t* ctx,
-    tiledb_array_t* array,
-    const SubarrayRanges<uint32_t>& ranges,
-    tiledb_layout_t layout,
-    tiledb_subarray_t** subarray);
-template void create_subarray<int64_t>(
-    tiledb_ctx_t* ctx,
-    tiledb_array_t* array,
-    const SubarrayRanges<int64_t>& ranges,
-    tiledb_layout_t layout,
-    tiledb_subarray_t** subarray);
-template void create_subarray<uint64_t>(
-    tiledb_ctx_t* ctx,
-    tiledb_array_t* array,
-    const SubarrayRanges<uint64_t>& ranges,
-    tiledb_layout_t layout,
-    tiledb_subarray_t** subarray);
-template void create_subarray<float>(
-    tiledb_ctx_t* ctx,
-    tiledb_array_t* array,
-    const SubarrayRanges<float>& ranges,
-    tiledb_layout_t layout,
-    tiledb_subarray_t** subarray);
-template void create_subarray<double>(
-    tiledb_ctx_t* ctx,
-    tiledb_array_t* array,
-    const SubarrayRanges<double>& ranges,
-    tiledb_layout_t layout,
-    tiledb_subarray_t** subarray);
-
 template void check_partitions<int8_t>(
     tiledb::sm::SubarrayPartitioner& partitioner,
     const std::vector<SubarrayRanges<int8_t>>& partitions,
@@ -652,3 +583,64 @@ template void check_partitions<double>(
     tiledb::sm::SubarrayPartitioner& partitioner,
     const std::vector<SubarrayRanges<double>>& partitions,
     bool last_unsplittable);
+
+template void read_array<int8_t>(
+    tiledb_ctx_t* ctx,
+    tiledb_array_t* array,
+    const SubarrayRanges<int8_t>& ranges,
+    tiledb_layout_t layout,
+    const AttrBuffers& attr_buffers);
+template void read_array<uint8_t>(
+    tiledb_ctx_t* ctx,
+    tiledb_array_t* array,
+    const SubarrayRanges<uint8_t>& ranges,
+    tiledb_layout_t layout,
+    const AttrBuffers& attr_buffers);
+template void read_array<int16_t>(
+    tiledb_ctx_t* ctx,
+    tiledb_array_t* array,
+    const SubarrayRanges<int16_t>& ranges,
+    tiledb_layout_t layout,
+    const AttrBuffers& attr_buffers);
+template void read_array<uint16_t>(
+    tiledb_ctx_t* ctx,
+    tiledb_array_t* array,
+    const SubarrayRanges<uint16_t>& ranges,
+    tiledb_layout_t layout,
+    const AttrBuffers& attr_buffers);
+template void read_array<int32_t>(
+    tiledb_ctx_t* ctx,
+    tiledb_array_t* array,
+    const SubarrayRanges<int32_t>& ranges,
+    tiledb_layout_t layout,
+    const AttrBuffers& attr_buffers);
+template void read_array<uint32_t>(
+    tiledb_ctx_t* ctx,
+    tiledb_array_t* array,
+    const SubarrayRanges<uint32_t>& ranges,
+    tiledb_layout_t layout,
+    const AttrBuffers& attr_buffers);
+template void read_array<int64_t>(
+    tiledb_ctx_t* ctx,
+    tiledb_array_t* array,
+    const SubarrayRanges<int64_t>& ranges,
+    tiledb_layout_t layout,
+    const AttrBuffers& attr_buffers);
+template void read_array<uint64_t>(
+    tiledb_ctx_t* ctx,
+    tiledb_array_t* array,
+    const SubarrayRanges<uint64_t>& ranges,
+    tiledb_layout_t layout,
+    const AttrBuffers& attr_buffers);
+template void read_array<float>(
+    tiledb_ctx_t* ctx,
+    tiledb_array_t* array,
+    const SubarrayRanges<float>& ranges,
+    tiledb_layout_t layout,
+    const AttrBuffers& attr_buffers);
+template void read_array<double>(
+    tiledb_ctx_t* ctx,
+    tiledb_array_t* array,
+    const SubarrayRanges<double>& ranges,
+    tiledb_layout_t layout,
+    const AttrBuffers& attr_buffers);
