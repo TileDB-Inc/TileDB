@@ -251,13 +251,20 @@ Status FragmentMetadata::add_max_buffer_sizes_sparse(
     const T* subarray,
     std::unordered_map<std::string, std::pair<uint64_t, uint64_t>>*
         buffer_sizes) {
-  RETURN_NOT_OK(load_mbrs(encryption_key));
+  RETURN_NOT_OK(load_rtree(encryption_key));
 
-  unsigned tid = 0;
-  uint64_t size;
+  // Get tile overlap
+  std::vector<const T*> range;
   auto dim_num = array_schema_->dim_num();
-  for (auto& mbr : mbrs_) {
-    if (utils::geometry::overlap(static_cast<T*>(mbr), subarray, dim_num)) {
+  range.resize(dim_num);
+  for (unsigned i = 0; i < dim_num; ++i)
+    range[i] = &subarray[2 * i];
+  auto tile_overlap = rtree_.get_tile_overlap<T>(range);
+  uint64_t size = 0;
+
+  // Handle tile ranges
+  for (const auto& tr : tile_overlap.tile_ranges_) {
+    for (uint64_t tid = tr.first; tid <= tr.second; ++tid) {
       for (auto& it : *buffer_sizes) {
         if (array_schema_->var_size(it.first)) {
           auto cell_num = this->cell_num(tid);
@@ -269,86 +276,23 @@ Status FragmentMetadata::add_max_buffer_sizes_sparse(
         }
       }
     }
-    tid++;
   }
 
-  return Status::Ok();
-}
-
-// TODO (sp): remove when the new dense algorithm is in
-template <class T>
-Status FragmentMetadata::add_est_read_buffer_sizes(
-    const EncryptionKey& encryption_key,
-    const T* subarray,
-    std::unordered_map<std::string, std::pair<double, double>>* buffer_sizes) {
-  if (dense_)
-    return add_est_read_buffer_sizes_dense(
-        encryption_key, subarray, buffer_sizes);
-  return add_est_read_buffer_sizes_sparse(
-      encryption_key, subarray, buffer_sizes);
-}
-
-// TODO (sp): remove when the new dense algorithm is in
-template <class T>
-Status FragmentMetadata::add_est_read_buffer_sizes_dense(
-    const EncryptionKey& encryption_key,
-    const T* subarray,
-    std::unordered_map<std::string, std::pair<double, double>>* buffer_sizes) {
-  // Calculate the ids and coverage of all tiles overlapping with subarray
-  auto tids_cov = compute_overlapping_tile_ids_cov(subarray);
-  uint64_t size = 0;
-
-  // Compute buffer sizes
-  for (auto& tid_cov : tids_cov) {
-    auto tid = tid_cov.first;
-    auto cov = tid_cov.second;
+  // Handle individual tiles
+  for (const auto& t : tile_overlap.tiles_) {
+    auto tid = t.first;
     for (auto& it : *buffer_sizes) {
       if (array_schema_->var_size(it.first)) {
-        it.second.first += cov * tile_size(it.first, tid);
+        auto cell_num = this->cell_num(tid);
+        it.second.first += cell_num * constants::cell_var_offset_size;
         RETURN_NOT_OK(tile_var_size(encryption_key, it.first, tid, &size));
-        it.second.second += cov * size;
+        it.second.second += size;
       } else {
-        it.second.first += cov * tile_size(it.first, tid);
+        it.second.first += cell_num(tid) * array_schema_->cell_size(it.first);
       }
     }
   }
 
-  return Status::Ok();
-}
-
-// TODO: remove after new dense read algorithm is in
-template <class T>
-Status FragmentMetadata::add_est_read_buffer_sizes_sparse(
-    const EncryptionKey& encryption_key,
-    const T* subarray,
-    std::unordered_map<std::string, std::pair<double, double>>* buffer_sizes) {
-  RETURN_NOT_OK(load_mbrs(encryption_key));
-
-  bool overlap;
-  auto dim_num = array_schema_->dim_num();
-  auto subarray_overlap = new T[2 * dim_num];
-  unsigned tid = 0;
-  uint64_t size;
-  for (auto& mbr : mbrs_) {
-    utils::geometry::overlap(
-        (T*)mbr, subarray, dim_num, subarray_overlap, &overlap);
-    if (overlap) {
-      double cov =
-          utils::geometry::coverage(subarray_overlap, (T*)mbr, dim_num);
-      for (auto& it : *buffer_sizes) {
-        if (array_schema_->var_size(it.first)) {
-          it.second.first += cov * tile_size(it.first, tid);
-          RETURN_NOT_OK(tile_var_size(encryption_key, it.first, tid, &size));
-          it.second.second += cov * size;
-        } else {
-          it.second.first += cov * tile_size(it.first, tid);
-        }
-      }
-    }
-    tid++;
-  }
-
-  delete[] subarray_overlap;
   return Status::Ok();
 }
 
@@ -527,17 +471,6 @@ Status FragmentMetadata::store(const EncryptionKey& encryption_key) {
 
   // Store R-Tree
   st = store_rtree(encryption_key);
-  if (!st.ok()) {
-    storage_manager_->close_file(fragment_metadata_uri);
-    storage_manager_->vfs()->remove_file(fragment_metadata_uri);
-    storage_manager_->array_xunlock(array_uri);
-    return st;
-  }
-
-  // Store MBRs
-  // TODO: after updating to the new dense read algorithm, remove
-  // TODO: after removing, update the format spec
-  st = store_mbrs(encryption_key);
   if (!st.ok()) {
     storage_manager_->close_file(fragment_metadata_uri);
     storage_manager_->vfs()->remove_file(fragment_metadata_uri);
@@ -940,29 +873,6 @@ Status FragmentMetadata::load_rtree(const EncryptionKey& encryption_key) {
   return Status::Ok();
 }
 
-Status FragmentMetadata::load_mbrs(const EncryptionKey& encryption_key) {
-  if (version_ <= 2)
-    return Status::Ok();
-
-  RETURN_NOT_OK(load_generic_tile_offsets());
-
-  std::lock_guard<std::mutex> lock(mtx_);
-
-  if (loaded_metadata_.mbrs_)
-    return Status::Ok();
-
-  Buffer buff;
-  RETURN_NOT_OK(
-      read_generic_tile_from_file(encryption_key, gt_offsets_.mbrs_, &buff));
-
-  ConstBuffer cbuff(&buff);
-  RETURN_NOT_OK(load_mbrs(&cbuff));
-
-  loaded_metadata_.mbrs_ = true;
-
-  return Status::Ok();
-}
-
 Status FragmentMetadata::load_tile_offsets(
     const EncryptionKey& encryption_key, unsigned attr_id) {
   if (version_ <= 2)
@@ -1108,7 +1018,8 @@ Status FragmentMetadata::load_last_tile_cell_num(ConstBuffer* buff) {
   Status st = buff->read(&last_tile_cell_num_, sizeof(uint64_t));
   if (!st.ok()) {
     return LOG_STATUS(Status::FragmentMetadataError(
-        "Cannot load fragment metadata; Reading last tile cell number failed"));
+        "Cannot load fragment metadata; Reading last tile cell number "
+        "failed"));
   }
   return Status::Ok();
 }
@@ -1142,7 +1053,6 @@ Status FragmentMetadata::load_mbrs(ConstBuffer* buff) {
     mbrs_[i] = mbr;
   }
 
-  loaded_metadata_.mbrs_ = true;
   sparse_tile_num_ = mbrs_.size();
 
   return Status::Ok();
@@ -1357,7 +1267,8 @@ Status FragmentMetadata::load_tile_var_sizes(ConstBuffer* buff) {
         &tile_var_sizes_[i][0], tile_var_sizes_num * sizeof(uint64_t));
     if (!st.ok()) {
       return LOG_STATUS(Status::FragmentMetadataError(
-          "Cannot load fragment metadata; Reading variable tile sizes failed"));
+          "Cannot load fragment metadata; Reading variable tile sizes "
+          "failed"));
     }
   }
 
@@ -1386,7 +1297,8 @@ Status FragmentMetadata::load_tile_var_sizes(
         &tile_var_sizes_[attr_id][0], tile_var_sizes_num * sizeof(uint64_t));
     if (!st.ok()) {
       return LOG_STATUS(Status::FragmentMetadataError(
-          "Cannot load fragment metadata; Reading variable tile sizes failed"));
+          "Cannot load fragment metadata; Reading variable tile sizes "
+          "failed"));
     }
   }
 
@@ -1403,8 +1315,6 @@ Status FragmentMetadata::load_sparse_tile_num(ConstBuffer* buff) {
   return Status::Ok();
 }
 
-// TODO: when the new dense read algorithm is in, don't double
-// TODO: buffer the leaf level of the tree
 Status FragmentMetadata::create_rtree() {
   auto dim_num = array_schema_->dim_num();
   auto type = array_schema_->domain()->type();
@@ -1448,11 +1358,6 @@ Status FragmentMetadata::load_generic_tile_offsets() {
   RETURN_NOT_OK(get_generic_tile_size(offset, &size));
   offset += size;
   gt_offsets_.rtree_ = offset;
-
-  // Offset for mbrs
-  RETURN_NOT_OK(get_generic_tile_size(offset, &size));
-  offset += size;
-  gt_offsets_.mbrs_ = offset;
 
   // Offsets for tile offsets
   gt_offsets_.tile_offsets_.resize(attribute_num + 1);
@@ -1884,47 +1789,6 @@ template Status FragmentMetadata::add_max_buffer_sizes<double>(
     std::unordered_map<std::string, std::pair<uint64_t, uint64_t>>*
         buffer_sizes);
 
-template Status FragmentMetadata::add_est_read_buffer_sizes<int8_t>(
-    const EncryptionKey& encryption_key,
-    const int8_t* subarray,
-    std::unordered_map<std::string, std::pair<double, double>>* buffer_sizes);
-template Status FragmentMetadata::add_est_read_buffer_sizes<uint8_t>(
-    const EncryptionKey& encryption_key,
-    const uint8_t* subarray,
-    std::unordered_map<std::string, std::pair<double, double>>* buffer_sizes);
-template Status FragmentMetadata::add_est_read_buffer_sizes<int16_t>(
-    const EncryptionKey& encryption_key,
-    const int16_t* subarray,
-    std::unordered_map<std::string, std::pair<double, double>>* buffer_sizes);
-template Status FragmentMetadata::add_est_read_buffer_sizes<uint16_t>(
-    const EncryptionKey& encryption_key,
-    const uint16_t* subarray,
-    std::unordered_map<std::string, std::pair<double, double>>* buffer_sizes);
-template Status FragmentMetadata::add_est_read_buffer_sizes<int>(
-    const EncryptionKey& encryption_key,
-    const int* subarray,
-    std::unordered_map<std::string, std::pair<double, double>>* buffer_sizes);
-template Status FragmentMetadata::add_est_read_buffer_sizes<unsigned>(
-    const EncryptionKey& encryption_key,
-    const unsigned* subarray,
-    std::unordered_map<std::string, std::pair<double, double>>* buffer_sizes);
-template Status FragmentMetadata::add_est_read_buffer_sizes<int64_t>(
-    const EncryptionKey& encryption_key,
-    const int64_t* subarray,
-    std::unordered_map<std::string, std::pair<double, double>>* buffer_sizes);
-template Status FragmentMetadata::add_est_read_buffer_sizes<uint64_t>(
-    const EncryptionKey& encryption_key,
-    const uint64_t* subarray,
-    std::unordered_map<std::string, std::pair<double, double>>* buffer_sizes);
-template Status FragmentMetadata::add_est_read_buffer_sizes<float>(
-    const EncryptionKey& encryption_key,
-    const float* subarray,
-    std::unordered_map<std::string, std::pair<double, double>>* buffer_sizes);
-template Status FragmentMetadata::add_est_read_buffer_sizes<double>(
-    const EncryptionKey& encryption_key,
-    const double* subarray,
-    std::unordered_map<std::string, std::pair<double, double>>* buffer_sizes);
-
 template uint64_t FragmentMetadata::get_tile_pos<int8_t>(
     const int8_t* tile_coords) const;
 template uint64_t FragmentMetadata::get_tile_pos<uint8_t>(
@@ -1982,6 +1846,37 @@ template Status FragmentMetadata::get_tile_overlap<double>(
     const EncryptionKey& encryption_key,
     const std::vector<const double*>& range,
     TileOverlap* tile_overlap);
+
+template std::vector<std::pair<uint64_t, double>>
+FragmentMetadata::compute_overlapping_tile_ids_cov<int8_t>(
+    const int8_t* subarray) const;
+template std::vector<std::pair<uint64_t, double>>
+FragmentMetadata::compute_overlapping_tile_ids_cov<uint8_t>(
+    const uint8_t* subarray) const;
+template std::vector<std::pair<uint64_t, double>>
+FragmentMetadata::compute_overlapping_tile_ids_cov<int16_t>(
+    const int16_t* subarray) const;
+template std::vector<std::pair<uint64_t, double>>
+FragmentMetadata::compute_overlapping_tile_ids_cov<uint16_t>(
+    const uint16_t* subarray) const;
+template std::vector<std::pair<uint64_t, double>>
+FragmentMetadata::compute_overlapping_tile_ids_cov<int32_t>(
+    const int32_t* subarray) const;
+template std::vector<std::pair<uint64_t, double>>
+FragmentMetadata::compute_overlapping_tile_ids_cov<uint32_t>(
+    const uint32_t* subarray) const;
+template std::vector<std::pair<uint64_t, double>>
+FragmentMetadata::compute_overlapping_tile_ids_cov<int64_t>(
+    const int64_t* subarray) const;
+template std::vector<std::pair<uint64_t, double>>
+FragmentMetadata::compute_overlapping_tile_ids_cov<uint64_t>(
+    const uint64_t* subarray) const;
+template std::vector<std::pair<uint64_t, double>>
+FragmentMetadata::compute_overlapping_tile_ids_cov<float>(
+    const float* subarray) const;
+template std::vector<std::pair<uint64_t, double>>
+FragmentMetadata::compute_overlapping_tile_ids_cov<double>(
+    const double* subarray) const;
 
 }  // namespace sm
 }  // namespace tiledb

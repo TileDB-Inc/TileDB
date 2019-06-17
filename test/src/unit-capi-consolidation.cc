@@ -3551,8 +3551,7 @@ TEST_CASE_METHOD(
   remove_dense_vector();
 }
 
-// Test consolidation size ratio 0.3
-// and 10 steps
+// Test consolidation size ratio 0.4 and 10 steps
 TEST_CASE_METHOD(
     ConsolidationFx,
     "C API: Test advanced consolidation #6",
@@ -3581,7 +3580,7 @@ TEST_CASE_METHOD(
   REQUIRE(rc == TILEDB_OK);
   REQUIRE(error == nullptr);
   rc = tiledb_config_set(
-      config, "sm.consolidation.step_size_ratio", "0.5", &error);
+      config, "sm.consolidation.step_size_ratio", "0.4", &error);
   REQUIRE(rc == TILEDB_OK);
   REQUIRE(error == nullptr);
 

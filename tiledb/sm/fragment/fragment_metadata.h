@@ -151,68 +151,6 @@ class FragmentMetadata {
           buffer_sizes);
 
   /**
-   * Computes an estimate on the buffer sizes needed when reading a subarray
-   * from the fragment, for a given set of attributes. Note that these upper
-   * bounds is added to those in `buffer_sizes`.
-   *
-   * @tparam T The coordinates type.
-   * @param encryption_key The encryption key the array was opened with.
-   * @param subarray The targeted subarray.
-   * @param buffer_sizes The upper bounds will be added to this map. The latter
-   *     maps an attribute to a buffer size pair. For fix-sized attributes, only
-   *     the first size is useful. For var-sized attributes, the first is the
-   *     offsets size, whereas the second is the data size.
-   * @return Status
-   */
-  template <class T>
-  Status add_est_read_buffer_sizes(
-      const EncryptionKey& encryption_key,
-      const T* subarray,
-      std::unordered_map<std::string, std::pair<double, double>>* buffer_sizes);
-
-  /**
-   * Computes an estimate on the buffer sizes needed when reading a subarray
-   * from the fragment, for a given set of attributes. Note that these upper
-   * bounds is added to those in `buffer_sizes`. Applicable only to the dense
-   * case.
-   *
-   * @tparam T The coordinates type.
-   * @param encryption_key The encryption key the array was opened with.
-   * @param subarray The targeted subarray.
-   * @param buffer_sizes The upper bounds will be added to this map. The latter
-   *     maps an attribute to a buffer size pair. For fix-sized attributes, only
-   *     the first size is useful. For var-sized attributes, the first is the
-   *     offsets size, whereas the second is the data size.
-   * @return Status
-   */
-  template <class T>
-  Status add_est_read_buffer_sizes_dense(
-      const EncryptionKey& encryption_key,
-      const T* subarray,
-      std::unordered_map<std::string, std::pair<double, double>>* buffer_sizes);
-
-  /**
-   * Computes an estimate on the buffer sizes needed when reading a subarray
-   * from the fragment, for a given set of attributes. Note that these upper
-   * bounds is added to those in `buffer_sizes`. Applicable only to the sparse
-   * case.
-   *
-   * @tparam T The coordinates type.
-   * @param encryption_key The encryption key the array was opened with.
-   * @param subarray The targeted subarray.
-   * @param buffer_sizes The upper bounds will be added to this map. The latter
-   *     maps an attribute to a buffer size pair. For fix-sized attributes, only
-   *     the first size is useful. For var-sized attributes, the first is the
-   *     offsets size, whereas the second is the data size.
-   * @return Status
-   */
-  template <class T>
-  Status add_est_read_buffer_sizes_sparse(
-      const EncryptionKey& encryption_key,
-      const T* subarray,
-      std::unordered_map<std::string, std::pair<double, double>>* buffer_sizes);
-
-  /**
    * Returns the ids (positions) of the tiles overlapping `subarray`, along with
    * with the coverage of the overlap.
    */
@@ -504,7 +442,6 @@ class FragmentMetadata {
   struct GenericTileOffsets {
     uint64_t basic_ = 0;
     uint64_t rtree_ = 0;
-    uint64_t mbrs_ = 0;
     std::vector<uint64_t> tile_offsets_;
     std::vector<uint64_t> tile_var_offsets_;
     std::vector<uint64_t> tile_var_sizes_;
@@ -515,7 +452,6 @@ class FragmentMetadata {
     bool basic_ = false;
     bool generic_tile_offsets_ = false;
     bool rtree_ = false;
-    bool mbrs_ = false;
     std::vector<bool> tile_offsets_;
     std::vector<bool> tile_var_offsets_;
     std::vector<bool> tile_var_sizes_;
@@ -631,7 +567,10 @@ class FragmentMetadata {
   /*           PRIVATE METHODS         */
   /* ********************************* */
 
-  /** Returns the ids (positions) of the tiles overlapping `subarray`. */
+  /**
+   * Returns the ids (positions) of the tiles overlapping `subarray`.
+   * Applicable only to dense arrays.
+   */
   template <class T>
   std::vector<uint64_t> compute_overlapping_tile_ids(const T* subarray) const;
 
@@ -665,9 +604,6 @@ class FragmentMetadata {
 
   /** Loads the R-tree from storage. */
   Status load_rtree(const EncryptionKey& encryption_key);
-
-  /** Loads the MBRs from storage. */
-  Status load_mbrs(const EncryptionKey& encryption_key);
 
   /** Loads the tile offsets for the input attribute from storage. */
   Status load_tile_offsets(
