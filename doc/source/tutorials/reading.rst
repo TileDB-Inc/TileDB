@@ -26,6 +26,7 @@ the non-empty domain of your array, and the concept of "incomplete" queries.
   ``reading_dense_layouts``             |readingdenselayoutscpp| |readingdenselayoutspy|
   ``reading_sparse_layouts``            |readingsparselayoutscpp| |readingsparselayoutspy|
   ``reading_incomplete``                |readingincompletecpp|
+  ``multi_range_subarray``              |multirangesubarraycpp|
   ====================================  =============================================================
 
 .. |readingdenselayoutscpp| image:: ../figures/cpp.png
@@ -52,6 +53,12 @@ the non-empty domain of your array, and the concept of "incomplete" queries.
    :align: middle
    :width: 30
    :target: {tiledb_src_root_url}/examples/cpp_api/reading_incomplete.cc
+
+.. |multirangesubarraycpp| image:: ../figures/cpp.png
+   :align: middle
+   :width: 30
+   :target: {tiledb_src_root_url}/examples/cpp_api/multi_range_subarray.cc
+
 
 Basic concepts and definitions
 ------------------------------
@@ -96,6 +103,14 @@ Basic concepts and definitions
       partial result, which you can consume and then resume the query,
       with TileDB incrementally bringing you the next partial results,
       and so on.
+
+.. toggle-header::
+    :header: **Multi-range subarrays**
+
+      TileDB allows specifying a "multi-range" subarray, i.e., more than
+      one ranges for each dimension of the subarray. In the general case
+      TileDB processes multi-range subarray queries more efficiently than
+      issuing multiple separate "single-range" subarrays.
 
 
 Reading in different layouts
@@ -577,11 +592,103 @@ that your memory budget is reasonable, the above approach will complete
 quickly and any extra cost stemming from pausing and resuming the
 query gets amortized over the entire execution.
 
+Multi-range subarrays
+---------------------
+
+So far all the examples involved a single multi-dimensional rectangular range,
+created by specifying a single 1D range per dimension. TileDB also supports
+*multi-range* subarrays, i.e., it allows specifying multiple 1D ranges
+per dimension. The resulting subarray consists of the *cross product* of
+all the 1D ranges across all dimensions.
+
+The feature is better illustrated with an example. The figure below illustrates
+multi-range subarray ``([1,2], [4,4]) x [1,4]``, which slices rows ``1, 2, 4``
+(two ranges along the rows dimension) and columns ``1, 2, 3, 4`` (one range
+along the columns dimension). Note above that the 1D row ranges form a *list*, 
+i.e., their order matters as it dictates the order of the results.
+For dense arrays, the permissible layouts are
+*row-major* and *column-major*. Note that the *global* layout is not supported
+for multi-range subarrays (whereas *unordered* reads are not supported at all
+for dense arrays).
+
+.. figure:: ../figures/multi_range_subarrays.png
+   :align: center
+   :scale: 40 %
+
+Here is how a mult-range read subarray can be specified (from program
+``multi_range_subarray``).
+
+.. content-tabs::
+
+   .. tab-container:: cpp
+      :title: C++
+
+      .. code-block:: c++
+
+       void read_array() {
+         Context ctx;
+
+         // Prepare the array for reading
+         Array array(ctx, array_name, TILEDB_READ);
+
+         // Prepare the vector that will hold the result (of size 6 elements)
+         std::vector<int> data(12);
+
+         // Prepare the query
+         Query query(ctx, array, TILEDB_READ);
+         query.set_layout(TILEDB_ROW_MAJOR).set_buffer("a", data);
+
+         // Add multi-range subarray to query
+         int row_0_start = 1, row_0_end = 2;
+         int row_1_start = 4, row_1_end = 4;
+         int col_0_start = 1, col_0_end = 4;
+         query.add_range(0, row_0_start, row_0_end)
+             .add_range(0, row_1_start, row_1_end)
+             .add_range(1, col_0_start, col_0_end);
+
+         // Submit the query and close the array.
+         query.submit();
+         array.close();
+
+         // Print out the results.
+         for (auto d : data)
+           std::cout << d << " ";
+         std::cout << "\n";
+       } 
+
+Compiling and running the program we get the following output.
+
+.. code-block:: bash
+
+   $ g++ -std=c++11 multi_range_subarray.cc -o multi_range_subarray_cpp -ltiledb
+   $ ./multi_range_subarray_cpp
+   1 2 3 4 5 6 7 8 13 14 15 16 
+
+Multi-range subarrays are applicable to *sparse* arrays as well and are 
+specified in an identical manner. In addition to row-major and column-major
+layouts, sparse arrays support also the *unordered* layout for multi-range
+subarrays. This layout leads typically to better performance since additional
+sorting (to respect a particular order) is avoided internally wherever possible.
+
+Furthermore, note that the user may specify ranges with duplicate values,
+i.e., some of the dimension domain values may be inclued in more than one
+1D ranges per dimension. For example, in the example above, the user may 
+issue subarray ``([1,2], [4,4], [2,2]) x [1,4]``, where row 2 appears in
+two row ranges. In this case, assuming a row-major layout, the results are 
+
+     ``1 2 3 4 5 6 7 8 13 14 15 16 5 6 7 8``
+
+In general, issuing multi-range subarray queries is faster than submitting the
+same queries separately as single-range queries. This is because TileDB
+performs various optimizations internally, such as batching the IO operations
+and performing them in parallel, avoiding fetching the same tile multiple times
+if more than one ranges intersect it, etc.
+
 Reading and performance
 -----------------------
 
 There are numerous factors affecting the read performance, from the way the
 arrays were tiled and written, to the number of fragments, to the read query
 layout, to the level of internal concurrency, and more. See the
-:ref:`performance/introduction` tutorial for
-more information about the TileDB performance.
+:ref:`performance/introduction` tutorial for more information about the TileDB
+performance.

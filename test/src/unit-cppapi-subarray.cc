@@ -69,8 +69,8 @@ TEST_CASE("C++ API: Test subarray", "[cppapi][sparse][subarray]") {
     Array array(ctx, array_name, TILEDB_READ);
     Query query(ctx, array);
     int range[] = {0, 0};
-    query.add_range(0, &range[0], &range[1]);
-    query.add_range(1, &range[0], &range[1]);
+    query.add_range(0, range[0], range[1]);
+    query.add_range(1, range[0], range[1]);
 
     auto est_size = query.est_result_size("a");
     REQUIRE(est_size == 1);
@@ -86,7 +86,7 @@ TEST_CASE("C++ API: Test subarray", "[cppapi][sparse][subarray]") {
     Array array(ctx, array_name, TILEDB_READ);
     Query query(ctx, array);
     int range[] = {1, 2};
-    query.add_range(0, &range[0], &range[1]).add_range(1, &range[0], &range[1]);
+    query.add_range(0, range[0], range[1]).add_range(1, range[0], range[1]);
 
     auto est_size = query.est_result_size("a");
     REQUIRE(est_size == 4);
@@ -105,13 +105,13 @@ TEST_CASE("C++ API: Test subarray", "[cppapi][sparse][subarray]") {
     Array array(ctx, array_name, TILEDB_READ);
     Query query(ctx, array);
     int range0[] = {0, 0}, range1[] = {2, 2};
-    query.add_range(0, &range0[0], &range0[1]);
-    query.add_range(1, &range0[0], &range0[1]);
-    query.add_range(0, &range1[0], &range1[1]);
-    query.add_range(1, &range1[0], &range1[1]);
+    query.add_range(0, range0[0], range0[1]);
+    query.add_range(1, range0[0], range0[1]);
+    query.add_range(0, range1[0], range1[1]);
+    query.add_range(1, range1[0], range1[1]);
 
     int64_t inv_range[] = {0, 1};
-    CHECK_THROWS(query.add_range(1, &inv_range[0], &inv_range[1]));
+    CHECK_THROWS(query.add_range(1, inv_range[0], inv_range[1]));
 
     // Get range
     auto range = query.range<int>(0, 0);
@@ -142,10 +142,10 @@ TEST_CASE("C++ API: Test subarray", "[cppapi][sparse][subarray]") {
     Array array(ctx, array_name, TILEDB_READ);
     Query query(ctx, array);
     int range0[] = {0, 1}, range1[] = {2, 3};
-    query.add_range(0, &range0[0], &range0[1]);
-    query.add_range(1, &range0[0], &range0[1]);
-    query.add_range(0, &range1[0], &range1[1]);
-    query.add_range(1, &range1[0], &range1[1]);
+    query.add_range(0, range0[0], range0[1]);
+    query.add_range(1, range0[0], range0[1]);
+    query.add_range(0, range1[0], range1[1]);
+    query.add_range(1, range1[0], range1[1]);
 
     auto est_size = query.est_result_size("a");
     std::vector<int> data(est_size);
@@ -208,9 +208,9 @@ TEST_CASE(
   int row_range[] = {0, 1};
   int col_range0[] = {12277, 13499};
   int col_range1[] = {13500, 17486};
-  query.add_range(0, &row_range[0], &row_range[1]);
-  query.add_range(1, &col_range0[0], &col_range0[1]);
-  query.add_range(1, &col_range1[0], &col_range1[1]);
+  query.add_range(0, row_range[0], row_range[1]);
+  query.add_range(1, col_range0[0], col_range0[1]);
+  query.add_range(1, col_range1[0], col_range1[1]);
 
   // Test range num
   auto range_num = query.range_num(0);
@@ -352,9 +352,9 @@ TEST_CASE(
   int row_range[] = {1, 1};
   int col_range0[] = {12277, 12277};
   int col_range1[] = {12277, 13160};
-  query.add_range(0, &row_range[0], &row_range[1]);
-  query.add_range(1, &col_range0[0], &col_range0[1]);
-  query.add_range(1, &col_range1[0], &col_range1[1]);
+  query.add_range(0, row_range[0], row_range[1]);
+  query.add_range(1, col_range0[0], col_range0[1]);
+  query.add_range(1, col_range1[0], col_range1[1]);
   query.set_layout(TILEDB_UNORDERED);
 
   // Allocate buffers large enough to hold 2 cells at a time.

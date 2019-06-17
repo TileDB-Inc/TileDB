@@ -374,7 +374,7 @@ class Query {
   std::unordered_map<std::string, std::pair<uint64_t, uint64_t>>
   result_buffer_elements() const {
     std::unordered_map<std::string, std::pair<uint64_t, uint64_t>> elements;
-    if (buff_sizes_.size() == 0)
+    if (buff_sizes_.empty())
       return std::unordered_map<
           std::string,
           std::pair<uint64_t, uint64_t>>();  // Query hasn't been submitted
@@ -417,15 +417,16 @@ class Query {
    * @return Reference to this Query
    */
   template <class T>
-  Query& add_range(
-      uint32_t dim_idx,
-      const T* start,
-      const T* end,
-      const T* stride = nullptr) {
+  Query& add_range(uint32_t dim_idx, T start, T end, T stride = 0) {
     impl::type_check<T>(schema_.domain().type());
     auto& ctx = ctx_.get();
     ctx.handle_error(tiledb_query_add_range(
-        ctx.ptr().get(), query_.get(), dim_idx, start, end, stride));
+        ctx.ptr().get(),
+        query_.get(),
+        dim_idx,
+        &start,
+        &end,
+        (stride == 0) ? nullptr : &stride));
     return *this;
   }
 

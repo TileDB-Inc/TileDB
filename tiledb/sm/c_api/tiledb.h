@@ -669,6 +669,7 @@ TILEDB_EXPORT int32_t tiledb_buffer_get_type(
  *
  * @param ctx TileDB context
  * @param buffer TileDB buffer instance
+ * @param data The pointer to the data to be retrieved.
  * @param num_bytes Set to the number of bytes in the buffer.
  * @return `TILEDB_OK` for success or `TILEDB_ERR` for error.
  */
