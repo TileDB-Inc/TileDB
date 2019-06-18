@@ -59,9 +59,9 @@ namespace sm {
 FragmentMetadata::FragmentMetadata(
     StorageManager* storage_manager,
     const ArraySchema* array_schema,
-    bool dense,
     const URI& fragment_uri,
-    uint64_t timestamp)
+    uint64_t timestamp,
+    bool dense)
     : storage_manager_(storage_manager)
     , array_schema_(array_schema)
     , dense_(dense)
@@ -871,6 +871,7 @@ Status FragmentMetadata::load_basic(const EncryptionKey& encryption_key) {
 
   ConstBuffer cbuff(&buff);
   RETURN_NOT_OK(load_version(&cbuff));
+  RETURN_NOT_OK(load_dense(&cbuff));
   RETURN_NOT_OK(load_non_empty_domain(&cbuff));
   RETURN_NOT_OK(load_sparse_tile_num(&cbuff));
   RETURN_NOT_OK(load_last_tile_cell_num(&cbuff));
@@ -1344,6 +1345,11 @@ Status FragmentMetadata::load_version(ConstBuffer* buff) {
   return Status::Ok();
 }
 
+Status FragmentMetadata::load_dense(ConstBuffer* buff) {
+  RETURN_NOT_OK(buff->read(&dense_, sizeof(char)));
+  return Status::Ok();
+}
+
 Status FragmentMetadata::load_sparse_tile_num(ConstBuffer* buff) {
   RETURN_NOT_OK(buff->read(&sparse_tile_num_, sizeof(uint64_t)));
   return Status::Ok();
@@ -1802,6 +1808,11 @@ Status FragmentMetadata::write_version(Buffer* buff) {
   return Status::Ok();
 }
 
+Status FragmentMetadata::write_dense(Buffer* buff) {
+  RETURN_NOT_OK(buff->write(&dense_, sizeof(char)));
+  return Status::Ok();
+}
+
 Status FragmentMetadata::write_sparse_tile_num(Buffer* buff) {
   RETURN_NOT_OK(buff->write(&sparse_tile_num_, sizeof(uint64_t)));
   return Status::Ok();
@@ -1811,6 +1822,7 @@ Status FragmentMetadata::store_basic(
     const EncryptionKey& encryption_key, uint64_t* offset) {
   Buffer buff;
   RETURN_NOT_OK(write_version(&buff));
+  RETURN_NOT_OK(write_dense(&buff));
   RETURN_NOT_OK(write_non_empty_domain(&buff));
   RETURN_NOT_OK(write_sparse_tile_num(&buff));
   RETURN_NOT_OK(write_last_tile_cell_num(&buff));

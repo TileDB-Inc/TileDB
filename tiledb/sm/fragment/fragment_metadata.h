@@ -60,17 +60,17 @@ class FragmentMetadata {
    *
    * @param storage_manager A storage manager instance.
    * @param array_schema The schema of the array the fragment belongs to.
-   * @param dense Indicates whether the fragment is dense or sparse.
    * @param fragment_uri The fragment URI.
    * @param timestamp The timestamp of the fragment creation. In TileDB,
-   * timestamps are in ms elapsed since 1970-01-01 00:00:00 +0000 (UTC).
+   * @param dense Indicates whether the fragment is dense or sparse.
+   *     timestamps are in ms elapsed since 1970-01-01 00:00:00 +0000 (UTC).
    */
   FragmentMetadata(
       StorageManager* storage_manager,
       const ArraySchema* array_schema,
-      bool dense,
       const URI& fragment_uri,
-      uint64_t timestamp);
+      uint64_t timestamp,
+      bool dense = true);
 
   /** Destructor. */
   ~FragmentMetadata();
@@ -703,6 +703,9 @@ class FragmentMetadata {
   /** Loads the format version from the buffer. */
   Status load_version(ConstBuffer* buff);
 
+  /** Loads the `dense_` field from the buffer. */
+  Status load_dense(ConstBuffer* buff);
+
   /** Loads the number of sparse tiles from the buffer. */
   Status load_sparse_tile_num(ConstBuffer* buff);
 
@@ -803,6 +806,9 @@ class FragmentMetadata {
 
   /** Writes the format version to the buffer. */
   Status write_version(Buffer* buff);
+
+  /** Writes the `dense_` field to the buffer. */
+  Status write_dense(Buffer* buff);
 
   /** Writes the number of sparse tiles to the buffer. */
   Status write_sparse_tile_num(Buffer* buff);

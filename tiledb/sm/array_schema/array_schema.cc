@@ -635,6 +635,10 @@ void ArraySchema::set_tile_order(Layout tile_order) {
   tile_order_ = tile_order;
 }
 
+uint32_t ArraySchema::version() const {
+  return version_;
+}
+
 /* ****************************** */
 /*         PRIVATE METHODS        */
 /* ****************************** */

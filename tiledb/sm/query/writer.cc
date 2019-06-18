@@ -1041,7 +1041,7 @@ Status Writer::create_fragment(
     uri = array_schema_->array_uri().join_path(new_fragment_str);
   }
   *frag_meta = std::make_shared<FragmentMetadata>(
-      storage_manager_, array_schema_, dense, uri, timestamp);
+      storage_manager_, array_schema_, uri, timestamp, dense);
   RETURN_NOT_OK((*frag_meta)->init(subarray_));
   return storage_manager_->create_dir(uri);
 

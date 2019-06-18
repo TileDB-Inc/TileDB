@@ -754,6 +754,7 @@ Status StorageManager::get_fragment_info(
   // Get the rest of fragment info
   auto statuses = parallel_for(0, fragment_num, [&](size_t f) {
     // Determine if the fragment is sparse
+    // TODO: this can be avoided
     const auto& uri = sorted_fragment_uris[f];
     URI coords_uri =
         uri.second.join_path(constants::coords + constants::file_suffix);
@@ -765,7 +766,7 @@ Status StorageManager::get_fragment_info(
 
     // Get fragment non-empty domain
     FragmentMetadata metadata(
-        this, array_schema, !sparse, uri.second, uri.first);
+        this, array_schema, uri.second, uri.first, !sparse);
     RETURN_NOT_OK(metadata.load(encryption_key));
     std::memcpy(&non_empty_domain[0], metadata.non_empty_domain(), domain_size);
 
@@ -823,21 +824,22 @@ Status StorageManager::get_fragment_info(
       (long long int*)&timestamp);
 
   // Check if fragment is sparse
-  uint64_t domain_size = 2 * array_schema->coords_size();
   bool sparse;
   URI coords_uri =
       fragment_uri.join_path(constants::coords + constants::file_suffix);
+  // TODO: this can be avoided
   RETURN_NOT_OK(vfs_->is_file(coords_uri, &sparse));
 
   // Get fragment non-empty domain
   FragmentMetadata metadata(
-      this, array_schema, !sparse, fragment_uri, timestamp);
+      this, array_schema, fragment_uri, timestamp, !sparse);
   RETURN_NOT_OK(metadata.load(encryption_key));
 
   // Get fragment size
   uint64_t size;
   RETURN_NOT_OK(metadata.fragment_size(&size));
 
+  uint64_t domain_size = 2 * array_schema->coords_size();
   std::vector<uint8_t> non_empty_domain;
   non_empty_domain.resize(domain_size);
   std::memcpy(&non_empty_domain[0], metadata.non_empty_domain(), domain_size);
@@ -1512,14 +1514,26 @@ Status StorageManager::load_fragment_metadata(
     const auto& sf = fragments_to_load[f];
     auto frag_timestamp = sf.first;
     const auto& frag_uri = sf.second;
+    auto array_schema = open_array->array_schema();
+    auto version = array_schema->version();
     auto metadata = open_array->fragment_metadata(frag_uri);
     if (metadata == nullptr) {  // Fragment metadata does not exist - load it
       URI coords_uri =
           frag_uri.join_path(constants::coords + constants::file_suffix);
-      bool sparse;
-      RETURN_NOT_OK(vfs_->is_file(coords_uri, &sparse));
-      metadata = new FragmentMetadata(
-          this, open_array->array_schema(), !sparse, frag_uri, frag_timestamp);
+
+      // Note that the fragment metadata version is >= the array schema
+      // version. Therefore, the check below is defensive and will always
+      // ensure backwads compatibility.
+      if (version <= 2) {
+        bool sparse;
+        RETURN_NOT_OK(vfs_->is_file(coords_uri, &sparse));
+        metadata = new FragmentMetadata(
+            this, array_schema, frag_uri, frag_timestamp, !sparse);
+      } else {  // Format bersion > 2
+        metadata =
+            new FragmentMetadata(this, array_schema, frag_uri, frag_timestamp);
+      }
+
       RETURN_NOT_OK_ELSE(metadata->load(encryption_key), delete metadata);
       open_array->insert_fragment_metadata(metadata);
     }
