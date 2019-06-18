@@ -568,6 +568,12 @@ class FragmentMetadata {
   /* ********************************* */
 
   /**
+   * Retrieves the offset in the fragment metadata file of the footer
+   * (which contains the generic tile offsets) along with its size.
+   */
+  Status get_footer_offset(uint64_t* offset, uint64_t* size) const;
+
+  /**
    * Returns the ids (positions) of the tiles overlapping `subarray`.
    * Applicable only to dense arrays.
    */
@@ -616,6 +622,9 @@ class FragmentMetadata {
   /** Loads the variable tile sizes for the input attribute from storage. */
   Status load_tile_var_sizes(
       const EncryptionKey& encryption_key, unsigned attr_id);
+
+  /** Loads the generic tile offsets from the buffer. */
+  Status load_generic_tile_offsets(ConstBuffer* buff);
 
   /**
    * Loads the bounding coordinates from the fragment metadata buffer.
@@ -721,16 +730,22 @@ class FragmentMetadata {
   /** Writes the sizes of each variable attribute file to the buffer. */
   Status write_file_var_sizes(Buffer* buff);
 
+  /** Writes the generic tile offsets to the buffer. */
+  Status write_generic_tile_offsets(Buffer* buff);
+
   /**
    * Writes the cell number of the last tile to the fragment metadata buffer.
    */
   Status write_last_tile_cell_num(Buffer* buff);
 
-  /** Writes the R-tree to storage. */
-  Status store_rtree(const EncryptionKey& encryption_key);
-
-  /** Writes the MBRs to storage. */
-  Status store_mbrs(const EncryptionKey& encryption_key);
+  /**
+   * Writes the R-tree to storage.
+   *
+   * @param encryption_key The encryption key.
+   * @param nbytes The total number of bytes written for the R-tree.
+   * @return Status
+   */
+  Status store_rtree(const EncryptionKey& encryption_key, uint64_t* nbytes);
 
   /** Writes the R-tree to the input buffer. */
   Status write_rtree(Buffer* buff);
@@ -741,23 +756,47 @@ class FragmentMetadata {
   /** Writes the non-empty domain to the input buffer. */
   Status write_non_empty_domain(Buffer* buff);
 
-  /** Writes the tile offsets of the input attribute to storage. */
+  /**
+   * Writes the tile offsets of the input attribute to storage.
+   *
+   * @param encryption_key The encryption key.
+   * @param nbytes The total number of bytes written for the tile offsets.
+   * @return Status
+   */
   Status store_tile_offsets(
-      unsigned attr_id, const EncryptionKey& encryption_key);
+      unsigned attr_id, const EncryptionKey& encryption_key, uint64_t* nbytes);
 
   /** Writes the tile offsets of the input attribut$ to the input buffer. */
   Status write_tile_offsets(unsigned attr_id, Buffer* buff);
 
-  /** Writes the variable tile offsets of the input attribute to storage. */
+  /**
+   * Writes the variable tile offsets of the input attribute to storage.
+   *
+   * @param encryption_key The encryption key.
+   * @param nbytes The total number of bytes written for the tile var offsets.
+   * @return Status
+   */
   Status store_tile_var_offsets(
-      unsigned attr_id, const EncryptionKey& encryption_key);
+      unsigned attr_id, const EncryptionKey& encryption_key, uint64_t* nbytes);
 
   /** Writes the variable tile offsets of the input attribute to the buffer. */
   Status write_tile_var_offsets(unsigned attr_id, Buffer* buff);
 
-  /** Writes the variable tile sizes for the input attribute to the buffer. */
+  /**
+   * Writes the variable tile sizes for the input attribute to the buffer.
+   *
+   * @param encryption_key The encryption key.
+   * @param nbytes The total number of bytes written for the tile var sizes.
+   * @return Status
+   */
   Status store_tile_var_sizes(
-      unsigned attr_id, const EncryptionKey& encryption_key);
+      unsigned attr_id, const EncryptionKey& encryption_key, uint64_t* nbytes);
+
+  /**
+   * Stores the generic tile offsets (for each metadata item stored)
+   * in the metadata file.
+   */
+  Status store_generic_tile_offsets();
 
   /** Writes the variable tile sizes to storage. */
   Status write_tile_var_sizes(unsigned attr_id, Buffer* buff);
@@ -768,8 +807,14 @@ class FragmentMetadata {
   /** Writes the number of sparse tiles to the buffer. */
   Status write_sparse_tile_num(Buffer* buff);
 
-  /** Writes the basic metadata to storage. */
-  Status store_basic(const EncryptionKey& encryption_key);
+  /**
+   * Writes the basic metadata to storage.
+   *
+   * @param encryption_key The encryption key.
+   * @param nbytes The total number of bytes written for the basic info.
+   * @return Status
+   */
+  Status store_basic(const EncryptionKey& encryption_key, uint64_t* nbytes);
 
   /**
    * Reads the contents of a generic tile starting at the input offset,
@@ -779,11 +824,32 @@ class FragmentMetadata {
       const EncryptionKey& encryption_key, uint64_t offset, Buffer* buff) const;
 
   /**
+   * Reads the fragment metadata file footer (which contains the generic tile
+   * offsets) into the input buffer.
+   */
+  Status read_file_footer(Buffer* buff) const;
+
+  /**
    * Writes the contents of the input buffer as a separate
    * generic tile to the metadata file.
+   *
+   * @param encryption_key The encryption key.
+   * @param buff The buffer whose contents the function will write.
+   * @param nbytes The total number of bytes written to the file.
+   * @return Status
    */
   Status write_generic_tile_to_file(
-      const EncryptionKey& encryption_key, Buffer* buff) const;
+      const EncryptionKey& encryption_key,
+      Buffer* buff,
+      uint64_t* nbytes) const;
+
+  /**
+   * Writes the contents of the input buffer at the end of the fragment
+   * metadata file, without applying any filters. This helps its quick
+   * retrieval upon reading (as its size is predictable based on the
+   * number of attributes).
+   */
+  Status write_file_footer(Buffer* buff) const;
 };
 
 }  // namespace sm

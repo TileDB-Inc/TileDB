@@ -1285,7 +1285,9 @@ Status StorageManager::store_array_schema(
       buff,
       false);
   auto tile_io = new TileIO(this, schema_uri);
-  Status st = tile_io->write_generic(tile, encryption_key);
+  uint64_t nbytes;
+  Status st = tile_io->write_generic(tile, encryption_key, &nbytes);
+  (void)nbytes;
   if (st.ok())
     st = close_file(schema_uri);
 

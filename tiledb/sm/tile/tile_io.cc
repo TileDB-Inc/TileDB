@@ -185,7 +185,8 @@ Status TileIO::read_generic_tile_header(
   return Status::Ok();
 }
 
-Status TileIO::write_generic(Tile* tile, const EncryptionKey& encryption_key) {
+Status TileIO::write_generic(
+    Tile* tile, const EncryptionKey& encryption_key, uint64_t* nbytes) {
   STATS_FUNC_IN(tileio_write_generic);
 
   // Reset the tile and buffer offset
@@ -206,6 +207,9 @@ Status TileIO::write_generic(Tile* tile, const EncryptionKey& encryption_key) {
 
   file_size_ = header.persisted_size;
   STATS_COUNTER_ADD(tileio_write_num_bytes_written, header.persisted_size);
+
+  *nbytes = TileIO::GenericTileHeader::BASE_SIZE + header.filter_pipeline_size +
+            header.persisted_size;
 
   return Status::Ok();
 
