@@ -1490,3 +1490,57 @@ TEST_CASE_METHOD(
   delete_array(array_name);
   remove_temp_dir(FILE_URI_PREFIX + FILE_TEMP_DIR);
 }
+
+TEST_CASE_METHOD(
+    ArraySchemaFx,
+    "C API: Test array schema error with no tile extent",
+    "[capi][array-schema]") {
+  // Create array schema
+  tiledb_array_schema_t* array_schema;
+  int rc = tiledb_array_schema_alloc(ctx_, TILEDB_SPARSE, &array_schema);
+  REQUIRE(rc == TILEDB_OK);
+
+  // Create dimensions
+  tiledb_dimension_t* d1;
+  rc = tiledb_dimension_alloc(
+      ctx_, "", TILEDB_INT64, &DIM_DOMAIN[0], nullptr, &d1);
+  REQUIRE(rc == TILEDB_OK);
+
+  // Set domain
+  tiledb_domain_t* domain;
+  rc = tiledb_domain_alloc(ctx_, &domain);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_domain_add_dimension(ctx_, domain, d1);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_array_schema_set_domain(ctx_, array_schema, domain);
+  REQUIRE(rc == TILEDB_OK);
+
+  // Set attribute
+  tiledb_attribute_t* attr1;
+  rc = tiledb_attribute_alloc(ctx_, "foo", TILEDB_INT32, &attr1);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_attribute_set_cell_val_num(ctx_, attr1, TILEDB_VAR_NUM);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_array_schema_add_attribute(ctx_, array_schema, attr1);
+  REQUIRE(rc == TILEDB_OK);
+
+  // Set schema members
+  rc = tiledb_array_schema_set_capacity(ctx_, array_schema, CAPACITY);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_array_schema_set_cell_order(ctx_, array_schema, CELL_ORDER);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_array_schema_set_tile_order(ctx_, array_schema, TILE_ORDER);
+  REQUIRE(rc == TILEDB_OK);
+
+  // Check for invalid array schema
+  rc = tiledb_array_schema_check(ctx_, array_schema);
+  REQUIRE(rc == TILEDB_ERR);
+
+  // Clean up
+  tiledb_attribute_free(&attr1);
+  tiledb_dimension_free(&d1);
+  tiledb_domain_free(&domain);
+  tiledb_array_schema_free(&array_schema);
+
+  remove_temp_dir(FILE_URI_PREFIX + FILE_TEMP_DIR);
+}

@@ -239,6 +239,8 @@ Status ArraySchema::check() const {
         Status::ArraySchemaError("Array schema check failed; Attributes "
                                  "and dimensions must have unique names"));
 
+  RETURN_NOT_OK(check_tile_extents());
+
   // Success
   return Status::Ok();
 }
@@ -665,6 +667,18 @@ bool ArraySchema::check_double_delta_compressor() const {
   }
 
   return true;
+}
+
+Status ArraySchema::check_tile_extents() const {
+  auto dim_num = domain_->dim_num();
+  for (unsigned i = 0; i < dim_num; i++) {
+    const auto* dim = domain_->dimension(i);
+    if (dim->tile_extent() == nullptr)
+      return LOG_STATUS(Status::ArraySchemaError(
+          "Array schema check failed; dimension '" + dim->name() +
+          "' has no tile extent set."));
+  }
+  return Status::Ok();
 }
 
 void ArraySchema::clear() {

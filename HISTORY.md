@@ -45,9 +45,14 @@
 
 ## Breaking changes
 
+### C API
+
+* Not setting a dimension's tile extent when creating an array is now an error (previously it implied the whole domain).
+
 ### C++ API
 
 * Removed cast operators of C++ API objects to their underlying C API objects. This helps prevent inadvertent memory issues such as double-frees.
+* Not setting a dimension's tile extent when creating an array is now an error (previously it implied the whole domain).
 
 # TileDB v1.5.0 Release Notes
 

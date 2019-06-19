@@ -362,6 +362,12 @@ class ArraySchema {
    */
   bool check_double_delta_compressor() const;
 
+  /**
+   * Checks that all dimensions have a non-null tile extent.
+   * @return Status
+   */
+  Status check_tile_extents() const;
+
   /** Clears all members. Use with caution! */
   void clear();
 
