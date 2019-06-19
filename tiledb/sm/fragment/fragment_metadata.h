@@ -437,10 +437,9 @@ class FragmentMetadata {
   /**
    * Stores the start offsets of the generic tiles stored in the
    * metadata file, each separately storing the various metadata
-   * (e.g., basic, mbrs, etc).
+   * (e.g., R-Tree, tile offsets, etc).
    */
   struct GenericTileOffsets {
-    uint64_t basic_ = 0;
     uint64_t rtree_ = 0;
     std::vector<uint64_t> tile_offsets_;
     std::vector<uint64_t> tile_var_offsets_;
@@ -449,8 +448,7 @@ class FragmentMetadata {
 
   /** Keeps track of which metadata is loaded. */
   struct LoadedMetadata {
-    bool basic_ = false;
-    bool generic_tile_offsets_ = false;
+    bool footer_ = false;
     bool rtree_ = false;
     std::vector<bool> tile_offsets_;
     std::vector<bool> tile_var_offsets_;
@@ -608,9 +606,6 @@ class FragmentMetadata {
   template <class T>
   Status expand_non_empty_domain(const T* mbr);
 
-  /** Loads the basic metadata from storage. */
-  Status load_basic(const EncryptionKey& encryption_key);
-
   /** Loads the R-tree from storage. */
   Status load_rtree(const EncryptionKey& encryption_key);
 
@@ -668,6 +663,24 @@ class FragmentMetadata {
   Status load_non_empty_domain(ConstBuffer* buff);
 
   /**
+   * Loads the non-empty domain from the fragment metadata buffer,
+   * for format versions <= 2.
+   *
+   * @param buff Metadata buffer.
+   * @return Status
+   */
+  Status load_non_empty_domain_v2(ConstBuffer* buff);
+
+  /**
+   * Loads the non-empty domain from the fragment metadata buffer,
+   * for format versions >= 3.
+   *
+   * @param buff Metadata buffer.
+   * @return Status
+   */
+  Status load_non_empty_domain_v3(ConstBuffer* buff);
+
+  /**
    * Loads the tile offsets for the input attribute from the input buffer.
    */
   Status load_tile_offsets(ConstBuffer* buff);
@@ -717,18 +730,17 @@ class FragmentMetadata {
    */
   Status get_generic_tile_size(uint64_t offset, uint64_t* size);
 
-  /**
-   * Loads the offsets of each generic tile (to be used to load the basic
-   * metadata, mbrs, tile offsets, etc. - each written in a separate generic
-   * tile).
-   */
-  Status load_generic_tile_offsets();
-
   /** Loads the basic metadata from storage (version 2 or before). */
   Status load_v2(const EncryptionKey& encryption_key);
 
   /** Loads the basic metadata from storage (version 3). */
   Status load_v3(const EncryptionKey& encryption_key);
+
+  /**
+   * Loads the footer of the metadata file, which contains
+   * only some basic info.
+   */
+  Status load_footer(const EncryptionKey& encryption_key);
 
   /** Writes the sizes of each attribute file to the buffer. */
   Status write_file_sizes(Buffer* buff);
@@ -752,6 +764,9 @@ class FragmentMetadata {
    * @return Status
    */
   Status store_rtree(const EncryptionKey& encryption_key, uint64_t* nbytes);
+
+  /** Stores a footer with the basic information. */
+  Status store_footer(const EncryptionKey& encryption_key);
 
   /** Writes the R-tree to the input buffer. */
   Status write_rtree(Buffer* buff);
@@ -798,12 +813,6 @@ class FragmentMetadata {
   Status store_tile_var_sizes(
       unsigned attr_id, const EncryptionKey& encryption_key, uint64_t* nbytes);
 
-  /**
-   * Stores the generic tile offsets (for each metadata item stored)
-   * in the metadata file.
-   */
-  Status store_generic_tile_offsets();
-
   /** Writes the variable tile sizes to storage. */
   Status write_tile_var_sizes(unsigned attr_id, Buffer* buff);
 
@@ -815,15 +824,6 @@ class FragmentMetadata {
 
   /** Writes the number of sparse tiles to the buffer. */
   Status write_sparse_tile_num(Buffer* buff);
-
-  /**
-   * Writes the basic metadata to storage.
-   *
-   * @param encryption_key The encryption key.
-   * @param nbytes The total number of bytes written for the basic info.
-   * @return Status
-   */
-  Status store_basic(const EncryptionKey& encryption_key, uint64_t* nbytes);
 
   /**
    * Reads the contents of a generic tile starting at the input offset,
