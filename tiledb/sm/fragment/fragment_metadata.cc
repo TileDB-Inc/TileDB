@@ -68,6 +68,7 @@ FragmentMetadata::FragmentMetadata(
     , fragment_uri_(fragment_uri)
     , timestamp_(timestamp) {
   domain_ = nullptr;
+  meta_file_size_ = 0;
   non_empty_domain_ = nullptr;
   version_ = constants::format_version;
   tile_index_base_ = 0;
@@ -317,10 +318,8 @@ Status FragmentMetadata::fragment_size(uint64_t* size) const {
     *size += file_var_size;
 
   // Add fragment metadata file size
-  auto uri = fragment_uri_.join_path(constants::fragment_metadata_filename);
-  uint64_t meta_file_size;
-  RETURN_NOT_OK(storage_manager_->vfs()->file_size(uri, &meta_file_size));
-  *size += meta_file_size;
+  assert(meta_file_size_ != 0);  // The file size should be loaded
+  *size += meta_file_size_;
 
   return Status::Ok();
 }
@@ -424,22 +423,11 @@ uint64_t FragmentMetadata::last_tile_cell_num() const {
 }
 
 Status FragmentMetadata::load(const EncryptionKey& encryption_key) {
-  bool fragment_exists;
-  RETURN_NOT_OK(storage_manager_->is_fragment(fragment_uri_, &fragment_exists));
-  if (!fragment_exists)
-    return Status::StorageManagerError(
-        "Cannot load fragment metadata; Fragment does not exist");
-
-  URI fragment_metadata_uri = fragment_uri_.join_path(
+  auto uri = fragment_uri_.join_path(
       std::string(constants::fragment_metadata_filename));
+  RETURN_NOT_OK(storage_manager_->vfs()->file_size(uri, &meta_file_size_));
 
-  // Read format version
-  TileIO tile_io(storage_manager_, fragment_metadata_uri);
-  TileIO::GenericTileHeader header;
-  RETURN_NOT_OK(tile_io.read_generic_tile_header(
-      storage_manager_, fragment_metadata_uri, 0, &header));
-
-  if (header.version_number <= 2)
+  if (array_schema_->version() <= 2)
     return load_v2(encryption_key);
   return load_v3(encryption_key);
 }
@@ -703,12 +691,10 @@ bool FragmentMetadata::operator<(const FragmentMetadata& metadata) const {
 /*        PRIVATE METHODS         */
 /* ****************************** */
 
-Status FragmentMetadata::get_footer_offset(
+Status FragmentMetadata::get_footer_offset_and_size(
     uint64_t* offset, uint64_t* size) const {
   // Get metadata file size
   auto uri = fragment_uri_.join_path(constants::fragment_metadata_filename);
-  uint64_t meta_file_size;
-  RETURN_NOT_OK(storage_manager_->vfs()->file_size(uri, &meta_file_size));
 
   // Get footer size
   // sizeof(uint64_t) for the R-Tree offset
@@ -719,7 +705,7 @@ Status FragmentMetadata::get_footer_offset(
   *size = (3 * attribute_num + 2) * sizeof(uint64_t);
 
   // Get footer offset
-  *offset = meta_file_size - *size;
+  *offset = meta_file_size_ - *size;
 
   return Status::Ok();
 }
@@ -1658,7 +1644,7 @@ Status FragmentMetadata::read_file_footer(Buffer* buff) const {
 
   // Get footer offset
   uint64_t footer_offset = 0, footer_size = 0;
-  RETURN_NOT_OK(get_footer_offset(&footer_offset, &footer_size));
+  RETURN_NOT_OK(get_footer_offset_and_size(&footer_offset, &footer_size));
 
   // Read footer
   return storage_manager_->read(
