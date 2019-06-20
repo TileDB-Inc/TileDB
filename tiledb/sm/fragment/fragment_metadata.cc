@@ -1437,6 +1437,8 @@ Status FragmentMetadata::load_v3(const EncryptionKey& encryption_key) {
 }
 
 Status FragmentMetadata::load_footer(const EncryptionKey& encryption_key) {
+  (void)encryption_key;  // Not used for now, perhaps in the future
+
   assert(version_ > 2);
 
   std::lock_guard<std::mutex> lock(mtx_);
