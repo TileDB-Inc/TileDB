@@ -290,6 +290,9 @@ class ArraySchema {
   /** Sets the tile order. */
   void set_tile_order(Layout tile_order);
 
+  /** Returns the array schema version. */
+  uint32_t version() const;
+
  private:
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */

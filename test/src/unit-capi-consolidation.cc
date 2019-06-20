@@ -3551,8 +3551,7 @@ TEST_CASE_METHOD(
   remove_dense_vector();
 }
 
-// Test consolidation size ratio 0.3
-// and 10 steps
+// Test consolidation size ratio 0.4 and 10 steps
 TEST_CASE_METHOD(
     ConsolidationFx,
     "C API: Test advanced consolidation #6",
@@ -3581,7 +3580,7 @@ TEST_CASE_METHOD(
   REQUIRE(rc == TILEDB_OK);
   REQUIRE(error == nullptr);
   rc = tiledb_config_set(
-      config, "sm.consolidation.step_size_ratio", "0.5", &error);
+      config, "sm.consolidation.step_size_ratio", "0.4", &error);
   REQUIRE(rc == TILEDB_OK);
   REQUIRE(error == nullptr);
 
@@ -4022,8 +4021,7 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     ConsolidationFx,
     "C API: Test advanced consolidation, overwritten fragments, deletion #1",
-    "[capi], [consolidation], [consolidation-adv], "
-    "[consolidation-overwritten-del-1]") {
+    "[capi][consolidation][overwritten-del-1]") {
   remove_dense_vector();
   create_dense_vector();
   write_dense_vector_del_1();
@@ -4062,7 +4060,7 @@ TEST_CASE_METHOD(
   get_dir_num_struct data = {ctx_, vfs_, 0};
   rc = tiledb_vfs_ls(ctx_, vfs_, DENSE_VECTOR_NAME, &get_dir_num, &data);
   CHECK(rc == TILEDB_OK);
-  CHECK(data.dir_num == 2);
+  CHECK(data.dir_num == 1);
 
   tiledb_config_free(&config);
   remove_dense_vector();
@@ -4160,7 +4158,7 @@ TEST_CASE_METHOD(
   get_dir_num_struct data = {ctx_, vfs_, 0};
   rc = tiledb_vfs_ls(ctx_, vfs_, DENSE_VECTOR_NAME, &get_dir_num, &data);
   CHECK(rc == TILEDB_OK);
-  CHECK(data.dir_num == 3);
+  CHECK(data.dir_num == 2);
 
   tiledb_config_free(&config);
   remove_dense_vector();

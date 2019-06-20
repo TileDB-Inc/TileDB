@@ -273,7 +273,7 @@ void AnyFx::delete_array(const std::string& array_name) {
   tiledb_ctx_free(&ctx);
 }
 
-TEST_CASE_METHOD(AnyFx, "C API: Test `ANY` datatype", "[capi], [any]") {
+TEST_CASE_METHOD(AnyFx, "C API: Test `ANY` datatype", "[capi][any]") {
   std::string array_name = "foo";
   delete_array(array_name);
   create_array(array_name);

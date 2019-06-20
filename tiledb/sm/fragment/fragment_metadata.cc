@@ -59,15 +59,16 @@ namespace sm {
 FragmentMetadata::FragmentMetadata(
     StorageManager* storage_manager,
     const ArraySchema* array_schema,
-    bool dense,
     const URI& fragment_uri,
-    uint64_t timestamp)
+    uint64_t timestamp,
+    bool dense)
     : storage_manager_(storage_manager)
     , array_schema_(array_schema)
     , dense_(dense)
     , fragment_uri_(fragment_uri)
     , timestamp_(timestamp) {
   domain_ = nullptr;
+  meta_file_size_ = 0;
   non_empty_domain_ = nullptr;
   version_ = constants::format_version;
   tile_index_base_ = 0;
@@ -244,20 +245,27 @@ Status FragmentMetadata::add_max_buffer_sizes_dense(
   return Status::Ok();
 }
 
-// TODO (sp): remove when the new dense algorithm is in
+// TODO (sp): remove in 1.7
 template <class T>
 Status FragmentMetadata::add_max_buffer_sizes_sparse(
     const EncryptionKey& encryption_key,
     const T* subarray,
     std::unordered_map<std::string, std::pair<uint64_t, uint64_t>>*
         buffer_sizes) {
-  RETURN_NOT_OK(load_mbrs(encryption_key));
+  RETURN_NOT_OK(load_rtree(encryption_key));
 
-  unsigned tid = 0;
-  uint64_t size;
+  // Get tile overlap
+  std::vector<const T*> range;
   auto dim_num = array_schema_->dim_num();
-  for (auto& mbr : mbrs_) {
-    if (utils::geometry::overlap(static_cast<T*>(mbr), subarray, dim_num)) {
+  range.resize(dim_num);
+  for (unsigned i = 0; i < dim_num; ++i)
+    range[i] = &subarray[2 * i];
+  auto tile_overlap = rtree_.get_tile_overlap<T>(range);
+  uint64_t size = 0;
+
+  // Handle tile ranges
+  for (const auto& tr : tile_overlap.tile_ranges_) {
+    for (uint64_t tid = tr.first; tid <= tr.second; ++tid) {
       for (auto& it : *buffer_sizes) {
         if (array_schema_->var_size(it.first)) {
           auto cell_num = this->cell_num(tid);
@@ -269,86 +277,23 @@ Status FragmentMetadata::add_max_buffer_sizes_sparse(
         }
       }
     }
-    tid++;
   }
 
-  return Status::Ok();
-}
-
-// TODO (sp): remove when the new dense algorithm is in
-template <class T>
-Status FragmentMetadata::add_est_read_buffer_sizes(
-    const EncryptionKey& encryption_key,
-    const T* subarray,
-    std::unordered_map<std::string, std::pair<double, double>>* buffer_sizes) {
-  if (dense_)
-    return add_est_read_buffer_sizes_dense(
-        encryption_key, subarray, buffer_sizes);
-  return add_est_read_buffer_sizes_sparse(
-      encryption_key, subarray, buffer_sizes);
-}
-
-// TODO (sp): remove when the new dense algorithm is in
-template <class T>
-Status FragmentMetadata::add_est_read_buffer_sizes_dense(
-    const EncryptionKey& encryption_key,
-    const T* subarray,
-    std::unordered_map<std::string, std::pair<double, double>>* buffer_sizes) {
-  // Calculate the ids and coverage of all tiles overlapping with subarray
-  auto tids_cov = compute_overlapping_tile_ids_cov(subarray);
-  uint64_t size = 0;
-
-  // Compute buffer sizes
-  for (auto& tid_cov : tids_cov) {
-    auto tid = tid_cov.first;
-    auto cov = tid_cov.second;
+  // Handle individual tiles
+  for (const auto& t : tile_overlap.tiles_) {
+    auto tid = t.first;
     for (auto& it : *buffer_sizes) {
       if (array_schema_->var_size(it.first)) {
-        it.second.first += cov * tile_size(it.first, tid);
+        auto cell_num = this->cell_num(tid);
+        it.second.first += cell_num * constants::cell_var_offset_size;
         RETURN_NOT_OK(tile_var_size(encryption_key, it.first, tid, &size));
-        it.second.second += cov * size;
+        it.second.second += size;
       } else {
-        it.second.first += cov * tile_size(it.first, tid);
+        it.second.first += cell_num(tid) * array_schema_->cell_size(it.first);
       }
     }
   }
 
-  return Status::Ok();
-}
-
-// TODO: remove after new dense read algorithm is in
-template <class T>
-Status FragmentMetadata::add_est_read_buffer_sizes_sparse(
-    const EncryptionKey& encryption_key,
-    const T* subarray,
-    std::unordered_map<std::string, std::pair<double, double>>* buffer_sizes) {
-  RETURN_NOT_OK(load_mbrs(encryption_key));
-
-  bool overlap;
-  auto dim_num = array_schema_->dim_num();
-  auto subarray_overlap = new T[2 * dim_num];
-  unsigned tid = 0;
-  uint64_t size;
-  for (auto& mbr : mbrs_) {
-    utils::geometry::overlap(
-        (T*)mbr, subarray, dim_num, subarray_overlap, &overlap);
-    if (overlap) {
-      double cov =
-          utils::geometry::coverage(subarray_overlap, (T*)mbr, dim_num);
-      for (auto& it : *buffer_sizes) {
-        if (array_schema_->var_size(it.first)) {
-          it.second.first += cov * tile_size(it.first, tid);
-          RETURN_NOT_OK(tile_var_size(encryption_key, it.first, tid, &size));
-          it.second.second += cov * size;
-        } else {
-          it.second.first += cov * tile_size(it.first, tid);
-        }
-      }
-    }
-    tid++;
-  }
-
-  delete[] subarray_overlap;
   return Status::Ok();
 }
 
@@ -373,10 +318,8 @@ Status FragmentMetadata::fragment_size(uint64_t* size) const {
     *size += file_var_size;
 
   // Add fragment metadata file size
-  auto uri = fragment_uri_.join_path(constants::fragment_metadata_filename);
-  uint64_t meta_file_size;
-  RETURN_NOT_OK(storage_manager_->vfs()->file_size(uri, &meta_file_size));
-  *size += meta_file_size;
+  assert(meta_file_size_ != 0);  // The file size should be loaded
+  *size += meta_file_size_;
 
   return Status::Ok();
 }
@@ -480,22 +423,11 @@ uint64_t FragmentMetadata::last_tile_cell_num() const {
 }
 
 Status FragmentMetadata::load(const EncryptionKey& encryption_key) {
-  bool fragment_exists;
-  RETURN_NOT_OK(storage_manager_->is_fragment(fragment_uri_, &fragment_exists));
-  if (!fragment_exists)
-    return Status::StorageManagerError(
-        "Cannot load fragment metadata; Fragment does not exist");
-
-  URI fragment_metadata_uri = fragment_uri_.join_path(
+  auto uri = fragment_uri_.join_path(
       std::string(constants::fragment_metadata_filename));
+  RETURN_NOT_OK(storage_manager_->vfs()->file_size(uri, &meta_file_size_));
 
-  // Read format version
-  TileIO tile_io(storage_manager_, fragment_metadata_uri);
-  TileIO::GenericTileHeader header;
-  RETURN_NOT_OK(tile_io.read_generic_tile_header(
-      storage_manager_, fragment_metadata_uri, 0, &header));
-
-  if (header.version_number <= 2)
+  if (array_schema_->version() <= 2)
     return load_v2(encryption_key);
   return load_v3(encryption_key);
 }
@@ -505,6 +437,7 @@ Status FragmentMetadata::store(const EncryptionKey& encryption_key) {
   auto fragment_metadata_uri =
       fragment_uri_.join_path(constants::fragment_metadata_filename);
   unsigned int attribute_num = array_schema_->attribute_num();
+  uint64_t offset = 0, nbytes;
 
   // Do nothing if fragment directory does not exist. The fragment directory
   // is created only when some attribute file is written
@@ -516,28 +449,10 @@ Status FragmentMetadata::store(const EncryptionKey& encryption_key) {
   // Exclusively lock the array
   RETURN_NOT_OK(storage_manager_->array_xlock(array_uri));
 
-  // Store basic
-  auto st = store_basic(encryption_key);
-  if (!st.ok()) {
-    storage_manager_->close_file(fragment_metadata_uri);
-    storage_manager_->vfs()->remove_file(fragment_metadata_uri);
-    storage_manager_->array_xunlock(array_uri);
-    return st;
-  }
-
   // Store R-Tree
-  st = store_rtree(encryption_key);
-  if (!st.ok()) {
-    storage_manager_->close_file(fragment_metadata_uri);
-    storage_manager_->vfs()->remove_file(fragment_metadata_uri);
-    storage_manager_->array_xunlock(array_uri);
-    return st;
-  }
-
-  // Store MBRs
-  // TODO: after updating to the new dense read algorithm, remove
-  // TODO: after removing, update the format spec
-  st = store_mbrs(encryption_key);
+  gt_offsets_.rtree_ = offset;
+  auto st = store_rtree(encryption_key, &nbytes);
+  offset += nbytes;
   if (!st.ok()) {
     storage_manager_->close_file(fragment_metadata_uri);
     storage_manager_->vfs()->remove_file(fragment_metadata_uri);
@@ -546,8 +461,11 @@ Status FragmentMetadata::store(const EncryptionKey& encryption_key) {
   }
 
   // Store tile offsets
+  gt_offsets_.tile_offsets_.resize(attribute_num + 1);
   for (unsigned int i = 0; i < attribute_num + 1; ++i) {
-    store_tile_offsets(i, encryption_key);
+    gt_offsets_.tile_offsets_[i] = offset;
+    st = store_tile_offsets(i, encryption_key, &nbytes);
+    offset += nbytes;
     if (!st.ok()) {
       storage_manager_->close_file(fragment_metadata_uri);
       storage_manager_->vfs()->remove_file(fragment_metadata_uri);
@@ -557,8 +475,11 @@ Status FragmentMetadata::store(const EncryptionKey& encryption_key) {
   }
 
   // Store tile var offsets
+  gt_offsets_.tile_var_offsets_.resize(attribute_num);
   for (unsigned int i = 0; i < attribute_num; ++i) {
-    st = store_tile_var_offsets(i, encryption_key);
+    gt_offsets_.tile_var_offsets_[i] = offset;
+    st = store_tile_var_offsets(i, encryption_key, &nbytes);
+    offset += nbytes;
     if (!st.ok()) {
       storage_manager_->close_file(fragment_metadata_uri);
       storage_manager_->vfs()->remove_file(fragment_metadata_uri);
@@ -568,8 +489,11 @@ Status FragmentMetadata::store(const EncryptionKey& encryption_key) {
   }
 
   // Store tile var sizes
+  gt_offsets_.tile_var_sizes_.resize(attribute_num);
   for (unsigned int i = 0; i < attribute_num; ++i) {
-    st = store_tile_var_sizes(i, encryption_key);
+    gt_offsets_.tile_var_sizes_[i] = offset;
+    st = store_tile_var_sizes(i, encryption_key, &nbytes);
+    offset += nbytes;
     if (!st.ok()) {
       storage_manager_->close_file(fragment_metadata_uri);
       storage_manager_->vfs()->remove_file(fragment_metadata_uri);
@@ -578,14 +502,22 @@ Status FragmentMetadata::store(const EncryptionKey& encryption_key) {
     }
   }
 
+  // Store footer
+  st = store_footer(encryption_key);
+  if (!st.ok()) {
+    storage_manager_->close_file(fragment_metadata_uri);
+    storage_manager_->vfs()->remove_file(fragment_metadata_uri);
+    storage_manager_->array_xunlock(array_uri);
+    return st;
+  }
+
   // Close file
   st = storage_manager_->close_file(fragment_metadata_uri);
 
   // Unlock array
   auto st2 = storage_manager_->array_xunlock(array_uri);
-  (void)st2;  // TODO: add this to error stack in the future
 
-  return st;
+  return !st.ok() ? st : st2;
 }
 
 const std::vector<void*> FragmentMetadata::mbrs() const {
@@ -748,6 +680,32 @@ bool FragmentMetadata::operator<(const FragmentMetadata& metadata) const {
 /*        PRIVATE METHODS         */
 /* ****************************** */
 
+Status FragmentMetadata::get_footer_offset_and_size(
+    uint64_t* offset, uint64_t* size) const {
+  auto attribute_num = array_schema_->attribute_num();
+  auto domain_size = 2 * array_schema_->coords_size();
+
+  // Get footer size
+  *size = 0;
+  *size += sizeof(uint32_t);                        // version
+  *size += sizeof(char);                            // dense
+  *size += sizeof(char);                            // null non-empty domain
+  *size += domain_size;                             // non-empty domain
+  *size += sizeof(uint64_t);                        // sparse tile num
+  *size += sizeof(uint64_t);                        // last tile cell num
+  *size += (attribute_num + 1) * sizeof(uint64_t);  // file sizes
+  *size += attribute_num * sizeof(uint64_t);        // file var sizes
+  *size += sizeof(uint64_t);                        // R-Tree offset
+  *size += (attribute_num + 1) * sizeof(uint64_t);  // tile offsets
+  *size += attribute_num * sizeof(uint64_t);        // tile var offsets
+  *size += attribute_num * sizeof(uint64_t);        // tile var sizes
+
+  // Get footer offset
+  *offset = meta_file_size_ - *size;
+
+  return Status::Ok();
+}
+
 template <class T>
 std::vector<uint64_t> FragmentMetadata::compute_overlapping_tile_ids(
     const T* subarray) const {
@@ -883,45 +841,9 @@ Status FragmentMetadata::expand_non_empty_domain(const T* mbr) {
   return Status::Ok();
 }
 
-Status FragmentMetadata::load_basic(const EncryptionKey& encryption_key) {
-  std::lock_guard<std::mutex> lock(mtx_);
-
-  if (loaded_metadata_.basic_)
-    return Status::Ok();
-
-  Buffer buff;
-  RETURN_NOT_OK(
-      read_generic_tile_from_file(encryption_key, gt_offsets_.basic_, &buff));
-
-  ConstBuffer cbuff(&buff);
-  RETURN_NOT_OK(load_version(&cbuff));
-  RETURN_NOT_OK(load_non_empty_domain(&cbuff));
-  RETURN_NOT_OK(load_sparse_tile_num(&cbuff));
-  RETURN_NOT_OK(load_last_tile_cell_num(&cbuff));
-  RETURN_NOT_OK(load_file_sizes(&cbuff));
-  RETURN_NOT_OK(load_file_var_sizes(&cbuff));
-
-  tile_offsets_.resize(array_schema_->attribute_num() + 1);
-  tile_var_offsets_.resize(array_schema_->attribute_num());
-  tile_var_sizes_.resize(array_schema_->attribute_num());
-
-  loaded_metadata_.tile_offsets_.resize(
-      array_schema_->attribute_num() + 1, false);
-  loaded_metadata_.tile_var_offsets_.resize(
-      array_schema_->attribute_num(), false);
-  loaded_metadata_.tile_var_sizes_.resize(
-      array_schema_->attribute_num(), false);
-
-  loaded_metadata_.basic_ = true;
-
-  return Status::Ok();
-}
-
 Status FragmentMetadata::load_rtree(const EncryptionKey& encryption_key) {
   if (version_ <= 2)
     return Status::Ok();
-
-  RETURN_NOT_OK(load_generic_tile_offsets());
 
   std::lock_guard<std::mutex> lock(mtx_);
 
@@ -940,35 +862,10 @@ Status FragmentMetadata::load_rtree(const EncryptionKey& encryption_key) {
   return Status::Ok();
 }
 
-Status FragmentMetadata::load_mbrs(const EncryptionKey& encryption_key) {
-  if (version_ <= 2)
-    return Status::Ok();
-
-  RETURN_NOT_OK(load_generic_tile_offsets());
-
-  std::lock_guard<std::mutex> lock(mtx_);
-
-  if (loaded_metadata_.mbrs_)
-    return Status::Ok();
-
-  Buffer buff;
-  RETURN_NOT_OK(
-      read_generic_tile_from_file(encryption_key, gt_offsets_.mbrs_, &buff));
-
-  ConstBuffer cbuff(&buff);
-  RETURN_NOT_OK(load_mbrs(&cbuff));
-
-  loaded_metadata_.mbrs_ = true;
-
-  return Status::Ok();
-}
-
 Status FragmentMetadata::load_tile_offsets(
     const EncryptionKey& encryption_key, unsigned attr_id) {
   if (version_ <= 2)
     return Status::Ok();
-
-  RETURN_NOT_OK(load_generic_tile_offsets());
 
   std::lock_guard<std::mutex> lock(mtx_);
 
@@ -978,7 +875,6 @@ Status FragmentMetadata::load_tile_offsets(
   Buffer buff;
   RETURN_NOT_OK(read_generic_tile_from_file(
       encryption_key, gt_offsets_.tile_offsets_[attr_id], &buff));
-
   ConstBuffer cbuff(&buff);
   RETURN_NOT_OK(load_tile_offsets(attr_id, &cbuff));
 
@@ -991,8 +887,6 @@ Status FragmentMetadata::load_tile_var_offsets(
     const EncryptionKey& encryption_key, unsigned attr_id) {
   if (version_ <= 2)
     return Status::Ok();
-
-  RETURN_NOT_OK(load_generic_tile_offsets());
 
   std::lock_guard<std::mutex> lock(mtx_);
 
@@ -1015,8 +909,6 @@ Status FragmentMetadata::load_tile_var_sizes(
     const EncryptionKey& encryption_key, unsigned attr_id) {
   if (version_ <= 2)
     return Status::Ok();
-
-  RETURN_NOT_OK(load_generic_tile_offsets());
 
   std::lock_guard<std::mutex> lock(mtx_);
 
@@ -1090,7 +982,7 @@ Status FragmentMetadata::load_file_sizes(ConstBuffer* buff) {
 // file_sizes_attr#attribute_num (uint64_t)
 Status FragmentMetadata::load_file_var_sizes(ConstBuffer* buff) {
   unsigned int attribute_num = array_schema_->attribute_num();
-  file_var_sizes_.resize(attribute_num + 1);
+  file_var_sizes_.resize(attribute_num);
   Status st = buff->read(&file_var_sizes_[0], attribute_num * sizeof(uint64_t));
 
   if (!st.ok()) {
@@ -1108,7 +1000,8 @@ Status FragmentMetadata::load_last_tile_cell_num(ConstBuffer* buff) {
   Status st = buff->read(&last_tile_cell_num_, sizeof(uint64_t));
   if (!st.ok()) {
     return LOG_STATUS(Status::FragmentMetadataError(
-        "Cannot load fragment metadata; Reading last tile cell number failed"));
+        "Cannot load fragment metadata; Reading last tile cell number "
+        "failed"));
   }
   return Status::Ok();
 }
@@ -1142,16 +1035,21 @@ Status FragmentMetadata::load_mbrs(ConstBuffer* buff) {
     mbrs_[i] = mbr;
   }
 
-  loaded_metadata_.mbrs_ = true;
   sparse_tile_num_ = mbrs_.size();
 
   return Status::Ok();
 }
 
+Status FragmentMetadata::load_non_empty_domain(ConstBuffer* buff) {
+  if (version_ <= 2)
+    return load_non_empty_domain_v2(buff);
+  return load_non_empty_domain_v3(buff);
+}
+
 // ===== FORMAT =====
 // non_empty_domain_size (uint64_t)
 // non_empty_domain (void*)
-Status FragmentMetadata::load_non_empty_domain(ConstBuffer* buff) {
+Status FragmentMetadata::load_non_empty_domain_v2(ConstBuffer* buff) {
   // Get domain size
   uint64_t domain_size = 0;
   Status st = buff->read(&domain_size, sizeof(uint64_t));
@@ -1171,6 +1069,46 @@ Status FragmentMetadata::load_non_empty_domain(ConstBuffer* buff) {
       return LOG_STATUS(Status::FragmentMetadataError(
           "Cannot load fragment metadata; Reading domain failed"));
     }
+  }
+
+  // Get expanded domain
+  if (non_empty_domain_ == nullptr) {
+    domain_ = nullptr;
+  } else {
+    domain_ = std::malloc(domain_size);
+    std::memcpy(domain_, non_empty_domain_, domain_size);
+    array_schema_->domain()->expand_domain(domain_);
+  }
+
+  return Status::Ok();
+}
+
+// ===== FORMAT =====
+// null non_empty_domain (char)
+// non_empty_domain (domain_size)
+Status FragmentMetadata::load_non_empty_domain_v3(ConstBuffer* buff) {
+  // TODO: backwards compatibility - 2 functions
+
+  // Get null non-empty domain
+  bool null_non_empty_domain = false;
+  Status st = buff->read(&null_non_empty_domain, sizeof(char));
+  if (!st.ok()) {
+    return LOG_STATUS(Status::FragmentMetadataError(
+        "Cannot load fragment metadata; Reading domain size failed"));
+  }
+
+  // Get non-empty domain
+  auto domain_size = 2 * array_schema_->coords_size();
+  non_empty_domain_ = std::malloc(domain_size);
+  st = buff->read(non_empty_domain_, domain_size);
+  if (!st.ok()) {
+    std::free(non_empty_domain_);
+    return LOG_STATUS(Status::FragmentMetadataError(
+        "Cannot load fragment metadata; Reading domain failed"));
+  }
+  if (null_non_empty_domain) {
+    std::free(non_empty_domain_);
+    non_empty_domain_ = nullptr;
   }
 
   // Get expanded domain
@@ -1357,7 +1295,8 @@ Status FragmentMetadata::load_tile_var_sizes(ConstBuffer* buff) {
         &tile_var_sizes_[i][0], tile_var_sizes_num * sizeof(uint64_t));
     if (!st.ok()) {
       return LOG_STATUS(Status::FragmentMetadataError(
-          "Cannot load fragment metadata; Reading variable tile sizes failed"));
+          "Cannot load fragment metadata; Reading variable tile sizes "
+          "failed"));
     }
   }
 
@@ -1386,7 +1325,8 @@ Status FragmentMetadata::load_tile_var_sizes(
         &tile_var_sizes_[attr_id][0], tile_var_sizes_num * sizeof(uint64_t));
     if (!st.ok()) {
       return LOG_STATUS(Status::FragmentMetadataError(
-          "Cannot load fragment metadata; Reading variable tile sizes failed"));
+          "Cannot load fragment metadata; Reading variable tile sizes "
+          "failed"));
     }
   }
 
@@ -1398,13 +1338,16 @@ Status FragmentMetadata::load_version(ConstBuffer* buff) {
   return Status::Ok();
 }
 
+Status FragmentMetadata::load_dense(ConstBuffer* buff) {
+  RETURN_NOT_OK(buff->read(&dense_, sizeof(char)));
+  return Status::Ok();
+}
+
 Status FragmentMetadata::load_sparse_tile_num(ConstBuffer* buff) {
   RETURN_NOT_OK(buff->read(&sparse_tile_num_, sizeof(uint64_t)));
   return Status::Ok();
 }
 
-// TODO: when the new dense read algorithm is in, don't double
-// TODO: buffer the leaf level of the tree
 Status FragmentMetadata::create_rtree() {
   auto dim_num = array_schema_->dim_num();
   auto type = array_schema_->domain()->type();
@@ -1428,57 +1371,30 @@ Status FragmentMetadata::get_generic_tile_size(
   return Status::Ok();
 }
 
-Status FragmentMetadata::load_generic_tile_offsets() {
-  if (version_ <= 2)
-    return Status::Ok();
+Status FragmentMetadata::load_generic_tile_offsets(ConstBuffer* buff) {
+  // Load R-Tree offset
+  RETURN_NOT_OK(buff->read(&gt_offsets_.rtree_, sizeof(uint64_t)));
 
-  std::lock_guard<std::mutex> lock(mtx_);
-
-  if (loaded_metadata_.generic_tile_offsets_)
-    return Status::Ok();
-
-  uint64_t size, offset = 0;
+  // Load offsets for tile offsets
   unsigned int attribute_num = array_schema_->attribute_num();
-
-  // Offset for basic metadata
-  offset = 0;
-  gt_offsets_.basic_ = 0;
-
-  // Offset for rtree
-  RETURN_NOT_OK(get_generic_tile_size(offset, &size));
-  offset += size;
-  gt_offsets_.rtree_ = offset;
-
-  // Offset for mbrs
-  RETURN_NOT_OK(get_generic_tile_size(offset, &size));
-  offset += size;
-  gt_offsets_.mbrs_ = offset;
-
-  // Offsets for tile offsets
   gt_offsets_.tile_offsets_.resize(attribute_num + 1);
   for (unsigned i = 0; i < attribute_num + 1; ++i) {
-    RETURN_NOT_OK(get_generic_tile_size(offset, &size));
-    offset += size;
-    gt_offsets_.tile_offsets_[i] = offset;
+    RETURN_NOT_OK(buff->read(&gt_offsets_.tile_offsets_[i], sizeof(uint64_t)));
   }
 
-  // Offsets for variable tile offsets
+  // Load offsets for tile var offsets
   gt_offsets_.tile_var_offsets_.resize(attribute_num);
   for (unsigned i = 0; i < attribute_num; ++i) {
-    RETURN_NOT_OK(get_generic_tile_size(offset, &size));
-    offset += size;
-    gt_offsets_.tile_var_offsets_[i] = offset;
+    RETURN_NOT_OK(
+        buff->read(&gt_offsets_.tile_var_offsets_[i], sizeof(uint64_t)));
   }
 
-  // Offsets for variable tile sizes
+  // Load offsets for tile var sizes
   gt_offsets_.tile_var_sizes_.resize(attribute_num);
   for (unsigned i = 0; i < attribute_num; ++i) {
-    RETURN_NOT_OK(get_generic_tile_size(offset, &size));
-    offset += size;
-    gt_offsets_.tile_var_sizes_[i] = offset;
+    RETURN_NOT_OK(
+        buff->read(&gt_offsets_.tile_var_sizes_[i], sizeof(uint64_t)));
   }
-
-  loaded_metadata_.generic_tile_offsets_ = true;
 
   return Status::Ok();
 }
@@ -1510,16 +1426,53 @@ Status FragmentMetadata::load_v2(const EncryptionKey& encryption_key) {
   RETURN_NOT_OK(load_file_var_sizes(&cbuff));
   RETURN_NOT_OK(create_rtree());
 
-  // Important in order no to ever load generic tile offsets
-  loaded_metadata_.generic_tile_offsets_ = true;
-
   delete buff;
 
   return Status::Ok();
 }
 
 Status FragmentMetadata::load_v3(const EncryptionKey& encryption_key) {
-  RETURN_NOT_OK(load_basic(encryption_key));
+  RETURN_NOT_OK(load_footer(encryption_key));
+  return Status::Ok();
+}
+
+Status FragmentMetadata::load_footer(const EncryptionKey& encryption_key) {
+  (void)encryption_key;  // Not used for now, perhaps in the future
+
+  assert(version_ > 2);
+
+  std::lock_guard<std::mutex> lock(mtx_);
+
+  if (loaded_metadata_.footer_)
+    return Status::Ok();
+
+  Buffer buff;
+  RETURN_NOT_OK(read_file_footer(&buff));
+
+  ConstBuffer cbuff(&buff);
+  RETURN_NOT_OK(load_version(&cbuff));
+  RETURN_NOT_OK(load_dense(&cbuff));
+  RETURN_NOT_OK(load_non_empty_domain(&cbuff));
+  RETURN_NOT_OK(load_sparse_tile_num(&cbuff));
+  RETURN_NOT_OK(load_last_tile_cell_num(&cbuff));
+  RETURN_NOT_OK(load_file_sizes(&cbuff));
+  RETURN_NOT_OK(load_file_var_sizes(&cbuff));
+
+  tile_offsets_.resize(array_schema_->attribute_num() + 1);
+  tile_var_offsets_.resize(array_schema_->attribute_num());
+  tile_var_sizes_.resize(array_schema_->attribute_num());
+
+  loaded_metadata_.tile_offsets_.resize(
+      array_schema_->attribute_num() + 1, false);
+  loaded_metadata_.tile_var_offsets_.resize(
+      array_schema_->attribute_num(), false);
+  loaded_metadata_.tile_var_sizes_.resize(
+      array_schema_->attribute_num(), false);
+
+  RETURN_NOT_OK(load_generic_tile_offsets(&cbuff));
+
+  loaded_metadata_.footer_ = true;
+
   return Status::Ok();
 }
 
@@ -1556,6 +1509,58 @@ Status FragmentMetadata::write_file_var_sizes(Buffer* buff) {
 }
 
 // ===== FORMAT =====
+// rtree_offset(uint64_t)
+// tile_offsets_offset_attr1(uint64_t)
+// ...
+// tile_offsets_offset_attr_{attr_num+1}(uint64_t)
+// tile_var_offsets_offset_attr1(uint64_t)
+// ...
+// tile_var_offsets_offset_attr_{attr_num}(uint64_t)
+// tile_var_sizes_offset_attr1(uint64_t)
+// ...
+// tile_var_sizes_offset_attr_{attr_num}(uint64_t)
+Status FragmentMetadata::write_generic_tile_offsets(Buffer* buff) {
+  unsigned int attribute_num = array_schema_->attribute_num();
+
+  // Write R-Tree offset
+  auto st = buff->write(&gt_offsets_.rtree_, sizeof(uint64_t));
+  if (!st.ok()) {
+    return LOG_STATUS(Status::FragmentMetadataError(
+        "Cannot serialize fragment metadata; Writing R-Tree offset failed"));
+  }
+
+  // Write tile offsets
+  for (unsigned i = 0; i < attribute_num + 1; ++i) {
+    st = buff->write(&gt_offsets_.tile_offsets_[i], sizeof(uint64_t));
+    if (!st.ok()) {
+      return LOG_STATUS(Status::FragmentMetadataError(
+          "Cannot serialize fragment metadata; Writing tile offsets failed"));
+    }
+  }
+
+  // Write tile var offsets
+  for (unsigned i = 0; i < attribute_num; ++i) {
+    st = buff->write(&gt_offsets_.tile_var_offsets_[i], sizeof(uint64_t));
+    if (!st.ok()) {
+      return LOG_STATUS(
+          Status::FragmentMetadataError("Cannot serialize fragment metadata; "
+                                        "Writing tile var offsets failed"));
+    }
+  }
+
+  // Write tile var sizes
+  for (unsigned i = 0; i < attribute_num; ++i) {
+    st = buff->write(&gt_offsets_.tile_var_sizes_[i], sizeof(uint64_t));
+    if (!st.ok()) {
+      return LOG_STATUS(Status::FragmentMetadataError(
+          "Cannot serialize fragment metadata; Writing tile var sizes failed"));
+    }
+  }
+
+  return Status::Ok();
+}
+
+// ===== FORMAT =====
 // last_tile_cell_num(uint64_t)
 Status FragmentMetadata::write_last_tile_cell_num(Buffer* buff) {
   uint64_t cell_num_per_tile =
@@ -1575,18 +1580,11 @@ Status FragmentMetadata::write_last_tile_cell_num(Buffer* buff) {
   return Status::Ok();
 }
 
-Status FragmentMetadata::store_rtree(const EncryptionKey& encryption_key) {
+Status FragmentMetadata::store_rtree(
+    const EncryptionKey& encryption_key, uint64_t* nbytes) {
   Buffer buff;
   RETURN_NOT_OK(write_rtree(&buff));
-  RETURN_NOT_OK(write_generic_tile_to_file(encryption_key, &buff));
-
-  return Status::Ok();
-}
-
-Status FragmentMetadata::store_mbrs(const EncryptionKey& encryption_key) {
-  Buffer buff;
-  RETURN_NOT_OK(write_mbrs(&buff));
-  RETURN_NOT_OK(write_generic_tile_to_file(encryption_key, &buff));
+  RETURN_NOT_OK(write_generic_tile_to_file(encryption_key, &buff, nbytes));
 
   return Status::Ok();
 }
@@ -1628,22 +1626,31 @@ Status FragmentMetadata::write_mbrs(Buffer* buff) {
 // ===== FORMAT =====
 // non_empty_domain_size(uint64_t) non_empty_domain(void*)
 Status FragmentMetadata::write_non_empty_domain(Buffer* buff) {
-  uint64_t domain_size =
-      (non_empty_domain_ == nullptr) ? 0 : array_schema_->coords_size() * 2;
+  uint64_t domain_size = 2 * array_schema_->coords_size();
+  bool null_non_empty_domain = (non_empty_domain_ == nullptr);
 
-  // Write non-empty domain size
-  Status st = buff->write(&domain_size, sizeof(uint64_t));
+  // Write null non-empty domain
+  Status st = buff->write(&null_non_empty_domain, sizeof(char));
   if (!st.ok()) {
     return LOG_STATUS(Status::FragmentMetadataError(
-        "Cannot serialize fragment metadata; Writing domain size failed"));
+        "Cannot serialize fragment metadata; Writing non-empty domain failed"));
   }
 
   // Write non-empty domain
   if (non_empty_domain_ != nullptr) {
     st = buff->write(non_empty_domain_, domain_size);
     if (!st.ok()) {
-      return LOG_STATUS(Status::FragmentMetadataError(
-          "Cannot serialize fragment metadata; Writing domain failed"));
+      return LOG_STATUS(
+          Status::FragmentMetadataError("Cannot serialize fragment metadata; "
+                                        "Writing non-empty domain failed"));
+    }
+  } else {  // Write some dummy values
+    std::vector<uint8_t> d(domain_size, 0);
+    st = buff->write(&d[0], domain_size);
+    if (!st.ok()) {
+      return LOG_STATUS(
+          Status::FragmentMetadataError("Cannot serialize fragment metadata; "
+                                        "Writing non-empty domain failed"));
     }
   }
 
@@ -1665,8 +1672,21 @@ Status FragmentMetadata::read_generic_tile_from_file(
   return Status::Ok();
 }
 
+Status FragmentMetadata::read_file_footer(Buffer* buff) const {
+  URI fragment_metadata_uri = fragment_uri_.join_path(
+      std::string(constants::fragment_metadata_filename));
+
+  // Get footer offset
+  uint64_t footer_offset = 0, footer_size = 0;
+  RETURN_NOT_OK(get_footer_offset_and_size(&footer_offset, &footer_size));
+
+  // Read footer
+  return storage_manager_->read(
+      fragment_metadata_uri, footer_offset, buff, footer_size);
+}
+
 Status FragmentMetadata::write_generic_tile_to_file(
-    const EncryptionKey& encryption_key, Buffer* buff) const {
+    const EncryptionKey& encryption_key, Buffer* buff, uint64_t* nbytes) const {
   URI fragment_metadata_uri = fragment_uri_.join_path(
       std::string(constants::fragment_metadata_filename));
   buff->reset_offset();
@@ -1677,16 +1697,24 @@ Status FragmentMetadata::write_generic_tile_to_file(
       buff,
       false);
   TileIO tile_io(storage_manager_, fragment_metadata_uri);
-  RETURN_NOT_OK(tile_io.write_generic(&tile, encryption_key));
+  RETURN_NOT_OK(tile_io.write_generic(&tile, encryption_key, nbytes));
 
   return Status::Ok();
 }
 
+Status FragmentMetadata::write_file_footer(Buffer* buff) const {
+  URI fragment_metadata_uri = fragment_uri_.join_path(
+      std::string(constants::fragment_metadata_filename));
+
+  return storage_manager_->write(
+      fragment_metadata_uri, buff->data(), buff->size());
+}
+
 Status FragmentMetadata::store_tile_offsets(
-    unsigned attr_id, const EncryptionKey& encryption_key) {
+    unsigned attr_id, const EncryptionKey& encryption_key, uint64_t* nbytes) {
   Buffer buff;
   RETURN_NOT_OK(write_tile_offsets(attr_id, &buff));
-  RETURN_NOT_OK(write_generic_tile_to_file(encryption_key, &buff));
+  RETURN_NOT_OK(write_generic_tile_to_file(encryption_key, &buff, nbytes));
 
   return Status::Ok();
 }
@@ -1717,10 +1745,10 @@ Status FragmentMetadata::write_tile_offsets(unsigned attr_id, Buffer* buff) {
 }
 
 Status FragmentMetadata::store_tile_var_offsets(
-    unsigned attr_id, const EncryptionKey& encryption_key) {
+    unsigned attr_id, const EncryptionKey& encryption_key, uint64_t* nbytes) {
   Buffer buff;
   RETURN_NOT_OK(write_tile_var_offsets(attr_id, &buff));
-  RETURN_NOT_OK(write_generic_tile_to_file(encryption_key, &buff));
+  RETURN_NOT_OK(write_generic_tile_to_file(encryption_key, &buff, nbytes));
 
   return Status::Ok();
 }
@@ -1755,10 +1783,10 @@ Status FragmentMetadata::write_tile_var_offsets(
 }
 
 Status FragmentMetadata::store_tile_var_sizes(
-    unsigned attr_id, const EncryptionKey& encryption_key) {
+    unsigned attr_id, const EncryptionKey& encryption_key, uint64_t* nbytes) {
   Buffer buff;
   RETURN_NOT_OK(write_tile_var_sizes(attr_id, &buff));
-  RETURN_NOT_OK(write_generic_tile_to_file(encryption_key, &buff));
+  RETURN_NOT_OK(write_generic_tile_to_file(encryption_key, &buff, nbytes));
 
   return Status::Ok();
 }
@@ -1793,20 +1821,29 @@ Status FragmentMetadata::write_version(Buffer* buff) {
   return Status::Ok();
 }
 
+Status FragmentMetadata::write_dense(Buffer* buff) {
+  RETURN_NOT_OK(buff->write(&dense_, sizeof(char)));
+  return Status::Ok();
+}
+
 Status FragmentMetadata::write_sparse_tile_num(Buffer* buff) {
   RETURN_NOT_OK(buff->write(&sparse_tile_num_, sizeof(uint64_t)));
   return Status::Ok();
 }
 
-Status FragmentMetadata::store_basic(const EncryptionKey& encryption_key) {
+Status FragmentMetadata::store_footer(const EncryptionKey& encryption_key) {
+  (void)encryption_key;  // Not used for now, maybe in the future
+
   Buffer buff;
   RETURN_NOT_OK(write_version(&buff));
+  RETURN_NOT_OK(write_dense(&buff));
   RETURN_NOT_OK(write_non_empty_domain(&buff));
   RETURN_NOT_OK(write_sparse_tile_num(&buff));
   RETURN_NOT_OK(write_last_tile_cell_num(&buff));
   RETURN_NOT_OK(write_file_sizes(&buff));
   RETURN_NOT_OK(write_file_var_sizes(&buff));
-  RETURN_NOT_OK(write_generic_tile_to_file(encryption_key, &buff));
+  RETURN_NOT_OK(write_generic_tile_offsets(&buff));
+  RETURN_NOT_OK(write_file_footer(&buff));
 
   return Status::Ok();
 }
@@ -1884,47 +1921,6 @@ template Status FragmentMetadata::add_max_buffer_sizes<double>(
     std::unordered_map<std::string, std::pair<uint64_t, uint64_t>>*
         buffer_sizes);
 
-template Status FragmentMetadata::add_est_read_buffer_sizes<int8_t>(
-    const EncryptionKey& encryption_key,
-    const int8_t* subarray,
-    std::unordered_map<std::string, std::pair<double, double>>* buffer_sizes);
-template Status FragmentMetadata::add_est_read_buffer_sizes<uint8_t>(
-    const EncryptionKey& encryption_key,
-    const uint8_t* subarray,
-    std::unordered_map<std::string, std::pair<double, double>>* buffer_sizes);
-template Status FragmentMetadata::add_est_read_buffer_sizes<int16_t>(
-    const EncryptionKey& encryption_key,
-    const int16_t* subarray,
-    std::unordered_map<std::string, std::pair<double, double>>* buffer_sizes);
-template Status FragmentMetadata::add_est_read_buffer_sizes<uint16_t>(
-    const EncryptionKey& encryption_key,
-    const uint16_t* subarray,
-    std::unordered_map<std::string, std::pair<double, double>>* buffer_sizes);
-template Status FragmentMetadata::add_est_read_buffer_sizes<int>(
-    const EncryptionKey& encryption_key,
-    const int* subarray,
-    std::unordered_map<std::string, std::pair<double, double>>* buffer_sizes);
-template Status FragmentMetadata::add_est_read_buffer_sizes<unsigned>(
-    const EncryptionKey& encryption_key,
-    const unsigned* subarray,
-    std::unordered_map<std::string, std::pair<double, double>>* buffer_sizes);
-template Status FragmentMetadata::add_est_read_buffer_sizes<int64_t>(
-    const EncryptionKey& encryption_key,
-    const int64_t* subarray,
-    std::unordered_map<std::string, std::pair<double, double>>* buffer_sizes);
-template Status FragmentMetadata::add_est_read_buffer_sizes<uint64_t>(
-    const EncryptionKey& encryption_key,
-    const uint64_t* subarray,
-    std::unordered_map<std::string, std::pair<double, double>>* buffer_sizes);
-template Status FragmentMetadata::add_est_read_buffer_sizes<float>(
-    const EncryptionKey& encryption_key,
-    const float* subarray,
-    std::unordered_map<std::string, std::pair<double, double>>* buffer_sizes);
-template Status FragmentMetadata::add_est_read_buffer_sizes<double>(
-    const EncryptionKey& encryption_key,
-    const double* subarray,
-    std::unordered_map<std::string, std::pair<double, double>>* buffer_sizes);
-
 template uint64_t FragmentMetadata::get_tile_pos<int8_t>(
     const int8_t* tile_coords) const;
 template uint64_t FragmentMetadata::get_tile_pos<uint8_t>(
@@ -1982,6 +1978,37 @@ template Status FragmentMetadata::get_tile_overlap<double>(
     const EncryptionKey& encryption_key,
     const std::vector<const double*>& range,
     TileOverlap* tile_overlap);
+
+template std::vector<std::pair<uint64_t, double>>
+FragmentMetadata::compute_overlapping_tile_ids_cov<int8_t>(
+    const int8_t* subarray) const;
+template std::vector<std::pair<uint64_t, double>>
+FragmentMetadata::compute_overlapping_tile_ids_cov<uint8_t>(
+    const uint8_t* subarray) const;
+template std::vector<std::pair<uint64_t, double>>
+FragmentMetadata::compute_overlapping_tile_ids_cov<int16_t>(
+    const int16_t* subarray) const;
+template std::vector<std::pair<uint64_t, double>>
+FragmentMetadata::compute_overlapping_tile_ids_cov<uint16_t>(
+    const uint16_t* subarray) const;
+template std::vector<std::pair<uint64_t, double>>
+FragmentMetadata::compute_overlapping_tile_ids_cov<int32_t>(
+    const int32_t* subarray) const;
+template std::vector<std::pair<uint64_t, double>>
+FragmentMetadata::compute_overlapping_tile_ids_cov<uint32_t>(
+    const uint32_t* subarray) const;
+template std::vector<std::pair<uint64_t, double>>
+FragmentMetadata::compute_overlapping_tile_ids_cov<int64_t>(
+    const int64_t* subarray) const;
+template std::vector<std::pair<uint64_t, double>>
+FragmentMetadata::compute_overlapping_tile_ids_cov<uint64_t>(
+    const uint64_t* subarray) const;
+template std::vector<std::pair<uint64_t, double>>
+FragmentMetadata::compute_overlapping_tile_ids_cov<float>(
+    const float* subarray) const;
+template std::vector<std::pair<uint64_t, double>>
+FragmentMetadata::compute_overlapping_tile_ids_cov<double>(
+    const double* subarray) const;
 
 }  // namespace sm
 }  // namespace tiledb

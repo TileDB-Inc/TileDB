@@ -387,117 +387,6 @@ Status StorageManager::array_reopen(
   STATS_FUNC_OUT(sm_array_reopen);
 }
 
-// TODO: remove after the new dense read algorithm is in
-Status StorageManager::array_compute_est_read_buffer_sizes(
-    const EncryptionKey& encryption_key,
-    const ArraySchema* array_schema,
-    const std::vector<FragmentMetadata*>& fragment_metadata,
-    const void* subarray,
-    std::unordered_map<std::string, std::pair<double, double>>* buffer_sizes) {
-  // Return if there are no metadata
-  if (fragment_metadata.empty())
-    return Status::Ok();
-
-  // Compute buffer sizes
-  switch (array_schema->coords_type()) {
-    case Datatype::INT32:
-      return array_compute_est_read_buffer_sizes<int>(
-          encryption_key,
-          array_schema,
-          fragment_metadata,
-          static_cast<const int*>(subarray),
-          buffer_sizes);
-    case Datatype::INT64:
-      return array_compute_est_read_buffer_sizes<int64_t>(
-          encryption_key,
-          array_schema,
-          fragment_metadata,
-          static_cast<const int64_t*>(subarray),
-          buffer_sizes);
-    case Datatype::FLOAT32:
-      return array_compute_est_read_buffer_sizes<float>(
-          encryption_key,
-          array_schema,
-          fragment_metadata,
-          static_cast<const float*>(subarray),
-          buffer_sizes);
-    case Datatype::FLOAT64:
-      return array_compute_est_read_buffer_sizes<double>(
-          encryption_key,
-          array_schema,
-          fragment_metadata,
-          static_cast<const double*>(subarray),
-          buffer_sizes);
-    case Datatype::INT8:
-      return array_compute_est_read_buffer_sizes<int8_t>(
-          encryption_key,
-          array_schema,
-          fragment_metadata,
-          static_cast<const int8_t*>(subarray),
-          buffer_sizes);
-    case Datatype::UINT8:
-      return array_compute_est_read_buffer_sizes<uint8_t>(
-          encryption_key,
-          array_schema,
-          fragment_metadata,
-          static_cast<const uint8_t*>(subarray),
-          buffer_sizes);
-    case Datatype::INT16:
-      return array_compute_est_read_buffer_sizes<int16_t>(
-          encryption_key,
-          array_schema,
-          fragment_metadata,
-          static_cast<const int16_t*>(subarray),
-          buffer_sizes);
-    case Datatype::UINT16:
-      return array_compute_est_read_buffer_sizes<uint16_t>(
-          encryption_key,
-          array_schema,
-          fragment_metadata,
-          static_cast<const uint16_t*>(subarray),
-          buffer_sizes);
-    case Datatype::UINT32:
-      return array_compute_est_read_buffer_sizes<uint32_t>(
-          encryption_key,
-          array_schema,
-          fragment_metadata,
-          static_cast<const uint32_t*>(subarray),
-          buffer_sizes);
-    case Datatype::UINT64:
-      return array_compute_est_read_buffer_sizes<uint64_t>(
-          encryption_key,
-          array_schema,
-          fragment_metadata,
-          static_cast<const uint64_t*>(subarray),
-          buffer_sizes);
-    case Datatype::DATETIME_YEAR:
-    case Datatype::DATETIME_MONTH:
-    case Datatype::DATETIME_WEEK:
-    case Datatype::DATETIME_DAY:
-    case Datatype::DATETIME_HR:
-    case Datatype::DATETIME_MIN:
-    case Datatype::DATETIME_SEC:
-    case Datatype::DATETIME_MS:
-    case Datatype::DATETIME_US:
-    case Datatype::DATETIME_NS:
-    case Datatype::DATETIME_PS:
-    case Datatype::DATETIME_FS:
-    case Datatype::DATETIME_AS:
-      return array_compute_est_read_buffer_sizes<int64_t>(
-          encryption_key,
-          array_schema,
-          fragment_metadata,
-          static_cast<const int64_t*>(subarray),
-          buffer_sizes);
-    default:
-      return LOG_STATUS(
-          Status::StorageManagerError("Cannot compute estimate for read buffer "
-                                      "sizes; Invalid coordinates type"));
-  }
-
-  return Status::Ok();
-}
-
 Status StorageManager::array_consolidate(
     const char* array_name,
     EncryptionType encryption_type,
@@ -865,6 +754,7 @@ Status StorageManager::get_fragment_info(
   // Get the rest of fragment info
   auto statuses = parallel_for(0, fragment_num, [&](size_t f) {
     // Determine if the fragment is sparse
+    // TODO: this can be avoided
     const auto& uri = sorted_fragment_uris[f];
     URI coords_uri =
         uri.second.join_path(constants::coords + constants::file_suffix);
@@ -876,7 +766,7 @@ Status StorageManager::get_fragment_info(
 
     // Get fragment non-empty domain
     FragmentMetadata metadata(
-        this, array_schema, !sparse, uri.second, uri.first);
+        this, array_schema, uri.second, uri.first, !sparse);
     RETURN_NOT_OK(metadata.load(encryption_key));
     std::memcpy(&non_empty_domain[0], metadata.non_empty_domain(), domain_size);
 
@@ -934,21 +824,22 @@ Status StorageManager::get_fragment_info(
       (long long int*)&timestamp);
 
   // Check if fragment is sparse
-  uint64_t domain_size = 2 * array_schema->coords_size();
   bool sparse;
   URI coords_uri =
       fragment_uri.join_path(constants::coords + constants::file_suffix);
+  // TODO: this can be avoided
   RETURN_NOT_OK(vfs_->is_file(coords_uri, &sparse));
 
   // Get fragment non-empty domain
   FragmentMetadata metadata(
-      this, array_schema, !sparse, fragment_uri, timestamp);
+      this, array_schema, fragment_uri, timestamp, !sparse);
   RETURN_NOT_OK(metadata.load(encryption_key));
 
   // Get fragment size
   uint64_t size;
   RETURN_NOT_OK(metadata.fragment_size(&size));
 
+  uint64_t domain_size = 2 * array_schema->coords_size();
   std::vector<uint8_t> non_empty_domain;
   non_empty_domain.resize(domain_size);
   std::memcpy(&non_empty_domain[0], metadata.non_empty_domain(), domain_size);
@@ -1396,7 +1287,9 @@ Status StorageManager::store_array_schema(
       buff,
       false);
   auto tile_io = new TileIO(this, schema_uri);
-  Status st = tile_io->write_generic(tile, encryption_key);
+  uint64_t nbytes;
+  Status st = tile_io->write_generic(tile, encryption_key, &nbytes);
+  (void)nbytes;
   if (st.ok())
     st = close_file(schema_uri);
 
@@ -1485,64 +1378,6 @@ Status StorageManager::write(const URI& uri, void* data, uint64_t size) const {
 /* ****************************** */
 /*         PRIVATE METHODS        */
 /* ****************************** */
-
-// TODO: remove after the new dense read algorithm is in
-template <class T>
-Status StorageManager::array_compute_est_read_buffer_sizes(
-    const EncryptionKey& encryption_key,
-    const ArraySchema* array_schema,
-    const std::vector<FragmentMetadata*>& metadata,
-    const T* subarray,
-    std::unordered_map<std::string, std::pair<double, double>>* buffer_sizes) {
-  // Sanity check
-  assert(!metadata.empty());
-
-  // First we calculate a rough upper bound. Especially for dense
-  // arrays, this will not be accurate, as it accounts only for the
-  // non-empty regions of the subarray.
-  for (auto& meta : metadata)
-    RETURN_NOT_OK(meta->add_est_read_buffer_sizes(
-        encryption_key, subarray, buffer_sizes));
-
-  // Rectify bound for dense arrays
-  if (array_schema->dense()) {
-    auto cell_num = array_schema->domain()->cell_num(subarray);
-    // `cell_num` becomes 0 when `subarray` is huge, leading to a
-    // `uint64_t` overflow.
-    if (cell_num != 0) {
-      for (auto& it : *buffer_sizes) {
-        if (array_schema->var_size(it.first)) {
-          it.second.first = cell_num * constants::cell_var_offset_size;
-        } else {
-          it.second.first = cell_num * array_schema->cell_size(it.first);
-        }
-      }
-    }
-  }
-
-  // Rectify bound for sparse arrays with integer domain
-  if (!array_schema->dense() &&
-      datatype_is_integer(array_schema->domain()->type())) {
-    auto cell_num = array_schema->domain()->cell_num(subarray);
-    // `cell_num` becomes 0 when `subarray` is huge, leading to a
-    // `uint64_t` overflow.
-    if (cell_num != 0) {
-      for (auto& it : *buffer_sizes) {
-        if (!array_schema->var_size(it.first)) {
-          // Check for overflow
-          uint64_t new_size = cell_num * array_schema->cell_size(it.first);
-          if (new_size / array_schema->cell_size((it.first)) != cell_num)
-            continue;
-
-          // Potentially rectify size
-          it.second.first = MIN(it.second.first, new_size);
-        }
-      }
-    }
-  }
-
-  return Status::Ok();
-}
 
 template <class T>
 void StorageManager::array_get_non_empty_domain(
@@ -1679,14 +1514,26 @@ Status StorageManager::load_fragment_metadata(
     const auto& sf = fragments_to_load[f];
     auto frag_timestamp = sf.first;
     const auto& frag_uri = sf.second;
+    auto array_schema = open_array->array_schema();
+    auto version = array_schema->version();
     auto metadata = open_array->fragment_metadata(frag_uri);
     if (metadata == nullptr) {  // Fragment metadata does not exist - load it
       URI coords_uri =
           frag_uri.join_path(constants::coords + constants::file_suffix);
-      bool sparse;
-      RETURN_NOT_OK(vfs_->is_file(coords_uri, &sparse));
-      metadata = new FragmentMetadata(
-          this, open_array->array_schema(), !sparse, frag_uri, frag_timestamp);
+
+      // Note that the fragment metadata version is >= the array schema
+      // version. Therefore, the check below is defensive and will always
+      // ensure backwads compatibility.
+      if (version <= 2) {
+        bool sparse;
+        RETURN_NOT_OK(vfs_->is_file(coords_uri, &sparse));
+        metadata = new FragmentMetadata(
+            this, array_schema, frag_uri, frag_timestamp, !sparse);
+      } else {  // Format bersion > 2
+        metadata =
+            new FragmentMetadata(this, array_schema, frag_uri, frag_timestamp);
+      }
+
       RETURN_NOT_OK_ELSE(metadata->load(encryption_key), delete metadata);
       open_array->insert_fragment_metadata(metadata);
     }

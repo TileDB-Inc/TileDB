@@ -168,9 +168,11 @@ class TileIO {
    *
    * @param tile The tile to be written.
    * @param encryption_key The encryption key to use.
+   * @param nbytes The total number of bytes written to the file.
    * @return Status
    */
-  Status write_generic(Tile* tile, const EncryptionKey& encryption_key);
+  Status write_generic(
+      Tile* tile, const EncryptionKey& encryption_key, uint64_t* nbytes);
 
   /**
    * Writes the generic tile header to the file.

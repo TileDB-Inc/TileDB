@@ -624,11 +624,7 @@ The file ``__fragment_metadata.tdb`` has the internal format:
 +----------------------------------------+----------------------+-------------------------------------------------------+
 | **Field**                              | **Type**             | **Description**                                       |
 +========================================+======================+=======================================================+
-| Basic metadata                         | ``BasicMetadata``    | The serialized basic metadata.                        |
-+----------------------------------------+----------------------+-------------------------------------------------------+
 | R-Tree                                 | ``RTree``            | The serialized R-Tree.                                |
-+----------------------------------------+----------------------+-------------------------------------------------------+
-| MBRs                                   | ``MBRs``             | The serialized MBRs.                                  |
 +----------------------------------------+----------------------+-------------------------------------------------------+
 | Tile offsets for attribute 1           | ``TileOffsets``      | The serialized tile offsets for attribute 1.          |
 +----------------------------------------+----------------------+-------------------------------------------------------+
@@ -648,36 +644,8 @@ The file ``__fragment_metadata.tdb`` has the internal format:
 +----------------------------------------+----------------------+-------------------------------------------------------+
 | Variable tile sizes for attribute N    | ``TileSizes``        | The serialized variable tile sizes for attribute N.   |
 +----------------------------------------+----------------------+-------------------------------------------------------+
-
-The type ``BasicMetadata`` is a generic tile with the following internal format:
-
-+-------------------------+----------------------+--------------------------------------------------------+
-| **Field**               | **Type**             | **Description**                                        |
-+=========================+======================+========================================================+
-| Version                 | ``uint32_t``         | Format version number of the fragment.                 |
-| number                  |                      |                                                        |
-+-------------------------+----------------------+--------------------------------------------------------+
-| Non-empty               | ``uint64_t``         | Number of bytes in two coordinate tuples (i.e. depends |
-| domain                  |                      | on rank and domain type of array).                     |
-| size                    |                      |                                                        |
-+-------------------------+----------------------+--------------------------------------------------------+
-| Non-empty               | ``uint8_t[]``        | Byte array of two coordinate tuples storing the        |
-| domain                  |                      | min/max coords of a bounding box surrounding the       |
-|                         |                      | non-empty domain of the fragment.                      |
-+-------------------------+----------------------+--------------------------------------------------------+
-| Number of sparse tiles  | ``uint64_t``         | Number of sparse tiles.                                |
-+-------------------------+----------------------+--------------------------------------------------------+
-| Last tile               | ``uint64_t``         | For sparse arrays, the number of cells in the last     |
-| cell num                |                      | tile in the fragment.                                  |
-+-------------------------+----------------------+--------------------------------------------------------+
-| File                    | ``uint64_t[]``       | The size in bytes of each attribute file in the        |
-| sizes                   |                      | fragment, including coords. For var-length attributes, |
-|                         |                      | this is the size of the offsets file.                  |
-+-------------------------+----------------------+--------------------------------------------------------+
-| File                    | ``uint64_t[]``       | The size in bytes of each var-length attribute file in |
-| var                     |                      | the fragment.                                          |
-| sizes                   |                      |                                                        |
-+-------------------------+----------------------+--------------------------------------------------------+
+| Footer                                 | ``Footer``           | Basic metadata.                                       |
++----------------------------------------+----------------------+-------------------------------------------------------+
 
 The type ``RTree`` is a generic tile with the following internal format:
 
@@ -715,22 +683,6 @@ The type ``RTree`` is a generic tile with the following internal format:
 |                         |                      | min/max coords of the Nth MBR at level L               |
 +-------------------------+----------------------+--------------------------------------------------------+
 
-The type ``MBRs`` is a generic tile with the following internal format:
-
-+-------------------------+----------------------+--------------------------------------------------------+
-| **Field**               | **Type**             | **Description**                                        |
-+=========================+======================+========================================================+
-| Num MBRs                | ``uint64_t``         | Number of MBRs in fragment                             |
-+-------------------------+----------------------+--------------------------------------------------------+
-| MBR 1                   | ``uint8_t[]``        | Byte array of two coordinate tuples storing the        |
-|                         |                      | min/max coords of the first MBR                        |
-+-------------------------+----------------------+--------------------------------------------------------+
-| ...                     | ...                  | ...                                                    |
-+-------------------------+----------------------+--------------------------------------------------------+
-| MBR N                   | ``uint8_t[]``        | Byte array of two coordinate tuples storing the        |
-|                         |                      | min/max coords of the nth MBR                          |
-+-------------------------+----------------------+--------------------------------------------------------+
-
 The type ``TileOffsets`` is a generic tile with the following internal format:
 
 +-------------------------+----------------------+-----------------------------------------+
@@ -760,6 +712,60 @@ The type ``TileSizes`` is a generic tile with the following internal format:
 +-------------------------+----------------------+-----------------------------------------+
 | Tile size N             | ``uint64_t``         | Size N.                                 |
 +-------------------------+----------------------+-----------------------------------------+
+
+The type ``Footer`` has the following internal format:
+
++-------------------------+----------------------+--------------------------------------------------------+
+| **Field**               | **Type**             | **Description**                                        |
++=========================+======================+========================================================+
+| Version                 | ``uint32_t``         | Format version number of the fragment.                 |
+| number                  |                      |                                                        |
++-------------------------+----------------------+--------------------------------------------------------+
+| Null non-empty domain   | ``char``             | Indicates whether the non-empty domain is null or not. |
++-------------------------+----------------------+--------------------------------------------------------+
+| Non-empty               | ``uint8_t[]``        | Byte array of two coordinate tuples storing the        |
+| domain                  |                      | min/max coords of a bounding box surrounding the       |
+|                         |                      | non-empty domain of the fragment.                      |
++-------------------------+----------------------+--------------------------------------------------------+
+| Number of sparse tiles  | ``uint64_t``         | Number of sparse tiles.                                |
++-------------------------+----------------------+--------------------------------------------------------+
+| Last tile               | ``uint64_t``         | For sparse arrays, the number of cells in the last     |
+| cell num                |                      | tile in the fragment.                                  |
++-------------------------+----------------------+--------------------------------------------------------+
+| File                    | ``uint64_t[]``       | The size in bytes of each attribute file in the        |
+| sizes                   |                      | fragment, including coords. For var-length attributes, |
+|                         |                      | this is the size of the offsets file.                  |
++-------------------------+----------------------+--------------------------------------------------------+
+| File                    | ``uint64_t[]``       | The size in bytes of each var-length attribute file in |
+| var sizes               |                      | the fragment.                                          |
++-------------------------+----------------------+--------------------------------------------------------+
+| R-Tree                  | ``uint64_t``         | The offset to the generic tile storing the R-Tree in   |
+| offset                  |                      | the metadata file.                                     |
++-------------------------+----------------------+--------------------------------------------------------+
+| Tile                    | ``uint64_t``         | The offset to the generic tile storing the tile        |
+| offset for attribute 1  |                      | offsets for attribute 1.                               |
++-------------------------+----------------------+--------------------------------------------------------+
+| ...                     | ...                  | ...                                                    |
++-------------------------+----------------------+--------------------------------------------------------+
+| Tile offset             | ``uint64_t``         | The offset to the generic tile storing the tile        |
+| for attribute N+1       |                      | offsets for attribute N+1 (N+1 stands for coordinates. |
++-------------------------+----------------------+--------------------------------------------------------+
+| Tile var                | ``uint64_t``         | The offset to the generic tile storing the variable    |
+| offset for attribute 1  |                      | tile offsets for attribute 1.                          |
++-------------------------+----------------------+--------------------------------------------------------+
+| ...                     | ...                  | ...                                                    |
++-------------------------+----------------------+--------------------------------------------------------+
+| Tile var                | ``uint64_t``         | The offset to the generic tile storing the variable    |
+| offset for attribute N  |                      | tile offsets for attribute N.                          |
++-------------------------+----------------------+--------------------------------------------------------+
+| Tile var sizes          | ``uint64_t``         | The offset to the generic tile storing the variable    |
+| offset for attribute 1  |                      | tile sizes for attribute 1.                            |
++-------------------------+----------------------+--------------------------------------------------------+
+| ...                     | ...                  | ...                                                    |
++-------------------------+----------------------+--------------------------------------------------------+
+| Tile var sizes          | ``uint64_t``         | The offset to the generic tile storing the variable    |
+| offset for attribute N  |                      | tile sizes for attribute N.                            |
++-------------------------+----------------------+--------------------------------------------------------+
 
 Coords file
 ~~~~~~~~~~~
