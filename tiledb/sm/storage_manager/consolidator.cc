@@ -262,6 +262,7 @@ Status Consolidator::consolidate(
         key_length,
         &new_fragment_uri));
 
+    // Get fragment info of the consolidated fragment
     FragmentInfo new_fragment_info;
     RETURN_NOT_OK(storage_manager_->get_fragment_info(
         array_schema, enc_key, new_fragment_uri, &new_fragment_info));
