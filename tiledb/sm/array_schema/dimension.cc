@@ -213,6 +213,13 @@ Status Dimension::set_tile_extent(const void* tile_extent) {
     return Status::DimensionError(
         "Cannot set tile extent; Domain must be set first");
 
+  // Note: this check was added in release 1.6.0. Older arrays may have been
+  // serialized with a null extent, and so it is still supported internally.
+  // But users can not construct dimension objects with null tile extents.
+  if (tile_extent == nullptr)
+    return LOG_STATUS(Status::DimensionError(
+        "Cannot set tile extent; tile extent cannot be null"));
+
   std::free(tile_extent_);
   if (tile_extent == nullptr) {
     tile_extent_ = nullptr;

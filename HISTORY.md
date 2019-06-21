@@ -46,9 +46,14 @@
 
 ## Breaking changes
 
+### C API
+
+* Removed ability to set `null` tile extents on dimensions. All dimensions must now have an explicit tile extent.
+
 ### C++ API
 
 * Removed cast operators of C++ API objects to their underlying C API objects. This helps prevent inadvertent memory issues such as double-frees.
+* Removed ability to set `null` tile extents on dimensions. All dimensions must now have an explicit tile extent.
 
 # TileDB v1.5.0 Release Notes
 

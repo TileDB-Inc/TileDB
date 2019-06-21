@@ -375,7 +375,7 @@ Status Domain::split_subarray_cell(
   return Status::Ok();
 }
 
-Status Domain::add_dimension(Dimension* dim) {
+Status Domain::add_dimension(const Dimension* dim) {
   // Set domain type and do sanity check
   if (dim_num_ == 0)
     type_ = dim->type();
