@@ -347,7 +347,7 @@ TEST_CASE(
 
   ArraySchema schema(ctx, TILEDB_SPARSE);
   Domain domain(ctx);
-  domain.add_dimension(Dimension::create<int32_t>(ctx, "d", {{0, 1000}}));
+  domain.add_dimension(Dimension::create<int32_t>(ctx, "d", {{0, 1000}}, 1001));
   schema.set_domain(domain);
   schema.add_attribute(Attribute::create<std::vector<int32_t>>(ctx, "a"));
   Array::create(array_name_1d, schema);

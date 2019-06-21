@@ -722,22 +722,17 @@ Status ArraySchema::set_kv_domain() {
   delete domain_;
   domain_ = new Domain(Datatype::UINT64);
   uint64_t dim_domain[] = {0, UINT64_MAX - 1};
+  uint64_t tile_extent = dim_domain[1] - dim_domain[0] + 1;
 
-  auto dim_1 = new Dimension(constants::key_dim_1, Datatype::UINT64);
-  RETURN_NOT_OK_ELSE(dim_1->set_domain(dim_domain), delete dim_1);
-  auto dim_2 = new Dimension(constants::key_dim_2, Datatype::UINT64);
-  Status st = dim_2->set_domain(dim_domain);
-  if (!st.ok()) {
-    delete dim_1;
-    delete dim_2;
-    return st;
-  }
+  Dimension dim_1(constants::key_dim_1, Datatype::UINT64);
+  RETURN_NOT_OK(dim_1.set_domain(dim_domain));
+  RETURN_NOT_OK(dim_1.set_tile_extent(&tile_extent));
+  RETURN_NOT_OK(domain_->add_dimension(&dim_1));
 
-  domain_->add_dimension(dim_1);
-  domain_->add_dimension(dim_2);
-
-  delete dim_1;
-  delete dim_2;
+  Dimension dim_2(constants::key_dim_2, Datatype::UINT64);
+  RETURN_NOT_OK(dim_2.set_domain(dim_domain));
+  RETURN_NOT_OK(dim_2.set_tile_extent(&tile_extent));
+  RETURN_NOT_OK(domain_->add_dimension(&dim_2));
 
   return Status::Ok();
 }

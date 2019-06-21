@@ -176,7 +176,7 @@ class Domain {
    * @param dim The dimension to be added.
    * @return Status
    */
-  Status add_dimension(Dimension* dim);
+  Status add_dimension(const Dimension* dim);
 
   /**
    * Returns the number of cells in the input domain. Note that this is

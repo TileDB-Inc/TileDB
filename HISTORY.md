@@ -25,6 +25,7 @@
 * Fixed minor bug when writing in global order with empty buffers.
 * Fixed thread safety issue in opening arrays.
 * Fixed floating point exception when writing fixed-length attributes with a large cell value number.
+* Fixed off-by-one limitation with floating point dimension tile extents.
 
 ## API additions
 
@@ -45,9 +46,14 @@
 
 ## Breaking changes
 
+### C API
+
+* Removed ability to set `null` tile extents on dimensions. All dimensions must now have an explicit tile extent.
+
 ### C++ API
 
 * Removed cast operators of C++ API objects to their underlying C API objects. This helps prevent inadvertent memory issues such as double-frees.
+* Removed ability to set `null` tile extents on dimensions. All dimensions must now have an explicit tile extent.
 
 # TileDB v1.5.0 Release Notes
 

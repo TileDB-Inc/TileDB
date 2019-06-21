@@ -42,9 +42,9 @@ class Benchmark : public BenchmarkBase {
     ArraySchema schema(ctx_, TILEDB_DENSE);
     Domain domain(ctx_);
     domain.add_dimension(
-        Dimension::create<uint32_t>(ctx_, "d1", {{1, array_rows}}));
+        Dimension::create<uint32_t>(ctx_, "d1", {{1, array_rows}}, array_rows));
     domain.add_dimension(
-        Dimension::create<uint32_t>(ctx_, "d2", {{1, array_cols}}));
+        Dimension::create<uint32_t>(ctx_, "d2", {{1, array_cols}}, array_cols));
     schema.set_domain(domain);
     FilterList filters(ctx_);
     filters.add_filter({ctx_, TILEDB_FILTER_BYTESHUFFLE})

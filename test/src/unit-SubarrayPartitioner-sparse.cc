@@ -184,6 +184,7 @@ void SubarrayPartitionerSparseFx::create_default_1d_array(
 void SubarrayPartitionerSparseFx::create_default_1d_float_array(
     tiledb_layout_t tile_order, tiledb_layout_t cell_order) {
   float domain[] = {1.0f, 100.0f};
+  float tile_extent = 100.0f;
   create_array(
       ctx_,
       array_name_,
@@ -191,7 +192,7 @@ void SubarrayPartitionerSparseFx::create_default_1d_float_array(
       {"d"},
       {TILEDB_FLOAT32},
       {domain},
-      {nullptr},
+      {&tile_extent},
       {"a", "b"},
       {TILEDB_INT32, TILEDB_INT32},
       {1, TILEDB_VAR_NUM},
