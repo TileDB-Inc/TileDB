@@ -25,6 +25,7 @@
 * Fixed minor bug when writing in global order with empty buffers.
 * Fixed thread safety issue in opening arrays.
 * Fixed floating point exception when writing fixed-length attributes with a large cell value number.
+* Fixed off-by-one limitation with floating point dimension tile extents.
 
 ## API additions
 

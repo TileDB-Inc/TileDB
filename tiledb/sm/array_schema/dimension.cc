@@ -436,7 +436,7 @@ Status Dimension::check_tile_extent() const {
 
   // Check if tile extent exceeds domain
   if (!is_int) {
-    if (*tile_extent > domain[1] - domain[0])
+    if (*tile_extent > (domain[1] - domain[0] + 1))
       return LOG_STATUS(
           Status::DimensionError("Tile extent check failed; Tile extent "
                                  "exceeds dimension domain range"));
