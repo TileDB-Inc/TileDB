@@ -99,6 +99,69 @@ Status Consolidator::consolidate(
 }
 
 /* ****************************** */
+/*        STATIC FUNCTIONS        */
+/* ****************************** */
+
+void Consolidator::remove_consolidated_fragment_uris(
+    std::vector<TimestampedURI>* sorted_fragment_uris) {
+  // Trivial case
+  if (sorted_fragment_uris->size() <= 1)
+    return;
+
+  // Put the URIs in a list, so that it is easy to remove "covered" URIs
+  std::list<TimestampedURI> uri_list;
+  for (auto f : *sorted_fragment_uris)
+    uri_list.push_back(f);
+
+  // NOTE: all fragments in uri_list are sorted on start timestamps,
+  // and there are no overlpas (by definition when creating the
+  // names of the fragments resulting from consolidation).
+
+  for (auto it = uri_list.begin(); it != uri_list.end(); ++it) {
+    // Do nothing for unary timestamp ranges, we cannot use them
+    // to remove any fragments
+    if (it->has_unary_timestamp_range())
+      continue;
+
+    // Move backwards and remove "covered" URIs. A previous URI is
+    // "covered" if its first timestamp is the same as that of the current
+    // URI. This is due to the lexicographic sorting of the
+    // URIs. For instance, if the current URI range is [5,10],
+    // then URI with range [5,5] will definitely preceed that URI and will
+    // be "covered".
+    if (it != uri_list.begin()) {
+      auto it_prev = std::prev(it);
+      while (it->timestamp_range_.first == it_prev->timestamp_range_.first) {
+        it_prev = uri_list.erase(it_prev);
+        if (it_prev == uri_list.begin())
+          break;
+        it_prev = std::prev(it_prev);
+      }
+    }
+
+    if (it == uri_list.end())
+      break;
+
+    // Move forward and remove "covered" URIs. A next URI is covered
+    // if its timestamp range is included in the timestamp range of
+    // the current fragment URI. For instance, if the current URI
+    // has range [1,10] and the next URI has range [3,4], then the
+    // URI with range [3,4] will be removed
+    auto it_next = std::next(it);
+    while (it_next != uri_list.end() &&
+           it_next->timestamp_range_.first >= it->timestamp_range_.first &&
+           it_next->timestamp_range_.second <= it->timestamp_range_.second) {
+      it_next = uri_list.erase(it_next);
+    }
+  }
+
+  // Update the sorted fragment URIs
+  sorted_fragment_uris->clear();
+  for (const auto& f : uri_list)
+    sorted_fragment_uris->push_back(f);
+}
+
+/* ****************************** */
 /*        PRIVATE METHODS         */
 /* ****************************** */
 
@@ -505,8 +568,11 @@ Status Consolidator::create_queries(
     RETURN_NOT_OK((*query_r)->set_sparse_mode(true));
 
   // Get last fragment URI, which will be the URI of the consolidated fragment
-  *new_fragment_uri = (*query_r)->last_fragment_uri();
-  RETURN_NOT_OK(rename_new_fragment_uri(new_fragment_uri));
+  auto first = (*query_r)->first_fragment_uri();
+  auto last = (*query_r)->last_fragment_uri();
+  auto version = array_for_reads->array_schema()->version();
+  RETURN_NOT_OK(
+      compute_new_fragment_uri(version, first, last, new_fragment_uri));
 
   // Create write query
   *query_w = new Query(storage_manager_, array_for_writes, *new_fragment_uri);
@@ -717,26 +783,45 @@ Status Consolidator::compute_next_to_consolidate(
   return Status::Ok();
 }
 
-Status Consolidator::rename_new_fragment_uri(URI* uri) const {
-  // Remove trailing slash
-  *uri = uri->remove_trailing_slash();
-
-  // Get timestamp
-  std::string name = uri->last_path_part();
-  auto timestamp_str = name.substr(name.find_last_of('_') + 1);
-
-  // Get current time
-  uint64_t ms = utils::time::timestamp_now_ms();
-
+Status Consolidator::compute_new_fragment_uri(
+    uint32_t version, const URI& first, const URI& last, URI* new_uri) const {
   // Get uuid
   std::string uuid;
   RETURN_NOT_OK(uuid::generate_uuid(&uuid, false));
 
-  std::stringstream ss;
-  ss << uri->parent().to_string() << "/__" << uuid << "_" << ms << "_"
-     << timestamp_str;
+  // Get fragment names
+  auto tmp_uri = first;
+  tmp_uri = tmp_uri.remove_trailing_slash();
+  std::string first_name = tmp_uri.last_path_part();
+  tmp_uri = last;
+  tmp_uri = tmp_uri.remove_trailing_slash();
+  std::string last_name = tmp_uri.last_path_part();
 
-  *uri = URI(ss.str());
+  // For creating the new fragment URI
+  std::stringstream ss;
+
+  if (version <= 2) {
+    // Get timestamp string
+    auto t_str = last_name.substr(last_name.find_last_of('_') + 1);
+
+    // Get current time
+    uint64_t ms = utils::time::timestamp_now_ms();
+
+    // Create new URI
+    ss << first.parent().to_string() << "/__" << uuid << "_" << ms << "_"
+       << t_str;
+  } else {
+    // Get timestamp ranges
+    auto t_first = utils::parse::get_timestamp_range(version, first_name);
+    auto t_last = utils::parse::get_timestamp_range(version, last_name);
+
+    // Create new URI
+    ss << first.parent().to_string() << "/__" << t_first.first << "_"
+       << t_last.second << "_" << uuid;
+  }
+
+  *new_uri = URI(ss.str());
+
   return Status::Ok();
 }
 

@@ -131,6 +131,25 @@ class Consolidator {
       uint32_t key_length,
       const Config* config);
 
+  /* ********************************* */
+  /*          STATIC FUNCTIONS         */
+  /* ********************************* */
+
+  /**
+   * Removes from the input the URIs of the fragments that have
+   * been consolidated. This is necessary on S3, where the deletion
+   * of the consolidated fragments may not have taken place before
+   * a read, in which case both the new and old fragments appear to
+   * exist. In this case, we need to make sure that the old
+   * fragments are ignored, otherwise performance will be impacted.
+   *
+   * A fragment URI of the form `__t1_t2_uuid` is
+   * ignored, if there is another fragment URI `__t1c_t2c_uuid`
+   * such that `t1c <= t1 <= t2 <= t2c`.
+   */
+  static void remove_consolidated_fragment_uris(
+      std::vector<TimestampedURI>* sorted_fragment_uris);
+
  private:
   /* ********************************* */
   /*        PRIVATE ATTRIBUTES         */
@@ -385,14 +404,14 @@ class Consolidator {
       T* union_non_empty_domains) const;
 
   /**
-   * Renames the new fragment URI. The new name has the format
-   * `__<thread_id>_<timestamp>_<last_fragment_timestamp>`, where
-   * `<thread_id>` is the id of the thread that performs the consolidation,
-   * `<timestamp>` is the current timestamp in milliseconds, and
-   * `<last_fragment_timestamp>` is the timestamp of the last of the
-   * consolidated fragments.
+   * If the version is <= 2, the new fragment URI is computed
+   * as `__<uuid>_<current_timestamp>_<last_URI_timestamp>`.
+   *
+   * If the version is >= 3, the new fragment URI is computed
+   * as `__<first_URI_timestamp>_<last_URI_timestamp>_<uuid>`.
    */
-  Status rename_new_fragment_uri(URI* uri) const;
+  Status compute_new_fragment_uri(
+      uint32_t version, const URI& first, const URI& last, URI* new_uri) const;
 
   /** Checks and sets the input configuration parameters. */
   Status set_config(const Config* config);

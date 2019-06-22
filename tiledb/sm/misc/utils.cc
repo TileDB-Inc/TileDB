@@ -183,6 +183,29 @@ Status convert(const std::string& str, bool* value) {
   return Status::Ok();
 }
 
+std::pair<uint64_t, uint64_t> get_timestamp_range(
+    uint32_t version, const std::string& fragment_name) {
+  std::pair<uint64_t, uint64_t> ret = {0, 0};
+  if (version <= 2) {
+    assert(fragment_name.find_last_of('_') != std::string::npos);
+    auto t_str = fragment_name.substr(fragment_name.find_last_of('_') + 1);
+    sscanf(
+        t_str.c_str(),
+        (std::string("%") + std::string(PRId64)).c_str(),
+        (long long int*)&ret.first);
+  } else {
+    assert(fragment_name.find_last_of('_') != std::string::npos);
+    sscanf(
+        fragment_name.c_str(),
+        (std::string("__%") + std::string(PRId64) + "_%" + std::string(PRId64))
+            .c_str(),
+        (long long int*)&ret.first,
+        (long long int*)&ret.second);
+  }
+
+  return ret;
+}
+
 bool is_int(const std::string& str) {
   // Check if empty
   if (str.empty())

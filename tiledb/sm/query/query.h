@@ -246,6 +246,9 @@ class Query {
   /** Initializes the query. */
   Status init();
 
+  /** Returns the first fragment uri. */
+  URI first_fragment_uri() const;
+
   /** Returns the last fragment uri. */
   URI last_fragment_uri() const;
 

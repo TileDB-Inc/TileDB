@@ -73,6 +73,15 @@ Status convert(const std::string& str, float* value);
 /** Converts the input string into a `bool` value. */
 Status convert(const std::string& str, bool* value);
 
+/**
+ * Retrieves the timestamp range from the input fragment
+ * name, based on the input version.
+ * For format version <= 2, only the range start is valid
+ * (the range end is ignored).
+ */
+std::pair<uint64_t, uint64_t> get_timestamp_range(
+    uint32_t version, const std::string& fragment_name);
+
 /** Returns `true` if the input string is a (potentially signed) integer. */
 bool is_int(const std::string& str);
 

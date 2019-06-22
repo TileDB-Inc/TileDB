@@ -40,7 +40,7 @@
 using namespace tiledb;
 
 // Name of array.
-std::string array_name("writing_dense_multiple_array");
+std::string array_name("multiple_writes_dense_array");
 
 void create_array() {
   // Create a TileDB context.

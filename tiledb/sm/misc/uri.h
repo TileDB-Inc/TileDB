@@ -221,6 +221,29 @@ class URI {
   std::string uri_;
 };
 
+/**
+ * Used to stores a fragment URI, materializing its timestamp range
+ * for convenience.
+ */
+struct TimestampedURI {
+  URI uri_;
+  std::pair<uint64_t, uint64_t> timestamp_range_;
+
+  TimestampedURI(
+      const URI& uri, const std::pair<uint64_t, uint64_t>& timestamp_range)
+      : uri_(uri)
+      , timestamp_range_(timestamp_range) {
+  }
+
+  bool operator<(const TimestampedURI& uri) const {
+    return timestamp_range_.first < uri.timestamp_range_.first;
+  }
+
+  bool has_unary_timestamp_range() const {
+    return timestamp_range_.first == timestamp_range_.second;
+  }
+};
+
 }  // namespace sm
 }  // namespace tiledb
 

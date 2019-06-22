@@ -336,21 +336,21 @@ is a sparse array), and some files for the keys ``__key.tdb``, ``__key_type.tdb`
 
 .. code-block:: bash
 
-  $ ls -l map/
+  $ ls -l map_array/
   total 8
-  drwx------  9 stavros  staff  306 Jul  2 22:30 __1d43f59f015a4497aaeaffdc830549db_1530585002464
-  drwx------  9 stavros  staff  306 Jul  2 22:30 __d6924e6d0b174749a7cf0ba24f789137_1530585002473
-  -rwx------  1 stavros  staff  150 Jul  2 22:30 __kv_schema.tdb
-  -rwx------  1 stavros  staff    0 Jul  2 22:30 __lock.tdb
-  $ ls -l map/__1d43f59f015a4497aaeaffdc830549db_1530585002464
-  total 56
-  -rwx------  1 stavros  staff   98 Jul  2 22:30 __coords.tdb
-  -rwx------  1 stavros  staff  147 Jul  2 22:30 __fragment_metadata.tdb
-  -rwx------  1 stavros  staff   49 Jul  2 22:30 __key.tdb
-  -rwx------  1 stavros  staff   35 Jul  2 22:30 __key_type.tdb
-  -rwx------  1 stavros  staff   45 Jul  2 22:30 __key_var.tdb
-  -rwx------  1 stavros  staff    8 Jul  2 22:30 a1.tdb
-  -rwx------  1 stavros  staff    8 Jul  2 22:30 a2.tdb
+  drwx------  8 stavros  staff  256 Jun 25 16:09 __1561493369960_1561493369960_1013bbf6aa18488a94630fa050e4436d
+  drwx------  8 stavros  staff  256 Jun 25 16:09 __1561493369980_1561493369980_ae355229b13c4049af4abd6a1547e418
+  -rwx------  1 stavros  staff  188 Jun 25 16:09 __kv_schema.tdb
+  -rwx------  1 stavros  staff    0 Jun 25 16:09 __lock.tdb
+
+  $ ls -l map_array/__1561493369960_1561493369960_1013bbf6aa18488a94630fa050e4436d/
+  total 48
+  -rwx------  1 stavrospapadopoulos  staff   114 Jun 25 16:09 __coords.tdb
+  -rwx------  1 stavrospapadopoulos  staff  1332 Jun 25 16:09 __fragment_metadata.tdb
+  -rwx------  1 stavrospapadopoulos  staff    61 Jun 25 16:09 __key.tdb
+  -rwx------  1 stavrospapadopoulos  staff    59 Jun 25 16:09 __key_var.tdb
+  -rwx------  1 stavrospapadopoulos  staff    28 Jun 25 16:09 a1.tdb
+  -rwx------  1 stavrospapadopoulos  staff    28 Jun 25 16:09 a2.tdb
 
 Finally, notice that our example produces two fragments. This is because we
 flushed after adding two items, and then again after adding the third item.
