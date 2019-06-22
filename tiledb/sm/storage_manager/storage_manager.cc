@@ -731,75 +731,58 @@ Status StorageManager::get_fragment_info(
     std::vector<FragmentInfo>* fragment_info) {
   fragment_info->clear();
 
-  // TODO: open and close array here instead, in order to comply
-  // TODO: with the xlocks in case a fragment is being written
+  // Open array for reading
+  auto array_uri = array_schema->array_uri();
+  auto array_schema_tmp = (ArraySchema*)nullptr;
+  std::vector<FragmentMetadata*> fragment_metadata;
+  RETURN_NOT_OK(array_open_for_reads(
+      array_uri,
+      timestamp,
+      encryption_key,
+      &array_schema_tmp,
+      &fragment_metadata));
 
-  // Get fragment URIs
-  std::vector<URI> fragment_uris;
-  RETURN_NOT_OK(get_fragment_uris(array_schema->array_uri(), &fragment_uris));
-
-  // Check if the array is empty
-  if (fragment_uris.empty())
-    return Status::Ok();
-
-  // Sort the URIs by timestamp
-  std::vector<std::pair<uint64_t, URI>> sorted_fragment_uris;
-  RETURN_NOT_OK(get_sorted_fragment_uris(
-      fragment_uris, timestamp, &sorted_fragment_uris));
+  // Return if array is empty
+  if (fragment_metadata.empty())
+    return array_close_for_reads(array_uri);
 
   uint64_t domain_size = 2 * array_schema->coords_size();
-  auto fragment_num = sorted_fragment_uris.size();
-  fragment_info->resize(fragment_num);
-
-  // Get the rest of fragment info
-  auto statuses = parallel_for(0, fragment_num, [&](size_t f) {
-    // Determine if the fragment is sparse
-    // TODO: this can be avoided
-    const auto& uri = sorted_fragment_uris[f];
-    URI coords_uri =
-        uri.second.join_path(constants::coords + constants::file_suffix);
-    bool sparse;
-    RETURN_NOT_OK(vfs_->is_file(coords_uri, &sparse));
+  for (auto meta : fragment_metadata) {
+    const auto& uri = meta->fragment_uri();
+    bool sparse = !meta->dense();
 
     std::vector<uint8_t> non_empty_domain;
     non_empty_domain.resize(domain_size);
 
     // Get fragment non-empty domain
-    FragmentMetadata metadata(
-        this, array_schema, uri.second, uri.first, !sparse);
-    RETURN_NOT_OK(metadata.load(encryption_key));
-    std::memcpy(&non_empty_domain[0], metadata.non_empty_domain(), domain_size);
+    std::memcpy(&non_empty_domain[0], meta->non_empty_domain(), domain_size);
 
     // Get fragment size
     uint64_t size;
-    RETURN_NOT_OK(metadata.fragment_size(&size));
+    RETURN_NOT_OK_ELSE(
+        meta->fragment_size(&size), array_close_for_reads(array_uri));
 
     // Compute expanded non-empty domain only for dense fragments
     std::vector<uint8_t> expanded_non_empty_domain;
     expanded_non_empty_domain.resize(domain_size);
     std::memcpy(
-        &expanded_non_empty_domain[0],
-        metadata.non_empty_domain(),
-        domain_size);
+        &expanded_non_empty_domain[0], meta->non_empty_domain(), domain_size);
     if (!sparse)
       array_schema->domain()->expand_domain(
           (void*)&expanded_non_empty_domain[0]);
 
     // Push new fragment info
-    (*fragment_info)[f] = FragmentInfo(
-        uri.second,
+    fragment_info->push_back(FragmentInfo(
+        uri,
         sparse,
-        uri.first,
+        meta->timestamp(),
         size,
         non_empty_domain,
-        expanded_non_empty_domain);
+        expanded_non_empty_domain));
+  }
 
-    return Status::Ok();
-  });
-  for (const auto& st : statuses)
-    RETURN_NOT_OK(st);
-
-  return Status::Ok();
+  // Close array
+  return array_close_for_reads(array_uri);
 }
 
 Status StorageManager::get_fragment_info(
@@ -824,16 +807,26 @@ Status StorageManager::get_fragment_info(
       (long long int*)&timestamp);
 
   // Check if fragment is sparse
-  bool sparse;
-  URI coords_uri =
-      fragment_uri.join_path(constants::coords + constants::file_suffix);
-  // TODO: this can be avoided
-  RETURN_NOT_OK(vfs_->is_file(coords_uri, &sparse));
+  bool sparse = false;
+  if (array_schema->version() <= 2) {
+    URI coords_uri =
+        fragment_uri.join_path(constants::coords + constants::file_suffix);
+    RETURN_NOT_OK(vfs_->is_file(coords_uri, &sparse));
+  } else {
+    // Do nothing. It does not matter what the `sparse` value
+    // is, since the FragmentMetadata object will load the correct
+    // value from the metadata file.
+
+    // Also `sparse` is updated below after loading the metadata
+  }
 
   // Get fragment non-empty domain
   FragmentMetadata metadata(
       this, array_schema, fragment_uri, timestamp, !sparse);
   RETURN_NOT_OK(metadata.load(encryption_key));
+
+  // This is important for format version > 2
+  sparse = !metadata.dense();
 
   // Get fragment size
   uint64_t size;
