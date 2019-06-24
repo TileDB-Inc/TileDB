@@ -1087,8 +1087,6 @@ Status FragmentMetadata::load_non_empty_domain_v2(ConstBuffer* buff) {
 // null non_empty_domain (char)
 // non_empty_domain (domain_size)
 Status FragmentMetadata::load_non_empty_domain_v3(ConstBuffer* buff) {
-  // TODO: backwards compatibility - 2 functions
-
   // Get null non-empty domain
   bool null_non_empty_domain = false;
   Status st = buff->read(&null_non_empty_domain, sizeof(char));
@@ -1438,8 +1436,6 @@ Status FragmentMetadata::load_v3(const EncryptionKey& encryption_key) {
 
 Status FragmentMetadata::load_footer(const EncryptionKey& encryption_key) {
   (void)encryption_key;  // Not used for now, perhaps in the future
-
-  assert(version_ > 2);
 
   std::lock_guard<std::mutex> lock(mtx_);
 
