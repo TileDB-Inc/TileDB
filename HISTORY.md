@@ -16,6 +16,7 @@
 * Support for direct writes without using the S3 multi-part API. Allows writing to
   Google Cloud Storage S3 compatibility mode. [#1219](https://github.com/TileDB-Inc/TileDB/pull/1219)
 * Removed 256-character length limit from URIs.
+* Dense reads and writes now always require a subarray to be set, to avoid confusion.
 
 ## Bug fixes
 

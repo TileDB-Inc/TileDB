@@ -433,6 +433,13 @@ Subarray Subarray::get_subarray(uint64_t start, uint64_t end) const {
   return ret;
 }
 
+bool Subarray::is_set() const {
+  for (const auto& r : ranges_)
+    if (!r.has_default_range_)
+      return true;
+  return false;
+}
+
 bool Subarray::is_unary() const {
   if (range_num() != 1)
     return false;

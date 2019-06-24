@@ -41,8 +41,38 @@
 
 using namespace tiledb;
 
+namespace {
+
 static const std::string arrays_dir =
     std::string(TILEDB_TEST_INPUTS_DIR) + "/arrays";
+
+template <typename T>
+void set_query_coords(
+    const Domain& domain,
+    Query* query,
+    void** coordinates,
+    void** expected_coordinates) {
+  const uint64_t ndim = domain.ndim();
+  const uint64_t coords_size = tiledb_datatype_size(domain.type()) * ndim;
+  *coordinates = std::malloc(coords_size);
+  *expected_coordinates = std::malloc(coords_size);
+
+  void* subarray = std::malloc(2 * coords_size);
+  auto dimensions = domain.dimensions();
+  for (size_t i = 0; i < ndim; i++) {
+    auto dom = dimensions[i].domain<T>();
+    static_cast<T*>(subarray)[2 * i] = dom.first;
+    static_cast<T*>(subarray)[2 * i + 1] = dom.second;
+    static_cast<T*>(*expected_coordinates)[i] = 1;
+  }
+
+  query->set_coordinates<T>(static_cast<T*>(*coordinates), ndim);
+  query->set_subarray<T>(static_cast<T*>(subarray), 2 * ndim);
+
+  std::free(subarray);
+}
+
+}  // namespace
 
 TEST_CASE(
     "Backwards compatibility: Test error opening 1.3.0 array",
@@ -267,79 +297,51 @@ TEST_CASE(
 
       // Get domain to build coordinates
       Domain domain = array->schema().domain();
-      uint64_t coordLength = domain.ndim();
-      uint64_t coordsSize = tiledb_datatype_size(domain.type()) * coordLength;
-      void* coordinates = malloc(coordsSize);
-      void* expectedCoordinates =
-          malloc(tiledb_datatype_size(domain.type()) * coordLength);
+      uint64_t ndim = domain.ndim();
+      uint64_t coordsSize = tiledb_datatype_size(domain.type()) * ndim;
+      void *coordinates = nullptr, *expectedCoordinates = nullptr;
+
       switch (domain.type()) {
-        case TILEDB_INT8: {
-          query.set_coordinates(static_cast<int8_t*>(coordinates), coordLength);
-          for (size_t i = 0; i < coordLength; i++)
-            static_cast<int8_t*>(expectedCoordinates)[i] = 1;
+        case TILEDB_INT8:
+          set_query_coords<int8_t>(
+              domain, &query, &coordinates, &expectedCoordinates);
           break;
-        }
-        case TILEDB_UINT8: {
-          query.set_coordinates(
-              static_cast<uint8_t*>(coordinates), coordLength);
-          for (size_t i = 0; i < coordLength; i++)
-            static_cast<uint8_t*>(expectedCoordinates)[i] = 1;
+        case TILEDB_UINT8:
+          set_query_coords<uint8_t>(
+              domain, &query, &coordinates, &expectedCoordinates);
           break;
-        }
-        case TILEDB_INT16: {
-          query.set_coordinates(
-              static_cast<int16_t*>(coordinates), coordLength);
-          for (size_t i = 0; i < coordLength; i++)
-            static_cast<int16_t*>(expectedCoordinates)[i] = 1;
+        case TILEDB_INT16:
+          set_query_coords<int16_t>(
+              domain, &query, &coordinates, &expectedCoordinates);
           break;
-        }
-        case TILEDB_UINT16: {
-          query.set_coordinates(
-              static_cast<uint16_t*>(coordinates), coordLength);
-          for (size_t i = 0; i < coordLength; i++)
-            static_cast<uint16_t*>(expectedCoordinates)[i] = 1;
+        case TILEDB_UINT16:
+          set_query_coords<uint16_t>(
+              domain, &query, &coordinates, &expectedCoordinates);
           break;
-        }
-        case TILEDB_INT32: {
-          query.set_coordinates(
-              static_cast<int32_t*>(coordinates), coordLength);
-          for (size_t i = 0; i < coordLength; i++)
-            static_cast<uint32_t*>(expectedCoordinates)[i] = 1;
+        case TILEDB_INT32:
+          set_query_coords<int32_t>(
+              domain, &query, &coordinates, &expectedCoordinates);
           break;
-        }
-        case TILEDB_UINT32: {
-          query.set_coordinates(
-              static_cast<uint32_t*>(coordinates), coordLength);
-          for (size_t i = 0; i < coordLength; i++)
-            static_cast<uint32_t*>(expectedCoordinates)[i] = 1;
+        case TILEDB_UINT32:
+          set_query_coords<uint32_t>(
+              domain, &query, &coordinates, &expectedCoordinates);
           break;
-        }
-        case TILEDB_INT64: {
-          query.set_coordinates(
-              static_cast<int64_t*>(coordinates), coordLength);
-          for (size_t i = 0; i < coordLength; i++)
-            static_cast<int64_t*>(expectedCoordinates)[i] = 1;
+        case TILEDB_INT64:
+          set_query_coords<int64_t>(
+              domain, &query, &coordinates, &expectedCoordinates);
           break;
-        }
-        case TILEDB_UINT64: {
-          query.set_coordinates(
-              static_cast<uint64_t*>(coordinates), coordLength);
-          for (size_t i = 0; i < coordLength; i++)
-            static_cast<uint64_t*>(expectedCoordinates)[i] = 1;
+        case TILEDB_UINT64:
+          set_query_coords<uint64_t>(
+              domain, &query, &coordinates, &expectedCoordinates);
           break;
-        }
-        case TILEDB_FLOAT32: {
-          query.set_coordinates(static_cast<float*>(coordinates), coordLength);
-          for (size_t i = 0; i < coordLength; i++)
-            static_cast<float*>(expectedCoordinates)[i] = 1;
+        case TILEDB_FLOAT32:
+          set_query_coords<float>(
+              domain, &query, &coordinates, &expectedCoordinates);
           break;
-        }
-        case TILEDB_FLOAT64: {
-          query.set_coordinates(static_cast<double*>(coordinates), coordLength);
-          for (size_t i = 0; i < coordLength; i++)
-            static_cast<double*>(expectedCoordinates)[i] = 1;
+        case TILEDB_FLOAT64:
+          set_query_coords<double>(
+              domain, &query, &coordinates, &expectedCoordinates);
           break;
-        }
         default:
           REQUIRE(false);
       }
@@ -348,6 +350,8 @@ TEST_CASE(
       query.submit();
 
       REQUIRE(memcmp(coordinates, expectedCoordinates, coordsSize) == 0);
+      std::free(coordinates);
+      std::free(expectedCoordinates);
 
       // Check the results to make sure all values are set to 1
       for (auto buff : buffers) {
