@@ -67,7 +67,7 @@ Status OpenSSL::encrypt_aes256gcm(
     PreallocatedBuffer* output_iv,
     PreallocatedBuffer* output_tag) {
   // Check input size for int datatype used by OpenSSL.
-  if (input->size() > std::numeric_limits<int>::max())
+  if (input->size() > static_cast<uint64_t>(std::numeric_limits<int>::max()))
     return LOG_STATUS(Status::EncryptionError(
         "OpenSSL error; cannot encrypt: input too large"));
 
@@ -160,7 +160,7 @@ Status OpenSSL::decrypt_aes256gcm(
     ConstBuffer* input,
     Buffer* output) {
   // Check input size for int datatype used by OpenSSL.
-  if (input->size() > std::numeric_limits<int>::max())
+  if (input->size() > static_cast<uint64_t>(std::numeric_limits<int>::max()))
     return LOG_STATUS(Status::EncryptionError(
         "OpenSSL error; cannot decrypt: input too large"));
 
