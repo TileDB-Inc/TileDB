@@ -772,12 +772,17 @@ Status Writer::check_global_order() const {
 }
 
 Status Writer::check_subarray() const {
-  if (subarray_ == nullptr)
-    return Status::Ok();
-
   if (array_schema_ == nullptr)
     return LOG_STATUS(
         Status::WriterError("Cannot check subarray; Array schema not set"));
+
+  if (subarray_ == nullptr) {
+    if (array_schema_->dense())
+      return LOG_STATUS(Status::WriterError(
+          "Cannot initialize query; Dense writes must specify a subarray"));
+    else
+      return Status::Ok();
+  }
 
   switch (array_schema_->domain()->type()) {
     case Datatype::INT8:

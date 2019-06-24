@@ -330,6 +330,7 @@ void DenseNegFx::write_dense_array_global(const std::string& path) {
   rc = tiledb_array_open(ctx_, array, TILEDB_WRITE);
   CHECK(rc == TILEDB_OK);
 
+  int64_t subarray[] = {-2, 1, -2, 1};
   int a[] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16};
   uint64_t a_size = sizeof(a);
   tiledb_query_t* query;
@@ -338,6 +339,8 @@ void DenseNegFx::write_dense_array_global(const std::string& path) {
   rc = tiledb_query_set_buffer(ctx_, query, "a", a, &a_size);
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_query_set_layout(ctx_, query, TILEDB_GLOBAL_ORDER);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_query_set_subarray(ctx_, query, subarray);
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_query_submit(ctx_, query);
   REQUIRE(rc == TILEDB_OK);
@@ -467,6 +470,7 @@ void DenseNegFx::read_dense_array_global(const std::string& path) {
   rc = tiledb_array_open(ctx_, array, TILEDB_READ);
   CHECK(rc == TILEDB_OK);
 
+  int64_t subarray[] = {-2, 1, -2, 1};
   int a[16];
   uint64_t a_size = sizeof(a);
   tiledb_query_t* query;
@@ -475,6 +479,8 @@ void DenseNegFx::read_dense_array_global(const std::string& path) {
   rc = tiledb_query_set_buffer(ctx_, query, "a", a, &a_size);
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_query_set_layout(ctx_, query, TILEDB_GLOBAL_ORDER);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_query_set_subarray(ctx_, query, subarray);
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_query_submit(ctx_, query);
   REQUIRE(rc == TILEDB_OK);
@@ -502,6 +508,7 @@ void DenseNegFx::read_dense_array_row(const std::string& path) {
   rc = tiledb_array_open(ctx_, array, TILEDB_READ);
   CHECK(rc == TILEDB_OK);
 
+  int64_t subarray[] = {-2, 1, -2, 1};
   int a[16];
   uint64_t a_size = sizeof(a);
   tiledb_query_t* query;
@@ -510,6 +517,8 @@ void DenseNegFx::read_dense_array_row(const std::string& path) {
   rc = tiledb_query_set_buffer(ctx_, query, "a", a, &a_size);
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_query_set_layout(ctx_, query, TILEDB_ROW_MAJOR);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_query_set_subarray(ctx_, query, subarray);
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_query_submit(ctx_, query);
   REQUIRE(rc == TILEDB_OK);
@@ -537,6 +546,7 @@ void DenseNegFx::read_dense_array_col(const std::string& path) {
   rc = tiledb_array_open(ctx_, array, TILEDB_READ);
   CHECK(rc == TILEDB_OK);
 
+  int64_t subarray[] = {-2, 1, -2, 1};
   int a[16];
   uint64_t a_size = sizeof(a);
   tiledb_query_t* query;
@@ -545,6 +555,8 @@ void DenseNegFx::read_dense_array_col(const std::string& path) {
   rc = tiledb_query_set_buffer(ctx_, query, "a", a, &a_size);
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_query_set_layout(ctx_, query, TILEDB_COL_MAJOR);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_query_set_subarray(ctx_, query, subarray);
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_query_submit(ctx_, query);
   REQUIRE(rc == TILEDB_OK);

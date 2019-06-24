@@ -570,6 +570,8 @@ void AsyncFx::read_dense_async() {
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_layout(ctx_, query, TILEDB_GLOBAL_ORDER);
   CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_subarray(ctx_, query, subarray);
+  CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_buffer(ctx_, query, "a1", buffer_a1, &buffer_a1_size);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_buffer_var(

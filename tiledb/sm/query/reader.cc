@@ -203,6 +203,9 @@ Status Reader::init() {
   if (attributes_.empty())
     return LOG_STATUS(
         Status::ReaderError("Cannot initialize reader; Attributes not set"));
+  if (array_schema_->dense() && !sparse_mode_ && !subarray_.is_set())
+    return LOG_STATUS(Status::ReaderError(
+        "Cannot initialize reader; Dense reads must have a subarray set"));
 
   // Get configuration parameters
   const char *memory_budget, *memory_budget_var;

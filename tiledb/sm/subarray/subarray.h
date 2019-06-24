@@ -332,6 +332,9 @@ class Subarray {
   /** Retrieves the number of ranges on the given dimension index. */
   Status get_range_num(uint32_t dim_idx, uint64_t* range_num) const;
 
+  /** Returns `true` if at least one dimension has non-default ranges set. */
+  bool is_set() const;
+
   /**
    * Returns ``true`` if the subarray is unary, which happens when it consists
    * of a single ND range **and** each 1D range is unary (i.e., consisting of

@@ -285,6 +285,8 @@ void StringFx::read_array(const std::string& array_name) {
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_query_set_layout(ctx, query, TILEDB_GLOBAL_ORDER);
   REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_query_set_subarray(ctx, query, subarray);
+  CHECK(rc == TILEDB_OK);
 
   // Submit query
   rc = tiledb_query_submit(ctx, query);
