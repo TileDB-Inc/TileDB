@@ -7,8 +7,9 @@ to TileDB arrays.
 
 .. warning::
 
-   This TileDB feature is experimental. Everything covered here works
-   great, but the APIs might undergo changes in future versions.
+   The TileDB key-value API has been deprecated and will be
+   `removed entirely <https://github.com/TileDB-Inc/TileDB/issues/1258>`_
+   in a future release.
 
 .. table:: Full programs
   :widths: auto

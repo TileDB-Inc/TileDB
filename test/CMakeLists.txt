@@ -139,6 +139,11 @@ add_executable(
   ${TILEDB_TEST_SOURCES}
 )
 
+# TODO: Remove when KV API has been removed.
+if (NOT WIN32)
+  target_compile_options(tiledb_unit PRIVATE -Wno-deprecated-declarations)
+endif()
+
 target_include_directories(
   tiledb_unit BEFORE PRIVATE
     ${TILEDB_CORE_INCLUDE_DIR}
