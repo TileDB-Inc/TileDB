@@ -18,6 +18,10 @@
 * Removed 256-character length limit from URIs.
 * Dense reads and writes now always require a subarray to be set, to avoid confusion.
 
+## Deprecations
+
+* The TileDB KV API has been deprecated and will be [removed entirely](https://github.com/TileDB-Inc/TileDB/issues/1258) in a future release. The KV mechanism will be removed when full support for string-valued dimensions has been added.
+
 ## Bug fixes
 
 * Bug fix with amplification factor in consolidation.

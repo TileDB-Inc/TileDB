@@ -4042,8 +4042,11 @@ TILEDB_EXPORT int32_t tiledb_object_ls(
  * @param ctx The TileDB context.
  * @param kv_schema The TileDB key-value schema to be created.
  * @return `TILEDB_OK` for success and `TILEDB_OOM` or `TILEDB_ERR` for error.
+ *
+ * @warning The TileDB KV API is deprecated and will be removed in a future
+ * release.
  */
-TILEDB_EXPORT int32_t
+TILEDB_EXPORT TILEDB_DEPRECATED int32_t
 tiledb_kv_schema_alloc(tiledb_ctx_t* ctx, tiledb_kv_schema_t** kv_schema);
 
 /**
@@ -4056,8 +4059,12 @@ tiledb_kv_schema_alloc(tiledb_ctx_t* ctx, tiledb_kv_schema_t** kv_schema);
  * @endcode
  *
  * @param kv_schema The key-value schema to be destroyed.
+ *
+ * @warning The TileDB KV API is deprecated and will be removed in a future
+ * release.
  */
-TILEDB_EXPORT void tiledb_kv_schema_free(tiledb_kv_schema_t** kv_schema);
+TILEDB_EXPORT TILEDB_DEPRECATED void tiledb_kv_schema_free(
+    tiledb_kv_schema_t** kv_schema);
 
 /**
  * Adds an attribute to a key-value schema.
@@ -4074,8 +4081,11 @@ TILEDB_EXPORT void tiledb_kv_schema_free(tiledb_kv_schema_t** kv_schema);
  * @param kv_schema The key-value schema.
  * @param attr The attribute to be added.
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ *
+ * @warning The TileDB KV API is deprecated and will be removed in a future
+ * release.
  */
-TILEDB_EXPORT int32_t tiledb_kv_schema_add_attribute(
+TILEDB_EXPORT TILEDB_DEPRECATED int32_t tiledb_kv_schema_add_attribute(
     tiledb_ctx_t* ctx, tiledb_kv_schema_t* kv_schema, tiledb_attribute_t* attr);
 
 /**
@@ -4091,8 +4101,11 @@ TILEDB_EXPORT int32_t tiledb_kv_schema_add_attribute(
  * @param kv_schema The kv schema.
  * @param capacity The capacity to be set.
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ *
+ * @warning The TileDB KV API is deprecated and will be removed in a future
+ * release.
  */
-TILEDB_EXPORT int32_t tiledb_kv_schema_set_capacity(
+TILEDB_EXPORT TILEDB_DEPRECATED int32_t tiledb_kv_schema_set_capacity(
     tiledb_ctx_t* ctx, tiledb_kv_schema_t* kv_schema, uint64_t capacity);
 
 /**
@@ -4108,8 +4121,11 @@ TILEDB_EXPORT int32_t tiledb_kv_schema_set_capacity(
  * @param kv_schema The key-value schema.
  * @return `TILEDB_OK` if the key-value schema is correct and `TILEDB_ERR`
  *     upon any error.
+ *
+ * @warning The TileDB KV API is deprecated and will be removed in a future
+ * release.
  */
-TILEDB_EXPORT int32_t
+TILEDB_EXPORT TILEDB_DEPRECATED int32_t
 tiledb_kv_schema_check(tiledb_ctx_t* ctx, tiledb_kv_schema_t* kv_schema);
 
 /**
@@ -4128,8 +4144,11 @@ tiledb_kv_schema_check(tiledb_ctx_t* ctx, tiledb_kv_schema_t* kv_schema);
  * @param kv_uri The key-value store whose schema will be retrieved.
  * @param kv_schema The key-value schema to be retrieved, or NULL upon error.
  * @return `TILEDB_OK` for success and `TILEDB_OOM` or `TILEDB_ERR` for error.
+ *
+ * @warning The TileDB KV API is deprecated and will be removed in a future
+ * release.
  */
-TILEDB_EXPORT int32_t tiledb_kv_schema_load(
+TILEDB_EXPORT TILEDB_DEPRECATED int32_t tiledb_kv_schema_load(
     tiledb_ctx_t* ctx, const char* kv_uri, tiledb_kv_schema_t** kv_schema);
 
 /**
@@ -4155,8 +4174,11 @@ TILEDB_EXPORT int32_t tiledb_kv_schema_load(
  * @param key_length Length in bytes of the encryption key.
  * @param kv_schema The key-value schema to be retrieved, or NULL upon error.
  * @return `TILEDB_OK` for success and `TILEDB_OOM` or `TILEDB_ERR` for error.
+ *
+ * @warning The TileDB KV API is deprecated and will be removed in a future
+ * release.
  */
-TILEDB_EXPORT int32_t tiledb_kv_schema_load_with_key(
+TILEDB_EXPORT TILEDB_DEPRECATED int32_t tiledb_kv_schema_load_with_key(
     tiledb_ctx_t* ctx,
     const char* kv_uri,
     tiledb_encryption_type_t encryption_type,
@@ -4178,8 +4200,11 @@ TILEDB_EXPORT int32_t tiledb_kv_schema_load_with_key(
  * @param kv_schema The kv schema.
  * @param capacity The capacity to be retrieved.
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ *
+ * @warning The TileDB KV API is deprecated and will be removed in a future
+ * release.
  */
-TILEDB_EXPORT int32_t tiledb_kv_schema_get_capacity(
+TILEDB_EXPORT TILEDB_DEPRECATED int32_t tiledb_kv_schema_get_capacity(
     tiledb_ctx_t* ctx, const tiledb_kv_schema_t* kv_schema, uint64_t* capacity);
 
 /**
@@ -4196,8 +4221,11 @@ TILEDB_EXPORT int32_t tiledb_kv_schema_get_capacity(
  * @param kv_schema The key-value schema.
  * @param attribute_num The number of attributes to be retrieved.
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ *
+ * @warning The TileDB KV API is deprecated and will be removed in a future
+ * release.
  */
-TILEDB_EXPORT int32_t tiledb_kv_schema_get_attribute_num(
+TILEDB_EXPORT TILEDB_DEPRECATED int32_t tiledb_kv_schema_get_attribute_num(
     tiledb_ctx_t* ctx,
     const tiledb_kv_schema_t* kv_schema,
     uint32_t* attribute_num);
@@ -4223,8 +4251,12 @@ TILEDB_EXPORT int32_t tiledb_kv_schema_get_attribute_num(
  * @param index The index of the attribute to retrieve.
  * @param attr The attribute object to retrieve.
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ *
+ * @warning The TileDB KV API is deprecated and will be removed in a future
+ * release.
  */
-TILEDB_EXPORT int32_t tiledb_kv_schema_get_attribute_from_index(
+TILEDB_EXPORT TILEDB_DEPRECATED int32_t
+tiledb_kv_schema_get_attribute_from_index(
     tiledb_ctx_t* ctx,
     const tiledb_kv_schema_t* kv_schema,
     uint32_t index,
@@ -4246,8 +4278,12 @@ TILEDB_EXPORT int32_t tiledb_kv_schema_get_attribute_from_index(
  * @param name The name (key) of the attribute to retrieve.
  * @param attr THe attribute object to retrieve.
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ *
+ * @warning The TileDB KV API is deprecated and will be removed in a future
+ * release.
  */
-TILEDB_EXPORT int32_t tiledb_kv_schema_get_attribute_from_name(
+TILEDB_EXPORT TILEDB_DEPRECATED int32_t
+tiledb_kv_schema_get_attribute_from_name(
     tiledb_ctx_t* ctx,
     const tiledb_kv_schema_t* kv_schema,
     const char* name,
@@ -4269,8 +4305,11 @@ TILEDB_EXPORT int32_t tiledb_kv_schema_get_attribute_from_name(
  * @param has_attr Set to `1` if the KV schema has an attribute of the
  *      given name, else 0.
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ *
+ * @warning The TileDB KV API is deprecated and will be removed in a future
+ * release.
  */
-TILEDB_EXPORT int32_t tiledb_kv_schema_has_attribute(
+TILEDB_EXPORT TILEDB_DEPRECATED int32_t tiledb_kv_schema_has_attribute(
     tiledb_ctx_t* ctx,
     const tiledb_kv_schema_t* kv_schema,
     const char* name,
@@ -4291,8 +4330,11 @@ TILEDB_EXPORT int32_t tiledb_kv_schema_has_attribute(
  * @param kv_schema The key-value schema.
  * @param out The output.
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ *
+ * @warning The TileDB KV API is deprecated and will be removed in a future
+ * release.
  */
-TILEDB_EXPORT int32_t tiledb_kv_schema_dump(
+TILEDB_EXPORT TILEDB_DEPRECATED int32_t tiledb_kv_schema_dump(
     tiledb_ctx_t* ctx, const tiledb_kv_schema_t* kv_schema, FILE* out);
 
 /* ****************************** */
@@ -4312,8 +4354,11 @@ TILEDB_EXPORT int32_t tiledb_kv_schema_dump(
  * @param ctx The TileDB context.
  * @param kv_item The key-value item to be created.
  * @return `TILEDB_OK` for success and `TILEDB_OOM` or `TILEDB_ERR` for error.
+ *
+ * @warning The TileDB KV API is deprecated and will be removed in a future
+ * release.
  */
-TILEDB_EXPORT int32_t
+TILEDB_EXPORT TILEDB_DEPRECATED int32_t
 tiledb_kv_item_alloc(tiledb_ctx_t* ctx, tiledb_kv_item_t** kv_item);
 
 /**
@@ -4326,8 +4371,12 @@ tiledb_kv_item_alloc(tiledb_ctx_t* ctx, tiledb_kv_item_t** kv_item);
  * @endcode
  *
  * @param kv_item The key-value item to be freed.
+ *
+ * @warning The TileDB KV API is deprecated and will be removed in a future
+ * release.
  */
-TILEDB_EXPORT void tiledb_kv_item_free(tiledb_kv_item_t** kv_item);
+TILEDB_EXPORT TILEDB_DEPRECATED void tiledb_kv_item_free(
+    tiledb_kv_item_t** kv_item);
 
 /**
  * Set the key in the key-value item.
@@ -4344,8 +4393,11 @@ TILEDB_EXPORT void tiledb_kv_item_free(tiledb_kv_item_t** kv_item);
  * @param key_type The key type to be set.
  * @param key_size The key size (in bytes).
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ *
+ * @warning The TileDB KV API is deprecated and will be removed in a future
+ * release.
  */
-TILEDB_EXPORT int32_t tiledb_kv_item_set_key(
+TILEDB_EXPORT TILEDB_DEPRECATED int32_t tiledb_kv_item_set_key(
     tiledb_ctx_t* ctx,
     tiledb_kv_item_t* kv_item,
     const void* key,
@@ -4371,8 +4423,11 @@ TILEDB_EXPORT int32_t tiledb_kv_item_set_key(
  * @param value_type The value type.
  * @param value_size The value size in bytes.
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ *
+ * @warning The TileDB KV API is deprecated and will be removed in a future
+ * release.
  */
-TILEDB_EXPORT int32_t tiledb_kv_item_set_value(
+TILEDB_EXPORT TILEDB_DEPRECATED int32_t tiledb_kv_item_set_value(
     tiledb_ctx_t* ctx,
     tiledb_kv_item_t* kv_item,
     const char* attribute,
@@ -4398,8 +4453,11 @@ TILEDB_EXPORT int32_t tiledb_kv_item_set_value(
  * @param key_type The key type to be retrieved.
  * @param key_size The key size (in bytes).
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ *
+ * @warning The TileDB KV API is deprecated and will be removed in a future
+ * release.
  */
-TILEDB_EXPORT int32_t tiledb_kv_item_get_key(
+TILEDB_EXPORT TILEDB_DEPRECATED int32_t tiledb_kv_item_get_key(
     tiledb_ctx_t* ctx,
     tiledb_kv_item_t* kv_item,
     const void** key,
@@ -4425,8 +4483,11 @@ TILEDB_EXPORT int32_t tiledb_kv_item_get_key(
  * @param value_type The value type to be retrieved.
  * @param value_size The value size to be retrieved.
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ *
+ * @warning The TileDB KV API is deprecated and will be removed in a future
+ * release.
  */
-TILEDB_EXPORT int32_t tiledb_kv_item_get_value(
+TILEDB_EXPORT TILEDB_DEPRECATED int32_t tiledb_kv_item_get_value(
     tiledb_ctx_t* ctx,
     tiledb_kv_item_t* kv_item,
     const char* attribute,
@@ -4451,8 +4512,11 @@ TILEDB_EXPORT int32_t tiledb_kv_item_get_value(
  * @param kv_uri The URI of the key-value store.
  * @param kv_schema The key-value store schema.
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ *
+ * @warning The TileDB KV API is deprecated and will be removed in a future
+ * release.
  */
-TILEDB_EXPORT int32_t tiledb_kv_create(
+TILEDB_EXPORT TILEDB_DEPRECATED int32_t tiledb_kv_create(
     tiledb_ctx_t* ctx, const char* kv_uri, const tiledb_kv_schema_t* kv_schema);
 
 /**
@@ -4476,8 +4540,11 @@ TILEDB_EXPORT int32_t tiledb_kv_create(
  * @param encryption_key The encryption key to use.
  * @param key_length Length in bytes of the encryption key.
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ *
+ * @warning The TileDB KV API is deprecated and will be removed in a future
+ * release.
  */
-TILEDB_EXPORT int32_t tiledb_kv_create_with_key(
+TILEDB_EXPORT TILEDB_DEPRECATED int32_t tiledb_kv_create_with_key(
     tiledb_ctx_t* ctx,
     const char* kv_uri,
     const tiledb_kv_schema_t* kv_schema,
@@ -4499,8 +4566,11 @@ TILEDB_EXPORT int32_t tiledb_kv_create_with_key(
  * @param config Configuration parameters for the consolidation
  *     (`nullptr` means default).
  * @return `TILEDB_OK` on success, and `TILEDB_ERR` on error.
+ *
+ * @warning The TileDB KV API is deprecated and will be removed in a future
+ * release.
  */
-TILEDB_EXPORT int32_t tiledb_kv_consolidate(
+TILEDB_EXPORT TILEDB_DEPRECATED int32_t tiledb_kv_consolidate(
     tiledb_ctx_t* ctx, const char* kv_uri, tiledb_config_t* config);
 
 /**
@@ -4523,8 +4593,11 @@ TILEDB_EXPORT int32_t tiledb_kv_consolidate(
  * @param config Configuration parameters for the consolidation
  *     (`nullptr` means default).
  * @return `TILEDB_OK` on success, and `TILEDB_ERR` on error.
+ *
+ * @warning The TileDB KV API is deprecated and will be removed in a future
+ * release.
  */
-TILEDB_EXPORT int32_t tiledb_kv_consolidate_with_key(
+TILEDB_EXPORT TILEDB_DEPRECATED int32_t tiledb_kv_consolidate_with_key(
     tiledb_ctx_t* ctx,
     const char* kv_uri,
     tiledb_encryption_type_t encryption_type,
@@ -4546,8 +4619,11 @@ TILEDB_EXPORT int32_t tiledb_kv_consolidate_with_key(
  * @param kv_uri The URI of the key-value store.
  * @param kv The key-value store object to be created.
  * @return `TILEDB_OK` for success and `TILEDB_OOM` or `TILEDB_ERR` for error.
+ *
+ * @warning The TileDB KV API is deprecated and will be removed in a future
+ * release.
  */
-TILEDB_EXPORT int32_t
+TILEDB_EXPORT TILEDB_DEPRECATED int32_t
 tiledb_kv_alloc(tiledb_ctx_t* ctx, const char* kv_uri, tiledb_kv_t** kv);
 
 /**
@@ -4569,8 +4645,11 @@ tiledb_kv_alloc(tiledb_ctx_t* ctx, const char* kv_uri, tiledb_kv_t** kv);
  *
  * @note If the key-value store is already open, the function throws
  *     an error.
+ *
+ * @warning The TileDB KV API is deprecated and will be removed in a future
+ * release.
  */
-TILEDB_EXPORT int32_t tiledb_kv_open(
+TILEDB_EXPORT TILEDB_DEPRECATED int32_t tiledb_kv_open(
     tiledb_ctx_t* ctx, tiledb_kv_t* kv, tiledb_query_type_t query_type);
 
 /**
@@ -4602,8 +4681,11 @@ TILEDB_EXPORT int32_t tiledb_kv_open(
  * @note If the key-value store is already open, the function throws
  *     an error.
  * @note This function is applicable only to read queries.
+ *
+ * @warning The TileDB KV API is deprecated and will be removed in a future
+ * release.
  */
-TILEDB_EXPORT int32_t tiledb_kv_open_at(
+TILEDB_EXPORT TILEDB_DEPRECATED int32_t tiledb_kv_open_at(
     tiledb_ctx_t* ctx,
     tiledb_kv_t* kv,
     tiledb_query_type_t query_type,
@@ -4634,8 +4716,11 @@ TILEDB_EXPORT int32_t tiledb_kv_open_at(
  * @param encryption_key The encryption key to use.
  * @param key_length Length in bytes of the encryption key.
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ *
+ * @warning The TileDB KV API is deprecated and will be removed in a future
+ * release.
  */
-TILEDB_EXPORT int32_t tiledb_kv_open_with_key(
+TILEDB_EXPORT TILEDB_DEPRECATED int32_t tiledb_kv_open_with_key(
     tiledb_ctx_t* ctx,
     tiledb_kv_t* kv,
     tiledb_query_type_t query_type,
@@ -4678,8 +4763,11 @@ TILEDB_EXPORT int32_t tiledb_kv_open_with_key(
  * @note If the key-value store is already open, the function throws
  *     an error.
  * @note This function is applicable only to read queries.
+ *
+ * @warning The TileDB KV API is deprecated and will be removed in a future
+ * release.
  */
-TILEDB_EXPORT int32_t tiledb_kv_open_at_with_key(
+TILEDB_EXPORT TILEDB_DEPRECATED int32_t tiledb_kv_open_at_with_key(
     tiledb_ctx_t* ctx,
     tiledb_kv_t* kv,
     tiledb_query_type_t query_type,
@@ -4695,8 +4783,11 @@ TILEDB_EXPORT int32_t tiledb_kv_open_at_with_key(
  * @param kv The key-value store to be checked.
  * @param is_open `1` if the array is open and `0` otherwise.
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ *
+ * @warning The TileDB KV API is deprecated and will be removed in a future
+ * release.
  */
-TILEDB_EXPORT int32_t
+TILEDB_EXPORT TILEDB_DEPRECATED int32_t
 tiledb_kv_is_open(tiledb_ctx_t* ctx, tiledb_kv_t* kv, int32_t* is_open);
 
 /**
@@ -4719,8 +4810,12 @@ tiledb_kv_is_open(tiledb_ctx_t* ctx, tiledb_kv_t* kv, int32_t* is_open);
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  *
  * @note This is applicable only to arrays opened for reads.
+ *
+ * @warning The TileDB KV API is deprecated and will be removed in a future
+ * release.
  */
-TILEDB_EXPORT int32_t tiledb_kv_reopen(tiledb_ctx_t* ctx, tiledb_kv_t* kv);
+TILEDB_EXPORT TILEDB_DEPRECATED int32_t
+tiledb_kv_reopen(tiledb_ctx_t* ctx, tiledb_kv_t* kv);
 
 /**
  * Reopens a key-value store at a specific timestamp.
@@ -4742,8 +4837,11 @@ TILEDB_EXPORT int32_t tiledb_kv_reopen(tiledb_ctx_t* ctx, tiledb_kv_t* kv);
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  *
  * @note This is applicable only to arrays opened for reads.
+ *
+ * @warning The TileDB KV API is deprecated and will be removed in a future
+ * release.
  */
-TILEDB_EXPORT int32_t
+TILEDB_EXPORT TILEDB_DEPRECATED int32_t
 tiledb_kv_reopen_at(tiledb_ctx_t* ctx, tiledb_kv_t* kv, uint64_t timestamp);
 
 /**
@@ -4769,8 +4867,11 @@ tiledb_kv_reopen_at(tiledb_ctx_t* ctx, tiledb_kv_t* kv, uint64_t timestamp);
  *
  * @note The KV does not need to be opened via `tiledb_kv_open_at` to use
  *      this function.
+ *
+ * @warning The TileDB KV API is deprecated and will be removed in a future
+ * release.
  */
-TILEDB_EXPORT int32_t tiledb_kv_get_timestamp(
+TILEDB_EXPORT TILEDB_DEPRECATED int32_t tiledb_kv_get_timestamp(
     tiledb_ctx_t* ctx, tiledb_kv_t* kv, uint64_t* timestamp);
 
 /**
@@ -4788,15 +4889,22 @@ TILEDB_EXPORT int32_t tiledb_kv_get_timestamp(
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  *
  * @note If the kv object is already closed, this function has no effect.
+ *
+ * @warning The TileDB KV API is deprecated and will be removed in a future
+ * release.
  */
-TILEDB_EXPORT int32_t tiledb_kv_close(tiledb_ctx_t* ctx, tiledb_kv_t* kv);
+TILEDB_EXPORT TILEDB_DEPRECATED int32_t
+tiledb_kv_close(tiledb_ctx_t* ctx, tiledb_kv_t* kv);
 
 /**
  * Frees the key-value store object.
  *
  * @param kv The key-value store object to be freed.
+ *
+ * @warning The TileDB KV API is deprecated and will be removed in a future
+ * release.
  */
-TILEDB_EXPORT void tiledb_kv_free(tiledb_kv_t** kv);
+TILEDB_EXPORT TILEDB_DEPRECATED void tiledb_kv_free(tiledb_kv_t** kv);
 
 /**
  * Retrieves the schema of a kv object.
@@ -4814,8 +4922,11 @@ TILEDB_EXPORT void tiledb_kv_free(tiledb_kv_t** kv);
  * @return `TILEDB_OK` for success and `TILEDB_OOM` or `TILEDB_ERR` for error.
  *
  * @note The user must free the kv schema with `tiledb_kv_schema_free`.
+ *
+ * @warning The TileDB KV API is deprecated and will be removed in a future
+ * release.
  */
-TILEDB_EXPORT int32_t tiledb_kv_get_schema(
+TILEDB_EXPORT TILEDB_DEPRECATED int32_t tiledb_kv_get_schema(
     tiledb_ctx_t* ctx, tiledb_kv_t* kv, tiledb_kv_schema_t** kv_schema);
 
 /**
@@ -4835,8 +4946,11 @@ TILEDB_EXPORT int32_t tiledb_kv_get_schema(
  * @param is_dirty Set to `1` or `0` based on whether the key-value store
  *     is dirty or not, respectively.
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ *
+ * @warning The TileDB KV API is deprecated and will be removed in a future
+ * release.
  */
-TILEDB_EXPORT int32_t
+TILEDB_EXPORT TILEDB_DEPRECATED int32_t
 tiledb_kv_is_dirty(tiledb_ctx_t* ctx, tiledb_kv_t* kv, int32_t* is_dirty);
 
 /**
@@ -4857,8 +4971,11 @@ tiledb_kv_is_dirty(tiledb_ctx_t* ctx, tiledb_kv_t* kv, int32_t* is_dirty);
  * @param kv The key-value store.
  * @param kv_item The key-value item to be added to the store.
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ *
+ * @warning The TileDB KV API is deprecated and will be removed in a future
+ * release.
  */
-TILEDB_EXPORT int32_t tiledb_kv_add_item(
+TILEDB_EXPORT TILEDB_DEPRECATED int32_t tiledb_kv_add_item(
     tiledb_ctx_t* ctx, tiledb_kv_t* kv, tiledb_kv_item_t* kv_item);
 
 /**
@@ -4873,8 +4990,12 @@ TILEDB_EXPORT int32_t tiledb_kv_add_item(
  * @param ctx The TileDB context.
  * @param kv The key-value store.
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ *
+ * @warning The TileDB KV API is deprecated and will be removed in a future
+ * release.
  */
-TILEDB_EXPORT int32_t tiledb_kv_flush(tiledb_ctx_t* ctx, tiledb_kv_t* kv);
+TILEDB_EXPORT TILEDB_DEPRECATED int32_t
+tiledb_kv_flush(tiledb_ctx_t* ctx, tiledb_kv_t* kv);
 
 /**
  * Retrieves a key-value item based on the input key. If the item with
@@ -4895,8 +5016,11 @@ TILEDB_EXPORT int32_t tiledb_kv_flush(tiledb_ctx_t* ctx, tiledb_kv_t* kv);
  * @param key_size The key size.
  * @param kv_item The key-value item to be retrieved.
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ *
+ * @warning The TileDB KV API is deprecated and will be removed in a future
+ * release.
  */
-TILEDB_EXPORT int32_t tiledb_kv_get_item(
+TILEDB_EXPORT TILEDB_DEPRECATED int32_t tiledb_kv_get_item(
     tiledb_ctx_t* ctx,
     tiledb_kv_t* kv,
     const void* key,
@@ -4914,8 +5038,11 @@ TILEDB_EXPORT int32_t tiledb_kv_get_item(
  * @param key_size The key size.
  * @param has_key Set to `1` if the key exists and `0` otherwise.
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ *
+ * @warning The TileDB KV API is deprecated and will be removed in a future
+ * release.
  */
-TILEDB_EXPORT int32_t tiledb_kv_has_key(
+TILEDB_EXPORT TILEDB_DEPRECATED int32_t tiledb_kv_has_key(
     tiledb_ctx_t* ctx,
     tiledb_kv_t* kv,
     const void* key,
@@ -4931,8 +5058,11 @@ TILEDB_EXPORT int32_t tiledb_kv_has_key(
  * @param kv_uri The key-value store URI.
  * @param encryption_type The encryption type to be retrieved.
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ *
+ * @warning The TileDB KV API is deprecated and will be removed in a future
+ * release.
  */
-TILEDB_EXPORT int32_t tiledb_kv_encryption_type(
+TILEDB_EXPORT TILEDB_DEPRECATED int32_t tiledb_kv_encryption_type(
     tiledb_ctx_t* ctx,
     const char* kv_uri,
     tiledb_encryption_type_t* encryption_type);
@@ -4959,8 +5089,11 @@ TILEDB_EXPORT int32_t tiledb_kv_encryption_type(
  * @param kv The kv the iterator is associated with.
  * @param kv_iter The kv iterator to be created.
  * @return `TILEDB_OK` for success and `TILEDB_OOM` or `TILEDB_ERR` for error.
+ *
+ * @warning The TileDB KV API is deprecated and will be removed in a future
+ * release.
  */
-TILEDB_EXPORT int32_t tiledb_kv_iter_alloc(
+TILEDB_EXPORT TILEDB_DEPRECATED int32_t tiledb_kv_iter_alloc(
     tiledb_ctx_t* ctx, tiledb_kv_t* kv, tiledb_kv_iter_t** kv_iter);
 
 /**
@@ -4973,8 +5106,12 @@ TILEDB_EXPORT int32_t tiledb_kv_iter_alloc(
  * @endcode
  *
  * @param kv_iter The key-value store iterator to be freed.
+ *
+ * @warning The TileDB KV API is deprecated and will be removed in a future
+ * release.
  */
-TILEDB_EXPORT void tiledb_kv_iter_free(tiledb_kv_iter_t** kv_iter);
+TILEDB_EXPORT TILEDB_DEPRECATED void tiledb_kv_iter_free(
+    tiledb_kv_iter_t** kv_iter);
 
 /**
  * Retrieves the key-value item currently pointed by the iterator.
@@ -4992,8 +5129,11 @@ TILEDB_EXPORT void tiledb_kv_iter_free(tiledb_kv_iter_t** kv_iter);
  * @param kv_iter The key-value store iterator.
  * @param kv_item The current key-value item to be retrieved.
  * @return `TILEDB_OK` for success and `TILEDB_OOM` or `TILEDB_ERR` for error.
+ *
+ * @warning The TileDB KV API is deprecated and will be removed in a future
+ * release.
  */
-TILEDB_EXPORT int32_t tiledb_kv_iter_here(
+TILEDB_EXPORT TILEDB_DEPRECATED int32_t tiledb_kv_iter_here(
     tiledb_ctx_t* ctx, tiledb_kv_iter_t* kv_iter, tiledb_kv_item_t** kv_item);
 
 /**
@@ -5008,8 +5148,11 @@ TILEDB_EXPORT int32_t tiledb_kv_iter_here(
  * @param ctx The TileDB context.
  * @param kv_iter The key-value store iterator.
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ *
+ * @warning The TileDB KV API is deprecated and will be removed in a future
+ * release.
  */
-TILEDB_EXPORT int32_t
+TILEDB_EXPORT TILEDB_DEPRECATED int32_t
 tiledb_kv_iter_next(tiledb_ctx_t* ctx, tiledb_kv_iter_t* kv_iter);
 
 /**
@@ -5026,8 +5169,11 @@ tiledb_kv_iter_next(tiledb_ctx_t* ctx, tiledb_kv_iter_t* kv_iter);
  * @param kv_iter The key-value store iterator.
  * @param done Sets this to `1` if the iterator is done, and to `0` otherwise.
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ *
+ * @warning The TileDB KV API is deprecated and will be removed in a future
+ * release.
  */
-TILEDB_EXPORT int32_t tiledb_kv_iter_done(
+TILEDB_EXPORT TILEDB_DEPRECATED int32_t tiledb_kv_iter_done(
     tiledb_ctx_t* ctx, tiledb_kv_iter_t* kv_iter, int32_t* done);
 
 /**
@@ -5042,8 +5188,11 @@ TILEDB_EXPORT int32_t tiledb_kv_iter_done(
  * @param ctx The TileDB context.
  * @param kv_iter The key-value store iterator to be reset.
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ *
+ * @warning The TileDB KV API is deprecated and will be removed in a future
+ * release.
  */
-TILEDB_EXPORT int32_t
+TILEDB_EXPORT TILEDB_DEPRECATED int32_t
 tiledb_kv_iter_reset(tiledb_ctx_t* ctx, tiledb_kv_iter_t* kv_iter);
 
 /* ****************************** */

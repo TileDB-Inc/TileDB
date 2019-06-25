@@ -3501,8 +3501,39 @@ int32_t tiledb_kv_schema_check(
 
 int32_t tiledb_kv_schema_load(
     tiledb_ctx_t* ctx, const char* kv_uri, tiledb_kv_schema_t** kv_schema) {
-  return tiledb_kv_schema_load_with_key(
-      ctx, kv_uri, TILEDB_NO_ENCRYPTION, nullptr, 0, kv_schema);
+  if (sanity_check(ctx) == TILEDB_ERR)
+    return TILEDB_ERR;
+  // Create array schema
+  *kv_schema = new (std::nothrow) tiledb_kv_schema_t;
+  if (*kv_schema == nullptr) {
+    tiledb::sm::Status st = tiledb::sm::Status::Error(
+        "Failed to allocate TileDB key-value schema object");
+    LOG_STATUS(st);
+    save_error(ctx, st);
+    return TILEDB_OOM;
+  }
+
+  // Create key
+  tiledb::sm::EncryptionKey key;
+  if (SAVE_ERROR_CATCH(
+          ctx,
+          key.set_key(tiledb::sm::EncryptionType::NO_ENCRYPTION, nullptr, 0)))
+    return TILEDB_ERR;
+
+  // Load array schema
+  auto storage_manager = ctx->ctx_->storage_manager();
+  if (SAVE_ERROR_CATCH(
+          ctx,
+          storage_manager->load_array_schema(
+              tiledb::sm::URI(kv_uri),
+              tiledb::sm::ObjectType::KEY_VALUE,
+              key,
+              &((*kv_schema)->array_schema_)))) {
+    delete *kv_schema;
+    return TILEDB_ERR;
+  }
+
+  return TILEDB_OK;
 }
 
 int32_t tiledb_kv_schema_load_with_key(
@@ -3958,8 +3989,36 @@ int32_t tiledb_kv_create(
     tiledb_ctx_t* ctx,
     const char* kv_uri,
     const tiledb_kv_schema_t* kv_schema) {
-  return tiledb_kv_create_with_key(
-      ctx, kv_uri, kv_schema, TILEDB_NO_ENCRYPTION, nullptr, 0);
+  // Sanity checks
+  if (sanity_check(ctx) == TILEDB_ERR ||
+      sanity_check(ctx, kv_schema) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  // Check key-value name
+  tiledb::sm::URI uri(kv_uri);
+  if (uri.is_invalid()) {
+    tiledb::sm::Status st = tiledb::sm::Status::Error(
+        "Failed to create key-value store; Invalid array URI");
+    LOG_STATUS(st);
+    save_error(ctx, st);
+    return TILEDB_ERR;
+  }
+
+  // Create key
+  tiledb::sm::EncryptionKey key;
+  if (SAVE_ERROR_CATCH(
+          ctx,
+          key.set_key(tiledb::sm::EncryptionType::NO_ENCRYPTION, nullptr, 0)))
+    return TILEDB_ERR;
+
+  // Create the key-value store
+  if (SAVE_ERROR_CATCH(
+          ctx,
+          ctx->ctx_->storage_manager()->array_create(
+              uri, kv_schema->array_schema_, key)))
+    return TILEDB_ERR;
+
+  return TILEDB_OK;
 }
 
 int32_t tiledb_kv_create_with_key(
@@ -4006,8 +4065,20 @@ int32_t tiledb_kv_create_with_key(
 
 int32_t tiledb_kv_consolidate(
     tiledb_ctx_t* ctx, const char* kv_uri, tiledb_config_t* config) {
-  return tiledb_kv_consolidate_with_key(
-      ctx, kv_uri, TILEDB_NO_ENCRYPTION, nullptr, 0, config);
+  if (sanity_check(ctx) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  if (SAVE_ERROR_CATCH(
+          ctx,
+          ctx->ctx_->storage_manager()->array_consolidate(
+              kv_uri,
+              tiledb::sm::EncryptionType::NO_ENCRYPTION,
+              nullptr,
+              0,
+              (config == nullptr) ? nullptr : config->config_)))
+    return TILEDB_ERR;
+
+  return TILEDB_OK;
 }
 
 int32_t tiledb_kv_consolidate_with_key(
@@ -4364,7 +4435,11 @@ int32_t tiledb_kv_iter_here(
   }
 
   if (SAVE_ERROR_CATCH(ctx, kv_iter->kv_iter_->here(&((*kv_item)->kv_item_)))) {
-    tiledb_kv_item_free(kv_item);
+    if (kv_item != nullptr && *kv_item != nullptr) {
+      delete (*kv_item)->kv_item_;
+      delete *kv_item;
+      *kv_item = nullptr;
+    }
     return TILEDB_ERR;
   }
 

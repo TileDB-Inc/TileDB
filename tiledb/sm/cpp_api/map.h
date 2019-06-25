@@ -52,7 +52,12 @@ class MultiMapItemProxy;
 class MapItemProxy;
 }  // namespace impl
 
-/** Object representing a Map key and its attribute values. **/
+/**
+ * Object representing a Map key and its attribute values.
+ *
+ * @warning The TileDB KV API is deprecated and will be removed in a future
+ * release.
+ */
 class MapItem {
  public:
   /* ********************************* */
@@ -498,7 +503,12 @@ class MapItemProxy {
 
 }  // namespace impl
 
-/** Iterate over items in a map. **/
+/**
+ * Iterate over items in a map.
+ *
+ * @warning The TileDB KV API is deprecated and will be removed in a future
+ * release.
+ */
 class MapIter : public std::iterator<std::forward_iterator_tag, MapItem> {
  public:
   /** Construct a iterator for a given map. */
@@ -641,6 +651,9 @@ class MapIterReference {
  * // Close map
  * map.close();
  * @endcode
+ *
+ * @warning The TileDB KV API is deprecated and will be removed in a future
+ * release.
  */
 class Map {
  public:

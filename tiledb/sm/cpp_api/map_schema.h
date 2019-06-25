@@ -63,6 +63,8 @@ namespace tiledb {
  * Map::create("my_map", schema);
  * @endcode
  *
+ * @warning The TileDB KV API is deprecated and will be removed in a future
+ * release.
  */
 class MapSchema : public Schema {
  public:
