@@ -315,11 +315,11 @@ class FragmentMetadata {
   /** Returns the number of tiles in the fragment. */
   uint64_t tile_num() const;
 
-  /** Returns the URI of the input attribute. */
-  URI attr_uri(const std::string& attribute) const;
+  /** Returns the URI of the input attribute/dimension. */
+  URI uri(const std::string& name) const;
 
-  /** Returns the URI of the input variable-sized attribute. */
-  URI attr_var_uri(const std::string& attribute) const;
+  /** Returns the URI of the input variable-sized attribute/dimension. */
+  URI var_uri(const std::string& name) const;
 
   /**
    * Retrieves the starting offset of the input tile of input attribute
@@ -472,11 +472,14 @@ class FragmentMetadata {
   /** Maps an attribute to an index used in the various vector class members. */
   std::unordered_map<std::string, unsigned> attribute_idx_map_;
 
-  /** Maps an attribute to its absolute URI within this fragment. */
-  std::unordered_map<std::string, URI> attribute_uri_map_;
+  /** Maps an attribute/dimension to its absolute URI within this fragment. */
+  std::unordered_map<std::string, URI> uri_map_;
 
-  /** Maps an attribute to its absolute '_var' URI within this fragment. */
-  std::unordered_map<std::string, URI> attribute_var_uri_map_;
+  /**
+   * Maps an attribute/dimension to its absolute '_var' URI within this
+   * fragment.
+   */
+  std::unordered_map<std::string, URI> var_uri_map_;
 
   /** A vector storing the first and last coordinates of each tile. */
   std::vector<void*> bounding_coords_;

@@ -147,7 +147,7 @@ struct Dimension {
   struct TileExtent;
 
   struct _capnpPrivate {
-    CAPNP_DECLARE_STRUCT_HEADER(95e26a84d32d8223, 2, 3)
+    CAPNP_DECLARE_STRUCT_HEADER(95e26a84d32d8223, 3, 4)
 #if !CAPNP_LITE
     static constexpr ::capnp::_::RawBrandedSchema const* brand() {
       return &schema->defaultBrand;
@@ -176,7 +176,7 @@ struct Dimension::TileExtent {
   };
 
   struct _capnpPrivate {
-    CAPNP_DECLARE_STRUCT_HEADER(a2a652536db09fa0, 2, 3)
+    CAPNP_DECLARE_STRUCT_HEADER(a2a652536db09fa0, 3, 4)
 #if !CAPNP_LITE
     static constexpr ::capnp::_::RawBrandedSchema const* brand() {
       return &schema->defaultBrand;
@@ -1406,6 +1406,12 @@ class Dimension::Reader {
   inline ::tiledb::sm::serialization::capnp::DomainArray::Reader getDomain()
       const;
 
+  inline bool hasFilterPipeline() const;
+  inline ::tiledb::sm::serialization::capnp::FilterPipeline::Reader
+  getFilterPipeline() const;
+
+  inline ::uint32_t getCellValNum() const;
+
  private:
   ::capnp::_::StructReader _reader;
   template <typename, ::capnp::Kind>
@@ -1475,6 +1481,22 @@ class Dimension::Builder {
   inline ::capnp::Orphan<::tiledb::sm::serialization::capnp::DomainArray>
   disownDomain();
 
+  inline bool hasFilterPipeline();
+  inline ::tiledb::sm::serialization::capnp::FilterPipeline::Builder
+  getFilterPipeline();
+  inline void setFilterPipeline(
+      ::tiledb::sm::serialization::capnp::FilterPipeline::Reader value);
+  inline ::tiledb::sm::serialization::capnp::FilterPipeline::Builder
+  initFilterPipeline();
+  inline void adoptFilterPipeline(
+      ::capnp::Orphan<::tiledb::sm::serialization::capnp::FilterPipeline>&&
+          value);
+  inline ::capnp::Orphan<::tiledb::sm::serialization::capnp::FilterPipeline>
+  disownFilterPipeline();
+
+  inline ::uint32_t getCellValNum();
+  inline void setCellValNum(::uint32_t value);
+
  private:
   ::capnp::_::StructBuilder _builder;
   template <typename, ::capnp::Kind>
@@ -1498,6 +1520,8 @@ class Dimension::Pipeline {
 
   inline typename TileExtent::Pipeline getTileExtent();
   inline ::tiledb::sm::serialization::capnp::DomainArray::Pipeline getDomain();
+  inline ::tiledb::sm::serialization::capnp::FilterPipeline::Pipeline
+  getFilterPipeline();
 
  private:
   ::capnp::AnyPointer::Pipeline _typeless;
@@ -5895,6 +5919,76 @@ Dimension::Builder::disownDomain() {
   return ::capnp::_::
       PointerHelpers<::tiledb::sm::serialization::capnp::DomainArray>::disown(
           _builder.getPointerField(::capnp::bounded<2>() * ::capnp::POINTERS));
+}
+
+inline bool Dimension::Reader::hasFilterPipeline() const {
+  return !_reader.getPointerField(::capnp::bounded<3>() * ::capnp::POINTERS)
+              .isNull();
+}
+inline bool Dimension::Builder::hasFilterPipeline() {
+  return !_builder.getPointerField(::capnp::bounded<3>() * ::capnp::POINTERS)
+              .isNull();
+}
+inline ::tiledb::sm::serialization::capnp::FilterPipeline::Reader
+Dimension::Reader::getFilterPipeline() const {
+  return ::capnp::_::
+      PointerHelpers<::tiledb::sm::serialization::capnp::FilterPipeline>::get(
+          _reader.getPointerField(::capnp::bounded<3>() * ::capnp::POINTERS));
+}
+inline ::tiledb::sm::serialization::capnp::FilterPipeline::Builder
+Dimension::Builder::getFilterPipeline() {
+  return ::capnp::_::
+      PointerHelpers<::tiledb::sm::serialization::capnp::FilterPipeline>::get(
+          _builder.getPointerField(::capnp::bounded<3>() * ::capnp::POINTERS));
+}
+#if !CAPNP_LITE
+inline ::tiledb::sm::serialization::capnp::FilterPipeline::Pipeline
+Dimension::Pipeline::getFilterPipeline() {
+  return ::tiledb::sm::serialization::capnp::FilterPipeline::Pipeline(
+      _typeless.getPointerField(3));
+}
+#endif  // !CAPNP_LITE
+inline void Dimension::Builder::setFilterPipeline(
+    ::tiledb::sm::serialization::capnp::FilterPipeline::Reader value) {
+  ::capnp::_::
+      PointerHelpers<::tiledb::sm::serialization::capnp::FilterPipeline>::set(
+          _builder.getPointerField(::capnp::bounded<3>() * ::capnp::POINTERS),
+          value);
+}
+inline ::tiledb::sm::serialization::capnp::FilterPipeline::Builder
+Dimension::Builder::initFilterPipeline() {
+  return ::capnp::_::
+      PointerHelpers<::tiledb::sm::serialization::capnp::FilterPipeline>::init(
+          _builder.getPointerField(::capnp::bounded<3>() * ::capnp::POINTERS));
+}
+inline void Dimension::Builder::adoptFilterPipeline(
+    ::capnp::Orphan<::tiledb::sm::serialization::capnp::FilterPipeline>&&
+        value) {
+  ::capnp::_::
+      PointerHelpers<::tiledb::sm::serialization::capnp::FilterPipeline>::adopt(
+          _builder.getPointerField(::capnp::bounded<3>() * ::capnp::POINTERS),
+          kj::mv(value));
+}
+inline ::capnp::Orphan<::tiledb::sm::serialization::capnp::FilterPipeline>
+Dimension::Builder::disownFilterPipeline() {
+  return ::capnp::_::PointerHelpers<
+      ::tiledb::sm::serialization::capnp::FilterPipeline>::
+      disown(
+          _builder.getPointerField(::capnp::bounded<3>() * ::capnp::POINTERS));
+}
+
+inline ::uint32_t Dimension::Reader::getCellValNum() const {
+  return _reader.getDataField<::uint32_t>(
+      ::capnp::bounded<4>() * ::capnp::ELEMENTS);
+}
+
+inline ::uint32_t Dimension::Builder::getCellValNum() {
+  return _builder.getDataField<::uint32_t>(
+      ::capnp::bounded<4>() * ::capnp::ELEMENTS);
+}
+inline void Dimension::Builder::setCellValNum(::uint32_t value) {
+  _builder.setDataField<::uint32_t>(
+      ::capnp::bounded<4>() * ::capnp::ELEMENTS, value);
 }
 
 inline ::tiledb::sm::serialization::capnp::Dimension::TileExtent::Which

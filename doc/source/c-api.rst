@@ -365,6 +365,14 @@ Dimension
     :project: TileDB-C
 .. doxygenfunction:: tiledb_dimension_dump
     :project: TileDB-C
+.. doxygenfunction:: tiledb_dimension_get_filter_list
+    :project: TileDB-C
+.. doxygenfunction:: tiledb_dimension_set_filter_list
+    :project: TileDB-C
+.. doxygenfunction:: tiledb_dimension_get_cell_val_num
+    :project: TileDB-C
+.. doxygenfunction:: tiledb_dimension_set_cell_val_num
+    :project: TileDB-C
 
 Query
 -----

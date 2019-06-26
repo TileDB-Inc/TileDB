@@ -1902,7 +1902,7 @@ TILEDB_EXPORT int32_t tiledb_attribute_get_filter_list(
 
 /**
  * Retrieves the number of values per cell for the attribute. For variable-sized
- * attributes result is TILEDB_VAR_NUM.
+ * attributes, `cell_val_num` is TILEDB_VAR_NUM.
  *
  * **Example:**
  *
@@ -2187,6 +2187,25 @@ TILEDB_EXPORT int32_t tiledb_dimension_alloc(
 TILEDB_EXPORT void tiledb_dimension_free(tiledb_dimension_t** dim);
 
 /**
+ * Retrieves the number of values per cell for a dimension. For variable-sized
+ * dimensions, `cell_val_num` is TILEDB_VAR_NUM.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * uint32_t num;
+ * tiledb_dimension_get_cell_val_num(ctx, dim, &num);
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param aim The dimension.
+ * @param cell_val_num The number of values per cell to be retrieved.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_dimension_get_cell_val_num(
+    tiledb_ctx_t* ctx, const tiledb_dimension_t* dim, uint32_t* cell_val_num);
+
+/**
  * Retrieves the dimension name.
  *
  * **Example:**
@@ -2279,6 +2298,75 @@ TILEDB_EXPORT int32_t tiledb_dimension_get_tile_extent(
  */
 TILEDB_EXPORT int32_t tiledb_dimension_dump(
     tiledb_ctx_t* ctx, const tiledb_dimension_t* dim, FILE* out);
+
+/**
+ * Sets the number of values per cell for a dimension. If this is not
+ * used, the default is `1`.
+ *
+ * **Examples:**
+ *
+ * For a fixed-sized dimension:
+ *
+ * @code{.c}
+ * tiledb_dimension_set_cell_val_num(ctx, dim, 3);
+ * @endcode
+ *
+ * For a variable-sized dimension:
+ *
+ * @code{.c}
+ * tiledb_dimension_set_cell_val_num(ctx, dim, TILEDB_VAR_NUM);
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param dim The target dimension.
+ * @param cell_val_num The number of values per cell.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_dimension_set_cell_val_num(
+    tiledb_ctx_t* ctx, tiledb_dimension_t* dim, uint32_t cell_val_num);
+
+/**
+ * Retrieves the filter list for a dimension.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * tiledb_filter_list_t* filter_list;
+ * tiledb_dimension_get_filter_list(ctx, dim, &filter_list);
+ * tiledb_filter_list_free(&filter_list);
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param dim The target dimension.
+ * @param filter_list The filter list to be retrieved.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_dimension_get_filter_list(
+    tiledb_ctx_t* ctx,
+    tiledb_dimension_t* dim,
+    tiledb_filter_list_t** filter_list);
+
+/**
+ * Sets the filter list for a dimension.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * tiledb_filter_list_t* filter_list;
+ * tiledb_filter_list_alloc(ctx, &filter_list);
+ * tiledb_filter_list_add_filter(ctx, filter_list, filter);
+ * tiledb_dimension_set_filter_list(ctx, dim, filter_list);
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param dim The target dimension.
+ * @param filter_list The filter_list to be set.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_dimension_set_filter_list(
+    tiledb_ctx_t* ctx,
+    tiledb_dimension_t* dim,
+    tiledb_filter_list_t* filter_list);
 
 /* ********************************* */
 /*            ARRAY SCHEMA           */
@@ -2420,7 +2508,12 @@ TILEDB_EXPORT int32_t tiledb_array_schema_set_tile_order(
     tiledb_layout_t tile_order);
 
 /**
- * Sets the filter list to use for the coordinates.
+ * Sets the filter list to use for the coordinates. Note that if the
+ * user specifies filters separately for a dimension with
+ * `tiledb_dimension_set_filter_list`, then
+ * dimension filters will be chosen over the coordinates filters set
+ * by this function. In other words, this function acts as a helper
+ * if the user wishes to set the same filters for all dimensions.
  *
  * **Example:**
  *
@@ -2599,7 +2692,12 @@ TILEDB_EXPORT int32_t tiledb_array_schema_get_cell_order(
     tiledb_layout_t* cell_order);
 
 /**
- * Retrieves the filter list used for the coordinates.
+ * Retrieves the filter list used for the coordinates, which was set
+ * with `tiledb_array_schema_set_coords_filter_list`.
+ * If the user specified filters for
+ * a dimension separately with `tiledb_dimension_set_filter_list`, then
+ * the user must use `tiledb_dimension_get_filter_list` to get the correct
+ * filters of that dimension.
  *
  * **Example:**
  *

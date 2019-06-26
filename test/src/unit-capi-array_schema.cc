@@ -496,6 +496,34 @@ void ArraySchemaFx::create_array(const std::string& path) {
   rc = tiledb_dimension_alloc(
       ctx_, DIM1_NAME, TILEDB_INT64, &DIM_DOMAIN[0], &TILE_EXTENTS[0], &d1);
   REQUIRE(rc == TILEDB_OK);
+  tiledb_filter_t* comp_filter;
+  rc = tiledb_filter_alloc(ctx_, TILEDB_FILTER_BZIP2, &comp_filter);
+  REQUIRE(rc == TILEDB_OK);
+  int level = 5;
+  rc = tiledb_filter_set_option(
+      ctx_, comp_filter, TILEDB_COMPRESSION_LEVEL, &level);
+  REQUIRE(rc == TILEDB_OK);
+  tiledb_filter_t* bs_filter;
+  rc = tiledb_filter_alloc(ctx_, TILEDB_FILTER_BYTESHUFFLE, &bs_filter);
+  REQUIRE(rc == TILEDB_OK);
+  tiledb_filter_list_t* filter_list;
+  rc = tiledb_filter_list_alloc(ctx_, &filter_list);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_filter_list_add_filter(ctx_, filter_list, bs_filter);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_filter_list_add_filter(ctx_, filter_list, comp_filter);
+  REQUIRE(rc == TILEDB_OK);
+
+  // Set dimension filters
+  rc = tiledb_dimension_set_filter_list(ctx_, d1, filter_list);
+  REQUIRE(rc == TILEDB_OK);
+
+  // Set schema filters
+  rc = tiledb_array_schema_set_offsets_filter_list(
+      ctx_, array_schema, filter_list);
+  REQUIRE(rc == TILEDB_OK);
+
+  // Create more dimensions
   tiledb_dimension_t* d2;
   rc = tiledb_dimension_alloc(
       ctx_, DIM2_NAME, TILEDB_INT64, &DIM_DOMAIN[2], &TILE_EXTENTS[1], &d2);
@@ -551,6 +579,8 @@ void ArraySchemaFx::create_array(const std::string& path) {
   tiledb_attribute_t* attr;
   rc = tiledb_attribute_alloc(ctx_, ATTR_NAME, ATTR_TYPE, &attr);
   REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_attribute_set_filter_list(ctx_, attr, filter_list);
+  REQUIRE(rc == TILEDB_OK);
   rc = tiledb_array_schema_add_attribute(ctx_, array_schema, attr);
   REQUIRE(rc == TILEDB_OK);
 
@@ -572,6 +602,9 @@ void ArraySchemaFx::create_array(const std::string& path) {
   tiledb_dimension_free(&d1);
   tiledb_dimension_free(&d2);
   tiledb_domain_free(&domain);
+  tiledb_filter_list_free(&filter_list);
+  tiledb_filter_free(&comp_filter);
+  tiledb_filter_free(&bs_filter);
 }
 
 void ArraySchemaFx::load_and_check_array_schema(const std::string& path) {
@@ -603,30 +636,6 @@ void ArraySchemaFx::load_and_check_array_schema(const std::string& path) {
   rc = tiledb_array_schema_get_array_type(ctx_, array_schema, &type);
   REQUIRE(rc == TILEDB_OK);
   CHECK(type == TILEDB_DENSE);
-
-  // Check coordinates compression
-  tiledb_filter_list_t* coords_filters;
-  rc = tiledb_array_schema_get_coords_filter_list(
-      ctx_, array_schema, &coords_filters);
-  REQUIRE(rc == TILEDB_OK);
-  uint32_t nfilters;
-  rc = tiledb_filter_list_get_nfilters(ctx_, coords_filters, &nfilters);
-  CHECK(nfilters == 1);
-  tiledb_filter_t* coords_filter;
-  rc = tiledb_filter_list_get_filter_from_index(
-      ctx_, coords_filters, 0, &coords_filter);
-  REQUIRE(rc == TILEDB_OK);
-  tiledb_filter_type_t coords_compression;
-  int32_t coords_compression_level;
-  rc = tiledb_filter_get_type(ctx_, coords_filter, &coords_compression);
-  REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_filter_get_option(
-      ctx_, coords_filter, TILEDB_COMPRESSION_LEVEL, &coords_compression_level);
-  REQUIRE(rc == TILEDB_OK);
-  CHECK(coords_compression == TILEDB_FILTER_ZSTD);
-  CHECK(coords_compression_level == -1);
-  tiledb_filter_free(&coords_filter);
-  tiledb_filter_list_free(&coords_filters);
 
   // Check attribute
   tiledb_attribute_t* attr;
@@ -660,11 +669,31 @@ void ArraySchemaFx::load_and_check_array_schema(const std::string& path) {
   REQUIRE(rc == TILEDB_OK);
   CHECK(attr_type == ATTR_TYPE);
 
+  // Check attribute filters
+  uint32_t nfilters;
   tiledb_filter_list_t* attr_filters;
+  tiledb_filter_t* filter;
+  tiledb_filter_type_t filter_type;
   rc = tiledb_attribute_get_filter_list(ctx_, attr, &attr_filters);
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_filter_list_get_nfilters(ctx_, attr_filters, &nfilters);
-  CHECK(nfilters == 0);
+  CHECK(nfilters == 2);
+  rc = tiledb_filter_list_get_filter_from_index(ctx_, attr_filters, 0, &filter);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_filter_get_type(ctx_, filter, &filter_type);
+  REQUIRE(rc == TILEDB_OK);
+  CHECK(filter_type == TILEDB_FILTER_BYTESHUFFLE);
+  tiledb_filter_free(&filter);
+  rc = tiledb_filter_list_get_filter_from_index(ctx_, attr_filters, 1, &filter);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_filter_get_type(ctx_, filter, &filter_type);
+  CHECK(filter_type == TILEDB_FILTER_BZIP2);
+  REQUIRE(rc == TILEDB_OK);
+  int32_t level;
+  rc = tiledb_filter_get_option(ctx_, filter, TILEDB_COMPRESSION_LEVEL, &level);
+  REQUIRE(rc == TILEDB_OK);
+  CHECK(level == 5);
+  tiledb_filter_free(&filter);
   tiledb_filter_list_free(&attr_filters);
 
   unsigned int cell_val_num;
@@ -694,6 +723,28 @@ void ArraySchemaFx::load_and_check_array_schema(const std::string& path) {
   REQUIRE(rc == TILEDB_OK);
   CHECK_THAT(dim_name, Catch::Equals(DIM1_NAME));
 
+  // Check dimension filters
+  tiledb_filter_list_t* dim_filters;
+  rc = tiledb_dimension_get_filter_list(ctx_, dim, &dim_filters);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_filter_list_get_nfilters(ctx_, dim_filters, &nfilters);
+  CHECK(nfilters == 2);
+  rc = tiledb_filter_list_get_filter_from_index(ctx_, dim_filters, 0, &filter);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_filter_get_type(ctx_, filter, &filter_type);
+  REQUIRE(rc == TILEDB_OK);
+  CHECK(filter_type == TILEDB_FILTER_BYTESHUFFLE);
+  tiledb_filter_free(&filter);
+  rc = tiledb_filter_list_get_filter_from_index(ctx_, dim_filters, 1, &filter);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_filter_get_type(ctx_, filter, &filter_type);
+  CHECK(filter_type == TILEDB_FILTER_BZIP2);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_filter_get_option(ctx_, filter, TILEDB_COMPRESSION_LEVEL, &level);
+  REQUIRE(rc == TILEDB_OK);
+  CHECK(level == 5);
+  tiledb_filter_free(&filter);
+  tiledb_filter_list_free(&dim_filters);
   tiledb_dimension_free(&dim);
 
   // get first dimension by index
@@ -756,21 +807,23 @@ void ArraySchemaFx::load_and_check_array_schema(const std::string& path) {
       "- Cell order: " + CELL_ORDER_STR + "\n" +
       "- Tile order: " + TILE_ORDER_STR + "\n" + "- Capacity: " + CAPACITY_STR +
       "\n"
-      "- Coordinates compressor: ZSTD\n" +
-      "- Coordinates compression level: -1\n\n" +
-      "=== Domain ===\n"
-      "- Dimensions type: " +
-      DIM_TYPE_STR + "\n\n" + "### Dimension ###\n" + "- Name: " + DIM1_NAME +
-      "\n" + "- Domain: " + DIM1_DOMAIN_STR + "\n" +
-      "- Tile extent: " + DIM1_TILE_EXTENT_STR + "\n" + "\n" +
+      "- Variable-cell offsets filters:\n" +
+      "\t* Byteshuffle Filter\n" +
+      "\t* Compression Filter, compressor=BZIP2, level=5\n\n" +
+      "### Dimension ###\n" + "- Name: " + DIM1_NAME + "\n" +
+      "- Type: " + DIM_TYPE_STR + "\n" + "- Domain: " + DIM1_DOMAIN_STR + "\n" +
+      "- Tile extent: " + DIM1_TILE_EXTENT_STR + "\n" + "- Filters:\n" +
+      "\t* Byteshuffle Filter\n" +
+      "\t* Compression Filter, compressor=BZIP2, level=5\n\n" +
       "### Dimension ###\n" + "- Name: " + DIM2_NAME + "\n" +
-      "- Domain: " + DIM2_DOMAIN_STR + "\n" +
+      "- Type: " + DIM_TYPE_STR + "\n" + "- Domain: " + DIM2_DOMAIN_STR + "\n" +
       "- Tile extent: " + DIM2_TILE_EXTENT_STR + "\n" + "\n" +
       "### Attribute ###\n" + "- Name: " + ATTR_NAME + "\n" +
       "- Type: " + ATTR_TYPE_STR + "\n" +
-      "- Compressor: " + ATTR_COMPRESSOR_STR + "\n" +
-      "- Compression level: " + ATTR_COMPRESSION_LEVEL_STR + "\n" +
-      "- Cell val num: " + CELL_VAL_NUM_STR + "\n";
+      "- Cell val num: " + CELL_VAL_NUM_STR + "\n" + "- Filters:\n" +
+      "\t* Byteshuffle Filter\n" +
+      "\t* Compression Filter, compressor=BZIP2, level=5\n";
+
   FILE* gold_fout = fopen("gold_fout.txt", "w");
   const char* dump = dump_str.c_str();
   fwrite(dump, sizeof(char), strlen(dump), gold_fout);
@@ -778,6 +831,7 @@ void ArraySchemaFx::load_and_check_array_schema(const std::string& path) {
   FILE* fout = fopen("fout.txt", "w");
   tiledb_array_schema_dump(ctx_, array_schema, fout);
   fclose(fout);
+
 #ifdef _WIN32
   CHECK(!system("FC gold_fout.txt fout.txt > nul"));
 #else
@@ -1188,8 +1242,124 @@ TEST_CASE_METHOD(
 
 TEST_CASE_METHOD(
     ArraySchemaFx,
-    "C API: Test array schema offsets/coords filter lists",
-    "[capi], [array-schema], [filter]") {
+    "C API: Test array schema, dimension cell val num",
+    "[capi][array-schema][dim-cell-val-num]") {
+  SECTION("- No serialization") {
+    serialize_array_schema = false;
+  }
+  SECTION("- Serialization") {
+    serialize_array_schema = true;
+  }
+
+  // Create array schema
+  tiledb_array_schema_t* array_schema;
+  int rc = tiledb_array_schema_alloc(ctx_, TILEDB_SPARSE, &array_schema);
+  REQUIRE(rc == TILEDB_OK);
+
+  // Create dimensions
+  tiledb_dimension_t* d1;
+  rc = tiledb_dimension_alloc(
+      ctx_, "d1", TILEDB_INT64, &DIM_DOMAIN[0], &TILE_EXTENTS[0], &d1);
+  REQUIRE(rc == TILEDB_OK);
+  tiledb_dimension_t* d2;
+  rc = tiledb_dimension_alloc(
+      ctx_, "d2", TILEDB_INT64, &DIM_DOMAIN[0], &TILE_EXTENTS[0], &d2);
+  REQUIRE(rc == TILEDB_OK);
+
+  // Set cell val num
+  rc = tiledb_dimension_set_cell_val_num(ctx_, d2, 3);
+  REQUIRE(rc == TILEDB_OK);
+
+  // Set domain
+  tiledb_domain_t* domain;
+  rc = tiledb_domain_alloc(ctx_, &domain);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_domain_add_dimension(ctx_, domain, d1);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_domain_add_dimension(ctx_, domain, d2);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_array_schema_set_domain(ctx_, array_schema, domain);
+  REQUIRE(rc == TILEDB_OK);
+
+  // Set attribute
+  tiledb_attribute_t* attr1;
+  rc = tiledb_attribute_alloc(ctx_, "foo", TILEDB_INT32, &attr1);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_attribute_set_cell_val_num(ctx_, attr1, TILEDB_VAR_NUM);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_array_schema_add_attribute(ctx_, array_schema, attr1);
+  REQUIRE(rc == TILEDB_OK);
+
+  // Set schema members
+  rc = tiledb_array_schema_set_capacity(ctx_, array_schema, CAPACITY);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_array_schema_set_cell_order(ctx_, array_schema, CELL_ORDER);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_array_schema_set_tile_order(ctx_, array_schema, TILE_ORDER);
+  REQUIRE(rc == TILEDB_OK);
+
+  // Check for invalid array schema
+  rc = tiledb_array_schema_check(ctx_, array_schema);
+  REQUIRE(rc == TILEDB_OK);
+
+  // Create array
+  std::string array_name = FILE_URI_PREFIX + FILE_TEMP_DIR + ARRAY_NAME;
+  create_temp_dir(FILE_URI_PREFIX + FILE_TEMP_DIR);
+  rc = array_create_wrapper(array_name, array_schema);
+  REQUIRE(rc == TILEDB_OK);
+
+  // Clean up
+  tiledb_attribute_free(&attr1);
+  tiledb_dimension_free(&d1);
+  tiledb_dimension_free(&d2);
+  tiledb_domain_free(&domain);
+  tiledb_array_schema_free(&array_schema);
+
+  // Open array
+  tiledb_array_t* array;
+  rc = tiledb_array_alloc(ctx_, array_name.c_str(), &array);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_array_open(ctx_, array, TILEDB_READ);
+  REQUIRE(rc == TILEDB_OK);
+  tiledb_array_schema_t* read_schema;
+  rc = array_get_schema_wrapper(array, &read_schema);
+  REQUIRE(rc == TILEDB_OK);
+
+  // Get dimensions
+  rc = tiledb_array_schema_get_domain(ctx_, read_schema, &domain);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_domain_get_dimension_from_name(ctx_, domain, "d1", &d1);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_domain_get_dimension_from_name(ctx_, domain, "d2", &d2);
+  REQUIRE(rc == TILEDB_OK);
+
+  // Check cell val num
+  uint32_t cell_val_num;
+  rc = tiledb_dimension_get_cell_val_num(ctx_, d1, &cell_val_num);
+  REQUIRE(rc == TILEDB_OK);
+  CHECK(cell_val_num == 1);
+  rc = tiledb_dimension_get_cell_val_num(ctx_, d2, &cell_val_num);
+  REQUIRE(rc == TILEDB_OK);
+  CHECK(cell_val_num == 3);
+
+  // Close array
+  rc = tiledb_array_close(ctx_, array);
+  REQUIRE(rc == TILEDB_OK);
+
+  // Clean up
+  tiledb_array_schema_free(&read_schema);
+  tiledb_domain_free(&domain);
+  tiledb_dimension_free(&d1);
+  tiledb_dimension_free(&d2);
+  tiledb_array_free(&array);
+  delete_array(array_name);
+  remove_temp_dir(FILE_URI_PREFIX + FILE_TEMP_DIR);
+}
+
+TEST_CASE_METHOD(
+    ArraySchemaFx,
+    "C API: Test array schema coords and offsets filter lists",
+    "[capi][array-schema][filter]") {
   SECTION("- No serialization") {
     serialize_array_schema = false;
   }
@@ -1247,11 +1417,11 @@ TEST_CASE_METHOD(
   rc = tiledb_filter_list_add_filter(ctx_, filter_list, filter);
   REQUIRE(rc == TILEDB_OK);
 
-  // Set schema filters
-  rc = tiledb_array_schema_set_coords_filter_list(
+  // Set coords and offsets filters
+  rc = tiledb_array_schema_set_offsets_filter_list(
       ctx_, array_schema, filter_list);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_array_schema_set_offsets_filter_list(
+  rc = tiledb_array_schema_set_coords_filter_list(
       ctx_, array_schema, filter_list);
   REQUIRE(rc == TILEDB_OK);
 
@@ -1270,6 +1440,7 @@ TEST_CASE_METHOD(
   tiledb_dimension_free(&d1);
   tiledb_domain_free(&domain);
   tiledb_array_schema_free(&array_schema);
+  tiledb_filter_list_free(&filter_list);
 
   // Open array
   tiledb_array_t* array;
@@ -1281,27 +1452,29 @@ TEST_CASE_METHOD(
   rc = array_get_schema_wrapper(array, &read_schema);
   REQUIRE(rc == TILEDB_OK);
 
-  // Get filter lists
-  tiledb_filter_list_t *coords_flist, *offsets_flist;
-  rc = tiledb_array_schema_get_coords_filter_list(
-      ctx_, read_schema, &coords_flist);
-  REQUIRE(rc == TILEDB_OK);
+  // Get coords and offset filter lists
+  tiledb_filter_list_t* offsets_flist;
   rc = tiledb_array_schema_get_offsets_filter_list(
       ctx_, read_schema, &offsets_flist);
   REQUIRE(rc == TILEDB_OK);
+  tiledb_filter_list_t* coords_flist;
+  rc = tiledb_array_schema_get_coords_filter_list(
+      ctx_, read_schema, &coords_flist);
+  REQUIRE(rc == TILEDB_OK);
 
   unsigned nfilters;
-  rc = tiledb_filter_list_get_nfilters(ctx_, coords_flist, &nfilters);
-  REQUIRE(rc == TILEDB_OK);
-  REQUIRE(nfilters == 1);
   rc = tiledb_filter_list_get_nfilters(ctx_, offsets_flist, &nfilters);
   REQUIRE(rc == TILEDB_OK);
   REQUIRE(nfilters == 1);
+  nfilters = 0;
+  rc = tiledb_filter_list_get_nfilters(ctx_, coords_flist, &nfilters);
+  REQUIRE(rc == TILEDB_OK);
+  REQUIRE(nfilters == 1);
 
-  // Check getting a filter
+  // Check getting a filter for offsets
   tiledb_filter_t* read_filter;
   rc = tiledb_filter_list_get_filter_from_index(
-      ctx_, coords_flist, 0, &read_filter);
+      ctx_, offsets_flist, 0, &read_filter);
   REQUIRE(rc == TILEDB_OK);
   tiledb_filter_type_t type;
   rc = tiledb_filter_get_type(ctx_, read_filter, &type);
@@ -1312,15 +1485,28 @@ TEST_CASE_METHOD(
       ctx_, read_filter, TILEDB_COMPRESSION_LEVEL, &read_level);
   REQUIRE(rc == TILEDB_OK);
   REQUIRE(read_level == level);
+  tiledb_filter_free(&read_filter);
+
+  // Check getting a filter for coordinates
+  rc = tiledb_filter_list_get_filter_from_index(
+      ctx_, coords_flist, 0, &read_filter);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_filter_get_type(ctx_, read_filter, &type);
+  REQUIRE(rc == TILEDB_OK);
+  REQUIRE(type == TILEDB_FILTER_BZIP2);
+  rc = tiledb_filter_get_option(
+      ctx_, read_filter, TILEDB_COMPRESSION_LEVEL, &read_level);
+  REQUIRE(rc == TILEDB_OK);
+  REQUIRE(read_level == level);
+  tiledb_filter_free(&read_filter);
 
   // Close array
   rc = tiledb_array_close(ctx_, array);
   REQUIRE(rc == TILEDB_OK);
 
   // Clean up
-  tiledb_filter_free(&read_filter);
-  tiledb_filter_list_free(&coords_flist);
   tiledb_filter_list_free(&offsets_flist);
+  tiledb_filter_list_free(&coords_flist);
   tiledb_array_schema_free(&read_schema);
   tiledb_array_free(&array);
   delete_array(array_name);
@@ -1330,7 +1516,7 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     ArraySchemaFx,
     "C API: Test array schema load error condition",
-    "[capi], [array-schema]") {
+    "[capi][array-schema][load-error]") {
   SECTION("- No serialization") {
     serialize_array_schema = false;
   }
@@ -1415,4 +1601,48 @@ TEST_CASE_METHOD(
   tiledb_array_free(&array);
   delete_array(array_name);
   remove_temp_dir(FILE_URI_PREFIX + FILE_TEMP_DIR);
+}
+
+TEST_CASE_METHOD(
+    ArraySchemaFx,
+    "C API: Test array schema, error when double "
+    "delta is used with real attributes/dimensions",
+    "[capi][array-schema][real-double-delta-error]") {
+  // Prepare filters
+  tiledb_filter_t* dd_filter;
+  int rc = tiledb_filter_alloc(ctx_, TILEDB_FILTER_DOUBLE_DELTA, &dd_filter);
+  REQUIRE(rc == TILEDB_OK);
+  tiledb_filter_t* bs_filter;
+  rc = tiledb_filter_alloc(ctx_, TILEDB_FILTER_BYTESHUFFLE, &bs_filter);
+  REQUIRE(rc == TILEDB_OK);
+  tiledb_filter_list_t* filter_list;
+  rc = tiledb_filter_list_alloc(ctx_, &filter_list);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_filter_list_add_filter(ctx_, filter_list, bs_filter);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_filter_list_add_filter(ctx_, filter_list, dd_filter);
+  REQUIRE(rc == TILEDB_OK);
+
+  // Check setting a double delta filter to a real dimension
+  tiledb_dimension_t* d;
+  float domain[] = {0.1f, 0.2f};
+  float extent = 0.1f;
+  rc = tiledb_dimension_alloc(ctx_, "d", TILEDB_FLOAT32, domain, &extent, &d);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_dimension_set_filter_list(ctx_, d, filter_list);
+  CHECK(rc == TILEDB_ERR);
+
+  // Check setting a double delta filter to a real dimension
+  tiledb_attribute_t* a;
+  rc = tiledb_attribute_alloc(ctx_, "a", TILEDB_FLOAT64, &a);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_attribute_set_filter_list(ctx_, a, filter_list);
+  CHECK(rc == TILEDB_ERR);
+
+  // Clean up
+  tiledb_filter_free(&dd_filter);
+  tiledb_filter_free(&bs_filter);
+  tiledb_filter_list_free(&filter_list);
+  tiledb_dimension_free(&d);
+  tiledb_attribute_free(&a);
 }

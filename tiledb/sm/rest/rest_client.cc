@@ -380,7 +380,7 @@ Status RestClient::update_attribute_buffer_sizes(
     return LOG_STATUS(Status::RestError(
         "Error updating attribute buffer sizes; array schema is null"));
 
-  const auto attrs = query->attributes();
+  const auto attrs = query->query_buffer_names();
   std::set<std::string> attr_names;
   attr_names.insert(constants::coords);
   for (const auto& name : attrs)
@@ -406,7 +406,7 @@ Status RestClient::update_attribute_buffer_sizes(
       uint64_t* offset_buffer_size = nullptr;
       void* buffer = nullptr;
       uint64_t* buffer_size = nullptr;
-      RETURN_NOT_OK(query->get_buffer(
+      RETURN_NOT_OK(query->get_query_buffer(
           attr_name.c_str(),
           &offset_buffer,
           &offset_buffer_size,
@@ -420,7 +420,7 @@ Status RestClient::update_attribute_buffer_sizes(
       void* buffer = nullptr;
       uint64_t* buffer_size = nullptr;
       RETURN_NOT_OK(
-          query->get_buffer(attr_name.c_str(), &buffer, &buffer_size));
+          query->get_query_buffer(attr_name.c_str(), &buffer, &buffer_size));
       if (buffer_size != nullptr)
         *buffer_size = attr_state.data_size;
     }

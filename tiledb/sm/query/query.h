@@ -162,14 +162,11 @@ class Query {
   /** Returns the array schema. */
   const ArraySchema* array_schema() const;
 
-  /**
-   * Return vector of attributes
-   * @return attributes for query
-   */
-  std::vector<std::string> attributes() const;
+  /** Returns the vector of query buffer names (attributes/dimensions). */
+  std::vector<std::string> query_buffer_names() const;
 
-  /** Gets the AttributeBuffer for an attribute. */
-  AttributeBuffer attribute_buffer(const std::string& attribute_name) const;
+  /** Gets the QueryBuffer for an attribute/dimension. */
+  QueryBuffer query_buffer(const std::string& name) const;
 
   /**
    * Marks a query that has not yet been started as failed. This should not be
@@ -199,30 +196,31 @@ class Query {
   Status finalize();
 
   /**
-   * Retrieves the buffer of a fixed-sized attribute.
+   * Retrieves the buffer of a fixed-sized attribute/dimension.
    *
-   * @param attribute The buffer attribute. An empty string means
+   * @param name The buffer attribute/dimension. An empty string means
    *     the special default attribute.
    * @param buffer The buffer to be retrieved.
    * @param buffer_size A pointer to the buffer size to be retrieved.
    * @return Status
    */
-  Status get_buffer(
-      const char* attribute, void** buffer, uint64_t** buffer_size) const;
+  Status get_query_buffer(
+      const char* name, void** buffer, uint64_t** buffer_size) const;
 
   /**
-   * Retrieves the offsets and values buffers of a var-sized attribute.
+   * Retrieves the offsets and values buffers of a var-sized
+   * attribute/dimensions.
    *
-   * @param attribute The buffer attribute.
+   * @param name The buffer attribute/dimension.
    * @param buffer_off The offsets buffer to be retrieved.
    * @param buffer_off_size A pointer to the offsets buffer size to be
-   * retrieved.
+   *     retrieved.
    * @param buffer_val The values buffer to be retrieved.
    * @param buffer_val_size A pointer to the values buffer size to be retrieved.
    * @return Status
    */
-  Status get_buffer(
-      const char* attribute,
+  Status get_query_buffer(
+      const char* name,
       uint64_t** buffer_off,
       uint64_t** buffer_off_size,
       void** buffer_val,
@@ -272,9 +270,9 @@ class Query {
   Writer* writer();
 
   /**
-   * Sets the buffer for a fixed-sized attribute.
+   * Sets the buffer for a fixed-sized attribute/dimension.
    *
-   * @param attribute The attribute to set the buffer for.
+   * @param name The attribute/dimension to set the buffer for.
    * @param buffer The buffer that either have the input data to be written,
    *     or will hold the data to be read.
    * @param buffer_size In the case of writes, this is the size of `buffer`
@@ -284,16 +282,16 @@ class Query {
    * @param check_null_buffers If true (default), null buffers are not allowed.
    * @return Status
    */
-  Status set_buffer(
-      const std::string& attribute,
+  Status set_query_buffer(
+      const std::string& name,
       void* buffer,
       uint64_t* buffer_size,
       bool check_null_buffers = true);
 
   /**
-   * Sets the buffer for a var-sized attribute.
+   * Sets the buffer for a var-sized attribute/dimension.
    *
-   * @param attribute The attribute to set the buffer for.
+   * @param name The attribute/dimension to set the buffer for.
    * @param buffer_off The buffer that either have the input data to be written,
    *     or will hold the data to be read. This buffer holds the starting
    *     offsets of each cell value in `buffer_val`.
@@ -313,8 +311,8 @@ class Query {
    * @param check_null_buffers If true (default), null buffers are not allowed.
    * @return Status
    */
-  Status set_buffer(
-      const std::string& attribute,
+  Status set_query_buffer(
+      const std::string& name,
       uint64_t* buffer_off,
       uint64_t* buffer_off_size,
       void* buffer_val,

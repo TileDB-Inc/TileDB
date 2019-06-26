@@ -142,7 +142,7 @@ Status KVIter::submit_read_query() {
   uint64_t coords_buffer_size = coords_buffer_alloced_size_;
 
   do {
-    RETURN_NOT_OK(query_->set_buffer(
+    RETURN_NOT_OK(query_->set_query_buffer(
         constants::coords, coords_buffer_, &coords_buffer_size));
     RETURN_NOT_OK(query_->submit());
 

@@ -44,6 +44,10 @@ PositiveDeltaFilter::PositiveDeltaFilter()
   max_window_size_ = 1024;
 }
 
+void PositiveDeltaFilter::dump(FILE* out) const {
+  fprintf(out, "\t* Positive Delta Filter\n");
+}
+
 Status PositiveDeltaFilter::run_forward(
     FilterBuffer* input_metadata,
     FilterBuffer* input,

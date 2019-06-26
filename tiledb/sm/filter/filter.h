@@ -82,6 +82,12 @@ class Filter {
   static Status deserialize(ConstBuffer* buff, Filter** filter);
 
   /**
+   * Dumps the filter contents in ASCII
+   * form in the selected output.
+   */
+  virtual void dump(FILE* file) const = 0;
+
+  /**
    * Gets an option from this filter.
    *
    * @param option Option whose value to get

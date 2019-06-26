@@ -126,7 +126,7 @@ TEST_CASE("C++ API: Filter lists", "[cppapi], [filter]") {
   REQUIRE(list.nfilters() == 3);
 }
 
-TEST_CASE("C++ API: Filter lists on array", "[cppapi], [filter]") {
+TEST_CASE("C++ API: Filter lists on array", "[cppapi][filter]") {
   using namespace tiledb;
   Context ctx;
   VFS vfs(ctx);

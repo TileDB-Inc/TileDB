@@ -521,6 +521,13 @@ Status BitWidthReductionFilter::deserialize_impl(ConstBuffer* buff) {
   return Status::Ok();
 }
 
+void BitWidthReductionFilter::dump(FILE* out) const {
+  fprintf(
+      out,
+      "\t* Bit Width Reduction Filter, max_window_size=%u\n",
+      max_window_size_);
+}
+
 Status BitWidthReductionFilter::serialize_impl(Buffer* buff) const {
   RETURN_NOT_OK(buff->write(&max_window_size_, sizeof(uint32_t)));
   return Status::Ok();

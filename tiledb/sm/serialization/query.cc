@@ -407,7 +407,7 @@ Status query_to_capnp(
   }
 
   // Serialize attribute buffer metadata
-  const auto attr_names = query.attributes();
+  const auto attr_names = query.query_buffer_names();
   auto attr_buffers_builder =
       query_builder->initAttributeBufferHeaders(attr_names.size());
   uint64_t total_fixed_len_bytes = 0;
@@ -415,7 +415,7 @@ Status query_to_capnp(
   for (uint64_t i = 0; i < attr_names.size(); i++) {
     auto attr_buffer_builder = attr_buffers_builder[i];
     const auto& attribute_name = attr_names[i];
-    const auto& buff = query.attribute_buffer(attribute_name);
+    const auto& buff = query.query_buffer(attribute_name);
     const bool is_coords = attribute_name == constants::coords;
     const auto* attr = schema->attribute(attribute_name);
     if (!is_coords && attr == nullptr)
@@ -533,14 +533,14 @@ Status query_from_capnp(
     uint64_t* existing_buffer_size = nullptr;
     const bool var_size = !is_coords && attr->var_size();
     if (var_size) {
-      RETURN_NOT_OK(query->get_buffer(
+      RETURN_NOT_OK(query->get_query_buffer(
           attribute_name.c_str(),
           &existing_offset_buffer,
           &existing_offset_buffer_size,
           &existing_buffer,
           &existing_buffer_size));
     } else {
-      RETURN_NOT_OK(query->get_buffer(
+      RETURN_NOT_OK(query->get_query_buffer(
           attribute_name.c_str(), &existing_buffer, &existing_buffer_size));
     }
 
@@ -633,7 +633,7 @@ Status query_from_capnp(
         attr_state->fixed_len_data.swap(offsets_buff);
         attr_state->var_len_data.swap(varlen_buff);
         if (var_size) {
-          RETURN_NOT_OK(query->set_buffer(
+          RETURN_NOT_OK(query->set_query_buffer(
               attribute_name,
               nullptr,
               &attr_state->fixed_len_size,
@@ -641,7 +641,7 @@ Status query_from_capnp(
               &attr_state->var_len_size,
               false));
         } else {
-          RETURN_NOT_OK(query->set_buffer(
+          RETURN_NOT_OK(query->set_query_buffer(
               attribute_name, nullptr, &attr_state->fixed_len_size, false));
         }
       } else {
@@ -656,7 +656,7 @@ Status query_from_capnp(
           attr_state->var_len_size = varlen_size;
           attr_state->fixed_len_data.swap(offsets_buff);
           attr_state->var_len_data.swap(varlen_buff);
-          RETURN_NOT_OK(query->set_buffer(
+          RETURN_NOT_OK(query->set_query_buffer(
               attribute_name,
               offsets,
               &attr_state->fixed_len_size,
@@ -671,7 +671,7 @@ Status query_from_capnp(
           attr_state->var_len_size = varlen_size;
           attr_state->fixed_len_data.swap(buff);
           attr_state->var_len_data.swap(varlen_buff);
-          RETURN_NOT_OK(query->set_buffer(
+          RETURN_NOT_OK(query->set_query_buffer(
               attribute_name, data, &attr_state->fixed_len_size));
         }
       }
@@ -769,7 +769,7 @@ Status query_serialize(
               uint64_t* offset_buffer_size = nullptr;
               void* buffer = nullptr;
               uint64_t* buffer_size = nullptr;
-              RETURN_NOT_OK(query->get_buffer(
+              RETURN_NOT_OK(query->get_query_buffer(
                   attribute_name.c_str(),
                   &offset_buffer,
                   &offset_buffer_size,
@@ -792,7 +792,7 @@ Status query_serialize(
               // Fixed size attribute buffer
               void* buffer = nullptr;
               uint64_t* buffer_size = nullptr;
-              RETURN_NOT_OK(query->get_buffer(
+              RETURN_NOT_OK(query->get_query_buffer(
                   attribute_name.c_str(), &buffer, &buffer_size));
 
               if (buffer != nullptr) {

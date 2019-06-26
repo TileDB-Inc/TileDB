@@ -170,12 +170,6 @@ class ArraySchema {
   /** Return a pointer to the pipeline used for coordinates. */
   const FilterPipeline* coords_filters() const;
 
-  /** Returns the compressor of the coordinates. */
-  Compressor coords_compression() const;
-
-  /** Returns the compression level of the coordinates. */
-  int coords_compression_level() const;
-
   /** Returns the coordinates size. */
   uint64_t coords_size() const;
 
@@ -272,14 +266,14 @@ class ArraySchema {
   /** Sets the filter pipeline for the variable cell offsets. */
   Status set_cell_var_offsets_filter_pipeline(const FilterPipeline* pipeline);
 
-  /** Sets the filter pipeline for the coordinates. */
-  Status set_coords_filter_pipeline(const FilterPipeline* pipeline);
-
   /** Sets the tile capacity. */
   void set_capacity(uint64_t capacity);
 
   /** Sets the cell order. */
   void set_cell_order(Layout cell_order);
+
+  /** Sets the filter pipeline for the coordinates. */
+  Status set_coords_filter_pipeline(const FilterPipeline* pipeline);
 
   /**
    * Sets the domain. The function returns an error if the array has been
@@ -358,12 +352,6 @@ class ArraySchema {
    * duplicates.
    */
   bool check_attribute_dimension_names() const;
-
-  /**
-   * Returns false if double delta compression is used with real attributes
-   * or coordinates and true otherwise.
-   */
-  bool check_double_delta_compressor() const;
 
   /** Clears all members. Use with caution! */
   void clear();

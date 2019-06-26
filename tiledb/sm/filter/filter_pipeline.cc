@@ -346,6 +346,15 @@ Filter* FilterPipeline::get_filter(unsigned index) const {
   return filters_[index].get();
 }
 
+bool FilterPipeline::has_double_delta_compressor() const {
+  for (const auto& f : filters_) {
+    if (f->type() == FilterType::FILTER_DOUBLE_DELTA)
+      return true;
+  }
+
+  return false;
+}
+
 uint32_t FilterPipeline::max_chunk_size() const {
   return max_chunk_size_;
 }
@@ -484,6 +493,15 @@ Status FilterPipeline::deserialize(ConstBuffer* buff) {
   }
 
   return Status::Ok();
+}
+
+void FilterPipeline::dump(FILE* out) const {
+  for (const auto& f : filters_)
+    f->dump(out);
+}
+
+bool FilterPipeline::empty() const {
+  return filters_.empty();
 }
 
 void FilterPipeline::set_max_chunk_size(uint32_t max_chunk_size) {

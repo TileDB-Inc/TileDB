@@ -207,11 +207,72 @@ class Dimension {
     return ss.str();
   }
 
+  /**
+   * Returns a copy of the FilterList of the dimension.
+   * To change the filter list, use `set_filter_list()`.
+   *
+   * @return Copy of the attribute FilterList.
+   */
+  FilterList filter_list() const {
+    auto& ctx = ctx_.get();
+    tiledb_filter_list_t* filter_list;
+    ctx.handle_error(tiledb_dimension_get_filter_list(
+        ctx.ptr().get(), dim_.get(), &filter_list));
+    return FilterList(ctx, filter_list);
+  }
+
+  /**
+   * Sets the dimension filter list, which is an ordered list of filters that
+   * will be used to process and/or transform the dimension data (such as
+   * compression).
+   *
+   * @param filter_list Filter list to set
+   * @return Reference to this Dimension
+   */
+  Dimension& set_filter_list(const FilterList& filter_list) {
+    auto& ctx = ctx_.get();
+    ctx.handle_error(tiledb_dimension_set_filter_list(
+        ctx.ptr().get(), dim_.get(), filter_list.ptr().get()));
+    return *this;
+  }
+
   /** Returns the tile extent of the dimension. */
   template <typename T>
   T tile_extent() const {
     impl::type_check<T>(type(), 1);
     return *static_cast<T*>(_tile_extent());
+  }
+
+  /**
+   * Returns number of values of one cell on this dimension. For variable-sized
+   * dimensions returns TILEDB_VAR_NUM.
+   */
+  unsigned cell_val_num() const {
+    auto& ctx = ctx_.get();
+    unsigned num;
+    ctx.handle_error(
+        tiledb_dimension_get_cell_val_num(ctx.ptr().get(), dim_.get(), &num));
+    return num;
+  }
+
+  /**
+   * Sets the number of dimension values per cell. This is inferred from
+   * the type parameter of the `Dimension::create<T>()` function, but can also
+   * be set manually.
+   *
+   * @param num Cell val number to set.
+   * @return Reference to this Dimension
+   */
+  Dimension& set_cell_val_num(unsigned num) {
+    auto& ctx = ctx_.get();
+    ctx.handle_error(
+        tiledb_dimension_set_cell_val_num(ctx.ptr().get(), dim_.get(), num));
+    return *this;
+  }
+
+  /** Check if the dimension is variable sized. **/
+  bool variable_sized() const {
+    return cell_val_num() == TILEDB_VAR_NUM;
   }
 
   /**
@@ -321,7 +382,7 @@ class Dimension {
    * @code{.cpp}
    * tiledb::Context ctx;
    * // Create a dimension with inclusive domain [0,1000] and tile extent 100.
-   * auto dim = Dimension::create<int32_t>(ctx, "d", {{0, 1000}}, 100);
+   * auto d = Dimension::create<int32_t>(ctx, "d", {{0, 1000}}, 100);
    * @endcode
    *
    * @tparam T int, char, etc...
@@ -339,10 +400,8 @@ class Dimension {
       const std::array<T, 2>& domain,
       T extent) {
     using DataT = impl::TypeHandler<T>;
-    static_assert(
-        DataT::tiledb_num == 1,
-        "Dimension types cannot be compound, use arithmetic type.");
-    return create_impl(ctx, name, DataT::tiledb_type, &domain, &extent);
+    return create_impl(
+        ctx, name, DataT::tiledb_type, &domain, &extent, DataT::tiledb_num);
   }
 
   /**
@@ -362,7 +421,7 @@ class Dimension {
       tiledb_datatype_t datatype,
       const void* domain,
       const void* extent) {
-    return create_impl(ctx, name, datatype, domain, extent);
+    return create_impl(ctx, name, datatype, domain, extent, 1);
   }
 
  private:
@@ -406,18 +465,21 @@ class Dimension {
   /* ********************************* */
 
   /**
-   * Creates a dimension with the input name, datatype, domain and tile
-   * extent.
+   * Creates a dimension with the input name, datatype, domain, tile
+   * extent and cell val num.
    */
   static Dimension create_impl(
       const Context& ctx,
       const std::string& name,
       tiledb_datatype_t type,
       const void* domain,
-      const void* tile_extent) {
+      const void* tile_extent,
+      uint32_t cell_val_num) {
     tiledb_dimension_t* d;
     ctx.handle_error(tiledb_dimension_alloc(
         ctx.ptr().get(), name.c_str(), type, domain, tile_extent, &d));
+    ctx.handle_error(
+        tiledb_dimension_set_cell_val_num(ctx.ptr().get(), d, cell_val_num));
     return Dimension(ctx, d);
   }
 };

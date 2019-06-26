@@ -835,11 +835,11 @@ Status Consolidator::set_query_buffers(
   unsigned bid = 0;
   for (const auto& attr : attributes) {
     if (!attr->var_size()) {
-      RETURN_NOT_OK(
-          query->set_buffer(attr->name(), buffers[bid], &buffer_sizes[bid]));
+      RETURN_NOT_OK(query->set_query_buffer(
+          attr->name(), buffers[bid], &buffer_sizes[bid]));
       ++bid;
     } else {
-      RETURN_NOT_OK(query->set_buffer(
+      RETURN_NOT_OK(query->set_query_buffer(
           attr->name(),
           (uint64_t*)buffers[bid],
           &buffer_sizes[bid],
@@ -849,8 +849,8 @@ Status Consolidator::set_query_buffers(
     }
   }
   if (!dense || sparse_mode)
-    RETURN_NOT_OK(
-        query->set_buffer(constants::coords, buffers[bid], &buffer_sizes[bid]));
+    RETURN_NOT_OK(query->set_query_buffer(
+        constants::coords, buffers[bid], &buffer_sizes[bid]));
 
   return Status::Ok();
 }

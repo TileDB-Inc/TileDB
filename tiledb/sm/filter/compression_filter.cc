@@ -379,5 +379,13 @@ Status CompressionFilter::deserialize_impl(ConstBuffer* buff) {
   return Status::Ok();
 }
 
+void CompressionFilter::dump(FILE* out) const {
+  fprintf(
+      out,
+      "\t* Compression Filter, compressor=%s, level=%i\n",
+      compressor_str(compressor_).c_str(),
+      level_);
+}
+
 }  // namespace sm
 }  // namespace tiledb

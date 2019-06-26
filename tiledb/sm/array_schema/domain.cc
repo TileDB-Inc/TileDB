@@ -393,6 +393,10 @@ Status Domain::add_dimension(const Dimension* dim) {
   RETURN_NOT_OK_ELSE(new_dim->set_domain(dim->domain()), delete new_dim);
   RETURN_NOT_OK_ELSE(
       new_dim->set_tile_extent(dim->tile_extent()), delete new_dim);
+  RETURN_NOT_OK_ELSE(
+      new_dim->set_filter_pipeline(dim->filters()), delete new_dim);
+  RETURN_NOT_OK_ELSE(
+      new_dim->set_cell_val_num(dim->cell_val_num()), delete new_dim);
 
   dimensions_.emplace_back(new_dim);
   ++dim_num_;
@@ -507,7 +511,7 @@ int Domain::cell_order_cmp(const T* coords_a, const T* coords_b) const {
 // dimension #1
 // dimension #2
 // ...
-Status Domain::deserialize(ConstBuffer* buff) {
+Status Domain::deserialize(uint32_t version, ConstBuffer* buff) {
   // Load type
   uint8_t type;
   RETURN_NOT_OK(buff->read(&type, sizeof(uint8_t)));
@@ -517,7 +521,7 @@ Status Domain::deserialize(ConstBuffer* buff) {
   RETURN_NOT_OK(buff->read(&dim_num_, sizeof(uint32_t)));
   for (uint32_t i = 0; i < dim_num_; ++i) {
     auto dim = new Dimension();
-    dim->deserialize(buff, type_);
+    dim->deserialize(version, buff, type_);
     dimensions_.emplace_back(dim);
   }
 
@@ -555,9 +559,6 @@ const Dimension* Domain::dimension(std::string name) const {
 }
 
 void Domain::dump(FILE* out) const {
-  fprintf(out, "=== Domain ===\n");
-  fprintf(out, "- Dimensions type: %s\n", datatype_str(type_).c_str());
-
   for (auto& dim : dimensions_) {
     fprintf(out, "\n");
     dim->dump(out);

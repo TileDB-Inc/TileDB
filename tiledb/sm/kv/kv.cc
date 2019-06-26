@@ -615,10 +615,10 @@ Status KV::set_read_query_buffers(Query* query) {
 
   for (const auto& attr : attributes_) {
     if (!schema->var_size(attr)) {
-      RETURN_NOT_OK(query->set_buffer(
+      RETURN_NOT_OK(query->set_query_buffer(
           attr, read_buffers_[attr].first, &read_buffer_sizes_[attr].first));
     } else {
-      RETURN_NOT_OK(query->set_buffer(
+      RETURN_NOT_OK(query->set_query_buffer(
           attr,
           (uint64_t*)read_buffers_[attr].first,
           &read_buffer_sizes_[attr].first,
@@ -638,7 +638,7 @@ Status KV::set_write_query_buffers(Query* query) {
     if (!schema->var_size(attr)) {
       write_buffer_sizes_[attr] =
           std::pair<uint64_t, uint64_t>(write_buffers_[attr].first->size(), 0);
-      RETURN_NOT_OK(query->set_buffer(
+      RETURN_NOT_OK(query->set_query_buffer(
           attr,
           write_buffers_[attr].first->data(),
           &write_buffer_sizes_[attr].first));
@@ -647,7 +647,7 @@ Status KV::set_write_query_buffers(Query* query) {
       auto size_val = write_buffers_[attr].second->size();
       write_buffer_sizes_[attr] =
           std::pair<uint64_t, uint64_t>(size_off, size_val);
-      RETURN_NOT_OK(query->set_buffer(
+      RETURN_NOT_OK(query->set_query_buffer(
           attr,
           (uint64_t*)write_buffers_[attr].first->data(),
           &write_buffer_sizes_[attr].first,

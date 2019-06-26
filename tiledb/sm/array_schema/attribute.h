@@ -80,6 +80,14 @@ class Attribute {
   /* ********************************* */
 
   /**
+   * Adds a copy of the given filter to the end of this pipeline.
+   *
+   * @param filter Filter to add
+   * @return Status
+   */
+  Status add_filter(const Filter& filter);
+
+  /**
    * Returns the size in bytes of one cell for this attribute. If the attribute
    * is variable-sized, this function returns the size in bytes of an offset.
    */
@@ -87,12 +95,6 @@ class Attribute {
 
   /** Returns the number of values per cell. */
   unsigned int cell_val_num() const;
-
-  /** Returns the compressor. */
-  Compressor compressor() const;
-
-  /** Returns the compression level. */
-  int compression_level() const;
 
   /**
    * Populates the object members from the data in the input binary buffer.
@@ -130,12 +132,6 @@ class Attribute {
    * @return Status
    */
   Status set_cell_val_num(unsigned int cell_val_num);
-
-  /** Sets the attribute compressor. */
-  void set_compressor(Compressor compressor);
-
-  /** Sets the attribute compression level. */
-  void set_compression_level(int compression_level);
 
   /** Sets the filter pipeline for this attribute. */
   Status set_filter_pipeline(const FilterPipeline* pipeline);

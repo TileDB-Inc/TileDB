@@ -50,7 +50,11 @@ namespace sm {
 class Array;
 class StorageManager;
 
-/** Processes write queries. */
+/**
+ * Processes write queries, based on query buffers set by the user for the
+ * attributes and dimensions. Each query buffer is associated with an
+ * attribute or dimension name.
+ */
 class Writer {
  public:
   /* ********************************* */
@@ -63,16 +67,16 @@ class Writer {
    */
   struct GlobalWriteState {
     /**
-     * Stores the last tile of each attribute for each write operation.
-     * For fixed-sized attributes, the second tile is ignored. For
-     * var-sized attributes, the first tile is the offsets tile, whereas
-     * the second tile is the values tile.
+     * Stores the last tile of each attribute/dimension for each write
+     * operation. For fixed-sized attributes/dimensions, the second tile
+     * is ignored. For var-sized attributes/dimensions, the first tile is
+     * the offsets tile, whereas the second tile is the values tile.
      */
     std::unordered_map<std::string, std::pair<Tile, Tile>> last_tiles_;
 
     /**
-     * Stores the number of cells written for each attribute across the
-     * write operations.
+     * Stores the number of cells written for each attribute/dimension across
+     * the write operations.
      */
     std::unordered_map<std::string, uint64_t> cells_written_;
 
@@ -84,9 +88,9 @@ class Writer {
   struct WriteCellRange {
     /** The position in the tile where the range will be copied. */
     uint64_t pos_;
-    /** The starting cell in the user buffers. */
+    /** The starting cell in the query buffers. */
     uint64_t start_;
-    /** The ending cell in the user buffers. */
+    /** The ending cell in the query buffers. */
     uint64_t end_;
 
     /** Constructor. */
@@ -115,13 +119,15 @@ class Writer {
   /* ********************************* */
 
   /**
-   * Adds a range to the (read/write) query on the input dimension,
-   * in the form of (start, end, stride).
+   * Adds a range on the input dimension, in the form of (start, end, stride).
    * The range components must be of the same type as the domain type of the
    * underlying array.
    */
   Status add_range(
       unsigned dim_idx, const void* start, const void* end, const void* stride);
+
+  /** Returns the array schema. */
+  const ArraySchema* array_schema() const;
 
   /** Retrieves the number of ranges of the subarray for the given dimension. */
   Status get_range_num(unsigned dim_idx, uint64_t* range_num) const;
@@ -145,62 +151,44 @@ class Writer {
 
   /**
    * Gets the estimated result size (in bytes) for the input fixed-sized
-   * attribute.
+   * attribute/dimension.
    */
-  Status get_est_result_size(const char* attr_name, uint64_t* size);
+  Status get_est_result_size(const char* name, uint64_t* size);
 
   /**
    * Gets the estimated result size (in bytes) for the input var-sized
-   * attribute.
+   * attribute/dimension.
    */
   Status get_est_result_size(
-      const char* attr_name, uint64_t* size_off, uint64_t* size_val);
+      const char* name, uint64_t* size_off, uint64_t* size_val);
 
-  /** Returns the array schema. */
-  const ArraySchema* array_schema() const;
-
-  /**
-   * Return list of attribtues for query
-   * @return vector of attributes for query
-   */
-  std::vector<std::string> attributes() const;
-
-  /**
-   * Fetch AttributeBuffer for attribute
-   * @param attribute to fetch
-   * @return AttributeBuffer for attribute
-   */
-  AttributeBuffer buffer(const std::string& attribute) const;
-
-  /** Finalizes the reader. */
+  /** Finalizes the writer. */
   Status finalize();
 
   /**
-   * Retrieves the buffer of a fixed-sized attribute.
+   * Retrieves the query buffer of a fixed-sized attribute/dimension.
    *
-   * @param attribute The buffer attribute.
+   * @param name The name of the attribute/dimension.
    * @param buffer The buffer to be retrieved.
    * @param buffer_size A pointer to the buffer size to be retrieved.
    * @return Status
    */
-  Status get_buffer(
-      const std::string& attribute,
-      void** buffer,
-      uint64_t** buffer_size) const;
+  Status get_query_buffer(
+      const std::string& name, void** buffer, uint64_t** buffer_size) const;
 
   /**
-   * Retrieves the offsets and values buffers of a var-sized attribute.
+   * Retrieves the query buffers of a var-sized attribute/dimension.
    *
-   * @param attribute The buffer attribute.
+   * @param name The attribute/dimension name.
    * @param buffer_off The offsets buffer to be retrieved.
    * @param buffer_off_size A pointer to the offsets buffer size to be
-   * retrieved.
+   *     retrieved.
    * @param buffer_val The values buffer to be retrieved.
    * @param buffer_val_size A pointer to the values buffer size to be retrieved.
    * @return Status
    */
-  Status get_buffer(
-      const std::string& attribute,
+  Status get_query_buffer(
+      const std::string& name,
       uint64_t** buffer_off,
       uint64_t** buffer_off_size,
       void** buffer_val,
@@ -221,45 +209,17 @@ class Writer {
   /** Returns the cell layout. */
   Layout layout() const;
 
+  /** Returns the QueryBuffer for an attribute/dimension. */
+  QueryBuffer query_buffer(const std::string& name) const;
+
+  /** Returns the list of the query buffer names. */
+  std::vector<std::string> query_buffer_names() const;
+
   /** Sets the array. */
   void set_array(const Array* array);
 
-  /*
-   * Sets the array schema. If the array is a kv store, then this
-   * function also sets global order as the default layout.
-   */
+  /** Sets the array schema. */
   void set_array_schema(const ArraySchema* array_schema);
-
-  /**
-   * Sets the buffer for a fixed-sized attribute.
-   *
-   * @param attribute The attribute to set the buffer for.
-   * @param buffer The buffer that has the input data to be written.
-   * @param buffer_size The size of `buffer` in bytes.
-   * @return Status
-   */
-  Status set_buffer(
-      const std::string& attribute, void* buffer, uint64_t* buffer_size);
-
-  /**
-   * Sets the buffer for a var-sized attribute.
-   *
-   * @param attribute The attribute to set the buffer for.
-   * @param buffer_off The buffer that has the input data to be written,
-   *     This buffer holds the starting offsets of each cell value in
-   *     `buffer_val`.
-   * @param buffer_off_size The size of `buffer_off` in bytes.
-   * @param buffer_val The buffer that has the input data to be written.
-   *     This buffer holds the actual var-sized cell values.
-   * @param buffer_val_size The size of `buffer_val` in bytes.
-   * @return Status
-   */
-  Status set_buffer(
-      const std::string& attribute,
-      uint64_t* buffer_off,
-      uint64_t* buffer_off_size,
-      void* buffer_val,
-      uint64_t* buffer_val_size);
 
   /** Sets current setting of check_coord_dups_ */
   void set_check_coord_dups(bool b);
@@ -273,12 +233,39 @@ class Writer {
   /** Sets the fragment URI. Applicable only to write queries. */
   void set_fragment_uri(const URI& fragment_uri);
 
-  /**
-   * Sets the cell layout of the query. The function will return an error
-   * if the queried array is a key-value store (because it has its default
-   * layout for both reads and writes.
-   */
+  /** Sets the cell layout of the query. */
   Status set_layout(Layout layout);
+
+  /**
+   * Sets the query buffer for a fixed-sized attribute/dimension.
+   *
+   * @param name The attribute/dimension name.
+   * @param buffer The buffer that has the input data to be written.
+   * @param buffer_size The size of `buffer` in bytes.
+   * @return Status
+   */
+  Status set_query_buffer(
+      const std::string& name, void* buffer, uint64_t* buffer_size);
+
+  /**
+   * Sets the query buffer for a var-sized attribute/dimension.
+   *
+   * @param name The attribute/dimension name.
+   * @param buffer_off The buffer that has the input data to be written,
+   *     This buffer holds the starting offsets of each cell value in
+   *     `buffer_val`.
+   * @param buffer_off_size The size of `buffer_off` in bytes.
+   * @param buffer_val The buffer that has the input data to be written.
+   *     This buffer holds the actual var-sized cell values.
+   * @param buffer_val_size The size of `buffer_val` in bytes.
+   * @return Status
+   */
+  Status set_query_buffer(
+      const std::string& name,
+      uint64_t* buffer_off,
+      uint64_t* buffer_off_size,
+      void* buffer_val,
+      uint64_t* buffer_val_size);
 
   /** Sets the storage manager. */
   void set_storage_manager(StorageManager* storage_manager);
@@ -292,18 +279,10 @@ class Writer {
    */
   Status set_subarray(const void* subarray);
 
-  /**
-   * Sets the query subarray.
-   *
-   * @param subarray The subarray to be set.
-   * @return Status
-   */
+  /** Sets the query subarray. */
   Status set_subarray(const Subarray& subarray);
 
-  /*
-   * Return the subarray
-   * @return subarray
-   */
+  /* Returns the query subarray. */
   void* subarray() const;
 
   /** Performs a write query using its set members. */
@@ -319,12 +298,6 @@ class Writer {
 
   /** The array schema. */
   const ArraySchema* array_schema_;
-
-  /** The names of the attributes involved in the query. */
-  std::vector<std::string> attributes_;
-
-  /** Maps attribute names to their buffers. */
-  std::unordered_map<std::string, AttributeBuffer> attr_buffers_;
 
   /**
    * Meaningful only when `dedup_coords_` is `false`.
@@ -343,7 +316,7 @@ class Writer {
   bool check_coord_oob_;
 
   /**
-   * If `true`, the coordinates will be checked whether the
+   * If `true`, the coordinates will be checked whether they
    * obey the global array order and appropriate errors will be thrown.
    */
   bool check_global_order_;
@@ -351,7 +324,6 @@ class Writer {
   /**
    * If `true`, deduplication of coordinates/cells will happen upon
    * sparse writes. Ties are broken arbitrarily.
-   *
    */
   bool dedup_coords_;
 
@@ -364,12 +336,17 @@ class Writer {
   /** True if the writer has been initialized. */
   bool initialized_;
 
-  /**
-   * The layout of the cells in the result of the subarray. Note
-   * that this may not be the same as what the user set to the
-   * query, as the Writer may calibrate it to boost performance.
-   */
+  /** The layout of the cells in the result of the subarray. */
   Layout layout_;
+
+  /**
+   * The names of the query buffers. A query buffer may correspond to
+   * either an attribute or a dimension.
+   */
+  std::vector<std::string> query_buffer_names_;
+
+  /** Maps query buffer names to query buffers. */
+  std::unordered_map<std::string, QueryBuffer> query_buffers_;
 
   /** The storage manager. */
   StorageManager* storage_manager_;
@@ -381,17 +358,20 @@ class Writer {
   /*           PRIVATE METHODS         */
   /* ********************************* */
 
-  /** Checks if attributes has been appropriately set for the query. */
-  Status check_attributes();
-
-  /** Correctness checks for buffer sizes. */
-  Status check_buffer_sizes() const;
+  /**
+   * Throws an error if there are coordinate duplicates. This function
+   * assumes that the coordinates are written in the global layout,
+   * which means that they are already sorted in the query buffers.
+   *
+   * @return Status
+   */
+  Status check_coord_dups() const;
 
   /**
    * Throws an error if there are coordinate duplicates.
    *
-   * @param cell_pos The sorted positions of the coordinates in the
-   *     `attr_buffers_`.
+   * @param cell_pos The positions reflecting the sorted coordinates
+   *     in `query_buffers_`.
    * @return Status
    */
   Status check_coord_dups(const std::vector<uint64_t>& cell_pos) const;
@@ -415,15 +395,6 @@ class Writer {
   Status check_coord_oob() const;
 
   /**
-   * Throws an error if there are coordinate duplicates. This function
-   * assumes that the coordinates are written in the global layout,
-   * which means that they are already sorted in the attribute buffers.
-   *
-   * @return Status
-   */
-  Status check_coord_dups() const;
-
-  /**
    * Throws an error if there are coordinates that do not obey the
    * global order.
    *
@@ -440,6 +411,12 @@ class Writer {
    */
   template <class T>
   Status check_global_order() const;
+
+  /** Checks correctness of the query buffer names. */
+  Status check_query_buffer_names();
+
+  /** Correctness checks for the query buffer sizes. */
+  Status check_query_buffer_sizes() const;
 
   /** Correctness checks for `subarray_`. */
   Status check_subarray() const;
@@ -460,7 +437,7 @@ class Writer {
    * @param cell_pos The sorted positions of the coordinates in the
    *     `attr_buffers_`.
    * @param A set indicating the positions of the duplicates.
-   *     If there are not duplicates, this vector will be **empty** after
+   *     If there are no duplicates, this vector will be **empty** after
    *     the termination of the function.
    * @return Status
    */
@@ -478,7 +455,7 @@ class Writer {
    * global order and, hence, they are sorted in the attribute buffers.
    *
    * @param A set indicating the positions of the duplicates.
-   *     If there are not duplicates, this vector will be **empty** after
+   *     If there are no duplicates, this vector will be **empty** after
    *     the termination of the function.
    * @return Status
    */
@@ -521,28 +498,28 @@ class Writer {
       bool dense, std::shared_ptr<FragmentMetadata>* frag_meta) const;
 
   /**
-   * Runs the input tiles for the input attribute through the filter pipeline.
-   * The tile buffers are modified to contain the output of the pipeline.
+   * Runs the input tiles for the input attribute/dimension
+   * through the filter pipeline. The tile buffers are modified to
+   * contain the output of the pipeline.
    *
-   * @param attribute The attribute the tiles belong to.
+   * @param name The attribute/dimension name.
    * @param tile The tiles to be filtered.
    * @return Status
    */
-  Status filter_tiles(
-      const std::string& attribute, std::vector<Tile>* tiles) const;
+  Status filter_tiles(const std::string& name, std::vector<Tile>* tiles) const;
 
   /**
-   * Runs the input tile for the input attribute through the filter pipeline.
-   * The tile buffer is modified to contain the output of the pipeline.
+   * Runs the input tile for the input attribute/dimension through the
+   * filter pipeline. The tile buffer is modified to contain the output
+   * of the pipeline.
    *
-   * @param attribute The attribute the tile belong to.
+   * @param name The attribute/dimension name.
    * @param tile The tile to be filtered.
    * @param offsets True if the tile to be filtered contains offsets for a
-   *    var-sized attribute.
+   *    var-sized attribute/dimension.
    * @return Status
    */
-  Status filter_tile(
-      const std::string& attribute, Tile* tile, bool offsets) const;
+  Status filter_tile(const std::string& name, Tile* tile, bool offsets) const;
 
   /** Finalizes the global write state. */
   Status finalize_global_write_state();
@@ -573,8 +550,8 @@ class Writer {
 
   /**
    * Applicable only to global writes. Writes the last tiles for each
-   * attribute remaining in the state, and records the metadata for
-   * the coordinates attribute (if present).
+   * attribute/dimension remaining in the state, and records the metadata for
+   * the coordinates (if present).
    *
    * @tparam T The domain type.
    * @return Status
@@ -582,7 +559,7 @@ class Writer {
   template <class T>
   Status global_write_handle_last_tile();
 
-  /** Returns `true` if the coordinates are included in the attributes. */
+  /** Returns `true` if the coordinates have been set in the query buffers. */
   bool has_coords() const;
 
   /** Initializes the global write state. */
@@ -591,26 +568,39 @@ class Writer {
   /**
    * Initializes a fixed-sized tile.
    *
-   * @param attribute The attribute the tile belongs to.
+   * @param name The name of the attribute/dimension the tile belongs to.
    * @param tile The tile to be initialized.
    * @return Status
    */
-  Status init_tile(const std::string& attribute, Tile* tile) const;
+  Status init_tile(const std::string& name, Tile* tile) const;
 
   /**
    * Initializes a var-sized tile.
    *
-   * @param attribute The attribute the tile belongs to.
+   * @param name The name of the attribute/dimension the tile belongs to.
    * @param tile The offsets tile to be initialized.
    * @param tile_var The var-sized data tile to be initialized.
    * @return Status
    */
-  Status init_tile(
-      const std::string& attribute, Tile* tile, Tile* tile_var) const;
+  Status init_tile(const std::string& name, Tile* tile, Tile* tile_var) const;
 
   /**
-   * Initializes dense cell range iterators for the subarray to be writte,
-   * one per overlapping tile.
+   * Initializes the tiles for writing for the input attribute.
+   *
+   * @param name The name of the attribute/dimension the tiles belong to.
+   * @param tile_num The number of tiles.
+   * @param tiles The tiles to be initialized. Note that the vector
+   *     has been already preallocated.
+   * @return Status
+   */
+  Status init_tiles(
+      const std::string& name,
+      uint64_t tile_num,
+      std::vector<Tile>* tiles) const;
+
+  /**
+   * Initializes dense cell range iterators for the subarray to be written,
+   * one per tile.
    *
    * @tparam T The domain type.
    * @param iters The dense cell range iterators to be created.
@@ -621,30 +611,12 @@ class Writer {
       std::vector<DenseCellRangeIter<T>>* iters) const;
 
   /**
-   * Initializes the tiles for writing for the input attribute.
+   * Generates a new fragment name, which is in the form:
+   * `__timestamp_timestamp_uuid`. For instance,
+   * `__1458759561320_1458759561320_6ba7b8129dad11d180b400c04fd430c8`
    *
-   * @param attribute The attribute the tiles belong to.
-   * @param tile_num The number of tiles.
-   * @param tiles The tiles to be initialized. Note that the vector
-   *     has been already preallocated.
-   * @return Status
-   */
-  Status init_tiles(
-      const std::string& attribute,
-      uint64_t tile_num,
-      std::vector<Tile>* tiles) const;
-
-  /**
-   * Generates a new fragment name, which is in the form: <br>
-   * .__uuid_timestamp. For instance,
-   *  __6ba7b8129dad11d180b400c04fd430c8_1458759561320
-   *
-   * Note that this is a temporary name, initiated by a new write process.
-   * After the new fragmemt is finalized, the array will change its name
-   * by removing the leading '.' character.
-   *
-   * @param frag_uri Will store the new special fragment name
-   * @param timestamp The timestamp of the fragment name creation.
+   * @param frag_uri Will store the new special fragment name.
+   * @param timestamp The timestamp to be injected in the fragment name.
    * @return Status
    */
   Status new_fragment_name(std::string* frag_uri, uint64_t* timestamp) const;
@@ -687,13 +659,13 @@ class Writer {
    * populates the partially full last tile from the previous
    * invocation.
    *
-   * @param attribute The attribute to prepare the tiles for.
+   * @param name The name of the attribute/dimension to prepare the tiles for.
    * @param coord_dups The positions of the duplicate coordinates.
    * @param tiles The **full** tiles to be created.
    * @return Status
    */
   Status prepare_full_tiles(
-      const std::string& attribute,
+      const std::string& name,
       const std::set<uint64_t>& coord_dups,
       std::vector<Tile>* tiles) const;
 
@@ -704,15 +676,15 @@ class Writer {
    * the next write invocation. The last tiles are written to storage
    * upon `finalize`. Upon each invocation, the function first
    * populates the partially full last tile from the previous
-   * invocation. Applicable only to fixed-sized attributes.
+   * invocation. Applicable only to fixed-sized attributes/dimensions.
    *
-   * @param attribute The attribute to prepare the tiles for.
+   * @param name The name of the attribute/dimension to prepare the tiles for.
    * @param coord_dups The positions of the duplicate coordinates.
    * @param tiles The **full** tiles to be created.
    * @return Status
    */
   Status prepare_full_tiles_fixed(
-      const std::string& attribute,
+      const std::string& name,
       const std::set<uint64_t>& coord_dups,
       std::vector<Tile>* tiles) const;
 
@@ -723,38 +695,38 @@ class Writer {
    * the next write invocation. The last tiles are written to storage
    * upon `finalize`. Upon each invocation, the function first
    * populates the partially full last tile from the previous
-   * invocation. Applicable only to var-sized attributes.
+   * invocation. Applicable only to var-sized attributes/dimensions.
    *
-   * @param attribute The attribute to prepare the tiles for.
+   * @param name The name of the attribute/dimension to prepare the tiles for.
    * @param coord_dups The positions of the duplicate coordinates.
    * @param tiles The **full** tiles to be created.
    * @return Status
    */
   Status prepare_full_tiles_var(
-      const std::string& attribute,
+      const std::string& name,
       const std::set<uint64_t>& coord_dups,
       std::vector<Tile>* tiles) const;
 
   /**
-   * It prepares the tiles, copying from the user buffers into the tiles
+   * It prepares the tiles, copying from the query buffers into the tiles
    * the values based on the input write cell ranges, focusing on the
-   * input attribute.
+   * input attribute/dimension.
    *
-   * @param attribute The attribute to prepare the tiles for.
+   * @param name The name of the attribute/dimension to prepare the tiles for.
    * @param write_cell_ranges The write cell ranges.
    * @param tiles The tiles to be created.
    * @return Status
    */
   Status prepare_tiles(
-      const std::string& attribute,
+      const std::string& name,
       const std::vector<WriteCellRangeVec>& write_cell_ranges,
       std::vector<Tile>* tiles) const;
 
   /**
-   * It prepares the tiles, re-organizing the cells from the user
+   * It prepares the tiles, re-organizing the cells from the query
    * buffers based on the input sorted positions.
    *
-   * @param attribute The attribute to prepare the tiles for.
+   * @param name The name of the attribute/dimension to prepare the tiles for.
    * @param cell_pos The positions that resulted from sorting and
    *     according to which the cells must be re-arranged.
    * @param coord_dups The set with the positions
@@ -763,17 +735,17 @@ class Writer {
    * @return Status
    */
   Status prepare_tiles(
-      const std::string& attribute,
+      const std::string& name,
       const std::vector<uint64_t>& cell_pos,
       const std::set<uint64_t>& coord_dups,
       std::vector<Tile>* tiles) const;
 
   /**
-   * It prepares the tiles, re-organizing the cells from the user
+   * It prepares the tiles, re-organizing the cells from the query
    * buffers based on the input sorted positions. Applicable only
-   * to fixed-sized attributes.
+   * to fixed-sized attributes/dimensions.
    *
-   * @param attribute The attribute to prepare the tiles for.
+   * @param name The name of the attribute/dimension to prepare the tiles for.
    * @param cell_pos The positions that resulted from sorting and
    *     according to which the cells must be re-arranged.
    * @param coord_dups The set with the positions
@@ -782,17 +754,17 @@ class Writer {
    * @return Status
    */
   Status prepare_tiles_fixed(
-      const std::string& attribute,
+      const std::string& name,
       const std::vector<uint64_t>& cell_pos,
       const std::set<uint64_t>& coord_dups,
       std::vector<Tile>* tiles) const;
 
   /**
-   * It prepares the tiles, re-organizing the cells from the user
+   * It prepares the tiles, re-organizing the cells from the query
    * buffers based on the input sorted positions. Applicable only
-   * to var-sized attributes.
+   * to var-sized attributes/dimensions.
    *
-   * @param attribute The attribute to prepare the tiles for.
+   * @param name The name of the attribute/dimension to prepare the tiles for.
    * @param cell_pos The positions that resulted from sorting and
    *     according to which the cells must be re-arranged.
    * @param coord_dups The set with the positions
@@ -801,16 +773,16 @@ class Writer {
    * @return Status
    */
   Status prepare_tiles_var(
-      const std::string& attribute,
+      const std::string& name,
       const std::vector<uint64_t>& cell_pos,
       const std::set<uint64_t>& coord_dups,
       std::vector<Tile>* tiles) const;
 
-  /** Resets the writer object, rendering it incomplete. */
+  /** Resets the writer, rendering it incomplete. */
   void reset();
 
   /**
-   * Sorts the coordinates of the user buffers, creating a vector with
+   * Sorts the coordinates of the query buffers, creating a vector with
    * the sorted positions.
    *
    * @tparam T The domain type.
@@ -836,30 +808,18 @@ class Writer {
   Status unordered_write();
 
   /**
-   * Writes an empty cell range to the input tile.
-   * Applicable to **fixed-sized** attributes.
+   * Writes all the input tiles to storage.
    *
-   * @param num Number of empty values to write.
-   * @param tile The tile to write to.
+   * @param tiles Tiles to be written, one element per attribute/dimension.
    * @return Status
    */
-  Status write_empty_cell_range_to_tile(uint64_t num, Tile* tile) const;
-
-  /**
-   * Writes an empty cell range to the input tile.
-   * Applicable to **variable-sized** attributes.
-   *
-   * @param num Number of empty values to write.
-   * @param tile The tile offsets to write to.
-   * @param tile_var The tile with the var-sized cells to write to.
-   * @return Status
-   */
-  Status write_empty_cell_range_to_tile_var(
-      uint64_t num, Tile* tile, Tile* tile_var) const;
+  Status write_all_tiles(
+      FragmentMetadata* frag_meta,
+      const std::vector<std::vector<Tile>>& tiles) const;
 
   /**
    * Writes the input cell range to the input tile, for a particular
-   * buffer. Applicable to **fixed-sized** attributes.
+   * buffer. Applicable to **fixed-sized** attributes/dimensions.
    *
    * @param buff The write buffer where the cells will be copied from.
    * @param start The start element in the write buffer.
@@ -872,7 +832,7 @@ class Writer {
 
   /**
    * Writes the input cell range to the input tile, for a particular
-   * buffer. Applicable to **variable-sized** attributes.
+   * buffer. Applicable to **variable-sized** attributes/dimensions.
    *
    * @param buff The write buffer where the cell offsets will be copied from.
    * @param buff_var The write buffer where the cell values will be copied from.
@@ -891,25 +851,37 @@ class Writer {
       Tile* tile_var) const;
 
   /**
-   * Writes all the input tiles to storage.
+   * Writes an empty cell range to the input tile.
+   * Applicable to **fixed-sized** attributes/dimensions.
    *
-   * @param attribute_tiles Tiles to be written, one element per attribute.
+   * @param num Number of empty values to write.
+   * @param tile The tile to write to.
    * @return Status
    */
-  Status write_all_tiles(
-      FragmentMetadata* frag_meta,
-      const std::vector<std::vector<Tile>>& attribute_tiles) const;
+  Status write_empty_cell_range_to_tile(uint64_t num, Tile* tile) const;
 
   /**
-   * Writes the input tiles for the input attribute to storage.
+   * Writes an empty cell range to the input tile.
+   * Applicable to **variable-sized** attributes/dimensions.
    *
-   * @param attribute The attribute the tiles belong to.
+   * @param num Number of empty values to write.
+   * @param tile The tile offsets to write to.
+   * @param tile_var The tile with the var-sized cells to write to.
+   * @return Status
+   */
+  Status write_empty_cell_range_to_tile_var(
+      uint64_t num, Tile* tile, Tile* tile_var) const;
+
+  /**
+   * Writes the input tiles for the input attribute/dimension to storage.
+   *
+   * @param name The name of the attribute/dimension the tiles belong to.
    * @param frag_meta The fragment metadata.
    * @param tiles The tiles to be written.
    * @return Status
    */
   Status write_tiles(
-      const std::string& attribute,
+      const std::string& name,
       FragmentMetadata* frag_meta,
       const std::vector<Tile>& tiles) const;
 };

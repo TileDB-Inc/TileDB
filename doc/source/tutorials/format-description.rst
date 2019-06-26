@@ -504,6 +504,13 @@ The type ``Dimension`` has the internal format:
 | Dimension               | ``char[]``           | Dimension name character array                     |
 | name                    |                      |                                                    |
 +-------------------------+----------------------+----------------------------------------------------+
+| Dimension               | ``uint8_t``          | Datatype of the dimension values                   |
+| datatype                |                      |                                                    |
++-------------------------+----------------------+----------------------------------------------------+
+| Cell val num            | ``uint32_t``         | Number of dimension values per cell. For           |
+|                         |                      | variable-length dimensions, this is                |
+|                         |                      | ``std::numeric_limits<uint32_t>::max()``           |
++-------------------------+----------------------+----------------------------------------------------+
 | Domain                  | ``uint8_t[]``        | Byte array of length ``2*sizeof(DimT)``, storing   |
 |                         |                      | the min, max values of the dimension (of type      |
 |                         |                      | ``DimT``).                                         |
@@ -515,7 +522,8 @@ The type ``Dimension`` has the internal format:
 | Tile                    | ``uint8_t[]``        | Byte array of length ``sizeof(DimT)``, storing the |
 | extent                  |                      | space tile extent of this dimension.               |
 +-------------------------+----------------------+----------------------------------------------------+
-
+| Filters                 | ``FilterPipeline``   | The filter pipeline used on dimension tiles        |
++-------------------------+----------------------+----------------------------------------------------+
 
 The type ``Attribute`` has the internal format:
 

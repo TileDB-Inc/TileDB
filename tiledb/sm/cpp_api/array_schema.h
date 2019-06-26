@@ -312,8 +312,12 @@ class ArraySchema : public Schema {
   }
 
   /**
-   * Returns a copy of the FilterList of the coordinates. To change the
-   * coordinate compressor, use `set_coords_filter_list()`.
+   * Returns a copy of the FilterList of the coordinates. Note that
+   * this is the list of filters set by the user with
+   * `set_coords_filter_list()`. If the user specified filters for
+   * a dimension separately with `Dimension::set_filter_list`, then
+   * the user must use `Dimension::filter_list` to get the correct
+   * filters of that dimension.
    *
    * @return Copy of the coordinates FilterList.
    */
@@ -328,7 +332,12 @@ class ArraySchema : public Schema {
   /**
    * Sets the FilterList for the coordinates, which is an ordered list of
    * filters that will be used to process and/or transform the coordinate data
-   * (such as compression).
+   * (such as compression). Note that if the
+   * user specifies filters separately for a dimension with
+   * `tiledb_dimension_set_filter_list`, then the explicit
+   * dimension filters will be chosen over the coordinates filters set
+   * by this function. This function acts as a helper
+   * if the user wishes to set the same filters for all dimensions.
    *
    * **Example:**
    * @code{.cpp}

@@ -58,9 +58,7 @@ ArraySchema::ArraySchema() {
   tile_order_ = Layout::ROW_MAJOR;
   version_ = constants::format_version;
 
-  // Set up default filter pipelines for coords and offsets
-  coords_filters_.add_filter(CompressionFilter(
-      constants::coords_compression, constants::coords_compression_level));
+  // Set up default filter pipelines for offsets
   cell_var_offsets_filters_.add_filter(CompressionFilter(
       constants::cell_var_offsets_compression,
       constants::cell_var_offsets_compression_level));
@@ -76,9 +74,7 @@ ArraySchema::ArraySchema(ArrayType array_type)
   tile_order_ = Layout::ROW_MAJOR;
   version_ = constants::format_version;
 
-  // Set up default filter pipelines for coords and offsets
-  coords_filters_.add_filter(CompressionFilter(
-      constants::coords_compression, constants::coords_compression_level));
+  // Set up default filter pipelines for offsets
   cell_var_offsets_filters_.add_filter(CompressionFilter(
       constants::cell_var_offsets_compression,
       constants::cell_var_offsets_compression_level));
@@ -93,9 +89,9 @@ ArraySchema::ArraySchema(const ArraySchema* array_schema) {
   capacity_ = array_schema->capacity_;
   cell_order_ = array_schema->cell_order_;
   cell_sizes_ = array_schema->cell_sizes_;
-  cell_var_offsets_filters_ = array_schema->cell_var_offsets_filters_;
   coords_filters_ = array_schema->coords_filters_;
   coords_size_ = array_schema->coords_size_;
+  cell_var_offsets_filters_ = array_schema->cell_var_offsets_filters_;
   tile_order_ = array_schema->tile_order_;
   version_ = array_schema->version_;
 
@@ -229,11 +225,6 @@ Status ArraySchema::check() const {
     }
   }
 
-  if (!check_double_delta_compressor())
-    return LOG_STATUS(Status::ArraySchemaError(
-        "Array schema check failed; Double delta compression can be used "
-        "only with integer values"));
-
   if (!check_attribute_dimension_names())
     return LOG_STATUS(
         Status::ArraySchemaError("Array schema check failed; Attributes "
@@ -272,17 +263,6 @@ const FilterPipeline* ArraySchema::coords_filters() const {
   return &coords_filters_;
 }
 
-Compressor ArraySchema::coords_compression() const {
-  auto compressor = coords_filters_.get_filter<CompressionFilter>();
-  return (compressor == nullptr) ? Compressor::NO_COMPRESSION :
-                                   compressor->compressor();
-}
-
-int ArraySchema::coords_compression_level() const {
-  auto compressor = coords_filters_.get_filter<CompressionFilter>();
-  return (compressor == nullptr) ? -1 : compressor->compression_level();
-}
-
 uint64_t ArraySchema::coords_size() const {
   return coords_size_;
 }
@@ -304,22 +284,21 @@ unsigned int ArraySchema::dim_num() const {
 }
 
 void ArraySchema::dump(FILE* out) const {
+  // Dump main members
   fprintf(out, "- Array type: %s\n", array_type_str(array_type_).c_str());
   fprintf(out, "- Cell order: %s\n", layout_str(cell_order_).c_str());
   fprintf(out, "- Tile order: %s\n", layout_str(tile_order_).c_str());
   fprintf(out, "- Capacity: %" PRIu64 "\n", capacity_);
-  fprintf(
-      out,
-      "- Coordinates compressor: %s\n",
-      compressor_str(coords_compression()).c_str());
-  fprintf(
-      out,
-      "- Coordinates compression level: %d\n\n",
-      coords_compression_level());
 
+  // Dump cell var offsets filters
+  fprintf(out, "- Variable-cell offsets filters:\n");
+  cell_var_offsets_filters_.dump(out);
+
+  // Dump domain
   if (domain_ != nullptr)
     domain_->dump(out);
 
+  // Dump attributes
   for (auto& attr : attributes_) {
     fprintf(out, "\n");
     attr->dump(out);
@@ -505,7 +484,7 @@ Status ArraySchema::deserialize(ConstBuffer* buff, bool is_kv) {
 
   // Load domain
   domain_ = new Domain();
-  RETURN_NOT_OK(domain_->deserialize(buff));
+  RETURN_NOT_OK(domain_->deserialize(version_, buff));
 
   // Load attributes
   uint32_t attribute_num;
@@ -582,11 +561,6 @@ void ArraySchema::set_capacity(uint64_t capacity) {
   capacity_ = capacity;
 }
 
-Status ArraySchema::set_coords_filter_pipeline(const FilterPipeline* pipeline) {
-  coords_filters_ = *pipeline;
-  return Status::Ok();
-}
-
 Status ArraySchema::set_cell_var_offsets_filter_pipeline(
     const FilterPipeline* pipeline) {
   cell_var_offsets_filters_ = *pipeline;
@@ -595,6 +569,11 @@ Status ArraySchema::set_cell_var_offsets_filter_pipeline(
 
 void ArraySchema::set_cell_order(Layout cell_order) {
   cell_order_ = cell_order;
+}
+
+Status ArraySchema::set_coords_filter_pipeline(const FilterPipeline* pipeline) {
+  coords_filters_ = *pipeline;
+  return Status::Ok();
 }
 
 Status ArraySchema::set_domain(Domain* domain) {
@@ -618,15 +597,6 @@ Status ArraySchema::set_domain(Domain* domain) {
   delete domain_;
   domain_ = new Domain(domain);
 
-  // Potentially change the default coordinates compressor
-  if ((domain_->type() == Datatype::FLOAT32 ||
-       domain_->type() == Datatype::FLOAT64) &&
-      coords_compression() == Compressor::DOUBLE_DELTA) {
-    auto* filter = coords_filters_.get_filter<CompressionFilter>();
-    assert(filter != nullptr);
-    filter->set_compressor(constants::real_coords_compression);
-    filter->set_compression_level(-1);
-  }
   return Status::Ok();
 }
 
@@ -650,24 +620,6 @@ bool ArraySchema::check_attribute_dimension_names() const {
   for (unsigned int i = 0; i < dim_num; ++i)
     names.insert(domain_->dimension(i)->name());
   return (names.size() == attributes_.size() + dim_num);
-}
-
-bool ArraySchema::check_double_delta_compressor() const {
-  // Check coordinates
-  if ((domain_->type() == Datatype::FLOAT32 ||
-       domain_->type() == Datatype::FLOAT64) &&
-      coords_compression() == Compressor::DOUBLE_DELTA)
-    return false;
-
-  // Check attributes
-  for (auto attr : attributes_) {
-    if ((attr->type() == Datatype::FLOAT32 ||
-         attr->type() == Datatype::FLOAT64) &&
-        attr->compressor() == Compressor::DOUBLE_DELTA)
-      return false;
-  }
-
-  return true;
 }
 
 void ArraySchema::clear() {
@@ -712,7 +664,7 @@ Status ArraySchema::set_kv_attributes() {
   // Add key attribute
   auto key_attr =
       new Attribute(constants::key_attr_name, constants::key_attr_type);
-  key_attr->set_compressor(constants::key_attr_compressor);
+  key_attr->add_filter(CompressionFilter(constants::key_attr_compressor, -1));
   attributes_.emplace_back(key_attr);
   return Status::Ok();
 }

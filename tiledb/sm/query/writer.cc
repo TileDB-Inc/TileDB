@@ -80,6 +80,10 @@ Status Writer::add_range(
       "Cannot add range; Operation currently unsupported for write queries"));
 }
 
+const ArraySchema* Writer::array_schema() const {
+  return array_schema_;
+}
+
 Status Writer::get_range_num(unsigned dim_idx, uint64_t* range_num) const {
   // TODO(sp): Handle this properly
   (void)dim_idx;
@@ -106,8 +110,8 @@ Status Writer::get_range(
                           "unsupported for write queries"));
 }
 
-Status Writer::get_est_result_size(const char* attr_name, uint64_t* size) {
-  (void)attr_name;
+Status Writer::get_est_result_size(const char* name, uint64_t* size) {
+  (void)name;
   (void)size;
   return LOG_STATUS(
       Status::WriterError("Cannot get estimated result size; This operation "
@@ -115,28 +119,13 @@ Status Writer::get_est_result_size(const char* attr_name, uint64_t* size) {
 }
 
 Status Writer::get_est_result_size(
-    const char* attr_name, uint64_t* size_off, uint64_t* size_val) {
-  (void)attr_name;
+    const char* name, uint64_t* size_off, uint64_t* size_val) {
+  (void)name;
   (void)size_off;
   (void)size_val;
   return LOG_STATUS(
       Status::WriterError("Cannot get estimated result size; This operation "
                           "is not supported for write queries"));
-}
-
-const ArraySchema* Writer::array_schema() const {
-  return array_schema_;
-}
-
-std::vector<std::string> Writer::attributes() const {
-  return attributes_;
-}
-
-AttributeBuffer Writer::buffer(const std::string& attribute) const {
-  auto attrbuf = attr_buffers_.find(attribute);
-  if (attrbuf == attr_buffers_.end())
-    return AttributeBuffer{};
-  return attrbuf->second;
 }
 
 Status Writer::finalize() {
@@ -145,10 +134,10 @@ Status Writer::finalize() {
   return Status::Ok();
 }
 
-Status Writer::get_buffer(
-    const std::string& attribute, void** buffer, uint64_t** buffer_size) const {
-  auto it = attr_buffers_.find(attribute);
-  if (it == attr_buffers_.end()) {
+Status Writer::get_query_buffer(
+    const std::string& name, void** buffer, uint64_t** buffer_size) const {
+  auto it = query_buffers_.find(name);
+  if (it == query_buffers_.end()) {
     *buffer = nullptr;
     *buffer_size = nullptr;
   } else {
@@ -159,14 +148,14 @@ Status Writer::get_buffer(
   return Status::Ok();
 }
 
-Status Writer::get_buffer(
-    const std::string& attribute,
+Status Writer::get_query_buffer(
+    const std::string& name,
     uint64_t** buffer_off,
     uint64_t** buffer_off_size,
     void** buffer_val,
     uint64_t** buffer_val_size) const {
-  auto it = attr_buffers_.find(attribute);
-  if (it == attr_buffers_.end()) {
+  auto it = query_buffers_.find(name);
+  if (it == query_buffers_.end()) {
     *buffer_off = nullptr;
     *buffer_off_size = nullptr;
     *buffer_val = nullptr;
@@ -193,18 +182,6 @@ bool Writer::get_dedup_coords() const {
   return dedup_coords_;
 }
 
-void Writer::set_check_coord_dups(bool b) {
-  check_coord_dups_ = b;
-}
-
-void Writer::set_check_coord_oob(bool b) {
-  check_coord_oob_ = b;
-}
-
-void Writer::set_dedup_coords(bool b) {
-  dedup_coords_ = b;
-}
-
 Status Writer::init() {
   // Sanity checks
   if (storage_manager_ == nullptr)
@@ -213,18 +190,18 @@ Status Writer::init() {
   if (array_schema_ == nullptr)
     return LOG_STATUS(
         Status::WriterError("Cannot initialize query; Array metadata not set"));
-  if (attr_buffers_.empty())
+  if (query_buffers_.empty())
     return LOG_STATUS(
-        Status::WriterError("Cannot initialize query; Buffers not set"));
-  if (attributes_.empty())
+        Status::WriterError("Cannot initialize query; Query buffers not set"));
+  if (query_buffer_names_.empty())
     return LOG_STATUS(
-        Status::WriterError("Cannot initialize query; Attributes not set"));
+        Status::WriterError("Cannot initialize query; Query buffers not set"));
 
   if (subarray_ == nullptr)
     RETURN_NOT_OK(set_subarray(nullptr));
   RETURN_NOT_OK(check_subarray());
-  RETURN_NOT_OK(check_buffer_sizes());
-  RETURN_NOT_OK(check_attributes());
+  RETURN_NOT_OK(check_query_buffer_names());
+  RETURN_NOT_OK(check_query_buffer_sizes());
 
   optimize_layout_for_1D();
 
@@ -250,6 +227,17 @@ Layout Writer::layout() const {
   return layout_;
 }
 
+QueryBuffer Writer::query_buffer(const std::string& name) const {
+  auto buff = query_buffers_.find(name);
+  if (buff == query_buffers_.end())
+    return QueryBuffer{};
+  return buff->second;
+}
+
+std::vector<std::string> Writer::query_buffer_names() const {
+  return query_buffer_names_;
+}
+
 void Writer::set_array(const Array* array) {
   array_ = array;
 }
@@ -260,97 +248,16 @@ void Writer::set_array_schema(const ArraySchema* array_schema) {
     layout_ = Layout::UNORDERED;
 }
 
-Status Writer::set_buffer(
-    const std::string& attribute, void* buffer, uint64_t* buffer_size) {
-  // Check buffer
-  if (buffer == nullptr || buffer_size == nullptr)
-    return LOG_STATUS(Status::WriterError(
-        "Cannot set buffer; Buffer or buffer size is null"));
-
-  // Array schema must exist
-  if (array_schema_ == nullptr)
-    return LOG_STATUS(
-        Status::WriterError("Cannot set buffer; Array schema not set"));
-
-  // Check that attribute exists
-  if (attribute != constants::coords &&
-      array_schema_->attribute(attribute) == nullptr)
-    return LOG_STATUS(
-        Status::WriterError("Cannot set buffer; Invalid attribute"));
-
-  // Check that attribute is fixed-sized
-  bool var_size =
-      (attribute != constants::coords && array_schema_->var_size(attribute));
-  if (var_size)
-    return LOG_STATUS(Status::WriterError(
-        std::string("Cannot set buffer; Input attribute '") + attribute +
-        "' is var-sized"));
-
-  // Error if setting a new attribute after initialization
-  bool attr_exists = attr_buffers_.find(attribute) != attr_buffers_.end();
-  if (initialized_ && !attr_exists)
-    return LOG_STATUS(Status::WriterError(
-        std::string("Cannot set buffer for new attribute '") + attribute +
-        "' after initialization"));
-
-  // Append to attributes only if buffer not set before
-  if (!attr_exists)
-    attributes_.push_back(std::string(attribute));
-
-  // Set attribute buffer
-  attr_buffers_[attribute] =
-      AttributeBuffer(buffer, nullptr, buffer_size, nullptr);
-
-  return Status::Ok();
+void Writer::set_check_coord_dups(bool b) {
+  check_coord_dups_ = b;
 }
 
-Status Writer::set_buffer(
-    const std::string& attribute,
-    uint64_t* buffer_off,
-    uint64_t* buffer_off_size,
-    void* buffer_val,
-    uint64_t* buffer_val_size) {
-  // Check buffer
-  if (buffer_off == nullptr || buffer_off_size == nullptr ||
-      buffer_val == nullptr || buffer_val_size == nullptr)
-    return LOG_STATUS(Status::WriterError(
-        "Cannot set buffer; Buffer or buffer size is null"));
+void Writer::set_check_coord_oob(bool b) {
+  check_coord_oob_ = b;
+}
 
-  // Array schema must exist
-  if (array_schema_ == nullptr)
-    return LOG_STATUS(
-        Status::WriterError("Cannot set buffer; Array schema not set"));
-
-  // Check that attribute exists
-  if (attribute != constants::coords &&
-      array_schema_->attribute(attribute) == nullptr)
-    return LOG_STATUS(
-        Status::WriterError("Cannot set buffer; Invalid attribute"));
-
-  // Check that attribute is var-sized
-  bool var_size =
-      (attribute != constants::coords && array_schema_->var_size(attribute));
-  if (!var_size)
-    return LOG_STATUS(Status::WriterError(
-        std::string("Cannot set buffer; Input attribute '") + attribute +
-        "' is fixed-sized"));
-
-  // Error if setting a new attribute after initialization
-  bool attr_exists = attr_buffers_.find(attribute) != attr_buffers_.end();
-  if (initialized_ && !attr_exists)
-    return LOG_STATUS(Status::WriterError(
-        std::string("Cannot set buffer for new attribute '") + attribute +
-        "' after initialization"));
-
-  // Append to attributes only if buffer not set before
-  if (!attr_exists)
-    attributes_.push_back(std::string(attribute));
-
-  // Set attribute buffer
-  attr_buffers_[attribute] =
-      AttributeBuffer(buffer_off, buffer_val, buffer_off_size, buffer_val_size);
-
-  return Status::Ok();
+void Writer::set_dedup_coords(bool b) {
+  dedup_coords_ = b;
 }
 
 void Writer::set_fragment_uri(const URI& fragment_uri) {
@@ -367,6 +274,99 @@ Status Writer::set_layout(Layout layout) {
                             "arrays - use GLOBAL_ORDER or UNORDERED instead"));
 
   layout_ = layout;
+
+  return Status::Ok();
+}
+
+Status Writer::set_query_buffer(
+    const std::string& name, void* buffer, uint64_t* buffer_size) {
+  // Check buffer
+  if (buffer == nullptr || buffer_size == nullptr)
+    return LOG_STATUS(Status::WriterError(
+        "Cannot set buffer; Buffer or buffer size is null"));
+
+  // Array schema must exist
+  if (array_schema_ == nullptr)
+    return LOG_STATUS(
+        Status::WriterError("Cannot set buffer; Array schema not set"));
+
+  // Check that attribute/dimension exists
+  if (name != constants::coords && array_schema_->attribute(name) == nullptr)
+    return LOG_STATUS(
+        Status::WriterError("Cannot set buffer; Invalid attribute/dimension"));
+
+  // Check that attribute/dimension is fixed-sized
+  bool var_size = (name != constants::coords && array_schema_->var_size(name));
+  // TODO: fix error message
+  if (var_size)
+    return LOG_STATUS(Status::WriterError(
+        std::string("Cannot set buffer; Input attribute '") + name +
+        "' is var-sized"));
+
+  // Error if setting a new attribute/dimension after initialization
+  bool attr_exists = query_buffers_.find(name) != query_buffers_.end();
+  if (initialized_ && !attr_exists)
+    // TODO: fix error message
+    return LOG_STATUS(Status::WriterError(
+        std::string("Cannot set buffer for new attribute '") + name +
+        "' after initialization"));
+
+  // Append to attributes only if buffer not set before
+  if (!attr_exists)
+    query_buffer_names_.push_back(std::string(name));
+
+  // Set attribute buffer
+  query_buffers_[name] = QueryBuffer(buffer, nullptr, buffer_size, nullptr);
+
+  return Status::Ok();
+}
+
+Status Writer::set_query_buffer(
+    const std::string& name,
+    uint64_t* buffer_off,
+    uint64_t* buffer_off_size,
+    void* buffer_val,
+    uint64_t* buffer_val_size) {
+  // Check buffer
+  if (buffer_off == nullptr || buffer_off_size == nullptr ||
+      buffer_val == nullptr || buffer_val_size == nullptr)
+    return LOG_STATUS(Status::WriterError(
+        "Cannot set buffer; Buffer or buffer size is null"));
+
+  // Array schema must exist
+  if (array_schema_ == nullptr)
+    return LOG_STATUS(
+        Status::WriterError("Cannot set buffer; Array schema not set"));
+
+  // TODO: revisit
+
+  // Check that attribute exists
+  // TODO: check attribute or dimension
+  if (name != constants::coords && array_schema_->attribute(name) == nullptr)
+    return LOG_STATUS(
+        Status::WriterError("Cannot set buffer; Invalid attribute"));
+
+  // Check that attribute is var-sized
+  bool var_size = (name != constants::coords && array_schema_->var_size(name));
+  if (!var_size)
+    return LOG_STATUS(Status::WriterError(
+        std::string("Cannot set buffer; Input attribute '") + name +
+        "' is fixed-sized"));
+
+  // Error if setting a new attribute after initialization
+  bool attr_exists = query_buffers_.find(name) != query_buffers_.end();
+  if (initialized_ && !attr_exists)
+    return LOG_STATUS(Status::WriterError(
+        std::string("Cannot set buffer for new attribute '") + name +
+        "' after initialization"));
+
+  // Append to attributes only if buffer not set before
+  if (!attr_exists)
+    query_buffer_names_.push_back(std::string(name));
+
+  // Set attribute buffer
+  query_buffers_[name] =
+      QueryBuffer(buffer_off, buffer_val, buffer_off_size, buffer_val_size);
 
   return Status::Ok();
 }
@@ -410,7 +410,6 @@ Status Writer::set_subarray(const Subarray& subarray) {
     return LOG_STATUS(Status::WriterError(
         "Cannot set subarray when writing to sparse arrays"));
 
-  // TODO
   // TODO: for the dense case, allow only single-range subarrays
   (void)subarray;
 
@@ -444,102 +443,12 @@ Status Writer::write() {
 /*          PRIVATE METHODS       */
 /* ****************************** */
 
-Status Writer::check_attributes() {
-  // There should be no duplicate attributes
-  std::set<std::string> unique_attributes;
-  int has_coords = 0;
-  for (const auto& attr : attributes_) {
-    unique_attributes.insert(attr);
-    if (attr == constants::coords)
-      has_coords = 1;
-  }
-  if (unique_attributes.size() != attributes_.size())
-    return LOG_STATUS(
-        Status::WriterError("Check attributes failed; Duplicate attributes"));
-
-  // If the array is sparse, the coordinates must be provided
-  if (!array_schema_->dense() && !has_coords)
-    return LOG_STATUS(
-        Status::WriterError("Sparse array writes expect the coordinates of the "
-                            "cells to be written"));
-
-  // If the layout is unordered, the coordinates must be provided
-  if (layout_ == Layout::UNORDERED && !has_coords)
-    return LOG_STATUS(Status::WriterError(
-        "Unordered writes expect the coordinates of the cells to be written"));
-
-  // All attributes must be provided
-  if (attributes_.size() != array_schema_->attribute_num() + has_coords)
-    return LOG_STATUS(Status::WriterError(
-        "Check attributes failed; Writes expect "
-        "all attributes (plus coordinates for unordered writes) to be set"));
-
-  return Status::Ok();
-}
-
-Status Writer::check_buffer_sizes() const {
-  // This is applicable only to dense arrays and ordered layout
-  if (!array_schema_->dense() ||
-      (layout_ != Layout::ROW_MAJOR && layout_ != Layout::COL_MAJOR))
-    return Status::Ok();
-
-  auto cell_num = array_schema_->domain()->cell_num(subarray_);
-  uint64_t expected_cell_num = 0;
-  for (const auto& attr : attributes_) {
-    bool is_var = array_schema_->var_size(attr);
-    auto it = attr_buffers_.find(attr);
-    auto buffer_size = *it->second.buffer_size_;
-    if (is_var) {
-      expected_cell_num = buffer_size / constants::cell_var_offset_size;
-    } else {
-      expected_cell_num = buffer_size / array_schema_->cell_size(attr);
-    }
-    if (expected_cell_num != cell_num) {
-      std::stringstream ss;
-      ss << "Buffer sizes check failed; Invalid number of cells given for ";
-      ss << "attribute '" << attr << "'";
-      ss << " (" << expected_cell_num << " != " << cell_num << ")";
-      return LOG_STATUS(Status::WriterError(ss.str()));
-    }
-  }
-  return Status::Ok();
-}
-
-Status Writer::check_coord_dups(const std::vector<uint64_t>& cell_pos) const {
-  STATS_FUNC_IN(writer_check_coord_dups);
-
-  auto coords_buff_it = attr_buffers_.find(constants::coords);
-  if (coords_buff_it == attr_buffers_.end())
-    return LOG_STATUS(
-        Status::WriterError("Cannot check for coordinate duplicates; "
-                            "Coordinates buffer not found"));
-
-  auto coords_buff = (unsigned char*)coords_buff_it->second.buffer_;
-  auto coords_size = array_schema_->coords_size();
-  auto coords_num = cell_pos.size();
-
-  if (coords_num < 2)
-    return Status::Ok();
-
-  for (uint64_t i = 1; i < coords_num; ++i) {
-    if (!memcmp(
-            coords_buff + cell_pos[i] * coords_size,
-            coords_buff + cell_pos[i - 1] * coords_size,
-            coords_size)) {
-      return LOG_STATUS(
-          Status::WriterError("Duplicate coordinates are not allowed"));
-    }
-  }
-
-  return Status::Ok();
-  STATS_FUNC_OUT(writer_check_coord_dups);
-}
-
+// TODO
 Status Writer::check_coord_dups() const {
   STATS_FUNC_IN(writer_check_coord_dups_global);
 
-  auto coords_buff_it = attr_buffers_.find(constants::coords);
-  if (coords_buff_it == attr_buffers_.end())
+  auto coords_buff_it = query_buffers_.find(constants::coords);
+  if (coords_buff_it == query_buffers_.end())
     return LOG_STATUS(
         Status::WriterError("Cannot check for coordinate duplicates; "
                             "Coordinates buffer not found"));
@@ -565,6 +474,37 @@ Status Writer::check_coord_dups() const {
   return Status::Ok();
 
   STATS_FUNC_OUT(writer_check_coord_dups_global);
+}
+
+// TODO
+Status Writer::check_coord_dups(const std::vector<uint64_t>& cell_pos) const {
+  STATS_FUNC_IN(writer_check_coord_dups);
+
+  auto coords_buff_it = query_buffers_.find(constants::coords);
+  if (coords_buff_it == query_buffers_.end())
+    return LOG_STATUS(
+        Status::WriterError("Cannot check for coordinate duplicates; "
+                            "Coordinates buffer not found"));
+
+  auto coords_buff = (unsigned char*)coords_buff_it->second.buffer_;
+  auto coords_size = array_schema_->coords_size();
+  auto coords_num = cell_pos.size();
+
+  if (coords_num < 2)
+    return Status::Ok();
+
+  for (uint64_t i = 1; i < coords_num; ++i) {
+    if (!memcmp(
+            coords_buff + cell_pos[i] * coords_size,
+            coords_buff + cell_pos[i - 1] * coords_size,
+            coords_size)) {
+      return LOG_STATUS(
+          Status::WriterError("Duplicate coordinates are not allowed"));
+    }
+  }
+
+  return Status::Ok();
+  STATS_FUNC_OUT(writer_check_coord_dups);
 }
 
 Status Writer::check_coord_oob() const {
@@ -621,12 +561,13 @@ Status Writer::check_coord_oob() const {
   return Status::Ok();
 }
 
+// TODO
 template <class T>
 Status Writer::check_coord_oob() const {
-  auto coords_it = attr_buffers_.find(constants::coords);
+  auto coords_it = query_buffers_.find(constants::coords);
 
   // Applicable only to sparse writes - exit if coordinates do not exist
-  if (coords_it == attr_buffers_.end())
+  if (coords_it == query_buffers_.end())
     return Status::Ok();
 
   // Get coordinates buffer
@@ -721,12 +662,13 @@ Status Writer::check_global_order() const {
   STATS_FUNC_OUT(writer_check_global_order);
 }
 
+// TODO
 template <class T>
 Status Writer::check_global_order() const {
-  auto coords_it = attr_buffers_.find(constants::coords);
+  auto coords_it = query_buffers_.find(constants::coords);
 
   // Applicable only to sparse writes - exit if coordinates do not exist
-  if (coords_it == attr_buffers_.end())
+  if (coords_it == query_buffers_.end())
     return Status::Ok();
 
   // Get coordinates buffer
@@ -767,6 +709,69 @@ Status Writer::check_global_order() const {
       return st;
   }
 
+  return Status::Ok();
+}
+
+// TODO
+Status Writer::check_query_buffer_names() {
+  // There should be no duplicate attributes
+  std::set<std::string> unique_attributes;
+  int has_coords = 0;
+  for (const auto& attr : query_buffer_names_) {
+    unique_attributes.insert(attr);
+    if (attr == constants::coords)
+      has_coords = 1;
+  }
+  if (unique_attributes.size() != query_buffer_names_.size())
+    return LOG_STATUS(
+        Status::WriterError("Check attributes failed; Duplicate attributes"));
+
+  // If the array is sparse, the coordinates must be provided
+  if (!array_schema_->dense() && !has_coords)
+    return LOG_STATUS(
+        Status::WriterError("Sparse array writes expect the coordinates of the "
+                            "cells to be written"));
+
+  // If the layout is unordered, the coordinates must be provided
+  if (layout_ == Layout::UNORDERED && !has_coords)
+    return LOG_STATUS(Status::WriterError(
+        "Unordered writes expect the coordinates of the cells to be written"));
+
+  // All attributes must be provided
+  if (query_buffer_names_.size() != array_schema_->attribute_num() + has_coords)
+    return LOG_STATUS(Status::WriterError(
+        "Check attributes failed; Writes expect "
+        "all attributes (plus coordinates for unordered writes) to be set"));
+
+  return Status::Ok();
+}
+
+// TODO
+Status Writer::check_query_buffer_sizes() const {
+  // This is applicable only to dense arrays and ordered layout
+  if (!array_schema_->dense() ||
+      (layout_ != Layout::ROW_MAJOR && layout_ != Layout::COL_MAJOR))
+    return Status::Ok();
+
+  auto cell_num = array_schema_->domain()->cell_num(subarray_);
+  uint64_t expected_cell_num = 0;
+  for (const auto& attr : query_buffer_names_) {
+    bool is_var = array_schema_->var_size(attr);
+    auto it = query_buffers_.find(attr);
+    auto buffer_size = *it->second.buffer_size_;
+    if (is_var) {
+      expected_cell_num = buffer_size / constants::cell_var_offset_size;
+    } else {
+      expected_cell_num = buffer_size / array_schema_->cell_size(attr);
+    }
+    if (expected_cell_num != cell_num) {
+      std::stringstream ss;
+      ss << "Buffer sizes check failed; Invalid number of cells given for ";
+      ss << "attribute '" << attr << "'";
+      ss << " (" << expected_cell_num << " != " << cell_num << ")";
+      return LOG_STATUS(Status::WriterError(ss.str()));
+    }
+  }
   return Status::Ok();
 }
 
@@ -864,22 +869,23 @@ Status Writer::check_subarray() const {
 }
 
 Status Writer::close_files(FragmentMetadata* meta) const {
-  for (const auto& attr : attributes_) {
-    RETURN_NOT_OK(storage_manager_->close_file(meta->attr_uri(attr)));
+  for (const auto& attr : query_buffer_names_) {
+    RETURN_NOT_OK(storage_manager_->close_file(meta->uri(attr)));
     if (array_schema_->var_size(attr))
-      RETURN_NOT_OK(storage_manager_->close_file(meta->attr_var_uri(attr)));
+      RETURN_NOT_OK(storage_manager_->close_file(meta->var_uri(attr)));
   }
 
   return Status::Ok();
 }
 
+// TODO
 Status Writer::compute_coord_dups(
     const std::vector<uint64_t>& cell_pos,
     std::set<uint64_t>* coord_dups) const {
   STATS_FUNC_IN(writer_compute_coord_dups);
 
-  auto coords_buff_it = attr_buffers_.find(constants::coords);
-  if (coords_buff_it == attr_buffers_.end())
+  auto coords_buff_it = query_buffers_.find(constants::coords);
+  if (coords_buff_it == query_buffers_.end())
     return LOG_STATUS(
         Status::WriterError("Cannot check for coordinate duplicates; "
                             "Coordinates buffer not found"));
@@ -902,11 +908,12 @@ Status Writer::compute_coord_dups(
   STATS_FUNC_OUT(writer_compute_coord_dups);
 }
 
+// TODO
 Status Writer::compute_coord_dups(std::set<uint64_t>* coord_dups) const {
   STATS_FUNC_IN(writer_compute_coord_dups_global);
 
-  auto coords_buff_it = attr_buffers_.find(constants::coords);
-  if (coords_buff_it == attr_buffers_.end())
+  auto coords_buff_it = query_buffers_.find(constants::coords);
+  if (coords_buff_it == query_buffers_.end())
     return LOG_STATUS(
         Status::WriterError("Cannot check for coordinate duplicates; "
                             "Coordinates buffer not found"));
@@ -930,6 +937,7 @@ Status Writer::compute_coord_dups(std::set<uint64_t>* coord_dups) const {
   STATS_FUNC_OUT(writer_compute_coord_dups_global);
 }
 
+// TODO
 template <class T>
 Status Writer::compute_coords_metadata(
     const std::vector<Tile>& tiles, FragmentMetadata* meta) const {
@@ -1054,17 +1062,17 @@ Status Writer::create_fragment(
 }
 
 Status Writer::filter_tiles(
-    const std::string& attribute, std::vector<Tile>* tiles) const {
+    const std::string& name, std::vector<Tile>* tiles) const {
   STATS_FUNC_IN(writer_filter_tiles);
 
-  bool var_size = array_schema_->var_size(attribute);
+  bool var_size = array_schema_->var_size(name);
   // Filter all tiles
   auto tile_num = tiles->size();
   for (size_t i = 0; i < tile_num; ++i) {
-    RETURN_NOT_OK(filter_tile(attribute, &(*tiles)[i], var_size));
+    RETURN_NOT_OK(filter_tile(name, &(*tiles)[i], var_size));
     if (var_size) {
       ++i;
-      RETURN_NOT_OK(filter_tile(attribute, &(*tiles)[i], false));
+      RETURN_NOT_OK(filter_tile(name, &(*tiles)[i], false));
     }
   }
 
@@ -1074,7 +1082,7 @@ Status Writer::filter_tiles(
 }
 
 Status Writer::filter_tile(
-    const std::string& attribute, Tile* tile, bool offsets) const {
+    const std::string& name, Tile* tile, bool offsets) const {
   auto orig_size = tile->buffer()->size();
 
   // Get a copy of the appropriate filter pipeline.
@@ -1084,7 +1092,7 @@ Status Writer::filter_tile(
   } else if (offsets) {
     filters = *array_schema_->cell_var_offsets_filters();
   } else {
-    filters = *array_schema_->filters(attribute);
+    filters = *array_schema_->filters(name);
   }
 
   // Append an encryption filter when necessary.
@@ -1145,6 +1153,7 @@ Status Writer::finalize_global_write_state() {
   return Status::Ok();
 }
 
+// TODO
 template <class T>
 Status Writer::finalize_global_write_state() {
   assert(layout_ == Layout::GLOBAL_ORDER);
@@ -1168,9 +1177,9 @@ Status Writer::finalize_global_write_state() {
   }
 
   // Check that the same number of cells was written across attributes
-  for (size_t i = 1; i < attributes_.size(); ++i) {
-    if (global_write_state_->cells_written_[attributes_[i]] !=
-        global_write_state_->cells_written_[attributes_[i - 1]]) {
+  for (size_t i = 1; i < query_buffer_names_.size(); ++i) {
+    if (global_write_state_->cells_written_[query_buffer_names_[i]] !=
+        global_write_state_->cells_written_[query_buffer_names_[i - 1]]) {
       storage_manager_->vfs()->remove_dir(meta->fragment_uri());
       global_write_state_.reset(nullptr);
       return LOG_STATUS(Status::WriterError(
@@ -1181,7 +1190,8 @@ Status Writer::finalize_global_write_state() {
 
   // Check if the total number of cells written is equal to the subarray size
   if (!has_coords()) {
-    auto cells_written = global_write_state_->cells_written_[attributes_[0]];
+    auto cells_written =
+        global_write_state_->cells_written_[query_buffer_names_[0]];
     if (cells_written != array_schema_->domain()->cell_num<T>((T*)subarray_)) {
       storage_manager_->vfs()->remove_dir(meta->fragment_uri());
       global_write_state_.reset(nullptr);
@@ -1267,11 +1277,11 @@ Status Writer::global_write() {
     RETURN_CANCEL_OR_ERROR(init_global_write_state());
   auto frag_meta = global_write_state_->frag_meta_.get();
   auto uri = frag_meta->fragment_uri();
-  auto num_attributes = attributes_.size();
+  auto num_attributes = query_buffer_names_.size();
 
   // Check for coordinate duplicates
   bool has_coords =
-      attr_buffers_.find(constants::coords) != attr_buffers_.end();
+      query_buffers_.find(constants::coords) != query_buffers_.end();
   if (has_coords) {
     if (check_coord_dups_ && !dedup_coords_)
       RETURN_CANCEL_OR_ERROR(check_coord_dups());
@@ -1287,7 +1297,7 @@ Status Writer::global_write() {
   // Prepare tiles for all attributes
   std::vector<std::vector<Tile>> attribute_tiles(num_attributes);
   auto statuses = parallel_for(0, num_attributes, [&](uint64_t i) {
-    const auto& attr = attributes_[i];
+    const auto& attr = query_buffer_names_[i];
     auto& full_tiles = attribute_tiles[i];
     RETURN_CANCEL_OR_ERROR(prepare_full_tiles(attr, coord_dups, &full_tiles));
     return Status::Ok();
@@ -1304,7 +1314,7 @@ Status Writer::global_write() {
   statuses.clear();
 
   // Increment number of tiles in the fragment metadata
-  uint64_t num_tiles = array_schema_->var_size(attributes_[0]) ?
+  uint64_t num_tiles = array_schema_->var_size(query_buffer_names_[0]) ?
                            attribute_tiles[0].size() / 2 :
                            attribute_tiles[0].size();
   auto new_num_tiles = frag_meta->tile_index_base() + num_tiles;
@@ -1312,8 +1322,9 @@ Status Writer::global_write() {
 
   // Filter all tiles
   statuses = parallel_for(0, num_attributes, [&](uint64_t i) {
-    const auto& attr = attributes_[i];
+    const auto& attr = query_buffer_names_[i];
     auto& full_tiles = attribute_tiles[i];
+    // TODO: this has to be moved out of here
     if (attr == constants::coords)
       RETURN_CANCEL_OR_ERROR(compute_coords_metadata<T>(full_tiles, frag_meta));
     RETURN_CANCEL_OR_ERROR(filter_tiles(attr, &full_tiles));
@@ -1348,7 +1359,7 @@ template <class T>
 Status Writer::global_write_handle_last_tile() {
   // See if any last tiles are nonempty.
   bool all_empty = true;
-  for (const auto& attr : attributes_) {
+  for (const auto& attr : query_buffer_names_) {
     auto& last_tile = global_write_state_->last_tiles_[attr].first;
     if (!last_tile.empty()) {
       all_empty = false;
@@ -1365,10 +1376,10 @@ Status Writer::global_write_handle_last_tile() {
   meta->set_num_tiles(meta->tile_index_base() + 1);
 
   // Filter the last tiles
-  uint64_t num_attributes = attributes_.size();
+  uint64_t num_attributes = query_buffer_names_.size();
   std::vector<std::vector<Tile>> attribute_tiles(num_attributes);
   auto statuses = parallel_for(0, num_attributes, [&](uint64_t i) {
-    const auto& attr = attributes_[i];
+    const auto& attr = query_buffer_names_[i];
     auto& last_tile = global_write_state_->last_tiles_[attr].first;
     auto& last_tile_var = global_write_state_->last_tiles_[attr].second;
 
@@ -1399,8 +1410,9 @@ Status Writer::global_write_handle_last_tile() {
   return Status::Ok();
 }
 
+// TODO
 bool Writer::has_coords() const {
-  return attr_buffers_.find(constants::coords) != attr_buffers_.end();
+  return query_buffers_.find(constants::coords) != query_buffers_.end();
 }
 
 Status Writer::init_global_write_state() {
@@ -1417,7 +1429,7 @@ Status Writer::init_global_write_state() {
       create_fragment(!has_coords(), &(global_write_state_->frag_meta_)));
 
   Status st = Status::Ok();
-  for (const auto& attr : attributes_) {
+  for (const auto& attr : query_buffer_names_) {
     // Initialize last tiles
     auto last_tile_pair = std::pair<std::string, std::pair<Tile, Tile>>(
         attr, std::pair<Tile, Tile>(Tile(), Tile()));
@@ -1452,13 +1464,13 @@ Status Writer::init_global_write_state() {
   STATS_FUNC_OUT(writer_init_global_write_state);
 }
 
-Status Writer::init_tile(const std::string& attribute, Tile* tile) const {
+Status Writer::init_tile(const std::string& name, Tile* tile) const {
   // For easy reference
   auto domain = array_schema_->domain();
-  auto cell_size = array_schema_->cell_size(attribute);
+  auto cell_size = array_schema_->cell_size(name);
   auto capacity = array_schema_->capacity();
-  auto type = array_schema_->type(attribute);
-  auto is_coords = (attribute == constants::coords);
+  auto type = array_schema_->type(name);
+  auto is_coords = (name == constants::coords);
   auto dim_num = (is_coords) ? array_schema_->dim_num() : 0;
   auto cell_num_per_tile =
       (has_coords()) ? capacity : domain->cell_num_per_tile();
@@ -1472,11 +1484,11 @@ Status Writer::init_tile(const std::string& attribute, Tile* tile) const {
 }
 
 Status Writer::init_tile(
-    const std::string& attribute, Tile* tile, Tile* tile_var) const {
+    const std::string& name, Tile* tile, Tile* tile_var) const {
   // For easy reference
   auto domain = array_schema_->domain();
   auto capacity = array_schema_->capacity();
-  auto type = array_schema_->type(attribute);
+  auto type = array_schema_->type(name);
   auto cell_num_per_tile =
       (has_coords()) ? capacity : domain->cell_num_per_tile();
   auto tile_size = cell_num_per_tile * constants::cell_var_offset_size;
@@ -1490,6 +1502,25 @@ Status Writer::init_tile(
       0));
   RETURN_NOT_OK(tile_var->init(
       constants::format_version, type, tile_size, datatype_size(type), 0));
+  return Status::Ok();
+}
+
+Status Writer::init_tiles(
+    const std::string& name,
+    uint64_t tile_num,
+    std::vector<Tile>* tiles) const {
+  // Initialize tiles
+  bool var_size = array_schema_->var_size(name);
+  auto tiles_len = (var_size) ? 2 * tile_num : tile_num;
+  tiles->resize(tiles_len);
+  for (size_t i = 0; i < tiles_len; i += (1 + var_size)) {
+    if (!var_size) {
+      RETURN_NOT_OK(init_tile(name, &((*tiles)[i])));
+    } else {
+      RETURN_NOT_OK(init_tile(name, &((*tiles)[i]), &((*tiles)[i + 1])));
+    }
+  }
+
   return Status::Ok();
 }
 
@@ -1546,25 +1577,6 @@ Status Writer::init_tile_dense_cell_range_iters(
   STATS_FUNC_OUT(writer_init_tile_dense_cell_range_iters);
 }
 
-Status Writer::init_tiles(
-    const std::string& attribute,
-    uint64_t tile_num,
-    std::vector<Tile>* tiles) const {
-  // Initialize tiles
-  bool var_size = array_schema_->var_size(attribute);
-  auto tiles_len = (var_size) ? 2 * tile_num : tile_num;
-  tiles->resize(tiles_len);
-  for (size_t i = 0; i < tiles_len; i += (1 + var_size)) {
-    if (!var_size) {
-      RETURN_NOT_OK(init_tile(attribute, &((*tiles)[i])));
-    } else {
-      RETURN_NOT_OK(init_tile(attribute, &((*tiles)[i]), &((*tiles)[i + 1])));
-    }
-  }
-
-  return Status::Ok();
-}
-
 Status Writer::new_fragment_name(
     std::string* frag_uri, uint64_t* timestamp) const {
   if (frag_uri == nullptr)
@@ -1574,12 +1586,7 @@ Status Writer::new_fragment_name(
   frag_uri->clear();
   RETURN_NOT_OK(uuid::generate_uuid(&uuid, false));
   std::stringstream ss;
-
-  if (array_schema_->version() <= 2)
-    ss << "/__" << uuid << "_" << *timestamp;
-  else  // version >= 3
-    ss << "/__" << *timestamp << "_" << *timestamp << "_" << uuid;
-
+  ss << "/__" << *timestamp << "_" << *timestamp << "_" << uuid;
   *frag_uri = ss.str();
   return Status::Ok();
 }
@@ -1676,10 +1683,10 @@ Status Writer::ordered_write() {
   frag_meta->set_num_tiles(tile_num);
 
   // Prepare tiles for all attributes and filter
-  uint64_t num_attributes = attributes_.size();
+  uint64_t num_attributes = query_buffer_names_.size();
   std::vector<std::vector<Tile>> attr_tiles(num_attributes);
   auto statuses = parallel_for(0, num_attributes, [&](uint64_t i) {
-    const auto& attr = attributes_[i];
+    const auto& attr = query_buffer_names_[i];
     std::vector<Tile>& tiles = attr_tiles[i];
     RETURN_CANCEL_OR_ERROR(prepare_tiles(attr, write_cell_ranges, &tiles));
     RETURN_CANCEL_OR_ERROR(filter_tiles(attr, &tiles));
@@ -1704,26 +1711,26 @@ Status Writer::ordered_write() {
 }
 
 Status Writer::prepare_full_tiles(
-    const std::string& attribute,
+    const std::string& name,
     const std::set<uint64_t>& coord_dups,
     std::vector<Tile>* tiles) const {
-  return array_schema_->var_size(attribute) ?
-             prepare_full_tiles_var(attribute, coord_dups, tiles) :
-             prepare_full_tiles_fixed(attribute, coord_dups, tiles);
+  return array_schema_->var_size(name) ?
+             prepare_full_tiles_var(name, coord_dups, tiles) :
+             prepare_full_tiles_fixed(name, coord_dups, tiles);
 }
 
 Status Writer::prepare_full_tiles_fixed(
-    const std::string& attribute,
+    const std::string& name,
     const std::set<uint64_t>& coord_dups,
     std::vector<Tile>* tiles) const {
   STATS_FUNC_IN(writer_prepare_full_tiles_fixed);
 
   // For easy reference
-  auto it = attr_buffers_.find(attribute);
+  auto it = query_buffers_.find(name);
   auto buffer = (unsigned char*)it->second.buffer_;
   auto buffer_size = it->second.buffer_size_;
   auto capacity = array_schema_->capacity();
-  auto cell_size = array_schema_->cell_size(attribute);
+  auto cell_size = array_schema_->cell_size(name);
   auto cell_num = *buffer_size / cell_size;
   auto domain = array_schema_->domain();
   auto cell_num_per_tile =
@@ -1734,7 +1741,7 @@ Status Writer::prepare_full_tiles_fixed(
     return Status::Ok();
 
   // First fill the last tile
-  auto& last_tile = global_write_state_->last_tiles_[attribute].first;
+  auto& last_tile = global_write_state_->last_tiles_[name].first;
   uint64_t cell_idx = 0;
   if (!last_tile.empty()) {
     if (coord_dups.empty()) {
@@ -1762,7 +1769,7 @@ Status Writer::prepare_full_tiles_fixed(
   if (full_tile_num > 0) {
     tiles->resize(full_tile_num);
     for (auto& tile : (*tiles))
-      RETURN_NOT_OK(init_tile(attribute, &tile));
+      RETURN_NOT_OK(init_tile(name, &tile));
 
     // Handle last tile (it must be either full or empty)
     if (last_tile.full()) {
@@ -1811,7 +1818,7 @@ Status Writer::prepare_full_tiles_fixed(
     }
   }
 
-  global_write_state_->cells_written_[attribute] += cell_num;
+  global_write_state_->cells_written_[name] += cell_num;
 
   return Status::Ok();
 
@@ -1819,13 +1826,13 @@ Status Writer::prepare_full_tiles_fixed(
 }
 
 Status Writer::prepare_full_tiles_var(
-    const std::string& attribute,
+    const std::string& name,
     const std::set<uint64_t>& coord_dups,
     std::vector<Tile>* tiles) const {
   STATS_FUNC_IN(writer_prepare_full_tiles_var);
 
   // For easy reference
-  auto it = attr_buffers_.find(attribute);
+  auto it = query_buffers_.find(name);
   auto buffer = (uint64_t*)it->second.buffer_;
   auto buffer_var = (unsigned char*)it->second.buffer_var_;
   auto buffer_size = it->second.buffer_size_;
@@ -1842,7 +1849,7 @@ Status Writer::prepare_full_tiles_var(
     return Status::Ok();
 
   // First fill the last tile
-  auto& last_tile_pair = global_write_state_->last_tiles_[attribute];
+  auto& last_tile_pair = global_write_state_->last_tiles_[name];
   auto& last_tile = last_tile_pair.first;
   auto& last_tile_var = last_tile_pair.second;
   uint64_t cell_idx = 0;
@@ -1892,7 +1899,7 @@ Status Writer::prepare_full_tiles_var(
     tiles->resize(2 * full_tile_num);
     auto tiles_len = tiles->size();
     for (uint64_t i = 0; i < tiles_len; i += 2)
-      RETURN_NOT_OK(init_tile(attribute, &((*tiles)[i]), &((*tiles)[i + 1])));
+      RETURN_NOT_OK(init_tile(name, &((*tiles)[i]), &((*tiles)[i + 1])));
 
     // Handle last tile (it must be either full or empty)
     if (last_tile.full()) {
@@ -1977,7 +1984,7 @@ Status Writer::prepare_full_tiles_var(
     }
   }
 
-  global_write_state_->cells_written_[attribute] += cell_num;
+  global_write_state_->cells_written_[name] += cell_num;
 
   return Status::Ok();
 
@@ -1985,7 +1992,7 @@ Status Writer::prepare_full_tiles_var(
 }
 
 Status Writer::prepare_tiles(
-    const std::string& attribute,
+    const std::string& name,
     const std::vector<WriteCellRangeVec>& write_cell_ranges,
     std::vector<Tile>* tiles) const {
   STATS_FUNC_IN(writer_prepare_tiles_ordered);
@@ -1996,16 +2003,16 @@ Status Writer::prepare_tiles(
     return Status::Ok();
 
   // For easy reference
-  auto var_size = array_schema_->var_size(attribute);
-  auto it = attr_buffers_.find(attribute);
+  auto var_size = array_schema_->var_size(name);
+  auto it = query_buffers_.find(name);
   auto buffer = (uint64_t*)it->second.buffer_;
   auto buffer_var = (uint64_t*)it->second.buffer_var_;
   auto buffer_size = it->second.buffer_size_;
   auto buffer_var_size = it->second.buffer_var_size_;
-  auto cell_val_num = array_schema_->cell_val_num(attribute);
+  auto cell_val_num = array_schema_->cell_val_num(name);
 
   // Initialize tiles and buffer
-  RETURN_NOT_OK(init_tiles(attribute, tile_num, tiles));
+  RETURN_NOT_OK(init_tiles(name, tile_num, tiles));
   auto buff = std::make_shared<ConstBuffer>(buffer, *buffer_size);
   auto buff_var =
       (!var_size) ? nullptr :
@@ -2059,17 +2066,17 @@ Status Writer::prepare_tiles(
 }
 
 Status Writer::prepare_tiles(
-    const std::string& attribute,
+    const std::string& name,
     const std::vector<uint64_t>& cell_pos,
     const std::set<uint64_t>& coord_dups,
     std::vector<Tile>* tiles) const {
-  return array_schema_->var_size(attribute) ?
-             prepare_tiles_var(attribute, cell_pos, coord_dups, tiles) :
-             prepare_tiles_fixed(attribute, cell_pos, coord_dups, tiles);
+  return array_schema_->var_size(name) ?
+             prepare_tiles_var(name, cell_pos, coord_dups, tiles) :
+             prepare_tiles_fixed(name, cell_pos, coord_dups, tiles);
 }
 
 Status Writer::prepare_tiles_fixed(
-    const std::string& attribute,
+    const std::string& name,
     const std::vector<uint64_t>& cell_pos,
     const std::set<uint64_t>& coord_dups,
     std::vector<Tile>* tiles) const {
@@ -2080,18 +2087,18 @@ Status Writer::prepare_tiles_fixed(
     return Status::Ok();
 
   // For easy reference
-  auto it = attr_buffers_.find(attribute);
+  auto it = query_buffers_.find(name);
   auto buffer = (unsigned char*)it->second.buffer_;
   auto cell_num = (uint64_t)cell_pos.size();
   auto capacity = array_schema_->capacity();
   auto dups_num = coord_dups.size();
   auto tile_num = utils::math::ceil(cell_num - dups_num, capacity);
-  auto cell_size = array_schema_->cell_size(attribute);
+  auto cell_size = array_schema_->cell_size(name);
 
   // Initialize tiles
   tiles->resize(tile_num);
   for (auto& tile : (*tiles))
-    RETURN_NOT_OK(init_tile(attribute, &tile));
+    RETURN_NOT_OK(init_tile(name, &tile));
 
   // Write all cells one by one
   if (dups_num == 0) {
@@ -2121,14 +2128,14 @@ Status Writer::prepare_tiles_fixed(
 }
 
 Status Writer::prepare_tiles_var(
-    const std::string& attribute,
+    const std::string& name,
     const std::vector<uint64_t>& cell_pos,
     const std::set<uint64_t>& coord_dups,
     std::vector<Tile>* tiles) const {
   STATS_FUNC_IN(writer_prepare_tiles_var);
 
   // For easy reference
-  auto it = attr_buffers_.find(attribute);
+  auto it = query_buffers_.find(name);
   auto buffer = (uint64_t*)it->second.buffer_;
   auto buffer_var = (unsigned char*)it->second.buffer_var_;
   auto buffer_var_size = it->second.buffer_var_size_;
@@ -2143,7 +2150,7 @@ Status Writer::prepare_tiles_var(
   tiles->resize(2 * tile_num);
   auto tiles_len = tiles->size();
   for (uint64_t i = 0; i < tiles_len; i += 2)
-    RETURN_NOT_OK(init_tile(attribute, &((*tiles)[i]), &((*tiles)[i + 1])));
+    RETURN_NOT_OK(init_tile(name, &((*tiles)[i]), &((*tiles)[i + 1])));
 
   // Write all cells one by one
   if (dups_num == 0) {
@@ -2194,6 +2201,7 @@ void Writer::reset() {
   initialized_ = false;
 }
 
+// TODO
 template <class T>
 Status Writer::sort_coords(std::vector<uint64_t>* cell_pos) const {
   STATS_FUNC_IN(writer_sort_coords);
@@ -2201,7 +2209,7 @@ Status Writer::sort_coords(std::vector<uint64_t>* cell_pos) const {
   // For easy reference
   auto domain = array_schema_->domain();
   uint64_t coords_size = array_schema_->coords_size();
-  auto it = attr_buffers_.find(constants::coords);
+  auto it = query_buffers_.find(constants::coords);
   auto buffer = (T*)it->second.buffer_;
   auto buffer_size = it->second.buffer_size_;
   uint64_t coords_num = *buffer_size / coords_size;
@@ -2294,11 +2302,12 @@ Status Writer::unordered_write() {
   RETURN_CANCEL_OR_ERROR(create_fragment(false, &frag_meta));
   auto uri = frag_meta->fragment_uri();
 
+  // TODO: split coords
   // Prepare tiles for all attributes
-  auto num_attributes = attributes_.size();
+  auto num_attributes = query_buffer_names_.size();
   std::vector<std::vector<Tile>> attribute_tiles(num_attributes);
   auto statuses = parallel_for(0, num_attributes, [&](uint64_t i) {
-    const auto& attr = attributes_[i];
+    const auto& attr = query_buffer_names_[i];
     auto& tiles = attribute_tiles[i];
     RETURN_CANCEL_OR_ERROR(prepare_tiles(attr, cell_pos, coord_dups, &tiles));
     return Status::Ok();
@@ -2313,18 +2322,22 @@ Status Writer::unordered_write() {
   statuses.clear();
 
   // Set the number of tiles in the metadata
-  uint64_t num_tiles = array_schema_->var_size(attributes_[0]) ?
+  uint64_t num_tiles = array_schema_->var_size(query_buffer_names_[0]) ?
                            attribute_tiles[0].size() / 2 :
                            attribute_tiles[0].size();
   frag_meta->set_num_tiles(num_tiles);
 
   // Filter all tiles
   statuses = parallel_for(0, num_attributes, [&](uint64_t i) {
-    const auto& attr = attributes_[i];
+    const auto& attr = query_buffer_names_[i];
     auto& tiles = attribute_tiles[i];
+    // TODO: this should be done outside the loop
     if (attr == constants::coords)
       RETURN_CANCEL_OR_ERROR(
           compute_coords_metadata<T>(tiles, frag_meta.get()));
+
+    // TODO: for coordinates, zip them and filter them separately
+
     RETURN_CANCEL_OR_ERROR(filter_tiles(attr, &tiles));
     return Status::Ok();
   });
@@ -2419,9 +2432,9 @@ Status Writer::write_all_tiles(
 
   std::vector<std::future<Status>> tasks;
 
-  auto num_attributes = attributes_.size();
+  auto num_attributes = query_buffer_names_.size();
   for (uint64_t i = 0; i < num_attributes; i++) {
-    const auto& attr = attributes_[i];
+    const auto& attr = query_buffer_names_[i];
     auto& tiles = attribute_tiles[i];
     tasks.push_back(
         storage_manager_->writer_thread_pool()->enqueue([&, this]() {
@@ -2442,7 +2455,7 @@ Status Writer::write_all_tiles(
 }
 
 Status Writer::write_tiles(
-    const std::string& attribute,
+    const std::string& name,
     FragmentMetadata* frag_meta,
     const std::vector<Tile>& tiles) const {
   // Handle zero tiles
@@ -2450,15 +2463,15 @@ Status Writer::write_tiles(
     return Status::Ok();
 
   // For easy reference
-  bool var_size = array_schema_->var_size(attribute);
-  auto attr_uri = frag_meta->attr_uri(attribute);
-  auto attr_var_uri = var_size ? frag_meta->attr_var_uri(attribute) : URI("");
+  bool var_size = array_schema_->var_size(name);
+  auto attr_uri = frag_meta->uri(name);
+  auto attr_var_uri = var_size ? frag_meta->var_uri(name) : URI("");
 
   // Write tiles
   auto tile_num = tiles.size();
   for (size_t i = 0, tile_id = 0; i < tile_num; ++i, ++tile_id) {
     RETURN_NOT_OK(storage_manager_->write(attr_uri, tiles[i].buffer()));
-    frag_meta->set_tile_offset(attribute, tile_id, tiles[i].buffer()->size());
+    frag_meta->set_tile_offset(name, tile_id, tiles[i].buffer()->size());
 
     STATS_COUNTER_ADD(writer_num_bytes_written, tiles[i].buffer()->size());
 
@@ -2466,10 +2479,8 @@ Status Writer::write_tiles(
       ++i;
 
       RETURN_NOT_OK(storage_manager_->write(attr_var_uri, tiles[i].buffer()));
-      frag_meta->set_tile_var_offset(
-          attribute, tile_id, tiles[i].buffer()->size());
-      frag_meta->set_tile_var_size(
-          attribute, tile_id, tiles[i].pre_filtered_size());
+      frag_meta->set_tile_var_offset(name, tile_id, tiles[i].buffer()->size());
+      frag_meta->set_tile_var_size(name, tile_id, tiles[i].pre_filtered_size());
 
       STATS_COUNTER_ADD(writer_num_bytes_written, tiles[i].buffer()->size());
     }
@@ -2477,10 +2488,9 @@ Status Writer::write_tiles(
 
   // Close files, except in the case of global order
   if (layout_ != Layout::GLOBAL_ORDER) {
-    RETURN_NOT_OK(storage_manager_->close_file(frag_meta->attr_uri(attribute)));
+    RETURN_NOT_OK(storage_manager_->close_file(frag_meta->uri(name)));
     if (var_size)
-      RETURN_NOT_OK(
-          storage_manager_->close_file(frag_meta->attr_var_uri(attribute)));
+      RETURN_NOT_OK(storage_manager_->close_file(frag_meta->var_uri(name)));
   }
 
   STATS_COUNTER_ADD(writer_num_attr_tiles_written, tile_num);

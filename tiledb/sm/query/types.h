@@ -32,6 +32,7 @@
 
 #ifndef TILEDB_TYPES_H
 #define TILEDB_TYPES_H
+
 namespace tiledb {
 namespace sm {
 
@@ -39,16 +40,19 @@ namespace sm {
 /*          TYPE DEFINITIONS         */
 /* ********************************* */
 
-/** Contains the buffer(s) and buffer size(s) for some attribute. */
-struct AttributeBuffer {
+/**
+ * Contains the buffer(s) and buffer size(s) for some attribute/dimension
+ * set for a query.
+ */
+struct QueryBuffer {
   /**
-   * The attribute buffer. In case the attribute is var-sized, this is
-   * the offsets buffer.
+   * The data buffer for fixed-sized attributes/dimensions. In the case of
+   * a var-sized attribute/dimension, this is the offsets buffer.
    */
   void* buffer_;
   /**
-   * For a var-sized attribute, this is the data buffer. It is `nullptr`
-   * for fixed-sized attributes.
+   * For a var-sized attribute/dimension, this is the data buffer. It is
+   * `nullptr` for fixed-sized attributes.
    */
   void* buffer_var_;
   /**
@@ -73,7 +77,7 @@ struct AttributeBuffer {
   uint64_t original_buffer_var_size_;
 
   /** Constructor. */
-  AttributeBuffer() {
+  QueryBuffer() {
     buffer_ = nullptr;
     buffer_var_ = nullptr;
     buffer_size_ = nullptr;
@@ -83,7 +87,7 @@ struct AttributeBuffer {
   }
 
   /** Constructor. */
-  AttributeBuffer(
+  QueryBuffer(
       void* buffer,
       void* buffer_var,
       uint64_t* buffer_size,
@@ -97,6 +101,8 @@ struct AttributeBuffer {
         (buffer_var_size_ != nullptr) ? *buffer_var_size : 0;
   }
 };
+
 }  // namespace sm
 }  // namespace tiledb
+
 #endif  // TILEDB_TYPES_H

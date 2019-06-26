@@ -218,6 +218,12 @@ Status dimension_to_capnp(
         tile_extent_builder, dimension->type(), dimension->tile_extent()));
   }
 
+  const auto* filters = dimension->filters();
+  auto filter_pipeline_builder = dimension_builder->initFilterPipeline();
+  RETURN_NOT_OK(filter_pipeline_to_capnp(filters, &filter_pipeline_builder));
+
+  dimension_builder->setCellValNum(dimension->cell_val_num());
+
   return Status::Ok();
 }
 
@@ -292,6 +298,17 @@ Status dimension_from_capnp(
             "Error deserializing dimension; unknown datatype."));
     }
   }
+
+  // Set filter pipelines
+  if (dimension_reader.hasFilterPipeline()) {
+    auto filter_pipeline_reader = dimension_reader.getFilterPipeline();
+    std::unique_ptr<FilterPipeline> filters;
+    RETURN_NOT_OK(filter_pipeline_from_capnp(filter_pipeline_reader, &filters));
+    RETURN_NOT_OK((*dimension)->set_filter_pipeline(filters.get()));
+  }
+
+  RETURN_NOT_OK(
+      (*dimension)->set_cell_val_num(dimension_reader.getCellValNum()));
 
   return Status::Ok();
 }

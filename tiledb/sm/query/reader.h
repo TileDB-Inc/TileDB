@@ -155,32 +155,30 @@ class Reader {
 
   /**
    * Gets the estimated result size (in bytes) for the input fixed-sized
-   * attribute.
+   * attribute/dimension.
    */
-  Status get_est_result_size(const char* attr_name, uint64_t* size);
+  Status get_est_result_size(const char* name, uint64_t* size);
 
   /**
    * Gets the estimated result size (in bytes) for the input var-sized
-   * attribute.
+   * attribute/dimension.
    */
   Status get_est_result_size(
-      const char* attr_name, uint64_t* size_off, uint64_t* size_val);
+      const char* name, uint64_t* size_off, uint64_t* size_val);
 
   /** Returns the array schema. */
   const ArraySchema* array_schema() const;
 
-  /**
-   * Return list of attribtues for query
-   * @return vector of attributes for query
-   */
-  std::vector<std::string> attributes() const;
+  /** Returns list of query buffer names set for the query. */
+  std::vector<std::string> query_buffer_names() const;
 
   /**
-   * Fetch AttributeBuffer for attribute
-   * @param attribute to fetch
-   * @return AttributeBuffer for attribute
+   * Fetch QueryBuffer for attribute/dimension.
+   *
+   * @param name The attribute/dimension.
+   * @return QueryBuffer for input attribute/dimension.
    */
-  AttributeBuffer buffer(const std::string& attribute) const;
+  QueryBuffer query_buffer(const std::string& name) const;
 
   /**
    * Returns `true` if the query was incomplete, i.e., if all subarray
@@ -190,22 +188,21 @@ class Reader {
   bool incomplete() const;
 
   /**
-   * Retrieves the buffer of a fixed-sized attribute.
+   * Retrieves the query buffer of a fixed-sized attribute/dimension.
    *
-   * @param attribute The buffer attribute.
+   * @param name The attribute/dimension whose buffer to retrieve.
    * @param buffer The buffer to be retrieved.
    * @param buffer_size A pointer to the buffer size to be retrieved.
    * @return Status
    */
-  Status get_buffer(
-      const std::string& attribute,
-      void** buffer,
-      uint64_t** buffer_size) const;
+  Status get_query_buffer(
+      const std::string& name, void** buffer, uint64_t** buffer_size) const;
 
   /**
-   * Retrieves the offsets and values buffers of a var-sized attribute.
+   * Retrieves the offsets and values buffers of a var-sized
+   * attribute/dimension.
    *
-   * @param attribute The buffer attribute.
+   * @param name The buffer name.
    * @param buffer_off The offsets buffer to be retrieved.
    * @param buffer_off_size A pointer to the offsets buffer size to be
    * retrieved.
@@ -213,8 +210,8 @@ class Reader {
    * @param buffer_val_size A pointer to the values buffer size to be retrieved.
    * @return Status
    */
-  Status get_buffer(
-      const std::string& attribute,
+  Status get_query_buffer(
+      const std::string& name,
       uint64_t** buffer_off,
       uint64_t** buffer_off_size,
       void** buffer_val,
@@ -258,9 +255,9 @@ class Reader {
   void set_array_schema(const ArraySchema* array_schema);
 
   /**
-   * Sets the buffer for a fixed-sized attribute.
+   * Sets the buffer for a fixed-sized attribute/dimension.
    *
-   * @param attribute The attribute to set the buffer for.
+   * @param name The attribute/dimension to set the buffer for.
    * @param buffer The buffer that will hold the data to be read.
    * @param buffer_size This initially contains the allocated
    *     size of `buffer`, but after the termination of the function
@@ -268,16 +265,16 @@ class Reader {
    * @param check_null_buffers If true (default), null buffers are not allowed.
    * @return Status
    */
-  Status set_buffer(
-      const std::string& attribute,
+  Status set_query_buffer(
+      const std::string& name,
       void* buffer,
       uint64_t* buffer_size,
       bool check_null_buffers = true);
 
   /**
-   * Sets the buffer for a var-sized attribute.
+   * Sets the buffer for a var-sized attribute/dimension.
    *
-   * @param attribute The attribute to set the buffer for.
+   * @param name The attribute/dimension to set the buffer for.
    * @param buffer_off The buffer that will hold the data to be read.
    *     This buffer holds the starting offsets of each cell value in
    *     `buffer_val`.
@@ -294,8 +291,8 @@ class Reader {
    * @param check_null_buffers If true (default), null buffers are not allowed.
    * @return Status
    */
-  Status set_buffer(
-      const std::string& attribute,
+  Status set_query_buffer(
+      const std::string& name,
       uint64_t* buffer_off,
       uint64_t* buffer_off_size,
       void* buffer_val,
@@ -486,11 +483,14 @@ class Reader {
   /** The array schema. */
   const ArraySchema* array_schema_;
 
-  /** The names of the attributes involved in the query. */
-  std::vector<std::string> attributes_;
+  /**
+   * The names of the attributes/dimensions whose buffers were
+   * set to the query.
+   */
+  std::vector<std::string> query_buffer_names_;
 
-  /** Maps attribute names to their buffers. */
-  std::unordered_map<std::string, AttributeBuffer> attr_buffers_;
+  /** Maps attribute/dimension names to their buffers. */
+  std::unordered_map<std::string, QueryBuffer> query_buffers_;
 
   /** The fragment metadata. */
   std::vector<FragmentMetadata*> fragment_metadata_;
@@ -515,12 +515,12 @@ class Reader {
   Subarray subarray_;
 
   /**
-   * The memory budget for the fixed-sized attributes and the offsets
-   * of the var-sized attributes.
+   * The memory budget for the fixed-sized attributes/dimensions
+   * and the offsets of the var-sized attributes/dimensions.
    */
   uint64_t memory_budget_;
 
-  /** The memory budget for the var-sized attributes. */
+  /** The memory budget for the var-sized attributes/dimensions. */
   uint64_t memory_budget_var_;
 
   /* ********************************* */
@@ -528,14 +528,15 @@ class Reader {
   /* ********************************* */
 
   /**
-   * Deletes the tiles on the input attribute from the result tiles.
+   * Deletes the tiles on the input attribute/dimension from the
+   * result tiles.
    *
-   * @param attr The attribute name.
+   * @param name The attribute/dimension name.
    * @param result_tiles The result tiles to delete from.
    * @return void
    */
   void clear_tiles(
-      const std::string& attr,
+      const std::string& name,
       const std::vector<ResultTile*>& result_tiles) const;
 
   /**
@@ -673,10 +674,10 @@ class Reader {
       std::vector<std::vector<T>>* tile_coords) const;
 
   /**
-   * Copies the cells for the input attribute and result cell slabs, into
-   * the corresponding result buffers.
+   * Copies the cells for the input attribute/dimension and result cell slabs,
+   * into the corresponding result buffers.
    *
-   * @param attribute The targeted attribute.
+   * @param name The targeted attribute/dimension.
    * @param stride If it is `UINT64_MAX`, then the cells in the result
    *     cell slabs are all contiguous. Otherwise, each cell in the
    *     result cell slabs are `stride` cells apart from each other.
@@ -684,15 +685,15 @@ class Reader {
    * @return Status
    */
   Status copy_cells(
-      const std::string& attribute,
+      const std::string& name,
       uint64_t stride,
       const std::vector<ResultCellSlab>& result_cell_slabs);
 
   /**
-   * Copies the cells for the input **fixed-sized** attribute and result
-   * cell slabs, into the corresponding result buffers.
+   * Copies the cells for the input **fixed-sized** attribute/dimension
+   * and result cell slabs, into the corresponding result buffers.
    *
-   * @param attribute The targeted attribute.
+   * @param name The targeted attribute/dimension.
    * @param stride If it is `UINT64_MAX`, then the cells in the result
    *     cell slabs are all contiguous. Otherwise, each cell in the
    *     result cell slabs are `stride` cells apart from each other.
@@ -700,15 +701,15 @@ class Reader {
    * @return Status
    */
   Status copy_fixed_cells(
-      const std::string& attribute,
+      const std::string& name,
       uint64_t stride,
       const std::vector<ResultCellSlab>& result_cell_slabs);
 
   /**
-   * Copies the cells for the input **var-sized** attribute and result
-   * cell slabs, into the corresponding result buffers.
+   * Copies the cells for the input **var-sized** attribute/dimension
+   * and result cell slabs, into the corresponding result buffers.
    *
-   * @param attribute The targeted attribute.
+   * @param name The targeted attribute/dimension.
    * @param stride If it is `UINT64_MAX`, then the cells in the result
    *     cell slabs are all contiguous. Otherwise, each cell in the
    *     result cell slabs are `stride` cells apart from each other.
@@ -716,33 +717,35 @@ class Reader {
    * @return Status
    */
   Status copy_var_cells(
-      const std::string& attribute,
+      const std::string& name,
       uint64_t stride,
       const std::vector<ResultCellSlab>& result_cell_slabs);
 
   /**
-   * Computes offsets into destination buffers for the given attribute's offset
-   * and variable-length data, for the given list of result cell slabs.
+   * Computes offsets into destination buffers for the given
+   * attribute's/dimension's offset and variable-length data, for the given
+   * list of result cell slabs.
    *
-   * @param attribute The variable-length attribute
+   * @param name The variable-length attribute/dimension.
    * @param stride If it is `UINT64_MAX`, then the cells in the result
    *     cell slabs are all contiguous. Otherwise, each cell in the
    *     result cell slabs are `stride` cells apart from each other.
    * @param result_cell_slabs The result cell slabs to compute destinations for.
    * @param offset_offsets_per_cs Output to hold one vector per result cell
    *    slab, and one element per cell in the slab. The elements are the
-   *    destination offsets for the attribute's offsets.
+   *    destination offsets for the attribute's/dimension's offsets.
    * @param var_offsets_per_cs Output to hold one vector per result cell slab,
    *    and one element per cell in the slab. The elements are the destination
-   *    offsets for the attribute's variable-length data.
+   *    offsets for the attribute's/dimension's variable-length data.
    * @param total_offset_size Output set to the total size in bytes of the
    *    offsets in the given list of result cell slabs.
    * @param total_var_size Output set to the total size in bytes of the
-   *    attribute's variable-length in the given list of result cell slabs.
+   *    attribute's/dimension's variable-length in the given list of result
+   *    cell slabs.
    * @return Status
    */
   Status compute_var_cell_destinations(
-      const std::string& attribute,
+      const std::string& name,
       uint64_t stride,
       const std::vector<ResultCellSlab>& result_cell_slabs,
       std::vector<std::vector<uint64_t>>* offset_offsets_per_cs,
@@ -885,29 +888,29 @@ class Reader {
       const T* start, uint64_t num, void* buff, uint64_t* offset) const;
 
   /**
-   * Filters the tiles on a particular attribute from all input fragments
-   * based on the tile info in `result_tiles`.
+   * Filters the tiles on a particular attribute/dimension from all input
+   * fragments based on the tile info in `result_tiles`.
    *
-   * @param attribute Attribute whose tiles will be filtered
+   * @param name Attribute/Dimension whose tiles will be filtered
    * @param result_tiles Vector containing the tiles to be filtered
    * @return Status
    */
   Status filter_tiles(
-      const std::string& attribute,
+      const std::string& name,
       const std::vector<ResultTile*>& result_tiles) const;
 
   /**
-   * Runs the input tile for the input attribute through the filter pipeline.
-   * The tile buffer is modified to contain the output of the pipeline.
+   * Runs the input tile for the input attribute/dimension through the
+   * filter pipeline. The tile buffer is modified to contain the output of
+   * the pipeline.
    *
-   * @param attribute The attribute the tile belong to.
+   * @param name The attribute/dimension the tile belong to.
    * @param tile The tile to be filtered.
    * @param offsets True if the tile to be filtered contains offsets for a
-   *    var-sized attribute.
+   *    var-sized attribute/dimension.
    * @return Status
    */
-  Status filter_tile(
-      const std::string& attribute, Tile* tile, bool offsets) const;
+  Status filter_tile(const std::string& name, Tile* tile, bool offsets) const;
 
   /**
    * Gets all the result coordinates of the input tile into `result_coords`.
@@ -921,7 +924,7 @@ class Reader {
   Status get_all_result_coords(
       ResultTile* tile, std::vector<ResultCoords<T>>* result_coords) const;
 
-  /** Returns `true` if the coordinates are included in the attributes. */
+  /** Returns `true` if the coordinate buffers were set to the query. */
   bool has_coords() const;
 
   /** Initializes the read state. */
@@ -931,56 +934,56 @@ class Reader {
    * Initializes a fixed-sized tile.
    *
    * @param format_version The format version of the tile.
-   * @param attribute The attribute the tile belongs to.
+   * @param name The attribute/dimension the tile belongs to.
    * @param tile The tile to be initialized.
    * @return Status
    */
   Status init_tile(
-      uint32_t format_version, const std::string& attribute, Tile* tile) const;
+      uint32_t format_version, const std::string& name, Tile* tile) const;
 
   /**
    * Initializes a var-sized tile.
    *
    * @param format_version The format version of the tile.
-   * @param attribute The attribute the tile belongs to.
+   * @param name The attribute/dimension the tile belongs to.
    * @param tile The offsets tile to be initialized.
    * @param tile_var The var-sized data tile to be initialized.
    * @return Status
    */
   Status init_tile(
       uint32_t format_version,
-      const std::string& attribute,
+      const std::string& name,
       Tile* tile,
       Tile* tile_var) const;
 
   /**
-   * Retrieves the tiles on a particular attribute and stores it in the
-   * appropriate result tile.
+   * Retrieves the tiles on a particular attribute/dimension and stores
+   * it in the appropriate result tile.
    *
-   * @param attr The attribute name.
+   * @param name The attribute/dimension name.
    * @param result_tiles The retrieved tiles will be stored inside the
    *     `ResultTile` instances in this vector.
    * @return Status
    */
   Status read_tiles(
-      const std::string& attr,
+      const std::string& name,
       const std::vector<ResultTile*>& result_tiles) const;
 
   /**
-   * Retrieves the tiles on a particular attribute and stores it in the
-   * appropriate result tile.
+   * Retrieves the tiles on a particular attribute/dimension and stores it in
+   * the appropriate result tile.
    *
    * The reads are done asynchronously, and futures for each read operation are
    * added to the output parameter.
    *
-   * @param attribute The attribute name.
+   * @param name The attribute/dimension name.
    * @param result_tiles The retrieved tiles will be stored inside the
    *     `ResultTile` instances in this vector.
    * @param tasks Vector to hold futures for the read tasks.
    * @return Status
    */
   Status read_tiles(
-      const std::string& attribute,
+      const std::string& name,
       const std::vector<ResultTile*>& result_tiles,
       std::vector<std::future<Status>>* tasks) const;
 
@@ -989,7 +992,7 @@ class Reader {
    * the read query may alter the buffer sizes to reflect the size of
    * the useful data (results) written in the buffers.
    */
-  void reset_buffer_sizes();
+  void reset_query_buffer_sizes();
 
   /**
    * Sorts the input result coordinates according to the subarray layout.

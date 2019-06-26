@@ -147,6 +147,12 @@ class BitWidthReductionFilter : public Filter {
   /** Deserializes this filter's metadata from the given buffer. */
   Status deserialize_impl(ConstBuffer* buff) override;
 
+  /**
+   * Dumps the filter contents in ASCII
+   * form in the selected output.
+   */
+  void dump(FILE* out) const override;
+
   /** Gets an option from this filter. */
   Status get_option_impl(FilterOption option, void* value) const override;
 

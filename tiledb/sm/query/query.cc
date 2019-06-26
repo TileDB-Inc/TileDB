@@ -134,17 +134,16 @@ const ArraySchema* Query::array_schema() const {
   return reader_.array_schema();
 }
 
-std::vector<std::string> Query::attributes() const {
+std::vector<std::string> Query::query_buffer_names() const {
   if (type_ == QueryType::WRITE)
-    return writer_.attributes();
-  return reader_.attributes();
+    return writer_.query_buffer_names();
+  return reader_.query_buffer_names();
 }
 
-AttributeBuffer Query::attribute_buffer(
-    const std::string& attribute_name) const {
+QueryBuffer Query::query_buffer(const std::string& name) const {
   if (type_ == QueryType::WRITE)
-    return writer_.buffer(attribute_name);
-  return reader_.buffer(attribute_name);
+    return writer_.query_buffer(name);
+  return reader_.query_buffer(name);
 }
 
 Status Query::finalize() {
@@ -167,11 +166,11 @@ Status Query::finalize() {
   return Status::Ok();
 }
 
-Status Query::get_buffer(
-    const char* attribute, void** buffer, uint64_t** buffer_size) const {
+Status Query::get_query_buffer(
+    const char* name, void** buffer, uint64_t** buffer_size) const {
   // Normalize attribute
   std::string normalized;
-  RETURN_NOT_OK(ArraySchema::attribute_name_normalized(attribute, &normalized));
+  RETURN_NOT_OK(ArraySchema::attribute_name_normalized(name, &normalized));
 
   // Check attribute
   auto array_schema = this->array_schema();
@@ -187,19 +186,19 @@ Status Query::get_buffer(
         "' is var-sized"));
 
   if (type_ == QueryType::WRITE)
-    return writer_.get_buffer(normalized, buffer, buffer_size);
-  return reader_.get_buffer(normalized, buffer, buffer_size);
+    return writer_.get_query_buffer(normalized, buffer, buffer_size);
+  return reader_.get_query_buffer(normalized, buffer, buffer_size);
 }
 
-Status Query::get_buffer(
-    const char* attribute,
+Status Query::get_query_buffer(
+    const char* name,
     uint64_t** buffer_off,
     uint64_t** buffer_off_size,
     void** buffer_val,
     uint64_t** buffer_val_size) const {
   // Normalize attribute
   std::string normalized;
-  RETURN_NOT_OK(ArraySchema::attribute_name_normalized(attribute, &normalized));
+  RETURN_NOT_OK(ArraySchema::attribute_name_normalized(name, &normalized));
 
   // Check attribute
   auto array_schema = this->array_schema();
@@ -217,9 +216,9 @@ Status Query::get_buffer(
         "' is fixed-sized"));
 
   if (type_ == QueryType::WRITE)
-    return writer_.get_buffer(
+    return writer_.get_query_buffer(
         normalized, buffer_off, buffer_off_size, buffer_val, buffer_val_size);
-  return reader_.get_buffer(
+  return reader_.get_query_buffer(
       normalized, buffer_off, buffer_off_size, buffer_val, buffer_val_size);
 }
 
@@ -373,28 +372,29 @@ Writer* Query::writer() {
   return &writer_;
 }
 
-Status Query::set_buffer(
-    const std::string& attribute,
+Status Query::set_query_buffer(
+    const std::string& name,
     void* buffer,
     uint64_t* buffer_size,
     bool check_null_buffers) {
   if (type_ == QueryType::WRITE)
-    return writer_.set_buffer(attribute, buffer, buffer_size);
-  return reader_.set_buffer(attribute, buffer, buffer_size, check_null_buffers);
+    return writer_.set_query_buffer(name, buffer, buffer_size);
+  return reader_.set_query_buffer(
+      name, buffer, buffer_size, check_null_buffers);
 }
 
-Status Query::set_buffer(
-    const std::string& attribute,
+Status Query::set_query_buffer(
+    const std::string& name,
     uint64_t* buffer_off,
     uint64_t* buffer_off_size,
     void* buffer_val,
     uint64_t* buffer_val_size,
     bool check_null_buffers) {
   if (type_ == QueryType::WRITE)
-    return writer_.set_buffer(
-        attribute, buffer_off, buffer_off_size, buffer_val, buffer_val_size);
-  return reader_.set_buffer(
-      attribute,
+    return writer_.set_query_buffer(
+        name, buffer_off, buffer_off_size, buffer_val, buffer_val_size);
+  return reader_.set_query_buffer(
+      name,
       buffer_off,
       buffer_off_size,
       buffer_val,

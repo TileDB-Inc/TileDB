@@ -57,6 +57,10 @@ EncryptionAES256GCMFilter* EncryptionAES256GCMFilter::clone_impl() const {
   return clone;
 }
 
+void EncryptionAES256GCMFilter::dump(FILE* out) const {
+  fprintf(out, "\t* Encryption Filter, type=AES256GCM\n");
+}
+
 Status EncryptionAES256GCMFilter::run_forward(
     FilterBuffer* input_metadata,
     FilterBuffer* input,

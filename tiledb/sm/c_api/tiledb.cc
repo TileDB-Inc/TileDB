@@ -1744,6 +1744,14 @@ void tiledb_dimension_free(tiledb_dimension_t** dim) {
   }
 }
 
+int32_t tiledb_dimension_get_cell_val_num(
+    tiledb_ctx_t* ctx, const tiledb_dimension_t* dim, uint32_t* cell_val_num) {
+  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, dim) == TILEDB_ERR)
+    return TILEDB_ERR;
+  *cell_val_num = dim->dim_->cell_val_num();
+  return TILEDB_OK;
+}
+
 int32_t tiledb_dimension_get_name(
     tiledb_ctx_t* ctx, const tiledb_dimension_t* dim, const char** name) {
   if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, dim) == TILEDB_ERR)
@@ -1906,6 +1914,62 @@ int32_t tiledb_domain_has_dimension(
     return TILEDB_ERR;
 
   *has_dim = b ? 1 : 0;
+
+  return TILEDB_OK;
+}
+
+int32_t tiledb_dimension_get_filter_list(
+    tiledb_ctx_t* ctx,
+    tiledb_dimension_t* dim,
+    tiledb_filter_list_t** filter_list) {
+  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, dim) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  // Create a filter list struct
+  *filter_list = new (std::nothrow) tiledb_filter_list_t;
+  if (*filter_list == nullptr) {
+    auto st = tiledb::sm::Status::Error(
+        "Failed to allocate TileDB filter list object");
+    LOG_STATUS(st);
+    save_error(ctx, st);
+    return TILEDB_OOM;
+  }
+
+  // Create a new FilterPipeline object
+  (*filter_list)->pipeline_ =
+      new (std::nothrow) tiledb::sm::FilterPipeline(*dim->dim_->filters());
+  if ((*filter_list)->pipeline_ == nullptr) {
+    delete *filter_list;
+    auto st = tiledb::sm::Status::Error(
+        "Failed to allocate TileDB filter list object");
+    LOG_STATUS(st);
+    save_error(ctx, st);
+    return TILEDB_OOM;
+  }
+
+  return TILEDB_OK;
+}
+
+int32_t tiledb_dimension_set_cell_val_num(
+    tiledb_ctx_t* ctx, tiledb_dimension_t* dim, uint32_t cell_val_num) {
+  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, dim) == TILEDB_ERR)
+    return TILEDB_ERR;
+  if (SAVE_ERROR_CATCH(ctx, dim->dim_->set_cell_val_num(cell_val_num)))
+    return TILEDB_ERR;
+  return TILEDB_OK;
+}
+
+int32_t tiledb_dimension_set_filter_list(
+    tiledb_ctx_t* ctx,
+    tiledb_dimension_t* dim,
+    tiledb_filter_list_t* filter_list) {
+  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, dim) == TILEDB_ERR ||
+      sanity_check(ctx, filter_list) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  if (SAVE_ERROR_CATCH(
+          ctx, dim->dim_->set_filter_pipeline(filter_list->pipeline_)))
+    return TILEDB_ERR;
 
   return TILEDB_OK;
 }
@@ -2529,7 +2593,9 @@ int32_t tiledb_query_set_buffer(
 
   // Set attribute buffer
   if (SAVE_ERROR_CATCH(
-          ctx, query->query_->set_buffer(normalized_name, buffer, buffer_size)))
+          ctx,
+          query->query_->set_query_buffer(
+              normalized_name, buffer, buffer_size)))
     return TILEDB_ERR;
 
   return TILEDB_OK;
@@ -2566,7 +2632,7 @@ int32_t tiledb_query_set_buffer_var(
   // Set attribute buffers
   if (SAVE_ERROR_CATCH(
           ctx,
-          query->query_->set_buffer(
+          query->query_->set_query_buffer(
               normalized_name,
               buffer_off,
               buffer_off_size,
@@ -2589,7 +2655,7 @@ int32_t tiledb_query_get_buffer(
 
   // Set attribute buffer
   if (SAVE_ERROR_CATCH(
-          ctx, query->query_->get_buffer(attribute, buffer, buffer_size)))
+          ctx, query->query_->get_query_buffer(attribute, buffer, buffer_size)))
     return TILEDB_ERR;
 
   return TILEDB_OK;
@@ -2610,7 +2676,7 @@ int32_t tiledb_query_get_buffer_var(
   // Get attribute buffers
   if (SAVE_ERROR_CATCH(
           ctx,
-          query->query_->get_buffer(
+          query->query_->get_query_buffer(
               attribute,
               buffer_off,
               buffer_off_size,

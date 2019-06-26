@@ -50,6 +50,12 @@ class NoopFilter : public Filter {
   NoopFilter();
 
   /**
+   * Dumps the filter contents in ASCII
+   * form in the selected output.
+   */
+  void dump(FILE* out) const override;
+
+  /**
    * Run forward.
    */
   Status run_forward(

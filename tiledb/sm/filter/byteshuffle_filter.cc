@@ -47,6 +47,10 @@ ByteshuffleFilter* ByteshuffleFilter::clone_impl() const {
   return new ByteshuffleFilter;
 }
 
+void ByteshuffleFilter::dump(FILE* out) const {
+  fprintf(out, "\t* Byteshuffle Filter\n");
+}
+
 Status ByteshuffleFilter::run_forward(
     FilterBuffer* input_metadata,
     FilterBuffer* input,

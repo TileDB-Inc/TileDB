@@ -32,6 +32,7 @@
 
 #include "tiledb/sm/array_schema/dimension.h"
 #include "tiledb/sm/buffer/const_buffer.h"
+#include "tiledb/sm/filter/compression_filter.h"
 #include "tiledb/sm/misc/utils.h"
 
 #include <cassert>
@@ -45,6 +46,7 @@ namespace sm {
 /* ********************************* */
 
 Dimension::Dimension() {
+  cell_val_num_ = 1;
   domain_ = nullptr;
   tile_extent_ = nullptr;
   type_ = Datatype::INT32;
@@ -53,6 +55,7 @@ Dimension::Dimension() {
 Dimension::Dimension(const std::string& name, Datatype type)
     : name_(name)
     , type_(type) {
+  cell_val_num_ = (type == Datatype::ANY) ? constants::var_num : 1;
   domain_ = nullptr;
   tile_extent_ = nullptr;
 }
@@ -60,6 +63,7 @@ Dimension::Dimension(const std::string& name, Datatype type)
 Dimension::Dimension(const Dimension* dim) {
   assert(dim != nullptr);
 
+  cell_val_num_ = dim->cell_val_num();
   name_ = dim->name();
   type_ = dim->type_;
   uint64_t type_size = datatype_size(type_);
@@ -73,6 +77,7 @@ Dimension::Dimension(const Dimension* dim) {
     tile_extent_ = std::malloc(type_size);
     std::memcpy(tile_extent_, tile_extent, type_size);
   }
+  filters_ = dim->filters_;
 }
 
 Dimension::~Dimension() {
@@ -85,46 +90,22 @@ Dimension::~Dimension() {
 /*                API                */
 /* ********************************* */
 
-// ===== FORMAT =====
-// dimension_name_size (uint32_t)
-// dimension_name (string)
-// domain (void* - 2*type_size)
-// null_tile_extent (uint8_t)
-// tile_extent (void* - type_size)
-Status Dimension::deserialize(ConstBuffer* buff, Datatype type) {
-  // Set type
-  type_ = type;
+uint64_t Dimension::cell_size() const {
+  if (var_size())
+    return constants::var_size;
 
-  // Load dimension name
-  uint32_t dimension_name_size;
-  RETURN_NOT_OK(buff->read(&dimension_name_size, sizeof(uint32_t)));
-  name_.resize(dimension_name_size);
-  RETURN_NOT_OK(buff->read(&name_[0], dimension_name_size));
+  return cell_val_num_ * datatype_size(type_);
+}
 
-  // Load domain
-  uint64_t domain_size = 2 * datatype_size(type_);
-  std::free(domain_);
-  domain_ = std::malloc(domain_size);
-  if (domain_ == nullptr)
-    return LOG_STATUS(
-        Status::DimensionError("Cannot deserialize; Memory allocation failed"));
-  RETURN_NOT_OK(buff->read(domain_, domain_size));
+unsigned int Dimension::cell_val_num() const {
+  return cell_val_num_;
+}
 
-  // Load tile extent
-  std::free(tile_extent_);
-  tile_extent_ = nullptr;
-  uint8_t null_tile_extent;
-  RETURN_NOT_OK(buff->read(&null_tile_extent, sizeof(uint8_t)));
-  if (null_tile_extent == 0) {
-    tile_extent_ = std::malloc(datatype_size(type_));
-    if (tile_extent_ == nullptr) {
-      return LOG_STATUS(Status::DimensionError(
-          "Cannot deserialize; Memory allocation failed"));
-    }
-    RETURN_NOT_OK(buff->read(tile_extent_, datatype_size(type_)));
-  }
-
-  return Status::Ok();
+Status Dimension::deserialize(
+    uint32_t version, ConstBuffer* buff, Datatype type) {
+  if (version <= 3)
+    return deserialize_v1_to_3(buff, type);
+  return deserialize_v4(buff);
 }
 
 void* Dimension::domain() const {
@@ -140,8 +121,18 @@ void Dimension::dump(FILE* out) const {
   // Dump
   fprintf(out, "### Dimension ###\n");
   fprintf(out, "- Name: %s\n", is_anonymous() ? "<anonymous>" : name_.c_str());
+  fprintf(out, "- Type: %s\n", datatype_str(type_).c_str());
   fprintf(out, "- Domain: %s\n", domain_s.c_str());
   fprintf(out, "- Tile extent: %s\n", tile_extent_s.c_str());
+
+  // Dump filters
+  if (!filters_.empty())
+    fprintf(out, "- Filters:\n");
+  filters_.dump(out);
+}
+
+const FilterPipeline* Dimension::filters() const {
+  return &filters_;
 }
 
 const std::string& Dimension::name() const {
@@ -156,9 +147,12 @@ bool Dimension::is_anonymous() const {
 // ===== FORMAT =====
 // dimension_name_size (uint32_t)
 // dimension_name (string)
+// type (uint8_t)
+// cell_val_num (uint32_t)
 // domain (void* - 2*type_size)
 // null_tile_extent (uint8_t)
 // tile_extent (void* - type_size)
+// filter_pipeline (see FilterPipeline::serialize)
 Status Dimension::serialize(Buffer* buff) {
   // Sanity check
   if (domain_ == nullptr) {
@@ -171,14 +165,23 @@ Status Dimension::serialize(Buffer* buff) {
   RETURN_NOT_OK(buff->write(&dimension_name_size, sizeof(uint32_t)));
   RETURN_NOT_OK(buff->write(name_.c_str(), dimension_name_size));
 
+  // Write type
+  auto type = (uint8_t)type_;
+  RETURN_NOT_OK(buff->write(&type, sizeof(uint8_t)));
+
+  // Write cell_val_num_
+  RETURN_NOT_OK(buff->write(&cell_val_num_, sizeof(uint32_t)));
+
   // Write domain and tile extent
   uint64_t domain_size = 2 * datatype_size(type_);
   RETURN_NOT_OK(buff->write(domain_, domain_size));
-
   auto null_tile_extent = (uint8_t)((tile_extent_ == nullptr) ? 1 : 0);
   RETURN_NOT_OK(buff->write(&null_tile_extent, sizeof(uint8_t)));
   if (tile_extent_ != nullptr)
     RETURN_NOT_OK(buff->write(tile_extent_, datatype_size(type_)));
+
+  // Write filter pipeline
+  RETURN_NOT_OK(filters_.serialize(buff));
 
   return Status::Ok();
 }
@@ -206,6 +209,30 @@ Status Dimension::set_domain(const void* domain) {
   }
 
   return st;
+}
+
+Status Dimension::set_cell_val_num(unsigned int cell_val_num) {
+  if (type_ == Datatype::ANY)
+    return LOG_STATUS(Status::DimensionError(
+        "Cannot set number of values per cell; Dimension datatype `ANY` is "
+        "always variable-sized"));
+
+  cell_val_num_ = cell_val_num;
+
+  return Status::Ok();
+}
+
+Status Dimension::set_filter_pipeline(const FilterPipeline* pipeline) {
+  if (pipeline == nullptr)
+    return LOG_STATUS(Status::DimensionError("Cannot set null pipeline"));
+
+  if ((type_ == Datatype::FLOAT32 || type_ == Datatype::FLOAT64) &&
+      pipeline->has_double_delta_compressor())
+    return LOG_STATUS(Status::DimensionError(
+        "Double delta compression cannot be used with real-valued dimensions"));
+
+  filters_ = *pipeline;
+  return Status::Ok();
 }
 
 Status Dimension::set_tile_extent(const void* tile_extent) {
@@ -336,6 +363,10 @@ void* Dimension::tile_extent() const {
 
 Datatype Dimension::type() const {
   return type_;
+}
+
+bool Dimension::var_size() const {
+  return cell_val_num_ == constants::var_num;
 }
 
 /* ********************************* */
@@ -474,6 +505,101 @@ Status Dimension::check_tile_extent() const {
             "domain max by 1 tile extent to allow for expansion."));
     }
   }
+
+  return Status::Ok();
+}
+
+// ===== FORMAT =====
+// dimension_name_size (uint32_t)
+// dimension_name (string)
+// domain (void* - 2*type_size)
+// null_tile_extent (uint8_t)
+// tile_extent (void* - type_size)
+Status Dimension::deserialize_v1_to_3(ConstBuffer* buff, Datatype type) {
+  // Set type
+  type_ = type;
+
+  // Load dimension name
+  uint32_t dimension_name_size;
+  RETURN_NOT_OK(buff->read(&dimension_name_size, sizeof(uint32_t)));
+  name_.resize(dimension_name_size);
+  RETURN_NOT_OK(buff->read(&name_[0], dimension_name_size));
+
+  // Load domain
+  uint64_t domain_size = 2 * datatype_size(type_);
+  std::free(domain_);
+  domain_ = std::malloc(domain_size);
+  if (domain_ == nullptr)
+    return LOG_STATUS(
+        Status::DimensionError("Cannot deserialize; Memory allocation failed"));
+  RETURN_NOT_OK(buff->read(domain_, domain_size));
+
+  // Load tile extent
+  std::free(tile_extent_);
+  tile_extent_ = nullptr;
+  uint8_t null_tile_extent;
+  RETURN_NOT_OK(buff->read(&null_tile_extent, sizeof(uint8_t)));
+  if (null_tile_extent == 0) {
+    tile_extent_ = std::malloc(datatype_size(type_));
+    if (tile_extent_ == nullptr) {
+      return LOG_STATUS(Status::DimensionError(
+          "Cannot deserialize; Memory allocation failed"));
+    }
+    RETURN_NOT_OK(buff->read(tile_extent_, datatype_size(type_)));
+  }
+
+  return Status::Ok();
+}
+
+// ===== FORMAT =====
+// dimension_name_size (uint32_t)
+// dimension_name (string)
+// type (uint8_t)
+// cell_val_num (uint32_t)
+// domain (void* - 2*type_size)
+// null_tile_extent (uint8_t)
+// tile_extent (void* - type_size)
+// filter_pipeline (see FilterPipeline::serialize)
+Status Dimension::deserialize_v4(ConstBuffer* buff) {
+  // Load dimension name
+  uint32_t dimension_name_size;
+  RETURN_NOT_OK(buff->read(&dimension_name_size, sizeof(uint32_t)));
+  name_.resize(dimension_name_size);
+  RETURN_NOT_OK(buff->read(&name_[0], dimension_name_size));
+
+  // Load type
+  uint8_t type;
+  RETURN_NOT_OK(buff->read(&type, sizeof(uint8_t)));
+  type_ = (Datatype)type;
+
+  // Load cell_val_num_
+  RETURN_NOT_OK(buff->read(&cell_val_num_, sizeof(uint32_t)));
+
+  // Load domain
+  uint64_t domain_size = 2 * datatype_size(type_);
+  std::free(domain_);
+  domain_ = std::malloc(domain_size);
+  if (domain_ == nullptr)
+    return LOG_STATUS(
+        Status::DimensionError("Cannot deserialize; Memory allocation failed"));
+  RETURN_NOT_OK(buff->read(domain_, domain_size));
+
+  // Load tile extent
+  std::free(tile_extent_);
+  tile_extent_ = nullptr;
+  uint8_t null_tile_extent;
+  RETURN_NOT_OK(buff->read(&null_tile_extent, sizeof(uint8_t)));
+  if (null_tile_extent == 0) {
+    tile_extent_ = std::malloc(datatype_size(type_));
+    if (tile_extent_ == nullptr) {
+      return LOG_STATUS(Status::DimensionError(
+          "Cannot deserialize; Memory allocation failed"));
+    }
+    RETURN_NOT_OK(buff->read(tile_extent_, datatype_size(type_)));
+  }
+
+  // Load filter pipeline
+  RETURN_NOT_OK(filters_.deserialize(buff));
 
   return Status::Ok();
 }

@@ -38,6 +38,7 @@
 #include "tiledb/sm/buffer/buffer.h"
 #include "tiledb/sm/enums/compressor.h"
 #include "tiledb/sm/enums/datatype.h"
+#include "tiledb/sm/filter/filter_pipeline.h"
 #include "tiledb/sm/misc/logger.h"
 #include "tiledb/sm/misc/status.h"
 
@@ -77,19 +78,33 @@ class Dimension {
   /* ********************************* */
 
   /**
+   * Returns the size in bytes of one cell for this dimension. If the
+   * dimension is variable-sized, this function returns the size in
+   * bytes of an offset.
+   */
+  uint64_t cell_size() const;
+
+  /** Returns the number of values per cell. */
+  unsigned int cell_val_num() const;
+
+  /**
    * Populates the object members from the data in the input binary buffer.
    *
+   * @param version The version of the format to deserialize from.
    * @param buff The buffer to deserialize from.
    * @param type The type of the dimension.
    * @return Status
    */
-  Status deserialize(ConstBuffer* buff, Datatype type);
+  Status deserialize(uint32_t version, ConstBuffer* buff, Datatype type);
 
   /** Returns the domain. */
   void* domain() const;
 
   /** Dumps the dimension contents in ASCII form in the selected output. */
   void dump(FILE* out) const;
+
+  /** Returns the filter pipeline of this dimension. */
+  const FilterPipeline* filters() const;
 
   /** Returns the dimension name. */
   const std::string& name() const;
@@ -105,8 +120,20 @@ class Dimension {
    */
   Status serialize(Buffer* buff);
 
+  /**
+   * Sets the dimension number of values per cell. Note that if the
+   * dimension datatype is `ANY` this function returns an error, since
+   * `ANY` datatype must always be variable-sized.
+   *
+   * @return Status
+   */
+  Status set_cell_val_num(unsigned int cell_val_num);
+
   /** Sets the domain. */
   Status set_domain(const void* domain);
+
+  /** Sets the filter pipeline for this dimension. */
+  Status set_filter_pipeline(const FilterPipeline* pipeline);
 
   /** Sets the tile extent. */
   Status set_tile_extent(const void* tile_extent);
@@ -132,13 +159,25 @@ class Dimension {
   /** Returns the dimension type. */
   Datatype type() const;
 
+  /**
+   * Returns *true* if this is a variable-sized dimension, and *false*
+   * otherwise.
+   */
+  bool var_size() const;
+
  private:
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
   /* ********************************* */
 
+  /** The attribute number of values per cell. */
+  unsigned int cell_val_num_;
+
   /** The dimension domain. */
   void* domain_;
+
+  /** The dimension filter pipeline. */
+  FilterPipeline filters_;
 
   /** The dimension name. */
   std::string name_;
@@ -229,6 +268,25 @@ class Dimension {
    */
   template <class T>
   Status check_tile_extent() const;
+
+  /**
+   * Populates the object members from the data in the input binary buffer.
+   * Applicable to format versions 1 to 3.
+   *
+   * @param buff The buffer to deserialize from.
+   * @param type The type of the dimension.
+   * @return Status
+   */
+  Status deserialize_v1_to_3(ConstBuffer* buff, Datatype type);
+
+  /**
+   * Populates the object members from the data in the input binary buffer.
+   * Applicable to format version 4.
+   *
+   * @param buff The buffer to deserialize from.
+   * @return Status
+   */
+  Status deserialize_v4(ConstBuffer* buff);
 };
 
 }  // namespace sm

@@ -60,6 +60,10 @@ class Add1InPlace : public Filter {
       : Filter(FilterType::FILTER_NONE) {
   }
 
+  void dump(FILE* out) const override {
+    (void)out;
+  }
+
   Status run_forward(
       FilterBuffer* input_metadata,
       FilterBuffer* input,
@@ -118,6 +122,10 @@ class Add1OutOfPlace : public Filter {
   // Just use a dummy filter type
   Add1OutOfPlace()
       : Filter(FilterType::FILTER_NONE) {
+  }
+
+  void dump(FILE* out) const override {
+    (void)out;
   }
 
   Status run_forward(
@@ -202,6 +210,10 @@ class AddNInPlace : public Filter {
     increment_ = 1;
   }
 
+  void dump(FILE* out) const override {
+    (void)out;
+  }
+
   Status run_forward(
       FilterBuffer* input_metadata,
       FilterBuffer* input,
@@ -273,6 +285,11 @@ class PseudoChecksumFilter : public Filter {
   PseudoChecksumFilter()
       : Filter(FilterType::FILTER_NONE) {
   }
+
+  void dump(FILE* out) const override {
+    (void)out;
+  }
+
   Status run_forward(
       FilterBuffer* input_metadata,
       FilterBuffer* input,
@@ -351,6 +368,10 @@ class Add1IncludingMetadataFilter : public Filter {
   // Just use a dummy filter type
   Add1IncludingMetadataFilter()
       : Filter(FilterType::FILTER_NONE) {
+  }
+
+  void dump(FILE* out) const override {
+    (void)out;
   }
 
   Status run_forward(

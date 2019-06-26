@@ -74,6 +74,12 @@ class PositiveDeltaFilter : public Filter {
   /** Constructor. */
   PositiveDeltaFilter();
 
+  /**
+   * Dumps the filter contents in ASCII
+   * form in the selected output.
+   */
+  void dump(FILE* out) const override;
+
   /** Return the max window size used by the filter. */
   uint32_t max_window_size() const;
 

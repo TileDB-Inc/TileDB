@@ -77,6 +77,12 @@ class BitshuffleFilter : public Filter {
   BitshuffleFilter();
 
   /**
+   * Dumps the filter contents in ASCII
+   * form in the selected output.
+   */
+  void dump(FILE* out) const override;
+
+  /**
    * Shuffle the bits of the input data into the output data buffer.
    */
   Status run_forward(

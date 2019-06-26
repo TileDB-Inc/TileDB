@@ -96,6 +96,15 @@ class FilterPipeline {
   Status deserialize(ConstBuffer* buff);
 
   /**
+   * Dumps the filter pipeline contents in ASCII
+   * form in the selected output.
+   */
+  void dump(FILE* out) const;
+
+  /** Returns true if the pipeline has no filters. */
+  bool empty() const;
+
+  /**
    * Returns pointer to the first instance of a filter in the pipeline with the
    * given filter subclass type.
    *
@@ -123,6 +132,12 @@ class FilterPipeline {
    * @return Pointer to filter instance in the pipeline
    */
   Filter* get_filter(unsigned index) const;
+
+  /**
+   * Returns true if the filter pipeline contains the double
+   * delta compressor.
+   */
+  bool has_double_delta_compressor() const;
 
   /** Returns the maximum tile chunk size. */
   uint32_t max_chunk_size() const;

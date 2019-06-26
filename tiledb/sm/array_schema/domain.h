@@ -227,10 +227,11 @@ class Domain {
   /**
    * Populates the object members from the data in the input binary buffer.
    *
+   * @param version The version to use for deserialization.
    * @param buff The buffer to deserialize from.
    * @return Status
    */
-  Status deserialize(ConstBuffer* buff);
+  Status deserialize(uint32_t version, ConstBuffer* buff);
 
   /** Returns the cell order. */
   Layout cell_order() const;
