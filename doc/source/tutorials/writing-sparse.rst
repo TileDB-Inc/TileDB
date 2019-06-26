@@ -194,22 +194,24 @@ Let us see how the array directory looks like after the execution of the program
 
 .. code-block:: bash
 
-    $ ls -l writing_sparse_multiple/
+    $ ls -l multiple_writes_sparse_array/
     total 8
-    drwx------  5 stavros  staff  170 Jun 22 15:27 __35a9e44618d34f68a20ec0b5a51d17eb_1529695666920
-    drwx------  5 stavros  staff  170 Jun 22 15:27 __5f38614a64d94b97b607125965db3bdd_1529695666925
-    -rwx------  1 stavros  staff  115 Jun 22 15:27 __array_schema.tdb
-    -rwx------  1 stavros  staff    0 Jun 22 15:27 __lock.tdb
-    $ ls -l writing_sparse_multiple/__35a9e44618d34f68a20ec0b5a51d17eb_1529695666920
+    drwx------  5 stavros  staff  160 Jun 25 15:41 __1561491710236_1561491710236_3eadf863ae0443c7815857d055ed45c7
+    drwx------  5 stavros  staff  160 Jun 25 15:41 __1561491710249_1561491710249_a94a9605d30049939eb34f7ee6eb4708
+    -rwx------  1 stavros  staff  153 Jun 25 15:41 __array_schema.tdb
+    -rwx------  1 stavros  staff    0 Jun 25 15:41 __lock.tdb
+
+    $ ls -l multiple_writes_sparse_array/__1561491710236_1561491710236_3eadf863ae0443c7815857d055ed45c7/
     total 24
-    -rwx------  1 stavros  staff   90 Jun 22 15:27 __coords.tdb
-    -rwx------  1 stavros  staff  110 Jun 22 15:27 __fragment_metadata.tdb
-    -rwx------  1 stavros  staff   12 Jun 22 15:27 a.tdb
-    $ ls -l writing_sparse_multiple/__5f38614a64d94b97b607125965db3bdd_1529695666925
+    -rwx------  1 stavros  staff  106 Jun 25 15:41 __coords.tdb
+    -rwx------  1 stavros  staff  611 Jun 25 15:41 __fragment_metadata.tdb
+    -rwx------  1 stavros  staff   32 Jun 25 15:41 a.tdb
+
+    $ ls -l multiple_writes_sparse_array/__1561491710249_1561491710249_a94a9605d30049939eb34f7ee6eb4708/
     total 24
-    -rwx------  1 stavros  staff   82 Jun 22 15:27 __coords.tdb
-    -rwx------  1 stavros  staff  104 Jun 22 15:27 __fragment_metadata.tdb
-    -rwx------  1 stavros  staff    8 Jun 22 15:27 a.tdb
+    -rwx------  1 stavrospapadopoulos  staff   98 Jun 25 15:41 __coords.tdb
+    -rwx------  1 stavrospapadopoulos  staff  612 Jun 25 15:41 __fragment_metadata.tdb
+    -rwx------  1 stavrospapadopoulos  staff   28 Jun 25 15:41 a.tdb
 
 Notice that now there are *two* subdirectories under the array directory. Each
 subdirectory corresponds to a write operation and is called **fragment**. We
@@ -316,11 +318,12 @@ array directory:
    Cell (1, 1) has data 1
    Cell (2, 3) has data 3
    Cell (2, 4) has data 2
-   $ ls -l writing_sparse_global/
+
+   $ ls -l global_order_sparse_array/
    total 8
-   drwx------  5 stavros  staff  170 Jun 22 16:29 __01b96bab96a64c3b86e06417c16b0618_1529699391758
-   -rwx------  1 stavros  staff  115 Jun 22 16:29 __array_schema.tdb
-   -rwx------  1 stavros  staff    0 Jun 22 16:29 __lock.tdb
+   drwx------  5 stavros  staff  160 Jun 25 15:44 __1561491885787_1561491885787_eccb5f9e17c54fef90cedf633d47118c
+   -rwx------  1 stavros  staff  153 Jun 25 15:44 __array_schema.tdb
+   -rwx------  1 stavros  staff    0 Jun 25 15:44 __lock.tdb
 
 As expected, the array contains the same cells and values as ``quickstart_sparse``.
 Moreover, despite the fact that we submitted two write queries, only one

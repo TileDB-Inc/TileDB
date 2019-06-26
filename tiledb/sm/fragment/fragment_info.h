@@ -45,8 +45,8 @@ struct FragmentInfo {
   URI uri_;
   /** True if the fragment is sparse, and false if it is dense. */
   bool sparse_;
-  /** The creation timestamp of the fragment. */
-  uint64_t timestamp_;
+  /** The timestamp range of the fragment. */
+  std::pair<uint64_t, uint64_t> timestamp_range_;
   /** The size of the entire fragment directory. */
   uint64_t fragment_size_;
   /** The fragment's non-empty domain. */
@@ -63,7 +63,7 @@ struct FragmentInfo {
   FragmentInfo() {
     uri_ = URI("");
     sparse_ = false;
-    timestamp_ = 0;
+    timestamp_range_ = {0, 0};
     fragment_size_ = 0;
   }
 
@@ -71,13 +71,13 @@ struct FragmentInfo {
   FragmentInfo(
       const URI& uri,
       bool sparse,
-      uint64_t timestamp,
+      const std::pair<uint64_t, uint64_t>& timestamp_range,
       uint64_t fragment_size,
       const std::vector<uint8_t>& non_empty_domain,
       const std::vector<uint8_t>& expanded_non_empty_domain)
       : uri_(uri)
       , sparse_(sparse)
-      , timestamp_(timestamp)
+      , timestamp_range_(timestamp_range)
       , fragment_size_(fragment_size)
       , non_empty_domain_(non_empty_domain)
       , expanded_non_empty_domain_(expanded_non_empty_domain) {
@@ -117,7 +117,7 @@ struct FragmentInfo {
     FragmentInfo clone;
     clone.uri_ = uri_;
     clone.sparse_ = sparse_;
-    clone.timestamp_ = timestamp_;
+    clone.timestamp_range_ = timestamp_range_;
     clone.fragment_size_ = fragment_size_;
     clone.non_empty_domain_ = non_empty_domain_;
     clone.expanded_non_empty_domain_ = expanded_non_empty_domain_;
@@ -128,7 +128,7 @@ struct FragmentInfo {
   void swap(FragmentInfo& info) {
     std::swap(uri_, info.uri_);
     std::swap(sparse_, info.sparse_);
-    std::swap(timestamp_, info.timestamp_);
+    std::swap(timestamp_range_, info.timestamp_range_);
     std::swap(fragment_size_, info.fragment_size_);
     std::swap(non_empty_domain_, info.non_empty_domain_);
     std::swap(expanded_non_empty_domain_, info.expanded_non_empty_domain_);

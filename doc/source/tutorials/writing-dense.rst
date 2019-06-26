@@ -503,14 +503,12 @@ subfolders/fragments created:
 
 .. code-block:: bash
 
-  $ ls -l writing_dense_multiple/
+  $ ls -l multiple_writes_dense_array/
   total 8
-  drwx------  4 stavros  staff  136 Jun 25 14:51 __71c5c364bc4b4f49888668c912c4a01c_1529952665416
-  -rwx------  1 stavros  staff  109 Jun 25 14:51 __array_schema.tdb
-  drwx------  4 stavros  staff  136 Jun 25 14:51 __d13ece6b48ca470b8c42810cdf9d9206_1529952665410
-  -rwx------  1 stavros  staff    0 Jun 25 14:51 __lock.tdb
-
-
+  drwx------  4 stavros  staff  128 Jun 25 15:49 __1561492148493_1561492148493_52634f26a295445ca6c6dcfdafc8a967
+  drwx------  4 stavros  staff  128 Jun 25 15:49 __1561492148506_1561492148506_fef381c0326b49a59d6e74816416dfa1
+  -rwx------  1 stavros  staff  149 Jun 25 15:49 __array_schema.tdb
+  -rwx------  1 stavros  staff    0 Jun 25 15:49 __lock.tdb
 
 Writing sparse cells
 --------------------
@@ -589,16 +587,17 @@ Let us inspect the contents of the dense array after the write:
 
 .. code-block:: bash
 
-  $ ls -l writing_dense_sparse/
+  $ ls -l writing_dense_sparse_array/
   total 8
-  drwx------  5 stavros  staff  170 Jun 25 17:59 __88e0ebca9aa44442918ad93fa82209f2_1529963970336
-  -rwx------  1 stavros  staff  109 Jun 25 17:59 __array_schema.tdb
-  -rwx------  1 stavros  staff    0 Jun 25 17:59 __lock.tdb
-  $ ls -l writing_dense_sparse/__88e0ebca9aa44442918ad93fa82209f2_1529963970336/
+  drwx------  5 stavros  staff  160 Jun 25 15:50 __1561492235844_1561492235844_c033cea7bbc34f2bb425969a497f7bab
+  -rwx------  1 stavros  staff  149 Jun 25 15:50 __array_schema.tdb
+  -rwx------  1 stavros  staff    0 Jun 25 15:50 __lock.tdb
+
+  $ ls -l writing_dense_sparse_array/__1561492235844_1561492235844_c033cea7bbc34f2bb425969a497f7bab/
   total 24
-  -rwx------  1 stavros  staff   32 Jun 25 17:59 __coords.tdb
-  -rwx------  1 stavros  staff  110 Jun 25 17:59 __fragment_metadata.tdb
-  -rwx------  1 stavros  staff   16 Jun 25 17:59 a.tdb
+  -rwx------  1 stavros  staff  114 Jun 25 15:50 __coords.tdb
+  -rwx------  1 stavros  staff  610 Jun 25 15:50 __fragment_metadata.tdb
+  -rwx------  1 stavros  staff   36 Jun 25 15:50 a.tdb
 
 Observe that the
 coordinates were written explicitly in file ``__coords.tdb`` inside

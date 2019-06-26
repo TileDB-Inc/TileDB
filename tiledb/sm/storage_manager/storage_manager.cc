@@ -199,11 +199,14 @@ Status StorageManager::array_open_for_reads(
   *array_schema = open_array->array_schema();
 
   // Determine which fragments to load
-  std::vector<std::pair<uint64_t, URI>> fragments_to_load;  // (timestamp, URI)
+  std::vector<TimestampedURI> fragments_to_load;
   std::vector<URI> fragment_uris;
   RETURN_NOT_OK(get_fragment_uris(array_uri, &fragment_uris));
-  RETURN_NOT_OK(
-      get_sorted_fragment_uris(fragment_uris, timestamp, &fragments_to_load));
+  RETURN_NOT_OK(get_sorted_fragment_uris(
+      (*array_schema)->version(),
+      fragment_uris,
+      timestamp,
+      &fragments_to_load));
 
   // Get fragment metadata in the case of reads, if not fetched already
   Status st = load_fragment_metadata(
@@ -242,9 +245,9 @@ Status StorageManager::array_open_for_reads(
   *array_schema = open_array->array_schema();
 
   // Determine which fragments to load
-  std::vector<std::pair<uint64_t, URI>> fragments_to_load;  // (timestamp, URI)
+  std::vector<TimestampedURI> fragments_to_load;
   for (const auto& fragment : fragments)
-    fragments_to_load.emplace_back(fragment.timestamp_, fragment.uri_);
+    fragments_to_load.emplace_back(fragment.uri_, fragment.timestamp_range_);
 
   // Get fragment metadata in the case of reads, if not fetched already
   Status st = load_fragment_metadata(
@@ -360,11 +363,12 @@ Status StorageManager::array_reopen(
   }
 
   // Determine which fragments to load
-  std::vector<std::pair<uint64_t, URI>> fragments_to_load;  // (timestamp, URI)
+  std::vector<TimestampedURI> fragments_to_load;
   std::vector<URI> fragment_uris;
   RETURN_NOT_OK(get_fragment_uris(array_uri, &fragment_uris));
-  RETURN_NOT_OK(
-      get_sorted_fragment_uris(fragment_uris, timestamp, &fragments_to_load));
+  auto version = open_array->array_schema()->version();
+  RETURN_NOT_OK(get_sorted_fragment_uris(
+      version, fragment_uris, timestamp, &fragments_to_load));
 
   // Get fragment metadata in the case of reads, if not fetched already
   auto st = load_fragment_metadata(
@@ -775,7 +779,7 @@ Status StorageManager::get_fragment_info(
     fragment_info->push_back(FragmentInfo(
         uri,
         sparse,
-        meta->timestamp(),
+        meta->timestamp_range(),
         size,
         non_empty_domain,
         expanded_non_empty_domain));
@@ -797,14 +801,9 @@ Status StorageManager::get_fragment_info(
   std::string fragment_name = URI(uri_str).last_path_part();
   assert(utils::parse::starts_with(fragment_name, "__"));
 
-  // Get timestamp in the end of the name after '_'
-  uint64_t timestamp;
-  assert(fragment_name.find_last_of('_') != std::string::npos);
-  auto t_str = fragment_name.substr(fragment_name.find_last_of('_') + 1);
-  sscanf(
-      t_str.c_str(),
-      (std::string("%") + std::string(PRId64)).c_str(),
-      (long long int*)&timestamp);
+  // Get timestamp range
+  auto timestamp_range =
+      utils::parse::get_timestamp_range(array_schema->version(), fragment_name);
 
   // Check if fragment is sparse
   bool sparse = false;
@@ -822,7 +821,7 @@ Status StorageManager::get_fragment_info(
 
   // Get fragment non-empty domain
   FragmentMetadata metadata(
-      this, array_schema, fragment_uri, timestamp, !sparse);
+      this, array_schema, fragment_uri, timestamp_range, !sparse);
   RETURN_NOT_OK(metadata.load(encryption_key));
 
   // This is important for format version > 2
@@ -849,7 +848,7 @@ Status StorageManager::get_fragment_info(
   *fragment_info = FragmentInfo(
       fragment_uri,
       sparse,
-      timestamp,
+      timestamp_range,
       size,
       non_empty_domain,
       expanded_non_empty_domain);
@@ -1498,21 +1497,19 @@ Status StorageManager::load_array_schema(
 Status StorageManager::load_fragment_metadata(
     OpenArray* open_array,
     const EncryptionKey& encryption_key,
-    const std::vector<std::pair<uint64_t, URI>>& fragments_to_load,
+    const std::vector<TimestampedURI>& fragments_to_load,
     std::vector<FragmentMetadata*>* fragment_metadata) {
   // Load the metadata for each fragment, only if they are not already loaded
   auto fragment_num = fragments_to_load.size();
   fragment_metadata->resize(fragment_num);
   auto statuses = parallel_for(0, fragment_num, [&](size_t f) {
     const auto& sf = fragments_to_load[f];
-    auto frag_timestamp = sf.first;
-    const auto& frag_uri = sf.second;
     auto array_schema = open_array->array_schema();
     auto version = array_schema->version();
-    auto metadata = open_array->fragment_metadata(frag_uri);
+    auto metadata = open_array->fragment_metadata(sf.uri_);
     if (metadata == nullptr) {  // Fragment metadata does not exist - load it
       URI coords_uri =
-          frag_uri.join_path(constants::coords + constants::file_suffix);
+          sf.uri_.join_path(constants::coords + constants::file_suffix);
 
       // Note that the fragment metadata version is >= the array schema
       // version. Therefore, the check below is defensive and will always
@@ -1521,10 +1518,10 @@ Status StorageManager::load_fragment_metadata(
         bool sparse;
         RETURN_NOT_OK(vfs_->is_file(coords_uri, &sparse));
         metadata = new FragmentMetadata(
-            this, array_schema, frag_uri, frag_timestamp, !sparse);
+            this, array_schema, sf.uri_, sf.timestamp_range_, !sparse);
       } else {  // Format bersion > 2
-        metadata =
-            new FragmentMetadata(this, array_schema, frag_uri, frag_timestamp);
+        metadata = new FragmentMetadata(
+            this, array_schema, sf.uri_, sf.timestamp_range_);
       }
 
       RETURN_NOT_OK_ELSE(metadata->load(encryption_key), delete metadata);
@@ -1542,16 +1539,13 @@ Status StorageManager::load_fragment_metadata(
 }
 
 Status StorageManager::get_sorted_fragment_uris(
+    uint32_t version,
     const std::vector<URI>& fragment_uris,
     uint64_t timestamp,
-    std::vector<std::pair<uint64_t, URI>>* sorted_fragment_uris) const {
+    std::vector<TimestampedURI>* sorted_fragment_uris) const {
   // Do nothing if there are not enough fragments
   if (fragment_uris.empty())
     return Status::Ok();
-
-  // Initializations
-  std::string t_str;
-  uint64_t t;
 
   // Get the timestamp for each fragment
   for (auto& uri : fragment_uris) {
@@ -1563,18 +1557,19 @@ Status StorageManager::get_sorted_fragment_uris(
     assert(utils::parse::starts_with(fragment_name, "__"));
 
     // Get timestamp in the end of the name after '_'
-    assert(fragment_name.find_last_of('_') != std::string::npos);
-    t_str = fragment_name.substr(fragment_name.find_last_of('_') + 1);
-    sscanf(
-        t_str.c_str(),
-        (std::string("%") + std::string(PRId64)).c_str(),
-        (long long int*)&t);
+    auto timestamp_range =
+        utils::parse::get_timestamp_range(version, fragment_name);
+    auto t = timestamp_range.first;
+
     if (t <= timestamp)
-      sorted_fragment_uris->emplace_back(t, uri);
+      sorted_fragment_uris->emplace_back(uri, timestamp_range);
   }
 
   // Sort the names based on the timestamps
   std::sort(sorted_fragment_uris->begin(), sorted_fragment_uris->end());
+
+  // Remove consolidated fragment URIs
+  Consolidator::remove_consolidated_fragment_uris(sorted_fragment_uris);
 
   return Status::Ok();
 }

@@ -344,25 +344,26 @@ If we look into the array on disk after it has been written to, we will see some
 
 .. code-block:: bash
 
-    $ ls -l my_array/
+    $ ls -l quickstart_sparse_array/
     total 8
-    drwx------  5 tyler  staff  170 Jun 12 10:32 __a71ac7b88bd84bd8897d156397eef603_1528813977859
-    -rwx------  1 tyler  staff  164 Jun 12 10:32 __array_schema.tdb
-    -rwx------  1 tyler  staff    0 Jun 12 10:32 __lock.tdb
+    drwx------  5 stavros  staff  160 Jun 25 15:22 __1561490578769_1561490578769_9e429a59930b4a9c83baa57eb2fb41a8
+    -rwx------  1 stavros  staff  153 Jun 25 15:22 __array_schema.tdb
+    -rwx------  1 stavros  staff    0 Jun 25 15:22 __lock.tdb
 
 The array directory and files ``__array_schema.tdb`` and ``__lock.tdb`` were written upon
-array creation, whereas subdirectory ``__a71ac7b88bd84bd8897d156397eef603_1528813977859`` was
+array creation, whereas subdirectory 
+``__1561490578769_1561490578769_9e429a59930b4a9c83baa57eb2fb41a8`` was
 created after array writting. This subdirectory, called **fragment**, contains the written
 cell values for attribute ``a`` in file ``a.tdb`` and the corresponding coordinates in
 a **separate** file ``__coords.tdb``, along with associated metadata:
 
 .. code-block:: bash
 
-    $ ls -l my_array/__a71ac7b88bd84bd8897d156397eef603_1528813977859/
+    $ ls -l quickstart_sparse_array/__1561490578769_1561490578769_9e429a59930b4a9c83baa57eb2fb41a8/
     total 24
-    -rwx------  1 tyler  staff  112 Jun 12 10:32 __coords.tdb
-    -rwx------  1 tyler  staff  124 Jun 12 10:32 __fragment_metadata.tdb
-    -rwx------  1 tyler  staff    4 Jun 12 10:32 a1.tdb
+    -rwx------  1 stavros  staff  106 Jun 25 15:22 __coords.tdb
+    -rwx------  1 stavros  staff  611 Jun 25 15:22 __fragment_metadata.tdb
+    -rwx------  1 stavros  staff   32 Jun 25 15:22 a.tdb
 
 The TileDB array hierarchy on disk and more details about fragments are discussed in
 later tutorials.

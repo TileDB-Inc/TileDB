@@ -366,23 +366,24 @@ If we look into the array on disk after it has been written to, we will see some
 
 .. code-block:: bash
 
-   $ ls -l quickstart_dense/
+   $ ls -l quickstart_dense_array/
    total 8
-   drwx------  4 tyler  staff  136 Jun 11 18:30 __0c4739ed957b4f5eaf0b2738cb1bec1c_1528756214526
-   -rwx------  1 tyler  staff  164 Jun 11 18:30 __array_schema.tdb
-   -rwx------  1 tyler  staff    0 Jun 11 18:30 __lock.tdb
+   drwx------  4 stavros  staff  128 Jun 25 15:18 __1561490302161_1561490302161_15bab0281e2e44f2a803eb6f3001ed00
+   -rwx------  1 stavros  staff  149 Jun 25 15:18 __array_schema.tdb
+   -rwx------  1 stavros  staff    0 Jun 25 15:18 __lock.tdb
 
 The array directory and files ``__array_schema.tdb`` and ``__lock.tdb`` were written upon
-array creation, whereas subdirectory ``__0c4739ed957b4f5eaf0b2738cb1bec1c_1528756214526`` was
+array creation, whereas subdirectory 
+``__1561490302161_1561490302161_15bab0281e2e44f2a803eb6f3001ed00`` was
 created after array writting. This subdirectory, called **fragment**, contains the written
 cell values for attribute ``a`` in file ``a.tdb``, along with associated metadata:
 
 .. code-block:: bash
 
-    $ ls -l quickstart_dense/__0c4739ed957b4f5eaf0b2738cb1bec1c_1528756214526/
+    $ ls -l quickstart_dense_array/__1561490302161_1561490302161_15bab0281e2e44f2a803eb6f3001ed00/
     total 16
-    -rwx------  1 tyler  staff  117 Jun 11 18:30 __fragment_metadata.tdb
-    -rwx------  1 tyler  staff    4 Jun 11 18:30 a.tdb
+    -rwx------  1 stavros  staff  602 Jun 25 15:18 __fragment_metadata.tdb
+    -rwx------  1 stavros  staff   84 Jun 25 15:18 a.tdb
 
 The TileDB array hierarchy on disk and more details about fragments are discussed in
 later tutorials.

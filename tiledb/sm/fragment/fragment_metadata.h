@@ -61,15 +61,16 @@ class FragmentMetadata {
    * @param storage_manager A storage manager instance.
    * @param array_schema The schema of the array the fragment belongs to.
    * @param fragment_uri The fragment URI.
-   * @param timestamp The timestamp of the fragment creation. In TileDB,
+   * @param timestamp_range The timestamp range of the fragment.
+   *     In TileDB, timestamps are in ms elapsed since
+   *     1970-01-01 00:00:00 +0000 (UTC).
    * @param dense Indicates whether the fragment is dense or sparse.
-   *     timestamps are in ms elapsed since 1970-01-01 00:00:00 +0000 (UTC).
    */
   FragmentMetadata(
       StorageManager* storage_manager,
       const ArraySchema* array_schema,
       const URI& fragment_uri,
-      uint64_t timestamp,
+      const std::pair<uint64_t, uint64_t>& timestamp_range,
       bool dense = true);
 
   /** Destructor. */
@@ -420,8 +421,11 @@ class FragmentMetadata {
       uint64_t tile_idx,
       uint64_t* tile_size);
 
-  /** The creation timestamp of the fragment. */
-  uint64_t timestamp() const;
+  /** Returns the first timestamp of the fragment timestamp range. */
+  uint64_t first_timestamp() const;
+
+  /** Returns the fragment timestamp range. */
+  const std::pair<uint64_t, uint64_t>& timestamp_range() const;
 
   /**
    * Returns `true` if the timestamp of the first operand is smaller,
@@ -558,8 +562,8 @@ class FragmentMetadata {
   /** The format version of this metadata. */
   uint32_t version_;
 
-  /** The creation timestamp of the fragment. */
-  uint64_t timestamp_;
+  /** The timestamp range of the fragment. */
+  std::pair<uint64_t, uint64_t> timestamp_range_;
 
   /** Stores the generic tile offsets, facilitating loading. */
   GenericTileOffsets gt_offsets_;

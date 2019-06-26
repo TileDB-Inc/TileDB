@@ -219,6 +219,12 @@ Status Reader::init() {
   return Status::Ok();
 }
 
+URI Reader::first_fragment_uri() const {
+  if (fragment_metadata_.empty())
+    return URI();
+  return fragment_metadata_.front()->fragment_uri();
+}
+
 URI Reader::last_fragment_uri() const {
   if (fragment_metadata_.empty())
     return URI();

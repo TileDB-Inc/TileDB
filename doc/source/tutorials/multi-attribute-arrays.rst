@@ -332,20 +332,21 @@ Let us look at the contents of the array of this example on disk.
 
 .. code-block:: bash
 
-   $ ls -l multi_attribute/
+   $ ls -l multi_attribute_array/
    total 8
-   drwx------  5 stavros  staff  170 Jun 18 17:33 __3f4622ed4ec1486ea3450f66c905f8cc_1529357638905
-   -rwx------  1 stavros  staff  186 Jun 18 17:33 __array_schema.tdb
-   -rwx------  1 stavros  staff    0 Jun 18 17:33 __lock.tdb
+   drwx------  5 stavros  staff  160 Jun 25 15:34 __1561491299419_1561491299419_fcb0ee91899142baad8a08049c0e2319
+   -rwx------  1 stavros  staff  159 Jun 25 15:34 __array_schema.tdb
+   -rwx------  1 stavros  staff    0 Jun 25 15:34 __lock.tdb
 
-   $ ls -l multi_attribute/__3f4622ed4ec1486ea3450f66c905f8cc_1529357638905/
+   $ ls -l multi_attribute_array/__1561491299419_1561491299419_fcb0ee91899142baad8a08049c0e2319/
    total 24
-   -rwx------  1 stavros  staff  124 Jun 18 17:33 __fragment_metadata.tdb
-   -rwx------  1 stavros  staff   36 Jun 18 17:33 a1.tdb
-   -rwx------  1 stavros  staff  148 Jun 18 17:33 a2.tdb
+   -rwx------  1 stavros  staff  939 Jun 25 15:34 __fragment_metadata.tdb
+   -rwx------  1 stavros  staff   36 Jun 25 15:34 a1.tdb
+   -rwx------  1 stavros  staff  148 Jun 25 15:34 a2.tdb
 
 TileDB created two separate attribute files in fragment subdirectory
-``__3f4622ed4ec1486ea3450f66c905f8cc_1529357638905``: ``a1.tdb`` that stores the cell values
+``__1561491299419_1561491299419_fcb0ee91899142baad8a08049c0e2319``: 
+``a1.tdb`` that stores the cell values
 on attribute ``a1`` (the file size is ``16`` bytes, equal to the size
 required for storing 16 1-byte characters, plus 20 bytes of metadata overhead),
 and ``a2.tdb`` that stores the cell

@@ -1045,8 +1045,9 @@ Status Writer::create_fragment(
     RETURN_NOT_OK(new_fragment_name(&new_fragment_str, &timestamp));
     uri = array_schema_->array_uri().join_path(new_fragment_str);
   }
+  auto timestamp_range = std::pair<uint64_t, uint64_t>(timestamp, timestamp);
   *frag_meta = std::make_shared<FragmentMetadata>(
-      storage_manager_, array_schema_, uri, timestamp, dense);
+      storage_manager_, array_schema_, uri, timestamp_range, dense);
   RETURN_NOT_OK((*frag_meta)->init(subarray_));
   return storage_manager_->create_dir(uri);
 
@@ -1574,7 +1575,12 @@ Status Writer::new_fragment_name(
   frag_uri->clear();
   RETURN_NOT_OK(uuid::generate_uuid(&uuid, false));
   std::stringstream ss;
-  ss << "/__" << uuid << "_" << *timestamp;
+
+  if (array_schema_->version() <= 2)
+    ss << "/__" << uuid << "_" << *timestamp;
+  else  // version >= 3
+    ss << "/__" << *timestamp << "_" << *timestamp << "_" << uuid;
+
   *frag_uri = ss.str();
   return Status::Ok();
 }

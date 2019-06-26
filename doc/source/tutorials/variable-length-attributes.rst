@@ -280,19 +280,19 @@ Let us look at the contents of the array of this example on disk.
 
 .. code-block:: bash
 
-   $ ls -l variable_length/
+   $ ls -l variable_length_array/
    total 8
-   drwx------  7 stavros  staff  238 Jun 19 13:40 __45aba8bfac594505b3a92c83db4920be_1529430032040
-   -rwx------  1 stavros  staff  186 Jun 19 13:40 __array_schema.tdb
-   -rwx------  1 stavros  staff    0 Jun 19 13:40 __lock.tdb
+   drwx------  7 stavros  staff  224 Jun 25 15:38 __1561491531226_1561491531226_3e56db7d25a447708a73d3e578622ab4
+   -rwx------  1 stavros  staff  155 Jun 25 15:38 __array_schema.tdb
+   -rwx------  1 stavros  staff    0 Jun 25 15:38 __lock.tdb
 
-   $ ls -l variable_length/__45aba8bfac594505b3a92c83db4920be_1529430032040/
+   $ ls -l variable_length_array/__1561491531226_1561491531226_3e56db7d25a447708a73d3e578622ab4/
    total 40
-   -rwx------  1 stavros  staff  132 Jun 19 13:40 __fragment_metadata.tdb
-   -rwx------  1 stavros  staff   80 Jun 19 13:40 a1.tdb
-   -rwx------  1 stavros  staff   28 Jun 19 13:40 a1_var.tdb
-   -rwx------  1 stavros  staff   80 Jun 19 13:40 a2.tdb
-   -rwx------  1 stavros  staff  104 Jun 19 13:40 a2_var.tdb
+   -rwx------  1 stavros  staff  945 Jun 25 15:38 __fragment_metadata.tdb
+   -rwx------  1 stavros  staff  100 Jun 25 15:38 a1.tdb
+   -rwx------  1 stavros  staff   48 Jun 25 15:38 a1_var.tdb
+   -rwx------  1 stavros  staff  100 Jun 25 15:38 a2.tdb
+   -rwx------  1 stavro  staff  124 Jun 25 15:38 a2_var.tdb
 
 Observe that, contrary to the case of fixed-length attributes, TileDB stores **two**
 files for each variable-length attribute. Specifically, ``a1_var.tdb`` and ``a2_var.tdb``

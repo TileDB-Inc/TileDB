@@ -89,13 +89,14 @@ contains three subdirectories with weird names:
         Cell (4, 2) has data -2147483648
         Cell (4, 3) has data -2147483648
         Cell (4, 4) has data -2147483648
-        $ ls -l fragments_consolidation/
+
+        $ ls -l fragments_consolidation_array/
         total 8
-        drwx------  5 stavros  staff  170 Dec 24 12:38 __13f149611c6541ad807d285dec1b1257_1545673114154
-        drwx------  4 stavros  staff  136 Dec 24 12:38 __374ef2b0dfef49688fd34cfb7e2ecad3_1545673114138
-        -rwx------  1 stavros  staff  149 Dec 24 12:38 __array_schema.tdb
-        drwx------  4 stavros  staff  136 Dec 24 12:38 __f42df6e8846543af8d43415ab3ef2f7d_1545673114147
-        -rwx------  1 stavros  staff    0 Dec 24 12:38 __lock.tdb
+        drwx------  4 stavros  staff  128 Jun 25 16:23 __1561494215438_1561494215438_f9041c73e04e4cb2b52734f1183508f4
+        drwx------  4 stavros  staff  128 Jun 25 16:23 __1561494215452_1561494215452_13a7d76455cc44fc893c650270d26ccf
+        drwx------  5 stavros  staff  160 Jun 25 16:23 __1561494215467_1561494215467_317c5aa1f6eb4e6880f3fda660b86507
+        -rwx------  1 stavros  staff  149 Jun 25 16:23 __array_schema.tdb
+        -rwx------  1 stavros  staff    0 Jun 25 16:23 __lock.tdb
 
    .. tab-container:: python
       :title: Python
@@ -119,30 +120,32 @@ contains three subdirectories with weird names:
          Cell (4, 2) has data -2147483648
          Cell (4, 3) has data -2147483648
          Cell (4, 4) has data -2147483648
-         $ ls -l fragments_consolidation/
+
+         $ ls -l fragments_consolidation_array/
          total 8
-         drwx------  5 stavros  staff  170 Dec 24 12:38 __13f149611c6541ad807d285dec1b1257_1545673114154
-         drwx------  4 stavros  staff  136 Dec 24 12:38 __374ef2b0dfef49688fd34cfb7e2ecad3_1545673114138
-         -rwx------  1 stavros  staff  149 Dec 24 12:38 __array_schema.tdb
-         drwx------  4 stavros  staff  136 Dec 24 12:38 __f42df6e8846543af8d43415ab3ef2f7d_1545673114147
-         -rwx------  1 stavros  staff    0 Dec 24 12:38 __lock.tdb
+         drwx------  4 stavros  staff  128 Jun 25 16:23 __1561494215438_1561494215438_f9041c73e04e4cb2b52734f1183508f4
+         drwx------  4 stavros  staff  128 Jun 25 16:23 __1561494215452_1561494215452_13a7d76455cc44fc893c650270d26ccf
+         drwx------  5 stavros  staff  160 Jun 25 16:23 __1561494215467_1561494215467_317c5aa1f6eb4e6880f3fda660b86507
+         -rwx------  1 stavros  staff  149 Jun 25 16:23 __array_schema.tdb
+         -rwx------  1 stavros  staff    0 Jun 25 16:23 __lock.tdb
 
 Each subdirectory corresponds to a **fragment**, i.e., to an array snapshot
 containing the cells written in a write operation. *How can we tell which
 fragment corresponds to which write?* In this example, this can be
 easily derived from the fragment name. The name has the following format::
 
-    __<uuid>_<timestamp>
+    __<timestamp>_<timestamp>_<uuid>
 
 The `UUID <https://en.wikipedia.org/wiki/Universally_unique_identifier>`_ is
 a *unique identifier*, specific to a process-thread pair. In a later tutorial
 we will explain that this enables concurrent threads/processes writing
 to the same array. The timestamp records the time
 when the fragment got created. Inspecting the fragment names, we derive that
-``__374ef2b0dfef49688fd34cfb7e2ecad3_1545673114138`` corresponds to the
-first write, ``__f42df6e8846543af8d43415ab3ef2f7d_1545673114147`` to the
-second, and ``__13f149611c6541ad807d285dec1b1257_1545673114154`` to the
-third, reading the fragment timestamps in ascending order.
+``__1561494215438_1561494215438_f9041c73e04e4cb2b52734f1183508f4`` 
+corresponds to the first write, 
+``__1561494215452_1561494215452_13a7d76455cc44fc893c650270d26ccf`` to the
+second, and ``__1561494215467_1561494215467_317c5aa1f6eb4e6880f3fda660b86507`` 
+to the third, reading the fragment timestamps in ascending order.
 
 There are two takeaways so far: (i) *every fragment is immutable*, i.e.,
 a subsequent write operation never overwrites a file of a previously
@@ -165,7 +168,7 @@ what happens each time a different fragment is deleted:
       .. code-block:: bash
 
         $ cp -R fragments_consolidation/ temp
-        $ rm -rf fragments_consolidation/__374ef2b0dfef49688fd34cfb7e2ecad3_1545673114138
+        $ rm -rf fragments_consolidation/__1561494215438_1561494215438_f9041c73e04e4cb2b52734f1183508f4
         $ ./fragments_consolidation_cpp
         Cell (1, 1) has data 201
         Cell (1, 2) has data -2147483648
@@ -185,7 +188,7 @@ what happens each time a different fragment is deleted:
         Cell (4, 4) has data -2147483648
         $ rm -rf fragments_consolidation
         $ cp -R temp fragments_consolidation
-        $ rm -rf fragments_consolidation/__f42df6e8846543af8d43415ab3ef2f7d_1545673114147
+        $ rm -rf fragments_consolidation/__1561494215452_1561494215452_13a7d76455cc44fc893c650270d26ccf
         $ ./fragments_consolidation_cpp
         Cell (1, 1) has data 201
         Cell (1, 2) has data 2
@@ -205,7 +208,7 @@ what happens each time a different fragment is deleted:
         Cell (4, 4) has data -2147483648
         $ rm -rf fragments_consolidation
         $ cp -R temp fragments_consolidation
-        $ rm -rf fragments_consolidation/__13f149611c6541ad807d285dec1b1257_1545673114154
+        $ rm -rf fragments_consolidation/__1561494215467_1561494215467_317c5aa1f6eb4e6880f3fda660b86507
         $ ./fragments_consolidation_cpp
         Cell (1, 1) has data 1
         Cell (1, 2) has data 2
@@ -231,7 +234,7 @@ what happens each time a different fragment is deleted:
       .. code-block:: bash
 
         $ cp -R fragments_consolidation/ temp
-        $ rm -rf fragments_consolidation/__374ef2b0dfef49688fd34cfb7e2ecad3_1545673114138
+        $ rm -rf fragments_consolidation/__1561494215438_1561494215438_f9041c73e04e4cb2b52734f1183508f4
         $ python fragments_consolidation.py
         Cell (1, 1) has data 201
         Cell (1, 2) has data -2147483648
@@ -251,7 +254,7 @@ what happens each time a different fragment is deleted:
         Cell (4, 4) has data -2147483648
         $ rm -rf fragments_consolidation
         $ cp -R temp fragments_consolidation
-        $ rm -rf fragments_consolidation/__f42df6e8846543af8d43415ab3ef2f7d_1545673114147
+        $ rm -rf fragments_consolidation/__1561494215452_1561494215452_13a7d76455cc44fc893c650270d26ccf
         $ python fragments_consolidation.py
         Cell (1, 1) has data 201
         Cell (1, 2) has data 2
@@ -271,7 +274,7 @@ what happens each time a different fragment is deleted:
         Cell (4, 4) has data -2147483648
         $ rm -rf fragments_consolidation
         $ cp -R temp fragments_consolidation
-        $ rm -rf fragments_consolidation/__13f149611c6541ad807d285dec1b1257_1545673114154
+        $ rm -rf fragments_consolidation/__1561494215467_1561494215467_317c5aa1f6eb4e6880f3fda660b86507
         $ python fragments_consolidation.py
         Cell (1, 1) has data 1
         Cell (1, 2) has data 2
@@ -376,16 +379,17 @@ to the program) consolidates the three fragments into one before reading.
         Cell (4, 2) has data -2147483648
         Cell (4, 3) has data -2147483648
         Cell (4, 4) has data -2147483648
-        $ ls -l fragments_consolidation
-        total 8
-        drwx------  4 stavros  staff  136 Dec 24 12:44 __9e57519eb78e40a48e96f0f7db75ee7c_1545673497211_1545673497172
-        -rwx------  1 stavros  staff  149 Dec 24 12:44 __array_schema.tdb
-        -rwx------  1 stavros  staff    0 Dec 24 12:44 __lock.tdb
-        $ ls -l fragments_consolidation_array/__9e57519eb78e40a48e96f0f7db75ee7c_1545673497211_1545673497172
-        total 16
-        -rwx------  1 stavros  staff  137 Dec 24 12:44 __fragment_metadata.tdb
-        -rwx------  1 stavros  staff  144 Dec 24 12:44 a.tdb
 
+        $ ls -l fragments_consolidation_array/
+        total 8
+        drwx------  4 stavros  staff  128 Jun 25 16:28 __1561494215438_1561494215467_1bc203276a1a42c29eb4358325a0f228
+        -rwx------  1 stavros  staff  149 Jun 25 16:23 __array_schema.tdb
+        -rwx------  1 stavros  staff    0 Jun 25 16:23 __lock.tdb
+
+        $ ls -l fragments_consolidation_array/__1561494215438_1561494215467_1bc203276a1a42c29eb4358325a0f228/
+        total 16
+        -rwx------  1 stavros  staff  613 Jun 25 16:28 __fragment_metadata.tdb
+        -rwx------  1 stavros  staff  144 Jun 25 16:28 a.tdb
 
    .. tab-container:: python
       :title: Python
@@ -409,30 +413,31 @@ to the program) consolidates the three fragments into one before reading.
         Cell (4, 2) has data -2147483648
         Cell (4, 3) has data -2147483648
         Cell (4, 4) has data -2147483648
-        $ ls -l fragments_consolidation
+
+        $ ls -l fragments_consolidation_array/
         total 8
-        drwx------  4 stavros  staff  136 Dec 24 12:44 __9e57519eb78e40a48e96f0f7db75ee7c_1545673497211_1545673497172
-        -rwx------  1 stavros  staff  149 Dec 24 12:44 __array_schema.tdb
-        -rwx------  1 stavros  staff    0 Dec 24 12:44 __lock.tdb
-        $ ls -l fragments_consolidation_array/__9e57519eb78e40a48e96f0f7db75ee7c_1545673497211_1545673497172
+        drwx------  4 stavros  staff  128 Jun 25 16:28 __1561494215438_1561494215467_1bc203276a1a42c29eb4358325a0f228
+        -rwx------  1 stavros  staff  149 Jun 25 16:23 __array_schema.tdb
+        -rwx------  1 stavros  staff    0 Jun 25 16:23 __lock.tdb
+
+        $ ls -l fragments_consolidation_array/__1561494215438_1561494215467_1bc203276a1a42c29eb4358325a0f228/
         total 16
-        -rwx------  1 stavros  staff  137 Dec 24 12:44 __fragment_metadata.tdb
-        -rwx------  1 stavros  staff  144 Dec 24 12:44 a.tdb
+        -rwx------  1 stavros  staff  613 Jun 25 16:28 __fragment_metadata.tdb
+        -rwx------  1 stavros  staff  144 Jun 25 16:28 a.tdb
+
 
 As expected, the result is the same as before.
 However, listing the contents of the array we now see a single fragment.
 This fragment merges the data of the three writes. We make two observations.
-First, the name is slightly different. The format now is::
+The name format is::
 
-    __<uuid>_<timestamp_merged>_<timestamp_last>
+    __<timestamp_first>_<timestamp_last>_<uuid>
 
-
-Here ``timestamp_merged`` is the time the merged fragment got created, whereas
-``timestamp_last`` is the timestamp of the latest fragment that got
-consolidated (i.e., the fragment corresponding to the third write in
-this example). In general, TileDB always uses the last timestamp in
-the fragment name in order to chronologically sort the fragments as they
-are being created during the reads.
+Here `timestamp_first` is the timestamp of the first fragment that was 
+consolidated (in the chronological order) and `timestamp_last` the 
+timestamp of the last fragment that was consolidated. In general, TileDB 
+always uses the first timestamp in
+the fragment name to chronologically sort the fragments during the reads.
 
 The second observation is that the merged fragment is *dense* (notice that
 ``__coords.tdb`` is missing). Upon consolidation, TileDB calculates the

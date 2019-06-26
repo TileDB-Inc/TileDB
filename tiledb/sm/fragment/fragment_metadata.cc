@@ -60,13 +60,13 @@ FragmentMetadata::FragmentMetadata(
     StorageManager* storage_manager,
     const ArraySchema* array_schema,
     const URI& fragment_uri,
-    uint64_t timestamp,
+    const std::pair<uint64_t, uint64_t>& timestamp_range,
     bool dense)
     : storage_manager_(storage_manager)
     , array_schema_(array_schema)
     , dense_(dense)
     , fragment_uri_(fragment_uri)
-    , timestamp_(timestamp) {
+    , timestamp_range_(timestamp_range) {
   domain_ = nullptr;
   meta_file_size_ = 0;
   non_empty_domain_ = nullptr;
@@ -666,13 +666,17 @@ Status FragmentMetadata::tile_var_size(
   return Status::Ok();
 }
 
-uint64_t FragmentMetadata::timestamp() const {
-  return timestamp_;
+uint64_t FragmentMetadata::first_timestamp() const {
+  return timestamp_range_.first;
+}
+
+const std::pair<uint64_t, uint64_t>& FragmentMetadata::timestamp_range() const {
+  return timestamp_range_;
 }
 
 bool FragmentMetadata::operator<(const FragmentMetadata& metadata) const {
-  return (timestamp_ < metadata.timestamp_) ||
-         (timestamp_ == metadata.timestamp_ &&
+  return (timestamp_range_.first < metadata.timestamp_range_.first) ||
+         (timestamp_range_.first == metadata.timestamp_range_.first &&
           fragment_uri_ < metadata.fragment_uri_);
 }
 

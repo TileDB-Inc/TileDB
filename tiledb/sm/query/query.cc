@@ -267,6 +267,12 @@ Status Query::init() {
   return Status::Ok();
 }
 
+URI Query::first_fragment_uri() const {
+  if (type_ == QueryType::WRITE)
+    return URI();
+  return reader_.first_fragment_uri();
+}
+
 URI Query::last_fragment_uri() const {
   if (type_ == QueryType::WRITE)
     return URI();

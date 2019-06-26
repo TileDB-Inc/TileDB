@@ -802,8 +802,7 @@ class StorageManager {
    *
    * @param open_array The open array object.
    * @param encryption_key The encryption key to use.
-   * @param fragments_to_load The fragments whose metadata to load. This
-   *     is a vector of pairs (timestamp, URI).
+   * @param fragments_to_load The fragments whose metadata to load.
    * @param fragment_metadata The fragment metadata retrieved in a
    *     vector.
    * @return Status
@@ -811,20 +810,21 @@ class StorageManager {
   Status load_fragment_metadata(
       OpenArray* open_array,
       const EncryptionKey& encryption_key,
-      const std::vector<std::pair<uint64_t, URI>>& fragments_to_load,
+      const std::vector<TimestampedURI>& fragments_to_load,
       std::vector<FragmentMetadata*>* fragment_metadata);
 
   /**
    * Gets the sorted fragment URIs based on the first input
-   * in ascending timestamp order, breaking ties with lexicographic sorting
-   * of UUID. Only the fragments with timestamp smaller than or equal to
-   * `timestamp` are considered. The sorted fragment URIs are stored in
-   * the second input, including the fragment timestamps.
+   * in ascending first timestamp order, breaking ties with lexicographic
+   * sorting of UUID. Only the fragments with timestamp smaller than or
+   * equal to `timestamp` are considered. The sorted fragment URIs are
+   * stored in the last input, including the fragment timestamps.
    */
   Status get_sorted_fragment_uris(
+      uint32_t version,
       const std::vector<URI>& fragment_uris,
       uint64_t timestamp,
-      std::vector<std::pair<uint64_t, URI>>* sorted_fragment_uris) const;
+      std::vector<TimestampedURI>* sorted_fragment_uris) const;
 
   /** Block until there are zero in-progress queries. */
   void wait_for_zero_in_progress();
