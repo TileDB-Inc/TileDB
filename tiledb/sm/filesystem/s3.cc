@@ -230,33 +230,35 @@ Status S3::disconnect() {
     return ret_st;
   }
 
-  RETURN_NOT_OK(init_client());
+  if (multipart_upload_states_.size() > 0) {
+    RETURN_NOT_OK(init_client());
 
-  for (auto& kv : multipart_upload_states_) {
-    const MultiPartUploadState& state = kv.second;
+    for (auto& kv : multipart_upload_states_) {
+      const MultiPartUploadState& state = kv.second;
 
-    if (state.st.ok()) {
-      Aws::S3::Model::CompleteMultipartUploadRequest complete_request =
-          make_multipart_complete_request(state);
-      auto outcome = client_->CompleteMultipartUpload(complete_request);
-      if (!outcome.IsSuccess()) {
-        const Status st = LOG_STATUS(Status::S3Error(
-            std::string("Failed to disconnect and flush S3 objects. ") +
-            outcome_error_message(outcome)));
-        if (!st.ok()) {
-          ret_st = st;
+      if (state.st.ok()) {
+        Aws::S3::Model::CompleteMultipartUploadRequest complete_request =
+            make_multipart_complete_request(state);
+        auto outcome = client_->CompleteMultipartUpload(complete_request);
+        if (!outcome.IsSuccess()) {
+          const Status st = LOG_STATUS(Status::S3Error(
+              std::string("Failed to disconnect and flush S3 objects. ") +
+              outcome_error_message(outcome)));
+          if (!st.ok()) {
+            ret_st = st;
+          }
         }
-      }
-    } else {
-      Aws::S3::Model::AbortMultipartUploadRequest abort_request =
-          make_multipart_abort_request(state);
-      auto outcome = client_->AbortMultipartUpload(abort_request);
-      if (!outcome.IsSuccess()) {
-        const Status st = LOG_STATUS(Status::S3Error(
-            std::string("Failed to disconnect and flush S3 objects. ") +
-            outcome_error_message(outcome)));
-        if (!st.ok()) {
-          ret_st = st;
+      } else {
+        Aws::S3::Model::AbortMultipartUploadRequest abort_request =
+            make_multipart_abort_request(state);
+        auto outcome = client_->AbortMultipartUpload(abort_request);
+        if (!outcome.IsSuccess()) {
+          const Status st = LOG_STATUS(Status::S3Error(
+              std::string("Failed to disconnect and flush S3 objects. ") +
+              outcome_error_message(outcome)));
+          if (!st.ok()) {
+            ret_st = st;
+          }
         }
       }
     }
