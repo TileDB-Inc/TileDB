@@ -488,6 +488,12 @@ set_target_properties(tiledb_shared
     OUTPUT_NAME "tiledb"
 )
 
+if (TILEDB_VERSION AND CMAKE_SYSTEM_NAME MATCHES "Linux")
+  set_target_properties(tiledb_shared
+    PROPERTIES
+      SOVERSION ${TILEDB_VERSION})
+endif()
+
 # Link the dependencies specified earlier
 target_link_libraries(tiledb_shared
   PRIVATE

@@ -32,6 +32,26 @@
 
 cmake_minimum_required(VERSION 3.3)
 
+############################################################
+# Parse version file
+# credit: https://stackoverflow.com/a/47084079
+
+file(READ "${CMAKE_CURRENT_SOURCE_DIR}/tiledb/sm/c_api/tiledb_version.h" VERFILE)
+if (NOT VERFILE)
+  message(FATAL_ERROR "Failed to parse tiledb_version.h!")
+endif()
+
+string(REGEX MATCH "TILEDB_VERSION_MAJOR ([0-9])*" _ ${VERFILE})
+set(_VER_MAJOR ${CMAKE_MATCH_1})
+string(REGEX MATCH "TILEDB_VERSION_MINOR ([0-9])*" _ ${VERFILE})
+set(_VER_MINOR ${CMAKE_MATCH_1})
+string(REGEX MATCH "TILEDB_VERSION_PATCH ([0-9])*" _ ${VERFILE})
+set(_VER_PATCH ${CMAKE_MATCH_1})
+
+set(TILEDB_VERSION "${_VER_MAJOR}.${_VER_MINOR}.${_VER_PATCH}")
+############################################################
+
+
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules/")
 
 set(TILEDB_CMAKE_INPUTS_DIR "${CMAKE_CURRENT_SOURCE_DIR}/cmake/inputs")
