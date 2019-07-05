@@ -2036,8 +2036,10 @@ TILEDB_EXPORT int32_t tiledb_domain_get_ndim(
  *
  * @code{.c}
  * tiledb_dimension_t* dim;
- * uint64_t dim_domain[] = {1, 10};
- * tiledb_dimension_alloc(ctx, "dim_0", TILEDB_INT64, dim_domain, 5, &dim);
+ * int64_t dim_domain[] = {1, 10};
+ * int64_t tile_extent = 5;
+ * tiledb_dimension_alloc(
+ *     ctx, "dim_0", TILEDB_INT64, dim_domain, &tile_extent, &dim);
  * tiledb_domain_add_dimension(ctx, domain, dim);
  * @endcode
  *
@@ -2149,16 +2151,17 @@ tiledb_domain_dump(tiledb_ctx_t* ctx, const tiledb_domain_t* domain, FILE* out);
  *
  * @code{.c}
  * tiledb_dimension_t* dim;
- * uint64_t dim_domain[] = {1, 10};
- * tiledb_dimension_alloc(ctx, "dim_0", TILEDB_INT64, dim_domain, 5, &dim);
+ * int64_t dim_domain[] = {1, 10};
+ * int64_t tile_extent = 5;
+ * tiledb_dimension_alloc(
+ *     ctx, "dim_0", TILEDB_INT64, dim_domain, &tile_extent, &dim);
  * @endcode
  *
  * @param ctx The TileDB context.
  * @param name The dimension name.
  * @param type The dimension type.
  * @param dim_domain The dimension domain.
- * @param tile_extent The dimension tile extent. This may be `NULL`, which is
- * equivalent to the entire domain.
+ * @param tile_extent The dimension tile extent.
  * @param dim The dimension to be created.
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
