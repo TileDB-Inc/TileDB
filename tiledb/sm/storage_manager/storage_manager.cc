@@ -91,7 +91,7 @@ StorageManager::~StorageManager() {
     auto filelock = fl_it.second;
     auto lock_uri = URI(fl_it.first).join_path(constants::filelock_name);
     if (filelock != INVALID_FILELOCK)
-      vfs_->filelock_unlock(lock_uri, filelock);
+      vfs_->filelock_unlock(lock_uri);
   }
 
   const Status st = vfs_->terminate();
@@ -606,7 +606,7 @@ Status StorageManager::array_xunlock(const URI& array_uri) {
   // Release exclusive lock for processes through the filelock
   auto lock_uri = array_uri.join_path(constants::filelock_name);
   if (filelock != INVALID_FILELOCK)
-    RETURN_NOT_OK(vfs_->filelock_unlock(lock_uri, filelock));
+    RETURN_NOT_OK(vfs_->filelock_unlock(lock_uri));
   xfilelocks_.erase(it);
 
   // Release exclusive lock for threads

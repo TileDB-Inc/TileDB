@@ -192,7 +192,7 @@ class VFS {
    * @param lock The handle of the filelock.
    * @return Status
    */
-  Status filelock_unlock(const URI& uri, filelock_t fd) const;
+  Status filelock_unlock(const URI& uri) const;
 
   /**
    * Retrieves the size of a file.
@@ -451,21 +451,13 @@ class VFS {
       const URI& uri, uint64_t offset, void* buffer, uint64_t nbytes);
 
   /**
-   * Increment the lock count of the given URI.
-   *
-   * @param uri The URI
-   * @return True if the new lock count is > 1.
-   */
-  bool incr_lock_count(const URI& uri) const;
-
-  /**
    * Decrement the lock count of the given URI.
    *
    * @param uri The URI
-   * @param is_zero Set to true if the new lock count is 0.
+   * @param lock The filelock_t that is held, or INVALID_FILELOCK
    * @return Status
    */
-  Status decr_lock_count(const URI& uri, bool* is_zero) const;
+  Status decr_lock_count(const URI& uri, bool* is_zero, filelock_t* lock) const;
 
   /**
    * Return the backend-specific max number of parallel operations for VFS read.
