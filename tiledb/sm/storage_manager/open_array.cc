@@ -101,7 +101,7 @@ Status OpenArray::file_lock(VFS* vfs) {
 Status OpenArray::file_unlock(VFS* vfs) {
   auto uri = array_uri_.join_path(constants::filelock_name);
   if (filelock_ != INVALID_FILELOCK)
-    RETURN_NOT_OK(vfs->filelock_unlock(uri, filelock_));
+    RETURN_NOT_OK(vfs->filelock_unlock(uri));
   filelock_ = INVALID_FILELOCK;
 
   return Status::Ok();

@@ -53,7 +53,8 @@ namespace sm {
  * Map of file URI -> number of current locks. This is shared across the entire
  * process.
  */
-static std::unordered_map<std::string, uint64_t> filelock_counts_;
+static std::unordered_map<std::string, std::pair<uint64_t, filelock_t>>
+    process_filelocks_;
 
 /** Mutex protecting the filelock process and the filelock counts map. */
 static std::mutex filelock_mtx_;
@@ -353,7 +354,7 @@ Status VFS::remove_file(const URI& uri) const {
   STATS_FUNC_OUT(vfs_remove_file);
 }
 
-Status VFS::filelock_lock(const URI& uri, filelock_t* fd, bool shared) const {
+Status VFS::filelock_lock(const URI& uri, filelock_t* lock, bool shared) const {
   STATS_FUNC_IN(vfs_filelock_lock);
 
   if (!vfs_params_.file_params_.enable_filelocks_)
@@ -362,17 +363,26 @@ Status VFS::filelock_lock(const URI& uri, filelock_t* fd, bool shared) const {
   // Hold the lock while updating counts and performing the lock.
   std::unique_lock<std::mutex> lck(filelock_mtx_);
 
-  // Only need to actually lock the file if this is the first one on the URI.
-  if (incr_lock_count(uri)) {
+  auto it = process_filelocks_.find(uri.to_string());
+  if (it != process_filelocks_.end()) {
+    it->second.first++;
+    // we need to return the lock for the xlock semantics
+    *lock = it->second.second;
     return Status::Ok();
   }
 
-  if (uri.is_file())
+  // We must hold the fd in the global map in order to free from any context
+  if (uri.is_file()) {
 #ifdef _WIN32
-    return win_.filelock_lock(uri.to_path(), fd, shared);
+    auto st = win_.filelock_lock(uri.to_path(), lock, shared);
 #else
-    return posix_.filelock_lock(uri.to_path(), fd, shared);
+    auto st = posix_.filelock_lock(uri.to_path(), lock, shared);
 #endif
+
+    if (st.ok())
+      process_filelocks_[uri.to_string()] = {1, *lock};
+    return st;
+  }
 
   if (uri.is_hdfs()) {
 #ifdef HAVE_HDFS
@@ -395,7 +405,7 @@ Status VFS::filelock_lock(const URI& uri, filelock_t* fd, bool shared) const {
   STATS_FUNC_OUT(vfs_filelock_lock);
 }
 
-Status VFS::filelock_unlock(const URI& uri, filelock_t fd) const {
+Status VFS::filelock_unlock(const URI& uri) const {
   STATS_FUNC_IN(vfs_filelock_unlock);
 
   if (!vfs_params_.file_params_.enable_filelocks_)
@@ -405,8 +415,9 @@ Status VFS::filelock_unlock(const URI& uri, filelock_t fd) const {
   std::unique_lock<std::mutex> lck(filelock_mtx_);
 
   // Decrement the lock counter and return if the counter is still > 0.
-  bool should_unlock = false;
-  Status st = decr_lock_count(uri, &should_unlock);
+  bool should_unlock;
+  filelock_t fd;
+  Status st = decr_lock_count(uri, &should_unlock, &fd);
   if (!st.ok() || !should_unlock) {
     return st;
   }
@@ -439,32 +450,23 @@ Status VFS::filelock_unlock(const URI& uri, filelock_t fd) const {
   STATS_FUNC_OUT(vfs_filelock_unlock);
 }
 
-bool VFS::incr_lock_count(const URI& uri) const {
-  auto it = filelock_counts_.find(uri.to_string());
-  if (it == filelock_counts_.end()) {
-    filelock_counts_[uri.to_string()] = 1;
-    return false;
-  } else {
-    it->second++;
-    return true;
-  }
-}
-
-Status VFS::decr_lock_count(const URI& uri, bool* is_zero) const {
-  auto it = filelock_counts_.find(uri.to_string());
-  if (it == filelock_counts_.end()) {
+Status VFS::decr_lock_count(
+    const URI& uri, bool* is_zero, filelock_t* lock) const {
+  auto it = process_filelocks_.find(uri.to_string());
+  if (it == process_filelocks_.end()) {
     return LOG_STATUS(
         Status::VFSError("No lock counter for URI " + uri.to_string()));
-  } else if (it->second == 0) {
+  } else if (it->second.first == 0) {
     return LOG_STATUS(
         Status::VFSError("Invalid lock count for URI " + uri.to_string()));
   }
 
-  it->second--;
+  it->second.first--;
 
-  if (it->second == 0) {
+  if (it->second.first == 0) {
     *is_zero = true;
-    filelock_counts_.erase(it);
+    *lock = it->second.second;
+    process_filelocks_.erase(it);
   } else {
     *is_zero = false;
   }
