@@ -452,7 +452,11 @@ Status Query::set_subarray(const Subarray& subarray) {
   return Status::Ok();
 }
 
-Status Query::submit() {  // Do nothing if the query is completed or failed
+Status Query::submit() {
+  // Do not resubmit completed reads.
+  if (type_ == QueryType::READ && status_ == QueryStatus::COMPLETED) {
+    return Status::Ok();
+  }
   if (array_->is_remote()) {
     auto rest_client = storage_manager_->rest_client();
     if (rest_client == nullptr)
@@ -469,6 +473,11 @@ Status Query::submit() {  // Do nothing if the query is completed or failed
 
 Status Query::submit_async(
     std::function<void(void*)> callback, void* callback_data) {
+  // Do not resubmit completed reads.
+  if (type_ == QueryType::READ && status_ == QueryStatus::COMPLETED) {
+    callback(callback_data);
+    return Status::Ok();
+  }
   RETURN_NOT_OK(init());
   if (array_->is_remote())
     return LOG_STATUS(
