@@ -3760,7 +3760,7 @@ TILEDB_EXPORT int32_t tiledb_array_create_with_key(
  * @param ctx The TileDB context.
  * @param array_uri The name of the TileDB array to be consolidated.
  * @param config Configuration parameters for the consolidation
- *     (`nullptr` means default).
+ *     (`nullptr` means default, which will use the config from `ctx`).
  * @return `TILEDB_OK` on success, and `TILEDB_ERR` on error.
  */
 TILEDB_EXPORT int32_t tiledb_array_consolidate(
@@ -3786,7 +3786,7 @@ TILEDB_EXPORT int32_t tiledb_array_consolidate(
  * @param encryption_key The encryption key to use.
  * @param key_length Length in bytes of the encryption key.
  * @param config Configuration parameters for the consolidation
- *     (`nullptr` means default).
+ *     (`nullptr` means default, which will use the config from `ctx`).
  *
  * @return `TILEDB_OK` on success, and `TILEDB_ERR` on error.
  */
@@ -4567,7 +4567,7 @@ TILEDB_EXPORT TILEDB_DEPRECATED int32_t tiledb_kv_create_with_key(
  * @param ctx The TileDB context.
  * @param kv_uri The name of the TileDB key-value store to be consolidated.
  * @param config Configuration parameters for the consolidation
- *     (`nullptr` means default).
+ *     (`nullptr` means default, which will use the config from `ctx`).
  * @return `TILEDB_OK` on success, and `TILEDB_ERR` on error.
  *
  * @warning The TileDB KV API is deprecated and will be removed in a future
@@ -4594,7 +4594,7 @@ TILEDB_EXPORT TILEDB_DEPRECATED int32_t tiledb_kv_consolidate(
  * @param encryption_key The encryption key to use.
  * @param key_length Length in bytes of the encryption key.
  * @param config Configuration parameters for the consolidation
- *     (`nullptr` means default).
+ *     (`nullptr` means default, which will use the config from `ctx`).
  * @return `TILEDB_OK` on success, and `TILEDB_ERR` on error.
  *
  * @warning The TileDB KV API is deprecated and will be removed in a future
