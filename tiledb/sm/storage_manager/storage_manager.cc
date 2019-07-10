@@ -412,6 +412,12 @@ Status StorageManager::array_consolidate(
         "Cannot consolidate array; Array does not exist"));
   }
 
+  // If 'config' is unset, use the 'config_' that was set during initialization
+  // of this StorageManager instance.
+  if (!config) {
+    config = &config_;
+  }
+
   // Consolidate
   Consolidator consolidator(this);
   return consolidator.consolidate(
