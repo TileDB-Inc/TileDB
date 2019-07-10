@@ -32,6 +32,8 @@
 
 #include "tiledb/sm/misc/logger.h"
 
+#include <spdlog/sinks/stdout_sinks.h>
+
 namespace tiledb {
 namespace sm {
 
