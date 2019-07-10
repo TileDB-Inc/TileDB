@@ -46,6 +46,7 @@
 #include "tiledb/sm/subarray/subarray.h"
 
 #include <functional>
+#include <sstream>
 #include <utility>
 #include <vector>
 
@@ -433,17 +434,7 @@ class Query {
     auto dim_num = domain->dim_num();
 
     // Check subarray bounds
-    for (unsigned int i = 0; i < dim_num; ++i) {
-      auto dim_domain = static_cast<const T*>(domain->dimension(i)->domain());
-      if (subarray[2 * i] < dim_domain[0] ||
-          subarray[2 * i + 1] > dim_domain[1])
-        return LOG_STATUS(Status::QueryError("Subarray out of bounds"));
-      if (subarray[2 * i] > subarray[2 * i + 1])
-        return LOG_STATUS(Status::QueryError(
-            "Subarray lower bound is larger than upper bound"));
-    }
-
-    return Status::Ok();
+    return check_subarray_bounds(subarray, domain, dim_num);
   }
 
   template <
@@ -461,17 +452,78 @@ class Query {
     }
 
     // Check subarray bounds
+    return check_subarray_bounds(subarray, domain, dim_num);
+  }
+
+  /**
+   * Checks that the subarray bounds are contained within the domain dimensions.
+   *
+   * @param subarray The subarray to check
+   * @param domain the domain of the subarray
+   * @param dim_num the number of dimensions in the subarray and domain
+   * @return Status
+   */
+  template <typename T>
+  Status check_subarray_bounds(
+      const T* subarray,
+      const Domain* const domain,
+      const unsigned int dim_num) const {
     for (unsigned int i = 0; i < dim_num; ++i) {
       auto dim_domain = static_cast<const T*>(domain->dimension(i)->domain());
       if (subarray[2 * i] < dim_domain[0] ||
           subarray[2 * i + 1] > dim_domain[1])
-        return LOG_STATUS(Status::QueryError("Subarray out of bounds"));
+        return LOG_STATUS(Status::QueryError(
+            "Subarray out of bounds. " +
+            format_subarray_bounds(subarray, domain, dim_num)));
       if (subarray[2 * i] > subarray[2 * i + 1])
         return LOG_STATUS(Status::QueryError(
-            "Subarray lower bound is larger than upper bound"));
+            "Subarray lower bound is larger than upper bound. " +
+            format_subarray_bounds(subarray, domain, dim_num)));
     }
 
     return Status::Ok();
+  }
+
+  /**
+   * Returns a formatted string containing the subarray bounds and domain
+   * dimension bounds. For example:
+   * "subarray: [1, 2, 1, 2] domain: [1, 4, 1, 4]"
+   *
+   * @param subarray The subarray to format from
+   * @param domain the domain of the subarray
+   * @param dim_num the number of dimensions in the subarray and domain
+   * @return string
+   */
+  template <typename T>
+  std::string format_subarray_bounds(
+      const T* subarray,
+      const Domain* const domain,
+      const unsigned int dim_num) const {
+    std::stringstream subarray_ss;
+    std::stringstream domain_ss;
+
+    subarray_ss << "subarray: [";
+    domain_ss << "domain: [";
+
+    for (unsigned int i = 0; i < dim_num; ++i) {
+      auto dim_domain = static_cast<const T*>(domain->dimension(i)->domain());
+
+      if (i != 0) {
+        subarray_ss << ", ";
+        domain_ss << ", ";
+      }
+
+      subarray_ss << subarray[2 * i] << ", " << subarray[2 * i + 1];
+
+      domain_ss << dim_domain[0] << ", " << dim_domain[1];
+    }
+
+    subarray_ss << "]";
+    domain_ss << "]";
+
+    subarray_ss << " " << domain_ss.str();
+
+    return subarray_ss.str();
   }
 };
 
