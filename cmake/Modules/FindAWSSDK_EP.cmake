@@ -69,12 +69,21 @@ if (NOT AWSSDK_FOUND)
       list(APPEND DEPENDS ep_zlib)
     endif()
 
+    # Work around for: https://github.com/aws/aws-sdk-cpp/pull/1187
+    # AWS SDK builds it's "aws-common" dependencies using `execute_process` to run cmake directly,
+    # and does not pass the CMAKE_GENERATOR PLATFORM, so those projects default to Win32 builds,
+    # causing linkage errors.
+    if (CMAKE_GENERATOR MATCHES "Visual Studio 14.*" OR CMAKE_GENERATOR MATCHES "Visual Studio 15.*")
+      set(CMAKE_GENERATOR "${CMAKE_GENERATOR} Win64")
+      set(CMAKE_GENERATOR_PLATFORM "")
+    endif()
+
     ExternalProject_Add(ep_awssdk
       PREFIX "externals"
       URL "https://github.com/aws/aws-sdk-cpp/archive/1.7.108.zip"
       URL_HASH SHA1=d07bae3fe924008b3117936963456dd314787abf
       CMAKE_ARGS
-        -DCMAKE_BUILD_TYPE=Release
+        -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
         -DENABLE_TESTING=OFF
         -DBUILD_ONLY=s3\\$<SEMICOLON>core
         -DBUILD_SHARED_LIBS=OFF

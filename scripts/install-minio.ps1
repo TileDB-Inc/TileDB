@@ -22,6 +22,8 @@ $TileDBRootDirectory = Split-Path -Parent (Get-ScriptsDirectory)
 $InstallPrefix = Join-Path $TileDBRootDirectory "dist"
 $StagingDirectory = Join-Path (Get-ScriptsDirectory) "deps-staging"
 
+New-Item -ItemType Directory -Path (Join-Path $InstallPrefix bin) -ea 0
+
 function DownloadFile([string] $URL, [string] $Dest) {
     Write-Host "Downloading $URL to $Dest..."
     Invoke-WebRequest -Uri $URL -OutFile $Dest
