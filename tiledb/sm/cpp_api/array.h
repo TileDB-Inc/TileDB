@@ -605,7 +605,7 @@ class Array {
   static void consolidate(
       const Context& ctx,
       const std::string& uri,
-      const Config& config = Config()) {
+      Config* const config = nullptr) {
     consolidate(ctx, uri, TILEDB_NO_ENCRYPTION, nullptr, 0, config);
   }
 
@@ -638,14 +638,14 @@ class Array {
       tiledb_encryption_type_t encryption_type,
       const void* encryption_key,
       uint32_t key_length,
-      const Config& config = Config()) {
+      Config* const config = nullptr) {
     ctx.handle_error(tiledb_array_consolidate_with_key(
         ctx.ptr().get(),
         uri.c_str(),
         encryption_type,
         encryption_key,
         key_length,
-        config.ptr().get()));
+        config ? config->ptr().get() : nullptr));
   }
 
   // clang-format off
@@ -666,7 +666,7 @@ class Array {
       const std::string& uri,
       tiledb_encryption_type_t encryption_type,
       const std::string& encryption_key,
-      const Config& config = Config()) {
+      Config* const config = nullptr) {
     return consolidate(
         ctx,
         uri,

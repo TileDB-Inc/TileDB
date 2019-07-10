@@ -210,7 +210,8 @@ class StorageManager {
    *    key. For unencrypted arrays, pass `nullptr`.
    * @param key_length The length in bytes of the encryption key.
    * @param config Configuration parameters for the consolidation
-   *     (`nullptr` means default).
+   *     (`nullptr` means default, which will use the config associated with
+   *      this instance).
    * @return Status
    */
   Status array_consolidate(
