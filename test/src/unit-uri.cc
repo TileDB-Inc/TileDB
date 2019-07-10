@@ -74,8 +74,9 @@ TEST_CASE("URI: Test file URIs", "[uri]") {
   CHECK(!uri.is_invalid());
   CHECK(URI::is_file(uri.to_string()));
   CHECK(uri.to_string() == "file:///path");
-  uri = URI("file://path");
-  CHECK(uri.is_invalid());
+  uri = URI("file:/path");
+  CHECK(!uri.is_invalid());
+  CHECK(uri.is_file());
   uri =
       URI("file:///path/is/quite/long/long/long/long/long/long/long/long/long/"
           "long/long/long/long/long/long/long/long/long/long/long/long/long/"

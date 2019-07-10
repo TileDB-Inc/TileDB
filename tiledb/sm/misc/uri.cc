@@ -106,12 +106,12 @@ bool URI::is_invalid() const {
 }
 
 bool URI::is_file(const std::string& path) {
-  return utils::parse::starts_with(path, "file:///") ||
+  return utils::parse::starts_with(path, "file:/") ||
          path.find("://") == std::string::npos;
 }
 
 bool URI::is_file() const {
-  return utils::parse::starts_with(uri_, "file:///");
+  return utils::parse::starts_with(uri_, "file:/");
 }
 
 bool URI::is_hdfs(const std::string& path) {
@@ -214,7 +214,11 @@ std::string URI::to_path(const std::string& uri) {
 #ifdef _WIN32
     return Win::path_from_uri(uri);
 #else
-    return uri.substr(std::string("file://").size());
+    if (utils::parse::starts_with(uri, "file:///")) {
+      return uri.substr(std::string("file://").size());
+    } else {
+      return uri.substr(std::string("file:/").size());
+    }
 #endif
   }
 
