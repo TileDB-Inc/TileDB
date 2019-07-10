@@ -1,3 +1,9 @@
+trigger:
+  branches:
+    include:
+    - dev
+    - release-*
+
 jobs:
 - job:
   strategy:
@@ -26,7 +32,7 @@ jobs:
         imageName: 'ubuntu-16.04'
         TILEDB_SERIALIZATION: ON
         CXX: g++
-    maxParallel: 4
+
   pool:
     vmImage: $(imageName)
   steps:
