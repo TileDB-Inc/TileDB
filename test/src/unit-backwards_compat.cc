@@ -443,3 +443,16 @@ TEST_CASE(
     }
   }
 }
+
+TEST_CASE(
+    "Backwards compatibility: Write to an array of older version",
+    "[backwards-compat][write-to-older-version]") {
+  std::string old_array_name(arrays_dir + "/non_split_coords_v1_4_0");
+  Context ctx;
+  try {
+    Array old_array(ctx, old_array_name, TILEDB_WRITE);
+    CHECK(false);
+  } catch (const std::exception& e) {
+    CHECK(true);
+  }
+}
