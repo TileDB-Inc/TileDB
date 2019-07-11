@@ -274,14 +274,13 @@ const FilterPipeline* ArraySchema::coords_filters() const {
 
 Compressor ArraySchema::coords_compression() const {
   auto compressor = coords_filters_.get_filter<CompressionFilter>();
-  assert(compressor != nullptr);
-  return compressor->compressor();
+  return (compressor == nullptr) ? Compressor::NO_COMPRESSION :
+                                   compressor->compressor();
 }
 
 int ArraySchema::coords_compression_level() const {
   auto compressor = coords_filters_.get_filter<CompressionFilter>();
-  assert(compressor != nullptr);
-  return compressor->compression_level();
+  return (compressor == nullptr) ? -1 : compressor->compression_level();
 }
 
 uint64_t ArraySchema::coords_size() const {
