@@ -12,7 +12,7 @@ steps:
       $host.SetShouldExit(1)
     }
 
-    if ($env:TILEDB_S3 -eq "true") {
+    if ($env:TILEDB_S3 -eq "ON") {
       & "$env:BUILD_SOURCESDIRECTORY\bootstrap.ps1" -EnableS3 -EnableVerbose -EnableStaticTileDB
       & "$env:BUILD_SOURCESDIRECTORY\scripts\install-minio.ps1"
     } else {
@@ -27,18 +27,29 @@ steps:
     cmake --build . --config Release -- /verbosity:minimal
 
     if ($LastExitCode -ne 0) {
-       Write-Host "Build failed."
+       Write-Host "Build failed. CMake exit status: " $LastExitCocde
        $host.SetShouldExit($LastExitCode)
     }
   displayName: "Build"
 
 - powershell: |
+    $env:MINIO_ACCESS_KEY = "minio"
+    $env:MINIO_SECRET_KEY = "miniosecretkey"
+    $env:AWS_ACCESS_KEY_ID = "minio"
+    $env:AWS_SECRET_ACCESS_KEY = "miniosecretkey"
+
     cd $env:AGENT_BUILDDIRECTORY\build\tiledb
 
-    cmake --build . --target check --config Release -- /verbosity:minimal
+    # CMake exits with non-0 status if there are any warnings during the build, so
+    # build the unit test executable before running tests.
+    cmake --build tiledb --target tiledb_unit --config Release -- /verbosity:minimal
+    # Actually run tests
+    cd tiledb
+    ctest -C Release -V
+    cd ..
 
     if ($LastExitCode -ne 0) {
-       Write-Host "Tests failed."
+       Write-Host "Tests failed. CMake exit status: " $LastExitCocde
        $host.SetShouldExit($LastExitCode)
     }
 
@@ -119,6 +130,11 @@ steps:
   #    archiveFile: '$(Build.ArtifactStagingDirectory)/tiledb-windows-x64-$(Build.SourceVersion).zip'
   #    replaceExistingArchive: true
   #    verbose: # Optional
+
+- powershell: |
+    (Get-ChildItem -Path $env:BUILD_SOURCESDIRECTORY -Include *.log -Recurse).fullname | ForEach-Object {echo $_ ---; Get-Content $_; echo ===}
+  condition: failed() # only run this job if the build step failed
+  displayName: "Print log files (failed build only)"
 
 - task: PublishBuildArtifacts@1
   inputs:

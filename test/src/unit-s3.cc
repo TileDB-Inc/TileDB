@@ -161,7 +161,7 @@ TEST_CASE_METHOD(S3Fx, "Test S3 filesystem, file management", "[s3]") {
   CHECK(paths.size() == 5);
 
   // Check if a directory exists
-  bool is_dir;
+  bool is_dir = false;
   CHECK(s3_.is_dir(URI(file1), &is_dir).ok());
   CHECK(!is_dir);  // Not a dir
   CHECK(s3_.is_dir(URI(file4), &is_dir).ok());

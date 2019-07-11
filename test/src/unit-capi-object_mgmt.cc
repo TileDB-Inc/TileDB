@@ -51,21 +51,19 @@ struct ObjectMgmtFx {
   const std::string S3_PREFIX = "s3://";
   const std::string S3_BUCKET = S3_PREFIX + random_bucket_name("tiledb") + "/";
   const std::string S3_TEMP_DIR = S3_BUCKET + "tiledb_test/";
-#ifdef _WIN32
+#if defined(_WIN32)
   const std::string FILE_URI_PREFIX = "";
   const std::string FILE_TEMP_DIR =
       tiledb::sm::Win::current_dir() + "\\tiledb_test\\";
   const std::string FILE_FULL_TEMP_DIR = FILE_TEMP_DIR;
-  const std::string GROUP = "group\\";
-  const std::string ARRAY = "array\\";
 #else
   const std::string FILE_URI_PREFIX = "file://";
   const std::string FILE_TEMP_DIR =
       tiledb::sm::Posix::current_dir() + "/tiledb_test/";
   const std::string FILE_FULL_TEMP_DIR = std::string("file://") + FILE_TEMP_DIR;
+#endif
   const std::string GROUP = "group/";
   const std::string ARRAY = "array/";
-#endif
 
   // TileDB context
   tiledb_ctx_t* ctx_;
