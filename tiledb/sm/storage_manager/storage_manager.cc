@@ -322,6 +322,16 @@ Status StorageManager::array_open_for_writes(
     }
   }
 
+  // Check array version versus library version
+  if (open_array->array_schema()->version() != constants::format_version) {
+    std::stringstream err;
+    err << "Cannot open array for writes; Array format version (";
+    err << open_array->array_schema()->version();
+    err << ") is different from library format version (";
+    err << constants::format_version << ")";
+    return LOG_STATUS(Status::StorageManagerError(err.str()));
+  }
+
   // No fragment metadata to be loaded
 
   *array_schema = open_array->array_schema();

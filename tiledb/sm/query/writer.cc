@@ -423,7 +423,6 @@ void* Writer::subarray() const {
 
 Status Writer::write() {
   STATS_FUNC_IN(writer_write);
-
   if (check_coord_oob_)
     RETURN_NOT_OK(check_coord_oob());
 
