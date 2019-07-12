@@ -73,7 +73,11 @@ if (NOT AWSSDK_FOUND)
     # AWS SDK builds it's "aws-common" dependencies using `execute_process` to run cmake directly,
     # and does not pass the CMAKE_GENERATOR PLATFORM, so those projects default to Win32 builds,
     # causing linkage errors.
-    if (CMAKE_GENERATOR MATCHES "Visual Studio 14.*" OR CMAKE_GENERATOR MATCHES "Visual Studio 15.*")
+    if (CMAKE_GENERATOR MATCHES "Visual Studio 14.*" OR CMAKE_GENERATOR MATCHES "Visual Studio 15.*"
+      AND NOT CMAKE_GENERATOR MATCHES ".*Win64")
+
+      set(_CMKGEN_OLD "${CMAKE_GENERATOR}")
+      set(_CMKPLT_OLD "${CMAKE_GENERATOR_PLATFORM}")
       set(CMAKE_GENERATOR "${CMAKE_GENERATOR} Win64")
       set(CMAKE_GENERATOR_PLATFORM "")
     endif()
@@ -99,6 +103,14 @@ if (NOT AWSSDK_FOUND)
       LOG_INSTALL TRUE
       DEPENDS ${DEPENDS}
     )
+
+    # restore cached values
+    if (DEFINED _CMKGEN_OLD)
+
+      set(CMAKE_GENERATOR "${_CMKGEN_OLD}")
+      set(CMAKE_GENERATOR_PLATFORM "${_CMKPLT_OLD}")
+    endif()
+
     list(APPEND TILEDB_EXTERNAL_PROJECTS ep_awssdk)
     list(APPEND FORWARD_EP_CMAKE_ARGS
       -DTILEDB_AWSSDK_EP_BUILT=TRUE
