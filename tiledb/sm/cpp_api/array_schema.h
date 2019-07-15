@@ -242,7 +242,8 @@ class ArraySchema : public Schema {
   /**
    * Sets the tile capacity.
    *
-   * @param capacity Capacity value to set.
+   * @param capacity Capacity value to set. For dense arrays, tile capacity is
+   * implicitly the product of tile extents over all dimensions
    * @return Reference to this `ArraySchema` instance.
    */
   ArraySchema& set_capacity(uint64_t capacity) {

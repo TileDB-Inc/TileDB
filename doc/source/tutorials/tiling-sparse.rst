@@ -30,8 +30,9 @@ Basic concepts and definitions
 
     This is the number of non-empty cells stored in a data tile. We will
     explain soon that all data tiles in a sparse array have the same capacity,
-    which is specified by the user upon the array creation.
-
+    which is specified by the user upon the array creation. Note that **tile
+    capacity** for dense arrays is the number of cells in a space tile, i.e.
+    the product of the tile extents over all dims.
 
 .. toggle-header::
     :header: **MBR**
