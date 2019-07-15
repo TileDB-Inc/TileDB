@@ -242,8 +242,9 @@ class ArraySchema : public Schema {
   /**
    * Sets the tile capacity.
    *
-   * @param capacity Capacity value to set. For dense arrays, tile capacity is
-   * implicitly the product of tile extents over all dimensions
+   * @param capacity Capacity value to set. For dense arrays, tile capacity
+   * controls the maximum number of cells written per data tile when writing
+   * a (sparse) fragment [fragment](tutorials/fragments-consolidation.html).
    * @return Reference to this `ArraySchema` instance.
    */
   ArraySchema& set_capacity(uint64_t capacity) {
