@@ -2372,9 +2372,10 @@ TILEDB_EXPORT int32_t tiledb_array_schema_set_domain(
  *
  * @param ctx The TileDB context.
  * @param array_schema The array schema.
- * @param capacity The capacity to be set. For dense arrays, tile capacity
- * controls the maximum number of cells written per data tile when writing
- * a (sparse) fragment [fragment](tutorials/fragments-consolidation.html).
+ * @param capacity The capacity of a sparse data tile. Note that
+ * sparse data tiles exist in sparse fragments, which can be created
+ * in both sparse and dense arrays. For more details,
+ * see [tutorials/tiling-sparse.html](tutorials/tiling-sparse.html).
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
 TILEDB_EXPORT int32_t tiledb_array_schema_set_capacity(

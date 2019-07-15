@@ -30,11 +30,8 @@ Basic concepts and definitions
 
     This is the number of non-empty cells stored in a data tile. We will
     explain soon that all data tiles in a sparse array have the same capacity,
-    which is specified by the user upon the array creation. Note that **tile
-    capacity** for dense arrays controls the number of cells written per data
-    tile when creating a sparse fragment. (as noted in the dense section, the
-    maximum size of a dense data tile is determined by the product of the tile
-    extents over all dimensions).
+    which is specified by the user upon the array creation.
+
 
 .. toggle-header::
     :header: **MBR**
