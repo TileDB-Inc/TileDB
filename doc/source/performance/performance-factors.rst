@@ -25,7 +25,7 @@ Dense vs. sparse arrays
     Sparse array reads also have additional runtime overhead due to the potential
     need of sorting the cells based on their coordinates.
 
-Space tiles
+Space tile extent
     In dense arrays, the space tile shape and size determines the atomic unit of
     I/O and compression. All space tiles that intersect a read query's subarray
     are read from disk whole, even if they only partially intersect with the query.
