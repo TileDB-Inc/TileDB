@@ -148,7 +148,7 @@ if ($EnableStaticTileDB.IsPresent) {
     $TileDBStatic = "ON"
 }
 
-$TileDBTools = "ON";
+$TileDBTools = "OFF";
 if ($EnableTools.IsPresent) {
     $TileDBTools = "ON"
 }

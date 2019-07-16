@@ -50,4 +50,4 @@ foreach(TOOL ${TILEDB_TOOLS})
 endforeach()
 
 # Add custom target 'tools' to build all tools.
-add_custom_target(tools DEPENDS ${TILEDB_TOOLS})
+add_custom_target(tools ALL DEPENDS ${TILEDB_TOOLS})

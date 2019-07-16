@@ -107,6 +107,7 @@ void InfoCommand::print_tile_sizes() const {
   Array array(uri, &sm);
   THROW_NOT_OK(
       array.open(QueryType::READ, EncryptionType::NO_ENCRYPTION, nullptr, 0));
+  EncryptionKey enc_key;
 
   // Compute and report mean persisted tile sizes over all attributes.
   const auto* schema = array.array_schema();
@@ -121,12 +122,18 @@ void InfoCommand::print_tile_sizes() const {
     for (const auto& f : fragment_metadata) {
       uint64_t tile_num = f->tile_num();
       for (uint64_t tile_idx = 0; tile_idx < tile_num; tile_idx++) {
-        persisted_tile_size += f->persisted_tile_size(name, tile_idx);
+        uint64_t tile_size = 0;
+        THROW_NOT_OK(
+            f->persisted_tile_size(enc_key, name, tile_idx, &tile_size));
+        persisted_tile_size += tile_size;
         in_memory_tile_size += f->tile_size(name, tile_idx);
         num_tiles++;
         if (var_size) {
-          persisted_tile_size += f->persisted_tile_var_size(name, tile_idx);
-          in_memory_tile_size += f->tile_var_size(name, tile_idx);
+          THROW_NOT_OK(
+              f->persisted_tile_var_size(enc_key, name, tile_idx, &tile_size));
+          persisted_tile_size += tile_size;
+          THROW_NOT_OK(f->tile_var_size(enc_key, name, tile_idx, &tile_size));
+          in_memory_tile_size += tile_size;
           num_tiles++;
         }
       }
@@ -223,7 +230,8 @@ void InfoCommand::write_svg_mbrs() const {
          "xmlns:xlink=\"http://www.w3.org/1999/xlink\" width=\""
       << (svg_width_) << "px\" height=\"" << (svg_height_) << "px\" >\n";
   svg << "<g>\n";
-  const uint16_t g_inc = std::max<uint16_t>(1, 0xff / mbr_rects.size());
+  const uint16_t g_inc = std::max<uint16_t>(
+      1, static_cast<uint16_t>((size_t)0xff / mbr_rects.size()));
   uint32_t r = 0, g = 0, b = 0xff;
   for (const auto& tup : mbr_rects) {
     double x = scale_x * (std::get<0>(tup) - min_x);
