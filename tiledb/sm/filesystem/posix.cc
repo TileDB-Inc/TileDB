@@ -383,7 +383,7 @@ Status Posix::read(
     return LOG_STATUS(Status::IOError(
         std::string("Cannot read from file; ") + strerror(errno)));
   }
-  if (offset > std::numeric_limits<off_t>::max()) {
+  if (offset > static_cast<uint64_t>(std::numeric_limits<off_t>::max())) {
     return LOG_STATUS(Status::IOError(
         std::string("Cannot read from file ' ") + path.c_str() +
         "'; offset > typemax(off_t)"));
