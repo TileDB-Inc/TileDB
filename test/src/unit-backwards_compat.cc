@@ -342,6 +342,22 @@ TEST_CASE(
           set_query_coords<double>(
               domain, &query, &coordinates, &expectedCoordinates);
           break;
+        case TILEDB_DATETIME_YEAR:
+        case TILEDB_DATETIME_MONTH:
+        case TILEDB_DATETIME_WEEK:
+        case TILEDB_DATETIME_DAY:
+        case TILEDB_DATETIME_HR:
+        case TILEDB_DATETIME_MIN:
+        case TILEDB_DATETIME_SEC:
+        case TILEDB_DATETIME_MS:
+        case TILEDB_DATETIME_US:
+        case TILEDB_DATETIME_NS:
+        case TILEDB_DATETIME_PS:
+        case TILEDB_DATETIME_FS:
+        case TILEDB_DATETIME_AS:
+          set_query_coords<int64_t>(
+              domain, &query, &coordinates, &expectedCoordinates);
+          break;
         default:
           REQUIRE(false);
       }
