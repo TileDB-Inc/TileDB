@@ -47,8 +47,6 @@
 #include "filter.h"
 #include "filter_list.h"
 #include "group.h"
-#include "map.h"
-#include "map_schema.h"
 #include "object.h"
 #include "object_iter.h"
 #include "query.h"

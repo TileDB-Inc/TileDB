@@ -286,7 +286,7 @@ class MapItem {
   std::shared_ptr<tiledb_kv_item_t> item_;
 
   /** Deleter for tiledb object **/
-  impl::Deleter deleter_;
+  impl::KVDeleter deleter_;
 
   /** Underlying Map **/
   Map* map_ = nullptr;
@@ -562,7 +562,7 @@ class MapIter : public std::iterator<std::forward_iterator_tag, MapItem> {
  private:
   /** Base map. **/
   Map* map_;
-  impl::Deleter deleter_;
+  impl::KVDeleter deleter_;
 
   /** Current item **/
   std::unique_ptr<MapItem> item_;
@@ -1520,7 +1520,7 @@ class Map {
   std::shared_ptr<tiledb_kv_t> kv_;
 
   /** Closes the map on destruction. **/
-  impl::Deleter deleter_;
+  impl::KVDeleter deleter_;
 
   /** URI **/
   std::string uri_;

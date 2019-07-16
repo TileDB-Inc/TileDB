@@ -35,6 +35,7 @@
  *
  */
 
+#include <tiledb/map.h>
 #include <iostream>
 #include <tiledb/tiledb>
 

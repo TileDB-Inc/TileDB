@@ -31,6 +31,7 @@
  */
 
 #include "catch.hpp"
+#include "tiledb/sm/cpp_api/map.h"
 #include "tiledb/sm/cpp_api/tiledb"
 
 TEST_CASE("C++ API: Schema", "[cppapi]") {

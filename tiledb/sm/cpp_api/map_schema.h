@@ -49,6 +49,42 @@
 
 namespace tiledb {
 
+namespace impl {
+/**
+ * Deleter for KV TileDB C types. Used to suppress deprecation warnings for
+ * the KV API unless explicitly used.
+ */
+class KVDeleter {
+ public:
+  /* ********************************* */
+  /*     CONSTRUCTORS & DESTRUCTORS    */
+  /* ********************************* */
+
+  KVDeleter() = default;
+  KVDeleter(const KVDeleter&) = default;
+
+  /* ********************************* */
+  /*              DELETERS             */
+  /* ********************************* */
+
+  void operator()(tiledb_kv_t* p) const {
+    tiledb_kv_free(&p);
+  }
+
+  void operator()(tiledb_kv_schema_t* p) const {
+    tiledb_kv_schema_free(&p);
+  }
+
+  void operator()(tiledb_kv_item_t* p) const {
+    tiledb_kv_item_free(&p);
+  }
+
+  void operator()(tiledb_kv_iter_t* p) const {
+    tiledb_kv_iter_free(&p);
+  }
+};
+}  // namespace impl
+
 /**
  * Represents the schema of a Map (key-value store).
  *
@@ -81,7 +117,7 @@ class MapSchema : public Schema {
       : Schema(ctx) {
     tiledb_kv_schema_t* schema;
     ctx.handle_error(tiledb_kv_schema_alloc(ctx.ptr().get(), &schema));
-    schema_ = std::shared_ptr<tiledb_kv_schema_t>(schema, deleter_);
+    schema_ = std::shared_ptr<tiledb_kv_schema_t>(schema, kv_deleter_);
   }
 
   /**
@@ -118,7 +154,7 @@ class MapSchema : public Schema {
         encryption_key,
         key_length,
         &schema));
-    schema_ = std::shared_ptr<tiledb_kv_schema_t>(schema, deleter_);
+    schema_ = std::shared_ptr<tiledb_kv_schema_t>(schema, kv_deleter_);
   }
 
   /**
@@ -148,7 +184,7 @@ class MapSchema : public Schema {
    */
   MapSchema(const Context& ctx, tiledb_kv_schema_t* schema)
       : Schema(ctx) {
-    schema_ = std::shared_ptr<tiledb_kv_schema_t>(schema, deleter_);
+    schema_ = std::shared_ptr<tiledb_kv_schema_t>(schema, kv_deleter_);
   }
 
   MapSchema(const MapSchema&) = default;
@@ -325,6 +361,9 @@ class MapSchema : public Schema {
 
   /** The pointer to the C TileDB KV schema object. */
   std::shared_ptr<tiledb_kv_schema_t> schema_;
+
+  /** KV-specific deleter wrapper. */
+  impl::KVDeleter kv_deleter_;
 };
 
 /* ********************************* */
