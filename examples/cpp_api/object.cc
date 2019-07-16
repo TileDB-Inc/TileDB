@@ -47,6 +47,7 @@
  * move/remove TileDB objects.
  */
 
+#include <tiledb/map.h>
 #include <iostream>
 #include <tiledb/tiledb>
 

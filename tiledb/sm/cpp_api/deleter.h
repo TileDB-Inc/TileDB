@@ -82,22 +82,6 @@ class Deleter {
     tiledb_array_schema_free(&p);
   }
 
-  void operator()(tiledb_kv_t* p) const {
-    tiledb_kv_free(&p);
-  }
-
-  void operator()(tiledb_kv_schema_t* p) const {
-    tiledb_kv_schema_free(&p);
-  }
-
-  void operator()(tiledb_kv_item_t* p) const {
-    tiledb_kv_item_free(&p);
-  }
-
-  void operator()(tiledb_kv_iter_t* p) const {
-    tiledb_kv_iter_free(&p);
-  }
-
   void operator()(tiledb_attribute_t* p) const {
     tiledb_attribute_free(&p);
   }
