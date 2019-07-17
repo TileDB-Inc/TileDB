@@ -69,6 +69,15 @@ if (NOT AWSSDK_FOUND)
       list(APPEND DEPENDS ep_zlib)
     endif()
 
+    # Set AWS cmake build to use specified build type except for gcc
+    # For aws sdk and gcc we must always build in release mode
+    # See https://github.com/TileDB-Inc/TileDB/issues/1351 and
+    # https://github.com/awslabs/aws-checksums/issues/8
+    set(AWS_CMAKE_BUILD_TYPE ${CMAKE_BUILD_TYPE})
+    if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+        set(AWS_CMAKE_BUILD_TYPE "Release")
+    endif()
+
     # Work around for: https://github.com/aws/aws-sdk-cpp/pull/1187
     # AWS SDK builds it's "aws-common" dependencies using `execute_process` to run cmake directly,
     # and does not pass the CMAKE_GENERATOR PLATFORM, so those projects default to Win32 builds,
@@ -87,7 +96,7 @@ if (NOT AWSSDK_FOUND)
       URL "https://github.com/aws/aws-sdk-cpp/archive/1.7.108.zip"
       URL_HASH SHA1=d07bae3fe924008b3117936963456dd314787abf
       CMAKE_ARGS
-        -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
+        -DCMAKE_BUILD_TYPE=${AWS_CMAKE_BUILD_TYPE}
         -DENABLE_TESTING=OFF
         -DBUILD_ONLY=s3\\$<SEMICOLON>core
         -DBUILD_SHARED_LIBS=OFF
