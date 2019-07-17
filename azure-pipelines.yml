@@ -11,6 +11,7 @@ jobs:
       linux:
         imageName: 'ubuntu-16.04'
         CXX: g++
+        TILEDB_TOOLS: ON
       linux_s3:
         imageName: 'ubuntu-16.04'
         TILEDB_S3: ON
@@ -46,6 +47,7 @@ jobs:
         TILEDB_S3: ON
       VS2017:
         imageName: 'vs2017-win2016'
+        TILEDB_TOOLS: ON
   pool:
     vmImage: $(imageName)
   steps:
