@@ -2,7 +2,34 @@
 
 ## New features
 
-* Added support for multi-range reads (non-continuous range slicing) for sparse arrays.
+## Improvements
+
+## Deprecations
+
+## Bug fixes
+
+## API additions
+
+# TileDB v1.6.1 Release Notes
+
+## New features
+
+## Improvements
+
+## Deprecations
+
+## Bug fixes
+
+* Bug fix in incomplete query behavior.
+* Fix v1.6.0 Release Notes 
+
+## API additions
+
+# TileDB v1.6.0 Release Notes
+
+## New features
+
+* Added support for multi-range reads (non-continuous range slicing) for dense and sparse arrays.
 * Added support for datetime domains and attributes.
 
 ## Improvements
@@ -24,7 +51,6 @@
 
 ## Bug fixes
 
-* Bug fix in incomplete query behavior.
 * Bug fix with amplification factor in consolidation.
 * Fixed thread safety issue with ZStd compressor. [#1208](https://github.com/TileDB-Inc/TileDB/pull/1208)
 * Fixed crash in consolidation due to accessing invalid entry [#1213](https://github.com/TileDB-Inc/TileDB/pull/1213)
@@ -37,8 +63,7 @@
 
 ### C API
 
-* Added functions `tiledb_subarray_{get_est_result_size, get_est_result_size_var}`.
-* Added object `tiledb_subarray_t` and functions `tiledb_subarray_{alloc, free, get_layout, get_type, get_ndim, get_domain, add_range, get_range_num, get_range}`.
+* Added functions `tiledb_query_{get_est_result_size, get_est_result_size_var, add_range, get_range_num, get_range}`.
 * Added function `tiledb_query_get_layout`
 * Added datatype `tiledb_buffer_t` and functions `tiledb_buffer_{alloc,free,get_type,set_type,get_data,set_data}`.
 * Added datatype `tiledb_buffer_list_t` and functions `tiledb_buffer_list_{alloc,free,get_num_buffers,get_total_size,get_buffer,flatten}`.
@@ -48,7 +73,7 @@
 
 ### C++ API
 
-* Added function `Query::query_layout()`
+* Added functions `Query::{query_layout, add_range, range, range_num}`.
 
 ## Breaking changes
 
