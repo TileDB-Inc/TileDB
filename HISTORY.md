@@ -10,7 +10,7 @@ The 1.6.0 release adds the major new feature of non-continuous range slicing, as
 
 ## New features
 
-* Added support for multi-range reads (non-continuous range slicing) for sparse arrays.
+* Added support for multi-range reads (non-continuous range slicing) for dense and sparse arrays.
 * Added support for datetime domains and attributes.
 
 ## Improvements
@@ -41,8 +41,7 @@ The 1.6.0 release adds the major new feature of non-continuous range slicing, as
 
 ### C API
 
-* Added functions `tiledb_subarray_{get_est_result_size, get_est_result_size_var}`.
-* Added object `tiledb_subarray_t` and functions `tiledb_subarray_{alloc, free, get_layout, get_type, get_ndim, get_domain, add_range, get_range_num, get_range}`.
+* Added functions `tiledb_query_{get_est_result_size, get_est_result_size_var, add_range, get_range_num, get_range}`.
 * Added function `tiledb_query_get_layout`
 * Added datatype `tiledb_buffer_t` and functions `tiledb_buffer_{alloc,free,get_type,set_type,get_data,set_data}`.
 * Added datatype `tiledb_buffer_list_t` and functions `tiledb_buffer_list_{alloc,free,get_num_buffers,get_total_size,get_buffer,flatten}`.
@@ -52,7 +51,7 @@ The 1.6.0 release adds the major new feature of non-continuous range slicing, as
 
 ### C++ API
 
-* Added function `Query::query_layout()`
+* Added functions `Query::{query_layout, add_range, range, range_num}`.
 
 ## Breaking changes
 
