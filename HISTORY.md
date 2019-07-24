@@ -8,7 +8,20 @@
 
 ## Bug fixes
 
+## API additions
+
+# TileDB v1.6.1 Release Notes
+
+## New features
+
+## Improvements
+
+## Deprecations
+
+## Bug fixes
+
 * Bug fix in incomplete query behavior.
+* Fix v1.6.0 Release Notes 
 
 ## API additions
 
