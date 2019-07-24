@@ -251,7 +251,7 @@ void read_array() {
       tiledb_query_set_buffer_var(
           ctx, query, "a2", a2_off, &a2_off_size, a2_data, &a2_data_size);
       tiledb_query_set_buffer(ctx, query, TILEDB_COORDS, coords, &coords_size);
-    } else {
+    } else if (result_num > 0) {
       print_results(
           coords, a1_data, a1_data_size, a2_off, a2_data, a2_data_size);
     }

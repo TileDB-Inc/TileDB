@@ -24,6 +24,7 @@
 
 ## Bug fixes
 
+* Bug fix in incomplete query behavior.
 * Bug fix with amplification factor in consolidation.
 * Fixed thread safety issue with ZStd compressor. [#1208](https://github.com/TileDB-Inc/TileDB/pull/1208)
 * Fixed crash in consolidation due to accessing invalid entry [#1213](https://github.com/TileDB-Inc/TileDB/pull/1213)

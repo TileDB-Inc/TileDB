@@ -173,7 +173,7 @@ void read_array() {
       query.set_buffer("a1", a1_data)
           .set_buffer("a2", a2_off, a2_data)
           .set_coordinates(coords);
-    } else {
+    } else if (result_num > 0) {
       print_results(
           coords, a1_data, a2_off, a2_data, query.result_buffer_elements());
     }
