@@ -1,3 +1,9 @@
+# TileDB v1.6.1 Release Notes
+
+## Bug fixes
+
+* Bug fix in incomplete query behavior. [#1358](https://github.com/TileDB-Inc/TileDB/pull/1358)
+
 # TileDB v1.6.0 Release Notes
 
 The 1.6.0 release adds the major new feature of non-continuous range slicing, as well as a number of stability and usability improvements. Support is also introduced for datetime dimensions and attributes.
