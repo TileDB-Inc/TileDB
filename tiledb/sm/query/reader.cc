@@ -332,6 +332,11 @@ Status Reader::read() {
         return Status::Ok();
     } else {
       bool no_results = this->no_results();
+
+      // Need to reset unsplittable if the results fit after all
+      if (!no_results)
+        read_state_.unsplittable_ = false;
+
       if (!no_results || read_state_.done())
         return Status::Ok();
 
