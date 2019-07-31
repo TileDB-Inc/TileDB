@@ -415,8 +415,8 @@ Status VFS::filelock_unlock(const URI& uri) const {
   std::unique_lock<std::mutex> lck(filelock_mtx_);
 
   // Decrement the lock counter and return if the counter is still > 0.
-  bool should_unlock;
-  filelock_t fd;
+  bool should_unlock = false;
+  filelock_t fd = INVALID_FILELOCK;
   Status st = decr_lock_count(uri, &should_unlock, &fd);
   if (!st.ok() || !should_unlock) {
     return st;
