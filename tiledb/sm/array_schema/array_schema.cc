@@ -91,6 +91,7 @@ ArraySchema::ArraySchema(const ArraySchema* array_schema) {
   cell_sizes_ = array_schema->cell_sizes_;
   coords_filters_ = array_schema->coords_filters_;
   coords_size_ = array_schema->coords_size_;
+  coord_offsets_ = array_schema->coord_offsets_;
   cell_var_offsets_filters_ = array_schema->cell_var_offsets_filters_;
   tile_order_ = array_schema->tile_order_;
   version_ = array_schema->version_;
@@ -108,6 +109,11 @@ ArraySchema::ArraySchema(const ArraySchema* array_schema) {
   }
   for (const auto& attr : attributes_)
     attribute_map_[attr->name()] = attr;
+  auto dim_num = domain_->dim_num();
+  for (unsigned i = 0; i < dim_num; ++i) {
+    const auto& dim = domain_->dimension(i);
+    dimension_map_[dim->name()] = dim;
+  }
 }
 
 ArraySchema::~ArraySchema() {
@@ -187,8 +193,8 @@ Layout ArraySchema::cell_order() const {
   return cell_order_;
 }
 
-uint64_t ArraySchema::cell_size(const std::string& attribute) const {
-  auto cell_size_it = cell_sizes_.find(attribute);
+uint64_t ArraySchema::cell_size(const std::string& name) const {
+  auto cell_size_it = cell_sizes_.find(name);
   assert(cell_size_it != cell_sizes_.end());
   return cell_size_it->second;
 }
@@ -247,24 +253,44 @@ Status ArraySchema::check_attributes(
   return Status::Ok();
 }
 
-const FilterPipeline* ArraySchema::filters(const std::string& attribute) const {
-  auto it = attribute_map_.find(attribute);
-  if (it == attribute_map_.end()) {
-    if (attribute == constants::coords)
-      return coords_filters();
-    assert(false);   // This should never happen
-    return nullptr;  // Return something ad hoc
+const FilterPipeline* ArraySchema::filters(const std::string& name) const {
+  // name == TILEDB_COORDS
+  if (name == constants::coords)
+    return coords_filters();
+
+  // name is an attribute
+  auto it = attribute_map_.find(name);
+  if (it != attribute_map_.end())
+    return it->second->filters();
+
+  // name is a dimension
+  auto dim_it = dimension_map_.find(name);
+  if (dim_it != dimension_map_.end()) {
+    auto dim_filters = dim_it->second->filters();
+    return !dim_filters->empty() ? dim_filters : coords_filters();
   }
 
-  return it->second->filters();
+  // Something went wrong
+  assert(false);   // This should never happen
+  return nullptr;  // Return something ad hoc
 }
 
 const FilterPipeline* ArraySchema::coords_filters() const {
   return &coords_filters_;
 }
 
+uint64_t ArraySchema::coord_offset(unsigned int i) const {
+  assert(i < dim_num());
+  return coord_offsets_[i];
+}
+
 uint64_t ArraySchema::coords_size() const {
   return coords_size_;
+}
+
+uint64_t ArraySchema::coord_size(unsigned int i) const {
+  assert(i < dim_num());
+  return domain_->dimension(i)->cell_size();
 }
 
 Datatype ArraySchema::coords_type() const {
@@ -320,6 +346,10 @@ Status ArraySchema::has_attribute(
   }
 
   return Status::Ok();
+}
+
+bool ArraySchema::is_dim(const std::string& name) const {
+  return dimension_map_.find(name) != dimension_map_.end();
 }
 
 bool ArraySchema::is_kv() const {
@@ -389,22 +419,44 @@ Datatype ArraySchema::type(unsigned int i) const {
   return domain_->type();
 }
 
-Datatype ArraySchema::type(const std::string& attribute) const {
-  auto it = attribute_map_.find(attribute);
-  if (it == attribute_map_.end()) {
-    if (attribute == constants::coords)
-      return domain_->type();
-    assert(false);          // This should never happen
-    return Datatype::INT8;  // Return something ad hoc
-  }
-  return it->second->type();
+Datatype ArraySchema::type(const std::string& name) const {
+  // name == TILDB_COORDS
+  if (name == constants::coords)
+    return domain_->type();
+
+  // name is an attribute
+  auto attr_it = attribute_map_.find(name);
+  if (attr_it != attribute_map_.end())
+    return attr_it->second->type();
+
+  // name is a dimension
+  auto dim_it = dimension_map_.find(name);
+  if (dim_it != dimension_map_.end())
+    return dim_it->second->type();
+
+  // Something went wrong
+  assert(false);          // This should never happen
+  return Datatype::INT8;  // Return something ad hoc
 }
 
-bool ArraySchema::var_size(const std::string& attribute) const {
-  auto it = attribute_map_.find(attribute);
-  if (it == attribute_map_.end())
+bool ArraySchema::var_size(const std::string& name) const {
+  // name == TILEDB_COORDS
+  if (name == constants::coords)
     return false;
-  return it->second->var_size();
+
+  // name is an attribute
+  auto it = attribute_map_.find(name);
+  if (it != attribute_map_.end())
+    return it->second->var_size();
+
+  // name is a dimension
+  auto dim_it = dimension_map_.find(name);
+  if (dim_it != dimension_map_.end())
+    return dim_it->second->var_size();
+
+  // Something went wrong
+  assert(false);
+  return false;
 }
 
 Status ArraySchema::add_attribute(const Attribute* attr, bool check_special) {
@@ -516,14 +568,32 @@ Status ArraySchema::init() {
   attribute_map_.clear();
   for (const auto& attr : attributes_)
     attribute_map_[attr->name()] = attr;
+  dimension_map_.clear();
+  auto dim_num = domain_->dim_num();
+  for (unsigned i = 0; i < dim_num; ++i) {
+    const auto& dim = domain_->dimension(i);
+    dimension_map_[dim->name()] = dim;
+  }
 
   // Set cell sizes
   for (auto& attr : attributes_)
     cell_sizes_[attr->name()] = compute_cell_size(attr->name());
   cell_sizes_[constants::coords] = compute_cell_size(constants::coords);
+  for (unsigned i = 0; i < dim_num; ++i) {
+    const auto& dim = domain_->dimension(i);
+    cell_sizes_[dim->name()] = dim->cell_size();
+  }
 
-  auto dim_num = domain_->dim_num();
-  coords_size_ = dim_num * datatype_size(coords_type());
+  // Compute coordinate sizes
+  coords_size_ = 0;
+  for (unsigned i = 0; i < dim_num; ++i)
+    coords_size_ += dimension(i)->cell_size();
+
+  // Compute coordinate offsets
+  coord_offsets_.resize(dim_num);
+  coord_offsets_[0] = 0;
+  for (unsigned i = 1; i < dim_num; ++i)
+    coord_offsets_[i] = coord_offsets_[i - 1] + coord_size(i - 1);
 
   // Success
   return Status::Ok();

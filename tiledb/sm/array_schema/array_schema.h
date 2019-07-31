@@ -137,8 +137,8 @@ class ArraySchema {
   /** Returns the cell order. */
   Layout cell_order() const;
 
-  /** Returns the size of cell on the input attribute. */
-  uint64_t cell_size(const std::string& attribute) const;
+  /** Returns the cell size on the input attribute/dimension. */
+  uint64_t cell_size(const std::string& name) const;
 
   /** Returns the number of values per cell of the input attribute. */
   unsigned int cell_val_num(const std::string& attribute) const;
@@ -164,14 +164,25 @@ class ArraySchema {
    */
   Status check_attributes(const std::vector<std::string>& attributes) const;
 
-  /** Return the filter pipeline for the given attribute. */
-  const FilterPipeline* filters(const std::string& attribute) const;
+  /** Return the filter pipeline for the given attribute/dimension. */
+  const FilterPipeline* filters(const std::string& name) const;
 
   /** Return a pointer to the pipeline used for coordinates. */
   const FilterPipeline* coords_filters() const;
 
+  /**
+   * Returns the offset of a coordinate in a tuple of coordinates.
+   * For example, if the first dimension is of type `int32`,
+   * the second of type `float64` and the third of type `char`,
+   * the offsets are respectively: 0, 4, 12
+   */
+  uint64_t coord_offset(unsigned i) const;
+
   /** Returns the coordinates size. */
   uint64_t coords_size() const;
+
+  /** Returns the coordinates size for the input dimension index. */
+  uint64_t coord_size(unsigned i) const;
 
   /** Returns the type of the coordinates. */
   Datatype coords_type() const;
@@ -198,6 +209,9 @@ class ArraySchema {
    */
   Status has_attribute(const std::string& name, bool* has_attr) const;
 
+  /** Returns true if the input is a dimension name. */
+  bool is_dim(const std::string& name) const;
+
   /** Checks if the array is defined as a key-value store. */
   bool is_kv() const;
 
@@ -215,11 +229,14 @@ class ArraySchema {
   /** Returns the type of the i-th attribute. */
   Datatype type(unsigned int i) const;
 
-  /** Returns the type of the input attribute (could be coordinates). */
-  Datatype type(const std::string& attribute) const;
+  /** Returns the type of the input attribute/dimension. */
+  Datatype type(const std::string& name) const;
 
-  /** Returns *true* if the indicated attribute has variable-sized values. */
-  bool var_size(const std::string& attribute) const;
+  /**
+   * Returns *true* if the indicated attribute/dimension has
+   * variable-sized values.
+   */
+  bool var_size(const std::string& name) const;
 
   /**
    * Adds an attribute, copying the input.
@@ -303,10 +320,14 @@ class ArraySchema {
 
   /** The array attributes. */
   std::vector<Attribute*> attributes_;
+
   /**
    * The tile capacity for the case of sparse fragments.
    */
   uint64_t capacity_;
+
+  /** It maps each dimension name to the corresponding dimension object. */
+  std::unordered_map<std::string, const Dimension*> dimension_map_;
 
   /**
    * The cell order. It can be one of the following:
@@ -315,7 +336,7 @@ class ArraySchema {
    */
   Layout cell_order_;
 
-  /** Stores the size of every attribute (plus coordinates). */
+  /** Stores the size of every attribute/dimension. */
   std::unordered_map<std::string, uint64_t> cell_sizes_;
 
   /** The filter pipeline run on offset tiles for var-length attributes. */
@@ -326,6 +347,15 @@ class ArraySchema {
 
   /** The size (in bytes) of the coordinates. */
   uint64_t coords_size_;
+
+  /**
+   * Stores the offsets of all coordinates, i.e., their positions
+   * in a tuple of coordinates.
+   * For example, if the first dimension is of type `int32`,
+   * the second of type `float64` and the third of type `char`,
+   * the offsets are respectively: 0, 4, 12
+   */
+  std::vector<uint64_t> coord_offsets_;
 
   /** The array domain. */
   Domain* domain_;

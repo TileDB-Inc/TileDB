@@ -126,6 +126,6 @@ int main() {
     write_array();
   }
 
-  read_array();
+  //  read_array();
   return 0;
 }

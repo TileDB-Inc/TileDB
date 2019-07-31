@@ -937,7 +937,6 @@ Status Writer::compute_coord_dups(std::set<uint64_t>* coord_dups) const {
   STATS_FUNC_OUT(writer_compute_coord_dups_global);
 }
 
-// TODO
 template <class T>
 Status Writer::compute_coords_metadata(
     const std::vector<Tile>& tiles, FragmentMetadata* meta) const {
@@ -974,6 +973,56 @@ Status Writer::compute_coords_metadata(
 
   // Set last tile cell number
   meta->set_last_tile_cell_num(tiles.back().size() / coords_size);
+
+  return Status::Ok();
+
+  STATS_FUNC_OUT(writer_compute_coords_metadata);
+}
+
+template <class T>
+Status Writer::compute_coords_metadata(
+    const std::vector<std::pair<std::string, std::vector<Tile>>>& tiles,
+    FragmentMetadata* meta) const {
+  STATS_FUNC_IN(writer_compute_coords_metadata);
+
+  assert(!tiles.empty());
+
+  // Check if tiles are empty
+  if (tiles[0].second.empty())
+    return Status::Ok();
+
+  // For easy reference
+  auto dim_num = array_schema_->dim_num();
+  auto coord_size = array_schema_->coord_size(0);
+  std::vector<T> mbr;
+  mbr.resize(2 * dim_num);
+
+  // Compute MBRs
+  uint64_t cell_num = 0;
+  for (uint64_t tile_id = 0; tile_id < tiles[0].second.size(); tile_id++) {
+    // Compute cell num
+    cell_num = tiles[0].second[tile_id].size() / coord_size;
+    assert(cell_num > 0);
+
+    // Gather an auxiliary tile data vector
+    std::vector<const T*> data(dim_num);
+    for (unsigned i = 0; i < dim_num; ++i)
+      data[i] = (const T*)(tiles[i].second[tile_id].data());
+
+    // Initialize MBR with the first coords
+    for (unsigned i = 0; i < dim_num; ++i) {
+      mbr[2 * i] = data[i][0];
+      mbr[2 * i + 1] = data[i][0];
+    }
+
+    // Expand the MBR with the rest coords
+    utils::geometry::expand_mbr(data, 1, cell_num - 1, &mbr[0]);
+
+    meta->set_mbr(tile_id, &mbr[0]);
+  }
+
+  // Set last tile cell number
+  meta->set_last_tile_cell_num(cell_num);
 
   return Status::Ok();
 
@@ -1320,14 +1369,18 @@ Status Writer::global_write() {
   auto new_num_tiles = frag_meta->tile_index_base() + num_tiles;
   frag_meta->set_num_tiles(new_num_tiles);
 
+  // Compute coordinates metadata
+  for (size_t i = 0; i < num_attributes; ++i) {
+    if (query_buffer_names_[i] == constants::coords) {
+      RETURN_CANCEL_OR_ERROR(
+          compute_coords_metadata<T>(attribute_tiles[i], frag_meta));
+    }
+  }
+
   // Filter all tiles
   statuses = parallel_for(0, num_attributes, [&](uint64_t i) {
-    const auto& attr = query_buffer_names_[i];
-    auto& full_tiles = attribute_tiles[i];
-    // TODO: this has to be moved out of here
-    if (attr == constants::coords)
-      RETURN_CANCEL_OR_ERROR(compute_coords_metadata<T>(full_tiles, frag_meta));
-    RETURN_CANCEL_OR_ERROR(filter_tiles(attr, &full_tiles));
+    RETURN_CANCEL_OR_ERROR(
+        filter_tiles(query_buffer_names_[i], &attribute_tiles[i]));
     return Status::Ok();
   });
 
@@ -1375,9 +1428,10 @@ Status Writer::global_write_handle_last_tile() {
   auto meta = global_write_state_->frag_meta_.get();
   meta->set_num_tiles(meta->tile_index_base() + 1);
 
-  // Filter the last tiles
   uint64_t num_attributes = query_buffer_names_.size();
   std::vector<std::vector<Tile>> attribute_tiles(num_attributes);
+
+  // Filter the last tiles
   auto statuses = parallel_for(0, num_attributes, [&](uint64_t i) {
     const auto& attr = query_buffer_names_[i];
     auto& last_tile = global_write_state_->last_tiles_[attr].first;
@@ -1410,9 +1464,11 @@ Status Writer::global_write_handle_last_tile() {
   return Status::Ok();
 }
 
-// TODO
 bool Writer::has_coords() const {
-  return query_buffers_.find(constants::coords) != query_buffers_.end();
+  bool ret = query_buffers_.find(constants::coords) != query_buffers_.end();
+  auto dim_name = array_schema_->domain()->dimension(0)->name();
+  ret = ret || query_buffers_.find(dim_name) != query_buffers_.end();
+  return ret;
 }
 
 Status Writer::init_global_write_state() {
@@ -1470,15 +1526,13 @@ Status Writer::init_tile(const std::string& name, Tile* tile) const {
   auto cell_size = array_schema_->cell_size(name);
   auto capacity = array_schema_->capacity();
   auto type = array_schema_->type(name);
-  auto is_coords = (name == constants::coords);
-  auto dim_num = (is_coords) ? array_schema_->dim_num() : 0;
   auto cell_num_per_tile =
-      (has_coords()) ? capacity : domain->cell_num_per_tile();
+      has_coords() ? capacity : domain->cell_num_per_tile();
   auto tile_size = cell_num_per_tile * cell_size;
 
   // Initialize
-  RETURN_NOT_OK(tile->init(
-      constants::format_version, type, tile_size, cell_size, dim_num));
+  RETURN_NOT_OK(
+      tile->init(constants::format_version, type, tile_size, cell_size, 0));
 
   return Status::Ok();
 }
@@ -2127,6 +2181,76 @@ Status Writer::prepare_tiles_fixed(
   STATS_FUNC_OUT(writer_prepare_tiles_fixed);
 }
 
+Status Writer::prepare_coord_tiles(
+    const std::vector<uint64_t>& cell_pos,
+    const std::set<uint64_t>& coord_dups,
+    std::vector<std::pair<std::string, std::vector<Tile>>>* tiles) const {
+  // Trivial case
+  if (cell_pos.empty())
+    return Status::Ok();
+
+  // For easy reference
+  auto it = query_buffers_.find(constants::coords);
+  auto buffer = (unsigned char*)it->second.buffer_;
+  auto cell_num = (uint64_t)cell_pos.size();
+  auto dim_num = array_schema_->dim_num();
+  auto capacity = array_schema_->capacity();
+  auto dups_num = coord_dups.size();
+  auto tile_num = utils::math::ceil(cell_num - dups_num, capacity);
+  auto coords_size = array_schema_->coords_size();
+
+  // Initialize tiles
+  for (unsigned d = 0; d < dim_num; ++d) {
+    (*tiles)[d].second.resize(tile_num);
+    for (auto& tile : (*tiles)[d].second)
+      RETURN_NOT_OK(init_tile((*tiles)[d].first, &tile));
+  }
+
+  // Write all coords one by one, splitting across the dimensions
+  if (dups_num == 0) {
+    auto statuses = parallel_for(0, dim_num, [&](uint64_t d) {
+      for (uint64_t i = 0, tile_idx = 0; i < cell_num; ++i) {
+        auto& coord_tile = (*tiles)[d].second[tile_idx];
+        if (coord_tile.full())
+          ++tile_idx;
+
+        RETURN_NOT_OK(coord_tile.write(
+            buffer + cell_pos[i] * coords_size +
+                d * array_schema_->coord_offset(d),
+            array_schema_->coord_size(d)));
+      }
+      return Status::Ok();
+    });
+    for (auto& st : statuses) {
+      if (!st.ok())
+        return st;
+    }
+  } else {
+    auto statuses = parallel_for(0, dim_num, [&](uint64_t d) {
+      for (uint64_t i = 0, tile_idx = 0; i < cell_num; ++i) {
+        if (coord_dups.find(cell_pos[i]) != coord_dups.end())
+          continue;
+
+        auto& coord_tile = (*tiles)[d].second[tile_idx];
+        if (coord_tile.full())
+          ++tile_idx;
+
+        RETURN_NOT_OK(coord_tile.write(
+            buffer + cell_pos[i] * coords_size +
+                d * array_schema_->coord_offset(d),
+            array_schema_->coord_size(d)));
+      }
+      return Status::Ok();
+    });
+    for (auto& st : statuses) {
+      if (!st.ok())
+        return st;
+    }
+  }
+
+  return Status::Ok();
+}
+
 Status Writer::prepare_tiles_var(
     const std::string& name,
     const std::vector<uint64_t>& cell_pos,
@@ -2302,54 +2426,80 @@ Status Writer::unordered_write() {
   RETURN_CANCEL_OR_ERROR(create_fragment(false, &frag_meta));
   auto uri = frag_meta->fragment_uri();
 
-  // TODO: split coords
-  // Prepare tiles for all attributes
-  auto num_attributes = query_buffer_names_.size();
-  std::vector<std::vector<Tile>> attribute_tiles(num_attributes);
-  auto statuses = parallel_for(0, num_attributes, [&](uint64_t i) {
-    const auto& attr = query_buffer_names_[i];
-    auto& tiles = attribute_tiles[i];
-    RETURN_CANCEL_OR_ERROR(prepare_tiles(attr, cell_pos, coord_dups, &tiles));
+  // Prepare tile vectors
+  std::vector<std::pair<std::string, std::vector<Tile>>> attr_tiles;
+  std::vector<std::pair<std::string, std::vector<Tile>>> coord_tiles;
+  auto dim_num = array_schema_->dim_num();
+  for (const auto& name : query_buffer_names_) {
+    if (name == constants::coords) {
+      for (unsigned d = 0; d < dim_num; ++d) {
+        auto dim_name = array_schema_->dimension(d)->name();
+        coord_tiles.emplace_back(dim_name, std::vector<Tile>());
+      }
+    } else {
+      attr_tiles.emplace_back(name, std::vector<Tile>());
+    }
+  }
+
+  // Prepare attribute tiles
+  auto attr_num = attr_tiles.size();
+  auto statuses = parallel_for(0, attr_num, [&](uint64_t i) {
+    const auto& attr_name = attr_tiles[i].first;
+    auto& tiles = attr_tiles[i].second;
+    RETURN_CANCEL_OR_ERROR(
+        prepare_tiles(attr_name, cell_pos, coord_dups, &tiles));
     return Status::Ok();
   });
+  for (auto& st : statuses)
+    RETURN_NOT_OK_ELSE(st, storage_manager_->vfs()->remove_dir(uri));
+  statuses.clear();
+
+  // Prepare coordinate tiles
+  RETURN_CANCEL_OR_ERROR(
+      prepare_coord_tiles(cell_pos, coord_dups, &coord_tiles));
 
   // Clear the boolean vector for coordinate duplicates
   coord_dups.clear();
 
-  // Check all statuses
-  for (auto& st : statuses)
-    RETURN_NOT_OK_ELSE(st, storage_manager_->vfs()->remove_dir(uri));
-  statuses.clear();
-
   // Set the number of tiles in the metadata
-  uint64_t num_tiles = array_schema_->var_size(query_buffer_names_[0]) ?
-                           attribute_tiles[0].size() / 2 :
-                           attribute_tiles[0].size();
+  assert(!coord_tiles.empty());
+  uint64_t num_tiles = coord_tiles[0].second.size();
   frag_meta->set_num_tiles(num_tiles);
 
-  // Filter all tiles
-  statuses = parallel_for(0, num_attributes, [&](uint64_t i) {
-    const auto& attr = query_buffer_names_[i];
-    auto& tiles = attribute_tiles[i];
-    // TODO: this should be done outside the loop
-    if (attr == constants::coords)
-      RETURN_CANCEL_OR_ERROR(
-          compute_coords_metadata<T>(tiles, frag_meta.get()));
+  // Compute coordinates metadata
+  RETURN_CANCEL_OR_ERROR(
+      compute_coords_metadata<T>(coord_tiles, frag_meta.get()));
 
-    // TODO: for coordinates, zip them and filter them separately
-
-    RETURN_CANCEL_OR_ERROR(filter_tiles(attr, &tiles));
+  // Filter attribute tiles
+  statuses = parallel_for(0, attr_num, [&](uint64_t i) {
+    const auto& attr_name = attr_tiles[i].first;
+    auto& tiles = attr_tiles[i].second;
+    RETURN_CANCEL_OR_ERROR(filter_tiles(attr_name, &tiles));
     return Status::Ok();
   });
-
-  // Check all statuses
   for (auto& st : statuses)
     RETURN_NOT_OK_ELSE(st, storage_manager_->vfs()->remove_dir(uri));
   statuses.clear();
 
-  // Write tiles for all attributes
+  // Filter coordinate tiles
+  statuses = parallel_for(0, dim_num, [&](uint64_t i) {
+    auto dim_name = coord_tiles[i].first;
+    auto& tiles = coord_tiles[i].second;
+    RETURN_CANCEL_OR_ERROR(filter_tiles(dim_name, &tiles));
+    return Status::Ok();
+  });
+  for (auto& st : statuses)
+    RETURN_NOT_OK_ELSE(st, storage_manager_->vfs()->remove_dir(uri));
+  statuses.clear();
+
+  // Write attribute tiles
   RETURN_NOT_OK_ELSE(
-      write_all_tiles(frag_meta.get(), attribute_tiles),
+      write_all_tiles(frag_meta.get(), attr_tiles),
+      storage_manager_->vfs()->remove_dir(uri));
+
+  // Write dimension tiles
+  RETURN_NOT_OK_ELSE(
+      write_all_tiles(frag_meta.get(), coord_tiles),
       storage_manager_->vfs()->remove_dir(uri));
 
   // Write the fragment metadata
@@ -2454,6 +2604,35 @@ Status Writer::write_all_tiles(
   STATS_FUNC_OUT(writer_write_all_tiles);
 }
 
+Status Writer::write_all_tiles(
+    FragmentMetadata* frag_meta,
+    const std::vector<std::pair<std::string, std::vector<tiledb::sm::Tile>>>&
+        tiles) const {
+  STATS_FUNC_IN(writer_write_all_tiles);
+
+  std::vector<std::future<Status>> tasks;
+
+  for (const auto& t_pair : tiles) {
+    const auto& name = t_pair.first;
+    auto& tile_vec = t_pair.second;
+    tasks.push_back(
+        storage_manager_->writer_thread_pool()->enqueue([&, this]() {
+          RETURN_CANCEL_OR_ERROR(write_tiles(name, frag_meta, tile_vec));
+          return Status::Ok();
+        }));
+  }
+
+  // Wait for writes and check all statuses
+  auto statuses =
+      storage_manager_->writer_thread_pool()->wait_all_status(tasks);
+  for (auto& st : statuses)
+    RETURN_NOT_OK(st);
+
+  return Status::Ok();
+
+  STATS_FUNC_OUT(writer_write_all_tiles);
+}
+
 Status Writer::write_tiles(
     const std::string& name,
     FragmentMetadata* frag_meta,
@@ -2464,13 +2643,13 @@ Status Writer::write_tiles(
 
   // For easy reference
   bool var_size = array_schema_->var_size(name);
-  auto attr_uri = frag_meta->uri(name);
-  auto attr_var_uri = var_size ? frag_meta->var_uri(name) : URI("");
+  auto uri = frag_meta->uri(name);
+  auto var_uri = var_size ? frag_meta->var_uri(name) : URI("");
 
   // Write tiles
   auto tile_num = tiles.size();
   for (size_t i = 0, tile_id = 0; i < tile_num; ++i, ++tile_id) {
-    RETURN_NOT_OK(storage_manager_->write(attr_uri, tiles[i].buffer()));
+    RETURN_NOT_OK(storage_manager_->write(uri, tiles[i].buffer()));
     frag_meta->set_tile_offset(name, tile_id, tiles[i].buffer()->size());
 
     STATS_COUNTER_ADD(writer_num_bytes_written, tiles[i].buffer()->size());
@@ -2478,7 +2657,7 @@ Status Writer::write_tiles(
     if (var_size) {
       ++i;
 
-      RETURN_NOT_OK(storage_manager_->write(attr_var_uri, tiles[i].buffer()));
+      RETURN_NOT_OK(storage_manager_->write(var_uri, tiles[i].buffer()));
       frag_meta->set_tile_var_offset(name, tile_id, tiles[i].buffer()->size());
       frag_meta->set_tile_var_size(name, tile_id, tiles[i].pre_filtered_size());
 
@@ -2488,9 +2667,9 @@ Status Writer::write_tiles(
 
   // Close files, except in the case of global order
   if (layout_ != Layout::GLOBAL_ORDER) {
-    RETURN_NOT_OK(storage_manager_->close_file(frag_meta->uri(name)));
+    RETURN_NOT_OK(storage_manager_->close_file(uri));
     if (var_size)
-      RETURN_NOT_OK(storage_manager_->close_file(frag_meta->var_uri(name)));
+      RETURN_NOT_OK(storage_manager_->close_file(var_uri));
   }
 
   STATS_COUNTER_ADD(writer_num_attr_tiles_written, tile_num);

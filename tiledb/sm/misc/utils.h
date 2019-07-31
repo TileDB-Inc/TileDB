@@ -246,6 +246,24 @@ template <class T>
 void expand_mbr(T* mbr, const T* coords, unsigned int dim_num);
 
 /**
+ * Expands the input MBR so that it encompasses the coordinates from
+ * the inpute vectors.
+ *
+ * @tparam T The type of the MBR and coordinates.
+ * @param coords The input coordinates to expand the MBR with. There is
+ *     one vector per dimension.
+ * @param start Only the coordinates at positions `[start, end]` will
+ *     be used for the MBR expansion.
+ * @param end Only the coordinates at positions `[start, end]` will
+ *     be used for the MBR expansion.
+ * @param mbr The input MBR to be expanded.
+ * @return void
+ */
+template <class T>
+void expand_mbr(
+    const std::vector<const T*>& coords, uint64_t start, uint64_t end, T* mbr);
+
+/**
  * Expands `mbr_a` so that it encompasses `mbr_b`.
  *
  * @tparam T The type of the MBR and coordinates.

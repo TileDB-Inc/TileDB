@@ -640,17 +640,35 @@ The file ``__fragment_metadata.tdb`` has the internal format:
 +----------------------------------------+----------------------+-------------------------------------------------------+
 | Tile offsets for attribute N           | ``TileOffsets``      | The serialized tile offsets for attribute N.          |
 +----------------------------------------+----------------------+-------------------------------------------------------+
+| Tile offsets for dimension 1           | ``TileOffsets``      | The serialized tile offsets for dimension 1.          |
++----------------------------------------+----------------------+-------------------------------------------------------+
+| ...                                    | ...                  | ...                                                   |
++----------------------------------------+----------------------+-------------------------------------------------------+
+| Tile offsets for dimension D           | ``TileOffsets``      | The serialized tile offsets for dimension D.          |
++----------------------------------------+----------------------+-------------------------------------------------------+
 | Variable tile offsets for attribute 1  | ``TileOffsets``      | The serialized variable tile offsets for attribute 1. |
 +----------------------------------------+----------------------+-------------------------------------------------------+
 | ...                                    | ...                  | ...                                                   |
 +----------------------------------------+----------------------+-------------------------------------------------------+
 | Variable tile offsets for attribute N  | ``TileOffsets``      | The serialized variable tile offsets for attribute N. |
 +----------------------------------------+----------------------+-------------------------------------------------------+
+| Variable tile offsets for dimension 1  | ``TileOffsets``      | The serialized variable tile offsets for dimension 1. |
++----------------------------------------+----------------------+-------------------------------------------------------+
+| ...                                    | ...                  | ...                                                   |
++----------------------------------------+----------------------+-------------------------------------------------------+
+| Variable tile offsets for dimension D  | ``TileOffsets``      | The serialized variable tile offsets for dimension D. |
++----------------------------------------+----------------------+-------------------------------------------------------+
 | Variable tile sizes for attribute 1    | ``TileSizes``        | The serialized variable tile sizes for attribute 1.   |
 +----------------------------------------+----------------------+-------------------------------------------------------+
 | ...                                    | ...                  | ...                                                   |
 +----------------------------------------+----------------------+-------------------------------------------------------+
 | Variable tile sizes for attribute N    | ``TileSizes``        | The serialized variable tile sizes for attribute N.   |
++----------------------------------------+----------------------+-------------------------------------------------------+
+| Variable tile sizes for dimension 1    | ``TileSizes``        | The serialized variable tile sizes for dimension 1.   |
++----------------------------------------+----------------------+-------------------------------------------------------+
+| ...                                    | ...                  | ...                                                   |
++----------------------------------------+----------------------+-------------------------------------------------------+
+| Variable tile sizes for dimension D    | ``TileSizes``        | The serialized variable tile sizes for dimension D.   |
 +----------------------------------------+----------------------+-------------------------------------------------------+
 | Footer                                 | ``Footer``           | Basic metadata.                                       |
 +----------------------------------------+----------------------+-------------------------------------------------------+
@@ -740,12 +758,12 @@ The type ``Footer`` has the following internal format:
 | Last tile               | ``uint64_t``         | For sparse arrays, the number of cells in the last     |
 | cell num                |                      | tile in the fragment.                                  |
 +-------------------------+----------------------+--------------------------------------------------------+
-| File                    | ``uint64_t[]``       | The size in bytes of each attribute file in the        |
-| sizes                   |                      | fragment, including coords. For var-length attributes, |
+| File                    | ``uint64_t[]``       | The size in bytes of each attribute and dimension file |
+| sizes                   |                      | in the fragment. For var-length attributes/dimensions, |
 |                         |                      | this is the size of the offsets file.                  |
 +-------------------------+----------------------+--------------------------------------------------------+
-| File                    | ``uint64_t[]``       | The size in bytes of each var-length attribute file in |
-| var sizes               |                      | the fragment.                                          |
+| File                    | ``uint64_t[]``       | The size in bytes of each var-length                   |
+| var sizes               |                      | attribute/dimension file the fragment.                 | 
 +-------------------------+----------------------+--------------------------------------------------------+
 | R-Tree                  | ``uint64_t``         | The offset to the generic tile storing the R-Tree in   |
 | offset                  |                      | the metadata file.                                     |
@@ -756,7 +774,15 @@ The type ``Footer`` has the following internal format:
 | ...                     | ...                  | ...                                                    |
 +-------------------------+----------------------+--------------------------------------------------------+
 | Tile offset             | ``uint64_t``         | The offset to the generic tile storing the tile        |
-| for attribute N+1       |                      | offsets for attribute N+1 (N+1 stands for coordinates. |
+| for attribute N         |                      | offsets for attribute N.                               |
++-------------------------+----------------------+--------------------------------------------------------+
+| Tile                    | ``uint64_t``         | The offset to the generic tile storing the tile        |
+| offset for dimension 1  |                      | offsets for dimension 1.                               |
++-------------------------+----------------------+--------------------------------------------------------+
+| ...                     | ...                  | ...                                                    |
++-------------------------+----------------------+--------------------------------------------------------+
+| Tile offset             | ``uint64_t``         | The offset to the generic tile storing the tile        |
+| for dimension D         |                      | offsets for dimension D.                               |
 +-------------------------+----------------------+--------------------------------------------------------+
 | Tile var                | ``uint64_t``         | The offset to the generic tile storing the variable    |
 | offset for attribute 1  |                      | tile offsets for attribute 1.                          |
@@ -766,6 +792,14 @@ The type ``Footer`` has the following internal format:
 | Tile var                | ``uint64_t``         | The offset to the generic tile storing the variable    |
 | offset for attribute N  |                      | tile offsets for attribute N.                          |
 +-------------------------+----------------------+--------------------------------------------------------+
+| Tile var                | ``uint64_t``         | The offset to the generic tile storing the variable    |
+| offset for dimension 1  |                      | tile offsets for dimension 1.                          |
++-------------------------+----------------------+--------------------------------------------------------+
+| ...                     | ...                  | ...                                                    |
++-------------------------+----------------------+--------------------------------------------------------+
+| Tile var                | ``uint64_t``         | The offset to the generic tile storing the variable    |
+| offset for dimension D  |                      | tile offsets for dimension D.                          |
++-------------------------+----------------------+--------------------------------------------------------+
 | Tile var sizes          | ``uint64_t``         | The offset to the generic tile storing the variable    |
 | offset for attribute 1  |                      | tile sizes for attribute 1.                            |
 +-------------------------+----------------------+--------------------------------------------------------+
@@ -774,56 +808,48 @@ The type ``Footer`` has the following internal format:
 | Tile var sizes          | ``uint64_t``         | The offset to the generic tile storing the variable    |
 | offset for attribute N  |                      | tile sizes for attribute N.                            |
 +-------------------------+----------------------+--------------------------------------------------------+
+| Tile var sizes          | ``uint64_t``         | The offset to the generic tile storing the variable    |
+| offset for dimension 1  |                      | tile sizes for dimension 1.                            |
++-------------------------+----------------------+--------------------------------------------------------+
+| ...                     | ...                  | ...                                                    |
++-------------------------+----------------------+--------------------------------------------------------+
+| Tile var sizes          | ``uint64_t``         | The offset to the generic tile storing the variable    |
+| offset for dimension D  |                      | tile sizes for dimension D.                            |
++-------------------------+----------------------+--------------------------------------------------------+
 
-Coords file
-~~~~~~~~~~~
+Data file
+~~~~~~~~~
 
-Within a sparse fragment, the file ``__coords.tdb`` has the following
-internal format:
+Within a fragment, each fixed-length attribute or dimension named ``attr`` or ``dim`` has a
+file ``<attr>.tdb`` or ``<dim>.tdb``, respectively, with the internal format:
 
-+-------------------------+----------------------+----------------------------------------------------+
-| **Field**               | **Type**             | **Description**                                    |
-+=========================+======================+====================================================+
-| Dim 1                   | ``DimT[]``           | Array of the first dimension values for all        |
-| coordinate              |                      | coordinate tuples of cells in the fragment.        |
-| values                  |                      |                                                    |
-+-------------------------+----------------------+----------------------------------------------------+
-| ...                     | ...                  |                                                    |
-+-------------------------+----------------------+----------------------------------------------------+
-| Dim N                   | ``DimT[]``           | Array of the nth dimension values for all          |
-| coordinate              |                      | coordinate tuples of cells in the fragment.        |
-| values                  |                      |                                                    |
-+-------------------------+----------------------+----------------------------------------------------+
++----------------------------+----------------------+----------------------------------------------+
+| **Field**                  | **Type**             | **Description**                              |
++============================+======================+==============================================+
+| Attribute/dimension values | ``T[]``              | Array of the attribute/dimension values for  | 
+|                            |                      | all cells.                                   |
++----------------------------+----------------------+----------------------------------------------+
 
-Attribute file
-~~~~~~~~~~~~~~
-
-Within a fragment, each fixed-length attribute named ``<attr>`` has a
-file ``<attr>.tdb`` with the internal format:
-
-+-------------------------+----------------------+----------------------------------------------+
-| **Field**               | **Type**             | **Description**                              |
-+=========================+======================+==============================================+
-| Attribute values        | ``AttrT[]``          | Array of the attribute values for all cells. |
-+-------------------------+----------------------+----------------------------------------------+
-
-Each var-length attribute named ``<attr>`` has two files,
-``<attr>_var.tdb`` storing the variable-length data for the attribute in
-each cell, and ``<attr>.tdb`` storing the offsets in ``<attr_var>.tdb``
-for the data belonging to each cell. ``<attr>.tdb`` has the internal
-format:
+Each var-length attribute ``attr`` or dimension ``dim`` has two files,
+``<attr>_var.tdb`` or ``<dim>_var.tdb`` storing the variable-length data for the 
+attribute/dimension in each cell, and ``<attr>.tdb`` or ``<dim>.tdb`` storing the 
+offsets in ``<attr>_var.tdb`` or
+``<dim>_var.tdb`` respectively, for the data belonging to each cell. 
+``<attr>.tdb`` and ``<dim>.tdb`` have the following internal format:
 
 +-------------------------+----------------------+---------------------------------------------------+
 | **Field**               | **Type**             | **Description**                                   |
 +=========================+======================+===================================================+
-| Attribute               | ``uint64_t``         | Array of the attribute value offsets in           |
-| offsets                 |                      | corresponding file ``<attr>_var.tdb``.            |
+| Attribute/Dimension     | ``uint64_t[]``       | Array of the attribute/dimension value offsets in |
+| offsets                 |                      | corresponding file                                |
+|                         |                      | ``<attr>_var.tdb`` / ``<dim>_var.tdb``            |
 +-------------------------+----------------------+---------------------------------------------------+
 
-And ``<attr>_var.tdb`` has the format:
+And ``<attr>_var.tdb`` / ``<dim>_var.tdb`` have format:
 
-+-------------------------+----------------------+----------------------------------------------+
-| **Field**               | **Type**             | **Description**                              |
-+=========================+======================+==============================================+
-| Attribute values        | ``AttrT[]``          | Array of the attribute values for all cells. |
-+-------------------------+----------------------+----------------------------------------------+
++-----------------------------+----------------------+----------------------------------------------+
+| **Field**                   | **Type**             | **Description**                              |
++=============================+======================+==============================================+
+| Attribute/Dimension values  | ``T[]``              | Array of the attribute/dimension values      |
+|                             |                      | for all cells.                               |
++-----------------------------+----------------------+----------------------------------------------+

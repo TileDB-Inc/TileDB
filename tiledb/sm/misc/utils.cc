@@ -33,6 +33,7 @@
 
 #include "tiledb/sm/misc/utils.h"
 #include "tiledb/sm/misc/logger.h"
+#include "tiledb/sm/misc/parallel_functions.h"
 
 #include <iostream>
 #include <set>
@@ -44,13 +45,6 @@
 #else
 #include <sys/time.h>
 #endif
-
-/* ****************************** */
-/*             MACROS             */
-/* ****************************** */
-
-#define MIN(a, b) ((a) < (b) ? (a) : (b))
-#define MAX(a, b) ((a) > (b) ? (a) : (b))
 
 namespace tiledb {
 namespace sm {
@@ -612,6 +606,25 @@ void expand_mbr(T* mbr, const T* coords, unsigned int dim_num) {
 }
 
 template <class T>
+void expand_mbr(
+    const std::vector<const T*>& coords, uint64_t start, uint64_t end, T* mbr) {
+  auto dim_num = (unsigned)coords.size();
+
+  auto statuses = parallel_for(0, dim_num, [&](uint64_t d) {
+    for (uint64_t i = start; i <= end; ++i) {
+      // Update lower bound on dimension i
+      if (mbr[2 * d] > coords[d][i])
+        mbr[2 * d] = coords[d][i];
+
+      // Update upper bound on dimension i
+      if (mbr[2 * d + 1] < coords[d][i])
+        mbr[2 * d + 1] = coords[d][i];
+    }
+    return Status::Ok();
+  });
+}
+
+template <class T>
 void expand_mbr_with_mbr(T* mbr_a, const T* mbr_b, unsigned int dim_num) {
   for (unsigned int i = 0; i < dim_num; ++i) {
     // Update lower bound on dimension i
@@ -853,6 +866,57 @@ template void expand_mbr<uint32_t>(
     uint32_t* mbr, const uint32_t* coords, unsigned int dim_num);
 template void expand_mbr<uint64_t>(
     uint64_t* mbr, const uint64_t* coords, unsigned int dim_num);
+
+template void expand_mbr<int8_t>(
+    const std::vector<const int8_t*>& coords,
+    uint64_t start,
+    uint64_t end,
+    int8_t* mbr);
+template void expand_mbr<uint8_t>(
+    const std::vector<const uint8_t*>& coords,
+    uint64_t start,
+    uint64_t end,
+    uint8_t* mbr);
+template void expand_mbr<int16_t>(
+    const std::vector<const int16_t*>& coords,
+    uint64_t start,
+    uint64_t end,
+    int16_t* mbr);
+template void expand_mbr<uint16_t>(
+    const std::vector<const uint16_t*>& coords,
+    uint64_t start,
+    uint64_t end,
+    uint16_t* mbr);
+template void expand_mbr<int32_t>(
+    const std::vector<const int32_t*>& coords,
+    uint64_t start,
+    uint64_t end,
+    int32_t* mbr);
+template void expand_mbr<uint32_t>(
+    const std::vector<const uint32_t*>& coords,
+    uint64_t start,
+    uint64_t end,
+    uint32_t* mbr);
+template void expand_mbr<int64_t>(
+    const std::vector<const int64_t*>& coords,
+    uint64_t start,
+    uint64_t end,
+    int64_t* mbr);
+template void expand_mbr<uint64_t>(
+    const std::vector<const uint64_t*>& coords,
+    uint64_t start,
+    uint64_t end,
+    uint64_t* mbr);
+template void expand_mbr<float>(
+    const std::vector<const float*>& coords,
+    uint64_t start,
+    uint64_t end,
+    float* mbr);
+template void expand_mbr<double>(
+    const std::vector<const double*>& coords,
+    uint64_t start,
+    uint64_t end,
+    double* mbr);
 
 template void expand_mbr_with_mbr<int>(
     int* mbr_a, const int* mbr_b, unsigned int dim_num);

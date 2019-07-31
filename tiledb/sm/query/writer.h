@@ -474,6 +474,20 @@ class Writer {
       const std::vector<Tile>& tiles, FragmentMetadata* meta) const;
 
   /**
+   * Computes the coordinates metadata (e.g., MBRs).
+   *
+   * @tparam T The domain type.
+   * @param tiles The tiles to calculate the coords metadata from. There
+   *     is one tile vector per dimension, along with the dimension name.
+   * @param meta The fragment metadata that will store the coords metadata.
+   * @return Status
+   */
+  template <class T>
+  Status compute_coords_metadata(
+      const std::vector<std::pair<std::string, std::vector<Tile>>>& tiles,
+      FragmentMetadata* meta) const;
+
+  /**
    * Computes the cell ranges to be written, derived from a
    * dense cell range iterator for a specific tile.
    *
@@ -778,6 +792,24 @@ class Writer {
       const std::set<uint64_t>& coord_dups,
       std::vector<Tile>* tiles) const;
 
+  /**
+   * It prepares the coordinate tiles, re-organizing the cells from the query
+   * buffers based on the input sorted positions.
+   *
+   * @param name The name of the attribute/dimension to prepare the tiles for.
+   * @param cell_pos The positions that resulted from sorting and
+   *     according to which the cells must be re-arranged.
+   * @param coord_dups The set with the positions
+   *     of duplicate coordinates/cells.
+   * @param tiles The tiles to be created. There is one tile vector
+   *     per dimension, along with its name.
+   * @return Status
+   */
+  Status prepare_coord_tiles(
+      const std::vector<uint64_t>& cell_pos,
+      const std::set<uint64_t>& coord_dups,
+      std::vector<std::pair<std::string, std::vector<Tile>>>* tiles) const;
+
   /** Resets the writer, rendering it incomplete. */
   void reset();
 
@@ -816,6 +848,17 @@ class Writer {
   Status write_all_tiles(
       FragmentMetadata* frag_meta,
       const std::vector<std::vector<Tile>>& tiles) const;
+
+  /**
+   * Writes all the input tiles to storage.
+   *
+   * @param tiles Tiles to be written, one element per attribute/dimension.
+   * @return Status
+   */
+  Status write_all_tiles(
+      FragmentMetadata* frag_meta,
+      const std::vector<std::pair<std::string, std::vector<Tile>>>& tiles)
+      const;
 
   /**
    * Writes the input cell range to the input tile, for a particular

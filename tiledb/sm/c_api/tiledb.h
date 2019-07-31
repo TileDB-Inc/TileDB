@@ -2198,7 +2198,7 @@ TILEDB_EXPORT void tiledb_dimension_free(tiledb_dimension_t** dim);
  * @endcode
  *
  * @param ctx The TileDB context.
- * @param aim The dimension.
+ * @param dim The dimension.
  * @param cell_val_num The number of values per cell to be retrieved.
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
