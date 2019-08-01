@@ -54,7 +54,6 @@ struct ResultTile {
    * offsets tile and the second is the var-sized values tile.
    */
   typedef std::pair<Tile, Tile> TilePair;
-
   /** The id of the fragment this tile belongs to. */
   unsigned frag_idx_ = UINT32_MAX;
   /** The id of the tile (which helps locating the physical attribute/dimension

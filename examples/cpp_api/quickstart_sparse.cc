@@ -56,6 +56,8 @@ void create_array() {
   ArraySchema schema(ctx, TILEDB_SPARSE);
   schema.set_domain(domain).set_order({{TILEDB_ROW_MAJOR, TILEDB_ROW_MAJOR}});
 
+  schema.set_capacity(2);
+
   // Add a single attribute "a" so each (i,j) cell can store an integer.
   schema.add_attribute(Attribute::create<int>(ctx, "a"));
 
@@ -126,6 +128,7 @@ int main() {
     write_array();
   }
 
-  //  read_array();
+  read_array();
+
   return 0;
 }

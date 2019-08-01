@@ -455,7 +455,9 @@ Status FragmentMetadata::load(const EncryptionKey& encryption_key) {
     case 2:
       return load_v2(encryption_key);
     case 3:
-      return load_v3(encryption_key);
+      return load_footer_v3(encryption_key);
+    case 4:
+      return load_footer_v4(encryption_key);
     default:
       return LOG_STATUS(Status::FragmentMetadataError(
           "Cannot load metadata; Unsupported array version"));
@@ -719,7 +721,7 @@ bool FragmentMetadata::operator<(const FragmentMetadata& metadata) const {
 /*        PRIVATE METHODS         */
 /* ****************************** */
 
-Status FragmentMetadata::get_footer_offset_and_size(
+Status FragmentMetadata::get_footer_offset_and_size_v3(
     uint64_t* offset, uint64_t* size) const {
   auto attribute_num = array_schema_->attribute_num();
   auto domain_size = 2 * array_schema_->coords_size();
@@ -738,6 +740,34 @@ Status FragmentMetadata::get_footer_offset_and_size(
   *size += (attribute_num + 1) * sizeof(uint64_t);  // tile offsets
   *size += attribute_num * sizeof(uint64_t);        // tile var offsets
   *size += attribute_num * sizeof(uint64_t);        // tile var sizes
+
+  // Get footer offset
+  *offset = meta_file_size_ - *size;
+
+  return Status::Ok();
+}
+
+Status FragmentMetadata::get_footer_offset_and_size_v4(
+    uint64_t* offset, uint64_t* size) const {
+  auto attribute_num = array_schema_->attribute_num();
+  auto dim_num = array_schema_->dim_num();
+  auto num = attribute_num + dim_num;
+  auto domain_size = 2 * array_schema_->coords_size();
+
+  // Get footer size
+  *size = 0;
+  *size += sizeof(uint32_t);        // version
+  *size += sizeof(char);            // dense
+  *size += sizeof(char);            // null non-empty domain
+  *size += domain_size;             // non-empty domain
+  *size += sizeof(uint64_t);        // sparse tile num
+  *size += sizeof(uint64_t);        // last tile cell num
+  *size += num * sizeof(uint64_t);  // file sizes
+  *size += num * sizeof(uint64_t);  // file var sizes
+  *size += sizeof(uint64_t);        // R-Tree offset
+  *size += num * sizeof(uint64_t);  // tile offsets
+  *size += num * sizeof(uint64_t);  // tile var offsets
+  *size += num * sizeof(uint64_t);  // tile var sizes
 
   // Get footer offset
   *offset = meta_file_size_ - *size;
@@ -902,66 +932,67 @@ Status FragmentMetadata::load_rtree(const EncryptionKey& encryption_key) {
 }
 
 Status FragmentMetadata::load_tile_offsets(
-    const EncryptionKey& encryption_key, unsigned attr_id) {
+    const EncryptionKey& encryption_key, unsigned id) {
   if (version_ <= 2)
     return Status::Ok();
 
   std::lock_guard<std::mutex> lock(mtx_);
 
-  if (loaded_metadata_.tile_offsets_[attr_id])
+  if (loaded_metadata_.tile_offsets_[id])
     return Status::Ok();
 
   Buffer buff;
   RETURN_NOT_OK(read_generic_tile_from_file(
-      encryption_key, gt_offsets_.tile_offsets_[attr_id], &buff));
+      encryption_key, gt_offsets_.tile_offsets_[id], &buff));
   ConstBuffer cbuff(&buff);
-  RETURN_NOT_OK(load_tile_offsets(attr_id, &cbuff));
 
-  loaded_metadata_.tile_offsets_[attr_id] = true;
+  RETURN_NOT_OK(load_tile_offsets(id, &cbuff));
+
+  loaded_metadata_.tile_offsets_[id] = true;
 
   return Status::Ok();
 }
 
 Status FragmentMetadata::load_tile_var_offsets(
-    const EncryptionKey& encryption_key, unsigned attr_id) {
+    const EncryptionKey& encryption_key, unsigned id) {
   if (version_ <= 2)
     return Status::Ok();
 
   std::lock_guard<std::mutex> lock(mtx_);
 
-  if (loaded_metadata_.tile_var_offsets_[attr_id])
+  if (loaded_metadata_.tile_var_offsets_[id])
     return Status::Ok();
 
   Buffer buff;
   RETURN_NOT_OK(read_generic_tile_from_file(
-      encryption_key, gt_offsets_.tile_var_offsets_[attr_id], &buff));
+      encryption_key, gt_offsets_.tile_var_offsets_[id], &buff));
 
   ConstBuffer cbuff(&buff);
-  RETURN_NOT_OK(load_tile_var_offsets(attr_id, &cbuff));
+  RETURN_NOT_OK(load_tile_var_offsets(id, &cbuff));
 
-  loaded_metadata_.tile_var_offsets_[attr_id] = true;
+  loaded_metadata_.tile_var_offsets_[id] = true;
 
   return Status::Ok();
 }
 
 Status FragmentMetadata::load_tile_var_sizes(
-    const EncryptionKey& encryption_key, unsigned attr_id) {
+    const EncryptionKey& encryption_key, unsigned id) {
   if (version_ <= 2)
     return Status::Ok();
 
   std::lock_guard<std::mutex> lock(mtx_);
 
-  if (loaded_metadata_.tile_var_sizes_[attr_id])
+  if (loaded_metadata_.tile_var_sizes_[id])
     return Status::Ok();
 
   Buffer buff;
   RETURN_NOT_OK(read_generic_tile_from_file(
-      encryption_key, gt_offsets_.tile_var_sizes_[attr_id], &buff));
+      encryption_key, gt_offsets_.tile_var_sizes_[id], &buff));
 
   ConstBuffer cbuff(&buff);
-  RETURN_NOT_OK(load_tile_var_sizes(attr_id, &cbuff));
+  RETURN_NOT_OK(load_tile_var_sizes(id, &cbuff));
 
-  loaded_metadata_.tile_var_sizes_[attr_id] = true;
+  loaded_metadata_.tile_var_sizes_[id] = true;
 
   return Status::Ok();
 }
@@ -1001,8 +1032,8 @@ Status FragmentMetadata::load_bounding_coords(ConstBuffer* buff) {
 // file_sizes_attr#0 (uint64_t)
 // ...
 // file_sizes_attr#attribute_num (uint64_t)
-Status FragmentMetadata::load_file_sizes(ConstBuffer* buff) {
-  unsigned int attribute_num = array_schema_->attribute_num();
+Status FragmentMetadata::load_file_sizes_v1_to_3(ConstBuffer* buff) {
+  auto attribute_num = array_schema_->attribute_num();
   file_sizes_.resize(attribute_num + 1);
   Status st =
       buff->read(&file_sizes_[0], (attribute_num + 1) * sizeof(uint64_t));
@@ -1016,13 +1047,57 @@ Status FragmentMetadata::load_file_sizes(ConstBuffer* buff) {
 }
 
 // ===== FORMAT =====
-// file_sizes_attr#0 (uint64_t)
+// file_sizes_attr#1 (uint64_t)
 // ...
 // file_sizes_attr#attribute_num (uint64_t)
-Status FragmentMetadata::load_file_var_sizes(ConstBuffer* buff) {
+// file_sizes_dim#1 (uint64_t)
+// ...
+// file_sizes_dim#dim_num (uint64_t)
+Status FragmentMetadata::load_file_sizes_v4(ConstBuffer* buff) {
+  auto attribute_num = array_schema_->attribute_num();
+  auto dim_num = array_schema_->dim_num();
+  auto num = attribute_num + dim_num;
+  file_sizes_.resize(num);
+  Status st = buff->read(&file_sizes_[0], num * sizeof(uint64_t));
+
+  if (!st.ok()) {
+    return LOG_STATUS(Status::FragmentMetadataError(
+        "Cannot load fragment metadata; Reading tile offsets failed"));
+  }
+
+  return Status::Ok();
+}
+
+// ===== FORMAT =====
+// file_var_sizes_attr#1 (uint64_t)
+// ...
+// file_var_sizes_attr#attribute_num (uint64_t)
+Status FragmentMetadata::load_file_var_sizes_v1_to_3(ConstBuffer* buff) {
   unsigned int attribute_num = array_schema_->attribute_num();
   file_var_sizes_.resize(attribute_num);
   Status st = buff->read(&file_var_sizes_[0], attribute_num * sizeof(uint64_t));
+
+  if (!st.ok()) {
+    return LOG_STATUS(Status::FragmentMetadataError(
+        "Cannot load fragment metadata; Reading tile offsets failed"));
+  }
+
+  return Status::Ok();
+}
+
+// ===== FORMAT =====
+// file_var_sizes_attr#1 (uint64_t)
+// ...
+// file_var_sizes_attr#attribute_num (uint64_t)
+// file_var_sizes_dim#1 (uint64_t)
+// ...
+// file_var_sizes_dim#dim_num (uint64_t)
+Status FragmentMetadata::load_file_var_sizes_v4(ConstBuffer* buff) {
+  auto attribute_num = array_schema_->attribute_num();
+  auto dim_num = array_schema_->dim_num();
+  auto num = attribute_num + dim_num;
+  file_var_sizes_.resize(num);
+  Status st = buff->read(&file_var_sizes_[0], num * sizeof(uint64_t));
 
   if (!st.ok()) {
     return LOG_STATUS(Status::FragmentMetadataError(
@@ -1196,8 +1271,7 @@ Status FragmentMetadata::load_tile_offsets(ConstBuffer* buff) {
   return Status::Ok();
 }
 
-Status FragmentMetadata::load_tile_offsets(
-    unsigned attr_id, ConstBuffer* buff) {
+Status FragmentMetadata::load_tile_offsets(unsigned id, ConstBuffer* buff) {
   Status st;
   uint64_t tile_offsets_num = 0;
 
@@ -1211,9 +1285,8 @@ Status FragmentMetadata::load_tile_offsets(
 
   // Get tile offsets
   if (tile_offsets_num != 0) {
-    tile_offsets_[attr_id].resize(tile_offsets_num);
-    st = buff->read(
-        &tile_offsets_[attr_id][0], tile_offsets_num * sizeof(uint64_t));
+    tile_offsets_[id].resize(tile_offsets_num);
+    st = buff->read(&tile_offsets_[id][0], tile_offsets_num * sizeof(uint64_t));
     if (!st.ok()) {
       return LOG_STATUS(Status::FragmentMetadataError(
           "Cannot load fragment metadata; Reading tile offsets failed"));
@@ -1269,8 +1342,7 @@ Status FragmentMetadata::load_tile_var_offsets(ConstBuffer* buff) {
   return Status::Ok();
 }
 
-Status FragmentMetadata::load_tile_var_offsets(
-    unsigned attr_id, ConstBuffer* buff) {
+Status FragmentMetadata::load_tile_var_offsets(unsigned id, ConstBuffer* buff) {
   Status st;
   uint64_t tile_var_offsets_num = 0;
 
@@ -1284,10 +1356,9 @@ Status FragmentMetadata::load_tile_var_offsets(
 
   // Get variable tile offsets
   if (tile_var_offsets_num != 0) {
-    tile_var_offsets_[attr_id].resize(tile_var_offsets_num);
+    tile_var_offsets_[id].resize(tile_var_offsets_num);
     st = buff->read(
-        &tile_var_offsets_[attr_id][0],
-        tile_var_offsets_num * sizeof(uint64_t));
+        &tile_var_offsets_[id][0], tile_var_offsets_num * sizeof(uint64_t));
     if (!st.ok()) {
       return LOG_STATUS(Status::FragmentMetadataError(
           "Cannot load fragment metadata; Reading variable tile offsets "
@@ -1342,8 +1413,7 @@ Status FragmentMetadata::load_tile_var_sizes(ConstBuffer* buff) {
   return Status::Ok();
 }
 
-Status FragmentMetadata::load_tile_var_sizes(
-    unsigned attr_id, ConstBuffer* buff) {
+Status FragmentMetadata::load_tile_var_sizes(unsigned id, ConstBuffer* buff) {
   Status st;
   uint64_t tile_var_sizes_num = 0;
 
@@ -1357,9 +1427,9 @@ Status FragmentMetadata::load_tile_var_sizes(
 
   // Get variable tile sizes
   if (tile_var_sizes_num != 0) {
-    tile_var_sizes_[attr_id].resize(tile_var_sizes_num);
+    tile_var_sizes_[id].resize(tile_var_sizes_num);
     st = buff->read(
-        &tile_var_sizes_[attr_id][0], tile_var_sizes_num * sizeof(uint64_t));
+        &tile_var_sizes_[id][0], tile_var_sizes_num * sizeof(uint64_t));
     if (!st.ok()) {
       return LOG_STATUS(Status::FragmentMetadataError(
           "Cannot load fragment metadata; Reading variable tile sizes "
@@ -1408,7 +1478,7 @@ Status FragmentMetadata::get_generic_tile_size(
   return Status::Ok();
 }
 
-Status FragmentMetadata::load_generic_tile_offsets(ConstBuffer* buff) {
+Status FragmentMetadata::load_generic_tile_offsets_v3(ConstBuffer* buff) {
   // Load R-Tree offset
   RETURN_NOT_OK(buff->read(&gt_offsets_.rtree_, sizeof(uint64_t)));
 
@@ -1429,6 +1499,37 @@ Status FragmentMetadata::load_generic_tile_offsets(ConstBuffer* buff) {
   // Load offsets for tile var sizes
   gt_offsets_.tile_var_sizes_.resize(attribute_num);
   for (unsigned i = 0; i < attribute_num; ++i) {
+    RETURN_NOT_OK(
+        buff->read(&gt_offsets_.tile_var_sizes_[i], sizeof(uint64_t)));
+  }
+
+  return Status::Ok();
+}
+
+Status FragmentMetadata::load_generic_tile_offsets_v4(ConstBuffer* buff) {
+  // Load R-Tree offset
+  RETURN_NOT_OK(buff->read(&gt_offsets_.rtree_, sizeof(uint64_t)));
+
+  auto attribute_num = array_schema_->attribute_num();
+  auto dim_num = array_schema_->dim_num();
+  auto num = attribute_num + dim_num;
+
+  // Load offsets for tile offsets
+  gt_offsets_.tile_offsets_.resize(num);
+  for (unsigned i = 0; i < num; ++i) {
+    RETURN_NOT_OK(buff->read(&gt_offsets_.tile_offsets_[i], sizeof(uint64_t)));
+  }
+
+  // Load offsets for tile var offsets
+  gt_offsets_.tile_var_offsets_.resize(num);
+  for (unsigned i = 0; i < num; ++i) {
+    RETURN_NOT_OK(
+        buff->read(&gt_offsets_.tile_var_offsets_[i], sizeof(uint64_t)));
+  }
+
+  // Load offsets for tile var sizes
+  gt_offsets_.tile_var_sizes_.resize(num);
+  for (unsigned i = 0; i < num; ++i) {
     RETURN_NOT_OK(
         buff->read(&gt_offsets_.tile_var_sizes_[i], sizeof(uint64_t)));
   }
@@ -1459,8 +1560,8 @@ Status FragmentMetadata::load_v2(const EncryptionKey& encryption_key) {
   RETURN_NOT_OK(load_tile_var_offsets(&cbuff));
   RETURN_NOT_OK(load_tile_var_sizes(&cbuff));
   RETURN_NOT_OK(load_last_tile_cell_num(&cbuff));
-  RETURN_NOT_OK(load_file_sizes(&cbuff));
-  RETURN_NOT_OK(load_file_var_sizes(&cbuff));
+  RETURN_NOT_OK(load_file_sizes_v1_to_3(&cbuff));
+  RETURN_NOT_OK(load_file_var_sizes_v1_to_3(&cbuff));
   RETURN_NOT_OK(create_rtree());
 
   delete buff;
@@ -1468,12 +1569,7 @@ Status FragmentMetadata::load_v2(const EncryptionKey& encryption_key) {
   return Status::Ok();
 }
 
-Status FragmentMetadata::load_v3(const EncryptionKey& encryption_key) {
-  RETURN_NOT_OK(load_footer(encryption_key));
-  return Status::Ok();
-}
-
-Status FragmentMetadata::load_footer(const EncryptionKey& encryption_key) {
+Status FragmentMetadata::load_footer_v3(const EncryptionKey& encryption_key) {
   (void)encryption_key;  // Not used for now, perhaps in the future
 
   std::lock_guard<std::mutex> lock(mtx_);
@@ -1482,7 +1578,7 @@ Status FragmentMetadata::load_footer(const EncryptionKey& encryption_key) {
     return Status::Ok();
 
   Buffer buff;
-  RETURN_NOT_OK(read_file_footer(&buff));
+  RETURN_NOT_OK(read_file_footer_v3(&buff));
 
   ConstBuffer cbuff(&buff);
   RETURN_NOT_OK(load_version(&cbuff));
@@ -1490,8 +1586,8 @@ Status FragmentMetadata::load_footer(const EncryptionKey& encryption_key) {
   RETURN_NOT_OK(load_non_empty_domain(&cbuff));
   RETURN_NOT_OK(load_sparse_tile_num(&cbuff));
   RETURN_NOT_OK(load_last_tile_cell_num(&cbuff));
-  RETURN_NOT_OK(load_file_sizes(&cbuff));
-  RETURN_NOT_OK(load_file_var_sizes(&cbuff));
+  RETURN_NOT_OK(load_file_sizes_v1_to_3(&cbuff));
+  RETURN_NOT_OK(load_file_var_sizes_v1_to_3(&cbuff));
 
   tile_offsets_.resize(array_schema_->attribute_num() + 1);
   tile_var_offsets_.resize(array_schema_->attribute_num());
@@ -1504,7 +1600,46 @@ Status FragmentMetadata::load_footer(const EncryptionKey& encryption_key) {
   loaded_metadata_.tile_var_sizes_.resize(
       array_schema_->attribute_num(), false);
 
-  RETURN_NOT_OK(load_generic_tile_offsets(&cbuff));
+  RETURN_NOT_OK(load_generic_tile_offsets_v3(&cbuff));
+
+  loaded_metadata_.footer_ = true;
+
+  return Status::Ok();
+}
+
+Status FragmentMetadata::load_footer_v4(const EncryptionKey& encryption_key) {
+  (void)encryption_key;  // Not used for now, perhaps in the future
+
+  std::lock_guard<std::mutex> lock(mtx_);
+
+  if (loaded_metadata_.footer_)
+    return Status::Ok();
+
+  Buffer buff;
+  RETURN_NOT_OK(read_file_footer_v4(&buff));
+
+  ConstBuffer cbuff(&buff);
+  RETURN_NOT_OK(load_version(&cbuff));
+  RETURN_NOT_OK(load_dense(&cbuff));
+  RETURN_NOT_OK(load_non_empty_domain(&cbuff));
+  RETURN_NOT_OK(load_sparse_tile_num(&cbuff));
+  RETURN_NOT_OK(load_last_tile_cell_num(&cbuff));
+  RETURN_NOT_OK(load_file_sizes_v4(&cbuff));
+  RETURN_NOT_OK(load_file_var_sizes_v4(&cbuff));
+
+  auto attribute_num = array_schema_->attribute_num();
+  auto dim_num = array_schema_->dim_num();
+  auto num = attribute_num + dim_num;
+
+  tile_offsets_.resize(num);
+  tile_var_offsets_.resize(num);
+  tile_var_sizes_.resize(num);
+
+  loaded_metadata_.tile_offsets_.resize(num, false);
+  loaded_metadata_.tile_var_offsets_.resize(num, false);
+  loaded_metadata_.tile_var_sizes_.resize(num, false);
+
+  RETURN_NOT_OK(load_generic_tile_offsets_v4(&cbuff));
 
   loaded_metadata_.footer_ = true;
 
@@ -1726,13 +1861,26 @@ Status FragmentMetadata::read_generic_tile_from_file(
   return Status::Ok();
 }
 
-Status FragmentMetadata::read_file_footer(Buffer* buff) const {
+Status FragmentMetadata::read_file_footer_v3(Buffer* buff) const {
   URI fragment_metadata_uri = fragment_uri_.join_path(
       std::string(constants::fragment_metadata_filename));
 
   // Get footer offset
   uint64_t footer_offset = 0, footer_size = 0;
-  RETURN_NOT_OK(get_footer_offset_and_size(&footer_offset, &footer_size));
+  RETURN_NOT_OK(get_footer_offset_and_size_v3(&footer_offset, &footer_size));
+
+  // Read footer
+  return storage_manager_->read(
+      fragment_metadata_uri, footer_offset, buff, footer_size);
+}
+
+Status FragmentMetadata::read_file_footer_v4(Buffer* buff) const {
+  URI fragment_metadata_uri = fragment_uri_.join_path(
+      std::string(constants::fragment_metadata_filename));
+
+  // Get footer offset
+  uint64_t footer_offset = 0, footer_size = 0;
+  RETURN_NOT_OK(get_footer_offset_and_size_v4(&footer_offset, &footer_size));
 
   // Read footer
   return storage_manager_->read(

@@ -2210,10 +2210,10 @@ Status Writer::prepare_coord_tiles(
   if (dups_num == 0) {
     auto statuses = parallel_for(0, dim_num, [&](uint64_t d) {
       for (uint64_t i = 0, tile_idx = 0; i < cell_num; ++i) {
-        auto& coord_tile = (*tiles)[d].second[tile_idx];
-        if (coord_tile.full())
+        if ((*tiles)[d].second[tile_idx].full())
           ++tile_idx;
 
+        auto& coord_tile = (*tiles)[d].second[tile_idx];
         RETURN_NOT_OK(coord_tile.write(
             buffer + cell_pos[i] * coords_size +
                 d * array_schema_->coord_offset(d),
@@ -2231,10 +2231,10 @@ Status Writer::prepare_coord_tiles(
         if (coord_dups.find(cell_pos[i]) != coord_dups.end())
           continue;
 
-        auto& coord_tile = (*tiles)[d].second[tile_idx];
-        if (coord_tile.full())
+        if ((*tiles)[d].second[tile_idx].full())
           ++tile_idx;
 
+        auto& coord_tile = (*tiles)[d].second[tile_idx];
         RETURN_NOT_OK(coord_tile.write(
             buffer + cell_pos[i] * coords_size +
                 d * array_schema_->coord_offset(d),

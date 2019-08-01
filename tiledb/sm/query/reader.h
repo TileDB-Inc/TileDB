@@ -970,6 +970,13 @@ class Reader {
       const std::vector<ResultTile*>& result_tiles) const;
 
   /**
+   * Retrieves the tiles of all dimensions and zips them into
+   * single tiles of coordinate tuples, stored in `result_tiles`.
+   */
+  Status read_filter_and_zip_coord_tiles(
+      const std::vector<ResultTile*>& result_tiles) const;
+
+  /**
    * Retrieves the tiles on a particular attribute/dimension and stores it in
    * the appropriate result tile.
    *

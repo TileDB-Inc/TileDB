@@ -592,8 +592,16 @@ class FragmentMetadata {
   /**
    * Retrieves the offset in the fragment metadata file of the footer
    * (which contains the generic tile offsets) along with its size.
+   * Applicable to format version 3.
    */
-  Status get_footer_offset_and_size(uint64_t* offset, uint64_t* size) const;
+  Status get_footer_offset_and_size_v3(uint64_t* offset, uint64_t* size) const;
+
+  /**
+   * Retrieves the offset in the fragment metadata file of the footer
+   * (which contains the generic tile offsets) along with its size.
+   * Applicable to format version 4.
+   */
+  Status get_footer_offset_and_size_v4(uint64_t* offset, uint64_t* size) const;
 
   /**
    * Returns the ids (positions) of the tiles overlapping `subarray`.
@@ -630,20 +638,36 @@ class FragmentMetadata {
   /** Loads the R-tree from storage. */
   Status load_rtree(const EncryptionKey& encryption_key);
 
-  /** Loads the tile offsets for the input attribute from storage. */
-  Status load_tile_offsets(
-      const EncryptionKey& encryption_key, unsigned attr_id);
+  /**
+   * Loads the tile offsets from storage for the attribute/dimension with
+   * the input id.
+   */
+  Status load_tile_offsets(const EncryptionKey& encryption_key, unsigned id);
 
-  /** Loads the variable tile offsets for the input attribute from storage. */
+  /**
+   * Loads the variable tile offsets from storage for the attribute/dimension
+   * with the input id.
+   */
   Status load_tile_var_offsets(
-      const EncryptionKey& encryption_key, unsigned attr_id);
+      const EncryptionKey& encryption_key, unsigned id);
 
-  /** Loads the variable tile sizes for the input attribute from storage. */
-  Status load_tile_var_sizes(
-      const EncryptionKey& encryption_key, unsigned attr_id);
+  /**
+   * Loads the variable tile sizes from storage for the attribute/dimension
+   * with the input id.
+   */
+  Status load_tile_var_sizes(const EncryptionKey& encryption_key, unsigned id);
 
-  /** Loads the generic tile offsets from the buffer. */
-  Status load_generic_tile_offsets(ConstBuffer* buff);
+  /**
+   * Loads the generic tile offsets from the buffer.
+   * Applicable to format version 3.
+   */
+  Status load_generic_tile_offsets_v3(ConstBuffer* buff);
+
+  /**
+   * Loads the generic tile offsets from the buffer.
+   * Applicable to format version 4.
+   */
+  Status load_generic_tile_offsets_v4(ConstBuffer* buff);
 
   /**
    * Loads the bounding coordinates from the fragment metadata buffer.
@@ -653,11 +677,29 @@ class FragmentMetadata {
    */
   Status load_bounding_coords(ConstBuffer* buff);
 
-  /** Loads the sizes of each attribute file from the buffer. */
-  Status load_file_sizes(ConstBuffer* buff);
+  /**
+   * Loads the sizes of each attribute file from the buffer.
+   * Applicable to format versions 1 to 3.
+   */
+  Status load_file_sizes_v1_to_3(ConstBuffer* buff);
 
-  /** Loads the sizes of each variable attribute file from the buffer. */
-  Status load_file_var_sizes(ConstBuffer* buff);
+  /**
+   * Loads the sizes of each attribute file from the buffer.
+   * Applicable to format version 4.
+   */
+  Status load_file_sizes_v4(ConstBuffer* buff);
+
+  /**
+   * Loads the sizes of each variable attribute file from the buffer.
+   * Applicable to format versions 1 to 3.
+   */
+  Status load_file_var_sizes_v1_to_3(ConstBuffer* buff);
+
+  /**
+   * Loads the sizes of each variable attribute file from the buffer.
+   * Applicable to format version 4.
+   */
+  Status load_file_var_sizes_v4(ConstBuffer* buff);
 
   /**
    * Loads the cell number of the last tile from the fragment metadata buffer.
@@ -707,9 +749,10 @@ class FragmentMetadata {
   Status load_tile_offsets(ConstBuffer* buff);
 
   /**
-   * Loads the tile offsets for the input attribute from the input buffer.
+   * Loads the tile offsets from the input buffer for the attribute/dimension
+   * with the input id.
    */
-  Status load_tile_offsets(unsigned attr_id, ConstBuffer* buff);
+  Status load_tile_offsets(unsigned id, ConstBuffer* buff);
 
   /**
    * Loads the variable tile offsets from the fragment metadata buffer.
@@ -720,9 +763,10 @@ class FragmentMetadata {
   Status load_tile_var_offsets(ConstBuffer* buff);
 
   /**
-   * Loads the variable tile offsets for the input attribute from the buffer.
+   * Loads the variable tile sizes from the input buffer for the
+   * attribute/dimension with the input id.
    */
-  Status load_tile_var_offsets(unsigned attr_id, ConstBuffer* buff);
+  Status load_tile_var_offsets(unsigned id, ConstBuffer* buff);
 
   /**
    * Loads the variable tile sizes from the fragment metadata.
@@ -733,9 +777,10 @@ class FragmentMetadata {
   Status load_tile_var_sizes(ConstBuffer* buff);
 
   /**
-   * Loads the variable tile sizes for the input attribute from the buffer.
+   * Loads the variable tile sizes from the input buffer for the
+   * attribute/dimension with the input id.
    */
-  Status load_tile_var_sizes(unsigned attr_id, ConstBuffer* buff);
+  Status load_tile_var_sizes(unsigned id, ConstBuffer* buff);
 
   /** Loads the format version from the buffer. */
   Status load_version(ConstBuffer* buff);
@@ -754,14 +799,17 @@ class FragmentMetadata {
   /** Loads the basic metadata from storage (version 2 or before). */
   Status load_v2(const EncryptionKey& encryption_key);
 
-  /** Loads the basic metadata from storage (version 3). */
-  Status load_v3(const EncryptionKey& encryption_key);
+  /**
+   * Loads the footer of the metadata file, which contains
+   * only some basic info. Applicable to format version 3.
+   */
+  Status load_footer_v3(const EncryptionKey& encryption_key);
 
   /**
    * Loads the footer of the metadata file, which contains
-   * only some basic info.
+   * only some basic info. Applicable to format version 4.
    */
-  Status load_footer(const EncryptionKey& encryption_key);
+  Status load_footer_v4(const EncryptionKey& encryption_key);
 
   /** Writes the sizes of each attribute file to the buffer. */
   Status write_file_sizes(Buffer* buff);
@@ -866,9 +914,15 @@ class FragmentMetadata {
 
   /**
    * Reads the fragment metadata file footer (which contains the generic tile
-   * offsets) into the input buffer.
+   * offsets) into the input buffer. Applicable to format version 3.
    */
-  Status read_file_footer(Buffer* buff) const;
+  Status read_file_footer_v3(Buffer* buff) const;
+
+  /**
+   * Reads the fragment metadata file footer (which contains the generic tile
+   * offsets) into the input buffer. Applicable to format version 4.
+   */
+  Status read_file_footer_v4(Buffer* buff) const;
 
   /**
    * Writes the contents of the input buffer as a separate

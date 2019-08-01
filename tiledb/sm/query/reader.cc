@@ -1295,15 +1295,26 @@ Status Reader::compute_result_coords(
       result_tiles, &result_tile_map, &single_fragment));
 
   // Create temporary vector with pointers to result tiles, so that
-  // `read_tiles`, `filter_tiles` and `clear_tiles` below can work without
-  // changes
+  // `read_tiles` and `filter_tiles` below can work without changes
   std::vector<ResultTile*> tmp_result_tiles;
   for (auto& result_tile : *result_tiles)
     tmp_result_tiles.push_back(&result_tile);
 
   // Read and filter coordinate tiles
-  RETURN_CANCEL_OR_ERROR(read_tiles(constants::coords, tmp_result_tiles));
-  RETURN_CANCEL_OR_ERROR(filter_tiles(constants::coords, tmp_result_tiles));
+  switch (array_schema_->version()) {
+    case 1:
+    case 2:
+    case 3:
+      RETURN_CANCEL_OR_ERROR(read_tiles(constants::coords, tmp_result_tiles));
+      RETURN_CANCEL_OR_ERROR(filter_tiles(constants::coords, tmp_result_tiles));
+      break;
+    case 4:
+      RETURN_CANCEL_OR_ERROR(read_filter_and_zip_coord_tiles(tmp_result_tiles));
+      break;
+    default:
+      return LOG_STATUS(Status::ReaderError(
+          "Cannot compute result coordinates; unsupported format version"));
+  }
 
   // Compute the read coordinates for all fragments for each subarray range
   std::vector<std::vector<ResultCoords<T>>> range_result_coords;
@@ -1858,6 +1869,62 @@ Status Reader::read_tiles(
   return Status::Ok();
 }
 
+Status Reader::read_filter_and_zip_coord_tiles(
+    const std::vector<ResultTile*>& result_tiles) const {
+  // Read and filter all separate coordinate tiles
+  auto dim_num = array_schema_->dim_num();
+  for (unsigned i = 0; i < dim_num; ++i) {
+    auto dim_name = array_schema_->dimension(i)->name();
+    RETURN_CANCEL_OR_ERROR(read_tiles(dim_name, result_tiles));
+    RETURN_CANCEL_OR_ERROR(filter_tiles(dim_name, result_tiles));
+  }
+
+  // For easy reference
+  auto coords_size = array_schema_->coords_size();
+  auto first_dim_name = array_schema_->dimension(0)->name();
+
+  // Produce zipped coordinate tiles
+  for (auto& rt : result_tiles) {
+    // Initialize zipped tile
+    auto it = rt->tile_map_.insert(std::pair<std::string, ResultTile::TilePair>(
+        constants::coords, ResultTile::TilePair(Tile(), Tile())));
+    auto& tile_pair = it.first->second;
+    auto& tile = tile_pair.first;
+    auto& fragment = fragment_metadata_[rt->frag_idx_];
+    auto format_version = fragment->format_version();
+    auto cell_num = rt->tile_map_[first_dim_name].first.cell_num();
+    auto coords_tile_size = cell_num * coords_size;
+    RETURN_NOT_OK(init_tile(format_version, constants::coords, &tile));
+    RETURN_NOT_OK(tile.buffer()->realloc(coords_tile_size));
+    tile.buffer()->set_size(coords_tile_size);
+    tile.buffer()->reset_offset();
+    auto data = (uint8_t*)tile.buffer()->data();
+
+    // Zip separate coordinate tiles into a single tile
+    for (unsigned d = 0; d < dim_num; ++d) {
+      auto dim_name = array_schema_->dimension(d)->name();
+      auto& dim_tile = rt->tile_map_[dim_name].first;
+      auto dim_data = (uint8_t*)dim_tile.buffer()->data();
+      auto coord_offset = array_schema_->coord_offset(d);
+      auto coord_size = array_schema_->coord_size(d);
+      for (uint64_t c = 0; c < cell_num; ++c) {
+        std::memcpy(
+            data + c * coords_size + coord_offset,
+            dim_data + c * coord_size,
+            coord_size);
+      }
+    }
+
+    // Clean up separate coordinate tiles
+    for (unsigned i = 0; i < dim_num; ++i) {
+      auto dim_name = array_schema_->dimension(i)->name();
+      rt->tile_map_.erase(dim_name);
+    }
+  }
+
+  return Status::Ok();
+}
+
 void Reader::reset_query_buffer_sizes() {
   for (auto& it : query_buffers_) {
     *(it.second.buffer_size_) = it.second.original_buffer_size_;
@@ -1933,16 +2000,16 @@ Status Reader::sparse_read() {
   tile_coords.clear();
 
   // Copy cells
-  for (const auto& qbname : query_buffer_names_) {
+  for (const auto& name : query_buffer_names_) {
     if (read_state_.overflowed_)
       break;
-    if (qbname == constants::coords)
+    if (name == constants::coords)
       continue;
 
-    RETURN_CANCEL_OR_ERROR(read_tiles(qbname, result_tiles));
-    RETURN_CANCEL_OR_ERROR(filter_tiles(qbname, result_tiles));
-    RETURN_CANCEL_OR_ERROR(copy_cells(qbname, stride, result_cell_slabs));
-    clear_tiles(qbname, result_tiles);
+    RETURN_CANCEL_OR_ERROR(read_tiles(name, result_tiles));
+    RETURN_CANCEL_OR_ERROR(filter_tiles(name, result_tiles));
+    RETURN_CANCEL_OR_ERROR(copy_cells(name, stride, result_cell_slabs));
+    clear_tiles(name, result_tiles);
   }
 
   return Status::Ok();
