@@ -359,6 +359,13 @@ class Writer {
   /* ********************************* */
 
   /**
+   * Auxiliary function for cleaning up after the global write
+   * errors out. It deletes the fragment with the input URI and
+   * cleans up the global state.
+   */
+  void clean_up_global_write(const URI& uri);
+
+  /**
    * Throws an error if there are coordinate duplicates. This function
    * assumes that the coordinates are written in the global layout,
    * which means that they are already sorted in the query buffers.
@@ -807,6 +814,23 @@ class Writer {
    */
   Status prepare_coord_tiles(
       const std::vector<uint64_t>& cell_pos,
+      const std::set<uint64_t>& coord_dups,
+      std::vector<std::pair<std::string, std::vector<Tile>>>* tiles) const;
+
+  /**
+   * Applicable only to writes in global order. It prepares only full
+   * coordinate tiles, storing the last potentially non-full tile in
+   * `global_write_state->last_tiles_` as part of the state to be used in
+   * the next write invocation. The last tiles are written to storage
+   * upon `finalize`. Upon each invocation, the function first
+   * populates the partially full last tile from the previous
+   * invocation.
+   *
+   * @param coord_dups The positions of the duplicate coordinates.
+   * @param tiles The **full** tiles to be created.
+   * @return Status
+   */
+  Status prepare_full_coord_tiles(
       const std::set<uint64_t>& coord_dups,
       std::vector<std::pair<std::string, std::vector<Tile>>>* tiles) const;
 
