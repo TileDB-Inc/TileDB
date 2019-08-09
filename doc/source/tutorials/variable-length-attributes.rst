@@ -6,23 +6,23 @@ Variable-length Attributes
 In this tutorial we will learn how to use variable-length attributes.
 It is recommended to read the tutorial on dense arrays first.
 
-.. warning::
-
-   Variable-length attributes are not yet supported in the Python API.
-
 .. table:: Full programs
   :widths: auto
 
   ====================================  =============================================================
   **Program**                           **Links**
   ------------------------------------  -------------------------------------------------------------
-  ``variable_length``                   |varlencpp|
+  ``variable_length``                   |varlencpp| |varlenpy|
   ====================================  =============================================================
 
 .. |varlencpp| image:: ../figures/cpp.png
    :align: middle
    :width: 30
    :target: {tiledb_src_root_url}/examples/cpp_api/variable_length.cc
+.. |varlenpy| image:: ../figures/python.png
+   :align: middle
+   :width: 25
+   :target: {tiledb_py_src_root_url}/examples/variable_length.py
 
 Basic concepts and definitions
 ------------------------------
@@ -40,7 +40,8 @@ Creating the array
 This is similar to what we covered in the simple dense array example. The only
 difference is that our two attributes are variable-length. Specifically,
 ``a1`` will store strings, whereas ``a2`` will store a variable-length
-list of integers.
+list of integers. For Python, variable-length attributes are created by
+passing ``var = True`` to the ``Attr`` constructor.
 
 .. content-tabs::
 
@@ -51,6 +52,20 @@ list of integers.
 
         schema.add_attribute(Attribute::create<std::string>(ctx, "a1"));
         schema.add_attribute(Attribute::create<std::vector<int>>(ctx, "a2"));
+
+
+   .. tab-container:: python
+      :title: Python
+
+      .. code-block:: python
+
+         attrs = [
+             tiledb.Attr(name="a1", var=True, dtype='U', ctx=ctx),
+             tiledb.Attr(name="a2", var=True, dtype=np.int64, ctx=ctx) ]
+
+         schema = tiledb.ArraySchema(domain=dom, sparse=False,
+                                     attrs=attrs,
+                                     dtype=np.dtype('O'))
 
 Writing to the array
 --------------------
@@ -110,33 +125,67 @@ that ``a`` starts at offset ``0`` in ``a1_data`` (in bytes),
         query.submit();
         array.close();
 
-Note that the offsets buffer stores offsets **in bytes**. That was easy for ``a1``
-where each character consumes 1 byte. The case of ``a2`` is a little different,
-thus, for simplicity, we take two steps. In the first step we construct a
-buffer ``a2_el_off`` that records the starting offsets **in terms of elements**
-in ``a2_data``. For instance, ``2,2`` of cell ``(1,2)`` starts at **element**
-``2`` in ``a2_data``. Next, we create another buffer ``a2_off`` that stores the
-actual buffer offsets by multiplying the element offsets by the size of an
-integer. In the previous example ``2,2`` of cell ``(1,2)`` starts at **byte**
-``2*sizeof(int)=8`` in ``a2_data``. Note that TileDB expects ``a2_off``,
-not ``a2_el_off``.
+      Note that the offsets buffer stores offsets **in bytes**. That was easy for ``a1``
+      where each character consumes 1 byte. The case of ``a2`` is a little different,
+      thus, for simplicity, we take two steps. In the first step we construct a
+      buffer ``a2_el_off`` that records the starting offsets **in terms of elements**
+      in ``a2_data``. For instance, ``2,2`` of cell ``(1,2)`` starts at **element**
+      ``2`` in ``a2_data``. Next, we create another buffer ``a2_off`` that stores the
+      actual buffer offsets by multiplying the element offsets by the size of an
+      integer. In the previous example ``2,2`` of cell ``(1,2)`` starts at **byte**
+      ``2*sizeof(int)=8`` in ``a2_data``. Note that TileDB expects ``a2_off``,
+      not ``a2_el_off``.
 
-Finally, similar to the fixed-length case we use ``set_buffer`` to add the
-buffers to the query, but now we provide both (byte) offset and data buffers.
+      Finally, similar to the fixed-length case we use ``set_buffer`` to add the
+      buffers to the query, but now we provide both (byte) offset and data buffers.
+
+   .. tab-container:: python
+      :title: Python
+
+      .. code-block:: python
+
+          # Create input data
+          a1_data = np.array([
+                      "a", "bb", "ccc", "dd",
+                      "eee", "f", "g", "hhh",
+                      "i", "jjj", "kk", "l",
+                      "m", "n", "oo", "p"
+                    ], dtype=np.object).reshape(4,4)
+
+          a2_data = np.array(
+                       list(map(
+                            lambda v: np.repeat(v[0], v[1]),
+                            [
+                            (1,1), (2,2), (3,1), (4,1),
+                            (5,1), (6,2), (7,2), (8,3),
+                            (9,2), (10,1),(11,1),(12,2),
+                            (13,1),(14,3),(15,1),(16,1),
+                            ]
+                       )), dtype=np.object).reshape(4,4)
+
+          # Write to the array
+          with tiledb.open(array_name, 'w', ctx=ctx) as array:
+              array[:] = { 'a1': a1_data,
+                           'a2': a2_data }
+
+      Note that the input NumPy arrays must be created with the object ``np.dtype('O')``
+      dtype.
 
 
 Reading from the array
 ----------------------
 
 We focus on subarray ``[1,2], [2,4]``. Recall that, in order to read
-from a TileDB array, we must allocate space for the buffers that will
-hold the result. For the variable-length case, this is a challenging
-task, since we do not know how many values each cell may be storing.
-Fortunately, TileDB has an auxiliary function that gives you an
-**upper bound** on how many elements your buffers need to store
-the results (note that this is an **approximation**). You can
-prepare the buffers as follows. Once again, we need two buffers
+from a TileDB array with C++, we must allocate space for the buffers
+that will hold the result; the Python API allocates space automatically.
+
+For the variable-length case, this is a challenging task, since we do not know
+how many values each cell may be storing. Fortunately, TileDB has an
+auxiliary function that gives you an **upper bound** on how many elements
+your buffers need to store the results (note that this is an **approximation**).
+You can prepare the buffers as follows. Once again, we need two buffers
 for each attribute, one for the data and one for the offsets.
+
 
 .. content-tabs::
 
@@ -151,6 +200,14 @@ for each attribute, one for the data and one for the offsets.
         a1_data.resize(max_el_map["a1"].second);
         std::vector<uint64_t> a2_off(max_el_map["a2"].first);
         std::vector<int> a2_data(max_el_map["a2"].second);
+
+   .. tab-container:: python
+      :title: Python
+
+      .. note::
+       The Python API will automatically allocate read buffers and
+       unpack the result to NumPy object arrays.
+
 
 Next, we perform the query as usual, but now we set both
 the data and offset buffers. After completion, ``a1_data`` and
@@ -176,6 +233,15 @@ contain ``0, 8, 12, 16, 24, 32`` (see figure above).
              .set_buffer("a2", a2_off, a2_data);
         query.submit();
         array.close();
+
+   .. tab-container:: python
+      :title: Python
+
+      .. code-block:: python
+
+        with tiledb.open(array_uri, ctx=ctx) as A:
+            a1 = A[:]['a1']
+            a2 = A[:]['a2']
 
 .. warning::
 
@@ -258,6 +324,14 @@ Finally, we print the result as follows.
             std::cout << a2_data[a2_el_off[i] + j] << " ";
           std::cout << "\n";
         }
+
+   .. tab-container:: python
+      :title: Python
+
+      .. code-block:: python
+
+        print(a1)
+        print(a2)
 
 If you compile and run the example of this tutorial as shown below, you should
 see the following output:
