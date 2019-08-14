@@ -1,3 +1,10 @@
+# TileDB v1.6.2 Release Notes
+
+## Bug fixes
+
+* Fix incorrect version number listed in `tiledb_version.h` header file and doc page.
+* Fix issue with release notes from 1.6.0 release. [#1359](https://github.com/TileDB-Inc/TileDB/pull/1359)
+
 # TileDB v1.6.1 Release Notes
 
 ## Bug fixes
