@@ -518,6 +518,10 @@ class Writer {
   Status create_fragment(
       bool dense, std::shared_ptr<FragmentMetadata>* frag_meta) const;
 
+  /** Filters the input attribute or dimension tiles. */
+  Status filter_tiles(
+      std::vector<std::pair<std::string, std::vector<Tile>>>* tiles) const;
+
   /**
    * Runs the input tiles for the input attribute/dimension
    * through the filter pipeline. The tile buffers are modified to
@@ -585,6 +589,11 @@ class Writer {
 
   /** Initializes the global write state. */
   Status init_global_write_state();
+
+  /** Initializes the attribute and dimension tiles for writing. */
+  void init_attr_dim_tiles(
+      std::vector<std::pair<std::string, std::vector<Tile>>>* attr_tiles,
+      std::vector<std::pair<std::string, std::vector<Tile>>>* dim_tiles) const;
 
   /**
    * Initializes a fixed-sized tile.
@@ -800,10 +809,28 @@ class Writer {
       std::vector<Tile>* tiles) const;
 
   /**
-   * It prepares the coordinate tiles, re-organizing the cells from the query
+   * It prepares the attribute tiles, re-organizing the cells from the query
    * buffers based on the input sorted positions.
    *
-   * @param name The name of the attribute/dimension to prepare the tiles for.
+   * @param name The name of the attribute to prepare the tiles for.
+   * @param cell_pos The positions that resulted from sorting and
+   *     according to which the cells must be re-arranged.
+   * @param coord_dups The set with the positions
+   *     of duplicate coordinates/cells.
+   * @param tiles The tiles to be created. There is one tile vector
+   *     per attribute, along with its name.
+   * @return Status
+   */
+  Status prepare_attr_tiles(
+      const std::vector<uint64_t>& cell_pos,
+      const std::set<uint64_t>& coord_dups,
+      std::vector<std::pair<std::string, std::vector<Tile>>>* tiles) const;
+
+  /**
+   * It prepares the dimension tiles, re-organizing the cells from the query
+   * buffers based on the input sorted positions.
+   *
+   * @param name The name of the dimension to prepare the tiles for.
    * @param cell_pos The positions that resulted from sorting and
    *     according to which the cells must be re-arranged.
    * @param coord_dups The set with the positions
@@ -812,7 +839,7 @@ class Writer {
    *     per dimension, along with its name.
    * @return Status
    */
-  Status prepare_coord_tiles(
+  Status prepare_dim_tiles(
       const std::vector<uint64_t>& cell_pos,
       const std::set<uint64_t>& coord_dups,
       std::vector<std::pair<std::string, std::vector<Tile>>>* tiles) const;

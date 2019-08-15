@@ -1116,6 +1116,22 @@ Status Writer::create_fragment(
 }
 
 Status Writer::filter_tiles(
+    std::vector<std::pair<std::string, std::vector<Tile>>>* tiles) const {
+  auto num = tiles->size();
+  auto statuses = parallel_for(0, num, [&](uint64_t i) {
+    RETURN_CANCEL_OR_ERROR(
+        filter_tiles((*tiles)[i].first, &((*tiles)[i].second)));
+    return Status::Ok();
+  });
+  for (auto& st : statuses) {
+    if (!st.ok())
+      return st;
+  }
+
+  return Status::Ok();
+}
+
+Status Writer::filter_tiles(
     const std::string& name, std::vector<Tile>* tiles) const {
   STATS_FUNC_IN(writer_filter_tiles);
 
@@ -1505,7 +1521,7 @@ Status Writer::global_write_handle_last_tile() {
   }
 
   // Compute coordinates metadata
-  if(has_coords()) {
+  if (has_coords()) {
     RETURN_CANCEL_OR_ERROR_ELSE(
         compute_coords_metadata<T>(coord_tiles, frag_meta),
         clean_up_global_write(uri));
@@ -1591,6 +1607,22 @@ Status Writer::init_global_write_state() {
   return st;
 
   STATS_FUNC_OUT(writer_init_global_write_state);
+}
+
+void Writer::init_attr_dim_tiles(
+    std::vector<std::pair<std::string, std::vector<Tile>>>* attr_tiles,
+    std::vector<std::pair<std::string, std::vector<Tile>>>* dim_tiles) const {
+  auto dim_num = array_schema_->dim_num();
+  for (const auto& name : query_buffer_names_) {
+    if (name == constants::coords) {
+      for (unsigned d = 0; d < dim_num; ++d) {
+        auto dim_name = array_schema_->dimension(d)->name();
+        dim_tiles->emplace_back(dim_name, std::vector<Tile>());
+      }
+    } else {
+      attr_tiles->emplace_back(name, std::vector<Tile>());
+    }
+  }
 }
 
 Status Writer::init_tile(const std::string& name, Tile* tile) const {
@@ -2254,7 +2286,25 @@ Status Writer::prepare_tiles_fixed(
   STATS_FUNC_OUT(writer_prepare_tiles_fixed);
 }
 
-Status Writer::prepare_coord_tiles(
+Status Writer::prepare_attr_tiles(
+    const std::vector<uint64_t>& cell_pos,
+    const std::set<uint64_t>& coord_dups,
+    std::vector<std::pair<std::string, std::vector<Tile>>>* tiles) const {
+  auto attr_num = tiles->size();
+  auto statuses = parallel_for(0, attr_num, [&](uint64_t i) {
+    RETURN_CANCEL_OR_ERROR(prepare_tiles(
+        (*tiles)[i].first, cell_pos, coord_dups, &(*tiles)[i].second));
+    return Status::Ok();
+  });
+  for (auto& st : statuses) {
+    if (!st.ok())
+      return st;
+  }
+
+  return Status::Ok();
+}
+
+Status Writer::prepare_dim_tiles(
     const std::vector<uint64_t>& cell_pos,
     const std::set<uint64_t>& coord_dups,
     std::vector<std::pair<std::string, std::vector<Tile>>>* tiles) const {
@@ -2608,80 +2658,46 @@ Status Writer::unordered_write() {
   RETURN_CANCEL_OR_ERROR(create_fragment(false, &frag_meta));
   auto uri = frag_meta->fragment_uri();
 
-  // Prepare tile vectors
+  // Initialize tile vectors
   std::vector<std::pair<std::string, std::vector<Tile>>> attr_tiles;
-  std::vector<std::pair<std::string, std::vector<Tile>>> coord_tiles;
-  auto dim_num = array_schema_->dim_num();
-  for (const auto& name : query_buffer_names_) {
-    if (name == constants::coords) {
-      for (unsigned d = 0; d < dim_num; ++d) {
-        auto dim_name = array_schema_->dimension(d)->name();
-        coord_tiles.emplace_back(dim_name, std::vector<Tile>());
-      }
-    } else {
-      attr_tiles.emplace_back(name, std::vector<Tile>());
-    }
-  }
+  std::vector<std::pair<std::string, std::vector<Tile>>> dim_tiles;
+  init_attr_dim_tiles(&attr_tiles, &dim_tiles);
 
   // Prepare attribute tiles
-  auto attr_num = attr_tiles.size();
-  auto statuses = parallel_for(0, attr_num, [&](uint64_t i) {
-    const auto& attr_name = attr_tiles[i].first;
-    auto& tiles = attr_tiles[i].second;
-    RETURN_CANCEL_OR_ERROR(
-        prepare_tiles(attr_name, cell_pos, coord_dups, &tiles));
-    return Status::Ok();
-  });
-  for (auto& st : statuses)
-    RETURN_NOT_OK_ELSE(st, storage_manager_->vfs()->remove_dir(uri));
-  statuses.clear();
+  RETURN_NOT_OK_ELSE(
+      prepare_attr_tiles(cell_pos, coord_dups, &attr_tiles),
+      storage_manager_->vfs()->remove_dir(uri));
 
-  // Prepare coordinate tiles
-  RETURN_CANCEL_OR_ERROR(
-      prepare_coord_tiles(cell_pos, coord_dups, &coord_tiles));
+  // Prepare dimension tiles
+  RETURN_CANCEL_OR_ERROR_ELSE(
+      prepare_dim_tiles(cell_pos, coord_dups, &dim_tiles),
+      storage_manager_->vfs()->remove_dir(uri));
 
   // Clear the boolean vector for coordinate duplicates
   coord_dups.clear();
 
   // Set the number of tiles in the metadata
-  assert(!coord_tiles.empty());
-  uint64_t num_tiles = coord_tiles[0].second.size();
+  assert(!dim_tiles.empty());
+  uint64_t num_tiles = dim_tiles[0].second.size();
   frag_meta->set_num_tiles(num_tiles);
 
   // Compute coordinates metadata
-  RETURN_CANCEL_OR_ERROR(
-      compute_coords_metadata<T>(coord_tiles, frag_meta.get()));
-
-  // Filter attribute tiles
-  statuses = parallel_for(0, attr_num, [&](uint64_t i) {
-    const auto& attr_name = attr_tiles[i].first;
-    auto& tiles = attr_tiles[i].second;
-    RETURN_CANCEL_OR_ERROR(filter_tiles(attr_name, &tiles));
-    return Status::Ok();
-  });
-  for (auto& st : statuses)
-    RETURN_NOT_OK_ELSE(st, storage_manager_->vfs()->remove_dir(uri));
-  statuses.clear();
-
-  // Filter coordinate tiles
-  statuses = parallel_for(0, dim_num, [&](uint64_t i) {
-    auto dim_name = coord_tiles[i].first;
-    auto& tiles = coord_tiles[i].second;
-    RETURN_CANCEL_OR_ERROR(filter_tiles(dim_name, &tiles));
-    return Status::Ok();
-  });
-  for (auto& st : statuses)
-    RETURN_NOT_OK_ELSE(st, storage_manager_->vfs()->remove_dir(uri));
-  statuses.clear();
-
-  // Write attribute tiles
-  RETURN_NOT_OK_ELSE(
-      write_all_tiles(frag_meta.get(), attr_tiles),
+  RETURN_CANCEL_OR_ERROR_ELSE(
+      compute_coords_metadata<T>(dim_tiles, frag_meta.get()),
       storage_manager_->vfs()->remove_dir(uri));
 
-  // Write dimension tiles
-  RETURN_NOT_OK_ELSE(
-      write_all_tiles(frag_meta.get(), coord_tiles),
+  // Filter attribute and dimension tiles
+  RETURN_CANCEL_OR_ERROR_ELSE(
+      filter_tiles(&attr_tiles), storage_manager_->vfs()->remove_dir(uri));
+  RETURN_CANCEL_OR_ERROR_ELSE(
+      filter_tiles(&dim_tiles), storage_manager_->vfs()->remove_dir(uri));
+
+  // Write attribute and dimension tiles
+  RETURN_CANCEL_OR_ERROR_ELSE(
+      write_all_tiles(frag_meta.get(), attr_tiles),
+      storage_manager_->vfs()->remove_dir(uri));
+  RETURN_CANCEL_OR_ERROR_ELSE(
+      write_all_tiles(frag_meta.get(), dim_tiles),
       storage_manager_->vfs()->remove_dir(uri));
 
   // Write the fragment metadata
