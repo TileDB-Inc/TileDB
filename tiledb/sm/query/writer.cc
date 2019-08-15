@@ -1367,37 +1367,17 @@ Status Writer::global_write() {
         compute_coord_dups(&coord_dups), clean_up_global_write(uri));
 
   // Prepare tile vectors
-  std::vector<std::pair<std::string, std::vector<Tile>>> attr_tiles;
-  std::vector<std::pair<std::string, std::vector<Tile>>> coord_tiles;
-  auto dim_num = array_schema_->dim_num();
-  for (const auto& name : query_buffer_names_) {
-    if (name == constants::coords) {
-      for (unsigned d = 0; d < dim_num; ++d) {
-        auto dim_name = array_schema_->dimension(d)->name();
-        coord_tiles.emplace_back(dim_name, std::vector<Tile>());
-      }
-    } else {
-      attr_tiles.emplace_back(name, std::vector<Tile>());
-    }
-  }
+  std::vector<std::pair<std::string, std::vector<Tile>>> attr_tiles, dim_tiles;
+  init_attr_dim_tiles(&attr_tiles, &dim_tiles);
 
   // Prepare attribute tiles
-  auto attr_num = attr_tiles.size();
-  auto statuses = parallel_for(0, attr_num, [&](uint64_t i) {
-    const auto& attr_name = attr_tiles[i].first;
-    auto& tiles = attr_tiles[i].second;
-    RETURN_CANCEL_OR_ERROR(prepare_full_tiles(attr_name, coord_dups, &tiles));
-    return Status::Ok();
-  });
-  for (auto& st : statuses) {
-    RETURN_CANCEL_OR_ERROR_ELSE(st, clean_up_global_write(uri));
-  }
-  statuses.clear();
+  RETURN_CANCEL_OR_ERROR_ELSE(
+      prepare_full_tiles(coord_dups, &attr_tiles), clean_up_global_write(uri));
 
-  // Prepare coordinate tiles
+  // Prepare dimension tiles
   if (has_coords) {
     RETURN_CANCEL_OR_ERROR_ELSE(
-        prepare_full_coord_tiles(coord_dups, &coord_tiles),
+        prepare_full_coord_tiles(coord_dups, &dim_tiles),
         clean_up_global_write(uri));
   }
 
@@ -1405,15 +1385,14 @@ Status Writer::global_write() {
   coord_dups.clear();
 
   // Set the number of tiles in the metadata
-  assert(!coord_tiles.empty() || !attr_tiles.empty());
+  assert(!dim_tiles.empty() || !attr_tiles.empty());
   uint64_t num_tiles;
   if (has_coords) {
-    num_tiles = coord_tiles[0].second.size();
+    num_tiles = dim_tiles[0].second.size();
   } else {
-    num_tiles = attr_tiles[0].second.size();
-    array_schema_->var_size(attr_tiles[0].first) ?
-        attr_tiles[0].second.size() / 2 :
-        attr_tiles[0].second.size();
+    num_tiles = array_schema_->var_size(attr_tiles[0].first) ?
+                    attr_tiles[0].second.size() / 2 :
+                    attr_tiles[0].second.size();
   }
   auto new_num_tiles = frag_meta->tile_index_base() + num_tiles;
   frag_meta->set_num_tiles(new_num_tiles);
@@ -1421,41 +1400,21 @@ Status Writer::global_write() {
   // Compute coordinates metadata
   if (has_coords) {
     RETURN_CANCEL_OR_ERROR_ELSE(
-        compute_coords_metadata<T>(coord_tiles, frag_meta),
+        compute_coords_metadata<T>(dim_tiles, frag_meta),
         clean_up_global_write(uri));
   }
 
-  // Filter attribute tiles
-  statuses = parallel_for(0, attr_num, [&](uint64_t i) {
-    const auto& attr_name = attr_tiles[i].first;
-    auto& tiles = attr_tiles[i].second;
-    RETURN_CANCEL_OR_ERROR(filter_tiles(attr_name, &tiles));
-    return Status::Ok();
-  });
-  for (auto& st : statuses) {
-    RETURN_CANCEL_OR_ERROR_ELSE(st, clean_up_global_write(uri));
-  }
-  statuses.clear();
+  // Filter attribute and dimension tiles
+  RETURN_CANCEL_OR_ERROR_ELSE(
+      filter_tiles(&attr_tiles), clean_up_global_write(uri));
+  RETURN_CANCEL_OR_ERROR_ELSE(
+      filter_tiles(&dim_tiles), clean_up_global_write(uri));
 
-  // Filter coordinate tiles
-  statuses = parallel_for(0, dim_num, [&](uint64_t i) {
-    auto dim_name = coord_tiles[i].first;
-    auto& tiles = coord_tiles[i].second;
-    RETURN_CANCEL_OR_ERROR(filter_tiles(dim_name, &tiles));
-    return Status::Ok();
-  });
-  for (auto& st : statuses) {
-    RETURN_CANCEL_OR_ERROR_ELSE(st, clean_up_global_write(uri));
-  }
-  statuses.clear();
-
-  // Write attribute tiles
+  // Write attribute and dimension tiles
   RETURN_CANCEL_OR_ERROR_ELSE(
       write_all_tiles(frag_meta, attr_tiles), clean_up_global_write(uri));
-
-  // Write dimension tiles
   RETURN_CANCEL_OR_ERROR_ELSE(
-      write_all_tiles(frag_meta, coord_tiles), clean_up_global_write(uri));
+      write_all_tiles(frag_meta, dim_tiles), clean_up_global_write(uri));
 
   // Increment the tile index base for the next global order write.
   frag_meta->set_tile_index_base(new_num_tiles);
@@ -1865,6 +1824,23 @@ Status Writer::ordered_write() {
   RETURN_CANCEL_OR_ERROR_ELSE(
       frag_meta.get()->store(array_->get_encryption_key()),
       storage_manager_->vfs()->remove_dir(uri));
+
+  return Status::Ok();
+}
+
+Status Writer::prepare_full_tiles(
+    const std::set<uint64_t>& coord_dups,
+    std::vector<std::pair<std::string, std::vector<Tile>>>* tiles) const {
+  auto attr_num = tiles->size();
+  auto statuses = parallel_for(0, attr_num, [&](uint64_t i) {
+    RETURN_CANCEL_OR_ERROR(prepare_full_tiles(
+        (*tiles)[i].first, coord_dups, &(((*tiles)[i].second))));
+    return Status::Ok();
+  });
+  for (auto& st : statuses) {
+    if (!st.ok())
+      return st;
+  }
 
   return Status::Ok();
 }
@@ -2659,8 +2635,7 @@ Status Writer::unordered_write() {
   auto uri = frag_meta->fragment_uri();
 
   // Initialize tile vectors
-  std::vector<std::pair<std::string, std::vector<Tile>>> attr_tiles;
-  std::vector<std::pair<std::string, std::vector<Tile>>> dim_tiles;
+  std::vector<std::pair<std::string, std::vector<Tile>>> attr_tiles, dim_tiles;
   init_attr_dim_tiles(&attr_tiles, &dim_tiles);
 
   // Prepare attribute tiles

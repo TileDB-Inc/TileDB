@@ -701,6 +701,23 @@ class Writer {
 
   /**
    * Applicable only to write in global order. It prepares only full
+   * attribute tiles, storing the last potentially non-full tile in
+   * `global_write_state->last_tiles_` as part of the state to be used in
+   * the next write invocation. The last tiles are written to storage
+   * upon `finalize`. Upon each invocation, the function first
+   * populates the partially full last tile from the previous
+   * invocation.
+   *
+   * @param coord_dups The positions of the duplicate coordinates.
+   * @param tiles The **full** attribute tiles to be created.
+   * @return Status
+   */
+  Status prepare_full_tiles(
+      const std::set<uint64_t>& coord_dups,
+      std::vector<std::pair<std::string, std::vector<Tile>>>* tiles) const;
+
+  /**
+   * Applicable only to write in global order. It prepares only full
    * tiles, storing the last potentially non-full tile in
    * `global_write_state_->last_tiles_` as part of the state to be used in
    * the next write invocation. The last tiles are written to storage
