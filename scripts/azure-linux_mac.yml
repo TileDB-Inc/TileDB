@@ -28,6 +28,9 @@ steps:
     # https://github.com/Microsoft/azure-pipelines-yaml/issues/135
     set -e pipefail
 
+    git config --global user.name 'Azure Pipeline'
+    git config --global user.email 'no-reply@tiledb.io'
+
     git clone https://github.com/TileDB-Inc/TileDB-Unit-Test-Arrays.git test/inputs/arrays/read_compatibility_test
     #   displayName: 'Clone Unit-Test-Arrays'
 

@@ -74,7 +74,8 @@ if (NOT CURL_FOUND AND TILEDB_SUPERBUILD)
 
   if (TARGET ep_openssl)
     set(DEPENDS ep_openssl)
-    set(with_ssl "--with-ssl=${TILEDB_EP_INSTALL_PREFIX}")
+    set(with_ssl "-DOPENSSL_ROOT_DIR=${TILEDB_EP_INSTALL_PREFIX}")
+    message(WARNING "with_ssl=${with_ssl}")
   endif()
 
   set(TILEDB_CURL_LIBS "-ldl -lpthread")
@@ -94,6 +95,7 @@ if (NOT CURL_FOUND AND TILEDB_SUPERBUILD)
   if (WIN32)
     set(USE_WINSSL "-DCMAKE_USE_WINSSL=ON")
   endif()
+  message(WARNING "with_ssl=${with_ssl}")
 
   ExternalProject_Add(ep_curl
     PREFIX "externals"
@@ -106,6 +108,8 @@ if (NOT CURL_FOUND AND TILEDB_SUPERBUILD)
     -DCURL_DISABLE_LDAP=ON
     -DCURL_DISABLE_LDAPS=ON
     -DCMAKE_POSITION_INDEPENDENT_CODE:BOOL=true
+    "${USE_WINSSL}"
+    "${with_ssl}"
     "-DCMAKE_C_FLAGS=${CFLAGS_DEF}"
     UPDATE_COMMAND ""
     LOG_DOWNLOAD TRUE
