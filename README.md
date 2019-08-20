@@ -25,7 +25,6 @@ Learn more and see examples and tutorials in the [official documentation](https:
 * **Parallelism.** Use every core with TileDB's parallelized I/O and compression systems (using Intel TBB), and build powerful parallel analytics on top of the TileDB array storage manager (e.g., using OpenMP or MPI) leveraging TileDB's thread-/process-safety.
 * **Portability.** TileDB works on Linux, macOS and Windows, offering easy installation packages, binaries and Docker containerization.
 * **Language Bindings.** Enable your NumPy data science applications to work with immense amounts of data using TileDB's Python API. Other APIs include Golang, R and Java.
-* **Key-value Store.** Store any persistent metadata with TileDB's key-value storage functionality. A TileDB key-value store inherits all the benefits of TileDB arrays such as compression, parallelism, and multiple backend support.
 * **Virtual Filesystem.** Add general file management and I/O to your applications for any supported storage backend using TileDB's unified "virtual filesystem" (VFS) API.
 
 ## Quickstart
