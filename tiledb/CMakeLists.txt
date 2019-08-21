@@ -302,11 +302,13 @@ endif()
 
 # Libcurl
 if (TILEDB_S3 OR TILEDB_SERIALIZATION)
-  find_package(Curl_EP REQUIRED)
-  target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
-    INTERFACE
-      CURL::libcurl
-  )
+  if (NOT WIN32)
+    find_package(Curl_EP REQUIRED)
+    target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
+      INTERFACE
+        CURL::libcurl
+    )
+  endif()
 endif()
 
 # HDFS dependencies
@@ -356,12 +358,6 @@ if (CMAKE_BUILD_TYPE MATCHES "Coverage")
   )
 endif()
 
-if (NOT WIN32)
-  # On Linux, must explicitly link -lpthread -ldl in order for static linking
-  # to libzstd or libcurl to work.
-  target_link_libraries(TILEDB_CORE_OBJECTS_ILIB INTERFACE pthread dl)
-endif()
-
 # Required dependencies. These come last as any prior dependencies relying on
 # these must be listed first for Linux. E.g. AWSSDK and Curl depend on Zlib,
 # which is installed here.
@@ -409,6 +405,12 @@ if(APPLE)
   endif()
 endif()
 
+# On Linux, must explicitly link -lpthread -ldl in order for static linking
+# to libzstd and tbb.
+if (NOT WIN32)
+  target_link_libraries(TILEDB_CORE_OBJECTS_ILIB INTERFACE pthread dl)
+endif()
+
 # Copy over dependency info (e.g. include directories) to the core objects.
 target_compile_definitions(TILEDB_CORE_OBJECTS
   PRIVATE
@@ -418,6 +420,51 @@ target_include_directories(TILEDB_CORE_OBJECTS
   PRIVATE
     $<TARGET_PROPERTY:TILEDB_CORE_OBJECTS_ILIB,INTERFACE_INCLUDE_DIRECTORIES>
 )
+
+############################################################
+# Query Curl linking information
+############################################################
+
+# Find curl link dependencies.
+# This needs to be done after curl is built because we use
+# curl-config to query the dependency libraries and then add
+# those to the target. Ref:
+#   - https://github.com/TileDB-Inc/TileDB/issues/1080
+#   - https://github.com/TileDB-Inc/TileDB/pull/1253
+# NOTE: just like the static dependencies in TileDBConfig create above
+#       (via TILEDB_DEP_STRING), this linkage embeds absolute paths.
+if (TILEDB_CURL_EP_BUILT AND NOT WIN32)
+  set(CURL_CONFIG_BINARY "${TILEDB_EP_BASE}/install/bin/curl-config")
+
+  if (NOT EXISTS "${CURL_CONFIG_BINARY}")
+    message(WARNING "Missing '${CURL_CONFIG_BINARY}': TileDB targets may have linker errors!")
+  endif()
+
+  execute_process(
+    COMMAND ${CURL_CONFIG_BINARY} --static-libs
+    OUTPUT_VARIABLE CURL_APPEND_LIBS
+    RESULT_VARIABLE CMD_RESULT
+    OUTPUT_STRIP_TRAILING_WHITESPACE
+  )
+
+  if (NOT CMD_RESULT EQUAL 0)
+    message(WARNING
+      "TileDB::tiledb_static link target may lack transitive link dependencies"
+      "'${CURL_CONFIG_BINARY} --static-libs' failed with error: "
+      "${CMD_RESULT}")
+  else()
+    # Make a list. The variable passed to target_link_libraries *must* be a list.
+    string(REGEX REPLACE "[ \t\r\n]" ";" CURL_APPEND_LIBS ${CURL_APPEND_LIBS})
+
+    message(STATUS "Adding transitive Curl library links to TileDB targets: '${CURL_APPEND_LIBS}'")
+  endif()
+endif()
+
+if (CURL_APPEND_LIBS)
+  target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
+    INTERFACE
+    ${CURL_APPEND_LIBS})
+endif()
 
 ############################################################
 # Generated dependency information (for installation)
@@ -434,30 +481,38 @@ if (TILEDB_STATIC)
   include(TileDBCommon)
 
   # Helper to generate CMake code
-  macro(append_dep_lib LIB_TARGET)
-    if (TARGET ${LIB_TARGET})
-      get_installed_location(LOC ${LIB_TARGET})
+  macro(append_dep_lib APPEND_LIB)
+    if (TARGET ${APPEND_LIB})
+      get_installed_location(TARGET_LOC ${APPEND_LIB})
+      get_target_property(TARGET_LIBS ${APPEND_LIB} INTERFACE_LINK_LIBRARIES)
+
       string(CONCAT TILEDB_STATIC_DEP_STRING
         "${TILEDB_STATIC_DEP_STRING}"
-        "if (NOT TARGET ${LIB_TARGET})\n"
-        "  add_library(${LIB_TARGET} UNKNOWN IMPORTED)\n"
-        "  set_target_properties(${LIB_TARGET} PROPERTIES IMPORTED_LOCATION ${LOC})\n"
+        "if (NOT TARGET ${APPEND_LIB})\n"
+        "  add_library(${APPEND_LIB} UNKNOWN IMPORTED)\n"
+        "  set_target_properties(${APPEND_LIB} PROPERTIES IMPORTED_LOCATION ${TARGET_LOC})\n"
+      )
+
+      string(CONCAT TILEDB_STATIC_DEP_STRING
+        "${TILEDB_STATIC_DEP_STRING}"
         "endif()\n"
       )
+
     endif()
   endmacro()
 
   append_dep_lib(Bzip2::Bzip2)
-  append_dep_lib(CURL::libcurl)
   append_dep_lib(LZ4::LZ4)
   append_dep_lib(TBB::tbb)
   append_dep_lib(Zlib::Zlib)
+  append_dep_lib(ZLIB::ZLIB)
   append_dep_lib(Zstd::Zstd)
   append_dep_lib(CapnProto::capnp)
   append_dep_lib(CapnProto::capnp-json)
   append_dep_lib(CapnProto::kj)
   append_dep_lib(OpenSSL::SSL)
   append_dep_lib(OpenSSL::Crypto)
+  append_dep_lib(CURL::libcurl)
   append_dep_lib(AWSSDK::aws-cpp-sdk-s3)
   append_dep_lib(AWSSDK::aws-cpp-sdk-core)
   append_dep_lib(AWSSDK::aws-c-event-stream)

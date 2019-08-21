@@ -33,12 +33,14 @@
 include(TileDBCommon)
 
 # If the EP was built, it will install the CapnProtoConfig.cmake file, which we
-# can use with find_package. CMake uses CMAKE_PREFIX_PATH to locate find
-# modules.
-set(CMAKE_PREFIX_PATH ${CMAKE_PREFIX_PATH} "${TILEDB_EP_INSTALL_PREFIX}")
+# can use with find_package.
 
 # First try the CMake find module.
-find_package(CapnProto QUIET ${TILEDB_DEPS_NO_DEFAULT_PATH})
+find_package(CapnProto
+  QUIET
+  PATHS ${TILEDB_EP_INSTALL_PREFIX}
+  {${TILEDB_DEPS_NO_DEFAULT_PATH}
+  )
 set(CAPNP_FOUND ${CapnProto_FOUND})
 
 # needed for cherry-pick
@@ -74,7 +76,7 @@ if (NOT CAPNP_FOUND)
           "-DCMAKE_C_FLAGS=${CFLAGS_DEF}"
           "-DCMAKE_CXX_FLAGS=${CXXFLAGS_DEF}"
           ${TILEDB_EP_BASE}/src/ep_capnp/c++
-      PATCH_COMMAND 
+      PATCH_COMMAND
         ${GIT_EXECUTABLE} cherry-pick fdbf035619
       UPDATE_COMMAND ""
       LOG_DOWNLOAD TRUE

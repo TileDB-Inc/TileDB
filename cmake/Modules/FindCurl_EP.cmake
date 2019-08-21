@@ -38,12 +38,12 @@ include(TileDBCommon)
 set(CURL_PATHS ${TILEDB_EP_INSTALL_PREFIX})
 
 # If the EP was built, it will install the CURLConfig.cmake file, which we
-# can use with find_package. CMake uses CMAKE_PREFIX_PATH to locate find
-# modules.
-set(CMAKE_PREFIX_PATH ${CMAKE_PREFIX_PATH} "${TILEDB_EP_INSTALL_PREFIX}")
+# can use with find_package.
 
 # First try the CMake-provided find script.
-find_package(CURL QUIET ${TILEDB_DEPS_NO_DEFAULT_PATH} CONFIG)
+find_package(CURL
+  HINTS "${CURL_PATHS}"
+  QUIET ${TILEDB_DEPS_NO_DEFAULT_PATH} CONFIG)
 
 # Next try finding the superbuild external project
 if (NOT CURL_FOUND)
@@ -51,8 +51,7 @@ if (NOT CURL_FOUND)
     NAMES curl/curl.h
     PATHS ${CURL_PATHS}
     PATH_SUFFIXES include
-    ${TILEDB_DEPS_NO_DEFAULT_PATH}
-  )
+    ${TILEDB_DEPS_NO_DEFAULT_PATH})
 
   # Link statically if installed with the EP.
   find_library(CURL_LIBRARIES
@@ -71,53 +70,59 @@ endif()
 
 if (NOT CURL_FOUND AND TILEDB_SUPERBUILD)
   message(STATUS "Adding Curl as an external project")
-
-  if (TARGET ep_openssl)
-    set(DEPENDS ep_openssl)
-    set(with_ssl "-DOPENSSL_ROOT_DIR=${TILEDB_EP_INSTALL_PREFIX}")
-    message(WARNING "with_ssl=${with_ssl}")
-  endif()
-
-  set(TILEDB_CURL_LIBS "-ldl -lpthread")
-  configure_file(
-    "${TILEDB_CMAKE_INPUTS_DIR}/configure-curl.sh.in"
-    "${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_FILES_DIRECTORY}/configure-curl.sh"
-    @ONLY
-  )
-  file(COPY
-    "${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_FILES_DIRECTORY}/configure-curl.sh"
-    DESTINATION "${CMAKE_CURRENT_BINARY_DIR}"
-    FILE_PERMISSIONS
-      OWNER_READ OWNER_WRITE OWNER_EXECUTE
-      GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE
-  )
-
   if (WIN32)
-    set(USE_WINSSL "-DCMAKE_USE_WINSSL=ON")
-  endif()
-  message(WARNING "with_ssl=${with_ssl}")
+    set(WITH_SSL "-DCMAKE_USE_WINSSL=ON")
+    ExternalProject_Add(ep_curl
+      PREFIX "externals"
+      URL "https://curl.haxx.se/download/curl-7.64.1.tar.gz"
+      URL_HASH SHA1=54ee48d81eb9f90d3efdc6cdf964bd0a23abc364
+      CMAKE_ARGS
+        -DCMAKE_INSTALL_PREFIX=${TILEDB_EP_INSTALL_PREFIX}
+        -DCMAKE_BUILD_TYPE=Release
+        -DBUILD_SHARED_LIBS=OFF
+        -DCURL_DISABLE_LDAP=ON
+        -DCURL_DISABLE_LDAPS=ON
+        -DCURL_STATICLIB=ON
+        -DCMAKE_POSITION_INDEPENDENT_CODE:BOOL=true
+        "${WITH_SSL}"
+        "-DCMAKE_C_FLAGS=${CFLAGS_DEF}"
+      UPDATE_COMMAND ""
+      LOG_DOWNLOAD TRUE
+      LOG_CONFIGURE TRUE
+      LOG_BUILD TRUE
+      LOG_INSTALL TRUE
+    )
 
-  ExternalProject_Add(ep_curl
-    PREFIX "externals"
-    URL "https://curl.haxx.se/download/curl-7.64.1.tar.gz"
-    URL_HASH SHA1=54ee48d81eb9f90d3efdc6cdf964bd0a23abc364
-    CMAKE_ARGS
-    -DCMAKE_INSTALL_PREFIX=${TILEDB_EP_INSTALL_PREFIX}
-    -DCMAKE_BUILD_TYPE=Release
-    -DBUILD_SHARED_LIBS=OFF
-    -DCURL_DISABLE_LDAP=ON
-    -DCURL_DISABLE_LDAPS=ON
-    -DCMAKE_POSITION_INDEPENDENT_CODE:BOOL=true
-    "${USE_WINSSL}"
-    "${with_ssl}"
-    "-DCMAKE_C_FLAGS=${CFLAGS_DEF}"
-    UPDATE_COMMAND ""
-    LOG_DOWNLOAD TRUE
-    LOG_CONFIGURE TRUE
-    LOG_BUILD TRUE
-    LOG_INSTALL TRUE
-    DEPENDS ${DEPENDS}
-  )
+  else()
+
+    if (TARGET ep_openssl)
+      set(DEPENDS ep_openssl)
+      set(WITH_SSL "--with-ssl=${TILEDB_EP_INSTALL_PREFIX}")
+    endif()
+
+    ExternalProject_Add(ep_curl
+      PREFIX "externals"
+      URL "https://curl.haxx.se/download/curl-7.64.1.tar.gz"
+      URL_HASH SHA1=54ee48d81eb9f90d3efdc6cdf964bd0a23abc364
+      CONFIGURE_COMMAND
+        ${TILEDB_EP_BASE}/src/ep_curl/configure
+          --prefix=${TILEDB_EP_INSTALL_PREFIX}
+          --enable-optimize
+          --enable-shared=no
+          --disable-ldap
+          --with-pic=yes
+          ${WITH_SSL}
+      BUILD_IN_SOURCE TRUE
+      BUILD_COMMAND $(MAKE)
+      INSTALL_COMMAND $(MAKE) install
+      DEPENDS ${DEPENDS}
+      LOG_DOWNLOAD TRUE
+      LOG_CONFIGURE TRUE
+      LOG_BUILD TRUE
+      LOG_INSTALL TRUE
+    )
+  endif()
+
   list(APPEND TILEDB_EXTERNAL_PROJECTS ep_curl)
   list(APPEND FORWARD_EP_CMAKE_ARGS
     -DTILEDB_CURL_EP_BUILT=TRUE
@@ -125,25 +130,24 @@ if (NOT CURL_FOUND AND TILEDB_SUPERBUILD)
 endif()
 
 if (CURL_FOUND)
-  message(STATUS "Found CURL: ${CURL_LIBRARIES} (found version \"${CURL_VERSION}\")")
+  message(STATUS "Found CURL: '${CURL_LIBRARIES}' (found version \"${CURL_VERSION}\")")
 
-    # If the libcurl target is missing this is an older version of curl found, don't attempt to use cmake target
-    if (NOT TARGET CURL::libcurl)
-      message(WARNING "cmake libcurl target not found, static linking against libcurl will result in missing symbols")
-      add_library(CURL::libcurl UNKNOWN IMPORTED)
+  # If the libcurl target is missing this is an older version of curl found, don't attempt to use cmake target
+  if (NOT TARGET CURL::libcurl)
+    add_library(CURL::libcurl UNKNOWN IMPORTED)
+    set_target_properties(CURL::libcurl PROPERTIES
+      IMPORTED_LOCATION "${CURL_LIBRARIES}"
+      INTERFACE_INCLUDE_DIRECTORIES "${CURL_INCLUDE_DIR};${CURL_INCLUDE_DIRS}"
+    )
+  # If the CURL::libcurl target exists this is new enough curl version to rely on the cmake target properties
+  else()
+    get_target_property(LIBCURL_TYPE CURL::libcurl TYPE)
+    # CURL_STATICLIB is missing for curl versions <7.61.1
+    if(CURL_VERSION VERSION_LESS 7.61.1 AND LIBCURL_TYPE STREQUAL "STATIC_LIBRARY")
       set_target_properties(CURL::libcurl PROPERTIES
-        IMPORTED_LOCATION "${CURL_LIBRARIES}"
-        INTERFACE_INCLUDE_DIRECTORIES "${CURL_INCLUDE_DIR};${CURL_INCLUDE_DIRS}"
-      )
-    # If the CURL::libcurl target exists this is new enough curl version to rely on the cmake target properties
-    else()
-      get_target_property(LIBCURL_TYPE CURL::libcurl TYPE)
-      # CURL_STATICLIB is missing for curl versions <7.61.1
-      if(CURL_VERSION VERSION_LESS 7.61.1 AND LIBCURL_TYPE STREQUAL "STATIC_LIBRARY")
-        set_target_properties(CURL::libcurl PROPERTIES
-                INTERFACE_COMPILE_DEFINITIONS CURL_STATICLIB)
-      endif()
+              INTERFACE_COMPILE_DEFINITIONS CURL_STATICLIB)
     endif()
+  endif()
 
 endif()
 
