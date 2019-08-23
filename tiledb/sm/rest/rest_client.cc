@@ -173,8 +173,6 @@ Status RestClient::get_array_non_empty_domain(
   // Deserialize data returned
   return serialization::nonempty_domain_deserialize(
       array, returned_data, serialization_type_, domain, is_empty);
-
-  return Status::Ok();
 }
 
 Status RestClient::get_array_max_buffer_sizes(
