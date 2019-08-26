@@ -2871,7 +2871,7 @@ void ConsolidationFx::read_kv_keys_abc_acd() {
   REQUIRE(rc == TILEDB_OK);
 
   // For retrieving values
-  const void *a1;
+  const void* a1;
   uint64_t a1_size;
   tiledb_datatype_t a1_type;
 
@@ -2939,7 +2939,7 @@ void ConsolidationFx::read_kv_keys_acd_abc() {
   REQUIRE(rc == TILEDB_OK);
 
   // For retrieving values
-  const void *a1;
+  const void* a1;
   uint64_t a1_size;
   tiledb_datatype_t a1_type;
 
