@@ -94,10 +94,16 @@ if (NOT CURL_FOUND AND TILEDB_SUPERBUILD)
     )
 
   else()
-
     if (TARGET ep_openssl)
       set(DEPENDS ep_openssl)
       set(WITH_SSL "--with-ssl=${TILEDB_EP_INSTALL_PREFIX}")
+    elseif (TILEDB_OPENSSL_DIR)
+      # ensure that curl links against the same libSSL
+      set(WITH_SSL "--with-ssl=${TILEDB_OPENSSL_DIR}")
+    else()
+      message(WARNING "TileDB FindOpenSSL_EP did not set TILEDB_OPENSSL_DIR. Falling back to autotools detection.")
+      # ensure that curl config errors out if SSL not available
+      set(WITH_SSL "--with-ssl")
     endif()
 
     ExternalProject_Add(ep_curl
