@@ -12,9 +12,11 @@ jobs:
         imageName: 'ubuntu-16.04'
         CXX: g++
         TILEDB_TOOLS: ON
+        TILEDB_FORCE_BUILD_DEPS: ON
       linux_s3:
         imageName: 'ubuntu-16.04'
         TILEDB_S3: ON
+        TILEDB_STATIC: OFF
         CXX: g++
       linux_hdfs:
         imageName: 'ubuntu-16.04'
@@ -32,6 +34,7 @@ jobs:
       linux_serialization:
         imageName: 'ubuntu-16.04'
         TILEDB_SERIALIZATION: ON
+        TILEDB_S3: ON
         CXX: g++
 
   pool:

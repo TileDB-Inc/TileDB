@@ -1,11 +1,20 @@
 steps:
 - bash: |
+    echo "'uname -s' is:"
+    echo "uname: " $(uname)
+    echo "uname -m: " $(uname -m)
+    echo "uname -r:" $(uname -r)
+    echo "uname -s: " $(uname -s)
+    echo "uname -v: " $(uname -v)
+    printenv
+  displayName: 'Print env'
+
+- bash: |
     set -e pipefail
     # Install doxygen *before* running cmake
     sudo apt-get install doxygen
   condition: eq(variables['Agent.OS'], 'Linux')
   displayName: 'Install doxygen (linux only)'
-
 
 - bash: |
     set -e pipefail
@@ -24,9 +33,19 @@ steps:
     # DELETEME work-around for https://github.com/microsoft/azure-pipelines-image-generation/issues/969
     sudo chown root.root /
 
+    # Azure sets "SYSTEM=build" for unknown reasonas, which breaks the OpenSSL configure script
+    #   - openssl configure uses ENV{SYSTEM} if available:
+    #     https://github.com/openssl/openssl/blob/6d745d740d37d680ff696486218b650512bbbbc6/config#L56
+    #   - error description:
+    #     https://developercommunity.visualstudio.com/content/problem/602584/openssl-build-error-when-using-pipelines.htm
+    unset SYSTEM
+
     # azure bash does not treat intermediate failure as error
     # https://github.com/Microsoft/azure-pipelines-yaml/issues/135
     set -e pipefail
+
+    git config --global user.name 'Azure Pipeline'
+    git config --global user.email 'no-reply@tiledb.io'
 
     git clone https://github.com/TileDB-Inc/TileDB-Unit-Test-Arrays.git test/inputs/arrays/read_compatibility_test
     #   displayName: 'Clone Unit-Test-Arrays'
@@ -48,10 +67,15 @@ steps:
       source scripts/install-minio.sh;
       source scripts/run-minio.sh;
     fi
-    # displayName: 'Install and start servers {HDFS|minio}'
 
     # Set up arguments for bootstrap.sh
-    bootstrap_args="--enable=verbose,static-tiledb";
+    bootstrap_args="--enable=verbose";
+
+    # Enable TILEDB_STATIC by default
+    [ "$TILEDB_STATIC" ] || TILEDB_STATIC=ON
+    if [[ "$TILEDB_STATIC" == "ON" ]]; then
+      bootstrap_args="${bootstrap_args} --enable-static-tiledb";
+    fi
     if [[ "$TILEDB_HDFS" == "ON" ]]; then
       bootstrap_args="${bootstrap_args} --enable-hdfs";
     fi;
@@ -79,6 +103,10 @@ steps:
       # Add serialization flag if necessary
       bootstrap_args="${bootstrap_args} --enable-serialization";
     fi
+    if [[ "$TILEDB_FORCE_BUILD_DEPS" == "ON" ]]; then
+      # Add superbuild flag
+      bootstrap_args="${bootstrap_args} --force-build-all-deps";
+    fi
 
     # displayName: 'Install dependencies'
 
@@ -86,6 +114,7 @@ steps:
     cd $BUILD_REPOSITORY_LOCALPATH/build
 
     # Configure and build TileDB
+    echo "Bootstrapping with '$bootstrap_args'"
     $BUILD_REPOSITORY_LOCALPATH/bootstrap $bootstrap_args
 
     make -j4
@@ -95,7 +124,6 @@ steps:
     #- bash: |
     cd $BUILD_REPOSITORY_LOCALPATH/build
     ls -la
-    printenv
 
     if [[ ( "$AGENT_OS" == "Linux" && "$TILEDB_S3" == "ON" ) ]]; then
       # make sure docker is still running...
@@ -116,7 +144,9 @@ steps:
     mkdir build && cd build
     cmake -DCMAKE_PREFIX_PATH=$BUILD_REPOSITORY_LOCALPATH/dist .. && make
     ./ExampleExe
-    ./ExampleExe_static
+    if [[ "TILEDB_STATIC" == "ON" ]]; then
+      ./ExampleExe_static
+    fi
     popd
     # Build and run the PNG ingestion example.
     if [[ "$AGENT_OS" == "Linux" ]]; then

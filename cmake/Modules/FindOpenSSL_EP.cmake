@@ -12,8 +12,7 @@
 # to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
 # copies of the Software, and to permit persons to whom the Software is
 # furnished to do so, subject to the following conditions:
-#
-# The above copyright notice and this permission notice shall be included in
+# # The above copyright notice and this permission notice shall be included in
 # all copies or substantial portions of the Software.
 #
 # THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
@@ -38,13 +37,17 @@ include(TileDBCommon)
 set(OPENSSL_PATHS ${TILEDB_EP_INSTALL_PREFIX})
 
 # Add /usr/local/opt, as Homebrew sometimes installs it there.
+set (HOMEBREW_BASE "/usr/local/opt/openssl")
 if (NOT TILEDB_DEPS_NO_DEFAULT_PATH)
-  list(APPEND OPENSSL_PATHS /usr/local/opt/openssl)
+  list(APPEND OPENSSL_PATHS ${HOMEBREW_BASE})
 endif()
 
 # First try the CMake-provided find script.
+# NOTE: must use OPEENS_ROOT_DIR. HINTS does not work.
 set(OPENSSL_ROOT_DIR ${OPENSSL_PATHS})
-find_package(OpenSSL QUIET ${TILEDB_DEPS_NO_DEFAULT_PATH})
+find_package(OpenSSL
+  QUIET
+  ${TILEDB_DEPS_NO_DEFAULT_PATH})
 
 # Next try finding the superbuild external project
 if (NOT OPENSSL_FOUND)
@@ -104,6 +107,8 @@ if (NOT OPENSSL_FOUND AND TILEDB_SUPERBUILD)
     LOG_INSTALL TRUE
   )
 
+  set(OPENSSL_ROOT_DIR "${TILEDB_EP_INSTALL_PREFIX}")
+
   list(APPEND TILEDB_EXTERNAL_PROJECTS ep_openssl)
   list(APPEND FORWARD_EP_CMAKE_ARGS
     -DTILEDB_OPENSSL_EP_BUILT=TRUE
@@ -111,7 +116,15 @@ if (NOT OPENSSL_FOUND AND TILEDB_SUPERBUILD)
 endif()
 
 if (OPENSSL_FOUND)
-  message(STATUS "Found OpenSSL: ${OPENSSL_SSL_LIBRARY} ${OPENSSL_CRYPTO_LIBRARY}")
+  message(STATUS "Found OpenSSL: ${OPENSSL_SSL_LIBRARY} -- OpenSSL crypto: ${OPENSSL_CRYPTO_LIBRARY} -- root: ${OPENSSL_ROOT_DIR}")
+
+  # define OPENSSL_ROOT_DIR if it came from homebrew, so that curl can find it later.
+  if ((NOT DEFINED OPENSSL_ROOT_DIR) OR ("${OPENSSL_ROOT_DIR}" STREQUAL ""))
+    if (DEFINED OPENSSL_INCLUDE_DIR AND "${OPENSSL_INCLUDE_DIR}" MATCHES "${HOMEBREW_BASE}.*")
+      set(OPENSSL_ROOT_DIR "${HOMEBREW_BASE}")
+    endif()
+  endif()
+
   if (NOT TARGET OpenSSL::SSL)
     add_library(OpenSSL::SSL UNKNOWN IMPORTED)
     set_target_properties(OpenSSL::SSL PROPERTIES
