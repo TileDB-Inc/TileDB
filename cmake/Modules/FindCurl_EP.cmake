@@ -102,8 +102,8 @@ if (NOT CURL_FOUND AND TILEDB_SUPERBUILD)
 
     ExternalProject_Add(ep_curl
       PREFIX "externals"
-      URL "https://curl.haxx.se/download/curl-7.64.1.tar.gz"
-      URL_HASH SHA1=54ee48d81eb9f90d3efdc6cdf964bd0a23abc364
+      URL "https://curl.haxx.se/download/curl-7.65.3.tar.gz"
+      URL_HASH SHA1=6468eea5e52ae0aac93f3995ec8e545ecb96f9e9
       CONFIGURE_COMMAND
         ${TILEDB_EP_BASE}/src/ep_curl/configure
           --prefix=${TILEDB_EP_INSTALL_PREFIX}
