@@ -493,6 +493,14 @@ if (CURL_APPEND_LIBS)
     ${CURL_APPEND_LIBS})
 endif()
 
+# Ensure that Curl has SSL available.
+# HTTPS failures are layered under the AWS SDK, with limited
+# and unspecific error messages.
+# Note: to override this check, set TILEDB_CURL_HAS_SSL=1
+if (TILEDB_SERIALIZATION OR TILEDB_S3 AND NOT WIN32)
+  include(${CMAKE_SOURCE_DIR}/cmake/Modules/CheckCurlSSL.cmake)
+endif()
+
 ############################################################
 # Generated dependency information (for installation)
 ############################################################
