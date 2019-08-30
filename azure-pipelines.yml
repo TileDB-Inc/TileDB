@@ -35,6 +35,7 @@ jobs:
         imageName: 'ubuntu-16.04'
         TILEDB_SERIALIZATION: ON
         TILEDB_S3: ON
+        TILEDB_COVERAGE: ON
         CXX: g++
 
   pool:

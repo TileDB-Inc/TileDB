@@ -91,6 +91,9 @@ steps:
     if [[ "$TILEDB_DEBUG" == "ON" ]]; then
       bootstrap_args="${bootstrap_args} --enable-debug";
     fi
+    if [[ "$TILEDB_COVERAGE" == "ON" ]]; then
+      bootstrap_args="${bootstrap_args} --enable-coverage";
+    fi
     if [[ "$TILEDB_CI_ASAN" == "ON" ]]; then
       # Add address sanitizer flag if necessary
       bootstrap_args="${bootstrap_args} --enable-sanitizer=address --enable-debug";
