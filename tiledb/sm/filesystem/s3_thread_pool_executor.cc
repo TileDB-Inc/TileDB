@@ -55,7 +55,10 @@ Status S3ThreadPoolExecutor::Stop() {
   Status ret_st = Status::Ok();
 
   std::unique_lock<std::mutex> lock_guard(lock_);
-  assert(state_ == State::RUNNING);
+  if (state_ == State::STOPPED) {
+    return ret_st;
+  }
+  assert(state_ == State::RUNNING || state_ == State::STOPPED);
   state_ = State::STOPPING;
   std::unordered_set<std::shared_ptr<std::future<Status>>> tasks =
       std::move(tasks_);

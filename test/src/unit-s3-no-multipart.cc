@@ -98,6 +98,8 @@ S3DirectFx::~S3DirectFx() {
 
   // Delete bucket
   CHECK(s3_.remove_bucket(S3_BUCKET).ok());
+
+  CHECK(s3_.disconnect().ok());
 }
 
 TEST_CASE_METHOD(

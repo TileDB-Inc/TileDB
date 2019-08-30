@@ -94,7 +94,7 @@ S3::S3()
 }
 
 S3::~S3() {
-  assert(state_ == State::DISCONNECTED);
+  assert(state_ == State::DISCONNECTED || state_ == State::UNINITIALIZED);
   for (auto& buff : file_buffers_)
     delete buff.second;
 }
