@@ -1045,6 +1045,11 @@ TILEDB_EXPORT void tiledb_config_free(tiledb_config_t** config);
  *    The scale factor for exponential backoff when connecting to S3.
  *    Any `long` value is acceptable. <br>
  *    **Default**: 25
+ * - `vfs.s3.logging_level` <br>
+ *    The AWS SDK logging level. This is a process-global setting. The
+ *    configuration of the most recently constructed context will set
+ *    process state. Log files are written to the process working directory.
+ *    **Default**: ""
  * - `vfs.s3.request_timeout_ms` <br>
  *    The request timeout in ms. Any `long` value is acceptable. <br>
  *    **Default**: 3000

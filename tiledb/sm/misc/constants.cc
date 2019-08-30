@@ -636,6 +636,9 @@ const std::string s3_proxy_username = "";
 /** S3 proxy password. */
 const std::string s3_proxy_password = "";
 
+/** S3 logging level. */
+const std::string s3_logging_level = "Off";
+
 /** HDFS default kerb ticket cache path. */
 const std::string hdfs_kerb_ticket_cache_path = "";
 
