@@ -123,6 +123,7 @@ class Config {
     std::string endpoint_override_;
     bool use_virtual_addressing_;
     bool use_multipart_upload_;
+    bool verify_ssl_;
     uint64_t max_parallel_ops_;
     uint64_t multipart_part_size_;
     long connect_timeout_ms_;
@@ -137,6 +138,8 @@ class Config {
     std::string aws_access_key_id;
     std::string aws_secret_access_key;
     std::string logging_level_;
+    std::string ca_file_;
+    std::string ca_path_;
 
     S3Params() {
       region_ = constants::s3_region;
@@ -144,6 +147,7 @@ class Config {
       endpoint_override_ = constants::s3_endpoint_override;
       use_virtual_addressing_ = constants::s3_use_virtual_addressing;
       use_multipart_upload_ = constants::s3_use_multipart_upload;
+      verify_ssl_ = constants::s3_verify_ssl;
       max_parallel_ops_ = constants::s3_max_parallel_ops;
       multipart_part_size_ = constants::s3_multipart_part_size;
       connect_timeout_ms_ = constants::s3_connect_timeout_ms;
@@ -158,6 +162,8 @@ class Config {
       aws_access_key_id = constants::aws_access_key_id;
       aws_secret_access_key = constants::aws_secret_access_key;
       logging_level_ = constants::s3_logging_level;
+      ca_file_ = constants::s3_ca_file;
+      ca_path_ = constants::s3_ca_path;
     }
   };
 
@@ -375,6 +381,16 @@ class Config {
    *    vfs.s3.max_parallel_ops` bytes will be buffered before issuing multipart
    *    uploads in parallel. <br>
    *    **Default**: 5MB
+   * - `vfs.s3.ca_path` <br>
+   *    Path to SSL/TLS certificate directory to be used by cURL for S3 HTTPS
+   *    encryption. Follows cURL conventions:
+   *    https://curl.haxx.se/docs/manpage.html <br>
+   *    **Default**: ""
+   * - `vfs.s3.ca_file` <br>
+   *    Path to SSL/TLS certificate file to be used by cURL for for S3 HTTPS
+   *    encryption. Follows cURL conventions:
+   *    https://curl.haxx.se/docs/manpage.html <br>
+   *    **Default**: ""
    * - `vfs.s3.connect_timeout_ms` <br>
    *    The connection timeout in ms. Any `long` value is acceptable. <br>
    *    **Default**: 3000
@@ -409,7 +425,10 @@ class Config {
    * - `vfs.s3.proxy_password` <br>
    *    The proxy password. Note: this parameter is not serialized by
    *    `tiledb_config_save_to_file`. <br>
-   *    **Default**: ""
+   *    **Default**: "
+   * - `vfs.s3.verify_ssl` <br>
+   *    Enable HTTPS certificate verification.<br>
+   *    **Default**: true""
    * - `vfs.hdfs.name_node"` <br>
    *    Name node for HDFS. <br>
    *    **Default**: ""
@@ -611,6 +630,12 @@ class Config {
   /** Sets the S3 multipart part size. */
   Status set_vfs_s3_multipart_part_size(const std::string& value);
 
+  /** Sets the S3 certificate file. */
+  Status set_vfs_s3_ca_file(const std::string& value);
+
+  /** Sets the S3 certificate directory. */
+  Status set_vfs_s3_ca_path(const std::string& value);
+
   /** Sets the S3 connect timeout in milliseconds. */
   Status set_vfs_s3_connect_timeout_ms(const std::string& value);
 
@@ -640,6 +665,9 @@ class Config {
 
   /** Sets the S3 proxy password. */
   Status set_vfs_s3_proxy_password(const std::string& value);
+
+  /** Sets the S3 verify_ssl. */
+  Status set_vfs_s3_verify_ssl(const std::string& value);
 
   /** Sets the HDFS namenode hostname and port (uri) */
   Status set_vfs_hdfs_name_node(const std::string& value);

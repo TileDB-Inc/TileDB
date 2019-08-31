@@ -230,6 +230,7 @@ void check_save_to_file() {
   ss << "vfs.s3.scheme https\n";
   ss << "vfs.s3.use_multipart_upload true\n";
   ss << "vfs.s3.use_virtual_addressing true\n";
+  ss << "vfs.s3.verify_ssl true\n";
 
   std::ifstream ifs("test_config.txt");
   std::stringstream ss_file;
@@ -408,6 +409,8 @@ TEST_CASE("C API: Test config iter", "[capi], [config]") {
   all_param_values["vfs.s3.max_parallel_ops"] =
       std::to_string(std::thread::hardware_concurrency());
   all_param_values["vfs.s3.multipart_part_size"] = "5242880";
+  all_param_values["vfs.s3.ca_file"] = "";
+  all_param_values["vfs.s3.ca_path"] = "";
   all_param_values["vfs.s3.connect_timeout_ms"] = "3000";
   all_param_values["vfs.s3.connect_max_tries"] = "5";
   all_param_values["vfs.s3.connect_scale_factor"] = "25";
@@ -418,6 +421,7 @@ TEST_CASE("C API: Test config iter", "[capi], [config]") {
   all_param_values["vfs.s3.proxy_port"] = "0";
   all_param_values["vfs.s3.proxy_scheme"] = "https";
   all_param_values["vfs.s3.proxy_username"] = "";
+  all_param_values["vfs.s3.verify_ssl"] = "true";
   all_param_values["vfs.hdfs.username"] = "stavros";
   all_param_values["vfs.hdfs.kerb_ticket_cache_path"] = "";
   all_param_values["vfs.hdfs.name_node_uri"] = "";
@@ -441,6 +445,8 @@ TEST_CASE("C API: Test config iter", "[capi], [config]") {
   vfs_param_values["s3.max_parallel_ops"] =
       std::to_string(std::thread::hardware_concurrency());
   vfs_param_values["s3.multipart_part_size"] = "5242880";
+  vfs_param_values["s3.ca_file"] = "";
+  vfs_param_values["s3.ca_path"] = "";
   vfs_param_values["s3.connect_timeout_ms"] = "3000";
   vfs_param_values["s3.connect_max_tries"] = "5";
   vfs_param_values["s3.connect_scale_factor"] = "25";
@@ -451,6 +457,7 @@ TEST_CASE("C API: Test config iter", "[capi], [config]") {
   vfs_param_values["s3.proxy_port"] = "0";
   vfs_param_values["s3.proxy_scheme"] = "https";
   vfs_param_values["s3.proxy_username"] = "";
+  vfs_param_values["s3.verify_ssl"] = "true";
   vfs_param_values["hdfs.username"] = "stavros";
   vfs_param_values["hdfs.kerb_ticket_cache_path"] = "";
   vfs_param_values["hdfs.name_node_uri"] = "";
@@ -466,6 +473,8 @@ TEST_CASE("C API: Test config iter", "[capi], [config]") {
   s3_param_values["max_parallel_ops"] =
       std::to_string(std::thread::hardware_concurrency());
   s3_param_values["multipart_part_size"] = "5242880";
+  s3_param_values["ca_file"] = "";
+  s3_param_values["ca_path"] = "";
   s3_param_values["connect_timeout_ms"] = "3000";
   s3_param_values["connect_max_tries"] = "5";
   s3_param_values["connect_scale_factor"] = "25";
@@ -476,6 +485,7 @@ TEST_CASE("C API: Test config iter", "[capi], [config]") {
   s3_param_values["proxy_port"] = "0";
   s3_param_values["proxy_scheme"] = "https";
   s3_param_values["proxy_username"] = "";
+  s3_param_values["verify_ssl"] = "true";
 
   // Create an iterator and iterate over all parameters
   tiledb_config_iter_t* config_iter = nullptr;
