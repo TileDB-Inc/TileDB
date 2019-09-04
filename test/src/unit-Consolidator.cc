@@ -42,12 +42,12 @@ TEST_CASE(
     "[remove-consolidated-URIs][remove-none]") {
   std::vector<TimestampedURI> uris;
   uris.emplace_back(URI(), std::pair<uint64_t, uint64_t>(0, 1));
-  Consolidator::remove_consolidated_fragment_uris(&uris);
+  Consolidator::remove_consolidated_uris(&uris);
   CHECK(uris.size() == 1);
   CHECK(uris[0].timestamp_range_ == std::pair<uint64_t, uint64_t>(0, 1));
 
   uris.emplace_back(URI(), std::pair<uint64_t, uint64_t>(2, 3));
-  Consolidator::remove_consolidated_fragment_uris(&uris);
+  Consolidator::remove_consolidated_uris(&uris);
   CHECK(uris.size() == 2);
   CHECK(uris[0].timestamp_range_ == std::pair<uint64_t, uint64_t>(0, 1));
   CHECK(uris[1].timestamp_range_ == std::pair<uint64_t, uint64_t>(2, 3));
@@ -62,7 +62,7 @@ TEST_CASE(
   uris.emplace_back(URI(), std::pair<uint64_t, uint64_t>(1, 1));
   uris.emplace_back(URI(), std::pair<uint64_t, uint64_t>(2, 2));
   uris.emplace_back(URI(), std::pair<uint64_t, uint64_t>(3, 3));
-  Consolidator::remove_consolidated_fragment_uris(&uris);
+  Consolidator::remove_consolidated_uris(&uris);
   CHECK(uris.size() == 3);
   CHECK(uris[0].timestamp_range_ == std::pair<uint64_t, uint64_t>(0, 1));
   CHECK(uris[1].timestamp_range_ == std::pair<uint64_t, uint64_t>(2, 2));
@@ -79,7 +79,7 @@ TEST_CASE(
   uris.emplace_back(URI(), std::pair<uint64_t, uint64_t>(2, 2));
   uris.emplace_back(URI(), std::pair<uint64_t, uint64_t>(2, 3));
   uris.emplace_back(URI(), std::pair<uint64_t, uint64_t>(3, 3));
-  Consolidator::remove_consolidated_fragment_uris(&uris);
+  Consolidator::remove_consolidated_uris(&uris);
   CHECK(uris.size() == 3);
   CHECK(uris[0].timestamp_range_ == std::pair<uint64_t, uint64_t>(0, 0));
   CHECK(uris[1].timestamp_range_ == std::pair<uint64_t, uint64_t>(1, 1));
@@ -97,7 +97,7 @@ TEST_CASE(
   uris.emplace_back(URI(), std::pair<uint64_t, uint64_t>(2, 2));
   uris.emplace_back(URI(), std::pair<uint64_t, uint64_t>(2, 3));
   uris.emplace_back(URI(), std::pair<uint64_t, uint64_t>(3, 3));
-  Consolidator::remove_consolidated_fragment_uris(&uris);
+  Consolidator::remove_consolidated_uris(&uris);
   CHECK(uris.size() == 1);
   CHECK(uris[0].timestamp_range_ == std::pair<uint64_t, uint64_t>(0, 3));
 }

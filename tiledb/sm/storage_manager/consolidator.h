@@ -131,24 +131,45 @@ class Consolidator {
       uint32_t key_length,
       const Config* config);
 
+  /**
+   * Consolidates the metadata of the input array.
+   *
+   * @param array_name URI of array whose metadata to consolidate.
+   * @param encryption_type The encryption type of the array
+   * @param encryption_key If the array is encrypted, the private encryption
+   *    key. For unencrypted arrays, pass `nullptr`.
+   * @param key_length The length in bytes of the encryption key.
+   * @param config Configuration parameters for the consolidation
+   *     (`nullptr` means default).
+   * @return Status
+   */
+  Status consolidate_array_metadata(
+      const char* array_name,
+      EncryptionType encryption_type,
+      const void* encryption_key,
+      uint32_t key_length,
+      const Config* config);
+
   /* ********************************* */
   /*          STATIC FUNCTIONS         */
   /* ********************************* */
 
   /**
-   * Removes from the input the URIs of the fragments that have
-   * been consolidated. This is necessary on S3, where the deletion
-   * of the consolidated fragments may not have taken place before
-   * a read, in which case both the new and old fragments appear to
-   * exist. In this case, we need to make sure that the old
-   * fragments are ignored, otherwise performance will be impacted.
+   * Applicable to both fragment and array metadata URIs.
    *
-   * A fragment URI of the form `__t1_t2_uuid` is
+   * Removes from the input the URIs that have
+   * been consolidated. This is necessary on S3, where the deletion
+   * of the consolidated URIs may not have taken place before
+   * a read, in which case both the new and old URIs appear to
+   * exist. In this case, we need to make sure that the old
+   * URIs are ignored, otherwise performance will be impacted.
+   *
+   * A URI of the form `__t1_t2_uuid` is
    * ignored, if there is another fragment URI `__t1c_t2c_uuid`
    * such that `t1c <= t1 <= t2 <= t2c`.
    */
-  static void remove_consolidated_fragment_uris(
-      std::vector<TimestampedURI>* sorted_fragment_uris);
+  static void remove_consolidated_uris(
+      std::vector<TimestampedURI>* sorted_uris);
 
  private:
   /* ********************************* */

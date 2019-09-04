@@ -621,8 +621,12 @@ class Array {
    * @code{.cpp}
    * // Load AES-256 key from disk, environment variable, etc.
    * uint8_t key[32] = ...;
-   * tiledb::Array::consolidate(ctx, "s3://bucket-name/array-name",
-   *    TILEDB_AES_256_GCM, key, sizeof(key));
+   * tiledb::Array::consolidate(
+   *     ctx,
+   *     "s3://bucket-name/array-name",
+   *     TILEDB_AES_256_GCM,
+   *     key,
+   *     sizeof(key));
    * @endcode
    *
    * @param ctx TileDB context
@@ -652,7 +656,12 @@ class Array {
   /**
    * @copybrief Array::consolidate(const Context&,const std::string&,tiledb_encryption_type_t,const void*,uint32_t,const Config&)
    *
-   * See @ref Array::consolidate(const Context&,const std::string&,tiledb_encryption_type_t,const void*,uint32_t,const Config&) "Array::consolidate"
+   * See @ref Array::consolidate(
+   *     const Context&,
+   *     const std::string&,
+   *     tiledb_encryption_type_t,
+   *     const void*,
+   *     uint32_t,const Config&) "Array::consolidate"
    *
    * @param ctx TileDB context
    * @param array_uri The URI of the TileDB array to be consolidated.
@@ -903,6 +912,223 @@ class Array {
     ctx.handle_error(tiledb_array_get_query_type(
         ctx.ptr().get(), array_.get(), &query_type));
     return query_type;
+  }
+
+  /**
+   * @brief Consolidates the metadata of an array.
+   *
+   * You must first finalize all queries to the array before consolidation can
+   * begin (as consolidation temporarily acquires an exclusive lock on the
+   * array).
+   *
+   * **Example:**
+   * @code{.cpp}
+   * tiledb::Array::consolidate_metadata(ctx, "s3://bucket-name/array-name");
+   * @endcode
+   *
+   * @param ctx TileDB context
+   * @param array_uri The URI of the TileDB array whose
+   *     metadata will be consolidated.
+   * @param config Configuration parameters for the consolidation.
+   */
+  static void consolidate_metadata(
+      const Context& ctx,
+      const std::string& uri,
+      Config* const config = nullptr) {
+    consolidate_metadata(ctx, uri, TILEDB_NO_ENCRYPTION, nullptr, 0, config);
+  }
+
+  /**
+   * @brief Consolidates the metadata of an encrypted array.
+   *
+   * You must first finalize all queries to the array before consolidation can
+   * begin (as consolidation temporarily acquires an exclusive lock on the
+   * array).
+   *
+   * **Example:**
+   * @code{.cpp}
+   * // Load AES-256 key from disk, environment variable, etc.
+   * uint8_t key[32] = ...;
+   * tiledb::Array::consolidate_metadata(
+   *     ctx,
+   *     "s3://bucket-name/array-name",
+   *     TILEDB_AES_256_GCM,
+   *     key,
+   *     sizeof(key));
+   * @endcode
+   *
+   * @param ctx TileDB context
+   * @param array_uri The URI of the TileDB array whose
+   *     metadata will be consolidated.
+   * @param encryption_type The encryption type to use.
+   * @param encryption_key The encryption key to use.
+   * @param key_length Length in bytes of the encryption key.
+   * @param config Configuration parameters for the consolidation.
+   */
+  static void consolidate_metadata(
+      const Context& ctx,
+      const std::string& uri,
+      tiledb_encryption_type_t encryption_type,
+      const void* encryption_key,
+      uint32_t key_length,
+      Config* const config = nullptr) {
+    ctx.handle_error(tiledb_array_consolidate_metadata_with_key(
+        ctx.ptr().get(),
+        uri.c_str(),
+        encryption_type,
+        encryption_key,
+        key_length,
+        config ? config->ptr().get() : nullptr));
+  }
+
+  // clang-format off
+  /**
+   * @copybrief Array::consolidate_metadata(const Context&,const std::string&,tiledb_encryption_type_t,const void*,uint32_t,const Config&)
+   *
+   * See @ref Array::consolidate_metadata(
+   *     const Context&,
+   *     const std::string&,
+   *     tiledb_encryption_type_t,
+   *     const void*,
+   *     uint32_t,const Config&) "Array::consolidate_metadata"
+   *
+   * @param ctx TileDB context
+   * @param array_uri The URI of the TileDB array whose 
+   *     metadata will be consolidated.
+   * @param encryption_type The encryption type to use.
+   * @param encryption_key The encryption key to use.
+   * @param config Configuration parameters for the consolidation.
+   */
+  // clang-format on
+  static void consolidate_metadata(
+      const Context& ctx,
+      const std::string& uri,
+      tiledb_encryption_type_t encryption_type,
+      const std::string& encryption_key,
+      Config* const config = nullptr) {
+    return consolidate_metadata(
+        ctx,
+        uri,
+        encryption_type,
+        encryption_key.data(),
+        (uint32_t)encryption_key.size(),
+        config);
+  }
+
+  /**
+   * It puts a metadata key-value item to an open array. The array must
+   * be opened in WRITE mode, otherwise the function will error out.
+   *
+   * @param key The key of the metadata item to be added. UTF-8 encodings
+   *     are acceptable.
+   * @param value_type The datatype of the value.
+   * @param value_num The value may consist of more than one items of the
+   *     same datatype. This argument indicates the number of items in the
+   *     value component of the metadata.
+   * @param value The metadata value in binary form.
+   *
+   * @note The writes will take effect only upon closing the array.
+   */
+  void put_metadata(
+      const std::string& key,
+      tiledb_datatype_t value_type,
+      uint32_t value_num,
+      const void* value) {
+    auto& ctx = ctx_.get();
+    tiledb_ctx_t* c_ctx = ctx.ptr().get();
+    ctx.handle_error(tiledb_array_put_metadata(
+        c_ctx, array_.get(), key.c_str(), value_type, value_num, value));
+  }
+
+  /**
+   * It deletes a metadata key-value item from an open array. The array must
+   * be opened in WRITE mode, otherwise the function will error out.
+   *
+   * @param key The key of the metadata item to be deleted.
+   *
+   * @note The writes will take effect only upon closing the array.
+   *
+   * @note If the key does not exist, this will take no effect
+   *     (i.e., the function will not error out).
+   */
+  void delete_metadata(const std::string& key) {
+    auto& ctx = ctx_.get();
+    tiledb_ctx_t* c_ctx = ctx.ptr().get();
+    ctx.handle_error(
+        tiledb_array_delete_metadata(c_ctx, array_.get(), key.c_str()));
+  }
+
+  /**
+   * It gets a metadata key-value item from an open array. The array must
+   * be opened in READ mode, otherwise the function will error out.
+   *
+   * @param key The key of the metadata item to be retrieved. UTF-8 encodings
+   *     are acceptable.
+   * @param value_type The datatype of the value.
+   * @param value_num The value may consist of more than one items of the
+   *     same datatype. This argument indicates the number of items in the
+   *     value component of the metadata.
+   * @param value The metadata value in binary form.
+   *
+   * @note If the key does not exist, then `value` will be NULL.
+   */
+  void get_metadata(
+      const std::string& key,
+      tiledb_datatype_t* value_type,
+      uint32_t* value_num,
+      const void** value) {
+    auto& ctx = ctx_.get();
+    tiledb_ctx_t* c_ctx = ctx.ptr().get();
+    ctx.handle_error(tiledb_array_get_metadata(
+        c_ctx, array_.get(), key.c_str(), value_type, value_num, value));
+  }
+
+  /**
+   * Returns then number of metadata items in an open array. The array must
+   * be opened in READ mode, otherwise the function will error out.
+   */
+  uint64_t metadata_num() const {
+    uint64_t num;
+    auto& ctx = ctx_.get();
+    tiledb_ctx_t* c_ctx = ctx.ptr().get();
+    ctx.handle_error(tiledb_array_get_metadata_num(c_ctx, array_.get(), &num));
+    return num;
+  }
+
+  /**
+   * It gets a metadata item from an open array using an index.
+   * The array must be opened in READ mode, otherwise the function will
+   * error out.
+   *
+   * @param index The index used to get the metadata.
+   * @param key The metadata key.
+   * @param value_type The datatype of the value.
+   * @param value_num The value may consist of more than one items of the
+   *     same datatype. This argument indicates the number of items in the
+   *     value component of the metadata.
+   * @param value The metadata value in binary form.
+   */
+  void get_metadata_from_index(
+      uint64_t index,
+      std::string* key,
+      tiledb_datatype_t* value_type,
+      uint32_t* value_num,
+      const void** value) {
+    const char* key_c;
+    uint32_t key_len;
+    auto& ctx = ctx_.get();
+    tiledb_ctx_t* c_ctx = ctx.ptr().get();
+    ctx.handle_error(tiledb_array_get_metadata_from_index(
+        c_ctx,
+        array_.get(),
+        index,
+        &key_c,
+        &key_len,
+        value_type,
+        value_num,
+        value));
+    key->resize(key_len);
+    std::memcpy((void*)key->data(), key_c, key_len);
   }
 
  private:

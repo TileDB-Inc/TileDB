@@ -126,14 +126,20 @@ const EncryptionKey* Array::encryption_key() const {
 
 Status Array::open(
     QueryType query_type,
+    uint64_t timestamp,
     EncryptionType encryption_type,
     const void* encryption_key,
     uint32_t key_length) {
   std::unique_lock<std::mutex> lck(mtx_);
 
   if (is_open_)
+    return LOG_STATUS(Status::ArrayError(
+        "Cannot open array at timestamp; Array already open"));
+
+  if (query_type != QueryType::READ)
     return LOG_STATUS(
-        Status::ArrayError("Cannot open array; Array already open"));
+        Status::ArrayError("Cannot open array at timestamp; The array can "
+                           "opened at a timestamp only in read mode"));
 
   if (remote_ && encryption_type != EncryptionType::NO_ENCRYPTION)
     return LOG_STATUS(Status::ArrayError(
@@ -143,9 +149,9 @@ Status Array::open(
   RETURN_NOT_OK(
       encryption_key_.set_key(encryption_type, encryption_key, key_length));
 
-  timestamp_ =
-      query_type == QueryType::READ ? utils::time::timestamp_now_ms() : 0;
+  timestamp_ = timestamp;
 
+  query_type_ = query_type;
   if (remote_) {
     auto rest_client = storage_manager_->rest_client();
     if (rest_client == nullptr)
@@ -153,19 +159,18 @@ Status Array::open(
           "Cannot open array; remote array with no REST client."));
     RETURN_NOT_OK(
         rest_client->get_array_schema_from_rest(array_uri_, &array_schema_));
-  } else if (query_type == QueryType::READ) {
+    // TODO: get metadata from REST
+  } else {
+    // Open the array.
     RETURN_NOT_OK(storage_manager_->array_open_for_reads(
         array_uri_,
         timestamp_,
         encryption_key_,
         &array_schema_,
-        &fragment_metadata_));
-  } else {
-    RETURN_NOT_OK(storage_manager_->array_open_for_writes(
-        array_uri_, encryption_key_, &array_schema_));
+        &fragment_metadata_,
+        &metadata_));
   }
 
-  query_type_ = query_type;
   is_open_ = true;
 
   return Status::Ok();
@@ -207,6 +212,7 @@ Status Array::open(
           "Cannot open array; remote array with no REST client."));
     RETURN_NOT_OK(
         rest_client->get_array_schema_from_rest(array_uri_, &array_schema_));
+    // TODO: get metadata from REST
   } else {
     // Open the array.
     RETURN_NOT_OK(storage_manager_->array_open_for_reads(
@@ -224,20 +230,14 @@ Status Array::open(
 
 Status Array::open(
     QueryType query_type,
-    uint64_t timestamp,
     EncryptionType encryption_type,
     const void* encryption_key,
     uint32_t key_length) {
   std::unique_lock<std::mutex> lck(mtx_);
 
   if (is_open_)
-    return LOG_STATUS(Status::ArrayError(
-        "Cannot open array at timestamp; Array already open"));
-
-  if (query_type != QueryType::READ)
     return LOG_STATUS(
-        Status::ArrayError("Cannot open array at timestamp; The array can "
-                           "opened at a timestamp only in read mode"));
+        Status::ArrayError("Cannot open array; Array already open"));
 
   if (remote_ && encryption_type != EncryptionType::NO_ENCRYPTION)
     return LOG_STATUS(Status::ArrayError(
@@ -247,9 +247,9 @@ Status Array::open(
   RETURN_NOT_OK(
       encryption_key_.set_key(encryption_type, encryption_key, key_length));
 
-  timestamp_ = timestamp;
+  timestamp_ =
+      query_type == QueryType::READ ? utils::time::timestamp_now_ms() : 0;
 
-  query_type_ = query_type;
   if (remote_) {
     auto rest_client = storage_manager_->rest_client();
     if (rest_client == nullptr)
@@ -257,16 +257,22 @@ Status Array::open(
           "Cannot open array; remote array with no REST client."));
     RETURN_NOT_OK(
         rest_client->get_array_schema_from_rest(array_uri_, &array_schema_));
-  } else {
-    // Open the array.
+    // TODO: get metadata from REST
+  } else if (query_type == QueryType::READ) {
     RETURN_NOT_OK(storage_manager_->array_open_for_reads(
         array_uri_,
         timestamp_,
         encryption_key_,
         &array_schema_,
-        &fragment_metadata_));
+        &fragment_metadata_,
+        &metadata_));
+  } else {
+    RETURN_NOT_OK(storage_manager_->array_open_for_writes(
+        array_uri_, encryption_key_, &array_schema_));
+    metadata_.reset();  // Resets metadata with a new timestamp
   }
 
+  query_type_ = query_type;
   is_open_ = true;
 
   return Status::Ok();
@@ -291,9 +297,14 @@ Status Array::close() {
     if (query_type_ == QueryType::READ) {
       RETURN_NOT_OK(storage_manager_->array_close_for_reads(array_uri_));
     } else {
-      RETURN_NOT_OK(storage_manager_->array_close_for_writes(array_uri_));
+      Buffer metadata_buff;
+      RETURN_NOT_OK(metadata_.serialize(&metadata_buff));
+      RETURN_NOT_OK(storage_manager_->array_close_for_writes(
+          array_uri_, encryption_key_, &metadata_));
     }
   }
+
+  metadata_.clear();
 
   return Status::Ok();
 }
@@ -457,7 +468,7 @@ Status Array::reopen(uint64_t timestamp) {
 
   if (query_type_ != QueryType::READ)
     return LOG_STATUS(
-        Status::ArrayError("Cannot reopen array; Array store was "
+        Status::ArrayError("Cannot reopen array; Array was "
                            "not opened in read mode"));
 
   clear_last_max_buffer_sizes();
@@ -477,7 +488,8 @@ Status Array::reopen(uint64_t timestamp) {
       timestamp_,
       encryption_key_,
       &array_schema_,
-      &fragment_metadata_);
+      &fragment_metadata_,
+      &metadata_);
 }
 
 uint64_t Array::timestamp() const {
@@ -495,6 +507,140 @@ Status Array::set_uri(const std::string& uri) {
   std::unique_lock<std::mutex> lck(mtx_);
   array_uri_ = URI(uri);
   return Status::Ok();
+}
+
+Status Array::delete_metadata(const char* key) {
+  // Check if array is open
+  if (!is_open_)
+    return LOG_STATUS(
+        Status::ArrayError("Cannot delete metadata; Array is not open"));
+
+  // Check mode
+  if (query_type_ != QueryType::WRITE)
+    return LOG_STATUS(
+        Status::ArrayError("Cannot delete metadata; Array was "
+                           "not opened in write mode"));
+
+  // Check if key is null
+  if (key == nullptr)
+    return LOG_STATUS(
+        Status::ArrayError("Cannot delete metadata; Key cannot be null"));
+
+  RETURN_NOT_OK(metadata_.del(key));
+
+  return Status::Ok();
+}
+
+Status Array::put_metadata(
+    const char* key,
+    Datatype value_type,
+    uint32_t value_num,
+    const void* value) {
+  // Check if array is open
+  if (!is_open_)
+    return LOG_STATUS(
+        Status::ArrayError("Cannot put metadata; Array is not open"));
+
+  // Check mode
+  if (query_type_ != QueryType::WRITE)
+    return LOG_STATUS(
+        Status::ArrayError("Cannot put metadata; Array was "
+                           "not opened in write mode"));
+
+  // Check if key is null
+  if (key == nullptr)
+    return LOG_STATUS(
+        Status::ArrayError("Cannot put metadata; Key cannot be null"));
+
+  // Check if value is null
+  if (value == nullptr)
+    return LOG_STATUS(
+        Status::ArrayError("Cannot put metadata; Value cannot be null"));
+
+  // Check if value num is 0
+  if (value_num == 0)
+    return LOG_STATUS(Status::ArrayError(
+        "Cannot put metadata; Number of values cannot be zero"));
+
+  // Check if value type is ANY
+  if (value_type == Datatype::ANY)
+    return LOG_STATUS(
+        Status::ArrayError("Cannot put metadata; Value type cannot be ANY"));
+
+  RETURN_NOT_OK(metadata_.put(key, value_type, value_num, value));
+
+  return Status::Ok();
+}
+
+Status Array::get_metadata(
+    const char* key,
+    Datatype* value_type,
+    uint32_t* value_num,
+    const void** value) {
+  // Check if array is open
+  if (!is_open_)
+    return LOG_STATUS(
+        Status::ArrayError("Cannot get metadata; Array is not open"));
+
+  // Check mode
+  if (query_type_ != QueryType::READ)
+    return LOG_STATUS(
+        Status::ArrayError("Cannot get metadata; Array was "
+                           "not opened in read mode"));
+
+  // Check if key is null
+  if (key == nullptr)
+    return LOG_STATUS(
+        Status::ArrayError("Cannot get metadata; Key cannot be null"));
+
+  RETURN_NOT_OK(metadata_.get(key, value_type, value_num, value));
+
+  return Status::Ok();
+}
+
+Status Array::get_metadata(
+    uint64_t index,
+    const char** key,
+    uint32_t* key_len,
+    Datatype* value_type,
+    uint32_t* value_num,
+    const void** value) {
+  // Check if array is open
+  if (!is_open_)
+    return LOG_STATUS(
+        Status::ArrayError("Cannot get metadata; Array is not open"));
+
+  // Check mode
+  if (query_type_ != QueryType::READ)
+    return LOG_STATUS(
+        Status::ArrayError("Cannot get metadata; Array was "
+                           "not opened in read mode"));
+
+  RETURN_NOT_OK(
+      metadata_.get(index, key, key_len, value_type, value_num, value));
+
+  return Status::Ok();
+}
+
+Status Array::get_metadata_num(uint64_t* num) const {
+  // Check if array is open
+  if (!is_open_)
+    return LOG_STATUS(
+        Status::ArrayError("Cannot get number of metadata; Array is not open"));
+
+  // Check mode
+  if (query_type_ != QueryType::READ)
+    return LOG_STATUS(
+        Status::ArrayError("Cannot get number of metadata; Array was "
+                           "not opened in read mode"));
+
+  *num = metadata_.num();
+
+  return Status::Ok();
+}
+
+Metadata* Array::metadata() {
+  return &metadata_;
 }
 
 /* ********************************* */

@@ -3406,10 +3406,7 @@ TILEDB_EXPORT int32_t tiledb_array_alloc(
  * objects are opened to receive only one type of queries.
  * They can always be closed and be re-opened with another query type.
  * Also there may be many different `tiledb_array_t`
- * objects created and opened with different query types. For
- * instance, one may create and open an array object `array_read` for
- * reads and another one `array_write` for writes, and interleave
- * creation and submission of queries for both these array objects.
+ * objects created and opened with different query types.
  *
  * **Example:**
  *
@@ -3933,6 +3930,168 @@ TILEDB_EXPORT int32_t tiledb_array_encryption_type(
     tiledb_ctx_t* ctx,
     const char* array_uri,
     tiledb_encryption_type_t* encryption_type);
+
+/**
+ * It puts a metadata key-value item to an open array. The array must
+ * be opened in WRITE mode, otherwise the function will error out.
+ *
+ * @param ctx The TileDB context.
+ * @param array An array opened in WRITE mode.
+ * @param key The key of the metadata item to be added. UTF-8 encodings
+ *     are acceptable.
+ * @param value_type The datatype of the value.
+ * @param value_num The value may consist of more than one items of the
+ *     same datatype. This argument indicates the number of items in the
+ *     value component of the metadata.
+ * @param value The metadata value in binary form.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ *
+ * @note The writes will take effect only upon closing the array.
+ */
+TILEDB_EXPORT int32_t tiledb_array_put_metadata(
+    tiledb_ctx_t* ctx,
+    tiledb_array_t* array,
+    const char* key,
+    tiledb_datatype_t value_type,
+    uint32_t value_num,
+    const void* value);
+
+/**
+ * It deletes a metadata key-value item from an open array. The array must
+ * be opened in WRITE mode, otherwise the function will error out.
+ *
+ * @param ctx The TileDB context.
+ * @param array An array opened in WRITE mode.
+ * @param key The key of the metadata item to be deleted.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ *
+ * @note The writes will take effect only upon closing the array.
+ *
+ * @note If the key does not exist, this will take no effect
+ *     (i.e., the function will not error out).
+ */
+TILEDB_EXPORT int32_t tiledb_array_delete_metadata(
+    tiledb_ctx_t* ctx, tiledb_array_t* array, const char* key);
+
+/**
+ * It gets a metadata key-value item from an open array. The array must
+ * be opened in READ mode, otherwise the function will error out.
+ *
+ * @param ctx The TileDB context.
+ * @param array An array opened in READ mode.
+ * @param key The key of the metadata item to be retrieved. UTF-8 encodings
+ *     are acceptable.
+ * @param value_type The datatype of the value.
+ * @param value_num The value may consist of more than one items of the
+ *     same datatype. This argument indicates the number of items in the
+ *     value component of the metadata.
+ * @param value The metadata value in binary form.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ *
+ * @note If the key does not exist, then `value` will be NULL.
+ */
+TILEDB_EXPORT int32_t tiledb_array_get_metadata(
+    tiledb_ctx_t* ctx,
+    tiledb_array_t* array,
+    const char* key,
+    tiledb_datatype_t* value_type,
+    uint32_t* value_num,
+    const void** value);
+
+/**
+ * It gets then number of metadata items in an open array. The array must
+ * be opened in READ mode, otherwise the function will error out.
+ *
+ * @param ctx The TileDB context.
+ * @param array An array opened in READ mode.
+ * @param num The number of metadata items to be retrieved.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_array_get_metadata_num(
+    tiledb_ctx_t* ctx, tiledb_array_t* array, uint64_t* num);
+
+/**
+ * It gets a metadata item from an open array using an index.
+ * The array must be opened in READ mode, otherwise the function will
+ * error out.
+ *
+ * @param ctx The TileDB context.
+ * @param array An array opened in READ mode.
+ * @param index The index used to get the metadata.
+ * @param key The metadata key.
+ * @param key_len The metadata key length.
+ * @param value_type The datatype of the value.
+ * @param value_num The value may consist of more than one items of the
+ *     same datatype. This argument indicates the number of items in the
+ *     value component of the metadata.
+ * @param value The metadata value in binary form.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_array_get_metadata_from_index(
+    tiledb_ctx_t* ctx,
+    tiledb_array_t* array,
+    uint64_t index,
+    const char** key,
+    uint32_t* key_len,
+    tiledb_datatype_t* value_type,
+    uint32_t* value_num,
+    const void** value);
+
+/**
+ * Consolidates the array metadata into a single array metadata file.
+ *
+ * You must first finalize all queries to the array before consolidation can
+ * begin (as consolidation temporarily acquires an exclusive lock on the array).
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * tiledb_array_consolidate_metadata(
+ *     ctx, "hdfs:///tiledb_arrays/my_array", nullptr);
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param array_uri The name of the TileDB array whose metadata will
+ *     be consolidated.
+ * @param config Configuration parameters for the consolidation
+ *     (`nullptr` means default, which will use the config from `ctx`).
+ * @return `TILEDB_OK` on success, and `TILEDB_ERR` on error.
+ */
+TILEDB_EXPORT int32_t tiledb_array_consolidate_metadata(
+    tiledb_ctx_t* ctx, const char* array_uri, tiledb_config_t* config);
+
+/**
+ * Consolidates the array metadata of an encrypted array into a single file.
+ *
+ * You must first finalize all queries to the array before consolidation can
+ * begin (as consolidation temporarily acquires an exclusive lock on the array).
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * uint8_t key[32] = ...;
+ * tiledb_array_consolidate_metadata_with_key(
+ *     ctx, "hdfs:///tiledb_arrays/my_array",
+ *     TILEDB_AES_256_GCM, key, sizeof(key), nullptr);
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param array_uri The name of the TileDB array to be consolidated.
+ * @param encryption_type The encryption type to use.
+ * @param encryption_key The encryption key to use.
+ * @param key_length Length in bytes of the encryption key.
+ * @param config Configuration parameters for the consolidation
+ *     (`nullptr` means default, which will use the config from `ctx`).
+ *
+ * @return `TILEDB_OK` on success, and `TILEDB_ERR` on error.
+ */
+TILEDB_EXPORT int32_t tiledb_array_consolidate_metadata_with_key(
+    tiledb_ctx_t* ctx,
+    const char* array_uri,
+    tiledb_encryption_type_t encryption_type,
+    const void* encryption_key,
+    uint32_t key_length,
+    tiledb_config_t* config);
 
 /* ********************************* */
 /*          OBJECT MANAGEMENT        */

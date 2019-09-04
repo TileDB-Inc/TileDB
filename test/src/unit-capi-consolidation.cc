@@ -33,6 +33,7 @@
 #include "catch.hpp"
 #include "test/src/helpers.h"
 #include "tiledb/sm/c_api/tiledb.h"
+#include "tiledb/sm/misc/utils.h"
 
 #include <climits>
 #include <cstring>
@@ -3189,7 +3190,12 @@ int ConsolidationFx::get_dir_num(const char* path, void* data) {
   int is_dir;
   int rc = tiledb_vfs_is_dir(ctx, vfs, path, &is_dir);
   CHECK(rc == TILEDB_OK);
-  data_struct->dir_num += is_dir;
+  auto meta_dir =
+      std::string("/") + tiledb::sm::constants::array_metadata_folder_name;
+  if (!tiledb::sm::utils::parse::ends_with(path, meta_dir)) {
+    // Ignoring the meta folder
+    data_struct->dir_num += is_dir;
+  }
 
   return 1;
 }

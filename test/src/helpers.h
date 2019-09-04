@@ -138,6 +138,47 @@ void create_array(
     uint64_t capacity);
 
 /**
+ * Helper method to create an encrypted array.
+ *
+ * @param ctx TileDB context.
+ * @param array_name The array name.
+ * @param enc_type The encryption type.
+ * @param key The key to encrypt the array with.
+ * @param key_len The key length.
+ * @param array_type The array type (dense or sparse).
+ * @param dim_names The names of dimensions.
+ * @param dim_types The types of dimensions.
+ * @param dim_domains The domains of dimensions.
+ * @param tile_extents The tile extents of dimensions.
+ * @param attr_names The names of attributes.
+ * @param attr_types The types of attributes.
+ * @param cell_val_num The number of values per cell of attributes.
+ * @param compressors The compressors of attributes.
+ * @param tile_order The tile order.
+ * @param cell_order The cell order.
+ * @param capacity The tile capacity.
+ */
+
+void create_array(
+    tiledb_ctx_t* ctx,
+    const std::string& array_name,
+    tiledb_encryption_type_t enc_type,
+    const char* key,
+    uint32_t key_len,
+    tiledb_array_type_t array_type,
+    const std::vector<std::string>& dim_names,
+    const std::vector<tiledb_datatype_t>& dim_types,
+    const std::vector<void*>& dim_domains,
+    const std::vector<void*>& tile_extents,
+    const std::vector<std::string>& attr_names,
+    const std::vector<tiledb_datatype_t>& attr_types,
+    const std::vector<uint32_t>& cell_val_num,
+    const std::vector<std::pair<tiledb_filter_type_t, int>>& compressors,
+    tiledb_layout_t tile_order,
+    tiledb_layout_t cell_order,
+    uint64_t capacity);
+
+/**
  * Helper method that creates a directory.
  *
  * @param path The name of the directory to be created.

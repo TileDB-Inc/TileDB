@@ -119,9 +119,15 @@ class StorageManager {
    * Closes an array opened for writes.
    *
    * @param array_uri The array URI
+   * @param encryption_key The array encryption key.
+   * @param array_metadata The array metadata, which the function
+   *     flush to persistent storage.
    * @return Status
    */
-  Status array_close_for_writes(const URI& array_uri);
+  Status array_close_for_writes(
+      const URI& array_uri,
+      const EncryptionKey& encryption_key,
+      Metadata* array_metadata);
 
   /**
    * Opens an array for reads at a timestamp. All the metadata of the
@@ -136,6 +142,7 @@ class StorageManager {
    *     array is opened.
    * @param fragment_metadata The fragment metadata to be retrieved
    *     after the array is opened.
+   * @param metadata The array metadata will be loaded here if not null.
    * @return Status
    */
   Status array_open_for_reads(
@@ -143,7 +150,8 @@ class StorageManager {
       uint64_t timestamp,
       const EncryptionKey& encryption_key,
       ArraySchema** array_schema,
-      std::vector<FragmentMetadata*>* fragment_metadata);
+      std::vector<FragmentMetadata*>* fragment_metadata,
+      Metadata* metadata = nullptr);
 
   /**
    * Opens an array for reads, focusing only on a given list of fragments.
@@ -192,6 +200,7 @@ class StorageManager {
    *     array is opened.
    * @param fragment_metadata The fragment metadata to be retrieved
    *     after the array is opened.
+   * @param metadata The array metadata to be loaded.
    * @return Status
    */
   Status array_reopen(
@@ -199,7 +208,8 @@ class StorageManager {
       uint64_t timestamp,
       const EncryptionKey& encryption_key,
       ArraySchema** array_schema,
-      std::vector<FragmentMetadata*>* fragment_metadata);
+      std::vector<FragmentMetadata*>* fragment_metadata,
+      Metadata* metadata);
 
   /**
    * Consolidates the fragments of an array into a single one.
@@ -215,6 +225,27 @@ class StorageManager {
    * @return Status
    */
   Status array_consolidate(
+      const char* array_name,
+      EncryptionType encryption_type,
+      const void* encryption_key,
+      uint32_t key_length,
+      const Config* config);
+
+  /**
+   * Consolidates the metadata of an array into a single file.
+   *
+   * @param array_name The name of the array whose metadata will be
+   *     consolidated.
+   * @param encryption_type The encryption type of the array
+   * @param encryption_key If the array is encrypted, the private encryption
+   *    key. For unencrypted arrays, pass `nullptr`.
+   * @param key_length The length in bytes of the encryption key.
+   * @param config Configuration parameters for the consolidation
+   *     (`nullptr` means default, which will use the config associated with
+   *      this instance).
+   * @return Status
+   */
+  Status array_metadata_consolidate(
       const char* array_name,
       EncryptionType encryption_type,
       const void* encryption_key,
@@ -583,6 +614,19 @@ class StorageManager {
   Status store_array_schema(
       ArraySchema* array_schema, const EncryptionKey& encryption_key);
 
+  /**
+   * Stores the array metadata into persistent storage.
+   *
+   * @param array_uri The URI of the array.
+   * @param encryption_key The encryption key to use.
+   * @param array_metadata The array metadata.
+   * @return Status
+   */
+  Status store_array_metadata(
+      const URI& array_uri,
+      const EncryptionKey& encryption_key,
+      Metadata* array_metadata);
+
   /** Closes a file, flushing its contents to persistent storage. */
   Status close_file(const URI& uri);
 
@@ -775,6 +819,10 @@ class StorageManager {
   Status get_fragment_uris(
       const URI& array_uri, std::vector<URI>* fragment_uris) const;
 
+  /** Retrieves all the array metadata URI's of an array. */
+  Status get_array_metadata_uris(
+      const URI& array_uri, std::vector<URI>* array_metadata_uris) const;
+
   /** Increment the count of in-progress queries. */
   void increment_in_progress();
 
@@ -792,6 +840,26 @@ class StorageManager {
       ObjectType object_type,
       OpenArray* open_array,
       const EncryptionKey& encryption_key);
+
+  /**
+   * Loads the array metadata whose URIs are specified in the input.
+   * The array metadata are cached in binary form in `open_array`.
+   * Only the metadata that have not yet been loaded will be fetched
+   * into the open array object. Eventually, the function will
+   * deserialize the appropriate array metadata into `metadata`.
+   *
+   * @param open_array The open array object.
+   * @param encryption_key The encryption key to use.
+   * @param array_metadata_to_load The timestamped URIs of the array
+   *     metadata to load.
+   * @param metadata The array metadata to be retrieved.
+   * @return Status
+   */
+  Status load_array_metadata(
+      OpenArray* open_array,
+      const EncryptionKey& encryption_key,
+      const std::vector<TimestampedURI>& array_metadata_to_load,
+      Metadata* metadata);
 
   /**
    * Loads the fragment metadata of an open array given a vector of
@@ -815,23 +883,34 @@ class StorageManager {
       std::vector<FragmentMetadata*>* fragment_metadata);
 
   /**
-   * Gets the sorted fragment URIs based on the first input
+   * Applicable to fragment and array metadata URIs.
+   *
+   * Gets the sorted URIs based on the second function input
    * in ascending first timestamp order, breaking ties with lexicographic
-   * sorting of UUID. Only the fragments with timestamp smaller than or
-   * equal to `timestamp` are considered. The sorted fragment URIs are
-   * stored in the last input, including the fragment timestamps.
+   * sorting of UUID. Only the URIs with timestamp smaller than or
+   * equal to `timestamp` are considered. The sorted URIs are
+   * stored in the last input, including their timestamps.
    */
-  Status get_sorted_fragment_uris(
+  Status get_sorted_uris(
       uint32_t version,
-      const std::vector<URI>& fragment_uris,
+      const std::vector<URI>& uris,
       uint64_t timestamp,
-      std::vector<TimestampedURI>* sorted_fragment_uris) const;
+      std::vector<TimestampedURI>* sorted_uris) const;
 
   /** Block until there are zero in-progress queries. */
   void wait_for_zero_in_progress();
 
   /** Initializes a REST client, if one was configured. */
   Status init_rest_client();
+
+  /**
+   * Retrieves a new array metadata URI, incorporating the input timestamp
+   * range.
+   */
+  Status new_array_metadata_uri(
+      const URI& array_uri,
+      const std::pair<uint64_t, uint64_t>& timestamp_range,
+      URI* new_uri) const;
 };
 
 }  // namespace sm

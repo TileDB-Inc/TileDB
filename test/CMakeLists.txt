@@ -62,6 +62,7 @@ set(TILEDB_TEST_SOURCES
   src/unit-capi-incomplete.cc
   src/unit-capi-incomplete-2.cc
   src/unit-capi-kv.cc
+  src/unit-capi-metadata.cc
   src/unit-capi-object_mgmt.cc
   src/unit-capi-query.cc
   src/unit-capi-query_2.cc
@@ -111,6 +112,7 @@ if (TILEDB_CPP_API)
     src/unit-cppapi-datetimes.cc
     src/unit-cppapi-filter.cc
     src/unit-cppapi-map.cc
+    src/unit-cppapi-metadata.cc
     src/unit-cppapi-query.cc
     src/unit-cppapi-schema.cc
     src/unit-cppapi-subarray.cc

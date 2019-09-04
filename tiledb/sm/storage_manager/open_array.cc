@@ -113,6 +113,12 @@ FragmentMetadata* OpenArray::fragment_metadata(const URI& uri) const {
   return (it == fragment_metadata_set_.end()) ? nullptr : it->second;
 }
 
+std::shared_ptr<ConstBuffer> OpenArray::array_metadata(const URI& uri) const {
+  std::lock_guard<std::mutex> lock(local_mtx_);
+  auto it = array_metadata_.find(uri.to_string());
+  return (it == array_metadata_.end()) ? nullptr : it->second;
+}
+
 void OpenArray::mtx_lock() {
   mtx_.lock();
 }
@@ -134,6 +140,13 @@ void OpenArray::insert_fragment_metadata(FragmentMetadata* metadata) {
   assert(metadata != nullptr);
   fragment_metadata_.insert(metadata);
   fragment_metadata_set_[metadata->fragment_uri().to_string()] = metadata;
+}
+
+void OpenArray::insert_array_metadata(
+    const URI& uri, const std::shared_ptr<ConstBuffer>& metadata) {
+  std::lock_guard<std::mutex> lock(local_mtx_);
+  assert(metadata != nullptr);
+  array_metadata_[uri.to_string()] = metadata;
 }
 
 /* ****************************** */

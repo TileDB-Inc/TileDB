@@ -32,6 +32,7 @@
 
 #include "catch.hpp"
 #include "tiledb/sm/cpp_api/tiledb"
+#include "tiledb/sm/misc/constants.h"
 #include "tiledb/sm/misc/utils.h"
 
 using namespace tiledb;
@@ -513,8 +514,16 @@ TEST_CASE(
   // Note: vfs.ls returns all the files and directories in the array
   // folder, which contains one file for the array schema and one
   // for the array lock. Therefore, the number of fragments is
-  // what ls returns minus 2.
-  auto frag_num = vfs.ls(array_name).size() - 2;
+  // what ls returns minus 2. There might also be a `__meta` folder
+  // (potentially not visible on S3 if there are not files in it),
+  // so we need to exclude that as well.
+  auto frags = vfs.ls(array_name);
+  auto frag_num = frags.size() - 2;
+  for (const auto& f : frags) {
+    if (tiledb::sm::utils::parse::ends_with(
+            f, tiledb::sm::constants::array_metadata_folder_name))
+      frag_num--;
+  }
   CHECK(frag_num == 1);
 
   if (vfs.is_dir(array_name))

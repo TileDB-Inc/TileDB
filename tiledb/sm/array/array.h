@@ -34,6 +34,7 @@
 #define TILEDB_ARRAY_H
 
 #include "tiledb/sm/encryption/encryption_key.h"
+#include "tiledb/sm/metadata/metadata.h"
 #include "tiledb/sm/misc/status.h"
 #include "tiledb/sm/storage_manager/open_array.h"
 #include "tiledb/sm/storage_manager/storage_manager.h"
@@ -227,6 +228,78 @@ class Array {
   /** Directly set the array URI. */
   Status set_uri(const std::string& uri);
 
+  /**
+   * Deletes metadata from an array opened in WRITE mode.
+   *
+   * @param key The key of the metadata item to be deleted.
+   * @return Status
+   */
+  Status delete_metadata(const char* key);
+
+  /**
+   * Puts metadata into an array opened in WRITE mode.
+   *
+   * @param key The key of the metadata item to be added. UTF-8 encodings
+   *     are acceptable.
+   * @param value_type The datatype of the value.
+   * @param value_num The value may consist of more than one items of the
+   *     same datatype. This argument indicates the number of items in the
+   *     value component of the metadata.
+   * @param value The metadata value in binary form.
+   * @return Status
+   */
+  Status put_metadata(
+      const char* key,
+      Datatype value_type,
+      uint32_t value_num,
+      const void* value);
+
+  /**
+   * Gets metadata from an array opened in READ mode. If the key does not
+   * exist, then `value` will be `nullptr`.
+   *
+   * @param key The key of the metadata item to be retrieved. UTF-8 encodings
+   *     are acceptable.
+   * @param value_type The datatype of the value.
+   * @param value_num The value may consist of more than one items of the
+   *     same datatype. This argument indicates the number of items in the
+   *     value component of the metadata.
+   * @param value The metadata value in binary form.
+   * @return Status
+   */
+  Status get_metadata(
+      const char* key,
+      Datatype* value_type,
+      uint32_t* value_num,
+      const void** value);
+
+  /**
+   * Gets metadata from an array opened in READ mode using an index.
+   *
+   * @param index The index used to retrieve the metadata.
+   * @param key The metadata key.
+   * @param key_len The metadata key length.
+   * @param value_type The datatype of the value.
+   * @param value_num The value may consist of more than one items of the
+   *     same datatype. This argument indicates the number of items in the
+   *     value component of the metadata.
+   * @param value The metadata value in binary form.
+   * @return Status
+   */
+  Status get_metadata(
+      uint64_t index,
+      const char** key,
+      uint32_t* key_len,
+      Datatype* value_type,
+      uint32_t* value_num,
+      const void** value);
+
+  /** Returns the number of array metadata items. */
+  Status get_metadata_num(uint64_t* num) const;
+
+  /** Returns the array metadata object. */
+  Metadata* metadata();
+
  private:
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
@@ -280,6 +353,9 @@ class Array {
 
   /** True if the array is remote (has `tiledb://` URI scheme). */
   bool remote_;
+
+  /** The array metadata. */
+  Metadata metadata_;
 
   /* ********************************* */
   /*          PRIVATE METHODS          */

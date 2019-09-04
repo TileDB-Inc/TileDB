@@ -2,6 +2,8 @@
 
 ## New features
 
+* Added array metadata.
+
 ## Improvements
 
 ## Deprecations
