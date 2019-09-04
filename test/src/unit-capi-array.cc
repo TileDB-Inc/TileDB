@@ -91,6 +91,12 @@ struct ArrayFx {
   void set_supported_fs();
 };
 
+static const std::string test_ca_path =
+    std::string(TILEDB_TEST_INPUTS_DIR) + "/test_certs";
+
+static const std::string test_ca_file =
+    std::string(TILEDB_TEST_INPUTS_DIR) + "/test_certs/public.crt";
+
 ArrayFx::ArrayFx() {
   // Supported filesystems
   set_supported_fs();
@@ -107,11 +113,15 @@ ArrayFx::ArrayFx() {
             config, "vfs.s3.endpoint_override", "localhost:9999", &error) ==
         TILEDB_OK);
     REQUIRE(
-        tiledb_config_set(config, "vfs.s3.scheme", "http", &error) ==
+        tiledb_config_set(config, "vfs.s3.scheme", "https", &error) ==
         TILEDB_OK);
     REQUIRE(
         tiledb_config_set(
             config, "vfs.s3.use_virtual_addressing", "false", &error) ==
+        TILEDB_OK);
+    REQUIRE(
+        tiledb_config_set(
+            config, "vfs.s3.ca_file", test_ca_file.c_str(), &error) ==
         TILEDB_OK);
     REQUIRE(error == nullptr);
 #endif
@@ -1309,11 +1319,15 @@ TEST_CASE_METHOD(
             config, "vfs.s3.endpoint_override", "localhost:9999", &error) ==
         TILEDB_OK);
     REQUIRE(
-        tiledb_config_set(config, "vfs.s3.scheme", "http", &error) ==
+        tiledb_config_set(config, "vfs.s3.scheme", "https", &error) ==
         TILEDB_OK);
     REQUIRE(
         tiledb_config_set(
             config, "vfs.s3.use_virtual_addressing", "false", &error) ==
+        TILEDB_OK);
+    REQUIRE(
+        tiledb_config_set(
+            config, "vfs.s3.ca_path", test_ca_path.c_str(), &error) ==
         TILEDB_OK);
     REQUIRE(error == nullptr);
 #endif

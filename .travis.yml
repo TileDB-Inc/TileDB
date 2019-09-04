@@ -83,6 +83,9 @@ script:
         make check-format;
       fi
     - make check
+    - if [[ "$TILEDB_S3" == "ON" ]]; then
+        docker logs `docker ps -q`;
+      fi
     - |
       pushd $TRAVIS_BUILD_DIR/examples/cmake_project &&
       mkdir build && cd build &&
