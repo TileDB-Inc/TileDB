@@ -108,11 +108,14 @@ ObjectMgmtFx::ObjectMgmtFx() {
             config, "vfs.s3.endpoint_override", "localhost:9999", &error) ==
         TILEDB_OK);
     REQUIRE(
-        tiledb_config_set(config, "vfs.s3.scheme", "http", &error) ==
+        tiledb_config_set(config, "vfs.s3.scheme", "https", &error) ==
         TILEDB_OK);
     REQUIRE(
         tiledb_config_set(
             config, "vfs.s3.use_virtual_addressing", "false", &error) ==
+        TILEDB_OK);
+    REQUIRE(
+        tiledb_config_set(config, "vfs.s3.verify_ssl", "false", &error) ==
         TILEDB_OK);
     REQUIRE(error == nullptr);
 #endif

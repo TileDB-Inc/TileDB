@@ -121,6 +121,7 @@ in this program and explain the output.
         "vfs.s3.request_timeout_ms" : "3000"
         "vfs.s3.scheme" : "https"
         "vfs.s3.use_virtual_addressing" : "true"
+        "vfs.s3.verify_ssl" : "true"
 
         VFS S3 settings:
         "aws_access_key_id" : ""
@@ -140,6 +141,7 @@ in this program and explain the output.
         "request_timeout_ms" : "3000"
         "scheme" : "https"
         "use_virtual_addressing" : "true"
+        "verify_ssl" : "true"
 
         Tile cache size after loading from file: 0
 
@@ -195,6 +197,7 @@ in this program and explain the output.
         "vfs.s3.request_timeout_ms" : "3000"
         "vfs.s3.scheme" : "https"
         "vfs.s3.use_virtual_addressing" : "true"
+        "vfs.s3.verify_ssl" : "true"
 
         VFS S3 settings:
         "aws_access_key_id" : ""
@@ -214,6 +217,7 @@ in this program and explain the output.
         "request_timeout_ms" : "3000"
         "scheme" : "https"
         "use_virtual_addressing" : "true"
+        "verify_ssl" : "true"
 
         Tile cache size after loading from file: 0
 
@@ -330,10 +334,13 @@ The corresponding output is (note that we ran this on a machine with
         "vfs.num_threads" : "8"
         "vfs.s3.aws_access_key_id" : ""
         "vfs.s3.aws_secret_access_key" : ""
+        "vfs.s3.ca_file" : ""
+        "vfs.s3.ca_path" : ""
         "vfs.s3.connect_max_tries" : "5"
         "vfs.s3.connect_scale_factor" : "25"
         "vfs.s3.connect_timeout_ms" : "3000"
         "vfs.s3.endpoint_override" : ""
+        "vfs.s3.logging_level" : "off"
         "vfs.s3.max_parallel_ops" : "8"
         "vfs.s3.multipart_part_size" : "5242880"
         "vfs.s3.proxy_host" : ""
@@ -345,6 +352,7 @@ The corresponding output is (note that we ran this on a machine with
         "vfs.s3.request_timeout_ms" : "3000"
         "vfs.s3.scheme" : "https"
         "vfs.s3.use_virtual_addressing" : "true"
+        "vfs.s3.verify_ssl" : "true"
 
 
 TileDB allows you also to iterate only over the config parameters
@@ -385,6 +393,8 @@ is *stripped* from the retrieved parameter names.
         VFS S3 settings:
         "aws_access_key_id" : ""
         "aws_secret_access_key" : ""
+        "ca_file" : ""
+        "ca_path" : ""
         "connect_max_tries" : "5"
         "connect_scale_factor" : "25"
         "connect_timeout_ms" : "3000"
@@ -400,6 +410,7 @@ is *stripped* from the retrieved parameter names.
         "request_timeout_ms" : "3000"
         "scheme" : "https"
         "use_virtual_addressing" : "true"
+        "verify_ssl" : "true"
 
 Saving/Loading config to/from file
 ----------------------------------
@@ -490,6 +501,7 @@ Inspecting the contents of the exported config file, we get the following:
   vfs.s3.request_timeout_ms 3000
   vfs.s3.scheme https
   vfs.s3.use_virtual_addressing true
+  vfs.s3.verify_ssl true
 
 Observe that config parameters that have an empty string as a value
 are not exported (e.g., ``vfs.s3.proxy_host``).
@@ -604,8 +616,10 @@ along with their description and default values.
     ``"vfs.s3.request_timeout_ms"``           ``"3000"``              The request timeout in ms. Any ``long`` value is
                                                                       acceptable.
     ``"vfs.s3.scheme"``                       ``"https"``             The S3 scheme.
-    ``"vfs.s3.use_virtual_addressing"``       ``"true"``              Determines whether to use virtual addressing
-                                                                      or not.
+    ``"vfs.s3.use_virtual_addressing"``       ``"true"``              Determines whether to use virtual addressing or not.
+    ``"vfs.s3.ca_file"``                      ``""``                  The path to a cURL-compatible certificate file.
+    ``"vfs.s3.ca_path"``                      ``""``                  The path to a cURL-compatible certificate directory.
+    ``"vfs.s3.verify_ssl"``                   ``"true"``              Enable certificate verification for HTTPS connections.
     ``"vfs.hdfs.kerb_ticket_cache_path"``     ``""``                  Path to the Kerberos ticket cache when connecting
                                                                       to an HDFS cluster.
     ``"vfs.hdfs.name_node_uri"``              ``""``                  Optional namenode URI to use (TileDB will use

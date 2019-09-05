@@ -15,7 +15,9 @@ matrix:
       env: TILEDB_HDFS="ON"
 
     - os: linux
-      env: TILEDB_S3="ON"
+      env:
+      - TILEDB_S3="ON"
+      - TILEDB_SUPERBUILD="ON"
 
     - os: osx
 
@@ -48,6 +50,9 @@ install:
       fi;
       if [[ "$TILEDB_TBB" == "OFF" ]]; then
         bootstrap_args="${bootstrap_args} --disable-tbb";
+      fi;
+      if [[ "$TILEDB_SUPERBUILD" == "ON" ]]; then
+        bootstrap_args="${bootstrap_args} --force-build-all-deps";
       fi
 
     # Start HDFS server if enabled
@@ -83,6 +88,9 @@ script:
         make check-format;
       fi
     - make check
+    - if [[ "$TILEDB_S3" == "ON" ]]; then
+        docker logs `docker ps -q`;
+      fi
     - |
       pushd $TRAVIS_BUILD_DIR/examples/cmake_project &&
       mkdir build && cd build &&

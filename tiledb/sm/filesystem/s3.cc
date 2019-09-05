@@ -181,6 +181,9 @@ Status S3::init(
                                                   Aws::Http::Scheme::HTTPS;
   config.connectTimeoutMs = s3_config.connect_timeout_ms_;
   config.requestTimeoutMs = s3_config.request_timeout_ms_;
+  config.caFile = s3_config.ca_file_.c_str();
+  config.caPath = s3_config.ca_path_.c_str();
+  config.verifySSL = s3_config.verify_ssl_;
 
   config.retryStrategy = Aws::MakeShared<Aws::Client::DefaultRetryStrategy>(
       constants::s3_allocation_tag.c_str(),

@@ -27,6 +27,8 @@
 # Starts a minio server and exports credentials to the environment
 # ('source' this script instead of executing).
 
+DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
+
 die() {
   echo "$@" 1>&2 ; popd 2>/dev/null; exit 1
 }
@@ -35,14 +37,18 @@ run_cask_minio() {
   export MINIO_ACCESS_KEY=minio
   export MINIO_SECRET_KEY=miniosecretkey
 
-  minio server --address localhost:9999 /tmp/minio-data &
+  # note: minio data directories *must* follow parameter arguments
+  minio server --certs-dir=/tmp/minio-data/test_certs --address localhost:9999 /tmp/minio-data &
   [[ "$?" -eq "0" ]] || die "could not run minio server"
 }
 
 run_docker_minio() {
-  mkdir -p /tmp/minio-data
-  docker run -e MINIO_ACCESS_KEY=minio -e MINIO_SECRET_KEY=miniosecretkey \
-       -d -p 9999:9000 minio/minio server /tmp/minio-data || die "could not run docker minio"
+  # note: minio data directories *must* follow parameter arguments
+  docker run -v /tmp/minio-data:/tmp/minio-data \
+       -e MINIO_ACCESS_KEY=minio -e MINIO_SECRET_KEY=miniosecretkey \
+       -d -p 9999:9000 \
+       minio/minio server -S /tmp/minio-data/test_certs \
+         /tmp/minio-data || die "could not run docker minio"
 }
 
 export_aws_keys() {
@@ -52,6 +58,10 @@ export_aws_keys() {
 
 run() {
   export_aws_keys
+
+  mkdir -p /tmp/minio-data
+  cp -f -r $DIR/../test/inputs/test_certs /tmp/minio-data
+
   if [[ "$AGENT_OS" == "Darwin" ]]; then
     run_cask_minio
   else

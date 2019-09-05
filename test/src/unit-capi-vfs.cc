@@ -129,11 +129,14 @@ void VFSFx::set_num_vfs_threads(unsigned num_threads) {
             config, "vfs.s3.endpoint_override", "localhost:9999", &error) ==
         TILEDB_OK);
     REQUIRE(
-        tiledb_config_set(config, "vfs.s3.scheme", "http", &error) ==
+        tiledb_config_set(config, "vfs.s3.scheme", "https", &error) ==
         TILEDB_OK);
     REQUIRE(
         tiledb_config_set(
             config, "vfs.s3.use_virtual_addressing", "false", &error) ==
+        TILEDB_OK);
+    REQUIRE(
+        tiledb_config_set(config, "vfs.s3.verify_ssl", "false", &error) ==
         TILEDB_OK);
     REQUIRE(error == nullptr);
 #endif
@@ -792,7 +795,7 @@ TEST_CASE_METHOD(
   int rc = tiledb_config_alloc(&config, &error);
   REQUIRE(rc == TILEDB_OK);
   REQUIRE(error == nullptr);
-  rc = tiledb_config_set(config, "vfs.s3.scheme", "http", &error);
+  rc = tiledb_config_set(config, "vfs.s3.scheme", "https", &error);
   REQUIRE(rc == TILEDB_OK);
   REQUIRE(error == nullptr);
 
@@ -808,7 +811,7 @@ TEST_CASE_METHOD(
   const char* value;
   rc = tiledb_config_get(config2, "vfs.s3.scheme", &value, &error);
   REQUIRE(error == nullptr);
-  CHECK(!strncmp(value, "http", strlen("http")));
+  CHECK(!strncmp(value, "https", strlen("https")));
   rc = tiledb_config_get(config2, "sm.tile_cache_size", &value, &error);
   REQUIRE(error == nullptr);
   CHECK(!strncmp(value, "10000000", strlen("10000000")));

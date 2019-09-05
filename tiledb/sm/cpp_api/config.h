@@ -358,6 +358,16 @@ class Config {
    *    vfs.s3.max_parallel_ops` bytes will be buffered before issuing multipart
    *    uploads in parallel. <br>
    *    **Default**: 5MB
+   * - `vfs.s3.ca_file` <br>
+   *    Path to SSL/TLS certificate file to be used by cURL for for S3 HTTPS
+   *    encryption. Follows cURL conventions:
+   *    https://curl.haxx.se/docs/manpage.html
+   *    **Default**: ""
+   * - `vfs.s3.ca_path` <br>
+   *    Path to SSL/TLS certificate directory to be used by cURL for S3 HTTPS
+   *    encryption. Follows cURL conventions:
+   *    https://curl.haxx.se/docs/manpage.html
+   *    **Default**: ""
    * - `vfs.s3.connect_timeout_ms` <br>
    *    The connection timeout in ms. Any `long` value is acceptable. <br>
    *    **Default**: 3000
@@ -372,7 +382,7 @@ class Config {
    *    The AWS SDK logging level. This is a process-global setting. The
    *    configuration of the most recently constructed context will set
    *    process state. Log files are written to the process working directory.
-   *    **Default**: ""
+   *    **Default**: off""
    * - `vfs.s3.request_timeout_ms` <br>
    *    The request timeout in ms. Any `long` value is acceptable. <br>
    *    **Default**: 3000
@@ -393,6 +403,9 @@ class Config {
    *    The proxy password. Note: this parameter is not serialized by
    *    `tiledb_config_save_to_file`. <br>
    *    **Default**: ""
+   * - `vfs.s3.verify_ssl` <br>
+   *    Enable HTTPS certificate verification. <br>
+   *    **Default**: true""
    * - `vfs.hdfs.name_node"` <br>
    *    Name node for HDFS. <br>
    *    **Default**: ""
