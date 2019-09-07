@@ -509,6 +509,7 @@ subfolders/fragments created:
   drwx------  4 stavros  staff  128 Jun 25 15:49 __1561492148506_1561492148506_fef381c0326b49a59d6e74816416dfa1
   -rwx------  1 stavros  staff  149 Jun 25 15:49 __array_schema.tdb
   -rwx------  1 stavros  staff    0 Jun 25 15:49 __lock.tdb
+  drwx------  2 stavros  staff   64 Jun 25 15:49 __meta
 
 Writing sparse cells
 --------------------
@@ -592,6 +593,7 @@ Let us inspect the contents of the dense array after the write:
   drwx------  5 stavros  staff  160 Jun 25 15:50 __1561492235844_1561492235844_c033cea7bbc34f2bb425969a497f7bab
   -rwx------  1 stavros  staff  149 Jun 25 15:50 __array_schema.tdb
   -rwx------  1 stavros  staff    0 Jun 25 15:50 __lock.tdb
+  drwx------  2 stavros  staff   64 Jun 25 15:50 __meta
 
   $ ls -l writing_dense_sparse_array/__1561492235844_1561492235844_c033cea7bbc34f2bb425969a497f7bab/
   total 24

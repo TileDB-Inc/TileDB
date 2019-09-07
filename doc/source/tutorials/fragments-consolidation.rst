@@ -1,3 +1,5 @@
+.. _fragments-consolidation:
+
 Fragments and Consolidation
 ===========================
 
@@ -97,6 +99,7 @@ contains three subdirectories with weird names:
         drwx------  5 stavros  staff  160 Jun 25 16:23 __1561494215467_1561494215467_317c5aa1f6eb4e6880f3fda660b86507
         -rwx------  1 stavros  staff  149 Jun 25 16:23 __array_schema.tdb
         -rwx------  1 stavros  staff    0 Jun 25 16:23 __lock.tdb
+        drwx------  2 stavros  staff   64 Jun 25 16:23 __meta
 
    .. tab-container:: python
       :title: Python
@@ -128,6 +131,7 @@ contains three subdirectories with weird names:
          drwx------  5 stavros  staff  160 Jun 25 16:23 __1561494215467_1561494215467_317c5aa1f6eb4e6880f3fda660b86507
          -rwx------  1 stavros  staff  149 Jun 25 16:23 __array_schema.tdb
          -rwx------  1 stavros  staff    0 Jun 25 16:23 __lock.tdb
+         drwx------  2 stavros  staff   64 Jun 25 16:23 __meta
 
 Each subdirectory corresponds to a **fragment**, i.e., to an array snapshot
 containing the cells written in a write operation. *How can we tell which
@@ -385,6 +389,7 @@ to the program) consolidates the three fragments into one before reading.
         drwx------  4 stavros  staff  128 Jun 25 16:28 __1561494215438_1561494215467_1bc203276a1a42c29eb4358325a0f228
         -rwx------  1 stavros  staff  149 Jun 25 16:23 __array_schema.tdb
         -rwx------  1 stavros  staff    0 Jun 25 16:23 __lock.tdb
+        drwx------  2 stavros  staff   64 Jun 25 16:23 __meta
 
         $ ls -l fragments_consolidation_array/__1561494215438_1561494215467_1bc203276a1a42c29eb4358325a0f228/
         total 16
@@ -419,6 +424,7 @@ to the program) consolidates the three fragments into one before reading.
         drwx------  4 stavros  staff  128 Jun 25 16:28 __1561494215438_1561494215467_1bc203276a1a42c29eb4358325a0f228
         -rwx------  1 stavros  staff  149 Jun 25 16:23 __array_schema.tdb
         -rwx------  1 stavros  staff    0 Jun 25 16:23 __lock.tdb
+        drwx------  2 stavros  staff   64 Jun 25 16:23 __meta
 
         $ ls -l fragments_consolidation_array/__1561494215438_1561494215467_1bc203276a1a42c29eb4358325a0f228/
         total 16

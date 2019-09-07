@@ -359,6 +359,7 @@ Let us look at the contents of the array of this example on disk.
    drwx------  7 stavros  staff  224 Jun 25 15:38 __1561491531226_1561491531226_3e56db7d25a447708a73d3e578622ab4
    -rwx------  1 stavros  staff  155 Jun 25 15:38 __array_schema.tdb
    -rwx------  1 stavros  staff    0 Jun 25 15:38 __lock.tdb
+   drwx------  2 stavros  staff   64 Jun 25 15:38 __meta
 
    $ ls -l variable_length_array/__1561491531226_1561491531226_3e56db7d25a447708a73d3e578622ab4/
    total 40

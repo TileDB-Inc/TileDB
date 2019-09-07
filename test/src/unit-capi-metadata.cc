@@ -926,3 +926,40 @@ TEST_CASE_METHOD(
   REQUIRE(rc == TILEDB_OK);
   tiledb_array_free(&array);
 }
+
+TEST_CASE_METHOD(
+    CMetadataFx, "C API: Metadata, overwrite", "[capi][metadata][overwrite]") {
+  // Create default array
+  create_default_array_1d();
+
+  // Open array
+  tiledb_array_t* array;
+  int rc = tiledb_array_alloc(ctx_, array_name_.c_str(), &array);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_array_open(ctx_, array, TILEDB_WRITE);
+  CHECK(rc == TILEDB_OK);
+
+  // Write and overwrite
+  int64_t v = 5;
+  rc = tiledb_array_put_metadata(ctx_, array, "aaa", TILEDB_INT32, 1, &v);
+  CHECK(rc == TILEDB_OK);
+  int64_t v2 = 10;
+  rc = tiledb_array_put_metadata(ctx_, array, "aaa", TILEDB_INT32, 1, &v2);
+  CHECK(rc == TILEDB_OK);
+
+  // Close array
+  rc = tiledb_array_close(ctx_, array);
+  CHECK(rc == TILEDB_OK);
+
+  // Read back
+  rc = tiledb_array_open(ctx_, array, TILEDB_READ);
+  CHECK(rc == TILEDB_OK);
+  const void* vback_ptr = NULL;
+  tiledb_datatype_t vtype;
+  uint32_t vnum = 0;
+  rc = tiledb_array_get_metadata(ctx_, array, "aaa", &vtype, &vnum, &vback_ptr);
+  CHECK(rc == TILEDB_OK);
+  CHECK(vtype == TILEDB_INT32);
+  CHECK(vnum == 1);
+  CHECK(*((int32_t*)vback_ptr) == 10);
+}

@@ -169,6 +169,7 @@ Status Metadata::put(
   value_struct.num_ = value_num;
   value_struct.value_.resize(value_size);
   std::memcpy(value_struct.value_.data(), value, value_size);
+  metadata_map_.erase(std::string(key));
   metadata_map_.emplace(
       std::make_pair(std::string(key), std::move(value_struct)));
 

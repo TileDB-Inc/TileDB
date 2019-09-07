@@ -90,6 +90,7 @@ def generate_sidebar(conf, conf_api):
     write('Sparse Arrays', 'tutorials/sparse-arrays')
     write('Multi-attribute Arrays', 'tutorials/multi-attribute-arrays')
     write('Variable-length Attributes', 'tutorials/variable-length-attributes')
+    write('Array Metadata', 'tutorials/array-metadata')
     write('Filters', 'tutorials/filters')
     write('Compression', 'tutorials/compression')
     write('Encryption', 'tutorials/encryption')
