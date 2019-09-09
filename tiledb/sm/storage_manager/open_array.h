@@ -40,6 +40,7 @@
 #include <vector>
 
 #include "tiledb/sm/array_schema/array_schema.h"
+#include "tiledb/sm/buffer/const_buffer.h"
 #include "tiledb/sm/encryption/encryption_key_validation.h"
 #include "tiledb/sm/filesystem/vfs.h"
 #include "tiledb/sm/fragment/fragment_metadata.h"
@@ -117,6 +118,12 @@ class OpenArray {
    */
   FragmentMetadata* fragment_metadata(const URI& uri) const;
 
+  /**
+   * Returns the constant buffer storing the serialized array metadata
+   * of the input URI, or `nullptr` if the array metadata do not exist.
+   */
+  std::shared_ptr<ConstBuffer> array_metadata(const URI& uri) const;
+
   /** Locks the array mutex. */
   void mtx_lock();
 
@@ -132,6 +139,13 @@ class OpenArray {
    * This function will guarantee that the ordering is maintained.
    */
   void insert_fragment_metadata(FragmentMetadata* metadata);
+
+  /**
+   * Inserts the input array metadata (serialized in a share constant
+   * buffer) with the input URI.
+   */
+  void insert_array_metadata(
+      const URI& uri, const std::shared_ptr<ConstBuffer>& metadata);
 
   /** Sets an array schema. */
   void set_array_schema(ArraySchema* array_schema);
@@ -176,6 +190,12 @@ class OpenArray {
    * loaded in `fragment_metadata_`.
    */
   std::unordered_map<std::string, FragmentMetadata*> fragment_metadata_set_;
+
+  /**
+   * A map of URI strings to array metadata. The map stores the serialized
+   * (decompressed, decrypted) array metadata into constant buffers.
+   */
+  std::unordered_map<std::string, std::shared_ptr<ConstBuffer>> array_metadata_;
 
   /**
    * A mutex used to lock the array for thread-safe open/close of the array

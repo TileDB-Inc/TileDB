@@ -337,6 +337,7 @@ Let us look at the contents of the array of this example on disk.
    drwx------  5 stavros  staff  160 Jun 25 15:34 __1561491299419_1561491299419_fcb0ee91899142baad8a08049c0e2319
    -rwx------  1 stavros  staff  159 Jun 25 15:34 __array_schema.tdb
    -rwx------  1 stavros  staff    0 Jun 25 15:34 __lock.tdb
+   drwx------  2 stavros  staff   64 Jun 25 15:34 __meta
 
    $ ls -l multi_attribute_array/__1561491299419_1561491299419_fcb0ee91899142baad8a08049c0e2319/
    total 24

@@ -98,19 +98,61 @@ Status Consolidator::consolidate(
   return Status::Ok();
 }
 
+Status Consolidator::consolidate_array_metadata(
+    const char* array_name,
+    EncryptionType encryption_type,
+    const void* encryption_key,
+    uint32_t key_length,
+    const Config* config) {
+  // Config not necessary yet
+  (void)config;
+
+  // Open array for reading
+  auto array_uri = URI(array_name);
+  Array array_for_reads(array_uri, storage_manager_);
+  RETURN_NOT_OK(array_for_reads.open(
+      QueryType::READ, encryption_type, encryption_key, key_length))
+
+  // Open array for writing
+  Array array_for_writes(array_uri, storage_manager_);
+  RETURN_NOT_OK_ELSE(
+      array_for_writes.open(
+          QueryType::WRITE, encryption_type, encryption_key, key_length),
+      array_for_reads.close());
+
+  // Swap the in-memory metadata between the two arrays.
+  // After that, the array for writes will store the (consolidated by
+  // the way metadata loading works) metadata of the array for reads
+  auto metadata_r = array_for_reads.metadata();
+  auto metadata_w = array_for_writes.metadata();
+  metadata_r->swap(metadata_w);
+
+  // Metadata uris to delete
+  const auto& to_delete = array_for_writes.metadata()->loaded_metadata_uris();
+
+  // Close arrays
+  RETURN_NOT_OK_ELSE(array_for_reads.close(), array_for_writes.close());
+  RETURN_NOT_OK(array_for_writes.close());
+
+  for (auto& uri : to_delete)
+    RETURN_NOT_OK(storage_manager_->vfs()->remove_file(uri));
+
+  return Status::Ok();
+}
+
 /* ****************************** */
 /*        STATIC FUNCTIONS        */
 /* ****************************** */
 
-void Consolidator::remove_consolidated_fragment_uris(
-    std::vector<TimestampedURI>* sorted_fragment_uris) {
+void Consolidator::remove_consolidated_uris(
+    std::vector<TimestampedURI>* sorted_uris) {
   // Trivial case
-  if (sorted_fragment_uris->size() <= 1)
+  if (sorted_uris->size() <= 1)
     return;
 
   // Put the URIs in a list, so that it is easy to remove "covered" URIs
   std::list<TimestampedURI> uri_list;
-  for (auto f : *sorted_fragment_uris)
+  for (auto f : *sorted_uris)
     uri_list.push_back(f);
 
   // NOTE: all fragments in uri_list are sorted on start timestamps,
@@ -156,9 +198,9 @@ void Consolidator::remove_consolidated_fragment_uris(
   }
 
   // Update the sorted fragment URIs
-  sorted_fragment_uris->clear();
+  sorted_uris->clear();
   for (const auto& f : uri_list)
-    sorted_fragment_uris->push_back(f);
+    sorted_uris->push_back(f);
 }
 
 /* ****************************** */
@@ -408,8 +450,8 @@ Status Consolidator::consolidate(
       &query_w,
       new_fragment_uri);
   if (!st.ok()) {
-    storage_manager_->array_close_for_reads(array_uri);
-    storage_manager_->array_close_for_writes(array_uri);
+    array_for_reads.close();
+    array_for_writes.close();
     clean_up(buffer_num, buffers, buffer_sizes, query_r, query_w);
     return st;
   }

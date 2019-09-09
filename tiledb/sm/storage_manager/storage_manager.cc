@@ -41,6 +41,7 @@
 #include "tiledb/sm/misc/parallel_functions.h"
 #include "tiledb/sm/misc/stats.h"
 #include "tiledb/sm/misc/utils.h"
+#include "tiledb/sm/misc/uuid.h"
 #include "tiledb/sm/rest/rest_client.h"
 #include "tiledb/sm/storage_manager/storage_manager.h"
 #include "tiledb/sm/tile/tile_io.h"
@@ -148,7 +149,10 @@ Status StorageManager::array_close_for_reads(const URI& array_uri) {
   STATS_FUNC_OUT(sm_array_close_for_reads);
 }
 
-Status StorageManager::array_close_for_writes(const URI& array_uri) {
+Status StorageManager::array_close_for_writes(
+    const URI& array_uri,
+    const EncryptionKey& encryption_key,
+    Metadata* array_metadata) {
   STATS_FUNC_IN(sm_array_close_for_writes);
   // Lock mutex
   std::lock_guard<std::mutex> lock{open_array_for_writes_mtx_};
@@ -163,6 +167,10 @@ Status StorageManager::array_close_for_writes(const URI& array_uri) {
 
   // For easy reference
   OpenArray* open_array = it->second;
+
+  // Flush the array metadata
+  RETURN_NOT_OK(
+      store_array_metadata(array_uri, encryption_key, array_metadata));
 
   // Lock the mutex of the array and decrement counter
   open_array->mtx_lock();
@@ -186,7 +194,8 @@ Status StorageManager::array_open_for_reads(
     uint64_t timestamp,
     const EncryptionKey& encryption_key,
     ArraySchema** array_schema,
-    std::vector<FragmentMetadata*>* fragment_metadata) {
+    std::vector<FragmentMetadata*>* fragment_metadata,
+    Metadata* metadata) {
   STATS_FUNC_IN(sm_array_open_for_reads);
 
   // Open array without fragments
@@ -202,7 +211,7 @@ Status StorageManager::array_open_for_reads(
   std::vector<TimestampedURI> fragments_to_load;
   std::vector<URI> fragment_uris;
   RETURN_NOT_OK(get_fragment_uris(array_uri, &fragment_uris));
-  RETURN_NOT_OK(get_sorted_fragment_uris(
+  RETURN_NOT_OK(get_sorted_uris(
       (*array_schema)->version(),
       fragment_uris,
       timestamp,
@@ -211,6 +220,26 @@ Status StorageManager::array_open_for_reads(
   // Get fragment metadata in the case of reads, if not fetched already
   Status st = load_fragment_metadata(
       open_array, encryption_key, fragments_to_load, fragment_metadata);
+  if (!st.ok()) {
+    open_array->mtx_unlock();
+    array_close_for_reads(array_uri);
+    *array_schema = nullptr;
+    return st;
+  }
+
+  // Determin which array metadata to load
+  std::vector<TimestampedURI> array_metadata_to_load;
+  std::vector<URI> array_metadata_uris;
+  RETURN_NOT_OK(get_array_metadata_uris(array_uri, &array_metadata_uris));
+  RETURN_NOT_OK(get_sorted_uris(
+      (*array_schema)->version(),
+      array_metadata_uris,
+      timestamp,
+      &array_metadata_to_load));
+
+  // Get the array metadata
+  st = load_array_metadata(
+      open_array, encryption_key, array_metadata_to_load, metadata);
   if (!st.ok()) {
     open_array->mtx_unlock();
     array_close_for_reads(array_uri);
@@ -258,6 +287,8 @@ Status StorageManager::array_open_for_reads(
     *array_schema = nullptr;
     return st;
   }
+
+  // Note: This function does not load any array metadata!
 
   // Unlock the array mutex
   open_array->mtx_unlock();
@@ -317,7 +348,7 @@ Status StorageManager::array_open_for_writes(
         load_array_schema(array_uri, obj_type, open_array, encryption_key);
     if (!st.ok()) {
       open_array->mtx_unlock();
-      array_close_for_writes(array_uri);
+      array_close_for_writes(array_uri, encryption_key, nullptr);
       return st;
     }
   }
@@ -349,7 +380,8 @@ Status StorageManager::array_reopen(
     uint64_t timestamp,
     const EncryptionKey& encryption_key,
     ArraySchema** array_schema,
-    std::vector<FragmentMetadata*>* fragment_metadata) {
+    std::vector<FragmentMetadata*>* fragment_metadata,
+    Metadata* metadata) {
   STATS_FUNC_IN(sm_array_reopen);
 
   auto open_array = (OpenArray*)nullptr;
@@ -377,8 +409,8 @@ Status StorageManager::array_reopen(
   std::vector<URI> fragment_uris;
   RETURN_NOT_OK(get_fragment_uris(array_uri, &fragment_uris));
   auto version = open_array->array_schema()->version();
-  RETURN_NOT_OK(get_sorted_fragment_uris(
-      version, fragment_uris, timestamp, &fragments_to_load));
+  RETURN_NOT_OK(
+      get_sorted_uris(version, fragment_uris, timestamp, &fragments_to_load));
 
   // Get fragment metadata in the case of reads, if not fetched already
   auto st = load_fragment_metadata(
@@ -392,6 +424,26 @@ Status StorageManager::array_reopen(
 
   // Get the array schema
   *array_schema = open_array->array_schema();
+
+  // Determin which array metadata to load
+  std::vector<TimestampedURI> array_metadata_to_load;
+  std::vector<URI> array_metadata_uris;
+  RETURN_NOT_OK(get_array_metadata_uris(array_uri, &array_metadata_uris));
+  RETURN_NOT_OK(get_sorted_uris(
+      (*array_schema)->version(),
+      array_metadata_uris,
+      timestamp,
+      &array_metadata_to_load));
+
+  // Get the array metadata
+  st = load_array_metadata(
+      open_array, encryption_key, array_metadata_to_load, metadata);
+  if (!st.ok()) {
+    open_array->mtx_unlock();
+    array_close_for_reads(array_uri);
+    *array_schema = nullptr;
+    return st;
+  }
 
   // Unlock the mutexes
   open_array->mtx_unlock();
@@ -434,6 +486,39 @@ Status StorageManager::array_consolidate(
       array_name, encryption_type, encryption_key, key_length, config);
 }
 
+Status StorageManager::array_metadata_consolidate(
+    const char* array_name,
+    EncryptionType encryption_type,
+    const void* encryption_key,
+    uint32_t key_length,
+    const Config* config) {
+  // Check array URI
+  URI array_uri(array_name);
+  if (array_uri.is_invalid()) {
+    return LOG_STATUS(Status::StorageManagerError(
+        "Cannot consolidate array metadata; Invalid URI"));
+  }
+  // Check if array exists
+  ObjectType obj_type;
+  RETURN_NOT_OK(object_type(array_uri, &obj_type));
+
+  if (obj_type != ObjectType::ARRAY && obj_type != ObjectType::KEY_VALUE) {
+    return LOG_STATUS(Status::StorageManagerError(
+        "Cannot consolidate array metadata; Array does not exist"));
+  }
+
+  // If 'config' is unset, use the 'config_' that was set during initialization
+  // of this StorageManager instance.
+  if (!config) {
+    config = &config_;
+  }
+
+  // Consolidate
+  Consolidator consolidator(this);
+  return consolidator.consolidate_array_metadata(
+      array_name, encryption_type, encryption_key, key_length, config);
+}
+
 Status StorageManager::array_create(
     const URI& array_uri,
     ArraySchema* array_schema,
@@ -459,6 +544,11 @@ Status StorageManager::array_create(
   // Create array directory
   RETURN_NOT_OK(vfs_->create_dir(array_uri));
 
+  // Create array metadata directory
+  URI array_metadata_uri =
+      array_uri.join_path(constants::array_metadata_folder_name);
+  RETURN_NOT_OK(vfs_->create_dir(array_metadata_uri));
+
   // Store array schema
   Status st = store_array_schema(array_schema, encryption_key);
   if (!st.ok()) {
@@ -466,14 +556,15 @@ Status StorageManager::array_create(
     return st;
   }
 
-  // Create array filelock
-  URI filelock_uri = array_uri.join_path(constants::filelock_name);
-  st = vfs_->touch(filelock_uri);
+  // Create array and array metadata filelocks
+  URI array_filelock_uri = array_uri.join_path(constants::filelock_name);
+  st = vfs_->touch(array_filelock_uri);
   if (!st.ok()) {
-    vfs_->remove_file(array_uri);
+    vfs_->remove_dir(array_uri);
     return st;
   }
-  return st;
+
+  return Status::Ok();
 }
 
 Status StorageManager::array_get_non_empty_domain(
@@ -1308,6 +1399,48 @@ Status StorageManager::store_array_schema(
   return st;
 }
 
+Status StorageManager::store_array_metadata(
+    const URI& array_uri,
+    const EncryptionKey& encryption_key,
+    Metadata* array_metadata) {
+  // Trivial case
+  if (array_metadata == nullptr)
+    return Status::Ok();
+
+  // Serialize array metadata
+  Buffer metadata_buff;
+  RETURN_NOT_OK(array_metadata->serialize(&metadata_buff));
+
+  // Do nothing if there are no metadata to write
+  if (metadata_buff.size() == 0)
+    return Status::Ok();
+
+  // Create a metadata file name
+  URI array_metadata_uri;
+  RETURN_NOT_OK(new_array_metadata_uri(
+      array_uri, array_metadata->timestamp_range(), &array_metadata_uri));
+
+  // Write to file
+  metadata_buff.reset_offset();
+  auto tile = new Tile(
+      constants::generic_tile_datatype,
+      constants::generic_tile_cell_size,
+      0,
+      &metadata_buff,
+      false);
+  auto tile_io = new TileIO(this, array_metadata_uri);
+  uint64_t nbytes;
+  Status st = tile_io->write_generic(tile, encryption_key, &nbytes);
+  (void)nbytes;
+  if (st.ok())
+    st = close_file(array_metadata_uri);
+
+  delete tile;
+  delete tile_io;
+
+  return st;
+}
+
 Status StorageManager::close_file(const URI& uri) {
   return vfs_->close_file(uri);
 }
@@ -1493,6 +1626,26 @@ Status StorageManager::get_fragment_uris(
   return Status::Ok();
 }
 
+Status StorageManager::get_array_metadata_uris(
+    const URI& array_uri, std::vector<URI>* array_metadata_uris) const {
+  // Get all uris in the array metadata directory
+  URI metadata_dir = array_uri.join_path(constants::array_metadata_folder_name);
+  std::vector<URI> uris;
+  RETURN_NOT_OK(vfs_->ls(metadata_dir.add_trailing_slash(), &uris));
+
+  // Get only the metadata uris
+  for (auto& uri : uris) {
+    auto uri_last_path = uri.last_path_part();
+    if (utils::parse::starts_with(uri_last_path, "."))
+      continue;
+
+    if (utils::parse::starts_with(uri_last_path, "__"))
+      array_metadata_uris->push_back(uri);
+  }
+
+  return Status::Ok();
+}
+
 Status StorageManager::load_array_schema(
     const URI& array_uri,
     ObjectType object_type,
@@ -1506,6 +1659,46 @@ Status StorageManager::load_array_schema(
   RETURN_NOT_OK(
       load_array_schema(array_uri, object_type, encryption_key, &array_schema));
   open_array->set_array_schema(array_schema);
+
+  return Status::Ok();
+}
+
+Status StorageManager::load_array_metadata(
+    OpenArray* open_array,
+    const EncryptionKey& encryption_key,
+    const std::vector<TimestampedURI>& array_metadata_to_load,
+    Metadata* metadata) {
+  // Special case
+  if (metadata == nullptr)
+    return Status::Ok();
+
+  auto metadata_num = array_metadata_to_load.size();
+  std::vector<std::shared_ptr<ConstBuffer>> metadata_buffs;
+  metadata_buffs.resize(metadata_num);
+  auto statuses = parallel_for(0, metadata_num, [&](size_t m) {
+    const auto& uri = array_metadata_to_load[m].uri_;
+    auto metadata_buff = open_array->array_metadata(uri);
+    if (metadata_buff == nullptr) {  // Array metadata does not exist - load it
+      TileIO tile_io(this, uri);
+      auto tile = (Tile*)nullptr;
+      RETURN_NOT_OK(tile_io.read_generic(&tile, 0, encryption_key));
+      tile->disown_buff();
+      auto buff = tile->buffer();
+      delete tile;
+      metadata_buff = std::make_shared<ConstBuffer>(buff);
+      open_array->insert_array_metadata(uri, metadata_buff);
+    }
+    metadata_buffs[m] = metadata_buff;
+    return Status::Ok();
+  });
+  for (auto st : statuses)
+    RETURN_NOT_OK(st);
+
+  // Deserialize metadata buffers
+  metadata->deserialize(metadata_buffs);
+
+  // Sets the loaded metadata URIs
+  metadata->set_loaded_metadata_uris(array_metadata_to_load);
 
   return Status::Ok();
 }
@@ -1554,38 +1747,53 @@ Status StorageManager::load_fragment_metadata(
   return Status::Ok();
 }
 
-Status StorageManager::get_sorted_fragment_uris(
+Status StorageManager::get_sorted_uris(
     uint32_t version,
-    const std::vector<URI>& fragment_uris,
+    const std::vector<URI>& uris,
     uint64_t timestamp,
-    std::vector<TimestampedURI>* sorted_fragment_uris) const {
-  // Do nothing if there are not enough fragments
-  if (fragment_uris.empty())
+    std::vector<TimestampedURI>* sorted_uris) const {
+  // Do nothing if there are not enough URIs
+  if (uris.empty())
     return Status::Ok();
 
-  // Get the timestamp for each fragment
-  for (auto& uri : fragment_uris) {
+  // Get the timestamp for each URI
+  for (auto& uri : uris) {
     // Get fragment name
     std::string uri_str = uri.c_str();
     if (uri_str.back() == '/')
       uri_str.pop_back();
-    std::string fragment_name = URI(uri_str).last_path_part();
-    assert(utils::parse::starts_with(fragment_name, "__"));
+    std::string name = URI(uri_str).last_path_part();
+    assert(utils::parse::starts_with(name, "__"));
 
-    // Get timestamp in the end of the name after '_'
-    auto timestamp_range =
-        utils::parse::get_timestamp_range(version, fragment_name);
+    // Get timestamp range
+    auto timestamp_range = utils::parse::get_timestamp_range(version, name);
     auto t = timestamp_range.first;
 
     if (t <= timestamp)
-      sorted_fragment_uris->emplace_back(uri, timestamp_range);
+      sorted_uris->emplace_back(uri, timestamp_range);
   }
 
   // Sort the names based on the timestamps
-  std::sort(sorted_fragment_uris->begin(), sorted_fragment_uris->end());
+  std::sort(sorted_uris->begin(), sorted_uris->end());
 
   // Remove consolidated fragment URIs
-  Consolidator::remove_consolidated_fragment_uris(sorted_fragment_uris);
+  Consolidator::remove_consolidated_uris(sorted_uris);
+
+  return Status::Ok();
+}
+
+Status StorageManager::new_array_metadata_uri(
+    const URI& array_uri,
+    const std::pair<uint64_t, uint64_t>& timestamp_range,
+    URI* new_uri) const {
+  std::string uuid;
+  RETURN_NOT_OK(uuid::generate_uuid(&uuid, false));
+
+  std::stringstream ss;
+  ss << "/__" << timestamp_range.first << "_" << timestamp_range.second << "_"
+     << uuid;
+  *new_uri = array_uri.join_path(constants::array_metadata_folder_name)
+                 .join_path(ss.str());
 
   return Status::Ok();
 }

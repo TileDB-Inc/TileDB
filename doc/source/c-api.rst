@@ -253,6 +253,20 @@ Array
     :project: TileDB-C
 .. doxygenfunction:: tiledb_array_encryption_type
     :project: TileDB-C
+.. doxygenfunction:: tiledb_array_put_metadata
+    :project: TileDB-C
+.. doxygenfunction:: tiledb_array_get_metadata
+    :project: TileDB-C
+.. doxygenfunction:: tiledb_array_get_metadata_from_index
+    :project: TileDB-C
+.. doxygenfunction:: tiledb_array_get_metadata_num
+    :project: TileDB-C
+.. doxygenfunction:: tiledb_array_delete_metadata
+    :project: TileDB-C
+.. doxygenfunction:: tiledb_array_consolidate_metadata
+    :project: TileDB-C
+.. doxygenfunction:: tiledb_array_consolidate_metadata_with_key
+    :project: TileDB-C
 
 Array Schema
 ------------

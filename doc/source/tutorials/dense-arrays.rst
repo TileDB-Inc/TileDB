@@ -371,6 +371,7 @@ If we look into the array on disk after it has been written to, we will see some
    drwx------  4 stavros  staff  128 Jun 25 15:18 __1561490302161_1561490302161_15bab0281e2e44f2a803eb6f3001ed00
    -rwx------  1 stavros  staff  149 Jun 25 15:18 __array_schema.tdb
    -rwx------  1 stavros  staff    0 Jun 25 15:18 __lock.tdb
+   drwx------  2 stavros  staff   64 Jun 25 15:18 __meta
 
 The array directory and files ``__array_schema.tdb`` and ``__lock.tdb`` were written upon
 array creation, whereas subdirectory 

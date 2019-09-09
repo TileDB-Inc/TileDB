@@ -106,7 +106,7 @@ Status TileIO::read_generic(
 
   if (encryption_key.encryption_type() !=
       (EncryptionType)header.encryption_type)
-    return LOG_STATUS(Status::Error(
+    return LOG_STATUS(Status::TileIOError(
         "Error reading generic tile; tile is encrypted with " +
         encryption_type_str((EncryptionType)header.encryption_type) +
         " but given key is for " +
@@ -268,13 +268,13 @@ Status TileIO::configure_encryption_filter(
     case EncryptionType::AES_256_GCM: {
       auto* f = header->filters.get_filter<EncryptionAES256GCMFilter>();
       if (f == nullptr)
-        return Status::Error(
+        return Status::TileIOError(
             "Error getting generic tile; no encryption filter.");
       RETURN_NOT_OK(f->set_key(encryption_key));
       break;
     }
     default:
-      return Status::Error(
+      return Status::TileIOError(
           "Error getting generic tile; invalid encryption type.");
   }
 

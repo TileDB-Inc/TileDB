@@ -101,6 +101,9 @@ const bool dedup_coords = false;
 /** The array schema file name. */
 const std::string array_schema_filename = "__array_schema.tdb";
 
+/** The array metadata folder name. */
+const std::string array_metadata_folder_name = "__meta";
+
 /** The key-value schema file name. */
 const std::string kv_schema_filename = "__kv_schema.tdb";
 

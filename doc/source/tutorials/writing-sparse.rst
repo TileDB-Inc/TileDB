@@ -200,6 +200,7 @@ Let us see how the array directory looks like after the execution of the program
     drwx------  5 stavros  staff  160 Jun 25 15:41 __1561491710249_1561491710249_a94a9605d30049939eb34f7ee6eb4708
     -rwx------  1 stavros  staff  153 Jun 25 15:41 __array_schema.tdb
     -rwx------  1 stavros  staff    0 Jun 25 15:41 __lock.tdb
+    drwx------  2 stavros  staff   64 Jun 25 15:41 __meta
 
     $ ls -l multiple_writes_sparse_array/__1561491710236_1561491710236_3eadf863ae0443c7815857d055ed45c7/
     total 24
@@ -324,6 +325,7 @@ array directory:
    drwx------  5 stavros  staff  160 Jun 25 15:44 __1561491885787_1561491885787_eccb5f9e17c54fef90cedf633d47118c
    -rwx------  1 stavros  staff  153 Jun 25 15:44 __array_schema.tdb
    -rwx------  1 stavros  staff    0 Jun 25 15:44 __lock.tdb
+   drwx------  2 stavros  staff   64 Jun 25 15:44 __meta
 
 As expected, the array contains the same cells and values as ``quickstart_sparse``.
 Moreover, despite the fact that we submitted two write queries, only one

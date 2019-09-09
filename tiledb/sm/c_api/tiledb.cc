@@ -3274,6 +3274,129 @@ int32_t tiledb_array_encryption_type(
   return TILEDB_OK;
 }
 
+int32_t tiledb_array_put_metadata(
+    tiledb_ctx_t* ctx,
+    tiledb_array_t* array,
+    const char* key,
+    tiledb_datatype_t value_type,
+    uint32_t value_num,
+    const void* value) {
+  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, array) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  // Put metadata
+  if (SAVE_ERROR_CATCH(
+          ctx,
+          array->array_->put_metadata(
+              key,
+              static_cast<tiledb::sm::Datatype>(value_type),
+              value_num,
+              value)))
+    return TILEDB_ERR;
+
+  return TILEDB_OK;
+}
+
+int32_t tiledb_array_delete_metadata(
+    tiledb_ctx_t* ctx, tiledb_array_t* array, const char* key) {
+  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, array) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  // Put metadata
+  if (SAVE_ERROR_CATCH(ctx, array->array_->delete_metadata(key)))
+    return TILEDB_ERR;
+
+  return TILEDB_OK;
+}
+
+int32_t tiledb_array_get_metadata(
+    tiledb_ctx_t* ctx,
+    tiledb_array_t* array,
+    const char* key,
+    tiledb_datatype_t* value_type,
+    uint32_t* value_num,
+    const void** value) {
+  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, array) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  // Get metadata
+  tiledb::sm::Datatype type;
+  if (SAVE_ERROR_CATCH(
+          ctx, array->array_->get_metadata(key, &type, value_num, value)))
+    return TILEDB_ERR;
+
+  *value_type = static_cast<tiledb_datatype_t>(type);
+
+  return TILEDB_OK;
+}
+
+int32_t tiledb_array_get_metadata_num(
+    tiledb_ctx_t* ctx, tiledb_array_t* array, uint64_t* num) {
+  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, array) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  // Get metadata num
+  if (SAVE_ERROR_CATCH(ctx, array->array_->get_metadata_num(num)))
+    return TILEDB_ERR;
+
+  return TILEDB_OK;
+}
+
+int32_t tiledb_array_get_metadata_from_index(
+    tiledb_ctx_t* ctx,
+    tiledb_array_t* array,
+    uint64_t index,
+    const char** key,
+    uint32_t* key_len,
+    tiledb_datatype_t* value_type,
+    uint32_t* value_num,
+    const void** value) {
+  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, array) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  // Get metadata
+  tiledb::sm::Datatype type;
+  if (SAVE_ERROR_CATCH(
+          ctx,
+          array->array_->get_metadata(
+              index, key, key_len, &type, value_num, value)))
+    return TILEDB_ERR;
+
+  *value_type = static_cast<tiledb_datatype_t>(type);
+
+  return TILEDB_OK;
+}
+
+int32_t tiledb_array_consolidate_metadata(
+    tiledb_ctx_t* ctx, const char* array_uri, tiledb_config_t* config) {
+  return tiledb_array_consolidate_metadata_with_key(
+      ctx, array_uri, TILEDB_NO_ENCRYPTION, nullptr, 0, config);
+}
+
+int32_t tiledb_array_consolidate_metadata_with_key(
+    tiledb_ctx_t* ctx,
+    const char* array_uri,
+    tiledb_encryption_type_t encryption_type,
+    const void* encryption_key,
+    uint32_t key_length,
+    tiledb_config_t* config) {
+  // Sanity checks
+  if (sanity_check(ctx) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  if (SAVE_ERROR_CATCH(
+          ctx,
+          ctx->ctx_->storage_manager()->array_metadata_consolidate(
+              array_uri,
+              static_cast<tiledb::sm::EncryptionType>(encryption_type),
+              encryption_key,
+              key_length,
+              (config == nullptr) ? nullptr : config->config_)))
+    return TILEDB_ERR;
+
+  return TILEDB_OK;
+}
+
 /* ****************************** */
 /*         OBJECT MANAGEMENT      */
 /* ****************************** */

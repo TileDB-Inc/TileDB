@@ -616,6 +616,34 @@ Array lock file
 
 The file ``__lock.tdb`` is always an empty file on disk.
 
+Array metadata file
+~~~~~~~~~~~~~~~~~~~
+
+The array metadata files are stored in folder ``<path_to_array>/__meta``. 
+Each file has name ``__t1_t2_uuid``, where ``uuid`` is the UUID of the
+process/thread that created it, and `t1` and `t2` indicate the
+timestamp range wthing which the array metadata were written (``t1`` equals
+``t2`` if the file was produced by a single write, and ``t1`` is smaller
+than ``t2`` if the file was produced from metadata consolidation).
+
+Each file stores a single generic tile with binary entries of the form:
+
++----------------------------------------+----------------------+--------------------------------------------------------+
+| **Field**                              | **Type**             | **Description**                                        |
++========================================+======================+========================================================+
+| Key length                             | ``uint32_t``         | The length of the key.                                 |
++----------------------------------------+----------------------+--------------------------------------------------------+
+| Key                                    | ``uint8_t[]``        | The key.                                               |
++----------------------------------------+----------------------+--------------------------------------------------------+
+| Deletion                               | ``char``             | ``1``/``0`` if it is a deletion/insertion.             | 
++----------------------------------------+----------------------+--------------------------------------------------------+
+| Value type                             | ``char``             | The value data type. Present only if ``del`` is ``0``. |
++----------------------------------------+----------------------+--------------------------------------------------------+
+| Number of values                       | ``uint32_t``         | The number of values. Present only if ``del`` is ``0``.|
++----------------------------------------+----------------------+--------------------------------------------------------+
+| Value                                  | ``uint8_t[]``        | The value. Present only if ``del`` is ``0``.           |
++----------------------------------------+----------------------+--------------------------------------------------------+
+
 Fragment metadata file
 ~~~~~~~~~~~~~~~~~~~~~~
 
