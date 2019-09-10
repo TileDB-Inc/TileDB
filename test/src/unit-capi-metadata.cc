@@ -940,10 +940,10 @@ TEST_CASE_METHOD(
   CHECK(rc == TILEDB_OK);
 
   // Write and overwrite
-  int64_t v = 5;
+  int32_t v = 5;
   rc = tiledb_array_put_metadata(ctx_, array, "aaa", TILEDB_INT32, 1, &v);
   CHECK(rc == TILEDB_OK);
-  int64_t v2 = 10;
+  int32_t v2 = 10;
   rc = tiledb_array_put_metadata(ctx_, array, "aaa", TILEDB_INT32, 1, &v2);
   CHECK(rc == TILEDB_OK);
 
@@ -962,4 +962,31 @@ TEST_CASE_METHOD(
   CHECK(vtype == TILEDB_INT32);
   CHECK(vnum == 1);
   CHECK(*((int32_t*)vback_ptr) == 10);
+  rc = tiledb_array_close(ctx_, array);
+  CHECK(rc == TILEDB_OK);
+
+  // Prevent array metadata filename/timestamp conflicts
+  std::this_thread::sleep_for(std::chrono::milliseconds(1));
+
+  // Overwrite again
+  rc = tiledb_array_alloc(ctx_, array_name_.c_str(), &array);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_array_open(ctx_, array, TILEDB_WRITE);
+  CHECK(rc == TILEDB_OK);
+  int32_t v3 = 20;
+  rc = tiledb_array_put_metadata(ctx_, array, "aaa", TILEDB_INT32, 1, &v3);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_array_close(ctx_, array);
+  CHECK(rc == TILEDB_OK);
+
+  // Read back
+  rc = tiledb_array_open(ctx_, array, TILEDB_READ);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_array_get_metadata(ctx_, array, "aaa", &vtype, &vnum, &vback_ptr);
+  CHECK(rc == TILEDB_OK);
+  CHECK(vtype == TILEDB_INT32);
+  CHECK(vnum == 1);
+  CHECK(*((int32_t*)vback_ptr) == 20);
+  rc = tiledb_array_close(ctx_, array);
+  CHECK(rc == TILEDB_OK);
 }
