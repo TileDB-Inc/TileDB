@@ -128,7 +128,7 @@ Status Consolidator::consolidate_array_metadata(
   metadata_r->swap(metadata_w);
 
   // Metadata uris to delete
-  const auto& to_delete = array_for_writes.metadata()->loaded_metadata_uris();
+  const auto to_delete = array_for_writes.metadata()->loaded_metadata_uris();
 
   // Close arrays
   RETURN_NOT_OK_ELSE(array_for_reads.close(), array_for_writes.close());

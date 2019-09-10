@@ -81,11 +81,11 @@ Status Metadata::deserialize(
       RETURN_NOT_OK(buff->read((void*)key.data(), key_len));
       RETURN_NOT_OK(buff->read(&del, sizeof(char)));
 
+      metadata_map_.erase(key);
+
       // Handle deletion
-      if (del) {
-        metadata_map_.erase(key);
+      if (del)
         continue;
-      }
 
       MetadataValue value_struct;
       value_struct.del_ = del;
