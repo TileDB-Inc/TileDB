@@ -332,6 +332,71 @@ T safe_mul(T a, T b);
 
 }  // namespace math
 
+/* ********************************* */
+/*          ENDIANNESS FUNCTIONS     */
+/* ********************************* */
+
+namespace endianness {
+
+/**
+ * Returns true if the current CPU architecture has little endian byte
+ * ordering, false for big endian.
+ */
+inline bool is_little_endian() {
+  const int n = 1;
+  return *(char*)&n == 1;
+}
+
+/**
+ * Returns true if the current CPU architecture has big endian byte
+ * ordering, false for little endian.
+ */
+inline bool is_big_endian() {
+  return !is_little_endian();
+}
+
+/**
+ * Decodes a little-endian ordered buffer 'data' into a native
+ * primitive type, T.
+ */
+template <class T>
+inline T decode_le(const void* const data) {
+  const T* const n = reinterpret_cast<const T* const>(data);
+  if (is_little_endian()) {
+    return *n;
+  }
+
+  T le_n;
+  char* const p = reinterpret_cast<char*>(&le_n);
+  for (std::size_t i = 0; i < sizeof(T); ++i) {
+    p[i] = *n >> ((sizeof(T) - i - 1) * 8);
+  }
+
+  return le_n;
+}
+
+/**
+ * Decodes a big-endian ordered buffer 'data' into a native
+ * primitive type, T.
+ */
+template <class T>
+inline T decode_be(const void* const data) {
+  const T* const n = reinterpret_cast<const T* const>(data);
+  if (is_big_endian()) {
+    return *n;
+  }
+
+  T be_n;
+  char* const p = reinterpret_cast<char*>(&be_n);
+  for (std::size_t i = 0; i < sizeof(T); ++i) {
+    p[i] = *n >> (i * 8);
+  }
+
+  return be_n;
+}
+
+}  // namespace endianness
+
 }  // namespace utils
 
 }  // namespace sm

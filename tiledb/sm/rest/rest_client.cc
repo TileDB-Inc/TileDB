@@ -219,10 +219,7 @@ Status RestClient::submit_query_to_rest(const URI& uri, Query* query) {
   std::unordered_map<std::string, serialization::QueryBufferCopyState>
       copy_state;
 
-  do {
-    // Repeatedly resubmit the query for incomplete reads, if enabled.
-    RETURN_NOT_OK(post_query_submit(uri, query, &copy_state));
-  } while (query->status() == QueryStatus::INCOMPLETE && resubmit_incomplete_);
+  RETURN_NOT_OK(post_query_submit(uri, query, &copy_state));
 
   // Now need to update the buffer sizes to the actual copied data size so that
   // the user can check the result size on reads.
@@ -254,9 +251,10 @@ Status RestClient::post_query_submit(
   RETURN_NOT_OK(curlc.init(config_));
   std::string array_ns, array_uri;
   RETURN_NOT_OK(uri.get_rest_components(&array_ns, &array_uri));
-  std::string url = rest_server_ + "/v1/arrays/" + array_ns + "/" +
+  std::string url = rest_server_ + "/v2/arrays/" + array_ns + "/" +
                     curlc.url_escape(array_uri) +
-                    "/query/submit?type=" + query_type_str(query->type());
+                    "/query/submit?type=" + query_type_str(query->type()) +
+                    "&read_all=" + (resubmit_incomplete_ ? "true" : "false");
 
   // Remote array reads always supply the timestamp.
   if (query->type() == QueryType::READ)
@@ -270,11 +268,40 @@ Status RestClient::post_query_submit(
     return LOG_STATUS(Status::RestError(
         "Error submitting query to REST; server returned no data."));
 
-  // Deserialize data returned. If the user buffers are too small to
-  // accomodate the attribute data when deserializing read queries, this will
-  // return an error status.
-  RETURN_NOT_OK(serialization::query_deserialize(
-      returned_data, serialization_type_, true, copy_state, query));
+  uint32_t offset = 0;
+  while (offset < returned_data.size()) {
+    // Each serialized query object is prefixed by an 8-byte, little-endian
+    // unsigned integer that contains the total byte size of the serialized
+    // query buffer.
+    if (offset + 8 > returned_data.size()) {
+      return LOG_STATUS(
+          Status::RestError("Error fetching serialized query size."));
+    }
+
+    // Decode the query size.
+    const void* const prefix =
+        static_cast<uint8_t*>(returned_data.data()) + offset;
+    const uint64_t query_size = utils::endianness::decode_le<uint64_t>(prefix);
+    offset += 8;
+
+    if (offset + query_size > returned_data.size()) {
+      return LOG_STATUS(Status::RestError("Error fetching serialized query."));
+    }
+
+    // The returned data may not be 8-byte aligned. Allocate a new buffer and
+    // copy the serialized buffer into it for deserialization.
+    Buffer aux;
+    RETURN_NOT_OK(aux.write(
+        static_cast<char*>(returned_data.data()) + offset, query_size))
+
+    // Deserialize data returned. If the user buffers are too small to
+    // accomodate the attribute data when deserializing read queries, this will
+    // return an error status.
+    RETURN_NOT_OK(serialization::query_deserialize(
+        aux, serialization_type_, true, copy_state, query));
+
+    offset += query_size;
+  }
 
   return Status::Ok();
 }
