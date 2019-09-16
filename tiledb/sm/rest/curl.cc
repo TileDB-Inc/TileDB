@@ -44,7 +44,24 @@ namespace tiledb {
 namespace sm {
 
 /**
- * @brief Callback for saving libcurl response data
+ * Wraps opaque user data to be invoked with a write callback.
+ */
+struct WriteCbState {
+  /** Default constructor. */
+  WriteCbState()
+      : reset(true)
+      , arg(NULL) {
+  }
+
+  /** True if this is the first write callback invoked in a request retry. */
+  bool reset;
+
+  /** The opaque user data to pass to the write callback. */
+  void* arg;
+};
+
+/**
+ * @brief Callback for saving unbuffered libcurl response data
  *
  * This is called by libcurl as soon as there is data received that needs
  * to be saved.
@@ -52,14 +69,22 @@ namespace sm {
  * @param contents Pointer to received data
  * @param size Size of a member in the received data
  * @param nmemb Number of members in the received data
- * @param userdata User data attached to the callback (in our case will point to
- *      a Buffer instance)
+ * @param userdata User data attached to the callback. This points to
+ *      a WriteCbState instance that wraps an instance of a Buffer.
  * @return Number of bytes copied from the received data
  */
 size_t write_memory_callback(
     void* contents, size_t size, size_t nmemb, void* userdata) {
   const size_t content_nbytes = size * nmemb;
-  auto buffer = (Buffer*)userdata;
+  auto write_cb_state = static_cast<WriteCbState*>(userdata);
+  auto buffer = static_cast<Buffer*>(write_cb_state->arg);
+
+  if (write_cb_state->reset) {
+    buffer->set_size(0);
+    buffer->set_offset(0);
+    write_cb_state->reset = false;
+  }
+
   auto st = buffer->write(contents, content_nbytes);
   if (!st.ok()) {
     LOG_ERROR(
@@ -69,6 +94,33 @@ size_t write_memory_callback(
   }
 
   return content_nbytes;
+}
+
+/**
+ * @brief Callback for saving buffered libcurl response data
+ *
+ * This is called by libcurl as soon as there is data received that needs
+ * to be saved.
+ *
+ * @param contents Pointer to received data
+ * @param size Size of a member in the received data
+ * @param nmemb Number of members in the received data
+ * @param userdata User data attached to the callback This points to
+ *      a WriteCbState instance that wraps an instance of a nested
+ *      PostResponseCb callback.
+ * @return Number of bytes copied from the received data
+ */
+size_t write_memory_callback_cb(
+    void* contents, size_t size, size_t nmemb, void* userdata) {
+  const size_t content_nbytes = size * nmemb;
+  auto write_cb_state = static_cast<WriteCbState*>(userdata);
+  auto user_cb = static_cast<Curl::PostResponseCb*>(write_cb_state->arg);
+
+  const size_t bytes_received =
+      (*user_cb)(write_cb_state->reset, contents, content_nbytes);
+  write_cb_state->reset = false;
+
+  return bytes_received;
 }
 
 /**
@@ -216,6 +268,24 @@ Status Curl::set_content_type(
 
 Status Curl::make_curl_request(
     const char* url, CURLcode* curl_code, Buffer* returned_data) const {
+  return make_curl_request_common(
+      url,
+      curl_code,
+      &write_memory_callback,
+      static_cast<void*>(returned_data));
+}
+
+Status Curl::make_curl_request(
+    const char* url, CURLcode* curl_code, PostResponseCb&& cb) const {
+  return make_curl_request_common(
+      url, curl_code, &write_memory_callback_cb, static_cast<void*>(&cb));
+}
+
+Status Curl::make_curl_request_common(
+    const char* const url,
+    CURLcode* const curl_code,
+    size_t (*write_cb)(void*, size_t, size_t, void*),
+    void* const write_cb_arg) const {
   CURL* curl = curl_.get();
   if (curl == nullptr)
     return LOG_STATUS(
@@ -223,17 +293,18 @@ Status Curl::make_curl_request(
 
   *curl_code = CURLE_OK;
   for (uint8_t i = 0; i < CURL_MAX_RETRIES; i++) {
-    returned_data->set_size(0);
-    returned_data->set_offset(0);
+    WriteCbState write_cb_state;
+    write_cb_state.arg = write_cb_arg;
 
     /* set url to fetch */
     curl_easy_setopt(curl, CURLOPT_URL, url);
 
     /* set callback function */
-    curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_memory_callback);
+    curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_cb);
 
     /* pass fetch buffer pointer */
-    curl_easy_setopt(curl, CURLOPT_WRITEDATA, (void*)returned_data);
+    curl_easy_setopt(
+        curl, CURLOPT_WRITEDATA, static_cast<void*>(&write_cb_state));
 
     /* set default user agent */
     // curl_easy_setopt(curl, CURLOPT_USERAGENT, "libcurl-agent/1.0");
@@ -283,14 +354,16 @@ Status Curl::check_curl_errors(
     msg << "Error in libcurl " << operation
         << " operation: libcurl error message '" << get_curl_errstr(curl_code)
         << "'; HTTP code " << http_code << "; ";
-    if (returned_data->size() > 0) {
-      msg << "server response data '"
-          << std::string(
-                 reinterpret_cast<const char*>(returned_data->data()),
-                 returned_data->size())
-          << "'.";
-    } else {
-      msg << "server response was empty.";
+    if (returned_data) {
+      if (returned_data->size() > 0) {
+        msg << "server response data '"
+            << std::string(
+                   reinterpret_cast<const char*>(returned_data->data()),
+                   returned_data->size())
+            << "'.";
+      } else {
+        msg << "server response was empty.";
+      }
     }
 
     return LOG_STATUS(Status::RestError(msg.str()));
@@ -317,38 +390,13 @@ std::string Curl::get_curl_errstr(CURLcode curl_code) const {
 
 Status Curl::post_data(
     const std::string& url,
-    SerializationType serialization_type,
+    const SerializationType serialization_type,
     const BufferList* data,
-    Buffer* returned_data) {
+    Buffer* const returned_data) {
   STATS_FUNC_IN(rest_curl_post);
 
-  CURL* curl = curl_.get();
-  if (curl == nullptr)
-    return LOG_STATUS(
-        Status::RestError("Error posting data; curl instance is null."));
-
-  // TODO: If you post more than 2GB, use CURLOPT_POSTFIELDSIZE_LARGE.
-  const uint64_t post_size_limit = uint64_t(2) * 1024 * 1024 * 1024;
-  if (data->total_size() > post_size_limit)
-    return LOG_STATUS(
-        Status::RestError("Error posting data; buffer size > 2GB"));
-
-  // Set auth and content-type for request
-  struct curl_slist* headers = nullptr;
-  RETURN_NOT_OK_ELSE(set_auth(&headers), curl_slist_free_all(headers));
-  RETURN_NOT_OK_ELSE(
-      set_content_type(serialization_type, &headers),
-      curl_slist_free_all(headers));
-
-  /* HTTP PUT please */
-  curl_easy_setopt(curl, CURLOPT_POST, 1L);
-  curl_easy_setopt(
-      curl, CURLOPT_READFUNCTION, buffer_list_read_memory_callback);
-  curl_easy_setopt(curl, CURLOPT_READDATA, data);
-  curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, data->total_size());
-
-  /* pass our list of custom made headers */
-  curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
+  struct curl_slist* headers;
+  RETURN_NOT_OK(post_data_common(serialization_type, data, &headers));
 
   CURLcode ret;
   auto st = make_curl_request(url.c_str(), &ret, returned_data);
@@ -361,6 +409,64 @@ Status Curl::post_data(
   return Status::Ok();
 
   STATS_FUNC_OUT(rest_curl_post);
+}
+
+Status Curl::post_data(
+    const std::string& url,
+    const SerializationType serialization_type,
+    const BufferList* data,
+    PostResponseCb&& cb) {
+  STATS_FUNC_IN(rest_curl_post);
+
+  struct curl_slist* headers;
+  RETURN_NOT_OK(post_data_common(serialization_type, data, &headers));
+
+  CURLcode ret;
+  auto st = make_curl_request(url.c_str(), &ret, std::move(cb));
+  curl_slist_free_all(headers);
+  RETURN_NOT_OK(st);
+
+  // Check for errors
+  RETURN_NOT_OK(check_curl_errors(ret, "POST"));
+
+  return Status::Ok();
+
+  STATS_FUNC_OUT(rest_curl_post);
+}
+
+Status Curl::post_data_common(
+    const SerializationType serialization_type,
+    const BufferList* data,
+    struct curl_slist** headers) {
+  CURL* curl = curl_.get();
+  if (curl == nullptr)
+    return LOG_STATUS(
+        Status::RestError("Error posting data; curl instance is null."));
+
+  // TODO: If you post more than 2GB, use CURLOPT_POSTFIELDSIZE_LARGE.
+  const uint64_t post_size_limit = uint64_t(2) * 1024 * 1024 * 1024;
+  if (data->total_size() > post_size_limit)
+    return LOG_STATUS(
+        Status::RestError("Error posting data; buffer size > 2GB"));
+
+  // Set auth and content-type for request
+  *headers = nullptr;
+  RETURN_NOT_OK_ELSE(set_auth(headers), curl_slist_free_all(*headers));
+  RETURN_NOT_OK_ELSE(
+      set_content_type(serialization_type, headers),
+      curl_slist_free_all(*headers));
+
+  /* HTTP PUT please */
+  curl_easy_setopt(curl, CURLOPT_POST, 1L);
+  curl_easy_setopt(
+      curl, CURLOPT_READFUNCTION, buffer_list_read_memory_callback);
+  curl_easy_setopt(curl, CURLOPT_READDATA, data);
+  curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, data->total_size());
+
+  /* pass our list of custom made headers */
+  curl_easy_setopt(curl, CURLOPT_HTTPHEADER, *headers);
+
+  return Status::Ok();
 }
 
 Status Curl::get_data(

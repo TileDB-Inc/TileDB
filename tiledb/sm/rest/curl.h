@@ -37,6 +37,7 @@
 
 #include <curl/curl.h>
 #include <cstdlib>
+#include <functional>
 #include <string>
 
 #include "tiledb/sm/buffer/buffer.h"
@@ -76,7 +77,8 @@ class Curl {
   std::string url_escape(const std::string& url) const;
 
   /**
-   * Simple wrapper for posting data to server.
+   * Wrapper for posting data to server and returning
+   * the unbuffered response body.
    *
    * @param url URL to post to
    * @param serialization_type Serialization type to use
@@ -89,6 +91,50 @@ class Curl {
       SerializationType serialization_type,
       const BufferList* data,
       Buffer* returned_data);
+
+  /**
+   * Callback defined by the caller of the 'post_data' variant for
+   * receiving buffered response data.
+   *
+   * @param reset True if this is the first callback from a new request
+   * @param contents Response data
+   * @param content_nbytes Response data size in 'contents'
+   * @return Number of acknowledged bytes.
+   */
+  typedef std::function<size_t(
+      bool reset, void* contents, size_t content_nbytes)>
+      PostResponseCb;
+
+  /**
+   * Wrapper for posting data to server and returning
+   * a buffered response body.
+   *
+   * @param url URL to post to
+   * @param serialization_type Serialization type to use
+   * @param data Encoded data buffer for posting
+   * @param write_cb Invoked as response body buffers are received.
+   * @return Status
+   */
+  Status post_data(
+      const std::string& url,
+      SerializationType serialization_type,
+      const BufferList* data,
+      PostResponseCb&& write_cb);
+
+  /**
+   * Common code shared between variants of 'post_data'.
+   *
+   * @param serialization_type Serialization type to use
+   * @param data Encoded data buffer for posting
+   * @param headers Request headers that must be freed after the curl
+   *    request is complete. If this routine returns a non-OK status,
+   *    the value returned through this parameter should be ignored.
+   * @return Status
+   */
+  Status post_data_common(
+      SerializationType serialization_type,
+      const BufferList* data,
+      struct curl_slist** headers);
 
   /**
    * Simple wrapper for getting data from server
@@ -159,18 +205,46 @@ class Curl {
       const char* url, CURLcode* curl_code, Buffer* returned_data) const;
 
   /**
+   * Makes the configured curl request to the given URL, writing partial
+   * response data to the 'cb' callback as the response is received.
+   *
+   * @param url URL to fetch
+   * @param curl_code Set to the return value of the curl call
+   * @param write_cb Callback to invoke as response data is received
+   * @return Status
+   */
+  Status make_curl_request(
+      const char* url, CURLcode* curl_code, PostResponseCb&& write_cb) const;
+
+  /**
+   * Common code shared between variants of 'make_curl_request'.
+   *
+   * @param url URL to fetch
+   * @param curl_code Set to the return value of the curl call
+   * @param write_cb Callback to invoke as response data is received.
+   * @param write_arg Opaque memory address passed to 'write_cb'.
+   * @return Status
+   */
+  Status make_curl_request_common(
+      const char* url,
+      CURLcode* curl_code,
+      size_t (*write_cb)(void*, size_t, size_t, void*),
+      void* write_arg) const;
+
+  /**
    * Check the given curl code for errors, returning a TileDB error status if
    * so.
    *
    * @param curl_code Curl return code to check for errors
    * @param operation String describing operation that was performed
-   * @param returned_data Buffer containing any response data from server
+   * @param returned_data Buffer containing any response data from server.
+   * Optional.
    * @return Status
    */
   Status check_curl_errors(
       CURLcode curl_code,
       const std::string& operation,
-      const Buffer* returned_data) const;
+      const Buffer* returned_data = NULL) const;
 
   /**
    * Gets as detailed an error message as possible from libcurl.
