@@ -137,10 +137,9 @@ class RestClient {
   SerializationType serialization_type_;
 
   /**
-   * If true (the default), automatically resubmit incomplete queries. This
-   * allows the server to return less data than the user buffers indicated, in
-   * which case the rest client can simply resubmit the incomplete query
-   * transparently to the user.
+   * If true (the default), automatically resubmit incomplete queries on the
+   * server-side. This garauntees that the user only receive a complete query
+   * result from the server.
    *
    * When this is turned on, it is currently an error if the user buffers on the
    * client are too small to receive all data received from the server
