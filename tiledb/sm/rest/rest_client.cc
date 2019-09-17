@@ -320,16 +320,130 @@ size_t RestClient::post_data_write_cb(
   // a previous callback.
   bytes_processed -= scratch->size();
 
+  // Deserialize as many queries in-place as we can.
+  const size_t in_place_bytes_processed = 0;
+  deserialize_queries_in_place(
+      contents, content_nbytes, scratch, query, copy_state);
+  bytes_processed += in_place_bytes_processed;
+
+  // The 'contents' and 'content_nbytes' must be offset to ignore
+  // the queries processed in-place.
+  void* const contents_scratch =
+      static_cast<char*>(contents) + in_place_bytes_processed;
+  const size_t content_nbytes_scratch =
+      content_nbytes - in_place_bytes_processed;
+
+  // Deserialize the remaining queries in the scratch space,
+  // which incurs at least one copy.
+  const size_t in_scratch_bytes_processed = deserialize_queries_in_scratch(
+      contents_scratch, content_nbytes_scratch, scratch, query, copy_state);
+  bytes_processed += in_scratch_bytes_processed;
+
+  // If there are unprocessed bytes left in the scratch space, copy them
+  // to the beginning of 'scratch'. The intent is to reduce memory
+  // consumption by overwriting the serialized query objects that we
+  // have already processed.
+  if (scratch->offset() != 0) {
+    const uint64_t offset = scratch->offset();
+    scratch->set_offset(0);
+
+    // When the length of the remaining bytes is less than offset,
+    // we can safely read the remaining bytes from 'scratch' and
+    // write them to the beginning of 'scratch' because there will
+    // not be an overlap in accessed memory between the source
+    // and destination. Otherwise, we must use an auxilary buffer
+    // to temporarily store the remaining bytes because the behavior
+    // of the 'memcpy' used 'Buffer::write' will be undefined because
+    // there will be an overlap in the memory of the source and
+    // destination.
+    if (length <= offset) {
+      st = scratch->write(scratch->data(offset), length);
+    } else {
+      Buffer aux;
+      st = aux.write(scratch->data(offset), length);
+      if (st.ok()) {
+        st = scratch->write(aux.data(), aux.size());
+      }
+    }
+
+    assert(st.ok());
+    assert(scratch->size() == length);
+    if (!st.ok()) {
+      return std::max(bytes_processed, 0L);
+    }
+  }
+
+  bytes_processed += length;
+
+  assert(bytes_processed == content_nbytes);
+  return std::max(bytes_processed, 0L);
+}
+
+size_t RestClient::deserialize_queries_in_place(
+    void* const contents,
+    const size_t content_nbytes,
+    Buffer* const scratch,
+    Query* query,
+    std::unordered_map<std::string, serialization::QueryBufferCopyState>*
+        copy_state) {
+  // If we have bytes in the scratch space from a previous callback, we
+  // will not attempt to process anything in-place.
+  if (scratch->size() != 0) {
+    return 0;
+  }
+
+  // If the input buffer is not 8-byte aligned, we can not continue.
+  if ((reinterpret_cast<std::uintptr_t>(contents) % 8) != 0) {
+    return 0;
+  }
+
+  // We can attempt to process a serialized query in-place for as long
+  // as we have 8 bytes to read the size prefix and the offset is 8-byte
+  // aligned.
+  size_t offset = 0;
+  while ((offset + 8) < content_nbytes && (offset % 8) == 0) {
+    // Decode the query size.
+    const uint64_t query_size = utils::endianness::decode_le<uint64_t>(
+        static_cast<char*>(contents) + offset);
+    if (offset + query_size + 8 < content_nbytes) {
+      return offset;
+    }
+
+    // Here, we know that 'contents' is large enough to contain
+    // a complete serialized buffer.
+    Buffer aux(static_cast<char*>(contents) + offset + 8, query_size);
+    auto st = serialization::query_deserialize(
+        aux, serialization_type_, true, copy_state, query);
+    if (!st.ok()) {
+      return offset;
+    }
+
+    offset += 8 + query_size;
+  }
+
+  return offset;
+}
+
+size_t RestClient::deserialize_queries_in_scratch(
+    void* const contents,
+    const size_t content_nbytes,
+    Buffer* const scratch,
+    Query* query,
+    std::unordered_map<std::string, serialization::QueryBufferCopyState>*
+        copy_state) {
+  size_t bytes_processed = 0;
+
   // Copy 'contents' to the end of 'scratch'. As a future optimization, if
   // 'scratch' is empty, we could attempt to process 'contents' in-place and
   // only copy the remaining, unprocessed bytes into 'scratch'.
   scratch->set_offset(scratch->size());
   Status st = scratch->write(contents, content_nbytes);
+  assert(st.ok());
   if (!st.ok()) {
     LOG_ERROR(
         "Cannot copy libcurl response data; buffer write failed: " +
         st.to_string());
-    return std::max(bytes_processed, 0L);
+    return bytes_processed;
   }
 
   // Process all of the serialized queries contained within 'scratch'.
@@ -365,10 +479,11 @@ size_t RestClient::post_data_write_cb(
       // aligned auxiliary buffer.
       Buffer aux;
       st = aux.write(scratch->cur_data(), query_size);
+      assert(st.ok());
       if (!st.ok()) {
         scratch->set_offset(scratch->offset() - 8);
         scratch->set_size(scratch->offset());
-        return std::max(bytes_processed, 0L);
+        return bytes_processed;
       }
 
       // Deserialize the buffer and store it in 'copy_state'. If
@@ -380,7 +495,7 @@ size_t RestClient::post_data_write_cb(
       if (!st.ok()) {
         scratch->set_offset(scratch->offset() - 8);
         scratch->set_size(scratch->offset());
-        return std::max(bytes_processed, 0L);
+        return bytes_processed;
       }
     } else {
       // Deserialize the buffer and store it in 'copy_state'. If
@@ -392,7 +507,7 @@ size_t RestClient::post_data_write_cb(
       if (!st.ok()) {
         scratch->set_offset(scratch->offset() - 8);
         scratch->set_size(scratch->offset());
-        return std::max(bytes_processed, 0L);
+        return bytes_processed;
       }
     }
 
@@ -400,42 +515,7 @@ size_t RestClient::post_data_write_cb(
     bytes_processed += (query_size + 8);
   }
 
-  // If there are unprocessed bytes left in the scratch space, copy them
-  // to the beginning of 'scratch'. The intent is to reduce memory
-  // consumption by overwriting the serialized query objects that we
-  // have already processed.
-  const uint64_t length = scratch->size() - scratch->offset();
-  if (scratch->offset() != 0) {
-    const uint64_t offset = scratch->offset();
-    scratch->set_offset(0);
-
-    // When the length of the remaining bytes is less than offset,
-    // we can safely read the remaining bytes from 'scratch' and
-    // write them to the beginning of 'scratch' because there will
-    // not be an overlap in accessed memory between the source
-    // and destination. Otherwise, we must use an auxilary buffer
-    // to temporarily store the remaining bytes because the behavior
-    // of the 'memcpy' used 'Buffer::write' will be undefined because
-    // there will be an overlap in the memory of the source and
-    // destination.
-    if (length <= offset) {
-      st = scratch->write(scratch->data(offset), length);
-    } else {
-      Buffer aux;
-      st = aux.write(scratch->data(offset), length);
-      if (st.ok()) {
-        st = scratch->write(aux.data(), aux.size());
-      }
-    }
-
-    assert(st.ok());
-    assert(scratch->size() == length);
-  }
-
-  bytes_processed += length;
-
-  assert(bytes_processed == content_nbytes);
-  return std::max(bytes_processed, 0L);
+  return bytes_processed;
 }
 
 Status RestClient::finalize_query_to_rest(const URI& uri, Query* query) {

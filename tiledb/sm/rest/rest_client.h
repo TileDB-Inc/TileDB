@@ -204,6 +204,51 @@ class RestClient {
           copy_state);
 
   /**
+   * Starting at offset 0 in 'contents', deserializes as many sequentially
+   * serialized querys in-place as possible.
+   *
+   * @param contents the partial response data
+   * @param content_nbytes the size of the response data in 'contents'
+   * @scratch scratch space to use between invocations of this callback
+   * @query the query object used for deserializing the serialized query
+   *    objects in the response data.
+   * @param copy_state Map of copy state per attribute. As attribute data is
+   *    copied into user buffers on reads, the state of each attribute in this
+   *    map is updated accordingly.
+   * @return Number of bytes deserialized in-place.
+   */
+  size_t deserialize_queries_in_place(
+      void* contents,
+      size_t content_nbytes,
+      Buffer* scratch,
+      Query* query,
+      std::unordered_map<std::string, serialization::QueryBufferCopyState>*
+          copy_state);
+
+  /**
+   * Appends a copy of 'contents' of length 'content_nbytes' into 'scratch'.
+   * Deserializes all completed serialized queries in 'scratch'. May may
+   * auxilary copies of the indivudal serialized queries as necessary.
+   *
+   * @param contents the partial response data
+   * @param content_nbytes the size of the response data in 'contents'
+   * @scratch scratch space to use between invocations of this callback
+   * @query the query object used for deserializing the serialized query
+   *    objects in the response data.
+   * @param copy_state Map of copy state per attribute. As attribute data is
+   *    copied into user buffers on reads, the state of each attribute in this
+   *    map is updated accordingly.
+   * @return Number of bytes deserialized in-scratch.
+   */
+  size_t deserialize_queries_in_scratch(
+      void* contents,
+      size_t content_nbytes,
+      Buffer* scratch,
+      Query* query,
+      std::unordered_map<std::string, serialization::QueryBufferCopyState>*
+          copy_state);
+
+  /**
    * Returns a string representation of the given subarray. The format is:
    *
    *   "dim0min,dim0max,dim1min,dim1max,..."
