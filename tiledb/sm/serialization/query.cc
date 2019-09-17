@@ -847,7 +847,8 @@ Status query_deserialize(
         capnp::Query::Builder query_builder =
             message_builder.initRoot<capnp::Query>();
         json.decode(
-            kj::StringPtr(static_cast<const char*>(serialized_buffer.data())),
+            kj::StringPtr(
+                static_cast<const char*>(serialized_buffer.cur_data())),
             query_builder);
         capnp::Query::Reader query_reader = query_builder.asReader();
         return query_from_capnp(
@@ -855,7 +856,7 @@ Status query_deserialize(
       }
       case SerializationType::CAPNP: {
         // Capnp FlatArrayMessageReader requires 64-bit alignment.
-        if (!utils::is_aligned<sizeof(uint64_t)>(serialized_buffer.data()))
+        if (!utils::is_aligned<sizeof(uint64_t)>(serialized_buffer.cur_data()))
           return LOG_STATUS(Status::SerializationError(
               "Could not deserialize query; buffer is not 8-byte aligned."));
 
@@ -865,8 +866,9 @@ Status query_deserialize(
         ::capnp::FlatArrayMessageReader reader(
             kj::arrayPtr(
                 reinterpret_cast<const ::capnp::word*>(
-                    serialized_buffer.data()),
-                serialized_buffer.size() / sizeof(::capnp::word)),
+                    serialized_buffer.cur_data()),
+                (serialized_buffer.size() - serialized_buffer.offset()) /
+                    sizeof(::capnp::word)),
             readerOptions);
 
         capnp::Query::Reader query_reader = reader.getRoot<capnp::Query>();

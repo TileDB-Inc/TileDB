@@ -174,6 +174,36 @@ class RestClient {
           copy_state);
 
   /**
+   * Callback to invoke as partial, buffered response data is received from
+   * posting a query.
+   *
+   * This is not thread-safe. It expects the response data to be ordered. The
+   * response must contain serialized query objects, prefixed by an 8-byte
+   * unsigned integer that contains the byte-size of the serialized query object
+   * it is prefixing. The scratch space must be empty before the first
+   * invocation, and must not change until the last invocation has completed.
+   *
+   * @param reset True if the callback must wipe the in-memory state
+   * @param contents the partial response data
+   * @param content_nbytes the size of the response data in 'contents'
+   * @scratch scratch space to use between invocations of this callback
+   * @query the query object used for deserializing the serialized query
+   *    objects in the response data.
+   * @param copy_state Map of copy state per attribute. As attribute data is
+   *    copied into user buffers on reads, the state of each attribute in this
+   *    map is updated accordingly.
+   * @return Number of acknowledged bytes
+   */
+  size_t post_data_write_cb(
+      bool reset,
+      void* contents,
+      size_t content_nbytes,
+      Buffer* scratch,
+      Query* query,
+      std::unordered_map<std::string, serialization::QueryBufferCopyState>*
+          copy_state);
+
+  /**
    * Returns a string representation of the given subarray. The format is:
    *
    *   "dim0min,dim0max,dim1min,dim1max,..."
