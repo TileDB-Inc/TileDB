@@ -1955,7 +1955,6 @@ void SparseArrayFx::check_non_empty_domain(const std::string& path) {
 }
 
 void SparseArrayFx::check_invalid_offsets(const std::string& array_name) {
-  const char* attributes[] = {"a2", TILEDB_COORDS};
   uint64_t buffer_a2[] = {0, 4, 6};
   char buffer_a2_var[] = "hhhhffa";
   uint64_t buffer_coords[] = {3, 4, 4, 2, 3, 3};
