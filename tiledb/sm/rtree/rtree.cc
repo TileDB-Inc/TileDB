@@ -195,17 +195,23 @@ double RTree::range_overlap(const std::vector<const T*>& range, const T* mbr) {
     auto overlap_end = MIN(range[i][1], mbr[2 * i + 1]);
     auto overlap_range = overlap_end - overlap_start;
     auto mbr_range = mbr[2 * i + 1] - mbr[2 * i];
+    auto max = std::numeric_limits<T>::max();
     if (std::numeric_limits<T>::is_integer) {
       overlap_range += 1;
       mbr_range += 1;
     } else {
-      auto max = std::numeric_limits<T>::max();
       if (overlap_range == 0)
         overlap_range = std::nextafter(overlap_range, max);
       if (mbr_range == 0)
         mbr_range = std::nextafter(mbr_range, max);
     }
     ratio *= (double)overlap_range / mbr_range;
+
+    // If ratio goes to 0, then the subarray overlap is much smaller than the
+    // volume of the MBR. Since we have already guaranteed that there is an
+    // overlap above, we should set the ratio to epsilon.
+    if (ratio == 0)
+      ratio = std::nextafter(0, max);
   }
 
   return ratio;
