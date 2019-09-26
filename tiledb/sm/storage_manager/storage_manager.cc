@@ -1003,7 +1003,9 @@ Status StorageManager::init(Config* config) {
   tile_cache_ = new LRUCache(sm_params.tile_cache_size_);
   vfs_ = new VFS();
   RETURN_NOT_OK(vfs_->init(config_.vfs_params()));
+#ifdef TILEDB_SERIALIZATION
   RETURN_NOT_OK(init_rest_client());
+#endif
   auto& global_state = global_state::GlobalState::GetGlobalState();
   RETURN_NOT_OK(global_state.initialize(config));
   global_state.register_storage_manager(this);
