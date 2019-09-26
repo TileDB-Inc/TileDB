@@ -190,6 +190,7 @@ void check_save_to_file() {
   REQUIRE(rc == TILEDB_OK);
 
   std::stringstream ss;
+  ss << "rest.server_address https://api.tiledb.com\n";
   ss << "rest.server_serialization_format CAPNP\n";
   ss << "sm.check_coord_dups true\n";
   ss << "sm.check_coord_oob true\n";
@@ -372,6 +373,7 @@ TEST_CASE("C API: Test config iter", "[capi], [config]") {
 
   // Prepare maps
   std::map<std::string, std::string> all_param_values;
+  all_param_values["rest.server_address"] = "https://api.tiledb.com";
   all_param_values["rest.server_serialization_format"] = "CAPNP";
   all_param_values["sm.dedup_coords"] = "false";
   all_param_values["sm.check_coord_dups"] = "true";

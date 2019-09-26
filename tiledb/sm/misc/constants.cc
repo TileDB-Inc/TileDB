@@ -339,6 +339,9 @@ const std::string serialization_type_json_str = "JSON";
 /** TILEDB_CAPNP **/
 const std::string serialization_type_capnp_str = "CAPNP";
 
+/** The default address for rest server. */
+const std::string rest_server_default_address = "https://api.tiledb.com";
+
 /** The default format for serialization. */
 const SerializationType serialization_default_format = SerializationType::CAPNP;
 

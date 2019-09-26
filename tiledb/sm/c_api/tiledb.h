@@ -1097,7 +1097,7 @@ TILEDB_EXPORT void tiledb_config_free(tiledb_config_t** config);
  *
  * - `rest.server_address` <br>
  *    URL for REST server to use for remote arrays. <br>
- *    **Default**: ""
+ *    **Default**: "https://api.tiledb.com"
  * - `rest.server_serialization_format` <br>
  *    Serialization format to use for remote array requests (CAPNP or
  *    JSON). <br>

@@ -312,7 +312,12 @@ Status Config::unset(const std::string& param) {
   std::stringstream value;
 
   // Set back to default
-  if (param == "rest.server_serialization_format") {
+  if (param == "rest.server_address") {
+    rest_params_.server_address_ = constants::rest_server_default_address;
+    value << rest_params_.server_address_;
+    param_values_["rest.server_address"] = value.str();
+    value.str(std::string());
+  } else if (param == "rest.server_serialization_format") {
     rest_params_.server_serialization_format_ =
         constants::serialization_default_format;
     value << serialization_type_str(rest_params_.server_serialization_format_);
@@ -591,6 +596,10 @@ Status Config::unset(const std::string& param) {
 
 void Config::set_default_param_values() {
   std::stringstream value;
+
+  value << rest_params_.server_address_;
+  param_values_["rest.server_address"] = value.str();
+  value.str(std::string());
 
   value << serialization_type_str(rest_params_.server_serialization_format_);
   param_values_["rest.server_serialization_format"] = value.str();

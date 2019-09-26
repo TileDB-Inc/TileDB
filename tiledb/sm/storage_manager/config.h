@@ -77,7 +77,7 @@ class Config {
     std::string token_;
 
     RESTParams() {
-      server_address_ = "";
+      server_address_ = constants::rest_server_default_address;
       server_serialization_format_ = constants::serialization_default_format;
       username_ = "";
       password_ = "";
@@ -443,7 +443,7 @@ class Config {
    *
    * - `rest.server_address` <br>
    *    URL for REST server to use for remote arrays. <br>
-   *    **Default**: ""
+   *    **Default**: "https://api.tiledb.com"
    * - `rest.server_serialization_format` <br>
    *    Serialization format to use for remote array requests (CAPNP or
    *    JSON). <br>
