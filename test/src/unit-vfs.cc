@@ -115,7 +115,6 @@ TEST_CASE("VFS: Test read batching", "[vfs]") {
 
   SECTION("- Reduce min batch size and min batch gap") {
     // Set a smaller min batch size and min batch gap
-    const unsigned batch_bytes = 13;
     Config::VFSParams vfs_params;
     vfs_params.min_batch_size_ = 0;
     vfs_params.min_batch_gap_ = 0;
@@ -173,7 +172,6 @@ TEST_CASE("VFS: Test read batching", "[vfs]") {
 
   SECTION("- Reduce min batch size but not min batch gap") {
     // Set a smaller min batch size
-    const unsigned batch_bytes = 13;
     Config::VFSParams vfs_params;
     vfs_params.min_batch_size_ = 0;
     REQUIRE(vfs->init(vfs_params).ok());
@@ -197,7 +195,6 @@ TEST_CASE("VFS: Test read batching", "[vfs]") {
 
   SECTION("- Reduce min batch gap but not min batch size") {
     // Set a smaller min batch size
-    const unsigned batch_bytes = 13;
     Config::VFSParams vfs_params;
     vfs_params.min_batch_gap_ = 0;
     REQUIRE(vfs->init(vfs_params).ok());
