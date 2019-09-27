@@ -434,7 +434,7 @@ size_t RestClient::post_data_write_cb(
 
   bytes_processed += length;
 
-  assert(bytes_processed == content_nbytes);
+  assert(static_cast<size_t>(bytes_processed) == content_nbytes);
   return std::max(bytes_processed, 0L);
 }
 
