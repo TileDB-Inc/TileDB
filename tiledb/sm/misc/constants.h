@@ -283,6 +283,9 @@ extern const int num_tbb_threads;
 /** The tile cache size. */
 extern const uint64_t tile_cache_size;
 
+/** The default address for rest server. */
+extern const std::string rest_server_default_address;
+
 /** The default format for serialization. */
 extern const SerializationType serialization_default_format;
 
