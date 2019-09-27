@@ -59,6 +59,8 @@ struct SubarrayPartitionerDenseFx {
   std::string array_name_;
   const char* ARRAY_NAME = "subarray_partitioner_dense";
   tiledb_array_t* array_ = nullptr;
+  uint64_t memory_budget_ = 1024 * 1024 * 1024;
+  uint64_t memory_budget_var_ = 1024 * 1024 * 1024;
 
   SubarrayPartitionerDenseFx();
   ~SubarrayPartitionerDenseFx();
@@ -256,7 +258,8 @@ void SubarrayPartitionerDenseFx::test_subarray_partitioner(
   Subarray subarray;
   create_subarray(array_->array_, ranges, subarray_layout, &subarray);
 
-  SubarrayPartitioner subarray_partitioner(subarray);
+  SubarrayPartitioner subarray_partitioner(
+      subarray, memory_budget_, memory_budget_var_);
   auto st = subarray_partitioner.set_result_budget(attr.c_str(), budget);
   CHECK(st.ok());
 
@@ -274,7 +277,8 @@ void SubarrayPartitionerDenseFx::test_subarray_partitioner(
   Subarray subarray;
   create_subarray(array_->array_, ranges, subarray_layout, &subarray);
 
-  SubarrayPartitioner subarray_partitioner(subarray);
+  SubarrayPartitioner subarray_partitioner(
+      subarray, memory_budget_, memory_budget_var_);
 
   // Note: this is necessary, otherwise the subarray partitioner does
   // not check if the memory budget is exceeded for attributes whose
@@ -545,7 +549,8 @@ TEST_CASE_METHOD(
 
   create_subarray(array_->array_, ranges, subarray_layout, &subarray);
 
-  SubarrayPartitioner subarray_partitioner(subarray);
+  SubarrayPartitioner subarray_partitioner(
+      subarray, memory_budget_, memory_budget_var_);
   auto st = subarray_partitioner.set_result_budget("a", 100 * sizeof(int));
   CHECK(st.ok());
   st = subarray_partitioner.set_result_budget("b", 1, 1);

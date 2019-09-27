@@ -195,11 +195,11 @@ void check_save_to_file() {
   ss << "sm.check_coord_dups true\n";
   ss << "sm.check_coord_oob true\n";
   ss << "sm.check_global_order true\n";
-  ss << "sm.consolidation.amplification 1\n";
+  ss << "sm.consolidation.amplification 1.0\n";
   ss << "sm.consolidation.buffer_size 50000000\n";
   ss << "sm.consolidation.step_max_frags 4294967295\n";
   ss << "sm.consolidation.step_min_frags 4294967295\n";
-  ss << "sm.consolidation.step_size_ratio 0\n";
+  ss << "sm.consolidation.step_size_ratio 0.0\n";
   ss << "sm.consolidation.steps 4294967295\n";
   ss << "sm.dedup_coords false\n";
   ss << "sm.enable_signal_handlers true\n";
@@ -324,10 +324,12 @@ TEST_CASE("C API: Test config", "[capi], [config]") {
       "Invalid argument");
   tiledb_error_free(&error);
 
-  // Check invalid parameters are ignored
+  // Set valid
   rc = tiledb_config_set(config, "sm.tile_cache_size", "10", &error);
   CHECK(rc == TILEDB_OK);
   CHECK(error == nullptr);
+
+  // Check invalid parameters are ignored
   rc = tiledb_config_set(config, "sm.unknown_config_param", "10", &error);
   CHECK(rc == TILEDB_OK);
   CHECK(error == nullptr);
@@ -336,6 +338,15 @@ TEST_CASE("C API: Test config", "[capi], [config]") {
   rc = tiledb_config_unset(config, "slkjs", &error);
   CHECK(rc == TILEDB_OK);
   CHECK(error == nullptr);
+
+  // Unset valid parameter
+  rc = tiledb_config_unset(config, "sm.tile_cache_size", &error);
+  CHECK(rc == TILEDB_OK);
+  CHECK(error == nullptr);
+  rc = tiledb_config_get(config, "sm.tile_cache_size", &value, &error);
+  CHECK(rc == TILEDB_OK);
+  CHECK(error == nullptr);
+  CHECK(!strcmp(value, "10000000"));
 
   // Check out of range argument for correct parameter
   rc = tiledb_config_set(
@@ -387,12 +398,12 @@ TEST_CASE("C API: Test config iter", "[capi], [config]") {
   all_param_values["sm.num_reader_threads"] = "1";
   all_param_values["sm.num_writer_threads"] = "1";
   all_param_values["sm.num_tbb_threads"] = "-1";
-  all_param_values["sm.consolidation.amplification"] = "1";
+  all_param_values["sm.consolidation.amplification"] = "1.0";
   all_param_values["sm.consolidation.steps"] = "4294967295";
   all_param_values["sm.consolidation.step_min_frags"] = "4294967295";
   all_param_values["sm.consolidation.step_max_frags"] = "4294967295";
   all_param_values["sm.consolidation.buffer_size"] = "50000000";
-  all_param_values["sm.consolidation.step_size_ratio"] = "0";
+  all_param_values["sm.consolidation.step_size_ratio"] = "0.0";
   all_param_values["vfs.num_threads"] =
       std::to_string(std::thread::hardware_concurrency());
   all_param_values["vfs.min_batch_gap"] = "512000";
@@ -612,4 +623,42 @@ TEST_CASE(
   CHECK(rc == TILEDB_OK);
 
   tiledb_config_free(&config);
+}
+
+TEST_CASE("C API: Test VFS config inheritance", "[capi][config][vfs-inherit]") {
+  tiledb_error_t* err;
+  tiledb_config_t* config = nullptr;
+  int rc = tiledb_config_alloc(&config, &err);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_config_set(config, "sm.tile_cache_size", "100", &err);
+  CHECK(rc == TILEDB_OK);
+  tiledb_config_t* vfs_config = nullptr;
+  rc = tiledb_config_alloc(&vfs_config, &err);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_config_set(vfs_config, "vfs.s3.ca_file", "path", &err);
+  CHECK(rc == TILEDB_OK);
+
+  tiledb_ctx_t* ctx = nullptr;
+  rc = tiledb_ctx_alloc(config, &ctx);
+  CHECK(rc == TILEDB_OK);
+
+  tiledb_vfs_t* vfs = nullptr;
+  tiledb_config_t* vfs_config_get = nullptr;
+  rc = tiledb_vfs_alloc(ctx, vfs_config, &vfs);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_vfs_get_config(ctx, vfs, &vfs_config_get);
+  CHECK(rc == TILEDB_OK);
+
+  const char* value = nullptr;
+  rc = tiledb_config_get(vfs_config_get, "sm.tile_cache_size", &value, &err);
+  CHECK(rc == TILEDB_OK);
+  CHECK(!strcmp(value, "100"));
+  rc = tiledb_config_get(vfs_config_get, "vfs.s3.ca_file", &value, &err);
+  CHECK(rc == TILEDB_OK);
+  CHECK(!strcmp(value, "path"));
+
+  tiledb_config_free(&config);
+  tiledb_config_free(&vfs_config);
+  tiledb_vfs_free(&vfs);
+  tiledb_ctx_free(&ctx);
 }

@@ -40,6 +40,7 @@
 #include <Shlwapi.h>
 #include <Windows.h>
 #include <wininet.h>  // For INTERNET_MAX_URL_LENGTH
+#include <cassert>
 #include <fstream>
 #include <iostream>
 
@@ -273,14 +274,13 @@ Status Win::filelock_unlock(filelock_t fd) const {
   return Status::Ok();
 }
 
-Status Win::init(
-    const Config::VFSParams& vfs_params, ThreadPool* vfs_thread_pool) {
+Status Win::init(const Config& config, ThreadPool* vfs_thread_pool) {
   if (vfs_thread_pool == nullptr) {
     return LOG_STATUS(
         Status::VFSError("Cannot initialize with null thread pool"));
   }
 
-  vfs_params_ = vfs_params;
+  config_ = config;
   vfs_thread_pool_ = vfs_thread_pool;
 
   return Status::Ok();
@@ -426,6 +426,17 @@ Status Win::sync(const std::string& path) const {
 
 Status Win::write(
     const std::string& path, const void* buffer, uint64_t buffer_size) const {
+  // Get config params
+  bool found = false;
+  uint64_t min_parallel_size = 0;
+  RETURN_NOT_OK(config_.get<uint64_t>(
+      "vfs.min_parallel_size", &min_parallel_size, &found));
+  assert(found);
+  uint64_t max_parallel_ops = 0;
+  RETURN_NOT_OK(config_.get<uint64_t>(
+      "vfs.file.max_parallel_ops", &max_parallel_ops, &found));
+  assert(found);
+
   Status st;
   // Open the file for appending, creating it if it doesn't exist.
   HANDLE file_h = CreateFile(
@@ -451,8 +462,7 @@ Status Win::write(
   // Ensure that each thread is responsible for at least min_parallel_size
   // bytes, and cap the number of parallel operations at the thread pool size.
   uint64_t num_ops = std::min(
-      std::max(buffer_size / vfs_params_.min_parallel_size_, uint64_t(1)),
-      vfs_params_.file_params_.max_parallel_ops_);
+      std::max(buffer_size / min_parallel_size, uint64_t(1)), max_parallel_ops);
   if (num_ops == 1) {
     if (!write_at(file_h, file_offset, buffer, buffer_size).ok()) {
       CloseHandle(file_h);

@@ -50,6 +50,10 @@
 namespace tiledb {
 namespace sm {
 
+Posix::Posix()
+    : config_(default_config_) {
+}
+
 bool Posix::both_slashes(char a, char b) {
   return a == '/' && b == '/';
 }
@@ -256,14 +260,13 @@ Status Posix::filelock_unlock(filelock_t fd) const {
   return Status::Ok();
 }
 
-Status Posix::init(
-    const Config::VFSParams& vfs_params, ThreadPool* vfs_thread_pool) {
+Status Posix::init(const Config& config, ThreadPool* vfs_thread_pool) {
   if (vfs_thread_pool == nullptr) {
     return LOG_STATUS(
         Status::VFSError("Cannot initialize with null thread pool"));
   }
 
-  vfs_params_ = vfs_params;
+  config_ = config;
   vfs_thread_pool_ = vfs_thread_pool;
 
   return Status::Ok();
@@ -443,6 +446,18 @@ Status Posix::sync(const std::string& path) {
 
 Status Posix::write(
     const std::string& path, const void* buffer, uint64_t buffer_size) {
+  // Get config params
+  bool found = false;
+  uint64_t min_parallel_size = 0;
+  uint64_t max_parallel_ops = 0;
+  RETURN_NOT_OK(config_.get().get<uint64_t>(
+      "vfs.min_parallel_size", &min_parallel_size, &found));
+  assert(found);
+  RETURN_NOT_OK(config_.get().get<uint64_t>(
+      "vfs.file.max_parallel_ops", &max_parallel_ops, &found));
+  assert(found);
+
+  // Get file offset (equal to file size)
   Status st;
   uint64_t file_offset = 0;
   if (is_file(path)) {
@@ -453,17 +468,18 @@ Status Posix::write(
       return LOG_STATUS(Status::IOError(errmsg.str()));
     }
   }
+
   // Open or create file.
   int fd = open(path.c_str(), O_WRONLY | O_CREAT, S_IRWXU);
   if (fd == -1) {
     return LOG_STATUS(Status::IOError(
         std::string("Cannot open file '") + path + "'; " + strerror(errno)));
   }
+
   // Ensure that each thread is responsible for at least min_parallel_size
   // bytes, and cap the number of parallel operations at the thread pool size.
   uint64_t num_ops = std::min(
-      std::max(buffer_size / vfs_params_.min_parallel_size_, uint64_t(1)),
-      vfs_params_.file_params_.max_parallel_ops_);
+      std::max(buffer_size / min_parallel_size, uint64_t(1)), max_parallel_ops);
   if (num_ops == 1) {
     st = write_at(fd, file_offset, buffer, buffer_size);
     if (!st.ok()) {

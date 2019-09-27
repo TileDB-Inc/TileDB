@@ -33,11 +33,11 @@
 #ifdef HAVE_S3
 
 #include "catch.hpp"
+#include "tiledb/sm/config/config.h"
 #include "tiledb/sm/filesystem/s3.h"
 #include "tiledb/sm/global_state/unit_test_config.h"
 #include "tiledb/sm/misc/thread_pool.h"
 #include "tiledb/sm/misc/utils.h"
-#include "tiledb/sm/storage_manager/config.h"
 
 #include <fstream>
 #include <thread>
@@ -60,15 +60,15 @@ struct S3Fx {
 
 S3Fx::S3Fx() {
   // Connect
-  Config::S3Params s3_config;
+  Config config;
 #ifndef TILEDB_TESTS_AWS_S3_CONFIG
-  s3_config.endpoint_override_ = "localhost:9999";
-  s3_config.scheme_ = "https";
-  s3_config.use_virtual_addressing_ = false;
-  s3_config.verify_ssl_ = false;
+  REQUIRE(config.set("vfs.s3.endpoint_override", "localhost:9999").ok());
+  REQUIRE(config.set("vfs.s3.scheme", "https").ok());
+  REQUIRE(config.set("vfs.s3.use_virtual_addressing", "false").ok());
+  REQUIRE(config.set("vfs.s3.verify_ssl", "false").ok());
 #endif
   REQUIRE(thread_pool_.init(2).ok());
-  REQUIRE(s3_.init(s3_config, &thread_pool_).ok());
+  REQUIRE(s3_.init(config, &thread_pool_).ok());
 
   // Create bucket
   if (s3_.is_bucket(S3_BUCKET))

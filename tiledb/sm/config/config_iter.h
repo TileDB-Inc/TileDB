@@ -33,7 +33,8 @@
 #ifndef TILEDB_CONFIG_ITER_H
 #define TILEDB_CONFIG_ITER_H
 
-#include "tiledb/sm/storage_manager/config.h"
+#include <functional>
+#include "tiledb/sm/config/config.h"
 
 #include <map>
 #include <string>
@@ -41,7 +42,11 @@
 namespace tiledb {
 namespace sm {
 
-/** Implements a config iterator. */
+/**
+ * Implements a config iterator.
+ *
+ * @note: The iterator is not designed to be multi-threaded.
+ */
 class ConfigIter {
  public:
   /* ********************************* */
@@ -49,7 +54,7 @@ class ConfigIter {
   /* ********************************* */
 
   /** Constructor. */
-  ConfigIter(Config* config, std::string prefix = "");
+  ConfigIter(const Config* config, const std::string& prefix = "");
 
   /** Destructor. */
   ~ConfigIter();
@@ -68,7 +73,7 @@ class ConfigIter {
   const std::string& param() const;
 
   /** Resets the iterator. */
-  void reset(Config* config, std::string prefix);
+  void reset(const Config* config, const std::string& prefix);
 
   /** Returns the current parameter value pointed by the iterator. */
   const std::string& value() const;
@@ -78,17 +83,31 @@ class ConfigIter {
   /*         PRIVATE ATTRIBUTES        */
   /* ********************************* */
 
-  /** The config object to load the parameters from. */
-  Config* config_;
-
   /** The config parameter-value pairs. */
-  std::map<std::string, std::string> param_values_;
+  std::reference_wrapper<const std::map<std::string, std::string>>
+      param_values_;
 
   /** An iterator pointing to the current parameter-value pair. */
-  std::map<std::string, std::string>::iterator it_;
+  std::map<std::string, std::string>::const_iterator it_;
 
   /** The prefix used to constrain the parameters to be iterated on. */
   std::string prefix_;
+
+  /** Current parameter. */
+  std::string param_;
+
+  /** Current value. */
+  std::string value_;
+
+  /* ********************************* */
+  /*         PRIVATE METHODS           */
+  /* ********************************* */
+
+  /**
+   * Advance the iterator while the current paramerer does not
+   * have the same prefix as `prefix_`. Do not advance if `prefix_ == ""`.
+   */
+  void next_while_not_prefix();
 };
 
 }  // namespace sm

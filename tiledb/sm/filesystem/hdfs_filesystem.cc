@@ -46,6 +46,7 @@
 #include "tiledb/sm/misc/utils.h"
 
 #include <dlfcn.h>
+#include <cassert>
 #include <fstream>
 #include <iostream>
 #include <sstream>
@@ -204,7 +205,17 @@ HDFS::HDFS()
     , libhdfs_(LibHDFS::load()) {
 }
 
-Status HDFS::init(const Config::HDFSParams& config) {
+Status HDFS::init(const Config& config) {
+  // Get config
+  bool found = false;
+  std::string name_node_uri = config.get("vfs.hdfs.name_node_uri", &found);
+  assert(found);
+  std::string username = config.get("vfs.hdfs.username", &found);
+  assert(found);
+  std::string kerb_ticket_cache_path =
+      config.get("vfs.hdfs.kerb_ticket_cache_path", &found);
+  assert(found);
+
   // if libhdfs does not exist, just return and fail lazily on connection
   if (!libhdfs_->status().ok()) {
     return Status::Ok();
@@ -215,26 +226,21 @@ Status HDFS::init(const Config::HDFSParams& config) {
         "Failed to connect to hdfs, could not create connection builder"));
   }
   libhdfs_->hdfsBuilderSetForceNewInstance(builder);
-  std::string namenode_uri;
-  if (!config.name_node_uri_.empty()) {
-    namenode_uri = config.name_node_uri_;
-  } else {
-    namenode_uri = "default";
-  }
-  libhdfs_->hdfsBuilderSetNameNode(builder, namenode_uri.c_str());
-  if (!config.username_.empty()) {
-    libhdfs_->hdfsBuilderSetUserName(builder, config.username_.c_str());
-  }
-  if (!config.kerb_ticket_cache_path_.empty()) {
+  if (name_node_uri.empty())
+    name_node_uri = "default";
+  libhdfs_->hdfsBuilderSetNameNode(builder, name_node_uri.c_str());
+  if (!username.empty())
+    libhdfs_->hdfsBuilderSetUserName(builder, username.c_str());
+  if (!kerb_ticket_cache_path.empty()) {
     libhdfs_->hdfsBuilderSetKerbTicketCachePath(
-        builder, config.kerb_ticket_cache_path_.c_str());
+        builder, kerb_ticket_cache_path.c_str());
   }
   // TODO: Set config strings
   hdfs_ = libhdfs_->hdfsBuilderConnect(builder);
   if (hdfs_ == nullptr) {
     // TODO: errno for better options
     return LOG_STATUS(Status::HDFSError(
-        std::string("Failed to connect to HDFS namenode: ") + namenode_uri));
+        std::string("Failed to connect to HDFS namenode: ") + name_node_uri));
   }
   return Status::Ok();
 }
@@ -260,7 +266,7 @@ Status HDFS::connect(hdfsFS* fs) {
 
 Status HDFS::is_dir(const URI& uri, bool* is_dir) {
   hdfsFS fs = nullptr;
-  RETURN_NOT_OK(connect(&fs))
+  RETURN_NOT_OK(connect(&fs));
   int exists = libhdfs_->hdfsExists(fs, uri.to_path().c_str());
   if (exists == 0) {  // success
     hdfsFileInfo* fileInfo =
@@ -282,7 +288,7 @@ Status HDFS::is_dir(const URI& uri, bool* is_dir) {
 
 Status HDFS::create_dir(const URI& uri) {
   hdfsFS fs = nullptr;
-  RETURN_NOT_OK(connect(&fs))
+  RETURN_NOT_OK(connect(&fs));
   bool dir_exists = false;
   RETURN_NOT_OK(is_dir(uri, &dir_exists));
   if (dir_exists) {
@@ -300,7 +306,7 @@ Status HDFS::create_dir(const URI& uri) {
 
 Status HDFS::remove_dir(const URI& uri) {
   hdfsFS fs = nullptr;
-  RETURN_NOT_OK(connect(&fs))
+  RETURN_NOT_OK(connect(&fs));
   int rc = libhdfs_->hdfsDelete(fs, uri.to_path().c_str(), 1);
   if (rc < 0) {
     return LOG_STATUS(
@@ -505,7 +511,7 @@ Status HDFS::sync(const URI& uri) {
 
 Status HDFS::ls(const URI& uri, std::vector<std::string>* paths) {
   hdfsFS fs = nullptr;
-  RETURN_NOT_OK(connect(&fs))
+  RETURN_NOT_OK(connect(&fs));
   int numEntries = 0;
   hdfsFileInfo* fileList =
       libhdfs_->hdfsListDirectory(fs, uri.to_path().c_str(), &numEntries);

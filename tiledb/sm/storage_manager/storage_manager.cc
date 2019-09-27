@@ -775,7 +775,7 @@ bool StorageManager::cancellation_in_progress() {
   return cancellation_in_progress_;
 }
 
-Config StorageManager::config() const {
+const Config& StorageManager::config() const {
   return config_;
 }
 
@@ -993,21 +993,40 @@ Status StorageManager::group_create(const std::string& group) {
   return st;
 }
 
-Status StorageManager::init(Config* config) {
+Status StorageManager::init(const Config* config) {
   if (config != nullptr)
     config_ = *config;
-  Config::SMParams sm_params = config_.sm_params();
-  RETURN_NOT_OK(async_thread_pool_.init(sm_params.num_async_threads_));
-  RETURN_NOT_OK(reader_thread_pool_.init(sm_params.num_reader_threads_));
-  RETURN_NOT_OK(writer_thread_pool_.init(sm_params.num_writer_threads_));
-  tile_cache_ = new LRUCache(sm_params.tile_cache_size_);
+
+  // Get config params
+  bool found = false;
+  uint64_t num_async_threads = 0;
+  RETURN_NOT_OK(config_.get<uint64_t>(
+      "sm.num_async_threads", &num_async_threads, &found));
+  assert(found);
+  uint64_t num_reader_threads = 0;
+  RETURN_NOT_OK(config_.get<uint64_t>(
+      "sm.num_reader_threads", &num_reader_threads, &found));
+  assert(found);
+  uint64_t num_writer_threads = 0;
+  RETURN_NOT_OK(config_.get<uint64_t>(
+      "sm.num_writer_threads", &num_writer_threads, &found));
+  assert(found);
+  uint64_t tile_cache_size = 0;
+  RETURN_NOT_OK(
+      config_.get<uint64_t>("sm.tile_cache_size", &tile_cache_size, &found));
+  assert(found);
+
+  RETURN_NOT_OK(async_thread_pool_.init(num_async_threads));
+  RETURN_NOT_OK(reader_thread_pool_.init(num_reader_threads));
+  RETURN_NOT_OK(writer_thread_pool_.init(num_writer_threads));
+  tile_cache_ = new LRUCache(tile_cache_size);
   vfs_ = new VFS();
-  RETURN_NOT_OK(vfs_->init(config_.vfs_params()));
+  RETURN_NOT_OK(vfs_->init(&config_, nullptr));
 #ifdef TILEDB_SERIALIZATION
   RETURN_NOT_OK(init_rest_client());
 #endif
   auto& global_state = global_state::GlobalState::GetGlobalState();
-  RETURN_NOT_OK(global_state.initialize(config));
+  RETURN_NOT_OK(global_state.init(config));
   global_state.register_storage_manager(this);
 
   STATS_COUNTER_ADD(sm_contexts_created, 1);
@@ -1190,7 +1209,7 @@ Status StorageManager::object_iter_begin(
   // Include the uris that are TileDB objects in the iterator state
   ObjectType obj_type;
   for (auto& uri : uris) {
-    RETURN_NOT_OK(object_type(uri, &obj_type))
+    RETURN_NOT_OK(object_type(uri, &obj_type));
     if (obj_type != ObjectType::INVALID)
       (*obj_iter)->objs_.push_back(uri);
   }
@@ -1620,7 +1639,7 @@ Status StorageManager::get_fragment_uris(
     if (utils::parse::starts_with(uri.last_path_part(), "."))
       continue;
 
-    RETURN_NOT_OK(is_fragment(uri, &exists))
+    RETURN_NOT_OK(is_fragment(uri, &exists));
     if (exists)
       fragment_uris->push_back(uri);
   }

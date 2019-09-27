@@ -45,6 +45,7 @@
 
 #include "tiledb/sm/array_schema/array_schema.h"
 #include "tiledb/sm/cache/lru_cache.h"
+#include "tiledb/sm/config/config.h"
 #include "tiledb/sm/encryption/encryption.h"
 #include "tiledb/sm/encryption/encryption_key_validation.h"
 #include "tiledb/sm/enums/object_type.h"
@@ -55,7 +56,6 @@
 #include "tiledb/sm/misc/thread_pool.h"
 #include "tiledb/sm/misc/uri.h"
 #include "tiledb/sm/query/query.h"
-#include "tiledb/sm/storage_manager/config.h"
 #include "tiledb/sm/storage_manager/consolidator.h"
 #include "tiledb/sm/storage_manager/open_array.h"
 
@@ -326,7 +326,7 @@ class StorageManager {
   bool cancellation_in_progress();
 
   /** Returns the configuration parameters. */
-  Config config() const;
+  const Config& config() const;
 
   /** Creates a directory with the input URI. */
   Status create_dir(const URI& uri);
@@ -381,7 +381,7 @@ class StorageManager {
    * @param config The configuration parameters.
    * @return Status
    */
-  Status init(Config* config);
+  Status init(const Config* config);
 
   /**
    * If the storage manager was configured with a REST server, return the

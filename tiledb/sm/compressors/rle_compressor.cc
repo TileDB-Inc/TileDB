@@ -135,7 +135,7 @@ Status RLE::decompress(
 
     // Copy to output buffer
     for (uint64_t j = 0; j < run_len; ++j)
-      RETURN_NOT_OK(output_buffer->write(input_cur, value_size))
+      RETURN_NOT_OK(output_buffer->write(input_cur, value_size));
 
     // Update input/output tracking info
     input_cur += run_size;

@@ -1647,7 +1647,21 @@ Status Reader::init_read_state() {
         Status::ReaderError("Cannot initialize read state; Multi-range "
                             "subarrays do not support global order"));
 
-  read_state_.partitioner_ = SubarrayPartitioner(subarray_);
+  // Get config
+  bool found = false;
+  auto config = storage_manager_->config();
+  uint64_t memory_budget = 0;
+  RETURN_NOT_OK(
+      config.get<uint64_t>("sm.memory_budget", &memory_budget, &found));
+  assert(found);
+  uint64_t memory_budget_var = 0;
+  RETURN_NOT_OK(
+      config.get<uint64_t>("sm.memory_budget_var", &memory_budget_var, &found));
+  assert(found);
+
+  // Create read state
+  read_state_.partitioner_ =
+      SubarrayPartitioner(subarray_, memory_budget, memory_budget_var);
   read_state_.overflowed_ = false;
   read_state_.unsplittable_ = false;
 

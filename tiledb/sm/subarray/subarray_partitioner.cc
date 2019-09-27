@@ -49,19 +49,19 @@ namespace sm {
 /*   CONSTRUCTORS & DESTRUCTORS   */
 /* ****************************** */
 
-SubarrayPartitioner::SubarrayPartitioner() {
-  memory_budget_ = constants::memory_budget_fixed;
-  memory_budget_var_ = constants::memory_budget_var;
-}
+SubarrayPartitioner::SubarrayPartitioner() = default;
 
-SubarrayPartitioner::SubarrayPartitioner(const Subarray& subarray)
-    : subarray_(subarray) {
+SubarrayPartitioner::SubarrayPartitioner(
+    const Subarray& subarray,
+    uint64_t memory_budget,
+    uint64_t memory_budget_var)
+    : subarray_(subarray)
+    , memory_budget_(memory_budget)
+    , memory_budget_var_(memory_budget_var) {
   subarray_.compute_tile_overlap();
   state_.start_ = 0;
   auto range_num = subarray_.range_num();
   state_.end_ = (range_num > 0) ? range_num - 1 : 0;
-  memory_budget_ = constants::memory_budget_fixed;
-  memory_budget_var_ = constants::memory_budget_var;
 }
 
 SubarrayPartitioner::~SubarrayPartitioner() = default;

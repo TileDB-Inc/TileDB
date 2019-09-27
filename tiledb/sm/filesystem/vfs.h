@@ -34,6 +34,7 @@
 #define TILEDB_VFS_H
 
 #include "tiledb/sm/buffer/buffer.h"
+#include "tiledb/sm/config/config.h"
 #include "tiledb/sm/enums/filesystem.h"
 #include "tiledb/sm/enums/vfs_mode.h"
 #include "tiledb/sm/filesystem/filelock.h"
@@ -43,7 +44,6 @@
 #include "tiledb/sm/misc/status.h"
 #include "tiledb/sm/misc/thread_pool.h"
 #include "tiledb/sm/misc/uri.h"
-#include "tiledb/sm/storage_manager/config.h"
 
 #ifdef HAVE_S3
 #include "tiledb/sm/filesystem/s3.h"
@@ -53,6 +53,7 @@
 #include "tiledb/sm/filesystem/hdfs_filesystem.h"
 #endif
 
+#include <functional>
 #include <set>
 #include <string>
 #include <vector>
@@ -245,10 +246,10 @@ class VFS {
   /**
    * Initializes the virtual filesystem with the given configuration.
    *
-   * @param vfs_params VFS Configuration
+   * @param config Configuration parameters
    * @return Status
    */
-  Status init(const Config::VFSParams& vfs_params);
+  Status init(const Config* ctx_config, const Config* vfs_config);
 
   /**
    * Terminates the virtual system. Must only be called if init() returned
@@ -413,8 +414,11 @@ class VFS {
   std::unique_ptr<hdfs::HDFS> hdfs_;
 #endif
 
-  /** VFS parameters. */
-  Config::VFSParams vfs_params_;
+  /** Config. */
+  Config config_;
+
+  /** `true` if the VFS object has been initialized. */
+  bool init_;
 
   /** The set with the supported filesystems. */
   std::set<Filesystem> supported_fs_;
@@ -460,12 +464,10 @@ class VFS {
   Status decr_lock_count(const URI& uri, bool* is_zero, filelock_t* lock) const;
 
   /**
-   * Return the backend-specific max number of parallel operations for VFS read.
-   *
-   * @param uri URI (used for determining the backend)
-   * @return Max number of parallel operations
+   * Retrieves the backend-specific max number of parallel operations for VFS
+   * read.
    */
-  uint64_t max_parallel_ops(const URI& uri) const;
+  Status max_parallel_ops(const URI& uri, uint64_t* ops) const;
 };
 
 }  // namespace sm

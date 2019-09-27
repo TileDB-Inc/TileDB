@@ -128,8 +128,7 @@ S3::~S3() {
 /*                 API               */
 /* ********************************* */
 
-Status S3::init(
-    const Config::S3Params& s3_config, ThreadPool* const thread_pool) {
+Status S3::init(const Config& config, ThreadPool* const thread_pool) {
   assert(state_ == State::UNINITIALIZED);
 
   if (thread_pool == nullptr) {
@@ -137,8 +136,11 @@ Status S3::init(
         Status::S3Error("Can't initialize with null thread pool."));
   }
 
-  options_.loggingOptions.logLevel =
-      aws_log_name_to_level(s3_config.logging_level_);
+  bool found = false;
+  auto logging_level = config.get("vfs.s3.logging_level", &found);
+  assert(found);
+
+  options_.loggingOptions.logLevel = aws_log_name_to_level(logging_level);
 
   // Initialize the library once per process.
   std::call_once(aws_lib_initialized, [this]() { Aws::InitAPI(options_); });
@@ -150,51 +152,104 @@ Status S3::init(
   }
 
   vfs_thread_pool_ = thread_pool;
-  max_parallel_ops_ = s3_config.max_parallel_ops_;
-  multipart_part_size_ = s3_config.multipart_part_size_;
+  RETURN_NOT_OK(config.get<uint64_t>(
+      "vfs.s3.max_parallel_ops", &max_parallel_ops_, &found));
+  assert(found);
+  RETURN_NOT_OK(config.get<uint64_t>(
+      "vfs.s3.multipart_part_size", &multipart_part_size_, &found));
+  assert(found);
   file_buffer_size_ = multipart_part_size_ * max_parallel_ops_;
-  region_ = s3_config.region_;
-  use_virtual_addressing_ = s3_config.use_virtual_addressing_;
-  use_multipart_upload_ = s3_config.use_multipart_upload_;
+  region_ = config.get("vfs.s3.region", &found);
+  assert(found);
+  RETURN_NOT_OK(config.get<bool>(
+      "vfs.s3.use_virtual_addressing", &use_virtual_addressing_, &found));
+  assert(found);
+  RETURN_NOT_OK(config.get<bool>(
+      "vfs.s3.use_multipart_upload", &use_multipart_upload_, &found));
+  assert(found);
+  auto s3_endpoint_override = config.get("vfs.s3.endpoint_override", &found);
+  assert(found);
 
   client_config_ = std::unique_ptr<Aws::Client::ClientConfiguration>(
       new Aws::Client::ClientConfiguration);
   s3_tp_executor_ = std::make_shared<S3ThreadPoolExecutor>(thread_pool);
   client_config_->executor = s3_tp_executor_;
-  auto& config = *client_config_.get();
-  if (!s3_config.region_.empty())
-    config.region = s3_config.region_.c_str();
-  if (!s3_config.endpoint_override_.empty())
-    config.endpointOverride = s3_config.endpoint_override_.c_str();
+  auto& client_config = *client_config_.get();
+  if (!region_.empty())
+    client_config.region = region_.c_str();
+  if (!s3_endpoint_override.empty())
+    client_config.endpointOverride = s3_endpoint_override.c_str();
 
-  if (!s3_config.proxy_host_.empty()) {
-    config.proxyHost = s3_config.proxy_host_.c_str();
-    config.proxyPort = s3_config.proxy_port_;
-    config.proxyScheme = s3_config.proxy_scheme_ == "http" ?
-                             Aws::Http::Scheme::HTTP :
-                             Aws::Http::Scheme::HTTPS;
-    config.proxyUserName = s3_config.proxy_username_.c_str();
-    config.proxyPassword = s3_config.proxy_password_.c_str();
+  auto proxy_host = config.get("vfs.s3.proxy_host", &found);
+  assert(found);
+  uint32_t proxy_port = 0;
+  RETURN_NOT_OK(config.get<uint32_t>("vfs.s3.proxy_port", &proxy_port, &found));
+  assert(found);
+  auto proxy_username = config.get("vfs.s3.proxy_username", &found);
+  assert(found);
+  auto proxy_password = config.get("vfs.s3.proxy_password", &found);
+  assert(found);
+  auto proxy_scheme = config.get("vfs.s3.proxy_scheme", &found);
+  assert(found);
+  if (!proxy_host.empty()) {
+    client_config.proxyHost = proxy_host.c_str();
+    client_config.proxyPort = proxy_port;
+    client_config.proxyScheme = proxy_scheme == "http" ?
+                                    Aws::Http::Scheme::HTTP :
+                                    Aws::Http::Scheme::HTTPS;
+    client_config.proxyUserName = proxy_username.c_str();
+    client_config.proxyPassword = proxy_password.c_str();
   }
 
-  config.scheme = (s3_config.scheme_ == "http") ? Aws::Http::Scheme::HTTP :
-                                                  Aws::Http::Scheme::HTTPS;
-  config.connectTimeoutMs = s3_config.connect_timeout_ms_;
-  config.requestTimeoutMs = s3_config.request_timeout_ms_;
-  config.caFile = s3_config.ca_file_.c_str();
-  config.caPath = s3_config.ca_path_.c_str();
-  config.verifySSL = s3_config.verify_ssl_;
+  auto s3_scheme = config.get("vfs.s3.scheme", &found);
+  assert(found);
+  int64_t connect_timeout_ms = 0;
+  RETURN_NOT_OK(config.get<int64_t>(
+      "vfs.s3.connect_timeout_ms", &connect_timeout_ms, &found));
+  assert(found);
+  int64_t request_timeout_ms = 0;
+  RETURN_NOT_OK(config.get<int64_t>(
+      "vfs.s3.request_timeout_ms", &request_timeout_ms, &found));
+  assert(found);
+  auto ca_file = config.get("vfs.s3.ca_file", &found);
+  assert(found);
+  auto ca_path = config.get("vfs.s3.ca_path", &found);
+  assert(found);
+  bool verify_ssl = false;
+  RETURN_NOT_OK(config.get<bool>("vfs.s3.verify_ssl", &verify_ssl, &found));
+  assert(found);
+  auto aws_access_key_id = config.get("vfs.s3.aws_access_key_id", &found);
+  assert(found);
+  auto aws_secret_access_key =
+      config.get("vfs.s3.aws_secret_access_key", &found);
+  assert(found);
+  int64_t connect_max_tries = 0;
+  RETURN_NOT_OK(config.get<int64_t>(
+      "vfs.s3.connect_max_tries", &connect_max_tries, &found));
+  assert(found);
+  int64_t connect_scale_factor = 0;
+  RETURN_NOT_OK(config.get<int64_t>(
+      "vfs.s3.connect_scale_factor", &connect_scale_factor, &found));
+  assert(found);
 
-  config.retryStrategy = Aws::MakeShared<Aws::Client::DefaultRetryStrategy>(
-      constants::s3_allocation_tag.c_str(),
-      s3_config.connect_max_tries_,
-      s3_config.connect_scale_factor_);
+  client_config.scheme = (s3_scheme == "http") ? Aws::Http::Scheme::HTTP :
+                                                 Aws::Http::Scheme::HTTPS;
+  client_config.connectTimeoutMs = (long)connect_timeout_ms;
+  client_config.requestTimeoutMs = (long)request_timeout_ms;
+  client_config.caFile = ca_file.c_str();
+  client_config.caPath = ca_path.c_str();
+  client_config.verifySSL = verify_ssl;
+
+  client_config.retryStrategy =
+      Aws::MakeShared<Aws::Client::DefaultRetryStrategy>(
+          constants::s3_allocation_tag.c_str(),
+          (long)connect_max_tries,
+          (long)connect_scale_factor);
 
   // If the user set config variables for AWS keys use them.
-  if (!s3_config.aws_access_key_id.empty() &&
-      !s3_config.aws_secret_access_key.empty()) {
-    Aws::String access_key_id(s3_config.aws_access_key_id.c_str());
-    Aws::String secret_access_key(s3_config.aws_secret_access_key.c_str());
+  if (!aws_access_key_id.empty() && !aws_secret_access_key.empty()) {
+    Aws::String access_key_id(aws_access_key_id.c_str());
+    Aws::String secret_access_key(aws_secret_access_key.c_str());
     client_creds_ = std::unique_ptr<Aws::Auth::AWSCredentials>(
         new Aws::Auth::AWSCredentials(access_key_id, secret_access_key));
   }

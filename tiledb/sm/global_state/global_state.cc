@@ -52,8 +52,15 @@ GlobalState::GlobalState() {
   initialized_ = false;
 }
 
-Status GlobalState::initialize(Config* config) {
+Status GlobalState::init(const Config* config) {
   std::unique_lock<std::mutex> lck(init_mtx_);
+
+  // Get config params
+  bool found;
+  bool enable_signal_handlers = false;
+  RETURN_NOT_OK(config_.get<bool>(
+      "sm.enable_signal_handlers", &enable_signal_handlers, &found));
+  assert(found);
 
   // initialize tbb with configured number of threads
   RETURN_NOT_OK(init_tbb(config));
@@ -63,7 +70,7 @@ Status GlobalState::initialize(Config* config) {
     if (config != nullptr) {
       config_ = *config;
     }
-    if (config_.sm_params().enable_signal_handlers_) {
+    if (enable_signal_handlers) {
       RETURN_NOT_OK(SignalHandlers::GetSignalHandlers().initialize());
     }
     RETURN_NOT_OK(Watchdog::GetWatchdog().initialize());

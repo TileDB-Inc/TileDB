@@ -46,18 +46,6 @@ enum class SerializationType : uint8_t;
 namespace constants {
 
 /**
- * The maximum memory budget for producing the result (in bytes)
- * for a fixed-sized attribute or the offsets of a var-sized attribute.
- */
-extern const uint64_t memory_budget_fixed;
-
-/**
- * The maximum memory budget for producing the result (in bytes)
- * for a var-sized attribute.
- */
-extern const uint64_t memory_budget_var;
-
-/**
  * Reduction factor (must be in [0.0, 1.0]) for the multi_range subarray
  * split by the partitioner. If the number is equal to 0.3, then this
  * means that the number of ranges will be reduced by 30%.
@@ -69,21 +57,6 @@ extern const double est_result_size_amplification;
 
 /** Default fanout for RTrees. */
 extern const unsigned rtree_fanout;
-
-/**
- * If `true`, this will check for coordinate duplicates upon sparse
- * writes.
- */
-extern const bool check_coord_dups;
-
-/**
- * If `true`, this will check for out-of-bound coordinates upon sparse
- * writes.
- */
-extern const bool check_coord_oob;
-
-/** If `true`, this will deduplicate coordinates upon sparse writes. */
-extern const bool dedup_coords;
 
 /** The object filelock name. */
 extern const std::string filelock_name;
@@ -202,59 +175,8 @@ extern uint64_t generic_tile_cell_size;
 /** The group file name. */
 extern const std::string group_filename;
 
-/**
- * The factor by which the size of the dense fragment resulting
- * from consolidating a set of fragments (containing at least one
- * dense fragment) can be amplified. This is important when
- * the union of the non-empty domains of the fragments to be
- * consolidated have a lot of empty cells, which the consolidated
- * fragment will have to fill with the special fill value
- * (since the resulting fragments is dense).
- */
-extern const float consolidation_amplification;
-
-/** The buffer size for each attribute used in consolidation. */
-extern const uint64_t consolidation_buffer_size;
-
-/** Number of steps in the consolidation algorithm. */
-extern const uint32_t consolidation_steps;
-
-/** Minimum number of fragments to consolidate per step. */
-extern const uint32_t consolidation_step_min_frags;
-
-/** Maximum number of fragments to consolidate per step. */
-extern const uint32_t consolidation_step_max_frags;
-
-/**
- * Size ratio of two fragments to be considered for consolidation in a step.
- * This should be a value in [0.0, 1.0].
- * 0.0 means always consolidate and 1.0 never consolidate.
- */
-extern const float consolidation_step_size_ratio;
-
 /** The maximum number of bytes written in a single I/O. */
 extern const uint64_t max_write_bytes;
-
-/** The default number of allocated VFS threads. */
-extern const uint64_t vfs_num_threads;
-
-/** The default minimum number of bytes in a parallel VFS operation. */
-extern const uint64_t vfs_min_parallel_size;
-
-/**
- * The default minimum number of bytes between the offsets of two VFS
- * read operations.
- */
-extern const uint64_t vfs_min_batch_gap;
-
-/** The default minimum number of bytes in a batched VFS read operation. */
-extern const uint64_t vfs_min_batch_size;
-
-/** The default maximum number of parallel file:/// operations. */
-extern const uint64_t vfs_file_max_parallel_ops;
-
-/** Whether or not filelocks are enabled for VFS. */
-extern const bool vfs_file_enable_filelocks;
 
 /** The maximum file path length (depending on platform). */
 extern const uint32_t path_max_len;
@@ -264,30 +186,6 @@ extern const uint32_t var_num;
 
 /** String describing no compression. */
 extern const std::string no_compression_str;
-
-/** Whether or not the signal handlers are installed. */
-extern const bool enable_signal_handlers;
-
-/** The number of threads allocated per StorageManager for async queries. */
-extern const uint64_t num_async_threads;
-
-/** The number of threads allocated per StorageManager for read operations. */
-extern const uint64_t num_reader_threads;
-
-/** The number of threads allocated per StorageManager for write operations. */
-extern const uint64_t num_writer_threads;
-
-/** The number of threads allocated for TBB. */
-extern const int num_tbb_threads;
-
-/** The tile cache size. */
-extern const uint64_t tile_cache_size;
-
-/** The default address for rest server. */
-extern const std::string rest_server_default_address;
-
-/** The default format for serialization. */
-extern const SerializationType serialization_default_format;
 
 /** Empty String reference **/
 extern const std::string empty_str;
@@ -567,81 +465,6 @@ extern const unsigned int s3_attempt_sleep_ms;
 
 /** An allocation tag used for logging. */
 extern const std::string s3_allocation_tag;
-
-/** Use virtual addressing (false for minio, true for AWS S3). */
-extern const bool s3_use_virtual_addressing;
-
-/** Use multipart upload (false for GCS, true for AWS S3). */
-extern const bool s3_use_multipart_upload;
-
-/** Certificate file path. */
-extern const std::string s3_ca_file;
-
-/** Certificate directory path. */
-extern const std::string s3_ca_path;
-
-/** Certificate verification enabled. */
-extern const bool s3_verify_ssl;
-
-/** Connect timeout in milliseconds. */
-extern const long s3_connect_timeout_ms;
-
-/** Connect max tries. */
-extern const long s3_connect_max_tries;
-
-/** Connect scale factor for exponential backoff. */
-extern const long s3_connect_scale_factor;
-
-/** S3 logging level. */
-extern const std::string s3_logging_level;
-
-/** Request timeout in milliseconds. */
-extern const long s3_request_timeout_ms;
-
-/** S3 scheme (http for local minio, https for AWS S3). */
-extern const std::string s3_scheme;
-
-/** The default maximum number of parallel S3 operations. */
-extern const uint64_t s3_max_parallel_ops;
-
-/** Size of parts used in the S3 multi-part uploads. */
-extern const uint64_t s3_multipart_part_size;
-
-/** S3 region. */
-extern const std::string s3_region;
-
-/** S3 aws access key id. */
-extern const std::string aws_access_key_id;
-
-/** S3 aws secret access key. */
-extern const std::string aws_secret_access_key;
-
-/** S3 endpoint override. */
-extern const std::string s3_endpoint_override;
-
-/** S3 proxy scheme. */
-extern const std::string s3_proxy_scheme;
-
-/** S3 proxy host. */
-extern const std::string s3_proxy_host;
-
-/** S3 proxy port. */
-extern const unsigned s3_proxy_port;
-
-/** S3 proxy username. */
-extern const std::string s3_proxy_username;
-
-/** S3 proxy password. */
-extern const std::string s3_proxy_password;
-
-/** HDFS default kerb ticket cache path. */
-extern const std::string hdfs_kerb_ticket_cache_path;
-
-/** HDFS default name node uri. */
-extern const std::string hdfs_name_node_uri;
-
-/** HDFS default username. */
-extern const std::string hdfs_username;
 
 /** Prefix indicating a special name reserved by TileDB. */
 extern const std::string special_name_prefix;

@@ -35,12 +35,12 @@
 
 #ifdef HAVE_S3
 #include "tiledb/sm/buffer/buffer.h"
+#include "tiledb/sm/config/config.h"
 #include "tiledb/sm/filesystem/s3_thread_pool_executor.h"
 #include "tiledb/sm/misc/constants.h"
 #include "tiledb/sm/misc/status.h"
 #include "tiledb/sm/misc/thread_pool.h"
 #include "tiledb/sm/misc/uri.h"
-#include "tiledb/sm/storage_manager/config.h"
 
 #include <aws/core/Aws.h>
 #include <aws/core/auth/AWSCredentialsProviderChain.h>
@@ -98,11 +98,11 @@ class S3 {
   /**
    * Initializes and connects an S3 client.
    *
-   * @param s3_config The S3 configuration parameters.
+   * @param config Configuration parameters.
    * @param thread_pool The parent VFS thread pool.
    * @return Status
    */
-  Status init(const Config::S3Params& s3_config, ThreadPool* thread_pool);
+  Status init(const Config& config, ThreadPool* thread_pool);
 
   /**
    * Creates a bucket.

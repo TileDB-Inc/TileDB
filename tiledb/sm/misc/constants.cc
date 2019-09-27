@@ -34,10 +34,6 @@
 #include <limits>
 #include <thread>
 
-#ifdef HAVE_TBB
-#include <tbb/task_scheduler_init.h>
-#endif
-
 #include "tiledb/sm/c_api/tiledb_version.h"
 
 // Include files for platform path max definition.
@@ -52,23 +48,12 @@
 #include "tiledb/sm/enums/compressor.h"
 #include "tiledb/sm/enums/datatype.h"
 #include "tiledb/sm/enums/serialization_type.h"
+#include "tiledb/sm/misc/utils.h"
 
 namespace tiledb {
 namespace sm {
 
 namespace constants {
-
-/**
- * The maximum memory budget for producing the result (in bytes)
- * for a fixed-sized attribute or the offsets of a var-sized attribute.
- */
-const uint64_t memory_budget_fixed = 5368709120;  // 5GB
-
-/**
- * The maximum memory budget for producing the result (in bytes)
- * for a var-sized attribute.
- */
-const uint64_t memory_budget_var = 10737418240;  // 10GB;
 
 /**
  * Reduction factor (must be in [0.0, 1.0]) for the multi_range subarray
@@ -82,21 +67,6 @@ const double est_result_size_amplification = 1.0;
 
 /** Default fanout for RTrees. */
 const unsigned rtree_fanout = 10;
-
-/**
- * If `true`, this will check for coordinate duplicates upon sparse
- * writes.
- */
-const bool check_coord_dups = true;
-
-/**
- * If `true`, this will check for out-of-bound coordinates upon sparse
- * writes.
- */
-const bool check_coord_oob = true;
-
-/** If `true`, this will deduplicate coordinates upon sparse writes. */
-const bool dedup_coords = false;
 
 /** The array schema file name. */
 const std::string array_schema_filename = "__array_schema.tdb";
@@ -215,58 +185,8 @@ uint64_t generic_tile_cell_size = sizeof(char);
 /** The group file name. */
 const std::string group_filename = "__tiledb_group.tdb";
 
-/**
- * The factor by which the size of the dense fragment resulting
- * from consolidating a set of fragments (containing at least one
- * dense fragment) can be amplified. This is important when
- * the union of the non-empty domains of the fragments to be
- * consolidated have a lot of empty cells, which the consolidated
- * fragment will have to fill with the special fill value
- * (since the resulting fragment is dense).
- */
-const float consolidation_amplification = 1.0f;
-
-/** The buffer size for each attribute used in consolidation. */
-const uint64_t consolidation_buffer_size = 50000000;
-
-/** Number of steps in the consolidation algorithm. */
-const uint32_t consolidation_steps = std::numeric_limits<unsigned>::max();
-
-/** Minimum number of fragments to consolidate per step. */
-const uint32_t consolidation_step_min_frags = UINT32_MAX;
-
-/** Maximum number of fragments to consolidate per step. */
-const uint32_t consolidation_step_max_frags = UINT32_MAX;
-
-/**
- * Size ratio of two fragments to be considered for consolidation in a step.
- * This should be a value in [0.0, 1.0].
- * 0.0 means always consolidate and 1.0 consolidate only if sizes are equal.
- */
-const float consolidation_step_size_ratio = 0.0f;
-
 /** The maximum number of bytes written in a single I/O. */
 const uint64_t max_write_bytes = std::numeric_limits<int>::max();
-
-/** The default number of allocated VFS threads. */
-const uint64_t vfs_num_threads = std::thread::hardware_concurrency();
-
-/** The default minimum number of bytes in a parallel VFS operation. */
-const uint64_t vfs_min_parallel_size = 10 * 1024 * 1024;
-
-/**
- * The default minimum number of bytes between two VFS read batches.
- */
-const uint64_t vfs_min_batch_gap = 500 * 1024;
-
-/** The default minimum number of bytes in a batched VFS read operation. */
-const uint64_t vfs_min_batch_size = 20 * 1024 * 1024;
-
-/** The default maximum number of parallel file:/// operations. */
-const uint64_t vfs_file_max_parallel_ops = vfs_num_threads;
-
-/** Whether or not filelocks are enabled for VFS. */
-const bool vfs_file_enable_filelocks = true;
 
 /** The maximum file path length (depending on platform). */
 #ifndef _WIN32
@@ -278,28 +198,6 @@ const uint32_t var_num = std::numeric_limits<unsigned int>::max();
 
 /** String describing no compression. */
 const std::string no_compression_str = "NO_COMPRESSION";
-
-/** Whether or not the signal handlers are installed. */
-const bool enable_signal_handlers = true;
-
-/** The number of threads allocated per StorageManager for async queries. */
-const uint64_t num_async_threads = 1;
-
-/** The number of threads allocated per StorageManager for the Reader pool. */
-const uint64_t num_reader_threads = 1;
-
-/** The number of threads allocated per StorageManager for the Writer pool. */
-const uint64_t num_writer_threads = 1;
-
-/** The number of threads allocated for TBB. */
-#ifdef HAVE_TBB
-const int num_tbb_threads = tbb::task_scheduler_init::automatic;
-#else
-const int num_tbb_threads = -1;
-#endif
-
-/** The tile cache size. */
-const uint64_t tile_cache_size = 10000000;
 
 /** Empty String **/
 const std::string empty_str = "";
@@ -338,12 +236,6 @@ const std::string serialization_type_json_str = "JSON";
 
 /** TILEDB_CAPNP **/
 const std::string serialization_type_capnp_str = "CAPNP";
-
-/** The default address for rest server. */
-const std::string rest_server_default_address = "https://api.tiledb.com";
-
-/** The default format for serialization. */
-const SerializationType serialization_default_format = SerializationType::CAPNP;
 
 /** String describing GZIP. */
 const std::string gzip_str = "GZIP";
@@ -587,81 +479,6 @@ const unsigned int s3_attempt_sleep_ms = 100;
 
 /** An allocation tag used for logging. */
 const std::string s3_allocation_tag = "TileDB";
-
-/** Use virtual addressing (false for minio, true for AWS S3). */
-const bool s3_use_virtual_addressing = true;
-
-/** Use virtual addressing (true). */
-const bool s3_use_multipart_upload = true;
-
-/** Certificate file path. */
-const std::string s3_ca_file = "";
-
-/** Certificate directory path. */
-const std::string s3_ca_path = "";
-
-/** Connect timeout in milliseconds. */
-const long s3_connect_timeout_ms = 3000;
-
-/** Connect max tries. */
-const long s3_connect_max_tries = 5;
-
-/** Connect scale factor for exponential backoff. */
-const long s3_connect_scale_factor = 25;
-
-/** Request timeout in milliseconds. */
-const long s3_request_timeout_ms = 3000;
-
-/** S3 scheme (http for local minio, https for AWS S3). */
-const std::string s3_scheme = "https";
-
-/** S3 max parallel operations. */
-const uint64_t s3_max_parallel_ops = vfs_num_threads;
-
-/** Size of parts used in the S3 multi-part uploads. */
-const uint64_t s3_multipart_part_size = 5 * 1024 * 1024;
-
-/** S3 region. */
-const std::string s3_region = "us-east-1";
-
-/** S3 aws access key id. */
-const std::string aws_access_key_id = "";
-
-/** S3 aws secret access key. */
-const std::string aws_secret_access_key = "";
-
-/** S3 endpoint override. */
-const std::string s3_endpoint_override = "";
-
-/** S3 proxy scheme. */
-const std::string s3_proxy_scheme = "https";
-
-/** S3 proxy host. */
-const std::string s3_proxy_host = "";
-
-/** S3 proxy port. */
-const unsigned s3_proxy_port = 0;
-
-/** S3 proxy username. */
-const std::string s3_proxy_username = "";
-
-/** S3 proxy password. */
-const std::string s3_proxy_password = "";
-
-/** S3 logging level. */
-const std::string s3_logging_level = "Off";
-
-/** Verify TLS/SSL certificates (true). */
-const bool s3_verify_ssl = true;
-
-/** HDFS default kerb ticket cache path. */
-const std::string hdfs_kerb_ticket_cache_path = "";
-
-/** HDFS default name node uri. */
-const std::string hdfs_name_node_uri = "";
-
-/** HDFS default username. */
-const std::string hdfs_username = "";
 
 /** Prefix indicating a special name reserved by TileDB. */
 const std::string special_name_prefix = "__";

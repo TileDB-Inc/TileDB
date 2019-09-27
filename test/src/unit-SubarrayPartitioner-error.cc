@@ -59,6 +59,8 @@ struct SubarrayPartitionerErrorFx {
   std::string array_name_;
   const char* ARRAY_NAME = "subarray_partitioner_error";
   tiledb_array_t* array_ = nullptr;
+  uint64_t memory_budget_ = 1024 * 1024 * 1024;
+  uint64_t memory_budget_var_ = 1024 * 1024 * 1024;
 
   SubarrayPartitionerErrorFx();
   ~SubarrayPartitionerErrorFx();
@@ -132,7 +134,8 @@ TEST_CASE_METHOD(
   SubarrayRanges<uint64_t> ranges = {};
   Layout subarray_layout = Layout::GLOBAL_ORDER;
   create_subarray(array_->array_, ranges, subarray_layout, &subarray);
-  SubarrayPartitioner subarray_partitioner(subarray);
+  SubarrayPartitioner subarray_partitioner(
+      subarray, memory_budget_, memory_budget_var_);
   uint64_t budget, budget_off, budget_val;
 
   auto st = subarray_partitioner.get_result_budget("a", &budget);
@@ -191,8 +194,8 @@ TEST_CASE_METHOD(
   uint64_t memory_budget, memory_budget_var;
   st = subarray_partitioner.get_memory_budget(
       &memory_budget, &memory_budget_var);
-  CHECK(memory_budget == 5368709120);
-  CHECK(memory_budget_var == 10737418240);
+  CHECK(memory_budget == memory_budget_);
+  CHECK(memory_budget_var == memory_budget_var_);
   st = subarray_partitioner.set_memory_budget(16, 16);
   st = subarray_partitioner.get_memory_budget(
       &memory_budget, &memory_budget_var);

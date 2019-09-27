@@ -40,11 +40,11 @@
 #include <vector>
 
 #include "tiledb/sm/buffer/buffer.h"
+#include "tiledb/sm/config/config.h"
 #include "tiledb/sm/filesystem/filelock.h"
 #include "tiledb/sm/misc/status.h"
 #include "tiledb/sm/misc/thread_pool.h"
 #include "tiledb/sm/misc/uri.h"
-#include "tiledb/sm/storage_manager/config.h"
 
 namespace tiledb {
 namespace sm {
@@ -136,11 +136,11 @@ class Win {
   /**
    * Initialize this instance with the given parameters.
    *
-   * @param vfs_params Params from the parent VFS instance.
+   * @param config Config from the parent VFS instance.
    * @param vfs_thread_pool ThreadPool from the parent VFS instance.
    * @return Status
    */
-  Status init(const Config::VFSParams& vfs_params, ThreadPool* vfs_thread_pool);
+  Status init(const Config& config, ThreadPool* vfs_thread_pool);
 
   /**
    * Checks if the input is an existing directory.
@@ -241,7 +241,7 @@ class Win {
 
  private:
   /** Config parameters from parent VFS instance. */
-  Config::VFSParams vfs_params_;
+  Config config_;
 
   /** Thread pool from parent VFS instance. */
   ThreadPool* vfs_thread_pool_;

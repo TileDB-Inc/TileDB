@@ -454,7 +454,7 @@ Status array_schema_serialize(
         const char nul = '\0';
         // size does not include needed null terminator, so add +1
         RETURN_NOT_OK(serialized_buffer->realloc(json_len + 1));
-        RETURN_NOT_OK(serialized_buffer->write(capnp_json.cStr(), json_len))
+        RETURN_NOT_OK(serialized_buffer->write(capnp_json.cStr(), json_len));
         RETURN_NOT_OK(serialized_buffer->write(&nul, 1));
         break;
       }
@@ -589,7 +589,7 @@ Status nonempty_domain_serialize(
         const char nul = '\0';
         // size does not include needed null terminator, so add +1
         RETURN_NOT_OK(serialized_buffer->realloc(json_len + 1));
-        RETURN_NOT_OK(serialized_buffer->write(capnp_json.cStr(), json_len))
+        RETURN_NOT_OK(serialized_buffer->write(capnp_json.cStr(), json_len));
         RETURN_NOT_OK(serialized_buffer->write(&nul, 1));
         break;
       }
@@ -758,7 +758,7 @@ Status max_buffer_sizes_serialize(
         const char nul = '\0';
         // size does not include needed null terminator, so add +1
         RETURN_NOT_OK(serialized_buffer->realloc(json_len + 1));
-        RETURN_NOT_OK(serialized_buffer->write(capnp_json.cStr(), json_len))
+        RETURN_NOT_OK(serialized_buffer->write(capnp_json.cStr(), json_len));
         RETURN_NOT_OK(serialized_buffer->write(&nul, 1));
         break;
       }
