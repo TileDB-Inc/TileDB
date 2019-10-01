@@ -145,14 +145,6 @@ if (CURL_FOUND)
       IMPORTED_LOCATION "${CURL_LIBRARIES}"
       INTERFACE_INCLUDE_DIRECTORIES "${CURL_INCLUDE_DIR};${CURL_INCLUDE_DIRS}"
     )
-  # If the CURL::libcurl target exists this is new enough curl version to rely on the cmake target properties
-  else()
-    get_target_property(LIBCURL_TYPE CURL::libcurl TYPE)
-    # CURL_STATICLIB is missing for curl versions <7.61.1
-    if(CURL_VERSION VERSION_LESS 7.61.1 AND LIBCURL_TYPE STREQUAL "STATIC_LIBRARY")
-      set_target_properties(CURL::libcurl PROPERTIES
-              INTERFACE_COMPILE_DEFINITIONS CURL_STATICLIB)
-    endif()
   endif()
 
 endif()
