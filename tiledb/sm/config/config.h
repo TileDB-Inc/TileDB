@@ -38,7 +38,6 @@
 #endif
 
 #include "tiledb/sm/misc/status.h"
-#include "tiledb/sm/misc/utils.h"
 
 #include <map>
 #include <set>

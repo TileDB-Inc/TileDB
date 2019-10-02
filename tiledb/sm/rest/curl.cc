@@ -31,6 +31,7 @@
  */
 
 #include "tiledb/sm/rest/curl.h"
+#include "tiledb/sm/global_state/global_state.h"
 #include "tiledb/sm/misc/logger.h"
 #include "tiledb/sm/misc/stats.h"
 #include "tiledb/sm/misc/utils.h"
@@ -195,6 +196,17 @@ Status Curl::init(const Config* config) {
     curl_easy_setopt(curl_.get(), CURLOPT_SSL_VERIFYHOST, 0);
     curl_easy_setopt(curl_.get(), CURLOPT_SSL_VERIFYPEER, 0);
   }
+
+#ifdef __linux__
+  // Get CA Cert bundle file from global state. This is initialized and cached
+  // if detected
+  const std::string cert_file =
+      global_state::GlobalState::GetGlobalState().cert_file();
+  // If we have detected a ca cert bundle let's set the curl option for CAPATH
+  if (!cert_file.empty()) {
+    curl_easy_setopt(curl_.get(), CURLOPT_CAPATH, cert_file.c_str());
+  }
+#endif
 
   return Status::Ok();
 }

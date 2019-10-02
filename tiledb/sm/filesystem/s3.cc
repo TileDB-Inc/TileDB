@@ -41,6 +41,7 @@
 #include <boost/interprocess/streams/bufferstream.hpp>
 #include <fstream>
 #include <iostream>
+#include "tiledb/sm/global_state/global_state.h"
 
 #include "tiledb/sm/global_state/unit_test_config.h"
 #include "tiledb/sm/misc/logger.h"
@@ -245,6 +246,18 @@ Status S3::init(const Config& config, ThreadPool* const thread_pool) {
           constants::s3_allocation_tag.c_str(),
           (long)connect_max_tries,
           (long)connect_scale_factor);
+
+#ifdef __linux__
+  // If the user has not set a s3 ca file or ca path then let's attempt to set
+  // the cert file if we've autodetected it
+  if (ca_file.empty() && ca_path.empty()) {
+    const std::string cert_file =
+        global_state::GlobalState::GetGlobalState().cert_file();
+    if (!cert_file.empty()) {
+      client_config.caFile = cert_file.c_str();
+    }
+  }
+#endif
 
   // If the user set config variables for AWS keys use them.
   if (!aws_access_key_id.empty() && !aws_secret_access_key.empty()) {
