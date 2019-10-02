@@ -32,6 +32,10 @@
 
 #ifdef HAVE_S3
 
+#include <aws/core/utils/logging/AWSLogging.h>
+#include <aws/core/utils/logging/DefaultLogSystem.h>
+#include <aws/core/utils/logging/LogLevel.h>
+#include <aws/core/utils/memory/stl/AWSString.h>
 #include <aws/s3/model/AbortMultipartUploadRequest.h>
 #include <aws/s3/model/CreateMultipartUploadRequest.h>
 #include <boost/interprocess/streams/bufferstream.hpp>
@@ -48,6 +52,27 @@
 #endif
 
 #include "tiledb/sm/filesystem/s3.h"
+
+namespace {
+
+Aws::Utils::Logging::LogLevel aws_log_name_to_level(std::string loglevel) {
+  std::transform(loglevel.begin(), loglevel.end(), loglevel.begin(), ::tolower);
+  if (loglevel == "fatal")
+    return Aws::Utils::Logging::LogLevel::Fatal;
+  else if (loglevel == "error")
+    return Aws::Utils::Logging::LogLevel::Error;
+  else if (loglevel == "warn")
+    return Aws::Utils::Logging::LogLevel::Warn;
+  else if (loglevel == "info")
+    return Aws::Utils::Logging::LogLevel::Info;
+  else if (loglevel == "debug")
+    return Aws::Utils::Logging::LogLevel::Debug;
+  else if (loglevel == "trace")
+    return Aws::Utils::Logging::LogLevel::Trace;
+  else
+    return Aws::Utils::Logging::LogLevel::Off;
+}
+}  // namespace
 
 namespace tiledb {
 namespace sm {
@@ -112,8 +137,17 @@ Status S3::init(
         Status::S3Error("Can't initialize with null thread pool."));
   }
 
+  options_.loggingOptions.logLevel =
+      aws_log_name_to_level(s3_config.logging_level_);
+
   // Initialize the library once per process.
   std::call_once(aws_lib_initialized, [this]() { Aws::InitAPI(options_); });
+
+  if (options_.loggingOptions.logLevel != Aws::Utils::Logging::LogLevel::Off) {
+    Aws::Utils::Logging::InitializeAWSLogging(
+        Aws::MakeShared<Aws::Utils::Logging::DefaultLogSystem>(
+            "TileDB", Aws::Utils::Logging::LogLevel::Trace, "tiledb_s3_"));
+  }
 
   vfs_thread_pool_ = thread_pool;
   max_parallel_ops_ = s3_config.max_parallel_ops_;
@@ -262,6 +296,10 @@ Status S3::disconnect() {
         }
       }
     }
+  }
+
+  if (options_.loggingOptions.logLevel != Aws::Utils::Logging::LogLevel::Off) {
+    Aws::Utils::Logging::ShutdownAWSLogging();
   }
 
   if (s3_tp_executor_) {

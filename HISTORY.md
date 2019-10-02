@@ -1,3 +1,15 @@
+# TileDB v1.6.3 Release Notes
+
+## Additions
+
+* Added config param `vfs.s3.logging_level`. [#1236](https://github.com/TileDB-Inc/TileDB/pull/1236)
+
+## Bug fixes
+
+* Fixed FP slice point-query with small (eps) gap coordinates. [#1384](https://github.com/TileDB-Inc/TileDB/pull/1384)
+* Fixed several unused variable warnings in unit tests. [#1385](https://github.com/TileDB-Inc/TileDB/pull/1385)
+* Fixed missing include in `subarray.h`. [#1374](https://github.com/TileDB-Inc/TileDB/pull/1374)
+
 # TileDB v1.6.2 Release Notes
 
 ## Bug fixes

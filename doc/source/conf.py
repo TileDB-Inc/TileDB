@@ -73,7 +73,7 @@ author = 'TileDB, Inc.'
 # The short X.Y version.
 version = '1.6'
 # The full version, including alpha/beta/rc tags.
-release = '1.6.2'
+release = '1.6.3'
 
 # Breathe extension configuration.
 tiledb_dir = '../../'
@@ -196,7 +196,7 @@ def replaceText(app, docname, source):
 
 text_replacements = {
     "{source_examples_path}" : "../../examples",
-    "{tiledb_src_root_url}" : "https://github.com/TileDB-Inc/TileDB/blob/1.6.2",
+    "{tiledb_src_root_url}" : "https://github.com/TileDB-Inc/TileDB/blob/1.6.3",
     "{tiledb_py_src_root_url}" : "https://github.com/TileDB-Inc/TileDB-Py/blob/0.4.3",
     "{tiledb_R_src_root_url}" : "https://github.com/TileDB-Inc/TileDB-R/blob/master",
     "{tiledb_go_src_root_url}" : "https://github.com/TileDB-Inc/TileDB-Go/blob/v0.6.0"

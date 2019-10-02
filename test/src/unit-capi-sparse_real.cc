@@ -72,6 +72,7 @@ struct SparseRealFx {
   void create_temp_dir(const std::string& path);
   void remove_temp_dir(const std::string& path);
   void create_sparse_array(const std::string& path);
+  void create_sparse_array_double(const std::string& path);
   void write_sparse_array(const std::string& path);
   void write_sparse_array_next_partition_bug(const std::string& path);
   void read_sparse_array(const std::string& path);
@@ -405,6 +406,72 @@ void SparseRealFx::read_sparse_array_next_partition_bug(
   tiledb_query_free(&query);
 }
 
+void SparseRealFx::create_sparse_array_double(const std::string& path) {
+  // Create dimensions
+  double dim_domain[] = {-180.0, 180.0, -90.0, 90.0};
+  double tile_extents[] = {1.0, 1.0};
+  tiledb_dimension_t* d1;
+  int rc = tiledb_dimension_alloc(
+      ctx_, "d1", TILEDB_FLOAT64, &dim_domain[0], &tile_extents[0], &d1);
+  CHECK(rc == TILEDB_OK);
+  tiledb_dimension_t* d2;
+  rc = tiledb_dimension_alloc(
+      ctx_, "d2", TILEDB_FLOAT64, &dim_domain[2], &tile_extents[1], &d2);
+  CHECK(rc == TILEDB_OK);
+
+  // Create domain
+  tiledb_domain_t* domain;
+  rc = tiledb_domain_alloc(ctx_, &domain);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_domain_add_dimension(ctx_, domain, d1);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_domain_add_dimension(ctx_, domain, d2);
+  CHECK(rc == TILEDB_OK);
+
+  // Create attributes
+  tiledb_attribute_t* a;
+  rc = tiledb_attribute_alloc(ctx_, "a", TILEDB_INT32, &a);
+  CHECK(rc == TILEDB_OK);
+  tiledb_filter_t* filter;
+  tiledb_filter_list_t* list;
+  rc = tiledb_filter_alloc(ctx_, TILEDB_FILTER_LZ4, &filter);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_filter_list_alloc(ctx_, &list);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_filter_list_add_filter(ctx_, list, filter);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_attribute_set_filter_list(ctx_, a, list);
+  CHECK(rc == TILEDB_OK);
+
+  // Create array schema
+  tiledb_array_schema_t* array_schema;
+  rc = tiledb_array_schema_alloc(ctx_, TILEDB_SPARSE, &array_schema);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_array_schema_set_cell_order(ctx_, array_schema, TILEDB_ROW_MAJOR);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_array_schema_set_tile_order(ctx_, array_schema, TILEDB_ROW_MAJOR);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_array_schema_set_domain(ctx_, array_schema, domain);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_array_schema_add_attribute(ctx_, array_schema, a);
+  CHECK(rc == TILEDB_OK);
+
+  // Check array schema
+  rc = tiledb_array_schema_check(ctx_, array_schema);
+  CHECK(rc == TILEDB_OK);
+
+  // Create array
+  rc = tiledb_array_create(ctx_, path.c_str(), array_schema);
+  CHECK(rc == TILEDB_OK);
+
+  // Clean up
+  tiledb_attribute_free(&a);
+  tiledb_dimension_free(&d1);
+  tiledb_dimension_free(&d2);
+  tiledb_domain_free(&domain);
+  tiledb_array_schema_free(&array_schema);
+}
+
 TEST_CASE_METHOD(
     SparseRealFx,
     "C API: Test 2d sparse array with real domain",
@@ -473,5 +540,99 @@ TEST_CASE_METHOD(
   tiledb_array_free(&array);
   tiledb_query_free(&query);
 
+  remove_temp_dir(FILE_URI_PREFIX + FILE_TEMP_DIR);
+}
+
+TEST_CASE_METHOD(
+    SparseRealFx,
+    "C API: Test 2d sparse array with real domain, small gap point-query bug",
+    "[capi][sparse-real][sparse-real-small-gap-point-query-bug]") {
+  std::string array_name =
+      FILE_URI_PREFIX + FILE_TEMP_DIR + "sparse_real_small_gap_point_query_bug";
+  create_temp_dir(FILE_URI_PREFIX + FILE_TEMP_DIR);
+
+  create_sparse_array_double(array_name);
+
+  // Write 2 points with 2*eps<double> gap in the first dimension
+  {
+    tiledb_array_t* array;
+    int rc = tiledb_array_alloc(ctx_, array_name.c_str(), &array);
+    CHECK(rc == TILEDB_OK);
+    rc = tiledb_array_open(ctx_, array, TILEDB_WRITE);
+    CHECK(rc == TILEDB_OK);
+
+    int a[] = {1, 2};
+    uint64_t a_size = sizeof(a);
+    double coords[] = {-180.0, 1.0, -179.99999999999997, 0.9999999999999999};
+
+    uint64_t coords_size = sizeof(coords);
+    tiledb_query_t* query;
+    rc = tiledb_query_alloc(ctx_, array, TILEDB_WRITE, &query);
+    REQUIRE(rc == TILEDB_OK);
+    rc = tiledb_query_set_buffer(ctx_, query, "a", a, &a_size);
+    REQUIRE(rc == TILEDB_OK);
+    rc = tiledb_query_set_buffer(
+        ctx_, query, TILEDB_COORDS, coords, &coords_size);
+    REQUIRE(rc == TILEDB_OK);
+    rc = tiledb_query_set_layout(ctx_, query, TILEDB_UNORDERED);
+    REQUIRE(rc == TILEDB_OK);
+    rc = tiledb_query_submit(ctx_, query);
+    REQUIRE(rc == TILEDB_OK);
+    rc = tiledb_query_finalize(ctx_, query);
+    REQUIRE(rc == TILEDB_OK);
+
+    // Close array
+    rc = tiledb_array_close(ctx_, array);
+    CHECK(rc == TILEDB_OK);
+
+    // Clean up
+    tiledb_array_free(&array);
+    tiledb_query_free(&query);
+  }
+
+  // Read back points
+  {
+    tiledb_array_t* array;
+    int rc = tiledb_array_alloc(ctx_, array_name.c_str(), &array);
+    CHECK(rc == TILEDB_OK);
+    rc = tiledb_array_open(ctx_, array, TILEDB_READ);
+    CHECK(rc == TILEDB_OK);
+
+    int a[1];
+    uint64_t a_size = sizeof(a);
+    double coords[2];
+    uint64_t coords_size = sizeof(coords);
+    tiledb_query_t* query;
+    double subarray[] = {-180.0, -180.0, 1.0, 1.0};
+
+    rc = tiledb_query_alloc(ctx_, array, TILEDB_READ, &query);
+    REQUIRE(rc == TILEDB_OK);
+    rc = tiledb_query_set_subarray(ctx_, query, subarray);
+    REQUIRE(rc == TILEDB_OK);
+    rc = tiledb_query_set_buffer(ctx_, query, "a", a, &a_size);
+    REQUIRE(rc == TILEDB_OK);
+    rc = tiledb_query_set_buffer(
+        ctx_, query, TILEDB_COORDS, coords, &coords_size);
+    REQUIRE(rc == TILEDB_OK);
+    rc = tiledb_query_set_layout(ctx_, query, TILEDB_ROW_MAJOR);
+    REQUIRE(rc == TILEDB_OK);
+    rc = tiledb_query_submit(ctx_, query);
+    REQUIRE(rc == TILEDB_OK);
+    rc = tiledb_query_finalize(ctx_, query);
+    REQUIRE(rc == TILEDB_OK);
+
+    CHECK(a_size == sizeof(int));
+    CHECK(a[0] == 1);
+    CHECK(coords[0] == -180.0);
+    CHECK(coords[1] == 1.0f);
+
+    // Close array
+    rc = tiledb_array_close(ctx_, array);
+    CHECK(rc == TILEDB_OK);
+
+    // Clean up
+    tiledb_array_free(&array);
+    tiledb_query_free(&query);
+  }
   remove_temp_dir(FILE_URI_PREFIX + FILE_TEMP_DIR);
 }
