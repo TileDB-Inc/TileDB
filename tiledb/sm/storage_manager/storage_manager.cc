@@ -1020,13 +1020,18 @@ Status StorageManager::init(const Config* config) {
   RETURN_NOT_OK(reader_thread_pool_.init(num_reader_threads));
   RETURN_NOT_OK(writer_thread_pool_.init(num_writer_threads));
   tile_cache_ = new LRUCache(tile_cache_size);
+
+  // Must be initialized before `vfs->init` because S3::init calls
+  // GetGlobalState
+  auto& global_state = global_state::GlobalState::GetGlobalState();
+  RETURN_NOT_OK(global_state.init(config));
+
   vfs_ = new VFS();
   RETURN_NOT_OK(vfs_->init(&config_, nullptr));
 #ifdef TILEDB_SERIALIZATION
   RETURN_NOT_OK(init_rest_client());
 #endif
-  auto& global_state = global_state::GlobalState::GetGlobalState();
-  RETURN_NOT_OK(global_state.init(config));
+
   global_state.register_storage_manager(this);
 
   STATS_COUNTER_ADD(sm_contexts_created, 1);
