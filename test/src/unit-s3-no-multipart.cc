@@ -33,11 +33,11 @@
 #ifdef HAVE_S3
 
 #include "catch.hpp"
+#include "tiledb/sm/config/config.h"
 #include "tiledb/sm/filesystem/s3.h"
 #include "tiledb/sm/global_state/unit_test_config.h"
 #include "tiledb/sm/misc/thread_pool.h"
 #include "tiledb/sm/misc/utils.h"
-#include "tiledb/sm/storage_manager/config.h"
 
 #include <fstream>
 #include <thread>
@@ -60,19 +60,19 @@ struct S3DirectFx {
 
 S3DirectFx::S3DirectFx() {
   // Connect
-  Config::S3Params s3_config;
+  Config config;
 #ifndef TILEDB_TESTS_AWS_S3_CONFIG
-  s3_config.endpoint_override_ = "localhost:9999";
-  s3_config.scheme_ = "https";
-  s3_config.use_virtual_addressing_ = false;
-  s3_config.verify_ssl_ = false;
+  REQUIRE(config.set("vfs.s3.endpoint_override", "localhost:9999").ok());
+  REQUIRE(config.set("vfs.s3.scheme", "https").ok());
+  REQUIRE(config.set("vfs.s3.use_virtual_addressing", "false").ok());
+  REQUIRE(config.set("vfs.s3.verify_ssl", "false").ok());
 #endif
-  s3_config.max_parallel_ops_ = 1;
+  REQUIRE(config.set("vfs.s3.max_parallel_ops", "1").ok());
   // set max buffer size to 10 MB
-  s3_config.multipart_part_size_ = 10000000;
-  s3_config.use_multipart_upload_ = false;
+  REQUIRE(config.set("vfs.s3.multipart_part_size", "10000000").ok());
+  REQUIRE(config.set("vfs.s3.use_multipart_upload", "false").ok());
   REQUIRE(thread_pool_.init(2).ok());
-  REQUIRE(s3_.init(s3_config, &thread_pool_).ok());
+  REQUIRE(s3_.init(config, &thread_pool_).ok());
 
   // Create bucket
   if (s3_.is_bucket(S3_BUCKET))

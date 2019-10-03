@@ -34,6 +34,7 @@
 #include "tiledb/sm/serialization/query.h"
 #include "tiledb/sm/misc/logger.h"
 #include "tiledb/sm/misc/stats.h"
+#include "tiledb/sm/misc/utils.h"
 #include "tiledb/sm/serialization/capnp_utils.h"
 
 #ifdef TILEDB_SERIALIZATION
@@ -219,6 +220,14 @@ Status subarray_partitioner_from_capnp(
     const Array* array,
     const capnp::SubarrayPartitioner::Reader& reader,
     SubarrayPartitioner* partitioner) {
+  // Get memory budget
+  uint64_t memory_budget = 0;
+  RETURN_NOT_OK(tiledb::sm::utils::parse::convert(
+      Config::SM_MEMORY_BUDGET, &memory_budget));
+  uint64_t memory_budget_var = 0;
+  RETURN_NOT_OK(tiledb::sm::utils::parse::convert(
+      Config::SM_MEMORY_BUDGET_VAR, &memory_budget_var));
+
   // Get subarray layout first
   Layout layout = Layout::ROW_MAJOR;
   auto subarray_reader = reader.getSubarray();
@@ -227,7 +236,8 @@ Status subarray_partitioner_from_capnp(
   // Subarray, which is used to initialize the partitioner.
   Subarray subarray(array, layout);
   RETURN_NOT_OK(subarray_from_capnp(reader.getSubarray(), &subarray));
-  *partitioner = SubarrayPartitioner(subarray);
+  *partitioner =
+      SubarrayPartitioner(subarray, memory_budget, memory_budget_var);
 
   // Per-attr mem budgets
   if (reader.hasBudget()) {
@@ -365,7 +375,7 @@ Status reader_from_capnp(
   // Read state
   if (reader_reader.hasReadState())
     RETURN_NOT_OK(
-        read_state_from_capnp(array, reader_reader.getReadState(), reader))
+        read_state_from_capnp(array, reader_reader.getReadState(), reader));
 
   return Status::Ok();
 }
@@ -732,7 +742,7 @@ Status query_serialize(
         Buffer header;
         // size does not include needed null terminator, so add +1
         RETURN_NOT_OK(header.realloc(json_len + 1));
-        RETURN_NOT_OK(header.write(capnp_json.cStr(), json_len))
+        RETURN_NOT_OK(header.write(capnp_json.cStr(), json_len));
         RETURN_NOT_OK(header.write(&nul, 1));
         RETURN_NOT_OK(serialized_buffer->add_buffer(std::move(header)));
         // TODO: At this point the buffer data should also be serialized.

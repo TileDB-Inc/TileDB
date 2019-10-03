@@ -36,6 +36,8 @@
 #include "tiledb/sm/array_schema/array_schema.h"
 #include "tiledb/sm/c_api/tiledb_serialization.h"
 #include "tiledb/sm/c_api/tiledb_struct_def.h"
+#include "tiledb/sm/config/config.h"
+#include "tiledb/sm/config/config_iter.h"
 #include "tiledb/sm/cpp_api/core_interface.h"
 #include "tiledb/sm/filesystem/vfs_file_handle.h"
 #include "tiledb/sm/filter/compression_filter.h"
@@ -50,8 +52,6 @@
 #include "tiledb/sm/rest/rest_client.h"
 #include "tiledb/sm/serialization/array_schema.h"
 #include "tiledb/sm/serialization/query.h"
-#include "tiledb/sm/storage_manager/config.h"
-#include "tiledb/sm/storage_manager/config_iter.h"
 #include "tiledb/sm/storage_manager/context.h"
 #include "tiledb/sm/subarray/subarray.h"
 #include "tiledb/sm/subarray/subarray_partitioner.h"
@@ -4640,11 +4640,9 @@ int32_t tiledb_vfs_alloc(
   }
 
   // Initialize VFS object
-  tiledb::sm::Config::VFSParams vfs_params;  // This will get default values
-  if (config != nullptr)
-    vfs_params = config->config_->vfs_params();
-
-  if (SAVE_ERROR_CATCH(ctx, (*vfs)->vfs_->init(vfs_params))) {
+  auto vfs_config = config ? config->config_ : nullptr;
+  auto ctx_config = ctx->ctx_->storage_manager()->config();
+  if (SAVE_ERROR_CATCH(ctx, (*vfs)->vfs_->init(&ctx_config, vfs_config))) {
     delete (*vfs)->vfs_;
     delete vfs;
     return TILEDB_ERR;

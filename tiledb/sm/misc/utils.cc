@@ -85,28 +85,6 @@ Status convert(const std::string& str, int* value) {
   return Status::Ok();
 }
 
-Status convert(const std::string& str, long* value) {
-  if (!is_int(str)) {
-    auto errmsg = std::string("Failed to convert string '") + str +
-                  "' to long; Invalid argument";
-    return LOG_STATUS(Status::UtilsError(errmsg));
-  }
-
-  try {
-    *value = std::stol(str);
-  } catch (std::invalid_argument& e) {
-    auto errmsg = std::string("Failed to convert string '") + str +
-                  "' to long; Invalid argument";
-    return LOG_STATUS(Status::UtilsError(errmsg));
-  } catch (std::out_of_range& e) {
-    auto errmsg = std::string("Failed to convert string '") + str +
-                  "' to long; Value out of range";
-    return LOG_STATUS(Status::UtilsError(errmsg));
-  }
-
-  return Status::Ok();
-}
-
 Status convert(const std::string& str, uint32_t* value) {
   if (!is_uint(str)) {
     auto errmsg = std::string("Failed to convert string '") + str +
@@ -154,6 +132,28 @@ Status convert(const std::string& str, uint64_t* value) {
   return Status::Ok();
 }
 
+Status convert(const std::string& str, int64_t* value) {
+  if (!is_int(str)) {
+    auto errmsg = std::string("Failed to convert string '") + str +
+                  "' to int64_t; Invalid argument";
+    return LOG_STATUS(Status::UtilsError(errmsg));
+  }
+
+  try {
+    *value = std::stoll(str);
+  } catch (std::invalid_argument& e) {
+    auto errmsg = std::string("Failed to convert string '") + str +
+                  "' to int64_t; Invalid argument";
+    return LOG_STATUS(Status::UtilsError(errmsg));
+  } catch (std::out_of_range& e) {
+    auto errmsg = std::string("Failed to convert string '") + str +
+                  "' to int64_t; Value out of range";
+    return LOG_STATUS(Status::UtilsError(errmsg));
+  }
+
+  return Status::Ok();
+}
+
 Status convert(const std::string& str, float* value) {
   try {
     *value = std::stof(str);
@@ -163,6 +163,20 @@ Status convert(const std::string& str, float* value) {
   } catch (std::out_of_range& e) {
     return LOG_STATUS(Status::UtilsError(
         "Failed to convert string to float32_t; Value out of range"));
+  }
+
+  return Status::Ok();
+}
+
+Status convert(const std::string& str, double* value) {
+  try {
+    *value = std::stod(str);
+  } catch (std::invalid_argument& e) {
+    return LOG_STATUS(Status::UtilsError(
+        "Failed to convert string to float64_t; Invalid argument"));
+  } catch (std::out_of_range& e) {
+    return LOG_STATUS(Status::UtilsError(
+        "Failed to convert string to float64_t; Value out of range"));
   }
 
   return Status::Ok();
@@ -178,6 +192,22 @@ Status convert(const std::string& str, bool* value) {
   } else {
     return LOG_STATUS(Status::UtilsError(
         "Failed to convert string to bool; Value not 'true' or 'false'"));
+  }
+
+  return Status::Ok();
+}
+
+Status convert(const std::string& str, SerializationType* value) {
+  std::string lvalue = str;
+  std::transform(lvalue.begin(), lvalue.end(), lvalue.begin(), ::tolower);
+  if (lvalue == "json") {
+    *value = SerializationType::JSON;
+  } else if (lvalue == "capnp") {
+    *value = SerializationType::CAPNP;
+  } else {
+    return LOG_STATUS(
+        Status::UtilsError("Failed to convert string to SerializationType; "
+                           "Value not 'json' or 'capnp'"));
   }
 
   return Status::Ok();
@@ -435,6 +465,13 @@ bool ends_with(const std::string& value, const std::string& suffix) {
     return false;
   return value.compare(value.size() - suffix.size(), suffix.size(), suffix) ==
          0;
+}
+
+template <class T>
+std::string to_str(const T& value) {
+  std::stringstream ss;
+  ss << value;
+  return ss.str();
 }
 
 }  // namespace parse
@@ -1046,6 +1083,13 @@ template float safe_mul<float>(float a, float b);
 template double safe_mul<double>(double a, double b);
 
 }  // namespace math
+
+namespace parse {
+
+template std::string to_str<int32_t>(const int32_t& value);
+template std::string to_str<uint32_t>(const uint32_t& value);
+
+}  // namespace parse
 
 }  // namespace utils
 

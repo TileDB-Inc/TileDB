@@ -184,7 +184,7 @@ Status Curl::init(const Config* config) {
   // Ignore ssl validation if the user has set rest.ignore_ssl_validation = true
   const char* ignore_ssl_validation_str = nullptr;
   RETURN_NOT_OK(
-      config_->get("rest.ignore_ssl_validation", &ignore_ssl_validation_str))
+      config_->get("rest.ignore_ssl_validation", &ignore_ssl_validation_str));
 
   bool ignore_ssl_validation = false;
   if (ignore_ssl_validation_str != nullptr)

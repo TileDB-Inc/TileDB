@@ -64,7 +64,7 @@ namespace sm {
     if (!_s.ok()) {      \
       return _s;         \
     }                    \
-  } while (false);
+  } while (false)
 
 #define RETURN_NOT_OK_ELSE(s, else_) \
   do {                               \
@@ -73,7 +73,7 @@ namespace sm {
       else_;                         \
       return _s;                     \
     }                                \
-  } while (false);
+  } while (false)
 
 enum class StatusCode : char {
   Ok,

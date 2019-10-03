@@ -42,7 +42,7 @@ using namespace tiledb::sm;
 
 TEST_CASE("UUID: Test generate", "[uuid]") {
   // Initialize global OpenSSL state if required.
-  REQUIRE(global_state::GlobalState::GetGlobalState().initialize(nullptr).ok());
+  REQUIRE(global_state::GlobalState::GetGlobalState().init(nullptr).ok());
 
   SECTION("- Serial") {
     std::string uuid0, uuid1, uuid2;

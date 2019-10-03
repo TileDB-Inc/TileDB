@@ -111,7 +111,7 @@ Status Consolidator::consolidate_array_metadata(
   auto array_uri = URI(array_name);
   Array array_for_reads(array_uri, storage_manager_);
   RETURN_NOT_OK(array_for_reads.open(
-      QueryType::READ, encryption_type, encryption_key, key_length))
+      QueryType::READ, encryption_type, encryption_key, key_length));
 
   // Open array for writing
   Array array_for_writes(array_uri, storage_manager_);
@@ -399,7 +399,7 @@ Status Consolidator::consolidate(
       to_consolidate,
       encryption_type,
       encryption_key,
-      key_length))
+      key_length));
 
   if (array_for_reads.is_empty()) {
     RETURN_NOT_OK(array_for_reads.close());
@@ -930,15 +930,35 @@ void Consolidator::update_fragment_info(
 }
 
 Status Consolidator::set_config(const Config* config) {
-  if (config != nullptr) {
-    auto params = config->consolidation_params();
-    config_.amplification_ = params.amplification_;
-    config_.steps_ = params.steps_;
-    config_.buffer_size_ = params.buffer_size_;
-    config_.size_ratio_ = params.step_size_ratio_;
-    config_.min_frags_ = params.step_min_frags_;
-    config_.max_frags_ = params.step_max_frags_;
-  }
+  // Set the config
+  Config merged_config = storage_manager_->config();
+  if (config)
+    merged_config.inherit(*config);
+  bool found = false;
+  config_.amplification_ = 0.0f;
+  RETURN_NOT_OK(merged_config.get<float>(
+      "sm.consolidation.amplification", &config_.amplification_, &found));
+  assert(found);
+  config_.steps_ = 0;
+  RETURN_NOT_OK(merged_config.get<uint32_t>(
+      "sm.consolidation.steps", &config_.steps_, &found));
+  assert(found);
+  config_.buffer_size_ = 0;
+  RETURN_NOT_OK(merged_config.get<uint64_t>(
+      "sm.consolidation.buffer_size", &config_.buffer_size_, &found));
+  assert(found);
+  config_.size_ratio_ = 0.0f;
+  RETURN_NOT_OK(merged_config.get<float>(
+      "sm.consolidation.step_size_ratio", &config_.size_ratio_, &found));
+  assert(found);
+  config_.min_frags_ = 0;
+  RETURN_NOT_OK(merged_config.get<uint32_t>(
+      "sm.consolidation.step_min_frags", &config_.min_frags_, &found));
+  assert(found);
+  config_.max_frags_ = 0;
+  RETURN_NOT_OK(merged_config.get<uint32_t>(
+      "sm.consolidation.step_max_frags", &config_.max_frags_, &found));
+  assert(found);
 
   // Sanity checks
   if (config_.min_frags_ > config_.max_frags_)

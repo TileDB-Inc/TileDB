@@ -30,7 +30,9 @@
  * This file implements class ConfigIter.
  */
 
-#include "tiledb/sm/storage_manager/config_iter.h"
+#include <iostream>
+
+#include "tiledb/sm/config/config_iter.h"
 
 namespace tiledb {
 namespace sm {
@@ -39,11 +41,11 @@ namespace sm {
 /*   CONSTRUCTORS & DESTRUCTORS   */
 /* ****************************** */
 
-ConfigIter::ConfigIter(Config* config, std::string prefix)
-    : config_(config)
+ConfigIter::ConfigIter(const Config* config, const std::string& prefix)
+    : param_values_(config->param_values())
     , prefix_(prefix) {
-  param_values_ = config_->param_values(prefix);
-  it_ = param_values_.begin();
+  it_ = param_values_.get().begin();
+  next_while_not_prefix();
 }
 
 ConfigIter::~ConfigIter() = default;
@@ -53,26 +55,44 @@ ConfigIter::~ConfigIter() = default;
 /* ****************************** */
 
 bool ConfigIter::end() const {
-  return it_ == param_values_.end();
+  return it_ == param_values_.get().end();
 }
 
 void ConfigIter::next() {
-  if (it_ != param_values_.end())
+  if (it_ != param_values_.get().end())
     it_++;
+  next_while_not_prefix();
 }
 
 const std::string& ConfigIter::param() const {
-  return it_->first;
+  return param_;
 }
 
-void ConfigIter::reset(Config* config, std::string prefix) {
-  config_ = config;
-  param_values_ = config_->param_values(prefix);
-  it_ = param_values_.begin();
+void ConfigIter::reset(const Config* config, const std::string& prefix) {
+  prefix_ = prefix;
+  param_values_ = config->param_values();
+  it_ = param_values_.get().begin();
+  next_while_not_prefix();
 }
 
 const std::string& ConfigIter::value() const {
-  return it_->second;
+  return value_;
+}
+
+/* ********************************* */
+/*         PRIVATE METHODS           */
+/* ********************************* */
+
+void ConfigIter::next_while_not_prefix() {
+  if (!prefix_.empty()) {
+    while (!end() && it_->first.find(prefix_) != 0)
+      ++it_;
+  }
+
+  if (it_ != param_values_.get().end()) {
+    param_ = it_->first.substr(prefix_.size());
+    value_ = it_->second;
+  }
 }
 
 }  // namespace sm

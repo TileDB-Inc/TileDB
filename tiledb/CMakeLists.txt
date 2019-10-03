@@ -35,7 +35,7 @@ cmake_policy(SET CMP0063 NEW)
 
 ############################################################
 # Source files
-############################################################
+###########################################################
 
 # The core header directory.
 set(TILEDB_CORE_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/..")
@@ -104,6 +104,8 @@ set(TILEDB_CORE_SOURCES
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/compressors/lz4_compressor.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/compressors/rle_compressor.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/compressors/zstd_compressor.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/config/config.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/config/config_iter.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/encryption/encryption.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/encryption/encryption_key.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/encryption/encryption_key_validation.cc
@@ -159,8 +161,6 @@ set(TILEDB_CORE_SOURCES
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/array_schema.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/query.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/storage_manager/context.cc
-  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/storage_manager/config.cc
-  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/storage_manager/config_iter.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/storage_manager/consolidator.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/storage_manager/open_array.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/storage_manager/storage_manager.cc

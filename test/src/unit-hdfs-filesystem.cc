@@ -33,8 +33,8 @@
 #ifdef HAVE_HDFS
 
 #include "catch.hpp"
+#include "tiledb/sm/config/config.h"
 #include "tiledb/sm/filesystem/hdfs_filesystem.h"
-#include "tiledb/sm/storage_manager/config.h"
 
 #include <fstream>
 #include <iostream>
@@ -43,7 +43,7 @@ using namespace tiledb::sm;
 using namespace tiledb::sm::hdfs;
 
 TEST_CASE("Test HDFS filesystem", "[hdfs]") {
-  const Config::HDFSParams config;
+  Config config;
   HDFS hdfs;
 
   Status st = hdfs.init(config);

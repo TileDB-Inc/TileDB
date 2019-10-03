@@ -34,8 +34,8 @@
 #ifndef TILEDB_TBB_STATE_H
 #define TILEDB_TBB_STATE_H
 
+#include "tiledb/sm/config/config.h"
 #include "tiledb/sm/misc/status.h"
-#include "tiledb/sm/storage_manager/config.h"
 
 namespace tiledb {
 namespace sm {
@@ -48,7 +48,7 @@ namespace global_state {
  * @param config TileDB Config object pointer (or nullptr)
  * @return Status
  */
-Status init_tbb(Config* config);
+Status init_tbb(const Config* config);
 
 }  // namespace global_state
 }  // namespace sm

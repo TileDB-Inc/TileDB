@@ -38,6 +38,7 @@
 #include "tiledb/sm/enums/compressor.h"
 #include "tiledb/sm/enums/datatype.h"
 #include "tiledb/sm/enums/layout.h"
+#include "tiledb/sm/enums/serialization_type.h"
 #include "tiledb/sm/misc/status.h"
 #include "tiledb/sm/misc/uri.h"
 
@@ -58,8 +59,8 @@ namespace parse {
 /** Converts the input string into an `int` value. */
 Status convert(const std::string& str, int* value);
 
-/** Converts the input string into a `long` value. */
-Status convert(const std::string& str, long* value);
+/** Converts the input string into an `int64_t` value. */
+Status convert(const std::string& str, int64_t* value);
 
 /** Converts the input string into a `uint64_t` value. */
 Status convert(const std::string& str, uint64_t* value);
@@ -70,8 +71,14 @@ Status convert(const std::string& str, uint32_t* value);
 /** Converts the input string into a `float` value. */
 Status convert(const std::string& str, float* value);
 
+/** Converts the input string into a `double` value. */
+Status convert(const std::string& str, double* value);
+
 /** Converts the input string into a `bool` value. */
 Status convert(const std::string& str, bool* value);
+
+/** Converts the input string into a `SerializationType` value. */
+Status convert(const std::string& str, SerializationType* value);
 
 /**
  * Retrieves the timestamp range from the input fragment
@@ -122,6 +129,10 @@ bool starts_with(const std::string& value, const std::string& prefix);
  * @return *true* if *value* ends with the *suffix*, and *false* otherwise.
  */
 bool ends_with(const std::string& value, const std::string& suffix);
+
+/** Converts the input value to string. */
+template <class T>
+std::string to_str(const T& value);
 
 }  // namespace parse
 

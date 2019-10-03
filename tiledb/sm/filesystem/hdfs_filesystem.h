@@ -40,9 +40,9 @@
 #include <vector>
 
 #include "tiledb/sm/buffer/buffer.h"
+#include "tiledb/sm/config/config.h"
 #include "tiledb/sm/misc/status.h"
 #include "tiledb/sm/misc/uri.h"
-#include "tiledb/sm/storage_manager/config.h"
 
 #include "hadoop/hdfs.h"
 
@@ -68,7 +68,7 @@ class HDFS {
    * @param config HDFS configuration parameter object
    * @return Status
    */
-  Status init(const Config::HDFSParams& config);
+  Status init(const Config& config);
 
   /**
    * Disconnects an HDFS filesystem

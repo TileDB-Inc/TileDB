@@ -42,8 +42,8 @@
 
 #include "tiledb/sm/buffer/buffer.h"
 #include "tiledb/sm/buffer/buffer_list.h"
+#include "tiledb/sm/config/config.h"
 #include "tiledb/sm/enums/serialization_type.h"
-#include "tiledb/sm/storage_manager/config.h"
 
 namespace tiledb {
 namespace sm {

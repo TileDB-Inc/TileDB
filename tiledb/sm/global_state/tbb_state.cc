@@ -36,6 +36,8 @@
 #ifdef HAVE_TBB
 
 #include <tbb/task_scheduler_init.h>
+#include <cassert>
+#include <cstdlib>
 #include <sstream>
 
 namespace tiledb {
@@ -48,9 +50,16 @@ static std::unique_ptr<tbb::task_scheduler_init> tbb_scheduler_;
 /** The number of TBB threads the scheduler was configured with **/
 static int tbb_nthreads_;
 
-Status init_tbb(tiledb::sm::Config* config) {
-  int nthreads = config ? config->sm_params().num_tbb_threads_ :
-                          constants::num_tbb_threads;
+Status init_tbb(const Config* config) {
+  int nthreads;
+  if (!config) {
+    nthreads = std::strtol(Config::SM_NUM_TBB_THREADS.c_str(), nullptr, 10);
+  } else {
+    bool found = false;
+    RETURN_NOT_OK(config->get<int>("sm.num_tbb_threads", &nthreads, &found));
+    assert(found);
+  }
+
   if (nthreads == tbb::task_scheduler_init::automatic) {
     nthreads = tbb::task_scheduler_init::default_num_threads();
   }
@@ -97,7 +106,7 @@ namespace tiledb {
 namespace sm {
 namespace global_state {
 
-Status init_tbb(Config* config) {
+Status init_tbb(const Config* config) {
   (void)config;
   return Status::Ok();
 }

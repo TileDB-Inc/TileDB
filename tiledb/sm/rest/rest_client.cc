@@ -30,8 +30,11 @@
  * This file declares a REST client class.
  */
 
-#include "tiledb/sm/rest/rest_client.h"
+#include <cassert>
+
 #include "tiledb/sm/misc/stats.h"
+#include "tiledb/sm/misc/utils.h"
+#include "tiledb/sm/rest/rest_client.h"
 #include "tiledb/sm/serialization/array_schema.h"
 #include "tiledb/sm/serialization/capnp_utils.h"
 #include "tiledb/sm/serialization/query.h"
@@ -48,8 +51,11 @@ namespace sm {
 
 RestClient::RestClient()
     : config_(nullptr)
-    , serialization_type_(constants::serialization_default_format)
     , resubmit_incomplete_(true) {
+  auto st = utils::parse::convert(
+      Config::REST_SERIALIZATION_DEFAULT_FORMAT, &serialization_type_);
+  assert(st.ok());
+  (void)st;
 }
 
 Status RestClient::init(const Config* config) {

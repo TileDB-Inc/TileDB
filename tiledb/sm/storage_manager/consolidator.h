@@ -82,16 +82,6 @@ class Consolidator {
      * consolidation.
      */
     float size_ratio_;
-
-    /** Constructor. */
-    ConsolidationConfig() {
-      amplification_ = constants::consolidation_amplification;
-      steps_ = constants::consolidation_steps;
-      buffer_size_ = constants::consolidation_buffer_size;
-      min_frags_ = constants::consolidation_step_min_frags;
-      max_frags_ = constants::consolidation_step_max_frags;
-      size_ratio_ = constants::consolidation_step_size_ratio;
-    }
   };
 
   /* ********************************* */

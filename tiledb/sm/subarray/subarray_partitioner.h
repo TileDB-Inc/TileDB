@@ -145,7 +145,10 @@ class SubarrayPartitioner {
   SubarrayPartitioner();
 
   /** Constructor. */
-  explicit SubarrayPartitioner(const Subarray& subarray);
+  SubarrayPartitioner(
+      const Subarray& subarray,
+      uint64_t memory_budget,
+      uint64_t memory_budget_var);
 
   /** Destructor. */
   ~SubarrayPartitioner();

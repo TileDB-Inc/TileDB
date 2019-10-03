@@ -129,7 +129,7 @@ class Add1OutOfPlace : public Filter {
     auto nelts = input_size / sizeof(uint64_t);
 
     // Add a new output buffer.
-    RETURN_NOT_OK(output->prepend_buffer(input_size))
+    RETURN_NOT_OK(output->prepend_buffer(input_size));
     output->reset_offset();
 
     for (uint64_t i = 0; i < nelts; i++) {
@@ -162,7 +162,7 @@ class Add1OutOfPlace : public Filter {
     auto nelts = input->size() / sizeof(uint64_t);
 
     // Add a new output buffer.
-    RETURN_NOT_OK(output->prepend_buffer(input->size()))
+    RETURN_NOT_OK(output->prepend_buffer(input->size()));
     output->reset_offset();
 
     for (uint64_t i = 0; i < nelts; i++) {
@@ -364,7 +364,7 @@ class Add1IncludingMetadataFilter : public Filter {
          md_nelts = input_md_size / sizeof(uint64_t);
 
     // Add a new output buffer.
-    RETURN_NOT_OK(output->prepend_buffer(input_size + input_md_size))
+    RETURN_NOT_OK(output->prepend_buffer(input_size + input_md_size));
     output->reset_offset();
 
     // Filter input data
@@ -419,7 +419,7 @@ class Add1IncludingMetadataFilter : public Filter {
     RETURN_NOT_OK(input_metadata->read(&orig_md_size, sizeof(uint32_t)));
 
     // Add a new output buffer.
-    RETURN_NOT_OK(output->prepend_buffer(orig_input_size))
+    RETURN_NOT_OK(output->prepend_buffer(orig_input_size));
     // Add a new output metadata buffer.
     RETURN_NOT_OK(output_metadata->prepend_buffer(orig_md_size));
 

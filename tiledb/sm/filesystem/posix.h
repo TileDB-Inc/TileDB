@@ -38,15 +38,16 @@
 #include <ftw.h>
 #include <sys/types.h>
 
+#include <functional>
 #include <string>
 #include <vector>
 
 #include "tiledb/sm/buffer/buffer.h"
+#include "tiledb/sm/config/config.h"
 #include "tiledb/sm/filesystem/filelock.h"
 #include "tiledb/sm/misc/status.h"
 #include "tiledb/sm/misc/thread_pool.h"
 #include "tiledb/sm/misc/uri.h"
-#include "tiledb/sm/storage_manager/config.h"
 
 namespace tiledb {
 namespace sm {
@@ -56,6 +57,12 @@ namespace sm {
  */
 class Posix {
  public:
+  /** Constructor. */
+  Posix();
+
+  /** Destructor. */
+  ~Posix() = default;
+
   /**
    * Returns the absolute posix (string) path of the input in the
    * form "file://<absolute path>"
@@ -135,13 +142,13 @@ class Posix {
   Status filelock_unlock(int fd) const;
 
   /**
-   * Initialize this instance with the given parameters.
+   * Initialize this instance with the given config.
    *
-   * @param vfs_params Params from the parent VFS instance.
+   * @param config Config parameters.
    * @param vfs_thread_pool ThreadPool from the parent VFS instance.
    * @return Status
    */
-  Status init(const Config::VFSParams& vfs_params, ThreadPool* vfs_thread_pool);
+  Status init(const Config& config, ThreadPool* vfs_thread_pool);
 
   /**
    * Checks if the input is an existing directory.
@@ -216,8 +223,11 @@ class Posix {
       const std::string& path, const void* buffer, uint64_t buffer_size);
 
  private:
-  /** Config parameters from parent VFS instance. */
-  Config::VFSParams vfs_params_;
+  /** Config parameters inherited from parent VFS. */
+  std::reference_wrapper<const Config> config_;
+
+  /** Default config. */
+  Config default_config_;
 
   /** Thread pool from parent VFS instance. */
   ThreadPool* vfs_thread_pool_;

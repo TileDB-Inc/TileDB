@@ -40,6 +40,7 @@ using namespace tiledb::sm;
 TEST_CASE("VFS: Test read batching", "[vfs]") {
   URI testfile("vfs_unit_test_data");
   std::unique_ptr<VFS> vfs(new VFS);
+  REQUIRE(vfs->init(nullptr, nullptr).ok());
 
   bool exists = false;
   REQUIRE(vfs->is_file(testfile, &exists).ok());
@@ -115,10 +116,10 @@ TEST_CASE("VFS: Test read batching", "[vfs]") {
 
   SECTION("- Reduce min batch size and min batch gap") {
     // Set a smaller min batch size and min batch gap
-    Config::VFSParams vfs_params;
-    vfs_params.min_batch_size_ = 0;
-    vfs_params.min_batch_gap_ = 0;
-    REQUIRE(vfs->init(vfs_params).ok());
+    Config default_config, vfs_config;
+    vfs_config.set("vfs.min_batch_size", "0");
+    vfs_config.set("vfs.min_batch_gap", "0");
+    REQUIRE(vfs->init(&default_config, &vfs_config).ok());
 
     // Check large batches are not split up.
     std::memset(data_read, 0, nelts * sizeof(uint32_t));
@@ -172,9 +173,9 @@ TEST_CASE("VFS: Test read batching", "[vfs]") {
 
   SECTION("- Reduce min batch size but not min batch gap") {
     // Set a smaller min batch size
-    Config::VFSParams vfs_params;
-    vfs_params.min_batch_size_ = 0;
-    REQUIRE(vfs->init(vfs_params).ok());
+    Config default_config, vfs_config;
+    vfs_config.set("vfs.min_batch_size", "0");
+    REQUIRE(vfs->init(&default_config, &vfs_config).ok());
 
     // There should be a single read due to the gap
     std::memset(data_read, 0, nelts * sizeof(uint32_t));
@@ -195,9 +196,9 @@ TEST_CASE("VFS: Test read batching", "[vfs]") {
 
   SECTION("- Reduce min batch gap but not min batch size") {
     // Set a smaller min batch size
-    Config::VFSParams vfs_params;
-    vfs_params.min_batch_gap_ = 0;
-    REQUIRE(vfs->init(vfs_params).ok());
+    Config default_config, vfs_config;
+    vfs_config.set("vfs.min_batch_gap", "0");
+    REQUIRE(vfs->init(&default_config, &vfs_config).ok());
 
     // There should be a single read due to the batch size
     std::memset(data_read, 0, nelts * sizeof(uint32_t));
@@ -273,6 +274,8 @@ TEST_CASE("VFS: Test long paths (Win32)", "[vfs][windows]") {
 
 TEST_CASE("VFS: Test long posix paths", "[vfs]") {
   std::unique_ptr<VFS> vfs(new VFS);
+  REQUIRE(vfs->init(nullptr, nullptr).ok());
+
   std::string tmpdir_base = Posix::current_dir() + "/tiledb_test/";
   REQUIRE(vfs->create_dir(URI(tmpdir_base)).ok());
 
