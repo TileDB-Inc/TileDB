@@ -45,10 +45,25 @@
 #include <string>
 #include <vector>
 
+#ifdef __linux__
+#include "tiledb/sm/filesystem/posix.h"
+#endif
+
 namespace tiledb {
 namespace sm {
-
 namespace utils {
+
+#ifdef __linux__
+namespace https {
+/**
+ * Check hard coded paths for possible ca certificates to set for curl
+ *
+ * @param vfs to use to check if cert paths exist
+ * @return ca cert bundle path or empty string if ca cert bundle was not found
+ */
+std::string find_ca_certs_linux(const Posix& posix);
+}  // namespace https
+#endif
 
 namespace parse {
 

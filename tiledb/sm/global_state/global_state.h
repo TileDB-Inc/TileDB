@@ -79,6 +79,13 @@ class GlobalState {
    */
   std::set<StorageManager*> storage_managers();
 
+  /**
+   * Getter for cert file
+   * @return detected cert file or empty if no cert file detected. Always empty
+   * string on non-linux platforms
+   */
+  const std::string& cert_file();
+
  private:
   /** The TileDB configuration parameters. */
   Config config_;
@@ -94,6 +101,9 @@ class GlobalState {
 
   /** Mutex protecting list of StorageManagers. */
   std::mutex storage_managers_mtx_;
+
+  /** Detected certificate file, currently only used on linux */
+  std::string cert_file_;
 
   /** Constructor. */
   GlobalState();

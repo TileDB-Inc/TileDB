@@ -33,6 +33,7 @@
 #ifndef TILEDB_CONSTANTS_H
 #define TILEDB_CONSTANTS_H
 
+#include <array>
 #include <cinttypes>
 #include <string>
 
@@ -475,6 +476,10 @@ extern const unsigned watchdog_thread_sleep_ms;
 /** Returns the empty fill value based on the input datatype. */
 const void* fill_value(Datatype type);
 
+#ifdef __linux__
+/** List of possible certificates files for libcurl */
+extern const std::array<std::string, 6> cert_files_linux;
+#endif
 }  // namespace constants
 
 }  // namespace sm
