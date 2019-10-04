@@ -91,7 +91,7 @@ class Filter {
     filter_ = std::shared_ptr<tiledb_filter_t>(filter, deleter_);
   }
 
-  Filter() = default;
+  Filter() = delete;
   Filter(const Filter&) = default;
   Filter(Filter&&) = default;
   Filter& operator=(const Filter&) = default;
