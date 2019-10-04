@@ -74,7 +74,9 @@ StorageManager::StorageManager() {
 
 StorageManager::~StorageManager() {
   global_state::GlobalState::GetGlobalState().unregister_storage_manager(this);
-  cancel_all_tasks();
+
+  if (vfs_ != nullptr)
+    cancel_all_tasks();
 
   delete tile_cache_;
 
@@ -95,12 +97,14 @@ StorageManager::~StorageManager() {
       vfs_->filelock_unlock(lock_uri);
   }
 
-  const Status st = vfs_->terminate();
-  if (!st.ok()) {
-    LOG_STATUS(Status::StorageManagerError("Failed to terminate VFS."));
-  }
+  if (vfs_ != nullptr) {
+    const Status st = vfs_->terminate();
+    if (!st.ok()) {
+      LOG_STATUS(Status::StorageManagerError("Failed to terminate VFS."));
+    }
 
-  delete vfs_;
+    delete vfs_;
+  }
 }
 
 /* ****************************** */
@@ -757,7 +761,10 @@ Status StorageManager::cancel_all_tasks() {
   if (handle_cancel) {
     // Cancel any queued tasks.
     cancelable_tasks_.cancel_all_tasks();
-    vfs_->cancel_all_tasks();
+
+    // Only call VFS cancel if the object has been constructed
+    if (vfs_ != nullptr)
+      vfs_->cancel_all_tasks();
 
     // Wait for in-progress queries to finish.
     wait_for_zero_in_progress();
@@ -1021,7 +1028,7 @@ Status StorageManager::init(const Config* config) {
   RETURN_NOT_OK(writer_thread_pool_.init(num_writer_threads));
   tile_cache_ = new LRUCache(tile_cache_size);
 
-  // Must be initialized before `vfs->init` because S3::init calls
+  // GlobalState must be initialized before `vfs->init` because S3::init calls
   // GetGlobalState
   auto& global_state = global_state::GlobalState::GetGlobalState();
   RETURN_NOT_OK(global_state.init(config));
