@@ -90,7 +90,7 @@ class FilterList {
     filter_list_ = std::shared_ptr<tiledb_filter_list_t>(filter_list, deleter_);
   }
 
-  FilterList() = default;
+  FilterList() = delete;
   FilterList(const FilterList&) = default;
   FilterList(FilterList&&) = default;
   FilterList& operator=(const FilterList&) = default;
