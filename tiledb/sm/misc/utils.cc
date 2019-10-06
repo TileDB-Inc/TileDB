@@ -720,6 +720,17 @@ void overlap(const T* a, const T* b, unsigned dim_num, T* o, bool* overlap) {
 }
 
 template <class T>
+bool overlap(const std::vector<const T*>& a, const T* b) {
+  auto dim_num = (unsigned)a.size();
+  for (unsigned i = 0; i < dim_num; ++i) {
+    if (a[i][0] > b[2 * i + 1] || a[i][1] < b[2 * i])
+      return false;
+  }
+
+  return true;
+}
+
+template <class T>
 double coverage(const T* a, const T* b, unsigned dim_num) {
   double c = 1.0;
   auto add = int(std::is_integral<T>::value);
@@ -1020,6 +1031,27 @@ template void overlap<uint64_t>(
     unsigned dim_num,
     uint64_t* o,
     bool* overlap);
+
+template bool overlap<int8_t>(
+    const std::vector<const int8_t*>& a, const int8_t* b);
+template bool overlap<uint8_t>(
+    const std::vector<const uint8_t*>& a, const uint8_t* b);
+template bool overlap<int16_t>(
+    const std::vector<const int16_t*>& a, const int16_t* b);
+template bool overlap<uint16_t>(
+    const std::vector<const uint16_t*>& a, const uint16_t* b);
+template bool overlap<int32_t>(
+    const std::vector<const int32_t*>& a, const int32_t* b);
+template bool overlap<uint32_t>(
+    const std::vector<const uint32_t*>& a, const uint32_t* b);
+template bool overlap<int64_t>(
+    const std::vector<const int64_t*>& a, const int64_t* b);
+template bool overlap<uint64_t>(
+    const std::vector<const uint64_t*>& a, const uint64_t* b);
+template bool overlap<float>(
+    const std::vector<const float*>& a, const float* b);
+template bool overlap<double>(
+    const std::vector<const double*>& a, const double* b);
 
 template double coverage<int8_t>(
     const int8_t* a, const int8_t* b, unsigned dim_num);

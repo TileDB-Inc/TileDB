@@ -315,6 +315,14 @@ template <class T>
 void overlap(const T* a, const T* b, unsigned dim_num, T* o, bool* overlap);
 
 /**
+ * Returns *true* if hyper-rectangle `a` overlaps with `b`.
+ * `a` is vector of [low, high] pairs, one per dimension, whereas `b`
+ * is a flattened array of [low,high] pairs one per dimension.
+ */
+template <class T>
+bool overlap(const std::vector<const T*>& a, const T* b);
+
+/**
  * Returns the percentage of coverage of hyper-rectangle `a` in `b`.
  * Note that the function assumes that `a` is fully contained in `b`.
  */

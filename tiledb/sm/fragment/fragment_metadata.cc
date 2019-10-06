@@ -333,12 +333,18 @@ Status FragmentMetadata::get_tile_overlap(
     const EncryptionKey& encryption_key,
     const std::vector<const T*>& range,
     TileOverlap* tile_overlap) {
+  // Return if the range does not overlap the non-empty domain of the fragment
+  if (!utils::geometry::overlap(range, (const T*)non_empty_domain_))
+    return Status::Ok();
+
+  // Handle version > 2
   if (version_ > 2) {
     RETURN_NOT_OK(load_rtree(encryption_key));
     *tile_overlap = rtree_.get_tile_overlap<T>(range);
     return Status::Ok();
   }
 
+  // Handle version <= 2
   auto mbr_num = mbrs_.size();
   for (size_t t = 0; t < mbr_num; ++t) {
     auto m = (const T*)mbrs_[t];
