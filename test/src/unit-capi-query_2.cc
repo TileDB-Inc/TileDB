@@ -2320,3 +2320,141 @@ TEST_CASE_METHOD(
 
   remove_array(array_name);
 }
+
+TEST_CASE_METHOD(
+    Query2Fx,
+    "C API: Test written fragments, errors with read queries",
+    "[capi][query_2][written-fragments][errors-read]") {
+  std::string array_name = "query_written_fragments_errors_read";
+  remove_array(array_name);
+
+  // Create array
+  create_dense_array(array_name);
+
+  // Open array
+  tiledb_array_t* array = nullptr;
+  int rc = tiledb_array_alloc(ctx_, array_name.c_str(), &array);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_array_open(ctx_, array, TILEDB_READ);
+  CHECK(rc == TILEDB_OK);
+
+  // Create query
+  tiledb_query_t* query = nullptr;
+  rc = tiledb_query_alloc(ctx_, array, TILEDB_READ, &query);
+  CHECK(rc == TILEDB_OK);
+
+  uint32_t num = 0;
+  rc = tiledb_query_get_fragment_num(ctx_, query, &num);
+  CHECK(rc == TILEDB_ERR);
+  const char* uri;
+  rc = tiledb_query_get_fragment_uri(ctx_, query, 0, &uri);
+  CHECK(rc == TILEDB_ERR);
+  uint64_t t1, t2;
+  rc = tiledb_query_get_fragment_timestamp_range(ctx_, query, 0, &t1, &t2);
+  CHECK(rc == TILEDB_ERR);
+
+  // Clean-up
+  rc = tiledb_array_close(ctx_, array);
+  CHECK(rc == TILEDB_OK);
+  tiledb_array_free(&array);
+  CHECK(array == nullptr);
+  tiledb_query_free(&query);
+  CHECK(query == nullptr);
+
+  remove_array(array_name);
+}
+
+TEST_CASE_METHOD(
+    Query2Fx,
+    "C API: Test written fragments",
+    "[capi][query_2][written-fragments]") {
+  std::string array_name = "query_written_fragments";
+  remove_array(array_name);
+
+  // Create array
+  create_dense_array(array_name);
+
+  // Open array
+  tiledb_array_t* array;
+  int rc = tiledb_array_alloc(ctx_, array_name.c_str(), &array);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_array_open(ctx_, array, TILEDB_WRITE);
+  CHECK(rc == TILEDB_OK);
+
+  std::vector<int> a = {1, 2, 3, 4};
+  std::vector<uint64_t> b_off = {
+      0,
+      sizeof(int),
+      3 * sizeof(int),
+      6 * sizeof(int),
+  };
+  std::vector<int> b_val = {1, 2, 2, 3, 3, 3, 4, 4, 4};
+  std::vector<uint64_t> domain = {1, 2, 1, 2};
+
+  uint64_t a_size = a.size() * sizeof(int);
+  uint64_t b_off_size = b_off.size() * sizeof(uint64_t);
+  uint64_t b_val_size = b_val.size() * sizeof(int);
+
+  // Create query
+  tiledb_query_t* query;
+  rc = tiledb_query_alloc(ctx_, array, TILEDB_WRITE, &query);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_subarray(ctx_, query, &domain[0]);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_layout(ctx_, query, TILEDB_ROW_MAJOR);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_buffer(ctx_, query, "a", (void*)a.data(), &a_size);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_buffer_var(
+      ctx_,
+      query,
+      "b",
+      (uint64_t*)b_off.data(),
+      &b_off_size,
+      (void*)b_val.data(),
+      &b_val_size);
+  CHECK(rc == TILEDB_OK);
+
+  // No fragments written yet
+  uint32_t num = 100;
+  rc = tiledb_query_get_fragment_num(ctx_, query, &num);
+  CHECK(rc == TILEDB_OK);
+  CHECK(num == 0);
+  const char* uri;
+  rc = tiledb_query_get_fragment_uri(ctx_, query, 0, &uri);
+  CHECK(rc == TILEDB_ERR);
+  uint64_t t1, t2;
+  rc = tiledb_query_get_fragment_timestamp_range(ctx_, query, 0, &t1, &t2);
+  CHECK(rc == TILEDB_ERR);
+
+  // Submit query
+  rc = tiledb_query_submit(ctx_, query);
+  CHECK(rc == TILEDB_OK);
+
+  // Finalize query
+  rc = tiledb_query_finalize(ctx_, query);
+  CHECK(rc == TILEDB_OK);
+
+  // 1 fragment written
+  rc = tiledb_query_get_fragment_num(ctx_, query, &num);
+  CHECK(rc == TILEDB_OK);
+  CHECK(num == 1);
+  rc = tiledb_query_get_fragment_uri(ctx_, query, 0, &uri);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_get_fragment_timestamp_range(ctx_, query, 0, &t1, &t2);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_get_fragment_uri(ctx_, query, 1, &uri);
+  CHECK(rc == TILEDB_ERR);
+  rc = tiledb_query_get_fragment_timestamp_range(ctx_, query, 1, &t1, &t2);
+  CHECK(rc == TILEDB_ERR);
+
+  // Close array
+  rc = tiledb_array_close(ctx_, array);
+  CHECK(rc == TILEDB_OK);
+
+  // Clean up
+  tiledb_array_free(&array);
+  tiledb_query_free(&query);
+
+  remove_array(array_name);
+}

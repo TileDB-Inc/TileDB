@@ -36,7 +36,7 @@
 
 using namespace tiledb;
 
-TEST_CASE("C++ API: Test get query layout", "[cppapi], [query]") {
+TEST_CASE("C++ API: Test get query layout", "[cppapi][query]") {
   const std::string array_name = "cpp_unit_array";
   Context ctx;
   VFS vfs(ctx);
@@ -62,6 +62,68 @@ TEST_CASE("C++ API: Test get query layout", "[cppapi], [query]") {
   REQUIRE(query.query_layout() == TILEDB_GLOBAL_ORDER);
   query.set_layout(TILEDB_UNORDERED);
   REQUIRE(query.query_layout() == TILEDB_UNORDERED);
+
+  array.close();
+
+  if (vfs.is_dir(array_name))
+    vfs.remove_dir(array_name);
+}
+
+TEST_CASE(
+    "C++ API: Test get written fragments for reads",
+    "[cppapi][query][written-fragments][read]") {
+  const std::string array_name = "cpp_unit_array";
+  Context ctx;
+  VFS vfs(ctx);
+
+  if (vfs.is_dir(array_name))
+    vfs.remove_dir(array_name);
+
+  // Create
+  Domain domain(ctx);
+  domain.add_dimension(Dimension::create<int>(ctx, "rows", {{0, 3}}, 4))
+      .add_dimension(Dimension::create<int>(ctx, "cols", {{0, 3}}, 4));
+  ArraySchema schema(ctx, TILEDB_SPARSE);
+  schema.set_domain(domain).set_order({{TILEDB_ROW_MAJOR, TILEDB_ROW_MAJOR}});
+  schema.add_attribute(Attribute::create<int>(ctx, "a"));
+  Array::create(array_name, schema);
+
+  Array array(ctx, array_name, TILEDB_READ);
+  Query query(ctx, array);
+  REQUIRE_THROWS(query.fragment_num());
+  REQUIRE_THROWS(query.fragment_uri(0));
+  REQUIRE_THROWS(query.fragment_timestamp_range(0));
+
+  array.close();
+
+  if (vfs.is_dir(array_name))
+    vfs.remove_dir(array_name);
+}
+
+TEST_CASE(
+    "C++ API: Test get written fragments for writes",
+    "[cppapi][query][written-fragments][write]") {
+  const std::string array_name = "cpp_unit_array";
+  Context ctx;
+  VFS vfs(ctx);
+
+  if (vfs.is_dir(array_name))
+    vfs.remove_dir(array_name);
+
+  // Create
+  Domain domain(ctx);
+  domain.add_dimension(Dimension::create<int>(ctx, "rows", {{0, 3}}, 4))
+      .add_dimension(Dimension::create<int>(ctx, "cols", {{0, 3}}, 4));
+  ArraySchema schema(ctx, TILEDB_SPARSE);
+  schema.set_domain(domain).set_order({{TILEDB_ROW_MAJOR, TILEDB_ROW_MAJOR}});
+  schema.add_attribute(Attribute::create<int>(ctx, "a"));
+  Array::create(array_name, schema);
+
+  Array array(ctx, array_name, TILEDB_WRITE);
+  Query query(ctx, array);
+  CHECK(query.fragment_num() == 0);
+  REQUIRE_THROWS(query.fragment_uri(0));
+  REQUIRE_THROWS(query.fragment_timestamp_range(0));
 
   array.close();
 

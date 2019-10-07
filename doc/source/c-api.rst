@@ -423,6 +423,13 @@ Query
 .. doxygenfunction:: tiledb_query_get_est_result_size_var
     :project: TileDB-C
 
+.. doxygenfunction:: tiledb_query_get_fragment_num
+    :project: TileDB-C
+.. doxygenfunction:: tiledb_query_get_fragment_uri
+    :project: TileDB-C
+.. doxygenfunction:: tiledb_query_get_fragment_timestamp_range
+    :project: TileDB-C
+
 Filter
 ------
 .. doxygenfunction:: tiledb_filter_alloc

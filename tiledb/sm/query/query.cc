@@ -120,6 +120,50 @@ Status Query::get_est_result_size(
   return reader_.get_est_result_size(attr_name, size_off, size_val);
 }
 
+Status Query::get_written_fragment_num(uint32_t* num) const {
+  if (type_ != QueryType::WRITE)
+    return LOG_STATUS(Status::WriterError(
+        "Cannot get number of fragments; Applicable only to WRITE mode"));
+
+  *num = (uint32_t)writer_.written_fragment_info().size();
+
+  return Status::Ok();
+}
+
+Status Query::get_written_fragment_uri(uint32_t idx, const char** uri) const {
+  if (type_ != QueryType::WRITE)
+    return LOG_STATUS(Status::WriterError(
+        "Cannot get fragment URI; Applicable only to WRITE mode"));
+
+  auto& written_fragment_info = writer_.written_fragment_info();
+  auto num = (uint32_t)written_fragment_info.size();
+  if (idx >= num)
+    return LOG_STATUS(
+        Status::WriterError("Cannot get fragment URI; Invalid fragment index"));
+
+  *uri = written_fragment_info[idx].uri_.c_str();
+
+  return Status::Ok();
+}
+
+Status Query::get_written_fragment_timestamp_range(
+    uint32_t idx, uint64_t* t1, uint64_t* t2) const {
+  if (type_ != QueryType::WRITE)
+    return LOG_STATUS(Status::WriterError(
+        "Cannot get fragment timestamp range; Applicable only to WRITE mode"));
+
+  auto& written_fragment_info = writer_.written_fragment_info();
+  auto num = (uint32_t)written_fragment_info.size();
+  if (idx >= num)
+    return LOG_STATUS(Status::WriterError(
+        "Cannot get fragment timestamp range; Invalid fragment index"));
+
+  *t1 = written_fragment_info[idx].timestamp_range_.first;
+  *t2 = written_fragment_info[idx].timestamp_range_.second;
+
+  return Status::Ok();
+}
+
 const Array* Query::array() const {
   return array_;
 }
