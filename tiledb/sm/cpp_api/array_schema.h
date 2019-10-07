@@ -199,7 +199,7 @@ class ArraySchema : public Schema {
     schema_ = std::shared_ptr<tiledb_array_schema_t>(schema, deleter_);
   }
 
-  ArraySchema() = default;
+  ArraySchema() = delete;
   ArraySchema(const ArraySchema&) = default;
   ArraySchema(ArraySchema&&) = default;
   virtual ~ArraySchema() = default;

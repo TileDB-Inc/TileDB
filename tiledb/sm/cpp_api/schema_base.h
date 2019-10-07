@@ -76,6 +76,7 @@ class Schema {
   Schema(Schema&&) = default;
   Schema& operator=(const Schema&) = default;
   Schema& operator=(Schema&&) = default;
+  virtual ~Schema() = default;
 
   /* ********************************* */
   /*          VIRTUAL INTERFACE        */
