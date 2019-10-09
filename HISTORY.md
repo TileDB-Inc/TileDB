@@ -12,6 +12,9 @@
 
 ## API additions
 
+* Added C API functions tiledb_query_get_{fragment_num,fragment_uri,fragment_timestamp_range}.
+* Added C++ API functions Query::{fragment_num,fragment_uri,fragment_timestamp_range}.
+
 # TileDB v1.6.1 Release Notes
 
 ## New features

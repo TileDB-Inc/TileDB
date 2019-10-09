@@ -2813,6 +2813,48 @@ int32_t tiledb_query_get_est_result_size_var(
   return TILEDB_OK;
 }
 
+int32_t tiledb_query_get_fragment_num(
+    tiledb_ctx_t* ctx, const tiledb_query_t* query, uint32_t* num) {
+  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, query) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  if (SAVE_ERROR_CATCH(ctx, query->query_->get_written_fragment_num(num)))
+    return TILEDB_ERR;
+
+  return TILEDB_OK;
+}
+
+int32_t tiledb_query_get_fragment_uri(
+    tiledb_ctx_t* ctx,
+    const tiledb_query_t* query,
+    uint64_t idx,
+    const char** uri) {
+  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, query) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  if (SAVE_ERROR_CATCH(ctx, query->query_->get_written_fragment_uri(idx, uri)))
+    return TILEDB_ERR;
+
+  return TILEDB_OK;
+}
+
+int32_t tiledb_query_get_fragment_timestamp_range(
+    tiledb_ctx_t* ctx,
+    const tiledb_query_t* query,
+    uint64_t idx,
+    uint64_t* t1,
+    uint64_t* t2) {
+  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, query) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  if (SAVE_ERROR_CATCH(
+          ctx,
+          query->query_->get_written_fragment_timestamp_range(idx, t1, t2)))
+    return TILEDB_ERR;
+
+  return TILEDB_OK;
+}
+
 /* ****************************** */
 /*              ARRAY             */
 /* ****************************** */

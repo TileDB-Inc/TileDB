@@ -36,6 +36,7 @@
 #include "tiledb/sm/array_schema/array_schema.h"
 #include "tiledb/sm/filter/filter_pipeline.h"
 #include "tiledb/sm/fragment/fragment_metadata.h"
+#include "tiledb/sm/fragment/written_fragment_info.h"
 #include "tiledb/sm/misc/status.h"
 #include "tiledb/sm/query/dense_cell_range_iter.h"
 #include "tiledb/sm/query/types.h"
@@ -309,6 +310,9 @@ class Writer {
   /** Performs a write query using its set members. */
   Status write();
 
+  /** Returns the written fragment info. */
+  const std::vector<WrittenFragmentInfo>& written_fragment_info() const;
+
  private:
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
@@ -377,9 +381,15 @@ class Writer {
   /** The subarray the query is constrained on. */
   void* subarray_;
 
+  /** Stores information about the written fragments. */
+  std::vector<WrittenFragmentInfo> written_fragment_info_;
+
   /* ********************************* */
   /*           PRIVATE METHODS         */
   /* ********************************* */
+
+  /** Adss a fragment to `written_fragment_info_`. */
+  void add_written_fragment_info(const URI& uri);
 
   /** Checks if attributes has been appropriately set for the query. */
   Status check_attributes();

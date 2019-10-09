@@ -153,6 +153,19 @@ class Query {
   Status get_est_result_size(
       const char* attr_name, uint64_t* size_off, uint64_t* size_val);
 
+  /** Retrieves the number of written fragments. */
+  Status get_written_fragment_num(uint32_t* num) const;
+
+  /** Retrieves the URI of the written fragment with the input index. */
+  Status get_written_fragment_uri(uint32_t idx, const char** uri) const;
+
+  /**
+   * Retrieves the timestamp range [t1,t2] of the written fragment with the
+   * input index.
+   */
+  Status get_written_fragment_timestamp_range(
+      uint32_t idx, uint64_t* t1, uint64_t* t2) const;
+
   /** Returns the array. */
   const Array* array() const;
 

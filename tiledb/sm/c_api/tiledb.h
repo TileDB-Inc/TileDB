@@ -3377,6 +3377,81 @@ TILEDB_EXPORT int32_t tiledb_query_get_est_result_size_var(
     uint64_t* size_off,
     uint64_t* size_val);
 
+/**
+ * Retrieves the number of written fragments. Applicable only to WRITE
+ * queries.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * uint32_t num;
+ * tiledb_query_get_fragment_num(ctx, query, &num);
+ * @endcode
+ *
+ * @param ctx The TileDB context
+ * @param query The query.
+ * @param num The number of written fragments to be retrieved.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_query_get_fragment_num(
+    tiledb_ctx_t* ctx, const tiledb_query_t* query, uint32_t* num);
+
+/**
+ * Retrieves the URI of the written fragment with the input index. Applicable
+ * only to WRITE queries.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * const char* uri;
+ * tiledb_query_get_fragment_uri(
+ *     ctx, query, 0, &uri);
+ * @endcode
+ *
+ * @param ctx The TileDB context
+ * @param query The query.
+ * @param idx The index of the written fragment.
+ * @param uri The URI of the written fragment to be returned.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ *
+ * @note Make sure to make a copy of `uri` after its retrieval, as the
+ *     constant pointer may be updated internally as new fragments
+ *     are being written.
+ */
+TILEDB_EXPORT int32_t tiledb_query_get_fragment_uri(
+    tiledb_ctx_t* ctx,
+    const tiledb_query_t* query,
+    uint64_t idx,
+    const char** uri);
+
+/**
+ * Retrieves the timestamp range of the written fragment with the input index.
+ * Applicable only to WRITE queries.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * uint64_t t1, t2;
+ * tiledb_query_get_fragment_timestamp_range(
+ *     ctx, query, 0, &t1, t2);
+ * @endcode
+ *
+ * @param ctx The TileDB context
+ * @param query The query.
+ * @param idx The index of the written fragment.
+ * @param t1 The start value of the timestamp range of the
+ *     written fragment to be returned.
+ * @param t2 The end value of the timestamp range of the
+ *     written fragment to be returned.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_query_get_fragment_timestamp_range(
+    tiledb_ctx_t* ctx,
+    const tiledb_query_t* query,
+    uint64_t idx,
+    uint64_t* t1,
+    uint64_t* t2);
+
 /* ********************************* */
 /*               ARRAY               */
 /* ********************************* */

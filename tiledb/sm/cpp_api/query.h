@@ -537,6 +537,41 @@ class Query {
   }
 
   /**
+   * Returns the number of written fragments. Applicable only to WRITE queries.
+   */
+  uint32_t fragment_num() const {
+    auto& ctx = ctx_.get();
+    uint32_t num;
+    ctx.handle_error(
+        tiledb_query_get_fragment_num(ctx.ptr().get(), query_.get(), &num));
+    return num;
+  }
+
+  /**
+   * Returns the URI of the written fragment with the input index. Applicable
+   * only to WRITE queries.
+   */
+  std::string fragment_uri(uint32_t idx) const {
+    auto& ctx = ctx_.get();
+    const char* uri;
+    ctx.handle_error(tiledb_query_get_fragment_uri(
+        ctx.ptr().get(), query_.get(), idx, &uri));
+    return uri;
+  }
+
+  /**
+   * Returns the timestamp range of the written fragment with the input index.
+   * Applicable only to WRITE queries.
+   */
+  std::pair<uint64_t, uint64_t> fragment_timestamp_range(uint32_t idx) const {
+    auto& ctx = ctx_.get();
+    uint64_t t1, t2;
+    ctx.handle_error(tiledb_query_get_fragment_timestamp_range(
+        ctx.ptr().get(), query_.get(), idx, &t1, &t2));
+    return std::make_pair(t1, t2);
+  }
+
+  /**
    * Sets a subarray, defined in the order dimensions were added.
    * Coordinates are inclusive. For the case of writes, this is meaningful only
    * for dense arrays, and specifically dense writes.

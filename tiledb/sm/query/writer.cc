@@ -440,9 +440,19 @@ Status Writer::write() {
   STATS_FUNC_OUT(writer_write);
 }
 
+const std::vector<WrittenFragmentInfo>& Writer::written_fragment_info() const {
+  return written_fragment_info_;
+}
+
 /* ****************************** */
 /*          PRIVATE METHODS       */
 /* ****************************** */
+
+void Writer::add_written_fragment_info(const URI& uri) {
+  auto timestamp_range = utils::parse::get_timestamp_range(
+      constants::format_version, uri.last_path_part());
+  written_fragment_info_.emplace_back(uri, timestamp_range);
+}
 
 Status Writer::check_attributes() {
   // There should be no duplicate attributes
@@ -1200,6 +1210,9 @@ Status Writer::finalize_global_write_state() {
   if (!st.ok())
     storage_manager_->vfs()->remove_dir(meta->fragment_uri());
 
+  // Add written fragment info
+  add_written_fragment_info(meta->fragment_uri());
+
   // Delete global write state
   global_write_state_.reset(nullptr);
 
@@ -1699,6 +1712,9 @@ Status Writer::ordered_write() {
   RETURN_CANCEL_OR_ERROR_ELSE(
       frag_meta.get()->store(array_->get_encryption_key()),
       storage_manager_->vfs()->remove_dir(uri));
+
+  // Add written fragment info
+  add_written_fragment_info(frag_meta->fragment_uri());
 
   return Status::Ok();
 }
@@ -2343,6 +2359,9 @@ Status Writer::unordered_write() {
   RETURN_CANCEL_OR_ERROR_ELSE(
       frag_meta.get()->store(array_->get_encryption_key()),
       storage_manager_->vfs()->remove_dir(uri));
+
+  // Add written fragment info
+  add_written_fragment_info(frag_meta->fragment_uri());
 
   return Status::Ok();
 }
