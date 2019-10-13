@@ -95,6 +95,7 @@ S3Fx::~S3Fx() {
 
   // Delete bucket
   CHECK(s3_.remove_bucket(S3_BUCKET).ok());
+  s3_.disconnect();
 }
 
 std::string S3Fx::random_bucket_name(const std::string& prefix) {
