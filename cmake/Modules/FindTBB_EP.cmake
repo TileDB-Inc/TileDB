@@ -238,6 +238,7 @@ else()
         LOG_CONFIGURE TRUE
         LOG_BUILD TRUE
         LOG_INSTALL TRUE
+        LOG_OUTPUT_ON_FAILURE ${TILEDB_LOG_OUTPUT_ON_FAILURE}
       )
     else()
       ExternalProject_Add(ep_tbb
@@ -252,6 +253,7 @@ else()
         LOG_CONFIGURE TRUE
         LOG_BUILD TRUE
         LOG_INSTALL TRUE
+        LOG_OUTPUT_ON_FAILURE ${TILEDB_LOG_OUTPUT_ON_FAILURE}
       )
     endif()
 

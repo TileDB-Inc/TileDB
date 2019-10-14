@@ -87,6 +87,7 @@ if (NOT BZIP2_FOUND)
         LOG_CONFIGURE TRUE
         LOG_BUILD TRUE
         LOG_INSTALL TRUE
+        LOG_OUTPUT_ON_FAILURE ${TILEDB_LOG_OUTPUT_ON_FAILURE}
       )
     else()
       # We build bzip2 with -fPIC on non-Windows platforms so that we can link the static library
@@ -105,6 +106,7 @@ if (NOT BZIP2_FOUND)
         LOG_CONFIGURE TRUE
         LOG_BUILD TRUE
         LOG_INSTALL TRUE
+        LOG_OUTPUT_ON_FAILURE ${TILEDB_LOG_OUTPUT_ON_FAILURE}
       )
     endif()
     list(APPEND TILEDB_EXTERNAL_PROJECTS ep_bzip2)
