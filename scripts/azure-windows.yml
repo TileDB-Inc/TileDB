@@ -12,19 +12,20 @@ steps:
       $host.SetShouldExit(1)
     }
 
+    # TODO DEBUG move this back in the TILEDB_S3 section
+    & "$env:BUILD_SOURCESDIRECTORY\scripts\install-minio.ps1"
+
     if ($env:TILEDB_S3 -eq "ON") {
       & "$env:BUILD_SOURCESDIRECTORY\bootstrap.ps1" -EnableS3 -EnableVerbose -EnableStaticTileDB
-      & "$env:BUILD_SOURCESDIRECTORY\scripts\install-minio.ps1"
     } else {
       & "$env:BUILD_SOURCESDIRECTORY\bootstrap.ps1" -EnableVerbose -EnableStaticTileDB
     }
-
     if ($LastExitCode -ne 0) {
        Write-Host "Bootstrap failed."
        $host.SetShouldExit($LastExitCode)
     }
 
-    cmake --build . --config Release -- /verbosity:minimal
+    cmake --build $env:AGENT_BUILDDIRECTORY\build --config Release -- /verbosity:minimal
 
     if ($LastExitCode -ne 0) {
        Write-Host "Build failed. CMake exit status: " $LastExitCocde
@@ -42,61 +43,55 @@ steps:
 
     # CMake exits with non-0 status if there are any warnings during the build, so
     # build the unit test executable before running tests.
-    cmake --build tiledb --target tiledb_unit --config Release -- /verbosity:minimal
+    cmake --build $env:AGENT_BUILDDIRECTORY\build\tiledb --target tiledb_unit --config Release -- /verbosity:minimal
+
     # Actually run tests
-    cd tiledb
-    ctest -C Release -V
-    cd ..
+    cmake --build $env:AGENT_BUILDDIRECTORY\build\tiledb --target check --config Release -- /verbosity:minimal
 
     if ($LastExitCode -ne 0) {
        Write-Host "Tests failed. CMake exit status: " $LastExitCocde
        $host.SetShouldExit($LastExitCode)
     }
 
-    cmake --build . --target examples --config Release -- /verbosity:minimal
+    # Build the examples
+    cmake --build $env:AGENT_BUILDDIRECTORY\build --target examples --config Release -- /verbosity:minimal
 
     if ($LastExitCode -ne 0) {
-       Write-Host "Examples failed to build."
-       $host.SetShouldExit($LastExitCode)
+      Write-Host "Examples failed to build."
+      $host.SetShouldExit($LastExitCode)
     }
 
-    cmake --build . --target install --config Release
+    cmake --build $env:AGENT_BUILDDIRECTORY\build --target install-tiledb --config Release
 
     if ($LastExitCode -ne 0) {
-       Write-Host "Installation failed."
-       $host.SetShouldExit($LastExitCode)
+      Write-Host "Installation failed."
+      $host.SetShouldExit($LastExitCode)
     }
 
     $env:Path += ";$env:AGENT_BUILDDIRECTORY\s\dist\bin;$env:AGENT_BUILDDIRECTORY\build\externals\install\bin"
 
-    ls .\examples\c_api\Release
-
+    ls $env:AGENT_BUILDDIRECTORY\build\tiledb\examples\c_api\Release
+    
     try {
-       .\examples\c_api\Release\quickstart_dense_c.exe
+      $exepath = Join-Path $env:AGENT_BUILDDIRECTORY "build\tiledb\examples\c_api\Release\quickstart_dense_c.exe"
+      & $exepath
     } catch {
-       Write-Host "C API example failed. Error:"
-       Write-Host $_
-       $host.SetShouldExit(1)
-    }
-
-    if ($LastExitCode -ne 0) {
-      Write-Host "C API example failed."
+      Write-Host "C API example failed. Error:"
       Write-Host $_
-      $host.SetShouldExit($LastExitCode)
+      $host.SetShouldExit(1)
     }
 
-    rm -Recurse -Force quickstart_dense_array
-
     try {
-      .\examples\cpp_api\Release\quickstart_dense_cpp.exe
+      $exepath = Join-Path $env:AGENT_BUILDDIRECTORY "build\tiledb\examples\cpp_api\Release\quickstart_dense_cpp.exe"
+      & $exepath
     } catch {
-       Write-Host "C++ API example failed."
-       $host.SetShouldExit(1)
+      Write-Host "C++ API example failed."
+      $host.SetShouldExit(1)
     }
 
     if ($LastExitCode -ne 0) {
-       Write-Host "C++ API example failed."
-       $host.SetShouldExit($LastExitCode)
+      Write-Host "C++ API example failed."
+      $host.SetShouldExit($LastExitCode)
     }
 
     # Build examples
@@ -132,8 +127,8 @@ steps:
   #    verbose: # Optional
 
 - powershell: |
-  # tiledb_unit is configured to set a job-level variable TILEDB_CI_SUCCESS=1
-  # following the test run. If this variable is not set, the build should fail.
+    # tiledb_unit is configured to set a job-level variable TILEDB_CI_SUCCESS=1
+    # following the test run. If this variable is not set, the build should fail.
     if ($env:TILEDB_CI_SUCCESS -ne 1) {
       Write-Host "tiledb_unit sanity-check failed! Go check logs."
       $host.SetShouldExit(1)
