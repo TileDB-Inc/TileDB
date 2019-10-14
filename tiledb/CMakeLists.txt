@@ -552,7 +552,7 @@ set_target_properties(tiledb_shared
 if (TILEDB_VERSION AND CMAKE_SYSTEM_NAME MATCHES "Linux")
   set_target_properties(tiledb_shared
     PROPERTIES
-      SOVERSION ${TILEDB_VERSION})
+      SOVERSION "${TILEDB_VERSION_MAJOR}.${TILEDB_VERSION_MINOR}")
 endif()
 
 # Link the dependencies specified earlier
