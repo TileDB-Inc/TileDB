@@ -132,6 +132,15 @@ steps:
   #    verbose: # Optional
 
 - powershell: |
+  # tiledb_unit is configured to set a job-level variable TILEDB_CI_SUCCESS=1
+  # following the test run. If this variable is not set, the build should fail.
+    if ($env:TILEDB_CI_SUCCESS -ne 1) {
+      Write-Host "tiledb_unit sanity-check failed! Go check logs."
+      $host.SetShouldExit(1)
+    }
+  displayName: "Test status check"
+
+- powershell: |
     (Get-ChildItem -Path $env:BUILD_SOURCESDIRECTORY -Include *.log -Recurse).fullname | ForEach-Object {echo $_ ---; Get-Content $_; echo ===}
   condition: failed() # only run this job if the build step failed
   displayName: "Print log files (failed build only)"
