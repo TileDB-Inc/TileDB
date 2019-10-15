@@ -30,13 +30,15 @@
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 
 die() {
-  echo "$@" 1>&2 ; popd 2>/dev/null; exit 1
+  echo "$@" 1>&2 ; popd 2>/dev/null;
+
+  if [[ "$BASH_SOURCE" = $0 ]]; then
+    # exit when *not* sourced (https://superuser.com/a/1288646)
+    exit 1;
+  fi
 }
 
 run_cask_minio() {
-  export MINIO_ACCESS_KEY=minio
-  export MINIO_SECRET_KEY=miniosecretkey
-
   # note: minio data directories *must* follow parameter arguments
   minio server --certs-dir=/tmp/minio-data/test_certs --address localhost:9999 /tmp/minio-data &
   [[ "$?" -eq "0" ]] || die "could not run minio server"
@@ -54,6 +56,8 @@ run_docker_minio() {
 export_aws_keys() {
   export AWS_ACCESS_KEY_ID=minio
   export AWS_SECRET_ACCESS_KEY=miniosecretkey
+  export MINIO_ACCESS_KEY=minio
+  export MINIO_SECRET_KEY=miniosecretkey
 }
 
 run() {
