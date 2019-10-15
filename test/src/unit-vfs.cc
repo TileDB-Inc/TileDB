@@ -229,6 +229,7 @@ TEST_CASE("VFS: Test read batching", "[vfs]") {
 TEST_CASE("VFS: Test long paths (Win32)", "[vfs][windows]") {
   std::unique_ptr<VFS> vfs(new VFS);
   std::string tmpdir_base = tiledb::sm::Win::current_dir() + "\\tiledb_test\\";
+  REQUIRE(vfs->init(nullptr, nullptr).ok());
   REQUIRE(vfs->create_dir(URI(tmpdir_base)).ok());
 
   SECTION("- Deep hierarchy") {

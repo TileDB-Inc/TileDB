@@ -35,11 +35,11 @@
 #include "catch.hpp"
 
 #include <cassert>
+#include "tiledb/sm/config/config.h"
 #include "tiledb/sm/filesystem/win.h"
 #include "tiledb/sm/misc/stats.h"
 #include "tiledb/sm/misc/status.h"
 #include "tiledb/sm/misc/thread_pool.h"
-#include "tiledb/sm/storage_manager/config.h"
 
 using namespace tiledb::sm;
 
@@ -59,13 +59,13 @@ struct WinFx {
   const std::string TEMP_DIR = Win::current_dir() + "/";
   Win win_;
   ThreadPool thread_pool_;
-  Config::VFSParams vfs_params_;
+  Config vfs_config_;
 
   WinFx() {
     // Make sure parallel reads/writes are tested.
-    vfs_params_.min_parallel_size_ = 100;
+    vfs_config_.set("vfs.min_parallel_size", "100");
     REQUIRE(thread_pool_.init(4).ok());
-    REQUIRE(win_.init(vfs_params_, &thread_pool_).ok());
+    REQUIRE(win_.init(vfs_config_, &thread_pool_).ok());
 
     if (path_exists(TEMP_DIR + "tiledb_test_dir"))
       REQUIRE(win_.remove_dir(TEMP_DIR + "tiledb_test_dir").ok());
