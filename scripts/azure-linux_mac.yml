@@ -198,7 +198,7 @@ steps:
 
 
 - bash: |
-    if [[ "TILEDB_CI_SUCCESS" -ne 1 ]]; then
+    if [[ "$TILEDB_CI_SUCCESS" -ne 1 ]]; then
       exit 1;
     fi
   displayName: 'Test status check'
