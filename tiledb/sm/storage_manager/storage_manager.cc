@@ -364,6 +364,8 @@ Status StorageManager::array_open_for_writes(
     err << open_array->array_schema()->version();
     err << ") is different from library format version (";
     err << constants::format_version << ")";
+    open_array->mtx_unlock();
+    array_close_for_writes(array_uri, encryption_key, nullptr);
     return LOG_STATUS(Status::StorageManagerError(err.str()));
   }
 
@@ -1664,6 +1666,12 @@ Status StorageManager::get_array_metadata_uris(
   // Get all uris in the array metadata directory
   URI metadata_dir = array_uri.join_path(constants::array_metadata_folder_name);
   std::vector<URI> uris;
+
+  bool is_dir;
+  RETURN_NOT_OK(vfs_->is_dir(metadata_dir, &is_dir));
+  if (!is_dir)
+    return Status::Ok();
+
   RETURN_NOT_OK(vfs_->ls(metadata_dir.add_trailing_slash(), &uris));
 
   // Get only the metadata uris
