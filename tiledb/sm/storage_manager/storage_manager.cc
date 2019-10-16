@@ -364,6 +364,8 @@ Status StorageManager::array_open_for_writes(
     err << open_array->array_schema()->version();
     err << ") is different from library format version (";
     err << constants::format_version << ")";
+    open_array->mtx_unlock();
+    array_close_for_writes(array_uri, encryption_key, nullptr);
     return LOG_STATUS(Status::StorageManagerError(err.str()));
   }
 
