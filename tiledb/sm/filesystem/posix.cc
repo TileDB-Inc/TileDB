@@ -305,7 +305,8 @@ Status Posix::ls(
   struct dirent* next_path = nullptr;
   DIR* dir = opendir(path.c_str());
   if (dir == nullptr) {
-    return Status::Ok();
+    return LOG_STATUS(Status::IOError(std::string(
+        "Cannot open directory '" + path + "': " + strerror(errno))));
   }
   while ((next_path = readdir(dir)) != nullptr) {
     if (!strcmp(next_path->d_name, ".") || !strcmp(next_path->d_name, ".."))

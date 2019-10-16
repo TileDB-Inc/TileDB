@@ -175,8 +175,9 @@ class S3 {
 
   /**
    * Lists the objects that start with `prefix`. Full URI paths are
-   * retrieved for the matched objects. If a delimiter is specified,
-   * the URI paths will be truncated to the first delimiter character.
+   * retrieved for the matched objects. Error if prefix does not exist.
+   * If a delimiter is specified, the URI paths will be truncated to
+   * the first delimiter character.
    * For instance, if there is a hierarchy:
    *
    * - `foo/bar/baz`
@@ -200,7 +201,8 @@ class S3 {
       const URI& prefix,
       std::vector<std::string>* paths,
       const std::string& delimiter = "/",
-      int max_paths = -1) const;
+      int max_paths = -1,
+      bool error_not_exists = true) const;
 
   /**
    * Renames an object.

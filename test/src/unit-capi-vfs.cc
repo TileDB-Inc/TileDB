@@ -730,6 +730,7 @@ void VFSFx::check_ls(const std::string& path) {
   std::string subdir2 = dir + "/subdir2";
   std::string subdir_file = subdir + "/file";
   std::string subdir_file2 = subdir2 + "/file2";
+  std::string non_existent = subdir2 + "/___nonexistent_dir123___";
 
   // Create directories and files
   int rc = tiledb_vfs_create_dir(ctx_, vfs_, dir.c_str());
@@ -751,6 +752,11 @@ void VFSFx::check_ls(const std::string& path) {
   std::vector<std::string> children;
   rc = tiledb_vfs_ls(ctx_, vfs_, (dir + "/").c_str(), ls_getter, &children);
   REQUIRE(rc == TILEDB_OK);
+
+  // List non-existent should raise error
+  rc = tiledb_vfs_ls(
+      ctx_, vfs_, (non_existent + "/").c_str(), ls_getter, &children);
+  REQUIRE(rc == TILEDB_ERR);
 
   // Normalization
   for (auto& child : children) {
