@@ -39,6 +39,9 @@ steps:
     $env:AWS_ACCESS_KEY_ID = "minio"
     $env:AWS_SECRET_ACCESS_KEY = "miniosecretkey"
 
+    # Clone backwards compatibility test arrays
+    git clone https://github.com/TileDB-Inc/TileDB-Unit-Test-Arrays.git  $env:BUILD_SOURCESDIRECTORY/test/inputs/arrays/read_compatibility_test
+
     cd $env:AGENT_BUILDDIRECTORY\build\tiledb
 
     # CMake exits with non-0 status if there are any warnings during the build, so
