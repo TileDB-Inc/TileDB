@@ -15,22 +15,36 @@
 * Added C API functions tiledb_query_get_{fragment_num,fragment_uri,fragment_timestamp_range}.
 * Added C++ API functions Query::{fragment_num,fragment_uri,fragment_timestamp_range}.
 
-# TileDB v1.6.1 Release Notes
+# TileDB v1.6.3 Release Notes
 
-## New features
+## Additions
 
-## Improvements
-
-## Deprecations
+* Added config param `vfs.s3.logging_level`. [#1236](https://github.com/TileDB-Inc/TileDB/pull/1236)
 
 ## Bug fixes
 
-* Bug fix in incomplete query behavior.
-* Fix v1.6.0 Release Notes 
+* Fixed FP slice point-query with small (eps) gap coordinates. [#1384](https://github.com/TileDB-Inc/TileDB/pull/1384)
+* Fixed several unused variable warnings in unit tests. [#1385](https://github.com/TileDB-Inc/TileDB/pull/1385)
+* Fixed missing include in `subarray.h`. [#1374](https://github.com/TileDB-Inc/TileDB/pull/1374)
+* Fixed missing virtual destructor in C++ API `schema.h`. [#1391](https://github.com/TileDB-Inc/TileDB/pull/1391)
+* Fixed C++ API build error with clang regarding deleted default constructors. [#1394](https://github.com/TileDB-Inc/TileDB/pull/1394)
 
-## API additions
+# TileDB v1.6.2 Release Notes
+
+## Bug fixes
+
+* Fix incorrect version number listed in `tiledb_version.h` header file and doc page.
+* Fix issue with release notes from 1.6.0 release. [#1359](https://github.com/TileDB-Inc/TileDB/pull/1359)
+
+# TileDB v1.6.1 Release Notes
+
+## Bug fixes
+
+* Bug fix in incomplete query behavior. [#1358](https://github.com/TileDB-Inc/TileDB/pull/1358)
 
 # TileDB v1.6.0 Release Notes
+
+The 1.6.0 release adds the major new feature of non-continuous range slicing, as well as a number of stability and usability improvements. Support is also introduced for datetime dimensions and attributes.
 
 ## New features
 
@@ -39,16 +53,16 @@
 
 ## Improvements
 
-* Better handling of `{C,CXX}FLAGS` during the build. [#1209](https://github.com/TileDB-Inc/TileDB/pull/1209)
-* Removed fragment metadata caching.
-* Removed array schema caching.
-* The tile MBR in the in-memory fragment metadata are organized into an R-Tree, speeding up tile overlap operations during subarray reads.
-* Improved encryption key validation process when opening already open arrays. Fixes issue with indefinite growing of the URI to encryption key mapping in `StorageManager` (the mapping is no longer needed). 
+* Removed fragment metadata caching. [#1197](https://github.com/TileDB-Inc/TileDB/pull/1197)
+* Removed array schema caching. [#1197](https://github.com/TileDB-Inc/TileDB/pull/1197)
+* The tile MBR in the in-memory fragment metadata are organized into an R-Tree, speeding up tile overlap operations during subarray reads. [#1197](https://github.com/TileDB-Inc/TileDB/pull/1197)
+* Improved encryption key validation process when opening already open arrays. Fixes issue with indefinite growing of the URI to encryption key mapping in `StorageManager` (the mapping is no longer needed).  [#1197](https://github.com/TileDB-Inc/TileDB/pull/1197)
 * Improved dense write performance in some benchmarks. [#1229](https://github.com/TileDB-Inc/TileDB/pull/1229)
 * Support for direct writes without using the S3 multi-part API. Allows writing to
   Google Cloud Storage S3 compatibility mode. [#1219](https://github.com/TileDB-Inc/TileDB/pull/1219)
-* Removed 256-character length limit from URIs.
-* Dense reads and writes now always require a subarray to be set, to avoid confusion.
+* Removed 256-character length limit from URIs. [#1288](https://github.com/TileDB-Inc/TileDB/pull/1288)
+* Dense reads and writes now always require a subarray to be set, to avoid confusion. [#1320](https://github.com/TileDB-Inc/TileDB/pull/1320)
+* Added query and array schema serialization API. [#1262](https://github.com/TileDB-Inc/TileDB/pull/1262)
 
 ## Deprecations
 
@@ -56,13 +70,10 @@
 
 ## Bug fixes
 
-* Bug fix with amplification factor in consolidation.
-* Fixed thread safety issue with ZStd compressor. [#1208](https://github.com/TileDB-Inc/TileDB/pull/1208)
-* Fixed crash in consolidation due to accessing invalid entry [#1213](https://github.com/TileDB-Inc/TileDB/pull/1213)
-* Fixed minor bug when writing in global order with empty buffers.
-* Fixed thread safety issue in opening arrays.
-* Fixed floating point exception when writing fixed-length attributes with a large cell value number.
-* Fixed off-by-one limitation with floating point dimension tile extents.
+* Bug fix with amplification factor in consolidation. [#1275](https://github.com/TileDB-Inc/TileDB/pull/1275)
+* Fixed thread safety issue in opening arrays. [#1252](https://github.com/TileDB-Inc/TileDB/pull/1252)
+* Fixed floating point exception when writing fixed-length attributes with a large cell value number. [#1289](https://github.com/TileDB-Inc/TileDB/pull/1289)
+* Fixed off-by-one limitation with floating point dimension tile extents. [#1314](https://github.com/TileDB-Inc/TileDB/pull/1314)
 
 ## API additions
 
@@ -92,6 +103,21 @@
 * Removed ability to set `null` tile extents on dimensions. All dimensions must now have an explicit tile extent.
 * Changed argument `config` in `Array::consolidate()` from a const-ref to a pointer.
 * Removed default includes of `Map` and `MapSchema`. To use the deprecated KV API temporarily, include `<tiledb/map.h>` explicitly.
+
+# TileDB v1.5.1 Release Notes
+
+## Improvements
+
+* Better handling of `{C,CXX}FLAGS` during the build. [#1209](https://github.com/TileDB-Inc/TileDB/pull/1209)
+* Update libcurl dependency to v7.64.1 for S3 builds. [#1240](https://github.com/TileDB-Inc/TileDB/pull/1240)
+
+## Bug fixes
+
+* S3 SDK build error fix. [#1201](https://github.com/TileDB-Inc/TileDB/pull/1201)
+* Fixed thread safety issue with ZStd compressor. [#1208](https://github.com/TileDB-Inc/TileDB/pull/1208)
+* Fixed crash in consolidation due to accessing invalid entry [#1213](https://github.com/TileDB-Inc/TileDB/pull/1213)
+* Fixed memory leak in C++ KV API. [#1247](https://github.com/TileDB-Inc/TileDB/pull/1247)
+* Fixed minor bug when writing in global order with empty buffers. [#1248](https://github.com/TileDB-Inc/TileDB/pull/1248)
 
 # TileDB v1.5.0 Release Notes
 
