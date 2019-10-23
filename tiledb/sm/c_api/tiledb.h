@@ -1485,6 +1485,23 @@ TILEDB_EXPORT int32_t tiledb_ctx_is_supported_fs(
  */
 TILEDB_EXPORT int32_t tiledb_ctx_cancel_tasks(tiledb_ctx_t* ctx);
 
+/**
+ * Sets a string key-value "tag" on the given context.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * tiledb_ctx_set_tag(ctx, "tag key", "tag value");
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param key The tag key
+ * @param value The tag value.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t
+tiledb_ctx_set_tag(tiledb_ctx_t* ctx, const char* key, const char* value);
+
 /* ********************************* */
 /*                GROUP              */
 /* ********************************* */

@@ -168,6 +168,8 @@ Context
     :project: TileDB-C
 .. doxygenfunction:: tiledb_ctx_cancel_tasks
     :project: TileDB-C
+.. doxygenfunction:: tiledb_ctx_set_tag
+    :project: TileDB-C
 
 Config
 ------

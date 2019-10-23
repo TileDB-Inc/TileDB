@@ -905,6 +905,11 @@ Status StorageManager::get_fragment_info(
   return array_close_for_reads(array_uri);
 }
 
+const std::unordered_map<std::string, std::string>& StorageManager::tags()
+    const {
+  return tags_;
+}
+
 Status StorageManager::get_fragment_info(
     const ArraySchema* array_schema,
     const EncryptionKey& encryption_key,
@@ -1040,6 +1045,8 @@ Status StorageManager::init(const Config* config) {
 #ifdef TILEDB_SERIALIZATION
   RETURN_NOT_OK(init_rest_client());
 #endif
+
+  RETURN_NOT_OK(set_default_tags());
 
   global_state.register_storage_manager(this);
 
@@ -1393,6 +1400,12 @@ Status StorageManager::read(
 
 ThreadPool* StorageManager::reader_thread_pool() {
   return &reader_thread_pool_;
+}
+
+Status StorageManager::set_tag(
+    const std::string& key, const std::string& value) {
+  tags_[key] = value;
+  return Status::Ok();
 }
 
 Status StorageManager::store_array_schema(
@@ -1836,6 +1849,11 @@ Status StorageManager::new_array_metadata_uri(
   *new_uri = array_uri.join_path(constants::array_metadata_folder_name)
                  .join_path(ss.str());
 
+  return Status::Ok();
+}
+
+Status StorageManager::set_default_tags() {
+  tags_["tiledb-api-language"] = "c";
   return Status::Ok();
 }
 
