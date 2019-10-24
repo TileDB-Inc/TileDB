@@ -367,6 +367,9 @@ class StorageManager {
       const URI& fragment_uri,
       FragmentInfo* fragment_info);
 
+  /** Returns the current map of any set tags. */
+  const std::unordered_map<std::string, std::string>& tags() const;
+
   /**
    * Creates a TileDB group.
    *
@@ -605,6 +608,17 @@ class StorageManager {
       const URI& uri, uint64_t offset, Buffer* buffer, uint64_t nbytes) const;
 
   /**
+   * Sets a string/string KV "tag" on the storage manager instance.
+   *
+   * This is currently only meant for internal TileDB Inc. usage.
+   *
+   * @param key Tag key
+   * @param value Tag value
+   * @return Status
+   */
+  Status set_tag(const std::string& key, const std::string& value);
+
+  /**
    * Stores an array schema into persistent storage.
    *
    * @param array_schema The array metadata to be stored.
@@ -763,6 +777,9 @@ class StorageManager {
    */
   CancelableTasks cancelable_tasks_;
 
+  /** Tags for the context object. */
+  std::unordered_map<std::string, std::string> tags_;
+
   /** A tile cache. */
   LRUCache* tile_cache_;
 
@@ -911,6 +928,9 @@ class StorageManager {
       const URI& array_uri,
       const std::pair<uint64_t, uint64_t>& timestamp_range,
       URI* new_uri) const;
+
+  /** Sets default tag values on this StorageManager. */
+  Status set_default_tags();
 };
 
 }  // namespace sm

@@ -1192,6 +1192,17 @@ int32_t tiledb_ctx_cancel_tasks(tiledb_ctx_t* ctx) {
   return TILEDB_OK;
 }
 
+int32_t tiledb_ctx_set_tag(
+    tiledb_ctx_t* ctx, const char* key, const char* value) {
+  if (sanity_check(ctx) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  if (SAVE_ERROR_CATCH(ctx, ctx->ctx_->storage_manager()->set_tag(key, value)))
+    return TILEDB_ERR;
+
+  return TILEDB_OK;
+}
+
 /* ****************************** */
 /*              GROUP             */
 /* ****************************** */

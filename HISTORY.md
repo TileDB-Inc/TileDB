@@ -14,6 +14,7 @@
 
 * Added C API functions tiledb_query_get_{fragment_num,fragment_uri,fragment_timestamp_range}.
 * Added C++ API functions Query::{fragment_num,fragment_uri,fragment_timestamp_range}.
+* Added C API function `tiledb_ctx_set_tag` and C++ API `Context::set_tag()`.
 
 # TileDB v1.6.3 Release Notes
 

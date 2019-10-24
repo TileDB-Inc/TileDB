@@ -85,6 +85,8 @@ class Context {
       throw TileDBError("[TileDB::C++API] Error: Failed to create context");
     ctx_ = std::shared_ptr<tiledb_ctx_t>(ctx, Context::free);
     error_handler_ = default_error_handler;
+
+    set_tag("tiledb-api-language", "c++");
   }
 
   /**
@@ -97,6 +99,8 @@ class Context {
       throw TileDBError("[TileDB::C++API] Error: Failed to create context");
     ctx_ = std::shared_ptr<tiledb_ctx_t>(ctx, Context::free);
     error_handler_ = default_error_handler;
+
+    set_tag("tiledb-api-language", "c++");
   }
 
   /* ********************************* */
@@ -187,6 +191,11 @@ class Context {
    */
   void cancel_tasks() const {
     handle_error(tiledb_ctx_cancel_tasks(ctx_.get()));
+  }
+
+  /** Sets a string/string KV tag on the context. */
+  void set_tag(const std::string& key, const std::string& value) {
+    handle_error(tiledb_ctx_set_tag(ctx_.get(), key.c_str(), value.c_str()));
   }
 
   /* ********************************* */
