@@ -1405,6 +1405,11 @@ ThreadPool* StorageManager::reader_thread_pool() {
 Status StorageManager::set_tag(
     const std::string& key, const std::string& value) {
   tags_[key] = value;
+
+  // Tags are added to REST requests as HTTP headers.
+  if (rest_client_ != nullptr)
+    RETURN_NOT_OK(rest_client_->set_header(key, value));
+
   return Status::Ok();
 }
 
@@ -1853,8 +1858,7 @@ Status StorageManager::new_array_metadata_uri(
 }
 
 Status StorageManager::set_default_tags() {
-  tags_["tiledb-api-language"] = "c";
-  return Status::Ok();
+  return set_tag("tiledb-api-language", "c");
 }
 
 }  // namespace sm
