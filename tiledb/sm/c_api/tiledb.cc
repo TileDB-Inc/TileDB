@@ -2800,8 +2800,17 @@ int32_t tiledb_query_get_est_result_size(
   if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, query) == TILEDB_ERR)
     return TILEDB_ERR;
 
+  // Normalize name
+  std::string normalized_name;
   if (SAVE_ERROR_CATCH(
-          ctx, query->query_->get_est_result_size(attr_name, size)))
+          ctx,
+          tiledb::sm::ArraySchema::attribute_name_normalized(
+              attr_name, &normalized_name)))
+    return TILEDB_ERR;
+
+  if (SAVE_ERROR_CATCH(
+          ctx,
+          query->query_->get_est_result_size(normalized_name.c_str(), size)))
     return TILEDB_ERR;
 
   return TILEDB_OK;
@@ -2816,9 +2825,18 @@ int32_t tiledb_query_get_est_result_size_var(
   if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, query) == TILEDB_ERR)
     return TILEDB_ERR;
 
+  // Normalize name
+  std::string normalized_name;
   if (SAVE_ERROR_CATCH(
           ctx,
-          query->query_->get_est_result_size(attr_name, size_off, size_val)))
+          tiledb::sm::ArraySchema::attribute_name_normalized(
+              attr_name, &normalized_name)))
+    return TILEDB_ERR;
+
+  if (SAVE_ERROR_CATCH(
+          ctx,
+          query->query_->get_est_result_size(
+              normalized_name.c_str(), size_off, size_val)))
     return TILEDB_ERR;
 
   return TILEDB_OK;
