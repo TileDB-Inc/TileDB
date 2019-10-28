@@ -50,6 +50,9 @@ class RestClient {
   /** Initialize the REST client with the given config. */
   Status init(const Config* config);
 
+  /** Sets a header that will be attached to all requests. */
+  Status set_header(const std::string& name, const std::string& value);
+
   /**
    * Get a data encoded array schema from rest server
    *
@@ -146,6 +149,9 @@ class RestClient {
    * (regardless of how many times the query is resubmitted).
    */
   bool resubmit_incomplete_;
+
+  /** Collection of extra headers that are attached to REST requests. */
+  std::unordered_map<std::string, std::string> extra_headers_;
 
   /* ********************************* */
   /*         PRIVATE METHODS           */

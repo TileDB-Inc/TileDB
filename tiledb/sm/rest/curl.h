@@ -39,6 +39,7 @@
 #include <cstdlib>
 #include <functional>
 #include <string>
+#include <unordered_map>
 
 #include "tiledb/sm/buffer/buffer.h"
 #include "tiledb/sm/buffer/buffer_list.h"
@@ -64,9 +65,12 @@ class Curl {
    * Initializes the class.
    *
    * @param config TileDB config storing server/auth information
+   * @param extra_headers Any additional headers to attach to each request.
    * @return Status
    */
-  Status init(const Config* config);
+  Status init(
+      const Config* config,
+      const std::unordered_map<std::string, std::string>& extra_headers);
 
   /**
    * Escapes the given URL.
@@ -173,14 +177,17 @@ class Curl {
   /** String buffer that will be used by libcurl to store error messages. */
   Buffer curl_error_buffer_;
 
+  /** Extra headers to attach to each request. */
+  std::unordered_map<std::string, std::string> extra_headers_;
+
   /**
-   * Sets authorization (token or username+password) on the curl instance using
-   * the given config instance.
+   * Populates the curl slist with authorization (token or username+password),
+   * and any extra headers.
    *
-   * @param headers Headers (may be modified)
+   * @param headers Headers list (will be modified)
    * @return Status
    */
-  Status set_auth(struct curl_slist** headers) const;
+  Status set_headers(struct curl_slist** headers) const;
 
   /**
    * Sets the appropriate Content-Type header for the given serialization type.

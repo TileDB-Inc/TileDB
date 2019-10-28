@@ -159,13 +159,16 @@ Curl::Curl()
     , curl_(nullptr, curl_easy_cleanup) {
 }
 
-Status Curl::init(const Config* config) {
+Status Curl::init(
+    const Config* config,
+    const std::unordered_map<std::string, std::string>& extra_headers) {
   if (config == nullptr)
     return LOG_STATUS(
         Status::RestError("Error initializing libcurl; config is null."));
 
   config_ = config;
   curl_.reset(curl_easy_init());
+  extra_headers_ = extra_headers;
 
   // See https://curl.haxx.se/libcurl/c/threadsafe.html
   CURLcode rc = curl_easy_setopt(curl_.get(), CURLOPT_NOSIGNAL, 1);
@@ -221,7 +224,7 @@ std::string Curl::url_escape(const std::string& url) const {
   return escaped;
 }
 
-Status Curl::set_auth(struct curl_slist** headers) const {
+Status Curl::set_headers(struct curl_slist** headers) const {
   CURL* curl = curl_.get();
   if (curl == nullptr)
     return LOG_STATUS(
@@ -252,6 +255,17 @@ Status Curl::set_auth(struct curl_slist** headers) const {
     std::string basic_auth = username + std::string(":") + password;
     curl_easy_setopt(curl, CURLOPT_HTTPAUTH, CURLAUTH_BASIC);
     curl_easy_setopt(curl, CURLOPT_USERPWD, basic_auth.c_str());
+  }
+
+  // Add any extra headers.
+  for (const auto& it : extra_headers_) {
+    std::string hdr = it.first + ": " + it.second;
+    *headers = curl_slist_append(*headers, hdr.c_str());
+    if (*headers == nullptr) {
+      curl_slist_free_all(*headers);
+      return LOG_STATUS(Status::RestError(
+          "Cannot set extra headers; curl_slist_append returned null."));
+    }
   }
 
   return Status::Ok();
@@ -463,7 +477,7 @@ Status Curl::post_data_common(
 
   // Set auth and content-type for request
   *headers = nullptr;
-  RETURN_NOT_OK_ELSE(set_auth(headers), curl_slist_free_all(*headers));
+  RETURN_NOT_OK_ELSE(set_headers(headers), curl_slist_free_all(*headers));
   RETURN_NOT_OK_ELSE(
       set_content_type(serialization_type, headers),
       curl_slist_free_all(*headers));
@@ -494,7 +508,7 @@ Status Curl::get_data(
 
   // Set auth and content-type for request
   struct curl_slist* headers = nullptr;
-  RETURN_NOT_OK_ELSE(set_auth(&headers), curl_slist_free_all(headers));
+  RETURN_NOT_OK_ELSE(set_headers(&headers), curl_slist_free_all(headers));
   RETURN_NOT_OK_ELSE(
       set_content_type(serialization_type, &headers),
       curl_slist_free_all(headers));
@@ -528,7 +542,7 @@ Status Curl::delete_data(
 
   // Set auth and content-type for request
   struct curl_slist* headers = nullptr;
-  RETURN_NOT_OK_ELSE(set_auth(&headers), curl_slist_free_all(headers));
+  RETURN_NOT_OK_ELSE(set_headers(&headers), curl_slist_free_all(headers));
   RETURN_NOT_OK_ELSE(
       set_content_type(serialization_type, &headers),
       curl_slist_free_all(headers));

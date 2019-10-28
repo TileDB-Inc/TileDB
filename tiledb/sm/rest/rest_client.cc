@@ -84,13 +84,19 @@ Status RestClient::init(const Config* config) {
   return Status::Ok();
 }
 
+Status RestClient::set_header(
+    const std::string& name, const std::string& value) {
+  extra_headers_[name] = value;
+  return Status::Ok();
+}
+
 Status RestClient::get_array_schema_from_rest(
     const URI& uri, ArraySchema** array_schema) {
   STATS_FUNC_IN(rest_array_get_schema);
 
   // Init curl and form the URL
   Curl curlc;
-  RETURN_NOT_OK(curlc.init(config_));
+  RETURN_NOT_OK(curlc.init(config_, extra_headers_));
   std::string array_ns, array_uri;
   RETURN_NOT_OK(uri.get_rest_components(&array_ns, &array_uri));
   std::string url = rest_server_ + "/v1/arrays/" + array_ns + "/" +
@@ -122,7 +128,7 @@ Status RestClient::post_array_schema_to_rest(
 
   // Init curl and form the URL
   Curl curlc;
-  RETURN_NOT_OK(curlc.init(config_));
+  RETURN_NOT_OK(curlc.init(config_, extra_headers_));
   std::string array_ns, array_uri;
   RETURN_NOT_OK(uri.get_rest_components(&array_ns, &array_uri));
   std::string url = rest_server_ + "/v1/arrays/" + array_ns + "/" +
@@ -137,7 +143,7 @@ Status RestClient::post_array_schema_to_rest(
 Status RestClient::deregister_array_from_rest(const URI& uri) {
   // Init curl and form the URL
   Curl curlc;
-  RETURN_NOT_OK(curlc.init(config_));
+  RETURN_NOT_OK(curlc.init(config_, extra_headers_));
   std::string array_ns, array_uri;
   RETURN_NOT_OK(uri.get_rest_components(&array_ns, &array_uri));
   std::string url = rest_server_ + "/v1/arrays/" + array_ns + "/" +
@@ -161,7 +167,7 @@ Status RestClient::get_array_non_empty_domain(
 
   // Init curl and form the URL
   Curl curlc;
-  RETURN_NOT_OK(curlc.init(config_));
+  RETURN_NOT_OK(curlc.init(config_, extra_headers_));
   std::string array_ns, array_uri;
   RETURN_NOT_OK(array->array_uri().get_rest_components(&array_ns, &array_uri));
   std::string url = rest_server_ + "/v1/arrays/" + array_ns + "/" +
@@ -195,7 +201,7 @@ Status RestClient::get_array_max_buffer_sizes(
 
   // Init curl and form the URL
   Curl curlc;
-  RETURN_NOT_OK(curlc.init(config_));
+  RETURN_NOT_OK(curlc.init(config_, extra_headers_));
   std::string array_ns, array_uri;
   RETURN_NOT_OK(uri.get_rest_components(&array_ns, &array_uri));
   std::string url = rest_server_ + "/v1/arrays/" + array_ns + "/" +
@@ -255,7 +261,7 @@ Status RestClient::post_query_submit(
 
   // Init curl and form the URL
   Curl curlc;
-  RETURN_NOT_OK(curlc.init(config_));
+  RETURN_NOT_OK(curlc.init(config_, extra_headers_));
   std::string array_ns, array_uri;
   RETURN_NOT_OK(uri.get_rest_components(&array_ns, &array_uri));
   std::string url = rest_server_ + "/v2/arrays/" + array_ns + "/" +
@@ -452,7 +458,7 @@ Status RestClient::finalize_query_to_rest(const URI& uri, Query* query) {
 
   // Init curl and form the URL
   Curl curlc;
-  RETURN_NOT_OK(curlc.init(config_));
+  RETURN_NOT_OK(curlc.init(config_, extra_headers_));
   std::string array_ns, array_uri;
   RETURN_NOT_OK(uri.get_rest_components(&array_ns, &array_uri));
   std::string url = rest_server_ + "/v1/arrays/" + array_ns + "/" +
@@ -603,6 +609,11 @@ RestClient::RestClient() {
 }
 
 Status RestClient::init(const Config*) {
+  return LOG_STATUS(
+      Status::RestError("Cannot use rest client; serialization not enabled."));
+}
+
+Status RestClient::set_header(const std::string&, const std::string&) {
   return LOG_STATUS(
       Status::RestError("Cannot use rest client; serialization not enabled."));
 }
