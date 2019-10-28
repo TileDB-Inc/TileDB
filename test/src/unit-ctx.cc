@@ -45,20 +45,25 @@ TEST_CASE("C API: Test context tags", "[capi][ctx-tags]") {
   tiledb::sm::StorageManager* sm = ctx->ctx_->storage_manager();
 
   // Check defaults
-  REQUIRE(sm->tags().size() == 1);
-  REQUIRE(sm->tags().at("tiledb-api-language") == "c");
+  REQUIRE(sm->tags().size() == 2);
+  REQUIRE(sm->tags().at("x-tiledb-api-language") == "c");
+  REQUIRE(
+      sm->tags().at("x-tiledb-version") ==
+      (std::to_string(tiledb::sm::constants::library_version[0]) + "." +
+       std::to_string(tiledb::sm::constants::library_version[1]) + "." +
+       std::to_string(tiledb::sm::constants::library_version[2])));
 
   // Check setter
   REQUIRE(tiledb_ctx_set_tag(ctx, "tag1", "value1") == TILEDB_OK);
-  REQUIRE(sm->tags().size() == 2);
+  REQUIRE(sm->tags().size() == 3);
   REQUIRE(sm->tags().at("tag1") == "value1");
 
   REQUIRE(tiledb_ctx_set_tag(ctx, "tag2", "value2") == TILEDB_OK);
-  REQUIRE(sm->tags().size() == 3);
+  REQUIRE(sm->tags().size() == 4);
   REQUIRE(sm->tags().at("tag2") == "value2");
 
   REQUIRE(tiledb_ctx_set_tag(ctx, "tag1", "value3") == TILEDB_OK);
-  REQUIRE(sm->tags().size() == 3);
+  REQUIRE(sm->tags().size() == 4);
   REQUIRE(sm->tags().at("tag1") == "value3");
 
   tiledb_ctx_free(&ctx);
@@ -69,19 +74,24 @@ TEST_CASE("C++ API: Test context tags", "[cppapi][ctx-tags]") {
   tiledb::sm::StorageManager* sm = ctx.ptr().get()->ctx_->storage_manager();
 
   // Check defaults
-  REQUIRE(sm->tags().size() == 1);
-  REQUIRE(sm->tags().at("tiledb-api-language") == "c++");
+  REQUIRE(sm->tags().size() == 2);
+  REQUIRE(sm->tags().at("x-tiledb-api-language") == "c++");
+  REQUIRE(
+      sm->tags().at("x-tiledb-version") ==
+      (std::to_string(tiledb::sm::constants::library_version[0]) + "." +
+       std::to_string(tiledb::sm::constants::library_version[1]) + "." +
+       std::to_string(tiledb::sm::constants::library_version[2])));
 
   // Check setter
   REQUIRE_NOTHROW(ctx.set_tag("tag1", "value1"));
-  REQUIRE(sm->tags().size() == 2);
+  REQUIRE(sm->tags().size() == 3);
   REQUIRE(sm->tags().at("tag1") == "value1");
 
   REQUIRE_NOTHROW(ctx.set_tag("tag2", "value2"));
-  REQUIRE(sm->tags().size() == 3);
+  REQUIRE(sm->tags().size() == 4);
   REQUIRE(sm->tags().at("tag2") == "value2");
 
   REQUIRE_NOTHROW(ctx.set_tag("tag1", "value3"));
-  REQUIRE(sm->tags().size() == 3);
+  REQUIRE(sm->tags().size() == 4);
   REQUIRE(sm->tags().at("tag1") == "value3");
 }
