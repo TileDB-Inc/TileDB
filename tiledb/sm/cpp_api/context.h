@@ -86,7 +86,7 @@ class Context {
     ctx_ = std::shared_ptr<tiledb_ctx_t>(ctx, Context::free);
     error_handler_ = default_error_handler;
 
-    set_tag("tiledb-api-language", "c++");
+    set_tag("x-tiledb-api-language", "c++");
   }
 
   /**
@@ -100,7 +100,7 @@ class Context {
     ctx_ = std::shared_ptr<tiledb_ctx_t>(ctx, Context::free);
     error_handler_ = default_error_handler;
 
-    set_tag("tiledb-api-language", "c++");
+    set_tag("x-tiledb-api-language", "c++");
   }
 
   /* ********************************* */

@@ -1858,7 +1858,14 @@ Status StorageManager::new_array_metadata_uri(
 }
 
 Status StorageManager::set_default_tags() {
-  return set_tag("tiledb-api-language", "c");
+  const auto version = std::to_string(constants::library_version[0]) + "." +
+                       std::to_string(constants::library_version[1]) + "." +
+                       std::to_string(constants::library_version[2]);
+
+  RETURN_NOT_OK(set_tag("x-tiledb-version", version));
+  RETURN_NOT_OK(set_tag("x-tiledb-api-language", "c"));
+
+  return Status::Ok();
 }
 
 }  // namespace sm
