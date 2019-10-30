@@ -252,7 +252,7 @@ To **configure** TileDB, use the ``bootstrap`` script
 
    $ mkdir build
    $ cd build
-   $ ../bootstap <flags>
+   $ ../bootstrap <flags>
    $ # Or use CMake directly instead of bootstrap:
    $ # cmake <flags> ..
 
