@@ -69,7 +69,6 @@ Status Metadata::deserialize(
     return Status::Ok();
 
   uint32_t key_len;
-  std::string key;
   char del;
   size_t value_len;
   for (const auto& buff : metadata_buffs) {
@@ -77,8 +76,8 @@ Status Metadata::deserialize(
     buff->set_offset(0);
     while (buff->offset() != buff->size()) {
       RETURN_NOT_OK(buff->read(&key_len, sizeof(uint32_t)));
-      key.resize(key_len);
-      RETURN_NOT_OK(buff->read((void*)key.data(), key_len));
+      std::string key((const char*)buff->cur_data(), key_len);
+      buff->advance_offset(key_len);
       RETURN_NOT_OK(buff->read(&del, sizeof(char)));
 
       metadata_map_.erase(key);
@@ -97,8 +96,7 @@ Status Metadata::deserialize(
       RETURN_NOT_OK(buff->read((void*)value_struct.value_.data(), value_len));
 
       // Insert to metadata
-      metadata_map_.emplace(
-          std::make_pair(std::string(key), std::move(value_struct)));
+      metadata_map_.emplace(std::make_pair(key, std::move(value_struct)));
     }
   }
 
