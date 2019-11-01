@@ -74,9 +74,6 @@ const std::string array_schema_filename = "__array_schema.tdb";
 /** The array metadata folder name. */
 const std::string array_metadata_folder_name = "__meta";
 
-/** The key-value schema file name. */
-const std::string kv_schema_filename = "__kv_schema.tdb";
-
 /** The fragment metadata file name. */
 const std::string fragment_metadata_filename = "__fragment_metadata.tdb";
 
@@ -405,9 +402,6 @@ const std::string object_type_group_str = "GROUP";
 /** The string representation for object type array. */
 const std::string object_type_array_str = "ARRAY";
 
-/** The string representation for object type key_value. */
-const std::string object_type_key_value_str = "KEY_VALUE";
-
 /** The string representation for filesystem type hdfs. */
 const std::string filesystem_type_hdfs_str = "HDFS";
 
@@ -434,7 +428,7 @@ const int32_t library_version[3] = {
     TILEDB_VERSION_MAJOR, TILEDB_VERSION_MINOR, TILEDB_VERSION_PATCH};
 
 /** The TileDB serialization format version number. */
-const uint32_t format_version = 3;
+const uint32_t format_version = 4;
 
 /** The maximum size of a tile chunk (unit of compression) in bytes. */
 const uint64_t max_tile_chunk_size = 64 * 1024;
@@ -467,9 +461,6 @@ const std::string key_dim_1 = "__key_dim_1";
  * is represented as a 2-dimensional uint64_t value.
  */
 const std::string key_dim_2 = "__key_dim_2";
-
-/** Maximum number of items to be buffered before a flush. */
-uint64_t kv_max_items = 1000;
 
 /** Maximum number of attempts to wait for an S3 response. */
 const unsigned int s3_max_attempts = 1000;

@@ -52,8 +52,6 @@ inline const std::string& object_type_str(ObjectType object_type) {
       return constants::object_type_group_str;
     case ObjectType::ARRAY:
       return constants::object_type_array_str;
-    case ObjectType::KEY_VALUE:
-      return constants::object_type_key_value_str;
     default:
       return constants::empty_str;
   }
@@ -68,8 +66,6 @@ inline Status object_type_enum(
     *object_type = ObjectType::GROUP;
   else if (object_type_str == constants::object_type_array_str)
     *object_type = ObjectType::ARRAY;
-  else if (object_type_str == constants::object_type_key_value_str)
-    *object_type = ObjectType::KEY_VALUE;
   else
     return Status::Error("Invalid ObjectType " + object_type_str);
 

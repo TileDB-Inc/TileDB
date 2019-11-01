@@ -281,14 +281,11 @@ class StorageManager {
    * Retrieves the encryption type from an array.
    *
    * @param array_uri URI of the array
-   * @param object_type This is either ARRAY or KEY_VALUE.
    * @param encryption_type Set to the encryption type of the array.
    * @return Status
    */
   Status array_get_encryption(
-      const std::string& array_uri,
-      ObjectType object_type,
-      EncryptionType* encryption_type);
+      const std::string& array_uri, EncryptionType* encryption_type);
 
   /**
    * Exclusively locks an array preventing it from being opened in
@@ -442,35 +439,23 @@ class StorageManager {
   Status is_file(const URI& uri, bool* is_file) const;
 
   /**
-   * Checks if the input URI represents a key-value store.
-   *
-   * @param The URI to be checked.
-   * @param is_kv Set to `true` if the URI is a key-value store and `false`
-   *     otherwise.
-   * @return Status
-   */
-  Status is_kv(const URI& uri, bool* is_kv) const;
-
-  /**
    * Loads the schema of an array from persistent storage into memory.
    *
    * @param array_uri The URI path of the array.
-   * @param object_type This is either ARRAY or KEY_VALUE.
    * @param encryption_key The encryption key to use.
    * @param array_schema The array schema to be retrieved.
    * @return Status
    */
   Status load_array_schema(
       const URI& array_uri,
-      ObjectType object_type,
       const EncryptionKey& encryption_key,
       ArraySchema** array_schema);
 
-  /** Removes a TileDB object (group, array, kv). */
+  /** Removes a TileDB object (group, array). */
   Status object_remove(const char* path) const;
 
   /**
-   * Renames a TileDB object (group, array, kv). If
+   * Renames a TileDB object (group, array). If
    * `new_path` exists, `new_path` will be overwritten.
    */
   Status object_move(const char* old_path, const char* new_path) const;
@@ -847,14 +832,12 @@ class StorageManager {
    * Loads the array schema into an open array.
    *
    * @param array_uri The array URI.
-   * @param object_type This is either ARRAY or KEY_VALUE.
    * @param open_array The open array object.
    * @param encryption_key The encryption key to use.
    * @return Status
    */
   Status load_array_schema(
       const URI& array_uri,
-      ObjectType object_type,
       OpenArray* open_array,
       const EncryptionKey& encryption_key);
 

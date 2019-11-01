@@ -68,9 +68,6 @@ extern const std::string array_schema_filename;
 /** The array metadata folder name. */
 extern const std::string array_metadata_folder_name;
 
-/** The key-value schema file name. */
-extern const std::string kv_schema_filename;
-
 /** The default tile capacity. */
 extern const uint64_t capacity;
 
@@ -393,9 +390,6 @@ extern const std::string object_type_group_str;
 /** The string representation for object type array. */
 extern const std::string object_type_array_str;
 
-/** The string representation for object type key_value. */
-extern const std::string object_type_key_value_str;
-
 /** The string representation for filesystem type hdfs. */
 extern const std::string filesystem_type_hdfs_str;
 
@@ -454,9 +448,6 @@ extern const std::string key_dim_1;
  * is represented as a 2-dimensional uint64_t value.
  */
 extern const std::string key_dim_2;
-
-/** Maximum number of items to be buffered before a flush. */
-extern uint64_t kv_max_items;
 
 /** Maximum number of attempts to wait for an S3 response. */
 extern const unsigned int s3_max_attempts;

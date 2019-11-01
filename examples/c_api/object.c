@@ -34,8 +34,7 @@
  * my_group/
  * ├── dense_arrays
  * │   ├── array_A
- * │   ├── array_B
- * │   └── kv
+ * │   └── array_B
  * └── sparse_arrays
  *     ├── array_C
  *     └── array_D
@@ -54,9 +53,6 @@ int print_path(const char* path, tiledb_object_t type, void* data) {
   switch (type) {
     case TILEDB_ARRAY:
       printf("ARRAY");
-      break;
-    case TILEDB_KEY_VALUE:
-      printf("KEY_VALUE");
       break;
     case TILEDB_GROUP:
       printf("GROUP");
@@ -136,30 +132,6 @@ void create_array(const char* array_name, tiledb_array_type_t type) {
   tiledb_ctx_free(&ctx);
 }
 
-void create_kv(const char* kv_name) {
-  (void)kv_name;
-  // Create TileDB context
-  tiledb_ctx_t* ctx;
-  tiledb_ctx_alloc(NULL, &ctx);
-
-  // Create attribute
-  tiledb_attribute_t* a;
-  tiledb_attribute_alloc(ctx, "a", TILEDB_INT32, &a);
-
-  // Create kv schema
-  tiledb_kv_schema_t* kv_schema;
-  tiledb_kv_schema_alloc(ctx, &kv_schema);
-  tiledb_kv_schema_add_attribute(ctx, kv_schema, a);
-
-  // Create kv
-  tiledb_kv_create(ctx, kv_name, kv_schema);
-
-  // Clean up
-  tiledb_attribute_free(&a);
-  tiledb_kv_schema_free(&kv_schema);
-  tiledb_ctx_free(&ctx);
-}
-
 void move_remove_obj() {
   // Create context
   tiledb_ctx_t* ctx;
@@ -189,9 +161,6 @@ void create_hierarchy() {
   create_array("my_group/dense_arrays/array_B", TILEDB_DENSE);
   create_array("my_group/sparse_arrays/array_C", TILEDB_SPARSE);
   create_array("my_group/sparse_arrays/array_D", TILEDB_SPARSE);
-
-  // Create key-value store
-  create_kv("my_group/dense_arrays/kv");
 
   // Clean up
   tiledb_ctx_free(&ctx);

@@ -71,17 +71,15 @@ class ObjectIter {
 
   /** Carries data to be passed to `obj_getter`. */
   struct ObjGetterData {
-    ObjGetterData(std::vector<Object>& objs, bool array, bool group, bool kv)
+    ObjGetterData(std::vector<Object>& objs, bool array, bool group)
         : objs_(objs)
         , array_(array)
-        , group_(group)
-        , kv_(kv) {
+        , group_(group) {
     }
 
     std::reference_wrapper<std::vector<Object>> objs_;
     bool array_;
     bool group_;
-    bool kv_;
   };
 
   /* ********************************* */
@@ -114,7 +112,6 @@ class ObjectIter {
     walk_order_ = TILEDB_PREORDER;
     group_ = true;
     array_ = true;
-    kv_ = true;
   }
 
   /* ********************************* */
@@ -128,12 +125,10 @@ class ObjectIter {
    *
    * @param group If `true`, groups will be considered.
    * @param array If `true`, arrays will be considered.
-   * @param kv If `true`, key-values will be considered.
    */
-  void set_iter_policy(bool group, bool array, bool kv) {
+  void set_iter_policy(bool group, bool array) {
     group_ = group;
     array_ = array;
-    kv_ = kv;
   }
 
   /**
@@ -209,7 +204,7 @@ class ObjectIter {
   iterator begin() {
     std::vector<Object> objs;
     auto& ctx = ctx_.get();
-    ObjGetterData data(objs, array_, group_, kv_);
+    ObjGetterData data(objs, array_, group_);
     if (recursive_) {
       ctx.handle_error(tiledb_object_walk(
           ctx.ptr().get(), root_.c_str(), walk_order_, obj_getter, &data));
@@ -241,8 +236,7 @@ class ObjectIter {
   static int obj_getter(const char* path, tiledb_object_t type, void* data) {
     auto data_struct = static_cast<ObjGetterData*>(data);
     if ((type == TILEDB_ARRAY && data_struct->array_) ||
-        (type == TILEDB_GROUP && data_struct->group_) ||
-        (type == TILEDB_KEY_VALUE && data_struct->kv_)) {
+        (type == TILEDB_GROUP && data_struct->group_)) {
       Object obj(type, path);
       auto& objs = data_struct->objs_.get();
       objs.emplace_back(obj);
@@ -263,9 +257,6 @@ class ObjectIter {
 
   /** If `true`, groups will be considered in the walk. */
   bool group_;
-
-  /** If `true`, key-values will be considered in the walk. */
-  bool kv_;
 
   /**
    * True if the iteration will recursively walk through the whole

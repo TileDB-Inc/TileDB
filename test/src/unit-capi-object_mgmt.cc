@@ -329,8 +329,6 @@ void ObjectMgmtFx::check_ls_1000(const std::string& path) {
  *    |       |     |_ __array_schema.tdb
  *    |       |_ array_B
  *    |       |     |_ __array_schema.tdb
- *    |       |_ kv
- *    |             |_ __kv_schema.tdb
  *    |_ sparse_arrays
  *            |_ __tiledb_group.tdb
  *            |_ array_C
@@ -375,11 +373,6 @@ void ObjectMgmtFx::create_hierarchy(const std::string& path) {
   rc = tiledb_vfs_touch(
       ctx_, vfs_, (path + "sparse_arrays/array_D/__array_schema.tdb").c_str());
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_vfs_create_dir(ctx_, vfs_, (path + "dense_arrays/kv").c_str());
-  REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_vfs_touch(
-      ctx_, vfs_, (path + "dense_arrays/kv/__kv_schema.tdb").c_str());
-  REQUIRE(rc == TILEDB_OK);
 }
 
 std::string ObjectMgmtFx::get_golden_walk(const std::string& path) {
@@ -389,7 +382,6 @@ std::string ObjectMgmtFx::get_golden_walk(const std::string& path) {
   golden += path + "dense_arrays GROUP\n";
   golden += path + "dense_arrays/array_A ARRAY\n";
   golden += path + "dense_arrays/array_B ARRAY\n";
-  golden += path + "dense_arrays/kv KEY_VALUE\n";
   golden += path + "sparse_arrays GROUP\n";
   golden += path + "sparse_arrays/array_C ARRAY\n";
   golden += path + "sparse_arrays/array_D ARRAY\n";
@@ -397,7 +389,6 @@ std::string ObjectMgmtFx::get_golden_walk(const std::string& path) {
   // Postorder traversal
   golden += path + "dense_arrays/array_A ARRAY\n";
   golden += path + "dense_arrays/array_B ARRAY\n";
-  golden += path + "dense_arrays/kv KEY_VALUE\n";
   golden += path + "dense_arrays GROUP\n";
   golden += path + "sparse_arrays/array_C ARRAY\n";
   golden += path + "sparse_arrays/array_D ARRAY\n";
@@ -431,9 +422,6 @@ int ObjectMgmtFx::write_path(
       break;
     case TILEDB_GROUP:
       (*str) += "GROUP";
-      break;
-    case TILEDB_KEY_VALUE:
-      (*str) += "KEY_VALUE";
       break;
     default:
       (*str) += "INVALID";

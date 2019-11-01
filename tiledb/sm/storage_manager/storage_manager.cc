@@ -316,7 +316,7 @@ Status StorageManager::array_open_for_writes(
   // Check if array exists
   ObjectType obj_type;
   RETURN_NOT_OK(this->object_type(array_uri, &obj_type));
-  if (obj_type != ObjectType::ARRAY && obj_type != ObjectType::KEY_VALUE) {
+  if (obj_type != ObjectType::ARRAY) {
     return LOG_STATUS(
         Status::StorageManagerError("Cannot open array; Array does not exist"));
   }
@@ -348,8 +348,7 @@ Status StorageManager::array_open_for_writes(
 
   // Load array schema if not fetched already
   if (open_array->array_schema() == nullptr) {
-    auto st =
-        load_array_schema(array_uri, obj_type, open_array, encryption_key);
+    auto st = load_array_schema(array_uri, open_array, encryption_key);
     if (!st.ok()) {
       open_array->mtx_unlock();
       array_close_for_writes(array_uri, encryption_key, nullptr);
@@ -475,7 +474,7 @@ Status StorageManager::array_consolidate(
   ObjectType obj_type;
   RETURN_NOT_OK(object_type(array_uri, &obj_type));
 
-  if (obj_type != ObjectType::ARRAY && obj_type != ObjectType::KEY_VALUE) {
+  if (obj_type != ObjectType::ARRAY) {
     return LOG_STATUS(Status::StorageManagerError(
         "Cannot consolidate array; Array does not exist"));
   }
@@ -508,7 +507,7 @@ Status StorageManager::array_metadata_consolidate(
   ObjectType obj_type;
   RETURN_NOT_OK(object_type(array_uri, &obj_type));
 
-  if (obj_type != ObjectType::ARRAY && obj_type != ObjectType::KEY_VALUE) {
+  if (obj_type != ObjectType::ARRAY) {
     return LOG_STATUS(Status::StorageManagerError(
         "Cannot consolidate array metadata; Array does not exist"));
   }
@@ -664,20 +663,14 @@ Status StorageManager::array_get_non_empty_domain(
 }
 
 Status StorageManager::array_get_encryption(
-    const std::string& array_uri,
-    ObjectType object_type,
-    EncryptionType* encryption_type) {
+    const std::string& array_uri, EncryptionType* encryption_type) {
   URI uri(array_uri);
 
   if (uri.is_invalid())
     return LOG_STATUS(Status::StorageManagerError(
         "Cannot get array encryption; Invalid array URI"));
 
-  assert(
-      object_type == ObjectType::ARRAY || object_type == ObjectType::KEY_VALUE);
-  URI schema_uri = (object_type == ObjectType::ARRAY) ?
-                       uri.join_path(constants::array_schema_filename) :
-                       uri.join_path(constants::kv_schema_filename);
+  URI schema_uri = uri.join_path(constants::array_schema_filename);
 
   // Read tile header.
   TileIO::GenericTileHeader header;
@@ -1088,26 +1081,15 @@ Status StorageManager::is_group(const URI& uri, bool* is_group) const {
   return Status::Ok();
 }
 
-Status StorageManager::is_kv(const URI& uri, bool* is_kv) const {
-  RETURN_NOT_OK(
-      vfs_->is_file(uri.join_path(constants::kv_schema_filename), is_kv));
-  return Status::Ok();
-}
-
 Status StorageManager::load_array_schema(
     const URI& array_uri,
-    ObjectType object_type,
     const EncryptionKey& encryption_key,
     ArraySchema** array_schema) {
   if (array_uri.is_invalid())
     return LOG_STATUS(Status::StorageManagerError(
         "Cannot load array schema; Invalid array URI"));
 
-  assert(
-      object_type == ObjectType::ARRAY || object_type == ObjectType::KEY_VALUE);
-  URI schema_uri = (object_type == ObjectType::ARRAY) ?
-                       array_uri.join_path(constants::array_schema_filename) :
-                       array_uri.join_path(constants::kv_schema_filename);
+  URI schema_uri = array_uri.join_path(constants::array_schema_filename);
 
   auto tile_io = new TileIO(this, schema_uri);
   auto tile = (Tile*)nullptr;
@@ -1119,11 +1101,10 @@ Status StorageManager::load_array_schema(
   delete tile_io;
 
   // Deserialize
-  bool is_kv = (object_type == ObjectType::KEY_VALUE);
   auto cbuff = new ConstBuffer(buff);
   *array_schema = new ArraySchema();
   (*array_schema)->set_array_uri(array_uri);
-  Status st = (*array_schema)->deserialize(cbuff, is_kv);
+  Status st = (*array_schema)->deserialize(cbuff);
   delete cbuff;
   if (!st.ok()) {
     delete *array_schema;
@@ -1161,10 +1142,6 @@ Status StorageManager::object_type(const URI& uri, ObjectType* type) const {
     auto uri_str = child_uri.to_string();
     if (utils::parse::ends_with(uri_str, constants::group_filename)) {
       *type = ObjectType::GROUP;
-      return Status::Ok();
-    } else if (utils::parse::ends_with(
-                   uri_str, constants::kv_schema_filename)) {
-      *type = ObjectType::KEY_VALUE;
       return Status::Ok();
     } else if (utils::parse::ends_with(
                    uri_str, constants::array_schema_filename)) {
@@ -1416,9 +1393,8 @@ Status StorageManager::set_tag(
 Status StorageManager::store_array_schema(
     ArraySchema* array_schema, const EncryptionKey& encryption_key) {
   auto& array_uri = array_schema->array_uri();
-  URI array_schema_uri = array_uri.join_path(constants::array_schema_filename);
-  URI kv_schema_uri = array_uri.join_path(constants::kv_schema_filename);
-  URI schema_uri = (array_schema->is_kv()) ? kv_schema_uri : array_schema_uri;
+  URI schema_uri = array_uri.join_path(constants::array_schema_filename);
+  ;
 
   // Serialize
   auto buff = new Buffer();
@@ -1539,8 +1515,7 @@ Status StorageManager::write_to_cache(
   // Do not write metadata to cache
   std::string filename = uri.last_path_part();
   if (filename == constants::fragment_metadata_filename ||
-      filename == constants::array_schema_filename ||
-      filename == constants::kv_schema_filename) {
+      filename == constants::array_schema_filename) {
     return Status::Ok();
   }
 
@@ -1610,7 +1585,7 @@ Status StorageManager::array_open_without_fragments(
   // Check if array exists
   ObjectType obj_type;
   RETURN_NOT_OK(this->object_type(array_uri, &obj_type));
-  if (obj_type != ObjectType::ARRAY && obj_type != ObjectType::KEY_VALUE) {
+  if (obj_type != ObjectType::ARRAY) {
     return LOG_STATUS(
         Status::StorageManagerError("Cannot open array; Array does not exist"));
   }
@@ -1647,8 +1622,7 @@ Status StorageManager::array_open_without_fragments(
 
   // Load array schema if not fetched already
   if ((*open_array)->array_schema() == nullptr) {
-    auto st =
-        load_array_schema(array_uri, obj_type, *open_array, encryption_key);
+    auto st = load_array_schema(array_uri, *open_array, encryption_key);
     if (!st.ok()) {
       (*open_array)->mtx_unlock();
       array_close_for_reads(array_uri);
@@ -1707,7 +1681,6 @@ Status StorageManager::get_array_metadata_uris(
 
 Status StorageManager::load_array_schema(
     const URI& array_uri,
-    ObjectType object_type,
     OpenArray* open_array,
     const EncryptionKey& encryption_key) {
   // Do nothing if the array schema is already loaded
@@ -1715,8 +1688,7 @@ Status StorageManager::load_array_schema(
     return Status::Ok();
 
   auto array_schema = (ArraySchema*)nullptr;
-  RETURN_NOT_OK(
-      load_array_schema(array_uri, object_type, encryption_key, &array_schema));
+  RETURN_NOT_OK(load_array_schema(array_uri, encryption_key, &array_schema));
   open_array->set_array_schema(array_schema);
 
   return Status::Ok();

@@ -289,7 +289,7 @@ SparseArrayFx::~SparseArrayFx() {
 bool SparseArrayFx::is_array(const std::string& array_name) {
   tiledb_object_t type = TILEDB_INVALID;
   REQUIRE(tiledb_object_type(ctx_, array_name.c_str(), &type) == TILEDB_OK);
-  return type == TILEDB_ARRAY || type == TILEDB_KEY_VALUE;
+  return type == TILEDB_ARRAY;
 }
 
 void SparseArrayFx::remove_array(const std::string& array_name) {

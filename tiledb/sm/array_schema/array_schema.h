@@ -204,9 +204,6 @@ class ArraySchema {
    */
   Status has_attribute(const std::string& name, bool* has_attr) const;
 
-  /** Checks if the array is defined as a key-value store. */
-  bool is_kv() const;
-
   /**
    * Serializes the array schema object into a buffer.
    *
@@ -244,13 +241,9 @@ class ArraySchema {
    * It assigns values to the members of the object from the input buffer.
    *
    * @param buff The binary representation of the object to read from.
-   * @param is_kv `true` if the array schema to be deserialized is a key-value
-   *     store. Note that a key-value store is indicated by a special file
-   *     stored in the array directory. The storage manager can know this
-   *     and, as such, pass `is_kv` to `deserialize` during the call.
    * @return Status
    */
-  Status deserialize(ConstBuffer* buff, bool is_kv);
+  Status deserialize(ConstBuffer* buff);
 
   /** Returns the array domain. */
   const Domain* domain() const;
@@ -262,9 +255,6 @@ class ArraySchema {
    * @return Status
    */
   Status init();
-
-  /** Defines the array as a key-value store. */
-  Status set_as_kv();
 
   /** Sets an array URI. */
   void set_array_uri(const URI& array_uri);
@@ -336,9 +326,6 @@ class ArraySchema {
   /** The array domain. */
   Domain* domain_;
 
-  /** `true` if the array is a key-value store. */
-  bool is_kv_;
-
   /**
    * The tile order. It can be one of the following:
    *    - TILEDB_ROW_MAJOR
@@ -370,12 +357,6 @@ class ArraySchema {
 
   /** Computes and returns the size of an attribute (or coordinates). */
   uint64_t compute_cell_size(const std::string& attribute) const;
-
-  /** Sets the special key-value attributes. */
-  Status set_kv_attributes();
-
-  /** Sets the special key-value domain. */
-  Status set_kv_domain();
 };
 
 }  // namespace sm
