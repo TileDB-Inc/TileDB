@@ -27,9 +27,6 @@
  *
  * @section DESCRIPTION
  *
- * This is a part of the TileDB tutorial:
- *   https://docs.tiledb.io/en/latest/tutorials/config.html
- *
  * This program shows how to set/get the TileDB configuration parameters.
  */
 

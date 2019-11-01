@@ -27,12 +27,8 @@
  *
  * @section DESCRIPTION
  *
- * This is a part of the TileDB filters tutorial:
- *   https://docs.tiledb.io/en/latest/tutorials/filters.html
- *
  * When run, this program will create a 2D sparse array with several filters,
  * write some data to it, and read a slice of the data back.
- *
  */
 
 #include <iostream>

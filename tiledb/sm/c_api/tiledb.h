@@ -1728,7 +1728,7 @@ TILEDB_EXPORT int32_t tiledb_filter_list_set_max_chunk_size(
  *
  * @code{.c}
  * uint32_t num_filters;
- * tiledb_filter_list_get_nfilters(ctx, attr, &num_filters);
+ * tiledb_filter_list_get_nfilters(ctx, filter_list, &num_filters);
  * @endcode
  *
  * @param ctx The TileDB context
@@ -2263,7 +2263,7 @@ TILEDB_EXPORT int32_t tiledb_dimension_get_type(
  * **Example:**
  *
  * @code{.c}
- * uint64_t domain[2];
+ * const uint64_t* domain;
  * tiledb_dimension_get_domain(ctx, dim, &domain);
  * @endcode
  *
@@ -2275,7 +2275,7 @@ TILEDB_EXPORT int32_t tiledb_dimension_get_type(
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
 TILEDB_EXPORT int32_t tiledb_dimension_get_domain(
-    tiledb_ctx_t* ctx, const tiledb_dimension_t* dim, void** domain);
+    tiledb_ctx_t* ctx, const tiledb_dimension_t* dim, const void** domain);
 
 /**
  * Retrieves the tile extent of the dimension.
@@ -2283,7 +2283,7 @@ TILEDB_EXPORT int32_t tiledb_dimension_get_domain(
  * **Example:**
  *
  * @code{.c}
- * void* tile_extent;
+ * const uint64_t* tile_extent;
  * tiledb_dimension_get_tile_extent(ctx, dim, &tile_extent);
  * @endcode
  *
@@ -2293,7 +2293,7 @@ TILEDB_EXPORT int32_t tiledb_dimension_get_domain(
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
 TILEDB_EXPORT int32_t tiledb_dimension_get_tile_extent(
-    tiledb_ctx_t* ctx, const tiledb_dimension_t* dim, void** tile_extent);
+    tiledb_ctx_t* ctx, const tiledb_dimension_t* dim, const void** tile_extent);
 
 /**
  * Dumps the contents of a dimension in ASCII form to some output (e.g.,
@@ -2524,7 +2524,7 @@ TILEDB_EXPORT int32_t tiledb_array_schema_check(
  *
  * @code{.c}
  * tiledb_array_schema_t* array_schema;
- * tiledb_array_schema_load(ctx, "s3://tiledb_bucket/my_array", array_schema);
+ * tiledb_array_schema_load(ctx, "s3://tiledb_bucket/my_array", &array_schema);
  * // Make sure to free the array schema in the end
  * @endcode
  *
@@ -2773,8 +2773,8 @@ TILEDB_EXPORT int32_t tiledb_array_schema_get_attribute_from_index(
  *
  * @code{.c}
  * tiledb_attribute_t* attr;
- * tiledb_array_schema_get_attribute_from_index(ctx, array_schema, "attr_0",
- * &attr);
+ * tiledb_array_schema_get_attribute_from_name(
+ *     ctx, array_schema, "attr_0", &attr);
  * // Make sure to delete the retrieved attribute in the end.
  * @endcode
  *
@@ -3116,7 +3116,7 @@ TILEDB_EXPORT void tiledb_query_free(tiledb_query_t** query);
  * **Example:**
  *
  * @code{.c}
- * tiledb_query_submit(ctx, &query);
+ * tiledb_query_submit(ctx, query);
  * @endcode
  *
  * @param ctx The TileDB context.
@@ -3149,7 +3149,7 @@ tiledb_query_submit(tiledb_ctx_t* ctx, tiledb_query_t* query);
  * Submit without a callback.
  *
  * @code{.c}
- * tiledb_query_submit_async(ctx, &query, NULL, NULL);
+ * tiledb_query_submit_async(ctx, query, NULL, NULL);
  * @endcode
  *
  * Submit with a callback function `print` that takes as input message
@@ -3450,7 +3450,7 @@ TILEDB_EXPORT int32_t tiledb_query_get_fragment_uri(
  * @code{.c}
  * uint64_t t1, t2;
  * tiledb_query_get_fragment_timestamp_range(
- *     ctx, query, 0, &t1, t2);
+ *     ctx, query, 0, &t1, &t2);
  * @endcode
  *
  * @param ctx The TileDB context
