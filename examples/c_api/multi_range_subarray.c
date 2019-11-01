@@ -144,7 +144,7 @@ void read_array() {
   int col_0_start = 1, col_0_end = 4;
   tiledb_query_add_range(ctx, query, 0, &row_0_start, &row_0_end, NULL);
   tiledb_query_add_range(ctx, query, 0, &row_1_start, &row_1_end, NULL);
-  tiledb_query_add_range(ctx, query, 0, &col_0_start, &col_0_end, NULL);
+  tiledb_query_add_range(ctx, query, 1, &col_0_start, &col_0_end, NULL);
 
   // Submit query
   tiledb_query_submit(ctx, query);

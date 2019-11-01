@@ -27,12 +27,8 @@
  *
  * @section DESCRIPTION
  *
- * This is a part of the TileDB tutorial:
- *   https://docs.tiledb.io/en/latest/performance/using-tiledb-statistics.html
- *
  * When run, this program will create a 0.5GB dense array, and enable the
  * TileDB statistics surrounding reads from the array.
- *
  */
 
 #include <iostream>
