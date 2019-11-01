@@ -515,7 +515,7 @@ class Query {
    *
    * @code{.cpp}
    * std::pair<uint64_t, uint64_t> est_size =
-   *     query.est_result_size("attr1");
+   *     query.est_result_size_var("attr1");
    * @endcode
    *
    * @param attr_name The attribute name.

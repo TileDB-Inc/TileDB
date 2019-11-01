@@ -27,12 +27,8 @@
  *
  * @section DESCRIPTION
  *
- * This is a part of the TileDB encryption tutorial:
- *   https://docs.tiledb.io/en/latest/tutorials/encryption.html
- *
  * When run, this program will create an encrypted 2D dense array, write some
  * data to it, and read a slice of the data back.
- *
  */
 
 #include <cstring>

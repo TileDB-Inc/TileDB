@@ -27,12 +27,8 @@
  *
  * @section DESCRIPTION
  *
- * This is a part of the TileDB tutorial:
- *   https://docs.tiledb.io/en/latest/tutorials/writing-sparse.html
- *
  * When run, this program will create a simple 2D sparse array, write some data
  * to it twice, and read all the data back.
- *
  */
 
 #include <iostream>

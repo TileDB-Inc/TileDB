@@ -27,13 +27,9 @@
  *
  * @section DESCRIPTION
  *
- * This is a part of the TileDB "Multi-attribute Arrays" tutorial:
- *   https://docs.tiledb.io/en/latest/tutorials/multi-attribute-arrays.html
- *
  * When run, this program will create a simple 2D dense array with two
  * attributes, write some data to it, and read a slice of the data back on
  * (i) both attributes, and (ii) subselecting on only one of the attributes.
- *
  */
 
 #include <iostream>

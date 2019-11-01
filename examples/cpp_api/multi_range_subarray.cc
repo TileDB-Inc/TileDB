@@ -27,12 +27,8 @@
  *
  * @section DESCRIPTION
  *
- * This is a part of the TileDB quickstart tutorial:
- *   https://docs.tiledb.io/en/latest/tutorials/reading.html#multi_range_slicing
- *
  * When run, this program will create a simple 2D dense array, write some data
  * to it, and read a multi-range slice of the data back.
- *
  */
 
 #include <iostream>

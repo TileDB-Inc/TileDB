@@ -27,13 +27,9 @@
  *
  * @section DESCRIPTION
  *
- * This is a part of the TileDB "Multi-attribute Arrays" tutorial:
- *   https://docs.tiledb.io/en/latest/tutorials/variable-length-attributes.html
- *
  * When run, this program will create a simple 2D dense array with two
  * variable-length attributes, write some data to it, and read a slice of the
  * data back on both attributes.
- *
  */
 
 #include <iostream>

@@ -27,9 +27,6 @@
  *
  * @section DESCRIPTION
  *
- * This is a part of the TileDB "Multi-attribute Arrays" tutorial:
- *   https://docs.tiledb.io/en/latest/tutorials/reading.html
- *
  * This example demonstrates the concept of incomplete read queries
  * for a sparse array with two attributes.
  */

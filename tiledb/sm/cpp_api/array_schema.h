@@ -119,7 +119,7 @@ class ArraySchema : public Schema {
    * **Example:**
    * @code{.cpp}
    * tiledb::Context ctx;
-   * tiledb::ArraySchema schema(ctx.ptr().get(), "s3://bucket-name/array-name");
+   * tiledb::ArraySchema schema(ctx, "s3://bucket-name/array-name");
    * @endcode
    *
    * @param ctx TileDB context
@@ -137,7 +137,7 @@ class ArraySchema : public Schema {
    * // Load AES-256 key from disk, environment variable, etc.
    * uint8_t key[32] = ...;
    * tiledb::Context ctx;
-   * tiledb::ArraySchema schema(ctx.ptr().get(), "s3://bucket-name/array-name",
+   * tiledb::ArraySchema schema(ctx, "s3://bucket-name/array-name",
    *    TILEDB_AES_256_GCM, key, sizeof(key));
    * @endcode
    *
