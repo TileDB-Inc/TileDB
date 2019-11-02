@@ -1586,7 +1586,7 @@ Status Writer::new_fragment_name(
   RETURN_NOT_OK(uuid::generate_uuid(&uuid, false));
   std::stringstream ss;
 
-  if (array_schema_->version() <= 2)
+  if (constants::format_version <= 2)
     ss << "/__" << uuid << "_" << *timestamp;
   else  // version >= 3
     ss << "/__" << *timestamp << "_" << *timestamp << "_" << uuid;

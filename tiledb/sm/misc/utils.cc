@@ -232,13 +232,14 @@ Status convert(const std::string& str, SerializationType* value) {
 std::pair<uint64_t, uint64_t> get_timestamp_range(
     uint32_t version, const std::string& fragment_name) {
   std::pair<uint64_t, uint64_t> ret = {0, 0};
-  if (version <= 2) {
+  if (version == 1) {  // This is equivalent to format version <=2
     assert(fragment_name.find_last_of('_') != std::string::npos);
     auto t_str = fragment_name.substr(fragment_name.find_last_of('_') + 1);
     sscanf(
         t_str.c_str(),
         (std::string("%") + std::string(PRId64)).c_str(),
         (long long int*)&ret.first);
+    ret.second = ret.first;
   } else {
     assert(fragment_name.find_last_of('_') != std::string::npos);
     sscanf(
@@ -250,6 +251,16 @@ std::pair<uint64_t, uint64_t> get_timestamp_range(
   }
 
   return ret;
+}
+
+Status get_fragment_name_version(
+    const std::string& fragment_name, uint32_t* version) {
+  auto t_str = fragment_name.substr(fragment_name.find_last_of('_') + 1);
+
+  // The newest version has the 32-byte long UUID at the end
+  *version = (t_str.size() == 32) ? 2 : 1;
+
+  return Status::Ok();
 }
 
 bool is_int(const std::string& str) {

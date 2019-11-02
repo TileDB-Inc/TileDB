@@ -104,6 +104,13 @@ Status convert(const std::string& str, SerializationType* value);
 std::pair<uint64_t, uint64_t> get_timestamp_range(
     uint32_t version, const std::string& fragment_name);
 
+/**
+ * Retrieves the fragment name version. Version 1 corresponds to format
+ * version <=2, and 2 to format version > 2.
+ */
+Status get_fragment_name_version(
+    const std::string& fragment_name, uint32_t* version);
+
 /** Returns `true` if the input string is a (potentially signed) integer. */
 bool is_int(const std::string& str);
 

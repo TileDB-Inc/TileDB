@@ -139,7 +139,7 @@ Status Array::open(
   if (query_type != QueryType::READ)
     return LOG_STATUS(
         Status::ArrayError("Cannot open array at timestamp; The array can "
-                           "opened at a timestamp only in read mode"));
+                           "be opened at a timestamp only in read mode"));
 
   if (remote_ && encryption_type != EncryptionType::NO_ENCRYPTION)
     return LOG_STATUS(Status::ArrayError(
