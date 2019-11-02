@@ -191,14 +191,6 @@ TEST_CASE_METHOD(
   rc = tiledb_array_put_metadata(ctx_, array, NULL, TILEDB_INT32, 1, &v);
   CHECK(rc == TILEDB_ERR);
 
-  // Write null value
-  rc = tiledb_array_put_metadata(ctx_, array, "key", TILEDB_INT32, 1, NULL);
-  CHECK(rc == TILEDB_ERR);
-
-  // Write zero values
-  rc = tiledb_array_put_metadata(ctx_, array, "key", TILEDB_INT32, 0, &v);
-  CHECK(rc == TILEDB_ERR);
-
   // Write value type ANY
   rc = tiledb_array_put_metadata(ctx_, array, "key", TILEDB_ANY, 1, &v);
   CHECK(rc == TILEDB_ERR);
@@ -989,4 +981,56 @@ TEST_CASE_METHOD(
   CHECK(*((int32_t*)vback_ptr) == 20);
   rc = tiledb_array_close(ctx_, array);
   CHECK(rc == TILEDB_OK);
+}
+
+TEST_CASE_METHOD(
+    CMetadataFx,
+    "C API: Metadata, write/read zero-valued",
+    "[capi][metadata][read][zero-valued]") {
+  // Create default array
+  create_default_array_1d();
+
+  // Create and open array in write mode
+  tiledb_array_t* array;
+  int rc = tiledb_array_alloc(ctx_, array_name_.c_str(), &array);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_array_open(ctx_, array, TILEDB_WRITE);
+  REQUIRE(rc == TILEDB_OK);
+
+  // Write items
+  rc = tiledb_array_put_metadata(ctx_, array, "aaa", TILEDB_CHAR, 0, nullptr);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_array_put_metadata(ctx_, array, "b", TILEDB_INT32, 1, nullptr);
+  REQUIRE(rc == TILEDB_OK);
+
+  // Close array
+  rc = tiledb_array_close(ctx_, array);
+  REQUIRE(rc == TILEDB_OK);
+  tiledb_array_free(&array);
+
+  // Open the array in read mode
+  rc = tiledb_array_alloc(ctx_, array_name_.c_str(), &array);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_array_open(ctx_, array, TILEDB_READ);
+  REQUIRE(rc == TILEDB_OK);
+
+  // Read
+  const void* v_r;
+  tiledb_datatype_t v_type;
+  uint32_t v_num;
+  rc = tiledb_array_get_metadata(ctx_, array, "aaa", &v_type, &v_num, &v_r);
+  CHECK(rc == TILEDB_OK);
+  CHECK(v_type == TILEDB_CHAR);
+  CHECK(v_num == 0);
+  CHECK(v_r == nullptr);
+  rc = tiledb_array_get_metadata(ctx_, array, "b", &v_type, &v_num, &v_r);
+  CHECK(rc == TILEDB_OK);
+  CHECK(v_type == TILEDB_INT32);
+  CHECK(v_num == 0);
+  CHECK(v_r == nullptr);
+
+  // Close array
+  rc = tiledb_array_close(ctx_, array);
+  REQUIRE(rc == TILEDB_OK);
+  tiledb_array_free(&array);
 }

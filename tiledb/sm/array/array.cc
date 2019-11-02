@@ -552,16 +552,6 @@ Status Array::put_metadata(
     return LOG_STATUS(
         Status::ArrayError("Cannot put metadata; Key cannot be null"));
 
-  // Check if value is null
-  if (value == nullptr)
-    return LOG_STATUS(
-        Status::ArrayError("Cannot put metadata; Value cannot be null"));
-
-  // Check if value num is 0
-  if (value_num == 0)
-    return LOG_STATUS(Status::ArrayError(
-        "Cannot put metadata; Number of values cannot be zero"));
-
   // Check if value type is ANY
   if (value_type == Datatype::ANY)
     return LOG_STATUS(
