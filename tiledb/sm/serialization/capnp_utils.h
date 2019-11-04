@@ -98,6 +98,19 @@ tiledb::sm::Status set_capnp_array_ptr(
     case tiledb::sm::Datatype::UINT32:
       builder.setUint32(kj::arrayPtr(static_cast<const uint32_t*>(ptr), size));
       break;
+    case tiledb::sm::Datatype::DATETIME_YEAR:
+    case tiledb::sm::Datatype::DATETIME_MONTH:
+    case tiledb::sm::Datatype::DATETIME_WEEK:
+    case tiledb::sm::Datatype::DATETIME_DAY:
+    case tiledb::sm::Datatype::DATETIME_HR:
+    case tiledb::sm::Datatype::DATETIME_MIN:
+    case tiledb::sm::Datatype::DATETIME_SEC:
+    case tiledb::sm::Datatype::DATETIME_MS:
+    case tiledb::sm::Datatype::DATETIME_US:
+    case tiledb::sm::Datatype::DATETIME_NS:
+    case tiledb::sm::Datatype::DATETIME_PS:
+    case tiledb::sm::Datatype::DATETIME_FS:
+    case tiledb::sm::Datatype::DATETIME_AS:
     case tiledb::sm::Datatype::INT64:
       builder.setInt64(kj::arrayPtr(static_cast<const int64_t*>(ptr), size));
       break;
@@ -151,6 +164,19 @@ tiledb::sm::Status set_capnp_scalar(
     case tiledb::sm::Datatype::UINT32:
       builder.setUint32(*static_cast<const uint32_t*>(value));
       break;
+    case tiledb::sm::Datatype::DATETIME_YEAR:
+    case tiledb::sm::Datatype::DATETIME_MONTH:
+    case tiledb::sm::Datatype::DATETIME_WEEK:
+    case tiledb::sm::Datatype::DATETIME_DAY:
+    case tiledb::sm::Datatype::DATETIME_HR:
+    case tiledb::sm::Datatype::DATETIME_MIN:
+    case tiledb::sm::Datatype::DATETIME_SEC:
+    case tiledb::sm::Datatype::DATETIME_MS:
+    case tiledb::sm::Datatype::DATETIME_US:
+    case tiledb::sm::Datatype::DATETIME_NS:
+    case tiledb::sm::Datatype::DATETIME_PS:
+    case tiledb::sm::Datatype::DATETIME_FS:
+    case tiledb::sm::Datatype::DATETIME_AS:
     case tiledb::sm::Datatype::INT64:
       builder.setInt64(*static_cast<const int64_t*>(value));
       break;
@@ -242,6 +268,19 @@ tiledb::sm::Status copy_capnp_list(
       if (reader.hasUint32())
         RETURN_NOT_OK(copy_capnp_list<uint32_t>(reader.getUint32(), buffer));
       break;
+    case tiledb::sm::Datatype::DATETIME_YEAR:
+    case tiledb::sm::Datatype::DATETIME_MONTH:
+    case tiledb::sm::Datatype::DATETIME_WEEK:
+    case tiledb::sm::Datatype::DATETIME_DAY:
+    case tiledb::sm::Datatype::DATETIME_HR:
+    case tiledb::sm::Datatype::DATETIME_MIN:
+    case tiledb::sm::Datatype::DATETIME_SEC:
+    case tiledb::sm::Datatype::DATETIME_MS:
+    case tiledb::sm::Datatype::DATETIME_US:
+    case tiledb::sm::Datatype::DATETIME_NS:
+    case tiledb::sm::Datatype::DATETIME_PS:
+    case tiledb::sm::Datatype::DATETIME_FS:
+    case tiledb::sm::Datatype::DATETIME_AS:
     case tiledb::sm::Datatype::INT64:
       if (reader.hasInt64())
         RETURN_NOT_OK(copy_capnp_list<int64_t>(reader.getInt64(), buffer));

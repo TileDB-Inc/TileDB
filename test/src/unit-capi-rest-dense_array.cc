@@ -2228,3 +2228,100 @@ TEST_CASE_METHOD(
   tiledb_array_free(&array);
   tiledb_ctx_free(&ctx);
 }
+
+TEST_CASE_METHOD(
+    DenseArrayRESTFx,
+    "C API: REST Test dense array, datetimes",
+    "[capi][dense][rest][datetime]") {
+  std::string array_name =
+      TILEDB_URI_PREFIX + FILE_URI_PREFIX + FILE_TEMP_DIR + "datetime_array";
+  create_temp_dir(FILE_URI_PREFIX + FILE_TEMP_DIR);
+
+  int64_t dim_domain[] = {1, 10};
+  int64_t tile_extents[] = {2};
+  tiledb_dimension_t* d1;
+  REQUIRE(
+      tiledb_dimension_alloc(
+          ctx_,
+          "d1",
+          TILEDB_DATETIME_DAY,
+          &dim_domain[0],
+          &tile_extents[0],
+          &d1) == TILEDB_OK);
+
+  tiledb_domain_t* domain;
+  REQUIRE(tiledb_domain_alloc(ctx_, &domain) == TILEDB_OK);
+  REQUIRE(tiledb_domain_add_dimension(ctx_, domain, d1) == TILEDB_OK);
+
+  tiledb_attribute_t* a1;
+  REQUIRE(
+      tiledb_attribute_alloc(ctx_, "a1", TILEDB_DATETIME_HR, &a1) == TILEDB_OK);
+
+  tiledb_array_schema_t* array_schema;
+  REQUIRE(
+      tiledb_array_schema_alloc(ctx_, TILEDB_DENSE, &array_schema) ==
+      TILEDB_OK);
+  REQUIRE(
+      tiledb_array_schema_set_domain(ctx_, array_schema, domain) == TILEDB_OK);
+  REQUIRE(
+      tiledb_array_schema_add_attribute(ctx_, array_schema, a1) == TILEDB_OK);
+  REQUIRE(tiledb_array_schema_check(ctx_, array_schema) == TILEDB_OK);
+
+  // Create array
+  REQUIRE(
+      tiledb_array_create(ctx_, array_name.c_str(), array_schema) == TILEDB_OK);
+  to_deregister_.insert(array_name);
+
+  // Clean up
+  tiledb_attribute_free(&a1);
+  tiledb_dimension_free(&d1);
+  tiledb_domain_free(&domain);
+  tiledb_array_schema_free(&array_schema);
+
+  // Write some values
+  const char* attributes[] = {"a1"};
+  int64_t buffer_a1[] = {-3, -2, -1, 0, 1, 2, 3, 4, 5, 6};
+  void* buffers[] = {buffer_a1};
+  uint64_t buffer_sizes[] = {sizeof(buffer_a1)};
+  tiledb_array_t* array;
+  REQUIRE(tiledb_array_alloc(ctx_, array_name.c_str(), &array) == TILEDB_OK);
+  REQUIRE(tiledb_array_open(ctx_, array, TILEDB_WRITE) == TILEDB_OK);
+  tiledb_query_t* query;
+  REQUIRE(tiledb_query_alloc(ctx_, array, TILEDB_WRITE, &query) == TILEDB_OK);
+  REQUIRE(tiledb_query_set_layout(ctx_, query, TILEDB_ROW_MAJOR) == TILEDB_OK);
+  REQUIRE(
+      tiledb_query_set_buffer(
+          ctx_, query, attributes[0], buffers[0], &buffer_sizes[0]) ==
+      TILEDB_OK);
+  REQUIRE(tiledb_query_submit(ctx_, query) == TILEDB_OK);
+  REQUIRE(tiledb_array_close(ctx_, array) == TILEDB_OK);
+  tiledb_array_free(&array);
+  tiledb_query_free(&query);
+
+  // Read a section back
+  for (int i = 0; i < 10; i++)
+    buffer_a1[i] = 0;
+  int64_t subarray[] = {2, 5};
+  buffer_sizes[0] = sizeof(buffer_a1);
+  REQUIRE(tiledb_array_alloc(ctx_, array_name.c_str(), &array) == TILEDB_OK);
+  REQUIRE(tiledb_array_open(ctx_, array, TILEDB_READ) == TILEDB_OK);
+  REQUIRE(tiledb_query_alloc(ctx_, array, TILEDB_READ, &query) == TILEDB_OK);
+  REQUIRE(tiledb_query_set_layout(ctx_, query, TILEDB_ROW_MAJOR) == TILEDB_OK);
+  REQUIRE(
+      tiledb_query_set_buffer(
+          ctx_, query, attributes[0], buffers[0], &buffer_sizes[0]) ==
+      TILEDB_OK);
+  REQUIRE(tiledb_query_set_subarray(ctx_, query, &subarray[0]) == TILEDB_OK);
+  REQUIRE(tiledb_query_submit(ctx_, query) == TILEDB_OK);
+  REQUIRE(tiledb_array_close(ctx_, array) == TILEDB_OK);
+
+  REQUIRE(buffer_a1[0] == -2);
+  REQUIRE(buffer_a1[1] == -1);
+  REQUIRE(buffer_a1[2] == 0);
+  REQUIRE(buffer_a1[3] == 1);
+
+  tiledb_array_free(&array);
+  tiledb_query_free(&query);
+
+  remove_temp_dir(FILE_URI_PREFIX + FILE_TEMP_DIR);
+}

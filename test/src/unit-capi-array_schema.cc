@@ -1419,3 +1419,62 @@ TEST_CASE_METHOD(
   delete_array(array_name);
   remove_temp_dir(FILE_URI_PREFIX + FILE_TEMP_DIR);
 }
+
+TEST_CASE_METHOD(
+    ArraySchemaFx,
+    "C API: Test array schema datetimes",
+    "[capi][array-schema][datetime]") {
+  SECTION("- No serialization") {
+    serialize_array_schema = false;
+  }
+  SECTION("- Serialization") {
+    serialize_array_schema = true;
+  }
+
+  // Create array schema
+  tiledb_array_schema_t* array_schema;
+  int rc = tiledb_array_schema_alloc(ctx_, TILEDB_DENSE, &array_schema);
+  REQUIRE(rc == TILEDB_OK);
+
+  // Create dimension
+  tiledb_dimension_t* d1;
+  rc = tiledb_dimension_alloc(
+      ctx_, "", TILEDB_DATETIME_MS, &DIM_DOMAIN[0], &TILE_EXTENTS[0], &d1);
+  REQUIRE(rc == TILEDB_OK);
+
+  // Set domain
+  tiledb_domain_t* domain;
+  rc = tiledb_domain_alloc(ctx_, &domain);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_domain_add_dimension(ctx_, domain, d1);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_array_schema_set_domain(ctx_, array_schema, domain);
+  REQUIRE(rc == TILEDB_OK);
+
+  // Set attributes
+  tiledb_attribute_t* attr1;
+  rc = tiledb_attribute_alloc(ctx_, "attr1", ATTR_TYPE, &attr1);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_array_schema_add_attribute(ctx_, array_schema, attr1);
+  REQUIRE(rc == TILEDB_OK);
+  tiledb_attribute_t* attr2;
+  rc = tiledb_attribute_alloc(ctx_, "attr2", TILEDB_DATETIME_DAY, &attr2);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_array_schema_add_attribute(ctx_, array_schema, attr2);
+  REQUIRE(rc == TILEDB_OK);
+
+  // Create array
+  std::string array_name = FILE_URI_PREFIX + FILE_TEMP_DIR + "datetime-dims";
+  create_temp_dir(FILE_URI_PREFIX + FILE_TEMP_DIR);
+  rc = array_create_wrapper(array_name, array_schema);
+  REQUIRE(rc == TILEDB_OK);
+
+  // Clean up
+  tiledb_attribute_free(&attr1);
+  tiledb_attribute_free(&attr2);
+  tiledb_dimension_free(&d1);
+  tiledb_domain_free(&domain);
+  tiledb_array_schema_free(&array_schema);
+  delete_array(array_name);
+  remove_temp_dir(FILE_URI_PREFIX + FILE_TEMP_DIR);
+}
