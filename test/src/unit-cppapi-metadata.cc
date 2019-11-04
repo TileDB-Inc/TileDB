@@ -172,12 +172,6 @@ TEST_CASE_METHOD(
   // Reopen array in WRITE mode
   array.open(TILEDB_WRITE);
 
-  // Write null value
-  CHECK_THROWS(array.put_metadata("key", TILEDB_INT32, 1, NULL));
-
-  // Write zero values
-  CHECK_THROWS(array.put_metadata("key", TILEDB_INT32, 0, &v));
-
   // Write value type ANY
   CHECK_THROWS(array.put_metadata("key", TILEDB_ANY, 1, &v));
 

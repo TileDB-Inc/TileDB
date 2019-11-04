@@ -90,10 +90,12 @@ Status Metadata::deserialize(
       value_struct.del_ = del;
       RETURN_NOT_OK(buff->read(&value_struct.type_, sizeof(char)));
       RETURN_NOT_OK(buff->read(&value_struct.num_, sizeof(uint32_t)));
-      value_len = value_struct.num_ *
-                  datatype_size(static_cast<Datatype>(value_struct.type_));
-      value_struct.value_.resize(value_len);
-      RETURN_NOT_OK(buff->read((void*)value_struct.value_.data(), value_len));
+      if (value_struct.num_) {
+        value_len = value_struct.num_ *
+                    datatype_size(static_cast<Datatype>(value_struct.type_));
+        value_struct.value_.resize(value_len);
+        RETURN_NOT_OK(buff->read((void*)value_struct.value_.data(), value_len));
+      }
 
       // Insert to metadata
       metadata_map_.emplace(std::make_pair(key, std::move(value_struct)));
@@ -125,7 +127,8 @@ Status Metadata::serialize(Buffer* buff) const {
     if (!value.del_) {
       RETURN_NOT_OK(buff->write(&value.type_, sizeof(char)));
       RETURN_NOT_OK(buff->write(&value.num_, sizeof(uint32_t)));
-      RETURN_NOT_OK(buff->write(value.value_.data(), value.value_.size()));
+      if (value.num_)
+        RETURN_NOT_OK(buff->write(value.value_.data(), value.value_.size()));
     }
   }
 
@@ -155,8 +158,9 @@ Status Metadata::put(
     const void* value) {
   assert(key != nullptr);
   assert(value_type != Datatype::ANY);
-  assert(value_num != 0);
-  assert(value != nullptr);
+
+  if (value == nullptr)
+    value_num = 0;
 
   std::unique_lock<std::mutex> lck(mtx_);
 
@@ -165,8 +169,10 @@ Status Metadata::put(
   value_struct.del_ = 0;
   value_struct.type_ = static_cast<char>(value_type);
   value_struct.num_ = value_num;
-  value_struct.value_.resize(value_size);
-  std::memcpy(value_struct.value_.data(), value, value_size);
+  if (value_size) {
+    value_struct.value_.resize(value_size);
+    std::memcpy(value_struct.value_.data(), value, value_size);
+  }
   metadata_map_.erase(std::string(key));
   metadata_map_.emplace(
       std::make_pair(std::string(key), std::move(value_struct)));
@@ -192,7 +198,7 @@ Status Metadata::get(
   auto& value_struct = it->second;
   *value_type = static_cast<Datatype>(value_struct.type_);
   *value_num = value_struct.num_;
-  *value = (const void*)(value_struct.value_.data());
+  *value = (*value_num) ? (const void*)(value_struct.value_.data()) : nullptr;
 
   return Status::Ok();
 }
@@ -217,7 +223,7 @@ Status Metadata::get(
   auto& value_struct = *(metadata_index_[index].second);
   *value_type = static_cast<Datatype>(value_struct.type_);
   *value_num = value_struct.num_;
-  *value = (const void*)value_struct.value_.data();
+  *value = (*value_num) ? (const void*)value_struct.value_.data() : nullptr;
 
   return Status::Ok();
 }
