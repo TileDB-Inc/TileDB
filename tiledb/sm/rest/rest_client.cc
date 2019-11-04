@@ -387,6 +387,7 @@ size_t RestClient::post_data_write_cb(
       // the user buffers are too small to accomodate the attribute
       // data when deserializing read queries, this will return an
       // error status.
+      aux.reset_offset();
       st = serialization::query_deserialize(
           aux, serialization_type_, true, copy_state, query);
       if (!st.ok()) {
@@ -474,6 +475,7 @@ Status RestClient::finalize_query_to_rest(const URI& uri, Query* query) {
         Status::RestError("Error finalizing query; server returned no data."));
 
   // Deserialize data returned
+  returned_data.set_offset(0);
   return serialization::query_deserialize(
       returned_data, serialization_type_, true, nullptr, query);
 }
