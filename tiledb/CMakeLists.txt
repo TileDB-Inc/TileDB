@@ -441,12 +441,22 @@ if (TILEDB_S3 OR TILEDB_SERIALIZATION AND NOT WIN32)
   else()
     message(STATUS "Found curl-config: '${CURL_CONFIG_BINARY}'")
 
-    execute_process(
-      COMMAND ${CURL_CONFIG_BINARY} --static-libs
-      OUTPUT_VARIABLE CURL_APPEND_LIBS
-      RESULT_VARIABLE CMD_RESULT
-      OUTPUT_STRIP_TRAILING_WHITESPACE
-    )
+    if(${CURL_LIBRARIES} MATCHES "${CMAKE_SHARED_LIBRARY_SUFFIX}$")
+      execute_process(
+              COMMAND ${CURL_CONFIG_BINARY} --static-libs
+              OUTPUT_VARIABLE CURL_APPEND_LIBS
+              RESULT_VARIABLE CMD_RESULT
+              OUTPUT_STRIP_TRAILING_WHITESPACE
+      )
+
+    else()
+      execute_process(
+        COMMAND ${CURL_CONFIG_BINARY} --static-libs
+        OUTPUT_VARIABLE CURL_APPEND_LIBS
+        RESULT_VARIABLE CMD_RESULT
+        OUTPUT_STRIP_TRAILING_WHITESPACE
+      )
+    endif()
 
     if (NOT CMD_RESULT EQUAL 0)
       message(WARNING
