@@ -432,34 +432,42 @@ target_include_directories(TILEDB_CORE_OBJECTS
 if (TILEDB_S3 OR TILEDB_SERIALIZATION AND NOT WIN32)
   if (TILEDB_CURL_EP_BUILT)
     set(CURL_CONFIG_BINARY "${TILEDB_EP_BASE}/install/bin/curl-config")
-  else()
-    find_program(CURL_CONFIG_BINARY NAMES curl-config)
-  endif()
 
-  if (NOT EXISTS "${CURL_CONFIG_BINARY}")
-    message(WARNING "Missing '${CURL_CONFIG_BINARY}': TileDB targets may have linker errors!")
-  else()
-    message(STATUS "Found curl-config: '${CURL_CONFIG_BINARY}'")
+      if (NOT EXISTS "${CURL_CONFIG_BINARY}")
+        message(WARNING "Missing '${CURL_CONFIG_BINARY}': TileDB targets may have linker errors!")
+      else()
+        message(STATUS "Found curl-config: '${CURL_CONFIG_BINARY}'")
 
-    execute_process(
-      COMMAND ${CURL_CONFIG_BINARY} --static-libs
-      OUTPUT_VARIABLE CURL_APPEND_LIBS
-      RESULT_VARIABLE CMD_RESULT
-      OUTPUT_STRIP_TRAILING_WHITESPACE
-    )
+        if(${CURL_LIBRARIES} MATCHES "${CMAKE_SHARED_LIBRARY_SUFFIX}$")
+          execute_process(
+                  COMMAND ${CURL_CONFIG_BINARY} --libs
+                  OUTPUT_VARIABLE CURL_APPEND_LIBS
+                  RESULT_VARIABLE CMD_RESULT
+                  OUTPUT_STRIP_TRAILING_WHITESPACE
+          )
 
-    if (NOT CMD_RESULT EQUAL 0)
-      message(WARNING
-        "TileDB::tiledb_static link target may lack transitive link dependencies"
-        "'${CURL_CONFIG_BINARY} --static-libs' failed with error: "
-        "${CMD_RESULT}")
-    elseif (CURL_APPEND_LIBS)
-      # ^ must check output, because it might be empty and break regex below
-      # Make a list. The variable passed to target_link_libraries *must* be a list.
-      string(REGEX REPLACE "[ \t\r\n]" ";" CURL_APPEND_LIBS ${CURL_APPEND_LIBS})
+        else()
+          execute_process(
+            COMMAND ${CURL_CONFIG_BINARY} --static-libs
+            OUTPUT_VARIABLE CURL_APPEND_LIBS
+            RESULT_VARIABLE CMD_RESULT
+            OUTPUT_STRIP_TRAILING_WHITESPACE
+          )
+        endif()
 
-      message(STATUS "Adding transitive Curl library links to TileDB targets: '${CURL_APPEND_LIBS}'")
-    endif()
+        if (NOT CMD_RESULT EQUAL 0)
+          message(WARNING
+            "TileDB::tiledb_static link target may lack transitive link dependencies"
+            "'${CURL_CONFIG_BINARY} --static-libs' failed with error: "
+            "${CMD_RESULT}")
+        elseif (CURL_APPEND_LIBS)
+          # ^ must check output, because it might be empty and break regex below
+          # Make a list. The variable passed to target_link_libraries *must* be a list.
+          string(REGEX REPLACE "[ \t\r\n]" ";" CURL_APPEND_LIBS ${CURL_APPEND_LIBS})
+
+          message(STATUS "Adding transitive Curl library links to TileDB targets: '${CURL_APPEND_LIBS}'")
+        endif()
+      endif()
   endif()
 
 endif()
