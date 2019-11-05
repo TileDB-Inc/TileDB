@@ -1407,6 +1407,92 @@ TEST_CASE_METHOD(
 
 TEST_CASE_METHOD(
     DenseArrayRESTFx,
+    "C API: REST Test dense array, global order reads",
+    "[capi][dense][rest]") {
+  std::string temp_dir = FILE_URI_PREFIX + FILE_TEMP_DIR;
+  std::string array_name = TILEDB_URI_PREFIX + temp_dir + "global_order_reads/";
+  create_temp_dir(temp_dir);
+  create_dense_array(array_name);
+  write_dense_array(array_name);
+
+  tiledb_array_t* array;
+  REQUIRE(tiledb_array_alloc(ctx_, array_name.c_str(), &array) == TILEDB_OK);
+  REQUIRE(tiledb_array_open(ctx_, array, TILEDB_READ) == TILEDB_OK);
+
+  uint64_t subarray[] = {1, 4, 1, 4};
+  uint64_t buffer_a1_size, buffer_a2_off_size, buffer_a2_val_size,
+      buffer_a3_size, buffer_coords_size;
+  REQUIRE(
+      tiledb_array_max_buffer_size(
+          ctx_, array, "a1", subarray, &buffer_a1_size) == TILEDB_OK);
+  REQUIRE(
+      tiledb_array_max_buffer_size_var(
+          ctx_,
+          array,
+          "a2",
+          subarray,
+          &buffer_a2_off_size,
+          &buffer_a2_val_size) == TILEDB_OK);
+  REQUIRE(
+      tiledb_array_max_buffer_size(
+          ctx_, array, "a3", subarray, &buffer_a3_size) == TILEDB_OK);
+  REQUIRE(
+      tiledb_array_max_buffer_size(
+          ctx_, array, TILEDB_COORDS, subarray, &buffer_coords_size) ==
+      TILEDB_OK);
+
+  auto buffer_a1 = (int*)malloc(buffer_a1_size);
+  auto buffer_a2_off = (uint64_t*)malloc(buffer_a2_off_size);
+  auto buffer_a2_val = (char*)malloc(buffer_a2_val_size);
+  auto buffer_a3 = (float*)malloc(buffer_a3_size);
+  auto buffer_coords = (uint64_t*)malloc(buffer_coords_size);
+
+  tiledb_query_t* query;
+  REQUIRE(tiledb_query_alloc(ctx_, array, TILEDB_READ, &query) == TILEDB_OK);
+  REQUIRE(
+      tiledb_query_set_layout(ctx_, query, TILEDB_GLOBAL_ORDER) == TILEDB_OK);
+  REQUIRE(tiledb_query_set_subarray(ctx_, query, subarray) == TILEDB_OK);
+  REQUIRE(
+      tiledb_query_set_buffer(ctx_, query, "a1", buffer_a1, &buffer_a1_size) ==
+      TILEDB_OK);
+  REQUIRE(
+      tiledb_query_set_buffer_var(
+          ctx_,
+          query,
+          "a2",
+          buffer_a2_off,
+          &buffer_a2_off_size,
+          buffer_a2_val,
+          &buffer_a2_val_size) == TILEDB_OK);
+  REQUIRE(
+      tiledb_query_set_buffer(ctx_, query, "a3", buffer_a3, &buffer_a3_size) ==
+      TILEDB_OK);
+  REQUIRE(
+      tiledb_query_set_buffer(
+          ctx_, query, TILEDB_COORDS, buffer_coords, &buffer_coords_size) ==
+      TILEDB_OK);
+  REQUIRE(tiledb_query_submit(ctx_, query) == TILEDB_OK);
+
+  tiledb_query_status_t status;
+  REQUIRE(tiledb_query_get_status(ctx_, query, &status) == TILEDB_OK);
+  REQUIRE(status == TILEDB_COMPLETED);
+
+  REQUIRE(tiledb_array_close(ctx_, array) == TILEDB_OK);
+
+  // Clean up
+  tiledb_array_free(&array);
+  tiledb_query_free(&query);
+  free(buffer_a1);
+  free(buffer_a2_off);
+  free(buffer_a2_val);
+  free(buffer_a3);
+  free(buffer_coords);
+
+  remove_temp_dir(temp_dir);
+}
+
+TEST_CASE_METHOD(
+    DenseArrayRESTFx,
     "C API: REST Test dense array, missing attributes in writes",
     "[capi], [dense], [rest], [dense-write-missing-attributes]") {
   std::string temp_dir = FILE_URI_PREFIX + FILE_TEMP_DIR;
