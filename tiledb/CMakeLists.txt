@@ -69,8 +69,6 @@ if (TILEDB_CPP_API)
     ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/filter.h
     ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/filter_list.h
     ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/group.h
-    ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/map.h
-    ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/map_schema.h
     ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/object.h
     ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/object_iter.h
     ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/query.h
@@ -136,9 +134,6 @@ set(TILEDB_CORE_SOURCES
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/global_state/signal_handlers.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/global_state/tbb_state.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/global_state/watchdog.cc
-  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/kv/kv.cc
-  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/kv/kv_item.cc
-  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/kv/kv_iter.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/metadata/metadata.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/misc/cancelable_tasks.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/misc/constants.cc

@@ -53,7 +53,6 @@ ArraySchema::ArraySchema() {
   array_type_ = ArrayType::DENSE;
   capacity_ = constants::capacity;
   cell_order_ = Layout::ROW_MAJOR;
-  is_kv_ = false;
   domain_ = nullptr;
   tile_order_ = Layout::ROW_MAJOR;
   version_ = constants::format_version;
@@ -71,7 +70,6 @@ ArraySchema::ArraySchema(ArrayType array_type)
   array_uri_ = URI();
   capacity_ = constants::capacity;
   cell_order_ = Layout::ROW_MAJOR;
-  is_kv_ = false;
   domain_ = nullptr;
   tile_order_ = Layout::ROW_MAJOR;
   version_ = constants::format_version;
@@ -87,7 +85,6 @@ ArraySchema::ArraySchema(ArrayType array_type)
 ArraySchema::ArraySchema(const ArraySchema* array_schema) {
   array_uri_ = array_schema->array_uri_;
   array_type_ = array_schema->array_type_;
-  is_kv_ = array_schema->is_kv_;
   domain_ = nullptr;
 
   capacity_ = array_schema->capacity_;
@@ -99,12 +96,7 @@ ArraySchema::ArraySchema(const ArraySchema* array_schema) {
   tile_order_ = array_schema->tile_order_;
   version_ = array_schema->version_;
 
-  if (is_kv_) {
-    set_kv_attributes();
-    set_kv_domain();
-  } else {
-    set_domain(array_schema->domain_);
-  }
+  set_domain(array_schema->domain_);
 
   for (auto attr : array_schema->attributes_) {
     if (attr->name() != constants::key_attr_name)
@@ -343,10 +335,6 @@ Status ArraySchema::has_attribute(
   return Status::Ok();
 }
 
-bool ArraySchema::is_kv() const {
-  return is_kv_;
-}
-
 // ===== FORMAT =====
 // version (uint32_t)
 // array_type (uint8_t)
@@ -473,9 +461,7 @@ Status ArraySchema::add_attribute(const Attribute* attr, bool check_special) {
 //   attribute #1
 //   attribute #2
 //   ...
-Status ArraySchema::deserialize(ConstBuffer* buff, bool is_kv) {
-  is_kv_ = is_kv;
-
+Status ArraySchema::deserialize(ConstBuffer* buff) {
   // Load version
   RETURN_NOT_OK(buff->read(&version_, sizeof(uint32_t)));
 
@@ -550,30 +536,6 @@ Status ArraySchema::init() {
   return Status::Ok();
 }
 
-Status ArraySchema::set_as_kv() {
-  // Do nothing if the array is already set as a key-value store
-  if (is_kv_)
-    return Status::Ok();
-
-  // Set the array as sparse
-  array_type_ = ArrayType::SPARSE;
-
-  // Set layout
-  cell_order_ = Layout::ROW_MAJOR;
-  tile_order_ = Layout::ROW_MAJOR;
-
-  // Set key-value special domain
-  RETURN_NOT_OK(set_kv_domain());
-
-  // Set key-value special attributes
-  RETURN_NOT_OK(set_kv_attributes());
-
-  // Set as key-value
-  is_kv_ = true;
-
-  return Status::Ok();
-}
-
 void ArraySchema::set_array_uri(const URI& array_uri) {
   array_uri_ = array_uri;
 }
@@ -598,11 +560,6 @@ void ArraySchema::set_cell_order(Layout cell_order) {
 }
 
 Status ArraySchema::set_domain(Domain* domain) {
-  // Check if the array is a key-value store
-  if (is_kv_)
-    return LOG_STATUS(Status::ArraySchemaError(
-        "Cannot set domain; The array is defined as a key-value store"));
-
   if (array_type_ == ArrayType::DENSE) {
     RETURN_NOT_OK(domain->set_null_tile_extents_to_range());
 
@@ -706,34 +663,6 @@ uint64_t ArraySchema::compute_cell_size(const std::string& attribute) const {
   return (cell_val_num == constants::var_num) ?
              constants::var_size :
              cell_val_num * datatype_size(type);
-}
-
-Status ArraySchema::set_kv_attributes() {
-  // Add key attribute
-  auto key_attr =
-      new Attribute(constants::key_attr_name, constants::key_attr_type);
-  key_attr->set_compressor(constants::key_attr_compressor);
-  attributes_.emplace_back(key_attr);
-  return Status::Ok();
-}
-
-Status ArraySchema::set_kv_domain() {
-  delete domain_;
-  domain_ = new Domain(Datatype::UINT64);
-  uint64_t dim_domain[] = {0, UINT64_MAX - 1};
-  uint64_t tile_extent = dim_domain[1] - dim_domain[0] + 1;
-
-  Dimension dim_1(constants::key_dim_1, Datatype::UINT64);
-  RETURN_NOT_OK(dim_1.set_domain(dim_domain));
-  RETURN_NOT_OK(dim_1.set_tile_extent(&tile_extent));
-  RETURN_NOT_OK(domain_->add_dimension(&dim_1));
-
-  Dimension dim_2(constants::key_dim_2, Datatype::UINT64);
-  RETURN_NOT_OK(dim_2.set_domain(dim_domain));
-  RETURN_NOT_OK(dim_2.set_tile_extent(&tile_extent));
-  RETURN_NOT_OK(domain_->add_dimension(&dim_2));
-
-  return Status::Ok();
 }
 
 }  // namespace sm

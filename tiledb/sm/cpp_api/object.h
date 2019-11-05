@@ -63,9 +63,7 @@ class Object {
     /** TileDB group object. */
     Group,
     /** Invalid or unknown object type. */
-    Invalid,
-    /** TileDB key-value (map) array object. */
-    KeyValue
+    Invalid
   };
 
   /* ********************************* */
@@ -88,9 +86,6 @@ class Object {
         break;
       case TILEDB_INVALID:
         type_ = Type::Invalid;
-        break;
-      case TILEDB_KEY_VALUE:
-        type_ = Type::KeyValue;
         break;
     }
   }
@@ -120,9 +115,6 @@ class Object {
         break;
       case Type::Invalid:
         ret += "INVALID";
-        break;
-      case Type::KeyValue:
-        ret += "KEYVALUE";
         break;
     }
     ret += " \"" + uri_ + "\">";

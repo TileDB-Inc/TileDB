@@ -33,14 +33,6 @@ Types
     :project: TileDB-C
 .. doxygentypedef:: tiledb_filter_list_t
     :project: TileDB-C
-.. doxygentypedef:: tiledb_kv_t
-    :project: TileDB-C
-.. doxygentypedef:: tiledb_kv_schema_t
-    :project: TileDB-C
-.. doxygentypedef:: tiledb_kv_item_t
-    :project: TileDB-C
-.. doxygentypedef:: tiledb_kv_iter_t
-    :project: TileDB-C
 .. doxygentypedef:: tiledb_vfs_t
     :project: TileDB-C
 .. doxygentypedef:: tiledb_vfs_fh_t
@@ -465,112 +457,6 @@ Filter List
 Group
 -----
 .. doxygenfunction:: tiledb_group_create
-    :project: TileDB-C
-
-Key-value
----------
-.. doxygenfunction:: tiledb_kv_alloc
-    :project: TileDB-C
-.. doxygenfunction:: tiledb_kv_create
-    :project: TileDB-C
-.. doxygenfunction:: tiledb_kv_create_with_key
-    :project: TileDB-C
-.. doxygenfunction:: tiledb_kv_consolidate
-    :project: TileDB-C
-.. doxygenfunction:: tiledb_kv_consolidate_with_key
-    :project: TileDB-C
-.. doxygenfunction:: tiledb_kv_open
-    :project: TileDB-C
-.. doxygenfunction:: tiledb_kv_open_with_key
-    :project: TileDB-C
-.. doxygenfunction:: tiledb_kv_open_at
-    :project: TileDB-C
-.. doxygenfunction:: tiledb_kv_open_at_with_key
-    :project: TileDB-C
-.. doxygenfunction:: tiledb_kv_is_open
-    :project: TileDB-C
-.. doxygenfunction:: tiledb_kv_reopen
-    :project: TileDB-C
-.. doxygenfunction:: tiledb_kv_reopen_at
-    :project: TileDB-C
-.. doxygenfunction:: tiledb_kv_get_timestamp
-    :project: TileDB-C
-.. doxygenfunction:: tiledb_kv_close
-    :project: TileDB-C
-.. doxygenfunction:: tiledb_kv_free
-    :project: TileDB-C
-.. doxygenfunction:: tiledb_kv_add_item
-    :project: TileDB-C
-.. doxygenfunction:: tiledb_kv_flush
-    :project: TileDB-C
-.. doxygenfunction:: tiledb_kv_get_item
-    :project: TileDB-C
-.. doxygenfunction:: tiledb_kv_get_schema
-    :project: TileDB-C
-.. doxygenfunction:: tiledb_kv_has_key
-    :project: TileDB-C
-.. doxygenfunction:: tiledb_kv_is_dirty
-    :project: TileDB-C
-.. doxygenfunction:: tiledb_kv_encryption_type
-    :project: TileDB-C
-
-Key-value Schema
-----------------
-.. doxygenfunction:: tiledb_kv_schema_alloc
-    :project: TileDB-C
-.. doxygenfunction:: tiledb_kv_schema_free
-    :project: TileDB-C
-.. doxygenfunction:: tiledb_kv_schema_add_attribute
-    :project: TileDB-C
-.. doxygenfunction:: tiledb_kv_schema_check
-    :project: TileDB-C
-.. doxygenfunction:: tiledb_kv_schema_load
-    :project: TileDB-C
-.. doxygenfunction:: tiledb_kv_schema_load_with_key
-    :project: TileDB-C
-.. doxygenfunction:: tiledb_kv_schema_get_attribute_num
-    :project: TileDB-C
-.. doxygenfunction:: tiledb_kv_schema_get_attribute_from_index
-    :project: TileDB-C
-.. doxygenfunction:: tiledb_kv_schema_get_attribute_from_name
-    :project: TileDB-C
-.. doxygenfunction:: tiledb_kv_schema_has_attribute
-    :project: TileDB-C
-.. doxygenfunction:: tiledb_kv_schema_dump
-    :project: TileDB-C
-.. doxygenfunction:: tiledb_kv_schema_set_capacity
-    :project: TileDB-C
-.. doxygenfunction:: tiledb_kv_schema_get_capacity
-    :project: TileDB-C
-
-Key-value Item
---------------
-.. doxygenfunction:: tiledb_kv_item_alloc
-    :project: TileDB-C
-.. doxygenfunction:: tiledb_kv_item_free
-    :project: TileDB-C
-.. doxygenfunction:: tiledb_kv_item_set_key
-    :project: TileDB-C
-.. doxygenfunction:: tiledb_kv_item_set_value
-    :project: TileDB-C
-.. doxygenfunction:: tiledb_kv_item_get_key
-    :project: TileDB-C
-.. doxygenfunction:: tiledb_kv_item_get_value
-    :project: TileDB-C
-
-Key-value Iterator
-------------------
-.. doxygenfunction:: tiledb_kv_iter_alloc
-    :project: TileDB-C
-.. doxygenfunction:: tiledb_kv_iter_free
-    :project: TileDB-C
-.. doxygenfunction:: tiledb_kv_iter_here
-    :project: TileDB-C
-.. doxygenfunction:: tiledb_kv_iter_next
-    :project: TileDB-C
-.. doxygenfunction:: tiledb_kv_iter_done
-    :project: TileDB-C
-.. doxygenfunction:: tiledb_kv_iter_reset
     :project: TileDB-C
 
 Buffer

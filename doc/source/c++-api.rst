@@ -79,30 +79,6 @@ Group
 .. doxygenfunction:: tiledb::create_group
     :project: TileDB-C++
 
-Map
----
-.. doxygenclass:: tiledb::Map
-    :project: TileDB-C++
-    :members:
-
-Map Schema
-----------
-.. doxygenclass:: tiledb::MapSchema
-    :project: TileDB-C++
-    :members:
-
-Map Item
---------
-.. doxygenclass:: tiledb::MapItem
-    :project: TileDB-C++
-    :members:
-
-Map Iter
---------
-.. doxygenclass:: tiledb::MapIter
-    :project: TileDB-C++
-    :members:
-
 Object Management
 -----------------
 .. doxygenclass:: tiledb::Object

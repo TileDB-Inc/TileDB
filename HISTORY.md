@@ -16,6 +16,10 @@
 * Added C++ API functions Query::{fragment_num,fragment_uri,fragment_timestamp_range}.
 * Added C API function `tiledb_ctx_set_tag` and C++ API `Context::set_tag()`.
 
+## API removals
+
+* Removed key-value functionality, tiledb_kv_* functions from the C API and Map and MapSchema from the C++ API
+
 # TileDB v1.6.3 Release Notes
 
 ## Additions

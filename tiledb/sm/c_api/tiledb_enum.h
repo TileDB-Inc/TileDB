@@ -40,8 +40,7 @@
     TILEDB_OBJECT_TYPE_ENUM(GROUP) = 1,
     /** Array object */
     TILEDB_OBJECT_TYPE_ENUM(ARRAY) = 2,
-    /** Key-value object */
-    TILEDB_OBJECT_TYPE_ENUM(KEY_VALUE) = 3,
+// We remove 3 (KEY_VALUE), so we should probably reserve it
 #endif
 
 #ifdef TILEDB_FILESYSTEM_ENUM

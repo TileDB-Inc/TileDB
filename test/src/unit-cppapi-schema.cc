@@ -31,7 +31,6 @@
  */
 
 #include "catch.hpp"
-#include "tiledb/sm/cpp_api/map.h"
 #include "tiledb/sm/cpp_api/tiledb"
 
 TEST_CASE("C++ API: Schema", "[cppapi]") {
@@ -152,30 +151,6 @@ TEST_CASE("C++ API: Schema", "[cppapi]") {
     CHECK(sparse_domain.type() == TILEDB_FLOAT64);
   }
 
-  SECTION("Map Schema") {
-    MapSchema schema(ctx);
-    schema.add_attribute(a1);
-    schema.add_attribute(a2);
-    schema.add_attribute(a3);
-    schema.add_attribute(a4);
-
-    auto attrs = schema.attributes();
-    CHECK(attrs.count("a1") == 1);
-    CHECK(attrs.count("a2") == 1);
-    CHECK(attrs.count("a3") == 1);
-    REQUIRE(schema.attribute_num() == 4);
-    CHECK(schema.attribute(0).name() == "a1");
-    CHECK(schema.attribute(1).name() == "a2");
-    CHECK(schema.attribute(2).name() == "a3");
-    CHECK(
-        schema.attribute("a1").filter_list().filter(0).filter_type() ==
-        TILEDB_FILTER_LZ4);
-    CHECK(schema.attribute("a2").cell_val_num() == TILEDB_VAR_NUM);
-    CHECK(schema.attribute("a3").cell_val_num() == 16);
-    CHECK(schema.attribute("a4").cell_val_num() == TILEDB_VAR_NUM);
-    CHECK(schema.attribute("a4").type() == TILEDB_UINT32);
-  }
-
   SECTION("Invalid dimension types") {
     Domain dom(ctx);
     dom.add_dimension(Dimension::create<int>(ctx, "d1", {{0, 10}}, 11));
@@ -190,10 +165,7 @@ TEST_CASE("C++ API: Test schema virtual destructors", "[cppapi]") {
   tiledb::Context ctx;
   // Test that this generates no compiler warnings.
   std::unique_ptr<tiledb::ArraySchema> schema;
-  std::unique_ptr<tiledb::MapSchema> map_schema;
 
   // Just instantiate them, don't care about runtime errors.
   schema.reset(new tiledb::ArraySchema(ctx, TILEDB_SPARSE));
-  CHECK_THROWS_AS(
-      map_schema.reset(new tiledb::MapSchema(ctx, "")), tiledb::TileDBError);
 }

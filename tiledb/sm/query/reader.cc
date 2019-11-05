@@ -356,8 +356,6 @@ void Reader::set_array(const Array* array) {
 
 void Reader::set_array_schema(const ArraySchema* array_schema) {
   array_schema_ = array_schema;
-  if (array_schema->is_kv())
-    layout_ = Layout::GLOBAL_ORDER;
 }
 
 Status Reader::set_buffer(

@@ -34,8 +34,7 @@
  * my_group/
  * ├── dense_arrays
  * │   ├── array_A
- * │   ├── array_B
- * │   └── kv
+ * │   └── array_B
  * └── sparse_arrays
  *     ├── array_C
  *     └── array_D
@@ -44,7 +43,6 @@
  * move/remove TileDB objects.
  */
 
-#include <tiledb/map.h>
 #include <iostream>
 #include <tiledb/tiledb>
 
@@ -56,9 +54,6 @@ void print_path(const std::string& path, tiledb::Object::Type type) {
   switch (type) {
     case tiledb::Object::Type::Array:
       std::cout << "ARRAY";
-      break;
-    case tiledb::Object::Type::KeyValue:
-      std::cout << "KEY_VALUE";
       break;
     case tiledb::Object::Type::Group:
       std::cout << "GROUP";
@@ -106,16 +101,6 @@ void create_array(const std::string& array_name, tiledb_array_type_t type) {
   Array::create(array_name, schema);
 }
 
-void create_kv(const std::string& kv_name) {
-  tiledb::Context ctx;
-  if (Object::object(ctx, kv_name).type() == Object::Type::KeyValue)
-    return;
-  tiledb::MapSchema schema(ctx);
-  tiledb::Attribute a = tiledb::Attribute::create<int>(ctx, "a");
-  schema.add_attribute(a);
-  tiledb::Map::create(kv_name, schema);
-}
-
 void move_remove_obj() {
   tiledb::Context ctx;
   tiledb::Object::move(ctx, "my_group", "my_group_2");
@@ -135,9 +120,6 @@ void create_hierarchy() {
   create_array("my_group/dense_arrays/array_B", TILEDB_DENSE);
   create_array("my_group/sparse_arrays/array_C", TILEDB_SPARSE);
   create_array("my_group/sparse_arrays/array_D", TILEDB_SPARSE);
-
-  // Create key-value store
-  create_kv("my_group/dense_arrays/kv");
 }
 
 int main() {

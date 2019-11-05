@@ -42,9 +42,6 @@
 #include "tiledb/sm/filesystem/vfs_file_handle.h"
 #include "tiledb/sm/filter/compression_filter.h"
 #include "tiledb/sm/filter/filter_pipeline.h"
-#include "tiledb/sm/kv/kv.h"
-#include "tiledb/sm/kv/kv_item.h"
-#include "tiledb/sm/kv/kv_iter.h"
 #include "tiledb/sm/query/query.h"
 #include "tiledb/sm/storage_manager/context.h"
 #include "tiledb/sm/subarray/subarray.h"
@@ -105,22 +102,6 @@ struct tiledb_filter_list_t {
 
 struct tiledb_query_t {
   tiledb::sm::Query* query_ = nullptr;
-};
-
-struct tiledb_kv_schema_t {
-  tiledb::sm::ArraySchema* array_schema_ = nullptr;
-};
-
-struct tiledb_kv_t {
-  tiledb::sm::KV* kv_ = nullptr;
-};
-
-struct tiledb_kv_item_t {
-  tiledb::sm::KVItem* kv_item_ = nullptr;
-};
-
-struct tiledb_kv_iter_t {
-  tiledb::sm::KVIter* kv_iter_ = nullptr;
 };
 
 struct tiledb_vfs_t {
