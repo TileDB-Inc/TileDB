@@ -387,9 +387,10 @@ Status query_to_capnp(
   auto type = query.type();
   auto array = query.array();
 
-  if (layout == Layout::GLOBAL_ORDER)
-    return LOG_STATUS(Status::SerializationError(
-        "Cannot serialize; global order serialization not supported."));
+  if (layout == Layout::GLOBAL_ORDER && query.type() == QueryType::WRITE)
+    return LOG_STATUS(
+        Status::SerializationError("Cannot serialize; global order "
+                                   "serialization not supported for writes."));
 
   if (array == nullptr)
     return LOG_STATUS(
