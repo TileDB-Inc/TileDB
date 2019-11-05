@@ -62,6 +62,7 @@ struct Query2Fx {
       const uint64_t* dim_domain = DIM_DOMAIN,
       tiledb_layout_t layout = TILEDB_ROW_MAJOR);
   void create_sparse_array_real(const std::string& array_name);
+  void create_sparse_array_real2(const std::string& array_name);
   void write_dense_array(
       const std::string& array_name,
       const std::vector<uint64_t>& domain,
@@ -451,6 +452,71 @@ void Query2Fx::create_sparse_array_real(const std::string& array_name) {
   tiledb_array_schema_free(&array_schema);
 }
 
+void Query2Fx::create_sparse_array_real2(const std::string& array_name) {
+  // Create dimensions
+  double dim_domain[] = {-5, 5};
+  double tile_extents[] = {1};
+  tiledb_dimension_t* d1;
+  int rc = tiledb_dimension_alloc(
+      ctx_, "d1", TILEDB_FLOAT64, &dim_domain[0], &tile_extents[0], &d1);
+  CHECK(rc == TILEDB_OK);
+
+  // Create domain
+  tiledb_domain_t* domain;
+  rc = tiledb_domain_alloc(ctx_, &domain);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_domain_add_dimension(ctx_, domain, d1);
+  CHECK(rc == TILEDB_OK);
+
+  /*
+  tiledb_dimension_t* d2;
+  rc = tiledb_dimension_alloc(
+      ctx_, "d2", TILEDB_FLOAT64, &dim_domain[2], &tile_extents[1], &d2);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_domain_add_dimension(ctx_, domain, d2);
+  CHECK(rc == TILEDB_OK);
+  */
+
+  // Create attribute
+  tiledb_attribute_t* a;
+  rc = tiledb_attribute_alloc(ctx_, "a", TILEDB_FLOAT64, &a);
+  CHECK(rc == TILEDB_OK);
+  // rc = set_attribute_compression_filter(ctx_, a, TILEDB_FILTER_LZ4, -1);
+  // CHECK(rc == TILEDB_OK);
+  rc = tiledb_attribute_set_cell_val_num(ctx_, a, 1);
+  CHECK(rc == TILEDB_OK);
+
+  // Create array schmea
+  tiledb_array_schema_t* array_schema;
+  rc = tiledb_array_schema_alloc(ctx_, TILEDB_SPARSE, &array_schema);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_array_schema_set_cell_order(ctx_, array_schema, TILEDB_ROW_MAJOR);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_array_schema_set_tile_order(ctx_, array_schema, TILEDB_ROW_MAJOR);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_array_schema_set_capacity(ctx_, array_schema, 4);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_array_schema_set_domain(ctx_, array_schema, domain);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_array_schema_add_attribute(ctx_, array_schema, a);
+  CHECK(rc == TILEDB_OK);
+
+  // Check array schema
+  rc = tiledb_array_schema_check(ctx_, array_schema);
+  CHECK(rc == TILEDB_OK);
+
+  // Create array
+  rc = tiledb_array_create(ctx_, array_name.c_str(), array_schema);
+  CHECK(rc == TILEDB_OK);
+
+  // Clean up
+  tiledb_attribute_free(&a);
+  tiledb_dimension_free(&d1);
+  // tiledb_dimension_free(&d2);
+  tiledb_domain_free(&domain);
+  tiledb_array_schema_free(&array_schema);
+}
+
 void Query2Fx::write_dense_array(
     const std::string& array_name,
     const std::vector<uint64_t>& domain,
@@ -775,6 +841,127 @@ TEST_CASE_METHOD(
   rc = tiledb_query_add_range(ctx_, query, 0, &range2[0], &range2[0], nullptr);
   CHECK(rc == TILEDB_OK);
 
+  // Clean-up
+  rc = tiledb_array_close(ctx_, array);
+  CHECK(rc == TILEDB_OK);
+  tiledb_array_free(&array);
+  CHECK(array == nullptr);
+  tiledb_query_free(&query);
+  CHECK(query == nullptr);
+
+  remove_array(array_name);
+}
+
+TEST_CASE_METHOD(
+    Query2Fx,
+    "C API: Test estimation, sparse, check negative ranges",
+    "[capi][query_2][sparse][negative]") {
+  std::string array_name = "subarray_sparse_neg";
+  remove_array(array_name);
+  create_sparse_array_real2(array_name);
+
+  int rc;
+  tiledb_array_t* array = nullptr;
+  tiledb_query_t* query = nullptr;
+
+  // works
+  /*
+  double buffer[] = {1.0};
+  double coords[] = {1.0};
+  */
+
+  // fails
+  double buffer[] = {1.0, 4.0};  //, 2.3, 3.4, 4.7};
+  double coords[] = {1.0, 2.0};
+
+  double range[] = {1.0, 1.0};
+  // double coords[] = {-5.0, -5.0,
+  //                    0, 0,
+  //                    1.0, 1.0,
+  //                    2.0, 2.0};
+  // double range[] = {1.0, 1.0};
+  // double range2[] = {1.0, 1.0};
+
+  // Write data
+  {
+    rc = tiledb_array_alloc(ctx_, array_name.c_str(), &array);
+    CHECK(rc == TILEDB_OK);
+    rc = tiledb_array_open(ctx_, array, TILEDB_WRITE);
+    CHECK(rc == TILEDB_OK);
+
+    uint64_t buffer_size = sizeof(buffer);
+    uint64_t coords_size = sizeof(coords);
+
+    rc = tiledb_query_alloc(ctx_, array, TILEDB_WRITE, &query);
+    CHECK(rc == TILEDB_OK);
+
+    rc = tiledb_query_set_buffer(ctx_, query, "a", buffer, &buffer_size);
+    CHECK(rc == TILEDB_OK);
+    rc = tiledb_query_set_buffer(
+        ctx_, query, TILEDB_COORDS, coords, &coords_size);
+    CHECK(rc == TILEDB_OK);
+
+    rc = tiledb_query_set_layout(ctx_, query, TILEDB_UNORDERED);
+    CHECK(rc == TILEDB_OK);
+
+    rc = tiledb_query_submit(ctx_, query);
+    CHECK(rc == TILEDB_OK);
+
+    rc = tiledb_query_finalize(ctx_, query);
+    REQUIRE(rc == TILEDB_OK);
+
+    rc = tiledb_array_close(ctx_, array);
+    CHECK(rc == TILEDB_OK);
+    tiledb_array_free(&array);
+    CHECK(array == nullptr);
+    tiledb_query_free(&query);
+    CHECK(query == nullptr);
+  }
+
+  /*
+  // Create subarray
+  tiledb_array_t* array;
+  int rc = tiledb_array_alloc(ctx_, array_name.c_str(), &array);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_array_open(ctx_, array, TILEDB_READ);
+  CHECK(rc == TILEDB_OK);
+  */
+
+  // Read query
+  rc = tiledb_array_alloc(ctx_, array_name.c_str(), &array);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_array_open(ctx_, array, TILEDB_READ);
+  CHECK(rc == TILEDB_OK);
+
+  rc = tiledb_query_alloc(ctx_, array, TILEDB_READ, &query);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_layout(ctx_, query, TILEDB_UNORDERED);
+  CHECK(rc == TILEDB_OK);
+
+  {
+    // Add range with negative point query
+    rc = tiledb_query_add_range(ctx_, query, 0, &range[0], &range[1], nullptr);
+    CHECK(rc == TILEDB_OK);
+
+    // rc = tiledb_query_add_range(ctx_, query, 1, &range2[0], &range2[1],
+    // nullptr); CHECK(rc == TILEDB_OK);
+
+    uint64_t est_bytes = 0;
+    rc = tiledb_query_get_est_result_size(ctx_, query, "a", &est_bytes);
+    CHECK(rc == TILEDB_OK);
+
+    std::vector<double> result_buf;
+    result_buf.resize(est_bytes / sizeof(double));
+
+    rc = tiledb_query_set_buffer(
+        ctx_, query, "a", result_buf.data(), &est_bytes);
+    CHECK(rc == TILEDB_OK);
+
+    rc = tiledb_query_submit(ctx_, query);
+    CHECK(rc == TILEDB_OK);
+
+    CHECK(result_buf[0] == 1.0);
+  }
   // Clean-up
   rc = tiledb_array_close(ctx_, array);
   CHECK(rc == TILEDB_OK);
