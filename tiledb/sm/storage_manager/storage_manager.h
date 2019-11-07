@@ -885,14 +885,13 @@ class StorageManager {
   /**
    * Applicable to fragment and array metadata URIs.
    *
-   * Gets the sorted URIs based on the second function input
-   * in ascending first timestamp order, breaking ties with lexicographic
+   * Gets the sorted URIs in ascending first timestamp order,
+   * breaking ties with lexicographic
    * sorting of UUID. Only the URIs with timestamp smaller than or
    * equal to `timestamp` are considered. The sorted URIs are
    * stored in the last input, including their timestamps.
    */
   Status get_sorted_uris(
-      uint32_t version,
       const std::vector<URI>& uris,
       uint64_t timestamp,
       std::vector<TimestampedURI>* sorted_uris) const;

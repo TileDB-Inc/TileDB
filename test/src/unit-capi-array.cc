@@ -738,7 +738,7 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     ArrayFx,
     "C API: Test opening array at timestamp",
-    "[capi], [array], [array-open-at]") {
+    "[capi][array][open-at]") {
   std::string temp_dir;
   if (supports_s3_)
     temp_dir = S3_TEMP_DIR;

@@ -215,11 +215,7 @@ Status StorageManager::array_open_for_reads(
   std::vector<TimestampedURI> fragments_to_load;
   std::vector<URI> fragment_uris;
   RETURN_NOT_OK(get_fragment_uris(array_uri, &fragment_uris));
-  RETURN_NOT_OK(get_sorted_uris(
-      (*array_schema)->version(),
-      fragment_uris,
-      timestamp,
-      &fragments_to_load));
+  RETURN_NOT_OK(get_sorted_uris(fragment_uris, timestamp, &fragments_to_load));
 
   // Get fragment metadata in the case of reads, if not fetched already
   Status st = load_fragment_metadata(
@@ -231,15 +227,12 @@ Status StorageManager::array_open_for_reads(
     return st;
   }
 
-  // Determin which array metadata to load
+  // Determine which array metadata to load
   std::vector<TimestampedURI> array_metadata_to_load;
   std::vector<URI> array_metadata_uris;
   RETURN_NOT_OK(get_array_metadata_uris(array_uri, &array_metadata_uris));
-  RETURN_NOT_OK(get_sorted_uris(
-      (*array_schema)->version(),
-      array_metadata_uris,
-      timestamp,
-      &array_metadata_to_load));
+  RETURN_NOT_OK(
+      get_sorted_uris(array_metadata_uris, timestamp, &array_metadata_to_load));
 
   // Get the array metadata
   st = load_array_metadata(
@@ -356,12 +349,13 @@ Status StorageManager::array_open_for_writes(
     }
   }
 
-  // Check array version versus library version
-  if (open_array->array_schema()->version() != constants::format_version) {
+  // This library should not be able to write to newer-versioned arrays
+  // (but it is ok to write to older arrays)
+  if (open_array->array_schema()->version() > constants::format_version) {
     std::stringstream err;
     err << "Cannot open array for writes; Array format version (";
     err << open_array->array_schema()->version();
-    err << ") is different from library format version (";
+    err << ") is newer than library format version (";
     err << constants::format_version << ")";
     open_array->mtx_unlock();
     array_close_for_writes(array_uri, encryption_key, nullptr);
@@ -413,9 +407,7 @@ Status StorageManager::array_reopen(
   std::vector<TimestampedURI> fragments_to_load;
   std::vector<URI> fragment_uris;
   RETURN_NOT_OK(get_fragment_uris(array_uri, &fragment_uris));
-  auto version = open_array->array_schema()->version();
-  RETURN_NOT_OK(
-      get_sorted_uris(version, fragment_uris, timestamp, &fragments_to_load));
+  RETURN_NOT_OK(get_sorted_uris(fragment_uris, timestamp, &fragments_to_load));
 
   // Get fragment metadata in the case of reads, if not fetched already
   auto st = load_fragment_metadata(
@@ -434,11 +426,8 @@ Status StorageManager::array_reopen(
   std::vector<TimestampedURI> array_metadata_to_load;
   std::vector<URI> array_metadata_uris;
   RETURN_NOT_OK(get_array_metadata_uris(array_uri, &array_metadata_uris));
-  RETURN_NOT_OK(get_sorted_uris(
-      (*array_schema)->version(),
-      array_metadata_uris,
-      timestamp,
-      &array_metadata_to_load));
+  RETURN_NOT_OK(
+      get_sorted_uris(array_metadata_uris, timestamp, &array_metadata_to_load));
 
   // Get the array metadata
   st = load_array_metadata(
@@ -915,13 +904,17 @@ Status StorageManager::get_fragment_info(
   std::string fragment_name = URI(uri_str).last_path_part();
   assert(utils::parse::starts_with(fragment_name, "__"));
 
+  uint32_t fragment_name_version;
+  RETURN_NOT_OK(utils::parse::get_fragment_name_version(
+      fragment_name, &fragment_name_version));
+
   // Get timestamp range
   auto timestamp_range =
-      utils::parse::get_timestamp_range(array_schema->version(), fragment_name);
+      utils::parse::get_timestamp_range(fragment_name_version, fragment_name);
 
   // Check if fragment is sparse
   bool sparse = false;
-  if (array_schema->version() <= 2) {
+  if (fragment_name_version == 1) {  // This corresponds to format version <=2
     URI coords_uri =
         fragment_uri.join_path(constants::coords + constants::file_suffix);
     RETURN_NOT_OK(vfs_->is_file(coords_uri, &sparse));
@@ -1742,24 +1735,27 @@ Status StorageManager::load_fragment_metadata(
   // Load the metadata for each fragment, only if they are not already loaded
   auto fragment_num = fragments_to_load.size();
   fragment_metadata->resize(fragment_num);
+  uint32_t f_version;
   auto statuses = parallel_for(0, fragment_num, [&](size_t f) {
     const auto& sf = fragments_to_load[f];
     auto array_schema = open_array->array_schema();
-    auto version = array_schema->version();
     auto metadata = open_array->fragment_metadata(sf.uri_);
     if (metadata == nullptr) {  // Fragment metadata does not exist - load it
       URI coords_uri =
           sf.uri_.join_path(constants::coords + constants::file_suffix);
 
+      RETURN_NOT_OK(utils::parse::get_fragment_name_version(
+          sf.uri_.to_string(), &f_version));
+
       // Note that the fragment metadata version is >= the array schema
       // version. Therefore, the check below is defensive and will always
-      // ensure backwads compatibility.
-      if (version <= 2) {
+      // ensure backwards compatibility.
+      if (f_version == 1) {  // This is equivalent to format version <=2
         bool sparse;
         RETURN_NOT_OK(vfs_->is_file(coords_uri, &sparse));
         metadata = new FragmentMetadata(
             this, array_schema, sf.uri_, sf.timestamp_range_, !sparse);
-      } else {  // Format bersion > 2
+      } else {  // Format version > 2
         metadata = new FragmentMetadata(
             this, array_schema, sf.uri_, sf.timestamp_range_);
       }
@@ -1779,7 +1775,6 @@ Status StorageManager::load_fragment_metadata(
 }
 
 Status StorageManager::get_sorted_uris(
-    uint32_t version,
     const std::vector<URI>& uris,
     uint64_t timestamp,
     std::vector<TimestampedURI>* sorted_uris) const {
@@ -1788,6 +1783,7 @@ Status StorageManager::get_sorted_uris(
     return Status::Ok();
 
   // Get the timestamp for each URI
+  uint32_t f_version;
   for (auto& uri : uris) {
     // Get fragment name
     std::string uri_str = uri.c_str();
@@ -1797,7 +1793,8 @@ Status StorageManager::get_sorted_uris(
     assert(utils::parse::starts_with(name, "__"));
 
     // Get timestamp range
-    auto timestamp_range = utils::parse::get_timestamp_range(version, name);
+    RETURN_NOT_OK(utils::parse::get_fragment_name_version(name, &f_version));
+    auto timestamp_range = utils::parse::get_timestamp_range(f_version, name);
     auto t = timestamp_range.first;
 
     if (t <= timestamp)

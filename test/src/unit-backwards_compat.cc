@@ -465,10 +465,44 @@ TEST_CASE(
     "[backwards-compat][write-to-older-version]") {
   std::string old_array_name(arrays_dir + "/non_split_coords_v1_4_0");
   Context ctx;
+  std::string fragment_uri;
+
   try {
+    // Write
     Array old_array(ctx, old_array_name, TILEDB_WRITE);
-    CHECK(false);
+    std::vector<int> a_write = {100};
+    std::vector<int> coords_write = {1, 10};
+    Query query_w(ctx, old_array);
+    query_w.set_layout(TILEDB_UNORDERED)
+        .set_buffer("a", a_write)
+        .set_coordinates(coords_write);
+    query_w.submit();
+    fragment_uri = query_w.fragment_uri(0);
+    old_array.close();
+
+    // Read
+    std::vector<int> subarray = {1, 4, 10, 10};
+    std::vector<int> a_read(50);
+    std::vector<int> coords_read(50);
+
+    Array array(ctx, old_array_name, TILEDB_READ);
+    Query query_r(ctx, array);
+    query_r.set_subarray(subarray)
+        .set_layout(TILEDB_ROW_MAJOR)
+        .set_buffer("a", a_read)
+        .set_coordinates(coords_read);
+    query_r.submit();
+    array.close();
+
+    // Remove create fragment
+    VFS vfs(ctx);
+    vfs.remove_dir(fragment_uri);
+
+    REQUIRE(a_read[0] == 100);
+    for (int i = 1; i < 4; i++) {
+      REQUIRE(a_read[i] == i + 1);
+    }
   } catch (const std::exception& e) {
-    CHECK(true);
+    CHECK(false);
   }
 }

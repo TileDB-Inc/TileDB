@@ -415,14 +415,11 @@ class Consolidator {
       T* union_non_empty_domains) const;
 
   /**
-   * If the version is <= 2, the new fragment URI is computed
-   * as `__<uuid>_<current_timestamp>_<last_URI_timestamp>`.
-   *
-   * If the version is >= 3, the new fragment URI is computed
+   * The new fragment URI is computed
    * as `__<first_URI_timestamp>_<last_URI_timestamp>_<uuid>`.
    */
   Status compute_new_fragment_uri(
-      uint32_t version, const URI& first, const URI& last, URI* new_uri) const;
+      const URI& first, const URI& last, URI* new_uri) const;
 
   /** Checks and sets the input configuration parameters. */
   Status set_config(const Config* config);

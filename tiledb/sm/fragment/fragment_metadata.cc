@@ -429,11 +429,19 @@ uint64_t FragmentMetadata::last_tile_cell_num() const {
 }
 
 Status FragmentMetadata::load(const EncryptionKey& encryption_key) {
-  auto uri = fragment_uri_.join_path(
+  auto meta_uri = fragment_uri_.join_path(
       std::string(constants::fragment_metadata_filename));
-  RETURN_NOT_OK(storage_manager_->vfs()->file_size(uri, &meta_file_size_));
+  RETURN_NOT_OK(storage_manager_->vfs()->file_size(meta_uri, &meta_file_size_));
 
-  if (array_schema_->version() <= 2)
+  // Get fragment name version
+  std::string uri_str = fragment_uri_.c_str();
+  if (uri_str.back() == '/')
+    uri_str.pop_back();
+  std::string name = URI(uri_str).last_path_part();
+  uint32_t f_version;
+  RETURN_NOT_OK(utils::parse::get_fragment_name_version(name, &f_version));
+
+  if (f_version == 1)
     return load_v2(encryption_key);
   return load_v3(encryption_key);
 }
