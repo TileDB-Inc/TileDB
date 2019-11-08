@@ -228,8 +228,7 @@ Status RestClient::submit_query_to_rest(const URI& uri, Query* query) {
   // Local state tracking for the current offsets into the user's query buffers.
   // This allows resubmission of incomplete queries while appending to the
   // same user buffers.
-  std::unordered_map<std::string, serialization::QueryBufferCopyState>
-      copy_state;
+  CopyState copy_state;
 
   RETURN_NOT_OK(post_query_submit(uri, query, &copy_state));
 
@@ -243,10 +242,7 @@ Status RestClient::submit_query_to_rest(const URI& uri, Query* query) {
 }
 
 Status RestClient::post_query_submit(
-    const URI& uri,
-    Query* query,
-    std::unordered_map<std::string, serialization::QueryBufferCopyState>*
-        copy_state) {
+    const URI& uri, Query* query, CopyState* copy_state) {
   // Get array
   const Array* array = query->array();
   if (array == nullptr) {
@@ -286,20 +282,23 @@ Status RestClient::post_query_submit(
       query,
       copy_state);
 
-  RETURN_NOT_OK(curlc.post_data(
-      url, serialization_type_, &serialized, std::move(write_cb)));
+  // Sending the POST request to the REST server. If this fails, log the error
+  // message but do not return an error because the we may have recieved
+  // partial, valid data. We can detect this scenario by checking if 'query' is
+  // in the incomplete state.
+  const Status st = curlc.post_data(
+      url, serialization_type_, &serialized, std::move(write_cb));
+  if (!st.ok()) {
+    LOG_STATUS(st);
+  }
 
+  // Even if the above 'post_data' failed, we may have recieved some of the
+  // data. in this scenario, the 'query' will be incomplete and 'copy_state'
+  // will be non-empty. If we didn't receive anything, 'copy_state' will be
+  // empty.
   if (copy_state->empty()) {
     return LOG_STATUS(Status::RestError(
         "Error submitting query to REST; server returned no data."));
-  }
-
-  // When 'resubmit_incomplete_' is true but the status is iscomplete, it
-  // indicates that the response from the server was incomplete. Set an error
-  // to alert the caller that we were unable to capture a complete query.
-  if (resubmit_incomplete_ && query->status() == QueryStatus::INCOMPLETE) {
-    return LOG_STATUS(Status::RestError(
-        "Error submitting query to REST; server returned incomplete data."));
   }
 
   return Status::Ok();
@@ -311,8 +310,7 @@ size_t RestClient::post_data_write_cb(
     const size_t content_nbytes,
     Buffer* const scratch,
     Query* query,
-    std::unordered_map<std::string, serialization::QueryBufferCopyState>*
-        copy_state) {
+    CopyState* copy_state) {
   // This is the return value that represents the amount of bytes processed
   // in 'contents'. This will act as the return value and will always be
   // less-than-or-equal-to 'content_nbytes'.
@@ -388,9 +386,11 @@ size_t RestClient::post_data_write_cb(
       // data when deserializing read queries, this will return an
       // error status.
       aux.reset_offset();
+      const CopyState original_copy_state(*copy_state);
       st = serialization::query_deserialize(
           aux, serialization_type_, true, copy_state, query);
       if (!st.ok()) {
+        *copy_state = original_copy_state;
         scratch->set_offset(scratch->offset() - 8);
         scratch->set_size(scratch->offset());
         return std::max(bytes_processed, 0L);
@@ -400,9 +400,11 @@ size_t RestClient::post_data_write_cb(
       // the user buffers are too small to accomodate the attribute
       // data when deserializing read queries, this will return an
       // error status.
+      const CopyState original_copy_state(*copy_state);
       st = serialization::query_deserialize(
           *scratch, serialization_type_, true, copy_state, query);
       if (!st.ok()) {
+        *copy_state = original_copy_state;
         scratch->set_offset(scratch->offset() - 8);
         scratch->set_size(scratch->offset());
         return std::max(bytes_processed, 0L);
@@ -554,9 +556,7 @@ Status RestClient::subarray_to_str(
 }
 
 Status RestClient::update_attribute_buffer_sizes(
-    const std::unordered_map<std::string, serialization::QueryBufferCopyState>&
-        copy_state,
-    Query* query) const {
+    const CopyState& copy_state, Query* query) const {
   // Applicable only to reads
   if (query->type() != QueryType::READ)
     return Status::Ok();

@@ -57,6 +57,19 @@ struct QueryBufferCopyState {
       : offset_size(0)
       , data_size(0) {
   }
+
+  /** Copy constructor. */
+  QueryBufferCopyState(const QueryBufferCopyState& rhs)
+      : offset_size(rhs.offset_size)
+      , data_size(rhs.data_size) {
+  }
+
+  /** Assignment operator. */
+  QueryBufferCopyState& operator=(const QueryBufferCopyState& rhs) {
+    offset_size = rhs.offset_size;
+    data_size = rhs.data_size;
+    return *this;
+  }
 };
 
 /**

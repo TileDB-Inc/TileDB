@@ -173,11 +173,9 @@ class RestClient {
    *    map is updated accordingly.
    * @return
    */
-  Status post_query_submit(
-      const URI& uri,
-      Query* query,
-      std::unordered_map<std::string, serialization::QueryBufferCopyState>*
-          copy_state);
+  using CopyState =
+      std::unordered_map<std::string, serialization::QueryBufferCopyState>;
+  Status post_query_submit(const URI& uri, Query* query, CopyState* copy_state);
 
   /**
    * Callback to invoke as partial, buffered response data is received from
@@ -206,8 +204,7 @@ class RestClient {
       size_t content_nbytes,
       Buffer* scratch,
       Query* query,
-      std::unordered_map<std::string, serialization::QueryBufferCopyState>*
-          copy_state);
+      CopyState* copy_state);
 
   /**
    * Returns a string representation of the given subarray. The format is:
@@ -233,10 +230,7 @@ class RestClient {
    * @return Status
    */
   Status update_attribute_buffer_sizes(
-      const std::unordered_map<
-          std::string,
-          serialization::QueryBufferCopyState>& copy_state,
-      Query* query) const;
+      const CopyState& copy_state, Query* query) const;
 };
 
 }  // namespace sm
