@@ -198,6 +198,9 @@ class RestClient {
    * @param copy_state Map of copy state per attribute. As attribute data is
    *    copied into user buffers on reads, the state of each attribute in this
    *    map is updated accordingly.
+   * @param user_buffers_overflowed If mutated to true, the 'query' and
+   *    'copy_state' are in incomplete but valid states and may be returned
+   *    to the user regardless of the return status.
    * @return Number of acknowledged bytes
    */
   size_t post_data_write_cb(
@@ -207,7 +210,8 @@ class RestClient {
       Buffer* scratch,
       Query* query,
       std::unordered_map<std::string, serialization::QueryBufferCopyState>*
-          copy_state);
+          copy_state,
+      bool* user_buffers_overflowed);
 
   /**
    * Returns a string representation of the given subarray. The format is:
