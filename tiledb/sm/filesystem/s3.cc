@@ -561,7 +561,8 @@ Status S3::touch(const URI& uri) const {
   Aws::Http::URI aws_uri = uri.c_str();
   Aws::S3::Model::PutObjectRequest put_object_request;
   put_object_request.WithKey(aws_uri.GetPath())
-      .WithBucket(aws_uri.GetAuthority());
+      .WithBucket(aws_uri.GetAuthority())
+      .WithACL(Aws::S3::Model::ObjectCannedACL::bucket_owner_full_control);
 
   auto request_stream =
       Aws::MakeShared<Aws::StringStream>(constants::s3_allocation_tag.c_str());
@@ -739,6 +740,8 @@ Status S3::initiate_multipart_request(Aws::Http::URI aws_uri) {
   std::string path_c_str = path.c_str();
   Aws::S3::Model::CreateMultipartUploadRequest multipart_upload_request;
   multipart_upload_request.SetBucket(aws_uri.GetAuthority());
+  multipart_upload_request.SetACL(
+      Aws::S3::Model::ObjectCannedACL::bucket_owner_full_control);
   multipart_upload_request.SetKey(path);
   multipart_upload_request.SetContentType("application/octet-stream");
 
