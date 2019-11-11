@@ -4172,7 +4172,8 @@ int32_t tiledb_deserialize_query(
               (tiledb::sm::SerializationType)serialize_type,
               client_side == 1,
               nullptr,
-              query->query_)))
+              query->query_,
+              nullptr)))
     return TILEDB_ERR;
 
   return TILEDB_OK;

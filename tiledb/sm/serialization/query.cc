@@ -475,7 +475,8 @@ Status query_from_capnp(
     bool clientside,
     void* buffer_start,
     std::unordered_map<std::string, QueryBufferCopyState>* copy_state,
-    Query* query) {
+    Query* query,
+    bool* const user_buffers_overflowed) {
   using namespace tiledb::sm;
 
   auto type = query->type();
@@ -502,14 +503,6 @@ Status query_from_capnp(
     return LOG_STATUS(Status::SerializationError(
         "Cannot deserialize; Query opened for " + query_type_str(type) +
         " but got serialized type for " + query_reader.getType().cStr()));
-
-  // Deserialize layout.
-  Layout layout = Layout::UNORDERED;
-  RETURN_NOT_OK(layout_enum(query_reader.getLayout().cStr(), &layout));
-  RETURN_NOT_OK(query->set_layout(layout));
-
-  // Deserialize array instance.
-  RETURN_NOT_OK(array_from_capnp(query_reader.getArray(), array));
 
   // Deserialize and set attribute buffers.
   if (!query_reader.hasAttributeBufferHeaders())
@@ -582,6 +575,9 @@ Status query_from_capnp(
       if ((var_size && (offset_size_left < fixedlen_size ||
                         data_size_left < varlen_size)) ||
           (!var_size && data_size_left < fixedlen_size)) {
+        if (user_buffers_overflowed != NULL) {
+          *user_buffers_overflowed = true;
+        }
         return LOG_STATUS(Status::SerializationError(
             "Error deserializing read query; buffer too small for attribute "
             "'" +
@@ -688,6 +684,14 @@ Status query_from_capnp(
       }
     }
   }
+
+  // Deserialize layout.
+  Layout layout = Layout::UNORDERED;
+  RETURN_NOT_OK(layout_enum(query_reader.getLayout().cStr(), &layout));
+  RETURN_NOT_OK(query->set_layout(layout));
+
+  // Deserialize array instance.
+  RETURN_NOT_OK(array_from_capnp(query_reader.getArray(), array));
 
   // Deserialize reader/writer.
   if (type == QueryType::READ) {
@@ -843,7 +847,8 @@ Status query_deserialize(
     SerializationType serialize_type,
     bool clientside,
     std::unordered_map<std::string, QueryBufferCopyState>* copy_state,
-    Query* query) {
+    Query* query,
+    bool* const user_buffers_overflowed) {
   STATS_FUNC_IN(serialization_query_deserialize);
 
   if (serialize_type == SerializationType::JSON)
@@ -863,7 +868,12 @@ Status query_deserialize(
             query_builder);
         capnp::Query::Reader query_reader = query_builder.asReader();
         return query_from_capnp(
-            query_reader, clientside, nullptr, copy_state, query);
+            query_reader,
+            clientside,
+            nullptr,
+            copy_state,
+            query,
+            user_buffers_overflowed);
       }
       case SerializationType::CAPNP: {
         // Capnp FlatArrayMessageReader requires 64-bit alignment.
@@ -889,7 +899,12 @@ Status query_deserialize(
         auto attribute_buffer_start = reader.getEnd();
         auto buffer_start = const_cast<::capnp::word*>(attribute_buffer_start);
         return query_from_capnp(
-            query_reader, clientside, buffer_start, copy_state, query);
+            query_reader,
+            clientside,
+            buffer_start,
+            copy_state,
+            query,
+            user_buffers_overflowed);
       }
       default:
         return LOG_STATUS(Status::SerializationError(
@@ -920,7 +935,8 @@ Status query_deserialize(
     SerializationType,
     bool,
     std::unordered_map<std::string, QueryBufferCopyState>*,
-    Query*) {
+    Query*,
+    bool*) {
   return LOG_STATUS(Status::SerializationError(
       "Cannot serialize; serialization not enabled."));
 }
