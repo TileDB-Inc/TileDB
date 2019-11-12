@@ -39,7 +39,7 @@
 #include <cstring>
 
 // TODO: replace this with config option
-#define CURL_MAX_RETRIES 3
+#define CURL_MAX_RETRIES 0
 
 namespace tiledb {
 namespace sm {
@@ -318,7 +318,7 @@ Status Curl::make_curl_request_common(
         Status::RestError("Cannot make curl request; curl instance is null."));
 
   *curl_code = CURLE_OK;
-  for (uint8_t i = 0; i < CURL_MAX_RETRIES; i++) {
+  for (uint8_t i = 0; i <= CURL_MAX_RETRIES; i++) {
     WriteCbState write_cb_state;
     write_cb_state.arg = write_cb_arg;
 
