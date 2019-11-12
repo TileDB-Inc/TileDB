@@ -1044,7 +1044,7 @@ Status Writer::create_fragment(
   STATS_FUNC_IN(writer_create_fragment);
 
   URI uri;
-  uint64_t timestamp;
+  uint64_t timestamp = 0;
   if (!fragment_uri_.to_string().empty()) {
     uri = fragment_uri_;
   } else {
