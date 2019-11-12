@@ -99,6 +99,7 @@ if (NOT CAPNP_FOUND)
           -DBUILD_TESTING=OFF
           "-DCMAKE_C_FLAGS=${CFLAGS_DEF}"
           "-DCMAKE_CXX_FLAGS=${CXXFLAGS_DEF}"
+          -DCMAKE_CXX_COMPILE_FEATURES=cxx_constexpr
           ${TILEDB_EP_BASE}/src/ep_capnp/c++
         UPDATE_COMMAND ""
         LOG_DOWNLOAD TRUE
