@@ -305,14 +305,6 @@ Status RestClient::post_query_submit(
         "Error submitting query to REST; server returned no data."));
   }
 
-  // When 'resubmit_incomplete_' is true but the status is iscomplete, it
-  // indicates that the response from the server was incomplete. Set an error
-  // to alert the caller that we were unable to capture a complete query.
-  if (resubmit_incomplete_ && query->status() == QueryStatus::INCOMPLETE) {
-    return LOG_STATUS(Status::RestError(
-        "Error submitting query to REST; server returned incomplete data."));
-  }
-
   return Status::Ok();
 }
 
