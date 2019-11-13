@@ -283,6 +283,7 @@ Status RestClient::post_query_submit(
       std::placeholders::_1,
       std::placeholders::_2,
       std::placeholders::_3,
+      std::placeholders::_4,
       &scratch,
       query,
       copy_state,
@@ -312,15 +313,38 @@ size_t RestClient::post_data_write_cb(
     const bool reset,
     void* const contents,
     const size_t content_nbytes,
+    bool* const skip_retries,
     Buffer* const scratch,
     Query* query,
     std::unordered_map<std::string, serialization::QueryBufferCopyState>*
         copy_state,
     bool* const user_buffers_overflowed) {
+  // All return statements in this function must pass through this wrapper.
+  // This is responsible for two things:
+  // 1. The 'bytes_processed' may be negative in error scenarios. The negative
+  //    number is only used for convenience during processing. We must restrict
+  //    the return value to >= 0 before returning.
+  // 2. When our return value ('bytes_processed') does not match the number of
+  //    input bytes ('content_nbytes'), The CURL layer that invoked this
+  //    callback will interpret this as an error and may attempt to retry. We
+  //    specifically want to prevent CURL from retrying the request if we have
+  //    reached this callback. If we encounter an error within this callback,
+  //    the issue is with the response data itself and not an issue with
+  //    transporting the response data (for example, the common issue will be
+  //    deserialization failure). In this scenario, we will waste time retrying
+  //    on response data that we know we cannot handle without error.
+  auto return_wrapper = [content_nbytes, skip_retries](long bytes_processed) {
+    bytes_processed = std::max(bytes_processed, 0L);
+    if (static_cast<size_t>(bytes_processed) != content_nbytes) {
+      *skip_retries = true;
+    }
+    return bytes_processed;
+  };
+
   // If 'user_buffers_overflowed' has been set, we should prevent all future
   // response processing.
   if (*user_buffers_overflowed) {
-    return 0;
+    return return_wrapper(0);
   }
 
   // This is the return value that represents the amount of bytes processed
@@ -351,7 +375,7 @@ size_t RestClient::post_data_write_cb(
     LOG_ERROR(
         "Cannot copy libcurl response data; buffer write failed: " +
         st.to_string());
-    return std::max(bytes_processed, 0L);
+    return return_wrapper(bytes_processed);
   }
 
   // Process all of the serialized queries contained within 'scratch'.
@@ -390,7 +414,7 @@ size_t RestClient::post_data_write_cb(
       if (!st.ok()) {
         scratch->set_offset(scratch->offset() - 8);
         scratch->set_size(scratch->offset());
-        return std::max(bytes_processed, 0L);
+        return return_wrapper(bytes_processed);
       }
 
       // Deserialize the buffer and store it in 'copy_state'. If
@@ -408,7 +432,7 @@ size_t RestClient::post_data_write_cb(
       if (!st.ok()) {
         scratch->set_offset(scratch->offset() - 8);
         scratch->set_size(scratch->offset());
-        return std::max(bytes_processed, 0L);
+        return return_wrapper(bytes_processed);
       }
     } else {
       // Deserialize the buffer and store it in 'copy_state'. If
@@ -425,7 +449,7 @@ size_t RestClient::post_data_write_cb(
       if (!st.ok()) {
         scratch->set_offset(scratch->offset() - 8);
         scratch->set_size(scratch->offset());
-        return std::max(bytes_processed, 0L);
+        return return_wrapper(bytes_processed);
       }
     }
 
@@ -468,7 +492,7 @@ size_t RestClient::post_data_write_cb(
   bytes_processed += length;
 
   assert(static_cast<size_t>(bytes_processed) == content_nbytes);
-  return std::max(bytes_processed, 0L);
+  return return_wrapper(bytes_processed);
 }
 
 Status RestClient::finalize_query_to_rest(const URI& uri, Query* query) {
