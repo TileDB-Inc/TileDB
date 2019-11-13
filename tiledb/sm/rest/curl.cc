@@ -51,7 +51,8 @@ struct WriteCbState {
   /** Default constructor. */
   WriteCbState()
       : reset(true)
-      , arg(NULL) {
+      , arg(NULL)
+      , skip_retries(false) {
   }
 
   /** True if this is the first write callback invoked in a request retry. */
@@ -59,6 +60,9 @@ struct WriteCbState {
 
   /** The opaque user data to pass to the write callback. */
   void* arg;
+
+  /** True if the internal curl retries should be skipped. */
+  bool skip_retries;
 };
 
 /**
@@ -117,8 +121,11 @@ size_t write_memory_callback_cb(
   auto write_cb_state = static_cast<WriteCbState*>(userdata);
   auto user_cb = static_cast<Curl::PostResponseCb*>(write_cb_state->arg);
 
-  const size_t bytes_received =
-      (*user_cb)(write_cb_state->reset, contents, content_nbytes);
+  const size_t bytes_received = (*user_cb)(
+      write_cb_state->reset,
+      contents,
+      content_nbytes,
+      &write_cb_state->skip_retries);
   write_cb_state->reset = false;
 
   return bytes_received;
@@ -348,13 +355,24 @@ Status Curl::make_curl_request_common(
     curl_easy_setopt(curl, CURLOPT_MAXREDIRS, 1);
 
     /* fetch the url */
-    *curl_code = curl_easy_perform(curl);
+    CURLcode tmp_curl_code = curl_easy_perform(curl);
     /* If Curl call was successful (not http status, but no socket error, etc)
      * break */
-    if (*curl_code == CURLE_OK)
+    if (tmp_curl_code == CURLE_OK) {
       break;
+    }
 
-    /* Retry on curl errors */
+    /* Only store the first non-OK curl code, because it will likely be more
+     * useful than the curl codes from the retries. */
+    if (*curl_code == CURLE_OK) {
+      *curl_code = tmp_curl_code;
+    }
+
+    /* Retry on curl errors, unless the write callback has elected
+     * to skip it. */
+    if (write_cb_state.skip_retries) {
+      break;
+    }
   }
 
   return Status::Ok();

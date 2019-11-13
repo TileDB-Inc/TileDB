@@ -192,6 +192,8 @@ class RestClient {
    * @param reset True if the callback must wipe the in-memory state
    * @param contents the partial response data
    * @param content_nbytes the size of the response data in 'contents'
+   * @param skip_retries Output argument that can be set to true to
+   *    prevent the curl layer from retrying this request.
    * @scratch scratch space to use between invocations of this callback
    * @query the query object used for deserializing the serialized query
    *    objects in the response data.
@@ -207,6 +209,7 @@ class RestClient {
       bool reset,
       void* contents,
       size_t content_nbytes,
+      bool* skip_retries,
       Buffer* scratch,
       Query* query,
       std::unordered_map<std::string, serialization::QueryBufferCopyState>*
