@@ -1,3 +1,5 @@
+:orphan:
+
 .. _reading:
 
 Reading Arrays

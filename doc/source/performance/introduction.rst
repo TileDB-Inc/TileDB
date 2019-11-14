@@ -1,3 +1,5 @@
+:orphan:
+
 .. _performance/introduction:
 
 Introduction to Performance

@@ -1,3 +1,5 @@
+:orphan:
+
 Key-value Store
 ===============
 

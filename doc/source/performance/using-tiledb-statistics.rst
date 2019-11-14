@@ -1,3 +1,5 @@
+:orphan:
+
 .. _using-tiledb-statistics:
 
 Using TileDB Statistics

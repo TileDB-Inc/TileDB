@@ -1,3 +1,5 @@
+:orphan:
+
 .. _neg-real:
 
 Negative and Real Domains

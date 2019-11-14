@@ -29,7 +29,7 @@ def generate_sidebar(conf, conf_api):
         '   To edit the sidebar, modify gensidebar.py and re-build the docs.', ''
     ]
 
-    url_base = 'https://docs.tiledb.io'
+    url_base = 'https://tiledb-inc-tiledb.readthedocs-hosted.com'
     lang = 'en'
 
     def toctree(name):
@@ -70,67 +70,13 @@ def generate_sidebar(conf, conf_api):
     # Specify the sidebar contents here
     #
 
-    toctree('Getting Started')
-    write('Introduction', 'introduction')
-    write('Quickstart', 'quickstart')
-    write('Installation', 'installation')
-    write('Usage', 'usage')
-    endl()
-
-    toctree('API References')
+    toctree('API Reference')
     write_api('tiledb', 'C', 'c-api')
     write_api('tiledb', 'C++', 'c++-api')
     write_api('tiledb-py', 'Python', 'python-api')
     write_api_url('R', 'https://tiledb-inc.github.io/TileDB-R/reference/index.html')
+    write_api_url('Java', 'https://www.javadoc.io/doc/io.tiledb/tiledb-java')
     write_api_url('Go', 'https://godoc.org/github.com/TileDB-Inc/TileDB-Go')
-    endl()
-
-    toctree('Tutorials - Beginner')
-    write('Dense Arrays', 'tutorials/dense-arrays')
-    write('Sparse Arrays', 'tutorials/sparse-arrays')
-    write('Multi-attribute Arrays', 'tutorials/multi-attribute-arrays')
-    write('Variable-length Attributes', 'tutorials/variable-length-attributes')
-    write('Array Metadata', 'tutorials/array-metadata')
-    write('Filters', 'tutorials/filters')
-    write('Compression', 'tutorials/compression')
-    write('Encryption', 'tutorials/encryption')
-    write('Catching Errors', 'tutorials/errors')
-    write('Working with S3', 'tutorials/working-with-s3')
-    write('Working with HDFS', 'tutorials/working-with-hdfs')
-    endl()
-
-    toctree('Tutorials - Intermediate')
-    write('Tiling Dense Arrays', 'tutorials/tiling-dense')
-    write('Tiling Sparse Arrays', 'tutorials/tiling-sparse')
-    write('Writing Sparse Arrays', 'tutorials/writing-sparse')
-    write('Writing Dense Arrays', 'tutorials/writing-dense')
-    write('Reading Arrays', 'tutorials/reading')
-    write('Negative and Real Domains', 'tutorials/neg-real')
-    write('Datetimes', 'tutorials/datetimes')
-    write('Key-value Store', 'tutorials/kv')
-    write('Object Management', 'tutorials/object')
-    write('Virtual Filesystem', 'tutorials/vfs')
-    write('Configuration Parameters', 'tutorials/config')
-    endl()
-
-    toctree('Tutorials - Advanced')
-    write('Fragments and Consolidation', 'tutorials/fragments-consolidation')
-    write('Advanced Consolidation', 'tutorials/advanced-consolidation')
-    write('Asynchronous Queries', 'tutorials/async')
-    write('Parallelism', 'tutorials/parallelism')
-    write('Concurrency and Consistency', 'tutorials/concurrency-consistency')
-    write('Format description', 'tutorials/format-description')
-    endl()
-
-    toctree('Performance')
-    write('Introduction to Performance', 'performance/introduction')
-    write('Using TileDB statistics', 'performance/using-tiledb-statistics')
-    write('Performance factors', 'performance/performance-factors')
-    endl()
-
-    toctree('Real-world Examples')
-    write('Dense Image Data', 'real-world-examples/dense-image-data')
-    write('Sparse Geospatial Data', 'real-world-examples/sparse-geospatial-data')
     endl()
 
     write_if_changed('_sidebar.rst.inc', '\n'.join(lines))
