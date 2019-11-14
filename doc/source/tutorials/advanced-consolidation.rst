@@ -1,3 +1,5 @@
+:orphan:
+
 .. _advanced-consolidation:
 
 Advanced Consolidation

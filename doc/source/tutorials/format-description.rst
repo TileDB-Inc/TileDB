@@ -1,3 +1,5 @@
+:orphan:
+
 .. _format-description:
 
 Format description

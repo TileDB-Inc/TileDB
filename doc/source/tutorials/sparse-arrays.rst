@@ -1,3 +1,5 @@
+:orphan:
+
 .. _sparse-arrays:
 
 Sparse Arrays
