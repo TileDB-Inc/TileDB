@@ -70,7 +70,7 @@ def generate_sidebar(conf, conf_api):
     # Specify the sidebar contents here
     #
 
-    toctree('API References')
+    toctree('API Reference')
     write_api('tiledb', 'C', 'c-api')
     write_api('tiledb', 'C++', 'c++-api')
     write_api('tiledb-py', 'Python', 'python-api')
