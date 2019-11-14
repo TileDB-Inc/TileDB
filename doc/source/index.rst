@@ -1,5 +1,5 @@
-TileDB Documentation
-====================
+TileDB API Documentation
+========================
 
 TileDB is an efficient multi-dimensional array management system which
 introduces a novel on-disk format that can effectively store dense and sparse
@@ -17,9 +17,11 @@ installation guides, tutorials, and API references. Enjoy!
 Useful Links
 ------------
 
-- :ref:`Quickstart <quickstart>`
+- `Main Developer Docs <https://docs.tiledb.com/>`_
+- `Installation <https://docs.tiledb.com/developer/installation/quick-install>`_
+- `Quickstart <https://docs.tiledb.com/developer/quickstart>`_
 - `TileDB Github Repo <https://github.com/TileDB-Inc/TileDB>`_
-- `TileDB, Inc. Official Website <https://tiledb.io>`_
+- `TileDB, Inc. Official Website <https://tiledb.com>`_
 
 .. include:: _sidebar.rst.inc
 

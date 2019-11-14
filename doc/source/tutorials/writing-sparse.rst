@@ -1,3 +1,5 @@
+:orphan:
+
 .. _writing-sparse:
 
 Writing Sparse Arrays

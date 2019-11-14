@@ -1,3 +1,5 @@
+:orphan:
+
 .. _array-metadata:
 
 Array Metadata

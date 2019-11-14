@@ -1,3 +1,5 @@
+:orphan:
+
 .. _variable-length-attributes:
 
 Variable-length Attributes

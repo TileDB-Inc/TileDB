@@ -1,3 +1,5 @@
+:orphan:
+
 Multi-attribute Arrays
 ======================
 
