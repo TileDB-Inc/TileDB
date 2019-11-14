@@ -41,9 +41,9 @@ set(CURL_PATHS ${TILEDB_EP_INSTALL_PREFIX})
 # can use with find_package.
 
 # First try the CMake-provided find script.
-find_package(CURL
-  HINTS "${CURL_PATHS}"
-  QUIET ${TILEDB_DEPS_NO_DEFAULT_PATH} CONFIG)
+if (NOT TILEDB_FORCE_ALL_DEPS)
+  find_package(CURL ${TILEDB_DEPS_NO_DEFAULT_PATH})
+endif()
 
 # Next try finding the superbuild external project
 if (NOT CURL_FOUND)
