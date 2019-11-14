@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2018 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2019 TileDB, Inc.
  * @copyright Copyright (c) 2016 MIT and Intel Corporation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -472,11 +472,10 @@ Status query_to_capnp(
 
 Status query_from_capnp(
     const capnp::Query::Reader& query_reader,
-    bool clientside,
+    const bool clientside,
     void* buffer_start,
-    std::unordered_map<std::string, QueryBufferCopyState>* copy_state,
-    Query* query,
-    bool* const user_buffers_overflowed) {
+    CopyState* const copy_state,
+    Query* const query) {
   using namespace tiledb::sm;
 
   auto type = query->type();
@@ -503,6 +502,14 @@ Status query_from_capnp(
     return LOG_STATUS(Status::SerializationError(
         "Cannot deserialize; Query opened for " + query_type_str(type) +
         " but got serialized type for " + query_reader.getType().cStr()));
+
+  // Deserialize layout.
+  Layout layout = Layout::UNORDERED;
+  RETURN_NOT_OK(layout_enum(query_reader.getLayout().cStr(), &layout));
+  RETURN_NOT_OK(query->set_layout(layout));
+
+  // Deserialize array instance.
+  RETURN_NOT_OK(array_from_capnp(query_reader.getArray(), array));
 
   // Deserialize and set attribute buffers.
   if (!query_reader.hasAttributeBufferHeaders())
@@ -575,9 +582,6 @@ Status query_from_capnp(
       if ((var_size && (offset_size_left < fixedlen_size ||
                         data_size_left < varlen_size)) ||
           (!var_size && data_size_left < fixedlen_size)) {
-        if (user_buffers_overflowed != NULL) {
-          *user_buffers_overflowed = true;
-        }
         return LOG_STATUS(Status::SerializationError(
             "Error deserializing read query; buffer too small for attribute "
             "'" +
@@ -684,14 +688,6 @@ Status query_from_capnp(
       }
     }
   }
-
-  // Deserialize layout.
-  Layout layout = Layout::UNORDERED;
-  RETURN_NOT_OK(layout_enum(query_reader.getLayout().cStr(), &layout));
-  RETURN_NOT_OK(query->set_layout(layout));
-
-  // Deserialize array instance.
-  RETURN_NOT_OK(array_from_capnp(query_reader.getArray(), array));
 
   // Deserialize reader/writer.
   if (type == QueryType::READ) {
@@ -842,13 +838,12 @@ Status query_serialize(
   STATS_FUNC_OUT(serialization_query_serialize);
 }
 
-Status query_deserialize(
+Status do_query_deserialize(
     const Buffer& serialized_buffer,
     SerializationType serialize_type,
-    bool clientside,
-    std::unordered_map<std::string, QueryBufferCopyState>* copy_state,
-    Query* query,
-    bool* const user_buffers_overflowed) {
+    const bool clientside,
+    CopyState* const copy_state,
+    Query* query) {
   STATS_FUNC_IN(serialization_query_deserialize);
 
   if (serialize_type == SerializationType::JSON)
@@ -868,12 +863,7 @@ Status query_deserialize(
             query_builder);
         capnp::Query::Reader query_reader = query_builder.asReader();
         return query_from_capnp(
-            query_reader,
-            clientside,
-            nullptr,
-            copy_state,
-            query,
-            user_buffers_overflowed);
+            query_reader, clientside, nullptr, copy_state, query);
       }
       case SerializationType::CAPNP: {
         // Capnp FlatArrayMessageReader requires 64-bit alignment.
@@ -899,12 +889,7 @@ Status query_deserialize(
         auto attribute_buffer_start = reader.getEnd();
         auto buffer_start = const_cast<::capnp::word*>(attribute_buffer_start);
         return query_from_capnp(
-            query_reader,
-            clientside,
-            buffer_start,
-            copy_state,
-            query,
-            user_buffers_overflowed);
+            query_reader, clientside, buffer_start, copy_state, query);
       }
       default:
         return LOG_STATUS(Status::SerializationError(
@@ -923,6 +908,52 @@ Status query_deserialize(
   STATS_FUNC_OUT(serialization_query_deserialize);
 }
 
+Status query_deserialize(
+    const Buffer& serialized_buffer,
+    SerializationType serialize_type,
+    bool clientside,
+    CopyState* copy_state,
+    Query* query) {
+  // Create an original, serialized copy of the 'query' that we will revert
+  // to if we are unable to deserialize 'serialized_buffer'.
+  BufferList original_bufferlist;
+  RETURN_NOT_OK(
+      query_serialize(query, serialize_type, clientside, &original_bufferlist));
+
+  // The first buffer is always the serialized Query object.
+  tiledb::sm::Buffer* original_buffer;
+  RETURN_NOT_OK(original_bufferlist.get_buffer(0, &original_buffer));
+
+  // Similarly, we must create a copy of 'copy_state'.
+  std::unique_ptr<CopyState> original_copy_state = nullptr;
+  if (copy_state) {
+    original_copy_state = std::unique_ptr<CopyState>(copy_state);
+  }
+
+  // Deserialize 'serialized_buffer'.
+  const Status st = do_query_deserialize(
+      serialized_buffer, serialize_type, clientside, copy_state, query);
+
+  // If the deserialization failed, deserialize 'serialized_query_original'
+  // into 'query' to ensure that 'query' is in the state it was before the
+  // deserialization of 'serialized_buffer' failed.
+  if (!st.ok()) {
+    if (original_copy_state) {
+      *copy_state = *original_copy_state;
+    } else {
+      copy_state = NULL;
+    }
+
+    const Status st2 = do_query_deserialize(
+        *original_buffer, serialize_type, clientside, copy_state, query);
+    if (!st2.ok()) {
+      LOG_FATAL(st2.message());
+    }
+  }
+
+  return st;
+}
+
 #else
 
 Status query_serialize(Query*, SerializationType, bool, BufferList*) {
@@ -931,12 +962,7 @@ Status query_serialize(Query*, SerializationType, bool, BufferList*) {
 }
 
 Status query_deserialize(
-    const Buffer&,
-    SerializationType,
-    bool,
-    std::unordered_map<std::string, QueryBufferCopyState>*,
-    Query*,
-    bool*) {
+    const Buffer&, SerializationType, bool, CopyState*, Query*) {
   return LOG_STATUS(Status::SerializationError(
       "Cannot serialize; serialization not enabled."));
 }

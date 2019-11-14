@@ -165,7 +165,7 @@ std::string to_str(const T& value);
 namespace datatype {
 
 /**
- * Check if a given type T is quivalent to the tiledb::sm::DataTtpe
+ * Check if a given type T is quivalent to the tiledb::sm::DataType
  * @tparam T
  * @param datatype to compare T to
  * @return Status indicating Ok() on equal data types else Status:Error()

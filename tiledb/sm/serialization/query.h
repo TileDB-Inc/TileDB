@@ -57,7 +57,41 @@ struct QueryBufferCopyState {
       : offset_size(0)
       , data_size(0) {
   }
+
+  /** Copy constructor. */
+  QueryBufferCopyState(const QueryBufferCopyState& rhs)
+      : offset_size(rhs.offset_size)
+      , data_size(rhs.data_size) {
+  }
+
+  /** Move constructor. */
+  QueryBufferCopyState(QueryBufferCopyState&& rhs)
+      : offset_size(rhs.offset_size)
+      , data_size(rhs.data_size) {
+  }
+
+  /** Destructor. */
+  ~QueryBufferCopyState() {
+  }
+
+  /** Assignment operator. */
+  QueryBufferCopyState& operator=(const QueryBufferCopyState& rhs) {
+    offset_size = rhs.offset_size;
+    data_size = rhs.data_size;
+    return *this;
+  }
+
+  /** Move-assignment operator. */
+  QueryBufferCopyState& operator=(QueryBufferCopyState&& rhs) {
+    offset_size = rhs.offset_size;
+    data_size = rhs.data_size;
+    return *this;
+  }
 };
+
+/** Maps a buffer name to an associated QueryBufferCopyState. */
+using CopyState =
+    std::unordered_map<std::string, serialization::QueryBufferCopyState>;
 
 /**
  * Serialize a query
@@ -85,16 +119,13 @@ Status query_serialize(
  *      query's buffer sizes are updated directly. If it is not null, the buffer
  *      sizes are not modified but the entries in the map are.
  * @param query Query to deserialize into
- * @param user_buffers_overflowed If non-null, set to true if the user buffer
- *      was not large enough to deserialize the query.
  */
 Status query_deserialize(
     const Buffer& serialized_buffer,
     SerializationType serialize_type,
     bool clientside,
-    std::unordered_map<std::string, QueryBufferCopyState>* copy_state,
-    Query* query,
-    bool* user_buffers_overflowed);
+    CopyState* copy_state,
+    Query* query);
 
 }  // namespace serialization
 }  // namespace sm
