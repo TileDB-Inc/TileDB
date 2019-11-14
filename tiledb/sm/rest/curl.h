@@ -103,10 +103,12 @@ class Curl {
    * @param reset True if this is the first callback from a new request
    * @param contents Response data
    * @param content_nbytes Response data size in 'contents'
+   * @param skip_retries Output argument that can be set to 'true' to skip
+   *        retries in the curl layer.
    * @return Number of acknowledged bytes.
    */
   typedef std::function<size_t(
-      bool reset, void* contents, size_t content_nbytes)>
+      bool reset, void* contents, size_t content_nbytes, bool* skip_retries)>
       PostResponseCb;
 
   /**
