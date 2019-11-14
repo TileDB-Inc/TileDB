@@ -228,8 +228,7 @@ Status RestClient::submit_query_to_rest(const URI& uri, Query* query) {
   // Local state tracking for the current offsets into the user's query buffers.
   // This allows resubmission of incomplete queries while appending to the
   // same user buffers.
-  std::unordered_map<std::string, serialization::QueryBufferCopyState>
-      copy_state;
+  serialization::CopyState copy_state;
 
   RETURN_NOT_OK(post_query_submit(uri, query, &copy_state));
 
@@ -243,10 +242,7 @@ Status RestClient::submit_query_to_rest(const URI& uri, Query* query) {
 }
 
 Status RestClient::post_query_submit(
-    const URI& uri,
-    Query* query,
-    std::unordered_map<std::string, serialization::QueryBufferCopyState>*
-        copy_state) {
+    const URI& uri, Query* query, serialization::CopyState* copy_state) {
   // Get array
   const Array* array = query->array();
   if (array == nullptr) {
@@ -276,7 +272,6 @@ Status RestClient::post_query_submit(
   // Create the callback that will process the response buffers as they
   // are received.
   Buffer scratch;
-  bool user_buffers_overflowed = false;
   auto write_cb = std::bind(
       &RestClient::post_data_write_cb,
       this,
@@ -286,19 +281,16 @@ Status RestClient::post_query_submit(
       std::placeholders::_4,
       &scratch,
       query,
-      copy_state,
-      &user_buffers_overflowed);
+      copy_state);
 
   const Status st = curlc.post_data(
       url, serialization_type_, &serialized, std::move(write_cb));
 
-  // When 'user_buffers_overflowed' is true, we will return all of
-  // the known query data even if the response parsing was unsuccessful.
-  // This is a temporary work-around to allow returning an incomplete
-  // query when the client-side buffer is too small to completely
-  // store the returned query.
-  if (!user_buffers_overflowed) {
-    RETURN_NOT_OK(st);
+  // We can safely return 'query' to the client even when the request
+  // fails, because we garauntee that 'query' will be in a good state,
+  // even if we were unable to deserialize all query objects.
+  if (!st.ok()) {
+    LOG_STATUS(st);
   }
 
   if (copy_state->empty()) {
@@ -316,9 +308,7 @@ size_t RestClient::post_data_write_cb(
     bool* const skip_retries,
     Buffer* const scratch,
     Query* query,
-    std::unordered_map<std::string, serialization::QueryBufferCopyState>*
-        copy_state,
-    bool* const user_buffers_overflowed) {
+    serialization::CopyState* copy_state) {
   // All return statements in this function must pass through this wrapper.
   // This is responsible for two things:
   // 1. The 'bytes_processed' may be negative in error scenarios. The negative
@@ -340,12 +330,6 @@ size_t RestClient::post_data_write_cb(
     }
     return bytes_processed;
   };
-
-  // If 'user_buffers_overflowed' has been set, we should prevent all future
-  // response processing.
-  if (*user_buffers_overflowed) {
-    return return_wrapper(0);
-  }
 
   // This is the return value that represents the amount of bytes processed
   // in 'contents'. This will act as the return value and will always be
@@ -423,12 +407,7 @@ size_t RestClient::post_data_write_cb(
       // error status.
       aux.reset_offset();
       st = serialization::query_deserialize(
-          aux,
-          serialization_type_,
-          true,
-          copy_state,
-          query,
-          user_buffers_overflowed);
+          aux, serialization_type_, true, copy_state, query);
       if (!st.ok()) {
         scratch->set_offset(scratch->offset() - 8);
         scratch->set_size(scratch->offset());
@@ -440,12 +419,7 @@ size_t RestClient::post_data_write_cb(
       // data when deserializing read queries, this will return an
       // error status.
       st = serialization::query_deserialize(
-          *scratch,
-          serialization_type_,
-          true,
-          copy_state,
-          query,
-          user_buffers_overflowed);
+          *scratch, serialization_type_, true, copy_state, query);
       if (!st.ok()) {
         scratch->set_offset(scratch->offset() - 8);
         scratch->set_size(scratch->offset());
@@ -521,7 +495,7 @@ Status RestClient::finalize_query_to_rest(const URI& uri, Query* query) {
   // Deserialize data returned
   returned_data.set_offset(0);
   return serialization::query_deserialize(
-      returned_data, serialization_type_, true, nullptr, query, nullptr);
+      returned_data, serialization_type_, true, nullptr, query);
 }
 
 Status RestClient::subarray_to_str(
@@ -598,9 +572,7 @@ Status RestClient::subarray_to_str(
 }
 
 Status RestClient::update_attribute_buffer_sizes(
-    const std::unordered_map<std::string, serialization::QueryBufferCopyState>&
-        copy_state,
-    Query* query) const {
+    const serialization::CopyState& copy_state, Query* query) const {
   // Applicable only to reads
   if (query->type() != QueryType::READ)
     return Status::Ok();

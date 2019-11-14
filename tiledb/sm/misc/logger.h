@@ -184,6 +184,12 @@ inline Status LOG_STATUS(const Status& st) {
 }
 #endif
 
+/** Logs an error and exits with a non-zero status. */
+inline void LOG_FATAL(const std::string& msg) {
+  global_logger().error(msg.c_str());
+  exit(1);
+}
+
 }  // namespace sm
 }  // namespace tiledb
 
