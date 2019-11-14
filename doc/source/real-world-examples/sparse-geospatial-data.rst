@@ -1,3 +1,5 @@
+:orphan:
+
 Sparse Geospatial Data
 ======================
 

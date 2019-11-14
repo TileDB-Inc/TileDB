@@ -1,3 +1,5 @@
+:orphan:
+
 Writing Dense Arrays
 ====================
 

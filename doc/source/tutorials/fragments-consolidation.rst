@@ -1,3 +1,5 @@
+:orphan:
+
 .. _fragments-consolidation:
 
 Fragments and Consolidation
