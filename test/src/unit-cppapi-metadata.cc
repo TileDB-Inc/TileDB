@@ -202,6 +202,9 @@ TEST_CASE_METHOD(
   float f[] = {1.1f, 1.2f};
   array.put_metadata("bb", TILEDB_FLOAT32, 2, f);
 
+  // Write null value
+  array.put_metadata("zero_val", TILEDB_FLOAT32, 1, NULL);
+
   // Close array
   array.close();
 
@@ -223,11 +226,16 @@ TEST_CASE_METHOD(
   CHECK(((const float_t*)v_r)[0] == 1.1f);
   CHECK(((const float_t*)v_r)[1] == 1.2f);
 
+  array.get_metadata("zero_val", &v_type, &v_num, &v_r);
+  CHECK(v_type == TILEDB_FLOAT32);
+  CHECK(v_num == 1);
+  CHECK(v_r == nullptr);
+
   array.get_metadata("foo", &v_type, &v_num, &v_r);
   CHECK(v_r == nullptr);
 
   uint64_t num = array.metadata_num();
-  CHECK(num == 2);
+  CHECK(num == 3);
 
   std::string key;
   CHECK_THROWS(array.get_metadata_from_index(10, &key, &v_type, &v_num, &v_r));
@@ -348,7 +356,7 @@ TEST_CASE_METHOD(
 
 TEST_CASE_METHOD(
     CPPMetadataFx,
-    "C++ API: Metadata, multiple metadata and cosnolidate",
+    "C++ API: Metadata, multiple metadata and consolidate",
     "[cppapi][metadata][multiple][consolidation]") {
   // Create default array
   create_default_array_1d();

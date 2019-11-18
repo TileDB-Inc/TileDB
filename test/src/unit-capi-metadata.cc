@@ -1021,12 +1021,12 @@ TEST_CASE_METHOD(
   rc = tiledb_array_get_metadata(ctx_, array, "aaa", &v_type, &v_num, &v_r);
   CHECK(rc == TILEDB_OK);
   CHECK(v_type == TILEDB_CHAR);
-  CHECK(v_num == 0);
+  CHECK(v_num == 1);
   CHECK(v_r == nullptr);
   rc = tiledb_array_get_metadata(ctx_, array, "b", &v_type, &v_num, &v_r);
   CHECK(rc == TILEDB_OK);
   CHECK(v_type == TILEDB_INT32);
-  CHECK(v_num == 0);
+  CHECK(v_num == 1);
   CHECK(v_r == nullptr);
 
   // Close array
