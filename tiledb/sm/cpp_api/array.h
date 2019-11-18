@@ -1024,8 +1024,7 @@ class Array {
    * @param value_type The datatype of the value.
    * @param value_num The value may consist of more than one items of the
    *     same datatype. This argument indicates the number of items in the
-   *     value component of the metadata. Keys with empty value are indicated
-   *     by value_num == 1 and value=NULL.
+   *     value component of the metadata.
    * @param value The metadata value in binary form.
    *
    * @note The writes will take effect only upon closing the array.
@@ -1068,7 +1067,8 @@ class Array {
    * @param value_type The datatype of the value.
    * @param value_num The value may consist of more than one items of the
    *     same datatype. This argument indicates the number of items in the
-   *     value component of the metadata.
+   *     value component of the metadata. Keys with empty values are indicated
+   *     by value_num == 1 and value == NULL.
    * @param value The metadata value in binary form.
    *
    * @note If the key does not exist, then `value` will be NULL.
@@ -1106,7 +1106,8 @@ class Array {
    * @param value_type The datatype of the value.
    * @param value_num The value may consist of more than one items of the
    *     same datatype. This argument indicates the number of items in the
-   *     value component of the metadata.
+   *     value component of the metadata. Keys with empty values are indicated
+   *     by value_num == 1 and value == NULL.
    * @param value The metadata value in binary form.
    */
   void get_metadata_from_index(
