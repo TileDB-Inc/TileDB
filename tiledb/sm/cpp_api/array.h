@@ -993,7 +993,7 @@ class Array {
    *     uint32_t,const Config&) "Array::consolidate_metadata"
    *
    * @param ctx TileDB context
-   * @param array_uri The URI of the TileDB array whose 
+   * @param array_uri The URI of the TileDB array whose
    *     metadata will be consolidated.
    * @param encryption_type The encryption type to use.
    * @param encryption_key The encryption key to use.
@@ -1067,7 +1067,8 @@ class Array {
    * @param value_type The datatype of the value.
    * @param value_num The value may consist of more than one items of the
    *     same datatype. This argument indicates the number of items in the
-   *     value component of the metadata.
+   *     value component of the metadata. Keys with empty values are indicated
+   *     by value_num == 1 and value == NULL.
    * @param value The metadata value in binary form.
    *
    * @note If the key does not exist, then `value` will be NULL.
@@ -1105,7 +1106,8 @@ class Array {
    * @param value_type The datatype of the value.
    * @param value_num The value may consist of more than one items of the
    *     same datatype. This argument indicates the number of items in the
-   *     value component of the metadata.
+   *     value component of the metadata. Keys with empty values are indicated
+   *     by value_num == 1 and value == NULL.
    * @param value The metadata value in binary form.
    */
   void get_metadata_from_index(

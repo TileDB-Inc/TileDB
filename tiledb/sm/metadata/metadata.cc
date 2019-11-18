@@ -197,8 +197,14 @@ Status Metadata::get(
   // Key found
   auto& value_struct = it->second;
   *value_type = static_cast<Datatype>(value_struct.type_);
-  *value_num = value_struct.num_;
-  *value = (*value_num) ? (const void*)(value_struct.value_.data()) : nullptr;
+  if (value_struct.num_ == 0) {
+    // zero-valued keys
+    *value_num = 1;
+    *value = nullptr;
+  } else {
+    *value_num = value_struct.num_;
+    *value = (const void*)(value_struct.value_.data());
+  }
 
   return Status::Ok();
 }

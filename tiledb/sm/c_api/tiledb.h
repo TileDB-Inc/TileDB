@@ -4064,7 +4064,8 @@ TILEDB_EXPORT int32_t tiledb_array_delete_metadata(
  * @param value_type The datatype of the value.
  * @param value_num The value may consist of more than one items of the
  *     same datatype. This argument indicates the number of items in the
- *     value component of the metadata.
+ *     value component of the metadata. Keys with empty values are indicated
+ *     by value_num == 1 and value == NULL.
  * @param value The metadata value in binary form.
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  *
