@@ -629,6 +629,29 @@ Status Array::get_metadata_num(uint64_t* num) const {
   return Status::Ok();
 }
 
+Status Array::has_metadata_key(
+    const char* key, Datatype* value_type, bool* has_key) {
+  // Check if array is open
+  if (!is_open_)
+    return LOG_STATUS(
+        Status::ArrayError("Cannot get metadata; Array is not open"));
+
+  // Check mode
+  if (query_type_ != QueryType::READ)
+    return LOG_STATUS(
+        Status::ArrayError("Cannot get metadata; Array was "
+                           "not opened in read mode"));
+
+  // Check if key is null
+  if (key == nullptr)
+    return LOG_STATUS(
+        Status::ArrayError("Cannot get metadata; Key cannot be null"));
+
+  RETURN_NOT_OK(metadata_.has_key(key, value_type, has_key));
+
+  return Status::Ok();
+}
+
 Metadata* Array::metadata() {
   return &metadata_;
 }

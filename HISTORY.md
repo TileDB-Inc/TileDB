@@ -1,3 +1,21 @@
+# In Progress
+
+## New features
+
+## Improvements
+
+* Added support for indicating zero-value metadata by returning `value_num` == 1 from the `_get_metadatata` and `Array::get_metadata` APIs [#1438](https://github.com/TileDB-Inc/TileDB/pull/1438) (this is a non-breaking change, as the documented return of `value == nullptr` to indicate missing keys does not change)`
+
+## Deprecations
+
+## Bug fixes
+
+## API additions
+
+* Added C API function `tiledb_array_has_metadata_key` and C++ API function `Array::has_metadata_key` [#1439](https://github.com/TileDB-Inc/TileDB/pull/1439)
+
+## API removals
+
 # TileDB v1.7.0 Release Notes
 
 TileDB 1.7.0 contains the new feature of array metadata, and numerous bugfixes.

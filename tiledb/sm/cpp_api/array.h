@@ -1085,6 +1085,26 @@ class Array {
   }
 
   /**
+   * Checks if key exists in metadata from an open array. The array must
+   * be opened in READ mode, otherwise the function will error out.
+   *
+   * @param key The key of the metadata item to be retrieved. UTF-8 encodings
+   *     are acceptable.
+   * @param value_type The datatype of the value associated with the key (if
+   * any).
+   * @return true if the key exists, else false.
+   * @note If the key does not exist, then `value_type` will not be modified.
+   */
+  bool has_metadata(const std::string& key, tiledb_datatype_t* value_type) {
+    auto& ctx = ctx_.get();
+    tiledb_ctx_t* c_ctx = ctx.ptr().get();
+    int32_t has_key;
+    ctx.handle_error(tiledb_array_has_metadata_key(
+        c_ctx, array_.get(), key.c_str(), value_type, &has_key));
+    return has_key == 1;
+  }
+
+  /**
    * Returns then number of metadata items in an open array. The array must
    * be opened in READ mode, otherwise the function will error out.
    */
