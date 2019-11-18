@@ -3385,6 +3385,29 @@ int32_t tiledb_array_get_metadata_from_index(
   return TILEDB_OK;
 }
 
+int32_t tiledb_array_has_metadata_key(
+    tiledb_ctx_t* ctx,
+    tiledb_array_t* array,
+    const char* key,
+    tiledb_datatype_t* value_type,
+    int32_t* has_key) {
+  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, array) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  // Check whether metadata has_key
+  bool has_the_key;
+  tiledb::sm::Datatype type;
+  if (SAVE_ERROR_CATCH(
+          ctx, array->array_->has_metadata_key(key, &type, &has_the_key)))
+    return TILEDB_ERR;
+
+  *has_key = has_the_key ? 1 : 0;
+  if (has_the_key) {
+    *value_type = static_cast<tiledb_datatype_t>(type);
+  }
+  return TILEDB_OK;
+}
+
 int32_t tiledb_array_consolidate_metadata(
     tiledb_ctx_t* ctx, const char* array_uri, tiledb_config_t* config) {
   return tiledb_array_consolidate_metadata_with_key(

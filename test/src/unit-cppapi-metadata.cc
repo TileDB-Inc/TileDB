@@ -248,6 +248,19 @@ TEST_CASE_METHOD(
   CHECK(key.size() == strlen("bb"));
   CHECK(!strncmp(key.data(), "bb", strlen("bb")));
 
+  // Check has_key
+  bool has_key;
+  v_type = (tiledb_datatype_t)std::numeric_limits<int32_t>::max();
+  has_key = array.has_metadata("bb", &v_type);
+  CHECK(has_key == true);
+  CHECK(v_type == TILEDB_FLOAT32);
+
+  // Check not has_key
+  v_type = (tiledb_datatype_t)std::numeric_limits<int32_t>::max();
+  has_key = array.has_metadata("non-existent-key", &v_type);
+  CHECK(has_key == false);
+  CHECK(v_type == std::numeric_limits<int32_t>::max());
+
   // Close array
   array.close();
 }

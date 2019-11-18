@@ -156,6 +156,17 @@ class Metadata {
   uint64_t num() const;
 
   /**
+   * Checks if metadata has specified key.
+   *
+   * @param key The metadata key.
+   * @param value_type The datatype of the value.
+   * @param value Set to `1` if the array metadata has a key of the
+   *      given name, else `0`.
+   * @return Status
+   */
+  Status has_key(const char* key, Datatype* value_type, bool* has_key);
+
+  /**
    * Sets the URIs of the metadata files that have been loaded
    * to this object.
    */

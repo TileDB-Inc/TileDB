@@ -285,6 +285,22 @@ TEST_CASE_METHOD(
   CHECK(key_len == strlen("bb"));
   CHECK(!strncmp(key, "bb", strlen("bb")));
 
+  // Check has_key
+  int32_t has_key = 0;
+  rc = tiledb_array_has_metadata_key(ctx_, array, "bb", &v_type, &has_key);
+  CHECK(rc == TILEDB_OK);
+  CHECK(v_type == TILEDB_FLOAT32);
+  CHECK(has_key == 1);
+
+  // Check not has_key
+  v_type = (tiledb_datatype_t)std::numeric_limits<int32_t>::max();
+  rc = tiledb_array_has_metadata_key(
+      ctx_, array, "non-existent-key", &v_type, &has_key);
+  CHECK(rc == TILEDB_OK);
+  // The API does not touch v_type when no key is found.
+  CHECK((int32_t)v_type == std::numeric_limits<int32_t>::max());
+  CHECK(has_key == 0);
+
   // Close array
   rc = tiledb_array_close(ctx_, array);
   REQUIRE(rc == TILEDB_OK);

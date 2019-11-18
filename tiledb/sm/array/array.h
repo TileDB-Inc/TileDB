@@ -297,6 +297,9 @@ class Array {
   /** Returns the number of array metadata items. */
   Status get_metadata_num(uint64_t* num) const;
 
+  /** Sets has_key == 1 and corresponding value_type if the array has key. */
+  Status has_metadata_key(const char* key, Datatype* value_type, bool* has_key);
+
   /** Returns the array metadata object. */
   Metadata* metadata();
 
