@@ -60,6 +60,25 @@ namespace sm {
 class Metadata {
  public:
   /* ********************************* */
+  /*       PUBLIC TYPE DEFINITIONS     */
+  /* ********************************* */
+
+  /** Represents a metadata value. */
+  struct MetadataValue {
+    /** 1 if it is a deletion and 0 if it is an insertion. */
+    char del_ = 0;
+    /** The value datatype. */
+    char type_ = 0;
+    /** The number of values. */
+    uint32_t num_ = 0;
+    /** The value in binary format. */
+    std::vector<uint8_t> value_;
+  };
+
+  /** Iterator type for iterating over metadata values. */
+  typedef std::map<std::string, MetadataValue>::const_iterator iterator;
+
+  /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
 
@@ -129,7 +148,7 @@ class Metadata {
       const char* key,
       Datatype* value_type,
       uint32_t* value_num,
-      const void** value);
+      const void** value) const;
 
   /**
    * Gets a metadata item as a key-value pair using an index.
@@ -150,7 +169,7 @@ class Metadata {
       uint32_t* key_len,
       Datatype* value_type,
       uint32_t* value_num,
-      const void** value);
+      const void** value) const;
 
   /** Returns the number of metadata items. */
   uint64_t num() const;
@@ -188,22 +207,13 @@ class Metadata {
    */
   void reset();
 
+  /** Returns an iterator to the beginning of the metadata. */
+  iterator begin() const;
+
+  /** Returns an iterator to the end of the metadata. */
+  iterator end() const;
+
  private:
-  /* ********************************* */
-  /*      PRIVATE TYPE DEFINITIONS     */
-  /* ********************************* */
-
-  struct MetadataValue {
-    /** 1 if it is a deletion and 0 if it is an insertion. */
-    char del_ = 0;
-    /** The value datatype. */
-    char type_ = 0;
-    /** The number of values. */
-    uint32_t num_ = 0;
-    /** The value in binary format. */
-    std::vector<uint8_t> value_;
-  };
-
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
   /* ********************************* */

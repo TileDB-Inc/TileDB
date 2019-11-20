@@ -303,6 +303,9 @@ class Array {
   /** Returns the array metadata object. */
   Metadata* metadata();
 
+  /** Returns the array metadata object. */
+  const Metadata* metadata() const;
+
  private:
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
