@@ -222,6 +222,58 @@ Status RestClient::get_array_max_buffer_sizes(
       schema, returned_data, serialization_type_, buffer_sizes);
 }
 
+Status RestClient::get_array_metadata_from_rest(
+    const URI& uri, uint64_t timestamp, Array* array) {
+  if (array == nullptr)
+    return LOG_STATUS(Status::RestError(
+        "Error getting array metadata from REST; array is null."));
+
+  // Init curl and form the URL
+  Curl curlc;
+  RETURN_NOT_OK(curlc.init(config_, extra_headers_));
+  std::string array_ns, array_uri;
+  RETURN_NOT_OK(uri.get_rest_components(&array_ns, &array_uri));
+  std::string url = rest_server_ + "/v1/arrays/" + array_ns + "/" +
+                    curlc.url_escape(array_uri) +
+                    "/array_metadata?timestamp=" + std::to_string(timestamp);
+
+  // Get the data
+  Buffer returned_data;
+  RETURN_NOT_OK(curlc.get_data(url, serialization_type_, &returned_data));
+  if (returned_data.data() == nullptr || returned_data.size() == 0)
+    return LOG_STATUS(Status::RestError(
+        "Error getting array metadata from REST; server returned no data."));
+
+  return serialization::array_metadata_deserialize(
+      array, serialization_type_, returned_data);
+}
+
+Status RestClient::post_array_metadata_to_rest(
+    const URI& uri, const Array* array) {
+  if (array == nullptr)
+    return LOG_STATUS(Status::RestError(
+        "Error posting array metadata to REST; array is null."));
+
+  Buffer buff;
+  RETURN_NOT_OK(serialization::array_metadata_serialize(
+      array, serialization_type_, &buff));
+  // Wrap in a list
+  BufferList serialized;
+  RETURN_NOT_OK(serialized.add_buffer(std::move(buff)));
+
+  // Init curl and form the URL
+  Curl curlc;
+  RETURN_NOT_OK(curlc.init(config_, extra_headers_));
+  std::string array_ns, array_uri;
+  RETURN_NOT_OK(uri.get_rest_components(&array_ns, &array_uri));
+  std::string url = rest_server_ + "/v1/arrays/" + array_ns + "/" +
+                    curlc.url_escape(array_uri) + "/array_metadata";
+
+  // Put the data
+  Buffer returned_data;
+  return curlc.post_data(url, serialization_type_, &serialized, &returned_data);
+}
+
 Status RestClient::submit_query_to_rest(const URI& uri, Query* query) {
   STATS_FUNC_IN(rest_query_submit);
 
@@ -670,6 +722,16 @@ Status RestClient::get_array_max_buffer_sizes(
     const ArraySchema*,
     const void*,
     std::unordered_map<std::string, std::pair<uint64_t, uint64_t>>*) {
+  return LOG_STATUS(
+      Status::RestError("Cannot use rest client; serialization not enabled."));
+}
+
+Status RestClient::get_array_metadata_from_rest(const URI&, uint64_t, Array*) {
+  return LOG_STATUS(
+      Status::RestError("Cannot use rest client; serialization not enabled."));
+}
+
+Status RestClient::post_array_metadata_to_rest(const URI&, const Array*) {
   return LOG_STATUS(
       Status::RestError("Cannot use rest client; serialization not enabled."));
 }

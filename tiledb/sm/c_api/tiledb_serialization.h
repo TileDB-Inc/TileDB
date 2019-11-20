@@ -224,6 +224,40 @@ TILEDB_EXPORT int32_t tiledb_serialize_array_max_buffer_sizes(
     tiledb_serialization_type_t serialize_type,
     tiledb_buffer_t** buffer);
 
+/**
+ * Serializes the array metadata into the given buffer.
+ *
+ * @note The caller must free the returned `tiledb_buffer_t`.
+ *
+ * @param ctx The TileDB context.
+ * @param array Array whose metadata to serialize.
+ * @param serialization_type Type of serialization to use
+ * @param buffer Will be set to a newly allocated buffer containing the
+ *      serialized array metadata.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_serialize_array_metadata(
+    tiledb_ctx_t* ctx,
+    const tiledb_array_t* array,
+    tiledb_serialization_type_t serialization_type,
+    tiledb_buffer_t** buffer);
+
+/**
+ * Sets the array metadata on the given array instance by deserializing the
+ * array metadata from the given buffer.
+ *
+ * @param ctx The TileDB context.
+ * @param array Array whose metadata to set.
+ * @param serialization_type Type of serialization to use
+ * @param buffer Buffer containing serialized array metadata.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_deserialize_array_metadata(
+    tiledb_ctx_t* ctx,
+    tiledb_array_t* array,
+    tiledb_serialization_type_t serialization_type,
+    const tiledb_buffer_t* buffer);
+
 #ifdef __cplusplus
 }
 #endif
