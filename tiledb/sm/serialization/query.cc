@@ -927,7 +927,8 @@ Status query_deserialize(
   // Similarly, we must create a copy of 'copy_state'.
   std::unique_ptr<CopyState> original_copy_state = nullptr;
   if (copy_state) {
-    original_copy_state = std::unique_ptr<CopyState>(copy_state);
+    original_copy_state =
+        std::unique_ptr<CopyState>(new CopyState(*copy_state));
   }
 
   // Deserialize 'serialized_buffer'.
