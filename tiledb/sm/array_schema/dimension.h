@@ -91,6 +91,13 @@ class Dimension {
   /** Dumps the dimension contents in ASCII form in the selected output. */
   void dump(FILE* out) const;
 
+  /** Expand the domain to be a multiple of the tile extent. */
+  void expand_domain_to_tile_extent_multiple();
+
+  /** Expand the domain to be a multiple of the tile extent. */
+  template <class T>
+  void expand_domain_to_tile_extent_multiple();
+
   /** Returns the dimension name. */
   const std::string& name() const;
 

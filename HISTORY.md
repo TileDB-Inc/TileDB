@@ -10,6 +10,8 @@
 
 ## Bug fixes
 
+* Fixed consolidation bug in dense arrays. Had to force the dimension domain of a dense array to expand such that the domain range becomes a multiple of the tile extent.
+
 ## API additions
 
 * Added C API functions tiledb_query_get_{fragment_num,fragment_uri,fragment_timestamp_range}.

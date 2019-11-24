@@ -584,6 +584,12 @@ Status ArraySchema::set_domain(Domain* domain) {
     filter->set_compressor(constants::real_coords_compression);
     filter->set_compression_level(-1);
   }
+
+  // If the array is dense, the dimension domains must be multiple of the
+  // tile extents
+  if (array_type_ == ArrayType::DENSE)
+    domain_->expand_dim_domains_to_tile_extent_multiples();
+
   return Status::Ok();
 }
 

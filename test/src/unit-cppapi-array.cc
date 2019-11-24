@@ -1,5 +1,5 @@
 /**
- * @file   unit-cppapi-schema.cc
+ * @file   unit-cppapi-array.cc
  *
  * @section LICENSE
  *
@@ -102,13 +102,13 @@ TEST_CASE_METHOD(CPPArrayFx, "C++ API: Arrays", "[cppapi]") {
     auto b = schema.domain().dimensions()[1].domain<int>();
     CHECK_THROWS(schema.domain().dimensions()[0].domain<unsigned>());
     CHECK(a.first == -100);
-    CHECK(a.second == 100);
+    CHECK(a.second == 109);
     CHECK(b.first == 0);
-    CHECK(b.second == 100);
+    CHECK(b.second == 104);
     CHECK_THROWS(schema.domain().dimensions()[0].tile_extent<unsigned>() == 10);
     CHECK(schema.domain().dimensions()[0].tile_extent<int>() == 10);
     CHECK(schema.domain().dimensions()[1].tile_extent<int>() == 5);
-    CHECK(schema.domain().cell_num() == 20301);
+    CHECK(schema.domain().cell_num() == 22050);
   }
   SECTION("Make Buffer") {
     Array array(ctx, "cpp_unit_array", TILEDB_WRITE);

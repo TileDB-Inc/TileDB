@@ -229,6 +229,7 @@ void ingest_png(const std::string& input_png, const std::string& array_path) {
   Array array(ctx, array_path, TILEDB_WRITE);
   Query query(ctx, array);
   query.set_layout(TILEDB_ROW_MAJOR)
+      .set_subarray<unsigned>({0, height - 1, 0, width - 1})
       .set_buffer("red", red)
       .set_buffer("green", green)
       .set_buffer("blue", blue)

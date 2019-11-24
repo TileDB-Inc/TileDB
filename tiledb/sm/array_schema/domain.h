@@ -308,6 +308,12 @@ class Domain {
   }
 
   /**
+   * Epxands the domain of every dimension to be a multiple of the
+   * corresponding tile extent.
+   */
+  void expand_dim_domains_to_tile_extent_multiples();
+
+  /**
    * Returns the position of the input coordinates inside its corresponding
    * tile, based on the array cell order. Applicable only to **dense** arrays.
    *

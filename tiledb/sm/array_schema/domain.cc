@@ -610,6 +610,11 @@ void Domain::expand_domain(void* domain) const {
   }
 }
 
+void Domain::expand_dim_domains_to_tile_extent_multiples() {
+  for (auto& dim : dimensions_)
+    dim->expand_domain_to_tile_extent_multiple();
+}
+
 template <class T>
 void Domain::get_tile_coords(const T* coords, T* tile_coords) const {
   auto domain = (T*)domain_;

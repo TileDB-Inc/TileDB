@@ -87,9 +87,9 @@ struct ArraySchemaFx {
   const char* DIM2_NAME = "d2";
   const tiledb_datatype_t DIM_TYPE = TILEDB_INT64;
   const char* DIM_TYPE_STR = "INT64";
-  const int64_t DIM_DOMAIN[4] = {0, 99, 20, 60};
+  const int64_t DIM_DOMAIN[4] = {0, 99, 21, 60};
   const char* DIM1_DOMAIN_STR = "[0,99]";
-  const char* DIM2_DOMAIN_STR = "[20,60]";
+  const char* DIM2_DOMAIN_STR = "[21,60]";
   const uint64_t DIM_DOMAIN_SIZE = sizeof(DIM_DOMAIN) / DIM_NUM;
   const int64_t TILE_EXTENTS[2] = {10, 5};
   const char* DIM1_TILE_EXTENT_STR = "10";

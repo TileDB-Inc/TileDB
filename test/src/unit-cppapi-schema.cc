@@ -33,7 +33,7 @@
 #include "catch.hpp"
 #include "tiledb/sm/cpp_api/tiledb"
 
-TEST_CASE("C++ API: Schema", "[cppapi]") {
+TEST_CASE("C++ API: Schema", "[cppapi][array-schema]") {
   using namespace tiledb;
   Context ctx;
 
@@ -97,7 +97,7 @@ TEST_CASE("C++ API: Schema", "[cppapi]") {
     CHECK(dims[1].name() == "d2");
     CHECK_THROWS(dims[0].domain<uint32_t>());
     CHECK(dims[0].domain<int>().first == -100);
-    CHECK(dims[0].domain<int>().second == 100);
+    CHECK(dims[0].domain<int>().second == 109);
     CHECK_THROWS(dims[0].tile_extent<unsigned>());
     CHECK(dims[0].tile_extent<int>() == 10);
 

@@ -221,11 +221,6 @@ Status Dimension::set_tile_extent(const void* tile_extent) {
         "Cannot set tile extent; tile extent cannot be null"));
 
   std::free(tile_extent_);
-  if (tile_extent == nullptr) {
-    tile_extent_ = nullptr;
-    return Status::Ok();
-  }
-
   uint64_t type_size = datatype_size(type_);
   tile_extent_ = std::malloc(type_size);
   if (tile_extent_ == nullptr) {
@@ -236,8 +231,8 @@ Status Dimension::set_tile_extent(const void* tile_extent) {
 
   auto st = check_tile_extent();
   if (!st.ok()) {
-    std::free(domain_);
-    domain_ = nullptr;
+    std::free(tile_extent_);
+    tile_extent_ = nullptr;
   }
 
   return st;
@@ -476,6 +471,68 @@ Status Dimension::check_tile_extent() const {
   }
 
   return Status::Ok();
+}
+
+void Dimension::expand_domain_to_tile_extent_multiple() {
+  switch (type_) {
+    case Datatype::INT32:
+      expand_domain_to_tile_extent_multiple<int>();
+      break;
+    case Datatype::INT64:
+      expand_domain_to_tile_extent_multiple<int64_t>();
+      break;
+    case Datatype::INT8:
+      expand_domain_to_tile_extent_multiple<int8_t>();
+      break;
+    case Datatype::UINT8:
+      expand_domain_to_tile_extent_multiple<uint8_t>();
+      break;
+    case Datatype::INT16:
+      expand_domain_to_tile_extent_multiple<int16_t>();
+      break;
+    case Datatype::UINT16:
+      expand_domain_to_tile_extent_multiple<uint16_t>();
+      break;
+    case Datatype::UINT32:
+      expand_domain_to_tile_extent_multiple<uint32_t>();
+      break;
+    case Datatype::UINT64:
+      expand_domain_to_tile_extent_multiple<uint64_t>();
+      break;
+    case Datatype::FLOAT32:
+      expand_domain_to_tile_extent_multiple<float>();
+      break;
+    case Datatype::FLOAT64:
+      expand_domain_to_tile_extent_multiple<double>();
+      break;
+    case Datatype::DATETIME_YEAR:
+    case Datatype::DATETIME_MONTH:
+    case Datatype::DATETIME_WEEK:
+    case Datatype::DATETIME_DAY:
+    case Datatype::DATETIME_HR:
+    case Datatype::DATETIME_MIN:
+    case Datatype::DATETIME_SEC:
+    case Datatype::DATETIME_MS:
+    case Datatype::DATETIME_US:
+    case Datatype::DATETIME_NS:
+    case Datatype::DATETIME_PS:
+    case Datatype::DATETIME_FS:
+    case Datatype::DATETIME_AS:
+      expand_domain_to_tile_extent_multiple<int64_t>();
+      break;
+    default:
+      assert(false);
+  }
+}
+
+template <class T>
+void Dimension::expand_domain_to_tile_extent_multiple() {
+  assert(std::is_integral<T>::value);  // Applicable only to integral domains
+  T tile_extent = *(T*)tile_extent_;
+  T* domain = (T*)domain_;
+  domain[1] =
+      utils::math::ceil(domain[1] - domain[0] + 1, tile_extent) * tile_extent +
+      domain[0] - 1;
 }
 
 }  // namespace sm
