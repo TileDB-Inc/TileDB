@@ -340,9 +340,13 @@ class Reader {
    * the entire domain.
    *
    * @param subarray The subarray to be set.
+   * @param check_expanded_domain If `true`, the subarray bounds will be
+   *     checked against the expanded domain of the array. This is important
+   *     in dense consolidation with space tiles not fully dividing the
+   *     dimension domain.
    * @return Status
    */
-  Status set_subarray(const void* subarray);
+  Status set_subarray(const void* subarray, bool check_expanded_domain = false);
 
   /**
    * Sets the query subarray.

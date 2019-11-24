@@ -603,7 +603,7 @@ Status Consolidator::create_queries(
   RETURN_NOT_OK((*query_r)->set_layout(Layout::GLOBAL_ORDER));
   RETURN_NOT_OK(
       set_query_buffers(*query_r, sparse_mode, buffers, buffer_sizes));
-  RETURN_NOT_OK((*query_r)->set_subarray(subarray));
+  RETURN_NOT_OK((*query_r)->set_subarray(subarray, true));
   if (array_for_reads->array_schema()->dense() && sparse_mode)
     RETURN_NOT_OK((*query_r)->set_sparse_mode(true));
 
@@ -615,7 +615,7 @@ Status Consolidator::create_queries(
   // Create write query
   *query_w = new Query(storage_manager_, array_for_writes, *new_fragment_uri);
   RETURN_NOT_OK((*query_w)->set_layout(Layout::GLOBAL_ORDER));
-  RETURN_NOT_OK((*query_w)->set_subarray(subarray));
+  RETURN_NOT_OK((*query_w)->set_subarray(subarray, true));
   RETURN_NOT_OK(
       set_query_buffers(*query_w, sparse_mode, buffers, buffer_sizes));
 

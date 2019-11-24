@@ -105,7 +105,8 @@ Subarray& Subarray::operator=(Subarray&& subarray) noexcept {
 /*               API              */
 /* ****************************** */
 
-Status Subarray::add_range(uint32_t dim_idx, const void* range) {
+Status Subarray::add_range(
+    uint32_t dim_idx, const void* range, bool check_expanded_domain) {
   if (range == nullptr)
     return LOG_STATUS(Status::SubarrayError(
         "Cannot add range to dimension; Range cannot be null"));
@@ -118,25 +119,35 @@ Status Subarray::add_range(uint32_t dim_idx, const void* range) {
   auto type = array_->array_schema()->domain()->type();
   switch (type) {
     case Datatype::INT8:
-      return add_range<int8_t>(dim_idx, (const int8_t*)range);
+      return add_range<int8_t>(
+          dim_idx, (const int8_t*)range, check_expanded_domain);
     case Datatype::UINT8:
-      return add_range<uint8_t>(dim_idx, (const uint8_t*)range);
+      return add_range<uint8_t>(
+          dim_idx, (const uint8_t*)range, check_expanded_domain);
     case Datatype::INT16:
-      return add_range<int16_t>(dim_idx, (const int16_t*)range);
+      return add_range<int16_t>(
+          dim_idx, (const int16_t*)range, check_expanded_domain);
     case Datatype::UINT16:
-      return add_range<uint16_t>(dim_idx, (const uint16_t*)range);
+      return add_range<uint16_t>(
+          dim_idx, (const uint16_t*)range, check_expanded_domain);
     case Datatype::INT32:
-      return add_range<int32_t>(dim_idx, (const int32_t*)range);
+      return add_range<int32_t>(
+          dim_idx, (const int32_t*)range, check_expanded_domain);
     case Datatype::UINT32:
-      return add_range<uint32_t>(dim_idx, (const uint32_t*)range);
+      return add_range<uint32_t>(
+          dim_idx, (const uint32_t*)range, check_expanded_domain);
     case Datatype::INT64:
-      return add_range<int64_t>(dim_idx, (const int64_t*)range);
+      return add_range<int64_t>(
+          dim_idx, (const int64_t*)range, check_expanded_domain);
     case Datatype::UINT64:
-      return add_range<uint64_t>(dim_idx, (const uint64_t*)range);
+      return add_range<uint64_t>(
+          dim_idx, (const uint64_t*)range, check_expanded_domain);
     case Datatype::FLOAT32:
-      return add_range<float>(dim_idx, (const float*)range);
+      return add_range<float>(
+          dim_idx, (const float*)range, check_expanded_domain);
     case Datatype::FLOAT64:
-      return add_range<double>(dim_idx, (const double*)range);
+      return add_range<double>(
+          dim_idx, (const double*)range, check_expanded_domain);
     case Datatype::DATETIME_YEAR:
     case Datatype::DATETIME_MONTH:
     case Datatype::DATETIME_WEEK:
@@ -150,7 +161,8 @@ Status Subarray::add_range(uint32_t dim_idx, const void* range) {
     case Datatype::DATETIME_PS:
     case Datatype::DATETIME_FS:
     case Datatype::DATETIME_AS:
-      return add_range<int64_t>(dim_idx, (const int64_t*)range);
+      return add_range<int64_t>(
+          dim_idx, (const int64_t*)range, check_expanded_domain);
     default:
       return LOG_STATUS(Status::SubarrayError(
           "Cannot add range to dimension; Unsupported subarray domain type"));
@@ -327,7 +339,7 @@ Subarray Subarray::crop_to_tile(const T* tile_coords, Layout layout) const {
       utils::geometry::overlap(
           (const T*)range, &tile_subarray[2 * d], 1, new_range, &overlaps);
       if (overlaps)
-        ret.add_range(d, new_range);
+        ret.add_range(d, new_range, true);
     }
   }
 
@@ -414,7 +426,7 @@ Subarray Subarray::get_subarray(uint64_t start, uint64_t end) const {
   auto dim_num = this->dim_num();
   for (unsigned i = 0; i < dim_num; ++i) {
     for (uint64_t r = start_coords[i]; r <= end_coords[i]; ++r) {
-      ret.add_range(i, ranges_[i].get_range(r));
+      ret.add_range(i, ranges_[i].get_range(r), true);
     }
   }
 
@@ -735,7 +747,8 @@ void Subarray::add_default_ranges() {
 }
 
 template <class T>
-Status Subarray::add_range(uint32_t dim_idx, const T* range) {
+Status Subarray::add_range(
+    uint32_t dim_idx, const T* range, bool check_expanded_domain) {
   assert(dim_idx < array_->array_schema()->dim_num());
 
   // Must reset the result size and tile overlap
@@ -752,8 +765,17 @@ Status Subarray::add_range(uint32_t dim_idx, const T* range) {
                               "bound cannot be larger than the higher bound"));
 
   // Check range against the domain
-  auto domain = (const T*)array_->array_schema()->domain()->domain();
-  if (range[0] < domain[2 * dim_idx] || range[1] > domain[2 * dim_idx + 1])
+  auto domain = array_->array_schema()->domain();
+  auto dim_domain = static_cast<const T*>(domain->dimension(dim_idx)->domain());
+  T low = dim_domain[0];
+  T high = dim_domain[1];
+  if (array_->array_schema()->dense() && check_expanded_domain) {
+    auto tile_extent =
+        *static_cast<const T*>(domain->dimension(dim_idx)->tile_extent());
+    high = utils::math::ceil(dim_domain[1], tile_extent) * tile_extent;
+  }
+
+  if (range[0] < low || range[1] > high)
     return LOG_STATUS(
         Status::SubarrayError("Cannot add range to dimension; Range must be in "
                               "the domain the subarray is constructed from"));
