@@ -2,9 +2,9 @@
 
 ## New features
 
-* Added array metadata.
-
 ## Improvements
+
+* Added support for indicating zero-value metadata by returning `value_num` == 1 from the `_get_metadatata` and `Array::get_metadata` APIs [#1438](https://github.com/TileDB-Inc/TileDB/pull/1438) (this is a non-breaking change, as the documented return of `value == nullptr` to indicate missing keys does not change)`
 
 ## Deprecations
 
@@ -12,13 +12,42 @@
 
 ## API additions
 
-* Added C API functions tiledb_query_get_{fragment_num,fragment_uri,fragment_timestamp_range}.
-* Added C++ API functions Query::{fragment_num,fragment_uri,fragment_timestamp_range}.
-* Added C API function `tiledb_ctx_set_tag` and C++ API `Context::set_tag()`.
+* Added C API function `tiledb_array_has_metadata_key` and C++ API function `Array::has_metadata_key` [#1439](https://github.com/TileDB-Inc/TileDB/pull/1439)
 
 ## API removals
 
-* Removed key-value functionality, tiledb_kv_* functions from the C API and Map and MapSchema from the C++ API
+# TileDB v1.7.0 Release Notes
+
+TileDB 1.7.0 contains the new feature of array metadata, and numerous bugfixes.
+
+## New features
+
+* Added array metadata. [#1377](https://github.com/TileDB-Inc/TileDB/pull/1377)
+
+## Improvements
+
+* Allow writes to older-versioned arrays. [#1417](https://github.com/TileDB-Inc/TileDB/pull/1417)
+* Added overseen optimization to check the fragment non-empty domain before loading the fragment R-Tree. [#1395](https://github.com/TileDB-Inc/TileDB/pull/1395)
+* Use `major.minor` for SOVERSION instead of full `major.minor.rev`. [#1398](https://github.com/TileDB-Inc/TileDB/pull/1398)
+
+## Bug fixes
+
+* Numerous query serialization bugfixes and performance improvements.
+* Numerous tweaks to build strategy for libcurl dependency.
+* Fix crash in StorageManager destructor when GlobalState init fails. [#1393](https://github.com/TileDB-Inc/TileDB/pull/1393)
+* Fix Windows destructor crash due to missing unlock (mutex/refcount). [#1400](https://github.com/TileDB-Inc/TileDB/pull/1400)
+* Normalize attribute names in multi-range size estimation C API. [#1408](https://github.com/TileDB-Inc/TileDB/pull/1408)
+
+## API additions
+
+* Added C API functions `tiledb_query_get_{fragment_num,fragment_uri,fragment_timestamp_range}`. [#1396](https://github.com/TileDB-Inc/TileDB/pull/1396)
+* Added C++ API functions `Query::{fragment_num,fragment_uri,fragment_timestamp_range}`. [#1396](https://github.com/TileDB-Inc/TileDB/pull/1396)
+* Added C API function `tiledb_ctx_set_tag` and C++ API `Context::set_tag()`. [#1406](https://github.com/TileDB-Inc/TileDB/pull/1406)
+* Add config support for S3 ca_path, ca_file, and verify_ssl options. [#1376](https://github.com/TileDB-Inc/TileDB/pull/1376)
+
+## API removals
+
+* Removed key-value functionality, `tiledb_kv_*` functions from the C API and Map and MapSchema from the C++ API. [#1415](https://github.com/TileDB-Inc/TileDB/pull/1415)
 
 # TileDB v1.6.3 Release Notes
 

@@ -4119,6 +4119,26 @@ TILEDB_EXPORT int32_t tiledb_array_get_metadata_from_index(
     const void** value);
 
 /**
+ * Checks whether a key exists in metadata from an open array. The array must
+ * be opened in READ mode, otherwise the function will error out.
+ *
+ * @param ctx The TileDB context.
+ * @param array An array opened in READ mode.
+ * @param key The key to be checked. UTF-8 encoding are acceptable.
+ * @param value_type The datatype of the value, if any.
+ * @param has_key Set to `1` if the metadata with given key exists, else `0`.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ *
+ * @note If the key does not exist, then `value` will be NULL.
+ */
+TILEDB_EXPORT int32_t tiledb_array_has_metadata_key(
+    tiledb_ctx_t* ctx,
+    tiledb_array_t* array,
+    const char* key,
+    tiledb_datatype_t* value_type,
+    int32_t* has_key);
+
+/**
  * Consolidates the array metadata into a single array metadata file.
  *
  * You must first finalize all queries to the array before consolidation can

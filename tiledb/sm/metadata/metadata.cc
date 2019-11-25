@@ -234,6 +234,24 @@ Status Metadata::get(
   return Status::Ok();
 }
 
+Status Metadata::has_key(const char* key, Datatype* value_type, bool* has_key) {
+  assert(key != nullptr);
+
+  auto it = metadata_map_.find(key);
+  if (it == metadata_map_.end()) {
+    // Key not found
+    *has_key = false;
+    return Status::Ok();
+  }
+
+  // Key found
+  auto& value_struct = it->second;
+  *value_type = static_cast<Datatype>(value_struct.type_);
+  *has_key = true;
+
+  return Status::Ok();
+}
+
 uint64_t Metadata::num() const {
   return metadata_map_.size();
 }
