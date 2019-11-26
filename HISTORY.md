@@ -1,20 +1,21 @@
-# In Progress
+# TileDB v1.7.1 Release Notes
+
+TileDB 1.7.1 contains build system and bug fixes, and one non-breaking API update.
 
 ## New features
 
 ## Improvements
 
-* Added support for indicating zero-value metadata by returning `value_num` == 1 from the `_get_metadatata` and `Array::get_metadata` APIs [#1438](https://github.com/TileDB-Inc/TileDB/pull/1438) (this is a non-breaking change, as the documented return of `value == nullptr` to indicate missing keys does not change)`
-
 ## Deprecations
 
 ## Bug fixes
 
-* Fixed bug in dense consolidation when the array domain is not divisible by the tile extents.
+* Fixed bug in dense consolidation when the array domain is not divisible by the tile extents. [#1442](https://github.com/TileDB-Inc/TileDB/pull/1442)
 
 ## API additions
 
 * Added C API function `tiledb_array_has_metadata_key` and C++ API function `Array::has_metadata_key` [#1439](https://github.com/TileDB-Inc/TileDB/pull/1439)
+* Added support for indicating zero-value metadata by returning `value_num` == 1 from the `_get_metadatata` and `Array::get_metadata` APIs [#1438](https://github.com/TileDB-Inc/TileDB/pull/1438) (this is a non-breaking change, as the documented return of `value == nullptr` to indicate missing keys does not change)`
 
 ## API removals
 
