@@ -1,5 +1,5 @@
 /**
- * @file   unit-cppapi-schema.cc
+ * @file   unit-cppapi-array.cc
  *
  * @section LICENSE
  *

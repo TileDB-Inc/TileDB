@@ -501,6 +501,52 @@ int Domain::cell_order_cmp(const T* coords_a, const T* coords_b) const {
   return 0;
 }
 
+void Domain::crop_domain(void* domain) const {
+  switch (type_) {
+    case Datatype::INT32:
+      crop_domain<int>(static_cast<int*>(domain));
+      break;
+    case Datatype::INT64:
+      crop_domain<int64_t>(static_cast<int64_t*>(domain));
+      break;
+    case Datatype::INT8:
+      crop_domain<int8_t>(static_cast<int8_t*>(domain));
+      break;
+    case Datatype::UINT8:
+      crop_domain<uint8_t>(static_cast<uint8_t*>(domain));
+      break;
+    case Datatype::INT16:
+      crop_domain<int16_t>(static_cast<int16_t*>(domain));
+      break;
+    case Datatype::UINT16:
+      crop_domain<uint16_t>(static_cast<uint16_t*>(domain));
+      break;
+    case Datatype::UINT32:
+      crop_domain<uint32_t>(static_cast<uint32_t*>(domain));
+      break;
+    case Datatype::UINT64:
+      crop_domain<uint64_t>(static_cast<uint64_t*>(domain));
+      break;
+    case Datatype::DATETIME_YEAR:
+    case Datatype::DATETIME_MONTH:
+    case Datatype::DATETIME_WEEK:
+    case Datatype::DATETIME_DAY:
+    case Datatype::DATETIME_HR:
+    case Datatype::DATETIME_MIN:
+    case Datatype::DATETIME_SEC:
+    case Datatype::DATETIME_MS:
+    case Datatype::DATETIME_US:
+    case Datatype::DATETIME_NS:
+    case Datatype::DATETIME_PS:
+    case Datatype::DATETIME_FS:
+    case Datatype::DATETIME_AS:
+      crop_domain<int64_t>(static_cast<int64_t*>(domain));
+      break;
+    default:  // Non-applicable to non-integer domains
+      break;
+  }
+}
+
 // ===== FORMAT =====
 // type (uint8_t)
 // dim_num (uint32_t)

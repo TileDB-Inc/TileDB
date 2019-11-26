@@ -235,6 +235,42 @@ class Domain {
   /** Returns the cell order. */
   Layout cell_order() const;
 
+  /**
+   * Crops the input domain such that it does not exceed the array domain.
+   *
+   * @param domain The domain to be cropped.
+   * @return void
+   */
+  void crop_domain(void* domain) const;
+
+  /**
+   * Crops the input domain such that it does not exceed the array domain.
+   *
+   * @param domain The domain to be cropped.
+   * @return void
+   */
+  template <
+      class T,
+      typename std::enable_if<std::is_integral<T>::value, T>::type* = nullptr>
+  void crop_domain(T* domain) const {
+    auto array_domain = static_cast<const T*>(domain_);
+
+    for (unsigned int i = 0; i < dim_num_; ++i) {
+      if (domain[2 * i] < array_domain[2 * i])
+        domain[2 * i] = array_domain[2 * i];
+      if (domain[2 * i + 1] > array_domain[2 * i + 1])
+        domain[2 * i + 1] = array_domain[2 * i + 1];
+    }
+  }
+
+  /** No-op for float/double domains. */
+  template <
+      class T,
+      typename std::enable_if<!std::is_integral<T>::value, T>::type* = nullptr>
+  void crop_domain(T* domain) const {
+    (void)domain;
+  }
+
   /** Returns the tile order. */
   Layout tile_order() const;
 

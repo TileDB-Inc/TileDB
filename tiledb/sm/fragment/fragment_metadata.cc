@@ -396,6 +396,11 @@ Status FragmentMetadata::init(const void* non_empty_domain) {
     // Set non-empty domain
     non_empty_domain_ = std::malloc(domain_size);
     std::memcpy(non_empty_domain_, non_empty_domain, domain_size);
+    // The following is needed in case the fragment is a result of
+    // dense consolidation, as the consolidator may have expanded
+    // the fragment domain beyond the array domain to include
+    // integral space tiles
+    domain->crop_domain(non_empty_domain_);
 
     // Set expanded domain
     domain_ = std::malloc(domain_size);

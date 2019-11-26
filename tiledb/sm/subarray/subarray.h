@@ -228,8 +228,18 @@ class Subarray {
   /*                 API               */
   /* ********************************* */
 
-  /** Adds a range along the dimension with the given index. */
-  Status add_range(uint32_t dim_idx, const void* range);
+  /**
+   * Adds a range along the dimension with the given index.
+   *
+   * @param dim_idx The index of the dimension to add the range to.
+   * @param range The range to be added in [low. high] format.
+   * @param check_expanded_domain If `true`, the subarray bounds will be
+   *     checked against the expanded domain of the array. This is important
+   *     in dense consolidation with space tiles not fully dividing the
+   *     dimension domain.
+   */
+  Status add_range(
+      uint32_t dim_idx, const void* range, bool check_expanded_domain = false);
 
   /**
    * Adds a range along the dimension with the given index, in the
@@ -243,10 +253,15 @@ class Subarray {
    * @tparam T The subarray domain type.
    * @param dim_idx The index of the dimension to add the range to.
    * @param range The range to add.
+   * @param check_expanded_domain If `true`, the subarray bounds will be
+   *     checked against the expanded domain of the array. This is important
+   *     in dense consolidation with space tiles not fully dividing the
+   *     dimension domain.
    * @return Status
    */
   template <class T>
-  Status add_range(uint32_t dim_idx, const T* range);
+  Status add_range(
+      uint32_t dim_idx, const T* range, bool check_expanded_domain);
 
   /**
    * Adds a range along the dimension with the given index, in the
