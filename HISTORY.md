@@ -10,6 +10,8 @@
 
 ## Bug fixes
 
+* Fixed bug in dense consolidation when the array domain is not divisible by the tile extents.
+
 ## API additions
 
 * Added C API function `tiledb_array_has_metadata_key` and C++ API function `Array::has_metadata_key` [#1439](https://github.com/TileDB-Inc/TileDB/pull/1439)

@@ -1055,6 +1055,7 @@ Status Writer::create_fragment(
   auto timestamp_range = std::pair<uint64_t, uint64_t>(timestamp, timestamp);
   *frag_meta = std::make_shared<FragmentMetadata>(
       storage_manager_, array_schema_, uri, timestamp_range, dense);
+
   RETURN_NOT_OK((*frag_meta)->init(subarray_));
   return storage_manager_->create_dir(uri);
 

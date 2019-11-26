@@ -465,12 +465,12 @@ void Query::set_status(QueryStatus status) {
   status_ = status;
 }
 
-Status Query::set_subarray(const void* subarray) {
-  RETURN_NOT_OK(check_subarray(subarray));
+Status Query::set_subarray(const void* subarray, bool check_expanded_domain) {
+  RETURN_NOT_OK(check_subarray(subarray, check_expanded_domain));
   if (type_ == QueryType::WRITE) {
     RETURN_NOT_OK(writer_.set_subarray(subarray));
   } else {  // READ
-    RETURN_NOT_OK(reader_.set_subarray(subarray));
+    RETURN_NOT_OK(reader_.set_subarray(subarray, check_expanded_domain));
   }
 
   status_ = QueryStatus::UNINITIALIZED;
@@ -545,7 +545,8 @@ QueryType Query::type() const {
 /*          PRIVATE METHODS       */
 /* ****************************** */
 
-Status Query::check_subarray(const void* subarray) const {
+Status Query::check_subarray(
+    const void* subarray, bool check_expanded_domain) const {
   if (subarray == nullptr)
     return Status::Ok();
 
@@ -556,25 +557,35 @@ Status Query::check_subarray(const void* subarray) const {
 
   switch (array_schema->domain()->type()) {
     case Datatype::INT8:
-      return check_subarray<int8_t>(static_cast<const int8_t*>(subarray));
+      return check_subarray<int8_t>(
+          static_cast<const int8_t*>(subarray), check_expanded_domain);
     case Datatype::UINT8:
-      return check_subarray<uint8_t>(static_cast<const uint8_t*>(subarray));
+      return check_subarray<uint8_t>(
+          static_cast<const uint8_t*>(subarray), check_expanded_domain);
     case Datatype::INT16:
-      return check_subarray<int16_t>(static_cast<const int16_t*>(subarray));
+      return check_subarray<int16_t>(
+          static_cast<const int16_t*>(subarray), check_expanded_domain);
     case Datatype::UINT16:
-      return check_subarray<uint16_t>(static_cast<const uint16_t*>(subarray));
+      return check_subarray<uint16_t>(
+          static_cast<const uint16_t*>(subarray), check_expanded_domain);
     case Datatype::INT32:
-      return check_subarray<int32_t>(static_cast<const int32_t*>(subarray));
+      return check_subarray<int32_t>(
+          static_cast<const int32_t*>(subarray), check_expanded_domain);
     case Datatype::UINT32:
-      return check_subarray<uint32_t>(static_cast<const uint32_t*>(subarray));
+      return check_subarray<uint32_t>(
+          static_cast<const uint32_t*>(subarray), check_expanded_domain);
     case Datatype::INT64:
-      return check_subarray<int64_t>(static_cast<const int64_t*>(subarray));
+      return check_subarray<int64_t>(
+          static_cast<const int64_t*>(subarray), check_expanded_domain);
     case Datatype::UINT64:
-      return check_subarray<uint64_t>(static_cast<const uint64_t*>(subarray));
+      return check_subarray<uint64_t>(
+          static_cast<const uint64_t*>(subarray), check_expanded_domain);
     case Datatype::FLOAT32:
-      return check_subarray<float>(static_cast<const float*>(subarray));
+      return check_subarray<float>(
+          static_cast<const float*>(subarray), check_expanded_domain);
     case Datatype::FLOAT64:
-      return check_subarray<double>(static_cast<const double*>(subarray));
+      return check_subarray<double>(
+          static_cast<const double*>(subarray), check_expanded_domain);
     case Datatype::DATETIME_YEAR:
     case Datatype::DATETIME_MONTH:
     case Datatype::DATETIME_WEEK:
@@ -588,7 +599,8 @@ Status Query::check_subarray(const void* subarray) const {
     case Datatype::DATETIME_PS:
     case Datatype::DATETIME_FS:
     case Datatype::DATETIME_AS:
-      return check_subarray<int64_t>(static_cast<const int64_t*>(subarray));
+      return check_subarray<int64_t>(
+          static_cast<const int64_t*>(subarray), check_expanded_domain);
     case Datatype::CHAR:
     case Datatype::STRING_ASCII:
     case Datatype::STRING_UTF8:

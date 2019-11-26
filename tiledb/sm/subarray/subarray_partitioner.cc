@@ -289,6 +289,7 @@ Status SubarrayPartitioner::next(bool* unsplittable) {
         std::move(subarray_.get_subarray<T>(current_.start_, current_.end_));
     current_.split_multi_range_ = false;
     state_.start_ = current_.end_ + 1;
+
     return Status::Ok();
   }
 
@@ -862,14 +863,14 @@ Status SubarrayPartitioner::split_top_single_range(bool* unsplittable) {
       T r[2];
       r[0] = ((const T*)range_1d)[0];
       r[1] = splitting_point;
-      r1.add_range(i, r);
+      r1.add_range(i, r, true);
       r[0] = (int_domain) ? (splitting_point + 1) :
                             std::nextafter(splitting_point, max);
       r[1] = ((const T*)range_1d)[1];
-      r2.add_range(i, r);
+      r2.add_range(i, r, true);
     } else {
-      r1.add_range(i, range_1d);
-      r2.add_range(i, range_1d);
+      r1.add_range(i, range_1d, true);
+      r2.add_range(i, range_1d, true);
     }
   }
 

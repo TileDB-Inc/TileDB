@@ -366,9 +366,13 @@ class Query {
    * the entire domain.
    *
    * @param subarray The subarray to be set.
+   * @param check_expanded_domain If `true`, the subarray bounds will be
+   *     checked against the expanded domain of the array. This is important
+   *     in dense consolidation with space tiles not fully dividing the
+   *     dimension domain.
    * @return Status
    */
-  Status set_subarray(const void* subarray);
+  Status set_subarray(const void* subarray, bool check_expanded_domain = false);
 
   /**
    * Sets the query subarray.
@@ -434,26 +438,45 @@ class Query {
   /*           PRIVATE METHODS         */
   /* ********************************* */
 
-  /** Correctness checks on `subarray`. */
-  Status check_subarray(const void* subarray) const;
+  /**
+   * Correctness checks on `subarray`.
+   *
+   * @param subarray The subarray to be checked
+   * @param check_expanded_domain If `true`, the subarray bounds will be
+   *     checked against the expanded domain of the array. This is important
+   *     in dense consolidation with space tiles not fully dividing the
+   *     dimension domain.
+   */
+  Status check_subarray(
+      const void* subarray, bool check_expanded_domain = false) const;
 
-  /** Correctness checks on `subarray`. */
+  /**
+   * Correctness checks on `subarray`.
+   *
+   * @param subarray The subarray to be checked
+   * @param check_expanded_domain If `true`, the subarray bounds will be
+   *     checked against the expanded domain of the array. This is important
+   *     in dense consolidation with space tiles not fully dividing the
+   *     dimension domain.
+   */
   template <
       typename T,
       typename std::enable_if<std::is_integral<T>::value>::type* = nullptr>
-  Status check_subarray(const T* subarray) const {
+  Status check_subarray(const T* subarray, bool check_expanded_domain) const {
     auto array_schema = this->array_schema();
     auto domain = array_schema->domain();
     auto dim_num = domain->dim_num();
 
     // Check subarray bounds
-    return check_subarray_bounds(subarray, domain, dim_num);
+    return check_subarray_bounds(
+        subarray, domain, dim_num, check_expanded_domain);
   }
 
   template <
       typename T,
       typename std::enable_if<!std::is_integral<T>::value>::type* = nullptr>
-  Status check_subarray(const T* subarray) const {
+  Status check_subarray(const T* subarray, bool check_expanded_domain) const {
+    (void)check_expanded_domain;  // Non-applicable to real domains
     auto array_schema = this->array_schema();
     auto domain = array_schema->domain();
     auto dim_num = domain->dim_num();
@@ -474,17 +497,32 @@ class Query {
    * @param subarray The subarray to check
    * @param domain the domain of the subarray
    * @param dim_num the number of dimensions in the subarray and domain
+   * @param check_expanded_domain If `true`, the subarray bounds will be
+   *     checked against the expanded domain of the array. This is important
+   *     in dense consolidation with space tiles not fully dividing the
+   *     dimension domain.
    * @return Status
    */
   template <typename T>
   Status check_subarray_bounds(
       const T* subarray,
       const Domain* const domain,
-      const unsigned int dim_num) const {
+      const unsigned int dim_num,
+      bool check_expanded_domain = false) const {
+    T low, high;
     for (unsigned int i = 0; i < dim_num; ++i) {
       auto dim_domain = static_cast<const T*>(domain->dimension(i)->domain());
-      if (subarray[2 * i] < dim_domain[0] ||
-          subarray[2 * i + 1] > dim_domain[1])
+      if (array_schema()->dense() && check_expanded_domain) {
+        auto tile_extent =
+            *static_cast<const T*>(domain->dimension(i)->tile_extent());
+        low = dim_domain[0];
+        high = utils::math::ceil(dim_domain[1], tile_extent) * tile_extent;
+      } else {
+        low = dim_domain[0];
+        high = dim_domain[1];
+      }
+
+      if (subarray[2 * i] < low || subarray[2 * i + 1] > high)
         return LOG_STATUS(Status::QueryError(
             "Subarray out of bounds. " +
             format_subarray_bounds(subarray, domain, dim_num)));

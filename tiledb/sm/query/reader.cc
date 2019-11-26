@@ -494,14 +494,15 @@ void Reader::set_storage_manager(StorageManager* storage_manager) {
   storage_manager_ = storage_manager;
 }
 
-Status Reader::set_subarray(const void* subarray) {
+Status Reader::set_subarray(const void* subarray, bool check_expanded_domain) {
   Subarray new_subarray(array_, layout_);
   if (subarray != nullptr) {
     auto dim_num = array_schema_->dim_num();
     auto coord_size = datatype_size(array_schema_->coords_type());
     auto s = (unsigned char*)subarray;
     for (unsigned i = 0; i < dim_num; ++i)
-      RETURN_NOT_OK(new_subarray.add_range(i, (void*)(s + 2 * i * coord_size)));
+      RETURN_NOT_OK(new_subarray.add_range(
+          i, (void*)(s + 2 * i * coord_size), check_expanded_domain));
   }
 
   return set_subarray(new_subarray);
@@ -1268,6 +1269,7 @@ void Reader::compute_result_cell_slabs_global(
         subarray.crop_to_tile((const T*)&tc[0], cell_order));
     auto& tile_subarray = tile_subarrays.back();
     tile_subarray.template compute_tile_coords<T>();
+
     compute_result_cell_slabs_row_col(
         tile_subarray,
         result_space_tiles,
@@ -1288,6 +1290,7 @@ Status Reader::compute_result_coords(
   typedef std::pair<unsigned, uint64_t> FragTilePair;
   std::map<FragTilePair, size_t> result_tile_map;
   std::vector<bool> single_fragment;
+
   RETURN_CANCEL_OR_ERROR(compute_sparse_result_tiles<T>(
       result_tiles, &result_tile_map, &single_fragment));
 
