@@ -49,6 +49,8 @@ namespace serialization {
 
 #ifdef TILEDB_SERIALIZATION
 
+enum class SerializationContext { CLIENT, SERVER, BACKUP };
+
 Status array_to_capnp(
     const Array& array, capnp::Array::Builder* array_builder) {
   array_builder->setUri(array.array_uri().to_string());
@@ -472,7 +474,7 @@ Status query_to_capnp(
 
 Status query_from_capnp(
     const capnp::Query::Reader& query_reader,
-    const bool clientside,
+    const SerializationContext context,
     void* buffer_start,
     CopyState* const copy_state,
     Query* const query) {
@@ -555,7 +557,7 @@ Status query_from_capnp(
           attribute_name.c_str(), &existing_buffer, &existing_buffer_size));
     }
 
-    if (clientside) {
+    if (context == SerializationContext::CLIENT) {
       // For queries on the client side, we require that buffers have been
       // set by the user, and that they are large enough for all the serialized
       // data.
@@ -568,7 +570,6 @@ Status query_from_capnp(
         return LOG_STATUS(Status::SerializationError(
             "Error deserializing read query; buffer not set for attribute '" +
             attribute_name + "'."));
-
       // Check sizes
       const uint64_t curr_data_size =
           attr_copy_state == nullptr ? 0 : attr_copy_state->data_size;
@@ -624,8 +625,8 @@ Status query_from_capnp(
           }
         }
       }
-    } else {
-      // Server-side; always expect null buffers when deserializing.
+    } else if (context == SerializationContext::SERVER) {
+      // Always expect null buffers when deserializing.
       if (existing_buffer != nullptr || existing_offset_buffer != nullptr)
         return LOG_STATUS(Status::SerializationError(
             "Error deserializing read query; unexpected "
@@ -841,7 +842,7 @@ Status query_serialize(
 Status do_query_deserialize(
     const Buffer& serialized_buffer,
     SerializationType serialize_type,
-    const bool clientside,
+    const SerializationContext context,
     CopyState* const copy_state,
     Query* query) {
   STATS_FUNC_IN(serialization_query_deserialize);
@@ -863,7 +864,7 @@ Status do_query_deserialize(
             query_builder);
         capnp::Query::Reader query_reader = query_builder.asReader();
         return query_from_capnp(
-            query_reader, clientside, nullptr, copy_state, query);
+            query_reader, context, nullptr, copy_state, query);
       }
       case SerializationType::CAPNP: {
         // Capnp FlatArrayMessageReader requires 64-bit alignment.
@@ -889,7 +890,7 @@ Status do_query_deserialize(
         auto attribute_buffer_start = reader.getEnd();
         auto buffer_start = const_cast<::capnp::word*>(attribute_buffer_start);
         return query_from_capnp(
-            query_reader, clientside, buffer_start, copy_state, query);
+            query_reader, context, buffer_start, copy_state, query);
       }
       default:
         return LOG_STATUS(Status::SerializationError(
@@ -923,6 +924,7 @@ Status query_deserialize(
   // The first buffer is always the serialized Query object.
   tiledb::sm::Buffer* original_buffer;
   RETURN_NOT_OK(original_bufferlist.get_buffer(0, &original_buffer));
+  original_buffer->reset_offset();
 
   // Similarly, we must create a copy of 'copy_state'.
   std::unique_ptr<CopyState> original_copy_state = nullptr;
@@ -933,7 +935,11 @@ Status query_deserialize(
 
   // Deserialize 'serialized_buffer'.
   const Status st = do_query_deserialize(
-      serialized_buffer, serialize_type, clientside, copy_state, query);
+      serialized_buffer,
+      serialize_type,
+      clientside ? SerializationContext::CLIENT : SerializationContext::SERVER,
+      copy_state,
+      query);
 
   // If the deserialization failed, deserialize 'serialized_query_original'
   // into 'query' to ensure that 'query' is in the state it was before the
@@ -946,7 +952,11 @@ Status query_deserialize(
     }
 
     const Status st2 = do_query_deserialize(
-        *original_buffer, serialize_type, clientside, copy_state, query);
+        *original_buffer,
+        serialize_type,
+        SerializationContext::BACKUP,
+        copy_state,
+        query);
     if (!st2.ok()) {
       LOG_FATAL(st2.message());
     }
