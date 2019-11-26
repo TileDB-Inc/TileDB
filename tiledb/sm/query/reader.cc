@@ -37,7 +37,7 @@
 #include "tiledb/sm/misc/stats.h"
 #include "tiledb/sm/misc/utils.h"
 #include "tiledb/sm/query/query_macros.h"
-#include "tiledb/sm/query/result_cell_slab_iter.h"
+#include "tiledb/sm/query/read_cell_slab_iter.h"
 #include "tiledb/sm/query/result_tile.h"
 #include "tiledb/sm/storage_manager/storage_manager.h"
 #include "tiledb/sm/subarray/cell_slab.h"
@@ -1229,7 +1229,7 @@ void Reader::compute_result_cell_slabs_row_col(
   // `result_tiles` holds pointers to tiles that store actual results,
   // which can be stored either in `sparse_result_tiles` (sparse)
   // or in `result_space_tiles` (dense).
-  auto rcs_it = ResultCellSlabIter<T>(
+  auto rcs_it = ReadCellSlabIter<T>(
       &subarray, result_space_tiles, result_coords, *result_coords_pos);
   for (rcs_it.begin(); !rcs_it.end(); ++rcs_it) {
     // Add result cell slab

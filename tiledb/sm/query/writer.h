@@ -38,8 +38,8 @@
 #include "tiledb/sm/fragment/fragment_metadata.h"
 #include "tiledb/sm/fragment/written_fragment_info.h"
 #include "tiledb/sm/misc/status.h"
-#include "tiledb/sm/query/dense_cell_range_iter.h"
 #include "tiledb/sm/query/types.h"
+#include "tiledb/sm/query/write_cell_slab_iter.h"
 #include "tiledb/sm/tile/tile.h"
 
 #include <memory>
@@ -114,48 +114,6 @@ class Writer {
   /* ********************************* */
   /*                 API               */
   /* ********************************* */
-
-  /**
-   * Adds a range to the (read/write) query on the input dimension,
-   * in the form of (start, end, stride).
-   * The range components must be of the same type as the domain type of the
-   * underlying array.
-   */
-  Status add_range(
-      unsigned dim_idx, const void* start, const void* end, const void* stride);
-
-  /** Retrieves the number of ranges of the subarray for the given dimension. */
-  Status get_range_num(unsigned dim_idx, uint64_t* range_num) const;
-
-  /**
-   * Retrieves a range from a dimension in the form (start, end, stride).
-   *
-   * @param dim_idx The dimension to retrieve the range from.
-   * @param range_idx The id of the range to retrieve.
-   * @param start The range start to retrieve.
-   * @param end The range end to retrieve.
-   * @param stride The range stride to retrieve.
-   * @return Status
-   */
-  Status get_range(
-      unsigned dim_idx,
-      uint64_t range_idx,
-      const void** start,
-      const void** end,
-      const void** stride) const;
-
-  /**
-   * Gets the estimated result size (in bytes) for the input fixed-sized
-   * attribute.
-   */
-  Status get_est_result_size(const char* attr_name, uint64_t* size);
-
-  /**
-   * Gets the estimated result size (in bytes) for the input var-sized
-   * attribute.
-   */
-  Status get_est_result_size(
-      const char* attr_name, uint64_t* size_off, uint64_t* size_val);
 
   /** Returns the array schema. */
   const ArraySchema* array_schema() const;
@@ -518,7 +476,7 @@ class Writer {
    */
   template <class T>
   Status compute_write_cell_ranges(
-      DenseCellRangeIter<T>* iters, WriteCellRangeVec* write_cell_ranges) const;
+      WriteCellSlabIter<T>* iters, WriteCellRangeVec* write_cell_ranges) const;
 
   /**
    * Creates a new fragment.
@@ -628,7 +586,7 @@ class Writer {
    */
   template <class T>
   Status init_tile_dense_cell_range_iters(
-      std::vector<DenseCellRangeIter<T>>* iters) const;
+      std::vector<WriteCellSlabIter<T>>* iters) const;
 
   /**
    * Initializes the tiles for writing for the input attribute.
