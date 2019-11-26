@@ -30,7 +30,7 @@
  * This file implements class ResultCellSlabIter.
  */
 
-#include "tiledb/sm/query/result_cell_slab_iter.h"
+#include "tiledb/sm/query/read_cell_slab_iter.h"
 #include "tiledb/sm/array/array.h"
 #include "tiledb/sm/misc/logger.h"
 
@@ -53,7 +53,7 @@ namespace sm {
 /* ****************************** */
 
 template <class T>
-ResultCellSlabIter<T>::ResultCellSlabIter(
+ReadCellSlabIter<T>::ReadCellSlabIter(
     const Subarray* subarray,
     std::map<const T*, ResultSpaceTile<T>>* result_space_tiles,
     std::vector<ResultCoords<T>>* result_coords,
@@ -76,7 +76,7 @@ ResultCellSlabIter<T>::ResultCellSlabIter(
 /* ****************************** */
 
 template <class T>
-Status ResultCellSlabIter<T>::begin() {
+Status ReadCellSlabIter<T>::begin() {
   end_ = true;
   RETURN_NOT_OK(cell_slab_iter_.begin());
   result_coords_pos_ = init_result_coords_pos_;
@@ -86,13 +86,13 @@ Status ResultCellSlabIter<T>::begin() {
 }
 
 template <class T>
-ResultCellSlab ResultCellSlabIter<T>::result_cell_slab() const {
+ResultCellSlab ReadCellSlabIter<T>::result_cell_slab() const {
   assert(result_cell_slabs_pos_ < result_cell_slabs_.size());
   return result_cell_slabs_[result_cell_slabs_pos_];
 }
 
 template <class T>
-void ResultCellSlabIter<T>::operator++() {
+void ReadCellSlabIter<T>::operator++() {
   // Get one result cell slab from the temporary ones
   ++result_cell_slabs_pos_;
   if (result_cell_slabs_pos_ >= result_cell_slabs_.size()) {
@@ -107,7 +107,7 @@ void ResultCellSlabIter<T>::operator++() {
 /* ****************************** */
 
 template <class T>
-void ResultCellSlabIter<T>::compute_cell_offsets() {
+void ReadCellSlabIter<T>::compute_cell_offsets() {
   if (domain_ == nullptr)
     return;
 
@@ -122,7 +122,7 @@ void ResultCellSlabIter<T>::compute_cell_offsets() {
 }
 
 template <class T>
-void ResultCellSlabIter<T>::compute_cell_offsets_col() {
+void ReadCellSlabIter<T>::compute_cell_offsets_col() {
   assert(std::is_integral<T>::value);
   auto dim_num = domain_->dim_num();
   auto tile_extents = (const T*)domain_->tile_extents();
@@ -134,7 +134,7 @@ void ResultCellSlabIter<T>::compute_cell_offsets_col() {
 }
 
 template <class T>
-void ResultCellSlabIter<T>::compute_cell_offsets_row() {
+void ReadCellSlabIter<T>::compute_cell_offsets_row() {
   assert(std::is_integral<T>::value);
   auto dim_num = domain_->dim_num();
   auto tile_extents = (const T*)domain_->tile_extents();
@@ -153,7 +153,7 @@ void ResultCellSlabIter<T>::compute_cell_offsets_row() {
 }
 
 template <class T>
-void ResultCellSlabIter<T>::compute_cell_slab_start(
+void ReadCellSlabIter<T>::compute_cell_slab_start(
     const T* cell_slab_coords,
     const std::vector<T>& tile_start_coords,
     uint64_t* start) {
@@ -166,7 +166,7 @@ void ResultCellSlabIter<T>::compute_cell_slab_start(
 }
 
 template <class T>
-void ResultCellSlabIter<T>::compute_cell_slab_overlap(
+void ReadCellSlabIter<T>::compute_cell_slab_overlap(
     const CellSlab<T>& cell_slab,
     const T* frag_domain,
     std::vector<T>* slab_overlap,
@@ -207,7 +207,7 @@ void ResultCellSlabIter<T>::compute_cell_slab_overlap(
 }
 
 template <class T>
-void ResultCellSlabIter<T>::compute_result_cell_slabs(
+void ReadCellSlabIter<T>::compute_result_cell_slabs(
     const CellSlab<T>& cell_slab) {
   // Find the result space tile
   auto it = result_space_tiles_->find(cell_slab.tile_coords_);
@@ -282,7 +282,7 @@ void ResultCellSlabIter<T>::compute_result_cell_slabs(
 }
 
 template <class T>
-void ResultCellSlabIter<T>::compute_result_cell_slabs_dense(
+void ReadCellSlabIter<T>::compute_result_cell_slabs_dense(
     const CellSlab<T>& cell_slab, ResultSpaceTile<T>* result_space_tile) {
   std::list<CellSlab<T>> to_process;
   to_process.push_back(cell_slab);
@@ -348,7 +348,7 @@ void ResultCellSlabIter<T>::compute_result_cell_slabs_dense(
 }
 
 template <class T>
-void ResultCellSlabIter<T>::compute_result_cell_slabs_empty(
+void ReadCellSlabIter<T>::compute_result_cell_slabs_empty(
     const ResultSpaceTile<T>& result_space_tile,
     const std::list<CellSlab<T>>& to_process,
     std::vector<ResultCellSlab>* result_cell_slabs) {
@@ -366,7 +366,7 @@ void ResultCellSlabIter<T>::compute_result_cell_slabs_empty(
 }
 
 template <class T>
-void ResultCellSlabIter<T>::split_cell_slab(
+void ReadCellSlabIter<T>::split_cell_slab(
     const CellSlab<T>& cell_slab,
     const std::vector<T>& slab_overlap,
     uint64_t overlap_length,
@@ -417,7 +417,7 @@ void ResultCellSlabIter<T>::split_cell_slab(
 }
 
 template <class T>
-void ResultCellSlabIter<T>::update_result_cell_slab() {
+void ReadCellSlabIter<T>::update_result_cell_slab() {
   if (cell_slab_iter_.end()) {
     end_ = true;
     return;
@@ -432,16 +432,16 @@ void ResultCellSlabIter<T>::update_result_cell_slab() {
 }
 
 // Explicit template instantiations
-template class ResultCellSlabIter<int8_t>;
-template class ResultCellSlabIter<uint8_t>;
-template class ResultCellSlabIter<int16_t>;
-template class ResultCellSlabIter<uint16_t>;
-template class ResultCellSlabIter<int32_t>;
-template class ResultCellSlabIter<uint32_t>;
-template class ResultCellSlabIter<int64_t>;
-template class ResultCellSlabIter<uint64_t>;
-template class ResultCellSlabIter<float>;
-template class ResultCellSlabIter<double>;
+template class ReadCellSlabIter<int8_t>;
+template class ReadCellSlabIter<uint8_t>;
+template class ReadCellSlabIter<int16_t>;
+template class ReadCellSlabIter<uint16_t>;
+template class ReadCellSlabIter<int32_t>;
+template class ReadCellSlabIter<uint32_t>;
+template class ReadCellSlabIter<int64_t>;
+template class ReadCellSlabIter<uint64_t>;
+template class ReadCellSlabIter<float>;
+template class ReadCellSlabIter<double>;
 
 }  // namespace sm
 }  // namespace tiledb

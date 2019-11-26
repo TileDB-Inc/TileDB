@@ -1,5 +1,5 @@
 /**
- * @file unit-ResultCellSlabIter.cc
+ * @file unit-ReadCellSlabIter.cc
  *
  * @section LICENSE
  *
@@ -27,12 +27,12 @@
  *
  * @section DESCRIPTION
  *
- * Tests the `ResultCellSlabIter` class.
+ * Tests the `ReadCellSlabIter` class.
  */
 
 #include "test/src/helpers.h"
 #include "tiledb/sm/c_api/tiledb_struct_def.h"
-#include "tiledb/sm/query/result_cell_slab_iter.h"
+#include "tiledb/sm/query/read_cell_slab_iter.h"
 
 #ifdef _WIN32
 #include "tiledb/sm/filesystem/win.h"
@@ -49,7 +49,7 @@ using namespace tiledb::sm;
 /*         STRUCT DEFINITION         */
 /* ********************************* */
 
-struct ResultCellSlabIterFx {
+struct ReadCellSlabIterFx {
   tiledb_ctx_t* ctx_;
   tiledb_vfs_t* vfs_;
   bool s3_supported_, hdfs_supported_;
@@ -57,15 +57,15 @@ struct ResultCellSlabIterFx {
   const std::string s3_bucket_name_ =
       "s3://" + random_bucket_name("tiledb") + "/";
   std::string array_name_;
-  const char* ARRAY_NAME = "result_cell_slab_iter";
+  const char* ARRAY_NAME = "read_cell_slab_iter";
   tiledb_array_t* array_ = nullptr;
 
-  ResultCellSlabIterFx();
-  ~ResultCellSlabIterFx();
+  ReadCellSlabIterFx();
+  ~ReadCellSlabIterFx();
 
   template <class T>
   void check_iter(
-      ResultCellSlabIter<T>* iter,
+      ReadCellSlabIter<T>* iter,
       const std::vector<std::vector<uint64_t>>& c_result_cell_slabs);
   template <class T>
   void create_result_space_tiles(
@@ -78,7 +78,7 @@ struct ResultCellSlabIterFx {
       std::map<const T*, ResultSpaceTile<T>>* result_space_tiles);
 };
 
-ResultCellSlabIterFx::ResultCellSlabIterFx() {
+ReadCellSlabIterFx::ReadCellSlabIterFx() {
   ctx_ = nullptr;
   vfs_ = nullptr;
   hdfs_supported_ = false;
@@ -106,7 +106,7 @@ ResultCellSlabIterFx::ResultCellSlabIterFx() {
   CHECK(rc == TILEDB_OK);
 }
 
-ResultCellSlabIterFx::~ResultCellSlabIterFx() {
+ReadCellSlabIterFx::~ReadCellSlabIterFx() {
   tiledb_array_free(&array_);
   remove_dir(temp_dir_, ctx_, vfs_);
   tiledb_ctx_free(&ctx_);
@@ -114,8 +114,8 @@ ResultCellSlabIterFx::~ResultCellSlabIterFx() {
 }
 
 template <class T>
-void ResultCellSlabIterFx::check_iter(
-    ResultCellSlabIter<T>* iter,
+void ReadCellSlabIterFx::check_iter(
+    ReadCellSlabIter<T>* iter,
     const std::vector<std::vector<uint64_t>>& c_result_cell_slabs) {
   CHECK(iter->end());
   CHECK(iter->begin().ok());
@@ -140,7 +140,7 @@ void ResultCellSlabIterFx::check_iter(
 }
 
 template <class T>
-void ResultCellSlabIterFx::create_result_space_tiles(
+void ReadCellSlabIterFx::create_result_space_tiles(
     unsigned dim_num,
     Layout layout,
     const T* domain,
@@ -169,23 +169,22 @@ void ResultCellSlabIterFx::create_result_space_tiles(
 /* ********************************* */
 
 TEST_CASE_METHOD(
-    ResultCellSlabIterFx,
-    "ResultCellSlabIter: Empty iterator",
-    "[ResultCellSlabIter][empty]") {
+    ReadCellSlabIterFx,
+    "ReadCellSlabIter: Empty iterator",
+    "[ReadCellSlabIter][empty]") {
   Subarray* subarray = nullptr;
   std::map<const int32_t*, ResultSpaceTile<int32_t>> result_space_tiles;
   std::vector<ResultCoords<int32_t>> result_coords;
-  ResultCellSlabIter<int32_t> iter(
-      subarray, &result_space_tiles, &result_coords);
+  ReadCellSlabIter<int32_t> iter(subarray, &result_space_tiles, &result_coords);
   CHECK(iter.end());
   CHECK(iter.begin().ok());
   CHECK(iter.end());
 }
 
 TEST_CASE_METHOD(
-    ResultCellSlabIterFx,
-    "ResultCellSlabIter: Test 1D slabs, 1 fragment, full overlap",
-    "[ResultCellSlabIter][slabs][1d][1f][full_overlap]") {
+    ReadCellSlabIterFx,
+    "ReadCellSlabIter: Test 1D slabs, 1 fragment, full overlap",
+    "[ReadCellSlabIter][slabs][1d][1f][full_overlap]") {
   // Create array
   uint64_t domain[] = {1, 100};
   uint64_t tile_extent = 10;
@@ -229,7 +228,7 @@ TEST_CASE_METHOD(
 
   // Check iterator
   std::vector<ResultCoords<uint64_t>> result_coords;
-  ResultCellSlabIter<uint64_t> iter(
+  ReadCellSlabIter<uint64_t> iter(
       &subarray, &result_space_tiles, &result_coords);
   std::vector<std::vector<uint64_t>> c_result_cell_slabs = {
       {1, 0, 4, 6},
@@ -241,9 +240,9 @@ TEST_CASE_METHOD(
 }
 
 TEST_CASE_METHOD(
-    ResultCellSlabIterFx,
-    "ResultCellSlabIter: Test 1D slabs, 1 fragment, no overlap",
-    "[ResultCellSlabIter][slabs][1d][1f][no_overlap]") {
+    ReadCellSlabIterFx,
+    "ReadCellSlabIter: Test 1D slabs, 1 fragment, no overlap",
+    "[ReadCellSlabIter][slabs][1d][1f][no_overlap]") {
   // Create array
   uint64_t domain[] = {1, 100};
   uint64_t tile_extent = 10;
@@ -287,7 +286,7 @@ TEST_CASE_METHOD(
 
   // Check iterator
   std::vector<ResultCoords<uint64_t>> result_coords;
-  ResultCellSlabIter<uint64_t> iter(
+  ReadCellSlabIter<uint64_t> iter(
       &subarray, &result_space_tiles, &result_coords);
   std::vector<std::vector<uint64_t>> c_result_cell_slabs = {
       {UINT64_MAX, 0, 4, 6},
@@ -299,9 +298,9 @@ TEST_CASE_METHOD(
 }
 
 TEST_CASE_METHOD(
-    ResultCellSlabIterFx,
-    "ResultCellSlabIter: Test 1D slabs, 2 fragments",
-    "[ResultCellSlabIter][slabs][1d][2f]") {
+    ReadCellSlabIterFx,
+    "ReadCellSlabIter: Test 1D slabs, 2 fragments",
+    "[ReadCellSlabIter][slabs][1d][2f]") {
   // Create array
   uint64_t domain[] = {1, 100};
   uint64_t tile_extent = 10;
@@ -345,7 +344,7 @@ TEST_CASE_METHOD(
 
   // Check iterator
   std::vector<ResultCoords<uint64_t>> result_coords;
-  ResultCellSlabIter<uint64_t> iter(
+  ReadCellSlabIter<uint64_t> iter(
       &subarray, &result_space_tiles, &result_coords);
   std::vector<std::vector<uint64_t>> c_result_cell_slabs = {
       {2, 0, 4, 6},
@@ -363,9 +362,9 @@ TEST_CASE_METHOD(
 }
 
 TEST_CASE_METHOD(
-    ResultCellSlabIterFx,
-    "ResultCellSlabIter: Test 1D slabs, 1 dense fragment, 2 sparse fragments",
-    "[ResultCellSlabIter][slabs][1d][1df][2sf]") {
+    ReadCellSlabIterFx,
+    "ReadCellSlabIter: Test 1D slabs, 1 dense fragment, 2 sparse fragments",
+    "[ReadCellSlabIter][slabs][1d][1df][2sf]") {
   // Create array
   uint64_t domain[] = {1, 100};
   uint64_t tile_extent = 10;
@@ -427,7 +426,7 @@ TEST_CASE_METHOD(
   result_coords.emplace_back(&result_tile_3_1, &coords_3_19, 2);
 
   // Check iterator
-  ResultCellSlabIter<uint64_t> iter(
+  ReadCellSlabIter<uint64_t> iter(
       &subarray, &result_space_tiles, &result_coords);
   std::vector<std::vector<uint64_t>> c_result_cell_slabs = {
       {2, 0, 1, 1},
@@ -449,10 +448,10 @@ TEST_CASE_METHOD(
 }
 
 TEST_CASE_METHOD(
-    ResultCellSlabIterFx,
-    "ResultCellSlabIter: Test 2D slabs, 1 range, 1 dense fragment, full "
+    ReadCellSlabIterFx,
+    "ReadCellSlabIter: Test 2D slabs, 1 range, 1 dense fragment, full "
     "overlap",
-    "[ResultCellSlabIter][slabs][2d][1r][1f][full_overlap]") {
+    "[ReadCellSlabIter][slabs][2d][1r][1f][full_overlap]") {
   Layout subarray_layout = Layout::ROW_MAJOR;
   Layout tile_domain_layout = Layout::ROW_MAJOR;
   tiledb_layout_t tile_order = TILEDB_ROW_MAJOR;
@@ -611,7 +610,7 @@ TEST_CASE_METHOD(
   std::vector<ResultCoords<uint64_t>> result_coords;
 
   // Check iterator
-  ResultCellSlabIter<uint64_t> iter(
+  ReadCellSlabIter<uint64_t> iter(
       &subarray, &result_space_tiles, &result_coords);
   check_iter<uint64_t>(&iter, c_result_cell_slabs);
 
@@ -619,9 +618,9 @@ TEST_CASE_METHOD(
 }
 
 TEST_CASE_METHOD(
-    ResultCellSlabIterFx,
-    "ResultCellSlabIter: Test 2D slabs, 1 range, 1 dense fragment, no overlap",
-    "[ResultCellSlabIter][slabs][2d][1r][1f][no_overlap]") {
+    ReadCellSlabIterFx,
+    "ReadCellSlabIter: Test 2D slabs, 1 range, 1 dense fragment, no overlap",
+    "[ReadCellSlabIter][slabs][2d][1r][1f][no_overlap]") {
   Layout subarray_layout = Layout::ROW_MAJOR;
   Layout tile_domain_layout = Layout::ROW_MAJOR;
   tiledb_layout_t tile_order = TILEDB_ROW_MAJOR;
@@ -780,7 +779,7 @@ TEST_CASE_METHOD(
   std::vector<ResultCoords<uint64_t>> result_coords;
 
   // Check iterator
-  ResultCellSlabIter<uint64_t> iter(
+  ReadCellSlabIter<uint64_t> iter(
       &subarray, &result_space_tiles, &result_coords);
   check_iter<uint64_t>(&iter, c_result_cell_slabs);
 
@@ -788,10 +787,10 @@ TEST_CASE_METHOD(
 }
 
 TEST_CASE_METHOD(
-    ResultCellSlabIterFx,
-    "ResultCellSlabIter: Test 2D slabs, 1 range, 1 dense fragment, partial "
+    ReadCellSlabIterFx,
+    "ReadCellSlabIter: Test 2D slabs, 1 range, 1 dense fragment, partial "
     "overlap",
-    "[ResultCellSlabIter][slabs][2d][1r][1f][partial_overlap]") {
+    "[ReadCellSlabIter][slabs][2d][1r][1f][partial_overlap]") {
   Layout subarray_layout = Layout::ROW_MAJOR;
   Layout tile_domain_layout = Layout::ROW_MAJOR;
   tiledb_layout_t tile_order = TILEDB_ROW_MAJOR;
@@ -962,7 +961,7 @@ TEST_CASE_METHOD(
   std::vector<ResultCoords<uint64_t>> result_coords;
 
   // Check iterator
-  ResultCellSlabIter<uint64_t> iter(
+  ReadCellSlabIter<uint64_t> iter(
       &subarray, &result_space_tiles, &result_coords);
   check_iter<uint64_t>(&iter, c_result_cell_slabs);
 
@@ -970,11 +969,11 @@ TEST_CASE_METHOD(
 }
 
 TEST_CASE_METHOD(
-    ResultCellSlabIterFx,
-    "ResultCellSlabIter: Test 2D slabs, multiple ranges, 2 denses fragments, 1 "
+    ReadCellSlabIterFx,
+    "ReadCellSlabIter: Test 2D slabs, multiple ranges, 2 denses fragments, 1 "
     "sparse "
     "overlap",
-    "[ResultCellSlabIter][slabs][2d][mr][2df1sf]") {
+    "[ReadCellSlabIter][slabs][2d][mr][2df1sf]") {
   Layout subarray_layout = Layout::ROW_MAJOR;
   Layout tile_domain_layout = Layout::ROW_MAJOR;
   tiledb_layout_t tile_order = TILEDB_ROW_MAJOR;
@@ -1198,7 +1197,7 @@ TEST_CASE_METHOD(
   result_coords.emplace_back(&result_tile_3_1, coords_3_5_6, 2);
 
   // Check iterator
-  ResultCellSlabIter<uint64_t> iter(
+  ReadCellSlabIter<uint64_t> iter(
       &subarray, &result_space_tiles, &result_coords);
   check_iter<uint64_t>(&iter, c_result_cell_slabs);
 

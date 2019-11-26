@@ -1,5 +1,5 @@
 /**
- * @file   dense_cell_range_iter.h
+ * @file   write_cell_slab_iter.h
  *
  * @section LICENSE
  *
@@ -27,11 +27,11 @@
  *
  * @section DESCRIPTION
  *
- * This file defines class DenseCellRangeIter.
+ * This file defines class WriteCellSlabIter.
  */
 
-#ifndef TILEDB_DENSE_CELL_RANGE_ITER_H
-#define TILEDB_DENSE_CELL_RANGE_ITER_H
+#ifndef TILEDB_WRITE_CELL_SLAB_ITER_H
+#define TILEDB_WRITE_CELL_SLAB_ITER_H
 
 #include "tiledb/sm/array_schema/domain.h"
 
@@ -39,75 +39,75 @@ namespace tiledb {
 namespace sm {
 
 /**
- * Iterator over cell ranges inside a particular subarray over a domain.
- * The iterator takes into account the layout of the cells in the global
- * order, as well as the query layout. It serves the next range of
- * contiguous cells (along the global order) that can satisfy the query
+ * Iterator over cell slabs inside a particular subarray over a domain,
+ * used in dense writes. The iterator takes into account the layout of the
+ * cells in the global order, as well as the query layout. It serves the next
+ * slab of contiguous cells (along the global order) that can satisfy the query
  * layout in the query subarray.
  *
  * @tparam T The domain type.
  */
 template <class T>
-class DenseCellRangeIter {
+class WriteCellSlabIter {
  public:
   /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
 
   /** Constructor. */
-  DenseCellRangeIter();
+  WriteCellSlabIter();
 
   /**
    * Constructor.
    *
    * @param domain The array domain.
    * @param subarray The subarray the iterator will focus on.
-   * @param layout The layout in which the cell ranges will be iterated on.
+   * @param layout The layout in which the cell slabs will be iterated on.
    */
-  DenseCellRangeIter(
+  WriteCellSlabIter(
       const Domain* domain, const std::vector<T>& subarray, Layout layout);
 
   /** Destructor. */
-  ~DenseCellRangeIter() = default;
+  ~WriteCellSlabIter() = default;
 
   /* ********************************* */
   /*                 API               */
   /* ********************************* */
 
-  /** Initializes the iterator, computing the very first cell range. */
+  /** Initializes the iterator, computing the very first cell slab. */
   Status begin();
 
-  /** Returns the coordinates of the start of the range. */
+  /** Returns the coordinates of the start of the slab. */
   const T* coords_start() const;
 
-  /** Returns the coordinates of the end of the range. */
+  /** Returns the coordinates of the end of the slab. */
   const T* coords_end() const;
 
   /** Checks if the iterator has reached the end. */
   bool end() const;
 
   /**
-   * Returns the tile index of the current range. The tile index is in the
+   * Returns the tile index of the current slab. The tile index is in the
    * global order of the domain.
    */
   uint64_t tile_idx() const;
 
   /**
-   * Returns the start position of the current range. This is the
-   * position of the start cell of the range **within** the current tile.
+   * Returns the start position of the current slab. This is the
+   * position of the start cell of the slab **within** the current tile.
    */
-  uint64_t range_start() const;
+  uint64_t slab_start() const;
 
   /**
-   * Returns the end position of the current range. This is the position
-   * position of the ending cell of the range **within** the current tile.
+   * Returns the end position of the current slab. This is the position
+   * position of the ending cell of the slab **within** the current tile.
    */
-  uint64_t range_end() const;
+  uint64_t slab_end() const;
 
   /** Returns the current tile coordinates. */
   const T* tile_coords() const;
 
-  /** Advances the iterator to the next range. */
+  /** Advances the iterator to the next slab. */
   void operator++();
 
  private:
@@ -145,17 +145,17 @@ class DenseCellRangeIter {
   /** Current tile coords in the subarray tile domain. */
   std::vector<T> tile_coords_in_subarray_;
 
-  /** The start coordinates of the range. */
+  /** The start coordinates of the slab. */
   std::vector<T> coords_start_;
 
-  /** The end coordinates of the range. */
+  /** The end coordinates of the slab. */
   std::vector<T> coords_end_;
 
-  /** The start position of the range. */
-  uint64_t range_start_;
+  /** The start position of the slab. */
+  uint64_t slab_start_;
 
-  /** The end position of the range. */
-  uint64_t range_end_;
+  /** The end position of the slab. */
+  uint64_t slab_end_;
 
   /** The query layout. */
   Layout layout_;
@@ -170,8 +170,8 @@ class DenseCellRangeIter {
    */
   void compute_current_tile_info();
 
-  /** Computes the current start/end range positions. */
-  Status compute_current_range();
+  /** Computes the current start/end slab positions. */
+  Status compute_current_slab();
 
   /** Computes the end coordinates based on the current start coordinates. */
   void compute_current_end_coords();
@@ -200,4 +200,4 @@ class DenseCellRangeIter {
 }  // namespace sm
 }  // namespace tiledb
 
-#endif  // TILEDB_DENSE_CELL_RANGE_ITER_H
+#endif  // TILEDB_WRITE_CELL_SLAB_ITER_H

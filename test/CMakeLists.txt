@@ -85,7 +85,7 @@ set(TILEDB_TEST_SOURCES
   src/unit-hdfs-filesystem.cc
   src/unit-lru_cache.cc
   src/unit-Reader.cc
-  src/unit-ResultCellSlabIter.cc
+        src/unit-ReadCellSlabIter.cc
   src/unit-rtree.cc
   src/unit-s3.cc
   src/unit-s3-no-multipart.cc

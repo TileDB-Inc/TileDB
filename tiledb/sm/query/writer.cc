@@ -69,61 +69,6 @@ Writer::~Writer() {
 /*               API              */
 /* ****************************** */
 
-Status Writer::add_range(
-    unsigned dim_idx, const void* start, const void* end, const void* stride) {
-  // TODO(sp): Handle this properly
-  (void)dim_idx;
-  (void)start;
-  (void)end;
-  (void)stride;
-  return LOG_STATUS(Status::WriterError(
-      "Cannot add range; Operation currently unsupported for write queries"));
-}
-
-Status Writer::get_range_num(unsigned dim_idx, uint64_t* range_num) const {
-  // TODO(sp): Handle this properly
-  (void)dim_idx;
-  (void)range_num;
-  return LOG_STATUS(
-      Status::WriterError("Cannot get number of ranges; Operation currently "
-                          "unsupported for write queries"));
-}
-
-Status Writer::get_range(
-    unsigned dim_idx,
-    uint64_t range_idx,
-    const void** start,
-    const void** end,
-    const void** stride) const {
-  // TODO(sp): Handle this properly
-  (void)dim_idx;
-  (void)range_idx;
-  (void)start;
-  (void)end;
-  (void)stride;
-  return LOG_STATUS(
-      Status::WriterError("Cannot get range; Operation currently "
-                          "unsupported for write queries"));
-}
-
-Status Writer::get_est_result_size(const char* attr_name, uint64_t* size) {
-  (void)attr_name;
-  (void)size;
-  return LOG_STATUS(
-      Status::WriterError("Cannot get estimated result size; This operation "
-                          "is not supported for write queries"));
-}
-
-Status Writer::get_est_result_size(
-    const char* attr_name, uint64_t* size_off, uint64_t* size_val) {
-  (void)attr_name;
-  (void)size_off;
-  (void)size_val;
-  return LOG_STATUS(
-      Status::WriterError("Cannot get estimated result size; This operation "
-                          "is not supported for write queries"));
-}
-
 const ArraySchema* Writer::array_schema() const {
   return array_schema_;
 }
@@ -982,7 +927,7 @@ Status Writer::compute_coords_metadata(
 
 template <class T>
 Status Writer::compute_write_cell_ranges(
-    DenseCellRangeIter<T>* iter, WriteCellRangeVec* write_cell_ranges) const {
+    WriteCellSlabIter<T>* iter, WriteCellRangeVec* write_cell_ranges) const {
   STATS_FUNC_IN(writer_compute_write_cell_ranges);
 
   auto domain = array_schema_->domain();
@@ -1009,8 +954,8 @@ Status Writer::compute_write_cell_ranges(
 
   RETURN_NOT_OK(iter->begin());
   while (!iter->end()) {
-    start = iter->range_start();
-    end = iter->range_end();
+    start = iter->slab_start();
+    end = iter->slab_end();
     coords_start = iter->coords_start();
 
     if (same_layout) {
@@ -1507,7 +1452,7 @@ Status Writer::init_tile(
 
 template <class T>
 Status Writer::init_tile_dense_cell_range_iters(
-    std::vector<DenseCellRangeIter<T>>* iters) const {
+    std::vector<WriteCellSlabIter<T>>* iters) const {
   STATS_FUNC_IN(writer_init_tile_dense_cell_range_iters);
 
   // For easy reference
@@ -1666,7 +1611,7 @@ Status Writer::ordered_write() {
   auto uri = frag_meta->fragment_uri();
 
   // Initialize dense cell range iterators for each tile in global order
-  std::vector<DenseCellRangeIter<T>> dense_cell_range_its;
+  std::vector<WriteCellSlabIter<T>> dense_cell_range_its;
   RETURN_CANCEL_OR_ERROR_ELSE(
       init_tile_dense_cell_range_iters<T>(&dense_cell_range_its),
       storage_manager_->vfs()->remove_dir(uri));

@@ -38,11 +38,11 @@
 #include "tiledb/sm/filter/filter_pipeline.h"
 #include "tiledb/sm/fragment/fragment_metadata.h"
 #include "tiledb/sm/misc/status.h"
-#include "tiledb/sm/query/dense_cell_range_iter.h"
 #include "tiledb/sm/query/result_cell_slab.h"
 #include "tiledb/sm/query/result_coords.h"
 #include "tiledb/sm/query/result_space_tile.h"
 #include "tiledb/sm/query/types.h"
+#include "tiledb/sm/query/write_cell_slab_iter.h"
 #include "tiledb/sm/subarray/subarray_partitioner.h"
 #include "tiledb/sm/tile/tile.h"
 

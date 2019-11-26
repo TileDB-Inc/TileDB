@@ -86,13 +86,16 @@ Query::~Query() = default;
 Status Query::add_range(
     unsigned dim_idx, const void* start, const void* end, const void* stride) {
   if (type_ == QueryType::WRITE)
-    return writer_.add_range(dim_idx, start, end, stride);
+    return LOG_STATUS(Status::QueryError(
+        "Cannot add range; Operation currently unsupported for write queries"));
   return reader_.add_range(dim_idx, start, end, stride);
 }
 
 Status Query::get_range_num(unsigned dim_idx, uint64_t* range_num) const {
   if (type_ == QueryType::WRITE)
-    return writer_.get_range_num(dim_idx, range_num);
+    return LOG_STATUS(
+        Status::QueryError("Cannot get number of ranges; Operation currently "
+                           "unsupported for write queries"));
   return reader_.get_range_num(dim_idx, range_num);
 }
 
@@ -103,20 +106,25 @@ Status Query::get_range(
     const void** end,
     const void** stride) const {
   if (type_ == QueryType::WRITE)
-    return writer_.get_range(dim_idx, range_idx, start, end, stride);
+    return LOG_STATUS(Status::QueryError(
+        "Cannot get range; Operation currently unsupported for write queries"));
   return reader_.get_range(dim_idx, range_idx, start, end, stride);
 }
 
 Status Query::get_est_result_size(const char* attr_name, uint64_t* size) {
   if (type_ == QueryType::WRITE)
-    return writer_.get_est_result_size(attr_name, size);
+    return LOG_STATUS(
+        Status::QueryError("Cannot estimated result size; Operation currently "
+                           "unsupported for write queries"));
   return reader_.get_est_result_size(attr_name, size);
 }
 
 Status Query::get_est_result_size(
     const char* attr_name, uint64_t* size_off, uint64_t* size_val) {
   if (type_ == QueryType::WRITE)
-    return writer_.get_est_result_size(attr_name, size_off, size_val);
+    return LOG_STATUS(
+        Status::QueryError("Cannot estimated result size; Operation currently "
+                           "unsupported for write queries"));
   return reader_.get_est_result_size(attr_name, size_off, size_val);
 }
 

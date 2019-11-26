@@ -1,5 +1,5 @@
 /**
- * @file   dense_cell_range_iter.inc
+ * @file   write_cell_slab_iter.cc
  *
  * @section LICENSE
  *
@@ -27,10 +27,10 @@
  *
  * @section DESCRIPTION
  *
- * This file implements class DenseCellRangeIter.
+ * This file implements class WriteCellSlabIter.
  */
 
-#include "tiledb/sm/query/dense_cell_range_iter.h"
+#include "tiledb/sm/query/write_cell_slab_iter.h"
 #include "tiledb/sm/misc/logger.h"
 #include "tiledb/sm/misc/utils.h"
 
@@ -52,14 +52,14 @@ namespace sm {
 /* ****************************** */
 
 template <class T>
-DenseCellRangeIter<T>::DenseCellRangeIter() {
+WriteCellSlabIter<T>::WriteCellSlabIter() {
   domain_ = nullptr;
   end_ = true;
   tile_overlap_ = false;
 }
 
 template <class T>
-DenseCellRangeIter<T>::DenseCellRangeIter(
+WriteCellSlabIter<T>::WriteCellSlabIter(
     const Domain* domain, const std::vector<T>& subarray, Layout layout)
     : domain_(domain)
     , subarray_(subarray)
@@ -73,7 +73,7 @@ DenseCellRangeIter<T>::DenseCellRangeIter(
 /* ****************************** */
 
 template <class T>
-Status DenseCellRangeIter<T>::begin() {
+Status WriteCellSlabIter<T>::begin() {
   // No domain, do not begin
   if (domain_ == nullptr)
     return Status::Ok();
@@ -94,48 +94,48 @@ Status DenseCellRangeIter<T>::begin() {
 
   compute_current_tile_info();
   compute_current_end_coords();
-  RETURN_NOT_OK(compute_current_range());
+  RETURN_NOT_OK(compute_current_slab());
 
   return Status::Ok();
 }
 
 template <class T>
-const T* DenseCellRangeIter<T>::coords_start() const {
+const T* WriteCellSlabIter<T>::coords_start() const {
   return &coords_start_[0];
 }
 
 template <class T>
-const T* DenseCellRangeIter<T>::coords_end() const {
+const T* WriteCellSlabIter<T>::coords_end() const {
   return &coords_end_[0];
 }
 
 template <class T>
-bool DenseCellRangeIter<T>::end() const {
+bool WriteCellSlabIter<T>::end() const {
   return end_;
 }
 
 template <class T>
-uint64_t DenseCellRangeIter<T>::tile_idx() const {
+uint64_t WriteCellSlabIter<T>::tile_idx() const {
   return tile_idx_;
 }
 
 template <class T>
-uint64_t DenseCellRangeIter<T>::range_start() const {
-  return range_start_;
+uint64_t WriteCellSlabIter<T>::slab_start() const {
+  return slab_start_;
 }
 
 template <class T>
-uint64_t DenseCellRangeIter<T>::range_end() const {
-  return range_end_;
+uint64_t WriteCellSlabIter<T>::slab_end() const {
+  return slab_end_;
 }
 
 template <class T>
-const T* DenseCellRangeIter<T>::tile_coords() const {
+const T* WriteCellSlabIter<T>::tile_coords() const {
   return &tile_coords_[0];
 }
 
 template <class T>
-void DenseCellRangeIter<T>::operator++() {
+void WriteCellSlabIter<T>::operator++() {
   // If at the end, do nothing
   if (end_)
     return;
@@ -157,7 +157,7 @@ void DenseCellRangeIter<T>::operator++() {
     compute_current_tile_info();
 
   compute_current_end_coords();
-  auto st = compute_current_range();
+  auto st = compute_current_slab();
   assert(st.ok());
 }
 
@@ -166,21 +166,21 @@ void DenseCellRangeIter<T>::operator++() {
 /* ****************************** */
 
 template <class T>
-void DenseCellRangeIter<T>::compute_current_end_coords() {
+void WriteCellSlabIter<T>::compute_current_end_coords() {
   domain_->get_end_of_cell_slab(
       &subarray_[0], &coords_start_[0], layout_, &coords_end_[0]);
 }
 
 template <class T>
-Status DenseCellRangeIter<T>::compute_current_range() {
-  RETURN_NOT_OK(domain_->get_cell_pos<T>(&coords_start_[0], &range_start_));
-  RETURN_NOT_OK(domain_->get_cell_pos<T>(&coords_end_[0], &range_end_));
-  assert(range_start_ <= range_end_);
+Status WriteCellSlabIter<T>::compute_current_slab() {
+  RETURN_NOT_OK(domain_->get_cell_pos<T>(&coords_start_[0], &slab_start_));
+  RETURN_NOT_OK(domain_->get_cell_pos<T>(&coords_end_[0], &slab_end_));
+  assert(slab_start_ <= slab_end_);
   return Status::Ok();
 }
 
 template <class T>
-void DenseCellRangeIter<T>::compute_current_tile_info() {
+void WriteCellSlabIter<T>::compute_current_tile_info() {
   auto dim_num = domain_->dim_num();
   domain_->get_tile_coords(&coords_start_[0], &tile_coords_[0]);
   domain_->get_tile_subarray(&tile_coords_[0], &tile_subarray_[0]);
@@ -195,7 +195,7 @@ void DenseCellRangeIter<T>::compute_current_tile_info() {
 }
 
 template <class T>
-void DenseCellRangeIter<T>::compute_next_start_coords(bool* in_subarray) {
+void WriteCellSlabIter<T>::compute_next_start_coords(bool* in_subarray) {
   switch (layout_) {
     case Layout::ROW_MAJOR:
       domain_->get_next_cell_coords_row<T>(
@@ -215,8 +215,7 @@ void DenseCellRangeIter<T>::compute_next_start_coords(bool* in_subarray) {
 }
 
 template <class T>
-void DenseCellRangeIter<T>::compute_next_start_coords_global(
-    bool* in_subarray) {
+void WriteCellSlabIter<T>::compute_next_start_coords_global(bool* in_subarray) {
   if (domain_->cell_order() == Layout::ROW_MAJOR)
     domain_->get_next_cell_coords_row<T>(
         &subarray_in_tile_[0], &coords_start_[0], in_subarray);
@@ -247,7 +246,7 @@ void DenseCellRangeIter<T>::compute_next_start_coords_global(
 }
 
 template <class T>
-Status DenseCellRangeIter<T>::sanity_check() const {
+Status WriteCellSlabIter<T>::sanity_check() const {
   // The layout should not be unordered
   if (layout_ == Layout::UNORDERED)
     return LOG_STATUS(Status::DenseCellRangeIterError(
@@ -283,14 +282,14 @@ Status DenseCellRangeIter<T>::sanity_check() const {
 }
 
 // Explicit template instantiations
-template class DenseCellRangeIter<int8_t>;
-template class DenseCellRangeIter<uint8_t>;
-template class DenseCellRangeIter<int16_t>;
-template class DenseCellRangeIter<uint16_t>;
-template class DenseCellRangeIter<int>;
-template class DenseCellRangeIter<unsigned>;
-template class DenseCellRangeIter<int64_t>;
-template class DenseCellRangeIter<uint64_t>;
+template class WriteCellSlabIter<int8_t>;
+template class WriteCellSlabIter<uint8_t>;
+template class WriteCellSlabIter<int16_t>;
+template class WriteCellSlabIter<uint16_t>;
+template class WriteCellSlabIter<int>;
+template class WriteCellSlabIter<unsigned>;
+template class WriteCellSlabIter<int64_t>;
+template class WriteCellSlabIter<uint64_t>;
 
 }  // namespace sm
 }  // namespace tiledb

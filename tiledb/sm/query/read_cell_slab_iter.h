@@ -1,5 +1,5 @@
 /**
- * @file   result_cell_slab_iter.h
+ * @file   read_cell_slab_iter.h
  *
  * @section LICENSE
  *
@@ -30,8 +30,8 @@
  * This file defines class ResultCellSlabIter.
  */
 
-#ifndef TILEDB_RESULT_CELL_SLAB_ITER_H
-#define TILEDB_RESULT_CELL_SLAB_ITER_H
+#ifndef TILEDB_READ_CELL_SLAB_ITER_H
+#define TILEDB_READ_CELL_SLAB_ITER_H
 
 #include "tiledb/sm/array_schema/domain.h"
 #include "tiledb/sm/query/result_cell_slab.h"
@@ -56,7 +56,7 @@ namespace sm {
  * @tparam T The datatype of the subarray domain.
  */
 template <class T>
-class ResultCellSlabIter {
+class ReadCellSlabIter {
  public:
   /* ********************************* */
   /*          TYPE DEFINITIONS         */
@@ -80,14 +80,14 @@ class ResultCellSlabIter {
    * @param result_coords_pos The position in `result_coords` the
    *     iterator will start iterating on.
    */
-  ResultCellSlabIter(
+  ReadCellSlabIter(
       const Subarray* subarray,
       std::map<const T*, ResultSpaceTile<T>>* result_space_tiles,
       std::vector<ResultCoords<T>>* result_coords,
       uint64_t result_coords_pos = 0);
 
   /** Destructor. */
-  ~ResultCellSlabIter() = default;
+  ~ReadCellSlabIter() = default;
 
   /* ********************************* */
   /*                 API               */
@@ -295,4 +295,4 @@ class ResultCellSlabIter {
 }  // namespace sm
 }  // namespace tiledb
 
-#endif  // TILEDB_RESULT_CELL_SLAB_ITER_H
+#endif  // TILEDB_READ_CELL_SLAB_ITER_H
