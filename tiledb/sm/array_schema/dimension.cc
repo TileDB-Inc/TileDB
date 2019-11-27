@@ -36,6 +36,7 @@
 
 #include <cassert>
 #include <iostream>
+#include <sstream>
 
 namespace tiledb {
 namespace sm {
@@ -48,6 +49,7 @@ Dimension::Dimension() {
   domain_ = nullptr;
   tile_extent_ = nullptr;
   type_ = Datatype::INT32;
+  set_oob_func();
 }
 
 Dimension::Dimension(const std::string& name, Datatype type)
@@ -55,6 +57,7 @@ Dimension::Dimension(const std::string& name, Datatype type)
     , type_(type) {
   domain_ = nullptr;
   tile_extent_ = nullptr;
+  set_oob_func();
 }
 
 Dimension::Dimension(const Dimension* dim) {
@@ -62,6 +65,7 @@ Dimension::Dimension(const Dimension* dim) {
 
   name_ = dim->name();
   type_ = dim->type_;
+  oob_func_ = dim->oob_func_;
   uint64_t type_size = datatype_size(type_);
   domain_ = std::malloc(2 * type_size);
   std::memcpy(domain_, dim->domain(), 2 * type_size);
@@ -84,6 +88,67 @@ Dimension::~Dimension() {
 /* ********************************* */
 /*                API                */
 /* ********************************* */
+
+uint64_t Dimension::coord_size() const {
+  return datatype_size(type_);
+}
+
+std::string Dimension::coord_to_str(const void* coord) const {
+  std::stringstream ss;
+  assert(coord != nullptr);
+
+  switch (type_) {
+    case Datatype::INT32:
+      ss << *((int32_t*)coord);
+      break;
+    case Datatype::INT64:
+      ss << *((int64_t*)coord);
+      break;
+    case Datatype::INT8:
+      ss << *((int8_t*)coord);
+      break;
+    case Datatype::UINT8:
+      ss << *((uint8_t*)coord);
+      break;
+    case Datatype::INT16:
+      ss << *((int16_t*)coord);
+      break;
+    case Datatype::UINT16:
+      ss << *((uint16_t*)coord);
+      break;
+    case Datatype::UINT32:
+      ss << *((uint32_t*)coord);
+      break;
+    case Datatype::UINT64:
+      ss << *((uint64_t*)coord);
+      break;
+    case Datatype::FLOAT32:
+      ss << *((float*)coord);
+      break;
+    case Datatype::FLOAT64:
+      ss << *((double*)coord);
+      break;
+    case Datatype::DATETIME_YEAR:
+    case Datatype::DATETIME_MONTH:
+    case Datatype::DATETIME_WEEK:
+    case Datatype::DATETIME_DAY:
+    case Datatype::DATETIME_HR:
+    case Datatype::DATETIME_MIN:
+    case Datatype::DATETIME_SEC:
+    case Datatype::DATETIME_MS:
+    case Datatype::DATETIME_US:
+    case Datatype::DATETIME_NS:
+    case Datatype::DATETIME_PS:
+    case Datatype::DATETIME_FS:
+    case Datatype::DATETIME_AS:
+      ss << *((int64_t*)coord);
+      break;
+    default:
+      break;
+  }
+
+  return ss.str();
+}
 
 // ===== FORMAT =====
 // dimension_name_size (uint32_t)
@@ -124,6 +189,8 @@ Status Dimension::deserialize(ConstBuffer* buff, Datatype type) {
     RETURN_NOT_OK(buff->read(tile_extent_, datatype_size(type_)));
   }
 
+  set_oob_func();
+
   return Status::Ok();
 }
 
@@ -151,6 +218,27 @@ const std::string& Dimension::name() const {
 bool Dimension::is_anonymous() const {
   return name_.empty() ||
          utils::parse::starts_with(name_, constants::default_dim_name);
+}
+
+template <class T>
+bool Dimension::oob(
+    const Dimension* dim, const void* coord, std::string* err_msg) {
+  auto domain = (const T*)dim->domain();
+  auto coord_t = (const T*)coord;
+  if (*coord_t < domain[0] || *coord_t > domain[1]) {
+    std::stringstream ss;
+    ss << "Coordinate " << *coord_t << " is out of domain bounds [" << domain[0]
+       << ", " << domain[1] << "] on dimension '" << dim->name() << "'";
+    *err_msg = ss.str();
+    return true;
+  }
+
+  return false;
+}
+
+bool Dimension::oob(const void* coord, std::string* err_msg) const {
+  assert(oob_func_ != nullptr);
+  return oob_func_(this, coord, err_msg);
 }
 
 // ===== FORMAT =====
@@ -476,6 +564,60 @@ Status Dimension::check_tile_extent() const {
   }
 
   return Status::Ok();
+}
+
+void Dimension::set_oob_func() {
+  // Set
+  switch (type_) {
+    case Datatype::INT32:
+      oob_func_ = oob<int32_t>;
+      break;
+    case Datatype::INT64:
+      oob_func_ = oob<int64_t>;
+      break;
+    case Datatype::INT8:
+      oob_func_ = oob<int8_t>;
+      break;
+    case Datatype::UINT8:
+      oob_func_ = oob<uint8_t>;
+      break;
+    case Datatype::INT16:
+      oob_func_ = oob<int16_t>;
+      break;
+    case Datatype::UINT16:
+      oob_func_ = oob<uint16_t>;
+      break;
+    case Datatype::UINT32:
+      oob_func_ = oob<uint32_t>;
+      break;
+    case Datatype::UINT64:
+      oob_func_ = oob<uint64_t>;
+      break;
+    case Datatype::FLOAT32:
+      oob_func_ = oob<float>;
+      break;
+    case Datatype::FLOAT64:
+      oob_func_ = oob<double>;
+      break;
+    case Datatype::DATETIME_YEAR:
+    case Datatype::DATETIME_MONTH:
+    case Datatype::DATETIME_WEEK:
+    case Datatype::DATETIME_DAY:
+    case Datatype::DATETIME_HR:
+    case Datatype::DATETIME_MIN:
+    case Datatype::DATETIME_SEC:
+    case Datatype::DATETIME_MS:
+    case Datatype::DATETIME_US:
+    case Datatype::DATETIME_NS:
+    case Datatype::DATETIME_PS:
+    case Datatype::DATETIME_FS:
+    case Datatype::DATETIME_AS:
+      oob_func_ = oob<int64_t>;
+      break;
+    default:
+      oob_func_ = nullptr;
+      break;
+  }
 }
 
 }  // namespace sm

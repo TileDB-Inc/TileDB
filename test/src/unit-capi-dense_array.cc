@@ -4160,7 +4160,7 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     DenseArrayFx,
     "C API: Test dense array, check if coords exist in unordered writes",
-    "[capi], [dense], [dense-coords-exist-unordered]") {
+    "[capi][dense][coords-exist-unordered]") {
   SECTION("- No serialization") {
     serialize_query_ = false;
   }

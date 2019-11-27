@@ -388,7 +388,7 @@ TEST_CASE(
     vfs.remove_dir(array_name_1d);
 }
 
-TEST_CASE("C++ API: Read subarray with expanded domain", "[cppapi], [dense]") {
+TEST_CASE("C++ API: Read subarray with expanded domain", "[cppapi][dense]") {
   const std::vector<tiledb_layout_t> tile_layouts = {TILEDB_ROW_MAJOR,
                                                      TILEDB_COL_MAJOR},
                                      cell_layouts = {TILEDB_ROW_MAJOR,
@@ -455,8 +455,7 @@ TEST_CASE("C++ API: Read subarray with expanded domain", "[cppapi], [dense]") {
   }
 }
 
-TEST_CASE(
-    "C++ API: Consolidation of empty arrays", "[cppapi], [consolidation]") {
+TEST_CASE("C++ API: Consolidation of empty arrays", "[cppapi][consolidation]") {
   Context ctx;
   VFS vfs(ctx);
   const std::string array_name = "cpp_unit_array";
@@ -530,7 +529,7 @@ TEST_CASE(
     vfs.remove_dir(array_name);
 }
 
-TEST_CASE("C++ API: Encrypted array", "[cppapi], [encryption]") {
+TEST_CASE("C++ API: Encrypted array", "[cppapi][encryption]") {
   Context ctx;
   VFS vfs(ctx);
   const std::string array_name = "cpp_unit_array";
@@ -625,9 +624,7 @@ TEST_CASE("C++ API: Encrypted array", "[cppapi], [encryption]") {
     vfs.remove_dir(array_name);
 }
 
-TEST_CASE(
-    "C++ API: Encrypted array, std::string key",
-    "[cppapi][encryption][cppapi-encryption]") {
+TEST_CASE("C++ API: Encrypted array, std::string key", "[cppapi][encryption]") {
   Context ctx;
   VFS vfs(ctx);
   const std::string array_name = "cpp_unit_array";
@@ -711,7 +708,7 @@ TEST_CASE(
 
 TEST_CASE(
     "C++ API: Open array with anonymous attribute",
-    "[cppapi], [cppapi-open-array-anon-attr]") {
+    "[cppapi][open-array-anon-attr]") {
   Context ctx;
   VFS vfs(ctx);
   const std::string array_name = "cppapi_open_array_anon_attr";
@@ -736,7 +733,7 @@ TEST_CASE(
     vfs.remove_dir(array_name);
 }
 
-TEST_CASE("C++ API: Open array at", "[cppapi], [cppapi-open-array-at]") {
+TEST_CASE("C++ API: Open array at", "[cppapi][open-array-at]") {
   Context ctx;
   VFS vfs(ctx);
   const std::string array_name = "cppapi_open_array_at";
@@ -840,8 +837,7 @@ TEST_CASE("C++ API: Open array at", "[cppapi], [cppapi-open-array-at]") {
 }
 
 TEST_CASE(
-    "C++ API: Open encrypted array at",
-    "[cppapi], [cppapi-open-encrypted-array-at]") {
+    "C++ API: Open encrypted array at", "[cppapi][open-encrypted-array-at]") {
   const char key[] = "0123456789abcdeF0123456789abcdeF";
   uint32_t key_len = (uint32_t)strlen(key);
 
@@ -943,7 +939,8 @@ TEST_CASE(
 }
 
 TEST_CASE(
-    "C++ API: Writing single cell with global order", "[cppapi], [sparse]") {
+    "C++ API: Writing single cell with global order",
+    "[cppapi][sparse][global]") {
   const std::string array_name = "cpp_unit_array";
   Context ctx;
   VFS vfs(ctx);

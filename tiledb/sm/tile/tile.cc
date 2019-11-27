@@ -287,6 +287,7 @@ void Tile::set_size(uint64_t size) {
 uint64_t Tile::size() const {
   return (buffer_ == nullptr) ? 0 : buffer_->size();
 }
+
 void Tile::split_coordinates() {
   assert(dim_num_ > 0);
 

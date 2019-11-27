@@ -839,6 +839,8 @@ void FragmentMetadata::get_subarray_tile_domain(
 
 template <class T>
 Status FragmentMetadata::expand_non_empty_domain(const T* mbr) {
+  std::lock_guard<std::mutex> lock(mtx_);
+
   if (non_empty_domain_ == nullptr) {
     auto domain_size = 2 * array_schema_->coords_size();
     non_empty_domain_ = std::malloc(domain_size);

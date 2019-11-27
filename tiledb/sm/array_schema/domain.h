@@ -225,6 +225,47 @@ class Domain {
   int cell_order_cmp(const T* coords_a, const T* coords_b) const;
 
   /**
+   * Checks the cell order of the input coordinates on the given dimension.
+   *
+   * @param The dimension to compare on.
+   * @param coord_buffs The input coordinates, given in separate buffers,
+   *     one per dimension. The buffers are sorted in the same order of the
+   *     dimensions as defined in the array schema.
+   * @param a The position of the first coordinate tuple across all buffers.
+   * @param b The position of the second coordinate tuple across all buffers.
+   * @param d The dimension index to compare on.
+   * @return One of the following:
+   *    - -1 if the first coordinates precede the second on the cell order
+   *    -  0 if the two coordinates have the same cell order
+   *    - +1 if the first coordinates succeed the second on the cell order
+   */
+  template <class T>
+  static int cell_order_cmp(
+      const Dimension* dim,
+      const std::vector<const void*>& coord_buffs,
+      uint64_t a,
+      uint64_t b,
+      unsigned d);
+
+  /**
+   * Checks the cell order of the input coordinates.
+   *
+   * @param coord_buffs The input coordinates, given n separate buffers,
+   *     one per dimension. The buffers are sorted in the same order of the
+   *     dimensions as defined in the array schema.
+   * @param a The position of the first coordinate tuple across all buffers.
+   * @param b The position of the second coordinate tuple across all buffers.
+   * @return One of the following:
+   *    - -1 if the first coordinates precede the second on the cell order
+   *    -  0 if the two coordinates have the same cell order
+   *    - +1 if the first coordinates succeed the second on the cell order
+   */
+  int cell_order_cmp(
+      const std::vector<const void*>& coord_buffs,
+      uint64_t a,
+      uint64_t b) const;
+
+  /**
    * Populates the object members from the data in the input binary buffer.
    *
    * @param buff The buffer to deserialize from.
@@ -608,6 +649,47 @@ class Domain {
   int tile_order_cmp(const T* coords_a, const T* coords_b) const;
 
   /**
+   * Checks the tile order of the input coordinates on the given dimension.
+   *
+   * @param The dimension to compare on.
+   * @param coord_buffs The input coordinates, given in separate buffers,
+   *     one per dimension. The buffers are sorted in the same order of the
+   *     dimensions as defined in the array schema.
+   * @param a The position of the first coordinate tuple across all buffers.
+   * @param b The position of the second coordinate tuple across all buffers.
+   * @param d The dimension index to compare on.
+   * @return One of the following:
+   *    - -1 if the first coordinates precede the second on the tile order
+   *    -  0 if the two coordinates have the same tile order
+   *    - +1 if the first coordinates succeed the second on the tile order
+   */
+  template <class T>
+  static int tile_order_cmp(
+      const Dimension* dim,
+      const std::vector<const void*>& coord_buffs,
+      uint64_t a,
+      uint64_t b,
+      unsigned d);
+
+  /**
+   * Checks the tile order of the input coordinates.
+   *
+   * @param coord_buffs The input coordinates, given n separate buffers,
+   *     one per dimension. The buffers are sorted in the same order of the
+   *     dimensions as defined in the array schema.
+   * @param a The position of the first coordinate tuple across all buffers.
+   * @param b The position of the second coordinate tuple across all buffers.
+   * @return One of the following:
+   *    - -1 if the first coordinates precede the second on the tile order
+   *    -  0 if the two coordinates have the same tile order
+   *    - +1 if the first coordinates succeed the second on the tile order
+   */
+  int tile_order_cmp(
+      const std::vector<const void*>& coord_buffs,
+      uint64_t a,
+      uint64_t b) const;
+
+  /**
    * Checks the tile order of the input tile coordinates.
    *
    * @tparam T The coordinates type.
@@ -733,6 +815,40 @@ class Domain {
   /** The tile order of the array the domain belongs to. */
   Layout tile_order_;
 
+  /**
+   * Vector of functions, one per dimension, for comparing the cell order of
+   * two coordinates. The inputs to the function are:
+   *
+   * - dim: The dimension to compare on.
+   * - coord_buffs: The coordinates, split in one buffer per dimensions.
+   * - a,b: The two positions of the coordinates to compare.
+   * - d: The dimension index to compare on.
+   */
+  std::vector<int (*)(
+      const Dimension* dim,
+      const std::vector<const void*>& coord_buffs,
+      uint64_t a,
+      uint64_t b,
+      unsigned d)>
+      cell_order_cmp_func_;
+
+  /**
+   * Vector of functions, one per dimension, for comparing the tile order of
+   * two coordinates. The inputs to the function are:
+   *
+   * - dim: The dimension to compare on.
+   * - coord_buffs: The coordinates, split in one buffer per dimensions.
+   * - a,b: The two positions of the coordinates to compare.
+   * - d: The dimension index to compare on.
+   */
+  std::vector<int (*)(
+      const Dimension* dim,
+      const std::vector<const void*>& coord_buffs,
+      uint64_t a,
+      uint64_t b,
+      unsigned d)>
+      tile_order_cmp_func_;
+
   /** The type of dimensions. */
   Datatype type_;
 
@@ -751,6 +867,9 @@ class Domain {
    */
   template <class T>
   void compute_cell_num_per_tile();
+
+  /** Prepares the comparator functions for each dimension. */
+  void set_tile_cell_order_cmp_funcs();
 
   /** Computes the tile domain. */
   void compute_tile_domain();
