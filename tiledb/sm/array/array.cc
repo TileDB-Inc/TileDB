@@ -656,6 +656,10 @@ Metadata* Array::metadata() {
   return &metadata_;
 }
 
+const Metadata* Array::metadata() const {
+  return &metadata_;
+}
+
 /* ********************************* */
 /*          PRIVATE METHODS          */
 /* ********************************* */

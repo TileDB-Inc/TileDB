@@ -184,7 +184,7 @@ Status Metadata::get(
     const char* key,
     Datatype* value_type,
     uint32_t* value_num,
-    const void** value) {
+    const void** value) const {
   assert(key != nullptr);
 
   auto it = metadata_map_.find(key);
@@ -215,7 +215,7 @@ Status Metadata::get(
     uint32_t* key_len,
     Datatype* value_type,
     uint32_t* value_num,
-    const void** value) {
+    const void** value) const {
   if (index >= metadata_index_.size())
     return LOG_STATUS(
         Status::MetadataError("Cannot get metadata; index out of bounds"));
@@ -286,6 +286,14 @@ void Metadata::reset() {
   clear();
   auto t = utils::time::timestamp_now_ms();
   timestamp_range_ = std::make_pair(t, t);
+}
+
+Metadata::iterator Metadata::begin() const {
+  return metadata_map_.cbegin();
+}
+
+Metadata::iterator Metadata::end() const {
+  return metadata_map_.cend();
 }
 
 /* ********************************* */
