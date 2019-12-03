@@ -153,6 +153,15 @@ class RestClient {
   /** Collection of extra headers that are attached to REST requests. */
   std::unordered_map<std::string, std::string> extra_headers_;
 
+  // A cached array schema request return payload.
+  Buffer serialized_array_schema_;
+
+  // A write-lock on serialized_array_schema_.
+  std::mutex serialized_array_schema_lock_;
+
+  // True if 'serialized_array_schema_' should be invalidated.
+  bool invalidate_serialized_array_schema_;
+
   /* ********************************* */
   /*         PRIVATE METHODS           */
   /* ********************************* */

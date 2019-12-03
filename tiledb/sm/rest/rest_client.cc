@@ -51,7 +51,8 @@ namespace sm {
 
 RestClient::RestClient()
     : config_(nullptr)
-    , resubmit_incomplete_(true) {
+    , resubmit_incomplete_(true)
+    , invalidate_serialized_array_schema_(false) {
   auto st = utils::parse::convert(
       Config::REST_SERIALIZATION_DEFAULT_FORMAT, &serialization_type_);
   assert(st.ok());
@@ -94,23 +95,41 @@ Status RestClient::get_array_schema_from_rest(
     const URI& uri, ArraySchema** array_schema) {
   STATS_FUNC_IN(rest_array_get_schema);
 
-  // Init curl and form the URL
-  Curl curlc;
-  RETURN_NOT_OK(curlc.init(config_, extra_headers_));
-  std::string array_ns, array_uri;
-  RETURN_NOT_OK(uri.get_rest_components(&array_ns, &array_uri));
-  std::string url = rest_server_ + "/v1/arrays/" + array_ns + "/" +
-                    curlc.url_escape(array_uri);
+  // Optimistically check for the cached array schema before
+  // locking.
+  if (serialized_array_schema_.data() == nullptr ||
+      serialized_array_schema_.size() == 0 ||
+      invalidate_serialized_array_schema_) {
+    std::lock_guard<std::mutex> guard(serialized_array_schema_lock_);
 
-  // Get the data
-  Buffer returned_data;
-  RETURN_NOT_OK(curlc.get_data(url, serialization_type_, &returned_data));
-  if (returned_data.data() == nullptr || returned_data.size() == 0)
-    return LOG_STATUS(Status::RestError(
-        "Error getting array schema from REST; server returned no data."));
+    // After acquiring the lock, check again to see if we can
+    // use a cached schema.
+    if (serialized_array_schema_.data() == nullptr ||
+        serialized_array_schema_.size() == 0 ||
+        invalidate_serialized_array_schema_) {
+      // Init curl and form the URL
+      Curl curlc;
+      RETURN_NOT_OK(curlc.init(config_, extra_headers_));
+      std::string array_ns, array_uri;
+      RETURN_NOT_OK(uri.get_rest_components(&array_ns, &array_uri));
+      std::string url = rest_server_ + "/v1/arrays/" + array_ns + "/" +
+                        curlc.url_escape(array_uri);
+
+      // Get the data
+      serialized_array_schema_.clear();
+      RETURN_NOT_OK(
+          curlc.get_data(url, serialization_type_, &serialized_array_schema_));
+      if (serialized_array_schema_.data() == nullptr ||
+          serialized_array_schema_.size() == 0)
+        return LOG_STATUS(Status::RestError(
+            "Error getting array schema from REST; server returned no data."));
+
+      invalidate_serialized_array_schema_ = false;
+    }
+  }
 
   return serialization::array_schema_deserialize(
-      array_schema, serialization_type_, returned_data);
+      array_schema, serialization_type_, serialized_array_schema_);
 
   STATS_FUNC_OUT(rest_array_get_schema);
 }
@@ -135,7 +154,16 @@ Status RestClient::post_array_schema_to_rest(
                     curlc.url_escape(array_uri);
 
   Buffer returned_data;
-  return curlc.post_data(url, serialization_type_, &serialized, &returned_data);
+  auto st =
+      curlc.post_data(url, serialization_type_, &serialized, &returned_data);
+  if (st.ok()) {
+    // Invalidate the cached array schema so that the next call to
+    // 'get_array_schema_from_rest' will perform a request to get the latest
+    // array schema.
+    invalidate_serialized_array_schema_ = true;
+  }
+
+  return st;
 
   STATS_FUNC_OUT(rest_array_create);
 }
