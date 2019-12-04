@@ -78,6 +78,16 @@ Status max_buffer_sizes_deserialize(
     std::unordered_map<std::string, std::pair<uint64_t, uint64_t>>*
         buffer_sizes);
 
+Status array_metadata_serialize(
+    const Array* array,
+    SerializationType serialize_type,
+    Buffer* serialized_buffer);
+
+Status array_metadata_deserialize(
+    Array* array,
+    SerializationType serialize_type,
+    const Buffer& serialized_buffer);
+
 }  // namespace serialization
 }  // namespace sm
 }  // namespace tiledb

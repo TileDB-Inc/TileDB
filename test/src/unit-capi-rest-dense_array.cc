@@ -2411,3 +2411,121 @@ TEST_CASE_METHOD(
 
   remove_temp_dir(FILE_URI_PREFIX + FILE_TEMP_DIR);
 }
+
+TEST_CASE_METHOD(
+    DenseArrayRESTFx,
+    "C API: REST Test dense array, array metadata",
+    "[capi][dense][rest][metadata]") {
+  std::string array_name =
+      TILEDB_URI_PREFIX + FILE_URI_PREFIX + FILE_TEMP_DIR + "metadata_array";
+  create_temp_dir(FILE_URI_PREFIX + FILE_TEMP_DIR);
+
+  int64_t dim_domain[] = {1, 10};
+  int64_t tile_extents[] = {2};
+  tiledb_dimension_t* d1;
+  REQUIRE(
+      tiledb_dimension_alloc(
+          ctx_, "d1", TILEDB_INT64, &dim_domain[0], &tile_extents[0], &d1) ==
+      TILEDB_OK);
+
+  tiledb_domain_t* domain;
+  REQUIRE(tiledb_domain_alloc(ctx_, &domain) == TILEDB_OK);
+  REQUIRE(tiledb_domain_add_dimension(ctx_, domain, d1) == TILEDB_OK);
+
+  tiledb_attribute_t* a1;
+  REQUIRE(tiledb_attribute_alloc(ctx_, "a1", TILEDB_INT64, &a1) == TILEDB_OK);
+
+  tiledb_array_schema_t* array_schema;
+  REQUIRE(
+      tiledb_array_schema_alloc(ctx_, TILEDB_DENSE, &array_schema) ==
+      TILEDB_OK);
+  REQUIRE(
+      tiledb_array_schema_set_domain(ctx_, array_schema, domain) == TILEDB_OK);
+  REQUIRE(
+      tiledb_array_schema_add_attribute(ctx_, array_schema, a1) == TILEDB_OK);
+  REQUIRE(tiledb_array_schema_check(ctx_, array_schema) == TILEDB_OK);
+
+  // Create array
+  REQUIRE(
+      tiledb_array_create(ctx_, array_name.c_str(), array_schema) == TILEDB_OK);
+  to_deregister_.insert(array_name);
+
+  // Clean up
+  tiledb_attribute_free(&a1);
+  tiledb_dimension_free(&d1);
+  tiledb_domain_free(&domain);
+  tiledb_array_schema_free(&array_schema);
+
+  // Write some metadata values
+  tiledb_array_t* array;
+  REQUIRE(tiledb_array_alloc(ctx_, array_name.c_str(), &array) == TILEDB_OK);
+  REQUIRE(tiledb_array_open(ctx_, array, TILEDB_WRITE) == TILEDB_OK);
+  int32_t v = 5;
+  float f[] = {1.1f, 1.2f};
+  REQUIRE(
+      tiledb_array_put_metadata(ctx_, array, "aaa", TILEDB_INT32, 1, &v) ==
+      TILEDB_OK);
+  REQUIRE(
+      tiledb_array_put_metadata(ctx_, array, "bb", TILEDB_FLOAT32, 2, f) ==
+      TILEDB_OK);
+  REQUIRE(tiledb_array_close(ctx_, array) == TILEDB_OK);
+  tiledb_array_free(&array);
+
+  // Read metadata and check values.
+  REQUIRE(tiledb_array_alloc(ctx_, array_name.c_str(), &array) == TILEDB_OK);
+  REQUIRE(tiledb_array_open(ctx_, array, TILEDB_READ) == TILEDB_OK);
+  uint64_t num_metadata = 0;
+  REQUIRE(
+      tiledb_array_get_metadata_num(ctx_, array, &num_metadata) == TILEDB_OK);
+  REQUIRE(num_metadata == 2);
+  tiledb_datatype_t datatype = TILEDB_UINT8;
+  uint32_t value_num = 0;
+  const void* value = nullptr;
+  REQUIRE(
+      tiledb_array_get_metadata(
+          ctx_, array, "aaa", &datatype, &value_num, &value) == TILEDB_OK);
+  REQUIRE(datatype == TILEDB_INT32);
+  REQUIRE(value_num == 1);
+  REQUIRE(*static_cast<const int32_t*>(value) == 5);
+  REQUIRE(
+      tiledb_array_get_metadata(
+          ctx_, array, "bb", &datatype, &value_num, &value) == TILEDB_OK);
+  REQUIRE(datatype == TILEDB_FLOAT32);
+  REQUIRE(value_num == 2);
+  REQUIRE(static_cast<const float*>(value)[0] == 1.1f);
+  REQUIRE(static_cast<const float*>(value)[1] == 1.2f);
+  REQUIRE(tiledb_array_close(ctx_, array) == TILEDB_OK);
+  tiledb_array_free(&array);
+
+  // Prevent array metadata filename/timestamp conflicts
+  std::this_thread::sleep_for(std::chrono::milliseconds(100));
+
+  // Open for writing and delete a key.
+  REQUIRE(tiledb_array_alloc(ctx_, array_name.c_str(), &array) == TILEDB_OK);
+  REQUIRE(tiledb_array_open(ctx_, array, TILEDB_WRITE) == TILEDB_OK);
+  REQUIRE(tiledb_array_delete_metadata(ctx_, array, "aaa") == TILEDB_OK);
+  REQUIRE(tiledb_array_close(ctx_, array) == TILEDB_OK);
+  tiledb_array_free(&array);
+
+  // Read metadata and check values again.
+  REQUIRE(tiledb_array_alloc(ctx_, array_name.c_str(), &array) == TILEDB_OK);
+  REQUIRE(tiledb_array_open(ctx_, array, TILEDB_READ) == TILEDB_OK);
+  REQUIRE(
+      tiledb_array_get_metadata_num(ctx_, array, &num_metadata) == TILEDB_OK);
+  REQUIRE(num_metadata == 1);
+  REQUIRE(
+      tiledb_array_get_metadata(
+          ctx_, array, "aaa", &datatype, &value_num, &value) == TILEDB_OK);
+  REQUIRE(value == nullptr);
+  REQUIRE(
+      tiledb_array_get_metadata(
+          ctx_, array, "bb", &datatype, &value_num, &value) == TILEDB_OK);
+  REQUIRE(datatype == TILEDB_FLOAT32);
+  REQUIRE(value_num == 2);
+  REQUIRE(static_cast<const float*>(value)[0] == 1.1f);
+  REQUIRE(static_cast<const float*>(value)[1] == 1.2f);
+  REQUIRE(tiledb_array_close(ctx_, array) == TILEDB_OK);
+  tiledb_array_free(&array);
+
+  remove_temp_dir(FILE_URI_PREFIX + FILE_TEMP_DIR);
+}
