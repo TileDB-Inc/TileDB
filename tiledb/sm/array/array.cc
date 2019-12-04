@@ -159,7 +159,8 @@ Status Array::open(
           "Cannot open array; remote array with no REST client."));
     RETURN_NOT_OK(
         rest_client->get_array_schema_from_rest(array_uri_, &array_schema_));
-    // TODO: get metadata from REST
+    RETURN_NOT_OK(rest_client->get_array_metadata_from_rest(
+        array_uri_, timestamp_, this));
   } else {
     // Open the array.
     RETURN_NOT_OK(storage_manager_->array_open_for_reads(
@@ -212,7 +213,8 @@ Status Array::open(
           "Cannot open array; remote array with no REST client."));
     RETURN_NOT_OK(
         rest_client->get_array_schema_from_rest(array_uri_, &array_schema_));
-    // TODO: get metadata from REST
+    RETURN_NOT_OK(rest_client->get_array_metadata_from_rest(
+        array_uri_, timestamp_, this));
   } else {
     // Open the array.
     RETURN_NOT_OK(storage_manager_->array_open_for_reads(
@@ -257,7 +259,8 @@ Status Array::open(
           "Cannot open array; remote array with no REST client."));
     RETURN_NOT_OK(
         rest_client->get_array_schema_from_rest(array_uri_, &array_schema_));
-    // TODO: get metadata from REST
+    RETURN_NOT_OK(rest_client->get_array_metadata_from_rest(
+        array_uri_, timestamp_, this));
   } else if (query_type == QueryType::READ) {
     RETURN_NOT_OK(storage_manager_->array_open_for_reads(
         array_uri_,
@@ -289,6 +292,15 @@ Status Array::close() {
   fragment_metadata_.clear();
 
   if (remote_) {
+    // Update array metadata for write queries.
+    if (query_type_ == QueryType::WRITE) {
+      auto rest_client = storage_manager_->rest_client();
+      if (rest_client == nullptr)
+        return LOG_STATUS(Status::ArrayError(
+            "Error closing array; remote array with no REST client."));
+      RETURN_NOT_OK(rest_client->post_array_metadata_to_rest(array_uri_, this));
+    }
+
     // Storage manager does not own the array schema for remote arrays.
     delete array_schema_;
     array_schema_ = nullptr;

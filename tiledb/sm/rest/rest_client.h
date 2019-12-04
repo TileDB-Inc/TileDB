@@ -108,6 +108,27 @@ class RestClient {
           buffer_sizes);
 
   /**
+   * Gets the array's metadata from the REST server (and updates the in-memory
+   * Metadata of the array to match the returned values).
+   *
+   * @param uri Array URI
+   * @param timestamp Timestamp at which to open array
+   * @param array Array to fetch metadata for
+   * @return Status
+   */
+  Status get_array_metadata_from_rest(
+      const URI& uri, uint64_t timestamp, Array* array);
+
+  /**
+   * Posts the array's metadata to the REST server.
+   *
+   * @param uri Array URI
+   * @param array Array to update/post metadata for.
+   * @return Status
+   */
+  Status post_array_metadata_to_rest(const URI& uri, const Array* array);
+
+  /**
    * Post a data query to rest server
    *
    * @param uri of array being queried
