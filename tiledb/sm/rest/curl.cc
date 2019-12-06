@@ -212,9 +212,9 @@ Status Curl::init(
   // if detected
   const std::string cert_file =
       global_state::GlobalState::GetGlobalState().cert_file();
-  // If we have detected a ca cert bundle let's set the curl option for CAPATH
+  // If we have detected a ca cert bundle let's set the curl option for CAINFO
   if (!cert_file.empty()) {
-    curl_easy_setopt(curl_.get(), CURLOPT_CAPATH, cert_file.c_str());
+    curl_easy_setopt(curl_.get(), CURLOPT_CAINFO, cert_file.c_str());
   }
 #endif
 
