@@ -884,7 +884,7 @@ Status Reader::compute_sparse_result_tiles(
 
 Status Reader::copy_cells(
     const std::string& attribute,
-    uint64_t stride,
+    const uint64_t stride,
     const std::vector<ResultCellSlab>& result_cell_slabs) {
   if (result_cell_slabs.empty()) {
     zero_out_buffer_sizes();
@@ -898,22 +898,22 @@ Status Reader::copy_cells(
 
 Status Reader::copy_fixed_cells(
     const std::string& attribute,
-    uint64_t stride,
+    const uint64_t stride,
     const std::vector<ResultCellSlab>& result_cell_slabs) {
   STATS_FUNC_IN(reader_copy_fixed_cells);
 
   // For easy reference
-  auto it = attr_buffers_.find(attribute);
-  auto buffer = (unsigned char*)it->second.buffer_;
-  auto buffer_size = it->second.buffer_size_;
-  auto cell_size = array_schema_->cell_size(attribute);
-  auto type = array_schema_->type(attribute);
-  auto fill_size = datatype_size(type);
-  auto fill_value = constants::fill_value(type);
+  const auto it = attr_buffers_.find(attribute);
+  const auto buffer = static_cast<unsigned char*>(it->second.buffer_);
+  const auto buffer_size = it->second.buffer_size_;
+  const auto cell_size = array_schema_->cell_size(attribute);
+  const auto type = array_schema_->type(attribute);
+  const auto fill_size = datatype_size(type);
+  const auto fill_value = constants::fill_value(type);
   assert(fill_value != nullptr);
 
   // Precompute the cell range destination offsets in the buffer
-  auto num_cs = result_cell_slabs.size();
+  const auto num_cs = result_cell_slabs.size();
   uint64_t buffer_offset = 0;
   std::vector<uint64_t> cs_offsets(num_cs);
   for (uint64_t i = 0; i < num_cs; i++) {
@@ -930,28 +930,28 @@ Status Reader::copy_fixed_cells(
   }
 
   // Copy cell ranges in parallel.
-  auto statuses = parallel_for(0, num_cs, [&](uint64_t i) {
+  const auto statuses = parallel_for(0, num_cs, [&](uint64_t i) {
     const auto& cs = result_cell_slabs[i];
     uint64_t offset = cs_offsets[i];
     // Check for overflow
-    auto bytes_to_copy = cs.length_ * cell_size;
+    const auto bytes_to_copy = cs.length_ * cell_size;
     assert(offset + bytes_to_copy <= *buffer_size);
 
     // Copy
     if (cs.tile_ == nullptr) {  // Empty range
-      auto fill_num = bytes_to_copy / fill_size;
+      const auto fill_num = bytes_to_copy / fill_size;
       for (uint64_t j = 0; j < fill_num; ++j) {
         std::memcpy(buffer + offset, fill_value, fill_size);
         offset += fill_size;
       }
     } else {  // Non-empty range
       const auto& tile = cs.tile_->attr_tiles_.find(attribute)->second.first;
-      auto data = (unsigned char*)tile.data();
+      const auto data = static_cast<unsigned char*>(tile.data());
       if (stride == UINT64_MAX) {
         std::memcpy(
             buffer + offset, data + cs.start_ * cell_size, bytes_to_copy);
       } else {
-        uint64_t byte_stride = stride * cell_size;
+        const uint64_t byte_stride = stride * cell_size;
         uint64_t cell_offset = offset;
         uint64_t data_offset = cs.start_ * cell_size;
         for (uint64_t j = 0; j < cs.length_; ++j) {
@@ -965,8 +965,9 @@ Status Reader::copy_fixed_cells(
     return Status::Ok();
   });
 
-  for (auto st : statuses)
+  for (const auto& st : statuses) {
     RETURN_NOT_OK(st);
+  }
 
   // Update buffer offsets
   *(attr_buffers_[attribute].buffer_size_) = buffer_offset;
@@ -984,15 +985,15 @@ Status Reader::copy_var_cells(
   STATS_FUNC_IN(reader_copy_var_cells);
 
   // For easy reference
-  auto it = attr_buffers_.find(attribute);
-  auto buffer = (unsigned char*)it->second.buffer_;
-  auto buffer_var = (unsigned char*)it->second.buffer_var_;
-  auto buffer_size = it->second.buffer_size_;
-  auto buffer_var_size = it->second.buffer_var_size_;
-  uint64_t offset_size = constants::cell_var_offset_size;
-  auto type = array_schema_->type(attribute);
-  auto fill_size = datatype_size(type);
-  auto fill_value = constants::fill_value(type);
+  const auto it = attr_buffers_.find(attribute);
+  const auto buffer = static_cast<unsigned char*>(it->second.buffer_);
+  const auto buffer_var = static_cast<unsigned char*>(it->second.buffer_var_);
+  const auto buffer_size = it->second.buffer_size_;
+  const auto buffer_var_size = it->second.buffer_var_size_;
+  const uint64_t offset_size = constants::cell_var_offset_size;
+  const auto type = array_schema_->type(attribute);
+  const auto fill_size = datatype_size(type);
+  const auto fill_value = constants::fill_value(type);
   assert(fill_value != nullptr);
 
   // Compute the destinations of offsets and var-len data in the buffers.
@@ -1016,7 +1017,7 @@ Status Reader::copy_var_cells(
 
   // Copy result cell slabs in parallel
   const auto num_cs = result_cell_slabs.size();
-  auto statuses = parallel_for(0, num_cs, [&](uint64_t cs_idx) {
+  const auto statuses = parallel_for(0, num_cs, [&](uint64_t cs_idx) {
     const auto& cs = result_cell_slabs[cs_idx];
     const auto& offset_offsets = offset_offsets_per_cs[cs_idx];
     const auto& var_offsets = var_offsets_per_cs[cs_idx];
@@ -1030,8 +1031,8 @@ Status Reader::copy_var_cells(
       const auto& tile_pair = cs.tile_->attr_tiles_.find(attribute)->second;
       const auto& tile = tile_pair.first;
       const auto& tile_var = tile_pair.second;
-      tile_offsets = (uint64_t*)tile.data();
-      tile_var_data = (unsigned char*)tile_var.data();
+      tile_offsets = static_cast<uint64_t*>(tile.data());
+      tile_var_data = static_cast<unsigned char*>(tile_var.data());
       tile_cell_num = tile.cell_num();
       tile_var_size = tile_var.size();
     }
@@ -1041,9 +1042,9 @@ Status Reader::copy_var_cells(
     stride = (stride == UINT64_MAX) ? 1 : stride;
     for (auto cell_idx = cs.start_; dest_vec_idx < cs.length_;
          cell_idx += stride, dest_vec_idx++) {
-      auto offset_dest = buffer + offset_offsets[dest_vec_idx];
-      auto var_offset = var_offsets[dest_vec_idx];
-      auto var_dest = buffer_var + var_offset;
+      const auto offset_dest = buffer + offset_offsets[dest_vec_idx];
+      const auto var_offset = var_offsets[dest_vec_idx];
+      const auto var_dest = buffer_var + var_offset;
 
       // Copy offset
       std::memcpy(offset_dest, &var_offset, offset_size);
@@ -1052,7 +1053,7 @@ Status Reader::copy_var_cells(
       if (cs.tile_ == nullptr) {
         std::memcpy(var_dest, &fill_value, fill_size);
       } else {
-        uint64_t cell_var_size =
+        const uint64_t cell_var_size =
             (cell_idx != tile_cell_num - 1) ?
                 tile_offsets[cell_idx + 1] - tile_offsets[cell_idx] :
                 tile_var_size - (tile_offsets[cell_idx] - tile_offsets[0]);
@@ -1067,8 +1068,9 @@ Status Reader::copy_var_cells(
   });
 
   // Check all statuses
-  for (auto st : statuses)
+  for (const auto& st : statuses) {
     RETURN_NOT_OK(st);
+  }
 
   // Update buffer offsets
   *(attr_buffers_[attribute].buffer_size_) = total_offset_size;
@@ -1087,8 +1089,8 @@ Status Reader::compute_var_cell_destinations(
     const std::vector<ResultCellSlab>& result_cell_slabs,
     std::vector<std::vector<uint64_t>>* offset_offsets_per_cs,
     std::vector<std::vector<uint64_t>>* var_offsets_per_cs,
-    uint64_t* total_offset_size,
-    uint64_t* total_var_size) const {
+    uint64_t* const total_offset_size,
+    uint64_t* const total_var_size) const {
   // For easy reference
   auto num_cs = result_cell_slabs.size();
   auto offset_size = constants::cell_var_offset_size;
@@ -1303,7 +1305,10 @@ Status Reader::compute_result_coords(
 
   // Read and filter coordinate tiles
   RETURN_CANCEL_OR_ERROR(read_tiles(constants::coords, tmp_result_tiles));
-  RETURN_CANCEL_OR_ERROR(filter_tiles(constants::coords, tmp_result_tiles));
+  RETURN_CANCEL_OR_ERROR(filter_tiles(
+      constants::coords,
+      tmp_result_tiles,
+      std::vector<ResultCellSlab>() /* WIP: dense array support only */));
 
   // Compute the read coordinates for all fragments for each subarray range
   std::vector<std::vector<ResultCoords<T>>> range_result_coords;
@@ -1380,12 +1385,13 @@ Status Reader::dense_read() {
       &result_cell_slabs);
 
   // Clear sparse coordinate tiles (not needed any more)
-  for (auto& tile : sparse_result_tiles)
+  for (auto& tile : sparse_result_tiles) {
     tile.attr_tiles_.erase(constants::coords);
+  }
   tile_coords.clear();
 
   // Needed when copying the cells
-  auto stride = array_schema_->domain()->stride<T>(subarray.layout());
+  const auto stride = array_schema_->domain()->stride<T>(subarray.layout());
 
   // Copy cells
   for (const auto& attr : attributes_) {
@@ -1395,14 +1401,15 @@ Status Reader::dense_read() {
       continue;
 
     RETURN_CANCEL_OR_ERROR(read_tiles(attr, result_tiles));
-    RETURN_CANCEL_OR_ERROR(filter_tiles(attr, result_tiles));
+    RETURN_CANCEL_OR_ERROR(filter_tiles(attr, result_tiles, result_cell_slabs));
     RETURN_CANCEL_OR_ERROR(copy_cells(attr, stride, result_cell_slabs));
     clear_tiles(attr, result_tiles);
   }
 
   // Fill coordinates if the user requested them
-  if (!read_state_.overflowed_ && has_coords())
+  if (!read_state_.overflowed_ && has_coords()) {
     RETURN_CANCEL_OR_ERROR(fill_dense_coords<T>(subarray));
+  }
 
   return Status::Ok();
 
@@ -1540,15 +1547,37 @@ void Reader::fill_dense_coords_col_slab(
 
 Status Reader::filter_tiles(
     const std::string& attribute,
-    const std::vector<ResultTile*>& result_tiles) const {
+    const std::vector<ResultTile*>& result_tiles,
+    const std::vector<ResultCellSlab>& result_cell_slabs) const {
   STATS_FUNC_IN(reader_filter_tiles);
 
   auto var_size = array_schema_->var_size(attribute);
   auto num_tiles = static_cast<uint64_t>(result_tiles.size());
   auto encryption_key = array_->encryption_key();
 
+  // Build an association from the result tile to the cell slab ranges
+  // that it contains.
+  std::unordered_map<
+      ResultTile*,
+      std::forward_list<std::pair<uint64_t, uint64_t>>>
+      cs_ranges;
+  std::vector<ResultCellSlab>::const_reverse_iterator rit =
+      result_cell_slabs.rbegin();
+  while (rit != result_cell_slabs.rend()) {
+    std::pair<uint64_t, uint64_t> range =
+        std::make_pair(rit->start_, rit->start_ + rit->length_);
+    if (cs_ranges.find(rit->tile_) == cs_ranges.end()) {
+      std::forward_list<std::pair<uint64_t, uint64_t>> ranges(
+          1, std::move(range));
+      cs_ranges.insert(std::make_pair(rit->tile_, std::move(ranges)));
+    } else {
+      cs_ranges[rit->tile_].emplace_front(std::move(range));
+    }
+    ++rit;
+  }
+
   auto statuses = parallel_for(0, num_tiles, [&, this](uint64_t i) {
-    auto& tile = result_tiles[i];
+    auto tile = result_tiles[i];
     auto it = tile->attr_tiles_.find(attribute);
     // Skip non-existent attributes (e.g. coords in the dense case).
     if (it == tile->attr_tiles_.end())
@@ -1565,9 +1594,24 @@ Status Reader::filter_tiles(
     auto& t = tile_pair.first;
     auto& t_var = tile_pair.second;
 
+    // Lookup the result cell slab ranges associated with this tile. If we do
+    // not have any ranges, use an empty list to indicate that this tile doesn't
+    // contain any results.
+    static const std::forward_list<std::pair<uint64_t, uint64_t>> empty_ranges;
+    const std::forward_list<std::pair<uint64_t, uint64_t>>* const
+        result_cell_slab_ranges =
+            cs_ranges.find(tile) != cs_ranges.end() ? &cs_ranges[tile] :
+                                                      &empty_ranges;
+
     if (!t.filtered()) {
       // Decompress, etc.
-      RETURN_NOT_OK(filter_tile(attribute, &t, var_size));
+      RETURN_NOT_OK(filter_tile(
+          attribute,
+          &t,
+          var_size,
+          var_size ?
+              nullptr :
+              result_cell_slab_ranges /* WIP: dense array support only */));
       RETURN_NOT_OK(storage_manager_->write_to_cache(
           tile_attr_uri, tile_attr_offset, t.buffer()));
     }
@@ -1579,7 +1623,7 @@ Status Reader::filter_tiles(
           *encryption_key, attribute, tile->tile_idx_, &tile_attr_var_offset));
 
       // Decompress, etc.
-      RETURN_NOT_OK(filter_tile(attribute, &t_var, false));
+      RETURN_NOT_OK(filter_tile(attribute, &t_var, false, nullptr));
       RETURN_NOT_OK(storage_manager_->write_to_cache(
           tile_attr_var_uri, tile_attr_var_offset, t_var.buffer()));
     }
@@ -1587,8 +1631,9 @@ Status Reader::filter_tiles(
     return Status::Ok();
   });
 
-  for (const auto& st : statuses)
+  for (const auto& st : statuses) {
     RETURN_CANCEL_OR_ERROR(st);
+  }
 
   return Status::Ok();
 
@@ -1596,7 +1641,11 @@ Status Reader::filter_tiles(
 }
 
 Status Reader::filter_tile(
-    const std::string& attribute, Tile* tile, bool offsets) const {
+    const std::string& attribute,
+    Tile* const tile,
+    const bool offsets,
+    const std::forward_list<std::pair<uint64_t, uint64_t>>* const
+        result_cell_slab_ranges) const {
   uint64_t orig_size = tile->buffer()->size();
 
   // Get a copy of the appropriate filter pipeline.
@@ -1613,7 +1662,7 @@ Status Reader::filter_tile(
   RETURN_NOT_OK(FilterPipeline::append_encryption_filter(
       &filters, array_->get_encryption_key()));
 
-  RETURN_NOT_OK(filters.run_reverse(tile));
+  RETURN_NOT_OK(filters.run_reverse(tile, result_cell_slab_ranges));
 
   tile->set_filtered(true);
   tile->set_pre_filtered_size(orig_size);
@@ -1957,7 +2006,10 @@ Status Reader::sparse_read() {
       continue;
 
     RETURN_CANCEL_OR_ERROR(read_tiles(attr, result_tiles));
-    RETURN_CANCEL_OR_ERROR(filter_tiles(attr, result_tiles));
+    RETURN_CANCEL_OR_ERROR(filter_tiles(
+        attr,
+        result_tiles,
+        std::vector<ResultCellSlab>() /* WIP: dense array support only */));
     RETURN_CANCEL_OR_ERROR(copy_cells(attr, stride, result_cell_slabs));
     clear_tiles(attr, result_tiles);
   }

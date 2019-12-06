@@ -46,6 +46,7 @@
 #include "tiledb/sm/subarray/subarray_partitioner.h"
 #include "tiledb/sm/tile/tile.h"
 
+#include <forward_list>
 #include <future>
 #include <list>
 #include <memory>
@@ -894,11 +895,14 @@ class Reader {
    *
    * @param attribute Attribute whose tiles will be filtered
    * @param result_tiles Vector containing the tiles to be filtered
+   * @param result_cell_slabs The result cell slabs to use for selective
+   * decompression.
    * @return Status
    */
   Status filter_tiles(
       const std::string& attribute,
-      const std::vector<ResultTile*>& result_tiles) const;
+      const std::vector<ResultTile*>& result_tiles,
+      const std::vector<ResultCellSlab>& result_cell_slabs) const;
 
   /**
    * Runs the input tile for the input attribute through the filter pipeline.
@@ -908,10 +912,16 @@ class Reader {
    * @param tile The tile to be filtered.
    * @param offsets True if the tile to be filtered contains offsets for a
    *    var-sized attribute.
+   * @param result_cell_slab_ranges Result cell slab ranges sorted in ascending
+   * order.
    * @return Status
    */
   Status filter_tile(
-      const std::string& attribute, Tile* tile, bool offsets) const;
+      const std::string& attribute,
+      Tile* tile,
+      bool offsets,
+      const std::forward_list<std::pair<uint64_t, uint64_t>>*
+          result_cell_slab_ranges) const;
 
   /**
    * Gets all the result coordinates of the input tile into `result_coords`.

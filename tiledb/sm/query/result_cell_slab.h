@@ -59,14 +59,15 @@ struct ResultCellSlab {
   uint64_t length_;
 
   /** Constructor. */
-  ResultCellSlab() {
-    tile_ = nullptr;
-    start_ = UINT64_MAX;
-    length_ = UINT64_MAX;
+  ResultCellSlab()
+      : tile_(nullptr)
+      , start_(UINT64_MAX)
+      , length_(UINT64_MAX) {
   }
 
   /** Constructor. */
-  ResultCellSlab(ResultTile* tile, uint64_t start, uint64_t length)
+  ResultCellSlab(
+      ResultTile* const tile, const uint64_t start, const uint64_t length)
       : tile_(tile)
       , start_(start)
       , length_(length) {
@@ -108,11 +109,7 @@ struct ResultCellSlab {
 
   /** Clones the instance. */
   ResultCellSlab clone() const {
-    ResultCellSlab clone;
-    clone.tile_ = tile_;
-    clone.start_ = start_;
-    clone.length_ = length_;
-    return clone;
+    return ResultCellSlab(tile_, start_, length_);
   }
 
   /** Swaps members with another instance. */

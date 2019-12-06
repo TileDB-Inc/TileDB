@@ -73,28 +73,27 @@ struct AttributeBuffer {
   uint64_t original_buffer_var_size_;
 
   /** Constructor. */
-  AttributeBuffer() {
-    buffer_ = nullptr;
-    buffer_var_ = nullptr;
-    buffer_size_ = nullptr;
-    buffer_var_size_ = nullptr;
-    original_buffer_size_ = 0;
-    original_buffer_var_size_ = 0;
+  AttributeBuffer()
+      : buffer_(nullptr)
+      , buffer_var_(nullptr)
+      , buffer_size_(nullptr)
+      , buffer_var_size_(nullptr)
+      , original_buffer_size_(0)
+      , original_buffer_var_size_(0) {
   }
 
   /** Constructor. */
   AttributeBuffer(
-      void* buffer,
-      void* buffer_var,
-      uint64_t* buffer_size,
-      uint64_t* buffer_var_size)
+      void* const buffer,
+      void* const buffer_var,
+      uint64_t* const buffer_size,
+      uint64_t* const buffer_var_size)
       : buffer_(buffer)
       , buffer_var_(buffer_var)
       , buffer_size_(buffer_size)
-      , buffer_var_size_(buffer_var_size) {
-    original_buffer_size_ = *buffer_size;
-    original_buffer_var_size_ =
-        (buffer_var_size_ != nullptr) ? *buffer_var_size : 0;
+      , buffer_var_size_(buffer_var_size)
+      , original_buffer_size_(*buffer_size)
+      , original_buffer_var_size_(buffer_var_size_ ? *buffer_var_size : 0) {
   }
 };
 }  // namespace sm
