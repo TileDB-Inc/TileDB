@@ -204,6 +204,7 @@ uint64_t Tile::cell_size() const {
   return cell_size_;
 }
 
+#if 0
 void* Tile::cur_data() const {
   return buffer_->cur_data();
 }
@@ -211,6 +212,7 @@ void* Tile::cur_data() const {
 void* Tile::data() const {
   return buffer_->data();
 }
+#endif
 
 unsigned int Tile::dim_num() const {
   return dim_num_;
@@ -252,6 +254,16 @@ Status Tile::realloc(uint64_t nbytes) {
 Status Tile::read(void* buffer, uint64_t nbytes) {
   RETURN_NOT_OK(buffer_->read(buffer, nbytes));
 
+  return Status::Ok();
+}
+
+Status Tile::read(
+    void* const buffer, const uint64_t nbytes, const uint64_t offset) const {
+  if (nbytes + offset > buffer_->size()) {
+    return LOG_STATUS(
+        Status::BufferError("Read failed; Trying to read beyond buffer size"));
+  }
+  std::memcpy(buffer, (char*)buffer_->data() + offset, nbytes);
   return Status::Ok();
 }
 

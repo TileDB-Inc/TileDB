@@ -900,9 +900,16 @@ Status Writer::compute_coords_metadata(
 
   // Compute MBRs
   for (uint64_t tile_id = 0; tile_id < tiles.size(); tile_id++) {
-    const auto& tile = tiles[tile_id];
+    const Tile& tile = tiles[tile_id];
+
     // Initialize MBR with the first coords
-    auto data = (T*)tile.data();
+    const uint64_t size = sizeof(T) * dim_num;
+    const uint64_t offset = 0;
+    std::shared_ptr<uint64_t> tile_buffer(
+        (uint64_t*)malloc(size), utils::misc::c_deleter());
+    RETURN_NOT_OK(tile.read(tile_buffer.get(), size, offset));
+
+    auto data = (T*)tile_buffer.get();
     auto cell_num = tile.size() / coords_size;
     assert(cell_num > 0);
     for (unsigned i = 0; i < dim_num; ++i) {

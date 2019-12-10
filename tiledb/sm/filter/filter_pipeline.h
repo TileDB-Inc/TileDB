@@ -256,7 +256,8 @@ class FilterPipeline {
    * @return Status
    */
   Status compute_tile_chunks(
-      Tile* tile, std::vector<std::pair<void*, uint32_t>>* chunks) const;
+      Tile* tile,
+      std::vector<std::pair<std::shared_ptr<void>, uint32_t>>* chunks) const;
 
   /**
    * Run the given list of chunks forward through the pipeline.
@@ -266,7 +267,7 @@ class FilterPipeline {
    * @return Status
    */
   Status filter_chunks_forward(
-      const std::vector<std::pair<void*, uint32_t>>& chunks,
+      const std::vector<std::pair<std::shared_ptr<void>, uint32_t>>& chunks,
       Buffer* output) const;
 
   /**

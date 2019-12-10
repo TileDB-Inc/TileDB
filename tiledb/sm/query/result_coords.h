@@ -58,7 +58,7 @@ struct ResultCoords {
    */
   ResultTile* tile_;
   /** The coordinates. */
-  const T* coords_;
+  std::shared_ptr<T> coords_;
   /** The coordinates of the tile in the global logical space. */
   const T* tile_coords_;
   /** The position of the coordinates in the tile. */
@@ -67,9 +67,9 @@ struct ResultCoords {
   bool valid_;
 
   /** Constructor. */
-  ResultCoords(ResultTile* tile, const T* coords, uint64_t pos)
+  ResultCoords(ResultTile* tile, std::shared_ptr<T> coords, uint64_t pos)
       : tile_(tile)
-      , coords_(coords)
+      , coords_(std::move(coords))
       , tile_coords_(nullptr)
       , pos_(pos)
       , valid_(true) {
@@ -96,7 +96,7 @@ struct ResultCoords {
     std::cout << "pos: " << pos_ << "\n";
     std::cout << "valid: " << valid_ << "\n";
     if (coords_ != nullptr)
-      std::cout << "first coord: " << coords_[0] << "\n";
+      std::cout << "first coord: " << coords_.get()[0] << "\n";
     if (tile_coords_ != nullptr)
       std::cout << "first tile coord: " << tile_coords_[0] << "\n";
   }

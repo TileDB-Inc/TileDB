@@ -406,6 +406,13 @@ TEST_CASE_METHOD(
       tile_coords,
       &result_space_tiles);
 
+  struct no_op_deleter {
+    void operator()(void* const rhs) {
+      if (rhs) {
+      }
+    }
+  };
+
   // Create result coordinates
   std::vector<ResultCoords<uint64_t>> result_coords;
   ResultTile result_tile_2_0(2, 0);
@@ -417,13 +424,31 @@ TEST_CASE_METHOD(
   uint64_t coords_3_9 = 9;
   uint64_t coords_3_12 = 12;
   uint64_t coords_3_19 = 19;
-  result_coords.emplace_back(&result_tile_2_0, &coords_2_3, 1);
-  result_coords.emplace_back(&result_tile_2_0, &coords_2_5, 3);
-  result_coords.emplace_back(&result_tile_3_0, &coords_3_8, 2);
-  result_coords.emplace_back(&result_tile_3_0, &coords_3_9, 3);
+  result_coords.emplace_back(
+      &result_tile_2_0,
+      std::shared_ptr<uint64_t>(&coords_2_3, no_op_deleter()),
+      1);
+  result_coords.emplace_back(
+      &result_tile_2_0,
+      std::shared_ptr<uint64_t>(&coords_2_5, no_op_deleter()),
+      3);
+  result_coords.emplace_back(
+      &result_tile_3_0,
+      std::shared_ptr<uint64_t>(&coords_3_8, no_op_deleter()),
+      2);
+  result_coords.emplace_back(
+      &result_tile_3_0,
+      std::shared_ptr<uint64_t>(&coords_3_9, no_op_deleter()),
+      3);
   result_coords.back().invalidate();
-  result_coords.emplace_back(&result_tile_3_1, &coords_3_12, 1);
-  result_coords.emplace_back(&result_tile_3_1, &coords_3_19, 2);
+  result_coords.emplace_back(
+      &result_tile_3_1,
+      std::shared_ptr<uint64_t>(&coords_3_12, no_op_deleter()),
+      1);
+  result_coords.emplace_back(
+      &result_tile_3_1,
+      std::shared_ptr<uint64_t>(&coords_3_19, no_op_deleter()),
+      2);
 
   // Check iterator
   ReadCellSlabIter<uint64_t> iter(
@@ -1185,6 +1210,13 @@ TEST_CASE_METHOD(
       tile_coords,
       &result_space_tiles);
 
+  struct no_op_deleter {
+    void operator()(void* const rhs) {
+      if (rhs) {
+      }
+    }
+  };
+
   // Create result coordinates
   std::vector<ResultCoords<uint64_t>> result_coords;
   ResultTile result_tile_3_0(3, 0);
@@ -1192,9 +1224,18 @@ TEST_CASE_METHOD(
   uint64_t coords_3_3_3[] = {3, 3};
   uint64_t coords_3_5_5[] = {5, 5};
   uint64_t coords_3_5_6[] = {5, 6};
-  result_coords.emplace_back(&result_tile_3_0, coords_3_3_3, 1);
-  result_coords.emplace_back(&result_tile_3_1, coords_3_5_5, 0);
-  result_coords.emplace_back(&result_tile_3_1, coords_3_5_6, 2);
+  result_coords.emplace_back(
+      &result_tile_3_0,
+      std::shared_ptr<uint64_t>(coords_3_3_3, no_op_deleter()),
+      1);
+  result_coords.emplace_back(
+      &result_tile_3_1,
+      std::shared_ptr<uint64_t>(coords_3_5_5, no_op_deleter()),
+      0);
+  result_coords.emplace_back(
+      &result_tile_3_1,
+      std::shared_ptr<uint64_t>(coords_3_5_6, no_op_deleter()),
+      2);
 
   // Check iterator
   ReadCellSlabIter<uint64_t> iter(

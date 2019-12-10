@@ -438,6 +438,20 @@ inline T decode_be(const void* const data) {
 
 }  // namespace endianness
 
+/* ********************************* */
+/*          MISC FUNCTIONS           */
+/* ********************************* */
+
+namespace misc {
+
+struct c_deleter {
+  void operator()(void* const rhs) {
+    free(rhs);
+  }
+};
+
+}  // namespace misc
+
 }  // namespace utils
 
 }  // namespace sm

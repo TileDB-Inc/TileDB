@@ -168,12 +168,6 @@ class Tile {
    */
   Tile clone(bool deep_copy) const;
 
-  /** Returns the buffer data pointer at the current offset. */
-  void* cur_data() const;
-
-  /** Returns the tile data. */
-  void* data() const;
-
   /**
    * Sets `owns_buff_` to `false` and thus will not destroy the buffer
    * in the destructor.
@@ -220,6 +214,13 @@ class Tile {
 
   /** Reads from the tile into the input buffer *nbytes*. */
   Status read(void* buffer, uint64_t nbytes);
+
+  /**
+   * Reads from the tile at the given offset into the input
+   * buffer of size nbytes. Does not mutate the internal offset.
+   * Thread-safe among readers.
+   */
+  Status read(void* buffer, uint64_t nbytes, uint64_t offset) const;
 
   /** Resets the size and offset of the tile. */
   void reset();

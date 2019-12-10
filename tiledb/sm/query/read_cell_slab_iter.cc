@@ -239,13 +239,14 @@ void ReadCellSlabIter<T>::compute_result_cell_slabs(
     for (unsigned d = 0; d < dim_num; ++d) {
       if (d != slab_dim) {
         // No overlap
-        if ((*result_coords_)[i].coords_[d] != cell_slab_copy.coords_[d]) {
+        if ((*result_coords_)[i].coords_.get()[d] !=
+            cell_slab_copy.coords_[d]) {
           must_break = true;
           break;
         }
       } else if (
-          (*result_coords_)[i].coords_[d] < slab_start ||
-          (*result_coords_)[i].coords_[d] > slab_end) {
+          (*result_coords_)[i].coords_.get()[d] < slab_start ||
+          (*result_coords_)[i].coords_.get()[d] > slab_end) {
         must_break = true;
         break;
       }
@@ -255,8 +256,8 @@ void ReadCellSlabIter<T>::compute_result_cell_slabs(
       break;
 
     // Add left slab
-    if ((*result_coords_)[i].coords_[slab_dim] > slab_start) {
-      cell_slab_copy.length_ = (*result_coords_)[i].coords_[slab_dim] -
+    if ((*result_coords_)[i].coords_.get()[slab_dim] > slab_start) {
+      cell_slab_copy.length_ = (*result_coords_)[i].coords_.get()[slab_dim] -
                                cell_slab_copy.coords_[slab_dim];
       compute_result_cell_slabs_dense(cell_slab_copy, &result_space_tile);
     }
@@ -267,7 +268,7 @@ void ReadCellSlabIter<T>::compute_result_cell_slabs(
 
     // Update cell slab copy
     cell_slab_copy.coords_[slab_dim] =
-        (*result_coords_)[i].coords_[slab_dim] + 1;
+        (*result_coords_)[i].coords_.get()[slab_dim] + 1;
     cell_slab_copy.length_ = slab_end - cell_slab_copy.coords_[slab_dim] + 1;
     slab_start = cell_slab_copy.coords_[slab_dim];
     slab_end = (T)(slab_start + cell_slab_copy.length_ - 1);

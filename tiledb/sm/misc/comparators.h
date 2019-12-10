@@ -67,11 +67,11 @@ class RowCmp {
    */
   bool operator()(const ResultCoords<T>& a, const ResultCoords<T>& b) const {
     for (unsigned int i = 0; i < dim_num_; ++i) {
-      if (a.coords_[i] < b.coords_[i])
+      if (a.coords_.get()[i] < b.coords_.get()[i])
         return true;
-      if (a.coords_[i] > b.coords_[i])
+      if (a.coords_.get()[i] > b.coords_.get()[i])
         return false;
-      // else a.coords_[i] == b.coords_[i] --> continue
+      // else a.coords_.get()[i] == b.coords_.get()[i] --> continue
     }
 
     return false;
@@ -104,11 +104,11 @@ class ColCmp {
    */
   bool operator()(const ResultCoords<T>& a, const ResultCoords<T>& b) const {
     for (unsigned int i = dim_num_ - 1;; --i) {
-      if (a.coords_[i] < b.coords_[i])
+      if (a.coords_.get()[i] < b.coords_.get()[i])
         return true;
-      if (a.coords_[i] > b.coords_[i])
+      if (a.coords_.get()[i] > b.coords_.get()[i])
         return false;
-      // else a.coords_[i] == b.coords_[i] --> continue
+      // else a.coords_.get()[i] == b.coords_.get()[i] --> continue
 
       if (i == 0)
         break;
@@ -161,7 +161,7 @@ class GlobalCmp {
     // else tile_cmp == 0 --> continue
 
     // Compare cell order
-    auto cell_cmp = domain_->cell_order_cmp(a.coords_, b.coords_);
+    auto cell_cmp = domain_->cell_order_cmp(a.coords_.get(), b.coords_.get());
     return cell_cmp == -1;
   }
 

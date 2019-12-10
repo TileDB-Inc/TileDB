@@ -39,6 +39,7 @@
 #include "tiledb/sm/misc/logger.h"
 #include "tiledb/sm/misc/parallel_functions.h"
 #include "tiledb/sm/misc/stats.h"
+#include "tiledb/sm/misc/utils.h"
 #include "tiledb/sm/tile/tile.h"
 
 namespace tiledb {
@@ -86,7 +87,8 @@ void FilterPipeline::clear() {
 }
 
 Status FilterPipeline::compute_tile_chunks(
-    Tile* tile, std::vector<std::pair<void*, uint32_t>>* chunks) const {
+    Tile* tile,
+    std::vector<std::pair<std::shared_ptr<void>, uint32_t>>* chunks) const {
   // For coordinate tiles, we treat each dimension separately (chunks won't
   // cross dimension boundaries, since the coordinates have been split).
   // Attribute tiles are treated as a whole.
@@ -115,8 +117,11 @@ Status FilterPipeline::compute_tile_chunks(
       // tile if the chunk size doesn't evenly divide).
       auto size = static_cast<uint32_t>(
           std::min(chunk_size, dim_tile_size - j * chunk_size));
-      chunks->emplace_back(tile->cur_data(), size);
-      tile->advance_offset(size);
+
+      std::shared_ptr<void> chunk_buffer(
+          malloc(size), utils::misc::c_deleter());
+      RETURN_NOT_OK(tile->read(chunk_buffer.get(), size));
+      chunks->emplace_back(std::move(chunk_buffer), size);
     }
   }
 
@@ -128,7 +133,7 @@ const Tile* FilterPipeline::current_tile() const {
 }
 
 Status FilterPipeline::filter_chunks_forward(
-    const std::vector<std::pair<void*, uint32_t>>& chunks,
+    const std::vector<std::pair<std::shared_ptr<void>, uint32_t>>& chunks,
     Buffer* output) const {
   // Vector storing the input and output of the final pipeline stage for each
   // chunk.
@@ -145,7 +150,7 @@ Status FilterPipeline::filter_chunks_forward(
 
     // First filter's input is the original chunk.
     const auto& chunk_input = chunks[i];
-    RETURN_NOT_OK(input_data.init(chunk_input.first, chunk_input.second));
+    RETURN_NOT_OK(input_data.init(chunk_input.first.get(), chunk_input.second));
 
     // Apply the filters sequentially.
     for (auto it = filters_.begin(), ite = filters_.end(); it != ite; ++it) {
@@ -360,7 +365,7 @@ Status FilterPipeline::run_forward(Tile* tile) const {
     tile->split_coordinates();
 
   // Compute the chunks.
-  std::vector<std::pair<void*, uint32_t>> chunks;
+  std::vector<std::pair<std::shared_ptr<void>, uint32_t>> chunks;
   RETURN_NOT_OK(compute_tile_chunks(tile, &chunks));
   uint64_t num_chunks = chunks.size();
   if (num_chunks == 0)
