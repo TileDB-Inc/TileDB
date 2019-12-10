@@ -76,6 +76,12 @@ class Dimension {
   /*                API                */
   /* ********************************* */
 
+  /** Returns the size (in bytes) of a coordinate in this dimension. */
+  uint64_t coord_size() const;
+
+  /** Returns the input coordinate in string format. */
+  std::string coord_to_str(const void* coord) const;
+
   /**
    * Populates the object members from the data in the input binary buffer.
    *
@@ -96,6 +102,33 @@ class Dimension {
 
   /** Returns true if this is an anonymous (unlabled) dimension **/
   bool is_anonymous() const;
+
+  /**
+   * Returns true if the input coordinate is out-of-bounds with respect
+   * to the dimension domain.
+   *
+   * @param coord The coordinate to be checked. It will properly be
+   *     type-cast to the dimension datatype.
+   * @param err_msg An error message to be retrieved in case the function
+   *     returns true.
+   * @return True if the input coordinates is out-of-bounds.
+   */
+  bool oob(const void* coord, std::string* err_msg) const;
+
+  /**
+   * Returns true if the input coordinate is out-of-bounds with respect
+   * to the dimension domain.
+   *
+   * @param dim The dimension to apply the oob check on.
+   * @param coord The coordinate to be checked. It will properly be
+   *     type-cast to the dimension datatype.
+   * @param err_msg An error message to be retrieved in case the function
+   *     returns true.
+   * @return True if the input coordinates is out-of-bounds.
+   */
+  template <class T>
+  static bool oob(
+      const Dimension* dim, const void* coord, std::string* err_msg);
 
   /**
    * Serializes the object members into a binary buffer.
@@ -148,6 +181,13 @@ class Dimension {
 
   /** The dimension type. */
   Datatype type_;
+
+  /**
+   * Stores the appropriate templated oob() function based on the
+   * dimension datatype.
+   */
+  std::function<bool(const Dimension* dim, const void*, std::string*)>
+      oob_func_;
 
   /* ********************************* */
   /*          PRIVATE METHODS          */
@@ -229,6 +269,9 @@ class Dimension {
    */
   template <class T>
   Status check_tile_extent() const;
+
+  /** Sets the templated oob function. */
+  void set_oob_func();
 };
 
 }  // namespace sm

@@ -69,13 +69,27 @@ class Writer {
      * var-sized attributes, the first tile is the offsets tile, whereas
      * the second tile is the values tile.
      */
-    std::unordered_map<std::string, std::pair<Tile, Tile>> last_tiles_;
+    std::unordered_map<std::string, std::pair<Tile, Tile>> last_attr_tiles_;
 
     /**
      * Stores the number of cells written for each attribute across the
      * write operations.
      */
-    std::unordered_map<std::string, uint64_t> cells_written_;
+    std::unordered_map<std::string, uint64_t> attr_cells_written_;
+
+    /**
+     * Stores the last coordinate tile of each dimension for each write
+     * operation. For fixed-sized dimensions, the second tile is ignored. For
+     * var-sized dimensions, the first tile is the offsets tile, whereas
+     * the second tile is the values tile.
+     */
+    std::unordered_map<std::string, std::pair<Tile, Tile>> last_coord_tiles_;
+
+    /**
+     * Stores the number of cells written for each dimension across the
+     * write operations.
+     */
+    std::unordered_map<std::string, uint64_t> coord_cells_written_;
 
     /** The fragment metadata. */
     std::shared_ptr<FragmentMetadata> frag_meta_;
@@ -115,42 +129,34 @@ class Writer {
   /*                 API               */
   /* ********************************* */
 
+  /** Returns the attributes the user has set buffers for. */
+  std::vector<std::string> attributes() const;
+
   /** Returns the array schema. */
   const ArraySchema* array_schema() const;
 
-  /**
-   * Return list of attribtues for query
-   * @return vector of attributes for query
-   */
-  std::vector<std::string> attributes() const;
-
-  /**
-   * Fetch AttributeBuffer for attribute
-   * @param attribute to fetch
-   * @return AttributeBuffer for attribute
-   */
-  AttributeBuffer buffer(const std::string& attribute) const;
+  /** Returns the query buffer with the given name. */
+  AttributeBuffer buffer(const std::string& name) const;
 
   /** Finalizes the reader. */
   Status finalize();
 
   /**
-   * Retrieves the buffer of a fixed-sized attribute.
+   * Retrieves the buffer of a fixed-sized attribute/dimension.
    *
-   * @param attribute The buffer attribute.
+   * @param name The buffer name.
    * @param buffer The buffer to be retrieved.
    * @param buffer_size A pointer to the buffer size to be retrieved.
    * @return Status
    */
   Status get_buffer(
-      const std::string& attribute,
-      void** buffer,
-      uint64_t** buffer_size) const;
+      const std::string& name, void** buffer, uint64_t** buffer_size) const;
 
   /**
-   * Retrieves the offsets and values buffers of a var-sized attribute.
+   * Retrieves the offsets and values buffers of a var-sized
+   * attribute/dimension.
    *
-   * @param attribute The buffer attribute.
+   * @param name The buffer attribute/dimension.
    * @param buffer_off The offsets buffer to be retrieved.
    * @param buffer_off_size A pointer to the offsets buffer size to be
    * retrieved.
@@ -159,7 +165,7 @@ class Writer {
    * @return Status
    */
   Status get_buffer(
-      const std::string& attribute,
+      const std::string& name,
       uint64_t** buffer_off,
       uint64_t** buffer_off_size,
       void** buffer_val,
@@ -190,20 +196,20 @@ class Writer {
   void set_array_schema(const ArraySchema* array_schema);
 
   /**
-   * Sets the buffer for a fixed-sized attribute.
+   * Sets the buffer for a fixed-sized attribute/dimension.
    *
-   * @param attribute The attribute to set the buffer for.
+   * @param name The attribute/dimension to set the buffer for.
    * @param buffer The buffer that has the input data to be written.
    * @param buffer_size The size of `buffer` in bytes.
    * @return Status
    */
   Status set_buffer(
-      const std::string& attribute, void* buffer, uint64_t* buffer_size);
+      const std::string& name, void* buffer, uint64_t* buffer_size);
 
   /**
-   * Sets the buffer for a var-sized attribute.
+   * Sets the buffer for a var-sized attribute/dimension.
    *
-   * @param attribute The attribute to set the buffer for.
+   * @param name The attribute/dimension to set the buffer for.
    * @param buffer_off The buffer that has the input data to be written,
    *     This buffer holds the starting offsets of each cell value in
    *     `buffer_val`.
@@ -214,7 +220,7 @@ class Writer {
    * @return Status
    */
   Status set_buffer(
-      const std::string& attribute,
+      const std::string& name,
       uint64_t* buffer_off,
       uint64_t* buffer_off_size,
       void* buffer_val,
@@ -282,11 +288,39 @@ class Writer {
   /** The array schema. */
   const ArraySchema* array_schema_;
 
-  /** The names of the attributes involved in the query. */
-  std::vector<std::string> attributes_;
-
   /** Maps attribute names to their buffers. */
   std::unordered_map<std::string, AttributeBuffer> attr_buffers_;
+
+  /** Maps dimension names to their coordinate buffers. */
+  std::unordered_map<std::string, CoordBuffer> coord_buffers_;
+
+  /** The coordinates buffer potentially set by the user. */
+  void* coords_buffer_;
+
+  /** The coordinates buffer size potentially set by the user. */
+  uint64_t* coords_buffer_size_;
+
+  /**
+   * The coordinate sizes, one per dimension, in the order the dimensions
+   * are defined in the array schema.
+   */
+  std::vector<uint64_t> coord_sizes_;
+
+  /** Number of coordinates provided by the user. */
+  uint64_t coords_num_;
+
+  /**
+   * If `true` it means that TileDB alloc'ed these buffers, not the user, and
+   * TileDB will free this buffers in the writer destructor.
+   */
+  bool coord_buffers_alloced_;
+
+  /**
+   * The sizes of the coordinate buffers in a map (dimension -> size).
+   * Needed separate storage since CoordBuffer stores a pointer to the buffer
+   * sizes.
+   */
+  std::unordered_map<std::string, uint64_t> coord_buffer_sizes_;
 
   /**
    * Meaningful only when `dedup_coords_` is `false`.
@@ -373,16 +407,6 @@ class Writer {
   Status check_coord_oob() const;
 
   /**
-   * Throws an error if there are coordinates falling out-of-bounds, i.e.,
-   * outside the array domain.
-   *
-   * @tparam T The coordinates type.
-   * @return Status
-   */
-  template <class T>
-  Status check_coord_oob() const;
-
-  /**
    * Throws an error if there are coordinate duplicates. This function
    * assumes that the coordinates are written in the global layout,
    * which means that they are already sorted in the attribute buffers.
@@ -399,22 +423,18 @@ class Writer {
    */
   Status check_global_order() const;
 
+  /** Correctness checks for `subarray_`. */
+  Status check_subarray() const;
+
+  /** Correctness checks for `subarray_`. */
+  template <class T>
+  Status check_subarray() const;
+
   /**
-   * Throws an error if there are coordinates that do not obey the
-   * global order.
-   *
-   * @tparam T The domain type.
-   * @return Status
+   * Cleans up the coordinate buffers. Applicable only if the coordinate
+   * buffers were allocated by TileDB (not the user)
    */
-  template <class T>
-  Status check_global_order() const;
-
-  /** Correctness checks for `subarray_`. */
-  Status check_subarray() const;
-
-  /** Correctness checks for `subarray_`. */
-  template <class T>
-  Status check_subarray() const;
+  void clear_coord_buffers();
 
   /** Closes all attribute files, flushing their state to storage. */
   Status close_files(FragmentMetadata* meta) const;
@@ -455,14 +475,28 @@ class Writer {
   /**
    * Computes the coordinates metadata (e.g., MBRs).
    *
+   * @param tiles The tiles to calculate the coords metadata from. It is
+   *     a vector of vectors, one vector of tiles per dimension.
+   * @param meta The fragment metadata that will store the coords metadata.
+   * @return Status
+   */
+  Status compute_coords_metadata(
+      const std::unordered_map<std::string, std::vector<Tile>>& tiles,
+      FragmentMetadata* meta) const;
+
+  /**
+   * Computes the coordinates metadata (e.g., MBRs).
+   *
    * @tparam T The domain type.
-   * @param tiles The tiles to calculate the coords metadata from.
+   * @param tiles The tiles to calculate the coords metadata from. It is
+   *     a vector of vectors, one vector of tiles per dimension.
    * @param meta The fragment metadata that will store the coords metadata.
    * @return Status
    */
   template <class T>
   Status compute_coords_metadata(
-      const std::vector<Tile>& tiles, FragmentMetadata* meta) const;
+      const std::unordered_map<std::string, std::vector<Tile>>& tiles,
+      FragmentMetadata* meta) const;
 
   /**
    * Computes the cell ranges to be written, derived from a
@@ -487,6 +521,25 @@ class Writer {
    */
   Status create_fragment(
       bool dense, std::shared_ptr<FragmentMetadata>* frag_meta) const;
+
+  /**
+   * Runs the input tiles for all attributes through the filter pipeline.
+   * The tile buffers are modified to contain the output of the pipeline.
+   *
+   * @return Status
+   */
+  Status filter_attr_tiles(
+      std::unordered_map<std::string, std::vector<Tile>>* attr_tiles) const;
+
+  /**
+   * Applicable only to global writes. Filters the last coordinate tiles
+   * and zips them into the input vector.
+   */
+  Status filter_last_coord_tiles(std::vector<Tile>* coords_tiles) const;
+
+  /** Applicable only to global writes. Filters the last attribute tiles. */
+  Status filter_last_attr_tiles(
+      std::unordered_map<std::string, std::vector<Tile>>* attr_tiles) const;
 
   /**
    * Runs the input tiles for the input attribute through the filter pipeline.
@@ -516,42 +569,19 @@ class Writer {
   Status finalize_global_write_state();
 
   /**
-   * Finalizes the global write state.
-   *
-   * @tparam T The domain type.
-   * @return Status
-   */
-  template <class T>
-  Status finalize_global_write_state();
-
-  /**
    * Writes in the global layout. Applicable to both dense and sparse
    * arrays.
    */
-  Status global_write();
-
-  /**
-   * Writes in the global layout. Applicable to both dense and sparse
-   * arrays.
-   *
-   * @tparam T The domain type.
-   */
-  template <class T>
   Status global_write();
 
   /**
    * Applicable only to global writes. Writes the last tiles for each
    * attribute remaining in the state, and records the metadata for
-   * the coordinates attribute (if present).
+   * the coordinates (if present).
    *
-   * @tparam T The domain type.
    * @return Status
    */
-  template <class T>
   Status global_write_handle_last_tile();
-
-  /** Returns `true` if the coordinates are included in the attributes. */
-  bool has_coords() const;
 
   /** Initializes the global write state. */
   Status init_global_write_state();
@@ -575,6 +605,15 @@ class Writer {
    */
   Status init_tile(
       const std::string& attribute, Tile* tile, Tile* tile_var) const;
+
+  /**
+   * Initializes a fixed-sized coordinate tile.
+   *
+   * @param dim_idx The index of the dimension the tile belongs to.
+   * @param tile The tile to be initialized.
+   * @return Status
+   */
+  Status init_coord_tile(unsigned dim_idx, Tile* tile) const;
 
   /**
    * Initializes dense cell range iterators for the subarray to be writte,
@@ -649,7 +688,25 @@ class Writer {
   /**
    * Applicable only to write in global order. It prepares only full
    * tiles, storing the last potentially non-full tile in
-   * `global_write_state->last_tiles_` as part of the state to be used in
+   * `global_write_state->last_attr_tiles_` as part of the state to be used in
+   * the next write invocation. The last tiles are written to storage
+   * upon `finalize`. Upon each invocation, the function first
+   * populates the partially full last tile from the previous
+   * invocation.
+   *
+   * @param attribute The attribute to prepare the tiles for.
+   * @param coord_dups The positions of the duplicate coordinates.
+   * @param attr_tiles The **full** tiles to be created.
+   * @return Status
+   */
+  Status prepare_full_attr_tiles(
+      const std::set<uint64_t>& coord_dups,
+      std::unordered_map<std::string, std::vector<Tile>>* attr_tiles) const;
+
+  /**
+   * Applicable only to write in global order. It prepares only full
+   * tiles, storing the last potentially non-full tile in
+   * `global_write_state->last_attr_tiles_` as part of the state to be used in
    * the next write invocation. The last tiles are written to storage
    * upon `finalize`. Upon each invocation, the function first
    * populates the partially full last tile from the previous
@@ -668,7 +725,7 @@ class Writer {
   /**
    * Applicable only to write in global order. It prepares only full
    * tiles, storing the last potentially non-full tile in
-   * `global_write_state_->last_tiles_` as part of the state to be used in
+   * `global_write_state_->last_attr_tiles_` as part of the state to be used in
    * the next write invocation. The last tiles are written to storage
    * upon `finalize`. Upon each invocation, the function first
    * populates the partially full last tile from the previous
@@ -687,7 +744,7 @@ class Writer {
   /**
    * Applicable only to write in global order. It prepares only full
    * tiles, storing the last potentially non-full tile in
-   * `global_write_state_->last_tiles_` as part of the state to be used in
+   * `global_write_state_->last_attr_tiles_` as part of the state to be used in
    * the next write invocation. The last tiles are written to storage
    * upon `finalize`. Upon each invocation, the function first
    * populates the partially full last tile from the previous
@@ -702,6 +759,54 @@ class Writer {
       const std::string& attribute,
       const std::set<uint64_t>& coord_dups,
       std::vector<Tile>* tiles) const;
+
+  /**
+   * Applicable only to write in global order. It prepares only full
+   * coordinate tiles for each dimension, storing the last potentially
+   * non-full tiles in `global_write_state->last_coord_tiles_` as part of the
+   * state to be used in the next write invocation. The last tiles are written
+   * to storage upon `finalize`. Upon each invocation, the function first
+   * populates the partially full last tile from the previous
+   * invocation.
+   *
+   * @param coord_dups The positions of the duplicate coordinates.
+   * @param tiles The **full** tiles to be created, one vector per dimension.
+   * @return Status
+   */
+  Status prepare_full_coord_tiles(
+      const std::set<uint64_t>& coord_dups,
+      std::unordered_map<std::string, std::vector<Tile>>* tiles) const;
+
+  /**
+   * Applicable only to write in global order. It prepares only full
+   * coordinate tiles for each dimension, storing the last potentially
+   * non-full tiles in `global_write_state->last_coord_tiles_` as part of the
+   * state to be used in the next write invocation. The last tiles are written
+   * to storage upon `finalize`. Upon each invocation, the function first
+   * populates the partially full last tile from the previous
+   * invocation.
+   *
+   * @param dim_idx The index of the dimension to prepare the full tiles for.
+   * @param coord_dups The positions of the duplicate coordinates.
+   * @param tiles The **full** tiles to be created.
+   * @return Status
+   */
+  Status prepare_full_coord_tiles_fixed(
+      unsigned dim_idx,
+      const std::set<uint64_t>& coord_dups,
+      std::vector<Tile>* tiles) const;
+
+  /**
+   * It prepares and filters  attribute the tiles, copying from the user
+   * buffers into the tiles the values based on the input write cell ranges.
+   *
+   * @param write_cell_ranges The write cell ranges.
+   * @param tiles The tiles to be created.
+   * @return Status
+   */
+  Status prepare_and_filter_attr_tiles(
+      const std::vector<WriteCellRangeVec>& write_cell_ranges,
+      std::unordered_map<std::string, std::vector<Tile>>* attr_tiles) const;
 
   /**
    * It prepares the tiles, copying from the user buffers into the tiles
@@ -774,6 +879,58 @@ class Writer {
       const std::set<uint64_t>& coord_dups,
       std::vector<Tile>* tiles) const;
 
+  /**
+   * It prepares the attribute tiles, re-organizing the cells from the user
+   * buffers based on the input sorted positions.
+   *
+   * @param cell_pos The positions that resulted from sorting and
+   *     according to which the cells must be re-arranged.
+   * @param coord_dups The set with the positions
+   *     of duplicate coordinates/cells.
+   * @param attr_tiles The tiles to be created, one vector per attribute
+   * @return Status
+   */
+  Status prepare_attr_tiles(
+      const std::vector<uint64_t>& cell_pos,
+      const std::set<uint64_t>& coord_dups,
+      std::unordered_map<std::string, std::vector<Tile>>* attr_tiles) const;
+
+  /**
+   * It prepares the coordinate tiles, re-organizing the cells from the user
+   * buffers based on the input sorted positions.
+   *
+   * @param cell_pos The positions that resulted from sorting and
+   *     according to which the cells must be re-arranged.
+   * @param coord_dups The set with the positions
+   *     of duplicate coordinates/cells.
+   * @param tiles The tiles to be created, one vector per dimension
+   * @return Status
+   */
+  Status prepare_coord_tiles(
+      const std::vector<uint64_t>& cell_pos,
+      const std::set<uint64_t>& coord_dups,
+      std::unordered_map<std::string, std::vector<Tile>>* tiles) const;
+
+  /**
+   * It prepares the coordinate tiles, re-organizing the cells from the user
+   * buffers based on the input sorted positions. Applicable to fixed-sized
+   * coordinates
+   *
+   * @param dim_idx The index of the dimension to prepare the coordinate
+   *     tiles for.
+   * @param cell_pos The positions that resulted from sorting and
+   *     according to which the cells must be re-arranged.
+   * @param coord_dups The set with the positions
+   *     of duplicate coordinates/cells.
+   * @param tiles The tiles to be created.
+   * @return Status
+   */
+  Status prepare_coord_tiles_fixed(
+      unsigned dim_idx,
+      const std::vector<uint64_t>& cell_pos,
+      const std::set<uint64_t>& coord_dups,
+      std::vector<Tile>* tiles) const;
+
   /** Resets the writer object, rendering it incomplete. */
   void reset();
 
@@ -781,26 +938,24 @@ class Writer {
    * Sorts the coordinates of the user buffers, creating a vector with
    * the sorted positions.
    *
-   * @tparam T The domain type.
    * @param cell_pos The sorted cell positions to be created.
    * @return Status
    */
-  template <class T>
   Status sort_coords(std::vector<uint64_t>* cell_pos) const;
 
   /**
-   * Writes in unordered layout. Applicable to both dense and sparse arrays.
-   * Explicit coordinates must be provided for this write.
+   * Splits the coordinates buffer into separate coordinate
+   * buffers, one per dimension. Note that this will require extra memory
+   * allocation, which will be cleaned up in the class destructor.
+   *
+   * @return Status
    */
-  Status unordered_write();
+  Status split_coords_buffer();
 
   /**
    * Writes in unordered layout. Applicable to both dense and sparse arrays.
    * Explicit coordinates must be provided for this write.
-   *
-   * @tparam T The domain type.
    */
-  template <class T>
   Status unordered_write();
 
   /**
@@ -861,12 +1016,14 @@ class Writer {
   /**
    * Writes all the input tiles to storage.
    *
-   * @param attribute_tiles Tiles to be written, one element per attribute.
+   * @param attr_tiles Attribute tiles to be written, one element per attribute.
+   * @param coords_tiles Coordinate tiles to be written.
    * @return Status
    */
   Status write_all_tiles(
       FragmentMetadata* frag_meta,
-      const std::vector<std::vector<Tile>>& attribute_tiles) const;
+      const std::unordered_map<std::string, std::vector<Tile>>& attr_tiles,
+      const std::vector<Tile>& coords_tiles) const;
 
   /**
    * Writes the input tiles for the input attribute to storage.
@@ -880,6 +1037,32 @@ class Writer {
       const std::string& attribute,
       FragmentMetadata* frag_meta,
       const std::vector<Tile>& tiles) const;
+
+  // TODO: remove
+  // This will be removed in a subsequent PR very soon, when we will write
+  // the coordinate tiles in separate files and, therefore, there will be
+  // no need zipping the coordinates from separate buffers into a single one.
+  Status zip_coord_tiles(
+      const std::unordered_map<std::string, std::vector<Tile>>& coord_tiles,
+      std::vector<Tile>* coords_tiles) const;
+
+  /**
+   * Returns the i-th coordinates in the coordinate buffers in string
+   * format.
+   */
+  std::string coords_to_str(uint64_t i) const;
+
+  /**
+   * Invoked on error. It removes the directory of the input URI and
+   * resets the global write state.
+   */
+  void clean_up(const URI& uri);
+
+  /**
+   * Applicable only to global writes. Returns true if all last tiles stored
+   * in the global write state are empty.
+   */
+  bool all_last_tiles_empty() const;
 };
 
 }  // namespace sm

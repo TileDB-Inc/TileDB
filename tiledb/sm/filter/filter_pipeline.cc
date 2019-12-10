@@ -355,10 +355,6 @@ Status FilterPipeline::run_forward(Tile* tile) const {
 
   current_tile_ = tile;
 
-  // Split the coords if the tile stores coordinates.
-  if (tile->stores_coords())
-    tile->split_coordinates();
-
   // Compute the chunks.
   std::vector<std::pair<void*, uint32_t>> chunks;
   RETURN_NOT_OK(compute_tile_chunks(tile, &chunks));

@@ -676,6 +676,20 @@ void expand_mbr(T* mbr, const T* coords, unsigned int dim_num) {
 }
 
 template <class T>
+void expand_mbr(const std::vector<T*>& coords, const uint64_t pos, T* mbr) {
+  auto dim_num = (unsigned)coords.size();
+  for (unsigned int d = 0; d < dim_num; ++d) {
+    // Update lower bound on dimension i
+    if (mbr[2 * d] > coords[d][pos])
+      mbr[2 * d] = coords[d][pos];
+
+    // Update upper bound on dimension i
+    if (mbr[2 * d + 1] < coords[d][pos])
+      mbr[2 * d + 1] = coords[d][pos];
+  }
+}
+
+template <class T>
 void expand_mbr_with_mbr(T* mbr_a, const T* mbr_b, unsigned int dim_num) {
   for (unsigned int i = 0; i < dim_num; ++i) {
     // Update lower bound on dimension i
@@ -928,6 +942,27 @@ template void expand_mbr<uint32_t>(
     uint32_t* mbr, const uint32_t* coords, unsigned int dim_num);
 template void expand_mbr<uint64_t>(
     uint64_t* mbr, const uint64_t* coords, unsigned int dim_num);
+
+template void expand_mbr(
+    const std::vector<int8_t*>& coords, const uint64_t pos, int8_t* mbr);
+template void expand_mbr(
+    const std::vector<uint8_t*>& coords, const uint64_t pos, uint8_t* mbr);
+template void expand_mbr(
+    const std::vector<int16_t*>& coords, const uint64_t pos, int16_t* mbr);
+template void expand_mbr(
+    const std::vector<uint16_t*>& coords, const uint64_t pos, uint16_t* mbr);
+template void expand_mbr(
+    const std::vector<int32_t*>& coords, const uint64_t pos, int32_t* mbr);
+template void expand_mbr(
+    const std::vector<uint32_t*>& coords, const uint64_t pos, uint32_t* mbr);
+template void expand_mbr(
+    const std::vector<int64_t*>& coords, const uint64_t pos, int64_t* mbr);
+template void expand_mbr(
+    const std::vector<uint64_t*>& coords, const uint64_t pos, uint64_t* mbr);
+template void expand_mbr(
+    const std::vector<float*>& coords, const uint64_t pos, float* mbr);
+template void expand_mbr(
+    const std::vector<double*>& coords, const uint64_t pos, double* mbr);
 
 template void expand_mbr_with_mbr<int>(
     int* mbr_a, const int* mbr_b, unsigned int dim_num);

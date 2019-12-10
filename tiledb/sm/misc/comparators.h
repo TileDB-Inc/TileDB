@@ -202,6 +202,57 @@ class GlobalCmp {
   unsigned dim_num_;
 };
 
+/**
+ * Wrapper of comparison function for sorting coords on the global order
+ * of some domain.
+ */
+class GlobalCmp2 {
+ public:
+  /**
+   * Constructor.
+   *
+   * @param domain The array domain.
+   * @param coord_buffs The coordinate buffers, one per dimension, containing
+   *     the actual values, used in positional comparisons.
+   */
+  GlobalCmp2(const Domain* domain, const std::vector<const void*>& coord_buffs)
+      : domain_(domain)
+      , coord_buffs_(coord_buffs) {
+  }
+
+  /**
+   * Positional comparison operator.
+   *
+   * @param a The first cell position.
+   * @param b The second cell position.
+   * @return `true` if cell at `a` across all coordinate buffers precedes
+   *     cell at `b`, and `false` otherwise.
+   */
+  bool operator()(uint64_t a, uint64_t b) const {
+    // Compare tile order first
+    auto tile_cmp = domain_->tile_order_cmp(coord_buffs_, a, b);
+
+    if (tile_cmp == -1)
+      return true;
+    if (tile_cmp == 1)
+      return false;
+    // else tile_cmp == 0 --> continue
+
+    // Compare cell order
+    auto cell_cmp = domain_->cell_order_cmp(coord_buffs_, a, b);
+    return cell_cmp == -1;
+  }
+
+ private:
+  /** The domain. */
+  const Domain* domain_;
+  /**
+   * The coordinate buffers, one per dimension, sorted in the order the
+   * dimensions are defined in the array schema.
+   */
+  const std::vector<const void*>& coord_buffs_;
+};
+
 }  // namespace sm
 }  // namespace tiledb
 
