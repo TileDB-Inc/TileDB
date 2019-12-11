@@ -37,6 +37,8 @@
 #include <cstring>
 #include <iostream>
 
+using namespace tiledb::test;
+
 /**
  * Tests cases where a read query is incomplete or leads to a buffer
  * overflow.

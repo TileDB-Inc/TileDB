@@ -44,6 +44,7 @@
 #include <iostream>
 
 using namespace tiledb::sm;
+using namespace tiledb::test;
 
 /* ********************************* */
 /*         STRUCT DEFINITION         */
@@ -176,8 +177,8 @@ void SubarrayPartitionerSparseFx::create_default_1d_array(
       {"a", "b"},
       {TILEDB_INT32, TILEDB_INT32},
       {1, TILEDB_VAR_NUM},
-      {::Compressor(TILEDB_FILTER_LZ4, -1),
-       ::Compressor(TILEDB_FILTER_LZ4, -1)},
+      {tiledb::test::Compressor(TILEDB_FILTER_LZ4, -1),
+       tiledb::test::Compressor(TILEDB_FILTER_LZ4, -1)},
       tile_order,
       cell_order,
       2);
@@ -198,8 +199,8 @@ void SubarrayPartitionerSparseFx::create_default_1d_float_array(
       {"a", "b"},
       {TILEDB_INT32, TILEDB_INT32},
       {1, TILEDB_VAR_NUM},
-      {::Compressor(TILEDB_FILTER_LZ4, -1),
-       ::Compressor(TILEDB_FILTER_LZ4, -1)},
+      {tiledb::test::Compressor(TILEDB_FILTER_LZ4, -1),
+       tiledb::test::Compressor(TILEDB_FILTER_LZ4, -1)},
       tile_order,
       cell_order,
       2);
@@ -220,15 +221,15 @@ void SubarrayPartitionerSparseFx::create_default_2d_array(
       {"a", "b"},
       {TILEDB_INT32, TILEDB_INT32},
       {1, TILEDB_VAR_NUM},
-      {::Compressor(TILEDB_FILTER_LZ4, -1),
-       ::Compressor(TILEDB_FILTER_LZ4, -1)},
+      {tiledb::test::Compressor(TILEDB_FILTER_LZ4, -1),
+       tiledb::test::Compressor(TILEDB_FILTER_LZ4, -1)},
       tile_order,
       cell_order,
       2);
 }
 
 void SubarrayPartitionerSparseFx::write_default_1d_array() {
-  AttrBuffers attr_buffers;
+  tiledb::test::QueryBuffers buffers;
   std::vector<uint64_t> coords = {2, 4, 5, 10, 12, 18};
   uint64_t coords_size = coords.size() * sizeof(uint64_t);
   std::vector<int> a = {1, 2, 3, 4, 5, 6};
@@ -242,16 +243,16 @@ void SubarrayPartitionerSparseFx::write_default_1d_array() {
   uint64_t b_off_size = b_off.size() * sizeof(uint64_t);
   std::vector<int> b_val = {1, 2, 2, 3, 3, 3, 4, 4, 4, 5, 5, 6, 6, 6, 6};
   uint64_t b_val_size = b_val.size() * sizeof(int);
-  attr_buffers[TILEDB_COORDS] =
-      AttrBuffer({&coords[0], coords_size, nullptr, 0});
-  attr_buffers["a"] = AttrBuffer({&a[0], a_size, nullptr, 0});
-  attr_buffers["b"] =
-      AttrBuffer({&b_off[0], b_off_size, &b_val[0], b_val_size});
-  write_array(ctx_, array_name_, TILEDB_UNORDERED, attr_buffers);
+  buffers[TILEDB_COORDS] =
+      tiledb::test::QueryBuffer({&coords[0], coords_size, nullptr, 0});
+  buffers["a"] = tiledb::test::QueryBuffer({&a[0], a_size, nullptr, 0});
+  buffers["b"] =
+      tiledb::test::QueryBuffer({&b_off[0], b_off_size, &b_val[0], b_val_size});
+  write_array(ctx_, array_name_, TILEDB_UNORDERED, buffers);
 }
 
 void SubarrayPartitionerSparseFx::write_default_1d_array_2() {
-  AttrBuffers attr_buffers;
+  tiledb::test::QueryBuffers buffers;
   std::vector<uint64_t> coords = {2, 4, 5, 10, 12, 18, 25, 27, 33, 40};
   uint64_t coords_size = coords.size() * sizeof(uint64_t);
   std::vector<int> a = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
@@ -270,16 +271,16 @@ void SubarrayPartitionerSparseFx::write_default_1d_array_2() {
   std::vector<int> b_val = {
       1, 2, 2, 3, 3, 3, 4, 4, 4, 5, 5, 6, 6, 6, 6, 7, 8, 9, 10};
   uint64_t b_val_size = b_val.size() * sizeof(int);
-  attr_buffers[TILEDB_COORDS] =
-      AttrBuffer({&coords[0], coords_size, nullptr, 0});
-  attr_buffers["a"] = AttrBuffer({&a[0], a_size, nullptr, 0});
-  attr_buffers["b"] =
-      AttrBuffer({&b_off[0], b_off_size, &b_val[0], b_val_size});
-  write_array(ctx_, array_name_, TILEDB_UNORDERED, attr_buffers);
+  buffers[TILEDB_COORDS] =
+      tiledb::test::QueryBuffer({&coords[0], coords_size, nullptr, 0});
+  buffers["a"] = tiledb::test::QueryBuffer({&a[0], a_size, nullptr, 0});
+  buffers["b"] =
+      tiledb::test::QueryBuffer({&b_off[0], b_off_size, &b_val[0], b_val_size});
+  write_array(ctx_, array_name_, TILEDB_UNORDERED, buffers);
 }
 
 void SubarrayPartitionerSparseFx::write_default_1d_float_array() {
-  AttrBuffers attr_buffers;
+  tiledb::test::QueryBuffers buffers;
   std::vector<float> coords = {2.0f, 4.0f, 5.0f, 10.0f, 12.0f, 18.0f};
   uint64_t coords_size = coords.size() * sizeof(float);
   std::vector<int> a = {1, 2, 3, 4, 5, 6};
@@ -293,16 +294,16 @@ void SubarrayPartitionerSparseFx::write_default_1d_float_array() {
   uint64_t b_off_size = b_off.size() * sizeof(uint64_t);
   std::vector<int> b_val = {1, 2, 2, 3, 3, 3, 4, 4, 4, 5, 5, 6, 6, 6, 6};
   uint64_t b_val_size = b_val.size() * sizeof(int);
-  attr_buffers[TILEDB_COORDS] =
-      AttrBuffer({&coords[0], coords_size, nullptr, 0});
-  attr_buffers["a"] = AttrBuffer({&a[0], a_size, nullptr, 0});
-  attr_buffers["b"] =
-      AttrBuffer({&b_off[0], b_off_size, &b_val[0], b_val_size});
-  write_array(ctx_, array_name_, TILEDB_UNORDERED, attr_buffers);
+  buffers[TILEDB_COORDS] =
+      tiledb::test::QueryBuffer({&coords[0], coords_size, nullptr, 0});
+  buffers["a"] = tiledb::test::QueryBuffer({&a[0], a_size, nullptr, 0});
+  buffers["b"] =
+      tiledb::test::QueryBuffer({&b_off[0], b_off_size, &b_val[0], b_val_size});
+  write_array(ctx_, array_name_, TILEDB_UNORDERED, buffers);
 }
 
 void SubarrayPartitionerSparseFx::write_default_2d_array() {
-  AttrBuffers attr_buffers;
+  tiledb::test::QueryBuffers buffers;
   std::vector<uint64_t> coords = {1, 2, 2, 5, 3, 3, 3, 9, 4, 1, 4, 7};
   uint64_t coords_size = coords.size() * sizeof(uint64_t);
   std::vector<int> a = {1, 2, 3, 4, 5, 6};
@@ -316,12 +317,12 @@ void SubarrayPartitionerSparseFx::write_default_2d_array() {
   uint64_t b_off_size = b_off.size() * sizeof(uint64_t);
   std::vector<int> b_val = {1, 2, 2, 3, 3, 3, 4, 4, 4, 5, 5, 6, 6, 6, 6};
   uint64_t b_val_size = b_val.size() * sizeof(int);
-  attr_buffers[TILEDB_COORDS] =
-      AttrBuffer({&coords[0], coords_size, nullptr, 0});
-  attr_buffers["a"] = AttrBuffer({&a[0], a_size, nullptr, 0});
-  attr_buffers["b"] =
-      AttrBuffer({&b_off[0], b_off_size, &b_val[0], b_val_size});
-  write_array(ctx_, array_name_, TILEDB_UNORDERED, attr_buffers);
+  buffers[TILEDB_COORDS] =
+      tiledb::test::QueryBuffer({&coords[0], coords_size, nullptr, 0});
+  buffers["a"] = tiledb::test::QueryBuffer({&a[0], a_size, nullptr, 0});
+  buffers["b"] =
+      tiledb::test::QueryBuffer({&b_off[0], b_off_size, &b_val[0], b_val_size});
+  write_array(ctx_, array_name_, TILEDB_UNORDERED, buffers);
 }
 
 template <class T>

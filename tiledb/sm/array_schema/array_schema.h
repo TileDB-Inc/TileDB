@@ -90,10 +90,16 @@ class ArraySchema {
   /** Returns the array uri. */
   const URI& array_uri() const;
 
-  /** Returns a constant pointer to the selected attribute (NULL if error). */
+  /**
+   * Returns a constant pointer to the selected attribute (nullptr if it
+   * does not exist).
+   */
   const Attribute* attribute(unsigned int id) const;
 
-  /** Returns a constant pointer to the selected attribute (NULL if error). */
+  /**
+   * Returns a constant pointer to the selected attribute (nullptr if it
+   * does not exist).
+   */
   const Attribute* attribute(std::string name) const;
 
   /**
@@ -188,6 +194,12 @@ class ArraySchema {
   /** Returns the i-th dimension. */
   const Dimension* dimension(unsigned int i) const;
 
+  /**
+   * Returns a constant pointer to the selected dimension (nullptr if it
+   * does not exist).
+   */
+  const Dimension* dimension(const std::string& name) const;
+
   /** Returns the number of dimensions. */
   unsigned int dim_num() const;
 
@@ -221,8 +233,11 @@ class ArraySchema {
   /** Returns the type of the input attribute (could be coordinates). */
   Datatype type(const std::string& attribute) const;
 
-  /** Returns *true* if the indicated attribute has variable-sized values. */
-  bool var_size(const std::string& attribute) const;
+  /**
+   * Returns *true* if the input attribute/dimension has variable-sized
+   * values.
+   */
+  bool var_size(const std::string& name) const;
 
   /**
    * Adds an attribute, copying the input.
@@ -322,6 +337,9 @@ class ArraySchema {
 
   /** The size (in bytes) of the coordinates. */
   uint64_t coords_size_;
+
+  /** It maps each dimension name to the corresponding dimension object. */
+  std::unordered_map<std::string, const Dimension*> dim_map_;
 
   /** The array domain. */
   Domain* domain_;

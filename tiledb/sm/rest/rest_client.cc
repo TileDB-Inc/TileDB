@@ -625,55 +625,14 @@ Status RestClient::update_attribute_buffer_sizes(
   if (query->type() != QueryType::READ)
     return Status::Ok();
 
-  const auto schema = query->array_schema();
-  if (schema == nullptr)
-    return LOG_STATUS(Status::RestError(
-        "Error updating attribute buffer sizes; array schema is null"));
-
-  const auto attrs = query->attributes();
-  std::set<std::string> attr_names;
-  attr_names.insert(constants::coords);
-  for (const auto& name : attrs)
-    attr_names.insert(name);
-
-  for (const auto& attr_name : attr_names) {
-    const bool is_coords = attr_name == constants::coords;
-    const auto* attr = schema->attribute(attr_name);
-    if (!is_coords && attr == nullptr)
-      return LOG_STATUS(Status::RestError(
-          "Error updating attribute buffer sizes; no attribute object for '" +
-          attr_name + "'"));
-
-    // Skip attributes that were not a part of the copy process.
-    auto copy_state_it = copy_state.find(attr_name);
-    if (copy_state_it == copy_state.end())
-      continue;
-    auto attr_state = copy_state_it->second;
-
-    const bool var_size = !is_coords && attr->var_size();
-    if (var_size) {
-      uint64_t* offset_buffer = nullptr;
-      uint64_t* offset_buffer_size = nullptr;
-      void* buffer = nullptr;
-      uint64_t* buffer_size = nullptr;
-      RETURN_NOT_OK(query->get_buffer(
-          attr_name.c_str(),
-          &offset_buffer,
-          &offset_buffer_size,
-          &buffer,
-          &buffer_size));
-      if (offset_buffer_size != nullptr)
-        *offset_buffer_size = attr_state.offset_size;
-      if (buffer_size != nullptr)
-        *buffer_size = attr_state.data_size;
-    } else {
-      void* buffer = nullptr;
-      uint64_t* buffer_size = nullptr;
-      RETURN_NOT_OK(
-          query->get_buffer(attr_name.c_str(), &buffer, &buffer_size));
-      if (buffer_size != nullptr)
-        *buffer_size = attr_state.data_size;
-    }
+  for (const auto& cit : copy_state) {
+    const auto& name = cit.first;
+    auto state = cit.second;
+    auto query_buffer = query->buffer(name);
+    if (query_buffer.buffer_var_size_ != nullptr)
+      *query_buffer.buffer_var_size_ = state.offset_size;
+    if (query_buffer.buffer_size_ != nullptr)
+      *query_buffer.buffer_size_ = state.data_size;
   }
 
   return Status::Ok();

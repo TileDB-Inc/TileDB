@@ -129,14 +129,17 @@ class Writer {
   /*                 API               */
   /* ********************************* */
 
-  /** Returns the attributes the user has set buffers for. */
-  std::vector<std::string> attributes() const;
-
   /** Returns the array schema. */
   const ArraySchema* array_schema() const;
 
-  /** Returns the query buffer with the given name. */
-  AttributeBuffer buffer(const std::string& name) const;
+  /** Returns the names of the buffers set by the user for the write query. */
+  std::vector<std::string> buffer_names() const;
+
+  /**
+   * Returns the query buffer for the given attribute/dimension name.
+   * The name can be TILEDB_COORDS.
+   */
+  QueryBuffer buffer(const std::string& name) const;
 
   /** Finalizes the reader. */
   Status finalize();
@@ -289,10 +292,10 @@ class Writer {
   const ArraySchema* array_schema_;
 
   /** Maps attribute names to their buffers. */
-  std::unordered_map<std::string, AttributeBuffer> attr_buffers_;
+  std::unordered_map<std::string, QueryBuffer> attr_buffers_;
 
   /** Maps dimension names to their coordinate buffers. */
-  std::unordered_map<std::string, CoordBuffer> coord_buffers_;
+  std::unordered_map<std::string, QueryBuffer> coord_buffers_;
 
   /** The coordinates buffer potentially set by the user. */
   void* coords_buffer_;
@@ -383,8 +386,8 @@ class Writer {
   /** Adss a fragment to `written_fragment_info_`. */
   void add_written_fragment_info(const URI& uri);
 
-  /** Checks if attributes has been appropriately set for the query. */
-  Status check_attributes();
+  /** Checks if the buffers names have been appropriately set for the query. */
+  Status check_buffer_names();
 
   /** Correctness checks for buffer sizes. */
   Status check_buffer_sizes() const;
@@ -643,15 +646,12 @@ class Writer {
 
   /**
    * Generates a new fragment name, which is in the form: <br>
-   * .__uuid_timestamp. For instance,
-   *  __6ba7b8129dad11d180b400c04fd430c8_1458759561320
-   *
-   * Note that this is a temporary name, initiated by a new write process.
-   * After the new fragmemt is finalized, the array will change its name
-   * by removing the leading '.' character.
+   * __t1_t1_uuid. For instance,
+   * __1458759561320_1458759561320_6ba7b8129dad11d180b400c04fd430c8
    *
    * @param frag_uri Will store the new special fragment name
-   * @param timestamp The timestamp of the fragment name creation.
+   * @param timestamp The timestamp of the fragment name creation. It is
+   *      in ms since 1970-01-01 00:00:00 +0000 (UTC).
    * @return Status
    */
   Status new_fragment_name(std::string* frag_uri, uint64_t* timestamp) const;
@@ -1063,6 +1063,38 @@ class Writer {
    * in the global write state are empty.
    */
   bool all_last_tiles_empty() const;
+
+  /**
+   * Sets the (zipped) coordinates buffer (set with TILEDB_COORDS as the
+   * buffer name).
+   *
+   * @param buffer The buffer that has the input data to be written.
+   * @param buffer_size The size of `buffer` in bytes.
+   * @return Status
+   */
+  Status set_coords_buffer(void* buffer, uint64_t* buffer_size);
+
+  /**
+   * Sets the coordinate buffer on a single fixed-sized dimension.
+   *
+   * @param name The name of the dimension the buffer corresponds to.
+   * @param buffer The buffer that has the input data to be written.
+   * @param buffer_size The size of `buffer` in bytes.
+   * @return Status
+   */
+  Status set_coord_buffer(
+      const std::string& name, void* buffer, uint64_t* buffer_size);
+
+  /**
+   * Sets the attribute buffer on a single fixed-sized attribute.
+   *
+   * @param name The name of the dimension the buffer corresponds to.
+   * @param buffer The buffer that has the input data to be written.
+   * @param buffer_size The size of `buffer` in bytes.
+   * @return Status
+   */
+  Status set_attr_buffer(
+      const std::string& name, void* buffer, uint64_t* buffer_size);
 };
 
 }  // namespace sm

@@ -44,6 +44,7 @@
 #include <iostream>
 
 using namespace tiledb::sm;
+using namespace tiledb::test;
 
 /* ********************************* */
 /*         STRUCT DEFINITION         */
@@ -163,8 +164,8 @@ void SubarrayPartitionerDenseFx::create_default_1d_array(
       {"a", "b"},
       {TILEDB_INT32, TILEDB_INT32},
       {1, TILEDB_VAR_NUM},
-      {::Compressor(TILEDB_FILTER_LZ4, -1),
-       ::Compressor(TILEDB_FILTER_LZ4, -1)},
+      {tiledb::test::Compressor(TILEDB_FILTER_LZ4, -1),
+       tiledb::test::Compressor(TILEDB_FILTER_LZ4, -1)},
       tile_order,
       cell_order,
       2);
@@ -185,15 +186,15 @@ void SubarrayPartitionerDenseFx::create_default_2d_array(
       {"a", "b"},
       {TILEDB_INT32, TILEDB_INT32},
       {1, TILEDB_VAR_NUM},
-      {::Compressor(TILEDB_FILTER_LZ4, -1),
-       ::Compressor(TILEDB_FILTER_LZ4, -1)},
+      {tiledb::test::Compressor(TILEDB_FILTER_LZ4, -1),
+       tiledb::test::Compressor(TILEDB_FILTER_LZ4, -1)},
       tile_order,
       cell_order,
       2);
 }
 
 void SubarrayPartitionerDenseFx::write_default_1d_array() {
-  AttrBuffers attr_buffers;
+  tiledb::test::QueryBuffers buffers;
   std::vector<int> a = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
   uint64_t a_size = a.size() * sizeof(int);
   std::vector<uint64_t> b_off = {0,
@@ -210,14 +211,14 @@ void SubarrayPartitionerDenseFx::write_default_1d_array() {
   std::vector<int> b_val = {
       1, 2, 2, 3, 3, 3, 4, 4, 4, 5, 5, 6, 6, 6, 6, 7, 8, 9, 10};
   uint64_t b_val_size = b_val.size() * sizeof(int);
-  attr_buffers["a"] = AttrBuffer({&a[0], a_size, nullptr, 0});
-  attr_buffers["b"] =
-      AttrBuffer({&b_off[0], b_off_size, &b_val[0], b_val_size});
-  write_array(ctx_, array_name_, TILEDB_GLOBAL_ORDER, attr_buffers);
+  buffers["a"] = tiledb::test::QueryBuffer({&a[0], a_size, nullptr, 0});
+  buffers["b"] =
+      tiledb::test::QueryBuffer({&b_off[0], b_off_size, &b_val[0], b_val_size});
+  write_array(ctx_, array_name_, TILEDB_GLOBAL_ORDER, buffers);
 }
 
 void SubarrayPartitionerDenseFx::write_default_2d_array() {
-  AttrBuffers attr_buffers;
+  tiledb::test::QueryBuffers buffers;
   std::vector<int> a = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16};
   uint64_t a_size = a.size() * sizeof(int);
   std::vector<uint64_t> b_off = {0,
@@ -241,10 +242,10 @@ void SubarrayPartitionerDenseFx::write_default_2d_array() {
                             6,  6,  6,  6,  7,  7,  8,  8,  8, 9, 10,
                             10, 11, 12, 13, 13, 14, 15, 16, 16};
   uint64_t b_val_size = b_val.size() * sizeof(int);
-  attr_buffers["a"] = AttrBuffer({&a[0], a_size, nullptr, 0});
-  attr_buffers["b"] =
-      AttrBuffer({&b_off[0], b_off_size, &b_val[0], b_val_size});
-  write_array(ctx_, array_name_, TILEDB_GLOBAL_ORDER, attr_buffers);
+  buffers["a"] = tiledb::test::QueryBuffer({&a[0], a_size, nullptr, 0});
+  buffers["b"] =
+      tiledb::test::QueryBuffer({&b_off[0], b_off_size, &b_val[0], b_val_size});
+  write_array(ctx_, array_name_, TILEDB_GLOBAL_ORDER, buffers);
 }
 
 template <class T>

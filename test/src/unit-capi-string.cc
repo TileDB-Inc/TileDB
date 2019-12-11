@@ -38,6 +38,8 @@
 #include <cstring>
 #include <iostream>
 
+using namespace tiledb::test;
+
 const char UTF8_STRINGS[] = u8"aabbccdd";
 const char UTF8_STRINGS_VAR[] = u8"aαbββcγγγdδδδδ";
 uint64_t UTF8_NULL_SIZE = sizeof(u8"");

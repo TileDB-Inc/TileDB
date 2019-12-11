@@ -175,12 +175,8 @@ class Reader {
    */
   std::vector<std::string> attributes() const;
 
-  /**
-   * Fetch AttributeBuffer for attribute
-   * @param attribute to fetch
-   * @return AttributeBuffer for attribute
-   */
-  AttributeBuffer buffer(const std::string& attribute) const;
+  /** Fetch QueryBuffer for the input attribute/dimension. */
+  QueryBuffer buffer(const std::string& name) const;
 
   /**
    * Returns `true` if the query was incomplete, i.e., if all subarray
@@ -494,7 +490,7 @@ class Reader {
   std::vector<std::string> attributes_;
 
   /** Maps attribute names to their buffers. */
-  std::unordered_map<std::string, AttributeBuffer> attr_buffers_;
+  std::unordered_map<std::string, QueryBuffer> attr_buffers_;
 
   /** The fragment metadata. */
   std::vector<FragmentMetadata*> fragment_metadata_;
