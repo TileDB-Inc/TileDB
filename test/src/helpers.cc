@@ -449,7 +449,7 @@ void write_array(
     tiledb_ctx_t* ctx,
     const std::string& array_name,
     tiledb_layout_t layout,
-    const AttrBuffers& attr_buffers) {
+    const QueryBuffers& buffers) {
   // Open array
   tiledb_array_t* array;
   int rc = tiledb_array_alloc(ctx, array_name.c_str(), &array);
@@ -465,7 +465,7 @@ void write_array(
   CHECK(rc == TILEDB_OK);
 
   // Set buffers
-  for (const auto& b : attr_buffers) {
+  for (const auto& b : buffers) {
     if (b.second.var_ == nullptr) {  // Fixed-sized
       rc = tiledb_query_set_buffer(
           ctx,
@@ -510,7 +510,7 @@ void read_array(
     tiledb_array_t* array,
     const SubarrayRanges<T>& ranges,
     tiledb_layout_t layout,
-    const AttrBuffers& attr_buffers) {
+    const QueryBuffers& buffers) {
   // Create query
   tiledb_query_t* query;
   int rc = tiledb_query_alloc(ctx, array, TILEDB_READ, &query);
@@ -529,7 +529,7 @@ void read_array(
   }
 
   // Set buffers
-  for (const auto& b : attr_buffers) {
+  for (const auto& b : buffers) {
     if (b.second.var_ == nullptr) {  // Fixed-sized
       rc = tiledb_query_set_buffer(
           ctx,
@@ -685,58 +685,58 @@ template void read_array<int8_t>(
     tiledb_array_t* array,
     const SubarrayRanges<int8_t>& ranges,
     tiledb_layout_t layout,
-    const AttrBuffers& attr_buffers);
+    const QueryBuffers& buffers);
 template void read_array<uint8_t>(
     tiledb_ctx_t* ctx,
     tiledb_array_t* array,
     const SubarrayRanges<uint8_t>& ranges,
     tiledb_layout_t layout,
-    const AttrBuffers& attr_buffers);
+    const QueryBuffers& buffers);
 template void read_array<int16_t>(
     tiledb_ctx_t* ctx,
     tiledb_array_t* array,
     const SubarrayRanges<int16_t>& ranges,
     tiledb_layout_t layout,
-    const AttrBuffers& attr_buffers);
+    const QueryBuffers& buffers);
 template void read_array<uint16_t>(
     tiledb_ctx_t* ctx,
     tiledb_array_t* array,
     const SubarrayRanges<uint16_t>& ranges,
     tiledb_layout_t layout,
-    const AttrBuffers& attr_buffers);
+    const QueryBuffers& buffers);
 template void read_array<int32_t>(
     tiledb_ctx_t* ctx,
     tiledb_array_t* array,
     const SubarrayRanges<int32_t>& ranges,
     tiledb_layout_t layout,
-    const AttrBuffers& attr_buffers);
+    const QueryBuffers& buffers);
 template void read_array<uint32_t>(
     tiledb_ctx_t* ctx,
     tiledb_array_t* array,
     const SubarrayRanges<uint32_t>& ranges,
     tiledb_layout_t layout,
-    const AttrBuffers& attr_buffers);
+    const QueryBuffers& buffers);
 template void read_array<int64_t>(
     tiledb_ctx_t* ctx,
     tiledb_array_t* array,
     const SubarrayRanges<int64_t>& ranges,
     tiledb_layout_t layout,
-    const AttrBuffers& attr_buffers);
+    const QueryBuffers& buffers);
 template void read_array<uint64_t>(
     tiledb_ctx_t* ctx,
     tiledb_array_t* array,
     const SubarrayRanges<uint64_t>& ranges,
     tiledb_layout_t layout,
-    const AttrBuffers& attr_buffers);
+    const QueryBuffers& buffers);
 template void read_array<float>(
     tiledb_ctx_t* ctx,
     tiledb_array_t* array,
     const SubarrayRanges<float>& ranges,
     tiledb_layout_t layout,
-    const AttrBuffers& attr_buffers);
+    const QueryBuffers& buffers);
 template void read_array<double>(
     tiledb_ctx_t* ctx,
     tiledb_array_t* array,
     const SubarrayRanges<double>& ranges,
     tiledb_layout_t layout,
-    const AttrBuffers& attr_buffers);
+    const QueryBuffers& buffers);
