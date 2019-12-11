@@ -519,7 +519,7 @@ TEST_CASE("Filter: Test simple in-place pipeline", "[filter]") {
   // Save the original allocation so that we can check that after running
   // through the pipeline, the tile buffer points to a different memory
   // region.
-  auto original_alloc = tile.data();
+  auto original_alloc = tile.internal_data();
 
   FilterPipeline pipeline;
   CHECK(pipeline.add_filter(Add1InPlace()).ok());
@@ -529,7 +529,7 @@ TEST_CASE("Filter: Test simple in-place pipeline", "[filter]") {
 
     // Check new size and number of chunks
     CHECK(tile.buffer() == &buff);
-    CHECK(tile.data() != original_alloc);
+    CHECK(tile.internal_data() != original_alloc);
     CHECK(
         buff.size() ==
         nelts * sizeof(uint64_t) + sizeof(uint64_t) + 3 * sizeof(uint32_t));

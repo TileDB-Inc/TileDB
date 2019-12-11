@@ -204,11 +204,7 @@ uint64_t Tile::cell_size() const {
   return cell_size_;
 }
 
-void* Tile::cur_data() const {
-  return buffer_->cur_data();
-}
-
-void* Tile::data() const {
+void* Tile::internal_data() const {
   return buffer_->data();
 }
 
@@ -252,6 +248,16 @@ Status Tile::realloc(uint64_t nbytes) {
 Status Tile::read(void* buffer, uint64_t nbytes) {
   RETURN_NOT_OK(buffer_->read(buffer, nbytes));
 
+  return Status::Ok();
+}
+
+Status Tile::read(
+    void* const buffer, const uint64_t nbytes, const uint64_t offset) const {
+  if (nbytes + offset > buffer_->size()) {
+    return LOG_STATUS(
+        Status::TileError("Read failed; Trying to read beyond buffer size"));
+  }
+  std::memcpy(buffer, (char*)buffer_->data() + offset, nbytes);
   return Status::Ok();
 }
 
@@ -338,6 +344,10 @@ Status Tile::write(ConstBuffer* buf, uint64_t nbytes) {
 
 Status Tile::write(const void* data, uint64_t nbytes) {
   return buffer_->write(data, nbytes);
+}
+
+Status Tile::write(const Tile& rhs) {
+  return buffer_->write(rhs.buffer_->data(), rhs.size());
 }
 
 Status Tile::write_with_shift(ConstBuffer* buf, uint64_t offset) {

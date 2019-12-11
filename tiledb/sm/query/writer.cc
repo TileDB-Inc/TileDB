@@ -986,7 +986,7 @@ Status Writer::compute_coords_metadata(
     for (unsigned d = 0; d < dim_num; ++d) {
       const auto& dim_name = array_schema_->dimension(d)->name();
       auto tiles_it = tiles.find(dim_name);
-      data[d] = (T*)(tiles_it->second[t].data());
+      data[d] = (T*)(tiles_it->second[t].internal_data());
     }
 
     // Initialize MBR with the first coords
@@ -2898,7 +2898,7 @@ Status Writer::zip_coord_tiles(
     for (unsigned d = 0; d < dim_num; ++d) {
       const auto& dim_name = array_schema_->dimension(d)->name();
       const auto& coord_tile = coord_tiles.find(dim_name)->second[t];
-      new_tile.write(coord_tile.data(), coord_tile.size());
+      new_tile.write(coord_tile);
     }
   }
 

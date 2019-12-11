@@ -61,7 +61,7 @@ set(TILEDB_TEST_SOURCES
   src/unit-capi-filter.cc
   src/unit-capi-incomplete.cc
   src/unit-capi-incomplete-2.cc
-        src/unit-capi-metadata.cc
+  src/unit-capi-metadata.cc
   src/unit-capi-object_mgmt.cc
   src/unit-capi-query.cc
   src/unit-capi-query_2.cc
@@ -85,7 +85,7 @@ set(TILEDB_TEST_SOURCES
   src/unit-hdfs-filesystem.cc
   src/unit-lru_cache.cc
   src/unit-Reader.cc
-        src/unit-ReadCellSlabIter.cc
+  src/unit-ReadCellSlabIter.cc
   src/unit-rtree.cc
   src/unit-s3.cc
   src/unit-s3-no-multipart.cc
@@ -97,6 +97,7 @@ set(TILEDB_TEST_SOURCES
   src/unit-SubarrayPartitioner-sparse.cc
   src/unit-tbb.cc
   src/unit-threadpool.cc
+  src/unit-Tile.cc
   src/unit-TileDomain.cc
   src/unit-uri.cc
   src/unit-uuid.cc
