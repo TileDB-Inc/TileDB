@@ -291,6 +291,18 @@ const Dimension* ArraySchema::dimension(unsigned int i) const {
   return domain_->dimension(i);
 }
 
+const Dimension* ArraySchema::dimension(std::string name) const {
+  bool anonymous = name.empty();
+  auto dim_num = this->dim_num();
+  for (unsigned d = 0; d < dim_num; ++d) {
+    auto dim = this->dimension(d);
+    if ((dim->name() == name) || (anonymous && dim->is_anonymous())) {
+      return dim;
+    }
+  }
+  return nullptr;
+}
+
 unsigned int ArraySchema::dim_num() const {
   return domain_->dim_num();
 }

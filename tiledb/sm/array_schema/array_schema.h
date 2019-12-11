@@ -90,10 +90,16 @@ class ArraySchema {
   /** Returns the array uri. */
   const URI& array_uri() const;
 
-  /** Returns a constant pointer to the selected attribute (NULL if error). */
+  /**
+   * Returns a constant pointer to the selected attribute (nullptr if it
+   * does not exist).
+   */
   const Attribute* attribute(unsigned int id) const;
 
-  /** Returns a constant pointer to the selected attribute (NULL if error). */
+  /**
+   * Returns a constant pointer to the selected attribute (nullptr if it
+   * does not exist).
+   */
   const Attribute* attribute(std::string name) const;
 
   /**
@@ -187,6 +193,12 @@ class ArraySchema {
 
   /** Returns the i-th dimension. */
   const Dimension* dimension(unsigned int i) const;
+
+  /**
+   * Returns a constant pointer to the selected dimension (nullptr if it
+   * does not exist).
+   */
+  const Dimension* dimension(std::string name) const;
 
   /** Returns the number of dimensions. */
   unsigned int dim_num() const;

@@ -383,8 +383,8 @@ class Writer {
   /** Adss a fragment to `written_fragment_info_`. */
   void add_written_fragment_info(const URI& uri);
 
-  /** Checks if attributes has been appropriately set for the query. */
-  Status check_attributes();
+  /** Checks if the buffers names have been appropriately set for the query. */
+  Status check_buffer_names();
 
   /** Correctness checks for buffer sizes. */
   Status check_buffer_sizes() const;
@@ -1063,6 +1063,38 @@ class Writer {
    * in the global write state are empty.
    */
   bool all_last_tiles_empty() const;
+
+  /**
+   * Sets the (zipped) coordinates buffer (set with TILEDB_COORDS as the
+   * buffer name).
+   *
+   * @param buffer The buffer that has the input data to be written.
+   * @param buffer_size The size of `buffer` in bytes.
+   * @return Status
+   */
+  Status set_coords_buffer(void* buffer, uint64_t* buffer_size);
+
+  /**
+   * Sets the coordinate buffer on a single fixed-sized dimension.
+   *
+   * @param name The name of the dimension the buffer corresponds to.
+   * @param buffer The buffer that has the input data to be written.
+   * @param buffer_size The size of `buffer` in bytes.
+   * @return Status
+   */
+  Status set_coord_buffer(
+      const std::string& name, void* buffer, uint64_t* buffer_size);
+
+  /**
+   * Sets the attribute buffer on a single fixed-sized attribute.
+   *
+   * @param name The name of the dimension the buffer corresponds to.
+   * @param buffer The buffer that has the input data to be written.
+   * @param buffer_size The size of `buffer` in bytes.
+   * @return Status
+   */
+  Status set_attr_buffer(
+      const std::string& name, void* buffer, uint64_t* buffer_size);
 };
 
 }  // namespace sm
