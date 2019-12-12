@@ -1,3 +1,24 @@
+# TileDB v1.7.2 Release Notes
+
+TileDB 1.7.2 contains bug fixes and several internal optimizations.
+
+## New features
+
+## Improvements
+
+* Added support for getting/setting array metadata via REST. [#1449](https://github.com/TileDB-Inc/TileDB/pull/1449)
+
+## Deprecations
+
+## Bug fixes
+
+* Fixed several REST query and deserialization bugs. [#1433](https://github.com/TileDB-Inc/TileDB/pull/1433), [#1437](https://github.com/TileDB-Inc/TileDB/pull/1437), [#1440](https://github.com/TileDB-Inc/TileDB/pull/1440), [#1444](https://github.com/TileDB-Inc/TileDB/pull/1444)
+* Fixed bug in setting certificate path on Linux for the REST client. [#1452](https://github.com/TileDB-Inc/TileDB/pull/1452)
+
+## API additions
+
+## API removals
+
 # TileDB v1.7.1 Release Notes
 
 TileDB 1.7.1 contains build system and bug fixes, and one non-breaking API update.
