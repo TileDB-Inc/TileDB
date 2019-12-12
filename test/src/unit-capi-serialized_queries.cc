@@ -154,6 +154,49 @@ struct SerializationFx {
     deserialize_query(ctx, serialized, &query, true);
   }
 
+  void write_sparse_array_split_coords() {
+    std::vector<int32_t> d1 = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
+
+    std::vector<int32_t> d2 = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
+
+    std::vector<uint32_t> a1;
+    std::vector<uint32_t> a2;
+    std::vector<char> a3_data;
+    std::vector<uint64_t> a3_offsets;
+
+    const unsigned ncells = 10;
+    for (unsigned i = 0; i < ncells; i++) {
+      a1.push_back(i);
+      a2.push_back(i);
+      a2.push_back(2 * i);
+
+      std::string a3 = "a";
+      for (unsigned j = 0; j < i; j++)
+        a3.push_back('a');
+      a3_offsets.push_back(a3_data.size());
+      a3_data.insert(a3_data.end(), a3.begin(), a3.end());
+    }
+
+    Array array(ctx, array_uri, TILEDB_WRITE);
+    Query query(ctx, array);
+    query.set_layout(TILEDB_UNORDERED);
+    query.set_buffer("d1", d1);
+    query.set_buffer("d2", d2);
+    query.set_buffer("a1", a1);
+    query.set_buffer("a2", a2);
+    query.set_buffer("a3", a3_offsets, a3_data);
+
+    // Serialize into a copy and submit.
+    std::vector<uint8_t> serialized;
+    serialize_query(ctx, query, &serialized, true);
+    Array array2(ctx, array_uri, TILEDB_WRITE);
+    Query query2(ctx, array2);
+    deserialize_query(ctx, serialized, &query2, false);
+    query2.submit();
+    serialize_query(ctx, query2, &serialized, false);
+    deserialize_query(ctx, serialized, &query, true);
+  }
+
   /**
    * Helper function that serializes a query from the "client" or "server"
    * perspective. The flow being mimicked here is (for read queries):
@@ -481,6 +524,55 @@ TEST_CASE_METHOD(
     "[query], [sparse], [serialization]") {
   create_array(TILEDB_SPARSE);
   write_sparse_array();
+
+  SECTION("- Read all") {
+    Array array(ctx, array_uri, TILEDB_READ);
+    Query query(ctx, array);
+    std::vector<int32_t> coords(1000);
+    std::vector<uint32_t> a1(1000);
+    std::vector<uint32_t> a2(1000);
+    std::vector<char> a3_data(1000 * 100);
+    std::vector<uint64_t> a3_offsets(1000);
+    std::vector<int32_t> subarray = {1, 10, 1, 10};
+
+    query.set_subarray(subarray);
+    query.set_coordinates(coords);
+    query.set_buffer("a1", a1);
+    query.set_buffer("a2", a2);
+    query.set_buffer("a3", a3_offsets, a3_data);
+
+    // Serialize into a copy and submit.
+    std::vector<uint8_t> serialized;
+    serialize_query(ctx, query, &serialized, true);
+    Array array2(ctx, array_uri, TILEDB_READ);
+    Query query2(ctx, array2);
+    deserialize_query(ctx, serialized, &query2, false);
+    auto to_free = allocate_query_buffers(ctx, array2, &query2);
+    query2.submit();
+    serialize_query(ctx, query2, &serialized, false);
+
+    // Deserialize into original query
+    deserialize_query(ctx, serialized, &query, true);
+    REQUIRE(query.query_status() == Query::Status::COMPLETE);
+
+    auto result_el = query.result_buffer_elements();
+    REQUIRE(result_el[TILEDB_COORDS].second == 20);
+    REQUIRE(result_el["a1"].second == 10);
+    REQUIRE(result_el["a2"].second == 20);
+    REQUIRE(result_el["a3"].first == 10);
+    REQUIRE(result_el["a3"].second == 55);
+
+    for (void* b : to_free)
+      std::free(b);
+  }
+}
+
+TEST_CASE_METHOD(
+    SerializationFx,
+    "Query serialization, split coords, sparse",
+    "[query], [sparse], [serialization]") {
+  create_array(TILEDB_SPARSE);
+  write_sparse_array_split_coords();
 
   SECTION("- Read all") {
     Array array(ctx, array_uri, TILEDB_READ);
