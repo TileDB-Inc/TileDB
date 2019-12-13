@@ -420,39 +420,29 @@ Status query_to_capnp(
   }
 
   // Serialize attribute buffer metadata
-  const auto attr_names = query.attributes();
+  const auto buffer_names = query.buffer_names();
   auto attr_buffers_builder =
-      query_builder->initAttributeBufferHeaders(attr_names.size());
+      query_builder->initAttributeBufferHeaders(buffer_names.size());
   uint64_t total_fixed_len_bytes = 0;
   uint64_t total_var_len_bytes = 0;
-  for (uint64_t i = 0; i < attr_names.size(); i++) {
+  for (uint64_t i = 0; i < buffer_names.size(); i++) {
     auto attr_buffer_builder = attr_buffers_builder[i];
-    const auto& attribute_name = attr_names[i];
-    const auto& buff = query.attribute_buffer(attribute_name);
-    const bool is_coords = attribute_name == constants::coords;
-    const auto* attr = schema->attribute(attribute_name);
-    if (!is_coords && attr == nullptr)
-      return LOG_STATUS(Status::SerializationError(
-          "Cannot serialize; no attribute named '" + attribute_name + "'."));
-
-    const bool var_size = !is_coords && attr->var_size();
-    attr_buffer_builder.setName(attribute_name);
-    if (var_size &&
-        (buff.buffer_var_ != nullptr && buff.buffer_var_size_ != nullptr)) {
-      // Variable-sized attribute.
-      if (buff.buffer_ == nullptr || buff.buffer_size_ == nullptr)
-        return LOG_STATUS(Status::SerializationError(
-            "Cannot serialize; no offset buffer set for attribute '" +
-            attribute_name + "'."));
+    const auto& name = buffer_names[i];
+    const auto& buff = query.buffer(name);
+    attr_buffer_builder.setName(name);
+    if (buff.buffer_var_ != nullptr && buff.buffer_var_size_ != nullptr) {
+      // Variable-sized buffer
       total_var_len_bytes += *buff.buffer_var_size_;
       attr_buffer_builder.setVarLenBufferSizeInBytes(*buff.buffer_var_size_);
       total_fixed_len_bytes += *buff.buffer_size_;
       attr_buffer_builder.setFixedLenBufferSizeInBytes(*buff.buffer_size_);
     } else if (buff.buffer_ != nullptr && buff.buffer_size_ != nullptr) {
-      // Fixed-length attribute
+      // Fixed-length buffer
       total_fixed_len_bytes += *buff.buffer_size_;
       attr_buffer_builder.setFixedLenBufferSizeInBytes(*buff.buffer_size_);
       attr_buffer_builder.setVarLenBufferSizeInBytes(0);
+    } else {
+      assert(false);
     }
   }
 
@@ -521,13 +511,7 @@ Status query_from_capnp(
   auto buffer_headers = query_reader.getAttributeBufferHeaders();
   auto attribute_buffer_start = static_cast<char*>(buffer_start);
   for (auto buffer_header : buffer_headers) {
-    const std::string attribute_name = buffer_header.getName().cStr();
-    const bool is_coords = attribute_name == constants::coords;
-    const auto* attr = schema->attribute(attribute_name);
-    if (!is_coords && attr == nullptr)
-      return LOG_STATUS(Status::SerializationError(
-          "Cannot deserialize; no attribute named '" + attribute_name +
-          "' in array schema."));
+    const std::string name = buffer_header.getName().cStr();
 
     // Get buffer sizes required
     const uint64_t fixedlen_size = buffer_header.getFixedLenBufferSizeInBytes();
@@ -537,42 +521,34 @@ Status query_from_capnp(
     // for memcpy into user buffers).
     QueryBufferCopyState* attr_copy_state = nullptr;
     if (copy_state != nullptr)
-      attr_copy_state = &(*copy_state)[attribute_name];
+      attr_copy_state = &(*copy_state)[name];
 
     // Get any buffers already set on this query object.
     uint64_t* existing_offset_buffer = nullptr;
     uint64_t* existing_offset_buffer_size = nullptr;
     void* existing_buffer = nullptr;
     uint64_t* existing_buffer_size = nullptr;
-    const bool var_size = !is_coords && attr->var_size();
+
+    auto var_size = schema->var_size(name);
     if (var_size) {
       RETURN_NOT_OK(query->get_buffer(
-          attribute_name.c_str(),
+          name.c_str(),
           &existing_offset_buffer,
           &existing_offset_buffer_size,
           &existing_buffer,
           &existing_buffer_size));
     } else {
       RETURN_NOT_OK(query->get_buffer(
-          attribute_name.c_str(), &existing_buffer, &existing_buffer_size));
+          name.c_str(), &existing_buffer, &existing_buffer_size));
     }
 
     if (context == SerializationContext::CLIENT) {
       // For queries on the client side, we require that buffers have been
       // set by the user, and that they are large enough for all the serialized
       // data.
-      const bool null_buffer =
-          existing_buffer == nullptr || existing_buffer_size == nullptr;
-      const bool null_offset_buffer = existing_offset_buffer == nullptr ||
-                                      existing_offset_buffer_size == nullptr;
-      if ((var_size && (null_buffer || null_offset_buffer)) ||
-          (!var_size && null_buffer))
-        return LOG_STATUS(Status::SerializationError(
-            "Error deserializing read query; buffer not set for attribute '" +
-            attribute_name + "'."));
-      // Check sizes
       const uint64_t curr_data_size =
           attr_copy_state == nullptr ? 0 : attr_copy_state->data_size;
+      assert(existing_buffer_size != nullptr);
       const uint64_t data_size_left = *existing_buffer_size - curr_data_size;
       const uint64_t curr_offset_size =
           attr_copy_state == nullptr ? 0 : attr_copy_state->offset_size;
@@ -580,13 +556,14 @@ Status query_from_capnp(
           existing_offset_buffer_size == nullptr ?
               0 :
               *existing_offset_buffer_size - curr_offset_size;
+
       if ((var_size && (offset_size_left < fixedlen_size ||
                         data_size_left < varlen_size)) ||
           (!var_size && data_size_left < fixedlen_size)) {
         return LOG_STATUS(Status::SerializationError(
-            "Error deserializing read query; buffer too small for attribute "
+            "Error deserializing read query; buffer too small for buffer "
             "'" +
-            attribute_name + "'."));
+            name + "'."));
       }
 
       // For reads, copy the response data into user buffers. For writes,
@@ -633,8 +610,7 @@ Status query_from_capnp(
             "buffer set on server-side."));
 
       Query::SerializationState::AttrState* attr_state;
-      RETURN_NOT_OK(
-          query->get_attr_serialization_state(attribute_name, &attr_state));
+      RETURN_NOT_OK(query->get_attr_serialization_state(name, &attr_state));
       if (type == QueryType::READ) {
         // On reads, just set null pointers with accurate size so that the
         // server can introspect and allocate properly sized buffers separately.
@@ -646,7 +622,7 @@ Status query_from_capnp(
         attr_state->var_len_data.swap(varlen_buff);
         if (var_size) {
           RETURN_NOT_OK(query->set_buffer(
-              attribute_name,
+              name,
               nullptr,
               &attr_state->fixed_len_size,
               nullptr,
@@ -654,7 +630,7 @@ Status query_from_capnp(
               false));
         } else {
           RETURN_NOT_OK(query->set_buffer(
-              attribute_name, nullptr, &attr_state->fixed_len_size, false));
+              name, nullptr, &attr_state->fixed_len_size, false));
         }
       } else {
         // On writes, just set buffer pointers wrapping the data in the message.
@@ -669,7 +645,7 @@ Status query_from_capnp(
           attr_state->fixed_len_data.swap(offsets_buff);
           attr_state->var_len_data.swap(varlen_buff);
           RETURN_NOT_OK(query->set_buffer(
-              attribute_name,
+              name,
               offsets,
               &attr_state->fixed_len_size,
               varlen_data,
@@ -683,8 +659,8 @@ Status query_from_capnp(
           attr_state->var_len_size = varlen_size;
           attr_state->fixed_len_data.swap(buff);
           attr_state->var_len_data.swap(varlen_buff);
-          RETURN_NOT_OK(query->set_buffer(
-              attribute_name, data, &attr_state->fixed_len_size));
+          RETURN_NOT_OK(
+              query->set_buffer(name, data, &attr_state->fixed_len_size));
         }
       }
     }
@@ -761,60 +737,28 @@ Status query_serialize(
             header.write(message_chars.begin(), message_chars.size()));
         RETURN_NOT_OK(serialized_buffer->add_buffer(std::move(header)));
 
-        // Iterate over attributes and concatenate buffers to end of message.
+        // Concatenate buffers to end of message
         if (serialize_buffers) {
           auto attr_buffer_builders = query_builder.getAttributeBufferHeaders();
           for (auto attr_buffer_builder : attr_buffer_builders) {
-            const std::string attribute_name =
-                attr_buffer_builder.getName().cStr();
-            const bool is_coords = attribute_name == constants::coords;
-            const auto* attr = array_schema->attribute(attribute_name);
-            if (!is_coords && attr == nullptr)
-              return LOG_STATUS(Status::SerializationError(
-                  "Cannot serialize; no attribute named '" + attribute_name +
-                  "'."));
+            const std::string name = attr_buffer_builder.getName().cStr();
 
-            const bool var_size = !is_coords && attr->var_size();
-            if (var_size) {
-              // Variable size attribute buffer
-              uint64_t* offset_buffer = nullptr;
-              uint64_t* offset_buffer_size = nullptr;
-              void* buffer = nullptr;
-              uint64_t* buffer_size = nullptr;
-              RETURN_NOT_OK(query->get_buffer(
-                  attribute_name.c_str(),
-                  &offset_buffer,
-                  &offset_buffer_size,
-                  &buffer,
-                  &buffer_size));
+            auto query_buffer = query->buffer(name);
 
-              if (offset_buffer != nullptr) {
-                if (offset_buffer_size == nullptr || buffer == nullptr ||
-                    buffer_size == nullptr)
-                  return LOG_STATUS(Status::SerializationError(
-                      "Cannot serialize; unexpected null buffers."));
-
-                Buffer offsets(offset_buffer, *offset_buffer_size);
-                Buffer data(buffer, *buffer_size);
-                RETURN_NOT_OK(
-                    serialized_buffer->add_buffer(std::move(offsets)));
-                RETURN_NOT_OK(serialized_buffer->add_buffer(std::move(data)));
-              }
+            if (query_buffer.buffer_var_size_ != nullptr &&
+                query_buffer.buffer_var_ != nullptr) {
+              Buffer offsets(query_buffer.buffer_, *query_buffer.buffer_size_);
+              RETURN_NOT_OK(serialized_buffer->add_buffer(std::move(offsets)));
+              Buffer data(
+                  query_buffer.buffer_var_, *query_buffer.buffer_var_size_);
+              RETURN_NOT_OK(serialized_buffer->add_buffer(std::move(data)));
+            } else if (
+                query_buffer.buffer_size_ != nullptr &&
+                query_buffer.buffer_ != nullptr) {
+              Buffer data(query_buffer.buffer_, *query_buffer.buffer_size_);
+              RETURN_NOT_OK(serialized_buffer->add_buffer(std::move(data)));
             } else {
-              // Fixed size attribute buffer
-              void* buffer = nullptr;
-              uint64_t* buffer_size = nullptr;
-              RETURN_NOT_OK(query->get_buffer(
-                  attribute_name.c_str(), &buffer, &buffer_size));
-
-              if (buffer != nullptr) {
-                if (buffer_size == nullptr)
-                  return LOG_STATUS(Status::SerializationError(
-                      "Cannot serialize; unexpected null buffer size."));
-
-                Buffer data(buffer, *buffer_size);
-                RETURN_NOT_OK(serialized_buffer->add_buffer(std::move(data)));
-              }
+              assert(false);
             }
           }
         }

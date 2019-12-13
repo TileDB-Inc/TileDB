@@ -38,6 +38,8 @@
 #include <cstring>
 #include <iostream>
 
+using namespace tiledb::test;
+
 const uint64_t DIM_DOMAIN[4] = {1, 10, 1, 10};
 
 /** Tests for C API subarray. */

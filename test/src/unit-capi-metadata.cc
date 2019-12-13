@@ -46,6 +46,7 @@
 #include <thread>
 
 using namespace tiledb::sm;
+using namespace tiledb::test;
 
 /* ********************************* */
 /*         STRUCT DEFINITION         */
@@ -121,9 +122,9 @@ void CMetadataFx::create_default_array_1d() {
       {"a", "b", "c"},
       {TILEDB_INT32, TILEDB_CHAR, TILEDB_FLOAT32},
       {1, TILEDB_VAR_NUM, 2},
-      {::Compressor(TILEDB_FILTER_NONE, -1),
-       ::Compressor(TILEDB_FILTER_ZSTD, -1),
-       ::Compressor(TILEDB_FILTER_LZ4, -1)},
+      {tiledb::test::Compressor(TILEDB_FILTER_NONE, -1),
+       tiledb::test::Compressor(TILEDB_FILTER_ZSTD, -1),
+       tiledb::test::Compressor(TILEDB_FILTER_LZ4, -1)},
       TILEDB_ROW_MAJOR,
       TILEDB_ROW_MAJOR,
       2);
@@ -146,9 +147,9 @@ void CMetadataFx::create_default_array_1d_with_key() {
       {"a", "b", "c"},
       {TILEDB_INT32, TILEDB_CHAR, TILEDB_FLOAT32},
       {1, TILEDB_VAR_NUM, 2},
-      {::Compressor(TILEDB_FILTER_NONE, -1),
-       ::Compressor(TILEDB_FILTER_ZSTD, -1),
-       ::Compressor(TILEDB_FILTER_LZ4, -1)},
+      {tiledb::test::Compressor(TILEDB_FILTER_NONE, -1),
+       tiledb::test::Compressor(TILEDB_FILTER_ZSTD, -1),
+       tiledb::test::Compressor(TILEDB_FILTER_LZ4, -1)},
       TILEDB_ROW_MAJOR,
       TILEDB_ROW_MAJOR,
       2);

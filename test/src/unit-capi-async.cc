@@ -36,6 +36,8 @@
 
 #include <cstring>
 
+using namespace tiledb::test;
+
 /** Tests for C API async queries. */
 struct AsyncFx {
   // Constants

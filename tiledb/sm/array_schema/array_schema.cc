@@ -104,6 +104,11 @@ ArraySchema::ArraySchema(const ArraySchema* array_schema) {
   }
   for (const auto& attr : attributes_)
     attribute_map_[attr->name()] = attr;
+  auto dim_num = array_schema->dim_num();
+  for (unsigned d = 0; d < dim_num; ++d) {
+    auto dim = dimension(d);
+    dim_map_[dim->name()] = dim;
+  }
 }
 
 ArraySchema::~ArraySchema() {
@@ -291,6 +296,18 @@ const Dimension* ArraySchema::dimension(unsigned int i) const {
   return domain_->dimension(i);
 }
 
+const Dimension* ArraySchema::dimension(const std::string& name) const {
+  bool anonymous = name.empty();
+  auto dim_num = this->dim_num();
+  for (unsigned d = 0; d < dim_num; ++d) {
+    auto dim = this->dimension(d);
+    if ((dim->name() == name) || (anonymous && dim->is_anonymous())) {
+      return dim;
+    }
+  }
+  return nullptr;
+}
+
 unsigned int ArraySchema::dim_num() const {
   return domain_->dim_num();
 }
@@ -409,11 +426,24 @@ Datatype ArraySchema::type(const std::string& attribute) const {
   return it->second->type();
 }
 
-bool ArraySchema::var_size(const std::string& attribute) const {
-  auto it = attribute_map_.find(attribute);
-  if (it == attribute_map_.end())
+bool ArraySchema::var_size(const std::string& name) const {
+  // Special case for zipped coordinates
+  if (name == constants::coords)
     return false;
-  return it->second->var_size();
+
+  // Attribute
+  auto attr_it = attribute_map_.find(name);
+  if (attr_it != attribute_map_.end())
+    return attr_it->second->var_size();
+
+  // Dimension
+  auto dim_it = dim_map_.find(name);
+  if (dim_it != dim_map_.end())
+    return dim_it->second->var_size();
+
+  // Name is not an attribute or dimension
+  assert(false);
+  return false;
 }
 
 Status ArraySchema::add_attribute(const Attribute* attr, bool check_special) {
@@ -523,13 +553,17 @@ Status ArraySchema::init() {
   attribute_map_.clear();
   for (const auto& attr : attributes_)
     attribute_map_[attr->name()] = attr;
+  dim_map_.clear();
+  auto dim_num = domain_->dim_num();
+  for (unsigned d = 0; d < dim_num; ++d) {
+    auto dim = dimension(d);
+    dim_map_[dim->name()] = dim;
+  }
 
   // Set cell sizes
   for (auto& attr : attributes_)
     cell_sizes_[attr->name()] = compute_cell_size(attr->name());
   cell_sizes_[constants::coords] = compute_cell_size(constants::coords);
-
-  auto dim_num = domain_->dim_num();
   coords_size_ = dim_num * datatype_size(coords_type());
 
   // Success

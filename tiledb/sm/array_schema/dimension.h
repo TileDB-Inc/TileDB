@@ -165,6 +165,9 @@ class Dimension {
   /** Returns the dimension type. */
   Datatype type() const;
 
+  /** Returns true if the dimension is var-sized. */
+  bool var_size() const;
+
  private:
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */

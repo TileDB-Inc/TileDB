@@ -143,17 +143,20 @@ std::vector<std::string> Reader::attributes() const {
   return attributes_;
 }
 
-AttributeBuffer Reader::buffer(const std::string& attribute) const {
-  auto attrbuf = attr_buffers_.find(attribute);
-  if (attrbuf == attr_buffers_.end())
-    return AttributeBuffer{};
-  return attrbuf->second;
+QueryBuffer Reader::buffer(const std::string& name) const {
+  // TODO: fetch separate coordinate buffers as well. To be addressed in
+  // TODO: subsequent PR
+  auto buf = attr_buffers_.find(name);
+  if (buf == attr_buffers_.end())
+    return QueryBuffer{};
+  return buf->second;
 }
 
 bool Reader::incomplete() const {
   return read_state_.overflowed_ || !read_state_.done();
 }
 
+// TODO: handle both attributes and dimensions
 Status Reader::get_buffer(
     const std::string& attribute, void** buffer, uint64_t** buffer_size) const {
   auto it = attr_buffers_.find(attribute);
@@ -168,6 +171,7 @@ Status Reader::get_buffer(
   return Status::Ok();
 }
 
+// TODO: handle both attributes and dimensions
 Status Reader::get_buffer(
     const std::string& attribute,
     uint64_t** buffer_off,
@@ -399,8 +403,7 @@ Status Reader::set_buffer(
     attributes_.emplace_back(attribute);
 
   // Set attribute buffer
-  attr_buffers_[attribute] =
-      AttributeBuffer(buffer, nullptr, buffer_size, nullptr);
+  attr_buffers_[attribute] = QueryBuffer(buffer, nullptr, buffer_size, nullptr);
 
   return Status::Ok();
 }
@@ -451,7 +454,7 @@ Status Reader::set_buffer(
 
   // Set attribute buffer
   attr_buffers_[attribute] =
-      AttributeBuffer(buffer_off, buffer_val, buffer_off_size, buffer_val_size);
+      QueryBuffer(buffer_off, buffer_val, buffer_off_size, buffer_val_size);
 
   return Status::Ok();
 }

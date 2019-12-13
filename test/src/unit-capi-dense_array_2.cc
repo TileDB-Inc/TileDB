@@ -44,6 +44,7 @@
 #include <iostream>
 
 using namespace tiledb::sm;
+using namespace tiledb::test;
 
 /* ********************************* */
 /*         STRUCT DEFINITION         */
@@ -119,9 +120,9 @@ void CDenseArrayFx::create_default_array_1d() {
       {"a", "b", "c"},
       {TILEDB_INT32, TILEDB_CHAR, TILEDB_FLOAT32},
       {1, TILEDB_VAR_NUM, 2},
-      {::Compressor(TILEDB_FILTER_NONE, -1),
-       ::Compressor(TILEDB_FILTER_ZSTD, -1),
-       ::Compressor(TILEDB_FILTER_LZ4, -1)},
+      {tiledb::test::Compressor(TILEDB_FILTER_NONE, -1),
+       tiledb::test::Compressor(TILEDB_FILTER_ZSTD, -1),
+       tiledb::test::Compressor(TILEDB_FILTER_LZ4, -1)},
       TILEDB_ROW_MAJOR,
       TILEDB_ROW_MAJOR,
       2);
@@ -141,16 +142,16 @@ void CDenseArrayFx::create_default_array_2d() {
       {"a", "b", "c"},
       {TILEDB_INT32, TILEDB_CHAR, TILEDB_FLOAT32},
       {1, TILEDB_VAR_NUM, 2},
-      {::Compressor(TILEDB_FILTER_NONE, -1),
-       ::Compressor(TILEDB_FILTER_ZSTD, -1),
-       ::Compressor(TILEDB_FILTER_LZ4, -1)},
+      {tiledb::test::Compressor(TILEDB_FILTER_NONE, -1),
+       tiledb::test::Compressor(TILEDB_FILTER_ZSTD, -1),
+       tiledb::test::Compressor(TILEDB_FILTER_LZ4, -1)},
       TILEDB_ROW_MAJOR,
       TILEDB_ROW_MAJOR,
       2);
 }
 
 void CDenseArrayFx::write_default_array_1d() {
-  AttrBuffers attr_buffers;
+  tiledb::test::QueryBuffers buffers;
   std::vector<int> a = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
   uint64_t a_size = a.size() * sizeof(int);
   std::vector<uint64_t> b_off = {0,
@@ -189,11 +190,11 @@ void CDenseArrayFx::write_default_array_1d() {
                           4.2f, 5.1f, 5.2f, 6.1f, 6.2f,  7.1f, 7.2f,
                           8.1f, 8.2f, 9.1f, 9.2f, 10.1f, 10.2f};
   uint64_t c_size = c.size() * sizeof(float);
-  attr_buffers["a"] = AttrBuffer({&a[0], a_size, nullptr, 0});
-  attr_buffers["b"] =
-      AttrBuffer({&b_off[0], b_off_size, &b_val[0], b_val_size});
-  attr_buffers["c"] = AttrBuffer({&c[0], c_size, nullptr, 0});
-  write_array(ctx_, array_name_, TILEDB_GLOBAL_ORDER, attr_buffers);
+  buffers["a"] = tiledb::test::QueryBuffer({&a[0], a_size, nullptr, 0});
+  buffers["b"] =
+      tiledb::test::QueryBuffer({&b_off[0], b_off_size, &b_val[0], b_val_size});
+  buffers["c"] = tiledb::test::QueryBuffer({&c[0], c_size, nullptr, 0});
+  write_array(ctx_, array_name_, TILEDB_GLOBAL_ORDER, buffers);
 }
 
 void CDenseArrayFx::write_default_array_2d() {
@@ -226,16 +227,16 @@ void CDenseArrayFx::write_default_array_2d() {
                           11.2f, 12.1f, 12.2f, 13.1f, 13.2f, 14.1f, 14.2f,
                           15.1f, 15.2f, 16.1f, 16.2f};
   uint64_t c_size = c.size() * sizeof(float);
-  AttrBuffers attr_buffers;
-  attr_buffers["a"] = AttrBuffer({&a[0], a_size, nullptr, 0});
-  attr_buffers["b"] =
-      AttrBuffer({&b_off[0], b_off_size, &b_val[0], b_val_size});
-  attr_buffers["c"] = AttrBuffer({&c[0], c_size, nullptr, 0});
-  write_array(ctx_, array_name_, TILEDB_ROW_MAJOR, attr_buffers);
+  tiledb::test::QueryBuffers buffers;
+  buffers["a"] = tiledb::test::QueryBuffer({&a[0], a_size, nullptr, 0});
+  buffers["b"] =
+      tiledb::test::QueryBuffer({&b_off[0], b_off_size, &b_val[0], b_val_size});
+  buffers["c"] = tiledb::test::QueryBuffer({&c[0], c_size, nullptr, 0});
+  write_array(ctx_, array_name_, TILEDB_ROW_MAJOR, buffers);
 }
 
 void CDenseArrayFx::write_sparse_fragment_1d() {
-  AttrBuffers attr_buffers;
+  tiledb::test::QueryBuffers buffers;
   std::vector<int> a = {102, 103, 106};
   uint64_t a_size = a.size() * sizeof(int);
   std::vector<uint64_t> b_off = {0, sizeof(char), 3 * sizeof(char)};
@@ -247,17 +248,17 @@ void CDenseArrayFx::write_sparse_fragment_1d() {
   std::vector<uint64_t> coords = {2, 3, 6};
   uint64_t coords_size = coords.size() * sizeof(uint64_t);
 
-  attr_buffers["a"] = AttrBuffer({&a[0], a_size, nullptr, 0});
-  attr_buffers["b"] =
-      AttrBuffer({&b_off[0], b_off_size, &b_val[0], b_val_size});
-  attr_buffers["c"] = AttrBuffer({&c[0], c_size, nullptr, 0});
-  attr_buffers[TILEDB_COORDS] =
-      AttrBuffer({&coords[0], coords_size, nullptr, 0});
-  write_array(ctx_, array_name_, TILEDB_GLOBAL_ORDER, attr_buffers);
+  buffers["a"] = tiledb::test::QueryBuffer({&a[0], a_size, nullptr, 0});
+  buffers["b"] =
+      tiledb::test::QueryBuffer({&b_off[0], b_off_size, &b_val[0], b_val_size});
+  buffers["c"] = tiledb::test::QueryBuffer({&c[0], c_size, nullptr, 0});
+  buffers[TILEDB_COORDS] =
+      tiledb::test::QueryBuffer({&coords[0], coords_size, nullptr, 0});
+  write_array(ctx_, array_name_, TILEDB_GLOBAL_ORDER, buffers);
 }
 
 void CDenseArrayFx::write_sparse_fragment_2d() {
-  AttrBuffers attr_buffers;
+  tiledb::test::QueryBuffers buffers;
   std::vector<int> a = {102, 103, 105, 109};
   uint64_t a_size = a.size() * sizeof(int);
   std::vector<uint64_t> b_off = {
@@ -271,13 +272,13 @@ void CDenseArrayFx::write_sparse_fragment_2d() {
   std::vector<uint64_t> coords = {1, 2, 1, 3, 2, 1, 3, 1};
   uint64_t coords_size = coords.size() * sizeof(uint64_t);
 
-  attr_buffers["a"] = AttrBuffer({&a[0], a_size, nullptr, 0});
-  attr_buffers["b"] =
-      AttrBuffer({&b_off[0], b_off_size, &b_val[0], b_val_size});
-  attr_buffers["c"] = AttrBuffer({&c[0], c_size, nullptr, 0});
-  attr_buffers[TILEDB_COORDS] =
-      AttrBuffer({&coords[0], coords_size, nullptr, 0});
-  write_array(ctx_, array_name_, TILEDB_UNORDERED, attr_buffers);
+  buffers["a"] = tiledb::test::QueryBuffer({&a[0], a_size, nullptr, 0});
+  buffers["b"] =
+      tiledb::test::QueryBuffer({&b_off[0], b_off_size, &b_val[0], b_val_size});
+  buffers["c"] = tiledb::test::QueryBuffer({&c[0], c_size, nullptr, 0});
+  buffers[TILEDB_COORDS] =
+      tiledb::test::QueryBuffer({&coords[0], coords_size, nullptr, 0});
+  write_array(ctx_, array_name_, TILEDB_UNORDERED, buffers);
 }
 
 /* ********************************* */
@@ -301,22 +302,22 @@ TEST_CASE_METHOD(
   uint64_t b_val_size = b_val.size() * sizeof(char);
   std::vector<float> c(20);
   uint64_t c_size = c.size() * sizeof(float);
-  AttrBuffers attr_buffers;
-  attr_buffers["a"] = AttrBuffer({&a[0], a_size, nullptr, 0});
-  attr_buffers["b"] =
-      AttrBuffer({&b_off[0], b_off_size, &b_val[0], b_val_size});
-  attr_buffers["c"] = AttrBuffer({&c[0], c_size, nullptr, 0});
+  tiledb::test::QueryBuffers buffers;
+  buffers["a"] = tiledb::test::QueryBuffer({&a[0], a_size, nullptr, 0});
+  buffers["b"] =
+      tiledb::test::QueryBuffer({&b_off[0], b_off_size, &b_val[0], b_val_size});
+  buffers["c"] = tiledb::test::QueryBuffer({&c[0], c_size, nullptr, 0});
   std::vector<uint64_t> coords(10);
   uint64_t coords_size = coords.size() * sizeof(uint64_t);
-  attr_buffers[TILEDB_COORDS] =
-      AttrBuffer({&coords[0], coords_size, nullptr, 0});
+  buffers[TILEDB_COORDS] =
+      tiledb::test::QueryBuffer({&coords[0], coords_size, nullptr, 0});
 
   // Open array
   open_array(ctx_, array_, TILEDB_READ);
 
   // Create subarray
   SubarrayRanges<uint64_t> ranges = {{1, 10}};
-  read_array(ctx_, array_, ranges, TILEDB_ROW_MAJOR, attr_buffers);
+  read_array(ctx_, array_, ranges, TILEDB_ROW_MAJOR, buffers);
 
   // Check results
   std::vector<int> c_a = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
@@ -382,22 +383,22 @@ TEST_CASE_METHOD(
   uint64_t b_val_size = b_val.size() * sizeof(char);
   std::vector<float> c(20);
   uint64_t c_size = c.size() * sizeof(float);
-  AttrBuffers attr_buffers;
-  attr_buffers["a"] = AttrBuffer({&a[0], a_size, nullptr, 0});
-  attr_buffers["b"] =
-      AttrBuffer({&b_off[0], b_off_size, &b_val[0], b_val_size});
-  attr_buffers["c"] = AttrBuffer({&c[0], c_size, nullptr, 0});
+  tiledb::test::QueryBuffers buffers;
+  buffers["a"] = tiledb::test::QueryBuffer({&a[0], a_size, nullptr, 0});
+  buffers["b"] =
+      tiledb::test::QueryBuffer({&b_off[0], b_off_size, &b_val[0], b_val_size});
+  buffers["c"] = tiledb::test::QueryBuffer({&c[0], c_size, nullptr, 0});
   std::vector<uint64_t> coords(10);
   uint64_t coords_size = coords.size() * sizeof(uint64_t);
-  attr_buffers[TILEDB_COORDS] =
-      AttrBuffer({&coords[0], coords_size, nullptr, 0});
+  buffers[TILEDB_COORDS] =
+      tiledb::test::QueryBuffer({&coords[0], coords_size, nullptr, 0});
 
   // Open array
   open_array(ctx_, array_, TILEDB_READ);
 
   // Read
   SubarrayRanges<uint64_t> ranges = {{1, 10}};
-  read_array(ctx_, array_, ranges, TILEDB_ROW_MAJOR, attr_buffers);
+  read_array(ctx_, array_, ranges, TILEDB_ROW_MAJOR, buffers);
 
   // Check results
   std::vector<int> c_a = {1, 102, 103, 4, 5, 106, 7, 8, 9, 10};
@@ -462,22 +463,22 @@ TEST_CASE_METHOD(
   uint64_t b_val_size = b_val.size() * sizeof(char);
   std::vector<float> c(20);
   uint64_t c_size = c.size() * sizeof(float);
-  AttrBuffers attr_buffers;
-  attr_buffers["a"] = AttrBuffer({&a[0], a_size, nullptr, 0});
-  attr_buffers["b"] =
-      AttrBuffer({&b_off[0], b_off_size, &b_val[0], b_val_size});
-  attr_buffers["c"] = AttrBuffer({&c[0], c_size, nullptr, 0});
+  tiledb::test::QueryBuffers buffers;
+  buffers["a"] = tiledb::test::QueryBuffer({&a[0], a_size, nullptr, 0});
+  buffers["b"] =
+      tiledb::test::QueryBuffer({&b_off[0], b_off_size, &b_val[0], b_val_size});
+  buffers["c"] = tiledb::test::QueryBuffer({&c[0], c_size, nullptr, 0});
   std::vector<uint64_t> coords(10);
   uint64_t coords_size = coords.size() * sizeof(uint64_t);
-  attr_buffers[TILEDB_COORDS] =
-      AttrBuffer({&coords[0], coords_size, nullptr, 0});
+  buffers[TILEDB_COORDS] =
+      tiledb::test::QueryBuffer({&coords[0], coords_size, nullptr, 0});
 
   // Open array
   open_array(ctx_, array_, TILEDB_READ);
 
   // Read
   SubarrayRanges<uint64_t> ranges = {{1, 10}};
-  read_array(ctx_, array_, ranges, TILEDB_ROW_MAJOR, attr_buffers);
+  read_array(ctx_, array_, ranges, TILEDB_ROW_MAJOR, buffers);
 
   // Check results
   std::vector<int> c_a = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
@@ -543,15 +544,15 @@ TEST_CASE_METHOD(
   uint64_t b_val_size = b_val.size() * sizeof(char);
   std::vector<float> c(32);
   uint64_t c_size = c.size() * sizeof(float);
-  AttrBuffers attr_buffers;
-  attr_buffers["a"] = AttrBuffer({&a[0], a_size, nullptr, 0});
-  attr_buffers["b"] =
-      AttrBuffer({&b_off[0], b_off_size, &b_val[0], b_val_size});
-  attr_buffers["c"] = AttrBuffer({&c[0], c_size, nullptr, 0});
+  tiledb::test::QueryBuffers buffers;
+  buffers["a"] = tiledb::test::QueryBuffer({&a[0], a_size, nullptr, 0});
+  buffers["b"] =
+      tiledb::test::QueryBuffer({&b_off[0], b_off_size, &b_val[0], b_val_size});
+  buffers["c"] = tiledb::test::QueryBuffer({&c[0], c_size, nullptr, 0});
   std::vector<uint64_t> coords(32);
   uint64_t coords_size = coords.size() * sizeof(uint64_t);
-  attr_buffers[TILEDB_COORDS] =
-      AttrBuffer({&coords[0], coords_size, nullptr, 0});
+  buffers[TILEDB_COORDS] =
+      tiledb::test::QueryBuffer({&coords[0], coords_size, nullptr, 0});
 
   // Open array
   open_array(ctx_, array_, TILEDB_READ);
@@ -655,7 +656,7 @@ TEST_CASE_METHOD(
 
   // Read
   SubarrayRanges<uint64_t> ranges = {{1, 4}, {1, 4}};
-  read_array(ctx_, array_, ranges, subarray_layout, attr_buffers);
+  read_array(ctx_, array_, ranges, subarray_layout, buffers);
 
   // Check results
   CHECK(a == c_a);
@@ -731,15 +732,15 @@ TEST_CASE_METHOD(
   uint64_t b_val_size = b_val.size() * sizeof(char);
   std::vector<float> c(32);
   uint64_t c_size = c.size() * sizeof(float);
-  AttrBuffers attr_buffers;
-  attr_buffers["a"] = AttrBuffer({&a[0], a_size, nullptr, 0});
-  attr_buffers["b"] =
-      AttrBuffer({&b_off[0], b_off_size, &b_val[0], b_val_size});
-  attr_buffers["c"] = AttrBuffer({&c[0], c_size, nullptr, 0});
+  tiledb::test::QueryBuffers buffers;
+  buffers["a"] = tiledb::test::QueryBuffer({&a[0], a_size, nullptr, 0});
+  buffers["b"] =
+      tiledb::test::QueryBuffer({&b_off[0], b_off_size, &b_val[0], b_val_size});
+  buffers["c"] = tiledb::test::QueryBuffer({&c[0], c_size, nullptr, 0});
   std::vector<uint64_t> coords(32);
   uint64_t coords_size = coords.size() * sizeof(uint64_t);
-  attr_buffers[TILEDB_COORDS] =
-      AttrBuffer({&coords[0], coords_size, nullptr, 0});
+  buffers[TILEDB_COORDS] =
+      tiledb::test::QueryBuffer({&coords[0], coords_size, nullptr, 0});
 
   // Open array
   open_array(ctx_, array_, TILEDB_READ);
@@ -843,7 +844,7 @@ TEST_CASE_METHOD(
 
   // Read from the array
   SubarrayRanges<uint64_t> ranges = {{1, 4}, {1, 4}};
-  read_array(ctx_, array_, ranges, subarray_layout, attr_buffers);
+  read_array(ctx_, array_, ranges, subarray_layout, buffers);
 
   // Check results
   CHECK(a == c_a);
@@ -875,15 +876,15 @@ TEST_CASE_METHOD(
   uint64_t b_val_size = b_val.size() * sizeof(char);
   std::vector<float> c(32);
   uint64_t c_size = c.size() * sizeof(float);
-  AttrBuffers attr_buffers;
-  attr_buffers["a"] = AttrBuffer({&a[0], a_size, nullptr, 0});
-  attr_buffers["b"] =
-      AttrBuffer({&b_off[0], b_off_size, &b_val[0], b_val_size});
-  attr_buffers["c"] = AttrBuffer({&c[0], c_size, nullptr, 0});
+  tiledb::test::QueryBuffers buffers;
+  buffers["a"] = tiledb::test::QueryBuffer({&a[0], a_size, nullptr, 0});
+  buffers["b"] =
+      tiledb::test::QueryBuffer({&b_off[0], b_off_size, &b_val[0], b_val_size});
+  buffers["c"] = tiledb::test::QueryBuffer({&c[0], c_size, nullptr, 0});
   std::vector<uint64_t> coords(32);
   uint64_t coords_size = coords.size() * sizeof(uint64_t);
-  attr_buffers[TILEDB_COORDS] =
-      AttrBuffer({&coords[0], coords_size, nullptr, 0});
+  buffers[TILEDB_COORDS] =
+      tiledb::test::QueryBuffer({&coords[0], coords_size, nullptr, 0});
 
   // Open array
   open_array(ctx_, array_, TILEDB_READ);
@@ -957,7 +958,7 @@ TEST_CASE_METHOD(
 
   // Read from the array
   SubarrayRanges<uint64_t> ranges = {{1, 1, 2, 2, 3, 3, 4, 4}, {1, 4}};
-  read_array(ctx_, array_, ranges, subarray_layout, attr_buffers);
+  read_array(ctx_, array_, ranges, subarray_layout, buffers);
 
   // Check results
   CHECK(a == c_a);

@@ -426,6 +426,11 @@ Datatype Dimension::type() const {
   return type_;
 }
 
+bool Dimension::var_size() const {
+  // TODO: to fix when adding var-sized support to dimensions
+  return false;
+}
+
 /* ********************************* */
 /*          PRIVATE METHODS          */
 /* ********************************* */

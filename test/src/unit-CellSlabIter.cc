@@ -44,6 +44,7 @@
 #include <iostream>
 
 using namespace tiledb::sm;
+using namespace tiledb::test;
 
 /* ********************************* */
 /*         STRUCT DEFINITION         */
@@ -151,8 +152,8 @@ TEST_CASE_METHOD(
       {"a", "b"},
       {TILEDB_INT32, TILEDB_INT32},
       {1, TILEDB_VAR_NUM},
-      {::Compressor(TILEDB_FILTER_LZ4, -1),
-       ::Compressor(TILEDB_FILTER_LZ4, -1)},
+      {tiledb::test::Compressor(TILEDB_FILTER_LZ4, -1),
+       tiledb::test::Compressor(TILEDB_FILTER_LZ4, -1)},
       TILEDB_ROW_MAJOR,
       TILEDB_ROW_MAJOR,
       2);
@@ -200,8 +201,8 @@ TEST_CASE_METHOD(
       {"a", "b"},
       {TILEDB_INT32, TILEDB_INT32},
       {1, TILEDB_VAR_NUM},
-      {::Compressor(TILEDB_FILTER_LZ4, -1),
-       ::Compressor(TILEDB_FILTER_LZ4, -1)},
+      {tiledb::test::Compressor(TILEDB_FILTER_LZ4, -1),
+       tiledb::test::Compressor(TILEDB_FILTER_LZ4, -1)},
       TILEDB_ROW_MAJOR,
       TILEDB_ROW_MAJOR,
       2);
@@ -254,8 +255,8 @@ TEST_CASE_METHOD(
       {"a", "b"},
       {TILEDB_INT32, TILEDB_INT32},
       {1, TILEDB_VAR_NUM},
-      {::Compressor(TILEDB_FILTER_LZ4, -1),
-       ::Compressor(TILEDB_FILTER_LZ4, -1)},
+      {tiledb::test::Compressor(TILEDB_FILTER_LZ4, -1),
+       tiledb::test::Compressor(TILEDB_FILTER_LZ4, -1)},
       TILEDB_ROW_MAJOR,
       TILEDB_ROW_MAJOR,
       2);
@@ -306,8 +307,8 @@ TEST_CASE_METHOD(
       {"a", "b"},
       {TILEDB_INT32, TILEDB_INT32},
       {1, TILEDB_VAR_NUM},
-      {::Compressor(TILEDB_FILTER_LZ4, -1),
-       ::Compressor(TILEDB_FILTER_LZ4, -1)},
+      {tiledb::test::Compressor(TILEDB_FILTER_LZ4, -1),
+       tiledb::test::Compressor(TILEDB_FILTER_LZ4, -1)},
       TILEDB_ROW_MAJOR,
       TILEDB_ROW_MAJOR,
       2);
@@ -355,8 +356,8 @@ TEST_CASE_METHOD(
       {"a", "b"},
       {TILEDB_INT32, TILEDB_INT32},
       {1, TILEDB_VAR_NUM},
-      {::Compressor(TILEDB_FILTER_LZ4, -1),
-       ::Compressor(TILEDB_FILTER_LZ4, -1)},
+      {tiledb::test::Compressor(TILEDB_FILTER_LZ4, -1),
+       tiledb::test::Compressor(TILEDB_FILTER_LZ4, -1)},
       TILEDB_ROW_MAJOR,
       TILEDB_ROW_MAJOR,
       2);

@@ -39,6 +39,8 @@
 #include <cstring>
 #include <iostream>
 
+using namespace tiledb::test;
+
 /** Tests for C API consolidation. */
 struct ConsolidationFx {
   // Constants

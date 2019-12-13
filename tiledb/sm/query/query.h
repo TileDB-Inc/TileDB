@@ -175,14 +175,14 @@ class Query {
   /** Returns the array schema. */
   const ArraySchema* array_schema() const;
 
-  /**
-   * Return vector of attributes
-   * @return attributes for query
-   */
-  std::vector<std::string> attributes() const;
+  /** Returns the names of the buffers set by the user for the query. */
+  std::vector<std::string> buffer_names() const;
 
-  /** Gets the AttributeBuffer for an attribute. */
-  AttributeBuffer attribute_buffer(const std::string& attribute_name) const;
+  /**
+   * Gets the query buffer for the input attribute/dimension.
+   * An empty string means the special default attribute.
+   */
+  QueryBuffer buffer(const std::string& name) const;
 
   /**
    * Marks a query that has not yet been started as failed. This should not be
@@ -212,21 +212,23 @@ class Query {
   Status finalize();
 
   /**
-   * Retrieves the buffer of a fixed-sized attribute.
+   * Retrieves the buffer of a fixed-sized attribute/dimension.
    *
-   * @param attribute The buffer attribute. An empty string means
-   *     the special default attribute.
+   * @param name The buffer attribute/dimension name. An empty string means
+   *     the special default attribute/dimension.
    * @param buffer The buffer to be retrieved.
    * @param buffer_size A pointer to the buffer size to be retrieved.
    * @return Status
    */
   Status get_buffer(
-      const char* attribute, void** buffer, uint64_t** buffer_size) const;
+      const char* name, void** buffer, uint64_t** buffer_size) const;
 
   /**
-   * Retrieves the offsets and values buffers of a var-sized attribute.
+   * Retrieves the offsets and values buffers of a var-sized
+   * attribute/dimension.
    *
-   * @param attribute The buffer attribute.
+   * @param name The attribute/dimension name. An empty string means
+   *     the special default attribute/dimension.
    * @param buffer_off The offsets buffer to be retrieved.
    * @param buffer_off_size A pointer to the offsets buffer size to be
    * retrieved.
@@ -235,7 +237,7 @@ class Query {
    * @return Status
    */
   Status get_buffer(
-      const char* attribute,
+      const char* name,
       uint64_t** buffer_off,
       uint64_t** buffer_off_size,
       void** buffer_val,

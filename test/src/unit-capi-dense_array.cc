@@ -53,6 +53,8 @@
 #include <sstream>
 #include <thread>
 
+using namespace tiledb::test;
+
 struct DenseArrayFx {
   // Constant parameters
   const char* ATTR_NAME = "a";

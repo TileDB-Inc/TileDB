@@ -42,31 +42,38 @@
 #include <string>
 #include <thread>
 
+namespace tiledb {
+
+namespace test {
+
 // For easy reference
 typedef std::pair<tiledb_filter_type_t, int> Compressor;
 template <class T>
 using SubarrayRanges = std::vector<std::vector<T>>;
 
-/** Helper struct for the buffers of an attribute (fixed- or var-sized). */
-struct AttrBuffer {
+/**
+ * Helper struct for the buffers of an attribute/dimension
+ * (fixed- or var-sized).
+ */
+struct QueryBuffer {
   /**
-   * For fixed-sized attributes, it contains the fixed-sized values.
-   * For var-sized attributes, it contains the offsets.
+   * For fixed-sized attributes/dimensions, it contains the fixed-sized values.
+   * For var-sized attributes/dimensions, it contains the offsets.
    * var buffer is nullptr.
    */
   void* fixed_;
   /** Size of fixed buffer. */
   uint64_t fixed_size_;
   /**
-   * For fixed-sized attributes, it is `nullptr`.
-   * For var-sized attributes, it contains the var-sized values.
+   * For fixed-sized attributes/dimensions, it is `nullptr`.
+   * For var-sized attributes/dimensions, it contains the var-sized values.
    */
   void* var_;
   /** Size of var buffer. */
   uint64_t var_size_;
 };
-/** Map attribute_name -> AttrBuffer */
-typedef std::map<std::string, AttrBuffer> AttrBuffers;
+/** Map attribute/dimension name -> QueryBuffer */
+typedef std::map<std::string, QueryBuffer> QueryBuffers;
 
 /**
  * Checks that the input partitioner produces the input partitions
@@ -297,13 +304,13 @@ int set_attribute_compression_filter(
  * @param ctx The TileDB context.
  * @param array_name The array name.
  * @param layout The layout to write into.
- * @param attr_buffers The attribute buffers to be written.
+ * @param buffers The attribute/dimension buffers to be written.
  */
 void write_array(
     tiledb_ctx_t* ctx,
     const std::string& array_name,
     tiledb_layout_t layout,
-    const AttrBuffers& attr_buffers);
+    const QueryBuffers& buffers);
 
 /**
  * Performs a single read to an array.
@@ -313,7 +320,7 @@ void write_array(
  * @param array The input array.
  * @param The subarray ranges.
  * @param layout The query layout.
- * @param attr_buffers The attribute buffers to be read.
+ * @param buffers The attribute/dimension buffers to be read.
  */
 template <class T>
 void read_array(
@@ -321,6 +328,10 @@ void read_array(
     tiledb_array_t* array,
     const SubarrayRanges<T>& ranges,
     tiledb_layout_t layout,
-    const AttrBuffers& attr_buffers);
+    const QueryBuffers& buffers);
+
+}  // End of namespace test
+
+}  // End of namespace tiledb
 
 #endif

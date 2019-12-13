@@ -186,17 +186,16 @@ const ArraySchema* Query::array_schema() const {
   return reader_.array_schema();
 }
 
-std::vector<std::string> Query::attributes() const {
+std::vector<std::string> Query::buffer_names() const {
   if (type_ == QueryType::WRITE)
-    return writer_.attributes();
-  return reader_.attributes();
+    return writer_.buffer_names();
+  return reader_.attributes();  // TODO: this will change in a subsequent PR
 }
 
-AttributeBuffer Query::attribute_buffer(
-    const std::string& attribute_name) const {
+QueryBuffer Query::buffer(const std::string& name) const {
   if (type_ == QueryType::WRITE)
-    return writer_.buffer(attribute_name);
-  return reader_.buffer(attribute_name);
+    return writer_.buffer(name);
+  return reader_.buffer(name);
 }
 
 Status Query::finalize() {
@@ -219,39 +218,41 @@ Status Query::finalize() {
   return Status::Ok();
 }
 
+// TODO: fix normalized for coords
 Status Query::get_buffer(
-    const char* attribute, void** buffer, uint64_t** buffer_size) const {
+    const char* name, void** buffer, uint64_t** buffer_size) const {
   // Normalize attribute
   std::string normalized;
-  RETURN_NOT_OK(ArraySchema::attribute_name_normalized(attribute, &normalized));
+  RETURN_NOT_OK(ArraySchema::attribute_name_normalized(name, &normalized));
 
   // Check attribute
   auto array_schema = this->array_schema();
   if (normalized != constants::coords) {
-    if (array_schema->attribute(normalized) == nullptr)
+    if (array_schema->attribute(normalized) == nullptr &&
+        array_schema->dimension(normalized) == nullptr)
       return LOG_STATUS(Status::QueryError(
-          std::string("Cannot get buffer; Invalid attribute name '") +
+          std::string("Cannot get buffer; Invalid attribute/dimension name '") +
           normalized + "'"));
   }
   if (array_schema->var_size(normalized))
     return LOG_STATUS(Status::QueryError(
-        std::string("Cannot get buffer; Attribute '") + normalized +
-        "' is var-sized"));
+        std::string("Cannot get buffer; '") + normalized + "' is var-sized"));
 
   if (type_ == QueryType::WRITE)
     return writer_.get_buffer(normalized, buffer, buffer_size);
   return reader_.get_buffer(normalized, buffer, buffer_size);
 }
 
+// TODO: fix normalized for coords
 Status Query::get_buffer(
-    const char* attribute,
+    const char* name,
     uint64_t** buffer_off,
     uint64_t** buffer_off_size,
     void** buffer_val,
     uint64_t** buffer_val_size) const {
   // Normalize attribute
   std::string normalized;
-  RETURN_NOT_OK(ArraySchema::attribute_name_normalized(attribute, &normalized));
+  RETURN_NOT_OK(ArraySchema::attribute_name_normalized(name, &normalized));
 
   // Check attribute
   auto array_schema = this->array_schema();
@@ -259,14 +260,14 @@ Status Query::get_buffer(
     return LOG_STATUS(
         Status::QueryError("Cannot get buffer; Coordinates are not var-sized"));
   }
-  if (array_schema->attribute(normalized) == nullptr)
+  if (array_schema->attribute(normalized) == nullptr &&
+      array_schema->dimension(normalized) == nullptr)
     return LOG_STATUS(Status::QueryError(
-        std::string("Cannot get buffer; Invalid attribute name '") +
+        std::string("Cannot get buffer; Invalid attribute/dimension name '") +
         normalized + "'"));
   if (!array_schema->var_size(normalized))
     return LOG_STATUS(Status::QueryError(
-        std::string("Cannot get buffer; Attribute '") + normalized +
-        "' is fixed-sized"));
+        std::string("Cannot get buffer; '") + normalized + "' is fixed-sized"));
 
   if (type_ == QueryType::WRITE)
     return writer_.get_buffer(

@@ -5,6 +5,7 @@
 ## Improvements
 
 * Added support for indicating zero-value metadata by returning `value_num` == 1 from the `_get_metadatata` and `Array::get_metadata` APIs [#1438](https://github.com/TileDB-Inc/TileDB/pull/1438) (this is a non-breaking change, as the documented return of `value == nullptr` to indicate missing keys does not change)`
+* User can set coordinate buffers separately for write queries.
 
 ## Deprecations
 
