@@ -910,7 +910,7 @@ class FragmentMetadata {
    */
   Status write_generic_tile_to_file(
       const EncryptionKey& encryption_key,
-      Buffer* buff,
+      Buffer&& buff,
       uint64_t* nbytes) const;
 
   /**

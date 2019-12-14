@@ -40,6 +40,7 @@
 #include "tiledb/sm/filter/filter.h"
 #include "tiledb/sm/filter/filter_buffer.h"
 #include "tiledb/sm/misc/status.h"
+#include "tiledb/sm/tile/chunked_buffer.h"
 
 namespace tiledb {
 namespace sm {
@@ -258,39 +259,28 @@ class FilterPipeline {
   uint32_t max_chunk_size_;
 
   /**
-   * Compute chunks of the given tile, used in the forward direction.
-   *
-   * @param tile Tile to compute chunks for
-   * @param chunks Output parameter storing the computed chunks
-   * @return Status
-   */
-  Status compute_tile_chunks(
-      Tile* tile, std::vector<std::pair<void*, uint32_t>>* chunks) const;
-
-  /**
    * Run the given list of chunks forward through the pipeline.
    *
-   * @param chunks Chunks to process
-   * @param output Buffer where output of last stage will be written.
+   * @param input chunked buffer to process.
+   * @param output buffer where output of the last stage
+   *    will be written.
    * @return Status
    */
   Status filter_chunks_forward(
-      const std::vector<std::pair<void*, uint32_t>>& chunks,
-      Buffer* output) const;
+      const ChunkedBuffer& input, Buffer* output) const;
 
   /**
    * Run the given list of chunks in reverse through the pipeline.
    *
-   * @param chunks Chunks to process. Format is
-   *    (data ptr, filtered size, original size, metadata size).
-   * @param output Buffer where output of last stage will be written.
+   * @param input Filtered chunk buffers to reverse.
+   * @param output Chunked buffer where output of the last stage
+   *    will be written.
    * @param config The global config.
    * @return Status
    */
   Status filter_chunks_reverse(
-      const std::vector<std::tuple<void*, uint32_t, uint32_t, uint32_t>>&
-          chunks,
-      Buffer* output,
+      const std::vector<std::tuple<void*, uint32_t, uint32_t, uint32_t>>& input,
+      ChunkedBuffer* output,
       const Config& config) const;
 };
 

@@ -113,30 +113,34 @@ Status TileIO::read_generic(
 
   RETURN_NOT_OK(configure_encryption_filter(&header, encryption_key));
 
+  const auto tile_data_offset =
+      GenericTileHeader::BASE_SIZE + header.filter_pipeline_size;
+
+  assert(tile);
   *tile = new Tile();
   RETURN_NOT_OK_ELSE(
-      (*tile)->init(
+      (*tile)->init_filtered(
           header.version_number,
           (Datatype)header.datatype,
           header.cell_size,
-          0,
-          true /* filtered */),
+          0),
       delete *tile);
 
-  auto tile_data_offset =
-      GenericTileHeader::BASE_SIZE + header.filter_pipeline_size;
-
   // Read the tile.
+  RETURN_NOT_OK_ELSE(
+      (*tile)->filtered_buffer()->realloc(header.persisted_size), delete *tile);
   RETURN_NOT_OK_ELSE(
       storage_manager_->read(
           uri_,
           file_offset + tile_data_offset,
-          (*tile)->buffer(),
+          (*tile)->filtered_buffer(),
           header.persisted_size),
       delete *tile);
 
-  // Filter
+  // Unfilter
+  assert((*tile)->filtered());
   RETURN_NOT_OK_ELSE(header.filters.run_reverse(*tile, config), delete *tile);
+  assert(!(*tile)->filtered());
 
   file_size_ = header.persisted_size;
   STATS_COUNTER_ADD(tileio_read_num_bytes_read, header.persisted_size);
@@ -199,11 +203,13 @@ Status TileIO::write_generic(
   RETURN_NOT_OK(init_generic_tile_header(tile, &header, encryption_key));
 
   // Filter tile
+  assert(!tile->filtered());
   RETURN_NOT_OK(header.filters.run_forward(tile));
-  header.persisted_size = tile->buffer()->size();
+  header.persisted_size = tile->filtered_buffer()->size();
+  assert(tile->filtered());
 
   RETURN_NOT_OK(write_generic_tile_header(&header));
-  RETURN_NOT_OK(storage_manager_->write(uri_, tile->buffer()));
+  RETURN_NOT_OK(storage_manager_->write(uri_, tile->filtered_buffer()));
 
   file_size_ = header.persisted_size;
   STATS_COUNTER_ADD(tileio_write_num_bytes_written, header.persisted_size);

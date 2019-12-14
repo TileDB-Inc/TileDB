@@ -31,7 +31,11 @@
  * This file implements the StorageManager class.
  */
 
-#include "tiledb/sm/storage_manager/storage_manager.h"
+#include <algorithm>
+#include <functional>
+#include <iostream>
+#include <sstream>
+
 #include "tiledb/sm/array/array.h"
 #include "tiledb/sm/array_schema/array_schema.h"
 #include "tiledb/sm/cache/lru_cache.h"
@@ -49,6 +53,7 @@
 #include "tiledb/sm/rest/rest_client.h"
 #include "tiledb/sm/storage_manager/consolidator.h"
 #include "tiledb/sm/storage_manager/open_array.h"
+#include "tiledb/sm/storage_manager/storage_manager.h"
 #include "tiledb/sm/tile/tile.h"
 #include "tiledb/sm/tile/tile_io.h"
 
@@ -374,7 +379,6 @@ Status StorageManager::array_open_for_writes(
   }
 
   // No fragment metadata to be loaded
-
   *array_schema = open_array->array_schema();
 
   // Unlock the array mutex
@@ -1454,27 +1458,27 @@ Status StorageManager::load_array_schema(
 
   URI schema_uri = array_uri.join_path(constants::array_schema_filename);
 
-  auto tile_io = new TileIO(this, schema_uri);
-  auto tile = (Tile*)nullptr;
+  TileIO tile_io(this, schema_uri);
+  Tile* tile = nullptr;
+  RETURN_NOT_OK(tile_io.read_generic(&tile, 0, encryption_key, config_));
+
+  auto chunked_buffer = tile->chunked_buffer();
+  Buffer buff;
+  buff.realloc(chunked_buffer->size());
+  buff.set_size(chunked_buffer->size());
   RETURN_NOT_OK_ELSE(
-      tile_io->read_generic(&tile, 0, encryption_key, config_), delete tile_io);
-  tile->disown_buff();
-  auto buff = tile->buffer();
+      chunked_buffer->read(buff.data(), buff.size(), 0), delete tile);
   delete tile;
-  delete tile_io;
 
   // Deserialize
-  auto cbuff = new ConstBuffer(buff);
+  ConstBuffer cbuff(&buff);
   *array_schema = new ArraySchema();
   (*array_schema)->set_array_uri(array_uri);
-  Status st = (*array_schema)->deserialize(cbuff);
-  delete cbuff;
+  Status st = (*array_schema)->deserialize(&cbuff);
   if (!st.ok()) {
     delete *array_schema;
     *array_schema = nullptr;
   }
-
-  delete buff;
 
   return st;
 }
@@ -1779,6 +1783,12 @@ Status StorageManager::read(
   return Status::Ok();
 }
 
+Status StorageManager::read(
+    const URI& uri, uint64_t offset, void* buffer, uint64_t nbytes) const {
+  RETURN_NOT_OK(vfs_->read(uri, offset, buffer, nbytes));
+  return Status::Ok();
+}
+
 ThreadPool* StorageManager::reader_thread_pool() {
   return &reader_thread_pool_;
 }
@@ -1800,33 +1810,35 @@ Status StorageManager::store_array_schema(
   URI schema_uri = array_uri.join_path(constants::array_schema_filename);
 
   // Serialize
-  auto buff = new Buffer();
-  RETURN_NOT_OK_ELSE(array_schema->serialize(buff), delete buff);
+  Buffer buff;
+  RETURN_NOT_OK(array_schema->serialize(&buff));
 
   // Delete file if it exists already
   bool exists;
   RETURN_NOT_OK(is_file(schema_uri, &exists));
   if (exists)
-    RETURN_NOT_OK_ELSE(vfs_->remove_file(schema_uri), delete buff);
+    RETURN_NOT_OK(vfs_->remove_file(schema_uri));
+
+  ChunkedBuffer chunked_buffer;
+  RETURN_NOT_OK(Tile::buffer_to_contigious_fixed_chunks(
+      buff, 0, constants::generic_tile_cell_size, &chunked_buffer));
+  buff.disown_data();
 
   // Write to file
-  buff->reset_offset();
-  auto tile = new Tile(
+  Tile tile(
       constants::generic_tile_datatype,
       constants::generic_tile_cell_size,
       0,
-      buff,
+      &chunked_buffer,
       false);
-  auto tile_io = new TileIO(this, schema_uri);
+  TileIO tile_io(this, schema_uri);
   uint64_t nbytes;
-  Status st = tile_io->write_generic(tile, encryption_key, &nbytes);
+  Status st = tile_io.write_generic(&tile, encryption_key, &nbytes);
   (void)nbytes;
   if (st.ok())
     st = close_file(schema_uri);
 
-  delete tile;
-  delete tile_io;
-  delete buff;
+  chunked_buffer.free();
 
   return st;
 }
@@ -1851,23 +1863,27 @@ Status StorageManager::store_array_metadata(
   URI array_metadata_uri;
   RETURN_NOT_OK(array_metadata->get_uri(array_uri, &array_metadata_uri));
 
-  // Write to file
-  metadata_buff.reset_offset();
-  auto tile = new Tile(
+  ChunkedBuffer* const chunked_buffer = new ChunkedBuffer();
+  RETURN_NOT_OK_ELSE(
+      Tile::buffer_to_contigious_fixed_chunks(
+          metadata_buff, 0, constants::generic_tile_cell_size, chunked_buffer),
+      delete chunked_buffer);
+  metadata_buff.disown_data();
+
+  Tile tile(
       constants::generic_tile_datatype,
       constants::generic_tile_cell_size,
       0,
-      &metadata_buff,
-      false);
-  auto tile_io = new TileIO(this, array_metadata_uri);
-  uint64_t nbytes;
-  Status st = tile_io->write_generic(tile, encryption_key, &nbytes);
-  (void)nbytes;
-  if (st.ok())
-    st = close_file(array_metadata_uri);
+      chunked_buffer,
+      true);
 
-  delete tile;
-  delete tile_io;
+  TileIO tile_io(this, array_metadata_uri);
+  uint64_t nbytes;
+  Status st = tile_io.write_generic(&tile, encryption_key, &nbytes);
+  (void)nbytes;
+  if (st.ok()) {
+    st = close_file(array_metadata_uri);
+  }
 
   return st;
 }
@@ -2062,9 +2078,18 @@ Status StorageManager::load_array_metadata(
       TileIO tile_io(this, uri);
       auto tile = (Tile*)nullptr;
       RETURN_NOT_OK(tile_io.read_generic(&tile, 0, encryption_key, config_));
-      tile->disown_buff();
-      auto buff = tile->buffer();
+
+      auto chunked_buffer = tile->chunked_buffer();
+      Buffer* const buff = new Buffer();
+      RETURN_NOT_OK(buff->realloc(chunked_buffer->size()));
+      buff->set_size(chunked_buffer->size());
+      RETURN_NOT_OK_ELSE(
+          chunked_buffer->read(buff->data(), buff->size(), 0), [&]() {
+            delete tile;
+            delete buff;
+          }());
       delete tile;
+
       metadata_buff = std::make_shared<ConstBuffer>(buff);
       open_array->insert_array_metadata(uri, metadata_buff);
     }
@@ -2159,9 +2184,14 @@ Status StorageManager::load_consolidated_fragment_meta(
     return Status::Ok();
 
   TileIO tile_io(this, uri);
-  auto tile = (Tile*)nullptr;
+  Tile* tile = nullptr;
   RETURN_NOT_OK(tile_io.read_generic(&tile, 0, enc_key, config_));
-  tile->buffer()->swap(*f_buff);
+
+  auto chunked_buffer = tile->chunked_buffer();
+  f_buff->realloc(chunked_buffer->size());
+  f_buff->set_size(chunked_buffer->size());
+  RETURN_NOT_OK_ELSE(
+      chunked_buffer->read(f_buff->data(), f_buff->size(), 0), delete tile);
   delete tile;
 
   uint32_t fragment_num;

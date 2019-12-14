@@ -59,6 +59,7 @@ namespace sm {
 class Array;
 class ArraySchema;
 class Buffer;
+class ChunkedBuffer;
 class Consolidator;
 class EncryptionKey;
 class FragmentMetadata;
@@ -770,6 +771,18 @@ class StorageManager {
    */
   Status read(
       const URI& uri, uint64_t offset, Buffer* buffer, uint64_t nbytes) const;
+
+  /**
+   * Reads from a file into the raw input buffer.
+   *
+   * @param uri The URI file to read from.
+   * @param offset The offset in the file the read will start from.
+   * @param buffer The buffer to write into.
+   * @param nbytes The number of bytes to read.
+   * @return Status.
+   */
+  Status read(
+      const URI& uri, uint64_t offset, void* buffer, uint64_t nbytes) const;
 
   /**
    * Sets a string/string KV "tag" on the storage manager instance.

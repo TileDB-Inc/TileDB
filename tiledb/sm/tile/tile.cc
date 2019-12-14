@@ -40,40 +40,108 @@ namespace tiledb {
 namespace sm {
 
 /* ****************************** */
+/*           STATIC API           */
+/* ****************************** */
+
+Status Tile::compute_chunk_size(
+    const uint64_t tile_size,
+    const uint32_t tile_dim_num,
+    const uint64_t tile_cell_size,
+    uint32_t* const chunk_size) {
+  const uint32_t dim_num = tile_dim_num > 0 ? tile_dim_num : 1;
+  const uint64_t dim_tile_size = tile_size / dim_num;
+  const uint64_t dim_cell_size = tile_cell_size / dim_num;
+
+  uint64_t chunk_size64 =
+      std::min(constants::max_tile_chunk_size, dim_tile_size);
+  chunk_size64 = chunk_size64 / dim_cell_size * dim_cell_size;
+  chunk_size64 = std::max(chunk_size64, dim_cell_size);
+  if (chunk_size64 > std::numeric_limits<uint32_t>::max()) {
+    return LOG_STATUS(Status::TileError("Chunk size exceeds uint32_t"));
+  }
+
+  *chunk_size = chunk_size64;
+  return Status::Ok();
+}
+
+Status Tile::buffer_to_contigious_fixed_chunks(
+    const Buffer& buffer,
+    const uint32_t tile_dim_num,
+    const uint64_t tile_cell_size,
+    ChunkedBuffer* chunked_buffer) {
+  return buffer_to_contigious_fixed_chunks(
+      buffer.data(),
+      buffer.size(),
+      tile_dim_num,
+      tile_cell_size,
+      chunked_buffer);
+}
+
+Status Tile::buffer_to_contigious_fixed_chunks(
+    void* buffer,
+    const uint64_t buffer_size,
+    const uint32_t tile_dim_num,
+    const uint64_t tile_cell_size,
+    ChunkedBuffer* chunked_buffer) {
+  // Calculate the chunk size for 'buff'.
+  uint32_t chunk_size;
+  RETURN_NOT_OK(compute_chunk_size(
+      buffer_size, tile_dim_num, tile_cell_size, &chunk_size));
+
+  // Initialize contigious, fixed size 'chunked_buffer_'.
+  RETURN_NOT_OK(chunked_buffer->init_fixed_size(
+      ChunkedBuffer::BufferAddressing::CONTIGIOUS, buffer_size, chunk_size));
+
+  RETURN_NOT_OK(chunked_buffer->set_contigious(buffer));
+  RETURN_NOT_OK(chunked_buffer->set_size(buffer_size));
+
+  return Status::Ok();
+}
+
+/* ****************************** */
 /*   CONSTRUCTORS & DESTRUCTORS   */
 /* ****************************** */
 
 Tile::Tile() {
-  buffer_ = nullptr;
+  chunked_buffer_ = nullptr;
+  offset_ = 0;
   cell_size_ = 0;
   dim_num_ = 0;
-  filtered_ = false;
-  owns_buff_ = true;
+  owns_chunked_buffer_ = true;
   pre_filtered_size_ = 0;
-  type_ = Datatype::INT32;
-}
-
-Tile::Tile(unsigned int dim_num)
-    : dim_num_(dim_num) {
-  buffer_ = nullptr;
-  cell_size_ = 0;
-  filtered_ = false;
-  owns_buff_ = true;
-  pre_filtered_size_ = 0;
+  format_version_ = 0;
   type_ = Datatype::INT32;
 }
 
 Tile::Tile(
-    Datatype type,
-    uint64_t cell_size,
-    unsigned int dim_num,
-    Buffer* buff,
-    bool owns_buff)
-    : buffer_(buff)
+    const Datatype type,
+    const uint64_t cell_size,
+    const unsigned int dim_num,
+    ChunkedBuffer* const chunked_buffer,
+    const bool owns_buff)
+    : chunked_buffer_(chunked_buffer)
+    , offset_(0)
     , cell_size_(cell_size)
     , dim_num_(dim_num)
-    , filtered_(false)
-    , owns_buff_(owns_buff)
+    , format_version_(0)
+    , owns_chunked_buffer_(owns_buff)
+    , pre_filtered_size_(0)
+    , type_(type) {
+}
+
+Tile::Tile(
+    const uint32_t format_version,
+    const Datatype type,
+    const uint64_t cell_size,
+    const unsigned int dim_num,
+    ChunkedBuffer* const chunked_buffer,
+    const bool owns_buff)
+    : chunked_buffer_(chunked_buffer)
+    , offset_(0)
+    , cell_size_(cell_size)
+    , dim_num_(dim_num)
+    , format_version_(format_version)
+    , owns_chunked_buffer_(owns_buff)
     , pre_filtered_size_(0)
     , type_(type) {
 }
@@ -93,16 +161,21 @@ Tile::Tile(Tile&& tile)
 }
 
 Tile::~Tile() {
-  if (owns_buff_)
-    delete buffer_;
+  if (owns_chunked_buffer_ && chunked_buffer_ != nullptr) {
+    chunked_buffer_->free();
+    delete chunked_buffer_;
+  }
 }
 
 Tile& Tile::operator=(const Tile& tile) {
   // Free existing buffer if owned.
-  if (owns_buff_) {
-    delete buffer_;
-    buffer_ = nullptr;
-    owns_buff_ = false;
+  if (owns_chunked_buffer_) {
+    if (chunked_buffer_) {
+      chunked_buffer_->free();
+      delete chunked_buffer_;
+      chunked_buffer_ = nullptr;
+    }
+    owns_chunked_buffer_ = false;
   }
 
   // Make a deep-copy clone
@@ -128,78 +201,79 @@ uint64_t Tile::cell_num() const {
   return size() / cell_size_;
 }
 
-Status Tile::init(
-    uint32_t format_version,
-    Datatype type,
-    uint64_t cell_size,
-    unsigned int dim_num,
-    bool filtered) {
-  cell_size_ = cell_size;
-  dim_num_ = dim_num;
-  type_ = type;
-  format_version_ = format_version;
-  filtered_ = filtered;
-
-  buffer_ = new Buffer();
-  if (buffer_ == nullptr)
-    return LOG_STATUS(
-        Status::TileError("Cannot initialize tile; Buffer allocation failed"));
-
-  return Status::Ok();
-}
-
-Status Tile::init(
+Status Tile::init_unfiltered(
     uint32_t format_version,
     Datatype type,
     uint64_t tile_size,
     uint64_t cell_size,
-    unsigned int dim_num,
-    bool filtered) {
+    unsigned int dim_num) {
   cell_size_ = cell_size;
   dim_num_ = dim_num;
   type_ = type;
   format_version_ = format_version;
-  filtered_ = filtered;
 
-  buffer_ = new Buffer();
-  if (buffer_ == nullptr)
-    return LOG_STATUS(
-        Status::TileError("Cannot initialize tile; Buffer allocation failed"));
-  RETURN_NOT_OK(buffer_->realloc(tile_size));
+  chunked_buffer_ = new ChunkedBuffer();
+  if (chunked_buffer_ == nullptr)
+    return LOG_STATUS(Status::TileError(
+        "Cannot initialize tile; ChunkedBuffer allocation failed"));
+
+  uint32_t chunk_size;
+  RETURN_NOT_OK(
+      compute_chunk_size(tile_size, dim_num, cell_size_, &chunk_size));
+  RETURN_NOT_OK(chunked_buffer_->init_fixed_size(
+      ChunkedBuffer::BufferAddressing::DISCRETE, tile_size, chunk_size));
+
+  return Status::Ok();
+}
+
+Status Tile::init_filtered(
+    uint32_t format_version,
+    Datatype type,
+    uint64_t cell_size,
+    unsigned int dim_num) {
+  cell_size_ = cell_size;
+  dim_num_ = dim_num;
+  type_ = type;
+  format_version_ = format_version;
+
+  chunked_buffer_ = new ChunkedBuffer();
+  if (chunked_buffer_ == nullptr)
+    return LOG_STATUS(Status::TileError(
+        "Cannot initialize tile; ChunkedBuffer allocation failed"));
 
   return Status::Ok();
 }
 
 void Tile::advance_offset(uint64_t nbytes) {
-  buffer_->advance_offset(nbytes);
+  offset_ += nbytes;
 }
 
-Buffer* Tile::buffer() const {
-  return buffer_;
+ChunkedBuffer* Tile::chunked_buffer() const {
+  return chunked_buffer_;
 }
 
 Tile Tile::clone(bool deep_copy) const {
   Tile clone;
   clone.cell_size_ = cell_size_;
   clone.dim_num_ = dim_num_;
-  clone.filtered_ = filtered_;
   clone.format_version_ = format_version_;
   clone.pre_filtered_size_ = pre_filtered_size_;
   clone.type_ = type_;
+  clone.offset_ = offset_;
+  clone.filtered_buffer_ = filtered_buffer_;
 
   if (deep_copy) {
-    clone.owns_buff_ = owns_buff_;
-    if (owns_buff_ && buffer_ != nullptr) {
-      clone.buffer_ = new Buffer();
-      // Calls Buffer copy-assign, which calls memcpy.
-      *clone.buffer_ = *buffer_;
+    clone.owns_chunked_buffer_ = owns_chunked_buffer_;
+    if (owns_chunked_buffer_ && chunked_buffer_ != nullptr) {
+      clone.chunked_buffer_ = new ChunkedBuffer();
+      // Calls ChunkedBuffer copy-assign, which performs a deep copy.
+      *clone.chunked_buffer_ = *chunked_buffer_;
     } else {
-      // this->buffer_ is either nullptr, or not owned. Just copy the pointer.
-      clone.buffer_ = buffer_;
+      clone.chunked_buffer_ = chunked_buffer_;
     }
   } else {
-    clone.owns_buff_ = false;
-    clone.buffer_ = buffer_;
+    clone.owns_chunked_buffer_ = false;
+    clone.chunked_buffer_ = chunked_buffer_;
   }
 
   return clone;
@@ -209,24 +283,30 @@ uint64_t Tile::cell_size() const {
   return cell_size_;
 }
 
-void* Tile::internal_data() const {
-  return buffer_->data();
-}
-
 unsigned int Tile::dim_num() const {
   return dim_num_;
 }
 
 void Tile::disown_buff() {
-  owns_buff_ = false;
+  owns_chunked_buffer_ = false;
+}
+
+bool Tile::owns_buff() const {
+  return owns_chunked_buffer_;
 }
 
 bool Tile::empty() const {
-  return (buffer_ == nullptr) || (buffer_->size() == 0);
+  assert(!filtered());
+  return (chunked_buffer_ == nullptr) || (chunked_buffer_->size() == 0);
 }
 
 bool Tile::filtered() const {
-  return filtered_;
+  assert(!(filtered_buffer_.alloced_size() > 0 && chunked_buffer_->size() > 0));
+  return filtered_buffer_.alloced_size() > 0;
+}
+
+Buffer* Tile::filtered_buffer() {
+  return &filtered_buffer_;
 }
 
 uint32_t Tile::format_version() const {
@@ -234,36 +314,30 @@ uint32_t Tile::format_version() const {
 }
 
 bool Tile::full() const {
-  return (buffer_->size() != 0) &&
-         (buffer_->offset() == buffer_->alloced_size());
+  assert(!filtered());
+  return !empty() && offset_ >= chunked_buffer_->capacity();
 }
 
 uint64_t Tile::offset() const {
-  return buffer_->offset();
+  return offset_;
 }
 
 uint64_t Tile::pre_filtered_size() const {
   return pre_filtered_size_;
 }
 
-Status Tile::realloc(uint64_t nbytes) {
-  return buffer_->realloc(nbytes);
-}
-
 Status Tile::read(void* buffer, uint64_t nbytes) {
-  RETURN_NOT_OK(buffer_->read(buffer, nbytes));
+  assert(!filtered());
+  RETURN_NOT_OK(chunked_buffer_->read(buffer, nbytes, offset_));
+  offset_ += nbytes;
 
   return Status::Ok();
 }
 
 Status Tile::read(
     void* const buffer, const uint64_t nbytes, const uint64_t offset) const {
-  if (nbytes + offset > buffer_->size()) {
-    return LOG_STATUS(
-        Status::TileError("Read failed; Trying to read beyond buffer size"));
-  }
-  std::memcpy(buffer, (char*)buffer_->data() + offset, nbytes);
-  return Status::Ok();
+  assert(!filtered());
+  return chunked_buffer_->read(buffer, nbytes, offset);
 }
 
 void Tile::reset() {
@@ -272,31 +346,25 @@ void Tile::reset() {
 }
 
 void Tile::reset_offset() {
-  buffer_->reset_offset();
+  offset_ = 0;
 }
 
 void Tile::reset_size() {
-  buffer_->reset_size();
-}
-
-void Tile::set_filtered(bool filtered) {
-  filtered_ = filtered;
+  assert(!filtered());
+  chunked_buffer_->set_size(0);
 }
 
 void Tile::set_offset(uint64_t offset) {
-  buffer_->set_offset(offset);
+  offset_ = offset;
 }
 
 void Tile::set_pre_filtered_size(uint64_t pre_filtered_size) {
   pre_filtered_size_ = pre_filtered_size;
 }
 
-void Tile::set_size(uint64_t size) {
-  buffer_->set_size(size);
-}
-
 uint64_t Tile::size() const {
-  return (buffer_ == nullptr) ? 0 : buffer_->size();
+  assert(!filtered());
+  return (chunked_buffer_ == nullptr) ? 0 : chunked_buffer_->size();
 }
 
 bool Tile::stores_coords() const {
@@ -308,48 +376,56 @@ Datatype Tile::type() const {
 }
 
 Status Tile::write(ConstBuffer* buf) {
-  buffer_->write(buf);
+  assert(!filtered());
+  RETURN_NOT_OK(chunked_buffer_->write(buf->cur_data(), buf->size(), offset_));
+  offset_ += buf->size();
 
   return Status::Ok();
 }
 
 Status Tile::write(ConstBuffer* buf, uint64_t nbytes) {
-  RETURN_NOT_OK(buffer_->write(buf, nbytes));
+  assert(!filtered());
+  RETURN_NOT_OK(chunked_buffer_->write(buf->cur_data(), nbytes, offset_));
+  offset_ += nbytes;
 
   return Status::Ok();
 }
 
 Status Tile::write(const void* data, uint64_t nbytes) {
-  return buffer_->write(data, nbytes);
-}
-
-Status Tile::write(const Tile& rhs) {
-  return buffer_->write(rhs.buffer_->data(), rhs.size());
-}
-
-Status Tile::write_with_shift(ConstBuffer* buf, uint64_t offset) {
-  buffer_->write_with_shift(buf, offset);
+  assert(!filtered());
+  RETURN_NOT_OK(chunked_buffer_->write(data, nbytes, offset_));
+  offset_ += nbytes;
 
   return Status::Ok();
 }
 
-void Tile::zip_coordinates() {
+Status Tile::zip_coordinates() {
   assert(dim_num_ > 0);
 
   // For easy reference
-  uint64_t tile_size = buffer_->size();
-  uint64_t coord_size = cell_size_ / dim_num_;
-  uint64_t cell_num = tile_size / cell_size_;
-  auto tile_c = (char*)buffer_->data();
-  uint64_t ptr = 0, ptr_tmp = 0;
+  const uint64_t tile_size = chunked_buffer_->size();
+  const uint64_t coord_size = cell_size_ / dim_num_;
+  const uint64_t cell_num = tile_size / cell_size_;
+
+  // Coordinate tiles are always contigiously allocated.
+  assert(
+      chunked_buffer_->buffer_addressing() ==
+      ChunkedBuffer::BufferAddressing::CONTIGIOUS);
+
+  // Fetch the internal, contigious buffer.
+  void* buffer;
+  RETURN_NOT_OK(chunked_buffer_->get_contigious(&buffer));
+  char* const tile_c = static_cast<char*>(buffer);
 
   // Create a tile clone
-  auto tile_tmp = (char*)std::malloc(tile_size);
+  char* const tile_tmp = static_cast<char*>(std::malloc(tile_size));
+  assert(tile_tmp);
   std::memcpy(tile_tmp, tile_c, tile_size);
 
   // Zip coordinates
+  uint64_t ptr_tmp = 0;
   for (unsigned int j = 0; j < dim_num_; ++j) {
-    ptr = j * coord_size;
+    uint64_t ptr = j * coord_size;
     for (uint64_t i = 0; i < cell_num; ++i) {
       std::memcpy(tile_c + ptr, tile_tmp + ptr_tmp, coord_size);
       ptr += cell_size_;
@@ -359,6 +435,8 @@ void Tile::zip_coordinates() {
 
   // Clean up
   std::free((void*)tile_tmp);
+
+  return Status::Ok();
 }
 
 /* ****************************** */
@@ -367,12 +445,13 @@ void Tile::zip_coordinates() {
 
 void Tile::swap(Tile& tile) {
   // Note swapping buffer pointers here.
-  std::swap(buffer_, tile.buffer_);
+  std::swap(filtered_buffer_, tile.filtered_buffer_);
+  std::swap(chunked_buffer_, tile.chunked_buffer_);
+  std::swap(offset_, tile.offset_);
   std::swap(cell_size_, tile.cell_size_);
   std::swap(dim_num_, tile.dim_num_);
-  std::swap(filtered_, tile.filtered_);
   std::swap(format_version_, tile.format_version_);
-  std::swap(owns_buff_, tile.owns_buff_);
+  std::swap(owns_chunked_buffer_, tile.owns_chunked_buffer_);
   std::swap(pre_filtered_size_, tile.pre_filtered_size_);
   std::swap(type_, tile.type_);
 }

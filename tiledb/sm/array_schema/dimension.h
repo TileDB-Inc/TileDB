@@ -234,20 +234,20 @@ class Dimension {
    * Computes the minimum bounding range of the values stored in
    * `tile`. Applicable only to fixed-size dimensions.
    */
-  void compute_mbr(const Tile& tile, Range* mbr) const;
+  Status compute_mbr(const Tile& tile, Range* mbr) const;
 
   /**
    * Computed the minimum bounding range of the values stored in
    * `tile`.
    */
   template <class T>
-  static void compute_mbr(const Tile& tile, Range* mbr);
+  static Status compute_mbr(const Tile& tile, Range* mbr);
 
   /**
    * Computes the minimum bounding range of the values stored in
    * `tile_val`. Applicable only to var-sized dimensions.
    */
-  void compute_mbr_var(
+  Status compute_mbr_var(
       const Tile& tile_off, const Tile& tile_val, Range* mbr) const;
 
   /**
@@ -255,7 +255,7 @@ class Dimension {
    * `tile_val`. Applicable only to var-sized dimensions.
    */
   template <class T>
-  static void compute_mbr_var(
+  static Status compute_mbr_var(
       const Tile& tile_off, const Tile& tile_val, Range* mbr);
 
   /**
@@ -508,13 +508,13 @@ class Dimension {
    * Stores the appropriate templated compute_mbr() function based on the
    * dimension datatype.
    */
-  std::function<void(const Tile&, Range*)> compute_mbr_func_;
+  std::function<Status(const Tile&, Range*)> compute_mbr_func_;
 
   /**
    * Stores the appropriate templated compute_mbr_var() function based on the
    * dimension datatype.
    */
-  std::function<void(const Tile&, const Tile&, Range*)> compute_mbr_var_func_;
+  std::function<Status(const Tile&, const Tile&, Range*)> compute_mbr_var_func_;
 
   /**
    * Stores the appropriate templated crop_range() function based on the
