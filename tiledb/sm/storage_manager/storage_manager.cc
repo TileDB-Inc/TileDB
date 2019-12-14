@@ -1088,13 +1088,13 @@ Status StorageManager::load_array_schema(
   auto tile = (Tile*)nullptr;
   RETURN_NOT_OK_ELSE(
       tile_io->read_generic(&tile, 0, encryption_key), delete tile_io);
-  tile->disown_buff();
-  auto buff = tile->buffer();
+  //tile->disown_buff();
+  Buffer buff(*tile->buffer2());
   delete tile;
   delete tile_io;
 
   // Deserialize
-  auto cbuff = new ConstBuffer(buff);
+  auto cbuff = new ConstBuffer(&buff);
   *array_schema = new ArraySchema();
   (*array_schema)->set_array_uri(array_uri);
   Status st = (*array_schema)->deserialize(cbuff);
@@ -1103,8 +1103,6 @@ Status StorageManager::load_array_schema(
     delete *array_schema;
     *array_schema = nullptr;
   }
-
-  delete buff;
 
   return st;
 }
@@ -1303,6 +1301,7 @@ Status StorageManager::object_iter_next_preorder(
 }
 
 Status StorageManager::query_submit(Query* query) {
+  std::cerr << "JOE StorageManager::query_submit 1" << std::endl;
   STATS_COUNTER_ADD_IF(
       query->type() == QueryType::READ, sm_query_submit_read, 1);
   STATS_COUNTER_ADD_IF(
@@ -1327,6 +1326,7 @@ Status StorageManager::query_submit(Query* query) {
 
   // Process the query
   QueryInProgress in_progress(this);
+  std::cerr << "JOE StorageManager::query_submit 2" << std::endl;
   auto st = query->process();
 
   return st;
@@ -1707,7 +1707,7 @@ Status StorageManager::load_array_metadata(
       auto tile = (Tile*)nullptr;
       RETURN_NOT_OK(tile_io.read_generic(&tile, 0, encryption_key));
       tile->disown_buff();
-      auto buff = tile->buffer();
+      Buffer* buff = new Buffer(*tile->buffer2());
       delete tile;
       metadata_buff = std::make_shared<ConstBuffer>(buff);
       open_array->insert_array_metadata(uri, metadata_buff);

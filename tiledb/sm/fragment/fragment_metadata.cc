@@ -67,22 +67,35 @@ FragmentMetadata::FragmentMetadata(
     , dense_(dense)
     , fragment_uri_(fragment_uri)
     , timestamp_range_(timestamp_range) {
+
+  std::cerr << "JOE FragmentMetadata 1" << std::endl;
+
   domain_ = nullptr;
   meta_file_size_ = 0;
   non_empty_domain_ = nullptr;
   version_ = constants::format_version;
   tile_index_base_ = 0;
   sparse_tile_num_ = 0;
+  std::cerr << "JOE FragmentMetadata 2" << std::endl;
   auto attributes = array_schema_->attributes();
+  std::cerr << "JOE FragmentMetadata 3" << std::endl;
   for (unsigned i = 0; i < attributes.size(); ++i) {
+    std::cerr << "JOE FragmentMetadata 4" << std::endl;
     auto attr_name = attributes[i]->name();
+    std::cerr << "JOE FragmentMetadata 5" << std::endl;
     attribute_idx_map_[attr_name] = i;
+    std::cerr << "JOE FragmentMetadata 5.1" << std::endl;
     attribute_uri_map_[attr_name] =
         fragment_uri_.join_path(attr_name + constants::file_suffix);
-    if (attributes[i]->var_size())
+    std::cerr << "JOE FragmentMetadata 6" << std::endl;
+    if (attributes[i]->var_size()) {
+      std::cerr << "JOE FragmentMetadata 7" << std::endl;
       attribute_var_uri_map_[attr_name] =
           fragment_uri_.join_path(attr_name + "_var" + constants::file_suffix);
+      std::cerr << "JOE FragmentMetadata 8" << std::endl;
+    }
   }
+  std::cerr << "JOE FragmentMetadata 4" << std::endl;
   attribute_idx_map_[constants::coords] = array_schema_->attribute_num();
   attribute_uri_map_[constants::coords] =
       fragment_uri_.join_path(constants::coords + constants::file_suffix);
@@ -1430,13 +1443,13 @@ Status FragmentMetadata::load_v2(const EncryptionKey& encryption_key) {
   TileIO tile_io(storage_manager_, fragment_metadata_uri);
   auto tile = (Tile*)nullptr;
   RETURN_NOT_OK(tile_io.read_generic(&tile, 0, encryption_key));
-  tile->disown_buff();
-  auto buff = tile->buffer();
+  //tile->disown_buff();
+  Buffer buff(*tile->buffer2());
   STATS_COUNTER_ADD(fragment_metadata_bytes_read, tile_io.file_size());
   delete tile;
 
   // Deserialize
-  ConstBuffer cbuff(buff);
+  ConstBuffer cbuff(&buff);
   RETURN_NOT_OK(load_version(&cbuff));
   RETURN_NOT_OK(load_non_empty_domain(&cbuff));
   RETURN_NOT_OK(load_mbrs(&cbuff));
@@ -1448,8 +1461,6 @@ Status FragmentMetadata::load_v2(const EncryptionKey& encryption_key) {
   RETURN_NOT_OK(load_file_sizes(&cbuff));
   RETURN_NOT_OK(load_file_var_sizes(&cbuff));
   RETURN_NOT_OK(create_rtree());
-
-  delete buff;
 
   return Status::Ok();
 }
@@ -1687,7 +1698,7 @@ Status FragmentMetadata::read_generic_tile_from_file(
   TileIO tile_io(storage_manager_, fragment_metadata_uri);
   auto tile = (Tile*)nullptr;
   RETURN_NOT_OK(tile_io.read_generic(&tile, offset, encryption_key));
-  tile->buffer()->swap(*buff);
+  tile->buffer2()->swap(*buff);
   delete tile;
 
   return Status::Ok();

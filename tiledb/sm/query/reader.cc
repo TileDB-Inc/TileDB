@@ -1569,7 +1569,7 @@ Status Reader::filter_tiles(
       // Decompress, etc.
       RETURN_NOT_OK(filter_tile(attribute, &t, var_size));
       RETURN_NOT_OK(storage_manager_->write_to_cache(
-          tile_attr_uri, tile_attr_offset, t.buffer()));
+          tile_attr_uri, tile_attr_offset, t.buffer2()));
     }
 
     if (var_size && !t_var.filtered()) {
@@ -1581,7 +1581,7 @@ Status Reader::filter_tiles(
       // Decompress, etc.
       RETURN_NOT_OK(filter_tile(attribute, &t_var, false));
       RETURN_NOT_OK(storage_manager_->write_to_cache(
-          tile_attr_var_uri, tile_attr_var_offset, t_var.buffer()));
+          tile_attr_var_uri, tile_attr_var_offset, t_var.buffer2()));
     }
 
     return Status::Ok();
@@ -1597,7 +1597,7 @@ Status Reader::filter_tiles(
 
 Status Reader::filter_tile(
     const std::string& attribute, Tile* tile, bool offsets) const {
-  uint64_t orig_size = tile->buffer()->size();
+  uint64_t orig_size = tile->buffer2()->size();
 
   // Get a copy of the appropriate filter pipeline.
   FilterPipeline filters;
@@ -1801,17 +1801,17 @@ Status Reader::read_tiles(
     // Try the cache first.
     bool cache_hit;
     RETURN_NOT_OK(storage_manager_->read_from_cache(
-        tile_attr_uri, tile_attr_offset, t.buffer(), tile_size, &cache_hit));
+        tile_attr_uri, tile_attr_offset, t.buffer2(), tile_size, &cache_hit));
     if (cache_hit) {
       t.set_filtered(true);
       STATS_COUNTER_ADD(reader_attr_tile_cache_hits, 1);
     } else {
       // Add the region of the fragment to be read.
-      RETURN_NOT_OK(t.buffer()->realloc(tile_persisted_size));
-      t.buffer()->set_size(tile_persisted_size);
-      t.buffer()->reset_offset();
+      RETURN_NOT_OK(t.buffer2()->realloc(tile_persisted_size));
+      t.buffer2()->set_size(tile_persisted_size);
+      t.buffer2()->reset_offset();
       all_regions[tile_attr_uri].emplace_back(
-          tile_attr_offset, t.buffer()->data(), tile_persisted_size);
+          tile_attr_offset, t.buffer2()->data(), tile_persisted_size);
 
       STATS_COUNTER_ADD(reader_num_tile_bytes_read, tile_persisted_size);
     }
@@ -1834,7 +1834,7 @@ Status Reader::read_tiles(
       RETURN_NOT_OK(storage_manager_->read_from_cache(
           tile_attr_var_uri,
           tile_attr_var_offset,
-          t_var.buffer(),
+          t_var.buffer2(),
           tile_var_size,
           &cache_hit));
 
@@ -1843,12 +1843,12 @@ Status Reader::read_tiles(
         STATS_COUNTER_ADD(reader_attr_tile_cache_hits, 1);
       } else {
         // Add the region of the fragment to be read.
-        RETURN_NOT_OK(t_var.buffer()->realloc(tile_var_persisted_size));
-        t_var.buffer()->set_size(tile_var_persisted_size);
-        t_var.buffer()->reset_offset();
+        RETURN_NOT_OK(t_var.buffer2()->realloc(tile_var_persisted_size));
+        t_var.buffer2()->set_size(tile_var_persisted_size);
+        t_var.buffer2()->reset_offset();
         all_regions[tile_attr_var_uri].emplace_back(
             tile_attr_var_offset,
-            t_var.buffer()->data(),
+            t_var.buffer2()->data(),
             tile_var_persisted_size);
 
         STATS_COUNTER_ADD(reader_num_tile_bytes_read, tile_var_persisted_size);

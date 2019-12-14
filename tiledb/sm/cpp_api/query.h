@@ -1004,6 +1004,9 @@ class Query {
       void* buff,
       uint64_t nelements,
       size_t element_size) {
+
+    std::cerr << "JOE CPPAPI set_buffer" << std::endl;
+
     auto ctx = ctx_.get();
     size_t size = nelements * element_size;
     buff_sizes_[attr] = std::pair<uint64_t, uint64_t>(0, size);

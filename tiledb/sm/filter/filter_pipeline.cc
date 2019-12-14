@@ -85,6 +85,7 @@ void FilterPipeline::clear() {
   filters_.clear();
 }
 
+// TODO: remove
 Status FilterPipeline::compute_tile_chunks(
     Tile* tile, std::vector<std::pair<void*, uint32_t>>* chunks) const {
   // For coordinate tiles, we treat each dimension separately (chunks won't
@@ -129,15 +130,18 @@ const Tile* FilterPipeline::current_tile() const {
 }
 
 Status FilterPipeline::filter_chunks_forward(
-    const std::vector<std::pair<void*, uint32_t>>& chunks,
-    Buffer* output) const {
+    const ChunkBuffers& input,
+    ChunkBuffers* output) const {
+
+  assert(output);
+
   // Vector storing the input and output of the final pipeline stage for each
   // chunk.
   std::vector<std::pair<FilterBufferPair, FilterBufferPair>> final_stage_io(
-      chunks.size());
+      input.nchunks());
 
   // Run each chunk through the entire pipeline.
-  auto statuses = parallel_for(0, chunks.size(), [&](uint64_t i) {
+  auto statuses = parallel_for(0, input.nchunks(), [&](uint64_t i) {
     // TODO(ttd): can we instead allocate one FilterStorage per thread?
     // or make it threadsafe?
     FilterStorage storage;
@@ -145,8 +149,11 @@ Status FilterPipeline::filter_chunks_forward(
     FilterBuffer input_metadata(&storage), output_metadata(&storage);
 
     // First filter's input is the original chunk.
-    const auto& chunk_input = chunks[i];
-    RETURN_NOT_OK(input_data.init(chunk_input.first, chunk_input.second));
+    void *chunk_buffer;
+    RETURN_NOT_OK(input.internal_buffer(i, &chunk_buffer));
+    uint32_t chunk_buffer_size;
+    RETURN_NOT_OK(input.internal_buffer_size(i, &chunk_buffer_size));
+    RETURN_NOT_OK(input_data.init(chunk_buffer, chunk_buffer_size));
 
     // Apply the filters sequentially.
     for (auto it = filters_.begin(), ite = filters_.end(); it != ite; ++it) {
@@ -191,10 +198,9 @@ Status FilterPipeline::filter_chunks_forward(
   for (auto st : statuses)
     RETURN_NOT_OK(st);
 
-  // Compute the destination offset of each processed chunk in the final output
-  // buffer.
-  uint64_t offset = output->offset();
   uint64_t total_processed_size = 0;
+  std::vector<uint32_t> var_chunk_sizes(final_stage_io.size());
+  uint64_t offset = 0;
   std::vector<uint64_t> offsets(final_stage_io.size());
   for (uint64_t i = 0; i < final_stage_io.size(); i++) {
     auto& final_stage_output_metadata = final_stage_io[i].first.first;
@@ -208,23 +214,26 @@ Status FilterPipeline::filter_chunks_forward(
           "Filter error; filtered chunk size exceeds uint32_t"));
 
     // Leave space for the chunk sizes and the data itself.
-    auto space_required = 3 * sizeof(uint32_t) +
-                          final_stage_output_data.size() +
-                          final_stage_output_metadata.size();
+    const uint32_t space_required =
+      3 * sizeof(uint32_t) +
+      final_stage_output_data.size() +
+      final_stage_output_metadata.size();
+    total_processed_size += space_required;
+    var_chunk_sizes[i] = space_required;
     offsets[i] = offset;
     offset += space_required;
-    total_processed_size += space_required;
   }
 
-  // Concatenate all processed chunks into the final output buffer.
-  RETURN_NOT_OK(output->realloc(output->size() + total_processed_size));
+  Buffer output_buffer;
+  RETURN_NOT_OK(output_buffer.realloc(total_processed_size));
   statuses = parallel_for(0, final_stage_io.size(), [&](uint64_t i) {
     auto& final_stage_output_metadata = final_stage_io[i].first.first;
     auto& final_stage_output_data = final_stage_io[i].first.second;
     auto filtered_size = (uint32_t)final_stage_output_data.size();
-    auto orig_chunk_size = chunks[i].second;
+    uint32_t orig_chunk_size;
+    RETURN_NOT_OK(input.internal_buffer_size(i, &orig_chunk_size));
     auto metadata_size = (uint32_t)final_stage_output_metadata.size();
-    void* dest = output->data(offsets[i]);
+    void* dest = output_buffer.data(offsets[i]);
     uint64_t dest_offset = 0;
 
     // Write the original (unfiltered) chunk size
@@ -249,32 +258,80 @@ Status FilterPipeline::filter_chunks_forward(
   for (auto st : statuses)
     RETURN_NOT_OK(st);
 
-  // Ensure the final size is set to the concatenated size.
-  output->advance_offset(total_processed_size);
-  output->advance_size(total_processed_size);
+  // TODO: do we necessarily need to use a contigious buffer here?
+
+  // Slice the contigious 'output_buffer' into variable-sized chunks.
+  output_buffer.disown_data();
+  auto st = Tile::buffer_to_contigious_var_chunks(
+    output_buffer.data(), std::move(var_chunk_sizes), output);
+  if (!st.ok()) {
+    free(output_buffer.data());
+    output->clear();
+  }
 
   return Status::Ok();
 }
 
 Status FilterPipeline::filter_chunks_reverse(
-    const std::vector<std::tuple<void*, uint32_t, uint32_t, uint32_t>>& chunks,
-    Buffer* output) const {
-  // Precompute the offsets for the final chunks in the shared output buffer.
-  std::vector<uint64_t> chunk_dest_offsets(chunks.size());
-  uint64_t chunk_dest_offset = 0;
-  for (uint64_t i = 0; i < chunks.size(); i++) {
-    chunk_dest_offsets[i] = chunk_dest_offset;
-    chunk_dest_offset += std::get<2>(chunks[i]);
+    const ChunkBuffers& input,
+    ChunkBuffers* output) const {
+
+  assert(output);
+
+  int64_t chunk_size = 0;
+  int64_t last_chunk_size = 0;
+  std::vector<uint32_t> chunk_sizes(input.nchunks());
+  for (size_t i = 0; i < input.nchunks(); ++i) {
+    void *chunk_input;
+    RETURN_NOT_OK(input.internal_buffer(i, &chunk_input));
+    const uint32_t orig_chunk_len =
+      *reinterpret_cast<uint32_t*>(chunk_input);
+    chunk_sizes[i] = orig_chunk_len;
+
+    std::cerr << "JOE orig_chunk_len: " << orig_chunk_len << std::endl;
+
+    if (i == 0) {
+      chunk_size = orig_chunk_len;
+      last_chunk_size = orig_chunk_len;
+    } else if (i == input.nchunks() - 1) {
+      last_chunk_size = orig_chunk_len;
+    } else if (orig_chunk_len != chunk_size) {
+      chunk_size = -1;
+    }
+  }
+
+  std::cerr << "JOE1 output->size(): " << output->size() << std::endl;
+
+  // Initialize the output chunk buffers.
+  if (chunk_size == -1) {
+    RETURN_NOT_OK(output->init_var_size(false, std::move(chunk_sizes)));
+    std::cerr << "JOE2 output->size(): " << output->size() << std::endl;
+  } else {
+    const uint64_t total_size =
+      (chunk_size * (chunk_sizes.size() - 1)) + last_chunk_size;
+    RETURN_NOT_OK(output->init_fixed_size(false, total_size, chunk_size));
+    std::cerr << "JOE3 output->size(): " << output->size() << std::endl;
   }
 
   // Run each chunk through the entire pipeline.
-  auto statuses = parallel_for(0, chunks.size(), [&](uint64_t i) {
-    const auto& chunk_input = chunks[i];
-    uint32_t filtered_chunk_len = std::get<1>(chunk_input);
-    uint32_t orig_chunk_len = std::get<2>(chunk_input);
-    uint32_t metadata_len = std::get<3>(chunk_input);
-    void* metadata = std::get<0>(chunk_input);
-    void* chunk_data = (char*)metadata + metadata_len;
+  auto statuses = parallel_for(0, input.nchunks(), [&](uint64_t i) {
+    void *chunk_input;
+    RETURN_NOT_OK(input.internal_buffer(i, &chunk_input));
+
+    uint64_t offset = 0;
+    const uint32_t orig_chunk_len =
+      *reinterpret_cast<uint32_t*>(static_cast<char*>(chunk_input) + offset);
+    offset += sizeof(uint32_t);
+    const uint32_t filtered_chunk_len =
+      *reinterpret_cast<uint32_t*>(static_cast<char*>(chunk_input) + offset);
+    offset += sizeof(uint32_t);
+    const uint32_t metadata_len =
+      *reinterpret_cast<uint32_t*>(static_cast<char*>(chunk_input) + offset);
+    offset += sizeof(uint32_t);
+    void *const metadata =
+      static_cast<void*>(static_cast<char*>(chunk_input) + offset);
+    void *const chunk_data =
+      static_cast<void*>(static_cast<char*>(metadata) + metadata_len);
 
     // TODO(ttd): can we instead allocate one FilterStorage per thread?
     // or make it threadsafe?
@@ -288,7 +345,9 @@ Status FilterPipeline::filter_chunks_reverse(
 
     // If the pipeline is empty, just copy input to output.
     if (filters_.empty()) {
-      RETURN_NOT_OK(input_data.copy_to(output->data(chunk_dest_offsets[i])));
+      void *output_chunk_buffer;
+      RETURN_NOT_OK(output->alloc_discrete(i, &output_chunk_buffer));
+      RETURN_NOT_OK(input_data.copy_to(output_chunk_buffer));
       return Status::Ok();
     }
 
@@ -309,8 +368,9 @@ Status FilterPipeline::filter_chunks_reverse(
       // Final filter: output directly into the shared output buffer.
       bool last_filter = filter_idx == 0;
       if (last_filter) {
-        void* dest = output->data(chunk_dest_offsets[i]);
-        RETURN_NOT_OK(output_data.set_fixed_allocation(dest, orig_chunk_len));
+        void *output_chunk_buffer;
+        RETURN_NOT_OK(output->alloc_discrete(i, &output_chunk_buffer));
+        RETURN_NOT_OK(output_data.set_fixed_allocation(output_chunk_buffer, orig_chunk_len));
       }
 
       RETURN_NOT_OK(f->run_reverse(
@@ -333,10 +393,6 @@ Status FilterPipeline::filter_chunks_reverse(
   for (auto st : statuses)
     RETURN_NOT_OK(st);
 
-  // Ensure the final size is set to the sum of unfiltered chunk sizes.
-  output->set_offset(chunk_dest_offset);
-  output->set_size(chunk_dest_offset);
-
   return Status::Ok();
 }
 
@@ -356,24 +412,26 @@ Status FilterPipeline::run_forward(Tile* tile) const {
 
   current_tile_ = tile;
 
-  // Compute the chunks.
-  std::vector<std::pair<void*, uint32_t>> chunks;
-  RETURN_NOT_OK(compute_tile_chunks(tile, &chunks));
-  uint64_t num_chunks = chunks.size();
-  if (num_chunks == 0)
-    return Status::FilterError("Filter error; tile has 0 chunks.");
+  // Run the filters over all the chunks and store the result in
+  // 'filtered_buffer_chunks'.
+  ChunkBuffers filtered_chunk_buffers;
+  const Status st = filter_chunks_forward(
+    *tile->chunk_buffers(), &filtered_chunk_buffers);
+  if (!st.ok()) {
+    filtered_chunk_buffers.free();
+    return st;
+  }
 
-  // Allocate a buffer to hold the end result (the concatentated, filtered
-  // chunks), and write the number of chunks.
-  Buffer filtered_tile;
-  filtered_tile.realloc(tile->buffer()->size());
-  RETURN_NOT_OK(filtered_tile.write(&num_chunks, sizeof(uint64_t)));
-
-  // Run the filters over all the chunks into the filtered_tile buffer.
-  RETURN_NOT_OK(filter_chunks_forward(chunks, &filtered_tile));
+  std::cerr << "JOE FilterPipeline::run_forward 2: filtered_chunk_buffers.size() "
+    << filtered_chunk_buffers.size() << std::endl;
 
   // Replace the tile's buffer with the filtered buffer.
-  RETURN_NOT_OK(tile->buffer()->swap(filtered_tile));
+  tile->chunk_buffers()->swap(&filtered_chunk_buffers);
+
+  // Now that we've swapped 'filtered_chunk_buffers' into the tile,
+  // we can safely free 'filtered_chunk_buffers' which now contains
+  // the unfiltered chunk buffers.
+  filtered_chunk_buffers.free();
 
   return Status::Ok();
 
@@ -383,46 +441,28 @@ Status FilterPipeline::run_forward(Tile* tile) const {
 Status FilterPipeline::run_reverse(Tile* tile) const {
   STATS_FUNC_IN(filter_pipeline_run_reverse);
 
-  auto tile_buff = tile->buffer();
-  if (tile_buff == nullptr)
+  ChunkBuffers *const chunk_buffers = tile->chunk_buffers();
+  if (chunk_buffers == nullptr)
     return LOG_STATUS(
         Status::FilterError("Filter error; tile has null buffer."));
 
-  current_tile_ = tile;
-
-  // First make a pass over the tile to get the chunk information.
-  tile_buff->reset_offset();
-  uint64_t num_chunks;
-  RETURN_NOT_OK(tile_buff->read(&num_chunks, sizeof(uint64_t)));
-  std::vector<std::tuple<void*, uint32_t, uint32_t, uint32_t>> chunks(
-      num_chunks);
-  uint64_t total_orig_size = 0;
-  for (uint64_t i = 0; i < num_chunks; i++) {
-    uint32_t filtered_chunk_size, orig_chunk_size, metadata_size;
-    RETURN_NOT_OK(tile_buff->read(&orig_chunk_size, sizeof(uint32_t)));
-    RETURN_NOT_OK(tile_buff->read(&filtered_chunk_size, sizeof(uint32_t)));
-    RETURN_NOT_OK(tile_buff->read(&metadata_size, sizeof(uint32_t)));
-    chunks[i] = std::make_tuple(
-        tile_buff->cur_data(),
-        filtered_chunk_size,
-        orig_chunk_size,
-        metadata_size);
-    tile_buff->advance_offset(metadata_size + filtered_chunk_size);
-    total_orig_size += orig_chunk_size;
+  // Run the filters in reverse over all the chunks and store the
+  // result in 'filtered_buffer_chunks'.
+  ChunkBuffers unfiltered_chunk_buffers;
+  const Status st = filter_chunks_reverse(
+    *chunk_buffers, &unfiltered_chunk_buffers);
+  if (!st.ok()) {
+    unfiltered_chunk_buffers.free();
+    return st;
   }
-  assert(tile_buff->offset() == tile_buff->size());
-
-  // Allocate a buffer to hold the end result (the assembled, unfiltered
-  // chunks).
-  Buffer unfiltered_tile;
-  RETURN_NOT_OK(unfiltered_tile.realloc(total_orig_size));
-
-  // Run the filters in reverse over all the chunks into the unfiltered_tile
-  // buffer.
-  RETURN_NOT_OK(filter_chunks_reverse(chunks, &unfiltered_tile));
 
   // Replace the tile's buffer with the unfiltered buffer.
-  RETURN_NOT_OK(tile->buffer()->swap(unfiltered_tile));
+  tile->chunk_buffers()->swap(&unfiltered_chunk_buffers);
+
+  // Now that we've swapped 'unfiltered_chunk_buffers' into the tile,
+  // we can safely free 'unfiltered_chunk_buffers' which now contains
+  // the unfiltered chunk buffers.
+  unfiltered_chunk_buffers.free();
 
   // Zip the coords.
   if (tile->stores_coords()) {

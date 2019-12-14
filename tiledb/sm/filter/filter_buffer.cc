@@ -125,7 +125,7 @@ Status FilterBuffer::init(void* data, uint64_t nbytes) {
 
   std::shared_ptr<Buffer> buffer(new Buffer(data, nbytes));
   offset_ = 0;
-  buffers_.emplace_back(buffer);
+  buffers_.emplace_back(std::move(buffer));
   current_relative_offset_ = 0;
   current_buffer_ = --(buffers_.end());
   return Status::Ok();

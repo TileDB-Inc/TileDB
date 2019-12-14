@@ -272,10 +272,14 @@ void Writer::set_array_schema(const ArraySchema* array_schema) {
 
 Status Writer::set_buffer(
     const std::string& name, void* buffer, uint64_t* buffer_size) {
+  std::cerr << "JOE Writer::set_buffer 1" << std::endl;
+
   // Check buffer
   if (buffer == nullptr || buffer_size == nullptr)
     return LOG_STATUS(Status::WriterError(
         "Cannot set buffer; Buffer or buffer size is null"));
+
+  std::cerr << "JOE Writer::set_buffer 2" << std::endl;
 
   // Array schema must exist
   if (array_schema_ == nullptr)
@@ -284,17 +288,23 @@ Status Writer::set_buffer(
 
   // Invoke the appropriate fuinction based on the buffer name
   if (name == constants::coords) {
+    std::cerr << "JOE Writer::set_buffer 3" << std::endl;
     return set_coords_buffer(buffer, buffer_size);
   } else if (array_schema_->attribute(name) != nullptr) {
+    std::cerr << "JOE Writer::set_buffer 4" << std::endl;
     return set_attr_buffer(name, buffer, buffer_size);
   } else if (array_schema_->dimension(name) != nullptr) {
+    std::cerr << "JOE Writer::set_buffer 5" << std::endl;
     return set_coord_buffer(name, buffer, buffer_size);
   } else {
+    std::cerr << "JOE Writer::set_buffer 6" << std::endl;
     return LOG_STATUS(Status::WriterError(
         std::string("Cannot set buffer; Invalid buffer name '") + name +
         "' (it should "
         "be an attribute or dimension)"));
   }
+
+  std::cerr << "JOE Writer::set_buffer 7" << std::endl;
 
   return Status::Ok();
 }
@@ -305,6 +315,7 @@ Status Writer::set_buffer(
     uint64_t* buffer_off_size,
     void* buffer_val,
     uint64_t* buffer_val_size) {
+
   // Check buffer
   if (buffer_off == nullptr || buffer_off_size == nullptr ||
       buffer_val == nullptr || buffer_val_size == nullptr)
@@ -411,19 +422,28 @@ void* Writer::subarray() const {
 }
 
 Status Writer::write() {
+  std::cerr << "JOE Writer::write 1" << std::endl;
+
   STATS_FUNC_IN(writer_write);
 
   // In case the user has provided a coordinates buffer
   RETURN_NOT_OK(split_coords_buffer());
 
+  std::cerr << "JOE Writer::write 2" << std::endl;
+
   if (check_coord_oob_)
     RETURN_NOT_OK(check_coord_oob());
 
+  std::cerr << "JOE Writer::write 3" << std::endl;
+
   if (layout_ == Layout::COL_MAJOR || layout_ == Layout::ROW_MAJOR) {
+    std::cerr << "JOE Writer::write 4" << std::endl;
     RETURN_NOT_OK(ordered_write());
   } else if (layout_ == Layout::UNORDERED) {
+    std::cerr << "JOE Writer::write 5" << std::endl;
     RETURN_NOT_OK(unordered_write());
   } else if (layout_ == Layout::GLOBAL_ORDER) {
+    std::cerr << "JOE Writer::write 6" << std::endl;
     RETURN_NOT_OK(global_write());
   } else {
     assert(false);
@@ -1076,6 +1096,8 @@ Status Writer::create_fragment(
     bool dense, std::shared_ptr<FragmentMetadata>* frag_meta) const {
   STATS_FUNC_IN(writer_create_fragment);
 
+  std::cerr << "JOE create_fragment 1" << std::endl;
+
   URI uri;
   uint64_t timestamp = 0;
   if (!fragment_uri_.to_string().empty()) {
@@ -1085,11 +1107,15 @@ Status Writer::create_fragment(
     RETURN_NOT_OK(new_fragment_name(&new_fragment_str, &timestamp));
     uri = array_schema_->array_uri().join_path(new_fragment_str);
   }
+  std::cerr << "JOE create_fragment 2" << std::endl;
   auto timestamp_range = std::pair<uint64_t, uint64_t>(timestamp, timestamp);
+  std::cerr << "JOE create_fragment 3" << std::endl;
   *frag_meta = std::make_shared<FragmentMetadata>(
       storage_manager_, array_schema_, uri, timestamp_range, dense);
+  std::cerr << "JOE create_fragment 3.1" << std::endl;
 
   RETURN_NOT_OK((*frag_meta)->init(subarray_));
+  std::cerr << "JOE create_fragment 4" << std::endl;
   return storage_manager_->create_dir(uri);
 
   STATS_FUNC_OUT(writer_create_fragment);
@@ -1138,7 +1164,7 @@ Status Writer::filter_tiles(
 
 Status Writer::filter_tile(
     const std::string& attribute, Tile* tile, bool offsets) const {
-  auto orig_size = tile->buffer()->size();
+  auto orig_size = tile->buffer2()->size();
 
   // Get a copy of the appropriate filter pipeline.
   FilterPipeline filters;
@@ -1236,14 +1262,24 @@ Status Writer::finalize_global_write_state() {
 }
 
 Status Writer::global_write() {
+  std::cerr << "JOE Writer::global_write 1" << std::endl;
+
   // Applicable only to global write on dense/sparse arrays
   assert(layout_ == Layout::GLOBAL_ORDER);
 
+  std::cerr << "JOE Writer::global_write 1.1" << std::endl;
+
   // Initialize the global write state if this is the first invocation
-  if (!global_write_state_)
+  if (!global_write_state_) {
+    std::cerr << "JOE Writer::global_write 1.2" << std::endl;
     RETURN_CANCEL_OR_ERROR(init_global_write_state());
+  }
+  std::cerr << "JOE Writer::global_write 1.3" << std::endl;
   auto frag_meta = global_write_state_->frag_meta_.get();
+  std::cerr << "JOE Writer::global_write 1.4" << std::endl;
   auto uri = frag_meta->fragment_uri();
+
+  std::cerr << "JOE Writer::global_write 2" << std::endl;
 
   // Check for coordinate duplicates
   if (!coord_buffers_.empty()) {
@@ -1253,10 +1289,15 @@ Status Writer::global_write() {
       RETURN_CANCEL_OR_ERROR(check_global_order());
   }
 
+  std::cerr << "JOE Writer::global_write 3" << std::endl;
+
   // Retrieve coordinate duplicates
   std::set<uint64_t> coord_dups;
   if (dedup_coords_)
     RETURN_CANCEL_OR_ERROR(compute_coord_dups(&coord_dups));
+
+
+  std::cerr << "JOE Writer::global_write 4" << std::endl;
 
   std::unordered_map<std::string, std::vector<Tile>> coord_tiles;
   std::unordered_map<std::string, std::vector<Tile>> attr_tiles;
@@ -1274,6 +1315,8 @@ Status Writer::global_write() {
     return Status::Ok();
   });
 
+  std::cerr << "JOE Writer::global_write 6" << std::endl;
+
   // Check statuses
   for (auto& st : statuses)
     RETURN_NOT_OK(st);
@@ -1289,13 +1332,19 @@ Status Writer::global_write() {
     tile_num = coord_tiles[0].size();
   }
 
+  std::cerr << "JOE Writer::global_write 7" << std::endl;
+
   // No cells to be written
   if (tile_num == 0)
     return Status::Ok();
 
+  std::cerr << "JOE Writer::global_write 8" << std::endl;
+
   // Set new number of tiles in the fragment metadata
   auto new_num_tiles = frag_meta->tile_index_base() + tile_num;
   frag_meta->set_num_tiles(new_num_tiles);
+
+  std::cerr << "JOE Writer::global_write 9" << std::endl;
 
   std::vector<Tile> coords_tiles;
   statuses = parallel_for(0, 2, [&](uint64_t i) {
@@ -1317,13 +1366,19 @@ Status Writer::global_write() {
     return Status::Ok();
   });
 
+  std::cerr << "JOE Writer::global_write 10" << std::endl;
+
   // Check statuses
   for (auto& st : statuses)
     RETURN_NOT_OK(st);
 
+  std::cerr << "JOE Writer::global_write 11" << std::endl;
+
   // Write tiles for all attributes
   RETURN_NOT_OK_ELSE(
       write_all_tiles(frag_meta, attr_tiles, coords_tiles), clean_up(uri));
+
+  std::cerr << "JOE Writer::global_write 12" << std::endl;
 
   // Increment the tile index base for the next global order write.
   frag_meta->set_tile_index_base(new_num_tiles);
@@ -1459,18 +1514,27 @@ bool Writer::all_last_tiles_empty() const {
 Status Writer::init_global_write_state() {
   STATS_FUNC_IN(writer_init_global_write_state);
 
+  std::cerr << "JOE Writer::init_global_write_state 1" << std::endl;
+
   // Create global array state object
   if (global_write_state_ != nullptr)
     return LOG_STATUS(Status::WriterError(
         "Cannot initialize global write state; State not properly finalized"));
   global_write_state_.reset(new GlobalWriteState);
 
+  std::cerr << "JOE Writer::init_global_write_state 2" << std::endl;
+
   bool has_coords = !coord_buffers_.empty();
+
+  std::cerr << "JOE Writer::init_global_write_state 3" << std::endl;
 
   // Create fragment
   RETURN_NOT_OK(
       create_fragment(!has_coords, &(global_write_state_->frag_meta_)));
+  std::cerr << "JOE Writer::init_global_write_state 3.1" << std::endl;
   auto uri = global_write_state_->frag_meta_->fragment_uri();
+
+  std::cerr << "JOE Writer::init_global_write_state 4" << std::endl;
 
   // Initialize global write state for coordinates
   if (has_coords) {
@@ -1492,27 +1556,41 @@ Status Writer::init_global_write_state() {
     }
   }
 
+  std::cerr << "JOE Writer::init_global_write_state 5" << std::endl;
+
   // Initialize global write state for attributes
   for (const auto& it : attr_buffers_) {
+    std::cerr << "JOE Writer::init_global_write_state 5.1" << std::endl;
     // Initialize last tiles
     const auto& attr = it.first;
+    std::cerr << "JOE Writer::init_global_write_state 5.2" << std::endl;
     auto last_tile_pair = std::pair<std::string, std::pair<Tile, Tile>>(
         attr, std::pair<Tile, Tile>(Tile(), Tile()));
+    std::cerr << "JOE Writer::init_global_write_state 5.2" << std::endl;
     auto it_ret = global_write_state_->last_attr_tiles_.emplace(last_tile_pair);
+    std::cerr << "JOE Writer::init_global_write_state 5.3" << std::endl;
 
     if (!array_schema_->var_size(attr)) {
+      std::cerr << "JOE Writer::init_global_write_state 5.4" << std::endl;
       auto& last_tile = it_ret.first->second.first;
+      std::cerr << "JOE Writer::init_global_write_state 5.5" << std::endl;
       RETURN_NOT_OK_ELSE(init_tile(attr, &last_tile), clean_up(uri));
+      std::cerr << "JOE Writer::init_global_write_state 5.6" << std::endl;
     } else {
+      std::cerr << "JOE Writer::init_global_write_state 5.7" << std::endl;
       auto& last_tile = it_ret.first->second.first;
       auto& last_tile_var = it_ret.first->second.second;
+      std::cerr << "JOE Writer::init_global_write_state 5.8" << std::endl;
       RETURN_NOT_OK_ELSE(
           init_tile(attr, &last_tile, &last_tile_var), clean_up(uri));
+      std::cerr << "JOE Writer::init_global_write_state 5.9" << std::endl;
     }
 
     // Initialize cells written
     global_write_state_->attr_cells_written_[attr] = 0;
   }
+
+  std::cerr << "JOE Writer::init_global_write_state 6" << std::endl;
 
   return Status::Ok();
 
@@ -2842,21 +2920,21 @@ Status Writer::write_tiles(
   // Write tiles
   auto tile_num = tiles.size();
   for (size_t i = 0, tile_id = 0; i < tile_num; ++i, ++tile_id) {
-    RETURN_NOT_OK(storage_manager_->write(attr_uri, tiles[i].buffer()));
-    frag_meta->set_tile_offset(attribute, tile_id, tiles[i].buffer()->size());
+    RETURN_NOT_OK(storage_manager_->write(attr_uri, tiles[i].buffer2()));
+    frag_meta->set_tile_offset(attribute, tile_id, tiles[i].buffer2()->size());
 
-    STATS_COUNTER_ADD(writer_num_bytes_written, tiles[i].buffer()->size());
+    STATS_COUNTER_ADD(writer_num_bytes_written, tiles[i].buffer2()->size());
 
     if (var_size) {
       ++i;
 
-      RETURN_NOT_OK(storage_manager_->write(attr_var_uri, tiles[i].buffer()));
+      RETURN_NOT_OK(storage_manager_->write(attr_var_uri, tiles[i].buffer2()));
       frag_meta->set_tile_var_offset(
-          attribute, tile_id, tiles[i].buffer()->size());
+          attribute, tile_id, tiles[i].buffer2()->size());
       frag_meta->set_tile_var_size(
           attribute, tile_id, tiles[i].pre_filtered_size());
 
-      STATS_COUNTER_ADD(writer_num_bytes_written, tiles[i].buffer()->size());
+      STATS_COUNTER_ADD(writer_num_bytes_written, tiles[i].buffer2()->size());
     }
   }
 

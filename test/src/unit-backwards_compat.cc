@@ -94,22 +94,40 @@ TEST_CASE(
 TEST_CASE(
     "Backwards compatibility: Test reading 1.4.0 array with non-split coords",
     "[backwards-compat][non-split-coords]") {
+
+  std::cerr << "JOE Backwards compatibility 1" << std::endl;
+
   Context ctx;
+  std::cerr << "JOE Backwards compatibility 2" << std::endl;
   std::string array_uri(arrays_dir + "/non_split_coords_v1_4_0");
+  std::cerr << "JOE Backwards compatibility 3" << std::endl;
   Array array(ctx, array_uri, TILEDB_READ);
+  std::cerr << "JOE Backwards compatibility 4" << std::endl;
   std::vector<int> subarray = {1, 4, 10, 10};
+  std::cerr << "JOE Backwards compatibility 5" << std::endl;
   auto max_el = array.max_buffer_elements(subarray);
+  std::cerr << "JOE Backwards compatibility 6" << std::endl;
   std::vector<int> a_read;
+  std::cerr << "JOE Backwards compatibility 7" << std::endl;
   a_read.resize(max_el["a"].second);
+  std::cerr << "JOE Backwards compatibility 8" << std::endl;
   std::vector<int> coords_read;
+  std::cerr << "JOE Backwards compatibility 9" << std::endl;
   coords_read.resize(max_el[TILEDB_COORDS].second);
 
+  std::cerr << "JOE Backwards compatibility 10" << std::endl;
   Query query_r(ctx, array);
-  query_r.set_subarray(subarray)
-      .set_layout(TILEDB_ROW_MAJOR)
-      .set_buffer("a", a_read)
-      .set_coordinates(coords_read);
+  std::cerr << "JOE Backwards compatibility 11" << std::endl;
+  query_r.set_subarray(subarray);
+  std::cerr << "JOE Backwards compatibility 11.1" << std::endl;
+  query_r.set_layout(TILEDB_ROW_MAJOR);
+  std::cerr << "JOE Backwards compatibility 11.2" << std::endl;
+  query_r.set_buffer("a", a_read);
+  std::cerr << "JOE Backwards compatibility 11.3" << std::endl;
+  query_r.set_coordinates(coords_read);
+  std::cerr << "JOE Backwards compatibility 12" << std::endl;
   query_r.submit();
+  std::cerr << "JOE Backwards compatibility 13" << std::endl;
   array.close();
 
   for (int i = 0; i < 4; i++)

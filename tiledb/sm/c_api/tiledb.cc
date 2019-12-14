@@ -2474,6 +2474,9 @@ int32_t tiledb_query_set_buffer(
     const char* attribute,
     void* buffer,
     uint64_t* buffer_size) {
+
+  std::cerr << "JOE tiledb_query_set_buffer 1 " << std::endl;
+
   // Sanity check
   if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, query) == TILEDB_ERR)
     return TILEDB_ERR;
@@ -2487,9 +2490,17 @@ int32_t tiledb_query_set_buffer(
     return TILEDB_ERR;
 
   // Set attribute buffer
+  std::cerr << "JOE tiledb_query_set_buffer 2 " << std::endl;
+  std::cerr << "JOE " << ctx << std::endl;
+  std::cerr << "JOE " << query << std::endl;
+  std::cerr << "JOE " << query->query_ << std::endl;
+  std::cerr << "JOE " << buffer << std::endl;
+  std::cerr << "JOE " << buffer_size << std::endl;
   if (SAVE_ERROR_CATCH(
           ctx, query->query_->set_buffer(normalized_name, buffer, buffer_size)))
     return TILEDB_ERR;
+
+  std::cerr << "JOE tiledb_query_set_buffer 3 " << std::endl;
 
   return TILEDB_OK;
 }
@@ -2624,8 +2635,12 @@ int32_t tiledb_query_submit(tiledb_ctx_t* ctx, tiledb_query_t* query) {
   if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, query) == TILEDB_ERR)
     return TILEDB_ERR;
 
+  std::cerr << "JOE tiledb_query_submit 1" << std::endl;
+
   if (SAVE_ERROR_CATCH(ctx, query->query_->submit()))
     return TILEDB_ERR;
+
+  std::cerr << "JOE tiledb_query_submit 2" << std::endl;
 
   return TILEDB_OK;
 }
