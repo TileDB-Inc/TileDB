@@ -86,7 +86,7 @@ struct ResultCoords {
   }
 
   /** Mainly for debugging. */
-  void print() const {
+  void print(size_t dim_num) const {
     if (tile_ == nullptr) {
       std::cout << "null tile\n";
     } else {
@@ -95,8 +95,11 @@ struct ResultCoords {
     }
     std::cout << "pos: " << pos_ << "\n";
     std::cout << "valid: " << valid_ << "\n";
-    if (coords_ != nullptr)
-      std::cout << "first coord: " << coords_[0] << "\n";
+    if (coords_ != nullptr) {
+      for (size_t i = 0; i < dim_num; ++i) {
+        std::cout << "coord[" << i << "]: " << coords_[i] << "\n";
+      }
+    }
     if (tile_coords_ != nullptr)
       std::cout << "first tile coord: " << tile_coords_[0] << "\n";
   }

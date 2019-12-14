@@ -294,7 +294,7 @@ Status Posix::ls(
   while ((next_path = readdir(dir)) != nullptr) {
     if (!strcmp(next_path->d_name, ".") || !strcmp(next_path->d_name, ".."))
       continue;
-    auto abspath = path + "/" + next_path->d_name;
+    std::string abspath = path + "/" + next_path->d_name;
     paths->push_back(abspath);
   }
   // close parent directory

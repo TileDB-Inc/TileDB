@@ -664,29 +664,20 @@ void compute_mbr_union(
 
 template <class T>
 void expand_mbr(T* mbr, const T* coords, unsigned int dim_num) {
-  for (unsigned int i = 0; i < dim_num; ++i) {
-    // Update lower bound on dimension i
-    if (mbr[2 * i] > coords[i])
-      mbr[2 * i] = coords[i];
-
-    // Update upper bound on dimension i
-    if (mbr[2 * i + 1] < coords[i])
-      mbr[2 * i + 1] = coords[i];
+  for (unsigned int d = 0; d < dim_num; ++d) {
+    expand_mbr(d, coords[d], mbr);
   }
 }
 
 template <class T>
-void expand_mbr(const std::vector<T*>& coords, const uint64_t pos, T* mbr) {
-  auto dim_num = (unsigned)coords.size();
-  for (unsigned int d = 0; d < dim_num; ++d) {
-    // Update lower bound on dimension i
-    if (mbr[2 * d] > coords[d][pos])
-      mbr[2 * d] = coords[d][pos];
+void expand_mbr(const uint64_t d, const T coord, T* const mbr) {
+  // Update lower bound on dimension i
+  if (mbr[2 * d] > coord)
+    mbr[2 * d] = coord;
 
-    // Update upper bound on dimension i
-    if (mbr[2 * d + 1] < coords[d][pos])
-      mbr[2 * d + 1] = coords[d][pos];
-  }
+  // Update upper bound on dimension i
+  if (mbr[2 * d + 1] < coord)
+    mbr[2 * d + 1] = coord;
 }
 
 template <class T>
@@ -943,26 +934,16 @@ template void expand_mbr<uint32_t>(
 template void expand_mbr<uint64_t>(
     uint64_t* mbr, const uint64_t* coords, unsigned int dim_num);
 
-template void expand_mbr(
-    const std::vector<int8_t*>& coords, const uint64_t pos, int8_t* mbr);
-template void expand_mbr(
-    const std::vector<uint8_t*>& coords, const uint64_t pos, uint8_t* mbr);
-template void expand_mbr(
-    const std::vector<int16_t*>& coords, const uint64_t pos, int16_t* mbr);
-template void expand_mbr(
-    const std::vector<uint16_t*>& coords, const uint64_t pos, uint16_t* mbr);
-template void expand_mbr(
-    const std::vector<int32_t*>& coords, const uint64_t pos, int32_t* mbr);
-template void expand_mbr(
-    const std::vector<uint32_t*>& coords, const uint64_t pos, uint32_t* mbr);
-template void expand_mbr(
-    const std::vector<int64_t*>& coords, const uint64_t pos, int64_t* mbr);
-template void expand_mbr(
-    const std::vector<uint64_t*>& coords, const uint64_t pos, uint64_t* mbr);
-template void expand_mbr(
-    const std::vector<float*>& coords, const uint64_t pos, float* mbr);
-template void expand_mbr(
-    const std::vector<double*>& coords, const uint64_t pos, double* mbr);
+template void expand_mbr(uint64_t d, int8_t coord, int8_t* mbr);
+template void expand_mbr(uint64_t d, uint8_t coord, uint8_t* mbr);
+template void expand_mbr(uint64_t d, int16_t coord, int16_t* mbr);
+template void expand_mbr(uint64_t d, uint16_t coord, uint16_t* mbr);
+template void expand_mbr(uint64_t d, int32_t coord, int32_t* mbr);
+template void expand_mbr(uint64_t d, uint32_t coord, uint32_t* mbr);
+template void expand_mbr(uint64_t d, int64_t coord, int64_t* mbr);
+template void expand_mbr(uint64_t d, uint64_t coord, uint64_t* mbr);
+template void expand_mbr(uint64_t d, float coord, float* mbr);
+template void expand_mbr(uint64_t d, double coord, double* mbr);
 
 template void expand_mbr_with_mbr<int>(
     int* mbr_a, const int* mbr_b, unsigned int dim_num);

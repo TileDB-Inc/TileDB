@@ -114,26 +114,42 @@ Status TileIO::read_generic(
 
   RETURN_NOT_OK(configure_encryption_filter(&header, encryption_key));
 
-  *tile = new Tile();
-  RETURN_NOT_OK_ELSE(
-      (*tile)->init(
-          header.version_number,
-          (Datatype)header.datatype,
-          header.cell_size,
-          0),
-      delete *tile);
-
-  auto tile_data_offset =
+  const auto tile_data_offset =
       GenericTileHeader::BASE_SIZE + header.filter_pipeline_size;
 
-  // Read the tile.
+  // Read the number of chunks.
+  uint64_t nchunks;
+  RETURN_NOT_OK(storage_manager_->read(
+      uri_, file_offset + tile_data_offset, &nchunks, sizeof(uint64_t)));
+
+  // Read all filtered chunks into a single buffer, skipping the first 8 bytes
+  // to ignore the leading uint64_t that contains the number of chunks.
+  Buffer buffer;
+  RETURN_NOT_OK(storage_manager_->read(
+      uri_,
+      file_offset + tile_data_offset + sizeof(uint64_t),
+      &buffer,
+      header.persisted_size - sizeof(uint64_t)));
+
+  // Create a contigious chunked buffer to represent the filtered chunks,
+  // taking ownership the buffer's data.
+  ChunkedBuffer* const chunked_buffer = new ChunkedBuffer();
   RETURN_NOT_OK_ELSE(
-      storage_manager_->read(
-          uri_,
-          file_offset + tile_data_offset,
-          (*tile)->buffer(),
-          header.persisted_size),
-      delete *tile);
+      Tile::filtered_buffer_to_contigious_chunks(
+          buffer.data(), nchunks, chunked_buffer),
+      delete chunked_buffer);
+  buffer.disown_data();
+
+  // Instantiate a new tile with the chunked buffer. The tile will take
+  // ownership of the buffer.
+  assert(tile);
+  *tile = new Tile(
+      header.version_number,
+      (Datatype)header.datatype,
+      header.cell_size,
+      0,
+      chunked_buffer,
+      true);
 
   // Filter
   RETURN_NOT_OK_ELSE(header.filters.run_reverse(*tile), delete *tile);
@@ -198,12 +214,41 @@ Status TileIO::write_generic(
   GenericTileHeader header;
   RETURN_NOT_OK(init_generic_tile_header(tile, &header, encryption_key));
 
+  uint32_t todo_tmp_1;
+  RETURN_NOT_OK(tile->chunked_buffer()->internal_buffer_size(0, &todo_tmp_1));
+
   // Filter tile
   RETURN_NOT_OK(header.filters.run_forward(tile));
-  header.persisted_size = tile->buffer()->size();
+  header.persisted_size = sizeof(uint64_t) + tile->size();
 
   RETURN_NOT_OK(write_generic_tile_header(&header));
-  RETURN_NOT_OK(storage_manager_->write(uri_, tile->buffer()));
+
+  // Write the number of chunks.
+  // uint64_t nchunks =
+  // static_cast<uint64_t>(tile->chunked_buffer()->nchunks());
+  uint64_t populated_nchunks =
+      static_cast<uint64_t>(tile->chunked_buffer()->nchunks());
+  if (tile->chunked_buffer()->size() != tile->chunked_buffer()->capacity()) {
+    populated_nchunks = 0;
+    for (uint64_t i = 0; i < tile->chunked_buffer()->nchunks(); ++i) {
+      uint32_t chunk_buffer_size;
+      RETURN_NOT_OK(
+          tile->chunked_buffer()->internal_buffer_size(i, &chunk_buffer_size));
+      if (chunk_buffer_size == 0) {
+        break;
+      }
+      ++populated_nchunks;
+    }
+  }
+  RETURN_NOT_OK(
+      storage_manager_->write(uri_, &populated_nchunks, sizeof(uint64_t)));
+
+  // Write the filtered tile buffer. The chunked buffer is always contigious
+  // after invoking 'run_forward'.
+  void* tile_buffer;
+  RETURN_NOT_OK(tile->chunked_buffer()->get_contigious(&tile_buffer));
+  RETURN_NOT_OK(storage_manager_->write(
+      uri_, tile_buffer, tile->chunked_buffer()->size()));
 
   file_size_ = header.persisted_size;
   STATS_COUNTER_ADD(tileio_write_num_bytes_written, header.persisted_size);

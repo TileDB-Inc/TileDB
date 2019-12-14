@@ -502,6 +502,21 @@ class Writer {
       FragmentMetadata* meta) const;
 
   /**
+   * Expands the MBR for a vector of coordinate values.
+   *
+   * @tparam T The domain type.
+   * @param coords The coordinates vector.
+   * @param cell_num The number of cells.
+   * @param mbr The MBR to expand.
+   * @return Status
+   */
+  template <class T>
+  Status expand_mbr(
+      const std::vector<ChunkedBuffer*>& coords,
+      uint64_t cell_num,
+      T* mbr) const;
+
+  /**
    * Computes the cell ranges to be written, derived from a
    * dense cell range iterator for a specific tile.
    *

@@ -798,9 +798,10 @@ Status Array::compute_max_buffer_sizes(
   // First we calculate a rough upper bound. Especially for dense
   // arrays, this will not be accurate, as it accounts only for the
   // non-empty regions of the subarray.
-  for (auto& meta : fragment_metadata_)
+  for (auto& meta : fragment_metadata_) {
     RETURN_NOT_OK(meta->add_max_buffer_sizes(
         encryption_key_, subarray, max_buffer_sizes));
+  }
 
   // Rectify bound for dense arrays
   if (array_schema_->dense()) {

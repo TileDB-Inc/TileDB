@@ -37,6 +37,7 @@
 #include "tiledb/sm/buffer/buffer.h"
 #include "tiledb/sm/buffer/const_buffer.h"
 #include "tiledb/sm/misc/status.h"
+#include "tiledb/sm/tile/chunked_buffer.h"
 
 #include <cinttypes>
 
@@ -50,6 +51,96 @@ namespace sm {
  * offset in the file where the tile data begin, plus the tile size.
  */
 class Tile {
+ public:
+  /**
+   * Computes the chunk size for a tile.
+   *
+   * @param tile_size The total size of the tile.
+   * @param tile_dim_num The number of coordinate dimensions.
+   * @param tile_cell_size The cell size.
+   * @param chunk_size Mutates to the calculated chunk size.
+   * @return Status
+   */
+  static Status compute_chunk_size(
+      const uint64_t tile_size,
+      const uint32_t tile_dim_num,
+      const uint64_t tile_cell_size,
+      uint32_t* const chunk_size);
+
+  /**
+   * Constructs a ChunkedBuffer instance from a Buffer instance.
+   * If this routine is successful, the returned ChunkBuffer will
+   * contain contigiously allocated buffers of fixed size that
+   * start at *buffer*. The input *buffer* still owns the data
+   * after this routine returns.
+   *
+   * @param buffer The buffer to convert.
+   * @param tile_dim_num The number of coordinate dimensions.
+   * @param tile_cell_size The cell size.
+   * @param chunked_buffer Mutates to the constructed ChunkBuffer.
+   * @return Status
+   */
+  static Status buffer_to_contigious_fixed_chunks(
+      const Buffer& buffer,
+      uint32_t tile_dim_num,
+      uint64_t tile_cell_size,
+      ChunkedBuffer* chunked_buffer);
+
+  /**
+   * Constructs a ChunkedBuffer instance from a raw buffer.
+   * If this routine is successful, the returned ChunkBuffer will
+   * contain contigiously allocated buffers of fixed size that
+   * start at *buffer*.
+   *
+   * @param buffer The buffer to convert.
+   * @param buffer_size The size of *buffer*.
+   * @param tile_dim_num The number of coordinate dimensions.
+   * @param tile_cell_size The cell size.
+   * @param chunked_buffer Mutates to the constructed ChunkBuffer.
+   * @return Status
+   */
+  static Status buffer_to_contigious_fixed_chunks(
+      void* buffer,
+      uint64_t buffer_size,
+      uint32_t tile_dim_num,
+      uint64_t tile_cell_size,
+      ChunkedBuffer* chunked_buffer);
+
+  /**
+   * Constructs a ChunkedBuffer instance from a raw buffer.
+   * If this routine is successful, the returned ChunkBuffer will
+   * contain contigiously allocated buffers of variable size that
+   * start at *buffer*.
+   *
+   * @param buffer The buffer to convert.
+   * @param buffer_size The size of *buffer*.
+   * @param var_chunk_sizes The sizes of each individual chunk.
+   * @param chunked_buffer Mutates to the constructed ChunkBuffer.
+   * @return Status
+   */
+  static Status buffer_to_contigious_var_chunks(
+      void* buffer,
+      uint64_t buffer_size,
+      std::vector<uint32_t>&& var_chunk_sizes,
+      ChunkedBuffer* chunked_buffer);
+
+  /**
+   * Constructs a ChunkedBuffer instance from a raw buffer, where
+   * the raw buffer contains the on-disk tile format. The chunk
+   * sizes will be determined by chunk sizes within the formatted
+   * 'buffer'. If this routine is successful, the returned ChunkBuffer
+   * will contain contigiously allocated buffers that start at *buffer*.
+   * If all but the last chunks are of equal size, the chunks will be
+   * of fixed size. Otherwise, the chunks will be of variable size.
+   *
+   * @param buffer The buffer to convert.
+   * @param nchunks The number of chunks within *buffer*.
+   * @param chunked_buffer Mutates to the constructed ChunkBuffer.
+   * @return Status
+   */
+  static Status filtered_buffer_to_contigious_chunks(
+      void* buffer, size_t nchunks, ChunkedBuffer* chunked_buffer);
+
  public:
   /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */
@@ -73,17 +164,39 @@ class Tile {
    * @param cell_size The cell size.
    * @param dim_num The number of dimensions in case the tile stores
    *      coordinates.
-   * @param buff  The buffer to be encapsulated by the tile object. This
-   *     means that the tile will not create a new buffer object, but
-   *     operate directly on the input.
-   * @param owns_buff If *true* the tile object will delete *buff* upon
-   *     destruction, otherwise it will not delete it.
+   * @param ChunkedBuffer The chunked buffer to be encapsulated by the tile
+   *     object. This means that the tile will not create a new ChunkedBuffer
+   *     object, but operate directly on the input.
+   * @param owns_buff If *true* the tile object will delete *chunked_buffer*
+   * upon destruction, otherwise it will not delete it.
    */
   Tile(
       Datatype type,
       uint64_t cell_size,
       unsigned int dim_num,
-      Buffer* buff,
+      ChunkedBuffer* chunked_buffer,
+      bool owns_buff);
+
+  /**
+   * Constructor.
+   *
+   * @param format_version The format version of the internal buffer.
+   * @param type The type of the data to be stored.
+   * @param cell_size The cell size.
+   * @param dim_num The number of dimensions in case the tile stores
+   *      coordinates.
+   * @param ChunkedBuffer The chunked buffer to be encapsulated by the tile
+   *     object. This means that the tile will not create a new ChunkedBuffer
+   *     object, but operate directly on the input.
+   * @param owns_buff If *true* the tile object will delete *chunked_buffer*
+   * upon destruction, otherwise it will not delete it.
+   */
+  Tile(
+      uint32_t format_version,
+      Datatype type,
+      uint64_t cell_size,
+      unsigned int dim_num,
+      ChunkedBuffer* chunked_buffer,
       bool owns_buff);
 
   /**
@@ -119,22 +232,6 @@ class Tile {
    *
    * @param format_version The format version of the data in this tile.
    * @param type The type of the data to be stored.
-   * @param cell_size The cell size.
-   * @param dim_num The number of dimensions in case the tile stores
-   *      coordinates.
-   * @return Status
-   */
-  Status init(
-      uint32_t format_version,
-      Datatype type,
-      uint64_t cell_size,
-      unsigned int dim_num);
-
-  /**
-   * Tile initializer.
-   *
-   * @param format_version The format version of the data in this tile.
-   * @param type The type of the data to be stored.
    * @param tile_size The tile size. The internal buffer will be allocated
    *     that much space upon construction.
    * @param cell_size The cell size.
@@ -152,8 +249,8 @@ class Tile {
   /** Advances the buffer offset. */
   void advance_offset(uint64_t nbytes);
 
-  /** Returns the internal buffer. */
-  Buffer* buffer() const;
+  /** Returns the internal chunked buffer. */
+  ChunkedBuffer* chunked_buffer() const;
 
   /** Returns the cell size. */
   uint64_t cell_size() const;
@@ -168,14 +265,13 @@ class Tile {
    */
   Tile clone(bool deep_copy) const;
 
-  /** Returns the internal tile data. */
-  void* internal_data() const;
-
   /**
-   * Sets `owns_buff_` to `false` and thus will not destroy the buffer
+   * Sets `owns_chunked_buffer_` to `false` and thus will not destroy the buffer
    * in the destructor.
    */
   void disown_buff();
+
+  bool owns_buff() const;
 
   /** Returns the number of dimensions (0 if this is an attribute tile). */
   unsigned int dim_num() const;
@@ -212,9 +308,6 @@ class Tile {
    */
   uint64_t pre_filtered_size() const;
 
-  /** Reallocates nbytes for the internal tile buffer. */
-  Status realloc(uint64_t nbytes);
-
   /** Reads from the tile into the input buffer *nbytes*. */
   Status read(void* buffer, uint64_t nbytes);
 
@@ -243,35 +336,14 @@ class Tile {
   /** Sets the pre-filtered size value to the given value. */
   void set_pre_filtered_size(uint64_t pre_filtered_size);
 
-  /** Sets the internal buffer size. */
-  void set_size(uint64_t size);
-
   /** Returns the tile size. */
   uint64_t size() const;
-
-  /**
-   * Splits the coordinates such that all the values of each dimension
-   * appear contiguously in the buffer.
-   */
-  void split_coordinates();
 
   /** Returns *true* if the tile stores coordinates. */
   bool stores_coords() const;
 
   /** Returns the tile data type. */
   Datatype type() const;
-
-  /** Returns the value of type T in the tile at the input offset. */
-  template <class T>
-  inline T value(uint64_t offset) const {
-    return buffer_->value<T>(offset);
-  }
-
-  /** Returns the value of type T in the tile at the current offset. */
-  template <class T>
-  inline T value() const {
-    return buffer_->value<T>();
-  }
 
   /** Writes as much data as possibly can be read from the input buffer. */
   Status write(ConstBuffer* buf);
@@ -285,30 +357,22 @@ class Tile {
   /** Writes `nbytes` from `data` to the tile. */
   Status write(const void* data, uint64_t nbytes);
 
-  /** Writes the entire internal buffer of 'rhs' into the tile. */
-  Status write(const Tile& rhs);
-
-  /**
-   * Writes as much data as possibly can be read from the input buffer.
-   * Note that this is a special function where each read value (of type
-   * uint64_t) is added to the input offset prior to being written to
-   * the tile local buffer.
-   */
-  Status write_with_shift(ConstBuffer* buf, uint64_t offset);
-
   /**
    * Zips the coordinate values such that a cell's coordinates across
    * all dimensions appear contiguously in the buffer.
    */
-  void zip_coordinates();
+  Status zip_coordinates();
 
  private:
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
   /* ********************************* */
 
-  /** Local buffer that stores the tile data. */
-  Buffer* buffer_ = nullptr;
+  /** The chunked buffers backing the tile data. */
+  ChunkedBuffer* chunked_buffer_;
+
+  /** The logical offset into the chunked buffer. */
+  uint64_t offset_;
 
   /** The cell size. */
   uint64_t cell_size_;
@@ -326,10 +390,10 @@ class Tile {
   uint32_t format_version_;
 
   /**
-   * If *true* the tile object will delete *buff* upon
+   * If *true* the tile object will free *chunked_buffer_* upon
    * destruction, otherwise it will not delete it.
    */
-  bool owns_buff_;
+  bool owns_chunked_buffer_;
 
   /** The size in bytes of the tile data before it has been filtered. */
   uint64_t pre_filtered_size_;
@@ -340,6 +404,10 @@ class Tile {
   /* ********************************* */
   /*          PRIVATE METHODS          */
   /* ********************************* */
+
+  // Status store_buffer(Buffer* buff);
+
+  void release_chunked_buffer();
 
   /** Swaps the contents (all field values) of this tile with the given tile. */
   void swap(Tile& tile);
