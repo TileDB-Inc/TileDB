@@ -117,11 +117,11 @@ class Tile {
   /**
    * Tile initializer.
    *
+   * @param format_version The format version of the data in this tile.
    * @param type The type of the data to be stored.
    * @param cell_size The cell size.
    * @param dim_num The number of dimensions in case the tile stores
    *      coordinates.
-   * @param format_version The format version of the data in this tile.
    * @return Status
    */
   Status init(
@@ -133,13 +133,13 @@ class Tile {
   /**
    * Tile initializer.
    *
+   * @param format_version The format version of the data in this tile.
    * @param type The type of the data to be stored.
    * @param tile_size The tile size. The internal buffer will be allocated
    *     that much space upon construction.
    * @param cell_size The cell size.
    * @param dim_num The number of dimensions in case the tile stores
    *      coordinates.
-   * @param format_version The format version of the data in this tile.
    * @return Status
    */
   Status init(
@@ -168,11 +168,8 @@ class Tile {
    */
   Tile clone(bool deep_copy) const;
 
-  /** Returns the buffer data pointer at the current offset. */
-  void* cur_data() const;
-
-  /** Returns the tile data. */
-  void* data() const;
+  /** Returns the internal tile data. */
+  void* internal_data() const;
 
   /**
    * Sets `owns_buff_` to `false` and thus will not destroy the buffer
@@ -220,6 +217,13 @@ class Tile {
 
   /** Reads from the tile into the input buffer *nbytes*. */
   Status read(void* buffer, uint64_t nbytes);
+
+  /**
+   * Reads from the tile at the given offset into the input
+   * buffer of size nbytes. Does not mutate the internal offset.
+   * Thread-safe among readers.
+   */
+  Status read(void* buffer, uint64_t nbytes, uint64_t offset) const;
 
   /** Resets the size and offset of the tile. */
   void reset();
@@ -280,6 +284,9 @@ class Tile {
 
   /** Writes `nbytes` from `data` to the tile. */
   Status write(const void* data, uint64_t nbytes);
+
+  /** Writes the entire internal buffer of 'rhs' into the tile. */
+  Status write(const Tile& rhs);
 
   /**
    * Writes as much data as possibly can be read from the input buffer.

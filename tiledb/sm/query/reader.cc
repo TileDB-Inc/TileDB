@@ -651,7 +651,7 @@ Status Reader::compute_range_result_coords(
   assert(dim_num == range.size());
   const auto& t = tile->attr_tiles_.find(constants::coords)->second.first;
   auto coords_num = t.cell_num();
-  auto c = (T*)t.data();
+  auto c = (T*)t.internal_data();
 
   for (uint64_t i = 0, pos = 0; i < coords_num; ++i, pos += dim_num) {
     if (utils::geometry::coords_in_rect<T>(&c[pos], range, dim_num) &&
@@ -949,16 +949,16 @@ Status Reader::copy_fixed_cells(
       }
     } else {  // Non-empty range
       const auto& tile = cs.tile_->attr_tiles_.find(attribute)->second.first;
-      auto data = (unsigned char*)tile.data();
       if (stride == UINT64_MAX) {
-        std::memcpy(
-            buffer + offset, data + cs.start_ * cell_size, bytes_to_copy);
+        const uint64_t tile_offset = cs.start_ * cell_size;
+        RETURN_NOT_OK(tile.read(buffer + offset, bytes_to_copy, tile_offset));
       } else {
         uint64_t byte_stride = stride * cell_size;
         uint64_t cell_offset = offset;
         uint64_t data_offset = cs.start_ * cell_size;
         for (uint64_t j = 0; j < cs.length_; ++j) {
-          std::memcpy(buffer + cell_offset, data + data_offset, cell_size);
+          RETURN_NOT_OK(
+              tile.read(buffer + cell_offset, cell_size, data_offset));
           cell_offset += cell_size;
           data_offset += byte_stride;
         }
@@ -1026,17 +1026,15 @@ Status Reader::copy_var_cells(
 
     // Get tile information, if the range is nonempty.
     uint64_t* tile_offsets = nullptr;
-    unsigned char* tile_var_data = nullptr;
+    Tile* tile_var = nullptr;
     uint64_t tile_cell_num = 0;
-    uint64_t tile_var_size = 0;
     if (cs.tile_ != nullptr) {
-      const auto& tile_pair = cs.tile_->attr_tiles_.find(attribute)->second;
-      const auto& tile = tile_pair.first;
-      const auto& tile_var = tile_pair.second;
-      tile_offsets = (uint64_t*)tile.data();
-      tile_var_data = (unsigned char*)tile_var.data();
-      tile_cell_num = tile.cell_num();
-      tile_var_size = tile_var.size();
+      std::pair<tiledb::sm::Tile, tiledb::sm::Tile>* const tile_pair =
+          &cs.tile_->attr_tiles_.find(attribute)->second;
+      Tile* const tile = &tile_pair->first;
+      tile_var = &tile_pair->second;
+      tile_offsets = (uint64_t*)tile->internal_data();
+      tile_cell_num = tile->cell_num();
     }
 
     // Copy each cell in the range
@@ -1055,14 +1053,13 @@ Status Reader::copy_var_cells(
       if (cs.tile_ == nullptr) {
         std::memcpy(var_dest, &fill_value, fill_size);
       } else {
-        uint64_t cell_var_size =
+        const uint64_t cell_var_size =
             (cell_idx != tile_cell_num - 1) ?
                 tile_offsets[cell_idx + 1] - tile_offsets[cell_idx] :
-                tile_var_size - (tile_offsets[cell_idx] - tile_offsets[0]);
-        std::memcpy(
-            var_dest,
-            &tile_var_data[tile_offsets[cell_idx] - tile_offsets[0]],
-            cell_var_size);
+                tile_var->size() - (tile_offsets[cell_idx] - tile_offsets[0]);
+        const uint64_t tile_var_offset =
+            tile_offsets[cell_idx] - tile_offsets[0];
+        RETURN_NOT_OK(tile_var->read(var_dest, cell_var_size, tile_var_offset));
       }
     }
 
@@ -1118,7 +1115,7 @@ Status Reader::compute_var_cell_destinations(
       const auto& tile_pair = cs.tile_->attr_tiles_.find(attribute)->second;
       const auto& tile = tile_pair.first;
       const auto& tile_var = tile_pair.second;
-      tile_offsets = (uint64_t*)tile.data();
+      tile_offsets = (uint64_t*)tile.internal_data();
       tile_cell_num = tile.cell_num();
       tile_var_size = tile_var.size();
     }
@@ -1632,7 +1629,7 @@ Status Reader::get_all_result_coords(
   auto dim_num = array_schema_->dim_num();
   const auto& t = tile->attr_tiles_.find(constants::coords)->second.first;
   auto coords_num = t.cell_num();
-  auto c = (T*)t.data();
+  auto c = (T*)t.internal_data();
 
   for (uint64_t i = 0; i < coords_num; ++i)
     result_coords->emplace_back(tile, &c[i * dim_num], i);

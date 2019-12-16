@@ -108,15 +108,16 @@ Status FilterPipeline::compute_tile_chunks(
                    uint64_t(bool(dim_tile_size % (chunk_size)));
 
   // Compute the chunks
-  tile->reset_offset();
+  uint64_t offset = 0;
   for (uint64_t i = 0; i < dim_num; i++) {
     for (uint64_t j = 0; j < chunk_num; j++) {
       // Compute the actual size of the chunk (may be smaller at the end of the
       // tile if the chunk size doesn't evenly divide).
       auto size = static_cast<uint32_t>(
           std::min(chunk_size, dim_tile_size - j * chunk_size));
-      chunks->emplace_back(tile->cur_data(), size);
-      tile->advance_offset(size);
+      chunks->emplace_back(
+          static_cast<char*>(tile->internal_data()) + offset, size);
+      offset += size;
     }
   }
 
