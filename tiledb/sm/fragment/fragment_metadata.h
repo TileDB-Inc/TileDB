@@ -189,17 +189,6 @@ class FragmentMetadata {
       TileOverlap* tile_overlap);
 
   /**
-   * Given as input global tile coordinates, it retrieves the tile position
-   * within the fragment.
-   *
-   * @tparam T The domain type.
-   * @param tile_coords The global tile coordinates.
-   * @return The tile position in the fragment.
-   */
-  template <class T>
-  uint64_t get_tile_pos(const T* tile_coords) const;
-
-  /**
    * Initializes the fragment metadata structures.
    *
    * @param non_empty_domain The non-empty domain in which the array read/write
@@ -214,11 +203,11 @@ class FragmentMetadata {
   /** Loads the basic metadata from storage. */
   Status load(const EncryptionKey& encryption_key);
 
-  /** Stores all the metadata to storage. */
-  Status store(const EncryptionKey& encryption_key);
-
   /** Returns the MBRs of the fragment. Used in format version <=2. */
   const std::vector<void*> mbrs() const;
+
+  /** Stores all the metadata to storage. */
+  Status store(const EncryptionKey& encryption_key);
 
   /** Returns the non-empty domain in which the fragment is constrained. */
   const void* non_empty_domain() const;
@@ -275,39 +264,37 @@ class FragmentMetadata {
   void set_tile_index_base(uint64_t tile_base);
 
   /**
-   * Sets a tile offset for the input attribute.
+   * Sets a tile offset for the input attribute or dimension.
    *
-   * @param attribute The attribute for which the offset is set.
-   * @param tile The index of the tile for which the offset is set.
+   * @param name The attribute/dimension for which the offset is set.
+   * @param tid The index of the tile for which the offset is set.
    * @param step This is essentially the step by which the previous
    *     offset will be expanded. It is practically the last tile size.
    * @return void
    */
-  void set_tile_offset(
-      const std::string& attribute, uint64_t tile, uint64_t step);
+  void set_tile_offset(const std::string& name, uint64_t tid, uint64_t step);
 
   /**
-   * Sets a variable tile offset for the input attribute.
+   * Sets a variable tile offset for the input attribute or dimension.
    *
-   * @param attribute The attribute for which the offset is set.
-   * @param tile The index of the tile for which the offset is set.
+   * @param name The attribute/dimension for which the offset is set.
+   * @param tid The index of the tile for which the offset is set.
    * @param step This is essentially the step by which the previous
    *     offset will be expanded. It is practically the last variable tile size.
    * @return void
    */
   void set_tile_var_offset(
-      const std::string& attribute, uint64_t tile, uint64_t step);
+      const std::string& name, uint64_t tid, uint64_t step);
 
   /**
-   * Sets a variable tile size for the input attribute.
+   * Sets a variable tile size for the input attribute or dimension.
    *
-   * @param attribute The attribute for which the size is set.
-   * @param tile The index of the tile for which the offset is set.
+   * @param name The attribute/dimension for which the size is set.
+   * @param tid The index of the tile for which the offset is set.
    * @param size The size to be appended.
    * @return void
    */
-  void set_tile_var_size(
-      const std::string& attribute, uint64_t tile, uint64_t size);
+  void set_tile_var_size(const std::string& name, uint64_t tid, uint64_t size);
 
   /** Returns the tile index base value. */
   uint64_t tile_index_base() const;
@@ -315,42 +302,42 @@ class FragmentMetadata {
   /** Returns the number of tiles in the fragment. */
   uint64_t tile_num() const;
 
-  /** Returns the URI of the input attribute. */
-  URI attr_uri(const std::string& attribute) const;
+  /** Returns the URI of the input attribute/dimension. */
+  URI uri(const std::string& name) const;
 
-  /** Returns the URI of the input variable-sized attribute. */
-  URI attr_var_uri(const std::string& attribute) const;
+  /** Returns the URI of the input variable-sized attribute/dimension. */
+  URI var_uri(const std::string& name) const;
 
   /**
-   * Retrieves the starting offset of the input tile of input attribute
-   * in the file. If the attribute is var-sized, it returns the starting
-   * offset of the offsets tile.
+   * Retrieves the starting offset of the input tile of the input attribute
+   * or dimension in the file. If the attribute/dimension is var-sized, it
+   * returns the starting offset of the offsets tile.
    *
    * @param encryption_key The key the array got opened with.
-   * @param attribute The input attribute.
+   * @param name The input attribute/dimension.
    * @param tile_idx The index of the tile in the metadata.
    * @param offset The file offset to be retrieved.
    * @return Status
    */
   Status file_offset(
       const EncryptionKey& encryption_key,
-      const std::string& attribute,
+      const std::string& name,
       uint64_t tile_idx,
       uint64_t* offset);
 
   /**
-   * Retrieves the starting offset of the input tile of input attribute
-   * in the file. The attribute must be var-sized.
+   * Retrieves the starting offset of the input tile of input attribute or
+   * dimension in the file. The attribute/dimension must be var-sized.
    *
    * @param encryption_key The key the array got opened with.
-   * @param attribute_id The input attribute.
+   * @param name The input attribute/dimension.
    * @param tile_idx The index of the tile in the metadata.
    * @param offset The file offset to be retrieved.
    * @return Status
    */
   Status file_var_offset(
       const EncryptionKey& encryption_key,
-      const std::string& attribute,
+      const std::string& name,
       uint64_t tile_idx,
       uint64_t* offset);
 
@@ -359,65 +346,63 @@ class FragmentMetadata {
 
   /**
    * Retrieves the size of the tile when it is persisted (e.g. the size of the
-   * compressed tile on disk) for a given attribute and tile index. If the
-   * attribute is var-sized, this will return the persisted size of the offsets
-   * tile.
+   * compressed tile on disk) for a given attribute or dimension and tile index.
+   * If the attribute/dimension is var-sized, this will return the persisted
+   * size of the offsets tile.
    *
    * @param encryption_key The key the array got opened with.
-   * @param attribute The input attribute.
+   * @param name The input attribute/dimension.
    * @param tile_idx The index of the tile in the metadata.
    * @param tile_size The tile size to be retrieved.
    * @return Status
    */
   Status persisted_tile_size(
       const EncryptionKey& encryption_key,
-      const std::string& attribute,
+      const std::string& name,
       uint64_t tile_idx,
       uint64_t* tile_size);
 
   /**
    * Retrieves the size of the tile when it is persisted (e.g. the size of the
-   * compressed tile on disk) for a given var-sized attribute and tile index.
+   * compressed tile on disk) for a given var-sized attribute or dimension
+   * and tile index.
    *
    * @param encryption_key The key the array got opened with.
-   * @param attribute The inout attribute.
+   * @param name The input attribute/dimension.
    * @param tile_idx The index of the tile in the metadata.
    * @param tile_size The tile size to be retrieved.
    * @return Status
    */
   Status persisted_tile_var_size(
       const EncryptionKey& encryption_key,
-      const std::string& attribute,
+      const std::string& name,
       uint64_t tile_idx,
       uint64_t* tile_size);
 
-  /** Retrieves the RTree. */
-  Status rtree(const EncryptionKey& encryption_key, const RTree** rtree);
-
   /**
-   * Returns the (uncompressed) tile size for a given attribute
-   * and tile index. If the attribute is var-sized, this will return
+   * Returns the (uncompressed) tile size for a given attribute or dimension
+   * and tile index. If the attribute/dimension is var-sized, this will return
    * the size of the offsets tile.
    *
-   * @param attribute The input attribute.
+   * @param name The input attribute/dimension.
    * @param tile_idx The index of the tile in the metadata.
    * @return The tile size.
    */
-  uint64_t tile_size(const std::string& attribute, uint64_t tile_idx) const;
+  uint64_t tile_size(const std::string& name, uint64_t tile_idx) const;
 
   /**
-   * Retrieves the (uncompressed) tile size for a given var-sized attribute
-   * and tile index.
+   * Retrieves the (uncompressed) tile size for a given var-sized attribute or
+   * dimension and tile index.
    *
    * @param encryption_key The key the array got opened with.
-   * @param attribute The input attribute.
+   * @param name The input attribute/dimension.
    * @param tile_idx The index of the tile in the metadata.
    * @param tile_size The tile size to be retrieved.
    * @return Status
    */
   Status tile_var_size(
       const EncryptionKey& encryption_key,
-      const std::string& attribute,
+      const std::string& name,
       uint64_t tile_idx,
       uint64_t* tile_size);
 
@@ -469,14 +454,12 @@ class FragmentMetadata {
   /** The array schema */
   const ArraySchema* array_schema_;
 
-  /** Maps an attribute to an index used in the various vector class members. */
-  std::unordered_map<std::string, unsigned> attribute_idx_map_;
-
-  /** Maps an attribute to its absolute URI within this fragment. */
-  std::unordered_map<std::string, URI> attribute_uri_map_;
-
-  /** Maps an attribute to its absolute '_var' URI within this fragment. */
-  std::unordered_map<std::string, URI> attribute_var_uri_map_;
+  /**
+   * Maps an attribute or dimension to an index used in the various vector
+   * class members. Attributes are first, then TILEDB_COORDS, then the
+   * dimensions.
+   */
+  std::unordered_map<std::string, unsigned> idx_map_;
 
   /** A vector storing the first and last coordinates of each tile. */
   std::vector<void*> bounding_coords_;
@@ -579,6 +562,24 @@ class FragmentMetadata {
   Status get_footer_offset_and_size(uint64_t* offset, uint64_t* size) const;
 
   /**
+   * Retrieves the offset in the fragment metadata file of the footer
+   * (which contains the generic tile offsets) along with its size.
+   *
+   * Applicable to format versions 3 and 4.
+   */
+  Status get_footer_offset_and_size_v3_v4(
+      uint64_t* offset, uint64_t* size) const;
+
+  /**
+   * Retrieves the offset in the fragment metadata file of the footer
+   * (which contains the generic tile offsets) along with its size.
+   *
+   * Applicable to format version 5 or higher.
+   */
+  Status get_footer_offset_and_size_v5_or_higher(
+      uint64_t* offset, uint64_t* size) const;
+
+  /**
    * Returns the ids (positions) of the tiles overlapping `subarray`.
    * Applicable only to dense arrays.
    */
@@ -613,20 +614,39 @@ class FragmentMetadata {
   /** Loads the R-tree from storage. */
   Status load_rtree(const EncryptionKey& encryption_key);
 
-  /** Loads the tile offsets for the input attribute from storage. */
-  Status load_tile_offsets(
-      const EncryptionKey& encryption_key, unsigned attr_id);
+  /**
+   * Loads the tile offsets for the input attribute or dimension idx
+   * from storage.
+   */
+  Status load_tile_offsets(const EncryptionKey& encryption_key, unsigned idx);
 
-  /** Loads the variable tile offsets for the input attribute from storage. */
+  /**
+   * Loads the variable tile offsets for the input attribute or dimension idx
+   * from storage.
+   */
   Status load_tile_var_offsets(
-      const EncryptionKey& encryption_key, unsigned attr_id);
+      const EncryptionKey& encryption_key, unsigned idx);
 
-  /** Loads the variable tile sizes for the input attribute from storage. */
-  Status load_tile_var_sizes(
-      const EncryptionKey& encryption_key, unsigned attr_id);
+  /**
+   * Loads the variable tile sizes for the input attribute or dimension idx
+   * from storage.
+   * */
+  Status load_tile_var_sizes(const EncryptionKey& encryption_key, unsigned idx);
 
   /** Loads the generic tile offsets from the buffer. */
   Status load_generic_tile_offsets(ConstBuffer* buff);
+
+  /**
+   * Loads the generic tile offsets from the buffer. Applicable to
+   * versions 4 and 5.
+   */
+  Status load_generic_tile_offsets_v3_v4(ConstBuffer* buff);
+
+  /**
+   * Loads the generic tile offsets from the buffer. Applicable to
+   * versions 5 or higher.
+   */
+  Status load_generic_tile_offsets_v5_or_higher(ConstBuffer* buff);
 
   /**
    * Loads the bounding coordinates from the fragment metadata buffer.
@@ -636,11 +656,38 @@ class FragmentMetadata {
    */
   Status load_bounding_coords(ConstBuffer* buff);
 
-  /** Loads the sizes of each attribute file from the buffer. */
+  /** Loads the sizes of each attribute or dimension file from the buffer. */
   Status load_file_sizes(ConstBuffer* buff);
 
-  /** Loads the sizes of each variable attribute file from the buffer. */
+  /**
+   * Loads the sizes of each attribute or dimension file from the buffer.
+   * Applicable to format versions 1 to 4.
+   */
+  Status load_file_sizes_v1_v4(ConstBuffer* buff);
+
+  /**
+   * Loads the sizes of each attribute or dimension file from the buffer.
+   * Applicable to format version 5 or higher.
+   */
+  Status load_file_sizes_v5_or_higher(ConstBuffer* buff);
+
+  /**
+   * Loads the sizes of each variable attribute or dimension file from the
+   * buffer.
+   */
   Status load_file_var_sizes(ConstBuffer* buff);
+
+  /**
+   * Loads the sizes of each variable attribute or dimension file from the
+   * buffer. Applicable to version 1 to 4.
+   */
+  Status load_file_var_sizes_v1_v4(ConstBuffer* buff);
+
+  /**
+   * Loads the sizes of each variable attribute or dimension file from the
+   * buffer. Applicable to version 5 or higher.
+   */
+  Status load_file_var_sizes_v5_or_higher(ConstBuffer* buff);
 
   /**
    * Loads the cell number of the last tile from the fragment metadata buffer.
@@ -658,67 +705,53 @@ class FragmentMetadata {
    */
   Status load_mbrs(ConstBuffer* buff);
 
-  /**
-   * Loads the non-empty domain from the fragment metadata buffer.
-   *
-   * @param buff Metadata buffer.
-   * @return Status
-   */
+  /** Loads the non-empty domain from the input buffer. */
   Status load_non_empty_domain(ConstBuffer* buff);
 
   /**
-   * Loads the non-empty domain from the fragment metadata buffer,
+   * Loads the non-empty domain from the input buffer,
    * for format versions <= 2.
-   *
-   * @param buff Metadata buffer.
-   * @return Status
    */
   Status load_non_empty_domain_v2(ConstBuffer* buff);
 
   /**
-   * Loads the non-empty domain from the fragment metadata buffer,
+   * Loads the non-empty domain from the input buffer,
    * for format versions >= 3.
-   *
-   * @param buff Metadata buffer.
-   * @return Status
    */
   Status load_non_empty_domain_v3(ConstBuffer* buff);
 
   /**
    * Loads the tile offsets for the input attribute from the input buffer.
+   * Applicable to versions 1 and 2
    */
   Status load_tile_offsets(ConstBuffer* buff);
 
   /**
-   * Loads the tile offsets for the input attribute from the input buffer.
+   * Loads the tile offsets for the input attribute or dimension from the
+   * input buffer.
    */
-  Status load_tile_offsets(unsigned attr_id, ConstBuffer* buff);
+  Status load_tile_offsets(unsigned idx, ConstBuffer* buff);
 
   /**
-   * Loads the variable tile offsets from the fragment metadata buffer.
-   *
-   * @param buff Metadata buffer.
-   * @return Status
+   * Loads the variable tile offsets from the input buffer.
+   * Applicable to versions 1 and 2
    */
   Status load_tile_var_offsets(ConstBuffer* buff);
 
   /**
-   * Loads the variable tile offsets for the input attribute from the buffer.
+   * Loads the variable tile offsets for the input attribute or dimension from
+   * the input buffer.
    */
-  Status load_tile_var_offsets(unsigned attr_id, ConstBuffer* buff);
+  Status load_tile_var_offsets(unsigned idx, ConstBuffer* buff);
 
-  /**
-   * Loads the variable tile sizes from the fragment metadata.
-   *
-   * @param buff Metadata buffer.
-   * @return Status
-   */
+  /** Loads the variable tile sizes from the input buffer. */
   Status load_tile_var_sizes(ConstBuffer* buff);
 
   /**
-   * Loads the variable tile sizes for the input attribute from the buffer.
+   * Loads the variable tile sizes for the input attribute or dimension
+   * from the input buffer.
    */
-  Status load_tile_var_sizes(unsigned attr_id, ConstBuffer* buff);
+  Status load_tile_var_sizes(unsigned idx, ConstBuffer* buff);
 
   /** Loads the format version from the buffer. */
   Status load_version(ConstBuffer* buff);
@@ -729,16 +762,11 @@ class FragmentMetadata {
   /** Loads the number of sparse tiles from the buffer. */
   Status load_sparse_tile_num(ConstBuffer* buff);
 
-  /**
-   * Retrieves the size of the generic tile starting at the input offset.
-   */
-  Status get_generic_tile_size(uint64_t offset, uint64_t* size);
-
   /** Loads the basic metadata from storage (version 2 or before). */
-  Status load_v2(const EncryptionKey& encryption_key);
+  Status load_v1_v2(const EncryptionKey& encryption_key);
 
-  /** Loads the basic metadata from storage (version 3). */
-  Status load_v3(const EncryptionKey& encryption_key);
+  /** Loads the basic metadata from storage (version 3 or after). */
+  Status load_v3_or_higher(const EncryptionKey& encryption_key);
 
   /**
    * Loads the footer of the metadata file, which contains
@@ -775,50 +803,61 @@ class FragmentMetadata {
   /** Writes the R-tree to the input buffer. */
   Status write_rtree(Buffer* buff);
 
-  /** Writes the MBRs to the input buffer. */
-  Status write_mbrs(Buffer* buff);
-
   /** Writes the non-empty domain to the input buffer. */
   Status write_non_empty_domain(Buffer* buff);
 
   /**
-   * Writes the tile offsets of the input attribute to storage.
+   * Writes the tile offsets of the input attribute or dimension to storage.
    *
+   * @param idx The index of the attribute or dimension.
    * @param encryption_key The encryption key.
    * @param nbytes The total number of bytes written for the tile offsets.
    * @return Status
    */
   Status store_tile_offsets(
-      unsigned attr_id, const EncryptionKey& encryption_key, uint64_t* nbytes);
-
-  /** Writes the tile offsets of the input attribut$ to the input buffer. */
-  Status write_tile_offsets(unsigned attr_id, Buffer* buff);
+      unsigned idx, const EncryptionKey& encryption_key, uint64_t* nbytes);
 
   /**
-   * Writes the variable tile offsets of the input attribute to storage.
+   * Writes the tile offsets of the input attribute or dimension idx to the
+   * input buffer.
+   */
+  Status write_tile_offsets(unsigned idx, Buffer* buff);
+
+  /**
+   * Writes the variable tile offsets of the input attribute or dimension
+   * to storage.
    *
+   * @param idx The index of the attribute or dimension.
    * @param encryption_key The encryption key.
    * @param nbytes The total number of bytes written for the tile var offsets.
    * @return Status
    */
   Status store_tile_var_offsets(
-      unsigned attr_id, const EncryptionKey& encryption_key, uint64_t* nbytes);
-
-  /** Writes the variable tile offsets of the input attribute to the buffer. */
-  Status write_tile_var_offsets(unsigned attr_id, Buffer* buff);
+      unsigned idx, const EncryptionKey& encryption_key, uint64_t* nbytes);
 
   /**
-   * Writes the variable tile sizes for the input attribute to the buffer.
+   * Writes the variable tile offsets of the input attribute or dimension idx
+   * to the buffer.
+   */
+  Status write_tile_var_offsets(unsigned idx, Buffer* buff);
+
+  /**
+   * Writes the variable tile sizes for the input attribute or dimension to
+   * the buffer.
    *
+   * @param idx The index of the attribute or dimension.
    * @param encryption_key The encryption key.
    * @param nbytes The total number of bytes written for the tile var sizes.
    * @return Status
    */
   Status store_tile_var_sizes(
-      unsigned attr_id, const EncryptionKey& encryption_key, uint64_t* nbytes);
+      unsigned idx, const EncryptionKey& encryption_key, uint64_t* nbytes);
 
-  /** Writes the variable tile sizes to storage. */
-  Status write_tile_var_sizes(unsigned attr_id, Buffer* buff);
+  /**
+   * Writes the variable tile sizes for the input attribute or dimension
+   * to storage.
+   */
+  Status write_tile_var_sizes(unsigned idx, Buffer* buff);
 
   /** Writes the format version to the buffer. */
   Status write_version(Buffer* buff);
@@ -863,6 +902,12 @@ class FragmentMetadata {
    * number of attributes).
    */
   Status write_file_footer(Buffer* buff) const;
+
+  /**
+   * Simple clean up function called in the case of error. It removes the
+   * fragment metadata file and unlocks the array.
+   */
+  void clean_up();
 };
 
 }  // namespace sm

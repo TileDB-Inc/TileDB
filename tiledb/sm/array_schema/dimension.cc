@@ -89,6 +89,11 @@ Dimension::~Dimension() {
 /*                API                */
 /* ********************************* */
 
+unsigned int Dimension::cell_val_num() const {
+  // TODO: in a future PR the user will be able to set this value
+  return 1;
+}
+
 uint64_t Dimension::coord_size() const {
   return datatype_size(type_);
 }
@@ -209,6 +214,12 @@ void Dimension::dump(FILE* out) const {
   fprintf(out, "- Name: %s\n", is_anonymous() ? "<anonymous>" : name_.c_str());
   fprintf(out, "- Domain: %s\n", domain_s.c_str());
   fprintf(out, "- Tile extent: %s\n", tile_extent_s.c_str());
+}
+
+const FilterPipeline* Dimension::filters() const {
+  // TODO: in a future PR, the user will be able to set separate
+  // TODO: filters for each dimension
+  return nullptr;
 }
 
 const std::string& Dimension::name() const {

@@ -1294,16 +1294,29 @@ Status Reader::compute_result_coords(
   RETURN_CANCEL_OR_ERROR(compute_sparse_result_tiles<T>(
       result_tiles, &result_tile_map, &single_fragment));
 
+  if (result_tiles->empty())
+    return Status::Ok();
+
   // Create temporary vector with pointers to result tiles, so that
-  // `read_tiles`, `filter_tiles` and `clear_tiles` below can work without
-  // changes
+  // `read_tiles`, `filter_tiles` below can work without changes
   std::vector<ResultTile*> tmp_result_tiles;
   for (auto& result_tile : *result_tiles)
     tmp_result_tiles.push_back(&result_tile);
 
   // Read and filter coordinate tiles
+  // NOTE: these will ignore tiles of fragments with format version >=5
   RETURN_CANCEL_OR_ERROR(read_tiles(constants::coords, tmp_result_tiles));
   RETURN_CANCEL_OR_ERROR(filter_tiles(constants::coords, tmp_result_tiles));
+
+  // Read and filter coordinate tiles
+  // NOTE: these will ignore tiles of fragments with format version <5
+  auto dim_num = array_schema_->dim_num();
+  for (unsigned d = 0; d < dim_num; ++d) {
+    const auto& dim_name = array_schema_->dimension(d)->name();
+    RETURN_CANCEL_OR_ERROR(read_tiles(dim_name, tmp_result_tiles));
+    RETURN_CANCEL_OR_ERROR(filter_tiles(dim_name, tmp_result_tiles));
+  }
+  RETURN_CANCEL_OR_ERROR(zip_coord_tiles(tmp_result_tiles));
 
   // Compute the read coordinates for all fragments for each subarray range
   std::vector<std::vector<ResultCoords<T>>> range_result_coords;
@@ -1549,39 +1562,50 @@ Status Reader::filter_tiles(
 
   auto statuses = parallel_for(0, num_tiles, [&, this](uint64_t i) {
     auto& tile = result_tiles[i];
-    auto it = tile->attr_tiles_.find(attribute);
-    // Skip non-existent attributes (e.g. coords in the dense case).
-    if (it == tile->attr_tiles_.end())
-      return Status::Ok();
-
-    // Get information about the tile in its fragment
     auto& fragment = fragment_metadata_[tile->frag_idx_];
-    auto tile_attr_uri = fragment->attr_uri(attribute);
-    uint64_t tile_attr_offset;
-    RETURN_NOT_OK(fragment->file_offset(
-        *encryption_key, attribute, tile->tile_idx_, &tile_attr_offset));
+    auto format_version = fragment->format_version();
 
-    auto& tile_pair = it->second;
-    auto& t = tile_pair.first;
-    auto& t_var = tile_pair.second;
+    // Applicable for zipped coordinates only to versions < 5
+    // Applicable for separate coordinates only to version >= 5
+    if (attribute != constants::coords ||
+        (attribute == constants::coords && format_version < 5) ||
+        (array_schema_->is_dim(attribute) && format_version >= 5)) {
+      auto it = tile->attr_tiles_.find(attribute);
+      // Skip non-existent attributes (e.g. coords in the dense case).
+      if (it == tile->attr_tiles_.end())
+        return Status::Ok();
 
-    if (!t.filtered()) {
-      // Decompress, etc.
-      RETURN_NOT_OK(filter_tile(attribute, &t, var_size));
-      RETURN_NOT_OK(storage_manager_->write_to_cache(
-          tile_attr_uri, tile_attr_offset, t.buffer()));
-    }
+      // Get information about the tile in its fragment
+      auto tile_attr_uri = fragment->uri(attribute);
+      uint64_t tile_attr_offset;
+      RETURN_NOT_OK(fragment->file_offset(
+          *encryption_key, attribute, tile->tile_idx_, &tile_attr_offset));
 
-    if (var_size && !t_var.filtered()) {
-      auto tile_attr_var_uri = fragment->attr_var_uri(attribute);
-      uint64_t tile_attr_var_offset;
-      RETURN_NOT_OK(fragment->file_var_offset(
-          *encryption_key, attribute, tile->tile_idx_, &tile_attr_var_offset));
+      auto& tile_pair = it->second;
+      auto& t = tile_pair.first;
+      auto& t_var = tile_pair.second;
 
-      // Decompress, etc.
-      RETURN_NOT_OK(filter_tile(attribute, &t_var, false));
-      RETURN_NOT_OK(storage_manager_->write_to_cache(
-          tile_attr_var_uri, tile_attr_var_offset, t_var.buffer()));
+      if (!t.filtered()) {
+        // Decompress, etc.
+        RETURN_NOT_OK(filter_tile(attribute, &t, var_size));
+        RETURN_NOT_OK(storage_manager_->write_to_cache(
+            tile_attr_uri, tile_attr_offset, t.buffer()));
+      }
+
+      if (var_size && !t_var.filtered()) {
+        auto tile_attr_var_uri = fragment->var_uri(attribute);
+        uint64_t tile_attr_var_offset;
+        RETURN_NOT_OK(fragment->file_var_offset(
+            *encryption_key,
+            attribute,
+            tile->tile_idx_,
+            &tile_attr_var_offset));
+
+        // Decompress, etc.
+        RETURN_NOT_OK(filter_tile(attribute, &t_var, false));
+        RETURN_NOT_OK(storage_manager_->write_to_cache(
+            tile_attr_var_uri, tile_attr_var_offset, t_var.buffer()));
+      }
     }
 
     return Status::Ok();
@@ -1596,18 +1620,13 @@ Status Reader::filter_tiles(
 }
 
 Status Reader::filter_tile(
-    const std::string& attribute, Tile* tile, bool offsets) const {
+    const std::string& name, Tile* tile, bool offsets) const {
   uint64_t orig_size = tile->buffer()->size();
 
   // Get a copy of the appropriate filter pipeline.
-  FilterPipeline filters;
-  if (tile->stores_coords()) {
-    filters = *array_schema_->coords_filters();
-  } else if (offsets) {
-    filters = *array_schema_->cell_var_offsets_filters();
-  } else {
-    filters = *array_schema_->filters(attribute);
-  }
+  FilterPipeline filters =
+      (offsets ? *array_schema_->cell_var_offsets_filters() :
+                 *array_schema_->filters(name));
 
   // Append an encryption filter when necessary.
   RETURN_NOT_OK(FilterPipeline::append_encryption_filter(
@@ -1769,6 +1788,17 @@ Status Reader::read_tiles(
   std::map<URI, std::vector<std::tuple<uint64_t, void*, uint64_t>>> all_regions;
   for (uint64_t i = 0; i < num_tiles; i++) {
     auto& tile = result_tiles[i];
+    auto& fragment = fragment_metadata_[tile->frag_idx_];
+    auto format_version = fragment->format_version();
+
+    // Applicable for zipped coordinates only to versions < 5
+    if (attribute == constants::coords && format_version >= 5)
+      continue;
+
+    // Applicable to separate coordinates only to versions >= 5
+    if (array_schema_->is_dim(attribute) && format_version < 5)
+      continue;
+
     auto it = tile->attr_tiles_.find(attribute);
     if (it == tile->attr_tiles_.end())
       it = tile->attr_tiles_
@@ -1780,8 +1810,6 @@ Status Reader::read_tiles(
     auto& tile_pair = it->second;
     auto& t = tile_pair.first;
     auto& t_var = tile_pair.second;
-    auto& fragment = fragment_metadata_[tile->frag_idx_];
-    auto format_version = fragment->format_version();
     if (!var_size) {
       RETURN_NOT_OK(init_tile(format_version, attribute, &t));
     } else {
@@ -1789,7 +1817,7 @@ Status Reader::read_tiles(
     }
 
     // Get information about the tile in its fragment
-    auto tile_attr_uri = fragment->attr_uri(attribute);
+    auto tile_attr_uri = fragment->uri(attribute);
     uint64_t tile_attr_offset;
     RETURN_NOT_OK(fragment->file_offset(
         *encryption_key, attribute, tile->tile_idx_, &tile_attr_offset));
@@ -1817,7 +1845,7 @@ Status Reader::read_tiles(
     }
 
     if (var_size) {
-      auto tile_attr_var_uri = fragment->attr_var_uri(attribute);
+      auto tile_attr_var_uri = fragment->var_uri(attribute);
       uint64_t tile_attr_var_offset;
       RETURN_NOT_OK(fragment->file_var_offset(
           *encryption_key, attribute, tile->tile_idx_, &tile_attr_var_offset));
@@ -2009,6 +2037,44 @@ bool Reader::coords_overwritten(unsigned frag_idx, const T* coords) const {
   }
 
   return false;
+}
+
+Status Reader::zip_coord_tiles(
+    const std::vector<ResultTile*>& tmp_result_tiles) const {
+  // Initialize zipped coordinate tiles
+  for (auto& tile : tmp_result_tiles) {
+    auto it = tile->attr_tiles_.find(constants::coords);
+    if (it == tile->attr_tiles_.end())
+      tile->attr_tiles_.emplace(
+          constants::coords, ResultTile::TilePair(Tile(), Tile()));
+  }
+
+  // Zip coordinate tiles
+  auto tile_num = (uint64_t)tmp_result_tiles.size();
+  auto dim_num = array_schema_->dim_num();
+  auto statuses = parallel_for(0, tile_num, [&](uint64_t t) {
+    const auto& fragment = fragment_metadata_[tmp_result_tiles[t]->frag_idx_];
+    auto format_version = fragment->format_version();
+    if (format_version >= 5) {  // Applicable only to version >= 5
+      auto& new_tile =
+          tmp_result_tiles[t]->attr_tiles_[constants::coords].first;
+      RETURN_NOT_OK(init_tile(format_version, constants::coords, &new_tile));
+      for (unsigned d = 0; d < dim_num; ++d) {
+        const auto& dim_name = array_schema_->dimension(d)->name();
+        const auto& coord_tile =
+            tmp_result_tiles[t]->attr_tiles_[dim_name].first;
+        new_tile.write(coord_tile);
+        tmp_result_tiles[t]->attr_tiles_.erase(dim_name);
+      }
+      new_tile.zip_coordinates();
+    }
+    return Status::Ok();
+  });
+
+  for (const auto& st : statuses)
+    RETURN_CANCEL_OR_ERROR(st);
+
+  return Status::Ok();
 }
 
 // Explicit template instantiations

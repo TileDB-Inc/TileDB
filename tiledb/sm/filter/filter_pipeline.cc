@@ -428,8 +428,10 @@ Status FilterPipeline::run_reverse(Tile* tile) const {
   if (tile->stores_coords()) {
     // Note that format version < 2 only split the coordinates when compression
     // was used. See https://github.com/TileDB-Inc/TileDB/issues/1053
+    // For format version > 4, a tile never stores coordinates
     bool using_compression = get_filter<CompressionFilter>() != nullptr;
-    if (tile->format_version() > 1 || using_compression) {
+    auto version = tile->format_version();
+    if (version > 1 || using_compression) {
       tile->zip_coordinates();
     }
   }

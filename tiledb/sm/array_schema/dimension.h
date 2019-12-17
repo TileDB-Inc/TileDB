@@ -38,6 +38,7 @@
 #include "tiledb/sm/buffer/buffer.h"
 #include "tiledb/sm/enums/compressor.h"
 #include "tiledb/sm/enums/datatype.h"
+#include "tiledb/sm/filter/filter_pipeline.h"
 #include "tiledb/sm/misc/logger.h"
 #include "tiledb/sm/misc/status.h"
 
@@ -76,6 +77,9 @@ class Dimension {
   /*                API                */
   /* ********************************* */
 
+  /** Returns the number of values per cell. */
+  unsigned int cell_val_num() const;
+
   /** Returns the size (in bytes) of a coordinate in this dimension. */
   uint64_t coord_size() const;
 
@@ -96,6 +100,9 @@ class Dimension {
 
   /** Dumps the dimension contents in ASCII form in the selected output. */
   void dump(FILE* out) const;
+
+  /** Returns the filter pipeline of this dimension. */
+  const FilterPipeline* filters() const;
 
   /** Returns the dimension name. */
   const std::string& name() const;

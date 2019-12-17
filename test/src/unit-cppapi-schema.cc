@@ -33,7 +33,7 @@
 #include "catch.hpp"
 #include "tiledb/sm/cpp_api/tiledb"
 
-TEST_CASE("C++ API: Schema", "[cppapi]") {
+TEST_CASE("C++ API: Schema", "[cppapi][schema]") {
   using namespace tiledb;
   Context ctx;
 
@@ -161,7 +161,7 @@ TEST_CASE("C++ API: Schema", "[cppapi]") {
   }
 }
 
-TEST_CASE("C++ API: Test schema virtual destructors", "[cppapi]") {
+TEST_CASE("C++ API: Test schema virtual destructors", "[cppapi][schema]") {
   tiledb::Context ctx;
   // Test that this generates no compiler warnings.
   std::unique_ptr<tiledb::ArraySchema> schema;

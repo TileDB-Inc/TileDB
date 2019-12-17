@@ -105,11 +105,15 @@ std::pair<uint64_t, uint64_t> get_timestamp_range(
     uint32_t version, const std::string& fragment_name);
 
 /**
- * Retrieves the fragment name version. Version 1 corresponds to format
- * version <=2, and 2 to format version > 2.
+ * Retrieves the fragment name version.
+ *  - Version 1 corresponds to format versions 1 and 2
+ *      * __uuid_<t1>{_t2}
+ *  - Version 2 corresponds to version 3 and 4
+ *      * __t1_t2_uuid
+ *  - Version 3 corresponds to version 5 or higher
+ *      * __t1_t2_uuid_version
  */
-Status get_fragment_name_version(
-    const std::string& fragment_name, uint32_t* version);
+Status get_fragment_name_version(const URI& uri, uint32_t* version);
 
 /** Returns `true` if the input string is a (potentially signed) integer. */
 bool is_int(const std::string& str);

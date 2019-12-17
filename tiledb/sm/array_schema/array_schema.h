@@ -100,7 +100,7 @@ class ArraySchema {
    * Returns a constant pointer to the selected attribute (nullptr if it
    * does not exist).
    */
-  const Attribute* attribute(std::string name) const;
+  const Attribute* attribute(const std::string& name) const;
 
   /**
    * Returns the given attribute name as it would be stored in the schema. E.g.
@@ -143,11 +143,11 @@ class ArraySchema {
   /** Returns the cell order. */
   Layout cell_order() const;
 
-  /** Returns the size of cell on the input attribute. */
-  uint64_t cell_size(const std::string& attribute) const;
+  /** Returns the size of cell on the input attribute/dimension. */
+  uint64_t cell_size(const std::string& name) const;
 
-  /** Returns the number of values per cell of the input attribute. */
-  unsigned int cell_val_num(const std::string& attribute) const;
+  /** Returns the number of values per cell of the input attribute/dimension. */
+  unsigned int cell_val_num(const std::string& name) const;
 
   /**
    * Return a pointer to the pipeline used for offsets of variable-sized cells.
@@ -170,8 +170,11 @@ class ArraySchema {
    */
   Status check_attributes(const std::vector<std::string>& attributes) const;
 
-  /** Return the filter pipeline for the given attribute. */
-  const FilterPipeline* filters(const std::string& attribute) const;
+  /**
+   * Return the filter pipeline for the given attribute/dimension (can be
+   * TILEDB_COORDS).
+   */
+  const FilterPipeline* filters(const std::string& name) const;
 
   /** Return a pointer to the pipeline used for coordinates. */
   const FilterPipeline* coords_filters() const;
@@ -216,6 +219,12 @@ class ArraySchema {
    */
   Status has_attribute(const std::string& name, bool* has_attr) const;
 
+  /** Returns true if the input name is an attribute. */
+  bool is_attr(const std::string& name) const;
+
+  /** Returns true if the input name is a dimension. */
+  bool is_dim(const std::string& name) const;
+
   /**
    * Serializes the array schema object into a buffer.
    *
@@ -227,11 +236,11 @@ class ArraySchema {
   /** Returns the tile order. */
   Layout tile_order() const;
 
-  /** Returns the type of the i-th attribute. */
-  Datatype type(unsigned int i) const;
-
-  /** Returns the type of the input attribute (could be coordinates). */
-  Datatype type(const std::string& attribute) const;
+  /**
+   * Returns the type of the input attribute/dimension (could also be
+   * TILEDB_COORDS).
+   */
+  Datatype type(const std::string& name) const;
 
   /**
    * Returns *true* if the input attribute/dimension has variable-sized
@@ -326,9 +335,6 @@ class ArraySchema {
    */
   Layout cell_order_;
 
-  /** Stores the size of every attribute (plus coordinates). */
-  std::unordered_map<std::string, uint64_t> cell_sizes_;
-
   /** The filter pipeline run on offset tiles for var-length attributes. */
   FilterPipeline cell_var_offsets_filters_;
 
@@ -372,9 +378,6 @@ class ArraySchema {
 
   /** Clears all members. Use with caution! */
   void clear();
-
-  /** Computes and returns the size of an attribute (or coordinates). */
-  uint64_t compute_cell_size(const std::string& attribute) const;
 };
 
 }  // namespace sm

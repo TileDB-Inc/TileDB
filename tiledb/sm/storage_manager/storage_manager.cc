@@ -906,7 +906,7 @@ Status StorageManager::get_fragment_info(
 
   uint32_t fragment_name_version;
   RETURN_NOT_OK(utils::parse::get_fragment_name_version(
-      fragment_name, &fragment_name_version));
+      fragment_uri, &fragment_name_version));
 
   // Get timestamp range
   auto timestamp_range =
@@ -1744,8 +1744,8 @@ Status StorageManager::load_fragment_metadata(
       URI coords_uri =
           sf.uri_.join_path(constants::coords + constants::file_suffix);
 
-      RETURN_NOT_OK(utils::parse::get_fragment_name_version(
-          sf.uri_.to_string(), &f_version));
+      RETURN_NOT_OK(
+          utils::parse::get_fragment_name_version(sf.uri_, &f_version));
 
       // Note that the fragment metadata version is >= the array schema
       // version. Therefore, the check below is defensive and will always
@@ -1793,7 +1793,7 @@ Status StorageManager::get_sorted_uris(
     assert(utils::parse::starts_with(name, "__"));
 
     // Get timestamp range
-    RETURN_NOT_OK(utils::parse::get_fragment_name_version(name, &f_version));
+    RETURN_NOT_OK(utils::parse::get_fragment_name_version(uri, &f_version));
     auto timestamp_range = utils::parse::get_timestamp_range(f_version, name);
     auto t = timestamp_range.first;
 
