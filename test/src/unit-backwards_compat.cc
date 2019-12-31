@@ -383,7 +383,7 @@ TEST_CASE(
             break;
           }
           case TILEDB_UINT8: {
-            REQUIRE(static_cast<int8_t*>(buffer.second)[0] == 1);
+            REQUIRE(static_cast<uint8_t*>(buffer.second)[0] == 1);
             break;
           }
           case TILEDB_INT16: {

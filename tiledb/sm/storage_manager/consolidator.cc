@@ -839,16 +839,15 @@ Status Consolidator::compute_new_fragment_uri(
 
   // Get timestamp ranges
   uint32_t f_version;
-  RETURN_NOT_OK(
-      utils::parse::get_fragment_name_version(first_name, &f_version));
+  RETURN_NOT_OK(utils::parse::get_fragment_name_version(first, &f_version));
   auto t_first = utils::parse::get_timestamp_range(f_version, first_name);
-  RETURN_NOT_OK(utils::parse::get_fragment_name_version(last_name, &f_version));
+  RETURN_NOT_OK(utils::parse::get_fragment_name_version(last, &f_version));
   auto t_last = utils::parse::get_timestamp_range(f_version, last_name);
 
   // Create new URI
   std::stringstream ss;
   ss << first.parent().to_string() << "/__" << t_first.first << "_"
-     << t_last.second << "_" << uuid;
+     << t_last.second << "_" << uuid << "_" << constants::format_version;
 
   *new_uri = URI(ss.str());
 

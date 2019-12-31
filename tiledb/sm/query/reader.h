@@ -897,17 +897,17 @@ class Reader {
       const std::vector<ResultTile*>& result_tiles) const;
 
   /**
-   * Runs the input tile for the input attribute through the filter pipeline.
-   * The tile buffer is modified to contain the output of the pipeline.
+   * Runs the input tile for the input attribute or dimension through the
+   * filter pipeline. The tile buffer is modified to contain the output of the
+   * pipeline.
    *
-   * @param attribute The attribute the tile belong to.
+   * @param name The attribute/dimension the tile belong to.
    * @param tile The tile to be filtered.
    * @param offsets True if the tile to be filtered contains offsets for a
-   *    var-sized attribute.
+   *    var-sized attribute/dimension.
    * @return Status
    */
-  Status filter_tile(
-      const std::string& attribute, Tile* tile, bool offsets) const;
+  Status filter_tile(const std::string& name, Tile* tile, bool offsets) const;
 
   /**
    * Gets all the result coordinates of the input tile into `result_coords`.
@@ -1028,6 +1028,13 @@ class Reader {
    */
   template <class T>
   bool coords_overwritten(unsigned frag_idx, const T* coords) const;
+
+  /**
+   * Creates zipped coordinate tiles for TILEDB_COORDS. This is for backwards
+   * compatibility; it will be removed in a subsequent PR.
+   */
+  Status zip_coord_tiles(
+      const std::vector<ResultTile*>& tmp_result_tiles) const;
 };
 
 }  // namespace sm

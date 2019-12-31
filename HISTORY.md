@@ -1,5 +1,11 @@
 # In Progress
 
+## Disk Format
+
+* Removed file __coords.tdb that stored the zipped coordinates in sparse fragments
+* Now storing the coordinate tiles on each dimension in separate files
+* Changed fragment name format from `__t1_t2_uuid` to `__t1_t2_uuid_<format_version>`. That was necessary for backwards compatibility
+
 ## New features
 
 ## Improvements

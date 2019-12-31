@@ -89,7 +89,6 @@ ArraySchema::ArraySchema(const ArraySchema* array_schema) {
 
   capacity_ = array_schema->capacity_;
   cell_order_ = array_schema->cell_order_;
-  cell_sizes_ = array_schema->cell_sizes_;
   cell_var_offsets_filters_ = array_schema->cell_var_offsets_filters_;
   coords_filters_ = array_schema->coords_filters_;
   coords_size_ = array_schema->coords_size_;
@@ -98,16 +97,10 @@ ArraySchema::ArraySchema(const ArraySchema* array_schema) {
 
   set_domain(array_schema->domain_);
 
+  attribute_map_.clear();
   for (auto attr : array_schema->attributes_) {
     if (attr->name() != constants::key_attr_name)
       add_attribute(attr, false);
-  }
-  for (const auto& attr : attributes_)
-    attribute_map_[attr->name()] = attr;
-  auto dim_num = array_schema->dim_num();
-  for (unsigned d = 0; d < dim_num; ++d) {
-    auto dim = dimension(d);
-    dim_map_[dim->name()] = dim;
   }
 }
 
@@ -133,16 +126,10 @@ const Attribute* ArraySchema::attribute(unsigned int id) const {
   return nullptr;
 }
 
-const Attribute* ArraySchema::attribute(std::string name) const {
-  bool anonymous = name.empty();
-  unsigned int nattr = attribute_num();
-  for (unsigned int i = 0; i < nattr; i++) {
-    auto attr = attribute(i);
-    if ((attr->name() == name) || (anonymous && attr->is_anonymous())) {
-      return attr;
-    }
-  }
-  return nullptr;
+const Attribute* ArraySchema::attribute(const std::string& name) const {
+  auto it =
+      attribute_map_.find(name.empty() ? constants::default_attr_name : name);
+  return it == attribute_map_.end() ? nullptr : it->second;
 }
 
 Status ArraySchema::attribute_name_normalized(
@@ -188,16 +175,45 @@ Layout ArraySchema::cell_order() const {
   return cell_order_;
 }
 
-uint64_t ArraySchema::cell_size(const std::string& attribute) const {
-  auto cell_size_it = cell_sizes_.find(attribute);
-  assert(cell_size_it != cell_sizes_.end());
-  return cell_size_it->second;
+uint64_t ArraySchema::cell_size(const std::string& name) const {
+  // Special zipped coordinates
+  if (name == constants::coords)
+    return domain_->dim_num() * datatype_size(coords_type());
+
+  // Attribute
+  auto attr_it = attribute_map_.find(name);
+  if (attr_it != attribute_map_.end()) {
+    auto attr = attr_it->second;
+    auto cell_val_num = attr->cell_val_num();
+    return (cell_val_num == constants::var_num) ?
+               constants::var_size :
+               cell_val_num * datatype_size(attr->type());
+  }
+
+  // Dimension
+  auto dim_it = dim_map_.find(name);
+  assert(dim_it != dim_map_.end());
+  auto dim = dim_it->second;
+  auto cell_val_num = dim->cell_val_num();
+  return (cell_val_num == constants::var_num) ?
+             constants::var_size :
+             cell_val_num * datatype_size(dim->type());
 }
 
-unsigned int ArraySchema::cell_val_num(const std::string& attribute) const {
-  auto it = attribute_map_.find(attribute);
-  assert(it != attribute_map_.end());
-  return it->second->cell_val_num();
+unsigned int ArraySchema::cell_val_num(const std::string& name) const {
+  // Special zipped coordinates
+  if (name == constants::coords)
+    return 1;
+
+  // Attribute
+  auto attr_it = attribute_map_.find(name);
+  if (attr_it != attribute_map_.end())
+    return attr_it->second->cell_val_num();
+
+  // Dimension
+  auto dim_it = dim_map_.find(name);
+  assert(dim_it != dim_map_.end());
+  return dim_it->second->cell_val_num();
 }
 
 const FilterPipeline* ArraySchema::cell_var_offsets_filters() const {
@@ -253,16 +269,20 @@ Status ArraySchema::check_attributes(
   return Status::Ok();
 }
 
-const FilterPipeline* ArraySchema::filters(const std::string& attribute) const {
-  auto it = attribute_map_.find(attribute);
-  if (it == attribute_map_.end()) {
-    if (attribute == constants::coords)
-      return coords_filters();
-    assert(false);   // This should never happen
-    return nullptr;  // Return something ad hoc
-  }
+const FilterPipeline* ArraySchema::filters(const std::string& name) const {
+  if (name == constants::coords)
+    return coords_filters();
 
-  return it->second->filters();
+  // Attribute
+  auto attr_it = attribute_map_.find(name);
+  if (attr_it != attribute_map_.end())
+    return attr_it->second->filters();
+
+  // Dimension (if filters not set, return default coordinate filters)
+  auto dim_it = dim_map_.find(name);
+  assert(dim_it != dim_map_.end());
+  auto ret = dim_it->second->filters();
+  return (ret != nullptr) ? ret : coords_filters();
 }
 
 const FilterPipeline* ArraySchema::coords_filters() const {
@@ -297,15 +317,8 @@ const Dimension* ArraySchema::dimension(unsigned int i) const {
 }
 
 const Dimension* ArraySchema::dimension(const std::string& name) const {
-  bool anonymous = name.empty();
-  auto dim_num = this->dim_num();
-  for (unsigned d = 0; d < dim_num; ++d) {
-    auto dim = this->dimension(d);
-    if ((dim->name() == name) || (anonymous && dim->is_anonymous())) {
-      return dim;
-    }
-  }
-  return nullptr;
+  auto it = dim_map_.find(name.empty() ? constants::default_dim_name : name);
+  return it == dim_map_.end() ? nullptr : it->second;
 }
 
 unsigned int ArraySchema::dim_num() const {
@@ -350,6 +363,14 @@ Status ArraySchema::has_attribute(
   }
 
   return Status::Ok();
+}
+
+bool ArraySchema::is_attr(const std::string& name) const {
+  return this->attribute(name) != nullptr;
+}
+
+bool ArraySchema::is_dim(const std::string& name) const {
+  return this->dimension(name) != nullptr;
 }
 
 // ===== FORMAT =====
@@ -404,26 +425,20 @@ Layout ArraySchema::tile_order() const {
   return tile_order_;
 }
 
-Datatype ArraySchema::type(unsigned int i) const {
-  auto attribute_num = attributes_.size();
-  if (i > attribute_num) {
-    LOG_ERROR("Cannot retrieve type; Invalid attribute id");
-    assert(false);
-  }
-  if (i < attribute_num)
-    return attributes_[i]->type();
-  return domain_->type();
-}
+Datatype ArraySchema::type(const std::string& name) const {
+  // Special zipped coordinates
+  if (name == constants::coords)
+    return domain_->type();
 
-Datatype ArraySchema::type(const std::string& attribute) const {
-  auto it = attribute_map_.find(attribute);
-  if (it == attribute_map_.end()) {
-    if (attribute == constants::coords)
-      return domain_->type();
-    assert(false);          // This should never happen
-    return Datatype::INT8;  // Return something ad hoc
-  }
-  return it->second->type();
+  // Attribute
+  auto attr_it = attribute_map_.find(name);
+  if (attr_it != attribute_map_.end())
+    return attr_it->second->type();
+
+  // Dimension
+  auto dim_it = dim_map_.find(name);
+  assert(dim_it != dim_map_.end());
+  return dim_it->second->type();
 }
 
 bool ArraySchema::var_size(const std::string& name) const {
@@ -474,7 +489,10 @@ Status ArraySchema::add_attribute(const Attribute* attr, bool check_special) {
   } else {
     new_attr = new Attribute(attr);
   }
+
   attributes_.emplace_back(new_attr);
+  attribute_map_[new_attr->name()] = new_attr;
+
   return Status::Ok();
 }
 
@@ -530,6 +548,12 @@ Status ArraySchema::deserialize(ConstBuffer* buff) {
     auto attr = new Attribute();
     RETURN_NOT_OK_ELSE(attr->deserialize(buff), delete attr);
     attributes_.emplace_back(attr);
+    attribute_map_[attr->name()] = attr;
+  }
+  auto dim_num = domain()->dim_num();
+  for (unsigned d = 0; d < dim_num; ++d) {
+    auto dim = dimension(d);
+    dim_map_[dim->name()] = dim;
   }
 
   // Initialize the rest of the object members
@@ -550,21 +574,9 @@ Status ArraySchema::init() {
   // Initialize domain
   RETURN_NOT_OK(domain_->init(cell_order_, tile_order_));
 
-  attribute_map_.clear();
-  for (const auto& attr : attributes_)
-    attribute_map_[attr->name()] = attr;
-  dim_map_.clear();
-  auto dim_num = domain_->dim_num();
-  for (unsigned d = 0; d < dim_num; ++d) {
-    auto dim = dimension(d);
-    dim_map_[dim->name()] = dim;
-  }
-
   // Set cell sizes
-  for (auto& attr : attributes_)
-    cell_sizes_[attr->name()] = compute_cell_size(attr->name());
-  cell_sizes_[constants::coords] = compute_cell_size(constants::coords);
-  coords_size_ = dim_num * datatype_size(coords_type());
+  // TODO: set upon setting domain
+  coords_size_ = domain_->dim_num() * datatype_size(coords_type());
 
   // Success
   return Status::Ok();
@@ -618,6 +630,15 @@ Status ArraySchema::set_domain(Domain* domain) {
     filter->set_compressor(constants::real_coords_compression);
     filter->set_compression_level(-1);
   }
+
+  // Create dimension map
+  dim_map_.clear();
+  auto dim_num = domain_->dim_num();
+  for (unsigned d = 0; d < dim_num; ++d) {
+    auto dim = dimension(d);
+    dim_map_[dim->name()] = dim;
+  }
+
   return Status::Ok();
 }
 
@@ -674,29 +695,6 @@ void ArraySchema::clear() {
 
   delete domain_;
   domain_ = nullptr;
-}
-
-uint64_t ArraySchema::compute_cell_size(const std::string& attribute) const {
-  // Handle coordinates first
-  if (attribute == constants::coords) {
-    auto dim_num = domain_->dim_num();
-    auto type = coords_type();
-    return dim_num * datatype_size(type);
-  }
-
-  // Handle attributes
-  auto attr_it = attribute_map_.find(attribute);
-  assert(attr_it != attribute_map_.end());
-  auto attr = attr_it->second;
-
-  // For easy reference
-  auto cell_val_num = attr->cell_val_num();
-  auto type = attr->type();
-
-  // Variable-sized cell
-  return (cell_val_num == constants::var_num) ?
-             constants::var_size :
-             cell_val_num * datatype_size(type);
 }
 
 }  // namespace sm

@@ -85,7 +85,7 @@ struct CPPArrayFx {
   VFS vfs;
 };
 
-TEST_CASE("Config", "[cppapi]") {
+TEST_CASE("Config", "[cppapi][config]") {
   // Primarily to instansiate operator[]/= template
   tiledb::Config cfg;
   cfg["vfs.s3.region"] = "us-east-1a";
@@ -94,7 +94,7 @@ TEST_CASE("Config", "[cppapi]") {
   CHECK((std::string)cfg["vfs.s3.use_virtual_addressing"] == "true");
 }
 
-TEST_CASE_METHOD(CPPArrayFx, "C++ API: Arrays", "[cppapi]") {
+TEST_CASE_METHOD(CPPArrayFx, "C++ API: Arrays", "[cppapi][basic]") {
   SECTION("Dimensions") {
     ArraySchema schema(ctx, "cpp_unit_array");
     CHECK(schema.domain().ndim() == 2);
@@ -337,8 +337,7 @@ TEST_CASE_METHOD(CPPArrayFx, "C++ API: Arrays", "[cppapi]") {
 }
 
 TEST_CASE(
-    "C++ API: Incorrect buffer size and offsets",
-    "[cppapi], [invalid-offsets]") {
+    "C++ API: Incorrect buffer size and offsets", "[cppapi][invalid-offsets]") {
   const std::string array_name_1d = "cpp_unit_array_1d";
   Context ctx;
   VFS vfs(ctx);

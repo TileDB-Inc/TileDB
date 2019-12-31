@@ -253,11 +253,23 @@ std::pair<uint64_t, uint64_t> get_timestamp_range(
   return ret;
 }
 
-Status get_fragment_name_version(
-    const std::string& fragment_name, uint32_t* version) {
-  auto t_str = fragment_name.substr(fragment_name.find_last_of('_') + 1);
+Status get_fragment_name_version(const URI& uri, uint32_t* version) {
+  // Prepare fragment name string
+  std::string uri_str(uri.c_str());
+  if (uri_str.back() == '/')
+    uri_str.pop_back();
+  std::string name = URI(uri_str).last_path_part();
 
-  // The newest version has the 32-byte long UUID at the end
+  // First check if it is in version 3, which has 5 '_' in the name
+  size_t n = std::count(name.begin(), name.end(), '_');
+  if (n == 5) {
+    *version = 3;
+    return Status::Ok();
+  }
+
+  // Check if it is in version 1 or 2
+  // Version 2 has the 32-byte long UUID at the end
+  auto t_str = name.substr(name.find_last_of('_') + 1);
   *version = (t_str.size() == 32) ? 2 : 1;
 
   return Status::Ok();

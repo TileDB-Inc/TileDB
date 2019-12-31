@@ -3796,8 +3796,7 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     ConsolidationFx,
     "C API: Test advanced consolidation, consolidatable #1",
-    "[capi], [consolidation], [consolidation-adv], "
-    "[consolidation-adv-consolidatable-1]") {
+    "[capi][consolidation][adv][consolidatable-1]") {
   remove_dense_vector();
   create_dense_vector();
   write_dense_vector_consolidatable_1();
@@ -3821,7 +3820,7 @@ TEST_CASE_METHOD(
   REQUIRE(rc == TILEDB_OK);
   REQUIRE(error == nullptr);
   rc = tiledb_config_set(
-      config, "sm.consolidation.step_size_ratio", "0.6", &error);
+      config, "sm.consolidation.step_size_ratio", "0.7", &error);
   REQUIRE(rc == TILEDB_OK);
   REQUIRE(error == nullptr);
 
