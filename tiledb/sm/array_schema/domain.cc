@@ -472,53 +472,19 @@ uint64_t Domain::cell_num_per_tile() const {
 }
 
 template <class T>
-int Domain::cell_order_cmp(const T* coords_a, const T* coords_b) const {
-  // Check if they are equal
-  if (std::memcmp(coords_a, coords_b, dim_num_ * datatype_size(type_)) == 0)
-    return 0;
-
-  // Check for precedence
-  if (cell_order_ == Layout::COL_MAJOR) {  // COLUMN-MAJOR
-    for (unsigned int i = dim_num_ - 1;; --i) {
-      if (coords_a[i] < coords_b[i])
-        return -1;
-      if (coords_a[i] > coords_b[i])
-        return 1;
-      if (i == 0)
-        break;
-    }
-  } else if (cell_order_ == Layout::ROW_MAJOR) {  // ROW-MAJOR
-    for (unsigned int i = 0; i < dim_num_; ++i) {
-      if (coords_a[i] < coords_b[i])
-        return -1;
-      if (coords_a[i] > coords_b[i])
-        return 1;
-    }
-  } else {  // Invalid cell order
-    assert(0);
-  }
-
-  // The program should never reach this point
-  assert(0);
+int Domain::cell_order_cmp(const void* coord_a, const void* coord_b) {
+  auto ca = (const T*)coord_a;
+  auto cb = (const T*)coord_b;
+  if (*ca < *cb)
+    return -1;
+  if (*ca > *cb)
+    return 1;
   return 0;
 }
 
-template <class T>
 int Domain::cell_order_cmp(
-    const Dimension* dim,
-    const std::vector<const void*>& coord_buffs,
-    uint64_t a,
-    uint64_t b,
-    unsigned d) {
-  auto coord_buff = (unsigned char*)coord_buffs[d];
-  auto coord_size = dim->coord_size();
-  auto coords_a = (T*)&(coord_buff[a * coord_size]);
-  auto coords_b = (T*)&(coord_buff[b * coord_size]);
-  if (*coords_a < *coords_b)
-    return -1;
-  if (*coords_a > *coords_b)
-    return 1;
-  return 0;
+    unsigned dim_idx, const void* coord_a, const void* coord_b) const {
+  return cell_order_cmp_func_[dim_idx](coord_a, coord_b);
 }
 
 int Domain::cell_order_cmp(
@@ -526,7 +492,10 @@ int Domain::cell_order_cmp(
   if (cell_order_ == Layout::ROW_MAJOR) {
     for (unsigned d = 0; d < dim_num_; ++d) {
       auto dim = dimension(d);
-      auto res = cell_order_cmp_func_[d](dim, coord_buffs, a, b, d);
+      auto coord_size = dim->coord_size();
+      auto ca = &(((unsigned char*)coord_buffs[d])[a * coord_size]);
+      auto cb = &(((unsigned char*)coord_buffs[d])[b * coord_size]);
+      auto res = cell_order_cmp_func_[d](ca, cb);
 
       if (res == 1 || res == -1)
         return res;
@@ -535,7 +504,10 @@ int Domain::cell_order_cmp(
   } else {  // COL_MAJOR
     for (unsigned d = dim_num_ - 1;; --d) {
       auto dim = dimension(d);
-      auto res = cell_order_cmp_func_[d](dim, coord_buffs, a, b, d);
+      auto coord_size = dim->coord_size();
+      auto ca = &(((unsigned char*)coord_buffs[d])[a * coord_size]);
+      auto cb = &(((unsigned char*)coord_buffs[d])[b * coord_size]);
+      auto res = cell_order_cmp_func_[d](ca, cb);
 
       if (res == 1 || res == -1)
         return res;
@@ -1017,57 +989,17 @@ uint64_t Domain::tile_num(const void* range) const {
 }
 
 template <class T>
-int Domain::tile_order_cmp(const T* coords_a, const T* coords_b) const {
-  if (tile_extents_ == nullptr)
+int Domain::tile_order_cmp(
+    const Dimension* dim, const void* coord_a, const void* coord_b) {
+  auto tile_extent = (T*)dim->tile_extent();
+  if (tile_extent == nullptr)
     return 0;
 
-  auto tile_extents = (T*)tile_extents_;
-  auto domain = (T*)domain_;
-  if (tile_order_ == Layout::ROW_MAJOR) {
-    for (unsigned i = 0; i < dim_num_; ++i) {
-      auto ta = (T)((coords_a[i] - domain[2 * i]) / tile_extents[i]);
-      auto tb = (T)((coords_b[i] - domain[2 * i]) / tile_extents[i]);
-
-      if (ta < tb)
-        return -1;
-      if (ta > tb)
-        return 1;
-      // else ta == tb --> continue
-    }
-  } else {  // COL_MAJOR
-    for (unsigned i = dim_num_ - 1;; --i) {
-      auto ta = (T)((coords_a[i] - domain[2 * i]) / tile_extents[i]);
-      auto tb = (T)((coords_b[i] - domain[2 * i]) / tile_extents[i]);
-      if (ta < tb)
-        return -1;
-      if (ta > tb)
-        return 1;
-      // else ta == tb --> continue
-
-      if (i == 0)
-        break;
-    }
-  }
-
-  return 0;
-}
-
-template <class T>
-int Domain::tile_order_cmp(
-    const Dimension* dim,
-    const std::vector<const void*>& coord_buffs,
-    uint64_t a,
-    uint64_t b,
-    unsigned d) {
-  auto tile_extent = (T*)dim->tile_extent();
-  assert(tile_extent != nullptr);
+  auto ca = (T*)coord_a;
+  auto cb = (T*)coord_b;
   auto domain = (T*)dim->domain();
-  auto coord_buff = (unsigned char*)coord_buffs[d];
-  auto coord_size = dim->coord_size();
-  auto coords_a = (T*)&(coord_buff[a * coord_size]);
-  auto coords_b = (T*)&(coord_buff[b * coord_size]);
-  auto ta = (T)((*coords_a - domain[0]) / *tile_extent);
-  auto tb = (T)((*coords_b - domain[0]) / *tile_extent);
+  auto ta = (T)((*ca - domain[0]) / *tile_extent);
+  auto tb = (T)((*cb - domain[0]) / *tile_extent);
   if (ta < tb)
     return -1;
   if (ta > tb)
@@ -1077,13 +1009,13 @@ int Domain::tile_order_cmp(
 
 int Domain::tile_order_cmp(
     const std::vector<const void*>& coord_buffs, uint64_t a, uint64_t b) const {
-  if (tile_extents_ == nullptr)
-    return 0;
-
   if (tile_order_ == Layout::ROW_MAJOR) {
     for (unsigned d = 0; d < dim_num_; ++d) {
       auto dim = dimension(d);
-      auto res = tile_order_cmp_func_[d](dim, coord_buffs, a, b, d);
+      auto coord_size = dim->coord_size();
+      auto ca = &(((unsigned char*)coord_buffs[d])[a * coord_size]);
+      auto cb = &(((unsigned char*)coord_buffs[d])[b * coord_size]);
+      auto res = tile_order_cmp_func_[d](dim, ca, cb);
 
       if (res == 1 || res == -1)
         return res;
@@ -1092,7 +1024,10 @@ int Domain::tile_order_cmp(
   } else {  // COL_MAJOR
     for (unsigned d = dim_num_ - 1;; --d) {
       auto dim = dimension(d);
-      auto res = tile_order_cmp_func_[d](dim, coord_buffs, a, b, d);
+      auto coord_size = dim->coord_size();
+      auto ca = &(((unsigned char*)coord_buffs[d])[a * coord_size]);
+      auto cb = &(((unsigned char*)coord_buffs[d])[b * coord_size]);
+      auto res = tile_order_cmp_func_[d](dim, ca, cb);
 
       if (res == 1 || res == -1)
         return res;
@@ -1106,39 +1041,10 @@ int Domain::tile_order_cmp(
   return 0;
 }
 
-template <class T>
-int Domain::tile_order_cmp_tile_coords(
-    const T* tile_coords_a, const T* tile_coords_b) const {
-  if (tile_coords_a == nullptr || tile_coords_b == nullptr)
-    return 0;
-
-  if (tile_order_ == Layout::ROW_MAJOR) {
-    for (unsigned i = 0; i < dim_num_; ++i) {
-      auto ta = tile_coords_a[i];
-      auto tb = tile_coords_b[i];
-
-      if (ta < tb)
-        return -1;
-      if (ta > tb)
-        return 1;
-      // else ta == tb --> continue
-    }
-  } else {  // COL_MAJOR
-    for (unsigned i = dim_num_ - 1;; --i) {
-      auto ta = tile_coords_a[i];
-      auto tb = tile_coords_b[i];
-      if (ta < tb)
-        return -1;
-      if (ta > tb)
-        return 1;
-      // else ta == tb --> continue
-
-      if (i == 0)
-        break;
-    }
-  }
-
-  return 0;
+int Domain::tile_order_cmp(
+    unsigned dim_idx, const void* coord_a, const void* coord_b) const {
+  auto dim = dimension(dim_idx);
+  return tile_order_cmp_func_[dim_idx](dim, coord_a, coord_b);
 }
 
 Datatype Domain::type() const {
@@ -1845,27 +1751,6 @@ template uint64_t Domain::cell_num<uint64_t>(const uint64_t* domain) const;
 template uint64_t Domain::cell_num<float>(const float* domain) const;
 template uint64_t Domain::cell_num<double>(const double* domain) const;
 
-template int Domain::cell_order_cmp<int>(
-    const int* coords_a, const int* coords_b) const;
-template int Domain::cell_order_cmp<int64_t>(
-    const int64_t* coords_a, const int64_t* coords_b) const;
-template int Domain::cell_order_cmp<float>(
-    const float* coords_a, const float* coords_b) const;
-template int Domain::cell_order_cmp<double>(
-    const double* coords_a, const double* coords_b) const;
-template int Domain::cell_order_cmp<int8_t>(
-    const int8_t* coords_a, const int8_t* coords_b) const;
-template int Domain::cell_order_cmp<uint8_t>(
-    const uint8_t* coords_a, const uint8_t* coords_b) const;
-template int Domain::cell_order_cmp<int16_t>(
-    const int16_t* coords_a, const int16_t* coords_b) const;
-template int Domain::cell_order_cmp<uint16_t>(
-    const uint16_t* coords_a, const uint16_t* coords_b) const;
-template int Domain::cell_order_cmp<uint32_t>(
-    const uint32_t* coords_a, const uint32_t* coords_b) const;
-template int Domain::cell_order_cmp<uint64_t>(
-    const uint64_t* coords_a, const uint64_t* coords_b) const;
-
 template Status Domain::get_cell_pos<int>(
     const int* coords, uint64_t* pos) const;
 template Status Domain::get_cell_pos<int64_t>(
@@ -2053,48 +1938,6 @@ template void Domain::get_tile_subarray<double>(
     const double* domain,
     const double* tile_coords,
     double* tile_subarray) const;
-
-template int Domain::tile_order_cmp<int8_t>(
-    const int8_t* coords_a, const int8_t* coords_b) const;
-template int Domain::tile_order_cmp<uint8_t>(
-    const uint8_t* coords_a, const uint8_t* coords_b) const;
-template int Domain::tile_order_cmp<int16_t>(
-    const int16_t* coords_a, const int16_t* coords_b) const;
-template int Domain::tile_order_cmp<uint16_t>(
-    const uint16_t* coords_a, const uint16_t* coords_b) const;
-template int Domain::tile_order_cmp<int>(
-    const int* coords_a, const int* coords_b) const;
-template int Domain::tile_order_cmp<unsigned>(
-    const unsigned* coords_a, const unsigned* coords_b) const;
-template int Domain::tile_order_cmp<int64_t>(
-    const int64_t* coords_a, const int64_t* coords_b) const;
-template int Domain::tile_order_cmp<uint64_t>(
-    const uint64_t* coords_a, const uint64_t* coords_b) const;
-template int Domain::tile_order_cmp<float>(
-    const float* coords_a, const float* coords_b) const;
-template int Domain::tile_order_cmp<double>(
-    const double* coords_a, const double* coords_b) const;
-
-template int Domain::tile_order_cmp_tile_coords<int8_t>(
-    const int8_t* coords_a, const int8_t* coords_b) const;
-template int Domain::tile_order_cmp_tile_coords<uint8_t>(
-    const uint8_t* coords_a, const uint8_t* coords_b) const;
-template int Domain::tile_order_cmp_tile_coords<int16_t>(
-    const int16_t* coords_a, const int16_t* coords_b) const;
-template int Domain::tile_order_cmp_tile_coords<uint16_t>(
-    const uint16_t* coords_a, const uint16_t* coords_b) const;
-template int Domain::tile_order_cmp_tile_coords<int>(
-    const int* coords_a, const int* coords_b) const;
-template int Domain::tile_order_cmp_tile_coords<unsigned>(
-    const unsigned* coords_a, const unsigned* coords_b) const;
-template int Domain::tile_order_cmp_tile_coords<int64_t>(
-    const int64_t* coords_a, const int64_t* coords_b) const;
-template int Domain::tile_order_cmp_tile_coords<uint64_t>(
-    const uint64_t* coords_a, const uint64_t* coords_b) const;
-template int Domain::tile_order_cmp_tile_coords<float>(
-    const float* coords_a, const float* coords_b) const;
-template int Domain::tile_order_cmp_tile_coords<double>(
-    const double* coords_a, const double* coords_b) const;
 
 template void Domain::get_end_of_cell_slab<int8_t>(
     int8_t* subarray, int8_t* start, Layout layout, int8_t* end) const;

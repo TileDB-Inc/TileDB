@@ -128,8 +128,8 @@ void ReadCellSlabIterFx::check_iter(
       CHECK(result_cell_slab.tile_ == nullptr);
     } else {
       CHECK(result_cell_slab.tile_ != nullptr);
-      CHECK(result_cell_slab.tile_->frag_idx_ == rcs[0]);
-      CHECK(result_cell_slab.tile_->tile_idx_ == rcs[1]);
+      CHECK(result_cell_slab.tile_->frag_idx() == rcs[0]);
+      CHECK(result_cell_slab.tile_->tile_idx() == rcs[1]);
     }
     CHECK(result_cell_slab.start_ == rcs[2]);
     CHECK(result_cell_slab.length_ == rcs[3]);
@@ -175,7 +175,7 @@ TEST_CASE_METHOD(
     "[ReadCellSlabIter][empty]") {
   Subarray* subarray = nullptr;
   std::map<const int32_t*, ResultSpaceTile<int32_t>> result_space_tiles;
-  std::vector<ResultCoords<int32_t>> result_coords;
+  std::vector<ResultCoords> result_coords;
   ReadCellSlabIter<int32_t> iter(subarray, &result_space_tiles, &result_coords);
   CHECK(iter.end());
   CHECK(iter.begin().ok());
@@ -228,7 +228,7 @@ TEST_CASE_METHOD(
       &result_space_tiles);
 
   // Check iterator
-  std::vector<ResultCoords<uint64_t>> result_coords;
+  std::vector<ResultCoords> result_coords;
   ReadCellSlabIter<uint64_t> iter(
       &subarray, &result_space_tiles, &result_coords);
   std::vector<std::vector<uint64_t>> c_result_cell_slabs = {
@@ -286,7 +286,7 @@ TEST_CASE_METHOD(
       &result_space_tiles);
 
   // Check iterator
-  std::vector<ResultCoords<uint64_t>> result_coords;
+  std::vector<ResultCoords> result_coords;
   ReadCellSlabIter<uint64_t> iter(
       &subarray, &result_space_tiles, &result_coords);
   std::vector<std::vector<uint64_t>> c_result_cell_slabs = {
@@ -344,7 +344,7 @@ TEST_CASE_METHOD(
       &result_space_tiles);
 
   // Check iterator
-  std::vector<ResultCoords<uint64_t>> result_coords;
+  std::vector<ResultCoords> result_coords;
   ReadCellSlabIter<uint64_t> iter(
       &subarray, &result_space_tiles, &result_coords);
   std::vector<std::vector<uint64_t>> c_result_cell_slabs = {
@@ -407,24 +407,46 @@ TEST_CASE_METHOD(
       tile_coords,
       &result_space_tiles);
 
+  auto dim_num = 1;
+
   // Create result coordinates
-  std::vector<ResultCoords<uint64_t>> result_coords;
-  ResultTile result_tile_2_0(2, 0);
-  ResultTile result_tile_3_0(3, 0);
-  ResultTile result_tile_3_1(3, 1);
-  uint64_t coords_2_3 = 3;
-  uint64_t coords_2_5 = 5;
-  uint64_t coords_3_8 = 8;
-  uint64_t coords_3_9 = 9;
-  uint64_t coords_3_12 = 12;
-  uint64_t coords_3_19 = 19;
-  result_coords.emplace_back(&result_tile_2_0, &coords_2_3, 1);
-  result_coords.emplace_back(&result_tile_2_0, &coords_2_5, 3);
-  result_coords.emplace_back(&result_tile_3_0, &coords_3_8, 2);
-  result_coords.emplace_back(&result_tile_3_0, &coords_3_9, 3);
+  std::vector<ResultCoords> result_coords;
+  ResultTile result_tile_2_0(2, 0, dim_num);
+  ResultTile result_tile_3_0(3, 0, dim_num);
+  ResultTile result_tile_3_1(3, 1, dim_num);
+
+  result_tile_2_0.init_coord_tile("d", 0);
+  result_tile_3_0.init_coord_tile("d", 0);
+  result_tile_3_1.init_coord_tile("d", 0);
+
+  std::vector<uint64_t> vec_2_0 = {1000, 3, 1000, 5};
+  Buffer buff_2_0(&vec_2_0[0], vec_2_0.size() * sizeof(uint64_t));
+  Tile tile_2_0(Datatype::UINT64, sizeof(uint64_t), 0, &buff_2_0, false);
+  auto tile_pair = result_tile_2_0.tile_pair("d");
+  REQUIRE(tile_pair != nullptr);
+  tile_pair->first = tile_2_0;
+
+  std::vector<uint64_t> vec_3_0 = {1000, 1000, 8, 9};
+  Buffer buff_3_0(&vec_3_0[0], vec_3_0.size() * sizeof(uint64_t));
+  Tile tile_3_0(Datatype::UINT64, sizeof(uint64_t), 0, &buff_3_0, false);
+  tile_pair = result_tile_3_0.tile_pair("d");
+  REQUIRE(tile_pair != nullptr);
+  tile_pair->first = tile_3_0;
+
+  std::vector<uint64_t> vec_3_1 = {1000, 12, 19, 1000};
+  Buffer buff_3_1(&vec_3_1[0], vec_3_1.size() * sizeof(uint64_t));
+  Tile tile_3_1(Datatype::UINT64, sizeof(uint64_t), 0, &buff_3_1, false);
+  tile_pair = result_tile_3_1.tile_pair("d");
+  REQUIRE(tile_pair != nullptr);
+  tile_pair->first = tile_3_1;
+
+  result_coords.emplace_back(&result_tile_2_0, 1);
+  result_coords.emplace_back(&result_tile_2_0, 3);
+  result_coords.emplace_back(&result_tile_3_0, 2);
+  result_coords.emplace_back(&result_tile_3_0, 3);
   result_coords.back().invalidate();
-  result_coords.emplace_back(&result_tile_3_1, &coords_3_12, 1);
-  result_coords.emplace_back(&result_tile_3_1, &coords_3_19, 2);
+  result_coords.emplace_back(&result_tile_3_1, 1);
+  result_coords.emplace_back(&result_tile_3_1, 2);
 
   // Check iterator
   ReadCellSlabIter<uint64_t> iter(
@@ -608,7 +630,7 @@ TEST_CASE_METHOD(
       &result_space_tiles);
 
   // Create result coordinates
-  std::vector<ResultCoords<uint64_t>> result_coords;
+  std::vector<ResultCoords> result_coords;
 
   // Check iterator
   ReadCellSlabIter<uint64_t> iter(
@@ -777,7 +799,7 @@ TEST_CASE_METHOD(
       &result_space_tiles);
 
   // Create result coordinates
-  std::vector<ResultCoords<uint64_t>> result_coords;
+  std::vector<ResultCoords> result_coords;
 
   // Check iterator
   ReadCellSlabIter<uint64_t> iter(
@@ -959,7 +981,7 @@ TEST_CASE_METHOD(
       &result_space_tiles);
 
   // Create result coordinates
-  std::vector<ResultCoords<uint64_t>> result_coords;
+  std::vector<ResultCoords> result_coords;
 
   // Check iterator
   ReadCellSlabIter<uint64_t> iter(
@@ -971,9 +993,8 @@ TEST_CASE_METHOD(
 
 TEST_CASE_METHOD(
     ReadCellSlabIterFx,
-    "ReadCellSlabIter: Test 2D slabs, multiple ranges, 2 denses fragments, 1 "
-    "sparse "
-    "overlap",
+    "ReadCellSlabIter: Test 2D slabs, multiple ranges, 2 dense fragments, "
+    "1 sparse, overlap",
     "[ReadCellSlabIter][slabs][2d][mr][2df1sf]") {
   Layout subarray_layout = Layout::ROW_MAJOR;
   Layout tile_domain_layout = Layout::ROW_MAJOR;
@@ -1186,16 +1207,49 @@ TEST_CASE_METHOD(
       tile_coords,
       &result_space_tiles);
 
+  unsigned dim_num = 2;
+
   // Create result coordinates
-  std::vector<ResultCoords<uint64_t>> result_coords;
-  ResultTile result_tile_3_0(3, 0);
-  ResultTile result_tile_3_1(3, 1);
-  uint64_t coords_3_3_3[] = {3, 3};
-  uint64_t coords_3_5_5[] = {5, 5};
-  uint64_t coords_3_5_6[] = {5, 6};
-  result_coords.emplace_back(&result_tile_3_0, coords_3_3_3, 1);
-  result_coords.emplace_back(&result_tile_3_1, coords_3_5_5, 0);
-  result_coords.emplace_back(&result_tile_3_1, coords_3_5_6, 2);
+  std::vector<ResultCoords> result_coords;
+  ResultTile result_tile_3_0(3, 0, dim_num);
+  ResultTile result_tile_3_1(3, 1, dim_num);
+
+  result_tile_3_0.init_coord_tile("d1", 0);
+  result_tile_3_0.init_coord_tile("d2", 1);
+  result_tile_3_1.init_coord_tile("d1", 0);
+  result_tile_3_1.init_coord_tile("d2", 1);
+
+  std::vector<uint64_t> vec_3_0_d1 = {1000, 3, 1000, 1000};
+  Buffer buff_3_0_d1(&vec_3_0_d1[0], vec_3_0_d1.size() * sizeof(uint64_t));
+  Tile tile_3_0_d1(Datatype::UINT64, sizeof(uint64_t), 0, &buff_3_0_d1, false);
+  auto tile_pair = result_tile_3_0.tile_pair("d1");
+  REQUIRE(tile_pair != nullptr);
+  tile_pair->first = tile_3_0_d1;
+
+  std::vector<uint64_t> vec_3_0_d2 = {1000, 3, 1000, 1000};
+  Buffer buff_3_0_d2(&vec_3_0_d2[0], vec_3_0_d2.size() * sizeof(uint64_t));
+  Tile tile_3_0_d2(Datatype::UINT64, sizeof(uint64_t), 0, &buff_3_0_d2, false);
+  tile_pair = result_tile_3_0.tile_pair("d2");
+  REQUIRE(tile_pair != nullptr);
+  tile_pair->first = tile_3_0_d2;
+
+  std::vector<uint64_t> vec_3_1_d1 = {5, 1000, 5, 1000};
+  Buffer buff_3_1_d1(&vec_3_1_d1[0], vec_3_1_d1.size() * sizeof(uint64_t));
+  Tile tile_3_1_d1(Datatype::UINT64, sizeof(uint64_t), 0, &buff_3_1_d1, false);
+  tile_pair = result_tile_3_1.tile_pair("d1");
+  REQUIRE(tile_pair != nullptr);
+  tile_pair->first = tile_3_1_d1;
+
+  std::vector<uint64_t> vec_3_1_d2 = {5, 1000, 6, 1000};
+  Buffer buff_3_1_d2(&vec_3_1_d2[0], vec_3_1_d2.size() * sizeof(uint64_t));
+  Tile tile_3_1_d2(Datatype::UINT64, sizeof(uint64_t), 0, &buff_3_1_d2, false);
+  tile_pair = result_tile_3_1.tile_pair("d2");
+  REQUIRE(tile_pair != nullptr);
+  tile_pair->first = tile_3_1_d2;
+
+  result_coords.emplace_back(&result_tile_3_0, 1);
+  result_coords.emplace_back(&result_tile_3_1, 0);
+  result_coords.emplace_back(&result_tile_3_1, 2);
 
   // Check iterator
   ReadCellSlabIter<uint64_t> iter(

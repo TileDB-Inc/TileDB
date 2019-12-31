@@ -43,11 +43,8 @@ namespace sm {
 
 /**
  * Stores information about cell coordinates of a sparse fragment
- * that are result of a subarray query.
- *
- * @tparam T The coords type
+ * that are in the result of a subarray query.
  */
-template <class T>
 struct ResultCoords {
   /**
    * The result tile the coords belong to.
@@ -57,20 +54,14 @@ struct ResultCoords {
    * the scope of those functions.
    */
   ResultTile* tile_;
-  /** The coordinates. */
-  const T* coords_;
-  /** The coordinates of the tile in the global logical space. */
-  const T* tile_coords_;
   /** The position of the coordinates in the tile. */
   uint64_t pos_;
   /** Whether this instance is "valid". */
   bool valid_;
 
   /** Constructor. */
-  ResultCoords(ResultTile* tile, const T* coords, uint64_t pos)
+  ResultCoords(ResultTile* tile, uint64_t pos)
       : tile_(tile)
-      , coords_(coords)
-      , tile_coords_(nullptr)
       , pos_(pos)
       , valid_(true) {
   }
@@ -85,20 +76,24 @@ struct ResultCoords {
     return valid_;
   }
 
-  /** Mainly for debugging. */
-  void print() const {
-    if (tile_ == nullptr) {
-      std::cout << "null tile\n";
-    } else {
-      std::cout << "frag_idx: " << tile_->frag_idx_ << "\n";
-      std::cout << "tile_idx: " << tile_->tile_idx_ << "\n";
-    }
-    std::cout << "pos: " << pos_ << "\n";
-    std::cout << "valid: " << valid_ << "\n";
-    if (coords_ != nullptr)
-      std::cout << "first coord: " << coords_[0] << "\n";
-    if (tile_coords_ != nullptr)
-      std::cout << "first tile coord: " << tile_coords_[0] << "\n";
+  /**
+   * Returns the coordinate at the object's position `pos_` from the object's
+   * tile `tile_` on the given dimension.
+   *
+   * @param dim_idx The index of the dimension to retrieve the coordinate for.
+   * @return A constant pointer to the requested coordinate.
+   */
+  const void* coord(unsigned dim_idx) const {
+    return tile_->coord(pos_, dim_idx);
+  }
+
+  /**
+   * Returns true if the coordinates (at the current position) of the
+   * calling ResultCoords object and the input are the same across all
+   * dimensions.
+   */
+  bool same_coords(const ResultCoords& rc) const {
+    return tile_->same_coords(*(rc.tile_), pos_, rc.pos_);
   }
 };
 
