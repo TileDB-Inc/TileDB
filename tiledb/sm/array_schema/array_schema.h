@@ -36,19 +36,6 @@
 
 #define __STDC_FORMAT_MACROS
 
-#include <string>
-#include <typeinfo>
-#include <unordered_map>
-#include <vector>
-
-#include "tiledb/sm/array_schema/attribute.h"
-#include "tiledb/sm/array_schema/dimension.h"
-#include "tiledb/sm/array_schema/domain.h"
-#include "tiledb/sm/buffer/buffer.h"
-#include "tiledb/sm/enums/array_type.h"
-#include "tiledb/sm/enums/compressor.h"
-#include "tiledb/sm/enums/datatype.h"
-#include "tiledb/sm/enums/layout.h"
 #include "tiledb/sm/filter/filter_pipeline.h"
 #include "tiledb/sm/misc/constants.h"
 #include "tiledb/sm/misc/status.h"
@@ -56,6 +43,17 @@
 
 namespace tiledb {
 namespace sm {
+
+class Attribute;
+class Buffer;
+class ConstBuffer;
+class Dimension;
+class Domain;
+
+enum class ArrayType : uint8_t;
+enum class Compressor : uint8_t;
+enum class Datatype : uint8_t;
+enum class Layout : uint8_t;
 
 /** Specifies the array schema. */
 class ArraySchema {

@@ -31,7 +31,10 @@
  */
 
 #include "tiledb/sm/array_schema/domain.h"
+#include "tiledb/sm/array_schema/dimension.h"
 #include "tiledb/sm/buffer/const_buffer.h"
+#include "tiledb/sm/enums/datatype.h"
+#include "tiledb/sm/enums/layout.h"
 #include "tiledb/sm/misc/logger.h"
 #include "tiledb/sm/misc/utils.h"
 

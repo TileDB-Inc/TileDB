@@ -31,6 +31,7 @@
  */
 
 #include "tiledb/sm/tile/tile.h"
+#include "tiledb/sm/enums/datatype.h"
 #include "tiledb/sm/misc/logger.h"
 
 #include <iostream>

@@ -33,7 +33,7 @@
 #ifndef TILEDB_TILE_DOMAIN_H
 #define TILEDB_TILE_DOMAIN_H
 
-#include <iostream>
+#include <algorithm>
 #include <vector>
 
 #include "tiledb/sm/enums/layout.h"

@@ -30,9 +30,9 @@
  * This file defines class ByteshuffleFilter.
  */
 
-#include "blosc/shuffle.h"
-
 #include "tiledb/sm/filter/byteshuffle_filter.h"
+#include "blosc/shuffle.h"
+#include "tiledb/sm/enums/datatype.h"
 #include "tiledb/sm/misc/logger.h"
 #include "tiledb/sm/tile/tile.h"
 

@@ -32,7 +32,14 @@
  */
 
 #include "tiledb/sm/array_schema/array_schema.h"
+#include "tiledb/sm/array_schema/attribute.h"
+#include "tiledb/sm/array_schema/dimension.h"
+#include "tiledb/sm/array_schema/domain.h"
 #include "tiledb/sm/buffer/const_buffer.h"
+#include "tiledb/sm/enums/array_type.h"
+#include "tiledb/sm/enums/compressor.h"
+#include "tiledb/sm/enums/datatype.h"
+#include "tiledb/sm/enums/layout.h"
 #include "tiledb/sm/filter/compression_filter.h"
 #include "tiledb/sm/misc/logger.h"
 

@@ -32,6 +32,7 @@
 
 #include "helpers.h"
 #include "catch.hpp"
+#include "tiledb/sm/subarray/subarray_partitioner.h"
 
 namespace tiledb {
 namespace test {

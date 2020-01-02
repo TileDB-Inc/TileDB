@@ -44,6 +44,10 @@
 
 namespace tiledb {
 
+namespace sm {
+class SubarrayPartitioner;
+}
+
 namespace test {
 
 // For easy reference

@@ -33,16 +33,17 @@
 #ifndef TILEDB_ATTRIBUTE_H
 #define TILEDB_ATTRIBUTE_H
 
-#include <string>
-
-#include "tiledb/sm/buffer/buffer.h"
 #include "tiledb/sm/enums/compressor.h"
-#include "tiledb/sm/enums/datatype.h"
 #include "tiledb/sm/filter/filter_pipeline.h"
 #include "tiledb/sm/misc/status.h"
 
 namespace tiledb {
 namespace sm {
+
+class Buffer;
+class ConstBuffer;
+
+enum class Datatype : uint8_t;
 
 /** Manipulates a TileDB attribute. */
 class Attribute {

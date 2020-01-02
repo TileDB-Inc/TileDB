@@ -33,6 +33,9 @@
 #include "tiledb/sm/subarray/subarray_partitioner.h"
 #include <iomanip>
 #include "tiledb/sm/array/array.h"
+#include "tiledb/sm/array_schema/array_schema.h"
+#include "tiledb/sm/array_schema/attribute.h"
+#include "tiledb/sm/array_schema/domain.h"
 
 /* ****************************** */
 /*             MACROS             */
