@@ -646,6 +646,16 @@ if (TILEDB_STATIC)
   )
 endif()
 
+# Don't re-export symbols from static (archive) libraries
+#   Prevents conflicts with other versions of (e.g.) OpenSSL
+#   loaded in the same process namespace, which can cause
+#   crashes if the versions are not compatible.
+if (CMAKE_SYSTEM_NAME MATCHES "Linux")
+  set_target_properties(tiledb_shared
+    PROPERTIES
+      LINK_FLAGS "-Wl,--exclude-libs=ALL")
+endif()
+
 ############################################################
 # Installation
 ############################################################
