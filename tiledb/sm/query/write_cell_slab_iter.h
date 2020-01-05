@@ -33,10 +33,16 @@
 #ifndef TILEDB_WRITE_CELL_SLAB_ITER_H
 #define TILEDB_WRITE_CELL_SLAB_ITER_H
 
-#include "tiledb/sm/array_schema/domain.h"
+#include <vector>
+
+#include "tiledb/sm/misc/status.h"
 
 namespace tiledb {
 namespace sm {
+
+class Domain;
+
+enum class Layout : uint8_t;
 
 /**
  * Iterator over cell slabs inside a particular subarray over a domain,

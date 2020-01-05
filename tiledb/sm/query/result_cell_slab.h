@@ -33,10 +33,10 @@
 #ifndef TILEDB_RESULT_CELL_SLAB_H
 #define TILEDB_RESULT_CELL_SLAB_H
 
-#include "tiledb/sm/query/result_tile.h"
-
 #include <iostream>
 #include <vector>
+
+#include "tiledb/sm/query/result_tile.h"
 
 namespace tiledb {
 namespace sm {

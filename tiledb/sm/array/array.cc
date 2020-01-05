@@ -31,12 +31,15 @@
  */
 
 #include "tiledb/sm/array/array.h"
+#include "tiledb/sm/array_schema/array_schema.h"
 #include "tiledb/sm/encryption/encryption.h"
 #include "tiledb/sm/enums/encryption_type.h"
+#include "tiledb/sm/enums/query_type.h"
 #include "tiledb/sm/enums/serialization_type.h"
 #include "tiledb/sm/misc/logger.h"
 #include "tiledb/sm/misc/stats.h"
 #include "tiledb/sm/rest/rest_client.h"
+#include "tiledb/sm/storage_manager/storage_manager.h"
 
 #include <cassert>
 #include <iostream>

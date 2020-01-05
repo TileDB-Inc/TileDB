@@ -30,6 +30,7 @@
  * Tests the `RTree` class.
  */
 
+#include "tiledb/sm/enums/datatype.h"
 #include "tiledb/sm/rtree/rtree.h"
 
 #include <catch.hpp>

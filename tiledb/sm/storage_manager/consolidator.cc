@@ -31,6 +31,7 @@
  */
 
 #include "tiledb/sm/storage_manager/consolidator.h"
+#include "tiledb/sm/enums/query_status.h"
 #include "tiledb/sm/fragment/fragment_info.h"
 #include "tiledb/sm/misc/logger.h"
 #include "tiledb/sm/misc/utils.h"

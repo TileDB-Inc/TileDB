@@ -31,6 +31,7 @@
  */
 
 #include "tiledb/sm/filter/positive_delta_filter.h"
+#include "tiledb/sm/enums/datatype.h"
 #include "tiledb/sm/enums/filter_option.h"
 #include "tiledb/sm/enums/filter_type.h"
 #include "tiledb/sm/filter/filter_pipeline.h"

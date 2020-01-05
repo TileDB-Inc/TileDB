@@ -34,6 +34,7 @@
 #define TILEDB_CONSOLIDATOR_H
 
 #include "tiledb/sm/array/array.h"
+#include "tiledb/sm/filesystem/filelock.h"
 #include "tiledb/sm/misc/status.h"
 #include "tiledb/sm/storage_manager/open_array.h"
 
@@ -43,6 +44,7 @@ namespace tiledb {
 namespace sm {
 
 class ArraySchema;
+class Config;
 class Query;
 class StorageManager;
 class URI;

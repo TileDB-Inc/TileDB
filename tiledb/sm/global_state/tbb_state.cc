@@ -32,6 +32,7 @@
  */
 
 #include "tiledb/sm/global_state/tbb_state.h"
+#include "tiledb/sm/config/config.h"
 
 #ifdef HAVE_TBB
 

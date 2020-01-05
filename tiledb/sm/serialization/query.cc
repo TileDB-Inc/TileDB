@@ -32,6 +32,9 @@
  */
 
 #include "tiledb/sm/serialization/query.h"
+#include "tiledb/sm/array/array.h"
+#include "tiledb/sm/config/config.h"
+#include "tiledb/sm/enums/query_status.h"
 #include "tiledb/sm/misc/logger.h"
 #include "tiledb/sm/misc/stats.h"
 #include "tiledb/sm/misc/utils.h"

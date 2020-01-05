@@ -33,28 +33,29 @@
 #ifndef TILEDB_READER_H
 #define TILEDB_READER_H
 
-#include "tiledb/sm/array_schema/array_schema.h"
+#include <future>
+#include <list>
+#include <map>
+#include <memory>
+
 #include "tiledb/sm/array_schema/tile_domain.h"
-#include "tiledb/sm/filter/filter_pipeline.h"
-#include "tiledb/sm/fragment/fragment_metadata.h"
 #include "tiledb/sm/misc/status.h"
+#include "tiledb/sm/misc/uri.h"
 #include "tiledb/sm/query/result_cell_slab.h"
 #include "tiledb/sm/query/result_coords.h"
 #include "tiledb/sm/query/result_space_tile.h"
 #include "tiledb/sm/query/types.h"
 #include "tiledb/sm/query/write_cell_slab_iter.h"
 #include "tiledb/sm/subarray/subarray_partitioner.h"
-#include "tiledb/sm/tile/tile.h"
-
-#include <future>
-#include <list>
-#include <memory>
 
 namespace tiledb {
 namespace sm {
 
 class Array;
+class ArraySchema;
+class FragmentMetadata;
 class StorageManager;
+class Tile;
 
 /** Processes read queries. */
 class Reader {
