@@ -33,15 +33,16 @@
 #ifndef TILEDB_TILE_IO_H
 #define TILEDB_TILE_IO_H
 
+#include "tiledb/sm/enums/datatype.h"
+#include "tiledb/sm/enums/encryption_type.h"
 #include "tiledb/sm/filter/filter_pipeline.h"
 #include "tiledb/sm/misc/uri.h"
-#include "tiledb/sm/storage_manager/storage_manager.h"
-#include "tiledb/sm/tile/tile.h"
 
 namespace tiledb {
 namespace sm {
 
 class StorageManager;
+class Tile;
 
 /** Handles IO (reading/writing) for tiles. */
 class TileIO {

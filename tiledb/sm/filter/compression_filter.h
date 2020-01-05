@@ -33,13 +33,13 @@
 #ifndef TILEDB_COMPRESSION_FILTER_H
 #define TILEDB_COMPRESSION_FILTER_H
 
-#include "tiledb/sm/buffer/preallocated_buffer.h"
-#include "tiledb/sm/enums/compressor.h"
 #include "tiledb/sm/filter/filter.h"
 #include "tiledb/sm/misc/status.h"
 
 namespace tiledb {
 namespace sm {
+
+enum class Compressor : uint8_t;
 
 /**
  * A filter that compresses/decompresses its input data. The FilterBuffer input

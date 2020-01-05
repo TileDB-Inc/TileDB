@@ -33,8 +33,9 @@
 #ifndef TILEDB_BITSHUFFLE_FILTER_H
 #define TILEDB_BITSHUFFLE_FILTER_H
 
+#include <vector>
+
 #include "tiledb/sm/buffer/const_buffer.h"
-#include "tiledb/sm/buffer/preallocated_buffer.h"
 #include "tiledb/sm/filter/filter.h"
 #include "tiledb/sm/misc/status.h"
 

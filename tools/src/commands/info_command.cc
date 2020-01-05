@@ -36,6 +36,7 @@
 #include "commands/info_command.h"
 #include "misc/common.h"
 
+#include "tiledb/sm/enums/encryption_type.h"
 #include "tiledb/sm/storage_manager/storage_manager.h"
 
 namespace tiledb {

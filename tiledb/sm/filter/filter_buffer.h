@@ -33,15 +33,19 @@
 #ifndef TILEDB_FILTER_BUFFER_H
 #define TILEDB_FILTER_BUFFER_H
 
+#include <list>
+#include <memory>
+#include <vector>
+
 #include "tiledb/sm/buffer/buffer.h"
 #include "tiledb/sm/buffer/const_buffer.h"
-#include "tiledb/sm/filter/filter_storage.h"
 #include "tiledb/sm/misc/status.h"
-
-#include <vector>
 
 namespace tiledb {
 namespace sm {
+
+class Buffer;
+class FilterStorage;
 
 /**
  * Class that manages an ordered list of multiple separate buffers and offers as

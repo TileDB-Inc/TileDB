@@ -31,10 +31,12 @@
  */
 
 #include "tiledb/sm/filter/byteshuffle_filter.h"
-#include "blosc/shuffle.h"
 #include "tiledb/sm/enums/datatype.h"
+#include "tiledb/sm/enums/filter_type.h"
 #include "tiledb/sm/misc/logger.h"
 #include "tiledb/sm/tile/tile.h"
+
+#include "blosc/shuffle.h"
 
 namespace tiledb {
 namespace sm {

@@ -33,13 +33,13 @@
 #ifndef TILEDB_ENCRYPTION_AES256GCM_FILTER_H
 #define TILEDB_ENCRYPTION_AES256GCM_FILTER_H
 
-#include "tiledb/sm/buffer/const_buffer.h"
-#include "tiledb/sm/encryption/encryption_key.h"
 #include "tiledb/sm/filter/filter.h"
 #include "tiledb/sm/misc/status.h"
 
 namespace tiledb {
 namespace sm {
+
+class EncryptionKey;
 
 /**
  * A filter that encrypts the input data into the output data buffer with

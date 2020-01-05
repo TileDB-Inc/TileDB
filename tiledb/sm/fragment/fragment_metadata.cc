@@ -32,11 +32,16 @@
  */
 
 #include "tiledb/sm/fragment/fragment_metadata.h"
+#include "tiledb/sm/array_schema/attribute.h"
+#include "tiledb/sm/array_schema/dimension.h"
+#include "tiledb/sm/array_schema/domain.h"
 #include "tiledb/sm/buffer/const_buffer.h"
 #include "tiledb/sm/misc/constants.h"
 #include "tiledb/sm/misc/logger.h"
 #include "tiledb/sm/misc/stats.h"
 #include "tiledb/sm/misc/utils.h"
+#include "tiledb/sm/storage_manager/storage_manager.h"
+#include "tiledb/sm/tile/tile.h"
 #include "tiledb/sm/tile/tile_io.h"
 
 #include <cassert>

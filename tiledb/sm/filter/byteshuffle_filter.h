@@ -33,8 +33,6 @@
 #ifndef TILEDB_BYTESHUFFLE_FILTER_H
 #define TILEDB_BYTESHUFFLE_FILTER_H
 
-#include "tiledb/sm/buffer/const_buffer.h"
-#include "tiledb/sm/buffer/preallocated_buffer.h"
 #include "tiledb/sm/filter/filter.h"
 #include "tiledb/sm/misc/status.h"
 

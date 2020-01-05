@@ -33,15 +33,16 @@
 #ifndef TILEDB_FILTER_STORAGE_H
 #define TILEDB_FILTER_STORAGE_H
 
-#include "tiledb/sm/buffer/buffer.h"
-#include "tiledb/sm/misc/status.h"
-
 #include <list>
 #include <memory>
 #include <unordered_map>
 
+#include "tiledb/sm/misc/status.h"
+
 namespace tiledb {
 namespace sm {
+
+class Buffer;
 
 /**
  * Manages a ref-counted pool of buffers, used for filter I/O.
