@@ -33,6 +33,10 @@
 #ifndef _WIN32
 
 #include "tiledb/sm/encryption/encryption_openssl.h"
+#include "tiledb/sm/buffer/buffer.h"
+#include "tiledb/sm/buffer/const_buffer.h"
+#include "tiledb/sm/buffer/preallocated_buffer.h"
+#include "tiledb/sm/encryption/encryption.h"
 #include "tiledb/sm/misc/logger.h"
 
 #include <openssl/err.h>

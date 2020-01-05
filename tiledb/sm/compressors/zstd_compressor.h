@@ -33,13 +33,14 @@
 #ifndef TILEDB_ZSTD_H
 #define TILEDB_ZSTD_H
 
-#include "tiledb/sm/buffer/buffer.h"
-#include "tiledb/sm/buffer/const_buffer.h"
-#include "tiledb/sm/buffer/preallocated_buffer.h"
 #include "tiledb/sm/misc/status.h"
 
 namespace tiledb {
 namespace sm {
+
+class Buffer;
+class ConstBuffer;
+class PreallocatedBuffer;
 
 /** Handles compression/decompression with the zstd library. */
 class ZStd {

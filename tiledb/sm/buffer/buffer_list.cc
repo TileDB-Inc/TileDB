@@ -31,6 +31,7 @@
  */
 
 #include "tiledb/sm/buffer/buffer_list.h"
+#include "tiledb/sm/buffer/buffer.h"
 #include "tiledb/sm/misc/logger.h"
 
 namespace tiledb {

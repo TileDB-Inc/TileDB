@@ -31,11 +31,14 @@
  * Tests for the RLE compression.
  */
 
+#include "catch.hpp"
+#include "tiledb/sm/buffer/buffer.h"
+#include "tiledb/sm/buffer/const_buffer.h"
+#include "tiledb/sm/buffer/preallocated_buffer.h"
+#include "tiledb/sm/compressors/rle_compressor.h"
+
 #include <cstring>
 #include <iostream>
-
-#include "catch.hpp"
-#include "tiledb/sm/compressors/rle_compressor.h"
 
 using namespace tiledb::sm;
 

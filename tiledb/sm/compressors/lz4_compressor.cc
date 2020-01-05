@@ -30,12 +30,15 @@
  * This file implements the lz4 compressor class.
  */
 
-#include <lz4.h>
-#include <limits>
-
 #include "tiledb/sm/compressors/lz4_compressor.h"
+#include "tiledb/sm/buffer/buffer.h"
+#include "tiledb/sm/buffer/const_buffer.h"
+#include "tiledb/sm/buffer/preallocated_buffer.h"
 #include "tiledb/sm/misc/logger.h"
 #include "tiledb/sm/misc/stats.h"
+
+#include <lz4.h>
+#include <limits>
 
 namespace tiledb {
 namespace sm {

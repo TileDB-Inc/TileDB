@@ -31,6 +31,7 @@
  */
 
 #include "tiledb/sm/buffer/const_buffer.h"
+#include "tiledb/sm/buffer/buffer.h"
 
 namespace tiledb {
 namespace sm {

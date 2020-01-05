@@ -34,13 +34,13 @@
 #define TILEDB_CONFIG_ITER_H
 
 #include <functional>
-#include "tiledb/sm/config/config.h"
-
 #include <map>
 #include <string>
 
 namespace tiledb {
 namespace sm {
+
+class Config;
 
 /**
  * Implements a config iterator.

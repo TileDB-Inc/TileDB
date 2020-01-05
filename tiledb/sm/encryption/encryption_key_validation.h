@@ -34,13 +34,12 @@
 #define TILEDB_ENCRYPTION_KEY_VALIDATION_H
 
 #include "tiledb/sm/buffer/buffer.h"
-#include "tiledb/sm/encryption/encryption.h"
-#include "tiledb/sm/encryption/encryption_key.h"
-#include "tiledb/sm/enums/encryption_type.h"
 #include "tiledb/sm/misc/status.h"
 
 namespace tiledb {
 namespace sm {
+
+class EncryptionKey;
 
 /**
  * Class which securely validates that a given encryption key is the same as a
