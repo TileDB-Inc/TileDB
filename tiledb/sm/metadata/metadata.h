@@ -169,7 +169,7 @@ class Metadata {
       uint32_t* key_len,
       Datatype* value_type,
       uint32_t* value_num,
-      const void** value) const;
+      const void** value);
 
   /** Returns the number of metadata items. */
   uint64_t num() const;
@@ -246,6 +246,12 @@ class Metadata {
   /* ********************************* */
   /*          PRIVATE METHODS          */
   /* ********************************* */
+
+  /**
+   * Build the metadata index vector from the metadata map
+   * @return Status
+   */
+  Status build_metadata_index();
 };
 
 }  // namespace sm

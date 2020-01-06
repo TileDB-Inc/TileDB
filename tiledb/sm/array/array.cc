@@ -162,8 +162,6 @@ Status Array::open(
           "Cannot open array; remote array with no REST client."));
     RETURN_NOT_OK(
         rest_client->get_array_schema_from_rest(array_uri_, &array_schema_));
-    RETURN_NOT_OK(rest_client->get_array_metadata_from_rest(
-        array_uri_, timestamp_, this));
   } else {
     // Open the array.
     RETURN_NOT_OK(storage_manager_->array_open_for_reads(
@@ -217,8 +215,6 @@ Status Array::open(
           "Cannot open array; remote array with no REST client."));
     RETURN_NOT_OK(
         rest_client->get_array_schema_from_rest(array_uri_, &array_schema_));
-    RETURN_NOT_OK(rest_client->get_array_metadata_from_rest(
-        array_uri_, timestamp_, this));
   } else {
     // Open the array.
     RETURN_NOT_OK(storage_manager_->array_open_for_reads(
@@ -265,8 +261,6 @@ Status Array::open(
           "Cannot open array; remote array with no REST client."));
     RETURN_NOT_OK(
         rest_client->get_array_schema_from_rest(array_uri_, &array_schema_));
-    RETURN_NOT_OK(rest_client->get_array_metadata_from_rest(
-        array_uri_, timestamp_, this));
   } else if (query_type == QueryType::READ) {
     RETURN_NOT_OK(storage_manager_->array_open_for_reads(
         array_uri_,
@@ -603,12 +597,8 @@ Status Array::get_metadata(
         Status::ArrayError("Cannot get metadata; Key cannot be null"));
 
   // Load array metadata, if not loaded yet
-  if (!metadata_loaded_) {
-    std::lock_guard<std::mutex> lock{mtx_};
-    RETURN_NOT_OK(storage_manager_->load_array_metadata(
-        array_uri_, encryption_key_, timestamp_, &metadata_));
-    metadata_loaded_ = true;
-  }
+  if (!metadata_loaded_)
+    RETURN_NOT_OK(load_metadata());
 
   RETURN_NOT_OK(metadata_.get(key, value_type, value_num, value));
 
@@ -634,12 +624,8 @@ Status Array::get_metadata(
                            "not opened in read mode"));
 
   // Load array metadata, if not loaded yet
-  if (!metadata_loaded_) {
-    std::lock_guard<std::mutex> lock{mtx_};
-    RETURN_NOT_OK(storage_manager_->load_array_metadata(
-        array_uri_, encryption_key_, timestamp_, &metadata_));
-    metadata_loaded_ = true;
-  }
+  if (!metadata_loaded_)
+    RETURN_NOT_OK(load_metadata());
 
   RETURN_NOT_OK(
       metadata_.get(index, key, key_len, value_type, value_num, value));
@@ -660,12 +646,8 @@ Status Array::get_metadata_num(uint64_t* num) {
                            "not opened in read mode"));
 
   // Load array metadata, if not loaded yet
-  if (!metadata_loaded_) {
-    std::lock_guard<std::mutex> lock{mtx_};
-    RETURN_NOT_OK(storage_manager_->load_array_metadata(
-        array_uri_, encryption_key_, timestamp_, &metadata_));
-    metadata_loaded_ = true;
-  }
+  if (!metadata_loaded_)
+    RETURN_NOT_OK(load_metadata());
 
   *num = metadata_.num();
 
@@ -691,26 +673,22 @@ Status Array::has_metadata_key(
         Status::ArrayError("Cannot get metadata; Key cannot be null"));
 
   // Load array metadata, if not loaded yet
-  if (!metadata_loaded_) {
-    std::lock_guard<std::mutex> lock{mtx_};
-    RETURN_NOT_OK(storage_manager_->load_array_metadata(
-        array_uri_, encryption_key_, timestamp_, &metadata_));
-    metadata_loaded_ = true;
-  }
+  if (!metadata_loaded_)
+    RETURN_NOT_OK(load_metadata());
 
   RETURN_NOT_OK(metadata_.has_key(key, value_type, has_key));
 
   return Status::Ok();
 }
 
+Metadata* Array::metadata() {
+  return &metadata_;
+}
+
 Status Array::metadata(Metadata** metadata) {
   // Load array metadata, if not loaded yet
-  if (!metadata_loaded_) {
-    std::lock_guard<std::mutex> lock{mtx_};
-    RETURN_NOT_OK(storage_manager_->load_array_metadata(
-        array_uri_, encryption_key_, timestamp_, &metadata_));
-    metadata_loaded_ = true;
-  }
+  if (!metadata_loaded_)
+    RETURN_NOT_OK(load_metadata());
 
   *metadata = &metadata_;
 
@@ -886,6 +864,23 @@ Status Array::compute_max_buffer_sizes(
     }
   }
 
+  return Status::Ok();
+}
+
+Status Array::load_metadata() {
+  std::lock_guard<std::mutex> lock{mtx_};
+  if (remote_) {
+    auto rest_client = storage_manager_->rest_client();
+    if (rest_client == nullptr)
+      return LOG_STATUS(Status::ArrayError(
+          "Cannot load metadata; remote array with no REST client."));
+    RETURN_NOT_OK(rest_client->get_array_metadata_from_rest(
+        array_uri_, timestamp_, this));
+  } else {
+    RETURN_NOT_OK(storage_manager_->load_array_metadata(
+        array_uri_, encryption_key_, timestamp_, &metadata_));
+  }
+  metadata_loaded_ = true;
   return Status::Ok();
 }
 
