@@ -121,12 +121,16 @@ Status Consolidator::consolidate_array_metadata(
   // Swap the in-memory metadata between the two arrays.
   // After that, the array for writes will store the (consolidated by
   // the way metadata loading works) metadata of the array for reads
-  auto metadata_r = array_for_reads.metadata();
-  auto metadata_w = array_for_writes.metadata();
+  Metadata* metadata_r;
+  RETURN_NOT_OK_ELSE(
+      array_for_reads.metadata(&metadata_r), array_for_reads.close());
+  Metadata* metadata_w;
+  RETURN_NOT_OK_ELSE(
+      array_for_writes.metadata(&metadata_w), array_for_reads.close());
   metadata_r->swap(metadata_w);
 
   // Metadata uris to delete
-  const auto to_delete = array_for_writes.metadata()->loaded_metadata_uris();
+  const auto to_delete = metadata_w->loaded_metadata_uris();
 
   // Close arrays
   RETURN_NOT_OK_ELSE(array_for_reads.close(), array_for_writes.close());
