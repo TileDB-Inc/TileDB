@@ -142,7 +142,6 @@ class StorageManager {
    *     array is opened.
    * @param fragment_metadata The fragment metadata to be retrieved
    *     after the array is opened.
-   * @param metadata The array metadata will be loaded here if not null.
    * @return Status
    */
   Status array_open_for_reads(
@@ -150,8 +149,7 @@ class StorageManager {
       uint64_t timestamp,
       const EncryptionKey& encryption_key,
       ArraySchema** array_schema,
-      std::vector<FragmentMetadata*>* fragment_metadata,
-      Metadata* metadata = nullptr);
+      std::vector<FragmentMetadata*>* fragment_metadata);
 
   /**
    * Opens an array for reads, focusing only on a given list of fragments.
@@ -200,7 +198,6 @@ class StorageManager {
    *     array is opened.
    * @param fragment_metadata The fragment metadata to be retrieved
    *     after the array is opened.
-   * @param metadata The array metadata to be loaded.
    * @return Status
    */
   Status array_reopen(
@@ -208,8 +205,7 @@ class StorageManager {
       uint64_t timestamp,
       const EncryptionKey& encryption_key,
       ArraySchema** array_schema,
-      std::vector<FragmentMetadata*>* fragment_metadata,
-      Metadata* metadata);
+      std::vector<FragmentMetadata*>* fragment_metadata);
 
   /**
    * Consolidates the fragments of an array into a single one.
@@ -450,6 +446,16 @@ class StorageManager {
       const URI& array_uri,
       const EncryptionKey& encryption_key,
       ArraySchema** array_schema);
+
+  /**
+   * Loads the array metadata from persistent storage that were created
+   * at or before `timestamp`.
+   */
+  Status load_array_metadata(
+      const URI& array_uri,
+      const EncryptionKey& encryption_key,
+      uint64_t timestamp,
+      Metadata* metadata);
 
   /** Removes a TileDB object (group, array). */
   Status object_remove(const char* path) const;

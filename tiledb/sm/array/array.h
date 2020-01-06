@@ -295,16 +295,13 @@ class Array {
       const void** value);
 
   /** Returns the number of array metadata items. */
-  Status get_metadata_num(uint64_t* num) const;
+  Status get_metadata_num(uint64_t* num);
 
   /** Sets has_key == 1 and corresponding value_type if the array has key. */
   Status has_metadata_key(const char* key, Datatype* value_type, bool* has_key);
 
-  /** Returns the array metadata object. */
-  Metadata* metadata();
-
-  /** Returns the array metadata object. */
-  const Metadata* metadata() const;
+  /** Retrieves the array metadata object. */
+  Status metadata(Metadata** metadata);
 
  private:
   /* ********************************* */
@@ -362,6 +359,9 @@ class Array {
 
   /** The array metadata. */
   Metadata metadata_;
+
+  /** True if the array metadata is loaded. */
+  bool metadata_loaded_;
 
   /* ********************************* */
   /*          PRIVATE METHODS          */
