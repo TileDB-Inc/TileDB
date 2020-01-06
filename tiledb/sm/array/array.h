@@ -303,6 +303,18 @@ class Array {
   /** Retrieves the array metadata object. */
   Status metadata(Metadata** metadata);
 
+  /**
+   * Retrieves the array metadata object.
+   *
+   * @note This is potentially an unsafe operation
+   * it could have contention with locks from lazy loading of metadata.
+   * This should only be used by the serialization class
+   * (tiledb/sm/serialization/array_schema.cc). In that class we need to fetch
+   * the underlying Metadata object to set the values we are loading from REST.
+   * A lock should already by taken before load_metadata is called.
+   */
+  Metadata* metadata();
+
  private:
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
@@ -414,6 +426,12 @@ class Array {
       const T* subarray,
       std::unordered_map<std::string, std::pair<uint64_t, uint64_t>>*
           max_buffer_sizes) const;
+
+  /**
+   * Load array metadata, handles remote arrays vs non-remote arrays
+   * @return  Status
+   */
+  Status load_metadata();
 };
 
 }  // namespace sm
