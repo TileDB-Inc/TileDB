@@ -79,9 +79,7 @@ Status max_buffer_sizes_deserialize(
         buffer_sizes);
 
 Status array_metadata_serialize(
-    const Array* array,
-    SerializationType serialize_type,
-    Buffer* serialized_buffer);
+    Array* array, SerializationType serialize_type, Buffer* serialized_buffer);
 
 Status array_metadata_deserialize(
     Array* array,

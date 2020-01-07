@@ -888,24 +888,26 @@ Status max_buffer_sizes_deserialize(
 }
 
 Status array_metadata_serialize(
-    const Array* array,
-    SerializationType serialize_type,
-    Buffer* serialized_buffer) {
+    Array* array, SerializationType serialize_type, Buffer* serialized_buffer) {
   if (array == nullptr)
     return LOG_STATUS(Status::SerializationError(
         "Error serializing array metadata; array instance is null"));
-  if (array->metadata() == nullptr)
+
+  Metadata* metadata;
+
+  RETURN_NOT_OK(array->metadata(&metadata));
+
+  if (metadata == nullptr)
     return LOG_STATUS(Status::SerializationError(
         "Error serializing array metadata; array metadata instance is null"));
 
-  const Metadata& metadata = *(array->metadata());
   try {
     // Serialize
     ::capnp::MallocMessageBuilder message;
     auto builder = message.initRoot<capnp::ArrayMetadata>();
-    auto entries_builder = builder.initEntries(metadata.num());
+    auto entries_builder = builder.initEntries(metadata->num());
     size_t i = 0;
-    for (auto it = metadata.begin(); it != metadata.end(); ++it) {
+    for (auto it = metadata->begin(); it != metadata->end(); ++it) {
       auto entry_builder = entries_builder[i++];
       const auto& entry = it->second;
       auto datatype = static_cast<Datatype>(entry.type_);
@@ -1105,7 +1107,7 @@ Status max_buffer_sizes_deserialize(
       "Cannot serialize; serialization not enabled."));
 }
 
-Status array_metadata_serialize(const Array*, SerializationType, Buffer*) {
+Status array_metadata_serialize(Array*, SerializationType, Buffer*) {
   return LOG_STATUS(Status::SerializationError(
       "Cannot serialize; serialization not enabled."));
 }

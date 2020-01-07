@@ -198,8 +198,7 @@ Status StorageManager::array_open_for_reads(
     uint64_t timestamp,
     const EncryptionKey& encryption_key,
     ArraySchema** array_schema,
-    std::vector<FragmentMetadata*>* fragment_metadata,
-    Metadata* metadata) {
+    std::vector<FragmentMetadata*>* fragment_metadata) {
   STATS_FUNC_IN(sm_array_open_for_reads);
 
   // Open array without fragments
@@ -220,23 +219,6 @@ Status StorageManager::array_open_for_reads(
   // Get fragment metadata in the case of reads, if not fetched already
   Status st = load_fragment_metadata(
       open_array, encryption_key, fragments_to_load, fragment_metadata);
-  if (!st.ok()) {
-    open_array->mtx_unlock();
-    array_close_for_reads(array_uri);
-    *array_schema = nullptr;
-    return st;
-  }
-
-  // Determine which array metadata to load
-  std::vector<TimestampedURI> array_metadata_to_load;
-  std::vector<URI> array_metadata_uris;
-  RETURN_NOT_OK(get_array_metadata_uris(array_uri, &array_metadata_uris));
-  RETURN_NOT_OK(
-      get_sorted_uris(array_metadata_uris, timestamp, &array_metadata_to_load));
-
-  // Get the array metadata
-  st = load_array_metadata(
-      open_array, encryption_key, array_metadata_to_load, metadata);
   if (!st.ok()) {
     open_array->mtx_unlock();
     array_close_for_reads(array_uri);
@@ -284,8 +266,6 @@ Status StorageManager::array_open_for_reads(
     *array_schema = nullptr;
     return st;
   }
-
-  // Note: This function does not load any array metadata!
 
   // Unlock the array mutex
   open_array->mtx_unlock();
@@ -379,8 +359,7 @@ Status StorageManager::array_reopen(
     uint64_t timestamp,
     const EncryptionKey& encryption_key,
     ArraySchema** array_schema,
-    std::vector<FragmentMetadata*>* fragment_metadata,
-    Metadata* metadata) {
+    std::vector<FragmentMetadata*>* fragment_metadata) {
   STATS_FUNC_IN(sm_array_reopen);
 
   auto open_array = (OpenArray*)nullptr;
@@ -421,23 +400,6 @@ Status StorageManager::array_reopen(
 
   // Get the array schema
   *array_schema = open_array->array_schema();
-
-  // Determin which array metadata to load
-  std::vector<TimestampedURI> array_metadata_to_load;
-  std::vector<URI> array_metadata_uris;
-  RETURN_NOT_OK(get_array_metadata_uris(array_uri, &array_metadata_uris));
-  RETURN_NOT_OK(
-      get_sorted_uris(array_metadata_uris, timestamp, &array_metadata_to_load));
-
-  // Get the array metadata
-  st = load_array_metadata(
-      open_array, encryption_key, array_metadata_to_load, metadata);
-  if (!st.ok()) {
-    open_array->mtx_unlock();
-    array_close_for_reads(array_uri);
-    *array_schema = nullptr;
-    return st;
-  }
 
   // Unlock the mutexes
   open_array->mtx_unlock();
@@ -1107,6 +1069,47 @@ Status StorageManager::load_array_schema(
   delete buff;
 
   return st;
+}
+
+Status StorageManager::load_array_metadata(
+    const URI& array_uri,
+    const EncryptionKey& encryption_key,
+    uint64_t timestamp,
+    Metadata* metadata) {
+  OpenArray* open_array;
+  // Lock mutex
+  {
+    std::lock_guard<std::mutex> lock{open_array_for_reads_mtx_};
+
+    // Find the open array entry
+    auto it = open_arrays_for_reads_.find(array_uri.to_string());
+    assert(it != open_arrays_for_reads_.end());
+    open_array = it->second;
+
+    // Lock the array
+    open_array->mtx_lock();
+  }
+
+  // Determine which array metadata to load
+  std::vector<TimestampedURI> array_metadata_to_load;
+  std::vector<URI> array_metadata_uris;
+  RETURN_NOT_OK_ELSE(
+      get_array_metadata_uris(array_uri, &array_metadata_uris),
+      open_array->mtx_unlock());
+  RETURN_NOT_OK_ELSE(
+      get_sorted_uris(array_metadata_uris, timestamp, &array_metadata_to_load),
+      open_array->mtx_unlock());
+
+  // Get the array metadata
+  RETURN_NOT_OK_ELSE(
+      load_array_metadata(
+          open_array, encryption_key, array_metadata_to_load, metadata),
+      open_array->mtx_unlock());
+
+  // Unlock the array
+  open_array->mtx_unlock();
+
+  return Status::Ok();
 }
 
 Status StorageManager::object_type(const URI& uri, ObjectType* type) const {

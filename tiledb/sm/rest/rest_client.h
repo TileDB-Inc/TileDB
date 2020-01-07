@@ -126,7 +126,7 @@ class RestClient {
    * @param array Array to update/post metadata for.
    * @return Status
    */
-  Status post_array_metadata_to_rest(const URI& uri, const Array* array);
+  Status post_array_metadata_to_rest(const URI& uri, Array* array);
 
   /**
    * Post a data query to rest server
