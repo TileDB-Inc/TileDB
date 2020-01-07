@@ -102,12 +102,7 @@ Status Metadata::deserialize(
     }
   }
 
-  // Create metadata index for fast lookups from index
-  metadata_index_.resize(metadata_map_.size());
-  size_t i = 0;
-  for (auto& m : metadata_map_)
-    metadata_index_[i++] = std::make_pair(&(m.first), &(m.second));
-
+  RETURN_NOT_OK(build_metadata_index());
   // Note: `metadata_map_` and `metadata_index_` are immutable after this point
 
   return Status::Ok();
@@ -215,7 +210,10 @@ Status Metadata::get(
     uint32_t* key_len,
     Datatype* value_type,
     uint32_t* value_num,
-    const void** value) const {
+    const void** value) {
+  if (metadata_index_.empty())
+    RETURN_NOT_OK(build_metadata_index());
+
   if (index >= metadata_index_.size())
     return LOG_STATUS(
         Status::MetadataError("Cannot get metadata; index out of bounds"));
@@ -299,6 +297,16 @@ Metadata::iterator Metadata::end() const {
 /* ********************************* */
 /*          PRIVATE METHODS          */
 /* ********************************* */
+
+Status Metadata::build_metadata_index() {
+  // Create metadata index for fast lookups from index
+  metadata_index_.resize(metadata_map_.size());
+  size_t i = 0;
+  for (auto& m : metadata_map_)
+    metadata_index_[i++] = std::make_pair(&(m.first), &(m.second));
+
+  return Status::Ok();
+}
 
 }  // namespace sm
 }  // namespace tiledb

@@ -248,8 +248,7 @@ Status RestClient::get_array_metadata_from_rest(
       array, serialization_type_, returned_data);
 }
 
-Status RestClient::post_array_metadata_to_rest(
-    const URI& uri, const Array* array) {
+Status RestClient::post_array_metadata_to_rest(const URI& uri, Array* array) {
   if (array == nullptr)
     return LOG_STATUS(Status::RestError(
         "Error posting array metadata to REST; array is null."));
@@ -690,7 +689,7 @@ Status RestClient::get_array_metadata_from_rest(const URI&, uint64_t, Array*) {
       Status::RestError("Cannot use rest client; serialization not enabled."));
 }
 
-Status RestClient::post_array_metadata_to_rest(const URI&, const Array*) {
+Status RestClient::post_array_metadata_to_rest(const URI&, Array*) {
   return LOG_STATUS(
       Status::RestError("Cannot use rest client; serialization not enabled."));
 }
