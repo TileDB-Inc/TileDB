@@ -56,7 +56,7 @@ template <class T>
 ReadCellSlabIter<T>::ReadCellSlabIter(
     const Subarray* subarray,
     std::map<const T*, ResultSpaceTile<T>>* result_space_tiles,
-    std::vector<ResultCoords<T>>* result_coords,
+    std::vector<ResultCoords>* result_coords,
     uint64_t result_coords_pos)
     : result_space_tiles_(result_space_tiles)
     , result_coords_(result_coords)
@@ -237,15 +237,14 @@ void ReadCellSlabIter<T>::compute_result_cell_slabs(
 
     // Check overlap
     for (unsigned d = 0; d < dim_num; ++d) {
+      auto result_coord = *(const T*)(*result_coords_)[i].coord(d);
       if (d != slab_dim) {
         // No overlap
-        if ((*result_coords_)[i].coords_[d] != cell_slab_copy.coords_[d]) {
+        if (result_coord != cell_slab_copy.coords_[d]) {
           must_break = true;
           break;
         }
-      } else if (
-          (*result_coords_)[i].coords_[d] < slab_start ||
-          (*result_coords_)[i].coords_[d] > slab_end) {
+      } else if (result_coord < slab_start || result_coord > slab_end) {
         must_break = true;
         break;
       }
@@ -255,9 +254,9 @@ void ReadCellSlabIter<T>::compute_result_cell_slabs(
       break;
 
     // Add left slab
-    if ((*result_coords_)[i].coords_[slab_dim] > slab_start) {
-      cell_slab_copy.length_ = (*result_coords_)[i].coords_[slab_dim] -
-                               cell_slab_copy.coords_[slab_dim];
+    auto result_coord = *(const T*)(*result_coords_)[i].coord(slab_dim);
+    if (result_coord > slab_start) {
+      cell_slab_copy.length_ = result_coord - cell_slab_copy.coords_[slab_dim];
       compute_result_cell_slabs_dense(cell_slab_copy, &result_space_tile);
     }
 
@@ -266,8 +265,7 @@ void ReadCellSlabIter<T>::compute_result_cell_slabs(
         (*result_coords_)[i].tile_, (*result_coords_)[i].pos_, 1);
 
     // Update cell slab copy
-    cell_slab_copy.coords_[slab_dim] =
-        (*result_coords_)[i].coords_[slab_dim] + 1;
+    cell_slab_copy.coords_[slab_dim] = result_coord + 1;
     cell_slab_copy.length_ = slab_end - cell_slab_copy.coords_[slab_dim] + 1;
     slab_start = cell_slab_copy.coords_[slab_dim];
     slab_end = (T)(slab_start + cell_slab_copy.length_ - 1);

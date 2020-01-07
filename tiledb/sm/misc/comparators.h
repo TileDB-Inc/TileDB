@@ -46,16 +46,12 @@ namespace tiledb {
 namespace sm {
 
 /** Wrapper of comparison function for sorting coords on row-major order. */
-template <class T>
 class RowCmp {
  public:
-  /**
-   * Constructor.
-   *
-   * @param dim_num The number of dimensions of the coords.
-   */
-  RowCmp(unsigned dim_num)
-      : dim_num_(dim_num) {
+  /** Constructor. */
+  RowCmp(const Domain* domain)
+      : domain_(domain)
+      , dim_num_(domain->dim_num()) {
   }
 
   /**
@@ -65,34 +61,34 @@ class RowCmp {
    * @param b The second coordinate.
    * @return `true` if `a` precedes `b` and `false` otherwise.
    */
-  bool operator()(const ResultCoords<T>& a, const ResultCoords<T>& b) const {
-    for (unsigned int i = 0; i < dim_num_; ++i) {
-      if (a.coords_[i] < b.coords_[i])
+  bool operator()(const ResultCoords& a, const ResultCoords& b) const {
+    for (unsigned int d = 0; d < dim_num_; ++d) {
+      auto res = domain_->cell_order_cmp(d, a.coord(d), b.coord(d));
+
+      if (res == -1)
         return true;
-      if (a.coords_[i] > b.coords_[i])
+      if (res == 1)
         return false;
-      // else a.coords_[i] == b.coords_[i] --> continue
+      // else same coordinate on dimension d --> continue
     }
 
     return false;
   }
 
  private:
+  /** The domain. */
+  const Domain* domain_;
   /** The number of dimensions. */
   unsigned dim_num_;
 };
 
 /** Wrapper of comparison function for sorting coords on col-major order. */
-template <class T>
 class ColCmp {
  public:
-  /**
-   * Constructor.
-   *
-   * @param dim_num The number of dimensions of the coords.
-   */
-  ColCmp(unsigned dim_num)
-      : dim_num_(dim_num) {
+  /** Constructor. */
+  ColCmp(const Domain* domain)
+      : domain_(domain)
+      , dim_num_(domain->dim_num()) {
   }
 
   /**
@@ -102,15 +98,17 @@ class ColCmp {
    * @param b The second coordinate.
    * @return `true` if `a` precedes `b` and `false` otherwise.
    */
-  bool operator()(const ResultCoords<T>& a, const ResultCoords<T>& b) const {
-    for (unsigned int i = dim_num_ - 1;; --i) {
-      if (a.coords_[i] < b.coords_[i])
-        return true;
-      if (a.coords_[i] > b.coords_[i])
-        return false;
-      // else a.coords_[i] == b.coords_[i] --> continue
+  bool operator()(const ResultCoords& a, const ResultCoords& b) const {
+    for (unsigned int d = dim_num_ - 1;; --d) {
+      auto res = domain_->cell_order_cmp(d, a.coord(d), b.coord(d));
 
-      if (i == 0)
+      if (res == -1)
+        return true;
+      if (res == 1)
+        return false;
+      // else same coordinate on dimension d --> continue
+
+      if (d == 0)
         break;
     }
 
@@ -118,6 +116,8 @@ class ColCmp {
   }
 
  private:
+  /** The domain. */
+  const Domain* domain_;
   /** The number of dimensions. */
   unsigned dim_num_;
 };
@@ -126,7 +126,6 @@ class ColCmp {
  * Wrapper of comparison function for sorting coords on the global order
  * of some domain.
  */
-template <class T>
 class GlobalCmp {
  public:
   /**
@@ -136,10 +135,24 @@ class GlobalCmp {
    * @param buff The buffer containing the actual values, used
    *     in positional comparisons.
    */
-  GlobalCmp(const Domain* domain, const T* buff = nullptr)
-      : domain_(domain)
-      , buff_(buff) {
+  GlobalCmp(const Domain* domain)
+      : domain_(domain) {
     dim_num_ = domain->dim_num();
+    tile_order_ = domain->tile_order();
+    cell_order_ = domain->cell_order();
+    coord_buffs_ = nullptr;
+  }
+
+  /**
+   * Constructor.
+   *
+   * @param domain The array domain.
+   * @param coord_buffs The coordinate buffers, one per dimension, containing
+   *     the actual values, used in positional comparisons.
+   */
+  GlobalCmp(const Domain* domain, const std::vector<const void*>* coord_buffs)
+      : domain_(domain)
+      , coord_buffs_(coord_buffs) {
   }
 
   /**
@@ -149,75 +162,62 @@ class GlobalCmp {
    * @param b The second coordinate.
    * @return `true` if `a` precedes `b` and `false` otherwise.
    */
-  bool operator()(const ResultCoords<T>& a, const ResultCoords<T>& b) const {
+  bool operator()(const ResultCoords& a, const ResultCoords& b) const {
     // Compare tile order first
-    auto tile_cmp =
-        domain_->tile_order_cmp_tile_coords<T>(a.tile_coords_, b.tile_coords_);
+    if (tile_order_ == Layout::ROW_MAJOR) {
+      for (unsigned d = 0; d < dim_num_; ++d) {
+        auto res = domain_->tile_order_cmp(d, a.coord(d), b.coord(d));
 
-    if (tile_cmp == -1)
-      return true;
-    if (tile_cmp == 1)
-      return false;
-    // else tile_cmp == 0 --> continue
+        if (res == -1)
+          return true;
+        if (res == 1)
+          return false;
+        // else same tile on dimension d --> continue
+      }
+    } else {  // COL_MAJOR
+      assert(tile_order_ == Layout::COL_MAJOR);
+      for (unsigned d = dim_num_ - 1;; --d) {
+        auto res = domain_->tile_order_cmp(d, a.coord(d), b.coord(d));
+
+        if (res == -1)
+          return true;
+        if (res == 1)
+          return false;
+        // else same tile on dimension d --> continue
+
+        if (d == 0)
+          break;
+      }
+    }
 
     // Compare cell order
-    auto cell_cmp = domain_->cell_order_cmp(a.coords_, b.coords_);
-    return cell_cmp == -1;
-  }
+    if (cell_order_ == Layout::ROW_MAJOR) {
+      for (unsigned d = 0; d < dim_num_; ++d) {
+        auto res = domain_->cell_order_cmp(d, a.coord(d), b.coord(d));
 
-  /**
-   * Comparison operator for a vector of integer positions.
-   * Here `buff_` is **not** `nullptr` and a position corresponds to
-   * coordinates in `buff_`.
-   *
-   * @param a The first coordinate position.
-   * @param b The second coordinate position.
-   * @return `true` if coordinates at `a` precedes coordinates at `b`,
-   *     and `false` otherwise.
-   */
-  bool operator()(uint64_t a, uint64_t b) const {
-    // Get coordinates
-    const T* coords_a = &buff_[a * dim_num_];
-    const T* coords_b = &buff_[b * dim_num_];
-    // Compare tile order first
-    auto tile_cmp = domain_->tile_order_cmp<T>(coords_a, coords_b);
+        if (res == -1)
+          return true;
+        if (res == 1)
+          return false;
+        // else same tile on dimension d --> continue
+      }
+    } else {  // COL_MAJOR
+      assert(cell_order_ == Layout::COL_MAJOR);
+      for (unsigned d = dim_num_ - 1;; --d) {
+        auto res = domain_->cell_order_cmp(d, a.coord(d), b.coord(d));
 
-    if (tile_cmp == -1)
-      return true;
-    if (tile_cmp == 1)
-      return false;
-    // else tile_cmp == 0 --> continue
+        if (res == -1)
+          return true;
+        if (res == 1)
+          return false;
+        // else same tile on dimension d --> continue
 
-    // Compare cell order
-    auto cell_cmp = domain_->cell_order_cmp(coords_a, coords_b);
-    return cell_cmp == -1;
-  }
+        if (d == 0)
+          break;
+      }
+    }
 
- private:
-  /** The domain. */
-  const Domain* domain_;
-  /** A buffer - not applicable to sorting `ResultCoords`. */
-  const T* buff_;
-  /** The number of dimensions. */
-  unsigned dim_num_;
-};
-
-/**
- * Wrapper of comparison function for sorting coords on the global order
- * of some domain.
- */
-class GlobalCmp2 {
- public:
-  /**
-   * Constructor.
-   *
-   * @param domain The array domain.
-   * @param coord_buffs The coordinate buffers, one per dimension, containing
-   *     the actual values, used in positional comparisons.
-   */
-  GlobalCmp2(const Domain* domain, const std::vector<const void*>& coord_buffs)
-      : domain_(domain)
-      , coord_buffs_(coord_buffs) {
+    return false;
   }
 
   /**
@@ -229,8 +229,8 @@ class GlobalCmp2 {
    *     cell at `b`, and `false` otherwise.
    */
   bool operator()(uint64_t a, uint64_t b) const {
-    // Compare tile order first
-    auto tile_cmp = domain_->tile_order_cmp(coord_buffs_, a, b);
+    assert(coord_buffs_ != nullptr);
+    auto tile_cmp = domain_->tile_order_cmp(*coord_buffs_, a, b);
 
     if (tile_cmp == -1)
       return true;
@@ -239,18 +239,24 @@ class GlobalCmp2 {
     // else tile_cmp == 0 --> continue
 
     // Compare cell order
-    auto cell_cmp = domain_->cell_order_cmp(coord_buffs_, a, b);
+    auto cell_cmp = domain_->cell_order_cmp(*coord_buffs_, a, b);
     return cell_cmp == -1;
   }
 
  private:
   /** The domain. */
   const Domain* domain_;
+  /** The number of dimensions. */
+  unsigned dim_num_;
+  /** The tile order. */
+  Layout tile_order_;
+  /** The cell order. */
+  Layout cell_order_;
   /**
    * The coordinate buffers, one per dimension, sorted in the order the
    * dimensions are defined in the array schema.
    */
-  const std::vector<const void*>& coord_buffs_;
+  const std::vector<const void*>* coord_buffs_;
 };
 
 }  // namespace sm

@@ -121,18 +121,6 @@ struct ResultCellSlab {
     std::swap(start_, result_cell_slab.start_);
     std::swap(length_, result_cell_slab.length_);
   }
-
-  /** For debugging. */
-  void print() const {
-    if (tile_ == nullptr) {
-      std::cout << "fragment: " << -1 << "\n";
-    } else {
-      std::cout << "fragment: " << tile_->frag_idx_ << "\n";
-      std::cout << "tile: " << tile_->tile_idx_ << "\n";
-    }
-    std::cout << "start: " << start_ << "\n";
-    std::cout << "length: " << length_ << "\n";
-  }
 };
 
 }  // namespace sm

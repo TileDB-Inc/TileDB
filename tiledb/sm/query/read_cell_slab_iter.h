@@ -83,7 +83,7 @@ class ReadCellSlabIter {
   ReadCellSlabIter(
       const Subarray* subarray,
       std::map<const T*, ResultSpaceTile<T>>* result_space_tiles,
-      std::vector<ResultCoords<T>>* result_coords,
+      std::vector<ResultCoords>* result_coords,
       uint64_t result_coords_pos = 0);
 
   /** Destructor. */
@@ -162,7 +162,7 @@ class ReadCellSlabIter {
   std::map<const T*, ResultSpaceTile<T>>* result_space_tiles_;
 
   /** The result sparse fragment coordinates. */
-  std::vector<ResultCoords<T>>* result_coords_;
+  std::vector<ResultCoords>* result_coords_;
 
   /** Current position to be explored in `result_coords_`. */
   size_t result_coords_pos_;

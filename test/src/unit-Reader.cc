@@ -161,15 +161,15 @@ TEST_CASE_METHOD(
   CHECK(result_space_tiles.size() == 6);
 
   // Result tiles for fragment #1
-  ResultTile result_tile_1_0_1(1, 0);
-  ResultTile result_tile_1_2_1(1, 2);
+  ResultTile result_tile_1_0_1(1, 0, dim_num);
+  ResultTile result_tile_1_2_1(1, 2, dim_num);
 
   // Result tiles for fragment #2
-  ResultTile result_tile_1_0_2(2, 0);
+  ResultTile result_tile_1_0_2(2, 0, dim_num);
 
   // Result tiles for fragment #3
-  ResultTile result_tile_2_0_3(3, 0);
-  ResultTile result_tile_3_0_3(3, 2);
+  ResultTile result_tile_2_0_3(3, 0, dim_num);
+  ResultTile result_tile_3_0_3(3, 2, dim_num);
 
   // Initialize frag domains
   typedef std::pair<unsigned, const int32_t*> FragDomain;

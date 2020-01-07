@@ -2242,7 +2242,7 @@ Status Writer::sort_coords(std::vector<uint64_t>* cell_pos) const {
     (*cell_pos)[i] = i;
 
   // Sort the coordinates in global order
-  parallel_sort(cell_pos->begin(), cell_pos->end(), GlobalCmp2(domain, buffs));
+  parallel_sort(cell_pos->begin(), cell_pos->end(), GlobalCmp(domain, &buffs));
 
   return Status::Ok();
 

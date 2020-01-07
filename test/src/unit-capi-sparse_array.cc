@@ -2947,16 +2947,16 @@ TEST_CASE_METHOD(
   REQUIRE(rc == TILEDB_OK);
   REQUIRE(status == TILEDB_COMPLETED);
 
+  CHECK(a1_size == sizeof(a1));
+  CHECK(a2_off_size == sizeof(a2_off));
+  CHECK(a2_size == 3 * sizeof(char));
   CHECK(a1[0] == 0);
   CHECK(a1[1] == 1);
-  CHECK(a1_size == sizeof(a1));
   CHECK(a2_off[0] == 0);
   CHECK(a2_off[1] == 1);
-  CHECK(a2_off_size == sizeof(a2_off));
   CHECK(a2[0] == 'a');
   CHECK(a2[1] == 'b');
   CHECK(a2[2] == 'b');
-  CHECK(a2_size == 3 * sizeof(char));
 
   // Close array
   CHECK(tiledb_array_close(ctx, array) == TILEDB_OK);

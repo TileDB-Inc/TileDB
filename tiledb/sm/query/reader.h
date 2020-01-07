@@ -407,7 +407,7 @@ class Reader {
   void compute_result_cell_slabs(
       const Subarray& subarray,
       std::map<const T*, ResultSpaceTile<T>>* result_space_tiles,
-      std::vector<ResultCoords<T>>* result_coords,
+      std::vector<ResultCoords>* result_coords,
       std::vector<ResultTile*>* result_tiles,
       std::vector<ResultCellSlab>* result_cell_slabs) const;
 
@@ -442,7 +442,7 @@ class Reader {
   void compute_result_cell_slabs_row_col(
       const Subarray& subarray,
       std::map<const T*, ResultSpaceTile<T>>* result_space_tiles,
-      std::vector<ResultCoords<T>>* result_coords,
+      std::vector<ResultCoords>* result_coords,
       uint64_t* result_coords_pos,
       std::vector<ResultTile*>* result_tiles,
       std::set<std::pair<unsigned, uint64_t>>* frag_tile_set,
@@ -471,7 +471,7 @@ class Reader {
   void compute_result_cell_slabs_global(
       const Subarray& subarray,
       std::map<const T*, ResultSpaceTile<T>>* result_space_tiles,
-      std::vector<ResultCoords<T>>* result_coords,
+      std::vector<ResultCoords>* result_coords,
       std::vector<ResultTile*>* result_tiles,
       std::vector<ResultCellSlab>* result_cell_slabs) const;
 
@@ -528,27 +528,25 @@ class Reader {
   /* ********************************* */
 
   /**
-   * Deletes the tiles on the input attribute from the result tiles.
+   * Deletes the tiles on the input attribute/dimension from the result tiles.
    *
-   * @param attr The attribute name.
+   * @param name The attribute/dimension name.
    * @param result_tiles The result tiles to delete from.
    * @return void
    */
   void clear_tiles(
-      const std::string& attr,
+      const std::string& name,
       const std::vector<ResultTile*>& result_tiles) const;
 
   /**
    * Compute the maximal cell slabs of contiguous sparse coordinates.
    *
-   * @tparam T The coords type.
    * @param coords The coordinates to compute the slabs from.
    * @param result_cell_slabs The result cell slabs to compute.
    * @return Status
    */
-  template <class T>
   Status compute_result_cell_slabs(
-      const std::vector<ResultCoords<T>>& result_coords,
+      const std::vector<ResultCoords>& result_coords,
       std::vector<ResultCellSlab>* result_cell_slabs) const;
 
   /**
@@ -568,7 +566,7 @@ class Reader {
       unsigned frag_idx,
       ResultTile* tile,
       const std::vector<const T*>& range,
-      std::vector<ResultCoords<T>>* result_coords) const;
+      std::vector<ResultCoords>* result_coords) const;
 
   /**
    * Computes the result coordinates for each range of the query
@@ -589,7 +587,7 @@ class Reader {
       const std::vector<bool>& single_fragment,
       const std::map<std::pair<unsigned, uint64_t>, size_t>& result_tile_map,
       std::vector<ResultTile>* result_tiles,
-      std::vector<std::vector<ResultCoords<T>>>* range_result_coords);
+      std::vector<std::vector<ResultCoords>>* range_result_coords);
 
   /**
    * Computes the result coordinates of a given range of the query
@@ -609,18 +607,13 @@ class Reader {
       uint64_t range_idx,
       const std::map<std::pair<unsigned, uint64_t>, size_t>& result_tile_map,
       std::vector<ResultTile>* result_tiles,
-      std::vector<ResultCoords<T>>* range_result_coords);
+      std::vector<ResultCoords>* range_result_coords);
 
   /**
    * Computes the final subarray result coordinates, which will be
    * deduplicated and sorted on the specified subarray layout.
    *
-   * @tparam T The domain type.
    * @param range_result_coords The result coordinates for each subarray range.
-   * @param tile_coords If the subarray layout is global order, this
-   *     function will store the unique tile coordinates of the subarray
-   *     coordinates in `tile_coords`. Then the element of `result_coords` will
-   *     store only pointers to the unique tile coordinates.
    * @param result_coords The final (subarray) result coordinates to be
    *     retrieved.
    * @return Status
@@ -628,11 +621,9 @@ class Reader {
    * @note the function will try to gradually clean up ``range_result_coords``
    *     as it is done processing its elements to quickly reclaim memory.
    */
-  template <class T>
   Status compute_subarray_coords(
-      std::vector<std::vector<ResultCoords<T>>>* range_result_coords,
-      std::vector<std::vector<T>>* tile_coords,
-      std::vector<ResultCoords<T>>* result_coords);
+      std::vector<std::vector<ResultCoords>>* range_result_coords,
+      std::vector<ResultCoords>* result_coords);
 
   /**
    * Computes info about the sparse result tiles, such as which fragment they
@@ -657,22 +648,6 @@ class Reader {
       std::vector<bool>* single_fragment);
 
   /**
-   * Computes the sparse tile coordinates. It stores the unique tile
-   * coordinates in `tile_coords`, and then it stores pointers to
-   * those tile coordinates in the elements of`result_coords`.
-   *
-   * @tparam T The domain data type.
-   * @param result_coords The result coordinates.
-   * @param tile_coords The unique tile coordinates of the result
-   *     coordinates.
-   * @return
-   */
-  template <class T>
-  Status compute_sparse_tile_coords(
-      std::vector<ResultCoords<T>>* result_coords,
-      std::vector<std::vector<T>>* tile_coords) const;
-
-  /**
    * Copies the cells for the input attribute and result cell slabs, into
    * the corresponding result buffers.
    *
@@ -689,10 +664,10 @@ class Reader {
       const std::vector<ResultCellSlab>& result_cell_slabs);
 
   /**
-   * Copies the cells for the input **fixed-sized** attribute and result
-   * cell slabs, into the corresponding result buffers.
+   * Copies the cells for the input **fixed-sized** attribute/dimension and
+   * result cell slabs, into the corresponding result buffers.
    *
-   * @param attribute The targeted attribute.
+   * @param name The targeted attribute/diemnsion.
    * @param stride If it is `UINT64_MAX`, then the cells in the result
    *     cell slabs are all contiguous. Otherwise, each cell in the
    *     result cell slabs are `stride` cells apart from each other.
@@ -700,15 +675,15 @@ class Reader {
    * @return Status
    */
   Status copy_fixed_cells(
-      const std::string& attribute,
+      const std::string& name,
       uint64_t stride,
       const std::vector<ResultCellSlab>& result_cell_slabs);
 
   /**
-   * Copies the cells for the input **var-sized** attribute and result
+   * Copies the cells for the input **var-sized** attribute/dimension and result
    * cell slabs, into the corresponding result buffers.
    *
-   * @param attribute The targeted attribute.
+   * @param name The targeted attribute/dimension.
    * @param stride If it is `UINT64_MAX`, then the cells in the result
    *     cell slabs are all contiguous. Otherwise, each cell in the
    *     result cell slabs are `stride` cells apart from each other.
@@ -716,15 +691,16 @@ class Reader {
    * @return Status
    */
   Status copy_var_cells(
-      const std::string& attribute,
+      const std::string& name,
       uint64_t stride,
       const std::vector<ResultCellSlab>& result_cell_slabs);
 
   /**
-   * Computes offsets into destination buffers for the given attribute's offset
-   * and variable-length data, for the given list of result cell slabs.
+   * Computes offsets into destination buffers for the given
+   * attribute/dimensions's offset and variable-length data, for the given list
+   * of result cell slabs.
    *
-   * @param attribute The variable-length attribute
+   * @param name The variable-length attribute/dimension.
    * @param stride If it is `UINT64_MAX`, then the cells in the result
    *     cell slabs are all contiguous. Otherwise, each cell in the
    *     result cell slabs are `stride` cells apart from each other.
@@ -742,7 +718,7 @@ class Reader {
    * @return Status
    */
   Status compute_var_cell_destinations(
-      const std::string& attribute,
+      const std::string& name,
       uint64_t stride,
       const std::vector<ResultCellSlab>& result_cell_slabs,
       std::vector<std::vector<uint64_t>>* offset_offsets_per_cs,
@@ -766,28 +742,21 @@ class Reader {
    * Computes the result coordinates from the sparse fragments.
    *
    * @param result_tiles This will store the unique result tiles.
-   * @param tile_coords If the subarray layout is global order, this
-   *     function will store the unique tile coordinates of the subarray
-   *     coordinates in `tile_coords`. Then the element of `result_coords`
-   *     will store only pointers to the unique tile coordinates.
    * @param result_coords This will store the result coordinates.
    */
   template <class T>
   Status compute_result_coords(
       std::vector<ResultTile>* result_tiles,
-      std::vector<std::vector<T>>* tile_coords,
-      std::vector<ResultCoords<T>>* result_coords);
+      std::vector<ResultCoords>* result_coords);
 
   /**
    * Deduplicates the input result coordinates, breaking ties giving preference
    * to the largest fragment index (i.e., it prefers more recent fragments).
    *
-   * @tparam T The coords type.
    * @param result_coords The result coordinates to dedup.
    * @return Status
    */
-  template <class T>
-  Status dedup_result_coords(std::vector<ResultCoords<T>>* result_coords) const;
+  Status dedup_result_coords(std::vector<ResultCoords>* result_coords) const;
 
   /**
    * Performs a read on a dense array.
@@ -885,15 +854,15 @@ class Reader {
       const T* start, uint64_t num, void* buff, uint64_t* offset) const;
 
   /**
-   * Filters the tiles on a particular attribute from all input fragments
-   * based on the tile info in `result_tiles`.
+   * Filters the tiles on a particular attribute/dimension from all input
+   * fragments based on the tile info in `result_tiles`.
    *
-   * @param attribute Attribute whose tiles will be filtered
+   * @param name Attribute/dimension whose tiles will be filtered
    * @param result_tiles Vector containing the tiles to be filtered
    * @return Status
    */
   Status filter_tiles(
-      const std::string& attribute,
+      const std::string& name,
       const std::vector<ResultTile*>& result_tiles) const;
 
   /**
@@ -912,14 +881,12 @@ class Reader {
   /**
    * Gets all the result coordinates of the input tile into `result_coords`.
    *
-   * @tparam T The coords type.
    * @param result_tile The result tile to read the coordinates from.
    * @param result_coords The result coordinates to copy into.
    * @return Status
    */
-  template <class T>
   Status get_all_result_coords(
-      ResultTile* tile, std::vector<ResultCoords<T>>* result_coords) const;
+      ResultTile* tile, std::vector<ResultCoords>* result_coords) const;
 
   /** Returns `true` if the coordinates are included in the attributes. */
   bool has_coords() const;
@@ -931,56 +898,56 @@ class Reader {
    * Initializes a fixed-sized tile.
    *
    * @param format_version The format version of the tile.
-   * @param attribute The attribute the tile belongs to.
+   * @param name The attribute/dimension the tile belongs to.
    * @param tile The tile to be initialized.
    * @return Status
    */
   Status init_tile(
-      uint32_t format_version, const std::string& attribute, Tile* tile) const;
+      uint32_t format_version, const std::string& name, Tile* tile) const;
 
   /**
    * Initializes a var-sized tile.
    *
    * @param format_version The format version of the tile.
-   * @param attribute The attribute the tile belongs to.
+   * @param name The attribute/dimension the tile belongs to.
    * @param tile The offsets tile to be initialized.
    * @param tile_var The var-sized data tile to be initialized.
    * @return Status
    */
   Status init_tile(
       uint32_t format_version,
-      const std::string& attribute,
+      const std::string& name,
       Tile* tile,
       Tile* tile_var) const;
 
   /**
-   * Retrieves the tiles on a particular attribute and stores it in the
-   * appropriate result tile.
+   * Retrieves the tiles on a particular attribute or dimension and stores it
+   * in the appropriate result tile.
    *
-   * @param attr The attribute name.
+   * @param name The attribute/dimension name.
    * @param result_tiles The retrieved tiles will be stored inside the
    *     `ResultTile` instances in this vector.
    * @return Status
    */
   Status read_tiles(
-      const std::string& attr,
+      const std::string& name,
       const std::vector<ResultTile*>& result_tiles) const;
 
   /**
-   * Retrieves the tiles on a particular attribute and stores it in the
-   * appropriate result tile.
+   * Retrieves the tiles on a particular attribute or dimension and stores it
+   * in the appropriate result tile.
    *
    * The reads are done asynchronously, and futures for each read operation are
    * added to the output parameter.
    *
-   * @param attribute The attribute name.
+   * @param name The attribute/dimension name.
    * @param result_tiles The retrieved tiles will be stored inside the
    *     `ResultTile` instances in this vector.
    * @param tasks Vector to hold futures for the read tasks.
    * @return Status
    */
   Status read_tiles(
-      const std::string& attribute,
+      const std::string& name,
       const std::vector<ResultTile*>& result_tiles,
       std::vector<std::future<Status>>* tasks) const;
 
@@ -994,14 +961,12 @@ class Reader {
   /**
    * Sorts the input result coordinates according to the subarray layout.
    *
-   * @tparam T The coords type.
    * @param result_coords The coordinates to sort.
    * @param layout The layout to sort into.
    * @return Status
    */
-  template <class T>
   Status sort_result_coords(
-      std::vector<ResultCoords<T>>* result_coords, Layout layout) const;
+      std::vector<ResultCoords>* result_coords, Layout layout) const;
 
   /**
    * Performs a read on a sparse array.
