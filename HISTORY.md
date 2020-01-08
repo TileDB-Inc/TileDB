@@ -1,3 +1,20 @@
+# TileDB v1.7.3 Release Notes
+
+## New features
+
+## Improvements
+
+* Array metadata fetching is now lazy (fetch on use) to improve array open performance [#1466](https://github.com/TileDB-Inc/TileDB/pull/1466)
+* libtiledb on Linux will no longer re-export symbols from statically linked dependencies [#1461](https://github.com/TileDB-Inc/TileDB/pull/1461)
+
+## Deprecations
+
+## Bug fixes
+
+## API additions
+
+## API removals
+
 # TileDB v1.7.2 Release Notes
 
 TileDB 1.7.2 contains bug fixes and several internal optimizations.
