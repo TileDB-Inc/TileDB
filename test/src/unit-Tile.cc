@@ -30,6 +30,7 @@
  * Tests the `Tile` class.
  */
 
+#include "tiledb/sm/enums/datatype.h"
 #include "tiledb/sm/tile/tile.h"
 
 #include <catch.hpp>

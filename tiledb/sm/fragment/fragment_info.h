@@ -36,6 +36,8 @@
 
 #include "tiledb/sm/misc/uri.h"
 
+#include <vector>
+
 namespace tiledb {
 namespace sm {
 

@@ -33,18 +33,19 @@
 #ifndef TILEDB_DOMAIN_H
 #define TILEDB_DOMAIN_H
 
-#include "tiledb/sm/array_schema/dimension.h"
-#include "tiledb/sm/buffer/buffer.h"
-#include "tiledb/sm/enums/array_type.h"
-#include "tiledb/sm/enums/datatype.h"
-#include "tiledb/sm/enums/layout.h"
 #include "tiledb/sm/misc/status.h"
 
-#include <iostream>
 #include <vector>
 
 namespace tiledb {
 namespace sm {
+
+class Buffer;
+class ConstBuffer;
+class Dimension;
+
+enum class Datatype : uint8_t;
+enum class Layout : uint8_t;
 
 /** Defines an array domain, which consists of dimensions. */
 class Domain {

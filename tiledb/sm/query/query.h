@@ -33,6 +33,7 @@
 #ifndef TILEDB_QUERY_H
 #define TILEDB_QUERY_H
 
+#include "tiledb/sm/array_schema/dimension.h"
 #include "tiledb/sm/enums/query_status.h"
 #include "tiledb/sm/enums/query_type.h"
 #include "tiledb/sm/fragment/fragment_metadata.h"

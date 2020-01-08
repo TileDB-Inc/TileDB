@@ -34,14 +34,20 @@
 #define TILEDB_ARRAY_H
 
 #include "tiledb/sm/encryption/encryption_key.h"
+#include "tiledb/sm/fragment/fragment_info.h"
 #include "tiledb/sm/metadata/metadata.h"
 #include "tiledb/sm/misc/status.h"
-#include "tiledb/sm/storage_manager/open_array.h"
-#include "tiledb/sm/storage_manager/storage_manager.h"
-#include "tiledb/sm/subarray/subarray.h"
+
+#include <atomic>
+#include <unordered_map>
 
 namespace tiledb {
 namespace sm {
+
+class ArraySchema;
+class FragmentMetadata;
+class StorageManager;
+enum class QueryType : uint8_t;
 
 /**
  * An array object to be opened for reads/writes. An ``Array`` instance

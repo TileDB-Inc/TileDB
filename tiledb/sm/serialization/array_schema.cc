@@ -31,6 +31,9 @@
  */
 
 #include "tiledb/sm/serialization/array_schema.h"
+#include "tiledb/sm/array_schema/attribute.h"
+#include "tiledb/sm/array_schema/dimension.h"
+#include "tiledb/sm/array_schema/domain.h"
 #include "tiledb/sm/enums/array_type.h"
 #include "tiledb/sm/enums/compressor.h"
 #include "tiledb/sm/enums/datatype.h"
@@ -40,6 +43,8 @@
 #include "tiledb/sm/misc/logger.h"
 #include "tiledb/sm/misc/stats.h"
 #include "tiledb/sm/serialization/capnp_utils.h"
+
+#include <set>
 
 #ifdef TILEDB_SERIALIZATION
 #include <capnp/compat/json.h>

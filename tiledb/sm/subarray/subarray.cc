@@ -32,7 +32,13 @@
 
 #include "tiledb/sm/subarray/subarray.h"
 #include "tiledb/sm/array/array.h"
+#include "tiledb/sm/array_schema/array_schema.h"
+#include "tiledb/sm/array_schema/attribute.h"
+#include "tiledb/sm/array_schema/dimension.h"
+#include "tiledb/sm/array_schema/domain.h"
+#include "tiledb/sm/fragment/fragment_metadata.h"
 #include "tiledb/sm/misc/parallel_functions.h"
+#include "tiledb/sm/misc/utils.h"
 #include "tiledb/sm/rtree/rtree.h"
 
 #include <iomanip>

@@ -32,7 +32,10 @@
  */
 
 #include "tiledb/sm/array_schema/array_schema.h"
+#include "tiledb/sm/array_schema/dimension.h"
+#include "tiledb/sm/array_schema/domain.h"
 #include "tiledb/sm/buffer/buffer.h"
+#include "tiledb/sm/enums/datatype.h"
 #include "tiledb/sm/filter/bit_width_reduction_filter.h"
 #include "tiledb/sm/filter/bitshuffle_filter.h"
 #include "tiledb/sm/filter/byteshuffle_filter.h"
