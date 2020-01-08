@@ -80,43 +80,6 @@ const URI& Array::array_uri() const {
   return array_uri_;
 }
 
-Status Array::compute_max_buffer_sizes(
-    const void* subarray,
-    const std::vector<std::string>& attributes,
-    std::unordered_map<std::string, std::pair<uint64_t, uint64_t>>*
-        max_buffer_sizes) const {
-  std::unique_lock<std::mutex> lck(mtx_);
-
-  // Error if the array is not open
-  if (!is_open_)
-    return LOG_STATUS(Status::ArrayError(
-        "Cannot compute max buffer sizes; Array is not open"));
-
-  // Error if the array was not opened in read mode
-  if (query_type_ != QueryType::READ)
-    return LOG_STATUS(
-        Status::ArrayError("Cannot compute max read buffer sizes; "
-                           "Array was not opened in read mode"));
-
-  // Error on remote arrays (user must handle incomplete queries).
-  if (remote_)
-    return LOG_STATUS(
-        Status::ArrayError("Cannot compute max read buffer sizes; not "
-                           "supported for remote arrays."));
-
-  // Check attributes
-  RETURN_NOT_OK(array_schema_->check_attributes(attributes));
-
-  // Compute buffer sizes
-  max_buffer_sizes->clear();
-  for (const auto& attr : attributes)
-    (*max_buffer_sizes)[attr] = std::pair<uint64_t, uint64_t>(0, 0);
-  RETURN_NOT_OK(compute_max_buffer_sizes(subarray, max_buffer_sizes));
-
-  // Close array
-  return Status::Ok();
-}
-
 const EncryptionKey* Array::encryption_key() const {
   return &encryption_key_;
 }

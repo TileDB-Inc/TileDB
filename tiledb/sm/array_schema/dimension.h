@@ -137,6 +137,14 @@ class Dimension {
   static bool oob(
       const Dimension* dim, const void* coord, std::string* err_msg);
 
+  /** Returns `true` if `value` is within the 1D `range`. */
+  template <class T>
+  static bool value_in_range(
+      const Dimension* dim, const void* value, const void* range);
+
+  /** Returns `true` if `value` is within the 1D `range`. */
+  bool value_in_range(const void* value, const void* range) const;
+
   /**
    * Serializes the object members into a binary buffer.
    *
@@ -198,6 +206,13 @@ class Dimension {
    */
   std::function<bool(const Dimension* dim, const void*, std::string*)>
       oob_func_;
+
+  /**
+   * Stores the appropriate templated value_in_range() function based on the
+   * dimension datatype.
+   */
+  std::function<bool(const Dimension* dim, const void*, const void*)>
+      value_in_range_func_;
 
   /* ********************************* */
   /*          PRIVATE METHODS          */
@@ -282,6 +297,9 @@ class Dimension {
 
   /** Sets the templated oob function. */
   void set_oob_func();
+
+  /** Sets the templated value_in_range function. */
+  void set_value_in_range_func();
 };
 
 }  // namespace sm

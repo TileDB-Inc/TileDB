@@ -426,29 +426,6 @@ extern const std::string default_attr_name;
 /** The default dimension name prefix. */
 extern const std::string default_dim_name;
 
-/** The key attribute name. */
-extern const std::string key_attr_name;
-
-/** The key attribute type. */
-extern Datatype key_attr_type;
-
-/** The key attribute compressor. */
-extern Compressor key_attr_compressor;
-
-/**
- * The name of the first key dimension (recall that a key in a
- * key-value store is hashed into a 16-byte MD5 digest, which
- * is represented as a 2-dimensional uint64_t value.
- */
-extern const std::string key_dim_1;
-
-/**
- * The name of the second key dimension (recall that a key in a
- * key-value store is hashed into a 16-byte MD5 digest, which
- * is represented as a 2-dimensional uint64_t value.
- */
-extern const std::string key_dim_2;
-
 /** Maximum number of attempts to wait for an S3 response. */
 extern const unsigned int s3_max_attempts;
 

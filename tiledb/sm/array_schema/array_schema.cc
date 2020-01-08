@@ -105,10 +105,8 @@ ArraySchema::ArraySchema(const ArraySchema* array_schema) {
   set_domain(array_schema->domain_);
 
   attribute_map_.clear();
-  for (auto attr : array_schema->attributes_) {
-    if (attr->name() != constants::key_attr_name)
-      add_attribute(attr, false);
-  }
+  for (auto attr : array_schema->attributes_)
+    add_attribute(attr, false);
 }
 
 ArraySchema::~ArraySchema() {
