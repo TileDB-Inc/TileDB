@@ -1,5 +1,22 @@
 steps:
+- task: UsePythonVersion@0
+- task: PowerShell@2
+  inputs:
+    pwsh: $[ ne(variables['imageName'], 'vs2015-win2012r2') ]
+    targetType: 'inline'
+    script: |
+      # This must be run in the same task section as the tests so minio doesn't exit
+      if ($env:TILEDB_S3 -eq "ON") {
+        $env:MINIO_ACCESS_KEY = "minio"
+        $env:MINIO_SECRET_KEY = "miniosecretkey"
+        $env:AWS_ACCESS_KEY_ID = "minio"
+        $env:AWS_SECRET_ACCESS_KEY = "miniosecretkey"
+        & "$env:BUILD_SOURCESDIRECTORY\scripts\install-minio.ps1"
+      }
+  displayName: "Pre-test minio"
+
 - powershell: |
+    python -c "print('hello, world')"
     mkdir $env:AGENT_BUILDDIRECTORY\build
     cd $env:AGENT_BUILDDIRECTORY\build
 
@@ -11,9 +28,6 @@ steps:
       Write-Host "Unknown image name: '$($env:imageName)'"
       $host.SetShouldExit(1)
     }
-
-    # TODO DEBUG move this back in the TILEDB_S3 section
-    & "$env:BUILD_SOURCESDIRECTORY\scripts\install-minio.ps1"
 
     if ($env:TILEDB_S3 -eq "ON") {
       & "$env:BUILD_SOURCESDIRECTORY\bootstrap.ps1" -EnableS3 -EnableVerbose -EnableStaticTileDB
@@ -33,28 +47,41 @@ steps:
     }
   displayName: "Build"
 
+- task: PowerShell@2
+  inputs:
+    pwsh: $[ eq(variables['imageName'], 'vs2015-win2012r2') ]
+    targetType: 'inline'
+    script: |
+      # This must be run in the same task section as the tests so minio doesn't exit
+      if ($env:TILEDB_S3 -eq "ON") {
+        $env:MINIO_ACCESS_KEY = "minio"
+        $env:MINIO_SECRET_KEY = "miniosecretkey"
+        $env:AWS_ACCESS_KEY_ID = "minio"
+        $env:AWS_SECRET_ACCESS_KEY = "miniosecretkey"
+        & "$env:BUILD_SOURCESDIRECTORY\scripts\install-minio.ps1"
+      }
+
+      # Clone backwards compatibility test arrays
+      git clone https://github.com/TileDB-Inc/TileDB-Unit-Test-Arrays.git  $env:BUILD_SOURCESDIRECTORY/test/inputs/arrays/read_compatibility_test
+
+      cd $env:AGENT_BUILDDIRECTORY\build\tiledb
+
+      # CMake exits with non-0 status if there are any warnings during the build, so
+      # build the unit test executable before running tests.
+      cmake --build $env:AGENT_BUILDDIRECTORY\build\tiledb --target tiledb_unit --config Release -- /verbosity:minimal
+
+      # Actually run tests
+      cmake --build $env:AGENT_BUILDDIRECTORY\build\tiledb --target check --config Release -- /verbosity:minimal
+
+      if ($LastExitCode -ne 0) {
+         Write-Host "Tests failed. CMake exit status: " $LastExitCocde
+         $host.SetShouldExit($LastExitCode)
+      }
+
+  displayName: "Test"
+
 - powershell: |
-    $env:MINIO_ACCESS_KEY = "minio"
-    $env:MINIO_SECRET_KEY = "miniosecretkey"
-    $env:AWS_ACCESS_KEY_ID = "minio"
-    $env:AWS_SECRET_ACCESS_KEY = "miniosecretkey"
-
-    # Clone backwards compatibility test arrays
-    git clone https://github.com/TileDB-Inc/TileDB-Unit-Test-Arrays.git  $env:BUILD_SOURCESDIRECTORY/test/inputs/arrays/read_compatibility_test
-
-    cd $env:AGENT_BUILDDIRECTORY\build\tiledb
-
-    # CMake exits with non-0 status if there are any warnings during the build, so
-    # build the unit test executable before running tests.
-    cmake --build $env:AGENT_BUILDDIRECTORY\build\tiledb --target tiledb_unit --config Release -- /verbosity:minimal
-
-    # Actually run tests
-    cmake --build $env:AGENT_BUILDDIRECTORY\build\tiledb --target check --config Release -- /verbosity:minimal
-
-    if ($LastExitCode -ne 0) {
-       Write-Host "Tests failed. CMake exit status: " $LastExitCocde
-       $host.SetShouldExit($LastExitCode)
-    }
+    cd $env:AGENT_BUILDDIRECTORY\build
 
     # Build the examples
     cmake --build $env:AGENT_BUILDDIRECTORY\build --target examples --config Release -- /verbosity:minimal
@@ -74,7 +101,7 @@ steps:
     $env:Path += ";$env:AGENT_BUILDDIRECTORY\s\dist\bin;$env:AGENT_BUILDDIRECTORY\build\externals\install\bin"
 
     ls $env:AGENT_BUILDDIRECTORY\build\tiledb\examples\c_api\Release
-    
+
     try {
       $exepath = Join-Path $env:AGENT_BUILDDIRECTORY "build\tiledb\examples\c_api\Release\quickstart_dense_c.exe"
       & $exepath
@@ -116,8 +143,8 @@ steps:
     #cd $env:AGENT_BUILDDIRECTORY
 
     #7z a tiledb-windows-x64.zip $env:AGENT_BUILDDIRECTORY\s\dist
+  displayName: "Build examples"
 
-  displayName: "Test"
 
 
   #- task: ArchiveFiles@2

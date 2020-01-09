@@ -18,10 +18,16 @@ function Get-ScriptsDirectory {
     Split-Path -Parent $PSCommandPath
 }
 
+#Set-PSDebug -Trace 2
+
 $TileDBRootDirectory = Split-Path -Parent (Get-ScriptsDirectory)
+Write-Host "TileDBRootDirectory: '$TileDBRootDirectory'"
 $InstallPrefix = Join-Path $TileDBRootDirectory "dist"
 $StagingDirectory = Join-Path (Get-ScriptsDirectory) "deps-staging"
-$CertsDirectory = Join-Path $TileDBRootDirectory "test/inputs/test_certs"
+$CertsDirectory = Join-Path $TileDBRootDirectory "test\inputs\test_certs"
+Write-Host "Certs Directory: '$CertsDirectory' ---"
+ls $CertsDirectory
+Write-Host "---"
 New-Item -ItemType Directory -Path (Join-Path $InstallPrefix bin) -ea 0
 
 function DownloadFile([string] $URL, [string] $Dest) {
@@ -44,6 +50,7 @@ function Install-Minio {
         DownloadIfNotExists $DownloadMinioDest "https://dl.minio.io/server/minio/release/windows-amd64/minio.exe"
     }
     Copy-Item $DownloadMinioDest (Join-Path $InstallPrefix "bin")
+    ls "$InstallPrefix\bin"
 }
 
 function Export-Env {
@@ -57,23 +64,37 @@ function Run-Minio {
     $ExePath = Join-Path $InstallPrefix "bin\minio.exe"
     $ServerConfigDir = Join-Path $InstallPrefix "etc\minio"
     $ServerDataDir = Join-Path $InstallPrefix "usr\local\share\minio"
+    
+    Write-Host "args -- ExePath: '$ExePath' ServerConfigDir: '$ServerConfigDir' ServerDataDir: '$ServerDataDir'"
+    
     if (!(Test-Path $ServerDataDir)) {
         New-Item -ItemType Directory -Path $ServerDataDir
     }
     if (!(Test-Path $ServerConfigDir)) {
         New-Item -ItemType Directory -Path $ServerConfigDir
     }
-    Start-Process -FilePath $ExePath -ArgumentList "server --address 127.0.0.1:9999 --config-dir `"$ServerConfigDir`" --certs-dir `"$CertsDir`" `"$ServerDataDir`""
+    $minio_proc = Start-Process -FilePath $ExePath -NoNewWindow -PassThru -ArgumentList "server --address 127.0.0.1:9999 --config-dir $ServerConfigDir --certs-dir $CertsDirectory $ServerDataDir"
 
-    Start-Sleep 1.0
+    Start-Sleep 3.0
+
+    Write-Host "Powershell version: " $PSVersionTable.PSVersion.Major
+
 
     if ($PSVersionTable.PSVersion.Major -ge 6) {
         Write-Host "Checking Minio with '-SkipCertificateCheck':"
-        Invoke-WebRequest -Uri https://127.0.0.1:9999 -SkipCertificateCheck
+        Write-Host "--------------------------------------------------------------------------------"
+        Invoke-WebRequest -Uri https://127.0.0.1:9999/minio/health/live -SkipCertificateCheck
+        Write-Host "--------------------------------------------------------------------------------"
+        Invoke-WebRequest -Uri https://127.0.0.1:9999/minio/health/ready -SkipCertificateCheck
         Write-Host "--------------------------------------------------------------------------------"
     } else {
         Write-Host "Skipping minio check (powershell version < 6)"
     }
+
+    python (Join-Path $TileDBRootDirectory "scripts/test-minio.py")
+    #if ($LastExitCode -ne 0) {
+    #    throw "minio test failed!"
+    #}
 }
 
 function Install-All-Deps {
@@ -87,4 +108,4 @@ function Install-All-Deps {
 
 Install-All-Deps
 
-Write-Host "Finished."
+Write-Host "Finished with minio"
