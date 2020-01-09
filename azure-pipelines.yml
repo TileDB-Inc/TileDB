@@ -47,7 +47,7 @@ jobs:
     matrix:
       VS2015:
         imageName: 'vs2015-win2012r2'
-        #TILEDB_S3: ON
+        TILEDB_S3: ON
       VS2017:
         imageName: 'vs2017-win2016'
         TILEDB_TOOLS: ON
