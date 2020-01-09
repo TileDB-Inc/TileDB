@@ -31,21 +31,16 @@
  */
 
 #include "tiledb/sm/rtree/rtree.h"
-#include <cassert>
-#include <iostream>
-#include <list>
 #include "tiledb/sm/misc/logger.h"
 #include "tiledb/sm/misc/utils.h"
 
+#include <algorithm>
+#include <cassert>
+#include <iostream>
+#include <list>
+
 namespace tiledb {
 namespace sm {
-
-/* ****************************** */
-/*             MACROS             */
-/* ****************************** */
-
-#define MIN(a, b) ((a) < (b) ? (a) : (b))
-#define MAX(a, b) ((a) > (b) ? (a) : (b))
 
 /* ****************************** */
 /*   CONSTRUCTORS & DESTRUCTORS   */
@@ -140,7 +135,7 @@ TileOverlap RTree::get_tile_overlap(const std::vector<const T*>& range) const {
         auto subtree_leaf_num = this->subtree_leaf_num(level);
         assert(subtree_leaf_num > 0);
         uint64_t start = mbr_idx * subtree_leaf_num;
-        uint64_t end = start + MIN(subtree_leaf_num, leaf_num - start) - 1;
+        uint64_t end = start + std::min(subtree_leaf_num, leaf_num - start) - 1;
         auto tile_range = std::pair<uint64_t, uint64_t>(start, end);
         overlap.tile_ranges_.emplace_back(tile_range);
       } else {  // Partial overlap
@@ -151,7 +146,7 @@ TileOverlap RTree::get_tile_overlap(const std::vector<const T*>& range) const {
         } else {  // Insert all "children" to traversal
           auto next_mbr_num = levels_[level + 1].mbr_num_;
           auto start = mbr_idx * fanout_;
-          auto end = MIN(start + fanout_ - 1, next_mbr_num - 1);
+          auto end = std::min(start + fanout_ - 1, next_mbr_num - 1);
           for (uint64_t i = start; i <= end; ++i)
             traversal.push_front({level + 1, end - (i - start)});
         }
@@ -191,8 +186,8 @@ double RTree::range_overlap(const std::vector<const T*>& range, const T* mbr) {
     }
 
     // Update ratio
-    auto overlap_start = MAX(range[i][0], mbr[2 * i]);
-    auto overlap_end = MIN(range[i][1], mbr[2 * i + 1]);
+    auto overlap_start = std::max(range[i][0], mbr[2 * i]);
+    auto overlap_end = std::min(range[i][1], mbr[2 * i + 1]);
     auto overlap_range = overlap_end - overlap_start;
     auto mbr_range = mbr[2 * i + 1] - mbr[2 * i];
     auto max = std::numeric_limits<T>::max();
@@ -385,7 +380,7 @@ RTree::Level RTree::build_level(const Level& level) {
 
   uint64_t mbrs_visited = 0, offset_level = 0, offset_new_level = 0;
   for (uint64_t i = 0; i < new_level.mbr_num_; ++i) {
-    auto mbr_num = MIN(fanout_, level.mbr_num_ - mbrs_visited);
+    auto mbr_num = std::min<uint64_t>(fanout_, level.mbr_num_ - mbrs_visited);
     auto mbr_at = (T*)(level.mbrs_.data() + offset_level);
     auto union_loc = (T*)(new_level.mbrs_.data() + offset_new_level);
     utils::geometry::compute_mbr_union<T>(dim_num_, mbr_at, mbr_num, union_loc);

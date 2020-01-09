@@ -38,13 +38,6 @@
 
 #include "tiledb/sm/enums/layout.h"
 
-/* ****************************** */
-/*             MACROS             */
-/* ****************************** */
-
-#define MIN(a, b) ((a) < (b) ? (a) : (b))
-#define MAX(a, b) ((a) > (b) ? (a) : (b))
-
 namespace tiledb {
 namespace sm {
 
@@ -193,8 +186,9 @@ class TileDomain {
     ret.resize(2 * dim_num_);
     auto tile_subarray = this->tile_subarray(tile_coords);
     for (unsigned i = 0; i < dim_num_; ++i) {
-      ret[2 * i] = MAX(tile_subarray[2 * i], domain_slice_[2 * i]);
-      ret[2 * i + 1] = MIN(tile_subarray[2 * i + 1], domain_slice_[2 * i + 1]);
+      ret[2 * i] = std::max(tile_subarray[2 * i], domain_slice_[2 * i]);
+      ret[2 * i + 1] =
+          std::min(tile_subarray[2 * i + 1], domain_slice_[2 * i + 1]);
     }
 
     return ret;

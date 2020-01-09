@@ -43,13 +43,6 @@
 #include <limits>
 #include <sstream>
 
-/* ****************************** */
-/*             MACROS             */
-/* ****************************** */
-
-#define MIN(a, b) ((a) < (b) ? (a) : (b))
-#define MAX(a, b) ((a) > (b) ? (a) : (b))
-
 namespace tiledb {
 namespace sm {
 
@@ -282,7 +275,7 @@ Status Domain::split_subarray_global(
     } else {
       s1[2 * i] = s[2 * i];
       s1[2 * i + 1] =
-          s1[2 * i] + MAX(1, floor(tiles_apart / 2)) * tile_extents[i];
+          s1[2 * i] + std::max<T>(1, floor(tiles_apart / 2)) * tile_extents[i];
 
       if (std::numeric_limits<T>::is_integer) {
         s1[2 * i + 1] = floor_to_tile(s1[2 * i + 1], i) - 1;
@@ -720,13 +713,13 @@ void Domain::get_end_of_cell_slab(
                             tile_extents[dim_num_ - 1]) -
                            1;
       end[dim_num_ - 1] =
-          MIN(end[dim_num_ - 1], subarray[2 * (dim_num_ - 1) + 1]);
+          std::min(end[dim_num_ - 1], subarray[2 * (dim_num_ - 1) + 1]);
     } else {
       for (unsigned i = 0; i < dim_num_; ++i)
         end[i] = start[i];
       end[0] +=
           tile_extents[0] - ((start[0] - domain[0]) % tile_extents[0]) - 1;
-      end[0] = MIN(end[0], subarray[1]);
+      end[0] = std::min(end[0], subarray[1]);
     }
   } else {
     for (unsigned i = 0; i < dim_num_; ++i)

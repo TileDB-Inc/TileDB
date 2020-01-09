@@ -36,18 +36,6 @@
 namespace tiledb {
 namespace sm {
 
-/* ****************************** */
-/*             MACROS             */
-/* ****************************** */
-
-#ifndef MIN
-#define MIN(a, b) ((a) < (b) ? (a) : (b))
-#endif
-
-#ifndef MAX
-#define MAX(a, b) ((a) > (b) ? (a) : (b))
-#endif
-
 #ifndef RETURN_CANCEL_OR_ERROR
 /**
  * Returns an error status if the given Status is not Status::Ok, or

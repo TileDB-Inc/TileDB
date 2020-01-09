@@ -45,13 +45,6 @@
 #include <sys/time.h>
 #endif
 
-/* ****************************** */
-/*             MACROS             */
-/* ****************************** */
-
-#define MIN(a, b) ((a) < (b) ? (a) : (b))
-#define MAX(a, b) ((a) > (b) ? (a) : (b))
-
 namespace tiledb {
 namespace sm {
 
@@ -747,8 +740,8 @@ void overlap(const T* a, const T* b, unsigned dim_num, T* o, bool* overlap) {
   // Get overlap range
   *overlap = true;
   for (unsigned int i = 0; i < dim_num; ++i) {
-    o[2 * i] = MAX(a[2 * i], b[2 * i]);
-    o[2 * i + 1] = MIN(a[2 * i + 1], b[2 * i + 1]);
+    o[2 * i] = std::max(a[2 * i], b[2 * i]);
+    o[2 * i + 1] = std::min(a[2 * i + 1], b[2 * i + 1]);
     if (o[2 * i] > b[2 * i + 1] || o[2 * i + 1] < b[2 * i]) {
       *overlap = false;
       break;
