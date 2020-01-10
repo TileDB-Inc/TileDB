@@ -39,13 +39,6 @@
 #include <iostream>
 #include <list>
 
-/* ****************************** */
-/*             MACROS             */
-/* ****************************** */
-
-#define MIN(a, b) ((a) < (b) ? (a) : (b))
-#define MAX(a, b) ((a) > (b) ? (a) : (b))
-
 namespace tiledb {
 namespace sm {
 
@@ -199,8 +192,8 @@ void ReadCellSlabIter<T>::compute_cell_slab_overlap(
   }
 
   // There is some overlap
-  T overlap_start = MAX(slab_start, frag_domain[2 * slab_dim]);
-  T overlap_end = MIN(slab_end, frag_domain[2 * slab_dim + 1]);
+  T overlap_start = std::max(slab_start, frag_domain[2 * slab_dim]);
+  T overlap_end = std::min(slab_end, frag_domain[2 * slab_dim + 1]);
   *slab_overlap = cell_slab.coords_;
   (*slab_overlap)[slab_dim] = overlap_start;
   *overlap_length = overlap_end - overlap_start + 1;

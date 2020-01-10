@@ -43,14 +43,6 @@
 
 #include <iomanip>
 
-/* ****************************** */
-/*             MACROS             */
-/* ****************************** */
-
-#ifndef MIN
-#define MIN(a, b) ((a) < (b) ? (a) : (b))
-#endif
-
 namespace tiledb {
 namespace sm {
 
@@ -1030,8 +1022,8 @@ Status Subarray::compute_est_result_size(
     max_size_fixed =
         utils::math::safe_mul(cell_num, array_schema->cell_size(attr_name));
   }
-  ret.size_fixed_ = MIN(ret.size_fixed_, max_size_fixed);
-  ret.size_var_ = MIN(ret.size_var_, max_size_var);
+  ret.size_fixed_ = std::min<double>(ret.size_fixed_, max_size_fixed);
+  ret.size_var_ = std::min<double>(ret.size_var_, max_size_var);
 
   *result_size = ret;
 

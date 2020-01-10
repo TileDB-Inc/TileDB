@@ -39,8 +39,6 @@
 /* ****************************** */
 
 #define ABS(x) ((x) < 0) ? uint64_t(-(x)) : uint64_t(x)
-#define MIN(a, b) ((a) < (b) ? (a) : (b))
-#define MAX(a, b) ((a) > (b) ? (a) : (b))
 
 namespace tiledb {
 namespace sm {
@@ -251,7 +249,7 @@ Status DoubleDelta::compute_bitsize(
     int64_t dd = cur_delta - prev_delta;
     delta_out_of_bounds |= (char)(cur_delta < 0 && prev_delta > 0 && dd > 0);
     delta_out_of_bounds |= (char)(cur_delta > 0 && prev_delta < 0 && dd < 0);
-    max = MAX(std::abs(dd), max);
+    max = std::max(std::abs(dd), max);
     prev_delta = cur_delta;
   }
   // Handle error
@@ -337,7 +335,7 @@ Status DoubleDelta::read_double_delta(
 
   // Read double delta
   int bits_left_to_read = bitsize;
-  int bits_to_read_from_chunk = MIN(*bit_in_chunk + 1, bits_left_to_read);
+  int bits_to_read_from_chunk = std::min(*bit_in_chunk + 1, bits_left_to_read);
   uint64_t tmp_chunk;
   int bit_in_dd = bitsize - 1;
   *double_delta = 0;
@@ -355,7 +353,7 @@ Status DoubleDelta::read_double_delta(
     if (*bit_in_chunk < 0 && buff->offset() != buff->size()) {
       RETURN_NOT_OK(buff->read(chunk, sizeof(uint64_t)));
       *bit_in_chunk = 63;
-      bits_to_read_from_chunk = MIN(*bit_in_chunk + 1, bits_left_to_read);
+      bits_to_read_from_chunk = std::min(*bit_in_chunk + 1, bits_left_to_read);
     }
   }
 
@@ -387,7 +385,7 @@ Status DoubleDelta::write_double_delta(
   // Write rest of bits
   int bits_left_to_write = bitsize;
   int bit_in_dd = bitsize - 1;
-  int bits_to_fill_in_chunk = MIN((*bit_in_chunk) + 1, bits_left_to_write);
+  int bits_to_fill_in_chunk = std::min((*bit_in_chunk) + 1, bits_left_to_write);
   uint64_t abs_dd = ABS(double_delta);
   uint64_t tmp_abs_dd;
 
@@ -406,7 +404,7 @@ Status DoubleDelta::write_double_delta(
       RETURN_NOT_OK(buff->write(chunk, sizeof(uint64_t)));
       *bit_in_chunk = 63;
       *chunk = 0;
-      bits_to_fill_in_chunk = MIN((*bit_in_chunk) + 1, bits_left_to_write);
+      bits_to_fill_in_chunk = std::min((*bit_in_chunk) + 1, bits_left_to_write);
     }
   }
 

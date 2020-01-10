@@ -40,14 +40,6 @@
 #include <cassert>
 #include <iostream>
 
-/* ****************************** */
-/*             MACROS             */
-/* ****************************** */
-
-#ifndef MIN
-#define MIN(a, b) ((a) < (b) ? (a) : (b))
-#endif
-
 namespace tiledb {
 namespace sm {
 
@@ -858,7 +850,7 @@ Status Array::compute_max_buffer_sizes(
             continue;
 
           // Potentially rectify size
-          it.second.first = MIN(it.second.first, new_size);
+          it.second.first = std::min(it.second.first, new_size);
         }
       }
     }

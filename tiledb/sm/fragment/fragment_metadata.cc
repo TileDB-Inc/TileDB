@@ -42,13 +42,6 @@
 #include <cassert>
 #include <iostream>
 
-/* ****************************** */
-/*             MACROS             */
-/* ****************************** */
-
-#define MIN(a, b) ((a) < (b) ? (a) : (b))
-#define MAX(a, b) ((a) > (b) ? (a) : (b))
-
 namespace tiledb {
 namespace sm {
 
@@ -819,10 +812,10 @@ void FragmentMetadata::get_subarray_tile_domain(
 
   // Calculate subarray in tile domain
   for (unsigned int i = 0; i < dim_num; ++i) {
-    auto overlap = MAX(subarray[2 * i], domain[2 * i]);
+    auto overlap = std::max(subarray[2 * i], domain[2 * i]);
     subarray_tile_domain[2 * i] = (overlap - domain[2 * i]) / tile_extents[i];
 
-    overlap = MIN(subarray[2 * i + 1], domain[2 * i + 1]);
+    overlap = std::min(subarray[2 * i + 1], domain[2 * i + 1]);
     subarray_tile_domain[2 * i + 1] =
         (overlap - domain[2 * i]) / tile_extents[i];
   }

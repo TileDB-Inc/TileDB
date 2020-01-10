@@ -37,14 +37,6 @@
 #include "tiledb/sm/misc/parallel_functions.h"
 #include "tiledb/sm/misc/stats.h"
 
-/* ****************************** */
-/*             MACROS             */
-/* ****************************** */
-
-#ifndef MIN
-#define MIN(a, b) ((a) < (b) ? (a) : (b))
-#endif
-
 namespace tiledb {
 namespace sm {
 
