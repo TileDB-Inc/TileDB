@@ -35,12 +35,14 @@
 
 #ifndef _WIN32
 
-#include "tiledb/sm/buffer/buffer.h"
-#include "tiledb/sm/encryption/encryption.h"
 #include "tiledb/sm/misc/status.h"
 
 namespace tiledb {
 namespace sm {
+
+class Buffer;
+class ConstBuffer;
+class PreallocatedBuffer;
 
 /** Class encapsulating encryption/decryption using the OpenSSL library. */
 class OpenSSL {

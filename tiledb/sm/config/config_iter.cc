@@ -30,9 +30,8 @@
  * This file implements class ConfigIter.
  */
 
-#include <iostream>
-
 #include "tiledb/sm/config/config_iter.h"
+#include "tiledb/sm/config/config.h"
 
 namespace tiledb {
 namespace sm {

@@ -33,13 +33,14 @@
 #ifndef TILEDB_ARRAY_H
 #define TILEDB_ARRAY_H
 
+#include <atomic>
+#include <unordered_map>
+#include <vector>
+
 #include "tiledb/sm/encryption/encryption_key.h"
 #include "tiledb/sm/fragment/fragment_info.h"
 #include "tiledb/sm/metadata/metadata.h"
 #include "tiledb/sm/misc/status.h"
-
-#include <atomic>
-#include <unordered_map>
 
 namespace tiledb {
 namespace sm {

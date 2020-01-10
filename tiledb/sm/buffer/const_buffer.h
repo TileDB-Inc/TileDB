@@ -35,11 +35,12 @@
 
 #include <cinttypes>
 
-#include "tiledb/sm/buffer/buffer.h"
 #include "tiledb/sm/misc/status.h"
 
 namespace tiledb {
 namespace sm {
+
+class Buffer;
 
 /** Enables reading from a constant buffer. */
 class ConstBuffer {

@@ -34,12 +34,13 @@
 #define TILEDB_ENCRYPTION_KEY_H
 
 #include "tiledb/sm/buffer/buffer.h"
-#include "tiledb/sm/encryption/encryption.h"
-#include "tiledb/sm/enums/encryption_type.h"
+#include "tiledb/sm/buffer/const_buffer.h"
 #include "tiledb/sm/misc/status.h"
 
 namespace tiledb {
 namespace sm {
+
+enum class EncryptionType : uint8_t;
 
 /**
  * Class that holds an encryption key, and zeroes the buffer in the destructor.

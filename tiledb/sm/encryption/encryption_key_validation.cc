@@ -31,6 +31,10 @@
  */
 
 #include "tiledb/sm/encryption/encryption_key_validation.h"
+#include "tiledb/sm/buffer/preallocated_buffer.h"
+#include "tiledb/sm/encryption/encryption.h"
+#include "tiledb/sm/encryption/encryption_key.h"
+#include "tiledb/sm/enums/encryption_type.h"
 #include "tiledb/sm/misc/logger.h"
 
 namespace tiledb {

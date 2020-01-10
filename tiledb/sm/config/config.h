@@ -41,7 +41,7 @@
 
 #include <map>
 #include <set>
-#include <thread>
+#include <string>
 
 namespace tiledb {
 namespace sm {

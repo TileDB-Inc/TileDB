@@ -38,14 +38,15 @@
 #include <mutex>
 #include <vector>
 
-#include "tiledb/sm/buffer/buffer.h"
-#include "tiledb/sm/buffer/const_buffer.h"
-#include "tiledb/sm/enums/datatype.h"
 #include "tiledb/sm/misc/status.h"
 #include "tiledb/sm/misc/uri.h"
 
 namespace tiledb {
 namespace sm {
+
+class Buffer;
+class ConstBuffer;
+enum class Datatype : uint8_t;
 
 /**
  * Handles writing/reading metadata. The persistent format of the metadata is:

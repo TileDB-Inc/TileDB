@@ -30,12 +30,15 @@
  * This file implements the gzip compressor class.
  */
 
-#include <zlib.h>
-#include <iostream>
-
 #include "tiledb/sm/compressors/gzip_compressor.h"
+#include "tiledb/sm/buffer/buffer.h"
+#include "tiledb/sm/buffer/const_buffer.h"
+#include "tiledb/sm/buffer/preallocated_buffer.h"
 #include "tiledb/sm/misc/logger.h"
 #include "tiledb/sm/misc/stats.h"
+
+#include <zlib.h>
+#include <iostream>
 
 namespace tiledb {
 namespace sm {

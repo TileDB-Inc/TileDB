@@ -31,6 +31,7 @@
  */
 
 #include "tiledb/sm/cache/lru_cache.h"
+#include "tiledb/sm/buffer/buffer.h"
 #include "tiledb/sm/misc/logger.h"
 #include "tiledb/sm/misc/stats.h"
 

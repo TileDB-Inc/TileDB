@@ -33,14 +33,14 @@
 #ifndef TILEDB_ENCRYPTION_H
 #define TILEDB_ENCRYPTION_H
 
-#include "tiledb/sm/buffer/buffer.h"
-#include "tiledb/sm/buffer/const_buffer.h"
-#include "tiledb/sm/buffer/preallocated_buffer.h"
-#include "tiledb/sm/enums/encryption_type.h"
 #include "tiledb/sm/misc/status.h"
 
 namespace tiledb {
 namespace sm {
+
+class Buffer;
+class ConstBuffer;
+class PreallocatedBuffer;
 
 /** Class implementing encryption methods. */
 class Encryption {

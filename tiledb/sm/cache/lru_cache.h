@@ -33,7 +33,6 @@
 #ifndef TILEDB_LRU_CACHE_H
 #define TILEDB_LRU_CACHE_H
 
-#include "tiledb/sm/buffer/buffer.h"
 #include "tiledb/sm/misc/status.h"
 
 #include <list>
@@ -42,6 +41,8 @@
 
 namespace tiledb {
 namespace sm {
+
+class Buffer;
 
 /**
  * Implements an LRU cache of opaque (`void*`) objects that can be located via

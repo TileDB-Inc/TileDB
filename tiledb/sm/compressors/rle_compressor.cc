@@ -30,12 +30,15 @@
  * This file implements the rle compressor class.
  */
 
-#include <cassert>
-#include <iostream>
-
 #include "tiledb/sm/compressors/rle_compressor.h"
+#include "tiledb/sm/buffer/buffer.h"
+#include "tiledb/sm/buffer/const_buffer.h"
+#include "tiledb/sm/buffer/preallocated_buffer.h"
 #include "tiledb/sm/misc/logger.h"
 #include "tiledb/sm/misc/stats.h"
+
+#include <cassert>
+#include <iostream>
 
 namespace tiledb {
 namespace sm {

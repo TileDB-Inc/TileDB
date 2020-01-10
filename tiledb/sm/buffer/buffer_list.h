@@ -35,11 +35,12 @@
 
 #include <vector>
 
-#include "tiledb/sm/buffer/buffer.h"
 #include "tiledb/sm/misc/status.h"
 
 namespace tiledb {
 namespace sm {
+
+class Buffer;
 
 /**
  * A simple flat list of Buffers. This class also offers some convenience

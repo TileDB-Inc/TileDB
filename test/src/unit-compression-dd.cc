@@ -32,7 +32,11 @@
  */
 
 #include "catch.hpp"
+#include "tiledb/sm/buffer/buffer.h"
+#include "tiledb/sm/buffer/const_buffer.h"
+#include "tiledb/sm/buffer/preallocated_buffer.h"
 #include "tiledb/sm/compressors/dd_compressor.h"
+#include "tiledb/sm/enums/datatype.h"
 
 #include <ctime>
 #include <iostream>
