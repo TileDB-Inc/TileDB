@@ -76,7 +76,7 @@ steps:
 
     # Actually run tests
     #cmake --build $env:AGENT_BUILDDIRECTORY\build\tiledb --target check --config Release -- /verbosity:minimal
-    & $env:AGENT_BUILDDIRECTORY\build\tiledb\test\tiledb_unit
+    & $env:AGENT_BUILDDIRECTORY\build\tiledb\test\Release\tiledb_unit.exe
 
     if ($LastExitCode -ne 0) {
         Write-Host "Tests failed. CMake exit status: " $LastExitCocde
