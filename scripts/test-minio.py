@@ -17,3 +17,5 @@ c.request("GET", "/minio/health/ready")
 r = c.getresponse()
 if (r.status != 200):
   raise Exception("minio is not ready!")
+
+print("minio test succeeded!")

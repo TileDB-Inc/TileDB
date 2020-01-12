@@ -73,7 +73,7 @@ function Run-Minio {
     if (!(Test-Path $ServerConfigDir)) {
         New-Item -ItemType Directory -Path $ServerConfigDir
     }
-    $minio_proc = Start-Process -FilePath $ExePath -NoNewWindow -PassThru -ArgumentList "server --address 127.0.0.1:9999 --config-dir $ServerConfigDir --certs-dir $CertsDirectory $ServerDataDir"
+    $global:minio_proc = Start-Process -FilePath $ExePath -NoNewWindow -PassThru -ArgumentList "server --address localhost:9999 --config-dir $ServerConfigDir --certs-dir $CertsDirectory $ServerDataDir"
 
     Start-Sleep 3.0
 
@@ -92,9 +92,9 @@ function Run-Minio {
     }
 
     python (Join-Path $TileDBRootDirectory "scripts/test-minio.py")
-    #if ($LastExitCode -ne 0) {
-    #    throw "minio test failed!"
-    #}
+    if ($LastExitCode -ne 0) {
+        throw "minio test failed!"
+    }
 }
 
 function Install-All-Deps {
