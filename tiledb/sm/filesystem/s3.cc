@@ -224,6 +224,8 @@ Status S3::init(const Config& config, ThreadPool* const thread_pool) {
   auto aws_secret_access_key =
       config.get("vfs.s3.aws_secret_access_key", &found);
   assert(found);
+  auto aws_session_token = config.get("vfs.s3.aws_session_token", &found);
+  assert(found);
   int64_t connect_max_tries = 0;
   RETURN_NOT_OK(config.get<int64_t>(
       "vfs.s3.connect_max_tries", &connect_max_tries, &found));
@@ -265,6 +267,17 @@ Status S3::init(const Config& config, ThreadPool* const thread_pool) {
     Aws::String secret_access_key(aws_secret_access_key.c_str());
     client_creds_ = std::unique_ptr<Aws::Auth::AWSCredentials>(
         new Aws::Auth::AWSCredentials(access_key_id, secret_access_key));
+
+    // If the user has set a session token (for AWS Security Token Service)
+    // then use it:
+    //     - https://docs.aws.amazon.com/STS/latest/APIReference/Welcome.html
+    // For testing run: `aws sts get-session-token --duration-seconds 900`. See:
+    //     -
+    //     https://docs.aws.amazon.com/cli/latest/reference/sts/get-session-token.html
+    if (!aws_session_token.empty()) {
+      Aws::String session_token(aws_session_token.c_str());
+      client_creds_->SetSessionToken(session_token);
+    }
   }
 
   state_ = State::INITIALIZED;
