@@ -1000,6 +1000,9 @@ TILEDB_EXPORT void tiledb_config_free(tiledb_config_t** config);
  * - `vfs.s3.aws_secret_access_key` <br>
  *    Set the AWS_SECRET_ACCESS_KEY <br>
  *    **Default**: ""
+ * - `vfs.s3.aws_access_key_id` <br>
+ *    Set the AWS_SESSION_TOKEN <br>
+ *    **Default**: ""
  * - `vfs.s3.scheme` <br>
  *    The S3 scheme (`http` or `https`), if S3 is enabled. <br>
  *    **Default**: https
