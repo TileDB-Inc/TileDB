@@ -54,6 +54,7 @@ Configuration:
     --enable-s3                     enables the s3 storage backend
     --enable-serialization          enables query serialization support
     --enable-tools                  enables TileDB CLI tools (experimental)
+    --enable-ccache                 enables use of ccache (if present)
     --enable=arg1,arg2...           same as "--enable-arg1 --enable-arg2 ..."
 
     
@@ -90,6 +91,7 @@ tiledb_static="OFF"
 tiledb_disable_avx2=""
 tiledb_serialization="OFF"
 tiledb_tools="OFF"
+tiledb_ccache="OFF"
 enable_multiple=""
 while test $# != 0; do
     case "$1" in
@@ -114,6 +116,7 @@ while test $# != 0; do
     --enable-s3) tiledb_s3="ON";;
     --enable-serialization) tiledb_serialization="ON";;
     --enable-tools) tiledb_tools="ON";;
+    --enable-ccache) tiledb_ccache="ON";;
     --enable=*) s=`arg "$1"`
                 enable_multiple="$s";;
     --help) usage ;;
@@ -132,6 +135,7 @@ for en in "${enables[@]}"; do
     s3) tiledb_s3="ON";;
     serialization) tiledb_serialization="ON";;
     tools) tiledb_tools="ON";;
+    ccache) tiledb_ccache="ON";;
     hdfs) tiledb_hdfs="ON";;
     static-tiledb) tiledb_static="ON";;
     *) die "Unknown option: --enable-$en" ;;
@@ -184,6 +188,7 @@ ${cmake} -DCMAKE_BUILD_TYPE=${build_type} \
     -DTILEDB_STATS=${tiledb_stats} \
     -DTILEDB_STATIC=${tiledb_static} \
     -DTILEDB_TESTS=${tiledb_tests} \
+    -DTILEDB_CCACHE=${tiledb_ccache} \
     -DTILEDB_FORCE_ALL_DEPS=${tiledb_force_all_deps} \
     -DSANITIZER=${sanitizer} \
     ${tiledb_disable_avx2} \
