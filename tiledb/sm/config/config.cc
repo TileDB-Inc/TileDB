@@ -83,6 +83,7 @@ const std::string Config::VFS_FILE_ENABLE_FILELOCKS = "true";
 const std::string Config::VFS_S3_REGION = "us-east-1";
 const std::string Config::VFS_S3_AWS_ACCESS_KEY_ID = "";
 const std::string Config::VFS_S3_AWS_SECRET_ACCESS_KEY = "";
+const std::string Config::VFS_S3_AWS_SESSION_TOKEN = "";
 const std::string Config::VFS_S3_SCHEME = "https";
 const std::string Config::VFS_S3_ENDPOINT_OVERRIDE = "";
 const std::string Config::VFS_S3_USE_VIRTUAL_ADDRESSING = "true";
@@ -117,6 +118,7 @@ const std::set<std::string> Config::unserialized_params_ = {
     "vfs.s3.proxy_password",
     "vfs.s3.aws_access_key_id",
     "vfs.s3.aws_secret_access_key",
+    "vfs.s3.aws_session_token",
     "rest.username",
     "rest.password",
     "rest.token",
@@ -162,6 +164,7 @@ Config::Config() {
   param_values_["vfs.s3.region"] = VFS_S3_REGION;
   param_values_["vfs.s3.aws_access_key_id"] = VFS_S3_AWS_ACCESS_KEY_ID;
   param_values_["vfs.s3.aws_secret_access_key"] = VFS_S3_AWS_SECRET_ACCESS_KEY;
+  param_values_["vfs.s3.aws_session_token"] = VFS_S3_AWS_SESSION_TOKEN;
   param_values_["vfs.s3.scheme"] = VFS_S3_SCHEME;
   param_values_["vfs.s3.endpoint_override"] = VFS_S3_ENDPOINT_OVERRIDE;
   param_values_["vfs.s3.use_virtual_addressing"] =
@@ -373,6 +376,8 @@ Status Config::unset(const std::string& param) {
   } else if (param == "vfs.s3.aws_secret_access_key") {
     param_values_["vfs.s3.aws_secret_access_key"] =
         VFS_S3_AWS_SECRET_ACCESS_KEY;
+  } else if (param == "vfs.s3.aws_session_token") {
+    param_values_["vfs.s3.aws_session_token"] = VFS_S3_AWS_SESSION_TOKEN;
   } else if (param == "vfs.s3.logging_level") {
     param_values_["vfs.s3.logging_level"] = VFS_S3_LOGGING_LEVEL;
   } else if (param == "vfs.s3.scheme") {
