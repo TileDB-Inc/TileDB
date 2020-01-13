@@ -348,6 +348,25 @@ Status Curl::make_curl_request_common(
     /* set timeout */
     // curl_easy_setopt(curl, CURLOPT_TIMEOUT, 5);
 
+    /* set compression */
+    const char* compressor = nullptr;
+    RETURN_NOT_OK(config_->get("rest.http_compressor", &compressor));
+
+    if (compressor != nullptr) {
+      // curl expects lowecase strings so let's convert
+      std::string comp(compressor);
+      std::locale loc;
+      for (std::string::size_type j = 0; j < comp.length(); ++j)
+        comp[j] = std::tolower(comp[j], loc);
+
+      if (comp != "none") {
+        if (comp == "any") {
+          comp = "";
+        }
+        curl_easy_setopt(curl, CURLOPT_ACCEPT_ENCODING, comp.c_str());
+      }
+    }
+
     /* enable location redirects */
     curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1);
 

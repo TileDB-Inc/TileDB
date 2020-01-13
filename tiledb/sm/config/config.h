@@ -63,6 +63,9 @@ class Config {
   /** The default format for serialization. */
   static const std::string REST_SERIALIZATION_DEFAULT_FORMAT;
 
+  /** The default compressor for http requests with the rest server. */
+  static const std::string REST_SERVER_DEFAULT_HTTP_COMPRESSOR;
+
   /** If `true`, this will deduplicate coordinates upon sparse writes. */
   static const std::string SM_DEDUP_COORDS;
 
