@@ -103,6 +103,7 @@ option(TILEDB_STATIC "Enables building TileDB as a static library." OFF)
 option(TILEDB_TESTS "If true, enables building the TileDB unit test suite" ON)
 option(TILEDB_TOOLS "If true, enables building the TileDB tools" OFF)
 option(TILEDB_SERIALIZATION "If true, enables building with support for query serialization" OFF)
+option(TILEDB_CCACHE "If true, enables use of 'ccache' (if present)" OFF)
 
 set(TILEDB_INSTALL_LIBDIR "" CACHE STRING "If non-empty, install TileDB library to this directory instead of CMAKE_INSTALL_LIBDIR.")
 
