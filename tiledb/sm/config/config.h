@@ -176,6 +176,9 @@ class Config {
   /** S3 aws secret access key. */
   static const std::string VFS_S3_AWS_SECRET_ACCESS_KEY;
 
+  /** S3 aws session token. */
+  static const std::string VFS_S3_AWS_SESSION_TOKEN;
+
   /** S3 scheme (http for local minio, https for AWS S3). */
   static const std::string VFS_S3_SCHEME;
 
