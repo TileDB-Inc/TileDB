@@ -39,15 +39,15 @@
 #include <string>
 #include <vector>
 
-#include "tiledb/sm/buffer/buffer.h"
-#include "tiledb/sm/config/config.h"
 #include "tiledb/sm/misc/status.h"
-#include "tiledb/sm/misc/uri.h"
 
 #include "hadoop/hdfs.h"
 
 namespace tiledb {
 namespace sm {
+
+class Config;
+class URI;
 
 namespace hdfs {
 

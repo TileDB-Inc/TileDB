@@ -35,6 +35,7 @@
 #include "catch.hpp"
 #include "tiledb/sm/config/config.h"
 #include "tiledb/sm/filesystem/hdfs_filesystem.h"
+#include "tiledb/sm/misc/uri.h"
 
 #include <fstream>
 #include <iostream>

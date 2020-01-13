@@ -31,6 +31,7 @@
  */
 
 #include "tiledb/sm/filter/filter_buffer.h"
+#include "tiledb/sm/filter/filter_storage.h"
 #include "tiledb/sm/misc/logger.h"
 
 namespace tiledb {

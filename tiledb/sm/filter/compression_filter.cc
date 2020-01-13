@@ -31,12 +31,15 @@
  */
 
 #include "tiledb/sm/filter/compression_filter.h"
+#include "tiledb/sm/buffer/preallocated_buffer.h"
 #include "tiledb/sm/compressors/bzip_compressor.h"
 #include "tiledb/sm/compressors/dd_compressor.h"
 #include "tiledb/sm/compressors/gzip_compressor.h"
 #include "tiledb/sm/compressors/lz4_compressor.h"
 #include "tiledb/sm/compressors/rle_compressor.h"
 #include "tiledb/sm/compressors/zstd_compressor.h"
+#include "tiledb/sm/enums/filter_option.h"
+#include "tiledb/sm/enums/filter_type.h"
 #include "tiledb/sm/filter/filter_pipeline.h"
 #include "tiledb/sm/misc/logger.h"
 #include "tiledb/sm/misc/utils.h"

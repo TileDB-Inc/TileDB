@@ -31,7 +31,8 @@
  */
 
 #include "tiledb/sm/filter/bit_width_reduction_filter.h"
-#include "bit_width_reduction_filter.h"
+#include "tiledb/sm/enums/filter_option.h"
+#include "tiledb/sm/enums/filter_type.h"
 #include "tiledb/sm/filter/filter_pipeline.h"
 #include "tiledb/sm/misc/logger.h"
 #include "tiledb/sm/misc/utils.h"

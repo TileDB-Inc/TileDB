@@ -36,6 +36,7 @@
 #include "tiledb/sm/misc/logger.h"
 #include "tiledb/sm/misc/parallel_functions.h"
 #include "tiledb/sm/misc/stats.h"
+#include "tiledb/sm/storage_manager/storage_manager.h"
 
 namespace tiledb {
 namespace sm {

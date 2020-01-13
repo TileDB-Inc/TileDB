@@ -33,10 +33,11 @@
 #ifndef TILEDB_RESULT_TILE_H
 #define TILEDB_RESULT_TILE_H
 
-#include "tiledb/sm/tile/tile.h"
-
 #include <iostream>
+#include <unordered_map>
 #include <vector>
+
+#include "tiledb/sm/tile/tile.h"
 
 namespace tiledb {
 namespace sm {

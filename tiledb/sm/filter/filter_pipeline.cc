@@ -31,6 +31,9 @@
  */
 
 #include "tiledb/sm/filter/filter_pipeline.h"
+#include "tiledb/sm/encryption/encryption_key.h"
+#include "tiledb/sm/enums/encryption_type.h"
+#include "tiledb/sm/enums/filter_type.h"
 #include "tiledb/sm/filter/compression_filter.h"
 #include "tiledb/sm/filter/encryption_aes256gcm_filter.h"
 #include "tiledb/sm/filter/filter.h"

@@ -32,6 +32,7 @@
 
 #include "tiledb/sm/array/array.h"
 #include "tiledb/sm/encryption/encryption.h"
+#include "tiledb/sm/enums/encryption_type.h"
 #include "tiledb/sm/enums/serialization_type.h"
 #include "tiledb/sm/misc/logger.h"
 #include "tiledb/sm/misc/stats.h"

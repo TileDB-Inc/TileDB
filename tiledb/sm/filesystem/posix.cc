@@ -36,15 +36,14 @@
 #include "tiledb/sm/misc/constants.h"
 #include "tiledb/sm/misc/logger.h"
 #include "tiledb/sm/misc/stats.h"
+#include "tiledb/sm/misc/thread_pool.h"
 #include "tiledb/sm/misc/utils.h"
 
 #include <dirent.h>
-
 #include <limits.h>
 
-#include <ftw.h>
-
 #include <fstream>
+#include <future>
 #include <iostream>
 
 namespace tiledb {

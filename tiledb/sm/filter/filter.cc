@@ -31,6 +31,8 @@
  */
 
 #include "tiledb/sm/filter/filter.h"
+#include "tiledb/sm/buffer/buffer.h"
+#include "tiledb/sm/enums/filter_type.h"
 #include "tiledb/sm/filter/bit_width_reduction_filter.h"
 #include "tiledb/sm/filter/bitshuffle_filter.h"
 #include "tiledb/sm/filter/byteshuffle_filter.h"

@@ -33,15 +33,18 @@
 #ifndef TILEDB_FILTER_H
 #define TILEDB_FILTER_H
 
-#include "tiledb/sm/enums/filter_option.h"
-#include "tiledb/sm/enums/filter_type.h"
-#include "tiledb/sm/filter/filter_buffer.h"
 #include "tiledb/sm/misc/status.h"
 
 namespace tiledb {
 namespace sm {
 
+class Buffer;
+class ConstBuffer;
+class FilterBuffer;
 class FilterPipeline;
+
+enum class FilterOption : uint8_t;
+enum class FilterType : uint8_t;
 
 /**
  * A Filter processes or modifies a byte region, modifying it in place, or

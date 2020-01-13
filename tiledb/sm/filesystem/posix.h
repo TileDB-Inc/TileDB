@@ -42,15 +42,14 @@
 #include <string>
 #include <vector>
 
-#include "tiledb/sm/buffer/buffer.h"
 #include "tiledb/sm/config/config.h"
 #include "tiledb/sm/filesystem/filelock.h"
 #include "tiledb/sm/misc/status.h"
-#include "tiledb/sm/misc/thread_pool.h"
-#include "tiledb/sm/misc/uri.h"
 
 namespace tiledb {
 namespace sm {
+
+class ThreadPool;
 
 /**
  * This class implements the POSIX filesystem functions.

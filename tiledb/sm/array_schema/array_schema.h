@@ -36,6 +36,8 @@
 
 #define __STDC_FORMAT_MACROS
 
+#include <unordered_map>
+
 #include "tiledb/sm/filter/filter_pipeline.h"
 #include "tiledb/sm/misc/constants.h"
 #include "tiledb/sm/misc/status.h"

@@ -33,19 +33,19 @@
 #ifndef TILEDB_FILTER_PIPELINE_H
 #define TILEDB_FILTER_PIPELINE_H
 
-#include "tiledb/sm/buffer/buffer.h"
-#include "tiledb/sm/encryption/encryption_key.h"
-#include "tiledb/sm/enums/encryption_type.h"
+#include <memory>
+#include <utility>
+#include <vector>
+
 #include "tiledb/sm/filter/filter.h"
 #include "tiledb/sm/filter/filter_buffer.h"
 #include "tiledb/sm/misc/status.h"
 
-#include <memory>
-#include <vector>
-
 namespace tiledb {
 namespace sm {
 
+class Buffer;
+class EncryptionKey;
 class Tile;
 
 /**
