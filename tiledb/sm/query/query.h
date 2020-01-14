@@ -33,28 +33,29 @@
 #ifndef TILEDB_QUERY_H
 #define TILEDB_QUERY_H
 
-#include "tiledb/sm/array_schema/dimension.h"
-#include "tiledb/sm/enums/query_status.h"
-#include "tiledb/sm/enums/query_type.h"
-#include "tiledb/sm/fragment/fragment_metadata.h"
-#include "tiledb/sm/misc/logger.h"
-#include "tiledb/sm/misc/status.h"
-#include "tiledb/sm/misc/utils.h"
-#include "tiledb/sm/query/reader.h"
-#include "tiledb/sm/query/write_cell_slab_iter.h"
-#include "tiledb/sm/query/writer.h"
-#include "tiledb/sm/storage_manager/storage_manager.h"
-#include "tiledb/sm/subarray/subarray.h"
-
 #include <functional>
 #include <sstream>
 #include <utility>
 #include <vector>
 
+#include "tiledb/sm/array_schema/array_schema.h"
+#include "tiledb/sm/array_schema/dimension.h"
+#include "tiledb/sm/array_schema/domain.h"
+#include "tiledb/sm/misc/logger.h"
+#include "tiledb/sm/misc/status.h"
+#include "tiledb/sm/misc/utils.h"
+#include "tiledb/sm/query/reader.h"
+#include "tiledb/sm/query/writer.h"
+
 namespace tiledb {
 namespace sm {
 
 class Array;
+class Subarray;
+class StorageManager;
+
+enum class QueryStatus : uint8_t;
+enum class QueryType : uint8_t;
 
 /** Processes a (read/write) query. */
 class Query {

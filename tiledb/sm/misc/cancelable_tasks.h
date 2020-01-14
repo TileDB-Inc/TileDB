@@ -33,14 +33,17 @@
 #ifndef TILEDB_CANCELABLE_TASKS_H
 #define TILEDB_CANCELABLE_TASKS_H
 
+#include <condition_variable>
 #include <functional>
-#include <iostream>
+#include <future>
+#include <mutex>
 
 #include "tiledb/sm/misc/status.h"
-#include "tiledb/sm/misc/thread_pool.h"
 
 namespace tiledb {
 namespace sm {
+
+class ThreadPool;
 
 class CancelableTasks {
  public:

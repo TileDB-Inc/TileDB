@@ -34,23 +34,22 @@
 #ifndef TILEDB_UTILS_H
 #define TILEDB_UTILS_H
 
-#include "tiledb/sm/enums/array_type.h"
-#include "tiledb/sm/enums/compressor.h"
-#include "tiledb/sm/enums/datatype.h"
-#include "tiledb/sm/enums/layout.h"
-#include "tiledb/sm/enums/serialization_type.h"
-#include "tiledb/sm/misc/status.h"
-#include "tiledb/sm/misc/uri.h"
-
+#include <cassert>
 #include <string>
+#include <type_traits>
 #include <vector>
 
-#ifdef __linux__
-#include "tiledb/sm/filesystem/posix.h"
-#endif
+#include "tiledb/sm/misc/status.h"
 
 namespace tiledb {
 namespace sm {
+
+class Posix;
+class URI;
+
+enum class Datatype : uint8_t;
+enum class SerializationType : uint8_t;
+
 namespace utils {
 
 #ifdef __linux__

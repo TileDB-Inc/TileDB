@@ -39,6 +39,8 @@
 
 #include "tiledb/sm/tile/tile.h"
 
+#include "tiledb/sm/tile/tile.h"
+
 namespace tiledb {
 namespace sm {
 

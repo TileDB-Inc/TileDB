@@ -33,23 +33,24 @@
 #ifndef TILEDB_WRITER_H
 #define TILEDB_WRITER_H
 
-#include "tiledb/sm/array_schema/array_schema.h"
-#include "tiledb/sm/filter/filter_pipeline.h"
-#include "tiledb/sm/fragment/fragment_metadata.h"
+#include <memory>
+#include <set>
+#include <unordered_map>
+
 #include "tiledb/sm/fragment/written_fragment_info.h"
 #include "tiledb/sm/misc/status.h"
 #include "tiledb/sm/query/types.h"
 #include "tiledb/sm/query/write_cell_slab_iter.h"
 #include "tiledb/sm/tile/tile.h"
 
-#include <memory>
-#include <set>
-
 namespace tiledb {
 namespace sm {
 
 class Array;
+class ArraySchema;
+class FragmentMetadata;
 class StorageManager;
+class Subarray;
 
 /** Processes write queries. */
 class Writer {

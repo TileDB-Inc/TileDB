@@ -32,9 +32,11 @@
 
 #include "tiledb/sm/query/query.h"
 #include "tiledb/sm/array/array.h"
+#include "tiledb/sm/enums/query_status.h"
 #include "tiledb/sm/misc/logger.h"
 #include "tiledb/sm/misc/stats.h"
 #include "tiledb/sm/rest/rest_client.h"
+#include "tiledb/sm/storage_manager/storage_manager.h"
 
 #include <cassert>
 #include <iostream>

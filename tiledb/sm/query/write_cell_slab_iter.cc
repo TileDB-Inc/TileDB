@@ -31,6 +31,8 @@
  */
 
 #include "tiledb/sm/query/write_cell_slab_iter.h"
+#include "tiledb/sm/array_schema/domain.h"
+#include "tiledb/sm/enums/layout.h"
 #include "tiledb/sm/misc/logger.h"
 #include "tiledb/sm/misc/utils.h"
 

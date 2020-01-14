@@ -32,8 +32,11 @@
  */
 
 #include "tiledb/sm/storage_manager/open_array.h"
+#include "tiledb/sm/array_schema/array_schema.h"
+#include "tiledb/sm/filesystem/vfs.h"
+#include "tiledb/sm/misc/constants.h"
 
-#include <iostream>
+#include <cassert>
 
 namespace tiledb {
 namespace sm {

@@ -35,12 +35,12 @@
 #ifndef TILEDB_COMPARATORS_H
 #define TILEDB_COMPARATORS_H
 
-#include <algorithm>
 #include <cinttypes>
-#include <iostream>
 #include <vector>
 
-#include "tiledb/sm/query/reader.h"
+#include "tiledb/sm/array_schema/domain.h"
+#include "tiledb/sm/enums/layout.h"
+#include "tiledb/sm/query/result_coords.h"
 
 namespace tiledb {
 namespace sm {

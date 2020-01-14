@@ -33,9 +33,9 @@
 #ifndef TILEDB_WRITTEN_FRAGMENT_INFO_H
 #define TILEDB_WRITTEN_FRAGMENT_INFO_H
 
-#include <string>
+#include <utility>
+
 #include "tiledb/sm/misc/uri.h"
-#include "tiledb/sm/misc/utils.h"
 
 namespace tiledb {
 namespace sm {

@@ -33,18 +33,19 @@
 #ifndef TILEDB_RTREE_H
 #define TILEDB_RTREE_H
 
-#include <memory>
 #include <vector>
-#include "tiledb/sm/buffer/buffer.h"
-#include "tiledb/sm/buffer/const_buffer.h"
-#include "tiledb/sm/enums/datatype.h"
-#include "tiledb/sm/enums/layout.h"
+
 #include "tiledb/sm/misc/status.h"
 #include "tiledb/sm/misc/tile_overlap.h"
-#include "tiledb/sm/subarray/subarray.h"
 
 namespace tiledb {
 namespace sm {
+
+class Buffer;
+class ConstBuffer;
+
+enum class Datatype : uint8_t;
+enum class Layout : uint8_t;
 
 /**
  * A simple RTree implementation. It supports storing only n-dimensional

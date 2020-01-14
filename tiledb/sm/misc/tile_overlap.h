@@ -33,6 +33,9 @@
 #ifndef TILEDB_TILE_OVERLAP_H
 #define TILEDB_TILE_OVERLAP_H
 
+#include <cinttypes>
+#include <vector>
+
 namespace tiledb {
 namespace sm {
 

@@ -35,19 +35,24 @@
 #define TILEDB_OPEN_ARRAY_H
 
 #include <map>
+#include <memory>
 #include <mutex>
+#include <set>
 #include <unordered_map>
-#include <vector>
 
-#include "tiledb/sm/array_schema/array_schema.h"
-#include "tiledb/sm/buffer/const_buffer.h"
 #include "tiledb/sm/encryption/encryption_key_validation.h"
-#include "tiledb/sm/filesystem/vfs.h"
+#include "tiledb/sm/filesystem/filelock.h"
 #include "tiledb/sm/fragment/fragment_metadata.h"
 #include "tiledb/sm/misc/uri.h"
 
 namespace tiledb {
 namespace sm {
+
+class ArraySchema;
+class ConstBuffer;
+class VFS;
+
+enum class QueryType : uint8_t;
 
 /**
  * Stores information about an open array.

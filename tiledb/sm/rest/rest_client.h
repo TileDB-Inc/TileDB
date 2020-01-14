@@ -33,14 +33,20 @@
 #ifndef TILEDB_REST_CLIENT_H
 #define TILEDB_REST_CLIENT_H
 
-#include "tiledb/sm/array_schema/array_schema.h"
-#include "tiledb/sm/enums/serialization_type.h"
+#include <string>
+#include <unordered_map>
+
 #include "tiledb/sm/misc/status.h"
-#include "tiledb/sm/query/query.h"
 #include "tiledb/sm/serialization/query.h"
 
 namespace tiledb {
 namespace sm {
+
+class ArraySchema;
+class Config;
+class Query;
+
+enum class SerializationType : uint8_t;
 
 class RestClient {
  public:

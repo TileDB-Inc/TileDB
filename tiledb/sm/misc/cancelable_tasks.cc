@@ -31,6 +31,7 @@
  */
 
 #include "tiledb/sm/misc/cancelable_tasks.h"
+#include "tiledb/sm/misc/thread_pool.h"
 
 namespace tiledb {
 namespace sm {

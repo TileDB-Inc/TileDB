@@ -34,18 +34,20 @@
 #ifndef TILEDB_FRAGMENT_METADATA_H
 #define TILEDB_FRAGMENT_METADATA_H
 
-#include "tiledb/sm/array_schema/array_schema.h"
-#include "tiledb/sm/buffer/buffer.h"
-#include "tiledb/sm/enums/query_type.h"
-#include "tiledb/sm/misc/status.h"
-#include "tiledb/sm/rtree/rtree.h"
-
 #include <mutex>
+#include <unordered_map>
 #include <vector>
+
+#include "tiledb/sm/misc/status.h"
+#include "tiledb/sm/misc/uri.h"
+#include "tiledb/sm/rtree/rtree.h"
 
 namespace tiledb {
 namespace sm {
 
+class ArraySchema;
+class Buffer;
+class EncryptionKey;
 class StorageManager;
 
 /** Stores the metadata structures of a fragment. */

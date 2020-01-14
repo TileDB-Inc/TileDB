@@ -34,11 +34,13 @@
 #ifndef TILEDB_TBB_STATE_H
 #define TILEDB_TBB_STATE_H
 
-#include "tiledb/sm/config/config.h"
 #include "tiledb/sm/misc/status.h"
 
 namespace tiledb {
 namespace sm {
+
+class Config;
+
 namespace global_state {
 
 /**
