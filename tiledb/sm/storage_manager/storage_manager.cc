@@ -31,20 +31,30 @@
  * This file implements the StorageManager class.
  */
 
-#include <algorithm>
-#include <iostream>
-#include <sstream>
-
+#include "tiledb/sm/storage_manager/storage_manager.h"
 #include "tiledb/sm/array/array.h"
+#include "tiledb/sm/array_schema/array_schema.h"
+#include "tiledb/sm/cache/lru_cache.h"
+#include "tiledb/sm/enums/layout.h"
+#include "tiledb/sm/enums/object_type.h"
+#include "tiledb/sm/enums/query_type.h"
+#include "tiledb/sm/filesystem/vfs.h"
 #include "tiledb/sm/global_state/global_state.h"
 #include "tiledb/sm/misc/logger.h"
 #include "tiledb/sm/misc/parallel_functions.h"
 #include "tiledb/sm/misc/stats.h"
 #include "tiledb/sm/misc/utils.h"
 #include "tiledb/sm/misc/uuid.h"
+#include "tiledb/sm/query/query.h"
 #include "tiledb/sm/rest/rest_client.h"
-#include "tiledb/sm/storage_manager/storage_manager.h"
+#include "tiledb/sm/storage_manager/consolidator.h"
+#include "tiledb/sm/storage_manager/open_array.h"
+#include "tiledb/sm/tile/tile.h"
 #include "tiledb/sm/tile/tile_io.h"
+
+#include <algorithm>
+#include <iostream>
+#include <sstream>
 
 namespace tiledb {
 namespace sm {

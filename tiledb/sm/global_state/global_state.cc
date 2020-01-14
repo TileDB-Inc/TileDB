@@ -38,6 +38,14 @@
 #include "tiledb/sm/global_state/watchdog.h"
 #include "tiledb/sm/misc/constants.h"
 
+#ifdef __linux__
+#include "tiledb/sm/filesystem/posix.h"
+#include "tiledb/sm/misc/thread_pool.h"
+#include "tiledb/sm/misc/utils.h"
+#endif
+
+#include <cassert>
+
 namespace tiledb {
 namespace sm {
 namespace global_state {

@@ -33,12 +33,18 @@
 #ifndef TILEDB_SERIALIZATION_ARRAY_SCHEMA_H
 #define TILEDB_SERIALIZATION_ARRAY_SCHEMA_H
 
-#include "tiledb/sm/array/array.h"
-#include "tiledb/sm/array_schema/array_schema.h"
-#include "tiledb/sm/enums/serialization_type.h"
+#include <unordered_map>
+
+#include "tiledb/sm/misc/status.h"
 
 namespace tiledb {
 namespace sm {
+
+class Array;
+class Buffer;
+class ArraySchema;
+enum class SerializationType : uint8_t;
+
 namespace serialization {
 
 Status array_schema_serialize(

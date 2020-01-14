@@ -31,6 +31,7 @@
  */
 
 #include "tiledb/sm/serialization/array_schema.h"
+#include "tiledb/sm/array/array.h"
 #include "tiledb/sm/array_schema/attribute.h"
 #include "tiledb/sm/array_schema/dimension.h"
 #include "tiledb/sm/array_schema/domain.h"

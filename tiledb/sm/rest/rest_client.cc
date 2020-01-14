@@ -32,8 +32,13 @@
 
 #include <cassert>
 
+#include "tiledb/sm/array/array.h"
+#include "tiledb/sm/array_schema/attribute.h"
+#include "tiledb/sm/enums/query_type.h"
+#include "tiledb/sm/misc/logger.h"
 #include "tiledb/sm/misc/stats.h"
 #include "tiledb/sm/misc/utils.h"
+#include "tiledb/sm/query/query.h"
 #include "tiledb/sm/rest/rest_client.h"
 #include "tiledb/sm/serialization/array_schema.h"
 #include "tiledb/sm/serialization/capnp_utils.h"

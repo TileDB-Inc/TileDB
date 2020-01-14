@@ -42,29 +42,35 @@
 #include <queue>
 #include <string>
 #include <thread>
+#include <unordered_map>
 
-#include "tiledb/sm/array_schema/array_schema.h"
-#include "tiledb/sm/cache/lru_cache.h"
 #include "tiledb/sm/config/config.h"
-#include "tiledb/sm/encryption/encryption.h"
-#include "tiledb/sm/encryption/encryption_key_validation.h"
-#include "tiledb/sm/enums/object_type.h"
 #include "tiledb/sm/enums/walk_order.h"
-#include "tiledb/sm/filesystem/vfs.h"
+#include "tiledb/sm/filesystem/filelock.h"
 #include "tiledb/sm/fragment/fragment_info.h"
+#include "tiledb/sm/misc/cancelable_tasks.h"
 #include "tiledb/sm/misc/status.h"
 #include "tiledb/sm/misc/thread_pool.h"
 #include "tiledb/sm/misc/uri.h"
-#include "tiledb/sm/query/query.h"
-#include "tiledb/sm/storage_manager/consolidator.h"
-#include "tiledb/sm/storage_manager/open_array.h"
 
 namespace tiledb {
 namespace sm {
 
 class Array;
+class ArraySchema;
+class Buffer;
 class Consolidator;
+class EncryptionKey;
+class FragmentMetadata;
+class LRUCache;
+class Metadata;
+class OpenArray;
+class Query;
 class RestClient;
+class VFS;
+
+enum class EncryptionType : uint8_t;
+enum class ObjectType : uint8_t;
 
 /** The storage manager that manages pretty much everything in TileDB. */
 class StorageManager {
