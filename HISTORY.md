@@ -6,6 +6,8 @@
 
 ## Improvements
 
+* Added support for AWS Security Token Service session tokens via configuration option `vfs.s3.session_token`. [#1472](https://github.com/TileDB-Inc/TileDB/pull/1472)
+
 ## Deprecations
 
 ## Bug fixes
