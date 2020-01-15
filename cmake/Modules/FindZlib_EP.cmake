@@ -101,6 +101,9 @@ if (NOT ZLIB_FOUND)
     list(APPEND FORWARD_EP_CMAKE_ARGS
       -DTILEDB_ZLIB_EP_BUILT=TRUE
     )
+
+    set(TILEDB_ZLIB_DIR "${TILEDB_EP_INSTALL_PREFIX}")
+
   else()
     message(FATAL_ERROR "Unable to find Zlib")
   endif()
