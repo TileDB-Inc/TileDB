@@ -1,3 +1,20 @@
+# TileDB v1.7.4 Release Notes
+
+## New features
+
+## Improvements
+
+* REST requests now will use http compression if available [#1479](https://github.com/TileDB-Inc/TileDB/pull/1479)
+
+## Deprecations
+
+## Bug fixes
+
+## API additions
+
+## API removals
+
+
 # TileDB v1.7.3 Release Notes
 
 ## New features
