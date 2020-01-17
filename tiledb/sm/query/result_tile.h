@@ -38,6 +38,7 @@
 #include <vector>
 
 #include "tiledb/sm/tile/tile.h"
+#include "tiledb/sm/misc/types.h"
 
 #include "tiledb/sm/tile/tile.h"
 
@@ -116,7 +117,7 @@ class ResultTile {
    * Returns true if the coordinates at position `pos` are inside
    * the input multi-dimensional rectangle.
    */
-  bool coord_in_rect(uint64_t pos, const std::vector<const void*>& rect) const;
+  bool coord_in_rect(uint64_t pos, const NDRange& rect) const;
 
   /** Returns the coordinate size on the input dimension. */
   uint64_t coord_size(unsigned dim_idx) const;

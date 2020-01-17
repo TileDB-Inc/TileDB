@@ -672,8 +672,6 @@ Status Reader::compute_range_result_coords(
   return Status::Ok();
 }
 
-// TODO: remove template 1
-template <class T>
 Status Reader::compute_range_result_coords(
     const std::vector<bool>& single_fragment,
     const std::map<std::pair<unsigned, uint64_t>, size_t>& result_tile_map,
@@ -685,7 +683,7 @@ Status Reader::compute_range_result_coords(
 
   auto statuses = parallel_for(0, range_num, [&](uint64_t r) {
     // Compute overlapping coordinates per range
-    RETURN_NOT_OK(compute_range_result_coords<T>(
+    RETURN_NOT_OK(compute_range_result_coords(
         r, result_tile_map, result_tiles, &((*range_result_coords)[r])));
 
     // Potentially sort for deduping purposes (for the case of updates)
@@ -709,8 +707,6 @@ Status Reader::compute_range_result_coords(
   return Status::Ok();
 }
 
-// TODO: remove template 2
-template <class T>
 Status Reader::compute_range_result_coords(
     uint64_t range_idx,
     const std::map<std::pair<unsigned, uint64_t>, size_t>& result_tile_map,
@@ -797,7 +793,6 @@ Status Reader::compute_subarray_coords(
   return Status::Ok();
 }
 
-template <class T>
 Status Reader::compute_sparse_result_tiles(
     std::vector<ResultTile>* result_tiles,
     std::map<std::pair<unsigned, uint64_t>, size_t>* result_tile_map,
@@ -1262,8 +1257,6 @@ void Reader::compute_result_cell_slabs_global(
   }
 }
 
-// TODO: remove template
-template <class T>
 Status Reader::compute_result_coords(
     std::vector<ResultTile>* result_tiles,
     std::vector<ResultCoords>* result_coords) {
@@ -1272,8 +1265,7 @@ Status Reader::compute_result_coords(
   std::map<FragTilePair, size_t> result_tile_map;
   std::vector<bool> single_fragment;
 
-  // TODO: remove template
-  RETURN_CANCEL_OR_ERROR(compute_sparse_result_tiles<T>(
+  RETURN_CANCEL_OR_ERROR(compute_sparse_result_tiles(
       result_tiles, &result_tile_map, &single_fragment));
 
   if (result_tiles->empty())
@@ -1301,7 +1293,7 @@ Status Reader::compute_result_coords(
 
   // Compute the read coordinates for all fragments for each subarray range
   std::vector<std::vector<ResultCoords>> range_result_coords;
-  RETURN_CANCEL_OR_ERROR(compute_range_result_coords<T>(
+  RETURN_CANCEL_OR_ERROR(compute_range_result_coords(
       single_fragment, result_tile_map, result_tiles, &range_result_coords));
   result_tile_map.clear();
 
@@ -1967,7 +1959,6 @@ void Reader::zero_out_buffer_sizes() {
   }
 }
 
-template <class T>
 bool Reader::sparse_tile_overwritten(
     unsigned frag_idx, uint64_t tile_idx) const {
   auto mbr = (const T*)fragment_metadata_[frag_idx]->mbr(tile_idx);

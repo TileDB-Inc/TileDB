@@ -37,12 +37,15 @@
 
 #include "tiledb/sm/misc/status.h"
 #include "tiledb/sm/misc/tile_overlap.h"
+#include "tiledb/sm/misc/types.h"
+#include "tiledb/sm/subarray/subarray.h"
 
 namespace tiledb {
 namespace sm {
 
 class Buffer;
 class ConstBuffer;
+class Domain;
 
 enum class Datatype : uint8_t;
 enum class Layout : uint8_t;
@@ -68,10 +71,7 @@ class RTree {
    * The input MBRs will be copied into the leaf level.
    */
   RTree(
-      Datatype type,
-      unsigned dim_num,
-      unsigned fanout,
-      const std::vector<void*>& mbrs);
+      const Domain* domain, unsigned fanout, const std::vector<NDRange>& mbrs);
 
   /** Destructor. */
   ~RTree();
@@ -92,8 +92,8 @@ class RTree {
   /*                 API               */
   /* ********************************* */
 
-  /** Returns the number of dimensions. */
-  unsigned dim_num() const;
+  /** Returns the RTree domain. */
+  const Domain* domain() const;
 
   /** Returns the fanout. */
   unsigned fanout() const;
@@ -102,30 +102,19 @@ class RTree {
    * Returns the tile overlap of the input range with the MBRs stored
    * in the RTree.
    */
-  template <class T>
-  TileOverlap get_tile_overlap(const std::vector<const T*>& range) const;
+  TileOverlap get_tile_overlap(const NDRange& range) const;
 
   /** Returns the tree height. */
   unsigned height() const;
 
   /** Returns the leaf MBR with the input index. */
-  const void* leaf(uint64_t leaf_idx) const;
-
-  /**
-   * Returns the overlap between a range and an RTree MBR, as the ratio
-   * of the volume of the overlap over the volume of the MBR.
-   */
-  template <class T>
-  static double range_overlap(const std::vector<const T*>& range, const T* mbr);
+  const NDRange& leaf(uint64_t leaf_idx) const;
 
   /**
    * Returns the number of leaves that are stored in a (full) subtree
    * rooted at the input level. Note that the root is at level 0.
    */
   uint64_t subtree_leaf_num(uint64_t level) const;
-
-  /** Returns the datatype of the R-Tree. */
-  Datatype type() const;
 
   /** Serializes the contents of the object to the input buffer. */
   Status serialize(Buffer* buff) const;
@@ -161,13 +150,8 @@ class RTree {
    * we can infer which tree level each `Level` object corresponds to.
    */
   struct Level {
-    /** Number of MBRs in the level (across all nodes in the level). */
-    uint64_t mbr_num_ = 0;
-    /** The serialized MBRs of the level, in the form
-     * ``(low_1, high_1), ..., (low_d, high_d)`` where ``d`` is
-     * the number of dimensions.
-     */
-    std::vector<uint8_t> mbrs_;
+    /** The MBRs of the level. */
+    std::vector<NDRange> mbrs_;
   };
 
   /** Defines an R-Tree level entry, which corresponds to a node
@@ -186,14 +170,11 @@ class RTree {
   /*         PRIVATE ATTRIBUTES        */
   /* ********************************* */
 
-  /** The number of dimensions. */
-  unsigned dim_num_;
+  /** The RTree domain. */
+  const Domain* domain_;
 
   /** The fanout of the tree. */
   unsigned fanout_;
-
-  /** The data type. */
-  Datatype type_;
 
   /**
    * The tree levels. The first level is the root. Note that the root
@@ -206,17 +187,12 @@ class RTree {
   /* ********************************* */
 
   /** Builds the RTree bottom-up on the input MBRs. */
-  Status build_tree(const std::vector<void*>& mbrs);
-
-  /** Builds the RTree bottom-up on the input MBRs. */
-  template <class T>
-  Status build_tree(const std::vector<void*>& mbrs);
+  Status build_tree(const std::vector<NDRange>& mbrs);
 
   /** Builds the tree leaf level using the input mbrs. */
-  Level build_leaf_level(const std::vector<void*>& mbrs);
+  Level build_leaf_level(const std::vector<NDRange>& mbrs);
 
   /** Builds a single tree level on top of the input level. */
-  template <class T>
   Level build_level(const Level& level);
 
   /** Returns a deep copy of this RTree. */

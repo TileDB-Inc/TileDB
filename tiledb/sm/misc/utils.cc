@@ -625,28 +625,6 @@ Status check_template_type_to_datatype<char>(Datatype datatype) {
 namespace geometry {
 
 template <class T>
-inline bool coords_in_rect(
-    const T* coords, const std::vector<const T*>& rect, unsigned int dim_num) {
-  for (unsigned int i = 0; i < dim_num; ++i) {
-    if (coords[i] < rect[i][0] || coords[i] > rect[i][1])
-      return false;
-  }
-
-  return true;
-}
-
-template <class T>
-inline bool coords_in_rect(
-    const T* coords, const T* rect, unsigned int dim_num) {
-  for (unsigned int i = 0; i < dim_num; ++i) {
-    if (coords[i] < rect[2 * i] || coords[i] > rect[2 * i + 1])
-      return false;
-  }
-
-  return true;
-}
-
-template <class T>
 inline bool rect_in_rect(
     const T* rect_a, const T* rect_b, unsigned int dim_num) {
   for (unsigned int i = 0; i < dim_num; ++i) {
@@ -768,30 +746,6 @@ bool overlap(const std::vector<const T*>& a, const T* b) {
   return true;
 }
 
-template <class T>
-double coverage(const T* a, const T* b, unsigned dim_num) {
-  double c = 1.0;
-  auto add = int(std::is_integral<T>::value);
-
-  for (unsigned i = 0; i < dim_num; ++i) {
-    if (b[2 * i] == b[2 * i + 1]) {
-      c *= 1;
-    } else {
-      auto a_range = double(a[2 * i + 1]) - a[2 * i] + add;
-      auto b_range = double(b[2 * i + 1]) - b[2 * i] + add;
-      if (std::numeric_limits<T>::is_integer) {
-        auto max = std::numeric_limits<T>::max();
-        if (a_range == 0)
-          a_range = std::nextafter(a_range, max);
-        if (b_range == 0)
-          b_range = std::nextafter(b_range, max);
-      }
-      c *= a_range / b_range;
-    }
-  }
-  return c;
-}
-
 }  // namespace geometry
 
 /* ********************************* */
@@ -851,68 +805,6 @@ T safe_mul(T a, T b) {
 // Explicit template instantiations
 
 namespace geometry {
-
-template bool coords_in_rect<int>(
-    const int* corrds, const int* subarray, unsigned int dim_num);
-template bool coords_in_rect<int64_t>(
-    const int64_t* corrds, const int64_t* subarray, unsigned int dim_num);
-template bool coords_in_rect<float>(
-    const float* coords, const float* subarray, unsigned int dim_num);
-template bool coords_in_rect<double>(
-    const double* coords, const double* subarray, unsigned int dim_num);
-template bool coords_in_rect<int8_t>(
-    const int8_t* coords, const int8_t* subarray, unsigned int dim_num);
-template bool coords_in_rect<uint8_t>(
-    const uint8_t* coords, const uint8_t* subarray, unsigned int dim_num);
-template bool coords_in_rect<int16_t>(
-    const int16_t* coords, const int16_t* subarray, unsigned int dim_num);
-template bool coords_in_rect<uint16_t>(
-    const uint16_t* coords, const uint16_t* subarray, unsigned int dim_num);
-template bool coords_in_rect<uint32_t>(
-    const uint32_t* coords, const uint32_t* subarray, unsigned int dim_num);
-template bool coords_in_rect<uint64_t>(
-    const uint64_t* coords, const uint64_t* subarray, unsigned int dim_num);
-
-template bool coords_in_rect<int>(
-    const int* corrds,
-    const std::vector<const int*>& subarray,
-    unsigned int dim_num);
-template bool coords_in_rect<int64_t>(
-    const int64_t* corrds,
-    const std::vector<const int64_t*>& subarray,
-    unsigned int dim_num);
-template bool coords_in_rect<float>(
-    const float* coords,
-    const std::vector<const float*>& subarray,
-    unsigned int dim_num);
-template bool coords_in_rect<double>(
-    const double* coords,
-    const std::vector<const double*>& subarray,
-    unsigned int dim_num);
-template bool coords_in_rect<int8_t>(
-    const int8_t* coords,
-    const std::vector<const int8_t*>& subarray,
-    unsigned int dim_num);
-template bool coords_in_rect<uint8_t>(
-    const uint8_t* coords,
-    const std::vector<const uint8_t*>& subarray,
-    unsigned int dim_num);
-template bool coords_in_rect<int16_t>(
-    const int16_t* coords,
-    const std::vector<const int16_t*>& subarray,
-    unsigned int dim_num);
-template bool coords_in_rect<uint16_t>(
-    const uint16_t* coords,
-    const std::vector<const uint16_t*>& subarray,
-    unsigned int dim_num);
-template bool coords_in_rect<uint32_t>(
-    const uint32_t* coords,
-    const std::vector<const uint32_t*>& subarray,
-    unsigned int dim_num);
-template bool coords_in_rect<uint64_t>(
-    const uint64_t* coords,
-    const std::vector<const uint64_t*>& subarray,
-    unsigned int dim_num);
 
 template bool rect_in_rect<int>(
     const int* rect_a, const int* rect_b, unsigned int dim_num);
@@ -1111,26 +1003,6 @@ template bool overlap<float>(
     const std::vector<const float*>& a, const float* b);
 template bool overlap<double>(
     const std::vector<const double*>& a, const double* b);
-
-template double coverage<int8_t>(
-    const int8_t* a, const int8_t* b, unsigned dim_num);
-template double coverage<uint8_t>(
-    const uint8_t* a, const uint8_t* b, unsigned dim_num);
-template double coverage<int16_t>(
-    const int16_t* a, const int16_t* b, unsigned dim_num);
-template double coverage<uint16_t>(
-    const uint16_t* a, const uint16_t* b, unsigned dim_num);
-template double coverage<int>(const int* a, const int* b, unsigned dim_num);
-template double coverage<unsigned>(
-    const unsigned* a, const unsigned* b, unsigned dim_num);
-template double coverage<int64_t>(
-    const int64_t* a, const int64_t* b, unsigned dim_num);
-template double coverage<uint64_t>(
-    const uint64_t* a, const uint64_t* b, unsigned dim_num);
-template double coverage<float>(
-    const float* a, const float* b, unsigned dim_num);
-template double coverage<double>(
-    const double* a, const double* b, unsigned dim_num);
 
 template void compute_mbr_union<int8_t>(
     unsigned dim_num, const int8_t* mbrs, uint64_t mbr_num, int8_t* mbr_union);

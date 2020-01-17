@@ -40,11 +40,11 @@
 
 #include "tiledb/sm/array_schema/tile_domain.h"
 #include "tiledb/sm/misc/status.h"
+#include "tiledb/sm/misc/types.h"
 #include "tiledb/sm/misc/uri.h"
 #include "tiledb/sm/query/result_cell_slab.h"
 #include "tiledb/sm/query/result_coords.h"
 #include "tiledb/sm/query/result_space_tile.h"
-#include "tiledb/sm/query/types.h"
 #include "tiledb/sm/query/write_cell_slab_iter.h"
 #include "tiledb/sm/subarray/subarray_partitioner.h"
 
@@ -573,7 +573,6 @@ class Reader {
    * Computes the result coordinates for each range of the query
    * subarray.
    *
-   * @tparam T The domain type.
    * @param single_fragment For each range, it indicates whether all
    *     result coordinates come from a single fragment.
    * @param result_tile_map This is an auxialiary map that helps finding the
@@ -583,7 +582,6 @@ class Reader {
    *     It contains a vector for each range of the subarray.
    * @return Status
    */
-  template <class T>
   Status compute_range_result_coords(
       const std::vector<bool>& single_fragment,
       const std::map<std::pair<unsigned, uint64_t>, size_t>& result_tile_map,
@@ -594,7 +592,6 @@ class Reader {
    * Computes the result coordinates of a given range of the query
    * subarray.
    *
-   * @tparam T The domain type.
    * @param range_idx The range to focus on.
    * @param result_tile_map This is an auxialiary map that helps finding the
    *     result_tiles overlapping with each range.
@@ -603,7 +600,6 @@ class Reader {
    *     It contains a vector for each range of the subarray.
    * @return Status
    */
-  template <class T>
   Status compute_range_result_coords(
       uint64_t range_idx,
       const std::map<std::pair<unsigned, uint64_t>, size_t>& result_tile_map,
@@ -634,7 +630,6 @@ class Reader {
    * track of the unique result  tile info for subarray ranges that overlap
    * with common tiles.
    *
-   * @tparam T The coords type.
    * @param result_tiles The result tiles to be computed.
    * @param result_tile_map The result tile map to be computed.
    * @param single_fragment Each element corresponds to a range of the
@@ -642,7 +637,6 @@ class Reader {
    *     tiles come from a single fragment for that range.
    * @return Status
    */
-  template <class T>
   Status compute_sparse_result_tiles(
       std::vector<ResultTile>* result_tiles,
       std::map<std::pair<unsigned, uint64_t>, size_t>* result_tile_map,
@@ -745,7 +739,6 @@ class Reader {
    * @param result_tiles This will store the unique result tiles.
    * @param result_coords This will store the result coordinates.
    */
-  template <class T>
   Status compute_result_coords(
       std::vector<ResultTile>* result_tiles,
       std::vector<ResultCoords>* result_coords);
@@ -985,7 +978,6 @@ class Reader {
    * Returns true if the input tile's MBR of the input fragment is fully
    * covered by the non-empty domain of a more recent fragment.
    */
-  template <class T>
   bool sparse_tile_overwritten(unsigned frag_idx, uint64_t tile_idx) const;
 
   /**

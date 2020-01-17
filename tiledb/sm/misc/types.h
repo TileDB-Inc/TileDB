@@ -39,6 +39,18 @@ namespace sm {
 /*          TYPE DEFINITIONS         */
 /* ********************************* */
 
+/** Stores a generic value (similar to void*). */
+typedef std::vector<uint8_t> Value;
+
+/** Stores an ND point. */
+typedef std::vector<Value> NDPoint;
+
+/** Stores a low-high pair. */
+typedef std::vector<uint8_t> Range;
+
+/** Stores a low-high range per dimension. */
+typedef std::vector<Range> NDRange;
+
 /** Contains the buffer(s) and buffer size(s) for some attribute / dimension. */
 struct QueryBuffer {
   /**

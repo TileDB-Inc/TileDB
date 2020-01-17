@@ -49,19 +49,14 @@ namespace sm {
 /* ****************************** */
 
 RTree::RTree() {
-  dim_num_ = 0;
+  domain_ = nullptr;
   fanout_ = 0;
-  type_ = Datatype::INT32;
 }
 
 RTree::RTree(
-    Datatype type,
-    unsigned dim_num,
-    unsigned fanout,
-    const std::vector<void*>& mbrs)
-    : dim_num_(dim_num)
-    , fanout_(fanout)
-    , type_(type) {
+    const Domain* domain, unsigned fanout, const std::vector<NDRange>& mbrs)
+    : domain_(domain)
+    , fanout_(fanout) {
   build_tree(mbrs);
 }
 
@@ -95,16 +90,17 @@ RTree& RTree::operator=(RTree&& rtree) noexcept {
 /*               API              */
 /* ****************************** */
 
-unsigned RTree::dim_num() const {
-  return dim_num_;
-}
+
+        const Domain* RTree::domain() const {
+            return domain_;
+        }
+
 
 unsigned RTree::fanout() const {
   return fanout_;
 }
 
-template <class T>
-TileOverlap RTree::get_tile_overlap(const std::vector<const T*>& range) const {
+TileOverlap RTree::get_tile_overlap(const NDRange& range) const {
   TileOverlap overlap;
 
   // Empty tree
@@ -172,48 +168,6 @@ const void* RTree::leaf(uint64_t leaf_idx) const {
   return (const void*)&(levels_.back().mbrs_[leaf_idx * mbr_size]);
 }
 
-template <class T>
-double RTree::range_overlap(const std::vector<const T*>& range, const T* mbr) {
-  double ratio = 1.0;
-  auto dim_num = (unsigned)range.size();
-
-  for (unsigned i = 0; i < dim_num; ++i) {
-    assert(range[i][0] <= range[i][1]);
-    assert(mbr[2 * i] <= mbr[2 * i + 1]);
-
-    // No overlap
-    if (range[i][0] > mbr[2 * i + 1] || range[i][1] < mbr[2 * i]) {
-      ratio = 0.0;
-      break;
-    }
-
-    // Update ratio
-    auto overlap_start = std::max(range[i][0], mbr[2 * i]);
-    auto overlap_end = std::min(range[i][1], mbr[2 * i + 1]);
-    auto overlap_range = overlap_end - overlap_start;
-    auto mbr_range = mbr[2 * i + 1] - mbr[2 * i];
-    auto max = std::numeric_limits<T>::max();
-    if (std::numeric_limits<T>::is_integer) {
-      overlap_range += 1;
-      mbr_range += 1;
-    } else {
-      if (overlap_range == 0)
-        overlap_range = std::nextafter(overlap_range, max);
-      if (mbr_range == 0)
-        mbr_range = std::nextafter(mbr_range, max);
-    }
-    ratio *= (double)overlap_range / mbr_range;
-
-    // If ratio goes to 0, then the subarray overlap is much smaller than the
-    // volume of the MBR. Since we have already guaranteed that there is an
-    // overlap above, we should set the ratio to epsilon.
-    if (ratio == 0)
-      ratio = std::nextafter(0, max);
-  }
-
-  return ratio;
-}
-
 uint64_t RTree::subtree_leaf_num(uint64_t level) const {
   // Check invalid level
   if (level >= levels_.size())
@@ -278,60 +232,14 @@ Status RTree::deserialize(ConstBuffer* cbuff) {
 /*          PRIVATE METHODS       */
 /* ****************************** */
 
-Status RTree::build_tree(const std::vector<void*>& mbrs) {
-  switch (type_) {
-    case Datatype::INT8:
-      return build_tree<int8_t>(mbrs);
-    case Datatype::UINT8:
-      return build_tree<uint8_t>(mbrs);
-    case Datatype::INT16:
-      return build_tree<int16_t>(mbrs);
-    case Datatype::UINT16:
-      return build_tree<uint16_t>(mbrs);
-    case Datatype::INT32:
-      return build_tree<int32_t>(mbrs);
-    case Datatype::UINT32:
-      return build_tree<uint32_t>(mbrs);
-    case Datatype::INT64:
-      return build_tree<int64_t>(mbrs);
-    case Datatype::UINT64:
-      return build_tree<uint64_t>(mbrs);
-    case Datatype::FLOAT32:
-      return build_tree<float>(mbrs);
-    case Datatype::FLOAT64:
-      return build_tree<double>(mbrs);
-    case Datatype::DATETIME_YEAR:
-    case Datatype::DATETIME_MONTH:
-    case Datatype::DATETIME_WEEK:
-    case Datatype::DATETIME_DAY:
-    case Datatype::DATETIME_HR:
-    case Datatype::DATETIME_MIN:
-    case Datatype::DATETIME_SEC:
-    case Datatype::DATETIME_MS:
-    case Datatype::DATETIME_US:
-    case Datatype::DATETIME_NS:
-    case Datatype::DATETIME_PS:
-    case Datatype::DATETIME_FS:
-    case Datatype::DATETIME_AS:
-      return build_tree<int64_t>(mbrs);
-    default:
-      assert(false);
-      return LOG_STATUS(
-          Status::RTreeError("Cannot build R-Tree; Unsupported type"));
-  }
-
-  return Status::Ok();
-}
-
-template <class T>
-Status RTree::build_tree(const std::vector<void*>& mbrs) {
+Status RTree::build_tree(const std::vector<NDRange>& mbrs) {
   // Handle empty tree
   if (mbrs.empty())
     return Status::Ok();
 
   // Build leaf level
   auto leaf_level = build_leaf_level(mbrs);
-  auto leaf_num = leaf_level.mbr_num_;
+  auto leaf_num = leaf_level.mbrs_.size();
   levels_.push_back(std::move(leaf_level));
   if (leaf_num == 1)
     return Status::Ok();
@@ -339,7 +247,7 @@ Status RTree::build_tree(const std::vector<void*>& mbrs) {
   // Build rest of the tree bottom up
   auto height = (size_t)ceil(utils::math::log(fanout_, leaf_num)) + 1;
   for (size_t i = 0; i < height - 1; ++i) {
-    auto new_level = build_level<T>(levels_.back());
+    auto new_level = build_level(levels_.back());
     levels_.emplace_back(new_level);
   }
 
@@ -349,7 +257,7 @@ Status RTree::build_tree(const std::vector<void*>& mbrs) {
   return Status::Ok();
 }
 
-RTree::Level RTree::build_leaf_level(const std::vector<void*>& mbrs) {
+RTree::Level RTree::build_leaf_level(const std::vector<NDRange>& mbrs) {
   assert(!mbrs.empty());
 
   Level new_level;
@@ -371,7 +279,6 @@ RTree::Level RTree::build_leaf_level(const std::vector<void*>& mbrs) {
   return new_level;
 }
 
-template <class T>
 RTree::Level RTree::build_level(const Level& level) {
   Level new_level;
 
@@ -397,64 +304,18 @@ RTree::Level RTree::build_level(const Level& level) {
 
 RTree RTree::clone() const {
   RTree clone;
-  clone.dim_num_ = dim_num_;
+  clone.domain_ = domain_;
   clone.fanout_ = fanout_;
-  clone.type_ = type_;
   clone.levels_ = levels_;
 
   return clone;
 }
 
 void RTree::swap(RTree& rtree) {
-  std::swap(dim_num_, rtree.dim_num_);
+  std::swap(domain_, rtree.domain_);
   std::swap(fanout_, rtree.fanout_);
-  std::swap(type_, rtree.type_);
   std::swap(levels_, rtree.levels_);
 }
-
-// Explicit template instantiations
-
-template TileOverlap RTree::get_tile_overlap<int8_t>(
-    const std::vector<const int8_t*>& range) const;
-template TileOverlap RTree::get_tile_overlap<uint8_t>(
-    const std::vector<const uint8_t*>& range) const;
-template TileOverlap RTree::get_tile_overlap<int16_t>(
-    const std::vector<const int16_t*>& range) const;
-template TileOverlap RTree::get_tile_overlap<uint16_t>(
-    const std::vector<const uint16_t*>& range) const;
-template TileOverlap RTree::get_tile_overlap<int32_t>(
-    const std::vector<const int32_t*>& range) const;
-template TileOverlap RTree::get_tile_overlap<uint32_t>(
-    const std::vector<const uint32_t*>& range) const;
-template TileOverlap RTree::get_tile_overlap<int64_t>(
-    const std::vector<const int64_t*>& range) const;
-template TileOverlap RTree::get_tile_overlap<uint64_t>(
-    const std::vector<const uint64_t*>& range) const;
-template TileOverlap RTree::get_tile_overlap<float>(
-    const std::vector<const float*>& range) const;
-template TileOverlap RTree::get_tile_overlap<double>(
-    const std::vector<const double*>& range) const;
-
-template double RTree::range_overlap<int8_t>(
-    const std::vector<const int8_t*>& range, const int8_t* mbr);
-template double RTree::range_overlap<uint8_t>(
-    const std::vector<const uint8_t*>& range, const uint8_t* mbr);
-template double RTree::range_overlap<int16_t>(
-    const std::vector<const int16_t*>& range, const int16_t* mbr);
-template double RTree::range_overlap<uint16_t>(
-    const std::vector<const uint16_t*>& range, const uint16_t* mbr);
-template double RTree::range_overlap<int32_t>(
-    const std::vector<const int32_t*>& range, const int32_t* mbr);
-template double RTree::range_overlap<uint32_t>(
-    const std::vector<const uint32_t*>& range, const uint32_t* mbr);
-template double RTree::range_overlap<int64_t>(
-    const std::vector<const int64_t*>& range, const int64_t* mbr);
-template double RTree::range_overlap<uint64_t>(
-    const std::vector<const uint64_t*>& range, const uint64_t* mbr);
-template double RTree::range_overlap<float>(
-    const std::vector<const float*>& range, const float* mbr);
-template double RTree::range_overlap<double>(
-    const std::vector<const double*>& range, const double* mbr);
 
 }  // namespace sm
 }  // namespace tiledb

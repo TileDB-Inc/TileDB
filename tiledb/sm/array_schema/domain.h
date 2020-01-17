@@ -33,7 +33,9 @@
 #ifndef TILEDB_DOMAIN_H
 #define TILEDB_DOMAIN_H
 
+#include "tiledb/sm/array_schema/dimension.h"
 #include "tiledb/sm/misc/status.h"
+#include "tiledb/sm/misc/types.h"
 
 #include <vector>
 
@@ -42,7 +44,6 @@ namespace sm {
 
 class Buffer;
 class ConstBuffer;
-class Dimension;
 
 enum class Datatype : uint8_t;
 enum class Layout : uint8_t;
@@ -77,6 +78,27 @@ class Domain {
   /* ********************************* */
   /*                 API               */
   /* ********************************* */
+
+  /**
+   * Returns the percentage of overlap between `subarray` and the tile of
+   * `domain` at coordinates `tile_coords`.
+   */
+  double tile_coverage(
+      const NDRange& domain,
+      const NDPoint& tile_coords,
+      const NDRange& subarray) const;
+
+  /** Returns the tile domain of `range` based on `domain`. */
+  NDRange tile_domain(const NDRange& range, const NDRange& domain) const;
+
+  /** Returns the starting coordinates in `domain`. */
+  NDPoint start_coords(const NDRange& domain) const;
+
+  /** Returns true if `point` lies inside `range`. */
+  bool point_in_range(const NDPoint& point, const NDRange& range) const;
+
+  /** Expands `mbr_a` to include `mbr_b`. */
+  void expand_mbr(NDRange* mbr_a, const NDRange& mbr_b) const;
 
   /**
    * Floors the value such that it coincides with the largest start of a tile
@@ -276,53 +298,19 @@ class Domain {
    * @param domain The domain to be cropped.
    * @return void
    */
-  void crop_domain(void* domain) const;
-
-  /**
-   * Crops the input domain such that it does not exceed the array domain.
-   *
-   * @param domain The domain to be cropped.
-   * @return void
-   */
-  template <
-      class T,
-      typename std::enable_if<std::is_integral<T>::value, T>::type* = nullptr>
-  void crop_domain(T* domain) const {
-    auto array_domain = static_cast<const T*>(domain_);
-
-    for (unsigned int i = 0; i < dim_num_; ++i) {
-      if (domain[2 * i] < array_domain[2 * i])
-        domain[2 * i] = array_domain[2 * i];
-      if (domain[2 * i + 1] > array_domain[2 * i + 1])
-        domain[2 * i + 1] = array_domain[2 * i + 1];
-    }
-  }
-
-  /** No-op for float/double domains. */
-  template <
-      class T,
-      typename std::enable_if<!std::is_integral<T>::value, T>::type* = nullptr>
-  void crop_domain(T* domain) const {
-    (void)domain;
-  }
+  void crop_domain(NDRange* domain) const;
 
   /** Returns the tile order. */
   Layout tile_order() const;
 
   /** Returns the number of dimensions. */
-  unsigned int dim_num() const;
+  unsigned dim_num() const;
 
-  /** Returns the domain (serialized dimension domains). */
-  const void* domain() const;
-
-  /** returns the domain along the i-th dimension (nullptr upon error). */
-  const void* domain(unsigned int i) const;
-
-  /** Returns the i-th dimensions (nullptr upon error). */
-  const Dimension* dimension(unsigned int i) const;
+  /** Returns the dim_idx-th dimensions (nullptr upon error). */
+  const Dimension* dimension(unsigned dim_idx) const;
 
   /** Returns the dimension given a name (nullptr upon error). */
-  const Dimension* dimension(std::string name) const;
+  const Dimension* dimension(const std::string& name) const;
 
   /** Dumps the domain in ASCII format in the selected output. */
   void dump(FILE* out) const;
@@ -335,48 +323,7 @@ class Domain {
    * @param domain The domain to be expanded.
    * @return void
    */
-  void expand_domain(void* domain) const;
-
-  /**
-   * Expands the input domain such that it coincides with the boundaries of
-   * the array's regular tiles (i.e., it maps it on the regular tile grid).
-   * If the array has no regular tile grid, the function does not do anything.
-   *
-   * @tparam The domain type.
-   * @param domain The domain to be expanded.
-   * @return void
-   */
-  template <
-      class T,
-      typename std::enable_if<std::is_integral<T>::value, T>::type* = nullptr>
-  void expand_domain(T* domain) const {
-    // Applicable only to regular tiles
-    if (tile_extents_ == nullptr)
-      return;
-
-    auto tile_extents = static_cast<const T*>(tile_extents_);
-    auto array_domain = static_cast<const T*>(domain_);
-
-    for (unsigned int i = 0; i < dim_num_; ++i) {
-      // This will always make the first bound coincide with a tile
-      domain[2 * i] = ((domain[2 * i] - array_domain[2 * i]) / tile_extents[i] *
-                       tile_extents[i]) +
-                      array_domain[2 * i];
-
-      domain[2 * i + 1] =
-          ((domain[2 * i + 1] - array_domain[2 * i]) / tile_extents[i] + 1) *
-              tile_extents[i] -
-          1 + array_domain[2 * i];
-    }
-  }
-
-  /** No-op for float/double domains. */
-  template <
-      class T,
-      typename std::enable_if<!std::is_integral<T>::value, T>::type* = nullptr>
-  void expand_domain(T* domain) const {
-    (void)domain;
-  }
+  void expand_domain(NDRange* domain) const;
 
   /**
    * Returns the position of the input coordinates inside its corresponding
@@ -458,31 +405,17 @@ class Domain {
       const T* domain, T* cell_coords, bool* coords_retrieved) const;
 
   /**
-   * Retrieves the next tile coordinates along the array tile order within a
-   * given tile domain. Applicable only to **dense** arrays.
-   *
-   * @tparam T The coordinates type.
-   * @param domain The targeted domain.
-   * @param tile_coords The input tile coordinates, which the function modifies
-   *     to store the next tile coordinates at termination.
-   * @return void
+   * Retrieves the next coordinates along the array tile order within a
+   * given tile domain.
    */
-  template <class T>
-  void get_next_tile_coords(const T* domain, T* tile_coords) const;
+  void next_coords(const NDRange& domain, NDPoint* coords) const;
 
   /**
-   * Retrieves the next tile coordinates along the array tile order within a
-   * given tile domain. Applicable only to **dense** arrays.
-   *
-   * @tparam T The coordinates type.
-   * @param domain The targeted domain.
-   * @param tile_coords The input tile coordinates, which the function modifies
-   *     to store the next tile coordinates at termination.
-   * @param in Set to `true` if the retrieve coords are inside the domain.
-   * @return void
+   * Retrieves the next coordinates along the array tile order within a
+   * given tile domain. It also sets `in` based on whether the next coordinates
+   * is in `domain` or not.
    */
-  template <class T>
-  void get_next_tile_coords(const T* domain, T* tile_coords, bool* in) const;
+  void next_coords(const NDRange& domain, NDPoint* coords, bool* in) const;
 
   /**
    * Gets the tile domain of the input cell `subarray`.
@@ -496,32 +429,19 @@ class Domain {
   void get_tile_domain(const T* subarray, T* tile_subarray) const;
 
   /**
-   * Returns the tile position along the array tile order within the input
-   * domain. Applicable only to **dense** arrays.
-   *
-   * @tparam T The domain type.
-   * @param tile_coords The tile coordinates.
-   * @return The tile position of *tile_coords* along the tile order of the
-   *     array inside the array domain.
+   * Returns the tile position along the array tile order within the array
+   * domain.
    */
-  template <class T>
-  uint64_t get_tile_pos(const T* tile_coords) const;
+  uint64_t tile_pos(const NDPoint& tile_coords) const;
 
   /**
    * Returns the tile position along the array tile order within the input
-   * domain. Applicable only to **dense** arrays.
+   * `tile_domain`.
    *
-   * @tparam T The domain type.
-   * @param domain The input domain, which is a cell domain partitioned into
-   *     regular tiles in the same manner as that of the array domain (however
-   *     *domain* may be a sub-domain of the array domain).
-   * @param tile_coords The tile coordinates, normalized inside the tile
-   *     domain of cell `domain`.
-   * @return The tile position of *tile_coords* along the tile order of the
-   *     array inside the input domain.
+   * @note `tile_domain` contains integral tiles
    */
-  template <class T>
-  uint64_t get_tile_pos(const T* domain, const T* tile_coords) const;
+  uint64_t tile_pos(
+      const NDRange& tile_domain, const NDPoint& tile_coords) const;
 
   /**
    * Gets the tile subarray for the input tile coordinates.
@@ -566,8 +486,8 @@ class Domain {
    */
   Status init(Layout cell_order, Layout tile_order);
 
-  /** Returns true if at least one dimension has null tile extent. */
-  bool null_tile_extents() const;
+  /** Returns true if the ND ranges `a` and `b` overlap. */
+  bool overlap(const NDRange& a, const NDRange& b) const;
 
   /**
    * Serializes the object members into a binary buffer.
@@ -593,40 +513,12 @@ class Domain {
   template <class T>
   uint64_t stride(Layout subarray_layout) const;
 
-  /** Returns the tile extents. */
-  const void* tile_extents() const;
-
-  /** returns the tile extent along the i-th dimension (nullptr upon error). */
-  const void* tile_extent(unsigned int i) const;
-
   /**
    * Returns the number of tiles contained in the input range.
    *
    * @note Applicable only to integer domains.
    */
-  uint64_t tile_num(const void* range) const;
-
-  /**
-   * Returns the number of tiles contained in the input range.
-   *
-   * @note Applicable only to integer domains.
-   */
-  template <
-      class T,
-      typename std::enable_if<std::is_integral<T>::value, T>::type* = nullptr>
-  uint64_t tile_num(const T* range) const {
-    // For easy reference
-    auto tile_extents = static_cast<const T*>(tile_extents_);
-    auto domain = static_cast<const T*>(domain_);
-
-    uint64_t ret = 1;
-    for (unsigned int i = 0; i < dim_num_; ++i) {
-      uint64_t start = (range[2 * i] - domain[2 * i]) / tile_extents[i];
-      uint64_t end = (range[2 * i + 1] - domain[2 * i]) / tile_extents[i];
-      ret *= (end - start + 1);
-    }
-    return ret;
-  }
+  uint64_t tile_num(const NDRange& range) const;
 
   /**
    * Checks the tile order of the input coordinates on the given dimension.
@@ -746,30 +638,12 @@ class Domain {
   /** The domain dimensions. */
   std::vector<Dimension*> dimensions_;
 
-  /** The number of dimensions. */
-  unsigned int dim_num_;
-
-  /**
-   * The array domain, represented by serializing the dimension domains.
-   * It should contain one [lower, upper] pair per dimension.
-   * The type of the values stored in this buffer should match the dimensions
-   * type.
-   */
-  void* domain_;
-
   /**
    * The array domain. It should contain one [lower, upper] pair per dimension.
    * The type of the values stored in this buffer should match the dimensions
    * type.
    */
-  void* tile_domain_;
-
-  /**
-   * The tile extents. There should be one value for each dimension. The type
-   * of the values stored in this buffer should match the dimensions type. If
-   * it is NULL, then it means that the array is sparse.
-   */
-  void* tile_extents_;
+  NDRange tile_domain_;
 
   /**
    * Offsets for calculating tile positions and ids for the column-major
@@ -860,122 +734,56 @@ class Domain {
   std::string default_dimension_name(unsigned int i) const;
 
   /**
-   * Retrieves the next tile coordinates along the array tile order within a
-   * given tile domain. Applicable only to **dense** arrays, and focusing on
-   * the **column-major** tile order.
-   *
-   * @tparam T The coordinates type.
-   * @param domain The targeted domain.
-   * @param tile_coords The input tile coordinates, which the function modifies
-   *     to store the next tile coordinates at termination.
-   * @return void
+   * Retrieves the next coordinates along the array tile order within a
+   * given tile domain. Focuses on the **column-major** tile order.
    */
-  template <class T>
-  void get_next_tile_coords_col(const T* domain, T* tile_coords) const;
+  void next_coords_col(const NDRange& domain, NDPoint* coords) const;
 
   /**
-   * Retrieves the next tile coordinates along the array tile order within a
-   * given tile domain. Applicable only to **dense** arrays, and focusing on
-   * the **column-major** tile order.
-   *
-   * @tparam T The coordinates type.
-   * @param domain The targeted domain.
-   * @param tile_coords The input tile coordinates, which the function modifies
-   *     to store the next tile coordinates at termination.
-   * @param in Set to `true` if the retrieved coords are inside the domain.
-   * @return void
+   * Retrieves the next coordinates along the array tile order within a
+   * given tile domain. Also sets `in` based on whether the next coordinates
+   * are in `domain` or not. Focuses on the **column-major** tile order.
    */
-  template <class T>
-  void get_next_tile_coords_col(
-      const T* domain, T* tile_coords, bool* in) const;
+  void next_coords_col(const NDRange& domain, NDPoint* coords, bool* in) const;
 
   /**
-   * Retrieves the next tile coordinates along the array tile order within a
-   * given tile domain. Applicable only to **dense** arrays, and focusing on
-   * the **row-major** tile order.
-   *
-   * @tparam T The coordinates type.
-   * @param domain The targeted domain.
-   * @param tile_coords The input tile coordinates, which the function modifies
-   *     to store the next tile coordinates at termination.
-   * @return void
+   * Retrieves the next coordinates along the array tile order within a
+   * given tile domain. Focuses on the **row-major** tile order.
    */
-  template <class T>
-  void get_next_tile_coords_row(const T* domain, T* tile_coords) const;
+  void next_coords_row(const NDRange& domain, NDPoint* coords) const;
 
   /**
-   * Retrieves the next tile coordinates along the array tile order within a
-   * given tile domain. Applicable only to **dense** arrays, and focusing on
-   * the **row-major** tile order.
-   *
-   * @tparam T The coordinates type.
-   * @param domain The targeted domain.
-   * @param tile_coords The input tile coordinates, which the function modifies
-   *     to store the next tile coordinates at termination.
-   * @param in Set to `true` if the retrieved coords are inside the domain.
-   * @return void
+   * Retrieves the next coordinates along the array tile order within a
+   * given tile domain. Also sets `in` based on whether the next coordinates
+   * are in `domain` or not. Focuses on the **row-major** tile order.
    */
-  template <class T>
-  void get_next_tile_coords_row(
-      const T* domain, T* tile_coords, bool* in) const;
+  void next_coords_row(const NDRange& domain, NDPoint* coords, bool* in) const;
+
+  /**
+   * Returns the tile position along the array tile order within the array
+   * tile domain. Focuses on the **column-major** tile order.
+   */
+  uint64_t tile_pos_col(const NDPoint& tile_coords) const;
 
   /**
    * Returns the tile position along the array tile order within the input
-   * domain. Applicable only to **dense** arrays, and focusing on the
-   * **column-major** tile order.
-   *
-   * @tparam T The domain type.
-   * @param tile_coords The tile coordinates.
-   * @return The tile position of *tile_coords* along the tile order of the
-   *     array inside the array domain.
+   * `tile_domain`. Focuses on the **column-major** tile order.
    */
-  template <class T>
-  uint64_t get_tile_pos_col(const T* tile_coords) const;
+  uint64_t tile_pos_col(
+      const NDRange& domain, const NDPoint& tile_coords) const;
+
+  /**
+   * Returns the tile position along the array tile order within the array
+   * tile domain. Focuses on the **row-major** tile order.
+   */
+  uint64_t tile_pos_row(const NDPoint& tile_coords) const;
 
   /**
    * Returns the tile position along the array tile order within the input
-   * domain. Applicable only to **dense** arrays, and focusing on the
-   * **column-major** tile order.
-   *
-   * @tparam T The domain type.
-   * @param domain The input domain, which is a cell domain partitioned into
-   *     regular tiles in the same manner as that of the array domain
-   *     (however *domain* may be a sub-domain of the array domain).
-   * @param tile_coords The tile coordinates.
-   * @return The tile position of *tile_coords* along the tile order of the
-   *     array inside the input domain.
+   * `tile_domain`. Focuses on the **row-major** tile order.
    */
-  template <class T>
-  uint64_t get_tile_pos_col(const T* domain, const T* tile_coords) const;
-
-  /**
-   * Returns the tile position along the array tile order within the input
-   * domain. Applicable only to **dense** arrays, and focusing on the
-   * **row-major** tile order.
-   *
-   * @tparam T The domain type.
-   * @param tile_coords The tile coordinates.
-   * @return The tile position of *tile_coords* along the tile order of the
-   *     array inside the array domain.
-   */
-  template <class T>
-  uint64_t get_tile_pos_row(const T* tile_coords) const;
-
-  /**
-   * Returns the tile position along the array tile order within the input
-   * domain. Applicable only to **dense** arrays, and focusing on the
-   * **row-major** tile order.
-   *
-   * @tparam T The domain type.
-   * @param domain The input domain, which is a cell domain partitioned into
-   *     regular tiles in the same manner as that of the array domain (however
-   *     *domain* may be a sub-domain of the array domain).
-   * @param tile_coords The tile coordinates.
-   * @return The tile position of *tile_coords* along the tile order of the
-   *     array inside the input domain.
-   */
-  template <class T>
-  uint64_t get_tile_pos_row(const T* domain, const T* tile_coords) const;
+  uint64_t tile_pos_row(
+      const NDRange& tile_domain, const NDPoint& tile_coords) const;
 };
 
 }  // namespace sm

@@ -215,35 +215,6 @@ uint64_t cell_num(const T* rect, unsigned dim_num) {
 }
 
 /**
- * Checks if `coords` are inside `rect`.
- *
- * @tparam T The type of the cell and subarray.
- * @param coords The coordinates to be checked.
- * @param rect The hyper-rectangle to be checked, expressed as [low, high] pairs
- *     along each dimension.
- * @param dim_num The number of dimensions for the coordinates and
- *     hyper-rectangle.
- * @return `true` if `coords` are inside `rect` and `false` otherwise.
- */
-template <class T>
-bool coords_in_rect(const T* coords, const T* rect, unsigned int dim_num);
-
-/**
- * Checks if `coords` are inside `rect`.
- *
- * @tparam T The type of the cell and subarray.
- * @param coords The coordinates to be checked.
- * @param rect The hyper-rectangle to be checked, expressed as [low, high] pairs
- *     along each dimension.
- * @param dim_num The number of dimensions for the coordinates and
- *     hyper-rectangle.
- * @return `true` if `coords` are inside `rect` and `false` otherwise.
- */
-template <class T>
-bool coords_in_rect(
-    const T* coords, const std::vector<const T*>& rect, unsigned int dim_num);
-
-/**
  * Checks if `rect_a` is inside `rect_b`.
  *
  * @tparam T The domain type.
@@ -347,13 +318,6 @@ void overlap(const T* a, const T* b, unsigned dim_num, T* o, bool* overlap);
  */
 template <class T>
 bool overlap(const std::vector<const T*>& a, const T* b);
-
-/**
- * Returns the percentage of coverage of hyper-rectangle `a` in `b`.
- * Note that the function assumes that `a` is fully contained in `b`.
- */
-template <class T>
-double coverage(const T* a, const T* b, unsigned dim_num);
 
 }  // namespace geometry
 

@@ -438,7 +438,7 @@ void* Writer::subarray() const {
 }
 
 Status Writer::write() {
-  STATS_FUNC_IN(writer_write);
+  STATS_FUNC_IN(writer_write)
 
   // In case the user has provided a coordinates buffer
   RETURN_NOT_OK(split_coords_buffer());
@@ -457,7 +457,7 @@ Status Writer::write() {
   }
 
   return Status::Ok();
-  STATS_FUNC_OUT(writer_write);
+  STATS_FUNC_OUT(writer_write)
 }
 
 const std::vector<WrittenFragmentInfo>& Writer::written_fragment_info() const {
@@ -527,7 +527,7 @@ Status Writer::check_buffer_sizes() const {
 }
 
 Status Writer::check_coord_dups(const std::vector<uint64_t>& cell_pos) const {
-  STATS_FUNC_IN(writer_check_coord_dups);
+  STATS_FUNC_IN(writer_check_coord_dups)
 
   if (!has_coords_) {
     return LOG_STATUS(
@@ -575,11 +575,11 @@ Status Writer::check_coord_dups(const std::vector<uint64_t>& cell_pos) const {
     RETURN_NOT_OK(st);
 
   return Status::Ok();
-  STATS_FUNC_OUT(writer_check_coord_dups);
+  STATS_FUNC_OUT(writer_check_coord_dups)
 }
 
 Status Writer::check_coord_dups() const {
-  STATS_FUNC_IN(writer_check_coord_dups_global);
+  STATS_FUNC_IN(writer_check_coord_dups_global)
 
   if (!has_coords_) {
     return LOG_STATUS(
@@ -630,7 +630,7 @@ Status Writer::check_coord_dups() const {
 
   return Status::Ok();
 
-  STATS_FUNC_OUT(writer_check_coord_dups_global);
+  STATS_FUNC_OUT(writer_check_coord_dups_global)
 }
 
 Status Writer::check_coord_oob() const {
@@ -827,7 +827,7 @@ Status Writer::close_files(FragmentMetadata* meta) const {
 Status Writer::compute_coord_dups(
     const std::vector<uint64_t>& cell_pos,
     std::set<uint64_t>* coord_dups) const {
-  STATS_FUNC_IN(writer_compute_coord_dups);
+  STATS_FUNC_IN(writer_compute_coord_dups)
   if (!has_coords_) {
     return LOG_STATUS(
         Status::WriterError("Cannot check for coordinate duplicates; "
@@ -876,11 +876,11 @@ Status Writer::compute_coord_dups(
 
   return Status::Ok();
 
-  STATS_FUNC_OUT(writer_compute_coord_dups);
+  STATS_FUNC_OUT(writer_compute_coord_dups)
 }
 
 Status Writer::compute_coord_dups(std::set<uint64_t>* coord_dups) const {
-  STATS_FUNC_IN(writer_compute_coord_dups_global);
+  STATS_FUNC_IN(writer_compute_coord_dups_global)
 
   if (!has_coords_) {
     return LOG_STATUS(
@@ -932,63 +932,9 @@ Status Writer::compute_coord_dups(std::set<uint64_t>* coord_dups) const {
 
   return Status::Ok();
 
-  STATS_FUNC_OUT(writer_compute_coord_dups_global);
+  STATS_FUNC_OUT(writer_compute_coord_dups_global)
 }
 
-Status Writer::compute_coords_metadata(
-    const std::unordered_map<std::string, std::vector<Tile>>& tiles,
-    FragmentMetadata* meta) const {
-  STATS_FUNC_IN(writer_compute_coords_metadata);
-
-  auto coords_type = array_schema_->coords_type();
-  switch (coords_type) {
-    case Datatype::INT8:
-      return compute_coords_metadata<int8_t>(tiles, meta);
-    case Datatype::UINT8:
-      return compute_coords_metadata<uint8_t>(tiles, meta);
-    case Datatype::INT16:
-      return compute_coords_metadata<int16_t>(tiles, meta);
-    case Datatype::UINT16:
-      return compute_coords_metadata<uint16_t>(tiles, meta);
-    case Datatype::INT32:
-      return compute_coords_metadata<int32_t>(tiles, meta);
-    case Datatype::UINT32:
-      return compute_coords_metadata<uint32_t>(tiles, meta);
-    case Datatype::INT64:
-      return compute_coords_metadata<int64_t>(tiles, meta);
-    case Datatype::UINT64:
-      return compute_coords_metadata<uint64_t>(tiles, meta);
-    case Datatype::FLOAT32:
-      assert(!array_schema_->dense());
-      return compute_coords_metadata<float>(tiles, meta);
-    case Datatype::FLOAT64:
-      assert(!array_schema_->dense());
-      return compute_coords_metadata<double>(tiles, meta);
-    case Datatype::DATETIME_YEAR:
-    case Datatype::DATETIME_MONTH:
-    case Datatype::DATETIME_WEEK:
-    case Datatype::DATETIME_DAY:
-    case Datatype::DATETIME_HR:
-    case Datatype::DATETIME_MIN:
-    case Datatype::DATETIME_SEC:
-    case Datatype::DATETIME_MS:
-    case Datatype::DATETIME_US:
-    case Datatype::DATETIME_NS:
-    case Datatype::DATETIME_PS:
-    case Datatype::DATETIME_FS:
-    case Datatype::DATETIME_AS:
-      return compute_coords_metadata<int64_t>(tiles, meta);
-    default:
-      return LOG_STATUS(Status::WriterError(
-          "Cannot compute coordinates metadata; Unsupported domain type"));
-  }
-
-  return Status::Ok();
-
-  STATS_FUNC_OUT(writer_compute_coords_metadata);
-}
-
-template <class T>
 Status Writer::compute_coords_metadata(
     const std::unordered_map<std::string, std::vector<Tile>>& tiles,
     FragmentMetadata* meta) const {
@@ -1009,9 +955,11 @@ Status Writer::compute_coords_metadata(
 
   // Compute MBRs
   auto statuses = parallel_for(0, tile_num, [&](uint64_t t) {
-    std::vector<T> mbr(2 * dim_num);
-    std::vector<T*> data(dim_num);
+    NDRange mbr(dim_num);
     uint64_t cell_num = UINT64_MAX;
+
+    // TODO: push to tile, one MBR range per dimension
+
     for (unsigned d = 0; d < dim_num; ++d) {
       const auto& dim_name = array_schema_->dimension(d)->name();
       auto tiles_it = tiles.find(dim_name);
@@ -1031,7 +979,7 @@ Status Writer::compute_coords_metadata(
     for (uint64_t c = 1; c < cell_num; ++c)
       utils::geometry::expand_mbr<T>(data, c, &mbr[0]);
 
-    meta->set_mbr(t, &mbr[0]);
+    meta->set_mbr(t, mbr);
     return Status::Ok();
   });
 
@@ -1050,7 +998,7 @@ Status Writer::compute_coords_metadata(
 template <class T>
 Status Writer::compute_write_cell_ranges(
     WriteCellSlabIter<T>* iter, WriteCellRangeVec* write_cell_ranges) const {
-  STATS_FUNC_IN(writer_compute_write_cell_ranges);
+  STATS_FUNC_IN(writer_compute_write_cell_ranges)
 
   auto domain = array_schema_->domain();
   auto dim_num = array_schema_->dim_num();
@@ -1103,12 +1051,12 @@ Status Writer::compute_write_cell_ranges(
 
   return Status::Ok();
 
-  STATS_FUNC_OUT(writer_compute_write_cell_ranges);
+  STATS_FUNC_OUT(writer_compute_write_cell_ranges)
 }
 
 Status Writer::create_fragment(
     bool dense, std::shared_ptr<FragmentMetadata>* frag_meta) const {
-  STATS_FUNC_IN(writer_create_fragment);
+  STATS_FUNC_IN(writer_create_fragment)
 
   URI uri;
   uint64_t timestamp = 0;
@@ -1126,7 +1074,7 @@ Status Writer::create_fragment(
   RETURN_NOT_OK((*frag_meta)->init(subarray_));
   return storage_manager_->create_dir(uri);
 
-  STATS_FUNC_OUT(writer_create_fragment);
+  STATS_FUNC_OUT(writer_create_fragment)
 }
 
 Status Writer::filter_tiles(
@@ -1150,7 +1098,7 @@ Status Writer::filter_tiles(
 
 Status Writer::filter_tiles(
     const std::string& name, std::vector<Tile>* tiles) const {
-  STATS_FUNC_IN(writer_filter_tiles);
+  STATS_FUNC_IN(writer_filter_tiles)
 
   bool var_size = array_schema_->var_size(name);
   // Filter all tiles
@@ -1165,7 +1113,7 @@ Status Writer::filter_tiles(
 
   return Status::Ok();
 
-  STATS_FUNC_OUT(writer_filter_tiles);
+  STATS_FUNC_OUT(writer_filter_tiles)
 }
 
 Status Writer::filter_tile(
@@ -1380,7 +1328,7 @@ bool Writer::all_last_tiles_empty() const {
 }
 
 Status Writer::init_global_write_state() {
-  STATS_FUNC_IN(writer_init_global_write_state);
+  STATS_FUNC_IN(writer_init_global_write_state)
 
   // Create global array state object
   if (global_write_state_ != nullptr)
@@ -1418,7 +1366,7 @@ Status Writer::init_global_write_state() {
 
   return Status::Ok();
 
-  STATS_FUNC_OUT(writer_init_global_write_state);
+  STATS_FUNC_OUT(writer_init_global_write_state)
 }
 
 Status Writer::init_tile(const std::string& name, Tile* tile) const {
@@ -1459,9 +1407,9 @@ Status Writer::init_tile(
 }
 
 template <class T>
-Status Writer::init_tile_dense_cell_range_iters(
+Status Writer::init_tile_write_cell_slab_iters(
     std::vector<WriteCellSlabIter<T>>* iters) const {
-  STATS_FUNC_IN(writer_init_tile_dense_cell_range_iters);
+  STATS_FUNC_IN(writer_init_tile_dense_cell_range_iters)
 
   // For easy reference
   auto domain = array_schema_->domain();
@@ -1508,7 +1456,7 @@ Status Writer::init_tile_dense_cell_range_iters(
 
   return Status::Ok();
 
-  STATS_FUNC_OUT(writer_init_tile_dense_cell_range_iters);
+  STATS_FUNC_OUT(writer_init_tile_dense_cell_range_iters)
 }
 
 Status Writer::init_tiles(
@@ -1560,7 +1508,7 @@ void Writer::optimize_layout_for_1D() {
 }
 
 Status Writer::ordered_write() {
-  STATS_FUNC_IN(writer_ordered_write);
+  STATS_FUNC_IN(writer_ordered_write)
 
   // Applicable only to ordered write on dense arrays
   assert(layout_ == Layout::ROW_MAJOR || layout_ == Layout::COL_MAJOR);
@@ -1605,7 +1553,7 @@ Status Writer::ordered_write() {
 
   return Status::Ok();
 
-  STATS_FUNC_OUT(writer_ordered_write);
+  STATS_FUNC_OUT(writer_ordered_write)
 }
 
 template <class T>
@@ -1616,11 +1564,10 @@ Status Writer::ordered_write() {
   auto uri = frag_meta->fragment_uri();
 
   // Initialize dense cell range iterators for each tile in global order
-  std::vector<WriteCellSlabIter<T>> dense_cell_range_its;
+  std::vector<WriteCellSlabIter<T>> write_cell_slab_its;
   RETURN_CANCEL_OR_ERROR_ELSE(
-      init_tile_dense_cell_range_iters<T>(&dense_cell_range_its),
-      clean_up(uri));
-  auto tile_num = dense_cell_range_its.size();
+      init_tile_write_cell_slab_iters<T>(&write_cell_slab_its), clean_up(uri));
+  auto tile_num = write_cell_slab_its.size();
   if (tile_num == 0)  // Nothing to write
     return Status::Ok();
 
@@ -1630,9 +1577,9 @@ Status Writer::ordered_write() {
   for (size_t i = 0; i < tile_num; ++i)
     RETURN_CANCEL_OR_ERROR_ELSE(
         compute_write_cell_ranges<T>(
-            &dense_cell_range_its[i], &write_cell_ranges[i]),
+            &write_cell_slab_its[i], &write_cell_ranges[i]),
         clean_up(uri));
-  dense_cell_range_its.clear();
+  write_cell_slab_its.clear();
 
   // Set number of tiles in the fragment metadata
   frag_meta->set_num_tiles(tile_num);
@@ -1721,7 +1668,7 @@ Status Writer::prepare_full_tiles_fixed(
     const std::string& name,
     const std::set<uint64_t>& coord_dups,
     std::vector<Tile>* tiles) const {
-  STATS_FUNC_IN(writer_prepare_full_tiles_fixed);
+  STATS_FUNC_IN(writer_prepare_full_tiles_fixed)
   // For easy reference
   auto it = buffers_.find(name);
   auto buffer = (unsigned char*)it->second.buffer_;
@@ -1818,14 +1765,14 @@ Status Writer::prepare_full_tiles_fixed(
 
   return Status::Ok();
 
-  STATS_FUNC_OUT(writer_prepare_full_tiles_fixed);
+  STATS_FUNC_OUT(writer_prepare_full_tiles_fixed)
 }
 
 Status Writer::prepare_full_tiles_var(
     const std::string& name,
     const std::set<uint64_t>& coord_dups,
     std::vector<Tile>* tiles) const {
-  STATS_FUNC_IN(writer_prepare_full_tiles_var);
+  STATS_FUNC_IN(writer_prepare_full_tiles_var)
 
   // For easy reference
   auto it = buffers_.find(name);
@@ -1983,14 +1930,14 @@ Status Writer::prepare_full_tiles_var(
 
   return Status::Ok();
 
-  STATS_FUNC_OUT(writer_prepare_full_tiles_var);
+  STATS_FUNC_OUT(writer_prepare_full_tiles_var)
 }
 
 Status Writer::prepare_tiles(
     const std::string& attribute,
     const std::vector<WriteCellRangeVec>& write_cell_ranges,
     std::vector<Tile>* tiles) const {
-  STATS_FUNC_IN(writer_prepare_tiles_ordered);
+  STATS_FUNC_IN(writer_prepare_tiles_ordered)
 
   // Trivial case
   auto tile_num = write_cell_ranges.size();
@@ -2057,7 +2004,7 @@ Status Writer::prepare_tiles(
 
   return Status::Ok();
 
-  STATS_FUNC_OUT(writer_prepare_tiles_ordered);
+  STATS_FUNC_OUT(writer_prepare_tiles_ordered)
 }
 
 Status Writer::prepare_tiles(
@@ -2102,7 +2049,7 @@ Status Writer::prepare_tiles_fixed(
     const std::vector<uint64_t>& cell_pos,
     const std::set<uint64_t>& coord_dups,
     std::vector<Tile>* tiles) const {
-  STATS_FUNC_IN(writer_prepare_tiles_fixed);
+  STATS_FUNC_IN(writer_prepare_tiles_fixed)
 
   // Trivial case
   if (cell_pos.empty())
@@ -2145,7 +2092,7 @@ Status Writer::prepare_tiles_fixed(
 
   return Status::Ok();
 
-  STATS_FUNC_OUT(writer_prepare_tiles_fixed);
+  STATS_FUNC_OUT(writer_prepare_tiles_fixed)
 }
 
 Status Writer::prepare_tiles_var(
@@ -2153,7 +2100,7 @@ Status Writer::prepare_tiles_var(
     const std::vector<uint64_t>& cell_pos,
     const std::set<uint64_t>& coord_dups,
     std::vector<Tile>* tiles) const {
-  STATS_FUNC_IN(writer_prepare_tiles_var);
+  STATS_FUNC_IN(writer_prepare_tiles_var)
 
   // For easy reference
   auto it = buffers_.find(name);
@@ -2213,7 +2160,7 @@ Status Writer::prepare_tiles_var(
 
   return Status::Ok();
 
-  STATS_FUNC_OUT(writer_prepare_tiles_var);
+  STATS_FUNC_OUT(writer_prepare_tiles_var)
 }
 
 void Writer::reset() {
@@ -2223,7 +2170,7 @@ void Writer::reset() {
 }
 
 Status Writer::sort_coords(std::vector<uint64_t>* cell_pos) const {
-  STATS_FUNC_IN(writer_sort_coords);
+  STATS_FUNC_IN(writer_sort_coords)
 
   // For easy reference
   auto domain = array_schema_->domain();
@@ -2246,7 +2193,7 @@ Status Writer::sort_coords(std::vector<uint64_t>* cell_pos) const {
 
   return Status::Ok();
 
-  STATS_FUNC_OUT(writer_sort_coords);
+  STATS_FUNC_OUT(writer_sort_coords)
 }
 
 Status Writer::split_coords_buffer() {
@@ -2422,7 +2369,7 @@ Status Writer::write_cell_range_to_tile_var(
 Status Writer::write_all_tiles(
     FragmentMetadata* frag_meta,
     const std::unordered_map<std::string, std::vector<Tile>>& tiles) const {
-  STATS_FUNC_IN(writer_write_all_tiles);
+  STATS_FUNC_IN(writer_write_all_tiles)
 
   assert(!tiles.empty());
 
@@ -2443,7 +2390,7 @@ Status Writer::write_all_tiles(
 
   return Status::Ok();
 
-  STATS_FUNC_OUT(writer_write_all_tiles);
+  STATS_FUNC_OUT(writer_write_all_tiles)
 }
 
 Status Writer::write_tiles(

@@ -1728,15 +1728,17 @@ int32_t tiledb_dimension_get_type(
 }
 
 int32_t tiledb_dimension_get_domain(
-    tiledb_ctx_t* ctx, const tiledb_dimension_t* dim, void** domain) {
+    tiledb_ctx_t* ctx, const tiledb_dimension_t* dim, const void** domain) {
   if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, dim) == TILEDB_ERR)
     return TILEDB_ERR;
-  *domain = dim->dim_->domain();
+  *domain = &dim->dim_->domain()[0];
   return TILEDB_OK;
 }
 
 int32_t tiledb_dimension_get_tile_extent(
-    tiledb_ctx_t* ctx, const tiledb_dimension_t* dim, void** tile_extent) {
+    tiledb_ctx_t* ctx,
+    const tiledb_dimension_t* dim,
+    const void** tile_extent) {
   if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, dim) == TILEDB_ERR)
     return TILEDB_ERR;
   *tile_extent = dim->dim_->tile_extent();

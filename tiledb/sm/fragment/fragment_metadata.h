@@ -34,6 +34,16 @@
 #ifndef TILEDB_FRAGMENT_METADATA_H
 #define TILEDB_FRAGMENT_METADATA_H
 
+<<<<<<< HEAD
+=======
+#include "tiledb/sm/array_schema/array_schema.h"
+#include "tiledb/sm/buffer/buffer.h"
+#include "tiledb/sm/enums/query_type.h"
+#include "tiledb/sm/misc/status.h"
+#include "tiledb/sm/misc/types.h"
+#include "tiledb/sm/rtree/rtree.h"
+
+>>>>>>> b8db8138... CLEANUP
 #include <mutex>
 #include <unordered_map>
 #include <vector>
@@ -76,7 +86,7 @@ class FragmentMetadata {
       bool dense = true);
 
   /** Destructor. */
-  ~FragmentMetadata();
+  ~FragmentMetadata() = default;
 
   /* ********************************* */
   /*                API                */
@@ -93,7 +103,6 @@ class FragmentMetadata {
    * from the fragment, for a given set of attributes. Note that these upper
    * bounds is added to those in `buffer_sizes`.
    *
-   * @tparam T The coordinates type.
    * @param encryption_key The encryption key the array was opened with.
    * @param subarray The targeted subarray.
    * @param buffer_sizes The upper bounds will be added to this map. The latter
@@ -102,10 +111,9 @@ class FragmentMetadata {
    *     offsets size, whereas the second is the data size.
    * @return Status
    */
-  template <class T>
   Status add_max_buffer_sizes(
       const EncryptionKey& encryption_key,
-      const T* subarray,
+      const NDRange& subarray,
       std::unordered_map<std::string, std::pair<uint64_t, uint64_t>>*
           buffer_sizes);
 
@@ -115,7 +123,6 @@ class FragmentMetadata {
    * bounds is added to those in `buffer_sizes`. Applicable only to the dense
    * case.
    *
-   * @tparam T The coordinates type.
    * @param encryption_key The encryption key the array was opened with.
    * @param subarray The targeted subarray.
    * @param buffer_sizes The upper bounds will be added to this map. The latter
@@ -124,10 +131,9 @@ class FragmentMetadata {
    *     offsets size, whereas the second is the data size.
    * @return Status
    */
-  template <class T>
   Status add_max_buffer_sizes_dense(
       const EncryptionKey& encryption_key,
-      const T* subarray,
+      const NDRange& subarray,
       std::unordered_map<std::string, std::pair<uint64_t, uint64_t>>*
           buffer_sizes);
 
@@ -137,7 +143,6 @@ class FragmentMetadata {
    * bounds is added to those in `buffer_sizes`. Applicable only to the sparse
    * case.
    *
-   * @tparam T The coordinates type.
    * @param encryption_key The encryption key the array was opened with.
    * @param subarray The targeted subarray.
    * @param buffer_sizes The upper bounds will be added to this map. The latter
@@ -146,10 +151,9 @@ class FragmentMetadata {
    *     offsets size, whereas the second is the data size.
    * @return Status
    */
-  template <class T>
   Status add_max_buffer_sizes_sparse(
       const EncryptionKey& encryption_key,
-      const T* subarray,
+      const NDRange& subarray,
       std::unordered_map<std::string, std::pair<uint64_t, uint64_t>>*
           buffer_sizes);
 
@@ -157,9 +161,8 @@ class FragmentMetadata {
    * Returns the ids (positions) of the tiles overlapping `subarray`, along with
    * with the coverage of the overlap.
    */
-  template <class T>
   std::vector<std::pair<uint64_t, double>> compute_overlapping_tile_ids_cov(
-      const T* subarray) const;
+      const NDRange& subarray) const;
 
   /**
    * Returns ture if the corresponding fragment is dense, and false if it
@@ -168,7 +171,7 @@ class FragmentMetadata {
   bool dense() const;
 
   /** Returns the (expanded) domain in which the fragment is constrained. */
-  const void* domain() const;
+  const NDRange& domain() const;
 
   /** Returns the format version of this fragment. */
   uint32_t format_version() const;
@@ -184,10 +187,9 @@ class FragmentMetadata {
    * as a vector of [low, high] intervals per dimension. The encryption
    * key is needed because certain metadata may have to be loaded on-the-fly.
    */
-  template <class T>
   Status get_tile_overlap(
       const EncryptionKey& encryption_key,
-      const std::vector<const T*>& range,
+      const NDRange& range,
       TileOverlap* tile_overlap);
 
   /**
@@ -197,7 +199,7 @@ class FragmentMetadata {
    *     will be constrained.
    * @return Status
    */
-  Status init(const void* non_empty_domain);
+  Status init(const NDRange& non_empty_domain);
 
   /** Returns the number of cells in the last tile. */
   uint64_t last_tile_cell_num() const;
@@ -206,16 +208,13 @@ class FragmentMetadata {
   Status load(const EncryptionKey& encryption_key);
 
   /** Returns the MBRs of the fragment. Used in format version <=2. */
-  const std::vector<void*> mbrs() const;
+  const std::vector<NDRange>& mbrs() const;
 
   /** Stores all the metadata to storage. */
   Status store(const EncryptionKey& encryption_key);
 
   /** Returns the non-empty domain in which the fragment is constrained. */
-  const void* non_empty_domain() const;
-
-  /** Returns the non-empty domain in which the fragment is constrained. */
-  std::vector<const void*> non_empty_domain_vec() const;
+  const NDRange& non_empty_domain() const;
 
   /**
    * Simply sets the number of cells for the last tile.
@@ -230,22 +229,10 @@ class FragmentMetadata {
    * non-empty domain of the fragment.
    *
    * @param tile The tile index whose MBR will be set.
-   * @param mbr The MBR to be set.
+   * @param mbr The MBR to be set. It is a vector of uint8_t per dimension.
    * @return Status
    */
-  Status set_mbr(uint64_t tile, const void* mbr);
-
-  /**
-   * Sets the input tile's MBR in the fragment metadata. It also expands the
-   * non-empty domain of the fragment.
-   *
-   * @tparam T The coordinates type.
-   * @param tile The tile index whose MBR will be set.
-   * @param mbr The MBR to be set.
-   * @return Status
-   */
-  template <class T>
-  Status set_mbr(uint64_t tile, const void* mbr);
+  Status set_mbr(uint64_t tile, const NDRange& mbr);
 
   /**
    * Resizes the per-tile metadata vectors for the given number of tiles. This
@@ -347,7 +334,7 @@ class FragmentMetadata {
       uint64_t* offset);
 
   /** Returns the MBR of the input tile. */
-  const void* mbr(uint64_t tile_idx) const;
+  const NDRange& mbr(uint64_t tile_idx) const;
 
   /**
    * Retrieves the size of the tile when it is persisted (e.g. the size of the
@@ -466,9 +453,6 @@ class FragmentMetadata {
    */
   std::unordered_map<std::string, unsigned> idx_map_;
 
-  /** A vector storing the first and last coordinates of each tile. */
-  std::vector<void*> bounding_coords_;
-
   /** True if the fragment is dense, and false if it is sparse. */
   bool dense_;
 
@@ -478,7 +462,7 @@ class FragmentMetadata {
    * boundaries (if there is a tile grid imposed by tile extents). Note that the
    * type of the domain must be the same as the type of the array coordinates.
    */
-  void* domain_;
+  NDRange domain_;
 
   /** Stores the size of each attribute file. */
   std::vector<uint64_t> file_sizes_;
@@ -498,9 +482,8 @@ class FragmentMetadata {
   /** Keeps track of which metadata has been loaded. */
   LoadedMetadata loaded_metadata_;
 
-  // TODO(sp): remove after the new dense algorithm is implemented
   /** The MBRs (applicable only to the sparse case with irregular tiles). */
-  std::vector<void*> mbrs_;
+  std::vector<NDRange> mbrs_;
 
   /** The size of the fragment metadata file. */
   uint64_t meta_file_size_;
@@ -518,7 +501,7 @@ class FragmentMetadata {
    * The non-empty domain in which the fragment is constrained. Note that the
    * type of the domain must be the same as the type of the array coordinates.
    */
-  void* non_empty_domain_;
+  NDRange non_empty_domain_;
 
   /** An RTree for the MBRs. */
   RTree rtree_;
@@ -588,33 +571,14 @@ class FragmentMetadata {
    * Returns the ids (positions) of the tiles overlapping `subarray`.
    * Applicable only to dense arrays.
    */
-  template <class T>
-  std::vector<uint64_t> compute_overlapping_tile_ids(const T* subarray) const;
+  std::vector<uint64_t> compute_overlapping_tile_ids(
+      const NDRange& subarray) const;
 
   /** Creates an RTree (stored in `rtree_`) on top of `mbrs_`. */
   Status create_rtree();
 
-  /**
-   * Retrieves the tile domain for the input `subarray` based on the expanded
-   * `domain_`.
-   *
-   * @tparam T The domain type.
-   * @param subarray The targeted subarray.
-   * @param subarray_tile_domain The tile domain to be retrieved.
-   */
-  template <class T>
-  void get_subarray_tile_domain(
-      const T* subarray, T* subarray_tile_domain) const;
-
-  /**
-   * Expands the non-empty domain using the input MBR.
-   *
-   * @tparam T The coordinates type.
-   * @param mbr The MBR to expand the non-empty domain with.
-   * @return Status
-   */
-  template <class T>
-  Status expand_non_empty_domain(const T* mbr);
+  /** Expands the non-empty domain using the input MBR. */
+  Status expand_non_empty_domain(const NDRange& mbr);
 
   /** Loads the R-tree from storage. */
   Status load_rtree(const EncryptionKey& encryption_key);

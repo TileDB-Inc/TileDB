@@ -41,6 +41,7 @@
 #include "tiledb/sm/filter/filter_pipeline.h"
 #include "tiledb/sm/misc/logger.h"
 #include "tiledb/sm/misc/status.h"
+#include "tiledb/sm/misc/types.h"
 
 namespace tiledb {
 namespace sm {
@@ -71,14 +72,14 @@ class Dimension {
   explicit Dimension(const Dimension* dim);
 
   /** Destructor. */
-  ~Dimension();
+  ~Dimension() = default;
 
   /* ********************************* */
   /*                API                */
   /* ********************************* */
 
   /** Returns the number of values per cell. */
-  unsigned int cell_val_num() const;
+  unsigned cell_val_num() const;
 
   /** Returns the size (in bytes) of a coordinate in this dimension. */
   uint64_t coord_size() const;
@@ -96,7 +97,7 @@ class Dimension {
   Status deserialize(ConstBuffer* buff, Datatype type);
 
   /** Returns the domain. */
-  void* domain() const;
+  const Range& domain() const;
 
   /** Dumps the dimension contents in ASCII form in the selected output. */
   void dump(FILE* out) const;
@@ -140,10 +141,115 @@ class Dimension {
   /** Returns `true` if `value` is within the 1D `range`. */
   template <class T>
   static bool value_in_range(
-      const Dimension* dim, const void* value, const void* range);
+      const Dimension* dim, const Value& value, const Range& range);
 
   /** Returns `true` if `value` is within the 1D `range`. */
-  bool value_in_range(const void* value, const void* range) const;
+  bool value_in_range(const Value& value, const Range& range) const;
+
+  /** Returns `true` if 1D ranges `a` and `b` overlap. */
+  template <class T>
+  static bool overlap(const Dimension* dim, const Range& a, const Range& b);
+
+  /** Returns `true` if 1D ranges `a` and `b` overlap. */
+  bool overlap(const Range& a, const Range& b) const;
+
+  /** Crops 1D range `a` using 1D range `b`. */
+  template <class T>
+  static void crop(const Dimension* dim, Range* a, const Range& b);
+
+  /** Crops 1D range `a` using 1D range `b`. */
+  void crop(Range* a, const Range& b) const;
+
+  /** Expands range `a` using range `b`. */
+  template <class T>
+  static void expand_range(const Dimension* dim, Range* a, const Range& b);
+
+  /** Expands range `a` using range `b`. */
+  void expand_range(Range* a, const Range& b) const;
+
+  /** Expands range `a` using range `b`. */
+  /** Expands range `a` to coincide with the dimension tiles. */
+  template <class T>
+  static void expand_range_to_tile(const Dimension* dim, Range* a);
+
+  /** Expands range `a` to coincide with the dimension tiles. */
+  void expand_range_to_tile(Range* range) const;
+
+  /**
+   * Returns the number of tiles the input 1D range consists of,
+   * based on the dimension's tile extent.
+   */
+  template <class T>
+  static uint64_t tile_num(const Dimension* dim, const Range& range);
+
+  /**
+   * Returns the number of tiles the input 1D range consists of,
+   * based on the dimension's tile extent.
+   */
+  uint64_t tile_num(const Range& range) const;
+
+  /** Returns the 1D tile domain of `range` based on `domain`. */
+  template <class T>
+  static Range tile_domain(
+      const Dimension* dim, const Range& range, const Range& domain);
+
+  /** Returns the 1D tile domain of `range` based on `domain`. */
+  Range tile_domain(const Range& range, const Range& domain) const;
+
+  /** Returns the start value of `range`. */
+  template <class T>
+  static Value range_start(const Dimension* dim, const Range& range);
+
+  /** Returns the start value of `range`. */
+  Value range_start(const Range& range) const;
+
+  /** Returns a * b, after casting `a` to `uint64_t`. */
+  template <class T>
+  static uint64_t mul(const Dimension* dim, const Value& a, uint64_t b);
+
+  /** Returns a * b, after casting `a` to `uint64_t`. */
+  uint64_t mul(const Value& a, uint64_t b) const;
+
+  /** Adds `b` to value `a`. */
+  template <class T>
+  static void add(const Dimension* dim, Value* a, uint64_t b);
+
+  /** Adds `b` to value `a`. */
+  void add(Value* a, uint64_t b) const;
+
+  /** Returns true if `value` exceeds the high bound of `range`. */
+  template <class T>
+  static bool value_after_range(
+      const Dimension* dim, const Value& value, const Range& range);
+
+  /** Returns true if `value` exceeds the high bound of `range`. */
+  bool value_after_range(const Value& value, const Range& range) const;
+
+  /** Sets `value` to the `range` start value. */
+  template <class T>
+  static void set_value_to_range_start(
+      const Dimension* dim, Value* value, const Range& range);
+
+  /** Sets `value` to the `range` start value. */
+  void set_value_to_range_start(Value* value, const Range& range) const;
+
+  /**
+   * Returns the overlap percentage between `range` and the tile in `domain`
+   * indicated by `tile_coords`.
+   */
+  template <class T>
+  static double tile_coverage(
+      const Dimension* dim,
+      const Range& domain,
+      const Value& tile_coords,
+      const Range& range);
+
+  /**
+   * Returns the overlap percentage between `range` and the tile in `domain`
+   * indicated by `tile_coords`.
+   */
+  double tile_coverage(
+      const Range& domain, const Value& tile_coords, const Range& range) const;
 
   /**
    * Serializes the object members into a binary buffer.
@@ -155,6 +261,9 @@ class Dimension {
 
   /** Sets the domain. */
   Status set_domain(const void* domain);
+
+  /** Sets the domain. */
+  Status set_domain(const Range& domain);
 
   /** Sets the tile extent. */
   Status set_tile_extent(const void* tile_extent);
@@ -175,7 +284,7 @@ class Dimension {
   Status set_null_tile_extent_to_range();
 
   /** Returns the tile extent. */
-  void* tile_extent() const;
+  const void* tile_extent() const;
 
   /** Returns the dimension type. */
   Datatype type() const;
@@ -189,13 +298,13 @@ class Dimension {
   /* ********************************* */
 
   /** The dimension domain. */
-  void* domain_;
+  Range domain_;
 
   /** The dimension name. */
   std::string name_;
 
   /** The tile extent of the dimension. */
-  void* tile_extent_;
+  std::vector<uint8_t> tile_extent_;
 
   /** The dimension type. */
   Datatype type_;
@@ -211,8 +320,88 @@ class Dimension {
    * Stores the appropriate templated value_in_range() function based on the
    * dimension datatype.
    */
-  std::function<bool(const Dimension* dim, const void*, const void*)>
+  std::function<bool(const Dimension* dim, const Value&, const Range&)>
       value_in_range_func_;
+
+  /**
+   * Stores the appropriate templated overlap() function based on the
+   * dimension datatype.
+   */
+  std::function<bool(const Dimension* dim, const Range&, const Range&)>
+      overlap_func_;
+
+  /**
+   * Stores the appropriate templated crop() function based on the
+   * dimension datatype.
+   */
+  std::function<void(const Dimension* dim, Range*, const Range&)> crop_func_;
+
+  /**
+   * Stores the appropriate templated expand_range() function based on the
+   * dimension datatype.
+   */
+  std::function<void(const Dimension* dim, Range*, const Range&)>
+      expand_range_func_;
+
+  /**
+   * Stores the appropriate templated expand_range_to_tile() function based on
+   * the dimension datatype.
+   */
+  std::function<void(const Dimension* dim, Range*)> expand_range_to_tile_func_;
+
+  /**
+   * Stores the appropriate templated tile_num() function based on the
+   * dimension datatype.
+   */
+  std::function<uint64_t(const Dimension* dim, const Range&)> tile_num_func_;
+
+  /**
+   * Stores the appropriate templated tile_domain() function based on the
+   * dimension datatype.
+   */
+  std::function<Range(const Dimension* dim, const Range&, const Range&)>
+      tile_domain_func_;
+
+  /**
+   * Stores the appropriate templated range_start() function based on the
+   * dimension datatype.
+   */
+  std::function<Value(const Dimension* dim, const Range&)> range_start_func_;
+
+  /**
+   * Stores the appropriate templated mul() function based on the
+   * dimension datatype.
+   */
+  std::function<uint64_t(const Dimension* dim, const Value&, uint64_t)>
+      mul_func_;
+
+  /**
+   * Stores the appropriate templated add() function based on the
+   * dimension datatype.
+   */
+  std::function<void(const Dimension* dim, Value*, uint64_t)> add_func_;
+
+  /**
+   * Stores the appropriate templated value_after_range() function based on the
+   * dimension datatype.
+   */
+  std::function<bool(const Dimension* dim, const Value&, const Range&)>
+      value_after_range_func_;
+
+  /**
+   * Stores the appropriate templated set_value_to_range_start() function based
+   * on the dimension datatype.
+   */
+  std::function<void(const Dimension* dim, Value*, const Range&)>
+      set_value_to_range_start_func_;
+
+  /**
+   * Stores the appropriate templated tile_coverage() function based
+   * on the dimension datatype.
+   */
+  std::function<double(
+      const Dimension* dim, const Range&, const Value&, const Range&)>
+      tile_coverage_func_;
 
   /* ********************************* */
   /*          PRIVATE METHODS          */
@@ -232,8 +421,8 @@ class Dimension {
       typename T,
       typename std::enable_if<std::is_integral<T>::value>::type* = nullptr>
   Status check_domain() const {
-    assert(domain_ != nullptr);
-    auto domain = static_cast<const T*>(domain_);
+    assert(!domain_.empty());
+    auto domain = (const T*)&domain_[0];
 
     // Upper bound should not be smaller than lower
     if (domain[1] < domain[0])
@@ -263,8 +452,8 @@ class Dimension {
       typename T,
       typename std::enable_if<!std::is_integral<T>::value>::type* = nullptr>
   Status check_domain() const {
-    assert(domain_ != nullptr);
-    auto domain = static_cast<const T*>(domain_);
+    assert(!domain_.empty());
+    auto domain = (const T*)&domain_[0];
 
     // Check for NAN and INF
     if (std::isinf(domain[0]) || std::isinf(domain[1]))
@@ -295,11 +484,47 @@ class Dimension {
   template <class T>
   Status check_tile_extent() const;
 
-  /** Sets the templated oob function. */
+  /** Sets the templated oob() function. */
   void set_oob_func();
 
-  /** Sets the templated value_in_range function. */
+  /** Sets the templated value_in_range() function. */
   void set_value_in_range_func();
+
+  /** Sets the templated overlap() function. */
+  void set_overlap_func();
+
+  /** Sets the templated crop() function. */
+  void set_crop_func();
+
+  /** Sets the templated expand_range() function. */
+  void set_expand_range_func();
+
+  /** Sets the templated expand_range_to_tile() function. */
+  void set_expand_range_to_tile_func();
+
+  /** Sets the templated tile_num() function. */
+  void set_tile_num_func();
+
+  /** Sets the templated tile_domain() function. */
+  void set_tile_domain_func();
+
+  /** Sets the templated range_start() function. */
+  void set_range_start_func();
+
+  /** Sets the templated mul() function. */
+  void set_mul_func();
+
+  /** Sets the templated add() function. */
+  void set_add_func();
+
+  /** Sets the templated value_after_range() function. */
+  void set_value_after_range_func();
+
+  /** Sets the templated set_value_to_range_start() function. */
+  void set_set_value_to_range_start_func();
+
+  /** Sets the templated tile_coverage() function. */
+  void set_tile_coverage_func();
 };
 
 }  // namespace sm

@@ -60,18 +60,16 @@ namespace sm {
 
 #define RETURN_NOT_OK(s) \
   do {                   \
-    Status _s = (s);     \
-    if (!_s.ok()) {      \
-      return _s;         \
+    if (!s.ok()) {       \
+      return s;          \
     }                    \
   } while (false)
 
 #define RETURN_NOT_OK_ELSE(s, else_) \
   do {                               \
-    Status _s = (s);                 \
-    if (!_s.ok()) {                  \
+    if (!s.ok()) {                   \
       else_;                         \
-      return _s;                     \
+      return s;                      \
     }                                \
   } while (false)
 
