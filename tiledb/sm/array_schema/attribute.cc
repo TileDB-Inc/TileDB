@@ -122,6 +122,8 @@ Status Attribute::deserialize(ConstBuffer* buff) {
 }
 
 void Attribute::dump(FILE* out) const {
+  if (out == nullptr)
+    out = stdout;
   // Dump
   fprintf(out, "### Attribute ###\n");
   fprintf(out, "- Name: %s\n", is_anonymous() ? "<anonymous>" : name_.c_str());

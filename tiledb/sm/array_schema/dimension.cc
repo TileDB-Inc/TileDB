@@ -204,6 +204,8 @@ void* Dimension::domain() const {
 }
 
 void Dimension::dump(FILE* out) const {
+  if (out == nullptr)
+    out = stdout;
   // Retrieve domain and tile extent strings
   std::string domain_s = utils::parse::domain_str(domain_, type_);
   std::string tile_extent_s =

@@ -333,6 +333,8 @@ unsigned int ArraySchema::dim_num() const {
 }
 
 void ArraySchema::dump(FILE* out) const {
+  if (out == nullptr)
+    out = stdout;
   fprintf(out, "- Array type: %s\n", array_type_str(array_type_).c_str());
   fprintf(out, "- Cell order: %s\n", layout_str(cell_order_).c_str());
   fprintf(out, "- Tile order: %s\n", layout_str(tile_order_).c_str());
