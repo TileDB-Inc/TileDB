@@ -249,12 +249,6 @@ class Tile {
   /** Returns the tile size. */
   uint64_t size() const;
 
-  /**
-   * Splits the coordinates such that all the values of each dimension
-   * appear contiguously in the buffer.
-   */
-  void split_coordinates();
-
   /** Returns *true* if the tile stores coordinates. */
   bool stores_coords() const;
 

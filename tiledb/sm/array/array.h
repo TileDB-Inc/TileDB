@@ -77,26 +77,6 @@ class Array {
   const URI& array_uri() const;
 
   /**
-   * Computes an upper bound on the buffer sizes required for a read
-   * query, for a given subarray and set of attributes.
-   *
-   * @param subarray The subarray to focus on. Note that it must have the same
-   *     underlying type as the array domain.
-   * @param attributes The attributes to focus on.
-   * @param buffer_sizes The buffer sizes to be retrieved. This is a map from
-   *     the attribute (or coordinates) name to a pair of sizes (in bytes).
-   *     For fixed-sized attributes, the second size is ignored. For var-sized
-   *     attributes, the first is the offsets size and the second is the
-   *     values size.
-   * @return Status
-   */
-  Status compute_max_buffer_sizes(
-      const void* subarray,
-      const std::vector<std::string>& attributes,
-      std::unordered_map<std::string, std::pair<uint64_t, uint64_t>>*
-          max_buffer_sizes) const;
-
-  /**
    * Opens the array for reading/writing.
    *
    * @param query_type The mode in which the array is opened.

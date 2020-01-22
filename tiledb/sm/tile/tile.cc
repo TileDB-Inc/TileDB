@@ -295,34 +295,6 @@ uint64_t Tile::size() const {
   return (buffer_ == nullptr) ? 0 : buffer_->size();
 }
 
-void Tile::split_coordinates() {
-  assert(dim_num_ > 0);
-
-  // For easy reference
-  uint64_t tile_size = buffer_->size();
-  uint64_t coord_size = cell_size_ / dim_num_;
-  uint64_t cell_num = tile_size / cell_size_;
-  auto tile_c = (char*)buffer_->data();
-  uint64_t ptr = 0, ptr_tmp = 0;
-
-  // Create a tile clone
-  auto tile_tmp = (char*)std::malloc(tile_size);
-  std::memcpy(tile_tmp, tile_c, tile_size);
-
-  // Split coordinates
-  for (unsigned int j = 0; j < dim_num_; ++j) {
-    ptr_tmp = j * coord_size;
-    for (uint64_t i = 0; i < cell_num; ++i) {
-      std::memcpy(tile_c + ptr, tile_tmp + ptr_tmp, coord_size);
-      ptr += coord_size;
-      ptr_tmp += cell_size_;
-    }
-  }
-
-  // Clean up
-  std::free((void*)tile_tmp);
-}
-
 bool Tile::stores_coords() const {
   return dim_num_ > 0;
 }

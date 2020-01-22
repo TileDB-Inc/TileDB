@@ -214,6 +214,9 @@ class FragmentMetadata {
   /** Returns the non-empty domain in which the fragment is constrained. */
   const void* non_empty_domain() const;
 
+  /** Returns the non-empty domain in which the fragment is constrained. */
+  std::vector<const void*> non_empty_domain_vec() const;
+
   /**
    * Simply sets the number of cells for the last tile.
    *
