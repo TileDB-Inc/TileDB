@@ -86,7 +86,7 @@ const uint64_t cell_var_offset_size = sizeof(uint64_t);
 /** The type of a variable cell offset. */
 const Datatype cell_var_offset_type = Datatype::UINT64;
 
-/** A special value indicating varibale size. */
+/** A special value indicating variable size. */
 const uint64_t var_size = std::numeric_limits<uint64_t>::max();
 
 /** The default compressor for the offsets of variable-sized cells. */
