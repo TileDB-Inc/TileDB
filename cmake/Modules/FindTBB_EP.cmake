@@ -39,7 +39,11 @@
 # will find it. This is a macro so the variables are set in the parent scope.
 #
 macro(build_tbb_ep)
-  set(TBB_SRC_DIR "${TILEDB_EP_BASE}/src/ep_tbb")
+  if (WIN32)
+    set(TBB_SRC_DIR "${TILEDB_EP_BASE}/src/ep_tbb/tbb")
+  else()
+    set(TBB_SRC_DIR "${TILEDB_EP_BASE}/src/ep_tbb")
+  endif()
   set(TBB_BUILD_DIR "${TILEDB_EP_BASE}/src/ep_tbb-build")
   set(TBB_BUILD_PREFIX "")
   set(TBB_BUILD_CMAKE "${TBB_SRC_DIR}/cmake/TBBBuild.cmake")
@@ -228,8 +232,8 @@ else()
       # On Windows we download pre-built binaries.
       ExternalProject_Add(ep_tbb
         PREFIX "externals"
-        URL "https://github.com/01org/tbb/releases/download/2018_U3/tbb2018_20180312oss_win.zip"
-        URL_HASH SHA1=7f0b4b227679637f7a4065b0377d55d12fac983b
+        URL "https://github.com/intel/tbb/releases/download/v2020.1/tbb-2020.1-win.zip"
+        URL_HASH SHA1=fdcdba2026f4c11f1cb3cbc36ff45d828219e580
         CONFIGURE_COMMAND ""
         BUILD_COMMAND ""
         UPDATE_COMMAND ""
@@ -243,8 +247,8 @@ else()
     else()
       ExternalProject_Add(ep_tbb
         PREFIX "externals"
-        URL "https://github.com/01org/tbb/archive/2018_U3.zip"
-        URL_HASH SHA1=c17ae26f2be1dd7ca9586f795d07a226ceca2dc2
+        URL "https://github.com/intel/tbb/archive/v2020.1.tar.gz"
+        URL_HASH SHA1=493a1faf80a7ab320448eec0fbfaedf40e9574ee
         CONFIGURE_COMMAND ""
         BUILD_COMMAND ""
         UPDATE_COMMAND ""
