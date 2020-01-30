@@ -308,8 +308,6 @@ Status Array::close() {
     if (query_type_ == QueryType::READ) {
       RETURN_NOT_OK(storage_manager_->array_close_for_reads(array_uri_));
     } else {
-      Buffer metadata_buff;
-      RETURN_NOT_OK(metadata_.serialize(&metadata_buff));
       RETURN_NOT_OK(storage_manager_->array_close_for_writes(
           array_uri_, encryption_key_, &metadata_));
     }
