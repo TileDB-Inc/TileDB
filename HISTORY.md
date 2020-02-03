@@ -1,3 +1,22 @@
+# TileDB v1.7.5 Release Notes
+
+## New features
+
+## Improvements
+
+* Avoid useless serialization of Array Metadata on close [#1485](https://github.com/TileDB-Inc/TileDB/pull/1485)
+* Update CONTRIBUTING and Code of Conduct [#1487](https://github.com/TileDB-Inc/TileDB/pull/1487)
+
+## Deprecations
+
+## Bug fixes
+
+* Fix deadlock in writes of TileDB Cloud Arrays [#1486](https://github.com/TileDB-Inc/TileDB/pull/1486)
+
+## API additions
+
+## API removals
+
 # TileDB v1.7.4 Release Notes
 
 ## New features
@@ -13,7 +32,6 @@
 ## API additions
 
 ## API removals
-
 
 # TileDB v1.7.3 Release Notes
 
