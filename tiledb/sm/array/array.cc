@@ -250,8 +250,12 @@ Status Array::close() {
   fragment_metadata_.clear();
 
   if (remote_) {
-    // Update array metadata for write queries.
-    if (query_type_ == QueryType::WRITE) {
+    // Update array metadata for write queries if metadata was written by the
+    // user
+    if (query_type_ == QueryType::WRITE && metadata_.num() > 0) {
+      // Set metadata loaded to be true so when serialization fetchs the
+      // metadata it won't trigger a deadlock
+      metadata_loaded_ = true;
       auto rest_client = storage_manager_->rest_client();
       if (rest_client == nullptr)
         return LOG_STATUS(Status::ArrayError(
