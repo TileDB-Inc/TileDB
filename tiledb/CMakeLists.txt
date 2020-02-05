@@ -109,6 +109,7 @@ set(TILEDB_CORE_SOURCES
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/encryption/encryption_key_validation.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/encryption/encryption_openssl.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/encryption/encryption_win32.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/filesystem/azure.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/filesystem/hdfs_filesystem.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/filesystem/posix.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/filesystem/s3.cc
@@ -295,6 +296,26 @@ if (TILEDB_S3)
       AWSSDK::aws-c-common
   )
   add_definitions(-DHAVE_S3)
+endif()
+
+# Azure dependencies
+if (TILEDB_AZURE)
+  message(STATUS "The TileDB library is compiled with Azure support.")
+  find_package(AZURESDK_EP REQUIRED COMPONENTS azure)
+  add_definitions(-DHAVE_AZURE)
+
+  # The Azure SDK build process suppresses many compiler warnings in its
+  # header files, allowing it to build without issue. When we import these
+  # header files for use within the core, our build fails because we treat
+  # warnings as errors (by default) and do not suppress any warnings.
+  #
+  # This suppresses the compiler warnings on our source files that include Azure
+  # SDK headers.
+  set_source_files_properties(
+    ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/filesystem/azure.cc
+    PROPERTIES
+    COMPILE_FLAGS
+    "-Wno-unknown-pragmas -Wno-reorder -Wno-unused-value")
 endif()
 
 # Libcurl
