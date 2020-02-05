@@ -48,6 +48,8 @@
     TILEDB_FILESYSTEM_ENUM(HDFS) = 0,
     /** S3 filesystem */
     TILEDB_FILESYSTEM_ENUM(S3) = 1,
+    /** Azure filesystem */
+    TILEDB_FILESYSTEM_ENUM(AZURE) = 2,
 #endif
 
 #ifdef TILEDB_DATATYPE_ENUM

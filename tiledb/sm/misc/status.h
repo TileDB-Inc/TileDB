@@ -102,6 +102,7 @@ enum class StatusCode : char {
   Config,
   Utils,
   FS_S3,
+  FS_AZURE,
   FS_HDFS,
   Attribute,
   DenseCellRangeIter,
@@ -276,6 +277,11 @@ class Status {
   /** Return a UtilsError error class Status with a given message **/
   static Status S3Error(const std::string& msg) {
     return Status(StatusCode::FS_S3, msg, -1);
+  }
+
+  /** Return a UtilsError error class Status with a given message **/
+  static Status AzureError(const std::string& msg) {
+    return Status(StatusCode::FS_AZURE, msg, -1);
   }
 
   /** Return a UtilsError error class Status with a given message **/

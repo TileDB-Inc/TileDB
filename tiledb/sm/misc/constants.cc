@@ -408,6 +408,9 @@ const std::string filesystem_type_hdfs_str = "HDFS";
 /** The string representation for filesystem type s3. */
 const std::string filesystem_type_s3_str = "S3";
 
+/** The string representation for filesystem type Azure. */
+const std::string filesystem_type_azure_str = "AZURE";
+
 /** The string representation for WalkOrder preorder. */
 const std::string walkorder_preorder_str = "PREORDER";
 

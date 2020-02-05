@@ -145,6 +145,21 @@ class URI {
   bool is_s3() const;
 
   /**
+   * Checks if the input path is Azure.
+   *
+   * @param path The path to be checked.
+   * @return The result of the check.
+   */
+  static bool is_azure(const std::string& path);
+
+  /**
+   * Checks if the URI is Azure.
+   *
+   * @return The result of the check.
+   */
+  bool is_azure() const;
+
+  /**
    * Checks if the input path is TileDB.
    *
    * @param path The path to be checked.
