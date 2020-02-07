@@ -770,6 +770,10 @@ Status S3::touch(const URI& uri) const {
         "Cannot create file; URI is not an S3 URI: " + uri.to_string())));
   }
 
+  if (is_object(uri)) {
+    return Status::Ok();
+  }
+
   Aws::Http::URI aws_uri = uri.c_str();
   Aws::S3::Model::PutObjectRequest put_object_request;
   put_object_request.WithKey(aws_uri.GetPath())
