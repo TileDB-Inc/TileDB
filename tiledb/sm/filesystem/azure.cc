@@ -612,6 +612,12 @@ Status Azure::touch(const URI& uri) const {
         std::string("URI is not an Azure URI: " + uri.to_string())));
   }
 
+  bool is_blob;
+  RETURN_NOT_OK(this->is_blob(uri, &is_blob));
+  if (is_blob) {
+    return Status::Ok();
+  }
+
   std::string container_name;
   std::string blob_path;
   RETURN_NOT_OK(parse_azure_uri(uri, &container_name, &blob_path));
