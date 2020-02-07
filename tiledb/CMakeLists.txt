@@ -109,6 +109,7 @@ set(TILEDB_CORE_SOURCES
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/encryption/encryption_key_validation.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/encryption/encryption_openssl.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/encryption/encryption_win32.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/filesystem/azure.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/filesystem/hdfs_filesystem.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/filesystem/posix.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/filesystem/s3.cc
@@ -297,8 +298,21 @@ if (TILEDB_S3)
   add_definitions(-DHAVE_S3)
 endif()
 
+# Azure dependencies
+if (TILEDB_AZURE)
+  message(STATUS "The TileDB library is compiled with Azure support.")
+  find_package(AZURESDK_EP REQUIRED COMPONENTS azure)
+  target_link_libraries(TILEDB_CORE_OBJECTS_ILIB INTERFACE uuid)
+  target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
+    INTERFACE
+      AzureSDK::AzureSDK
+  )
+
+  add_definitions(-DHAVE_AZURE)
+endif()
+
 # Libcurl
-if (TILEDB_S3 OR TILEDB_SERIALIZATION)
+if (TILEDB_S3 OR TILEDB_AZURE OR TILEDB_SERIALIZATION)
   if (NOT WIN32)
     find_package(Curl_EP REQUIRED)
     target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
@@ -531,6 +545,7 @@ if (TILEDB_STATIC)
   append_dep_lib(AWSSDK::aws-c-event-stream)
   append_dep_lib(AWSSDK::aws-checksums)
   append_dep_lib(AWSSDK::aws-c-common)
+  append_dep_lib(AzureSDK::AzureSDK)
 
   # Spdlog is a special case because it is header-only.
   string(CONCAT TILEDB_STATIC_DEP_STRING
