@@ -50,6 +50,7 @@ namespace sm {
 const std::string Config::REST_SERVER_DEFAULT_ADDRESS =
     "https://api.tiledb.com";
 const std::string Config::REST_SERIALIZATION_DEFAULT_FORMAT = "CAPNP";
+const std::string Config::REST_SERVER_DEFAULT_HTTP_COMPRESSOR = "any";
 const std::string Config::SM_DEDUP_COORDS = "false";
 const std::string Config::SM_CHECK_COORD_DUPS = "true";
 const std::string Config::SM_CHECK_COORD_OOB = "true";
@@ -133,6 +134,7 @@ Config::Config() {
   param_values_["rest.server_address"] = REST_SERVER_DEFAULT_ADDRESS;
   param_values_["rest.server_serialization_format"] =
       REST_SERIALIZATION_DEFAULT_FORMAT;
+  param_values_["rest.http_compressor"] = REST_SERVER_DEFAULT_HTTP_COMPRESSOR;
   param_values_["sm.dedup_coords"] = SM_DEDUP_COORDS;
   param_values_["sm.check_coord_dups"] = SM_CHECK_COORD_DUPS;
   param_values_["sm.check_coord_oob"] = SM_CHECK_COORD_OOB;
@@ -316,6 +318,8 @@ Status Config::unset(const std::string& param) {
   } else if (param == "rest.server_serialization_format") {
     param_values_["rest.server_serialization_format"] =
         REST_SERIALIZATION_DEFAULT_FORMAT;
+  } else if (param == "rest.http_compressor") {
+    param_values_["rest.http_compressor"] = REST_SERVER_DEFAULT_HTTP_COMPRESSOR;
   } else if (param == "sm.dedup_coords") {
     param_values_["sm.dedup_coords"] = SM_DEDUP_COORDS;
   } else if (param == "sm.check_coord_dups") {

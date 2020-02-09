@@ -105,10 +105,8 @@ ArraySchema::ArraySchema(const ArraySchema* array_schema) {
   set_domain(array_schema->domain_);
 
   attribute_map_.clear();
-  for (auto attr : array_schema->attributes_) {
-    if (attr->name() != constants::key_attr_name)
-      add_attribute(attr, false);
-  }
+  for (auto attr : array_schema->attributes_)
+    add_attribute(attr, false);
 }
 
 ArraySchema::~ArraySchema() {
@@ -333,6 +331,8 @@ unsigned int ArraySchema::dim_num() const {
 }
 
 void ArraySchema::dump(FILE* out) const {
+  if (out == nullptr)
+    out = stdout;
   fprintf(out, "- Array type: %s\n", array_type_str(array_type_).c_str());
   fprintf(out, "- Cell order: %s\n", layout_str(cell_order_).c_str());
   fprintf(out, "- Tile order: %s\n", layout_str(tile_order_).c_str());

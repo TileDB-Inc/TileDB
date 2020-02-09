@@ -689,6 +689,36 @@ std::vector<const T*> Subarray::range(uint64_t range_idx) const {
   return ret;
 }
 
+std::vector<const void*> Subarray::range(uint64_t range_idx) const {
+  std::vector<const void*> ret;
+  uint64_t tmp_idx = range_idx;
+  auto dim_num = this->dim_num();
+  auto cell_order = array_->array_schema()->cell_order();
+  auto layout = (layout_ == Layout::UNORDERED) ? cell_order : layout_;
+
+  if (layout == Layout::ROW_MAJOR) {
+    for (unsigned i = 0; i < dim_num; ++i) {
+      ret.push_back((ranges_[i].get_range(tmp_idx / range_offsets_[i])));
+      tmp_idx %= range_offsets_[i];
+    }
+  } else if (layout == Layout::COL_MAJOR) {
+    for (unsigned i = dim_num - 1;; --i) {
+      ret.push_back((ranges_[i].get_range(tmp_idx / range_offsets_[i])));
+      tmp_idx %= range_offsets_[i];
+      if (i == 0)
+        break;
+    }
+    std::reverse(ret.begin(), ret.end());
+  } else {
+    assert(layout == Layout::GLOBAL_ORDER);
+    assert(range_num() == 1);
+    for (unsigned i = 0; i < dim_num; ++i)
+      ret.push_back(ranges_[i].get_range(0));
+  }
+
+  return ret;
+}
+
 const Subarray::Ranges* Subarray::ranges_for_dim(uint32_t dim_idx) const {
   return &ranges_[dim_idx];
 }

@@ -75,9 +75,9 @@ Formatting conventions:
 
 - Submit a PR, writing a descriptive message.  If a PR closes an open issue, reference the issue in the PR message (ex. If an issue closes issue number 10, you would write `closes #10`)
 
-- Make sure CI is passing for your PR:
+- Make sure CI (continuous integration) is passing for your PR -- click `Show all checks` in the pull request status box at the bottom of each PR page. The continous integration project pages will also list all recently-built PRs:
+  - [Azure Pipelines](https://dev.azure.com/TileDB-Inc/CI/_build)
   - [Travis](https://travis-ci.org/TileDB-Inc/TileDB) Linux / OSX CI
-  - [Appveyor](https://ci.appveyor.com/project/StavrosPapadopoulos/tiledb/branch/dev) Windows CI
 
 ### Documentation Pull Requests:
  - TileDB uses [Sphinx](http://www.sphinx-doc.org/en/master/) as its documentation generator.

@@ -154,22 +154,32 @@ TEST_CASE_METHOD(
   TileDomain<int32_t> array_tile_domain(
       UINT32_MAX, dim_num, &domain[0], &domain[0], &tile_extents[0], layout);
 
+  Dimension d1("d1", Datatype::INT32);
+  Dimension d2("d2", Datatype::INT32);
+  Domain dom(Datatype::INT32);
+  dom.add_dimension(&d1);
+  dom.add_dimension(&d2);
+
   // Compute result space tiles map
   std::map<const int32_t*, ResultSpaceTile<int32_t>> result_space_tiles;
   Reader::compute_result_space_tiles<int32_t>(
-      tile_coords, array_tile_domain, frag_tile_domains, &result_space_tiles);
+      &dom,
+      tile_coords,
+      array_tile_domain,
+      frag_tile_domains,
+      &result_space_tiles);
   CHECK(result_space_tiles.size() == 6);
 
   // Result tiles for fragment #1
-  ResultTile result_tile_1_0_1(1, 0, dim_num);
-  ResultTile result_tile_1_2_1(1, 2, dim_num);
+  ResultTile result_tile_1_0_1(1, 0, &dom);
+  ResultTile result_tile_1_2_1(1, 2, &dom);
 
   // Result tiles for fragment #2
-  ResultTile result_tile_1_0_2(2, 0, dim_num);
+  ResultTile result_tile_1_0_2(2, 0, &dom);
 
   // Result tiles for fragment #3
-  ResultTile result_tile_2_0_3(3, 0, dim_num);
-  ResultTile result_tile_3_0_3(3, 2, dim_num);
+  ResultTile result_tile_2_0_3(3, 0, &dom);
+  ResultTile result_tile_3_0_3(3, 2, &dom);
 
   // Initialize frag domains
   typedef std::pair<unsigned, const int32_t*> FragDomain;
