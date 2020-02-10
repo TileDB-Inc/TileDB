@@ -71,10 +71,13 @@ S3Fx::S3Fx() {
   REQUIRE(s3_.init(config, &thread_pool_).ok());
 
   // Create bucket
-  if (s3_.is_bucket(S3_BUCKET))
+  bool exists;
+  REQUIRE(s3_.is_bucket(S3_BUCKET, &exists).ok());
+  if (exists)
     REQUIRE(s3_.remove_bucket(S3_BUCKET).ok());
 
-  REQUIRE(!s3_.is_bucket(S3_BUCKET));
+  REQUIRE(s3_.is_bucket(S3_BUCKET, &exists).ok());
+  REQUIRE(!exists);
   REQUIRE(s3_.create_bucket(S3_BUCKET).ok());
 
   // Check if bucket is empty
@@ -130,23 +133,30 @@ TEST_CASE_METHOD(S3Fx, "Test S3 filesystem, file management", "[s3]") {
   CHECK(is_empty);
 
   // Continue building the hierarchy
+  bool exists;
   CHECK(s3_.touch(URI(file1)).ok());
-  CHECK(s3_.is_object(URI(file1)));
+  CHECK(s3_.is_object(URI(file1), &exists).ok());
+  CHECK(exists);
   CHECK(s3_.touch(URI(file2)).ok());
-  CHECK(s3_.is_object(URI(file2)));
+  CHECK(s3_.is_object(URI(file2), &exists).ok());
+  CHECK(exists);
   CHECK(s3_.touch(URI(file3)).ok());
-  CHECK(s3_.is_object(URI(file3)));
+  CHECK(s3_.is_object(URI(file3), &exists).ok());
+  CHECK(exists);
   CHECK(s3_.touch(URI(file4)).ok());
-  CHECK(s3_.is_object(URI(file4)));
+  CHECK(s3_.is_object(URI(file4), &exists).ok());
+  CHECK(exists);
   CHECK(s3_.touch(URI(file5)).ok());
-  CHECK(s3_.is_object(URI(file5)));
+  CHECK(s3_.is_object(URI(file5), &exists).ok());
+  CHECK(exists);
 
   // Check that the bucket is not empty
   CHECK(s3_.is_empty_bucket(S3_BUCKET, &is_empty).ok());
   CHECK(!is_empty);
 
   // Check invalid file
-  CHECK(!s3_.is_object(URI(TEST_DIR + "foo")));
+  CHECK(s3_.is_object(URI(TEST_DIR + "foo"), &exists).ok());
+  CHECK(!exists);
 
   // List with prefix
   std::vector<std::string> paths;
@@ -175,8 +185,10 @@ TEST_CASE_METHOD(S3Fx, "Test S3 filesystem, file management", "[s3]") {
 
   // Move file
   CHECK(s3_.move_object(URI(file5), URI(file6)).ok());
-  CHECK(!s3_.is_object(URI(file5)));
-  CHECK(s3_.is_object(URI(file6)));
+  CHECK(s3_.is_object(URI(file5), &exists).ok());
+  CHECK(!exists);
+  CHECK(s3_.is_object(URI(file6), &exists).ok());
+  CHECK(exists);
   paths.clear();
   CHECK(s3_.ls(S3_BUCKET, &paths, "").ok());  // No delimiter
   CHECK(paths.size() == 5);
@@ -193,13 +205,17 @@ TEST_CASE_METHOD(S3Fx, "Test S3 filesystem, file management", "[s3]") {
 
   // Remove files
   CHECK(s3_.remove_object(URI(file4)).ok());
-  CHECK(!s3_.is_object(URI(file4)));
+  CHECK(s3_.is_object(URI(file4), &exists).ok());
+  CHECK(!exists);
 
   // Remove directories
   CHECK(s3_.remove_dir(URI(dir2)).ok());
-  CHECK(!s3_.is_object(URI(file1)));
-  CHECK(!s3_.is_object(URI(file2)));
-  CHECK(!s3_.is_object(URI(file3)));
+  CHECK(s3_.is_object(URI(file1), &exists).ok());
+  CHECK(!exists);
+  CHECK(s3_.is_object(URI(file2), &exists).ok());
+  CHECK(!exists);
+  CHECK(s3_.is_object(URI(file3), &exists).ok());
+  CHECK(!exists);
 }
 
 TEST_CASE_METHOD(S3Fx, "Test S3 filesystem, file I/O", "[s3]") {
@@ -221,16 +237,21 @@ TEST_CASE_METHOD(S3Fx, "Test S3 filesystem, file I/O", "[s3]") {
   CHECK(s3_.write(URI(smallfile), write_buffer_small, buffer_size_small).ok());
 
   // Before flushing, the files do not exist
-  CHECK(!s3_.is_object(URI(largefile)));
-  CHECK(!s3_.is_object(URI(smallfile)));
+  bool exists;
+  CHECK(s3_.is_object(URI(largefile), &exists).ok());
+  CHECK(!exists);
+  CHECK(s3_.is_object(URI(smallfile), &exists).ok());
+  CHECK(!exists);
 
   // Flush the files
   CHECK(s3_.flush_object(URI(largefile)).ok());
   CHECK(s3_.flush_object(URI(smallfile)).ok());
 
   // After flushing, the files exist
-  CHECK(s3_.is_object(URI(largefile)));
-  CHECK(s3_.is_object(URI(smallfile)));
+  CHECK(s3_.is_object(URI(largefile), &exists).ok());
+  CHECK(exists);
+  CHECK(s3_.is_object(URI(smallfile), &exists).ok());
+  CHECK(exists);
 
   // Get file sizes
   uint64_t nbytes = 0;
@@ -280,13 +301,16 @@ TEST_CASE_METHOD(S3Fx, "Test S3 multiupload abort path", "[s3]") {
     CHECK(!s3_.write(URI(largefile), write_buffer, buffer_size).ok());
 
     // Before flushing, the file does not exist
-    CHECK(!s3_.is_object(URI(largefile)));
+    bool exists;
+    CHECK(s3_.is_object(URI(largefile), &exists).ok());
+    CHECK(!exists);
 
     // Flush the file
     CHECK(s3_.flush_object(URI(largefile)).ok());
 
     // After flushing, the file does not exist
-    CHECK(!s3_.is_object(URI(largefile)));
+    CHECK(s3_.is_object(URI(largefile), &exists).ok());
+    CHECK(!exists);
   }
 }
 

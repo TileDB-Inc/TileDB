@@ -137,9 +137,11 @@ class S3 {
    * Check if a bucket exists.
    *
    * @param bucket The name of the bucket.
-   * @return bool
+   * @param exists Mutates to `true` if `uri` is an existing bucket,
+   *   and `false` otherwise.
+   * @return Status
    */
-  bool is_bucket(const URI& uri) const;
+  Status is_bucket(const URI& uri, bool* exists) const;
 
   /**
    * Checks if there is an object with prefix `uri/`. For instance, suppose
@@ -165,9 +167,11 @@ class S3 {
    * Checks if the given URI is an existing S3 object.
    *
    * @param uri The URI of the object to be checked.
-   * @return `True` if `uri` is an existing object, and `false` otherwise.
+   * @param exists Mutates to `true` if `uri` is an existing object,
+   *   and `false` otherwise.
+   * @return Status
    */
-  bool is_object(const URI& uri) const;
+  Status is_object(const URI& uri, bool* exists) const;
 
   /**
    * Lists the objects that start with `prefix`. Full URI paths are
@@ -514,16 +518,22 @@ class S3 {
   std::string join_authority_and_path(
       const std::string& authority, const std::string& path) const;
 
+  /** Checks if the given object exists on S3. */
+  Status is_object(
+      const Aws::String& bucket_name,
+      const Aws::String& object_key,
+      bool* exists) const;
+
   /** Waits for the input object to be propagated. */
-  bool wait_for_object_to_propagate(
+  Status wait_for_object_to_propagate(
       const Aws::String& bucketName, const Aws::String& objectKey) const;
 
   /** Waits for the input object to be deleted. */
-  bool wait_for_object_to_be_deleted(
+  Status wait_for_object_to_be_deleted(
       const Aws::String& bucketName, const Aws::String& objectKey) const;
 
   /** Waits for the bucket to be created. */
-  bool wait_for_bucket_to_be_created(const URI& bucket_uri) const;
+  Status wait_for_bucket_to_be_created(const URI& bucket_uri) const;
 
   /**
    * Builds and returns a CompleteMultipartUploadRequest for completing an
