@@ -33,7 +33,7 @@
 #ifndef TILEDB_SIGNAL_HANDLERS_H
 #define TILEDB_SIGNAL_HANDLERS_H
 
-#include <atomic>
+#include <cinttypes>
 
 #include "tiledb/sm/misc/status.h"
 

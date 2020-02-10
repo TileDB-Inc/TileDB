@@ -35,8 +35,6 @@
 
 #include "tiledb/sm/buffer/buffer.h"
 #include "tiledb/sm/enums/datatype.h"
-#include "tiledb/sm/enums/layout.h"
-#include "tiledb/sm/enums/query_type.h"
 #include "tiledb/sm/misc/logger.h"
 #include "tiledb/sm/misc/tile_overlap.h"
 
@@ -51,6 +49,9 @@ namespace tiledb {
 namespace sm {
 
 class Array;
+
+enum class Layout : uint8_t;
+enum class QueryType : uint8_t;
 
 /**
  * A Subarray object is associated with an array, and

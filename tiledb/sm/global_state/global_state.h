@@ -33,12 +33,18 @@
 #ifndef TILEDB_GLOBAL_STATE_H
 #define TILEDB_GLOBAL_STATE_H
 
+#include <mutex>
 #include <set>
+#include <string>
 
-#include "tiledb/sm/storage_manager/storage_manager.h"
+#include "tiledb/sm/config/config.h"
+#include "tiledb/sm/misc/status.h"
 
 namespace tiledb {
 namespace sm {
+
+class StorageManager;
+
 namespace global_state {
 
 /**

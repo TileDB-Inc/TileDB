@@ -3,6 +3,7 @@
 #include "tiledb/sm/global_state/signal_handlers.h"
 #include "tiledb/sm/misc/constants.h"
 #include "tiledb/sm/misc/logger.h"
+#include "tiledb/sm/storage_manager/storage_manager.h"
 
 namespace tiledb {
 namespace sm {

@@ -33,17 +33,23 @@
 #ifndef TILEDB_VFS_H
 #define TILEDB_VFS_H
 
-#include "tiledb/sm/buffer/buffer.h"
+#include <functional>
+#include <set>
+#include <string>
+#include <vector>
+
 #include "tiledb/sm/config/config.h"
-#include "tiledb/sm/enums/filesystem.h"
-#include "tiledb/sm/enums/vfs_mode.h"
 #include "tiledb/sm/filesystem/filelock.h"
-#include "tiledb/sm/filesystem/posix.h"
-#include "tiledb/sm/filesystem/win.h"
 #include "tiledb/sm/misc/cancelable_tasks.h"
 #include "tiledb/sm/misc/status.h"
 #include "tiledb/sm/misc/thread_pool.h"
 #include "tiledb/sm/misc/uri.h"
+
+#ifdef _WIN32
+#include "tiledb/sm/filesystem/win.h"
+#else
+#include "tiledb/sm/filesystem/posix.h"
+#endif
 
 #ifdef HAVE_S3
 #include "tiledb/sm/filesystem/s3.h"
@@ -53,13 +59,11 @@
 #include "tiledb/sm/filesystem/hdfs_filesystem.h"
 #endif
 
-#include <functional>
-#include <set>
-#include <string>
-#include <vector>
-
 namespace tiledb {
 namespace sm {
+
+enum class Filesystem : uint8_t;
+enum class VFSMode : uint8_t;
 
 /**
  * This class implements a virtual filesystem that directs filesystem-related
