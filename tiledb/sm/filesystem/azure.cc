@@ -53,18 +53,26 @@ Azure::~Azure() {
 /*                 API               */
 /* ********************************* */
 
-Status Azure::init(const Config& /*config*/, ThreadPool* const thread_pool) {
+Status Azure::init(const Config& config, ThreadPool* const thread_pool) {
   if (thread_pool == nullptr) {
     return LOG_STATUS(
         Status::AzureError("Can't initialize with null thread pool."));
   }
   // TODO: make use of 'thread_pool'
 
-  // TODO: pull account name, accont key, and blob endpoint from 'config'.
-  const std::string account_name = "";
-  const std::string account_key = "";
-  const std::string blob_endpoint = "";
-  const bool use_https = true;
+  bool found;
+  const std::string account_name =
+      config.get("vfs.azure.storage_account_name", &found);
+  assert(found);
+  const std::string account_key =
+      config.get("vfs.azure.storage_account_key", &found);
+  assert(found);
+  const std::string blob_endpoint =
+      config.get("vfs.azure.blob_endpoint", &found);
+  assert(found);
+  const bool use_https = config.get("vfs.azure.use_https", &found) == "true";
+  assert(found);
+
   const int connection_count = 1;
 
   std::shared_ptr<azure::storage_lite::shared_key_credential> credential =

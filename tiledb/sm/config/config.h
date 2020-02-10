@@ -167,6 +167,18 @@ class Config {
   /** Whether or not filelocks are enabled for VFS. */
   static const std::string VFS_FILE_ENABLE_FILELOCKS;
 
+  /** Azure storage account name. */
+  static const std::string VFS_AZURE_STORAGE_ACCOUNT_NAME;
+
+  /** Azure storage account key. */
+  static const std::string VFS_AZURE_STORAGE_ACCOUNT_KEY;
+
+  /** Azure blob endpoint. */
+  static const std::string VFS_AZURE_BLOB_ENDPOINT;
+
+  /** Azure use https. */
+  static const std::string VFS_AZURE_USE_HTTPS;
+
   /** S3 region. */
   static const std::string VFS_S3_REGION;
 

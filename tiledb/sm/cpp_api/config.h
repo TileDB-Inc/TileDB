@@ -326,6 +326,18 @@ class Config {
    *    If set to `false`, file locking operations are no-ops for `file:///`
    *    URIs in VFS. <br>
    *    **Default**: `true`
+   * - `vfs.azure.storage_account_name` <br>
+   *    Set the AZURE_STORAGE_ACCOUNT_NAME <br>
+   *    **Default**: ""
+   * - `vfs.azure.storage_account_key` <br>
+   *    Set the AZURE_STORAGE_ACCOUNT_KEY <br>
+   *    **Default**: ""
+   * - `vfs.azure.blob_endpoint` <br>
+   *    Set the AZURE_BLOB_ENDPOINT <br>
+   *    **Default**: ""
+   * - `vfs.azure.use_https` <br>
+   *    Set the AZURE_USE_HTTPS <br>
+   *    **Default**: "true"
    * - `vfs.s3.region` <br>
    *    The S3 region, if S3 is enabled. <br>
    *    **Default**: us-east-1
