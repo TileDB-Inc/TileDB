@@ -70,10 +70,8 @@ struct ReadCellSlabIterFx {
       const std::vector<std::vector<uint64_t>>& c_result_cell_slabs);
   template <class T>
   void create_result_space_tiles(
-      unsigned dim_num,
+      const Domain* dom,
       Layout layout,
-      const T* domain,
-      const T* tile_extents,
       const std::vector<std::vector<T>>& domain_slices,
       const std::vector<std::vector<uint8_t>>& tile_coords,
       std::map<const T*, ResultSpaceTile<T>>* result_space_tiles);
@@ -142,13 +140,14 @@ void ReadCellSlabIterFx::check_iter(
 
 template <class T>
 void ReadCellSlabIterFx::create_result_space_tiles(
-    unsigned dim_num,
+    const Domain* dom,
     Layout layout,
-    const T* domain,
-    const T* tile_extents,
     const std::vector<std::vector<T>>& domain_slices,
     const std::vector<std::vector<uint8_t>>& tile_coords,
     std::map<const T*, ResultSpaceTile<T>>* result_space_tiles) {
+  auto dim_num = dom->dim_num();
+  auto domain = (const T*)dom->domain();
+  auto tile_extents = (const T*)dom->tile_extents();
   std::vector<TileDomain<T>> frag_tile_domains;
   for (size_t i = 0; i < domain_slices.size(); ++i) {
     frag_tile_domains.emplace_back(
@@ -162,7 +161,11 @@ void ReadCellSlabIterFx::create_result_space_tiles(
   TileDomain<T> array_tile_domain(
       UINT32_MAX, dim_num, domain, domain, tile_extents, layout);
   Reader::compute_result_space_tiles<T>(
-      tile_coords, array_tile_domain, frag_tile_domains, result_space_tiles);
+      dom,
+      tile_coords,
+      array_tile_domain,
+      frag_tile_domains,
+      result_space_tiles);
 }
 
 /* ********************************* */
@@ -219,10 +222,8 @@ TEST_CASE_METHOD(
   const auto& tile_coords = subarray.tile_coords();
   std::map<const uint64_t*, ResultSpaceTile<uint64_t>> result_space_tiles;
   create_result_space_tiles(
-      1,
+      array_->array_->array_schema()->domain(),
       subarray_layout,
-      domain,
-      &tile_extent,
       domain_slices,
       tile_coords,
       &result_space_tiles);
@@ -277,10 +278,8 @@ TEST_CASE_METHOD(
   const auto& tile_coords = subarray.tile_coords();
   std::map<const uint64_t*, ResultSpaceTile<uint64_t>> result_space_tiles;
   create_result_space_tiles(
-      1,
+      array_->array_->array_schema()->domain(),
       subarray_layout,
-      domain,
-      &tile_extent,
       domain_slices,
       tile_coords,
       &result_space_tiles);
@@ -335,10 +334,8 @@ TEST_CASE_METHOD(
   const auto& tile_coords = subarray.tile_coords();
   std::map<const uint64_t*, ResultSpaceTile<uint64_t>> result_space_tiles;
   create_result_space_tiles(
-      1,
+      array_->array_->array_schema()->domain(),
       subarray_layout,
-      domain,
-      &tile_extent,
       domain_slices,
       tile_coords,
       &result_space_tiles);
@@ -398,22 +395,15 @@ TEST_CASE_METHOD(
   std::vector<std::vector<uint64_t>> domain_slices = {{3, 12}};
   const auto& tile_coords = subarray.tile_coords();
   std::map<const uint64_t*, ResultSpaceTile<uint64_t>> result_space_tiles;
+  auto dom = array_->array_->array_schema()->domain();
   create_result_space_tiles(
-      1,
-      subarray_layout,
-      domain,
-      &tile_extent,
-      domain_slices,
-      tile_coords,
-      &result_space_tiles);
-
-  auto dim_num = 1;
+      dom, subarray_layout, domain_slices, tile_coords, &result_space_tiles);
 
   // Create result coordinates
   std::vector<ResultCoords> result_coords;
-  ResultTile result_tile_2_0(2, 0, dim_num);
-  ResultTile result_tile_3_0(3, 0, dim_num);
-  ResultTile result_tile_3_1(3, 1, dim_num);
+  ResultTile result_tile_2_0(2, 0, dom);
+  ResultTile result_tile_3_0(3, 0, dom);
+  ResultTile result_tile_3_1(3, 1, dom);
 
   result_tile_2_0.init_coord_tile("d", 0);
   result_tile_3_0.init_coord_tile("d", 0);
@@ -621,10 +611,8 @@ TEST_CASE_METHOD(
   const auto& tile_coords = subarray.tile_coords();
   std::map<const uint64_t*, ResultSpaceTile<uint64_t>> result_space_tiles;
   create_result_space_tiles(
-      2,
+      array_->array_->array_schema()->domain(),
       tile_domain_layout,
-      domain,
-      tile_extents,
       domain_slices,
       tile_coords,
       &result_space_tiles);
@@ -790,10 +778,8 @@ TEST_CASE_METHOD(
   const auto& tile_coords = subarray.tile_coords();
   std::map<const uint64_t*, ResultSpaceTile<uint64_t>> result_space_tiles;
   create_result_space_tiles(
-      2,
+      array_->array_->array_schema()->domain(),
       tile_domain_layout,
-      domain,
-      tile_extents,
       domain_slices,
       tile_coords,
       &result_space_tiles);
@@ -972,10 +958,8 @@ TEST_CASE_METHOD(
   const auto& tile_coords = subarray.tile_coords();
   std::map<const uint64_t*, ResultSpaceTile<uint64_t>> result_space_tiles;
   create_result_space_tiles(
-      2,
+      array_->array_->array_schema()->domain(),
       tile_domain_layout,
-      domain,
-      tile_extents,
       domain_slices,
       tile_coords,
       &result_space_tiles);
@@ -1198,21 +1182,14 @@ TEST_CASE_METHOD(
                                                       {2, 3, 1, 6}};
   const auto& tile_coords = subarray.tile_coords();
   std::map<const uint64_t*, ResultSpaceTile<uint64_t>> result_space_tiles;
+  auto dom = array_->array_->array_schema()->domain();
   create_result_space_tiles(
-      2,
-      tile_domain_layout,
-      domain,
-      tile_extents,
-      domain_slices,
-      tile_coords,
-      &result_space_tiles);
-
-  unsigned dim_num = 2;
+      dom, tile_domain_layout, domain_slices, tile_coords, &result_space_tiles);
 
   // Create result coordinates
   std::vector<ResultCoords> result_coords;
-  ResultTile result_tile_3_0(3, 0, dim_num);
-  ResultTile result_tile_3_1(3, 1, dim_num);
+  ResultTile result_tile_3_0(3, 0, dom);
+  ResultTile result_tile_3_1(3, 1, dom);
 
   result_tile_3_0.init_coord_tile("d1", 0);
   result_tile_3_0.init_coord_tile("d2", 1);

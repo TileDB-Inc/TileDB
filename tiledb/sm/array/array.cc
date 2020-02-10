@@ -85,43 +85,6 @@ const URI& Array::array_uri() const {
   return array_uri_;
 }
 
-Status Array::compute_max_buffer_sizes(
-    const void* subarray,
-    const std::vector<std::string>& attributes,
-    std::unordered_map<std::string, std::pair<uint64_t, uint64_t>>*
-        max_buffer_sizes) const {
-  std::unique_lock<std::mutex> lck(mtx_);
-
-  // Error if the array is not open
-  if (!is_open_)
-    return LOG_STATUS(Status::ArrayError(
-        "Cannot compute max buffer sizes; Array is not open"));
-
-  // Error if the array was not opened in read mode
-  if (query_type_ != QueryType::READ)
-    return LOG_STATUS(
-        Status::ArrayError("Cannot compute max read buffer sizes; "
-                           "Array was not opened in read mode"));
-
-  // Error on remote arrays (user must handle incomplete queries).
-  if (remote_)
-    return LOG_STATUS(
-        Status::ArrayError("Cannot compute max read buffer sizes; not "
-                           "supported for remote arrays."));
-
-  // Check attributes
-  RETURN_NOT_OK(array_schema_->check_attributes(attributes));
-
-  // Compute buffer sizes
-  max_buffer_sizes->clear();
-  for (const auto& attr : attributes)
-    (*max_buffer_sizes)[attr] = std::pair<uint64_t, uint64_t>(0, 0);
-  RETURN_NOT_OK(compute_max_buffer_sizes(subarray, max_buffer_sizes));
-
-  // Close array
-  return Status::Ok();
-}
-
 const EncryptionKey* Array::encryption_key() const {
   return &encryption_key_;
 }
@@ -292,8 +255,12 @@ Status Array::close() {
   fragment_metadata_.clear();
 
   if (remote_) {
-    // Update array metadata for write queries.
-    if (query_type_ == QueryType::WRITE) {
+    // Update array metadata for write queries if metadata was written by the
+    // user
+    if (query_type_ == QueryType::WRITE && metadata_.num() > 0) {
+      // Set metadata loaded to be true so when serialization fetchs the
+      // metadata it won't trigger a deadlock
+      metadata_loaded_ = true;
       auto rest_client = storage_manager_->rest_client();
       if (rest_client == nullptr)
         return LOG_STATUS(Status::ArrayError(
@@ -309,8 +276,6 @@ Status Array::close() {
     if (query_type_ == QueryType::READ) {
       RETURN_NOT_OK(storage_manager_->array_close_for_reads(array_uri_));
     } else {
-      Buffer metadata_buff;
-      RETURN_NOT_OK(metadata_.serialize(&metadata_buff));
       RETURN_NOT_OK(storage_manager_->array_close_for_writes(
           array_uri_, encryption_key_, &metadata_));
     }

@@ -95,8 +95,9 @@ if (NOT CURL_FOUND AND TILEDB_SUPERBUILD)
     )
 
   else()
+    set(DEPENDS)
     if (TARGET ep_openssl)
-      set(DEPENDS ep_openssl)
+      list(APPEND DEPENDS ep_openssl)
       set(WITH_SSL "--with-ssl=${TILEDB_EP_INSTALL_PREFIX}")
     elseif (TILEDB_OPENSSL_DIR)
       # ensure that curl links against the same libSSL
@@ -105,6 +106,18 @@ if (NOT CURL_FOUND AND TILEDB_SUPERBUILD)
       message(WARNING "TileDB FindOpenSSL_EP did not set TILEDB_OPENSSL_DIR. Falling back to autotools detection.")
       # ensure that curl config errors out if SSL not available
       set(WITH_SSL "--with-ssl")
+    endif()
+
+    if (TARGET ep_zlib)
+      list(APPEND DEPENDS ep_zlib)
+      set(WITH_ZLIB "--with-zlib=${TILEDB_EP_INSTALL_PREFIX}")
+    elseif (TILEDB_ZLIB_DIR)
+      # ensure that curl links against the same libz
+      set(WITH_ZLIB "--with-zlib=${TILEDB_ZLIB_DIR}")
+    else()
+      message(WARNING "TileDB FindZlib_EP did not set TILEDB_ZLIB_DIR. Falling back to autotools detection.")
+      # ensure that curl config errors out if SSL not available
+      set(WITH_ZLIB "--with-zlib")
     endif()
 
     ExternalProject_Add(ep_curl
@@ -119,6 +132,7 @@ if (NOT CURL_FOUND AND TILEDB_SUPERBUILD)
           --disable-ldap
           --with-pic=yes
           ${WITH_SSL}
+          ${WITH_ZLIB}
       BUILD_IN_SOURCE TRUE
       BUILD_COMMAND $(MAKE)
       INSTALL_COMMAND $(MAKE) install

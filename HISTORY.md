@@ -10,6 +10,7 @@
 
 ## Improvements
 
+* Added support for AWS Security Token Service session tokens via configuration option `vfs.s3.session_token`. [#1472](https://github.com/TileDB-Inc/TileDB/pull/1472)
 * Added support for indicating zero-value metadata by returning `value_num` == 1 from the `_get_metadatata` and `Array::get_metadata` APIs [#1438](https://github.com/TileDB-Inc/TileDB/pull/1438) (this is a non-breaking change, as the documented return of `value == nullptr` to indicate missing keys does not change)`
 * User can set coordinate buffers separately for write queries.
 
@@ -22,6 +23,65 @@
 ## API additions
 
 * Added C API function `tiledb_array_has_metadata_key` and C++ API function `Array::has_metadata_key` [#1439](https://github.com/TileDB-Inc/TileDB/pull/1439)
+
+## API removals
+
+# TileDB v1.7.3 Release Notes
+
+## New features
+
+## Improvements
+
+* Array metadata fetching is now lazy (fetch on use) to improve array open performance [#1466](https://github.com/TileDB-Inc/TileDB/pull/1466)
+* libtiledb on Linux will no longer re-export symbols from statically linked dependencies [#1461](https://github.com/TileDB-Inc/TileDB/pull/1461)
+
+## Deprecations
+
+## Bug fixes
+
+## API additions
+
+## API removals
+
+# TileDB v1.7.2 Release Notes
+
+TileDB 1.7.2 contains bug fixes and several internal optimizations.
+
+## New features
+
+## Improvements
+
+* Added support for getting/setting array metadata via REST. [#1449](https://github.com/TileDB-Inc/TileDB/pull/1449)
+
+## Deprecations
+
+## Bug fixes
+
+* Fixed several REST query and deserialization bugs. [#1433](https://github.com/TileDB-Inc/TileDB/pull/1433), [#1437](https://github.com/TileDB-Inc/TileDB/pull/1437), [#1440](https://github.com/TileDB-Inc/TileDB/pull/1440), [#1444](https://github.com/TileDB-Inc/TileDB/pull/1444)
+* Fixed bug in setting certificate path on Linux for the REST client. [#1452](https://github.com/TileDB-Inc/TileDB/pull/1452)
+
+## API additions
+
+## API removals
+
+# TileDB v1.7.1 Release Notes
+
+TileDB 1.7.1 contains build system and bug fixes, and one non-breaking API update.
+
+## New features
+
+## Improvements
+
+## Deprecations
+
+## Bug fixes
+
+* Fixed bug in dense consolidation when the array domain is not divisible by the tile extents. [#1442](https://github.com/TileDB-Inc/TileDB/pull/1442)
+
+## API additions
+
+* Added C API function `tiledb_array_has_metadata_key` and C++ API function `Array::has_metadata_key` [#1439](https://github.com/TileDB-Inc/TileDB/pull/1439)
+* Added support for indicating zero-value metadata by returning `value_num` == 1 from the `_get_metadatata` and `Array::get_metadata` APIs [#1438](https://github.com/TileDB-Inc/TileDB/pull/1438) (this is a non-breaking change, as the documented return of `value == nullptr` to indicate missing keys does not change)`
 
 ## API removals
 

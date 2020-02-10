@@ -1110,7 +1110,7 @@ TEST_CASE_METHOD(
       }
 
       SECTION("### sparse") {
-        create_dense_vector(array_name);
+        create_sparse_vector(array_name);
       }
 
       // Prepare cell buffers
@@ -1130,7 +1130,7 @@ TEST_CASE_METHOD(
       }
 
       SECTION("### sparse") {
-        create_dense_array(array_name);
+        create_sparse_array(array_name);
       }
 
       // Prepare cell buffers
@@ -1162,7 +1162,7 @@ TEST_CASE_METHOD(
       }
 
       SECTION("### sparse") {
-        create_dense_vector(array_name);
+        create_sparse_vector(array_name);
       }
 
       // Prepare cell buffers

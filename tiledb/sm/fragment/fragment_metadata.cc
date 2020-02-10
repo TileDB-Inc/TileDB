@@ -506,6 +506,15 @@ const void* FragmentMetadata::non_empty_domain() const {
   return non_empty_domain_;
 }
 
+std::vector<const void*> FragmentMetadata::non_empty_domain_vec() const {
+  std::vector<const void*> ret;
+  ret.reserve(array_schema_->dim_num());
+  auto dom = (unsigned char*)non_empty_domain_;
+  for (unsigned d = 0; d < array_schema_->dim_num(); ++d)
+    ret.emplace_back(&dom[2 * array_schema_->dimension(d)->coord_size()]);
+  return ret;
+}
+
 Status FragmentMetadata::set_num_tiles(uint64_t num_tiles) {
   auto num = array_schema_->attribute_num() + 1 + array_schema_->dim_num();
 

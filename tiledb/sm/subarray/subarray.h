@@ -438,6 +438,15 @@ class Subarray {
   std::vector<const T*> range(uint64_t range_idx) const;
 
   /**
+   * Returns the multi-dimensional range with the input id, based on the
+   * order imposed on the the subarray ranges by the layout. If ``layout_``
+   * is UNORDERED, then the range layout will be the same as the array's
+   * cell order, since this will lead to more beneficial tile access
+   * patterns upon a read query.
+   */
+  std::vector<const void*> range(uint64_t range_idx) const;
+
+  /**
    * Returns the `Ranges` for the given dimension index.
    * @note Intended for serialization only
    */

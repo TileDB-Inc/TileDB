@@ -86,7 +86,7 @@ const uint64_t cell_var_offset_size = sizeof(uint64_t);
 /** The type of a variable cell offset. */
 const Datatype cell_var_offset_type = Datatype::UINT64;
 
-/** A special value indicating varibale size. */
+/** A special value indicating variable size. */
 const uint64_t var_size = std::numeric_limits<uint64_t>::max();
 
 /** The default compressor for the offsets of variable-sized cells. */
@@ -438,29 +438,6 @@ const std::string default_attr_name = "__attr";
 
 /** The default dimension name prefix. */
 const std::string default_dim_name = "__dim";
-
-/** The key attribute name. */
-const std::string key_attr_name = "__key";
-
-/** The key attribute type. */
-Datatype key_attr_type = Datatype::ANY;
-
-/** The key attribute compressor. */
-Compressor key_attr_compressor = Compressor::ZSTD;
-
-/**
- * The name of the first key dimension (recall that a key in a
- * key-value store is hashed into a 16-byte MD5 digest, which
- * is represented as a 2-dimensional uint64_t value.
- */
-const std::string key_dim_1 = "__key_dim_1";
-
-/**
- * The name of the second key dimension (recall that a key in a
- * key-value store is hashed into a 16-byte MD5 digest, which
- * is represented as a 2-dimensional uint64_t value.
- */
-const std::string key_dim_2 = "__key_dim_2";
 
 /** Maximum number of attempts to wait for an S3 response. */
 const unsigned int s3_max_attempts = 1000;

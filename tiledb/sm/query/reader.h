@@ -370,6 +370,7 @@ class Reader {
    * in the space tile.
    *
    * @tparam T The datatype of the tile domains.
+   * @param domain The array domain
    * @param tile_coords The unique coordinates of the tiles that intersect
    *     a subarray.
    * @param array_tile_domain The array tile domain.
@@ -381,6 +382,7 @@ class Reader {
    */
   template <class T>
   static void compute_result_space_tiles(
+      const Domain* domain,
       const std::vector<std::vector<uint8_t>>& tile_coords,
       const TileDomain<T>& array_tile_domain,
       const std::vector<TileDomain<T>>& frag_tile_domains,
@@ -554,7 +556,6 @@ class Reader {
    * Retrieves the coordinates that overlap the input N-dimensional range
    * from the input result tile.
    *
-   * @tparam T The coords type.
    * @param frag_idx The id of the fragment that the result tile belongs to.
    * @param The result tile.
    * @param range An N-dimensional range (where N is equal to the number
@@ -562,11 +563,10 @@ class Reader {
    * @param result_coords The overlapping coordinates to retrieve.
    * @return Status
    */
-  template <class T>
   Status compute_range_result_coords(
       unsigned frag_idx,
       ResultTile* tile,
-      const std::vector<const T*>& range,
+      const std::vector<const void*>& range,
       std::vector<ResultCoords>* result_coords) const;
 
   /**
@@ -989,18 +989,10 @@ class Reader {
   bool sparse_tile_overwritten(unsigned frag_idx, uint64_t tile_idx) const;
 
   /**
-   * Returns true if the input coordinates of the input fragment is
-   * covered by the non-empty domain of a more recent fragment.
+   * Erases the coordinate tiles (zipped or separate) from the input result
+   * tiles.
    */
-  template <class T>
-  bool coords_overwritten(unsigned frag_idx, const T* coords) const;
-
-  /**
-   * Creates zipped coordinate tiles for TILEDB_COORDS. This is for backwards
-   * compatibility; it will be removed in a subsequent PR.
-   */
-  Status zip_coord_tiles(
-      const std::vector<ResultTile*>& tmp_result_tiles) const;
+  void erase_coord_tiles(std::vector<ResultTile>* result_tiles) const;
 };
 
 }  // namespace sm

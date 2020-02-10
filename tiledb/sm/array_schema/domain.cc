@@ -620,6 +620,8 @@ const Dimension* Domain::dimension(std::string name) const {
 }
 
 void Domain::dump(FILE* out) const {
+  if (out == nullptr)
+    out = stdout;
   fprintf(out, "=== Domain ===\n");
   fprintf(out, "- Dimensions type: %s\n", datatype_str(type_).c_str());
 

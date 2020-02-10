@@ -268,9 +268,10 @@ class Attribute {
    * Dumps information about the attribute in an ASCII representation to an
    * output.
    *
-   * @param out (Optional) File to dump output to. Defaults to `stdout`.
+   * @param out (Optional) File to dump output to. Defaults to `nullptr`
+   * which will lead to selection of `stdout`.
    */
-  void dump(FILE* out = stdout) const {
+  void dump(FILE* out = nullptr) const {
     ctx_.get().handle_error(
         tiledb_attribute_dump(ctx_.get().ptr().get(), attr_.get(), out));
   }

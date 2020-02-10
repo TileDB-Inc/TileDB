@@ -539,6 +539,7 @@ const Subarray* Reader::subarray() const {
 
 template <class T>
 void Reader::compute_result_space_tiles(
+    const Domain* domain,
     const std::vector<std::vector<uint8_t>>& tile_coords,
     const TileDomain<T>& array_tile_domain,
     const std::vector<TileDomain<T>>& frag_tile_domains,
@@ -584,7 +585,7 @@ void Reader::compute_result_space_tiles(
       auto frag_idx = frag_tile_domains[f].id();
       result_space_tile.frag_domains_.emplace_back(frag_idx, frag_domain);
       auto tile_idx = frag_tile_domains[f].tile_pos(coords);
-      ResultTile result_tile(frag_idx, tile_idx, dim_num);
+      ResultTile result_tile(frag_idx, tile_idx, domain);
       result_space_tile.result_tiles_[frag_idx] = result_tile;
     }
   }
@@ -645,32 +646,38 @@ Status Reader::compute_result_cell_slabs(
   STATS_FUNC_OUT(reader_compute_cell_ranges);
 }
 
-template <class T>
 Status Reader::compute_range_result_coords(
     unsigned frag_idx,
     ResultTile* tile,
-    const std::vector<const T*>& range,
+    const std::vector<const void*>& range,
     std::vector<ResultCoords>* result_coords) const {
-  auto dim_num = array_schema_->dim_num();
-  assert(dim_num == range.size());
-  const auto& t = tile->coords_tile();
-  // TODO: find coords_num in a different way
-  auto coords_num = t.cell_num();
-  auto c = (T*)t.internal_data();
+  auto coords_num = tile->cell_num();
+  auto fragment_num = fragment_metadata_.size();
 
-  for (uint64_t i = 0, pos = 0; i < coords_num; ++i, pos += dim_num) {
-    // TODO: must fix - it should be one coord per dimension
-    // TODO: does not need to be a separate function
-    // TODO: not templates here
-    if (utils::geometry::coords_in_rect<T>(&c[pos], range, dim_num) &&
-        !coords_overwritten(frag_idx, &c[pos]))
-      result_coords->emplace_back(tile, i);
+  for (uint64_t pos = 0; pos < coords_num; ++pos) {
+    // Check if the coordinates are in the range
+    if (!tile->coord_in_rect(pos, range))
+      continue;
+
+    // Check if the coordinates are overwritten by a future dense fragment
+    bool overwritten = false;
+    for (unsigned f = frag_idx + 1; !overwritten && f < fragment_num; ++f) {
+      if (fragment_metadata_[f]->dense()) {
+        overwritten = tile->coord_in_rect(
+            pos, fragment_metadata_[f]->non_empty_domain_vec());
+        if (overwritten)
+          break;
+      }
+    }
+
+    if (!overwritten)
+      result_coords->emplace_back(tile, pos);
   }
 
   return Status::Ok();
 }
 
-// TODO: remove template
+// TODO: remove template 1
 template <class T>
 Status Reader::compute_range_result_coords(
     const std::vector<bool>& single_fragment,
@@ -707,7 +714,7 @@ Status Reader::compute_range_result_coords(
   return Status::Ok();
 }
 
-// TODO: remove template
+// TODO: remove template 2
 template <class T>
 Status Reader::compute_range_result_coords(
     uint64_t range_idx,
@@ -716,7 +723,6 @@ Status Reader::compute_range_result_coords(
     std::vector<ResultCoords>* range_result_coords) {
   const auto& subarray = read_state_.partitioner_.current();
   const auto& overlap = subarray.tile_overlap();
-  auto range = subarray.range<T>(range_idx);
   auto fragment_num = fragment_metadata_.size();
 
   for (unsigned f = 0; f < fragment_num; ++f) {
@@ -741,6 +747,7 @@ Status Reader::compute_range_result_coords(
 
           // Add results only if the sparse tile MBR is not fully
           // covered by a more recent fragment's non-empty domain
+          // TODO: remove template
           if (!sparse_tile_overwritten<T>(f, i))
             RETURN_NOT_OK(get_all_result_coords(&tile, range_result_coords));
         }
@@ -759,7 +766,8 @@ Status Reader::compute_range_result_coords(
           if (!sparse_tile_overwritten<T>(f, t->first))
             RETURN_NOT_OK(get_all_result_coords(&tile, range_result_coords));
         } else {  // Partial overlap
-          RETURN_NOT_OK(compute_range_result_coords<T>(
+          auto range = subarray.range(range_idx);
+          RETURN_NOT_OK(compute_range_result_coords(
               f, &tile, range, range_result_coords));
         }
         ++t;
@@ -802,7 +810,7 @@ Status Reader::compute_sparse_result_tiles(
   STATS_FUNC_IN(reader_compute_overlapping_tiles);
 
   // For easy reference
-  auto dim_num = array_schema_->dim_num();
+  auto domain = array_schema_->domain();
   const auto& subarray = read_state_.partitioner_.current();
   const auto& overlap = subarray.tile_overlap();
   auto range_num = subarray.range_num();
@@ -830,7 +838,7 @@ Status Reader::compute_sparse_result_tiles(
           auto pair = std::pair<unsigned, uint64_t>(f, t);
           // Add tile only if it does not already exist
           if (result_tile_map->find(pair) == result_tile_map->end()) {
-            result_tiles->emplace_back(f, t, dim_num);
+            result_tiles->emplace_back(f, t, domain);
             (*result_tile_map)[pair] = result_tiles->size() - 1;
             if (f > first_fragment[r])
               (*single_fragment)[r] = false;
@@ -847,7 +855,7 @@ Status Reader::compute_sparse_result_tiles(
         auto pair = std::pair<unsigned, uint64_t>(f, t);
         // Add tile only if it does not already exist
         if (result_tile_map->find(pair) == result_tile_map->end()) {
-          result_tiles->emplace_back(f, t, dim_num);
+          result_tiles->emplace_back(f, t, domain);
           (*result_tile_map)[pair] = result_tiles->size() - 1;
           if (f > first_fragment[r])
             (*single_fragment)[r] = false;
@@ -888,10 +896,6 @@ Status Reader::copy_fixed_cells(
   auto buffer = (unsigned char*)it->second.buffer_;
   auto buffer_size = it->second.buffer_size_;
   auto cell_size = array_schema_->cell_size(name);
-  auto type = array_schema_->type(name);
-  auto fill_size = datatype_size(type);
-  auto fill_value = constants::fill_value(type);
-  assert(fill_value != nullptr);
 
   // Precompute the cell range destination offsets in the buffer
   auto num_cs = result_cell_slabs.size();
@@ -915,31 +919,31 @@ Status Reader::copy_fixed_cells(
     const auto& cs = result_cell_slabs[i];
     uint64_t offset = cs_offsets[i];
     // Check for overflow
-    auto bytes_to_copy = cs.length_ * cell_size;
-    assert(offset + bytes_to_copy <= *buffer_size);
+    assert(offset + cs.length_ * cell_size <= *buffer_size);
 
     // Copy
     if (cs.tile_ == nullptr) {  // Empty range
+      auto type = array_schema_->type(name);
+      auto fill_size = datatype_size(type);
+      auto fill_value = constants::fill_value(type);
+      assert(fill_value != nullptr);
+      auto bytes_to_copy = cs.length_ * cell_size;
       auto fill_num = bytes_to_copy / fill_size;
       for (uint64_t j = 0; j < fill_num; ++j) {
         std::memcpy(buffer + offset, fill_value, fill_size);
         offset += fill_size;
       }
     } else {  // Non-empty range
-      auto tile_pair = cs.tile_->tile_pair(name);
-      const auto& tile = tile_pair->first;
       if (stride == UINT64_MAX) {
-        const uint64_t tile_offset = cs.start_ * cell_size;
-        RETURN_NOT_OK(tile.read(buffer + offset, bytes_to_copy, tile_offset));
+        RETURN_NOT_OK(
+            cs.tile_->read(name, buffer + offset, cs.start_, cs.length_));
       } else {
-        uint64_t byte_stride = stride * cell_size;
-        uint64_t cell_offset = offset;
-        uint64_t data_offset = cs.start_ * cell_size;
+        auto cell_offset = offset;
+        auto start = cs.start_;
         for (uint64_t j = 0; j < cs.length_; ++j) {
-          RETURN_NOT_OK(
-              tile.read(buffer + cell_offset, cell_size, data_offset));
+          RETURN_NOT_OK(cs.tile_->read(name, buffer + cell_offset, start, 1));
           cell_offset += cell_size;
-          data_offset += byte_stride;
+          start += stride;
         }
       }
     }
@@ -1156,7 +1160,11 @@ void Reader::compute_result_space_tiles(
 
   // Compute result space tiles
   compute_result_space_tiles<T>(
-      tile_coords, array_tile_domain, frag_tile_domains, result_space_tiles);
+      array_schema_->domain(),
+      tile_coords,
+      array_tile_domain,
+      frag_tile_domains,
+      result_space_tiles);
 }
 
 template <class T>
@@ -1259,6 +1267,7 @@ void Reader::compute_result_cell_slabs_global(
   }
 }
 
+// TODO: remove template
 template <class T>
 Status Reader::compute_result_coords(
     std::vector<ResultTile>* result_tiles,
@@ -1268,6 +1277,7 @@ Status Reader::compute_result_coords(
   std::map<FragTilePair, size_t> result_tile_map;
   std::vector<bool> single_fragment;
 
+  // TODO: remove template
   RETURN_CANCEL_OR_ERROR(compute_sparse_result_tiles<T>(
       result_tiles, &result_tile_map, &single_fragment));
 
@@ -1293,10 +1303,6 @@ Status Reader::compute_result_coords(
     RETURN_CANCEL_OR_ERROR(read_tiles(dim_name, tmp_result_tiles));
     RETURN_CANCEL_OR_ERROR(filter_tiles(dim_name, tmp_result_tiles));
   }
-  // TODO: remove
-  RETURN_CANCEL_OR_ERROR(zip_coord_tiles(tmp_result_tiles));
-  // TODO: create vector in tmp_result tiles with pointers to the actual
-  // TODO: separate coordinate tiles. Applicable only to format version >=5
 
   // Compute the read coordinates for all fragments for each subarray range
   std::vector<std::vector<ResultCoords>> range_result_coords;
@@ -1368,8 +1374,7 @@ Status Reader::dense_read() {
       &result_cell_slabs);
 
   // Clear sparse coordinate tiles (not needed any more)
-  for (auto& tile : sparse_result_tiles)
-    tile.erase_tile(constants::coords);
+  erase_coord_tiles(&sparse_result_tiles);
 
   // Needed when copying the cells
   auto stride = array_schema_->domain()->stride<T>(subarray.layout());
@@ -1617,10 +1622,7 @@ Status Reader::filter_tile(
 
 Status Reader::get_all_result_coords(
     ResultTile* tile, std::vector<ResultCoords>* result_coords) const {
-  // TODO: do not use the following line, find cell_num in another way
-  auto tile_pair = tile->tile_pair(constants::coords);
-  const auto& t = tile_pair->first;
-  auto coords_num = t.cell_num();
+  auto coords_num = tile->cell_num();
   for (uint64_t i = 0; i < coords_num; ++i)
     result_coords->emplace_back(tile, i);
 
@@ -1936,14 +1938,12 @@ Status Reader::sparse_read() {
   uint64_t stride = UINT64_MAX;
 
   // Copy coordinates
-  if (std::find(attributes_.begin(), attributes_.end(), constants::coords) !=
-      attributes_.end())
+  if (has_coords())
     RETURN_CANCEL_OR_ERROR(
         copy_cells(constants::coords, stride, result_cell_slabs));
 
   // Clear sparse coordinate tiles (not needed any more)
-  for (auto& tile : sparse_result_tiles)
-    tile.erase_tile(constants::coords);
+  erase_coord_tiles(&sparse_result_tiles);
 
   // Copy cells
   for (const auto& attr : attributes_) {
@@ -1990,90 +1990,60 @@ bool Reader::sparse_tile_overwritten(
   return false;
 }
 
-template <class T>
-bool Reader::coords_overwritten(unsigned frag_idx, const T* coords) const {
-  auto fragment_num = fragment_metadata_.size();
-  auto dim_num = array_schema_->dim_num();
-
-  for (unsigned f = frag_idx + 1; f < fragment_num; ++f) {
-    if (fragment_metadata_[f]->dense() &&
-        utils::geometry::coords_in_rect<T>(
-            coords,
-            (const T*)fragment_metadata_[f]->non_empty_domain(),
-            dim_num))
-      return true;
+void Reader::erase_coord_tiles(std::vector<ResultTile>* result_tiles) const {
+  for (auto& tile : *result_tiles) {
+    auto dim_num = array_schema_->dim_num();
+    for (unsigned d = 0; d < dim_num; ++d)
+      tile.erase_tile(array_schema_->dimension(d)->name());
+    tile.erase_tile(constants::coords);
   }
-
-  return false;
-}
-
-Status Reader::zip_coord_tiles(
-    const std::vector<ResultTile*>& tmp_result_tiles) const {
-  // Zip coordinate tiles
-  auto tile_num = (uint64_t)tmp_result_tiles.size();
-  auto dim_num = array_schema_->dim_num();
-  auto statuses = parallel_for(0, tile_num, [&](uint64_t t) {
-    const auto& fragment = fragment_metadata_[tmp_result_tiles[t]->frag_idx()];
-    auto format_version = fragment->format_version();
-    if (format_version >= 5) {  // Applicable only to version >= 5
-      auto coords_tile_pair = tmp_result_tiles[t]->tile_pair(constants::coords);
-      assert(coords_tile_pair != nullptr);
-      auto& new_tile = coords_tile_pair->first;
-      RETURN_NOT_OK(init_tile(format_version, constants::coords, &new_tile));
-      for (unsigned d = 0; d < dim_num; ++d) {
-        const auto& dim_name = array_schema_->dimension(d)->name();
-        auto tile_pair = tmp_result_tiles[t]->tile_pair(dim_name);
-        const auto& coord_tile = tile_pair->first;
-        new_tile.write(coord_tile);
-      }
-      new_tile.zip_coordinates();
-    }
-    return Status::Ok();
-  });
-
-  for (const auto& st : statuses)
-    RETURN_CANCEL_OR_ERROR(st);
-
-  return Status::Ok();
 }
 
 // Explicit template instantiations
 template void Reader::compute_result_space_tiles<int8_t>(
+    const Domain* domain,
     const std::vector<std::vector<uint8_t>>& tile_coords,
     const TileDomain<int8_t>& array_tile_domain,
     const std::vector<TileDomain<int8_t>>& frag_tile_domains,
     std::map<const int8_t*, ResultSpaceTile<int8_t>>* result_space_tiles);
 template void Reader::compute_result_space_tiles<uint8_t>(
+    const Domain* domain,
     const std::vector<std::vector<uint8_t>>& tile_coords,
     const TileDomain<uint8_t>& array_tile_domain,
     const std::vector<TileDomain<uint8_t>>& frag_tile_domains,
     std::map<const uint8_t*, ResultSpaceTile<uint8_t>>* result_space_tiles);
 template void Reader::compute_result_space_tiles<int16_t>(
+    const Domain* domain,
     const std::vector<std::vector<uint8_t>>& tile_coords,
     const TileDomain<int16_t>& array_tile_domain,
     const std::vector<TileDomain<int16_t>>& frag_tile_domains,
     std::map<const int16_t*, ResultSpaceTile<int16_t>>* result_space_tiles);
 template void Reader::compute_result_space_tiles<uint16_t>(
+    const Domain* domain,
     const std::vector<std::vector<uint8_t>>& tile_coords,
     const TileDomain<uint16_t>& array_tile_domain,
     const std::vector<TileDomain<uint16_t>>& frag_tile_domains,
     std::map<const uint16_t*, ResultSpaceTile<uint16_t>>* result_space_tiles);
 template void Reader::compute_result_space_tiles<int32_t>(
+    const Domain* domain,
     const std::vector<std::vector<uint8_t>>& tile_coords,
     const TileDomain<int32_t>& array_tile_domain,
     const std::vector<TileDomain<int32_t>>& frag_tile_domains,
     std::map<const int32_t*, ResultSpaceTile<int32_t>>* result_space_tiles);
 template void Reader::compute_result_space_tiles<uint32_t>(
+    const Domain* domain,
     const std::vector<std::vector<uint8_t>>& tile_coords,
     const TileDomain<uint32_t>& array_tile_domain,
     const std::vector<TileDomain<uint32_t>>& frag_tile_domains,
     std::map<const uint32_t*, ResultSpaceTile<uint32_t>>* result_space_tiles);
 template void Reader::compute_result_space_tiles<int64_t>(
+    const Domain* domain,
     const std::vector<std::vector<uint8_t>>& tile_coords,
     const TileDomain<int64_t>& array_tile_domain,
     const std::vector<TileDomain<int64_t>>& frag_tile_domains,
     std::map<const int64_t*, ResultSpaceTile<int64_t>>* result_space_tiles);
 template void Reader::compute_result_space_tiles<uint64_t>(
+    const Domain* domain,
     const std::vector<std::vector<uint8_t>>& tile_coords,
     const TileDomain<uint64_t>& array_tile_domain,
     const std::vector<TileDomain<uint64_t>>& frag_tile_domains,

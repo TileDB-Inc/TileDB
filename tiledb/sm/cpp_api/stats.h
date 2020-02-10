@@ -74,7 +74,7 @@ class Stats {
    *
    * @param out The output.
    */
-  static void dump(FILE* out = stdout) {
+  static void dump(FILE* out = nullptr) {
     check_error(tiledb_stats_dump(out), "error dumping stats");
   }
 
