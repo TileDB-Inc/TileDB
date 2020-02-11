@@ -566,7 +566,7 @@ class Reader {
   Status compute_range_result_coords(
       unsigned frag_idx,
       ResultTile* tile,
-      const std::vector<const void*>& range,
+      const NDRange& range,
       std::vector<ResultCoords>* result_coords) const;
 
   /**
@@ -962,13 +962,7 @@ class Reader {
   Status sort_result_coords(
       std::vector<ResultCoords>* result_coords, Layout layout) const;
 
-  /**
-   * Performs a read on a sparse array.
-   *
-   * @tparam The domain type.
-   * @return Status
-   */
-  template <class T>
+  /** Performs a read on a sparse array. */
   Status sparse_read();
 
   /** Zeroes out the user buffer sizes, indicating an empty result. */

@@ -30,6 +30,7 @@
  * This file implements class RTree.
  */
 
+#include "tiledb/sm/array_schema/domain.h"
 #include "tiledb/sm/rtree/rtree.h"
 #include "tiledb/sm/buffer/buffer.h"
 #include "tiledb/sm/buffer/const_buffer.h"
@@ -90,11 +91,9 @@ RTree& RTree::operator=(RTree&& rtree) noexcept {
 /*               API              */
 /* ****************************** */
 
-
-        const Domain* RTree::domain() const {
-            return domain_;
-        }
-
+const Domain* RTree::domain() const {
+  return domain_;
+}
 
 unsigned RTree::fanout() const {
   return fanout_;
@@ -102,9 +101,10 @@ unsigned RTree::fanout() const {
 
 TileOverlap RTree::get_tile_overlap(const NDRange& range) const {
   TileOverlap overlap;
+  auto dim_num = (unsigned)domain_->dim_num();
 
   // Empty tree
-  if (dim_num_ == 0 || levels_.empty())
+  if (dim_num == 0 || levels_.empty())
     return overlap;
 
   // This will keep track of the traversal
@@ -112,7 +112,7 @@ TileOverlap RTree::get_tile_overlap(const NDRange& range) const {
   traversal.push_front({0, 0});
   auto leaf_num = levels_.back().mbr_num_;
   auto height = this->height();
-  uint64_t mbr_size = 2 * dim_num_ * datatype_size(type_);
+  uint64_t mbr_size = 2 * dim_num * datatype_size(type_);
 
   while (!traversal.empty()) {
     // Get next entry

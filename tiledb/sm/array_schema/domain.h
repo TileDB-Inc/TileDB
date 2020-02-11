@@ -88,6 +88,12 @@ class Domain {
       const NDPoint& tile_coords,
       const NDRange& subarray) const;
 
+  /**
+   * Returns the overlap between multi-dimensional ranges
+   * `a` and `b` over the volume of `b`.
+   */
+  double coverage(const NDRange& a, const NDRange& b) const;
+
   /** Returns the tile domain of `range` based on `domain`. */
   NDRange tile_domain(const NDRange& range, const NDRange& domain) const;
 

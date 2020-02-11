@@ -323,7 +323,7 @@ Status Reader::read() {
     if (array_schema_->dense() && !sparse_mode_) {
       RETURN_NOT_OK(dense_read<T>());
     } else {
-      RETURN_NOT_OK(sparse_read<T>());
+      RETURN_NOT_OK(sparse_read());
     }
 
     // In the case of overflow, we need to split the current partition
@@ -644,7 +644,7 @@ Status Reader::compute_result_cell_slabs(
 Status Reader::compute_range_result_coords(
     unsigned frag_idx,
     ResultTile* tile,
-    const std::vector<const void*>& range,
+    const NDRange& range,
     std::vector<ResultCoords>* result_coords) const {
   auto coords_num = tile->cell_num();
   auto fragment_num = fragment_metadata_.size();
@@ -658,8 +658,8 @@ Status Reader::compute_range_result_coords(
     bool overwritten = false;
     for (unsigned f = frag_idx + 1; !overwritten && f < fragment_num; ++f) {
       if (fragment_metadata_[f]->dense()) {
-        overwritten = tile->coord_in_rect(
-            pos, fragment_metadata_[f]->non_empty_domain_vec());
+        overwritten =
+            tile->coord_in_rect(pos, fragment_metadata_[f]->non_empty_domain());
         if (overwritten)
           break;
       }
@@ -738,8 +738,7 @@ Status Reader::compute_range_result_coords(
 
           // Add results only if the sparse tile MBR is not fully
           // covered by a more recent fragment's non-empty domain
-          // TODO: remove template
-          if (!sparse_tile_overwritten<T>(f, i))
+          if (!sparse_tile_overwritten(f, i))
             RETURN_NOT_OK(get_all_result_coords(&tile, range_result_coords));
         }
         ++tr;
@@ -753,8 +752,7 @@ Status Reader::compute_range_result_coords(
         if (t->second == 1.0) {  // Full overlap
           // Add results only if the sparse tile MBR is not fully
           // covered by a more recent fragment's non-empty domain
-          // TODO: remove template
-          if (!sparse_tile_overwritten<T>(f, t->first))
+          if (!sparse_tile_overwritten(f, t->first))
             RETURN_NOT_OK(get_all_result_coords(&tile, range_result_coords));
         } else {  // Partial overlap
           auto range = subarray.range(range_idx);
@@ -1902,7 +1900,6 @@ Status Reader::sort_result_coords(
   STATS_FUNC_OUT(reader_sort_coords);
 }
 
-template <class T>
 Status Reader::sparse_read() {
   STATS_FUNC_IN(reader_sparse_read);
 
@@ -1911,7 +1908,7 @@ Status Reader::sparse_read() {
   // sparse fragments
   std::vector<ResultCoords> result_coords;
   std::vector<ResultTile> sparse_result_tiles;
-  RETURN_NOT_OK(compute_result_coords<T>(&sparse_result_tiles, &result_coords));
+  RETURN_NOT_OK(compute_result_coords(&sparse_result_tiles, &result_coords));
   std::vector<ResultTile*> result_tiles;
   for (auto& srt : sparse_result_tiles)
     result_tiles.push_back(&srt);
@@ -1961,15 +1958,14 @@ void Reader::zero_out_buffer_sizes() {
 
 bool Reader::sparse_tile_overwritten(
     unsigned frag_idx, uint64_t tile_idx) const {
-  auto mbr = (const T*)fragment_metadata_[frag_idx]->mbr(tile_idx);
-  assert(mbr != nullptr);
+  const auto& mbr = fragment_metadata_[frag_idx]->mbr(tile_idx);
+  assert(!mbr.empty());
   auto fragment_num = fragment_metadata_.size();
-  auto dim_num = array_schema_->dim_num();
+  auto domain = array_schema_->domain();
 
   for (unsigned f = frag_idx + 1; f < fragment_num; ++f) {
     if (fragment_metadata_[f]->dense() &&
-        utils::geometry::rect_in_rect<T>(
-            mbr, (const T*)fragment_metadata_[f]->non_empty_domain(), dim_num))
+        domain->range_in_range(mbr, fragment_metadata_[f]->non_empty_domain()))
       return true;
   }
 

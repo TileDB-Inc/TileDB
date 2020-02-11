@@ -251,6 +251,13 @@ class Dimension {
   double tile_coverage(
       const Range& domain, const Value& tile_coords, const Range& range) const;
 
+  /** Returns the overlap between `a` and `b` over the volume of `b`. */
+  template <class T>
+  static double coverage(const Dimension* dim, const Range& a, const Range& b);
+
+  /** Returns the overlap between `a` and `b` over the volume of `b`. */
+  double coverage(const Range& a, const Range& b) const;
+
   /**
    * Serializes the object members into a binary buffer.
    *
@@ -403,6 +410,13 @@ class Dimension {
       const Dimension* dim, const Range&, const Value&, const Range&)>
       tile_coverage_func_;
 
+  /**
+   * Stores the appropriate templated coverage() function based
+   * on the dimension datatype.
+   */
+  std::function<double(const Dimension* dim, const Range&, const Range&)>
+      coverage_func_;
+
   /* ********************************* */
   /*          PRIVATE METHODS          */
   /* ********************************* */
@@ -525,6 +539,9 @@ class Dimension {
 
   /** Sets the templated tile_coverage() function. */
   void set_tile_coverage_func();
+
+  /** Sets the templated coverage() function. */
+  void set_coverage_func();
 };
 
 }  // namespace sm

@@ -61,6 +61,7 @@ Dimension::Dimension() {
   set_value_after_range_func();
   set_set_value_to_range_start_func();
   set_tile_coverage_func();
+  set_coverage_func();
 }
 
 Dimension::Dimension(const std::string& name, Datatype type)
@@ -80,6 +81,7 @@ Dimension::Dimension(const std::string& name, Datatype type)
   set_value_after_range_func();
   set_set_value_to_range_start_func();
   set_tile_coverage_func();
+  set_coverage_func();
 }
 
 Dimension::Dimension(const Dimension* dim) {
@@ -206,6 +208,7 @@ Status Dimension::deserialize(ConstBuffer* buff, Datatype type) {
   set_value_after_range_func();
   set_set_value_to_range_start_func();
   set_tile_coverage_func();
+  set_coverage_func();
 
   return Status::Ok();
 }
@@ -528,14 +531,11 @@ double Dimension::tile_coverage(
   if (overlap[0] > range_v[1] || overlap[1] < range_v[0])
     return 0.0;
 
-  // Get coverage between the overalp and the range
+  // Get coverage between the overlap and the range
   auto add = int(std::is_integral<T>::value);
-  if (range_v[0] == range_v[1])
-    return 1.0;
-
   auto overlap_len = double(overlap[1]) - overlap[0] + add;
   auto range_len = double(range_v[1]) - range_v[0] + add;
-  if (std::numeric_limits<T>::is_integer) {
+  if (!std::numeric_limits<T>::is_integer) {
     auto max = std::numeric_limits<T>::max();
     if (overlap_len == 0)
       overlap_len = std::nextafter(overlap_len, max);
@@ -555,6 +555,48 @@ double Dimension::tile_coverage(
     const Range& domain, const Value& tile_coords, const Range& range) const {
   assert(tile_coverage_func_ != nullptr);
   return tile_coverage_func_(this, domain, tile_coords, range);
+}
+
+template <class T>
+double Dimension::coverage(
+    const Dimension* dim, const Range& a, const Range& b) {
+  (void)*dim;  // Will be used in the future
+  assert(!a.empty());
+  assert(!b.empty());
+
+  auto a_v = (const T*)&a[0];
+  auto b_v = (const T*)&b[0];
+
+  // Get overlap between the two ranges
+  T overlap[2];
+  overlap[0] = std::max(a_v[0], b_v[0]);
+  overlap[1] = std::min(a_v[1], b_v[1]);
+  if (overlap[0] > a_v[1] || overlap[1] < a_v[0])
+    return 0.0;
+
+  // Get coverage between the overlap and `b`
+  auto add = int(std::is_integral<T>::value);
+  auto overlap_len = double(overlap[1]) - overlap[0] + add;
+  auto b_len = double(b_v[1]) - b_v[0] + add;
+  if (!std::numeric_limits<T>::is_integer) {
+    auto max = std::numeric_limits<T>::max();
+    if (overlap_len == 0)
+      overlap_len = std::nextafter(overlap_len, max);
+    if (b_len == 0)
+      b_len = std::nextafter(b_len, max);
+  }
+  double cov = overlap_len / b_len;
+
+  // At this point, we know that the tile coverage should not be 0.
+  // If cov goes to 0, then it is because it is too small, so we should set cov
+  // to epsilon.
+  return (cov != 0) ? cov :
+                      std::nextafter(0, std::numeric_limits<double>::max());
+}
+
+double Dimension::coverage(const Range& a, const Range& b) const {
+  assert(coverage_func_ != nullptr);
+  return coverage_func_(this, a, b);
 }
 
 // ===== FORMAT =====
@@ -1607,6 +1649,59 @@ void Dimension::set_tile_coverage_func() {
       break;
     default:
       tile_coverage_func_ = nullptr;
+      break;
+  }
+}
+
+void Dimension::set_coverage_func() {
+  switch (type_) {
+    case Datatype::INT32:
+      coverage_func_ = coverage<int32_t>;
+      break;
+    case Datatype::INT64:
+      coverage_func_ = coverage<int64_t>;
+      break;
+    case Datatype::INT8:
+      coverage_func_ = coverage<int8_t>;
+      break;
+    case Datatype::UINT8:
+      coverage_func_ = coverage<uint8_t>;
+      break;
+    case Datatype::INT16:
+      coverage_func_ = coverage<int16_t>;
+      break;
+    case Datatype::UINT16:
+      coverage_func_ = coverage<uint16_t>;
+      break;
+    case Datatype::UINT32:
+      coverage_func_ = coverage<uint32_t>;
+      break;
+    case Datatype::UINT64:
+      coverage_func_ = coverage<uint64_t>;
+      break;
+    case Datatype::FLOAT32:
+      coverage_func_ = coverage<float>;
+      break;
+    case Datatype::FLOAT64:
+      coverage_func_ = coverage<double>;
+      break;
+    case Datatype::DATETIME_YEAR:
+    case Datatype::DATETIME_MONTH:
+    case Datatype::DATETIME_WEEK:
+    case Datatype::DATETIME_DAY:
+    case Datatype::DATETIME_HR:
+    case Datatype::DATETIME_MIN:
+    case Datatype::DATETIME_SEC:
+    case Datatype::DATETIME_MS:
+    case Datatype::DATETIME_US:
+    case Datatype::DATETIME_NS:
+    case Datatype::DATETIME_PS:
+    case Datatype::DATETIME_FS:
+    case Datatype::DATETIME_AS:
+      coverage_func_ = coverage<int64_t>;
+      break;
+    default:
+      coverage_func_ = nullptr;
       break;
   }
 }

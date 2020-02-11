@@ -113,6 +113,27 @@ double Domain::tile_coverage(
   return cov;
 }
 
+double Domain::coverage(const NDRange& a, const NDRange& b) const {
+  double cov = 1.0, dim_cov;
+  auto dim_num = (unsigned)dimensions_.size();
+  for (unsigned d = 0; d < dim_num; ++d) {
+    dim_cov = dimensions_[d]->coverage(a[d], b[d]);
+
+    // Return if coverage on any dimension is 0.0
+    if (dim_cov == 0.0)
+      return 0.0;
+
+    cov *= dim_cov;
+
+    // At this point, we know that the coverage should not be 0.
+    // If cov goes to 0, then it is because it got too small, so we should set
+    // it to epsilon.
+    (cov != 0) ? cov : std::nextafter(0, std::numeric_limits<double>::max());
+  }
+
+  return cov;
+}
+
 NDRange Domain::tile_domain(const NDRange& range, const NDRange& domain) const {
   auto dim_num = (unsigned)dimensions_.size();
   NDRange ret(dim_num);
