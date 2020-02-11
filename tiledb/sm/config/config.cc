@@ -81,6 +81,10 @@ const std::string Config::VFS_MIN_BATCH_GAP = "512000";
 const std::string Config::VFS_MIN_BATCH_SIZE = "20971520";
 const std::string Config::VFS_FILE_MAX_PARALLEL_OPS = Config::VFS_NUM_THREADS;
 const std::string Config::VFS_FILE_ENABLE_FILELOCKS = "true";
+const std::string Config::VFS_AZURE_STORAGE_ACCOUNT_NAME = "";
+const std::string Config::VFS_AZURE_STORAGE_ACCOUNT_KEY = "";
+const std::string Config::VFS_AZURE_BLOB_ENDPOINT = "";
+const std::string Config::VFS_AZURE_USE_HTTPS = "true";
 const std::string Config::VFS_S3_REGION = "us-east-1";
 const std::string Config::VFS_S3_AWS_ACCESS_KEY_ID = "";
 const std::string Config::VFS_S3_AWS_SECRET_ACCESS_KEY = "";
@@ -115,6 +119,8 @@ const std::string Config::VFS_HDFS_USERNAME = "";
 const char Config::COMMENT_START = '#';
 
 const std::set<std::string> Config::unserialized_params_ = {
+    "vfs.azure.storage_account_name",
+    "vfs.azure.storage_account_key",
     "vfs.s3.proxy_username",
     "vfs.s3.proxy_password",
     "vfs.s3.aws_access_key_id",
@@ -163,6 +169,12 @@ Config::Config() {
   param_values_["vfs.min_batch_size"] = VFS_MIN_BATCH_SIZE;
   param_values_["vfs.file.max_parallel_ops"] = VFS_FILE_MAX_PARALLEL_OPS;
   param_values_["vfs.file.enable_filelocks"] = VFS_FILE_ENABLE_FILELOCKS;
+  param_values_["vfs.azure.storage_account_name"] =
+      VFS_AZURE_STORAGE_ACCOUNT_NAME;
+  param_values_["vfs.azure.storage_account_key"] =
+      VFS_AZURE_STORAGE_ACCOUNT_KEY;
+  param_values_["vfs.azure.blob_endpoint"] = VFS_AZURE_BLOB_ENDPOINT;
+  param_values_["vfs.azure.use_https"] = VFS_AZURE_USE_HTTPS;
   param_values_["vfs.s3.region"] = VFS_S3_REGION;
   param_values_["vfs.s3.aws_access_key_id"] = VFS_S3_AWS_ACCESS_KEY_ID;
   param_values_["vfs.s3.aws_secret_access_key"] = VFS_S3_AWS_SECRET_ACCESS_KEY;
@@ -373,6 +385,16 @@ Status Config::unset(const std::string& param) {
     param_values_["vfs.file.max_parallel_ops"] = VFS_FILE_MAX_PARALLEL_OPS;
   } else if (param == "vfs.file.enable_filelocks") {
     param_values_["vfs.file.enable_filelocks"] = VFS_FILE_ENABLE_FILELOCKS;
+  } else if (param == "vfs.azure.storage_account_name") {
+    param_values_["vfs.azure.storage_account_name"] =
+        VFS_AZURE_STORAGE_ACCOUNT_NAME;
+  } else if (param == "vfs.azure.storage_account_key") {
+    param_values_["vfs.azure.storage_account_key"] =
+        VFS_AZURE_STORAGE_ACCOUNT_KEY;
+  } else if (param == "vfs.azure.blob_endpoint") {
+    param_values_["vfs.azure.blob_endpoint"] = VFS_AZURE_BLOB_ENDPOINT;
+  } else if (param == "vfs.azure.use_https") {
+    param_values_["vfs.azure.use_https"] = VFS_AZURE_USE_HTTPS;
   } else if (param == "vfs.s3.region") {
     param_values_["vfs.s3.region"] = VFS_S3_REGION;
   } else if (param == "vfs.s3.aws_access_key_id") {
