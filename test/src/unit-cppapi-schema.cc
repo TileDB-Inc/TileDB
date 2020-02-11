@@ -157,7 +157,7 @@ TEST_CASE("C++ API: Schema", "[cppapi][schema]") {
     CHECK_THROWS_AS(
         dom.add_dimension(
             Dimension::create<uint64_t>(ctx, "d2", {{0, 10}}, 11)),
-        TileDBError);
+        TileDBError&);
   }
 }
 

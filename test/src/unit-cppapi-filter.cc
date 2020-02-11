@@ -67,10 +67,10 @@ TEST_CASE("C++ API: Filter options", "[cppapi], [filter]") {
   uint32_t wrong_type_u = 1;
   REQUIRE_THROWS_AS(
       f.set_option(TILEDB_COMPRESSION_LEVEL, wrong_type_u),
-      std::invalid_argument);
+      std::invalid_argument&);
   REQUIRE_THROWS_AS(
       f.get_option(TILEDB_COMPRESSION_LEVEL, &wrong_type_u),
-      std::invalid_argument);
+      std::invalid_argument&);
 
   // Check that you can bypass type safety (don't do this).
   f.get_option(TILEDB_COMPRESSION_LEVEL, (void*)&wrong_type_u);
@@ -79,18 +79,18 @@ TEST_CASE("C++ API: Filter options", "[cppapi], [filter]") {
   // Unsupported option
   uint32_t window;
   REQUIRE_THROWS_AS(
-      f.set_option(TILEDB_BIT_WIDTH_MAX_WINDOW, &window), TileDBError);
+      f.set_option(TILEDB_BIT_WIDTH_MAX_WINDOW, &window), TileDBError&);
   REQUIRE_THROWS_AS(
-      f.get_option(TILEDB_BIT_WIDTH_MAX_WINDOW, &window), TileDBError);
+      f.get_option(TILEDB_BIT_WIDTH_MAX_WINDOW, &window), TileDBError&);
 
   Filter f2(ctx, TILEDB_FILTER_BIT_WIDTH_REDUCTION);
   int32_t wrong_type_i = 1;
-  REQUIRE_THROWS_AS(f2.set_option(TILEDB_COMPRESSION_LEVEL, 1), TileDBError);
+  REQUIRE_THROWS_AS(f2.set_option(TILEDB_COMPRESSION_LEVEL, 1), TileDBError&);
   REQUIRE_THROWS_AS(
-      f2.set_option(TILEDB_BIT_WIDTH_MAX_WINDOW, -1), std::invalid_argument);
+      f2.set_option(TILEDB_BIT_WIDTH_MAX_WINDOW, -1), std::invalid_argument&);
   REQUIRE_THROWS_AS(
       f2.set_option(TILEDB_BIT_WIDTH_MAX_WINDOW, wrong_type_i),
-      std::invalid_argument);
+      std::invalid_argument&);
 }
 
 TEST_CASE("C++ API: Filter lists", "[cppapi], [filter]") {
@@ -114,7 +114,7 @@ TEST_CASE("C++ API: Filter lists", "[cppapi], [filter]") {
   REQUIRE(list.nfilters() == 2);
 
   Filter f1_get = list.filter(0), f2_get(list.filter(1));
-  REQUIRE_THROWS_AS(list.filter(2), TileDBError);
+  REQUIRE_THROWS_AS(list.filter(2), TileDBError&);
   REQUIRE(f1_get.filter_type() == TILEDB_FILTER_BIT_WIDTH_REDUCTION);
   REQUIRE(f2_get.filter_type() == TILEDB_FILTER_BZIP2);
 
