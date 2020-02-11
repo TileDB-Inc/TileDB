@@ -34,11 +34,14 @@
 #define TILEDB_AZURE_H
 
 #ifdef HAVE_AZURE
+#include <base64.h>
 #include <blob/blob_client.h>
 #include <storage_account.h>
 #include <storage_credential.h>
+#include <list>
 #include <unordered_map>
 
+#include "tiledb/sm/buffer/buffer.h"
 #include "tiledb/sm/config/config.h"
 #include "tiledb/sm/misc/constants.h"
 #include "tiledb/sm/misc/status.h"
@@ -274,18 +277,160 @@ class Azure {
 
  private:
   /* ********************************* */
+  /*         PRIVATE DATATYPES         */
+  /* ********************************* */
+
+  /** Contains all state associated with a block list upload transaction. */
+  class BlockListUploadState {
+   public:
+    BlockListUploadState()
+        : next_block_id_(0) {
+    }
+
+    /* Generates the next base64-encoded block id. */
+    std::string get_next_block_id() {
+      const uint64_t block_id = next_block_id_++;
+      const std::string block_id_str = std::to_string(block_id);
+      const std::string b64_block_id_str = azure::storage_lite::to_base64(
+          reinterpret_cast<const unsigned char*>(block_id_str.c_str()),
+          block_id_str.size());
+
+      block_ids_.emplace_back(b64_block_id_str);
+
+      return b64_block_id_str;
+    }
+
+    /* Returns all generated block ids. */
+    std::list<std::string> get_block_ids() {
+      return block_ids_;
+    }
+
+   private:
+    // The next block id to generate.
+    uint64_t next_block_id_;
+
+    // A list of all generated block ids.
+    std::list<std::string> block_ids_;
+  };
+
+  /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
   /* ********************************* */
 
   // The Azure blob storage client.
   std::shared_ptr<azure::storage_lite::blob_client> client_;
 
-  // Maps a URI to unflushed writes.
-  std::unordered_map<std::string, std::stringstream> write_cache_;
+  // Maps a blob URI to an write cache buffer.
+  std::unordered_map<std::string, Buffer> write_cache_map_;
+
+  // Protects 'write_cache_map_'.
+  std::mutex write_cache_map_lock_;
+
+  // The maximum size of each value-element in 'write_cache_map_'.
+  uint64_t write_cache_max_size_;
+
+  /** Whether or not to use block list upload. */
+  bool use_block_list_upload_;
+
+  /** Maps a blob URI to its block list upload state. */
+  std::unordered_map<std::string, BlockListUploadState>
+      block_list_upload_states_;
+
+  /** Protects 'block_list_upload_states_'. */
+  std::mutex block_list_upload_states_lock_;
 
   /* ********************************* */
   /*          PRIVATE METHODS          */
   /* ********************************* */
+
+  /*
+   * Thread-safe fetch of the write cache buffer in `write_cache_map_`.
+   * If a buffer does not exist for `uri`, it will be created.
+   *
+   * @param uri The blob URI.
+   * @return Buffer
+   */
+  Buffer* get_write_cache_buffer(const std::string& uri);
+
+  /**
+   * Fills the write cache buffer (given as an input `Buffer` object) from
+   * the input binary `buffer`, up until the size of the file buffer becomes
+   * `write_cache_max_size_`. It also retrieves the number of bytes filled.
+   *
+   * @param write_cache_buffer The destination write cache buffer to fill.
+   * @param buffer The source binary buffer to fill the data from.
+   * @param length The length of `buffer`.
+   * @param nbytes_filled The number of bytes filled into `write_cache_buffer`.
+   * @return Status
+   */
+  Status fill_write_cache(
+      Buffer* write_cache_buffer,
+      const void* buffer,
+      const uint64_t length,
+      uint64_t* nbytes_filled);
+
+  /**
+   * Writes the contents of the input buffer to the blob given by
+   * the input `uri` as a new series of block uploads. Resets
+   * 'write_cache_buffer'.
+   *
+   * @param uri The blob URI.
+   * @param write_cache_buffer The input buffer to flush.
+   * @param last_block Should be true only when the flush corresponds to the
+   * last block(s) of a block list upload.
+   * @return Status
+   */
+  Status flush_write_cache(
+      const URI& uri, Buffer* write_cache_buffer, bool last_block);
+
+  /**
+   * Writes the input buffer as an uncommited block to Azure by issuing one
+   * or more block upload requests.
+   *
+   * @param uri The blob URI.
+   * @param buffer The input buffer.
+   * @param length The size of the input buffer.
+   * @param last_part Should be true only when this is the last block of a blob.
+   * @return Status
+   */
+  Status write_blocks(
+      const URI& uri, const void* buffer, uint64_t length, bool last_block);
+
+  /*
+   * Executes a single, uncommited block upload.
+   *
+   * @param uri The blob URI.
+   * @param buffer The block contents.
+   * @param length The length of `buffer`.
+   * @param block_id A base64-encoded string that is unique to this block
+   * within the blob.
+   * @param result The returned future to fetch the async upload result from.
+   * @return Status
+   */
+  Status submit_upload_block(
+      const URI& uri,
+      const void* buffer,
+      uint64_t length,
+      const std::string& block_id,
+      std::future<azure::storage_lite::storage_outcome<void>>* result);
+
+  /*
+   * Waits on the associated block upload of 'result' and checks for
+   * success.
+   *
+   * @param uri The blob URI.
+   * @param result The future to fetch the async upload result from.
+   * @return Status
+   */
+  Status get_upload_block(
+      const URI& uri,
+      std::future<azure::storage_lite::storage_outcome<void>>&& result);
+
+  /*
+   * Uploads the write cache buffer associated with 'uri' as an entire
+   * blob.
+   */
+  Status flush_blob_direct(const URI& uri);
 
   /**
    * Parses a URI into a container name and blob path. For example,
