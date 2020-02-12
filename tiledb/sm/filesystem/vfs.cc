@@ -31,6 +31,9 @@
  */
 
 #include "tiledb/sm/filesystem/vfs.h"
+#include "tiledb/sm/buffer/buffer.h"
+#include "tiledb/sm/enums/filesystem.h"
+#include "tiledb/sm/enums/vfs_mode.h"
 #include "tiledb/sm/filesystem/hdfs_filesystem.h"
 #include "tiledb/sm/misc/logger.h"
 #include "tiledb/sm/misc/parallel_functions.h"

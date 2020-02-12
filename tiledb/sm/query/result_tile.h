@@ -37,8 +37,7 @@
 #include <unordered_map>
 #include <vector>
 
-#include "tiledb/sm/tile/tile.h"
-
+#include "tiledb/sm/misc/constants.h"
 #include "tiledb/sm/tile/tile.h"
 
 namespace tiledb {

@@ -31,6 +31,8 @@
  */
 
 #include "tiledb/sm/filesystem/vfs_file_handle.h"
+#include "tiledb/sm/enums/vfs_mode.h"
+#include "tiledb/sm/filesystem/vfs.h"
 #include "tiledb/sm/misc/logger.h"
 
 #include <sstream>

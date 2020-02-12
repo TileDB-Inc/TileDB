@@ -38,6 +38,7 @@
 #include "tiledb/sm/compressors/lz4_compressor.h"
 #include "tiledb/sm/compressors/rle_compressor.h"
 #include "tiledb/sm/compressors/zstd_compressor.h"
+#include "tiledb/sm/enums/compressor.h"
 #include "tiledb/sm/enums/filter_option.h"
 #include "tiledb/sm/enums/filter_type.h"
 #include "tiledb/sm/filter/filter_pipeline.h"

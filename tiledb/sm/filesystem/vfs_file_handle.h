@@ -33,10 +33,17 @@
 #ifndef TILEDB_VFS_FILE_HANDLE_H
 #define TILEDB_VFS_FILE_HANDLE_H
 
-#include "tiledb/sm/filesystem/vfs.h"
+#include <atomic>
+
+#include "tiledb/sm/misc/status.h"
+#include "tiledb/sm/misc/uri.h"
 
 namespace tiledb {
 namespace sm {
+
+class VFS;
+
+enum class VFSMode : uint8_t;
 
 /**
  * This class implements a file handle to be used along with

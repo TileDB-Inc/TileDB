@@ -34,6 +34,7 @@
 #include "tiledb/sm/array/array.h"
 #include "tiledb/sm/array_schema/array_schema.h"
 #include "tiledb/sm/array_schema/domain.h"
+#include "tiledb/sm/enums/layout.h"
 #include "tiledb/sm/misc/logger.h"
 
 #include <cassert>

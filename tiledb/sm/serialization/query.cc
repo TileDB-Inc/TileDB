@@ -33,12 +33,21 @@
 
 #include "tiledb/sm/serialization/query.h"
 #include "tiledb/sm/array/array.h"
+#include "tiledb/sm/buffer/buffer_list.h"
 #include "tiledb/sm/config/config.h"
+#include "tiledb/sm/enums/layout.h"
 #include "tiledb/sm/enums/query_status.h"
+#include "tiledb/sm/enums/query_type.h"
+#include "tiledb/sm/enums/serialization_type.h"
 #include "tiledb/sm/misc/logger.h"
 #include "tiledb/sm/misc/stats.h"
 #include "tiledb/sm/misc/utils.h"
+#include "tiledb/sm/query/query.h"
+#include "tiledb/sm/query/reader.h"
+#include "tiledb/sm/query/writer.h"
 #include "tiledb/sm/serialization/capnp_utils.h"
+#include "tiledb/sm/subarray/subarray.h"
+#include "tiledb/sm/subarray/subarray_partitioner.h"
 
 #ifdef TILEDB_SERIALIZATION
 #include <capnp/compat/json.h>

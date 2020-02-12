@@ -33,7 +33,6 @@
 #ifndef TILEDB_ATTRIBUTE_H
 #define TILEDB_ATTRIBUTE_H
 
-#include "tiledb/sm/enums/compressor.h"
 #include "tiledb/sm/filter/filter_pipeline.h"
 #include "tiledb/sm/misc/status.h"
 
@@ -43,6 +42,7 @@ namespace sm {
 class Buffer;
 class ConstBuffer;
 
+enum class Compressor : uint8_t;
 enum class Datatype : uint8_t;
 
 /** Manipulates a TileDB attribute. */

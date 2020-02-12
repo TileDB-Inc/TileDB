@@ -33,12 +33,20 @@
 #ifndef TILEDB_SERIALIZATION_QUERY_H
 #define TILEDB_SERIALIZATION_QUERY_H
 
-#include "tiledb/sm/buffer/buffer_list.h"
-#include "tiledb/sm/enums/serialization_type.h"
-#include "tiledb/sm/query/query.h"
+#include <unordered_map>
+
+#include "tiledb/sm/misc/status.h"
 
 namespace tiledb {
 namespace sm {
+
+class Array;
+class Buffer;
+class BufferList;
+class Query;
+
+enum class SerializationType : uint8_t;
+
 namespace serialization {
 
 /**
