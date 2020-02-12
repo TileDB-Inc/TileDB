@@ -37,6 +37,7 @@
 #include <iostream>
 
 #include "catch.hpp"
+#include "test/src/helpers.h"
 #ifdef _WIN32
 #include <Windows.h>
 #include "tiledb/sm/filesystem/win.h"
@@ -50,6 +51,8 @@
 #include <iostream>
 #include <sstream>
 #include <thread>
+
+using namespace tiledb::test;
 
 struct ArrayFx {
   const std::string HDFS_TEMP_DIR = "hdfs:///tiledb_test/";
@@ -167,13 +170,7 @@ void ArrayFx::set_supported_fs() {
   tiledb_ctx_t* ctx = nullptr;
   REQUIRE(tiledb_ctx_alloc(nullptr, &ctx) == TILEDB_OK);
 
-  int is_supported = 0;
-  int rc = tiledb_ctx_is_supported_fs(ctx, TILEDB_S3, &is_supported);
-  REQUIRE(rc == TILEDB_OK);
-  supports_s3_ = (bool)is_supported;
-  rc = tiledb_ctx_is_supported_fs(ctx, TILEDB_HDFS, &is_supported);
-  REQUIRE(rc == TILEDB_OK);
-  supports_hdfs_ = (bool)is_supported;
+  get_supported_fs(&supports_s3_, &supports_hdfs_);
 
   tiledb_ctx_free(&ctx);
 }
@@ -424,11 +421,16 @@ TEST_CASE_METHOD(
   CHECK(rc == TILEDB_OK);
 
 #ifdef _WIN32
+  std::cerr << "JOE 1: " << MAX_PATH << "." << std::endl;
   char path[MAX_PATH];
   unsigned length;
-  tiledb_uri_to_path(ctx_, uri, path, &length);
+  rc = tiledb_uri_to_path(ctx_, uri, path, &length);
+  CHECK(rc == TILEDB_OK);
+  std::cerr << "JOE path " << path << std::endl;
+  std::cerr << "JOE array_name " << array_name << std::endl;
   CHECK(!strcmp(path, array_name.c_str()));
 #else
+  std::cerr << "JOE 2" << std::endl;
   CHECK(!strcmp(uri, array_name.c_str()));
 #endif
 
