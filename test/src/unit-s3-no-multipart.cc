@@ -75,10 +75,13 @@ S3DirectFx::S3DirectFx() {
   REQUIRE(s3_.init(config, &thread_pool_).ok());
 
   // Create bucket
-  if (s3_.is_bucket(S3_BUCKET))
+  bool exists;
+  REQUIRE(s3_.is_bucket(S3_BUCKET, &exists).ok());
+  if (exists)
     REQUIRE(s3_.remove_bucket(S3_BUCKET).ok());
 
-  REQUIRE(!s3_.is_bucket(S3_BUCKET));
+  REQUIRE(s3_.is_bucket(S3_BUCKET, &exists).ok());
+  REQUIRE(!exists);
   REQUIRE(s3_.create_bucket(S3_BUCKET).ok());
 
   // Check if bucket is empty
@@ -124,16 +127,21 @@ TEST_CASE_METHOD(
   CHECK(s3_.write(URI(smallfile), write_buffer_small, buffer_size_small).ok());
 
   // Before flushing, the files do not exist
-  CHECK(!s3_.is_object(URI(largefile)));
-  CHECK(!s3_.is_object(URI(smallfile)));
+  bool exists;
+  CHECK(s3_.is_object(URI(largefile), &exists).ok());
+  CHECK(!exists);
+  CHECK(s3_.is_object(URI(smallfile), &exists).ok());
+  CHECK(!exists);
 
   // Flush the files
   CHECK(s3_.flush_object(URI(largefile)).ok());
   CHECK(s3_.flush_object(URI(smallfile)).ok());
 
   // After flushing, the files exist
-  CHECK(s3_.is_object(URI(largefile)));
-  CHECK(s3_.is_object(URI(smallfile)));
+  CHECK(s3_.is_object(URI(largefile), &exists).ok());
+  CHECK(exists);
+  CHECK(s3_.is_object(URI(smallfile), &exists).ok());
+  CHECK(exists);
 
   // Get file sizes
   uint64_t nbytes = 0;

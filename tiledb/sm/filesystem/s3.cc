@@ -316,10 +316,7 @@ Status S3::create_bucket(const URI& bucket) const {
         outcome_error_message(create_bucket_outcome)));
   }
 
-  if (!wait_for_bucket_to_be_created(bucket)) {
-    return LOG_STATUS(Status::S3Error(
-        "Failed waiting for bucket " + bucket.to_string() + " to be created."));
-  }
+  RETURN_NOT_OK(wait_for_bucket_to_be_created(bucket));
 
   return Status::Ok();
 }
@@ -512,7 +509,9 @@ Status S3::finish_flush_object(
 Status S3::is_empty_bucket(const URI& bucket, bool* is_empty) const {
   RETURN_NOT_OK(init_client());
 
-  if (!is_bucket(bucket))
+  bool exists;
+  RETURN_NOT_OK(is_bucket(bucket, &exists));
+  if (!exists)
     return LOG_STATUS(Status::S3Error(
         "Cannot check if bucket is empty; Bucket does not exist"));
 
@@ -535,32 +534,49 @@ Status S3::is_empty_bucket(const URI& bucket, bool* is_empty) const {
   return Status::Ok();
 }
 
-bool S3::is_bucket(const URI& bucket) const {
+Status S3::is_bucket(const URI& uri, bool* const exists) const {
   init_client();
 
-  if (!bucket.is_s3()) {
-    return false;
+  if (!uri.is_s3()) {
+    return LOG_STATUS(Status::S3Error(
+        std::string("URI is not an S3 URI: " + uri.to_string())));
   }
 
-  Aws::Http::URI aws_uri = bucket.c_str();
+  Aws::Http::URI aws_uri = uri.c_str();
   Aws::S3::Model::HeadBucketRequest head_bucket_request;
   head_bucket_request.SetBucket(aws_uri.GetAuthority());
   auto head_bucket_outcome = client_->HeadBucket(head_bucket_request);
-  return head_bucket_outcome.IsSuccess();
+  *exists = head_bucket_outcome.IsSuccess();
+
+  return Status::Ok();
 }
 
-bool S3::is_object(const URI& uri) const {
+Status S3::is_object(const URI& uri, bool* const exists) const {
   init_client();
 
-  if (!uri.is_s3())
-    return false;
+  if (!uri.is_s3()) {
+    return LOG_STATUS(Status::S3Error(
+        std::string("URI is not an S3 URI: " + uri.to_string())));
+  }
 
   Aws::Http::URI aws_uri = uri.c_str();
+
+  return is_object(aws_uri.GetAuthority(), aws_uri.GetPath(), exists);
+}
+
+Status S3::is_object(
+    const Aws::String& bucket_name,
+    const Aws::String& object_key,
+    bool* const exists) const {
+  init_client();
+
   Aws::S3::Model::HeadObjectRequest head_object_request;
-  head_object_request.SetBucket(aws_uri.GetAuthority());
-  head_object_request.SetKey(aws_uri.GetPath());
+  head_object_request.SetBucket(bucket_name);
+  head_object_request.SetKey(object_key);
   auto head_object_outcome = client_->HeadObject(head_object_request);
-  return head_object_outcome.IsSuccess();
+  *exists = head_object_outcome.IsSuccess();
+
+  return Status::Ok();
 }
 
 Status S3::is_dir(const URI& uri, bool* exists) const {
@@ -770,7 +786,9 @@ Status S3::touch(const URI& uri) const {
         "Cannot create file; URI is not an S3 URI: " + uri.to_string())));
   }
 
-  if (is_object(uri)) {
+  bool exists;
+  RETURN_NOT_OK(is_object(uri, &exists));
+  if (exists) {
     return Status::Ok();
   }
 
@@ -1001,59 +1019,64 @@ std::string S3::join_authority_and_path(
   return authority + (need_slash ? "/" : "") + path;
 }
 
-bool S3::wait_for_object_to_propagate(
-    const Aws::String& bucketName, const Aws::String& objectKey) const {
+Status S3::wait_for_object_to_propagate(
+    const Aws::String& bucket_name, const Aws::String& object_key) const {
   init_client();
 
   unsigned attempts_cnt = 0;
   while (attempts_cnt++ < constants::s3_max_attempts) {
-    Aws::S3::Model::HeadObjectRequest head_object_request;
-    head_object_request.SetBucket(bucketName);
-    head_object_request.SetKey(objectKey);
-    auto headObjectOutcome = client_->HeadObject(head_object_request);
-    if (headObjectOutcome.IsSuccess())
-      return true;
-
-    std::this_thread::sleep_for(
-        std::chrono::milliseconds(constants::s3_attempt_sleep_ms));
-  }
-
-  return false;
-}
-
-bool S3::wait_for_object_to_be_deleted(
-    const Aws::String& bucketName, const Aws::String& objectKey) const {
-  init_client();
-
-  unsigned attempts_cnt = 0;
-  while (attempts_cnt++ < constants::s3_max_attempts) {
-    Aws::S3::Model::HeadObjectRequest head_object_request;
-    head_object_request.SetBucket(bucketName);
-    head_object_request.SetKey(objectKey);
-    auto head_object_outcome = client_->HeadObject(head_object_request);
-    if (!head_object_outcome.IsSuccess())
-      return true;
-
-    std::this_thread::sleep_for(
-        std::chrono::milliseconds(constants::s3_attempt_sleep_ms));
-  }
-
-  return false;
-}
-
-bool S3::wait_for_bucket_to_be_created(const URI& bucket_uri) const {
-  init_client();
-
-  unsigned attempts_cnt = 0;
-  while (attempts_cnt++ < constants::s3_max_attempts) {
-    if (is_bucket(bucket_uri)) {
-      return true;
+    bool exists;
+    RETURN_NOT_OK(is_object(bucket_name, object_key, &exists));
+    if (exists) {
+      return Status::Ok();
     }
 
     std::this_thread::sleep_for(
         std::chrono::milliseconds(constants::s3_attempt_sleep_ms));
   }
-  return false;
+
+  return LOG_STATUS(Status::S3Error(
+      "Failed waiting for object " + object_key + " to be created."));
+}
+
+Status S3::wait_for_object_to_be_deleted(
+    const Aws::String& bucket_name, const Aws::String& object_key) const {
+  init_client();
+
+  unsigned attempts_cnt = 0;
+  while (attempts_cnt++ < constants::s3_max_attempts) {
+    bool exists;
+    RETURN_NOT_OK(is_object(bucket_name, object_key, &exists));
+    if (!exists) {
+      return Status::Ok();
+    }
+
+    std::this_thread::sleep_for(
+        std::chrono::milliseconds(constants::s3_attempt_sleep_ms));
+  }
+
+  return LOG_STATUS(Status::S3Error(
+      "Failed waiting for object " + object_key + " to be deleted."));
+}
+
+Status S3::wait_for_bucket_to_be_created(const URI& bucket_uri) const {
+  init_client();
+
+  unsigned attempts_cnt = 0;
+  while (attempts_cnt++ < constants::s3_max_attempts) {
+    bool exists;
+    RETURN_NOT_OK(is_bucket(bucket_uri, &exists));
+    if (exists) {
+      return Status::Ok();
+    }
+
+    std::this_thread::sleep_for(
+        std::chrono::milliseconds(constants::s3_attempt_sleep_ms));
+  }
+
+  return LOG_STATUS(Status::S3Error(
+      "Failed waiting for bucket " + bucket_uri.to_string() +
+      " to be created."));
 }
 
 Status S3::flush_direct(const URI& uri) {
@@ -1139,8 +1162,12 @@ Status S3::write_multipart(
   auto state_iter = multipart_upload_states_.find(uri_path);
   if (state_iter == multipart_upload_states_.end()) {
     // Delete file if it exists (overwrite) and initiate multipart request
-    if (is_object(uri))
+    bool exists;
+    RETURN_NOT_OK(is_object(uri, &exists));
+    if (exists) {
       RETURN_NOT_OK(remove_object(uri));
+    }
+
     const Status st = initiate_multipart_request(aws_uri);
     if (!st.ok()) {
       return st;

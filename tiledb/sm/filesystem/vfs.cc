@@ -667,7 +667,7 @@ Status VFS::is_file(const URI& uri, bool* is_file) const {
   }
   if (uri.is_s3()) {
 #ifdef HAVE_S3
-    *is_file = s3_.is_object(uri);
+    RETURN_NOT_OK(s3_.is_object(uri, is_file));
     return Status::Ok();
 #else
     *is_file = false;
@@ -689,7 +689,7 @@ Status VFS::is_bucket(const URI& uri, bool* is_bucket) const {
 
   if (uri.is_s3()) {
 #ifdef HAVE_S3
-    *is_bucket = s3_.is_bucket(uri);
+    RETURN_NOT_OK(s3_.is_bucket(uri, is_bucket));
     return Status::Ok();
 #else
     *is_bucket = false;
