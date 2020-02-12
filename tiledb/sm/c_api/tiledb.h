@@ -1000,6 +1000,15 @@ TILEDB_EXPORT void tiledb_config_free(tiledb_config_t** config);
  * - `vfs.azure.blob_endpoint` <br>
  *    Set the AZURE_BLOB_ENDPOINT <br>
  *    **Default**: ""
+ * - `vfs.azure.block_list_block_size` <br>
+ *    Set the VFS_AZURE_BLOCK_LIST_BLOCK_SIZE <br>
+ *    **Default**: "5242880"
+ * - `vfs.azure.max_parallel_ops` <br>
+ *    Set the VFS_AZURE_MAX_PARALLEL_OPS <br>
+ *    **Default**: `vfs.num_threads`
+ * - `vfs.azure.use_block_list_upload` <br>
+ *    Set the VFS_AZURE_USE_BLOCK_LIST_UPLOAD <br>
+ *    **Default**: "true"
  * - `vfs.azure.use_https` <br>
  *    Set the AZURE_USE_HTTPS <br>
  *    **Default**: "true"

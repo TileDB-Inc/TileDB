@@ -85,6 +85,9 @@ const std::string Config::VFS_AZURE_STORAGE_ACCOUNT_NAME = "";
 const std::string Config::VFS_AZURE_STORAGE_ACCOUNT_KEY = "";
 const std::string Config::VFS_AZURE_BLOB_ENDPOINT = "";
 const std::string Config::VFS_AZURE_USE_HTTPS = "true";
+const std::string Config::VFS_AZURE_MAX_PARALLEL_OPS = Config::VFS_NUM_THREADS;
+const std::string Config::VFS_AZURE_BLOCK_LIST_BLOCK_SIZE = "5242880";
+const std::string Config::VFS_AZURE_USE_BLOCK_LIST_UPLOAD = "true";
 const std::string Config::VFS_S3_REGION = "us-east-1";
 const std::string Config::VFS_S3_AWS_ACCESS_KEY_ID = "";
 const std::string Config::VFS_S3_AWS_SECRET_ACCESS_KEY = "";
@@ -175,6 +178,11 @@ Config::Config() {
       VFS_AZURE_STORAGE_ACCOUNT_KEY;
   param_values_["vfs.azure.blob_endpoint"] = VFS_AZURE_BLOB_ENDPOINT;
   param_values_["vfs.azure.use_https"] = VFS_AZURE_USE_HTTPS;
+  param_values_["vfs.azure.max_parallel_ops"] = VFS_AZURE_MAX_PARALLEL_OPS;
+  param_values_["vfs.azure.block_list_block_size"] =
+      VFS_AZURE_BLOCK_LIST_BLOCK_SIZE;
+  param_values_["vfs.azure.use_block_list_upload"] =
+      VFS_AZURE_USE_BLOCK_LIST_UPLOAD;
   param_values_["vfs.s3.region"] = VFS_S3_REGION;
   param_values_["vfs.s3.aws_access_key_id"] = VFS_S3_AWS_ACCESS_KEY_ID;
   param_values_["vfs.s3.aws_secret_access_key"] = VFS_S3_AWS_SECRET_ACCESS_KEY;
@@ -395,6 +403,14 @@ Status Config::unset(const std::string& param) {
     param_values_["vfs.azure.blob_endpoint"] = VFS_AZURE_BLOB_ENDPOINT;
   } else if (param == "vfs.azure.use_https") {
     param_values_["vfs.azure.use_https"] = VFS_AZURE_USE_HTTPS;
+  } else if (param == "vfs.azure.max_parallel_ops") {
+    param_values_["vfs.azure.max_parallel_ops"] = VFS_AZURE_MAX_PARALLEL_OPS;
+  } else if (param == "vfs.azure.block_list_block_size") {
+    param_values_["vfs.azure.block_list_block_size"] =
+        VFS_AZURE_BLOCK_LIST_BLOCK_SIZE;
+  } else if (param == "vfs.azure.use_block_list_upload") {
+    param_values_["vfs.azure.use_block_list_upload"] =
+        VFS_AZURE_USE_BLOCK_LIST_UPLOAD;
   } else if (param == "vfs.s3.region") {
     param_values_["vfs.s3.region"] = VFS_S3_REGION;
   } else if (param == "vfs.s3.aws_access_key_id") {

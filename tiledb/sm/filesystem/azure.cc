@@ -47,6 +47,8 @@ namespace sm {
 
 Azure::Azure()
     : write_cache_max_size_(0)
+    , max_parallel_ops_(1)
+    , block_list_block_size_(0)
     , use_block_list_upload_(false) {
 }
 
@@ -74,14 +76,20 @@ Status Azure::init(const Config& config, ThreadPool* const thread_pool) {
   const std::string blob_endpoint =
       config.get("vfs.azure.blob_endpoint", &found);
   assert(found);
-  const bool use_https = config.get("vfs.azure.use_https", &found) == "true";
+  bool use_https;
+  RETURN_NOT_OK(config.get<bool>("vfs.azure.use_https", &use_https, &found));
+  assert(found);
+  RETURN_NOT_OK(config.get<uint64_t>(
+      "vfs.azure.max_parallel_ops", &max_parallel_ops_, &found));
+  assert(found);
+  RETURN_NOT_OK(config.get<uint64_t>(
+      "vfs.azure.block_list_block_size", &block_list_block_size_, &found));
+  assert(found);
+  RETURN_NOT_OK(config.get<bool>(
+      "vfs.azure.use_block_list_upload", &use_block_list_upload_, &found));
   assert(found);
 
-  // TODO: read from config
-  write_cache_max_size_ = 1000000;
-  use_block_list_upload_ = true;
-
-  const int connection_count = 1;
+  write_cache_max_size_ = max_parallel_ops_ * block_list_block_size_;
 
   std::shared_ptr<azure::storage_lite::shared_key_credential> credential =
       std::make_shared<azure::storage_lite::shared_key_credential>(
@@ -91,6 +99,7 @@ Status Azure::init(const Config& config, ThreadPool* const thread_pool) {
       std::make_shared<azure::storage_lite::storage_account>(
           account_name, credential, use_https, blob_endpoint);
 
+  const int connection_count = 1;
   client_ = std::make_shared<azure::storage_lite::blob_client>(
       account, connection_count);
 
@@ -205,10 +214,26 @@ Status Azure::flush_blob(const URI& uri) {
   BlockListUploadState* const state =
       &block_list_upload_states_.at(uri.to_string());
 
-  // TODO: 'state' will eventually contain a Status object that indicates
-  // whether we write or abort the uncommited blocks in the block list. If the
-  // state is non-OK, we will attempt a 'put_block_list' request that deletes
-  // all uncommited blocks.
+  if (!state->st().ok()) {
+    // Unlike S3 that can abort a chunked upload to immediately release
+    // uncommited chunks and leave the original object unmodified, the
+    // only way to do this on Azure is by some form of a write. We must
+    // either:
+    // 1. Delete the blob
+    // 2. Overwrite the blob with a zero-length buffer.
+    //
+    // Alternatively, we could do nothing and let Azure release the
+    // uncommited blocks ~7 days later. We chose to delete the blob
+    // as a best-effort operation. We intentionally are ignoring the
+    // returned Status from 'remove_blob'.
+    remove_blob(uri);
+
+    // Release all instance state associated with this block list
+    // transactions.
+    finish_block_list_upload(uri);
+
+    return Status::Ok();
+  }
 
   // Build the block list to commit.
   const std::list<std::string> block_ids = state->get_block_ids();
@@ -226,15 +251,10 @@ Status Azure::flush_blob(const URI& uri) {
   // We do not store any custom metadata with the blob.
   std::vector<std::pair<std::string, std::string>> empty_metadata;
 
-  // Protect 'block_list_upload_states_' from multiple writers.
-  std::unique_lock<std::mutex> states_lock(block_list_upload_states_lock_);
-  block_list_upload_states_.erase(uri.to_string());
-  states_lock.unlock();
-
-  // Protect 'write_cache_map_' from multiple writers.
-  std::unique_lock<std::mutex> cache_lock(write_cache_map_lock_);
-  write_cache_map_.erase(uri.to_string());
-  cache_lock.unlock();
+  // Release all instance state associated with this block list
+  // transactions so that we can safely return if the following
+  // request fails.
+  finish_block_list_upload(uri);
 
   std::future<azure::storage_lite::storage_outcome<void>> result =
       client_->put_block_list(
@@ -251,6 +271,18 @@ Status Azure::flush_blob(const URI& uri) {
   }
 
   return wait_for_blob_to_propagate(container_name, blob_path);
+}
+
+void Azure::finish_block_list_upload(const URI& uri) {
+  // Protect 'block_list_upload_states_' from multiple writers.
+  std::unique_lock<std::mutex> states_lock(block_list_upload_states_lock_);
+  block_list_upload_states_.erase(uri.to_string());
+  states_lock.unlock();
+
+  // Protect 'write_cache_map_' from multiple writers.
+  std::unique_lock<std::mutex> cache_lock(write_cache_map_lock_);
+  write_cache_map_.erase(uri.to_string());
+  cache_lock.unlock();
 }
 
 Status Azure::flush_blob_direct(const URI& uri) {
@@ -277,18 +309,19 @@ Status Azure::flush_blob_direct(const URI& uri) {
   write_cache_map_.erase(uri.to_string());
   cache_lock.unlock();
 
-  // TODO: Unlike the 'upload_block_from_buffer' interface used in
+  // Unlike the 'upload_block_from_buffer' interface used in
   // the block list upload path, there is not an interface to
   // upload a single blob with a buffer. There is only
-  // 'upload_block_blob_from_stream'. Here, we make an extra copy
-  // of 'write_cache_buffer' into a stringstream object.
-  std::stringstream ss(std::string(
-      static_cast<const char*>(write_cache_buffer->data()),
-      write_cache_buffer->size()));
+  // 'upload_block_blob_from_stream'. Here, we construct a
+  // zero-copy stream buffer.
+  ZeroCopyStreamBuffer zc_stream_buffer(
+      static_cast<char*>(write_cache_buffer->data()),
+      write_cache_buffer->size());
+  std::istream zc_istream(&zc_stream_buffer);
 
   std::future<azure::storage_lite::storage_outcome<void>> result =
       client_->upload_block_blob_from_stream(
-          container_name, blob_path, ss, empty_metadata);
+          container_name, blob_path, zc_istream, empty_metadata);
   if (!result.valid()) {
     return LOG_STATUS(Status::AzureError(
         std::string("Flush blob failed on: " + uri.to_string())));
@@ -908,14 +941,18 @@ Status Azure::write_blocks(
   states_lock.unlock();
 
   if (num_ops == 1) {
-    const std::string block_id = state->get_next_block_id();
+    const std::string block_id = state->next_block_id();
 
     // Submit the upload request.
     std::future<azure::storage_lite::storage_outcome<void>> result;
     RETURN_NOT_OK(submit_upload_block(uri, buffer, length, block_id, &result));
 
-    // Wait for the operation to complete.
-    return get_upload_block(uri, std::move(result));
+    // Wait for the operation to complete. Capture the status so that
+    // we can abort the block list upload if an individual block upload
+    // fails.
+    const Status st = get_upload_block(uri, std::move(result));
+    state->update_st(st);
+    return st;
   } else {
     LOG_FATAL("Parallel operations unimplemented");
   }
@@ -935,6 +972,12 @@ Status Azure::submit_upload_block(
   std::string blob_path;
   RETURN_NOT_OK(parse_azure_uri(uri, &container_name, &blob_path));
 
+  // The 'const_cast' is necessary because the SDK API requires a
+  // non-const 'buffer'. However, this is safe because the SDK does
+  // not actually mutate 'buffer'.
+  //
+  // This may removed once the following PR is merged and released:
+  // https://github.com/Azure/azure-storage-cpplite/pull/64
   *result = client_->upload_block_from_buffer(
       container_name,
       blob_path,

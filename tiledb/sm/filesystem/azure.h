@@ -284,11 +284,12 @@ class Azure {
   class BlockListUploadState {
    public:
     BlockListUploadState()
-        : next_block_id_(0) {
+        : next_block_id_(0)
+        , st_(Status::Ok()) {
     }
 
     /* Generates the next base64-encoded block id. */
-    std::string get_next_block_id() {
+    std::string next_block_id() {
       const uint64_t block_id = next_block_id_++;
       const std::string block_id_str = std::to_string(block_id);
       const std::string b64_block_id_str = azure::storage_lite::to_base64(
@@ -301,8 +302,20 @@ class Azure {
     }
 
     /* Returns all generated block ids. */
-    std::list<std::string> get_block_ids() {
+    std::list<std::string> get_block_ids() const {
       return block_ids_;
+    }
+
+    /* Returns the aggregate status. */
+    Status st() const {
+      return st_;
+    }
+
+    /* Updates 'st_' if 'st' is non-OK */
+    void update_st(const Status& st) {
+      if (!st.ok()) {
+        st_ = st;
+      }
     }
 
    private:
@@ -311,6 +324,21 @@ class Azure {
 
     // A list of all generated block ids.
     std::list<std::string> block_ids_;
+
+    // The aggregate status. If any individual block
+    // upload fails, this will be in a non-OK status.
+    Status st_;
+  };
+
+  /**
+   * A zero-copy stream buffer used as a work-around for writing
+   * a single buffer to the stream-only SDK interface.
+   */
+  class ZeroCopyStreamBuffer : public std::streambuf {
+   public:
+    ZeroCopyStreamBuffer(char* const buffer, std::size_t size) {
+      setg(buffer, buffer, buffer + size);
+    }
   };
 
   /* ********************************* */
@@ -326,8 +354,14 @@ class Azure {
   // Protects 'write_cache_map_'.
   std::mutex write_cache_map_lock_;
 
-  // The maximum size of each value-element in 'write_cache_map_'.
+  /**  The maximum size of each value-element in 'write_cache_map_'. */
   uint64_t write_cache_max_size_;
+
+  /**  The maximum number of parallel requests. */
+  uint64_t max_parallel_ops_;
+
+  /**  The target block size in a block list upload */
+  uint64_t block_list_block_size_;
 
   /** Whether or not to use block list upload. */
   bool use_block_list_upload_;
@@ -343,7 +377,7 @@ class Azure {
   /*          PRIVATE METHODS          */
   /* ********************************* */
 
-  /*
+  /**
    * Thread-safe fetch of the write cache buffer in `write_cache_map_`.
    * If a buffer does not exist for `uri`, it will be created.
    *
@@ -396,7 +430,7 @@ class Azure {
   Status write_blocks(
       const URI& uri, const void* buffer, uint64_t length, bool last_block);
 
-  /*
+  /**
    * Executes a single, uncommited block upload.
    *
    * @param uri The blob URI.
@@ -414,7 +448,7 @@ class Azure {
       const std::string& block_id,
       std::future<azure::storage_lite::storage_outcome<void>>* result);
 
-  /*
+  /**
    * Waits on the associated block upload of 'result' and checks for
    * success.
    *
@@ -426,7 +460,12 @@ class Azure {
       const URI& uri,
       std::future<azure::storage_lite::storage_outcome<void>>&& result);
 
-  /*
+  /**
+   * Clears all instance state related to a block list upload on 'uri'.
+   */
+  void finish_block_list_upload(const URI& uri);
+
+  /**
    * Uploads the write cache buffer associated with 'uri' as an entire
    * blob.
    */
