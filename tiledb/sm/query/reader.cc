@@ -702,7 +702,10 @@ Status Reader::compute_range_result_coords(
 
       RETURN_CANCEL_OR_ERROR(
           sort_result_coords(&((*range_result_coords)[r]), layout));
-      RETURN_CANCEL_OR_ERROR(dedup_result_coords(&((*range_result_coords)[r])));
+      if (!array_schema_->allows_dups()) {
+        RETURN_CANCEL_OR_ERROR(
+            dedup_result_coords(&((*range_result_coords)[r])));
+      }
     }
 
     // Compute tile coordinate

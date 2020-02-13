@@ -130,6 +130,7 @@ void close_array(tiledb_ctx_t* ctx, tiledb_array_t* array);
  * @param tile_order The tile order.
  * @param cell_order The cell order.
  * @param capacity The tile capacity.
+ * @param allows_dups Whether the array allows coordinate duplicates.
  */
 
 void create_array(
@@ -146,7 +147,8 @@ void create_array(
     const std::vector<std::pair<tiledb_filter_type_t, int>>& compressors,
     tiledb_layout_t tile_order,
     tiledb_layout_t cell_order,
-    uint64_t capacity);
+    uint64_t capacity,
+    bool allows_dups = false);
 
 /**
  * Helper method to create an encrypted array.
