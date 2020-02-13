@@ -171,6 +171,18 @@ void check_save_to_file() {
   REQUIRE(rc == TILEDB_OK);
   CHECK(error == nullptr);
 
+  // Check that azure storage account name is not serialized.
+  rc = tiledb_config_set(
+      config, "vfs.azure.storage_account_name", "storagename", &error);
+  REQUIRE(rc == TILEDB_OK);
+  CHECK(error == nullptr);
+
+  // Check that aws secret access key is not serialized.
+  rc = tiledb_config_set(
+      config, "vfs.azure.storage_account_key", "secret", &error);
+  REQUIRE(rc == TILEDB_OK);
+  CHECK(error == nullptr);
+
   // Check that password is not serialized.
   rc = tiledb_config_set(config, "vfs.s3.proxy_password", "password", &error);
   REQUIRE(rc == TILEDB_OK);
@@ -180,6 +192,7 @@ void check_save_to_file() {
   rc = tiledb_config_set(config, "vfs.s3.aws_access_key_id", "keyid", &error);
   REQUIRE(rc == TILEDB_OK);
   CHECK(error == nullptr);
+
   // Check that aws secret access key is not serialized.
   rc = tiledb_config_set(
       config, "vfs.s3.aws_secret_access_key", "secret", &error);
@@ -217,6 +230,11 @@ void check_save_to_file() {
   ss << "sm.num_tbb_threads -1\n";
   ss << "sm.num_writer_threads 1\n";
   ss << "sm.tile_cache_size 10000000\n";
+  ss << "vfs.azure.block_list_block_size 5242880\n";
+  ss << "vfs.azure.max_parallel_ops " << std::thread::hardware_concurrency()
+     << "\n";
+  ss << "vfs.azure.use_block_list_upload true\n";
+  ss << "vfs.azure.use_https true\n";
   ss << "vfs.file.enable_filelocks true\n";
   ss << "vfs.file.max_parallel_ops " << std::thread::hardware_concurrency()
      << "\n";
@@ -417,6 +435,14 @@ TEST_CASE("C API: Test config iter", "[capi], [config]") {
   all_param_values["vfs.min_batch_gap"] = "512000";
   all_param_values["vfs.min_batch_size"] = "20971520";
   all_param_values["vfs.min_parallel_size"] = "10485760";
+  all_param_values["vfs.azure.storage_account_name"] = "";
+  all_param_values["vfs.azure.storage_account_key"] = "";
+  all_param_values["vfs.azure.blob_endpoint"] = "";
+  all_param_values["vfs.azure.block_list_block_size"] = "5242880";
+  all_param_values["vfs.azure.max_parallel_ops"] =
+      std::to_string(std::thread::hardware_concurrency());
+  all_param_values["vfs.azure.use_block_list_upload"] = "true";
+  all_param_values["vfs.azure.use_https"] = "true";
   all_param_values["vfs.file.max_parallel_ops"] =
       std::to_string(std::thread::hardware_concurrency());
   all_param_values["vfs.file.enable_filelocks"] = "true";
@@ -454,6 +480,14 @@ TEST_CASE("C API: Test config iter", "[capi], [config]") {
   vfs_param_values["min_batch_gap"] = "512000";
   vfs_param_values["min_batch_size"] = "20971520";
   vfs_param_values["min_parallel_size"] = "10485760";
+  vfs_param_values["azure.storage_account_name"] = "";
+  vfs_param_values["azure.storage_account_key"] = "";
+  vfs_param_values["azure.blob_endpoint"] = "";
+  vfs_param_values["azure.block_list_block_size"] = "5242880";
+  vfs_param_values["azure.max_parallel_ops"] =
+      std::to_string(std::thread::hardware_concurrency());
+  vfs_param_values["azure.use_block_list_upload"] = "true";
+  vfs_param_values["azure.use_https"] = "true";
   vfs_param_values["file.max_parallel_ops"] =
       std::to_string(std::thread::hardware_concurrency());
   vfs_param_values["file.enable_filelocks"] = "true";
@@ -484,6 +518,16 @@ TEST_CASE("C API: Test config iter", "[capi], [config]") {
   vfs_param_values["hdfs.username"] = "stavros";
   vfs_param_values["hdfs.kerb_ticket_cache_path"] = "";
   vfs_param_values["hdfs.name_node_uri"] = "";
+
+  std::map<std::string, std::string> azure_param_values;
+  azure_param_values["storage_account_name"] = "";
+  azure_param_values["storage_account_key"] = "";
+  azure_param_values["blob_endpoint"] = "";
+  azure_param_values["block_list_block_size"] = "5242880";
+  azure_param_values["max_parallel_ops"] =
+      std::to_string(std::thread::hardware_concurrency());
+  azure_param_values["use_block_list_upload"] = "true";
+  azure_param_values["use_https"] = "true";
 
   std::map<std::string, std::string> s3_param_values;
   s3_param_values["scheme"] = "https";
@@ -566,6 +610,33 @@ TEST_CASE("C API: Test config iter", "[capi], [config]") {
   } while (!done);
   CHECK(vfs_param_values == vfs_iter_map);
   tiledb_config_iter_free(&config_iter);
+
+  // Create an iterator and iterate over azure parameters
+  rc = tiledb_config_iter_alloc(config, "vfs.azure.", &config_iter, &error);
+  REQUIRE(rc == TILEDB_OK);
+  CHECK(error == nullptr);
+  rc = tiledb_config_iter_done(config_iter, &done, &error);
+  CHECK(rc == TILEDB_OK);
+  CHECK(error == nullptr);
+  CHECK(!(bool)done);
+  std::map<std::string, std::string> azure_iter_map;
+  do {
+    rc = tiledb_config_iter_here(config_iter, &param, &value, &error);
+    CHECK(rc == TILEDB_OK);
+    CHECK(error == nullptr);
+    CHECK(param != nullptr);
+    CHECK(value != nullptr);
+    azure_iter_map[std::string(param)] = std::string(value);
+    rc = tiledb_config_iter_next(config_iter, &error);
+    CHECK(rc == TILEDB_OK);
+    CHECK(error == nullptr);
+    rc = tiledb_config_iter_done(config_iter, &done, &error);
+    CHECK(rc == TILEDB_OK);
+    CHECK(error == nullptr);
+  } while (!done);
+  CHECK(azure_param_values == azure_iter_map);
+  tiledb_config_iter_free(&config_iter);
+  CHECK(error == nullptr);
 
   // Create an iterator and iterate over s3 parameters
   rc = tiledb_config_iter_alloc(config, "vfs.s3.", &config_iter, &error);

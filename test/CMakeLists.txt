@@ -42,6 +42,7 @@ list(APPEND TILEDB_CORE_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../tiledb/sm/c_
 set(TILEDB_TEST_SOURCES
   src/helpers.h
   src/helpers.cc
+  src/unit-azure.cc
   src/unit-backwards_compat.cc
   src/unit-buffer.cc
   src/unit-bufferlist.cc
@@ -182,6 +183,10 @@ endif()
 if (TILEDB_TESTS_AWS_S3_CONFIG)
   message(STATUS "Tests built with AWS S3 config")
   target_compile_definitions(tiledb_unit PRIVATE -DTILEDB_TESTS_AWS_S3_CONFIG)
+endif()
+
+if (TILEDB_AZURE)
+  target_compile_definitions(tiledb_unit PRIVATE -DHAVE_AZURE)
 endif()
 
 if (TILEDB_TBB)

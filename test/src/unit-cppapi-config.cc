@@ -50,5 +50,5 @@ TEST_CASE("C++ API: Config iterator", "[cppapi], [cppapi-config]") {
     names.push_back(it->first);
   }
   // Check number of VFS params in default config object.
-  CHECK(names.size() == 32);
+  CHECK(names.size() == 39);
 }

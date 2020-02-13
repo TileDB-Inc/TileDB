@@ -991,6 +991,31 @@ TILEDB_EXPORT void tiledb_config_free(tiledb_config_t** config);
  *    If set to `false`, file locking operations are no-ops for `file:///` URIs
  *    in VFS. <br>
  *    **Default**: `true`
+ * - `vfs.azure.storage_account_name` <br>
+ *    Set the Azure Storage Account name. <br>
+ *    **Default**: ""
+ * - `vfs.azure.storage_account_key` <br>
+ *    Set the Azure Storage Account key. <br>
+ *    **Default**: ""
+ * - `vfs.azure.blob_endpoint` <br>
+ *    Set the Azure Storage Blob endpoint. This should not include an
+ *    http:// or https:// prefix. <br>
+ *    **Default**: ""
+ * - `vfs.azure.block_list_block_size` <br>
+ *    The block size (in bytes) used in Azure blob block list writes.
+ *    Any `uint64_t` value is acceptable. Note: `vfs.azure.block_list_block_size
+ *    vfs.azure.max_parallel_ops` bytes will be buffered before issuing block
+ *    uploads in parallel. <br>
+ *    **Default**: "5242880"
+ * - `vfs.azure.max_parallel_ops` <br>
+ *    The maximum number of Azure backend parallel operations. <br>
+ *    **Default**: `vfs.num_threads`
+ * - `vfs.azure.use_block_list_upload` <br>
+ *    Determines if the Azure backend can use chunked block uploads. <br>
+ *    **Default**: "true"
+ * - `vfs.azure.use_https` <br>
+ *    Determines if the blob endpoint should use HTTP or HTTPS.
+ *    **Default**: "true"
  * - `vfs.s3.region` <br>
  *    The S3 region, if S3 is enabled. <br>
  *    **Default**: us-east-1

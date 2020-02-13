@@ -65,7 +65,9 @@ URI::URI(const std::string& path) {
     uri_ = "";
   else if (URI::is_file(path))
     uri_ = VFS::abs_path(path);
-  else if (URI::is_hdfs(path) || URI::is_s3(path) || URI::is_tiledb(path))
+  else if (
+      URI::is_hdfs(path) || URI::is_s3(path) || URI::is_azure(path) ||
+      URI::is_tiledb(path))
     uri_ = path;
   else
     uri_ = "";
@@ -132,6 +134,14 @@ bool URI::is_s3() const {
   return utils::parse::starts_with(uri_, "s3://") ||
          utils::parse::starts_with(uri_, "http://") ||
          utils::parse::starts_with(uri_, "https://");
+}
+
+bool URI::is_azure(const std::string& path) {
+  return utils::parse::starts_with(path, "azure://");
+}
+
+bool URI::is_azure() const {
+  return utils::parse::starts_with(uri_, "azure://");
 }
 
 bool URI::is_tiledb(const std::string& path) {

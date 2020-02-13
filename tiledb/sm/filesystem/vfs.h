@@ -51,6 +51,10 @@
 #include "tiledb/sm/filesystem/posix.h"
 #endif
 
+#ifdef HAVE_AZURE
+#include "tiledb/sm/filesystem/azure.h"
+#endif
+
 #ifdef HAVE_S3
 #include "tiledb/sm/filesystem/s3.h"
 #endif
@@ -403,6 +407,10 @@ class VFS {
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
   /* ********************************* */
+
+#ifdef HAVE_AZURE
+  Azure azure_;
+#endif
 
 #ifdef HAVE_S3
   S3 s3_;
