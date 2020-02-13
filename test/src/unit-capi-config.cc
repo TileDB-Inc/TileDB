@@ -230,6 +230,10 @@ void check_save_to_file() {
   ss << "sm.num_tbb_threads -1\n";
   ss << "sm.num_writer_threads 1\n";
   ss << "sm.tile_cache_size 10000000\n";
+  ss << "vfs.azure.block_list_block_size 5242880\n";
+  ss << "vfs.azure.max_parallel_ops " << std::thread::hardware_concurrency()
+     << "\n";
+  ss << "vfs.azure.use_block_list_upload true\n";
   ss << "vfs.azure.use_https true\n";
   ss << "vfs.file.enable_filelocks true\n";
   ss << "vfs.file.max_parallel_ops " << std::thread::hardware_concurrency()
@@ -434,6 +438,10 @@ TEST_CASE("C API: Test config iter", "[capi], [config]") {
   all_param_values["vfs.azure.storage_account_name"] = "";
   all_param_values["vfs.azure.storage_account_key"] = "";
   all_param_values["vfs.azure.blob_endpoint"] = "";
+  all_param_values["vfs.azure.block_list_block_size"] = "5242880";
+  all_param_values["vfs.azure.max_parallel_ops"] =
+      std::to_string(std::thread::hardware_concurrency());
+  all_param_values["vfs.azure.use_block_list_upload"] = "true";
   all_param_values["vfs.azure.use_https"] = "true";
   all_param_values["vfs.file.max_parallel_ops"] =
       std::to_string(std::thread::hardware_concurrency());
@@ -475,6 +483,10 @@ TEST_CASE("C API: Test config iter", "[capi], [config]") {
   vfs_param_values["azure.storage_account_name"] = "";
   vfs_param_values["azure.storage_account_key"] = "";
   vfs_param_values["azure.blob_endpoint"] = "";
+  vfs_param_values["azure.block_list_block_size"] = "5242880";
+  vfs_param_values["azure.max_parallel_ops"] =
+      std::to_string(std::thread::hardware_concurrency());
+  vfs_param_values["azure.use_block_list_upload"] = "true";
   vfs_param_values["azure.use_https"] = "true";
   vfs_param_values["file.max_parallel_ops"] =
       std::to_string(std::thread::hardware_concurrency());
@@ -511,6 +523,10 @@ TEST_CASE("C API: Test config iter", "[capi], [config]") {
   azure_param_values["storage_account_name"] = "";
   azure_param_values["storage_account_key"] = "";
   azure_param_values["blob_endpoint"] = "";
+  azure_param_values["block_list_block_size"] = "5242880";
+  azure_param_values["max_parallel_ops"] =
+      std::to_string(std::thread::hardware_concurrency());
+  azure_param_values["use_block_list_upload"] = "true";
   azure_param_values["use_https"] = "true";
 
   std::map<std::string, std::string> s3_param_values;
