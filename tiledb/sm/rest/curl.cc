@@ -209,7 +209,8 @@ Status Curl::init(
 
 #ifdef __linux__
   // Get CA Cert bundle file from global state. This is initialized and cached
-  // if detected
+  // if detected. We have only had issues with finding the certificate path on
+  // Linux.
   const std::string cert_file =
       global_state::GlobalState::GetGlobalState().cert_file();
   // If we have detected a ca cert bundle let's set the curl option for CAINFO

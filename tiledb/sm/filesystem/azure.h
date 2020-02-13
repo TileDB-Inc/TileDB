@@ -345,13 +345,16 @@ class Azure {
   /*         PRIVATE ATTRIBUTES        */
   /* ********************************* */
 
-  // The Azure blob storage client.
+  /** The VFS thread pool. */
+  ThreadPool* thread_pool_;
+
+  /** The Azure blob storage client. */
   std::shared_ptr<azure::storage_lite::blob_client> client_;
 
-  // Maps a blob URI to an write cache buffer.
+  /** Maps a blob URI to an write cache buffer. */
   std::unordered_map<std::string, Buffer> write_cache_map_;
 
-  // Protects 'write_cache_map_'.
+  /** Protects 'write_cache_map_'. */
   std::mutex write_cache_map_lock_;
 
   /**  The maximum size of each value-element in 'write_cache_map_'. */
@@ -431,34 +434,22 @@ class Azure {
       const URI& uri, const void* buffer, uint64_t length, bool last_block);
 
   /**
-   * Executes a single, uncommited block upload.
+   * Executes and waits for a single, uncommited block upload.
    *
-   * @param uri The blob URI.
-   * @param buffer The block contents.
+   * @param container_name The blob's container name.
+   * @param blob_path The blob's file path relative to the container.
    * @param length The length of `buffer`.
    * @param block_id A base64-encoded string that is unique to this block
    * within the blob.
    * @param result The returned future to fetch the async upload result from.
    * @return Status
    */
-  Status submit_upload_block(
-      const URI& uri,
-      const void* buffer,
-      uint64_t length,
-      const std::string& block_id,
-      std::future<azure::storage_lite::storage_outcome<void>>* result);
-
-  /**
-   * Waits on the associated block upload of 'result' and checks for
-   * success.
-   *
-   * @param uri The blob URI.
-   * @param result The future to fetch the async upload result from.
-   * @return Status
-   */
-  Status get_upload_block(
-      const URI& uri,
-      std::future<azure::storage_lite::storage_outcome<void>>&& result);
+  Status upload_block(
+      const std::string& container_name,
+      const std::string& blob_path,
+      const void* const buffer,
+      const uint64_t length,
+      const std::string& block_id);
 
   /**
    * Clears all instance state related to a block list upload on 'uri'.

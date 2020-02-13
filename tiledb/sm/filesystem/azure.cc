@@ -35,6 +35,7 @@
 #include <put_block_list_request_base.h>
 
 #include "tiledb/sm/filesystem/azure.h"
+#include "tiledb/sm/global_state/global_state.h"
 #include "tiledb/sm/misc/logger.h"
 #include "tiledb/sm/misc/utils.h"
 
@@ -64,7 +65,8 @@ Status Azure::init(const Config& config, ThreadPool* const thread_pool) {
     return LOG_STATUS(
         Status::AzureError("Can't initialize with null thread pool."));
   }
-  // TODO: make use of 'thread_pool'
+
+  thread_pool_ = thread_pool;
 
   bool found;
   const std::string account_name =
@@ -99,9 +101,24 @@ Status Azure::init(const Config& config, ThreadPool* const thread_pool) {
       std::make_shared<azure::storage_lite::storage_account>(
           account_name, credential, use_https, blob_endpoint);
 
-  const int connection_count = 1;
+  // Construct the Azure SDK blob client with a concurrency level
+  // equal to 'thread_pool_->num_threads'. Internally, the client
+  // will allocate an equal number of libcurl sessions with
+  // 'curl_easy_init'. This ensures that our 'thread_pool_' threads
+  // will not block on the blob client's internal request queue
+  // unless the user is performing concurrent I/O on this instance.
+#ifdef __linux__
+  // Get CA Cert bundle file from global state. This is initialized and cached
+  // if detected. We have only had issues with finding the certificate path on
+  // Linux.
+  const std::string cert_file =
+      global_state::GlobalState::GetGlobalState().cert_file();
   client_ = std::make_shared<azure::storage_lite::blob_client>(
-      account, connection_count);
+      account, thread_pool_->num_threads(), cert_file);
+#else
+  client_ = std::make_shared<azure::storage_lite::blob_client>(
+      account, thread_pool_->num_threads());
+#endif
 
   return Status::Ok();
 }
@@ -665,7 +682,6 @@ Status Azure::read(
   std::string blob_path;
   RETURN_NOT_OK(parse_azure_uri(uri, &container_name, &blob_path));
 
-  // TODO: Read in parallel
   std::stringstream ss;
   std::future<azure::storage_lite::storage_outcome<void>> result =
       client_->download_blob_to_stream(
@@ -893,20 +909,26 @@ Status Azure::write_blocks(
     const URI& uri,
     const void* const buffer,
     const uint64_t length,
-    const bool /*last_block*/) {
+    const bool last_block) {
   if (!uri.is_azure()) {
     return LOG_STATUS(Status::AzureError(
         std::string("URI is not an Azure URI: " + uri.to_string())));
   }
 
-  // TODO: calculate number of parallel operations.
-  const uint64_t num_ops = 1;
+  // Ensure that each thread is responsible for exactly block_list_block_size_
+  // bytes (except if this is the last block, in which case the final
+  // thread should write less). Cap the number of parallel operations at the
+  // configured max number. Length must be evenly divisible by
+  // block_list_block_size_ unless this is the last block.
+  uint64_t num_ops = last_block ?
+                         utils::math::ceil(length, block_list_block_size_) :
+                         (length / block_list_block_size_);
+  num_ops = std::min(std::max(num_ops, uint64_t(1)), max_parallel_ops_);
 
-  // TODO: check block size.
-  /*if (!last_block && length % block_size_ != 0) {
+  if (!last_block && length % block_list_block_size_ != 0) {
     return LOG_STATUS(
         Status::S3Error("Length not evenly divisible by block size"));
-  }*/
+  }
 
   // Protect 'block_list_upload_states_' from concurrent read and writes.
   std::unique_lock<std::mutex> states_lock(block_list_upload_states_lock_);
@@ -940,66 +962,79 @@ Status Azure::write_blocks(
   // 'block_list_upload_states_'.
   states_lock.unlock();
 
+  std::string container_name;
+  std::string blob_path;
+  RETURN_NOT_OK(parse_azure_uri(uri, &container_name, &blob_path));
+
   if (num_ops == 1) {
     const std::string block_id = state->next_block_id();
 
-    // Submit the upload request.
-    std::future<azure::storage_lite::storage_outcome<void>> result;
-    RETURN_NOT_OK(submit_upload_block(uri, buffer, length, block_id, &result));
-
-    // Wait for the operation to complete. Capture the status so that
-    // we can abort the block list upload if an individual block upload
-    // fails.
-    const Status st = get_upload_block(uri, std::move(result));
+    const Status st =
+        upload_block(container_name, blob_path, buffer, length, block_id);
     state->update_st(st);
     return st;
   } else {
-    LOG_FATAL("Parallel operations unimplemented");
+    std::vector<std::future<Status>> tasks;
+    tasks.reserve(num_ops);
+    for (uint64_t i = 0; i < num_ops; i++) {
+      const uint64_t begin = i * block_list_block_size_;
+      const uint64_t end =
+          std::min((i + 1) * block_list_block_size_ - 1, length - 1);
+      const char* const thread_buffer =
+          reinterpret_cast<const char*>(buffer) + begin;
+      const uint64_t thread_buffer_len = end - begin + 1;
+      const std::string block_id = state->next_block_id();
+
+      std::function<Status()> upload_block_fn = std::bind(
+          &Azure::upload_block,
+          this,
+          container_name,
+          blob_path,
+          thread_buffer,
+          thread_buffer_len,
+          block_id);
+      std::future<Status> task =
+          thread_pool_->enqueue(std::move(upload_block_fn));
+      tasks.emplace_back(std::move(task));
+    }
+
+    const Status st = thread_pool_->wait_all(tasks);
+    state->update_st(st);
+    return st;
   }
 
   return Status::Ok();
 }
 
-Status Azure::submit_upload_block(
-    const URI& uri,
+Status Azure::upload_block(
+    const std::string& container_name,
+    const std::string& blob_path,
     const void* const buffer,
     const uint64_t length,
-    const std::string& block_id,
-    std::future<azure::storage_lite::storage_outcome<void>>* result) {
-  assert(uri.is_azure());
-
-  std::string container_name;
-  std::string blob_path;
-  RETURN_NOT_OK(parse_azure_uri(uri, &container_name, &blob_path));
-
+    const std::string& block_id) {
   // The 'const_cast' is necessary because the SDK API requires a
   // non-const 'buffer'. However, this is safe because the SDK does
   // not actually mutate 'buffer'.
   //
   // This may removed once the following PR is merged and released:
   // https://github.com/Azure/azure-storage-cpplite/pull/64
-  *result = client_->upload_block_from_buffer(
-      container_name,
-      blob_path,
-      block_id,
-      const_cast<char*>(static_cast<const char*>(buffer)),
-      length);
+  std::future<azure::storage_lite::storage_outcome<void>> result =
+      client_->upload_block_from_buffer(
+          container_name,
+          blob_path,
+          block_id,
+          const_cast<char*>(static_cast<const char*>(buffer)),
+          length);
 
-  return Status::Ok();
-}
-
-Status Azure::get_upload_block(
-    const URI& uri,
-    std::future<azure::storage_lite::storage_outcome<void>>&& result) {
   if (!result.valid()) {
     return LOG_STATUS(Status::AzureError(
-        std::string("Upload block failed on: " + uri.to_string())));
+        std::string("Upload block failed on: " + blob_path)));
   }
 
   azure::storage_lite::storage_outcome<void> outcome = result.get();
   if (!outcome.success()) {
     return LOG_STATUS(Status::AzureError(
-        std::string("Upload block failed on: " + uri.to_string())));
+        std::string("Upload block failed on: " + blob_path)));
   }
 
   return Status::Ok();

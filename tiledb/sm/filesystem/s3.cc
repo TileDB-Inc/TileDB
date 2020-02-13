@@ -1115,7 +1115,8 @@ Status S3::write_multipart(
   // Ensure that each thread is responsible for exactly multipart_part_size_
   // bytes (except if this is the last write_multipart, in which case the final
   // thread should write less), and cap the number of parallel operations at the
-  // configured max number.
+  // configured max number. Length must be evenly divisible by
+  // multipart_part_size_ unless this is the last part.
   uint64_t num_ops = last_part ?
                          utils::math::ceil(length, multipart_part_size_) :
                          (length / multipart_part_size_);
