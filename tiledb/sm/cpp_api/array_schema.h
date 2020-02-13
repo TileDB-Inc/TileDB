@@ -256,6 +256,27 @@ class ArraySchema : public Schema {
     return *this;
   }
 
+  /** Returns `true` if the array allows coordinate duplicates. */
+  bool allows_dups() const {
+    auto& ctx = ctx_.get();
+    int allows_dups;
+    ctx.handle_error(tiledb_array_schema_get_allows_dups(
+        ctx.ptr().get(), schema_.get(), &allows_dups));
+    return (bool)allows_dups;
+  }
+
+  /**
+   * Sets whether the array allows coordinate duplicates. It throws
+   * an exception in case it sets `true` to a dense array.
+   */
+  ArraySchema& set_allows_dups(bool allows_dups) {
+    auto& ctx = ctx_.get();
+    int allows_dups_i = allows_dups ? 1 : 0;
+    ctx.handle_error(tiledb_array_schema_set_allows_dups(
+        ctx.ptr().get(), schema_.get(), allows_dups_i));
+    return *this;
+  }
+
   /** Returns the tile order. */
   tiledb_layout_t tile_order() const {
     auto& ctx = ctx_.get();

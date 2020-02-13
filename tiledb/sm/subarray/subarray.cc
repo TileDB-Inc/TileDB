@@ -1043,18 +1043,20 @@ Status Subarray::compute_est_result_size(
     }
   }
 
-  // Calibrate result
-  uint64_t max_size_fixed, max_size_var = UINT64_MAX;
-  auto cell_num = this->cell_num<T>(range_idx);
-  if (var_size) {
-    max_size_fixed =
-        utils::math::safe_mul(cell_num, constants::cell_var_offset_size);
-  } else {
-    max_size_fixed =
-        utils::math::safe_mul(cell_num, array_schema->cell_size(attr_name));
+  // Calibrate result - applicable only to arrays without coordinate duplicates
+  if (!array_->array_schema()->allows_dups()) {
+    uint64_t max_size_fixed, max_size_var = UINT64_MAX;
+    auto cell_num = this->cell_num<T>(range_idx);
+    if (var_size) {
+      max_size_fixed =
+          utils::math::safe_mul(cell_num, constants::cell_var_offset_size);
+    } else {
+      max_size_fixed =
+          utils::math::safe_mul(cell_num, array_schema->cell_size(attr_name));
+    }
+    ret.size_fixed_ = std::min<double>(ret.size_fixed_, max_size_fixed);
+    ret.size_var_ = std::min<double>(ret.size_var_, max_size_var);
   }
-  ret.size_fixed_ = std::min<double>(ret.size_fixed_, max_size_fixed);
-  ret.size_var_ = std::min<double>(ret.size_var_, max_size_var);
 
   *result_size = ret;
 
