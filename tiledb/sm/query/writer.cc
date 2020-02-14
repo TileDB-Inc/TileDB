@@ -1128,12 +1128,12 @@ Status Writer::create_fragment(
   STATS_FUNC_IN(writer_create_fragment);
 
   URI uri;
-  uint64_t timestamp = 0;
+  uint64_t timestamp = array_->timestamp();
   if (!fragment_uri_.to_string().empty()) {
     uri = fragment_uri_;
   } else {
     std::string new_fragment_str;
-    RETURN_NOT_OK(new_fragment_name(&new_fragment_str, &timestamp));
+    RETURN_NOT_OK(new_fragment_name(timestamp, &new_fragment_str));
     uri = array_schema_->array_uri().join_path(new_fragment_str);
   }
   auto timestamp_range = std::pair<uint64_t, uint64_t>(timestamp, timestamp);
@@ -1546,15 +1546,16 @@ Status Writer::init_tiles(
 }
 
 Status Writer::new_fragment_name(
-    std::string* frag_uri, uint64_t* timestamp) const {
+    uint64_t timestamp, std::string* frag_uri) const {
+  timestamp = (timestamp != 0) ? timestamp : utils::time::timestamp_now_ms();
+
   if (frag_uri == nullptr)
     return Status::WriterError("Null fragment uri argument.");
-  *timestamp = utils::time::timestamp_now_ms();
   std::string uuid;
   frag_uri->clear();
   RETURN_NOT_OK(uuid::generate_uuid(&uuid, false));
   std::stringstream ss;
-  ss << "/__" << *timestamp << "_" << *timestamp << "_" << uuid << "_"
+  ss << "/__" << timestamp << "_" << timestamp << "_" << uuid << "_"
      << constants::format_version;
 
   *frag_uri = ss.str();

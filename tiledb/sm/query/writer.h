@@ -615,15 +615,18 @@ class Writer {
 
   /**
    * Generates a new fragment name, which is in the form: <br>
-   * __t1_t1_uuid. For instance,
-   * __1458759561320_1458759561320_6ba7b8129dad11d180b400c04fd430c8
+   * `__t_t_uuid_v`, where `t` is the input timestamp and `v` is the current
+   * format version. For instance,
+   * `__1458759561320_1458759561320_6ba7b8129dad11d180b400c04fd430c8_3`.
    *
+   * If `timestamp` is 0, then it is set to the current time.
+   *
+   * @param timestamp The timestamp of when the array got opened for writes. It
+   *     is in ms since 1970-01-01 00:00:00 +0000 (UTC).
    * @param frag_uri Will store the new special fragment name
-   * @param timestamp The timestamp of the fragment name creation. It is
-   *      in ms since 1970-01-01 00:00:00 +0000 (UTC).
    * @return Status
    */
-  Status new_fragment_name(std::string* frag_uri, uint64_t* timestamp) const;
+  Status new_fragment_name(uint64_t timestamp, std::string* frag_uri) const;
 
   /**
    * This deletes the global write state and deletes the potentially
