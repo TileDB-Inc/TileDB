@@ -18,6 +18,14 @@ steps:
 
 - bash: |
     set -e pipefail
+    # Install uuid-dev *before* running cmake
+    sudo apt-get update
+    sudo apt-get install uuid-dev
+  condition: eq(variables['Agent.OS'], 'Linux')
+  displayName: 'Install uuid-dev (linux only)'
+
+- bash: |
+    set -e pipefail
     # Install clang-format (v5.0)
     sudo scripts/install-clangformat.sh
     src=$BUILD_REPOSITORY_LOCALPATH
@@ -82,6 +90,9 @@ steps:
     if [[ "$TILEDB_S3" == "ON" ]]; then
       bootstrap_args="${bootstrap_args} --enable-s3";
     fi;
+    if [[ "$TILEDB_AZURE" == "ON" ]]; then
+      bootstrap_args="${bootstrap_args} --enable-azure";
+    fi;
     if [[ "$TILEDB_TBB" == "OFF" ]]; then
       bootstrap_args="${bootstrap_args} --disable-tbb";
     fi
@@ -133,38 +144,42 @@ steps:
 
     make -j4 -C tiledb tiledb_unit
 
-
     if [[ "$TILEDB_CI_ASAN" == "ON" ]]; then
       export ASAN_OPTIONS=detect_leaks=0 LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libasan.so.4
     fi
     make check
 
-    # - bash: |
-    pushd $BUILD_REPOSITORY_LOCALPATH/examples/cmake_project
-    mkdir build && cd build
-    cmake -DCMAKE_PREFIX_PATH=$BUILD_REPOSITORY_LOCALPATH/dist .. && make
-    ./ExampleExe
-    if [[ "TILEDB_STATIC" == "ON" ]]; then
-      ./ExampleExe_static
-    fi
-    popd
-    # Build and run the PNG ingestion example.
-    if [[ "$AGENT_OS" == "Linux" ]]; then
-      # libpng (example dependency)
-      sudo apt-get install libpng-dev
+    # The Azure SDK requires a dynamic link with libuuid. Rather than modifying
+    # our nested cmake projects to handle this scenario, just skip them for
+    # when building with the Azure backend.
+    if [[ "$TILEDB_AZURE" != "ON" ]]; then
+      # - bash: |
+      pushd $BUILD_REPOSITORY_LOCALPATH/examples/cmake_project
+      mkdir build && cd build
+      cmake -DCMAKE_PREFIX_PATH=$BUILD_REPOSITORY_LOCALPATH/dist .. && make
+      ./ExampleExe
+      if [[ "TILEDB_STATIC" == "ON" ]]; then
+        ./ExampleExe_static
+      fi
+      popd
+      # Build and run the PNG ingestion example.
+      if [[ "$AGENT_OS" == "Linux" ]]; then
+        # libpng (example dependency)
+        sudo apt-get install libpng-dev
 
-      pushd $BUILD_REPOSITORY_LOCALPATH/examples/png_ingestion;
-      mkdir build && cd build;
-      cmake -DCMAKE_PREFIX_PATH=$BUILD_REPOSITORY_LOCALPATH/dist .. && make;
-      ./tiledb_png $BUILD_REPOSITORY_LOCALPATH/doc/source/figures/Scarlet-Macaw-small.png /tmp/pngarray output.png;
-      popd;
-    fi
+        pushd $BUILD_REPOSITORY_LOCALPATH/examples/png_ingestion;
+        mkdir build && cd build;
+        cmake -DCMAKE_PREFIX_PATH=$BUILD_REPOSITORY_LOCALPATH/dist .. && make;
+        ./tiledb_png $BUILD_REPOSITORY_LOCALPATH/doc/source/figures/Scarlet-Macaw-small.png /tmp/pngarray output.png;
+        popd;
+      fi
 
-    # Build the benchmarks (but do not run them).
-    pushd $BUILD_REPOSITORY_LOCALPATH/test/benchmarking && \
-      mkdir build && cd build && \
-      cmake -DCMAKE_PREFIX_PATH=$BUILD_REPOSITORY_LOCALPATH/dist ../src && make && \
-    popd
+      # Build the benchmarks (but do not run them).
+      pushd $BUILD_REPOSITORY_LOCALPATH/test/benchmarking && \
+        mkdir build && cd build && \
+        cmake -DCMAKE_PREFIX_PATH=$BUILD_REPOSITORY_LOCALPATH/dist ../src && make && \
+      popd
+    fi;
 
     testfile=$(mktemp)
     mv $testfile $testfile.cc
@@ -183,12 +198,16 @@ steps:
       return 0;
     }
     EOF
+    export TESTFILE_LDFLAGS="-ltiledb"
     if [[ "$AGENT_OS" == "Linux" ]]; then
       export LD_LIBRARY_PATH=$BUILD_REPOSITORY_LOCALPATH/dist/lib:/usr/local/lib:$LD_LIBRARY_PATH
+      if [[ "$TILEDB_AZURE" == "ON" ]]; then
+        export TESTFILE_LDFLAGS="$TESTFILE_LDFLAGS -luuid"
+      fi
     else
       export DYLD_LIBRARY_PATH=$BUILD_REPOSITORY_LOCALPATH/dist/lib:/usr/local/lib:$DYLD_LIBRARY_PATH
     fi
-    $CXX -std=c++11 -g -O0 -Wall -Werror -I$BUILD_REPOSITORY_LOCALPATH/dist/include -L$BUILD_REPOSITORY_LOCALPATH/dist/lib $testfile -o $testfile.exe -ltiledb && \
+    $CXX -std=c++11 -g -O0 -Wall -Werror -I$BUILD_REPOSITORY_LOCALPATH/dist/include -L$BUILD_REPOSITORY_LOCALPATH/dist/lib $testfile -o $testfile.exe $TESTFILE_LDFLAGS && \
     $testfile.exe && \
     rm -f $testfile $testfile.exe
 

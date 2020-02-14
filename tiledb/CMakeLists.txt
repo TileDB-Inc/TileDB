@@ -278,7 +278,7 @@ endif()
 # so we can use the targets created by the calls to find_package().
 add_library(TILEDB_CORE_OBJECTS_ILIB INTERFACE)
 
-# Find OpenSSL first in case it's needed for S3
+# Find OpenSSL first in case it's needed for S3 or Azure
 if (NOT WIN32)
   find_package(OpenSSL_EP REQUIRED)
 endif()
@@ -301,13 +301,14 @@ endif()
 # Azure dependencies
 if (TILEDB_AZURE)
   message(STATUS "The TileDB library is compiled with Azure support.")
-  find_package(AZURESDK_EP REQUIRED COMPONENTS azure)
-  target_link_libraries(TILEDB_CORE_OBJECTS_ILIB INTERFACE uuid)
+  find_package(AzureSDK_EP REQUIRED COMPONENTS azure)
+  if (NOT APPLE)
+    target_link_libraries(TILEDB_CORE_OBJECTS_ILIB INTERFACE uuid)
+  endif()
   target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
     INTERFACE
       AzureSDK::AzureSDK
   )
-
   add_definitions(-DHAVE_AZURE)
 endif()
 
@@ -444,7 +445,7 @@ target_include_directories(TILEDB_CORE_OBJECTS
 #   - https://github.com/TileDB-Inc/TileDB/pull/1253
 # NOTE: just like the static dependencies in TileDBConfig create above
 #       (via TILEDB_DEP_STRING), this linkage embeds absolute paths.
-if (TILEDB_S3 OR TILEDB_SERIALIZATION AND NOT WIN32)
+if ((TILEDB_S3 OR TILEDB_AZURE OR TILEDB_SERIALIZATION) AND NOT WIN32)
   if (TILEDB_CURL_EP_BUILT)
     set(CURL_CONFIG_BINARY "${TILEDB_EP_BASE}/install/bin/curl-config")
 

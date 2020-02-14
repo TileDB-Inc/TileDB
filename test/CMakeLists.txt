@@ -162,6 +162,13 @@ target_link_libraries(tiledb_unit
     Catch::Catch
 )
 
+if (TILEDB_AZURE AND NOT APPLE AND NOT WIN32)
+  target_link_libraries(tiledb_unit
+    PUBLIC
+      uuid
+  )
+endif()
+
 # need to properly link the signal chaining library for catch to work with the jni hdfs interface
 # see: https://docs.oracle.com/javase/9/vm/signal-chaining.htm
 if (TILEDB_HDFS)
@@ -213,9 +220,10 @@ if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
     )
 endif()
 
+# Temporarily disable Azure-specific unit tests
 add_test(
   NAME "tiledb_unit"
-  COMMAND $<TARGET_FILE:tiledb_unit> --durations=yes
+  COMMAND $<TARGET_FILE:tiledb_unit> --durations=yes ~[azure]
   WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
 )
 
