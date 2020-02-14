@@ -1052,7 +1052,7 @@ Status Azure::parse_azure_uri(
 
   if (uri_str.size() == azure_prefix.size()) {
     if (container_name)
-      *container_name == "";
+      *container_name = "";
     if (blob_path)
       *blob_path = "";
     return Status::Ok();
@@ -1066,7 +1066,7 @@ Status Azure::parse_azure_uri(
     const size_t c_pos_start = azure_prefix.size();
     const size_t c_pos_end = uri_str.size();
     if (container_name)
-      *container_name == uri_str.substr(c_pos_start, c_pos_end - c_pos_start);
+      *container_name = uri_str.substr(c_pos_start, c_pos_end - c_pos_start);
     if (blob_path)
       *blob_path = "";
     return Status::Ok();
@@ -1078,7 +1078,7 @@ Status Azure::parse_azure_uri(
     const size_t c_pos_start = azure_prefix.size();
     const size_t c_pos_end = separator;
     if (container_name)
-      *container_name == uri_str.substr(c_pos_start, c_pos_end - c_pos_start);
+      *container_name = uri_str.substr(c_pos_start, c_pos_end - c_pos_start);
     if (blob_path)
       *blob_path = "";
     return Status::Ok();

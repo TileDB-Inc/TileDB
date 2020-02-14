@@ -161,6 +161,13 @@ target_link_libraries(tiledb_unit
     Catch::Catch
 )
 
+if (TILEDB_AZURE)
+  target_link_libraries(tiledb_unit
+    PUBLIC
+      uuid
+  )
+endif()
+
 # need to properly link the signal chaining library for catch to work with the jni hdfs interface
 # see: https://docs.oracle.com/javase/9/vm/signal-chaining.htm
 if (TILEDB_HDFS)

@@ -18,6 +18,14 @@ steps:
 
 - bash: |
     set -e pipefail
+    # Install uuid-dev *before* running cmake
+    sudo apt-get update
+    sudo apt-get install uuid-dev
+  condition: eq(variables['Agent.OS'], 'Linux')
+  displayName: 'Install uuid-dev (linux only)'
+
+- bash: |
+    set -e pipefail
     # Install clang-format (v5.0)
     sudo scripts/install-clangformat.sh
     src=$BUILD_REPOSITORY_LOCALPATH
@@ -81,6 +89,9 @@ steps:
     fi;
     if [[ "$TILEDB_S3" == "ON" ]]; then
       bootstrap_args="${bootstrap_args} --enable-s3";
+    fi;
+    if [[ "$TILEDB_AZURE" == "ON" ]]; then
+      bootstrap_args="${bootstrap_args} --enable-azure";
     fi;
     if [[ "$TILEDB_TBB" == "OFF" ]]; then
       bootstrap_args="${bootstrap_args} --disable-tbb";

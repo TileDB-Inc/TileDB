@@ -19,6 +19,11 @@ matrix:
       - TILEDB_S3="ON"
       - TILEDB_SUPERBUILD="ON"
 
+    - os: linux
+      env:
+      - TILEDB_AZURE="ON"
+      - TILEDB_SUPERBUILD="ON"
+
     - os: osx
 
 before_install:
@@ -47,6 +52,9 @@ install:
       fi;
       if [[ "$TILEDB_S3" == "ON" ]]; then
         bootstrap_args="${bootstrap_args} --enable-s3";
+      fi;
+      if [[ "$TILEDB_AZURE" == "ON" ]]; then
+        bootstrap_args="${bootstrap_args} --enable-azure";
       fi;
       if [[ "$TILEDB_TBB" == "OFF" ]]; then
         bootstrap_args="${bootstrap_args} --disable-tbb";
