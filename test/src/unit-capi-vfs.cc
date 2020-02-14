@@ -31,6 +31,7 @@
  */
 
 #include "catch.hpp"
+#include "test/src/helpers.h"
 #include "tiledb/sm/c_api/tiledb.h"
 #include "tiledb/sm/misc/stats.h"
 #include "tiledb/sm/misc/utils.h"
@@ -43,6 +44,8 @@
 #include <iostream>
 #include <sstream>
 #include <thread>
+
+using namespace tiledb::test;
 
 struct VFSFx {
   const std::string HDFS_TEMP_DIR = "hdfs://localhost:9000/tiledb_test/";
@@ -100,13 +103,7 @@ void VFSFx::set_supported_fs() {
   tiledb_ctx_t* ctx = nullptr;
   REQUIRE(tiledb_ctx_alloc(nullptr, &ctx) == TILEDB_OK);
 
-  int is_supported = 0;
-  int rc = tiledb_ctx_is_supported_fs(ctx, TILEDB_S3, &is_supported);
-  REQUIRE(rc == TILEDB_OK);
-  supports_s3_ = (bool)is_supported;
-  rc = tiledb_ctx_is_supported_fs(ctx, TILEDB_HDFS, &is_supported);
-  REQUIRE(rc == TILEDB_OK);
-  supports_hdfs_ = (bool)is_supported;
+  get_supported_fs(&supports_s3_, &supports_hdfs_);
 
   tiledb_ctx_free(&ctx);
 }

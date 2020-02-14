@@ -39,6 +39,7 @@
 #include <thread>
 
 #include "catch.hpp"
+#include "test/src/helpers.h"
 #ifdef _WIN32
 #include "tiledb/sm/filesystem/win.h"
 #else
@@ -48,6 +49,8 @@
 #include "tiledb/sm/c_api/tiledb_serialization.h"
 #include "tiledb/sm/enums/serialization_type.h"
 #include "tiledb/sm/misc/utils.h"
+
+using namespace tiledb::test;
 
 struct ArraySchemaFx {
   // Filesystem related
@@ -201,13 +204,7 @@ void ArraySchemaFx::set_supported_fs() {
   tiledb_ctx_t* ctx = nullptr;
   REQUIRE(tiledb_ctx_alloc(nullptr, &ctx) == TILEDB_OK);
 
-  int is_supported = 0;
-  int rc = tiledb_ctx_is_supported_fs(ctx, TILEDB_S3, &is_supported);
-  REQUIRE(rc == TILEDB_OK);
-  supports_s3_ = (bool)is_supported;
-  rc = tiledb_ctx_is_supported_fs(ctx, TILEDB_HDFS, &is_supported);
-  REQUIRE(rc == TILEDB_OK);
-  supports_hdfs_ = (bool)is_supported;
+  get_supported_fs(&supports_s3_, &supports_hdfs_);
 
   tiledb_ctx_free(&ctx);
 }
