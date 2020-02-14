@@ -130,7 +130,8 @@ void create_array(
     const std::vector<std::pair<tiledb_filter_type_t, int>>& compressors,
     tiledb_layout_t tile_order,
     tiledb_layout_t cell_order,
-    uint64_t capacity) {
+    uint64_t capacity,
+    bool allows_dups) {
   // For easy reference
   auto dim_num = dim_names.size();
   auto attr_num = attr_names.size();
@@ -152,6 +153,8 @@ void create_array(
   rc = tiledb_array_schema_set_tile_order(ctx, array_schema, tile_order);
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_array_schema_set_capacity(ctx, array_schema, capacity);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_array_schema_set_allows_dups(ctx, array_schema, (int)allows_dups);
   REQUIRE(rc == TILEDB_OK);
 
   // Create dimensions and domain

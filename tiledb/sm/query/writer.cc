@@ -534,6 +534,10 @@ Status Writer::check_buffer_sizes() const {
 Status Writer::check_coord_dups(const std::vector<uint64_t>& cell_pos) const {
   STATS_FUNC_IN(writer_check_coord_dups);
 
+  // Check if applicable
+  if (array_schema_->allows_dups() || !check_coord_dups_ || dedup_coords_)
+    return Status::Ok();
+
   if (!has_coords_) {
     return LOG_STATUS(
         Status::WriterError("Cannot check for coordinate duplicates; "
@@ -585,6 +589,10 @@ Status Writer::check_coord_dups(const std::vector<uint64_t>& cell_pos) const {
 
 Status Writer::check_coord_dups() const {
   STATS_FUNC_IN(writer_check_coord_dups_global);
+
+  // Check if applicable
+  if (array_schema_->allows_dups() || !check_coord_dups_ || dedup_coords_)
+    return Status::Ok();
 
   if (!has_coords_) {
     return LOG_STATUS(
@@ -676,6 +684,10 @@ Status Writer::check_coord_oob() const {
 }
 
 Status Writer::check_global_order() const {
+  // Check if applicable
+  if (!check_global_order_)
+    return Status::Ok();
+
   // Applicable only to sparse writes - exit if coordinates do not exist
   if (!has_coords_ || coords_num_ < 2)
     return Status::Ok();
@@ -1262,10 +1274,8 @@ Status Writer::global_write() {
 
   // Check for coordinate duplicates
   if (has_coords_) {
-    if (check_coord_dups_ && !dedup_coords_)
-      RETURN_CANCEL_OR_ERROR(check_coord_dups());
-    if (check_global_order_)
-      RETURN_CANCEL_OR_ERROR(check_global_order());
+    RETURN_CANCEL_OR_ERROR(check_coord_dups());
+    RETURN_CANCEL_OR_ERROR(check_global_order());
   }
 
   // Retrieve coordinate duplicates
@@ -2307,8 +2317,7 @@ Status Writer::unordered_write() {
   RETURN_CANCEL_OR_ERROR(sort_coords(&cell_pos));
 
   // Check for coordinate duplicates
-  if (check_coord_dups_ && !dedup_coords_)
-    RETURN_CANCEL_OR_ERROR(check_coord_dups(cell_pos));
+  RETURN_CANCEL_OR_ERROR(check_coord_dups(cell_pos));
 
   // Retrieve coordinate duplicates
   std::set<uint64_t> coord_dups;

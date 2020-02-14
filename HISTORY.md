@@ -2,7 +2,7 @@
 
 ## Disk Format
 
-* Removed file __coords.tdb that stored the zipped coordinates in sparse fragments
+* Removed file `__coords.tdb` that stored the zipped coordinates in sparse fragments
 * Now storing the coordinate tiles on each dimension in separate files
 * Changed fragment name format from `__t1_t2_uuid` to `__t1_t2_uuid_<format_version>`. That was necessary for backwards compatibility
 
@@ -13,6 +13,7 @@
 * Added support for AWS Security Token Service session tokens via configuration option `vfs.s3.session_token`. [#1472](https://github.com/TileDB-Inc/TileDB/pull/1472)
 * Added support for indicating zero-value metadata by returning `value_num` == 1 from the `_get_metadatata` and `Array::get_metadata` APIs [#1438](https://github.com/TileDB-Inc/TileDB/pull/1438) (this is a non-breaking change, as the documented return of `value == nullptr` to indicate missing keys does not change)`
 * User can set coordinate buffers separately for write queries.
+* Added option to enable duplicate coordinates for sparse arrays [#1504](https://github.com/TileDB-Inc/TileDB/pull/1504) 
 
 ## Deprecations
 
@@ -23,6 +24,7 @@
 ## API additions
 
 * Added C API function `tiledb_array_has_metadata_key` and C++ API function `Array::has_metadata_key` [#1439](https://github.com/TileDB-Inc/TileDB/pull/1439)
+* Added C API functions `tiledb_array_schema_{set,get}_allows_dups` and C++ API functions `Array::set_allows_dups` and `Array::allows_dups`
 
 ## API removals
 

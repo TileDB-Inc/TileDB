@@ -66,6 +66,7 @@ TEST_CASE("C++ API: Schema", "[cppapi][schema]") {
     schema.add_attribute(a4);
     schema.set_cell_order(TILEDB_ROW_MAJOR);
     schema.set_tile_order(TILEDB_COL_MAJOR);
+    CHECK_THROWS(schema.set_allows_dups(1));
 
     FilterList offsets_filters(ctx);
     offsets_filters.add_filter({ctx, TILEDB_FILTER_DOUBLE_DELTA});
@@ -113,6 +114,7 @@ TEST_CASE("C++ API: Schema", "[cppapi][schema]") {
     schema.add_attribute(a4);
     schema.set_cell_order(TILEDB_ROW_MAJOR);
     schema.set_tile_order(TILEDB_COL_MAJOR);
+    schema.set_allows_dups(true);
 
     FilterList offsets_filters(ctx);
     offsets_filters.add_filter({ctx, TILEDB_FILTER_DOUBLE_DELTA});
@@ -137,6 +139,7 @@ TEST_CASE("C++ API: Schema", "[cppapi][schema]") {
     CHECK(schema.attribute("a3").cell_val_num() == 16);
     CHECK(schema.attribute("a4").cell_val_num() == TILEDB_VAR_NUM);
     CHECK(schema.attribute("a4").type() == TILEDB_UINT32);
+    CHECK(schema.allows_dups() == true);
 
     auto dims = schema.domain().dimensions();
     REQUIRE(dims.size() == 2);

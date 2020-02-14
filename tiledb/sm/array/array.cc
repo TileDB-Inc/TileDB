@@ -809,8 +809,8 @@ Status Array::compute_max_buffer_sizes(
     }
   }
 
-  // Rectify bound for sparse arrays with integer domain
-  if (!array_schema_->dense() &&
+  // Rectify bound for sparse arrays with integer domain, without duplicates
+  if (!array_schema_->dense() && !array_schema_->allows_dups() &&
       datatype_is_integer(array_schema_->domain()->type())) {
     auto cell_num = array_schema_->domain()->cell_num(subarray);
     // `cell_num` becomes 0 when `subarray` is huge, leading to a
