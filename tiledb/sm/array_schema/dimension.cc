@@ -598,7 +598,8 @@ Status Dimension::check_tile_extent() const {
         return LOG_STATUS(Status::DimensionError(
             "Tile extent check failed; domain max expanded to multiple of tile "
             "extent exceeds max value representable by domain type. Reduce "
-            "domain max by 1 tile extent to allow for expansion."));
+            "domain max by 1 tile extent to allow for expansion or ensure "
+            "that desired dimension type is explicitly specified."));
     }
   }
 
