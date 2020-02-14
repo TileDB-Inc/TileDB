@@ -316,6 +316,9 @@ class ArraySchema {
   /** Sets the tile order. */
   void set_tile_order(Layout tile_order);
 
+  /** Set version of schema, only used for serialization */
+  void set_version(uint32_t version);
+
   /** Returns the array schema version. */
   uint32_t version() const;
 
