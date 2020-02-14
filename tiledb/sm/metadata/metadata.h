@@ -203,10 +203,11 @@ class Metadata {
   void swap(Metadata* metadata);
 
   /**
-   * Clears the metadata and assigns the current timestamp to
-   * its timestamp range.
+   * Clears the metadata and assigns the input timestamp to
+   * its timestamp range. If `timestamp` is 0, then the metadata
+   * timestamp range is set to the current time.
    */
-  void reset();
+  void reset(uint64_t timestamp);
 
   /** Returns an iterator to the beginning of the metadata. */
   iterator begin() const;

@@ -101,11 +101,6 @@ Status Array::open(
     return LOG_STATUS(Status::ArrayError(
         "Cannot open array at timestamp; Array already open"));
 
-  if (query_type != QueryType::READ)
-    return LOG_STATUS(
-        Status::ArrayError("Cannot open array at timestamp; The array can "
-                           "be opened at a timestamp only in read mode"));
-
   if (remote_ && encryption_type != EncryptionType::NO_ENCRYPTION)
     return LOG_STATUS(Status::ArrayError(
         "Cannot open array; encrypted remote arrays are not supported."));
@@ -126,14 +121,17 @@ Status Array::open(
           "Cannot open array; remote array with no REST client."));
     RETURN_NOT_OK(
         rest_client->get_array_schema_from_rest(array_uri_, &array_schema_));
-  } else {
-    // Open the array.
+  } else if (query_type == QueryType::READ) {
     RETURN_NOT_OK(storage_manager_->array_open_for_reads(
         array_uri_,
         timestamp_,
         encryption_key_,
         &array_schema_,
         &fragment_metadata_));
+  } else {
+    RETURN_NOT_OK(storage_manager_->array_open_for_writes(
+        array_uri_, encryption_key_, &array_schema_));
+    metadata_.reset(timestamp_);
   }
 
   is_open_ = true;
@@ -214,7 +212,7 @@ Status Array::open(
       encryption_key_.set_key(encryption_type, encryption_key, key_length));
 
   timestamp_ =
-      query_type == QueryType::READ ? utils::time::timestamp_now_ms() : 0;
+      (query_type == QueryType::READ) ? utils::time::timestamp_now_ms() : 0;
   metadata_.clear();
   metadata_loaded_ = false;
 
@@ -235,7 +233,7 @@ Status Array::open(
   } else {
     RETURN_NOT_OK(storage_manager_->array_open_for_writes(
         array_uri_, encryption_key_, &array_schema_));
-    metadata_.reset();  // Resets metadata with a new timestamp
+    metadata_.reset(timestamp_);
   }
 
   query_type_ = query_type;

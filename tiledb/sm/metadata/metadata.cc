@@ -283,10 +283,10 @@ void Metadata::swap(Metadata* metadata) {
   std::swap(loaded_metadata_uris_, metadata->loaded_metadata_uris_);
 }
 
-void Metadata::reset() {
+void Metadata::reset(uint64_t timestamp) {
   clear();
-  auto t = utils::time::timestamp_now_ms();
-  timestamp_range_ = std::make_pair(t, t);
+  timestamp = (timestamp != 0) ? timestamp : utils::time::timestamp_now_ms();
+  timestamp_range_ = std::make_pair(timestamp, timestamp);
 }
 
 Metadata::iterator Metadata::begin() const {
