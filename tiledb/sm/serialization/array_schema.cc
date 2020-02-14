@@ -368,6 +368,7 @@ Status array_schema_to_capnp(
   array_schema_builder->setTileOrder(layout_str(array_schema->tile_order()));
   array_schema_builder->setCellOrder(layout_str(array_schema->cell_order()));
   array_schema_builder->setCapacity(array_schema->capacity());
+  array_schema_builder->setAllowsDuplicates(array_schema->allows_dups());
 
   // Set coordinate filters
   const FilterPipeline* coords_filters = array_schema->coords_filters();
@@ -415,6 +416,7 @@ Status array_schema_from_capnp(
   (*array_schema)->set_array_uri(URI(schema_reader.getUri().cStr()));
   (*array_schema)->set_cell_order(layout);
   (*array_schema)->set_capacity(schema_reader.getCapacity());
+  (*array_schema)->set_allows_dups(schema_reader.getAllowsDuplicates());
 
   auto domain_reader = schema_reader.getDomain();
   std::unique_ptr<Domain> domain;
