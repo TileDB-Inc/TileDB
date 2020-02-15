@@ -33,10 +33,12 @@
 #ifndef TILEDB_RESULT_SPACE_TILE_H
 #define TILEDB_RESULT_SPACE_TILE_H
 
+#include <functional>
 #include <iostream>
 #include <map>
 #include <vector>
 
+#include "tiledb/sm/misc/types.h"
 #include "tiledb/sm/query/result_tile.h"
 
 namespace tiledb {
@@ -48,29 +50,24 @@ namespace sm {
  * @tparam The datatype of the array domain.
  */
 template <class T>
-struct ResultSpaceTile {
-  /** The (global) coordinates of the first cell in the space tile. */
-  std::vector<T> start_coords_;
-
-  /**
-   * A vector of pairs `(fragment id, fragment domain)`, sorted on
-   * fragment id in descending order. Note that only fragments
-   * with domains that intersect this space tile will be included
-   * in this vector.
-   */
-  std::vector<std::pair<unsigned, const T*>> frag_domains_;
-
-  /**
-   * The (dense) result tiles for this space tile, as a map
-   * `(fragment id) -> (result tile)`.
-   */
-  std::map<unsigned, ResultTile> result_tiles_;
-
+class ResultSpaceTile {
+ public:
   /** Default constructor. */
   ResultSpaceTile() = default;
 
   /** Default destructor. */
   ~ResultSpaceTile() = default;
+
+  ResultSpaceTile(
+      const std::vector<T>& start_coords,
+      const std::vector<
+          std::pair<unsigned, std::reference_wrapper<const NDRange>>>&
+          frag_domains,
+      const std::map<unsigned, ResultTile>& result_tiles)
+      : start_coords_(start_coords)
+      , frag_domains_(frag_domains)
+      , result_tiles_(result_tiles) {
+  }
 
   /** Default copy constructor. */
   ResultSpaceTile(const ResultSpaceTile& result_space_tile) = default;
@@ -85,19 +82,77 @@ struct ResultSpaceTile {
   /** Default move-assign operator. */
   ResultSpaceTile& operator=(ResultSpaceTile&& result_space_tile) = default;
 
+  /** Returns the fragment domains. */
+  const std::vector<std::pair<unsigned, std::reference_wrapper<const NDRange>>>&
+  frag_domains() const {
+    return frag_domains_;
+  }
+
+  /** Returns the result tiles. */
+  const std::map<unsigned, ResultTile>& result_tiles() const {
+    return result_tiles_;
+  }
+
+  /** Returns the start coordinates. */
+  const std::vector<T>& start_coords() const {
+    return start_coords_;
+  }
+
+  /** Sets the start coordinates. */
+  void set_start_coords(const std::vector<T>& start_coords) {
+    start_coords_ = start_coords;
+  }
+
+  /** Appends a fragment domain. */
+  void append_frag_domain(
+      unsigned frag_idx, const std::reference_wrapper<const NDRange>& dom) {
+    frag_domains_.emplace_back(frag_idx, dom);
+  }
+
+  /** Sets the input result tile for the given fragment. */
+  void set_result_tile(unsigned frag_idx, const ResultTile& result_tile) {
+    result_tiles_[frag_idx] = result_tile;
+  }
+
+  /** Returns the result tile for the input fragment. */
+  ResultTile* result_tile(unsigned frag_idx) {
+    auto it = result_tiles_.find(frag_idx);
+    assert(it != result_tiles_.end());
+    return &(it->second);
+  }
+
   /** Equality operator (mainly for debugging purposes). */
   bool operator==(const ResultSpaceTile& rst) const {
     if (frag_domains_.size() != rst.frag_domains_.size())
       return false;
     for (size_t i = 0; i < frag_domains_.size(); ++i) {
       if (!(frag_domains_[i].first == rst.frag_domains_[i].first &&
-            frag_domains_[i].second == rst.frag_domains_[i].second))
+            frag_domains_[i].second.get() == rst.frag_domains_[i].second.get()))
         return false;
     }
 
     return start_coords_ == rst.start_coords_ &&
            result_tiles_ == rst.result_tiles_;
   }
+
+ private:
+  /** The (global) coordinates of the first cell in the space tile. */
+  std::vector<T> start_coords_;
+
+  /**
+   * A vector of pairs `(fragment id, fragment domain)`, sorted on
+   * fragment id in descending order. Note that only fragments
+   * with domains that intersect this space tile will be included
+   * in this vector.
+   */
+  std::vector<std::pair<unsigned, std::reference_wrapper<const NDRange>>>
+      frag_domains_;
+
+  /**
+   * The (dense) result tiles for this space tile, as a map
+   * `(fragment id) -> (result tile)`.
+   */
+  std::map<unsigned, ResultTile> result_tiles_;
 };
 
 }  // namespace sm

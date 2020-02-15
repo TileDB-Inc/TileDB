@@ -67,9 +67,7 @@ FragmentMetadata::FragmentMetadata(
     , dense_(dense)
     , fragment_uri_(fragment_uri)
     , timestamp_range_(timestamp_range) {
-  domain_ = nullptr;
   meta_file_size_ = 0;
-  non_empty_domain_ = nullptr;
   version_ = constants::format_version;
   tile_index_base_ = 0;
   sparse_tile_num_ = 0;
@@ -86,16 +84,9 @@ FragmentMetadata::FragmentMetadata(
 }
 
 FragmentMetadata::~FragmentMetadata() {
-  std::free(domain_);
-  std::free(non_empty_domain_);
-
   auto mbr_num = (uint64_t)mbrs_.size();
   for (uint64_t i = 0; i < mbr_num; ++i)
     std::free(mbrs_[i]);
-
-  auto bounding_coords_num = (uint64_t)bounding_coords_.size();
-  for (uint64_t i = 0; i < bounding_coords_num; ++i)
-    std::free(bounding_coords_[i]);
 }
 
 /* ****************************** */
@@ -106,61 +97,26 @@ const URI& FragmentMetadata::array_uri() const {
   return array_schema_->array_uri();
 }
 
-Status FragmentMetadata::set_mbr(uint64_t tile, const void* mbr) {
-  switch (array_schema_->coords_type()) {
-    case Datatype::INT8:
-      return set_mbr<int8_t>(tile, static_cast<const int8_t*>(mbr));
-    case Datatype::UINT8:
-      return set_mbr<uint8_t>(tile, static_cast<const uint8_t*>(mbr));
-    case Datatype::INT16:
-      return set_mbr<int16_t>(tile, static_cast<const int16_t*>(mbr));
-    case Datatype::UINT16:
-      return set_mbr<uint16_t>(tile, static_cast<const uint16_t*>(mbr));
-    case Datatype::INT32:
-      return set_mbr<int>(tile, static_cast<const int*>(mbr));
-    case Datatype::UINT32:
-      return set_mbr<unsigned>(tile, static_cast<const unsigned*>(mbr));
-    case Datatype::INT64:
-      return set_mbr<int64_t>(tile, static_cast<const int64_t*>(mbr));
-    case Datatype::UINT64:
-      return set_mbr<uint64_t>(tile, static_cast<const uint64_t*>(mbr));
-    case Datatype::FLOAT32:
-      return set_mbr<float>(tile, static_cast<const float*>(mbr));
-    case Datatype::FLOAT64:
-      return set_mbr<double>(tile, static_cast<const double*>(mbr));
-    case Datatype::DATETIME_YEAR:
-    case Datatype::DATETIME_MONTH:
-    case Datatype::DATETIME_WEEK:
-    case Datatype::DATETIME_DAY:
-    case Datatype::DATETIME_HR:
-    case Datatype::DATETIME_MIN:
-    case Datatype::DATETIME_SEC:
-    case Datatype::DATETIME_MS:
-    case Datatype::DATETIME_US:
-    case Datatype::DATETIME_NS:
-    case Datatype::DATETIME_PS:
-    case Datatype::DATETIME_FS:
-    case Datatype::DATETIME_AS:
-      return set_mbr<int64_t>(tile, static_cast<const int64_t*>(mbr));
-    default:
-      return LOG_STATUS(Status::FragmentMetadataError(
-          "Cannot append mbr; Unsupported coordinates type"));
-  }
-}
-
-template <class T>
-Status FragmentMetadata::set_mbr(uint64_t tile, const void* mbr) {
+Status FragmentMetadata::set_mbr(uint64_t tile, const NDRange& mbr) {
   // For easy reference
   uint64_t mbr_size = 2 * array_schema_->coords_size();
   tile += tile_index_base_;
 
-  // Copy and set MBR
-  void* new_mbr = std::malloc(mbr_size);
-  std::memcpy(new_mbr, mbr, mbr_size);
+  // Copy MBR
+  auto new_mbr = (unsigned char*)std::malloc(mbr_size);
+  auto dim_num = array_schema_->dim_num();
+  uint64_t offset = 0;
+  for (unsigned d = 0; d < dim_num; ++d) {
+    std::memcpy(&new_mbr[offset], mbr[d].data(), mbr[d].size());
+    offset += mbr[d].size();
+  }
+
+  // Set MBR
   assert(tile < mbrs_.size());
   mbrs_[tile] = new_mbr;
 
-  return expand_non_empty_domain(static_cast<const T*>(mbr));
+  // Expand non-empty domain
+  return expand_non_empty_domain(mbr);
 }
 
 void FragmentMetadata::set_tile_index_base(uint64_t tile_base) {
@@ -303,7 +259,7 @@ bool FragmentMetadata::dense() const {
   return dense_;
 }
 
-const void* FragmentMetadata::domain() const {
+const NDRange& FragmentMetadata::domain() const {
   return domain_;
 }
 
@@ -335,8 +291,16 @@ Status FragmentMetadata::get_tile_overlap(
     const EncryptionKey& encryption_key,
     const std::vector<const T*>& range,
     TileOverlap* tile_overlap) {
+  auto dim_num = array_schema_->dim_num();
+  NDRange ndrange(dim_num);
+  for (unsigned d = 0; d < dim_num; ++d) {
+    auto coord_size = 2 * array_schema_->dimension(d)->coord_size();
+    Range r(range[d], 2 * coord_size);
+    ndrange[d] = std::move(r);
+  }
+
   // Return if the range does not overlap the non-empty domain of the fragment
-  if (!utils::geometry::overlap(range, (const T*)non_empty_domain_))
+  if (!array_schema_->domain()->overlap(ndrange, non_empty_domain_))
     return Status::Ok();
 
   // Handle version > 2
@@ -362,31 +326,37 @@ Status FragmentMetadata::get_tile_overlap(
 
 Status FragmentMetadata::init(const void* non_empty_domain) {
   // For easy reference
-  auto num = array_schema_->attribute_num() + array_schema_->dim_num() + 1;
+  auto dim_num = array_schema_->dim_num();
+  auto num = array_schema_->attribute_num() + dim_num + 1;
   auto domain = array_schema_->domain();
 
   // Sanity check
   assert(non_empty_domain != nullptr);
-  assert(non_empty_domain_ == nullptr);
-  assert(domain_ == nullptr);
+  assert(non_empty_domain_.empty());
+  assert(domain_.empty());
 
   // Set non-empty domain for dense arrays (for sparse it will be calculated
   // via the MBRs)
-  uint64_t domain_size = 2 * array_schema_->coords_size();
   if (dense_) {
     // Set non-empty domain
-    non_empty_domain_ = std::malloc(domain_size);
-    std::memcpy(non_empty_domain_, non_empty_domain, domain_size);
+    auto dom_ptr = (const unsigned char*)non_empty_domain;
+    non_empty_domain_.resize(dim_num);
+    for (unsigned d = 0; d < dim_num; ++d) {
+      auto r_size = 2 * array_schema_->dimension(d)->coord_size();
+      Range r(dom_ptr, r_size);
+      non_empty_domain_[d] = std::move(r);
+      dom_ptr += r_size;
+    }
+
     // The following is needed in case the fragment is a result of
     // dense consolidation, as the consolidator may have expanded
     // the fragment domain beyond the array domain to include
     // integral space tiles
-    domain->crop_domain(non_empty_domain_);
+    domain->crop_ndrange(&non_empty_domain_);
 
     // Set expanded domain
-    domain_ = std::malloc(domain_size);
-    std::memcpy(domain_, non_empty_domain_, domain_size);
-    domain->expand_domain(domain_);
+    domain_ = non_empty_domain_;
+    domain->expand_to_tiles(&domain_);
   }
 
   // Set last tile cell number
@@ -502,17 +472,8 @@ Status FragmentMetadata::store(const EncryptionKey& encryption_key) {
   return !st.ok() ? st : st2;
 }
 
-const void* FragmentMetadata::non_empty_domain() const {
+const NDRange& FragmentMetadata::non_empty_domain() {
   return non_empty_domain_;
-}
-
-std::vector<const void*> FragmentMetadata::non_empty_domain_vec() const {
-  std::vector<const void*> ret;
-  ret.reserve(array_schema_->dim_num());
-  auto dom = (unsigned char*)non_empty_domain_;
-  for (unsigned d = 0; d < array_schema_->dim_num(); ++d)
-    ret.emplace_back(&dom[2 * array_schema_->dimension(d)->coord_size()]);
-  return ret;
 }
 
 Status FragmentMetadata::set_num_tiles(uint64_t num_tiles) {
@@ -528,7 +489,6 @@ Status FragmentMetadata::set_num_tiles(uint64_t num_tiles) {
   if (!dense_) {
     mbrs_.resize(num_tiles, nullptr);
     sparse_tile_num_ = num_tiles;
-    bounding_coords_.resize(num_tiles, nullptr);
   }
 
   return Status::Ok();
@@ -712,7 +672,7 @@ Status FragmentMetadata::get_footer_offset_and_size_v5_or_higher(
   *size = 0;
   *size += sizeof(uint32_t);        // version
   *size += sizeof(char);            // dense
-  *size += sizeof(char);            // null non-empty domain
+  *size += sizeof(uint64_t);        // non-empty domain size
   *size += domain_size;             // non-empty domain
   *size += sizeof(uint64_t);        // sparse tile num
   *size += sizeof(uint64_t);        // last tile cell num
@@ -735,7 +695,15 @@ std::vector<uint64_t> FragmentMetadata::compute_overlapping_tile_ids(
   assert(dense_);
   std::vector<uint64_t> tids;
   auto dim_num = array_schema_->dim_num();
-  auto metadata_domain = static_cast<const T*>(domain_);
+
+  // TODO: fix
+  std::vector<uint8_t> temp(2 * array_schema_->coords_size());
+  uint8_t offset = 0;
+  for (unsigned d = 0; d < dim_num; ++d) {
+    std::memcpy(&temp[offset], domain_[d].data(), domain_[d].size());
+    offset += domain_[d].size();
+  }
+  auto metadata_domain = (const T*)&temp[0];
 
   // Check if there is any overlap
   if (!utils::geometry::overlap(subarray, metadata_domain, dim_num))
@@ -773,7 +741,15 @@ FragmentMetadata::compute_overlapping_tile_ids_cov(const T* subarray) const {
   assert(dense_);
   std::vector<std::pair<uint64_t, double>> tids;
   auto dim_num = array_schema_->dim_num();
-  auto metadata_domain = static_cast<const T*>(domain_);
+
+  // TODO: fix
+  std::vector<uint8_t> temp(2 * array_schema_->coords_size());
+  uint8_t offset = 0;
+  for (unsigned d = 0; d < dim_num; ++d) {
+    std::memcpy(&temp[offset], domain_[d].data(), domain_[d].size());
+    offset += domain_[d].size();
+  }
+  auto metadata_domain = (const T*)&temp[0];
 
   // Check if there is any overlap
   if (!utils::geometry::overlap(subarray, metadata_domain, dim_num))
@@ -822,46 +798,31 @@ void FragmentMetadata::get_subarray_tile_domain(
     const T* subarray, T* subarray_tile_domain) const {
   // For easy reference
   auto dim_num = array_schema_->dim_num();
-  auto domain = static_cast<const T*>(domain_);
   auto tile_extents =
       static_cast<const T*>(array_schema_->domain()->tile_extents());
 
   // Calculate subarray in tile domain
-  for (unsigned int i = 0; i < dim_num; ++i) {
-    auto overlap = std::max(subarray[2 * i], domain[2 * i]);
-    subarray_tile_domain[2 * i] = (overlap - domain[2 * i]) / tile_extents[i];
+  for (unsigned int d = 0; d < dim_num; ++d) {
+    auto domain = (const T*)domain_[d].data();
+    auto overlap = std::max(subarray[2 * d], domain[0]);
+    subarray_tile_domain[2 * d] = (overlap - domain[0]) / tile_extents[d];
 
-    overlap = std::min(subarray[2 * i + 1], domain[2 * i + 1]);
-    subarray_tile_domain[2 * i + 1] =
-        (overlap - domain[2 * i]) / tile_extents[i];
+    overlap = std::min(subarray[2 * d + 1], domain[1]);
+    subarray_tile_domain[2 * d + 1] = (overlap - domain[0]) / tile_extents[d];
   }
 }
 
-template <class T>
-Status FragmentMetadata::expand_non_empty_domain(const T* mbr) {
+Status FragmentMetadata::expand_non_empty_domain(const NDRange& mbr) {
   std::lock_guard<std::mutex> lock(mtx_);
 
-  if (non_empty_domain_ == nullptr) {
-    auto domain_size = 2 * array_schema_->coords_size();
-    non_empty_domain_ = std::malloc(domain_size);
-    if (non_empty_domain_ == nullptr)
-      return LOG_STATUS(Status::FragmentMetadataError(
-          "Cannot expand non-empty domain; Memory allocation failed"));
-
-    std::memcpy(non_empty_domain_, mbr, domain_size);
+  // Case the non-empty domain is not initialized yet
+  if (non_empty_domain_.empty()) {
+    non_empty_domain_ = mbr;
     return Status::Ok();
   }
 
-  auto dim_num = array_schema_->dim_num();
-  auto coords = new T[dim_num];
-  for (unsigned i = 0; i < dim_num; ++i)
-    coords[i] = mbr[2 * i];
-  auto non_empty_domain = static_cast<T*>(non_empty_domain_);
-  utils::geometry::expand_mbr(non_empty_domain, coords, dim_num);
-  for (unsigned i = 0; i < dim_num; ++i)
-    coords[i] = mbr[2 * i + 1];
-  utils::geometry::expand_mbr(non_empty_domain, coords, dim_num);
-  delete[] coords;
+  // Expand existing non-empty domain
+  array_schema_->domain()->expand_ndrange(mbr, &non_empty_domain_);
 
   return Status::Ok();
 }
@@ -956,30 +917,18 @@ Status FragmentMetadata::load_tile_var_sizes(
 //  bounding_coords_num (uint64_t)
 //  bounding_coords_#1 (void*) bounding_coords_#2 (void*) ...
 Status FragmentMetadata::load_bounding_coords(ConstBuffer* buff) {
-  uint64_t bounding_coords_size = 2 * array_schema_->coords_size();
-
   // Get number of bounding coordinates
   uint64_t bounding_coords_num = 0;
-  Status st = buff->read(&bounding_coords_num, sizeof(uint64_t));
-  if (!st.ok()) {
-    return LOG_STATUS(Status::FragmentMetadataError(
-        "Cannot load fragment metadata; Reading number of "
-        "bounding coordinates failed"));
-  }
+  RETURN_NOT_OK(buff->read(&bounding_coords_num, sizeof(uint64_t)));
+
   // Get bounding coordinates
-  void* bounding_coords;
-  bounding_coords_.resize(bounding_coords_num, nullptr);
+  uint64_t bounding_coords_size = 2 * array_schema_->coords_size();
+  bounding_coords_.resize(bounding_coords_num);
   for (uint64_t i = 0; i < bounding_coords_num; ++i) {
-    bounding_coords = std::malloc(bounding_coords_size);
-    st = buff->read(bounding_coords, bounding_coords_size);
-    if (!st.ok()) {
-      std::free(bounding_coords);
-      return LOG_STATUS(
-          Status::FragmentMetadataError("Cannot load fragment metadata; "
-                                        "Reading bounding coordinates failed"));
-    }
-    bounding_coords_[i] = bounding_coords;
+    bounding_coords_[i].resize(bounding_coords_size);
+    RETURN_NOT_OK(buff->read(&bounding_coords_[i][0], bounding_coords_size));
   }
+
   return Status::Ok();
 }
 
@@ -1114,44 +1063,39 @@ Status FragmentMetadata::load_mbrs(ConstBuffer* buff) {
 }
 
 Status FragmentMetadata::load_non_empty_domain(ConstBuffer* buff) {
-  if (version_ <= 2)
-    return load_non_empty_domain_v2(buff);
-  return load_non_empty_domain_v3(buff);
+  if (version_ <= 2 || version_ >= 5)
+    return load_non_empty_domain_v1_v2_and_v5(buff);
+  // version_ 3 or 4
+  return load_non_empty_domain_v3_v4(buff);
 }
 
 // ===== FORMAT =====
 // non_empty_domain_size (uint64_t)
 // non_empty_domain (void*)
-Status FragmentMetadata::load_non_empty_domain_v2(ConstBuffer* buff) {
+Status FragmentMetadata::load_non_empty_domain_v1_v2_and_v5(ConstBuffer* buff) {
   // Get domain size
   uint64_t domain_size = 0;
-  Status st = buff->read(&domain_size, sizeof(uint64_t));
-  if (!st.ok()) {
-    return LOG_STATUS(Status::FragmentMetadataError(
-        "Cannot load fragment metadata; Reading domain size failed"));
-  }
+  RETURN_NOT_OK(buff->read(&domain_size, sizeof(uint64_t)));
 
   // Get non-empty domain
-  if (domain_size == 0) {
-    non_empty_domain_ = nullptr;
-  } else {
-    non_empty_domain_ = std::malloc(domain_size);
-    st = buff->read(non_empty_domain_, domain_size);
-    if (!st.ok()) {
-      std::free(non_empty_domain_);
-      //      non_empty_domain_ = nullptr;
-      return LOG_STATUS(Status::FragmentMetadataError(
-          "Cannot load fragment metadata; Reading domain failed"));
+  if (domain_size != 0) {
+    auto dim_num = array_schema_->dim_num();
+    std::vector<uint8_t> temp(domain_size);
+    RETURN_NOT_OK(buff->read(&temp[0], domain_size));
+    non_empty_domain_.resize(dim_num);
+    uint64_t offset = 0;
+    for (unsigned d = 0; d < dim_num; ++d) {
+      auto coord_size = array_schema_->dimension(d)->coord_size();
+      Range r(&temp[offset], 2 * coord_size);
+      non_empty_domain_[d] = std::move(r);
+      offset += 2 * coord_size;
     }
   }
 
   // Get expanded domain
-  if (non_empty_domain_ == nullptr) {
-    domain_ = nullptr;
-  } else {
-    domain_ = std::malloc(domain_size);
-    std::memcpy(domain_, non_empty_domain_, domain_size);
-    array_schema_->domain()->expand_domain(domain_);
+  if (!non_empty_domain_.empty()) {
+    domain_ = non_empty_domain_;
+    array_schema_->domain()->expand_to_tiles(&domain_);
   }
 
   return Status::Ok();
@@ -1160,37 +1104,31 @@ Status FragmentMetadata::load_non_empty_domain_v2(ConstBuffer* buff) {
 // ===== FORMAT =====
 // null non_empty_domain (char)
 // non_empty_domain (domain_size)
-Status FragmentMetadata::load_non_empty_domain_v3(ConstBuffer* buff) {
+Status FragmentMetadata::load_non_empty_domain_v3_v4(ConstBuffer* buff) {
   // Get null non-empty domain
   bool null_non_empty_domain = false;
-  Status st = buff->read(&null_non_empty_domain, sizeof(char));
-  if (!st.ok()) {
-    return LOG_STATUS(Status::FragmentMetadataError(
-        "Cannot load fragment metadata; Reading domain size failed"));
-  }
+  RETURN_NOT_OK(buff->read(&null_non_empty_domain, sizeof(char)));
 
   // Get non-empty domain
-  auto domain_size = 2 * array_schema_->coords_size();
-  non_empty_domain_ = std::malloc(domain_size);
-  st = buff->read(non_empty_domain_, domain_size);
-  if (!st.ok()) {
-    std::free(non_empty_domain_);
-    non_empty_domain_ = nullptr;
-    return LOG_STATUS(Status::FragmentMetadataError(
-        "Cannot load fragment metadata; Reading domain failed"));
-  }
-  if (null_non_empty_domain) {
-    std::free(non_empty_domain_);
-    non_empty_domain_ = nullptr;
+  if (!null_non_empty_domain) {
+    auto dim_num = array_schema_->dim_num();
+    auto domain_size = 2 * array_schema_->coords_size();
+    std::vector<uint8_t> temp(domain_size);
+    RETURN_NOT_OK(buff->read(&temp[0], domain_size));
+    non_empty_domain_.resize(dim_num);
+    uint64_t offset = 0;
+    for (unsigned d = 0; d < dim_num; ++d) {
+      auto coord_size = array_schema_->dimension(d)->coord_size();
+      Range r(&temp[offset], 2 * coord_size);
+      non_empty_domain_[d] = std::move(r);
+      offset += 2 * coord_size;
+    }
   }
 
   // Get expanded domain
-  if (non_empty_domain_ == nullptr) {
-    domain_ = nullptr;
-  } else {
-    domain_ = std::malloc(domain_size);
-    std::memcpy(domain_, non_empty_domain_, domain_size);
-    array_schema_->domain()->expand_domain(domain_);
+  if (!non_empty_domain_.empty()) {
+    domain_ = non_empty_domain_;
+    array_schema_->domain()->expand_to_tiles(&domain_);
   }
 
   return Status::Ok();
@@ -1686,34 +1624,21 @@ Status FragmentMetadata::write_rtree(Buffer* buff) {
 }
 
 // ===== FORMAT =====
-// non_empty_domain_size(uint64_t) non_empty_domain(void*)
+// non_empty_domain_size (uint64_t)
+// non_empty_domain (uint8_t[])
 Status FragmentMetadata::write_non_empty_domain(Buffer* buff) {
-  uint64_t domain_size = 2 * array_schema_->coords_size();
-  bool null_non_empty_domain = (non_empty_domain_ == nullptr);
-
-  // Write null non-empty domain
-  Status st = buff->write(&null_non_empty_domain, sizeof(char));
-  if (!st.ok()) {
-    return LOG_STATUS(Status::FragmentMetadataError(
-        "Cannot serialize fragment metadata; Writing non-empty domain failed"));
-  }
+  // Write non-empty domain size
+  uint64_t domain_size = 0;
+  for (const auto& r : non_empty_domain_)
+    domain_size += r.size();
+  RETURN_NOT_OK(buff->write(&domain_size, sizeof(uint64_t)));
 
   // Write non-empty domain
-  if (non_empty_domain_ != nullptr) {
-    st = buff->write(non_empty_domain_, domain_size);
-    if (!st.ok()) {
-      return LOG_STATUS(
-          Status::FragmentMetadataError("Cannot serialize fragment metadata; "
-                                        "Writing non-empty domain failed"));
-    }
-  } else {  // Write some dummy values
-    std::vector<uint8_t> d(domain_size, 0);
-    st = buff->write(&d[0], domain_size);
-    if (!st.ok()) {
-      return LOG_STATUS(
-          Status::FragmentMetadataError("Cannot serialize fragment metadata; "
-                                        "Writing non-empty domain failed"));
-    }
+  if (!non_empty_domain_.empty()) {
+    auto dim_num = array_schema_->dim_num();
+    for (unsigned d = 0; d < dim_num; ++d)
+      RETURN_NOT_OK(buff->write(
+          non_empty_domain_[d].data(), non_empty_domain_[d].size()));
   }
 
   return Status::Ok();
@@ -1919,27 +1844,6 @@ void FragmentMetadata::clean_up() {
 }
 
 // Explicit template instantiations
-template Status FragmentMetadata::set_mbr<int8_t>(
-    uint64_t tile, const void* mbr);
-template Status FragmentMetadata::set_mbr<uint8_t>(
-    uint64_t tile, const void* mbr);
-template Status FragmentMetadata::set_mbr<int16_t>(
-    uint64_t tile, const void* mbr);
-template Status FragmentMetadata::set_mbr<uint16_t>(
-    uint64_t tile, const void* mbr);
-template Status FragmentMetadata::set_mbr<int32_t>(
-    uint64_t tile, const void* mbr);
-template Status FragmentMetadata::set_mbr<uint32_t>(
-    uint64_t tile, const void* mbr);
-template Status FragmentMetadata::set_mbr<int64_t>(
-    uint64_t tile, const void* mbr);
-template Status FragmentMetadata::set_mbr<uint64_t>(
-    uint64_t tile, const void* mbr);
-template Status FragmentMetadata::set_mbr<float>(
-    uint64_t tile, const void* mbr);
-template Status FragmentMetadata::set_mbr<double>(
-    uint64_t tile, const void* mbr);
-
 template Status FragmentMetadata::add_max_buffer_sizes<int8_t>(
     const EncryptionKey& encryption_key,
     const int8_t* subarray,

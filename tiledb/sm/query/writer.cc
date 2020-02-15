@@ -955,60 +955,6 @@ Status Writer::compute_coord_dups(std::set<uint64_t>* coord_dups) const {
 Status Writer::compute_coords_metadata(
     const std::unordered_map<std::string, std::vector<Tile>>& tiles,
     FragmentMetadata* meta) const {
-  STATS_FUNC_IN(writer_compute_coords_metadata);
-
-  auto coords_type = array_schema_->coords_type();
-  switch (coords_type) {
-    case Datatype::INT8:
-      return compute_coords_metadata<int8_t>(tiles, meta);
-    case Datatype::UINT8:
-      return compute_coords_metadata<uint8_t>(tiles, meta);
-    case Datatype::INT16:
-      return compute_coords_metadata<int16_t>(tiles, meta);
-    case Datatype::UINT16:
-      return compute_coords_metadata<uint16_t>(tiles, meta);
-    case Datatype::INT32:
-      return compute_coords_metadata<int32_t>(tiles, meta);
-    case Datatype::UINT32:
-      return compute_coords_metadata<uint32_t>(tiles, meta);
-    case Datatype::INT64:
-      return compute_coords_metadata<int64_t>(tiles, meta);
-    case Datatype::UINT64:
-      return compute_coords_metadata<uint64_t>(tiles, meta);
-    case Datatype::FLOAT32:
-      assert(!array_schema_->dense());
-      return compute_coords_metadata<float>(tiles, meta);
-    case Datatype::FLOAT64:
-      assert(!array_schema_->dense());
-      return compute_coords_metadata<double>(tiles, meta);
-    case Datatype::DATETIME_YEAR:
-    case Datatype::DATETIME_MONTH:
-    case Datatype::DATETIME_WEEK:
-    case Datatype::DATETIME_DAY:
-    case Datatype::DATETIME_HR:
-    case Datatype::DATETIME_MIN:
-    case Datatype::DATETIME_SEC:
-    case Datatype::DATETIME_MS:
-    case Datatype::DATETIME_US:
-    case Datatype::DATETIME_NS:
-    case Datatype::DATETIME_PS:
-    case Datatype::DATETIME_FS:
-    case Datatype::DATETIME_AS:
-      return compute_coords_metadata<int64_t>(tiles, meta);
-    default:
-      return LOG_STATUS(Status::WriterError(
-          "Cannot compute coordinates metadata; Unsupported domain type"));
-  }
-
-  return Status::Ok();
-
-  STATS_FUNC_OUT(writer_compute_coords_metadata);
-}
-
-template <class T>
-Status Writer::compute_coords_metadata(
-    const std::unordered_map<std::string, std::vector<Tile>>& tiles,
-    FragmentMetadata* meta) const {
   // Applicable only if there are coordinates
   if (!has_coords_)
     return Status::Ok();
@@ -1026,29 +972,17 @@ Status Writer::compute_coords_metadata(
 
   // Compute MBRs
   auto statuses = parallel_for(0, tile_num, [&](uint64_t t) {
-    std::vector<T> mbr(2 * dim_num);
-    std::vector<T*> data(dim_num);
-    uint64_t cell_num = UINT64_MAX;
+    NDRange mbr(dim_num);
+    std::vector<const void*> data(dim_num);
     for (unsigned d = 0; d < dim_num; ++d) {
-      const auto& dim_name = array_schema_->dimension(d)->name();
+      auto dim = array_schema_->dimension(d);
+      const auto& dim_name = dim->name();
       auto tiles_it = tiles.find(dim_name);
       assert(tiles_it != tiles.end());
-      data[d] = (T*)(tiles_it->second[t].internal_data());
-      assert(
-          cell_num == UINT64_MAX || cell_num == tiles_it->second[t].cell_num());
-      cell_num = tiles_it->second[t].cell_num();
-
-      // Initialize MBR with the first coords
-      mbr[2 * d] = data[d][0];
-      mbr[2 * d + 1] = data[d][0];
+      dim->compute_mbr(tiles_it->second[t], &mbr[d]);
     }
 
-    // Expand the MBR with the rest coords
-    assert(cell_num > 0);
-    for (uint64_t c = 1; c < cell_num; ++c)
-      utils::geometry::expand_mbr<T>(data, c, &mbr[0]);
-
-    meta->set_mbr(t, &mbr[0]);
+    meta->set_mbr(t, mbr);
     return Status::Ok();
   });
 
@@ -1494,7 +1428,14 @@ Status Writer::init_tile_dense_cell_range_iters(
   domain->get_tile_domain(&subarray[0], &tile_domain[0]);
   for (unsigned i = 0; i < dim_num; ++i)
     tile_coords[i] = tile_domain[2 * i];
-  auto tile_num = domain->tile_num<T>(&subarray[0]);
+
+  // TODO: fix
+  NDRange sub(dim_num);
+  for (unsigned d = 0; d < dim_num; ++d) {
+    Range r(&subarray[2 * d], 2 * sizeof(T));
+    sub[d] = std::move(r);
+  }
+  auto tile_num = domain->tile_num(sub);
 
   // Iterate over all tiles in the tile domain
   iters->clear();

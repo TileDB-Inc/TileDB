@@ -39,6 +39,7 @@
 #include <vector>
 
 #include "tiledb/sm/misc/status.h"
+#include "tiledb/sm/misc/types.h"
 #include "tiledb/sm/misc/uri.h"
 #include "tiledb/sm/rtree/rtree.h"
 
@@ -168,7 +169,7 @@ class FragmentMetadata {
   bool dense() const;
 
   /** Returns the (expanded) domain in which the fragment is constrained. */
-  const void* domain() const;
+  const NDRange& domain() const;
 
   /** Returns the format version of this fragment. */
   uint32_t format_version() const;
@@ -212,10 +213,7 @@ class FragmentMetadata {
   Status store(const EncryptionKey& encryption_key);
 
   /** Returns the non-empty domain in which the fragment is constrained. */
-  const void* non_empty_domain() const;
-
-  /** Returns the non-empty domain in which the fragment is constrained. */
-  std::vector<const void*> non_empty_domain_vec() const;
+  const NDRange& non_empty_domain();
 
   /**
    * Simply sets the number of cells for the last tile.
@@ -233,19 +231,7 @@ class FragmentMetadata {
    * @param mbr The MBR to be set.
    * @return Status
    */
-  Status set_mbr(uint64_t tile, const void* mbr);
-
-  /**
-   * Sets the input tile's MBR in the fragment metadata. It also expands the
-   * non-empty domain of the fragment.
-   *
-   * @tparam T The coordinates type.
-   * @param tile The tile index whose MBR will be set.
-   * @param mbr The MBR to be set.
-   * @return Status
-   */
-  template <class T>
-  Status set_mbr(uint64_t tile, const void* mbr);
+  Status set_mbr(uint64_t tile, const NDRange& mbr);
 
   /**
    * Resizes the per-tile metadata vectors for the given number of tiles. This
@@ -467,7 +453,7 @@ class FragmentMetadata {
   std::unordered_map<std::string, unsigned> idx_map_;
 
   /** A vector storing the first and last coordinates of each tile. */
-  std::vector<void*> bounding_coords_;
+  std::vector<std::vector<uint8_t>> bounding_coords_;
 
   /** True if the fragment is dense, and false if it is sparse. */
   bool dense_;
@@ -478,7 +464,7 @@ class FragmentMetadata {
    * boundaries (if there is a tile grid imposed by tile extents). Note that the
    * type of the domain must be the same as the type of the array coordinates.
    */
-  void* domain_;
+  NDRange domain_;
 
   /** Stores the size of each attribute file. */
   std::vector<uint64_t> file_sizes_;
@@ -514,11 +500,8 @@ class FragmentMetadata {
   /** The offsets of the next variable tile for each attribute. */
   std::vector<uint64_t> next_tile_var_offsets_;
 
-  /**
-   * The non-empty domain in which the fragment is constrained. Note that the
-   * type of the domain must be the same as the type of the array coordinates.
-   */
-  void* non_empty_domain_;
+  /** The non-empty domain of the fragment. */
+  NDRange non_empty_domain_;
 
   /** An RTree for the MBRs. */
   RTree rtree_;
@@ -608,13 +591,8 @@ class FragmentMetadata {
 
   /**
    * Expands the non-empty domain using the input MBR.
-   *
-   * @tparam T The coordinates type.
-   * @param mbr The MBR to expand the non-empty domain with.
-   * @return Status
    */
-  template <class T>
-  Status expand_non_empty_domain(const T* mbr);
+  Status expand_non_empty_domain(const NDRange& mbr);
 
   /** Loads the R-tree from storage. */
   Status load_rtree(const EncryptionKey& encryption_key);
@@ -715,15 +693,15 @@ class FragmentMetadata {
 
   /**
    * Loads the non-empty domain from the input buffer,
-   * for format versions <= 2.
+   * for format versions <= 2 and >= 5.
    */
-  Status load_non_empty_domain_v2(ConstBuffer* buff);
+  Status load_non_empty_domain_v1_v2_and_v5(ConstBuffer* buff);
 
   /**
    * Loads the non-empty domain from the input buffer,
-   * for format versions >= 3.
+   * for format versions 3 and 4.
    */
-  Status load_non_empty_domain_v3(ConstBuffer* buff);
+  Status load_non_empty_domain_v3_v4(ConstBuffer* buff);
 
   /**
    * Loads the tile offsets for the input attribute from the input buffer.

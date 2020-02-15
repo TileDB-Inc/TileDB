@@ -43,8 +43,10 @@ TEST_CASE("TileDomain: Test 1D", "[TileDomain][1d]") {
   int32_t tile_extent = 10;
   Layout layout = Layout::ROW_MAJOR;
 
+  NDRange ds = {Range(&domain_slice[0], 2 * sizeof(int32_t))};
+
   TileDomain<int32_t> tile_domain(
-      0, dim_num, &domain[0], &domain_slice[0], &tile_extent, layout);
+      0, dim_num, &domain[0], ds, &tile_extent, layout);
   const auto& td = tile_domain.tile_domain();
   CHECK(td.size() == 2);
   CHECK(td[0] == 1);
@@ -72,8 +74,11 @@ TEST_CASE(
   std::vector<int32_t> tile_extents = {2, 5};
   Layout layout = Layout::ROW_MAJOR;
 
+  auto size = 2 * (sizeof(int32_t));
+  NDRange ds = {Range(&domain_slice[0], size), Range(&domain_slice[2], size)};
+
   TileDomain<int32_t> tile_domain(
-      0, dim_num, &domain[0], &domain_slice[0], &tile_extents[0], layout);
+      0, dim_num, &domain[0], ds, &tile_extents[0], layout);
   const auto& td = tile_domain.tile_domain();
   CHECK(td.size() == 4);
   CHECK(td[0] == 0);
@@ -110,8 +115,11 @@ TEST_CASE(
   std::vector<int32_t> tile_extents = {2, 5};
   Layout layout = Layout::ROW_MAJOR;
 
+  auto size = 2 * (sizeof(int32_t));
+  NDRange ds = {Range(&domain_slice[0], size), Range(&domain_slice[2], size)};
+
   TileDomain<int32_t> tile_domain(
-      0, dim_num, &domain[0], &domain_slice[0], &tile_extents[0], layout);
+      0, dim_num, &domain[0], ds, &tile_extents[0], layout);
   const auto& td = tile_domain.tile_domain();
   CHECK(td.size() == 4);
   CHECK(td[0] == 1);
@@ -143,8 +151,11 @@ TEST_CASE(
   std::vector<int32_t> tile_extents = {2, 5};
   Layout layout = Layout::COL_MAJOR;
 
+  auto size = 2 * (sizeof(int32_t));
+  NDRange ds = {Range(&domain_slice[0], size), Range(&domain_slice[2], size)};
+
   TileDomain<int32_t> tile_domain(
-      0, dim_num, &domain[0], &domain_slice[0], &tile_extents[0], layout);
+      0, dim_num, &domain[0], ds, &tile_extents[0], layout);
   const auto& td = tile_domain.tile_domain();
   CHECK(td.size() == 4);
   CHECK(td[0] == 0);
@@ -176,8 +187,11 @@ TEST_CASE(
   std::vector<int32_t> tile_extents = {2, 5};
   Layout layout = Layout::COL_MAJOR;
 
+  auto size = 2 * (sizeof(int32_t));
+  NDRange ds = {Range(&domain_slice[0], size), Range(&domain_slice[2], size)};
+
   TileDomain<int32_t> tile_domain(
-      0, dim_num, &domain[0], &domain_slice[0], &tile_extents[0], layout);
+      0, dim_num, &domain[0], ds, &tile_extents[0], layout);
   const auto& td = tile_domain.tile_domain();
   CHECK(td.size() == 4);
   CHECK(td[0] == 1);
@@ -208,8 +222,11 @@ TEST_CASE(
   std::vector<int32_t> tile_extents = {2, 5};
   Layout layout = Layout::COL_MAJOR;
 
+  auto size = 2 * (sizeof(int32_t));
+  NDRange ds = {Range(&domain_slice[0], size), Range(&domain_slice[2], size)};
+
   TileDomain<int32_t> tile_domain(
-      0, dim_num, &domain[0], &domain_slice[0], &tile_extents[0], layout);
+      0, dim_num, &domain[0], ds, &tile_extents[0], layout);
 
   int32_t tile_coords[] = {0, 0};
   auto tile_subarray = tile_domain.tile_subarray(tile_coords);
@@ -235,8 +252,11 @@ TEST_CASE(
   std::vector<int32_t> tile_extents = {2, 5};
   Layout layout = Layout::COL_MAJOR;
 
+  auto size = 2 * (sizeof(int32_t));
+  NDRange ds = {Range(&domain_slice[0], size), Range(&domain_slice[2], size)};
+
   TileDomain<int32_t> tile_domain(
-      0, dim_num, &domain[0], &domain_slice[0], &tile_extents[0], layout);
+      0, dim_num, &domain[0], ds, &tile_extents[0], layout);
 
   int32_t tile_coords[] = {0, 0};
   auto tile_overlap = tile_domain.tile_overlap(tile_coords);
@@ -267,8 +287,11 @@ TEST_CASE(
   std::vector<int32_t> tile_extents = {2, 5};
   Layout layout = Layout::COL_MAJOR;
 
+  auto size = 2 * (sizeof(int32_t));
+  NDRange ds = {Range(&domain_slice[0], size), Range(&domain_slice[2], size)};
+
   TileDomain<int32_t> tile_domain(
-      0, dim_num, &domain[0], &domain_slice[0], &tile_extents[0], layout);
+      0, dim_num, &domain[0], ds, &tile_extents[0], layout);
 
   int32_t tile_coords[] = {0, 0};
   CHECK(tile_domain.in_tile_domain(tile_coords));
@@ -288,11 +311,17 @@ TEST_CASE("TileDomain: Test 2D, covers", "[TileDomain][2d][covers]") {
   std::vector<int32_t> tile_extents = {2, 5};
   Layout layout = Layout::COL_MAJOR;
 
+  auto size = 2 * (sizeof(int32_t));
+  NDRange ds1 = {Range(&domain_slice_1[0], size),
+                 Range(&domain_slice_1[2], size)};
+  NDRange ds2 = {Range(&domain_slice_2[0], size),
+                 Range(&domain_slice_2[2], size)};
+
   TileDomain<int32_t> tile_domain_1(
-      1, dim_num, &domain[0], &domain_slice_1[0], &tile_extents[0], layout);
+      1, dim_num, &domain[0], ds1, &tile_extents[0], layout);
 
   TileDomain<int32_t> tile_domain_2(
-      2, dim_num, &domain[0], &domain_slice_2[0], &tile_extents[0], layout);
+      2, dim_num, &domain[0], ds2, &tile_extents[0], layout);
 
   int32_t tile_coords[] = {0, 0};
   CHECK(!tile_domain_1.covers(tile_coords, tile_domain_2));

@@ -558,7 +558,7 @@ void Reader::compute_result_space_tiles(
     // Create result space tile and insert into the map
     auto r = result_space_tiles->emplace(coords, ResultSpaceTile<T>());
     auto& result_space_tile = r.first->second;
-    result_space_tile.start_coords_ = start_coords;
+    result_space_tile.set_start_coords(start_coords);
 
     // Add fragment info to the result space tile
     for (unsigned f = 0; f < fragment_num; ++f) {
@@ -583,10 +583,10 @@ void Reader::compute_result_space_tiles(
       // Include this fragment in the space tile
       auto frag_domain = frag_tile_domains[f].domain_slice();
       auto frag_idx = frag_tile_domains[f].id();
-      result_space_tile.frag_domains_.emplace_back(frag_idx, frag_domain);
+      result_space_tile.append_frag_domain(frag_idx, frag_domain);
       auto tile_idx = frag_tile_domains[f].tile_pos(coords);
       ResultTile result_tile(frag_idx, tile_idx, domain);
-      result_space_tile.result_tiles_[frag_idx] = result_tile;
+      result_space_tile.set_result_tile(frag_idx, result_tile);
     }
   }
 }
@@ -649,22 +649,22 @@ Status Reader::compute_result_cell_slabs(
 Status Reader::compute_range_result_coords(
     unsigned frag_idx,
     ResultTile* tile,
-    const std::vector<const void*>& range,
+    const NDRange& ndrange,
     std::vector<ResultCoords>* result_coords) const {
   auto coords_num = tile->cell_num();
   auto fragment_num = fragment_metadata_.size();
 
   for (uint64_t pos = 0; pos < coords_num; ++pos) {
     // Check if the coordinates are in the range
-    if (!tile->coord_in_rect(pos, range))
+    if (!tile->coord_in_rect(pos, ndrange))
       continue;
 
     // Check if the coordinates are overwritten by a future dense fragment
     bool overwritten = false;
     for (unsigned f = frag_idx + 1; !overwritten && f < fragment_num; ++f) {
       if (fragment_metadata_[f]->dense()) {
-        overwritten = tile->coord_in_rect(
-            pos, fragment_metadata_[f]->non_empty_domain_vec());
+        overwritten =
+            tile->coord_in_rect(pos, fragment_metadata_[f]->non_empty_domain());
         if (overwritten)
           break;
       }
@@ -769,9 +769,9 @@ Status Reader::compute_range_result_coords(
           if (!sparse_tile_overwritten<T>(f, t->first))
             RETURN_NOT_OK(get_all_result_coords(&tile, range_result_coords));
         } else {  // Partial overlap
-          auto range = subarray.range(range_idx);
+          auto ndrange = subarray.ndrange(range_idx);
           RETURN_NOT_OK(compute_range_result_coords(
-              f, &tile, range, range_result_coords));
+              f, &tile, ndrange, range_result_coords));
         }
         ++t;
       }
@@ -1139,6 +1139,7 @@ void Reader::compute_result_space_tiles(
   // For easy reference
   auto dim_num = array_schema_->dim_num();
   auto domain = (const T*)array_schema_->domain()->domain();
+  auto domain_ndrange = array_schema_->domain()->domain_ndrange();
   auto tile_extents = (const T*)array_schema_->domain()->tile_extents();
   auto tile_order = array_schema_->tile_order();
 
@@ -1148,10 +1149,13 @@ void Reader::compute_result_space_tiles(
   if (fragment_num > 0) {
     for (int i = fragment_num - 1; i >= 0; --i) {
       if (fragment_metadata_[i]->dense()) {
-        auto non_empty_domain =
-            (const T*)fragment_metadata_[i]->non_empty_domain();
         frag_tile_domains.emplace_back(
-            i, dim_num, domain, non_empty_domain, tile_extents, tile_order);
+            i,
+            dim_num,
+            domain,
+            fragment_metadata_[i]->non_empty_domain(),
+            tile_extents,
+            tile_order);
       }
     }
   }
@@ -1159,7 +1163,7 @@ void Reader::compute_result_space_tiles(
   // Get tile coords and array domain
   const auto& tile_coords = subarray.tile_coords();
   TileDomain<T> array_tile_domain(
-      UINT32_MAX, dim_num, domain, domain, tile_extents, tile_order);
+      UINT32_MAX, dim_num, domain, domain_ndrange, tile_extents, tile_order);
 
   // Compute result space tiles
   compute_result_space_tiles<T>(
@@ -1986,7 +1990,7 @@ bool Reader::sparse_tile_overwritten(
   for (unsigned f = frag_idx + 1; f < fragment_num; ++f) {
     if (fragment_metadata_[f]->dense() &&
         utils::geometry::rect_in_rect<T>(
-            mbr, (const T*)fragment_metadata_[f]->non_empty_domain(), dim_num))
+            mbr, fragment_metadata_[f]->non_empty_domain(), dim_num))
       return true;
   }
 
