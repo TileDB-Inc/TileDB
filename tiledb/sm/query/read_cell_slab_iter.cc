@@ -163,7 +163,7 @@ void ReadCellSlabIter<T>::compute_cell_slab_start(
 template <class T>
 void ReadCellSlabIter<T>::compute_cell_slab_overlap(
     const CellSlab<T>& cell_slab,
-    const T* frag_domain,
+    const NDRange& frag_domain,
     std::vector<T>* slab_overlap,
     uint64_t* overlap_length,
     unsigned* overlap_type) {
@@ -175,17 +175,15 @@ void ReadCellSlabIter<T>::compute_cell_slab_overlap(
   slab_end = slab_start + cell_slab.length_ - 1;
 
   // Check if there is any overlap
-  for (unsigned i = 0; i < dim_num; ++i) {
-    if (i == slab_dim) {
-      if (slab_end < frag_domain[2 * i] ||
-          slab_start > frag_domain[2 * i + 1]) {
+  for (unsigned d = 0; d < dim_num; ++d) {
+    auto dom = (const T*)frag_domain[d].data();
+    if (d == slab_dim) {
+      if (slab_end < dom[0] || slab_start > dom[1]) {
         *overlap_type = 0;
         *overlap_length = 0;
         return;
       }
-    } else if (
-        cell_slab.coords_[i] < frag_domain[2 * i] ||
-        cell_slab.coords_[i] > frag_domain[2 * i + 1]) {
+    } else if (cell_slab.coords_[d] < dom[0] || cell_slab.coords_[d] > dom[1]) {
       *overlap_type = 0;
       *overlap_length = 0;
       return;
@@ -193,8 +191,9 @@ void ReadCellSlabIter<T>::compute_cell_slab_overlap(
   }
 
   // There is some overlap
-  T overlap_start = std::max(slab_start, frag_domain[2 * slab_dim]);
-  T overlap_end = std::min(slab_end, frag_domain[2 * slab_dim + 1]);
+  auto dom = (const T*)frag_domain[slab_dim].data();
+  T overlap_start = std::max(slab_start, dom[0]);
+  T overlap_end = std::min(slab_end, dom[1]);
   *slab_overlap = cell_slab.coords_;
   (*slab_overlap)[slab_dim] = overlap_start;
   *overlap_length = overlap_end - overlap_start + 1;
@@ -279,8 +278,7 @@ void ReadCellSlabIter<T>::compute_result_cell_slabs_dense(
     const CellSlab<T>& cell_slab, ResultSpaceTile<T>* result_space_tile) {
   std::list<CellSlab<T>> to_process;
   to_process.push_back(cell_slab);
-  const auto& frag_domains = result_space_tile->frag_domains_;
-  auto& result_tiles = result_space_tile->result_tiles_;
+  const auto& frag_domains = result_space_tile->frag_domains();
   auto dim_num = domain_->dim_num();
   std::vector<T> slab_overlap;
   slab_overlap.resize(dim_num);
@@ -295,7 +293,7 @@ void ReadCellSlabIter<T>::compute_result_cell_slabs_dense(
   for (const auto& fd : frag_domains) {
     for (auto pit = to_process.begin(); pit != to_process.end();) {
       compute_cell_slab_overlap(
-          *pit, fd.second, &slab_overlap, &overlap_length, &overlap_type);
+          *pit, fd.second.get(), &slab_overlap, &overlap_length, &overlap_type);
 
       // No overlap
       if (overlap_type == 0) {
@@ -305,10 +303,9 @@ void ReadCellSlabIter<T>::compute_result_cell_slabs_dense(
 
       // Compute new result cell slab
       compute_cell_slab_start(
-          &slab_overlap[0], result_space_tile->start_coords_, &start);
-      auto tit = result_tiles.find(fd.first);
-      assert(tit != result_tiles.end());
-      result_cell_slabs.emplace_back(&(tit->second), start, overlap_length);
+          &slab_overlap[0], result_space_tile->start_coords(), &start);
+      auto tile = result_space_tile->result_tile(fd.first);
+      result_cell_slabs.emplace_back(tile, start, overlap_length);
 
       // If it is partial overlap, we need to create up to two new cell slabs
       // and re-insert to the head of `to_process` (so that the rest of the
@@ -353,7 +350,7 @@ void ReadCellSlabIter<T>::compute_result_cell_slabs_empty(
   uint64_t start;
   for (auto pit = to_process.begin(); pit != to_process.end(); ++pit) {
     compute_cell_slab_start(
-        &pit->coords_[0], result_space_tile.start_coords_, &start);
+        &pit->coords_[0], result_space_tile.start_coords(), &start);
     result_cell_slabs->emplace_back(nullptr, start, pit->length_);
   }
 }

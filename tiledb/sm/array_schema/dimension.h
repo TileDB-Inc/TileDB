@@ -37,6 +37,8 @@
 
 #include "tiledb/sm/misc/logger.h"
 #include "tiledb/sm/misc/status.h"
+#include "tiledb/sm/misc/types.h"
+#include "tiledb/sm/tile/tile.h"
 
 namespace tiledb {
 namespace sm {
@@ -114,6 +116,59 @@ class Dimension {
   bool is_anonymous() const;
 
   /**
+   * Computed the minimum bounding range of the values stored in
+   * `tile`.
+   */
+  void compute_mbr(const Tile& tile, Range* mbr) const;
+
+  /**
+   * Computed the minimum bounding range of the values stored in
+   * `tile`.
+   */
+  template <class T>
+  static void compute_mbr(const Dimension* dim, const Tile& tile, Range* mbr);
+
+  /**
+   * Crops the input 1D range such that it does not exceed the
+   * dimension domain.
+   */
+  void crop_range(Range* range) const;
+
+  /**
+   * Crops the input 1D range such that it does not exceed the
+   * input dimension domain.
+   */
+  template <class T>
+  static void crop_range(const Dimension* dim, Range* range);
+
+  /** Expand 1D range `r` using value `v`. */
+  void expand_range_v(const void* v, Range* r) const;
+
+  /** Expand 1D range `r` using value `v`. */
+  template <class T>
+  static void expand_range_v(const Dimension* dim, const void* v, Range* r);
+
+  /** Expand 1D range `r2` using 1D range `r1`. */
+  void expand_range(const Range& r1, Range* r2) const;
+
+  /** Expand 1D range `r2` using 1D range `r1`. */
+  template <class T>
+  static void expand_range(const Dimension* dim, const Range& r1, Range* r2);
+
+  /**
+   * Expands the input 1D range to coincide with the dimension tiles.
+   * It is a noop if the tile extents are null and for real domains.
+   */
+  void expand_to_tile(Range* range) const;
+
+  /**
+   * Expands the input 1D range to coincide with the dimension tiles.
+   * It is a noop if the tile extents are null and for real domains.
+   */
+  template <class T>
+  static void expand_to_tile(const Dimension* dim, Range* range);
+
+  /**
    * Returns true if the input coordinate is out-of-bounds with respect
    * to the dimension domain.
    *
@@ -140,13 +195,27 @@ class Dimension {
   static bool oob(
       const Dimension* dim, const void* coord, std::string* err_msg);
 
+  /** Return true if the input 1D ranges overlap. */
+  bool overlap(const Range& r1, const Range& r2) const;
+
+  /** Return true if the input 1D ranges overlap. */
+  template <class T>
+  static bool overlap(const Dimension* dim, const Range& r1, const Range& r2);
+
+  /** Return the number of tiles the input range intersects. */
+  uint64_t tile_num(const Range& range) const;
+
+  /** Return the number of tiles the input range intersects. */
+  template <class T>
+  static uint64_t tile_num(const Dimension* dim, const Range& range);
+
   /** Returns `true` if `value` is within the 1D `range`. */
   template <class T>
   static bool value_in_range(
-      const Dimension* dim, const void* value, const void* range);
+      const Dimension* dim, const void* value, const Range& range);
 
   /** Returns `true` if `value` is within the 1D `range`. */
-  bool value_in_range(const void* value, const void* range) const;
+  bool value_in_range(const void* value, const Range& range) const;
 
   /**
    * Serializes the object members into a binary buffer.
@@ -204,6 +273,39 @@ class Dimension {
   Datatype type_;
 
   /**
+   * Stores the appropriate templated compute_mbr() function based on the
+   * dimension datatype.
+   */
+  std::function<void(const Dimension* dim, const Tile&, Range*)>
+      compute_mbr_func_;
+
+  /**
+   * Stores the appropriate templated crop_range() function based on the
+   * dimension datatype.
+   */
+  std::function<void(const Dimension* dim, Range*)> crop_range_func_;
+
+  /**
+   * Stores the appropriate templated expand_range() function based on the
+   * dimension datatype.
+   */
+  std::function<void(const Dimension* dim, const void*, Range*)>
+      expand_range_v_func_;
+
+  /**
+   * Stores the appropriate templated expand_range() function based on the
+   * dimension datatype.
+   */
+  std::function<void(const Dimension* dim, const Range&, Range*)>
+      expand_range_func_;
+
+  /**
+   * Stores the appropriate templated expand_to_tile() function based on the
+   * dimension datatype.
+   */
+  std::function<void(const Dimension* dim, Range*)> expand_to_tile_func_;
+
+  /**
    * Stores the appropriate templated oob() function based on the
    * dimension datatype.
    */
@@ -211,10 +313,23 @@ class Dimension {
       oob_func_;
 
   /**
+   * Stores the appropriate templated overlap() function based on the
+   * dimension datatype.
+   */
+  std::function<bool(const Dimension* dim, const Range&, const Range&)>
+      overlap_func_;
+
+  /**
+   * Stores the appropriate templated tile_num() function based on the
+   * dimension datatype.
+   */
+  std::function<uint64_t(const Dimension* dim, const Range&)> tile_num_func_;
+
+  /**
    * Stores the appropriate templated value_in_range() function based on the
    * dimension datatype.
    */
-  std::function<bool(const Dimension* dim, const void*, const void*)>
+  std::function<bool(const Dimension* dim, const void*, const Range&)>
       value_in_range_func_;
 
   /* ********************************* */
@@ -298,10 +413,31 @@ class Dimension {
   template <class T>
   Status check_tile_extent() const;
 
-  /** Sets the templated oob function. */
+  /** Sets the templated compute_mbr() function. */
+  void set_compute_mbr_func();
+
+  /** Sets the templated crop_range() function. */
+  void set_crop_range_func();
+
+  /** Sets the templated expand_range() function. */
+  void set_expand_range_func();
+
+  /** Sets the templated expand_range_v() function. */
+  void set_expand_range_v_func();
+
+  /** Sets the templated expand_to_tile() function. */
+  void set_expand_to_tile_func();
+
+  /** Sets the templated oob() function. */
   void set_oob_func();
 
-  /** Sets the templated value_in_range function. */
+  /** Sets the templated overlap() function. */
+  void set_overlap_func();
+
+  /** Sets the templated tile_num() function. */
+  void set_tile_num_func();
+
+  /** Sets the templated value_in_range() function. */
   void set_value_in_range_func();
 };
 

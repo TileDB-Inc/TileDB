@@ -40,11 +40,11 @@
 
 #include "tiledb/sm/array_schema/tile_domain.h"
 #include "tiledb/sm/misc/status.h"
+#include "tiledb/sm/misc/types.h"
 #include "tiledb/sm/misc/uri.h"
 #include "tiledb/sm/query/result_cell_slab.h"
 #include "tiledb/sm/query/result_coords.h"
 #include "tiledb/sm/query/result_space_tile.h"
-#include "tiledb/sm/query/types.h"
 #include "tiledb/sm/query/write_cell_slab_iter.h"
 #include "tiledb/sm/subarray/subarray_partitioner.h"
 
@@ -557,8 +557,8 @@ class Reader {
    * from the input result tile.
    *
    * @param frag_idx The id of the fragment that the result tile belongs to.
-   * @param The result tile.
-   * @param range An N-dimensional range (where N is equal to the number
+   * @param tile The result tile.
+   * @param ndrange An N-dimensional range (where N is equal to the number
    *     of dimensions of the array).
    * @param result_coords The overlapping coordinates to retrieve.
    * @return Status
@@ -566,7 +566,7 @@ class Reader {
   Status compute_range_result_coords(
       unsigned frag_idx,
       ResultTile* tile,
-      const std::vector<const void*>& range,
+      const NDRange& ndrange,
       std::vector<ResultCoords>* result_coords) const;
 
   /**

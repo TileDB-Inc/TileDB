@@ -541,68 +541,19 @@ Status StorageManager::array_get_non_empty_domain(
   if (metadata.empty())
     return Status::Ok();
 
-  // Compute domain
+  NDRange temp_dom = metadata[0]->non_empty_domain();
+  auto metadata_num = metadata.size();
+  for (size_t j = 1; j < metadata_num; ++j) {
+    const auto& meta_dom = metadata[j]->non_empty_domain();
+    array_schema->domain()->expand_ndrange(meta_dom, &temp_dom);
+  }
+
   auto dim_num = array_schema->dim_num();
-  switch (array_schema->coords_type()) {
-    case Datatype::INT32:
-      array_get_non_empty_domain<int>(
-          metadata, dim_num, static_cast<int*>(domain));
-      break;
-    case Datatype::INT64:
-      array_get_non_empty_domain<int64_t>(
-          metadata, dim_num, static_cast<int64_t*>(domain));
-      break;
-    case Datatype::FLOAT32:
-      array_get_non_empty_domain<float>(
-          metadata, dim_num, static_cast<float*>(domain));
-      break;
-    case Datatype::FLOAT64:
-      array_get_non_empty_domain<double>(
-          metadata, dim_num, static_cast<double*>(domain));
-      break;
-    case Datatype::INT8:
-      array_get_non_empty_domain<int8_t>(
-          metadata, dim_num, static_cast<int8_t*>(domain));
-      break;
-    case Datatype::UINT8:
-      array_get_non_empty_domain<uint8_t>(
-          metadata, dim_num, static_cast<uint8_t*>(domain));
-      break;
-    case Datatype::INT16:
-      array_get_non_empty_domain<int16_t>(
-          metadata, dim_num, static_cast<int16_t*>(domain));
-      break;
-    case Datatype::UINT16:
-      array_get_non_empty_domain<uint16_t>(
-          metadata, dim_num, static_cast<uint16_t*>(domain));
-      break;
-    case Datatype::UINT32:
-      array_get_non_empty_domain<uint32_t>(
-          metadata, dim_num, static_cast<uint32_t*>(domain));
-      break;
-    case Datatype::UINT64:
-      array_get_non_empty_domain<uint64_t>(
-          metadata, dim_num, static_cast<uint64_t*>(domain));
-      break;
-    case Datatype::DATETIME_YEAR:
-    case Datatype::DATETIME_MONTH:
-    case Datatype::DATETIME_WEEK:
-    case Datatype::DATETIME_DAY:
-    case Datatype::DATETIME_HR:
-    case Datatype::DATETIME_MIN:
-    case Datatype::DATETIME_SEC:
-    case Datatype::DATETIME_MS:
-    case Datatype::DATETIME_US:
-    case Datatype::DATETIME_NS:
-    case Datatype::DATETIME_PS:
-    case Datatype::DATETIME_FS:
-    case Datatype::DATETIME_AS:
-      array_get_non_empty_domain<int64_t>(
-          metadata, dim_num, static_cast<int64_t*>(domain));
-      break;
-    default:
-      return LOG_STATUS(Status::StorageManagerError(
-          "Cannot get non-empty domain; Invalid coordinates type"));
+  auto domain_c = (unsigned char*)domain;
+  uint64_t offset = 0;
+  for (unsigned d = 0; d < dim_num; ++d) {
+    std::memcpy(&domain_c[offset], temp_dom[d].data(), temp_dom[d].size());
+    offset += temp_dom[d].size();
   }
 
   *is_empty = false;
@@ -809,6 +760,7 @@ Status StorageManager::get_fragment_info(
     return array_close_for_reads(array_uri);
 
   uint64_t domain_size = 2 * array_schema->coords_size();
+  auto dim_num = array_schema->dim_num();
   for (auto meta : fragment_metadata) {
     const auto& uri = meta->fragment_uri();
     bool sparse = !meta->dense();
@@ -817,7 +769,14 @@ Status StorageManager::get_fragment_info(
     non_empty_domain.resize(domain_size);
 
     // Get fragment non-empty domain
-    std::memcpy(&non_empty_domain[0], meta->non_empty_domain(), domain_size);
+    const auto meta_non_empty_domain = meta->non_empty_domain();
+    auto non_empty_domain_ptr = (unsigned char*)&non_empty_domain[0];
+    for (unsigned d = 0; d < dim_num; ++d) {
+      auto range_size = 2 * array_schema->dimension(d)->coord_size();
+      std::memcpy(
+          non_empty_domain_ptr, meta_non_empty_domain[d].data(), range_size);
+      non_empty_domain_ptr += range_size;
+    }
 
     // Get fragment size
     uint64_t size;
@@ -825,10 +784,7 @@ Status StorageManager::get_fragment_info(
         meta->fragment_size(&size), array_close_for_reads(array_uri));
 
     // Compute expanded non-empty domain only for dense fragments
-    std::vector<uint8_t> expanded_non_empty_domain;
-    expanded_non_empty_domain.resize(domain_size);
-    std::memcpy(
-        &expanded_non_empty_domain[0], meta->non_empty_domain(), domain_size);
+    auto expanded_non_empty_domain = non_empty_domain;
     if (!sparse)
       array_schema->domain()->expand_domain(
           (void*)&expanded_non_empty_domain[0]);
@@ -887,27 +843,32 @@ Status StorageManager::get_fragment_info(
   }
 
   // Get fragment non-empty domain
-  FragmentMetadata metadata(
+  FragmentMetadata meta(
       this, array_schema, fragment_uri, timestamp_range, !sparse);
-  RETURN_NOT_OK(metadata.load(encryption_key));
+  RETURN_NOT_OK(meta.load(encryption_key));
 
   // This is important for format version > 2
-  sparse = !metadata.dense();
+  sparse = !meta.dense();
 
   // Get fragment size
   uint64_t size;
-  RETURN_NOT_OK(metadata.fragment_size(&size));
+  RETURN_NOT_OK(meta.fragment_size(&size));
 
   uint64_t domain_size = 2 * array_schema->coords_size();
   std::vector<uint8_t> non_empty_domain;
   non_empty_domain.resize(domain_size);
-  std::memcpy(&non_empty_domain[0], metadata.non_empty_domain(), domain_size);
+  const auto meta_non_empty_domain = meta.non_empty_domain();
+  auto non_empty_domain_ptr = (unsigned char*)&non_empty_domain[0];
+  auto dim_num = array_schema->dim_num();
+  for (unsigned d = 0; d < dim_num; ++d) {
+    auto range_size = 2 * array_schema->dimension(d)->coord_size();
+    std::memcpy(
+        non_empty_domain_ptr, meta_non_empty_domain[d].data(), range_size);
+    non_empty_domain_ptr += range_size;
+  }
 
   // Compute expanded non-empty domain only for dense fragments
-  std::vector<uint8_t> expanded_non_empty_domain;
-  expanded_non_empty_domain.resize(domain_size);
-  std::memcpy(
-      &expanded_non_empty_domain[0], metadata.non_empty_domain(), domain_size);
+  auto expanded_non_empty_domain = non_empty_domain;
   if (!sparse)
     array_schema->domain()->expand_domain((void*)&expanded_non_empty_domain[0]);
 
@@ -1541,32 +1502,6 @@ Status StorageManager::write(const URI& uri, void* data, uint64_t size) const {
 /* ****************************** */
 /*         PRIVATE METHODS        */
 /* ****************************** */
-
-template <class T>
-void StorageManager::array_get_non_empty_domain(
-    const std::vector<FragmentMetadata*>& metadata,
-    unsigned dim_num,
-    T* domain) {
-  assert(!metadata.empty());
-  uint64_t domain_size = 2 * sizeof(T) * dim_num;
-  auto non_empty_domain =
-      static_cast<const T*>(metadata[0]->non_empty_domain());
-  std::memcpy(domain, non_empty_domain, domain_size);
-
-  // Expand with the rest of the fragments
-  auto metadata_num = metadata.size();
-  auto coords = new T[dim_num];
-  for (size_t j = 1; j < metadata_num; ++j) {
-    non_empty_domain = static_cast<const T*>(metadata[j]->non_empty_domain());
-    for (unsigned i = 0; i < dim_num; ++i)
-      coords[i] = non_empty_domain[2 * i];
-    utils::geometry::expand_mbr(domain, coords, dim_num);
-    for (unsigned i = 0; i < dim_num; ++i)
-      coords[i] = non_empty_domain[2 * i + 1];
-    utils::geometry::expand_mbr(domain, coords, dim_num);
-  }
-  delete[] coords;
-}
 
 Status StorageManager::array_open_without_fragments(
     const URI& array_uri,

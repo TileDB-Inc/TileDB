@@ -147,8 +147,7 @@ const void* ResultTile::coord(uint64_t pos, unsigned dim_idx) const {
   return nullptr;
 }
 
-bool ResultTile::coord_in_rect(
-    uint64_t pos, const std::vector<const void*>& rect) const {
+bool ResultTile::coord_in_rect(uint64_t pos, const NDRange& rect) const {
   auto dim_num = domain_->dim_num();
   for (unsigned d = 0; d < dim_num; ++d) {
     if (!domain_->dimension(d)->value_in_range(coord(pos, d), rect[d]))

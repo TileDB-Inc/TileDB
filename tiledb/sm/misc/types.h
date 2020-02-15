@@ -32,12 +32,82 @@
 
 #ifndef TILEDB_TYPES_H
 #define TILEDB_TYPES_H
+
+#include <cstring>
+#include <vector>
+
 namespace tiledb {
 namespace sm {
 
 /* ********************************* */
 /*          TYPE DEFINITIONS         */
 /* ********************************* */
+
+/**
+ * Defines a 1D range (low, high), flattened in a sequence of bytes.
+ * If the range consists of var-sized values (e.g., strings), then
+ * the format is:
+ *
+ * low_nbytes (uint32) | low | high_nbytes (uint32) | high
+ */
+class Range {
+ public:
+  /** Default constructor. */
+  Range() = default;
+
+  /** Constructor setting a range. */
+  Range(const void* range, uint64_t range_size) {
+    set_range(range, range_size);
+  }
+
+  /** Copy constructor. */
+  Range(const Range& range) = default;
+
+  /** Move constructor. */
+  Range(Range&& range) = default;
+
+  /** Destructor. */
+  ~Range() = default;
+
+  /** Copy-assign operator.*/
+  Range& operator=(const Range& range) = default;
+
+  /** Move-assign operator. */
+  Range& operator=(Range&& range) = default;
+
+  /** Sets a range. */
+  void set_range(const void* range, uint64_t range_size) {
+    range_.resize(range_size);
+    std::memcpy(&range_[0], range, range_size);
+  }
+
+  /** Returns the pointer to the range flattened bytes. */
+  const void* data() const {
+    return &range_[0];
+  }
+
+  /** Returns true if the range is empty. */
+  bool empty() const {
+    return range_.empty();
+  }
+
+  /** Returns the range size in bytes. */
+  uint64_t size() const {
+    return range_.size();
+  }
+
+  /** Equality operator. */
+  bool operator==(const Range& r) const {
+    return range_ == r.range_;
+  }
+
+ private:
+  /** The range as a flat byte vector.*/
+  std::vector<uint8_t> range_;
+};
+
+/** An N-dimensional range, consisting of a vector of 1D ranges. */
+typedef std::vector<Range> NDRange;
 
 /** Contains the buffer(s) and buffer size(s) for some attribute / dimension. */
 struct QueryBuffer {

@@ -34,6 +34,7 @@
 #define TILEDB_DOMAIN_H
 
 #include "tiledb/sm/misc/status.h"
+#include "tiledb/sm/misc/types.h"
 
 #include <vector>
 
@@ -271,40 +272,9 @@ class Domain {
   Layout cell_order() const;
 
   /**
-   * Crops the input domain such that it does not exceed the array domain.
-   *
-   * @param domain The domain to be cropped.
-   * @return void
+   * Crops the input ND range such that it does not exceed the array domain.
    */
-  void crop_domain(void* domain) const;
-
-  /**
-   * Crops the input domain such that it does not exceed the array domain.
-   *
-   * @param domain The domain to be cropped.
-   * @return void
-   */
-  template <
-      class T,
-      typename std::enable_if<std::is_integral<T>::value, T>::type* = nullptr>
-  void crop_domain(T* domain) const {
-    auto array_domain = static_cast<const T*>(domain_);
-
-    for (unsigned int i = 0; i < dim_num_; ++i) {
-      if (domain[2 * i] < array_domain[2 * i])
-        domain[2 * i] = array_domain[2 * i];
-      if (domain[2 * i + 1] > array_domain[2 * i + 1])
-        domain[2 * i + 1] = array_domain[2 * i + 1];
-    }
-  }
-
-  /** No-op for float/double domains. */
-  template <
-      class T,
-      typename std::enable_if<!std::is_integral<T>::value, T>::type* = nullptr>
-  void crop_domain(T* domain) const {
-    (void)domain;
-  }
+  void crop_ndrange(NDRange* ndrange) const;
 
   /** Returns the tile order. */
   Layout tile_order() const;
@@ -318,6 +288,9 @@ class Domain {
   /** returns the domain along the i-th dimension (nullptr upon error). */
   const void* domain(unsigned int i) const;
 
+  /** Returns the domain as a N-dimensional range object. */
+  NDRange domain_ndrange() const;
+
   /** Returns the i-th dimensions (nullptr upon error). */
   const Dimension* dimension(unsigned int i) const;
 
@@ -326,6 +299,17 @@ class Domain {
 
   /** Dumps the domain in ASCII format in the selected output. */
   void dump(FILE* out) const;
+
+  /** Expands ND range `r2` using ND range `r1`. */
+  void expand_ndrange(const NDRange& r1, NDRange* r2) const;
+
+  /**
+   * Expands the input domain such that it coincides with the boundaries of
+   * the array's regular tiles (i.e., it maps it on the regular tile grid).
+   * If the array has no regular tile grid or real domain, the function
+   * does not do anything.
+   */
+  void expand_to_tiles(NDRange* ndrange) const;
 
   /**
    * Expands the input domain such that it coincides with the boundaries of
@@ -600,33 +584,13 @@ class Domain {
   const void* tile_extent(unsigned int i) const;
 
   /**
-   * Returns the number of tiles contained in the input range.
-   *
-   * @note Applicable only to integer domains.
+   * Returns the number of tiles contained in the input ND range.
+   * Returns 0 if even a single dimension has non-integral type.
    */
-  uint64_t tile_num(const void* range) const;
+  uint64_t tile_num(const NDRange& ndrange) const;
 
-  /**
-   * Returns the number of tiles contained in the input range.
-   *
-   * @note Applicable only to integer domains.
-   */
-  template <
-      class T,
-      typename std::enable_if<std::is_integral<T>::value, T>::type* = nullptr>
-  uint64_t tile_num(const T* range) const {
-    // For easy reference
-    auto tile_extents = static_cast<const T*>(tile_extents_);
-    auto domain = static_cast<const T*>(domain_);
-
-    uint64_t ret = 1;
-    for (unsigned int i = 0; i < dim_num_; ++i) {
-      uint64_t start = (range[2 * i] - domain[2 * i]) / tile_extents[i];
-      uint64_t end = (range[2 * i + 1] - domain[2 * i]) / tile_extents[i];
-      ret *= (end - start + 1);
-    }
-    return ret;
-  }
+  /** Returns true if the two ND ranges overlap. */
+  bool overlap(const NDRange& r1, const NDRange& r2) const;
 
   /**
    * Checks the tile order of the input coordinates on the given dimension.

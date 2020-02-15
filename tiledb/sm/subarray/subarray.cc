@@ -720,6 +720,43 @@ std::vector<const void*> Subarray::range(uint64_t range_idx) const {
   return ret;
 }
 
+NDRange Subarray::ndrange(uint64_t range_idx) const {
+  NDRange ret;
+  uint64_t tmp_idx = range_idx;
+  auto dim_num = this->dim_num();
+  auto cell_order = array_->array_schema()->cell_order();
+  auto layout = (layout_ == Layout::UNORDERED) ? cell_order : layout_;
+  auto array_schema = array_->array_schema();
+
+  if (layout == Layout::ROW_MAJOR) {
+    for (unsigned d = 0; d < dim_num; ++d) {
+      auto coord_size = array_schema->dimension(d)->coord_size();
+      ret.emplace_back(
+          ranges_[d].get_range(tmp_idx / range_offsets_[d]), 2 * coord_size);
+      tmp_idx %= range_offsets_[d];
+    }
+  } else if (layout == Layout::COL_MAJOR) {
+    for (unsigned d = dim_num - 1;; --d) {
+      auto coord_size = array_schema->dimension(d)->coord_size();
+      ret.emplace_back(
+          ranges_[d].get_range(tmp_idx / range_offsets_[d]), 2 * coord_size);
+      tmp_idx %= range_offsets_[d];
+      if (d == 0)
+        break;
+    }
+    std::reverse(ret.begin(), ret.end());
+  } else {
+    assert(layout == Layout::GLOBAL_ORDER);
+    assert(range_num() == 1);
+    for (unsigned d = 0; d < dim_num; ++d) {
+      auto coord_size = array_schema->dimension(d)->coord_size();
+      ret.emplace_back(ranges_[d].get_range(0), 2 * coord_size);
+    }
+  }
+
+  return ret;
+}
+
 const Subarray::Ranges* Subarray::ranges_for_dim(uint32_t dim_idx) const {
   return &ranges_[dim_idx];
 }
