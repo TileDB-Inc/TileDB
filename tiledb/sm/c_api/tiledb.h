@@ -2391,6 +2391,45 @@ TILEDB_EXPORT int32_t tiledb_array_schema_add_attribute(
     tiledb_attribute_t* attr);
 
 /**
+ * Sets whether the array can allow coordinate duplicates or not.
+ * Applicable only to sparse arrays (it errors out if set to `1` for dense
+ * arrays).
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * int allows_dups = 1;
+ * tiledb_array_schema_set_allows_dups(ctx, array_schema, allows_dups);
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param array_schema The array schema.
+ * @param allows_dups Whether or not the array allows coordinate duplicates.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_array_schema_set_allows_dups(
+    tiledb_ctx_t* ctx, tiledb_array_schema_t* array_schema, int allows_dups);
+
+/**
+ * Gets whether the array can allow coordinate duplicates or not.
+ * It should always be `0` for dense arrays.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * int allows_dups;
+ * tiledb_array_schema_get_allows_dups(ctx, array_schema, &allows_dups);
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param array_schema The array schema.
+ * @param allows_dups Whether or not the array allows coordinate duplicates.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_array_schema_get_allows_dups(
+    tiledb_ctx_t* ctx, tiledb_array_schema_t* array_schema, int* allows_dups);
+
+/**
  * Sets a domain for the array schema.
  *
  * **Example:**

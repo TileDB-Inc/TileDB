@@ -362,12 +362,15 @@ Status array_schema_to_capnp(
         "Error serializing array schema; array schema is null."));
 
   array_schema_builder->setUri(array_schema->array_uri().to_string());
-  array_schema_builder->setVersion(kj::arrayPtr(constants::library_version, 3));
+  auto v = kj::heapArray<int32_t>(1);
+  v[0] = array_schema->version();
+  array_schema_builder->setVersion(v);
   array_schema_builder->setArrayType(
       array_type_str(array_schema->array_type()));
   array_schema_builder->setTileOrder(layout_str(array_schema->tile_order()));
   array_schema_builder->setCellOrder(layout_str(array_schema->cell_order()));
   array_schema_builder->setCapacity(array_schema->capacity());
+  array_schema_builder->setAllowsDuplicates(array_schema->allows_dups());
 
   // Set coordinate filters
   const FilterPipeline* coords_filters = array_schema->coords_filters();
@@ -415,6 +418,13 @@ Status array_schema_from_capnp(
   (*array_schema)->set_array_uri(URI(schema_reader.getUri().cStr()));
   (*array_schema)->set_cell_order(layout);
   (*array_schema)->set_capacity(schema_reader.getCapacity());
+  (*array_schema)->set_allows_dups(schema_reader.getAllowsDuplicates());
+  // Pre 1.8 TileDB serialized the version as the library version
+  // This would have been a list of size 3, so only set the version
+  // if the list size is 1, meaning tiledb 1.8 or later
+  if (schema_reader.hasVersion() && schema_reader.getVersion().size() == 1) {
+    (*array_schema)->set_version(schema_reader.getVersion()[0]);
+  }
 
   auto domain_reader = schema_reader.getDomain();
   std::unique_ptr<Domain> domain;

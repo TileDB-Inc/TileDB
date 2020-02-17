@@ -84,6 +84,12 @@ class ArraySchema {
   /*               API                 */
   /* ********************************* */
 
+  /**
+   * Returns true if the array allows coordinate duplicates. Applicable
+   * only to sparse arrays, dense arrays do not allow duplicates.
+   */
+  bool allows_dups() const;
+
   /** Returns the array type. */
   ArrayType array_type() const;
 
@@ -280,6 +286,12 @@ class ArraySchema {
    */
   Status init();
 
+  /**
+   * Sets whether the array allows coordinate duplicates.
+   * It errors out if set to `1` for dense arrays.
+   */
+  Status set_allows_dups(bool allows_dups);
+
   /** Sets an array URI. */
   void set_array_uri(const URI& array_uri);
 
@@ -304,6 +316,9 @@ class ArraySchema {
   /** Sets the tile order. */
   void set_tile_order(Layout tile_order);
 
+  /** Set version of schema, only used for serialization */
+  void set_version(uint32_t version);
+
   /** Returns the array schema version. */
   uint32_t version() const;
 
@@ -311,6 +326,12 @@ class ArraySchema {
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
   /* ********************************* */
+
+  /**
+   * True if the array allows coordinate duplicates. Applicable only
+   * to sparse arrays.
+   */
+  bool allows_dups_;
 
   /** An array name attached to the schema object. */
   URI array_uri_;

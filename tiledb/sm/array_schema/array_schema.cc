@@ -56,6 +56,7 @@ namespace sm {
 /* ****************************** */
 
 ArraySchema::ArraySchema() {
+  allows_dups_ = false;
   array_uri_ = URI();
   array_type_ = ArrayType::DENSE;
   capacity_ = constants::capacity;
@@ -74,6 +75,7 @@ ArraySchema::ArraySchema() {
 
 ArraySchema::ArraySchema(ArrayType array_type)
     : array_type_(array_type) {
+  allows_dups_ = false;
   array_uri_ = URI();
   capacity_ = constants::capacity;
   cell_order_ = Layout::ROW_MAJOR;
@@ -90,6 +92,7 @@ ArraySchema::ArraySchema(ArrayType array_type)
 }
 
 ArraySchema::ArraySchema(const ArraySchema* array_schema) {
+  allows_dups_ = array_schema->allows_dups_;
   array_uri_ = array_schema->array_uri_;
   array_type_ = array_schema->array_type_;
   domain_ = nullptr;
@@ -116,6 +119,10 @@ ArraySchema::~ArraySchema() {
 /* ****************************** */
 /*               API              */
 /* ****************************** */
+
+bool ArraySchema::allows_dups() const {
+  return allows_dups_;
+}
 
 ArrayType ArraySchema::array_type() const {
   return array_type_;
@@ -397,6 +404,9 @@ Status ArraySchema::serialize(Buffer* buff) const {
   // Write version
   RETURN_NOT_OK(buff->write(&version_, sizeof(uint32_t)));
 
+  // Write allows_dups
+  RETURN_NOT_OK(buff->write(&allows_dups_, sizeof(bool)));
+
   // Write array type
   auto array_type = (uint8_t)array_type_;
   RETURN_NOT_OK(buff->write(&array_type, sizeof(uint8_t)));
@@ -505,6 +515,7 @@ Status ArraySchema::add_attribute(const Attribute* attr, bool check_special) {
 
 // ===== FORMAT =====
 // version (uint32_t)
+// allows_dups (bool) - for format versions >= 5
 // array_type (uint8_t)
 // tile_order (uint8_t)
 // cell_order (uint8_t)
@@ -519,6 +530,10 @@ Status ArraySchema::add_attribute(const Attribute* attr, bool check_special) {
 Status ArraySchema::deserialize(ConstBuffer* buff) {
   // Load version
   RETURN_NOT_OK(buff->read(&version_, sizeof(uint32_t)));
+
+  // Load allows_dups
+  if (version_ >= 5)
+    RETURN_NOT_OK(buff->read(&allows_dups_, sizeof(bool)));
 
   // Load array type
   uint8_t array_type;
@@ -589,6 +604,15 @@ Status ArraySchema::init() {
   return Status::Ok();
 }
 
+Status ArraySchema::set_allows_dups(bool allows_dups) {
+  if (allows_dups && array_type_ == ArrayType::DENSE)
+    return LOG_STATUS(Status::ArraySchemaError(
+        "Dense arrays cannot allow coordinate duplicates"));
+
+  allows_dups_ = allows_dups;
+  return Status::Ok();
+}
+
 void ArraySchema::set_array_uri(const URI& array_uri) {
   array_uri_ = array_uri;
 }
@@ -651,6 +675,10 @@ Status ArraySchema::set_domain(Domain* domain) {
 
 void ArraySchema::set_tile_order(Layout tile_order) {
   tile_order_ = tile_order;
+}
+
+void ArraySchema::set_version(uint32_t version) {
+  version_ = version;
 }
 
 uint32_t ArraySchema::version() const {

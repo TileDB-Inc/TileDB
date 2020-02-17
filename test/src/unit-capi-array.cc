@@ -736,8 +736,8 @@ TEST_CASE_METHOD(
 
 TEST_CASE_METHOD(
     ArrayFx,
-    "C API: Test opening array at timestamp",
-    "[capi][array][open-at]") {
+    "C API: Test opening array at timestamp, reads",
+    "[capi][array][open-at][reads]") {
   std::string temp_dir;
   if (supports_s3_)
     temp_dir = S3_TEMP_DIR;
@@ -746,7 +746,7 @@ TEST_CASE_METHOD(
   else
     temp_dir = FILE_URI_PREFIX + FILE_TEMP_DIR;
 
-  std::string array_name = temp_dir + "array-open-at";
+  std::string array_name = temp_dir + "array-open-at-reads";
   SECTION("- without encryption") {
     encryption_type_ = TILEDB_NO_ENCRYPTION;
     encryption_key_ = nullptr;
@@ -770,19 +770,6 @@ TEST_CASE_METHOD(
   tiledb_array_t* array;
   int rc = tiledb_array_alloc(ctx_, array_name.c_str(), &array);
   CHECK(rc == TILEDB_OK);
-  if (encryption_type_ == TILEDB_NO_ENCRYPTION) {
-    rc = tiledb_array_open_at(ctx_, array, TILEDB_WRITE, 0);
-  } else {
-    rc = tiledb_array_open_at_with_key(
-        ctx_,
-        array,
-        TILEDB_WRITE,
-        encryption_type_,
-        encryption_key_,
-        (uint32_t)strlen(encryption_key_),
-        0);
-  }
-  CHECK(rc == TILEDB_ERR);  // open_at is applicable only to reads
   if (encryption_type_ == TILEDB_NO_ENCRYPTION) {
     rc = tiledb_array_open(ctx_, array, TILEDB_WRITE);
   } else {
@@ -1069,6 +1056,181 @@ TEST_CASE_METHOD(
   CHECK(!std::memcmp(
       buffer_read, buffer_read_reopen_c, sizeof(buffer_read_reopen_c)));
   CHECK(buffer_read_size == sizeof(buffer_read_reopen_c));
+
+  remove_temp_dir(temp_dir);
+}
+
+TEST_CASE_METHOD(
+    ArrayFx,
+    "C API: Test opening array at timestamp, writes",
+    "[capi][array][open-at][writes]") {
+  std::string temp_dir;
+  if (supports_s3_)
+    temp_dir = S3_TEMP_DIR;
+  else if (supports_hdfs_)
+    temp_dir = HDFS_TEMP_DIR;
+  else
+    temp_dir = FILE_URI_PREFIX + FILE_TEMP_DIR;
+
+  std::string array_name = temp_dir + "array-open-at-writes";
+  SECTION("- without encryption") {
+    encryption_type_ = TILEDB_NO_ENCRYPTION;
+    encryption_key_ = nullptr;
+  }
+
+  SECTION("- with encryption") {
+    encryption_type_ = TILEDB_AES_256_GCM;
+    encryption_key_ = "0123456789abcdeF0123456789abcdeF";
+  }
+
+  create_temp_dir(temp_dir);
+
+  create_dense_vector(array_name);
+
+  // ---- WRITE ----
+  // Prepare cell buffers
+  int buffer_a1[] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
+  uint64_t buffer_a1_size = sizeof(buffer_a1);
+
+  // Some timestamp, it could be anything
+  uint64_t timestamp = 1000;
+
+  // Open array
+  tiledb_array_t* array;
+  int rc = tiledb_array_alloc(ctx_, array_name.c_str(), &array);
+  CHECK(rc == TILEDB_OK);
+  if (encryption_type_ == TILEDB_NO_ENCRYPTION) {
+    rc = tiledb_array_open_at(ctx_, array, TILEDB_WRITE, timestamp);
+  } else {
+    rc = tiledb_array_open_at_with_key(
+        ctx_,
+        array,
+        TILEDB_WRITE,
+        encryption_type_,
+        encryption_key_,
+        (uint32_t)strlen(encryption_key_),
+        timestamp);
+  }
+  CHECK(rc == TILEDB_OK);
+
+  // Submit query
+  tiledb_query_t* query;
+  rc = tiledb_query_alloc(ctx_, array, TILEDB_WRITE, &query);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_layout(ctx_, query, TILEDB_GLOBAL_ORDER);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_buffer(ctx_, query, "a", buffer_a1, &buffer_a1_size);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_submit(ctx_, query);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_finalize(ctx_, query);
+  CHECK(rc == TILEDB_OK);
+
+  // Get written timestamp
+  uint64_t t1, t2;
+  rc = tiledb_query_get_fragment_timestamp_range(ctx_, query, 0, &t1, &t2);
+  CHECK(rc == TILEDB_OK);
+  CHECK(t1 == timestamp);
+  CHECK(t2 == timestamp);
+
+  // Close array and clean up
+  rc = tiledb_array_close(ctx_, array);
+  CHECK(rc == TILEDB_OK);
+  tiledb_array_free(&array);
+  tiledb_query_free(&query);
+
+  // ---- READ AT ZERO TIMESTAMP ----
+  // Open array
+  rc = tiledb_array_alloc(ctx_, array_name.c_str(), &array);
+  CHECK(rc == TILEDB_OK);
+  if (encryption_type_ == TILEDB_NO_ENCRYPTION) {
+    rc = tiledb_array_open_at(ctx_, array, TILEDB_READ, 0);
+  } else {
+    rc = tiledb_array_open_at_with_key(
+        ctx_,
+        array,
+        TILEDB_READ,
+        encryption_type_,
+        encryption_key_,
+        (uint32_t)strlen(encryption_key_),
+        0);
+  }
+  CHECK(rc == TILEDB_OK);
+
+  // Check timestamp
+  uint64_t timestamp_get;
+  rc = tiledb_array_get_timestamp(ctx_, array, &timestamp_get);
+  CHECK(rc == TILEDB_OK);
+  CHECK(timestamp_get == 0);
+
+  // Submit query
+  rc = tiledb_query_alloc(ctx_, array, TILEDB_READ, &query);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_layout(ctx_, query, TILEDB_ROW_MAJOR);
+  CHECK(rc == TILEDB_OK);
+  int64_t subarray_read[] = {1, 10};
+  rc = tiledb_query_set_subarray(ctx_, query, subarray_read);
+  CHECK(rc == TILEDB_OK);
+  int buffer_read[10];
+  uint64_t buffer_read_size = sizeof(buffer_read);
+  rc =
+      tiledb_query_set_buffer(ctx_, query, "a", buffer_read, &buffer_read_size);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_submit(ctx_, query);
+  CHECK(rc == TILEDB_OK);
+
+  // Close array and clean up
+  rc = tiledb_array_close(ctx_, array);
+  CHECK(rc == TILEDB_OK);
+  tiledb_array_free(&array);
+  tiledb_query_free(&query);
+
+  // Check correctness
+  CHECK(buffer_read_size == 0);  // Empty array
+
+  // ---- READ AT THE WRITTEN TIMESTAMP ----
+  buffer_read_size = sizeof(buffer_read);
+
+  // Open array
+  rc = tiledb_array_alloc(ctx_, array_name.c_str(), &array);
+  CHECK(rc == TILEDB_OK);
+  if (encryption_type_ == TILEDB_NO_ENCRYPTION) {
+    rc = tiledb_array_open_at(ctx_, array, TILEDB_READ, timestamp);
+  } else {
+    rc = tiledb_array_open_at_with_key(
+        ctx_,
+        array,
+        TILEDB_READ,
+        encryption_type_,
+        encryption_key_,
+        (uint32_t)strlen(encryption_key_),
+        timestamp);
+  }
+  CHECK(rc == TILEDB_OK);
+
+  // Submit query
+  rc = tiledb_query_alloc(ctx_, array, TILEDB_READ, &query);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_layout(ctx_, query, TILEDB_ROW_MAJOR);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_subarray(ctx_, query, subarray_read);
+  CHECK(rc == TILEDB_OK);
+  rc =
+      tiledb_query_set_buffer(ctx_, query, "a", buffer_read, &buffer_read_size);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_submit(ctx_, query);
+  CHECK(rc == TILEDB_OK);
+
+  // Close array and clean up
+  rc = tiledb_array_close(ctx_, array);
+  CHECK(rc == TILEDB_OK);
+  tiledb_array_free(&array);
+  tiledb_query_free(&query);
+
+  // Check correctness
+  int buffer_read_at_c[] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
+  CHECK(!std::memcmp(buffer_read, buffer_read_at_c, sizeof(buffer_read_at_c)));
+  CHECK(buffer_read_size == sizeof(buffer_read_at_c));
 
   remove_temp_dir(temp_dir);
 }

@@ -1943,6 +1943,26 @@ int32_t tiledb_array_schema_add_attribute(
   return TILEDB_OK;
 }
 
+int32_t tiledb_array_schema_set_allows_dups(
+    tiledb_ctx_t* ctx, tiledb_array_schema_t* array_schema, int allows_dups) {
+  if (sanity_check(ctx) == TILEDB_ERR ||
+      sanity_check(ctx, array_schema) == TILEDB_ERR)
+    return TILEDB_ERR;
+  if (SAVE_ERROR_CATCH(
+          ctx, array_schema->array_schema_->set_allows_dups(allows_dups)))
+    return TILEDB_ERR;
+  return TILEDB_OK;
+}
+
+int32_t tiledb_array_schema_get_allows_dups(
+    tiledb_ctx_t* ctx, tiledb_array_schema_t* array_schema, int* allows_dups) {
+  if (sanity_check(ctx) == TILEDB_ERR ||
+      sanity_check(ctx, array_schema) == TILEDB_ERR)
+    return TILEDB_ERR;
+  *allows_dups = (int)array_schema->array_schema_->allows_dups();
+  return TILEDB_OK;
+}
+
 int32_t tiledb_array_schema_set_domain(
     tiledb_ctx_t* ctx,
     tiledb_array_schema_t* array_schema,

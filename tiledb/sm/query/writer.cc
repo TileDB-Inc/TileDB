@@ -534,6 +534,10 @@ Status Writer::check_buffer_sizes() const {
 Status Writer::check_coord_dups(const std::vector<uint64_t>& cell_pos) const {
   STATS_FUNC_IN(writer_check_coord_dups);
 
+  // Check if applicable
+  if (array_schema_->allows_dups() || !check_coord_dups_ || dedup_coords_)
+    return Status::Ok();
+
   if (!has_coords_) {
     return LOG_STATUS(
         Status::WriterError("Cannot check for coordinate duplicates; "
@@ -585,6 +589,10 @@ Status Writer::check_coord_dups(const std::vector<uint64_t>& cell_pos) const {
 
 Status Writer::check_coord_dups() const {
   STATS_FUNC_IN(writer_check_coord_dups_global);
+
+  // Check if applicable
+  if (array_schema_->allows_dups() || !check_coord_dups_ || dedup_coords_)
+    return Status::Ok();
 
   if (!has_coords_) {
     return LOG_STATUS(
@@ -676,6 +684,10 @@ Status Writer::check_coord_oob() const {
 }
 
 Status Writer::check_global_order() const {
+  // Check if applicable
+  if (!check_global_order_)
+    return Status::Ok();
+
   // Applicable only to sparse writes - exit if coordinates do not exist
   if (!has_coords_ || coords_num_ < 2)
     return Status::Ok();
@@ -1116,12 +1128,12 @@ Status Writer::create_fragment(
   STATS_FUNC_IN(writer_create_fragment);
 
   URI uri;
-  uint64_t timestamp = 0;
+  uint64_t timestamp = array_->timestamp();
   if (!fragment_uri_.to_string().empty()) {
     uri = fragment_uri_;
   } else {
     std::string new_fragment_str;
-    RETURN_NOT_OK(new_fragment_name(&new_fragment_str, &timestamp));
+    RETURN_NOT_OK(new_fragment_name(timestamp, &new_fragment_str));
     uri = array_schema_->array_uri().join_path(new_fragment_str);
   }
   auto timestamp_range = std::pair<uint64_t, uint64_t>(timestamp, timestamp);
@@ -1262,10 +1274,8 @@ Status Writer::global_write() {
 
   // Check for coordinate duplicates
   if (has_coords_) {
-    if (check_coord_dups_ && !dedup_coords_)
-      RETURN_CANCEL_OR_ERROR(check_coord_dups());
-    if (check_global_order_)
-      RETURN_CANCEL_OR_ERROR(check_global_order());
+    RETURN_CANCEL_OR_ERROR(check_coord_dups());
+    RETURN_CANCEL_OR_ERROR(check_global_order());
   }
 
   // Retrieve coordinate duplicates
@@ -1536,15 +1546,16 @@ Status Writer::init_tiles(
 }
 
 Status Writer::new_fragment_name(
-    std::string* frag_uri, uint64_t* timestamp) const {
+    uint64_t timestamp, std::string* frag_uri) const {
+  timestamp = (timestamp != 0) ? timestamp : utils::time::timestamp_now_ms();
+
   if (frag_uri == nullptr)
     return Status::WriterError("Null fragment uri argument.");
-  *timestamp = utils::time::timestamp_now_ms();
   std::string uuid;
   frag_uri->clear();
   RETURN_NOT_OK(uuid::generate_uuid(&uuid, false));
   std::stringstream ss;
-  ss << "/__" << *timestamp << "_" << *timestamp << "_" << uuid << "_"
+  ss << "/__" << timestamp << "_" << timestamp << "_" << uuid << "_"
      << constants::format_version;
 
   *frag_uri = ss.str();
@@ -2307,8 +2318,7 @@ Status Writer::unordered_write() {
   RETURN_CANCEL_OR_ERROR(sort_coords(&cell_pos));
 
   // Check for coordinate duplicates
-  if (check_coord_dups_ && !dedup_coords_)
-    RETURN_CANCEL_OR_ERROR(check_coord_dups(cell_pos));
+  RETURN_CANCEL_OR_ERROR(check_coord_dups(cell_pos));
 
   // Retrieve coordinate duplicates
   std::set<uint64_t> coord_dups;

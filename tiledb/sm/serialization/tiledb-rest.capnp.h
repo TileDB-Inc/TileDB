@@ -97,7 +97,7 @@ struct ArraySchema {
   class Pipeline;
 
   struct _capnpPrivate {
-    CAPNP_DECLARE_STRUCT_HEADER(d71de32f98e296fe, 1, 9)
+    CAPNP_DECLARE_STRUCT_HEADER(d71de32f98e296fe, 2, 9)
 #if !CAPNP_LITE
     static constexpr ::capnp::_::RawBrandedSchema const* brand() {
       return &schema->defaultBrand;
@@ -1006,6 +1006,8 @@ class ArraySchema::Reader {
   inline bool hasVersion() const;
   inline ::capnp::List<::int32_t>::Reader getVersion() const;
 
+  inline bool getAllowsDuplicates() const;
+
  private:
   ::capnp::_::StructReader _reader;
   template <typename, ::capnp::Kind>
@@ -1135,6 +1137,9 @@ class ArraySchema::Builder {
   inline ::capnp::List<::int32_t>::Builder initVersion(unsigned int size);
   inline void adoptVersion(::capnp::Orphan<::capnp::List<::int32_t>>&& value);
   inline ::capnp::Orphan<::capnp::List<::int32_t>> disownVersion();
+
+  inline bool getAllowsDuplicates();
+  inline void setAllowsDuplicates(bool value);
 
  private:
   ::capnp::_::StructBuilder _builder;
@@ -5788,6 +5793,19 @@ inline ::capnp::Orphan<::capnp::List<::int32_t>>
 ArraySchema::Builder::disownVersion() {
   return ::capnp::_::PointerHelpers<::capnp::List<::int32_t>>::disown(
       _builder.getPointerField(::capnp::bounded<8>() * ::capnp::POINTERS));
+}
+
+inline bool ArraySchema::Reader::getAllowsDuplicates() const {
+  return _reader.getDataField<bool>(::capnp::bounded<64>() * ::capnp::ELEMENTS);
+}
+
+inline bool ArraySchema::Builder::getAllowsDuplicates() {
+  return _builder.getDataField<bool>(
+      ::capnp::bounded<64>() * ::capnp::ELEMENTS);
+}
+inline void ArraySchema::Builder::setAllowsDuplicates(bool value) {
+  _builder.setDataField<bool>(
+      ::capnp::bounded<64>() * ::capnp::ELEMENTS, value);
 }
 
 inline ::uint32_t Attribute::Reader::getCellValNum() const {

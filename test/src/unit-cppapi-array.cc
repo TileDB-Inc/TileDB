@@ -747,9 +747,6 @@ TEST_CASE("C++ API: Open array at", "[cppapi][open-array-at]") {
   schema.add_attribute(Attribute::create<int>(ctx, "a"));
   Array::create(array_name, schema);
 
-  REQUIRE_THROWS_AS(
-      Array(ctx, array_name, TILEDB_WRITE, 0), tiledb::TileDBError);
-
   // Write array
   Array array_w(ctx, array_name, TILEDB_WRITE);
   Query query_w(ctx, array_w);
@@ -853,10 +850,6 @@ TEST_CASE(
   schema.set_domain(domain);
   schema.add_attribute(Attribute::create<int>(ctx, "a"));
   Array::create(array_name, schema, TILEDB_AES_256_GCM, key, key_len);
-
-  REQUIRE_THROWS_AS(
-      Array(ctx, array_name, TILEDB_WRITE, TILEDB_AES_256_GCM, key, key_len, 0),
-      tiledb::TileDBError);
 
   // Write array
   Array array_w(
