@@ -36,6 +36,7 @@
 #ifdef HAVE_AZURE
 #include <base64.h>
 #include <blob/blob_client.h>
+#include <retry.h>
 #include <storage_account.h>
 #include <storage_credential.h>
 #include <list>
@@ -279,6 +280,18 @@ class Azure {
   /* ********************************* */
   /*         PRIVATE DATATYPES         */
   /* ********************************* */
+
+  class AzureRetryPolicy final : public azure::storage_lite::retry_policy_base {
+   public:
+    azure::storage_lite::retry_info evaluate(
+        const azure::storage_lite::retry_context& context) const override {
+      if (context.numbers() < 3) {
+        return azure::storage_lite::retry_info(true, std::chrono::seconds(1));
+      }
+
+      return azure::storage_lite::retry_info(false, std::chrono::seconds(0));
+    }
+  };
 
   /** Contains all state associated with a block list upload transaction. */
   class BlockListUploadState {
