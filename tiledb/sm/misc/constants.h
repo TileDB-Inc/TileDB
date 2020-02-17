@@ -396,6 +396,9 @@ extern const std::string filesystem_type_hdfs_str;
 /** The string representation for filesystem type s3. */
 extern const std::string filesystem_type_s3_str;
 
+/** The string representation for filesystem type azure. */
+extern const std::string filesystem_type_azure_str;
+
 /** The string representation for WalkOrder preorder. */
 extern const std::string walkorder_preorder_str;
 
