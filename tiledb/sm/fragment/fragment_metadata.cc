@@ -841,7 +841,7 @@ Status FragmentMetadata::load_rtree(const EncryptionKey& encryption_key) {
       read_generic_tile_from_file(encryption_key, gt_offsets_.rtree_, &buff));
 
   ConstBuffer cbuff(&buff);
-  RETURN_NOT_OK(rtree_.deserialize(&cbuff, array_schema_->domain()));
+  RETURN_NOT_OK(rtree_.deserialize(&cbuff, array_schema_->domain(), version_));
 
   loaded_metadata_.rtree_ = true;
 

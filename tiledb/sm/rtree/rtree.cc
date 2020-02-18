@@ -246,10 +246,17 @@ Status RTree::serialize(Buffer* buff) const {
   return Status::Ok();
 }
 
-Status RTree::deserialize(ConstBuffer* cbuff, const Domain* domain) {
-  // TODO: check versions here
+Status RTree::deserialize(
+    ConstBuffer* cbuff, const Domain* domain, uint32_t version) {
+  // For backwards compatibility, they will be ignored
+  unsigned dim_num_i;
+  uint8_t type_i;
 
+  if (version < 5)
+    RETURN_NOT_OK(cbuff->read(&dim_num_i, sizeof(dim_num_i)));
   RETURN_NOT_OK(cbuff->read(&fanout_, sizeof(fanout_)));
+  if (version < 5)
+    RETURN_NOT_OK(cbuff->read(&type_i, sizeof(type_i)));
   unsigned level_num;
   RETURN_NOT_OK(cbuff->read(&level_num, sizeof(level_num)));
 

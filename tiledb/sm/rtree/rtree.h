@@ -131,10 +131,12 @@ class RTree {
   Status serialize(Buffer* buff) const;
 
   /**
-   * Deserializes the contents of the object from the input buffer.
+   * Deserializes the contents of the object from the input buffer based
+   * on the format version.
    * It also sets the input domain, as that is not serialized.
    */
-  Status deserialize(ConstBuffer* cbuff, const Domain* domain);
+  Status deserialize(
+      ConstBuffer* cbuff, const Domain* domain, uint32_t version);
 
  private:
   /* ********************************* */
