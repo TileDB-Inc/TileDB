@@ -19,6 +19,11 @@ matrix:
       - TILEDB_S3="ON"
       - TILEDB_SUPERBUILD="ON"
 
+    - os: linux
+      env:
+      - TILEDB_AZURE="ON"
+      - TILEDB_SUPERBUILD="ON"
+
     - os: osx
 
 before_install:
@@ -47,6 +52,9 @@ install:
       fi;
       if [[ "$TILEDB_S3" == "ON" ]]; then
         bootstrap_args="${bootstrap_args} --enable-s3";
+      fi;
+      if [[ "$TILEDB_AZURE" == "ON" ]]; then
+        bootstrap_args="${bootstrap_args} --enable-azure";
       fi;
       if [[ "$TILEDB_TBB" == "OFF" ]]; then
         bootstrap_args="${bootstrap_args} --disable-tbb";
@@ -92,14 +100,16 @@ script:
         docker logs `docker ps -q`;
       fi
     - |
-      pushd $TRAVIS_BUILD_DIR/examples/cmake_project &&
-      mkdir build && cd build &&
-      cmake -DCMAKE_PREFIX_PATH=$TRAVIS_BUILD_DIR/dist .. && make &&
-      ./ExampleExe &&
-      ./ExampleExe_static &&
-      popd
+      if [[ "$TILEDB_AZURE" != "ON" ]]; then
+        pushd $TRAVIS_BUILD_DIR/examples/cmake_project &&
+        mkdir build && cd build &&
+        cmake -DCMAKE_PREFIX_PATH=$TRAVIS_BUILD_DIR/dist .. && make &&
+        ./ExampleExe &&
+        ./ExampleExe_static &&
+        popd
+      fi
     # Build and run the PNG ingestion example.
-    - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then
+    - if [[ "$TRAVIS_OS_NAME" == "linux" ]] && [[ "$TILEDB_AZURE" != "ON" ]]; then
         pushd $TRAVIS_BUILD_DIR/examples/png_ingestion &&
         mkdir build && cd build &&
         cmake -DCMAKE_PREFIX_PATH=$TRAVIS_BUILD_DIR/dist .. && make &&
@@ -108,10 +118,12 @@ script:
       fi
     # Build the benchmarks (but do not run them).
     - |
-      pushd $TRAVIS_BUILD_DIR/test/benchmarking &&
-      mkdir build && cd build &&
-      cmake -DCMAKE_PREFIX_PATH=$TRAVIS_BUILD_DIR/dist ../src && make &&
-      popd
+      if [[ "$TILEDB_AZURE" != "ON" ]]; then
+        pushd $TRAVIS_BUILD_DIR/test/benchmarking &&
+        mkdir build && cd build &&
+        cmake -DCMAKE_PREFIX_PATH=$TRAVIS_BUILD_DIR/dist ../src && make &&
+        popd
+      fi
     - |
       testfile=$(mktemp)
       mv $testfile $testfile.cc
@@ -130,11 +142,15 @@ script:
         return 0;
       }
       EOF
+      export TESTFILE_LDFLAGS="-ltiledb"
       if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then
         export LD_LIBRARY_PATH=$TRAVIS_BUILD_DIR/dist/lib:/usr/local/lib:$LD_LIBRARY_PATH
+        if [[ "$TILEDB_AZURE" == "ON" ]]; then
+          export TESTFILE_LDFLAGS="$TESTFILE_LDFLAGS -luuid"
+        fi
       else
         export DYLD_LIBRARY_PATH=$TRAVIS_BUILD_DIR/dist/lib:/usr/local/lib:$DYLD_LIBRARY_PATH
       fi
-      ${CXX} -std=c++11 -g -O0 -Wall -Werror -I$TRAVIS_BUILD_DIR/dist/include -L$TRAVIS_BUILD_DIR/dist/lib $testfile -o $testfile.exe -ltiledb && \
+      ${CXX} -std=c++11 -g -O0 -Wall -Werror -I$TRAVIS_BUILD_DIR/dist/include -L$TRAVIS_BUILD_DIR/dist/lib $testfile -o $testfile.exe $TESTFILE_LDFLAGS && \
       $testfile.exe && \
       rm -f $testfile $testfile.exe

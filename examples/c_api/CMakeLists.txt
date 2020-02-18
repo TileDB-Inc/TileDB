@@ -44,6 +44,10 @@ function(build_TileDB_example_capi TARGET)
     # On Linux, must explicitly link -lpthread -ldl in order for static linking
     # to libzstd or libcurl to work.
     target_link_libraries(${TARGET}_c pthread dl)
+
+    if (TILEDB_AZURE AND NOT APPLE)
+      target_link_libraries(${TARGET}_c uuid)
+    endif()
   endif()
   add_dependencies(examples_c ${TARGET}_c)
 endfunction()

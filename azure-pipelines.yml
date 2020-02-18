@@ -22,9 +22,18 @@ jobs:
         imageName: 'ubuntu-16.04'
         TILEDB_HDFS: ON
         CXX: g++
+      linux_azure:
+        imageName: 'ubuntu-16.04'
+        TILEDB_AZURE: ON
+        TILEDB_STATIC: OFF
+        CXX: g++
       macOS:
         imageName: 'macOS-10.13'
         TILEDB_S3: ON
+        CXX: clang++
+      macOS_azure:
+        imageName: 'macOS-10.13'
+        TILEDB_AZURE: ON
         CXX: clang++
       linux_asan:
         imageName: 'ubuntu-16.04'
