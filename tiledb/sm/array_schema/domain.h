@@ -593,6 +593,12 @@ class Domain {
   bool overlap(const NDRange& r1, const NDRange& r2) const;
 
   /**
+   * Return ratio of the overalp of the two input ND ranges over
+   * the volume of `r2`.
+   */
+  double overlap_ratio(const NDRange& r1, const NDRange& r2) const;
+
+  /**
    * Checks the tile order of the input coordinates on the given dimension.
    *
    * @param The dimension to compare on.

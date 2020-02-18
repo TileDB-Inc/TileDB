@@ -931,6 +931,28 @@ bool Domain::overlap(const NDRange& r1, const NDRange& r2) const {
   return true;
 }
 
+double Domain::overlap_ratio(const NDRange& r1, const NDRange& r2) const {
+  double ratio = 1.0;
+  assert(dim_num_ == r1.size());
+  assert(dim_num_ == r2.size());
+
+  for (unsigned d = 0; d < dim_num_; ++d) {
+    if (!dimensions_[d]->overlap(r1[d], r2[d]))
+      return 0.0;
+
+    ratio *= dimensions_[d]->overlap_ratio(r1[d], r2[d]);
+
+    // If ratio goes to 0, then the subarray overlap is much smaller than the
+    // volume of the MBR. Since we have already guaranteed that there is an
+    // overlap above, we should set the ratio to epsilon.
+    auto max = std::numeric_limits<double>::max();
+    if (ratio == 0)
+      ratio = std::nextafter(0, max);
+  }
+
+  return ratio;
+}
+
 template <class T>
 int Domain::tile_order_cmp(
     const Dimension* dim, const void* coord_a, const void* coord_b) {

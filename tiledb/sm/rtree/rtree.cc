@@ -137,8 +137,8 @@ TileOverlap RTree::get_tile_overlap(const NDRange& range) const {
       off += r_size;
     }
 
-    // Get
-    auto ratio = this->range_overlap(domain_, range, ndmbr);
+    // Get overlap ratio
+    auto ratio = domain_->overlap_ratio(range, ndmbr);
 
     // If there is overlap
     if (ratio != 0.0) {
@@ -182,29 +182,6 @@ const void* RTree::leaf(uint64_t leaf_idx) const {
   auto type = domain_->type();
   uint64_t mbr_size = 2 * dim_num * datatype_size(type);
   return (const void*)&(levels_.back().mbrs_[leaf_idx * mbr_size]);
-}
-
-double RTree::range_overlap(
-    const Domain* domain, const NDRange& range, const NDRange& mbr) {
-  double ratio = 1.0;
-  auto dim_num = (unsigned)range.size();
-  assert(dim_num == domain->dim_num());
-
-  for (unsigned d = 0; d < dim_num; ++d) {
-    if (!domain->dimension(d)->overlap(range[d], mbr[d]))
-      return 0.0;
-
-    ratio *= domain->dimension(d)->overlap_ratio(range[d], mbr[d]);
-
-    // If ratio goes to 0, then the subarray overlap is much smaller than the
-    // volume of the MBR. Since we have already guaranteed that there is an
-    // overlap above, we should set the ratio to epsilon.
-    auto max = std::numeric_limits<double>::max();
-    if (ratio == 0)
-      ratio = std::nextafter(0, max);
-  }
-
-  return ratio;
 }
 
 uint64_t RTree::subtree_leaf_num(uint64_t level) const {

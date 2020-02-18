@@ -111,13 +111,6 @@ class RTree {
   const void* leaf(uint64_t leaf_idx) const;
 
   /**
-   * Returns the overlap between a range and an RTree MBR, as the ratio
-   * of the volume of the overlap over the volume of the MBR.
-   */
-  static double range_overlap(
-      const Domain* domain, const NDRange& range, const NDRange& mbr);
-
-  /**
    * Returns the number of leaves that are stored in a (full) subtree
    * rooted at the input level. Note that the root is at level 0.
    */

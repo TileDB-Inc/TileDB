@@ -102,25 +102,25 @@ TEST_CASE("RTree: Test R-Tree, basic functions", "[rtree][basic]") {
   int32_t r1_right[] = {7, 11};
   int32_t r1_no_right[] = {11, 15};
   range1[0].set_range(r1_no_left, 2 * sizeof(int32_t));
-  double ratio1 = rtree1.range_overlap(&dom1, range1, mbr1);
+  double ratio1 = dom1.overlap_ratio(range1, mbr1);
   CHECK(ratio1 == 0.0);
   range1[0].set_range(r1_left, 2 * sizeof(int32_t));
-  ratio1 = rtree1.range_overlap(&dom1, range1, mbr1);
+  ratio1 = dom1.overlap_ratio(range1, mbr1);
   CHECK(ratio1 == 3.0 / 6);
   range1[0].set_range(r1_exact, 2 * sizeof(int32_t));
-  ratio1 = rtree1.range_overlap(&dom1, range1, mbr1);
+  ratio1 = dom1.overlap_ratio(range1, mbr1);
   CHECK(ratio1 == 1.0);
   range1[0].set_range(r1_full, 2 * sizeof(int32_t));
-  ratio1 = rtree1.range_overlap(&dom1, range1, mbr1);
+  ratio1 = dom1.overlap_ratio(range1, mbr1);
   CHECK(ratio1 == 1.0);
   range1[0].set_range(r1_contained, 2 * sizeof(int32_t));
-  ratio1 = rtree1.range_overlap(&dom1, range1, mbr1);
+  ratio1 = dom1.overlap_ratio(range1, mbr1);
   CHECK(ratio1 == 2.0 / 6);
   range1[0].set_range(r1_right, 2 * sizeof(int32_t));
-  ratio1 = rtree1.range_overlap(&dom1, range1, mbr1);
+  ratio1 = dom1.overlap_ratio(range1, mbr1);
   CHECK(ratio1 == 4.0 / 6);
   range1[0].set_range(r1_no_right, 2 * sizeof(int32_t));
-  ratio1 = rtree1.range_overlap(&dom1, range1, mbr1);
+  ratio1 = dom1.overlap_ratio(range1, mbr1);
   CHECK(ratio1 == 0.0);
 
   // 2D
@@ -154,15 +154,15 @@ TEST_CASE("RTree: Test R-Tree, basic functions", "[rtree][basic]") {
   int64_t r2_partial[] = {7, 11, 4, 5};
   range2[0].set_range(&r2_no[0], 2 * sizeof(int64_t));
   range2[1].set_range(&r2_no[2], 2 * sizeof(int64_t));
-  double ratio2 = rtree2.range_overlap(&dom2, range2, mbr2);
+  double ratio2 = dom2.overlap_ratio(range2, mbr2);
   CHECK(ratio2 == 0.0);
   range2[0].set_range(&r2_full[0], 2 * sizeof(int64_t));
   range2[1].set_range(&r2_full[2], 2 * sizeof(int64_t));
-  ratio2 = rtree2.range_overlap(&dom2, range2, mbr2);
+  ratio2 = dom2.overlap_ratio(range2, mbr2);
   CHECK(ratio2 == 1.0);
   range2[0].set_range(&r2_partial[0], 2 * sizeof(int64_t));
   range2[1].set_range(&r2_partial[2], 2 * sizeof(int64_t));
-  ratio2 = rtree2.range_overlap(&dom2, range2, mbr2);
+  ratio2 = dom2.overlap_ratio(range2, mbr2);
   CHECK(ratio2 == (4.0 / 6) * (2.0 / 8));
 
   // Float datatype
@@ -188,22 +188,22 @@ TEST_CASE("RTree: Test R-Tree, basic functions", "[rtree][basic]") {
   float rf_right[] = {7.0, 11.0};
   float rf_no_right[] = {11.0, 15.0};
   rangef[0].set_range(rf_no_left, 2 * sizeof(float));
-  double ratiof = rtree1.range_overlap(&dom2f, rangef, mbrf);
+  double ratiof = dom2f.overlap_ratio(rangef, mbrf);
   CHECK(ratiof == 0.0);
   rangef[0].set_range(rf_left, 2 * sizeof(float));
-  ratiof = rtreef.range_overlap(&dom2f, rangef, mbrf);
+  ratiof = dom2f.overlap_ratio(rangef, mbrf);
   CHECK(ratiof == 2.0 / 5);
   rangef[0].set_range(rf_exact, 2 * sizeof(float));
-  ratiof = rtreef.range_overlap(&dom2f, rangef, mbrf);
+  ratiof = dom2f.overlap_ratio(rangef, mbrf);
   CHECK(ratiof == 1.0);
   rangef[0].set_range(rf_full, 2 * sizeof(float));
-  ratiof = rtreef.range_overlap(&dom2f, rangef, mbrf);
+  ratiof = dom2f.overlap_ratio(rangef, mbrf);
   CHECK(ratiof == 1.0);
   rangef[0].set_range(rf_right, 2 * sizeof(float));
-  ratiof = rtreef.range_overlap(&dom2f, rangef, mbrf);
+  ratiof = dom2f.overlap_ratio(rangef, mbrf);
   CHECK(ratiof == 3.0 / 5);
   rangef[0].set_range(rf_no_right, 2 * sizeof(float));
-  ratiof = rtreef.range_overlap(&dom2f, rangef, mbrf);
+  ratiof = dom2f.overlap_ratio(rangef, mbrf);
   CHECK(ratiof == 0.0);
 }
 

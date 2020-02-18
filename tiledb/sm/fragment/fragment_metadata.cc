@@ -316,7 +316,7 @@ Status FragmentMetadata::get_tile_overlap(
       off += r_size;
     }
 
-    auto overlap = RTree::range_overlap(domain, range, ndmbr);
+    auto overlap = domain->overlap_ratio(range, ndmbr);
     if (overlap > 0.0) {
       auto to = std::pair<uint64_t, double>(t, overlap);
       tile_overlap->tiles_.push_back(to);
