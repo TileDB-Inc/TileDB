@@ -103,7 +103,7 @@ class RTree {
    * in the RTree.
    */
   template <class T>
-  TileOverlap get_tile_overlap(const std::vector<const T*>& range) const;
+  TileOverlap get_tile_overlap(const NDRange& range) const;
 
   /** Returns the tree height. */
   unsigned height() const;
@@ -116,7 +116,7 @@ class RTree {
    * of the volume of the overlap over the volume of the MBR.
    */
   template <class T>
-  static double range_overlap(const std::vector<const T*>& range, const T* mbr);
+  static double range_overlap(const NDRange& range, const T* mbr);
 
   /**
    * Returns the number of leaves that are stored in a (full) subtree

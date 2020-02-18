@@ -213,11 +213,10 @@ Status FragmentMetadata::add_max_buffer_sizes_sparse(
   RETURN_NOT_OK(load_rtree(encryption_key));
 
   // Get tile overlap
-  std::vector<const T*> range;
   auto dim_num = array_schema_->dim_num();
-  range.resize(dim_num);
-  for (unsigned i = 0; i < dim_num; ++i)
-    range[i] = &subarray[2 * i];
+  NDRange range(dim_num);
+  for (unsigned d = 0; d < dim_num; ++d)
+    range[d].set_range(&subarray[2 * d], 2 * sizeof(T));
   auto tile_overlap = rtree_.get_tile_overlap<T>(range);
   uint64_t size = 0;
 
@@ -306,7 +305,7 @@ Status FragmentMetadata::get_tile_overlap(
   // Handle version > 2
   if (version_ > 2) {
     RETURN_NOT_OK(load_rtree(encryption_key));
-    *tile_overlap = rtree_.get_tile_overlap<T>(range);
+    *tile_overlap = rtree_.get_tile_overlap<T>(ndrange);
     return Status::Ok();
   }
 
@@ -314,7 +313,7 @@ Status FragmentMetadata::get_tile_overlap(
   auto mbr_num = mbrs_.size();
   for (size_t t = 0; t < mbr_num; ++t) {
     auto m = (const T*)mbrs_[t];
-    auto overlap = RTree::range_overlap<T>(range, m);
+    auto overlap = RTree::range_overlap<T>(ndrange, m);
     if (overlap > 0.0) {
       auto to = std::pair<uint64_t, double>(t, overlap);
       tile_overlap->tiles_.push_back(to);
