@@ -49,19 +49,14 @@ namespace sm {
 /* ****************************** */
 
 RTree::RTree() {
-  dim_num_ = 0;
+  domain_ = nullptr;
   fanout_ = 0;
-  type_ = Datatype::INT32;
 }
 
 RTree::RTree(
-    Datatype type,
-    unsigned dim_num,
-    unsigned fanout,
-    const std::vector<void*>& mbrs)
-    : dim_num_(dim_num)
-    , fanout_(fanout)
-    , type_(type) {
+    const Domain* domain, unsigned fanout, const std::vector<void*>& mbrs)
+    : domain_(domain)
+    , fanout_(fanout) {
   build_tree(mbrs);
 }
 
@@ -96,7 +91,11 @@ RTree& RTree::operator=(RTree&& rtree) noexcept {
 /* ****************************** */
 
 unsigned RTree::dim_num() const {
-  return dim_num_;
+  return (domain_ == nullptr) ? 0 : domain_->dim_num();
+}
+
+const Domain* RTree::domain() const {
+  return domain_;
 }
 
 unsigned RTree::fanout() const {
@@ -108,7 +107,7 @@ TileOverlap RTree::get_tile_overlap(const std::vector<const T*>& range) const {
   TileOverlap overlap;
 
   // Empty tree
-  if (dim_num_ == 0 || levels_.empty())
+  if (domain_ == nullptr || levels_.empty())
     return overlap;
 
   // This will keep track of the traversal
@@ -116,7 +115,9 @@ TileOverlap RTree::get_tile_overlap(const std::vector<const T*>& range) const {
   traversal.push_front({0, 0});
   auto leaf_num = levels_.back().mbr_num_;
   auto height = this->height();
-  uint64_t mbr_size = 2 * dim_num_ * datatype_size(type_);
+  auto dim_num = domain_->dim_num();
+  auto type = domain_->type();
+  uint64_t mbr_size = 2 * dim_num * datatype_size(type);
 
   while (!traversal.empty()) {
     // Get next entry
@@ -168,7 +169,9 @@ const void* RTree::leaf(uint64_t leaf_idx) const {
     return nullptr;
   assert(leaf_idx < levels_.back().mbr_num_);
 
-  uint64_t mbr_size = 2 * dim_num_ * datatype_size(type_);
+  auto dim_num = domain_->dim_num();
+  auto type = domain_->type();
+  uint64_t mbr_size = 2 * dim_num * datatype_size(type);
   return (const void*)&(levels_.back().mbrs_[leaf_idx * mbr_size]);
 }
 
@@ -227,15 +230,8 @@ uint64_t RTree::subtree_leaf_num(uint64_t level) const {
   return leaf_num;
 }
 
-Datatype RTree::type() const {
-  return type_;
-}
-
 Status RTree::serialize(Buffer* buff) const {
-  RETURN_NOT_OK(buff->write(&dim_num_, sizeof(dim_num_)));
   RETURN_NOT_OK(buff->write(&fanout_, sizeof(fanout_)));
-  auto type = (uint8_t)type_;
-  RETURN_NOT_OK(buff->write(&type, sizeof(type)));
   auto level_num = (unsigned)levels_.size();
   RETURN_NOT_OK(buff->write(&level_num, sizeof(level_num)));
 
@@ -250,18 +246,18 @@ Status RTree::serialize(Buffer* buff) const {
   return Status::Ok();
 }
 
-Status RTree::deserialize(ConstBuffer* cbuff) {
-  RETURN_NOT_OK(cbuff->read(&dim_num_, sizeof(dim_num_)));
+Status RTree::deserialize(ConstBuffer* cbuff, const Domain* domain) {
+  // TODO: check versions here
+
   RETURN_NOT_OK(cbuff->read(&fanout_, sizeof(fanout_)));
-  uint8_t type;
-  RETURN_NOT_OK(cbuff->read(&type, sizeof(uint8_t)));
-  type_ = (Datatype)type;
   unsigned level_num;
   RETURN_NOT_OK(cbuff->read(&level_num, sizeof(level_num)));
 
   levels_.clear();
   levels_.resize(level_num);
-  uint64_t mbr_size = 2 * dim_num_ * datatype_size(type_);
+  auto type = domain->type();
+  auto dim_num = domain->dim_num();
+  uint64_t mbr_size = 2 * dim_num * datatype_size(type);
   uint64_t mbr_num;
   for (unsigned i = 0; i < level_num; ++i) {
     RETURN_NOT_OK(cbuff->read(&mbr_num, sizeof(uint64_t)));
@@ -271,6 +267,8 @@ Status RTree::deserialize(ConstBuffer* cbuff) {
     RETURN_NOT_OK(cbuff->read(&levels_[i].mbrs_[0], mbrs_size));
   }
 
+  domain_ = domain;
+
   return Status::Ok();
 }
 
@@ -279,7 +277,7 @@ Status RTree::deserialize(ConstBuffer* cbuff) {
 /* ****************************** */
 
 Status RTree::build_tree(const std::vector<void*>& mbrs) {
-  switch (type_) {
+  switch (domain_->type()) {
     case Datatype::INT8:
       return build_tree<int8_t>(mbrs);
     case Datatype::UINT8:
@@ -355,7 +353,9 @@ RTree::Level RTree::build_leaf_level(const std::vector<void*>& mbrs) {
   Level new_level;
 
   // Allocate space
-  uint64_t mbr_size = 2 * dim_num_ * datatype_size(type_);
+  auto dim_num = domain_->dim_num();
+  auto type = domain_->type();
+  uint64_t mbr_size = 2 * dim_num * datatype_size(type);
   uint64_t leaf_level_size = mbrs.size() * mbr_size;
   new_level.mbr_num_ = mbrs.size();
   new_level.mbrs_.resize(leaf_level_size);
@@ -375,7 +375,9 @@ template <class T>
 RTree::Level RTree::build_level(const Level& level) {
   Level new_level;
 
-  uint64_t mbr_size = 2 * dim_num_ * datatype_size(type_);
+  auto dim_num = domain_->dim_num();
+  auto type = domain_->type();
+  uint64_t mbr_size = 2 * dim_num * datatype_size(type);
   new_level.mbr_num_ = (uint64_t)ceil((double)level.mbr_num_ / fanout_);
   uint64_t new_level_size = new_level.mbr_num_ * mbr_size;
   new_level.mbrs_.resize(new_level_size);
@@ -385,7 +387,7 @@ RTree::Level RTree::build_level(const Level& level) {
     auto mbr_num = std::min<uint64_t>(fanout_, level.mbr_num_ - mbrs_visited);
     auto mbr_at = (T*)(level.mbrs_.data() + offset_level);
     auto union_loc = (T*)(new_level.mbrs_.data() + offset_new_level);
-    utils::geometry::compute_mbr_union<T>(dim_num_, mbr_at, mbr_num, union_loc);
+    utils::geometry::compute_mbr_union<T>(dim_num, mbr_at, mbr_num, union_loc);
     mbrs_visited += mbr_num;
     offset_level += mbr_num * mbr_size;
     offset_new_level += mbr_size;
@@ -397,18 +399,16 @@ RTree::Level RTree::build_level(const Level& level) {
 
 RTree RTree::clone() const {
   RTree clone;
-  clone.dim_num_ = dim_num_;
+  clone.domain_ = domain_;
   clone.fanout_ = fanout_;
-  clone.type_ = type_;
   clone.levels_ = levels_;
 
   return clone;
 }
 
 void RTree::swap(RTree& rtree) {
-  std::swap(dim_num_, rtree.dim_num_);
+  std::swap(domain_, rtree.domain_);
   std::swap(fanout_, rtree.fanout_);
-  std::swap(type_, rtree.type_);
   std::swap(levels_, rtree.levels_);
 }
 

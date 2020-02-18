@@ -494,8 +494,8 @@ Status Dimension::set_domain(const void* domain) {
 
 Status Dimension::set_tile_extent(const void* tile_extent) {
   if (domain_ == nullptr)
-    return Status::DimensionError(
-        "Cannot set tile extent; Domain must be set first");
+    return LOG_STATUS(Status::DimensionError(
+        "Cannot set tile extent; Domain must be set first"));
 
   // Note: this check was added in release 1.6.0. Older arrays may have been
   // serialized with a null extent, and so it is still supported internally.

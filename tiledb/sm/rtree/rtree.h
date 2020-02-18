@@ -35,6 +35,7 @@
 
 #include <vector>
 
+#include "tiledb/sm/array_schema/domain.h"
 #include "tiledb/sm/misc/status.h"
 #include "tiledb/sm/misc/tile_overlap.h"
 
@@ -67,11 +68,7 @@ class RTree {
    * construct bottom up the tree based on these ``mbrs``.
    * The input MBRs will be copied into the leaf level.
    */
-  RTree(
-      Datatype type,
-      unsigned dim_num,
-      unsigned fanout,
-      const std::vector<void*>& mbrs);
+  RTree(const Domain* domain, unsigned fanout, const std::vector<void*>& mbrs);
 
   /** Destructor. */
   ~RTree();
@@ -92,8 +89,11 @@ class RTree {
   /*                 API               */
   /* ********************************* */
 
-  /** Returns the number of dimensions. */
+  /** The number of dimensions of the R-tree. */
   unsigned dim_num() const;
+
+  /** Returns the domain. */
+  const Domain* domain() const;
 
   /** Returns the fanout. */
   unsigned fanout() const;
@@ -124,14 +124,17 @@ class RTree {
    */
   uint64_t subtree_leaf_num(uint64_t level) const;
 
-  /** Returns the datatype of the R-Tree. */
-  Datatype type() const;
-
-  /** Serializes the contents of the object to the input buffer. */
+  /**
+   * Serializes the contents of the object to the input buffer.
+   * Note that `domain_` is not serialized in the buffer.
+   */
   Status serialize(Buffer* buff) const;
 
-  /** Deserializes the contents of the object from the input buffer. */
-  Status deserialize(ConstBuffer* cbuff);
+  /**
+   * Deserializes the contents of the object from the input buffer.
+   * It also sets the input domain, as that is not serialized.
+   */
+  Status deserialize(ConstBuffer* cbuff, const Domain* domain);
 
  private:
   /* ********************************* */
@@ -186,14 +189,11 @@ class RTree {
   /*         PRIVATE ATTRIBUTES        */
   /* ********************************* */
 
-  /** The number of dimensions. */
-  unsigned dim_num_;
+  /** The domain. */
+  const Domain* domain_;
 
   /** The fanout of the tree. */
   unsigned fanout_;
-
-  /** The data type. */
-  Datatype type_;
 
   /**
    * The tree levels. The first level is the root. Note that the root

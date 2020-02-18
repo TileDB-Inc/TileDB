@@ -841,7 +841,7 @@ Status FragmentMetadata::load_rtree(const EncryptionKey& encryption_key) {
       read_generic_tile_from_file(encryption_key, gt_offsets_.rtree_, &buff));
 
   ConstBuffer cbuff(&buff);
-  RETURN_NOT_OK(rtree_.deserialize(&cbuff));
+  RETURN_NOT_OK(rtree_.deserialize(&cbuff, array_schema_->domain()));
 
   loaded_metadata_.rtree_ = true;
 
@@ -1358,9 +1358,7 @@ Status FragmentMetadata::load_sparse_tile_num(ConstBuffer* buff) {
 }
 
 Status FragmentMetadata::create_rtree() {
-  auto dim_num = array_schema_->dim_num();
-  auto type = array_schema_->domain()->type();
-  auto rtree = RTree(type, dim_num, constants::rtree_fanout, mbrs_);
+  auto rtree = RTree(array_schema_->domain(), constants::rtree_fanout, mbrs_);
   rtree_ = std::move(rtree);
   return Status::Ok();
 }

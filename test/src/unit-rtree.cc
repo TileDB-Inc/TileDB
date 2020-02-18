@@ -30,7 +30,9 @@
  * Tests the `RTree` class.
  */
 
+#include "tiledb/sm/array_schema/dimension.h"
 #include "tiledb/sm/enums/datatype.h"
+#include "tiledb/sm/enums/layout.h"
 #include "tiledb/sm/rtree/rtree.h"
 
 #include <catch.hpp>
@@ -38,11 +40,34 @@
 
 using namespace tiledb::sm;
 
+Domain create_domain(
+    const std::vector<std::string>& dim_names,
+    const std::vector<Datatype>& dim_types,
+    const std::vector<const void*>& dim_domains,
+    const std::vector<const void*>& dim_tile_extents) {
+  assert(!dim_names.empty());
+  assert(dim_names.size() == dim_types.size());
+  assert(dim_names.size() == dim_domains.size());
+  assert(dim_names.size() == dim_tile_extents.size());
+
+  Domain domain(dim_types[0]);
+  for (size_t d = 0; d < dim_names.size(); ++d) {
+    Dimension dim(dim_names[d], dim_types[d]);
+    dim.set_domain(dim_domains[d]);
+    dim.set_tile_extent(dim_tile_extents[d]);
+    domain.add_dimension(&dim);
+  }
+  domain.init(Layout::ROW_MAJOR, Layout::ROW_MAJOR);
+
+  return domain;
+}
+
 TEST_CASE("RTree: Test R-Tree, basic functions", "[rtree][basic]") {
   // Empty tree
   RTree rtree0;
   CHECK(rtree0.height() == 0);
   CHECK(rtree0.dim_num() == 0);
+  CHECK(rtree0.domain() == nullptr);
   CHECK(rtree0.fanout() == 0);
   int r0[] = {1, 10};
   std::vector<const int*> range0;
@@ -52,13 +77,18 @@ TEST_CASE("RTree: Test R-Tree, basic functions", "[rtree][basic]") {
   CHECK(tile_overlap.tiles_.empty());
 
   // 1D
+  int32_t dim_dom[] = {1, 1000};
+  int32_t dim_extent = 10;
+  Domain dom1 =
+      create_domain({"d"}, {Datatype::INT32}, {dim_dom}, {&dim_extent});
   std::vector<void*> mbrs_1d;
   int m1[] = {1, 3, 5, 10, 20, 22};
   mbrs_1d.resize(3);
   for (int i = 0; i < 3; ++i)
     mbrs_1d[i] = &m1[2 * i];
-  RTree rtree1(Datatype::INT32, 1, 3, mbrs_1d);
+  RTree rtree1(&dom1, 3, mbrs_1d);
   CHECK(rtree1.height() == 2);
+  CHECK(rtree1.dim_num() == 1);
   CHECK(rtree1.subtree_leaf_num(0) == 3);
   CHECK(rtree1.subtree_leaf_num(1) == 1);
   CHECK(rtree1.subtree_leaf_num(2) == 0);
@@ -104,16 +134,22 @@ TEST_CASE("RTree: Test R-Tree, basic functions", "[rtree][basic]") {
   CHECK(ratio1 == 0.0);
 
   // 2D
+  int64_t dim_dom_2[] = {1, 1000};
+  int64_t dim_extent_2 = 10;
+  Domain dom2 = create_domain(
+      {"d1", "d2"},
+      {Datatype::INT64, Datatype::INT64},
+      {dim_dom_2, dim_dom_2},
+      {&dim_extent_2, &dim_extent_2});
   std::vector<void*> mbrs_2d;
   int64_t m2[] = {1, 3, 5, 10, 20, 22, 24, 25, 11, 15, 30, 31};
   mbrs_2d.resize(3);
   for (int i = 0; i < 3; ++i)
     mbrs_2d[i] = &m2[4 * i];
-  RTree rtree2(Datatype::INT64, 2, 5, mbrs_2d);
+  RTree rtree2(&dom2, 5, mbrs_2d);
   CHECK(rtree2.height() == 2);
   CHECK(rtree2.dim_num() == 2);
   CHECK(rtree2.fanout() == 5);
-  CHECK(rtree2.type() == Datatype::INT64);
   CHECK(!std::memcmp(rtree2.leaf(0), &m2[0], 4 * sizeof(int64_t)));
   CHECK(!std::memcmp(rtree2.leaf(1), &m2[4], 4 * sizeof(int64_t)));
   CHECK(!std::memcmp(rtree2.leaf(2), &m2[8], 4 * sizeof(int64_t)));
@@ -143,7 +179,11 @@ TEST_CASE("RTree: Test R-Tree, basic functions", "[rtree][basic]") {
   mbrs_f.resize(3);
   for (int i = 0; i < 3; ++i)
     mbrs_f[i] = &mf[2 * i];
-  RTree rtreef(Datatype::FLOAT32, 1, 5, mbrs_f);
+  float dim_dom_f[] = {1.0, 1000.0};
+  float dim_extent_f = 10.0;
+  Domain dom2f =
+      create_domain({"d"}, {Datatype::FLOAT32}, {dim_dom_f}, {&dim_extent_f});
+  RTree rtreef(&dom2f, 5, mbrs_f);
   std::vector<const float*> rangef;
   float mbrf[] = {5.0f, 10.0f};
   float rf_no_left[] = {0.0, 1.0};
@@ -185,11 +225,14 @@ TEST_CASE("RTree: Test 1D R-tree, height 2", "[rtree][1d][2h]") {
     mbrs[i] = &m[2 * i];
 
   // Build tree
-  RTree rtree(Datatype::INT32, 1, 3, mbrs);
+  int32_t dim_dom[] = {1, 1000};
+  int32_t dim_extent = 10;
+  Domain dom1 =
+      create_domain({"d"}, {Datatype::INT32}, {dim_dom}, {&dim_extent});
+  RTree rtree(&dom1, 3, mbrs);
   CHECK(rtree.height() == 2);
   CHECK(rtree.dim_num() == 1);
   CHECK(rtree.fanout() == 3);
-  CHECK(rtree.type() == Datatype::INT32);
 
   // Subtree leaf num
   CHECK(rtree.subtree_leaf_num(0) == 3);
@@ -230,11 +273,14 @@ TEST_CASE("RTree: Test 1D R-tree, height 3", "[rtree][1d][3h]") {
     mbrs.push_back(&m[2 * i]);
 
   // Build tree
-  RTree rtree(Datatype::INT32, 1, 3, mbrs);
+  int32_t dim_dom[] = {1, 1000};
+  int32_t dim_extent = 10;
+  Domain dom1 =
+      create_domain({"d"}, {Datatype::INT32}, {dim_dom}, {&dim_extent});
+  RTree rtree(&dom1, 3, mbrs);
   CHECK(rtree.height() == 3);
   CHECK(rtree.dim_num() == 1);
   CHECK(rtree.fanout() == 3);
-  CHECK(rtree.type() == Datatype::INT32);
 
   // Subtree leaf num
   CHECK(rtree.subtree_leaf_num(0) == 9);
@@ -296,11 +342,17 @@ TEST_CASE("RTree: Test 2D R-tree, height 2", "[rtree][2d][2h]") {
     mbrs.push_back(&m[4 * i]);
 
   // Build tree
-  RTree rtree(Datatype::INT32, 2, 3, mbrs);
+  int32_t dim_dom[] = {1, 1000};
+  int32_t dim_extent = 10;
+  Domain dom2 = create_domain(
+      {"d1", "d2"},
+      {Datatype::INT32, Datatype::INT32},
+      {dim_dom, dim_dom},
+      {&dim_extent, &dim_extent});
+  RTree rtree(&dom2, 3, mbrs);
   CHECK(rtree.height() == 2);
   CHECK(rtree.dim_num() == 2);
   CHECK(rtree.fanout() == 3);
-  CHECK(rtree.type() == Datatype::INT32);
 
   // Subtree leaf num
   CHECK(rtree.subtree_leaf_num(0) == 3);
@@ -346,11 +398,17 @@ TEST_CASE("RTree: Test 2D R-tree, height 3", "[rtree][2d][3h]") {
     mbrs.push_back(&m[4 * i]);
 
   // Build tree
-  RTree rtree(Datatype::INT32, 2, 3, mbrs);
+  int32_t dim_dom[] = {1, 1000};
+  int32_t dim_extent = 10;
+  Domain dom2 = create_domain(
+      {"d1", "d2"},
+      {Datatype::INT32, Datatype::INT32},
+      {dim_dom, dim_dom},
+      {&dim_extent, &dim_extent});
+  RTree rtree(&dom2, 3, mbrs);
   CHECK(rtree.height() == 3);
   CHECK(rtree.dim_num() == 2);
   CHECK(rtree.fanout() == 3);
-  CHECK(rtree.type() == Datatype::INT32);
 
   // Subtree leaf num
   CHECK(rtree.subtree_leaf_num(0) == 9);

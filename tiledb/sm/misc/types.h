@@ -86,6 +86,11 @@ class Range {
     return &range_[0];
   }
 
+  /** Returns true if the range is empty. */
+  bool empty() const {
+    return range_.empty();
+  }
+
   /** Returns the range size in bytes. */
   uint64_t size() const {
     return range_.size();
