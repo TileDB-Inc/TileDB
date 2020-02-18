@@ -57,7 +57,9 @@ Dimension::Dimension() {
   set_expand_range_v_func();
   set_expand_to_tile_func();
   set_oob_func();
+  set_covered_func();
   set_overlap_func();
+  set_overlap_ratio_func();
   set_tile_num_func();
   set_value_in_range_func();
 }
@@ -73,7 +75,9 @@ Dimension::Dimension(const std::string& name, Datatype type)
   set_expand_range_v_func();
   set_expand_to_tile_func();
   set_oob_func();
+  set_covered_func();
   set_overlap_func();
+  set_overlap_ratio_func();
   set_tile_num_func();
   set_value_in_range_func();
 }
@@ -218,7 +222,9 @@ Status Dimension::deserialize(ConstBuffer* buff, Datatype type) {
   set_expand_range_v_func();
   set_expand_to_tile_func();
   set_oob_func();
+  set_covered_func();
   set_overlap_func();
+  set_overlap_ratio_func();
   set_tile_num_func();
   set_value_in_range_func();
 
@@ -260,9 +266,7 @@ bool Dimension::is_anonymous() const {
 }
 
 template <class T>
-void Dimension::compute_mbr(
-    const Dimension* dim, const Tile& tile, Range* mbr) {
-  assert(dim != nullptr);
+void Dimension::compute_mbr(const Tile& tile, Range* mbr) {
   assert(mbr != nullptr);
   auto data = (const T*)(tile.internal_data());
   assert(data != nullptr);
@@ -275,12 +279,12 @@ void Dimension::compute_mbr(
 
   // Expand the MBR with the rest tile values
   for (uint64_t c = 1; c < cell_num; ++c)
-    dim->expand_range_v(&data[c], mbr);
+    expand_range_v<T>(&data[c], mbr);
 }
 
 void Dimension::compute_mbr(const Tile& tile, Range* mbr) const {
   assert(compute_mbr_func_ != nullptr);
-  compute_mbr_func_(this, tile, mbr);
+  compute_mbr_func_(tile, mbr);
 }
 
 template <class T>
@@ -299,11 +303,9 @@ void Dimension::crop_range(Range* range) const {
 }
 
 template <class T>
-void Dimension::expand_range_v(const Dimension* dim, const void* v, Range* r) {
-  assert(dim != nullptr);
+void Dimension::expand_range_v(const void* v, Range* r) {
   assert(v != nullptr);
   assert(!r->empty());
-  (void)dim;  // Not used here
   auto rt = (const T*)r->data();
   auto vt = (const T*)v;
   T res[2] = {std::min(rt[0], *vt), std::max(rt[1], *vt)};
@@ -312,15 +314,13 @@ void Dimension::expand_range_v(const Dimension* dim, const void* v, Range* r) {
 
 void Dimension::expand_range_v(const void* v, Range* r) const {
   assert(expand_range_v_func_ != nullptr);
-  expand_range_v_func_(this, v, r);
+  expand_range_v_func_(v, r);
 }
 
 template <class T>
-void Dimension::expand_range(const Dimension* dim, const Range& r1, Range* r2) {
-  assert(dim != nullptr);
+void Dimension::expand_range(const Range& r1, Range* r2) {
   assert(!r1.empty());
   assert(!r2->empty());
-  (void)dim;  // Not used here
   auto d1 = (const T*)r1.data();
   auto d2 = (const T*)r2->data();
   T res[2] = {std::min(d1[0], d2[0]), std::max(d1[1], d2[1])};
@@ -329,7 +329,7 @@ void Dimension::expand_range(const Dimension* dim, const Range& r1, Range* r2) {
 
 void Dimension::expand_range(const Range& r1, Range* r2) const {
   assert(expand_range_func_ != nullptr);
-  expand_range_func_(this, r1, r2);
+  expand_range_func_(r1, r2);
 }
 
 template <class T>
@@ -380,12 +380,27 @@ bool Dimension::oob(const void* coord, std::string* err_msg) const {
 }
 
 template <class T>
-bool Dimension::overlap(
-    const Dimension* dim, const Range& r1, const Range& r2) {
-  assert(dim != nullptr);
+bool Dimension::covered(const Range& r1, const Range& r2) {
   assert(!r1.empty());
   assert(!r2.empty());
-  (void)dim;  // Not used here
+
+  auto d1 = (const T*)r1.data();
+  auto d2 = (const T*)r2.data();
+  assert(d1[0] <= d1[1]);
+  assert(d2[0] <= d2[1]);
+
+  return d1[0] >= d2[0] && d1[1] <= d2[1];
+}
+
+bool Dimension::covered(const Range& r1, const Range& r2) const {
+  assert(covered_func_ != nullptr);
+  return covered_func_(r1, r2);
+}
+
+template <class T>
+bool Dimension::overlap(const Range& r1, const Range& r2) {
+  assert(!r1.empty());
+  assert(!r2.empty());
 
   auto d1 = (const T*)r1.data();
   auto d2 = (const T*)r2.data();
@@ -394,7 +409,44 @@ bool Dimension::overlap(
 
 bool Dimension::overlap(const Range& r1, const Range& r2) const {
   assert(overlap_func_ != nullptr);
-  return overlap_func_(this, r1, r2);
+  return overlap_func_(r1, r2);
+}
+
+template <class T>
+double Dimension::overlap_ratio(const Range& r1, const Range& r2) {
+  assert(!r1.empty());
+  assert(!r2.empty());
+
+  auto d1 = (const T*)r1.data();
+  auto d2 = (const T*)r2.data();
+  assert(d1[0] <= d1[1]);
+  assert(d2[0] <= d2[1]);
+
+  // No overlap
+  if (d1[0] > d2[1] || d1[1] < d2[0])
+    return 0.0;
+
+  // Compute ratio
+  auto overlap_start = std::max(d1[0], d2[0]);
+  auto overlap_end = std::min(d1[1], d2[1]);
+  auto overlap_range = overlap_end - overlap_start;
+  auto mbr_range = d2[1] - d2[0];
+  auto max = std::numeric_limits<double>::max();
+  if (std::numeric_limits<T>::is_integer) {
+    overlap_range += 1;
+    mbr_range += 1;
+  } else {
+    if (overlap_range == 0)
+      overlap_range = std::nextafter(overlap_range, max);
+    if (mbr_range == 0)
+      mbr_range = std::nextafter(mbr_range, max);
+  }
+  return (double)overlap_range / mbr_range;
+}
+
+double Dimension::overlap_ratio(const Range& r1, const Range& r2) const {
+  assert(overlap_ratio_func_ != nullptr);
+  return overlap_ratio_func_(r1, r2);
 }
 
 template <class T>
@@ -422,9 +474,7 @@ uint64_t Dimension::tile_num(const Range& range) const {
 }
 
 template <class T>
-bool Dimension::value_in_range(
-    const Dimension* dim, const void* value, const Range& range) {
-  (void)*dim;  // Not used here
+bool Dimension::value_in_range(const void* value, const Range& range) {
   assert(value != nullptr);
   assert(!range.empty());
   auto v = (const T*)value;
@@ -434,7 +484,7 @@ bool Dimension::value_in_range(
 
 bool Dimension::value_in_range(const void* value, const Range& range) const {
   assert(value_in_range_func_ != nullptr);
-  return value_in_range_func_(this, value, range);
+  return value_in_range_func_(value, range);
 }
 
 // ===== FORMAT =====
@@ -494,8 +544,8 @@ Status Dimension::set_domain(const void* domain) {
 
 Status Dimension::set_tile_extent(const void* tile_extent) {
   if (domain_ == nullptr)
-    return Status::DimensionError(
-        "Cannot set tile extent; Domain must be set first");
+    return LOG_STATUS(Status::DimensionError(
+        "Cannot set tile extent; Domain must be set first"));
 
   // Note: this check was added in release 1.6.0. Older arrays may have been
   // serialized with a null extent, and so it is still supported internally.
@@ -1085,6 +1135,59 @@ void Dimension::set_oob_func() {
   }
 }
 
+void Dimension::set_covered_func() {
+  switch (type_) {
+    case Datatype::INT32:
+      covered_func_ = covered<int32_t>;
+      break;
+    case Datatype::INT64:
+      covered_func_ = covered<int64_t>;
+      break;
+    case Datatype::INT8:
+      covered_func_ = covered<int8_t>;
+      break;
+    case Datatype::UINT8:
+      covered_func_ = covered<uint8_t>;
+      break;
+    case Datatype::INT16:
+      covered_func_ = covered<int16_t>;
+      break;
+    case Datatype::UINT16:
+      covered_func_ = covered<uint16_t>;
+      break;
+    case Datatype::UINT32:
+      covered_func_ = covered<uint32_t>;
+      break;
+    case Datatype::UINT64:
+      covered_func_ = covered<uint64_t>;
+      break;
+    case Datatype::FLOAT32:
+      covered_func_ = covered<float>;
+      break;
+    case Datatype::FLOAT64:
+      covered_func_ = covered<double>;
+      break;
+    case Datatype::DATETIME_YEAR:
+    case Datatype::DATETIME_MONTH:
+    case Datatype::DATETIME_WEEK:
+    case Datatype::DATETIME_DAY:
+    case Datatype::DATETIME_HR:
+    case Datatype::DATETIME_MIN:
+    case Datatype::DATETIME_SEC:
+    case Datatype::DATETIME_MS:
+    case Datatype::DATETIME_US:
+    case Datatype::DATETIME_NS:
+    case Datatype::DATETIME_PS:
+    case Datatype::DATETIME_FS:
+    case Datatype::DATETIME_AS:
+      covered_func_ = covered<int64_t>;
+      break;
+    default:
+      covered_func_ = nullptr;
+      break;
+  }
+}
+
 void Dimension::set_overlap_func() {
   switch (type_) {
     case Datatype::INT32:
@@ -1134,6 +1237,59 @@ void Dimension::set_overlap_func() {
       break;
     default:
       overlap_func_ = nullptr;
+      break;
+  }
+}
+
+void Dimension::set_overlap_ratio_func() {
+  switch (type_) {
+    case Datatype::INT32:
+      overlap_ratio_func_ = overlap_ratio<int32_t>;
+      break;
+    case Datatype::INT64:
+      overlap_ratio_func_ = overlap_ratio<int64_t>;
+      break;
+    case Datatype::INT8:
+      overlap_ratio_func_ = overlap_ratio<int8_t>;
+      break;
+    case Datatype::UINT8:
+      overlap_ratio_func_ = overlap_ratio<uint8_t>;
+      break;
+    case Datatype::INT16:
+      overlap_ratio_func_ = overlap_ratio<int16_t>;
+      break;
+    case Datatype::UINT16:
+      overlap_ratio_func_ = overlap_ratio<uint16_t>;
+      break;
+    case Datatype::UINT32:
+      overlap_ratio_func_ = overlap_ratio<uint32_t>;
+      break;
+    case Datatype::UINT64:
+      overlap_ratio_func_ = overlap_ratio<uint64_t>;
+      break;
+    case Datatype::FLOAT32:
+      overlap_ratio_func_ = overlap_ratio<float>;
+      break;
+    case Datatype::FLOAT64:
+      overlap_ratio_func_ = overlap_ratio<double>;
+      break;
+    case Datatype::DATETIME_YEAR:
+    case Datatype::DATETIME_MONTH:
+    case Datatype::DATETIME_WEEK:
+    case Datatype::DATETIME_DAY:
+    case Datatype::DATETIME_HR:
+    case Datatype::DATETIME_MIN:
+    case Datatype::DATETIME_SEC:
+    case Datatype::DATETIME_MS:
+    case Datatype::DATETIME_US:
+    case Datatype::DATETIME_NS:
+    case Datatype::DATETIME_PS:
+    case Datatype::DATETIME_FS:
+    case Datatype::DATETIME_AS:
+      overlap_ratio_func_ = overlap_ratio<int64_t>;
+      break;
+    default:
+      overlap_ratio_func_ = nullptr;
       break;
   }
 }

@@ -181,14 +181,12 @@ class FragmentMetadata {
   const URI& fragment_uri() const;
 
   /**
-   * Retrieves the overlap of all MBRs with the input range, which is given
-   * as a vector of [low, high] intervals per dimension. The encryption
+   * Retrieves the overlap of all MBRs with the input ND range. The encryption
    * key is needed because certain metadata may have to be loaded on-the-fly.
    */
-  template <class T>
   Status get_tile_overlap(
       const EncryptionKey& encryption_key,
-      const std::vector<const T*>& range,
+      const NDRange& range,
       TileOverlap* tile_overlap);
 
   /**
@@ -205,9 +203,6 @@ class FragmentMetadata {
 
   /** Loads the basic metadata from storage. */
   Status load(const EncryptionKey& encryption_key);
-
-  /** Returns the MBRs of the fragment. Used in format version <=2. */
-  const std::vector<void*> mbrs() const;
 
   /** Stores all the metadata to storage. */
   Status store(const EncryptionKey& encryption_key);
@@ -333,7 +328,10 @@ class FragmentMetadata {
       uint64_t* offset);
 
   /** Returns the MBR of the input tile. */
-  const void* mbr(uint64_t tile_idx) const;
+  const NDRange& mbr(uint64_t tile_idx) const;
+
+  /** Returns all the MBRs of all tiles in the fragment. */
+  const std::vector<NDRange>& mbrs() const;
 
   /**
    * Retrieves the size of the tile when it is persisted (e.g. the size of the
@@ -484,10 +482,6 @@ class FragmentMetadata {
   /** Keeps track of which metadata has been loaded. */
   LoadedMetadata loaded_metadata_;
 
-  // TODO(sp): remove after the new dense algorithm is implemented
-  /** The MBRs (applicable only to the sparse case with irregular tiles). */
-  std::vector<void*> mbrs_;
-
   /** The size of the fragment metadata file. */
   uint64_t meta_file_size_;
 
@@ -573,9 +567,6 @@ class FragmentMetadata {
    */
   template <class T>
   std::vector<uint64_t> compute_overlapping_tile_ids(const T* subarray) const;
-
-  /** Creates an RTree (stored in `rtree_`) on top of `mbrs_`. */
-  Status create_rtree();
 
   /**
    * Retrieves the tile domain for the input `subarray` based on the expanded

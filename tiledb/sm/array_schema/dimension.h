@@ -126,7 +126,7 @@ class Dimension {
    * `tile`.
    */
   template <class T>
-  static void compute_mbr(const Dimension* dim, const Tile& tile, Range* mbr);
+  static void compute_mbr(const Tile& tile, Range* mbr);
 
   /**
    * Crops the input 1D range such that it does not exceed the
@@ -146,14 +146,14 @@ class Dimension {
 
   /** Expand 1D range `r` using value `v`. */
   template <class T>
-  static void expand_range_v(const Dimension* dim, const void* v, Range* r);
+  static void expand_range_v(const void* v, Range* r);
 
   /** Expand 1D range `r2` using 1D range `r1`. */
   void expand_range(const Range& r1, Range* r2) const;
 
   /** Expand 1D range `r2` using 1D range `r1`. */
   template <class T>
-  static void expand_range(const Dimension* dim, const Range& r1, Range* r2);
+  static void expand_range(const Range& r1, Range* r2);
 
   /**
    * Expands the input 1D range to coincide with the dimension tiles.
@@ -195,12 +195,26 @@ class Dimension {
   static bool oob(
       const Dimension* dim, const void* coord, std::string* err_msg);
 
+  /** Return true if r1 is fully covered by r2. */
+  bool covered(const Range& r1, const Range& r2) const;
+
+  /** Return true if r1 is fully covered by r2. */
+  template <class T>
+  static bool covered(const Range& r1, const Range& r2);
+
   /** Return true if the input 1D ranges overlap. */
   bool overlap(const Range& r1, const Range& r2) const;
 
   /** Return true if the input 1D ranges overlap. */
   template <class T>
-  static bool overlap(const Dimension* dim, const Range& r1, const Range& r2);
+  static bool overlap(const Range& r1, const Range& r2);
+
+  /** Return ratio of the overalp of the two input 1D ranges over `r2`. */
+  double overlap_ratio(const Range& r1, const Range& r2) const;
+
+  /** Return ratio of the overalp of the two input 1D ranges over `r2`. */
+  template <class T>
+  static double overlap_ratio(const Range& r1, const Range& r2);
 
   /** Return the number of tiles the input range intersects. */
   uint64_t tile_num(const Range& range) const;
@@ -211,8 +225,7 @@ class Dimension {
 
   /** Returns `true` if `value` is within the 1D `range`. */
   template <class T>
-  static bool value_in_range(
-      const Dimension* dim, const void* value, const Range& range);
+  static bool value_in_range(const void* value, const Range& range);
 
   /** Returns `true` if `value` is within the 1D `range`. */
   bool value_in_range(const void* value, const Range& range) const;
@@ -276,8 +289,7 @@ class Dimension {
    * Stores the appropriate templated compute_mbr() function based on the
    * dimension datatype.
    */
-  std::function<void(const Dimension* dim, const Tile&, Range*)>
-      compute_mbr_func_;
+  std::function<void(const Tile&, Range*)> compute_mbr_func_;
 
   /**
    * Stores the appropriate templated crop_range() function based on the
@@ -289,15 +301,13 @@ class Dimension {
    * Stores the appropriate templated expand_range() function based on the
    * dimension datatype.
    */
-  std::function<void(const Dimension* dim, const void*, Range*)>
-      expand_range_v_func_;
+  std::function<void(const void*, Range*)> expand_range_v_func_;
 
   /**
    * Stores the appropriate templated expand_range() function based on the
    * dimension datatype.
    */
-  std::function<void(const Dimension* dim, const Range&, Range*)>
-      expand_range_func_;
+  std::function<void(const Range&, Range*)> expand_range_func_;
 
   /**
    * Stores the appropriate templated expand_to_tile() function based on the
@@ -313,11 +323,22 @@ class Dimension {
       oob_func_;
 
   /**
+   * Stores the appropriate templated covered() function based on the
+   * dimension datatype.
+   */
+  std::function<bool(const Range&, const Range&)> covered_func_;
+
+  /**
    * Stores the appropriate templated overlap() function based on the
    * dimension datatype.
    */
-  std::function<bool(const Dimension* dim, const Range&, const Range&)>
-      overlap_func_;
+  std::function<bool(const Range&, const Range&)> overlap_func_;
+
+  /**
+   * Stores the appropriate templated overlap_ratio() function based on the
+   * dimension datatype.
+   */
+  std::function<double(const Range&, const Range&)> overlap_ratio_func_;
 
   /**
    * Stores the appropriate templated tile_num() function based on the
@@ -329,8 +350,7 @@ class Dimension {
    * Stores the appropriate templated value_in_range() function based on the
    * dimension datatype.
    */
-  std::function<bool(const Dimension* dim, const void*, const Range&)>
-      value_in_range_func_;
+  std::function<bool(const void*, const Range&)> value_in_range_func_;
 
   /* ********************************* */
   /*          PRIVATE METHODS          */
@@ -431,8 +451,14 @@ class Dimension {
   /** Sets the templated oob() function. */
   void set_oob_func();
 
+  /** Sets the templated covered() function. */
+  void set_covered_func();
+
   /** Sets the templated overlap() function. */
   void set_overlap_func();
+
+  /** Sets the templated overlap_ratio() function. */
+  void set_overlap_ratio_func();
 
   /** Sets the templated tile_num() function. */
   void set_tile_num_func();

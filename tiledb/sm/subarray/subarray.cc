@@ -1233,19 +1233,18 @@ Status Subarray::compute_tile_overlap() {
   // Compute estimated tile overlap in parallel over fragments and ranges
   auto statuses = parallel_for_2d(
       0, fragment_num, 0, range_num, [&](unsigned i, uint64_t j) {
-        auto range = this->range<T>(j);
         if (meta[i]->dense()) {  // Dense fragment
+          auto range = this->range<T>(j);
           tile_overlap_[i][j] = get_tile_overlap<T>(range, i);
         } else {  // Sparse fragment
-          RETURN_NOT_OK(meta[i]->get_tile_overlap<T>(
+          const auto& range = this->ndrange(j);
+          RETURN_NOT_OK(meta[i]->get_tile_overlap(
               *encryption_key, range, &(tile_overlap_[i][j])));
         }
         return Status::Ok();
       });
-  for (const auto& st : statuses) {
-    if (!st.ok())
-      return st;
-  }
+  for (const auto& st : statuses)
+    RETURN_NOT_OK(st);
 
   tile_overlap_computed_ = true;
 
