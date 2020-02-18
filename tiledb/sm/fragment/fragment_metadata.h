@@ -181,14 +181,12 @@ class FragmentMetadata {
   const URI& fragment_uri() const;
 
   /**
-   * Retrieves the overlap of all MBRs with the input range, which is given
-   * as a vector of [low, high] intervals per dimension. The encryption
+   * Retrieves the overlap of all MBRs with the input ND range. The encryption
    * key is needed because certain metadata may have to be loaded on-the-fly.
    */
-  template <class T>
   Status get_tile_overlap(
       const EncryptionKey& encryption_key,
-      const std::vector<const T*>& range,
+      const NDRange& range,
       TileOverlap* tile_overlap);
 
   /**

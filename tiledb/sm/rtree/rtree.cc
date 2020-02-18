@@ -31,6 +31,7 @@
  */
 
 #include "tiledb/sm/rtree/rtree.h"
+#include "tiledb/sm/array_schema/dimension.h"
 #include "tiledb/sm/buffer/buffer.h"
 #include "tiledb/sm/buffer/const_buffer.h"
 #include "tiledb/sm/enums/datatype.h"
@@ -102,7 +103,6 @@ unsigned RTree::fanout() const {
   return fanout_;
 }
 
-template <class T>
 TileOverlap RTree::get_tile_overlap(const NDRange& range) const {
   TileOverlap overlap;
 
@@ -126,10 +126,19 @@ TileOverlap RTree::get_tile_overlap(const NDRange& range) const {
     auto level = entry.level_;
     auto mbr_idx = entry.mbr_idx_;
     auto offset = entry.mbr_idx_ * mbr_size;
-    auto mbr = levels_[level].mbrs_.data() + offset;
+    auto mbr = (const unsigned char*)(levels_[level].mbrs_.data() + offset);
+
+    // TODO: fix
+    NDRange ndmbr(dim_num);
+    uint64_t off = 0;
+    for (unsigned d = 0; d < dim_num; ++d) {
+      auto r_size = 2 * domain_->dimension(d)->coord_size();
+      ndmbr[d].set_range(&mbr[off], r_size);
+      off += r_size;
+    }
 
     // Get
-    auto ratio = this->range_overlap<T>(range, (T*)mbr);
+    auto ratio = this->range_overlap(domain_, range, ndmbr);
 
     // If there is overlap
     if (ratio != 0.0) {
@@ -175,43 +184,22 @@ const void* RTree::leaf(uint64_t leaf_idx) const {
   return (const void*)&(levels_.back().mbrs_[leaf_idx * mbr_size]);
 }
 
-template <class T>
-double RTree::range_overlap(const NDRange& range, const T* mbr) {
+double RTree::range_overlap(
+    const Domain* domain, const NDRange& range, const NDRange& mbr) {
   double ratio = 1.0;
   auto dim_num = (unsigned)range.size();
-  assert(dim_num == domain_->dim_num());
+  assert(dim_num == domain->dim_num());
 
   for (unsigned d = 0; d < dim_num; ++d) {
-    auto r = (const T*)range[d].data();
-    assert(r[0] <= r[1]);
-    assert(mbr[2 * d] <= mbr[2 * d + 1]);
+    if (!domain->dimension(d)->overlap(range[d], mbr[d]))
+      return 0.0;
 
-    // No overlap
-    if (r[0] > mbr[2 * d + 1] || r[1] < mbr[2 * d]) {
-      ratio = 0.0;
-      break;
-    }
-
-    // Update ratio
-    auto overlap_start = std::max(r[0], mbr[2 * d]);
-    auto overlap_end = std::min(r[1], mbr[2 * d + 1]);
-    auto overlap_range = overlap_end - overlap_start;
-    auto mbr_range = mbr[2 * d + 1] - mbr[2 * d];
-    auto max = std::numeric_limits<T>::max();
-    if (std::numeric_limits<T>::is_integer) {
-      overlap_range += 1;
-      mbr_range += 1;
-    } else {
-      if (overlap_range == 0)
-        overlap_range = std::nextafter(overlap_range, max);
-      if (mbr_range == 0)
-        mbr_range = std::nextafter(mbr_range, max);
-    }
-    ratio *= (double)overlap_range / mbr_range;
+    ratio *= domain->dimension(d)->overlap_ratio(range[d], mbr[d]);
 
     // If ratio goes to 0, then the subarray overlap is much smaller than the
     // volume of the MBR. Since we have already guaranteed that there is an
     // overlap above, we should set the ratio to epsilon.
+    auto max = std::numeric_limits<double>::max();
     if (ratio == 0)
       ratio = std::nextafter(0, max);
   }
@@ -420,49 +408,6 @@ void RTree::swap(RTree& rtree) {
   std::swap(fanout_, rtree.fanout_);
   std::swap(levels_, rtree.levels_);
 }
-
-// Explicit template instantiations
-
-template TileOverlap RTree::get_tile_overlap<int8_t>(
-    const NDRange& range) const;
-template TileOverlap RTree::get_tile_overlap<uint8_t>(
-    const NDRange& range) const;
-template TileOverlap RTree::get_tile_overlap<int16_t>(
-    const NDRange& range) const;
-template TileOverlap RTree::get_tile_overlap<uint16_t>(
-    const NDRange& range) const;
-template TileOverlap RTree::get_tile_overlap<int32_t>(
-    const NDRange& range) const;
-template TileOverlap RTree::get_tile_overlap<uint32_t>(
-    const NDRange& range) const;
-template TileOverlap RTree::get_tile_overlap<int64_t>(
-    const NDRange& range) const;
-template TileOverlap RTree::get_tile_overlap<uint64_t>(
-    const NDRange& range) const;
-template TileOverlap RTree::get_tile_overlap<float>(const NDRange& range) const;
-template TileOverlap RTree::get_tile_overlap<double>(
-    const NDRange& range) const;
-
-template double RTree::range_overlap<int8_t>(
-    const NDRange& range, const int8_t* mbr);
-template double RTree::range_overlap<uint8_t>(
-    const NDRange& range, const uint8_t* mbr);
-template double RTree::range_overlap<int16_t>(
-    const NDRange& range, const int16_t* mbr);
-template double RTree::range_overlap<uint16_t>(
-    const NDRange& range, const uint16_t* mbr);
-template double RTree::range_overlap<int32_t>(
-    const NDRange& range, const int32_t* mbr);
-template double RTree::range_overlap<uint32_t>(
-    const NDRange& range, const uint32_t* mbr);
-template double RTree::range_overlap<int64_t>(
-    const NDRange& range, const int64_t* mbr);
-template double RTree::range_overlap<uint64_t>(
-    const NDRange& range, const uint64_t* mbr);
-template double RTree::range_overlap<float>(
-    const NDRange& range, const float* mbr);
-template double RTree::range_overlap<double>(
-    const NDRange& range, const double* mbr);
 
 }  // namespace sm
 }  // namespace tiledb

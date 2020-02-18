@@ -102,7 +102,6 @@ class RTree {
    * Returns the tile overlap of the input range with the MBRs stored
    * in the RTree.
    */
-  template <class T>
   TileOverlap get_tile_overlap(const NDRange& range) const;
 
   /** Returns the tree height. */
@@ -115,8 +114,8 @@ class RTree {
    * Returns the overlap between a range and an RTree MBR, as the ratio
    * of the volume of the overlap over the volume of the MBR.
    */
-  template <class T>
-  static double range_overlap(const NDRange& range, const T* mbr);
+  static double range_overlap(
+      const Domain* domain, const NDRange& range, const NDRange& mbr);
 
   /**
    * Returns the number of leaves that are stored in a (full) subtree

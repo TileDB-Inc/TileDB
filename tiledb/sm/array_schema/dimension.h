@@ -202,6 +202,14 @@ class Dimension {
   template <class T>
   static bool overlap(const Dimension* dim, const Range& r1, const Range& r2);
 
+  /** Return ratio of the overalp of the two input 1D ranges over `r2`. */
+  double overlap_ratio(const Range& r1, const Range& r2) const;
+
+  /** Return ratio of the overalp of the two input 1D ranges over `r2`. */
+  template <class T>
+  static double overlap_ratio(
+      const Dimension* dim, const Range& r1, const Range& r2);
+
   /** Return the number of tiles the input range intersects. */
   uint64_t tile_num(const Range& range) const;
 
@@ -320,6 +328,13 @@ class Dimension {
       overlap_func_;
 
   /**
+   * Stores the appropriate templated overlap_ratio() function based on the
+   * dimension datatype.
+   */
+  std::function<double(const Dimension* dim, const Range&, const Range&)>
+      overlap_ratio_func_;
+
+  /**
    * Stores the appropriate templated tile_num() function based on the
    * dimension datatype.
    */
@@ -433,6 +448,9 @@ class Dimension {
 
   /** Sets the templated overlap() function. */
   void set_overlap_func();
+
+  /** Sets the templated overlap_ratio() function. */
+  void set_overlap_ratio_func();
 
   /** Sets the templated tile_num() function. */
   void set_tile_num_func();
