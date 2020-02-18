@@ -145,9 +145,6 @@ script:
       export TESTFILE_LDFLAGS="-ltiledb"
       if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then
         export LD_LIBRARY_PATH=$TRAVIS_BUILD_DIR/dist/lib:/usr/local/lib:$LD_LIBRARY_PATH
-        if [[ "$TILEDB_AZURE" == "ON" ]]; then
-          export TESTFILE_LDFLAGS="$TESTFILE_LDFLAGS -luuid"
-        fi
       else
         export DYLD_LIBRARY_PATH=$TRAVIS_BUILD_DIR/dist/lib:/usr/local/lib:$DYLD_LIBRARY_PATH
       fi
