@@ -407,10 +407,6 @@ Status FragmentMetadata::load(const EncryptionKey& encryption_key) {
   return load_v3_or_higher(encryption_key);
 }
 
-const std::vector<void*> FragmentMetadata::mbrs() const {
-  return mbrs_;
-}
-
 Status FragmentMetadata::store(const EncryptionKey& encryption_key) {
   auto array_uri = this->array_uri();
   auto fragment_metadata_uri =
