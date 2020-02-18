@@ -217,8 +217,8 @@ void InfoCommand::write_svg_mbrs() const {
          max_y = std::numeric_limits<double>::min();
   auto fragment_metadata = array.fragment_metadata();
   for (const auto& f : fragment_metadata) {
-    auto mbrs = f->mbrs();
-    for (void* mbr : mbrs) {
+    const auto& mbrs = f->mbrs();
+    for (const auto& mbr : mbrs) {
       auto tup = get_mbr(mbr, schema->coords_type());
       min_x = std::min(min_x, std::get<0>(tup));
       min_y = std::min(min_y, std::get<1>(tup));
@@ -283,8 +283,8 @@ void InfoCommand::write_text_mbrs() const {
   auto coords_type = schema->coords_type();
   std::stringstream text;
   for (const auto& f : fragment_metadata) {
-    auto mbrs = f->mbrs();
-    for (void* mbr : mbrs) {
+    const auto& mbrs = f->mbrs();
+    for (const auto& mbr : mbrs) {
       auto str_mbr = mbr_to_string(mbr, coords_type, dim_num);
       for (unsigned i = 0; i < dim_num; i++) {
         text << str_mbr[2 * i + 0] << "," << str_mbr[2 * i + 1];
@@ -307,7 +307,7 @@ void InfoCommand::write_text_mbrs() const {
 }
 
 std::tuple<double, double, double, double> InfoCommand::get_mbr(
-    const void* mbr, tiledb::sm::Datatype datatype) const {
+    const NDRange& mbr, tiledb::sm::Datatype datatype) const {
   switch (datatype) {
     case Datatype::INT8:
       return get_mbr<int8_t>(mbr);
@@ -351,79 +351,80 @@ std::tuple<double, double, double, double> InfoCommand::get_mbr(
 
 template <typename T>
 std::tuple<double, double, double, double> InfoCommand::get_mbr(
-    const void* mbr) const {
+    const NDRange& mbr) const {
   T x, y, width, height;
-  y = static_cast<const T*>(mbr)[0];
-  height = static_cast<const T*>(mbr)[1] - y + 1;
-  x = static_cast<const T*>(mbr)[2];
-  width = static_cast<const T*>(mbr)[3] - x + 1;
+  y = static_cast<const T*>(mbr[0].data())[0];
+  height = static_cast<const T*>(mbr[0].data())[1] - y + 1;
+  x = static_cast<const T*>(mbr[1].data())[0];
+  width = static_cast<const T*>(mbr[1].data())[1] - x + 1;
   return std::make_tuple(x, y, width, height);
 }
 
+// Works only for fixed-sized coordinates
 std::vector<std::string> InfoCommand::mbr_to_string(
-    const void* mbr, Datatype coords_type, unsigned dim_num) const {
+    const NDRange& mbr, Datatype coords_type, unsigned dim_num) const {
   std::vector<std::string> result;
-  for (unsigned i = 0; i < dim_num; i++) {
+  const int8_t* r8;
+  const uint8_t* ru8;
+  const int16_t* r16;
+  const uint16_t* ru16;
+  const int32_t* r32;
+  const uint32_t* ru32;
+  const int64_t* r64;
+  const uint64_t* ru64;
+  const float* rf32;
+  const double* rf64;
+  for (unsigned d = 0; d < dim_num; d++) {
     switch (coords_type) {
       case Datatype::INT8:
-        result.push_back(
-            std::to_string(static_cast<const uint8_t*>(mbr)[2 * i + 0]));
-        result.push_back(
-            std::to_string(static_cast<const uint8_t*>(mbr)[2 * i + 1]));
+        r8 = (const int8_t*)mbr[d].data();
+        result.push_back(std::to_string(r8[0]));
+        result.push_back(std::to_string(r8[1]));
         break;
       case Datatype::UINT8:
-        result.push_back(
-            std::to_string(static_cast<const uint8_t*>(mbr)[2 * i + 0]));
-        result.push_back(
-            std::to_string(static_cast<const uint8_t*>(mbr)[2 * i + 1]));
+        ru8 = (const uint8_t*)mbr[d].data();
+        result.push_back(std::to_string(ru8[0]));
+        result.push_back(std::to_string(ru8[1]));
         break;
       case Datatype::INT16:
-        result.push_back(
-            std::to_string(static_cast<const int16_t*>(mbr)[2 * i + 0]));
-        result.push_back(
-            std::to_string(static_cast<const int16_t*>(mbr)[2 * i + 1]));
+        r16 = (const int16_t*)mbr[d].data();
+        result.push_back(std::to_string(r16[0]));
+        result.push_back(std::to_string(r16[1]));
         break;
       case Datatype::UINT16:
-        result.push_back(
-            std::to_string(static_cast<const uint16_t*>(mbr)[2 * i + 0]));
-        result.push_back(
-            std::to_string(static_cast<const uint16_t*>(mbr)[2 * i + 1]));
+        ru16 = (const uint16_t*)mbr[d].data();
+        result.push_back(std::to_string(ru16[0]));
+        result.push_back(std::to_string(ru16[1]));
         break;
       case Datatype::INT32:
-        result.push_back(
-            std::to_string(static_cast<const int*>(mbr)[2 * i + 0]));
-        result.push_back(
-            std::to_string(static_cast<const int*>(mbr)[2 * i + 1]));
+        r32 = (const int32_t*)mbr[d].data();
+        result.push_back(std::to_string(r32[0]));
+        result.push_back(std::to_string(r32[1]));
         break;
       case Datatype::UINT32:
-        result.push_back(
-            std::to_string(static_cast<const unsigned*>(mbr)[2 * i + 0]));
-        result.push_back(
-            std::to_string(static_cast<const unsigned*>(mbr)[2 * i + 1]));
+        ru32 = (const uint32_t*)mbr[d].data();
+        result.push_back(std::to_string(ru32[0]));
+        result.push_back(std::to_string(ru32[1]));
         break;
       case Datatype::INT64:
-        result.push_back(
-            std::to_string(static_cast<const int64_t*>(mbr)[2 * i + 0]));
-        result.push_back(
-            std::to_string(static_cast<const int64_t*>(mbr)[2 * i + 1]));
+        r64 = (const int64_t*)mbr[d].data();
+        result.push_back(std::to_string(r64[0]));
+        result.push_back(std::to_string(r64[1]));
         break;
       case Datatype::UINT64:
-        result.push_back(
-            std::to_string(static_cast<const uint64_t*>(mbr)[2 * i + 0]));
-        result.push_back(
-            std::to_string(static_cast<const uint64_t*>(mbr)[2 * i + 1]));
+        ru64 = (const uint64_t*)mbr[d].data();
+        result.push_back(std::to_string(ru64[0]));
+        result.push_back(std::to_string(ru64[1]));
         break;
       case Datatype::FLOAT32:
-        result.push_back(
-            std::to_string(static_cast<const float*>(mbr)[2 * i + 0]));
-        result.push_back(
-            std::to_string(static_cast<const float*>(mbr)[2 * i + 1]));
+        rf32 = (const float*)mbr[d].data();
+        result.push_back(std::to_string(rf32[0]));
+        result.push_back(std::to_string(rf32[1]));
         break;
       case Datatype::FLOAT64:
-        result.push_back(
-            std::to_string(static_cast<const double*>(mbr)[2 * i + 0]));
-        result.push_back(
-            std::to_string(static_cast<const double*>(mbr)[2 * i + 1]));
+        rf64 = (const double*)mbr[d].data();
+        result.push_back(std::to_string(rf64[0]));
+        result.push_back(std::to_string(rf64[1]));
         break;
       default:
         throw std::invalid_argument(
@@ -436,25 +437,25 @@ std::vector<std::string> InfoCommand::mbr_to_string(
 
 // Explicit template instantiations
 template std::tuple<double, double, double, double>
-InfoCommand::get_mbr<int8_t>(const void* mbr) const;
+InfoCommand::get_mbr<int8_t>(const NDRange& mbr) const;
 template std::tuple<double, double, double, double>
-InfoCommand::get_mbr<uint8_t>(const void* mbr) const;
+InfoCommand::get_mbr<uint8_t>(const NDRange& mbr) const;
 template std::tuple<double, double, double, double>
-InfoCommand::get_mbr<int16_t>(const void* mbr) const;
+InfoCommand::get_mbr<int16_t>(const NDRange& mbr) const;
 template std::tuple<double, double, double, double>
-InfoCommand::get_mbr<uint16_t>(const void* mbr) const;
+InfoCommand::get_mbr<uint16_t>(const NDRange& mbr) const;
 template std::tuple<double, double, double, double>
-InfoCommand::get_mbr<int32_t>(const void* mbr) const;
+InfoCommand::get_mbr<int32_t>(const NDRange& mbr) const;
 template std::tuple<double, double, double, double>
-InfoCommand::get_mbr<uint32_t>(const void* mbr) const;
+InfoCommand::get_mbr<uint32_t>(const NDRange& mbr) const;
 template std::tuple<double, double, double, double>
-InfoCommand::get_mbr<int64_t>(const void* mbr) const;
+InfoCommand::get_mbr<int64_t>(const NDRange& mbr) const;
 template std::tuple<double, double, double, double>
-InfoCommand::get_mbr<uint64_t>(const void* mbr) const;
+InfoCommand::get_mbr<uint64_t>(const NDRange& mbr) const;
 template std::tuple<double, double, double, double> InfoCommand::get_mbr<float>(
-    const void* mbr) const;
+    const NDRange& mbr) const;
 template std::tuple<double, double, double, double>
-InfoCommand::get_mbr<double>(const void* mbr) const;
+InfoCommand::get_mbr<double>(const NDRange& mbr) const;
 
 }  // namespace cli
 }  // namespace tiledb

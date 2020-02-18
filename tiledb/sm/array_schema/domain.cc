@@ -601,6 +601,15 @@ void Domain::dump(FILE* out) const {
 }
 
 void Domain::expand_ndrange(const NDRange& r1, NDRange* r2) const {
+  assert(r2 != nullptr);
+
+  // Assign r1 to r2 if r2 is empty
+  if (r2->empty()) {
+    *r2 = r1;
+    return;
+  }
+
+  // Expand r2 along all dimensions
   for (unsigned d = 0; d < dim_num_; ++d)
     dimensions_[d]->expand_range(r1[d], &(*r2)[d]);
 }
@@ -922,13 +931,50 @@ uint64_t Domain::tile_num(const NDRange& ndrange) const {
   return ret;
 }
 
+bool Domain::covered(const NDRange& r1, const NDRange& r2) const {
+  assert(r1.size() == dim_num_);
+  assert(r2.size() == dim_num_);
+
+  for (unsigned d = 0; d < dim_num_; ++d) {
+    if (!dimensions_[d]->covered(r1[d], r2[d]))
+      return false;
+  }
+
+  return true;
+}
+
 bool Domain::overlap(const NDRange& r1, const NDRange& r2) const {
+  assert(r1.size() == dim_num_);
+  assert(r2.size() == dim_num_);
+
   for (unsigned d = 0; d < dim_num_; ++d) {
     if (!dimensions_[d]->overlap(r1[d], r2[d]))
       return false;
   }
 
   return true;
+}
+
+double Domain::overlap_ratio(const NDRange& r1, const NDRange& r2) const {
+  double ratio = 1.0;
+  assert(dim_num_ == r1.size());
+  assert(dim_num_ == r2.size());
+
+  for (unsigned d = 0; d < dim_num_; ++d) {
+    if (!dimensions_[d]->overlap(r1[d], r2[d]))
+      return 0.0;
+
+    ratio *= dimensions_[d]->overlap_ratio(r1[d], r2[d]);
+
+    // If ratio goes to 0, then the subarray overlap is much smaller than the
+    // volume of the MBR. Since we have already guaranteed that there is an
+    // overlap above, we should set the ratio to epsilon.
+    auto max = std::numeric_limits<double>::max();
+    if (ratio == 0)
+      ratio = std::nextafter(0, max);
+  }
+
+  return ratio;
 }
 
 template <class T>

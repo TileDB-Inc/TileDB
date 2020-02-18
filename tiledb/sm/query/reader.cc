@@ -677,8 +677,6 @@ Status Reader::compute_range_result_coords(
   return Status::Ok();
 }
 
-// TODO: remove template 1
-template <class T>
 Status Reader::compute_range_result_coords(
     const std::vector<bool>& single_fragment,
     const std::map<std::pair<unsigned, uint64_t>, size_t>& result_tile_map,
@@ -690,7 +688,7 @@ Status Reader::compute_range_result_coords(
 
   auto statuses = parallel_for(0, range_num, [&](uint64_t r) {
     // Compute overlapping coordinates per range
-    RETURN_NOT_OK(compute_range_result_coords<T>(
+    RETURN_NOT_OK(compute_range_result_coords(
         r, result_tile_map, result_tiles, &((*range_result_coords)[r])));
 
     // Potentially sort for deduping purposes (for the case of updates)
@@ -717,8 +715,6 @@ Status Reader::compute_range_result_coords(
   return Status::Ok();
 }
 
-// TODO: remove template 2
-template <class T>
 Status Reader::compute_range_result_coords(
     uint64_t range_idx,
     const std::map<std::pair<unsigned, uint64_t>, size_t>& result_tile_map,
@@ -751,7 +747,7 @@ Status Reader::compute_range_result_coords(
           // Add results only if the sparse tile MBR is not fully
           // covered by a more recent fragment's non-empty domain
           // TODO: remove template
-          if (!sparse_tile_overwritten<T>(f, i))
+          if (!sparse_tile_overwritten(f, i))
             RETURN_NOT_OK(get_all_result_coords(&tile, range_result_coords));
         }
         ++tr;
@@ -766,7 +762,7 @@ Status Reader::compute_range_result_coords(
           // Add results only if the sparse tile MBR is not fully
           // covered by a more recent fragment's non-empty domain
           // TODO: remove template
-          if (!sparse_tile_overwritten<T>(f, t->first))
+          if (!sparse_tile_overwritten(f, t->first))
             RETURN_NOT_OK(get_all_result_coords(&tile, range_result_coords));
         } else {  // Partial overlap
           auto ndrange = subarray.ndrange(range_idx);
@@ -1313,7 +1309,7 @@ Status Reader::compute_result_coords(
 
   // Compute the read coordinates for all fragments for each subarray range
   std::vector<std::vector<ResultCoords>> range_result_coords;
-  RETURN_CANCEL_OR_ERROR(compute_range_result_coords<T>(
+  RETURN_CANCEL_OR_ERROR(compute_range_result_coords(
       single_fragment, result_tile_map, result_tiles, &range_result_coords));
   result_tile_map.clear();
 
@@ -1979,18 +1975,16 @@ void Reader::zero_out_buffer_sizes() {
   }
 }
 
-template <class T>
 bool Reader::sparse_tile_overwritten(
     unsigned frag_idx, uint64_t tile_idx) const {
-  auto mbr = (const T*)fragment_metadata_[frag_idx]->mbr(tile_idx);
-  assert(mbr != nullptr);
-  auto fragment_num = fragment_metadata_.size();
-  auto dim_num = array_schema_->dim_num();
+  const auto& mbr = fragment_metadata_[frag_idx]->mbr(tile_idx);
+  assert(!mbr.empty());
+  auto fragment_num = (unsigned)fragment_metadata_.size();
+  auto domain = array_schema_->domain();
 
   for (unsigned f = frag_idx + 1; f < fragment_num; ++f) {
     if (fragment_metadata_[f]->dense() &&
-        utils::geometry::rect_in_rect<T>(
-            mbr, fragment_metadata_[f]->non_empty_domain(), dim_num))
+        domain->covered(mbr, fragment_metadata_[f]->non_empty_domain()))
       return true;
   }
 

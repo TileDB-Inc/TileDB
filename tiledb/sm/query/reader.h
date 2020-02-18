@@ -573,7 +573,6 @@ class Reader {
    * Computes the result coordinates for each range of the query
    * subarray.
    *
-   * @tparam T The domain type.
    * @param single_fragment For each range, it indicates whether all
    *     result coordinates come from a single fragment.
    * @param result_tile_map This is an auxialiary map that helps finding the
@@ -583,7 +582,6 @@ class Reader {
    *     It contains a vector for each range of the subarray.
    * @return Status
    */
-  template <class T>
   Status compute_range_result_coords(
       const std::vector<bool>& single_fragment,
       const std::map<std::pair<unsigned, uint64_t>, size_t>& result_tile_map,
@@ -594,7 +592,6 @@ class Reader {
    * Computes the result coordinates of a given range of the query
    * subarray.
    *
-   * @tparam T The domain type.
    * @param range_idx The range to focus on.
    * @param result_tile_map This is an auxialiary map that helps finding the
    *     result_tiles overlapping with each range.
@@ -603,7 +600,6 @@ class Reader {
    *     It contains a vector for each range of the subarray.
    * @return Status
    */
-  template <class T>
   Status compute_range_result_coords(
       uint64_t range_idx,
       const std::map<std::pair<unsigned, uint64_t>, size_t>& result_tile_map,
@@ -985,7 +981,6 @@ class Reader {
    * Returns true if the input tile's MBR of the input fragment is fully
    * covered by the non-empty domain of a more recent fragment.
    */
-  template <class T>
   bool sparse_tile_overwritten(unsigned frag_idx, uint64_t tile_idx) const;
 
   /**

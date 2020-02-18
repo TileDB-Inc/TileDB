@@ -35,6 +35,7 @@
 
 #include <vector>
 
+#include "tiledb/sm/array_schema/domain.h"
 #include "tiledb/sm/misc/status.h"
 #include "tiledb/sm/misc/tile_overlap.h"
 
@@ -61,17 +62,8 @@ class RTree {
   /** Constructor. */
   RTree();
 
-  /**
-   * Constructor. This admits a list of sorted MBRs that will
-   * constitute the leaf level of the tree. The constructor will
-   * construct bottom up the tree based on these ``mbrs``.
-   * The input MBRs will be copied into the leaf level.
-   */
-  RTree(
-      Datatype type,
-      unsigned dim_num,
-      unsigned fanout,
-      const std::vector<void*>& mbrs);
+  /** Constructor. */
+  RTree(const Domain* domain, unsigned fanout);
 
   /** Destructor. */
   ~RTree();
@@ -92,8 +84,14 @@ class RTree {
   /*                 API               */
   /* ********************************* */
 
-  /** Returns the number of dimensions. */
+  /** Builds the RTree bottom-up on the current leaf level. */
+  Status build_tree();
+
+  /** The number of dimensions of the R-tree. */
   unsigned dim_num() const;
+
+  /** Returns the domain. */
+  const Domain* domain() const;
 
   /** Returns the fanout. */
   unsigned fanout() const;
@@ -102,21 +100,16 @@ class RTree {
    * Returns the tile overlap of the input range with the MBRs stored
    * in the RTree.
    */
-  template <class T>
-  TileOverlap get_tile_overlap(const std::vector<const T*>& range) const;
+  TileOverlap get_tile_overlap(const NDRange& range) const;
 
   /** Returns the tree height. */
   unsigned height() const;
 
   /** Returns the leaf MBR with the input index. */
-  const void* leaf(uint64_t leaf_idx) const;
+  const NDRange& leaf(uint64_t leaf_idx) const;
 
-  /**
-   * Returns the overlap between a range and an RTree MBR, as the ratio
-   * of the volume of the overlap over the volume of the MBR.
-   */
-  template <class T>
-  static double range_overlap(const std::vector<const T*>& range, const T* mbr);
+  /** Returns the leaves of the tree. */
+  const std::vector<NDRange>& leaves() const;
 
   /**
    * Returns the number of leaves that are stored in a (full) subtree
@@ -124,14 +117,40 @@ class RTree {
    */
   uint64_t subtree_leaf_num(uint64_t level) const;
 
-  /** Returns the datatype of the R-Tree. */
-  Datatype type() const;
-
-  /** Serializes the contents of the object to the input buffer. */
+  /**
+   * Serializes the contents of the object to the input buffer.
+   * Note that `domain_` is not serialized in the buffer.
+   */
   Status serialize(Buffer* buff) const;
 
-  /** Deserializes the contents of the object from the input buffer. */
-  Status deserialize(ConstBuffer* cbuff);
+  /**
+   * Sets an MBR as a leaf in the tree. The function will error out
+   * if the number of levels in the tree is different from exactly
+   * 1 (the leaf level), and if `leaf_id` is out of bounds / invalid.
+   */
+  Status set_leaf(uint64_t leaf_id, const NDRange& mbr);
+
+  /**
+   * Sets the input MBRs as leaves. This will destroy the existing
+   * RTree.
+   */
+  Status set_leaves(const std::vector<NDRange>& mbrs);
+
+  /**
+   * Resizes the leaf level. It destroys the upper levels
+   * of the tree if they exist.
+   * It errors if `num` is smaller than the current number
+   * of leaves.
+   */
+  Status set_leaf_num(uint64_t num);
+
+  /**
+   * Deserializes the contents of the object from the input buffer based
+   * on the format version.
+   * It also sets the input domain, as that is not serialized.
+   */
+  Status deserialize(
+      ConstBuffer* cbuff, const Domain* domain, uint32_t version);
 
  private:
   /* ********************************* */
@@ -160,17 +179,10 @@ class RTree {
    * `levels_`, where the first level is the root. This is how
    * we can infer which tree level each `Level` object corresponds to.
    */
-  struct Level {
-    /** Number of MBRs in the level (across all nodes in the level). */
-    uint64_t mbr_num_ = 0;
-    /** The serialized MBRs of the level, in the form
-     * ``(low_1, high_1), ..., (low_d, high_d)`` where ``d`` is
-     * the number of dimensions.
-     */
-    std::vector<uint8_t> mbrs_;
-  };
+  typedef std::vector<NDRange> Level;
 
-  /** Defines an R-Tree level entry, which corresponds to a node
+  /**
+   * Defines an R-Tree level entry, which corresponds to a node
    * at a particular level. It stores the level the entry belongs
    * to, as well as the starting index of the first MBR in the
    * corresponding R-Tree node.
@@ -186,14 +198,11 @@ class RTree {
   /*         PRIVATE ATTRIBUTES        */
   /* ********************************* */
 
-  /** The number of dimensions. */
-  unsigned dim_num_;
+  /** The domain. */
+  const Domain* domain_;
 
   /** The fanout of the tree. */
   unsigned fanout_;
-
-  /** The data type. */
-  Datatype type_;
 
   /**
    * The tree levels. The first level is the root. Note that the root
@@ -205,22 +214,29 @@ class RTree {
   /*           PRIVATE METHODS         */
   /* ********************************* */
 
-  /** Builds the RTree bottom-up on the input MBRs. */
-  Status build_tree(const std::vector<void*>& mbrs);
-
-  /** Builds the RTree bottom-up on the input MBRs. */
-  template <class T>
-  Status build_tree(const std::vector<void*>& mbrs);
-
-  /** Builds the tree leaf level using the input mbrs. */
-  Level build_leaf_level(const std::vector<void*>& mbrs);
-
   /** Builds a single tree level on top of the input level. */
-  template <class T>
   Level build_level(const Level& level);
 
   /** Returns a deep copy of this RTree. */
   RTree clone() const;
+
+  /**
+   * Deserializes the contents of the object from the input buffer based
+   * on the format version.
+   * It also sets the input domain, as that is not serialized.
+   *
+   * Applicable to versions 1-4
+   */
+  Status deserialize_v1_v4(ConstBuffer* cbuff, const Domain* domain);
+
+  /**
+   * Deserializes the contents of the object from the input buffer based
+   * on the format version.
+   * It also sets the input domain, as that is not serialized.
+   *
+   * Applicable to versions >= 5
+   */
+  Status deserialize_v5(ConstBuffer* cbuff, const Domain* domain);
 
   /**
    * Swaps the contents (all field values) of this RTree with the

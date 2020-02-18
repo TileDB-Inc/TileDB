@@ -195,12 +195,27 @@ class Dimension {
   static bool oob(
       const Dimension* dim, const void* coord, std::string* err_msg);
 
+  /** Return true if r1 is fully covered by r2. */
+  bool covered(const Range& r1, const Range& r2) const;
+
+  /** Return true if r1 is fully covered by r2. */
+  template <class T>
+  static bool covered(const Dimension* dim, const Range& r1, const Range& r2);
+
   /** Return true if the input 1D ranges overlap. */
   bool overlap(const Range& r1, const Range& r2) const;
 
   /** Return true if the input 1D ranges overlap. */
   template <class T>
   static bool overlap(const Dimension* dim, const Range& r1, const Range& r2);
+
+  /** Return ratio of the overalp of the two input 1D ranges over `r2`. */
+  double overlap_ratio(const Range& r1, const Range& r2) const;
+
+  /** Return ratio of the overalp of the two input 1D ranges over `r2`. */
+  template <class T>
+  static double overlap_ratio(
+      const Dimension* dim, const Range& r1, const Range& r2);
 
   /** Return the number of tiles the input range intersects. */
   uint64_t tile_num(const Range& range) const;
@@ -313,11 +328,25 @@ class Dimension {
       oob_func_;
 
   /**
+   * Stores the appropriate templated covered() function based on the
+   * dimension datatype.
+   */
+  std::function<bool(const Dimension* dim, const Range&, const Range&)>
+      covered_func_;
+
+  /**
    * Stores the appropriate templated overlap() function based on the
    * dimension datatype.
    */
   std::function<bool(const Dimension* dim, const Range&, const Range&)>
       overlap_func_;
+
+  /**
+   * Stores the appropriate templated overlap_ratio() function based on the
+   * dimension datatype.
+   */
+  std::function<double(const Dimension* dim, const Range&, const Range&)>
+      overlap_ratio_func_;
 
   /**
    * Stores the appropriate templated tile_num() function based on the
@@ -431,8 +460,14 @@ class Dimension {
   /** Sets the templated oob() function. */
   void set_oob_func();
 
+  /** Sets the templated covered() function. */
+  void set_covered_func();
+
   /** Sets the templated overlap() function. */
   void set_overlap_func();
+
+  /** Sets the templated overlap_ratio() function. */
+  void set_overlap_ratio_func();
 
   /** Sets the templated tile_num() function. */
   void set_tile_num_func();

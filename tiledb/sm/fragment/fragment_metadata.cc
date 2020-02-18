@@ -67,6 +67,7 @@ FragmentMetadata::FragmentMetadata(
     , dense_(dense)
     , fragment_uri_(fragment_uri)
     , timestamp_range_(timestamp_range) {
+  rtree_ = RTree(array_schema_->domain(), constants::rtree_fanout);
   meta_file_size_ = 0;
   version_ = constants::format_version;
   tile_index_base_ = 0;
@@ -83,11 +84,7 @@ FragmentMetadata::FragmentMetadata(
   }
 }
 
-FragmentMetadata::~FragmentMetadata() {
-  auto mbr_num = (uint64_t)mbrs_.size();
-  for (uint64_t i = 0; i < mbr_num; ++i)
-    std::free(mbrs_[i]);
-}
+FragmentMetadata::~FragmentMetadata() = default;
 
 /* ****************************** */
 /*                API             */
@@ -99,23 +96,8 @@ const URI& FragmentMetadata::array_uri() const {
 
 Status FragmentMetadata::set_mbr(uint64_t tile, const NDRange& mbr) {
   // For easy reference
-  uint64_t mbr_size = 2 * array_schema_->coords_size();
   tile += tile_index_base_;
-
-  // Copy MBR
-  auto new_mbr = (unsigned char*)std::malloc(mbr_size);
-  auto dim_num = array_schema_->dim_num();
-  uint64_t offset = 0;
-  for (unsigned d = 0; d < dim_num; ++d) {
-    std::memcpy(&new_mbr[offset], mbr[d].data(), mbr[d].size());
-    offset += mbr[d].size();
-  }
-
-  // Set MBR
-  assert(tile < mbrs_.size());
-  mbrs_[tile] = new_mbr;
-
-  // Expand non-empty domain
+  RETURN_NOT_OK(rtree_.set_leaf(tile, mbr));
   return expand_non_empty_domain(mbr);
 }
 
@@ -213,12 +195,11 @@ Status FragmentMetadata::add_max_buffer_sizes_sparse(
   RETURN_NOT_OK(load_rtree(encryption_key));
 
   // Get tile overlap
-  std::vector<const T*> range;
   auto dim_num = array_schema_->dim_num();
-  range.resize(dim_num);
-  for (unsigned i = 0; i < dim_num; ++i)
-    range[i] = &subarray[2 * i];
-  auto tile_overlap = rtree_.get_tile_overlap<T>(range);
+  NDRange range(dim_num);
+  for (unsigned d = 0; d < dim_num; ++d)
+    range[d].set_range(&subarray[2 * d], 2 * sizeof(T));
+  auto tile_overlap = rtree_.get_tile_overlap(range);
   uint64_t size = 0;
 
   // Handle tile ranges
@@ -286,41 +267,17 @@ const URI& FragmentMetadata::fragment_uri() const {
   return fragment_uri_;
 }
 
-template <class T>
 Status FragmentMetadata::get_tile_overlap(
     const EncryptionKey& encryption_key,
-    const std::vector<const T*>& range,
+    const NDRange& range,
     TileOverlap* tile_overlap) {
-  auto dim_num = array_schema_->dim_num();
-  NDRange ndrange(dim_num);
-  for (unsigned d = 0; d < dim_num; ++d) {
-    auto r_size = 2 * array_schema_->dimension(d)->coord_size();
-    Range r(range[d], r_size);
-    ndrange[d] = std::move(r);
-  }
-
   // Return if the range does not overlap the non-empty domain of the fragment
-  if (!array_schema_->domain()->overlap(ndrange, non_empty_domain_))
+  if (!array_schema_->domain()->overlap(range, non_empty_domain_))
     return Status::Ok();
 
-  // Handle version > 2
-  if (version_ > 2) {
-    RETURN_NOT_OK(load_rtree(encryption_key));
-    *tile_overlap = rtree_.get_tile_overlap<T>(range);
-    return Status::Ok();
-  }
-
-  // Handle version <= 2
-  auto mbr_num = mbrs_.size();
-  for (size_t t = 0; t < mbr_num; ++t) {
-    auto m = (const T*)mbrs_[t];
-    auto overlap = RTree::range_overlap<T>(range, m);
-    if (overlap > 0.0) {
-      auto to = std::pair<uint64_t, double>(t, overlap);
-      tile_overlap->tiles_.push_back(to);
-    }
-  }
-
+  // Get overlap
+  RETURN_NOT_OK(load_rtree(encryption_key));
+  *tile_overlap = rtree_.get_tile_overlap(range);
   return Status::Ok();
 }
 
@@ -407,10 +364,6 @@ Status FragmentMetadata::load(const EncryptionKey& encryption_key) {
   return load_v3_or_higher(encryption_key);
 }
 
-const std::vector<void*> FragmentMetadata::mbrs() const {
-  return mbrs_;
-}
-
 Status FragmentMetadata::store(const EncryptionKey& encryption_key) {
   auto array_uri = this->array_uri();
   auto fragment_metadata_uri =
@@ -487,7 +440,7 @@ Status FragmentMetadata::set_num_tiles(uint64_t num_tiles) {
   }
 
   if (!dense_) {
-    mbrs_.resize(num_tiles, nullptr);
+    rtree_.set_leaf_num(num_tiles);
     sparse_tile_num_ = num_tiles;
   }
 
@@ -543,8 +496,12 @@ Status FragmentMetadata::file_var_offset(
   return Status::Ok();
 }
 
-const void* FragmentMetadata::mbr(uint64_t tile_idx) const {
+const NDRange& FragmentMetadata::mbr(uint64_t tile_idx) const {
   return rtree_.leaf(tile_idx);
+}
+
+const std::vector<NDRange>& FragmentMetadata::mbrs() const {
+  return rtree_.leaves();
 }
 
 Status FragmentMetadata::persisted_tile_size(
@@ -696,7 +653,7 @@ std::vector<uint64_t> FragmentMetadata::compute_overlapping_tile_ids(
   std::vector<uint64_t> tids;
   auto dim_num = array_schema_->dim_num();
 
-  // TODO: fix
+  // Temporary domain vector
   std::vector<uint8_t> temp(2 * array_schema_->coords_size());
   uint8_t offset = 0;
   for (unsigned d = 0; d < dim_num; ++d) {
@@ -742,7 +699,7 @@ FragmentMetadata::compute_overlapping_tile_ids_cov(const T* subarray) const {
   std::vector<std::pair<uint64_t, double>> tids;
   auto dim_num = array_schema_->dim_num();
 
-  // TODO: fix
+  // Temporary domain vector
   std::vector<uint8_t> temp(2 * array_schema_->coords_size());
   uint8_t offset = 0;
   for (unsigned d = 0; d < dim_num; ++d) {
@@ -841,7 +798,7 @@ Status FragmentMetadata::load_rtree(const EncryptionKey& encryption_key) {
       read_generic_tile_from_file(encryption_key, gt_offsets_.rtree_, &buff));
 
   ConstBuffer cbuff(&buff);
-  RETURN_NOT_OK(rtree_.deserialize(&cbuff));
+  RETURN_NOT_OK(rtree_.deserialize(&cbuff, array_schema_->domain(), version_));
 
   loaded_metadata_.rtree_ = true;
 
@@ -1036,28 +993,26 @@ Status FragmentMetadata::load_last_tile_cell_num(ConstBuffer* buff) {
 Status FragmentMetadata::load_mbrs(ConstBuffer* buff) {
   // Get number of MBRs
   uint64_t mbr_num = 0;
-  Status st = buff->read(&mbr_num, sizeof(uint64_t));
-  if (!st.ok()) {
-    return LOG_STATUS(Status::FragmentMetadataError(
-        "Cannot load fragment metadata; Reading number of MBRs failed"));
-  }
+  RETURN_NOT_OK(buff->read(&mbr_num, sizeof(uint64_t)));
 
-  // Get MBRs
-  uint64_t mbr_size = 2 * array_schema_->coords_size();
-  void* mbr = nullptr;
-  mbrs_.resize(mbr_num);
-  for (uint64_t i = 0; i < mbr_num; ++i) {
-    mbr = std::malloc(mbr_size);
-    st = buff->read(mbr, mbr_size);
-    if (!st.ok()) {
-      std::free(mbr);
-      return LOG_STATUS(Status::FragmentMetadataError(
-          "Cannot load fragment metadata; Reading MBR failed"));
+  // Set leaf level
+  rtree_.set_leaf_num(mbr_num);
+  auto domain = array_schema_->domain();
+  auto dim_num = domain->dim_num();
+  for (uint64_t m = 0; m < mbr_num; ++m) {
+    NDRange mbr(dim_num);
+    for (unsigned d = 0; d < dim_num; ++d) {
+      auto r_size = 2 * domain->dimension(d)->coord_size();
+      mbr[d].set_range(buff->cur_data(), r_size);
+      buff->advance_offset(r_size);
     }
-    mbrs_[i] = mbr;
+    rtree_.set_leaf(m, mbr);
   }
 
-  sparse_tile_num_ = mbrs_.size();
+  // Build R-tree bottom-up
+  rtree_.build_tree();
+
+  sparse_tile_num_ = mbr_num;
 
   return Status::Ok();
 }
@@ -1357,14 +1312,6 @@ Status FragmentMetadata::load_sparse_tile_num(ConstBuffer* buff) {
   return Status::Ok();
 }
 
-Status FragmentMetadata::create_rtree() {
-  auto dim_num = array_schema_->dim_num();
-  auto type = array_schema_->domain()->type();
-  auto rtree = RTree(type, dim_num, constants::rtree_fanout, mbrs_);
-  rtree_ = std::move(rtree);
-  return Status::Ok();
-}
-
 Status FragmentMetadata::load_generic_tile_offsets(ConstBuffer* buff) {
   if (version_ == 3 || version_ == 4)
     return load_generic_tile_offsets_v3_v4(buff);
@@ -1456,7 +1403,6 @@ Status FragmentMetadata::load_v1_v2(const EncryptionKey& encryption_key) {
   RETURN_NOT_OK(load_last_tile_cell_num(&cbuff));
   RETURN_NOT_OK(load_file_sizes(&cbuff));
   RETURN_NOT_OK(load_file_var_sizes(&cbuff));
-  RETURN_NOT_OK(create_rtree());
 
   delete buff;
 
@@ -1618,7 +1564,7 @@ Status FragmentMetadata::store_rtree(
 }
 
 Status FragmentMetadata::write_rtree(Buffer* buff) {
-  RETURN_NOT_OK(create_rtree());
+  RETURN_NOT_OK(rtree_.build_tree());
   RETURN_NOT_OK(rtree_.serialize(buff));
   return Status::Ok();
 }
@@ -1894,47 +1840,6 @@ template Status FragmentMetadata::add_max_buffer_sizes<double>(
     const double* subarray,
     std::unordered_map<std::string, std::pair<uint64_t, uint64_t>>*
         buffer_sizes);
-
-template Status FragmentMetadata::get_tile_overlap<int8_t>(
-    const EncryptionKey& encryption_key,
-    const std::vector<const int8_t*>& range,
-    TileOverlap* tile_overlap);
-template Status FragmentMetadata::get_tile_overlap<uint8_t>(
-    const EncryptionKey& encryption_key,
-    const std::vector<const uint8_t*>& range,
-    TileOverlap* tile_overlap);
-template Status FragmentMetadata::get_tile_overlap<int16_t>(
-    const EncryptionKey& encryption_key,
-    const std::vector<const int16_t*>& range,
-    TileOverlap* tile_overlap);
-template Status FragmentMetadata::get_tile_overlap<uint16_t>(
-    const EncryptionKey& encryption_key,
-    const std::vector<const uint16_t*>& range,
-    TileOverlap* tile_overlap);
-template Status FragmentMetadata::get_tile_overlap<int32_t>(
-    const EncryptionKey& encryption_key,
-    const std::vector<const int32_t*>& range,
-    TileOverlap* tile_overlap);
-template Status FragmentMetadata::get_tile_overlap<uint32_t>(
-    const EncryptionKey& encryption_key,
-    const std::vector<const uint32_t*>& range,
-    TileOverlap* tile_overlap);
-template Status FragmentMetadata::get_tile_overlap<int64_t>(
-    const EncryptionKey& encryption_key,
-    const std::vector<const int64_t*>& range,
-    TileOverlap* tile_overlap);
-template Status FragmentMetadata::get_tile_overlap<uint64_t>(
-    const EncryptionKey& encryption_key,
-    const std::vector<const uint64_t*>& range,
-    TileOverlap* tile_overlap);
-template Status FragmentMetadata::get_tile_overlap<float>(
-    const EncryptionKey& encryption_key,
-    const std::vector<const float*>& range,
-    TileOverlap* tile_overlap);
-template Status FragmentMetadata::get_tile_overlap<double>(
-    const EncryptionKey& encryption_key,
-    const std::vector<const double*>& range,
-    TileOverlap* tile_overlap);
 
 template std::vector<std::pair<uint64_t, double>>
 FragmentMetadata::compute_overlapping_tile_ids_cov<int8_t>(
