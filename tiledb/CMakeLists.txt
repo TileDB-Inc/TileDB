@@ -302,9 +302,6 @@ endif()
 if (TILEDB_AZURE)
   message(STATUS "The TileDB library is compiled with Azure support.")
   find_package(AzureSDK_EP REQUIRED COMPONENTS azure)
-  if (NOT APPLE)
-    target_link_libraries(TILEDB_CORE_OBJECTS_ILIB INTERFACE uuid)
-  endif()
   target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
     INTERFACE
       AzureSDK::AzureSDK

@@ -18,14 +18,6 @@ steps:
 
 - bash: |
     set -e pipefail
-    # Install uuid-dev *before* running cmake
-    sudo apt-get update
-    sudo apt-get install uuid-dev
-  condition: eq(variables['Agent.OS'], 'Linux')
-  displayName: 'Install uuid-dev (linux only)'
-
-- bash: |
-    set -e pipefail
     # Install clang-format (v5.0)
     sudo scripts/install-clangformat.sh
     src=$BUILD_REPOSITORY_LOCALPATH
@@ -149,37 +141,32 @@ steps:
     fi
     make check
 
-    # The Azure SDK requires a dynamic link with libuuid. Rather than modifying
-    # our nested cmake projects to handle this scenario, just skip them for
-    # when building with the Azure backend.
-    if [[ "$TILEDB_AZURE" != "ON" ]]; then
-      # - bash: |
-      pushd $BUILD_REPOSITORY_LOCALPATH/examples/cmake_project
-      mkdir build && cd build
-      cmake -DCMAKE_PREFIX_PATH=$BUILD_REPOSITORY_LOCALPATH/dist .. && make
-      ./ExampleExe
-      if [[ "TILEDB_STATIC" == "ON" ]]; then
-        ./ExampleExe_static
-      fi
-      popd
-      # Build and run the PNG ingestion example.
-      if [[ "$AGENT_OS" == "Linux" ]]; then
-        # libpng (example dependency)
-        sudo apt-get install libpng-dev
+    # - bash: |
+    pushd $BUILD_REPOSITORY_LOCALPATH/examples/cmake_project
+    mkdir build && cd build
+    cmake -DCMAKE_PREFIX_PATH=$BUILD_REPOSITORY_LOCALPATH/dist .. && make
+    ./ExampleExe
+    if [[ "TILEDB_STATIC" == "ON" ]]; then
+      ./ExampleExe_static
+    fi
+    popd
+    # Build and run the PNG ingestion example.
+    if [[ "$AGENT_OS" == "Linux" ]]; then
+      # libpng (example dependency)
+      sudo apt-get install libpng-dev
 
-        pushd $BUILD_REPOSITORY_LOCALPATH/examples/png_ingestion;
-        mkdir build && cd build;
-        cmake -DCMAKE_PREFIX_PATH=$BUILD_REPOSITORY_LOCALPATH/dist .. && make;
-        ./tiledb_png $BUILD_REPOSITORY_LOCALPATH/doc/source/figures/Scarlet-Macaw-small.png /tmp/pngarray output.png;
-        popd;
-      fi
+      pushd $BUILD_REPOSITORY_LOCALPATH/examples/png_ingestion;
+      mkdir build && cd build;
+      cmake -DCMAKE_PREFIX_PATH=$BUILD_REPOSITORY_LOCALPATH/dist .. && make;
+      ./tiledb_png $BUILD_REPOSITORY_LOCALPATH/doc/source/figures/Scarlet-Macaw-small.png /tmp/pngarray output.png;
+      popd;
+    fi
 
-      # Build the benchmarks (but do not run them).
-      pushd $BUILD_REPOSITORY_LOCALPATH/test/benchmarking && \
-        mkdir build && cd build && \
-        cmake -DCMAKE_PREFIX_PATH=$BUILD_REPOSITORY_LOCALPATH/dist ../src && make && \
-      popd
-    fi;
+    # Build the benchmarks (but do not run them).
+    pushd $BUILD_REPOSITORY_LOCALPATH/test/benchmarking && \
+      mkdir build && cd build && \
+      cmake -DCMAKE_PREFIX_PATH=$BUILD_REPOSITORY_LOCALPATH/dist ../src && make && \
+    popd
 
     testfile=$(mktemp)
     mv $testfile $testfile.cc
@@ -201,9 +188,6 @@ steps:
     export TESTFILE_LDFLAGS="-ltiledb"
     if [[ "$AGENT_OS" == "Linux" ]]; then
       export LD_LIBRARY_PATH=$BUILD_REPOSITORY_LOCALPATH/dist/lib:/usr/local/lib:$LD_LIBRARY_PATH
-      if [[ "$TILEDB_AZURE" == "ON" ]]; then
-        export TESTFILE_LDFLAGS="$TESTFILE_LDFLAGS -luuid"
-      fi
     else
       export DYLD_LIBRARY_PATH=$BUILD_REPOSITORY_LOCALPATH/dist/lib:/usr/local/lib:$DYLD_LIBRARY_PATH
     fi
