@@ -195,6 +195,13 @@ class Dimension {
   static bool oob(
       const Dimension* dim, const void* coord, std::string* err_msg);
 
+  /** Return true if r1 is fully covered by r2. */
+  bool covered(const Range& r1, const Range& r2) const;
+
+  /** Return true if r1 is fully covered by r2. */
+  template <class T>
+  static bool covered(const Dimension* dim, const Range& r1, const Range& r2);
+
   /** Return true if the input 1D ranges overlap. */
   bool overlap(const Range& r1, const Range& r2) const;
 
@@ -321,6 +328,13 @@ class Dimension {
       oob_func_;
 
   /**
+   * Stores the appropriate templated covered() function based on the
+   * dimension datatype.
+   */
+  std::function<bool(const Dimension* dim, const Range&, const Range&)>
+      covered_func_;
+
+  /**
    * Stores the appropriate templated overlap() function based on the
    * dimension datatype.
    */
@@ -445,6 +459,9 @@ class Dimension {
 
   /** Sets the templated oob() function. */
   void set_oob_func();
+
+  /** Sets the templated covered() function. */
+  void set_covered_func();
 
   /** Sets the templated overlap() function. */
   void set_overlap_func();

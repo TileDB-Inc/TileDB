@@ -589,6 +589,9 @@ class Domain {
    */
   uint64_t tile_num(const NDRange& ndrange) const;
 
+  /** Returns true if r1 is fully covered by r2. */
+  bool covered(const NDRange& r1, const NDRange& r2) const;
+
   /** Returns true if the two ND ranges overlap. */
   bool overlap(const NDRange& r1, const NDRange& r2) const;
 

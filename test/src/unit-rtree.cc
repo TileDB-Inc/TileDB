@@ -40,6 +40,25 @@
 
 using namespace tiledb::sm;
 
+// `mbrs` contains a flattened vector of values (low, high)
+// per dimension per MBR
+template <class T, unsigned D>
+std::vector<NDRange> create_mbrs(const std::vector<T>& mbrs) {
+  assert(mbrs.size() % 2 * D == 0);
+
+  uint64_t mbr_num = (uint64_t)(mbrs.size() / (2 * D));
+  std::vector<NDRange> ret(mbr_num);
+  uint64_t r_size = 2 * sizeof(T);
+  for (uint64_t m = 0; m < mbr_num; ++m) {
+    ret[m].resize(D);
+    for (unsigned d = 0; d < D; ++d) {
+      ret[m][d].set_range(&mbrs[2 * D * m + 2 * d], r_size);
+    }
+  }
+
+  return ret;
+}
+
 Domain create_domain(
     const std::vector<std::string>& dim_names,
     const std::vector<Datatype>& dim_types,
@@ -75,20 +94,16 @@ TEST_CASE("RTree: Test R-Tree, basic functions", "[rtree][basic]") {
   int32_t dim_extent = 10;
   Domain dom1 =
       create_domain({"d"}, {Datatype::INT32}, {dim_dom}, {&dim_extent});
-  std::vector<void*> mbrs_1d;
-  int m1[] = {1, 3, 5, 10, 20, 22};
-  mbrs_1d.resize(3);
-  for (int i = 0; i < 3; ++i)
-    mbrs_1d[i] = &m1[2 * i];
+  std::vector<NDRange> mbrs_1d = create_mbrs<int32_t, 1>({1, 3, 5, 10, 20, 22});
   RTree rtree1(&dom1, 3, mbrs_1d);
   CHECK(rtree1.height() == 2);
   CHECK(rtree1.dim_num() == 1);
   CHECK(rtree1.subtree_leaf_num(0) == 3);
   CHECK(rtree1.subtree_leaf_num(1) == 1);
   CHECK(rtree1.subtree_leaf_num(2) == 0);
-  CHECK(!std::memcmp(rtree1.leaf(0), &m1[0], 2 * sizeof(int)));
-  CHECK(!std::memcmp(rtree1.leaf(1), &m1[2], 2 * sizeof(int)));
-  CHECK(!std::memcmp(rtree1.leaf(2), &m1[4], 2 * sizeof(int)));
+  CHECK(rtree1.leaf(0) == mbrs_1d[0]);
+  CHECK(rtree1.leaf(1) == mbrs_1d[1]);
+  CHECK(rtree1.leaf(2) == mbrs_1d[2]);
 
   NDRange range1(1);
   NDRange mbr1(1);
@@ -131,18 +146,15 @@ TEST_CASE("RTree: Test R-Tree, basic functions", "[rtree][basic]") {
       {Datatype::INT64, Datatype::INT64},
       {dim_dom_2, dim_dom_2},
       {&dim_extent_2, &dim_extent_2});
-  std::vector<void*> mbrs_2d;
-  int64_t m2[] = {1, 3, 5, 10, 20, 22, 24, 25, 11, 15, 30, 31};
-  mbrs_2d.resize(3);
-  for (int i = 0; i < 3; ++i)
-    mbrs_2d[i] = &m2[4 * i];
+  std::vector<NDRange> mbrs_2d =
+      create_mbrs<int64_t, 2>({1, 3, 5, 10, 20, 22, 24, 25, 11, 15, 30, 31});
   RTree rtree2(&dom2, 5, mbrs_2d);
   CHECK(rtree2.height() == 2);
   CHECK(rtree2.dim_num() == 2);
   CHECK(rtree2.fanout() == 5);
-  CHECK(!std::memcmp(rtree2.leaf(0), &m2[0], 4 * sizeof(int64_t)));
-  CHECK(!std::memcmp(rtree2.leaf(1), &m2[4], 4 * sizeof(int64_t)));
-  CHECK(!std::memcmp(rtree2.leaf(2), &m2[8], 4 * sizeof(int64_t)));
+  CHECK(rtree2.leaf(0) == mbrs_2d[0]);
+  CHECK(rtree2.leaf(1) == mbrs_2d[1]);
+  CHECK(rtree2.leaf(2) == mbrs_2d[2]);
 
   NDRange range2(2);
   int64_t mbr2_r[] = {5, 10, 2, 9};
@@ -166,13 +178,10 @@ TEST_CASE("RTree: Test R-Tree, basic functions", "[rtree][basic]") {
   CHECK(ratio2 == (4.0 / 6) * (2.0 / 8));
 
   // Float datatype
-  std::vector<void*> mbrs_f;
-  float mf[] = {1.0f, 3.0f, 5.0f, 10.0f, 20.0f, 22.0f};
-  mbrs_f.resize(3);
-  for (int i = 0; i < 3; ++i)
-    mbrs_f[i] = &mf[2 * i];
   float dim_dom_f[] = {1.0, 1000.0};
   float dim_extent_f = 10.0;
+  std::vector<NDRange> mbrs_f =
+      create_mbrs<float, 1>({1.0f, 3.0f, 5.0f, 10.0f, 20.0f, 22.0f});
   Domain dom2f =
       create_domain({"d"}, {Datatype::FLOAT32}, {dim_dom_f}, {&dim_extent_f});
   RTree rtreef(&dom2f, 5, mbrs_f);
@@ -208,17 +217,12 @@ TEST_CASE("RTree: Test R-Tree, basic functions", "[rtree][basic]") {
 }
 
 TEST_CASE("RTree: Test 1D R-tree, height 2", "[rtree][1d][2h]") {
-  int m[] = {1, 3, 5, 10, 20, 22};
-  std::vector<void*> mbrs;
-  mbrs.resize(3);
-  for (int i = 0; i < 3; ++i)
-    mbrs[i] = &m[2 * i];
-
   // Build tree
   int32_t dim_dom[] = {1, 1000};
   int32_t dim_extent = 10;
   Domain dom1 =
       create_domain({"d"}, {Datatype::INT32}, {dim_dom}, {&dim_extent});
+  std::vector<NDRange> mbrs = create_mbrs<int32_t, 1>({1, 3, 5, 10, 20, 22});
   RTree rtree(&dom1, 3, mbrs);
   CHECK(rtree.height() == 2);
   CHECK(rtree.dim_num() == 1);
@@ -255,14 +259,11 @@ TEST_CASE("RTree: Test 1D R-tree, height 2", "[rtree][1d][2h]") {
 }
 
 TEST_CASE("RTree: Test 1D R-tree, height 3", "[rtree][1d][3h]") {
-  int m[] = {1, 3, 5, 10, 20, 22, 30, 35, 36, 38, 40, 49, 50, 51, 65, 69};
-  std::vector<void*> mbrs;
-  for (size_t i = 0; i < sizeof(m) / (2 * sizeof(int)); ++i)
-    mbrs.push_back(&m[2 * i]);
-
   // Build tree
   int32_t dim_dom[] = {1, 1000};
   int32_t dim_extent = 10;
+  std::vector<NDRange> mbrs = create_mbrs<int32_t, 1>(
+      {1, 3, 5, 10, 20, 22, 30, 35, 36, 38, 40, 49, 50, 51, 65, 69});
   Domain dom1 =
       create_domain({"d"}, {Datatype::INT32}, {dim_dom}, {&dim_extent});
   RTree rtree(&dom1, 3, mbrs);
@@ -320,11 +321,6 @@ TEST_CASE("RTree: Test 1D R-tree, height 3", "[rtree][1d][3h]") {
 }
 
 TEST_CASE("RTree: Test 2D R-tree, height 2", "[rtree][2d][2h]") {
-  int m[] = {1, 3, 2, 4, 5, 7, 6, 9, 10, 12, 10, 15};
-  std::vector<void*> mbrs;
-  for (size_t i = 0; i < sizeof(m) / (4 * sizeof(int)); ++i)
-    mbrs.push_back(&m[4 * i]);
-
   // Build tree
   int32_t dim_dom[] = {1, 1000};
   int32_t dim_extent = 10;
@@ -333,6 +329,8 @@ TEST_CASE("RTree: Test 2D R-tree, height 2", "[rtree][2d][2h]") {
       {Datatype::INT32, Datatype::INT32},
       {dim_dom, dim_dom},
       {&dim_extent, &dim_extent});
+  std::vector<NDRange> mbrs =
+      create_mbrs<int32_t, 2>({1, 3, 2, 4, 5, 7, 6, 9, 10, 12, 10, 15});
   RTree rtree(&dom2, 3, mbrs);
   CHECK(rtree.height() == 2);
   CHECK(rtree.dim_num() == 2);
@@ -372,13 +370,6 @@ TEST_CASE("RTree: Test 2D R-tree, height 2", "[rtree][2d][2h]") {
 }
 
 TEST_CASE("RTree: Test 2D R-tree, height 3", "[rtree][2d][3h]") {
-  int m[] = {1,  3,  2,  4,  5,  7,  6,  9,  10, 12, 10, 15,
-             11, 15, 20, 22, 16, 16, 23, 23, 19, 20, 24, 26,
-             25, 28, 30, 32, 30, 35, 35, 37, 40, 42, 40, 42};
-  std::vector<void*> mbrs;
-  for (size_t i = 0; i < sizeof(m) / (4 * sizeof(int)); ++i)
-    mbrs.push_back(&m[4 * i]);
-
   // Build tree
   int32_t dim_dom[] = {1, 1000};
   int32_t dim_extent = 10;
@@ -387,6 +378,9 @@ TEST_CASE("RTree: Test 2D R-tree, height 3", "[rtree][2d][3h]") {
       {Datatype::INT32, Datatype::INT32},
       {dim_dom, dim_dom},
       {&dim_extent, &dim_extent});
+  std::vector<NDRange> mbrs = create_mbrs<int32_t, 2>(
+      {1,  3,  2,  4,  5,  7,  6,  9,  10, 12, 10, 15, 11, 15, 20, 22, 16, 16,
+       23, 23, 19, 20, 24, 26, 25, 28, 30, 32, 30, 35, 35, 37, 40, 42, 40, 42});
   RTree rtree(&dom2, 3, mbrs);
   CHECK(rtree.height() == 3);
   CHECK(rtree.dim_num() == 2);

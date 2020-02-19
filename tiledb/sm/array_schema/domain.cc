@@ -601,6 +601,15 @@ void Domain::dump(FILE* out) const {
 }
 
 void Domain::expand_ndrange(const NDRange& r1, NDRange* r2) const {
+  assert(r2 != nullptr);
+
+  // Assign r1 to r2 if r2 is empty
+  if (r2->empty()) {
+    *r2 = r1;
+    return;
+  }
+
+  // Expand r2 along all dimensions
   for (unsigned d = 0; d < dim_num_; ++d)
     dimensions_[d]->expand_range(r1[d], &(*r2)[d]);
 }
@@ -922,7 +931,22 @@ uint64_t Domain::tile_num(const NDRange& ndrange) const {
   return ret;
 }
 
+bool Domain::covered(const NDRange& r1, const NDRange& r2) const {
+  assert(r1.size() == dim_num_);
+  assert(r2.size() == dim_num_);
+
+  for (unsigned d = 0; d < dim_num_; ++d) {
+    if (!dimensions_[d]->covered(r1[d], r2[d]))
+      return false;
+  }
+
+  return true;
+}
+
 bool Domain::overlap(const NDRange& r1, const NDRange& r2) const {
+  assert(r1.size() == dim_num_);
+  assert(r2.size() == dim_num_);
+
   for (unsigned d = 0; d < dim_num_; ++d) {
     if (!dimensions_[d]->overlap(r1[d], r2[d]))
       return false;

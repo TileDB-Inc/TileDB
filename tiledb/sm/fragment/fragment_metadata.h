@@ -328,7 +328,7 @@ class FragmentMetadata {
       uint64_t* offset);
 
   /** Returns the MBR of the input tile. */
-  const void* mbr(uint64_t tile_idx) const;
+  const NDRange& mbr(uint64_t tile_idx) const;
 
   /**
    * Retrieves the size of the tile when it is persisted (e.g. the size of the
@@ -479,9 +479,8 @@ class FragmentMetadata {
   /** Keeps track of which metadata has been loaded. */
   LoadedMetadata loaded_metadata_;
 
-  // TODO(sp): remove after the new dense algorithm is implemented
   /** The MBRs (applicable only to the sparse case with irregular tiles). */
-  std::vector<void*> mbrs_;
+  std::vector<NDRange> mbrs_;
 
   /** The size of the fragment metadata file. */
   uint64_t meta_file_size_;

@@ -68,7 +68,8 @@ class RTree {
    * construct bottom up the tree based on these ``mbrs``.
    * The input MBRs will be copied into the leaf level.
    */
-  RTree(const Domain* domain, unsigned fanout, const std::vector<void*>& mbrs);
+  RTree(
+      const Domain* domain, unsigned fanout, const std::vector<NDRange>& mbrs);
 
   /** Destructor. */
   ~RTree();
@@ -108,7 +109,7 @@ class RTree {
   unsigned height() const;
 
   /** Returns the leaf MBR with the input index. */
-  const void* leaf(uint64_t leaf_idx) const;
+  const NDRange& leaf(uint64_t leaf_idx) const;
 
   /**
    * Returns the number of leaves that are stored in a (full) subtree
@@ -157,17 +158,10 @@ class RTree {
    * `levels_`, where the first level is the root. This is how
    * we can infer which tree level each `Level` object corresponds to.
    */
-  struct Level {
-    /** Number of MBRs in the level (across all nodes in the level). */
-    uint64_t mbr_num_ = 0;
-    /** The serialized MBRs of the level, in the form
-     * ``(low_1, high_1), ..., (low_d, high_d)`` where ``d`` is
-     * the number of dimensions.
-     */
-    std::vector<uint8_t> mbrs_;
-  };
+  typedef std::vector<NDRange> Level;
 
-  /** Defines an R-Tree level entry, which corresponds to a node
+  /**
+   * Defines an R-Tree level entry, which corresponds to a node
    * at a particular level. It stores the level the entry belongs
    * to, as well as the starting index of the first MBR in the
    * corresponding R-Tree node.
@@ -200,21 +194,31 @@ class RTree {
   /* ********************************* */
 
   /** Builds the RTree bottom-up on the input MBRs. */
-  Status build_tree(const std::vector<void*>& mbrs);
-
-  /** Builds the RTree bottom-up on the input MBRs. */
-  template <class T>
-  Status build_tree(const std::vector<void*>& mbrs);
-
-  /** Builds the tree leaf level using the input mbrs. */
-  Level build_leaf_level(const std::vector<void*>& mbrs);
+  Status build_tree(const std::vector<NDRange>& mbrs);
 
   /** Builds a single tree level on top of the input level. */
-  template <class T>
   Level build_level(const Level& level);
 
   /** Returns a deep copy of this RTree. */
   RTree clone() const;
+
+  /**
+   * Deserializes the contents of the object from the input buffer based
+   * on the format version.
+   * It also sets the input domain, as that is not serialized.
+   *
+   * Applicable to versions 1-4
+   */
+  Status deserialize_v1_v4(ConstBuffer* cbuff, const Domain* domain);
+
+  /**
+   * Deserializes the contents of the object from the input buffer based
+   * on the format version.
+   * It also sets the input domain, as that is not serialized.
+   *
+   * Applicable to versions >= 5
+   */
+  Status deserialize_v5(ConstBuffer* cbuff, const Domain* domain);
 
   /**
    * Swaps the contents (all field values) of this RTree with the

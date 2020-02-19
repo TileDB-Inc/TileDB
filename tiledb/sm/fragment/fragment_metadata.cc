@@ -83,11 +83,7 @@ FragmentMetadata::FragmentMetadata(
   }
 }
 
-FragmentMetadata::~FragmentMetadata() {
-  auto mbr_num = (uint64_t)mbrs_.size();
-  for (uint64_t i = 0; i < mbr_num; ++i)
-    std::free(mbrs_[i]);
-}
+FragmentMetadata::~FragmentMetadata() = default;
 
 /* ****************************** */
 /*                API             */
@@ -99,23 +95,9 @@ const URI& FragmentMetadata::array_uri() const {
 
 Status FragmentMetadata::set_mbr(uint64_t tile, const NDRange& mbr) {
   // For easy reference
-  uint64_t mbr_size = 2 * array_schema_->coords_size();
   tile += tile_index_base_;
-
-  // Copy MBR
-  auto new_mbr = (unsigned char*)std::malloc(mbr_size);
-  auto dim_num = array_schema_->dim_num();
-  uint64_t offset = 0;
-  for (unsigned d = 0; d < dim_num; ++d) {
-    std::memcpy(&new_mbr[offset], mbr[d].data(), mbr[d].size());
-    offset += mbr[d].size();
-  }
-
-  // Set MBR
   assert(tile < mbrs_.size());
-  mbrs_[tile] = new_mbr;
-
-  // Expand non-empty domain
+  mbrs_[tile] = mbr;
   return expand_non_empty_domain(mbr);
 }
 
@@ -301,25 +283,13 @@ Status FragmentMetadata::get_tile_overlap(
   }
 
   // Handle version <= 2
-  auto mbr_num = mbrs_.size();
-  auto dim_num = array_schema_->dim_num();
+  auto mbr_num = (uint64_t)mbrs_.size();
   auto domain = array_schema_->domain();
-  for (size_t t = 0; t < mbr_num; ++t) {
-    auto m = (const unsigned char*)mbrs_[t];
-
-    // TODO: fix
-    NDRange ndmbr(dim_num);
-    uint64_t off = 0;
-    for (unsigned d = 0; d < dim_num; ++d) {
-      auto r_size = 2 * domain->dimension(d)->coord_size();
-      ndmbr[d].set_range(&m[off], r_size);
-      off += r_size;
-    }
-
-    auto overlap = domain->overlap_ratio(range, ndmbr);
+  for (uint64_t m = 0; m < mbr_num; ++m) {
+    auto overlap = domain->overlap_ratio(range, mbrs_[m]);
     if (overlap > 0.0) {
-      auto to = std::pair<uint64_t, double>(t, overlap);
-      tile_overlap->tiles_.push_back(to);
+      auto to = std::pair<uint64_t, double>(m, overlap);
+      tile_overlap->tiles_.emplace_back(to);
     }
   }
 
@@ -485,7 +455,7 @@ Status FragmentMetadata::set_num_tiles(uint64_t num_tiles) {
   }
 
   if (!dense_) {
-    mbrs_.resize(num_tiles, nullptr);
+    mbrs_.resize(num_tiles);
     sparse_tile_num_ = num_tiles;
   }
 
@@ -541,7 +511,7 @@ Status FragmentMetadata::file_var_offset(
   return Status::Ok();
 }
 
-const void* FragmentMetadata::mbr(uint64_t tile_idx) const {
+const NDRange& FragmentMetadata::mbr(uint64_t tile_idx) const {
   return rtree_.leaf(tile_idx);
 }
 
@@ -1034,25 +1004,19 @@ Status FragmentMetadata::load_last_tile_cell_num(ConstBuffer* buff) {
 Status FragmentMetadata::load_mbrs(ConstBuffer* buff) {
   // Get number of MBRs
   uint64_t mbr_num = 0;
-  Status st = buff->read(&mbr_num, sizeof(uint64_t));
-  if (!st.ok()) {
-    return LOG_STATUS(Status::FragmentMetadataError(
-        "Cannot load fragment metadata; Reading number of MBRs failed"));
-  }
+  RETURN_NOT_OK(buff->read(&mbr_num, sizeof(uint64_t)));
 
   // Get MBRs
-  uint64_t mbr_size = 2 * array_schema_->coords_size();
-  void* mbr = nullptr;
   mbrs_.resize(mbr_num);
-  for (uint64_t i = 0; i < mbr_num; ++i) {
-    mbr = std::malloc(mbr_size);
-    st = buff->read(mbr, mbr_size);
-    if (!st.ok()) {
-      std::free(mbr);
-      return LOG_STATUS(Status::FragmentMetadataError(
-          "Cannot load fragment metadata; Reading MBR failed"));
+  auto domain = array_schema_->domain();
+  auto dim_num = domain->dim_num();
+  for (auto& mbr : mbrs_) {
+    mbr.resize(dim_num);
+    for (unsigned d = 0; d < dim_num; ++d) {
+      auto r_size = 2 * domain->dimension(d)->coord_size();
+      mbr[d].set_range(buff->cur_data(), r_size);
+      buff->advance_offset(r_size);
     }
-    mbrs_[i] = mbr;
   }
 
   sparse_tile_num_ = mbrs_.size();
@@ -1356,8 +1320,7 @@ Status FragmentMetadata::load_sparse_tile_num(ConstBuffer* buff) {
 }
 
 Status FragmentMetadata::create_rtree() {
-  auto rtree = RTree(array_schema_->domain(), constants::rtree_fanout, mbrs_);
-  rtree_ = std::move(rtree);
+  rtree_ = RTree(array_schema_->domain(), constants::rtree_fanout, mbrs_);
   return Status::Ok();
 }
 

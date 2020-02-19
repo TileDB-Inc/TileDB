@@ -985,7 +985,6 @@ class Reader {
    * Returns true if the input tile's MBR of the input fragment is fully
    * covered by the non-empty domain of a more recent fragment.
    */
-  template <class T>
   bool sparse_tile_overwritten(unsigned frag_idx, uint64_t tile_idx) const;
 
   /**

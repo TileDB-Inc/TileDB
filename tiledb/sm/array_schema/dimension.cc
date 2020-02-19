@@ -57,6 +57,7 @@ Dimension::Dimension() {
   set_expand_range_v_func();
   set_expand_to_tile_func();
   set_oob_func();
+  set_covered_func();
   set_overlap_func();
   set_overlap_ratio_func();
   set_tile_num_func();
@@ -74,6 +75,7 @@ Dimension::Dimension(const std::string& name, Datatype type)
   set_expand_range_v_func();
   set_expand_to_tile_func();
   set_oob_func();
+  set_covered_func();
   set_overlap_func();
   set_overlap_ratio_func();
   set_tile_num_func();
@@ -220,6 +222,7 @@ Status Dimension::deserialize(ConstBuffer* buff, Datatype type) {
   set_expand_range_v_func();
   set_expand_to_tile_func();
   set_oob_func();
+  set_covered_func();
   set_overlap_func();
   set_overlap_ratio_func();
   set_tile_num_func();
@@ -266,7 +269,7 @@ template <class T>
 void Dimension::compute_mbr(
     const Dimension* dim, const Tile& tile, Range* mbr) {
   assert(dim != nullptr);
-  assert(!mbr->empty());
+  assert(mbr != nullptr);
   auto data = (const T*)(tile.internal_data());
   assert(data != nullptr);
   auto cell_num = tile.cell_num();
@@ -380,6 +383,27 @@ bool Dimension::oob(
 bool Dimension::oob(const void* coord, std::string* err_msg) const {
   assert(oob_func_ != nullptr);
   return oob_func_(this, coord, err_msg);
+}
+
+template <class T>
+bool Dimension::covered(
+    const Dimension* dim, const Range& r1, const Range& r2) {
+  assert(dim != nullptr);
+  assert(!r1.empty());
+  assert(!r2.empty());
+  (void)dim;  // Not used here
+
+  auto d1 = (const T*)r1.data();
+  auto d2 = (const T*)r2.data();
+  assert(d1[0] <= d1[1]);
+  assert(d2[0] <= d2[1]);
+
+  return d1[0] >= d2[0] && d1[1] <= d2[1];
+}
+
+bool Dimension::covered(const Range& r1, const Range& r2) const {
+  assert(covered_func_ != nullptr);
+  return covered_func_(this, r1, r2);
 }
 
 template <class T>
@@ -1124,6 +1148,59 @@ void Dimension::set_oob_func() {
       break;
     default:
       oob_func_ = nullptr;
+      break;
+  }
+}
+
+void Dimension::set_covered_func() {
+  switch (type_) {
+    case Datatype::INT32:
+      covered_func_ = covered<int32_t>;
+      break;
+    case Datatype::INT64:
+      covered_func_ = covered<int64_t>;
+      break;
+    case Datatype::INT8:
+      covered_func_ = covered<int8_t>;
+      break;
+    case Datatype::UINT8:
+      covered_func_ = covered<uint8_t>;
+      break;
+    case Datatype::INT16:
+      covered_func_ = covered<int16_t>;
+      break;
+    case Datatype::UINT16:
+      covered_func_ = covered<uint16_t>;
+      break;
+    case Datatype::UINT32:
+      covered_func_ = covered<uint32_t>;
+      break;
+    case Datatype::UINT64:
+      covered_func_ = covered<uint64_t>;
+      break;
+    case Datatype::FLOAT32:
+      covered_func_ = covered<float>;
+      break;
+    case Datatype::FLOAT64:
+      covered_func_ = covered<double>;
+      break;
+    case Datatype::DATETIME_YEAR:
+    case Datatype::DATETIME_MONTH:
+    case Datatype::DATETIME_WEEK:
+    case Datatype::DATETIME_DAY:
+    case Datatype::DATETIME_HR:
+    case Datatype::DATETIME_MIN:
+    case Datatype::DATETIME_SEC:
+    case Datatype::DATETIME_MS:
+    case Datatype::DATETIME_US:
+    case Datatype::DATETIME_NS:
+    case Datatype::DATETIME_PS:
+    case Datatype::DATETIME_FS:
+    case Datatype::DATETIME_AS:
+      covered_func_ = covered<int64_t>;
+      break;
+    default:
+      covered_func_ = nullptr;
       break;
   }
 }
