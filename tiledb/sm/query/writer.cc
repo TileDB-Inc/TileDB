@@ -712,6 +712,8 @@ Status Writer::check_global_order() const {
       ss << "Write failed; Coordinates " << coords_to_str(i);
       ss << " succeed " << coords_to_str(i + 1);
       ss << " in the global order";
+      if (tile_cmp > 0)
+        ss << " due to writes across tiles";
       return LOG_STATUS(Status::WriterError(ss.str()));
     }
     return Status::Ok();
