@@ -34,6 +34,7 @@
 #define TILEDB_READ_CELL_SLAB_ITER_H
 
 #include "tiledb/sm/array_schema/domain.h"
+#include "tiledb/sm/misc/types.h"
 #include "tiledb/sm/query/result_cell_slab.h"
 #include "tiledb/sm/query/result_coords.h"
 #include "tiledb/sm/query/result_space_tile.h"
@@ -228,7 +229,7 @@ class ReadCellSlabIter {
    */
   void compute_cell_slab_overlap(
       const CellSlab<T>& cell_slab,
-      const T* frag_domain,
+      const NDRange& frag_domain,
       std::vector<T>* slab_overlap,
       uint64_t* overlap_length,
       unsigned* overlap_type);

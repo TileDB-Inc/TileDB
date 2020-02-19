@@ -40,6 +40,7 @@
 #include <vector>
 
 #include "tiledb/sm/misc/status.h"
+#include "tiledb/sm/misc/types.h"
 
 namespace tiledb {
 namespace sm {
@@ -256,6 +257,18 @@ template <class T>
 bool rect_in_rect(const T* rect_a, const T* rect_b, unsigned int dim_num);
 
 /**
+ * Checks if `rect_a` is inside `rect_b`.
+ *
+ * @tparam T The domain type.
+ * @param rect_a The first rectangle.
+ * @param rect_b The second rectangle.
+ * @param dim_num The number of dimensions.
+ * @return `true` if `rect_a` is inside `rect_b` and `false` otherwise.
+ */
+template <class T>
+bool rect_in_rect(const T* rect_a, const NDRange& rect_b, unsigned int dim_num);
+
+/**
  * Computes the union of a set of MBRs (rectangles).
  *
  * @tparam T The domain type.
@@ -268,34 +281,6 @@ bool rect_in_rect(const T* rect_a, const T* rect_b, unsigned int dim_num);
 template <class T>
 void compute_mbr_union(
     unsigned dim_num, const T* mbrs, uint64_t mbr_num, T* mbr_union);
-
-/**
- * Expands the input MBR so that it encompasses the input coordinates.
- *
- * @tparam T The type of the MBR and coordinates.
- * @param mbr The input MBR to be expanded.
- * @param coords The input coordinates to expand the MBR.
- * @param dim_num The number of dimensions of the MBR and coordinates.
- * @return void
- */
-template <class T>
-void expand_mbr(T* mbr, const T* coords, unsigned int dim_num);
-
-/**
- * Expands the input MBR with the input coordinates. The input coordinates
- * are given as a vector of values, one per dimension, and a position in
- * the vectors along the dimensions. The input MBR will be expanded using
- * the values along the dimensions located at the input position.
- *
- * @tparam T The type of the MBR and coordinates.
- * @param coords A vector of coordinate buffers, one per dimension.
- * @param pos The position of the values in the coordinate buffers that
- *     will be used to expand the MBR with.
- * @param mbr The input MBR to be expanded.
- * @return void
- */
-template <class T>
-void expand_mbr(const std::vector<T*>& coords, const uint64_t pos, T* mbr);
 
 /**
  * Expands `mbr_a` so that it encompasses `mbr_b`.

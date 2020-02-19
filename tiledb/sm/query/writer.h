@@ -39,7 +39,7 @@
 
 #include "tiledb/sm/fragment/written_fragment_info.h"
 #include "tiledb/sm/misc/status.h"
-#include "tiledb/sm/query/types.h"
+#include "tiledb/sm/misc/types.h"
 #include "tiledb/sm/query/write_cell_slab_iter.h"
 #include "tiledb/sm/tile/tile.h"
 
@@ -467,20 +467,6 @@ class Writer {
    * @param meta The fragment metadata that will store the coords metadata.
    * @return Status
    */
-  Status compute_coords_metadata(
-      const std::unordered_map<std::string, std::vector<Tile>>& tiles,
-      FragmentMetadata* meta) const;
-
-  /**
-   * Computes the coordinates metadata (e.g., MBRs).
-   *
-   * @tparam T The domain type.
-   * @param tiles The tiles to calculate the coords metadata from. It is
-   *     a vector of vectors, one vector of tiles per dimension.
-   * @param meta The fragment metadata that will store the coords metadata.
-   * @return Status
-   */
-  template <class T>
   Status compute_coords_metadata(
       const std::unordered_map<std::string, std::vector<Tile>>& tiles,
       FragmentMetadata* meta) const;

@@ -37,6 +37,7 @@
 #include <vector>
 
 #include "tiledb/sm/enums/layout.h"
+#include "tiledb/sm/misc/types.h"
 
 namespace tiledb {
 namespace sm {
@@ -80,7 +81,7 @@ class TileDomain {
       unsigned id,
       unsigned dim_num,
       const T* domain,
-      const T* domain_slice,
+      const std::reference_wrapper<const NDRange>& domain_slice,
       const T* tile_extents,
       Layout layout)
       : id_(id)
@@ -90,7 +91,7 @@ class TileDomain {
       , tile_extents_(tile_extents)
       , layout_(layout) {
     assert(layout == Layout::ROW_MAJOR || layout == Layout::COL_MAJOR);
-    compute_tile_domain(domain, domain_slice, tile_extents);
+    compute_tile_domain(domain, domain_slice.get(), tile_extents);
     if (layout == Layout::ROW_MAJOR)
       compute_tile_offsets_row();
     else
@@ -185,10 +186,10 @@ class TileDomain {
     // Get overlap
     ret.resize(2 * dim_num_);
     auto tile_subarray = this->tile_subarray(tile_coords);
-    for (unsigned i = 0; i < dim_num_; ++i) {
-      ret[2 * i] = std::max(tile_subarray[2 * i], domain_slice_[2 * i]);
-      ret[2 * i + 1] =
-          std::min(tile_subarray[2 * i + 1], domain_slice_[2 * i + 1]);
+    for (unsigned d = 0; d < dim_num_; ++d) {
+      auto ds = (const T*)domain_slice_.get()[d].data();
+      ret[2 * d] = std::max(tile_subarray[2 * d], ds[0]);
+      ret[2 * d + 1] = std::min(tile_subarray[2 * d + 1], ds[1]);
     }
 
     return ret;
@@ -245,7 +246,8 @@ class TileDomain {
     return tile_domain_;
   }
 
-  const T* domain_slice() const {
+  /** Returns the domain slice. */
+  std::reference_wrapper<const NDRange> domain_slice() const {
     return domain_slice_;
   }
 
@@ -267,7 +269,7 @@ class TileDomain {
   const T* domain_;
 
   /** The domain slice from which the tile domain is constructed. */
-  const T* domain_slice_;
+  std::reference_wrapper<const NDRange> domain_slice_;
 
   /** The tile extents. */
   const T* tile_extents_;
@@ -293,17 +295,14 @@ class TileDomain {
    * `tile_extents`.
    */
   void compute_tile_domain(
-      const T* domain, const T* domain_slice, const T* tile_extents) {
+      const T* domain, const NDRange& domain_slice, const T* tile_extents) {
     tile_domain_.resize(2 * dim_num_);
-    for (unsigned i = 0; i < dim_num_; ++i) {
-      assert(domain_slice[2 * i] <= domain_slice[2 * i + 1]);
-      assert(
-          domain_slice[2 * i] >= domain[2 * i] &&
-          domain_slice[2 * i + 1] <= domain[2 * i + 1]);
-      tile_domain_[2 * i] =
-          (domain_slice[2 * i] - domain[2 * i]) / tile_extents[i];
-      tile_domain_[2 * i + 1] =
-          (domain_slice[2 * i + 1] - domain[2 * i]) / tile_extents[i];
+    for (unsigned d = 0; d < dim_num_; ++d) {
+      auto ds = (const T*)domain_slice[d].data();
+      assert(ds[0] <= ds[1]);
+      assert(ds[0] >= domain[2 * d] && ds[1] <= domain[2 * d + 1]);
+      tile_domain_[2 * d] = (ds[0] - domain[2 * d]) / tile_extents[d];
+      tile_domain_[2 * d + 1] = (ds[1] - domain[2 * d]) / tile_extents[d];
     }
   }
 

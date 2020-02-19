@@ -794,21 +794,6 @@ class StorageManager {
   /* ********************************* */
 
   /**
-   * Retrieves the non-empty domain from the input fragment metadata. This is
-   * the union of the non-empty domains of the fragments.
-   *
-   * @param metadata The metadata of all fragments in the array.
-   * @param dim_num The number of dimensions in the domain.
-   * @param domain The domain to be retrieved.
-   * @return void
-   */
-  template <class T>
-  void array_get_non_empty_domain(
-      const std::vector<FragmentMetadata*>& metadata,
-      unsigned dim_num,
-      T* domain);
-
-  /**
    * This is an auxiliary function to the other `array_open*` functions.
    * It opens the array, retrieves an `OpenArray` instance, acquires
    * its mutex and increases its counter. The array schema of the array

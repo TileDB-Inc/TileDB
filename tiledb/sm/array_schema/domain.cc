@@ -518,50 +518,9 @@ int Domain::cell_order_cmp(
   return 0;
 }
 
-void Domain::crop_domain(void* domain) const {
-  switch (type_) {
-    case Datatype::INT32:
-      crop_domain<int>(static_cast<int*>(domain));
-      break;
-    case Datatype::INT64:
-      crop_domain<int64_t>(static_cast<int64_t*>(domain));
-      break;
-    case Datatype::INT8:
-      crop_domain<int8_t>(static_cast<int8_t*>(domain));
-      break;
-    case Datatype::UINT8:
-      crop_domain<uint8_t>(static_cast<uint8_t*>(domain));
-      break;
-    case Datatype::INT16:
-      crop_domain<int16_t>(static_cast<int16_t*>(domain));
-      break;
-    case Datatype::UINT16:
-      crop_domain<uint16_t>(static_cast<uint16_t*>(domain));
-      break;
-    case Datatype::UINT32:
-      crop_domain<uint32_t>(static_cast<uint32_t*>(domain));
-      break;
-    case Datatype::UINT64:
-      crop_domain<uint64_t>(static_cast<uint64_t*>(domain));
-      break;
-    case Datatype::DATETIME_YEAR:
-    case Datatype::DATETIME_MONTH:
-    case Datatype::DATETIME_WEEK:
-    case Datatype::DATETIME_DAY:
-    case Datatype::DATETIME_HR:
-    case Datatype::DATETIME_MIN:
-    case Datatype::DATETIME_SEC:
-    case Datatype::DATETIME_MS:
-    case Datatype::DATETIME_US:
-    case Datatype::DATETIME_NS:
-    case Datatype::DATETIME_PS:
-    case Datatype::DATETIME_FS:
-    case Datatype::DATETIME_AS:
-      crop_domain<int64_t>(static_cast<int64_t*>(domain));
-      break;
-    default:  // Non-applicable to non-integer domains
-      break;
-  }
+void Domain::crop_ndrange(NDRange* ndrange) const {
+  for (unsigned d = 0; d < dim_num_; ++d)
+    dimensions_[d]->crop_range(&(*ndrange)[d]);
 }
 
 // ===== FORMAT =====
@@ -603,6 +562,16 @@ const void* Domain::domain(unsigned int i) const {
   return dimensions_[i]->domain();
 }
 
+NDRange Domain::domain_ndrange() const {
+  NDRange ret(dim_num_);
+  for (unsigned d = 0; d < dim_num_; ++d) {
+    Range r(dimensions_[d]->domain(), 2 * dimensions_[d]->coord_size());
+    ret[d] = std::move(r);
+  }
+
+  return ret;
+}
+
 const Dimension* Domain::dimension(unsigned int i) const {
   if (i > dim_num_)
     return nullptr;
@@ -629,6 +598,16 @@ void Domain::dump(FILE* out) const {
     fprintf(out, "\n");
     dim->dump(out);
   }
+}
+
+void Domain::expand_ndrange(const NDRange& r1, NDRange* r2) const {
+  for (unsigned d = 0; d < dim_num_; ++d)
+    dimensions_[d]->expand_range(r1[d], &(*r2)[d]);
+}
+
+void Domain::expand_to_tiles(NDRange* ndrange) const {
+  for (unsigned d = 0; d < dim_num_; ++d)
+    dimensions_[d]->expand_to_tile(&(*ndrange)[d]);
 }
 
 void Domain::expand_domain(void* domain) const {
@@ -935,56 +914,21 @@ const void* Domain::tile_extents() const {
   return tile_extents_;
 }
 
-uint64_t Domain::tile_num(const void* range) const {
-  switch (type_) {
-    case Datatype::INT32:
-      return tile_num<int>(static_cast<const int*>(range));
-    case Datatype::INT64:
-      return tile_num<int64_t>(static_cast<const int64_t*>(range));
-    case Datatype::INT8:
-      return tile_num<int8_t>(static_cast<const int8_t*>(range));
-    case Datatype::UINT8:
-      return tile_num<uint8_t>(static_cast<const uint8_t*>(range));
-    case Datatype::INT16:
-      return tile_num<int16_t>(static_cast<const int16_t*>(range));
-    case Datatype::UINT16:
-      return tile_num<uint16_t>(static_cast<const uint16_t*>(range));
-    case Datatype::UINT32:
-      return tile_num<uint32_t>(static_cast<const uint32_t*>(range));
-    case Datatype::UINT64:
-      return tile_num<uint64_t>(static_cast<const uint64_t*>(range));
-    case Datatype::DATETIME_YEAR:
-    case Datatype::DATETIME_MONTH:
-    case Datatype::DATETIME_WEEK:
-    case Datatype::DATETIME_DAY:
-    case Datatype::DATETIME_HR:
-    case Datatype::DATETIME_MIN:
-    case Datatype::DATETIME_SEC:
-    case Datatype::DATETIME_MS:
-    case Datatype::DATETIME_US:
-    case Datatype::DATETIME_NS:
-    case Datatype::DATETIME_PS:
-    case Datatype::DATETIME_FS:
-    case Datatype::DATETIME_AS:
-      return tile_num<int64_t>(static_cast<const int64_t*>(range));
-    case Datatype::FLOAT32:
-    case Datatype::FLOAT64:
-      // Operation not supported for float domains
-    case Datatype::CHAR:
-    case Datatype::STRING_ASCII:
-    case Datatype::STRING_UTF8:
-    case Datatype::STRING_UTF16:
-    case Datatype::STRING_UTF32:
-    case Datatype::STRING_UCS2:
-    case Datatype::STRING_UCS4:
-    case Datatype::ANY:
-      // Not supported domain types
-      assert(false);
-      return 0;
+uint64_t Domain::tile_num(const NDRange& ndrange) const {
+  uint64_t ret = 1;
+  for (unsigned d = 0; d < dim_num_; ++d)
+    ret *= dimensions_[d]->tile_num(ndrange[d]);
+
+  return ret;
+}
+
+bool Domain::overlap(const NDRange& r1, const NDRange& r2) const {
+  for (unsigned d = 0; d < dim_num_; ++d) {
+    if (!dimensions_[d]->overlap(r1[d], r2[d]))
+      return false;
   }
 
-  assert(false);
-  return 0;
+  return true;
 }
 
 template <class T>

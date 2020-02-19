@@ -32,6 +32,7 @@
 
 #include "test/src/helpers.h"
 #include "tiledb/sm/c_api/tiledb_struct_def.h"
+#include "tiledb/sm/misc/types.h"
 #include "tiledb/sm/query/reader.h"
 
 #ifdef _WIN32
@@ -144,15 +145,25 @@ TEST_CASE_METHOD(
   std::vector<int32_t> domain_slice_1 = {3, 4, 1, 12};
   std::vector<int32_t> domain_slice_2 = {4, 5, 2, 4};
   std::vector<int32_t> domain_slice_3 = {5, 7, 1, 9};
+
+  auto size = 2 * sizeof(int32_t);
+  NDRange ds1 = {Range(&domain_slice_1[0], size),
+                 Range(&domain_slice_1[2], size)};
+  NDRange ds2 = {Range(&domain_slice_2[0], size),
+                 Range(&domain_slice_2[2], size)};
+  NDRange ds3 = {Range(&domain_slice_3[0], size),
+                 Range(&domain_slice_3[2], size)};
+  NDRange dsd = {Range(&domain[0], size), Range(&domain[2], size)};
+
   std::vector<TileDomain<int32_t>> frag_tile_domains;
   frag_tile_domains.emplace_back(TileDomain<int32_t>(
-      3, dim_num, &domain[0], &domain_slice_3[0], &tile_extents[0], layout));
+      3, dim_num, &domain[0], ds3, &tile_extents[0], layout));
   frag_tile_domains.emplace_back(TileDomain<int32_t>(
-      2, dim_num, &domain[0], &domain_slice_2[0], &tile_extents[0], layout));
+      2, dim_num, &domain[0], ds2, &tile_extents[0], layout));
   frag_tile_domains.emplace_back(TileDomain<int32_t>(
-      1, dim_num, &domain[0], &domain_slice_1[0], &tile_extents[0], layout));
+      1, dim_num, &domain[0], ds1, &tile_extents[0], layout));
   TileDomain<int32_t> array_tile_domain(
-      UINT32_MAX, dim_num, &domain[0], &domain[0], &tile_extents[0], layout);
+      UINT32_MAX, dim_num, &domain[0], dsd, &tile_extents[0], layout);
 
   Dimension d1("d1", Datatype::INT32);
   Dimension d2("d2", Datatype::INT32);
@@ -181,46 +192,29 @@ TEST_CASE_METHOD(
   ResultTile result_tile_2_0_3(3, 0, &dom);
   ResultTile result_tile_3_0_3(3, 2, &dom);
 
-  // Initialize frag domains
-  typedef std::pair<unsigned, const int32_t*> FragDomain;
-  std::vector<FragDomain> frag_domain_1_0 = {FragDomain(2, &domain_slice_2[0]),
-                                             FragDomain(1, &domain_slice_1[0])};
-  std::vector<FragDomain> frag_domain_1_2 = {FragDomain(1, &domain_slice_1[0])};
-  std::vector<FragDomain> frag_domain_2_0 = {FragDomain(3, &domain_slice_3[0])};
-  std::vector<FragDomain> frag_domain_3_0 = {FragDomain(3, &domain_slice_3[0])};
-  std::vector<FragDomain> frag_domain_2_2 = {};
-  std::vector<FragDomain> frag_domain_3_2 = {};
-
-  // Initialize result tiles
-  std::map<unsigned, ResultTile> result_tiles_1_0 = {
-      std::pair<unsigned, ResultTile>(1, result_tile_1_0_1),
-      std::pair<unsigned, ResultTile>(2, result_tile_1_0_2),
-  };
-  std::map<unsigned, ResultTile> result_tiles_1_2 = {
-      std::pair<unsigned, ResultTile>(1, result_tile_1_2_1),
-  };
-  std::map<unsigned, ResultTile> result_tiles_2_0 = {
-      std::pair<unsigned, ResultTile>(3, result_tile_2_0_3),
-  };
-  std::map<unsigned, ResultTile> result_tiles_3_0 = {
-      std::pair<unsigned, ResultTile>(3, result_tile_3_0_3),
-  };
-  std::map<unsigned, ResultTile> result_tiles_2_2 = {};
-  std::map<unsigned, ResultTile> result_tiles_3_2 = {};
-
   // Initialize result_space_tiles
-  ResultSpaceTile<int32_t> rst_1_0 = {
-      {3, 1}, frag_domain_1_0, result_tiles_1_0};
-  ResultSpaceTile<int32_t> rst_1_2 = {
-      {3, 11}, frag_domain_1_2, result_tiles_1_2};
-  ResultSpaceTile<int32_t> rst_2_0 = {
-      {5, 1}, frag_domain_2_0, result_tiles_2_0};
-  ResultSpaceTile<int32_t> rst_2_2 = {
-      {5, 11}, frag_domain_2_2, result_tiles_2_2};
-  ResultSpaceTile<int32_t> rst_3_0 = {
-      {7, 1}, frag_domain_3_0, result_tiles_3_0};
-  ResultSpaceTile<int32_t> rst_3_2 = {
-      {7, 11}, frag_domain_3_2, result_tiles_3_2};
+  ResultSpaceTile<int32_t> rst_1_0;
+  rst_1_0.set_start_coords({3, 1});
+  rst_1_0.append_frag_domain(2, ds2);
+  rst_1_0.append_frag_domain(1, ds1);
+  rst_1_0.set_result_tile(1, result_tile_1_0_1);
+  rst_1_0.set_result_tile(2, result_tile_1_0_2);
+  ResultSpaceTile<int32_t> rst_1_2;
+  rst_1_2.set_start_coords({3, 11});
+  rst_1_2.append_frag_domain(1, ds1);
+  rst_1_2.set_result_tile(1, result_tile_1_2_1);
+  ResultSpaceTile<int32_t> rst_2_0;
+  rst_2_0.set_start_coords({5, 1});
+  rst_2_0.append_frag_domain(3, ds3);
+  rst_2_0.set_result_tile(3, result_tile_2_0_3);
+  ResultSpaceTile<int32_t> rst_2_2;
+  rst_2_2.set_start_coords({5, 11});
+  ResultSpaceTile<int32_t> rst_3_0;
+  rst_3_0.set_start_coords({7, 1});
+  rst_3_0.append_frag_domain(3, ds3);
+  rst_3_0.set_result_tile(3, result_tile_3_0_3);
+  ResultSpaceTile<int32_t> rst_3_2;
+  rst_3_2.set_start_coords({7, 11});
 
   // Prepare correct space tiles map
   std::map<const int32_t*, ResultSpaceTile<int32_t>> c_result_space_tiles;
