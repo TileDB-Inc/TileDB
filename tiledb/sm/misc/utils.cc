@@ -660,35 +660,6 @@ inline bool rect_in_rect(
 }
 
 template <class T>
-inline bool rect_in_rect(
-    const T* rect_a, const NDRange& rect_b, unsigned int dim_num) {
-  for (unsigned d = 0; d < dim_num; ++d) {
-    auto rb = (const T*)rect_b[d].data();
-    if (rect_a[2 * d] < rb[0] || rect_a[2 * d] > rb[1] ||
-        rect_a[2 * d + 1] < rb[0] || rect_a[2 * d + 1] > rb[1])
-      return false;
-  }
-
-  return true;
-}
-
-template <class T>
-void compute_mbr_union(
-    unsigned dim_num, const T* mbrs, uint64_t mbr_num, T* mbr_union) {
-  // Sanity check
-  if (dim_num == 0 || mbr_num == 0)
-    return;
-
-  // Set the first rectangle to the union
-  auto mbr_size = 2 * dim_num * sizeof(T);
-  std::memcpy(mbr_union, mbrs, mbr_size);
-
-  // Expand the union with every other MBR
-  for (uint64_t i = 1; i < mbr_num; ++i)
-    expand_mbr_with_mbr<T>(mbr_union, &mbrs[i * 2 * dim_num], dim_num);
-}
-
-template <class T>
 void expand_mbr_with_mbr(T* mbr_a, const T* mbr_b, unsigned int dim_num) {
   for (unsigned int i = 0; i < dim_num; ++i) {
     // Update lower bound on dimension i
@@ -921,27 +892,6 @@ template bool rect_in_rect<uint32_t>(
 template bool rect_in_rect<uint64_t>(
     const uint64_t* rect_a, const uint64_t* rect_b, unsigned int dim_num);
 
-template bool rect_in_rect<int>(
-    const int* rect_a, const NDRange& rect_b, unsigned int dim_num);
-template bool rect_in_rect<int64_t>(
-    const int64_t* rect_a, const NDRange& rect_b, unsigned int dim_num);
-template bool rect_in_rect<float>(
-    const float* react_a, const NDRange& rect_b, unsigned int dim_num);
-template bool rect_in_rect<double>(
-    const double* rect_a, const NDRange& rect_b, unsigned int dim_num);
-template bool rect_in_rect<int8_t>(
-    const int8_t* rect_a, const NDRange& rect_b, unsigned int dim_num);
-template bool rect_in_rect<uint8_t>(
-    const uint8_t* rect_a, const NDRange& rect_b, unsigned int dim_num);
-template bool rect_in_rect<int16_t>(
-    const int16_t* rect_a, const NDRange& rect_b, unsigned int dim_num);
-template bool rect_in_rect<uint16_t>(
-    const uint16_t* rect_a, const NDRange& rect_b, unsigned int dim_num);
-template bool rect_in_rect<uint32_t>(
-    const uint32_t* rect_a, const NDRange& rect_b, unsigned int dim_num);
-template bool rect_in_rect<uint64_t>(
-    const uint64_t* rect_a, const NDRange& rect_b, unsigned int dim_num);
-
 template void expand_mbr_with_mbr<int>(
     int* mbr_a, const int* mbr_b, unsigned int dim_num);
 template void expand_mbr_with_mbr<int64_t>(
@@ -1096,48 +1046,6 @@ template double coverage<float>(
     const float* a, const float* b, unsigned dim_num);
 template double coverage<double>(
     const double* a, const double* b, unsigned dim_num);
-
-template void compute_mbr_union<int8_t>(
-    unsigned dim_num, const int8_t* mbrs, uint64_t mbr_num, int8_t* mbr_union);
-template void compute_mbr_union<uint8_t>(
-    unsigned dim_num,
-    const uint8_t* mbrs,
-    uint64_t mbr_num,
-    uint8_t* mbr_union);
-template void compute_mbr_union<int16_t>(
-    unsigned dim_num,
-    const int16_t* mbrs,
-    uint64_t mbr_num,
-    int16_t* mbr_union);
-template void compute_mbr_union<uint16_t>(
-    unsigned dim_num,
-    const uint16_t* mbrs,
-    uint64_t mbr_num,
-    uint16_t* mbr_union);
-template void compute_mbr_union<int32_t>(
-    unsigned dim_num,
-    const int32_t* mbrs,
-    uint64_t mbr_num,
-    int32_t* mbr_union);
-template void compute_mbr_union<uint32_t>(
-    unsigned dim_num,
-    const uint32_t* mbrs,
-    uint64_t mbr_num,
-    uint32_t* mbr_union);
-template void compute_mbr_union<int64_t>(
-    unsigned dim_num,
-    const int64_t* mbrs,
-    uint64_t mbr_num,
-    int64_t* mbr_union);
-template void compute_mbr_union<uint64_t>(
-    unsigned dim_num,
-    const uint64_t* mbrs,
-    uint64_t mbr_num,
-    uint64_t* mbr_union);
-template void compute_mbr_union<float>(
-    unsigned dim_num, const float* mbrs, uint64_t mbr_num, float* mbr_union);
-template void compute_mbr_union<double>(
-    unsigned dim_num, const double* mbrs, uint64_t mbr_num, double* mbr_union);
 
 }  // namespace geometry
 
