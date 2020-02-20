@@ -94,7 +94,7 @@ void Statistics::dump_read_summary(FILE* out) const {
       out,
       "  Read compression ratio",
       "bytes",
-      counter_reader_num_bytes_after_filtering +
+      counter_reader_num_bytes_after_unfiltering +
           counter_tileio_read_num_resulting_bytes,
       counter_reader_num_tile_bytes_read + counter_tileio_read_num_bytes_read);
 }

@@ -1292,23 +1292,23 @@ Status Reader::compute_result_coords(
     return Status::Ok();
 
   // Create temporary vector with pointers to result tiles, so that
-  // `read_tiles`, `filter_tiles` below can work without changes
+  // `read_tiles`, `unfilter_tiles` below can work without changes
   std::vector<ResultTile*> tmp_result_tiles;
   for (auto& result_tile : *result_tiles)
     tmp_result_tiles.push_back(&result_tile);
 
-  // Read and filter coordinate tiles
+  // Read and unfilter coordinate tiles
   // NOTE: these will ignore tiles of fragments with format version >=5
   RETURN_CANCEL_OR_ERROR(read_tiles(constants::coords, tmp_result_tiles));
-  RETURN_CANCEL_OR_ERROR(filter_tiles(constants::coords, tmp_result_tiles));
+  RETURN_CANCEL_OR_ERROR(unfilter_tiles(constants::coords, tmp_result_tiles));
 
-  // Read and filter coordinate tiles
+  // Read and unfilter coordinate tiles
   // NOTE: these will ignore tiles of fragments with format version <5
   auto dim_num = array_schema_->dim_num();
   for (unsigned d = 0; d < dim_num; ++d) {
     const auto& dim_name = array_schema_->dimension(d)->name();
     RETURN_CANCEL_OR_ERROR(read_tiles(dim_name, tmp_result_tiles));
-    RETURN_CANCEL_OR_ERROR(filter_tiles(dim_name, tmp_result_tiles));
+    RETURN_CANCEL_OR_ERROR(unfilter_tiles(dim_name, tmp_result_tiles));
   }
 
   // Compute the read coordinates for all fragments for each subarray range
@@ -1394,7 +1394,7 @@ Status Reader::dense_read() {
       continue;
 
     RETURN_CANCEL_OR_ERROR(read_tiles(attr, result_tiles));
-    RETURN_CANCEL_OR_ERROR(filter_tiles(attr, result_tiles));
+    RETURN_CANCEL_OR_ERROR(unfilter_tiles(attr, result_tiles));
     RETURN_CANCEL_OR_ERROR(copy_cells(attr, stride, result_cell_slabs));
     clear_tiles(attr, result_tiles);
   }
@@ -1537,10 +1537,10 @@ void Reader::fill_dense_coords_col_slab(
   }
 }
 
-Status Reader::filter_tiles(
+Status Reader::unfilter_tiles(
     const std::string& name,
     const std::vector<ResultTile*>& result_tiles) const {
-  STATS_FUNC_IN(reader_filter_tiles);
+  STATS_FUNC_IN(reader_unfilter_tiles);
 
   auto var_size = array_schema_->var_size(name);
   auto num_tiles = static_cast<uint64_t>(result_tiles.size());
@@ -1573,21 +1573,21 @@ Status Reader::filter_tiles(
       auto& t = tile_pair->first;
       auto& t_var = tile_pair->second;
 
-      if (!t.filtered()) {
+      if (t.filtered()) {
         // Decompress, etc.
-        RETURN_NOT_OK(filter_tile(name, &t, var_size));
+        RETURN_NOT_OK(unfilter_tile(name, &t, var_size));
         RETURN_NOT_OK(storage_manager_->write_to_cache(
             tile_attr_uri, tile_attr_offset, t.buffer()));
       }
 
-      if (var_size && !t_var.filtered()) {
+      if (var_size && t_var.filtered()) {
         auto tile_attr_var_uri = fragment->var_uri(name);
         uint64_t tile_attr_var_offset;
         RETURN_NOT_OK(fragment->file_var_offset(
             *encryption_key, name, tile_idx, &tile_attr_var_offset));
 
         // Decompress, etc.
-        RETURN_NOT_OK(filter_tile(name, &t_var, false));
+        RETURN_NOT_OK(unfilter_tile(name, &t_var, false));
         RETURN_NOT_OK(storage_manager_->write_to_cache(
             tile_attr_var_uri, tile_attr_var_offset, t_var.buffer()));
       }
@@ -1601,28 +1601,25 @@ Status Reader::filter_tiles(
 
   return Status::Ok();
 
-  STATS_FUNC_OUT(reader_filter_tiles);
+  STATS_FUNC_OUT(reader_unfilter_tiles);
 }
 
-Status Reader::filter_tile(
+Status Reader::unfilter_tile(
     const std::string& name, Tile* tile, bool offsets) const {
-  uint64_t orig_size = tile->buffer()->size();
-
-  // Get a copy of the appropriate filter pipeline.
+  // Get a copy of the appropriate unfilter pipeline.
   FilterPipeline filters =
       (offsets ? *array_schema_->cell_var_offsets_filters() :
                  *array_schema_->filters(name));
 
-  // Append an encryption filter when necessary.
+  // Append an encryption unfilter when necessary.
   RETURN_NOT_OK(FilterPipeline::append_encryption_filter(
       &filters, array_->get_encryption_key()));
 
   RETURN_NOT_OK(filters.run_reverse(tile));
 
-  tile->set_filtered(true);
-  tile->set_pre_filtered_size(orig_size);
+  tile->set_filtered(false);
 
-  STATS_COUNTER_ADD(reader_num_bytes_after_filtering, tile->size());
+  STATS_COUNTER_ADD(reader_num_bytes_after_unfiltering, tile->size());
 
   return Status::Ok();
 }
@@ -1704,8 +1701,13 @@ Status Reader::init_tile(
   auto tile_size = cell_num_per_tile * cell_size;
 
   // Initialize
-  RETURN_NOT_OK(
-      tile->init(format_version, type, tile_size, cell_size, dim_num));
+  RETURN_NOT_OK(tile->init(
+      format_version,
+      type,
+      tile_size,
+      cell_size,
+      dim_num,
+      true /* filtered */));
 
   return Status::Ok();
 }
@@ -1729,9 +1731,15 @@ Status Reader::init_tile(
       constants::cell_var_offset_type,
       tile_size,
       constants::cell_var_offset_size,
-      0));
-  RETURN_NOT_OK(
-      tile_var->init(format_version, type, tile_size, datatype_size(type), 0));
+      0,
+      true /* filtered */));
+  RETURN_NOT_OK(tile_var->init(
+      format_version,
+      type,
+      tile_size,
+      datatype_size(type),
+      0,
+      true /* filtered */));
   return Status::Ok();
 }
 
@@ -1818,7 +1826,7 @@ Status Reader::read_tiles(
     RETURN_NOT_OK(storage_manager_->read_from_cache(
         tile_attr_uri, tile_attr_offset, t.buffer(), tile_size, &cache_hit));
     if (cache_hit) {
-      t.set_filtered(true);
+      t.set_filtered(false);
       STATS_COUNTER_ADD(reader_attr_tile_cache_hits, 1);
     } else {
       // Add the region of the fragment to be read.
@@ -1851,7 +1859,7 @@ Status Reader::read_tiles(
           &cache_hit));
 
       if (cache_hit) {
-        t_var.set_filtered(true);
+        t_var.set_filtered(false);
         STATS_COUNTER_ADD(reader_attr_tile_cache_hits, 1);
       } else {
         // Add the region of the fragment to be read.
@@ -1960,7 +1968,7 @@ Status Reader::sparse_read() {
       continue;
 
     RETURN_CANCEL_OR_ERROR(read_tiles(attr, result_tiles));
-    RETURN_CANCEL_OR_ERROR(filter_tiles(attr, result_tiles));
+    RETURN_CANCEL_OR_ERROR(unfilter_tiles(attr, result_tiles));
     RETURN_CANCEL_OR_ERROR(copy_cells(attr, stride, result_cell_slabs));
     clear_tiles(attr, result_tiles);
   }

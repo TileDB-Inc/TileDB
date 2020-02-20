@@ -858,11 +858,11 @@ class Reader {
    * Filters the tiles on a particular attribute/dimension from all input
    * fragments based on the tile info in `result_tiles`.
    *
-   * @param name Attribute/dimension whose tiles will be filtered
-   * @param result_tiles Vector containing the tiles to be filtered
+   * @param name Attribute/dimension whose tiles will be unfiltered
+   * @param result_tiles Vector containing the tiles to be unfiltered
    * @return Status
    */
-  Status filter_tiles(
+  Status unfilter_tiles(
       const std::string& name,
       const std::vector<ResultTile*>& result_tiles) const;
 
@@ -872,12 +872,12 @@ class Reader {
    * pipeline.
    *
    * @param name The attribute/dimension the tile belong to.
-   * @param tile The tile to be filtered.
-   * @param offsets True if the tile to be filtered contains offsets for a
+   * @param tile The tile to be unfiltered.
+   * @param offsets True if the tile to be unfiltered contains offsets for a
    *    var-sized attribute/dimension.
    * @return Status
    */
-  Status filter_tile(const std::string& name, Tile* tile, bool offsets) const;
+  Status unfilter_tile(const std::string& name, Tile* tile, bool offsets) const;
 
   /**
    * Gets all the result coordinates of the input tile into `result_coords`.

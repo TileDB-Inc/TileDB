@@ -122,13 +122,15 @@ class Tile {
    * @param cell_size The cell size.
    * @param dim_num The number of dimensions in case the tile stores
    *      coordinates.
+   * @param filtered The filtered state of the tile buffer.
    * @return Status
    */
   Status init(
       uint32_t format_version,
       Datatype type,
       uint64_t cell_size,
-      unsigned int dim_num);
+      unsigned int dim_num,
+      bool filtered);
 
   /**
    * Tile initializer.
@@ -140,6 +142,7 @@ class Tile {
    * @param cell_size The cell size.
    * @param dim_num The number of dimensions in case the tile stores
    *      coordinates.
+   * @param filtered The filtered state of the tile buffer.
    * @return Status
    */
   Status init(
@@ -147,7 +150,8 @@ class Tile {
       Datatype type,
       uint64_t tile_size,
       uint64_t cell_size,
-      unsigned int dim_num);
+      unsigned int dim_num,
+      bool filtered);
 
   /** Advances the buffer offset. */
   void advance_offset(uint64_t nbytes);
@@ -184,13 +188,8 @@ class Tile {
   bool empty() const;
 
   /**
-   * Returns the current filtered state of the tile data in the buffer.
-   *
-   * On writes, this returns true once the tile buffer is ready to be written
-   * (compressed, etc).
-   *
-   * On reads, this returns true once the tile buffer is ready to be copied to
-   * user buffers (decompressed, etc).
+   * Returns the current filtered state of the tile data in the buffer. When
+   * `true`, the buffer contains the filtered, on-disk format of the tile.
    */
   bool filtered() const;
 
@@ -313,7 +312,7 @@ class Tile {
    */
   unsigned int dim_num_;
 
-  /** The current state of the in-memory tile data with respect to filtering. */
+  /** When `true`, `buffer_` contains the filtered (on-disk) format. */
   bool filtered_;
 
   /** The format version of the data in this tile. */

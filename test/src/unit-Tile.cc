@@ -45,7 +45,13 @@ TEST_CASE("Tile: Test basic read", "[Tile][basic_read]") {
   const Datatype data_type = Datatype::UINT32;
   const uint64_t cell_size = 0;
   const unsigned int dim_num = 0;
-  CHECK(tile.init(format_version, data_type, cell_size, dim_num).ok());
+  CHECK(tile.init(
+                format_version,
+                data_type,
+                cell_size,
+                dim_num,
+                true /* filtered */)
+            .ok());
 
   // Create a buffer to write to the test Tile.
   const uint32_t buffer_len = 128;
