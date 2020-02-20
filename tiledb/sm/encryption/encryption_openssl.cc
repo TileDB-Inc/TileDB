@@ -37,7 +37,9 @@
 
 #include <openssl/err.h>
 #include <openssl/evp.h>
+#include <openssl/md5.h>
 #include <openssl/rand.h>
+#include <openssl/sha.h>
 
 namespace tiledb {
 namespace sm {
@@ -234,6 +236,41 @@ Status OpenSSL::decrypt_aes256gcm(
   // Clean up.
   EVP_CIPHER_CTX_free(ctx);
 
+  return Status::Ok();
+}
+
+Status OpenSSL::md5(
+    const void* input, uint64_t input_read_size, Buffer* output) {
+  // Ensure sufficient space in output buffer.
+  uint64_t required_space = MD5_DIGEST_LENGTH;
+  if (output->owns_data()) {
+    if (output->free_space() < required_space)
+      RETURN_NOT_OK(output->realloc(output->alloced_size() + required_space));
+  } else if (output->size() < required_space) {
+    return LOG_STATUS(Status::EncryptionError(
+        "OpenSSL error; cannot checksum: output buffer too small."));
+  }
+  MD5(static_cast<const unsigned char*>(input),
+      input_read_size,
+      static_cast<unsigned char*>(output->data()));
+  return Status::Ok();
+}
+
+Status OpenSSL::sha256(
+    const void* input, uint64_t input_read_size, Buffer* output) {
+  // Ensure sufficient space in output buffer.
+  uint64_t required_space = SHA256_DIGEST_LENGTH;
+  if (output->owns_data()) {
+    if (output->free_space() < required_space)
+      RETURN_NOT_OK(output->realloc(output->alloced_size() + required_space));
+  } else if (output->size() < required_space) {
+    return LOG_STATUS(Status::EncryptionError(
+        "OpenSSL error; cannot checksum: output buffer too small."));
+  }
+  SHA256(
+      static_cast<const unsigned char*>(input),
+      input_read_size,
+      static_cast<unsigned char*>(output->data()));
   return Status::Ok();
 }
 

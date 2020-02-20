@@ -34,6 +34,8 @@
 #include "tiledb/sm/filter/bit_width_reduction_filter.h"
 #include "tiledb/sm/filter/bitshuffle_filter.h"
 #include "tiledb/sm/filter/byteshuffle_filter.h"
+#include "tiledb/sm/filter/checksum_md5_filter.h"
+#include "tiledb/sm/filter/checksum_sha256_filter.h"
 #include "tiledb/sm/filter/compression_filter.h"
 #include "tiledb/sm/filter/encryption_aes256gcm_filter.h"
 #include "tiledb/sm/filter/noop_filter.h"
@@ -77,6 +79,10 @@ Filter* Filter::create(FilterType type) {
       return new (std::nothrow) PositiveDeltaFilter();
     case FilterType::INTERNAL_FILTER_AES_256_GCM:
       return new (std::nothrow) EncryptionAES256GCMFilter();
+    case FilterType::FILTER_CHECKSUM_MD5:
+      return new (std::nothrow) ChecksumMD5Filter();
+    case FilterType::FILTER_CHECKSUM_SHA256:
+      return new (std::nothrow) ChecksumSHA256Filter();
     default:
       assert(false);
       return nullptr;

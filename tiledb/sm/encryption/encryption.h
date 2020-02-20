@@ -53,6 +53,10 @@ class Encryption {
   static const unsigned AES256GCM_IV_BYTES = 12;
   /** Size of an AES-256-GCM tag in bytes. */
   static const unsigned AES256GCM_TAG_BYTES = 16;
+  /** Size of an MD5 Digest */
+  static const unsigned MD5_DIGEST_BYTES = 16;
+  /** Size of an SHA256 Digest */
+  static const unsigned SHA256_DIGEST_BYTES = 32;
 
   /**
    * Encrypt the given data using AES-256-GCM.
@@ -90,6 +94,68 @@ class Encryption {
       ConstBuffer* tag,
       ConstBuffer* input,
       Buffer* output);
+
+  /**
+   * Compute md5 checksum of data
+   *
+   * @param input Plaintext to compute hash of
+   * @param output Buffer to store store hash bytes.
+   * @return Status
+   */
+  static Status md5(ConstBuffer* input, Buffer* output);
+
+  /**
+   * Compute md5 checksum of data
+   *
+   * @param input Plaintext to compute hash of
+   * @param input_read_size size of input to compute has over
+   * @param output Buffer to store store hash bytes.
+   * @return Status
+   */
+  static Status md5(
+      ConstBuffer* input, uint64_t input_read_size, Buffer* output);
+
+  /**
+   * Compute md5 checksum of data
+   *
+   * @param input Plaintext to compute hash of
+   * @param input_read_size size of input to compute has over
+   * @param output Buffer to store store hash bytes.
+   * @return Status
+   */
+  static Status md5(
+      const void* input, uint64_t input_read_size, Buffer* output);
+
+  /**
+   * Compute sha256 checksum of data
+   *
+   * @param input Plaintext to compute hash of
+   * @param output Buffer to store store hash bytes.
+   * @return Status
+   */
+  static Status sha256(ConstBuffer* input, Buffer* output);
+
+  /**
+   * Compute sha256 checksum of data
+   *
+   * @param input Plaintext to compute hash of
+   * @param input_read_size size of input to compute has over
+   * @param output Buffer to store store hash bytes.
+   * @return Status
+   */
+  static Status sha256(
+      ConstBuffer* input, uint64_t input_read_size, Buffer* output);
+
+  /**
+   * Compute sha256 checksum of data
+   *
+   * @param input Plaintext to compute hash of
+   * @param input_read_size size of input to compute has over
+   * @param output Buffer to store store hash bytes.
+   * @return Status
+   */
+  static Status sha256(
+      const void* input, uint64_t input_read_size, Buffer* output);
 };
 
 }  // namespace sm

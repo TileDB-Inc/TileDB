@@ -267,6 +267,12 @@ const std::string filter_byteshuffle_str = "BYTESHUFFLE";
 /** String describing FILTER_POSITIVE_DELTA. */
 const std::string filter_positive_delta_str = "POSITIVE_DELTA";
 
+/** String describing FILTER_CHECKSUM_MD5. */
+const std::string filter_checksum_md5_str = "CHECKSUM_MD5";
+
+/** String describing FILTER_CHECKSUM_SHA256. */
+const std::string filter_checksum_sha256_str = "CHECKSUM_SHA256";
+
 /** The string representation for FilterOption type compression_level. */
 const std::string filter_option_compression_level_str = "COMPRESSION_LEVEL";
 

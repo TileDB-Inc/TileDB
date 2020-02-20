@@ -79,6 +79,10 @@ inline const std::string& filter_type_str(FilterType filter_type) {
       return constants::filter_byteshuffle_str;
     case FilterType::FILTER_POSITIVE_DELTA:
       return constants::filter_positive_delta_str;
+    case FilterType::FILTER_CHECKSUM_MD5:
+      return constants::filter_checksum_md5_str;
+    case FilterType::FILTER_CHECKSUM_SHA256:
+      return constants::filter_checksum_sha256_str;
     default:
       return constants::empty_str;
   }
@@ -109,6 +113,10 @@ inline Status filter_type_enum(
     *filter_type = FilterType::FILTER_BYTESHUFFLE;
   else if (filter_type_str == constants::filter_positive_delta_str)
     *filter_type = FilterType::FILTER_POSITIVE_DELTA;
+  else if (filter_type_str == constants::filter_checksum_md5_str)
+    *filter_type = FilterType::FILTER_CHECKSUM_MD5;
+  else if (filter_type_str == constants::filter_checksum_sha256_str)
+    *filter_type = FilterType::FILTER_CHECKSUM_SHA256;
   else {
     return Status::Error("Invalid FilterType " + filter_type_str);
   }

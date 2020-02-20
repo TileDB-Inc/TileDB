@@ -35,9 +35,12 @@
 
 #ifdef _WIN32
 
+#include <windows.h>
 #include "tiledb/sm/buffer/buffer.h"
 #include "tiledb/sm/encryption/encryption.h"
 #include "tiledb/sm/misc/status.h"
+
+#include <bcrypt.h>
 
 namespace tiledb {
 namespace sm {
@@ -81,6 +84,44 @@ class Win32CNG {
       ConstBuffer* tag,
       ConstBuffer* input,
       Buffer* output);
+
+  /**
+   * Compute md5 checksum of data
+   *
+   * @param input Plaintext to compute hash of
+   * @param input_read_size size of input to read for hash
+   * @param output Buffer to store store hash bytes.
+   * @return Status
+   */
+  static Status md5(
+      const void* input, uint64_t input_read_size, Buffer* output);
+
+  /**
+   * Compute sha256 checksum of data
+   *
+   * @param input Plaintext to compute hash of
+   * @param input_read_size size of input to read for hash
+   * @param output Buffer to store store hash bytes.
+   * @return Status
+   */
+  static Status sha256(
+      const void* input, uint64_t input_read_size, Buffer* output);
+
+  /**
+   *
+   * Compute a has using Win32CNG functions
+   *
+   * @param input Plaintext to compute hash of
+   * @param input_read_size size of input to read for hash
+   * @param output Buffer to store store hash bytes.
+   * @param alg_handle hash algorithm handle
+   * @return Status
+   */
+  static Status hash_bytes(
+      const void* input,
+      uint64_t input_read_size,
+      Buffer* output,
+      LPCWSTR hash_algorithm);
 
  private:
   /**
