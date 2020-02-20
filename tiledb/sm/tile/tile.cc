@@ -132,11 +132,13 @@ Status Tile::init(
     uint32_t format_version,
     Datatype type,
     uint64_t cell_size,
-    unsigned int dim_num) {
+    unsigned int dim_num,
+    bool filtered) {
   cell_size_ = cell_size;
   dim_num_ = dim_num;
   type_ = type;
   format_version_ = format_version;
+  filtered_ = filtered;
 
   buffer_ = new Buffer();
   if (buffer_ == nullptr)
@@ -151,11 +153,13 @@ Status Tile::init(
     Datatype type,
     uint64_t tile_size,
     uint64_t cell_size,
-    unsigned int dim_num) {
+    unsigned int dim_num,
+    bool filtered) {
   cell_size_ = cell_size;
   dim_num_ = dim_num;
   type_ = type;
   format_version_ = format_version;
+  filtered_ = filtered;
 
   buffer_ = new Buffer();
   if (buffer_ == nullptr)

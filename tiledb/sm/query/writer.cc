@@ -1382,8 +1382,13 @@ Status Writer::init_tile(const std::string& name, Tile* tile) const {
   auto tile_size = cell_num_per_tile * cell_size;
 
   // Initialize
-  RETURN_NOT_OK(
-      tile->init(constants::format_version, type, tile_size, cell_size, 0));
+  RETURN_NOT_OK(tile->init(
+      constants::format_version,
+      type,
+      tile_size,
+      cell_size,
+      0,
+      false /* filtered */));
 
   return Status::Ok();
 }
@@ -1403,9 +1408,15 @@ Status Writer::init_tile(
       constants::cell_var_offset_type,
       tile_size,
       constants::cell_var_offset_size,
-      0));
+      0,
+      false /* filtered */));
   RETURN_NOT_OK(tile_var->init(
-      constants::format_version, type, tile_size, datatype_size(type), 0));
+      constants::format_version,
+      type,
+      tile_size,
+      datatype_size(type),
+      0,
+      false /* filtered */));
   return Status::Ok();
 }
 

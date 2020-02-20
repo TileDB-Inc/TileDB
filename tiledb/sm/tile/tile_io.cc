@@ -116,7 +116,8 @@ Status TileIO::read_generic(
           header.version_number,
           (Datatype)header.datatype,
           header.cell_size,
-          0),
+          0,
+          true /* filtered */),
       delete *tile);
 
   auto tile_data_offset =
