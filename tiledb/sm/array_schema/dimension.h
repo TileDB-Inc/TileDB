@@ -141,6 +141,21 @@ class Dimension {
   template <class T>
   static void crop_range(const Dimension* dim, Range* range);
 
+  /**
+   * Returns the domain range (high - low + 1) of the input
+   * 1D range. It returns 0 in case the dimension datatype
+   * is not integer or if there is an overflow.
+   */
+  uint64_t domain_range(const Range& range) const;
+
+  /**
+   * Returns the domain range (high - low + 1) of the input
+   * 1D range. It returns 0 in case the dimension datatype
+   * is not integer or if there is an overflow.
+   */
+  template <class T>
+  static uint64_t domain_range(const Dimension* dim, const Range& range);
+
   /** Expand 1D range `r` using value `v`. */
   void expand_range_v(const void* v, Range* r) const;
 
@@ -301,6 +316,13 @@ class Dimension {
   std::function<void(const Dimension* dim, Range*)> crop_range_func_;
 
   /**
+   * Stores the appropriate templated crop_range() function based on the
+   * dimension datatype.
+   */
+  std::function<uint64_t(const Dimension* dim, const Range&)>
+      domain_range_func_;
+
+  /**
    * Stores the appropriate templated expand_range() function based on the
    * dimension datatype.
    */
@@ -447,6 +469,9 @@ class Dimension {
 
   /** Sets the templated crop_range() function. */
   void set_crop_range_func();
+
+  /** Sets the templated domain_range() function. */
+  void set_domain_range_func();
 
   /** Sets the templated expand_range() function. */
   void set_expand_range_func();

@@ -244,62 +244,9 @@ template <class T>
 bool coords_in_rect(
     const T* coords, const std::vector<const T*>& rect, unsigned int dim_num);
 
-/**
- * Checks if `rect_a` is inside `rect_b`.
- *
- * @tparam T The domain type.
- * @param rect_a The first rectangle.
- * @param rect_b The second rectangle.
- * @param dim_num The number of dimensions.
- * @return `true` if `rect_a` is inside `rect_b` and `false` otherwise.
- */
-template <class T>
-bool rect_in_rect(const T* rect_a, const T* rect_b, unsigned int dim_num);
-
-/**
- * Computes the union of a set of MBRs (rectangles).
- *
- * @tparam T The domain type.
- * @param dim_num The number of dimensions.
- * @param mbrs The start of the MBRs whose union to compute.
- * @param mbr_num The number of MBRs serialized one after the
- *     other and starting at ``mbrs``.
- * @param mbr_union The MBR union to be computed.
- */
-template <class T>
-void compute_mbr_union(
-    unsigned dim_num, const T* mbrs, uint64_t mbr_num, T* mbr_union);
-
-/**
- * Expands `mbr_a` so that it encompasses `mbr_b`.
- *
- * @tparam T The type of the MBR and coordinates.
- * @param mbr_a The MBR to be expanded.
- * @param mbr_b The MBR used to expnad `mbr_a`.
- * @param dim_num The number of dimensions of the MBRs.
- * @return void
- */
-template <class T>
-void expand_mbr_with_mbr(T* mbr_a, const T* mbr_b, unsigned int dim_num);
-
 /** Returns *true* if hyper-rectangle `a` overlaps with `b`. */
 template <class T>
 bool overlap(const T* a, const T* b, unsigned dim_num);
-
-/**
- * Checks whether two hyper-rectangles overlap, and determines whether
- * the first rectangle contains the second.
- *
- * @tparam T The type of the rectangles.
- * @param a The first rectangle.
- * @param b The second rectangle.
- * @param dim_num The number of dimensions.
- * @param a_contains_b Determines whether the first rectangle contains the
- *     second.
- * @return `True` if the rectangles overlap, and `false` otherwise.
- */
-template <class T>
-bool overlap(const T* a, const T* b, unsigned dim_num, bool* a_contains_b);
 
 /**
  * Computes the overlap between two rectangles.
@@ -312,14 +259,6 @@ bool overlap(const T* a, const T* b, unsigned dim_num, bool* a_contains_b);
  */
 template <class T>
 void overlap(const T* a, const T* b, unsigned dim_num, T* o, bool* overlap);
-
-/**
- * Returns *true* if hyper-rectangle `a` overlaps with `b`.
- * `a` is vector of [low, high] pairs, one per dimension, whereas `b`
- * is a flattened array of [low,high] pairs one per dimension.
- */
-template <class T>
-bool overlap(const std::vector<const T*>& a, const T* b);
 
 /**
  * Returns the percentage of coverage of hyper-rectangle `a` in `b`.

@@ -197,7 +197,7 @@ class Consolidator {
    * fragments is more than an amplification factor larger than the
    * sum of sizes of the separate fragment non-empty domains.
    *
-   * @tparam T The domain type.
+   * @param domain The array domain.
    * @param fragments The input fragments.
    * @param start The function will focus on fragments between
    *     positions `start` and `end`.
@@ -205,17 +205,15 @@ class Consolidator {
    *     positions `start` and `end`.
    * @param union_non_empty_domains The union of the non-empty domains of
    *    the fragments between `start` and `end`.
-   * @param dim_num The number of domain dimensions.
    * @return `True` if the fragments between `start` and `end` can be
    *     consolidated based on the above definition.
    */
-  template <class T>
   bool are_consolidatable(
+      const Domain* domain,
       const std::vector<FragmentInfo>& fragments,
       size_t start,
       size_t end,
-      const T* union_non_empty_domains,
-      unsigned dim_num) const;
+      const NDRange& union_non_empty_domains) const;
 
   /**
    * Consolidates the fragments of the input array.
@@ -227,24 +225,6 @@ class Consolidator {
    * @param key_length The length in bytes of the encryption key.
    * @return Status
    */
-  Status consolidate(
-      const ArraySchema* array_schema,
-      EncryptionType encryption_type,
-      const void* encryption_key,
-      uint32_t key_length);
-
-  /**
-   * Consolidates the fragments of the input array.
-   *
-   * @param T The domain type.
-   * @param array_schema The schema of the array to consolidate.
-   * @param encryption_type The encryption type of the array
-   * @param encryption_key If the array is encrypted, the private encryption
-   *    key. For unencrypted arrays, pass `nullptr`.
-   * @param key_length The length in bytes of the encryption key.
-   * @return Status
-   */
-  template <class T>
   Status consolidate(
       const ArraySchema* array_schema,
       EncryptionType encryption_type,
@@ -255,7 +235,6 @@ class Consolidator {
    * Consolidates the input fragments of the input array. This function
    * implements a single consolidation step.
    *
-   * @tparam T The domain type.
    * @param array_uri URI of array to consolidate.
    * @param to_consolidate The fragments to consolidate in this consolidation
    *     step.
@@ -270,11 +249,10 @@ class Consolidator {
    *     consolidating the `to_consolidate` fragments.
    * @return Status
    */
-  template <class T>
   Status consolidate(
       const URI& array_uri,
       const std::vector<FragmentInfo>& to_consolidate,
-      T* union_non_empty_domains,
+      const NDRange& union_non_empty_domains,
       EncryptionType encryption_type,
       const void* encryption_key,
       uint32_t key_length,
@@ -342,7 +320,7 @@ class Consolidator {
       Array* array_for_reads,
       Array* array_for_writes,
       bool sparse_mode,
-      void* subarray,
+      const NDRange& subarray,
       void** buffers,
       uint64_t* buffer_sizes,
       Query** query_r,
@@ -375,7 +353,6 @@ class Consolidator {
    * included in the non-empty domain of a later dense fragment.
    * This is applicable only to dense arrays.
    *
-   * @tparam T The domain type.
    * @param array_schema The array schema.
    * @param fragments Fragment information that will help in identifying
    *     which fragments to delete. If a fragment gets deleted by the
@@ -383,7 +360,6 @@ class Consolidator {
    *     from this vector.
    * @return Status
    */
-  template <class T>
   Status delete_overwritten_fragments(
       const ArraySchema* array_schema, std::vector<FragmentInfo>* fragments);
 
@@ -401,7 +377,6 @@ class Consolidator {
    * Based on the input fragment info, this algorithm decides the (sorted) list
    * of fragments to be consolidated in the next consolidation step.
    *
-   * @tparam T The domain type.
    * @param array_schema The array schema.
    * @param fragments Information about all the fragments.
    * @param to_consolidate The fragments to consolidate in the next step.
@@ -409,12 +384,11 @@ class Consolidator {
    *     union of the non-empty domains of the fragments in `to_consolidate`.
    * @return Status
    */
-  template <class T>
   Status compute_next_to_consolidate(
       const ArraySchema* array_schema,
       const std::vector<FragmentInfo>& fragments,
       std::vector<FragmentInfo>* to_consolidate,
-      T* union_non_empty_domains) const;
+      NDRange* union_non_empty_domains) const;
 
   /**
    * The new fragment URI is computed

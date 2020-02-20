@@ -53,6 +53,7 @@ Dimension::Dimension() {
   type_ = Datatype::INT32;
   set_compute_mbr_func();
   set_crop_range_func();
+  set_domain_range_func();
   set_expand_range_func();
   set_expand_range_v_func();
   set_expand_to_tile_func();
@@ -71,6 +72,7 @@ Dimension::Dimension(const std::string& name, Datatype type)
   tile_extent_ = nullptr;
   set_compute_mbr_func();
   set_crop_range_func();
+  set_domain_range_func();
   set_expand_range_func();
   set_expand_range_v_func();
   set_expand_to_tile_func();
@@ -218,6 +220,7 @@ Status Dimension::deserialize(ConstBuffer* buff, Datatype type) {
 
   set_compute_mbr_func();
   set_crop_range_func();
+  set_domain_range_func();
   set_expand_range_func();
   set_expand_range_v_func();
   set_expand_to_tile_func();
@@ -302,6 +305,29 @@ void Dimension::crop_range(const Dimension* dim, Range* range) {
 void Dimension::crop_range(Range* range) const {
   assert(crop_range_func_ != nullptr);
   crop_range_func_(this, range);
+}
+
+template <class T>
+uint64_t Dimension::domain_range(const Dimension* dim, const Range& range) {
+  assert(dim != nullptr);
+  assert(!range.empty());
+  (void)dim;
+
+  if (&typeid(T) == &typeid(float) || &typeid(T) == &typeid(double))
+    return 0;
+
+  auto r = (const T*)range.data();
+  uint64_t ret = r[1] - r[0];
+  if (ret == std::numeric_limits<uint64_t>::max())  // overflow
+    return 0;
+  ++ret;
+
+  return ret;
+}
+
+uint64_t Dimension::domain_range(const Range& range) const {
+  assert(domain_range_func_ != nullptr);
+  return domain_range_func_(this, range);
 }
 
 template <class T>
@@ -883,6 +909,59 @@ void Dimension::set_crop_range_func() {
       break;
     default:
       crop_range_func_ = nullptr;
+      break;
+  }
+}
+
+void Dimension::set_domain_range_func() {
+  switch (type_) {
+    case Datatype::INT32:
+      domain_range_func_ = domain_range<int32_t>;
+      break;
+    case Datatype::INT64:
+      domain_range_func_ = domain_range<int64_t>;
+      break;
+    case Datatype::INT8:
+      domain_range_func_ = domain_range<int8_t>;
+      break;
+    case Datatype::UINT8:
+      domain_range_func_ = domain_range<uint8_t>;
+      break;
+    case Datatype::INT16:
+      domain_range_func_ = domain_range<int16_t>;
+      break;
+    case Datatype::UINT16:
+      domain_range_func_ = domain_range<uint16_t>;
+      break;
+    case Datatype::UINT32:
+      domain_range_func_ = domain_range<uint32_t>;
+      break;
+    case Datatype::UINT64:
+      domain_range_func_ = domain_range<uint64_t>;
+      break;
+    case Datatype::FLOAT32:
+      domain_range_func_ = domain_range<float>;
+      break;
+    case Datatype::FLOAT64:
+      domain_range_func_ = domain_range<double>;
+      break;
+    case Datatype::DATETIME_YEAR:
+    case Datatype::DATETIME_MONTH:
+    case Datatype::DATETIME_WEEK:
+    case Datatype::DATETIME_DAY:
+    case Datatype::DATETIME_HR:
+    case Datatype::DATETIME_MIN:
+    case Datatype::DATETIME_SEC:
+    case Datatype::DATETIME_MS:
+    case Datatype::DATETIME_US:
+    case Datatype::DATETIME_NS:
+    case Datatype::DATETIME_PS:
+    case Datatype::DATETIME_FS:
+    case Datatype::DATETIME_AS:
+      domain_range_func_ = domain_range<int64_t>;
+      break;
+    default:
+      domain_range_func_ = nullptr;
       break;
   }
 }

@@ -208,41 +208,35 @@ bool Consolidator::all_sparse(
     size_t start,
     size_t end) const {
   for (size_t i = start; i <= end; ++i) {
-    if (!fragments[i].sparse_)
+    if (!fragments[i].sparse())
       return false;
   }
 
   return true;
 }
 
-template <class T>
 bool Consolidator::are_consolidatable(
+    const Domain* domain,
     const std::vector<FragmentInfo>& fragments,
     size_t start,
     size_t end,
-    const T* union_non_empty_domains,
-    unsigned dim_num) const {
+    const NDRange& union_non_empty_domains) const {
   // True if all fragments in [start, end] are sparse
   if (all_sparse(fragments, start, end))
     return true;
 
   // Check overlap of union with earlier fragments
   for (size_t i = 0; i < start; ++i) {
-    if (utils::geometry::overlap(
-            union_non_empty_domains,
-            (T*)&fragments[i].non_empty_domain_[0],
-            dim_num))
+    if (domain->overlap(
+            union_non_empty_domains, fragments[i].non_empty_domain()))
       return false;
   }
 
   // Check consolidation amplification factor
-  auto union_cell_num =
-      utils::geometry::cell_num<T>(union_non_empty_domains, dim_num);
+  auto union_cell_num = domain->cell_num(union_non_empty_domains);
   uint64_t sum_cell_num = 0;
   for (size_t i = start; i <= end; ++i) {
-    // fragments(StorageManager)
-    sum_cell_num += utils::geometry::cell_num<T>(
-        (T*)&fragments[i].expanded_non_empty_domain_[0], dim_num);
+    sum_cell_num += domain->cell_num(fragments[i].expanded_non_empty_domain());
   }
 
   return (double(union_cell_num) / sum_cell_num) <= config_.amplification_;
@@ -253,79 +247,11 @@ Status Consolidator::consolidate(
     EncryptionType encryption_type,
     const void* encryption_key,
     uint32_t key_length) {
-  switch (array_schema->coords_type()) {
-    case Datatype::INT32:
-      return consolidate<int>(
-          array_schema, encryption_type, encryption_key, key_length);
-    case Datatype::INT64:
-      return consolidate<int64_t>(
-          array_schema, encryption_type, encryption_key, key_length);
-    case Datatype::INT8:
-      return consolidate<int8_t>(
-          array_schema, encryption_type, encryption_key, key_length);
-    case Datatype::UINT8:
-      return consolidate<uint8_t>(
-          array_schema, encryption_type, encryption_key, key_length);
-    case Datatype::INT16:
-      return consolidate<int16_t>(
-          array_schema, encryption_type, encryption_key, key_length);
-    case Datatype::UINT16:
-      return consolidate<uint16_t>(
-          array_schema, encryption_type, encryption_key, key_length);
-    case Datatype::UINT32:
-      return consolidate<uint32_t>(
-          array_schema, encryption_type, encryption_key, key_length);
-    case Datatype::UINT64:
-      return consolidate<uint64_t>(
-          array_schema, encryption_type, encryption_key, key_length);
-    case Datatype::FLOAT32:
-      return consolidate<float>(
-          array_schema, encryption_type, encryption_key, key_length);
-    case Datatype::FLOAT64:
-      return consolidate<double>(
-          array_schema, encryption_type, encryption_key, key_length);
-    case Datatype::DATETIME_YEAR:
-    case Datatype::DATETIME_MONTH:
-    case Datatype::DATETIME_WEEK:
-    case Datatype::DATETIME_DAY:
-    case Datatype::DATETIME_HR:
-    case Datatype::DATETIME_MIN:
-    case Datatype::DATETIME_SEC:
-    case Datatype::DATETIME_MS:
-    case Datatype::DATETIME_US:
-    case Datatype::DATETIME_NS:
-    case Datatype::DATETIME_PS:
-    case Datatype::DATETIME_FS:
-    case Datatype::DATETIME_AS:
-      return consolidate<int64_t>(
-          array_schema, encryption_type, encryption_key, key_length);
-    default:
-      return LOG_STATUS(
-          Status::ConsolidatorError("Cannot consolidate; Invalid domain type"));
-  }
-
-  return Status::Ok();
-}
-
-template <class T>
-Status Consolidator::consolidate(
-    const ArraySchema* array_schema,
-    EncryptionType encryption_type,
-    const void* encryption_key,
-    uint32_t key_length) {
   std::vector<FragmentInfo> to_consolidate;
   auto timestamp = utils::time::timestamp_now_ms();
   auto array_uri = array_schema->array_uri();
   EncryptionKey enc_key;
   RETURN_NOT_OK(enc_key.set_key(encryption_type, encryption_key, key_length));
-  auto domain_size = 2 * array_schema->coords_size();
-
-  // Allocate memory for union of non-empty domains of fragments to consolidate
-  std::unique_ptr<uint8_t[]> union_non_empty_domains(
-      new uint8_t[domain_size]());
-  if (union_non_empty_domains == nullptr)
-    return LOG_STATUS(Status::ConsolidatorError(
-        "Cannot consolidate; memory allocation failed"));
 
   // Get fragment info
   std::vector<FragmentInfo> fragment_info;
@@ -333,7 +259,7 @@ Status Consolidator::consolidate(
       array_schema, timestamp, enc_key, &fragment_info));
 
   // First make a pass and delete any entirely overwritten fragments
-  RETURN_NOT_OK(delete_overwritten_fragments<T>(array_schema, &fragment_info));
+  RETURN_NOT_OK(delete_overwritten_fragments(array_schema, &fragment_info));
 
   uint32_t step = 0;
   do {
@@ -342,11 +268,12 @@ Status Consolidator::consolidate(
       break;
 
     // Find the next fragments to be consolidated
-    RETURN_NOT_OK(compute_next_to_consolidate<T>(
+    NDRange union_non_empty_domains;
+    RETURN_NOT_OK(compute_next_to_consolidate(
         array_schema,
         fragment_info,
         &to_consolidate,
-        (T*)union_non_empty_domains.get()));
+        &union_non_empty_domains));
 
     // Check if there is anything to consolidate
     if (to_consolidate.size() <= 1)
@@ -354,10 +281,10 @@ Status Consolidator::consolidate(
 
     // Consolidate the selected fragments
     URI new_fragment_uri;
-    RETURN_NOT_OK(consolidate<T>(
+    RETURN_NOT_OK(consolidate(
         array_uri,
         to_consolidate,
-        (T*)union_non_empty_domains.get(),
+        union_non_empty_domains,
         encryption_type,
         encryption_key,
         key_length,
@@ -379,11 +306,10 @@ Status Consolidator::consolidate(
   return Status::Ok();
 }
 
-template <class T>
 Status Consolidator::consolidate(
     const URI& array_uri,
     const std::vector<FragmentInfo>& to_consolidate,
-    T* union_non_empty_domains,
+    const NDRange& union_non_empty_domains,
     EncryptionType encryption_type,
     const void* encryption_key,
     uint32_t key_length,
@@ -417,9 +343,6 @@ Status Consolidator::consolidate(
   bool all_sparse =
       this->all_sparse(to_consolidate, 0, to_consolidate.size() - 1);
 
-  // Compute layout and subarray
-  void* subarray = (all_sparse) ? nullptr : union_non_empty_domains;
-
   // Prepare buffers
   void** buffers;
   uint64_t* buffer_sizes;
@@ -439,7 +362,7 @@ Status Consolidator::consolidate(
       &array_for_reads,
       &array_for_writes,
       all_sparse,
-      subarray,
+      union_non_empty_domains,
       buffers,
       buffer_sizes,
       &query_r,
@@ -497,7 +420,7 @@ Status Consolidator::consolidate(
 
   std::vector<URI> to_delete;
   for (const auto& f : to_consolidate)
-    to_delete.emplace_back(f.uri_);
+    to_delete.emplace_back(f.uri());
 
   // Delete old fragment metadata. This makes the old fragments invisible
   st = delete_fragment_metadata(array_uri, to_delete);
@@ -590,18 +513,31 @@ Status Consolidator::create_queries(
     Array* array_for_reads,
     Array* array_for_writes,
     bool sparse_mode,
-    void* subarray,
+    const NDRange& subarray,
     void** buffers,
     uint64_t* buffer_sizes,
     Query** query_r,
     Query** query_w,
     URI* new_fragment_uri) {
+  // Create subarray to set
+  std::vector<uint8_t> s;
+  if (!sparse_mode) {
+    auto domain_size = 2 * array_for_reads->array_schema()->coords_size();
+    s.resize(domain_size);
+    uint64_t offset = 0;
+    for (const auto& r : subarray) {
+      std::memcpy(&s[offset], r.data(), r.size());
+      offset += r.size();
+    }
+  }
+  void* to_set = (s.empty()) ? nullptr : &s[0];
+
   // Create read query
   *query_r = new Query(storage_manager_, array_for_reads);
   RETURN_NOT_OK((*query_r)->set_layout(Layout::GLOBAL_ORDER));
   RETURN_NOT_OK(
       set_query_buffers(*query_r, sparse_mode, buffers, buffer_sizes));
-  RETURN_NOT_OK((*query_r)->set_subarray(subarray, true));
+  RETURN_NOT_OK((*query_r)->set_subarray(to_set, true));
   if (array_for_reads->array_schema()->dense() && sparse_mode)
     RETURN_NOT_OK((*query_r)->set_sparse_mode(true));
 
@@ -613,7 +549,7 @@ Status Consolidator::create_queries(
   // Create write query
   *query_w = new Query(storage_manager_, array_for_writes, *new_fragment_uri);
   RETURN_NOT_OK((*query_w)->set_layout(Layout::GLOBAL_ORDER));
-  RETURN_NOT_OK((*query_w)->set_subarray(subarray, true));
+  RETURN_NOT_OK((*query_w)->set_subarray(to_set, true));
   RETURN_NOT_OK(
       set_query_buffers(*query_w, sparse_mode, buffers, buffer_sizes));
 
@@ -641,7 +577,6 @@ Status Consolidator::delete_fragments(const std::vector<URI>& fragments) {
   return Status::Ok();
 }
 
-template <class T>
 Status Consolidator::delete_overwritten_fragments(
     const ArraySchema* array_schema, std::vector<FragmentInfo>* fragments) {
   // Trivial case
@@ -653,22 +588,19 @@ Status Consolidator::delete_overwritten_fragments(
     return Status::Ok();
 
   // Find which fragments to delete
-  auto dim_num = array_schema->dim_num();
+  auto domain = array_schema->domain();
   std::vector<URI> to_delete;
   std::list<FragmentInfo> updated;
   for (auto f : *fragments)
     updated.emplace_back(f);
 
   for (auto cur = updated.rbegin(); cur != updated.rend(); ++cur) {
-    if (cur->sparse_)
+    if (cur->sparse())
       continue;
     for (auto check = updated.begin();
-         check->uri_.to_string() != cur->uri_.to_string();) {
-      if (utils::geometry::rect_in_rect<T>(
-              (T*)&check->non_empty_domain_[0],
-              (T*)&cur->non_empty_domain_[0],
-              dim_num)) {
-        to_delete.emplace_back(check->uri_);
+         check->uri().to_string() != cur->uri().to_string();) {
+      if (domain->covered(check->non_empty_domain(), cur->non_empty_domain())) {
+        to_delete.emplace_back(check->uri());
         check = updated.erase(check);
       } else {
         ++check;
@@ -700,15 +632,12 @@ void Consolidator::free_buffers(
   delete[] buffer_sizes;
 }
 
-template <class T>
 Status Consolidator::compute_next_to_consolidate(
     const ArraySchema* array_schema,
     const std::vector<FragmentInfo>& fragments,
     std::vector<FragmentInfo>* to_consolidate,
-    T* union_non_empty_domains) const {
+    NDRange* union_non_empty_domains) const {
   // Preparation
-  auto domain_size = 2 * array_schema->coords_size();
-  auto dim_num = array_schema->dim_num();
   auto domain = array_schema->domain();
   to_consolidate->clear();
   auto min = config_.min_frags_;
@@ -726,7 +655,7 @@ Status Consolidator::compute_next_to_consolidate(
   // stores the sum of fragment sizes, and the other the union of the
   // corresponding non-empty domains of the fragments.
   std::vector<std::vector<uint64_t>> m_sizes;
-  std::vector<std::vector<std::vector<uint8_t>>> m_union;
+  std::vector<std::vector<NDRange>> m_union;
   auto col_num = fragments.size();
   auto row_num = max;
   m_sizes.resize(row_num);
@@ -735,8 +664,6 @@ Status Consolidator::compute_next_to_consolidate(
   m_union.resize(row_num);
   for (auto& row : m_union) {
     row.resize(col_num);
-    for (auto& col : row)
-      col.resize(domain_size);
   }
 
   // Entry m[i][j] contains the collective size of fragments
@@ -750,27 +677,23 @@ Status Consolidator::compute_next_to_consolidate(
   for (size_t i = 0; i < row_num; ++i) {
     for (size_t j = 0; j < col_num; ++j) {
       if (i == 0) {  // In the first row we store the sizes of `fragments`
-        m_sizes[i][j] = fragments[j].fragment_size_;
-        std::memcpy(
-            &m_union[i][j][0], &fragments[j].non_empty_domain_[0], domain_size);
+        m_sizes[i][j] = fragments[j].fragment_size();
+        m_union[i][j] = fragments[j].non_empty_domain();
       } else if (i + j >= col_num) {  // Non-valid entries
         m_sizes[i][j] = UINT64_MAX;
         m_union[i][j].clear();
         m_union[i][j].shrink_to_fit();
       } else {  // Every other row is computed using the previous row
-        auto ratio = (float)fragments[i + j - 1].fragment_size_ /
-                     fragments[i + j].fragment_size_;
+        auto ratio = (float)fragments[i + j - 1].fragment_size() /
+                     fragments[i + j].fragment_size();
         ratio = (ratio <= 1.0f) ? ratio : 1.0f / ratio;
         if (ratio >= size_ratio && (m_sizes[i - 1][j] != UINT64_MAX)) {
-          m_sizes[i][j] = m_sizes[i - 1][j] + fragments[i + j].fragment_size_;
-          std::memcpy(&m_union[i][j][0], &m_union[i - 1][j][0], domain_size);
-          utils::geometry::expand_mbr_with_mbr<T>(
-              (T*)&m_union[i][j][0],
-              (const T*)&fragments[i + j].non_empty_domain_[0],
-              dim_num);
-          domain->expand_domain<T>((T*)&m_union[i][j][0]);
-          if (!are_consolidatable<T>(
-                  fragments, j, j + i, (const T*)&m_union[i][j][0], dim_num)) {
+          m_sizes[i][j] = m_sizes[i - 1][j] + fragments[i + j].fragment_size();
+          m_union[i][j] = m_union[i - 1][j];
+          domain->expand_ndrange(
+              fragments[i + j].non_empty_domain(), &m_union[i][j]);
+          domain->expand_to_tiles(&m_union[i][j]);
+          if (!are_consolidatable(domain, fragments, j, j + i, m_union[i][j])) {
             // Mark this entry as invalid
             m_sizes[i][j] = UINT64_MAX;
             m_union[i][j].clear();
@@ -812,7 +735,15 @@ Status Consolidator::compute_next_to_consolidate(
     // Results found
     for (size_t f = min_col; f <= min_col + i; ++f)
       to_consolidate->emplace_back(fragments[f]);
-    std::memcpy(union_non_empty_domains, &m_union[i][min_col][0], domain_size);
+    *union_non_empty_domains = m_union[i][min_col];
+
+    std::cout << "union_non_empty_domains: ";
+    for (auto r : *union_non_empty_domains) {
+      auto d = (const uint64_t*)r.data();
+      std::cout << d[0] << " " << d[1];
+    }
+    std::cout << "\n";
+
     break;
   }
 
@@ -894,7 +825,8 @@ void Consolidator::update_fragment_info(
   while (fragment_it != fragment_info->end()) {
     // No match - add the fragment info and advance `fragment_it`
     if (to_consolidate_it == to_consolidate.end() ||
-        fragment_it->uri_.to_string() != to_consolidate_it->uri_.to_string()) {
+        fragment_it->uri().to_string() !=
+            to_consolidate_it->uri().to_string()) {
       updated_fragment_info.emplace_back(*fragment_it);
       ++fragment_it;
     } else {  // Match - add new fragment only once and advance both iterators
