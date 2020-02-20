@@ -106,5 +106,45 @@ Status Encryption::decrypt_aes256gcm(
   STATS_FUNC_OUT(encryption_decrypt_aes256gcm);
 }
 
+Status Encryption::md5(ConstBuffer* input, Buffer* output) {
+  return md5(input, input->size(), output);
+}
+
+Status Encryption::md5(
+    ConstBuffer* input, uint64_t input_read_size, Buffer* output) {
+  return md5(input->data(), input_read_size, output);
+}
+
+Status Encryption::md5(
+    const void* input, uint64_t input_read_size, Buffer* output) {
+  STATS_FUNC_IN(encryption_md5);
+#ifdef _WIN32
+  return Win32CNG::md5(input, input_read_size, output);
+#else
+  return OpenSSL::md5(input, input_read_size, output);
+#endif
+  STATS_FUNC_OUT(encryption_md5);
+}
+
+Status Encryption::sha256(ConstBuffer* input, Buffer* output) {
+  return sha256(input, input->size(), output);
+}
+
+Status Encryption::sha256(
+    ConstBuffer* input, uint64_t input_read_size, Buffer* output) {
+  return sha256(input->data(), input_read_size, output);
+}
+
+Status Encryption::sha256(
+    const void* input, uint64_t input_read_size, Buffer* output) {
+  STATS_FUNC_IN(encryption_sha256);
+#ifdef _WIN32
+  return Win32CNG::sha256(input, input_read_size, output);
+#else
+  return OpenSSL::sha256(input, input_read_size, output);
+#endif
+  STATS_FUNC_OUT(encryption_sha256);
+}
+
 }  // namespace sm
 }  // namespace tiledb

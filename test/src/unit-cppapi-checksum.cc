@@ -1,5 +1,5 @@
 /**
- * @file   unit-cppapi-filter.cc
+ * @file   unit-cppapi-checksum.cc
  *
  * @section LICENSE
  *
@@ -27,9 +27,10 @@
  *
  * @section DESCRIPTION
  *
- * Tests the C++ API for filter related functions.
+ * Tests the C++ API for checksum validation.
  */
 
+#include <fstream>
 #include "catch.hpp"
 #include "tiledb/sm/cpp_api/tiledb"
 
@@ -43,92 +44,10 @@ static void check_filters(
   }
 }
 
-TEST_CASE("C++ API: Filter options", "[cppapi], [filter]") {
+static void run_checksum_test(tiledb_filter_type_t filter_type) {
   using namespace tiledb;
   Context ctx;
-
-  // Test filter creation and option setting/getting
-  Filter f(ctx, TILEDB_FILTER_BZIP2);
-  int32_t get_level;
-  f.get_option(TILEDB_COMPRESSION_LEVEL, &get_level);
-  REQUIRE(get_level == -1);
-
-  int32_t set_level = 5;
-  f.set_option(TILEDB_COMPRESSION_LEVEL, &set_level);
-  f.get_option(TILEDB_COMPRESSION_LEVEL, &get_level);
-  REQUIRE(get_level == 5);
-
-  // Check templated version
-  f.set_option(TILEDB_COMPRESSION_LEVEL, 4);
-  f.get_option(TILEDB_COMPRESSION_LEVEL, &get_level);
-  REQUIRE(get_level == 4);
-
-  // Check templated version with wrong type throws exception
-  uint32_t wrong_type_u = 1;
-  REQUIRE_THROWS_AS(
-      f.set_option(TILEDB_COMPRESSION_LEVEL, wrong_type_u),
-      std::invalid_argument);
-  REQUIRE_THROWS_AS(
-      f.get_option(TILEDB_COMPRESSION_LEVEL, &wrong_type_u),
-      std::invalid_argument);
-
-  // Check that you can bypass type safety (don't do this).
-  f.get_option(TILEDB_COMPRESSION_LEVEL, (void*)&wrong_type_u);
-  REQUIRE(wrong_type_u == 4);
-
-  // Unsupported option
-  uint32_t window;
-  REQUIRE_THROWS_AS(
-      f.set_option(TILEDB_BIT_WIDTH_MAX_WINDOW, &window), TileDBError);
-  REQUIRE_THROWS_AS(
-      f.get_option(TILEDB_BIT_WIDTH_MAX_WINDOW, &window), TileDBError);
-
-  Filter f2(ctx, TILEDB_FILTER_BIT_WIDTH_REDUCTION);
-  int32_t wrong_type_i = 1;
-  REQUIRE_THROWS_AS(f2.set_option(TILEDB_COMPRESSION_LEVEL, 1), TileDBError);
-  REQUIRE_THROWS_AS(
-      f2.set_option(TILEDB_BIT_WIDTH_MAX_WINDOW, -1), std::invalid_argument);
-  REQUIRE_THROWS_AS(
-      f2.set_option(TILEDB_BIT_WIDTH_MAX_WINDOW, wrong_type_i),
-      std::invalid_argument);
-}
-
-TEST_CASE("C++ API: Filter lists", "[cppapi], [filter]") {
-  using namespace tiledb;
-  Context ctx;
-
-  Filter f1(ctx, TILEDB_FILTER_BIT_WIDTH_REDUCTION),
-      f2(ctx, TILEDB_FILTER_BZIP2);
-
-  const int32_t set_level = 5;
-  f2.set_option(TILEDB_COMPRESSION_LEVEL, &set_level);
-
-  FilterList list(ctx);
-  REQUIRE(list.nfilters() == 0);
-
-  REQUIRE(list.max_chunk_size() == 65536);
-  list.set_max_chunk_size(10000);
-  REQUIRE(list.max_chunk_size() == 10000);
-
-  list.add_filter(f1).add_filter(f2);
-  REQUIRE(list.nfilters() == 2);
-
-  Filter f1_get = list.filter(0), f2_get(list.filter(1));
-  REQUIRE_THROWS_AS(list.filter(2), TileDBError);
-  REQUIRE(f1_get.filter_type() == TILEDB_FILTER_BIT_WIDTH_REDUCTION);
-  REQUIRE(f2_get.filter_type() == TILEDB_FILTER_BZIP2);
-
-  int32_t get_level;
-  f2_get.get_option(TILEDB_COMPRESSION_LEVEL, &get_level);
-  REQUIRE(get_level == set_level);
-
-  list.add_filter({ctx, TILEDB_FILTER_BYTESHUFFLE});
-  REQUIRE(list.nfilters() == 3);
-}
-
-TEST_CASE("C++ API: Filter lists on array", "[cppapi], [filter]") {
-  using namespace tiledb;
-  Context ctx;
+  Context ctx2;
   VFS vfs(ctx);
   std::string array_name = "cpp_unit_array";
 
@@ -137,16 +56,10 @@ TEST_CASE("C++ API: Filter lists on array", "[cppapi], [filter]") {
 
   // Create schema with filter lists
   FilterList a1_filters(ctx);
-  a1_filters.set_max_chunk_size(10000);
-  a1_filters.add_filter({ctx, TILEDB_FILTER_BYTESHUFFLE})
-      .add_filter({ctx, TILEDB_FILTER_BZIP2})
-      .add_filter({ctx, TILEDB_FILTER_CHECKSUM_MD5})
-      .add_filter({ctx, TILEDB_FILTER_CHECKSUM_SHA256});
+  a1_filters.add_filter({ctx, filter_type});
 
   FilterList a2_filters(ctx);
-  a2_filters.add_filter({ctx, TILEDB_FILTER_ZSTD})
-      .add_filter({ctx, TILEDB_FILTER_CHECKSUM_MD5})
-      .add_filter({ctx, TILEDB_FILTER_CHECKSUM_SHA256});
+  a2_filters.add_filter({ctx, filter_type});
 
   auto a1 = Attribute::create<int>(ctx, "a1");
   auto a2 = Attribute::create<std::string>(ctx, "a2");
@@ -163,11 +76,7 @@ TEST_CASE("C++ API: Filter lists on array", "[cppapi], [filter]") {
   schema.add_attributes(a1, a2);
 
   FilterList offsets_filters(ctx);
-  offsets_filters.add_filter({ctx, TILEDB_FILTER_POSITIVE_DELTA})
-      .add_filter({ctx, TILEDB_FILTER_BYTESHUFFLE})
-      .add_filter({ctx, TILEDB_FILTER_LZ4})
-      .add_filter({ctx, TILEDB_FILTER_CHECKSUM_MD5})
-      .add_filter({ctx, TILEDB_FILTER_CHECKSUM_SHA256});
+  offsets_filters.add_filter({ctx, filter_type});
   schema.set_coords_filter_list(a1_filters)
       .set_offsets_filter_list(offsets_filters);
 
@@ -186,29 +95,38 @@ TEST_CASE("C++ API: Filter lists on array", "[cppapi], [filter]") {
       .set_coordinates(coords)
       .set_layout(TILEDB_UNORDERED);
   REQUIRE(query.submit() == Query::Status::COMPLETE);
+
+  REQUIRE(query.fragment_num() == 1);
+  std::string fragment_uri = query.fragment_uri(0);
   array.close();
 
-  // Sanity check reading
+  // Sanity check reading before corrupting data
   array.open(TILEDB_READ);
   std::vector<int> subarray = {0, 10, 0, 10};
   auto buff_el = array.max_buffer_elements(subarray);
+  std::vector<int> coords_read(4);
   std::vector<int> a1_read(buff_el["a1"].second);
   std::vector<uint64_t> a2_read_off(buff_el["a2"].first);
   std::string a2_read_data;
   a2_read_data.resize(buff_el["a2"].second);
-  Query query_r(ctx, array);
+  Query query_r(ctx2, array);
   query_r.set_subarray(subarray)
       .set_layout(TILEDB_ROW_MAJOR)
+      .set_buffer(tiledb_coords(), coords_read)
       .set_buffer("a1", a1_read)
       .set_buffer("a2", a2_read_off, a2_read_data);
   REQUIRE(query_r.submit() == Query::Status::COMPLETE);
   array.close();
   auto ret = query_r.result_buffer_elements();
-  REQUIRE(ret.size() == 2);
+  REQUIRE(ret.size() == 3);
   REQUIRE(ret["a1"].first == 0);
   REQUIRE(ret["a1"].second == 2);
   REQUIRE(ret["a2"].first == 2);
   REQUIRE(ret["a2"].second == 7);
+  REQUIRE(coords_read[0] == 0);
+  REQUIRE(coords_read[1] == 0);
+  REQUIRE(coords_read[2] == 10);
+  REQUIRE(coords_read[3] == 10);
   REQUIRE(a1_read[0] == 1);
   REQUIRE(a1_read[1] == 2);
   REQUIRE(a2_read_off[0] == 0);
@@ -224,7 +142,62 @@ TEST_CASE("C++ API: Filter lists on array", "[cppapi], [filter]") {
   check_filters(a2_filters, schema_r.attribute("a2").filter_list());
   array.close();
 
+  // Corrupt a byte of a1, we should then get a checksum failure
+  std::string file_a;
+  std::string prefix = "file://";
+  fragment_uri = fragment_uri.substr(
+      prefix.length(), fragment_uri.length() - prefix.length());
+  // Set file for a based on windows or posix
+#ifdef _WIN32
+  file_a = fragment_uri + "\\a1.tdb";
+#else
+  file_a = fragment_uri + "/a1.tdb";
+#endif
+  // Open A
+  std::fstream fbuf;
+  fbuf.open(file_a, std::ios::in | std::ios::out | std::ios::binary);
+  auto file_size = vfs.file_size(file_a);
+
+  // We will change 2 to 3
+  uint32_t corruption = 3;
+  // Seek to the start of the last value
+  fbuf.seekp(file_size - sizeof(corruption), std::ios_base::beg);
+  fbuf.write(reinterpret_cast<const char*>(&corruption), sizeof(corruption));
+
+  // Flush and close
+  fbuf.flush();
+  fbuf.close();
+
+  // Reading will now fail because we have corrupted a1 to be {1, 3} instead of
+  // {1, 2}
+  array.open(TILEDB_READ);
+  subarray = {0, 10, 0, 10};
+  auto buff_el2 = array.max_buffer_elements(subarray);
+  std::vector<int> coords_read2(4);
+  std::vector<int> a1_read2(buff_el["a1"].second);
+  std::vector<uint64_t> a2_read_off2(buff_el["a2"].first);
+  std::string a2_read_data2;
+  a2_read_data2.resize(buff_el["a2"].second);
+  Query query_r2(ctx, array);
+  query_r2.set_subarray(subarray)
+      .set_layout(TILEDB_ROW_MAJOR)
+      .set_buffer(tiledb_coords(), coords_read2)
+      .set_buffer("a1", a1_read2)
+      .set_buffer("a2", a2_read_off2, a2_read_data2);
+  // Will throw checksum mismatch for filter error
+  REQUIRE_THROWS_AS(query_r2.submit(), TileDBError);
+  array.close();
+
   // Clean up
   if (vfs.is_dir(array_name))
     vfs.remove_dir(array_name);
+}
+
+TEST_CASE("C++ API: MD5 checksum on array", "[cppapi], [checksum], [md5]") {
+  run_checksum_test(TILEDB_FILTER_CHECKSUM_MD5);
+}
+
+TEST_CASE(
+    "C++ API: SHA256 checksum on array", "[cppapi], [checksum], [sha256]") {
+  run_checksum_test(TILEDB_FILTER_CHECKSUM_SHA256);
 }

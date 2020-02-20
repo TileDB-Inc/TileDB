@@ -84,6 +84,28 @@ class OpenSSL {
       ConstBuffer* input,
       Buffer* output);
 
+  /**
+   * Compute md5 checksum of data
+   *
+   * @param input Plaintext to compute hash of
+   * @param input_read_size size of input to read for hash
+   * @param output Buffer to store store hash bytes.
+   * @return Status
+   */
+  static Status md5(
+      const void* input, uint64_t input_read_size, Buffer* output);
+
+  /**
+   * Compute sha256 checksum of data
+   *
+   * @param input Plaintext to compute hash of
+   * @param input_read_size size of input to read for hash
+   * @param output Buffer to store store hash bytes.
+   * @return Status
+   */
+  static Status sha256(
+      const void* input, uint64_t input_read_size, Buffer* output);
+
  private:
   /**
    * Generates a number of cryptographically random bytes.

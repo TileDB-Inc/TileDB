@@ -257,6 +257,12 @@ extern const std::string filter_byteshuffle_str;
 /** String describing FILTER_POSITIVE_DELTA. */
 extern const std::string filter_positive_delta_str;
 
+/** String describing FILTER_CHECKSUM_MD5. */
+extern const std::string filter_checksum_md5_str;
+
+/** String describing FILTER_CHECKSUM_SHA256. */
+extern const std::string filter_checksum_sha256_str;
+
 /** The string representation for FilterOption type compression_level. */
 extern const std::string filter_option_compression_level_str;
 

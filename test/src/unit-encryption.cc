@@ -501,3 +501,51 @@ TEST_CASE("Encryption: Test AES-256-GCM", "[encryption], [aes]") {
     }
   }
 }
+
+TEST_CASE("Encryption: Test MD5", "[encryption], [md5]") {
+  SECTION("- Basic") {
+    std::string expected_checksum = "e99a18c428cb38d5f260853678922e03";
+    std::string text_to_checksum = "abc123";
+    ConstBuffer input_buffer(
+        text_to_checksum.data(), text_to_checksum.length());
+    Buffer output_buffer;
+    output_buffer.realloc(Encryption::MD5_DIGEST_BYTES);
+    CHECK(Encryption::md5(&input_buffer, &output_buffer).ok());
+
+    unsigned char* digest =
+        reinterpret_cast<unsigned char*>(output_buffer.data());
+    char md5string[33];
+    for (uint64_t i = 0; i < output_buffer.alloced_size(); ++i) {
+      sprintf(&md5string[i * 2], "%02x", (unsigned int)digest[i]);
+    }
+    CHECK(
+        memcmp(
+            expected_checksum.data(), md5string, expected_checksum.length()) ==
+        0);
+  }
+}
+
+TEST_CASE("Encryption: Test SHA256", "[encryption], [sha256]") {
+  SECTION("- Basic") {
+    std::string expected_checksum =
+        "6ca13d52ca70c883e0f0bb101e425a89e8624de51db2d2392593af6a84118090";
+    std::string text_to_checksum = "abc123";
+    ConstBuffer input_buffer(
+        text_to_checksum.data(), text_to_checksum.length());
+    Buffer output_buffer;
+    output_buffer.realloc(Encryption::SHA256_DIGEST_BYTES);
+    CHECK(Encryption::sha256(&input_buffer, &output_buffer).ok());
+
+    unsigned char* digest =
+        reinterpret_cast<unsigned char*>(output_buffer.data());
+    char shastring[65];
+    for (uint64_t i = 0; i < output_buffer.alloced_size(); ++i) {
+      sprintf(&shastring[i * 2], "%02x", (unsigned int)digest[i]);
+    }
+
+    CHECK(
+        memcmp(
+            expected_checksum.data(), shastring, expected_checksum.length()) ==
+        0);
+  }
+}

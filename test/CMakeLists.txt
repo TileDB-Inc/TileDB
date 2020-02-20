@@ -111,6 +111,7 @@ set(TILEDB_TEST_SOURCES
 if (TILEDB_CPP_API)
   list(APPEND TILEDB_TEST_SOURCES
     src/unit-cppapi-array.cc
+    src/unit-cppapi-checksum.cc
     src/unit-cppapi-config.cc
     src/unit-cppapi-consolidation.cc
     src/unit-cppapi-datetimes.cc
