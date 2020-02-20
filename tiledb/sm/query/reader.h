@@ -630,7 +630,6 @@ class Reader {
    * track of the unique result  tile info for subarray ranges that overlap
    * with common tiles.
    *
-   * @tparam T The coords type.
    * @param result_tiles The result tiles to be computed.
    * @param result_tile_map The result tile map to be computed.
    * @param single_fragment Each element corresponds to a range of the
@@ -638,7 +637,6 @@ class Reader {
    *     tiles come from a single fragment for that range.
    * @return Status
    */
-  template <class T>
   Status compute_sparse_result_tiles(
       std::vector<ResultTile>* result_tiles,
       std::map<std::pair<unsigned, uint64_t>, size_t>* result_tile_map,
@@ -741,7 +739,6 @@ class Reader {
    * @param result_tiles This will store the unique result tiles.
    * @param result_coords This will store the result coordinates.
    */
-  template <class T>
   Status compute_result_coords(
       std::vector<ResultTile>* result_tiles,
       std::vector<ResultCoords>* result_coords);
@@ -965,13 +962,7 @@ class Reader {
   Status sort_result_coords(
       std::vector<ResultCoords>* result_coords, Layout layout) const;
 
-  /**
-   * Performs a read on a sparse array.
-   *
-   * @tparam The domain type.
-   * @return Status
-   */
-  template <class T>
+  /** Performs a read on a sparse array. */
   Status sparse_read();
 
   /** Zeroes out the user buffer sizes, indicating an empty result. */

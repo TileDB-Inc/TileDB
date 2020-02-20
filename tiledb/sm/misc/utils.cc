@@ -647,54 +647,10 @@ inline bool coords_in_rect(
 }
 
 template <class T>
-inline bool rect_in_rect(
-    const T* rect_a, const T* rect_b, unsigned int dim_num) {
-  for (unsigned int i = 0; i < dim_num; ++i) {
-    if (rect_a[2 * i] < rect_b[2 * i] || rect_a[2 * i] > rect_b[2 * i + 1] ||
-        rect_a[2 * i + 1] < rect_b[2 * i] ||
-        rect_a[2 * i + 1] > rect_b[2 * i + 1])
-      return false;
-  }
-
-  return true;
-}
-
-template <class T>
-void expand_mbr_with_mbr(T* mbr_a, const T* mbr_b, unsigned int dim_num) {
-  for (unsigned int i = 0; i < dim_num; ++i) {
-    // Update lower bound on dimension i
-    if (mbr_a[2 * i] > mbr_b[2 * i])
-      mbr_a[2 * i] = mbr_b[2 * i];
-
-    // Update upper bound on dimension i
-    if (mbr_a[2 * i + 1] < mbr_b[2 * i + 1])
-      mbr_a[2 * i + 1] = mbr_b[2 * i + 1];
-  }
-}
-
-template <class T>
 bool overlap(const T* a, const T* b, unsigned dim_num) {
   for (unsigned i = 0; i < dim_num; ++i) {
     if (a[2 * i] > b[2 * i + 1] || a[2 * i + 1] < b[2 * i])
       return false;
-  }
-
-  return true;
-}
-
-template <class T>
-bool overlap(const T* a, const T* b, unsigned dim_num, bool* a_contains_b) {
-  for (unsigned i = 0; i < dim_num; ++i) {
-    if (a[2 * i] > b[2 * i + 1] || a[2 * i + 1] < b[2 * i])
-      return false;
-  }
-
-  *a_contains_b = true;
-  for (unsigned i = 0; i < dim_num; ++i) {
-    if (a[2 * i] > b[2 * i] || a[2 * i + 1] < b[2 * i + 1]) {
-      *a_contains_b = false;
-      break;
-    }
   }
 
   return true;
@@ -712,17 +668,6 @@ void overlap(const T* a, const T* b, unsigned dim_num, T* o, bool* overlap) {
       break;
     }
   }
-}
-
-template <class T>
-bool overlap(const std::vector<const T*>& a, const T* b) {
-  auto dim_num = (unsigned)a.size();
-  for (unsigned i = 0; i < dim_num; ++i) {
-    if (a[i][0] > b[2 * i + 1] || a[i][1] < b[2 * i])
-      return false;
-  }
-
-  return true;
 }
 
 template <class T>
@@ -871,48 +816,6 @@ template bool coords_in_rect<uint64_t>(
     const std::vector<const uint64_t*>& subarray,
     unsigned int dim_num);
 
-template bool rect_in_rect<int>(
-    const int* rect_a, const int* rect_b, unsigned int dim_num);
-template bool rect_in_rect<int64_t>(
-    const int64_t* rect_a, const int64_t* rect_b, unsigned int dim_num);
-template bool rect_in_rect<float>(
-    const float* react_a, const float* rect_b, unsigned int dim_num);
-template bool rect_in_rect<double>(
-    const double* rect_a, const double* rect_b, unsigned int dim_num);
-template bool rect_in_rect<int8_t>(
-    const int8_t* rect_a, const int8_t* rect_b, unsigned int dim_num);
-template bool rect_in_rect<uint8_t>(
-    const uint8_t* rect_a, const uint8_t* rect_b, unsigned int dim_num);
-template bool rect_in_rect<int16_t>(
-    const int16_t* rect_a, const int16_t* rect_b, unsigned int dim_num);
-template bool rect_in_rect<uint16_t>(
-    const uint16_t* rect_a, const uint16_t* rect_b, unsigned int dim_num);
-template bool rect_in_rect<uint32_t>(
-    const uint32_t* rect_a, const uint32_t* rect_b, unsigned int dim_num);
-template bool rect_in_rect<uint64_t>(
-    const uint64_t* rect_a, const uint64_t* rect_b, unsigned int dim_num);
-
-template void expand_mbr_with_mbr<int>(
-    int* mbr_a, const int* mbr_b, unsigned int dim_num);
-template void expand_mbr_with_mbr<int64_t>(
-    int64_t* mbr_a, const int64_t* mbr_b, unsigned int dim_num);
-template void expand_mbr_with_mbr<float>(
-    float* mbr_a, const float* mbr_b, unsigned int dim_num);
-template void expand_mbr_with_mbr<double>(
-    double* mbr_a, const double* mbr_b, unsigned int dim_num);
-template void expand_mbr_with_mbr<int8_t>(
-    int8_t* mbr_a, const int8_t* mbr_b, unsigned int dim_num);
-template void expand_mbr_with_mbr<uint8_t>(
-    uint8_t* mbr_a, const uint8_t* mbr_b, unsigned int dim_num);
-template void expand_mbr_with_mbr<int16_t>(
-    int16_t* mbr_a, const int16_t* mbr_b, unsigned int dim_num);
-template void expand_mbr_with_mbr<uint16_t>(
-    uint16_t* mbr_a, const uint16_t* mbr_b, unsigned int dim_num);
-template void expand_mbr_with_mbr<uint32_t>(
-    uint32_t* mbr_a, const uint32_t* mbr_b, unsigned int dim_num);
-template void expand_mbr_with_mbr<uint64_t>(
-    uint64_t* mbr_a, const uint64_t* mbr_b, unsigned int dim_num);
-
 template bool overlap<int8_t>(
     const int8_t* a, const int8_t* b, unsigned dim_num);
 template bool overlap<uint8_t>(
@@ -931,27 +834,6 @@ template bool overlap<uint64_t>(
 template bool overlap<float>(const float* a, const float* b, unsigned dim_num);
 template bool overlap<double>(
     const double* a, const double* b, unsigned dim_num);
-
-template bool overlap<int8_t>(
-    const int8_t* a, const int8_t* b, unsigned dim_num, bool* a_contains_b);
-template bool overlap<uint8_t>(
-    const uint8_t* a, const uint8_t* b, unsigned dim_num, bool* a_contains_b);
-template bool overlap<int16_t>(
-    const int16_t* a, const int16_t* b, unsigned dim_num, bool* a_contains_b);
-template bool overlap<uint16_t>(
-    const uint16_t* a, const uint16_t* b, unsigned dim_num, bool* a_contains_b);
-template bool overlap<int>(
-    const int* a, const int* b, unsigned dim_num, bool* a_contains_b);
-template bool overlap<unsigned>(
-    const unsigned* a, const unsigned* b, unsigned dim_num, bool* a_contains_b);
-template bool overlap<int64_t>(
-    const int64_t* a, const int64_t* b, unsigned dim_num, bool* a_contains_b);
-template bool overlap<uint64_t>(
-    const uint64_t* a, const uint64_t* b, unsigned dim_num, bool* a_contains_b);
-template bool overlap<float>(
-    const float* a, const float* b, unsigned dim_num, bool* a_contains_b);
-template bool overlap<double>(
-    const double* a, const double* b, unsigned dim_num, bool* a_contains_b);
 
 template void overlap<int>(
     const int* a, const int* b, unsigned dim_num, int* o, bool* overlap);
@@ -1005,27 +887,6 @@ template void overlap<uint64_t>(
     unsigned dim_num,
     uint64_t* o,
     bool* overlap);
-
-template bool overlap<int8_t>(
-    const std::vector<const int8_t*>& a, const int8_t* b);
-template bool overlap<uint8_t>(
-    const std::vector<const uint8_t*>& a, const uint8_t* b);
-template bool overlap<int16_t>(
-    const std::vector<const int16_t*>& a, const int16_t* b);
-template bool overlap<uint16_t>(
-    const std::vector<const uint16_t*>& a, const uint16_t* b);
-template bool overlap<int32_t>(
-    const std::vector<const int32_t*>& a, const int32_t* b);
-template bool overlap<uint32_t>(
-    const std::vector<const uint32_t*>& a, const uint32_t* b);
-template bool overlap<int64_t>(
-    const std::vector<const int64_t*>& a, const int64_t* b);
-template bool overlap<uint64_t>(
-    const std::vector<const uint64_t*>& a, const uint64_t* b);
-template bool overlap<float>(
-    const std::vector<const float*>& a, const float* b);
-template bool overlap<double>(
-    const std::vector<const double*>& a, const double* b);
 
 template double coverage<int8_t>(
     const int8_t* a, const int8_t* b, unsigned dim_num);

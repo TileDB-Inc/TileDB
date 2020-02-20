@@ -34,6 +34,7 @@
 #ifndef TILEDB_FRAGMENT_INFO_H
 #define TILEDB_FRAGMENT_INFO_H
 
+#include "tiledb/sm/misc/types.h"
 #include "tiledb/sm/misc/uri.h"
 
 #include <vector>
@@ -42,25 +43,8 @@ namespace tiledb {
 namespace sm {
 
 /** Stores basic information about a fragment. */
-struct FragmentInfo {
-  /** The fragment URI. */
-  URI uri_;
-  /** True if the fragment is sparse, and false if it is dense. */
-  bool sparse_;
-  /** The timestamp range of the fragment. */
-  std::pair<uint64_t, uint64_t> timestamp_range_;
-  /** The size of the entire fragment directory. */
-  uint64_t fragment_size_;
-  /** The fragment's non-empty domain. */
-  std::vector<uint8_t> non_empty_domain_;
-  /**
-   * The fragment's expanded non-empty domain (in a way that
-   * it coincides with tile boundaries. Applicable only to
-   * dense fragments. For sparse fragments, the expanded
-   * domain is the same as the non-empty domain.
-   */
-  std::vector<uint8_t> expanded_non_empty_domain_;
-
+class FragmentInfo {
+ public:
   /** Constructor. */
   FragmentInfo() {
     uri_ = URI("");
@@ -75,8 +59,8 @@ struct FragmentInfo {
       bool sparse,
       const std::pair<uint64_t, uint64_t>& timestamp_range,
       uint64_t fragment_size,
-      const std::vector<uint8_t>& non_empty_domain,
-      const std::vector<uint8_t>& expanded_non_empty_domain)
+      const NDRange& non_empty_domain,
+      const NDRange& expanded_non_empty_domain)
       : uri_(uri)
       , sparse_(sparse)
       , timestamp_range_(timestamp_range)
@@ -110,6 +94,55 @@ struct FragmentInfo {
     swap(info);
     return *this;
   }
+
+  /** Returns `true` if the fragment is sparse. */
+  bool sparse() const {
+    return sparse_;
+  }
+
+  /** Returns the fragment URI. */
+  const URI& uri() const {
+    return uri_;
+  }
+
+  /** Returns the timestamp range. */
+  const std::pair<uint64_t, uint64_t>& timestamp_range() const {
+    return timestamp_range_;
+  }
+
+  /** Returns the fragment size. */
+  uint64_t fragment_size() const {
+    return fragment_size_;
+  }
+
+  /** Returns the non-empty domain. */
+  const NDRange& non_empty_domain() const {
+    return non_empty_domain_;
+  }
+
+  /** Returns the expanded non-empty domain. */
+  const NDRange& expanded_non_empty_domain() const {
+    return expanded_non_empty_domain_;
+  }
+
+ private:
+  /** The fragment URI. */
+  URI uri_;
+  /** True if the fragment is sparse, and false if it is dense. */
+  bool sparse_;
+  /** The timestamp range of the fragment. */
+  std::pair<uint64_t, uint64_t> timestamp_range_;
+  /** The size of the entire fragment directory. */
+  uint64_t fragment_size_;
+  /** The fragment's non-empty domain. */
+  NDRange non_empty_domain_;
+  /**
+   * The fragment's expanded non-empty domain (in a way that
+   * it coincides with tile boundaries. Applicable only to
+   * dense fragments. For sparse fragments, the expanded
+   * domain is the same as the non-empty domain.
+   */
+  NDRange expanded_non_empty_domain_;
 
   /**
    * Returns a deep copy of this FragmentInfo.

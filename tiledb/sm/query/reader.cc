@@ -328,7 +328,7 @@ Status Reader::read() {
     if (array_schema_->dense() && !sparse_mode_) {
       RETURN_NOT_OK(dense_read<T>());
     } else {
-      RETURN_NOT_OK(sparse_read<T>());
+      RETURN_NOT_OK(sparse_read());
     }
 
     // In the case of overflow, we need to split the current partition
@@ -801,7 +801,6 @@ Status Reader::compute_subarray_coords(
   return Status::Ok();
 }
 
-template <class T>
 Status Reader::compute_sparse_result_tiles(
     std::vector<ResultTile>* result_tiles,
     std::map<std::pair<unsigned, uint64_t>, size_t>* result_tile_map,
@@ -1270,8 +1269,6 @@ void Reader::compute_result_cell_slabs_global(
   }
 }
 
-// TODO: remove template
-template <class T>
 Status Reader::compute_result_coords(
     std::vector<ResultTile>* result_tiles,
     std::vector<ResultCoords>* result_coords) {
@@ -1281,7 +1278,7 @@ Status Reader::compute_result_coords(
   std::vector<bool> single_fragment;
 
   // TODO: remove template
-  RETURN_CANCEL_OR_ERROR(compute_sparse_result_tiles<T>(
+  RETURN_CANCEL_OR_ERROR(compute_sparse_result_tiles(
       result_tiles, &result_tile_map, &single_fragment));
 
   if (result_tiles->empty())
@@ -1358,7 +1355,7 @@ Status Reader::dense_read() {
   // sparse fragments
   std::vector<ResultCoords> result_coords;
   std::vector<ResultTile> sparse_result_tiles;
-  RETURN_NOT_OK(compute_result_coords<T>(&sparse_result_tiles, &result_coords));
+  RETURN_NOT_OK(compute_result_coords(&sparse_result_tiles, &result_coords));
 
   // Compute result cell slabs.
   // `result_space_tiles` will hold all the relevant result tiles of
@@ -1926,7 +1923,6 @@ Status Reader::sort_result_coords(
   STATS_FUNC_OUT(reader_sort_coords);
 }
 
-template <class T>
 Status Reader::sparse_read() {
   STATS_FUNC_IN(reader_sparse_read);
 
@@ -1935,7 +1931,7 @@ Status Reader::sparse_read() {
   // sparse fragments
   std::vector<ResultCoords> result_coords;
   std::vector<ResultTile> sparse_result_tiles;
-  RETURN_NOT_OK(compute_result_coords<T>(&sparse_result_tiles, &result_coords));
+  RETURN_NOT_OK(compute_result_coords(&sparse_result_tiles, &result_coords));
   std::vector<ResultTile*> result_tiles;
   for (auto& srt : sparse_result_tiles)
     result_tiles.push_back(&srt);

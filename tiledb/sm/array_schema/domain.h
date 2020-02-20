@@ -312,57 +312,6 @@ class Domain {
   void expand_to_tiles(NDRange* ndrange) const;
 
   /**
-   * Expands the input domain such that it coincides with the boundaries of
-   * the array's regular tiles (i.e., it maps it on the regular tile grid).
-   * If the array has no regular tile grid, the function does not do anything.
-   *
-   * @param domain The domain to be expanded.
-   * @return void
-   */
-  void expand_domain(void* domain) const;
-
-  /**
-   * Expands the input domain such that it coincides with the boundaries of
-   * the array's regular tiles (i.e., it maps it on the regular tile grid).
-   * If the array has no regular tile grid, the function does not do anything.
-   *
-   * @tparam The domain type.
-   * @param domain The domain to be expanded.
-   * @return void
-   */
-  template <
-      class T,
-      typename std::enable_if<std::is_integral<T>::value, T>::type* = nullptr>
-  void expand_domain(T* domain) const {
-    // Applicable only to regular tiles
-    if (tile_extents_ == nullptr)
-      return;
-
-    auto tile_extents = static_cast<const T*>(tile_extents_);
-    auto array_domain = static_cast<const T*>(domain_);
-
-    for (unsigned int i = 0; i < dim_num_; ++i) {
-      // This will always make the first bound coincide with a tile
-      domain[2 * i] = ((domain[2 * i] - array_domain[2 * i]) / tile_extents[i] *
-                       tile_extents[i]) +
-                      array_domain[2 * i];
-
-      domain[2 * i + 1] =
-          ((domain[2 * i + 1] - array_domain[2 * i]) / tile_extents[i] + 1) *
-              tile_extents[i] -
-          1 + array_domain[2 * i];
-    }
-  }
-
-  /** No-op for float/double domains. */
-  template <
-      class T,
-      typename std::enable_if<!std::is_integral<T>::value, T>::type* = nullptr>
-  void expand_domain(T* domain) const {
-    (void)domain;
-  }
-
-  /**
    * Returns the position of the input coordinates inside its corresponding
    * tile, based on the array cell order. Applicable only to **dense** arrays.
    *
@@ -588,6 +537,14 @@ class Domain {
    * Returns 0 if even a single dimension has non-integral type.
    */
   uint64_t tile_num(const NDRange& ndrange) const;
+
+  /**
+   * Returns the number of cells in the input range.
+   * If there is an overflow, then the function returns 0.
+   * If at least one dimension had a non-integer domain, the
+   * functuon returns 0.
+   */
+  uint64_t cell_num(const NDRange& ndrange) const;
 
   /** Returns true if r1 is fully covered by r2. */
   bool covered(const NDRange& r1, const NDRange& r2) const;

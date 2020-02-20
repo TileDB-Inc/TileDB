@@ -619,52 +619,6 @@ void Domain::expand_to_tiles(NDRange* ndrange) const {
     dimensions_[d]->expand_to_tile(&(*ndrange)[d]);
 }
 
-void Domain::expand_domain(void* domain) const {
-  switch (type_) {
-    case Datatype::INT32:
-      expand_domain<int>(static_cast<int*>(domain));
-      break;
-    case Datatype::INT64:
-      expand_domain<int64_t>(static_cast<int64_t*>(domain));
-      break;
-    case Datatype::INT8:
-      expand_domain<int8_t>(static_cast<int8_t*>(domain));
-      break;
-    case Datatype::UINT8:
-      expand_domain<uint8_t>(static_cast<uint8_t*>(domain));
-      break;
-    case Datatype::INT16:
-      expand_domain<int16_t>(static_cast<int16_t*>(domain));
-      break;
-    case Datatype::UINT16:
-      expand_domain<uint16_t>(static_cast<uint16_t*>(domain));
-      break;
-    case Datatype::UINT32:
-      expand_domain<uint32_t>(static_cast<uint32_t*>(domain));
-      break;
-    case Datatype::UINT64:
-      expand_domain<uint64_t>(static_cast<uint64_t*>(domain));
-      break;
-    case Datatype::DATETIME_YEAR:
-    case Datatype::DATETIME_MONTH:
-    case Datatype::DATETIME_WEEK:
-    case Datatype::DATETIME_DAY:
-    case Datatype::DATETIME_HR:
-    case Datatype::DATETIME_MIN:
-    case Datatype::DATETIME_SEC:
-    case Datatype::DATETIME_MS:
-    case Datatype::DATETIME_US:
-    case Datatype::DATETIME_NS:
-    case Datatype::DATETIME_PS:
-    case Datatype::DATETIME_FS:
-    case Datatype::DATETIME_AS:
-      expand_domain<int64_t>(static_cast<int64_t*>(domain));
-      break;
-    default:  // Non-applicable to non-integer domains
-      break;
-  }
-}
-
 template <class T>
 void Domain::get_tile_coords(const T* coords, T* tile_coords) const {
   auto domain = (T*)domain_;
@@ -929,6 +883,24 @@ uint64_t Domain::tile_num(const NDRange& ndrange) const {
     ret *= dimensions_[d]->tile_num(ndrange[d]);
 
   return ret;
+}
+
+uint64_t Domain::cell_num(const NDRange& ndrange) const {
+  assert(!ndrange.empty());
+
+  uint64_t cell_num = 1, range, prod;
+  for (unsigned d = 0; d < dim_num_; ++d) {
+    range = dimensions_[d]->domain_range(ndrange[d]);
+    if (range == 0)  // Real dimension domain or overflow
+      return 0;
+
+    prod = range * cell_num;
+    if (prod / range != cell_num)  // Overflow
+      return 0;
+    cell_num = prod;
+  }
+
+  return cell_num;
 }
 
 bool Domain::covered(const NDRange& r1, const NDRange& r2) const {
