@@ -253,7 +253,7 @@ Status StorageManager::array_open_for_reads(
   // Determine which fragments to load
   std::vector<TimestampedURI> fragments_to_load;
   for (const auto& fragment : fragments)
-    fragments_to_load.emplace_back(fragment.uri_, fragment.timestamp_range_);
+    fragments_to_load.emplace_back(fragment.uri(), fragment.timestamp_range());
 
   // Get fragment metadata in the case of reads, if not fetched already
   Status st = load_fragment_metadata(
@@ -759,35 +759,21 @@ Status StorageManager::get_fragment_info(
   if (fragment_metadata.empty())
     return array_close_for_reads(array_uri);
 
-  uint64_t domain_size = 2 * array_schema->coords_size();
-  auto dim_num = array_schema->dim_num();
   for (auto meta : fragment_metadata) {
     const auto& uri = meta->fragment_uri();
     bool sparse = !meta->dense();
-
-    std::vector<uint8_t> non_empty_domain;
-    non_empty_domain.resize(domain_size);
-
-    // Get fragment non-empty domain
-    const auto meta_non_empty_domain = meta->non_empty_domain();
-    auto non_empty_domain_ptr = (unsigned char*)&non_empty_domain[0];
-    for (unsigned d = 0; d < dim_num; ++d) {
-      auto range_size = 2 * array_schema->dimension(d)->coord_size();
-      std::memcpy(
-          non_empty_domain_ptr, meta_non_empty_domain[d].data(), range_size);
-      non_empty_domain_ptr += range_size;
-    }
 
     // Get fragment size
     uint64_t size;
     RETURN_NOT_OK_ELSE(
         meta->fragment_size(&size), array_close_for_reads(array_uri));
 
-    // Compute expanded non-empty domain only for dense fragments
+    // Get non-empty domain, and compute expanded non-empty domain
+    // (only for dense fragments)
+    const auto& non_empty_domain = meta->non_empty_domain();
     auto expanded_non_empty_domain = non_empty_domain;
     if (!sparse)
-      array_schema->domain()->expand_domain(
-          (void*)&expanded_non_empty_domain[0]);
+      array_schema->domain()->expand_to_tiles(&expanded_non_empty_domain);
 
     // Push new fragment info
     fragment_info->push_back(FragmentInfo(
@@ -854,23 +840,13 @@ Status StorageManager::get_fragment_info(
   uint64_t size;
   RETURN_NOT_OK(meta.fragment_size(&size));
 
-  uint64_t domain_size = 2 * array_schema->coords_size();
-  std::vector<uint8_t> non_empty_domain;
-  non_empty_domain.resize(domain_size);
-  const auto meta_non_empty_domain = meta.non_empty_domain();
-  auto non_empty_domain_ptr = (unsigned char*)&non_empty_domain[0];
-  auto dim_num = array_schema->dim_num();
-  for (unsigned d = 0; d < dim_num; ++d) {
-    auto range_size = 2 * array_schema->dimension(d)->coord_size();
-    std::memcpy(
-        non_empty_domain_ptr, meta_non_empty_domain[d].data(), range_size);
-    non_empty_domain_ptr += range_size;
-  }
-
   // Compute expanded non-empty domain only for dense fragments
+  // Get non-empty domain, and compute expanded non-empty domain
+  // (only for dense fragments)
+  const auto& non_empty_domain = meta.non_empty_domain();
   auto expanded_non_empty_domain = non_empty_domain;
   if (!sparse)
-    array_schema->domain()->expand_domain((void*)&expanded_non_empty_domain[0]);
+    array_schema->domain()->expand_to_tiles(&expanded_non_empty_domain);
 
   // Set fragment info
   *fragment_info = FragmentInfo(
