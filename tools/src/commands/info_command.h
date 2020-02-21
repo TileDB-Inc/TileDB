@@ -36,6 +36,7 @@
 #include "commands/command.h"
 
 #include "tiledb/sm/enums/datatype.h"
+#include "tiledb/sm/misc/types.h"
 
 namespace tiledb {
 namespace cli {
@@ -84,11 +85,12 @@ class InfoCommand : public Command {
 
   /** Converts an opaque MBR to a 2D (double) rectangle. */
   std::tuple<double, double, double, double> get_mbr(
-      const void* mbr, tiledb::sm::Datatype datatype) const;
+      const sm::NDRange& mbr, tiledb::sm::Datatype datatype) const;
 
   /** Converts an opaque MBR to a 2D (double) rectangle. */
   template <typename T>
-  std::tuple<double, double, double, double> get_mbr(const void* mbr) const;
+  std::tuple<double, double, double, double> get_mbr(
+      const sm::NDRange& mbr) const;
 
   /**
    * Converts an opaque MBR to a string vector. The vector contents are strings:
@@ -100,7 +102,7 @@ class InfoCommand : public Command {
    * @return String vector of MBR.
    */
   std::vector<std::string> mbr_to_string(
-      const void* mbr,
+      const sm::NDRange& mbr,
       tiledb::sm::Datatype coords_type,
       unsigned dim_num) const;
 };

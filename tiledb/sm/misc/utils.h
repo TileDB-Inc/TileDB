@@ -257,18 +257,6 @@ template <class T>
 bool rect_in_rect(const T* rect_a, const T* rect_b, unsigned int dim_num);
 
 /**
- * Checks if `rect_a` is inside `rect_b`.
- *
- * @tparam T The domain type.
- * @param rect_a The first rectangle.
- * @param rect_b The second rectangle.
- * @param dim_num The number of dimensions.
- * @return `true` if `rect_a` is inside `rect_b` and `false` otherwise.
- */
-template <class T>
-bool rect_in_rect(const T* rect_a, const NDRange& rect_b, unsigned int dim_num);
-
-/**
  * Computes the union of a set of MBRs (rectangles).
  *
  * @tparam T The domain type.
