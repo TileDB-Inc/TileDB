@@ -97,9 +97,8 @@ class Reader {
      * by the reader when the current partition was estimated to fit
      * the results, but that was not eventually true.
      */
-    template <class T>
     Status split_current() {
-      return partitioner_.split_current<T>(&unsplittable_);
+      return partitioner_.split_current(&unsplittable_);
     }
   };
 
@@ -239,10 +238,6 @@ class Reader {
   ReadState* read_state();
 
   /** Performs a read query using its set members. */
-  Status read();
-
-  /** Performs a read query (applicable when setting a Subarray). */
-  template <class T>
   Status read();
 
   /** Sets the array. */
@@ -751,6 +746,9 @@ class Reader {
    * @return Status
    */
   Status dedup_result_coords(std::vector<ResultCoords>* result_coords) const;
+
+  /** Performs a read on a dense array. */
+  Status dense_read();
 
   /**
    * Performs a read on a dense array.

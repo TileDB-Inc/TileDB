@@ -261,52 +261,6 @@ Reader::ReadState* Reader::read_state() {
 }
 
 Status Reader::read() {
-  auto coords_type = array_schema_->coords_type();
-  switch (coords_type) {
-    case Datatype::INT8:
-      return read<int8_t>();
-    case Datatype::UINT8:
-      return read<uint8_t>();
-    case Datatype::INT16:
-      return read<int16_t>();
-    case Datatype::UINT16:
-      return read<uint16_t>();
-    case Datatype::INT32:
-      return read<int>();
-    case Datatype::UINT32:
-      return read<unsigned>();
-    case Datatype::INT64:
-      return read<int64_t>();
-    case Datatype::UINT64:
-      return read<uint64_t>();
-    case Datatype::FLOAT32:
-      return read<float>();
-    case Datatype::FLOAT64:
-      return read<double>();
-    case Datatype::DATETIME_YEAR:
-    case Datatype::DATETIME_MONTH:
-    case Datatype::DATETIME_WEEK:
-    case Datatype::DATETIME_DAY:
-    case Datatype::DATETIME_HR:
-    case Datatype::DATETIME_MIN:
-    case Datatype::DATETIME_SEC:
-    case Datatype::DATETIME_MS:
-    case Datatype::DATETIME_US:
-    case Datatype::DATETIME_NS:
-    case Datatype::DATETIME_PS:
-    case Datatype::DATETIME_FS:
-    case Datatype::DATETIME_AS:
-      return read<int64_t>();
-    default:
-      return LOG_STATUS(
-          Status::ReaderError("Cannot read; Unsupported domain type"));
-  }
-
-  return Status::Ok();
-}
-
-template <class T>
-Status Reader::read() {
   STATS_FUNC_IN(reader_read);
 
   // Get next partition
@@ -326,7 +280,7 @@ Status Reader::read() {
 
     // Perform read
     if (array_schema_->dense() && !sparse_mode_) {
-      RETURN_NOT_OK(dense_read<T>());
+      RETURN_NOT_OK(dense_read());
     } else {
       RETURN_NOT_OK(sparse_read());
     }
@@ -335,7 +289,7 @@ Status Reader::read() {
     // without advancing to the next partition
     if (read_state_.overflowed_) {
       zero_out_buffer_sizes();
-      RETURN_NOT_OK(read_state_.split_current<T>());
+      RETURN_NOT_OK(read_state_.split_current());
 
       if (read_state_.unsplittable_)
         return Status::Ok();
@@ -1340,6 +1294,51 @@ Status Reader::dedup_result_coords(
   return Status::Ok();
 
   STATS_FUNC_OUT(reader_dedup_coords);
+}
+
+Status Reader::dense_read() {
+  auto coords_type = array_schema_->coords_type();
+  switch (coords_type) {
+    case Datatype::INT8:
+      return dense_read<int8_t>();
+    case Datatype::UINT8:
+      return dense_read<uint8_t>();
+    case Datatype::INT16:
+      return dense_read<int16_t>();
+    case Datatype::UINT16:
+      return dense_read<uint16_t>();
+    case Datatype::INT32:
+      return dense_read<int>();
+    case Datatype::UINT32:
+      return dense_read<unsigned>();
+    case Datatype::INT64:
+      return dense_read<int64_t>();
+    case Datatype::UINT64:
+      return dense_read<uint64_t>();
+    case Datatype::FLOAT32:
+      return dense_read<float>();
+    case Datatype::FLOAT64:
+      return dense_read<double>();
+    case Datatype::DATETIME_YEAR:
+    case Datatype::DATETIME_MONTH:
+    case Datatype::DATETIME_WEEK:
+    case Datatype::DATETIME_DAY:
+    case Datatype::DATETIME_HR:
+    case Datatype::DATETIME_MIN:
+    case Datatype::DATETIME_SEC:
+    case Datatype::DATETIME_MS:
+    case Datatype::DATETIME_US:
+    case Datatype::DATETIME_NS:
+    case Datatype::DATETIME_PS:
+    case Datatype::DATETIME_FS:
+    case Datatype::DATETIME_AS:
+      return dense_read<int64_t>();
+    default:
+      return LOG_STATUS(Status::ReaderError(
+          "Cannot read dense array; Unsupported domain type"));
+  }
+
+  return Status::Ok();
 }
 
 template <class T>

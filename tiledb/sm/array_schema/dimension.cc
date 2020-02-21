@@ -51,6 +51,7 @@ Dimension::Dimension() {
   domain_ = nullptr;
   tile_extent_ = nullptr;
   type_ = Datatype::INT32;
+  set_ceil_to_tile_func();
   set_compute_mbr_func();
   set_crop_range_func();
   set_domain_range_func();
@@ -61,6 +62,8 @@ Dimension::Dimension() {
   set_covered_func();
   set_overlap_func();
   set_overlap_ratio_func();
+  set_split_range_func();
+  set_splitting_value_func();
   set_tile_num_func();
   set_value_in_range_func();
 }
@@ -70,6 +73,7 @@ Dimension::Dimension(const std::string& name, Datatype type)
     , type_(type) {
   domain_ = nullptr;
   tile_extent_ = nullptr;
+  set_ceil_to_tile_func();
   set_compute_mbr_func();
   set_crop_range_func();
   set_domain_range_func();
@@ -80,6 +84,8 @@ Dimension::Dimension(const std::string& name, Datatype type)
   set_covered_func();
   set_overlap_func();
   set_overlap_ratio_func();
+  set_split_range_func();
+  set_splitting_value_func();
   set_tile_num_func();
   set_value_in_range_func();
 }
@@ -218,6 +224,7 @@ Status Dimension::deserialize(ConstBuffer* buff, Datatype type) {
     RETURN_NOT_OK(buff->read(tile_extent_, datatype_size(type_)));
   }
 
+  set_ceil_to_tile_func();
   set_compute_mbr_func();
   set_crop_range_func();
   set_domain_range_func();
@@ -228,6 +235,8 @@ Status Dimension::deserialize(ConstBuffer* buff, Datatype type) {
   set_covered_func();
   set_overlap_func();
   set_overlap_ratio_func();
+  set_split_range_func();
+  set_splitting_value_func();
   set_tile_num_func();
   set_value_in_range_func();
 
@@ -266,6 +275,34 @@ const std::string& Dimension::name() const {
 bool Dimension::is_anonymous() const {
   return name_.empty() ||
          utils::parse::starts_with(name_, constants::default_dim_name);
+}
+
+template <class T>
+void Dimension::ceil_to_tile(
+    const Dimension* dim, const Range& r, uint64_t tile_num, ByteVecValue* v) {
+  assert(dim != nullptr);
+  assert(!r.empty());
+  assert(v != nullptr);
+  assert(dim->tile_extent() != nullptr);
+
+  auto tile_extent = *(const T*)dim->tile_extent();
+  auto dim_dom = (const T*)dim->domain();
+  v->resize(sizeof(T));
+  auto r_t = (const T*)r.data();
+
+  T mid = r_t[0] + (tile_num + 1) * tile_extent;
+  uint64_t div = (mid - dim_dom[0]) / tile_extent;
+  auto floored_mid = (T)div * tile_extent + dim_dom[0];
+  T sp = (std::numeric_limits<T>::is_integer) ?
+             floored_mid - 1 :
+             std::nextafter(floored_mid, std::numeric_limits<T>::lowest());
+  std::memcpy(&(*v)[0], &sp, sizeof(T));
+}
+
+void Dimension::ceil_to_tile(
+    const Range& r, uint64_t tile_num, ByteVecValue* v) const {
+  assert(ceil_to_tile_func_ != nullptr);
+  ceil_to_tile_func_(this, r, tile_num, v);
 }
 
 template <class T>
@@ -309,13 +346,14 @@ template <class T>
 uint64_t Dimension::domain_range(const Range& range) {
   assert(!range.empty());
 
-  if (&typeid(T) == &typeid(float) || &typeid(T) == &typeid(double))
-    return 0;
+  // Inapplicable to real domains
+  if (!std::is_integral<T>::value)
+    return std::numeric_limits<uint64_t>::max();
 
   auto r = (const T*)range.data();
   uint64_t ret = r[1] - r[0];
   if (ret == std::numeric_limits<uint64_t>::max())  // overflow
-    return 0;
+    return ret;
   ++ret;
 
   return ret;
@@ -475,6 +513,54 @@ double Dimension::overlap_ratio(const Range& r1, const Range& r2) const {
 }
 
 template <class T>
+void Dimension::split_range(
+    const void* r, const ByteVecValue& v, Range* r1, Range* r2) {
+  assert(r != nullptr);
+  assert(!v.empty());
+  assert(r1 != nullptr);
+  assert(r2 != nullptr);
+
+  auto max = std::numeric_limits<T>::max();
+  bool int_domain = std::numeric_limits<T>::is_integer;
+  auto r_t = (const T*)r;
+  auto v_t = *(const T*)(&v[0]);
+
+  T ret[2];
+  ret[0] = r_t[0];
+  ret[1] = v_t;
+  r1->set_range(ret, sizeof(ret));
+  ret[0] = (int_domain) ? (v_t + 1) : std::nextafter(v_t, max);
+  ret[1] = r_t[1];
+  r2->set_range(ret, sizeof(ret));
+}
+
+void Dimension::split_range(
+    const void* r, const ByteVecValue& v, Range* r1, Range* r2) const {
+  assert(split_range_func_ != nullptr);
+  split_range_func_(r, v, r1, r2);
+}
+
+template <class T>
+void Dimension::splitting_value(
+    const Range& r, ByteVecValue* v, bool* unsplittable) {
+  assert(!r.empty());
+  assert(v != nullptr);
+  assert(unsplittable != nullptr);
+
+  auto r_t = (const T*)r.data();
+  T sp = r_t[0] + (r_t[1] - r_t[0]) / 2;
+  v->resize(sizeof(T));
+  std::memcpy(&(*v)[0], &sp, sizeof(T));
+  *unsplittable = !std::memcmp(&sp, &r_t[1], sizeof(T));
+}
+
+void Dimension::splitting_value(
+    const Range& r, ByteVecValue* v, bool* unsplittable) const {
+  assert(splitting_value_func_ != nullptr);
+  splitting_value_func_(r, v, unsplittable);
+}
+
+template <class T>
 uint64_t Dimension::tile_num(const Dimension* dim, const Range& range) {
   assert(dim != nullptr);
   assert(!range.empty());
@@ -482,14 +568,12 @@ uint64_t Dimension::tile_num(const Dimension* dim, const Range& range) {
   // Trivial cases
   if (dim->tile_extent() == nullptr)
     return 1;
-  if (!std::is_integral<T>::value)
-    return 0;
 
   auto tile_extent = *(const T*)dim->tile_extent();
   auto dim_dom = (const T*)dim->domain();
   auto r = (const T*)range.data();
-  uint64_t start = (r[0] - dim_dom[0]) / tile_extent;
-  uint64_t end = (r[1] - dim_dom[0]) / tile_extent;
+  uint64_t start = floor((r[0] - dim_dom[0]) / tile_extent);
+  uint64_t end = floor((r[1] - dim_dom[0]) / tile_extent);
   return end - start + 1;
 }
 
@@ -948,6 +1032,59 @@ void Dimension::set_domain_range_func() {
   }
 }
 
+void Dimension::set_ceil_to_tile_func() {
+  switch (type_) {
+    case Datatype::INT32:
+      ceil_to_tile_func_ = ceil_to_tile<int32_t>;
+      break;
+    case Datatype::INT64:
+      ceil_to_tile_func_ = ceil_to_tile<int64_t>;
+      break;
+    case Datatype::INT8:
+      ceil_to_tile_func_ = ceil_to_tile<int8_t>;
+      break;
+    case Datatype::UINT8:
+      ceil_to_tile_func_ = ceil_to_tile<uint8_t>;
+      break;
+    case Datatype::INT16:
+      ceil_to_tile_func_ = ceil_to_tile<int16_t>;
+      break;
+    case Datatype::UINT16:
+      ceil_to_tile_func_ = ceil_to_tile<uint16_t>;
+      break;
+    case Datatype::UINT32:
+      ceil_to_tile_func_ = ceil_to_tile<uint32_t>;
+      break;
+    case Datatype::UINT64:
+      ceil_to_tile_func_ = ceil_to_tile<uint64_t>;
+      break;
+    case Datatype::FLOAT32:
+      ceil_to_tile_func_ = ceil_to_tile<float>;
+      break;
+    case Datatype::FLOAT64:
+      ceil_to_tile_func_ = ceil_to_tile<double>;
+      break;
+    case Datatype::DATETIME_YEAR:
+    case Datatype::DATETIME_MONTH:
+    case Datatype::DATETIME_WEEK:
+    case Datatype::DATETIME_DAY:
+    case Datatype::DATETIME_HR:
+    case Datatype::DATETIME_MIN:
+    case Datatype::DATETIME_SEC:
+    case Datatype::DATETIME_MS:
+    case Datatype::DATETIME_US:
+    case Datatype::DATETIME_NS:
+    case Datatype::DATETIME_PS:
+    case Datatype::DATETIME_FS:
+    case Datatype::DATETIME_AS:
+      ceil_to_tile_func_ = ceil_to_tile<int64_t>;
+      break;
+    default:
+      ceil_to_tile_func_ = nullptr;
+      break;
+  }
+}
+
 void Dimension::set_compute_mbr_func() {
   switch (type_) {
     case Datatype::INT32:
@@ -1368,6 +1505,112 @@ void Dimension::set_overlap_ratio_func() {
       break;
     default:
       overlap_ratio_func_ = nullptr;
+      break;
+  }
+}
+
+void Dimension::set_split_range_func() {
+  switch (type_) {
+    case Datatype::INT32:
+      split_range_func_ = split_range<int32_t>;
+      break;
+    case Datatype::INT64:
+      split_range_func_ = split_range<int64_t>;
+      break;
+    case Datatype::INT8:
+      split_range_func_ = split_range<int8_t>;
+      break;
+    case Datatype::UINT8:
+      split_range_func_ = split_range<uint8_t>;
+      break;
+    case Datatype::INT16:
+      split_range_func_ = split_range<int16_t>;
+      break;
+    case Datatype::UINT16:
+      split_range_func_ = split_range<uint16_t>;
+      break;
+    case Datatype::UINT32:
+      split_range_func_ = split_range<uint32_t>;
+      break;
+    case Datatype::UINT64:
+      split_range_func_ = split_range<uint64_t>;
+      break;
+    case Datatype::FLOAT32:
+      split_range_func_ = split_range<float>;
+      break;
+    case Datatype::FLOAT64:
+      split_range_func_ = split_range<double>;
+      break;
+    case Datatype::DATETIME_YEAR:
+    case Datatype::DATETIME_MONTH:
+    case Datatype::DATETIME_WEEK:
+    case Datatype::DATETIME_DAY:
+    case Datatype::DATETIME_HR:
+    case Datatype::DATETIME_MIN:
+    case Datatype::DATETIME_SEC:
+    case Datatype::DATETIME_MS:
+    case Datatype::DATETIME_US:
+    case Datatype::DATETIME_NS:
+    case Datatype::DATETIME_PS:
+    case Datatype::DATETIME_FS:
+    case Datatype::DATETIME_AS:
+      split_range_func_ = split_range<int64_t>;
+      break;
+    default:
+      split_range_func_ = nullptr;
+      break;
+  }
+}
+
+void Dimension::set_splitting_value_func() {
+  switch (type_) {
+    case Datatype::INT32:
+      splitting_value_func_ = splitting_value<int32_t>;
+      break;
+    case Datatype::INT64:
+      splitting_value_func_ = splitting_value<int64_t>;
+      break;
+    case Datatype::INT8:
+      splitting_value_func_ = splitting_value<int8_t>;
+      break;
+    case Datatype::UINT8:
+      splitting_value_func_ = splitting_value<uint8_t>;
+      break;
+    case Datatype::INT16:
+      splitting_value_func_ = splitting_value<int16_t>;
+      break;
+    case Datatype::UINT16:
+      splitting_value_func_ = splitting_value<uint16_t>;
+      break;
+    case Datatype::UINT32:
+      splitting_value_func_ = splitting_value<uint32_t>;
+      break;
+    case Datatype::UINT64:
+      splitting_value_func_ = splitting_value<uint64_t>;
+      break;
+    case Datatype::FLOAT32:
+      splitting_value_func_ = splitting_value<float>;
+      break;
+    case Datatype::FLOAT64:
+      splitting_value_func_ = splitting_value<double>;
+      break;
+    case Datatype::DATETIME_YEAR:
+    case Datatype::DATETIME_MONTH:
+    case Datatype::DATETIME_WEEK:
+    case Datatype::DATETIME_DAY:
+    case Datatype::DATETIME_HR:
+    case Datatype::DATETIME_MIN:
+    case Datatype::DATETIME_SEC:
+    case Datatype::DATETIME_MS:
+    case Datatype::DATETIME_US:
+    case Datatype::DATETIME_NS:
+    case Datatype::DATETIME_PS:
+    case Datatype::DATETIME_FS:
+    case Datatype::DATETIME_AS:
+      splitting_value_func_ = splitting_value<int64_t>;
+      break;
+    default:
+      splitting_value_func_ = nullptr;
       break;
   }
 }

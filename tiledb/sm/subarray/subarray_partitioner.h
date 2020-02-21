@@ -220,18 +220,6 @@ class SubarrayPartitioner {
   Status next(bool* unsplittable);
 
   /**
-   * The partitioner iterates over the partitions of the subarray it is
-   * associated with. This function advances to compute the next partition
-   * based on the specified budget. If this cannot be retrieved because
-   * the current partition cannot be split further (typically because it
-   * is a single cell whose estimated result does not fit in the budget),
-   * then the function does not advance to the next partition and sets
-   * ``unsplittable`` to ``true``.
-   */
-  template <class T>
-  Status next(bool* unsplittable);
-
-  /**
    * Sets the memory budget (in bytes).
    *
    * @param budget The budget for the fixed-sized attributes and the
@@ -254,7 +242,6 @@ class SubarrayPartitioner {
    * by the reader when the current partition was estimated to fit
    * the results, but that was not eventually true.
    */
-  template <class T>
   Status split_current(bool* unsplittable);
 
   /** Returns the state. */
@@ -330,49 +317,44 @@ class SubarrayPartitioner {
    * If the interval is a single range, which does not fit in the budget,
    * then the function sets ``found`` to ``false`` and ``true`` otherwise.
    */
-  template <class T>
   Status compute_current_start_end(bool* found);
 
   /**
    * Applicable only when the `range` layout is GLOBAL_ORDER.
-   * Computes the splitting point and dimension for the input range.
+   * Computes the splitting value and dimension for the input range.
    * If `range` is whithin a single space tile, then `unsplittable`
    * is set to `true`.
    */
-  template <class T>
-  void compute_splitting_point_on_tiles(
+  void compute_splitting_value_on_tiles(
       const Subarray& range,
       unsigned* splitting_dim,
-      T* splitting_point,
+      ByteVecValue* splitting_value,
       bool* unsplittable);
 
   /**
-   * Computes the splitting point and dimension for the input range.
+   * Computes the splitting value and dimension for the input range.
    * In case of real domains, if this function may not be able to find a
-   * splitting point and set ``unsplittable`` to ``true``.
+   * splitting value and set ``unsplittable`` to ``true``.
    */
-  template <class T>
-  void compute_splitting_point_single_range(
+  void compute_splitting_value_single_range(
       const Subarray& range,
       unsigned* splitting_dim,
-      T* splitting_point,
+      ByteVecValue* splitting_value,
       bool* unsplittable);
 
   /**
-   * Computes the splitting point and dimension for
+   * Computes the splitting value and dimension for
    * ``state_.multi_range_.front()``. In case of real domains, if this
-   * function may not be able to find a splitting point and set
+   * function may not be able to find a splitting value and set
    * ``unsplittable`` to ``true``.
    */
-  template <class T>
-  void compute_splitting_point_multi_range(
+  void compute_splitting_value_multi_range(
       unsigned* splitting_dim,
       uint64_t* splitting_range,
-      T* splitting_point,
+      ByteVecValue* splitting_value,
       bool* unsplittable);
 
   /** Returns ``true`` if the input partition must be split. */
-  template <class T>
   bool must_split(Subarray* partition);
 
   /**
@@ -381,7 +363,6 @@ class SubarrayPartitioner {
    * partitions. If the next partition cannot be produced,
    * ``unsplittable`` is set to ``true``.
    */
-  template <class T>
   Status next_from_multi_range(bool* unsplittable);
 
   /**
@@ -391,21 +372,18 @@ class SubarrayPartitioner {
    * If the next partition cannot be produced, ``unsplittable`` is set
    * to ``true``.
    */
-  template <class T>
   Status next_from_single_range(bool* unsplittable);
 
   /**
    * Splits the top single range, or sets ``unsplittable`` to ``true``
    * if that is not possible.
    */
-  template <class T>
   Status split_top_single_range(bool* unsplittable);
 
   /**
    * Splits the top multi-range, or sets ``unsplittable`` to ``true``
    * if that is not possible.
    */
-  template <class T>
   Status split_top_multi_range(bool* unsplittable);
 
   /**
