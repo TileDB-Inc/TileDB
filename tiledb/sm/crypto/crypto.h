@@ -1,5 +1,5 @@
 /**
- * @file   encryption.h
+ * @file   crypto.h
  *
  * @section LICENSE
  *
@@ -27,11 +27,11 @@
  *
  * @section DESCRIPTION
  *
- * This file declares a platform-independent encryption interface.
+ * This file declares a platform-independent crypto interface.
  */
 
-#ifndef TILEDB_ENCRYPTION_H
-#define TILEDB_ENCRYPTION_H
+#ifndef TILEDB_CRYPTO_H
+#define TILEDB_CRYPTO_H
 
 #include "tiledb/sm/misc/status.h"
 
@@ -42,8 +42,8 @@ class Buffer;
 class ConstBuffer;
 class PreallocatedBuffer;
 
-/** Class implementing encryption methods. */
-class Encryption {
+/** Class implementing crypto methods. */
+class Crypto {
  public:
   /** Size of an AES-256-GCM block in bytes. */
   static const unsigned AES256GCM_BLOCK_BYTES = 16;

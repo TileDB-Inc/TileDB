@@ -1,5 +1,5 @@
 /**
- * @file   encryption_win32.h
+ * @file   crypto_win32.h
  *
  * @section LICENSE
  *
@@ -27,11 +27,11 @@
  *
  * @section DESCRIPTION
  *
- * This file declares a Win32 encryption interface.
+ * This file declares a Win32 crypto interface.
  */
 
-#ifndef TILEDB_ENCRYPTION_WIN32_H
-#define TILEDB_ENCRYPTION_WIN32_H
+#ifndef TILEDB_CRYPTO_WIN32_H
+#define TILEDB_CRYPTO_WIN32_H
 
 #ifdef _WIN32
 

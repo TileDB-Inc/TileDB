@@ -40,7 +40,7 @@
 #include <set>
 #include <unordered_map>
 
-#include "tiledb/sm/encryption/encryption_key_validation.h"
+#include "tiledb/sm/crypto/encryption_key_validation.h"
 #include "tiledb/sm/filesystem/filelock.h"
 #include "tiledb/sm/fragment/fragment_metadata.h"
 #include "tiledb/sm/misc/uri.h"

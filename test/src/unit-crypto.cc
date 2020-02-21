@@ -1,5 +1,5 @@
 /**
- * @file unit-encryption.cc
+ * @file unit-crypto.cc
  *
  * @section LICENSE
  *
@@ -28,20 +28,20 @@
  *
  * @section DESCRIPTION
  *
- * Tests the `Encryption` class
+ * Tests the `Crypto` class
  */
 
 #include "tiledb/sm/buffer/buffer.h"
 #include "tiledb/sm/buffer/const_buffer.h"
 #include "tiledb/sm/buffer/preallocated_buffer.h"
-#include "tiledb/sm/encryption/encryption.h"
+#include "tiledb/sm/crypto/crypto.h"
 
 #include <catch.hpp>
 #include <iostream>
 
 using namespace tiledb::sm;
 
-TEST_CASE("Encryption: Test AES-256-GCM", "[encryption], [aes]") {
+TEST_CASE("Crypto: Test AES-256-GCM", "[crypto], [aes]") {
   SECTION("- Basic") {
     unsigned nelts = 123;
     Buffer input;
@@ -59,7 +59,7 @@ TEST_CASE("Encryption: Test AES-256-GCM", "[encryption], [aes]") {
     char tag_array[16], iv_array[12];
     PreallocatedBuffer output_iv(&iv_array[0], sizeof(iv_array));
     PreallocatedBuffer output_tag(&tag_array[0], sizeof(tag_array));
-    CHECK(Encryption::encrypt_aes256gcm(
+    CHECK(Crypto::encrypt_aes256gcm(
               &key, nullptr, &input_cb, &encrypted, &output_iv, &output_tag)
               .ok());
     CHECK(encrypted.size() == 492);
@@ -69,8 +69,7 @@ TEST_CASE("Encryption: Test AES-256-GCM", "[encryption], [aes]") {
     ConstBuffer iv(output_iv.data(), output_iv.size());
     ConstBuffer tag(output_tag.data(), output_tag.size());
     ConstBuffer encrypted_cb(&encrypted);
-    CHECK(Encryption::decrypt_aes256gcm(
-              &key, &iv, &tag, &encrypted_cb, &decrypted)
+    CHECK(Crypto::decrypt_aes256gcm(&key, &iv, &tag, &encrypted_cb, &decrypted)
               .ok());
     CHECK(decrypted.size() == input.size());
     for (unsigned i = 0; i < nelts; i++)
@@ -82,16 +81,14 @@ TEST_CASE("Encryption: Test AES-256-GCM", "[encryption], [aes]") {
     memset(tag_array, 0, sizeof(tag_array));
     decrypted.reset_offset();
     decrypted.reset_size();
-    CHECK(!Encryption::decrypt_aes256gcm(
-               &key, &iv, &tag, &encrypted_cb, &decrypted)
+    CHECK(!Crypto::decrypt_aes256gcm(&key, &iv, &tag, &encrypted_cb, &decrypted)
                .ok());
 
     // Check with proper tag again.
     memcpy(tag_array, tag_copy, sizeof(tag_array));
     decrypted.reset_offset();
     decrypted.reset_size();
-    CHECK(Encryption::decrypt_aes256gcm(
-              &key, &iv, &tag, &encrypted_cb, &decrypted)
+    CHECK(Crypto::decrypt_aes256gcm(&key, &iv, &tag, &encrypted_cb, &decrypted)
               .ok());
     CHECK(decrypted.size() == input.size());
     for (unsigned i = 0; i < nelts; i++)
@@ -103,16 +100,14 @@ TEST_CASE("Encryption: Test AES-256-GCM", "[encryption], [aes]") {
     key_bytes[0] = 'z';
     decrypted.reset_offset();
     decrypted.reset_size();
-    CHECK(!Encryption::decrypt_aes256gcm(
-               &key, &iv, &tag, &encrypted_cb, &decrypted)
+    CHECK(!Crypto::decrypt_aes256gcm(&key, &iv, &tag, &encrypted_cb, &decrypted)
                .ok());
 
     // Check with proper key again
     memcpy(key_bytes, key_copy, sizeof(key_copy) - 1);
     decrypted.reset_offset();
     decrypted.reset_size();
-    CHECK(Encryption::decrypt_aes256gcm(
-              &key, &iv, &tag, &encrypted_cb, &decrypted)
+    CHECK(Crypto::decrypt_aes256gcm(&key, &iv, &tag, &encrypted_cb, &decrypted)
               .ok());
     CHECK(decrypted.size() == input.size());
     for (unsigned i = 0; i < nelts; i++)
@@ -122,7 +117,7 @@ TEST_CASE("Encryption: Test AES-256-GCM", "[encryption], [aes]") {
     ConstBuffer short_key(key_bytes, 16);
     decrypted.reset_offset();
     decrypted.reset_size();
-    CHECK(!Encryption::decrypt_aes256gcm(
+    CHECK(!Crypto::decrypt_aes256gcm(
                &short_key, &iv, &tag, &encrypted_cb, &decrypted)
                .ok());
 
@@ -130,8 +125,7 @@ TEST_CASE("Encryption: Test AES-256-GCM", "[encryption], [aes]") {
     *((unsigned*)encrypted.value_ptr(0)) += 1;
     decrypted.reset_offset();
     decrypted.reset_size();
-    CHECK(!Encryption::decrypt_aes256gcm(
-               &key, &iv, &tag, &encrypted_cb, &decrypted)
+    CHECK(!Crypto::decrypt_aes256gcm(&key, &iv, &tag, &encrypted_cb, &decrypted)
                .ok());
   }
 
@@ -152,10 +146,10 @@ TEST_CASE("Encryption: Test AES-256-GCM", "[encryption], [aes]") {
     char tag_array[16], iv_array[12];
     PreallocatedBuffer output_iv(&iv_array[0], sizeof(iv_array));
     PreallocatedBuffer output_tag(&tag_array[0], sizeof(tag_array));
-    CHECK(Encryption::encrypt_aes256gcm(
+    CHECK(Crypto::encrypt_aes256gcm(
               &key, nullptr, &input_cb, &encrypted, &output_iv, &output_tag)
               .ok());
-    CHECK(Encryption::encrypt_aes256gcm(
+    CHECK(Crypto::encrypt_aes256gcm(
               &key, nullptr, &input_cb, &encrypted2, &output_iv, &output_tag)
               .ok());
 
@@ -171,8 +165,7 @@ TEST_CASE("Encryption: Test AES-256-GCM", "[encryption], [aes]") {
     ConstBuffer iv(output_iv.data(), output_iv.size());
     ConstBuffer tag(output_tag.data(), output_tag.size());
     ConstBuffer encrypted_cb(&encrypted2);
-    CHECK(Encryption::decrypt_aes256gcm(
-              &key, &iv, &tag, &encrypted_cb, &decrypted)
+    CHECK(Crypto::decrypt_aes256gcm(&key, &iv, &tag, &encrypted_cb, &decrypted)
               .ok());
     CHECK(decrypted.size() == input.size());
     for (unsigned i = 0; i < nelts; i++)
@@ -197,7 +190,7 @@ TEST_CASE("Encryption: Test AES-256-GCM", "[encryption], [aes]") {
       char tag_array[16], iv_array[12];
       PreallocatedBuffer output_iv(&iv_array[0], sizeof(iv_array));
       PreallocatedBuffer output_tag(&tag_array[0], sizeof(tag_array));
-      CHECK(Encryption::encrypt_aes256gcm(
+      CHECK(Crypto::encrypt_aes256gcm(
                 &key, nullptr, &input_cb, &encrypted, &output_iv, &output_tag)
                 .ok());
       CHECK(encrypted.size() == input.size());
@@ -207,9 +200,9 @@ TEST_CASE("Encryption: Test AES-256-GCM", "[encryption], [aes]") {
       ConstBuffer iv(output_iv.data(), output_iv.size());
       ConstBuffer tag(output_tag.data(), output_tag.size());
       ConstBuffer encrypted_cb(&encrypted);
-      CHECK(Encryption::decrypt_aes256gcm(
-                &key, &iv, &tag, &encrypted_cb, &decrypted)
-                .ok());
+      CHECK(
+          Crypto::decrypt_aes256gcm(&key, &iv, &tag, &encrypted_cb, &decrypted)
+              .ok());
       CHECK(decrypted.size() == input.size());
       for (unsigned i = 0; i < nelts; i++)
         REQUIRE(decrypted.value<unsigned>(i * sizeof(unsigned)) == i);
@@ -462,7 +455,7 @@ TEST_CASE("Encryption: Test AES-256-GCM", "[encryption], [aes]") {
       ConstBuffer iv_const(iv.data(), iv.size());
       Buffer encrypted;
       ConstBuffer plaintext_cb(&plaintext);
-      CHECK(Encryption::encrypt_aes256gcm(
+      CHECK(Crypto::encrypt_aes256gcm(
                 &key_const,
                 &iv_const,
                 &plaintext_cb,
@@ -490,7 +483,7 @@ TEST_CASE("Encryption: Test AES-256-GCM", "[encryption], [aes]") {
       Buffer decrypted;
       ConstBuffer tag_const(output_tag.data(), output_tag.size());
       ConstBuffer encrypted_cb(&encrypted);
-      CHECK(Encryption::decrypt_aes256gcm(
+      CHECK(Crypto::decrypt_aes256gcm(
                 &key_const, &iv_const, &tag_const, &encrypted_cb, &decrypted)
                 .ok());
       CHECK(decrypted.size() == plaintext.size());
@@ -502,15 +495,15 @@ TEST_CASE("Encryption: Test AES-256-GCM", "[encryption], [aes]") {
   }
 }
 
-TEST_CASE("Encryption: Test MD5", "[encryption], [md5]") {
+TEST_CASE("Crypto: Test MD5", "[crypto], [md5]") {
   SECTION("- Basic") {
     std::string expected_checksum = "e99a18c428cb38d5f260853678922e03";
     std::string text_to_checksum = "abc123";
     ConstBuffer input_buffer(
         text_to_checksum.data(), text_to_checksum.length());
     Buffer output_buffer;
-    output_buffer.realloc(Encryption::MD5_DIGEST_BYTES);
-    CHECK(Encryption::md5(&input_buffer, &output_buffer).ok());
+    output_buffer.realloc(Crypto::MD5_DIGEST_BYTES);
+    CHECK(Crypto::md5(&input_buffer, &output_buffer).ok());
 
     unsigned char* digest =
         reinterpret_cast<unsigned char*>(output_buffer.data());
@@ -525,7 +518,7 @@ TEST_CASE("Encryption: Test MD5", "[encryption], [md5]") {
   }
 }
 
-TEST_CASE("Encryption: Test SHA256", "[encryption], [sha256]") {
+TEST_CASE("Crypto: Test SHA256", "[crypto], [sha256]") {
   SECTION("- Basic") {
     std::string expected_checksum =
         "6ca13d52ca70c883e0f0bb101e425a89e8624de51db2d2392593af6a84118090";
@@ -533,8 +526,8 @@ TEST_CASE("Encryption: Test SHA256", "[encryption], [sha256]") {
     ConstBuffer input_buffer(
         text_to_checksum.data(), text_to_checksum.length());
     Buffer output_buffer;
-    output_buffer.realloc(Encryption::SHA256_DIGEST_BYTES);
-    CHECK(Encryption::sha256(&input_buffer, &output_buffer).ok());
+    output_buffer.realloc(Crypto::SHA256_DIGEST_BYTES);
+    CHECK(Crypto::sha256(&input_buffer, &output_buffer).ok());
 
     unsigned char* digest =
         reinterpret_cast<unsigned char*>(output_buffer.data());

@@ -32,7 +32,7 @@
 
 #include "tiledb/sm/filter/checksum_md5_filter.h"
 #include "tiledb/sm/buffer/preallocated_buffer.h"
-#include "tiledb/sm/encryption/encryption.h"
+#include "tiledb/sm/crypto/crypto.h"
 #include "tiledb/sm/enums/filter_type.h"
 #include "tiledb/sm/misc/logger.h"
 #include "tiledb/sm/tile/tile.h"
@@ -67,7 +67,7 @@ Status ChecksumMD5Filter::run_forward(
   auto num_metadata_parts = (uint32_t)metadata_parts.size();
   auto total_num_parts = num_data_parts + num_metadata_parts;
 
-  uint32_t part_md_size = Encryption::MD5_DIGEST_BYTES + sizeof(uint64_t);
+  uint32_t part_md_size = Crypto::MD5_DIGEST_BYTES + sizeof(uint64_t);
   uint32_t metadata_size =
       (total_num_parts * part_md_size) + (2 * sizeof(uint32_t));
   RETURN_NOT_OK(output_metadata->prepend_buffer(metadata_size));
@@ -108,9 +108,8 @@ Status ChecksumMD5Filter::run_reverse(
         input_metadata->read(&metadata_checksummed_bytes, sizeof(uint64_t)));
 
     Buffer buff;
-    buff.realloc(Encryption::MD5_DIGEST_BYTES);
-    RETURN_NOT_OK(
-        input_metadata->read(buff.data(), Encryption::MD5_DIGEST_BYTES));
+    buff.realloc(Crypto::MD5_DIGEST_BYTES);
+    RETURN_NOT_OK(input_metadata->read(buff.data(), Crypto::MD5_DIGEST_BYTES));
     metadata_checksums[i] = std::make_pair(metadata_checksummed_bytes, buff);
   }
 
@@ -120,9 +119,8 @@ Status ChecksumMD5Filter::run_reverse(
         input_metadata->read(&data_checksummed_bytes, sizeof(uint64_t)));
 
     Buffer buff;
-    buff.realloc(Encryption::MD5_DIGEST_BYTES);
-    RETURN_NOT_OK(
-        input_metadata->read(buff.data(), Encryption::MD5_DIGEST_BYTES));
+    buff.realloc(Crypto::MD5_DIGEST_BYTES);
+    RETURN_NOT_OK(input_metadata->read(buff.data(), Crypto::MD5_DIGEST_BYTES));
     data_checksums[i] = std::make_pair(data_checksummed_bytes, buff);
   }
 
@@ -163,8 +161,8 @@ Status ChecksumMD5Filter::checksum_part(
     ConstBuffer* part, FilterBuffer* output_metadata) const {
   // Allocate an initial output buffer.
   std::unique_ptr<Buffer> computed_hash = std::unique_ptr<Buffer>(new Buffer());
-  computed_hash->realloc(Encryption::MD5_DIGEST_BYTES);
-  RETURN_NOT_OK(Encryption::md5(part, computed_hash.get()));
+  computed_hash->realloc(Crypto::MD5_DIGEST_BYTES);
+  RETURN_NOT_OK(Crypto::md5(part, computed_hash.get()));
 
   // Write metadata.
   uint64_t part_size = part->size();
@@ -201,13 +199,13 @@ Status ChecksumMD5Filter::compare_checksum_part(
 
   // Buffer to store the newly computed hash value for comparison
   std::unique_ptr<Buffer> computed_hash = std::unique_ptr<Buffer>(new Buffer());
-  computed_hash->realloc(Encryption::MD5_DIGEST_BYTES);
+  computed_hash->realloc(Crypto::MD5_DIGEST_BYTES);
 
-  RETURN_NOT_OK(Encryption::md5(
+  RETURN_NOT_OK(Crypto::md5(
       buffer_to_compare->data(), bytes_to_compare, computed_hash.get()));
 
-  if (std::memcmp(
-          checksum, computed_hash->data(), Encryption::MD5_DIGEST_BYTES) != 0) {
+  if (std::memcmp(checksum, computed_hash->data(), Crypto::MD5_DIGEST_BYTES) !=
+      0) {
     // If we have a checksum mismatch print hex versions
     unsigned char* digest =
         reinterpret_cast<unsigned char*>(computed_hash->data());
@@ -218,7 +216,7 @@ Status ChecksumMD5Filter::compare_checksum_part(
 
     unsigned char* existing_digest = reinterpret_cast<unsigned char*>(checksum);
     char md5string_existing[33];
-    for (uint64_t i = 0; i < Encryption::MD5_DIGEST_BYTES; ++i) {
+    for (uint64_t i = 0; i < Crypto::MD5_DIGEST_BYTES; ++i) {
       sprintf(
           &md5string_existing[i * 2], "%02x", (unsigned int)existing_digest[i]);
     }

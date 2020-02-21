@@ -35,7 +35,7 @@
 #include "tiledb/sm/array_schema/dimension.h"
 #include "tiledb/sm/array_schema/domain.h"
 #include "tiledb/sm/buffer/buffer.h"
-#include "tiledb/sm/encryption/encryption_key.h"
+#include "tiledb/sm/crypto/encryption_key.h"
 #include "tiledb/sm/enums/compressor.h"
 #include "tiledb/sm/enums/datatype.h"
 #include "tiledb/sm/enums/encryption_type.h"

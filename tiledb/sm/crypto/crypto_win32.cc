@@ -27,16 +27,16 @@
  *
  * @section DESCRIPTION
  *
- * This file defines a Win32 encryption interface.
+ * This file defines a Win32 crypto interface.
  */
 
 #ifdef _WIN32
 
-#include "tiledb/sm/encryption/encryption_win32.h"
+#include "tiledb/sm/crypto/crypto_win32.h"
 #include "tiledb/sm/buffer/buffer.h"
 #include "tiledb/sm/buffer/const_buffer.h"
 #include "tiledb/sm/buffer/preallocated_buffer.h"
-#include "tiledb/sm/encryption/encryption.h"
+#include "tiledb/sm/crypto/crypto.h"
 #include "tiledb/sm/misc/logger.h"
 
 #ifndef NT_SUCCESS
@@ -79,7 +79,7 @@ Status Win32CNG::encrypt_aes256gcm(
     PreallocatedBuffer* output_iv,
     PreallocatedBuffer* output_tag) {
   // Ensure sufficient space in output buffer.
-  auto required_space = input->size() + 2 * Encryption::AES256GCM_BLOCK_BYTES;
+  auto required_space = input->size() + 2 * Crypto::AES256GCM_BLOCK_BYTES;
   if (output->free_space() < required_space)
     RETURN_NOT_OK(output->realloc(output->alloced_size() + required_space));
 
@@ -88,8 +88,7 @@ Status Win32CNG::encrypt_aes256gcm(
   unsigned char* iv_buf;
   Buffer generated_iv;
   if (iv == nullptr || iv->data() == nullptr) {
-    RETURN_NOT_OK(
-        get_random_bytes(Encryption::AES256GCM_IV_BYTES, &generated_iv));
+    RETURN_NOT_OK(get_random_bytes(Crypto::AES256GCM_IV_BYTES, &generated_iv));
     iv_len = (ULONG)generated_iv.size();
     iv_buf = (unsigned char*)generated_iv.data();
   } else {
@@ -315,7 +314,7 @@ Status Win32CNG::hash_bytes(
   BCRYPT_ALG_HANDLE alg_handle;
   if (!NT_SUCCESS(
           BCryptOpenAlgorithmProvider(&alg_handle, hash_algorithm, NULL, 0))) {
-    return Status::EncryptionError(
+    return Status::ChecksumError(
         "Win32CNG error; could not open of hash algorithm.");
   }
 
@@ -328,7 +327,7 @@ Status Win32CNG::hash_bytes(
           sizeof(DWORD),
           &cbData,
           0))) {
-    return Status::EncryptionError(
+    return Status::ChecksumError(
         "Win32CNG error; could not get size of hash object.");
   }
 
@@ -346,19 +345,19 @@ Status Win32CNG::hash_bytes(
           NULL,
           0,
           0))) {
-    return Status::EncryptionError(
+    return Status::ChecksumError(
         "Win32CNG error; could not create hash object.");
   }
 
   // hash some data
   if (!NT_SUCCESS(BCryptHashData(hash, (PBYTE)input, input_read_size, 0))) {
-    return Status::EncryptionError("Win32CNG error; could not hash data.");
+    return Status::ChecksumError("Win32CNG error; could not hash data.");
   }
 
   // close the hash
   if (!NT_SUCCESS(BCryptFinishHash(
           hash, (PUCHAR)output->data(), output->alloced_size(), 0))) {
-    return Status::EncryptionError(
+    return Status::ChecksumError(
         "Win32CNG error; could not close hash object.");
   }
 

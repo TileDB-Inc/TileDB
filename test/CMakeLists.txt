@@ -81,7 +81,7 @@ set(TILEDB_TEST_SOURCES
   src/unit-compression-dd.cc
   src/unit-compression-rle.cc
   src/unit-ctx.cc
-  src/unit-encryption.cc
+  src/unit-crypto.cc
   src/unit-filter-buffer.cc
   src/unit-filter-pipeline.cc
   src/unit-hdfs-filesystem.cc

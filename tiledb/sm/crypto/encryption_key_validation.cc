@@ -30,10 +30,10 @@
  * This file defines a class for encryption key validation.
  */
 
-#include "tiledb/sm/encryption/encryption_key_validation.h"
+#include "tiledb/sm/crypto/encryption_key_validation.h"
 #include "tiledb/sm/buffer/preallocated_buffer.h"
-#include "tiledb/sm/encryption/encryption.h"
-#include "tiledb/sm/encryption/encryption_key.h"
+#include "tiledb/sm/crypto/crypto.h"
+#include "tiledb/sm/crypto/encryption_key.h"
 #include "tiledb/sm/enums/encryption_type.h"
 #include "tiledb/sm/misc/logger.h"
 
@@ -66,7 +66,7 @@ Status EncryptionKeyValidation::check_encryption_key(
           encryption_key_check_data_tag_.size());
       ConstBuffer key = encryption_key.key();
       RETURN_NOT_OK(
-          Encryption::decrypt_aes256gcm(&key, &iv, &tag, &input, &output));
+          Crypto::decrypt_aes256gcm(&key, &iv, &tag, &input, &output));
       break;
     }
     default:
@@ -98,10 +98,10 @@ Status EncryptionKeyValidation::init_encryption_key_check_data(
       RETURN_NOT_OK(encryption_key_check_data_.write(&input, input.size()));
       break;
     case EncryptionType::AES_256_GCM: {
-      RETURN_NOT_OK(encryption_key_check_data_iv_.realloc(
-          Encryption::AES256GCM_IV_BYTES));
-      RETURN_NOT_OK(encryption_key_check_data_tag_.realloc(
-          Encryption::AES256GCM_TAG_BYTES));
+      RETURN_NOT_OK(
+          encryption_key_check_data_iv_.realloc(Crypto::AES256GCM_IV_BYTES));
+      RETURN_NOT_OK(
+          encryption_key_check_data_tag_.realloc(Crypto::AES256GCM_TAG_BYTES));
       ConstBuffer key = encryption_key.key();
       PreallocatedBuffer iv(
           encryption_key_check_data_iv_.data(),
@@ -109,12 +109,10 @@ Status EncryptionKeyValidation::init_encryption_key_check_data(
       PreallocatedBuffer tag(
           encryption_key_check_data_tag_.data(),
           encryption_key_check_data_tag_.alloced_size());
-      RETURN_NOT_OK(Encryption::encrypt_aes256gcm(
+      RETURN_NOT_OK(Crypto::encrypt_aes256gcm(
           &key, nullptr, &input, &encryption_key_check_data_, &iv, &tag));
-      encryption_key_check_data_iv_.advance_size(
-          Encryption::AES256GCM_IV_BYTES);
-      encryption_key_check_data_tag_.advance_size(
-          Encryption::AES256GCM_TAG_BYTES);
+      encryption_key_check_data_iv_.advance_size(Crypto::AES256GCM_IV_BYTES);
+      encryption_key_check_data_tag_.advance_size(Crypto::AES256GCM_TAG_BYTES);
       break;
     }
     default:

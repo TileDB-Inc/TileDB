@@ -1,5 +1,5 @@
 /**
- * @file   encryption.cc
+ * @file   crypto.cc
  *
  * @section LICENSE
  *
@@ -27,10 +27,10 @@
  *
  * @section DESCRIPTION
  *
- * This file defines a platform-independent encryption interface.
+ * This file defines a platform-independent crypto interface.
  */
 
-#include "tiledb/sm/encryption/encryption.h"
+#include "tiledb/sm/crypto/crypto.h"
 #include "tiledb/sm/buffer/buffer.h"
 #include "tiledb/sm/buffer/const_buffer.h"
 #include "tiledb/sm/buffer/preallocated_buffer.h"
@@ -38,22 +38,22 @@
 #include "tiledb/sm/misc/stats.h"
 
 #ifdef _WIN32
-#include "tiledb/sm/encryption/encryption_win32.h"
+#include "tiledb/sm/crypto/crypto_win32.h"
 #else
-#include "tiledb/sm/encryption/encryption_openssl.h"
+#include "tiledb/sm/crypto/crypto_openssl.h"
 #endif
 
 namespace tiledb {
 namespace sm {
 
-Status Encryption::encrypt_aes256gcm(
+Status Crypto::encrypt_aes256gcm(
     ConstBuffer* key,
     ConstBuffer* iv,
     ConstBuffer* input,
     Buffer* output,
     PreallocatedBuffer* output_iv,
     PreallocatedBuffer* output_tag) {
-  STATS_FUNC_IN(encryption_encrypt_aes256gcm);
+  STATS_FUNC_IN(crypto_encrypt_aes256gcm);
 
   if (key->size() != AES256GCM_KEY_BYTES)
     return LOG_STATUS(
@@ -76,16 +76,16 @@ Status Encryption::encrypt_aes256gcm(
       key, iv, input, output, output_iv, output_tag);
 #endif
 
-  STATS_FUNC_OUT(encryption_encrypt_aes256gcm);
+  STATS_FUNC_OUT(crypto_encrypt_aes256gcm);
 }
 
-Status Encryption::decrypt_aes256gcm(
+Status Crypto::decrypt_aes256gcm(
     ConstBuffer* key,
     ConstBuffer* iv,
     ConstBuffer* tag,
     ConstBuffer* input,
     Buffer* output) {
-  STATS_FUNC_IN(encryption_decrypt_aes256gcm);
+  STATS_FUNC_IN(crypto_decrypt_aes256gcm);
 
   if (key == nullptr || key->size() != AES256GCM_KEY_BYTES)
     return LOG_STATUS(
@@ -103,47 +103,47 @@ Status Encryption::decrypt_aes256gcm(
   return OpenSSL::decrypt_aes256gcm(key, iv, tag, input, output);
 #endif
 
-  STATS_FUNC_OUT(encryption_decrypt_aes256gcm);
+  STATS_FUNC_OUT(crypto_decrypt_aes256gcm);
 }
 
-Status Encryption::md5(ConstBuffer* input, Buffer* output) {
+Status Crypto::md5(ConstBuffer* input, Buffer* output) {
   return md5(input, input->size(), output);
 }
 
-Status Encryption::md5(
+Status Crypto::md5(
     ConstBuffer* input, uint64_t input_read_size, Buffer* output) {
   return md5(input->data(), input_read_size, output);
 }
 
-Status Encryption::md5(
+Status Crypto::md5(
     const void* input, uint64_t input_read_size, Buffer* output) {
-  STATS_FUNC_IN(encryption_md5);
+  STATS_FUNC_IN(crypto_md5);
 #ifdef _WIN32
   return Win32CNG::md5(input, input_read_size, output);
 #else
   return OpenSSL::md5(input, input_read_size, output);
 #endif
-  STATS_FUNC_OUT(encryption_md5);
+  STATS_FUNC_OUT(crypto_md5);
 }
 
-Status Encryption::sha256(ConstBuffer* input, Buffer* output) {
+Status Crypto::sha256(ConstBuffer* input, Buffer* output) {
   return sha256(input, input->size(), output);
 }
 
-Status Encryption::sha256(
+Status Crypto::sha256(
     ConstBuffer* input, uint64_t input_read_size, Buffer* output) {
   return sha256(input->data(), input_read_size, output);
 }
 
-Status Encryption::sha256(
+Status Crypto::sha256(
     const void* input, uint64_t input_read_size, Buffer* output) {
-  STATS_FUNC_IN(encryption_sha256);
+  STATS_FUNC_IN(crypto_sha256);
 #ifdef _WIN32
   return Win32CNG::sha256(input, input_read_size, output);
 #else
   return OpenSSL::sha256(input, input_read_size, output);
 #endif
-  STATS_FUNC_OUT(encryption_sha256);
+  STATS_FUNC_OUT(crypto_sha256);
 }
 
 }  // namespace sm

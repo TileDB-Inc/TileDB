@@ -30,8 +30,8 @@
  * This file defines a class representing an encryption key.
  */
 
-#include "tiledb/sm/encryption/encryption_key.h"
-#include "tiledb/sm/encryption/encryption.h"
+#include "tiledb/sm/crypto/encryption_key.h"
+#include "tiledb/sm/crypto/crypto.h"
 #include "tiledb/sm/enums/encryption_type.h"
 #include "tiledb/sm/misc/logger.h"
 
@@ -83,7 +83,7 @@ bool EncryptionKey::is_valid_key_length(
     case EncryptionType::NO_ENCRYPTION:
       return key_length == 0;
     case EncryptionType::AES_256_GCM:
-      return key_length == Encryption::AES256GCM_KEY_BYTES;
+      return key_length == Crypto::AES256GCM_KEY_BYTES;
     default:
       return false;
   }

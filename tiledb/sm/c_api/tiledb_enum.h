@@ -158,7 +158,8 @@
     TILEDB_FILTER_TYPE_ENUM(FILTER_BYTESHUFFLE) = 9,
     /** Positive-delta encoding filter. */
     TILEDB_FILTER_TYPE_ENUM(FILTER_POSITIVE_DELTA) = 10,
-    /** MD5 checksum filter. */
+    /** MD5 checksum filter. Starts at 12 because 11 is used for encryption, see
+       tiledb/sm/enums/filter_type.h */
     TILEDB_FILTER_TYPE_ENUM(FILTER_CHECKSUM_MD5) = 12,
     /** SHA256 checksum filter. */
     TILEDB_FILTER_TYPE_ENUM(FILTER_CHECKSUM_SHA256) = 13,

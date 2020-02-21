@@ -120,7 +120,7 @@ enum class StatusCode : char {
   CellSlabIterError,
   RestError,
   SerializationError,
-  Checksum
+  ChecksumError
 };
 
 class Status {
@@ -197,7 +197,7 @@ class Status {
 
   /** Return a ArrayError error class Status with a given message **/
   static Status ChecksumError(const std::string& msg) {
-    return Status(StatusCode::Checksum, msg, -1);
+    return Status(StatusCode::ChecksumError, msg, -1);
   }
 
   /** Return a ArrayError error class Status with a given message **/

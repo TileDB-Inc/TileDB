@@ -32,8 +32,8 @@
 
 #include "tiledb/sm/filter/encryption_aes256gcm_filter.h"
 #include "tiledb/sm/buffer/preallocated_buffer.h"
-#include "tiledb/sm/encryption/encryption.h"
-#include "tiledb/sm/encryption/encryption_key.h"
+#include "tiledb/sm/crypto/crypto.h"
+#include "tiledb/sm/crypto/encryption_key.h"
 #include "tiledb/sm/enums/encryption_type.h"
 #include "tiledb/sm/enums/filter_type.h"
 #include "tiledb/sm/misc/logger.h"
@@ -80,9 +80,8 @@ Status EncryptionAES256GCMFilter::run_forward(
   auto num_data_parts = (uint32_t)data_parts.size(),
        num_metadata_parts = (uint32_t)metadata_parts.size(),
        total_num_parts = num_data_parts + num_metadata_parts;
-  uint32_t part_md_size = 2 * sizeof(uint32_t) +
-                          Encryption::AES256GCM_TAG_BYTES +
-                          Encryption::AES256GCM_IV_BYTES;
+  uint32_t part_md_size = 2 * sizeof(uint32_t) + Crypto::AES256GCM_TAG_BYTES +
+                          Crypto::AES256GCM_IV_BYTES;
   uint32_t metadata_size =
       2 * sizeof(uint32_t) + total_num_parts * part_md_size;
   RETURN_NOT_OK(output_metadata->prepend_buffer(metadata_size));
@@ -101,18 +100,17 @@ Status EncryptionAES256GCMFilter::run_forward(
 Status EncryptionAES256GCMFilter::encrypt_part(
     ConstBuffer* part, Buffer* output, FilterBuffer* output_metadata) const {
   // Set up the key buffer.
-  ConstBuffer key(key_bytes_, Encryption::AES256GCM_KEY_BYTES);
+  ConstBuffer key(key_bytes_, Crypto::AES256GCM_KEY_BYTES);
 
   // Set up the IV and tag metadata buffers.
-  uint8_t iv[Encryption::AES256GCM_IV_BYTES],
-      tag[Encryption::AES256GCM_TAG_BYTES];
-  PreallocatedBuffer output_iv(iv, Encryption::AES256GCM_IV_BYTES),
-      output_tag(tag, Encryption::AES256GCM_TAG_BYTES);
+  uint8_t iv[Crypto::AES256GCM_IV_BYTES], tag[Crypto::AES256GCM_TAG_BYTES];
+  PreallocatedBuffer output_iv(iv, Crypto::AES256GCM_IV_BYTES),
+      output_tag(tag, Crypto::AES256GCM_TAG_BYTES);
 
   // Encrypt.
   auto orig_size = (uint32_t)output->size();
 
-  RETURN_NOT_OK(Encryption::encrypt_aes256gcm(
+  RETURN_NOT_OK(Crypto::encrypt_aes256gcm(
       &key, nullptr, part, output, &output_iv, &output_tag));
 
   if (output->size() > std::numeric_limits<uint32_t>::max())
@@ -124,8 +122,8 @@ Status EncryptionAES256GCMFilter::encrypt_part(
            encrypted_size = (uint32_t)output->size() - orig_size;
   RETURN_NOT_OK(output_metadata->write(&input_size, sizeof(uint32_t)));
   RETURN_NOT_OK(output_metadata->write(&encrypted_size, sizeof(uint32_t)));
-  RETURN_NOT_OK(output_metadata->write(iv, Encryption::AES256GCM_IV_BYTES));
-  RETURN_NOT_OK(output_metadata->write(tag, Encryption::AES256GCM_TAG_BYTES));
+  RETURN_NOT_OK(output_metadata->write(iv, Crypto::AES256GCM_IV_BYTES));
+  RETURN_NOT_OK(output_metadata->write(tag, Crypto::AES256GCM_TAG_BYTES));
 
   return Status::Ok();
 }
@@ -168,16 +166,15 @@ Status EncryptionAES256GCMFilter::decrypt_part(
   RETURN_NOT_OK(input_metadata->read(&encrypted_size, sizeof(uint32_t)));
 
   // Set up the key buffer.
-  ConstBuffer key(key_bytes_, Encryption::AES256GCM_KEY_BYTES);
+  ConstBuffer key(key_bytes_, Crypto::AES256GCM_KEY_BYTES);
 
   // Set up the IV and tag metadata buffers.
-  uint8_t iv_bytes[Encryption::AES256GCM_IV_BYTES],
-      tag_bytes[Encryption::AES256GCM_TAG_BYTES];
-  RETURN_NOT_OK(input_metadata->read(iv_bytes, Encryption::AES256GCM_IV_BYTES));
-  RETURN_NOT_OK(
-      input_metadata->read(tag_bytes, Encryption::AES256GCM_TAG_BYTES));
-  ConstBuffer iv(iv_bytes, Encryption::AES256GCM_IV_BYTES),
-      tag(tag_bytes, Encryption::AES256GCM_TAG_BYTES);
+  uint8_t iv_bytes[Crypto::AES256GCM_IV_BYTES],
+      tag_bytes[Crypto::AES256GCM_TAG_BYTES];
+  RETURN_NOT_OK(input_metadata->read(iv_bytes, Crypto::AES256GCM_IV_BYTES));
+  RETURN_NOT_OK(input_metadata->read(tag_bytes, Crypto::AES256GCM_TAG_BYTES));
+  ConstBuffer iv(iv_bytes, Crypto::AES256GCM_IV_BYTES),
+      tag(tag_bytes, Crypto::AES256GCM_TAG_BYTES);
 
   // Ensure space in the output buffer if possible.
   if (output->owns_data()) {
@@ -193,7 +190,7 @@ Status EncryptionAES256GCMFilter::decrypt_part(
 
   // Decrypt.
   RETURN_NOT_OK(
-      Encryption::decrypt_aes256gcm(&key, &iv, &tag, &input_buffer, output));
+      Crypto::decrypt_aes256gcm(&key, &iv, &tag, &input_buffer, output));
 
   input->advance_offset(encrypted_size);
 
@@ -208,7 +205,7 @@ Status EncryptionAES256GCMFilter::set_key(const EncryptionKey& key) {
         Status::FilterError("Encryption error; invalid key encryption type."));
 
   if (key_buff.data() == nullptr ||
-      key_buff.size() != Encryption::AES256GCM_KEY_BYTES)
+      key_buff.size() != Crypto::AES256GCM_KEY_BYTES)
     return LOG_STATUS(
         Status::FilterError("Encryption error; invalid key for AES-256-GCM."));
 
