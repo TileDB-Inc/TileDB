@@ -55,22 +55,8 @@ namespace sm {
 /*   CONSTRUCTORS & DESTRUCTORS   */
 /* ****************************** */
 
-ArraySchema::ArraySchema() {
-  allows_dups_ = false;
-  array_uri_ = URI();
-  array_type_ = ArrayType::DENSE;
-  capacity_ = constants::capacity;
-  cell_order_ = Layout::ROW_MAJOR;
-  domain_ = nullptr;
-  tile_order_ = Layout::ROW_MAJOR;
-  version_ = constants::format_version;
-
-  // Set up default filter pipelines for coords and offsets
-  coords_filters_.add_filter(CompressionFilter(
-      constants::coords_compression, constants::coords_compression_level));
-  cell_var_offsets_filters_.add_filter(CompressionFilter(
-      constants::cell_var_offsets_compression,
-      constants::cell_var_offsets_compression_level));
+ArraySchema::ArraySchema()
+    : ArraySchema(ArrayType::DENSE) {
 }
 
 ArraySchema::ArraySchema(ArrayType array_type)
