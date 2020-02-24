@@ -127,7 +127,7 @@ TEST_CASE_METHOD(
   CHECK(s3_.write(URI(smallfile), write_buffer_small, buffer_size_small).ok());
 
   // Before flushing, the files do not exist
-  bool exists;
+  bool exists = false;
   CHECK(s3_.is_object(URI(largefile), &exists).ok());
   CHECK(!exists);
   CHECK(s3_.is_object(URI(smallfile), &exists).ok());

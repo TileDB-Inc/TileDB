@@ -133,7 +133,7 @@ TEST_CASE_METHOD(S3Fx, "Test S3 filesystem, file management", "[s3]") {
   CHECK(is_empty);
 
   // Continue building the hierarchy
-  bool exists;
+  bool exists = false;
   CHECK(s3_.touch(URI(file1)).ok());
   CHECK(s3_.is_object(URI(file1), &exists).ok());
   CHECK(exists);
@@ -237,7 +237,7 @@ TEST_CASE_METHOD(S3Fx, "Test S3 filesystem, file I/O", "[s3]") {
   CHECK(s3_.write(URI(smallfile), write_buffer_small, buffer_size_small).ok());
 
   // Before flushing, the files do not exist
-  bool exists;
+  bool exists = false;
   CHECK(s3_.is_object(URI(largefile), &exists).ok());
   CHECK(!exists);
   CHECK(s3_.is_object(URI(smallfile), &exists).ok());
@@ -301,7 +301,7 @@ TEST_CASE_METHOD(S3Fx, "Test S3 multiupload abort path", "[s3]") {
     CHECK(!s3_.write(URI(largefile), write_buffer, buffer_size).ok());
 
     // Before flushing, the file does not exist
-    bool exists;
+    bool exists = false;
     CHECK(s3_.is_object(URI(largefile), &exists).ok());
     CHECK(!exists);
 
