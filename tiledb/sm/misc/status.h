@@ -105,7 +105,7 @@ enum class StatusCode : char {
   FS_AZURE,
   FS_HDFS,
   Attribute,
-  DenseCellRangeIter,
+  WriteCellSlabIter,
   Reader,
   Writer,
   PreallocatedBuffer,
@@ -300,10 +300,10 @@ class Status {
     return Status(StatusCode::Attribute, msg, -1);
   }
 
-  /** Return a DenseCellRangeIterError error class Status with a given message
+  /** Return a WriteCellSlabIterError error class Status with a given message
    * **/
-  static Status DenseCellRangeIterError(const std::string& msg) {
-    return Status(StatusCode::DenseCellRangeIter, msg, -1);
+  static Status WriteCellSlabIterError(const std::string& msg) {
+    return Status(StatusCode::WriteCellSlabIter, msg, -1);
   }
 
   /** Return a ReaderError error class Status with a given message **/

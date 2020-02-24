@@ -120,26 +120,27 @@ template <class T>
 void ReadCellSlabIter<T>::compute_cell_offsets_col() {
   assert(std::is_integral<T>::value);
   auto dim_num = domain_->dim_num();
-  auto tile_extents = (const T*)domain_->tile_extents();
   cell_offsets_.reserve(dim_num);
 
   cell_offsets_.push_back(1);
-  for (unsigned int i = 1; i < dim_num; ++i)
-    cell_offsets_.push_back(cell_offsets_.back() * tile_extents[i - 1]);
+  for (unsigned d = 1; d < dim_num; ++d) {
+    auto tile_extent = *(const T*)domain_->tile_extent(d - 1).data();
+    cell_offsets_.push_back(cell_offsets_.back() * tile_extent);
+  }
 }
 
 template <class T>
 void ReadCellSlabIter<T>::compute_cell_offsets_row() {
   assert(std::is_integral<T>::value);
   auto dim_num = domain_->dim_num();
-  auto tile_extents = (const T*)domain_->tile_extents();
   cell_offsets_.reserve(dim_num);
 
   cell_offsets_.push_back(1);
   if (dim_num > 1) {
-    for (unsigned int i = dim_num - 2;; --i) {
-      cell_offsets_.push_back(cell_offsets_.back() * tile_extents[i + 1]);
-      if (i == 0)
+    for (unsigned d = dim_num - 2;; --d) {
+      auto tile_extent = *(const T*)domain_->tile_extent(d + 1).data();
+      cell_offsets_.push_back(cell_offsets_.back() * tile_extent);
+      if (d == 0)
         break;
     }
   }
@@ -293,7 +294,7 @@ void ReadCellSlabIter<T>::compute_result_cell_slabs_dense(
   for (const auto& fd : frag_domains) {
     for (auto pit = to_process.begin(); pit != to_process.end();) {
       compute_cell_slab_overlap(
-          *pit, fd.second.get(), &slab_overlap, &overlap_length, &overlap_type);
+          *pit, fd.second, &slab_overlap, &overlap_length, &overlap_type);
 
       // No overlap
       if (overlap_type == 0) {

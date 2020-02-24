@@ -124,14 +124,8 @@ class Reader {
   /** Returns the array. */
   const Array* array() const;
 
-  /**
-   * Adds a range to the (read/write) query on the input dimension,
-   * in the form of (start, end, stride).
-   * The range components must be of the same type as the domain type of the
-   * underlying array.
-   */
-  Status add_range(
-      unsigned dim_idx, const void* start, const void* end, const void* stride);
+  /** Adds a range to the subarray on the input dimension. */
+  Status add_range(unsigned dim_idx, const Range& range);
 
   /** Retrieves the number of ranges of the subarray for the given dimension. */
   Status get_range_num(unsigned dim_idx, uint64_t* range_num) const;
@@ -222,8 +216,8 @@ class Reader {
   /** Returns the last fragment uri. */
   URI last_fragment_uri() const;
 
-  /** Initializes the reader. */
-  Status init();
+  /** Initializes the reader with the subarray layout. */
+  Status init(const Layout& layout);
 
   /** Returns the cell layout. */
   Layout layout() const;
@@ -327,25 +321,7 @@ class Reader {
   /** Sets the storage manager. */
   void set_storage_manager(StorageManager* storage_manager);
 
-  /**
-   * Sets the query subarray. If it is null, then the subarray will be set to
-   * the entire domain.
-   *
-   * @param subarray The subarray to be set.
-   * @param check_expanded_domain If `true`, the subarray bounds will be
-   *     checked against the expanded domain of the array. This is important
-   *     in dense consolidation with space tiles not fully dividing the
-   *     dimension domain.
-   * @return Status
-   */
-  Status set_subarray(const void* subarray, bool check_expanded_domain = false);
-
-  /**
-   * Sets the query subarray.
-   *
-   * @param subarray The subarray to be set.
-   * @return Status
-   */
+  /** Sets the query subarray. */
   Status set_subarray(const Subarray& subarray);
 
   /** Returns the query subarray. */
@@ -524,6 +500,9 @@ class Reader {
   /* ********************************* */
   /*           PRIVATE METHODS         */
   /* ********************************* */
+
+  /** Correctness checks for `subarray_`. */
+  Status check_subarray() const;
 
   /**
    * Deletes the tiles on the input attribute/dimension from the result tiles.

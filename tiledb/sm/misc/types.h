@@ -87,9 +87,23 @@ class Range {
     return &range_[0];
   }
 
+  /** Returns a pointer to the start of the range. */
+  const void* start() const {
+    return &range_[0];
+  }
+
+  const void* end() const {
+    return &range_[range_.size() / 2];
+  }
+
   /** Returns true if the range is empty. */
   bool empty() const {
     return range_.empty();
+  }
+
+  /** Clears the range. */
+  void clear() {
+    range_.clear();
   }
 
   /** Returns the range size in bytes. */

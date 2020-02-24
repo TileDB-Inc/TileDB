@@ -109,12 +109,8 @@ const Array* Reader::array() const {
   return array_;
 }
 
-Status Reader::add_range(
-    unsigned dim_idx, const void* start, const void* end, const void* stride) {
-  if (stride != nullptr)
-    return LOG_STATUS(Status::ReaderError(
-        "Cannot add range; Setting range stride is currently unsupported"));
-  return subarray_.add_range(dim_idx, start, end);
+Status Reader::add_range(unsigned dim_idx, const Range& range) {
+  return subarray_.add_range(dim_idx, range);
 }
 
 Status Reader::get_range_num(unsigned dim_idx, uint64_t* range_num) const {
@@ -198,7 +194,7 @@ Status Reader::get_buffer(
   return Status::Ok();
 }
 
-Status Reader::init() {
+Status Reader::init(const Layout& layout) {
   // Sanity checks
   if (storage_manager_ == nullptr)
     return LOG_STATUS(Status::ReaderError(
@@ -215,6 +211,12 @@ Status Reader::init() {
   if (array_schema_->dense() && !sparse_mode_ && !subarray_.is_set())
     return LOG_STATUS(Status::ReaderError(
         "Cannot initialize reader; Dense reads must have a subarray set"));
+
+  // Set layout
+  RETURN_NOT_OK(set_layout(layout));
+
+  // Check subarray
+  RETURN_NOT_OK(check_subarray());
 
   // Get configuration parameters
   const char *memory_budget, *memory_budget_var;
@@ -456,27 +458,7 @@ void Reader::set_storage_manager(StorageManager* storage_manager) {
   storage_manager_ = storage_manager;
 }
 
-Status Reader::set_subarray(const void* subarray, bool check_expanded_domain) {
-  Subarray new_subarray(array_, layout_);
-  if (subarray != nullptr) {
-    auto dim_num = array_schema_->dim_num();
-    auto coord_size = datatype_size(array_schema_->coords_type());
-    auto s = (unsigned char*)subarray;
-    for (unsigned i = 0; i < dim_num; ++i)
-      RETURN_NOT_OK(new_subarray.add_range(
-          i, (void*)(s + 2 * i * coord_size), check_expanded_domain));
-  }
-
-  return set_subarray(new_subarray);
-}
-
 Status Reader::set_subarray(const Subarray& subarray) {
-  // Check layout
-  if (subarray.layout() == Layout::GLOBAL_ORDER && subarray.range_num() != 1)
-    return LOG_STATUS(
-        Status::ReaderError("Cannot set subarray; Multi-range subarrays with "
-                            "global order layout are not supported"));
-
   subarray_ = subarray;
   layout_ = subarray.layout();
 
@@ -548,6 +530,15 @@ void Reader::compute_result_space_tiles(
 /* ****************************** */
 /*          PRIVATE METHODS       */
 /* ****************************** */
+
+Status Reader::check_subarray() const {
+  if (subarray_.layout() == Layout::GLOBAL_ORDER && subarray_.range_num() != 1)
+    return LOG_STATUS(Status::ReaderError(
+        "Cannot initialize reader; Multi-range subarrays with "
+        "global order layout are not supported"));
+
+  return Status::Ok();
+}
 
 void Reader::clear_tiles(
     const std::string& name,
@@ -1086,10 +1077,8 @@ void Reader::compute_result_space_tiles(
     const Subarray& subarray,
     std::map<const T*, ResultSpaceTile<T>>* result_space_tiles) const {
   // For easy reference
-  auto dim_num = array_schema_->dim_num();
-  auto domain = (const T*)array_schema_->domain()->domain();
-  auto domain_ndrange = array_schema_->domain()->domain_ndrange();
-  auto tile_extents = (const T*)array_schema_->domain()->tile_extents();
+  auto domain = array_schema_->domain()->domain();
+  auto tile_extents = array_schema_->domain()->tile_extents();
   auto tile_order = array_schema_->tile_order();
 
   // Compute fragment tile domains
@@ -1100,7 +1089,6 @@ void Reader::compute_result_space_tiles(
       if (fragment_metadata_[i]->dense()) {
         frag_tile_domains.emplace_back(
             i,
-            dim_num,
             domain,
             fragment_metadata_[i]->non_empty_domain(),
             tile_extents,
@@ -1112,7 +1100,7 @@ void Reader::compute_result_space_tiles(
   // Get tile coords and array domain
   const auto& tile_coords = subarray.tile_coords();
   TileDomain<T> array_tile_domain(
-      UINT32_MAX, dim_num, domain, domain_ndrange, tile_extents, tile_order);
+      UINT32_MAX, domain, domain, tile_extents, tile_order);
 
   // Compute result space tiles
   compute_result_space_tiles<T>(
@@ -1315,10 +1303,6 @@ Status Reader::dense_read() {
       return dense_read<int64_t>();
     case Datatype::UINT64:
       return dense_read<uint64_t>();
-    case Datatype::FLOAT32:
-      return dense_read<float>();
-    case Datatype::FLOAT64:
-      return dense_read<double>();
     case Datatype::DATETIME_YEAR:
     case Datatype::DATETIME_MONTH:
     case Datatype::DATETIME_WEEK:
@@ -1364,6 +1348,7 @@ Status Reader::dense_read() {
   std::vector<ResultCellSlab> result_cell_slabs;
   std::vector<ResultTile*> result_tiles;
   auto& subarray = read_state_.partitioner_.current();
+
   subarray.compute_tile_coords<T>();
   compute_result_cell_slabs<T>(
       subarray,
@@ -2004,56 +1989,6 @@ void Reader::erase_coord_tiles(std::vector<ResultTile>* result_tiles) const {
     tile.erase_tile(constants::coords);
   }
 }
-
-// Explicit template instantiations
-template void Reader::compute_result_space_tiles<int8_t>(
-    const Domain* domain,
-    const std::vector<std::vector<uint8_t>>& tile_coords,
-    const TileDomain<int8_t>& array_tile_domain,
-    const std::vector<TileDomain<int8_t>>& frag_tile_domains,
-    std::map<const int8_t*, ResultSpaceTile<int8_t>>* result_space_tiles);
-template void Reader::compute_result_space_tiles<uint8_t>(
-    const Domain* domain,
-    const std::vector<std::vector<uint8_t>>& tile_coords,
-    const TileDomain<uint8_t>& array_tile_domain,
-    const std::vector<TileDomain<uint8_t>>& frag_tile_domains,
-    std::map<const uint8_t*, ResultSpaceTile<uint8_t>>* result_space_tiles);
-template void Reader::compute_result_space_tiles<int16_t>(
-    const Domain* domain,
-    const std::vector<std::vector<uint8_t>>& tile_coords,
-    const TileDomain<int16_t>& array_tile_domain,
-    const std::vector<TileDomain<int16_t>>& frag_tile_domains,
-    std::map<const int16_t*, ResultSpaceTile<int16_t>>* result_space_tiles);
-template void Reader::compute_result_space_tiles<uint16_t>(
-    const Domain* domain,
-    const std::vector<std::vector<uint8_t>>& tile_coords,
-    const TileDomain<uint16_t>& array_tile_domain,
-    const std::vector<TileDomain<uint16_t>>& frag_tile_domains,
-    std::map<const uint16_t*, ResultSpaceTile<uint16_t>>* result_space_tiles);
-template void Reader::compute_result_space_tiles<int32_t>(
-    const Domain* domain,
-    const std::vector<std::vector<uint8_t>>& tile_coords,
-    const TileDomain<int32_t>& array_tile_domain,
-    const std::vector<TileDomain<int32_t>>& frag_tile_domains,
-    std::map<const int32_t*, ResultSpaceTile<int32_t>>* result_space_tiles);
-template void Reader::compute_result_space_tiles<uint32_t>(
-    const Domain* domain,
-    const std::vector<std::vector<uint8_t>>& tile_coords,
-    const TileDomain<uint32_t>& array_tile_domain,
-    const std::vector<TileDomain<uint32_t>>& frag_tile_domains,
-    std::map<const uint32_t*, ResultSpaceTile<uint32_t>>* result_space_tiles);
-template void Reader::compute_result_space_tiles<int64_t>(
-    const Domain* domain,
-    const std::vector<std::vector<uint8_t>>& tile_coords,
-    const TileDomain<int64_t>& array_tile_domain,
-    const std::vector<TileDomain<int64_t>>& frag_tile_domains,
-    std::map<const int64_t*, ResultSpaceTile<int64_t>>* result_space_tiles);
-template void Reader::compute_result_space_tiles<uint64_t>(
-    const Domain* domain,
-    const std::vector<std::vector<uint8_t>>& tile_coords,
-    const TileDomain<uint64_t>& array_tile_domain,
-    const std::vector<TileDomain<uint64_t>>& frag_tile_domains,
-    std::map<const uint64_t*, ResultSpaceTile<uint64_t>>* result_space_tiles);
 
 }  // namespace sm
 }  // namespace tiledb

@@ -244,32 +244,31 @@ template <class T>
 Status WriteCellSlabIter<T>::sanity_check() const {
   // The layout should not be unordered
   if (layout_ == Layout::UNORDERED)
-    return LOG_STATUS(Status::DenseCellRangeIterError(
+    return LOG_STATUS(Status::WriteCellSlabIterError(
         "Sanity check failed; Unordered layout is invalid"));
 
   // For easy reference
   auto dim_num = domain_->dim_num();
-  auto domain = (T*)domain_->domain();
+  auto domain = domain_->domain();
 
   // Check subarray length
   if (subarray_.size() != 2 * dim_num)
-    return LOG_STATUS(Status::DenseCellRangeIterError(
+    return LOG_STATUS(Status::WriteCellSlabIterError(
         "Sanity check failed; Invalid subarray length"));
 
   // Check subarray bounds
-  for (unsigned i = 0; i < dim_num; ++i) {
-    if (subarray_[2 * i] > subarray_[2 * i + 1])
-      return LOG_STATUS(Status::DenseCellRangeIterError(
+  for (unsigned d = 0; d < dim_num; ++d) {
+    if (subarray_[2 * d] > subarray_[2 * d + 1])
+      return LOG_STATUS(Status::WriteCellSlabIterError(
           "Sanity check failed; Invalid subarray bounds"));
   }
 
   // Check if subarray is contained in the domain
-  for (unsigned i = 0; i < dim_num; ++i) {
-    if (subarray_[2 * i] < domain[2 * i] ||
-        subarray_[2 * i] > domain[2 * i + 1] ||
-        subarray_[2 * i + 1] < domain[2 * i] ||
-        subarray_[2 * i + 1] > domain[2 * i + 1])
-      return LOG_STATUS(Status::DenseCellRangeIterError(
+  for (unsigned d = 0; d < dim_num; ++d) {
+    auto dim_dom = (const T*)domain[d].data();
+    if (subarray_[2 * d] < dim_dom[0] || subarray_[2 * d] > dim_dom[1] ||
+        subarray_[2 * d + 1] < dim_dom[0] || subarray_[2 * d + 1] > dim_dom[1])
+      return LOG_STATUS(Status::WriteCellSlabIterError(
           "Sanity check failed; Subarray not contained in domain"));
   }
 
