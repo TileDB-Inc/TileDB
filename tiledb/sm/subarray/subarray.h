@@ -275,14 +275,6 @@ class Subarray {
   /** Returns the array the subarray is associated with. */
   const Array* array() const;
 
-  /**
-   * Returns the number of cells in the ND range with the input id.
-   * If the domain is huge and the number of cells overflows, the
-   * function returns UINT64_MAX.
-   */
-  template <class T>
-  uint64_t cell_num(uint64_t range_idx) const;
-
   /** Clears the contents of the subarray. */
   void clear();
 
@@ -302,14 +294,12 @@ class Subarray {
    * Computes the estimated result size (calibrated using the maximum size)
    * for a given attribute and range id, for all fragments.
    *
-   * @tparam T The domain type.
    * @param attr_name The name of the attribute to focus on.
    * @param range_idx The id of the subarray range to focus on.
    * @param var_size Whether the attribute is var-sized or not.
    * @param result_size The result size to be retrieved.
    * @return Status
    */
-  template <class T>
   Status compute_est_result_size(
       const std::string& attr_name,
       uint64_t range_idx,
@@ -407,13 +397,11 @@ class Subarray {
    * Returns a subarray consisting of the ranges specified by
    * the input.
    *
-   * @tparam T The domain type.
    * @param start The subarray will be constructed from ranges in
    *     interval ``[start, end]`` in the flattened range order.
    * @param end The subarray will be constructed from ranges in
    *     interval ``[start, end]`` in the flattened range order.
    */
-  template <class T>
   Subarray get_subarray(uint64_t start, uint64_t end) const;
 
   /** Sets the array layout. */
@@ -473,6 +461,27 @@ class Subarray {
    * @note Intended for serialization only
    */
   Status set_ranges_for_dim(uint32_t dim_idx, const Ranges& ranges);
+
+  /**
+   * Splits the subarray along the splitting dimension and value into
+   * two new subarrays `r1` and `r2`.
+   */
+  void split(
+      unsigned splitting_dim,
+      const ByteVecValue& splitting_value,
+      Subarray* r1,
+      Subarray* r2) const;
+
+  /**
+   * Splits the subarray along the splitting range, dimension and value
+   * into two new subarrays `r1` and `r2`.
+   */
+  Status split(
+      uint64_t splitting_range,
+      unsigned splitting_dim,
+      const ByteVecValue& splitting_value,
+      Subarray* r1,
+      Subarray* r2) const;
 
   /**
    * Returns the (unique) coordinates of all the tiles that the subarray
@@ -600,10 +609,6 @@ class Subarray {
   /** Computes the estimated result size for all attributes. */
   Status compute_est_result_size();
 
-  /** Computes the estimated result size for all attributes. */
-  template <class T>
-  Status compute_est_result_size();
-
   /**
    * Compute `tile_coords_` and `tile_coords_map_`. The coordinates will
    * be sorted on col-major tile order.
@@ -622,13 +627,6 @@ class Subarray {
   template <class T>
   void compute_tile_coords_row();
 
-  /**
-   * Computes the tile overlap with all subarray ranges for
-   * all fragments.
-   */
-  template <class T>
-  Status compute_tile_overlap();
-
   /** Returns a deep copy of this Subarray. */
   Subarray clone() const;
 
@@ -636,14 +634,23 @@ class Subarray {
    * Compute the tile overlap between ``range`` and the non-empty domain
    * of the input fragment. Applicable only to dense fragments.
    *
+   * @param range_idx The id of the range to compute the overlap with.
+   * @param fid The id of the fragment to focus on.
+   * @return The tile overlap.
+   */
+  TileOverlap get_tile_overlap(uint64_t range_idx, unsigned fid) const;
+
+  /**
+   * Compute the tile overlap between ``range`` and the non-empty domain
+   * of the input fragment. Applicable only to dense fragments.
+   *
    * @tparam T The domain data type.
-   * @param range The range to compute the overlap with.
+   * @param range_idx The id of the range to compute the overlap with.
    * @param fid The id of the fragment to focus on.
    * @return The tile overlap.
    */
   template <class T>
-  TileOverlap get_tile_overlap(
-      const std::vector<const T*>& range, unsigned fid) const;
+  TileOverlap get_tile_overlap(uint64_t range_idx, unsigned fid) const;
 
   /**
    * Swaps the contents (all field values) of this subarray with the

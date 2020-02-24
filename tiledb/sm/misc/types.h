@@ -33,6 +33,7 @@
 #ifndef TILEDB_TYPES_H
 #define TILEDB_TYPES_H
 
+#include <cassert>
 #include <cstring>
 #include <vector>
 
@@ -101,6 +102,13 @@ class Range {
     return range_ == r.range_;
   }
 
+  /** Returns true if the range start is the same as its end. */
+  bool unary() const {
+    assert(!range_.empty());
+    return !std::memcmp(
+        &range_[0], &range_[range_.size() / 2], range_.size() / 2);
+  }
+
  private:
   /** The range as a flat byte vector.*/
   std::vector<uint8_t> range_;
@@ -108,6 +116,9 @@ class Range {
 
 /** An N-dimensional range, consisting of a vector of 1D ranges. */
 typedef std::vector<Range> NDRange;
+
+/** A value as a vector of bytes. */
+typedef std::vector<uint8_t> ByteVecValue;
 
 /** Contains the buffer(s) and buffer size(s) for some attribute / dimension. */
 struct QueryBuffer {

@@ -80,99 +80,6 @@ class Domain {
   /* ********************************* */
 
   /**
-   * Floors the value such that it coincides with the largest start of a tile
-   * that is smaller than value, on a given dimension. If there are no tile
-   * extents, then the returned value is the start of the domain on the input
-   * dimension.
-   *
-   * @tparam T The domain type.
-   * @param value The value to be floored.
-   * @param dim_idx The targeted dimension.
-   * @return The floored value.
-   */
-  template <class T>
-  T floor_to_tile(T value, unsigned dim_idx) const;
-
-  /**
-   * Splits the input subarray in half, in a way that the input layout is
-   * respected. This means that if the two resulting subarrays were to
-   * be issued as consecutive queries with the input layout, the retrieved
-   * result would be correct (i.e., the resulting cells would respect the
-   * input layout).
-   *
-   * @param subarray The input subarray.
-   * @param layout The query layout.
-   * @param subarray_1 The first subarray resulting from the split.
-   * @param subarray_2 The second subarray resulting from the split.
-   * @return Status
-   */
-  Status split_subarray(
-      void* subarray,
-      Layout layout,
-      void** subarray_1,
-      void** subarray_2) const;
-
-  /**
-   * Splits the input subarray in half, in a way that the input layout is
-   * respected. This means that if the two resulting subarrays were to
-   * be issued as consecutive queries with the input layout, the retrieved
-   * result would be correct (i.e., the resulting cells would respect the
-   * input layout).
-   *
-   * @tparam T The domain type.
-   * @param subarray The input subarray.
-   * @param layout The query layout.
-   * @param subarray_1 The first subarray resulting from the split.
-   * @param subarray_2 The second subarray resulting from the split.
-   * @return Status
-   */
-  template <class T>
-  Status split_subarray(
-      void* subarray,
-      Layout layout,
-      void** subarray_1,
-      void** subarray_2) const;
-
-  /**
-   * Splits the input subarray in half, in a way that the global layout is
-   * respected. This means that if the two resulting subarrays were to
-   * be issued as consecutive queries with the input layout, the retrieved
-   * result would be correct (i.e., the resulting cells would respect the
-   * global layout).
-   *
-   * @tparam T The domain type.
-   * @param subarray The input subarray.
-   * @param layout The query layout.
-   * @param subarray_1 The first subarray resulting from the split.
-   * @param subarray_2 The second subarray resulting from the split.
-   * @return Status
-   */
-  template <class T>
-  Status split_subarray_global(
-      void* subarray, void** subarray_1, void** subarray_2) const;
-
-  /**
-   * Splits the input subarray in half, in a way that the input cell layout is
-   * respected. This means that if the two resulting subarrays were to
-   * be issued as consecutive queries with the cell layout, the retrieved
-   * result would be correct (i.e., the resulting cells would respect the
-   * input layout).
-   *
-   * @tparam T The domain type.
-   * @param subarray The input subarray.
-   * @param cell_layout The cell layout.
-   * @param subarray_1 The first subarray resulting from the split.
-   * @param subarray_2 The second subarray resulting from the split.
-   * @return Status
-   */
-  template <class T>
-  Status split_subarray_cell(
-      void* subarray,
-      Layout cell_layout,
-      void** subarray_1,
-      void** subarray_2) const;
-
-  /**
    * Adds a dimension to the domain.
    *
    * @param dim The dimension to be added.
@@ -540,9 +447,9 @@ class Domain {
 
   /**
    * Returns the number of cells in the input range.
-   * If there is an overflow, then the function returns 0.
+   * If there is an overflow, then the function returns MAX_UINT64.
    * If at least one dimension had a non-integer domain, the
-   * functuon returns 0.
+   * functuon returns MAX_UINT64.
    */
   uint64_t cell_num(const NDRange& ndrange) const;
 

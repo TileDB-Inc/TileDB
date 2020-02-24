@@ -131,247 +131,8 @@ Layout Domain::cell_order() const {
   return cell_order_;
 }
 
-template <class T>
-T Domain::floor_to_tile(T value, unsigned dim_idx) const {
-  auto domain = (T*)domain_;
-  auto tile_extents = (T*)tile_extents_;
-
-  if (tile_extents_ == nullptr)
-    return domain[2 * dim_idx];
-
-  uint64_t div = (value - domain[2 * dim_idx]) / tile_extents[dim_idx];
-  return (T)div * tile_extents[dim_idx] + domain[2 * dim_idx];
-}
-
 Layout Domain::tile_order() const {
   return tile_order_;
-}
-
-Status Domain::split_subarray(
-    void* subarray, Layout layout, void** subarray_1, void** subarray_2) const {
-  switch (type_) {
-    case Datatype::INT8:
-      return split_subarray<int8_t>(subarray, layout, subarray_1, subarray_2);
-    case Datatype::UINT8:
-      return split_subarray<uint8_t>(subarray, layout, subarray_1, subarray_2);
-    case Datatype::INT16:
-      return split_subarray<int16_t>(subarray, layout, subarray_1, subarray_2);
-    case Datatype::UINT16:
-      return split_subarray<uint16_t>(subarray, layout, subarray_1, subarray_2);
-    case Datatype::INT32:
-      return split_subarray<int>(subarray, layout, subarray_1, subarray_2);
-    case Datatype::UINT32:
-      return split_subarray<unsigned>(subarray, layout, subarray_1, subarray_2);
-    case Datatype::INT64:
-      return split_subarray<int64_t>(subarray, layout, subarray_1, subarray_2);
-    case Datatype::UINT64:
-      return split_subarray<uint64_t>(subarray, layout, subarray_1, subarray_2);
-    case Datatype::FLOAT32:
-      return split_subarray<float>(subarray, layout, subarray_1, subarray_2);
-    case Datatype::FLOAT64:
-      return split_subarray<double>(subarray, layout, subarray_1, subarray_2);
-    case Datatype::DATETIME_YEAR:
-    case Datatype::DATETIME_MONTH:
-    case Datatype::DATETIME_WEEK:
-    case Datatype::DATETIME_DAY:
-    case Datatype::DATETIME_HR:
-    case Datatype::DATETIME_MIN:
-    case Datatype::DATETIME_SEC:
-    case Datatype::DATETIME_MS:
-    case Datatype::DATETIME_US:
-    case Datatype::DATETIME_NS:
-    case Datatype::DATETIME_PS:
-    case Datatype::DATETIME_FS:
-    case Datatype::DATETIME_AS:
-      return split_subarray<int64_t>(subarray, layout, subarray_1, subarray_2);
-    default:
-      return LOG_STATUS(Status::DomainError(
-          "Cannot split subarray; Unsupported domain type"));
-  }
-
-  return Status::Ok();
-}
-
-template <class T>
-Status Domain::split_subarray(
-    void* subarray, Layout layout, void** subarray_1, void** subarray_2) const {
-  switch (layout) {
-    case Layout::GLOBAL_ORDER:
-      return split_subarray_global<T>(subarray, subarray_1, subarray_2);
-    case Layout::ROW_MAJOR:
-    case Layout::COL_MAJOR:
-      return split_subarray_cell<T>(subarray, layout, subarray_1, subarray_2);
-    default:
-      return LOG_STATUS(
-          Status::DomainError("Cannot split subarray; Unsupported layout"));
-  }
-
-  return Status::Ok();
-}
-
-template <class T>
-Status Domain::split_subarray_global(
-    void* subarray, void** subarray_1, void** subarray_2) const {
-  // Find dimension to split by tile
-  auto s = (T*)subarray;
-  int dim_to_split = -1;
-  auto tile_extents = (T*)tile_extents_;
-  auto domain = (T*)domain_;
-  uint64_t tiles_apart = 0;
-
-  if (tile_extents != nullptr) {
-    if (tile_order_ == Layout::ROW_MAJOR) {
-      for (int i = 0; i < (int)dim_num_; ++i) {
-        tiles_apart =
-            (T)floor(((s[2 * i + 1] - domain[2 * i]) / tile_extents[i])) -
-            (T)floor(((s[2 * i] - domain[2 * i]) / tile_extents[i]));
-        if (tiles_apart != 0) {
-          // Not in the same tile - can split
-          dim_to_split = i;
-          break;
-        }
-      }
-    } else {
-      for (int i = (int)dim_num_ - 1;; --i) {
-        tiles_apart =
-            (T)floor(((s[2 * i + 1] - domain[2 * i]) / tile_extents[i])) -
-            (T)floor(((s[2 * i] - domain[2 * i]) / tile_extents[i]));
-        if (tiles_apart != 0) {
-          // Not in the same tile - can split
-          dim_to_split = i;
-          break;
-        }
-        if (i == 0)
-          break;
-      }
-    }
-  }
-
-  // Cannot split by tile, split by cell
-  if (dim_to_split == -1)
-    return split_subarray_cell<T>(
-        subarray, cell_order_, subarray_1, subarray_2);
-
-  // Split by tile
-  *subarray_1 = std::malloc(2 * dim_num_ * sizeof(T));
-  if (*subarray_1 == nullptr)
-    return LOG_STATUS(
-        Status::DomainError("Cannot split subarray; Memory allocation failed"));
-  *subarray_2 = std::malloc(2 * dim_num_ * sizeof(T));
-  if (*subarray_2 == nullptr) {
-    std::free(subarray_1);
-    *subarray_1 = nullptr;
-    return LOG_STATUS(
-        Status::DomainError("Cannot split subarray; Memory allocation failed"));
-  }
-  auto s1 = (T*)(*subarray_1);
-  auto s2 = (T*)(*subarray_2);
-
-  for (int i = 0; i < (int)dim_num_; ++i) {
-    if (i != dim_to_split) {
-      s1[2 * i] = s[2 * i];
-      s1[2 * i + 1] = s[2 * i + 1];
-      s2[2 * i] = s[2 * i];
-      s2[2 * i + 1] = s[2 * i + 1];
-    } else {
-      s1[2 * i] = s[2 * i];
-      s1[2 * i + 1] =
-          s1[2 * i] + std::max<T>(1, floor(tiles_apart / 2)) * tile_extents[i];
-
-      if (std::numeric_limits<T>::is_integer) {
-        s1[2 * i + 1] = floor_to_tile(s1[2 * i + 1], i) - 1;
-        s2[2 * i] = s1[2 * i + 1] + 1;
-      } else {
-        s2[2 * i] = floor_to_tile(s1[2 * i + 1], i);
-        s1[2 * i + 1] =
-            std::nextafter(s2[2 * i], std::numeric_limits<T>::lowest());
-      }
-      s2[2 * i + 1] = s[2 * i + 1];
-
-      assert(s1[2 * i + 1] >= s1[2 * i]);
-      assert(s2[2 * i + 1] >= s2[2 * i]);
-    }
-  }
-
-  return Status::Ok();
-}
-
-template <class T>
-Status Domain::split_subarray_cell(
-    void* subarray,
-    Layout cell_layout,
-    void** subarray_1,
-    void** subarray_2) const {
-  // Find dimension to split
-  auto s = (T*)subarray;
-  int dim_to_split = -1;
-
-  if (cell_layout == Layout::ROW_MAJOR) {
-    for (int i = 0; i < (int)dim_num_; ++i) {
-      if (s[2 * i] != s[2 * i + 1]) {
-        dim_to_split = i;
-        break;
-      }
-    }
-  } else {
-    for (int i = (int)dim_num_ - 1;; --i) {
-      if (s[2 * i] != s[2 * i + 1]) {
-        dim_to_split = i;
-        break;
-      }
-      if (i == 0)
-        break;
-    }
-  }
-
-  // Cannot split
-  if (dim_to_split == -1) {
-    *subarray_1 = nullptr;
-    *subarray_2 = nullptr;
-    return Status::Ok();
-  }
-
-  // Split
-  *subarray_1 = std::malloc(2 * dim_num_ * sizeof(T));
-  if (*subarray_1 == nullptr)
-    return LOG_STATUS(
-        Status::DomainError("Cannot split subarray; Memory allocation failed"));
-  *subarray_2 = std::malloc(2 * dim_num_ * sizeof(T));
-  if (*subarray_2 == nullptr) {
-    std::free(subarray_1);
-    *subarray_1 = nullptr;
-    return LOG_STATUS(
-        Status::DomainError("Cannot split subarray; Memory allocation failed"));
-  }
-  auto s1 = (T*)(*subarray_1);
-  auto s2 = (T*)(*subarray_2);
-  for (int i = 0; i < (int)dim_num_; ++i) {
-    if (i != dim_to_split) {
-      s1[2 * i] = s[2 * i];
-      s1[2 * i + 1] = s[2 * i + 1];
-      s2[2 * i] = s[2 * i];
-      s2[2 * i + 1] = s[2 * i + 1];
-    } else {
-      s1[2 * i] = s[2 * i];
-      if (std::numeric_limits<T>::is_integer) {  // Integers
-        s1[2 * i + 1] = s[2 * i] + (s[2 * i + 1] - s[2 * i]) / 2;
-        s2[2 * i] = s1[2 * i + 1] + 1;
-      } else {  // Reals
-        if (std::nextafter(s[2 * i], std::numeric_limits<T>::max()) ==
-            s[2 * i + 1]) {
-          s1[2 * i + 1] = s[2 * i];
-          s2[2 * i] = s[2 * i + 1];
-        } else {
-          s1[2 * i + 1] = s[2 * i] + (s[2 * i + 1] - s[2 * i]) / 2;
-          s2[2 * i] =
-              std::nextafter(s1[2 * i + 1], std::numeric_limits<T>::max());
-        }
-      }
-      s2[2 * i + 1] = s[2 * i + 1];
-    }
-  }
-
-  return Status::Ok();
 }
 
 Status Domain::add_dimension(const Dimension* dim) {
@@ -888,16 +649,15 @@ uint64_t Domain::tile_num(const NDRange& ndrange) const {
 uint64_t Domain::cell_num(const NDRange& ndrange) const {
   assert(!ndrange.empty());
 
-  uint64_t cell_num = 1, range, prod;
+  uint64_t cell_num = 1, range;
   for (unsigned d = 0; d < dim_num_; ++d) {
     range = dimensions_[d]->domain_range(ndrange[d]);
-    if (range == 0)  // Real dimension domain or overflow
-      return 0;
+    if (range == std::numeric_limits<uint64_t>::max())  // Overflow
+      return range;
 
-    prod = range * cell_num;
-    if (prod / range != cell_num)  // Overflow
-      return 0;
-    cell_num = prod;
+    cell_num = utils::math::safe_mul(range, cell_num);
+    if (cell_num == std::numeric_limits<uint64_t>::max())  // Overflow
+      return cell_num;
   }
 
   return cell_num;
@@ -1999,27 +1759,6 @@ template uint64_t Domain::get_cell_pos_row<int64_t>(
     const int64_t* subarray, const int64_t* coords) const;
 template uint64_t Domain::get_cell_pos_row<uint64_t>(
     const uint64_t* subarray, const uint64_t* coords) const;
-
-template int8_t Domain::floor_to_tile<int8_t>(
-    int8_t value, unsigned dim_idx) const;
-template uint8_t Domain::floor_to_tile<uint8_t>(
-    uint8_t value, unsigned dim_idx) const;
-template int16_t Domain::floor_to_tile<int16_t>(
-    int16_t value, unsigned dim_idx) const;
-template uint16_t Domain::floor_to_tile<uint16_t>(
-    uint16_t value, unsigned dim_idx) const;
-template int32_t Domain::floor_to_tile<int32_t>(
-    int32_t value, unsigned dim_idx) const;
-template uint32_t Domain::floor_to_tile<uint32_t>(
-    uint32_t value, unsigned dim_idx) const;
-template int64_t Domain::floor_to_tile<int64_t>(
-    int64_t value, unsigned dim_idx) const;
-template uint64_t Domain::floor_to_tile<uint64_t>(
-    uint64_t value, unsigned dim_idx) const;
-template float Domain::floor_to_tile<float>(
-    float value, unsigned dim_idx) const;
-template double Domain::floor_to_tile<double>(
-    double value, unsigned dim_idx) const;
 
 template uint64_t Domain::stride<int8_t>(Layout subarray_layout) const;
 template uint64_t Domain::stride<uint8_t>(Layout subarray_layout) const;

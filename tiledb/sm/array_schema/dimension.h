@@ -116,6 +116,20 @@ class Dimension {
   bool is_anonymous() const;
 
   /**
+   * Retrieves the value `v` that lies at the end (ceil) of the tile
+   * that is `tile_num` tiles apart from the beginning of `r`.
+   */
+  void ceil_to_tile(const Range& r, uint64_t tile_num, ByteVecValue* v) const;
+
+  /**
+   * Returns the value that lies at the end (ceil) of the tile
+   * that is `tile_num` tiles apart from the beginning of `r`.
+   */
+  template <class T>
+  static void ceil_to_tile(
+      const Dimension* dim, const Range& r, uint64_t tile_num, ByteVecValue* v);
+
+  /**
    * Computed the minimum bounding range of the values stored in
    * `tile`.
    */
@@ -150,7 +164,7 @@ class Dimension {
 
   /**
    * Returns the domain range (high - low + 1) of the input
-   * 1D range. It returns 0 in case the dimension datatype
+   * 1D range. It returns MAX_UINT64 in case the dimension datatype
    * is not integer or if there is an overflow.
    */
   template <class T>
@@ -231,6 +245,30 @@ class Dimension {
   template <class T>
   static double overlap_ratio(const Range& r1, const Range& r2);
 
+  /** Splits `r` at point `v`, producing 1D ranges `r1` and `r2`. */
+  void split_range(
+      const void* r, const ByteVecValue& v, Range* r1, Range* r2) const;
+
+  /** Splits `r` at point `v`, producing 1D ranges `r1` and `r2`. */
+  template <class T>
+  static void split_range(
+      const void* r, const ByteVecValue& v, Range* r1, Range* r2);
+
+  /**
+   * Computes the splitting point `v` of `r`, and sets `unsplittable`
+   * to true if `r` cannot be split.
+   */
+  void splitting_value(
+      const Range& r, ByteVecValue* v, bool* unsplittable) const;
+
+  /**
+   * Computes the splitting point `v` of `r`, and sets `unsplittable`
+   * to true if `r` cannot be split.
+   */
+  template <class T>
+  static void splitting_value(
+      const Range& r, ByteVecValue* v, bool* unsplittable);
+
   /** Return the number of tiles the input range intersects. */
   uint64_t tile_num(const Range& range) const;
 
@@ -301,6 +339,13 @@ class Dimension {
   Datatype type_;
 
   /**
+   * Stores the appropriate templated ceil_to_tile() function based on the
+   * dimension datatype.
+   */
+  std::function<void(const Dimension*, const Range&, uint64_t, ByteVecValue*)>
+      ceil_to_tile_func_;
+
+  /**
    * Stores the appropriate templated compute_mbr() function based on the
    * dimension datatype.
    */
@@ -360,6 +405,20 @@ class Dimension {
    * dimension datatype.
    */
   std::function<double(const Range&, const Range&)> overlap_ratio_func_;
+
+  /**
+   * Stores the appropriate templated split_range() function based on the
+   * dimension datatype.
+   */
+  std::function<void(const void*, const ByteVecValue&, Range*, Range*)>
+      split_range_func_;
+
+  /**
+   * Stores the appropriate templated splitting_value() function based on the
+   * dimension datatype.
+   */
+  std::function<void(const Range&, ByteVecValue*, bool* unsplittable)>
+      splitting_value_func_;
 
   /**
    * Stores the appropriate templated tile_num() function based on the
@@ -454,6 +513,9 @@ class Dimension {
   template <class T>
   Status check_tile_extent() const;
 
+  /** Sets the templated ceil_to_tile() function. */
+  void set_ceil_to_tile_func();
+
   /** Sets the templated compute_mbr() function. */
   void set_compute_mbr_func();
 
@@ -483,6 +545,12 @@ class Dimension {
 
   /** Sets the templated overlap_ratio() function. */
   void set_overlap_ratio_func();
+
+  /** Sets the templated split_range() function. */
+  void set_split_range_func();
+
+  /** Sets the templated splitting_value() function. */
+  void set_splitting_value_func();
 
   /** Sets the templated tile_num() function. */
   void set_tile_num_func();

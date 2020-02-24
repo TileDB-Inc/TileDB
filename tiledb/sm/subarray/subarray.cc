@@ -239,84 +239,12 @@ const Array* Subarray::array() const {
   return array_;
 }
 
-template <class T>
-uint64_t Subarray::cell_num(uint64_t range_idx) const {
-  // Special case if it unary
-  if (is_unary(range_idx))
-    return 1;
-
-  // Inapplicable to non-unary real ranges
-  if (!std::is_integral<T>::value)
-    return UINT64_MAX;
-
-  uint64_t ret = 1, length;
-  auto range = this->range<T>(range_idx);
-
-  for (const auto& r : range) {
-    // The code below essentially computes
-    // ret *= r[1] - r[0] + 1;
-    // while performing overflow checks
-    length = r[1] - r[0];
-    if (length == UINT64_MAX)  // overflow
-      return UINT64_MAX;
-    ++length;
-    ret = utils::math::safe_mul(length, ret);
-  }
-
-  return ret;
-}
-
 void Subarray::clear() {
   ranges_.clear();
   range_offsets_.clear();
   tile_overlap_.clear();
   est_result_size_computed_ = false;
   tile_overlap_computed_ = false;
-}
-
-Status Subarray::compute_tile_overlap() {
-  auto type = array_->array_schema()->domain()->type();
-  switch (type) {
-    case Datatype::INT8:
-      return compute_tile_overlap<int8_t>();
-    case Datatype::UINT8:
-      return compute_tile_overlap<uint8_t>();
-    case Datatype::INT16:
-      return compute_tile_overlap<int16_t>();
-    case Datatype::UINT16:
-      return compute_tile_overlap<uint16_t>();
-    case Datatype::INT32:
-      return compute_tile_overlap<int32_t>();
-    case Datatype::UINT32:
-      return compute_tile_overlap<uint32_t>();
-    case Datatype::INT64:
-      return compute_tile_overlap<int64_t>();
-    case Datatype::UINT64:
-      return compute_tile_overlap<uint64_t>();
-    case Datatype::FLOAT32:
-      return compute_tile_overlap<float>();
-    case Datatype::FLOAT64:
-      return compute_tile_overlap<double>();
-    case Datatype::DATETIME_YEAR:
-    case Datatype::DATETIME_MONTH:
-    case Datatype::DATETIME_WEEK:
-    case Datatype::DATETIME_DAY:
-    case Datatype::DATETIME_HR:
-    case Datatype::DATETIME_MIN:
-    case Datatype::DATETIME_SEC:
-    case Datatype::DATETIME_MS:
-    case Datatype::DATETIME_US:
-    case Datatype::DATETIME_NS:
-    case Datatype::DATETIME_PS:
-    case Datatype::DATETIME_FS:
-    case Datatype::DATETIME_AS:
-      return compute_tile_overlap<int64_t>();
-    default:
-      return LOG_STATUS(Status::SubarrayError(
-          "Failed to compute tile overlap; unsupported domain type"));
-  }
-
-  return Status::Ok();
 }
 
 template <class T>
@@ -415,7 +343,6 @@ Status Subarray::get_range_num(uint32_t dim_idx, uint64_t* range_num) const {
   return Status::Ok();
 }
 
-template <class T>
 Subarray Subarray::get_subarray(uint64_t start, uint64_t end) const {
   Subarray ret(array_, layout_);
 
@@ -767,6 +694,83 @@ Status Subarray::set_ranges_for_dim(uint32_t dim_idx, const Ranges& ranges) {
   return Status::Ok();
 }
 
+void Subarray::split(
+    unsigned splitting_dim,
+    const ByteVecValue& splitting_value,
+    Subarray* r1,
+    Subarray* r2) const {
+  assert(r1 != nullptr);
+  assert(r2 != nullptr);
+  *r1 = Subarray(array_, layout_);
+  *r2 = Subarray(array_, layout_);
+
+  auto dim_num = array_->array_schema()->dim_num();
+  const void* range_1d;
+
+  Range sr1, sr2;
+  for (unsigned d = 0; d < dim_num; ++d) {
+    this->get_range(d, 0, &range_1d);
+    if (d == splitting_dim) {
+      auto dim = array_->array_schema()->dimension(d);
+      dim->split_range(range_1d, splitting_value, &sr1, &sr2);
+      r1->add_range(d, sr1.data(), true);
+      r2->add_range(d, sr2.data(), true);
+    } else {
+      r1->add_range(d, range_1d, true);
+      r2->add_range(d, range_1d, true);
+    }
+  }
+}
+
+Status Subarray::split(
+    uint64_t splitting_range,
+    unsigned splitting_dim,
+    const ByteVecValue& splitting_value,
+    Subarray* r1,
+    Subarray* r2) const {
+  assert(r1 != nullptr);
+  assert(r2 != nullptr);
+  *r1 = Subarray(array_, layout_);
+  *r2 = Subarray(array_, layout_);
+
+  // For easy reference
+  auto array_schema = array_->array_schema();
+  auto dim_num = array_schema->dim_num();
+  const void* range_1d;
+  uint64_t range_num;
+  Range sr1, sr2;
+
+  for (unsigned d = 0; d < dim_num; ++d) {
+    RETURN_NOT_OK(this->get_range_num(d, &range_num));
+    if (d != splitting_dim) {
+      for (uint64_t j = 0; j < range_num; ++j) {
+        this->get_range(d, j, &range_1d);
+        r1->add_range(d, range_1d);
+        r2->add_range(d, range_1d);
+      }
+    } else {                                // d == splitting_dim
+      if (splitting_range != UINT64_MAX) {  // Need to split multiple ranges
+        for (uint64_t j = 0; j <= splitting_range; ++j) {
+          this->get_range(d, j, &range_1d);
+          r1->add_range(d, range_1d);
+        }
+        for (uint64_t j = splitting_range + 1; j < range_num; ++j) {
+          this->get_range(d, j, &range_1d);
+          r2->add_range(d, range_1d);
+        }
+      } else {  // Need to split a single range
+        this->get_range(d, 0, &range_1d);
+        auto dim = array_schema->dimension(d);
+        dim->split_range(range_1d, splitting_value, &sr1, &sr2);
+        r1->add_range(d, sr1.data(), true);
+        r2->add_range(d, sr2.data(), true);
+      }
+    }
+  }
+
+  return Status::Ok();
+}
+
 const std::vector<std::vector<uint8_t>>& Subarray::tile_coords() const {
   return tile_coords_;
 }
@@ -924,56 +928,7 @@ Status Subarray::compute_est_result_size() {
   if (est_result_size_computed_)
     return Status::Ok();
 
-  auto type = array_->array_schema()->domain()->type();
-  switch (type) {
-    case Datatype::INT8:
-      return compute_est_result_size<int8_t>();
-    case Datatype::UINT8:
-      return compute_est_result_size<uint8_t>();
-    case Datatype::INT16:
-      return compute_est_result_size<int16_t>();
-    case Datatype::UINT16:
-      return compute_est_result_size<uint16_t>();
-    case Datatype::INT32:
-      return compute_est_result_size<int32_t>();
-    case Datatype::UINT32:
-      return compute_est_result_size<uint32_t>();
-    case Datatype::INT64:
-      return compute_est_result_size<int64_t>();
-    case Datatype::UINT64:
-      return compute_est_result_size<uint64_t>();
-    case Datatype::FLOAT32:
-      return compute_est_result_size<float>();
-    case Datatype::FLOAT64:
-      return compute_est_result_size<double>();
-    case Datatype::DATETIME_YEAR:
-    case Datatype::DATETIME_MONTH:
-    case Datatype::DATETIME_WEEK:
-    case Datatype::DATETIME_DAY:
-    case Datatype::DATETIME_HR:
-    case Datatype::DATETIME_MIN:
-    case Datatype::DATETIME_SEC:
-    case Datatype::DATETIME_MS:
-    case Datatype::DATETIME_US:
-    case Datatype::DATETIME_NS:
-    case Datatype::DATETIME_PS:
-    case Datatype::DATETIME_FS:
-    case Datatype::DATETIME_AS:
-      return compute_est_result_size<int64_t>();
-    default:
-      return LOG_STATUS(Status::SubarrayError(
-          "Cannot compute estimated results size; unsupported domain type"));
-  }
-
-  return Status::Ok();
-}
-
-template <class T>
-Status Subarray::compute_est_result_size() {
-  if (est_result_size_computed_)
-    return Status::Ok();
-
-  RETURN_NOT_OK(compute_tile_overlap<T>());
+  RETURN_NOT_OK(compute_tile_overlap());
 
   std::mutex mtx;
 
@@ -995,7 +950,7 @@ Status Subarray::compute_est_result_size() {
       bool var_size = (a == attribute_num) ? false : attributes[a]->var_size();
       ResultSize result_size;
       RETURN_NOT_OK(
-          compute_est_result_size<T>(attr_name, i, var_size, &result_size));
+          compute_est_result_size(attr_name, i, var_size, &result_size));
       std::lock_guard<std::mutex> block(mtx);
       est_result_size_vec[a].size_fixed_ += result_size.size_fixed_;
       est_result_size_vec[a].size_var_ += result_size.size_var_;
@@ -1027,7 +982,6 @@ Status Subarray::compute_est_result_size() {
   return Status::Ok();
 }
 
-template <class T>
 Status Subarray::compute_est_result_size(
     const std::string& attr_name,
     uint64_t range_idx,
@@ -1037,6 +991,7 @@ Status Subarray::compute_est_result_size(
   auto fragment_num = array_->fragment_metadata().size();
   ResultSize ret{0.0, 0.0, 0, 0};
   auto array_schema = array_->array_schema();
+  auto domain = array_schema->domain();
   auto encryption_key = array_->encryption_key();
   uint64_t size;
 
@@ -1083,7 +1038,7 @@ Status Subarray::compute_est_result_size(
   // Calibrate result - applicable only to arrays without coordinate duplicates
   if (!array_->array_schema()->allows_dups()) {
     uint64_t max_size_fixed, max_size_var = UINT64_MAX;
-    auto cell_num = this->cell_num<T>(range_idx);
+    auto cell_num = domain->cell_num(this->ndrange(range_idx));
     if (var_size) {
       max_size_fixed =
           utils::math::safe_mul(cell_num, constants::cell_var_offset_size);
@@ -1214,7 +1169,6 @@ void Subarray::compute_tile_coords_row() {
     tile_coords_map_[tile_coords_[i]] = i;
 }
 
-template <class T>
 Status Subarray::compute_tile_overlap() {
   if (tile_overlap_computed_)
     return Status::Ok();
@@ -1234,8 +1188,7 @@ Status Subarray::compute_tile_overlap() {
   auto statuses = parallel_for_2d(
       0, fragment_num, 0, range_num, [&](unsigned i, uint64_t j) {
         if (meta[i]->dense()) {  // Dense fragment
-          auto range = this->range<T>(j);
-          tile_overlap_[i][j] = get_tile_overlap<T>(range, i);
+          tile_overlap_[i][j] = get_tile_overlap(j, i);
         } else {  // Sparse fragment
           const auto& range = this->ndrange(j);
           RETURN_NOT_OK(meta[i]->get_tile_overlap(
@@ -1265,10 +1218,53 @@ Subarray Subarray::clone() const {
   return clone;
 }
 
+TileOverlap Subarray::get_tile_overlap(uint64_t range_idx, unsigned fid) const {
+  auto type = array_->array_schema()->domain()->type();
+  switch (type) {
+    case Datatype::INT8:
+      return get_tile_overlap<int8_t>(range_idx, fid);
+    case Datatype::UINT8:
+      return get_tile_overlap<uint8_t>(range_idx, fid);
+    case Datatype::INT16:
+      return get_tile_overlap<int16_t>(range_idx, fid);
+    case Datatype::UINT16:
+      return get_tile_overlap<uint16_t>(range_idx, fid);
+    case Datatype::INT32:
+      return get_tile_overlap<int32_t>(range_idx, fid);
+    case Datatype::UINT32:
+      return get_tile_overlap<uint32_t>(range_idx, fid);
+    case Datatype::INT64:
+      return get_tile_overlap<int64_t>(range_idx, fid);
+    case Datatype::UINT64:
+      return get_tile_overlap<uint64_t>(range_idx, fid);
+    case Datatype::FLOAT32:
+      return get_tile_overlap<float>(range_idx, fid);
+    case Datatype::FLOAT64:
+      return get_tile_overlap<double>(range_idx, fid);
+    case Datatype::DATETIME_YEAR:
+    case Datatype::DATETIME_MONTH:
+    case Datatype::DATETIME_WEEK:
+    case Datatype::DATETIME_DAY:
+    case Datatype::DATETIME_HR:
+    case Datatype::DATETIME_MIN:
+    case Datatype::DATETIME_SEC:
+    case Datatype::DATETIME_MS:
+    case Datatype::DATETIME_US:
+    case Datatype::DATETIME_NS:
+    case Datatype::DATETIME_PS:
+    case Datatype::DATETIME_FS:
+    case Datatype::DATETIME_AS:
+      return get_tile_overlap<int64_t>(range_idx, fid);
+    default:
+      assert(false);
+  }
+  return TileOverlap();
+}
+
 template <class T>
-TileOverlap Subarray::get_tile_overlap(
-    const std::vector<const T*>& range, unsigned fid) const {
+TileOverlap Subarray::get_tile_overlap(uint64_t range_idx, unsigned fid) const {
   TileOverlap ret;
+  auto range = this->range<T>(range_idx);
 
   // Prepare a range copy
   auto dim_num = array_->array_schema()->dim_num();
@@ -1346,38 +1342,6 @@ void Subarray::swap(Subarray& subarray) {
 }
 
 // Explicit instantiations
-template Subarray Subarray::get_subarray<uint8_t>(
-    uint64_t start, uint64_t end) const;
-template Subarray Subarray::get_subarray<int8_t>(
-    uint64_t start, uint64_t end) const;
-template Subarray Subarray::get_subarray<uint16_t>(
-    uint64_t start, uint64_t end) const;
-template Subarray Subarray::get_subarray<int16_t>(
-    uint64_t start, uint64_t end) const;
-template Subarray Subarray::get_subarray<uint32_t>(
-    uint64_t start, uint64_t end) const;
-template Subarray Subarray::get_subarray<int32_t>(
-    uint64_t start, uint64_t end) const;
-template Subarray Subarray::get_subarray<uint64_t>(
-    uint64_t start, uint64_t end) const;
-template Subarray Subarray::get_subarray<int64_t>(
-    uint64_t start, uint64_t end) const;
-template Subarray Subarray::get_subarray<float>(
-    uint64_t start, uint64_t end) const;
-template Subarray Subarray::get_subarray<double>(
-    uint64_t start, uint64_t end) const;
-
-template uint64_t Subarray::cell_num<int8_t>(uint64_t range_idx) const;
-template uint64_t Subarray::cell_num<uint8_t>(uint64_t range_idx) const;
-template uint64_t Subarray::cell_num<int16_t>(uint64_t range_idx) const;
-template uint64_t Subarray::cell_num<uint16_t>(uint64_t range_idx) const;
-template uint64_t Subarray::cell_num<int32_t>(uint64_t range_idx) const;
-template uint64_t Subarray::cell_num<uint32_t>(uint64_t range_idx) const;
-template uint64_t Subarray::cell_num<int64_t>(uint64_t range_idx) const;
-template uint64_t Subarray::cell_num<uint64_t>(uint64_t range_idx) const;
-template uint64_t Subarray::cell_num<float>(uint64_t range_idx) const;
-template uint64_t Subarray::cell_num<double>(uint64_t range_idx) const;
-
 template void Subarray::compute_tile_coords<int8_t>();
 template void Subarray::compute_tile_coords<uint8_t>();
 template void Subarray::compute_tile_coords<int16_t>();
