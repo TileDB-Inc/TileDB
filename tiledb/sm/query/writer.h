@@ -41,6 +41,7 @@
 #include "tiledb/sm/misc/status.h"
 #include "tiledb/sm/misc/types.h"
 #include "tiledb/sm/query/write_cell_slab_iter.h"
+#include "tiledb/sm/subarray/subarray.h"
 #include "tiledb/sm/tile/tile.h"
 
 namespace tiledb {
@@ -50,7 +51,6 @@ class Array;
 class ArraySchema;
 class FragmentMetadata;
 class StorageManager;
-class Subarray;
 
 /** Processes write queries. */
 class Writer {
@@ -170,8 +170,8 @@ class Writer {
   /** Returns current setting of dedup_coords_ */
   bool get_dedup_coords() const;
 
-  /** Initializes the writer. */
-  Status init();
+  /** Initializes the writer with the subarray layout. */
+  Status init(Layout layout);
 
   /** Returns the cell layout. */
   Layout layout() const;
@@ -238,28 +238,11 @@ class Writer {
   /** Sets the storage manager. */
   void set_storage_manager(StorageManager* storage_manager);
 
-  /**
-   * Sets the query subarray. If it is null, then the subarray will be set to
-   * the entire domain.
-   *
-   * @param subarray The subarray to be set.
-   * @return Status
-   */
-  Status set_subarray(const void* subarray);
-
-  /**
-   * Sets the query subarray.
-   *
-   * @param subarray The subarray to be set.
-   * @return Status
-   */
+  /** Sets the query subarray. */
   Status set_subarray(const Subarray& subarray);
 
-  /*
-   * Return the subarray
-   * @return subarray
-   */
-  void* subarray() const;
+  /* Return the subarray. */
+  const void* subarray() const;
 
   /** Performs a write query using its set members. */
   Status write();
@@ -354,8 +337,19 @@ class Writer {
   /** The storage manager. */
   StorageManager* storage_manager_;
 
-  /** The subarray the query is constrained on. */
-  void* subarray_;
+  /**
+   * The subarray the query is constrained on. It is represented
+   * as a flat byte vector for the (low, high) pairs of the
+   * subarray. This is used only in dense writes and, therefore,
+   * it is assumed that all dimensions have the same datatype.
+   */
+  std::vector<uint8_t> subarray_flat_;
+
+  /**
+   * The subarray object, used in dense writes. It has to be
+   * comprised of a single multi-dimensional range.
+   */
+  Subarray subarray_;
 
   /** Stores information about the written fragments. */
   std::vector<WrittenFragmentInfo> written_fragment_info_;
@@ -411,10 +405,6 @@ class Writer {
   Status check_global_order() const;
 
   /** Correctness checks for `subarray_`. */
-  Status check_subarray() const;
-
-  /** Correctness checks for `subarray_`. */
-  template <class T>
   Status check_subarray() const;
 
   /**

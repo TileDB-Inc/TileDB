@@ -73,8 +73,7 @@ class ResultSpaceTile {
   ResultSpaceTile& operator=(ResultSpaceTile&& result_space_tile) = default;
 
   /** Returns the fragment domains. */
-  const std::vector<std::pair<unsigned, std::reference_wrapper<const NDRange>>>&
-  frag_domains() const {
+  const std::vector<std::pair<unsigned, NDRange>>& frag_domains() const {
     return frag_domains_;
   }
 
@@ -118,7 +117,7 @@ class ResultSpaceTile {
       return false;
     for (size_t i = 0; i < frag_domains_.size(); ++i) {
       if (!(frag_domains_[i].first == rst.frag_domains_[i].first &&
-            frag_domains_[i].second.get() == rst.frag_domains_[i].second.get()))
+            frag_domains_[i].second == rst.frag_domains_[i].second))
         return false;
     }
 
@@ -136,8 +135,7 @@ class ResultSpaceTile {
    * with domains that intersect this space tile will be included
    * in this vector.
    */
-  std::vector<std::pair<unsigned, std::reference_wrapper<const NDRange>>>
-      frag_domains_;
+  std::vector<std::pair<unsigned, NDRange>> frag_domains_;
 
   /**
    * The (dense) result tiles for this space tile, as a map

@@ -124,70 +124,6 @@ class Subarray {
     uint64_t mem_size_var_;
   };
 
-  /**
-   * Stores a set of 1D ranges.
-   */
-  struct Ranges {
-    /** A buffer where all the ranges are appended to. */
-    Buffer buffer_;
-
-    /**
-     * ``true`` if it has the default entire-domain range
-     * that must be replaced the first time a new range
-     * is added.
-     */
-    bool has_default_range_ = false;
-
-    /** The size in bytes of a range. */
-    uint64_t range_size_;
-
-    /** The datatype of the ranges. */
-    Datatype type_;
-
-    /** Constructor. */
-    explicit Ranges(Datatype type)
-        : type_(type) {
-      range_size_ = 2 * datatype_size(type_);
-    }
-
-    /** Adds a range to the buffer. */
-    void add_range(const void* range, bool is_default = false) {
-      if (is_default) {
-        buffer_.write(range, range_size_);
-        has_default_range_ = true;
-      } else {
-        if (has_default_range_) {
-          buffer_.clear();
-          has_default_range_ = false;
-        }
-        buffer_.write(range, range_size_);
-      }
-    }
-
-    /** Gets the range at the given index. */
-    const void* get_range(uint64_t idx) const {
-      assert(idx < range_num());
-      return buffer_.data(idx * range_size_);
-    }
-
-    /** Gets the range start at the given index. */
-    const void* get_range_start(uint64_t idx) const {
-      assert(idx < range_num());
-      return buffer_.data(idx * range_size_);
-    }
-
-    /** Gets the range end at the given index. */
-    const void* get_range_end(uint64_t idx) const {
-      assert(idx < range_num());
-      return buffer_.data(idx * range_size_ + range_size_ / 2);
-    }
-
-    /** Return the number of ranges in this object. */
-    uint64_t range_num() const {
-      return buffer_.size() / range_size_;
-    }
-  };
-
   /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
@@ -230,53 +166,26 @@ class Subarray {
   /*                 API               */
   /* ********************************* */
 
-  /**
-   * Adds a range along the dimension with the given index.
-   *
-   * @param dim_idx The index of the dimension to add the range to.
-   * @param range The range to be added in [low. high] format.
-   * @param check_expanded_domain If `true`, the subarray bounds will be
-   *     checked against the expanded domain of the array. This is important
-   *     in dense consolidation with space tiles not fully dividing the
-   *     dimension domain.
-   */
-  Status add_range(
-      uint32_t dim_idx, const void* range, bool check_expanded_domain = false);
+  /** Adds a range along the dimension with the given index. */
+  Status add_range(uint32_t dim_idx, const Range& range);
 
   /**
-   * Adds a range along the dimension with the given index, in the
-   * form of (start, end).
+   * Adds a range along the dimension with the given index, without
+   * performing any error checks.
    */
-  Status add_range(uint32_t dim_idx, const void* start, const void* end);
-
-  /**
-   * Adds a range along the dimension with the given index.
-   *
-   * @tparam T The subarray domain type.
-   * @param dim_idx The index of the dimension to add the range to.
-   * @param range The range to add.
-   * @param check_expanded_domain If `true`, the subarray bounds will be
-   *     checked against the expanded domain of the array. This is important
-   *     in dense consolidation with space tiles not fully dividing the
-   *     dimension domain.
-   * @return Status
-   */
-  template <class T>
-  Status add_range(
-      uint32_t dim_idx, const T* range, bool check_expanded_domain);
-
-  /**
-   * Adds a range along the dimension with the given index, in the
-   * form of (start, end).
-   */
-  template <class T>
-  Status add_range(uint32_t dim_idx, const T* start, const T* end);
+  Status add_range_unsafe(uint32_t dim_idx, const Range& range);
 
   /** Returns the array the subarray is associated with. */
   const Array* array() const;
 
   /** Clears the contents of the subarray. */
   void clear();
+
+  /**
+   * Returns true if the subarray is unary and it coincides with
+   * tile boundaries.
+   */
+  bool coincides_with_tiles() const;
 
   /**
    * Computes the range offsets which are important for getting
@@ -318,18 +227,28 @@ class Subarray {
   uint32_t dim_num() const;
 
   /** Returns the domain the subarray is constructed from. */
-  const void* domain() const;
+  NDRange domain() const;
 
   /** ``True`` if the subarray does not contain any ranges. */
   bool empty() const;
 
-  /** Retrieves a range of a given dimension at a given range index. */
+  /**
+   * Retrieves a range of a given dimension at a given range index.
+   *
+   * @note Note that the retrieved range may be invalid if
+   *     Subarray::set_range() is called after this function. In that case,
+   *     make sure to make a copy in the caller function.
+   */
   Status get_range(
-      uint32_t dim_idx, uint64_t range_idx, const void** range) const;
+      uint32_t dim_idx, uint64_t range_idx, const Range** range) const;
 
   /**
    * Retrieves a range of a given dimension at a given range index.
    * The range is in the form (start, end).
+   *
+   * @note Note that the retrieved range may be invalid if
+   *     Subarray::set_range() is called after this function. In that case,
+   *     make sure to make a copy in the caller function.
    */
   Status get_range(
       uint32_t dim_idx,
@@ -407,6 +326,12 @@ class Subarray {
   /** Sets the array layout. */
   void set_layout(Layout layout);
 
+  /**
+   * Flattens the subarray ranges in a byte vector. Errors out
+   * if the subarray is not unary.
+   */
+  Status to_byte_vec(std::vector<uint8_t>* byte_vec) const;
+
   /** Returns the subarray layout. */
   Layout layout() const;
 
@@ -423,50 +348,31 @@ class Subarray {
    * cell order, since this will lead to more beneficial tile access
    * patterns upon a read query.
    */
-  template <class T>
-  std::vector<const T*> range(uint64_t range_idx) const;
-
-  /**
-   * Returns the multi-dimensional range with the input id, based on the
-   * order imposed on the the subarray ranges by the layout. If ``layout_``
-   * is UNORDERED, then the range layout will be the same as the array's
-   * cell order, since this will lead to more beneficial tile access
-   * patterns upon a read query.
-   */
-  std::vector<const void*> range(uint64_t range_idx) const;
-
-  /**
-   * Returns the multi-dimensional range with the input id, based on the
-   * order imposed on the the subarray ranges by the layout. If ``layout_``
-   * is UNORDERED, then the range layout will be the same as the array's
-   * cell order, since this will lead to more beneficial tile access
-   * patterns upon a read query.
-   */
   NDRange ndrange(uint64_t range_idx) const;
 
   /**
-   * Returns the `Ranges` for the given dimension index.
+   * Returns the `Range` vector for the given dimension index.
    * @note Intended for serialization only
    */
-  const Ranges* ranges_for_dim(uint32_t dim_idx) const;
+  const std::vector<Range>& ranges_for_dim(uint32_t dim_idx) const;
 
   /**
-   * Directly sets the `Ranges` for the given dimension index, making a deep
-   * copy of the given `Ranges` instance.
+   * Directly sets the `Range` vector for the given dimension index, making
+   * a deep copy.
    *
    * @param dim_idx Index of dimension to set
-   * @param ranges Ranges instance that will be copied and set
+   * @param ranges `Range` vector that will be copied and set
    * @return Status
    *
    * @note Intended for serialization only
    */
-  Status set_ranges_for_dim(uint32_t dim_idx, const Ranges& ranges);
+  Status set_ranges_for_dim(uint32_t dim_idx, const std::vector<Range>& ranges);
 
   /**
    * Splits the subarray along the splitting dimension and value into
    * two new subarrays `r1` and `r2`.
    */
-  void split(
+  Status split(
       unsigned splitting_dim,
       const ByteVecValue& splitting_value,
       Subarray* r1,
@@ -538,8 +444,14 @@ class Subarray {
    */
   Layout layout_;
 
-  /** Stores a set of ranges per dimension. */
-  std::vector<Ranges> ranges_;
+  /** Stores a vector of 1D ranges per dimension. */
+  std::vector<std::vector<Range>> ranges_;
+
+  /**
+   * One value per dimension indicating whether the (single) range set in
+   * `ranges_` is the default range.
+   */
+  std::vector<bool> is_default_;
 
   /** Important for computed an ND range index from a flat serialized index. */
   std::vector<uint64_t> range_offsets_;
@@ -584,27 +496,6 @@ class Subarray {
    * replaced.
    */
   void add_default_ranges();
-
-  /** Checks if the input range contains NaN. This is a noop for integers. */
-  template <
-      typename T,
-      typename std::enable_if<std::is_integral<T>::value>::type* = nullptr>
-  Status check_nan(const T* range) const {
-    (void)range;
-    return Status::Ok();
-  }
-
-  /** Checks if the input range contains NaN. */
-  template <
-      typename T,
-      typename std::enable_if<!std::is_integral<T>::value>::type* = nullptr>
-  Status check_nan(const T* range) const {
-    // Check for NaN
-    if (std::isnan(range[0]) || std::isnan(range[1]))
-      return LOG_STATUS(Status::SubarrayError(
-          "Cannot add range to dimension; Range contains NaN"));
-    return Status::Ok();
-  }
 
   /** Computes the estimated result size for all attributes. */
   Status compute_est_result_size();

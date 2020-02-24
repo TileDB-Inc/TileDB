@@ -196,7 +196,7 @@ class FragmentMetadata {
    *     will be constrained.
    * @return Status
    */
-  Status init(const void* non_empty_domain);
+  Status init(const NDRange& non_empty_domain);
 
   /** Returns the number of cells in the last tile. */
   uint64_t last_tile_cell_num() const;

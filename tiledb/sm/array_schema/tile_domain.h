@@ -70,7 +70,6 @@ class TileDomain {
    * Constructor.
    *
    * @param id An identifier given to this tile domain.
-   * @param dim_num The number of dimensions of the tile domain.
    * @param domain The domain.
    * @param domain_slice The domain slice (included in `domain`).
    * @param tile_extents The tile extents of the domains.
@@ -79,19 +78,18 @@ class TileDomain {
    */
   TileDomain(
       unsigned id,
-      unsigned dim_num,
-      const T* domain,
-      const std::reference_wrapper<const NDRange>& domain_slice,
-      const T* tile_extents,
+      const NDRange& domain,
+      const NDRange& domain_slice,
+      const std::vector<ByteVecValue> tile_extents,
       Layout layout)
       : id_(id)
-      , dim_num_(dim_num)
+      , dim_num_(domain.size())
       , domain_(domain)
       , domain_slice_(domain_slice)
       , tile_extents_(tile_extents)
       , layout_(layout) {
     assert(layout == Layout::ROW_MAJOR || layout == Layout::COL_MAJOR);
-    compute_tile_domain(domain, domain_slice.get(), tile_extents);
+    compute_tile_domain(domain, domain_slice, tile_extents);
     if (layout == Layout::ROW_MAJOR)
       compute_tile_offsets_row();
     else
@@ -134,8 +132,11 @@ class TileDomain {
   std::vector<T> start_coords(const T* tile_coords) const {
     std::vector<T> ret;
     ret.resize(dim_num_);
-    for (unsigned i = 0; i < dim_num_; ++i)
-      ret[i] = domain_[2 * i] + tile_coords[i] * tile_extents_[i];
+    for (unsigned d = 0; d < dim_num_; ++d) {
+      auto dim_dom = (const T*)domain_[d].data();
+      auto tile_extent = *(const T*)tile_extents_[d].data();
+      ret[d] = dim_dom[0] + tile_coords[d] * tile_extent;
+    }
 
     return ret;
   }
@@ -162,9 +163,11 @@ class TileDomain {
     std::vector<T> ret;
     ret.resize(2 * dim_num_);
 
-    for (unsigned i = 0; i < dim_num_; ++i) {
-      ret[2 * i] = tile_coords[i] * tile_extents_[i] + domain_[2 * i];
-      ret[2 * i + 1] = ret[2 * i] + tile_extents_[i] - 1;
+    for (unsigned d = 0; d < dim_num_; ++d) {
+      auto dim_dom = (const T*)domain_[d].data();
+      auto tile_extent = *(const T*)tile_extents_[d].data();
+      ret[2 * d] = tile_coords[d] * tile_extent + dim_dom[0];
+      ret[2 * d + 1] = ret[2 * d] + tile_extent - 1;
     }
 
     return ret;
@@ -187,7 +190,7 @@ class TileDomain {
     ret.resize(2 * dim_num_);
     auto tile_subarray = this->tile_subarray(tile_coords);
     for (unsigned d = 0; d < dim_num_; ++d) {
-      auto ds = (const T*)domain_slice_.get()[d].data();
+      auto ds = (const T*)domain_slice_[d].data();
       ret[2 * d] = std::max(tile_subarray[2 * d], ds[0]);
       ret[2 * d + 1] = std::min(tile_subarray[2 * d + 1], ds[1]);
     }
@@ -247,7 +250,7 @@ class TileDomain {
   }
 
   /** Returns the domain slice. */
-  std::reference_wrapper<const NDRange> domain_slice() const {
+  const NDRange& domain_slice() const {
     return domain_slice_;
   }
 
@@ -266,13 +269,13 @@ class TileDomain {
   unsigned dim_num_ = 0;
 
   /** The global domain the tiles are defined over. */
-  const T* domain_;
+  NDRange domain_;
 
   /** The domain slice from which the tile domain is constructed. */
-  std::reference_wrapper<const NDRange> domain_slice_;
+  NDRange domain_slice_;
 
   /** The tile extents. */
-  const T* tile_extents_;
+  std::vector<ByteVecValue> tile_extents_;
 
   /** The layout used to compute 1D-mapped tile positions. */
   Layout layout_ = Layout::GLOBAL_ORDER;
@@ -295,14 +298,18 @@ class TileDomain {
    * `tile_extents`.
    */
   void compute_tile_domain(
-      const T* domain, const NDRange& domain_slice, const T* tile_extents) {
+      const NDRange& domain,
+      const NDRange& domain_slice,
+      const std::vector<ByteVecValue>& tile_extents) {
     tile_domain_.resize(2 * dim_num_);
     for (unsigned d = 0; d < dim_num_; ++d) {
       auto ds = (const T*)domain_slice[d].data();
+      auto dim_dom = (const T*)domain[d].data();
+      auto tile_extent = *(const T*)tile_extents[d].data();
       assert(ds[0] <= ds[1]);
-      assert(ds[0] >= domain[2 * d] && ds[1] <= domain[2 * d + 1]);
-      tile_domain_[2 * d] = (ds[0] - domain[2 * d]) / tile_extents[d];
-      tile_domain_[2 * d + 1] = (ds[1] - domain[2 * d]) / tile_extents[d];
+      assert(ds[0] >= dim_dom[0] && ds[1] <= dim_dom[1]);
+      tile_domain_[2 * d] = (ds[0] - dim_dom[0]) / tile_extent;
+      tile_domain_[2 * d + 1] = (ds[1] - dim_dom[0]) / tile_extent;
     }
   }
 

@@ -68,11 +68,9 @@ Writer::Writer() {
   initialized_ = false;
   layout_ = Layout::ROW_MAJOR;
   storage_manager_ = nullptr;
-  subarray_ = nullptr;
 }
 
 Writer::~Writer() {
-  std::free(subarray_);
   clear_coord_buffers();
 }
 
@@ -194,7 +192,7 @@ void Writer::set_dedup_coords(bool b) {
   dedup_coords_ = b;
 }
 
-Status Writer::init() {
+Status Writer::init(Layout layout) {
   // Sanity checks
   if (storage_manager_ == nullptr)
     return LOG_STATUS(Status::WriterError(
@@ -206,11 +204,16 @@ Status Writer::init() {
     return LOG_STATUS(
         Status::WriterError("Cannot initialize query; Buffers not set"));
 
-  if (subarray_ == nullptr)
-    RETURN_NOT_OK(set_subarray(nullptr));
+  // Set a default subarray
+  if (!subarray_.is_set())
+    subarray_ = Subarray(array_, layout);
+
+  RETURN_NOT_OK(set_layout(layout));
   RETURN_NOT_OK(check_subarray());
   RETURN_NOT_OK(check_buffer_sizes());
   RETURN_NOT_OK(check_buffer_names());
+  if (array_schema_->dense())
+    RETURN_NOT_OK(subarray_.to_byte_vec(&subarray_flat_));
 
   optimize_layout_for_1D();
 
@@ -379,15 +382,8 @@ void Writer::set_fragment_uri(const URI& fragment_uri) {
 }
 
 Status Writer::set_layout(Layout layout) {
-  // Ordered layout for writes in sparse arrays is meaningless
-  if (!array_schema_->dense() &&
-      (layout == Layout::COL_MAJOR || layout == Layout::ROW_MAJOR))
-    return LOG_STATUS(
-        Status::WriterError("Cannot set layout; Ordered layouts cannot be used "
-                            "when writing to sparse "
-                            "arrays - use GLOBAL_ORDER or UNORDERED instead"));
-
   layout_ = layout;
+  subarray_.set_layout(layout);
 
   return Status::Ok();
 }
@@ -396,50 +392,27 @@ void Writer::set_storage_manager(StorageManager* storage_manager) {
   storage_manager_ = storage_manager;
 }
 
-Status Writer::set_subarray(const void* subarray) {
-  // Check
-  if (subarray != nullptr) {
-    if (!array_schema_->dense())  // Sparse arrays
-      return LOG_STATUS(Status::WriterError(
-          "Cannot set subarray when writing to sparse arrays"));
-    else if (layout_ == Layout::UNORDERED)  // Dense arrays
-      return LOG_STATUS(Status::WriterError(
-          "Cannot set subarray when performing sparse writes to dense arrays "
-          "(i.e., when writing in UNORDERED mode)"));
-  }
+Status Writer::set_subarray(const Subarray& subarray) {
+  // Not applicable to sparse arrays
+  if (!array_schema_->dense())
+    return Status::Ok();
+
+  // Subarray must be unary for dense writes
+  if (array_schema_->dense() && subarray.range_num() != 1)
+    return LOG_STATUS(
+        Status::WriterError("Cannot set subarray; Multi-range dense writes "
+                            "are not supported"));
 
   // Reset the writer (this will nuke the global write state)
   reset();
 
-  uint64_t subarray_size = 2 * array_schema_->coords_size();
-  if (subarray_ == nullptr)
-    subarray_ = std::malloc(subarray_size);
-  if (subarray_ == nullptr)
-    return LOG_STATUS(
-        Status::WriterError("Memory allocation for subarray failed"));
-
-  if (subarray == nullptr)
-    std::memcpy(subarray_, array_schema_->domain()->domain(), subarray_size);
-  else
-    std::memcpy(subarray_, subarray, subarray_size);
+  subarray_ = subarray;
 
   return Status::Ok();
 }
 
-Status Writer::set_subarray(const Subarray& subarray) {
-  if (!array_schema_->dense())  // Sparse arrays
-    return LOG_STATUS(Status::WriterError(
-        "Cannot set subarray when writing to sparse arrays"));
-
-  // TODO
-  // TODO: for the dense case, allow only single-range subarrays
-  (void)subarray;
-
-  return Status::Ok();
-}
-
-void* Writer::subarray() const {
-  return subarray_;
+const void* Writer::subarray() const {
+  return &subarray_flat_[0];
 }
 
 Status Writer::write() {
@@ -508,7 +481,7 @@ Status Writer::check_buffer_sizes() const {
       (layout_ != Layout::ROW_MAJOR && layout_ != Layout::COL_MAJOR))
     return Status::Ok();
 
-  auto cell_num = array_schema_->domain()->cell_num(subarray_);
+  auto cell_num = array_schema_->domain()->cell_num(subarray_.ndrange(0));
   uint64_t expected_cell_num = 0;
   for (const auto& it : buffers_) {
     const auto& attr = it.first;
@@ -733,90 +706,12 @@ Status Writer::check_subarray() const {
     return LOG_STATUS(
         Status::WriterError("Cannot check subarray; Array schema not set"));
 
-  if (subarray_ == nullptr) {
-    if (array_schema_->dense())
-      return LOG_STATUS(Status::WriterError(
-          "Cannot initialize query; Dense writes must specify a subarray"));
-    else
-      return Status::Ok();
-  }
-
-  switch (array_schema_->domain()->type()) {
-    case Datatype::INT8:
-      return check_subarray<int8_t>();
-    case Datatype::UINT8:
-      return check_subarray<uint8_t>();
-    case Datatype::INT16:
-      return check_subarray<int16_t>();
-    case Datatype::UINT16:
-      return check_subarray<uint16_t>();
-    case Datatype::INT32:
-      return check_subarray<int32_t>();
-    case Datatype::UINT32:
-      return check_subarray<uint32_t>();
-    case Datatype::INT64:
-      return check_subarray<int64_t>();
-    case Datatype::UINT64:
-      return check_subarray<uint64_t>();
-    case Datatype::FLOAT32:
-      return check_subarray<float>();
-    case Datatype::FLOAT64:
-      return check_subarray<double>();
-    case Datatype::DATETIME_YEAR:
-    case Datatype::DATETIME_MONTH:
-    case Datatype::DATETIME_WEEK:
-    case Datatype::DATETIME_DAY:
-    case Datatype::DATETIME_HR:
-    case Datatype::DATETIME_MIN:
-    case Datatype::DATETIME_SEC:
-    case Datatype::DATETIME_MS:
-    case Datatype::DATETIME_US:
-    case Datatype::DATETIME_NS:
-    case Datatype::DATETIME_PS:
-    case Datatype::DATETIME_FS:
-    case Datatype::DATETIME_AS:
-      return check_subarray<int64_t>();
-    case Datatype::CHAR:
-    case Datatype::STRING_ASCII:
-    case Datatype::STRING_UTF8:
-    case Datatype::STRING_UTF16:
-    case Datatype::STRING_UTF32:
-    case Datatype::STRING_UCS2:
-    case Datatype::STRING_UCS4:
-    case Datatype::ANY:
-      // Not supported domain type
-      assert(false);
-      break;
-  }
-
-  return Status::Ok();
-}
-
-template <class T>
-Status Writer::check_subarray() const {
-  // Check subarray bounds
-  auto domain = array_schema_->domain();
-  auto dim_num = domain->dim_num();
-  auto subarray = (T*)subarray_;
-
-  // In global dense writes, the subarray must coincide with tile extents
-  // Note that in the dense case, the domain type is integer
-  if (array_schema_->dense() && layout() == Layout::GLOBAL_ORDER) {
-    for (unsigned int i = 0; i < dim_num; ++i) {
-      const auto dim = domain->dimension(i);
-      auto dim_domain = static_cast<const T*>(dim->domain());
-      auto tile_extent = static_cast<const T*>(dim->tile_extent());
-      assert(tile_extent != nullptr);
-      auto norm_1 = uint64_t(subarray[2 * i] - dim_domain[0]);
-      auto norm_2 = (uint64_t(subarray[2 * i + 1]) - dim_domain[0]) + 1;
-      if ((norm_1 / (*tile_extent) * (*tile_extent) != norm_1) ||
-          (norm_2 / (*tile_extent) * (*tile_extent) != norm_2)) {
-        return LOG_STATUS(
-            Status::WriterError("Invalid subarray; In global writes for "
-                                "dense arrays, the subarray "
-                                "must coincide with the tile bounds"));
-      }
-    }
+  if (array_schema_->dense()) {
+    if (layout() == Layout::GLOBAL_ORDER && !subarray_.coincides_with_tiles())
+      return LOG_STATUS(
+          Status::WriterError("Cannot initialize query; In global writes for "
+                              "dense arrays, the subarray "
+                              "must coincide with the tile bounds"));
   }
 
   return Status::Ok();
@@ -1007,7 +902,7 @@ Status Writer::compute_write_cell_ranges(
 
   auto domain = array_schema_->domain();
   auto dim_num = array_schema_->dim_num();
-  auto subarray = (const T*)subarray_;
+  auto subarray = (const T*)&subarray_flat_[0];
   auto cell_order = array_schema_->cell_order();
   bool same_layout = (cell_order == layout_);
   uint64_t start, end, start_in_sub, end_in_sub;
@@ -1076,7 +971,7 @@ Status Writer::create_fragment(
   *frag_meta = std::make_shared<FragmentMetadata>(
       storage_manager_, array_schema_, uri, timestamp_range, dense);
 
-  RETURN_NOT_OK((*frag_meta)->init(subarray_));
+  RETURN_NOT_OK((*frag_meta)->init(subarray_.ndrange(0)));
   return storage_manager_->create_dir(uri);
 
   STATS_FUNC_OUT(writer_create_fragment);
@@ -1173,8 +1068,9 @@ Status Writer::finalize_global_write_state() {
   }
 
   // Check if the total number of cells written is equal to the subarray size
-  if (!has_coords_) {
-    auto expected_cell_num = array_schema_->domain()->cell_num(subarray_);
+  if (!has_coords_) {  // This implies a dense array
+    auto expected_cell_num =
+        array_schema_->domain()->cell_num(subarray_.ndrange(0));
     if (cell_num != expected_cell_num) {
       clean_up(uri);
       std::stringstream ss;
@@ -1431,7 +1327,7 @@ Status Writer::init_tile_dense_cell_range_iters(
   std::vector<T> subarray;
   subarray.resize(2 * dim_num);
   for (unsigned i = 0; i < 2 * dim_num; ++i)
-    subarray[i] = ((T*)subarray_)[i];
+    subarray[i] = ((T*)&subarray_flat_[0])[i];
   auto cell_order = domain->cell_order();
 
   // Compute tile domain and current tile coords

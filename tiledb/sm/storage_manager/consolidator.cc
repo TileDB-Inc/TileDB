@@ -519,25 +519,16 @@ Status Consolidator::create_queries(
     Query** query_r,
     Query** query_w,
     URI* new_fragment_uri) {
-  // Create subarray to set
-  std::vector<uint8_t> s;
-  if (!sparse_mode) {
-    auto domain_size = 2 * array_for_reads->array_schema()->coords_size();
-    s.resize(domain_size);
-    uint64_t offset = 0;
-    for (const auto& r : subarray) {
-      std::memcpy(&s[offset], r.data(), r.size());
-      offset += r.size();
-    }
-  }
-  void* to_set = (s.empty()) ? nullptr : &s[0];
+  // Note: it is safe to use `set_subarray_safe` for `subarray` below
+  // because the subarray is calculated by the TileDB algorithm (it
+  // is not a user input prone to errors).
 
   // Create read query
   *query_r = new Query(storage_manager_, array_for_reads);
   RETURN_NOT_OK((*query_r)->set_layout(Layout::GLOBAL_ORDER));
   RETURN_NOT_OK(
       set_query_buffers(*query_r, sparse_mode, buffers, buffer_sizes));
-  RETURN_NOT_OK((*query_r)->set_subarray(to_set, true));
+  RETURN_NOT_OK((*query_r)->set_subarray_unsafe(subarray));
   if (array_for_reads->array_schema()->dense() && sparse_mode)
     RETURN_NOT_OK((*query_r)->set_sparse_mode(true));
 
@@ -549,7 +540,7 @@ Status Consolidator::create_queries(
   // Create write query
   *query_w = new Query(storage_manager_, array_for_writes, *new_fragment_uri);
   RETURN_NOT_OK((*query_w)->set_layout(Layout::GLOBAL_ORDER));
-  RETURN_NOT_OK((*query_w)->set_subarray(to_set, true));
+  RETURN_NOT_OK((*query_w)->set_subarray_unsafe(subarray));
   RETURN_NOT_OK(
       set_query_buffers(*query_w, sparse_mode, buffers, buffer_sizes));
 

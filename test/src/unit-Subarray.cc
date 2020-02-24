@@ -321,14 +321,14 @@ TEST_CASE_METHOD(
   std::vector<uint64_t> c_range_1_1 = {5, 5};
   auto cropped_subarray =
       subarray.crop_to_tile(&tile_coords[0], Layout::ROW_MAJOR);
-  const void* range = nullptr;
+  const Range* range = nullptr;
   CHECK(cropped_subarray.range_num() == 2);
   CHECK(cropped_subarray.get_range(0, 0, &range).ok());
-  CHECK(!memcmp(range, &c_range_0_0[0], 2 * sizeof(uint64_t)));
+  CHECK(!memcmp(range->data(), &c_range_0_0[0], 2 * sizeof(uint64_t)));
   CHECK(cropped_subarray.get_range(1, 0, &range).ok());
-  CHECK(!memcmp(range, &c_range_1_0[0], 2 * sizeof(uint64_t)));
+  CHECK(!memcmp(range->data(), &c_range_1_0[0], 2 * sizeof(uint64_t)));
   CHECK(cropped_subarray.get_range(1, 1, &range).ok());
-  CHECK(!memcmp(range, &c_range_1_1[0], 2 * sizeof(uint64_t)));
+  CHECK(!memcmp(range->data(), &c_range_1_1[0], 2 * sizeof(uint64_t)));
 
   close_array(ctx_, array_);
 }

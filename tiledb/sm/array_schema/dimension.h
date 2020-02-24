@@ -76,7 +76,7 @@ class Dimension {
   explicit Dimension(const Dimension* dim);
 
   /** Destructor. */
-  ~Dimension();
+  ~Dimension() = default;
 
   /* ********************************* */
   /*                API                */
@@ -101,7 +101,7 @@ class Dimension {
   Status deserialize(ConstBuffer* buff, Datatype type);
 
   /** Returns the domain. */
-  void* domain() const;
+  const Range& domain() const;
 
   /** Dumps the dimension contents in ASCII form in the selected output. */
   void dump(FILE* out) const;
@@ -130,6 +130,32 @@ class Dimension {
       const Dimension* dim, const Range& r, uint64_t tile_num, ByteVecValue* v);
 
   /**
+   * Performs correctness checks on the input range. Returns `false`
+   * upon error and stores an error message to `err_msg`.
+   *
+   * Specifically, it checks
+   *     - if the lower range bound is larger than the upper
+   *     - if the range falls outside the dimension domain
+   *     - for real domains, if any range bound is NaN
+   */
+  bool check_range(const Range& range, std::string* err_msg) const;
+
+  /**
+   * Performs correctness checks on the input range. Returns `true`
+   * upon error and stores an error message to `err_msg`.
+   */
+  template <class T>
+  static bool check_range(
+      const Dimension* dim, const Range& range, std::string* err_msg);
+
+  /** Returns true if the input range coincides with tile boundaries. */
+  bool coincides_with_tiles(const Range& r) const;
+
+  /** Returns true if the input range coincides with tile boundaries. */
+  template <class T>
+  static bool coincides_with_tiles(const Dimension* dim, const Range& r);
+
+  /**
    * Computed the minimum bounding range of the values stored in
    * `tile`.
    */
@@ -150,7 +176,7 @@ class Dimension {
 
   /**
    * Crops the input 1D range such that it does not exceed the
-   * input dimension domain.
+   * dimension domain.
    */
   template <class T>
   static void crop_range(const Dimension* dim, Range* range);
@@ -247,12 +273,12 @@ class Dimension {
 
   /** Splits `r` at point `v`, producing 1D ranges `r1` and `r2`. */
   void split_range(
-      const void* r, const ByteVecValue& v, Range* r1, Range* r2) const;
+      const Range& r, const ByteVecValue& v, Range* r1, Range* r2) const;
 
   /** Splits `r` at point `v`, producing 1D ranges `r1` and `r2`. */
   template <class T>
   static void split_range(
-      const void* r, const ByteVecValue& v, Range* r1, Range* r2);
+      const Range& r, const ByteVecValue& v, Range* r1, Range* r2);
 
   /**
    * Computes the splitting point `v` of `r`, and sets `unsplittable`
@@ -294,12 +320,20 @@ class Dimension {
   /** Sets the domain. */
   Status set_domain(const void* domain);
 
+  /** Sets the domain. */
+  Status set_domain(const Range& domain);
+
   /** Sets the tile extent. */
   Status set_tile_extent(const void* tile_extent);
+
+  /** Sets the tile extent. */
+  Status set_tile_extent(const ByteVecValue& tile_extent);
 
   /**
    * If the tile extent is `null`, this function sets the
    * the tile extent to the dimension domain range.
+   *
+   * @note This is applicable only to dense arrays.
    */
   Status set_null_tile_extent_to_range();
 
@@ -308,12 +342,14 @@ class Dimension {
    * the tile extent to the dimension domain range.
    *
    * @tparam T The dimension type.
+   *
+   * @note This is applicable only to dense arrays.
    */
   template <class T>
   Status set_null_tile_extent_to_range();
 
   /** Returns the tile extent. */
-  void* tile_extent() const;
+  const ByteVecValue& tile_extent() const;
 
   /** Returns the dimension type. */
   Datatype type() const;
@@ -327,13 +363,13 @@ class Dimension {
   /* ********************************* */
 
   /** The dimension domain. */
-  void* domain_;
+  Range domain_;
 
   /** The dimension name. */
   std::string name_;
 
   /** The tile extent of the dimension. */
-  void* tile_extent_;
+  ByteVecValue tile_extent_;
 
   /** The dimension type. */
   Datatype type_;
@@ -344,6 +380,20 @@ class Dimension {
    */
   std::function<void(const Dimension*, const Range&, uint64_t, ByteVecValue*)>
       ceil_to_tile_func_;
+
+  /**
+   * Stores the appropriate templated check_range() function based on the
+   * dimension datatype.
+   */
+  std::function<bool(const Dimension* dim, const Range&, std::string*)>
+      check_range_func_;
+
+  /**
+   * Stores the appropriate templated coincides_with_tiles() function based on
+   * the dimension datatype.
+   */
+  std::function<bool(const Dimension*, const Range&)>
+      coincides_with_tiles_func_;
 
   /**
    * Stores the appropriate templated compute_mbr() function based on the
@@ -410,7 +460,7 @@ class Dimension {
    * Stores the appropriate templated split_range() function based on the
    * dimension datatype.
    */
-  std::function<void(const void*, const ByteVecValue&, Range*, Range*)>
+  std::function<void(const Range&, const ByteVecValue&, Range*, Range*)>
       split_range_func_;
 
   /**
@@ -439,82 +489,31 @@ class Dimension {
   /** Returns an error if the set domain is invalid. */
   Status check_domain() const;
 
-  /**
-   * Returns an error if the set domain is invalid.
-   * Applicable only to integer domains
-   *
-   * @tparam T The type of the dimension domain.
-   * @return Status
-   */
-  template <
-      typename T,
-      typename std::enable_if<std::is_integral<T>::value>::type* = nullptr>
-  Status check_domain() const {
-    assert(domain_ != nullptr);
-    auto domain = static_cast<const T*>(domain_);
-
-    // Upper bound should not be smaller than lower
-    if (domain[1] < domain[0])
-      return LOG_STATUS(Status::DimensionError(
-          "Domain check failed; Upper domain bound should "
-          "not be smaller than the lower one"));
-
-    // Domain range must not exceed the maximum uint64_t number
-    // for integer domains
-    uint64_t diff = domain[1] - domain[0];
-    if (diff == std::numeric_limits<uint64_t>::max())
-      return LOG_STATUS(Status::DimensionError(
-          "Domain check failed; Domain range (upper + lower + 1) is larger "
-          "than the maximum uint64 number"));
-
-    return Status::Ok();
-  }
-
-  /**
-   * Returns an error if the set domain is invalid.
-   * Applicable only to real domains.
-   *
-   * @tparam T The type of the dimension domain.
-   * @return Status
-   */
-  template <
-      typename T,
-      typename std::enable_if<!std::is_integral<T>::value>::type* = nullptr>
-  Status check_domain() const {
-    assert(domain_ != nullptr);
-    auto domain = static_cast<const T*>(domain_);
-
-    // Check for NAN and INF
-    if (std::isinf(domain[0]) || std::isinf(domain[1]))
-      return LOG_STATUS(
-          Status::DimensionError("Domain check failed; domain contains NaN"));
-    if (std::isnan(domain[0]) || std::isnan(domain[1]))
-      return LOG_STATUS(
-          Status::DimensionError("Domain check failed; domain contains NaN"));
-
-    // Upper bound should not be smaller than lower
-    if (domain[1] < domain[0])
-      return LOG_STATUS(Status::DimensionError(
-          "Domain check failed; Upper domain bound should "
-          "not be smaller than the lower one"));
-
-    return Status::Ok();
-  }
+  /** Returns an error if the set domain is invalid. */
+  template <class T>
+  Status check_domain() const;
 
   /** Returns an error if the set tile extent is invalid. */
   Status check_tile_extent() const;
 
-  /**
-   * Returns an error if the set tile extent is invalid.
-   *
-   * @tparam T The type of the dimension domain.
-   * @return Status
-   */
+  /** Returns an error if the set tile extent is invalid. */
   template <class T>
   Status check_tile_extent() const;
 
+  /** Returns the domain in string format. */
+  std::string domain_str() const;
+
+  /** Returns the tile extent in string format. */
+  std::string tile_extent_str() const;
+
   /** Sets the templated ceil_to_tile() function. */
   void set_ceil_to_tile_func();
+
+  /** Sets the templated check_range() function. */
+  void set_check_range_func();
+
+  /** Sets the templated coincides_with_tiles() function. */
+  void set_coincides_with_tiles_func();
 
   /** Sets the templated compute_mbr() function. */
   void set_compute_mbr_func();
