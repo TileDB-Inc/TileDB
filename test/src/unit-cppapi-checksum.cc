@@ -144,25 +144,27 @@ static void run_checksum_test(tiledb_filter_type_t filter_type) {
 
   // Corrupt a byte of a1, we should then get a checksum failure
   std::string file_a;
-  std::string prefix = "file://";
-  fragment_uri = fragment_uri.substr(
-      prefix.length(), fragment_uri.length() - prefix.length());
-  // Set file for a based on windows or posix
-#ifdef _WIN32
-  file_a = fragment_uri + "\\a1.tdb";
-#else
   file_a = fragment_uri + "/a1.tdb";
+
+  auto file_size = vfs.file_size(file_a);
+
+#ifdef _WIN32
+  std::string prefix = "file:///";
+#else
+  std::string prefix = "file://";
 #endif
+  file_a = file_a.substr(prefix.length(), file_a.length() - prefix.length());
   // Open A
   std::fstream fbuf;
   fbuf.open(file_a, std::ios::in | std::ios::out | std::ios::binary);
-  auto file_size = vfs.file_size(file_a);
+  REQUIRE(fbuf.is_open());
 
   // We will change 2 to 3
   uint32_t corruption = 3;
   // Seek to the start of the last value
   fbuf.seekp(file_size - sizeof(corruption), std::ios_base::beg);
   fbuf.write(reinterpret_cast<const char*>(&corruption), sizeof(corruption));
+  REQUIRE(fbuf.fail() != true);
 
   // Flush and close
   fbuf.flush();
@@ -173,8 +175,8 @@ static void run_checksum_test(tiledb_filter_type_t filter_type) {
   array.open(TILEDB_READ);
   subarray = {0, 10, 0, 10};
   auto buff_el2 = array.max_buffer_elements(subarray);
-  std::vector<int> coords_read2(4);
-  std::vector<int> a1_read2(buff_el["a1"].second);
+  std::vector<int32_t> coords_read2(4);
+  std::vector<int32_t> a1_read2(buff_el["a1"].second);
   std::vector<uint64_t> a2_read_off2(buff_el["a2"].first);
   std::string a2_read_data2;
   a2_read_data2.resize(buff_el["a2"].second);
