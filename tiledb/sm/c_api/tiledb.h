@@ -4522,6 +4522,100 @@ TILEDB_EXPORT int32_t tiledb_vfs_is_bucket(
     tiledb_ctx_t* ctx, tiledb_vfs_t* vfs, const char* uri, int32_t* is_bucket);
 
 /**
+ * Creates an Azure storage container.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * tiledb_vfs_create_azure_container(ctx, vfs, "azure://tiledb");
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param vfs The virtual filesystem object.
+ * @param uri The URI of the Azure container to be created.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_vfs_create_azure_container(
+    tiledb_ctx_t* ctx, tiledb_vfs_t* vfs, const char* uri);
+
+/**
+ * Deletes an Azure storage container.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * tiledb_vfs_delete_azure_container(ctx, vfs, "azure://tiledb");
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param vfs The virtual filesystem object.
+ * @param uri The URI of the Azure container to be deleted.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_vfs_remove_azure_container(
+    tiledb_ctx_t* ctx, tiledb_vfs_t* vfs, const char* uri);
+
+/**
+ * Deletes the contents of an Azure storage container.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * tiledb_vfs_empty_azure_container(ctx, vfs, "azure://tiledb");
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param vfs The virtual filesystem object.
+ * @param uri The URI of the Azure container to be emptied.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_vfs_empty_azure_container(
+    tiledb_ctx_t* ctx, tiledb_vfs_t* vfs, const char* uri);
+
+/**
+ * Checks if an Azure storage container is empty.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * int32_t is_empty;
+ * tiledb_vfs_is_empty_azure_container(ctx, vfs, "azure://tiledb", &empty);
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param vfs The virtual filesystem object.
+ * @param uri The URI of the Azure container.
+ * @param is_empty Sets it to `1` if the input Azure container is empty,
+ *     and `0` otherwise.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_vfs_is_empty_azure_container(
+    tiledb_ctx_t* ctx, tiledb_vfs_t* vfs, const char* uri, int32_t* is_empty);
+
+/**
+ * Checks if an Azure storage container exists.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * int32_t exists;
+ * tiledb_vfs_is_azure_container(ctx, vfs, "azure://tiledb", &exists);
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param vfs The virtual filesystem object.
+ * @param uri The URI of the Azure container.
+ * @param is_azure_container Sets it to `1` if the input URI is a Azure
+ * container, and `0` otherwise.
+ * @return TILEDB_OK for success and TILEDB_ERR for error.
+ */
+TILEDB_EXPORT int32_t tiledb_vfs_is_azure_container(
+    tiledb_ctx_t* ctx,
+    tiledb_vfs_t* vfs,
+    const char* uri,
+    int32_t* is_azure_container);
+
+/**
  * Creates a directory.
  *
  * - On S3, this is a noop.

@@ -93,7 +93,9 @@ if (NOT AZURESDK_FOUND)
         -DCMAKE_CXX_FLAGS=-fPIC
         -DCMAKE_C_FLAGS=-fPIC
       #INSTALL_COMMAND $(MAKE) CXXFLAGS=-fPIC PREFIX=${TILEDB_EP_INSTALL_PREFIX} install
-      PATCH_COMMAND patch -p1 < ${TILEDB_CMAKE_INPUTS_DIR}/azuresdk-remove-uuid-dep.patch
+      PATCH_COMMAND
+        patch -p1 < ${TILEDB_CMAKE_INPUTS_DIR}/patches/ep_azuresdk/remove-uuid-dep.patch &&
+        patch -p1 < ${TILEDB_CMAKE_INPUTS_DIR}/patches/ep_azuresdk/azurite-support.patch
       LOG_DOWNLOAD TRUE
       LOG_CONFIGURE TRUE
       LOG_BUILD TRUE

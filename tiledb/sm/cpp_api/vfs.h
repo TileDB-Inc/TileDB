@@ -383,21 +383,21 @@ class VFS {
   /*                API                */
   /* ********************************* */
 
-  /** Creates an object-store bucket with the input URI. */
+  /** Creates an s3 bucket with the input URI. */
   void create_bucket(const std::string& uri) const {
     auto& ctx = ctx_.get();
     ctx.handle_error(
         tiledb_vfs_create_bucket(ctx.ptr().get(), vfs_.get(), uri.c_str()));
   }
 
-  /** Deletes an object-store bucket with the input URI. */
+  /** Deletes an s3 bucket with the input URI. */
   void remove_bucket(const std::string& uri) const {
     auto& ctx = ctx_.get();
     ctx.handle_error(
         tiledb_vfs_remove_bucket(ctx.ptr().get(), vfs_.get(), uri.c_str()));
   }
 
-  /** Checks if an object-store bucket with the input URI exists. */
+  /** Checks if an s3 bucket with the input URI exists. */
   bool is_bucket(const std::string& uri) const {
     auto& ctx = ctx_.get();
     int ret;
@@ -406,19 +406,58 @@ class VFS {
     return (bool)ret;
   }
 
-  /** Empty a bucket **/
+  /** Empty an s3 bucket **/
   void empty_bucket(const std::string& bucket) const {
     auto& ctx = ctx_.get();
     ctx.handle_error(
         tiledb_vfs_empty_bucket(ctx.ptr().get(), vfs_.get(), bucket.c_str()));
   }
 
-  /** Check if a bucket is empty **/
+  /** Check if an s3 bucket is empty **/
   bool is_empty_bucket(const std::string& bucket) const {
     auto& ctx = ctx_.get();
     int empty;
     ctx.handle_error(tiledb_vfs_is_empty_bucket(
         ctx.ptr().get(), vfs_.get(), bucket.c_str(), &empty));
+    return empty == 0;
+  }
+
+  /** Creates an azure storage container with the input URI. */
+  void create_azure_container(const std::string& uri) const {
+    auto& ctx = ctx_.get();
+    ctx.handle_error(tiledb_vfs_create_azure_container(
+        ctx.ptr().get(), vfs_.get(), uri.c_str()));
+  }
+
+  /** Deletes an azure storage container with the input URI. */
+  void remove_azure_container(const std::string& uri) const {
+    auto& ctx = ctx_.get();
+    ctx.handle_error(tiledb_vfs_remove_azure_container(
+        ctx.ptr().get(), vfs_.get(), uri.c_str()));
+  }
+
+  /** Checks if an  azure storage container with the input URI exists. */
+  bool is_azure_container(const std::string& uri) const {
+    auto& ctx = ctx_.get();
+    int ret;
+    ctx.handle_error(tiledb_vfs_is_azure_container(
+        ctx.ptr().get(), vfs_.get(), uri.c_str(), &ret));
+    return (bool)ret;
+  }
+
+  /** Empty an azure storage container **/
+  void empty_azure_container(const std::string& azure_container) const {
+    auto& ctx = ctx_.get();
+    ctx.handle_error(tiledb_vfs_empty_azure_container(
+        ctx.ptr().get(), vfs_.get(), azure_container.c_str()));
+  }
+
+  /** Check if an azure storage container is empty **/
+  bool is_empty_azure_container(const std::string& azure_container) const {
+    auto& ctx = ctx_.get();
+    int empty;
+    ctx.handle_error(tiledb_vfs_is_empty_azure_container(
+        ctx.ptr().get(), vfs_.get(), azure_container.c_str(), &empty));
     return empty == 0;
   }
 

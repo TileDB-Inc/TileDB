@@ -130,12 +130,20 @@ class VFS {
   Status cancel_all_tasks();
 
   /**
-   * Creates an object-store bucket.
+   * Creates an s3 bucket.
    *
    * @param uri The name of the bucket to be created.
    * @return Status
    */
   Status create_bucket(const URI& uri) const;
+
+  /**
+   * Creates an Azure container.
+   *
+   * @param uri The name of the container to be created.
+   * @return Status
+   */
+  Status create_azure_container(const URI& uri) const;
 
   /**
    * Returns the size of the files in the input directory.
@@ -151,7 +159,7 @@ class VFS {
   Status dir_size(const URI& dir_name, uint64_t* dir_size) const;
 
   /**
-   * Deletes an object-store bucket.
+   * Deletes an s3 bucket.
    *
    * @param uri The name of the bucket to be deleted.
    * @return Status
@@ -159,12 +167,28 @@ class VFS {
   Status remove_bucket(const URI& uri) const;
 
   /**
-   * Deletes the contents of an object-store bucket.
+   * Deletes an Azure container.
+   *
+   * @param uri The name of the container to be deleted.
+   * @return Status
+   */
+  Status remove_azure_container(const URI& uri) const;
+
+  /**
+   * Deletes the contents of an s3 bucket.
    *
    * @param uri The name of the bucket to be emptied.
    * @return Status
    */
   Status empty_bucket(const URI& uri) const;
+
+  /**
+   * Deletes the contents of an Azure container.
+   *
+   * @param uri The name of the container to be emptied.
+   * @return Status
+   */
+  Status empty_azure_container(const URI& uri) const;
 
   /**
    * Removes a given directory (recursive)
@@ -235,7 +259,7 @@ class VFS {
   Status is_file(const URI& uri, bool* is_file) const;
 
   /**
-   * Checks if an object-store bucket exists.
+   * Checks if an s3 bucket exists.
    *
    * @param uri The name of the S3 bucket.
    * @return is_bucket Set to `true` if the bucket exists and `false` otherwise.
@@ -244,12 +268,31 @@ class VFS {
   Status is_bucket(const URI& uri, bool* is_bucket) const;
 
   /**
-   * Checks if an object-store bucket is empty.
+   * Checks if an Azure container exists.
+   *
+   * @param uri The name of the Azure container.
+   * @return is_container Set to `true` if the container exists and `false`
+   * otherwise.
+   * @return Status
+   */
+  Status is_azure_container(const URI& uri, bool* is_container) const;
+
+  /**
+   * Checks if an s3 bucket is empty.
    *
    * @param uri The name of the S3 bucket.
    * @param is_empty Set to `true` if the bucket is empty and `false` otherwise.
    */
   Status is_empty_bucket(const URI& uri, bool* is_empty) const;
+
+  /**
+   * Checks if an Azure container is empty.
+   *
+   * @param uri The name of the Azure container.
+   * @param is_empty Set to `true` if the container is empty and `false`
+   * otherwise.
+   */
+  Status is_empty_azure_container(const URI& uri, bool* is_container) const;
 
   /**
    * Initializes the virtual filesystem with the given configuration.

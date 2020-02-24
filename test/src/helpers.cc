@@ -318,8 +318,29 @@ void create_s3_bucket(
   }
 }
 
+void create_azure_container(
+    const std::string& container_name,
+    bool azure_supported,
+    tiledb_ctx_t* ctx,
+    tiledb_vfs_t* vfs) {
+  if (azure_supported) {
+    // Create container if it does not exist
+    int is_container = 0;
+    int rc = tiledb_vfs_is_azure_container(
+        ctx, vfs, container_name.c_str(), &is_container);
+    REQUIRE(rc == TILEDB_OK);
+    if (!is_container) {
+      rc = tiledb_vfs_create_azure_container(ctx, vfs, container_name.c_str());
+      REQUIRE(rc == TILEDB_OK);
+    }
+  }
+}
+
 void create_ctx_and_vfs(
-    bool s3_supported, tiledb_ctx_t** ctx, tiledb_vfs_t** vfs) {
+    bool s3_supported,
+    bool azure_supported,
+    tiledb_ctx_t** ctx,
+    tiledb_vfs_t** vfs) {
   // Create TileDB context
   tiledb_config_t* config = nullptr;
   tiledb_error_t* error = nullptr;
@@ -343,6 +364,30 @@ void create_ctx_and_vfs(
         TILEDB_OK);
     REQUIRE(error == nullptr);
 #endif
+  }
+  if (azure_supported) {
+    REQUIRE(
+        tiledb_config_set(
+            config,
+            "vfs.azure.storage_account_name",
+            "devstoreaccount1",
+            &error) == TILEDB_OK);
+    REQUIRE(
+        tiledb_config_set(
+            config,
+            "vfs.azure.storage_account_key",
+            "Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/"
+            "K1SZFPTOtr/KBHBeksoGMGw==",
+            &error) == TILEDB_OK);
+    REQUIRE(
+        tiledb_config_set(
+            config,
+            "vfs.azure.blob_endpoint",
+            "127.0.0.1:10000/devstoreaccount1",
+            &error) == TILEDB_OK);
+    REQUIRE(
+        tiledb_config_set(config, "vfs.azure.use_https", "false", &error) ==
+        TILEDB_OK);
   }
   REQUIRE(tiledb_ctx_alloc(config, ctx) == TILEDB_OK);
   REQUIRE(error == nullptr);
@@ -377,7 +422,8 @@ void create_subarray(
   *subarray = ret;
 }
 
-void get_supported_fs(bool* s3_supported, bool* hdfs_supported) {
+void get_supported_fs(
+    bool* s3_supported, bool* hdfs_supported, bool* azure_supported) {
   tiledb_ctx_t* ctx = nullptr;
   REQUIRE(tiledb_ctx_alloc(nullptr, &ctx) == TILEDB_OK);
 
@@ -388,24 +434,38 @@ void get_supported_fs(bool* s3_supported, bool* hdfs_supported) {
   rc = tiledb_ctx_is_supported_fs(ctx, TILEDB_HDFS, &is_supported);
   REQUIRE(rc == TILEDB_OK);
   *hdfs_supported = (bool)is_supported;
+  rc = tiledb_ctx_is_supported_fs(ctx, TILEDB_AZURE, &is_supported);
+  REQUIRE(rc == TILEDB_OK);
+  *azure_supported = (bool)is_supported;
 
   // Override VFS support if the user used the '--vfs' command line argument.
   if (!g_vfs.empty()) {
-    REQUIRE((g_vfs == "native" || g_vfs == "s3" || g_vfs == "hdfs"));
+    REQUIRE(
+        (g_vfs == "native" || g_vfs == "s3" || g_vfs == "hdfs" ||
+         g_vfs == "azure"));
 
     if (g_vfs == "native") {
       *s3_supported = false;
       *hdfs_supported = false;
+      *azure_supported = false;
     }
 
     if (g_vfs == "s3") {
       *s3_supported = true;
       *hdfs_supported = false;
+      *azure_supported = false;
     }
 
     if (g_vfs == "hdfs") {
       *s3_supported = false;
       *hdfs_supported = true;
+      *azure_supported = false;
+    }
+
+    if (g_vfs == "azure") {
+      *s3_supported = false;
+      *hdfs_supported = false;
+      *azure_supported = true;
     }
   }
 
@@ -418,7 +478,7 @@ void open_array(
   CHECK(rc == TILEDB_OK);
 }
 
-std::string random_bucket_name(const std::string& prefix) {
+std::string random_name(const std::string& prefix) {
   std::stringstream ss;
   ss << prefix << "-" << std::this_thread::get_id() << "-"
      << TILEDB_TIMESTAMP_NOW_MS;

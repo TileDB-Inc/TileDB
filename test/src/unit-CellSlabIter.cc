@@ -53,10 +53,11 @@ using namespace tiledb::test;
 struct CellSlabIterFx {
   tiledb_ctx_t* ctx_;
   tiledb_vfs_t* vfs_;
-  bool s3_supported_, hdfs_supported_;
+  bool s3_supported_, hdfs_supported_, azure_supported_;
   std::string temp_dir_;
-  const std::string s3_bucket_name_ =
-      "s3://" + random_bucket_name("tiledb") + "/";
+  const std::string s3_bucket_name_ = "s3://" + random_name("tiledb") + "/";
+  const std::string azure_container_name_ =
+      "azure://" + random_name("tiledb") + "/";
   std::string array_name_;
   const char* ARRAY_NAME = "cell_slab_iter";
   tiledb_array_t* array_ = nullptr;
@@ -74,10 +75,12 @@ CellSlabIterFx::CellSlabIterFx() {
   vfs_ = nullptr;
   hdfs_supported_ = false;
   s3_supported_ = false;
+  azure_supported_ = false;
 
-  get_supported_fs(&s3_supported_, &hdfs_supported_);
-  create_ctx_and_vfs(s3_supported_, &ctx_, &vfs_);
+  get_supported_fs(&s3_supported_, &hdfs_supported_, &azure_supported_);
+  create_ctx_and_vfs(s3_supported_, azure_supported_, &ctx_, &vfs_);
   create_s3_bucket(s3_bucket_name_, s3_supported_, ctx_, vfs_);
+  create_azure_container(azure_container_name_, azure_supported_, ctx_, vfs_);
 
 // Create temporary directory based on the supported filesystem
 #ifdef _WIN32
@@ -87,6 +90,8 @@ CellSlabIterFx::CellSlabIterFx() {
 #endif
   if (s3_supported_)
     temp_dir_ = s3_bucket_name_ + "tiledb/test/";
+  else if (azure_supported_)
+    temp_dir_ = azure_container_name_ + "tiledb/test/";
   // Removing this for now as these tests take too long on HDFS
   // if (hdfs_supported_)
   //   temp_dir_ = "hdfs:///tiledb_test/";

@@ -134,6 +134,10 @@ TEST_CASE("URI: Test URI to path", "[uri]") {
   CHECK(uri.to_path() == "s3://path/on/s3");
   uri = URI("s3://relative/../path/on/s3");
   CHECK(uri.to_path() == "s3://relative/../path/on/s3");
+  uri = URI("azure://path/on/azure");
+  CHECK(uri.to_path() == "azure://path/on/azure");
+  uri = URI("azure://relative/../path/on/azure");
+  CHECK(uri.to_path() == "azure://relative/../path/on/azure");
   uri = URI("hdfs://path/on/hdfs");
   CHECK(uri.to_path() == "hdfs://path/on/hdfs");
   uri = URI("hdfs://relative/../path/on/hdfs");
@@ -166,6 +170,8 @@ TEST_CASE("URI: Test schemes", "[uri]") {
   CHECK(URI("http://bucket/dir").is_s3());
   CHECK(URI("https://bucket/dir").is_s3());
 
+  CHECK(URI("azure://container/dir").is_azure());
+
   CHECK(URI("hdfs://namenode/dir").is_hdfs());
 
   CHECK(URI("tiledb://namespace/array").is_tiledb());
@@ -180,6 +186,7 @@ TEST_CASE("URI: Test REST components", "[uri]") {
   CHECK(!URI("/path/to/dir").get_rest_components(&ns, &array).ok());
   CHECK(!URI("file:///path/to/dir").get_rest_components(&ns, &array).ok());
   CHECK(!URI("s3://bucket/dir").get_rest_components(&ns, &array).ok());
+  CHECK(!URI("azure://container/dir").get_rest_components(&ns, &array).ok());
   CHECK(!URI("http://bucket/dir").get_rest_components(&ns, &array).ok());
   CHECK(!URI("https://bucket/dir").get_rest_components(&ns, &array).ok());
   CHECK(!URI("hdfs://namenode/dir").get_rest_components(&ns, &array).ok());
@@ -197,6 +204,11 @@ TEST_CASE("URI: Test REST components", "[uri]") {
             .ok());
   CHECK(ns == "namespace");
   CHECK(array == "s3://bucket/dir");
+  CHECK(URI("tiledb://namespace/azure://container/dir")
+            .get_rest_components(&ns, &array)
+            .ok());
+  CHECK(ns == "namespace");
+  CHECK(array == "azure://container/dir");
 
   CHECK(!URI("tiledb:///array").get_rest_components(&ns, &array).ok());
   CHECK(!URI("tiledb://ns").get_rest_components(&ns, &array).ok());

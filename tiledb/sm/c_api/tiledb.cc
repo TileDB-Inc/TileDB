@@ -3756,6 +3756,74 @@ int32_t tiledb_vfs_is_bucket(
   return TILEDB_OK;
 }
 
+int32_t tiledb_vfs_create_azure_container(
+    tiledb_ctx_t* ctx, tiledb_vfs_t* vfs, const char* uri) {
+  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, vfs) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  if (SAVE_ERROR_CATCH(
+          ctx, vfs->vfs_->create_azure_container(tiledb::sm::URI(uri))))
+    return TILEDB_ERR;
+
+  return TILEDB_OK;
+}
+
+int32_t tiledb_vfs_remove_azure_container(
+    tiledb_ctx_t* ctx, tiledb_vfs_t* vfs, const char* uri) {
+  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, vfs) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  if (SAVE_ERROR_CATCH(
+          ctx, vfs->vfs_->remove_azure_container(tiledb::sm::URI(uri))))
+    return TILEDB_ERR;
+
+  return TILEDB_OK;
+}
+
+int32_t tiledb_vfs_empty_azure_container(
+    tiledb_ctx_t* ctx, tiledb_vfs_t* vfs, const char* uri) {
+  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, vfs) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  if (SAVE_ERROR_CATCH(
+          ctx, vfs->vfs_->empty_azure_container(tiledb::sm::URI(uri))))
+    return TILEDB_ERR;
+
+  return TILEDB_OK;
+}
+
+int32_t tiledb_vfs_is_empty_azure_container(
+    tiledb_ctx_t* ctx, tiledb_vfs_t* vfs, const char* uri, int32_t* is_empty) {
+  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, vfs) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  bool b;
+  if (SAVE_ERROR_CATCH(
+          ctx, vfs->vfs_->is_empty_azure_container(tiledb::sm::URI(uri), &b)))
+    return TILEDB_ERR;
+  *is_empty = (int32_t)b;
+
+  return TILEDB_OK;
+}
+
+int32_t tiledb_vfs_is_azure_container(
+    tiledb_ctx_t* ctx,
+    tiledb_vfs_t* vfs,
+    const char* uri,
+    int32_t* is_azure_container) {
+  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, vfs) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  bool exists;
+  if (SAVE_ERROR_CATCH(
+          ctx, vfs->vfs_->is_azure_container(tiledb::sm::URI(uri), &exists)))
+    return TILEDB_ERR;
+
+  *is_azure_container = (int32_t)exists;
+
+  return TILEDB_OK;
+}
+
 int32_t tiledb_vfs_create_dir(
     tiledb_ctx_t* ctx, tiledb_vfs_t* vfs, const char* uri) {
   if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, vfs) == TILEDB_ERR)

@@ -66,8 +66,12 @@ struct SparseArrayFx {
   int COMPRESSION_LEVEL = -1;
   const std::string HDFS_TEMP_DIR = "hdfs:///tiledb_test/";
   const std::string S3_PREFIX = "s3://";
-  const std::string S3_BUCKET = S3_PREFIX + random_bucket_name("tiledb") + "/";
+  const std::string S3_BUCKET = S3_PREFIX + random_name("tiledb") + "/";
   const std::string S3_TEMP_DIR = S3_BUCKET + "tiledb_test/";
+  const std::string AZURE_PREFIX = "azure://";
+  const std::string AZURE_CONTAINER =
+      AZURE_PREFIX + random_name("tiledb") + "/";
+  const std::string AZURE_TEMP_DIR = AZURE_CONTAINER + "tiledb_test/";
 #ifdef _WIN32
   const std::string FILE_URI_PREFIX = "";
   const std::string FILE_TEMP_DIR =
@@ -90,6 +94,7 @@ struct SparseArrayFx {
   // Supported filesystems
   bool supports_s3_;
   bool supports_hdfs_;
+  bool supports_azure_;
 
   // Functions
   SparseArrayFx();
@@ -131,7 +136,7 @@ struct SparseArrayFx {
   void set_supported_fs();
   void create_temp_dir(const std::string& path);
   void remove_temp_dir(const std::string& path);
-  static std::string random_bucket_name(const std::string& prefix);
+  static std::string random_name(const std::string& prefix);
   void check_sorted_reads(
       const std::string& array_name,
       tiledb_filter_type_t compressor,
@@ -242,6 +247,30 @@ SparseArrayFx::SparseArrayFx() {
     REQUIRE(error == nullptr);
 #endif
   }
+  if (supports_azure_) {
+    REQUIRE(
+        tiledb_config_set(
+            config,
+            "vfs.azure.storage_account_name",
+            "devstoreaccount1",
+            &error) == TILEDB_OK);
+    REQUIRE(
+        tiledb_config_set(
+            config,
+            "vfs.azure.storage_account_key",
+            "Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/"
+            "K1SZFPTOtr/KBHBeksoGMGw==",
+            &error) == TILEDB_OK);
+    REQUIRE(
+        tiledb_config_set(
+            config,
+            "vfs.azure.blob_endpoint",
+            "127.0.0.1:10000/devstoreaccount1",
+            &error) == TILEDB_OK);
+    REQUIRE(
+        tiledb_config_set(config, "vfs.azure.use_https", "false", &error) ==
+        TILEDB_OK);
+  }
   REQUIRE(tiledb_ctx_alloc(config, &ctx_) == TILEDB_OK);
   REQUIRE(error == nullptr);
   vfs_ = nullptr;
@@ -260,11 +289,26 @@ SparseArrayFx::SparseArrayFx() {
     }
   }
 
+  // Connect to Azure
+  if (supports_azure_) {
+    int is_container = 0;
+    int rc = tiledb_vfs_is_azure_container(
+        ctx_, vfs_, AZURE_CONTAINER.c_str(), &is_container);
+    REQUIRE(rc == TILEDB_OK);
+    if (!is_container) {
+      rc = tiledb_vfs_create_azure_container(
+          ctx_, vfs_, AZURE_CONTAINER.c_str());
+      REQUIRE(rc == TILEDB_OK);
+    }
+  }
+
   std::srand(0);
 
   create_temp_dir(FILE_URI_PREFIX + FILE_TEMP_DIR);
   if (supports_s3_)
     create_temp_dir(S3_TEMP_DIR);
+  if (supports_azure_)
+    create_temp_dir(AZURE_TEMP_DIR);
   if (supports_hdfs_)
     create_temp_dir(HDFS_TEMP_DIR);
 }
@@ -282,6 +326,19 @@ SparseArrayFx::~SparseArrayFx() {
           tiledb_vfs_remove_bucket(ctx_, vfs_, S3_BUCKET.c_str()) == TILEDB_OK);
     }
   }
+
+  if (supports_azure_) {
+    int is_container = 0;
+    int rc = tiledb_vfs_is_azure_container(
+        ctx_, vfs_, AZURE_CONTAINER.c_str(), &is_container);
+    REQUIRE(rc == TILEDB_OK);
+    if (is_container) {
+      rc = tiledb_vfs_remove_azure_container(
+          ctx_, vfs_, AZURE_CONTAINER.c_str());
+      REQUIRE(rc == TILEDB_OK);
+    }
+  }
+
   if (supports_hdfs_)
     remove_temp_dir(HDFS_TEMP_DIR);
 
@@ -306,7 +363,7 @@ void SparseArrayFx::set_supported_fs() {
   tiledb_ctx_t* ctx = nullptr;
   REQUIRE(tiledb_ctx_alloc(nullptr, &ctx) == TILEDB_OK);
 
-  get_supported_fs(&supports_s3_, &supports_hdfs_);
+  get_supported_fs(&supports_s3_, &supports_hdfs_, &supports_azure_);
 
   tiledb_ctx_free(&ctx);
 }
@@ -323,7 +380,7 @@ void SparseArrayFx::remove_temp_dir(const std::string& path) {
     REQUIRE(tiledb_vfs_remove_dir(ctx_, vfs_, path.c_str()) == TILEDB_OK);
 }
 
-std::string SparseArrayFx::random_bucket_name(const std::string& prefix) {
+std::string SparseArrayFx::random_name(const std::string& prefix) {
   std::stringstream ss;
   ss << prefix << "-" << std::this_thread::get_id() << "-"
      << TILEDB_TIMESTAMP_NOW_MS;
@@ -2230,6 +2287,11 @@ TEST_CASE_METHOD(
       array_name = S3_TEMP_DIR + ARRAY;
       check_sorted_reads(
           array_name, TILEDB_FILTER_NONE, TILEDB_ROW_MAJOR, TILEDB_ROW_MAJOR);
+    } else if (supports_azure_) {
+      // Azure
+      array_name = AZURE_TEMP_DIR + ARRAY;
+      check_sorted_reads(
+          array_name, TILEDB_FILTER_NONE, TILEDB_ROW_MAJOR, TILEDB_ROW_MAJOR);
     } else if (supports_hdfs_) {
       // HDFS
       array_name = HDFS_TEMP_DIR + ARRAY;
@@ -2247,6 +2309,11 @@ TEST_CASE_METHOD(
     if (supports_s3_) {
       // S3
       array_name = S3_TEMP_DIR + ARRAY;
+      check_sorted_reads(
+          array_name, TILEDB_FILTER_NONE, TILEDB_COL_MAJOR, TILEDB_COL_MAJOR);
+    } else if (supports_azure_) {
+      // Azure
+      array_name = AZURE_TEMP_DIR + ARRAY;
       check_sorted_reads(
           array_name, TILEDB_FILTER_NONE, TILEDB_COL_MAJOR, TILEDB_COL_MAJOR);
     } else if (supports_hdfs_) {
@@ -2268,6 +2335,11 @@ TEST_CASE_METHOD(
       array_name = S3_TEMP_DIR + ARRAY;
       check_sorted_reads(
           array_name, TILEDB_FILTER_NONE, TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR);
+    } else if (supports_azure_) {
+      // Azure
+      array_name = AZURE_TEMP_DIR + ARRAY;
+      check_sorted_reads(
+          array_name, TILEDB_FILTER_NONE, TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR);
     } else if (supports_hdfs_) {
       // HDFS
       array_name = HDFS_TEMP_DIR + ARRAY;
@@ -2285,6 +2357,11 @@ TEST_CASE_METHOD(
     if (supports_s3_) {
       // S3
       array_name = S3_TEMP_DIR + ARRAY;
+      check_sorted_reads(
+          array_name, TILEDB_FILTER_GZIP, TILEDB_ROW_MAJOR, TILEDB_ROW_MAJOR);
+    } else if (supports_azure_) {
+      // Azure
+      array_name = AZURE_TEMP_DIR + ARRAY;
       check_sorted_reads(
           array_name, TILEDB_FILTER_GZIP, TILEDB_ROW_MAJOR, TILEDB_ROW_MAJOR);
     } else if (supports_hdfs_) {
@@ -2306,6 +2383,11 @@ TEST_CASE_METHOD(
       array_name = S3_TEMP_DIR + ARRAY;
       check_sorted_reads(
           array_name, TILEDB_FILTER_GZIP, TILEDB_COL_MAJOR, TILEDB_COL_MAJOR);
+    } else if (supports_azure_) {
+      // Azure
+      array_name = AZURE_TEMP_DIR + ARRAY;
+      check_sorted_reads(
+          array_name, TILEDB_FILTER_GZIP, TILEDB_COL_MAJOR, TILEDB_COL_MAJOR);
     } else if (supports_hdfs_) {
       // HDFS
       array_name = HDFS_TEMP_DIR + ARRAY;
@@ -2323,6 +2405,11 @@ TEST_CASE_METHOD(
     if (supports_s3_) {
       // S3
       array_name = S3_TEMP_DIR + ARRAY;
+      check_sorted_reads(
+          array_name, TILEDB_FILTER_GZIP, TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR);
+    } else if (supports_azure_) {
+      // Azure
+      array_name = AZURE_TEMP_DIR + ARRAY;
       check_sorted_reads(
           array_name, TILEDB_FILTER_GZIP, TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR);
     } else if (supports_hdfs_) {
@@ -2344,6 +2431,11 @@ TEST_CASE_METHOD(
       array_name = S3_TEMP_DIR + ARRAY;
       check_sorted_reads(
           array_name, TILEDB_FILTER_BZIP2, TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR);
+    } else if (supports_azure_) {
+      // Azure
+      array_name = AZURE_TEMP_DIR + ARRAY;
+      check_sorted_reads(
+          array_name, TILEDB_FILTER_BZIP2, TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR);
     } else if (supports_hdfs_) {
       // HDFS
       array_name = HDFS_TEMP_DIR + ARRAY;
@@ -2361,6 +2453,11 @@ TEST_CASE_METHOD(
     if (supports_s3_) {
       // S3
       array_name = S3_TEMP_DIR + ARRAY;
+      check_sorted_reads(
+          array_name, TILEDB_FILTER_LZ4, TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR);
+    } else if (supports_azure_) {
+      // Azure
+      array_name = AZURE_TEMP_DIR + ARRAY;
       check_sorted_reads(
           array_name, TILEDB_FILTER_LZ4, TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR);
     } else if (supports_hdfs_) {
@@ -2382,6 +2479,11 @@ TEST_CASE_METHOD(
       array_name = S3_TEMP_DIR + ARRAY;
       check_sorted_reads(
           array_name, TILEDB_FILTER_RLE, TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR);
+    } else if (supports_azure_) {
+      // Azure
+      array_name = AZURE_TEMP_DIR + ARRAY;
+      check_sorted_reads(
+          array_name, TILEDB_FILTER_RLE, TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR);
     } else if (supports_hdfs_) {
       // HDFS
       array_name = HDFS_TEMP_DIR + ARRAY;
@@ -2401,6 +2503,11 @@ TEST_CASE_METHOD(
       array_name = S3_TEMP_DIR + ARRAY;
       check_sorted_reads(
           array_name, TILEDB_FILTER_ZSTD, TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR);
+    } else if (supports_azure_) {
+      // Azure
+      array_name = AZURE_TEMP_DIR + ARRAY;
+      check_sorted_reads(
+          array_name, TILEDB_FILTER_ZSTD, TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR);
     } else if (supports_hdfs_) {
       // HDFS
       array_name = HDFS_TEMP_DIR + ARRAY;
@@ -2418,6 +2525,14 @@ TEST_CASE_METHOD(
     if (supports_s3_) {
       // S3
       array_name = S3_TEMP_DIR + ARRAY;
+      check_sorted_reads(
+          array_name,
+          TILEDB_FILTER_DOUBLE_DELTA,
+          TILEDB_ROW_MAJOR,
+          TILEDB_COL_MAJOR);
+    } else if (supports_azure_) {
+      // Azure
+      array_name = AZURE_TEMP_DIR + ARRAY;
       check_sorted_reads(
           array_name,
           TILEDB_FILTER_DOUBLE_DELTA,
@@ -2870,6 +2985,11 @@ TEST_CASE_METHOD(
   if (supports_s3_) {
     // S3
     array_name = S3_TEMP_DIR + ARRAY;
+    check_sorted_reads(
+        array_name, TILEDB_FILTER_BZIP2, TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR);
+  } else if (supports_azure_) {
+    // Azure
+    array_name = AZURE_TEMP_DIR + ARRAY;
     check_sorted_reads(
         array_name, TILEDB_FILTER_BZIP2, TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR);
   } else if (supports_hdfs_) {

@@ -61,12 +61,18 @@ struct AzureFx {
 AzureFx::AzureFx() {
   // Connect
   Config config;
-#ifndef TILEDB_TESTS_AWS_AZURE_CONFIG
-  // REQUIRE(config.set("azure.s3.endpoint_override", "localhost:9999").ok());
-  // REQUIRE(config.set("azure.s3.scheme", "https").ok());
-  // REQUIRE(config.set("azure.s3.use_virtual_addressing", "false").ok());
-  // REQUIRE(config.set("azure.s3.verify_ssl", "false").ok());
-#endif
+  REQUIRE(
+      config.set("vfs.azure.storage_account_name", "devstoreaccount1").ok());
+  REQUIRE(config
+              .set(
+                  "vfs.azure.storage_account_key",
+                  "Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6"
+                  "tq/K1SZFPTOtr/KBHBeksoGMGw==")
+              .ok());
+  REQUIRE(
+      config.set("vfs.azure.blob_endpoint", "127.0.0.1:10000/devstoreaccount1")
+          .ok());
+  REQUIRE(config.set("vfs.azure.use_https", "false").ok());
   REQUIRE(thread_pool_.init(2).ok());
   REQUIRE(azure_.init(config, &thread_pool_).ok());
 

@@ -47,7 +47,7 @@ using namespace tiledb::sm;
 struct S3Fx {
   const std::string S3_PREFIX = "s3://";
   const tiledb::sm::URI S3_BUCKET =
-      tiledb::sm::URI(S3_PREFIX + random_bucket_name("tiledb") + "/");
+      tiledb::sm::URI(S3_PREFIX + random_name("tiledb") + "/");
   const std::string TEST_DIR = S3_BUCKET.to_string() + "tiledb_test_dir/";
   tiledb::sm::S3 s3_;
   ThreadPool thread_pool_;
@@ -55,7 +55,7 @@ struct S3Fx {
   S3Fx();
   ~S3Fx();
 
-  static std::string random_bucket_name(const std::string& prefix);
+  static std::string random_name(const std::string& prefix);
 };
 
 S3Fx::S3Fx() {
@@ -101,7 +101,7 @@ S3Fx::~S3Fx() {
   s3_.disconnect();
 }
 
-std::string S3Fx::random_bucket_name(const std::string& prefix) {
+std::string S3Fx::random_name(const std::string& prefix) {
   std::stringstream ss;
   ss << prefix << "-" << std::this_thread::get_id() << "-"
      << tiledb::sm::utils::time::timestamp_now_ms();

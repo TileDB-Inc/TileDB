@@ -215,6 +215,20 @@ void create_s3_bucket(
     tiledb_vfs_t* vfs);
 
 /**
+ * Helper method that creates an Azure container (if it does not already exist).
+ *
+ * @param container_name The name of the container to be created.
+ * @param azure_supported The container will be created only if this is `true`.
+ * @param ctx The TileDB context.
+ * @param vfs The VFS object that will create the bucket.
+ */
+void create_azure_container(
+    const std::string& container_name,
+    bool azure_supported,
+    tiledb_ctx_t* ctx,
+    tiledb_vfs_t* vfs);
+
+/**
  * Creates a subarray for the input array.
  *
  * @tparam T The datatype of the subarray domain.
@@ -234,19 +248,25 @@ void create_subarray(
  * Helper method that creates a TileDB context and a VFS object.
  *
  * @param s3_supported Indicates whether S3 is supported or not.
+ * @param azure_supported Indicates whether Azure is supported or not.
  * @param ctx The TileDB context to be created.
  * @param vfs The VFS object to be created.
  */
 void create_ctx_and_vfs(
-    bool s3_supported, tiledb_ctx_t** ctx, tiledb_vfs_t** vfs);
+    bool s3_supported,
+    bool azure_supported,
+    tiledb_ctx_t** ctx,
+    tiledb_vfs_t** vfs);
 
 /**
  * Helper function to get the supported filesystems.
  *
  * @param s3_supported Set to `true` if S3 is supported.
- * @param hdfs_supported Set to `false` if HDFS is supported.
+ * @param hdfs_supported Set to `true` if HDFS is supported.
+ * @param azure_supported Set to `true` if Azure is supported.
  */
-void get_supported_fs(bool* s3_supported, bool* hdfs_supported);
+void get_supported_fs(
+    bool* s3_supported, bool* hdfs_supported, bool* azure_supported);
 
 /**
  * Opens an array.
@@ -264,7 +284,7 @@ void open_array(tiledb_ctx_t* ctx, tiledb_array_t* array, tiledb_query_type_t);
  * @param prefix The prefix of the bucket name.
  * @return A random bucket name.
  */
-std::string random_bucket_name(const std::string& prefix);
+std::string random_name(const std::string& prefix);
 
 /**
  * Helper method that removes a directory.

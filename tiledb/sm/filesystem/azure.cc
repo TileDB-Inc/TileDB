@@ -93,9 +93,15 @@ Status Azure::init(const Config& config, ThreadPool* const thread_pool) {
 
   write_cache_max_size_ = max_parallel_ops_ * block_list_block_size_;
 
+  // The Azurite default test account name is 'devstoreaccount1'. If this
+  // is the account name, we must flag the credential constructor that
+  // it must authenticate with a storage emulator instead of a production
+  // instance of Azure.
+  const bool under_test = account_name == "devstoreaccount1" ? true : false;
+
   std::shared_ptr<azure::storage_lite::shared_key_credential> credential =
       std::make_shared<azure::storage_lite::shared_key_credential>(
-          account_name, account_key);
+          account_name, account_key, under_test);
 
   std::shared_ptr<azure::storage_lite::storage_account> account =
       std::make_shared<azure::storage_lite::storage_account>(
@@ -125,7 +131,7 @@ Status Azure::init(const Config& config, ThreadPool* const thread_pool) {
   // re-assigns the context with our own retry policy.
   *client_->context() = azure::storage_lite::executor_context(
       std::make_shared<azure::storage_lite::tinyxml2_parser>(),
-      std::make_shared<AzureRetryPolicy>());
+      std::make_shared<AzureRetryPolicy>(under_test));
 
   return Status::Ok();
 }
@@ -704,7 +710,7 @@ Status Azure::read(
         std::string("Read blob failed on: " + uri.to_string())));
   }
 
-  ss >> static_cast<char*>(buffer);
+  ss.read(static_cast<char*>(buffer), length);
 
   return Status::Ok();
 }
