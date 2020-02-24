@@ -283,14 +283,33 @@ class Azure {
 
   class AzureRetryPolicy final : public azure::storage_lite::retry_policy_base {
    public:
+    AzureRetryPolicy(const bool under_test)
+        : azure::storage_lite::retry_policy_base()
+        , under_test_(under_test) {
+    }
+
     azure::storage_lite::retry_info evaluate(
         const azure::storage_lite::retry_context& context) const override {
-      if (context.numbers() < 3) {
+      const int32_t max_retries = under_test_ ? 1 : 3;
+
+      // The SDK consults this return value for the initial request. We must
+      // return an instance of 'retry_info' with a 0-delay wait time to prevent
+      // the SDK from sleeping on the first request.
+      if (context.numbers() < 1) {
+        return azure::storage_lite::retry_info(true, std::chrono::seconds(0));
+      }
+
+      // Wait one second before all retry attempts.
+      if (context.numbers() < max_retries) {
         return azure::storage_lite::retry_info(true, std::chrono::seconds(1));
       }
 
       return azure::storage_lite::retry_info(false, std::chrono::seconds(0));
     }
+
+   private:
+    /** True if this is initialized in the context of a unit test. */
+    const bool under_test_;
   };
 
   /** Contains all state associated with a block list upload transaction. */

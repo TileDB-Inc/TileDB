@@ -228,7 +228,7 @@ std::string URI::to_path(const std::string& uri) {
 #endif
   }
 
-  if (is_hdfs(uri) || is_s3(uri) || is_tiledb(uri))
+  if (is_hdfs(uri) || is_s3(uri) || is_azure(uri) || is_tiledb(uri))
     return uri;
 
   // Error

@@ -1049,15 +1049,15 @@ Status StorageManager::load_array_metadata(
 
 Status StorageManager::object_type(const URI& uri, ObjectType* type) const {
   URI dir_uri = uri;
-  if (uri.is_s3()) {
-    // Always add a trailing '/' in the S3 case so that listing the URI as a
-    // directory will work as expected. Listing a non-directory object is not an
-    // error for S3.
+  if (uri.is_s3() || uri.is_azure()) {
+    // Always add a trailing '/' in the S3/Azure case so that listing the URI as
+    // a directory will work as expected. Listing a non-directory object is not
+    // an error for S3/Azure.
     auto uri_str = uri.to_string();
     dir_uri =
         URI(utils::parse::ends_with(uri_str, "/") ? uri_str : (uri_str + "/"));
   } else {
-    // For non-S3, listing a non-directory is an error.
+    // For non public cloud backends, listing a non-directory is an error.
     bool is_dir = false;
     RETURN_NOT_OK(vfs_->is_dir(uri, &is_dir));
     if (!is_dir) {

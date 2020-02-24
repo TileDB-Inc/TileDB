@@ -130,7 +130,7 @@ class VFS {
   Status cancel_all_tasks();
 
   /**
-   * Creates an object-store bucket.
+   * Creates an object store bucket.
    *
    * @param uri The name of the bucket to be created.
    * @return Status
@@ -151,7 +151,7 @@ class VFS {
   Status dir_size(const URI& dir_name, uint64_t* dir_size) const;
 
   /**
-   * Deletes an object-store bucket.
+   * Deletes an object store bucket.
    *
    * @param uri The name of the bucket to be deleted.
    * @return Status
@@ -159,7 +159,7 @@ class VFS {
   Status remove_bucket(const URI& uri) const;
 
   /**
-   * Deletes the contents of an object-store bucket.
+   * Deletes the contents of an object store bucket.
    *
    * @param uri The name of the bucket to be emptied.
    * @return Status
@@ -235,9 +235,9 @@ class VFS {
   Status is_file(const URI& uri, bool* is_file) const;
 
   /**
-   * Checks if an object-store bucket exists.
+   * Checks if an object store bucket exists.
    *
-   * @param uri The name of the S3 bucket.
+   * @param uri The name of the object store bucket.
    * @return is_bucket Set to `true` if the bucket exists and `false` otherwise.
    * @return Status
    */
@@ -246,7 +246,7 @@ class VFS {
   /**
    * Checks if an object-store bucket is empty.
    *
-   * @param uri The name of the S3 bucket.
+   * @param uri The name of the object store bucket.
    * @param is_empty Set to `true` if the bucket is empty and `false` otherwise.
    */
   Status is_empty_bucket(const URI& uri, bool* is_empty) const;

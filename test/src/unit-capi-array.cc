@@ -52,11 +52,16 @@
 #include <sstream>
 #include <thread>
 
+using namespace tiledb::test;
+
 struct ArrayFx {
   const std::string HDFS_TEMP_DIR = "hdfs:///tiledb_test/";
   const std::string S3_PREFIX = "s3://";
-  const std::string S3_BUCKET = S3_PREFIX + random_bucket_name("tiledb") + "/";
+  const std::string S3_BUCKET = S3_PREFIX + random_name("tiledb") + "/";
   const std::string S3_TEMP_DIR = S3_BUCKET + "tiledb_test/";
+  const std::string AZURE_PREFIX = "azure://";
+  const std::string bucket = AZURE_PREFIX + random_name("tiledb") + "/";
+  const std::string AZURE_TEMP_DIR = bucket + "tiledb_test/";
 #ifdef _WIN32
   const std::string FILE_URI_PREFIX = "";
   const std::string FILE_TEMP_DIR =
@@ -74,6 +79,7 @@ struct ArrayFx {
   // Supported filesystems
   bool supports_s3_;
   bool supports_hdfs_;
+  bool supports_azure_;
 
   // Encryption parameters
   tiledb_encryption_type_t encryption_type_ = TILEDB_NO_ENCRYPTION;
@@ -88,7 +94,7 @@ struct ArrayFx {
   void create_sparse_array(const std::string& path);
   void create_dense_vector(const std::string& path);
   void create_dense_array(const std::string& path);
-  static std::string random_bucket_name(const std::string& prefix);
+  static std::string random_name(const std::string& prefix);
   void set_supported_fs();
 };
 
@@ -130,6 +136,30 @@ ArrayFx::ArrayFx() {
     REQUIRE(error == nullptr);
 #endif
   }
+  if (supports_azure_) {
+    REQUIRE(
+        tiledb_config_set(
+            config,
+            "vfs.azure.storage_account_name",
+            "devstoreaccount1",
+            &error) == TILEDB_OK);
+    REQUIRE(
+        tiledb_config_set(
+            config,
+            "vfs.azure.storage_account_key",
+            "Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/"
+            "K1SZFPTOtr/KBHBeksoGMGw==",
+            &error) == TILEDB_OK);
+    REQUIRE(
+        tiledb_config_set(
+            config,
+            "vfs.azure.blob_endpoint",
+            "127.0.0.1:10000/devstoreaccount1",
+            &error) == TILEDB_OK);
+    REQUIRE(
+        tiledb_config_set(config, "vfs.azure.use_https", "false", &error) ==
+        TILEDB_OK);
+  }
   REQUIRE(tiledb_ctx_alloc(config, &ctx_) == TILEDB_OK);
   REQUIRE(error == nullptr);
   vfs_ = nullptr;
@@ -147,6 +177,17 @@ ArrayFx::ArrayFx() {
       REQUIRE(rc == TILEDB_OK);
     }
   }
+
+  // Connect to Azure
+  if (supports_azure_) {
+    int is_container = 0;
+    int rc = tiledb_vfs_is_bucket(ctx_, vfs_, bucket.c_str(), &is_container);
+    REQUIRE(rc == TILEDB_OK);
+    if (!is_container) {
+      rc = tiledb_vfs_create_bucket(ctx_, vfs_, bucket.c_str());
+      REQUIRE(rc == TILEDB_OK);
+    }
+  }
 }
 
 ArrayFx::~ArrayFx() {
@@ -160,6 +201,16 @@ ArrayFx::~ArrayFx() {
     }
   }
 
+  if (supports_azure_) {
+    int is_container = 0;
+    int rc = tiledb_vfs_is_bucket(ctx_, vfs_, bucket.c_str(), &is_container);
+    REQUIRE(rc == TILEDB_OK);
+    if (is_container) {
+      rc = tiledb_vfs_remove_bucket(ctx_, vfs_, bucket.c_str());
+      REQUIRE(rc == TILEDB_OK);
+    }
+  }
+
   tiledb_vfs_free(&vfs_);
   tiledb_ctx_free(&ctx_);
 }
@@ -168,7 +219,7 @@ void ArrayFx::set_supported_fs() {
   tiledb_ctx_t* ctx = nullptr;
   REQUIRE(tiledb_ctx_alloc(nullptr, &ctx) == TILEDB_OK);
 
-  tiledb::test::get_supported_fs(&supports_s3_, &supports_hdfs_);
+  get_supported_fs(&supports_s3_, &supports_hdfs_, &supports_azure_);
 
   tiledb_ctx_free(&ctx);
 }
@@ -185,7 +236,7 @@ void ArrayFx::remove_temp_dir(const std::string& path) {
     REQUIRE(tiledb_vfs_remove_dir(ctx_, vfs_, path.c_str()) == TILEDB_OK);
 }
 
-std::string ArrayFx::random_bucket_name(const std::string& prefix) {
+std::string ArrayFx::random_name(const std::string& prefix) {
   std::stringstream ss;
   ss << prefix << "-" << std::this_thread::get_id() << "-"
      << TILEDB_TIMESTAMP_NOW_MS;
@@ -420,7 +471,7 @@ TEST_CASE_METHOD(
 
 #ifdef _WIN32
   char path[MAX_PATH];
-  unsigned length;
+  unsigned length = MAX_PATH;
   rc = tiledb_uri_to_path(ctx_, uri, path, &length);
   CHECK(rc == TILEDB_OK);
   CHECK(!strcmp(path, array_name.c_str()));
@@ -741,6 +792,8 @@ TEST_CASE_METHOD(
   std::string temp_dir;
   if (supports_s3_)
     temp_dir = S3_TEMP_DIR;
+  else if (supports_azure_)
+    temp_dir = AZURE_TEMP_DIR;
   else if (supports_hdfs_)
     temp_dir = HDFS_TEMP_DIR;
   else
@@ -1067,6 +1120,8 @@ TEST_CASE_METHOD(
   std::string temp_dir;
   if (supports_s3_)
     temp_dir = S3_TEMP_DIR;
+  else if (supports_azure_)
+    temp_dir = AZURE_TEMP_DIR;
   else if (supports_hdfs_)
     temp_dir = HDFS_TEMP_DIR;
   else
@@ -1454,6 +1509,8 @@ TEST_CASE_METHOD(
   std::string temp_dir;
   if (supports_s3_)
     temp_dir = S3_TEMP_DIR;
+  else if (supports_azure_)
+    temp_dir = AZURE_TEMP_DIR;
   else if (supports_hdfs_)
     temp_dir = HDFS_TEMP_DIR;
   else
@@ -1495,6 +1552,30 @@ TEST_CASE_METHOD(
         TILEDB_OK);
     REQUIRE(error == nullptr);
 #endif
+  }
+  if (supports_azure_) {
+    REQUIRE(
+        tiledb_config_set(
+            config,
+            "vfs.azure.storage_account_name",
+            "devstoreaccount1",
+            &error) == TILEDB_OK);
+    REQUIRE(
+        tiledb_config_set(
+            config,
+            "vfs.azure.storage_account_key",
+            "Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/"
+            "K1SZFPTOtr/KBHBeksoGMGw==",
+            &error) == TILEDB_OK);
+    REQUIRE(
+        tiledb_config_set(
+            config,
+            "vfs.azure.blob_endpoint",
+            "127.0.0.1:10000/devstoreaccount1",
+            &error) == TILEDB_OK);
+    REQUIRE(
+        tiledb_config_set(config, "vfs.azure.use_https", "false", &error) ==
+        TILEDB_OK);
   }
   REQUIRE(tiledb_ctx_alloc(config, &ctx_) == TILEDB_OK);
   REQUIRE(error == nullptr);

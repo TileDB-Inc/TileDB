@@ -50,8 +50,12 @@ using namespace tiledb::test;
 struct VFSFx {
   const std::string HDFS_TEMP_DIR = "hdfs://localhost:9000/tiledb_test/";
   const std::string S3_PREFIX = "s3://";
-  const std::string S3_BUCKET = S3_PREFIX + random_bucket_name("tiledb") + "/";
+  const std::string S3_BUCKET = S3_PREFIX + random_name("tiledb") + "/";
   const std::string S3_TEMP_DIR = S3_BUCKET + "tiledb_test/";
+  const std::string AZURE_PREFIX = "azure://";
+  const std::string AZURE_CONTAINER =
+      AZURE_PREFIX + random_name("tiledb") + "/";
+  const std::string AZURE_TEMP_DIR = AZURE_CONTAINER + "tiledb_test/";
 #ifdef _WIN32
   const std::string FILE_TEMP_DIR =
       tiledb::sm::Win::current_dir() + "\\tiledb_test\\";
@@ -68,6 +72,7 @@ struct VFSFx {
   // Supported filesystems
   bool supports_s3_;
   bool supports_hdfs_;
+  bool supports_azure_;
 
   // Functions
   VFSFx();
@@ -78,7 +83,7 @@ struct VFSFx {
   void check_read(const std::string& path);
   void check_append(const std::string& path);
   void check_ls(const std::string& path);
-  static std::string random_bucket_name(const std::string& prefix);
+  static std::string random_name(const std::string& prefix);
   void set_supported_fs();
   void set_num_vfs_threads(unsigned num_threads);
 };
@@ -103,7 +108,7 @@ void VFSFx::set_supported_fs() {
   tiledb_ctx_t* ctx = nullptr;
   REQUIRE(tiledb_ctx_alloc(nullptr, &ctx) == TILEDB_OK);
 
-  get_supported_fs(&supports_s3_, &supports_hdfs_);
+  get_supported_fs(&supports_s3_, &supports_hdfs_, &supports_azure_);
 
   tiledb_ctx_free(&ctx);
 }
@@ -137,6 +142,30 @@ void VFSFx::set_num_vfs_threads(unsigned num_threads) {
         TILEDB_OK);
     REQUIRE(error == nullptr);
 #endif
+  }
+  if (supports_azure_) {
+    REQUIRE(
+        tiledb_config_set(
+            config,
+            "vfs.azure.storage_account_name",
+            "devstoreaccount1",
+            &error) == TILEDB_OK);
+    REQUIRE(
+        tiledb_config_set(
+            config,
+            "vfs.azure.storage_account_key",
+            "Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/"
+            "K1SZFPTOtr/KBHBeksoGMGw==",
+            &error) == TILEDB_OK);
+    REQUIRE(
+        tiledb_config_set(
+            config,
+            "vfs.azure.blob_endpoint",
+            "127.0.0.1:10000/devstoreaccount1",
+            &error) == TILEDB_OK);
+    REQUIRE(
+        tiledb_config_set(config, "vfs.azure.use_https", "false", &error) ==
+        TILEDB_OK);
   }
 
   // Set number of threads across all backends.
@@ -414,7 +443,7 @@ void VFSFx::check_move(const std::string& path) {
   // Move from one bucket to another (only for S3)
   if (supports_s3_) {
     if (path == S3_TEMP_DIR) {
-      std::string bucket2 = S3_PREFIX + random_bucket_name("tiledb") + "/";
+      std::string bucket2 = S3_PREFIX + random_name("tiledb") + "/";
       std::string subdir3 = bucket2 + "tiledb_test/subdir3/";
       std::string file3 = subdir3 + "file2";
       int is_bucket = 0;
@@ -746,7 +775,7 @@ void VFSFx::check_ls(const std::string& path) {
   CHECK(children[3] == subdir2);
 }
 
-std::string VFSFx::random_bucket_name(const std::string& prefix) {
+std::string VFSFx::random_name(const std::string& prefix) {
   std::stringstream ss;
   ss << prefix << "-" << std::this_thread::get_id() << "-"
      << TILEDB_TIMESTAMP_NOW_MS;

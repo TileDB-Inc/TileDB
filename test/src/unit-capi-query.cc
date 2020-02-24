@@ -53,8 +53,12 @@ struct QueryFx {
   // Filesystem related
   const std::string HDFS_TEMP_DIR = "hdfs:///tiledb_test/";
   const std::string S3_PREFIX = "s3://";
-  const std::string S3_BUCKET = S3_PREFIX + random_bucket_name("tiledb") + "/";
+  const std::string S3_BUCKET = S3_PREFIX + random_name("tiledb") + "/";
   const std::string S3_TEMP_DIR = S3_BUCKET + "tiledb_test/";
+  const std::string AZURE_PREFIX = "azure://";
+  const std::string AZURE_CONTAINER =
+      AZURE_PREFIX + random_name("tiledb") + "/";
+  const std::string AZURE_TEMP_DIR = AZURE_CONTAINER + "tiledb_test/";
 #ifdef _WIN32
   const std::string FILE_URI_PREFIX = "";
   const std::string FILE_TEMP_DIR =
@@ -72,6 +76,7 @@ struct QueryFx {
   // Supported filesystems
   bool supports_s3_;
   bool supports_hdfs_;
+  bool supports_azure_;
 
   // Functions
   QueryFx();
@@ -81,7 +86,7 @@ struct QueryFx {
   void create_array(const std::string& path);
   void test_get_buffer_write(const std::string& path);
   void test_get_buffer_read(const std::string& path);
-  static std::string random_bucket_name(const std::string& prefix);
+  static std::string random_name(const std::string& prefix);
   void set_supported_fs();
 };
 
@@ -150,7 +155,7 @@ QueryFx::~QueryFx() {
   tiledb_ctx_free(&ctx_);
 }
 
-std::string QueryFx::random_bucket_name(const std::string& prefix) {
+std::string QueryFx::random_name(const std::string& prefix) {
   std::stringstream ss;
   ss << prefix << "-" << std::this_thread::get_id() << "-"
      << TILEDB_TIMESTAMP_NOW_MS;
@@ -161,7 +166,7 @@ void QueryFx::set_supported_fs() {
   tiledb_ctx_t* ctx = nullptr;
   REQUIRE(tiledb_ctx_alloc(nullptr, &ctx) == TILEDB_OK);
 
-  get_supported_fs(&supports_s3_, &supports_hdfs_);
+  get_supported_fs(&supports_s3_, &supports_hdfs_, &supports_azure_);
 
   tiledb_ctx_free(&ctx);
 }

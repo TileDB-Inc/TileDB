@@ -214,10 +214,9 @@ if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
     )
 endif()
 
-# Temporarily disable Azure-specific unit tests
 add_test(
   NAME "tiledb_unit"
-  COMMAND $<TARGET_FILE:tiledb_unit> --durations=yes ~[azure]
+  COMMAND $<TARGET_FILE:tiledb_unit> --durations=yes
   WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
 )
 
