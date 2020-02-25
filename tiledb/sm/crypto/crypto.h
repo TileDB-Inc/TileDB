@@ -1,5 +1,5 @@
 /**
- * @file   encryption_openssl.h
+ * @file   crypto.h
  *
  * @section LICENSE
  *
@@ -27,13 +27,11 @@
  *
  * @section DESCRIPTION
  *
- * This file declares an OpenSSL encryption interface.
+ * This file declares a platform-independent crypto interface.
  */
 
-#ifndef TILEDB_ENCRYPTION_OPENSSL_H
-#define TILEDB_ENCRYPTION_OPENSSL_H
-
-#ifndef _WIN32
+#ifndef TILEDB_CRYPTO_H
+#define TILEDB_CRYPTO_H
 
 #include "tiledb/sm/misc/status.h"
 
@@ -44,9 +42,22 @@ class Buffer;
 class ConstBuffer;
 class PreallocatedBuffer;
 
-/** Class encapsulating encryption/decryption using the OpenSSL library. */
-class OpenSSL {
+/** Class implementing crypto methods. */
+class Crypto {
  public:
+  /** Size of an AES-256-GCM block in bytes. */
+  static const unsigned AES256GCM_BLOCK_BYTES = 16;
+  /** Size of an AES-256-GCM key in bytes. */
+  static const unsigned AES256GCM_KEY_BYTES = 32;
+  /** Size of an AES-256-GCM IV in bytes. */
+  static const unsigned AES256GCM_IV_BYTES = 12;
+  /** Size of an AES-256-GCM tag in bytes. */
+  static const unsigned AES256GCM_TAG_BYTES = 16;
+  /** Size of an MD5 Digest */
+  static const unsigned MD5_DIGEST_BYTES = 16;
+  /** Size of an SHA256 Digest */
+  static const unsigned SHA256_DIGEST_BYTES = 32;
+
   /**
    * Encrypt the given data using AES-256-GCM.
    *
@@ -84,20 +95,70 @@ class OpenSSL {
       ConstBuffer* input,
       Buffer* output);
 
- private:
   /**
-   * Generates a number of cryptographically random bytes.
+   * Compute md5 checksum of data
    *
-   * @param num_bytes Number of bytes to generate.
-   * @param output Buffer to store random bytes.
+   * @param input Plaintext to compute hash of
+   * @param output Buffer to store store hash bytes.
    * @return Status
    */
-  static Status get_random_bytes(unsigned num_bytes, Buffer* output);
+  static Status md5(ConstBuffer* input, Buffer* output);
+
+  /**
+   * Compute md5 checksum of data
+   *
+   * @param input Plaintext to compute hash of
+   * @param input_read_size size of input to compute has over
+   * @param output Buffer to store store hash bytes.
+   * @return Status
+   */
+  static Status md5(
+      ConstBuffer* input, uint64_t input_read_size, Buffer* output);
+
+  /**
+   * Compute md5 checksum of data
+   *
+   * @param input Plaintext to compute hash of
+   * @param input_read_size size of input to compute has over
+   * @param output Buffer to store store hash bytes.
+   * @return Status
+   */
+  static Status md5(
+      const void* input, uint64_t input_read_size, Buffer* output);
+
+  /**
+   * Compute sha256 checksum of data
+   *
+   * @param input Plaintext to compute hash of
+   * @param output Buffer to store store hash bytes.
+   * @return Status
+   */
+  static Status sha256(ConstBuffer* input, Buffer* output);
+
+  /**
+   * Compute sha256 checksum of data
+   *
+   * @param input Plaintext to compute hash of
+   * @param input_read_size size of input to compute has over
+   * @param output Buffer to store store hash bytes.
+   * @return Status
+   */
+  static Status sha256(
+      ConstBuffer* input, uint64_t input_read_size, Buffer* output);
+
+  /**
+   * Compute sha256 checksum of data
+   *
+   * @param input Plaintext to compute hash of
+   * @param input_read_size size of input to compute has over
+   * @param output Buffer to store store hash bytes.
+   * @return Status
+   */
+  static Status sha256(
+      const void* input, uint64_t input_read_size, Buffer* output);
 };
 
 }  // namespace sm
 }  // namespace tiledb
-
-#endif  // !_WIN32
 
 #endif

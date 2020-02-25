@@ -1,5 +1,5 @@
 /**
- * @file   encryption.h
+ * @file   crypto_win32.h
  *
  * @section LICENSE
  *
@@ -27,12 +27,17 @@
  *
  * @section DESCRIPTION
  *
- * This file declares a platform-independent encryption interface.
+ * This file declares a Win32 crypto interface.
  */
 
-#ifndef TILEDB_ENCRYPTION_H
-#define TILEDB_ENCRYPTION_H
+#ifndef TILEDB_CRYPTO_WIN32_H
+#define TILEDB_CRYPTO_WIN32_H
 
+#ifdef _WIN32
+
+#include <windows.h>
+
+#include <bcrypt.h>
 #include "tiledb/sm/misc/status.h"
 
 namespace tiledb {
@@ -42,18 +47,9 @@ class Buffer;
 class ConstBuffer;
 class PreallocatedBuffer;
 
-/** Class implementing encryption methods. */
-class Encryption {
+/** Class encapsulating encryption/decryption using the Win32 CNG interface. */
+class Win32CNG {
  public:
-  /** Size of an AES-256-GCM block in bytes. */
-  static const unsigned AES256GCM_BLOCK_BYTES = 16;
-  /** Size of an AES-256-GCM key in bytes. */
-  static const unsigned AES256GCM_KEY_BYTES = 32;
-  /** Size of an AES-256-GCM IV in bytes. */
-  static const unsigned AES256GCM_IV_BYTES = 12;
-  /** Size of an AES-256-GCM tag in bytes. */
-  static const unsigned AES256GCM_TAG_BYTES = 16;
-
   /**
    * Encrypt the given data using AES-256-GCM.
    *
@@ -90,9 +86,59 @@ class Encryption {
       ConstBuffer* tag,
       ConstBuffer* input,
       Buffer* output);
+
+  /**
+   * Compute md5 checksum of data
+   *
+   * @param input Plaintext to compute hash of
+   * @param input_read_size size of input to read for hash
+   * @param output Buffer to store store hash bytes.
+   * @return Status
+   */
+  static Status md5(
+      const void* input, uint64_t input_read_size, Buffer* output);
+
+  /**
+   * Compute sha256 checksum of data
+   *
+   * @param input Plaintext to compute hash of
+   * @param input_read_size size of input to read for hash
+   * @param output Buffer to store store hash bytes.
+   * @return Status
+   */
+  static Status sha256(
+      const void* input, uint64_t input_read_size, Buffer* output);
+
+  /**
+   *
+   * Compute a has using Win32CNG functions
+   *
+   * @param input Plaintext to compute hash of
+   * @param input_read_size size of input to read for hash
+   * @param output Buffer to store store hash bytes.
+   * @param alg_handle hash algorithm handle
+   * @return Status
+   */
+  static Status hash_bytes(
+      const void* input,
+      uint64_t input_read_size,
+      Buffer* output,
+      LPCWSTR hash_algorithm);
+
+ private:
+  /**
+   * Generates a number of cryptographically random bytes.
+   *
+   * @param num_bytes Number of bytes to generate.
+   * @param output Buffer to store random bytes.
+   * @return Status
+   */
+  static Status get_random_bytes(unsigned num_bytes, Buffer* output);
 };
 
 }  // namespace sm
 }  // namespace tiledb
+
+#endif  // _WIN32
 
 #endif

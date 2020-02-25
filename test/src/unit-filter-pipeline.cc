@@ -35,7 +35,7 @@
 #include "tiledb/sm/array_schema/dimension.h"
 #include "tiledb/sm/array_schema/domain.h"
 #include "tiledb/sm/buffer/buffer.h"
-#include "tiledb/sm/encryption/encryption_key.h"
+#include "tiledb/sm/crypto/encryption_key.h"
 #include "tiledb/sm/enums/compressor.h"
 #include "tiledb/sm/enums/datatype.h"
 #include "tiledb/sm/enums/encryption_type.h"
@@ -43,6 +43,8 @@
 #include "tiledb/sm/filter/bit_width_reduction_filter.h"
 #include "tiledb/sm/filter/bitshuffle_filter.h"
 #include "tiledb/sm/filter/byteshuffle_filter.h"
+#include "tiledb/sm/filter/checksum_md5_filter.h"
+#include "tiledb/sm/filter/checksum_sha256_filter.h"
 #include "tiledb/sm/filter/compression_filter.h"
 #include "tiledb/sm/filter/encryption_aes256gcm_filter.h"
 #include "tiledb/sm/filter/filter_pipeline.h"
@@ -1089,6 +1091,8 @@ TEST_CASE("Filter: Test random pipeline", "[filter]") {
       []() { return new ByteshuffleFilter(); },
       []() { return new CompressionFilter(Compressor::BZIP2, -1); },
       []() { return new PseudoChecksumFilter(); },
+      []() { return new ChecksumMD5Filter(); },
+      []() { return new ChecksumSHA256Filter(); },
       [&encryption_key]() {
         return new EncryptionAES256GCMFilter(encryption_key);
       },

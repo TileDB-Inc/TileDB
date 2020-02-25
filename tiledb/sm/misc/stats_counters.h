@@ -44,9 +44,11 @@ STATS_DEFINE_FUNC_STAT(compressor_rle_compress)
 STATS_DEFINE_FUNC_STAT(compressor_rle_decompress)
 STATS_DEFINE_FUNC_STAT(compressor_zstd_compress)
 STATS_DEFINE_FUNC_STAT(compressor_zstd_decompress)
-// Encryption
-STATS_DEFINE_FUNC_STAT(encryption_encrypt_aes256gcm)
-STATS_DEFINE_FUNC_STAT(encryption_decrypt_aes256gcm)
+// Crypto
+STATS_DEFINE_FUNC_STAT(crypto_encrypt_aes256gcm)
+STATS_DEFINE_FUNC_STAT(crypto_decrypt_aes256gcm)
+STATS_DEFINE_FUNC_STAT(crypto_md5)
+STATS_DEFINE_FUNC_STAT(crypto_sha256)
 // Filters
 STATS_DEFINE_FUNC_STAT(filter_pipeline_run_forward)
 STATS_DEFINE_FUNC_STAT(filter_pipeline_run_reverse)
@@ -171,9 +173,11 @@ STATS_INIT_FUNC_STAT(compressor_rle_compress)
 STATS_INIT_FUNC_STAT(compressor_rle_decompress)
 STATS_INIT_FUNC_STAT(compressor_zstd_compress)
 STATS_INIT_FUNC_STAT(compressor_zstd_decompress)
-// Encryption
-STATS_INIT_FUNC_STAT(encryption_encrypt_aes256gcm)
-STATS_INIT_FUNC_STAT(encryption_decrypt_aes256gcm)
+// Crypto
+STATS_INIT_FUNC_STAT(crypto_encrypt_aes256gcm)
+STATS_INIT_FUNC_STAT(crypto_decrypt_aes256gcm)
+STATS_INIT_FUNC_STAT(crypto_md5)
+STATS_INIT_FUNC_STAT(crypto_sha256)
 // Filters
 STATS_INIT_FUNC_STAT(filter_pipeline_run_forward)
 STATS_INIT_FUNC_STAT(filter_pipeline_run_reverse)
@@ -298,9 +302,11 @@ STATS_REPORT_FUNC_STAT(compressor_rle_compress)
 STATS_REPORT_FUNC_STAT(compressor_rle_decompress)
 STATS_REPORT_FUNC_STAT(compressor_zstd_compress)
 STATS_REPORT_FUNC_STAT(compressor_zstd_decompress)
-// Encryption
-STATS_REPORT_FUNC_STAT(encryption_encrypt_aes256gcm)
-STATS_REPORT_FUNC_STAT(encryption_decrypt_aes256gcm)
+// Crypto
+STATS_REPORT_FUNC_STAT(crypto_encrypt_aes256gcm)
+STATS_REPORT_FUNC_STAT(crypto_decrypt_aes256gcm)
+STATS_REPORT_FUNC_STAT(crypto_md5)
+STATS_REPORT_FUNC_STAT(crypto_sha256)
 // Filters
 STATS_REPORT_FUNC_STAT(filter_pipeline_run_forward)
 STATS_REPORT_FUNC_STAT(filter_pipeline_run_reverse)

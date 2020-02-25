@@ -1,5 +1,5 @@
 /**
- * @file   encryption_openssl.cc
+ * @file   crypto_openssl.cc
  *
  * @section LICENSE
  *
@@ -27,21 +27,23 @@
  *
  * @section DESCRIPTION
  *
- * This file defines an OpenSSL encryption interface.
+ * This file defines an OpenSSL crypto interface.
  */
 
 #ifndef _WIN32
 
-#include "tiledb/sm/encryption/encryption_openssl.h"
+#include "tiledb/sm/crypto/crypto_openssl.h"
 #include "tiledb/sm/buffer/buffer.h"
 #include "tiledb/sm/buffer/const_buffer.h"
 #include "tiledb/sm/buffer/preallocated_buffer.h"
-#include "tiledb/sm/encryption/encryption.h"
+#include "tiledb/sm/crypto/crypto.h"
 #include "tiledb/sm/misc/logger.h"
 
 #include <openssl/err.h>
 #include <openssl/evp.h>
+#include <openssl/md5.h>
 #include <openssl/rand.h>
+#include <openssl/sha.h>
 
 namespace tiledb {
 namespace sm {
@@ -85,8 +87,7 @@ Status OpenSSL::encrypt_aes256gcm(
   int iv_len;
   unsigned char* iv_buf;
   if (iv == nullptr || iv->data() == nullptr) {
-    RETURN_NOT_OK(
-        get_random_bytes(Encryption::AES256GCM_IV_BYTES, &generated_iv));
+    RETURN_NOT_OK(get_random_bytes(Crypto::AES256GCM_IV_BYTES, &generated_iv));
     iv_len = (int)generated_iv.size();
     iv_buf = (unsigned char*)generated_iv.data();
   } else {
@@ -144,7 +145,7 @@ Status OpenSSL::encrypt_aes256gcm(
   if (EVP_CIPHER_CTX_ctrl(
           ctx,
           EVP_CTRL_GCM_GET_TAG,
-          Encryption::AES256GCM_TAG_BYTES,
+          Crypto::AES256GCM_TAG_BYTES,
           (char*)output_tag->data()) == 0) {
     EVP_CIPHER_CTX_free(ctx);
     return LOG_STATUS(
@@ -217,7 +218,7 @@ Status OpenSSL::decrypt_aes256gcm(
   if (EVP_CIPHER_CTX_ctrl(
           ctx,
           EVP_CTRL_GCM_SET_TAG,
-          Encryption::AES256GCM_TAG_BYTES,
+          Crypto::AES256GCM_TAG_BYTES,
           (char*)tag->data()) == 0) {
     EVP_CIPHER_CTX_free(ctx);
     return LOG_STATUS(
@@ -238,6 +239,41 @@ Status OpenSSL::decrypt_aes256gcm(
   // Clean up.
   EVP_CIPHER_CTX_free(ctx);
 
+  return Status::Ok();
+}
+
+Status OpenSSL::md5(
+    const void* input, uint64_t input_read_size, Buffer* output) {
+  // Ensure sufficient space in output buffer.
+  uint64_t required_space = MD5_DIGEST_LENGTH;
+  if (output->owns_data()) {
+    if (output->free_space() < required_space)
+      RETURN_NOT_OK(output->realloc(output->alloced_size() + required_space));
+  } else if (output->size() < required_space) {
+    return LOG_STATUS(Status::ChecksumError(
+        "OpenSSL error; cannot checksum: output buffer too small."));
+  }
+  MD5(static_cast<const unsigned char*>(input),
+      input_read_size,
+      static_cast<unsigned char*>(output->data()));
+  return Status::Ok();
+}
+
+Status OpenSSL::sha256(
+    const void* input, uint64_t input_read_size, Buffer* output) {
+  // Ensure sufficient space in output buffer.
+  uint64_t required_space = SHA256_DIGEST_LENGTH;
+  if (output->owns_data()) {
+    if (output->free_space() < required_space)
+      RETURN_NOT_OK(output->realloc(output->alloced_size() + required_space));
+  } else if (output->size() < required_space) {
+    return LOG_STATUS(Status::ChecksumError(
+        "OpenSSL error; cannot checksum: output buffer too small."));
+  }
+  SHA256(
+      static_cast<const unsigned char*>(input),
+      input_read_size,
+      static_cast<unsigned char*>(output->data()));
   return Status::Ok();
 }
 

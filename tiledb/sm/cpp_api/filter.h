@@ -265,6 +265,10 @@ class Filter {
         return "BYTESHUFFLE";
       case TILEDB_FILTER_POSITIVE_DELTA:
         return "POSITIVE_DELTA";
+      case TILEDB_FILTER_CHECKSUM_MD5:
+        return "CHECKSUM_MD5";
+      case TILEDB_FILTER_CHECKSUM_SHA256:
+        return "CHECKSUM_SHA256";
     }
     return "";
   }

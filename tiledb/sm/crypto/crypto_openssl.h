@@ -1,5 +1,5 @@
 /**
- * @file   encryption_win32.h
+ * @file   encryption_openssl.h
  *
  * @section LICENSE
  *
@@ -27,13 +27,13 @@
  *
  * @section DESCRIPTION
  *
- * This file declares a Win32 encryption interface.
+ * This file declares an OpenSSL encryption interface.
  */
 
-#ifndef TILEDB_ENCRYPTION_WIN32_H
-#define TILEDB_ENCRYPTION_WIN32_H
+#ifndef TILEDB_ENCRYPTION_OPENSSL_H
+#define TILEDB_ENCRYPTION_OPENSSL_H
 
-#ifdef _WIN32
+#ifndef _WIN32
 
 #include "tiledb/sm/misc/status.h"
 
@@ -44,8 +44,8 @@ class Buffer;
 class ConstBuffer;
 class PreallocatedBuffer;
 
-/** Class encapsulating encryption/decryption using the Win32 CNG interface. */
-class Win32CNG {
+/** Class encapsulating encryption/decryption using the OpenSSL library. */
+class OpenSSL {
  public:
   /**
    * Encrypt the given data using AES-256-GCM.
@@ -84,6 +84,28 @@ class Win32CNG {
       ConstBuffer* input,
       Buffer* output);
 
+  /**
+   * Compute md5 checksum of data
+   *
+   * @param input Plaintext to compute hash of
+   * @param input_read_size size of input to read for hash
+   * @param output Buffer to store store hash bytes.
+   * @return Status
+   */
+  static Status md5(
+      const void* input, uint64_t input_read_size, Buffer* output);
+
+  /**
+   * Compute sha256 checksum of data
+   *
+   * @param input Plaintext to compute hash of
+   * @param input_read_size size of input to read for hash
+   * @param output Buffer to store store hash bytes.
+   * @return Status
+   */
+  static Status sha256(
+      const void* input, uint64_t input_read_size, Buffer* output);
+
  private:
   /**
    * Generates a number of cryptographically random bytes.
@@ -98,6 +120,6 @@ class Win32CNG {
 }  // namespace sm
 }  // namespace tiledb
 
-#endif  // _WIN32
+#endif  // !_WIN32
 
 #endif

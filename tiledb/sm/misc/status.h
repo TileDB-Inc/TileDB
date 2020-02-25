@@ -119,7 +119,8 @@ enum class StatusCode : char {
   RTreeError,
   CellSlabIterError,
   RestError,
-  SerializationError
+  SerializationError,
+  ChecksumError
 };
 
 class Status {
@@ -192,6 +193,11 @@ class Status {
   /** Return a ArrayError error class Status with a given message **/
   static Status GZipError(const std::string& msg) {
     return Status(StatusCode::GZip, msg, -1);
+  }
+
+  /** Return a ArrayError error class Status with a given message **/
+  static Status ChecksumError(const std::string& msg) {
+    return Status(StatusCode::ChecksumError, msg, -1);
   }
 
   /** Return a ArrayError error class Status with a given message **/
