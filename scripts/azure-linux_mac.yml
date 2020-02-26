@@ -18,6 +18,13 @@ steps:
 
 - bash: |
     set -e pipefail
+    open /Library/Developer/CommandLineTools/Packages/macOS_SDK_headers_for_macOS_10.14.pkg
+    sudo installer -pkg /Library/Developer/CommandLineTools/Packages/macOS_SDK_headers_for_macOS_10.14.pkg -allowUntrusted -target /
+  condition: eq(variables['Agent.OS'], 'Darwin')
+  displayName: 'Install system headers (OSX only)'
+
+- bash: |
+    set -e pipefail
     # Install clang-format (v5.0)
     sudo scripts/install-clangformat.sh
     src=$BUILD_REPOSITORY_LOCALPATH
@@ -27,7 +34,6 @@ steps:
        -name "*.cc" -or -name "*.c" -or -name "*.h")
   condition: eq(variables['Agent.OS'], 'Linux')
   displayName: 'Check formatting (linux only)'
-
 
 - bash: |
     # DELETEME work-around for https://github.com/microsoft/azure-pipelines-image-generation/issues/969

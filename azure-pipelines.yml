@@ -23,7 +23,7 @@ jobs:
         TILEDB_HDFS: ON
         CXX: g++
       macOS:
-        imageName: 'macOS-10.13'
+        imageName: 'macOS-10.14'
         TILEDB_S3: ON
         CXX: clang++
       linux_asan:
