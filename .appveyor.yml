@@ -1,7 +1,6 @@
 version: '{build}'
 image:
 - Visual Studio 2017
-- Visual Studio 2015
 environment:
   TILEDB_S3: false
 
@@ -11,11 +10,7 @@ build_script:
 
     cd build
 
-    if ($env:APPVEYOR_BUILD_WORKER_IMAGE -eq "Visual Studio 2015") {
-      $env:Path += ";C:\Program Files (x86)\Microsoft Visual Studio 14.0\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin"
-    } else {
-      $env:Path += ";C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin"
-    }
+    $env:Path += ";C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin"
 
     if ($env:TILEDB_S3 -eq "true") {
       ..\bootstrap.ps1 -EnableS3 -EnableVerbose -EnableStaticTileDB
