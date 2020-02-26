@@ -28,11 +28,11 @@ jobs:
         TILEDB_STATIC: OFF
         CXX: g++
       macOS:
-        imageName: 'macOS-10.13'
+        imageName: 'macOS-10.14'
         TILEDB_S3: ON
         CXX: clang++
       macOS_azure:
-        imageName: 'macOS-10.13'
+        imageName: 'macOS-10.14'
         TILEDB_AZURE: ON
         CXX: clang++
       linux_asan:
