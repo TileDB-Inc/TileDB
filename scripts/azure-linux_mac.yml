@@ -74,8 +74,8 @@ steps:
       source scripts/run-minio.sh;
     fi
 
-    # Start Azurite server on Linux if Azure is enabled
-    if [[ ( "$AGENT_OS" == "Linux" && "$TILEDB_AZURE" == "ON" ) ]]; then
+    # Start Azurite if Azure is enabled
+    if [[ "$TILEDB_AZURE" == "ON" ]]; then
       source scripts/install-azurite.sh;
       source scripts/run-azurite.sh;
     fi
@@ -158,14 +158,7 @@ steps:
       export ASAN_OPTIONS=detect_leaks=0 LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libasan.so.4
     fi
 
-    # We do not support Azurite on OSX. When Azure is enabled, skip the azure
-    # unit test and force the generic unit tests to use the native VFS
-    # implementation instead of the Azure backend.
-    if [[ ( "$AGENT_OS" == "Darwin" && "$TILEDB_AZURE" == "ON" ) ]]; then
-      ./tiledb/test/tiledb_unit --durations=yes --vfs native ~[azure]
-    else
-      make check
-    fi
+    make check
 
     # - bash: |
     pushd $BUILD_REPOSITORY_LOCALPATH/examples/cmake_project

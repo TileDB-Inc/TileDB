@@ -76,7 +76,7 @@ install:
       fi
 
     # Start Azurite server if Azure is enabled
-    - if [[ ( "$TRAVIS_OS_NAME" == "linux" && "$TILEDB_AZURE" == "ON" ) ]]; then
+    - if [[ "$TILEDB_AZURE" == "ON" ]]; then
         source scripts/install-azurite.sh;
         source scripts/run-azurite.sh;
       fi
