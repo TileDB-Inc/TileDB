@@ -37,10 +37,10 @@
 namespace tiledb {
 namespace sm {
 
-BufferList::BufferList() {
-  current_buffer_index_ = 0;
-  current_relative_offset_ = 0;
-  offset_ = 0;
+BufferList::BufferList()
+    : current_buffer_index_(0)
+    , current_relative_offset_(0)
+    , offset_(0) {
 }
 
 Status BufferList::add_buffer(Buffer&& buffer) {

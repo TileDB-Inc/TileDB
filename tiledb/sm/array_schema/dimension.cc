@@ -47,25 +47,8 @@ namespace sm {
 /*     CONSTRUCTORS & DESTRUCTORS    */
 /* ********************************* */
 
-Dimension::Dimension() {
-  domain_ = nullptr;
-  tile_extent_ = nullptr;
-  type_ = Datatype::INT32;
-  set_ceil_to_tile_func();
-  set_compute_mbr_func();
-  set_crop_range_func();
-  set_domain_range_func();
-  set_expand_range_func();
-  set_expand_range_v_func();
-  set_expand_to_tile_func();
-  set_oob_func();
-  set_covered_func();
-  set_overlap_func();
-  set_overlap_ratio_func();
-  set_split_range_func();
-  set_splitting_value_func();
-  set_tile_num_func();
-  set_value_in_range_func();
+Dimension::Dimension()
+    : Dimension("", Datatype::INT32) {
 }
 
 Dimension::Dimension(const std::string& name, Datatype type)

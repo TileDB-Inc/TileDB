@@ -51,15 +51,8 @@ namespace sm {
 /*     CONSTRUCTORS & DESTRUCTORS    */
 /* ********************************* */
 
-Domain::Domain() {
-  cell_order_ = Layout::ROW_MAJOR;
-  tile_order_ = Layout::ROW_MAJOR;
-  dim_num_ = 0;
-  type_ = Datatype::INT32;
-  cell_num_per_tile_ = 0;
-  domain_ = nullptr;
-  tile_extents_ = nullptr;
-  tile_domain_ = nullptr;
+Domain::Domain()
+    : Domain(Datatype::INT32) {
 }
 
 Domain::Domain(Datatype type)
