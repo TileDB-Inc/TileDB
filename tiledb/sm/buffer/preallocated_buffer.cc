@@ -40,7 +40,7 @@ namespace sm {
 /*   CONSTRUCTORS & DESTRUCTORS   */
 /* ****************************** */
 
-PreallocatedBuffer::PreallocatedBuffer(const void* data, uint64_t size)
+PreallocatedBuffer::PreallocatedBuffer(const void* data, const uint64_t size)
     : data_(data)
     , offset_(0)
     , size_(size) {
@@ -50,7 +50,7 @@ PreallocatedBuffer::PreallocatedBuffer(const void* data, uint64_t size)
 /*               API              */
 /* ****************************** */
 
-void PreallocatedBuffer::advance_offset(uint64_t nbytes) {
+void PreallocatedBuffer::advance_offset(const uint64_t nbytes) {
   assert(offset_ + nbytes <= size_);
   offset_ += nbytes;
 }
@@ -73,7 +73,7 @@ uint64_t PreallocatedBuffer::offset() const {
   return offset_;
 }
 
-Status PreallocatedBuffer::read(void* buffer, uint64_t nbytes) {
+Status PreallocatedBuffer::read(void* buffer, const uint64_t nbytes) {
   if (offset_ + nbytes > size_)
     return Status::PreallocatedBufferError("Read buffer overflow");
 
@@ -87,7 +87,7 @@ uint64_t PreallocatedBuffer::size() const {
   return size_;
 }
 
-Status PreallocatedBuffer::write(const void* buffer, uint64_t nbytes) {
+Status PreallocatedBuffer::write(const void* buffer, const uint64_t nbytes) {
   if (offset_ + nbytes > size_)
     return Status::PreallocatedBufferError("Write would overflow buffer.");
 

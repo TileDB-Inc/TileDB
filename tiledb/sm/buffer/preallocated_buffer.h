@@ -56,14 +56,14 @@ class PreallocatedBuffer {
    * @param data The data of the buffer.
    * @param size The size of the buffer.
    */
-  PreallocatedBuffer(const void* data, uint64_t size);
+  PreallocatedBuffer(const void* data, const uint64_t size);
 
   /* ********************************* */
   /*                API                */
   /* ********************************* */
 
   /** Advances the offset by *nbytes*. */
-  void advance_offset(uint64_t nbytes);
+  void advance_offset(const uint64_t nbytes);
 
   /** Returns the buffer data pointer at the current offset. */
   void* cur_data() const;
@@ -85,7 +85,7 @@ class PreallocatedBuffer {
    * @param nbytes The number of bytes to read.
    * @return Status.
    */
-  Status read(void* buffer, uint64_t nbytes);
+  Status read(void* buffer, const uint64_t nbytes);
 
   /** Returns the size of the buffer. */
   uint64_t size() const;
@@ -98,7 +98,7 @@ class PreallocatedBuffer {
    * @return The desired value of type T.
    */
   template <class T>
-  inline T value(uint64_t offset) {
+  inline T value(const uint64_t offset) const {
     return ((const T*)(((const char*)data_) + offset))[0];
   }
 
@@ -109,7 +109,7 @@ class PreallocatedBuffer {
    * @return The value to be returned of type T.
    */
   template <class T>
-  inline T value() {
+  inline T value() const {
     return ((const T*)(((const char*)data_) + offset_))[0];
   }
 
@@ -121,7 +121,7 @@ class PreallocatedBuffer {
    * @param nbytes Number of bytes to write.
    * @return Status.
    */
-  Status write(const void* buffer, uint64_t nbytes);
+  Status write(const void* buffer, const uint64_t nbytes);
 
  private:
   /* ********************************* */

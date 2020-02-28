@@ -48,10 +48,8 @@ namespace sm {
 /*     CONSTRUCTORS & DESTRUCTORS    */
 /* ********************************* */
 
-Attribute::Attribute() {
-  name_ = "";
-  type_ = Datatype::CHAR;
-  cell_val_num_ = 1;
+Attribute::Attribute()
+    : Attribute("", Datatype::CHAR) {
 }
 
 Attribute::Attribute(const std::string& name, Datatype type) {

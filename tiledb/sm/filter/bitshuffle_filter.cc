@@ -103,6 +103,7 @@ Status BitshuffleFilter::run_forward(
 Status BitshuffleFilter::compute_parts(
     FilterBuffer* input, std::vector<ConstBuffer>* parts) const {
   auto input_parts = input->buffers();
+  parts->reserve(input_parts.size() * 2);
   for (const auto& input_part : input_parts) {
     auto part_nbytes = (uint32_t)input_part.size();
     auto rem = part_nbytes % 8;
@@ -110,8 +111,8 @@ Status BitshuffleFilter::compute_parts(
       parts->push_back(input_part);
     } else {
       // Split into 2 subparts with the first one divisible by 8.
-      uint32_t first_size = part_nbytes - rem;
-      uint32_t last_size = part_nbytes - first_size;
+      const uint32_t first_size = part_nbytes - rem;
+      const uint32_t last_size = part_nbytes - first_size;
       parts->emplace_back((char*)input_part.data(), first_size);
       parts->emplace_back((char*)input_part.data() + first_size, last_size);
     }
