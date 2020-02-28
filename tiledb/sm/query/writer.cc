@@ -2244,7 +2244,7 @@ Status Writer::split_coords_buffer() {
     if (buff.buffer_ == nullptr)
       RETURN_NOT_OK(Status::WriterError(
           "Cannot split coordinate buffers; memory allocation failed"));
-    buffers_.emplace(dim_name, buff);
+    buffers_[dim_name] = buff;
   }
 
   // Split coordinates
