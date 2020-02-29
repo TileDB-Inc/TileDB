@@ -65,8 +65,11 @@ struct DenseArrayFx {
   const tiledb_datatype_t DIM_TYPE = TILEDB_INT64;
   const std::string HDFS_TEMP_DIR = "hdfs:///tiledb_test/";
   const std::string S3_PREFIX = "s3://";
-  const std::string S3_BUCKET = S3_PREFIX + random_bucket_name("tiledb") + "/";
+  const std::string S3_BUCKET = S3_PREFIX + random_name("tiledb") + "/";
   const std::string S3_TEMP_DIR = S3_BUCKET + "tiledb_test/";
+  const std::string AZURE_PREFIX = "azure://";
+  const std::string bucket = AZURE_PREFIX + random_name("tiledb") + "/";
+  const std::string AZURE_TEMP_DIR = bucket + "tiledb_test/";
 #ifdef _WIN32
   const std::string FILE_URI_PREFIX = "";
   const std::string FILE_TEMP_DIR =
@@ -94,6 +97,7 @@ struct DenseArrayFx {
   // Supported filesystems
   bool supports_s3_;
   bool supports_hdfs_;
+  bool supports_azure_;
 
   // Functions
   DenseArrayFx();
@@ -124,7 +128,7 @@ struct DenseArrayFx {
       const std::string& array_name);
   void read_dense_array_with_coords_subarray_row(const std::string& array_name);
   void read_dense_array_with_coords_subarray_col(const std::string& array_name);
-  static std::string random_bucket_name(const std::string& prefix);
+  static std::string random_name(const std::string& prefix);
 
   /**
    * Helper method that wraps tiledb_query_submit() and inserts a serialization
@@ -315,6 +319,30 @@ DenseArrayFx::DenseArrayFx() {
     REQUIRE(error == nullptr);
 #endif
   }
+  if (supports_azure_) {
+    REQUIRE(
+        tiledb_config_set(
+            config,
+            "vfs.azure.storage_account_name",
+            "devstoreaccount1",
+            &error) == TILEDB_OK);
+    REQUIRE(
+        tiledb_config_set(
+            config,
+            "vfs.azure.storage_account_key",
+            "Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/"
+            "K1SZFPTOtr/KBHBeksoGMGw==",
+            &error) == TILEDB_OK);
+    REQUIRE(
+        tiledb_config_set(
+            config,
+            "vfs.azure.blob_endpoint",
+            "127.0.0.1:10000/devstoreaccount1",
+            &error) == TILEDB_OK);
+    REQUIRE(
+        tiledb_config_set(config, "vfs.azure.use_https", "false", &error) ==
+        TILEDB_OK);
+  }
   REQUIRE(tiledb_ctx_alloc(config, &ctx_) == TILEDB_OK);
   REQUIRE(error == nullptr);
   vfs_ = nullptr;
@@ -333,6 +361,17 @@ DenseArrayFx::DenseArrayFx() {
     }
   }
 
+  // Connect to Azure
+  if (supports_azure_) {
+    int is_container = 0;
+    int rc = tiledb_vfs_is_bucket(ctx_, vfs_, bucket.c_str(), &is_container);
+    REQUIRE(rc == TILEDB_OK);
+    if (!is_container) {
+      rc = tiledb_vfs_create_bucket(ctx_, vfs_, bucket.c_str());
+      REQUIRE(rc == TILEDB_OK);
+    }
+  }
+
   std::srand(0);
 }
 
@@ -346,6 +385,17 @@ DenseArrayFx::~DenseArrayFx() {
           tiledb_vfs_remove_bucket(ctx_, vfs_, S3_BUCKET.c_str()) == TILEDB_OK);
     }
   }
+
+  if (supports_azure_) {
+    int is_container = 0;
+    int rc = tiledb_vfs_is_bucket(ctx_, vfs_, bucket.c_str(), &is_container);
+    REQUIRE(rc == TILEDB_OK);
+    if (is_container) {
+      rc = tiledb_vfs_remove_bucket(ctx_, vfs_, bucket.c_str());
+      REQUIRE(rc == TILEDB_OK);
+    }
+  }
+
   tiledb_vfs_free(&vfs_);
   CHECK(vfs_ == nullptr);
   tiledb_ctx_free(&ctx_);
@@ -356,7 +406,7 @@ void DenseArrayFx::set_supported_fs() {
   tiledb_ctx_t* ctx = nullptr;
   REQUIRE(tiledb_ctx_alloc(nullptr, &ctx) == TILEDB_OK);
 
-  get_supported_fs(&supports_s3_, &supports_hdfs_);
+  get_supported_fs(&supports_s3_, &supports_hdfs_, &supports_azure_);
 
   tiledb_ctx_free(&ctx);
 }
@@ -2935,7 +2985,7 @@ int DenseArrayFx::submit_query_wrapper(
   return rc;
 }
 
-std::string DenseArrayFx::random_bucket_name(const std::string& prefix) {
+std::string DenseArrayFx::random_name(const std::string& prefix) {
   std::stringstream ss;
   ss << prefix << "-" << std::this_thread::get_id() << "-"
      << TILEDB_TIMESTAMP_NOW_MS;
@@ -2958,6 +3008,11 @@ TEST_CASE_METHOD(
     create_temp_dir(S3_TEMP_DIR);
     check_sorted_reads(S3_TEMP_DIR);
     remove_temp_dir(S3_TEMP_DIR);
+  } else if (supports_azure_) {
+    // Azure
+    create_temp_dir(AZURE_TEMP_DIR);
+    check_sorted_reads(AZURE_TEMP_DIR);
+    remove_temp_dir(AZURE_TEMP_DIR);
   } else if (supports_hdfs_) {
     // HDFS
     create_temp_dir(HDFS_TEMP_DIR);
@@ -2987,6 +3042,11 @@ TEST_CASE_METHOD(
     create_temp_dir(S3_TEMP_DIR);
     check_invalid_cell_num_in_dense_writes(S3_TEMP_DIR);
     remove_temp_dir(S3_TEMP_DIR);
+  } else if (supports_azure_) {
+    // Azure
+    create_temp_dir(AZURE_TEMP_DIR);
+    check_invalid_cell_num_in_dense_writes(AZURE_TEMP_DIR);
+    remove_temp_dir(AZURE_TEMP_DIR);
   } else if (supports_hdfs_) {
     // HDFS
     create_temp_dir(HDFS_TEMP_DIR);
@@ -3014,6 +3074,11 @@ TEST_CASE_METHOD(
     create_temp_dir(S3_TEMP_DIR);
     check_sorted_writes(S3_TEMP_DIR);
     remove_temp_dir(S3_TEMP_DIR);
+  } else if (supports_azure_) {
+    // Azure
+    create_temp_dir(AZURE_TEMP_DIR);
+    check_sorted_writes(AZURE_TEMP_DIR);
+    remove_temp_dir(AZURE_TEMP_DIR);
   } else if (supports_hdfs_) {
     // HDFS
     create_temp_dir(HDFS_TEMP_DIR);
@@ -3043,6 +3108,11 @@ TEST_CASE_METHOD(
     create_temp_dir(S3_TEMP_DIR);
     check_sparse_writes(S3_TEMP_DIR);
     remove_temp_dir(S3_TEMP_DIR);
+  } else if (supports_azure_) {
+    // Azure
+    create_temp_dir(AZURE_TEMP_DIR);
+    check_sparse_writes(AZURE_TEMP_DIR);
+    remove_temp_dir(AZURE_TEMP_DIR);
   } else if (supports_hdfs_) {
     // HDFS
     create_temp_dir(HDFS_TEMP_DIR);
@@ -3070,6 +3140,8 @@ TEST_CASE_METHOD(
   std::string temp_dir;
   if (supports_s3_) {
     temp_dir = S3_TEMP_DIR;
+  } else if (supports_azure_) {
+    temp_dir = AZURE_TEMP_DIR;
   } else if (supports_hdfs_) {
     temp_dir = HDFS_TEMP_DIR;
   } else {
@@ -3094,6 +3166,8 @@ TEST_CASE_METHOD(
   std::string temp_dir;
   if (supports_s3_) {
     temp_dir = S3_TEMP_DIR;
+  } else if (supports_azure_) {
+    temp_dir = AZURE_TEMP_DIR;
   } else if (supports_hdfs_) {
     temp_dir = HDFS_TEMP_DIR;
   } else {
@@ -3118,6 +3192,8 @@ TEST_CASE_METHOD(
   std::string temp_dir;
   if (supports_s3_) {
     temp_dir = S3_TEMP_DIR;
+  } else if (supports_azure_) {
+    temp_dir = AZURE_TEMP_DIR;
   } else if (supports_hdfs_) {
     temp_dir = HDFS_TEMP_DIR;
   } else {
@@ -4382,6 +4458,11 @@ TEST_CASE_METHOD(
     create_temp_dir(S3_TEMP_DIR);
     check_sorted_reads(S3_TEMP_DIR);
     remove_temp_dir(S3_TEMP_DIR);
+  } else if (supports_azure_) {
+    // Azure
+    create_temp_dir(AZURE_TEMP_DIR);
+    check_sorted_reads(AZURE_TEMP_DIR);
+    remove_temp_dir(AZURE_TEMP_DIR);
   } else if (supports_hdfs_) {
     // HDFS
     create_temp_dir(HDFS_TEMP_DIR);
@@ -4402,6 +4483,8 @@ TEST_CASE_METHOD(
   std::string path;
   if (supports_s3_) {
     path = S3_TEMP_DIR;
+  } else if (supports_azure_) {
+    path = AZURE_TEMP_DIR;
   } else if (supports_hdfs_) {
     path = HDFS_TEMP_DIR;
   } else {

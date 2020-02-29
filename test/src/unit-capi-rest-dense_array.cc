@@ -68,7 +68,7 @@ struct DenseArrayRESTFx {
   const tiledb_datatype_t DIM_TYPE = TILEDB_INT64;
   const std::string HDFS_TEMP_DIR = "hdfs:///tiledb_test/";
   const std::string S3_PREFIX = "s3://";
-  const std::string S3_BUCKET = S3_PREFIX + random_bucket_name("tiledb") + "/";
+  const std::string S3_BUCKET = S3_PREFIX + random_name("tiledb") + "/";
   const std::string S3_TEMP_DIR = S3_BUCKET + "tiledb_test/";
 #ifdef _WIN32
   const std::string FILE_URI_PREFIX = "";
@@ -91,6 +91,7 @@ struct DenseArrayRESTFx {
   // Supported filesystems
   bool supports_s3_;
   bool supports_hdfs_;
+  bool supports_azure_;
 
   const std::string rest_server_uri_ = "http://localhost:8080";
   const std::string rest_server_username_ = "unit";
@@ -113,7 +114,7 @@ struct DenseArrayRESTFx {
   void create_dense_array_1_attribute(const std::string& array_name);
   void write_dense_array(const std::string& array_name);
   void write_dense_array_missing_attributes(const std::string& array_name);
-  static std::string random_bucket_name(const std::string& prefix);
+  static std::string random_name(const std::string& prefix);
 
   /**
    * Creates a 2D dense array.
@@ -316,7 +317,7 @@ void DenseArrayRESTFx::set_supported_fs() {
   tiledb_ctx_t* ctx = nullptr;
   REQUIRE(tiledb_ctx_alloc(nullptr, &ctx) == TILEDB_OK);
 
-  get_supported_fs(&supports_s3_, &supports_hdfs_);
+  get_supported_fs(&supports_s3_, &supports_hdfs_, &supports_azure_);
 
   tiledb_ctx_free(&ctx);
 }
@@ -1334,7 +1335,7 @@ void DenseArrayRESTFx::write_dense_array_missing_attributes(
   tiledb_query_free(&query);
 }
 
-std::string DenseArrayRESTFx::random_bucket_name(const std::string& prefix) {
+std::string DenseArrayRESTFx::random_name(const std::string& prefix) {
   std::stringstream ss;
   ss << prefix << "-" << std::this_thread::get_id() << "-"
      << TILEDB_TIMESTAMP_NOW_MS;

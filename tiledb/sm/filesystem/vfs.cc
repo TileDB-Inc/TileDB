@@ -104,6 +104,8 @@ std::string VFS::abs_path(const std::string& path) {
     return path_copy;
   if (URI::is_s3(path))
     return path_copy;
+  if (URI::is_azure(path))
+    return path_copy;
   // Certainly starts with "<resource>://" other than "file://"
   return path_copy;
 
@@ -121,7 +123,7 @@ Status VFS::create_dir(const URI& uri) const {
     return LOG_STATUS(
         Status::VFSError("Cannot create directory; VFS not initialized"));
 
-  if (!uri.is_s3()) {
+  if (!uri.is_s3() && !uri.is_azure()) {
     bool is_dir;
     RETURN_NOT_OK(this->is_dir(uri, &is_dir));
     if (is_dir)
@@ -275,6 +277,14 @@ Status VFS::create_bucket(const URI& uri) const {
     return LOG_STATUS(Status::VFSError(std::string("S3 is not supported")));
 #endif
   }
+  if (uri.is_azure()) {
+#ifdef HAVE_AZURE
+    return azure_.create_container(uri);
+#else
+    (void)uri;
+    return LOG_STATUS(Status::VFSError(std::string("Azure is not supported")));
+#endif
+  }
   return LOG_STATUS(Status::VFSError(
       std::string("Cannot create bucket; Unsupported URI scheme: ") +
       uri.to_string()));
@@ -295,6 +305,14 @@ Status VFS::remove_bucket(const URI& uri) const {
 #else
     (void)uri;
     return LOG_STATUS(Status::VFSError(std::string("S3 is not supported")));
+#endif
+  }
+  if (uri.is_azure()) {
+#ifdef HAVE_AZURE
+    return azure_.remove_container(uri);
+#else
+    (void)uri;
+    return LOG_STATUS(Status::VFSError(std::string("Azure is not supported")));
 #endif
   }
   return LOG_STATUS(Status::VFSError(
@@ -320,6 +338,14 @@ Status VFS::empty_bucket(const URI& uri) const {
     return LOG_STATUS(Status::VFSError(std::string("S3 is not supported")));
 #endif
   }
+  if (uri.is_azure()) {
+#ifdef HAVE_AZURE
+    return azure_.empty_container(uri);
+#else
+    (void)uri;
+    return LOG_STATUS(Status::VFSError(std::string("Azure is not supported")));
+#endif
+  }
   return LOG_STATUS(Status::VFSError(
       std::string("Cannot empty bucket; Unsupported URI scheme: ") +
       uri.to_string()));
@@ -342,6 +368,15 @@ Status VFS::is_empty_bucket(const URI& uri, bool* is_empty) const {
     (void)uri;
     (void)is_empty;
     return LOG_STATUS(Status::VFSError(std::string("S3 is not supported")));
+#endif
+  }
+  if (uri.is_azure()) {
+#ifdef HAVE_AZURE
+    return azure_.is_empty_container(uri, is_empty);
+#else
+    (void)uri;
+    (void)is_empty;
+    return LOG_STATUS(Status::VFSError(std::string("Azure is not supported")));
 #endif
   }
   return LOG_STATUS(Status::VFSError(
@@ -612,6 +647,10 @@ Status VFS::max_parallel_ops(const URI& uri, uint64_t* ops) const {
     RETURN_NOT_OK(
         config_.get<uint64_t>("vfs.s3.max_parallel_ops", ops, &found));
     assert(found);
+  } else if (uri.is_azure()) {
+    RETURN_NOT_OK(
+        config_.get<uint64_t>("vfs.azure.max_parallel_ops", ops, &found));
+    assert(found);
   } else {
     *ops = 1;
   }
@@ -771,6 +810,16 @@ Status VFS::is_bucket(const URI& uri, bool* is_bucket) const {
 #else
     *is_bucket = false;
     return LOG_STATUS(Status::VFSError("TileDB was built without S3 support"));
+#endif
+  }
+  if (uri.is_azure()) {
+#ifdef HAVE_AZURE
+    RETURN_NOT_OK(azure_.is_container(uri, is_bucket));
+    return Status::Ok();
+#else
+    *is_bucket = false;
+    return LOG_STATUS(
+        Status::VFSError("TileDB was built without Azure support"));
 #endif
   }
 
