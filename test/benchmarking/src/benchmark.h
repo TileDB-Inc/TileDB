@@ -35,6 +35,7 @@
 
 #include <cassert>
 #include <string>
+#include <vector>
 
 /**
  * Base class for benchmarks.
@@ -60,26 +61,41 @@ class BenchmarkBase {
 
  protected:
   /** Implemented by subclass: the setup phase. */
-  virtual void setup();
+  virtual void setup() = 0;
 
   /** Implemented by subclass: the cleanup phase. */
-  virtual void teardown();
+  virtual void teardown() = 0;
 
   /**
    * Implemented by subclass: anything that needs to happen in the same process
    * as 'run' but should be excluded from the benchmark run time, e.g.
    * query buffer allocation.
    */
-  virtual void pre_run();
+  virtual void pre_run() = 0;
 
   /** Implemented by subclass: the run phase. */
-  virtual void run();
+  virtual void run() = 0;
 
  private:
   /**
-   * Prints a time in milliseconds for a task name in JSON.
+   * Prints metrics for a given task.
    */
-  void print_task_ms_json(const std::string& name, uint64_t ms);
+  void print_task(
+      const std::string& name,
+      const uint64_t* ms,
+      const std::vector<uint64_t>* mem_samples_mb);
+
+  /**
+   * Samples the current processes's used virtual memory every 50ms
+   * and stores it in 'mem_samples_mb'.
+   */
+  static void mem_sampling_thread_func(
+      bool* stop_mem_sampling, std::vector<uint64_t>* mem_samples_mb);
+
+  /**
+   * Samples the current processes's used virtual memory and returns it.
+   */
+  static uint64_t sample_virt_mem_mb();
 };
 
 #endif
