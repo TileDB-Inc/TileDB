@@ -1566,10 +1566,11 @@ Status Reader::unfilter_tiles(
       auto& t_var = tile_pair->second;
 
       if (t.filtered()) {
-        // Decompress, etc.
-        RETURN_NOT_OK(unfilter_tile(name, &t, var_size));
+        // Store the filtered buffer in the tile cache.
         RETURN_NOT_OK(storage_manager_->write_to_cache(
             tile_attr_uri, tile_attr_offset, t.buffer()));
+        // Unfilter the tile buffer within the 't' instance.
+        RETURN_NOT_OK(unfilter_tile(name, &t, var_size));
       }
 
       if (var_size && t_var.filtered()) {
@@ -1578,10 +1579,11 @@ Status Reader::unfilter_tiles(
         RETURN_NOT_OK(fragment->file_var_offset(
             *encryption_key, name, tile_idx, &tile_attr_var_offset));
 
-        // Decompress, etc.
-        RETURN_NOT_OK(unfilter_tile(name, &t_var, false));
+        // Store the filtered buffer in the tile cache.
         RETURN_NOT_OK(storage_manager_->write_to_cache(
             tile_attr_var_uri, tile_attr_var_offset, t_var.buffer()));
+        // Unfilter the tile buffer within the 't_var' instance.
+        RETURN_NOT_OK(unfilter_tile(name, &t_var, false));
       }
     }
 
@@ -1808,7 +1810,6 @@ Status Reader::read_tiles(
     auto tile_idx = tile->tile_idx();
     RETURN_NOT_OK(fragment->file_offset(
         *encryption_key, name, tile_idx, &tile_attr_offset));
-    auto tile_size = fragment->tile_size(name, tile_idx);
     uint64_t tile_persisted_size;
     RETURN_NOT_OK(fragment->persisted_tile_size(
         *encryption_key, name, tile_idx, &tile_persisted_size));
@@ -1816,9 +1817,13 @@ Status Reader::read_tiles(
     // Try the cache first.
     bool cache_hit;
     RETURN_NOT_OK(storage_manager_->read_from_cache(
-        tile_attr_uri, tile_attr_offset, t.buffer(), tile_size, &cache_hit));
+        tile_attr_uri,
+        tile_attr_offset,
+        t.buffer(),
+        tile_persisted_size,
+        &cache_hit));
     if (cache_hit) {
-      t.set_filtered(false);
+      t.set_filtered(true);
       STATS_COUNTER_ADD(reader_attr_tile_cache_hits, 1);
     } else {
       // Add the region of the fragment to be read.
@@ -1836,9 +1841,6 @@ Status Reader::read_tiles(
       uint64_t tile_attr_var_offset;
       RETURN_NOT_OK(fragment->file_var_offset(
           *encryption_key, name, tile_idx, &tile_attr_var_offset));
-      uint64_t tile_var_size;
-      RETURN_NOT_OK(fragment->tile_var_size(
-          *encryption_key, name, tile_idx, &tile_var_size));
       uint64_t tile_var_persisted_size;
       RETURN_NOT_OK(fragment->persisted_tile_var_size(
           *encryption_key, name, tile_idx, &tile_var_persisted_size));
@@ -1847,11 +1849,11 @@ Status Reader::read_tiles(
           tile_attr_var_uri,
           tile_attr_var_offset,
           t_var.buffer(),
-          tile_var_size,
+          tile_var_persisted_size,
           &cache_hit));
 
       if (cache_hit) {
-        t_var.set_filtered(false);
+        t_var.set_filtered(true);
         STATS_COUNTER_ADD(reader_attr_tile_cache_hits, 1);
       } else {
         // Add the region of the fragment to be read.
