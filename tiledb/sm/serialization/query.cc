@@ -102,38 +102,34 @@ Status writer_from_capnp(
   writer->set_check_coord_oob(writer_reader.getCheckCoordOOB());
   writer->set_dedup_coords(writer_reader.getDedupCoords());
 
-  const auto* schema = writer->array_schema();
-  // For sparse writes we want to explicitly set subarray to nullptr.
-  const bool sparse_write =
-      !schema->dense() || writer->layout() == Layout::UNORDERED;
-  if (writer_reader.hasSubarray() && !sparse_write) {
-    auto subarray_reader = writer_reader.getSubarray();
-    void* subarray = nullptr;
-    RETURN_NOT_OK(
-        utils::deserialize_subarray(subarray_reader, schema, &subarray));
-    RETURN_NOT_OK_ELSE(writer->set_subarray(subarray), std::free(subarray));
-    std::free(subarray);
-  } else {
-    RETURN_NOT_OK(writer->set_subarray(nullptr));
-  }
-
   return Status::Ok();
 }
 
 Status subarray_to_capnp(
-    const Subarray* subarray, capnp::Subarray::Builder* builder) {
+    const ArraySchema* schema,
+    const Subarray* subarray,
+    capnp::Subarray::Builder* builder) {
   builder->setLayout(layout_str(subarray->layout()));
 
   const uint32_t dim_num = subarray->dim_num();
   auto ranges_builder = builder->initRanges(dim_num);
   for (uint32_t i = 0; i < dim_num; i++) {
+    const auto datatype = schema->dimension(i)->type();
     auto range_builder = ranges_builder[i];
-    const auto* ranges = subarray->ranges_for_dim(i);
-    range_builder.setType(datatype_str(ranges->type_));
-    range_builder.setHasDefaultRange(ranges->has_default_range_);
-    range_builder.setBuffer(kj::arrayPtr(
-        static_cast<const uint8_t*>(ranges->buffer_.data()),
-        ranges->buffer_.size()));
+    const auto& ranges = subarray->ranges_for_dim(i);
+    range_builder.setType(datatype_str(datatype));
+
+    range_builder.setHasDefaultRange(subarray->is_default(i));
+    // This will copy all of the ranges into one large byte vector
+    // Future improvement is to do this in a zero copy manner
+    // (kj::ArrayBuilder?)
+    auto capnpVector = kj::Vector<uint8_t>();
+    for (auto& range : ranges) {
+      capnpVector.addAll(kj::ArrayPtr<uint8_t>(
+          const_cast<uint8_t*>(reinterpret_cast<const uint8_t*>(range.data())),
+          range.size()));
+    }
+    range_builder.setBuffer(capnpVector.asPtr());
   }
 
   return Status::Ok();
@@ -148,14 +144,19 @@ Status subarray_from_capnp(
     Datatype type = Datatype::UINT8;
     RETURN_NOT_OK(datatype_enum(range_reader.getType(), &type));
 
-    Subarray::Ranges ranges(type);
-    auto data_ptr = range_reader.getBuffer();
-    RETURN_NOT_OK(ranges.buffer_.realloc(data_ptr.size()));
-    RETURN_NOT_OK(
-        ranges.buffer_.write((void*)data_ptr.begin(), data_ptr.size()));
-    ranges.has_default_range_ = range_reader.getHasDefaultRange();
+    auto data = range_reader.getBuffer();
+    auto data_ptr = data.asBytes();
+    uint64_t range_size = datatype_size(type) * 2;
+    size_t range_count = data_ptr.size() / range_size;
+    std::vector<Range> ranges(range_count);
+    for (size_t j = 0; j < range_count; j++) {
+      ranges[j] = Range(data_ptr.begin() + (j * range_size), range_size);
+    }
 
     RETURN_NOT_OK(subarray->set_ranges_for_dim(i, ranges));
+
+    // Set default indicator
+    subarray->set_is_default(i, range_reader.getHasDefaultRange());
   }
 
   return Status::Ok();
@@ -167,7 +168,8 @@ Status subarray_partitioner_to_capnp(
     capnp::SubarrayPartitioner::Builder* builder) {
   // Subarray
   auto subarray_builder = builder->initSubarray();
-  RETURN_NOT_OK(subarray_to_capnp(partitioner.subarray(), &subarray_builder));
+  RETURN_NOT_OK(
+      subarray_to_capnp(schema, partitioner.subarray(), &subarray_builder));
 
   // Per-attr mem budgets
   const auto* attr_budgets = partitioner.get_attr_result_budgets();
@@ -193,8 +195,8 @@ Status subarray_partitioner_to_capnp(
   const auto* partition_info = partitioner.current_partition_info();
   auto info_builder = builder->initCurrent();
   auto info_subarray_builder = info_builder.initSubarray();
-  RETURN_NOT_OK(
-      subarray_to_capnp(&partition_info->partition_, &info_subarray_builder));
+  RETURN_NOT_OK(subarray_to_capnp(
+      schema, &partition_info->partition_, &info_subarray_builder));
   info_builder.setStart(partition_info->start_);
   info_builder.setEnd(partition_info->end_);
   info_builder.setSplitMultiRange(partition_info->split_multi_range_);
@@ -209,7 +211,7 @@ Status subarray_partitioner_to_capnp(
   size_t sr_idx = 0;
   for (const auto& subarray : state->single_range_) {
     auto b = single_range_builder[sr_idx];
-    RETURN_NOT_OK(subarray_to_capnp(&subarray, &b));
+    RETURN_NOT_OK(subarray_to_capnp(schema, &subarray, &b));
     sr_idx++;
   }
   auto multi_range_builder =
@@ -217,7 +219,7 @@ Status subarray_partitioner_to_capnp(
   size_t m_idx = 0;
   for (const auto& subarray : state->multi_range_) {
     auto b = multi_range_builder[m_idx];
-    RETURN_NOT_OK(subarray_to_capnp(&subarray, &b));
+    RETURN_NOT_OK(subarray_to_capnp(schema, &subarray, &b));
     m_idx++;
   }
 
@@ -292,18 +294,18 @@ Status subarray_partitioner_from_capnp(
   auto sr_reader = state_reader.getSingleRange();
   const unsigned num_sr = sr_reader.size();
   for (unsigned i = 0; i < num_sr; i++) {
-    auto subarray_reader = sr_reader[i];
+    auto subarray_reader_ = sr_reader[i];
     state->single_range_.emplace_back(array, layout);
-    Subarray& subarray = state->single_range_.back();
-    RETURN_NOT_OK(subarray_from_capnp(subarray_reader, &subarray));
+    Subarray& subarray_ = state->single_range_.back();
+    RETURN_NOT_OK(subarray_from_capnp(subarray_reader_, &subarray_));
   }
   auto m_reader = state_reader.getMultiRange();
   const unsigned num_m = m_reader.size();
   for (unsigned i = 0; i < num_m; i++) {
-    auto subarray_reader = m_reader[i];
+    auto subarray_reader_ = m_reader[i];
     state->multi_range_.emplace_back(array, layout);
-    Subarray& subarray = state->multi_range_.back();
-    RETURN_NOT_OK(subarray_from_capnp(subarray_reader, &subarray));
+    Subarray& subarray_ = state->multi_range_.back();
+    RETURN_NOT_OK(subarray_from_capnp(subarray_reader_, &subarray_));
   }
 
   // Overall mem budget
@@ -363,7 +365,8 @@ Status reader_to_capnp(
 
   // Subarray
   auto subarray_builder = reader_builder->initSubarray();
-  RETURN_NOT_OK(subarray_to_capnp(reader.subarray(), &subarray_builder));
+  RETURN_NOT_OK(
+      subarray_to_capnp(array_schema, reader.subarray(), &subarray_builder));
 
   // Read state
   RETURN_NOT_OK(read_state_to_capnp(array_schema, reader, reader_builder));
@@ -679,12 +682,29 @@ Status query_from_capnp(
   }
 
   // Deserialize reader/writer.
+  // Also set subarray on query if it exists. Prior to 1.8 the subarray was set
+  // on the reader or writer directly Now we set it on the query class after the
+  // heterogeneous coordinate changes
   if (type == QueryType::READ) {
     auto reader_reader = query_reader.getReader();
     RETURN_NOT_OK(reader_from_capnp(reader_reader, query->reader()));
   } else {
     auto writer_reader = query_reader.getWriter();
     RETURN_NOT_OK(writer_from_capnp(writer_reader, query->writer()));
+
+    // For sparse writes we want to explicitly set subarray to nullptr.
+    const bool sparse_write =
+        !schema->dense() || query->layout() == Layout::UNORDERED;
+    if (writer_reader.hasSubarray() && !sparse_write) {
+      auto subarray_reader = writer_reader.getSubarray();
+      void* subarray = nullptr;
+      RETURN_NOT_OK(
+          utils::deserialize_subarray(subarray_reader, schema, &subarray));
+      RETURN_NOT_OK_ELSE(query->set_subarray(subarray), std::free(subarray));
+      std::free(subarray);
+    } else {
+      RETURN_NOT_OK(query->set_subarray(nullptr));
+    }
   }
 
   // Deserialize status. This must come last because various setters above

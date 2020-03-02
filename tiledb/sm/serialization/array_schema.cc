@@ -214,16 +214,18 @@ Status dimension_to_capnp(
 
   dimension_builder->setName(dimension->name());
   dimension_builder->setType(datatype_str(dimension->type()));
-  dimension_builder->setNullTileExtent(dimension->tile_extent() == nullptr);
+  dimension_builder->setNullTileExtent(dimension->tile_extent().empty());
 
   auto domain_builder = dimension_builder->initDomain();
   RETURN_NOT_OK(utils::set_capnp_array_ptr(
-      domain_builder, dimension->type(), dimension->domain(), 2));
+      domain_builder, dimension->type(), dimension->domain().data(), 2));
 
-  if (dimension->tile_extent() != nullptr) {
+  if (!dimension->tile_extent().empty()) {
     auto tile_extent_builder = dimension_builder->initTileExtent();
     RETURN_NOT_OK(utils::set_capnp_scalar(
-        tile_extent_builder, dimension->type(), dimension->tile_extent()));
+        tile_extent_builder,
+        dimension->type(),
+        dimension->tile_extent().data()));
   }
 
   return Status::Ok();

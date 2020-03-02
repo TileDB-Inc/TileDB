@@ -408,11 +408,18 @@ Status Writer::set_subarray(const Subarray& subarray) {
 
   subarray_ = subarray;
 
+  // Set subarray_flat so calls to `subarray()` will reflect newly set value
+  RETURN_NOT_OK(subarray_.to_byte_vec(&subarray_flat_));
+
   return Status::Ok();
 }
 
 const void* Writer::subarray() const {
-  return &subarray_flat_[0];
+  // Only access subarray_flat_ if it is not empty
+  if (!subarray_flat_.empty())
+    return &subarray_flat_[0];
+
+  return nullptr;
 }
 
 Status Writer::write() {

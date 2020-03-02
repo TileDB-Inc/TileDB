@@ -78,7 +78,26 @@ Dimension::Dimension(const Dimension* dim) {
 
   name_ = dim->name();
   type_ = dim->type_;
+
+  // Set fuctions
+  ceil_to_tile_func_ = dim->ceil_to_tile_func_;
+  check_range_func_ = dim->check_range_func_;
+  coincides_with_tiles_func_ = dim->coincides_with_tiles_func_;
+  compute_mbr_func_ = dim->compute_mbr_func_;
+  crop_range_func_ = dim->crop_range_func_;
+  domain_range_func_ = dim->domain_range_func_;
+  expand_range_v_func_ = dim->expand_range_v_func_;
+  expand_range_func_ = dim->expand_range_func_;
+  expand_to_tile_func_ = dim->expand_to_tile_func_;
   oob_func_ = dim->oob_func_;
+  covered_func_ = dim->covered_func_;
+  overlap_func_ = dim->overlap_func_;
+  overlap_ratio_func_ = dim->overlap_ratio_func_;
+  split_range_func_ = dim->split_range_func_;
+  splitting_value_func_ = dim->splitting_value_func_;
+  tile_num_func_ = dim->tile_num_func_;
+  value_in_range_func_ = dim->value_in_range_func_;
+
   domain_ = dim->domain();
   tile_extent_ = dim->tile_extent();
 }

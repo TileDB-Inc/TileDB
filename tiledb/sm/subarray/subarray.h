@@ -259,6 +259,13 @@ class Subarray {
   /** Retrieves the number of ranges on the given dimension index. */
   Status get_range_num(uint32_t dim_idx, uint64_t* range_num) const;
 
+  /**
+   *
+   * @param dim_index
+   * @return returns true if the specified dimension is set to default subarray
+   */
+  bool is_default(uint32_t dim_index) const;
+
   /** Returns `true` if at least one dimension has non-default ranges set. */
   bool is_set() const;
 
@@ -322,6 +329,13 @@ class Subarray {
    *     interval ``[start, end]`` in the flattened range order.
    */
   Subarray get_subarray(uint64_t start, uint64_t end) const;
+
+  /**
+   * Set default indicator for dimension subarray. Used by serialization only
+   * @param dim_index
+   * @param is_default
+   */
+  void set_is_default(uint32_t dim_index, bool is_default);
 
   /** Sets the array layout. */
   void set_layout(Layout layout);

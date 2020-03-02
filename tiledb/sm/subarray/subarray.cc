@@ -304,6 +304,10 @@ Subarray Subarray::get_subarray(uint64_t start, uint64_t end) const {
   return ret;
 }
 
+bool Subarray::is_default(uint32_t dim_index) const {
+  return is_default_[dim_index];
+}
+
 bool Subarray::is_set() const {
   for (const auto& d : is_default_)
     if (d == false)
@@ -333,6 +337,10 @@ bool Subarray::is_unary(uint64_t range_idx) const {
   }
 
   return true;
+}
+
+void Subarray::set_is_default(uint32_t dim_index, bool is_default) {
+  is_default_[dim_index] = is_default;
 }
 
 void Subarray::set_layout(Layout layout) {
