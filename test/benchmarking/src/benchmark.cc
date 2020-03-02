@@ -31,8 +31,16 @@
  */
 
 #include <chrono>
+#include <fstream>
 #include <iostream>
 #include <string>
+#include <thread>
+
+#ifdef __linux__
+#include <sys/sysinfo.h>
+#include <sys/types.h>
+#include <unistd.h>
+#endif
 
 #include "benchmark.h"
 
@@ -81,7 +89,7 @@ void BenchmarkBase::teardown_base() {
 
   uint64_t ms =
       std::chrono::duration_cast<std::chrono::milliseconds>(t1 - t0).count();
-  print_task_ms_json("teardown", ms);
+  print_task("teardown", &ms, nullptr);
 }
 
 void BenchmarkBase::setup_base() {
@@ -93,33 +101,78 @@ void BenchmarkBase::setup_base() {
 
   uint64_t ms =
       std::chrono::duration_cast<std::chrono::milliseconds>(t1 - t0).count();
-  print_task_ms_json("setup", ms);
+  print_task("setup", &ms, nullptr);
 }
 
 void BenchmarkBase::run_base() {
   pre_run();
 
+  bool stop_mem_sampling = false;
+  std::vector<uint64_t> mem_samples_mb;
+  std::thread mem_sampling_thread(
+      mem_sampling_thread_func, &stop_mem_sampling, &mem_samples_mb);
+
   auto t0 = std::chrono::steady_clock::now();
   run();
   auto t1 = std::chrono::steady_clock::now();
 
+  stop_mem_sampling = true;
+  mem_sampling_thread.join();
+
   uint64_t ms =
       std::chrono::duration_cast<std::chrono::milliseconds>(t1 - t0).count();
-  print_task_ms_json("run", ms);
+  print_task("run", &ms, &mem_samples_mb);
 }
 
-void BenchmarkBase::teardown() {
+void BenchmarkBase::print_task(
+    const std::string& name,
+    const uint64_t* const runtime_ms,
+    const std::vector<uint64_t>* const mem_samples_mb) {
+  std::cout << "{\n";
+  std::cout << "  \"phase\": \"" << name << "\"\n";
+
+  if (runtime_ms) {
+    std::cout << "  \"runtime_ms\": \"" << *runtime_ms << "\"\n";
+  }
+
+  if (mem_samples_mb) {
+    uint64_t peak_mem_mb = 0;
+    unsigned __int128 avg_mem_mb = 0;
+    for (const auto& mem_sample_mb : *mem_samples_mb) {
+      if (mem_sample_mb > peak_mem_mb) {
+        peak_mem_mb = mem_sample_mb;
+      }
+
+      avg_mem_mb += mem_sample_mb;
+    }
+    avg_mem_mb = avg_mem_mb / mem_samples_mb->size();
+
+    std::cout << "  \"peak_mem_mb\": \"" << peak_mem_mb << "\"\n";
+    std::cout << "  \"avg_mem_mb\": \"" << static_cast<uint64_t>(avg_mem_mb)
+              << "\"\n";
+  }
+
+  std::cout << "}\n";
 }
 
-void BenchmarkBase::setup() {
+void BenchmarkBase::mem_sampling_thread_func(
+    bool* const stop_mem_sampling,
+    std::vector<uint64_t>* const mem_samples_mb) {
+  do {
+    mem_samples_mb->emplace_back(sample_virt_mem_mb());
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+  } while (!*stop_mem_sampling);
 }
 
-void BenchmarkBase::run() {
-}
+uint64_t BenchmarkBase::sample_virt_mem_mb() {
+#ifdef __linux__
+  uint64_t vm_total_kb = 0;
+  std::ifstream buffer("/proc/self/statm");
+  buffer >> vm_total_kb;
+  buffer.close();
 
-void BenchmarkBase::pre_run() {
-}
-
-void BenchmarkBase::print_task_ms_json(const std::string& name, uint64_t ms) {
-  std::cout << "{ \"phase\": \"" << name << "\", \"ms\": " << ms << " }\n";
+  return vm_total_kb / 1024;
+#else
+  return 0;
+#endif
 }
