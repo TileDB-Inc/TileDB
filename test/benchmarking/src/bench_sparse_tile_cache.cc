@@ -1,5 +1,5 @@
 /**
- * @file   bench_sparse_write_large_tile.cc
+ * @file   bench_sparse_tile_cache.cc
  *
  * @section LICENSE
  *
@@ -27,8 +27,7 @@
  *
  * @section DESCRIPTION
  *
- * Benchmark compressed sparse 2D read performance with a large data tile
- * capacity, and reasonable sized space tile.
+ * Benchmark compressed sparse 2D read performance from the tile cache.
  */
 
 #include <tiledb/tiledb>
@@ -38,26 +37,36 @@
 using namespace tiledb;
 
 class Benchmark : public BenchmarkBase {
+ public:
+  Benchmark()
+      : BenchmarkBase() {
+    // Set the max tile cache size to 10GB -- this is more
+    // than enough to guarantee that the tile cach can
+    // hold all of our tiles.
+    Config config;
+    config["sm.tile_cache_size"] = "10000000000";
+    ctx_ = std::unique_ptr<Context>(new Context(config));
+  }
+
  protected:
   virtual void setup() {
-    ArraySchema schema(ctx_, TILEDB_SPARSE);
-    Domain domain(ctx_);
+    ArraySchema schema(*ctx_, TILEDB_SPARSE);
+    Domain domain(*ctx_);
     domain.add_dimension(Dimension::create<uint32_t>(
-        ctx_,
+        *ctx_,
         "d1",
         {{1, std::numeric_limits<uint32_t>::max() - tile_rows}},
         tile_rows));
     domain.add_dimension(Dimension::create<uint32_t>(
-        ctx_,
+        *ctx_,
         "d2",
         {{1, std::numeric_limits<uint32_t>::max() - tile_cols}},
         tile_cols));
     schema.set_domain(domain);
-    schema.set_capacity(capacity);
-    FilterList filters(ctx_);
-    filters.add_filter({ctx_, TILEDB_FILTER_BYTESHUFFLE})
-        .add_filter({ctx_, TILEDB_FILTER_LZ4});
-    schema.add_attribute(Attribute::create<int32_t>(ctx_, "a", filters));
+    FilterList filters(*ctx_);
+    filters.add_filter({*ctx_, TILEDB_FILTER_BYTESHUFFLE})
+        .add_filter({*ctx_, TILEDB_FILTER_LZ4});
+    schema.add_attribute(Attribute::create<int32_t>(*ctx_, "a", filters));
     Array::create(array_uri_, schema);
 
     // RNG coords are expensive to generate. Just make the data "sparse"
@@ -74,23 +83,24 @@ class Benchmark : public BenchmarkBase {
     for (uint64_t i = 0; i < data_.size(); i++)
       data_[i] = i;
 
-    Array array(ctx_, array_uri_, TILEDB_WRITE);
-    Query query(ctx_, array);
-    query.set_layout(TILEDB_UNORDERED)
+    // Write the array one time.
+    Array write_array(*ctx_, array_uri_, TILEDB_WRITE);
+    Query write_query(*ctx_, write_array);
+    write_query.set_layout(TILEDB_UNORDERED)
         .set_buffer("a", data_)
         .set_coordinates(coords_);
-    query.submit();
-    array.close();
+    write_query.submit();
+    write_array.close();
   }
 
   virtual void teardown() {
-    VFS vfs(ctx_);
+    VFS vfs(*ctx_);
     if (vfs.is_dir(array_uri_))
       vfs.remove_dir(array_uri_);
   }
 
   virtual void pre_run() {
-    Array array(ctx_, array_uri_, TILEDB_READ);
+    Array array(*ctx_, array_uri_, TILEDB_READ);
     auto non_empty = array.non_empty_domain<uint32_t>();
     subarray_ = {non_empty[0].second.first,
                  non_empty[0].second.second,
@@ -100,26 +110,39 @@ class Benchmark : public BenchmarkBase {
     auto max_elements = array.max_buffer_elements(subarray_);
     data_.resize(max_elements["a"].second);
     coords_.resize(max_elements[TILEDB_COORDS].second);
-  }
 
-  virtual void run() {
-    Array array(ctx_, array_uri_, TILEDB_READ);
-    Query query(ctx_, array);
-    query.set_subarray(subarray_)
+    // Read the array one time, populating the entire tile cache.
+    Array read_array(*ctx_, array_uri_, TILEDB_READ);
+    Query read_query(*ctx_, read_array);
+    read_query.set_subarray(subarray_)
         .set_layout(TILEDB_ROW_MAJOR)
         .set_buffer("a", data_)
         .set_coordinates(coords_);
-    query.submit();
-    array.close();
+    read_query.submit();
+    read_array.close();
+  }
+
+  virtual void run() {
+    // Read the entire array multiple times. We have already populated
+    // the tile cache in pre_run().
+    for (int i = 0; i < 5; ++i) {
+      Array array(*ctx_, array_uri_, TILEDB_READ);
+      Query query(*ctx_, array);
+      query.set_subarray(subarray_)
+          .set_layout(TILEDB_ROW_MAJOR)
+          .set_buffer("a", data_)
+          .set_coordinates(coords_);
+      query.submit();
+      array.close();
+    }
   }
 
  private:
   const std::string array_uri_ = "bench_array";
-  const unsigned tile_rows = 300, tile_cols = 300;
-  const unsigned capacity = 100000000;
+  const unsigned tile_rows = 50, tile_cols = 50;
   const unsigned max_row = 5000, max_col = 5000;
 
-  Context ctx_;
+  std::unique_ptr<Context> ctx_;
   std::vector<int> data_;
   std::vector<uint32_t> subarray_, coords_;
 };

@@ -60,10 +60,12 @@ add_library(benchmark_core OBJECT
 set(BENCHMARKS
   bench_dense_read_large_tile
   bench_dense_read_small_tile
+  bench_dense_tile_cache
   bench_dense_write_large_tile
   bench_dense_write_small_tile
   bench_sparse_read_large_tile
   bench_sparse_read_small_tile
+  bench_sparse_tile_cache
   bench_sparse_write_large_tile
   bench_sparse_write_small_tile
 )
@@ -73,5 +75,5 @@ foreach(NAME IN LISTS BENCHMARKS)
     "${NAME}.cc"
     $<TARGET_OBJECTS:benchmark_core>
   )
-  target_link_libraries(${NAME} TileDB::tiledb_shared)
+  target_link_libraries(${NAME} TileDB::tiledb_shared pthread)
 endforeach()
