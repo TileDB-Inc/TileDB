@@ -1,5 +1,5 @@
 /**
- * @file   bench_dense_read_large_tile.cc
+ * @file   bench_dense_tile_cache.cc
  *
  * @section LICENSE
  *
@@ -27,7 +27,7 @@
  *
  * @section DESCRIPTION
  *
- * Benchmark compressed dense 2D read performance with a single large tile.
+ * Benchmark compressed dense 2D read performance from the tile cache.
  */
 
 #include <tiledb/tiledb>
@@ -37,19 +37,30 @@
 using namespace tiledb;
 
 class Benchmark : public BenchmarkBase {
+ public:
+  Benchmark()
+      : BenchmarkBase() {
+    // Set the max tile cache size to 10GB -- this is more
+    // than enough to guarantee that the tile cach can
+    // hold all of our tiles.
+    Config config;
+    config["sm.tile_cache_size"] = "10000000000";
+    ctx_ = std::unique_ptr<Context>(new Context(config));
+  }
+
  protected:
   virtual void setup() {
-    ArraySchema schema(ctx_, TILEDB_DENSE);
-    Domain domain(ctx_);
+    ArraySchema schema(*ctx_, TILEDB_DENSE);
+    Domain domain(*ctx_);
     domain.add_dimension(
-        Dimension::create<uint32_t>(ctx_, "d1", {{1, array_rows}}, array_rows));
+        Dimension::create<uint32_t>(*ctx_, "d1", {{1, array_rows}}, tile_rows));
     domain.add_dimension(
-        Dimension::create<uint32_t>(ctx_, "d2", {{1, array_cols}}, array_cols));
+        Dimension::create<uint32_t>(*ctx_, "d2", {{1, array_cols}}, tile_cols));
     schema.set_domain(domain);
-    FilterList filters(ctx_);
-    filters.add_filter({ctx_, TILEDB_FILTER_BYTESHUFFLE})
-        .add_filter({ctx_, TILEDB_FILTER_LZ4});
-    schema.add_attribute(Attribute::create<int32_t>(ctx_, "a", filters));
+    FilterList filters(*ctx_);
+    filters.add_filter({*ctx_, TILEDB_FILTER_BYTESHUFFLE})
+        .add_filter({*ctx_, TILEDB_FILTER_LZ4});
+    schema.add_attribute(Attribute::create<int32_t>(*ctx_, "a", filters));
     Array::create(array_uri_, schema);
 
     data_.resize(array_rows * array_cols);
@@ -57,40 +68,55 @@ class Benchmark : public BenchmarkBase {
       data_[i] = i;
     }
 
-    Array array(ctx_, array_uri_, TILEDB_WRITE);
-    Query query(ctx_, array, TILEDB_WRITE);
-    query.set_subarray({1u, array_rows, 1u, array_cols})
+    // Write the array one time.
+    Array write_array(*ctx_, array_uri_, TILEDB_WRITE);
+    Query write_query(*ctx_, write_array, TILEDB_WRITE);
+    write_query.set_subarray({1u, array_rows, 1u, array_cols})
         .set_layout(TILEDB_ROW_MAJOR)
         .set_buffer("a", data_);
-    query.submit();
-    array.close();
+    write_query.submit();
+    write_array.close();
   }
 
   virtual void teardown() {
-    VFS vfs(ctx_);
+    VFS vfs(*ctx_);
     if (vfs.is_dir(array_uri_))
       vfs.remove_dir(array_uri_);
   }
 
   virtual void pre_run() {
     data_.resize(array_rows * array_cols);
+
+    // Read the array one time, populating the entire tile cache.
+    Array read_array(*ctx_, array_uri_, TILEDB_READ);
+    Query read_query(*ctx_, read_array);
+    read_query.set_subarray({1u, array_rows, 1u, array_cols})
+        .set_layout(TILEDB_ROW_MAJOR)
+        .set_buffer("a", data_);
+    read_query.submit();
+    read_array.close();
   }
 
   virtual void run() {
-    Array array(ctx_, array_uri_, TILEDB_READ);
-    Query query(ctx_, array);
-    query.set_subarray({1u, array_rows, 1u, array_cols})
-        .set_layout(TILEDB_ROW_MAJOR)
-        .set_buffer("a", data_);
-    query.submit();
-    array.close();
+    // Read the entire array multiple times. We have already populated
+    // the tile cache in pre_run().
+    for (int i = 0; i < 10; ++i) {
+      Array array(*ctx_, array_uri_, TILEDB_READ);
+      Query query(*ctx_, array);
+      query.set_subarray({1u, array_rows, 1u, array_cols})
+          .set_layout(TILEDB_ROW_MAJOR)
+          .set_buffer("a", data_);
+      query.submit();
+      array.close();
+    }
   }
 
  private:
   const std::string array_uri_ = "bench_array";
-  const unsigned array_rows = 10000, array_cols = 10000;
+  const unsigned array_rows = 10000, array_cols = 20000;
+  const unsigned tile_rows = 100, tile_cols = 100;
 
-  Context ctx_;
+  std::unique_ptr<Context> ctx_;
   std::vector<int> data_;
 };
 
