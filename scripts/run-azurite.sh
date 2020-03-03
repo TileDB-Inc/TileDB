@@ -38,6 +38,15 @@ die() {
   fi
 }
 
+run_npm_azurite() {
+  azurite-blob \
+    --silent \
+    --location /tmp/azurite-data \
+    --debug /tmp/azurite-data/debug.log \
+    --blobPort 10000 \
+    --blobHost 0.0.0.0 &
+}
+
 run_docker_azurite() {
   docker run -d \
     -v /tmp/azurite-data:/data \
@@ -55,7 +64,7 @@ run() {
   cp -f -r $DIR/../test/inputs/test_certs /tmp/azurite-data
 
   if [[ "$AGENT_OS" == "Darwin" ]]; then
-    die "Azurite unsupported on OS X"
+    run_npm_azurite
   else
     run_docker_azurite
   fi

@@ -39,7 +39,8 @@ install_yum_pkgs() {
 }
 
 install_brew_pkgs() {
-  die "Azurite installation unsupported on OS X"
+  brew install node || brew link --overwrite node
+  npm install -g azurite
 }
 
 install_deps() {
