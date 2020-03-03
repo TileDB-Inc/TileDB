@@ -148,15 +148,91 @@ uint64_t FragmentMetadata::cell_num(uint64_t tile_pos) const {
   return last_tile_cell_num();
 }
 
-template <class T>
 Status FragmentMetadata::add_max_buffer_sizes(
     const EncryptionKey& encryption_key,
-    const T* subarray,
+    const void* subarray,
     std::unordered_map<std::string, std::pair<uint64_t, uint64_t>>*
         buffer_sizes) {
+  // Dense case
   if (dense_)
     return add_max_buffer_sizes_dense(encryption_key, subarray, buffer_sizes);
-  return add_max_buffer_sizes_sparse(encryption_key, subarray, buffer_sizes);
+
+  // Convert subarray to NDRange
+  auto dim_num = array_schema_->dim_num();
+  auto sub_ptr = (const unsigned char*)subarray;
+  NDRange sub_nd(dim_num);
+  uint64_t offset = 0;
+  for (unsigned d = 0; d < dim_num; ++d) {
+    auto r_size = 2 * array_schema_->dimension(d)->coord_size();
+    sub_nd[d].set_range(&sub_ptr[offset], r_size);
+    offset += r_size;
+  }
+
+  // Sparse case
+  return add_max_buffer_sizes_sparse(encryption_key, sub_nd, buffer_sizes);
+}
+
+Status FragmentMetadata::add_max_buffer_sizes_dense(
+    const EncryptionKey& encryption_key,
+    const void* subarray,
+    std::unordered_map<std::string, std::pair<uint64_t, uint64_t>>*
+        buffer_sizes) {
+  // Note: applicable only to the dense case where all dimensions
+  // have the same type
+  auto type = array_schema_->dimension(0)->type();
+  switch (type) {
+    case Datatype::INT32:
+      return add_max_buffer_sizes_dense<int32_t>(
+          encryption_key, static_cast<const int32_t*>(subarray), buffer_sizes);
+    case Datatype::INT64:
+      return add_max_buffer_sizes_dense<int64_t>(
+          encryption_key, static_cast<const int64_t*>(subarray), buffer_sizes);
+    case Datatype::FLOAT32:
+      return add_max_buffer_sizes_dense<float>(
+          encryption_key, static_cast<const float*>(subarray), buffer_sizes);
+    case Datatype::FLOAT64:
+      return add_max_buffer_sizes_dense<double>(
+          encryption_key, static_cast<const double*>(subarray), buffer_sizes);
+    case Datatype::INT8:
+      return add_max_buffer_sizes_dense<int8_t>(
+          encryption_key, static_cast<const int8_t*>(subarray), buffer_sizes);
+    case Datatype::UINT8:
+      return add_max_buffer_sizes_dense<uint8_t>(
+          encryption_key, static_cast<const uint8_t*>(subarray), buffer_sizes);
+    case Datatype::INT16:
+      return add_max_buffer_sizes_dense<int16_t>(
+          encryption_key, static_cast<const int16_t*>(subarray), buffer_sizes);
+    case Datatype::UINT16:
+      return add_max_buffer_sizes_dense<uint16_t>(
+          encryption_key, static_cast<const uint16_t*>(subarray), buffer_sizes);
+    case Datatype::UINT32:
+      return add_max_buffer_sizes_dense<uint32_t>(
+          encryption_key, static_cast<const uint32_t*>(subarray), buffer_sizes);
+    case Datatype::UINT64:
+      return add_max_buffer_sizes_dense<uint64_t>(
+          encryption_key, static_cast<const uint64_t*>(subarray), buffer_sizes);
+    case Datatype::DATETIME_YEAR:
+    case Datatype::DATETIME_MONTH:
+    case Datatype::DATETIME_WEEK:
+    case Datatype::DATETIME_DAY:
+    case Datatype::DATETIME_HR:
+    case Datatype::DATETIME_MIN:
+    case Datatype::DATETIME_SEC:
+    case Datatype::DATETIME_MS:
+    case Datatype::DATETIME_US:
+    case Datatype::DATETIME_NS:
+    case Datatype::DATETIME_PS:
+    case Datatype::DATETIME_FS:
+    case Datatype::DATETIME_AS:
+      return add_max_buffer_sizes_dense<int64_t>(
+          encryption_key, static_cast<const int64_t*>(subarray), buffer_sizes);
+    default:
+      return LOG_STATUS(Status::FragmentMetadataError(
+          "Cannot compute add read buffer sizes for dense array; Unsupported "
+          "domain type"));
+  }
+
+  return Status::Ok();
 }
 
 template <class T>
@@ -186,20 +262,15 @@ Status FragmentMetadata::add_max_buffer_sizes_dense(
   return Status::Ok();
 }
 
-template <class T>
 Status FragmentMetadata::add_max_buffer_sizes_sparse(
     const EncryptionKey& encryption_key,
-    const T* subarray,
+    const NDRange& subarray,
     std::unordered_map<std::string, std::pair<uint64_t, uint64_t>>*
         buffer_sizes) {
   RETURN_NOT_OK(load_rtree(encryption_key));
 
   // Get tile overlap
-  auto dim_num = array_schema_->dim_num();
-  NDRange range(dim_num);
-  for (unsigned d = 0; d < dim_num; ++d)
-    range[d].set_range(&subarray[2 * d], 2 * sizeof(T));
-  auto tile_overlap = rtree_.get_tile_overlap(range);
+  auto tile_overlap = rtree_.get_tile_overlap(subarray);
   uint64_t size = 0;
 
   // Handle tile ranges
@@ -589,7 +660,9 @@ Status FragmentMetadata::get_footer_offset_and_size(
 Status FragmentMetadata::get_footer_offset_and_size_v3_v4(
     uint64_t* offset, uint64_t* size) const {
   auto attribute_num = array_schema_->attribute_num();
-  auto domain_size = 2 * array_schema_->coords_size();
+  auto dim_num = array_schema_->dim_num();
+  // v3 and v4 support only arrays where all dimensions have the same type
+  auto domain_size = 2 * dim_num * array_schema_->dimension(0)->coord_size();
 
   // Get footer size
   *size = 0;
@@ -614,8 +687,11 @@ Status FragmentMetadata::get_footer_offset_and_size_v3_v4(
 
 Status FragmentMetadata::get_footer_offset_and_size_v5_or_higher(
     uint64_t* offset, uint64_t* size) const {
-  auto num = array_schema_->attribute_num() + array_schema_->dim_num() + 1;
-  auto domain_size = 2 * array_schema_->coords_size();
+  auto dim_num = array_schema_->dim_num();
+  auto num = array_schema_->attribute_num() + dim_num + 1;
+  uint64_t domain_size = 0;
+  for (unsigned d = 0; d < dim_num; ++d)
+    domain_size += 2 * array_schema_->domain()->dimension(d)->coord_size();
 
   // Get footer size
   *size = 0;
@@ -646,7 +722,9 @@ std::vector<uint64_t> FragmentMetadata::compute_overlapping_tile_ids(
   auto dim_num = array_schema_->dim_num();
 
   // Temporary domain vector
-  std::vector<uint8_t> temp(2 * array_schema_->coords_size());
+  auto coord_size = array_schema_->domain()->dimension(0)->coord_size();
+  auto temp_size = 2 * dim_num * coord_size;
+  std::vector<uint8_t> temp(temp_size);
   uint8_t offset = 0;
   for (unsigned d = 0; d < dim_num; ++d) {
     std::memcpy(&temp[offset], domain_[d].data(), domain_[d].size());
@@ -692,7 +770,9 @@ FragmentMetadata::compute_overlapping_tile_ids_cov(const T* subarray) const {
   auto dim_num = array_schema_->dim_num();
 
   // Temporary domain vector
-  std::vector<uint8_t> temp(2 * array_schema_->coords_size());
+  auto coord_size = array_schema_->domain()->dimension(0)->coord_size();
+  auto temp_size = 2 * dim_num * coord_size;
+  std::vector<uint8_t> temp(temp_size);
   uint8_t offset = 0;
   for (unsigned d = 0; d < dim_num; ++d) {
     std::memcpy(&temp[offset], domain_[d].data(), domain_[d].size());
@@ -871,7 +951,10 @@ Status FragmentMetadata::load_bounding_coords(ConstBuffer* buff) {
   RETURN_NOT_OK(buff->read(&bounding_coords_num, sizeof(uint64_t)));
 
   // Get bounding coordinates
-  uint64_t bounding_coords_size = 2 * array_schema_->coords_size();
+  // Note: This version supports only dimensions domains with the same type
+  auto coord_size = array_schema_->domain()->dimension(0)->coord_size();
+  auto dim_num = array_schema_->domain()->dim_num();
+  uint64_t bounding_coords_size = 2 * dim_num * coord_size;
   bounding_coords_.resize(bounding_coords_num);
   for (uint64_t i = 0; i < bounding_coords_num; ++i) {
     bounding_coords_[i].resize(bounding_coords_size);
@@ -1059,7 +1142,9 @@ Status FragmentMetadata::load_non_empty_domain_v3_v4(ConstBuffer* buff) {
   // Get non-empty domain
   if (!null_non_empty_domain) {
     auto dim_num = array_schema_->dim_num();
-    auto domain_size = 2 * array_schema_->coords_size();
+    // Note: These versions supports only dimensions domains with the same type
+    auto coord_size = array_schema_->domain()->dimension(0)->coord_size();
+    auto domain_size = 2 * dim_num * coord_size;
     std::vector<uint8_t> temp(domain_size);
     RETURN_NOT_OK(buff->read(&temp[0], domain_size));
     non_empty_domain_.resize(dim_num);
@@ -1782,57 +1867,6 @@ void FragmentMetadata::clean_up() {
 }
 
 // Explicit template instantiations
-template Status FragmentMetadata::add_max_buffer_sizes<int8_t>(
-    const EncryptionKey& encryption_key,
-    const int8_t* subarray,
-    std::unordered_map<std::string, std::pair<uint64_t, uint64_t>>*
-        buffer_sizes);
-template Status FragmentMetadata::add_max_buffer_sizes<uint8_t>(
-    const EncryptionKey& encryption_key,
-    const uint8_t* subarray,
-    std::unordered_map<std::string, std::pair<uint64_t, uint64_t>>*
-        buffer_sizes);
-template Status FragmentMetadata::add_max_buffer_sizes<int16_t>(
-    const EncryptionKey& encryption_key,
-    const int16_t* subarray,
-    std::unordered_map<std::string, std::pair<uint64_t, uint64_t>>*
-        buffer_sizes);
-template Status FragmentMetadata::add_max_buffer_sizes<uint16_t>(
-    const EncryptionKey& encryption_key,
-    const uint16_t* subarray,
-    std::unordered_map<std::string, std::pair<uint64_t, uint64_t>>*
-        buffer_sizes);
-template Status FragmentMetadata::add_max_buffer_sizes<int>(
-    const EncryptionKey& encryption_key,
-    const int* subarray,
-    std::unordered_map<std::string, std::pair<uint64_t, uint64_t>>*
-        buffer_sizes);
-template Status FragmentMetadata::add_max_buffer_sizes<unsigned>(
-    const EncryptionKey& encryption_key,
-    const unsigned* subarray,
-    std::unordered_map<std::string, std::pair<uint64_t, uint64_t>>*
-        buffer_sizes);
-template Status FragmentMetadata::add_max_buffer_sizes<int64_t>(
-    const EncryptionKey& encryption_key,
-    const int64_t* subarray,
-    std::unordered_map<std::string, std::pair<uint64_t, uint64_t>>*
-        buffer_sizes);
-template Status FragmentMetadata::add_max_buffer_sizes<uint64_t>(
-    const EncryptionKey& encryption_key,
-    const uint64_t* subarray,
-    std::unordered_map<std::string, std::pair<uint64_t, uint64_t>>*
-        buffer_sizes);
-template Status FragmentMetadata::add_max_buffer_sizes<float>(
-    const EncryptionKey& encryption_key,
-    const float* subarray,
-    std::unordered_map<std::string, std::pair<uint64_t, uint64_t>>*
-        buffer_sizes);
-template Status FragmentMetadata::add_max_buffer_sizes<double>(
-    const EncryptionKey& encryption_key,
-    const double* subarray,
-    std::unordered_map<std::string, std::pair<uint64_t, uint64_t>>*
-        buffer_sizes);
-
 template std::vector<std::pair<uint64_t, double>>
 FragmentMetadata::compute_overlapping_tile_ids_cov<int8_t>(
     const int8_t* subarray) const;

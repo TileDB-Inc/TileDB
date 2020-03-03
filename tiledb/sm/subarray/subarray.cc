@@ -674,10 +674,6 @@ const std::vector<std::vector<TileOverlap>>& Subarray::tile_overlap() const {
   return tile_overlap_;
 }
 
-Datatype Subarray::type() const {
-  return array_->array_schema()->domain()->type();
-}
-
 template <class T>
 void Subarray::compute_tile_coords() {
   if (array_->array_schema()->tile_order() == Layout::ROW_MAJOR)
@@ -690,8 +686,9 @@ template <class T>
 const T* Subarray::tile_coords_ptr(
     const std::vector<T>& tile_coords,
     std::vector<uint8_t>* aux_tile_coords) const {
-  auto coords_size = array_->array_schema()->coords_size();
-  std::memcpy(&((*aux_tile_coords)[0]), &tile_coords[0], coords_size);
+  auto dim_num = array_->array_schema()->dim_num();
+  auto coord_size = array_->array_schema()->dimension(0)->coord_size();
+  std::memcpy(&((*aux_tile_coords)[0]), &tile_coords[0], dim_num * coord_size);
   auto it = tile_coords_map_.find(*aux_tile_coords);
   if (it == tile_coords_map_.end())
     return nullptr;
@@ -911,7 +908,7 @@ void Subarray::compute_tile_coords_col() {
 
   tile_coords_.resize(tile_coords_num);
   std::vector<uint8_t> coords;
-  auto coords_size = array_schema->coords_size();
+  auto coords_size = dim_num * array_schema->dimension(0)->coord_size();
   coords.resize(coords_size);
   size_t coord_size = sizeof(T);
   size_t tile_coords_pos = 0;
@@ -969,7 +966,7 @@ void Subarray::compute_tile_coords_row() {
 
   tile_coords_.resize(tile_coords_num);
   std::vector<uint8_t> coords;
-  auto coords_size = array_schema->coords_size();
+  auto coords_size = dim_num * array_schema->dimension(0)->coord_size();
   coords.resize(coords_size);
   size_t coord_size = sizeof(T);
   size_t tile_coords_pos = 0;
@@ -1046,7 +1043,8 @@ Subarray Subarray::clone() const {
 }
 
 TileOverlap Subarray::get_tile_overlap(uint64_t range_idx, unsigned fid) const {
-  auto type = array_->array_schema()->domain()->type();
+  assert(array_->array_schema()->dense());
+  auto type = array_->array_schema()->dimension(0)->type();
   switch (type) {
     case Datatype::INT8:
       return get_tile_overlap<int8_t>(range_idx, fid);
@@ -1090,6 +1088,7 @@ TileOverlap Subarray::get_tile_overlap(uint64_t range_idx, unsigned fid) const {
 
 template <class T>
 TileOverlap Subarray::get_tile_overlap(uint64_t range_idx, unsigned fid) const {
+  assert(array_->array_schema()->dense());
   TileOverlap ret;
   auto ndrange = this->ndrange(range_idx);
 

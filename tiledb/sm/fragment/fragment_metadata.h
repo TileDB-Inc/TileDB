@@ -94,7 +94,6 @@ class FragmentMetadata {
    * from the fragment, for a given set of attributes. Note that these upper
    * bounds is added to those in `buffer_sizes`.
    *
-   * @tparam T The coordinates type.
    * @param encryption_key The encryption key the array was opened with.
    * @param subarray The targeted subarray.
    * @param buffer_sizes The upper bounds will be added to this map. The latter
@@ -103,10 +102,29 @@ class FragmentMetadata {
    *     offsets size, whereas the second is the data size.
    * @return Status
    */
-  template <class T>
   Status add_max_buffer_sizes(
       const EncryptionKey& encryption_key,
-      const T* subarray,
+      const void* subarray,
+      std::unordered_map<std::string, std::pair<uint64_t, uint64_t>>*
+          buffer_sizes);
+
+  /**
+   * Computes an upper bound on the buffer sizes needed when reading a subarray
+   * from the fragment, for a given set of attributes. Note that these upper
+   * bounds is added to those in `buffer_sizes`. Applicable only to the dense
+   * case.
+   *
+   * @param encryption_key The encryption key the array was opened with.
+   * @param subarray The targeted subarray.
+   * @param buffer_sizes The upper bounds will be added to this map. The latter
+   *     maps an attribute to a buffer size pair. For fix-sized attributes, only
+   *     the first size is useful. For var-sized attributes, the first is the
+   *     offsets size, whereas the second is the data size.
+   * @return Status
+   */
+  Status add_max_buffer_sizes_dense(
+      const EncryptionKey& encryption_key,
+      const void* subarray,
       std::unordered_map<std::string, std::pair<uint64_t, uint64_t>>*
           buffer_sizes);
 
@@ -138,7 +156,6 @@ class FragmentMetadata {
    * bounds is added to those in `buffer_sizes`. Applicable only to the sparse
    * case.
    *
-   * @tparam T The coordinates type.
    * @param encryption_key The encryption key the array was opened with.
    * @param subarray The targeted subarray.
    * @param buffer_sizes The upper bounds will be added to this map. The latter
@@ -147,10 +164,9 @@ class FragmentMetadata {
    *     offsets size, whereas the second is the data size.
    * @return Status
    */
-  template <class T>
   Status add_max_buffer_sizes_sparse(
       const EncryptionKey& encryption_key,
-      const T* subarray,
+      const NDRange& subarray,
       std::unordered_map<std::string, std::pair<uint64_t, uint64_t>>*
           buffer_sizes);
 

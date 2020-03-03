@@ -191,12 +191,6 @@ class ArraySchema {
   /** Returns the compression level of the coordinates. */
   int coords_compression_level() const;
 
-  /** Returns the coordinates size. */
-  uint64_t coords_size() const;
-
-  /** Returns the type of the coordinates. */
-  Datatype coords_type() const;
-
   /** True if the array is dense. */
   bool dense() const;
 
@@ -361,9 +355,6 @@ class ArraySchema {
 
   /** The filter pipeline run on coordinate tiles. */
   FilterPipeline coords_filters_;
-
-  /** The size (in bytes) of the coordinates. */
-  uint64_t coords_size_;
 
   /** It maps each dimension name to the corresponding dimension object. */
   std::unordered_map<std::string, const Dimension*> dim_map_;
