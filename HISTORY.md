@@ -1,3 +1,19 @@
+# TileDB v1.7.6 Release Notes
+
+## New features
+
+* Add MD5 and SHA256 checksum filters [#1515](https://github.com/TileDB-Inc/TileDB/pull/1515)
+
+## Improvements
+
+## Deprecations
+
+## Bug fixes
+
+## API additions
+
+## API removals
+
 # TileDB v1.7.5 Release Notes
 
 ## New features
@@ -16,6 +32,7 @@
 ## API additions
 
 ## API removals
+
 
 # TileDB v1.7.4 Release Notes
 
