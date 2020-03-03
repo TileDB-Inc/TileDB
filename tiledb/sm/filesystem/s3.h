@@ -187,7 +187,7 @@ class S3 {
    * and the delimiter is `/`, the returned URIs will be
    *
    * - `foo/boo`
-   * - `foo/bar/`
+   * - `foo/bar`
    *
    * @param prefix The prefix URI.
    * @param paths Pointer of a vector of URIs to store the retrieved paths.
@@ -482,6 +482,12 @@ class S3 {
    * from the front if it exists.
    */
   std::string remove_front_slash(const std::string& path) const;
+
+  /**
+   * Returns the input `path` after removing a potential `/` character
+   * from the end if it exists.
+   */
+  std::string remove_trailing_slash(const std::string& path) const;
 
   /**
    * Writes the contents of the input buffer to the S3 object given by

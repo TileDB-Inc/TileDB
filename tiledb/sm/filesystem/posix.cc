@@ -106,6 +106,23 @@ void Posix::adjacent_slashes_dedup(std::string* path) {
 }
 
 std::string Posix::abs_path(const std::string& path) {
+  std::string resolved_path = abs_path_internal(path);
+
+  // Ensure the returned has the same postfix slash as 'path'.
+  if (utils::parse::ends_with(path, "/")) {
+    if (!utils::parse::ends_with(resolved_path, "/")) {
+      resolved_path = resolved_path + "/";
+    }
+  } else {
+    if (utils::parse::ends_with(resolved_path, "/")) {
+      resolved_path = resolved_path.substr(0, resolved_path.length() - 1);
+    }
+  }
+
+  return resolved_path;
+}
+
+std::string Posix::abs_path_internal(const std::string& path) {
   // Initialize current, home and root
   std::string current = current_dir();
   auto env_home_ptr = getenv("HOME");

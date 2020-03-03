@@ -358,6 +358,11 @@ Status HDFS::is_file(const URI& uri, bool* is_file) {
 }
 
 Status HDFS::touch(const URI& uri) {
+  if (uri.to_string().back() == '/') {
+    return LOG_STATUS(Status::HDFSError(std::string(
+        "Cannot create file; URI is a directory: " + uri.to_string())));
+  }
+
   hdfsFS fs = nullptr;
   RETURN_NOT_OK(connect(&fs));
   hdfsFile writeFile =

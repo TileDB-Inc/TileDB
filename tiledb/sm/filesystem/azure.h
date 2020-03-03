@@ -157,7 +157,7 @@ class Azure {
    * and the delimiter is `/`, the returned URIs will be
    *
    * - `foo/boo`
-   * - `foo/bar/`
+   * - `foo/bar`
    *
    * @param uri The prefix URI.
    * @param paths Pointer of a vector of URIs to store the retrieved paths.
@@ -582,6 +582,27 @@ class Azure {
       const std::string& container_name,
       const std::string& blob_path,
       bool* const is_blob) const;
+
+  /**
+   * Removes a leading slash from 'path' if it exists.
+   *
+   * @param path the string to remove the leading slash from.
+   */
+  std::string remove_front_slash(const std::string& path) const;
+
+  /**
+   * Adds a trailing slash from 'path' if it doesn't already have one.
+   *
+   * @param path the string to add the trailing slash to.
+   */
+  std::string add_trailing_slash(const std::string& path) const;
+
+  /**
+   * Removes a trailing slash from 'path' if it exists.
+   *
+   * @param path the string to remove the trailing slash from.
+   */
+  std::string remove_trailing_slash(const std::string& path) const;
 };
 
 }  // namespace sm
