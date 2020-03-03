@@ -121,27 +121,35 @@ Status Domain::add_dimension(const Dimension* dim) {
   return Status::Ok();
 }
 
-template <class T>
-uint64_t Domain::cell_num(const T* domain) const {
-  if (&typeid(T) == &typeid(float) || &typeid(T) == &typeid(double))
-    return 0;
-
-  uint64_t cell_num = 1, range, prod;
-  for (unsigned i = 0; i < dim_num_; ++i) {
-    // The code below essentially computes
-    // cell_num *= domain[2 * i + 1] - domain[2 * i] + 1;
-    // while performing overflow checks
-    range = domain[2 * i + 1] - domain[2 * i];
-    if (range == std::numeric_limits<uint64_t>::max())  // overflow
-      return 0;
-    ++range;
-    prod = range * cell_num;
-    if (prod / range != cell_num)  // Overflow
-      return 0;
-    cell_num = prod;
+bool Domain::all_dims_int() const {
+  for (const auto& dim : dimensions_) {
+    if (!datatype_is_integer(dim->type()))
+      return false;
   }
 
-  return cell_num;
+  return true;
+}
+
+bool Domain::all_dims_real() const {
+  for (const auto& dim : dimensions_) {
+    if (!datatype_is_real(dim->type()))
+      return false;
+  }
+
+  return true;
+}
+
+bool Domain::all_dims_same_type() const {
+  if (dim_num_ == 0)
+    return true;
+
+  auto type = dimensions_[0]->type();
+  for (unsigned d = 1; d < dim_num_; ++d) {
+    if (dimensions_[d]->type() != type)
+      return false;
+  }
+
+  return true;
 }
 
 uint64_t Domain::cell_num_per_tile() const {
@@ -644,9 +652,11 @@ int Domain::tile_order_cmp(
   return tile_order_cmp_func_[dim_idx](dim, coord_a, coord_b);
 }
 
+/*
 Datatype Domain::type() const {
   return type_;
 }
+*/
 
 /* ****************************** */
 /*         PRIVATE METHODS        */
@@ -1284,17 +1294,6 @@ uint64_t Domain::get_tile_pos_row(const T* domain, const T* tile_coords) const {
 }
 
 // Explicit template instantiations
-template uint64_t Domain::cell_num<int8_t>(const int8_t* domain) const;
-template uint64_t Domain::cell_num<uint8_t>(const uint8_t* domain) const;
-template uint64_t Domain::cell_num<int16_t>(const int16_t* domain) const;
-template uint64_t Domain::cell_num<uint16_t>(const uint16_t* domain) const;
-template uint64_t Domain::cell_num<int>(const int* domain) const;
-template uint64_t Domain::cell_num<unsigned>(const unsigned* domain) const;
-template uint64_t Domain::cell_num<int64_t>(const int64_t* domain) const;
-template uint64_t Domain::cell_num<uint64_t>(const uint64_t* domain) const;
-template uint64_t Domain::cell_num<float>(const float* domain) const;
-template uint64_t Domain::cell_num<double>(const double* domain) const;
-
 template Status Domain::get_cell_pos<int>(
     const int* coords, uint64_t* pos) const;
 template Status Domain::get_cell_pos<int64_t>(

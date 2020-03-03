@@ -36,6 +36,7 @@
 #include "tiledb/sm/array/array.h"
 #include "tiledb/sm/array_schema/array_schema.h"
 #include "tiledb/sm/array_schema/attribute.h"
+#include "tiledb/sm/array_schema/dimension.h"
 #include "tiledb/sm/crypto/encryption_key.h"
 #include "tiledb/sm/enums/encryption_type.h"
 #include "tiledb/sm/enums/query_type.h"
@@ -219,7 +220,7 @@ void InfoCommand::write_svg_mbrs() const {
   for (const auto& f : fragment_metadata) {
     const auto& mbrs = f->mbrs();
     for (const auto& mbr : mbrs) {
-      auto tup = get_mbr(mbr, schema->coords_type());
+      auto tup = get_mbr(mbr, schema->dimension(0)->type());
       min_x = std::min(min_x, std::get<0>(tup));
       min_y = std::min(min_y, std::get<1>(tup));
       max_x = std::max(max_x, std::get<0>(tup) + std::get<2>(tup));
@@ -280,7 +281,7 @@ void InfoCommand::write_text_mbrs() const {
   const auto* schema = array.array_schema();
   auto dim_num = schema->dim_num();
   auto fragment_metadata = array.fragment_metadata();
-  auto coords_type = schema->coords_type();
+  auto coords_type = schema->dimension(0)->type();
   std::stringstream text;
   for (const auto& f : fragment_metadata) {
     const auto& mbrs = f->mbrs();

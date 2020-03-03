@@ -87,7 +87,6 @@ ArraySchema::ArraySchema(const ArraySchema* array_schema) {
   cell_order_ = array_schema->cell_order_;
   cell_var_offsets_filters_ = array_schema->cell_var_offsets_filters_;
   coords_filters_ = array_schema->coords_filters_;
-  coords_size_ = array_schema->coords_size_;
   tile_order_ = array_schema->tile_order_;
   version_ = array_schema->version_;
 
@@ -174,9 +173,13 @@ Layout ArraySchema::cell_order() const {
 }
 
 uint64_t ArraySchema::cell_size(const std::string& name) const {
-  // Special zipped coordinates
-  if (name == constants::coords)
-    return domain_->dim_num() * datatype_size(coords_type());
+  // Special zipped coordinates attribute
+  if (name == constants::coords) {
+    auto dim_num = domain_->dim_num();
+    assert(dim_num > 0);
+    auto coord_size = domain_->dimension(0)->coord_size();
+    return dim_num * coord_size;
+  }
 
   // Attribute
   auto attr_it = attribute_map_.find(name);
@@ -228,8 +231,8 @@ Status ArraySchema::check() const {
         "Array schema check failed; No dimensions provided"));
 
   if (array_type_ == ArrayType::DENSE) {
-    if (domain_->type() == Datatype::FLOAT32 ||
-        domain_->type() == Datatype::FLOAT64) {
+    auto type = domain_->dimension(0)->type();
+    if (datatype_is_real(type)) {
       return LOG_STATUS(
           Status::ArraySchemaError("Array schema check failed; Dense arrays "
                                    "cannot have floating point domains"));
@@ -296,14 +299,6 @@ Compressor ArraySchema::coords_compression() const {
 int ArraySchema::coords_compression_level() const {
   auto compressor = coords_filters_.get_filter<CompressionFilter>();
   return (compressor == nullptr) ? -1 : compressor->compression_level();
-}
-
-uint64_t ArraySchema::coords_size() const {
-  return coords_size_;
-}
-
-Datatype ArraySchema::coords_type() const {
-  return domain_->type();
 }
 
 bool ArraySchema::dense() const {
@@ -429,9 +424,9 @@ Layout ArraySchema::tile_order() const {
 }
 
 Datatype ArraySchema::type(const std::string& name) const {
-  // Special zipped coordinates
+  // Special zipped coordinates attribute
   if (name == constants::coords)
-    return domain_->type();
+    return domain_->dimension(0)->type();
 
   // Attribute
   auto attr_it = attribute_map_.find(name);
@@ -582,10 +577,6 @@ Status ArraySchema::init() {
   // Initialize domain
   RETURN_NOT_OK(domain_->init(cell_order_, tile_order_));
 
-  // Set cell sizes
-  // TODO: set upon setting domain
-  coords_size_ = domain_->dim_num() * datatype_size(coords_type());
-
   // Success
   return Status::Ok();
 }
@@ -626,11 +617,13 @@ Status ArraySchema::set_domain(Domain* domain) {
   if (array_type_ == ArrayType::DENSE) {
     RETURN_NOT_OK(domain->set_null_tile_extents_to_range());
 
-    if (domain->type() == Datatype::FLOAT32 ||
-        domain->type() == Datatype::FLOAT64) {
-      return LOG_STATUS(
-          Status::ArraySchemaError("Cannot set domain; Dense arrays "
-                                   "cannot have floating point domains"));
+    if (domain->dim_num() > 0) {
+      auto type = domain->dimension(0)->type();
+      if (type == Datatype::FLOAT32 || type == Datatype::FLOAT64) {
+        return LOG_STATUS(
+            Status::ArraySchemaError("Cannot set domain; Dense arrays "
+                                     "cannot have floating point domains"));
+      }
     }
   }
 
@@ -639,8 +632,7 @@ Status ArraySchema::set_domain(Domain* domain) {
   domain_ = new Domain(domain);
 
   // Potentially change the default coordinates compressor
-  if ((domain_->type() == Datatype::FLOAT32 ||
-       domain_->type() == Datatype::FLOAT64) &&
+  if (domain_->all_dims_real() &&
       coords_compression() == Compressor::DOUBLE_DELTA) {
     auto* filter = coords_filters_.get_filter<CompressionFilter>();
     assert(filter != nullptr);
@@ -686,12 +678,6 @@ bool ArraySchema::check_attribute_dimension_names() const {
 }
 
 bool ArraySchema::check_double_delta_compressor() const {
-  // Check coordinates
-  if ((domain_->type() == Datatype::FLOAT32 ||
-       domain_->type() == Datatype::FLOAT64) &&
-      coords_compression() == Compressor::DOUBLE_DELTA)
-    return false;
-
   // Check attributes
   for (auto attr : attributes_) {
     if ((attr->type() == Datatype::FLOAT32 ||

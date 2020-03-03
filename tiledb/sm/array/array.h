@@ -395,26 +395,6 @@ class Array {
           max_buffer_sizes_) const;
 
   /**
-   * Computes an upper bound on the buffer sizes required for a read
-   * query, for a given subarray and set of attributes. Note that
-   * the attributes are already set in `max_buffer_sizes`
-   *
-   * @tparam T The domain type
-   * @param subarray The subarray to focus on. Note that it must have the same
-   *     underlying type as the array domain.
-   * @param max_buffer_sizes The buffer sizes to be retrieved. This is a map
-   *     from an attribute to a size pair. For fixed-sized attributes, only
-   *     the first size is useful. For var-sized attributes, the first size
-   *     is the offsets size, and the second size is the values size.
-   * @return Status
-   */
-  template <class T>
-  Status compute_max_buffer_sizes(
-      const T* subarray,
-      std::unordered_map<std::string, std::pair<uint64_t, uint64_t>>*
-          max_buffer_sizes) const;
-
-  /**
    * Load array metadata, handles remote arrays vs non-remote arrays
    * @return  Status
    */

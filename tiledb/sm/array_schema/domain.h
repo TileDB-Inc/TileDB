@@ -87,18 +87,14 @@ class Domain {
    */
   Status add_dimension(const Dimension* dim);
 
-  /**
-   * Returns the number of cells in the input domain. Note that this is
-   * applicable only to integer array domains (otherwise the output is 0).
-   * Also note that it is assummed that the input domain is expanded
-   * such that it aligns with the tile extents.
-   *
-   * @tparam T The domain type.
-   * @param domain The domain to be checked.
-   * @return The number of cells in the domain.
-   */
-  template <class T>
-  uint64_t cell_num(const T* domain) const;
+  /** Returns true if all dimensions have integer domain types. */
+  bool all_dims_int() const;
+
+  /** Returns true if all dimensions have real domain types. */
+  bool all_dims_real() const;
+
+  /** Returns true if all dimensions have the same type. */
+  bool all_dims_same_type() const;
 
   /** Returns the number of cells per tile (only for the dense case). */
   uint64_t cell_num_per_tile() const;
@@ -494,9 +490,6 @@ class Domain {
    */
   int tile_order_cmp(
       unsigned dim_idx, const void* coord_a, const void* coord_b) const;
-
-  /** Returns the dimensions type. */
-  Datatype type() const;
 
   /**
    * Returns the position of the input coordinates inside its corresponding

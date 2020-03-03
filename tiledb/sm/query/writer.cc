@@ -1482,8 +1482,8 @@ Status Writer::ordered_write() {
   assert(layout_ == Layout::ROW_MAJOR || layout_ == Layout::COL_MAJOR);
   assert(array_schema_->dense());
 
-  auto coords_type = array_schema_->coords_type();
-  switch (coords_type) {
+  auto type = array_schema_->domain()->dimension(0)->type();
+  switch (type) {
     case Datatype::INT8:
       return ordered_write<int8_t>();
     case Datatype::UINT8:
@@ -2171,9 +2171,10 @@ Status Writer::split_coords_buffer() {
     return Status::Ok();
 
   // For easy reference
-  auto coords_size = array_schema_->coords_size();
-  coords_num_ = *coords_buffer_size_ / coords_size;
   auto dim_num = array_schema_->dim_num();
+  auto coord_size = array_schema_->domain()->dimension(0)->coord_size();
+  auto coords_size = dim_num * coord_size;
+  coords_num_ = *coords_buffer_size_ / coords_size;
 
   clear_coord_buffers();
 

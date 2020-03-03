@@ -1285,8 +1285,8 @@ Status Reader::dedup_result_coords(
 }
 
 Status Reader::dense_read() {
-  auto coords_type = array_schema_->coords_type();
-  switch (coords_type) {
+  auto type = array_schema_->domain()->dimension(0)->type();
+  switch (type) {
     case Datatype::INT8:
       return dense_read<int8_t>();
     case Datatype::UINT8:
@@ -1436,7 +1436,9 @@ Status Reader::fill_dense_coords_row_col(
   STATS_FUNC_IN(reader_fill_coords);
 
   auto cell_order = array_schema_->cell_order();
-  auto coords_size = array_schema_->coords_size();
+  auto coord_size = array_schema_->domain()->dimension(0)->coord_size();
+  auto dim_num = array_schema_->dim_num();
+  auto coords_size = dim_num * coord_size;
 
   // Iterate over all coordinates, retrieved in cell slabs
   CellSlabIter<T> iter(&subarray);
