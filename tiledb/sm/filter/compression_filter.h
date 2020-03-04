@@ -78,8 +78,18 @@ class CompressionFilter : public Filter {
    *
    * @param compressor Compressor to use
    * @param level Compression level to use
+   * @param use_checksum Enable compression checksum if available
    */
   CompressionFilter(Compressor compressor, int level);
+
+  /**
+   * Constructor.
+   *
+   * @param compressor Compressor to use
+   * @param level Compression level to use
+   * @param use_checksum Enable compression checksum if available
+   */
+  CompressionFilter(Compressor compressor, int level, bool use_checksum);
 
   /**
    * Constructor.
@@ -94,6 +104,9 @@ class CompressionFilter : public Filter {
 
   /** Return the compression level used by this filter instance. */
   int compression_level() const;
+
+  /** Return the use_checksum option used by this filter instance. */
+  bool use_checksum() const;
 
   /**
    * Compress the given input into the given output.
@@ -119,12 +132,18 @@ class CompressionFilter : public Filter {
   /** Set the compression level used by this filter instance. */
   void set_compression_level(int compressor_level);
 
+  /** Set the use_checksum flag used by this filter instance. */
+  void set_use_checksum(bool use_checksum);
+
  private:
   /** The compressor. */
   Compressor compressor_;
 
   /** The compression level. */
   int level_;
+
+  /** Use built-in checksum (ZStd only). */
+  bool use_checksum_;
 
   /** Returns a new clone of this filter. */
   CompressionFilter* clone_impl() const override;

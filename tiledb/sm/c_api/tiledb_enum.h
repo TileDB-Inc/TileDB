@@ -172,6 +172,8 @@
     TILEDB_FILTER_OPTION_ENUM(BIT_WIDTH_MAX_WINDOW) = 1,
     /** Max window length for positive-delta encoding. Type: `uint32_t`. */
     TILEDB_FILTER_OPTION_ENUM(POSITIVE_DELTA_MAX_WINDOW) = 2,
+    /** Max window length for positive-delta encoding. Type: `uint32_t`. */
+    TILEDB_FILTER_OPTION_ENUM(USE_CHECKSUM) = 3,
 #endif
 
 #ifdef TILEDB_ENCRYPTION_TYPE_ENUM

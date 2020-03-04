@@ -33,6 +33,7 @@
 #ifndef TILEDB_ZSTD_H
 #define TILEDB_ZSTD_H
 
+#include "tiledb/sm/filter/filter.h"
 #include "tiledb/sm/misc/status.h"
 
 namespace tiledb {
@@ -51,10 +52,11 @@ class ZStd {
    * @param level Compression level.
    * @param input_buffer Input buffer to read from.
    * @param output_buffer Output buffer to write to the compressed data.
+   * @param use_checksum Apply Zstd built-in checksum filter.
    * @return Status
    */
   static Status compress(
-      int level, ConstBuffer* input_buffer, Buffer* output_buffer);
+      int level, bool use_checksum, ConstBuffer* input_buffer, Buffer* output_buffer);
 
   /**
    * Decompression function.
@@ -73,6 +75,7 @@ class ZStd {
 
   /** Returns the compression overhead for the given input. */
   static uint64_t overhead(uint64_t nbytes);
+
 };
 
 }  // namespace sm

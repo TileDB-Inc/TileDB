@@ -53,6 +53,7 @@ CompressionFilter::CompressionFilter(FilterType compressor, int level)
     : Filter(compressor) {
   compressor_ = filter_to_compressor(compressor);
   level_ = level;
+  use_checksum_ = (compressor_ == Compressor::ZSTD) ? true : false;
 }
 
 CompressionFilter::CompressionFilter(Compressor compressor, int level)
@@ -60,6 +61,15 @@ CompressionFilter::CompressionFilter(Compressor compressor, int level)
   compressor_ = compressor;
   level_ = level;
   type_ = compressor_to_filter(compressor);
+  use_checksum_ = (compressor_ == Compressor::ZSTD) ? true : false;
+}
+
+CompressionFilter::CompressionFilter(Compressor compressor, int level, bool use_checksum)
+    : Filter(FilterType::FILTER_NONE) {
+  compressor_ = compressor;
+  level_ = level;
+  type_ = compressor_to_filter(compressor);
+  use_checksum_ = use_checksum;
 }
 
 Compressor CompressionFilter::compressor() const {
@@ -70,8 +80,12 @@ int CompressionFilter::compression_level() const {
   return level_;
 }
 
+bool CompressionFilter::use_checksum() const {
+  return use_checksum_;
+}
+
 CompressionFilter* CompressionFilter::clone_impl() const {
-  return new CompressionFilter(compressor_, level_);
+  return new CompressionFilter(compressor_, level_, use_checksum_);
 }
 
 void CompressionFilter::set_compressor(Compressor compressor) {
@@ -81,6 +95,13 @@ void CompressionFilter::set_compressor(Compressor compressor) {
 
 void CompressionFilter::set_compression_level(int compressor_level) {
   level_ = compressor_level;
+}
+
+void CompressionFilter::set_use_checksum(bool use_checksum) {
+  if (compressor_ != Compressor::ZSTD)
+    return;
+
+  use_checksum_ = use_checksum;
 }
 
 FilterType CompressionFilter::compressor_to_filter(Compressor compressor) {
@@ -137,6 +158,13 @@ Status CompressionFilter::set_option_impl(
     case FilterOption::COMPRESSION_LEVEL:
       level_ = *(int*)value;
       return Status::Ok();
+    case FilterOption::USE_CHECKSUM:
+      if (compressor_ != Compressor::ZSTD)
+        return LOG_STATUS(
+          Status::FilterError("Compression filter error: checksum only supported for ZStd compressor"));
+
+      use_checksum_ = *(bool*)value;
+      return Status::Ok();
     default:
       return LOG_STATUS(
           Status::FilterError("Compression filter error; unknown option"));
@@ -148,6 +176,13 @@ Status CompressionFilter::get_option_impl(
   switch (option) {
     case FilterOption::COMPRESSION_LEVEL:
       *(int*)value = level_;
+      return Status::Ok();
+    case FilterOption::USE_CHECKSUM:
+      if (compressor_ != Compressor::ZSTD)
+        return LOG_STATUS(
+          Status::FilterError("Compression filter error: checksum only supported for ZStd compressor"));
+
+      *(bool*)value = use_checksum_;
       return Status::Ok();
     default:
       return LOG_STATUS(
@@ -254,7 +289,7 @@ Status CompressionFilter::compress_part(
       RETURN_NOT_OK(GZip::compress(level_, &input_buffer, output));
       break;
     case Compressor::ZSTD:
-      RETURN_NOT_OK(ZStd::compress(level_, &input_buffer, output));
+      RETURN_NOT_OK(ZStd::compress(level_, use_checksum_, &input_buffer, output));
       break;
     case Compressor::LZ4:
       RETURN_NOT_OK(LZ4::compress(level_, &input_buffer, output));
@@ -370,6 +405,7 @@ Status CompressionFilter::serialize_impl(Buffer* buff) const {
   auto compressor_char = static_cast<uint8_t>(compressor_);
   RETURN_NOT_OK(buff->write(&compressor_char, sizeof(uint8_t)));
   RETURN_NOT_OK(buff->write(&level_, sizeof(int32_t)));
+  RETURN_NOT_OK(buff->write(&use_checksum_, sizeof(uint8_t)));
 
   return Status::Ok();
 }
@@ -379,6 +415,7 @@ Status CompressionFilter::deserialize_impl(ConstBuffer* buff) {
   RETURN_NOT_OK(buff->read(&compressor_char, sizeof(uint8_t)));
   compressor_ = static_cast<Compressor>(compressor_char);
   RETURN_NOT_OK(buff->read(&level_, sizeof(int32_t)));
+  RETURN_NOT_OK(buff->read(&use_checksum_, sizeof(uint8_t)));
 
   return Status::Ok();
 }

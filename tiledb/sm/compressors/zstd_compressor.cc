@@ -44,7 +44,7 @@ namespace tiledb {
 namespace sm {
 
 Status ZStd::compress(
-    int level, ConstBuffer* input_buffer, Buffer* output_buffer) {
+    int level, bool use_checksum, ConstBuffer* input_buffer, Buffer* output_buffer) {
   STATS_FUNC_IN(compressor_zstd_compress);
 
   // Sanity check
@@ -58,6 +58,10 @@ Status ZStd::compress(
   if (ctx.get() == nullptr)
     return LOG_STATUS(Status::CompressionError(
         std::string("ZStd compression failed; could not allocate context.")));
+
+  // Set checksum option
+  if (use_checksum)
+    ZSTD_CCtx_setParameter(ctx.get(), ZSTD_c_checksumFlag, 1);
 
   // Compress
   uint64_t zstd_ret = ZSTD_compressCCtx(
@@ -99,6 +103,9 @@ Status ZStd::decompress(
   if (ctx.get() == nullptr)
     return LOG_STATUS(Status::CompressionError(
         std::string("ZStd decompression failed; could not allocate context.")));
+
+  // Note: checksum is a write-only option: it will always be checked on decompression
+  //       if available.
 
   // Decompress
   uint64_t zstd_ret = ZSTD_decompressDCtx(
