@@ -3,9 +3,7 @@ steps:
     mkdir $env:AGENT_BUILDDIRECTORY\build
     cd $env:AGENT_BUILDDIRECTORY\build
 
-    if ($env:imageName -eq "vs2015-win2012r2") {
-      $env:Path += ";C:\Program Files (x86)\Microsoft Visual Studio 14.0\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin"
-    } elseif ($env:imageName -eq "vs2017-win2016") {
+    if ($env:imageName -eq "vs2017-win2016") {
       $env:Path += ";C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin"
     } else {
       Write-Host "Unknown image name: '$($env:imageName)'"
@@ -148,4 +146,4 @@ steps:
     #pathtoPublish: '$(Build.ArtifactStagingDirectory)/tiledb-windows-x64-$(Build.SourceVersion).zip'
     pathtoPublish: '$(Agent.BuildDirectory)\s\dist\'
     artifactName: 'tiledb-windows-x64-$(Build.SourceVersion)'
-  condition: and(succeeded(), eq(variables['imageName'], 'vs2015-win2012r2'))
+  condition: and(succeeded(), eq(variables['imageName'], 'vs2017-win2016'))
