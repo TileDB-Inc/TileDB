@@ -77,7 +77,6 @@ Formatting conventions:
 
 - Make sure CI (continuous integration) is passing for your PR -- click `Show all checks` in the pull request status box at the bottom of each PR page. The continous integration project pages will also list all recently-built PRs:
   - [Azure Pipelines](https://dev.azure.com/TileDB-Inc/CI/_build)
-  - [Travis](https://travis-ci.org/TileDB-Inc/TileDB) Linux / OSX CI
 
 ### Documentation Pull Requests:
  - TileDB uses [Sphinx](http://www.sphinx-doc.org/en/master/) as its documentation generator.
