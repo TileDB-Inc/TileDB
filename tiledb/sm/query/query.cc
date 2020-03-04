@@ -88,17 +88,33 @@ Query::~Query() = default;
 
 Status Query::add_range(
     unsigned dim_idx, const void* start, const void* end, const void* stride) {
-  if (type_ == QueryType::WRITE)
+  if (dim_idx >= array_->array_schema()->dim_num())
+    return LOG_STATUS(
+        Status::QueryError("Cannot add range; Invalid dimension index"));
+
+  if (start == nullptr || end == nullptr)
+    return LOG_STATUS(Status::QueryError("Cannot add range; Invalid range"));
+
+  if (stride != nullptr)
     return LOG_STATUS(Status::QueryError(
-        "Cannot add range; Operation currently unsupported for write queries"));
-  return reader_.add_range(dim_idx, start, end, stride);
+        "Cannot add range; Setting range stride is currently unsupported"));
+
+  // Prepare a temp range
+  std::vector<uint8_t> range;
+  uint8_t coord_size = array_->array_schema()->dimension(dim_idx)->coord_size();
+  range.resize(2 * coord_size);
+  std::memcpy(&range[0], start, coord_size);
+  std::memcpy(&range[coord_size], end, coord_size);
+
+  // Add range
+  if (type_ == QueryType::WRITE)
+    return writer_.add_range(dim_idx, Range(&range[0], 2 * coord_size));
+  return reader_.add_range(dim_idx, Range(&range[0], 2 * coord_size));
 }
 
 Status Query::get_range_num(unsigned dim_idx, uint64_t* range_num) const {
   if (type_ == QueryType::WRITE)
-    return LOG_STATUS(
-        Status::QueryError("Cannot get number of ranges; Operation currently "
-                           "unsupported for write queries"));
+    return writer_.get_range_num(dim_idx, range_num);
   return reader_.get_range_num(dim_idx, range_num);
 }
 
@@ -109,8 +125,7 @@ Status Query::get_range(
     const void** end,
     const void** stride) const {
   if (type_ == QueryType::WRITE)
-    return LOG_STATUS(Status::QueryError(
-        "Cannot get range; Operation currently unsupported for write queries"));
+    return writer_.get_range(dim_idx, range_idx, start, end, stride);
   return reader_.get_range(dim_idx, range_idx, start, end, stride);
 }
 
@@ -312,9 +327,9 @@ Status Query::init() {
     }
 
     if (type_ == QueryType::READ) {
-      RETURN_NOT_OK(reader_.init());
+      RETURN_NOT_OK(reader_.init(layout_));
     } else {  // Write
-      RETURN_NOT_OK(writer_.init());
+      RETURN_NOT_OK(writer_.init(layout_));
     }
   }
 
@@ -460,9 +475,7 @@ Status Query::set_buffer(
 
 Status Query::set_layout(Layout layout) {
   layout_ = layout;
-  if (type_ == QueryType::WRITE)
-    return writer_.set_layout(layout);
-  return reader_.set_layout(layout);
+  return Status::Ok();
 }
 
 Status Query::set_sparse_mode(bool sparse_mode) {
@@ -477,12 +490,24 @@ void Query::set_status(QueryStatus status) {
   status_ = status;
 }
 
-Status Query::set_subarray(const void* subarray, bool check_expanded_domain) {
-  RETURN_NOT_OK(check_subarray(subarray, check_expanded_domain));
+Status Query::set_subarray(const void* subarray) {
+  // Prepare a subarray object
+  Subarray sub(array_, layout_);
+  if (subarray != nullptr) {
+    auto dim_num = array_->array_schema()->dim_num();
+    auto s_ptr = (const unsigned char*)subarray;
+    uint64_t offset = 0;
+    for (unsigned d = 0; d < dim_num; ++d) {
+      auto r_size = 2 * array_->array_schema()->dimension(d)->coord_size();
+      RETURN_NOT_OK(sub.add_range(d, Range(&s_ptr[offset], r_size)));
+      offset += r_size;
+    }
+  }
+
   if (type_ == QueryType::WRITE) {
-    RETURN_NOT_OK(writer_.set_subarray(subarray));
-  } else {  // READ
-    RETURN_NOT_OK(reader_.set_subarray(subarray, check_expanded_domain));
+    RETURN_NOT_OK(writer_.set_subarray(sub));
+  } else if (type_ == QueryType::READ) {
+    RETURN_NOT_OK(reader_.set_subarray(sub));
   }
 
   status_ = QueryStatus::UNINITIALIZED;
@@ -490,17 +515,19 @@ Status Query::set_subarray(const void* subarray, bool check_expanded_domain) {
   return Status::Ok();
 }
 
-Status Query::set_subarray(const Subarray& subarray) {
-  // Check that the subarray is associated with the same array as the query
-  if (subarray.array() != array_)
-    return LOG_STATUS(
-        Status::QueryError("Cannot set subarray; The array of subarray is "
-                           "different from that of the query"));
+Status Query::set_subarray_unsafe(const NDRange& subarray) {
+  // Prepare a subarray object
+  Subarray sub(array_, layout_);
+  if (!subarray.empty()) {
+    auto dim_num = array_->array_schema()->dim_num();
+    for (unsigned d = 0; d < dim_num; ++d)
+      RETURN_NOT_OK(sub.add_range_unsafe(d, subarray[d]));
+  }
 
   if (type_ == QueryType::WRITE) {
-    RETURN_NOT_OK(writer_.set_subarray(subarray));
-  } else {  // READ
-    RETURN_NOT_OK(reader_.set_subarray(subarray));
+    RETURN_NOT_OK(writer_.set_subarray(sub));
+  } else if (type_ == QueryType::READ) {
+    RETURN_NOT_OK(reader_.set_subarray(sub));
   }
 
   status_ = QueryStatus::UNINITIALIZED;
@@ -556,78 +583,6 @@ QueryType Query::type() const {
 /* ****************************** */
 /*          PRIVATE METHODS       */
 /* ****************************** */
-
-Status Query::check_subarray(
-    const void* subarray, bool check_expanded_domain) const {
-  if (subarray == nullptr)
-    return Status::Ok();
-
-  auto array_schema = this->array_schema();
-  if (array_schema == nullptr)
-    return LOG_STATUS(
-        Status::QueryError("Cannot check subarray; Array schema not set"));
-
-  switch (array_schema->domain()->type()) {
-    case Datatype::INT8:
-      return check_subarray<int8_t>(
-          static_cast<const int8_t*>(subarray), check_expanded_domain);
-    case Datatype::UINT8:
-      return check_subarray<uint8_t>(
-          static_cast<const uint8_t*>(subarray), check_expanded_domain);
-    case Datatype::INT16:
-      return check_subarray<int16_t>(
-          static_cast<const int16_t*>(subarray), check_expanded_domain);
-    case Datatype::UINT16:
-      return check_subarray<uint16_t>(
-          static_cast<const uint16_t*>(subarray), check_expanded_domain);
-    case Datatype::INT32:
-      return check_subarray<int32_t>(
-          static_cast<const int32_t*>(subarray), check_expanded_domain);
-    case Datatype::UINT32:
-      return check_subarray<uint32_t>(
-          static_cast<const uint32_t*>(subarray), check_expanded_domain);
-    case Datatype::INT64:
-      return check_subarray<int64_t>(
-          static_cast<const int64_t*>(subarray), check_expanded_domain);
-    case Datatype::UINT64:
-      return check_subarray<uint64_t>(
-          static_cast<const uint64_t*>(subarray), check_expanded_domain);
-    case Datatype::FLOAT32:
-      return check_subarray<float>(
-          static_cast<const float*>(subarray), check_expanded_domain);
-    case Datatype::FLOAT64:
-      return check_subarray<double>(
-          static_cast<const double*>(subarray), check_expanded_domain);
-    case Datatype::DATETIME_YEAR:
-    case Datatype::DATETIME_MONTH:
-    case Datatype::DATETIME_WEEK:
-    case Datatype::DATETIME_DAY:
-    case Datatype::DATETIME_HR:
-    case Datatype::DATETIME_MIN:
-    case Datatype::DATETIME_SEC:
-    case Datatype::DATETIME_MS:
-    case Datatype::DATETIME_US:
-    case Datatype::DATETIME_NS:
-    case Datatype::DATETIME_PS:
-    case Datatype::DATETIME_FS:
-    case Datatype::DATETIME_AS:
-      return check_subarray<int64_t>(
-          static_cast<const int64_t*>(subarray), check_expanded_domain);
-    case Datatype::CHAR:
-    case Datatype::STRING_ASCII:
-    case Datatype::STRING_UTF8:
-    case Datatype::STRING_UTF16:
-    case Datatype::STRING_UTF32:
-    case Datatype::STRING_UCS2:
-    case Datatype::STRING_UCS4:
-    case Datatype::ANY:
-      // Not supported domain type
-      assert(false);
-      break;
-  }
-
-  return Status::Ok();
-}
 
 }  // namespace sm
 }  // namespace tiledb

@@ -174,7 +174,7 @@ std::string Status::code_to_string() const {
     case StatusCode::Attribute:
       type = "[TileDB::Attribute] Error";
       break;
-    case StatusCode::DenseCellRangeIter:
+    case StatusCode::WriteCellSlabIter:
       type = "[TileDB::WriteCellSlabIter] Error";
       break;
     case StatusCode::Reader:

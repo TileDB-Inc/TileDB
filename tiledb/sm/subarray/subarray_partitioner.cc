@@ -536,7 +536,6 @@ void SubarrayPartitioner::compute_splitting_value_on_tiles(
   auto array_schema = subarray_.array()->array_schema();
   auto dim_num = subarray_.array()->array_schema()->dim_num();
   auto layout = subarray_.array()->array_schema()->tile_order();
-  const void* r_v;
   *splitting_dim = UINT32_MAX;
 
   std::vector<unsigned> dims;
@@ -549,15 +548,15 @@ void SubarrayPartitioner::compute_splitting_value_on_tiles(
   }
 
   // Compute splitting dimension and value
+  const Range* r;
   for (auto d : dims) {
     auto dim = array_schema->domain()->dimension(d);
-    auto r_size = 2 * dim->coord_size();
-    range.get_range(d, 0, &r_v);
-    Range r(r_v, r_size);
-    auto tiles_apart = dim->tile_num(r) - 1;
+    range.get_range(d, 0, &r);
+    auto tiles_apart = dim->tile_num(*r) - 1;
     if (tiles_apart != 0) {
       *splitting_dim = d;
-      dim->ceil_to_tile(r, MAX(1, floor(tiles_apart / 2)) - 1, splitting_value);
+      dim->ceil_to_tile(
+          *r, MAX(1, floor(tiles_apart / 2)) - 1, splitting_value);
       *unsplittable = false;
       break;
     }
@@ -593,7 +592,6 @@ void SubarrayPartitioner::compute_splitting_value_single_range(
   layout = (layout == Layout::UNORDERED || layout == Layout::GLOBAL_ORDER) ?
                cell_order :
                layout;
-  const void* r_v;
   *splitting_dim = UINT32_MAX;
 
   std::vector<unsigned> dims;
@@ -606,15 +604,13 @@ void SubarrayPartitioner::compute_splitting_value_single_range(
   }
 
   // Compute splitting dimension and value
-  Range r;
+  const Range* r;
   for (auto d : dims) {
     auto dim = array_schema->dimension(d);
-    auto r_size = 2 * dim->coord_size();
-    range.get_range(d, 0, &r_v);
-    r.set_range(r_v, r_size);
-    if (!r.unary()) {
+    range.get_range(d, 0, &r);
+    if (!r->unary()) {
       *splitting_dim = d;
-      dim->splitting_value(r, splitting_value, unsplittable);
+      dim->splitting_value(*r, splitting_value, unsplittable);
 
       // Splitting dim/value found
       if (!*unsplittable)
@@ -647,7 +643,6 @@ void SubarrayPartitioner::compute_splitting_value_multi_range(
   auto dim_num = array_schema->dim_num();
   auto cell_order = array_schema->cell_order();
   layout = (layout == Layout::UNORDERED) ? cell_order : layout;
-  const void* r_v;
   *splitting_dim = UINT32_MAX;
   uint64_t range_num;
 
@@ -661,7 +656,7 @@ void SubarrayPartitioner::compute_splitting_value_multi_range(
   }
 
   // Compute splitting dimension, range and value
-  Range r;
+  const Range* r;
   for (auto d : dims) {
     // Check if we need to split the multiple ranges
     partition.get_range_num(d, &range_num);
@@ -674,13 +669,11 @@ void SubarrayPartitioner::compute_splitting_value_multi_range(
     }
 
     // Check if we need to split single range
-    partition.get_range(d, 0, &r_v);
+    partition.get_range(d, 0, &r);
     auto dim = array_schema->dimension(d);
-    auto r_size = 2 * dim->coord_size();
-    r.set_range(r_v, r_size);
-    if (!r.unary()) {
+    if (!r->unary()) {
       *splitting_dim = d;
-      dim->splitting_value(r, splitting_value, unsplittable);
+      dim->splitting_value(*r, splitting_value, unsplittable);
       break;
     }
   }
@@ -802,7 +795,7 @@ Status SubarrayPartitioner::split_top_single_range(bool* unsplittable) {
 
   // Split remaining range into two ranges
   Subarray r1, r2;
-  range.split(splitting_dim, splitting_value, &r1, &r2);
+  RETURN_NOT_OK(range.split(splitting_dim, splitting_value, &r1, &r2));
 
   // Update list
   state_.single_range_.pop_front();

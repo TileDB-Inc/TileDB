@@ -152,21 +152,19 @@ void ReadCellSlabIterFx::create_result_space_tiles(
     const std::vector<NDRange>& domain_slices,
     const std::vector<std::vector<uint8_t>>& tile_coords,
     std::map<const T*, ResultSpaceTile<T>>* result_space_tiles) {
-  auto dim_num = dom->dim_num();
-  auto domain = (const T*)dom->domain();
-  auto tile_extents = (const T*)dom->tile_extents();
+  auto domain = dom->domain();
+  const auto& tile_extents = dom->tile_extents();
   std::vector<TileDomain<T>> frag_tile_domains;
   for (size_t i = 0; i < domain_slices.size(); ++i) {
     frag_tile_domains.emplace_back(
         (unsigned)(domain_slices.size() - i),
-        dim_num,
         domain,
         domain_slices[i],
         tile_extents,
         layout);
   }
   TileDomain<T> array_tile_domain(
-      UINT32_MAX, dim_num, domain, dom_ndrange, tile_extents, layout);
+      UINT32_MAX, domain, dom_ndrange, tile_extents, layout);
   Reader::compute_result_space_tiles<T>(
       dom,
       tile_coords,
@@ -231,10 +229,9 @@ TEST_CASE_METHOD(
   const auto& tile_coords = subarray.tile_coords();
   std::map<const uint64_t*, ResultSpaceTile<uint64_t>> result_space_tiles;
   auto dom = array_->array_->array_schema()->domain();
-  auto dom_ndrange = dom->domain_ndrange();
   create_result_space_tiles(
       dom,
-      dom_ndrange,
+      dom->domain(),
       subarray_layout,
       domain_slices,
       tile_coords,
@@ -292,10 +289,9 @@ TEST_CASE_METHOD(
   const auto& tile_coords = subarray.tile_coords();
   std::map<const uint64_t*, ResultSpaceTile<uint64_t>> result_space_tiles;
   auto dom = array_->array_->array_schema()->domain();
-  auto dom_ndrange = dom->domain_ndrange();
   create_result_space_tiles(
       dom,
-      dom_ndrange,
+      dom->domain(),
       subarray_layout,
       domain_slices,
       tile_coords,
@@ -356,10 +352,9 @@ TEST_CASE_METHOD(
   const auto& tile_coords = subarray.tile_coords();
   std::map<const uint64_t*, ResultSpaceTile<uint64_t>> result_space_tiles;
   auto dom = array_->array_->array_schema()->domain();
-  auto dom_ndrange = dom->domain_ndrange();
   create_result_space_tiles(
       dom,
-      dom_ndrange,
+      dom->domain(),
       subarray_layout,
       domain_slices,
       tile_coords,
@@ -424,10 +419,9 @@ TEST_CASE_METHOD(
   const auto& tile_coords = subarray.tile_coords();
   std::map<const uint64_t*, ResultSpaceTile<uint64_t>> result_space_tiles;
   auto dom = array_->array_->array_schema()->domain();
-  auto dom_ndrange = dom->domain_ndrange();
   create_result_space_tiles(
       dom,
-      dom_ndrange,
+      dom->domain(),
       subarray_layout,
       domain_slices,
       tile_coords,
@@ -648,10 +642,9 @@ TEST_CASE_METHOD(
   const auto& tile_coords = subarray.tile_coords();
   std::map<const uint64_t*, ResultSpaceTile<uint64_t>> result_space_tiles;
   auto dom = array_->array_->array_schema()->domain();
-  auto dom_ndrange = dom->domain_ndrange();
   create_result_space_tiles(
       dom,
-      dom_ndrange,
+      dom->domain(),
       tile_domain_layout,
       domain_slices,
       tile_coords,
@@ -821,10 +814,9 @@ TEST_CASE_METHOD(
   const auto& tile_coords = subarray.tile_coords();
   std::map<const uint64_t*, ResultSpaceTile<uint64_t>> result_space_tiles;
   auto dom = array_->array_->array_schema()->domain();
-  auto dom_ndrange = dom->domain_ndrange();
   create_result_space_tiles(
       dom,
-      dom_ndrange,
+      dom->domain(),
       tile_domain_layout,
       domain_slices,
       tile_coords,
@@ -1007,10 +999,9 @@ TEST_CASE_METHOD(
   const auto& tile_coords = subarray.tile_coords();
   std::map<const uint64_t*, ResultSpaceTile<uint64_t>> result_space_tiles;
   auto dom = array_->array_->array_schema()->domain();
-  auto dom_ndrange = dom->domain_ndrange();
   create_result_space_tiles(
       dom,
-      dom_ndrange,
+      dom->domain(),
       tile_domain_layout,
       domain_slices,
       tile_coords,
@@ -1239,10 +1230,9 @@ TEST_CASE_METHOD(
   const auto& tile_coords = subarray.tile_coords();
   std::map<const uint64_t*, ResultSpaceTile<uint64_t>> result_space_tiles;
   auto dom = array_->array_->array_schema()->domain();
-  auto dom_ndrange = dom->domain_ndrange();
   create_result_space_tiles(
       dom,
-      dom_ndrange,
+      dom->domain(),
       tile_domain_layout,
       domain_slices,
       tile_coords,

@@ -99,14 +99,15 @@ void check_subarray(
 
   // Check ranges
   uint64_t dim_range_num = 0;
-  const T* range;
+  const sm::Range* range;
   for (unsigned i = 0; i < dim_num; ++i) {
     CHECK(subarray.get_range_num(i, &dim_range_num).ok());
     CHECK(dim_range_num == ranges[i].size() / 2);
     for (uint64_t j = 0; j < dim_range_num; ++j) {
-      subarray.get_range(i, j, (const void**)&range);
-      CHECK(range[0] == ranges[i][2 * j]);
-      CHECK(range[1] == ranges[i][2 * j + 1]);
+      subarray.get_range(i, j, &range);
+      auto r = (const T*)range->data();
+      CHECK(r[0] == ranges[i][2 * j]);
+      CHECK(r[1] == ranges[i][2 * j + 1]);
     }
   }
 }
@@ -412,10 +413,10 @@ void create_subarray(
   tiledb::sm::Subarray ret(array, layout);
 
   auto dim_num = (unsigned)ranges.size();
-  for (unsigned i = 0; i < dim_num; ++i) {
-    auto dim_range_num = ranges[i].size() / 2;
+  for (unsigned d = 0; d < dim_num; ++d) {
+    auto dim_range_num = ranges[d].size() / 2;
     for (size_t j = 0; j < dim_range_num; ++j) {
-      ret.add_range(i, &ranges[i][2 * j]);
+      ret.add_range(d, sm::Range(&ranges[d][2 * j], 2 * sizeof(T)));
     }
   }
 

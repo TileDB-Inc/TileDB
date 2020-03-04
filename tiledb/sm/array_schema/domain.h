@@ -93,20 +93,6 @@ class Domain {
    * Also note that it is assummed that the input domain is expanded
    * such that it aligns with the tile extents.
    *
-   * @param domain The domain to be checked.
-   * @return The number of cells in the domain.
-   *
-   * @note The function returns 0 in case `domain` is huge, leading to more
-   *      cells than `uint64_t` can hold.
-   */
-  uint64_t cell_num(const void* domain) const;
-
-  /**
-   * Returns the number of cells in the input domain. Note that this is
-   * applicable only to integer array domains (otherwise the output is 0).
-   * Also note that it is assummed that the input domain is expanded
-   * such that it aligns with the tile extents.
-   *
    * @tparam T The domain type.
    * @param domain The domain to be checked.
    * @return The number of cells in the domain.
@@ -189,14 +175,11 @@ class Domain {
   /** Returns the number of dimensions. */
   unsigned int dim_num() const;
 
-  /** Returns the domain (serialized dimension domains). */
-  const void* domain() const;
-
-  /** returns the domain along the i-th dimension (nullptr upon error). */
-  const void* domain(unsigned int i) const;
+  /** Returns the domain along the i-th dimension. */
+  const Range& domain(unsigned i) const;
 
   /** Returns the domain as a N-dimensional range object. */
-  NDRange domain_ndrange() const;
+  NDRange domain() const;
 
   /** Returns the i-th dimensions (nullptr upon error). */
   const Dimension* dimension(unsigned int i) const;
@@ -433,11 +416,11 @@ class Domain {
   template <class T>
   uint64_t stride(Layout subarray_layout) const;
 
-  /** Returns the tile extents. */
-  const void* tile_extents() const;
+  /** Returns the tile extent along the i-th dimension. */
+  const ByteVecValue& tile_extent(unsigned i) const;
 
-  /** returns the tile extent along the i-th dimension (nullptr upon error). */
-  const void* tile_extent(unsigned int i) const;
+  /** Returns the tile extents. */
+  std::vector<ByteVecValue> tile_extents() const;
 
   /**
    * Returns the number of tiles contained in the input ND range.
@@ -584,29 +567,7 @@ class Domain {
   std::vector<Dimension*> dimensions_;
 
   /** The number of dimensions. */
-  unsigned int dim_num_;
-
-  /**
-   * The array domain, represented by serializing the dimension domains.
-   * It should contain one [lower, upper] pair per dimension.
-   * The type of the values stored in this buffer should match the dimensions
-   * type.
-   */
-  void* domain_;
-
-  /**
-   * The array domain. It should contain one [lower, upper] pair per dimension.
-   * The type of the values stored in this buffer should match the dimensions
-   * type.
-   */
-  void* tile_domain_;
-
-  /**
-   * The tile extents. There should be one value for each dimension. The type
-   * of the values stored in this buffer should match the dimensions type. If
-   * it is NULL, then it means that the array is sparse.
-   */
-  void* tile_extents_;
+  unsigned dim_num_;
 
   /**
    * Offsets for calculating tile positions and ids for the column-major
@@ -664,18 +625,6 @@ class Domain {
 
   /** Prepares the comparator functions for each dimension. */
   void set_tile_cell_order_cmp_funcs();
-
-  /** Computes the tile domain. */
-  void compute_tile_domain();
-
-  /**
-   * Computes the tile domain.
-   *
-   * @tparam T The domain type.
-   * @return void
-   */
-  template <class T>
-  void compute_tile_domain();
 
   /**
    * Computes tile offsets neccessary when computing tile positions and ids.
