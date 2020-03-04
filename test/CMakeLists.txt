@@ -160,7 +160,7 @@ target_include_directories(
 target_link_libraries(tiledb_unit
   PUBLIC
     TILEDB_CORE_OBJECTS_ILIB
-    Catch::Catch
+    Catch2::Catch2
 )
 
 # need to properly link the signal chaining library for catch to work with the jni hdfs interface

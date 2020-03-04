@@ -32,7 +32,7 @@
 
 # Search the path set during the superbuild for the EP.
 message(STATUS "searching for catch in ${TILEDB_EP_SOURCE_DIR}")
-set(CATCH_PATHS ${TILEDB_EP_SOURCE_DIR}/ep_catch/single_include)
+set(CATCH_PATHS ${TILEDB_EP_SOURCE_DIR}/ep_catch/single_include/catch2)
 
 find_path(CATCH_INCLUDE_DIR
   NAMES catch.hpp
@@ -41,7 +41,7 @@ find_path(CATCH_INCLUDE_DIR
 )
 
 include(FindPackageHandleStandardArgs)
-FIND_PACKAGE_HANDLE_STANDARD_ARGS(Catch
+FIND_PACKAGE_HANDLE_STANDARD_ARGS(Catch2
   REQUIRED_VARS CATCH_INCLUDE_DIR
 )
 
@@ -49,8 +49,8 @@ if (NOT CATCH_FOUND AND TILEDB_SUPERBUILD)
   message(STATUS "Adding Catch as an external project")
   ExternalProject_Add(ep_catch
     PREFIX "externals"
-    URL "https://github.com/catchorg/Catch2/archive/v2.2.1.zip"
-    URL_HASH SHA1=578908c96d67e681a13ea903188a107076a6d1ee
+    URL "https://github.com/catchorg/Catch2/archive/v2.11.1.zip"
+    URL_HASH SHA1=758c33d983c8e3bd0b2e5f9d20153104578edb81
     CONFIGURE_COMMAND ""
     BUILD_COMMAND ""
     INSTALL_COMMAND ""
@@ -61,9 +61,9 @@ if (NOT CATCH_FOUND AND TILEDB_SUPERBUILD)
   list(APPEND TILEDB_EXTERNAL_PROJECTS ep_catch)
 endif()
 
-if (CATCH_FOUND AND NOT TARGET Catch::Catch)
-  add_library(Catch::Catch INTERFACE IMPORTED)
-  set_target_properties(Catch::Catch PROPERTIES
+if (CATCH2_FOUND AND NOT TARGET Catch2::Catch2)
+  add_library(Catch2::Catch2 INTERFACE IMPORTED)
+  set_target_properties(Catch2::Catch2 PROPERTIES
     INTERFACE_INCLUDE_DIRECTORIES "${CATCH_INCLUDE_DIR}"
   )
 endif()
