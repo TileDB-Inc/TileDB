@@ -24,21 +24,11 @@
 # SOFTWARE.
 #
 
-# Starts a azurite server and exports credentials to the environment
-# ('source' this script instead of executing).
+# Starts an Azurite server
 
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 
-die() {
-  echo "$@" 1>&2 ; popd 2>/dev/null;
-
-  if [[ "$BASH_SOURCE" = $0 ]]; then
-    # exit when *not* sourced (https://superuser.com/a/1288646)
-    exit 1;
-  fi
-}
-
-run_npm_azurite() {
+run_azurite() {
   azurite-blob \
     --silent \
     --location /tmp/azurite-data \
@@ -47,27 +37,11 @@ run_npm_azurite() {
     --blobHost 0.0.0.0 &
 }
 
-run_docker_azurite() {
-  docker run -d \
-    -v /tmp/azurite-data:/data \
-    -p 10000:10000 \
-    mcr.microsoft.com/azure-storage/azurite \
-    azurite-blob \
-    --blobPort 10000 \
-    --blobHost 0.0.0.0 \
-    --debug /data/debug.log \
-    --loose
-}
-
 run() {
   mkdir -p /tmp/azurite-data
   cp -f -r $DIR/../test/inputs/test_certs /tmp/azurite-data
 
-  if [[ "$AGENT_OS" == "Darwin" ]]; then
-    run_npm_azurite
-  else
-    run_docker_azurite
-  fi
+  run_azurite
 }
 
 run
