@@ -41,6 +41,7 @@ die() {
 run_cask_minio() {
   # note: minio data directories *must* follow parameter arguments
   minio server --certs-dir=/tmp/minio-data/test_certs --address localhost:9999 /tmp/minio-data &
+  export MINIO_PID=$!
   [[ "$?" -eq "0" ]] || die "could not run minio server"
 }
 
