@@ -41,6 +41,12 @@ find_library(AZURESDK_LIBRARIES
 
 if (AZURESDK_LIBRARIES)
   set(AZURESDK_STATIC_EP_FOUND TRUE)
+  find_path(AZURESDK_INCLUDE_DIR
+    NAMES get_blob_request_base.h
+    PATHS ${TILEDB_EP_INSTALL_PREFIX}
+    PATH_SUFFIXES include
+    NO_DEFAULT_PATH
+  )
 else()
   set(AZURESDK_STATIC_EP_FOUND FALSE)
   # Static EP not found, search in system paths.
@@ -50,11 +56,16 @@ else()
     PATH_SUFFIXES lib bin
     ${TILEDB_DEPS_NO_DEFAULT_PATH}
   )
+  find_path(AZURESDK_INCLUDE_DIR
+    NAMES get_blob_request_base.h
+    PATH_SUFFIXES include
+    ${TILEDB_DEPS_NO_DEFAULT_PATH}
+  )
 endif()
 
 include(FindPackageHandleStandardArgs)
 FIND_PACKAGE_HANDLE_STANDARD_ARGS(AzureSDK
-  REQUIRED_VARS AZURESDK_LIBRARIES
+  REQUIRED_VARS AZURESDK_LIBRARIES AZURESDK_INCLUDE_DIR
 )
 
 if (NOT AZURESDK_FOUND)
@@ -117,6 +128,7 @@ if (AZURESDK_FOUND AND NOT TARGET AzureSDK::AzureSDK)
   add_library(AzureSDK::AzureSDK UNKNOWN IMPORTED)
   set_target_properties(AzureSDK::AzureSDK PROPERTIES
     IMPORTED_LOCATION "${AZURESDK_LIBRARIES}"
+    INTERFACE_INCLUDE_DIRECTORIES "${AZURESDK_INCLUDE_DIR}"
   )
 endif()
 
