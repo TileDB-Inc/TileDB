@@ -8,11 +8,6 @@ jobs:
 - job:
   strategy:
     matrix:
-      linux:
-        imageName: 'ubuntu-16.04'
-        CXX: g++
-        TILEDB_TOOLS: ON
-        TILEDB_FORCE_BUILD_DEPS: ON
       linux_s3:
         imageName: 'ubuntu-16.04'
         TILEDB_S3: ON
@@ -41,6 +36,16 @@ jobs:
     vmImage: $(imageName)
   steps:
   - template: scripts/azure-linux_mac.yml
+
+- job: CentOS6_manylinux1
+  container:
+    image: quay.io/pypa/manylinux1_x86_64
+  variables:
+    CXX: g++
+    TILEDB_FORCE_BUILD_DEPS: ON
+    TILEDB_BUILD_ENABLE: "s3,serialization,static-tiledb"
+  steps:
+  - template: scripts/azure-centos6.yml
 
 - job: Windows
   strategy:
