@@ -127,7 +127,7 @@ void Attribute::dump(FILE* out) const {
     out = stdout;
   // Dump
   fprintf(out, "### Attribute ###\n");
-  fprintf(out, "- Name: %s\n", is_anonymous() ? "<anonymous>" : name_.c_str());
+  fprintf(out, "- Name: %s\n", name_.c_str());
   fprintf(out, "- Type: %s\n", datatype_str(type_).c_str());
   fprintf(out, "- Compressor: %s\n", compressor_str(compressor()).c_str());
   fprintf(out, "- Compression level: %d\n", compression_level());
@@ -144,11 +144,6 @@ const FilterPipeline* Attribute::filters() const {
 
 const std::string& Attribute::name() const {
   return name_;
-}
-
-bool Attribute::is_anonymous() const {
-  return name_.empty() ||
-         utils::parse::starts_with(name_, constants::default_attr_name);
 }
 
 // ===== FORMAT =====

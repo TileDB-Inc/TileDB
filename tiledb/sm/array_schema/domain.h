@@ -635,9 +635,6 @@ class Domain {
   template <class T>
   void compute_tile_offsets();
 
-  /** Returns the default name constructed for the i-th dimension. */
-  std::string default_dimension_name(unsigned int i) const;
-
   /**
    * Retrieves the next tile coordinates along the array tile order within a
    * given tile domain. Applicable only to **dense** arrays, and focusing on

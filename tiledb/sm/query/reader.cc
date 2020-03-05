@@ -140,15 +140,17 @@ const ArraySchema* Reader::array_schema() const {
   return array_schema_;
 }
 
-std::vector<std::string> Reader::attributes() const {
-  return attributes_;
+std::vector<std::string> Reader::buffer_names() const {
+  std::vector<std::string> ret;
+  for (const auto& it : buffers_)
+    ret.push_back(it.first);
+
+  return ret;
 }
 
 QueryBuffer Reader::buffer(const std::string& name) const {
-  // TODO: fetch separate coordinate buffers as well. To be addressed in
-  // TODO: subsequent PR
-  auto buf = attr_buffers_.find(name);
-  if (buf == attr_buffers_.end())
+  auto buf = buffers_.find(name);
+  if (buf == buffers_.end())
     return QueryBuffer{};
   return buf->second;
 }
@@ -157,11 +159,10 @@ bool Reader::incomplete() const {
   return read_state_.overflowed_ || !read_state_.done();
 }
 
-// TODO: handle both attributes and dimensions
 Status Reader::get_buffer(
-    const std::string& attribute, void** buffer, uint64_t** buffer_size) const {
-  auto it = attr_buffers_.find(attribute);
-  if (it == attr_buffers_.end()) {
+    const std::string& name, void** buffer, uint64_t** buffer_size) const {
+  auto it = buffers_.find(name);
+  if (it == buffers_.end()) {
     *buffer = nullptr;
     *buffer_size = nullptr;
   } else {
@@ -172,15 +173,14 @@ Status Reader::get_buffer(
   return Status::Ok();
 }
 
-// TODO: handle both attributes and dimensions
 Status Reader::get_buffer(
-    const std::string& attribute,
+    const std::string& name,
     uint64_t** buffer_off,
     uint64_t** buffer_off_size,
     void** buffer_val,
     uint64_t** buffer_val_size) const {
-  auto it = attr_buffers_.find(attribute);
-  if (it == attr_buffers_.end()) {
+  auto it = buffers_.find(name);
+  if (it == buffers_.end()) {
     *buffer_off = nullptr;
     *buffer_off_size = nullptr;
     *buffer_val = nullptr;
@@ -202,12 +202,9 @@ Status Reader::init(const Layout& layout) {
   if (array_schema_ == nullptr)
     return LOG_STATUS(Status::ReaderError(
         "Cannot initialize reader; Array metadata not set"));
-  if (attr_buffers_.empty())
+  if (buffers_.empty())
     return LOG_STATUS(
         Status::ReaderError("Cannot initialize reader; Buffers not set"));
-  if (attributes_.empty())
-    return LOG_STATUS(
-        Status::ReaderError("Cannot initialize reader; Attributes not set"));
   if (array_schema_->dense() && !sparse_mode_ && !subarray_.is_set())
     return LOG_STATUS(Status::ReaderError(
         "Cannot initialize reader; Dense reads must have a subarray set"));
@@ -247,7 +244,7 @@ Layout Reader::layout() const {
 }
 
 bool Reader::no_results() const {
-  for (const auto& it : attr_buffers_) {
+  for (const auto& it : buffers_) {
     if (*(it.second.buffer_size_) != 0)
       return false;
   }
@@ -324,7 +321,7 @@ void Reader::set_array_schema(const ArraySchema* array_schema) {
 }
 
 Status Reader::set_buffer(
-    const std::string& attribute,
+    const std::string& name,
     void* buffer,
     uint64_t* buffer_size,
     bool check_null_buffers) {
@@ -338,39 +335,45 @@ Status Reader::set_buffer(
     return LOG_STATUS(
         Status::ReaderError("Cannot set buffer; Array schema not set"));
 
-  // Check that attribute exists
-  if (attribute != constants::coords &&
-      array_schema_->attribute(attribute) == nullptr)
-    return LOG_STATUS(
-        Status::ReaderError("Cannot set buffer; Invalid attribute"));
+  // For easy reference
+  bool is_dim = array_schema_->is_dim(name);
+  bool is_attr = array_schema_->is_attr(name);
 
-  // Check that attribute is fixed-sized
-  bool var_size =
-      (attribute != constants::coords && array_schema_->var_size(attribute));
+  // Check that attribute/dimension exists
+  if (name != constants::coords && !is_dim && !is_attr)
+    return LOG_STATUS(Status::ReaderError(
+        std::string("Cannot set buffer; Invalid attribute/dimension '") + name +
+        "'"));
+
+  // Check that attribute/dimension is fixed-sized
+  bool var_size = (name != constants::coords && array_schema_->var_size(name));
   if (var_size)
-    return LOG_STATUS(Status::WriterError(
-        std::string("Cannot set buffer; Input attribute '") + attribute +
+    return LOG_STATUS(Status::ReaderError(
+        std::string("Cannot set buffer; Input attribute/dimension '") + name +
         "' is var-sized"));
 
-  // Error if setting a new attribute after initialization
-  bool attr_exists = attr_buffers_.find(attribute) != attr_buffers_.end();
-  if (read_state_.initialized_ && !attr_exists)
+  // Check if zipped coordinates coexist with separate coordinate buffers
+  if ((is_dim && buffers_.find(constants::coords) != buffers_.end()) ||
+      (name == constants::coords && has_separate_coords()))
     return LOG_STATUS(Status::ReaderError(
-        std::string("Cannot set buffer for new attribute '") + attribute +
+        std::string("Cannot set separate coordinate buffers and "
+                    "a zipped coordinate buffer in the same query")));
+
+  // Error if setting a new attribute/dimension after initialization
+  bool exists = buffers_.find(name) != buffers_.end();
+  if (read_state_.initialized_ && !exists)
+    return LOG_STATUS(Status::ReaderError(
+        std::string("Cannot set buffer for new attribute/dimension '") + name +
         "' after initialization"));
 
-  // Append to attributes only if buffer not set before
-  if (!attr_exists)
-    attributes_.emplace_back(attribute);
-
   // Set attribute buffer
-  attr_buffers_[attribute] = QueryBuffer(buffer, nullptr, buffer_size, nullptr);
+  buffers_[name] = QueryBuffer(buffer, nullptr, buffer_size, nullptr);
 
   return Status::Ok();
 }
 
 Status Reader::set_buffer(
-    const std::string& attribute,
+    const std::string& name,
     uint64_t* buffer_off,
     uint64_t* buffer_off_size,
     void* buffer_val,
@@ -388,33 +391,27 @@ Status Reader::set_buffer(
     return LOG_STATUS(
         Status::ReaderError("Cannot set buffer; Array schema not set"));
 
-  // Check that attribute exists
-  if (attribute != constants::coords &&
-      array_schema_->attribute(attribute) == nullptr)
+  // Check that attribute/dimension exists
+  if (name != constants::coords && array_schema_->attribute(name) == nullptr)
     return LOG_STATUS(
-        Status::WriterError("Cannot set buffer; Invalid attribute"));
+        Status::ReaderError("Cannot set buffer; Invalid attribute/dimension"));
 
-  // Check that attribute is var-sized
-  bool var_size =
-      (attribute != constants::coords && array_schema_->var_size(attribute));
+  // Check that attribute/dimension is var-sized
+  bool var_size = (name != constants::coords && array_schema_->var_size(name));
   if (!var_size)
-    return LOG_STATUS(Status::WriterError(
-        std::string("Cannot set buffer; Input attribute '") + attribute +
+    return LOG_STATUS(Status::ReaderError(
+        std::string("Cannot set buffer; Input attribute/dimension '") + name +
         "' is fixed-sized"));
 
-  // Error if setting a new attribute after initialization
-  bool attr_exists = attr_buffers_.find(attribute) != attr_buffers_.end();
-  if (read_state_.initialized_ && !attr_exists)
+  // Error if setting a new attribute/dimension after initialization
+  bool exists = buffers_.find(name) != buffers_.end();
+  if (read_state_.initialized_ && !exists)
     return LOG_STATUS(Status::ReaderError(
-        std::string("Cannot set buffer for new attribute '") + attribute +
+        std::string("Cannot set buffer for new attribute/dimension '") + name +
         "' after initialization"));
 
-  // Append to attributes only if buffer not set before
-  if (!attr_exists)
-    attributes_.emplace_back(attribute);
-
-  // Set attribute buffer
-  attr_buffers_[attribute] =
+  // Set attribute/dimension buffer
+  buffers_[name] =
       QueryBuffer(buffer_off, buffer_val, buffer_off_size, buffer_val_size);
 
   return Status::Ok();
@@ -835,7 +832,7 @@ Status Reader::copy_fixed_cells(
   STATS_FUNC_IN(reader_copy_fixed_cells);
 
   // For easy reference
-  auto it = attr_buffers_.find(name);
+  auto it = buffers_.find(name);
   auto buffer = (unsigned char*)it->second.buffer_;
   auto buffer_size = it->second.buffer_size_;
   auto cell_size = array_schema_->cell_size(name);
@@ -898,7 +895,7 @@ Status Reader::copy_fixed_cells(
     RETURN_NOT_OK(st);
 
   // Update buffer offsets
-  *(attr_buffers_[name].buffer_size_) = buffer_offset;
+  *(buffers_[name].buffer_size_) = buffer_offset;
   STATS_COUNTER_ADD(reader_num_fixed_cell_bytes_copied, buffer_offset);
 
   return Status::Ok();
@@ -913,7 +910,7 @@ Status Reader::copy_var_cells(
   STATS_FUNC_IN(reader_copy_var_cells);
 
   // For easy reference
-  auto it = attr_buffers_.find(name);
+  auto it = buffers_.find(name);
   auto buffer = (unsigned char*)it->second.buffer_;
   auto buffer_var = (unsigned char*)it->second.buffer_var_;
   auto buffer_size = it->second.buffer_size_;
@@ -996,8 +993,8 @@ Status Reader::copy_var_cells(
     RETURN_NOT_OK(st);
 
   // Update buffer offsets
-  *(attr_buffers_[name].buffer_size_) = total_offset_size;
-  *(attr_buffers_[name].buffer_var_size_) = total_var_size;
+  *(buffers_[name].buffer_size_) = total_offset_size;
+  *(buffers_[name].buffer_var_size_) = total_var_size;
   STATS_COUNTER_ADD(
       reader_num_var_cell_bytes_copied, total_offset_size + total_var_size);
 
@@ -1364,16 +1361,17 @@ Status Reader::dense_read() {
   auto stride = array_schema_->domain()->stride<T>(subarray.layout());
 
   // Copy cells
-  for (const auto& attr : attributes_) {
+  for (const auto& it : buffers_) {
+    const auto& name = it.first;
     if (read_state_.overflowed_)
       break;
-    if (attr == constants::coords)
+    if (name == constants::coords || array_schema_->is_dim(name))
       continue;
 
-    RETURN_CANCEL_OR_ERROR(read_tiles(attr, result_tiles));
-    RETURN_CANCEL_OR_ERROR(unfilter_tiles(attr, result_tiles));
-    RETURN_CANCEL_OR_ERROR(copy_cells(attr, stride, result_cell_slabs));
-    clear_tiles(attr, result_tiles);
+    RETURN_CANCEL_OR_ERROR(read_tiles(name, result_tiles));
+    RETURN_CANCEL_OR_ERROR(unfilter_tiles(name, result_tiles));
+    RETURN_CANCEL_OR_ERROR(copy_cells(name, stride, result_cell_slabs));
+    clear_tiles(name, result_tiles);
   }
 
   // Fill coordinates if the user requested them
@@ -1387,24 +1385,38 @@ Status Reader::dense_read() {
 
 template <class T>
 Status Reader::fill_dense_coords(const Subarray& subarray) {
-  // For easy reference
-  uint64_t coords_buff_offset = 0;
-  auto it = attr_buffers_.find(constants::coords);
-  assert(it != attr_buffers_.end());
-  auto coords_buff = it->second.buffer_;
-  auto coords_buff_size = *(it->second.buffer_size_);
+  // Prepare buffers
+  std::vector<unsigned> dim_idx;
+  std::vector<QueryBuffer*> buffers;
+  auto coords_it = buffers_.find(constants::coords);
+  auto dim_num = array_schema_->dim_num();
+  if (coords_it != buffers_.end()) {
+    buffers.emplace_back(&(coords_it->second));
+    dim_idx.emplace_back(dim_num);
+  } else {
+    for (unsigned d = 0; d < dim_num; ++d) {
+      const auto& dim = array_schema_->dimension(d);
+      auto it = buffers_.find(dim->name());
+      if (it != buffers_.end()) {
+        buffers.emplace_back(&(it->second));
+        dim_idx.emplace_back(d);
+      }
+    }
+  }
+  std::vector<uint64_t> offsets(buffers.size(), 0);
 
   if (layout_ == Layout::GLOBAL_ORDER) {
-    RETURN_NOT_OK(fill_dense_coords_global<T>(
-        subarray, coords_buff, coords_buff_size, &coords_buff_offset));
+    RETURN_NOT_OK(
+        fill_dense_coords_global<T>(subarray, dim_idx, buffers, &offsets));
   } else {
     assert(layout_ == Layout::ROW_MAJOR || layout_ == Layout::COL_MAJOR);
-    RETURN_NOT_OK(fill_dense_coords_row_col<T>(
-        subarray, coords_buff, coords_buff_size, &coords_buff_offset));
+    RETURN_NOT_OK(
+        fill_dense_coords_row_col<T>(subarray, dim_idx, buffers, &offsets));
   }
 
-  // Update buffer size
-  *(it->second.buffer_size_) = coords_buff_offset;
+  // Update buffer sizes
+  for (size_t i = 0; i < buffers.size(); ++i)
+    *(buffers[i]->buffer_size_) = offsets[i];
 
   return Status::Ok();
 }
@@ -1412,16 +1424,16 @@ Status Reader::fill_dense_coords(const Subarray& subarray) {
 template <class T>
 Status Reader::fill_dense_coords_global(
     const Subarray& subarray,
-    void* coords_buff,
-    uint64_t coords_buff_size,
-    uint64_t* coords_buff_offset) {
+    const std::vector<unsigned>& dim_idx,
+    const std::vector<QueryBuffer*>& buffers,
+    std::vector<uint64_t>* offsets) {
   auto tile_coords = subarray.tile_coords();
   auto cell_order = array_schema_->cell_order();
 
   for (const auto& tc : tile_coords) {
     auto tile_subarray = subarray.crop_to_tile((const T*)&tc[0], cell_order);
-    RETURN_NOT_OK(fill_dense_coords_row_col<T>(
-        tile_subarray, coords_buff, coords_buff_size, coords_buff_offset));
+    RETURN_NOT_OK(
+        fill_dense_coords_row_col<T>(tile_subarray, dim_idx, buffers, offsets));
   }
 
   return Status::Ok();
@@ -1430,15 +1442,13 @@ Status Reader::fill_dense_coords_global(
 template <class T>
 Status Reader::fill_dense_coords_row_col(
     const Subarray& subarray,
-    void* coords_buff,
-    uint64_t coords_buff_size,
-    uint64_t* coords_buff_offset) {
+    const std::vector<unsigned>& dim_idx,
+    const std::vector<QueryBuffer*>& buffers,
+    std::vector<uint64_t>* offsets) {
   STATS_FUNC_IN(reader_fill_coords);
 
   auto cell_order = array_schema_->cell_order();
-  auto coord_size = array_schema_->domain()->dimension(0)->coord_size();
   auto dim_num = array_schema_->dim_num();
-  auto coords_size = dim_num * coord_size;
 
   // Iterate over all coordinates, retrieved in cell slabs
   CellSlabIter<T> iter(&subarray);
@@ -1448,18 +1458,28 @@ Status Reader::fill_dense_coords_row_col(
     auto coords_num = cell_slab.length_;
 
     // Check for overflow
-    if (coords_num * coords_size + (*coords_buff_offset) > coords_buff_size) {
-      read_state_.overflowed_ = true;
-      return Status::Ok();
+    for (size_t i = 0; i < buffers.size(); ++i) {
+      auto idx = (dim_idx[i] == dim_num) ? 0 : dim_idx[i];
+      auto dim = array_schema_->domain()->dimension(idx);
+      auto coord_size = dim->coord_size();
+      coord_size = (dim_idx[i] == dim_num) ? coord_size * dim_num : coord_size;
+      auto buff_size = *(buffers[i]->buffer_size_);
+      auto offset = (*offsets)[i];
+      if (coords_num * coord_size + offset > buff_size) {
+        read_state_.overflowed_ = true;
+        return Status::Ok();
+      }
     }
 
+    // Copy slab
     if (layout_ == Layout::ROW_MAJOR ||
         (layout_ == Layout::GLOBAL_ORDER && cell_order == Layout::ROW_MAJOR))
       fill_dense_coords_row_slab(
-          &cell_slab.coords_[0], coords_num, coords_buff, coords_buff_offset);
+          &cell_slab.coords_[0], coords_num, dim_idx, buffers, offsets);
     else
       fill_dense_coords_col_slab(
-          &cell_slab.coords_[0], coords_num, coords_buff, coords_buff_offset);
+          &cell_slab.coords_[0], coords_num, dim_idx, buffers, offsets);
+
     ++iter;
   }
 
@@ -1470,48 +1490,99 @@ Status Reader::fill_dense_coords_row_col(
 
 template <class T>
 void Reader::fill_dense_coords_row_slab(
-    const T* start, uint64_t num, void* buff, uint64_t* offset) const {
+    const T* start,
+    uint64_t num,
+    const std::vector<unsigned>& dim_idx,
+    const std::vector<QueryBuffer*>& buffers,
+    std::vector<uint64_t>* offsets) const {
   // For easy reference
   auto dim_num = array_schema_->dim_num();
-  assert(dim_num > 0);
-  auto c_buff = (char*)buff;
 
-  // Fill coordinates
-  for (uint64_t i = 0; i < num; ++i) {
-    // First dim-1 dimensions are copied as they are
-    if (dim_num > 1) {
-      auto bytes_to_copy = (dim_num - 1) * sizeof(T);
-      std::memcpy(c_buff + *offset, start, bytes_to_copy);
-      *offset += bytes_to_copy;
+  // Special zipped coordinates
+  if (dim_idx.size() == 1 && dim_idx[0] == dim_num) {
+    auto c_buff = (char*)buffers[0]->buffer_;
+    auto offset = &(*offsets)[0];
+
+    // Fill coordinates
+    for (uint64_t i = 0; i < num; ++i) {
+      // First dim-1 dimensions are copied as they are
+      if (dim_num > 1) {
+        auto bytes_to_copy = (dim_num - 1) * sizeof(T);
+        std::memcpy(c_buff + *offset, start, bytes_to_copy);
+        *offset += bytes_to_copy;
+      }
+
+      // Last dimension is incremented by `i`
+      auto new_coord = start[dim_num - 1] + i;
+      std::memcpy(c_buff + *offset, &new_coord, sizeof(T));
+      *offset += sizeof(T);
     }
+  } else {  // Set of separate coordinate buffers
+    for (uint64_t i = 0; i < num; ++i) {
+      for (size_t b = 0; b < buffers.size(); ++b) {
+        auto c_buff = (char*)buffers[b]->buffer_;
+        auto offset = &(*offsets)[b];
 
-    // Last dimension is incremented by `i`
-    auto new_coord = start[dim_num - 1] + i;
-    std::memcpy(c_buff + *offset, &new_coord, sizeof(T));
-    *offset += sizeof(T);
+        // First dim-1 dimensions are copied as they are
+        if (dim_num > 1 && dim_idx[b] < dim_num - 1) {
+          std::memcpy(c_buff + *offset, &start[dim_idx[b]], sizeof(T));
+          *offset += sizeof(T);
+        } else {
+          // Last dimension is incremented by `i`
+          auto new_coord = start[dim_num - 1] + i;
+          std::memcpy(c_buff + *offset, &new_coord, sizeof(T));
+          *offset += sizeof(T);
+        }
+      }
+    }
   }
 }
 
 template <class T>
 void Reader::fill_dense_coords_col_slab(
-    const T* start, uint64_t num, void* buff, uint64_t* offset) const {
+    const T* start,
+    uint64_t num,
+    const std::vector<unsigned>& dim_idx,
+    const std::vector<QueryBuffer*>& buffers,
+    std::vector<uint64_t>* offsets) const {
   // For easy reference
   auto dim_num = array_schema_->dim_num();
-  assert(dim_num > 0);
-  auto c_buff = (char*)buff;
 
-  // Fill coordinates
-  for (uint64_t i = 0; i < num; ++i) {
-    // First dimension is incremented by `i`
-    auto new_coord = start[0] + i;
-    std::memcpy(c_buff + *offset, &new_coord, sizeof(T));
-    *offset += sizeof(T);
+  // Special zipped coordinates
+  if (dim_idx.size() == 1 && dim_idx[0] == dim_num) {
+    auto c_buff = (char*)buffers[0]->buffer_;
+    auto offset = &(*offsets)[0];
 
-    // Last dim-1 dimensions are copied as they are
-    if (dim_num > 1) {
-      auto bytes_to_copy = (dim_num - 1) * sizeof(T);
-      std::memcpy(c_buff + *offset, &start[1], bytes_to_copy);
-      *offset += bytes_to_copy;
+    // Fill coordinates
+    for (uint64_t i = 0; i < num; ++i) {
+      // First dimension is incremented by `i`
+      auto new_coord = start[0] + i;
+      std::memcpy(c_buff + *offset, &new_coord, sizeof(T));
+      *offset += sizeof(T);
+
+      // Last dim-1 dimensions are copied as they are
+      if (dim_num > 1) {
+        auto bytes_to_copy = (dim_num - 1) * sizeof(T);
+        std::memcpy(c_buff + *offset, &start[1], bytes_to_copy);
+        *offset += bytes_to_copy;
+      }
+    }
+  } else {  // Separate coordinate buffers
+    for (uint64_t i = 0; i < num; ++i) {
+      for (size_t b = 0; b < buffers.size(); ++b) {
+        auto c_buff = (char*)buffers[b]->buffer_;
+        auto offset = &(*offsets)[b];
+
+        // First dimension is incremented by `i`
+        if (dim_idx[b] == 0) {
+          auto new_coord = start[0] + i;
+          std::memcpy(c_buff + *offset, &new_coord, sizeof(T));
+          *offset += sizeof(T);
+        } else {  // Last dim-1 dimensions are copied as they are
+          std::memcpy(c_buff + *offset, &start[dim_idx[b]], sizeof(T));
+          *offset += sizeof(T);
+        }
+      }
     }
   }
 }
@@ -1615,7 +1686,21 @@ Status Reader::get_all_result_coords(
 }
 
 bool Reader::has_coords() const {
-  return attr_buffers_.find(constants::coords) != attr_buffers_.end();
+  for (const auto& it : buffers_) {
+    if (it.first == constants::coords || array_schema_->is_dim(it.first))
+      return true;
+  }
+
+  return false;
+}
+
+bool Reader::has_separate_coords() const {
+  for (const auto& it : buffers_) {
+    if (array_schema_->is_dim(it.first))
+      return true;
+  }
+
+  return false;
 }
 
 Status Reader::init_read_state() {
@@ -1644,7 +1729,7 @@ Status Reader::init_read_state() {
   read_state_.unsplittable_ = false;
 
   // Set result size budget
-  for (const auto& a : attr_buffers_) {
+  for (const auto& a : buffers_) {
     auto attr_name = a.first;
     auto buffer_size = a.second.buffer_size_;
     auto buffer_var_size = a.second.buffer_var_size_;
@@ -1879,7 +1964,7 @@ Status Reader::read_tiles(
 }
 
 void Reader::reset_buffer_sizes() {
-  for (auto& it : attr_buffers_) {
+  for (auto& it : buffers_) {
     *(it.second.buffer_size_) = it.second.original_buffer_size_;
     if (it.second.buffer_var_size_ != nullptr)
       *(it.second.buffer_var_size_) = it.second.original_buffer_var_size_;
@@ -1932,8 +2017,8 @@ Status Reader::sparse_read() {
 
   uint64_t stride = UINT64_MAX;
 
-  // Copy coordinates
-  if (has_coords())
+  // Copy zipped coordinates
+  if (buffers_.find(constants::coords) != buffers_.end())
     RETURN_CANCEL_OR_ERROR(
         copy_cells(constants::coords, stride, result_cell_slabs));
 
@@ -1941,16 +2026,17 @@ Status Reader::sparse_read() {
   erase_coord_tiles(&sparse_result_tiles);
 
   // Copy cells
-  for (const auto& attr : attributes_) {
+  for (const auto& it : buffers_) {
+    const auto& name = it.first;
     if (read_state_.overflowed_)
       break;
-    if (attr == constants::coords)
+    if (name == constants::coords)
       continue;
 
-    RETURN_CANCEL_OR_ERROR(read_tiles(attr, result_tiles));
-    RETURN_CANCEL_OR_ERROR(unfilter_tiles(attr, result_tiles));
-    RETURN_CANCEL_OR_ERROR(copy_cells(attr, stride, result_cell_slabs));
-    clear_tiles(attr, result_tiles);
+    RETURN_CANCEL_OR_ERROR(read_tiles(name, result_tiles));
+    RETURN_CANCEL_OR_ERROR(unfilter_tiles(name, result_tiles));
+    RETURN_CANCEL_OR_ERROR(copy_cells(name, stride, result_cell_slabs));
+    clear_tiles(name, result_tiles);
   }
 
   return Status::Ok();
@@ -1959,11 +2045,11 @@ Status Reader::sparse_read() {
 }
 
 void Reader::zero_out_buffer_sizes() {
-  for (auto& attr_buffer : attr_buffers_) {
-    if (attr_buffer.second.buffer_size_ != nullptr)
-      *(attr_buffer.second.buffer_size_) = 0;
-    if (attr_buffer.second.buffer_var_size_ != nullptr)
-      *(attr_buffer.second.buffer_var_size_) = 0;
+  for (auto& buffer : buffers_) {
+    if (buffer.second.buffer_size_ != nullptr)
+      *(buffer.second.buffer_size_) = 0;
+    if (buffer.second.buffer_var_size_ != nullptr)
+      *(buffer.second.buffer_var_size_) = 0;
   }
 }
 

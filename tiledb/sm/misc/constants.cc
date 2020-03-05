@@ -442,12 +442,6 @@ const uint32_t format_version = 5;
 /** The maximum size of a tile chunk (unit of compression) in bytes. */
 const uint64_t max_tile_chunk_size = 64 * 1024;
 
-/** The default attribute name prefix. */
-const std::string default_attr_name = "__attr";
-
-/** The default dimension name prefix. */
-const std::string default_dim_name = "__dim";
-
 /** Maximum number of attempts to wait for an S3 response. */
 const unsigned int s3_max_attempts = 100;
 

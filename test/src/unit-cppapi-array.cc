@@ -488,23 +488,23 @@ TEST_CASE(
     vfs.remove_dir(array_name);
 
   Domain domain(ctx);
-  domain.add_dimension(Dimension::create<int>(ctx, "", {{0, 11}}, 12));
+  domain.add_dimension(Dimension::create<int>(ctx, "d", {{0, 11}}, 12));
 
   ArraySchema schema(ctx, TILEDB_DENSE);
   schema.set_domain(domain).set_order({{TILEDB_ROW_MAJOR, TILEDB_ROW_MAJOR}});
-  schema.add_attribute(Attribute::create<int>(ctx, ""));
+  schema.add_attribute(Attribute::create<int>(ctx, "a"));
 
   tiledb::Array::create(array_name, schema);
   auto array_w = tiledb::Array(ctx, array_name, TILEDB_WRITE);
   auto query_w = tiledb::Query(ctx, array_w, TILEDB_WRITE);
   std::vector<int> data = {0, 1};
 
-  query_w.set_buffer("", data).set_subarray({0, 1}).submit();
-  query_w.set_buffer("", data).set_subarray({2, 3}).submit();
+  query_w.set_buffer("a", data).set_subarray({0, 1}).submit();
+  query_w.set_buffer("a", data).set_subarray({2, 3}).submit();
   // this fragment write caused crash during consolidation
   //   https://github.com/TileDB-Inc/TileDB/issues/1205
   //   https://github.com/TileDB-Inc/TileDB/issues/1212
-  query_w.set_buffer("", data).set_subarray({4, 5}).submit();
+  query_w.set_buffer("a", data).set_subarray({4, 5}).submit();
   query_w.finalize();
   array_w.close();
   Array::consolidate(ctx, array_name);

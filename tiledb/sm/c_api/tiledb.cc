@@ -1502,11 +1502,7 @@ int32_t tiledb_attribute_get_name(
   if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, attr) == TILEDB_ERR)
     return TILEDB_ERR;
 
-  // Hide anonymous attribute name from user
-  if (attr->attr_->is_anonymous())
-    *name = "";
-  else
-    *name = attr->attr_->name().c_str();
+  *name = attr->attr_->name().c_str();
 
   return TILEDB_OK;
 }
@@ -1835,28 +1831,8 @@ int32_t tiledb_domain_get_dimension_from_name(
     return TILEDB_OK;
   }
   std::string name_string(name);
-  const tiledb::sm::Dimension* found_dim = nullptr;
-  if (name_string.empty()) {  // anonymous dimension
-    bool found_anonymous = false;
-    for (uint32_t i = 0; i < ndim; i++) {
-      auto dim = domain->domain_->dimension(i);
-      if (dim->is_anonymous()) {
-        if (found_anonymous) {
-          tiledb::sm::Status st = tiledb::sm::Status::Error(
-              "Dimension from name is ambiguous when "
-              "there are multiple anonymous "
-              "dimensions; Use index instead");
-          LOG_STATUS(st);
-          save_error(ctx, st);
-          return TILEDB_ERR;
-        }
-        found_anonymous = true;
-        found_dim = dim;
-      }
-    }
-  } else {
-    found_dim = domain->domain_->dimension(name_string);
-  }
+  auto found_dim = domain->domain_->dimension(name_string);
+
   if (found_dim == nullptr) {
     tiledb::sm::Status st = tiledb::sm::Status::DomainError(
         std::string("Dimension \"") + name + "\" does not exist");
@@ -1864,6 +1840,7 @@ int32_t tiledb_domain_get_dimension_from_name(
     save_error(ctx, st);
     return TILEDB_ERR;
   }
+
   *dim = new (std::nothrow) tiledb_dimension_t;
   if (*dim == nullptr) {
     auto st =
@@ -2521,24 +2498,16 @@ int32_t tiledb_query_set_subarray(
 int32_t tiledb_query_set_buffer(
     tiledb_ctx_t* ctx,
     tiledb_query_t* query,
-    const char* attribute,
+    const char* name,
     void* buffer,
     uint64_t* buffer_size) {
   // Sanity check
   if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, query) == TILEDB_ERR)
     return TILEDB_ERR;
 
-  // Normalize name
-  std::string normalized_name;
-  if (SAVE_ERROR_CATCH(
-          ctx,
-          tiledb::sm::ArraySchema::attribute_name_normalized(
-              attribute, &normalized_name)))
-    return TILEDB_ERR;
-
   // Set attribute buffer
   if (SAVE_ERROR_CATCH(
-          ctx, query->query_->set_buffer(normalized_name, buffer, buffer_size)))
+          ctx, query->query_->set_buffer(name, buffer, buffer_size)))
     return TILEDB_ERR;
 
   return TILEDB_OK;
@@ -2547,7 +2516,7 @@ int32_t tiledb_query_set_buffer(
 int32_t tiledb_query_set_buffer_var(
     tiledb_ctx_t* ctx,
     tiledb_query_t* query,
-    const char* attribute,
+    const char* name,
     uint64_t* buffer_off,
     uint64_t* buffer_off_size,
     void* buffer_val,
@@ -2564,23 +2533,11 @@ int32_t tiledb_query_set_buffer_var(
               buffer_off, buffer_off_size, buffer_val_size)))
     return TILEDB_ERR;
 
-  // Normalize name
-  std::string normalized_name;
-  if (SAVE_ERROR_CATCH(
-          ctx,
-          tiledb::sm::ArraySchema::attribute_name_normalized(
-              attribute, &normalized_name)))
-    return TILEDB_ERR;
-
   // Set attribute buffers
   if (SAVE_ERROR_CATCH(
           ctx,
           query->query_->set_buffer(
-              normalized_name,
-              buffer_off,
-              buffer_off_size,
-              buffer_val,
-              buffer_val_size)))
+              name, buffer_off, buffer_off_size, buffer_val, buffer_val_size)))
     return TILEDB_ERR;
 
   return TILEDB_OK;
@@ -2589,7 +2546,7 @@ int32_t tiledb_query_set_buffer_var(
 int32_t tiledb_query_get_buffer(
     tiledb_ctx_t* ctx,
     tiledb_query_t* query,
-    const char* attribute,
+    const char* name,
     void** buffer,
     uint64_t** buffer_size) {
   // Sanity check
@@ -2598,7 +2555,7 @@ int32_t tiledb_query_get_buffer(
 
   // Set attribute buffer
   if (SAVE_ERROR_CATCH(
-          ctx, query->query_->get_buffer(attribute, buffer, buffer_size)))
+          ctx, query->query_->get_buffer(name, buffer, buffer_size)))
     return TILEDB_ERR;
 
   return TILEDB_OK;
@@ -2607,7 +2564,7 @@ int32_t tiledb_query_get_buffer(
 int32_t tiledb_query_get_buffer_var(
     tiledb_ctx_t* ctx,
     tiledb_query_t* query,
-    const char* attribute,
+    const char* name,
     uint64_t** buffer_off,
     uint64_t** buffer_off_size,
     void** buffer_val,
@@ -2620,11 +2577,7 @@ int32_t tiledb_query_get_buffer_var(
   if (SAVE_ERROR_CATCH(
           ctx,
           query->query_->get_buffer(
-              attribute,
-              buffer_off,
-              buffer_off_size,
-              buffer_val,
-              buffer_val_size)))
+              name, buffer_off, buffer_off_size, buffer_val, buffer_val_size)))
     return TILEDB_ERR;
 
   return TILEDB_OK;
@@ -2793,22 +2746,12 @@ int32_t tiledb_query_get_range(
 int32_t tiledb_query_get_est_result_size(
     tiledb_ctx_t* ctx,
     const tiledb_query_t* query,
-    const char* attr_name,
+    const char* name,
     uint64_t* size) {
   if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, query) == TILEDB_ERR)
     return TILEDB_ERR;
 
-  // Normalize name
-  std::string normalized_name;
-  if (SAVE_ERROR_CATCH(
-          ctx,
-          tiledb::sm::ArraySchema::attribute_name_normalized(
-              attr_name, &normalized_name)))
-    return TILEDB_ERR;
-
-  if (SAVE_ERROR_CATCH(
-          ctx,
-          query->query_->get_est_result_size(normalized_name.c_str(), size)))
+  if (SAVE_ERROR_CATCH(ctx, query->query_->get_est_result_size(name, size)))
     return TILEDB_ERR;
 
   return TILEDB_OK;
@@ -2817,24 +2760,14 @@ int32_t tiledb_query_get_est_result_size(
 int32_t tiledb_query_get_est_result_size_var(
     tiledb_ctx_t* ctx,
     const tiledb_query_t* query,
-    const char* attr_name,
+    const char* name,
     uint64_t* size_off,
     uint64_t* size_val) {
   if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, query) == TILEDB_ERR)
     return TILEDB_ERR;
 
-  // Normalize name
-  std::string normalized_name;
   if (SAVE_ERROR_CATCH(
-          ctx,
-          tiledb::sm::ArraySchema::attribute_name_normalized(
-              attr_name, &normalized_name)))
-    return TILEDB_ERR;
-
-  if (SAVE_ERROR_CATCH(
-          ctx,
-          query->query_->get_est_result_size(
-              normalized_name.c_str(), size_off, size_val)))
+          ctx, query->query_->get_est_result_size(name, size_off, size_val)))
     return TILEDB_ERR;
 
   return TILEDB_OK;

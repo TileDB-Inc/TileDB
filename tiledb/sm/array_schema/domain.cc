@@ -105,12 +105,7 @@ Status Domain::add_dimension(const Dimension* dim) {
         Status::DomainError("Cannot add dimension to domain; All added "
                             "dimensions must have the same type"));
 
-  // Compute new dimension name
-  std::string new_dim_name = dim->name();
-  if (new_dim_name.empty())
-    new_dim_name = default_dimension_name(dim_num_);
-
-  auto new_dim = new Dimension(new_dim_name, type_);
+  auto new_dim = new Dimension(dim->name(), type_);
   RETURN_NOT_OK_ELSE(new_dim->set_domain(dim->domain()), delete new_dim);
   RETURN_NOT_OK_ELSE(
       new_dim->set_tile_extent(dim->tile_extent()), delete new_dim);
@@ -652,12 +647,6 @@ int Domain::tile_order_cmp(
   return tile_order_cmp_func_[dim_idx](dim, coord_a, coord_b);
 }
 
-/*
-Datatype Domain::type() const {
-  return type_;
-}
-*/
-
 /* ****************************** */
 /*         PRIVATE METHODS        */
 /* ****************************** */
@@ -891,12 +880,6 @@ void Domain::compute_tile_offsets() {
     }
   }
   std::reverse(tile_offsets_row_.begin(), tile_offsets_row_.end());
-}
-
-std::string Domain::default_dimension_name(unsigned int i) const {
-  std::stringstream ss;
-  ss << constants::default_dim_name << "_" << i;
-  return ss.str();
 }
 
 template <class T>

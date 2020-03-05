@@ -64,7 +64,7 @@ class Array {
   Array(const URI& array_uri, StorageManager* storage_manager);
 
   /** Destructor. */
-  ~Array();
+  ~Array() = default;
 
   /* ********************************* */
   /*                API                */
@@ -167,18 +167,18 @@ class Array {
   Status get_query_type(QueryType* qyery_type) const;
 
   /**
-   * Returns the max buffer size given a fixed-sized attribute and
+   * Returns the max buffer size given a fixed-sized attribute/dimension and
    * a subarray. Errors if the array is not open.
    */
   Status get_max_buffer_size(
-      const char* attribute, const void* subarray, uint64_t* buffer_size);
+      const char* name, const void* subarray, uint64_t* buffer_size);
 
   /**
-   * Returns the max buffer size given a var-sized attribute and
+   * Returns the max buffer size given a var-sized attribute/dimension and
    * a subarray. Errors if the array is not open.
    */
   Status get_max_buffer_size(
-      const char* attribute,
+      const char* name,
       const void* subarray,
       uint64_t* buffer_off_size,
       uint64_t* buffer_val_size);
@@ -348,7 +348,7 @@ class Array {
    * This is the last subarray used by the user to retrieve the
    * max buffer sizes.
    */
-  void* last_max_buffer_sizes_subarray_;
+  std::vector<uint8_t> last_max_buffer_sizes_subarray_;
 
   /** Mutex for thread-safety. */
   mutable std::mutex mtx_;

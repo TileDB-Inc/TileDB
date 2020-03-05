@@ -171,23 +171,23 @@ Status subarray_partitioner_to_capnp(
   RETURN_NOT_OK(
       subarray_to_capnp(schema, partitioner.subarray(), &subarray_builder));
 
-  // Per-attr mem budgets
-  const auto* attr_budgets = partitioner.get_attr_result_budgets();
-  if (!attr_budgets->empty()) {
-    auto mem_budgets_builder = builder->initBudget(attr_budgets->size());
-    size_t attr_idx = 0;
-    for (const auto& pair : (*attr_budgets)) {
-      const std::string& attr_name = pair.first;
-      auto budget_builder = mem_budgets_builder[attr_idx];
-      budget_builder.setAttribute(attr_name);
-      if (attr_name == constants::coords || !schema->var_size(attr_name)) {
+  // Per-attr/dim mem budgets
+  const auto* budgets = partitioner.get_result_budgets();
+  if (!budgets->empty()) {
+    auto mem_budgets_builder = builder->initBudget(budgets->size());
+    size_t idx = 0;
+    for (const auto& pair : (*budgets)) {
+      const std::string& name = pair.first;
+      auto budget_builder = mem_budgets_builder[idx];
+      budget_builder.setAttribute(name);
+      if (name == constants::coords || !schema->var_size(name)) {
         budget_builder.setOffsetBytes(0);
         budget_builder.setDataBytes(pair.second.size_fixed_);
       } else {
         budget_builder.setOffsetBytes(pair.second.size_fixed_);
         budget_builder.setDataBytes(pair.second.size_var_);
       }
-      attr_idx++;
+      idx++;
     }
   }
 

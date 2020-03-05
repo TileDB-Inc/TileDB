@@ -236,7 +236,7 @@ void Dimension::dump(FILE* out) const {
 
   // Dump
   fprintf(out, "### Dimension ###\n");
-  fprintf(out, "- Name: %s\n", is_anonymous() ? "<anonymous>" : name_.c_str());
+  fprintf(out, "- Name: %s\n", name_.c_str());
   fprintf(out, "- Domain: %s\n", domain_s.c_str());
   fprintf(out, "- Tile extent: %s\n", tile_extent_s.c_str());
 }
@@ -249,11 +249,6 @@ const FilterPipeline* Dimension::filters() const {
 
 const std::string& Dimension::name() const {
   return name_;
-}
-
-bool Dimension::is_anonymous() const {
-  return name_.empty() ||
-         utils::parse::starts_with(name_, constants::default_dim_name);
 }
 
 template <class T>
@@ -450,7 +445,7 @@ Status Dimension::oob(const void* coord) const {
   std::string err_msg;
   auto ret = oob_func_(this, coord, &err_msg);
   if (ret)
-    return LOG_STATUS(Status::DimensionError(err_msg));
+    return Status::DimensionError(err_msg);
   return Status::Ok();
 }
 

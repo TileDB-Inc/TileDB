@@ -113,9 +113,6 @@ class Dimension {
   /** Returns the dimension name. */
   const std::string& name() const;
 
-  /** Returns true if this is an anonymous (unlabled) dimension **/
-  bool is_anonymous() const;
-
   /**
    * Retrieves the value `v` that lies at the end (ceil) of the tile
    * that is `tile_num` tiles apart from the beginning of `r`.
