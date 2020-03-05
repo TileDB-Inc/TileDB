@@ -564,6 +564,7 @@ TEST_CASE("C++ API: Encrypted array", "[cppapi][encryption]") {
   Array array(ctx, array_name, TILEDB_WRITE, TILEDB_AES_256_GCM, key, key_len);
   REQUIRE(Array::encryption_type(ctx, array_name) == TILEDB_AES_256_GCM);
   array.close();
+
   REQUIRE_THROWS_AS(array.open(TILEDB_WRITE), tiledb::TileDBError);
   array.open(TILEDB_WRITE, TILEDB_AES_256_GCM, key, key_len);
   REQUIRE(Array::encryption_type(ctx, array_name) == TILEDB_AES_256_GCM);

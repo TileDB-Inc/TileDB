@@ -281,29 +281,21 @@ Status FragmentMetadata::get_tile_overlap(
   return Status::Ok();
 }
 
-Status FragmentMetadata::init(const void* non_empty_domain) {
+Status FragmentMetadata::init(const NDRange& non_empty_domain) {
   // For easy reference
   auto dim_num = array_schema_->dim_num();
   auto num = array_schema_->attribute_num() + dim_num + 1;
   auto domain = array_schema_->domain();
 
   // Sanity check
-  assert(non_empty_domain != nullptr);
+  assert(!non_empty_domain.empty());
   assert(non_empty_domain_.empty());
   assert(domain_.empty());
 
   // Set non-empty domain for dense arrays (for sparse it will be calculated
   // via the MBRs)
   if (dense_) {
-    // Set non-empty domain
-    auto dom_ptr = (const unsigned char*)non_empty_domain;
-    non_empty_domain_.resize(dim_num);
-    for (unsigned d = 0; d < dim_num; ++d) {
-      auto r_size = 2 * array_schema_->dimension(d)->coord_size();
-      Range r(dom_ptr, r_size);
-      non_empty_domain_[d] = std::move(r);
-      dom_ptr += r_size;
-    }
+    non_empty_domain_ = non_empty_domain;
 
     // The following is needed in case the fragment is a result of
     // dense consolidation, as the consolidator may have expanded
@@ -755,17 +747,17 @@ void FragmentMetadata::get_subarray_tile_domain(
     const T* subarray, T* subarray_tile_domain) const {
   // For easy reference
   auto dim_num = array_schema_->dim_num();
-  auto tile_extents =
-      static_cast<const T*>(array_schema_->domain()->tile_extents());
 
   // Calculate subarray in tile domain
-  for (unsigned int d = 0; d < dim_num; ++d) {
+  for (unsigned d = 0; d < dim_num; ++d) {
     auto domain = (const T*)domain_[d].data();
+    auto tile_extent =
+        *(const T*)array_schema_->domain()->tile_extent(d).data();
     auto overlap = std::max(subarray[2 * d], domain[0]);
-    subarray_tile_domain[2 * d] = (overlap - domain[0]) / tile_extents[d];
+    subarray_tile_domain[2 * d] = (overlap - domain[0]) / tile_extent;
 
     overlap = std::min(subarray[2 * d + 1], domain[1]);
-    subarray_tile_domain[2 * d + 1] = (overlap - domain[0]) / tile_extents[d];
+    subarray_tile_domain[2 * d + 1] = (overlap - domain[0]) / tile_extent;
   }
 }
 

@@ -6,6 +6,11 @@
 * Now storing the coordinate tiles on each dimension in separate files
 * Changed fragment name format from `__t1_t2_uuid` to `__t1_t2_uuid_<format_version>`. That was necessary for backwards compatibility
 
+## Breaking C API changes
+
+* Changed `domain` input of `tiledb_dimension_get_domain` to `const void**` (from `void**`).
+* Changed `tile_extent` input of `tiledb_dimension_get_tile_extent` to `const void**` (from `void**`).
+
 ## New features
 
 ## Improvements

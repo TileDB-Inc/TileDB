@@ -116,8 +116,15 @@ TEST_CASE_METHOD(
     "[Reader][2d][compute_result_space_tiles]") {
   Reader reader;
   unsigned dim_num = 2;
-  std::vector<int32_t> domain = {1, 10, 1, 15};
-  std::vector<int32_t> tile_extents = {2, 5};
+  auto size = 2 * sizeof(int32_t);
+  int32_t domain_vec[] = {1, 10, 1, 15};
+  NDRange domain = {Range(&domain_vec[0], size), Range(&domain_vec[2], size)};
+  std::vector<int32_t> tile_extents_vec = {2, 5};
+  std::vector<ByteVecValue> tile_extents(2);
+  tile_extents[0].resize(sizeof(int32_t));
+  std::memcpy(&tile_extents[0][0], &tile_extents_vec[0], sizeof(int32_t));
+  tile_extents[1].resize(sizeof(int32_t));
+  std::memcpy(&tile_extents[1][0], &tile_extents_vec[1], sizeof(int32_t));
   Layout layout = Layout::ROW_MAJOR;
 
   // Tile coords
@@ -151,30 +158,33 @@ TEST_CASE_METHOD(
   std::vector<int32_t> domain_slice_2 = {4, 5, 2, 4};
   std::vector<int32_t> domain_slice_3 = {5, 7, 1, 9};
 
-  auto size = 2 * sizeof(int32_t);
   NDRange ds1 = {Range(&domain_slice_1[0], size),
                  Range(&domain_slice_1[2], size)};
   NDRange ds2 = {Range(&domain_slice_2[0], size),
                  Range(&domain_slice_2[2], size)};
   NDRange ds3 = {Range(&domain_slice_3[0], size),
                  Range(&domain_slice_3[2], size)};
-  NDRange dsd = {Range(&domain[0], size), Range(&domain[2], size)};
+  NDRange dsd = domain;
 
   std::vector<TileDomain<int32_t>> frag_tile_domains;
-  frag_tile_domains.emplace_back(TileDomain<int32_t>(
-      3, dim_num, &domain[0], ds3, &tile_extents[0], layout));
-  frag_tile_domains.emplace_back(TileDomain<int32_t>(
-      2, dim_num, &domain[0], ds2, &tile_extents[0], layout));
-  frag_tile_domains.emplace_back(TileDomain<int32_t>(
-      1, dim_num, &domain[0], ds1, &tile_extents[0], layout));
+  frag_tile_domains.emplace_back(
+      TileDomain<int32_t>(3, domain, ds3, tile_extents, layout));
+  frag_tile_domains.emplace_back(
+      TileDomain<int32_t>(2, domain, ds2, tile_extents, layout));
+  frag_tile_domains.emplace_back(
+      TileDomain<int32_t>(1, domain, ds1, tile_extents, layout));
   TileDomain<int32_t> array_tile_domain(
-      UINT32_MAX, dim_num, &domain[0], dsd, &tile_extents[0], layout);
+      UINT32_MAX, domain, dsd, tile_extents, layout);
 
   Dimension d1("d1", Datatype::INT32);
+  d1.set_domain(domain_vec);
+  d1.set_tile_extent(&tile_extents_vec[0]);
   Dimension d2("d2", Datatype::INT32);
+  d2.set_domain(&domain_vec[2]);
+  d2.set_tile_extent(&tile_extents_vec[1]);
   Domain dom(Datatype::INT32);
-  dom.add_dimension(&d1);
-  dom.add_dimension(&d2);
+  CHECK(dom.add_dimension(&d1).ok());
+  CHECK(dom.add_dimension(&d2).ok());
 
   // Compute result space tiles map
   std::map<const int32_t*, ResultSpaceTile<int32_t>> result_space_tiles;

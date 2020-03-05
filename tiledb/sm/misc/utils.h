@@ -122,24 +122,6 @@ bool is_int(const std::string& str);
 bool is_uint(const std::string& str);
 
 /**
- * Returns the input domain as a string of the form "[low, high]".
- *
- * @param domain A single dimension's domain.
- * @param type The type of the dimension.
- * @return A string of the form "[low, high]".
- */
-std::string domain_str(const void* domain, Datatype type);
-
-/**
- * Returns a dimension's tile extent in string form.
- *
- * @param tile_extent The tile extent of a single dimension.
- * @param type The type of the dimension.
- * @return The tile extent in string form.
- */
-std::string tile_extent_str(const void* tile_extent, Datatype type);
-
-/**
  * Checks if a string starts with a certain prefix.
  *
  * @param value The base string.

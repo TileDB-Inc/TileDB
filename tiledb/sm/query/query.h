@@ -370,21 +370,16 @@ class Query {
    * the entire domain.
    *
    * @param subarray The subarray to be set.
-   * @param check_expanded_domain If `true`, the subarray bounds will be
-   *     checked against the expanded domain of the array. This is important
-   *     in dense consolidation with space tiles not fully dividing the
-   *     dimension domain.
    * @return Status
-   */
-  Status set_subarray(const void* subarray, bool check_expanded_domain = false);
-
-  /**
-   * Sets the query subarray.
    *
-   * @param subarray The subarray to be set.
-   * @return Status
+   * @note Setting a subarray for sparse arrays, or for dense arrays
+   *     when performing unordered (sparse) writes, has no effect
+   *     (will be ingnored).
    */
-  Status set_subarray(const Subarray& subarray);
+  Status set_subarray(const void* subarray);
+
+  /** Sets the query subarray, without performing any checks. */
+  Status set_subarray_unsafe(const NDRange& subarray);
 
   /** Submits the query to the storage manager. */
   Status submit();
@@ -441,145 +436,6 @@ class Query {
   /* ********************************* */
   /*           PRIVATE METHODS         */
   /* ********************************* */
-
-  /**
-   * Correctness checks on `subarray`.
-   *
-   * @param subarray The subarray to be checked
-   * @param check_expanded_domain If `true`, the subarray bounds will be
-   *     checked against the expanded domain of the array. This is important
-   *     in dense consolidation with space tiles not fully dividing the
-   *     dimension domain.
-   */
-  Status check_subarray(
-      const void* subarray, bool check_expanded_domain = false) const;
-
-  /**
-   * Correctness checks on `subarray`.
-   *
-   * @param subarray The subarray to be checked
-   * @param check_expanded_domain If `true`, the subarray bounds will be
-   *     checked against the expanded domain of the array. This is important
-   *     in dense consolidation with space tiles not fully dividing the
-   *     dimension domain.
-   */
-  template <
-      typename T,
-      typename std::enable_if<std::is_integral<T>::value>::type* = nullptr>
-  Status check_subarray(const T* subarray, bool check_expanded_domain) const {
-    auto array_schema = this->array_schema();
-    auto domain = array_schema->domain();
-    auto dim_num = domain->dim_num();
-
-    // Check subarray bounds
-    return check_subarray_bounds(
-        subarray, domain, dim_num, check_expanded_domain);
-  }
-
-  template <
-      typename T,
-      typename std::enable_if<!std::is_integral<T>::value>::type* = nullptr>
-  Status check_subarray(const T* subarray, bool check_expanded_domain) const {
-    (void)check_expanded_domain;  // Non-applicable to real domains
-    auto array_schema = this->array_schema();
-    auto domain = array_schema->domain();
-    auto dim_num = domain->dim_num();
-
-    // Check for NaN
-    for (unsigned int i = 0; i < dim_num; ++i) {
-      if (std::isnan(subarray[2 * i]) || std::isnan(subarray[2 * i + 1]))
-        return LOG_STATUS(Status::QueryError("Subarray contains NaN"));
-    }
-
-    // Check subarray bounds
-    return check_subarray_bounds(subarray, domain, dim_num);
-  }
-
-  /**
-   * Checks that the subarray bounds are contained within the domain dimensions.
-   *
-   * @param subarray The subarray to check
-   * @param domain the domain of the subarray
-   * @param dim_num the number of dimensions in the subarray and domain
-   * @param check_expanded_domain If `true`, the subarray bounds will be
-   *     checked against the expanded domain of the array. This is important
-   *     in dense consolidation with space tiles not fully dividing the
-   *     dimension domain.
-   * @return Status
-   */
-  template <typename T>
-  Status check_subarray_bounds(
-      const T* subarray,
-      const Domain* const domain,
-      const unsigned int dim_num,
-      bool check_expanded_domain = false) const {
-    T low, high;
-    for (unsigned int i = 0; i < dim_num; ++i) {
-      auto dim_domain = static_cast<const T*>(domain->dimension(i)->domain());
-      if (array_schema()->dense() && check_expanded_domain) {
-        auto tile_extent =
-            *static_cast<const T*>(domain->dimension(i)->tile_extent());
-        low = dim_domain[0];
-        high = utils::math::ceil(dim_domain[1], tile_extent) * tile_extent;
-      } else {
-        low = dim_domain[0];
-        high = dim_domain[1];
-      }
-
-      if (subarray[2 * i] < low || subarray[2 * i + 1] > high)
-        return LOG_STATUS(Status::QueryError(
-            "Subarray out of bounds. " +
-            format_subarray_bounds(subarray, domain, dim_num)));
-      if (subarray[2 * i] > subarray[2 * i + 1])
-        return LOG_STATUS(Status::QueryError(
-            "Subarray lower bound is larger than upper bound. " +
-            format_subarray_bounds(subarray, domain, dim_num)));
-    }
-
-    return Status::Ok();
-  }
-
-  /**
-   * Returns a formatted string containing the subarray bounds and domain
-   * dimension bounds. For example:
-   * "subarray: [1, 2, 1, 2] domain: [1, 4, 1, 4]"
-   *
-   * @param subarray The subarray to format from
-   * @param domain the domain of the subarray
-   * @param dim_num the number of dimensions in the subarray and domain
-   * @return string
-   */
-  template <typename T>
-  std::string format_subarray_bounds(
-      const T* subarray,
-      const Domain* const domain,
-      const unsigned int dim_num) const {
-    std::stringstream subarray_ss;
-    std::stringstream domain_ss;
-
-    subarray_ss << "subarray: [";
-    domain_ss << "domain: [";
-
-    for (unsigned int i = 0; i < dim_num; ++i) {
-      auto dim_domain = static_cast<const T*>(domain->dimension(i)->domain());
-
-      if (i != 0) {
-        subarray_ss << ", ";
-        domain_ss << ", ";
-      }
-
-      subarray_ss << subarray[2 * i] << ", " << subarray[2 * i + 1];
-
-      domain_ss << dim_domain[0] << ", " << dim_domain[1];
-    }
-
-    subarray_ss << "]";
-    domain_ss << "]";
-
-    subarray_ss << " " << domain_ss.str();
-
-    return subarray_ss.str();
-  }
 };
 
 }  // namespace sm

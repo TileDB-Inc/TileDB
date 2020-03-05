@@ -36,6 +36,7 @@
 #include "tiledb/sm/array_schema/domain.h"
 #include "tiledb/sm/enums/layout.h"
 #include "tiledb/sm/misc/logger.h"
+#include "tiledb/sm/misc/types.h"
 
 #include <cassert>
 #include <iostream>
@@ -234,21 +235,22 @@ Status CellSlabIter<T>::init_ranges() {
   // For easy reference
   auto dim_num = subarray_->dim_num();
   auto array_schema = subarray_->array()->array_schema();
-  auto array_domain = (T*)array_schema->domain()->domain();
-  auto tile_extents = (T*)array_schema->domain()->tile_extents();
+  auto array_domain = array_schema->domain()->domain();
   uint64_t range_num;
-  const T* range;
   T tile_extent, dim_domain_start;
+  const tiledb::sm::Range* r;
 
   ranges_.resize(dim_num);
-  for (unsigned i = 0; i < dim_num; ++i) {
-    RETURN_NOT_OK(subarray_->get_range_num(i, &range_num));
-    ranges_[i].reserve(range_num);
-    tile_extent = tile_extents[i];
-    dim_domain_start = array_domain[2 * i];
+  for (unsigned d = 0; d < dim_num; ++d) {
+    auto dim_dom = (const T*)array_domain[d].data();
+    RETURN_NOT_OK(subarray_->get_range_num(d, &range_num));
+    ranges_[d].reserve(range_num);
+    tile_extent = *(const T*)array_schema->domain()->tile_extent(d).data();
+    dim_domain_start = dim_dom[0];
     for (uint64_t j = 0; j < range_num; ++j) {
-      RETURN_NOT_OK(subarray_->get_range(i, j, (const void**)&range));
-      create_ranges(range, tile_extent, dim_domain_start, &ranges_[i]);
+      RETURN_NOT_OK(subarray_->get_range(d, j, &r));
+      create_ranges(
+          (const T*)(*r).data(), tile_extent, dim_domain_start, &ranges_[d]);
     }
   }
 

@@ -38,7 +38,6 @@
 
 #include <cassert>
 #include <iostream>
-#include <sstream>
 
 namespace tiledb {
 namespace sm {
@@ -54,9 +53,9 @@ Dimension::Dimension()
 Dimension::Dimension(const std::string& name, Datatype type)
     : name_(name)
     , type_(type) {
-  domain_ = nullptr;
-  tile_extent_ = nullptr;
   set_ceil_to_tile_func();
+  set_check_range_func();
+  set_coincides_with_tiles_func();
   set_compute_mbr_func();
   set_crop_range_func();
   set_domain_range_func();
@@ -78,24 +77,28 @@ Dimension::Dimension(const Dimension* dim) {
 
   name_ = dim->name();
   type_ = dim->type_;
+
+  // Set fuctions
+  ceil_to_tile_func_ = dim->ceil_to_tile_func_;
+  check_range_func_ = dim->check_range_func_;
+  coincides_with_tiles_func_ = dim->coincides_with_tiles_func_;
+  compute_mbr_func_ = dim->compute_mbr_func_;
+  crop_range_func_ = dim->crop_range_func_;
+  domain_range_func_ = dim->domain_range_func_;
+  expand_range_v_func_ = dim->expand_range_v_func_;
+  expand_range_func_ = dim->expand_range_func_;
+  expand_to_tile_func_ = dim->expand_to_tile_func_;
   oob_func_ = dim->oob_func_;
-  uint64_t type_size = datatype_size(type_);
-  domain_ = std::malloc(2 * type_size);
-  std::memcpy(domain_, dim->domain(), 2 * type_size);
+  covered_func_ = dim->covered_func_;
+  overlap_func_ = dim->overlap_func_;
+  overlap_ratio_func_ = dim->overlap_ratio_func_;
+  split_range_func_ = dim->split_range_func_;
+  splitting_value_func_ = dim->splitting_value_func_;
+  tile_num_func_ = dim->tile_num_func_;
+  value_in_range_func_ = dim->value_in_range_func_;
 
-  const void* tile_extent = dim->tile_extent();
-  if (tile_extent == nullptr) {
-    tile_extent_ = nullptr;
-  } else {
-    tile_extent_ = std::malloc(type_size);
-    std::memcpy(tile_extent_, tile_extent, type_size);
-  }
-}
-
-Dimension::~Dimension() {
-  // Clean up
-  std::free(domain_);
-  std::free(tile_extent_);
+  domain_ = dim->domain();
+  tile_extent_ = dim->tile_extent();
 }
 
 /* ********************************* */
@@ -185,29 +188,23 @@ Status Dimension::deserialize(ConstBuffer* buff, Datatype type) {
   RETURN_NOT_OK(buff->read(&name_[0], dimension_name_size));
 
   // Load domain
-  uint64_t domain_size = 2 * datatype_size(type_);
-  std::free(domain_);
-  domain_ = std::malloc(domain_size);
-  if (domain_ == nullptr)
-    return LOG_STATUS(
-        Status::DimensionError("Cannot deserialize; Memory allocation failed"));
-  RETURN_NOT_OK(buff->read(domain_, domain_size));
+  uint64_t domain_size = 2 * coord_size();
+  std::vector<uint8_t> tmp(domain_size);
+  RETURN_NOT_OK(buff->read(&tmp[0], domain_size));
+  domain_ = Range(&tmp[0], domain_size);
 
   // Load tile extent
-  std::free(tile_extent_);
-  tile_extent_ = nullptr;
+  tile_extent_.clear();
   uint8_t null_tile_extent;
   RETURN_NOT_OK(buff->read(&null_tile_extent, sizeof(uint8_t)));
   if (null_tile_extent == 0) {
-    tile_extent_ = std::malloc(datatype_size(type_));
-    if (tile_extent_ == nullptr) {
-      return LOG_STATUS(Status::DimensionError(
-          "Cannot deserialize; Memory allocation failed"));
-    }
-    RETURN_NOT_OK(buff->read(tile_extent_, datatype_size(type_)));
+    tile_extent_.resize(coord_size());
+    RETURN_NOT_OK(buff->read(&tile_extent_[0], coord_size()));
   }
 
   set_ceil_to_tile_func();
+  set_check_range_func();
+  set_coincides_with_tiles_func();
   set_compute_mbr_func();
   set_crop_range_func();
   set_domain_range_func();
@@ -226,7 +223,7 @@ Status Dimension::deserialize(ConstBuffer* buff, Datatype type) {
   return Status::Ok();
 }
 
-void* Dimension::domain() const {
+const Range& Dimension::domain() const {
   return domain_;
 }
 
@@ -234,9 +231,8 @@ void Dimension::dump(FILE* out) const {
   if (out == nullptr)
     out = stdout;
   // Retrieve domain and tile extent strings
-  std::string domain_s = utils::parse::domain_str(domain_, type_);
-  std::string tile_extent_s =
-      utils::parse::tile_extent_str(tile_extent_, type_);
+  std::string domain_s = domain_str();
+  std::string tile_extent_s = tile_extent_str();
 
   // Dump
   fprintf(out, "### Dimension ###\n");
@@ -266,10 +262,10 @@ void Dimension::ceil_to_tile(
   assert(dim != nullptr);
   assert(!r.empty());
   assert(v != nullptr);
-  assert(dim->tile_extent() != nullptr);
+  assert(!dim->tile_extent().empty());
 
-  auto tile_extent = *(const T*)dim->tile_extent();
-  auto dim_dom = (const T*)dim->domain();
+  auto tile_extent = *(const T*)dim->tile_extent().data();
+  auto dim_dom = (const T*)dim->domain().data();
   v->resize(sizeof(T));
   auto r_t = (const T*)r.data();
 
@@ -286,6 +282,35 @@ void Dimension::ceil_to_tile(
     const Range& r, uint64_t tile_num, ByteVecValue* v) const {
   assert(ceil_to_tile_func_ != nullptr);
   ceil_to_tile_func_(this, r, tile_num, v);
+}
+
+Status Dimension::check_range(const Range& range) const {
+  assert(check_range_func_ != nullptr);
+  std::string err_msg;
+  auto ret = check_range_func_(this, range, &err_msg);
+  if (!ret)
+    return LOG_STATUS(Status::DimensionError(err_msg));
+  return Status::Ok();
+}
+
+template <class T>
+bool Dimension::coincides_with_tiles(const Dimension* dim, const Range& r) {
+  assert(dim != nullptr);
+  assert(!r.empty());
+  assert(!dim->tile_extent().empty());
+
+  auto dim_domain = (const T*)dim->domain().data();
+  auto tile_extent = *(const T*)dim->tile_extent().data();
+  auto d = (const T*)r.data();
+  auto norm_1 = uint64_t(d[0] - dim_domain[0]);
+  auto norm_2 = (uint64_t(d[1]) - dim_domain[0]) + 1;
+  return ((norm_1 / tile_extent) * tile_extent == norm_1) &&
+         ((norm_2 / tile_extent) * tile_extent == norm_2);
+}
+
+bool Dimension::coincides_with_tiles(const Range& r) const {
+  assert(coincides_with_tiles_func_ != nullptr);
+  return coincides_with_tiles_func_(this, r);
 }
 
 template <class T>
@@ -314,7 +339,7 @@ template <class T>
 void Dimension::crop_range(const Dimension* dim, Range* range) {
   assert(dim != nullptr);
   assert(!range->empty());
-  auto dim_dom = (const T*)dim->domain();
+  auto dim_dom = (const T*)dim->domain().data();
   auto r = (const T*)range->data();
   T res[2] = {std::max(r[0], dim_dom[0]), std::min(r[1], dim_dom[1])};
   range->set_range(res, sizeof(res));
@@ -384,11 +409,11 @@ void Dimension::expand_to_tile(const Dimension* dim, Range* range) {
   assert(!range->empty());
 
   // Applicable only to regular tiles and integral domains
-  if (dim->tile_extent() == nullptr || !std::is_integral<T>::value)
+  if (dim->tile_extent().empty() || !std::is_integral<T>::value)
     return;
 
-  auto tile_extent = *(const T*)dim->tile_extent();
-  auto dim_dom = (const T*)dim->domain();
+  auto tile_extent = *(const T*)dim->tile_extent().data();
+  auto dim_dom = (const T*)dim->domain().data();
   auto r = (const T*)range->data();
   T res[2];
 
@@ -407,7 +432,7 @@ void Dimension::expand_to_tile(Range* range) const {
 template <class T>
 bool Dimension::oob(
     const Dimension* dim, const void* coord, std::string* err_msg) {
-  auto domain = (const T*)dim->domain();
+  auto domain = (const T*)dim->domain().data();
   auto coord_t = (const T*)coord;
   if (*coord_t < domain[0] || *coord_t > domain[1]) {
     std::stringstream ss;
@@ -420,9 +445,13 @@ bool Dimension::oob(
   return false;
 }
 
-bool Dimension::oob(const void* coord, std::string* err_msg) const {
+Status Dimension::oob(const void* coord) const {
   assert(oob_func_ != nullptr);
-  return oob_func_(this, coord, err_msg);
+  std::string err_msg;
+  auto ret = oob_func_(this, coord, &err_msg);
+  if (ret)
+    return LOG_STATUS(Status::DimensionError(err_msg));
+  return Status::Ok();
 }
 
 template <class T>
@@ -497,15 +526,15 @@ double Dimension::overlap_ratio(const Range& r1, const Range& r2) const {
 
 template <class T>
 void Dimension::split_range(
-    const void* r, const ByteVecValue& v, Range* r1, Range* r2) {
-  assert(r != nullptr);
+    const Range& r, const ByteVecValue& v, Range* r1, Range* r2) {
+  assert(!r.empty());
   assert(!v.empty());
   assert(r1 != nullptr);
   assert(r2 != nullptr);
 
   auto max = std::numeric_limits<T>::max();
   bool int_domain = std::numeric_limits<T>::is_integer;
-  auto r_t = (const T*)r;
+  auto r_t = (const T*)r.data();
   auto v_t = *(const T*)(&v[0]);
 
   T ret[2];
@@ -518,7 +547,7 @@ void Dimension::split_range(
 }
 
 void Dimension::split_range(
-    const void* r, const ByteVecValue& v, Range* r1, Range* r2) const {
+    const Range& r, const ByteVecValue& v, Range* r1, Range* r2) const {
   assert(split_range_func_ != nullptr);
   split_range_func_(r, v, r1, r2);
 }
@@ -549,11 +578,11 @@ uint64_t Dimension::tile_num(const Dimension* dim, const Range& range) {
   assert(!range.empty());
 
   // Trivial cases
-  if (dim->tile_extent() == nullptr)
+  if (dim->tile_extent().empty())
     return 1;
 
-  auto tile_extent = *(const T*)dim->tile_extent();
-  auto dim_dom = (const T*)dim->domain();
+  auto tile_extent = *(const T*)dim->tile_extent().data();
+  auto dim_dom = (const T*)dim->domain().data();
   auto r = (const T*)range.data();
   uint64_t start = floor((r[0] - dim_dom[0]) / tile_extent);
   uint64_t end = floor((r[1] - dim_dom[0]) / tile_extent);
@@ -587,7 +616,7 @@ bool Dimension::value_in_range(const void* value, const Range& range) const {
 // tile_extent (void* - type_size)
 Status Dimension::serialize(Buffer* buff) {
   // Sanity check
-  if (domain_ == nullptr) {
+  if (domain_.empty()) {
     return LOG_STATUS(
         Status::DimensionError("Cannot serialize dimension; Domain not set"));
   }
@@ -598,83 +627,67 @@ Status Dimension::serialize(Buffer* buff) {
   RETURN_NOT_OK(buff->write(name_.c_str(), dimension_name_size));
 
   // Write domain and tile extent
-  uint64_t domain_size = 2 * datatype_size(type_);
-  RETURN_NOT_OK(buff->write(domain_, domain_size));
+  uint64_t domain_size = 2 * coord_size();
+  RETURN_NOT_OK(buff->write(domain_.data(), domain_size));
 
-  auto null_tile_extent = (uint8_t)((tile_extent_ == nullptr) ? 1 : 0);
+  auto null_tile_extent = (uint8_t)((tile_extent_.empty()) ? 1 : 0);
   RETURN_NOT_OK(buff->write(&null_tile_extent, sizeof(uint8_t)));
-  if (tile_extent_ != nullptr)
-    RETURN_NOT_OK(buff->write(tile_extent_, datatype_size(type_)));
+  if (!tile_extent_.empty())
+    RETURN_NOT_OK(buff->write(tile_extent_.data(), tile_extent_.size()));
 
   return Status::Ok();
 }
 
 Status Dimension::set_domain(const void* domain) {
-  std::free(domain_);
-
-  if (domain == nullptr) {
-    domain_ = nullptr;
+  if (domain == nullptr)
     return Status::Ok();
-  }
+  return set_domain(Range(domain, 2 * coord_size()));
+}
 
-  uint64_t domain_size = 2 * datatype_size(type_);
-  domain_ = std::malloc(domain_size);
-  if (domain_ == nullptr) {
-    return LOG_STATUS(
-        Status::DimensionError("Cannot set domain; Memory allocation error"));
-  }
-  std::memcpy(domain_, domain, domain_size);
+Status Dimension::set_domain(const Range& domain) {
+  if (domain.empty())
+    return Status::Ok();
 
-  auto st = check_domain();
-  if (!st.ok()) {
-    std::free(domain_);
-    domain_ = nullptr;
-  }
+  domain_ = domain;
+  RETURN_NOT_OK_ELSE(check_domain(), domain_.clear());
 
-  return st;
+  return Status::Ok();
 }
 
 Status Dimension::set_tile_extent(const void* tile_extent) {
-  if (domain_ == nullptr)
+  ByteVecValue te;
+  if (tile_extent != nullptr) {
+    auto size = coord_size();
+    te.resize(size);
+    std::memcpy(&te[0], tile_extent, size);
+  }
+
+  return set_tile_extent(te);
+}
+
+Status Dimension::set_tile_extent(const ByteVecValue& tile_extent) {
+  if (domain_.empty())
     return LOG_STATUS(Status::DimensionError(
         "Cannot set tile extent; Domain must be set first"));
 
   // Note: this check was added in release 1.6.0. Older arrays may have been
   // serialized with a null extent, and so it is still supported internally.
   // But users can not construct dimension objects with null tile extents.
-  if (tile_extent == nullptr)
+  if (tile_extent.empty())
     return LOG_STATUS(Status::DimensionError(
         "Cannot set tile extent; tile extent cannot be null"));
 
-  std::free(tile_extent_);
-  if (tile_extent == nullptr) {
-    tile_extent_ = nullptr;
-    return Status::Ok();
-  }
+  tile_extent_ = tile_extent;
 
-  uint64_t type_size = datatype_size(type_);
-  tile_extent_ = std::malloc(type_size);
-  if (tile_extent_ == nullptr) {
-    return LOG_STATUS(Status::DimensionError(
-        "Cannot set tile extent; Memory allocation error"));
-  }
-  std::memcpy(tile_extent_, tile_extent, type_size);
-
-  auto st = check_tile_extent();
-  if (!st.ok()) {
-    std::free(domain_);
-    domain_ = nullptr;
-  }
-
-  return st;
+  return check_tile_extent();
 }
 
 Status Dimension::set_null_tile_extent_to_range() {
   // Applicable only to null extents
-  if (tile_extent_ != nullptr)
+  if (!tile_extent_.empty())
     return Status::Ok();
 
-  if (domain_ == nullptr)
+  if (domain_.empty())
     return LOG_STATUS(Status::DimensionError(
         "Cannot set tile extent to domain range; Domain not set"));
 
@@ -727,11 +740,11 @@ Status Dimension::set_null_tile_extent_to_range() {
 template <class T>
 Status Dimension::set_null_tile_extent_to_range() {
   // Applicable only to null extents
-  if (tile_extent_ != nullptr)
+  if (!tile_extent_.empty())
     return Status::Ok();
 
   // Calculate new tile extent equal to domain range
-  auto domain = (T*)domain_;
+  auto domain = (const T*)domain_.data();
   T tile_extent = domain[1] - domain[0];
 
   // Check overflow before adding 1
@@ -745,18 +758,13 @@ Status Dimension::set_null_tile_extent_to_range() {
 
   // Allocate space
   uint64_t type_size = sizeof(T);
-  tile_extent_ = std::malloc(type_size);
-  if (tile_extent_ == nullptr) {
-    return LOG_STATUS(
-        Status::DimensionError("Cannot set null tile extent to domain range; "
-                               "Memory allocation error"));
-  }
-  std::memcpy(tile_extent_, &tile_extent, type_size);
+  tile_extent_.resize(type_size);
+  std::memcpy(&tile_extent_[0], &tile_extent, type_size);
 
   return Status::Ok();
 }
 
-void* Dimension::tile_extent() const {
+const ByteVecValue& Dimension::tile_extent() const {
   return tile_extent_;
 }
 
@@ -859,12 +867,15 @@ Status Dimension::check_tile_extent() const {
 
 template <class T>
 Status Dimension::check_tile_extent() const {
-  if (domain_ == nullptr)
+  if (domain_.empty())
     return LOG_STATUS(
         Status::DimensionError("Tile extent check failed; Domain not set"));
 
-  auto tile_extent = static_cast<T*>(tile_extent_);
-  auto domain = static_cast<T*>(domain_);
+  if (tile_extent_.empty())
+    return Status::Ok();
+
+  auto tile_extent = (const T*)tile_extent_.data();
+  auto domain = (const T*)domain_.data();
   bool is_int = std::is_integral<T>::value;
 
   // Check if tile extent is negative or 0
@@ -907,6 +918,190 @@ Status Dimension::check_tile_extent() const {
   }
 
   return Status::Ok();
+}
+
+std::string Dimension::domain_str() const {
+  std::stringstream ss;
+
+  if (domain_.empty())
+    return "";
+
+  const int* domain_int32;
+  const int64_t* domain_int64;
+  const float* domain_float32;
+  const double* domain_float64;
+  const int8_t* domain_int8;
+  const uint8_t* domain_uint8;
+  const int16_t* domain_int16;
+  const uint16_t* domain_uint16;
+  const uint32_t* domain_uint32;
+  const uint64_t* domain_uint64;
+
+  switch (type_) {
+    case Datatype::INT32:
+      domain_int32 = (const int32_t*)domain_.data();
+      ss << "[" << domain_int32[0] << "," << domain_int32[1] << "]";
+      return ss.str();
+    case Datatype::INT64:
+      domain_int64 = (const int64_t*)domain_.data();
+      ss << "[" << domain_int64[0] << "," << domain_int64[1] << "]";
+      return ss.str();
+    case Datatype::FLOAT32:
+      domain_float32 = (const float*)domain_.data();
+      ss << "[" << domain_float32[0] << "," << domain_float32[1] << "]";
+      return ss.str();
+    case Datatype::FLOAT64:
+      domain_float64 = (const double*)domain_.data();
+      ss << "[" << domain_float64[0] << "," << domain_float64[1] << "]";
+      return ss.str();
+    case Datatype::INT8:
+      domain_int8 = (const int8_t*)domain_.data();
+      ss << "[" << int(domain_int8[0]) << "," << int(domain_int8[1]) << "]";
+      return ss.str();
+    case Datatype::UINT8:
+      domain_uint8 = (const uint8_t*)domain_.data();
+      ss << "[" << int(domain_uint8[0]) << "," << int(domain_uint8[1]) << "]";
+      return ss.str();
+    case Datatype::INT16:
+      domain_int16 = (const int16_t*)domain_.data();
+      ss << "[" << domain_int16[0] << "," << domain_int16[1] << "]";
+      return ss.str();
+    case Datatype::UINT16:
+      domain_uint16 = (const uint16_t*)domain_.data();
+      ss << "[" << domain_uint16[0] << "," << domain_uint16[1] << "]";
+      return ss.str();
+    case Datatype::UINT32:
+      domain_uint32 = (const uint32_t*)domain_.data();
+      ss << "[" << domain_uint32[0] << "," << domain_uint32[1] << "]";
+      return ss.str();
+    case Datatype::UINT64:
+      domain_uint64 = (const uint64_t*)domain_.data();
+      ss << "[" << domain_uint64[0] << "," << domain_uint64[1] << "]";
+      return ss.str();
+    case Datatype::DATETIME_YEAR:
+    case Datatype::DATETIME_MONTH:
+    case Datatype::DATETIME_WEEK:
+    case Datatype::DATETIME_DAY:
+    case Datatype::DATETIME_HR:
+    case Datatype::DATETIME_MIN:
+    case Datatype::DATETIME_SEC:
+    case Datatype::DATETIME_MS:
+    case Datatype::DATETIME_US:
+    case Datatype::DATETIME_NS:
+    case Datatype::DATETIME_PS:
+    case Datatype::DATETIME_FS:
+    case Datatype::DATETIME_AS:
+      domain_int64 = (const int64_t*)domain_.data();
+      ss << "[" << domain_int64[0] << "," << domain_int64[1] << "]";
+      return ss.str();
+
+    case Datatype::CHAR:
+    case Datatype::STRING_ASCII:
+    case Datatype::STRING_UTF8:
+    case Datatype::STRING_UTF16:
+    case Datatype::STRING_UTF32:
+    case Datatype::STRING_UCS2:
+    case Datatype::STRING_UCS4:
+    case Datatype::ANY:
+      // Not supported domain type
+      assert(false);
+      return "";
+  }
+
+  assert(false);
+  return "";
+}
+
+std::string Dimension::tile_extent_str() const {
+  std::stringstream ss;
+
+  if (tile_extent_.empty())
+    return constants::null_str;
+
+  const int* tile_extent_int32;
+  const int64_t* tile_extent_int64;
+  const float* tile_extent_float32;
+  const double* tile_extent_float64;
+  const int8_t* tile_extent_int8;
+  const uint8_t* tile_extent_uint8;
+  const int16_t* tile_extent_int16;
+  const uint16_t* tile_extent_uint16;
+  const uint32_t* tile_extent_uint32;
+  const uint64_t* tile_extent_uint64;
+
+  switch (type_) {
+    case Datatype::INT32:
+      tile_extent_int32 = (const int32_t*)tile_extent_.data();
+      ss << *tile_extent_int32;
+      return ss.str();
+    case Datatype::INT64:
+      tile_extent_int64 = (const int64_t*)tile_extent_.data();
+      ss << *tile_extent_int64;
+      return ss.str();
+    case Datatype::FLOAT32:
+      tile_extent_float32 = (const float*)tile_extent_.data();
+      ss << *tile_extent_float32;
+      return ss.str();
+    case Datatype::FLOAT64:
+      tile_extent_float64 = (const double*)tile_extent_.data();
+      ss << *tile_extent_float64;
+      return ss.str();
+    case Datatype::INT8:
+      tile_extent_int8 = (const int8_t*)tile_extent_.data();
+      ss << int(*tile_extent_int8);
+      return ss.str();
+    case Datatype::UINT8:
+      tile_extent_uint8 = (const uint8_t*)tile_extent_.data();
+      ss << int(*tile_extent_uint8);
+      return ss.str();
+    case Datatype::INT16:
+      tile_extent_int16 = (const int16_t*)tile_extent_.data();
+      ss << *tile_extent_int16;
+      return ss.str();
+    case Datatype::UINT16:
+      tile_extent_uint16 = (const uint16_t*)tile_extent_.data();
+      ss << *tile_extent_uint16;
+      return ss.str();
+    case Datatype::UINT32:
+      tile_extent_uint32 = (const uint32_t*)tile_extent_.data();
+      ss << *tile_extent_uint32;
+      return ss.str();
+    case Datatype::UINT64:
+      tile_extent_uint64 = (const uint64_t*)tile_extent_.data();
+      ss << *tile_extent_uint64;
+      return ss.str();
+    case Datatype::DATETIME_YEAR:
+    case Datatype::DATETIME_MONTH:
+    case Datatype::DATETIME_WEEK:
+    case Datatype::DATETIME_DAY:
+    case Datatype::DATETIME_HR:
+    case Datatype::DATETIME_MIN:
+    case Datatype::DATETIME_SEC:
+    case Datatype::DATETIME_MS:
+    case Datatype::DATETIME_US:
+    case Datatype::DATETIME_NS:
+    case Datatype::DATETIME_PS:
+    case Datatype::DATETIME_FS:
+    case Datatype::DATETIME_AS:
+      tile_extent_int64 = (const int64_t*)tile_extent_.data();
+      ss << *tile_extent_int64;
+      return ss.str();
+
+    case Datatype::CHAR:
+    case Datatype::STRING_ASCII:
+    case Datatype::STRING_UTF8:
+    case Datatype::STRING_UTF16:
+    case Datatype::STRING_UTF32:
+    case Datatype::STRING_UCS2:
+    case Datatype::STRING_UCS4:
+    case Datatype::ANY:
+      // Not supported domain type
+      assert(false);
+      return "";
+  }
+
+  assert(false);
+  return "";
 }
 
 void Dimension::set_crop_range_func() {
@@ -1064,6 +1259,112 @@ void Dimension::set_ceil_to_tile_func() {
       break;
     default:
       ceil_to_tile_func_ = nullptr;
+      break;
+  }
+}
+
+void Dimension::set_check_range_func() {
+  switch (type_) {
+    case Datatype::INT32:
+      check_range_func_ = check_range<int32_t>;
+      break;
+    case Datatype::INT64:
+      check_range_func_ = check_range<int64_t>;
+      break;
+    case Datatype::INT8:
+      check_range_func_ = check_range<int8_t>;
+      break;
+    case Datatype::UINT8:
+      check_range_func_ = check_range<uint8_t>;
+      break;
+    case Datatype::INT16:
+      check_range_func_ = check_range<int16_t>;
+      break;
+    case Datatype::UINT16:
+      check_range_func_ = check_range<uint16_t>;
+      break;
+    case Datatype::UINT32:
+      check_range_func_ = check_range<uint32_t>;
+      break;
+    case Datatype::UINT64:
+      check_range_func_ = check_range<uint64_t>;
+      break;
+    case Datatype::FLOAT32:
+      check_range_func_ = check_range<float>;
+      break;
+    case Datatype::FLOAT64:
+      check_range_func_ = check_range<double>;
+      break;
+    case Datatype::DATETIME_YEAR:
+    case Datatype::DATETIME_MONTH:
+    case Datatype::DATETIME_WEEK:
+    case Datatype::DATETIME_DAY:
+    case Datatype::DATETIME_HR:
+    case Datatype::DATETIME_MIN:
+    case Datatype::DATETIME_SEC:
+    case Datatype::DATETIME_MS:
+    case Datatype::DATETIME_US:
+    case Datatype::DATETIME_NS:
+    case Datatype::DATETIME_PS:
+    case Datatype::DATETIME_FS:
+    case Datatype::DATETIME_AS:
+      check_range_func_ = check_range<int64_t>;
+      break;
+    default:
+      check_range_func_ = nullptr;
+      break;
+  }
+}
+
+void Dimension::set_coincides_with_tiles_func() {
+  switch (type_) {
+    case Datatype::INT32:
+      coincides_with_tiles_func_ = coincides_with_tiles<int32_t>;
+      break;
+    case Datatype::INT64:
+      coincides_with_tiles_func_ = coincides_with_tiles<int64_t>;
+      break;
+    case Datatype::INT8:
+      coincides_with_tiles_func_ = coincides_with_tiles<int8_t>;
+      break;
+    case Datatype::UINT8:
+      coincides_with_tiles_func_ = coincides_with_tiles<uint8_t>;
+      break;
+    case Datatype::INT16:
+      coincides_with_tiles_func_ = coincides_with_tiles<int16_t>;
+      break;
+    case Datatype::UINT16:
+      coincides_with_tiles_func_ = coincides_with_tiles<uint16_t>;
+      break;
+    case Datatype::UINT32:
+      coincides_with_tiles_func_ = coincides_with_tiles<uint32_t>;
+      break;
+    case Datatype::UINT64:
+      coincides_with_tiles_func_ = coincides_with_tiles<uint64_t>;
+      break;
+    case Datatype::FLOAT32:
+      coincides_with_tiles_func_ = coincides_with_tiles<float>;
+      break;
+    case Datatype::FLOAT64:
+      coincides_with_tiles_func_ = coincides_with_tiles<double>;
+      break;
+    case Datatype::DATETIME_YEAR:
+    case Datatype::DATETIME_MONTH:
+    case Datatype::DATETIME_WEEK:
+    case Datatype::DATETIME_DAY:
+    case Datatype::DATETIME_HR:
+    case Datatype::DATETIME_MIN:
+    case Datatype::DATETIME_SEC:
+    case Datatype::DATETIME_MS:
+    case Datatype::DATETIME_US:
+    case Datatype::DATETIME_NS:
+    case Datatype::DATETIME_PS:
+    case Datatype::DATETIME_FS:
+    case Datatype::DATETIME_AS:
+      coincides_with_tiles_func_ = coincides_with_tiles<int64_t>;
+      break;
+    default:
+      coincides_with_tiles_func_ = nullptr;
       break;
   }
 }

@@ -108,7 +108,7 @@ class Dimension {
   template <typename T>
   std::pair<T, T> domain() const {
     impl::type_check<T>(type(), 1);
-    auto d = static_cast<T*>(_domain());
+    auto d = (const T*)_domain();
     return std::pair<T, T>(d[0], d[1]);
   };
 
@@ -211,7 +211,7 @@ class Dimension {
   template <typename T>
   T tile_extent() const {
     impl::type_check<T>(type(), 1);
-    return *static_cast<T*>(_tile_extent());
+    return *(const T*)_tile_extent();
   }
 
   /**
@@ -384,18 +384,18 @@ class Dimension {
   /* ********************************* */
 
   /** Returns the binary representation of the dimension domain. */
-  void* _domain() const {
+  const void* _domain() const {
     auto& ctx = ctx_.get();
-    void* domain;
+    const void* domain;
     ctx.handle_error(
         tiledb_dimension_get_domain(ctx.ptr().get(), dim_.get(), &domain));
     return domain;
   }
 
   /** Returns the binary representation of the dimension extent. */
-  void* _tile_extent() const {
+  const void* _tile_extent() const {
     auto& ctx = ctx_.get();
-    void* tile_extent;
+    const void* tile_extent;
     ctx.handle_error(tiledb_dimension_get_tile_extent(
         ctx.ptr().get(), dim_.get(), &tile_extent));
     return tile_extent;
