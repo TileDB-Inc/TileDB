@@ -245,6 +245,9 @@ struct SerializationFx {
         serialized->end(),
         static_cast<const uint8_t*>(data),
         static_cast<const uint8_t*>(data) + num_bytes);
+
+    // Free buffer list
+    tiledb_buffer_list_free(&buff_list);
   }
 
   /**
