@@ -225,6 +225,9 @@ steps:
 
 
 - bash: |
+    # tiledb_unit is configured to set a job-level variable TILEDB_CI_SUCCESS=1
+    # following the test run. If this variable is not set, the build should fail.
+    # see https://github.com/TileDB-Inc/TileDB/pull/1400 (5f0623f4d3)
     if [[ "$TILEDB_CI_SUCCESS" -ne 1 ]]; then
       exit 1;
     fi
