@@ -39,6 +39,7 @@ jobs:
         imageName: 'ubuntu-16.04'
         TILEDB_CI_ASAN: ON
         TILEDB_TBB: OFF
+        TILEDB_SERIALIZATION: ON
         CXX: g++-7
       linux_serialization:
         imageName: 'ubuntu-16.04'
