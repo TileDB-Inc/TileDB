@@ -35,6 +35,7 @@ run_azurite() {
     --debug /tmp/azurite-data/debug.log \
     --blobPort 10000 \
     --blobHost 0.0.0.0 &
+  export AZURITE_PID=$!
 }
 
 run() {
