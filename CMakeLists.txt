@@ -203,7 +203,8 @@ else()
     add_compile_options(-DDEBUG -g3 -gdwarf-3 --coverage)
   endif()
 
-  if (TILEDB_SERIALIZATION)
+  if (TILEDB_SERIALIZATION OR
+     (CMAKE_COMPILER_IS_GNUCC AND CMAKE_CXX_COMPILER_VERSION VERSION_LESS 5.0))
     # CapnProto 0.6.1 contains some unused parameter warnings that we need to
     # ignore in order to allow for Werror builds.
     add_compile_options(-Wno-unused-parameter)
