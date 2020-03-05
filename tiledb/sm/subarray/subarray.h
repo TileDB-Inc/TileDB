@@ -106,20 +106,26 @@ class Subarray {
   /*           TYPE DEFINITIONS        */
   /* ********************************* */
 
-  /** Result size (in bytes) for an attribute used for partitioning. */
+  /**
+   * Result size (in bytes) for an attribute/dimension used for
+   * partitioning.
+   */
   struct ResultSize {
-    /** Size for fixed-sized attributes or offsets of var-sized attributes. */
+    /** Size for fixed-sized attributes/dimensions or offsets of var-sized
+     * attributes/dimensions.
+     */
     double size_fixed_;
-    /** Size of values for var-sized attributes. */
+    /** Size of values for var-sized attributes/dimensions. */
     double size_var_;
     /**
      * Maximum size of overlapping tiles fetched into memory for
-     * fixed-sized attributes or offsets of var-sized attributes.
+     * fixed-sized attributes/dimensions or offsets of var-sized
+     * attributes/dimensions.
      */
     uint64_t mem_size_fixed_;
     /**
      * Maximum size of overlapping tiles fetched into memory for
-     * var-sized attributes.
+     * var-sized attributes/dimensions.
      */
     uint64_t mem_size_var_;
   };
@@ -208,16 +214,16 @@ class Subarray {
 
   /**
    * Computes the estimated result size (calibrated using the maximum size)
-   * for a given attribute and range id, for all fragments.
+   * for a given attribute/dimension and range id, for all fragments.
    *
-   * @param attr_name The name of the attribute to focus on.
+   * @param name The name of the attribute/dimension to focus on.
    * @param range_idx The id of the subarray range to focus on.
-   * @param var_size Whether the attribute is var-sized or not.
+   * @param var_size Whether the attribute/dimension is var-sized or not.
    * @param result_size The result size to be retrieved.
    * @return Status
    */
   Status compute_est_result_size(
-      const std::string& attr_name,
+      const std::string& name,
       uint64_t range_idx,
       bool var_size,
       ResultSize* result_size) const;
@@ -294,29 +300,29 @@ class Subarray {
 
   /**
    * Gets the estimated result size (in bytes) for the input fixed-sized
-   * attribute.
+   * attribute/dimension.
    */
-  Status get_est_result_size(const char* attr_name, uint64_t* size);
+  Status get_est_result_size(const char* name, uint64_t* size);
 
   /**
    * Gets the estimated result size (in bytes) for the input var-sized
-   * attribute.
+   * attribute/dimension.
    */
   Status get_est_result_size(
-      const char* attr_name, uint64_t* size_off, uint64_t* size_val);
+      const char* name, uint64_t* size_off, uint64_t* size_val);
 
   /*
    * Gets the maximum memory required to produce the result (in bytes)
-   * for the input fixed-sized attribute.
+   * for the input fixed-sized attribute/dimensiom.
    */
-  Status get_max_memory_size(const char* attr_name, uint64_t* size);
+  Status get_max_memory_size(const char* name, uint64_t* size);
 
   /**
    * Gets the maximum memory required to produce the result (in bytes)
-   * for the input fixed-sized attribute.
+   * for the input var-sized attribute/dimension.
    */
   Status get_max_memory_size(
-      const char* attr_name, uint64_t* size_off, uint64_t* size_val);
+      const char* name, uint64_t* size_off, uint64_t* size_val);
 
   /** Retrieves the query type of the subarray's array. */
   Status get_query_type(QueryType* type) const;
@@ -455,7 +461,7 @@ class Subarray {
   /** The array the subarray object is associated with. */
   const Array* array_;
 
-  /** Stores the estimated result size for each array attribute. */
+  /** Stores the estimated result size for each array attribute/dimension. */
   std::unordered_map<std::string, ResultSize> est_result_size_;
 
   /**
@@ -478,8 +484,8 @@ class Subarray {
   std::vector<uint64_t> range_offsets_;
 
   /**
-   * ``True`` if the estimated result size for all attributes has been
-   * computed.
+   * ``True`` if the estimated result size for all attributes/dimensions has
+   * been computed.
    */
   bool est_result_size_computed_;
 
@@ -518,7 +524,7 @@ class Subarray {
    */
   void add_default_ranges();
 
-  /** Computes the estimated result size for all attributes. */
+  /** Computes the estimated result size for all attributes/dimensions. */
   Status compute_est_result_size();
 
   /**

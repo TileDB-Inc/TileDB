@@ -57,11 +57,17 @@ class SubarrayPartitioner {
   /*           TYPE DEFINITIONS        */
   /* ********************************* */
 
-  /** Result budget (in bytes) for an attribute used for partitioning. */
+  /**
+   * Result budget (in bytes) for an attribute/dimension used for
+   * partitioning.
+   */
   struct ResultBudget {
-    /** Size for fixed-sized attributes or offsets of var-sized attributes. */
+    /**
+     * Size for fixed-sized attributes/dimensions or offsets of var-sized
+     * attributes/dimensions.
+     */
     uint64_t size_fixed_;
-    /** Size of values for var-sized attributes. */
+    /** Size of values for var-sized attributes/dimensions. */
     uint64_t size_var_;
   };
 
@@ -184,18 +190,24 @@ class SubarrayPartitioner {
    */
   bool done() const;
 
-  /** Gets result size budget (in bytes) for the input fixed-sized attribute. */
-  Status get_result_budget(const char* attr_name, uint64_t* budget) const;
-
-  /** Gets result size budget (in bytes) for the input var-sized attribute. */
-  Status get_result_budget(
-      const char* attr_name, uint64_t* budget_off, uint64_t* budget_val) const;
+  /**
+   * Gets result size budget (in bytes) for the input fixed-sized
+   * attribute/dimension.
+   */
+  Status get_result_budget(const char* name, uint64_t* budget) const;
 
   /**
-   * Returns a pointer to mapping containing all attribute result budgets that
-   * have been set.
+   * Gets result size budget (in bytes) for the input var-sized
+   * attribute/dimension.
    */
-  const std::unordered_map<std::string, ResultBudget>* get_attr_result_budgets()
+  Status get_result_budget(
+      const char* name, uint64_t* budget_off, uint64_t* budget_val) const;
+
+  /**
+   * Returns a pointer to mapping containing all attribute/dimension result
+   * budgets that have been set.
+   */
+  const std::unordered_map<std::string, ResultBudget>* get_result_budgets()
       const;
 
   /**
@@ -229,12 +241,18 @@ class SubarrayPartitioner {
    */
   Status set_memory_budget(uint64_t budget, uint64_t budget_var);
 
-  /** Sets result size budget (in bytes) for the input fixed-sized attribute. */
-  Status set_result_budget(const char* attr_name, uint64_t budget);
+  /**
+   * Sets result size budget (in bytes) for the input fixed-sized
+   * attribute/dimension.
+   */
+  Status set_result_budget(const char* name, uint64_t budget);
 
-  /** Sets result size budget (in bytes) for the input var-sized attribute. */
+  /**
+   * Sets result size budget (in bytes) for the input var-sized
+   * attribute/dimension.
+   */
   Status set_result_budget(
-      const char* attr_name, uint64_t budget_off, uint64_t budget_val);
+      const char* name, uint64_t budget_off, uint64_t budget_val);
 
   /**
    * Splits the current partition and updates the state, retrieving
@@ -264,7 +282,7 @@ class SubarrayPartitioner {
   /** The subarray the partitioner will iterate on to produce partitions. */
   Subarray subarray_;
 
-  /** Result size budget (in bytes) for all attributes. */
+  /** Result size budget (in bytes) for all attributes/dimensions. */
   std::unordered_map<std::string, ResultBudget> budget_;
 
   /** The current partition info. */

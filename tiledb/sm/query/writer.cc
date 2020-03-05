@@ -123,7 +123,7 @@ const ArraySchema* Writer::array_schema() const {
 std::vector<std::string> Writer::buffer_names() const {
   std::vector<std::string> ret;
 
-  // Add to the buffers names the attributes, as well as the dimensions only if
+  // Add to the buffer names the attributes, as well as the dimensions only if
   // coords_buffer_ has not been set
   for (const auto& it : buffers_) {
     if (!array_schema_->is_dim(it.first) || (!coords_buffer_))
@@ -326,11 +326,11 @@ Status Writer::set_buffer(
         std::string("Cannot set buffer for new attribute/dimension '") + name +
         "' after initialization"));
 
-  // Check if zipped coordinates buffer is set
+  // Check if zipped coordinates coexist with separate coordinate buffers
   if (is_dim && coords_buffer_ != nullptr)
     return LOG_STATUS(Status::WriterError(
-        std::string("Cannot set separate coordinates buffer after having "
-                    "set the zipped coordinates buffer")));
+        std::string("Cannot set separate coordinate buffers after "
+                    "having set the zipped coordinates buffer")));
 
   if (is_dim) {
     // Check number of coordinates
@@ -591,17 +591,15 @@ Status Writer::check_coord_dups(const std::vector<uint64_t>& cell_pos) const {
     }
 
     // Found duplicate
-    if (found_dup) {
-      return LOG_STATUS(
-          Status::WriterError("Duplicate coordinates are not allowed"));
-    }
+    if (found_dup)
+      return Status::WriterError("Duplicate coordinates are not allowed");
 
     return Status::Ok();
   });
 
   // Check all statuses
   for (auto& st : statuses)
-    RETURN_NOT_OK(st);
+    RETURN_NOT_OK_ELSE(st, LOG_STATUS(st));
 
   return Status::Ok();
   STATS_FUNC_OUT(writer_check_coord_dups);
@@ -647,19 +645,15 @@ Status Writer::check_coord_dups() const {
     }
 
     // Found duplicate
-    if (found_dup) {
-      return LOG_STATUS(
-          Status::WriterError("Duplicate coordinates are not allowed"));
-    }
+    if (found_dup)
+      return Status::WriterError("Duplicate coordinates are not allowed");
 
     return Status::Ok();
   });
 
   // Check all statuses
-  for (auto& st : statuses) {
-    if (!st.ok())
-      return st;
-  }
+  for (auto& st : statuses)
+    RETURN_NOT_OK_ELSE(st, LOG_STATUS(st));
 
   return Status::Ok();
 

@@ -163,11 +163,8 @@ class Reader {
   /** Returns the array schema. */
   const ArraySchema* array_schema() const;
 
-  /**
-   * Return list of attribtues for query
-   * @return vector of attributes for query
-   */
-  std::vector<std::string> attributes() const;
+  /** Returns the names of the buffers set by the user for the read query. */
+  std::vector<std::string> buffer_names() const;
 
   /** Fetch QueryBuffer for the input attribute/dimension. */
   QueryBuffer buffer(const std::string& name) const;
@@ -180,31 +177,30 @@ class Reader {
   bool incomplete() const;
 
   /**
-   * Retrieves the buffer of a fixed-sized attribute.
+   * Retrieves the buffer of a fixed-sized attribute/dimension.
    *
-   * @param attribute The buffer attribute.
+   * @param name The attribute/dimension name.
    * @param buffer The buffer to be retrieved.
    * @param buffer_size A pointer to the buffer size to be retrieved.
    * @return Status
    */
   Status get_buffer(
-      const std::string& attribute,
-      void** buffer,
-      uint64_t** buffer_size) const;
+      const std::string& name, void** buffer, uint64_t** buffer_size) const;
 
   /**
-   * Retrieves the offsets and values buffers of a var-sized attribute.
+   * Retrieves the offsets and values buffers of a var-sized
+   * attribute/dimension.
    *
-   * @param attribute The buffer attribute.
+   * @param name The attribute/dimension name.
    * @param buffer_off The offsets buffer to be retrieved.
    * @param buffer_off_size A pointer to the offsets buffer size to be
-   * retrieved.
+   *     retrieved.
    * @param buffer_val The values buffer to be retrieved.
    * @param buffer_val_size A pointer to the values buffer size to be retrieved.
    * @return Status
    */
   Status get_buffer(
-      const std::string& attribute,
+      const std::string& name,
       uint64_t** buffer_off,
       uint64_t** buffer_off_size,
       void** buffer_val,
@@ -244,9 +240,9 @@ class Reader {
   void set_array_schema(const ArraySchema* array_schema);
 
   /**
-   * Sets the buffer for a fixed-sized attribute.
+   * Sets the buffer for a fixed-sized attribute/dimension.
    *
-   * @param attribute The attribute to set the buffer for.
+   * @param name The attribute/dimension to set the buffer for.
    * @param buffer The buffer that will hold the data to be read.
    * @param buffer_size This initially contains the allocated
    *     size of `buffer`, but after the termination of the function
@@ -255,15 +251,15 @@ class Reader {
    * @return Status
    */
   Status set_buffer(
-      const std::string& attribute,
+      const std::string& name,
       void* buffer,
       uint64_t* buffer_size,
       bool check_null_buffers = true);
 
   /**
-   * Sets the buffer for a var-sized attribute.
+   * Sets the buffer for a var-sized attribute/dimension.
    *
-   * @param attribute The attribute to set the buffer for.
+   * @param name The name to set the buffer for.
    * @param buffer_off The buffer that will hold the data to be read.
    *     This buffer holds the starting offsets of each cell value in
    *     `buffer_val`.
@@ -281,7 +277,7 @@ class Reader {
    * @return Status
    */
   Status set_buffer(
-      const std::string& attribute,
+      const std::string& name,
       uint64_t* buffer_off,
       uint64_t* buffer_off_size,
       void* buffer_val,
@@ -460,11 +456,12 @@ class Reader {
   /** The array schema. */
   const ArraySchema* array_schema_;
 
-  /** The names of the attributes involved in the query. */
-  std::vector<std::string> attributes_;
-
-  /** Maps attribute names to their buffers. */
-  std::unordered_map<std::string, QueryBuffer> attr_buffers_;
+  /**
+   * Maps attribute/dimension names to their buffers.
+   * `TILEDB_COORDS` may be used for the special zipped coordinates
+   * buffer.
+   * */
+  std::unordered_map<std::string, QueryBuffer> buffers_;
 
   /** The fragment metadata. */
   std::vector<FragmentMetadata*> fragment_metadata_;
@@ -751,48 +748,58 @@ class Reader {
   Status fill_dense_coords(const Subarray& subarray);
 
   /**
-   * Fills the coordinate buffer with coordinates. Applicable only to dense
+   * Fills the coordinate buffers with coordinates. Applicable only to dense
    * arrays when the user explicitly requests the coordinates to be
    * materialized. Also applicable only to global order.
    *
    * @tparam T The domain type.
    * @param subarray The input subarray.
-   * @param coords_buff The coordinates buffer to be filled.
-   * @param coords_buff_size The size of the coordinates buffer.
-   * @param coords_buff_offset The offset in the coordinates buffer the filling
-   *     will start from.
+   * @param dim_idx The dimension indices of the corresponding `buffers`.
+   *     For the special zipped coordinates, `dim_idx`, `buffers` and `offsets`
+   *     contain a single element and `dim_idx` contains `dim_num` as
+   *     the dimension index.
+   * @param buffers The buffers to copy from. It could be the special
+   *     zipped coordinates or separate coordinate buffers.
+   * @param offsets The offsets that will be used eventually to update
+   *     the buffer sizes, determining the useful results written in
+   *     the buffers.
    * @return Status
    */
   template <class T>
   Status fill_dense_coords_global(
       const Subarray& subarray,
-      void* coords_buff,
-      uint64_t coords_buff_size,
-      uint64_t* coords_buff_offset);
+      const std::vector<unsigned>& dim_idx,
+      const std::vector<QueryBuffer*>& buffers,
+      std::vector<uint64_t>* offsets);
 
   /**
-   * Fills the coordinate buffer with coordinates. Applicable only to dense
+   * Fills the coordinate buffers with coordinates. Applicable only to dense
    * arrays when the user explicitly requests the coordinates to be
    * materialized. Also applicable only to row-/col-major order.
    *
    * @tparam T The domain type.
    * @param subarray The input subarray.
-   * @param coords_buff The coordinates buffer to be filled.
-   * @param coords_buff_size The size of the coordinates buffer.
-   * @param coords_buff_offset The offset in the coordinates buffer the filling
-   *     will start from.
+   * @param dim_idx The dimension indices of the corresponding `buffers`.
+   *     For the special zipped coordinates, `dim_idx`, `buffers` and `offsets`
+   *     contain a single element and `dim_idx` contains `dim_num` as
+   *     the dimension index.
+   * @param buffers The buffers to copy from. It could be the special
+   *     zipped coordinates or separate coordinate buffers.
+   * @param offsets The offsets that will be used eventually to update
+   *     the buffer sizes, determining the useful results written in
+   *     the buffers.
    * @return Status
    */
   template <class T>
   Status fill_dense_coords_row_col(
       const Subarray& subarray,
-      void* coords_buff,
-      uint64_t coords_buff_size,
-      uint64_t* coords_buff_offset);
+      const std::vector<unsigned>& dim_idx,
+      const std::vector<QueryBuffer*>& buffers,
+      std::vector<uint64_t>* offsets);
 
   /**
-   * Fills coordinates in the input buffer for a particular cell slab, following
-   * a row-major layout. For instance, if the starting coordinate are
+   * Fills coordinates in the input buffers for a particular cell slab,
+   * following a row-major layout. For instance, if the starting coordinate are
    * [3, 1] and the number of coords to be written is 3, this function will
    * write to the input buffer (starting at the input offset) coordinates
    * [3, 1], [3, 2], and [3, 3].
@@ -800,16 +807,27 @@ class Reader {
    * @tparam T The domain type.
    * @param start The starting coordinates in the slab.
    * @param num The number of coords to be written.
-   * @param buff The buffer to write the coordinates into.
-   * @param offset The offset in `buff` where the write will begin.
+   * @param dim_idx The dimension indices of the corresponding `buffers`.
+   *     For the special zipped coordinates, `dim_idx`, `buffers` and `offsets`
+   *     contain a single element and `dim_idx` contains `dim_num` as
+   *     the dimension index.
+   * @param buffers The buffers to copy from. It could be the special
+   *     zipped coordinates or separate coordinate buffers.
+   * @param offsets The offsets that will be used eventually to update
+   *     the buffer sizes, determining the useful results written in
+   *     the buffers.
    */
   template <class T>
   void fill_dense_coords_row_slab(
-      const T* start, uint64_t num, void* buff, uint64_t* offset) const;
+      const T* start,
+      uint64_t num,
+      const std::vector<unsigned>& dim_idx,
+      const std::vector<QueryBuffer*>& buffers,
+      std::vector<uint64_t>* offsets) const;
 
   /**
-   * Fills coordinates in the input buffer for a particular cell slab, following
-   * a col-major layout. For instance, if the starting coordinate are
+   * Fills coordinates in the input buffers for a particular cell slab,
+   * following a col-major layout. For instance, if the starting coordinate are
    * [3, 1] and the number of coords to be written is 3, this function will
    * write to the input buffer (starting at the input offset) coordinates
    * [4, 1], [5, 1], and [6, 1].
@@ -817,12 +835,23 @@ class Reader {
    * @tparam T The domain type.
    * @param start The starting coordinates in the slab.
    * @param num The number of coords to be written.
-   * @param buff The buffer to write the coordinates into.
-   * @param offset The offset in `buff` where the write will begin.
+   * @param dim_idx The dimension indices of the corresponding `buffers`.
+   *     For the special zipped coordinates, `dim_idx`, `buffers` and `offsets`
+   *     contain a single element and `dim_idx` contains `dim_num` as
+   *     the dimension index.
+   * @param buffers The buffers to copy from. It could be the special
+   *     zipped coordinates or separate coordinate buffers.
+   * @param offsets The offsets that will be used eventually to update
+   *     the buffer sizes, determining the useful results written in
+   *     the buffers.
    */
   template <class T>
   void fill_dense_coords_col_slab(
-      const T* start, uint64_t num, void* buff, uint64_t* offset) const;
+      const T* start,
+      uint64_t num,
+      const std::vector<unsigned>& dim_idx,
+      const std::vector<QueryBuffer*>& buffers,
+      std::vector<uint64_t>* offsets) const;
 
   /**
    * Filters the tiles on a particular attribute/dimension from all input
@@ -861,6 +890,12 @@ class Reader {
 
   /** Returns `true` if the coordinates are included in the attributes. */
   bool has_coords() const;
+
+  /**
+   * Returns `true` if a coordinate buffer for a separate dimension
+   * has been set.
+   */
+  bool has_separate_coords() const;
 
   /** Initializes the read state. */
   Status init_read_state();

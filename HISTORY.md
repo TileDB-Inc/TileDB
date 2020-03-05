@@ -10,8 +10,11 @@
 
 * Changed `domain` input of `tiledb_dimension_get_domain` to `const void**` (from `void**`).
 * Changed `tile_extent` input of `tiledb_dimension_get_tile_extent` to `const void**` (from `void**`).
+* Anonymous attribute and dimensions (i.e., empty strings for attribute/dimension names) is no longer supported. This is because now the user can set separate dimension buffers to the query and, therefore, supporting anonymous attributes and dimensions creates ambiguity in the current API. 
 
 ## New features
+
+* The user can now set separate coordinate buffers to the query. Also any subset of the dimensions is supported.
 
 ## Improvements
 

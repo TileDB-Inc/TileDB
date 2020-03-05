@@ -344,11 +344,9 @@ Status Consolidator::consolidate(
       this->all_sparse(to_consolidate, 0, to_consolidate.size() - 1);
 
   // Prepare buffers
-  void** buffers;
-  uint64_t* buffer_sizes;
-  unsigned int buffer_num;
-  Status st = create_buffers(
-      array_schema, all_sparse, &buffers, &buffer_sizes, &buffer_num);
+  std::vector<ByteVec> buffers;
+  std::vector<uint64_t> buffer_sizes;
+  Status st = create_buffers(array_schema, all_sparse, &buffers, &buffer_sizes);
   if (!st.ok()) {
     array_for_reads.close();
     array_for_writes.close();
@@ -363,24 +361,24 @@ Status Consolidator::consolidate(
       &array_for_writes,
       all_sparse,
       union_non_empty_domains,
-      buffers,
-      buffer_sizes,
       &query_r,
       &query_w,
       new_fragment_uri);
   if (!st.ok()) {
     array_for_reads.close();
     array_for_writes.close();
-    clean_up(buffer_num, buffers, buffer_sizes, query_r, query_w);
+    delete query_r;
+    delete query_w;
     return st;
   }
 
   // Read from one array and write to the other
-  st = copy_array(query_r, query_w);
+  st = copy_array(query_r, query_w, &buffers, &buffer_sizes, all_sparse);
   if (!st.ok()) {
     array_for_reads.close();
     array_for_writes.close();
-    clean_up(buffer_num, buffers, buffer_sizes, query_r, query_w);
+    delete query_r;
+    delete query_w;
     return st;
   }
 
@@ -389,7 +387,8 @@ Status Consolidator::consolidate(
   if (!st.ok()) {
     array_for_writes.close();
     storage_manager_->vfs()->remove_dir(*new_fragment_uri);
-    clean_up(buffer_num, buffers, buffer_sizes, query_r, query_w);
+    delete query_r;
+    delete query_w;
     return st;
   }
 
@@ -397,7 +396,8 @@ Status Consolidator::consolidate(
   st = query_w->finalize();
   if (!st.ok()) {
     array_for_writes.close();
-    clean_up(buffer_num, buffers, buffer_sizes, query_r, query_w);
+    delete query_r;
+    delete query_w;
     bool is_dir = false;
     auto st2 = storage_manager_->vfs()->is_dir(*new_fragment_uri, &is_dir);
     (void)st2;  // Perhaps report this once we support an error stack
@@ -409,7 +409,8 @@ Status Consolidator::consolidate(
   // Close array
   st = array_for_writes.close();
   if (!st.ok()) {
-    clean_up(buffer_num, buffers, buffer_sizes, query_r, query_w);
+    delete query_r;
+    delete query_w;
     bool is_dir = false;
     auto st2 = storage_manager_->vfs()->is_dir(*new_fragment_uri, &is_dir);
     (void)st2;  // Perhaps report this once we support an error stack
@@ -426,7 +427,8 @@ Status Consolidator::consolidate(
   st = delete_fragment_metadata(array_uri, to_delete);
   if (!st.ok()) {
     delete_fragments(to_delete);
-    clean_up(buffer_num, buffers, buffer_sizes, query_r, query_w);
+    delete query_r;
+    delete query_w;
     return st;
   }
 
@@ -434,75 +436,63 @@ Status Consolidator::consolidate(
   st = delete_fragments(to_delete);
 
   // Clean up
-  clean_up(buffer_num, buffers, buffer_sizes, query_r, query_w);
+  delete query_r;
+  delete query_w;
 
   return st;
 }
 
-Status Consolidator::copy_array(Query* query_r, Query* query_w) {
+Status Consolidator::copy_array(
+    Query* query_r,
+    Query* query_w,
+    std::vector<ByteVec>* buffers,
+    std::vector<uint64_t>* buffer_sizes,
+    bool sparse_mode) {
+  // Set the read query buffers outside the repeated submissions.
+  // The Reader will reset the query buffer sizes to the original
+  // sizes, not the potentially smaller sizes of the results after
+  // the query submission.
+  RETURN_NOT_OK(set_query_buffers(query_r, sparse_mode, buffers, buffer_sizes));
+
   do {
+    // READ
     RETURN_NOT_OK(query_r->submit());
+
+    // Set explicitly the write query buffers, as the sizes may have
+    // been altered by the read query.
+    RETURN_NOT_OK(
+        set_query_buffers(query_w, sparse_mode, buffers, buffer_sizes));
+
+    // WRITE
     RETURN_NOT_OK(query_w->submit());
   } while (query_r->status() == QueryStatus::INCOMPLETE);
 
   return Status::Ok();
 }
 
-void Consolidator::clean_up(
-    unsigned buffer_num,
-    void** buffers,
-    uint64_t* buffer_sizes,
-    Query* query_r,
-    Query* query_w) const {
-  free_buffers(buffer_num, buffers, buffer_sizes);
-  delete query_r;
-  delete query_w;
-}
-
 Status Consolidator::create_buffers(
     const ArraySchema* array_schema,
     bool sparse_mode,
-    void*** buffers,
-    uint64_t** buffer_sizes,
-    unsigned int* buffer_num) {
+    std::vector<ByteVec>* buffers,
+    std::vector<uint64_t>* buffer_sizes) {
   // For easy reference
   auto attribute_num = array_schema->attribute_num();
   auto sparse = !array_schema->dense() || sparse_mode;
 
   // Calculate number of buffers
-  *buffer_num = 0;
+  size_t buffer_num = 0;
   for (unsigned int i = 0; i < attribute_num; ++i)
-    *buffer_num += (array_schema->attributes()[i]->var_size()) ? 2 : 1;
-  *buffer_num += (sparse) ? 1 : 0;
+    buffer_num += (array_schema->attributes()[i]->var_size()) ? 2 : 1;
+  buffer_num += (sparse) ? array_schema->dim_num() : 0;
 
   // Create buffers
-  *buffers = (void**)std::malloc(*buffer_num * sizeof(void*));
-  if (*buffers == nullptr) {
-    return LOG_STATUS(Status::ConsolidatorError(
-        "Cannot create consolidation buffers; Memory allocation failed"));
-  }
-  *buffer_sizes = new uint64_t[*buffer_num];
-  if (*buffer_sizes == nullptr) {
-    return LOG_STATUS(Status::ConsolidatorError(
-        "Cannot create consolidation buffer sizes; Memory allocation failed"));
-  }
+  buffers->resize(buffer_num);
+  buffer_sizes->resize(buffer_num);
 
   // Allocate space for each buffer
-  bool error = false;
-  for (unsigned int i = 0; i < *buffer_num; ++i) {
-    (*buffers)[i] = std::malloc(config_.buffer_size_);
-    if ((*buffers)[i] == nullptr)  // The loop should continue to
-      error = true;                // allocate nullptr to each buffer
+  for (unsigned int i = 0; i < buffer_num; ++i) {
+    (*buffers)[i].resize(config_.buffer_size_);
     (*buffer_sizes)[i] = config_.buffer_size_;
-  }
-
-  // Clean up upon error
-  if (error) {
-    free_buffers(*buffer_num, *buffers, *buffer_sizes);
-    *buffers = nullptr;
-    *buffer_sizes = nullptr;
-    return LOG_STATUS(Status::ConsolidatorError(
-        "Cannot create consolidation buffers; Memory allocation failed"));
   }
 
   // Success
@@ -514,8 +504,6 @@ Status Consolidator::create_queries(
     Array* array_for_writes,
     bool sparse_mode,
     const NDRange& subarray,
-    void** buffers,
-    uint64_t* buffer_sizes,
     Query** query_r,
     Query** query_w,
     URI* new_fragment_uri) {
@@ -526,8 +514,6 @@ Status Consolidator::create_queries(
   // Create read query
   *query_r = new Query(storage_manager_, array_for_reads);
   RETURN_NOT_OK((*query_r)->set_layout(Layout::GLOBAL_ORDER));
-  RETURN_NOT_OK(
-      set_query_buffers(*query_r, sparse_mode, buffers, buffer_sizes));
   RETURN_NOT_OK((*query_r)->set_subarray_unsafe(subarray));
   if (array_for_reads->array_schema()->dense() && sparse_mode)
     RETURN_NOT_OK((*query_r)->set_sparse_mode(true));
@@ -542,8 +528,6 @@ Status Consolidator::create_queries(
   RETURN_NOT_OK((*query_w)->set_layout(Layout::GLOBAL_ORDER));
   if (array_for_reads->array_schema()->dense())
     RETURN_NOT_OK((*query_w)->set_subarray_unsafe(subarray));
-  RETURN_NOT_OK(
-      set_query_buffers(*query_w, sparse_mode, buffers, buffer_sizes));
 
   return Status::Ok();
 }
@@ -613,15 +597,6 @@ Status Consolidator::delete_overwritten_fragments(
     fragments->emplace_back(f);
 
   return Status::Ok();
-}
-
-void Consolidator::free_buffers(
-    unsigned int buffer_num, void** buffers, uint64_t* buffer_sizes) const {
-  for (unsigned int i = 0; i < buffer_num; ++i) {
-    std::free(buffers[i]);
-  }
-  std::free(buffers);
-  delete[] buffer_sizes;
 }
 
 Status Consolidator::compute_next_to_consolidate(
@@ -770,29 +745,36 @@ Status Consolidator::compute_new_fragment_uri(
 Status Consolidator::set_query_buffers(
     Query* query,
     bool sparse_mode,
-    void** buffers,
-    uint64_t* buffer_sizes) const {
-  auto dense = query->array_schema()->dense();
-  auto attributes = query->array_schema()->attributes();
+    std::vector<ByteVec>* buffers,
+    std::vector<uint64_t>* buffer_sizes) const {
+  auto array_schema = query->array_schema();
+  auto dim_num = array_schema->dim_num();
+  auto dense = array_schema->dense();
+  auto attributes = array_schema->attributes();
   unsigned bid = 0;
   for (const auto& attr : attributes) {
     if (!attr->var_size()) {
-      RETURN_NOT_OK(
-          query->set_buffer(attr->name(), buffers[bid], &buffer_sizes[bid]));
+      RETURN_NOT_OK(query->set_buffer(
+          attr->name(), (void*)&(*buffers)[bid][0], &(*buffer_sizes)[bid]));
       ++bid;
     } else {
       RETURN_NOT_OK(query->set_buffer(
           attr->name(),
-          (uint64_t*)buffers[bid],
-          &buffer_sizes[bid],
-          buffers[bid + 1],
-          &buffer_sizes[bid + 1]));
+          (uint64_t*)&(*buffers)[bid][0],
+          &(*buffer_sizes)[bid],
+          (void*)&(*buffers)[bid + 1][0],
+          &(*buffer_sizes)[bid + 1]));
       bid += 2;
     }
   }
-  if (!dense || sparse_mode)
-    RETURN_NOT_OK(
-        query->set_buffer(constants::coords, buffers[bid], &buffer_sizes[bid]));
+  if (!dense || sparse_mode) {
+    for (unsigned d = 0; d < dim_num; ++d) {
+      auto dim_name = array_schema->dimension(d)->name();
+      RETURN_NOT_OK(query->set_buffer(
+          dim_name, (void*)&(*buffers)[bid][0], &(*buffer_sizes)[bid]));
+      ++bid;
+    }
+  }
 
   return Status::Ok();
 }
