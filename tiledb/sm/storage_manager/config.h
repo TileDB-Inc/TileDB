@@ -123,6 +123,7 @@ class Config {
     std::string proxy_password_;
     std::string aws_access_key_id;
     std::string aws_secret_access_key;
+    std::string aws_session_token;
 
     S3Params() {
       region_ = constants::s3_region;
@@ -142,6 +143,7 @@ class Config {
       proxy_password_ = constants::s3_proxy_password;
       aws_access_key_id = constants::aws_access_key_id;
       aws_secret_access_key = constants::aws_secret_access_key;
+      aws_session_token = constants::aws_session_token;
     }
   };
 
@@ -536,6 +538,9 @@ class Config {
 
   /** Sets the S3 AWS_SECRET_ACCESS_KEY. */
   Status set_vfs_s3_aws_secret_access_key(const std::string& value);
+
+  /** Sets the S3 AWS_SESSION_TOKEN. */
+  Status set_vfs_s3_aws_session_token(const std::string& value);
 
   /** Sets the S3 scheme. */
   Status set_vfs_s3_scheme(const std::string& value);
