@@ -325,7 +325,7 @@ Status domain_to_capnp(
     return LOG_STATUS(Status::SerializationError(
         "Error serializing domain; domain is null."));
 
-  domainBuilder->setType(datatype_str(domain->type()));
+  domainBuilder->setType(datatype_str(domain->dimension(0)->type()));
   domainBuilder->setTileOrder(layout_str(domain->tile_order()));
   domainBuilder->setCellOrder(layout_str(domain->cell_order()));
 
@@ -686,7 +686,10 @@ Status nonempty_domain_deserialize(
           void* subarray;
           RETURN_NOT_OK(utils::deserialize_subarray(
               reader.getNonEmptyDomain(), schema, &subarray));
-          std::memcpy(nonempty_domain, subarray, 2 * schema->coords_size());
+          std::memcpy(
+              nonempty_domain,
+              subarray,
+              2 * schema->dimension(0)->coord_size());
           std::free(subarray);
         }
 
@@ -706,7 +709,10 @@ Status nonempty_domain_deserialize(
           void* subarray;
           RETURN_NOT_OK(utils::deserialize_subarray(
               reader.getNonEmptyDomain(), schema, &subarray));
-          std::memcpy(nonempty_domain, subarray, 2 * schema->coords_size());
+          std::memcpy(
+              nonempty_domain,
+              subarray,
+              2 * schema->dimension(0)->coord_size());
           std::free(subarray);
         }
 

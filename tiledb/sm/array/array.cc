@@ -33,6 +33,7 @@
 #include "tiledb/sm/array/array.h"
 #include "tiledb/sm/array_schema/array_schema.h"
 #include "tiledb/sm/array_schema/attribute.h"
+#include "tiledb/sm/array_schema/dimension.h"
 #include "tiledb/sm/array_schema/domain.h"
 #include "tiledb/sm/crypto/crypto.h"
 #include "tiledb/sm/enums/datatype.h"
@@ -670,8 +671,16 @@ void Array::clear_last_max_buffer_sizes() {
 }
 
 Status Array::compute_max_buffer_sizes(const void* subarray) {
+  // Applicable only to domains where all dimensions have the same type
+  if (!array_schema_->domain()->all_dims_same_type())
+    return LOG_STATUS(
+        Status::ArrayError("Cannot compute max buffer sizes; Inapplicable when "
+                           "dimension domains have different types"));
+
   // Allocate space for max buffer sizes subarray
-  auto subarray_size = 2 * array_schema_->coords_size();
+  auto dim_num = array_schema_->dim_num();
+  auto coord_size = array_schema_->domain()->dimension(0)->coord_size();
+  auto subarray_size = 2 * dim_num * coord_size;
   if (last_max_buffer_sizes_subarray_ == nullptr) {
     last_max_buffer_sizes_subarray_ = std::malloc(subarray_size);
     if (last_max_buffer_sizes_subarray_ == nullptr)
@@ -719,83 +728,31 @@ Status Array::compute_max_buffer_sizes(
   if (fragment_metadata_.empty())
     return Status::Ok();
 
-  // Compute buffer sizes
-  switch (array_schema_->coords_type()) {
-    case Datatype::INT32:
-      return compute_max_buffer_sizes<int>(
-          static_cast<const int*>(subarray), buffer_sizes);
-    case Datatype::INT64:
-      return compute_max_buffer_sizes<int64_t>(
-          static_cast<const int64_t*>(subarray), buffer_sizes);
-    case Datatype::FLOAT32:
-      return compute_max_buffer_sizes<float>(
-          static_cast<const float*>(subarray), buffer_sizes);
-    case Datatype::FLOAT64:
-      return compute_max_buffer_sizes<double>(
-          static_cast<const double*>(subarray), buffer_sizes);
-    case Datatype::INT8:
-      return compute_max_buffer_sizes<int8_t>(
-          static_cast<const int8_t*>(subarray), buffer_sizes);
-    case Datatype::UINT8:
-      return compute_max_buffer_sizes<uint8_t>(
-          static_cast<const uint8_t*>(subarray), buffer_sizes);
-    case Datatype::INT16:
-      return compute_max_buffer_sizes<int16_t>(
-          static_cast<const int16_t*>(subarray), buffer_sizes);
-    case Datatype::UINT16:
-      return compute_max_buffer_sizes<uint16_t>(
-          static_cast<const uint16_t*>(subarray), buffer_sizes);
-    case Datatype::UINT32:
-      return compute_max_buffer_sizes<uint32_t>(
-          static_cast<const uint32_t*>(subarray), buffer_sizes);
-    case Datatype::UINT64:
-      return compute_max_buffer_sizes<uint64_t>(
-          static_cast<const uint64_t*>(subarray), buffer_sizes);
-    case Datatype::DATETIME_YEAR:
-    case Datatype::DATETIME_MONTH:
-    case Datatype::DATETIME_WEEK:
-    case Datatype::DATETIME_DAY:
-    case Datatype::DATETIME_HR:
-    case Datatype::DATETIME_MIN:
-    case Datatype::DATETIME_SEC:
-    case Datatype::DATETIME_MS:
-    case Datatype::DATETIME_US:
-    case Datatype::DATETIME_NS:
-    case Datatype::DATETIME_PS:
-    case Datatype::DATETIME_FS:
-    case Datatype::DATETIME_AS:
-      return compute_max_buffer_sizes<int64_t>(
-          static_cast<const int64_t*>(subarray), buffer_sizes);
-    default:
-      return LOG_STATUS(Status::ArrayError(
-          "Cannot compute max read buffer sizes; Invalid coordinates type"));
-  }
-
-  return Status::Ok();
-}
-
-template <class T>
-Status Array::compute_max_buffer_sizes(
-    const T* subarray,
-    std::unordered_map<std::string, std::pair<uint64_t, uint64_t>>*
-        max_buffer_sizes) const {
-  // Sanity check
-  assert(!fragment_metadata_.empty());
-
   // First we calculate a rough upper bound. Especially for dense
   // arrays, this will not be accurate, as it accounts only for the
   // non-empty regions of the subarray.
   for (auto& meta : fragment_metadata_)
-    RETURN_NOT_OK(meta->add_max_buffer_sizes(
-        encryption_key_, subarray, max_buffer_sizes));
+    RETURN_NOT_OK(
+        meta->add_max_buffer_sizes(encryption_key_, subarray, buffer_sizes));
+
+  // Prepare an NDRange for the subarray
+  auto dim_num = array_schema_->dim_num();
+  NDRange sub(dim_num);
+  auto sub_ptr = (const unsigned char*)subarray;
+  uint64_t offset = 0;
+  for (unsigned d = 0; d < dim_num; ++d) {
+    auto r_size = 2 * array_schema_->dimension(d)->coord_size();
+    sub[d] = Range(&sub_ptr[offset], r_size);
+    offset += r_size;
+  }
 
   // Rectify bound for dense arrays
   if (array_schema_->dense()) {
-    auto cell_num = array_schema_->domain()->cell_num(subarray);
+    auto cell_num = array_schema_->domain()->cell_num(sub);
     // `cell_num` becomes 0 when `subarray` is huge, leading to a
     // `uint64_t` overflow.
     if (cell_num != 0) {
-      for (auto& it : *max_buffer_sizes) {
+      for (auto& it : *buffer_sizes) {
         if (array_schema_->var_size(it.first)) {
           it.second.first = cell_num * constants::cell_var_offset_size;
           it.second.second +=
@@ -809,12 +766,12 @@ Status Array::compute_max_buffer_sizes(
 
   // Rectify bound for sparse arrays with integer domain, without duplicates
   if (!array_schema_->dense() && !array_schema_->allows_dups() &&
-      datatype_is_integer(array_schema_->domain()->type())) {
-    auto cell_num = array_schema_->domain()->cell_num(subarray);
+      array_schema_->domain()->all_dims_int()) {
+    auto cell_num = array_schema_->domain()->cell_num(sub);
     // `cell_num` becomes 0 when `subarray` is huge, leading to a
     // `uint64_t` overflow.
     if (cell_num != 0) {
-      for (auto& it : *max_buffer_sizes) {
+      for (auto& it : *buffer_sizes) {
         if (!array_schema_->var_size(it.first)) {
           // Check for overflow
           uint64_t new_size = cell_num * array_schema_->cell_size(it.first);

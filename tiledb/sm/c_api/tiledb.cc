@@ -1621,7 +1621,24 @@ int32_t tiledb_domain_get_type(
   if (sanity_check(ctx) == TILEDB_ERR ||
       sanity_check(ctx, domain) == TILEDB_ERR)
     return TILEDB_ERR;
-  *type = static_cast<tiledb_datatype_t>(domain->domain_->type());
+
+  if (domain->domain_->dim_num() == 0) {
+    auto st = tiledb::sm::Status::Error(
+        "Cannot get domain type; Domain has no dimensions");
+    LOG_STATUS(st);
+    save_error(ctx, st);
+    return TILEDB_OOM;
+  }
+
+  if (!domain->domain_->all_dims_same_type()) {
+    auto st = tiledb::sm::Status::Error(
+        "Cannot get domain type; Not applicable to heterogeneous dimensions");
+    LOG_STATUS(st);
+    save_error(ctx, st);
+    return TILEDB_OOM;
+  }
+
+  *type = static_cast<tiledb_datatype_t>(domain->domain_->dimension(0)->type());
   return TILEDB_OK;
 }
 

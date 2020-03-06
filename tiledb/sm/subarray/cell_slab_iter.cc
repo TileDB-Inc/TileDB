@@ -33,6 +33,7 @@
 #include "tiledb/sm/subarray/cell_slab_iter.h"
 #include "tiledb/sm/array/array.h"
 #include "tiledb/sm/array_schema/array_schema.h"
+#include "tiledb/sm/array_schema/dimension.h"
 #include "tiledb/sm/array_schema/domain.h"
 #include "tiledb/sm/enums/layout.h"
 #include "tiledb/sm/misc/logger.h"
@@ -59,8 +60,11 @@ CellSlabIter<T>::CellSlabIter(const Subarray* subarray)
     : subarray_(subarray) {
   end_ = true;
   if (subarray != nullptr) {
-    aux_tile_coords_.resize(subarray->dim_num());
-    aux_tile_coords_2_.resize(subarray->array()->array_schema()->coords_size());
+    auto array_schema = subarray->array()->array_schema();
+    auto dim_num = array_schema->dim_num();
+    auto coord_size = array_schema->dimension(0)->coord_size();
+    aux_tile_coords_.resize(dim_num);
+    aux_tile_coords_2_.resize(dim_num * coord_size);
   }
 }
 
@@ -270,7 +274,9 @@ Status CellSlabIter<T>::sanity_check() const {
 
   // Check type
   bool error;
-  switch (subarray_->type()) {
+  auto array_schema = subarray_->array()->array_schema();
+  auto type = array_schema->domain()->dimension(0)->type();
+  switch (type) {
     case Datatype::INT8:
       error = !std::is_same<T, int8_t>::value;
       break;

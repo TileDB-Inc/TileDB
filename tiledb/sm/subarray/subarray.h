@@ -438,9 +438,6 @@ class Subarray {
   /** Returns the tile overlap of the subarray. */
   const std::vector<std::vector<TileOverlap>>& tile_overlap() const;
 
-  /** Returns the subarray domain type. */
-  Datatype type() const;
-
   /**
    * Compute `tile_coords_` and `tile_coords_map_`. The coordinates will
    * be sorted on the array tile order.
