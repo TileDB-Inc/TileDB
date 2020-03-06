@@ -513,6 +513,9 @@ const std::string aws_access_key_id = "";
 /** S3 aws secret access key. */
 const std::string aws_secret_access_key = "";
 
+/** S3 aws session token. */
+const std::string aws_session_token = "";
+
 /** S3 endpoint override. */
 const std::string s3_endpoint_override = "";
 
