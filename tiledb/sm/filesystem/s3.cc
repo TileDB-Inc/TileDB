@@ -597,8 +597,10 @@ Status S3::ls(
     int max_paths) const {
   RETURN_NOT_OK(init_client());
 
-  auto prefix_str = prefix.to_string();
-  if (!prefix.is_s3()) {
+  const auto prefix_dir = prefix.add_trailing_slash();
+
+  auto prefix_str = prefix_dir.to_string();
+  if (!prefix_dir.is_s3()) {
     return LOG_STATUS(
         Status::S3Error(std::string("URI is not an S3 URI: " + prefix_str)));
   }
@@ -631,7 +633,8 @@ Status S3::ls(
     for (const auto& object :
          list_objects_outcome.GetResult().GetCommonPrefixes()) {
       std::string file(object.GetPrefix().c_str());
-      paths->push_back("s3://" + aws_auth + add_front_slash(file));
+      paths->push_back(
+          "s3://" + aws_auth + add_front_slash(remove_trailing_slash(file)));
     }
 
     is_done = !list_objects_outcome.GetResult().GetIsTruncated();
@@ -784,6 +787,11 @@ Status S3::touch(const URI& uri) const {
   if (!uri.is_s3()) {
     return LOG_STATUS(Status::S3Error(std::string(
         "Cannot create file; URI is not an S3 URI: " + uri.to_string())));
+  }
+
+  if (uri.to_string().back() == '/') {
+    return LOG_STATUS(Status::S3Error(std::string(
+        "Cannot create file; URI is a directory: " + uri.to_string())));
   }
 
   bool exists;
@@ -949,6 +957,14 @@ std::string S3::add_front_slash(const std::string& path) const {
 std::string S3::remove_front_slash(const std::string& path) const {
   if (path.front() == '/')
     return path.substr(1, path.length());
+  return path;
+}
+
+std::string S3::remove_trailing_slash(const std::string& path) const {
+  if (path.back() == '/') {
+    return path.substr(0, path.length() - 1);
+  }
+
   return path;
 }
 

@@ -235,6 +235,9 @@ class Posix {
 
   static bool both_slashes(char a, char b);
 
+  // Internal logic for 'abs_path()'.
+  static std::string abs_path_internal(const std::string& path);
+
   /**
    * It takes as input an **absolute** path, and returns it in its canonicalized
    * form, after appropriately replacing "./" and "../" in the path.
