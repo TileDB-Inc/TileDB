@@ -39,6 +39,7 @@
 #include <tbb/task_scheduler_init.h>
 #include <cassert>
 #include <cstdlib>
+#include <memory>
 #include <sstream>
 
 namespace tiledb {
