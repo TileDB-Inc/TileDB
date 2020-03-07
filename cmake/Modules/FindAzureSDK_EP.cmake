@@ -95,7 +95,7 @@ if (NOT AZURESDK_FOUND)
       URL "https://github.com/Azure/azure-storage-cpplite/archive/v0.2.0.zip"
       URL_HASH SHA1=058975ccac9b60b522c9f7fd044a3d2aaec9f893
       CMAKE_ARGS
-        -DCMAKE_BUILD_TYPE=Release
+        -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
         -DBUILD_SHARED_LIBS=OFF
         -DBUILD_TESTS=OFF
         -DBUILD_SAMPLES=OFF
