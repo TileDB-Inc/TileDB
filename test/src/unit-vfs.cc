@@ -63,11 +63,13 @@ TEST_CASE("VFS: Test read batching", "[vfs]") {
   ThreadPool thread_pool;
   REQUIRE(thread_pool.init(4).ok());
   std::vector<std::future<Status>> tasks;
+  REQUIRE(vfs->terminate().ok());
 
   SECTION("- Default config") {
     // Check reading in one batch: single read operation.
     std::memset(data_read, 0, nelts * sizeof(uint32_t));
     batches.emplace_back(0, data_read, nelts * sizeof(uint32_t));
+    REQUIRE(vfs->init(nullptr, nullptr).ok());
     REQUIRE(vfs->read_all(testfile, batches, &thread_pool, &tasks).ok());
     REQUIRE(thread_pool.wait_all(tasks).ok());
     tasks.clear();
@@ -113,6 +115,7 @@ TEST_CASE("VFS: Test read batching", "[vfs]") {
     REQUIRE(
         stats::all_stats.counter_vfs_read_total_bytes ==
         nelts * sizeof(uint32_t));
+    REQUIRE(vfs->terminate().ok());
   }
 
   SECTION("- Reduce min batch size and min batch gap") {
@@ -193,6 +196,7 @@ TEST_CASE("VFS: Test read batching", "[vfs]") {
     CHECK(
         stats::all_stats.counter_vfs_read_total_bytes ==
         nelts * sizeof(uint32_t));
+    REQUIRE(vfs->terminate().ok());
   }
 
   SECTION("- Reduce min batch gap but not min batch size") {
@@ -216,8 +220,11 @@ TEST_CASE("VFS: Test read batching", "[vfs]") {
     CHECK(
         stats::all_stats.counter_vfs_read_total_bytes ==
         nelts * sizeof(uint32_t));
+    REQUIRE(vfs->terminate().ok());
   }
 
+  Config default_config, vfs_config;
+  REQUIRE(vfs->init(&default_config, &vfs_config).ok());
   REQUIRE(vfs->is_file(testfile, &exists).ok());
   if (exists)
     REQUIRE(vfs->remove_file(testfile).ok());
@@ -317,6 +324,7 @@ TEST_CASE("VFS: Test long posix paths", "[vfs]") {
   }
 
   REQUIRE(vfs->remove_dir(URI(tmpdir_base)).ok());
+  REQUIRE(vfs->terminate().ok());
 }
 
 #endif
@@ -461,5 +469,6 @@ TEST_CASE("VFS: URI semantics", "[vfs][uri]") {
     } else {
       REQUIRE(vfs.remove_dir(root).ok());
     }
+    vfs.terminate();
   }
 }
