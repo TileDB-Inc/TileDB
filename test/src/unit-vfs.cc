@@ -461,5 +461,6 @@ TEST_CASE("VFS: URI semantics", "[vfs][uri]") {
     } else {
       REQUIRE(vfs.remove_dir(root).ok());
     }
+    vfs.terminate();
   }
 }
