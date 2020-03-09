@@ -283,33 +283,52 @@ class Azure {
 
   class AzureRetryPolicy final : public azure::storage_lite::retry_policy_base {
    public:
-    AzureRetryPolicy(const bool under_test)
-        : azure::storage_lite::retry_policy_base()
-        , under_test_(under_test) {
-    }
-
+    /**
+     * The SDK invokes this routine before each request to Azure. This returns
+     * a pair: a bool to indicate if we should make a request and a time
+     * interval to wait before starting the request.
+     */
     azure::storage_lite::retry_info evaluate(
         const azure::storage_lite::retry_context& context) const override {
-      const int32_t max_retries = under_test_ ? 1 : 3;
+      const int http_code = context.result();
 
-      // The SDK consults this return value for the initial request. We must
-      // return an instance of 'retry_info' with a 0-delay wait time to prevent
-      // the SDK from sleeping on the first request.
-      if (context.numbers() < 1) {
+      // When the response code is 0, the SDK has yet to send the initial
+      // request. Allow the request to start immediately by returning a 0-second
+      // delay.
+      if (http_code == 0) {
         return azure::storage_lite::retry_info(true, std::chrono::seconds(0));
       }
 
-      // Wait one second before all retry attempts.
-      if (context.numbers() < max_retries) {
-        return azure::storage_lite::retry_info(true, std::chrono::seconds(1));
+      // Determine if we should retry on the returned http code in the response.
+      if (!should_retry(http_code)) {
+        return azure::storage_lite::retry_info(false, std::chrono::seconds(0));
       }
 
+      // Wait one second before all retry attempts.
+      static const int32_t max_retries = constants::azure_max_attempts;
+      if (context.numbers() < max_retries) {
+        return azure::storage_lite::retry_info(
+            true,
+            std::chrono::seconds(constants::azure_attempt_sleep_ms / 100));
+      }
+
+      // All retry attempts exhausted.
       return azure::storage_lite::retry_info(false, std::chrono::seconds(0));
     }
 
    private:
-    /** True if this is initialized in the context of a unit test. */
-    const bool under_test_;
+    /**
+     * Returns true if we should attempt a retry after receiving 'http_code'
+     * in the last response.
+     */
+    bool should_retry(const int http_code) const {
+      // Only retry on server errors.
+      if (http_code >= 500 && http_code < 600) {
+        return true;
+      }
+
+      return false;
+    }
   };
 
   /** Contains all state associated with a block list upload transaction. */
