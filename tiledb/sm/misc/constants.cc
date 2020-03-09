@@ -454,6 +454,12 @@ const unsigned int s3_max_attempts = 1000;
 /** Milliseconds of wait time between S3 attempts. */
 const unsigned int s3_attempt_sleep_ms = 100;
 
+/** Maximum number of attempts to wait for an Azure response. */
+const unsigned int azure_max_attempts = 100;
+
+/** Milliseconds of wait time between Azure attempts. */
+const unsigned int azure_attempt_sleep_ms = 1000;
+
 /** An allocation tag used for logging. */
 const std::string s3_allocation_tag = "TileDB";
 

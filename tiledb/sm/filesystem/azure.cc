@@ -131,7 +131,7 @@ Status Azure::init(const Config& config, ThreadPool* const thread_pool) {
   // re-assigns the context with our own retry policy.
   *client_->context() = azure::storage_lite::executor_context(
       std::make_shared<azure::storage_lite::tinyxml2_parser>(),
-      std::make_shared<AzureRetryPolicy>(under_test));
+      std::make_shared<AzureRetryPolicy>());
 
   return Status::Ok();
 }
