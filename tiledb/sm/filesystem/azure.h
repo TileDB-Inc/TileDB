@@ -309,7 +309,7 @@ class Azure {
       if (context.numbers() < max_retries) {
         return azure::storage_lite::retry_info(
             true,
-            std::chrono::seconds(constants::azure_attempt_sleep_ms / 100));
+            std::chrono::seconds(constants::azure_attempt_sleep_ms / 1000));
       }
 
       // All retry attempts exhausted.
