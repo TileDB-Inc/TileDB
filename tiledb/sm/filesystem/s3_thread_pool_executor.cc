@@ -52,6 +52,9 @@ S3ThreadPoolExecutor::~S3ThreadPoolExecutor() {
 }
 
 Status S3ThreadPoolExecutor::Stop() {
+  if (state_ == State::STOPPED)
+    return Status::Ok();
+
   Status ret_st = Status::Ok();
 
   std::unique_lock<std::mutex> lock_guard(lock_);

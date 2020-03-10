@@ -132,6 +132,10 @@ S3::~S3() {
 /* ********************************* */
 
 Status S3::init(const Config& config, ThreadPool* const thread_pool) {
+  // already initialized
+  if (state_ == State::DISCONNECTED)
+    return Status::Ok();
+
   assert(state_ == State::UNINITIALIZED);
 
   if (thread_pool == nullptr) {
