@@ -359,7 +359,7 @@ class VFS {
    */
   explicit VFS(const Context& ctx)
       : ctx_(ctx) {
-    create_vfs(nullptr);
+    create_vfs(ctx.config());
   }
 
   /**
