@@ -53,6 +53,7 @@ Configuration:
     --enable-hdfs                   enables the hdfs storage backend
     --enable-s3                     enables the s3 storage backend
     --enable-azure                  enables the azure storage backend
+    --enable-gcs                    enables the gcs storage backend
     --enable-serialization          enables query serialization support
     --enable-tools                  enables TileDB CLI tools (experimental)
     --enable-ccache                 enables use of ccache (if present)
@@ -83,6 +84,7 @@ tiledb_verbose="OFF"
 tiledb_hdfs="OFF"
 tiledb_s3="OFF"
 tiledb_azure="OFF"
+tiledb_gcs="OFF"
 tiledb_werror="ON"
 tiledb_tests="ON"
 tiledb_cpp_api="ON"
@@ -117,6 +119,7 @@ while test $# != 0; do
     --enable-hdfs) tiledb_hdfs="ON";;
     --enable-s3) tiledb_s3="ON";;
     --enable-azure) tiledb_azure="ON";;
+    --enable-gcs) tiledb_gcs="ON";;
     --enable-serialization) tiledb_serialization="ON";;
     --enable-tools) tiledb_tools="ON";;
     --enable-ccache) tiledb_ccache="ON";;
@@ -137,6 +140,7 @@ for en in "${enables[@]}"; do
     verbose) tiledb_verbose="ON";;
     s3) tiledb_s3="ON";;
     azure) tiledb_azure="ON";;
+    gcs) tiledb_gcs="ON";;
     serialization) tiledb_serialization="ON";;
     tools) tiledb_tools="ON";;
     ccache) tiledb_ccache="ON";;
@@ -185,6 +189,7 @@ ${cmake} -DCMAKE_BUILD_TYPE=${build_type} \
     -DTILEDB_HDFS=${tiledb_hdfs} \
     -DTILEDB_S3=${tiledb_s3} \
     -DTILEDB_AZURE=${tiledb_azure} \
+    -DTILEDB_GCS=${tiledb_gcs} \
     -DTILEDB_SERIALIZATION=${tiledb_serialization} \
     -DTILEDB_TOOLS=${tiledb_tools} \
     -DTILEDB_WERROR=${tiledb_werror} \
