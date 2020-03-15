@@ -178,9 +178,9 @@ Status attribute_to_capnp(
   attribute_builder->setType(datatype_str(attribute->type()));
   attribute_builder->setCellValNum(attribute->cell_val_num());
 
-  const auto* filters = attribute->filters();
+  const auto& filters = attribute->filters();
   auto filter_pipeline_builder = attribute_builder->initFilterPipeline();
-  RETURN_NOT_OK(filter_pipeline_to_capnp(filters, &filter_pipeline_builder));
+  RETURN_NOT_OK(filter_pipeline_to_capnp(&filters, &filter_pipeline_builder));
 
   return Status::Ok();
 }
@@ -228,6 +228,11 @@ Status dimension_to_capnp(
         dimension->tile_extent().data()));
   }
 
+  // Set filters
+  const FilterPipeline& coords_filters = dimension->filters();
+  capnp::FilterPipeline::Builder filters_builder =
+      dimension_builder->initFilterPipeline();
+  RETURN_NOT_OK(filter_pipeline_to_capnp(&coords_filters, &filters_builder));
   return Status::Ok();
 }
 
@@ -243,6 +248,13 @@ Status dimension_from_capnp(
   RETURN_NOT_OK(
       utils::copy_capnp_list(domain_reader, dim_type, &domain_buffer));
   RETURN_NOT_OK((*dimension)->set_domain(domain_buffer.data()));
+
+  if (dimension_reader.hasFilterPipeline()) {
+    auto reader = dimension_reader.getFilterPipeline();
+    std::unique_ptr<FilterPipeline> filters;
+    RETURN_NOT_OK(filter_pipeline_from_capnp(reader, &filters));
+    RETURN_NOT_OK((*dimension)->set_filter_pipeline(filters.get()));
+  }
 
   if (!dimension_reader.getNullTileExtent()) {
     auto tile_extent_reader = dimension_reader.getTileExtent();
@@ -375,19 +387,19 @@ Status array_schema_to_capnp(
   array_schema_builder->setAllowsDuplicates(array_schema->allows_dups());
 
   // Set coordinate filters
-  const FilterPipeline* coords_filters = array_schema->coords_filters();
+  const FilterPipeline& coords_filters = array_schema->coords_filters();
   capnp::FilterPipeline::Builder coords_filters_builder =
       array_schema_builder->initCoordsFilterPipeline();
   RETURN_NOT_OK(
-      filter_pipeline_to_capnp(coords_filters, &coords_filters_builder));
+      filter_pipeline_to_capnp(&coords_filters, &coords_filters_builder));
 
   // Set offset filters
-  const FilterPipeline* offsets_filters =
+  const FilterPipeline& offsets_filters =
       array_schema->cell_var_offsets_filters();
   capnp::FilterPipeline::Builder offsets_filters_builder =
       array_schema_builder->initOffsetFilterPipeline();
   RETURN_NOT_OK(
-      filter_pipeline_to_capnp(offsets_filters, &offsets_filters_builder));
+      filter_pipeline_to_capnp(&offsets_filters, &offsets_filters_builder));
 
   // Domain
   auto domain_builder = array_schema_builder->initDomain();

@@ -34,6 +34,7 @@
 #include "tiledb/sm/buffer/const_buffer.h"
 #include "tiledb/sm/enums/compressor.h"
 #include "tiledb/sm/enums/datatype.h"
+#include "tiledb/sm/enums/filter_type.h"
 #include "tiledb/sm/filter/compression_filter.h"
 #include "tiledb/sm/misc/logger.h"
 #include "tiledb/sm/misc/utils.h"
@@ -84,17 +85,6 @@ unsigned int Attribute::cell_val_num() const {
   return cell_val_num_;
 }
 
-Compressor Attribute::compressor() const {
-  auto compressor = filters_.get_filter<CompressionFilter>();
-  return compressor == nullptr ? Compressor::NO_COMPRESSION :
-                                 compressor->compressor();
-}
-
-int Attribute::compression_level() const {
-  auto compressor = filters_.get_filter<CompressionFilter>();
-  return compressor == nullptr ? -1 : compressor->compression_level();
-}
-
 // ===== FORMAT =====
 // attribute_name_size (uint32_t)
 // attribute_name (string)
@@ -129,17 +119,17 @@ void Attribute::dump(FILE* out) const {
   fprintf(out, "### Attribute ###\n");
   fprintf(out, "- Name: %s\n", name_.c_str());
   fprintf(out, "- Type: %s\n", datatype_str(type_).c_str());
-  fprintf(out, "- Compressor: %s\n", compressor_str(compressor()).c_str());
-  fprintf(out, "- Compression level: %d\n", compression_level());
-
   if (!var_size())
     fprintf(out, "- Cell val num: %u\n", cell_val_num_);
   else
     fprintf(out, "- Cell val num: var\n");
+  fprintf(out, "- Filters: %u", (unsigned)filters_.size());
+  filters_.dump(out);
+  fprintf(out, "\n");
 }
 
-const FilterPipeline* Attribute::filters() const {
-  return &filters_;
+const FilterPipeline& Attribute::filters() const {
+  return filters_;
 }
 
 const std::string& Attribute::name() const {
@@ -182,25 +172,21 @@ Status Attribute::set_cell_val_num(unsigned int cell_val_num) {
   return Status::Ok();
 }
 
-void Attribute::set_compressor(Compressor compressor) {
-  auto filter = filters_.get_filter<CompressionFilter>();
-  if (filter == nullptr)
-    filters_.add_filter(CompressionFilter(compressor, -1));
-  else
-    filter->set_compressor(compressor);
-}
-
-void Attribute::set_compression_level(int compression_level) {
-  auto filter = filters_.get_filter<CompressionFilter>();
-  if (filter == nullptr)
-    filters_.add_filter(
-        CompressionFilter(Compressor::NO_COMPRESSION, compression_level));
-  else
-    filter->set_compression_level(compression_level);
-}
-
 Status Attribute::set_filter_pipeline(const FilterPipeline* pipeline) {
+  if (pipeline == nullptr)
+    return LOG_STATUS(Status::AttributeError(
+        "Cannot set filter pipeline to attribute; Pipeline cannot be null"));
+
+  for (unsigned i = 0; i < pipeline->size(); ++i) {
+    if (datatype_is_real(type_) &&
+        pipeline->get_filter(i)->type() == FilterType::FILTER_DOUBLE_DELTA)
+      return LOG_STATUS(
+          Status::AttributeError("Cannot set DOUBLE DELTA filter to a "
+                                 "dimension with a real datatype"));
+  }
+
   filters_ = *pipeline;
+
   return Status::Ok();
 }
 

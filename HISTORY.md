@@ -15,6 +15,7 @@
 ## New features
 
 * The user can now set separate coordinate buffers to the query. Also any subset of the dimensions is supported.
+* The user can set separate filter lists per dimension, as well as the number of values per coordinate.
 
 ## Improvements
 
@@ -34,6 +35,9 @@
 
 * Added C API function `tiledb_array_has_metadata_key` and C++ API function `Array::has_metadata_key` [#1439](https://github.com/TileDB-Inc/TileDB/pull/1439)
 * Added C API functions `tiledb_array_schema_{set,get}_allows_dups` and C++ API functions `Array::set_allows_dups` and `Array::allows_dups`
+* Added C API functions `tiledb_dimension_{set,get}_filter_list` and `tiledb_dimension_{set,get}_cell_val_num`
+* Added C++ API functions `Dimension::set_cell_val_num` and `Dimension::cell_val_num`.
+* Added C++ API functions `Dimension::set_filter_list` and `Dimension::filter_list`.
 
 ## API removals
 

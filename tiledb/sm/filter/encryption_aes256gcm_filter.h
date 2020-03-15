@@ -88,6 +88,9 @@ class EncryptionAES256GCMFilter : public Filter {
    */
   explicit EncryptionAES256GCMFilter(const EncryptionKey& key);
 
+  /** Dumps the filter details in ASCII format in the selected output. */
+  void dump(FILE* out) const override;
+
   /**
    * Encrypt the bytes of the input data into the output data buffer.
    */

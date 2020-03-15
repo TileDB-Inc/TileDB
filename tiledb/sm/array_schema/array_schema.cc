@@ -39,6 +39,7 @@
 #include "tiledb/sm/enums/array_type.h"
 #include "tiledb/sm/enums/compressor.h"
 #include "tiledb/sm/enums/datatype.h"
+#include "tiledb/sm/enums/filter_type.h"
 #include "tiledb/sm/enums/layout.h"
 #include "tiledb/sm/filter/compression_filter.h"
 #include "tiledb/sm/misc/logger.h"
@@ -190,8 +191,8 @@ unsigned int ArraySchema::cell_val_num(const std::string& name) const {
   return dim_it->second->cell_val_num();
 }
 
-const FilterPipeline* ArraySchema::cell_var_offsets_filters() const {
-  return &cell_var_offsets_filters_;
+const FilterPipeline& ArraySchema::cell_var_offsets_filters() const {
+  return cell_var_offsets_filters_;
 }
 
 Status ArraySchema::check() const {
@@ -216,10 +217,7 @@ Status ArraySchema::check() const {
     }
   }
 
-  if (!check_double_delta_compressor())
-    return LOG_STATUS(Status::ArraySchemaError(
-        "Array schema check failed; Double delta compression can be used "
-        "only with integer values"));
+  RETURN_NOT_OK(check_double_delta_compressor());
 
   if (!check_attribute_dimension_names())
     return LOG_STATUS(
@@ -243,7 +241,7 @@ Status ArraySchema::check_attributes(
   return Status::Ok();
 }
 
-const FilterPipeline* ArraySchema::filters(const std::string& name) const {
+const FilterPipeline& ArraySchema::filters(const std::string& name) const {
   if (name == constants::coords)
     return coords_filters();
 
@@ -255,14 +253,15 @@ const FilterPipeline* ArraySchema::filters(const std::string& name) const {
   // Dimension (if filters not set, return default coordinate filters)
   auto dim_it = dim_map_.find(name);
   assert(dim_it != dim_map_.end());
-  auto ret = dim_it->second->filters();
-  return (ret != nullptr) ? ret : coords_filters();
+  const auto& ret = dim_it->second->filters();
+  return !ret.empty() ? ret : coords_filters();
 }
 
-const FilterPipeline* ArraySchema::coords_filters() const {
-  return &coords_filters_;
+const FilterPipeline& ArraySchema::coords_filters() const {
+  return coords_filters_;
 }
 
+/*
 Compressor ArraySchema::coords_compression() const {
   auto compressor = coords_filters_.get_filter<CompressionFilter>();
   return (compressor == nullptr) ? Compressor::NO_COMPRESSION :
@@ -273,6 +272,7 @@ int ArraySchema::coords_compression_level() const {
   auto compressor = coords_filters_.get_filter<CompressionFilter>();
   return (compressor == nullptr) ? -1 : compressor->compression_level();
 }
+*/
 
 bool ArraySchema::dense() const {
   return array_type_ == ArrayType::DENSE;
@@ -298,14 +298,15 @@ void ArraySchema::dump(FILE* out) const {
   fprintf(out, "- Cell order: %s\n", layout_str(cell_order_).c_str());
   fprintf(out, "- Tile order: %s\n", layout_str(tile_order_).c_str());
   fprintf(out, "- Capacity: %" PRIu64 "\n", capacity_);
+  fprintf(out, "- Allows duplicates: %s\n", (allows_dups_ ? "true" : "false"));
+  fprintf(out, "- Coordinates filters: %u", (unsigned)coords_filters_.size());
+  coords_filters_.dump(out);
   fprintf(
       out,
-      "- Coordinates compressor: %s\n",
-      compressor_str(coords_compression()).c_str());
-  fprintf(
-      out,
-      "- Coordinates compression level: %d\n\n",
-      coords_compression_level());
+      "\n- Offsets filters: %u",
+      (unsigned)cell_var_offsets_filters_.size());
+  cell_var_offsets_filters_.dump(out);
+  fprintf(out, "\n");
 
   if (domain_ != nullptr)
     domain_->dump(out);
@@ -378,7 +379,7 @@ Status ArraySchema::serialize(Buffer* buff) const {
   RETURN_NOT_OK(cell_var_offsets_filters_.serialize(buff));
 
   // Write domain
-  domain_->serialize(buff);
+  RETURN_NOT_OK(domain_->serialize(buff, version_));
 
   // Write attributes
   auto attribute_num = (uint32_t)attributes_.size();
@@ -498,7 +499,7 @@ Status ArraySchema::deserialize(ConstBuffer* buff) {
 
   // Load domain
   domain_ = new Domain();
-  RETURN_NOT_OK(domain_->deserialize(buff));
+  RETURN_NOT_OK(domain_->deserialize(buff, version_));
 
   // Load attributes
   uint32_t attribute_num;
@@ -509,6 +510,8 @@ Status ArraySchema::deserialize(ConstBuffer* buff) {
     attributes_.emplace_back(attr);
     attribute_map_[attr->name()] = attr;
   }
+
+  // Create dimension map
   auto dim_num = domain()->dim_num();
   for (unsigned d = 0; d < dim_num; ++d) {
     auto dim = dimension(d);
@@ -587,15 +590,6 @@ Status ArraySchema::set_domain(Domain* domain) {
   delete domain_;
   domain_ = new Domain(domain);
 
-  // Potentially change the default coordinates compressor
-  if (domain_->all_dims_real() &&
-      coords_compression() == Compressor::DOUBLE_DELTA) {
-    auto* filter = coords_filters_.get_filter<CompressionFilter>();
-    assert(filter != nullptr);
-    filter->set_compressor(constants::real_coords_compression);
-    filter->set_compression_level(-1);
-  }
-
   // Create dimension map
   dim_map_.clear();
   auto dim_num = domain_->dim_num();
@@ -633,16 +627,35 @@ bool ArraySchema::check_attribute_dimension_names() const {
   return (names.size() == attributes_.size() + dim_num);
 }
 
-bool ArraySchema::check_double_delta_compressor() const {
-  // Check attributes
-  for (auto attr : attributes_) {
-    if ((attr->type() == Datatype::FLOAT32 ||
-         attr->type() == Datatype::FLOAT64) &&
-        attr->compressor() == Compressor::DOUBLE_DELTA)
-      return false;
+Status ArraySchema::check_double_delta_compressor() const {
+  // Check if coordinate filters have DOUBLE DELTA as a compressor
+  bool has_double_delta = false;
+  for (unsigned i = 0; i < coords_filters_.size(); ++i) {
+    if (coords_filters_.get_filter(i)->type() ==
+        FilterType::FILTER_DOUBLE_DELTA) {
+      has_double_delta = true;
+      break;
+    }
   }
 
-  return true;
+  // Not applicable when DOUBLE DELTA no present in coord filters
+  if (!has_double_delta)
+    return Status::Ok();
+
+  // Error if any real dimension inherits the coord filters with DOUBLE DELTA.
+  // A dimension inherits the filters when it has no filters.
+  auto dim_num = domain_->dim_num();
+  for (unsigned d = 0; d < dim_num; ++d) {
+    auto dim = domain_->dimension(d);
+    const auto& dim_filters = dim->filters();
+    auto dim_type = dim->type();
+    if (datatype_is_real(dim_type) && dim_filters.empty())
+      return LOG_STATUS(
+          Status::ArraySchemaError("Real dimension cannot inherit coordinate "
+                                   "filters with DOUBLE DELTA compression"));
+  }
+
+  return Status::Ok();
 }
 
 void ArraySchema::clear() {

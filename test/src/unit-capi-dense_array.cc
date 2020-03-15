@@ -3355,7 +3355,7 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     DenseArrayFx,
     "C API: Test dense array, simultaneous writes",
-    "[capi], [dense], [dense-simultaneous-writes]") {
+    "[capi][dense][dense-simultaneous-writes]") {
   SECTION("- No serialization") {
     serialize_query_ = false;
   }

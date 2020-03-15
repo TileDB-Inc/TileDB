@@ -50,6 +50,13 @@ ChecksumMD5Filter* ChecksumMD5Filter::clone_impl() const {
   return new ChecksumMD5Filter;
 }
 
+void ChecksumMD5Filter::dump(FILE* out) const {
+  if (out == nullptr)
+    out = stdout;
+
+  fprintf(out, "ChecksumMD5");
+}
+
 Status ChecksumMD5Filter::run_forward(
     FilterBuffer* input_metadata,
     FilterBuffer* input,

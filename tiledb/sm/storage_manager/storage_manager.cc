@@ -1325,7 +1325,6 @@ Status StorageManager::store_array_schema(
     ArraySchema* array_schema, const EncryptionKey& encryption_key) {
   auto& array_uri = array_schema->array_uri();
   URI schema_uri = array_uri.join_path(constants::array_schema_filename);
-  ;
 
   // Serialize
   auto buff = new Buffer();

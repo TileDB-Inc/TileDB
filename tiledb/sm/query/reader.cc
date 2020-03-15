@@ -1661,8 +1661,8 @@ Status Reader::unfilter_tile(
     const std::string& name, Tile* tile, bool offsets) const {
   // Get a copy of the appropriate unfilter pipeline.
   FilterPipeline filters =
-      (offsets ? *array_schema_->cell_var_offsets_filters() :
-                 *array_schema_->filters(name));
+      (offsets ? array_schema_->cell_var_offsets_filters() :
+                 array_schema_->filters(name));
 
   // Append an encryption unfilter when necessary.
   RETURN_NOT_OK(FilterPipeline::append_encryption_filter(

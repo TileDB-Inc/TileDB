@@ -37,9 +37,16 @@ TEST_CASE("C++ API: Schema", "[cppapi][schema]") {
   using namespace tiledb;
   Context ctx;
 
+  FilterList filters(ctx);
+  filters.add_filter({ctx, TILEDB_FILTER_LZ4});
+
   Domain dense_domain(ctx);
   auto id1 = Dimension::create<int>(ctx, "d1", {{-100, 100}}, 10);
   auto id2 = Dimension::create<int>(ctx, "d2", {{0, 100}}, 5);
+  CHECK_THROWS(id1.set_cell_val_num(4));
+  CHECK_NOTHROW(id1.set_cell_val_num(1));
+  CHECK_NOTHROW(id1.set_filter_list(filters));
+  CHECK_NOTHROW(id1.filter_list());
   dense_domain.add_dimension(id1).add_dimension(id2);
 
   Domain sparse_domain(ctx);
@@ -51,8 +58,6 @@ TEST_CASE("C++ API: Schema", "[cppapi][schema]") {
   auto a2 = Attribute::create<std::string>(ctx, "a2");
   auto a3 = Attribute::create<std::array<double, 2>>(ctx, "a3");
   auto a4 = Attribute::create<std::vector<uint32_t>>(ctx, "a4");
-  FilterList filters(ctx);
-  filters.add_filter({ctx, TILEDB_FILTER_LZ4});
   a1.set_filter_list(filters);
 
   SECTION("Dense Array Schema") {
@@ -150,6 +155,7 @@ TEST_CASE("C++ API: Schema", "[cppapi][schema]") {
     CHECK(dims[0].domain<double>().second == 100.0);
     CHECK_THROWS(dims[0].tile_extent<unsigned>());
     CHECK(dims[0].tile_extent<double>() == 10.0);
+    CHECK(dims[0].cell_val_num() == 1);
 
     CHECK(sparse_domain.type() == TILEDB_FLOAT64);
   }
