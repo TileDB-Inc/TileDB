@@ -89,12 +89,6 @@ class Attribute {
   /** Returns the number of values per cell. */
   unsigned int cell_val_num() const;
 
-  /** Returns the compressor. */
-  Compressor compressor() const;
-
-  /** Returns the compression level. */
-  int compression_level() const;
-
   /**
    * Populates the object members from the data in the input binary buffer.
    *
@@ -107,7 +101,7 @@ class Attribute {
   void dump(FILE* out) const;
 
   /** Returns the filter pipeline of this attribute. */
-  const FilterPipeline* filters() const;
+  const FilterPipeline& filters() const;
 
   /** Returns the attribute name. */
   const std::string& name() const;
@@ -128,12 +122,6 @@ class Attribute {
    * @return Status
    */
   Status set_cell_val_num(unsigned int cell_val_num);
-
-  /** Sets the attribute compressor. */
-  void set_compressor(Compressor compressor);
-
-  /** Sets the attribute compression level. */
-  void set_compression_level(int compression_level);
 
   /** Sets the filter pipeline for this attribute. */
   Status set_filter_pipeline(const FilterPipeline* pipeline);
@@ -156,7 +144,7 @@ class Attribute {
   /* ********************************* */
 
   /** The attribute number of values per cell. */
-  unsigned int cell_val_num_;
+  unsigned cell_val_num_;
 
   /** The attribute filter pipeline. */
   FilterPipeline filters_;

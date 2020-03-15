@@ -96,6 +96,12 @@ class FilterPipeline {
   Status deserialize(ConstBuffer* buff);
 
   /**
+   * Dumps the filter pipeline details in ASCII format in the selected
+   * output.
+   */
+  void dump(FILE* out) const;
+
+  /**
    * Returns pointer to the first instance of a filter in the pipeline with the
    * given filter subclass type.
    *
@@ -218,6 +224,9 @@ class FilterPipeline {
 
   /** Returns the number of filters in the pipeline. */
   unsigned size() const;
+
+  /** Returns true if the pipeline is empty. */
+  bool empty() const;
 
   /** Swaps the contents of this pipeline with the given pipeline. */
   void swap(FilterPipeline& other);

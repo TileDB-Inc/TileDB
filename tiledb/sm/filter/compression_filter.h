@@ -95,6 +95,9 @@ class CompressionFilter : public Filter {
   /** Return the compression level used by this filter instance. */
   int compression_level() const;
 
+  /** Dumps the filter details in ASCII format in the selected output. */
+  void dump(FILE* out) const override;
+
   /**
    * Compress the given input into the given output.
    */

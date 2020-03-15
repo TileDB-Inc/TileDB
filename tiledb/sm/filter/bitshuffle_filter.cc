@@ -49,6 +49,13 @@ BitshuffleFilter* BitshuffleFilter::clone_impl() const {
   return new BitshuffleFilter;
 }
 
+void BitshuffleFilter::dump(FILE* out) const {
+  if (out == nullptr)
+    out = stdout;
+
+  fprintf(out, "BitShuffle");
+}
+
 Status BitshuffleFilter::run_forward(
     FilterBuffer* input_metadata,
     FilterBuffer* input,

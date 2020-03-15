@@ -77,6 +77,9 @@ class PositiveDeltaFilter : public Filter {
   /** Return the max window size used by the filter. */
   uint32_t max_window_size() const;
 
+  /** Dumps the filter details in ASCII format in the selected output. */
+  void dump(FILE* out) const override;
+
   /**
    * Perform positive-delta encoding of the given input into the given output.
    */

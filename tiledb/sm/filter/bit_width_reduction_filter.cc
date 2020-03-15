@@ -84,6 +84,12 @@ BitWidthReductionFilter::BitWidthReductionFilter()
   max_window_size_ = 256;
 }
 
+void BitWidthReductionFilter::dump(FILE* out) const {
+  if (out == nullptr)
+    out = stdout;
+  fprintf(out, "BitWidthReduction: BIT_WIDTH_MAX_WINDOW=%u", max_window_size_);
+}
+
 Status BitWidthReductionFilter::run_forward(
     FilterBuffer* input_metadata,
     FilterBuffer* input,

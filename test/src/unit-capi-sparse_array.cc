@@ -875,6 +875,21 @@ void SparseArrayFx::create_sparse_array(
       ctx_, "d2", TILEDB_UINT64, &dim_domain[2], &tile_extents[1], &d2);
   CHECK(rc == TILEDB_OK);
 
+  // Set up filter list
+  tiledb_filter_t* filter;
+  rc = tiledb_filter_alloc(ctx_, TILEDB_FILTER_BZIP2, &filter);
+  REQUIRE(rc == TILEDB_OK);
+  int level = 5;
+  rc = tiledb_filter_set_option(ctx_, filter, TILEDB_COMPRESSION_LEVEL, &level);
+  REQUIRE(rc == TILEDB_OK);
+  tiledb_filter_list_t* filter_list;
+  rc = tiledb_filter_list_alloc(ctx_, &filter_list);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_filter_list_add_filter(ctx_, filter_list, filter);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_dimension_set_filter_list(ctx_, d1, filter_list);
+  REQUIRE(rc == TILEDB_OK);
+
   // Create domain
   tiledb_domain_t* domain;
   rc = tiledb_domain_alloc(ctx_, &domain);
@@ -939,6 +954,8 @@ void SparseArrayFx::create_sparse_array(
   tiledb_attribute_free(&a3);
   tiledb_dimension_free(&d1);
   tiledb_dimension_free(&d2);
+  tiledb_filter_free(&filter);
+  tiledb_filter_list_free(&filter_list);
   tiledb_domain_free(&domain);
   tiledb_array_schema_free(&array_schema);
 }

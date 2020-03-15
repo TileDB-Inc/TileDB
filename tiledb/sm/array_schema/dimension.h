@@ -83,8 +83,11 @@ class Dimension {
   /*                API                */
   /* ********************************* */
 
-  /** Returns the number of values per cell. */
-  unsigned int cell_val_num() const;
+  /** Returns the number of values per coordinate. */
+  unsigned cell_val_num() const;
+
+  /** Sets the number of values per coordinate. */
+  Status set_cell_val_num(unsigned int cell_val_num);
 
   /** Returns the size (in bytes) of a coordinate in this dimension. */
   uint64_t coord_size() const;
@@ -97,9 +100,10 @@ class Dimension {
    *
    * @param buff The buffer to deserialize from.
    * @param type The type of the dimension.
+   * @param version The array schema version.
    * @return Status
    */
-  Status deserialize(ConstBuffer* buff, Datatype type);
+  Status deserialize(ConstBuffer* buff, uint32_t version, Datatype type);
 
   /** Returns the domain. */
   const Range& domain() const;
@@ -108,7 +112,7 @@ class Dimension {
   void dump(FILE* out) const;
 
   /** Returns the filter pipeline of this dimension. */
-  const FilterPipeline* filters() const;
+  const FilterPipeline& filters() const;
 
   /** Returns the dimension name. */
   const std::string& name() const;
@@ -372,15 +376,19 @@ class Dimension {
    * Serializes the object members into a binary buffer.
    *
    * @param buff The buffer to serialize the data into.
+   * @param version The array schema version
    * @return Status
    */
-  Status serialize(Buffer* buff);
+  Status serialize(Buffer* buff, uint32_t version);
 
   /** Sets the domain. */
   Status set_domain(const void* domain);
 
   /** Sets the domain. */
   Status set_domain(const Range& domain);
+
+  /** Sets the filter pipeline for this dimension. */
+  Status set_filter_pipeline(const FilterPipeline* pipeline);
 
   /** Sets the tile extent. */
   Status set_tile_extent(const void* tile_extent);
@@ -421,8 +429,14 @@ class Dimension {
   /*         PRIVATE ATTRIBUTES        */
   /* ********************************* */
 
+  /** The number of values per coordinate. */
+  unsigned cell_val_num_;
+
   /** The dimension domain. */
   Range domain_;
+
+  /** The dimension filter pipeline. */
+  FilterPipeline filters_;
 
   /** The dimension name. */
   std::string name_;

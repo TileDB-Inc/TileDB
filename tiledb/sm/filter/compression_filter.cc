@@ -70,6 +70,40 @@ int CompressionFilter::compression_level() const {
   return level_;
 }
 
+void CompressionFilter::dump(FILE* out) const {
+  if (out == nullptr)
+    out = stdout;
+
+  std::string compressor_str;
+  switch (compressor_) {
+    case Compressor::NO_COMPRESSION:
+      compressor_str = "NO_COMPRESSION";
+      break;
+    case Compressor::GZIP:
+      compressor_str = "GZIP";
+      break;
+    case Compressor::ZSTD:
+      compressor_str = "ZSTD";
+      break;
+    case Compressor::LZ4:
+      compressor_str = "LZ4";
+      break;
+    case Compressor::RLE:
+      compressor_str = "RLE";
+      break;
+    case Compressor::BZIP2:
+      compressor_str = "BZIP2";
+      break;
+    case Compressor::DOUBLE_DELTA:
+      compressor_str = "DOUBLE_DELTA";
+      break;
+    default:
+      compressor_str = "NO_COMPRESSION";
+  }
+
+  fprintf(out, "%s: COMPRESSION_LEVEL=%i", compressor_str.c_str(), level_);
+}
+
 CompressionFilter* CompressionFilter::clone_impl() const {
   return new CompressionFilter(compressor_, level_);
 }

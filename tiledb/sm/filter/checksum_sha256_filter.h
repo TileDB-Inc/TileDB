@@ -75,6 +75,9 @@ class ChecksumSHA256Filter : public Filter {
    */
   ChecksumSHA256Filter();
 
+  /** Dumps the filter details in ASCII format in the selected output. */
+  void dump(FILE* out) const override;
+
   /**
    * Encrypt the bytes of the input data into the output data buffer.
    */

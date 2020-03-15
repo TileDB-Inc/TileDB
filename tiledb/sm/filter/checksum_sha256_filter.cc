@@ -50,6 +50,13 @@ ChecksumSHA256Filter* ChecksumSHA256Filter::clone_impl() const {
   return new ChecksumSHA256Filter;
 }
 
+void ChecksumSHA256Filter::dump(FILE* out) const {
+  if (out == nullptr)
+    out = stdout;
+
+  fprintf(out, "ChecksumSHA256");
+}
+
 Status ChecksumSHA256Filter::run_forward(
     FilterBuffer* input_metadata,
     FilterBuffer* input,

@@ -178,9 +178,9 @@ Status attribute_to_capnp(
   attribute_builder->setType(datatype_str(attribute->type()));
   attribute_builder->setCellValNum(attribute->cell_val_num());
 
-  const auto* filters = attribute->filters();
+  const auto& filters = attribute->filters();
   auto filter_pipeline_builder = attribute_builder->initFilterPipeline();
-  RETURN_NOT_OK(filter_pipeline_to_capnp(filters, &filter_pipeline_builder));
+  RETURN_NOT_OK(filter_pipeline_to_capnp(&filters, &filter_pipeline_builder));
 
   return Status::Ok();
 }
@@ -375,19 +375,19 @@ Status array_schema_to_capnp(
   array_schema_builder->setAllowsDuplicates(array_schema->allows_dups());
 
   // Set coordinate filters
-  const FilterPipeline* coords_filters = array_schema->coords_filters();
+  const FilterPipeline& coords_filters = array_schema->coords_filters();
   capnp::FilterPipeline::Builder coords_filters_builder =
       array_schema_builder->initCoordsFilterPipeline();
   RETURN_NOT_OK(
-      filter_pipeline_to_capnp(coords_filters, &coords_filters_builder));
+      filter_pipeline_to_capnp(&coords_filters, &coords_filters_builder));
 
   // Set offset filters
-  const FilterPipeline* offsets_filters =
+  const FilterPipeline& offsets_filters =
       array_schema->cell_var_offsets_filters();
   capnp::FilterPipeline::Builder offsets_filters_builder =
       array_schema_builder->initOffsetFilterPipeline();
   RETURN_NOT_OK(
-      filter_pipeline_to_capnp(offsets_filters, &offsets_filters_builder));
+      filter_pipeline_to_capnp(&offsets_filters, &offsets_filters_builder));
 
   // Domain
   auto domain_builder = array_schema_builder->initDomain();

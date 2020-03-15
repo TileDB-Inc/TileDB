@@ -1065,8 +1065,8 @@ Status Writer::filter_tile(
 
   // Get a copy of the appropriate filter pipeline.
   FilterPipeline filters =
-      (offsets ? *array_schema_->cell_var_offsets_filters() :
-                 *array_schema_->filters(name));
+      (offsets ? array_schema_->cell_var_offsets_filters() :
+                 array_schema_->filters(name));
 
   // Append an encryption filter when necessary.
   RETURN_NOT_OK(FilterPipeline::append_encryption_filter(

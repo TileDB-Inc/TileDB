@@ -34,6 +34,7 @@
 #include "tiledb/sm/buffer/buffer.h"
 #include "tiledb/sm/buffer/const_buffer.h"
 #include "tiledb/sm/enums/datatype.h"
+#include "tiledb/sm/enums/filter_type.h"
 #include "tiledb/sm/misc/utils.h"
 
 #include <cassert>
@@ -53,6 +54,7 @@ Dimension::Dimension()
 Dimension::Dimension(const std::string& name, Datatype type)
     : name_(name)
     , type_(type) {
+  cell_val_num_ = 1;
   set_ceil_to_tile_func();
   set_check_range_func();
   set_coincides_with_tiles_func();
@@ -75,6 +77,8 @@ Dimension::Dimension(const std::string& name, Datatype type)
 Dimension::Dimension(const Dimension* dim) {
   assert(dim != nullptr);
 
+  cell_val_num_ = dim->cell_val_num_;
+  filters_ = dim->filters_;
   name_ = dim->name();
   type_ = dim->type_;
 
@@ -106,8 +110,18 @@ Dimension::Dimension(const Dimension* dim) {
 /* ********************************* */
 
 unsigned int Dimension::cell_val_num() const {
-  // TODO: in a future PR the user will be able to set this value
-  return 1;
+  return cell_val_num_;
+}
+
+Status Dimension::set_cell_val_num(unsigned int cell_val_num) {
+  if (cell_val_num != 1)
+    return LOG_STATUS(Status::DimensionError(
+        "Cannot set number of values per coordinate; Currently only one value "
+        "per coordinate is supported"));
+
+  cell_val_num_ = cell_val_num;
+
+  return Status::Ok();
 }
 
 uint64_t Dimension::coord_size() const {
@@ -174,18 +188,35 @@ std::string Dimension::coord_to_str(const void* coord) const {
 // ===== FORMAT =====
 // dimension_name_size (uint32_t)
 // dimension_name (string)
+// type (uint8_t)
+// cell_val_num (uint32_t)
+// filter_pipeline (see FilterPipeline::serialize)
 // domain (void* - 2*type_size)
 // null_tile_extent (uint8_t)
 // tile_extent (void* - type_size)
-Status Dimension::deserialize(ConstBuffer* buff, Datatype type) {
-  // Set type
-  type_ = type;
-
+Status Dimension::deserialize(
+    ConstBuffer* buff, uint32_t version, Datatype type) {
   // Load dimension name
   uint32_t dimension_name_size;
   RETURN_NOT_OK(buff->read(&dimension_name_size, sizeof(uint32_t)));
   name_.resize(dimension_name_size);
   RETURN_NOT_OK(buff->read(&name_[0], dimension_name_size));
+
+  // Applicable only to version >= 5
+  if (version >= 5) {
+    // Load type
+    uint8_t type;
+    RETURN_NOT_OK(buff->read(&type, sizeof(uint8_t)));
+    type_ = (Datatype)type;
+
+    // Load cell_val_num_
+    RETURN_NOT_OK(buff->read(&cell_val_num_, sizeof(uint32_t)));
+
+    // Load filter pipeline
+    RETURN_NOT_OK(filters_.deserialize(buff));
+  } else {
+    type_ = type;
+  }
 
   // Load domain
   uint64_t domain_size = 2 * coord_size();
@@ -239,12 +270,13 @@ void Dimension::dump(FILE* out) const {
   fprintf(out, "- Name: %s\n", name_.c_str());
   fprintf(out, "- Domain: %s\n", domain_s.c_str());
   fprintf(out, "- Tile extent: %s\n", tile_extent_s.c_str());
+  fprintf(out, "- Filters: %u", (unsigned)filters_.size());
+  filters_.dump(out);
+  fprintf(out, "\n");
 }
 
-const FilterPipeline* Dimension::filters() const {
-  // TODO: in a future PR, the user will be able to set separate
-  // TODO: filters for each dimension
-  return nullptr;
+const FilterPipeline& Dimension::filters() const {
+  return filters_;
 }
 
 const std::string& Dimension::name() const {
@@ -606,10 +638,13 @@ bool Dimension::value_in_range(const void* value, const Range& range) const {
 // ===== FORMAT =====
 // dimension_name_size (uint32_t)
 // dimension_name (string)
+// type (uint8_t)
+// cell_val_num (uint32_t)
+// filter_pipeline (see FilterPipeline::serialize)
 // domain (void* - 2*type_size)
 // null_tile_extent (uint8_t)
 // tile_extent (void* - type_size)
-Status Dimension::serialize(Buffer* buff) {
+Status Dimension::serialize(Buffer* buff, uint32_t version) {
   // Sanity check
   if (domain_.empty()) {
     return LOG_STATUS(
@@ -620,6 +655,19 @@ Status Dimension::serialize(Buffer* buff) {
   auto dimension_name_size = (uint32_t)name_.size();
   RETURN_NOT_OK(buff->write(&dimension_name_size, sizeof(uint32_t)));
   RETURN_NOT_OK(buff->write(name_.c_str(), dimension_name_size));
+
+  // Applicable only to version >= 5
+  if (version >= 5) {
+    // Write type
+    auto type = (uint8_t)type_;
+    RETURN_NOT_OK(buff->write(&type, sizeof(uint8_t)));
+
+    // Write cell_val_num_
+    RETURN_NOT_OK(buff->write(&cell_val_num_, sizeof(uint32_t)));
+
+    // Write filter pipeline
+    RETURN_NOT_OK(filters_.serialize(buff));
+  }
 
   // Write domain and tile extent
   uint64_t domain_size = 2 * coord_size();
@@ -645,6 +693,24 @@ Status Dimension::set_domain(const Range& domain) {
 
   domain_ = domain;
   RETURN_NOT_OK_ELSE(check_domain(), domain_.clear());
+
+  return Status::Ok();
+}
+
+Status Dimension::set_filter_pipeline(const FilterPipeline* pipeline) {
+  if (pipeline == nullptr)
+    return LOG_STATUS(Status::DimensionError(
+        "Cannot set filter pipeline to dimension; Pipeline cannot be null"));
+
+  for (size_t i = 0; i < pipeline->size(); ++i) {
+    if (datatype_is_real(type_) &&
+        pipeline->get_filter(i)->type() == FilterType::FILTER_DOUBLE_DELTA)
+      return LOG_STATUS(
+          Status::DimensionError("Cannot set DOUBLE DELTA filter to a "
+                                 "dimension with a real datatype"));
+  }
+
+  filters_ = *pipeline;
 
   return Status::Ok();
 }
@@ -768,8 +834,7 @@ Datatype Dimension::type() const {
 }
 
 bool Dimension::var_size() const {
-  // TODO: to fix when adding var-sized support to dimensions
-  return false;
+  return cell_val_num_ == constants::var_num;
 }
 
 /* ********************************* */

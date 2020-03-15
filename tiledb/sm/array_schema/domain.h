@@ -153,9 +153,10 @@ class Domain {
    * Populates the object members from the data in the input binary buffer.
    *
    * @param buff The buffer to deserialize from.
+   * @param version The array schema version.
    * @return Status
    */
-  Status deserialize(ConstBuffer* buff);
+  Status deserialize(ConstBuffer* buff, uint32_t version);
 
   /** Returns the cell order. */
   Layout cell_order() const;
@@ -392,9 +393,10 @@ class Domain {
    * Serializes the object members into a binary buffer.
    *
    * @param buff The buffer to serialize the data into.
+   * @param version The array schema version.
    * @return Status
    */
-  Status serialize(Buffer* buff);
+  Status serialize(Buffer* buff, uint32_t version);
 
   /**
    * For every dimension that has a null tile extent, it sets
