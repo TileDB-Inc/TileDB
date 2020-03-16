@@ -333,11 +333,6 @@ Status Azure::flush_blob_direct(const URI& uri) {
   // We do not store any custom metadata with the blob.
   std::vector<std::pair<std::string, std::string>> empty_metadata;
 
-  // Protect 'write_cache_map_' from multiple writers.
-  std::unique_lock<std::mutex> cache_lock(write_cache_map_lock_);
-  write_cache_map_.erase(uri.to_string());
-  cache_lock.unlock();
-
   // Unlike the 'upload_block_from_buffer' interface used in
   // the block list upload path, there is not an interface to
   // upload a single blob with a buffer. There is only
@@ -350,7 +345,11 @@ Status Azure::flush_blob_direct(const URI& uri) {
 
   std::future<azure::storage_lite::storage_outcome<void>> result =
       client_->upload_block_blob_from_stream(
-          container_name, blob_path, zc_istream, empty_metadata);
+          container_name,
+          blob_path,
+          zc_istream,
+          empty_metadata,
+          write_cache_buffer->size());
   if (!result.valid()) {
     return LOG_STATUS(Status::AzureError(
         std::string("Flush blob failed on: " + uri.to_string())));
@@ -361,6 +360,11 @@ Status Azure::flush_blob_direct(const URI& uri) {
     return LOG_STATUS(Status::AzureError(
         std::string("Flush blob failed on: " + uri.to_string())));
   }
+
+  // Protect 'write_cache_map_' from multiple writers.
+  std::unique_lock<std::mutex> cache_lock(write_cache_map_lock_);
+  write_cache_map_.erase(uri.to_string());
+  cache_lock.unlock();
 
   return wait_for_blob_to_propagate(container_name, blob_path);
 }

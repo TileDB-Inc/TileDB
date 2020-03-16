@@ -49,18 +49,34 @@ struct AzureFx {
   const tiledb::sm::URI AZURE_CONTAINER =
       tiledb::sm::URI(AZURE_PREFIX + random_container_name("tiledb") + "/");
   const std::string TEST_DIR = AZURE_CONTAINER.to_string() + "tiledb_test_dir/";
+
   tiledb::sm::Azure azure_;
   ThreadPool thread_pool_;
 
-  AzureFx();
+  AzureFx() = default;
   ~AzureFx();
+
+  void init_azure(Config&& config);
 
   static std::string random_container_name(const std::string& prefix);
 };
 
-AzureFx::AzureFx() {
+AzureFx::~AzureFx() {
+  // Empty container
+  bool is_empty;
+  REQUIRE(azure_.is_empty_container(AZURE_CONTAINER, &is_empty).ok());
+  if (!is_empty) {
+    REQUIRE(azure_.empty_container(AZURE_CONTAINER).ok());
+    REQUIRE(azure_.is_empty_container(AZURE_CONTAINER, &is_empty).ok());
+    REQUIRE(is_empty);
+  }
+
+  // Delete container
+  REQUIRE(azure_.remove_container(AZURE_CONTAINER).ok());
+}
+
+void AzureFx::init_azure(Config&& config) {
   // Connect
-  Config config;
   REQUIRE(
       config.set("vfs.azure.storage_account_name", "devstoreaccount1").ok());
   REQUIRE(config
@@ -92,20 +108,6 @@ AzureFx::AzureFx() {
   REQUIRE(is_empty);
 }
 
-AzureFx::~AzureFx() {
-  // Empty container
-  bool is_empty;
-  REQUIRE(azure_.is_empty_container(AZURE_CONTAINER, &is_empty).ok());
-  if (!is_empty) {
-    REQUIRE(azure_.empty_container(AZURE_CONTAINER).ok());
-    REQUIRE(azure_.is_empty_container(AZURE_CONTAINER, &is_empty).ok());
-    REQUIRE(is_empty);
-  }
-
-  // Delete container
-  REQUIRE(azure_.remove_container(AZURE_CONTAINER).ok());
-}
-
 std::string AzureFx::random_container_name(const std::string& prefix) {
   std::stringstream ss;
   ss << prefix << "-" << std::this_thread::get_id() << "-"
@@ -114,6 +116,10 @@ std::string AzureFx::random_container_name(const std::string& prefix) {
 }
 
 TEST_CASE_METHOD(AzureFx, "Test Azure filesystem, file management", "[azure]") {
+  Config config;
+  config.set("vfs.azure.use_block_list_upload", "true");
+  init_azure(std::move(config));
+
   /* Create the following file hierarchy:
    *
    * TEST_DIR/dir/subdir/file1
@@ -223,9 +229,22 @@ TEST_CASE_METHOD(AzureFx, "Test Azure filesystem, file management", "[azure]") {
   REQUIRE(!is_blob);
 }
 
-TEST_CASE_METHOD(AzureFx, "Test Azure filesystem, file I/O", "[azure]") {
+TEST_CASE_METHOD(
+    AzureFx, "Test Azure filesystem, file I/O", "[azure][multipart]") {
+  Config config;
+  const uint64_t max_parallel_ops = 2;
+  const uint64_t block_list_block_size = 4 * 1024 * 1024;
+  config.set("vfs.azure.use_block_list_upload", "true");
+  config.set("vfs.azure.max_parallel_ops", std::to_string(max_parallel_ops));
+  config.set(
+      "vfs.azure.block_list_block_size", std::to_string(block_list_block_size));
+  init_azure(std::move(config));
+
+  const uint64_t write_cache_max_size =
+      max_parallel_ops * block_list_block_size;
+
   // Prepare buffers
-  uint64_t buffer_size = 5 * 1024 * 1024;
+  uint64_t buffer_size = write_cache_max_size;
   auto write_buffer = new char[buffer_size];
   for (uint64_t i = 0; i < buffer_size; i++)
     write_buffer[i] = (char)('a' + (i % 26));
@@ -281,6 +300,114 @@ TEST_CASE_METHOD(AzureFx, "Test Azure filesystem, file I/O", "[azure]") {
 
   // Read from a different offset
   REQUIRE(azure_.read(URI(largefile), 11, read_buffer, 26).ok());
+  allok = true;
+  for (int i = 0; i < 26; i++) {
+    if (read_buffer[i] != static_cast<char>('a' + (i + 11) % 26)) {
+      allok = false;
+      break;
+    }
+  }
+  REQUIRE(allok);
+}
+
+TEST_CASE_METHOD(
+    AzureFx,
+    "Test Azure filesystem, file I/O, no multipart",
+    "[azure][no_multipart]") {
+  Config config;
+  const uint64_t max_parallel_ops = 2;
+  const uint64_t block_list_block_size = 4 * 1024 * 1024;
+  config.set("vfs.azure.use_block_list_upload", "false");
+  config.set("vfs.azure.max_parallel_ops", std::to_string(max_parallel_ops));
+  config.set(
+      "vfs.azure.block_list_block_size", std::to_string(block_list_block_size));
+  init_azure(std::move(config));
+
+  const uint64_t write_cache_max_size =
+      max_parallel_ops * block_list_block_size;
+
+  // Prepare a large buffer that can fit in the write cache.
+  uint64_t large_buffer_size = write_cache_max_size;
+  auto large_write_buffer = new char[large_buffer_size];
+  for (uint64_t i = 0; i < large_buffer_size; i++)
+    large_write_buffer[i] = (char)('a' + (i % 26));
+
+  // Prepare a small buffer that can fit in the write cache.
+  uint64_t small_buffer_size = write_cache_max_size / 1024;
+  auto small_write_buffer = new char[small_buffer_size];
+  for (uint64_t i = 0; i < small_buffer_size; i++)
+    small_write_buffer[i] = (char)('a' + (i % 26));
+
+  // Prepare a buffer too large to fit in the write cache.
+  uint64_t oob_buffer_size = write_cache_max_size + 1;
+  auto oob_write_buffer = new char[oob_buffer_size];
+  for (uint64_t i = 0; i < oob_buffer_size; i++)
+    oob_write_buffer[i] = (char)('a' + (i % 26));
+
+  auto large_file = TEST_DIR + "largefile";
+  REQUIRE(azure_.write(URI(large_file), large_write_buffer, large_buffer_size)
+              .ok());
+
+  auto small_file_1 = TEST_DIR + "smallfile1";
+  REQUIRE(azure_.write(URI(small_file_1), small_write_buffer, small_buffer_size)
+              .ok());
+
+  auto small_file_2 = TEST_DIR + "smallfile2";
+  REQUIRE(azure_.write(URI(small_file_2), small_write_buffer, small_buffer_size)
+              .ok());
+  REQUIRE(azure_.write(URI(small_file_2), small_write_buffer, small_buffer_size)
+              .ok());
+
+  auto oob_file = TEST_DIR + "oobfile";
+  REQUIRE(!azure_.write(URI(oob_file), oob_write_buffer, oob_buffer_size).ok());
+
+  // Before flushing, the files do not exist
+  bool is_blob;
+  REQUIRE(azure_.is_blob(URI(large_file), &is_blob).ok());
+  REQUIRE(!is_blob);
+  REQUIRE(azure_.is_blob(URI(small_file_1), &is_blob).ok());
+  REQUIRE(!is_blob);
+  REQUIRE(azure_.is_blob(URI(small_file_2), &is_blob).ok());
+  REQUIRE(!is_blob);
+  REQUIRE(azure_.is_blob(URI(oob_file), &is_blob).ok());
+  REQUIRE(!is_blob);
+
+  // Flush the files
+  REQUIRE(azure_.flush_blob(URI(small_file_1)).ok());
+  REQUIRE(azure_.flush_blob(URI(small_file_2)).ok());
+  REQUIRE(azure_.flush_blob(URI(large_file)).ok());
+
+  // After flushing, the files exist
+  REQUIRE(azure_.is_blob(URI(large_file), &is_blob).ok());
+  REQUIRE(is_blob);
+  REQUIRE(azure_.is_blob(URI(small_file_1), &is_blob).ok());
+  REQUIRE(is_blob);
+  REQUIRE(azure_.is_blob(URI(small_file_2), &is_blob).ok());
+  REQUIRE(is_blob);
+
+  // Get file sizes
+  uint64_t nbytes = 0;
+  REQUIRE(azure_.blob_size(URI(large_file), &nbytes).ok());
+  CHECK(nbytes == large_buffer_size);
+  REQUIRE(azure_.blob_size(URI(small_file_1), &nbytes).ok());
+  CHECK(nbytes == small_buffer_size);
+  REQUIRE(azure_.blob_size(URI(small_file_2), &nbytes).ok());
+  CHECK(nbytes == (small_buffer_size + small_buffer_size));
+
+  // Read from the beginning
+  auto read_buffer = new char[26];
+  REQUIRE(azure_.read(URI(large_file), 0, read_buffer, 26).ok());
+  bool allok = true;
+  for (int i = 0; i < 26; i++) {
+    if (read_buffer[i] != static_cast<char>('a' + i)) {
+      allok = false;
+      break;
+    }
+  }
+  REQUIRE(allok);
+
+  // Read from a different offset
+  REQUIRE(azure_.read(URI(large_file), 11, read_buffer, 26).ok());
   allok = true;
   for (int i = 0; i < 26; i++) {
     if (read_buffer[i] != static_cast<char>('a' + (i + 11) % 26)) {
