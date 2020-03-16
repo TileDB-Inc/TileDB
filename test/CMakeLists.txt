@@ -84,6 +84,7 @@ set(TILEDB_TEST_SOURCES
   src/unit-crypto.cc
   src/unit-filter-buffer.cc
   src/unit-filter-pipeline.cc
+  src/unit-gcs.cc
   src/unit-hdfs-filesystem.cc
   src/unit-lru_cache.cc
   src/unit-Reader.cc
@@ -189,6 +190,10 @@ endif()
 
 if (TILEDB_AZURE)
   target_compile_definitions(tiledb_unit PRIVATE -DHAVE_AZURE)
+endif()
+
+if (TILEDB_GCS)
+  target_compile_definitions(tiledb_unit PRIVATE -DHAVE_GCS)
 endif()
 
 if (TILEDB_TBB)
