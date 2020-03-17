@@ -343,9 +343,18 @@ class Azure {
     std::string next_block_id() {
       const uint64_t block_id = next_block_id_++;
       const std::string block_id_str = std::to_string(block_id);
+
+      // Pad the block id string with enough leading zeros to support
+      // the maximum number of blocks (50,000). All block ids must be
+      // of equal length among a single blob.
+      const int block_id_chars = 5;
+      const std::string padded_block_id_str =
+          std::string(block_id_chars - block_id_str.length(), '0') +
+          block_id_str;
+
       const std::string b64_block_id_str = azure::storage_lite::to_base64(
-          reinterpret_cast<const unsigned char*>(block_id_str.c_str()),
-          block_id_str.size());
+          reinterpret_cast<const unsigned char*>(padded_block_id_str.c_str()),
+          padded_block_id_str.size());
 
       block_ids_.emplace_back(b64_block_id_str);
 

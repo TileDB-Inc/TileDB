@@ -244,6 +244,9 @@ Status Azure::flush_blob(const URI& uri) {
       &block_list_upload_states_.at(uri.to_string());
 
   if (!state->st().ok()) {
+    // Save the return status because 'state' will be freed before we return.
+    const Status st = state->st();
+
     // Unlike S3 that can abort a chunked upload to immediately release
     // uncommited chunks and leave the original object unmodified, the
     // only way to do this on Azure is by some form of a write. We must
@@ -261,7 +264,7 @@ Status Azure::flush_blob(const URI& uri) {
     // transactions.
     finish_block_list_upload(uri);
 
-    return Status::Ok();
+    return st;
   }
 
   // Build the block list to commit.
@@ -333,11 +336,6 @@ Status Azure::flush_blob_direct(const URI& uri) {
   // We do not store any custom metadata with the blob.
   std::vector<std::pair<std::string, std::string>> empty_metadata;
 
-  // Protect 'write_cache_map_' from multiple writers.
-  std::unique_lock<std::mutex> cache_lock(write_cache_map_lock_);
-  write_cache_map_.erase(uri.to_string());
-  cache_lock.unlock();
-
   // Unlike the 'upload_block_from_buffer' interface used in
   // the block list upload path, there is not an interface to
   // upload a single blob with a buffer. There is only
@@ -350,7 +348,11 @@ Status Azure::flush_blob_direct(const URI& uri) {
 
   std::future<azure::storage_lite::storage_outcome<void>> result =
       client_->upload_block_blob_from_stream(
-          container_name, blob_path, zc_istream, empty_metadata);
+          container_name,
+          blob_path,
+          zc_istream,
+          empty_metadata,
+          write_cache_buffer->size());
   if (!result.valid()) {
     return LOG_STATUS(Status::AzureError(
         std::string("Flush blob failed on: " + uri.to_string())));
@@ -361,6 +363,11 @@ Status Azure::flush_blob_direct(const URI& uri) {
     return LOG_STATUS(Status::AzureError(
         std::string("Flush blob failed on: " + uri.to_string())));
   }
+
+  // Protect 'write_cache_map_' from multiple writers.
+  std::unique_lock<std::mutex> cache_lock(write_cache_map_lock_);
+  write_cache_map_.erase(uri.to_string());
+  cache_lock.unlock();
 
   return wait_for_blob_to_propagate(container_name, blob_path);
 }
