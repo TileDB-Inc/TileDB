@@ -3110,23 +3110,57 @@ int DenseArrayFx::submit_query_wrapper(
         }
       }
 
-      // Repeat for coords
-      void* buff;
-      uint64_t* buff_size;
-      REQUIRE(
-          tiledb_query_get_buffer(
-              ctx_, new_query, TILEDB_COORDS, &buff, &buff_size) == TILEDB_OK);
-      if (buff_size != nullptr) {
-        buff = std::malloc(*buff_size);
-        to_free.push_back(buff);
-        REQUIRE(
-            tiledb_query_set_buffer(
-                ctx_, new_query, TILEDB_COORDS, buff, buff_size) == TILEDB_OK);
-      }
-
       tiledb_attribute_free(&attr);
     }
 
+    // Repeat for coords
+    void* buff;
+    uint64_t* buff_size;
+    REQUIRE(
+        tiledb_query_get_buffer(
+            ctx_, new_query, TILEDB_COORDS, &buff, &buff_size) == TILEDB_OK);
+    if (buff_size != nullptr) {
+      buff = std::malloc(*buff_size);
+      to_free.push_back(buff);
+      REQUIRE(
+          tiledb_query_set_buffer(
+              ctx_, new_query, TILEDB_COORDS, buff, buff_size) == TILEDB_OK);
+    }
+
+    // Repeat for split dimensions, if they are set we will set the buffer
+    uint32_t num_dimension;
+    tiledb_domain_t* domain;
+    REQUIRE(tiledb_array_schema_get_domain(ctx_, schema, &domain) == TILEDB_OK);
+    REQUIRE(tiledb_domain_get_ndim(ctx_, domain, &num_dimension) == TILEDB_OK);
+
+    for (uint32_t i = 0; i < num_dimension; i++) {
+      tiledb_dimension_t* dim;
+      REQUIRE(
+          tiledb_domain_get_dimension_from_index(ctx_, domain, i, &dim) ==
+          TILEDB_OK);
+      const char* name;
+      REQUIRE(tiledb_dimension_get_name(ctx_, dim, &name) == TILEDB_OK);
+
+      void* buff;
+      uint64_t* buff_size;
+      REQUIRE(
+          tiledb_query_get_buffer(ctx_, new_query, name, &buff, &buff_size) ==
+          TILEDB_OK);
+      // Buffers will always be null after deserialization on server side
+      REQUIRE(buff == nullptr);
+      if (buff_size != nullptr) {
+        // Buffer size was set for the attribute; allocate one of the
+        // appropriate size.
+        buff = std::malloc(*buff_size);
+        to_free.push_back(buff);
+        REQUIRE(
+            tiledb_query_set_buffer(ctx_, new_query, name, buff, buff_size) ==
+            TILEDB_OK);
+      }
+      tiledb_dimension_free(&dim);
+    }
+
+    tiledb_domain_free(&domain);
     tiledb_array_schema_free(&schema);
   }
 
