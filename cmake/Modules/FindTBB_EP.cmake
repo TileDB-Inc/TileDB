@@ -242,8 +242,8 @@ else()
     else()
       ExternalProject_Add(ep_tbb
         PREFIX "externals"
-        URL "https://github.com/01org/tbb/archive/2018_U3.zip"
-        URL_HASH SHA1=c17ae26f2be1dd7ca9586f795d07a226ceca2dc2
+        URL "https://github.com/oneapi-src/oneTBB/archive/2018_U3.zip"
+        URL_HASH SHA1=cfd10b441022ba84e41406a885b9172f693f6f99
         CONFIGURE_COMMAND ""
         BUILD_COMMAND ""
         UPDATE_COMMAND ""
