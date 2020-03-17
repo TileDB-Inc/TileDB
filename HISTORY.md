@@ -12,6 +12,8 @@
 
 ## Bug fixes
 
+* Fix new SHA1 for intel TBB in superbuild due to change in repository name [#1551](https://github.com/TileDB-Inc/TileDB/pull/1551)
+
 ## API additions
 
 ## API removals
