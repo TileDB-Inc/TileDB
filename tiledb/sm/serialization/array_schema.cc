@@ -228,6 +228,11 @@ Status dimension_to_capnp(
         dimension->tile_extent().data()));
   }
 
+  // Set filters
+  const FilterPipeline& coords_filters = dimension->filters();
+  capnp::FilterPipeline::Builder filters_builder =
+      dimension_builder->initFilterPipeline();
+  RETURN_NOT_OK(filter_pipeline_to_capnp(&coords_filters, &filters_builder));
   return Status::Ok();
 }
 
@@ -243,6 +248,13 @@ Status dimension_from_capnp(
   RETURN_NOT_OK(
       utils::copy_capnp_list(domain_reader, dim_type, &domain_buffer));
   RETURN_NOT_OK((*dimension)->set_domain(domain_buffer.data()));
+
+  if (dimension_reader.hasFilterPipeline()) {
+    auto reader = dimension_reader.getFilterPipeline();
+    std::unique_ptr<FilterPipeline> filters;
+    RETURN_NOT_OK(filter_pipeline_from_capnp(reader, &filters));
+    RETURN_NOT_OK((*dimension)->set_filter_pipeline(filters.get()));
+  }
 
   if (!dimension_reader.getNullTileExtent()) {
     auto tile_extent_reader = dimension_reader.getTileExtent();
