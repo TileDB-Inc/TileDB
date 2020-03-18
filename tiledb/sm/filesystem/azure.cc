@@ -69,18 +69,39 @@ Status Azure::init(const Config& config, ThreadPool* const thread_pool) {
   thread_pool_ = thread_pool;
 
   bool found;
-  const std::string account_name =
+  char* tmp = NULL;
+
+  std::string account_name =
       config.get("vfs.azure.storage_account_name", &found);
   assert(found);
-  const std::string account_key =
-      config.get("vfs.azure.storage_account_key", &found);
+  if (account_name.empty() &&
+      ((tmp = getenv("AZURE_STORAGE_ACCOUNT")) != NULL)) {
+    account_name = std::string(tmp);
+  }
+
+  std::string account_key = config.get("vfs.azure.storage_account_key", &found);
   assert(found);
-  const std::string blob_endpoint =
-      config.get("vfs.azure.blob_endpoint", &found);
+  if (account_key.empty() && ((tmp = getenv("AZURE_STORAGE_KEY")) != NULL)) {
+    account_key = std::string(getenv("AZURE_STORAGE_KEY"));
+  }
+
+  std::string blob_endpoint = config.get("vfs.azure.blob_endpoint", &found);
   assert(found);
+  if (blob_endpoint.empty() &&
+      ((tmp = getenv("AZURE_BLOB_ENDPOINT")) != NULL)) {
+    blob_endpoint = std::string(getenv("AZURE_BLOB_ENDPOINT"));
+  }
+
   bool use_https;
   RETURN_NOT_OK(config.get<bool>("vfs.azure.use_https", &use_https, &found));
   assert(found);
+  // note that the default here is use_https=true, so the logic below is
+  // inverted
+  if (use_https && ((tmp = getenv("AZURE_USE_HTTPS")) != NULL)) {
+    std::string use_https_env(tmp);
+    use_https = (!use_https_env.empty());
+  }
+
   RETURN_NOT_OK(config.get<uint64_t>(
       "vfs.azure.max_parallel_ops", &max_parallel_ops_, &found));
   assert(found);
