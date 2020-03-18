@@ -1,5 +1,5 @@
 /**
- * @file unit-rtree.cc
+ * @file unit-RTree.cc
  *
  * @section LICENSE
  *
@@ -59,6 +59,24 @@ std::vector<NDRange> create_mbrs(const std::vector<T>& mbrs) {
   return ret;
 }
 
+template <class T1, class T2>
+std::vector<NDRange> create_mbrs(
+    const std::vector<T1>& r1, const std::vector<T2>& r2) {
+  assert(r1.size() == r2.size());
+
+  uint64_t mbr_num = (uint64_t)(r1.size() / 2);
+  std::vector<NDRange> ret(mbr_num);
+  uint64_t r1_size = 2 * sizeof(T1);
+  uint64_t r2_size = 2 * sizeof(T2);
+  for (uint64_t m = 0; m < mbr_num; ++m) {
+    ret[m].resize(2);
+    ret[m][0].set_range(&r1[2 * m], r1_size);
+    ret[m][1].set_range(&r2[2 * m], r2_size);
+  }
+
+  return ret;
+}
+
 Domain create_domain(
     const std::vector<std::string>& dim_names,
     const std::vector<Datatype>& dim_types,
@@ -69,7 +87,7 @@ Domain create_domain(
   assert(dim_names.size() == dim_domains.size());
   assert(dim_names.size() == dim_tile_extents.size());
 
-  Domain domain(dim_types[0]);
+  Domain domain;
   for (size_t d = 0; d < dim_names.size(); ++d) {
     Dimension dim(dim_names[d], dim_types[d]);
     dim.set_domain(dim_domains[d]);
@@ -457,4 +475,274 @@ TEST_CASE("RTree: Test 2D R-tree, height 3", "[rtree][2d][3h]") {
   CHECK(overlap.tiles_.size() == 1);
   CHECK(overlap.tiles_[0].first == 5);
   CHECK(overlap.tiles_[0].second == 2.0 / 3);
+}
+
+TEST_CASE(
+    "RTree: Test R-Tree, heterogeneous (uint8, int32), basic functions",
+    "[rtree][basic][heter]") {
+  // Create RTree with dimensions uint8, int32
+  uint8_t uint8_dom[] = {0, 10};
+  int32_t int32_dom[] = {5, 10};
+  uint8_t uint8_extent = 2;
+  int32_t int32_extent = 2;
+  Domain dom = create_domain(
+      {"d1", "d2"},
+      {Datatype::UINT8, Datatype::INT32},
+      {uint8_dom, int32_dom},
+      {&uint8_extent, &int32_extent});
+  std::vector<NDRange> mbrs =
+      create_mbrs<uint8_t, int32_t>({0, 1, 3, 5}, {5, 6, 7, 9});
+  RTree rtree(&dom, 5);
+  rtree.set_leaves(mbrs);
+  rtree.build_tree();
+  CHECK(rtree.height() == 2);
+  CHECK(rtree.dim_num() == 2);
+  CHECK(rtree.fanout() == 5);
+  CHECK(rtree.leaf(0) == mbrs[0]);
+  CHECK(rtree.leaf(1) == mbrs[1]);
+
+  // Check no domain overlap
+  NDRange range_no(2);
+  uint8_t uint8_r_no[] = {6, 7};
+  int32_t int32_r_no[] = {1, 10};
+  range_no[0].set_range(uint8_r_no, sizeof(uint8_r_no));
+  range_no[1].set_range(int32_r_no, sizeof(int32_r_no));
+  double ratio = dom.overlap_ratio(range_no, mbrs[0]);
+  CHECK(ratio == 0.0);
+
+  // Check full domain overlap
+  NDRange range_full(2);
+  uint8_t uint8_r_full[] = {0, 10};
+  int32_t int32_r_full[] = {1, 10};
+  range_full[0].set_range(uint8_r_full, sizeof(uint8_r_full));
+  range_full[1].set_range(int32_r_full, sizeof(int32_r_full));
+  ratio = dom.overlap_ratio(range_full, mbrs[0]);
+  CHECK(ratio == 1.0);
+  ratio = dom.overlap_ratio(range_full, mbrs[1]);
+  CHECK(ratio == 1.0);
+
+  // Check partial domain overlap
+  NDRange range_part(2);
+  uint8_t uint8_r_part[] = {1, 1};
+  int32_t int32_r_part[] = {5, 5};
+  range_part[0].set_range(uint8_r_part, sizeof(uint8_r_part));
+  range_part[1].set_range(int32_r_part, sizeof(int32_r_part));
+  ratio = dom.overlap_ratio(range_part, mbrs[0]);
+  CHECK(ratio == 0.25);
+}
+
+TEST_CASE(
+    "RTree: Test R-Tree, heterogeneous (uint64, float32), basic functions",
+    "[rtree][basic][heter]") {
+  // Create RTree with dimensions uint64, float32
+  uint64_t uint64_dom[] = {0, 10};
+  float float_dom[] = {0.1f, 0.9f};
+  uint64_t uint64_extent = 2;
+  float float_extent = 0.1f;
+  Domain dom = create_domain(
+      {"d1", "d2"},
+      {Datatype::UINT64, Datatype::FLOAT32},
+      {uint64_dom, float_dom},
+      {&uint64_extent, &float_extent});
+  std::vector<NDRange> mbrs =
+      create_mbrs<uint64_t, float>({0, 1, 3, 5}, {.5f, .6f, .7f, .9f});
+  RTree rtree(&dom, 5);
+  rtree.set_leaves(mbrs);
+  rtree.build_tree();
+  CHECK(rtree.height() == 2);
+  CHECK(rtree.dim_num() == 2);
+  CHECK(rtree.fanout() == 5);
+  CHECK(rtree.leaf(0) == mbrs[0]);
+  CHECK(rtree.leaf(1) == mbrs[1]);
+
+  // Check no domain overlap
+  NDRange range_no(2);
+  uint64_t uint64_r_no[] = {6, 7};
+  float float_r_no[] = {.1f, .9f};
+  range_no[0].set_range(uint64_r_no, sizeof(uint64_r_no));
+  range_no[1].set_range(float_r_no, sizeof(float_r_no));
+  double ratio = dom.overlap_ratio(range_no, mbrs[0]);
+  CHECK(ratio == 0.0);
+
+  // Check full domain overlap
+  NDRange range_full(2);
+  uint64_t uint64_r_full[] = {0, 10};
+  float float_r_full[] = {.1f, 1.0f};
+  range_full[0].set_range(uint64_r_full, sizeof(uint64_r_full));
+  range_full[1].set_range(float_r_full, sizeof(float_r_full));
+  ratio = dom.overlap_ratio(range_full, mbrs[0]);
+  CHECK(ratio == 1.0);
+  ratio = dom.overlap_ratio(range_full, mbrs[1]);
+  CHECK(ratio == 1.0);
+
+  // Check partial domain overlap
+  NDRange range_part(2);
+  uint64_t uint64_r_part[] = {1, 1};
+  float float_r_part[] = {.5f, .55f};
+  range_part[0].set_range(uint64_r_part, sizeof(uint64_r_part));
+  range_part[1].set_range(float_r_part, sizeof(float_r_part));
+  ratio = dom.overlap_ratio(range_part, mbrs[0]);
+  CHECK(ratio == 0.25);
+}
+
+TEST_CASE(
+    "RTree: Test 2D R-tree, height 2, heterogeneous (uint8, int32)",
+    "[rtree][2d][2h][heter]") {
+  // Create RTree with dimensions uint8, int32
+  uint8_t uint8_dom[] = {0, 200};
+  int32_t int32_dom[] = {5, 100};
+  uint8_t uint8_extent = 2;
+  int32_t int32_extent = 2;
+  Domain dom = create_domain(
+      {"d1", "d2"},
+      {Datatype::UINT8, Datatype::INT32},
+      {uint8_dom, int32_dom},
+      {&uint8_extent, &int32_extent});
+  std::vector<NDRange> mbrs =
+      create_mbrs<uint8_t, int32_t>({0, 1, 3, 5, 11, 20}, {5, 6, 7, 9, 11, 30});
+  RTree rtree(&dom, 3);
+  rtree.set_leaves(mbrs);
+  rtree.build_tree();
+  CHECK(rtree.height() == 2);
+  CHECK(rtree.dim_num() == 2);
+  CHECK(rtree.fanout() == 3);
+  CHECK(rtree.leaf(0) == mbrs[0]);
+  CHECK(rtree.leaf(1) == mbrs[1]);
+  CHECK(rtree.leaf(2) == mbrs[2]);
+
+  // Subtree leaf num
+  CHECK(rtree.subtree_leaf_num(0) == 3);
+  CHECK(rtree.subtree_leaf_num(1) == 1);
+  CHECK(rtree.subtree_leaf_num(2) == 0);
+
+  // Check no tile overlap
+  NDRange range_no(2);
+  uint8_t uint8_r_no[] = {6, 7};
+  int32_t int32_r_no[] = {1, 10};
+  range_no[0].set_range(uint8_r_no, sizeof(uint8_r_no));
+  range_no[1].set_range(int32_r_no, sizeof(int32_r_no));
+  auto overlap = rtree.get_tile_overlap(range_no);
+  CHECK(overlap.tiles_.empty());
+  CHECK(overlap.tile_ranges_.empty());
+
+  // Check full tile overlap
+  NDRange range_full(2);
+  uint8_t uint8_r_full[] = {0, 100};
+  int32_t int32_r_full[] = {1, 100};
+  range_full[0].set_range(uint8_r_full, sizeof(uint8_r_full));
+  range_full[1].set_range(int32_r_full, sizeof(int32_r_full));
+  overlap = rtree.get_tile_overlap(range_full);
+  CHECK(overlap.tiles_.empty());
+  CHECK(overlap.tile_ranges_.size() == 1);
+  CHECK(overlap.tile_ranges_[0].first == 0);
+  CHECK(overlap.tile_ranges_[0].second == 2);
+
+  // Check partial tile overlap
+  NDRange range_part(2);
+  uint8_t uint8_r_part[] = {4, 15};
+  int32_t int32_r_part[] = {7, 20};
+  range_part[0].set_range(uint8_r_part, sizeof(uint8_r_part));
+  range_part[1].set_range(int32_r_part, sizeof(int32_r_part));
+  overlap = rtree.get_tile_overlap(range_part);
+  CHECK(overlap.tile_ranges_.empty());
+  CHECK(overlap.tiles_.size() == 2);
+  CHECK(overlap.tiles_[0].first == 1);
+  CHECK(overlap.tiles_[0].second == 2.0 / 3);
+  CHECK(overlap.tiles_[1].first == 2);
+  CHECK(overlap.tiles_[1].second == .25);
+}
+
+TEST_CASE(
+    "RTree: Test 2D R-tree, height 3, heterogeneous (uint8, int32)",
+    "[rtree][2d][2h][heter]") {
+  // Create RTree with dimensions uint8, int32
+  uint8_t uint8_dom[] = {0, 200};
+  int32_t int32_dom[] = {5, 100};
+  uint8_t uint8_extent = 2;
+  int32_t int32_extent = 2;
+  Domain dom = create_domain(
+      {"d1", "d2"},
+      {Datatype::UINT8, Datatype::INT32},
+      {uint8_dom, int32_dom},
+      {&uint8_extent, &int32_extent});
+  std::vector<NDRange> mbrs = create_mbrs<uint8_t, int32_t>(
+      {0, 1, 3, 5, 11, 20, 21, 26}, {5, 6, 7, 9, 11, 30, 31, 40});
+  RTree rtree(&dom, 2);
+  rtree.set_leaves(mbrs);
+  rtree.build_tree();
+  CHECK(rtree.height() == 3);
+  CHECK(rtree.dim_num() == 2);
+  CHECK(rtree.fanout() == 2);
+  CHECK(rtree.leaf(0) == mbrs[0]);
+  CHECK(rtree.leaf(1) == mbrs[1]);
+  CHECK(rtree.leaf(2) == mbrs[2]);
+  CHECK(rtree.leaf(3) == mbrs[3]);
+
+  // Subtree leaf num
+  CHECK(rtree.subtree_leaf_num(0) == 4);
+  CHECK(rtree.subtree_leaf_num(1) == 2);
+  CHECK(rtree.subtree_leaf_num(2) == 1);
+  CHECK(rtree.subtree_leaf_num(3) == 0);
+
+  // Check no tile overlap
+  NDRange range_no(2);
+  uint8_t uint8_r_no[] = {6, 7};
+  int32_t int32_r_no[] = {1, 10};
+  range_no[0].set_range(uint8_r_no, sizeof(uint8_r_no));
+  range_no[1].set_range(int32_r_no, sizeof(int32_r_no));
+  auto overlap = rtree.get_tile_overlap(range_no);
+  CHECK(overlap.tiles_.empty());
+  CHECK(overlap.tile_ranges_.empty());
+
+  // Check full tile overlap
+  NDRange range_full(2);
+  uint8_t uint8_r_full[] = {0, 100};
+  int32_t int32_r_full[] = {1, 100};
+  range_full[0].set_range(uint8_r_full, sizeof(uint8_r_full));
+  range_full[1].set_range(int32_r_full, sizeof(int32_r_full));
+  overlap = rtree.get_tile_overlap(range_full);
+  CHECK(overlap.tiles_.empty());
+  CHECK(overlap.tile_ranges_.size() == 1);
+  CHECK(overlap.tile_ranges_[0].first == 0);
+  CHECK(overlap.tile_ranges_[0].second == 3);
+
+  // Check partial tile overlap, only tiles
+  NDRange range_part(2);
+  uint8_t uint8_r_part[] = {4, 15};
+  int32_t int32_r_part[] = {7, 20};
+  range_part[0].set_range(uint8_r_part, sizeof(uint8_r_part));
+  range_part[1].set_range(int32_r_part, sizeof(int32_r_part));
+  overlap = rtree.get_tile_overlap(range_part);
+  CHECK(overlap.tile_ranges_.empty());
+  CHECK(overlap.tiles_.size() == 2);
+  CHECK(overlap.tiles_[0].first == 1);
+  CHECK(overlap.tiles_[0].second == 2.0 / 3);
+  CHECK(overlap.tiles_[1].first == 2);
+  CHECK(overlap.tiles_[1].second == .25);
+
+  // Check partial tile overlap, only ranges
+  NDRange range_ranges(2);
+  uint8_t uint8_r_ranges[] = {11, 26};
+  int32_t int32_r_ranges[] = {11, 40};
+  range_ranges[0].set_range(uint8_r_ranges, sizeof(uint8_r_ranges));
+  range_ranges[1].set_range(int32_r_ranges, sizeof(int32_r_ranges));
+  overlap = rtree.get_tile_overlap(range_ranges);
+  CHECK(overlap.tiles_.empty());
+  CHECK(overlap.tile_ranges_.size() == 1);
+  CHECK(overlap.tile_ranges_[0].first == 2);
+  CHECK(overlap.tile_ranges_[0].second == 3);
+
+  // Check partial tile overlap, both tiles and ranges
+  NDRange range_mixed(2);
+  uint8_t uint8_r_mixed[] = {4, 26};
+  int32_t int32_r_mixed[] = {8, 40};
+  range_mixed[0].set_range(uint8_r_mixed, sizeof(uint8_r_mixed));
+  range_mixed[1].set_range(int32_r_mixed, sizeof(int32_r_mixed));
+  overlap = rtree.get_tile_overlap(range_mixed);
+  CHECK(overlap.tiles_.size() == 1);
+  CHECK(overlap.tiles_[0].first == 1);
+  CHECK(overlap.tiles_[0].second == (2.0 / 3) * (2.0 / 3));
+  CHECK(overlap.tile_ranges_.size() == 1);
+  CHECK(overlap.tile_ranges_[0].first == 2);
+  CHECK(overlap.tile_ranges_[0].second == 3);
 }

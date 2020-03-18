@@ -842,9 +842,17 @@ Status Subarray::compute_est_result_size(
     uint64_t range_idx,
     bool var_size,
     ResultSize* result_size) const {
+  ResultSize ret{0.0, 0.0, 0, 0};
+
+  // Zipped coords applicable only
+  if (name == constants::coords &&
+      !array_->array_schema()->domain()->all_dims_same_type()) {
+    *result_size = ret;
+    return Status::Ok();
+  }
+
   // For easy reference
   auto fragment_num = array_->fragment_metadata().size();
-  ResultSize ret{0.0, 0.0, 0, 0};
   auto array_schema = array_->array_schema();
   auto domain = array_schema->domain();
   auto encryption_key = array_->encryption_key();

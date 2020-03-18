@@ -144,16 +144,16 @@ class Query {
 
   /**
    * Gets the estimated result size (in bytes) for the input fixed-sized
-   * attribute.
+   * attribute/dimension.
    */
-  Status get_est_result_size(const char* attr_name, uint64_t* size);
+  Status get_est_result_size(const char* name, uint64_t* size);
 
   /**
    * Gets the estimated result size (in bytes) for the input var-sized
-   * attribute.
+   * attribute/dimension.
    */
   Status get_est_result_size(
-      const char* attr_name, uint64_t* size_off, uint64_t* size_val);
+      const char* name, uint64_t* size_off, uint64_t* size_val);
 
   /** Retrieves the number of written fragments. */
   Status get_written_fragment_num(uint32_t* num) const;
@@ -289,9 +289,9 @@ class Query {
   Writer* writer();
 
   /**
-   * Sets the buffer for a fixed-sized attribute.
+   * Sets the buffer for a fixed-sized attribute/dimension.
    *
-   * @param attribute The attribute to set the buffer for.
+   * @param name The attribute/dimension to set the buffer for.
    * @param buffer The buffer that either have the input data to be written,
    *     or will hold the data to be read.
    * @param buffer_size In the case of writes, this is the size of `buffer`
@@ -302,15 +302,15 @@ class Query {
    * @return Status
    */
   Status set_buffer(
-      const std::string& attribute,
+      const std::string& name,
       void* buffer,
       uint64_t* buffer_size,
       bool check_null_buffers = true);
 
   /**
-   * Sets the buffer for a var-sized attribute.
+   * Sets the buffer for a var-sized attribute/dimension.
    *
-   * @param attribute The attribute to set the buffer for.
+   * @param name The attribute/dimension to set the buffer for.
    * @param buffer_off The buffer that either have the input data to be written,
    *     or will hold the data to be read. This buffer holds the starting
    *     offsets of each cell value in `buffer_val`.
@@ -331,7 +331,7 @@ class Query {
    * @return Status
    */
   Status set_buffer(
-      const std::string& attribute,
+      const std::string& name,
       uint64_t* buffer_off,
       uint64_t* buffer_off_size,
       void* buffer_val,

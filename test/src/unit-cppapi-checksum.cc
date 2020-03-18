@@ -195,11 +195,10 @@ static void run_checksum_test(tiledb_filter_type_t filter_type) {
     vfs.remove_dir(array_name);
 }
 
-TEST_CASE("C++ API: MD5 checksum on array", "[cppapi], [checksum], [md5]") {
+TEST_CASE("C++ API: MD5 checksum on array", "[cppapi][checksum][md5]") {
   run_checksum_test(TILEDB_FILTER_CHECKSUM_MD5);
 }
 
-TEST_CASE(
-    "C++ API: SHA256 checksum on array", "[cppapi], [checksum], [sha256]") {
+TEST_CASE("C++ API: SHA256 checksum on array", "[cppapi][checksum][sha256]") {
   run_checksum_test(TILEDB_FILTER_CHECKSUM_SHA256);
 }

@@ -2003,21 +2003,71 @@ void SparseArrayFx::check_non_empty_domain(const std::string& path) {
   rc = tiledb_array_get_non_empty_domain(ctx_, array, domain, &is_empty);
   CHECK(rc == TILEDB_OK);
   CHECK(is_empty == 1);
+  rc = tiledb_array_get_non_empty_domain_from_index(
+      ctx_, array, 0, domain, &is_empty);
+  CHECK(rc == TILEDB_OK);
+  CHECK(is_empty == 1);
+  rc = tiledb_array_get_non_empty_domain_from_index(
+      ctx_, array, 5, domain, &is_empty);
+  CHECK(rc == TILEDB_ERR);
+  rc = tiledb_array_get_non_empty_domain_from_name(
+      ctx_, array, "d1", domain, &is_empty);
+  CHECK(rc == TILEDB_OK);
+  CHECK(is_empty == 1);
+  rc = tiledb_array_get_non_empty_domain_from_name(
+      ctx_, array, "foo", domain, &is_empty);
+  CHECK(rc == TILEDB_ERR);
+
   rc = tiledb_array_close(ctx_, array);
   CHECK(rc == TILEDB_OK);
 
   // Write
   write_partial_sparse_array(array_name);
 
-  // Check non-empty domain
+  // Open array
   rc = tiledb_array_open(ctx_, array, TILEDB_READ);
   CHECK(rc == TILEDB_OK);
 
+  // Check non-empty domain
   rc = tiledb_array_get_non_empty_domain(ctx_, array, domain, &is_empty);
   CHECK(rc == TILEDB_OK);
   CHECK(is_empty == 0);
   uint64_t c_domain[] = {3, 4, 2, 4};
   CHECK(!memcmp(domain, c_domain, sizeof(c_domain)));
+
+  // Check non-empty domain from index
+  rc = tiledb_array_get_non_empty_domain_from_index(
+      ctx_, array, 0, domain, &is_empty);
+  CHECK(rc == TILEDB_OK);
+  CHECK(is_empty == 0);
+  uint64_t c_domain_0[] = {3, 4};
+  CHECK(!memcmp(domain, c_domain_0, sizeof(c_domain_0)));
+  rc = tiledb_array_get_non_empty_domain_from_index(
+      ctx_, array, 1, domain, &is_empty);
+  CHECK(rc == TILEDB_OK);
+  CHECK(is_empty == 0);
+  uint64_t c_domain_1[] = {2, 4};
+  CHECK(!memcmp(domain, c_domain_1, sizeof(c_domain_1)));
+  rc = tiledb_array_get_non_empty_domain_from_index(
+      ctx_, array, 4, domain, &is_empty);
+  CHECK(rc == TILEDB_ERR);
+
+  // Check non-empty domain from name
+  rc = tiledb_array_get_non_empty_domain_from_name(
+      ctx_, array, "d1", domain, &is_empty);
+  CHECK(rc == TILEDB_OK);
+  CHECK(is_empty == 0);
+  CHECK(!memcmp(domain, c_domain_0, sizeof(c_domain_0)));
+  rc = tiledb_array_get_non_empty_domain_from_name(
+      ctx_, array, "d2", domain, &is_empty);
+  CHECK(rc == TILEDB_OK);
+  CHECK(is_empty == 0);
+  CHECK(!memcmp(domain, c_domain_1, sizeof(c_domain_1)));
+  rc = tiledb_array_get_non_empty_domain_from_name(
+      ctx_, array, "foo", domain, &is_empty);
+  CHECK(rc == TILEDB_ERR);
+
+  // Close array
   rc = tiledb_array_close(ctx_, array);
   CHECK(rc == TILEDB_OK);
   tiledb_array_free(&array);

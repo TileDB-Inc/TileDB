@@ -127,13 +127,13 @@ Status Reader::get_range(
   return subarray_.get_range(dim_idx, range_idx, start, end);
 }
 
-Status Reader::get_est_result_size(const char* attr_name, uint64_t* size) {
-  return subarray_.get_est_result_size(attr_name, size);
+Status Reader::get_est_result_size(const char* name, uint64_t* size) {
+  return subarray_.get_est_result_size(name, size);
 }
 
 Status Reader::get_est_result_size(
-    const char* attr_name, uint64_t* size_off, uint64_t* size_val) {
-  return subarray_.get_est_result_size(attr_name, size_off, size_val);
+    const char* name, uint64_t* size_off, uint64_t* size_val) {
+  return subarray_.get_est_result_size(name, size_off, size_val);
 }
 
 const ArraySchema* Reader::array_schema() const {

@@ -35,6 +35,7 @@
 
 #include "commands/command.h"
 
+#include "tiledb/sm/array_schema/domain.h"
 #include "tiledb/sm/enums/datatype.h"
 #include "tiledb/sm/misc/types.h"
 
@@ -85,26 +86,18 @@ class InfoCommand : public Command {
 
   /** Converts an opaque MBR to a 2D (double) rectangle. */
   std::tuple<double, double, double, double> get_mbr(
-      const sm::NDRange& mbr, tiledb::sm::Datatype datatype) const;
-
-  /** Converts an opaque MBR to a 2D (double) rectangle. */
-  template <typename T>
-  std::tuple<double, double, double, double> get_mbr(
-      const sm::NDRange& mbr) const;
+      const sm::NDRange& mbr, const tiledb::sm::Domain* domain) const;
 
   /**
    * Converts an opaque MBR to a string vector. The vector contents are strings:
    * [dim0_min, dim0_max, dim1_min, dim1_max, ...]
    *
-   * @param mbr MBR to convert
-   * @param coords_type Datatype of MBR values
-   * @param dim_num Number of dimensions in MBR
-   * @return String vector of MBR.
+   * @param mbr MBR to convert.
+   * @param domain The array domain.
+   * @return String vector representation of MBR.
    */
   std::vector<std::string> mbr_to_string(
-      const sm::NDRange& mbr,
-      tiledb::sm::Datatype coords_type,
-      unsigned dim_num) const;
+      const sm::NDRange& mbr, const tiledb::sm::Domain* domain) const;
 };
 
 }  // namespace cli

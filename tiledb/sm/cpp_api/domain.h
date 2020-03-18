@@ -194,6 +194,26 @@ class Domain {
     return dims;
   }
 
+  /** Returns the dimensions with the given index. */
+  Dimension dimension(unsigned idx) const {
+    auto& ctx = ctx_.get();
+    tiledb_ctx_t* c_ctx = ctx.ptr().get();
+    tiledb_dimension_t* dimptr;
+    ctx.handle_error(tiledb_domain_get_dimension_from_index(
+        c_ctx, domain_.get(), idx, &dimptr));
+    return Dimension(ctx, dimptr);
+  }
+
+  /** Returns the dimensions with the given name. */
+  Dimension dimension(const std::string& name) const {
+    auto& ctx = ctx_.get();
+    tiledb_ctx_t* c_ctx = ctx.ptr().get();
+    tiledb_dimension_t* dimptr;
+    ctx.handle_error(tiledb_domain_get_dimension_from_name(
+        c_ctx, domain_.get(), name.c_str(), &dimptr));
+    return Dimension(ctx, dimptr);
+  }
+
   /**
    * Adds a new dimension to the domain.
    *

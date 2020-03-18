@@ -51,12 +51,7 @@ namespace sm {
 /*     CONSTRUCTORS & DESTRUCTORS    */
 /* ********************************* */
 
-Domain::Domain()
-    : Domain(Datatype::INT32) {
-}
-
-Domain::Domain(Datatype type)
-    : type_(type) {
+Domain::Domain() {
   cell_order_ = Layout::ROW_MAJOR;
   tile_order_ = Layout::ROW_MAJOR;
   dim_num_ = 0;
@@ -67,7 +62,6 @@ Domain::Domain(const Domain* domain) {
   cell_num_per_tile_ = domain->cell_num_per_tile_;
   cell_order_ = domain->cell_order_;
   dim_num_ = domain->dim_num_;
-  type_ = domain->type_;
   cell_order_cmp_func_ = domain->cell_order_cmp_func_;
   tile_order_cmp_func_ = domain->tile_order_cmp_func_;
 
@@ -97,14 +91,6 @@ Layout Domain::tile_order() const {
 }
 
 Status Domain::add_dimension(const Dimension* dim) {
-  // Set domain type and do sanity check
-  if (dim_num_ == 0)
-    type_ = dim->type();
-  else if (dim->type() != type_)
-    return LOG_STATUS(
-        Status::DomainError("Cannot add dimension to domain; All added "
-                            "dimensions must have the same type"));
-
   dimensions_.emplace_back(new Dimension(dim));
   ++dim_num_;
 
@@ -209,15 +195,18 @@ void Domain::crop_ndrange(NDRange* ndrange) const {
 // ...
 Status Domain::deserialize(ConstBuffer* buff, uint32_t version) {
   // Load type
-  uint8_t type;
-  RETURN_NOT_OK(buff->read(&type, sizeof(uint8_t)));
-  type_ = static_cast<Datatype>(type);
+  Datatype type = Datatype::INT32;
+  if (version < 5) {
+    uint8_t type_c;
+    RETURN_NOT_OK(buff->read(&type_c, sizeof(uint8_t)));
+    type = static_cast<Datatype>(type_c);
+  }
 
   // Load dimensions
   RETURN_NOT_OK(buff->read(&dim_num_, sizeof(uint32_t)));
   for (uint32_t i = 0; i < dim_num_; ++i) {
     auto dim = new Dimension();
-    dim->deserialize(buff, version, type_);
+    dim->deserialize(buff, version, type);
     dimensions_.emplace_back(dim);
   }
 
@@ -462,10 +451,6 @@ bool Domain::null_tile_extents() const {
 // dimension #2
 // ...
 Status Domain::serialize(Buffer* buff, uint32_t version) {
-  // Write type
-  auto type = static_cast<uint8_t>(type_);
-  RETURN_NOT_OK(buff->write(&type, sizeof(uint8_t)));
-
   // Write dimensions
   RETURN_NOT_OK(buff->write(&dim_num_, sizeof(uint32_t)));
   for (auto dim : dimensions_)
@@ -588,11 +573,11 @@ int Domain::tile_order_cmp(
     return 0;
 
   auto tile_extent = *(const T*)dim->tile_extent().data();
-  auto ca = (T*)coord_a;
-  auto cb = (T*)coord_b;
+  auto ca = (const T*)coord_a;
+  auto cb = (const T*)coord_b;
   auto domain = (const T*)dim->domain().data();
-  auto ta = (T)((*ca - domain[0]) / tile_extent);
-  auto tb = (T)((*cb - domain[0]) / tile_extent);
+  auto ta = (uint64_t)((*ca - domain[0]) / tile_extent);
+  auto tb = (uint64_t)((*cb - domain[0]) / tile_extent);
   if (ta < tb)
     return -1;
   if (ta > tb)
@@ -645,8 +630,13 @@ int Domain::tile_order_cmp(
 /* ****************************** */
 
 void Domain::compute_cell_num_per_tile() {
+  // Applicable to dimensions that have the same type
+  if (!all_dims_same_type())
+    return;
+
   // Invoke the proper templated function
-  switch (type_) {
+  auto type = dimensions_[0]->type();
+  switch (type) {
     case Datatype::INT32:
       compute_cell_num_per_tile<int>();
       break;
@@ -712,7 +702,8 @@ void Domain::set_tile_cell_order_cmp_funcs() {
   tile_order_cmp_func_.resize(dim_num_);
   cell_order_cmp_func_.resize(dim_num_);
   for (unsigned d = 0; d < dim_num_; ++d) {
-    switch (type_) {
+    auto type = dimensions_[d]->type();
+    switch (type) {
       case Datatype::INT32:
         tile_order_cmp_func_[d] = tile_order_cmp<int32_t>;
         cell_order_cmp_func_[d] = cell_order_cmp<int32_t>;
@@ -784,64 +775,6 @@ void Domain::set_tile_cell_order_cmp_funcs() {
 }
 
 void Domain::compute_tile_offsets() {
-  // Invoke the proper templated function
-  switch (type_) {
-    case Datatype::INT32:
-      compute_tile_offsets<int>();
-      break;
-    case Datatype::INT64:
-      compute_tile_offsets<int64_t>();
-      break;
-    case Datatype::FLOAT32:
-      compute_tile_offsets<float>();
-      break;
-    case Datatype::FLOAT64:
-      compute_tile_offsets<double>();
-      break;
-    case Datatype::INT8:
-      compute_tile_offsets<int8_t>();
-      break;
-    case Datatype::UINT8:
-      compute_tile_offsets<uint8_t>();
-      break;
-    case Datatype::INT16:
-      compute_tile_offsets<int16_t>();
-      break;
-    case Datatype::UINT16:
-      compute_tile_offsets<uint16_t>();
-      break;
-    case Datatype::UINT32:
-      compute_tile_offsets<uint32_t>();
-      break;
-    case Datatype::UINT64:
-      compute_tile_offsets<uint64_t>();
-      break;
-    case Datatype::DATETIME_YEAR:
-    case Datatype::DATETIME_MONTH:
-    case Datatype::DATETIME_WEEK:
-    case Datatype::DATETIME_DAY:
-    case Datatype::DATETIME_HR:
-    case Datatype::DATETIME_MIN:
-    case Datatype::DATETIME_SEC:
-    case Datatype::DATETIME_MS:
-    case Datatype::DATETIME_US:
-    case Datatype::DATETIME_NS:
-    case Datatype::DATETIME_PS:
-    case Datatype::DATETIME_FS:
-    case Datatype::DATETIME_AS:
-      compute_tile_offsets<int64_t>();
-      break;
-    default:
-      assert(0);
-  }
-}
-
-template <class T>
-void Domain::compute_tile_offsets() {
-  //  // Non-applicable to real domains
-  //  if(!std::is_integral<T>())
-  //    return;
-
   // Applicable only to non-NULL space tiles
   if (null_tile_extents())
     return;
@@ -853,9 +786,7 @@ void Domain::compute_tile_offsets() {
   tile_offsets_col_.push_back(1);
   if (dim_num_ > 1) {
     for (unsigned d = 1; d < dim_num_; ++d) {
-      auto dim_dom = (const T*)domain(d - 1).data();
-      auto tile_extent = *(const T*)this->tile_extent(d - 1).data();
-      tile_num = utils::math::ceil(dim_dom[1] - dim_dom[0] + 1, tile_extent);
+      tile_num = dimensions_[d]->tile_num(dimensions_[d]->domain());
       tile_offsets_col_.push_back(tile_offsets_col_.back() * tile_num);
     }
   }
@@ -864,9 +795,7 @@ void Domain::compute_tile_offsets() {
   tile_offsets_row_.push_back(1);
   if (dim_num_ > 1) {
     for (unsigned d = dim_num_ - 2;; --d) {
-      auto dim_dom = (const T*)domain(d + 1).data();
-      auto tile_extent = *(const T*)this->tile_extent(d + 1).data();
-      tile_num = utils::math::ceil(dim_dom[1] - dim_dom[0] + 1, tile_extent);
+      tile_num = dimensions_[d]->tile_num(dimensions_[d]->domain());
       tile_offsets_row_.push_back(tile_offsets_row_.back() * tile_num);
       if (d == 0)
         break;

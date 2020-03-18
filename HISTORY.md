@@ -36,8 +36,12 @@
 * Added C API function `tiledb_array_has_metadata_key` and C++ API function `Array::has_metadata_key` [#1439](https://github.com/TileDB-Inc/TileDB/pull/1439)
 * Added C API functions `tiledb_array_schema_{set,get}_allows_dups` and C++ API functions `Array::set_allows_dups` and `Array::allows_dups`
 * Added C API functions `tiledb_dimension_{set,get}_filter_list` and `tiledb_dimension_{set,get}_cell_val_num`
+* Added C API functions `tiledb_array_get_non_empty_domain_from_{index,name}`
 * Added C++ API functions `Dimension::set_cell_val_num` and `Dimension::cell_val_num`.
 * Added C++ API functions `Dimension::set_filter_list` and `Dimension::filter_list`.
+* Added C++ API functions `Array::non_empty_domain(unsigned idx)` and `Array::non_empty_domain(const std::string& name)`.
+* Added C++ API functions `Domain::dimension(unsigned idx)` and `Domain::dimension(const std::string& name)`.
+* Added C++ API function `Array::load_schema(ctx, uri)` and `Array::load_schema(ctx, uri, key_type, key, key_len)`.
 
 ## API removals
 

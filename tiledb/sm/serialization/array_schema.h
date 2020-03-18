@@ -43,6 +43,7 @@ namespace sm {
 class Array;
 class Buffer;
 class ArraySchema;
+class Dimension;
 enum class SerializationType : uint8_t;
 
 namespace serialization {
@@ -56,6 +57,20 @@ Status array_schema_deserialize(
     ArraySchema** array_schema,
     SerializationType serialize_type,
     const Buffer& serialized_buffer);
+
+Status nonempty_domain_serialize(
+    const Dimension* dimension,
+    const void* nonempty_domain,
+    bool is_empty,
+    SerializationType serialize_type,
+    Buffer* serialized_buffer);
+
+Status nonempty_domain_deserialize(
+    const Dimension* dimension,
+    const Buffer& serialized_buffer,
+    SerializationType serialize_type,
+    void* nonempty_domain,
+    bool* is_empty);
 
 Status nonempty_domain_serialize(
     const Array* array,
