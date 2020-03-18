@@ -180,6 +180,10 @@ TEST_CASE_METHOD(
   CHECK(!st.ok());
   st = subarray_partitioner.set_result_budget("b", 100, 101);
   CHECK(st.ok());
+  st = subarray_partitioner.set_result_budget("d", 1000, 1010);
+  CHECK(!st.ok());
+  st = subarray_partitioner.set_result_budget("d", 1000);
+  CHECK(st.ok());
   st =
       subarray_partitioner.get_result_budget(nullptr, &budget_off, &budget_val);
   CHECK(!st.ok());
@@ -196,15 +200,21 @@ TEST_CASE_METHOD(
   st = subarray_partitioner.get_result_budget(
       TILEDB_COORDS, &budget_off, &budget_val);
   CHECK(!st.ok());
+  st = subarray_partitioner.get_result_budget("d", &budget);
+  CHECK(st.ok());
+  CHECK(budget == 1000);
 
   uint64_t memory_budget, memory_budget_var;
   st = subarray_partitioner.get_memory_budget(
       &memory_budget, &memory_budget_var);
+  CHECK(st.ok());
   CHECK(memory_budget == memory_budget_);
   CHECK(memory_budget_var == memory_budget_var_);
   st = subarray_partitioner.set_memory_budget(16, 16);
+  CHECK(st.ok());
   st = subarray_partitioner.get_memory_budget(
       &memory_budget, &memory_budget_var);
+  CHECK(st.ok());
   CHECK(memory_budget == 16);
   CHECK(memory_budget_var == 16);
 

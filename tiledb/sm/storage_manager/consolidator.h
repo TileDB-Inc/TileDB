@@ -36,6 +36,7 @@
 #include "tiledb/sm/array/array.h"
 #include "tiledb/sm/filesystem/filelock.h"
 #include "tiledb/sm/misc/status.h"
+#include "tiledb/sm/misc/types.h"
 #include "tiledb/sm/storage_manager/open_array.h"
 
 #include <vector>
@@ -261,20 +262,18 @@ class Consolidator {
   /**
    * Copies the array by reading from the fragments to be consolidated
    * (with `query_r`) and writing to the new fragment (with `query_w`).
+   * It also appropriately sets the query buffers.
    *
    * @param query_r The read query.
    * @param query_w The write query.
    * @return Status
    */
-  Status copy_array(Query* query_r, Query* query_w);
-
-  /** Cleans up the inputs. */
-  void clean_up(
-      unsigned buffer_num,
-      void** buffers,
-      uint64_t* buffer_sizes,
+  Status copy_array(
       Query* query_r,
-      Query* query_w) const;
+      Query* query_w,
+      std::vector<ByteVec>* buffers,
+      std::vector<uint64_t>* buffer_sizes,
+      bool sparse_mode);
 
   /**
    * Creates the buffers that will be used upon reading the input fragments and
@@ -286,15 +285,13 @@ class Consolidator {
    *     in special sparse mode. This is ignored for sparse arrays.
    * @param buffers The buffers to be created.
    * @param buffer_sizes The corresponding buffer sizes.
-   * @param buffer_num The number of buffers to be retrieved.
    * @return Status
    */
   Status create_buffers(
       const ArraySchema* array_schema,
       bool sparse_mode,
-      void*** buffers,
-      uint64_t** buffer_sizes,
-      unsigned int* buffer_num);
+      std::vector<ByteVec>* buffers,
+      std::vector<uint64_t>* buffer_sizes);
 
   /**
    * Creates the queries needed for consolidation. It also retrieves
@@ -309,8 +306,6 @@ class Consolidator {
    *     in special sparse mode. This is ignored for sparse arrays.
    * @param subarray The subarray to read from (the fragments to consolidate)
    *     and write to (the new fragment).
-   * @param buffers The buffers to be passed in the queries.
-   * @param buffer_sizes The corresponding buffer sizes.
    * @param query_r This query reads from the fragments to be consolidated.
    * @param query_w This query writes to the new consolidated fragment.
    * @param new_fragment_uri The URI of the new fragment to be created.
@@ -321,8 +316,6 @@ class Consolidator {
       Array* array_for_writes,
       bool sparse_mode,
       const NDRange& subarray,
-      void** buffers,
-      uint64_t* buffer_sizes,
       Query** query_r,
       Query** query_w,
       URI* new_fragment_uri);
@@ -362,16 +355,6 @@ class Consolidator {
    */
   Status delete_overwritten_fragments(
       const ArraySchema* array_schema, std::vector<FragmentInfo>* fragments);
-
-  /**
-   * Frees the input buffers.
-   *
-   * @param buffer_num The number of buffers.
-   * @param buffers The buffers to be freed.
-   * @param buffer_sizes The corresponding buffer sizes.
-   */
-  void free_buffers(
-      unsigned int buffer_num, void** buffers, uint64_t* buffer_sizes) const;
 
   /**
    * Based on the input fragment info, this algorithm decides the (sorted) list
@@ -415,8 +398,8 @@ class Consolidator {
   Status set_query_buffers(
       Query* query,
       bool sparse_mode,
-      void** buffers,
-      uint64_t* buffer_sizes) const;
+      std::vector<ByteVec>* buffers,
+      std::vector<uint64_t>* buffer_sizes) const;
 
   /**
    * Updates the `fragment_info` by removing `to_consolidate` and

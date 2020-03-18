@@ -2961,7 +2961,7 @@ TILEDB_EXPORT int32_t tiledb_query_set_subarray(
     tiledb_ctx_t* ctx, tiledb_query_t* query, const void* subarray);
 
 /**
- * Sets the buffer for a fixed-sized attribute to a query, which will
+ * Sets the buffer for a fixed-sized attribute/dimension to a query, which will
  * either hold the values to be written (if it is a write query), or will hold
  * the results from a read query.
  *
@@ -2975,10 +2975,8 @@ TILEDB_EXPORT int32_t tiledb_query_set_subarray(
  *
  * @param ctx The TileDB context.
  * @param query The TileDB query.
- * @param attribute The attribute to set the buffer for. Note that the
- *     coordinates have special attribute name `TILEDB_COORDS`. Also,
- *     if `attribute` is equal to the empty string, then a special default
- *     attribute name is set.
+ * @param name The attribute/dimension to set the buffer for. Note that
+ *     zipped coordinates have special name `TILEDB_COORDS`.
  * @param buffer The buffer that either have the input data to be written,
  *     or will hold the data to be read.
  * @param buffer_size In the case of writes, this is the size of `buffer`
@@ -2990,7 +2988,7 @@ TILEDB_EXPORT int32_t tiledb_query_set_subarray(
 TILEDB_EXPORT int32_t tiledb_query_set_buffer(
     tiledb_ctx_t* ctx,
     tiledb_query_t* query,
-    const char* attribute,
+    const char* name,
     void* buffer,
     uint64_t* buffer_size);
 
@@ -3012,7 +3010,7 @@ TILEDB_EXPORT int32_t tiledb_query_set_buffer(
  *
  * @param ctx The TileDB context.
  * @param query The TileDB query.
- * @param attribute The attribute to set the buffer for.
+ * @param name The attribute/dimension to set the buffer for.
  * @param buffer_off The buffer that either have the input data to be written,
  *     or will hold the data to be read. This buffer holds the starting offsets
  *     of each cell value in `buffer_val`.
@@ -3033,7 +3031,7 @@ TILEDB_EXPORT int32_t tiledb_query_set_buffer(
 TILEDB_EXPORT int32_t tiledb_query_set_buffer_var(
     tiledb_ctx_t* ctx,
     tiledb_query_t* query,
-    const char* attribute,
+    const char* name,
     uint64_t* buffer_off,
     uint64_t* buffer_off_size,
     void* buffer_val,
@@ -3053,8 +3051,8 @@ TILEDB_EXPORT int32_t tiledb_query_set_buffer_var(
  *
  * @param ctx The TileDB context.
  * @param query The TileDB query.
- * @param attribute The attribute to get the buffer for. Note that the
- *     coordinates have special attribute name `TILEDB_COORDS`.
+ * @param name The attribute/dimension to get the buffer for. Note that the
+ *     zipped coordinates have special name `TILEDB_COORDS`.
  * @param buffer The buffer to retrieve.
  * @param buffer_size A pointer to the size of the buffer.
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
@@ -3062,14 +3060,14 @@ TILEDB_EXPORT int32_t tiledb_query_set_buffer_var(
 TILEDB_EXPORT int32_t tiledb_query_get_buffer(
     tiledb_ctx_t* ctx,
     tiledb_query_t* query,
-    const char* attribute,
+    const char* name,
     void** buffer,
     uint64_t** buffer_size);
 
 /**
- * Gets the values and offsets buffers for a var-sized attribute to a query.
- * If the buffers have not been set, then `buffer_off` and `buffer_val` are
- * set to `nullptr`.
+ * Gets the values and offsets buffers for a var-sized attribute/dimension
+ * to a query. If the buffers have not been set, then `buffer_off` and
+ * `buffer_val` are set to `nullptr`.
  *
  * **Example:**
  *
@@ -3084,7 +3082,7 @@ TILEDB_EXPORT int32_t tiledb_query_get_buffer(
  *
  * @param ctx The TileDB context.
  * @param query The TileDB query.
- * @param attribute The attribute to set the buffer for.
+ * @param name The attribute/dimension to set the buffer for.
  * @param buffer_off The offsets buffer to be retrieved.
  * @param buffer_off_size A pointer to the size of the offsets buffer.
  * @param buffer_val The values buffer to be retrieved.
@@ -3094,7 +3092,7 @@ TILEDB_EXPORT int32_t tiledb_query_get_buffer(
 TILEDB_EXPORT int32_t tiledb_query_get_buffer_var(
     tiledb_ctx_t* ctx,
     tiledb_query_t* query,
-    const char* attribute,
+    const char* name,
     uint64_t** buffer_off,
     uint64_t** buffer_off_size,
     void** buffer_val,
@@ -3403,7 +3401,7 @@ TILEDB_EXPORT int32_t tiledb_query_get_range(
     const void** stride);
 
 /**
- * Retrieves the estimated result size for a fixed-sized attribute.
+ * Retrieves the estimated result size for a fixed-sized attribute/dimension.
  *
  * **Example:**
  *
@@ -3414,30 +3412,30 @@ TILEDB_EXPORT int32_t tiledb_query_get_range(
  *
  * @param ctx The TileDB context
  * @param query The query.
- * @param attr_name The attribute name.
+ * @param name The attribute/dimension name.
  * @param size The size (in bytes) to be retrieved.
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
 TILEDB_EXPORT int32_t tiledb_query_get_est_result_size(
     tiledb_ctx_t* ctx,
     const tiledb_query_t* query,
-    const char* attr_name,
+    const char* name,
     uint64_t* size);
 
 /**
- * Retrieves the estimated result size for a var-sized attribute.
+ * Retrieves the estimated result size for a var-sized attribute/dimension.
  *
  * **Example:**
  *
  * @code{.c}
  * uint64_t size_off, size_val;
- * tiledb_query_get_est_query_size_var(
+ * tiledb_query_get_est_result_size_var(
  *     ctx, query, "a", &size_off, &size_val);
  * @endcode
  *
  * @param ctx The TileDB context
  * @param query The query.
- * @param attr_name The attribute name.
+ * @param name The attribute/dimension name.
  * @param size_off The size of the offsets (in bytes) to be retrieved.
  * @param size_val The size of the values (in bytes) to be retrieved.
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
@@ -3445,7 +3443,7 @@ TILEDB_EXPORT int32_t tiledb_query_get_est_result_size(
 TILEDB_EXPORT int32_t tiledb_query_get_est_result_size_var(
     tiledb_ctx_t* ctx,
     const tiledb_query_t* query,
-    const char* attr_name,
+    const char* name,
     uint64_t* size_off,
     uint64_t* size_val);
 

@@ -1555,6 +1555,18 @@ TEST_CASE_METHOD(
       rc = tiledb_query_get_est_result_size(ctx_, query, TILEDB_COORDS, &size);
       CHECK(rc == TILEDB_OK);
       CHECK(size == 6 * 2 * sizeof(uint64_t));
+      rc =
+          tiledb_query_get_est_result_size_var(ctx_, query, "d1", &size, &size);
+      CHECK(rc == TILEDB_ERR);
+      rc =
+          tiledb_query_get_est_result_size_var(ctx_, query, "d2", &size, &size);
+      CHECK(rc == TILEDB_ERR);
+      rc = tiledb_query_get_est_result_size(ctx_, query, "d1", &size);
+      CHECK(rc == TILEDB_OK);
+      CHECK(size == 6 * sizeof(uint64_t));
+      rc = tiledb_query_get_est_result_size(ctx_, query, "d2", &size);
+      CHECK(rc == TILEDB_OK);
+      CHECK(size == 6 * sizeof(uint64_t));
       rc = tiledb_query_get_est_result_size(ctx_, query, "a", &size);
       CHECK(rc == TILEDB_OK);
       CHECK(size == 6 * sizeof(int));
@@ -1572,6 +1584,12 @@ TEST_CASE_METHOD(
       rc = tiledb_query_add_range(ctx_, query, 1, &r[2], &r[3], nullptr);
       CHECK(rc == TILEDB_OK);
       rc = tiledb_query_get_est_result_size(ctx_, query, TILEDB_COORDS, &size);
+      CHECK(rc == TILEDB_OK);
+      CHECK(size == 0);
+      rc = tiledb_query_get_est_result_size(ctx_, query, "d1", &size);
+      CHECK(rc == TILEDB_OK);
+      CHECK(size == 0);
+      rc = tiledb_query_get_est_result_size(ctx_, query, "d2", &size);
       CHECK(rc == TILEDB_OK);
       CHECK(size == 0);
       rc = tiledb_query_get_est_result_size(ctx_, query, "a", &size);
@@ -1600,6 +1618,12 @@ TEST_CASE_METHOD(
       rc = tiledb_query_get_est_result_size(ctx_, query, TILEDB_COORDS, &size);
       CHECK(rc == TILEDB_OK);
       CHECK(size == 0);
+      rc = tiledb_query_get_est_result_size(ctx_, query, "d1", &size);
+      CHECK(rc == TILEDB_OK);
+      CHECK(size == 0);
+      rc = tiledb_query_get_est_result_size(ctx_, query, "d2", &size);
+      CHECK(rc == TILEDB_OK);
+      CHECK(size == 0);
       rc = tiledb_query_get_est_result_size(ctx_, query, "a", &size);
       CHECK(rc == TILEDB_OK);
       CHECK(size == 0);
@@ -1622,6 +1646,18 @@ TEST_CASE_METHOD(
           (1.0 / 2) * (1.0 / 4) * 4 * sizeof(uint64_t) +
           1.0 * (2.0 / 7) * 4 * sizeof(uint64_t));
       CHECK(size == coords_size);
+      rc = tiledb_query_get_est_result_size(ctx_, query, "d1", &size);
+      CHECK(rc == TILEDB_OK);
+      auto d1_size = (uint64_t)ceil(
+          (1.0 / 2) * (1.0 / 4) * 2 * sizeof(uint64_t) +
+          1.0 * (2.0 / 7) * 2 * sizeof(uint64_t));
+      CHECK(size == d1_size);
+      rc = tiledb_query_get_est_result_size(ctx_, query, "d2", &size);
+      CHECK(rc == TILEDB_OK);
+      auto d2_size = (uint64_t)ceil(
+          (1.0 / 2) * (1.0 / 4) * 2 * sizeof(uint64_t) +
+          1.0 * (2.0 / 7) * 2 * sizeof(uint64_t));
+      CHECK(size == d2_size);
       rc = tiledb_query_get_est_result_size(ctx_, query, "a", &size);
       CHECK(rc == TILEDB_OK);
       auto a_size = (uint64_t)ceil(
@@ -1659,6 +1695,16 @@ TEST_CASE_METHOD(
           (1.0 / 4) * 4 * sizeof(uint64_t) + (3.0 / 7) * 4 * sizeof(uint64_t));
       CHECK(rc == TILEDB_OK);
       CHECK(size == coords_size);
+      rc = tiledb_query_get_est_result_size(ctx_, query, "d1", &size);
+      auto d1_size = (uint64_t)ceil(
+          (1.0 / 4) * 2 * sizeof(uint64_t) + (3.0 / 7) * 2 * sizeof(uint64_t));
+      CHECK(rc == TILEDB_OK);
+      CHECK(size == d1_size);
+      rc = tiledb_query_get_est_result_size(ctx_, query, "d2", &size);
+      auto d2_size = (uint64_t)ceil(
+          (1.0 / 4) * 2 * sizeof(uint64_t) + (3.0 / 7) * 2 * sizeof(uint64_t));
+      CHECK(rc == TILEDB_OK);
+      CHECK(size == d2_size);
       rc = tiledb_query_get_est_result_size(ctx_, query, "a", &size);
       CHECK(rc == TILEDB_OK);
       auto a_size = (uint64_t)ceil(
@@ -1700,6 +1746,12 @@ TEST_CASE_METHOD(
       rc = tiledb_query_get_est_result_size(ctx_, query, TILEDB_COORDS, &size);
       CHECK(rc == TILEDB_OK);
       CHECK(size == 6 * 2 * sizeof(uint64_t));
+      rc = tiledb_query_get_est_result_size(ctx_, query, "d1", &size);
+      CHECK(rc == TILEDB_OK);
+      CHECK(size == 6 * sizeof(uint64_t));
+      rc = tiledb_query_get_est_result_size(ctx_, query, "d2", &size);
+      CHECK(rc == TILEDB_OK);
+      CHECK(size == 6 * sizeof(uint64_t));
       rc = tiledb_query_get_est_result_size(ctx_, query, "a", &size);
       CHECK(rc == TILEDB_OK);
       CHECK(size == 6 * sizeof(int));
@@ -1717,6 +1769,12 @@ TEST_CASE_METHOD(
       rc = tiledb_query_add_range(ctx_, query, 1, &r[2], &r[3], nullptr);
       CHECK(rc == TILEDB_OK);
       rc = tiledb_query_get_est_result_size(ctx_, query, TILEDB_COORDS, &size);
+      CHECK(rc == TILEDB_OK);
+      CHECK(size == 0);
+      rc = tiledb_query_get_est_result_size(ctx_, query, "d1", &size);
+      CHECK(rc == TILEDB_OK);
+      CHECK(size == 0);
+      rc = tiledb_query_get_est_result_size(ctx_, query, "d2", &size);
       CHECK(rc == TILEDB_OK);
       CHECK(size == 0);
       rc = tiledb_query_get_est_result_size(ctx_, query, "a", &size);
@@ -1745,6 +1803,12 @@ TEST_CASE_METHOD(
       rc = tiledb_query_get_est_result_size(ctx_, query, TILEDB_COORDS, &size);
       CHECK(rc == TILEDB_OK);
       CHECK(size == 0);
+      rc = tiledb_query_get_est_result_size(ctx_, query, "d1", &size);
+      CHECK(rc == TILEDB_OK);
+      CHECK(size == 0);
+      rc = tiledb_query_get_est_result_size(ctx_, query, "d2", &size);
+      CHECK(rc == TILEDB_OK);
+      CHECK(size == 0);
       rc = tiledb_query_get_est_result_size(ctx_, query, "a", &size);
       CHECK(rc == TILEDB_OK);
       CHECK(size == 0);
@@ -1765,6 +1829,14 @@ TEST_CASE_METHOD(
       CHECK(rc == TILEDB_OK);
       auto coords_size = (uint64_t)ceil(1.0 * (1.0 / 3) * 4 * sizeof(uint64_t));
       CHECK(size == coords_size);
+      rc = tiledb_query_get_est_result_size(ctx_, query, "d1", &size);
+      CHECK(rc == TILEDB_OK);
+      auto d1_size = (uint64_t)ceil(1.0 * (1.0 / 3) * 2 * sizeof(uint64_t));
+      CHECK(size == d1_size);
+      rc = tiledb_query_get_est_result_size(ctx_, query, "d2", &size);
+      CHECK(rc == TILEDB_OK);
+      auto d2_size = (uint64_t)ceil(1.0 * (1.0 / 3) * 2 * sizeof(uint64_t));
+      CHECK(size == d2_size);
       rc = tiledb_query_get_est_result_size(ctx_, query, "a", &size);
       CHECK(rc == TILEDB_OK);
       auto a_size = (uint64_t)ceil(1.0 * (1.0 / 3) * 2 * sizeof(int));
@@ -1796,6 +1868,16 @@ TEST_CASE_METHOD(
           (6.0 / 8) * 4 * sizeof(uint64_t) + (2.0 / 6) * 4 * sizeof(uint64_t));
       CHECK(rc == TILEDB_OK);
       CHECK(size == coords_size);
+      rc = tiledb_query_get_est_result_size(ctx_, query, "d1", &size);
+      auto d1_size = (uint64_t)ceil(
+          (6.0 / 8) * 2 * sizeof(uint64_t) + (2.0 / 6) * 2 * sizeof(uint64_t));
+      CHECK(rc == TILEDB_OK);
+      CHECK(size == d1_size);
+      rc = tiledb_query_get_est_result_size(ctx_, query, "d2", &size);
+      auto d2_size = (uint64_t)ceil(
+          (6.0 / 8) * 2 * sizeof(uint64_t) + (2.0 / 6) * 2 * sizeof(uint64_t));
+      CHECK(rc == TILEDB_OK);
+      CHECK(size == d2_size);
       rc = tiledb_query_get_est_result_size(ctx_, query, "a", &size);
       CHECK(rc == TILEDB_OK);
       auto a_size = (uint64_t)ceil(
@@ -1921,6 +2003,12 @@ TEST_CASE_METHOD(
   rc = tiledb_query_get_est_result_size(ctx_, query, "a", &size);
   CHECK(rc == TILEDB_OK);
   CHECK(size == 4 * sizeof(int));
+  rc = tiledb_query_get_est_result_size(ctx_, query, "d2", &size);
+  CHECK(rc == TILEDB_OK);
+  CHECK(size == 4 * sizeof(uint64_t));
+  rc = tiledb_query_get_est_result_size(ctx_, query, TILEDB_COORDS, &size);
+  CHECK(rc == TILEDB_OK);
+  CHECK(size == 4 * 2 * sizeof(uint64_t));
   rc = tiledb_query_get_est_result_size_var(
       ctx_, query, "b", &size_off, &size_val);
   CHECK(rc == TILEDB_OK);

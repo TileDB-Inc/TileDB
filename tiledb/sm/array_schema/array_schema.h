@@ -108,35 +108,6 @@ class ArraySchema {
    */
   const Attribute* attribute(const std::string& name) const;
 
-  /**
-   * Returns the given attribute name as it would be stored in the schema. E.g.
-   * if the argument is "" (empty string), this returns the default anonymous
-   * attribute name, which is what is stored in the schema for anonymous
-   * attributes.
-   *
-   * @param attribute Attribute name
-   * @param normalized_name Will hold the normalized name
-   * @return Status
-   */
-  static Status attribute_name_normalized(
-      const char* attribute, std::string* normalized_name);
-
-  /**
-   * Returns the given attribute names as they would be stored in the schema.
-   * E.g. if an input name is "" (empty string), this returns it as the default
-   * anonymous attribute name, which is what is stored in the schema for
-   * anonymous attributes.
-   *
-   * @param attributes Attribute names to normalize
-   * @param num_attributes Number of attribute names
-   * @param normalized_names Will hold the normalized names
-   * @return Status
-   */
-  static Status attribute_names_normalized(
-      const char** attributes,
-      unsigned num_attributes,
-      std::vector<std::string>* normalized_names);
-
   /** Returns the number of attributes. */
   unsigned int attribute_num() const;
 

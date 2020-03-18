@@ -2714,7 +2714,7 @@ bool ConsolidationFx::is_array(const std::string& array_name) {
 TEST_CASE_METHOD(
     ConsolidationFx,
     "C API: Test consolidation, dense",
-    "[capi][consolidation][dense-consolidation]") {
+    "[capi][consolidation][dense]") {
   remove_dense_array();
   create_dense_array();
 

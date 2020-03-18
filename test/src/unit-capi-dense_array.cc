@@ -111,7 +111,7 @@ struct DenseArrayFx {
   void check_sparse_writes(const std::string& path);
   void check_simultaneous_writes(const std::string& path);
   void check_cancel_and_retry_writes(const std::string& path);
-  void check_return_coords(const std::string& path);
+  void check_return_coords(const std::string& path, bool split_coords);
   void check_non_empty_domain(const std::string& path);
   void create_dense_vector(const std::string& path);
   void create_dense_array(const std::string& array_name);
@@ -121,13 +121,18 @@ struct DenseArrayFx {
   void write_dense_array_missing_attributes(const std::string& array_name);
   void write_partial_dense_array(const std::string& array_name);
   void read_dense_vector_mixed(const std::string& array_name);
-  void read_dense_array_with_coords_full_global(const std::string& array_name);
-  void read_dense_array_with_coords_full_row(const std::string& array_name);
-  void read_dense_array_with_coords_full_col(const std::string& array_name);
+  void read_dense_array_with_coords_full_global(
+      const std::string& array_name, bool split_coords);
+  void read_dense_array_with_coords_full_row(
+      const std::string& array_name, bool split_coords);
+  void read_dense_array_with_coords_full_col(
+      const std::string& array_name, bool split_coords);
   void read_dense_array_with_coords_subarray_global(
-      const std::string& array_name);
-  void read_dense_array_with_coords_subarray_row(const std::string& array_name);
-  void read_dense_array_with_coords_subarray_col(const std::string& array_name);
+      const std::string& array_name, bool split_coords);
+  void read_dense_array_with_coords_subarray_row(
+      const std::string& array_name, bool split_coords);
+  void read_dense_array_with_coords_subarray_col(
+      const std::string& array_name, bool split_coords);
   static std::string random_name(const std::string& prefix);
 
   /**
@@ -1757,16 +1762,17 @@ void DenseArrayFx::create_dense_array_1_attribute(
   tiledb_array_schema_free(&array_schema);
 }
 
-void DenseArrayFx::check_return_coords(const std::string& path) {
+void DenseArrayFx::check_return_coords(
+    const std::string& path, bool split_coords) {
   std::string array_name = path + "return_coords";
   create_dense_array(array_name);
   write_dense_array(array_name);
-  read_dense_array_with_coords_full_global(array_name);
-  read_dense_array_with_coords_full_row(array_name);
-  read_dense_array_with_coords_full_col(array_name);
-  read_dense_array_with_coords_subarray_global(array_name);
-  read_dense_array_with_coords_subarray_row(array_name);
-  read_dense_array_with_coords_subarray_col(array_name);
+  read_dense_array_with_coords_full_global(array_name, split_coords);
+  read_dense_array_with_coords_full_row(array_name, split_coords);
+  read_dense_array_with_coords_full_col(array_name, split_coords);
+  read_dense_array_with_coords_subarray_global(array_name, split_coords);
+  read_dense_array_with_coords_subarray_row(array_name, split_coords);
+  read_dense_array_with_coords_subarray_col(array_name, split_coords);
 }
 
 void DenseArrayFx::write_dense_array(const std::string& array_name) {
@@ -2062,7 +2068,7 @@ void DenseArrayFx::read_dense_vector_mixed(const std::string& array_name) {
 }
 
 void DenseArrayFx::read_dense_array_with_coords_full_global(
-    const std::string& array_name) {
+    const std::string& array_name, bool split_coords) {
   // Correct buffers
   int c_buffer_a1[] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15};
   uint64_t c_buffer_a2_off[] = {
@@ -2080,6 +2086,8 @@ void DenseArrayFx::read_dense_array_with_coords_full_global(
   };
   uint64_t c_buffer_coords[] = {1, 1, 1, 2, 2, 1, 2, 2, 1, 3, 1, 4, 2, 3, 2, 4,
                                 3, 1, 3, 2, 4, 1, 4, 2, 3, 3, 3, 4, 4, 3, 4, 4};
+  uint64_t c_buffer_d1[] = {1, 1, 2, 2, 1, 1, 2, 2, 3, 3, 4, 4, 3, 3, 4, 4};
+  uint64_t c_buffer_d2[] = {1, 2, 1, 2, 3, 4, 3, 4, 1, 2, 1, 2, 3, 4, 3, 4};
 
   // Open array
   tiledb_array_t* array;
@@ -2091,7 +2099,8 @@ void DenseArrayFx::read_dense_array_with_coords_full_global(
   // Compute max buffer sizes
   uint64_t subarray[] = {1, 4, 1, 4};
   uint64_t buffer_a1_size, buffer_a2_off_size, buffer_a2_val_size,
-      buffer_a3_size, buffer_coords_size;
+      buffer_a3_size, buffer_coords_size = 0, buffer_d1_size = 0,
+                      buffer_d2_size = 0;
   rc = tiledb_array_max_buffer_size(
       ctx_, array, "a1", subarray, &buffer_a1_size);
   CHECK(rc == TILEDB_OK);
@@ -2101,9 +2110,18 @@ void DenseArrayFx::read_dense_array_with_coords_full_global(
   rc = tiledb_array_max_buffer_size(
       ctx_, array, "a3", subarray, &buffer_a3_size);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_array_max_buffer_size(
-      ctx_, array, TILEDB_COORDS, subarray, &buffer_coords_size);
-  CHECK(rc == TILEDB_OK);
+  if (split_coords) {
+    rc = tiledb_array_max_buffer_size(
+        ctx_, array, "d1", subarray, &buffer_d1_size);
+    CHECK(rc == TILEDB_OK);
+    rc = tiledb_array_max_buffer_size(
+        ctx_, array, "d2", subarray, &buffer_d2_size);
+    CHECK(rc == TILEDB_OK);
+  } else {
+    rc = tiledb_array_max_buffer_size(
+        ctx_, array, TILEDB_COORDS, subarray, &buffer_coords_size);
+    CHECK(rc == TILEDB_OK);
+  }
 
   // Prepare cell buffers
   auto buffer_a1 = (int*)malloc(buffer_a1_size);
@@ -2111,6 +2129,8 @@ void DenseArrayFx::read_dense_array_with_coords_full_global(
   auto buffer_a2_val = (char*)malloc(buffer_a2_val_size);
   auto buffer_a3 = (float*)malloc(buffer_a3_size);
   auto buffer_coords = (uint64_t*)malloc(buffer_coords_size);
+  auto buffer_d1 = (uint64_t*)malloc(buffer_d1_size);
+  auto buffer_d2 = (uint64_t*)malloc(buffer_d2_size);
 
   // Create query
   tiledb_query_t* query;
@@ -2133,9 +2153,16 @@ void DenseArrayFx::read_dense_array_with_coords_full_global(
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_buffer(ctx_, query, "a3", buffer_a3, &buffer_a3_size);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_buffer(
-      ctx_, query, TILEDB_COORDS, buffer_coords, &buffer_coords_size);
-  CHECK(rc == TILEDB_OK);
+  if (split_coords) {
+    rc = tiledb_query_set_buffer(ctx_, query, "d1", buffer_d1, &buffer_d1_size);
+    CHECK(rc == TILEDB_OK);
+    rc = tiledb_query_set_buffer(ctx_, query, "d2", buffer_d2, &buffer_d2_size);
+    CHECK(rc == TILEDB_OK);
+  } else {
+    rc = tiledb_query_set_buffer(
+        ctx_, query, TILEDB_COORDS, buffer_coords, &buffer_coords_size);
+    CHECK(rc == TILEDB_OK);
+  }
 
   // Submit query
   rc = submit_query_wrapper(array_name, query);
@@ -2154,12 +2181,20 @@ void DenseArrayFx::read_dense_array_with_coords_full_global(
   CHECK(sizeof(c_buffer_a2_off) == buffer_a2_off_size);
   CHECK(sizeof(c_buffer_a2_val) - 1 == buffer_a2_val_size);
   CHECK(sizeof(c_buffer_a3) == buffer_a3_size);
-  CHECK(sizeof(c_buffer_coords) == buffer_coords_size);
   CHECK(!memcmp(buffer_a1, c_buffer_a1, sizeof(c_buffer_a1)));
   CHECK(!memcmp(buffer_a2_off, c_buffer_a2_off, sizeof(c_buffer_a2_off)));
   CHECK(!memcmp(buffer_a2_val, c_buffer_a2_val, sizeof(c_buffer_a2_val) - 1));
   CHECK(!memcmp(buffer_a3, c_buffer_a3, sizeof(c_buffer_a3)));
-  CHECK(!memcmp(buffer_coords, c_buffer_coords, sizeof(c_buffer_coords)));
+
+  if (split_coords) {
+    CHECK(sizeof(c_buffer_d1) == buffer_d1_size);
+    CHECK(!memcmp(buffer_d1, c_buffer_d1, sizeof(c_buffer_d1)));
+    CHECK(sizeof(c_buffer_d2) == buffer_d2_size);
+    CHECK(!memcmp(buffer_d2, c_buffer_d2, sizeof(c_buffer_d2)));
+  } else {
+    CHECK(sizeof(c_buffer_coords) == buffer_coords_size);
+    CHECK(!memcmp(buffer_coords, c_buffer_coords, sizeof(c_buffer_coords)));
+  }
 
   // Close array
   rc = tiledb_array_close(ctx_, array);
@@ -2173,10 +2208,12 @@ void DenseArrayFx::read_dense_array_with_coords_full_global(
   free(buffer_a2_val);
   free(buffer_a3);
   free(buffer_coords);
+  free(buffer_d1);
+  free(buffer_d2);
 }
 
 void DenseArrayFx::read_dense_array_with_coords_full_row(
-    const std::string& array_name) {
+    const std::string& array_name, bool split_coords) {
   // Correct buffers
   int c_buffer_a1[] = {0, 1, 4, 5, 2, 3, 6, 7, 8, 9, 12, 13, 10, 11, 14, 15};
   uint64_t c_buffer_a2_off[] = {
@@ -2194,6 +2231,8 @@ void DenseArrayFx::read_dense_array_with_coords_full_row(
   };
   uint64_t c_buffer_coords[] = {1, 1, 1, 2, 1, 3, 1, 4, 2, 1, 2, 2, 2, 3, 2, 4,
                                 3, 1, 3, 2, 3, 3, 3, 4, 4, 1, 4, 2, 4, 3, 4, 4};
+  uint64_t c_buffer_d1[] = {1, 1, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3, 4, 4, 4, 4};
+  uint64_t c_buffer_d2[] = {1, 2, 3, 4, 1, 2, 3, 4, 1, 2, 3, 4, 1, 2, 3, 4};
 
   // Open array
   tiledb_array_t* array;
@@ -2205,7 +2244,8 @@ void DenseArrayFx::read_dense_array_with_coords_full_row(
   // Compute max buffer sizes
   uint64_t subarray[] = {1, 4, 1, 4};
   uint64_t buffer_a1_size, buffer_a2_off_size, buffer_a2_val_size,
-      buffer_a3_size, buffer_coords_size;
+      buffer_a3_size, buffer_coords_size = 0, buffer_d1_size = 0,
+                      buffer_d2_size = 0;
   rc = tiledb_array_max_buffer_size(
       ctx_, array, "a1", subarray, &buffer_a1_size);
   CHECK(rc == TILEDB_OK);
@@ -2215,9 +2255,18 @@ void DenseArrayFx::read_dense_array_with_coords_full_row(
   rc = tiledb_array_max_buffer_size(
       ctx_, array, "a3", subarray, &buffer_a3_size);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_array_max_buffer_size(
-      ctx_, array, TILEDB_COORDS, subarray, &buffer_coords_size);
-  CHECK(rc == TILEDB_OK);
+  if (split_coords) {
+    rc = tiledb_array_max_buffer_size(
+        ctx_, array, "d1", subarray, &buffer_d1_size);
+    CHECK(rc == TILEDB_OK);
+    rc = tiledb_array_max_buffer_size(
+        ctx_, array, "d2", subarray, &buffer_d2_size);
+    CHECK(rc == TILEDB_OK);
+  } else {
+    rc = tiledb_array_max_buffer_size(
+        ctx_, array, TILEDB_COORDS, subarray, &buffer_coords_size);
+    CHECK(rc == TILEDB_OK);
+  }
 
   // Prepare cell buffers
   auto buffer_a1 = (int*)malloc(buffer_a1_size);
@@ -2225,6 +2274,8 @@ void DenseArrayFx::read_dense_array_with_coords_full_row(
   auto buffer_a2_val = (char*)malloc(buffer_a2_val_size);
   auto buffer_a3 = (float*)malloc(buffer_a3_size);
   auto buffer_coords = (uint64_t*)malloc(buffer_coords_size);
+  auto buffer_d1 = (uint64_t*)malloc(buffer_d1_size);
+  auto buffer_d2 = (uint64_t*)malloc(buffer_d2_size);
 
   // Create query
   tiledb_query_t* query;
@@ -2247,9 +2298,16 @@ void DenseArrayFx::read_dense_array_with_coords_full_row(
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_buffer(ctx_, query, "a3", buffer_a3, &buffer_a3_size);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_buffer(
-      ctx_, query, TILEDB_COORDS, buffer_coords, &buffer_coords_size);
-  CHECK(rc == TILEDB_OK);
+  if (split_coords) {
+    rc = tiledb_query_set_buffer(ctx_, query, "d1", buffer_d1, &buffer_d1_size);
+    CHECK(rc == TILEDB_OK);
+    rc = tiledb_query_set_buffer(ctx_, query, "d2", buffer_d2, &buffer_d2_size);
+    CHECK(rc == TILEDB_OK);
+  } else {
+    rc = tiledb_query_set_buffer(
+        ctx_, query, TILEDB_COORDS, buffer_coords, &buffer_coords_size);
+    CHECK(rc == TILEDB_OK);
+  }
 
   // Submit query
   rc = submit_query_wrapper(array_name, query);
@@ -2268,12 +2326,20 @@ void DenseArrayFx::read_dense_array_with_coords_full_row(
   CHECK(sizeof(c_buffer_a2_off) == buffer_a2_off_size);
   CHECK(sizeof(c_buffer_a2_val) - 1 == buffer_a2_val_size);
   CHECK(sizeof(c_buffer_a3) == buffer_a3_size);
-  CHECK(sizeof(c_buffer_coords) == buffer_coords_size);
   CHECK(!memcmp(buffer_a1, c_buffer_a1, sizeof(c_buffer_a1)));
   CHECK(!memcmp(buffer_a2_off, c_buffer_a2_off, sizeof(c_buffer_a2_off)));
   CHECK(!memcmp(buffer_a2_val, c_buffer_a2_val, sizeof(c_buffer_a2_val) - 1));
   CHECK(!memcmp(buffer_a3, c_buffer_a3, sizeof(c_buffer_a3)));
-  CHECK(!memcmp(buffer_coords, c_buffer_coords, sizeof(c_buffer_coords)));
+
+  if (split_coords) {
+    CHECK(sizeof(c_buffer_d1) == buffer_d1_size);
+    CHECK(!memcmp(buffer_d1, c_buffer_d1, sizeof(c_buffer_d1)));
+    CHECK(sizeof(c_buffer_d2) == buffer_d2_size);
+    CHECK(!memcmp(buffer_d2, c_buffer_d2, sizeof(c_buffer_d2)));
+  } else {
+    CHECK(sizeof(c_buffer_coords) == buffer_coords_size);
+    CHECK(!memcmp(buffer_coords, c_buffer_coords, sizeof(c_buffer_coords)));
+  }
 
   // Close array
   rc = tiledb_array_close(ctx_, array);
@@ -2287,10 +2353,12 @@ void DenseArrayFx::read_dense_array_with_coords_full_row(
   free(buffer_a2_val);
   free(buffer_a3);
   free(buffer_coords);
+  free(buffer_d1);
+  free(buffer_d2);
 }
 
 void DenseArrayFx::read_dense_array_with_coords_full_col(
-    const std::string& array_name) {
+    const std::string& array_name, bool split_coords) {
   // Correct buffers
   int c_buffer_a1[] = {0, 2, 8, 10, 1, 3, 9, 11, 4, 6, 12, 14, 5, 7, 13, 15};
   uint64_t c_buffer_a2_off[] = {
@@ -2307,6 +2375,8 @@ void DenseArrayFx::read_dense_array_with_coords_full_col(
   };
   uint64_t c_buffer_coords[] = {1, 1, 2, 1, 3, 1, 4, 1, 1, 2, 2, 2, 3, 2, 4, 2,
                                 1, 3, 2, 3, 3, 3, 4, 3, 1, 4, 2, 4, 3, 4, 4, 4};
+  uint64_t c_buffer_d1[] = {1, 2, 3, 4, 1, 2, 3, 4, 1, 2, 3, 4, 1, 2, 3, 4};
+  uint64_t c_buffer_d2[] = {1, 1, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3, 4, 4, 4, 4};
 
   // Open array
   tiledb_array_t* array;
@@ -2318,7 +2388,8 @@ void DenseArrayFx::read_dense_array_with_coords_full_col(
   // Compute max buffer sizes
   uint64_t subarray[] = {1, 4, 1, 4};
   uint64_t buffer_a1_size, buffer_a2_off_size, buffer_a2_val_size,
-      buffer_a3_size, buffer_coords_size;
+      buffer_a3_size, buffer_coords_size = 0, buffer_d1_size = 0,
+                      buffer_d2_size = 0;
   rc = tiledb_array_max_buffer_size(
       ctx_, array, "a1", subarray, &buffer_a1_size);
   CHECK(rc == TILEDB_OK);
@@ -2328,9 +2399,18 @@ void DenseArrayFx::read_dense_array_with_coords_full_col(
   rc = tiledb_array_max_buffer_size(
       ctx_, array, "a3", subarray, &buffer_a3_size);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_array_max_buffer_size(
-      ctx_, array, TILEDB_COORDS, subarray, &buffer_coords_size);
-  CHECK(rc == TILEDB_OK);
+  if (split_coords) {
+    rc = tiledb_array_max_buffer_size(
+        ctx_, array, "d1", subarray, &buffer_d1_size);
+    CHECK(rc == TILEDB_OK);
+    rc = tiledb_array_max_buffer_size(
+        ctx_, array, "d2", subarray, &buffer_d2_size);
+    CHECK(rc == TILEDB_OK);
+  } else {
+    rc = tiledb_array_max_buffer_size(
+        ctx_, array, TILEDB_COORDS, subarray, &buffer_coords_size);
+    CHECK(rc == TILEDB_OK);
+  }
 
   // Prepare cell buffers
   auto buffer_a1 = (int*)malloc(buffer_a1_size);
@@ -2338,6 +2418,8 @@ void DenseArrayFx::read_dense_array_with_coords_full_col(
   auto buffer_a2_val = (char*)malloc(buffer_a2_val_size);
   auto buffer_a3 = (float*)malloc(buffer_a3_size);
   auto buffer_coords = (uint64_t*)malloc(buffer_coords_size);
+  auto buffer_d1 = (uint64_t*)malloc(buffer_d1_size);
+  auto buffer_d2 = (uint64_t*)malloc(buffer_d2_size);
 
   // Create query
   tiledb_query_t* query;
@@ -2360,9 +2442,16 @@ void DenseArrayFx::read_dense_array_with_coords_full_col(
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_buffer(ctx_, query, "a3", buffer_a3, &buffer_a3_size);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_buffer(
-      ctx_, query, TILEDB_COORDS, buffer_coords, &buffer_coords_size);
-  CHECK(rc == TILEDB_OK);
+  if (split_coords) {
+    rc = tiledb_query_set_buffer(ctx_, query, "d1", buffer_d1, &buffer_d1_size);
+    CHECK(rc == TILEDB_OK);
+    rc = tiledb_query_set_buffer(ctx_, query, "d2", buffer_d2, &buffer_d2_size);
+    CHECK(rc == TILEDB_OK);
+  } else {
+    rc = tiledb_query_set_buffer(
+        ctx_, query, TILEDB_COORDS, buffer_coords, &buffer_coords_size);
+    CHECK(rc == TILEDB_OK);
+  }
 
   // Submit query
   rc = submit_query_wrapper(array_name, query);
@@ -2381,12 +2470,20 @@ void DenseArrayFx::read_dense_array_with_coords_full_col(
   CHECK(sizeof(c_buffer_a2_off) == buffer_a2_off_size);
   CHECK(sizeof(c_buffer_a2_val) - 1 == buffer_a2_val_size);
   CHECK(sizeof(c_buffer_a3) == buffer_a3_size);
-  CHECK(sizeof(c_buffer_coords) == buffer_coords_size);
   CHECK(!memcmp(buffer_a1, c_buffer_a1, sizeof(c_buffer_a1)));
   CHECK(!memcmp(buffer_a2_off, c_buffer_a2_off, sizeof(c_buffer_a2_off)));
   CHECK(!memcmp(buffer_a2_val, c_buffer_a2_val, sizeof(c_buffer_a2_val) - 1));
   CHECK(!memcmp(buffer_a3, c_buffer_a3, sizeof(c_buffer_a3)));
-  CHECK(!memcmp(buffer_coords, c_buffer_coords, sizeof(c_buffer_coords)));
+
+  if (split_coords) {
+    CHECK(sizeof(c_buffer_d1) == buffer_d1_size);
+    CHECK(!memcmp(buffer_d1, c_buffer_d1, sizeof(c_buffer_d1)));
+    CHECK(sizeof(c_buffer_d2) == buffer_d2_size);
+    CHECK(!memcmp(buffer_d2, c_buffer_d2, sizeof(c_buffer_d2)));
+  } else {
+    CHECK(sizeof(c_buffer_coords) == buffer_coords_size);
+    CHECK(!memcmp(buffer_coords, c_buffer_coords, sizeof(c_buffer_coords)));
+  }
 
   // Close array
   rc = tiledb_array_close(ctx_, array);
@@ -2400,10 +2497,12 @@ void DenseArrayFx::read_dense_array_with_coords_full_col(
   free(buffer_a2_val);
   free(buffer_a3);
   free(buffer_coords);
+  free(buffer_d1);
+  free(buffer_d2);
 }
 
 void DenseArrayFx::read_dense_array_with_coords_subarray_global(
-    const std::string& array_name) {
+    const std::string& array_name, bool split_coords) {
   // Correct buffers
   int c_buffer_a1[] = {9, 11, 12, 13, 14, 15};
   uint64_t c_buffer_a2_off[] = {0, 2, 6, 7, 9, 12};
@@ -2423,6 +2522,8 @@ void DenseArrayFx::read_dense_array_with_coords_subarray_global(
       15.2f,
   };
   uint64_t c_buffer_coords[] = {3, 2, 4, 2, 3, 3, 3, 4, 4, 3, 4, 4};
+  uint64_t c_buffer_d1[] = {3, 4, 3, 3, 4, 4};
+  uint64_t c_buffer_d2[] = {2, 2, 3, 4, 3, 4};
 
   // Open array
   tiledb_array_t* array;
@@ -2434,7 +2535,8 @@ void DenseArrayFx::read_dense_array_with_coords_subarray_global(
   // Compute max buffer sizes
   uint64_t subarray[] = {3, 4, 2, 4};
   uint64_t buffer_a1_size, buffer_a2_off_size, buffer_a2_val_size,
-      buffer_a3_size, buffer_coords_size;
+      buffer_a3_size, buffer_coords_size = 0, buffer_d1_size = 0,
+                      buffer_d2_size = 0;
   rc = tiledb_array_max_buffer_size(
       ctx_, array, "a1", subarray, &buffer_a1_size);
   CHECK(rc == TILEDB_OK);
@@ -2444,9 +2546,18 @@ void DenseArrayFx::read_dense_array_with_coords_subarray_global(
   rc = tiledb_array_max_buffer_size(
       ctx_, array, "a3", subarray, &buffer_a3_size);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_array_max_buffer_size(
-      ctx_, array, TILEDB_COORDS, subarray, &buffer_coords_size);
-  CHECK(rc == TILEDB_OK);
+  if (split_coords) {
+    rc = tiledb_array_max_buffer_size(
+        ctx_, array, "d1", subarray, &buffer_d1_size);
+    CHECK(rc == TILEDB_OK);
+    rc = tiledb_array_max_buffer_size(
+        ctx_, array, "d2", subarray, &buffer_d2_size);
+    CHECK(rc == TILEDB_OK);
+  } else {
+    rc = tiledb_array_max_buffer_size(
+        ctx_, array, TILEDB_COORDS, subarray, &buffer_coords_size);
+    CHECK(rc == TILEDB_OK);
+  }
 
   // Prepare cell buffers
   auto buffer_a1 = (int*)malloc(buffer_a1_size);
@@ -2454,6 +2565,8 @@ void DenseArrayFx::read_dense_array_with_coords_subarray_global(
   auto buffer_a2_val = (char*)malloc(buffer_a2_val_size);
   auto buffer_a3 = (float*)malloc(buffer_a3_size);
   auto buffer_coords = (uint64_t*)malloc(buffer_coords_size);
+  auto buffer_d1 = (uint64_t*)malloc(buffer_d1_size);
+  auto buffer_d2 = (uint64_t*)malloc(buffer_d2_size);
 
   // Create query
   tiledb_query_t* query;
@@ -2476,9 +2589,16 @@ void DenseArrayFx::read_dense_array_with_coords_subarray_global(
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_buffer(ctx_, query, "a3", buffer_a3, &buffer_a3_size);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_buffer(
-      ctx_, query, TILEDB_COORDS, buffer_coords, &buffer_coords_size);
-  CHECK(rc == TILEDB_OK);
+  if (split_coords) {
+    rc = tiledb_query_set_buffer(ctx_, query, "d1", buffer_d1, &buffer_d1_size);
+    CHECK(rc == TILEDB_OK);
+    rc = tiledb_query_set_buffer(ctx_, query, "d2", buffer_d2, &buffer_d2_size);
+    CHECK(rc == TILEDB_OK);
+  } else {
+    rc = tiledb_query_set_buffer(
+        ctx_, query, TILEDB_COORDS, buffer_coords, &buffer_coords_size);
+    CHECK(rc == TILEDB_OK);
+  }
 
   // Submit query
   rc = submit_query_wrapper(array_name, query);
@@ -2497,12 +2617,20 @@ void DenseArrayFx::read_dense_array_with_coords_subarray_global(
   CHECK(sizeof(c_buffer_a2_off) <= buffer_a2_off_size);
   CHECK(sizeof(c_buffer_a2_val) - 1 <= buffer_a2_val_size);
   CHECK(sizeof(c_buffer_a3) <= buffer_a3_size);
-  CHECK(sizeof(c_buffer_coords) <= buffer_coords_size);
   CHECK(!memcmp(buffer_a1, c_buffer_a1, sizeof(c_buffer_a1)));
   CHECK(!memcmp(buffer_a2_off, c_buffer_a2_off, sizeof(c_buffer_a2_off)));
   CHECK(!memcmp(buffer_a2_val, c_buffer_a2_val, sizeof(c_buffer_a2_val) - 1));
   CHECK(!memcmp(buffer_a3, c_buffer_a3, sizeof(c_buffer_a3)));
-  CHECK(!memcmp(buffer_coords, c_buffer_coords, sizeof(c_buffer_coords)));
+
+  if (split_coords) {
+    CHECK(sizeof(c_buffer_d1) == buffer_d1_size);
+    CHECK(!memcmp(buffer_d1, c_buffer_d1, sizeof(c_buffer_d1)));
+    CHECK(sizeof(c_buffer_d2) == buffer_d2_size);
+    CHECK(!memcmp(buffer_d2, c_buffer_d2, sizeof(c_buffer_d2)));
+  } else {
+    CHECK(sizeof(c_buffer_coords) == buffer_coords_size);
+    CHECK(!memcmp(buffer_coords, c_buffer_coords, sizeof(c_buffer_coords)));
+  }
 
   // Close array
   rc = tiledb_array_close(ctx_, array);
@@ -2516,10 +2644,12 @@ void DenseArrayFx::read_dense_array_with_coords_subarray_global(
   free(buffer_a2_val);
   free(buffer_a3);
   free(buffer_coords);
+  free(buffer_d1);
+  free(buffer_d2);
 }
 
 void DenseArrayFx::read_dense_array_with_coords_subarray_row(
-    const std::string& array_name) {
+    const std::string& array_name, bool split_coords) {
   // Correct buffers
   int c_buffer_a1[] = {9, 12, 13, 11, 14, 15};
   uint64_t c_buffer_a2_off[] = {0, 2, 3, 5, 9, 12};
@@ -2537,6 +2667,8 @@ void DenseArrayFx::read_dense_array_with_coords_subarray_row(
                          15.1f,
                          15.2f};
   uint64_t c_buffer_coords[] = {3, 2, 3, 3, 3, 4, 4, 2, 4, 3, 4, 4};
+  uint64_t c_buffer_d1[] = {3, 3, 3, 4, 4, 4};
+  uint64_t c_buffer_d2[] = {2, 3, 4, 2, 3, 4};
 
   // Open array
   tiledb_array_t* array;
@@ -2548,7 +2680,8 @@ void DenseArrayFx::read_dense_array_with_coords_subarray_row(
   // Compute max buffer sizes
   uint64_t subarray[] = {3, 4, 2, 4};
   uint64_t buffer_a1_size, buffer_a2_off_size, buffer_a2_val_size,
-      buffer_a3_size, buffer_coords_size;
+      buffer_a3_size, buffer_coords_size = 0, buffer_d1_size = 0,
+                      buffer_d2_size = 0;
   rc = tiledb_array_max_buffer_size(
       ctx_, array, "a1", subarray, &buffer_a1_size);
   CHECK(rc == TILEDB_OK);
@@ -2558,9 +2691,18 @@ void DenseArrayFx::read_dense_array_with_coords_subarray_row(
   rc = tiledb_array_max_buffer_size(
       ctx_, array, "a3", subarray, &buffer_a3_size);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_array_max_buffer_size(
-      ctx_, array, TILEDB_COORDS, subarray, &buffer_coords_size);
-  CHECK(rc == TILEDB_OK);
+  if (split_coords) {
+    rc = tiledb_array_max_buffer_size(
+        ctx_, array, "d1", subarray, &buffer_d1_size);
+    CHECK(rc == TILEDB_OK);
+    rc = tiledb_array_max_buffer_size(
+        ctx_, array, "d2", subarray, &buffer_d2_size);
+    CHECK(rc == TILEDB_OK);
+  } else {
+    rc = tiledb_array_max_buffer_size(
+        ctx_, array, TILEDB_COORDS, subarray, &buffer_coords_size);
+    CHECK(rc == TILEDB_OK);
+  }
 
   // Prepare cell buffers
   auto buffer_a1 = (int*)malloc(buffer_a1_size);
@@ -2568,6 +2710,8 @@ void DenseArrayFx::read_dense_array_with_coords_subarray_row(
   auto buffer_a2_val = (char*)malloc(buffer_a2_val_size);
   auto buffer_a3 = (float*)malloc(buffer_a3_size);
   auto buffer_coords = (uint64_t*)malloc(buffer_coords_size);
+  auto buffer_d1 = (uint64_t*)malloc(buffer_d1_size);
+  auto buffer_d2 = (uint64_t*)malloc(buffer_d2_size);
 
   // Create query
   tiledb_query_t* query;
@@ -2590,9 +2734,16 @@ void DenseArrayFx::read_dense_array_with_coords_subarray_row(
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_buffer(ctx_, query, "a3", buffer_a3, &buffer_a3_size);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_buffer(
-      ctx_, query, TILEDB_COORDS, buffer_coords, &buffer_coords_size);
-  CHECK(rc == TILEDB_OK);
+  if (split_coords) {
+    rc = tiledb_query_set_buffer(ctx_, query, "d1", buffer_d1, &buffer_d1_size);
+    CHECK(rc == TILEDB_OK);
+    rc = tiledb_query_set_buffer(ctx_, query, "d2", buffer_d2, &buffer_d2_size);
+    CHECK(rc == TILEDB_OK);
+  } else {
+    rc = tiledb_query_set_buffer(
+        ctx_, query, TILEDB_COORDS, buffer_coords, &buffer_coords_size);
+    CHECK(rc == TILEDB_OK);
+  }
 
   // Submit query
   rc = submit_query_wrapper(array_name, query);
@@ -2611,12 +2762,20 @@ void DenseArrayFx::read_dense_array_with_coords_subarray_row(
   CHECK(sizeof(c_buffer_a2_off) == buffer_a2_off_size);
   CHECK(sizeof(c_buffer_a2_val) - 1 == buffer_a2_val_size);
   CHECK(sizeof(c_buffer_a3) == buffer_a3_size);
-  CHECK(sizeof(c_buffer_coords) == buffer_coords_size);
   CHECK(!memcmp(buffer_a1, c_buffer_a1, sizeof(c_buffer_a1)));
   CHECK(!memcmp(buffer_a2_off, c_buffer_a2_off, sizeof(c_buffer_a2_off)));
   CHECK(!memcmp(buffer_a2_val, c_buffer_a2_val, sizeof(c_buffer_a2_val) - 1));
   CHECK(!memcmp(buffer_a3, c_buffer_a3, sizeof(c_buffer_a3)));
-  CHECK(!memcmp(buffer_coords, c_buffer_coords, sizeof(c_buffer_coords)));
+
+  if (split_coords) {
+    CHECK(sizeof(c_buffer_d1) == buffer_d1_size);
+    CHECK(!memcmp(buffer_d1, c_buffer_d1, sizeof(c_buffer_d1)));
+    CHECK(sizeof(c_buffer_d2) == buffer_d2_size);
+    CHECK(!memcmp(buffer_d2, c_buffer_d2, sizeof(c_buffer_d2)));
+  } else {
+    CHECK(sizeof(c_buffer_coords) == buffer_coords_size);
+    CHECK(!memcmp(buffer_coords, c_buffer_coords, sizeof(c_buffer_coords)));
+  }
 
   // Close array
   rc = tiledb_array_close(ctx_, array);
@@ -2630,10 +2789,12 @@ void DenseArrayFx::read_dense_array_with_coords_subarray_row(
   free(buffer_a2_val);
   free(buffer_a3);
   free(buffer_coords);
+  free(buffer_d1);
+  free(buffer_d2);
 }
 
 void DenseArrayFx::read_dense_array_with_coords_subarray_col(
-    const std::string& array_name) {
+    const std::string& array_name, bool split_coords) {
   // Correct buffers
   int c_buffer_a1[] = {9, 11, 12, 14, 13, 15};
   uint64_t c_buffer_a2_off[] = {0, 2, 6, 7, 10, 12};
@@ -2651,6 +2812,8 @@ void DenseArrayFx::read_dense_array_with_coords_subarray_col(
                          15.1f,
                          15.2f};
   uint64_t c_buffer_coords[] = {3, 2, 4, 2, 3, 3, 4, 3, 3, 4, 4, 4};
+  uint64_t c_buffer_d1[] = {3, 4, 3, 4, 3, 4};
+  uint64_t c_buffer_d2[] = {2, 2, 3, 3, 4, 4};
 
   // Open array
   tiledb_array_t* array;
@@ -2662,7 +2825,8 @@ void DenseArrayFx::read_dense_array_with_coords_subarray_col(
   // Compute max buffer sizes
   uint64_t subarray[] = {3, 4, 2, 4};
   uint64_t buffer_a1_size, buffer_a2_off_size, buffer_a2_val_size,
-      buffer_a3_size, buffer_coords_size;
+      buffer_a3_size, buffer_coords_size = 0, buffer_d1_size = 0,
+                      buffer_d2_size = 0;
   rc = tiledb_array_max_buffer_size(
       ctx_, array, "a1", subarray, &buffer_a1_size);
   CHECK(rc == TILEDB_OK);
@@ -2672,9 +2836,18 @@ void DenseArrayFx::read_dense_array_with_coords_subarray_col(
   rc = tiledb_array_max_buffer_size(
       ctx_, array, "a3", subarray, &buffer_a3_size);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_array_max_buffer_size(
-      ctx_, array, TILEDB_COORDS, subarray, &buffer_coords_size);
-  CHECK(rc == TILEDB_OK);
+  if (split_coords) {
+    rc = tiledb_array_max_buffer_size(
+        ctx_, array, "d1", subarray, &buffer_d1_size);
+    CHECK(rc == TILEDB_OK);
+    rc = tiledb_array_max_buffer_size(
+        ctx_, array, "d2", subarray, &buffer_d2_size);
+    CHECK(rc == TILEDB_OK);
+  } else {
+    rc = tiledb_array_max_buffer_size(
+        ctx_, array, TILEDB_COORDS, subarray, &buffer_coords_size);
+    CHECK(rc == TILEDB_OK);
+  }
 
   // Prepare cell buffers
   auto buffer_a1 = (int*)malloc(buffer_a1_size);
@@ -2682,6 +2855,8 @@ void DenseArrayFx::read_dense_array_with_coords_subarray_col(
   auto buffer_a2_val = (char*)malloc(buffer_a2_val_size);
   auto buffer_a3 = (float*)malloc(buffer_a3_size);
   auto buffer_coords = (uint64_t*)malloc(buffer_coords_size);
+  auto buffer_d1 = (uint64_t*)malloc(buffer_d1_size);
+  auto buffer_d2 = (uint64_t*)malloc(buffer_d2_size);
 
   // Create query
   tiledb_query_t* query;
@@ -2704,9 +2879,16 @@ void DenseArrayFx::read_dense_array_with_coords_subarray_col(
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_buffer(ctx_, query, "a3", buffer_a3, &buffer_a3_size);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_buffer(
-      ctx_, query, TILEDB_COORDS, buffer_coords, &buffer_coords_size);
-  CHECK(rc == TILEDB_OK);
+  if (split_coords) {
+    rc = tiledb_query_set_buffer(ctx_, query, "d1", buffer_d1, &buffer_d1_size);
+    CHECK(rc == TILEDB_OK);
+    rc = tiledb_query_set_buffer(ctx_, query, "d2", buffer_d2, &buffer_d2_size);
+    CHECK(rc == TILEDB_OK);
+  } else {
+    rc = tiledb_query_set_buffer(
+        ctx_, query, TILEDB_COORDS, buffer_coords, &buffer_coords_size);
+    CHECK(rc == TILEDB_OK);
+  }
 
   // Submit query
   rc = submit_query_wrapper(array_name, query);
@@ -2725,12 +2907,20 @@ void DenseArrayFx::read_dense_array_with_coords_subarray_col(
   CHECK(sizeof(c_buffer_a2_off) == buffer_a2_off_size);
   CHECK(sizeof(c_buffer_a2_val) - 1 == buffer_a2_val_size);
   CHECK(sizeof(c_buffer_a3) == buffer_a3_size);
-  CHECK(sizeof(c_buffer_coords) == buffer_coords_size);
   CHECK(!memcmp(buffer_a1, c_buffer_a1, sizeof(c_buffer_a1)));
   CHECK(!memcmp(buffer_a2_off, c_buffer_a2_off, sizeof(c_buffer_a2_off)));
   CHECK(!memcmp(buffer_a2_val, c_buffer_a2_val, sizeof(c_buffer_a2_val) - 1));
   CHECK(!memcmp(buffer_a3, c_buffer_a3, sizeof(c_buffer_a3)));
-  CHECK(!memcmp(buffer_coords, c_buffer_coords, sizeof(c_buffer_coords)));
+
+  if (split_coords) {
+    CHECK(sizeof(c_buffer_d1) == buffer_d1_size);
+    CHECK(!memcmp(buffer_d1, c_buffer_d1, sizeof(c_buffer_d1)));
+    CHECK(sizeof(c_buffer_d2) == buffer_d2_size);
+    CHECK(!memcmp(buffer_d2, c_buffer_d2, sizeof(c_buffer_d2)));
+  } else {
+    CHECK(sizeof(c_buffer_coords) == buffer_coords_size);
+    CHECK(!memcmp(buffer_coords, c_buffer_coords, sizeof(c_buffer_coords)));
+  }
 
   // Close array
   rc = tiledb_array_close(ctx_, array);
@@ -2744,6 +2934,8 @@ void DenseArrayFx::read_dense_array_with_coords_subarray_col(
   free(buffer_a2_val);
   free(buffer_a3);
   free(buffer_coords);
+  free(buffer_d1);
+  free(buffer_d2);
 }
 
 void DenseArrayFx::check_non_empty_domain(const std::string& path) {
@@ -2918,23 +3110,57 @@ int DenseArrayFx::submit_query_wrapper(
         }
       }
 
-      // Repeat for coords
-      void* buff;
-      uint64_t* buff_size;
-      REQUIRE(
-          tiledb_query_get_buffer(
-              ctx_, new_query, TILEDB_COORDS, &buff, &buff_size) == TILEDB_OK);
-      if (buff_size != nullptr) {
-        buff = std::malloc(*buff_size);
-        to_free.push_back(buff);
-        REQUIRE(
-            tiledb_query_set_buffer(
-                ctx_, new_query, TILEDB_COORDS, buff, buff_size) == TILEDB_OK);
-      }
-
       tiledb_attribute_free(&attr);
     }
 
+    // Repeat for coords
+    void* buff;
+    uint64_t* buff_size;
+    REQUIRE(
+        tiledb_query_get_buffer(
+            ctx_, new_query, TILEDB_COORDS, &buff, &buff_size) == TILEDB_OK);
+    if (buff_size != nullptr) {
+      buff = std::malloc(*buff_size);
+      to_free.push_back(buff);
+      REQUIRE(
+          tiledb_query_set_buffer(
+              ctx_, new_query, TILEDB_COORDS, buff, buff_size) == TILEDB_OK);
+    }
+
+    // Repeat for split dimensions, if they are set we will set the buffer
+    uint32_t num_dimension;
+    tiledb_domain_t* domain;
+    REQUIRE(tiledb_array_schema_get_domain(ctx_, schema, &domain) == TILEDB_OK);
+    REQUIRE(tiledb_domain_get_ndim(ctx_, domain, &num_dimension) == TILEDB_OK);
+
+    for (uint32_t i = 0; i < num_dimension; i++) {
+      tiledb_dimension_t* dim;
+      REQUIRE(
+          tiledb_domain_get_dimension_from_index(ctx_, domain, i, &dim) ==
+          TILEDB_OK);
+      const char* name;
+      REQUIRE(tiledb_dimension_get_name(ctx_, dim, &name) == TILEDB_OK);
+
+      void* buff;
+      uint64_t* buff_size;
+      REQUIRE(
+          tiledb_query_get_buffer(ctx_, new_query, name, &buff, &buff_size) ==
+          TILEDB_OK);
+      // Buffers will always be null after deserialization on server side
+      REQUIRE(buff == nullptr);
+      if (buff_size != nullptr) {
+        // Buffer size was set for the attribute; allocate one of the
+        // appropriate size.
+        buff = std::malloc(*buff_size);
+        to_free.push_back(buff);
+        REQUIRE(
+            tiledb_query_set_buffer(ctx_, new_query, name, buff, buff_size) ==
+            TILEDB_OK);
+      }
+      tiledb_dimension_free(&dim);
+    }
+
+    tiledb_domain_free(&domain);
     tiledb_array_schema_free(&schema);
   }
 
@@ -3181,12 +3407,30 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     DenseArrayFx,
     "C API: Test dense array, return coordinates",
-    "[capi], [dense], [return-coords]") {
+    "[capi][dense][return-coords]") {
+  bool split_coords = false;
+
   SECTION("- No serialization") {
     serialize_query_ = false;
+
+    SECTION("-- zipped coordinates") {
+      split_coords = false;
+    }
+
+    SECTION("-- split coordinates") {
+      split_coords = true;
+    }
   }
   SECTION("- Serialization") {
     serialize_query_ = true;
+
+    SECTION("-- zipped coordinates") {
+      split_coords = false;
+    }
+
+    SECTION("-- split coordinates") {
+      split_coords = true;
+    }
   }
 
   std::string temp_dir;
@@ -3199,15 +3443,16 @@ TEST_CASE_METHOD(
   } else {
     temp_dir = FILE_URI_PREFIX + FILE_TEMP_DIR;
   }
+
   create_temp_dir(temp_dir);
-  check_return_coords(temp_dir);
+  check_return_coords(temp_dir, split_coords);
   remove_temp_dir(temp_dir);
 }
 
 TEST_CASE_METHOD(
     DenseArrayFx,
     "C API: Test dense array, non-empty domain",
-    "[capi], [dense], [dense-non-empty]") {
+    "[capi][dense][dense-non-empty]") {
   SECTION("- No serialization") {
     serialize_query_ = false;
   }
@@ -3670,7 +3915,7 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     DenseArrayFx,
     "C API: Test dense array, URI ending in a slash",
-    "[capi], [dense], [uri-ending-slash]") {
+    "[capi][dense][uri-ending-slash]") {
   SECTION("- No serialization") {
     serialize_query_ = false;
   }
@@ -3683,14 +3928,14 @@ TEST_CASE_METHOD(
   create_temp_dir(temp_dir);
   create_dense_array(array_name);
   write_dense_array(array_name);
-  read_dense_array_with_coords_full_global(array_name);
+  read_dense_array_with_coords_full_global(array_name, true);
   remove_temp_dir(temp_dir);
 }
 
 TEST_CASE_METHOD(
     DenseArrayFx,
     "C API: Test dense array, missing attributes in writes",
-    "[capi], [dense], [dense-write-missing-attributes]") {
+    "[capi][dense][write-missing-attributes]") {
   SECTION("- No serialization") {
     serialize_query_ = false;
   }

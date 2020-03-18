@@ -124,36 +124,8 @@ const Attribute* ArraySchema::attribute(unsigned int id) const {
 }
 
 const Attribute* ArraySchema::attribute(const std::string& name) const {
-  auto it =
-      attribute_map_.find(name.empty() ? constants::default_attr_name : name);
+  auto it = attribute_map_.find(name);
   return it == attribute_map_.end() ? nullptr : it->second;
-}
-
-Status ArraySchema::attribute_name_normalized(
-    const char* attribute, std::string* normalized_name) {
-  if (attribute == nullptr)
-    return Status::AttributeError("Null attribute name");
-  *normalized_name =
-      attribute[0] == '\0' ? constants::default_attr_name : attribute;
-  return Status::Ok();
-}
-
-Status ArraySchema::attribute_names_normalized(
-    const char** attributes,
-    unsigned num_attributes,
-    std::vector<std::string>* normalized_names) {
-  normalized_names->clear();
-
-  if (attributes == nullptr || num_attributes == 0)
-    return Status::Ok();
-
-  for (unsigned i = 0; i < num_attributes; i++) {
-    std::string normalized;
-    RETURN_NOT_OK(attribute_name_normalized(attributes[i], &normalized));
-    normalized_names->push_back(normalized);
-  }
-
-  return Status::Ok();
 }
 
 unsigned int ArraySchema::attribute_num() const {
@@ -175,6 +147,7 @@ Layout ArraySchema::cell_order() const {
 uint64_t ArraySchema::cell_size(const std::string& name) const {
   // Special zipped coordinates attribute
   if (name == constants::coords) {
+    assert(domain_->all_dims_same_type());
     auto dim_num = domain_->dim_num();
     assert(dim_num > 0);
     auto coord_size = domain_->dimension(0)->coord_size();
@@ -310,7 +283,7 @@ const Dimension* ArraySchema::dimension(unsigned int i) const {
 }
 
 const Dimension* ArraySchema::dimension(const std::string& name) const {
-  auto it = dim_map_.find(name.empty() ? constants::default_dim_name : name);
+  auto it = dim_map_.find(name);
   return it == dim_map_.end() ? nullptr : it->second;
 }
 
@@ -347,11 +320,8 @@ Status ArraySchema::has_attribute(
     const std::string& name, bool* has_attr) const {
   *has_attr = false;
 
-  std::string normalized;
-  RETURN_NOT_OK(attribute_name_normalized(name.c_str(), &normalized));
-
   for (auto& attr : attributes_) {
-    if (normalized == attr->name()) {
+    if (name == attr->name()) {
       *has_attr = true;
       break;
     }
@@ -473,21 +443,7 @@ Status ArraySchema::add_attribute(const Attribute* attr, bool check_special) {
   }
 
   // Create new attribute and potentially set a default name
-  auto new_attr = (Attribute*)nullptr;
-  if (attr->is_anonymous()) {
-    // Check if any other attributes are anonymous
-    for (auto& a : attributes_) {
-      if (a->is_anonymous()) {
-        return LOG_STATUS(Status::ArraySchemaError(
-            "Only one anonymous attribute is allowed per array"));
-      }
-    }
-    new_attr = new Attribute(attr);
-    new_attr->set_name(constants::default_attr_name);
-  } else {
-    new_attr = new Attribute(attr);
-  }
-
+  auto new_attr = new Attribute(attr);
   attributes_.emplace_back(new_attr);
   attribute_map_[new_attr->name()] = new_attr;
 

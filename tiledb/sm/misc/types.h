@@ -134,10 +134,13 @@ typedef std::vector<Range> NDRange;
 /** A value as a vector of bytes. */
 typedef std::vector<uint8_t> ByteVecValue;
 
-/** Contains the buffer(s) and buffer size(s) for some attribute / dimension. */
+/** A byte vector. */
+typedef std::vector<uint8_t> ByteVec;
+
+/** Contains the buffer(s) and buffer size(s) for some attribute/dimension. */
 struct QueryBuffer {
   /**
-   * The attribute/coordinate buffer. In case the attribute/dimension is
+   * The attribute/dimension buffer. In case the attribute/dimension is
    * var-sized, this is the offsets buffer.
    */
   void* buffer_;

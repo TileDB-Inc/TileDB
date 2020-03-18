@@ -63,14 +63,9 @@ Array::Array(const URI& array_uri, StorageManager* storage_manager)
   is_open_ = false;
   array_schema_ = nullptr;
   timestamp_ = 0;
-  last_max_buffer_sizes_subarray_ = nullptr;
   remote_ = array_uri.is_tiledb();
   metadata_loaded_ = false;
 };
-
-Array::~Array() {
-  std::free(last_max_buffer_sizes_subarray_);
-}
 
 /* ********************************* */
 /*                API                */
@@ -332,9 +327,8 @@ Status Array::get_query_type(QueryType* query_type) const {
 }
 
 Status Array::get_max_buffer_size(
-    const char* attribute, const void* subarray, uint64_t* buffer_size) {
+    const char* name, const void* subarray, uint64_t* buffer_size) {
   std::unique_lock<std::mutex> lck(mtx_);
-
   // Check if array is open
   if (!is_open_)
     return LOG_STATUS(
@@ -346,39 +340,39 @@ Status Array::get_max_buffer_size(
         Status::ArrayError("Cannot get max buffer size; "
                            "Array was not opened in read mode"));
 
-  // Check if attribute is null
-  if (attribute == nullptr)
-    return LOG_STATUS(
-        Status::ArrayError("Cannot get max buffer size; Attribute is null"));
+  // Check if name is null
+  if (name == nullptr)
+    return LOG_STATUS(Status::ArrayError(
+        "Cannot get max buffer size; Attribute/Dimension name is null"));
+
+  // Check if name is attribute or dimension
+  bool is_dim = array_schema_->is_dim(name);
+  bool is_attr = array_schema_->is_attr(name);
+
+  // Check if attribute/dimension exists
+  if (name != constants::coords && !is_dim && !is_attr)
+    return LOG_STATUS(Status::ArrayError(
+        std::string("Cannot get max buffer size; Attribute/Dimension '") +
+        name + "' does not exist"));
+
+  // Check if attribute/dimension is fixed sized
+  if (array_schema_->var_size(name))
+    return LOG_STATUS(Status::ArrayError(
+        std::string("Cannot get max buffer size; Attribute/Dimension '") +
+        name + "' is var-sized"));
 
   RETURN_NOT_OK(compute_max_buffer_sizes(subarray));
 
-  // Normalize attribute name
-  std::string norm_attribute;
-  RETURN_NOT_OK(
-      ArraySchema::attribute_name_normalized(attribute, &norm_attribute));
-
-  // Check if attribute exists
-  auto it = last_max_buffer_sizes_.find(norm_attribute);
-  if (it == last_max_buffer_sizes_.end())
-    return LOG_STATUS(Status::ArrayError(
-        std::string("Cannot get max buffer size; Attribute '") +
-        norm_attribute + "' does not exist"));
-
-  // Check if attribute is fixed sized
-  if (array_schema_->var_size(norm_attribute))
-    return LOG_STATUS(Status::ArrayError(
-        std::string("Cannot get max buffer size; Attribute '") +
-        norm_attribute + "' is var-sized"));
-
   // Retrieve buffer size
+  auto it = last_max_buffer_sizes_.find(name);
+  assert(it != last_max_buffer_sizes_.end());
   *buffer_size = it->second.first;
 
   return Status::Ok();
 }
 
 Status Array::get_max_buffer_size(
-    const char* attribute,
+    const char* name,
     const void* subarray,
     uint64_t* buffer_off_size,
     uint64_t* buffer_val_size) {
@@ -395,30 +389,25 @@ Status Array::get_max_buffer_size(
         Status::ArrayError("Cannot get max buffer size; "
                            "Array was not opened in read mode"));
 
-  // Check if attribute is null
-  if (attribute == nullptr)
-    return LOG_STATUS(
-        Status::ArrayError("Cannot get max buffer size; Attribute is null"));
+  // Check if name is null
+  if (name == nullptr)
+    return LOG_STATUS(Status::ArrayError(
+        "Cannot get max buffer size; Attribute/Dimension name is null"));
 
   RETURN_NOT_OK(compute_max_buffer_sizes(subarray));
 
-  // Normalize attribute name
-  std::string norm_attribute;
-  RETURN_NOT_OK(
-      ArraySchema::attribute_name_normalized(attribute, &norm_attribute));
-
-  // Check if attribute exists
-  auto it = last_max_buffer_sizes_.find(norm_attribute);
+  // Check if attribute/dimension exists
+  auto it = last_max_buffer_sizes_.find(name);
   if (it == last_max_buffer_sizes_.end())
     return LOG_STATUS(Status::ArrayError(
-        std::string("Cannot get max buffer size; Attribute '") +
-        norm_attribute + "' does not exist"));
+        std::string("Cannot get max buffer size; Attribute/Dimension '") +
+        name + "' does not exist"));
 
-  // Check if attribute is var-sized
-  if (!array_schema_->var_size(norm_attribute))
+  // Check if attribute/dimension is var-sized
+  if (!array_schema_->var_size(name))
     return LOG_STATUS(Status::ArrayError(
-        std::string("Cannot get max buffer size; Attribute '") +
-        norm_attribute + "' is fixed-sized"));
+        std::string("Cannot get max buffer size; Attribute/Dimension '") +
+        name + "' is fixed-sized"));
 
   // Retrieve buffer sizes
   *buffer_off_size = it->second.first;
@@ -666,8 +655,8 @@ Status Array::metadata(Metadata** metadata) {
 
 void Array::clear_last_max_buffer_sizes() {
   last_max_buffer_sizes_.clear();
-  std::free(last_max_buffer_sizes_subarray_);
-  last_max_buffer_sizes_subarray_ = nullptr;
+  last_max_buffer_sizes_subarray_.clear();
+  last_max_buffer_sizes_subarray_.shrink_to_fit();
 }
 
 Status Array::compute_max_buffer_sizes(const void* subarray) {
@@ -681,17 +670,12 @@ Status Array::compute_max_buffer_sizes(const void* subarray) {
   auto dim_num = array_schema_->dim_num();
   auto coord_size = array_schema_->domain()->dimension(0)->coord_size();
   auto subarray_size = 2 * dim_num * coord_size;
-  if (last_max_buffer_sizes_subarray_ == nullptr) {
-    last_max_buffer_sizes_subarray_ = std::malloc(subarray_size);
-    if (last_max_buffer_sizes_subarray_ == nullptr)
-      return LOG_STATUS(Status::ArrayError(
-          "Cannot compute max buffer sizes; Subarray allocation failed"));
-  }
+  last_max_buffer_sizes_subarray_.resize(subarray_size);
 
   // Compute max buffer sizes
   if (last_max_buffer_sizes_.empty() ||
-      std::memcmp(last_max_buffer_sizes_subarray_, subarray, subarray_size) !=
-          0) {
+      std::memcmp(
+          &last_max_buffer_sizes_subarray_[0], subarray, subarray_size) != 0) {
     last_max_buffer_sizes_.clear();
 
     // Get all attributes and coordinates
@@ -702,11 +686,15 @@ Status Array::compute_max_buffer_sizes(const void* subarray) {
           std::pair<uint64_t, uint64_t>(0, 0);
     last_max_buffer_sizes_[constants::coords] =
         std::pair<uint64_t, uint64_t>(0, 0);
+    for (unsigned d = 0; d < dim_num; ++d)
+      last_max_buffer_sizes_[array_schema_->domain()->dimension(d)->name()] =
+          std::pair<uint64_t, uint64_t>(0, 0);
+
     RETURN_NOT_OK(compute_max_buffer_sizes(subarray, &last_max_buffer_sizes_));
   }
 
   // Update subarray
-  std::memcpy(last_max_buffer_sizes_subarray_, subarray, subarray_size);
+  std::memcpy(&last_max_buffer_sizes_subarray_[0], subarray, subarray_size);
 
   return Status::Ok();
 }
