@@ -345,6 +345,12 @@ Status Array::get_max_buffer_size(
     return LOG_STATUS(Status::ArrayError(
         "Cannot get max buffer size; Attribute/Dimension name is null"));
 
+  // Not applicable to heterogeneous domains
+  if (!array_schema_->domain()->all_dims_same_type())
+    return LOG_STATUS(
+        Status::ArrayError("Cannot get max buffer size; Function not "
+                           "applicable to heterogeneous domains"));
+
   // Check if name is attribute or dimension
   bool is_dim = array_schema_->is_dim(name);
   bool is_attr = array_schema_->is_attr(name);
@@ -393,6 +399,12 @@ Status Array::get_max_buffer_size(
   if (name == nullptr)
     return LOG_STATUS(Status::ArrayError(
         "Cannot get max buffer size; Attribute/Dimension name is null"));
+
+  // Not applicable to heterogeneous domains
+  if (!array_schema_->domain()->all_dims_same_type())
+    return LOG_STATUS(
+        Status::ArrayError("Cannot get max buffer size; Function not "
+                           "applicable to heterogeneous domains"));
 
   RETURN_NOT_OK(compute_max_buffer_sizes(subarray));
 

@@ -261,19 +261,6 @@ const FilterPipeline& ArraySchema::coords_filters() const {
   return coords_filters_;
 }
 
-/*
-Compressor ArraySchema::coords_compression() const {
-  auto compressor = coords_filters_.get_filter<CompressionFilter>();
-  return (compressor == nullptr) ? Compressor::NO_COMPRESSION :
-                                   compressor->compressor();
-}
-
-int ArraySchema::coords_compression_level() const {
-  auto compressor = coords_filters_.get_filter<CompressionFilter>();
-  return (compressor == nullptr) ? -1 : compressor->compression_level();
-}
-*/
-
 bool ArraySchema::dense() const {
   return array_type_ == ArrayType::DENSE;
 }
@@ -573,17 +560,27 @@ void ArraySchema::set_cell_order(Layout cell_order) {
 }
 
 Status ArraySchema::set_domain(Domain* domain) {
-  if (array_type_ == ArrayType::DENSE) {
-    RETURN_NOT_OK(domain->set_null_tile_extents_to_range());
+  if (domain == nullptr)
+    return LOG_STATUS(
+        Status::ArraySchemaError("Cannot set domain; Input domain is nullptr"));
 
-    if (domain->dim_num() > 0) {
-      auto type = domain->dimension(0)->type();
-      if (type == Datatype::FLOAT32 || type == Datatype::FLOAT64) {
-        return LOG_STATUS(
-            Status::ArraySchemaError("Cannot set domain; Dense arrays "
-                                     "cannot have floating point domains"));
-      }
+  if (domain->dim_num() == 0)
+    return LOG_STATUS(Status::ArraySchemaError(
+        "Cannot set domain; Domain must contain at least one dimension"));
+
+  if (array_type_ == ArrayType::DENSE) {
+    if (!domain->all_dims_same_type())
+      return LOG_STATUS(
+          Status::ArraySchemaError("Cannot set domain; In dense arrays, all "
+                                   "dimensions must have the same datatype"));
+
+    auto type = domain->dimension(0)->type();
+    if (type == Datatype::FLOAT32 || type == Datatype::FLOAT64) {
+      return LOG_STATUS(
+          Status::ArraySchemaError("Cannot set domain; Dense arrays "
+                                   "cannot have floating point domains"));
     }
+    RETURN_NOT_OK(domain->set_null_tile_extents_to_range());
   }
 
   // Set domain

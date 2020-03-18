@@ -107,6 +107,18 @@ TEST_CASE("C++ API: Schema", "[cppapi][schema]") {
     CHECK_THROWS(dims[0].tile_extent<unsigned>());
     CHECK(dims[0].tile_extent<int>() == 10);
 
+    auto d1 = schema.domain().dimension(0);
+    CHECK(d1.name() == "d1");
+    auto d2 = schema.domain().dimension(1);
+    CHECK(d2.name() == "d2");
+    auto d1_1 = schema.domain().dimension("d1");
+    CHECK(d1_1.type() == TILEDB_INT32);
+    CHECK(d1_1.name() == "d1");
+    auto d2_1 = schema.domain().dimension("d2");
+    CHECK(d2_1.type() == TILEDB_INT32);
+    CHECK(d2_1.name() == "d2");
+    CHECK_THROWS(schema.domain().dimension(2));
+    CHECK_THROWS(schema.domain().dimension("foo"));
     CHECK(dense_domain.type() == TILEDB_INT32);
   }
 
@@ -159,15 +171,6 @@ TEST_CASE("C++ API: Schema", "[cppapi][schema]") {
 
     CHECK(sparse_domain.type() == TILEDB_FLOAT64);
   }
-
-  SECTION("Invalid dimension types") {
-    Domain dom(ctx);
-    dom.add_dimension(Dimension::create<int>(ctx, "d1", {{0, 10}}, 11));
-    CHECK_THROWS_AS(
-        dom.add_dimension(
-            Dimension::create<uint64_t>(ctx, "d2", {{0, 10}}, 11)),
-        TileDBError);
-  }
 }
 
 TEST_CASE("C++ API: Test schema virtual destructors", "[cppapi][schema]") {
@@ -177,4 +180,64 @@ TEST_CASE("C++ API: Test schema virtual destructors", "[cppapi][schema]") {
 
   // Just instantiate them, don't care about runtime errors.
   schema.reset(new tiledb::ArraySchema(ctx, TILEDB_SPARSE));
+}
+
+TEST_CASE(
+    "C++ API: Test schema, heterogeneous domain, errors",
+    "[cppapi][schema][heter][error]") {
+  using namespace tiledb;
+  tiledb::Context ctx;
+
+  auto d1 = Dimension::create<float>(ctx, "d1", {{1.0f, 2.0f}}, .5f);
+  auto d2 = Dimension::create<int32_t>(ctx, "d2", {{1, 2}}, 1);
+
+  // Create domain
+  Domain domain(ctx);
+  domain.add_dimension(d1).add_dimension(d2);
+
+  // Set domain to a dense array schema should error out
+  ArraySchema dense_schema(ctx, TILEDB_DENSE);
+  CHECK_THROWS(dense_schema.set_domain(domain));
+
+  // Create sparse array
+  ArraySchema sparse_schema(ctx, TILEDB_SPARSE);
+  sparse_schema.set_domain(domain);
+  auto a = Attribute::create<int32_t>(ctx, "a");
+  sparse_schema.add_attribute(a);
+  Array::create("sparse_array", sparse_schema);
+
+  // Load array schema and get domain
+  auto schema = Array::load_schema(ctx, "sparse_array");
+  auto dom = schema.domain();
+
+  // Get domain type should error out
+  CHECK_THROWS(dom.type());
+
+  // Check dimension types
+  auto r_d1 = domain.dimension("d1");
+  auto r_d2 = domain.dimension("d2");
+  CHECK(r_d1.type() == TILEDB_FLOAT32);
+  CHECK(r_d2.type() == TILEDB_INT32);
+
+  // Open array
+  Array array(ctx, "sparse_array", TILEDB_READ);
+
+  // Get non-empty domain and max buffer elements should error out
+  CHECK_THROWS(array.non_empty_domain<int32_t>());
+  std::vector<int32_t> subarray = {1, 2, 1, 3};
+  CHECK_THROWS(array.max_buffer_elements(subarray));
+  CHECK_THROWS(array.max_buffer_elements(subarray));
+
+  // Query checks
+  Query query(ctx, array, TILEDB_READ);
+  CHECK_THROWS(query.set_subarray(subarray));
+  std::vector<int32_t> buff = {1, 2, 4};
+  CHECK_THROWS(query.set_buffer(TILEDB_COORDS, buff));
+
+  // Close array
+  array.close();
+
+  // Clean up
+  VFS vfs(ctx);
+  vfs.remove_dir("sparse_array");
 }

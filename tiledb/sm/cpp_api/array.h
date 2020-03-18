@@ -701,6 +701,57 @@ class Array {
   }
 
   /**
+   * Loads the array schema from an array.
+   *
+   * **Example:**
+   * @code{.cpp}
+   * auto schema = tiledb::Array::load_schema(ctx,
+   * "s3://bucket-name/array-name");
+   * @endcode
+   *
+   * @param ctx The TileDB context.
+   * @param uri The array URI.
+   */
+  static ArraySchema load_schema(const Context& ctx, const std::string& uri) {
+    tiledb_array_schema_t* schema;
+    ctx.handle_error(
+        tiledb_array_schema_load(ctx.ptr().get(), uri.c_str(), &schema));
+    return ArraySchema(ctx, schema);
+  }
+
+  /**
+   * Loads the array schema from an encrypted array.
+   *
+   * **Example:**
+   * @code{.cpp}
+   * auto schema = tiledb::Array::load_schema(ctx,
+   * "s3://bucket-name/array-name", key_type, key, key_len);
+   * @endcode
+   *
+   * @param ctx The TileDB context.
+   * @param uri The array URI.
+   * @param encryption_type The encryption type to use.
+   * @param encryption_key The encryption key to use.
+   * @param key_length Length in bytes of the encryption key.
+   */
+  static ArraySchema load_schema(
+      const Context& ctx,
+      const std::string& uri,
+      tiledb_encryption_type_t encryption_type,
+      const void* encryption_key,
+      uint32_t key_length) {
+    tiledb_array_schema_t* schema;
+    ctx.handle_error(tiledb_array_schema_load_with_key(
+        ctx.ptr().get(),
+        uri.c_str(),
+        encryption_type,
+        encryption_key,
+        key_length,
+        &schema));
+    return ArraySchema(ctx, schema);
+  }
+
+  /**
    * @brief Creates a new encrypted TileDB array given an input schema.
    *
    * **Example:**
@@ -824,6 +875,80 @@ class Array {
           std::pair<std::string, std::pair<T, T>>(dims[i].name(), domain));
     }
 
+    return ret;
+  }
+
+  /**
+   * Retrieves the non-empty domain from the array on the given dimension.
+   * This is the union of the non-empty domains of the array fragments.
+   *
+   *
+   * **Example:**
+   * @code{.cpp}
+   * tiledb::Context ctx;
+   * tiledb::Array array(ctx, "s3://bucket-name/array-name", TILEDB_READ);
+   * // Specify the dimension type (example uint32_t)
+   * auto non_empty = array.non_empty_domain<uint32_t>(0);
+   * @endcode
+   *
+   * @tparam T Dimension datatype
+   * @param idx The dimension index.
+   * @return The {lower, upper} pair of the non-empty domain (inclusive)
+   *         on the input dimension.
+   */
+  template <typename T>
+  std::pair<T, T> non_empty_domain(unsigned idx) {
+    auto dim = schema_.domain().dimension(idx);
+    impl::type_check<T>(dim.type());
+    std::pair<T, T> ret;
+    std::vector<T> buf(2);
+    int empty;
+
+    auto& ctx = ctx_.get();
+    ctx.handle_error(tiledb_array_get_non_empty_domain_from_index(
+        ctx.ptr().get(), array_.get(), idx, buf.data(), &empty));
+
+    if (empty)
+      return ret;
+
+    ret = std::pair<T, T>(buf[0], buf[1]);
+    return ret;
+  }
+
+  /**
+   * Retrieves the non-empty domain from the array on the given dimension.
+   * This is the union of the non-empty domains of the array fragments.
+   *
+   *
+   * **Example:**
+   * @code{.cpp}
+   * tiledb::Context ctx;
+   * tiledb::Array array(ctx, "s3://bucket-name/array-name", TILEDB_READ);
+   * // Specify the dimension type (example uint32_t)
+   * auto non_empty = array.non_empty_domain<uint32_t>("d1");
+   * @endcode
+   *
+   * @tparam T Dimension datatype
+   * @param name The dimension name.
+   * @return The {lower, upper} pair of the non-empty domain (inclusive)
+   *         on the input dimension.
+   */
+  template <typename T>
+  std::pair<T, T> non_empty_domain(const std::string& name) {
+    auto dim = schema_.domain().dimension(name);
+    impl::type_check<T>(dim.type());
+    std::pair<T, T> ret;
+    std::vector<T> buf(2);
+    int empty;
+
+    auto& ctx = ctx_.get();
+    ctx.handle_error(tiledb_array_get_non_empty_domain_from_name(
+        ctx.ptr().get(), array_.get(), name.c_str(), buf.data(), &empty));
+
+    if (empty)
+      return ret;
+
+    ret = std::pair<T, T>(buf[0], buf[1]);
     return ret;
   }
 

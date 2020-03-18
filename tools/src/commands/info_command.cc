@@ -43,6 +43,7 @@
 #include "tiledb/sm/fragment/fragment_metadata.h"
 #include "tiledb/sm/storage_manager/storage_manager.h"
 
+#include <cassert>
 #include <fstream>
 #include <iostream>
 #include <sstream>
@@ -220,7 +221,7 @@ void InfoCommand::write_svg_mbrs() const {
   for (const auto& f : fragment_metadata) {
     const auto& mbrs = f->mbrs();
     for (const auto& mbr : mbrs) {
-      auto tup = get_mbr(mbr, schema->dimension(0)->type());
+      auto tup = get_mbr(mbr, schema->domain());
       min_x = std::min(min_x, std::get<0>(tup));
       min_y = std::min(min_y, std::get<1>(tup));
       max_x = std::max(max_x, std::get<0>(tup) + std::get<2>(tup));
@@ -281,12 +282,11 @@ void InfoCommand::write_text_mbrs() const {
   const auto* schema = array.array_schema();
   auto dim_num = schema->dim_num();
   auto fragment_metadata = array.fragment_metadata();
-  auto coords_type = schema->dimension(0)->type();
   std::stringstream text;
   for (const auto& f : fragment_metadata) {
     const auto& mbrs = f->mbrs();
     for (const auto& mbr : mbrs) {
-      auto str_mbr = mbr_to_string(mbr, coords_type, dim_num);
+      auto str_mbr = mbr_to_string(mbr, schema->domain());
       for (unsigned i = 0; i < dim_num; i++) {
         text << str_mbr[2 * i + 0] << "," << str_mbr[2 * i + 1];
         if (i < dim_num - 1)
@@ -308,28 +308,53 @@ void InfoCommand::write_text_mbrs() const {
 }
 
 std::tuple<double, double, double, double> InfoCommand::get_mbr(
-    const NDRange& mbr, tiledb::sm::Datatype datatype) const {
-  switch (datatype) {
+    const NDRange& mbr, const Domain* domain) const {
+  assert(domain->dim_num() == 2);
+  double x, y, width, height;
+
+  // First dimension
+  auto d1_type = domain->dimension(0)->type();
+  switch (d1_type) {
     case Datatype::INT8:
-      return get_mbr<int8_t>(mbr);
+      y = static_cast<const int8_t*>(mbr[0].data())[0];
+      height = static_cast<const int8_t*>(mbr[0].data())[1] - y + 1;
+      break;
     case Datatype::UINT8:
-      return get_mbr<uint8_t>(mbr);
+      y = static_cast<const uint8_t*>(mbr[0].data())[0];
+      height = static_cast<const uint8_t*>(mbr[0].data())[1] - y + 1;
+      break;
     case Datatype::INT16:
-      return get_mbr<int16_t>(mbr);
+      y = static_cast<const int16_t*>(mbr[0].data())[0];
+      height = static_cast<const int16_t*>(mbr[0].data())[1] - y + 1;
+      break;
     case Datatype::UINT16:
-      return get_mbr<uint16_t>(mbr);
+      y = static_cast<const uint16_t*>(mbr[0].data())[0];
+      height = static_cast<const uint16_t*>(mbr[0].data())[1] - y + 1;
+      break;
     case Datatype::INT32:
-      return get_mbr<int>(mbr);
+      y = static_cast<const int32_t*>(mbr[0].data())[0];
+      height = static_cast<const int32_t*>(mbr[0].data())[1] - y + 1;
+      break;
     case Datatype::UINT32:
-      return get_mbr<unsigned>(mbr);
+      y = static_cast<const uint32_t*>(mbr[0].data())[0];
+      height = static_cast<const uint32_t*>(mbr[0].data())[1] - y + 1;
+      break;
     case Datatype::INT64:
-      return get_mbr<int64_t>(mbr);
+      y = static_cast<const int64_t*>(mbr[0].data())[0];
+      height = static_cast<const int64_t*>(mbr[0].data())[1] - y + 1;
+      break;
     case Datatype::UINT64:
-      return get_mbr<uint64_t>(mbr);
+      y = static_cast<const uint64_t*>(mbr[0].data())[0];
+      height = static_cast<const uint64_t*>(mbr[0].data())[1] - y + 1;
+      break;
     case Datatype::FLOAT32:
-      return get_mbr<float>(mbr);
+      y = static_cast<const float*>(mbr[0].data())[0];
+      height = static_cast<const float*>(mbr[0].data())[1] - y + 1;
+      break;
     case Datatype::FLOAT64:
-      return get_mbr<double>(mbr);
+      y = static_cast<const double*>(mbr[0].data())[0];
+      height = static_cast<const double*>(mbr[0].data())[1] - y + 1;
+      break;
     case Datatype::DATETIME_YEAR:
     case Datatype::DATETIME_MONTH:
     case Datatype::DATETIME_WEEK:
@@ -343,27 +368,84 @@ std::tuple<double, double, double, double> InfoCommand::get_mbr(
     case Datatype::DATETIME_PS:
     case Datatype::DATETIME_FS:
     case Datatype::DATETIME_AS:
-      return get_mbr<int64_t>(mbr);
+      y = static_cast<const int64_t*>(mbr[0].data())[0];
+      height = static_cast<const int64_t*>(mbr[0].data())[1] - y + 1;
+      break;
     default:
       throw std::invalid_argument(
           "Cannot get MBR; Unsupported coordinates type");
   }
-}
 
-template <typename T>
-std::tuple<double, double, double, double> InfoCommand::get_mbr(
-    const NDRange& mbr) const {
-  T x, y, width, height;
-  y = static_cast<const T*>(mbr[0].data())[0];
-  height = static_cast<const T*>(mbr[0].data())[1] - y + 1;
-  x = static_cast<const T*>(mbr[1].data())[0];
-  width = static_cast<const T*>(mbr[1].data())[1] - x + 1;
+  // Second dimension
+  auto d2_type = domain->dimension(1)->type();
+  switch (d2_type) {
+    case Datatype::INT8:
+      x = static_cast<const int8_t*>(mbr[1].data())[0];
+      width = static_cast<const int8_t*>(mbr[1].data())[1] - x + 1;
+      break;
+    case Datatype::UINT8:
+      x = static_cast<const uint8_t*>(mbr[1].data())[0];
+      width = static_cast<const uint8_t*>(mbr[1].data())[1] - x + 1;
+      break;
+    case Datatype::INT16:
+      x = static_cast<const int16_t*>(mbr[1].data())[0];
+      width = static_cast<const int16_t*>(mbr[1].data())[1] - x + 1;
+      break;
+    case Datatype::UINT16:
+      x = static_cast<const uint16_t*>(mbr[1].data())[0];
+      width = static_cast<const uint16_t*>(mbr[1].data())[1] - x + 1;
+      break;
+    case Datatype::INT32:
+      x = static_cast<const int32_t*>(mbr[1].data())[0];
+      width = static_cast<const int32_t*>(mbr[1].data())[1] - x + 1;
+      break;
+    case Datatype::UINT32:
+      x = static_cast<const uint32_t*>(mbr[1].data())[0];
+      width = static_cast<const uint32_t*>(mbr[1].data())[1] - x + 1;
+      break;
+    case Datatype::INT64:
+      x = static_cast<const int64_t*>(mbr[1].data())[0];
+      width = static_cast<const int64_t*>(mbr[1].data())[1] - x + 1;
+      break;
+    case Datatype::UINT64:
+      x = static_cast<const uint64_t*>(mbr[1].data())[0];
+      width = static_cast<const uint64_t*>(mbr[1].data())[1] - x + 1;
+      break;
+    case Datatype::FLOAT32:
+      x = static_cast<const float*>(mbr[1].data())[0];
+      width = static_cast<const float*>(mbr[1].data())[1] - x + 1;
+      break;
+    case Datatype::FLOAT64:
+      x = static_cast<const double*>(mbr[1].data())[0];
+      width = static_cast<const double*>(mbr[1].data())[1] - x + 1;
+      break;
+    case Datatype::DATETIME_YEAR:
+    case Datatype::DATETIME_MONTH:
+    case Datatype::DATETIME_WEEK:
+    case Datatype::DATETIME_DAY:
+    case Datatype::DATETIME_HR:
+    case Datatype::DATETIME_MIN:
+    case Datatype::DATETIME_SEC:
+    case Datatype::DATETIME_MS:
+    case Datatype::DATETIME_US:
+    case Datatype::DATETIME_NS:
+    case Datatype::DATETIME_PS:
+    case Datatype::DATETIME_FS:
+    case Datatype::DATETIME_AS:
+      x = static_cast<const int64_t*>(mbr[1].data())[0];
+      width = static_cast<const int64_t*>(mbr[1].data())[1] - x + 1;
+      break;
+    default:
+      throw std::invalid_argument(
+          "Cannot get MBR; Unsupported coordinates type");
+  }
+
   return std::make_tuple(x, y, width, height);
 }
 
 // Works only for fixed-sized coordinates
 std::vector<std::string> InfoCommand::mbr_to_string(
-    const NDRange& mbr, Datatype coords_type, unsigned dim_num) const {
+    const NDRange& mbr, const Domain* domain) const {
   std::vector<std::string> result;
   const int8_t* r8;
   const uint8_t* ru8;
@@ -375,8 +457,10 @@ std::vector<std::string> InfoCommand::mbr_to_string(
   const uint64_t* ru64;
   const float* rf32;
   const double* rf64;
+  auto dim_num = domain->dim_num();
   for (unsigned d = 0; d < dim_num; d++) {
-    switch (coords_type) {
+    auto type = domain->dimension(d)->type();
+    switch (type) {
       case Datatype::INT8:
         r8 = (const int8_t*)mbr[d].data();
         result.push_back(std::to_string(r8[0]));
@@ -435,28 +519,6 @@ std::vector<std::string> InfoCommand::mbr_to_string(
 
   return result;
 }
-
-// Explicit template instantiations
-template std::tuple<double, double, double, double>
-InfoCommand::get_mbr<int8_t>(const NDRange& mbr) const;
-template std::tuple<double, double, double, double>
-InfoCommand::get_mbr<uint8_t>(const NDRange& mbr) const;
-template std::tuple<double, double, double, double>
-InfoCommand::get_mbr<int16_t>(const NDRange& mbr) const;
-template std::tuple<double, double, double, double>
-InfoCommand::get_mbr<uint16_t>(const NDRange& mbr) const;
-template std::tuple<double, double, double, double>
-InfoCommand::get_mbr<int32_t>(const NDRange& mbr) const;
-template std::tuple<double, double, double, double>
-InfoCommand::get_mbr<uint32_t>(const NDRange& mbr) const;
-template std::tuple<double, double, double, double>
-InfoCommand::get_mbr<int64_t>(const NDRange& mbr) const;
-template std::tuple<double, double, double, double>
-InfoCommand::get_mbr<uint64_t>(const NDRange& mbr) const;
-template std::tuple<double, double, double, double> InfoCommand::get_mbr<float>(
-    const NDRange& mbr) const;
-template std::tuple<double, double, double, double>
-InfoCommand::get_mbr<double>(const NDRange& mbr) const;
 
 }  // namespace cli
 }  // namespace tiledb

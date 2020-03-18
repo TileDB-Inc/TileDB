@@ -149,16 +149,16 @@ class Reader {
 
   /**
    * Gets the estimated result size (in bytes) for the input fixed-sized
-   * attribute.
+   * attribute/dimension.
    */
-  Status get_est_result_size(const char* attr_name, uint64_t* size);
+  Status get_est_result_size(const char* name, uint64_t* size);
 
   /**
    * Gets the estimated result size (in bytes) for the input var-sized
-   * attribute.
+   * attribute/dimension.
    */
   Status get_est_result_size(
-      const char* attr_name, uint64_t* size_off, uint64_t* size_val);
+      const char* name, uint64_t* size_off, uint64_t* size_val);
 
   /** Returns the array schema. */
   const ArraySchema* array_schema() const;

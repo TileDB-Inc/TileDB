@@ -549,12 +549,8 @@ void ArraySchemaFx::create_array(const std::string& path) {
   rc = tiledb_dimension_alloc(
       ctx_, DIM2_NAME, TILEDB_INT64, &DIM_DOMAIN[2], &TILE_EXTENTS[1], &d2);
   REQUIRE(rc == TILEDB_OK);
-  tiledb_dimension_t* d3;  // This will be an invalid dimension
   int dim_domain_int[] = {0, 10};
-  rc = tiledb_dimension_alloc(
-      ctx_, DIM2_NAME, TILEDB_INT32, dim_domain_int, &TILE_EXTENTS[1], &d3);
-  REQUIRE(rc == TILEDB_OK);
-  tiledb_dimension_t* d4;  // This will be an invalid dimension
+  tiledb_dimension_t* d3;  // This will be an invalid dimension
   int tile_extent = 10000;
   rc = tiledb_dimension_alloc(  // This will not even be created
       ctx_,
@@ -562,7 +558,7 @@ void ArraySchemaFx::create_array(const std::string& path) {
       TILEDB_INT32,
       dim_domain_int,
       &tile_extent,
-      &d4);
+      &d3);
   REQUIRE(rc == TILEDB_ERR);
 
   // Set up filters
@@ -603,8 +599,6 @@ void ArraySchemaFx::create_array(const std::string& path) {
   REQUIRE(domain_type == TILEDB_INT64);
   rc = tiledb_domain_add_dimension(ctx_, domain, d2);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_domain_add_dimension(ctx_, domain, d3);
-  REQUIRE(rc == TILEDB_ERR);
   rc = tiledb_array_schema_set_domain(ctx_, array_schema, domain);
   REQUIRE(rc == TILEDB_OK);
 
@@ -919,7 +913,7 @@ TEST_CASE_METHOD(
     delete_array(array_name);
     remove_temp_dir(HDFS_TEMP_DIR);
   } else if (supports_azure_) {
-    // HDFS
+    // Azure
     array_name = AZURE_TEMP_DIR + ARRAY_NAME;
     create_temp_dir(AZURE_TEMP_DIR);
     create_array(array_name);
@@ -1619,4 +1613,159 @@ TEST_CASE_METHOD(
   tiledb_filter_list_free(&filter_list);
   tiledb_attribute_free(&a);
   tiledb_dimension_free(&d);
+}
+
+TEST_CASE_METHOD(
+    ArraySchemaFx,
+    "C API: Test array schema, setting heterogeneous dimensions to dense array "
+    "error",
+    "[capi][array-schema][heter][error]") {
+  tiledb_dimension_t* d1;
+  float float32_domain[] = {1.0f, 2.0f};
+  float float32_extent = .5f;
+  int rc = tiledb_dimension_alloc(
+      ctx_, "d1", TILEDB_FLOAT32, float32_domain, &float32_extent, &d1);
+  REQUIRE(rc == TILEDB_OK);
+  tiledb_dimension_t* d2;
+  int32_t int32_domain[] = {1, 2};
+  int32_t int32_extent = 1;
+  rc = tiledb_dimension_alloc(
+      ctx_, "d2", TILEDB_INT32, int32_domain, &int32_extent, &d2);
+  REQUIRE(rc == TILEDB_OK);
+
+  // Create domain
+  tiledb_domain_t* domain;
+  rc = tiledb_domain_alloc(ctx_, &domain);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_domain_add_dimension(ctx_, domain, d1);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_domain_add_dimension(ctx_, domain, d2);
+  REQUIRE(rc == TILEDB_OK);
+
+  // Set domain to a dense array schema should error out
+  tiledb_array_schema_t* array_schema;
+  rc = tiledb_array_schema_alloc(ctx_, TILEDB_DENSE, &array_schema);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_array_schema_set_domain(ctx_, array_schema, domain);
+  REQUIRE(rc == TILEDB_ERR);
+
+  // Clean up
+  tiledb_dimension_free(&d1);
+  tiledb_dimension_free(&d2);
+  tiledb_domain_free(&domain);
+  tiledb_array_schema_free(&array_schema);
+}
+
+TEST_CASE_METHOD(
+    ArraySchemaFx,
+    "C API: Test array schema, setting heterogeneous dimensions to sparse "
+    "array",
+    "[capi][array-schema][heter][error]") {
+  tiledb_dimension_t* d1;
+  float float32_domain[] = {1.0f, 2.0f};
+  float float32_extent = .5f;
+  int rc = tiledb_dimension_alloc(
+      ctx_, "d1", TILEDB_FLOAT32, float32_domain, &float32_extent, &d1);
+  REQUIRE(rc == TILEDB_OK);
+  tiledb_dimension_t* d2;
+  int32_t int32_domain[] = {1, 2};
+  int32_t int32_extent = 1;
+  rc = tiledb_dimension_alloc(
+      ctx_, "d2", TILEDB_INT32, int32_domain, &int32_extent, &d2);
+  REQUIRE(rc == TILEDB_OK);
+
+  // Create domain
+  tiledb_domain_t* domain;
+  rc = tiledb_domain_alloc(ctx_, &domain);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_domain_add_dimension(ctx_, domain, d1);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_domain_add_dimension(ctx_, domain, d2);
+  REQUIRE(rc == TILEDB_OK);
+
+  // Set domain to a dense array schema should error out
+  tiledb_array_schema_t* array_schema;
+  rc = tiledb_array_schema_alloc(ctx_, TILEDB_SPARSE, &array_schema);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_array_schema_set_domain(ctx_, array_schema, domain);
+  REQUIRE(rc == TILEDB_OK);
+
+  // Set attribute
+  tiledb_attribute_t* a;
+  rc = tiledb_attribute_alloc(ctx_, "a", TILEDB_INT32, &a);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_array_schema_add_attribute(ctx_, array_schema, a);
+  REQUIRE(rc == TILEDB_OK);
+
+  // Create array
+  create_temp_dir(FILE_URI_PREFIX + FILE_TEMP_DIR);
+  auto array_name = FILE_URI_PREFIX + FILE_TEMP_DIR + ARRAY_NAME;
+  rc = tiledb_array_create(ctx_, array_name.c_str(), array_schema);
+  REQUIRE(rc == TILEDB_OK);
+  tiledb_array_schema_free(&array_schema);
+
+  // Load array schema
+  rc = tiledb_array_schema_load(ctx_, array_name.c_str(), &array_schema);
+  REQUIRE(rc == TILEDB_OK);
+  tiledb_domain_t* read_dom;
+  rc = tiledb_array_schema_get_domain(ctx_, array_schema, &read_dom);
+  REQUIRE(rc == TILEDB_OK);
+  tiledb_datatype_t type;
+  rc = tiledb_domain_get_type(ctx_, read_dom, &type);
+  REQUIRE(rc == TILEDB_ERR);
+
+  // Check dimension types
+  tiledb_dimension_t *r_d1, *r_d2;
+  rc = tiledb_domain_get_dimension_from_name(ctx_, domain, "d1", &r_d1);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_domain_get_dimension_from_name(ctx_, domain, "d2", &r_d2);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_dimension_get_type(ctx_, r_d1, &type);
+  REQUIRE(rc == TILEDB_OK);
+  CHECK(type == TILEDB_FLOAT32);
+  rc = tiledb_dimension_get_type(ctx_, r_d2, &type);
+  REQUIRE(rc == TILEDB_OK);
+  CHECK(type == TILEDB_INT32);
+
+  // Get non-empty domain and max buffer size should error out
+  tiledb_array_t* array;
+  rc = tiledb_array_alloc(ctx_, array_name.c_str(), &array);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_array_open(ctx_, array, TILEDB_READ);
+  REQUIRE(rc == TILEDB_OK);
+  void* dom = nullptr;
+  int is_empty = false;
+  rc = tiledb_array_get_non_empty_domain(ctx_, array, dom, &is_empty);
+  REQUIRE(rc == TILEDB_ERR);
+  uint64_t size, size_var;
+  void* subarray = nullptr;
+  rc = tiledb_array_max_buffer_size(ctx_, array, "d1", subarray, &size);
+  REQUIRE(rc == TILEDB_ERR);
+  rc = tiledb_array_max_buffer_size_var(
+      ctx_, array, "d1", subarray, &size, &size_var);
+  REQUIRE(rc == TILEDB_ERR);
+
+  // Query checks
+  tiledb_query_t* query;
+  rc = tiledb_query_alloc(ctx_, array, TILEDB_READ, &query);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_query_set_subarray(ctx_, query, subarray);
+  REQUIRE(rc == TILEDB_ERR);
+  void* buff = nullptr;
+  rc = tiledb_query_set_buffer(ctx_, query, TILEDB_COORDS, buff, &size);
+  REQUIRE(rc == TILEDB_ERR);
+
+  rc = tiledb_array_close(ctx_, array);
+  REQUIRE(rc == TILEDB_OK);
+
+  // Clean up
+  tiledb_dimension_free(&d1);
+  tiledb_dimension_free(&d2);
+  tiledb_dimension_free(&r_d1);
+  tiledb_dimension_free(&r_d2);
+  tiledb_domain_free(&domain);
+  tiledb_array_free(&array);
+  tiledb_query_free(&query);
+  tiledb_array_schema_free(&array_schema);
+  remove_temp_dir(FILE_URI_PREFIX + FILE_TEMP_DIR);
 }
