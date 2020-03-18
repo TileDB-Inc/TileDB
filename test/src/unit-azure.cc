@@ -265,9 +265,7 @@ TEST_CASE_METHOD(
   // Before flushing, the files do not exist
   bool is_blob;
   REQUIRE(azure_.is_blob(URI(largefile), &is_blob).ok());
-  // TODO: is_blob should be false, but returns true on Azurite. Azurite returns
-  // a 0-length object after writing the first chunk but Azure returns a 404.
-  REQUIRE(is_blob);
+  REQUIRE(!is_blob);
   REQUIRE(azure_.is_blob(URI(smallfile), &is_blob).ok());
   REQUIRE(!is_blob);
 
