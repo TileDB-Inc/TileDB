@@ -339,7 +339,7 @@ if (TILEDB_TBB)
     INTERFACE
       TBB::tbb
   )
-  add_definitions(-DHAVE_TBB)
+  add_definitions(-DHAVE_TBB -DTBB_SUPPRESS_DEPRECATED_MESSAGES)
 endif()
 
 # Serialization
