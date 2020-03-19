@@ -92,6 +92,7 @@ option(TILEDB_SUPERBUILD "If true, perform a superbuild (builds all missing depe
 option(TILEDB_FORCE_ALL_DEPS "If true, force superbuild to download and build all dependencies, even those installed on the system." OFF)
 option(TILEDB_VERBOSE "Prints TileDB errors with verbosity" OFF)
 option(TILEDB_S3 "Enables S3/minio support using aws-cpp-sdk" OFF)
+option(TILEDB_S3_USR "Enables S3/minio support using aws-cpp-sdk from /usr" OFF)
 option(TILEDB_AZURE "Enables Azure Storage support using azure-storage-cpp" OFF)
 option(TILEDB_GCS "Enables GCS Storage support using google-cloud-cpp" OFF)
 option(TILEDB_HDFS "Enables HDFS support using the official Hadoop JNI bindings" OFF)

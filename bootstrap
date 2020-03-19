@@ -52,6 +52,7 @@ Configuration:
     --enable-verbose                enable verbose status messages
     --enable-hdfs                   enables the hdfs storage backend
     --enable-s3                     enables the s3 storage backend
+    --enable-s3-usr                 enables the s3 storage backend used via /usr
     --enable-azure                  enables the azure storage backend
     --enable-gcs                    enables the gcs storage backend
     --enable-serialization          enables query serialization support
@@ -83,6 +84,7 @@ build_type="Release"
 tiledb_verbose="OFF"
 tiledb_hdfs="OFF"
 tiledb_s3="OFF"
+tiledb_s3_usr="OFF"
 tiledb_azure="OFF"
 tiledb_gcs="OFF"
 tiledb_werror="ON"
@@ -118,6 +120,7 @@ while test $# != 0; do
     --enable-verbose) tiledb_verbose="ON";;
     --enable-hdfs) tiledb_hdfs="ON";;
     --enable-s3) tiledb_s3="ON";;
+    --enable-s3-usr) tiledb_s3_usr="ON";;
     --enable-azure) tiledb_azure="ON";;
     --enable-gcs) tiledb_gcs="ON";;
     --enable-serialization) tiledb_serialization="ON";;
@@ -139,6 +142,7 @@ for en in "${enables[@]}"; do
     coverage) build_type="Coverage";;
     verbose) tiledb_verbose="ON";;
     s3) tiledb_s3="ON";;
+    s3-usr) tiledb_s3_usr="ON";;
     azure) tiledb_azure="ON";;
     gcs) tiledb_gcs="ON";;
     serialization) tiledb_serialization="ON";;
@@ -188,6 +192,7 @@ ${cmake} -DCMAKE_BUILD_TYPE=${build_type} \
     -DTILEDB_VERBOSE=${tiledb_verbose} \
     -DTILEDB_HDFS=${tiledb_hdfs} \
     -DTILEDB_S3=${tiledb_s3} \
+    -DTILEDB_S3_USR=${tiledb_s3_usr} \
     -DTILEDB_AZURE=${tiledb_azure} \
     -DTILEDB_GCS=${tiledb_gcs} \
     -DTILEDB_SERIALIZATION=${tiledb_serialization} \

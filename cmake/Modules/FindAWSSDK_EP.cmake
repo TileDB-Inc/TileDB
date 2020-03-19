@@ -39,6 +39,11 @@ set(CMAKE_PREFIX_PATH ${CMAKE_PREFIX_PATH} "${TILEDB_EP_INSTALL_PREFIX}")
 # Try searching for the SDK in the EP prefix.
 set(AWSSDK_ROOT_DIR "${TILEDB_EP_INSTALL_PREFIX}")
 
+# Unless S3 via /usr is selected
+if (TILEDB_S3_USR)
+  set(AWSSDK_ROOT_DIR "/usr")
+endif()
+
 # Check to see if the SDK is installed (which provides the find module).
 # This will either use the system-installed AWSSDK find module (if present),
 # or the superbuild-installed find module.

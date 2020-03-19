@@ -66,6 +66,12 @@ if (TILEDB_CCACHE)
   )
 endif()
 
+if (TILEDB_S3_USR)
+  list(APPEND INHERITED_CMAKE_ARGS
+    -DTILEDB_S3_USR=${TILEDB_S3_USR}
+  )
+endif()
+
 ############################################################
 # Set up external projects for dependencies
 ############################################################
