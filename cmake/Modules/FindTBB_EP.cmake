@@ -248,7 +248,7 @@ else()
       ExternalProject_Add(ep_tbb
         PREFIX "externals"
         URL "https://github.com/intel/tbb/archive/v2020.1.tar.gz"
-        URL_HASH SHA1=493a1faf80a7ab320448eec0fbfaedf40e9574ee
+        URL_HASH SHA1=c42a33b5fc42aedeba75c204a5367593e28a6977
         CONFIGURE_COMMAND ""
         BUILD_COMMAND ""
         UPDATE_COMMAND ""

@@ -160,6 +160,21 @@ class URI {
   bool is_azure() const;
 
   /**
+   * Checks if the input path is gcs.
+   *
+   * @param path The path to be checked.
+   * @return The result of the check.
+   */
+  static bool is_gcs(const std::string& path);
+
+  /**
+   * Checks if the URI is gcs.
+   *
+   * @return The result of the check.
+   */
+  bool is_gcs() const;
+
+  /**
    * Checks if the input path is TileDB.
    *
    * @param path The path to be checked.

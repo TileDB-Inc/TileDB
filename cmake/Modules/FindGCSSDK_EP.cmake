@@ -69,7 +69,9 @@ if (NOT storage_client_FOUND)
       URL "https://github.com/googleapis/google-cloud-cpp/archive/v0.20.0.zip"
       URL_HASH SHA1=6e7931a0e62779dfbd07427373373bf1ad6f8686
       BUILD_IN_SOURCE 1
-      PATCH_COMMAND patch -N -p1 < ${TILEDB_CMAKE_INPUTS_DIR}/patches/ep_gcssdk/build.patch
+      PATCH_COMMAND
+        patch -N -p1 < ${TILEDB_CMAKE_INPUTS_DIR}/patches/ep_gcssdk/build.patch &&
+        patch -N -p1 < ${TILEDB_CMAKE_INPUTS_DIR}/patches/ep_gcssdk/ls.patch
       CONFIGURE_COMMAND
         cmake -Hsuper -Bcmake-out
         -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
