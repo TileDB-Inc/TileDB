@@ -482,6 +482,9 @@ extern const long s3_connect_max_tries;
 /** Connect scale factor for exponential backoff. */
 extern const long s3_connect_scale_factor;
 
+/** S3 logging level. */
+extern const std::string s3_logging_level;
+
 /** Request timeout in milliseconds. */
 extern const long s3_request_timeout_ms;
 

@@ -168,6 +168,21 @@ Status convert(const std::string& str, float* value) {
   return Status::Ok();
 }
 
+Status convert(const std::string& str, bool* value) {
+  std::string lvalue = str;
+  std::transform(lvalue.begin(), lvalue.end(), lvalue.begin(), ::tolower);
+  if (lvalue == "true") {
+    *value = true;
+  } else if (lvalue == "false") {
+    *value = false;
+  } else {
+    return LOG_STATUS(Status::UtilsError(
+        "Failed to convert string to bool; Value not 'true' or 'false'"));
+  }
+
+  return Status::Ok();
+}
+
 bool is_int(const std::string& str) {
   // Check if empty
   if (str.empty())

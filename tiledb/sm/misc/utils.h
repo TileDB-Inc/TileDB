@@ -67,6 +67,9 @@ Status convert(const std::string& str, uint64_t* value);
 /** Converts the input string into a `uint32_t` value. */
 Status convert(const std::string& str, uint32_t* value);
 
+/** Converts the input string into a `bool` value. */
+Status convert(const std::string& str, bool* value);
+
 /** Converts the input string into a `float` value. */
 Status convert(const std::string& str, float* value);
 
