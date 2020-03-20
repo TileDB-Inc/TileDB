@@ -49,6 +49,9 @@ class NoopFilter : public Filter {
    */
   NoopFilter();
 
+  /** Dumps the filter details in ASCII format in the selected output. */
+  void dump(FILE* out) const override;
+
   /**
    * Run forward.
    */

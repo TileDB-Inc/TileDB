@@ -105,12 +105,7 @@ Status Domain::add_dimension(const Dimension* dim) {
         Status::DomainError("Cannot add dimension to domain; All added "
                             "dimensions must have the same type"));
 
-  auto new_dim = new Dimension(dim->name(), type_);
-  RETURN_NOT_OK_ELSE(new_dim->set_domain(dim->domain()), delete new_dim);
-  RETURN_NOT_OK_ELSE(
-      new_dim->set_tile_extent(dim->tile_extent()), delete new_dim);
-
-  dimensions_.emplace_back(new_dim);
+  dimensions_.emplace_back(new Dimension(dim));
   ++dim_num_;
 
   return Status::Ok();
@@ -212,7 +207,7 @@ void Domain::crop_ndrange(NDRange* ndrange) const {
 // dimension #1
 // dimension #2
 // ...
-Status Domain::deserialize(ConstBuffer* buff) {
+Status Domain::deserialize(ConstBuffer* buff, uint32_t version) {
   // Load type
   uint8_t type;
   RETURN_NOT_OK(buff->read(&type, sizeof(uint8_t)));
@@ -222,7 +217,7 @@ Status Domain::deserialize(ConstBuffer* buff) {
   RETURN_NOT_OK(buff->read(&dim_num_, sizeof(uint32_t)));
   for (uint32_t i = 0; i < dim_num_; ++i) {
     auto dim = new Dimension();
-    dim->deserialize(buff, type_);
+    dim->deserialize(buff, version, type_);
     dimensions_.emplace_back(dim);
   }
 
@@ -267,8 +262,6 @@ const Dimension* Domain::dimension(std::string name) const {
 void Domain::dump(FILE* out) const {
   if (out == nullptr)
     out = stdout;
-  fprintf(out, "=== Domain ===\n");
-  fprintf(out, "- Dimensions type: %s\n", datatype_str(type_).c_str());
 
   for (auto& dim : dimensions_) {
     fprintf(out, "\n");
@@ -468,7 +461,7 @@ bool Domain::null_tile_extents() const {
 // dimension #1
 // dimension #2
 // ...
-Status Domain::serialize(Buffer* buff) {
+Status Domain::serialize(Buffer* buff, uint32_t version) {
   // Write type
   auto type = static_cast<uint8_t>(type_);
   RETURN_NOT_OK(buff->write(&type, sizeof(uint8_t)));
@@ -476,7 +469,7 @@ Status Domain::serialize(Buffer* buff) {
   // Write dimensions
   RETURN_NOT_OK(buff->write(&dim_num_, sizeof(uint32_t)));
   for (auto dim : dimensions_)
-    dim->serialize(buff);
+    dim->serialize(buff, version);
 
   return Status::Ok();
 }

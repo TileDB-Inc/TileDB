@@ -47,6 +47,12 @@ PositiveDeltaFilter::PositiveDeltaFilter()
   max_window_size_ = 1024;
 }
 
+void PositiveDeltaFilter::dump(FILE* out) const {
+  if (out == nullptr)
+    out = stdout;
+  fprintf(out, "PositiveDelta: POSITIVE_DELTA_MAX_WINDOW=%u", max_window_size_);
+}
+
 Status PositiveDeltaFilter::run_forward(
     FilterBuffer* input_metadata,
     FilterBuffer* input,

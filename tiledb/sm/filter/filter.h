@@ -67,6 +67,9 @@ class Filter {
    */
   Filter* clone() const;
 
+  /** Dumps the filter details in ASCII format in the selected output. */
+  virtual void dump(FILE* out) const = 0;
+
   /**
    * Factory method to create a new Filter instance of the given type.
    *

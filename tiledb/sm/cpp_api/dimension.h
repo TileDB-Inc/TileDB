@@ -81,6 +81,50 @@ class Dimension {
   /*                API                */
   /* ********************************* */
 
+  /**
+   * Returns number of values of one cell on this dimension. For variable-sized
+   * dimensions returns TILEDB_VAR_NUM.
+   */
+  unsigned cell_val_num() const {
+    auto& ctx = ctx_.get();
+    unsigned num;
+    ctx.handle_error(
+        tiledb_dimension_get_cell_val_num(ctx.ptr().get(), dim_.get(), &num));
+    return num;
+  }
+
+  /** Sets the number of values per coordinate. */
+  Dimension& set_cell_val_num(unsigned num) {
+    auto& ctx = ctx_.get();
+    ctx.handle_error(
+        tiledb_dimension_set_cell_val_num(ctx.ptr().get(), dim_.get(), num));
+    return *this;
+  }
+
+  /**
+   * Returns a copy of the FilterList of the dimemnsion.
+   * To change the filter list, use `set_filter_list()`.
+   */
+  FilterList filter_list() const {
+    auto& ctx = ctx_.get();
+    tiledb_filter_list_t* filter_list;
+    ctx.handle_error(tiledb_dimension_get_filter_list(
+        ctx.ptr().get(), dim_.get(), &filter_list));
+    return FilterList(ctx, filter_list);
+  }
+
+  /**
+   * Sets the dimension filter list, which is an ordered list of filters that
+   * will be used to process and/or transform the coordinate data (such as
+   * compression).
+   */
+  Dimension& set_filter_list(const FilterList& filter_list) {
+    auto& ctx = ctx_.get();
+    ctx.handle_error(tiledb_dimension_set_filter_list(
+        ctx.ptr().get(), dim_.get(), filter_list.ptr().get()));
+    return *this;
+  }
+
   /** Returns the name of the dimension. */
   const std::string name() const {
     const char* name;

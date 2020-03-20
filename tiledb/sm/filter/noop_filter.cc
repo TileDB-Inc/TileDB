@@ -46,6 +46,13 @@ NoopFilter* NoopFilter::clone_impl() const {
   return new NoopFilter;
 }
 
+void NoopFilter::dump(FILE* out) const {
+  if (out == nullptr)
+    out = stdout;
+
+  fprintf(out, "NoOp");
+}
+
 Status NoopFilter::run_forward(
     FilterBuffer* input_metadata,
     FilterBuffer* input,

@@ -126,10 +126,8 @@ class ArraySchema {
   /** Returns the number of values per cell of the input attribute/dimension. */
   unsigned int cell_val_num(const std::string& name) const;
 
-  /**
-   * Return a pointer to the pipeline used for offsets of variable-sized cells.
-   */
-  const FilterPipeline* cell_var_offsets_filters() const;
+  /** Return the fileter pipeline used for offsets of variable-sized cells. */
+  const FilterPipeline& cell_var_offsets_filters() const;
 
   /**
    * Checks the correctness of the array schema.
@@ -151,16 +149,10 @@ class ArraySchema {
    * Return the filter pipeline for the given attribute/dimension (can be
    * TILEDB_COORDS).
    */
-  const FilterPipeline* filters(const std::string& name) const;
+  const FilterPipeline& filters(const std::string& name) const;
 
-  /** Return a pointer to the pipeline used for coordinates. */
-  const FilterPipeline* coords_filters() const;
-
-  /** Returns the compressor of the coordinates. */
-  Compressor coords_compression() const;
-
-  /** Returns the compression level of the coordinates. */
-  int coords_compression_level() const;
+  /** Return the pipeline used for coordinates. */
+  const FilterPipeline& coords_filters() const;
 
   /** True if the array is dense. */
   bool dense() const;
@@ -354,10 +346,10 @@ class ArraySchema {
   bool check_attribute_dimension_names() const;
 
   /**
-   * Returns false if double delta compression is used with real attributes
-   * or coordinates and true otherwise.
+   * Returns error if double delta compression is used in the zipped
+   * coordinate filters and is inherited by a dimension.
    */
-  bool check_double_delta_compressor() const;
+  Status check_double_delta_compressor() const;
 
   /** Clears all members. Use with caution! */
   void clear();

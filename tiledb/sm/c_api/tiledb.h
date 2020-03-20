@@ -2238,6 +2238,94 @@ TILEDB_EXPORT int32_t tiledb_dimension_alloc(
 TILEDB_EXPORT void tiledb_dimension_free(tiledb_dimension_t** dim);
 
 /**
+ * Sets the filter list for a dimension.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * tiledb_filter_list_t* filter_list;
+ * tiledb_filter_list_alloc(ctx, &filter_list);
+ * tiledb_filter_list_add_filter(ctx, filter_list, filter);
+ * tiledb_dimension_set_filter_list(ctx, dim, filter_list);
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param dim The target dimension.
+ * @param filter_list The filter_list to be set.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_dimension_set_filter_list(
+    tiledb_ctx_t* ctx,
+    tiledb_dimension_t* dim,
+    tiledb_filter_list_t* filter_list);
+
+/**
+ * Sets the number of values per cell for a dimension. If this is not
+ * used, the default is `1`.
+ *
+ * **Examples:**
+ *
+ * For a fixed-sized dimension:
+ *
+ * @code{.c}
+ * tiledb_dimension_set_cell_val_num(ctx, dim, 3);
+ * @endcode
+ *
+ * For a variable-sized dimension:
+ *
+ * @code{.c}
+ * tiledb_dimension_set_cell_val_num(ctx, dim, TILEDB_VAR_NUM);
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param dim The target dimension.
+ * @param cell_val_num The number of values per cell.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_dimension_set_cell_val_num(
+    tiledb_ctx_t* ctx, tiledb_dimension_t* dim, uint32_t cell_val_num);
+
+/**
+ * Retrieves the filter list for a dimension.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * tiledb_filter_list_t* filter_list;
+ * tiledb_dimension_get_filter_list(ctx, dim, &filter_list);
+ * tiledb_filter_list_free(&filter_list);
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param dim The target dimension.
+ * @param filter_list The filter list to be retrieved.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_dimension_get_filter_list(
+    tiledb_ctx_t* ctx,
+    tiledb_dimension_t* dim,
+    tiledb_filter_list_t** filter_list);
+
+/**
+ * Retrieves the number of values per cell for a dimension. For variable-sized
+ * dimensions the result is TILEDB_VAR_NUM.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * uint32_t num;
+ * tiledb_dimension_get_cell_val_num(ctx, dim, &num);
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param dim The dimension.
+ * @param cell_val_num The number of values per cell to be retrieved.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_dimension_get_cell_val_num(
+    tiledb_ctx_t* ctx, const tiledb_dimension_t* dim, uint32_t* cell_val_num);
+
+/**
  * Retrieves the dimension name.
  *
  * **Example:**
