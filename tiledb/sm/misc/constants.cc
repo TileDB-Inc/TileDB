@@ -483,6 +483,12 @@ const std::string s3_allocation_tag = "TileDB";
 /** Use virtual addressing (false for minio, true for AWS S3). */
 const bool s3_use_virtual_addressing = true;
 
+/** Certificate file path. */
+const std::string s3_ca_file = "";
+
+/** Certificate directory path. */
+const std::string s3_ca_path = "";
+
 /** Connect timeout in milliseconds. */
 const long s3_connect_timeout_ms = 3000;
 
@@ -533,6 +539,12 @@ const std::string s3_proxy_username = "";
 
 /** S3 proxy password. */
 const std::string s3_proxy_password = "";
+
+/** S3 logging level. */
+const std::string s3_logging_level = "Off";
+
+/** Verify TLS/SSL certificates (true). */
+const bool s3_verify_ssl = true;
 
 /** HDFS default kerb ticket cache path. */
 const std::string hdfs_kerb_ticket_cache_path = "";
