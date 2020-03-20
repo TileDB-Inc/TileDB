@@ -593,6 +593,9 @@ class Config {
   /** Sets the S3 connect scale factor for exponential backoff. */
   Status set_vfs_s3_connect_scale_factor(const std::string& value);
 
+  /** Sets the S3 logging level. */
+  Status set_vfs_s3_logging_level(const std::string& value);
+
   /** Sets the S3 request timeout in milliseconds. */
   Status set_vfs_s3_request_timeout_ms(const std::string& value);
 
