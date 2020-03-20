@@ -233,6 +233,10 @@ Status Config::set(const std::string& param, const std::string& value) {
     RETURN_NOT_OK(set_vfs_s3_max_parallel_ops(value));
   } else if (param == "vfs.s3.multipart_part_size") {
     RETURN_NOT_OK(set_vfs_s3_multipart_part_size(value));
+  } else if (param == "vfs.s3.ca_file") {
+    RETURN_NOT_OK(set_vfs_s3_ca_file(value));
+  } else if (param == "vfs.s3.ca_path") {
+    RETURN_NOT_OK(set_vfs_s3_ca_path(value));
   } else if (param == "vfs.s3.connect_timeout_ms") {
     RETURN_NOT_OK(set_vfs_s3_connect_timeout_ms(value));
   } else if (param == "vfs.s3.connect_max_tries") {
@@ -251,6 +255,10 @@ Status Config::set(const std::string& param, const std::string& value) {
     RETURN_NOT_OK(set_vfs_s3_proxy_username(value));
   } else if (param == "vfs.s3.proxy_password") {
     RETURN_NOT_OK(set_vfs_s3_proxy_password(value));
+  } else if (param == "vfs.s3.logging_level") {
+    RETURN_NOT_OK(set_vfs_s3_logging_level(value));
+  } else if (param == "vfs.s3.verify_ssl") {
+    RETURN_NOT_OK(set_vfs_s3_verify_ssl(value));
   } else if (param == "vfs.hdfs.name_node") {
     RETURN_NOT_OK(set_vfs_hdfs_name_node(value));
   } else if (param == "vfs.hdfs.username") {
@@ -470,6 +478,18 @@ Status Config::unset(const std::string& param) {
     value << vfs_params_.s3_params_.multipart_part_size_;
     param_values_["vfs.s3.multipart_part_size"] = value.str();
     value.str(std::string());
+  } else if (param == "vfs.s3.ca_file") {
+    vfs_params_.s3_params_.ca_file_ =
+        constants::s3_ca_file;
+    value << vfs_params_.s3_params_.ca_file_;
+    param_values_["vfs.s3.ca_file"] = value.str();
+    value.str(std::string());
+  } else if (param == "vfs.s3.ca_path") {
+    vfs_params_.s3_params_.ca_path_ =
+        constants::s3_ca_path;
+    value << vfs_params_.s3_params_.ca_path_;
+    param_values_["vfs.s3.ca_path"] = value.str();
+    value.str(std::string());
   } else if (param == "vfs.s3.connect_timeout_ms") {
     vfs_params_.s3_params_.connect_timeout_ms_ =
         constants::s3_connect_timeout_ms;
@@ -517,6 +537,13 @@ Status Config::unset(const std::string& param) {
     vfs_params_.s3_params_.proxy_password_ = constants::s3_proxy_password;
     value << vfs_params_.s3_params_.proxy_password_;
     param_values_["vfs.s3.proxy_password"] = value.str();
+    value.str(std::string());
+  } else if (param == "vfs.s3.verify_ssl") {
+    vfs_params_.s3_params_.verify_ssl_ =
+        constants::s3_verify_ssl;
+    value
+        << ((vfs_params_.s3_params_.verify_ssl_) ? "true" : "false");
+    param_values_["vfs.s3.verify_ssl"] = value.str();
     value.str(std::string());
   } else if (param == "vfs.hdfs.name_node") {
     vfs_params_.hdfs_params_.name_node_uri_ = constants::hdfs_name_node_uri;
@@ -679,6 +706,14 @@ void Config::set_default_param_values() {
   param_values_["vfs.s3.multipart_part_size"] = value.str();
   value.str(std::string());
 
+  value << vfs_params_.s3_params_.ca_file_;
+  param_values_["vfs.s3.ca_file"] = value.str();
+  value.str(std::string());
+
+  value << vfs_params_.s3_params_.ca_path_;
+  param_values_["vfs.s3.ca_path"] = value.str();
+  value.str(std::string());
+
   value << vfs_params_.s3_params_.connect_timeout_ms_;
   param_values_["vfs.s3.connect_timeout_ms"] = value.str();
   value.str(std::string());
@@ -713,6 +748,14 @@ void Config::set_default_param_values() {
 
   value << vfs_params_.s3_params_.proxy_password_;
   param_values_["vfs.s3.proxy_password"] = value.str();
+  value.str(std::string());
+
+  value << vfs_params_.s3_params_.logging_level_;
+  param_values_["vfs.s3.logging_level"] = value.str();
+  value.str(std::string());
+
+  value << ((vfs_params_.s3_params_.verify_ssl_) ? "true" : "false");
+  param_values_["vfs.s3.verify_ssl"] = value.str();
   value.str(std::string());
 
   value << vfs_params_.hdfs_params_.name_node_uri_;
@@ -1008,6 +1051,16 @@ Status Config::set_vfs_s3_multipart_part_size(const std::string& value) {
   return Status::Ok();
 }
 
+Status Config::set_vfs_s3_ca_file(const std::string& value) {
+  vfs_params_.s3_params_.ca_file_ = value;
+  return Status::Ok();
+}
+
+Status Config::set_vfs_s3_ca_path(const std::string& value) {
+  vfs_params_.s3_params_.ca_path_ = value;
+  return Status::Ok();
+}
+
 Status Config::set_vfs_s3_connect_timeout_ms(const std::string& value) {
   long v;
   RETURN_NOT_OK(utils::parse::convert(value, &v));
@@ -1061,6 +1114,21 @@ Status Config::set_vfs_s3_proxy_username(const std::string& value) {
 
 Status Config::set_vfs_s3_proxy_password(const std::string& value) {
   vfs_params_.s3_params_.proxy_password_ = value;
+  return Status::Ok();
+}
+
+Status Config::set_vfs_s3_logging_level(const std::string& value) {
+  vfs_params_.s3_params_.logging_level_ = value;
+  return Status::Ok();
+}
+
+Status Config::set_vfs_s3_verify_ssl(const std::string& value) {
+  bool v = true;
+  if (!utils::parse::convert(value, &v).ok()) {
+    return LOG_STATUS(Status::ConfigError(
+        "Cannot set parameter; Invalid S3 verifySSL value"));
+  }
+  vfs_params_.s3_params_.verify_ssl_ = v;
   return Status::Ok();
 }
 
