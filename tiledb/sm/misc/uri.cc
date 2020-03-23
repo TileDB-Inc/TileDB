@@ -67,7 +67,7 @@ URI::URI(const std::string& path) {
     uri_ = VFS::abs_path(path);
   else if (
       URI::is_hdfs(path) || URI::is_s3(path) || URI::is_azure(path) ||
-      URI::is_tiledb(path))
+      URI::is_gcs(path) || URI::is_tiledb(path))
     uri_ = path;
   else
     uri_ = "";
@@ -142,6 +142,14 @@ bool URI::is_azure(const std::string& path) {
 
 bool URI::is_azure() const {
   return utils::parse::starts_with(uri_, "azure://");
+}
+
+bool URI::is_gcs(const std::string& path) {
+  return utils::parse::starts_with(path, "gcs://");
+}
+
+bool URI::is_gcs() const {
+  return utils::parse::starts_with(uri_, "gcs://");
 }
 
 bool URI::is_tiledb(const std::string& path) {
@@ -228,7 +236,8 @@ std::string URI::to_path(const std::string& uri) {
 #endif
   }
 
-  if (is_hdfs(uri) || is_s3(uri) || is_azure(uri) || is_tiledb(uri))
+  if (is_hdfs(uri) || is_s3(uri) || is_azure(uri) || is_gcs(uri) ||
+      is_tiledb(uri))
     return uri;
 
   // Error

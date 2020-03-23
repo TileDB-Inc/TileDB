@@ -258,9 +258,9 @@ class Azure {
   Status remove_dir(const URI& uri) const;
 
   /**
-   * Creates an empty object.
+   * Creates an empty blob.
    *
-   * @param uri The URI of the object to be created.
+   * @param uri The URI of the blob to be created.
    * @return Status
    */
   Status touch(const URI& uri) const;
