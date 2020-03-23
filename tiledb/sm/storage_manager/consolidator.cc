@@ -38,10 +38,13 @@
 #include "tiledb/sm/filesystem/vfs.h"
 #include "tiledb/sm/fragment/fragment_info.h"
 #include "tiledb/sm/misc/logger.h"
+#include "tiledb/sm/misc/parallel_functions.h"
 #include "tiledb/sm/misc/utils.h"
 #include "tiledb/sm/misc/uuid.h"
 #include "tiledb/sm/query/query.h"
 #include "tiledb/sm/storage_manager/storage_manager.h"
+#include "tiledb/sm/tile/tile.h"
+#include "tiledb/sm/tile/tile_io.h"
 
 #include <iostream>
 #include <sstream>
@@ -72,15 +75,20 @@ Status Consolidator::consolidate(
   // Set config parameters
   RETURN_NOT_OK(set_config(config));
 
+  // Consolidate only fragment metadata
   URI array_uri = URI(array_name);
-  EncryptionKey enc_key;
-  RETURN_NOT_OK(enc_key.set_key(encryption_type, encryption_key, key_length));
+  if (config_.only_fragment_meta_)
+    return consolidate_fragment_meta(
+        array_uri, encryption_type, encryption_key, key_length);
 
   // Get array schema
+  EncryptionKey enc_key;
+  RETURN_NOT_OK(enc_key.set_key(encryption_type, encryption_key, key_length));
   auto array_schema = (ArraySchema*)nullptr;
   RETURN_NOT_OK(
       storage_manager_->load_array_schema(array_uri, enc_key, &array_schema));
 
+  // Consolidate fragments
   RETURN_NOT_OK_ELSE(
       consolidate(array_schema, encryption_type, encryption_key, key_length),
       delete array_schema);
@@ -134,69 +142,6 @@ Status Consolidator::consolidate_array_metadata(
     RETURN_NOT_OK(storage_manager_->vfs()->remove_file(uri));
 
   return Status::Ok();
-}
-
-/* ****************************** */
-/*        STATIC FUNCTIONS        */
-/* ****************************** */
-
-void Consolidator::remove_consolidated_uris(
-    std::vector<TimestampedURI>* sorted_uris) {
-  // Trivial case
-  if (sorted_uris->size() <= 1)
-    return;
-
-  // Put the URIs in a list, so that it is easy to remove "covered" URIs
-  std::list<TimestampedURI> uri_list;
-  for (auto f : *sorted_uris)
-    uri_list.push_back(f);
-
-  // NOTE: all fragments in uri_list are sorted on start timestamps,
-  // and there are no overlpas (by definition when creating the
-  // names of the fragments resulting from consolidation).
-
-  for (auto it = uri_list.begin(); it != uri_list.end(); ++it) {
-    // Do nothing for unary timestamp ranges, we cannot use them
-    // to remove any fragments
-    if (it->has_unary_timestamp_range())
-      continue;
-
-    // Move backwards and remove "covered" URIs. A previous URI is
-    // "covered" if its first timestamp is the same as that of the current
-    // URI. This is due to the lexicographic sorting of the
-    // URIs. For instance, if the current URI range is [5,10],
-    // then URI with range [5,5] will definitely preceed that URI and will
-    // be "covered".
-    if (it != uri_list.begin()) {
-      auto it_prev = std::prev(it);
-      while (it->timestamp_range_.first == it_prev->timestamp_range_.first) {
-        it_prev = uri_list.erase(it_prev);
-        if (it_prev == uri_list.begin())
-          break;
-        it_prev = std::prev(it_prev);
-      }
-    }
-
-    if (it == uri_list.end())
-      break;
-
-    // Move forward and remove "covered" URIs. A next URI is covered
-    // if its timestamp range is included in the timestamp range of
-    // the current fragment URI. For instance, if the current URI
-    // has range [1,10] and the next URI has range [3,4], then the
-    // URI with range [3,4] will be removed
-    auto it_next = std::next(it);
-    while (it_next != uri_list.end() &&
-           it_next->timestamp_range_.first >= it->timestamp_range_.first &&
-           it_next->timestamp_range_.second <= it->timestamp_range_.second) {
-      it_next = uri_list.erase(it_next);
-    }
-  }
-
-  // Update the sorted fragment URIs
-  sorted_uris->clear();
-  for (const auto& f : uri_list)
-    sorted_uris->push_back(f);
 }
 
 /* ****************************** */
@@ -257,9 +202,6 @@ Status Consolidator::consolidate(
   std::vector<FragmentInfo> fragment_info;
   RETURN_NOT_OK(storage_manager_->get_fragment_info(
       array_schema, timestamp, enc_key, &fragment_info));
-
-  // First make a pass and delete any entirely overwritten fragments
-  RETURN_NOT_OK(delete_overwritten_fragments(array_schema, &fragment_info));
 
   uint32_t step = 0;
   do {
@@ -419,27 +361,122 @@ Status Consolidator::consolidate(
     return st;
   }
 
-  std::vector<URI> to_delete;
-  for (const auto& f : to_consolidate)
-    to_delete.emplace_back(f.uri());
-
-  // Delete old fragment metadata. This makes the old fragments invisible
-  st = delete_fragment_metadata(array_uri, to_delete);
+  // Write vacuum file
+  st = write_vacuum_file(*new_fragment_uri, to_consolidate);
   if (!st.ok()) {
-    delete_fragments(to_delete);
     delete query_r;
     delete query_w;
+    bool is_dir = false;
+    auto st2 = storage_manager_->vfs()->is_dir(*new_fragment_uri, &is_dir);
+    (void)st2;  // Perhaps report this once we support an error stack
+    if (is_dir)
+      storage_manager_->vfs()->remove_dir(*new_fragment_uri);
     return st;
   }
-
-  // Delete old fragments. The array does not need to be locked.
-  st = delete_fragments(to_delete);
 
   // Clean up
   delete query_r;
   delete query_w;
 
   return st;
+}
+
+/*
+ * This function will write a file with format `__t1_t2_v`,
+ * where `t1` (`t2`) is the timestamp of the first (last)
+ * fragment whose footers it consolidates, and `v` is the
+ * format version.
+ *
+ * The file format is as follows:
+ * <number of fragments whose footers are consolidated in the file>
+ * <framgment #1 name size> <fragment #1 name> <fragment #1 footer offset>
+ * <framgment #2 name size> <fragment #2 name> <fragment #2 footer offset>
+ * ...
+ * <framgment #N name size> <fragment #N name> <fragment #N footer offset>
+ * <serialized footer for fragment #1>
+ * <serialized footer for fragment #2>
+ * ...
+ * <serialized footer for fragment #N>
+ */
+Status Consolidator::consolidate_fragment_meta(
+    const URI& array_uri,
+    EncryptionType encryption_type,
+    const void* encryption_key,
+    uint32_t key_length) {
+  // Open array for reading
+  Array array(array_uri, storage_manager_);
+  RETURN_NOT_OK(
+      array.open(QueryType::READ, encryption_type, encryption_key, key_length));
+
+  // Include only fragments with footers / separate basic metadata
+  Buffer buff;
+  const auto& tmp_meta = array.fragment_metadata();
+  std::vector<FragmentMetadata*> meta;
+  for (auto m : tmp_meta) {
+    if (m->format_version() > 2)
+      meta.emplace_back(m);
+  }
+  auto fragment_num = (unsigned)meta.size();
+
+  // Do not consolidate if the number of fragments is not >1
+  if (fragment_num < 2)
+    return array.close();
+
+  // Write number of fragments
+  buff.write(&fragment_num, sizeof(uint32_t));
+
+  // Calculate offset of first fragment footer
+  uint64_t offset = sizeof(uint32_t);  // Fragment num
+  for (auto m : meta) {
+    offset += sizeof(uint64_t);                      // Name size
+    offset += m->fragment_uri().to_string().size();  // Name
+    offset += sizeof(uint64_t);                      // Offset
+  }
+
+  // Serialize all fragment names and footer offsets into a single buffer
+  uint64_t footer_size = 0;
+  for (auto m : meta) {
+    // Write name size and name
+    auto name = m->fragment_uri().to_string();
+    auto name_size = (uint64_t)name.size();
+    buff.write(&name_size, sizeof(uint64_t));
+    buff.write(name.c_str(), name_size);
+    buff.write(&offset, sizeof(uint64_t));
+    RETURN_NOT_OK(m->get_footer_size(&footer_size));
+    offset += footer_size;
+  }
+
+  // Serialize all fragment metadata footers into a single buffer
+  for (auto m : meta)
+    m->write_footer(&buff);
+
+  // Compute new URI
+  URI uri;
+  auto first = meta.front()->fragment_uri();
+  auto last = meta.back()->fragment_uri();
+  RETURN_NOT_OK(compute_new_fragment_uri(first, last, &uri));
+  uri = URI(uri.to_string() + constants::meta_file_suffix);
+
+  // Close array
+  RETURN_NOT_OK(array.close());
+
+  // Write to file
+  EncryptionKey enc_key;
+  RETURN_NOT_OK(enc_key.set_key(encryption_type, encryption_key, key_length));
+  buff.reset_offset();
+  Tile tile(
+      constants::generic_tile_datatype,
+      constants::generic_tile_cell_size,
+      0,
+      &buff,
+      false);
+  TileIO tile_io(storage_manager_, uri);
+  uint64_t nbytes = 0;
+  RETURN_NOT_OK(tile_io.write_generic(&tile, enc_key, &nbytes));
+  (void)nbytes;
+  RETURN_NOT_OK(storage_manager_->close_file(uri));
+
+  return Status::Ok();
 }
 
 Status Consolidator::copy_array(
@@ -528,73 +565,6 @@ Status Consolidator::create_queries(
   RETURN_NOT_OK((*query_w)->set_layout(Layout::GLOBAL_ORDER));
   if (array_for_reads->array_schema()->dense())
     RETURN_NOT_OK((*query_w)->set_subarray_unsafe(subarray));
-
-  return Status::Ok();
-}
-
-Status Consolidator::delete_fragment_metadata(
-    const URI& array_uri, const std::vector<URI>& fragments) {
-  RETURN_NOT_OK(storage_manager_->array_xlock(array_uri));
-
-  for (auto& uri : fragments) {
-    auto meta_uri = uri.join_path(constants::fragment_metadata_filename);
-    RETURN_NOT_OK(storage_manager_->vfs()->remove_file(meta_uri));
-  }
-
-  RETURN_NOT_OK(storage_manager_->array_xunlock(array_uri));
-
-  return Status::Ok();
-}
-
-Status Consolidator::delete_fragments(const std::vector<URI>& fragments) {
-  for (auto& uri : fragments)
-    RETURN_NOT_OK(storage_manager_->vfs()->remove_dir(uri));
-
-  return Status::Ok();
-}
-
-Status Consolidator::delete_overwritten_fragments(
-    const ArraySchema* array_schema, std::vector<FragmentInfo>* fragments) {
-  // Trivial case
-  if (fragments->size() == 1)
-    return Status::Ok();
-
-  // Applicable only to dense arrays
-  if (!array_schema->dense())
-    return Status::Ok();
-
-  // Find which fragments to delete
-  auto domain = array_schema->domain();
-  std::vector<URI> to_delete;
-  std::list<FragmentInfo> updated;
-  for (auto f : *fragments)
-    updated.emplace_back(f);
-
-  for (auto cur = updated.rbegin(); cur != updated.rend(); ++cur) {
-    if (cur->sparse())
-      continue;
-    for (auto check = updated.begin();
-         check->uri().to_string() != cur->uri().to_string();) {
-      if (domain->covered(check->non_empty_domain(), cur->non_empty_domain())) {
-        to_delete.emplace_back(check->uri());
-        check = updated.erase(check);
-      } else {
-        ++check;
-      }
-    }
-  }
-
-  // Delete the fragment metadata
-  auto array_uri = array_schema->array_uri();
-  RETURN_NOT_OK(delete_fragment_metadata(array_uri, to_delete));
-
-  // Delete the fragments
-  RETURN_NOT_OK(delete_fragments(to_delete));
-
-  // Update the input fragments
-  fragments->clear();
-  for (const auto& f : updated)
-    fragments->emplace_back(f);
 
   return Status::Ok();
 }
@@ -715,22 +685,12 @@ Status Consolidator::compute_new_fragment_uri(
   std::string uuid;
   RETURN_NOT_OK(uuid::generate_uuid(&uuid, false));
 
-  // Get fragment names
-  auto tmp_uri = first;
-  tmp_uri = tmp_uri.remove_trailing_slash();
-  std::string first_name = tmp_uri.last_path_part();
-  tmp_uri = last;
-  tmp_uri = tmp_uri.remove_trailing_slash();
-  std::string last_name = tmp_uri.last_path_part();
-
   // For creating the new fragment URI
 
   // Get timestamp ranges
-  uint32_t f_version;
-  RETURN_NOT_OK(utils::parse::get_fragment_name_version(first, &f_version));
-  auto t_first = utils::parse::get_timestamp_range(f_version, first_name);
-  RETURN_NOT_OK(utils::parse::get_fragment_name_version(last, &f_version));
-  auto t_last = utils::parse::get_timestamp_range(f_version, last_name);
+  std::pair<uint64_t, uint64_t> t_first, t_last;
+  RETURN_NOT_OK(utils::parse::get_timestamp_range(first, &t_first));
+  RETURN_NOT_OK(utils::parse::get_timestamp_range(last, &t_last));
 
   // Create new URI
   std::stringstream ss;
@@ -842,6 +802,12 @@ Status Consolidator::set_config(const Config* config) {
   RETURN_NOT_OK(merged_config.get<uint32_t>(
       "sm.consolidation.step_max_frags", &config_.max_frags_, &found));
   assert(found);
+  config_.only_fragment_meta_ = false;
+  RETURN_NOT_OK(merged_config.get<bool>(
+      "sm.consolidation.only_fragment_meta",
+      &config_.only_fragment_meta_,
+      &found));
+  assert(found);
 
   // Sanity checks
   if (config_.min_frags_ > config_.max_frags_)
@@ -856,6 +822,22 @@ Status Consolidator::set_config(const Config* config) {
     return LOG_STATUS(
         Status::ConsolidatorError("Invalid configuration; Amplification config "
                                   "parameter must be non-negative"));
+
+  return Status::Ok();
+}
+
+Status Consolidator::write_vacuum_file(
+    const URI& new_uri, const std::vector<FragmentInfo>& to_consolidate) const {
+  URI vac_uri = URI(new_uri.to_string() + constants::vacuum_file_suffix);
+
+  std::stringstream ss;
+  for (const auto& uri : to_consolidate)
+    ss << uri.uri().to_string() << "\n";
+
+  auto data = ss.str();
+  RETURN_NOT_OK(
+      storage_manager_->vfs()->write(vac_uri, data.c_str(), data.size()));
+  RETURN_NOT_OK(storage_manager_->vfs()->sync(vac_uri));
 
   return Status::Ok();
 }

@@ -652,6 +652,28 @@ class Array {
         config ? config->ptr().get() : nullptr));
   }
 
+  /**
+   * Cleans up the array, such as consolidated fragments and array metadata.
+   * Note that this will coarsen the granularity of time traveling (see docs
+   * for more information).
+   *
+   * **Example:**
+   * @code{.cpp}
+   * tiledb::Array::vacuum(ctx, "s3://bucket-name/array-name");
+   * @endcode
+   *
+   * @param ctx TileDB context
+   * @param array_uri The URI of the TileDB array to be vacuumed.
+   * @param config Configuration parameters for the vaccuming.
+   */
+  static void vacuum(
+      const Context& ctx,
+      const std::string& uri,
+      Config* const config = nullptr) {
+    ctx.handle_error(tiledb_array_vacuum(
+        ctx.ptr().get(), uri.c_str(), config ? config->ptr().get() : nullptr));
+  }
+
   // clang-format off
   /**
    * @copybrief Array::consolidate(const Context&,const std::string&,tiledb_encryption_type_t,const void*,uint32_t,const Config&)
@@ -1110,7 +1132,7 @@ class Array {
 
   // clang-format off
   /**
-   * @copybrief Array::consolidate_metadata(const Context&,const std::string&,tiledb_encryption_type_t,const void*,uint32_t,const Config&)
+   * @copybrief Array::consolidate_metadata(const Context&, const std::string&, tiledb_encryption_type_t, const void*,uint32_t, const Config&)
    *
    * See @ref Array::consolidate_metadata(
    *     const Context&,

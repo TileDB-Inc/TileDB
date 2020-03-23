@@ -494,9 +494,10 @@ TEST_CASE(
     query_r.submit();
     array.close();
 
-    // Remove create fragment
+    // Remove created fragment and ok file
     VFS vfs(ctx);
     vfs.remove_dir(fragment_uri);
+    vfs.remove_file(fragment_uri + ".ok");
 
     REQUIRE(a_read[0] == 100);
     for (int i = 1; i < 4; i++) {

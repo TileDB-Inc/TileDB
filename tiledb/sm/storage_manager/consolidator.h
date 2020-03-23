@@ -85,6 +85,11 @@ class Consolidator {
      * consolidation.
      */
     float size_ratio_;
+    /**
+     * If `true`, then only the fragment metadata footers will be
+     * consolidated.
+     */
+    bool only_fragment_meta_;
   };
 
   /* ********************************* */
@@ -146,23 +151,6 @@ class Consolidator {
   /* ********************************* */
   /*          STATIC FUNCTIONS         */
   /* ********************************* */
-
-  /**
-   * Applicable to both fragment and array metadata URIs.
-   *
-   * Removes from the input the URIs that have
-   * been consolidated. This is necessary on S3, where the deletion
-   * of the consolidated URIs may not have taken place before
-   * a read, in which case both the new and old URIs appear to
-   * exist. In this case, we need to make sure that the old
-   * URIs are ignored, otherwise performance will be impacted.
-   *
-   * A URI of the form `__t1_t2_uuid` is
-   * ignored, if there is another fragment URI `__t1c_t2c_uuid`
-   * such that `t1c <= t1 <= t2 <= t2c`.
-   */
-  static void remove_consolidated_uris(
-      std::vector<TimestampedURI>* sorted_uris);
 
  private:
   /* ********************************* */
@@ -260,6 +248,20 @@ class Consolidator {
       URI* new_fragment_uri);
 
   /**
+   * Consolidates the fragment metadata of the input array.
+   *
+   * @param array_uri The array URI.
+   * @param enc_key If the array is encrypted, the private encryption
+   *    key.
+   * @return Status
+   */
+  Status consolidate_fragment_meta(
+      const URI& array_uri,
+      EncryptionType encryption_type,
+      const void* encryption_key,
+      uint32_t key_length);
+
+  /**
    * Copies the array by reading from the fragments to be consolidated
    * (with `query_r`) and writing to the new fragment (with `query_w`).
    * It also appropriately sets the query buffers.
@@ -319,42 +321,6 @@ class Consolidator {
       Query** query_r,
       Query** query_w,
       URI* new_fragment_uri);
-
-  /**
-   * Deletes the fragment metadata files of the input fragments.
-   * This renders the fragments "invisible".
-   *
-   * @param array_uri The array URI.
-   * @param fragments The URIs of the fragments to be deleted.
-   * @return Status
-   */
-  Status delete_fragment_metadata(
-      const URI& array_uri, const std::vector<URI>& fragments);
-
-  /**
-   * Deletes the entire directories of the input fragments.
-   *
-   * @param fragments The URIs of the fragments to be deleted.
-   * @return Status
-   */
-  Status delete_fragments(const std::vector<URI>& fragments);
-
-  /**
-   * This function will delete all fragments that are completely
-   * overwritten by more recent fragments, i.e., all fragments
-   * (dense or sparse) whose non-empty domain is completely
-   * included in the non-empty domain of a later dense fragment.
-   * This is applicable only to dense arrays.
-   *
-   * @param array_schema The array schema.
-   * @param fragments Fragment information that will help in identifying
-   *     which fragments to delete. If a fragment gets deleted by the
-   *     function, its corresponding fragment info will get evicted
-   *     from this vector.
-   * @return Status
-   */
-  Status delete_overwritten_fragments(
-      const ArraySchema* array_schema, std::vector<FragmentInfo>* fragments);
 
   /**
    * Based on the input fragment info, this algorithm decides the (sorted) list
@@ -418,6 +384,12 @@ class Consolidator {
       const std::vector<FragmentInfo>& to_consolidate,
       const FragmentInfo& new_fragment_info,
       std::vector<FragmentInfo>* fragment_info) const;
+
+  /** Writes the vacuum file that contains the URIs of the consolidated
+   * fragments. */
+  Status write_vacuum_file(
+      const URI& new_uri,
+      const std::vector<FragmentInfo>& to_consolidate) const;
 };
 
 }  // namespace sm

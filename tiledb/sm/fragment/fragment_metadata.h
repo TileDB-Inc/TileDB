@@ -217,8 +217,12 @@ class FragmentMetadata {
   /** Returns the number of cells in the last tile. */
   uint64_t last_tile_cell_num() const;
 
-  /** Loads the basic metadata from storage. */
-  Status load(const EncryptionKey& encryption_key);
+  /**
+   * Loads the basic metadata from storage or `f_buff` for later
+   * versions if it is not `nullptr`.
+   */
+  Status load(
+      const EncryptionKey& encryption_key, Buffer* f_buff, uint64_t offset);
 
   /** Stores all the metadata to storage. */
   Status store(const EncryptionKey& encryption_key);
@@ -343,6 +347,12 @@ class FragmentMetadata {
       uint64_t tile_idx,
       uint64_t* offset);
 
+  /**
+   * Retrieves the size of the fragment metadata footer
+   * (which contains the generic tile offsets) along with its size.
+   */
+  Status get_footer_size(uint64_t* size) const;
+
   /** Returns the MBR of the input tile. */
   const NDRange& mbr(uint64_t tile_idx) const;
 
@@ -422,6 +432,9 @@ class FragmentMetadata {
    * breaking ties based on the URI string.
    */
   bool operator<(const FragmentMetadata& metadata) const;
+
+  /** Serializes the fragment metadata footer into the input buffer. */
+  Status write_footer(Buffer* buff) const;
 
  private:
   /* ********************************* */
@@ -504,12 +517,6 @@ class FragmentMetadata {
   /** Local mutex for thread-safety. */
   std::mutex mtx_;
 
-  /** The offsets of the next tile for each attribute. */
-  std::vector<uint64_t> next_tile_offsets_;
-
-  /** The offsets of the next variable tile for each attribute. */
-  std::vector<uint64_t> next_tile_var_offsets_;
-
   /** The non-empty domain of the fragment. */
   NDRange non_empty_domain_;
 
@@ -560,22 +567,20 @@ class FragmentMetadata {
   Status get_footer_offset_and_size(uint64_t* offset, uint64_t* size) const;
 
   /**
-   * Retrieves the offset in the fragment metadata file of the footer
+   * Returns the size of the fragment metadata footer
    * (which contains the generic tile offsets) along with its size.
    *
    * Applicable to format versions 3 and 4.
    */
-  Status get_footer_offset_and_size_v3_v4(
-      uint64_t* offset, uint64_t* size) const;
+  uint64_t footer_size_v3_v4() const;
 
   /**
-   * Retrieves the offset in the fragment metadata file of the footer
+   * Returns the size of the fragment metadata footer
    * (which contains the generic tile offsets) along with its size.
    *
    * Applicable to format version 5 or higher.
    */
-  Status get_footer_offset_and_size_v5_or_higher(
-      uint64_t* offset, uint64_t* size) const;
+  uint64_t footer_size_v5_or_higher() const;
 
   /**
    * Returns the ids (positions) of the tiles overlapping `subarray`.
@@ -755,28 +760,35 @@ class FragmentMetadata {
   /** Loads the basic metadata from storage (version 2 or before). */
   Status load_v1_v2(const EncryptionKey& encryption_key);
 
-  /** Loads the basic metadata from storage (version 3 or after). */
-  Status load_v3_or_higher(const EncryptionKey& encryption_key);
+  /**
+   * Loads the basic metadata from storage or the input `f_buff` if
+   * it is not `nullptr` (version 3 or after).
+   */
+  Status load_v3_or_higher(
+      const EncryptionKey& encryption_key, Buffer* f_buff, uint64_t offset);
 
   /**
    * Loads the footer of the metadata file, which contains
-   * only some basic info.
+   * only some basic info. If `f_buff` is `nullptr, then
+   * the footer will be loaded from the file, otherwise it
+   * will be loaded from `f_buff`.
    */
-  Status load_footer(const EncryptionKey& encryption_key);
+  Status load_footer(
+      const EncryptionKey& encryption_key, Buffer* f_buff, uint64_t offset);
 
   /** Writes the sizes of each attribute file to the buffer. */
-  Status write_file_sizes(Buffer* buff);
+  Status write_file_sizes(Buffer* buff) const;
 
   /** Writes the sizes of each variable attribute file to the buffer. */
-  Status write_file_var_sizes(Buffer* buff);
+  Status write_file_var_sizes(Buffer* buff) const;
 
   /** Writes the generic tile offsets to the buffer. */
-  Status write_generic_tile_offsets(Buffer* buff);
+  Status write_generic_tile_offsets(Buffer* buff) const;
 
   /**
    * Writes the cell number of the last tile to the fragment metadata buffer.
    */
-  Status write_last_tile_cell_num(Buffer* buff);
+  Status write_last_tile_cell_num(Buffer* buff) const;
 
   /**
    * Writes the R-tree to storage.
@@ -794,7 +806,7 @@ class FragmentMetadata {
   Status write_rtree(Buffer* buff);
 
   /** Writes the non-empty domain to the input buffer. */
-  Status write_non_empty_domain(Buffer* buff);
+  Status write_non_empty_domain(Buffer* buff) const;
 
   /**
    * Writes the tile offsets of the input attribute or dimension to storage.
@@ -850,13 +862,13 @@ class FragmentMetadata {
   Status write_tile_var_sizes(unsigned idx, Buffer* buff);
 
   /** Writes the format version to the buffer. */
-  Status write_version(Buffer* buff);
+  Status write_version(Buffer* buff) const;
 
   /** Writes the `dense_` field to the buffer. */
-  Status write_dense(Buffer* buff);
+  Status write_dense(Buffer* buff) const;
 
   /** Writes the number of sparse tiles to the buffer. */
-  Status write_sparse_tile_num(Buffer* buff);
+  Status write_sparse_tile_num(Buffer* buff) const;
 
   /**
    * Reads the contents of a generic tile starting at the input offset,
@@ -891,7 +903,7 @@ class FragmentMetadata {
    * retrieval upon reading (as its size is predictable based on the
    * number of attributes).
    */
-  Status write_file_footer(Buffer* buff) const;
+  Status write_footer_to_file(Buffer* buff) const;
 
   /**
    * Simple clean up function called in the case of error. It removes the

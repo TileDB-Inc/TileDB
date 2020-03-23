@@ -93,7 +93,6 @@ set(TILEDB_TEST_SOURCES
   src/unit-s3.cc
   src/unit-s3-no-multipart.cc
   src/unit-status.cc
-  src/unit-Consolidator.cc
   src/unit-Subarray.cc
   src/unit-SubarrayPartitioner-dense.cc
   src/unit-SubarrayPartitioner-error.cc

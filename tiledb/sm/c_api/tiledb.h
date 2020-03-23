@@ -3999,9 +3999,6 @@ TILEDB_EXPORT int32_t tiledb_array_create_with_key(
 /**
  * Consolidates the fragments of an array into a single fragment.
  *
- * You must first finalize all queries to the array before consolidation can
- * begin (as consolidation temporarily acquires an exclusive lock on the array).
- *
  * **Example:**
  *
  * @code{.c}
@@ -4019,9 +4016,6 @@ TILEDB_EXPORT int32_t tiledb_array_consolidate(
 
 /**
  * Consolidates the fragments of an encrypted array into a single fragment.
- *
- * You must first finalize all queries to the array before consolidation can
- * begin (as consolidation temporarily acquires an exclusive lock on the array).
  *
  * **Example:**
  *
@@ -4048,6 +4042,26 @@ TILEDB_EXPORT int32_t tiledb_array_consolidate_with_key(
     const void* encryption_key,
     uint32_t key_length,
     tiledb_config_t* config);
+
+/**
+ * Cleans up the array, such as consolidated fragments and array metadata.
+ * Note that this will coarsen the granularity of time traveling (see docs
+ * for more information).
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * tiledb_array_vacuum(ctx, "hdfs:///tiledb_arrays/my_array");
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param array_uri The name of the TileDB array to vacuum.
+ * @param config Configuration parameters for the vacuuming
+ *     (`nullptr` means default, which will use the config from `ctx`).
+ * @return `TILEDB_OK` on success, and `TILEDB_ERR` on error.
+ */
+TILEDB_EXPORT int32_t tiledb_array_vacuum(
+    tiledb_ctx_t* ctx, const char* array_uri, tiledb_config_t* config);
 
 /**
  * Retrieves the non-empty domain from an array. This is the union of the

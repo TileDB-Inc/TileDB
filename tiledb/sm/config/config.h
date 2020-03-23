@@ -147,6 +147,12 @@ class Config {
    */
   static const std::string SM_CONSOLIDATION_STEP_SIZE_RATIO;
 
+  /**
+   * If set to "true", then only the fragment metadata footers will be
+   * consolidated.
+   */
+  static const std::string SM_CONSOLIDATION_ONLY_FRAGMENT_META;
+
   /** The default number of allocated VFS threads. */
   static const std::string VFS_NUM_THREADS;
 
