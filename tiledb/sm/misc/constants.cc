@@ -167,6 +167,15 @@ const uint8_t empty_any = 0;
 /** The file suffix used in TileDB. */
 const std::string file_suffix = ".tdb";
 
+/** Suffix for the special vacuum files used in TileDB. */
+const std::string vacuum_file_suffix = ".vac";
+
+/** Suffix for the special ok files used in TileDB. */
+const std::string ok_file_suffix = ".ok";
+
+/** Suffix for the special metadata files used in TileDB. */
+const std::string meta_file_suffix = ".meta";
+
 /** Default datatype for a generic tile. */
 const Datatype generic_tile_datatype = Datatype::CHAR;
 

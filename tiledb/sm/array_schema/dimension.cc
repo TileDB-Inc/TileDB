@@ -268,6 +268,7 @@ void Dimension::dump(FILE* out) const {
   // Dump
   fprintf(out, "### Dimension ###\n");
   fprintf(out, "- Name: %s\n", name_.c_str());
+  fprintf(out, "- Type: %s\n", datatype_str(type_).c_str());
   fprintf(out, "- Domain: %s\n", domain_s.c_str());
   fprintf(out, "- Tile extent: %s\n", tile_extent_s.c_str());
   fprintf(out, "- Filters: %u", (unsigned)filters_.size());

@@ -251,5 +251,13 @@ bool URI::operator>(const URI& uri) const {
   return uri_ > uri.uri_;
 }
 
+bool URI::operator==(const URI& uri) const {
+  return uri_ == uri.uri_;
+}
+
+bool URI::operator!=(const URI& uri) const {
+  return uri_ != uri.uri_;
+}
+
 }  // namespace sm
 }  // namespace tiledb

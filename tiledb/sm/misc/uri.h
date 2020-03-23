@@ -227,6 +227,12 @@ class URI {
   /** For comparing URIs alphanumerically. */
   bool operator>(const URI& uri) const;
 
+  /** For comparing URIs alphanumerically. */
+  bool operator==(const URI& uri) const;
+
+  /** For comparing URIs alphanumerically. */
+  bool operator!=(const URI& uri) const;
+
  private:
   /* ********************************* */
   /*        PRIVATE ATTRIBUTES         */

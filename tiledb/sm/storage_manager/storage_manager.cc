@@ -194,7 +194,7 @@ Status StorageManager::array_close_for_writes(
 Status StorageManager::array_open_for_reads(
     const URI& array_uri,
     uint64_t timestamp,
-    const EncryptionKey& encryption_key,
+    const EncryptionKey& enc_key,
     ArraySchema** array_schema,
     std::vector<FragmentMetadata*>* fragment_metadata) {
   STATS_FUNC_IN(sm_array_open_for_reads);
@@ -202,7 +202,7 @@ Status StorageManager::array_open_for_reads(
   // Open array without fragments
   auto open_array = (OpenArray*)nullptr;
   RETURN_NOT_OK_ELSE(
-      array_open_without_fragments(array_uri, encryption_key, &open_array),
+      array_open_without_fragments(array_uri, enc_key, &open_array),
       *array_schema = nullptr);
 
   // Retrieve array schema
@@ -211,12 +211,26 @@ Status StorageManager::array_open_for_reads(
   // Determine which fragments to load
   std::vector<TimestampedURI> fragments_to_load;
   std::vector<URI> fragment_uris;
-  RETURN_NOT_OK(get_fragment_uris(array_uri, &fragment_uris));
+  URI meta_uri;
+  RETURN_NOT_OK(get_fragment_uris(array_uri, &fragment_uris, &meta_uri));
   RETURN_NOT_OK(get_sorted_uris(fragment_uris, timestamp, &fragments_to_load));
+
+  // Get the consolidated fragment metadata
+  Buffer f_buff;
+  std::unordered_map<std::string, uint64_t> offsets;
+  uint32_t meta_version = 0;
+  RETURN_NOT_OK(load_consolidated_fragment_meta(
+      meta_uri, enc_key, &f_buff, &offsets, &meta_version));
 
   // Get fragment metadata in the case of reads, if not fetched already
   Status st = load_fragment_metadata(
-      open_array, encryption_key, fragments_to_load, fragment_metadata);
+      open_array,
+      enc_key,
+      fragments_to_load,
+      &f_buff,
+      offsets,
+      meta_version,
+      fragment_metadata);
   if (!st.ok()) {
     open_array->mtx_unlock();
     array_close_for_reads(array_uri);
@@ -236,7 +250,7 @@ Status StorageManager::array_open_for_reads(
 Status StorageManager::array_open_for_reads(
     const URI& array_uri,
     const std::vector<FragmentInfo>& fragments,
-    const EncryptionKey& encryption_key,
+    const EncryptionKey& enc_key,
     ArraySchema** array_schema,
     std::vector<FragmentMetadata*>* fragment_metadata) {
   STATS_FUNC_IN(sm_array_open_for_reads);
@@ -244,7 +258,7 @@ Status StorageManager::array_open_for_reads(
   // Open array without fragments
   auto open_array = (OpenArray*)nullptr;
   RETURN_NOT_OK_ELSE(
-      array_open_without_fragments(array_uri, encryption_key, &open_array),
+      array_open_without_fragments(array_uri, enc_key, &open_array),
       *array_schema = nullptr);
 
   // Retrieve array schema
@@ -255,9 +269,28 @@ Status StorageManager::array_open_for_reads(
   for (const auto& fragment : fragments)
     fragments_to_load.emplace_back(fragment.uri(), fragment.timestamp_range());
 
+  // Get the consolidated fragment metadata URI
+  URI meta_uri;
+  std::vector<URI> uris;
+  RETURN_NOT_OK(vfs_->ls(array_uri.add_trailing_slash(), &uris));
+  RETURN_NOT_OK(get_consolidated_fragment_meta_uri(uris, &meta_uri));
+
+  // Get the consolidated fragment metadata
+  Buffer f_buff;
+  std::unordered_map<std::string, uint64_t> offsets;
+  uint32_t meta_version = 0;
+  RETURN_NOT_OK(load_consolidated_fragment_meta(
+      meta_uri, enc_key, &f_buff, &offsets, &meta_version));
+
   // Get fragment metadata in the case of reads, if not fetched already
   Status st = load_fragment_metadata(
-      open_array, encryption_key, fragments_to_load, fragment_metadata);
+      open_array,
+      enc_key,
+      fragments_to_load,
+      &f_buff,
+      offsets,
+      meta_version,
+      fragment_metadata);
   if (!st.ok()) {
     open_array->mtx_unlock();
     array_close_for_reads(array_uri);
@@ -355,7 +388,7 @@ Status StorageManager::array_open_for_writes(
 Status StorageManager::array_reopen(
     const URI& array_uri,
     uint64_t timestamp,
-    const EncryptionKey& encryption_key,
+    const EncryptionKey& enc_key,
     ArraySchema** array_schema,
     std::vector<FragmentMetadata*>* fragment_metadata) {
   STATS_FUNC_IN(sm_array_reopen);
@@ -373,7 +406,7 @@ Status StorageManager::array_reopen(
           std::string("Cannot reopen array ") + array_uri.to_string() +
           "; Array not open"));
     }
-    RETURN_NOT_OK(it->second->set_encryption_key(encryption_key));
+    RETURN_NOT_OK(it->second->set_encryption_key(enc_key));
     open_array = it->second;
 
     // Lock the array
@@ -383,12 +416,26 @@ Status StorageManager::array_reopen(
   // Determine which fragments to load
   std::vector<TimestampedURI> fragments_to_load;
   std::vector<URI> fragment_uris;
-  RETURN_NOT_OK(get_fragment_uris(array_uri, &fragment_uris));
+  URI meta_uri;
+  RETURN_NOT_OK(get_fragment_uris(array_uri, &fragment_uris, &meta_uri));
   RETURN_NOT_OK(get_sorted_uris(fragment_uris, timestamp, &fragments_to_load));
+
+  // Get the consolidated fragment metadata
+  Buffer f_buff;
+  std::unordered_map<std::string, uint64_t> offsets;
+  uint32_t meta_version = 0;
+  RETURN_NOT_OK(load_consolidated_fragment_meta(
+      meta_uri, enc_key, &f_buff, &offsets, &meta_version));
 
   // Get fragment metadata in the case of reads, if not fetched already
   auto st = load_fragment_metadata(
-      open_array, encryption_key, fragments_to_load, fragment_metadata);
+      open_array,
+      enc_key,
+      fragments_to_load,
+      &f_buff,
+      offsets,
+      meta_version,
+      fragment_metadata);
   if (!st.ok()) {
     open_array->mtx_unlock();
     array_close_for_reads(array_uri);
@@ -419,6 +466,7 @@ Status StorageManager::array_consolidate(
     return LOG_STATUS(
         Status::StorageManagerError("Cannot consolidate array; Invalid URI"));
   }
+
   // Check if array exists
   ObjectType obj_type;
   RETURN_NOT_OK(object_type(array_uri, &obj_type));
@@ -438,6 +486,151 @@ Status StorageManager::array_consolidate(
   Consolidator consolidator(this);
   return consolidator.consolidate(
       array_name, encryption_type, encryption_key, key_length, config);
+}
+
+Status StorageManager::array_vacuum(
+    const char* array_name, const Config* config) {
+  // If 'config' is unset, use the 'config_' that was set during initialization
+  // of this StorageManager instance.
+  if (!config) {
+    config = &config_;
+  }
+
+  // Get mode
+  const char* mode;
+  RETURN_NOT_OK(config->get("sm.vacuum.mode", &mode));
+
+  if (mode == nullptr)
+    return LOG_STATUS(Status::StorageManagerError(
+        "Cannot vacuum array; Vacuum mode cannot be null"));
+  else if (std::string(mode) == "fragments")
+    RETURN_NOT_OK(array_vacuum_fragments(array_name));
+  else if (std::string(mode) == "fragment_meta")
+    RETURN_NOT_OK(array_vacuum_fragment_meta(array_name));
+  else if (std::string(mode) == "array_meta")
+    RETURN_NOT_OK(array_vacuum_array_meta(array_name));
+  else
+    return LOG_STATUS(Status::StorageManagerError(
+        "Cannot vacuum array; Invalid vacuum mode"));
+
+  return Status::Ok();
+}
+
+Status StorageManager::array_vacuum_fragments(const char* array_name) {
+  if (array_name == nullptr)
+    return LOG_STATUS(Status::StorageManagerError(
+        "Cannot vacuum fragments; Array name cannot be null"));
+
+  // Get all URIs in the array directory
+  URI array_uri(array_name);
+  std::vector<URI> uris;
+  RETURN_NOT_OK(vfs_->ls(array_uri.add_trailing_slash(), &uris));
+
+  // Get URIs to be vacuumed
+  std::vector<URI> to_vacuum, vac_uris;
+  auto timestamp = utils::time::timestamp_now_ms();
+  RETURN_NOT_OK(get_uris_to_vacuum(uris, timestamp, &to_vacuum, &vac_uris));
+
+  // Delete the ok files
+  RETURN_NOT_OK(array_xlock(array_uri));
+  auto statuses = parallel_for(0, to_vacuum.size(), [&, this](size_t i) {
+    auto uri = URI(to_vacuum[i].to_string() + constants::ok_file_suffix);
+    RETURN_NOT_OK(vfs_->remove_file(uri));
+
+    return Status::Ok();
+  });
+  for (const auto& st : statuses)
+    RETURN_NOT_OK_ELSE(st, array_xunlock(array_uri));
+  RETURN_NOT_OK(array_xunlock(array_uri));
+
+  // Delete fragment directories
+  statuses = parallel_for(0, to_vacuum.size(), [&, this](size_t i) {
+    RETURN_NOT_OK(vfs_->remove_dir(to_vacuum[i]));
+
+    return Status::Ok();
+  });
+  for (const auto& st : statuses)
+    RETURN_NOT_OK(st);
+
+  // Delete vacuum files
+  statuses = parallel_for(0, vac_uris.size(), [&, this](size_t i) {
+    RETURN_NOT_OK(vfs_->remove_file(vac_uris[i]));
+    return Status::Ok();
+  });
+  for (const auto& st : statuses)
+    RETURN_NOT_OK(st);
+
+  return Status::Ok();
+}
+
+Status StorageManager::array_vacuum_fragment_meta(const char* array_name) {
+  if (array_name == nullptr)
+    return LOG_STATUS(Status::StorageManagerError(
+        "Cannot vacuum fragment metadata; Array name cannot be null"));
+
+  // Get the consolidated fragment metadata URIs to be deleted
+  // (all except the last one)
+  URI array_uri(array_name);
+  std::vector<URI> uris, to_vacuum;
+  URI last;
+  RETURN_NOT_OK(vfs_->ls(array_uri.add_trailing_slash(), &uris));
+  RETURN_NOT_OK(get_consolidated_fragment_meta_uri(uris, &last));
+  to_vacuum.reserve(uris.size());
+  for (const auto& uri : uris) {
+    if (utils::parse::ends_with(uri.to_string(), constants::meta_file_suffix) &&
+        uri != last)
+      to_vacuum.emplace_back(uri);
+  }
+
+  // Vacuum after exclusively locking the array
+  RETURN_NOT_OK(array_xlock(array_uri));
+  auto statuses = parallel_for(0, to_vacuum.size(), [&, this](size_t i) {
+    RETURN_NOT_OK(vfs_->remove_file(to_vacuum[i]));
+    return Status::Ok();
+  });
+  for (const auto& st : statuses)
+    RETURN_NOT_OK_ELSE(st, array_xunlock(array_uri));
+  RETURN_NOT_OK(array_xunlock(array_uri));
+
+  return Status::Ok();
+}
+
+Status StorageManager::array_vacuum_array_meta(const char* array_name) {
+  if (array_name == nullptr)
+    return LOG_STATUS(Status::StorageManagerError(
+        "Cannot vacuum array metadata; Array name cannot be null"));
+
+  // Get all URIs in the array directory
+  URI array_uri(array_name);
+  auto meta_uri = array_uri.join_path(constants::array_metadata_folder_name);
+  std::vector<URI> uris;
+  RETURN_NOT_OK(vfs_->ls(meta_uri.add_trailing_slash(), &uris));
+
+  // Get URIs to be vacuumed
+  std::vector<URI> to_vacuum, vac_uris;
+  auto timestamp = utils::time::timestamp_now_ms();
+  RETURN_NOT_OK(get_uris_to_vacuum(uris, timestamp, &to_vacuum, &vac_uris));
+
+  // Delete the array metadata files
+  RETURN_NOT_OK(array_xlock(array_uri));
+  auto statuses = parallel_for(0, to_vacuum.size(), [&, this](size_t i) {
+    RETURN_NOT_OK(vfs_->remove_file(to_vacuum[i]));
+
+    return Status::Ok();
+  });
+  for (const auto& st : statuses)
+    RETURN_NOT_OK_ELSE(st, array_xunlock(array_uri));
+  RETURN_NOT_OK(array_xunlock(array_uri));
+
+  // Delete vacuum files
+  statuses = parallel_for(0, vac_uris.size(), [&, this](size_t i) {
+    RETURN_NOT_OK(vfs_->remove_file(vac_uris[i]));
+    return Status::Ok();
+  });
+  for (const auto& st : statuses)
+    RETURN_NOT_OK(st);
+
+  return Status::Ok();
 }
 
 Status StorageManager::array_metadata_consolidate(
@@ -469,8 +662,8 @@ Status StorageManager::array_metadata_consolidate(
 
   // Consolidate
   Consolidator consolidator(this);
-  return consolidator.consolidate_array_metadata(
-      array_name, encryption_type, encryption_key, key_length, config);
+  return consolidator.consolidate_array_meta(
+      array_name, encryption_type, encryption_key, key_length);
 }
 
 Status StorageManager::array_create(
@@ -851,6 +1044,48 @@ Status StorageManager::get_fragment_info(
   return array_close_for_reads(array_uri);
 }
 
+Status StorageManager::get_fragment_uris(
+    const URI& array_uri,
+    std::vector<URI>* fragment_uris,
+    URI* meta_uri) const {
+  // Get all uris in the array directory
+  std::vector<URI> uris;
+  RETURN_NOT_OK(vfs_->ls(array_uri.add_trailing_slash(), &uris));
+
+  // Get the fragments that have special "ok" URIs, which indicate
+  // that fragments are "committed" for versions >= 5
+  std::set<URI> ok_uris;
+  for (size_t i = 0; i < uris.size(); ++i) {
+    if (utils::parse::ends_with(
+            uris[i].to_string(), constants::ok_file_suffix)) {
+      auto name = uris[i].to_string();
+      name = name.substr(0, name.size() - constants::ok_file_suffix.size());
+      ok_uris.emplace(URI(name));
+    }
+  }
+
+  // Get only the committed fragment uris
+  std::vector<int> is_fragment(uris.size(), 0);
+  auto statuses = parallel_for(0, uris.size(), [&](size_t i) {
+    if (utils::parse::starts_with(uris[i].last_path_part(), "."))
+      return Status::Ok();
+    RETURN_NOT_OK(this->is_fragment(uris[i], ok_uris, &is_fragment[i]));
+    return Status::Ok();
+  });
+  for (const auto& st : statuses)
+    RETURN_NOT_OK(st);
+
+  for (size_t i = 0; i < uris.size(); ++i) {
+    if (is_fragment[i])
+      fragment_uris->emplace_back(uris[i]);
+  }
+
+  // Get the latest consolidated fragment metadata URI
+  RETURN_NOT_OK(get_consolidated_fragment_meta_uri(uris, meta_uri));
+
+  return Status::Ok();
+}
+
 const std::unordered_map<std::string, std::string>& StorageManager::tags()
     const {
   return tags_;
@@ -861,24 +1096,17 @@ Status StorageManager::get_fragment_info(
     const EncryptionKey& encryption_key,
     const URI& fragment_uri,
     FragmentInfo* fragment_info) {
-  // Get fragment name
-  std::string uri_str = fragment_uri.c_str();
-  if (uri_str.back() == '/')
-    uri_str.pop_back();
-  std::string fragment_name = URI(uri_str).last_path_part();
-  assert(utils::parse::starts_with(fragment_name, "__"));
-
-  uint32_t fragment_name_version;
-  RETURN_NOT_OK(utils::parse::get_fragment_name_version(
-      fragment_uri, &fragment_name_version));
-
   // Get timestamp range
-  auto timestamp_range =
-      utils::parse::get_timestamp_range(fragment_name_version, fragment_name);
+  std::pair<uint64_t, uint64_t> timestamp_range;
+  RETURN_NOT_OK(
+      utils::parse::get_timestamp_range(fragment_uri, &timestamp_range));
+  uint32_t version;
+  auto name = fragment_uri.remove_trailing_slash().last_path_part();
+  RETURN_NOT_OK(utils::parse::get_fragment_name_version(name, &version));
 
   // Check if fragment is sparse
   bool sparse = false;
-  if (fragment_name_version == 1) {  // This corresponds to format version <=2
+  if (version == 1) {  // This corresponds to format version <=2
     URI coords_uri =
         fragment_uri.join_path(constants::coords + constants::file_suffix);
     RETURN_NOT_OK(vfs_->is_file(coords_uri, &sparse));
@@ -893,7 +1121,7 @@ Status StorageManager::get_fragment_info(
   // Get fragment non-empty domain
   FragmentMetadata meta(
       this, array_schema, fragment_uri, timestamp_range, !sparse);
-  RETURN_NOT_OK(meta.load(encryption_key));
+  RETURN_NOT_OK(meta.load(encryption_key, nullptr, 0, 0));
 
   // This is important for format version > 2
   sparse = !meta.dense();
@@ -1021,9 +1249,35 @@ Status StorageManager::is_file(const URI& uri, bool* is_file) const {
   return Status::Ok();
 }
 
-Status StorageManager::is_fragment(const URI& uri, bool* is_fragment) const {
+Status StorageManager::is_fragment(
+    const URI& uri, const std::set<URI>& ok_uris, int* is_fragment) const {
+  // If the URI name has a suffix, then it is not a fragment
+  auto name = uri.remove_trailing_slash().last_path_part();
+  if (name.find_first_of('.') != std::string::npos) {
+    *is_fragment = 0;
+    return Status::Ok();
+  }
+
+  // Check set membership in ok_uris
+  if (ok_uris.find(uri) != ok_uris.end()) {
+    *is_fragment = 1;
+    return Status::Ok();
+  }
+
+  // If the format version is >= 5, then the above suffices to check if
+  // the URI is indeed a fragment
+  uint32_t version;
+  RETURN_NOT_OK(utils::parse::get_fragment_version(name, &version));
+  if (version != UINT32_MAX && version >= 5) {
+    *is_fragment = false;
+    return Status::Ok();
+  }
+
+  // Versions < 5
+  bool is_file;
   RETURN_NOT_OK(vfs_->is_file(
-      uri.join_path(constants::fragment_metadata_filename), is_fragment));
+      uri.join_path(constants::fragment_metadata_filename), &is_file));
+  *is_fragment = (int)is_file;
   return Status::Ok();
 }
 
@@ -1438,8 +1692,7 @@ Status StorageManager::store_array_metadata(
 
   // Create a metadata file name
   URI array_metadata_uri;
-  RETURN_NOT_OK(new_array_metadata_uri(
-      array_uri, array_metadata->timestamp_range(), &array_metadata_uri));
+  RETURN_NOT_OK(array_metadata->get_uri(array_uri, &array_metadata_uri));
 
   // Write to file
   metadata_buff.reset_offset();
@@ -1548,14 +1801,6 @@ Status StorageManager::array_open_without_fragments(
     return LOG_STATUS(Status::StorageManagerError(
         "Cannot open array; URI scheme unsupported."));
 
-  // Check if array exists
-  ObjectType obj_type;
-  RETURN_NOT_OK(this->object_type(array_uri, &obj_type));
-  if (obj_type != ObjectType::ARRAY) {
-    return LOG_STATUS(
-        Status::StorageManagerError("Cannot open array; Array does not exist"));
-  }
-
   // Lock mutexes
   {
     std::lock_guard<std::mutex> lock{open_array_for_reads_mtx_};
@@ -1599,26 +1844,6 @@ Status StorageManager::array_open_without_fragments(
   return Status::Ok();
 }
 
-Status StorageManager::get_fragment_uris(
-    const URI& array_uri, std::vector<URI>* fragment_uris) const {
-  // Get all uris in the array directory
-  std::vector<URI> uris;
-  RETURN_NOT_OK(vfs_->ls(array_uri.add_trailing_slash(), &uris));
-
-  // Get only the fragment uris
-  bool exists;
-  for (auto& uri : uris) {
-    if (utils::parse::starts_with(uri.last_path_part(), "."))
-      continue;
-
-    RETURN_NOT_OK(is_fragment(uri, &exists));
-    if (exists)
-      fragment_uris->push_back(uri);
-  }
-
-  return Status::Ok();
-}
-
 Status StorageManager::get_array_metadata_uris(
     const URI& array_uri, std::vector<URI>* array_metadata_uris) const {
   // Get all uris in the array metadata directory
@@ -1638,7 +1863,8 @@ Status StorageManager::get_array_metadata_uris(
     if (utils::parse::starts_with(uri_last_path, "."))
       continue;
 
-    if (utils::parse::starts_with(uri_last_path, "__"))
+    if (utils::parse::starts_with(uri_last_path, "__") &&
+        !utils::parse::ends_with(uri_last_path, constants::vacuum_file_suffix))
       array_metadata_uris->push_back(uri);
   }
 
@@ -1704,6 +1930,9 @@ Status StorageManager::load_fragment_metadata(
     OpenArray* open_array,
     const EncryptionKey& encryption_key,
     const std::vector<TimestampedURI>& fragments_to_load,
+    Buffer* meta_buff,
+    const std::unordered_map<std::string, uint64_t>& offsets,
+    uint32_t meta_version,
     std::vector<FragmentMetadata*>* fragment_metadata) {
   // Load the metadata for each fragment, only if they are not already loaded
   auto fragment_num = fragments_to_load.size();
@@ -1717,8 +1946,8 @@ Status StorageManager::load_fragment_metadata(
       URI coords_uri =
           sf.uri_.join_path(constants::coords + constants::file_suffix);
 
-      RETURN_NOT_OK(
-          utils::parse::get_fragment_name_version(sf.uri_, &f_version));
+      auto name = sf.uri_.remove_trailing_slash().last_path_part();
+      RETURN_NOT_OK(utils::parse::get_fragment_name_version(name, &f_version));
 
       // Note that the fragment metadata version is >= the array schema
       // version. Therefore, the check below is defensive and will always
@@ -1733,7 +1962,20 @@ Status StorageManager::load_fragment_metadata(
             this, array_schema, sf.uri_, sf.timestamp_range_);
       }
 
-      RETURN_NOT_OK_ELSE(metadata->load(encryption_key), delete metadata);
+      // Potentially find the basic fragment metadata in the consolidated
+      // metadata buffer
+      Buffer* f_buff = nullptr;
+      uint64_t offset = 0;
+      auto it = offsets.find(sf.uri_.to_string());
+      if (it != offsets.end()) {
+        f_buff = meta_buff;
+        offset = it->second;
+      }
+
+      // Load fragment metadata
+      RETURN_NOT_OK_ELSE(
+          metadata->load(encryption_key, f_buff, offset, meta_version),
+          delete metadata);
       open_array->insert_fragment_metadata(metadata);
     }
     (*fragment_metadata)[f] = metadata;
@@ -1747,6 +1989,64 @@ Status StorageManager::load_fragment_metadata(
   return Status::Ok();
 }
 
+Status StorageManager::load_consolidated_fragment_meta(
+    const URI& uri,
+    const EncryptionKey& enc_key,
+    Buffer* f_buff,
+    std::unordered_map<std::string, uint64_t>* offsets,
+    uint32_t* meta_version) {
+  *meta_version = 0;
+
+  // No consolidated fragment metadata file
+  if (uri.to_string().empty())
+    return Status::Ok();
+
+  TileIO tile_io(this, uri);
+  auto tile = (Tile*)nullptr;
+  RETURN_NOT_OK(tile_io.read_generic(&tile, 0, enc_key, config_));
+  tile->buffer()->swap(*f_buff);
+  delete tile;
+
+  uint32_t fragment_num;
+  f_buff->reset_offset();
+  f_buff->read(&fragment_num, sizeof(uint32_t));
+
+  uint64_t name_size, offset;
+  std::string name;
+  for (uint32_t f = 0; f < fragment_num; ++f) {
+    f_buff->read(&name_size, sizeof(uint64_t));
+    name.resize(name_size);
+    f_buff->read(&name[0], name_size);
+    f_buff->read(&offset, sizeof(uint64_t));
+    (*offsets)[name] = offset;
+  }
+
+  // Get the consolidated fragment metadata version
+  auto meta_name = uri.remove_trailing_slash().last_path_part();
+  auto pos = meta_name.find_last_of('.');
+  meta_name = (pos == std::string::npos) ? meta_name : meta_name.substr(0, pos);
+  RETURN_NOT_OK(utils::parse::get_fragment_version(meta_name, meta_version));
+
+  return Status::Ok();
+}
+
+Status StorageManager::get_consolidated_fragment_meta_uri(
+    const std::vector<URI>& uris, URI* meta_uri) const {
+  uint64_t t_latest = 0;
+  std::pair<uint64_t, uint64_t> timestamp_range;
+  for (const auto& uri : uris) {
+    if (utils::parse::ends_with(uri.to_string(), constants::meta_file_suffix)) {
+      RETURN_NOT_OK(utils::parse::get_timestamp_range(uri, &timestamp_range));
+      if (timestamp_range.second > t_latest) {
+        t_latest = timestamp_range.second;
+        *meta_uri = uri;
+      }
+    }
+  }
+
+  return Status::Ok();
+}
+
 Status StorageManager::get_sorted_uris(
     const std::vector<URI>& uris,
     uint64_t timestamp,
@@ -1755,21 +2055,24 @@ Status StorageManager::get_sorted_uris(
   if (uris.empty())
     return Status::Ok();
 
-  // Get the timestamp for each URI
-  uint32_t f_version;
+  // Get the URIs that must be ignored
+  std::vector<URI> vac_uris, to_ignore;
+  RETURN_NOT_OK(get_uris_to_vacuum(uris, timestamp, &to_ignore, &vac_uris));
+  std::set<URI> to_ignore_set;
+  for (const auto& uri : to_ignore)
+    to_ignore_set.emplace(uri);
+
+  // Filter based on vacuumed URIs and timestamp
   for (auto& uri : uris) {
-    // Get fragment name
-    std::string uri_str = uri.c_str();
-    if (uri_str.back() == '/')
-      uri_str.pop_back();
-    std::string name = URI(uri_str).last_path_part();
-    assert(utils::parse::starts_with(name, "__"));
+    // Ignore vacuumed URIs
+    if (to_ignore_set.find(uri) != to_ignore_set.end())
+      continue;
 
-    // Get timestamp range
-    RETURN_NOT_OK(utils::parse::get_fragment_name_version(uri, &f_version));
-    auto timestamp_range = utils::parse::get_timestamp_range(f_version, name);
-    auto t = timestamp_range.first;
-
+    // Add only URIs whose second timestamp is smaller than or equal to
+    // the input timestamp
+    std::pair<uint64_t, uint64_t> timestamp_range;
+    RETURN_NOT_OK(utils::parse::get_timestamp_range(uri, &timestamp_range));
+    auto t = timestamp_range.second;
     if (t <= timestamp)
       sorted_uris->emplace_back(uri, timestamp_range);
   }
@@ -1777,24 +2080,56 @@ Status StorageManager::get_sorted_uris(
   // Sort the names based on the timestamps
   std::sort(sorted_uris->begin(), sorted_uris->end());
 
-  // Remove consolidated fragment URIs
-  Consolidator::remove_consolidated_uris(sorted_uris);
-
   return Status::Ok();
 }
 
-Status StorageManager::new_array_metadata_uri(
-    const URI& array_uri,
-    const std::pair<uint64_t, uint64_t>& timestamp_range,
-    URI* new_uri) const {
-  std::string uuid;
-  RETURN_NOT_OK(uuid::generate_uuid(&uuid, false));
+Status StorageManager::get_uris_to_vacuum(
+    const std::vector<URI>& uris,
+    uint64_t timestamp,
+    std::vector<URI>* to_vacuum,
+    std::vector<URI>* vac_uris) const {
+  // Get vacuum URIs
+  std::unordered_map<std::string, size_t> uris_map;
+  for (size_t i = 0; i < uris.size(); ++i) {
+    std::pair<uint64_t, uint64_t> timestamp_range;
+    RETURN_NOT_OK(utils::parse::get_timestamp_range(uris[i], &timestamp_range));
+    if (timestamp_range.second > timestamp)
+      continue;
 
-  std::stringstream ss;
-  ss << "/__" << timestamp_range.first << "_" << timestamp_range.second << "_"
-     << uuid;
-  *new_uri = array_uri.join_path(constants::array_metadata_folder_name)
-                 .join_path(ss.str());
+    if (utils::parse::ends_with(
+            uris[i].to_string(), constants::vacuum_file_suffix))
+      vac_uris->emplace_back(uris[i]);
+    else
+      uris_map[uris[i].to_string()] = i;
+  }
+
+  // Compute fragment URIs to vacuum as a bitmap vector
+  std::vector<int32_t> to_vacuum_vec(uris.size(), 0);
+  auto statuses = parallel_for(0, vac_uris->size(), [&, this](size_t i) {
+    uint64_t size = 0;
+    RETURN_NOT_OK(vfs_->file_size((*vac_uris)[i], &size));
+    std::string names;
+    names.resize(size);
+    RETURN_NOT_OK(vfs_->read((*vac_uris)[i], 0, &names[0], size));
+    std::stringstream ss(names);
+    std::string uri_str;
+    for (std::string uri_str; std::getline(ss, uri_str);) {
+      auto it = uris_map.find(uri_str);
+      if (it != uris_map.end())
+        to_vacuum_vec[it->second] = 1;
+    }
+
+    return Status::Ok();
+  });
+  for (const auto& st : statuses)
+    RETURN_NOT_OK(st);
+
+  // Compute the URIs to vacuum
+  to_vacuum->clear();
+  for (size_t i = 0; i < uris.size(); ++i) {
+    if (to_vacuum_vec[i] == 1)
+      to_vacuum->emplace_back(uris[i]);
+  }
 
   return Status::Ok();
 }

@@ -217,6 +217,7 @@ void check_save_to_file() {
   ss << "sm.check_global_order true\n";
   ss << "sm.consolidation.amplification 1.0\n";
   ss << "sm.consolidation.buffer_size 50000000\n";
+  ss << "sm.consolidation.mode fragments\n";
   ss << "sm.consolidation.step_max_frags 4294967295\n";
   ss << "sm.consolidation.step_min_frags 4294967295\n";
   ss << "sm.consolidation.step_size_ratio 0.0\n";
@@ -231,6 +232,7 @@ void check_save_to_file() {
   ss << "sm.num_writer_threads 1\n";
   ss << "sm.skip_checksum_validation false\n";
   ss << "sm.tile_cache_size 10000000\n";
+  ss << "sm.vacuum.mode fragments\n";
   ss << "vfs.azure.block_list_block_size 5242880\n";
   ss << "vfs.azure.max_parallel_ops " << std::thread::hardware_concurrency()
      << "\n";
@@ -432,6 +434,9 @@ TEST_CASE("C API: Test config iter", "[capi], [config]") {
   all_param_values["sm.consolidation.step_max_frags"] = "4294967295";
   all_param_values["sm.consolidation.buffer_size"] = "50000000";
   all_param_values["sm.consolidation.step_size_ratio"] = "0.0";
+  all_param_values["sm.consolidation.mode"] = "fragments";
+  all_param_values["sm.vacuum.mode"] = "fragments";
+
   all_param_values["vfs.num_threads"] =
       std::to_string(std::thread::hardware_concurrency());
   all_param_values["vfs.min_batch_gap"] = "512000";

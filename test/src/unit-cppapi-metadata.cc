@@ -322,7 +322,7 @@ TEST_CASE_METHOD(
 
   // Create and open array in write mode
   Context ctx;
-  Array array(ctx, std::string(array_name_), TILEDB_WRITE);
+  Array array(ctx, std::string(array_name_), TILEDB_WRITE, 1);
 
   // Write items
   int32_t v = 5;
@@ -333,11 +333,8 @@ TEST_CASE_METHOD(
   // Close array
   array.close();
 
-  // Prevent array metadata filename/timestamp conflicts
-  std::this_thread::sleep_for(std::chrono::milliseconds(1));
-
   // Delete an item that exists and one that does not exist
-  array.open(TILEDB_WRITE);
+  array.open(TILEDB_WRITE, 2);
   array.delete_metadata("aaa");
   array.delete_metadata("foo");
   array.close();
@@ -351,7 +348,6 @@ TEST_CASE_METHOD(
   uint32_t v_num;
   array.get_metadata("aaa", &v_type, &v_num, &v_r);
   CHECK(v_r == nullptr);
-
   array.get_metadata("bb", &v_type, &v_num, &v_r);
   CHECK(v_type == TILEDB_FLOAT32);
   CHECK(v_num == 2);
