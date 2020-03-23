@@ -185,6 +185,11 @@ void check_save_to_file() {
       config, "vfs.s3.aws_secret_access_key", "secret", &error);
   REQUIRE(rc == TILEDB_OK);
   CHECK(error == nullptr);
+  // Check that aws session token is not serialized.
+  rc = tiledb_config_set(
+      config, "vfs.s3.aws_session_token", "token", &error);
+  REQUIRE(rc == TILEDB_OK);
+  CHECK(error == nullptr);
 
   rc = tiledb_config_save_to_file(config, "test_config.txt", &error);
   REQUIRE(rc == TILEDB_OK);
@@ -219,6 +224,7 @@ void check_save_to_file() {
   ss << "vfs.s3.connect_max_tries 5\n";
   ss << "vfs.s3.connect_scale_factor 25\n";
   ss << "vfs.s3.connect_timeout_ms 3000\n";
+  ss << "vfs.s3.logging_level Off\n";
   ss << "vfs.s3.max_parallel_ops " << std::thread::hardware_concurrency()
      << "\n";
   ss << "vfs.s3.multipart_part_size 5242880\n";
@@ -404,6 +410,7 @@ TEST_CASE("C API: Test config iter", "[capi], [config]") {
   all_param_values["vfs.s3.region"] = "us-east-1";
   all_param_values["vfs.s3.aws_access_key_id"] = "";
   all_param_values["vfs.s3.aws_secret_access_key"] = "";
+  all_param_values["vfs.s3.aws_session_token"] = "";
   all_param_values["vfs.s3.endpoint_override"] = "";
   all_param_values["vfs.s3.use_virtual_addressing"] = "true";
   all_param_values["vfs.s3.max_parallel_ops"] =
@@ -421,6 +428,7 @@ TEST_CASE("C API: Test config iter", "[capi], [config]") {
   all_param_values["vfs.s3.proxy_scheme"] = "https";
   all_param_values["vfs.s3.proxy_username"] = "";
   all_param_values["vfs.s3.verify_ssl"] = "true";
+  all_param_values["vfs.s3.logging_level"] = "Off";
   all_param_values["vfs.hdfs.username"] = "stavros";
   all_param_values["vfs.hdfs.kerb_ticket_cache_path"] = "";
   all_param_values["vfs.hdfs.name_node_uri"] = "";
@@ -437,6 +445,7 @@ TEST_CASE("C API: Test config iter", "[capi], [config]") {
   vfs_param_values["s3.region"] = "us-east-1";
   vfs_param_values["s3.aws_access_key_id"] = "";
   vfs_param_values["s3.aws_secret_access_key"] = "";
+  vfs_param_values["s3.aws_session_token"] = "";
   vfs_param_values["s3.endpoint_override"] = "";
   vfs_param_values["s3.use_virtual_addressing"] = "true";
   vfs_param_values["s3.max_parallel_ops"] =
@@ -454,6 +463,7 @@ TEST_CASE("C API: Test config iter", "[capi], [config]") {
   vfs_param_values["s3.proxy_scheme"] = "https";
   vfs_param_values["s3.proxy_username"] = "";
   vfs_param_values["s3.verify_ssl"] = "true";
+  vfs_param_values["s3.logging_level"] = "Off";
   vfs_param_values["hdfs.username"] = "stavros";
   vfs_param_values["hdfs.kerb_ticket_cache_path"] = "";
   vfs_param_values["hdfs.name_node_uri"] = "";
@@ -463,6 +473,7 @@ TEST_CASE("C API: Test config iter", "[capi], [config]") {
   s3_param_values["region"] = "us-east-1";
   s3_param_values["aws_access_key_id"] = "";
   s3_param_values["aws_secret_access_key"] = "";
+  s3_param_values["aws_session_token"] = "";
   s3_param_values["endpoint_override"] = "";
   s3_param_values["use_virtual_addressing"] = "true";
   s3_param_values["max_parallel_ops"] =
@@ -480,6 +491,7 @@ TEST_CASE("C API: Test config iter", "[capi], [config]") {
   s3_param_values["proxy_scheme"] = "https";
   s3_param_values["proxy_username"] = "";
   s3_param_values["verify_ssl"] = "true";
+  s3_param_values["logging_level"] = "Off";
 
   // Create an iterator and iterate over all parameters
   tiledb_config_iter_t* config_iter = nullptr;
