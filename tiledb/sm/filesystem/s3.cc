@@ -149,11 +149,12 @@ Status S3::init(const Config::S3Params& s3_config, ThreadPool* thread_pool) {
     Aws::String secret_access_key(s3_config.aws_secret_access_key.c_str());
     if (!s3_config.aws_session_token.c_str()) {
       client_creds_ = std::unique_ptr<Aws::Auth::AWSCredentials>(
-        new Aws::Auth::AWSCredentials(access_key_id, secret_access_key));
+          new Aws::Auth::AWSCredentials(access_key_id, secret_access_key));
     } else {
       Aws::String session_token(s3_config.aws_session_token.c_str());
       client_creds_ = std::unique_ptr<Aws::Auth::AWSCredentials>(
-        new Aws::Auth::AWSCredentials(access_key_id, secret_access_key, session_token));
+          new Aws::Auth::AWSCredentials(
+              access_key_id, secret_access_key, session_token));
     }
   }
 

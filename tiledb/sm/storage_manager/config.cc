@@ -479,14 +479,12 @@ Status Config::unset(const std::string& param) {
     param_values_["vfs.s3.multipart_part_size"] = value.str();
     value.str(std::string());
   } else if (param == "vfs.s3.ca_file") {
-    vfs_params_.s3_params_.ca_file_ =
-        constants::s3_ca_file;
+    vfs_params_.s3_params_.ca_file_ = constants::s3_ca_file;
     value << vfs_params_.s3_params_.ca_file_;
     param_values_["vfs.s3.ca_file"] = value.str();
     value.str(std::string());
   } else if (param == "vfs.s3.ca_path") {
-    vfs_params_.s3_params_.ca_path_ =
-        constants::s3_ca_path;
+    vfs_params_.s3_params_.ca_path_ = constants::s3_ca_path;
     value << vfs_params_.s3_params_.ca_path_;
     param_values_["vfs.s3.ca_path"] = value.str();
     value.str(std::string());
@@ -539,10 +537,8 @@ Status Config::unset(const std::string& param) {
     param_values_["vfs.s3.proxy_password"] = value.str();
     value.str(std::string());
   } else if (param == "vfs.s3.verify_ssl") {
-    vfs_params_.s3_params_.verify_ssl_ =
-        constants::s3_verify_ssl;
-    value
-        << ((vfs_params_.s3_params_.verify_ssl_) ? "true" : "false");
+    vfs_params_.s3_params_.verify_ssl_ = constants::s3_verify_ssl;
+    value << ((vfs_params_.s3_params_.verify_ssl_) ? "true" : "false");
     param_values_["vfs.s3.verify_ssl"] = value.str();
     value.str(std::string());
   } else if (param == "vfs.hdfs.name_node") {
