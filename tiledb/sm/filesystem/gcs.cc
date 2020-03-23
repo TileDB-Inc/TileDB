@@ -32,6 +32,7 @@
 
 #ifdef HAVE_GCS
 
+#include <sstream>
 #include <unordered_set>
 
 #include "google/cloud/status.h"
@@ -48,7 +49,11 @@ namespace sm {
 
 GCS::GCS()
     // TODO: fetch from config
-    : project_id_("joe-tiledb") {
+    : project_id_("joe-tiledb")
+    , write_cache_max_size_(0)
+    , max_parallel_ops_(1)
+    , multi_part_block_size_(0)
+    , use_multi_part_upload_(true) {
 }
 
 GCS::~GCS() {
@@ -63,6 +68,10 @@ Status GCS::init(const Config& /*config*/, ThreadPool* const /*(thread_pool*/) {
   if (!client_) {
     return LOG_STATUS(Status::GCSError("Failed to initialize GCS Client."));
   }
+
+  // TODO from config
+  write_cache_max_size_ = 1024 * 1024 * 1024;
+  use_multi_part_upload_ = false;
 
   return Status::Ok();
 }
@@ -381,7 +390,7 @@ Status GCS::wait_for_object_to_propagate(
         std::chrono::milliseconds(constants::gcs_attempt_sleep_ms));
   }
 
-  return LOG_STATUS(Status::AzureError(
+  return LOG_STATUS(Status::GCSError(
       std::string("Timed out waiting on object to propogate: " + object_path)));
 }
 
@@ -401,7 +410,7 @@ Status GCS::wait_for_object_to_be_deleted(
         std::chrono::milliseconds(constants::gcs_attempt_sleep_ms));
   }
 
-  return LOG_STATUS(Status::AzureError(std::string(
+  return LOG_STATUS(Status::GCSError(std::string(
       "Timed out waiting on object to be deleted: " + object_path)));
 }
 
@@ -419,7 +428,7 @@ Status GCS::wait_for_bucket_to_propagate(const std::string& bucket_name) const {
         std::chrono::milliseconds(constants::gcs_attempt_sleep_ms));
   }
 
-  return LOG_STATUS(Status::AzureError(
+  return LOG_STATUS(Status::GCSError(
       std::string("Timed out waiting on bucket to propogate: " + bucket_name)));
 }
 
@@ -439,7 +448,7 @@ Status GCS::wait_for_bucket_to_be_deleted(
         std::chrono::milliseconds(constants::gcs_attempt_sleep_ms));
   }
 
-  return LOG_STATUS(Status::AzureError(std::string(
+  return LOG_STATUS(Status::GCSError(std::string(
       "Timed out waiting on bucket to be deleted: " + bucket_name)));
 }
 
@@ -522,6 +531,302 @@ Status GCS::is_object(
   }
 
   *is_object = true;
+
+  return Status::Ok();
+}
+
+Status GCS::write(
+    const URI& uri, const void* const buffer, const uint64_t length) {
+  if (!uri.is_gcs()) {
+    return LOG_STATUS(Status::GCSError(
+        std::string("URI is not a GCS URI: " + uri.to_string())));
+  }
+
+  Buffer* const write_cache_buffer = get_write_cache_buffer(uri.to_string());
+
+  uint64_t nbytes_filled;
+  RETURN_NOT_OK(
+      fill_write_cache(write_cache_buffer, buffer, length, &nbytes_filled));
+
+  if (!use_multi_part_upload_) {
+    if (nbytes_filled != length) {
+      std::stringstream errmsg;
+      errmsg << "Direct write failed! " << nbytes_filled
+             << " bytes written to buffer, " << length << " bytes requested.";
+      return LOG_STATUS(Status::GCSError(errmsg.str()));
+    } else {
+      return Status::Ok();
+    }
+  }
+
+  if (write_cache_buffer->size() == write_cache_max_size_) {
+    RETURN_NOT_OK(flush_write_cache(uri, write_cache_buffer, false));
+  }
+
+  uint64_t new_length = length - nbytes_filled;
+  uint64_t offset = nbytes_filled;
+  while (new_length > 0) {
+    if (new_length >= write_cache_max_size_) {
+      RETURN_NOT_OK(write_blocks(
+          uri,
+          static_cast<const char*>(buffer) + offset,
+          write_cache_max_size_,
+          false));
+      offset += write_cache_max_size_;
+      new_length -= write_cache_max_size_;
+    } else {
+      RETURN_NOT_OK(fill_write_cache(
+          write_cache_buffer,
+          static_cast<const char*>(buffer) + offset,
+          new_length,
+          &nbytes_filled));
+      offset += nbytes_filled;
+      new_length -= nbytes_filled;
+    }
+  }
+
+  assert(offset == length);
+
+  return Status::Ok();
+}
+
+Status GCS::object_size(const URI& uri, uint64_t* const nbytes) const {
+  assert(client_);
+  assert(nbytes);
+
+  if (!uri.is_gcs()) {
+    return LOG_STATUS(Status::GCSError(
+        std::string("URI is not a GCS URI: " + uri.to_string())));
+  }
+
+  std::string bucket_name;
+  std::string object_path;
+  RETURN_NOT_OK(parse_gcs_uri(uri, &bucket_name, &object_path));
+
+  google::cloud::StatusOr<google::cloud::storage::ObjectMetadata>
+      object_metadata = client_->GetObjectMetadata(bucket_name, object_path);
+
+  if (!object_metadata.ok()) {
+    const google::cloud::Status status = object_metadata.status();
+
+    return LOG_STATUS(Status::GCSError(std::string(
+        "Get object size failed on: " + object_path + " (" + status.message() +
+        ")")));
+  }
+
+  *nbytes = object_metadata->size();
+
+  return Status::Ok();
+}
+
+Buffer* GCS::get_write_cache_buffer(const std::string& uri) {
+  // The unordered_map routines 'count' and 'at' are thread-safe.
+  // This class only guarantees thread-safety among different object
+  // URIs so we do not need to worry about the 'uri' element
+  // disappearing between 'count' and 'at'.
+  if (write_cache_map_.count(uri) > 0) {
+    return &write_cache_map_.at(uri);
+  } else {
+    std::unique_lock<std::mutex> map_lock(write_cache_map_lock_);
+    return &write_cache_map_[uri];
+  }
+}
+
+Status GCS::fill_write_cache(
+    Buffer* const write_cache_buffer,
+    const void* const buffer,
+    const uint64_t length,
+    uint64_t* const nbytes_filled) {
+  assert(write_cache_buffer);
+  assert(buffer);
+  assert(nbytes_filled);
+
+  *nbytes_filled =
+      std::min(write_cache_max_size_ - write_cache_buffer->size(), length);
+
+  if (*nbytes_filled > 0) {
+    RETURN_NOT_OK(write_cache_buffer->write(buffer, *nbytes_filled));
+  }
+
+  return Status::Ok();
+}
+
+Status GCS::flush_write_cache(
+    const URI& uri, Buffer* const write_cache_buffer, const bool last_block) {
+  assert(write_cache_buffer);
+
+  if (write_cache_buffer->size() > 0) {
+    const Status st = write_blocks(
+        uri,
+        write_cache_buffer->data(),
+        write_cache_buffer->size(),
+        last_block);
+    write_cache_buffer->reset_size();
+    RETURN_NOT_OK(st);
+  }
+
+  return Status::Ok();
+}
+
+Status GCS::write_blocks(
+    const URI& uri,
+    const void* const /*buffer*/,
+    const uint64_t length,
+    const bool last_block) {
+  if (!uri.is_gcs()) {
+    return LOG_STATUS(Status::GCSError(
+        std::string("URI is not an GCS URI: " + uri.to_string())));
+  }
+
+  // Ensure that each thread is responsible for exactly multi_part_block_size_
+  // bytes (except if this is the last block, in which case the final
+  // thread should write less). Cap the number of parallel operations at the
+  // configured max number. Length must be evenly divisible by
+  // multi_part_block_size_ unless this is the last block.
+  uint64_t num_ops = last_block ?
+                         utils::math::ceil(length, multi_part_block_size_) :
+                         (length / multi_part_block_size_);
+  num_ops = std::min(std::max(num_ops, uint64_t(1)), max_parallel_ops_);
+
+  if (!last_block && length % multi_part_block_size_ != 0) {
+    return LOG_STATUS(
+        Status::S3Error("Length not evenly divisible by block size"));
+  }
+
+  // Protect 'multi_part_upload_states_' from concurrent read and writes.
+  std::unique_lock<std::mutex> states_lock(multi_part_upload_states_lock_);
+
+  auto state_iter = multi_part_upload_states_.find(uri.to_string());
+  if (state_iter == multi_part_upload_states_.end()) {
+    // Delete file if it exists (overwrite).
+    bool exists;
+    RETURN_NOT_OK(is_object(uri, &exists));
+    if (exists) {
+      RETURN_NOT_OK(remove_object(uri));
+    }
+
+    // Instantiate the new state.
+    MultiPartUploadState state;
+
+    // Store the new state.
+    const std::pair<
+        std::unordered_map<std::string, MultiPartUploadState>::iterator,
+        bool>
+        emplaced = multi_part_upload_states_.emplace(
+            uri.to_string(), std::move(state));
+    assert(emplaced.second);
+    state_iter = emplaced.first;
+  }
+
+  MultiPartUploadState* const state = &state_iter->second;
+
+  // We're done reading and writing from 'multi_part_upload_states_'. Mutating
+  // the 'state' element does not affect the thread-safety of
+  // 'multi_part_upload_states_'.
+  states_lock.unlock();
+
+  std::string bucket_name;
+  std::string object_path;
+  RETURN_NOT_OK(parse_gcs_uri(uri, &bucket_name, &object_path));
+
+  if (num_ops == 1) {
+    LOG_FATAL("Unreached -- TODO");
+    if (state) {
+    }
+  } else {
+    LOG_FATAL("Unreached -- TODO");
+  }
+
+  return Status::Ok();
+}
+
+Status GCS::flush_object(const URI& uri) {
+  assert(client_);
+
+  if (!uri.is_gcs()) {
+    return LOG_STATUS(Status::GCSError(
+        std::string("URI is not a GCS URI: " + uri.to_string())));
+  }
+
+  if (!use_multi_part_upload_) {
+    return flush_object_direct(uri);
+  }
+
+  LOG_FATAL("Unreached -- TODO");
+
+  return Status::Ok();
+}
+
+Status GCS::flush_object_direct(const URI& uri) {
+  Buffer* const write_cache_buffer = get_write_cache_buffer(uri.to_string());
+
+  if (write_cache_buffer->size() == 0) {
+    return Status::Ok();
+  }
+
+  std::string bucket_name;
+  std::string object_path;
+  RETURN_NOT_OK(parse_gcs_uri(uri, &bucket_name, &object_path));
+
+  // TODO: zero-copy from write cache buffer to 'write_buffer'.
+  std::string write_buffer(
+      static_cast<const char*>(write_cache_buffer->data()),
+      write_cache_buffer->size());
+
+  // Protect 'write_cache_map_' from multiple writers.
+  std::unique_lock<std::mutex> cache_lock(write_cache_map_lock_);
+  write_cache_map_.erase(uri.to_string());
+  cache_lock.unlock();
+
+  google::cloud::StatusOr<google::cloud::storage::ObjectMetadata>
+      object_metadata = client_->InsertObject(
+          bucket_name, object_path, std::move(write_buffer));
+
+  if (!object_metadata.ok()) {
+    const google::cloud::Status status = object_metadata.status();
+
+    return LOG_STATUS(Status::GCSError(std::string(
+        "Write object failed on: " + uri.to_string() + " (" + status.message() +
+        ")")));
+  }
+
+  return wait_for_object_to_propagate(bucket_name, object_path);
+}
+
+Status GCS::read(
+    const URI& uri,
+    const off_t offset,
+    void* const buffer,
+    const uint64_t length) const {
+  assert(client_);
+
+  if (!uri.is_gcs()) {
+    return LOG_STATUS(Status::GCSError(
+        std::string("URI is not an GCS URI: " + uri.to_string())));
+  }
+
+  std::string bucket_name;
+  std::string object_path;
+  RETURN_NOT_OK(parse_gcs_uri(uri, &bucket_name, &object_path));
+
+  google::cloud::storage::ObjectReadStream stream = client_->ReadObject(
+      bucket_name, object_path, google::cloud::storage::ReadFromOffset(offset));
+
+  if (!stream.status().ok()) {
+    return LOG_STATUS(Status::GCSError(std::string(
+        "Read object failed on: " + uri.to_string() + " (" +
+        stream.status().message() + ")")));
+  }
+
+  // TODO: zero-copy
+  stream.read(static_cast<char*>(buffer), length);
+
+  if (!stream) {
+    return LOG_STATUS(Status::GCSError(
+        std::string("Read object failed on: " + uri.to_string())));
+  }
+
+  stream.Close();
 
   return Status::Ok();
 }

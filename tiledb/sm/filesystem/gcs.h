@@ -36,6 +36,7 @@
 #ifdef HAVE_GCS
 
 #include "google/cloud/storage/client.h"
+#include "tiledb/sm/buffer/buffer.h"
 #include "tiledb/sm/config/config.h"
 #include "tiledb/sm/misc/constants.h"
 #include "tiledb/sm/misc/status.h"
@@ -229,7 +230,75 @@ class GCS {
    */
   Status touch(const URI& uri) const;
 
+  /**
+   * Writes the input buffer to an GCS object. Note that this is essentially
+   * an append operation implemented via multipart uploads.
+   *
+   * @param uri The URI of the object to be written to.
+   * @param buffer The input buffer.
+   * @param length The size of the input buffer.
+   * @return Status
+   */
+  Status write(const URI& uri, const void* buffer, uint64_t length);
+
+  /**
+   * Reads data from an object into a buffer.
+   *
+   * @param uri The URI of the object to be read.
+   * @param offset The offset in the object from which the read will start.
+   * @param buffer The buffer into which the data will be written.
+   * @param length The size of the data to be read from the object.
+   * @return Status
+   */
+  Status read(
+      const URI& uri, off_t offset, void* buffer, uint64_t length) const;
+
+  /**
+   * Returns the size of the input object with a given URI in bytes.
+   *
+   * @param uri The URI of the object.
+   * @param nbytes Pointer to `uint64_t` bytes to return.
+   * @return Status
+   */
+  Status object_size(const URI& uri, uint64_t* nbytes) const;
+
+  /**
+   * Flushes an object to GCS, finalizing the upload.
+   *
+   * @param uri The URI of the object to be flushed.
+   * @return Status
+   */
+  Status flush_object(const URI& uri);
+
  private:
+  /* ********************************* */
+  /*         PRIVATE DATATYPES         */
+  /* ********************************* */
+
+  /** Contains all state associated with a block list upload transaction. */
+  class MultiPartUploadState {
+   public:
+    MultiPartUploadState()
+        : st_(Status::Ok()) {
+    }
+
+    /* Returns the aggregate status. */
+    Status st() const {
+      return st_;
+    }
+
+    /* Updates 'st_' if 'st' is non-OK */
+    void update_st(const Status& st) {
+      if (!st.ok()) {
+        st_ = st;
+      }
+    }
+
+   private:
+    // The aggregate status. If any individual block
+    // upload fails, this will be in a non-OK status.
+    Status st_;
+  };
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
   /* ********************************* */
@@ -239,6 +308,31 @@ class GCS {
 
   // The GCS REST client.
   mutable google::cloud::StatusOr<google::cloud::storage::Client> client_;
+
+  /** Maps a object URI to an write cache buffer. */
+  std::unordered_map<std::string, Buffer> write_cache_map_;
+
+  /** Protects 'write_cache_map_'. */
+  std::mutex write_cache_map_lock_;
+
+  /**  The maximum size of each value-element in 'write_cache_map_'. */
+  uint64_t write_cache_max_size_;
+
+  /**  The maximum number of parallel requests. */
+  uint64_t max_parallel_ops_;
+
+  /**  The target block size in a block list upload */
+  uint64_t multi_part_block_size_;
+
+  /** Whether or not to use block list upload. */
+  bool use_multi_part_upload_;
+
+  /** Maps a object URI to its block list upload state. */
+  std::unordered_map<std::string, MultiPartUploadState>
+      multi_part_upload_states_;
+
+  /** Protects 'multi_part_upload_states_'. */
+  std::mutex multi_part_upload_states_lock_;
 
   /* ********************************* */
   /*          PRIVATE METHODS          */
@@ -289,7 +383,7 @@ class GCS {
 
   /**
    * Waits for a object with `bucket_name` and `object_path`
-   * to exist on Azure.
+   * to exist on GCS.
    *
    * @param bucket_name The object's bucket name.
    * @param object_path The object's path
@@ -300,7 +394,7 @@ class GCS {
 
   /**
    * Waits for a object with `bucket_name` and `object_path`
-   * to not exist on Azure.
+   * to not exist on GCS.
    *
    * @param bucket_name The object's bucket name.
    * @param object_path The object's path
@@ -311,7 +405,7 @@ class GCS {
 
   /**
    * Waits for a bucket with `bucket_name`
-   * to exist on Azure.
+   * to exist on GCS.
    *
    * @param bucket_name The bucket's name.
    * @return Status
@@ -320,7 +414,7 @@ class GCS {
 
   /**
    * Waits for a bucket with `bucket_name`
-   * to not exist on Azure.
+   * to not exist on GCS.
    *
    * @param bucket_name The bucket's name.
    * @return Status
@@ -328,7 +422,7 @@ class GCS {
   Status wait_for_bucket_to_be_deleted(const std::string& bucket_name) const;
 
   /**
-   * Check if 'is_object' is a object on Azure.
+   * Check if 'is_object' is a object on GCS.
    *
    * @param bucket_name The object's bucket name.
    * @param object_path The object's path.
@@ -341,13 +435,73 @@ class GCS {
       bool* const is_object) const;
 
   /**
-   * Check if 'bucket_name' is a bucket on Azure.
+   * Check if 'bucket_name' is a bucket on GCS.
    *
    * @param bucket_name The bucket's name.
    * @param is_bucket Mutates to the output.
    * @return Status
    */
   Status is_bucket(const std::string& bucket_name, bool* const is_bucket) const;
+
+  /**
+   * Thread-safe fetch of the write cache buffer in `write_cache_map_`.
+   * If a buffer does not exist for `uri`, it will be created.
+   *
+   * @param uri The object URI.
+   * @return Buffer
+   */
+  Buffer* get_write_cache_buffer(const std::string& uri);
+
+  /**
+   * Fills the write cache buffer (given as an input `Buffer` object) from
+   * the input binary `buffer`, up until the size of the file buffer becomes
+   * `write_cache_max_size_`. It also retrieves the number of bytes filled.
+   *
+   * @param write_cache_buffer The destination write cache buffer to fill.
+   * @param buffer The source binary buffer to fill the data from.
+   * @param length The length of `buffer`.
+   * @param nbytes_filled The number of bytes filled into `write_cache_buffer`.
+   * @return Status
+   */
+  Status fill_write_cache(
+      Buffer* write_cache_buffer,
+      const void* buffer,
+      const uint64_t length,
+      uint64_t* nbytes_filled);
+
+  /**
+   * Writes the contents of the input buffer to the object given by
+   * the input `uri` as a new series of block uploads. Resets
+   * 'write_cache_buffer'.
+   *
+   * @param uri The object URI.
+   * @param write_cache_buffer The input buffer to flush.
+   * @param last_block Should be true only when the flush corresponds to the
+   * last block(s) of a block list upload.
+   * @return Status
+   */
+  Status flush_write_cache(
+      const URI& uri, Buffer* write_cache_buffer, bool last_block);
+
+  /**
+   * Writes the input buffer as an uncommited block to GCS by issuing one
+   * or more block upload requests.
+   *
+   * @param uri The object URI.
+   * @param buffer The input buffer.
+   * @param length The size of the input buffer.
+   * @param last_part Should be true only when this is the last block of a
+   * object.
+   * @return Status
+   */
+  Status write_blocks(
+      const URI& uri, const void* buffer, uint64_t length, bool last_block);
+
+  /**
+   * Uploads the write cache buffer associated with 'uri' as an entire
+   * object.
+   */
+  Status flush_object_direct(const URI& uri);
 };
 
 }  // namespace sm
