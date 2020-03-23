@@ -681,6 +681,10 @@ void Config::set_default_param_values() {
   param_values_["vfs.s3.aws_secret_access_key"] = value.str();
   value.str(std::string());
 
+  value << vfs_params_.s3_params_.aws_session_token;
+  param_values_["vfs.s3.aws_session_token"] = value.str();
+  value.str(std::string());
+
   value << vfs_params_.s3_params_.scheme_;
   param_values_["vfs.s3.scheme"] = value.str();
   value.str(std::string());
