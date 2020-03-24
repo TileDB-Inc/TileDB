@@ -356,7 +356,7 @@ Status domain_from_capnp(
     std::unique_ptr<Domain>* domain) {
   Datatype datatype = Datatype::ANY;
   RETURN_NOT_OK(datatype_enum(domain_reader.getType(), &datatype));
-  domain->reset(new Domain(datatype));
+  domain->reset(new Domain());
 
   auto dimensions = domain_reader.getDimensions();
   for (const auto& dimension : dimensions) {
