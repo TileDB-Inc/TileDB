@@ -252,6 +252,12 @@ TEST_CASE_METHOD(
   CHECK(key.size() == strlen("bb"));
   CHECK(!strncmp(key.data(), "bb", strlen("bb")));
 
+  // idx 2 is 'zero_val'
+  array.get_metadata_from_index(2, &key, &v_type, &v_num, &v_r);
+  CHECK(v_type == TILEDB_FLOAT32);
+  CHECK(v_num == 1);
+  CHECK(v_r == nullptr);
+
   // Check has_key
   bool has_key;
   v_type = (tiledb_datatype_t)std::numeric_limits<int32_t>::max();
