@@ -38,6 +38,8 @@
 #include "tiledb/sm/filesystem/posix.h"
 #endif
 #include "tiledb/sm/c_api/tiledb.h"
+#include "tiledb/sm/c_api/tiledb_serialization.h"
+#include "tiledb/sm/enums/serialization_type.h"
 #include "tiledb/sm/misc/utils.h"
 
 #include <iostream>
@@ -74,6 +76,8 @@ struct SparseHeterFx {
   bool supports_s3_;
   bool supports_hdfs_;
   bool supports_azure_;
+
+  bool serialize_ = false;
 
   // Functions
   SparseHeterFx();
@@ -130,6 +134,18 @@ struct SparseHeterFx {
       const std::vector<int32_t>& buff_a);
   static std::string random_name(const std::string& prefix);
   void set_supported_fs();
+  int tiledb_array_get_non_empty_domain_from_index_wrapper(
+      tiledb_ctx_t* ctx,
+      tiledb_array_t* array,
+      uint32_t index,
+      void* domain,
+      int32_t* is_empty);
+  int tiledb_array_get_non_empty_domain_from_name_wrapper(
+      tiledb_ctx_t* ctx,
+      tiledb_array_t* array,
+      const char* name,
+      void* domain,
+      int32_t* is_empty);
 };
 
 SparseHeterFx::SparseHeterFx() {
@@ -248,6 +264,118 @@ void SparseHeterFx::set_supported_fs() {
   tiledb_ctx_free(&ctx);
 }
 
+int SparseHeterFx::tiledb_array_get_non_empty_domain_from_index_wrapper(
+    tiledb_ctx_t* ctx,
+    tiledb_array_t* array,
+    uint32_t index,
+    void* domain,
+    int32_t* is_empty) {
+  int ret = tiledb_array_get_non_empty_domain_from_index(
+      ctx, array, index, domain, is_empty);
+#ifndef TILEDB_SERIALIZATION
+  return ret;
+#endif
+
+  if (ret != TILEDB_OK || !serialize_)
+    return ret;
+
+  tiledb_array_schema_t* schema;
+  REQUIRE(tiledb_array_get_schema(ctx, array, &schema) == TILEDB_OK);
+
+  tiledb_domain_t* dom;
+  REQUIRE(tiledb_array_schema_get_domain(ctx, schema, &dom) == TILEDB_OK);
+
+  tiledb_dimension_t* dimension;
+  REQUIRE(
+      tiledb_domain_get_dimension_from_index(ctx, dom, index, &dimension) ==
+      TILEDB_OK);
+
+  // Serialize the non_empty_domain
+  tiledb_buffer_t* buff;
+  REQUIRE(
+      tiledb_serialize_array_nonempty_domain_from_dimension(
+          ctx,
+          dimension,
+          domain,
+          *is_empty,
+          (tiledb_serialization_type_t)tiledb::sm::SerializationType::CAPNP,
+          0,
+          &buff) == TILEDB_OK);
+
+  // Deserialize to validate we can round-trip
+  REQUIRE(
+      tiledb_deserialize_array_nonempty_domain_from_dimension(
+          ctx,
+          dimension,
+          buff,
+          (tiledb_serialization_type_t)tiledb::sm::SerializationType::CAPNP,
+          1,
+          &domain,
+          is_empty) == TILEDB_OK);
+
+  tiledb_dimension_free(&dimension);
+  tiledb_domain_free(&dom);
+  tiledb_array_schema_free(&schema);
+
+  return TILEDB_OK;
+}
+
+int SparseHeterFx::tiledb_array_get_non_empty_domain_from_name_wrapper(
+    tiledb_ctx_t* ctx,
+    tiledb_array_t* array,
+    const char* name,
+    void* domain,
+    int32_t* is_empty) {
+  int ret = tiledb_array_get_non_empty_domain_from_name(
+      ctx, array, name, domain, is_empty);
+#ifndef TILEDB_SERIALIZATION
+  return ret;
+#endif
+
+  if (ret != TILEDB_OK || !serialize_)
+    return ret;
+
+  tiledb_array_schema_t* schema;
+  REQUIRE(tiledb_array_get_schema(ctx, array, &schema) == TILEDB_OK);
+
+  tiledb_domain_t* dom;
+  REQUIRE(tiledb_array_schema_get_domain(ctx, schema, &dom) == TILEDB_OK);
+
+  tiledb_dimension_t* dimension;
+  REQUIRE(
+      tiledb_domain_get_dimension_from_name(ctx, dom, name, &dimension) ==
+      TILEDB_OK);
+
+  // Serialize the non_empty_domain
+  tiledb_buffer_t* buff;
+  REQUIRE(
+      tiledb_serialize_array_nonempty_domain_from_dimension(
+          ctx,
+          dimension,
+          domain,
+          *is_empty,
+          (tiledb_serialization_type_t)tiledb::sm::SerializationType::CAPNP,
+          0,
+          &buff) == TILEDB_OK);
+
+  // Deserialize to validate we can round-trip
+  REQUIRE(
+      tiledb_deserialize_array_nonempty_domain_from_dimension(
+          ctx,
+          dimension,
+          buff,
+          (tiledb_serialization_type_t)tiledb::sm::SerializationType::CAPNP,
+          1,
+          &domain,
+          is_empty) == TILEDB_OK);
+
+  tiledb_dimension_free(&dimension);
+  tiledb_domain_free(&dom);
+  tiledb_array_schema_free(&schema);
+
+  return TILEDB_OK;
+}
+
 void SparseHeterFx::create_temp_dir(const std::string& path) {
   remove_temp_dir(path);
   REQUIRE(tiledb_vfs_create_dir(ctx_, vfs_, path.c_str()) == TILEDB_OK);
@@ -283,11 +411,11 @@ void SparseHeterFx::check_non_empty_domain_float_int64(
   float dom_f_r[2];
   int64_t dom_i_r[2];
   int is_empty_r;
-  rc = tiledb_array_get_non_empty_domain_from_index(
+  rc = tiledb_array_get_non_empty_domain_from_index_wrapper(
       ctx_, array, 0, dom_f_r, &is_empty_r);
   CHECK(rc == TILEDB_OK);
   CHECK(is_empty_r == (int)is_empty);
-  rc = tiledb_array_get_non_empty_domain_from_name(
+  rc = tiledb_array_get_non_empty_domain_from_name_wrapper(
       ctx_, array, "d2", dom_i_r, &is_empty_r);
   CHECK(rc == TILEDB_OK);
   CHECK(is_empty_r == (int)is_empty);
@@ -320,11 +448,11 @@ void SparseHeterFx::check_non_empty_domain_int64_float(
   float dom_f_r[2];
   int64_t dom_i_r[2];
   int is_empty_r;
-  rc = tiledb_array_get_non_empty_domain_from_name(
+  rc = tiledb_array_get_non_empty_domain_from_name_wrapper(
       ctx_, array, "d1", dom_i_r, &is_empty_r);
   CHECK(rc == TILEDB_OK);
   CHECK(is_empty_r == (int)is_empty);
-  rc = tiledb_array_get_non_empty_domain_from_index(
+  rc = tiledb_array_get_non_empty_domain_from_index_wrapper(
       ctx_, array, 1, dom_f_r, &is_empty_r);
   CHECK(rc == TILEDB_OK);
   CHECK(is_empty_r == (int)is_empty);
@@ -651,6 +779,13 @@ TEST_CASE_METHOD(
     SparseHeterFx,
     "C API: Test sparse array with heterogeneous domains (float, int64)",
     "[capi][sparse][heter][float-int64]") {
+  SECTION("- No serialization") {
+    serialize_ = false;
+  }
+  SECTION("- Serialization") {
+    serialize_ = true;
+  }
+
   std::string array_name =
       FILE_URI_PREFIX + FILE_TEMP_DIR + "sparse_array_heter";
   create_temp_dir(FILE_URI_PREFIX + FILE_TEMP_DIR);
@@ -674,7 +809,9 @@ TEST_CASE_METHOD(
       {tiledb::test::Compressor(TILEDB_FILTER_NONE, -1)},
       TILEDB_ROW_MAJOR,
       TILEDB_ROW_MAJOR,
-      2);
+      2,
+      false,
+      serialize_);
 
   // Get non-empty domain when array is empty
   std::vector<float> c_dom_f = {1.f, 2.f};
@@ -994,6 +1131,13 @@ TEST_CASE_METHOD(
     SparseHeterFx,
     "C API: Test sparse array with heterogeneous domains (int64, float)",
     "[capi][sparse][heter][int64-float]") {
+  SECTION("- No serialization") {
+    serialize_ = false;
+  }
+  SECTION("- Serialization") {
+    serialize_ = true;
+  }
+
   std::string array_name =
       FILE_URI_PREFIX + FILE_TEMP_DIR + "sparse_array_heter";
   create_temp_dir(FILE_URI_PREFIX + FILE_TEMP_DIR);
@@ -1017,7 +1161,9 @@ TEST_CASE_METHOD(
       {tiledb::test::Compressor(TILEDB_FILTER_NONE, -1)},
       TILEDB_ROW_MAJOR,
       TILEDB_ROW_MAJOR,
-      2);
+      2,
+      false,
+      serialize_);
 
   // Get non-empty domain when array is empty
   std::vector<float> c_dom_f = {1.f, 2.f};
