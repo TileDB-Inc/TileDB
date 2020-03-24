@@ -768,7 +768,6 @@ Status GCS::flush_object_direct(const URI& uri) {
   std::string object_path;
   RETURN_NOT_OK(parse_gcs_uri(uri, &bucket_name, &object_path));
 
-  // TODO: zero-copy from write cache buffer to 'write_buffer'.
   std::string write_buffer(
       static_cast<const char*>(write_cache_buffer->data()),
       write_cache_buffer->size());
@@ -818,7 +817,6 @@ Status GCS::read(
         stream.status().message() + ")")));
   }
 
-  // TODO: zero-copy
   stream.read(static_cast<char*>(buffer), length);
 
   if (!stream) {
