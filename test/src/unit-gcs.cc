@@ -205,4 +205,72 @@ TEST_CASE_METHOD(GCSFx, "Test GCS filesystem, file management", "[gcs]") {
   REQUIRE(!is_object);
 }
 
+TEST_CASE_METHOD(GCSFx, "Test GCS filesystem, file I/O", "[gcs][io]") {
+  // Prepare buffers
+  uint64_t buffer_size = 5 * 1024 * 1024;
+  auto write_buffer = new char[buffer_size];
+  for (uint64_t i = 0; i < buffer_size; i++)
+    write_buffer[i] = (char)('a' + (i % 26));
+  uint64_t buffer_size_small = 1024 * 1024;
+  auto write_buffer_small = new char[buffer_size_small];
+  for (uint64_t i = 0; i < buffer_size_small; i++)
+    write_buffer_small[i] = (char)('a' + (i % 26));
+
+  // Write to two files
+  auto largefile = TEST_DIR + "largefile";
+  REQUIRE(gcs_.write(URI(largefile), write_buffer, buffer_size).ok());
+  REQUIRE(
+      gcs_.write(URI(largefile), write_buffer_small, buffer_size_small).ok());
+  auto smallfile = TEST_DIR + "smallfile";
+  REQUIRE(
+      gcs_.write(URI(smallfile), write_buffer_small, buffer_size_small).ok());
+
+  // Before flushing, the files do not exist
+  bool is_object;
+  REQUIRE(gcs_.is_object(URI(largefile), &is_object).ok());
+  REQUIRE(!is_object);
+  REQUIRE(gcs_.is_object(URI(smallfile), &is_object).ok());
+  REQUIRE(!is_object);
+
+  // Flush the files
+  REQUIRE(gcs_.flush_object(URI(largefile)).ok());
+  REQUIRE(gcs_.flush_object(URI(smallfile)).ok());
+
+  // After flushing, the files exist
+  REQUIRE(gcs_.is_object(URI(largefile), &is_object).ok());
+  REQUIRE(is_object);
+  REQUIRE(gcs_.is_object(URI(smallfile), &is_object).ok());
+  REQUIRE(is_object);
+
+  // Get file sizes
+  uint64_t nbytes = 0;
+  REQUIRE(gcs_.object_size(URI(largefile), &nbytes).ok());
+  REQUIRE(nbytes == (buffer_size + buffer_size_small));
+  REQUIRE(gcs_.object_size(URI(smallfile), &nbytes).ok());
+  REQUIRE(nbytes == buffer_size_small);
+
+  // Read from the beginning
+  auto read_buffer = new char[26];
+  REQUIRE(gcs_.read(URI(largefile), 0, read_buffer, 26).ok());
+  bool allok = true;
+  for (int i = 0; i < 26; i++) {
+    if (read_buffer[i] != static_cast<char>('a' + i)) {
+      allok = false;
+      break;
+    }
+  }
+  REQUIRE(allok);
+
+  // Read from a different offset
+  REQUIRE(gcs_.read(URI(largefile), 11, read_buffer, 26).ok());
+  allok = true;
+  for (int i = 0; i < 26; i++) {
+    if (read_buffer[i] != static_cast<char>('a' + (i + 11) % 26)) {
+      allok = false;
+      break;
+    }
+  }
+  REQUIRE(allok);
+}
+
 #endif
