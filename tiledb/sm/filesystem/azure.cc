@@ -927,14 +927,10 @@ Status Azure::write(
 }
 
 Buffer* Azure::get_write_cache_buffer(const std::string& uri) {
-  // The unordered_map routines 'count' and 'at' are thread-safe.
-  // This class only guarantees thread-safety among different blob
-  // URIs so we do not need to worry about the 'uri' element
-  // disappearing between 'count' and 'at'.
+  std::unique_lock<std::mutex> map_lock(write_cache_map_lock_);
   if (write_cache_map_.count(uri) > 0) {
     return &write_cache_map_.at(uri);
   } else {
-    std::unique_lock<std::mutex> map_lock(write_cache_map_lock_);
     return &write_cache_map_[uri];
   }
 }
