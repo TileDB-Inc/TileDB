@@ -1631,7 +1631,7 @@ int32_t tiledb_domain_get_type(
         "Cannot get domain type; Not applicable to heterogeneous dimensions");
     LOG_STATUS(st);
     save_error(ctx, st);
-    return TILEDB_OOM;
+    return TILEDB_ERR;
   }
 
   *type = static_cast<tiledb_datatype_t>(domain->domain_->dimension(0)->type());
@@ -3272,18 +3272,97 @@ int32_t tiledb_array_get_non_empty_domain(
   return TILEDB_OK;
 }
 
+int32_t tiledb_array_get_non_empty_domain_from_index(
+    tiledb_ctx_t* ctx,
+    tiledb_array_t* array,
+    uint32_t idx,
+    void* domain,
+    int32_t* is_empty) {
+  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, array) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  bool is_empty_b;
+
+  if (array->array_->is_remote()) {
+    // Check REST client
+    auto rest_client = ctx->ctx_->storage_manager()->rest_client();
+    if (rest_client == nullptr) {
+      auto st = tiledb::sm::Status::Error(
+          "Failed to get non-empty domain; remote array with no REST client.");
+      LOG_STATUS(st);
+      save_error(ctx, st);
+      return TILEDB_ERR;
+    }
+
+    if (SAVE_ERROR_CATCH(
+            ctx,
+            rest_client->get_array_non_empty_domain_from_index(
+                array->array_, idx, domain, &is_empty_b)))
+      return TILEDB_ERR;
+  } else {
+    if (SAVE_ERROR_CATCH(
+            ctx,
+            ctx->ctx_->storage_manager()->array_get_non_empty_domain_from_index(
+                array->array_, idx, domain, &is_empty_b)))
+      return TILEDB_ERR;
+  }
+
+  *is_empty = (int32_t)is_empty_b;
+
+  return TILEDB_OK;
+}
+
+int32_t tiledb_array_get_non_empty_domain_from_name(
+    tiledb_ctx_t* ctx,
+    tiledb_array_t* array,
+    const char* name,
+    void* domain,
+    int32_t* is_empty) {
+  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, array) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  bool is_empty_b;
+
+  if (array->array_->is_remote()) {
+    // Check REST client
+    auto rest_client = ctx->ctx_->storage_manager()->rest_client();
+    if (rest_client == nullptr) {
+      auto st = tiledb::sm::Status::Error(
+          "Failed to get non-empty domain; remote array with no REST client.");
+      LOG_STATUS(st);
+      save_error(ctx, st);
+      return TILEDB_ERR;
+    }
+
+    if (SAVE_ERROR_CATCH(
+            ctx,
+            rest_client->get_array_non_empty_domain_from_name(
+                array->array_, name, domain, &is_empty_b)))
+      return TILEDB_ERR;
+  } else {
+    if (SAVE_ERROR_CATCH(
+            ctx,
+            ctx->ctx_->storage_manager()->array_get_non_empty_domain_from_name(
+                array->array_, name, domain, &is_empty_b)))
+      return TILEDB_ERR;
+  }
+
+  *is_empty = (int32_t)is_empty_b;
+
+  return TILEDB_OK;
+}
+
 int32_t tiledb_array_max_buffer_size(
     tiledb_ctx_t* ctx,
     tiledb_array_t* array,
-    const char* attribute,
+    const char* name,
     const void* subarray,
     uint64_t* buffer_size) {
   if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, array) == TILEDB_ERR)
     return TILEDB_ERR;
 
   if (SAVE_ERROR_CATCH(
-          ctx,
-          array->array_->get_max_buffer_size(attribute, subarray, buffer_size)))
+          ctx, array->array_->get_max_buffer_size(name, subarray, buffer_size)))
     return TILEDB_ERR;
 
   return TILEDB_OK;
@@ -3292,7 +3371,7 @@ int32_t tiledb_array_max_buffer_size(
 int32_t tiledb_array_max_buffer_size_var(
     tiledb_ctx_t* ctx,
     tiledb_array_t* array,
-    const char* attribute,
+    const char* name,
     const void* subarray,
     uint64_t* buffer_off_size,
     uint64_t* buffer_val_size) {
@@ -3302,7 +3381,7 @@ int32_t tiledb_array_max_buffer_size_var(
   if (SAVE_ERROR_CATCH(
           ctx,
           array->array_->get_max_buffer_size(
-              attribute, subarray, buffer_off_size, buffer_val_size)))
+              name, subarray, buffer_off_size, buffer_val_size)))
     return TILEDB_ERR;
 
   return TILEDB_OK;
@@ -4306,6 +4385,73 @@ int32_t tiledb_deserialize_array_nonempty_domain(
           ctx,
           tiledb::sm::serialization::nonempty_domain_deserialize(
               array->array_,
+              *buffer->buffer_,
+              (tiledb::sm::SerializationType)serialize_type,
+              nonempty_domain,
+              &is_empty_bool)))
+    return TILEDB_ERR;
+
+  *is_empty = is_empty_bool ? 1 : 0;
+
+  return TILEDB_OK;
+}
+
+int32_t tiledb_serialize_array_nonempty_domain_from_dimension(
+    tiledb_ctx_t* ctx,
+    const tiledb_dimension_t* dimension,
+    const void* nonempty_domain,
+    int32_t is_empty,
+    tiledb_serialization_type_t serialize_type,
+    int32_t client_side,
+    tiledb_buffer_t** buffer) {
+  // Currently unused:
+  (void)client_side;
+
+  // Sanity check
+  if (sanity_check(ctx) == TILEDB_ERR ||
+      sanity_check(ctx, dimension) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  // Create buffer
+  if (tiledb_buffer_alloc(ctx, buffer) != TILEDB_OK ||
+      sanity_check(ctx, *buffer) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  if (SAVE_ERROR_CATCH(
+          ctx,
+          tiledb::sm::serialization::nonempty_domain_serialize(
+              dimension->dim_,
+              nonempty_domain,
+              is_empty,
+              (tiledb::sm::SerializationType)serialize_type,
+              (*buffer)->buffer_)))
+    return TILEDB_ERR;
+
+  return TILEDB_OK;
+}
+
+int32_t tiledb_deserialize_array_nonempty_domain_from_dimension(
+    tiledb_ctx_t* ctx,
+    const tiledb_dimension_t* dimension,
+    const tiledb_buffer_t* buffer,
+    tiledb_serialization_type_t serialize_type,
+    int32_t client_side,
+    void* nonempty_domain,
+    int32_t* is_empty) {
+  // Currently unused:
+  (void)client_side;
+
+  // Sanity check
+  if (sanity_check(ctx) == TILEDB_ERR ||
+      sanity_check(ctx, dimension) == TILEDB_ERR ||
+      sanity_check(ctx, buffer) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  bool is_empty_bool;
+  if (SAVE_ERROR_CATCH(
+          ctx,
+          tiledb::sm::serialization::nonempty_domain_deserialize(
+              dimension->dim_,
               *buffer->buffer_,
               (tiledb::sm::SerializationType)serialize_type,
               nonempty_domain,

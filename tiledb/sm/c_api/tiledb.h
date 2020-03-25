@@ -4075,8 +4075,73 @@ TILEDB_EXPORT int32_t tiledb_array_get_non_empty_domain(
     tiledb_ctx_t* ctx, tiledb_array_t* array, void* domain, int32_t* is_empty);
 
 /**
+ * Retrieves the non-empty domain from an array for a given dimension index.
+ * This is the union of the non-empty domains of the array fragments on
+ * the given dimension.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * uint64_t domain[2];
+ * int32_t is_empty;
+ * tiledb_array_t* array;
+ * tiledb_array_alloc(ctx, "my_array", &array);
+ * tiledb_array_open(ctx, array, TILEDB_READ);
+ * tiledb_array_get_non_empty_domain_from_index(ctx, array, 0, domain,
+ * &is_empty);
+ * @endcode
+ *
+ * @param ctx The TileDB context
+ * @param array The array object (must be opened beforehand).
+ * @param idx The dimension index, following the order as it was defined
+ *      in the domain of the array schema.
+ * @param domain The domain to be retrieved.
+ * @param is_empty The function sets it to `1` if the non-empty domain is
+ *     empty (i.e., the array does not contain any data yet), and `0` otherwise.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_array_get_non_empty_domain_from_index(
+    tiledb_ctx_t* ctx,
+    tiledb_array_t* array,
+    uint32_t idx,
+    void* domain,
+    int32_t* is_empty);
+
+/**
+ * Retrieves the non-empty domain from an array for a given dimension name.
+ * This is the union of the non-empty domains of the array fragments on
+ * the given dimension.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * uint64_t domain[2];
+ * int32_t is_empty;
+ * tiledb_array_t* array;
+ * tiledb_array_alloc(ctx, "my_array", &array);
+ * tiledb_array_open(ctx, array, TILEDB_READ);
+ * tiledb_array_get_non_empty_domain_from_name(ctx, array, "d1", domain,
+ * &is_empty);
+ * @endcode
+ *
+ * @param ctx The TileDB context
+ * @param array The array object (must be opened beforehand).
+ * @param name The dimension name.
+ * @param domain The domain to be retrieved.
+ * @param is_empty The function sets it to `1` if the non-empty domain is
+ *     empty (i.e., the array does not contain any data yet), and `0` otherwise.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_array_get_non_empty_domain_from_name(
+    tiledb_ctx_t* ctx,
+    tiledb_array_t* array,
+    const char* name,
+    void* domain,
+    int32_t* is_empty);
+
+/**
  * Computes an upper bound on the buffer size (in bytes) required for a read
- * query, for a given **fixed-sized* attribute and subarray.
+ * query, for a given **fixed-sized* attribute/dimension and subarray.
  *
  * **Example:**
  *
@@ -4092,7 +4157,7 @@ TILEDB_EXPORT int32_t tiledb_array_get_non_empty_domain(
  *
  * @param ctx The TileDB context.
  * @param array The array object (must be opened beforehand).
- * @param attribute The fixed-sized attribute to focus on.
+ * @param name The fixed-sized attribute/dimension to focus on.
  * @param subarray The subarray to focus on. Note that it must have the same
  *     underlying type as the array domain.
  * @param buffer_size The buffer size (in bytes) to be retrieved.
@@ -4101,13 +4166,13 @@ TILEDB_EXPORT int32_t tiledb_array_get_non_empty_domain(
 TILEDB_EXPORT int32_t tiledb_array_max_buffer_size(
     tiledb_ctx_t* ctx,
     tiledb_array_t* array,
-    const char* attribute,
+    const char* name,
     const void* subarray,
     uint64_t* buffer_size);
 
 /**
  * Computes an upper bound on the buffer size (in bytes) required for a read
- * query, for a given **var-sized* attribute and subarray.
+ * query, for a given **var-sized* attribute/dimension and subarray.
  *
  * **Example:**
  *
@@ -4124,7 +4189,7 @@ TILEDB_EXPORT int32_t tiledb_array_max_buffer_size(
  *
  * @param ctx The TileDB context.
  * @param array The array object (must be opened beforehand).
- * @param attribute The var-sized attribute to focus on.
+ * @param name The var-sized attribute/dimension to focus on.
  * @param subarray The subarray to focus on. Note that it must have the same
  *     underlying type as the array domain.
  * @param buffer_off_size The offsets buffer size (in bytes) to be retrieved.
@@ -4134,7 +4199,7 @@ TILEDB_EXPORT int32_t tiledb_array_max_buffer_size(
 TILEDB_EXPORT int32_t tiledb_array_max_buffer_size_var(
     tiledb_ctx_t* ctx,
     tiledb_array_t* array,
-    const char* attribute,
+    const char* name,
     const void* subarray,
     uint64_t* buffer_off_size,
     uint64_t* buffer_val_size);

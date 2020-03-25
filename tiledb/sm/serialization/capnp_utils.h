@@ -413,6 +413,54 @@ tiledb::sm::Status deserialize_subarray(
   return tiledb::sm::Status::Ok();
 }
 
+/**
+ * Serializes the given arbitrarily typed coordinates into the given Capnp
+ * builder.
+ *
+ * @tparam CapnpT Capnp builder type
+ * @param builder Builder to set subarray onto
+ * @param dimension dimension of coordinates
+ * @param subarray Subarray
+ * @return Status
+ */
+template <typename CapnpT>
+tiledb::sm::Status serialize_coords(
+    CapnpT& builder,
+    const tiledb::sm::Dimension* dimension,
+    const void* subarray) {
+  // Check coords type
+  uint64_t subarray_size = 2 * dimension->coord_size();
+
+  // Store subarray in typed array
+  const uint64_t subarray_length =
+      subarray_size / datatype_size(dimension->type());
+  RETURN_NOT_OK(set_capnp_array_ptr(
+      builder, dimension->type(), subarray, subarray_length));
+
+  return tiledb::sm::Status::Ok();
+}
+
+template <typename CapnpT>
+tiledb::sm::Status deserialize_coords(
+    const CapnpT& reader,
+    const tiledb::sm::Dimension* dimension,
+    void** subarray) {
+  // Check coords type
+  uint64_t subarray_size = 2 * dimension->coord_size();
+
+  tiledb::sm::Buffer subarray_buff;
+  RETURN_NOT_OK(copy_capnp_list(reader, dimension->type(), &subarray_buff));
+
+  if (subarray_buff.size() == 0) {
+    *subarray = nullptr;
+  } else {
+    *subarray = std::malloc(subarray_size);
+    std::memcpy(*subarray, subarray_buff.data(), subarray_size);
+  }
+
+  return tiledb::sm::Status::Ok();
+}
+
 }  // namespace utils
 }  // namespace serialization
 }  // namespace sm

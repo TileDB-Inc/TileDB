@@ -117,6 +117,68 @@ void close_array(tiledb_ctx_t* ctx, tiledb_array_t* array) {
   CHECK(rc == TILEDB_OK);
 }
 
+int array_create_wrapper(
+    tiledb_ctx_t* ctx,
+    const std::string& path,
+    tiledb_array_schema_t* array_schema,
+    bool serialize_array_schema) {
+#ifndef TILEDB_SERIALIZATION
+  return tiledb_array_create(ctx, path.c_str(), array_schema);
+#endif
+
+  if (!serialize_array_schema) {
+    return tiledb_array_create(ctx, path.c_str(), array_schema);
+  }
+
+  // Serialize the array
+  tiledb_buffer_t* buff;
+  REQUIRE(
+      tiledb_serialize_array_schema(
+          ctx,
+          array_schema,
+          (tiledb_serialization_type_t)tiledb::sm::SerializationType::CAPNP,
+          1,
+          &buff) == TILEDB_OK);
+
+  // Load array schema from the rest server
+  tiledb_array_schema_t* new_array_schema = nullptr;
+  REQUIRE(
+      tiledb_deserialize_array_schema(
+          ctx,
+          buff,
+          (tiledb_serialization_type_t)tiledb::sm::SerializationType::CAPNP,
+          0,
+          &new_array_schema) == TILEDB_OK);
+
+  // Create array from new schema
+  int rc = tiledb_array_create(ctx, path.c_str(), new_array_schema);
+
+  // Serialize the new array schema and deserialize into the original array
+  // schema.
+  tiledb_buffer_t* buff2;
+  REQUIRE(
+      tiledb_serialize_array_schema(
+          ctx,
+          new_array_schema,
+          (tiledb_serialization_type_t)tiledb::sm::SerializationType::CAPNP,
+          0,
+          &buff2) == TILEDB_OK);
+  REQUIRE(
+      tiledb_deserialize_array_schema(
+          ctx,
+          buff2,
+          (tiledb_serialization_type_t)tiledb::sm::SerializationType::CAPNP,
+          1,
+          &array_schema) == TILEDB_OK);
+
+  // Clean up.
+  tiledb_array_schema_free(&new_array_schema);
+  tiledb_buffer_free(&buff);
+  tiledb_buffer_free(&buff2);
+
+  return rc;
+}
+
 void create_array(
     tiledb_ctx_t* ctx,
     const std::string& array_name,
@@ -132,7 +194,8 @@ void create_array(
     tiledb_layout_t tile_order,
     tiledb_layout_t cell_order,
     uint64_t capacity,
-    bool allows_dups) {
+    bool allows_dups,
+    bool serialize_array_schema) {
   // For easy reference
   auto dim_num = dim_names.size();
   auto attr_num = attr_names.size();
@@ -202,7 +265,8 @@ void create_array(
   REQUIRE(rc == TILEDB_OK);
 
   // Create array
-  rc = tiledb_array_create(ctx, array_name.c_str(), array_schema);
+  rc = array_create_wrapper(
+      ctx, array_name, array_schema, serialize_array_schema);
   REQUIRE(rc == TILEDB_OK);
 
   // Clean up

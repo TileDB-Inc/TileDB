@@ -36,7 +36,9 @@
 #include "tiledb.h"
 #include "tiledb/sm/array/array.h"
 #include "tiledb/sm/enums/layout.h"
+#include "tiledb/sm/enums/serialization_type.h"
 #include "tiledb/sm/subarray/subarray.h"
+#include "tiledb_serialization.h"
 
 #include <sstream>
 #include <string>
@@ -114,6 +116,20 @@ void check_subarray(
 void close_array(tiledb_ctx_t* ctx, tiledb_array_t* array);
 
 /**
+ * Small wrapper to test round trip serialization in array create
+ * @param ctx TileDB context
+ * @param path path to create array at
+ * @param array_schema array schema to create
+ * @param serialize_array_schema whether to round-trip schema through
+ * serialization
+ */
+int array_create_wrapper(
+    tiledb_ctx_t* ctx,
+    const std::string& path,
+    tiledb_array_schema_t* array_schema,
+    bool serialize_array_schema);
+
+/**
  * Helper method to create an array.
  *
  * @param ctx TileDB context.
@@ -131,6 +147,8 @@ void close_array(tiledb_ctx_t* ctx, tiledb_array_t* array);
  * @param cell_order The cell order.
  * @param capacity The tile capacity.
  * @param allows_dups Whether the array allows coordinate duplicates.
+ * @param serialize_array_schema whether to round-trip through serialization or
+ * not
  */
 
 void create_array(
@@ -148,7 +166,8 @@ void create_array(
     tiledb_layout_t tile_order,
     tiledb_layout_t cell_order,
     uint64_t capacity,
-    bool allows_dups = false);
+    bool allows_dups = false,
+    bool serialize_array_schema = false);
 
 /**
  * Helper method to create an encrypted array.

@@ -312,12 +312,33 @@ TEST_CASE_METHOD(CPPArrayFx, "C++ API: Arrays", "[cppapi][basic]") {
     array.close();
 
     array.open(TILEDB_READ);
+
+    // Check non-empty domain
     auto non_empty = array.non_empty_domain<int>();
     REQUIRE(non_empty.size() == 2);
     CHECK(non_empty[0].second.first == 0);
     CHECK(non_empty[0].second.second == d1_tile - 1);
     CHECK(non_empty[1].second.first == 0);
     CHECK(non_empty[1].second.second == d2_tile - 1);
+
+    // Check non-empty domain from index
+    CHECK_THROWS(array.non_empty_domain<int>(5));
+    auto non_empty_0 = array.non_empty_domain<int>(0);
+    auto non_empty_1 = array.non_empty_domain<int>(1);
+    CHECK(non_empty_0.first == 0);
+    CHECK(non_empty_0.second == d1_tile - 1);
+    CHECK(non_empty_1.first == 0);
+    CHECK(non_empty_1.second == d2_tile - 1);
+
+    // Check non-empty domain from name
+    CHECK_THROWS(array.non_empty_domain<int>("foo"));
+    non_empty_0 = array.non_empty_domain<int>("d1");
+    non_empty_1 = array.non_empty_domain<int>("d2");
+    CHECK(non_empty_0.first == 0);
+    CHECK(non_empty_0.second == d1_tile - 1);
+    CHECK(non_empty_1.first == 0);
+    CHECK(non_empty_1.second == d2_tile - 1);
+
     array.close();
   }
 

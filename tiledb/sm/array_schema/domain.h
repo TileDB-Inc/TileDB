@@ -59,13 +59,6 @@ class Domain {
   Domain();
 
   /**
-   * Constructor.
-   *
-   * @param type The type of dimensions.
-   */
-  explicit Domain(Datatype type);
-
-  /**
    * Constructor that clones the input domain.
    *
    * @param domain The object to clone.
@@ -599,9 +592,6 @@ class Domain {
       const Dimension* dim, const void* coord_a, const void* coord_b)>
       tile_order_cmp_func_;
 
-  /** The type of dimensions. */
-  Datatype type_;
-
   /* ********************************* */
   /*           PRIVATE METHODS         */
   /* ********************************* */
@@ -621,20 +611,7 @@ class Domain {
   /** Prepares the comparator functions for each dimension. */
   void set_tile_cell_order_cmp_funcs();
 
-  /**
-   * Computes tile offsets neccessary when computing tile positions and ids.
-   *
-   * @return void
-   */
-  void compute_tile_offsets();
-
-  /**
-   * Computes tile offsets neccessary when computing tile positions and ids.
-   *
-   * @tparam T The coordinates type.
-   * @return void
-   */
-  template <class T>
+  /** Computes tile offsets neccessary when computing tile positions and ids. */
   void compute_tile_offsets();
 
   /**

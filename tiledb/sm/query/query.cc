@@ -129,21 +129,32 @@ Status Query::get_range(
   return reader_.get_range(dim_idx, range_idx, start, end, stride);
 }
 
-Status Query::get_est_result_size(const char* attr_name, uint64_t* size) {
+Status Query::get_est_result_size(const char* name, uint64_t* size) {
   if (type_ == QueryType::WRITE)
-    return LOG_STATUS(
-        Status::QueryError("Cannot estimated result size; Operation currently "
-                           "unsupported for write queries"));
-  return reader_.get_est_result_size(attr_name, size);
+    return LOG_STATUS(Status::QueryError(
+        "Cannot get estimated result size; Operation currently "
+        "unsupported for write queries"));
+
+  if (name == nullptr)
+    return LOG_STATUS(Status::QueryError(
+        "Cannot get estimated result size; Name cannot be null"));
+
+  if (name == constants::coords &&
+      !array_->array_schema()->domain()->all_dims_same_type())
+    return LOG_STATUS(Status::QueryError(
+        "Cannot get estimated result size; Not applicable to zipped "
+        "coordinates in arrays with heterogeneous domain"));
+
+  return reader_.get_est_result_size(name, size);
 }
 
 Status Query::get_est_result_size(
-    const char* attr_name, uint64_t* size_off, uint64_t* size_val) {
+    const char* name, uint64_t* size_off, uint64_t* size_val) {
   if (type_ == QueryType::WRITE)
-    return LOG_STATUS(
-        Status::QueryError("Cannot estimated result size; Operation currently "
-                           "unsupported for write queries"));
-  return reader_.get_est_result_size(attr_name, size_off, size_val);
+    return LOG_STATUS(Status::QueryError(
+        "Cannot get estimated result size; Operation currently "
+        "unsupported for write queries"));
+  return reader_.get_est_result_size(name, size_off, size_val);
 }
 
 Status Query::get_written_fragment_num(uint32_t* num) const {
@@ -435,17 +446,23 @@ Writer* Query::writer() {
 }
 
 Status Query::set_buffer(
-    const std::string& attribute,
+    const std::string& name,
     void* buffer,
     uint64_t* buffer_size,
     bool check_null_buffers) {
+  if (name == constants::coords &&
+      !array_->array_schema()->domain()->all_dims_same_type())
+    return LOG_STATUS(Status::QueryError(
+        "Cannot set buffer; Setting a buffer for zipped coordinates is not "
+        "applicable to heterogeneous domains"));
+
   if (type_ == QueryType::WRITE)
-    return writer_.set_buffer(attribute, buffer, buffer_size);
-  return reader_.set_buffer(attribute, buffer, buffer_size, check_null_buffers);
+    return writer_.set_buffer(name, buffer, buffer_size);
+  return reader_.set_buffer(name, buffer, buffer_size, check_null_buffers);
 }
 
 Status Query::set_buffer(
-    const std::string& attribute,
+    const std::string& name,
     uint64_t* buffer_off,
     uint64_t* buffer_off_size,
     void* buffer_val,
@@ -453,9 +470,9 @@ Status Query::set_buffer(
     bool check_null_buffers) {
   if (type_ == QueryType::WRITE)
     return writer_.set_buffer(
-        attribute, buffer_off, buffer_off_size, buffer_val, buffer_val_size);
+        name, buffer_off, buffer_off_size, buffer_val, buffer_val_size);
   return reader_.set_buffer(
-      attribute,
+      name,
       buffer_off,
       buffer_off_size,
       buffer_val,
@@ -481,6 +498,11 @@ void Query::set_status(QueryStatus status) {
 }
 
 Status Query::set_subarray(const void* subarray) {
+  if (!array_->array_schema()->domain()->all_dims_same_type())
+    return LOG_STATUS(
+        Status::QueryError("Cannot set subarray; Function not applicable to "
+                           "heterogeneous domains"));
+
   // Prepare a subarray object
   Subarray sub(array_, layout_);
   if (subarray != nullptr) {

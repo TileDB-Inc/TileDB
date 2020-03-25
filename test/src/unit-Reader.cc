@@ -182,7 +182,7 @@ TEST_CASE_METHOD(
   Dimension d2("d2", Datatype::INT32);
   d2.set_domain(&domain_vec[2]);
   d2.set_tile_extent(&tile_extents_vec[1]);
-  Domain dom(Datatype::INT32);
+  Domain dom;
   CHECK(dom.add_dimension(&d1).ok());
   CHECK(dom.add_dimension(&d2).ok());
 
