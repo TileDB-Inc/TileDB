@@ -246,23 +246,20 @@ Status Azure::flush_blob(const URI& uri) {
   const Status flush_write_cache_st =
       flush_write_cache(uri, write_cache_buffer, true);
 
-  // We do not need to protect 'block_list_upload_states_' here because
-  // 'count' is thread-safe.
+  std::unique_lock<std::mutex> states_lock(block_list_upload_states_lock_);
+
   if (block_list_upload_states_.count(uri.to_string()) == 0) {
     return flush_write_cache_st;
   }
 
+  BlockListUploadState* const state =
+      &block_list_upload_states_.at(uri.to_string());
+
+  states_lock.unlock();
+
   std::string container_name;
   std::string blob_path;
   RETURN_NOT_OK(parse_azure_uri(uri, &container_name, &blob_path));
-
-  // We do not need to protect 'block_list_upload_states_' with
-  // 'block_list_upload_states_lock_' because 'at' is thread-safe.
-  // This class only guarantees thread-safety among different blob URIs
-  // so we do not need to worry about the 'uri' element appearing between
-  // 'count' and 'at'.
-  BlockListUploadState* const state =
-      &block_list_upload_states_.at(uri.to_string());
 
   if (!state->st().ok()) {
     // Save the return status because 'state' will be freed before we return.
