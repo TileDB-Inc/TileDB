@@ -139,10 +139,14 @@ class TileIO {
    * @param tile The tile that will hold the read data.
    * @param file_offset The offset in the file to read from.
    * @param encryption_key The encryption key to use.
+   * @param config The storage manager's config.
    * @return Status
    */
   Status read_generic(
-      Tile** tile, uint64_t file_offset, const EncryptionKey& encryption_key);
+      Tile** tile,
+      uint64_t file_offset,
+      const EncryptionKey& encryption_key,
+      const Config& config);
 
   /**
    * Reads the generic tile header from the file.

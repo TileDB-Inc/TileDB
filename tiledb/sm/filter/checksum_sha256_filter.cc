@@ -44,7 +44,6 @@ namespace sm {
 
 ChecksumSHA256Filter::ChecksumSHA256Filter()
     : Filter(FilterType::FILTER_CHECKSUM_SHA256) {
-  skip_validation_ = false;
 }
 
 ChecksumSHA256Filter* ChecksumSHA256Filter::clone_impl() const {
@@ -95,7 +94,15 @@ Status ChecksumSHA256Filter::run_reverse(
     FilterBuffer* input_metadata,
     FilterBuffer* input,
     FilterBuffer* output_metadata,
-    FilterBuffer* output) const {
+    FilterBuffer* output,
+    const Config& config) const {
+  // Fetch the skip checksum configuration parameter.
+  bool found;
+  bool skip_validation;
+  RETURN_NOT_OK(config.get<bool>(
+      "sm.skip_checksum_validation", &skip_validation, &found));
+  assert(found);
+
   // Set output buffer to input buffer
   RETURN_NOT_OK(output->append_view(input));
 
@@ -116,7 +123,7 @@ Status ChecksumSHA256Filter::run_reverse(
         input_metadata->read(&metadata_checksummed_bytes, sizeof(uint64_t)));
 
     // Only fetch and store checksum if we are not going to skip it
-    if (!skip_validation_) {
+    if (!skip_validation) {
       Buffer buff;
       buff.realloc(Crypto::SHA256_DIGEST_BYTES);
       RETURN_NOT_OK(
@@ -133,7 +140,7 @@ Status ChecksumSHA256Filter::run_reverse(
         input_metadata->read(&data_checksummed_bytes, sizeof(uint64_t)));
 
     // Only fetch and store checksum if we are not going to skip it
-    if (!skip_validation_) {
+    if (!skip_validation) {
       Buffer buff;
       buff.realloc(Crypto::SHA256_DIGEST_BYTES);
       RETURN_NOT_OK(
@@ -145,7 +152,7 @@ Status ChecksumSHA256Filter::run_reverse(
   }
 
   // Only run checksums if we are not set to skip
-  if (!skip_validation_) {
+  if (!skip_validation) {
     // Now that the checksums are fetched we an run the actual comparisons
     // against the real metadata and data Need to save the metadata offset
     // before we loop through to check it
@@ -253,17 +260,6 @@ Status ChecksumSHA256Filter::compare_checksum_part(
   }
 
   return Status::Ok();
-}
-
-bool ChecksumSHA256Filter::skip_validation() const {
-  return skip_validation_;
-};
-
-/**
- * Sets skip validation parameter
- */
-void ChecksumSHA256Filter::skip_validation(bool skip_validation) {
-  skip_validation_ = skip_validation;
 }
 
 }  // namespace sm

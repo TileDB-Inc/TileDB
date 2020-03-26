@@ -114,7 +114,8 @@ class CompressionFilter : public Filter {
       FilterBuffer* input_metadata,
       FilterBuffer* input,
       FilterBuffer* output_metadata,
-      FilterBuffer* output) const override;
+      FilterBuffer* output,
+      const Config& config) const override;
 
   /** Set the compressor used by this filter instance. */
   void set_compressor(Compressor compressor);

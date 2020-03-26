@@ -93,7 +93,10 @@ Status TileIO::is_generic_tile(
 }
 
 Status TileIO::read_generic(
-    Tile** tile, uint64_t file_offset, const EncryptionKey& encryption_key) {
+    Tile** tile,
+    uint64_t file_offset,
+    const EncryptionKey& encryption_key,
+    const Config& config) {
   STATS_FUNC_IN(tileio_read_generic);
 
   GenericTileHeader header;
@@ -133,7 +136,7 @@ Status TileIO::read_generic(
       delete *tile);
 
   // Filter
-  RETURN_NOT_OK_ELSE(header.filters.run_reverse(*tile), delete *tile);
+  RETURN_NOT_OK_ELSE(header.filters.run_reverse(*tile, config), delete *tile);
 
   file_size_ = header.persisted_size;
   STATS_COUNTER_ADD(tileio_read_num_bytes_read, header.persisted_size);

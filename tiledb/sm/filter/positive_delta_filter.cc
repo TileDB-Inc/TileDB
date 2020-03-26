@@ -215,7 +215,10 @@ Status PositiveDeltaFilter::run_reverse(
     FilterBuffer* input_metadata,
     FilterBuffer* input,
     FilterBuffer* output_metadata,
-    FilterBuffer* output) const {
+    FilterBuffer* output,
+    const Config& config) const {
+  (void)config;
+
   auto tile_type = pipeline_->current_tile()->type();
 
   // If encoding wasn't applied, just return the input unmodified.
