@@ -722,13 +722,16 @@ Status Reader::compute_range_result_coords(
   // Gather result range coordinates per fragment
   auto fragment_num = fragment_metadata_.size();
   std::vector<std::vector<ResultCoords>> range_result_coords_vec(fragment_num);
-  for (unsigned f = 0; f < fragment_num; ++f)
-    RETURN_NOT_OK(compute_range_result_coords(
+  auto statuses = parallel_for(0, fragment_num, [&](uint32_t f) {
+    return compute_range_result_coords(
         range_idx,
         f,
         result_tile_map,
         result_tiles,
-        &range_result_coords_vec[f]));
+        &range_result_coords_vec[f]);
+  });
+  for (auto st : statuses)
+    RETURN_NOT_OK(st);
 
   // Consolidate the result coordinates in the single result vector
   for (const auto& vec : range_result_coords_vec) {
