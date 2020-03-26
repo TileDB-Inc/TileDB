@@ -119,14 +119,11 @@ void write_array() {
 }
 
 void read_array() {
-
   tiledb_config_t* config;
   tiledb_error_t* error;
   tiledb_config_alloc(&config, &error);
-  tiledb_config_set(
-      config, "sm.num_reader_threads", "16", &error);
-  tiledb_config_set(
-      config, "vfs.num_threads", "16", &error);
+  tiledb_config_set(config, "sm.num_reader_threads", "16", &error);
+  tiledb_config_set(config, "vfs.num_threads", "16", &error);
 
   // Create TileDB context
   tiledb_ctx_t* ctx;
@@ -162,7 +159,7 @@ void read_array() {
 
   tiledb_query_status_t status;
   tiledb_query_get_status(ctx, query, &status);
-  if(status == TILEDB_COMPLETED)
+  if (status == TILEDB_COMPLETED)
     printf("COMPLETED\n");
   else
     printf("INCOMPLETE\n");
@@ -179,34 +176,34 @@ void read_array() {
 }
 
 int main() {
-/*
+  /*
 
-  // Get object type
-  tiledb_ctx_t* ctx;
-  tiledb_ctx_alloc(NULL, &ctx);
-  tiledb_object_t type;
-  tiledb_object_type(ctx, array_name, &type);
-  tiledb_ctx_free(&ctx);
+    // Get object type
+    tiledb_ctx_t* ctx;
+    tiledb_ctx_alloc(NULL, &ctx);
+    tiledb_object_t type;
+    tiledb_object_type(ctx, array_name, &type);
+    tiledb_ctx_free(&ctx);
 
-  if (type != TILEDB_ARRAY) {
-    create_array();
-    write_array();
-  }
-  */
+    if (type != TILEDB_ARRAY) {
+      create_array();
+      write_array();
+    }
+    */
 
-/*
-  tiledb_config_t* config;
-  tiledb_error_t* error;
-  tiledb_config_alloc(&config, &error);
-  tiledb_config_set(
-      config, "sm.consolidation.only_fragment_meta", "true", &error);
+  /*
+    tiledb_config_t* config;
+    tiledb_error_t* error;
+    tiledb_config_alloc(&config, &error);
+    tiledb_config_set(
+        config, "sm.consolidation.only_fragment_meta", "true", &error);
 
-  tiledb_ctx_t* ctx;
-  tiledb_ctx_alloc(NULL, &ctx);
-  tiledb_array_consolidate(ctx, array_name, config);
-  tiledb_config_free(&config);
-  tiledb_ctx_free(&ctx);
-/*/
+    tiledb_ctx_t* ctx;
+    tiledb_ctx_alloc(NULL, &ctx);
+    tiledb_array_consolidate(ctx, array_name, config);
+    tiledb_config_free(&config);
+    tiledb_ctx_free(&ctx);
+  /*/
 
   read_array();
 

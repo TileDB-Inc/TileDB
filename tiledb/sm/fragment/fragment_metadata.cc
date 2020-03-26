@@ -346,8 +346,6 @@ Status FragmentMetadata::get_tile_overlap(
   if (!array_schema_->domain()->overlap(range, non_empty_domain_))
     return Status::Ok();
 
-    std::cout << fragment_uri_.to_string() << "\n";
-
   // Get overlap
   RETURN_NOT_OK(load_rtree(encryption_key));
   *tile_overlap = rtree_.get_tile_overlap(range);

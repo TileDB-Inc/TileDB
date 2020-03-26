@@ -80,7 +80,7 @@ Status Consolidator::consolidate(
   if (config_.only_fragment_meta_)
     return consolidate_fragment_meta(
         array_uri, encryption_type, encryption_key, key_length);
-        
+
   // Get array schema
   EncryptionKey enc_key;
   RETURN_NOT_OK(enc_key.set_key(encryption_type, encryption_key, key_length));
@@ -447,7 +447,7 @@ Status Consolidator::consolidate_fragment_meta(
   }
 
   // Serialize all fragment metadata footers into a single buffer
-  for (auto m : meta) 
+  for (auto m : meta)
     m->write_footer(&buff);
 
   // Compute new URI

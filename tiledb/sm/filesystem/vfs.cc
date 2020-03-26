@@ -1187,14 +1187,8 @@ Status VFS::read_all(
   std::vector<BatchedRead> batches;
   RETURN_NOT_OK(compute_read_batches(regions, &batches));
 
-  std::cout << "num batches: " << batches.size() << "\n";
-std::cout << "num threads: " << thread_pool->num_threads() << "\n";
-
   // Read all the batches and copy to the original destinations.
   for (const auto& batch : batches) {
-
-std::cout << batch.nbytes << "\n";
-
     URI uri_copy = uri;
     BatchedRead batch_copy = batch;
     auto task = thread_pool->enqueue([uri_copy, batch_copy, this]() {
@@ -1251,18 +1245,12 @@ Status VFS::compute_read_batches(
   BatchedRead curr_batch(sorted_regions.front());
   uint64_t curr_batch_useful_bytes = curr_batch.nbytes;
   for (uint64_t i = 1; i < sorted_regions.size(); i++) {
-
-
     const auto& region = sorted_regions[i];
     uint64_t offset = std::get<0>(region);
     uint64_t nbytes = std::get<2>(region);
-
-std::cout << "sorted region size: " << nbytes << "\n";
-
     uint64_t new_batch_size = (offset + nbytes) - curr_batch.offset;
     uint64_t gap = offset - (curr_batch.offset + curr_batch.nbytes);
-    (void)gap;
-    if(false) { // (new_batch_size <= min_batch_size || gap <= min_batch_gap) {
+    if (new_batch_size <= min_batch_size || gap <= min_batch_gap) {
       // Extend current batch.
       curr_batch.nbytes = new_batch_size;
       curr_batch.regions.push_back(region);
