@@ -634,19 +634,17 @@ Status Reader::compute_range_result_coords(
     RETURN_NOT_OK(compute_range_result_coords(
         r, result_tile_map, result_tiles, &((*range_result_coords)[r])));
 
-    // Potentially sort for deduping purposes (for the case of updates)
-    if (!single_fragment[r]) {
-      Layout layout =
-          (layout_ == Layout::GLOBAL_ORDER || layout_ == Layout ::UNORDERED) ?
-              cell_order :
-              layout_;
+    // Sort
+    Layout layout =
+        (layout_ == Layout::GLOBAL_ORDER || layout_ == Layout ::UNORDERED) ?
+            cell_order :
+            layout_;
+    RETURN_CANCEL_OR_ERROR(
+        sort_result_coords(&((*range_result_coords)[r]), layout));
 
-      RETURN_CANCEL_OR_ERROR(
-          sort_result_coords(&((*range_result_coords)[r]), layout));
-      if (!array_schema_->allows_dups()) {
-        RETURN_CANCEL_OR_ERROR(
-            dedup_result_coords(&((*range_result_coords)[r])));
-      }
+    // Dedup unless there is a single fragment or array schema allows duplicates
+    if (!single_fragment[r] && !array_schema_->allows_dups()) {
+      RETURN_CANCEL_OR_ERROR(dedup_result_coords(&((*range_result_coords)[r])));
     }
 
     // Compute tile coordinate
@@ -660,59 +658,82 @@ Status Reader::compute_range_result_coords(
 
 Status Reader::compute_range_result_coords(
     uint64_t range_idx,
+    uint32_t fragment_idx,
     const std::map<std::pair<unsigned, uint64_t>, size_t>& result_tile_map,
     std::vector<ResultTile>* result_tiles,
     std::vector<ResultCoords>* range_result_coords) {
   const auto& subarray = read_state_.partitioner_.current();
   const auto& overlap = subarray.tile_overlap();
-  auto fragment_num = fragment_metadata_.size();
 
-  for (unsigned f = 0; f < fragment_num; ++f) {
-    // Skip dense fragments
-    if (fragment_metadata_[f]->dense())
-      continue;
+  // Skip dense fragments
+  if (fragment_metadata_[fragment_idx]->dense())
+    return Status::Ok();
 
-    auto tr = overlap[f][range_idx].tile_ranges_.begin();
-    auto tr_end = overlap[f][range_idx].tile_ranges_.end();
-    auto t = overlap[f][range_idx].tiles_.begin();
-    auto t_end = overlap[f][range_idx].tiles_.end();
+  auto tr = overlap[fragment_idx][range_idx].tile_ranges_.begin();
+  auto tr_end = overlap[fragment_idx][range_idx].tile_ranges_.end();
+  auto t = overlap[fragment_idx][range_idx].tiles_.begin();
+  auto t_end = overlap[fragment_idx][range_idx].tiles_.end();
 
-    while (tr != tr_end || t != t_end) {
-      // Handle tile range
-      if (tr != tr_end && (t == t_end || tr->first < t->first)) {
-        for (uint64_t i = tr->first; i <= tr->second; ++i) {
-          auto pair = std::pair<unsigned, uint64_t>(f, i);
-          auto tile_it = result_tile_map.find(pair);
-          assert(tile_it != result_tile_map.end());
-          auto tile_idx = tile_it->second;
-          auto& tile = (*result_tiles)[tile_idx];
-
-          // Add results only if the sparse tile MBR is not fully
-          // covered by a more recent fragment's non-empty domain
-          if (!sparse_tile_overwritten(f, i))
-            RETURN_NOT_OK(get_all_result_coords(&tile, range_result_coords));
-        }
-        ++tr;
-      } else {
-        // Handle single tile
-        auto pair = std::pair<unsigned, uint64_t>(f, t->first);
+  while (tr != tr_end || t != t_end) {
+    // Handle tile range
+    if (tr != tr_end && (t == t_end || tr->first < t->first)) {
+      for (uint64_t i = tr->first; i <= tr->second; ++i) {
+        auto pair = std::pair<unsigned, uint64_t>(fragment_idx, i);
         auto tile_it = result_tile_map.find(pair);
         assert(tile_it != result_tile_map.end());
         auto tile_idx = tile_it->second;
         auto& tile = (*result_tiles)[tile_idx];
-        if (t->second == 1.0) {  // Full overlap
-          // Add results only if the sparse tile MBR is not fully
-          // covered by a more recent fragment's non-empty domain
-          if (!sparse_tile_overwritten(f, t->first))
-            RETURN_NOT_OK(get_all_result_coords(&tile, range_result_coords));
-        } else {  // Partial overlap
-          auto ndrange = subarray.ndrange(range_idx);
-          RETURN_NOT_OK(compute_range_result_coords(
-              f, &tile, ndrange, range_result_coords));
-        }
-        ++t;
+
+        // Add results only if the sparse tile MBR is not fully
+        // covered by a more recent fragment's non-empty domain
+        if (!sparse_tile_overwritten(fragment_idx, i))
+          RETURN_NOT_OK(get_all_result_coords(&tile, range_result_coords));
       }
+      ++tr;
+    } else {
+      // Handle single tile
+      auto pair = std::pair<unsigned, uint64_t>(fragment_idx, t->first);
+      auto tile_it = result_tile_map.find(pair);
+      assert(tile_it != result_tile_map.end());
+      auto tile_idx = tile_it->second;
+      auto& tile = (*result_tiles)[tile_idx];
+      if (t->second == 1.0) {  // Full overlap
+        // Add results only if the sparse tile MBR is not fully
+        // covered by a more recent fragment's non-empty domain
+        if (!sparse_tile_overwritten(fragment_idx, t->first))
+          RETURN_NOT_OK(get_all_result_coords(&tile, range_result_coords));
+      } else {  // Partial overlap
+        auto ndrange = subarray.ndrange(range_idx);
+        RETURN_NOT_OK(compute_range_result_coords(
+            fragment_idx, &tile, ndrange, range_result_coords));
+      }
+      ++t;
     }
+  }
+
+  return Status::Ok();
+}
+
+Status Reader::compute_range_result_coords(
+    uint64_t range_idx,
+    const std::map<std::pair<unsigned, uint64_t>, size_t>& result_tile_map,
+    std::vector<ResultTile>* result_tiles,
+    std::vector<ResultCoords>* range_result_coords) {
+  // Gather result range coordinates per fragment
+  auto fragment_num = fragment_metadata_.size();
+  std::vector<std::vector<ResultCoords>> range_result_coords_vec(fragment_num);
+  for (unsigned f = 0; f < fragment_num; ++f)
+    RETURN_NOT_OK(compute_range_result_coords(
+        range_idx,
+        f,
+        result_tile_map,
+        result_tiles,
+        &range_result_coords_vec[f]));
+
+  // Consolidate the result coordinates in the single result vector
+  for (const auto& vec : range_result_coords_vec) {
+    for (const auto& r : vec)
+      range_result_coords->emplace_back(r);
   }
 
   return Status::Ok();
