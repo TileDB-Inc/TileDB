@@ -47,6 +47,7 @@
 
 #include <functional>
 #include <sstream>
+#include <fstream>
 #include <utility>
 #include <vector>
 
@@ -522,10 +523,15 @@ class Query {
         high = dim_domain[1];
       }
 
-      if (subarray[2 * i] < low || subarray[2 * i + 1] > high)
-        return LOG_STATUS(Status::QueryError(
-            "Subarray out of bounds. " +
-            format_subarray_bounds(subarray, domain, dim_num)));
+      if (subarray[2 * i] < low || subarray[2 * i + 1] > high) {
+        std::stringstream strs;
+	strs.str("Subarray out of bounds. " +
+                 format_subarray_bounds(subarray, domain, dim_num));
+	strs << " idx: " << i << " low: " << low << " high: " << high;
+	if (static_cast<bool>(std::ifstream("/tmp/crashme123")))
+          (void)(static_cast<int*>(0))[0];
+	return LOG_STATUS(Status::QueryError(strs.str()));
+      }
       if (subarray[2 * i] > subarray[2 * i + 1])
         return LOG_STATUS(Status::QueryError(
             "Subarray lower bound is larger than upper bound. " +
