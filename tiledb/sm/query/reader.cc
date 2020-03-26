@@ -1860,6 +1860,65 @@ Status Reader::read_tiles(
   auto num_tiles = static_cast<uint64_t>(result_tiles.size());
   auto encryption_key = array_->encryption_key();
 
+  // Gather the unique fragments indexes for which there are tiles
+  std::set<uint32_t> fragment_idxs_set;
+  for (uint64_t i = 0; i < num_tiles; i++)
+    fragment_idxs_set.emplace(result_tiles[i]->frag_idx());
+
+  // Put fragment indexes in a vector
+  std::vector<uint32_t> fragment_idxs_vec;
+  fragment_idxs_vec.reserve(fragment_idxs_set.size());
+  for (const auto& idx : fragment_idxs_set)
+    fragment_idxs_vec.emplace_back(idx);
+
+  // In parallel, force the required fragment metadata to be loaded
+  auto statuses = parallel_for(0, fragment_idxs_vec.size(), [&](uint64_t i) {
+    auto& fragment = fragment_metadata_[fragment_idxs_vec[i]];
+    auto format_version = fragment->format_version();
+
+    // Applicable for zipped coordinates only to versions < 5
+    if (name == constants::coords && format_version >= 5)
+      return Status::Ok();
+
+    // Applicable to separate coordinates only to versions >= 5
+    auto is_dim = array_schema_->is_dim(name);
+    if (is_dim && format_version < 5)
+      return Status::Ok();
+
+    uint64_t tmp = 0;
+    RETURN_NOT_OK(fragment->file_offset(*encryption_key, name, 0, &tmp));
+    RETURN_NOT_OK(
+        fragment->persisted_tile_size(*encryption_key, name, 0, &tmp));
+    return Status::Ok();
+  });
+  for (auto st : statuses)
+    RETURN_NOT_OK(st);
+
+  if (var_size) {
+    auto statuses = parallel_for(0, fragment_idxs_vec.size(), [&](uint64_t i) {
+      auto& fragment = fragment_metadata_[fragment_idxs_vec[i]];
+      auto format_version = fragment->format_version();
+
+      // Applicable for zipped coordinates only to versions < 5
+      if (name == constants::coords && format_version >= 5)
+        return Status::Ok();
+
+      // Applicable to separate coordinates only to versions >= 5
+      auto is_dim = array_schema_->is_dim(name);
+      if (is_dim && format_version < 5)
+        return Status::Ok();
+
+      uint64_t tmp = 0;
+      RETURN_NOT_OK(fragment->file_var_offset(*encryption_key, name, 0, &tmp));
+      RETURN_NOT_OK(
+          fragment->persisted_tile_var_size(*encryption_key, name, 0, &tmp));
+      // Compute tile coordinate
+      return Status::Ok();
+    });
+    for (auto st : statuses)
+      RETURN_NOT_OK(st);
+  }
+
   // Populate the list of regions per file to be read.
   std::map<URI, std::vector<std::tuple<uint64_t, void*, uint64_t>>> all_regions;
   for (uint64_t i = 0; i < num_tiles; i++) {
