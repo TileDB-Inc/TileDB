@@ -105,7 +105,8 @@ class BitWidthReductionFilter : public Filter {
       FilterBuffer* input_metadata,
       FilterBuffer* input,
       FilterBuffer* output_metadata,
-      FilterBuffer* output) const override;
+      FilterBuffer* output,
+      const Config& config) const override;
 
   /** Set the max window size (in bytes) to use. */
   void set_max_window_size(uint32_t max_window_size);

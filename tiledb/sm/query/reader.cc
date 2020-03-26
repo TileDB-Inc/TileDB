@@ -1668,7 +1668,7 @@ Status Reader::unfilter_tile(
   RETURN_NOT_OK(FilterPipeline::append_encryption_filter(
       &filters, array_->get_encryption_key()));
 
-  RETURN_NOT_OK(filters.run_reverse(tile));
+  RETURN_NOT_OK(filters.run_reverse(tile, storage_manager_->config()));
 
   tile->set_filtered(false);
 

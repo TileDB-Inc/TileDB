@@ -1046,7 +1046,7 @@ Status StorageManager::load_array_schema(
   auto tile_io = new TileIO(this, schema_uri);
   auto tile = (Tile*)nullptr;
   RETURN_NOT_OK_ELSE(
-      tile_io->read_generic(&tile, 0, encryption_key), delete tile_io);
+      tile_io->read_generic(&tile, 0, encryption_key, config_), delete tile_io);
   tile->disown_buff();
   auto buff = tile->buffer();
   delete tile;
@@ -1678,7 +1678,7 @@ Status StorageManager::load_array_metadata(
     if (metadata_buff == nullptr) {  // Array metadata does not exist - load it
       TileIO tile_io(this, uri);
       auto tile = (Tile*)nullptr;
-      RETURN_NOT_OK(tile_io.read_generic(&tile, 0, encryption_key));
+      RETURN_NOT_OK(tile_io.read_generic(&tile, 0, encryption_key, config_));
       tile->disown_buff();
       auto buff = tile->buffer();
       delete tile;

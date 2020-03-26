@@ -35,6 +35,7 @@
 #include "tiledb/sm/array_schema/dimension.h"
 #include "tiledb/sm/array_schema/domain.h"
 #include "tiledb/sm/buffer/buffer.h"
+#include "tiledb/sm/config/config.h"
 #include "tiledb/sm/crypto/encryption_key.h"
 #include "tiledb/sm/enums/compressor.h"
 #include "tiledb/sm/enums/datatype.h"
@@ -99,7 +100,10 @@ class Add1InPlace : public Filter {
       FilterBuffer* input_metadata,
       FilterBuffer* input,
       FilterBuffer* output_metadata,
-      FilterBuffer* output) const override {
+      FilterBuffer* output,
+      const Config& config) const override {
+    (void)config;
+
     auto input_size = input->size();
     RETURN_NOT_OK(output->append_view(input));
     output->reset_offset();
@@ -174,7 +178,10 @@ class Add1OutOfPlace : public Filter {
       FilterBuffer* input_metadata,
       FilterBuffer* input,
       FilterBuffer* output_metadata,
-      FilterBuffer* output) const override {
+      FilterBuffer* output,
+      const Config& config) const override {
+    (void)config;
+
     auto input_size = input->size();
     auto nelts = input->size() / sizeof(uint64_t);
 
@@ -248,7 +255,10 @@ class AddNInPlace : public Filter {
       FilterBuffer* input_metadata,
       FilterBuffer* input,
       FilterBuffer* output_metadata,
-      FilterBuffer* output) const override {
+      FilterBuffer* output,
+      const Config& config) const override {
+    (void)config;
+
     auto input_size = input->size();
     RETURN_NOT_OK(output->append_view(input));
     output->reset_offset();
@@ -332,7 +342,10 @@ class PseudoChecksumFilter : public Filter {
       FilterBuffer* input_metadata,
       FilterBuffer* input,
       FilterBuffer* output_metadata,
-      FilterBuffer* output) const override {
+      FilterBuffer* output,
+      const Config& config) const override {
+    (void)config;
+
     auto input_size = input->size();
     auto nelts = input_size / sizeof(uint64_t);
 
@@ -440,7 +453,10 @@ class Add1IncludingMetadataFilter : public Filter {
       FilterBuffer* input_metadata,
       FilterBuffer* input,
       FilterBuffer* output_metadata,
-      FilterBuffer* output) const override {
+      FilterBuffer* output,
+      const Config& config) const override {
+    (void)config;
+
     if (input_metadata->size() != 2 * sizeof(uint32_t))
       return Status::FilterError("Unexpected input metadata length");
 
@@ -492,6 +508,8 @@ class Add1IncludingMetadataFilter : public Filter {
 };
 
 TEST_CASE("Filter: Test empty pipeline", "[filter]") {
+  Config config;
+
   // Set up test data
   const uint64_t nelts = 100;
   Buffer buff;
@@ -528,7 +546,7 @@ TEST_CASE("Filter: Test empty pipeline", "[filter]") {
     buff.advance_offset(sizeof(uint64_t));
   }
 
-  CHECK(pipeline.run_reverse(&tile).ok());
+  CHECK(pipeline.run_reverse(&tile, config).ok());
   CHECK(tile.buffer() == &buff);
   CHECK(buff.size() == nelts * sizeof(uint64_t));
   buff.reset_offset();
@@ -537,6 +555,8 @@ TEST_CASE("Filter: Test empty pipeline", "[filter]") {
 }
 
 TEST_CASE("Filter: Test simple in-place pipeline", "[filter]") {
+  Config config;
+
   // Set up test data
   const uint64_t nelts = 100;
   Buffer buff;
@@ -583,7 +603,7 @@ TEST_CASE("Filter: Test simple in-place pipeline", "[filter]") {
       buff.advance_offset(sizeof(uint64_t));
     }
 
-    CHECK(pipeline.run_reverse(&tile).ok());
+    CHECK(pipeline.run_reverse(&tile, config).ok());
     CHECK(tile.buffer() == &buff);
     CHECK(buff.size() == nelts * sizeof(uint64_t));
     buff.reset_offset();
@@ -622,7 +642,7 @@ TEST_CASE("Filter: Test simple in-place pipeline", "[filter]") {
       buff.advance_offset(sizeof(uint64_t));
     }
 
-    CHECK(pipeline.run_reverse(&tile).ok());
+    CHECK(pipeline.run_reverse(&tile, config).ok());
     CHECK(tile.buffer() == &buff);
     CHECK(buff.size() == nelts * sizeof(uint64_t));
     buff.reset_offset();
@@ -632,6 +652,8 @@ TEST_CASE("Filter: Test simple in-place pipeline", "[filter]") {
 }
 
 TEST_CASE("Filter: Test simple out-of-place pipeline", "[filter]") {
+  Config config;
+
   // Set up test data
   const uint64_t nelts = 100;
   Buffer buff;
@@ -672,7 +694,7 @@ TEST_CASE("Filter: Test simple out-of-place pipeline", "[filter]") {
       buff.advance_offset(sizeof(uint64_t));
     }
 
-    CHECK(pipeline.run_reverse(&tile).ok());
+    CHECK(pipeline.run_reverse(&tile, config).ok());
     CHECK(tile.buffer() == &buff);
     CHECK(buff.size() == nelts * sizeof(uint64_t));
     buff.reset_offset();
@@ -711,7 +733,7 @@ TEST_CASE("Filter: Test simple out-of-place pipeline", "[filter]") {
       buff.advance_offset(sizeof(uint64_t));
     }
 
-    CHECK(pipeline.run_reverse(&tile).ok());
+    CHECK(pipeline.run_reverse(&tile, config).ok());
     CHECK(tile.buffer() == &buff);
     CHECK(buff.size() == nelts * sizeof(uint64_t));
     buff.reset_offset();
@@ -721,6 +743,8 @@ TEST_CASE("Filter: Test simple out-of-place pipeline", "[filter]") {
 }
 
 TEST_CASE("Filter: Test mixed in- and out-of-place pipeline", "[filter]") {
+  Config config;
+
   // Set up test data
   const uint64_t nelts = 100;
   Buffer buff;
@@ -762,7 +786,7 @@ TEST_CASE("Filter: Test mixed in- and out-of-place pipeline", "[filter]") {
     buff.advance_offset(sizeof(uint64_t));
   }
 
-  CHECK(pipeline.run_reverse(&tile).ok());
+  CHECK(pipeline.run_reverse(&tile, config).ok());
   CHECK(tile.buffer() == &buff);
   CHECK(buff.size() == nelts * sizeof(uint64_t));
   buff.reset_offset();
@@ -771,6 +795,8 @@ TEST_CASE("Filter: Test mixed in- and out-of-place pipeline", "[filter]") {
 }
 
 TEST_CASE("Filter: Test compression", "[filter], [compression]") {
+  Config config;
+
   // Set up test data
   const uint64_t nelts = 100;
   Buffer buff;
@@ -803,7 +829,7 @@ TEST_CASE("Filter: Test compression", "[filter], [compression]") {
     // Check compression worked
     CHECK(tile.buffer()->size() < nelts * sizeof(uint64_t));
 
-    CHECK(pipeline.run_reverse(&tile).ok());
+    CHECK(pipeline.run_reverse(&tile, config).ok());
     CHECK(tile.buffer()->size() == nelts * sizeof(uint64_t));
 
     // Check all elements original values.
@@ -822,7 +848,7 @@ TEST_CASE("Filter: Test compression", "[filter], [compression]") {
     // Check compression worked
     CHECK(tile.buffer()->size() < nelts * sizeof(uint64_t));
 
-    CHECK(pipeline.run_reverse(&tile).ok());
+    CHECK(pipeline.run_reverse(&tile, config).ok());
     CHECK(tile.buffer()->size() == nelts * sizeof(uint64_t));
 
     // Check all elements original values.
@@ -843,7 +869,7 @@ TEST_CASE("Filter: Test compression", "[filter], [compression]") {
     // Check compression worked
     CHECK(tile.buffer()->size() < nelts * sizeof(uint64_t));
 
-    CHECK(pipeline.run_reverse(&tile).ok());
+    CHECK(pipeline.run_reverse(&tile, config).ok());
     CHECK(tile.buffer()->size() == nelts * sizeof(uint64_t));
 
     // Check all elements original values.
@@ -856,6 +882,8 @@ TEST_CASE("Filter: Test compression", "[filter], [compression]") {
 }
 
 TEST_CASE("Filter: Test pseudo-checksum", "[filter]") {
+  Config config;
+
   // Set up test data
   const uint64_t nelts = 100;
   const uint64_t expected_checksum = 4950;
@@ -903,7 +931,7 @@ TEST_CASE("Filter: Test pseudo-checksum", "[filter]") {
       buff.advance_offset(sizeof(uint64_t));
     }
 
-    CHECK(pipeline.run_reverse(&tile).ok());
+    CHECK(pipeline.run_reverse(&tile, config).ok());
     CHECK(tile.buffer() == &buff);
     CHECK(buff.size() == nelts * sizeof(uint64_t));
     buff.reset_offset();
@@ -958,7 +986,7 @@ TEST_CASE("Filter: Test pseudo-checksum", "[filter]") {
       buff.advance_offset(sizeof(uint64_t));
     }
 
-    CHECK(pipeline.run_reverse(&tile).ok());
+    CHECK(pipeline.run_reverse(&tile, config).ok());
     CHECK(tile.buffer() == &buff);
     CHECK(buff.size() == nelts * sizeof(uint64_t));
     buff.reset_offset();
@@ -968,6 +996,8 @@ TEST_CASE("Filter: Test pseudo-checksum", "[filter]") {
 }
 
 TEST_CASE("Filter: Test pipeline modify filter", "[filter]") {
+  Config config;
+
   // Set up test data
   const uint64_t nelts = 100;
   Buffer buff;
@@ -1013,13 +1043,15 @@ TEST_CASE("Filter: Test pipeline modify filter", "[filter]") {
     buff.advance_offset(sizeof(uint64_t));
   }
 
-  CHECK(pipeline.run_reverse(&tile).ok());
+  CHECK(pipeline.run_reverse(&tile, config).ok());
   buff.reset_offset();
   for (uint64_t i = 0; i < nelts; i++)
     CHECK(buff.value<uint64_t>(i * sizeof(uint64_t)) == i);
 }
 
 TEST_CASE("Filter: Test pipeline copy", "[filter]") {
+  Config config;
+
   // Set up test data
   const uint64_t nelts = 100;
   const uint64_t expected_checksum = 5350;
@@ -1077,13 +1109,15 @@ TEST_CASE("Filter: Test pipeline copy", "[filter]") {
     buff.advance_offset(sizeof(uint64_t));
   }
 
-  CHECK(pipeline_copy.run_reverse(&tile).ok());
+  CHECK(pipeline_copy.run_reverse(&tile, config).ok());
   buff.reset_offset();
   for (uint64_t i = 0; i < nelts; i++)
     CHECK(buff.value<uint64_t>(i * sizeof(uint64_t)) == i);
 }
 
 TEST_CASE("Filter: Test random pipeline", "[filter]") {
+  Config config;
+
   // Set up test data
   const uint64_t nelts = 10000;
   Buffer buff;
@@ -1152,14 +1186,52 @@ TEST_CASE("Filter: Test random pipeline", "[filter]") {
 
     // End result should always be the same as the input.
     CHECK(pipeline.run_forward(&tile).ok());
-    CHECK(pipeline.run_reverse(&tile).ok());
+    CHECK(pipeline.run_reverse(&tile, config).ok());
     auto* tile_buff = tile.buffer();
     for (uint64_t i = 0; i < nelts; i++)
       REQUIRE(tile_buff->value<uint64_t>(i * sizeof(uint64_t)) == i);
   }
 }
 
+TEST_CASE(
+    "Filter: Test skip checksum validation",
+    "[filter][skip-checksum-validation]") {
+  Config config;
+  REQUIRE(config.set("sm.skip_checksum_validation", "true").ok());
+
+  // Set up test data
+  const uint64_t nelts = 10000;
+  Buffer buff;
+  for (uint64_t i = 0; i < nelts; i++)
+    CHECK(buff.write(&i, sizeof(uint64_t)).ok());
+  CHECK(buff.size() == nelts * sizeof(uint64_t));
+
+  Tile tile(Datatype::UINT64, sizeof(uint64_t), 0, &buff, false);
+
+  // MD5
+  FilterPipeline md5_pipeline;
+  ChecksumMD5Filter md5_filter;
+  CHECK(md5_pipeline.add_filter(md5_filter).ok());
+  CHECK(md5_pipeline.run_forward(&tile).ok());
+  CHECK(md5_pipeline.run_reverse(&tile, config).ok());
+  auto* tile_buff = tile.buffer();
+  for (uint64_t i = 0; i < nelts; i++)
+    REQUIRE(tile_buff->value<uint64_t>(i * sizeof(uint64_t)) == i);
+
+  // SHA256
+  FilterPipeline sha_256_pipeline;
+  ChecksumMD5Filter sha_256_filter;
+  CHECK(sha_256_pipeline.add_filter(sha_256_filter).ok());
+  CHECK(sha_256_pipeline.run_forward(&tile).ok());
+  CHECK(sha_256_pipeline.run_reverse(&tile, config).ok());
+  tile_buff = tile.buffer();
+  for (uint64_t i = 0; i < nelts; i++)
+    REQUIRE(tile_buff->value<uint64_t>(i * sizeof(uint64_t)) == i);
+}
+
 TEST_CASE("Filter: Test bit width reduction", "[filter]") {
+  Config config;
+
   // Set up test data
   const uint64_t nelts = 1000;
   Buffer buff;
@@ -1197,7 +1269,7 @@ TEST_CASE("Filter: Test bit width reduction", "[filter]") {
     auto compressed_size = buff.size();
     CHECK(compressed_size < nelts * sizeof(uint64_t));
 
-    CHECK(pipeline.run_reverse(&tile).ok());
+    CHECK(pipeline.run_reverse(&tile, config).ok());
     CHECK(tile.buffer() == &buff);
     CHECK(tile.buffer()->size() == nelts * sizeof(uint64_t));
     tile.buffer()->reset_offset();
@@ -1213,7 +1285,7 @@ TEST_CASE("Filter: Test bit width reduction", "[filter]") {
           window_size);
 
       CHECK(pipeline.run_forward(&tile).ok());
-      CHECK(pipeline.run_reverse(&tile).ok());
+      CHECK(pipeline.run_reverse(&tile, config).ok());
       CHECK(tile.buffer()->size() == nelts * sizeof(uint64_t));
       tile.buffer()->reset_offset();
       for (uint64_t i = 0; i < nelts; i++)
@@ -1238,7 +1310,7 @@ TEST_CASE("Filter: Test bit width reduction", "[filter]") {
     Tile tile(Datatype::UINT64, sizeof(uint64_t), 0, &buff, false);
 
     CHECK(pipeline.run_forward(&tile).ok());
-    CHECK(pipeline.run_reverse(&tile).ok());
+    CHECK(pipeline.run_reverse(&tile, config).ok());
     CHECK(tile.buffer()->size() == nelts * sizeof(uint64_t));
     tile.buffer()->reset_offset();
     for (uint64_t i = 0; i < nelts; i++)
@@ -1266,7 +1338,7 @@ TEST_CASE("Filter: Test bit width reduction", "[filter]") {
     Tile tile(Datatype::INT32, sizeof(int32_t), 0, &buff, false);
 
     CHECK(pipeline.run_forward(&tile).ok());
-    CHECK(pipeline.run_reverse(&tile).ok());
+    CHECK(pipeline.run_reverse(&tile, config).ok());
     CHECK(tile.buffer()->size() == nelts * sizeof(int32_t));
     tile.buffer()->reset_offset();
     for (uint64_t i = 0; i < nelts; i++)
@@ -1285,7 +1357,7 @@ TEST_CASE("Filter: Test bit width reduction", "[filter]") {
     Tile tile(Datatype::UINT64, sizeof(uint64_t), 0, &buff, false);
 
     CHECK(pipeline.run_forward(&tile).ok());
-    CHECK(pipeline.run_reverse(&tile).ok());
+    CHECK(pipeline.run_reverse(&tile, config).ok());
     CHECK(tile.buffer()->size() == nelts * sizeof(uint64_t));
     tile.buffer()->reset_offset();
     for (uint64_t i = 0; i < nelts; i++)
@@ -1294,6 +1366,8 @@ TEST_CASE("Filter: Test bit width reduction", "[filter]") {
 }
 
 TEST_CASE("Filter: Test positive-delta encoding", "[filter]") {
+  Config config;
+
   // Set up test data
   const uint64_t nelts = 1000;
   Buffer buff;
@@ -1332,7 +1406,7 @@ TEST_CASE("Filter: Test positive-delta encoding", "[filter]") {
         encoded_size == pipeline_metadata_size + filter_metadata_size +
                             nelts * sizeof(uint64_t));
 
-    CHECK(pipeline.run_reverse(&tile).ok());
+    CHECK(pipeline.run_reverse(&tile, config).ok());
     CHECK(tile.buffer() == &buff);
     CHECK(tile.buffer()->size() == nelts * sizeof(uint64_t));
     tile.buffer()->reset_offset();
@@ -1348,7 +1422,7 @@ TEST_CASE("Filter: Test positive-delta encoding", "[filter]") {
           window_size);
 
       CHECK(pipeline.run_forward(&tile).ok());
-      CHECK(pipeline.run_reverse(&tile).ok());
+      CHECK(pipeline.run_reverse(&tile, config).ok());
       CHECK(tile.buffer()->size() == nelts * sizeof(uint64_t));
       tile.buffer()->reset_offset();
       for (uint64_t i = 0; i < nelts; i++)
@@ -1368,6 +1442,8 @@ TEST_CASE("Filter: Test positive-delta encoding", "[filter]") {
 }
 
 TEST_CASE("Filter: Test bitshuffle", "[filter]") {
+  Config config;
+
   // Set up test data
   const uint64_t nelts = 1000;
   Buffer buff;
@@ -1382,7 +1458,7 @@ TEST_CASE("Filter: Test bitshuffle", "[filter]") {
 
   SECTION("- Single stage") {
     CHECK(pipeline.run_forward(&tile).ok());
-    CHECK(pipeline.run_reverse(&tile).ok());
+    CHECK(pipeline.run_reverse(&tile, config).ok());
     CHECK(tile.buffer()->size() == nelts * sizeof(uint64_t));
     tile.buffer()->reset_offset();
     for (uint64_t i = 0; i < nelts; i++)
@@ -1398,7 +1474,7 @@ TEST_CASE("Filter: Test bitshuffle", "[filter]") {
     Tile tile2(Datatype::UINT32, sizeof(uint32_t), 0, &buff2, false);
 
     CHECK(pipeline.run_forward(&tile2).ok());
-    CHECK(pipeline.run_reverse(&tile2).ok());
+    CHECK(pipeline.run_reverse(&tile2, config).ok());
     CHECK(tile2.buffer()->size() == nelts * sizeof(uint32_t));
     tile2.buffer()->reset_offset();
     for (uint32_t i = 0; i < nelts; i++)
@@ -1407,6 +1483,8 @@ TEST_CASE("Filter: Test bitshuffle", "[filter]") {
 }
 
 TEST_CASE("Filter: Test byteshuffle", "[filter]") {
+  Config config;
+
   // Set up test data
   const uint64_t nelts = 1000;
   Buffer buff;
@@ -1421,7 +1499,7 @@ TEST_CASE("Filter: Test byteshuffle", "[filter]") {
 
   SECTION("- Single stage") {
     CHECK(pipeline.run_forward(&tile).ok());
-    CHECK(pipeline.run_reverse(&tile).ok());
+    CHECK(pipeline.run_reverse(&tile, config).ok());
     CHECK(tile.buffer()->size() == nelts * sizeof(uint64_t));
     tile.buffer()->reset_offset();
     for (uint64_t i = 0; i < nelts; i++)
@@ -1437,7 +1515,7 @@ TEST_CASE("Filter: Test byteshuffle", "[filter]") {
     Tile tile2(Datatype::UINT32, sizeof(uint32_t), 0, &buff2, false);
 
     CHECK(pipeline.run_forward(&tile2).ok());
-    CHECK(pipeline.run_reverse(&tile2).ok());
+    CHECK(pipeline.run_reverse(&tile2, config).ok());
     CHECK(tile2.buffer()->size() == nelts * sizeof(uint32_t));
     tile2.buffer()->reset_offset();
     for (uint32_t i = 0; i < nelts; i++)
@@ -1446,6 +1524,8 @@ TEST_CASE("Filter: Test byteshuffle", "[filter]") {
 }
 
 TEST_CASE("Filter: Test encryption", "[filter], [encryption]") {
+  Config config;
+
   // Set up test data
   const uint64_t nelts = 1000;
   Buffer buff;
@@ -1471,7 +1551,7 @@ TEST_CASE("Filter: Test encryption", "[filter], [encryption]") {
 
     // Check success
     CHECK(pipeline.run_forward(&tile).ok());
-    CHECK(pipeline.run_reverse(&tile).ok());
+    CHECK(pipeline.run_reverse(&tile, config).ok());
     CHECK(tile.buffer()->size() == nelts * sizeof(uint64_t));
     tile.buffer()->reset_offset();
     for (uint64_t i = 0; i < nelts; i++)
@@ -1481,14 +1561,14 @@ TEST_CASE("Filter: Test encryption", "[filter], [encryption]") {
     CHECK(pipeline.run_forward(&tile).ok());
     key[0]++;
     CHECK(filter->set_key(key).ok());
-    CHECK(!pipeline.run_reverse(&tile).ok());
+    CHECK(!pipeline.run_reverse(&tile, config).ok());
 
     // Fix key and check success. Note: this test depends on the implementation
     // leaving the tile data unmodified when the decryption fails, which is not
     // true in general use of the filter pipeline.
     key[0]--;
     CHECK(filter->set_key(key).ok());
-    CHECK(pipeline.run_reverse(&tile).ok());
+    CHECK(pipeline.run_reverse(&tile, config).ok());
     CHECK(tile.buffer()->size() == nelts * sizeof(uint64_t));
     tile.buffer()->reset_offset();
     for (uint64_t i = 0; i < nelts; i++)

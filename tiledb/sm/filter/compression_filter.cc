@@ -243,7 +243,10 @@ Status CompressionFilter::run_reverse(
     FilterBuffer* input_metadata,
     FilterBuffer* input,
     FilterBuffer* output_metadata,
-    FilterBuffer* output) const {
+    FilterBuffer* output,
+    const Config& config) const {
+  (void)config;
+
   // Easy case: no compression
   if (compressor_ == Compressor::NO_COMPRESSION) {
     RETURN_NOT_OK(output->append_view(input));

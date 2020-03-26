@@ -33,6 +33,7 @@
 #ifndef TILEDB_FILTER_H
 #define TILEDB_FILTER_H
 
+#include "tiledb/sm/config/config.h"
 #include "tiledb/sm/misc/status.h"
 
 namespace tiledb {
@@ -136,7 +137,8 @@ class Filter {
       FilterBuffer* input_metadata,
       FilterBuffer* input,
       FilterBuffer* output_metadata,
-      FilterBuffer* output) const = 0;
+      FilterBuffer* output,
+      const Config& config) const = 0;
 
   /**
    * Sets an option on this filter.

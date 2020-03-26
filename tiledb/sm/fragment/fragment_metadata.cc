@@ -1462,7 +1462,8 @@ Status FragmentMetadata::load_v1_v2(const EncryptionKey& encryption_key) {
   // Read metadata
   TileIO tile_io(storage_manager_, fragment_metadata_uri);
   auto tile = (Tile*)nullptr;
-  RETURN_NOT_OK(tile_io.read_generic(&tile, 0, encryption_key));
+  RETURN_NOT_OK(tile_io.read_generic(
+      &tile, 0, encryption_key, storage_manager_->config()));
   tile->disown_buff();
   auto buff = tile->buffer();
   STATS_COUNTER_ADD(fragment_metadata_bytes_read, tile_io.file_size());
@@ -1675,7 +1676,8 @@ Status FragmentMetadata::read_generic_tile_from_file(
   // Read metadata
   TileIO tile_io(storage_manager_, fragment_metadata_uri);
   auto tile = (Tile*)nullptr;
-  RETURN_NOT_OK(tile_io.read_generic(&tile, offset, encryption_key));
+  RETURN_NOT_OK(tile_io.read_generic(
+      &tile, offset, encryption_key, storage_manager_->config()));
   tile->buffer()->swap(*buff);
   delete tile;
 

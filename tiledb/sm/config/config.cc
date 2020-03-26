@@ -68,6 +68,7 @@ const std::string Config::SM_NUM_TBB_THREADS =
 #else
 const std::string Config::SM_NUM_TBB_THREADS = "-1";
 #endif
+const std::string Config::SM_SKIP_CHECKSUM_VALIDATION = "false";
 const std::string Config::SM_CONSOLIDATION_AMPLIFICATION = "1.0";
 const std::string Config::SM_CONSOLIDATION_BUFFER_SIZE = "50000000";
 const std::string Config::SM_CONSOLIDATION_STEPS = "4294967295";
@@ -156,6 +157,7 @@ Config::Config() {
   param_values_["sm.num_reader_threads"] = SM_NUM_READER_THREADS;
   param_values_["sm.num_writer_threads"] = SM_NUM_WRITER_THREADS;
   param_values_["sm.num_tbb_threads"] = SM_NUM_TBB_THREADS;
+  param_values_["sm.skip_checksum_validation"] = SM_SKIP_CHECKSUM_VALIDATION;
   param_values_["sm.consolidation.amplification"] =
       SM_CONSOLIDATION_AMPLIFICATION;
   param_values_["sm.consolidation.buffer_size"] = SM_CONSOLIDATION_BUFFER_SIZE;

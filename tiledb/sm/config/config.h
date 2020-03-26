@@ -117,6 +117,9 @@ class Config {
   /** The number of threads allocated for TBB. */
   static const std::string SM_NUM_TBB_THREADS;
 
+  /** If `true`, checksum validation will be skipped on reads. */
+  static const std::string SM_SKIP_CHECKSUM_VALIDATION;
+
   /**
    * The factor by which the size of the dense fragment resulting
    * from consolidating a set of fragments (containing at least one

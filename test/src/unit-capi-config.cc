@@ -229,6 +229,7 @@ void check_save_to_file() {
   ss << "sm.num_reader_threads 1\n";
   ss << "sm.num_tbb_threads -1\n";
   ss << "sm.num_writer_threads 1\n";
+  ss << "sm.skip_checksum_validation false\n";
   ss << "sm.tile_cache_size 10000000\n";
   ss << "vfs.azure.block_list_block_size 5242880\n";
   ss << "vfs.azure.max_parallel_ops " << std::thread::hardware_concurrency()
@@ -424,6 +425,7 @@ TEST_CASE("C API: Test config iter", "[capi], [config]") {
   all_param_values["sm.num_reader_threads"] = "1";
   all_param_values["sm.num_writer_threads"] = "1";
   all_param_values["sm.num_tbb_threads"] = "-1";
+  all_param_values["sm.skip_checksum_validation"] = "false";
   all_param_values["sm.consolidation.amplification"] = "1.0";
   all_param_values["sm.consolidation.steps"] = "4294967295";
   all_param_values["sm.consolidation.step_min_frags"] = "4294967295";

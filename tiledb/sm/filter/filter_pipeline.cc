@@ -261,7 +261,8 @@ Status FilterPipeline::filter_chunks_forward(
 
 Status FilterPipeline::filter_chunks_reverse(
     const std::vector<std::tuple<void*, uint32_t, uint32_t, uint32_t>>& chunks,
-    Buffer* output) const {
+    Buffer* output,
+    const Config& config) const {
   // Precompute the offsets for the final chunks in the shared output buffer.
   std::vector<uint64_t> chunk_dest_offsets(chunks.size());
   uint64_t chunk_dest_offset = 0;
@@ -317,7 +318,11 @@ Status FilterPipeline::filter_chunks_reverse(
       }
 
       RETURN_NOT_OK(f->run_reverse(
-          &input_metadata, &input_data, &output_metadata, &output_data));
+          &input_metadata,
+          &input_data,
+          &output_metadata,
+          &output_data,
+          config));
 
       input_data.set_read_only(false);
       input_metadata.set_read_only(false);
@@ -383,7 +388,7 @@ Status FilterPipeline::run_forward(Tile* tile) const {
   STATS_FUNC_OUT(filter_pipeline_run_forward);
 }
 
-Status FilterPipeline::run_reverse(Tile* tile) const {
+Status FilterPipeline::run_reverse(Tile* tile, const Config& config) const {
   STATS_FUNC_IN(filter_pipeline_run_reverse);
 
   auto tile_buff = tile->buffer();
@@ -422,7 +427,7 @@ Status FilterPipeline::run_reverse(Tile* tile) const {
 
   // Run the filters in reverse over all the chunks into the unfiltered_tile
   // buffer.
-  RETURN_NOT_OK(filter_chunks_reverse(chunks, &unfiltered_tile));
+  RETURN_NOT_OK(filter_chunks_reverse(chunks, &unfiltered_tile, config));
 
   // Replace the tile's buffer with the unfiltered buffer.
   RETURN_NOT_OK(tile->buffer()->swap(unfiltered_tile));
