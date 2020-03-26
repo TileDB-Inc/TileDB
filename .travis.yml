@@ -20,7 +20,7 @@ matrix:
     - os: osx
 
 before_install:
-    - git clone https://github.com/TileDB-Inc/TileDB-Unit-Test-Arrays.git test/inputs/arrays/read_compatibility_test
+    - git clone -b 1.6.0 https://github.com/TileDB-Inc/TileDB-Unit-Test-Arrays.git test/inputs/arrays/read_compatibility_test
 
 install:
     # Install clangformat (v5.0)
