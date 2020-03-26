@@ -193,7 +193,7 @@ if (TILEDB_AZURE)
 endif()
 
 if (TILEDB_TBB)
-  target_compile_definitions(tiledb_unit PRIVATE -DHAVE_TBB)
+  target_compile_definitions(tiledb_unit PRIVATE -DHAVE_TBB -DTBB_SUPPRESS_DEPRECATED_MESSAGES)
 endif()
 
 if (TILEDB_SERIALIZATION)
