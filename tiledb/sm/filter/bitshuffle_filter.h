@@ -96,7 +96,8 @@ class BitshuffleFilter : public Filter {
       FilterBuffer* input_metadata,
       FilterBuffer* input,
       FilterBuffer* output_metadata,
-      FilterBuffer* output) const override;
+      FilterBuffer* output,
+      const Config& config) const override;
 
  private:
   /** Returns a new clone of this filter. */

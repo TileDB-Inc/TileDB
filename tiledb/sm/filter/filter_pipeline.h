@@ -209,7 +209,7 @@ class FilterPipeline {
    * @param tile Tile to filter
    * @return Status
    */
-  Status run_reverse(Tile* tile) const;
+  Status run_reverse(Tile* tile, const Config& config) const;
 
   /**
    * Serializes the pipeline metadata into a binary buffer.
@@ -284,12 +284,14 @@ class FilterPipeline {
    * @param chunks Chunks to process. Format is
    *    (data ptr, filtered size, original size, metadata size).
    * @param output Buffer where output of last stage will be written.
+   * @param config The global config.
    * @return Status
    */
   Status filter_chunks_reverse(
       const std::vector<std::tuple<void*, uint32_t, uint32_t, uint32_t>>&
           chunks,
-      Buffer* output) const;
+      Buffer* output,
+      const Config& config) const;
 };
 
 }  // namespace sm

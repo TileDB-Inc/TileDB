@@ -94,23 +94,10 @@ class ChecksumMD5Filter : public Filter {
       FilterBuffer* input_metadata,
       FilterBuffer* input,
       FilterBuffer* output_metadata,
-      FilterBuffer* output) const override;
-
-  /**
-   * Returns skip validation parameter
-   * @return skip_validation
-   */
-  bool skip_validation() const;
-
-  /**
-   * Sets skip validation parameter
-   */
-  void skip_validation(bool skip_validation);
+      FilterBuffer* output,
+      const Config& config) const override;
 
  private:
-  /** Skip validation of checksums on reverse */
-  bool skip_validation_;
-
   /** Returns a new clone of this filter. */
   ChecksumMD5Filter* clone_impl() const override;
 
