@@ -433,6 +433,20 @@ Status Consolidator::consolidate_fragment_meta(
     offset += sizeof(uint64_t);                      // Offset
   }
 
+  // Compute new URI
+  URI uri;
+  auto first = meta.front()->fragment_uri();
+  auto last = meta.back()->fragment_uri();
+  RETURN_NOT_OK(compute_new_fragment_uri(first, last, &uri));
+  uri = URI(uri.to_string() + constants::meta_file_suffix);
+
+  // Get the consolidated fragment metadata version
+  auto meta_name = uri.remove_trailing_slash().last_path_part();
+  auto pos = meta_name.find_last_of('.');
+  meta_name = (pos == std::string::npos) ? meta_name : meta_name.substr(0, pos);
+  uint32_t meta_version = 0;
+  RETURN_NOT_OK(utils::parse::get_fragment_version(meta_name, &meta_version));
+
   // Serialize all fragment names and footer offsets into a single buffer
   uint64_t footer_size = 0;
   for (auto m : meta) {
@@ -442,20 +456,13 @@ Status Consolidator::consolidate_fragment_meta(
     buff.write(&name_size, sizeof(uint64_t));
     buff.write(name.c_str(), name_size);
     buff.write(&offset, sizeof(uint64_t));
-    RETURN_NOT_OK(m->get_footer_size(&footer_size));
+    RETURN_NOT_OK(m->get_footer_size(meta_version, &footer_size));
     offset += footer_size;
   }
 
   // Serialize all fragment metadata footers into a single buffer
   for (auto m : meta)
     m->write_footer(&buff);
-
-  // Compute new URI
-  URI uri;
-  auto first = meta.front()->fragment_uri();
-  auto last = meta.back()->fragment_uri();
-  RETURN_NOT_OK(compute_new_fragment_uri(first, last, &uri));
-  uri = URI(uri.to_string() + constants::meta_file_suffix);
 
   // Close array
   RETURN_NOT_OK(array.close());

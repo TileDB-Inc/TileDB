@@ -1711,14 +1711,6 @@ Status StorageManager::array_open_without_fragments(
     return LOG_STATUS(Status::StorageManagerError(
         "Cannot open array; URI scheme unsupported."));
 
-  // Check if array exists
-  ObjectType obj_type;
-  RETURN_NOT_OK(this->object_type(array_uri, &obj_type));
-  if (obj_type != ObjectType::ARRAY) {
-    return LOG_STATUS(
-        Status::StorageManagerError("Cannot open array; Array does not exist"));
-  }
-
   // Lock mutexes
   {
     std::lock_guard<std::mutex> lock{open_array_for_reads_mtx_};
@@ -1856,7 +1848,6 @@ Status StorageManager::load_fragment_metadata(
   fragment_metadata->resize(fragment_num);
   uint32_t f_version;
   auto statuses = parallel_for(0, fragment_num, [&](size_t f) {
-    //  for(unsigned f=0; f<fragment_num; ++f) {
     const auto& sf = fragments_to_load[f];
     auto array_schema = open_array->array_schema();
     auto metadata = open_array->fragment_metadata(sf.uri_);
@@ -1901,7 +1892,6 @@ Status StorageManager::load_fragment_metadata(
   });
   for (auto st : statuses)
     RETURN_NOT_OK(st);
-  //  }
 
   STATS_COUNTER_ADD(fragment_metadata_num_fragments, fragment_num);
 

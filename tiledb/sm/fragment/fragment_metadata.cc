@@ -663,18 +663,19 @@ Status FragmentMetadata::write_footer(Buffer* buff) const {
 /*        PRIVATE METHODS         */
 /* ****************************** */
 
-Status FragmentMetadata::get_footer_size(uint64_t* size) const {
-  uint32_t f_version;
-  auto name = fragment_uri_.remove_trailing_slash().last_path_part();
-  RETURN_NOT_OK(utils::parse::get_fragment_name_version(name, &f_version));
-  *size = (f_version < 3) ? footer_size_v3_v4() : footer_size_v5_or_higher();
+Status FragmentMetadata::get_footer_size(
+    uint32_t version, uint64_t* size) const {
+  *size = (version < 3) ? footer_size_v3_v4() : footer_size_v5_or_higher();
 
   return Status::Ok();
 }
 
 Status FragmentMetadata::get_footer_offset_and_size(
     uint64_t* offset, uint64_t* size) const {
-  RETURN_NOT_OK(get_footer_size(size));
+  uint32_t f_version;
+  auto name = fragment_uri_.remove_trailing_slash().last_path_part();
+  RETURN_NOT_OK(utils::parse::get_fragment_name_version(name, &f_version));
+  RETURN_NOT_OK(get_footer_size(f_version, size));
   *offset = meta_file_size_ - *size;
 
   return Status::Ok();
@@ -1410,7 +1411,7 @@ Status FragmentMetadata::load_generic_tile_offsets(
     ConstBuffer* buff, uint32_t version) {
   if (version == 3 || version == 4)
     return load_generic_tile_offsets_v3_v4(buff);
-  else if (version_ > 4)
+  else if (version > 4)
     return load_generic_tile_offsets_v5_or_higher(buff);
 
   assert(false);

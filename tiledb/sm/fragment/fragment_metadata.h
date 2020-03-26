@@ -355,7 +355,7 @@ class FragmentMetadata {
    * Retrieves the size of the fragment metadata footer
    * (which contains the generic tile offsets) along with its size.
    */
-  Status get_footer_size(uint64_t* size) const;
+  Status get_footer_size(uint32_t version, uint64_t* size) const;
 
   /** Returns the MBR of the input tile. */
   const NDRange& mbr(uint64_t tile_idx) const;
