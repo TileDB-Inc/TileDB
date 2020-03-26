@@ -1217,9 +1217,12 @@ Status Reader::compute_result_coords(
   std::map<FragTilePair, size_t> result_tile_map;
   std::vector<bool> single_fragment;
 
-  // TODO: remove template
   RETURN_CANCEL_OR_ERROR(compute_sparse_result_tiles(
       result_tiles, &result_tile_map, &single_fragment));
+
+      std::cout << "computed sparse result tiles\n";
+
+      std::cout << "tile num: " << result_tiles->size() << "\n";
 
   if (result_tiles->empty())
     return Status::Ok();
@@ -1233,7 +1236,12 @@ Status Reader::compute_result_coords(
   // Read and unfilter coordinate tiles
   // NOTE: these will ignore tiles of fragments with format version >=5
   RETURN_CANCEL_OR_ERROR(read_tiles(constants::coords, tmp_result_tiles));
+
+      std::cout << "read coordinate tiles\n";
+
   RETURN_CANCEL_OR_ERROR(unfilter_tiles(constants::coords, tmp_result_tiles));
+
+      std::cout << "unfiltered coordinate tiles\n";
 
   // Read and unfilter coordinate tiles
   // NOTE: these will ignore tiles of fragments with format version <5
@@ -1244,16 +1252,22 @@ Status Reader::compute_result_coords(
     RETURN_CANCEL_OR_ERROR(unfilter_tiles(dim_name, tmp_result_tiles));
   }
 
+      std::cout << "non-zipped coordinate tiles\n";
+
   // Compute the read coordinates for all fragments for each subarray range
   std::vector<std::vector<ResultCoords>> range_result_coords;
   RETURN_CANCEL_OR_ERROR(compute_range_result_coords(
       single_fragment, result_tile_map, result_tiles, &range_result_coords));
   result_tile_map.clear();
 
+      std::cout << "computed range result coords\n";
+
   // Compute final coords (sorted in the result layout) of the whole subarray.
   RETURN_CANCEL_OR_ERROR(
       compute_subarray_coords(&range_result_coords, result_coords));
   range_result_coords.clear();
+
+      std::cout << "computed subarray coords\n";
 
   return Status::Ok();
 }
@@ -1821,11 +1835,15 @@ Status Reader::read_tiles(
   std::vector<std::future<Status>> tasks;
   RETURN_CANCEL_OR_ERROR(read_tiles(name, result_tiles, &tasks));
 
+  std::cout << "created vfs tasks\n";
+
   // Wait for the reads to finish and check statuses.
   auto statuses =
       storage_manager_->reader_thread_pool()->wait_all_status(tasks);
   for (const auto& st : statuses)
     RETURN_CANCEL_OR_ERROR(st);
+
+    std::cout << "tasks done\n";
 
   return Status::Ok();
 }
@@ -2010,11 +2028,15 @@ Status Reader::sparse_read() {
   for (auto& srt : sparse_result_tiles)
     result_tiles.push_back(&srt);
 
+    std::cout << "computed result coords\n";
+
   // Compute result cell slabs
   std::vector<ResultCellSlab> result_cell_slabs;
   RETURN_CANCEL_OR_ERROR(
       compute_result_cell_slabs(result_coords, &result_cell_slabs));
   result_coords.clear();
+
+    std::cout << "computed result cell slabs\n";
 
   uint64_t stride = UINT64_MAX;
 
@@ -2035,8 +2057,14 @@ Status Reader::sparse_read() {
       continue;
 
     RETURN_CANCEL_OR_ERROR(read_tiles(name, result_tiles));
+
+
+    std::cout << "read tiles\n";
+
     RETURN_CANCEL_OR_ERROR(unfilter_tiles(name, result_tiles));
+    std::cout << "unfiltered tiles\n";
     RETURN_CANCEL_OR_ERROR(copy_cells(name, stride, result_cell_slabs));
+    std::cout << "copied cells\n";
     clear_tiles(name, result_tiles);
   }
 

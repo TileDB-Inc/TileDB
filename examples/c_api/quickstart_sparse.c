@@ -36,7 +36,7 @@
 #include <tiledb/tiledb.h>
 
 // Name of array.
-const char* array_name = "quickstart_sparse_array";
+const char* array_name = "s3://synthetic-lidar/random_points";
 
 void create_array() {
   // Create TileDB context
@@ -119,27 +119,35 @@ void write_array() {
 }
 
 void read_array() {
+
+  tiledb_config_t* config;
+  tiledb_error_t* error;
+  tiledb_config_alloc(&config, &error);
+  tiledb_config_set(
+      config, "sm.num_reader_threads", "16", &error);
+  tiledb_config_set(
+      config, "vfs.num_threads", "16", &error);
+
   // Create TileDB context
   tiledb_ctx_t* ctx;
-  tiledb_ctx_alloc(NULL, &ctx);
+  tiledb_ctx_alloc(config, &ctx);
+
+  printf("Opening array\n");
 
   // Open array for reading
   tiledb_array_t* array;
   tiledb_array_alloc(ctx, array_name, &array);
   tiledb_array_open(ctx, array, TILEDB_READ);
 
+  printf("Array open\n");
+
   // Slice only rows 1, 2 and cols 2, 3, 4
-  int subarray[] = {1, 2, 2, 4};
+  double subarray[] = {717500.0, 718000.0, 3275500.0, 3276000.0, -600.0, 200};
 
   // Calculate maximum buffer sizes
-  uint64_t coords_size;
-  uint64_t data_size;
-  tiledb_array_max_buffer_size(ctx, array, "a", subarray, &data_size);
-  tiledb_array_max_buffer_size(
-      ctx, array, TILEDB_COORDS, subarray, &coords_size);
+  uint64_t data_size = 100000000 * sizeof(uint16_t);
 
   // Prepare the vector that will hold the result
-  int* coords = (int*)malloc(coords_size);
   int* data = (int*)malloc(data_size);
 
   // Create query
@@ -147,32 +155,32 @@ void read_array() {
   tiledb_query_alloc(ctx, array, TILEDB_READ, &query);
   tiledb_query_set_subarray(ctx, query, subarray);
   tiledb_query_set_layout(ctx, query, TILEDB_ROW_MAJOR);
-  tiledb_query_set_buffer(ctx, query, "a", data, &data_size);
-  tiledb_query_set_buffer(ctx, query, TILEDB_COORDS, coords, &coords_size);
+  tiledb_query_set_buffer(ctx, query, "Red", data, &data_size);
 
   // Submit query
   tiledb_query_submit(ctx, query);
 
+  tiledb_query_status_t status;
+  tiledb_query_get_status(ctx, query, &status);
+  if(status == TILEDB_COMPLETED)
+    printf("COMPLETED\n");
+  else
+    printf("INCOMPLETE\n");
+
   // Close array
   tiledb_array_close(ctx, array);
 
-  // Print out the results.
-  int result_num = (int)(data_size / sizeof(int));
-  for (int r = 0; r < result_num; r++) {
-    int i = coords[2 * r], j = coords[2 * r + 1];
-    int a = data[r];
-    printf("Cell (%d, %d) has data %d\n", i, j, a);
-  }
-
   // Clean up
-  free((void*)coords);
   free((void*)data);
   tiledb_array_free(&array);
   tiledb_query_free(&query);
   tiledb_ctx_free(&ctx);
+  tiledb_config_free(&config);
 }
 
 int main() {
+/*
+
   // Get object type
   tiledb_ctx_t* ctx;
   tiledb_ctx_alloc(NULL, &ctx);
@@ -184,6 +192,21 @@ int main() {
     create_array();
     write_array();
   }
+  */
+
+/*
+  tiledb_config_t* config;
+  tiledb_error_t* error;
+  tiledb_config_alloc(&config, &error);
+  tiledb_config_set(
+      config, "sm.consolidation.only_fragment_meta", "true", &error);
+
+  tiledb_ctx_t* ctx;
+  tiledb_ctx_alloc(NULL, &ctx);
+  tiledb_array_consolidate(ctx, array_name, config);
+  tiledb_config_free(&config);
+  tiledb_ctx_free(&ctx);
+/*/
 
   read_array();
 
