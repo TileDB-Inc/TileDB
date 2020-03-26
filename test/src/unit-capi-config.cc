@@ -186,8 +186,7 @@ void check_save_to_file() {
   REQUIRE(rc == TILEDB_OK);
   CHECK(error == nullptr);
   // Check that aws session token is not serialized.
-  rc = tiledb_config_set(
-      config, "vfs.s3.aws_session_token", "token", &error);
+  rc = tiledb_config_set(config, "vfs.s3.aws_session_token", "token", &error);
   REQUIRE(rc == TILEDB_OK);
   CHECK(error == nullptr);
 
