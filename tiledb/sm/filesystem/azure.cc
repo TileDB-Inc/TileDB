@@ -282,7 +282,7 @@ Status Azure::flush_blob(const URI& uri) {
 
   // Release all instance state associated with this block list
   // transactions so that we can safely return if the following
-  // request fails.
+  // request failed.
   finish_block_list_upload(uri);
 
   std::future<azure::storage_lite::storage_outcome<void>> result =

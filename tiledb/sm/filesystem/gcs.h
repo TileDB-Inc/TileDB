@@ -275,11 +275,27 @@ class GCS {
   /*         PRIVATE DATATYPES         */
   /* ********************************* */
 
-  /** Contains all state associated with a block list upload transaction. */
+  /** Contains all state associated with a part list upload transaction. */
   class MultiPartUploadState {
    public:
-    MultiPartUploadState()
-        : st_(Status::Ok()) {
+    MultiPartUploadState(const std::string& object_path)
+        : object_path_(remove_trailing_slash(object_path))
+        , next_part_id_(0)
+        , st_(Status::Ok()) {
+    }
+
+    /* Generates the next part path. */
+    std::string next_part_path() {
+      const uint64_t part_id = next_part_id_++;
+      const std::string part_path =
+          object_path_ + "__tiledb_" + std::to_string(part_id);
+      part_paths_.emplace_back(part_path);
+      return part_path;
+    }
+
+    /* Returns all generated part paths. */
+    std::vector<std::string> get_part_paths() const {
+      return part_paths_;
     }
 
     /* Returns the aggregate status. */
@@ -295,13 +311,25 @@ class GCS {
     }
 
    private:
-    // The aggregate status. If any individual block
+    // The object path for the final composed object.
+    std::string object_path_;
+
+    // The next part id to generate.
+    uint64_t next_part_id_;
+
+    // A list of all generated part ids.
+    std::vector<std::string> part_paths_;
+
+    // The aggregate status. If any individual part
     // upload fails, this will be in a non-OK status.
     Status st_;
   };
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
   /* ********************************* */
+
+  /** The VFS thread pool. */
+  ThreadPool* thread_pool_;
 
   // The GCS project id.
   std::string project_id_;
@@ -321,13 +349,13 @@ class GCS {
   /**  The maximum number of parallel requests. */
   uint64_t max_parallel_ops_;
 
-  /**  The target block size in a block list upload */
-  uint64_t multi_part_block_size_;
+  /**  The target part size in a part list upload */
+  uint64_t multi_part_part_size_;
 
-  /** Whether or not to use block list upload. */
+  /** Whether or not to use part list upload. */
   bool use_multi_part_upload_;
 
-  /** Maps a object URI to its block list upload state. */
+  /** Maps a object URI to its part list upload state. */
   std::unordered_map<std::string, MultiPartUploadState>
       multi_part_upload_states_;
 
@@ -356,21 +384,21 @@ class GCS {
    *
    * @param path the string to remove the leading slash from.
    */
-  std::string remove_front_slash(const std::string& path) const;
+  static std::string remove_front_slash(const std::string& path);
 
   /**
    * Adds a trailing slash from 'path' if it doesn't already have one.
    *
    * @param path the string to add the trailing slash to.
    */
-  std::string add_trailing_slash(const std::string& path) const;
+  static std::string add_trailing_slash(const std::string& path);
 
   /**
    * Removes a trailing slash from 'path' if it exists.
    *
    * @param path the string to remove the trailing slash from.
    */
-  std::string remove_trailing_slash(const std::string& path) const;
+  static std::string remove_trailing_slash(const std::string& path);
 
   /**
    * Copies the object at 'old_uri' to `new_uri`.
@@ -471,31 +499,73 @@ class GCS {
 
   /**
    * Writes the contents of the input buffer to the object given by
-   * the input `uri` as a new series of block uploads. Resets
+   * the input `uri` as a new series of part uploads. Resets
    * 'write_cache_buffer'.
    *
    * @param uri The object URI.
    * @param write_cache_buffer The input buffer to flush.
-   * @param last_block Should be true only when the flush corresponds to the
-   * last block(s) of a block list upload.
+   * @param last_part Should be true only when the flush corresponds to the
+   * last part(s) of a part list upload.
    * @return Status
    */
   Status flush_write_cache(
-      const URI& uri, Buffer* write_cache_buffer, bool last_block);
+      const URI& uri, Buffer* write_cache_buffer, bool last_part);
 
   /**
-   * Writes the input buffer as an uncommited block to GCS by issuing one
-   * or more block upload requests.
+   * Writes the input buffer as an uncommited part to GCS by issuing one
+   * or more part upload requests.
    *
    * @param uri The object URI.
    * @param buffer The input buffer.
    * @param length The size of the input buffer.
-   * @param last_part Should be true only when this is the last block of a
+   * @param last_part Should be true only when this is the last part of a
    * object.
    * @return Status
    */
-  Status write_blocks(
-      const URI& uri, const void* buffer, uint64_t length, bool last_block);
+  Status write_parts(
+      const URI& uri, const void* buffer, uint64_t length, bool last_part);
+
+  /**
+   * Executes and waits for a single, uncommited part upload.
+   *
+   * @param bucket_name The object's bucket name.
+   * @param object_part_path The object's part path.
+   * @param length The length of `buffer`.
+   * @param part_id A unique integer identifier for this part.
+   * @return Status
+   */
+  Status upload_part(
+      const std::string& bucket_name,
+      const std::string& object_part_path,
+      const void* const buffer,
+      const uint64_t length);
+
+  /**
+   * Performs a best-effort to delete all objects in 'part_paths'.
+   *
+   * @param bucket_name The object's bucket name.
+   * @param part_paths All object part paths to delete.
+   */
+  void delete_parts(
+      const std::string& bucket_name,
+      const std::vector<std::string>& part_paths);
+
+  /**
+   * Executres a delete object request on 'part_path'. This blocks
+   * for a response from the server but does not wait for the object
+   * to be deleted.
+   *
+   * @param bucket_name The object's bucket name.
+   * @param part_path The object part's path to delete.
+   * @return Status
+   */
+  Status delete_part(
+      const std::string& bucket_name, const std::string& part_path);
+
+  /**
+   * Clears all instance state related to a multi-part upload on 'uri'.
+   */
+  void finish_multi_part_upload(const URI& uri);
 
   /**
    * Uploads the write cache buffer associated with 'uri' as an entire

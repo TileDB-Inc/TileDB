@@ -52,7 +52,7 @@ GCS::GCS()
     : project_id_("joe-tiledb")
     , write_cache_max_size_(0)
     , max_parallel_ops_(1)
-    , multi_part_block_size_(0)
+    , multi_part_part_size_(0)
     , use_multi_part_upload_(true) {
 }
 
@@ -63,7 +63,14 @@ GCS::~GCS() {
 /*                 API               */
 /* ********************************* */
 
-Status GCS::init(const Config& /*config*/, ThreadPool* const /*(thread_pool*/) {
+Status GCS::init(const Config& config, ThreadPool* const thread_pool) {
+  if (thread_pool == nullptr) {
+    return LOG_STATUS(
+        Status::GCSError("Can't initialize with null thread pool."));
+  }
+
+  thread_pool_ = thread_pool;
+
   client_ = google::cloud::storage::Client::CreateDefaultClient();
   if (!client_) {
     return LOG_STATUS(Status::GCSError("Failed to initialize GCS Client."));
@@ -71,7 +78,11 @@ Status GCS::init(const Config& /*config*/, ThreadPool* const /*(thread_pool*/) {
 
   // TODO from config
   write_cache_max_size_ = 1024 * 1024 * 1024;
-  use_multi_part_upload_ = false;
+
+  bool found;
+  RETURN_NOT_OK(config.get<bool>(
+      "vfs.gcs.use_multi_part_upload", &use_multi_part_upload_, &found));
+  assert(found);
 
   return Status::Ok();
 }
@@ -258,7 +269,7 @@ Status GCS::remove_dir(const URI& uri) const {
   return Status::Ok();
 }
 
-std::string GCS::remove_front_slash(const std::string& path) const {
+std::string GCS::remove_front_slash(const std::string& path) {
   if (path.front() == '/') {
     return path.substr(1, path.length());
   }
@@ -266,7 +277,7 @@ std::string GCS::remove_front_slash(const std::string& path) const {
   return path;
 }
 
-std::string GCS::add_trailing_slash(const std::string& path) const {
+std::string GCS::add_trailing_slash(const std::string& path) {
   if (path.back() != '/') {
     return path + "/";
   }
@@ -274,7 +285,7 @@ std::string GCS::add_trailing_slash(const std::string& path) const {
   return path;
 }
 
-std::string GCS::remove_trailing_slash(const std::string& path) const {
+std::string GCS::remove_trailing_slash(const std::string& path) {
   if (path.back() == '/') {
     return path.substr(0, path.length() - 1);
   }
@@ -567,7 +578,7 @@ Status GCS::write(
   uint64_t offset = nbytes_filled;
   while (new_length > 0) {
     if (new_length >= write_cache_max_size_) {
-      RETURN_NOT_OK(write_blocks(
+      RETURN_NOT_OK(write_parts(
           uri,
           static_cast<const char*>(buffer) + offset,
           write_cache_max_size_,
@@ -620,14 +631,10 @@ Status GCS::object_size(const URI& uri, uint64_t* const nbytes) const {
 }
 
 Buffer* GCS::get_write_cache_buffer(const std::string& uri) {
-  // The unordered_map routines 'count' and 'at' are thread-safe.
-  // This class only guarantees thread-safety among different object
-  // URIs so we do not need to worry about the 'uri' element
-  // disappearing between 'count' and 'at'.
+  std::unique_lock<std::mutex> map_lock(write_cache_map_lock_);
   if (write_cache_map_.count(uri) > 0) {
     return &write_cache_map_.at(uri);
   } else {
-    std::unique_lock<std::mutex> map_lock(write_cache_map_lock_);
     return &write_cache_map_[uri];
   }
 }
@@ -652,15 +659,12 @@ Status GCS::fill_write_cache(
 }
 
 Status GCS::flush_write_cache(
-    const URI& uri, Buffer* const write_cache_buffer, const bool last_block) {
+    const URI& uri, Buffer* const write_cache_buffer, const bool last_part) {
   assert(write_cache_buffer);
 
   if (write_cache_buffer->size() > 0) {
-    const Status st = write_blocks(
-        uri,
-        write_cache_buffer->data(),
-        write_cache_buffer->size(),
-        last_block);
+    const Status st = write_parts(
+        uri, write_cache_buffer->data(), write_cache_buffer->size(), last_part);
     write_cache_buffer->reset_size();
     RETURN_NOT_OK(st);
   }
@@ -668,30 +672,34 @@ Status GCS::flush_write_cache(
   return Status::Ok();
 }
 
-Status GCS::write_blocks(
+Status GCS::write_parts(
     const URI& uri,
-    const void* const /*buffer*/,
+    const void* const buffer,
     const uint64_t length,
-    const bool last_block) {
+    const bool last_part) {
   if (!uri.is_gcs()) {
     return LOG_STATUS(Status::GCSError(
         std::string("URI is not an GCS URI: " + uri.to_string())));
   }
 
-  // Ensure that each thread is responsible for exactly multi_part_block_size_
-  // bytes (except if this is the last block, in which case the final
+  // Ensure that each thread is responsible for exactly multi_part_part_size_
+  // bytes (except if this is the last part, in which case the final
   // thread should write less). Cap the number of parallel operations at the
   // configured max number. Length must be evenly divisible by
-  // multi_part_block_size_ unless this is the last block.
-  uint64_t num_ops = last_block ?
-                         utils::math::ceil(length, multi_part_block_size_) :
-                         (length / multi_part_block_size_);
+  // multi_part_part_size_ unless this is the last part.
+  uint64_t num_ops = last_part ?
+                         utils::math::ceil(length, multi_part_part_size_) :
+                         (length / multi_part_part_size_);
   num_ops = std::min(std::max(num_ops, uint64_t(1)), max_parallel_ops_);
 
-  if (!last_block && length % multi_part_block_size_ != 0) {
+  if (!last_part && length % multi_part_part_size_ != 0) {
     return LOG_STATUS(
-        Status::S3Error("Length not evenly divisible by block size"));
+        Status::S3Error("Length not evenly divisible by part size"));
   }
+
+  std::string bucket_name;
+  std::string object_path;
+  RETURN_NOT_OK(parse_gcs_uri(uri, &bucket_name, &object_path));
 
   // Protect 'multi_part_upload_states_' from concurrent read and writes.
   std::unique_lock<std::mutex> states_lock(multi_part_upload_states_lock_);
@@ -706,7 +714,7 @@ Status GCS::write_blocks(
     }
 
     // Instantiate the new state.
-    MultiPartUploadState state;
+    MultiPartUploadState state(object_path);
 
     // Store the new state.
     const std::pair<
@@ -725,16 +733,63 @@ Status GCS::write_blocks(
   // 'multi_part_upload_states_'.
   states_lock.unlock();
 
-  std::string bucket_name;
-  std::string object_path;
-  RETURN_NOT_OK(parse_gcs_uri(uri, &bucket_name, &object_path));
-
   if (num_ops == 1) {
-    LOG_FATAL("Unreached -- TODO");
-    if (state) {
-    }
+    const std::string object_part_path = state->next_part_path();
+
+    const Status st =
+        upload_part(bucket_name, object_part_path, buffer, length);
+    state->update_st(st);
+    return st;
   } else {
-    LOG_FATAL("Unreached -- TODO");
+    std::vector<std::future<Status>> tasks;
+    tasks.reserve(num_ops);
+    for (uint64_t i = 0; i < num_ops; i++) {
+      const uint64_t begin = i * multi_part_part_size_;
+      const uint64_t end =
+          std::min((i + 1) * multi_part_part_size_ - 1, length - 1);
+      const char* const thread_buffer =
+          reinterpret_cast<const char*>(buffer) + begin;
+      const uint64_t thread_buffer_len = end - begin + 1;
+      const std::string object_part_path = state->next_part_path();
+
+      std::function<Status()> upload_part_fn = std::bind(
+          &GCS::upload_part,
+          this,
+          bucket_name,
+          object_part_path,
+          thread_buffer,
+          thread_buffer_len);
+      std::future<Status> task =
+          thread_pool_->enqueue(std::move(upload_part_fn));
+      tasks.emplace_back(std::move(task));
+    }
+
+    const Status st = thread_pool_->wait_all(tasks);
+    state->update_st(st);
+    return st;
+  }
+
+  return Status::Ok();
+}
+
+Status GCS::upload_part(
+    const std::string& bucket_name,
+    const std::string& object_part_path,
+    const void* const buffer,
+    const uint64_t length) {
+  std::string write_buffer(
+      static_cast<const char*>(buffer), static_cast<size_t>(length));
+
+  google::cloud::StatusOr<google::cloud::storage::ObjectMetadata>
+      object_metadata = client_->InsertObject(
+          bucket_name, object_part_path, std::move(write_buffer));
+
+  if (!object_metadata.ok()) {
+    const google::cloud::Status status = object_metadata.status();
+
+    return LOG_STATUS(Status::GCSError(std::string(
+        "Upload part failed on: " + object_part_path + " (" + status.message() +
+        ")")));
   }
 
   return Status::Ok();
@@ -752,9 +807,121 @@ Status GCS::flush_object(const URI& uri) {
     return flush_object_direct(uri);
   }
 
-  LOG_FATAL("Unreached -- TODO");
+  Buffer* const write_cache_buffer = get_write_cache_buffer(uri.to_string());
+
+  const Status flush_write_cache_st =
+      flush_write_cache(uri, write_cache_buffer, true);
+
+  std::unique_lock<std::mutex> states_lock(multi_part_upload_states_lock_);
+
+  if (multi_part_upload_states_.count(uri.to_string()) == 0) {
+    return flush_write_cache_st;
+  }
+
+  MultiPartUploadState* const state =
+      &multi_part_upload_states_.at(uri.to_string());
+
+  states_lock.unlock();
+
+  const std::vector<std::string> part_paths = state->get_part_paths();
+
+  std::string bucket_name;
+  std::string object_path;
+  RETURN_NOT_OK(parse_gcs_uri(uri, &bucket_name, &object_path));
+
+  // Wait for the last written part to propogate to ensure all parts
+  // are available for composition into a single object.
+  std::string last_part_path = part_paths.back();
+  const Status st = wait_for_object_to_propagate(bucket_name, last_part_path);
+  state->update_st(st);
+
+  if (!state->st().ok()) {
+    // Delete all outstanding part objects.
+    delete_parts(bucket_name, part_paths);
+
+    // Release all instance state associated with this part list
+    // transactions.
+    finish_multi_part_upload(uri);
+
+    return Status::Ok();
+  }
+
+  // TODO: There is a 32 object limit for object compositions. When we have more
+  // than 32 parts, we need multiple ComposeObject requests to reduce all parts
+  // into a single object.
+
+  // Build a list of objects to compose.
+  std::vector<google::cloud::storage::ComposeSourceObject> source_objects;
+  source_objects.reserve(part_paths.size());
+  for (const auto& part_path : part_paths) {
+    google::cloud::storage::ComposeSourceObject source_object;
+    source_object.object_name = part_path;
+    source_objects.emplace_back(std::move(source_object));
+  }
+
+  google::cloud::StatusOr<google::cloud::storage::ObjectMetadata>
+      object_metadata =
+          client_->ComposeObject(bucket_name, source_objects, object_path);
+
+  // Delete all outstanding part objects.
+  delete_parts(bucket_name, part_paths);
+
+  // Release all instance state associated with this multi part
+  // transactions so that we can safely return if the following
+  // request failed.
+  finish_multi_part_upload(uri);
+
+  if (!object_metadata.ok()) {
+    const google::cloud::Status status = object_metadata.status();
+
+    return LOG_STATUS(Status::GCSError(std::string(
+        "Compse object failed on: " + uri.to_string() + " (" +
+        status.message() + ")")));
+  }
+
+  return wait_for_object_to_propagate(bucket_name, object_path);
+}
+
+void GCS::delete_parts(
+    const std::string& bucket_name,
+    const std::vector<std::string>& part_paths) {
+  std::vector<std::future<Status>> tasks;
+  tasks.reserve(part_paths.size());
+  for (const auto& part_path : part_paths) {
+    std::function<Status()> delete_part_fn =
+        std::bind(&GCS::delete_part, this, bucket_name, part_path);
+    std::future<Status> task = thread_pool_->enqueue(std::move(delete_part_fn));
+    tasks.emplace_back(std::move(task));
+  }
+
+  const Status st = thread_pool_->wait_all(tasks);
+  if (!st.ok()) {
+    LOG_STATUS(st);
+  }
+}
+
+Status GCS::delete_part(
+    const std::string& bucket_name, const std::string& part_path) {
+  const google::cloud::Status status =
+      client_->DeleteObject(bucket_name, part_path);
+  if (!status.ok()) {
+    return Status::GCSError(std::string(
+        "Delete part failed on: " + part_path + " (" + status.message() + ")"));
+  }
 
   return Status::Ok();
+}
+
+void GCS::finish_multi_part_upload(const URI& uri) {
+  // Protect 'multi_part_upload_states_' from multiple writers.
+  std::unique_lock<std::mutex> states_lock(multi_part_upload_states_lock_);
+  multi_part_upload_states_.erase(uri.to_string());
+  states_lock.unlock();
+
+  // Protect 'write_cache_map_' from multiple writers.
+  std::unique_lock<std::mutex> cache_lock(write_cache_map_lock_);
+  write_cache_map_.erase(uri.to_string());
+  cache_lock.unlock();
 }
 
 Status GCS::flush_object_direct(const URI& uri) {

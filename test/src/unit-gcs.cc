@@ -48,31 +48,17 @@ struct GCSFx {
   const tiledb::sm::URI GCS_BUCKET =
       tiledb::sm::URI(GCS_PREFIX + random_bucket_name("tiledb") + "/");
   const std::string TEST_DIR = GCS_BUCKET.to_string() + "tiledb_test_dir/";
+
   tiledb::sm::GCS gcs_;
   ThreadPool thread_pool_;
 
-  GCSFx();
+  GCSFx() = default;
   ~GCSFx();
+
+  void init_gcs(Config&& config);
 
   static std::string random_bucket_name(const std::string& prefix);
 };
-
-GCSFx::GCSFx() {
-  Config config;
-  REQUIRE(thread_pool_.init(2).ok());
-  REQUIRE(gcs_.init(config, &thread_pool_).ok());
-
-  // Create bucket
-  bool is_bucket;
-  REQUIRE(gcs_.is_bucket(GCS_BUCKET, &is_bucket).ok());
-  if (is_bucket) {
-    REQUIRE(gcs_.remove_bucket(GCS_BUCKET).ok());
-  }
-
-  REQUIRE(gcs_.is_bucket(GCS_BUCKET, &is_bucket).ok());
-  REQUIRE(!is_bucket);
-  REQUIRE(gcs_.create_bucket(GCS_BUCKET).ok());
-}
 
 GCSFx::~GCSFx() {
   // Empty bucket
@@ -88,6 +74,27 @@ GCSFx::~GCSFx() {
   REQUIRE(gcs_.remove_bucket(GCS_BUCKET).ok());
 }
 
+void GCSFx::init_gcs(Config&& config) {
+  REQUIRE(thread_pool_.init(2).ok());
+  REQUIRE(gcs_.init(config, &thread_pool_).ok());
+
+  // Create bucket
+  bool is_bucket;
+  REQUIRE(gcs_.is_bucket(GCS_BUCKET, &is_bucket).ok());
+  if (is_bucket) {
+    REQUIRE(gcs_.remove_bucket(GCS_BUCKET).ok());
+  }
+
+  REQUIRE(gcs_.is_bucket(GCS_BUCKET, &is_bucket).ok());
+  REQUIRE(!is_bucket);
+  REQUIRE(gcs_.create_bucket(GCS_BUCKET).ok());
+
+  // Check if bucket is empty
+  bool is_empty;
+  REQUIRE(gcs_.is_empty_bucket(GCS_BUCKET, &is_empty).ok());
+  REQUIRE(is_empty);
+}
+
 std::string GCSFx::random_bucket_name(const std::string& prefix) {
   std::stringstream ss;
   ss << prefix << "-" << std::this_thread::get_id() << "-"
@@ -96,6 +103,10 @@ std::string GCSFx::random_bucket_name(const std::string& prefix) {
 }
 
 TEST_CASE_METHOD(GCSFx, "Test GCS filesystem, file management", "[gcs]") {
+  Config config;
+  config.set("vfs.gcs.use_multi_part_upload", "true");
+  init_gcs(std::move(config));
+
   /* Create the following file hierarchy:
    *
    * TEST_DIR/dir/subdir/file1
@@ -205,7 +216,87 @@ TEST_CASE_METHOD(GCSFx, "Test GCS filesystem, file management", "[gcs]") {
   REQUIRE(!is_object);
 }
 
-TEST_CASE_METHOD(GCSFx, "Test GCS filesystem, file I/O", "[gcs][io]") {
+TEST_CASE_METHOD(
+    GCSFx, "Test GCS filesystem, multipart file I/O", "[gcs][io][multipart]") {
+  Config config;
+  config.set("vfs.gcs.use_multi_part_upload", "true");
+  init_gcs(std::move(config));
+
+  // Prepare buffers
+  uint64_t buffer_size = 5 * 1024 * 1024;
+  auto write_buffer = new char[buffer_size];
+  for (uint64_t i = 0; i < buffer_size; i++)
+    write_buffer[i] = (char)('a' + (i % 26));
+  uint64_t buffer_size_small = 1024 * 1024;
+  auto write_buffer_small = new char[buffer_size_small];
+  for (uint64_t i = 0; i < buffer_size_small; i++)
+    write_buffer_small[i] = (char)('a' + (i % 26));
+
+  // Write to two files
+  auto largefile = TEST_DIR + "largefile";
+  REQUIRE(gcs_.write(URI(largefile), write_buffer, buffer_size).ok());
+  REQUIRE(
+      gcs_.write(URI(largefile), write_buffer_small, buffer_size_small).ok());
+  auto smallfile = TEST_DIR + "smallfile";
+  REQUIRE(
+      gcs_.write(URI(smallfile), write_buffer_small, buffer_size_small).ok());
+
+  // Before flushing, the files do not exist
+  bool is_object;
+  REQUIRE(gcs_.is_object(URI(largefile), &is_object).ok());
+  REQUIRE(!is_object);
+  REQUIRE(gcs_.is_object(URI(smallfile), &is_object).ok());
+  REQUIRE(!is_object);
+
+  // Flush the files
+  REQUIRE(gcs_.flush_object(URI(largefile)).ok());
+  REQUIRE(gcs_.flush_object(URI(smallfile)).ok());
+
+  // After flushing, the files exist
+  REQUIRE(gcs_.is_object(URI(largefile), &is_object).ok());
+  REQUIRE(is_object);
+  REQUIRE(gcs_.is_object(URI(smallfile), &is_object).ok());
+  REQUIRE(is_object);
+
+  // Get file sizes
+  uint64_t nbytes = 0;
+  REQUIRE(gcs_.object_size(URI(largefile), &nbytes).ok());
+  REQUIRE(nbytes == (buffer_size + buffer_size_small));
+  REQUIRE(gcs_.object_size(URI(smallfile), &nbytes).ok());
+  REQUIRE(nbytes == buffer_size_small);
+
+  // Read from the beginning
+  auto read_buffer = new char[26];
+  REQUIRE(gcs_.read(URI(largefile), 0, read_buffer, 26).ok());
+  bool allok = true;
+  for (int i = 0; i < 26; i++) {
+    if (read_buffer[i] != static_cast<char>('a' + i)) {
+      allok = false;
+      break;
+    }
+  }
+  REQUIRE(allok);
+
+  // Read from a different offset
+  REQUIRE(gcs_.read(URI(largefile), 11, read_buffer, 26).ok());
+  allok = true;
+  for (int i = 0; i < 26; i++) {
+    if (read_buffer[i] != static_cast<char>('a' + (i + 11) % 26)) {
+      allok = false;
+      break;
+    }
+  }
+  REQUIRE(allok);
+}
+
+TEST_CASE_METHOD(
+    GCSFx,
+    "Test GCS filesystem, non-multipart file I/O",
+    "[gcs][io][non-multipart]") {
+  Config config;
+  config.set("vfs.gcs.use_multi_part_upload", "false");
+  init_gcs(std::move(config));
+
   // Prepare buffers
   uint64_t buffer_size = 5 * 1024 * 1024;
   auto write_buffer = new char[buffer_size];
