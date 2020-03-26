@@ -238,7 +238,7 @@ Status get_timestamp_range(
 
   // Cut the suffix
   auto pos = name.find_last_of('.');
-  name = (pos == std::string::npos) ? name : name.substr(0, pos - 1);
+  name = (pos == std::string::npos) ? name : name.substr(0, pos);
 
   // Get fragment version
   uint32_t version = 0;

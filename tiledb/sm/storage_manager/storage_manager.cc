@@ -218,8 +218,9 @@ Status StorageManager::array_open_for_reads(
   // Get the consolidated fragment metadata
   Buffer f_buff;
   std::unordered_map<std::string, uint64_t> offsets;
-  RETURN_NOT_OK(
-      load_consolidated_fragment_meta(meta_uri, enc_key, &f_buff, &offsets));
+  uint32_t meta_version = 0;
+  RETURN_NOT_OK(load_consolidated_fragment_meta(
+      meta_uri, enc_key, &f_buff, &offsets, &meta_version));
 
   // Get fragment metadata in the case of reads, if not fetched already
   Status st = load_fragment_metadata(
@@ -228,6 +229,7 @@ Status StorageManager::array_open_for_reads(
       fragments_to_load,
       &f_buff,
       offsets,
+      meta_version,
       fragment_metadata);
   if (!st.ok()) {
     open_array->mtx_unlock();
@@ -276,8 +278,9 @@ Status StorageManager::array_open_for_reads(
   // Get the consolidated fragment metadata
   Buffer f_buff;
   std::unordered_map<std::string, uint64_t> offsets;
-  RETURN_NOT_OK(
-      load_consolidated_fragment_meta(meta_uri, enc_key, &f_buff, &offsets));
+  uint32_t meta_version = 0;
+  RETURN_NOT_OK(load_consolidated_fragment_meta(
+      meta_uri, enc_key, &f_buff, &offsets, &meta_version));
 
   // Get fragment metadata in the case of reads, if not fetched already
   Status st = load_fragment_metadata(
@@ -286,6 +289,7 @@ Status StorageManager::array_open_for_reads(
       fragments_to_load,
       &f_buff,
       offsets,
+      meta_version,
       fragment_metadata);
   if (!st.ok()) {
     open_array->mtx_unlock();
@@ -419,8 +423,9 @@ Status StorageManager::array_reopen(
   // Get the consolidated fragment metadata
   Buffer f_buff;
   std::unordered_map<std::string, uint64_t> offsets;
-  RETURN_NOT_OK(
-      load_consolidated_fragment_meta(meta_uri, enc_key, &f_buff, &offsets));
+  uint32_t meta_version = 0;
+  RETURN_NOT_OK(load_consolidated_fragment_meta(
+      meta_uri, enc_key, &f_buff, &offsets, &meta_version));
 
   // Get fragment metadata in the case of reads, if not fetched already
   auto st = load_fragment_metadata(
@@ -429,6 +434,7 @@ Status StorageManager::array_reopen(
       fragments_to_load,
       &f_buff,
       offsets,
+      meta_version,
       fragment_metadata);
   if (!st.ok()) {
     open_array->mtx_unlock();
@@ -1024,7 +1030,7 @@ Status StorageManager::get_fragment_info(
   // Get fragment non-empty domain
   FragmentMetadata meta(
       this, array_schema, fragment_uri, timestamp_range, !sparse);
-  RETURN_NOT_OK(meta.load(encryption_key, nullptr, 0));
+  RETURN_NOT_OK(meta.load(encryption_key, nullptr, 0, 0));
 
   // This is important for format version > 2
   sparse = !meta.dense();
@@ -1843,6 +1849,7 @@ Status StorageManager::load_fragment_metadata(
     const std::vector<TimestampedURI>& fragments_to_load,
     Buffer* meta_buff,
     const std::unordered_map<std::string, uint64_t>& offsets,
+    uint32_t meta_version,
     std::vector<FragmentMetadata*>* fragment_metadata) {
   // Load the metadata for each fragment, only if they are not already loaded
   auto fragment_num = fragments_to_load.size();
@@ -1883,9 +1890,10 @@ Status StorageManager::load_fragment_metadata(
         offset = it->second;
       }
 
-      // Load fragment metadats
+      // Load fragment metadata
       RETURN_NOT_OK_ELSE(
-          metadata->load(encryption_key, f_buff, offset), delete metadata);
+          metadata->load(encryption_key, f_buff, offset, meta_version),
+          delete metadata);
       open_array->insert_fragment_metadata(metadata);
     }
     (*fragment_metadata)[f] = metadata;
@@ -1904,7 +1912,10 @@ Status StorageManager::load_consolidated_fragment_meta(
     const URI& uri,
     const EncryptionKey& enc_key,
     Buffer* f_buff,
-    std::unordered_map<std::string, uint64_t>* offsets) {
+    std::unordered_map<std::string, uint64_t>* offsets,
+    uint32_t* meta_version) {
+  *meta_version = 0;
+
   // No consolidated fragment metadata file
   if (uri.to_string().empty())
     return Status::Ok();
@@ -1928,6 +1939,12 @@ Status StorageManager::load_consolidated_fragment_meta(
     f_buff->read(&offset, sizeof(uint64_t));
     (*offsets)[name] = offset;
   }
+
+  // Get the consolidated fragment metadata version
+  auto meta_name = uri.remove_trailing_slash().last_path_part();
+  auto pos = meta_name.find_last_of('.');
+  meta_name = (pos == std::string::npos) ? meta_name : meta_name.substr(0, pos);
+  RETURN_NOT_OK(utils::parse::get_fragment_version(meta_name, meta_version));
 
   return Status::Ok();
 }
