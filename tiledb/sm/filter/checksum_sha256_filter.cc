@@ -44,6 +44,7 @@ namespace sm {
 
 ChecksumSHA256Filter::ChecksumSHA256Filter()
     : Filter(FilterType::FILTER_CHECKSUM_SHA256) {
+  skip_validation_ = false;
 }
 
 ChecksumSHA256Filter* ChecksumSHA256Filter::clone_impl() const {
@@ -114,11 +115,16 @@ Status ChecksumSHA256Filter::run_reverse(
     RETURN_NOT_OK(
         input_metadata->read(&metadata_checksummed_bytes, sizeof(uint64_t)));
 
-    Buffer buff;
-    buff.realloc(Crypto::SHA256_DIGEST_BYTES);
-    RETURN_NOT_OK(
-        input_metadata->read(buff.data(), Crypto::SHA256_DIGEST_BYTES));
-    metadata_checksums[i] = std::make_pair(metadata_checksummed_bytes, buff);
+    // Only fetch and store checksum if we are not going to skip it
+    if (!skip_validation_) {
+      Buffer buff;
+      buff.realloc(Crypto::SHA256_DIGEST_BYTES);
+      RETURN_NOT_OK(
+          input_metadata->read(buff.data(), Crypto::SHA256_DIGEST_BYTES));
+      metadata_checksums[i] = std::make_pair(metadata_checksummed_bytes, buff);
+    } else {
+      input_metadata->advance_offset(Crypto::SHA256_DIGEST_BYTES);
+    }
   }
 
   for (uint32_t i = 0; i < num_data_parts; i++) {
@@ -126,35 +132,43 @@ Status ChecksumSHA256Filter::run_reverse(
     RETURN_NOT_OK(
         input_metadata->read(&data_checksummed_bytes, sizeof(uint64_t)));
 
-    Buffer buff;
-    buff.realloc(Crypto::SHA256_DIGEST_BYTES);
-    RETURN_NOT_OK(
-        input_metadata->read(buff.data(), Crypto::SHA256_DIGEST_BYTES));
-    data_checksums[i] = std::make_pair(data_checksummed_bytes, buff);
+    // Only fetch and store checksum if we are not going to skip it
+    if (!skip_validation_) {
+      Buffer buff;
+      buff.realloc(Crypto::SHA256_DIGEST_BYTES);
+      RETURN_NOT_OK(
+          input_metadata->read(buff.data(), Crypto::SHA256_DIGEST_BYTES));
+      data_checksums[i] = std::make_pair(data_checksummed_bytes, buff);
+    } else {
+      input_metadata->advance_offset(Crypto::SHA256_DIGEST_BYTES);
+    }
   }
 
-  // Now that the checksums are fetched we an run the actual comparisons against
-  // the real metadata and data
-  // Need to save the metadata offset before we loop through to check it
-  uint64_t offset_before_checksum = input_metadata->offset();
-  for (uint32_t i = 0; i < num_metadata_parts; i++) {
-    auto& checksum_details = metadata_checksums[i];
-    RETURN_NOT_OK(compare_checksum_part(
-        input_metadata,
-        checksum_details.first,
-        checksum_details.second.data()));
-  }
-  // Reset input metadata back to offset only if there was metadata that we read
-  // We check this to avoid the edge case where there was not metadata to check
-  // and the offset is actually at the end buffer
-  if (input_metadata->offset() != offset_before_checksum) {
-    input_metadata->set_offset(offset_before_checksum);
-  }
+  // Only run checksums if we are not set to skip
+  if (!skip_validation_) {
+    // Now that the checksums are fetched we an run the actual comparisons
+    // against the real metadata and data Need to save the metadata offset
+    // before we loop through to check it
+    uint64_t offset_before_checksum = input_metadata->offset();
+    for (uint32_t i = 0; i < num_metadata_parts; i++) {
+      auto& checksum_details = metadata_checksums[i];
+      RETURN_NOT_OK(compare_checksum_part(
+          input_metadata,
+          checksum_details.first,
+          checksum_details.second.data()));
+    }
+    // Reset input metadata back to offset only if there was metadata that we
+    // read We check this to avoid the edge case where there was not metadata to
+    // check and the offset is actually at the end buffer
+    if (input_metadata->offset() != offset_before_checksum) {
+      input_metadata->set_offset(offset_before_checksum);
+    }
 
-  for (uint32_t i = 0; i < num_data_parts; i++) {
-    auto& checksum_details = data_checksums[i];
-    RETURN_NOT_OK(compare_checksum_part(
-        input, checksum_details.first, checksum_details.second.data()));
+    for (uint32_t i = 0; i < num_data_parts; i++) {
+      auto& checksum_details = data_checksums[i];
+      RETURN_NOT_OK(compare_checksum_part(
+          input, checksum_details.first, checksum_details.second.data()));
+    }
   }
 
   // Output metadata is a view on the input metadata, skipping what was used
@@ -239,6 +253,17 @@ Status ChecksumSHA256Filter::compare_checksum_part(
   }
 
   return Status::Ok();
+}
+
+bool ChecksumSHA256Filter::skip_validation() const {
+  return skip_validation_;
+};
+
+/**
+ * Sets skip validation parameter
+ */
+void ChecksumSHA256Filter::skip_validation(bool skip_validation) {
+  skip_validation_ = skip_validation;
 }
 
 }  // namespace sm
