@@ -1525,19 +1525,18 @@ Status FragmentMetadata::load_footer(
     return Status::Ok();
 
   Buffer buff;
-  uint32_t version;
   std::shared_ptr<ConstBuffer> cbuff = nullptr;
   if (f_buff == nullptr) {
     RETURN_NOT_OK(read_file_footer(&buff));
     cbuff = std::make_shared<ConstBuffer>(&buff);
-    version = version_;
   } else {
     cbuff = std::make_shared<ConstBuffer>(f_buff);
     cbuff->set_offset(offset);
-    version = meta_version;
   }
 
   RETURN_NOT_OK(load_version(cbuff.get()));
+  uint32_t version = (f_buff == nullptr) ? version_ : meta_version;
+
   RETURN_NOT_OK(load_dense(cbuff.get()));
   RETURN_NOT_OK(load_non_empty_domain(cbuff.get(), version));
   RETURN_NOT_OK(load_sparse_tile_num(cbuff.get()));
