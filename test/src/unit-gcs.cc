@@ -217,16 +217,24 @@ TEST_CASE_METHOD(GCSFx, "Test GCS filesystem, file management", "[gcs]") {
 }
 
 TEST_CASE_METHOD(
-    GCSFx, "Test GCS filesystem, multipart file I/O", "[gcs][io][multipart]") {
+    GCSFx,
+    "Test GCS filesystem I/O, multipart, serial",
+    "[gcs][multipart][serial]") {
   Config config;
+  const uint64_t max_parallel_ops = 1;
+  const uint64_t multi_part_size = 4 * 1024 * 1024;
+  config.set("vfs.gcs.max_parallel_ops", std::to_string(max_parallel_ops));
   config.set("vfs.gcs.use_multi_part_upload", "true");
+  config.set("vfs.gcs.multi_part_size", std::to_string(multi_part_size));
   init_gcs(std::move(config));
 
+  const uint64_t write_cache_max_size = max_parallel_ops * multi_part_size;
+
   // Prepare buffers
-  uint64_t buffer_size = 5 * 1024 * 1024;
-  auto write_buffer = new char[buffer_size];
-  for (uint64_t i = 0; i < buffer_size; i++)
-    write_buffer[i] = (char)('a' + (i % 26));
+  uint64_t buffer_size_large = write_cache_max_size;
+  auto write_buffer_large = new char[buffer_size_large];
+  for (uint64_t i = 0; i < buffer_size_large; i++)
+    write_buffer_large[i] = (char)('a' + (i % 26));
   uint64_t buffer_size_small = 1024 * 1024;
   auto write_buffer_small = new char[buffer_size_small];
   for (uint64_t i = 0; i < buffer_size_small; i++)
@@ -234,7 +242,8 @@ TEST_CASE_METHOD(
 
   // Write to two files
   auto largefile = TEST_DIR + "largefile";
-  REQUIRE(gcs_.write(URI(largefile), write_buffer, buffer_size).ok());
+  REQUIRE(
+      gcs_.write(URI(largefile), write_buffer_large, buffer_size_large).ok());
   REQUIRE(
       gcs_.write(URI(largefile), write_buffer_small, buffer_size_small).ok());
   auto smallfile = TEST_DIR + "smallfile";
@@ -261,7 +270,7 @@ TEST_CASE_METHOD(
   // Get file sizes
   uint64_t nbytes = 0;
   REQUIRE(gcs_.object_size(URI(largefile), &nbytes).ok());
-  REQUIRE(nbytes == (buffer_size + buffer_size_small));
+  REQUIRE(nbytes == (buffer_size_large + buffer_size_small));
   REQUIRE(gcs_.object_size(URI(smallfile), &nbytes).ok());
   REQUIRE(nbytes == buffer_size_small);
 
@@ -291,17 +300,23 @@ TEST_CASE_METHOD(
 
 TEST_CASE_METHOD(
     GCSFx,
-    "Test GCS filesystem, non-multipart file I/O",
-    "[gcs][io][non-multipart]") {
+    "Test GCS filesystem I/O, non-multipart, serial",
+    "[gcs][non-multipart][serial]") {
   Config config;
+  const uint64_t max_parallel_ops = 1;
+  const uint64_t multi_part_size = 4 * 1024 * 1024;
+  config.set("vfs.gcs.max_parallel_ops", std::to_string(max_parallel_ops));
   config.set("vfs.gcs.use_multi_part_upload", "false");
+  config.set("vfs.gcs.multi_part_size", std::to_string(multi_part_size));
   init_gcs(std::move(config));
 
+  const uint64_t write_cache_max_size = max_parallel_ops * multi_part_size;
+
   // Prepare buffers
-  uint64_t buffer_size = 5 * 1024 * 1024;
-  auto write_buffer = new char[buffer_size];
-  for (uint64_t i = 0; i < buffer_size; i++)
-    write_buffer[i] = (char)('a' + (i % 26));
+  uint64_t buffer_size_large = write_cache_max_size;
+  auto write_buffer_large = new char[buffer_size_large];
+  for (uint64_t i = 0; i < buffer_size_large; i++)
+    write_buffer_large[i] = (char)('a' + (i % 26));
   uint64_t buffer_size_small = 1024 * 1024;
   auto write_buffer_small = new char[buffer_size_small];
   for (uint64_t i = 0; i < buffer_size_small; i++)
@@ -309,7 +324,83 @@ TEST_CASE_METHOD(
 
   // Write to two files
   auto largefile = TEST_DIR + "largefile";
-  REQUIRE(gcs_.write(URI(largefile), write_buffer, buffer_size).ok());
+  REQUIRE(
+      gcs_.write(URI(largefile), write_buffer_large, buffer_size_large).ok());
+  REQUIRE(
+      !gcs_.write(URI(largefile), write_buffer_small, buffer_size_small).ok());
+  auto smallfile = TEST_DIR + "smallfile";
+  REQUIRE(
+      gcs_.write(URI(smallfile), write_buffer_small, buffer_size_small).ok());
+
+  // Before flushing, the file does not exist
+  bool is_object;
+  REQUIRE(gcs_.is_object(URI(smallfile), &is_object).ok());
+  REQUIRE(!is_object);
+
+  // Flush the file
+  REQUIRE(gcs_.flush_object(URI(smallfile)).ok());
+
+  // After flushing, the file exists
+  REQUIRE(gcs_.is_object(URI(smallfile), &is_object).ok());
+  REQUIRE(is_object);
+
+  // Get file size
+  uint64_t nbytes = 0;
+  REQUIRE(gcs_.object_size(URI(smallfile), &nbytes).ok());
+  REQUIRE(nbytes == buffer_size_small);
+
+  // Read from the beginning
+  auto read_buffer = new char[26];
+  REQUIRE(gcs_.read(URI(smallfile), 0, read_buffer, 26).ok());
+  bool allok = true;
+  for (int i = 0; i < 26; i++) {
+    if (read_buffer[i] != static_cast<char>('a' + i)) {
+      allok = false;
+      break;
+    }
+  }
+  REQUIRE(allok);
+
+  // Read from a different offset
+  REQUIRE(gcs_.read(URI(smallfile), 11, read_buffer, 26).ok());
+  allok = true;
+  for (int i = 0; i < 26; i++) {
+    if (read_buffer[i] != static_cast<char>('a' + (i + 11) % 26)) {
+      allok = false;
+      break;
+    }
+  }
+  REQUIRE(allok);
+}
+
+TEST_CASE_METHOD(
+    GCSFx,
+    "Test GCS filesystem I/O, multipart, concurrent",
+    "[gcs][multipart][concurrent]") {
+  Config config;
+  const uint64_t max_parallel_ops = 4;
+  const uint64_t multi_part_size = 4 * 1024 * 1024;
+  config.set("vfs.gcs.max_parallel_ops", std::to_string(max_parallel_ops));
+  config.set("vfs.gcs.use_multi_part_upload", "true");
+  config.set("vfs.gcs.multi_part_size", std::to_string(multi_part_size));
+  init_gcs(std::move(config));
+
+  const uint64_t write_cache_max_size = max_parallel_ops * multi_part_size;
+
+  // Prepare buffers
+  uint64_t buffer_size_large = write_cache_max_size;
+  auto write_buffer_large = new char[buffer_size_large];
+  for (uint64_t i = 0; i < buffer_size_large; i++)
+    write_buffer_large[i] = (char)('a' + (i % 26));
+  uint64_t buffer_size_small = 1024 * 1024;
+  auto write_buffer_small = new char[buffer_size_small];
+  for (uint64_t i = 0; i < buffer_size_small; i++)
+    write_buffer_small[i] = (char)('a' + (i % 26));
+
+  // Write to two files
+  auto largefile = TEST_DIR + "largefile";
+  REQUIRE(
+      gcs_.write(URI(largefile), write_buffer_large, buffer_size_large).ok());
   REQUIRE(
       gcs_.write(URI(largefile), write_buffer_small, buffer_size_small).ok());
   auto smallfile = TEST_DIR + "smallfile";
@@ -336,7 +427,7 @@ TEST_CASE_METHOD(
   // Get file sizes
   uint64_t nbytes = 0;
   REQUIRE(gcs_.object_size(URI(largefile), &nbytes).ok());
-  REQUIRE(nbytes == (buffer_size + buffer_size_small));
+  REQUIRE(nbytes == (buffer_size_large + buffer_size_small));
   REQUIRE(gcs_.object_size(URI(smallfile), &nbytes).ok());
   REQUIRE(nbytes == buffer_size_small);
 
@@ -362,6 +453,172 @@ TEST_CASE_METHOD(
     }
   }
   REQUIRE(allok);
+}
+
+TEST_CASE_METHOD(
+    GCSFx,
+    "Test GCS filesystem I/O, non-multipart, concurrent",
+    "[gcs][non-multipart][concurrent]") {
+  Config config;
+  const uint64_t max_parallel_ops = 4;
+  const uint64_t multi_part_size = 4 * 1024 * 1024;
+  config.set("vfs.gcs.max_parallel_ops", std::to_string(max_parallel_ops));
+  config.set("vfs.gcs.use_multi_part_upload", "false");
+  config.set("vfs.gcs.multi_part_size", std::to_string(multi_part_size));
+  init_gcs(std::move(config));
+
+  const uint64_t write_cache_max_size = max_parallel_ops * multi_part_size;
+
+  // Prepare buffers
+  uint64_t buffer_size_large = write_cache_max_size;
+  auto write_buffer_large = new char[buffer_size_large];
+  for (uint64_t i = 0; i < buffer_size_large; i++)
+    write_buffer_large[i] = (char)('a' + (i % 26));
+  uint64_t buffer_size_small = 1024 * 1024;
+  auto write_buffer_small = new char[buffer_size_small];
+  for (uint64_t i = 0; i < buffer_size_small; i++)
+    write_buffer_small[i] = (char)('a' + (i % 26));
+
+  // Write to two files
+  auto largefile = TEST_DIR + "largefile";
+  REQUIRE(
+      gcs_.write(URI(largefile), write_buffer_large, buffer_size_large).ok());
+  REQUIRE(
+      !gcs_.write(URI(largefile), write_buffer_small, buffer_size_small).ok());
+  auto smallfile = TEST_DIR + "smallfile";
+  REQUIRE(
+      gcs_.write(URI(smallfile), write_buffer_small, buffer_size_small).ok());
+
+  // Before flushing, the file does not exist
+  bool is_object;
+  REQUIRE(gcs_.is_object(URI(smallfile), &is_object).ok());
+  REQUIRE(!is_object);
+
+  // Flush the file
+  REQUIRE(gcs_.flush_object(URI(smallfile)).ok());
+
+  // After flushing, the file exists
+  REQUIRE(gcs_.is_object(URI(smallfile), &is_object).ok());
+  REQUIRE(is_object);
+
+  // Get file size
+  uint64_t nbytes = 0;
+  REQUIRE(gcs_.object_size(URI(smallfile), &nbytes).ok());
+  REQUIRE(nbytes == buffer_size_small);
+
+  // Read from the beginning
+  auto read_buffer = new char[26];
+  REQUIRE(gcs_.read(URI(smallfile), 0, read_buffer, 26).ok());
+  bool allok = true;
+  for (int i = 0; i < 26; i++) {
+    if (read_buffer[i] != static_cast<char>('a' + i)) {
+      allok = false;
+      break;
+    }
+  }
+  REQUIRE(allok);
+
+  // Read from a different offset
+  REQUIRE(gcs_.read(URI(smallfile), 11, read_buffer, 26).ok());
+  allok = true;
+  for (int i = 0; i < 26; i++) {
+    if (read_buffer[i] != static_cast<char>('a' + (i + 11) % 26)) {
+      allok = false;
+      break;
+    }
+  }
+  REQUIRE(allok);
+}
+
+TEST_CASE_METHOD(
+    GCSFx,
+    "Test GCS filesystem I/O, multipart, composition",
+    "[gcs][multipart][composition]") {
+  Config config;
+  const uint64_t max_parallel_ops = 4;
+  const uint64_t multi_part_size = 4 * 1024;
+  config.set("vfs.gcs.max_parallel_ops", std::to_string(max_parallel_ops));
+  config.set("vfs.gcs.use_multi_part_upload", "true");
+  config.set("vfs.gcs.multi_part_size", std::to_string(multi_part_size));
+  init_gcs(std::move(config));
+
+  const uint64_t write_cache_max_size = max_parallel_ops * multi_part_size;
+
+  // Prepare a buffer that will write 200 (50 * 4 threads) objects.
+  // The maximum number of objects per composition operation is 32.
+  uint64_t buffer_size_large = 50 * write_cache_max_size;
+  auto write_buffer_large = new char[buffer_size_large];
+  for (uint64_t i = 0; i < buffer_size_large; i++)
+    write_buffer_large[i] = (char)('a' + (i % 26));
+
+  // Write to the file
+  auto largefile = TEST_DIR + "largefile";
+  REQUIRE(
+      gcs_.write(URI(largefile), write_buffer_large, buffer_size_large).ok());
+
+  // Before flushing, the file does not exist
+  bool is_object;
+  REQUIRE(gcs_.is_object(URI(largefile), &is_object).ok());
+  REQUIRE(!is_object);
+
+  // Flush the file
+  REQUIRE(gcs_.flush_object(URI(largefile)).ok());
+
+  // After flushing, the file exists
+  REQUIRE(gcs_.is_object(URI(largefile), &is_object).ok());
+  REQUIRE(is_object);
+
+  // Get file size
+  uint64_t nbytes = 0;
+  REQUIRE(gcs_.object_size(URI(largefile), &nbytes).ok());
+  REQUIRE(nbytes == buffer_size_large);
+
+  // Read from the beginning
+  auto read_buffer = new char[26];
+  REQUIRE(gcs_.read(URI(largefile), 0, read_buffer, 26).ok());
+  bool allok = true;
+  for (int i = 0; i < 26; i++) {
+    if (read_buffer[i] != static_cast<char>('a' + i)) {
+      allok = false;
+      break;
+    }
+  }
+  REQUIRE(allok);
+
+  // Read from a different offset
+  REQUIRE(gcs_.read(URI(largefile), 11, read_buffer, 26).ok());
+  allok = true;
+  for (int i = 0; i < 26; i++) {
+    if (read_buffer[i] != static_cast<char>('a' + (i + 11) % 26)) {
+      allok = false;
+      break;
+    }
+  }
+  REQUIRE(allok);
+
+  // Prepare a buffer that will overwrite the original with a smaller
+  // size.
+  uint64_t buffer_size_overwrite = 10 * write_cache_max_size;
+  auto write_buffer_overwrite = new char[buffer_size_overwrite];
+  for (uint64_t i = 0; i < buffer_size_overwrite; i++)
+    write_buffer_overwrite[i] = (char)('a' + (i % 26));
+
+  // Write to the file
+  REQUIRE(
+      gcs_.write(URI(largefile), write_buffer_overwrite, buffer_size_overwrite)
+          .ok());
+
+  // Flush the file
+  REQUIRE(gcs_.flush_object(URI(largefile)).ok());
+
+  // After flushing, the file exists
+  REQUIRE(gcs_.is_object(URI(largefile), &is_object).ok());
+  REQUIRE(is_object);
+
+  // Get file size
+  nbytes = 0;
+  REQUIRE(gcs_.object_size(URI(largefile), &nbytes).ok());
+  REQUIRE(nbytes == buffer_size_overwrite);
 }
 
 #endif
