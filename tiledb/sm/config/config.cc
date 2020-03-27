@@ -88,6 +88,10 @@ const std::string Config::VFS_AZURE_USE_HTTPS = "true";
 const std::string Config::VFS_AZURE_MAX_PARALLEL_OPS = Config::VFS_NUM_THREADS;
 const std::string Config::VFS_AZURE_BLOCK_LIST_BLOCK_SIZE = "5242880";
 const std::string Config::VFS_AZURE_USE_BLOCK_LIST_UPLOAD = "true";
+const std::string Config::VFS_GCS_PROJECT_ID = "";
+const std::string Config::VFS_GCS_MAX_PARALLEL_OPS = Config::VFS_NUM_THREADS;
+const std::string Config::VFS_GCS_MULTI_PART_SIZE = "5242880";
+const std::string Config::VFS_GCS_USE_MULTI_PART_UPLOAD = "true";
 const std::string Config::VFS_S3_REGION = "us-east-1";
 const std::string Config::VFS_S3_AWS_ACCESS_KEY_ID = "";
 const std::string Config::VFS_S3_AWS_SECRET_ACCESS_KEY = "";
@@ -183,6 +187,11 @@ Config::Config() {
       VFS_AZURE_BLOCK_LIST_BLOCK_SIZE;
   param_values_["vfs.azure.use_block_list_upload"] =
       VFS_AZURE_USE_BLOCK_LIST_UPLOAD;
+  param_values_["vfs.gcs.project_id"] = VFS_GCS_PROJECT_ID;
+  param_values_["vfs.gcs.max_parallel_ops"] = VFS_GCS_MAX_PARALLEL_OPS;
+  param_values_["vfs.gcs.multi_part_size"] = VFS_GCS_MULTI_PART_SIZE;
+  param_values_["vfs.gcs.use_multi_part_upload"] =
+      VFS_GCS_USE_MULTI_PART_UPLOAD;
   param_values_["vfs.s3.region"] = VFS_S3_REGION;
   param_values_["vfs.s3.aws_access_key_id"] = VFS_S3_AWS_ACCESS_KEY_ID;
   param_values_["vfs.s3.aws_secret_access_key"] = VFS_S3_AWS_SECRET_ACCESS_KEY;
@@ -411,6 +420,15 @@ Status Config::unset(const std::string& param) {
   } else if (param == "vfs.azure.use_block_list_upload") {
     param_values_["vfs.azure.use_block_list_upload"] =
         VFS_AZURE_USE_BLOCK_LIST_UPLOAD;
+  } else if (param == "vfs.gcs.project_id") {
+    param_values_["vfs.gcs.project_id"] = VFS_GCS_PROJECT_ID;
+  } else if (param == "vfs.gcs.max_parallel_ops") {
+    param_values_["vfs.gcs.max_parallel_ops"] = VFS_GCS_MAX_PARALLEL_OPS;
+  } else if (param == "vfs.gcs.multi_part_size") {
+    param_values_["vfs.gcs.multi_part_size"] = VFS_GCS_MULTI_PART_SIZE;
+  } else if (param == "vfs.gcs.use_multi_part_upload") {
+    param_values_["vfs.gcs.use_multi_part_upload"] =
+        VFS_GCS_USE_MULTI_PART_UPLOAD;
   } else if (param == "vfs.s3.region") {
     param_values_["vfs.s3.region"] = VFS_S3_REGION;
   } else if (param == "vfs.s3.aws_access_key_id") {

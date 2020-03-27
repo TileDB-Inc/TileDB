@@ -48,9 +48,7 @@ namespace sm {
 /* ********************************* */
 
 GCS::GCS()
-    // TODO: fetch from config
-    : project_id_("joe-tiledb")
-    , write_cache_max_size_(0)
+    : write_cache_max_size_(0)
     , max_parallel_ops_(1)
     , multi_part_part_size_(0)
     , use_multi_part_upload_(true) {
@@ -77,6 +75,8 @@ Status GCS::init(const Config& config, ThreadPool* const thread_pool) {
   }
 
   bool found;
+  project_id_ = config.get("vfs.gcs.project_id", &found);
+  assert(found);
   RETURN_NOT_OK(config.get<uint64_t>(
       "vfs.gcs.max_parallel_ops", &max_parallel_ops_, &found));
   assert(found);

@@ -188,6 +188,18 @@ class Config {
   /** Azure use block list upload. */
   static const std::string VFS_AZURE_USE_BLOCK_LIST_UPLOAD;
 
+  /** GCS project id. */
+  static const std::string VFS_GCS_PROJECT_ID;
+
+  /** GCS max parallel ops. */
+  static const std::string VFS_GCS_MAX_PARALLEL_OPS;
+
+  /** GCS multi part size. */
+  static const std::string VFS_GCS_MULTI_PART_SIZE;
+
+  /** GCS use multi part upload. */
+  static const std::string VFS_GCS_USE_MULTI_PART_UPLOAD;
+
   /** S3 region. */
   static const std::string VFS_S3_REGION;
 

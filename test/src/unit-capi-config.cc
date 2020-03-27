@@ -238,6 +238,9 @@ void check_save_to_file() {
   ss << "vfs.file.enable_filelocks true\n";
   ss << "vfs.file.max_parallel_ops " << std::thread::hardware_concurrency()
      << "\n";
+  ss << "vfs.gcs.max_parallel_ops 4\n";
+  ss << "vfs.gcs.multi_part_size 5242880\n";
+  ss << "vfs.gcs.use_multi_part_upload true\n";
   ss << "vfs.min_batch_gap 512000\n";
   ss << "vfs.min_batch_size 20971520\n";
   ss << "vfs.min_parallel_size 10485760\n";
@@ -435,6 +438,11 @@ TEST_CASE("C API: Test config iter", "[capi], [config]") {
   all_param_values["vfs.min_batch_gap"] = "512000";
   all_param_values["vfs.min_batch_size"] = "20971520";
   all_param_values["vfs.min_parallel_size"] = "10485760";
+  all_param_values["vfs.gcs.project_id"] = "";
+  all_param_values["vfs.gcs.max_parallel_ops"] =
+      std::to_string(std::thread::hardware_concurrency());
+  all_param_values["vfs.gcs.multi_part_size"] = "5242880";
+  all_param_values["vfs.gcs.use_multi_part_upload"] = "true";
   all_param_values["vfs.azure.storage_account_name"] = "";
   all_param_values["vfs.azure.storage_account_key"] = "";
   all_param_values["vfs.azure.blob_endpoint"] = "";
@@ -480,6 +488,11 @@ TEST_CASE("C API: Test config iter", "[capi], [config]") {
   vfs_param_values["min_batch_gap"] = "512000";
   vfs_param_values["min_batch_size"] = "20971520";
   vfs_param_values["min_parallel_size"] = "10485760";
+  vfs_param_values["gcs.project_id"] = "";
+  vfs_param_values["gcs.max_parallel_ops"] =
+      std::to_string(std::thread::hardware_concurrency());
+  vfs_param_values["gcs.multi_part_size"] = "5242880";
+  vfs_param_values["gcs.use_multi_part_upload"] = "true";
   vfs_param_values["azure.storage_account_name"] = "";
   vfs_param_values["azure.storage_account_key"] = "";
   vfs_param_values["azure.blob_endpoint"] = "";
@@ -518,6 +531,13 @@ TEST_CASE("C API: Test config iter", "[capi], [config]") {
   vfs_param_values["hdfs.username"] = "stavros";
   vfs_param_values["hdfs.kerb_ticket_cache_path"] = "";
   vfs_param_values["hdfs.name_node_uri"] = "";
+
+  std::map<std::string, std::string> gcs_param_values;
+  gcs_param_values["project_id"] = "";
+  gcs_param_values["max_parallel_ops"] =
+      std::to_string(std::thread::hardware_concurrency());
+  gcs_param_values["multi_part_size"] = "5242880";
+  gcs_param_values["use_multi_part_upload"] = "true";
 
   std::map<std::string, std::string> azure_param_values;
   azure_param_values["storage_account_name"] = "";
@@ -610,6 +630,33 @@ TEST_CASE("C API: Test config iter", "[capi], [config]") {
   } while (!done);
   CHECK(vfs_param_values == vfs_iter_map);
   tiledb_config_iter_free(&config_iter);
+
+  // Create an iterator and iterate over gcs parameters
+  rc = tiledb_config_iter_alloc(config, "vfs.gcs.", &config_iter, &error);
+  REQUIRE(rc == TILEDB_OK);
+  CHECK(error == nullptr);
+  rc = tiledb_config_iter_done(config_iter, &done, &error);
+  CHECK(rc == TILEDB_OK);
+  CHECK(error == nullptr);
+  CHECK(!(bool)done);
+  std::map<std::string, std::string> gcs_iter_map;
+  do {
+    rc = tiledb_config_iter_here(config_iter, &param, &value, &error);
+    CHECK(rc == TILEDB_OK);
+    CHECK(error == nullptr);
+    CHECK(param != nullptr);
+    CHECK(value != nullptr);
+    gcs_iter_map[std::string(param)] = std::string(value);
+    rc = tiledb_config_iter_next(config_iter, &error);
+    CHECK(rc == TILEDB_OK);
+    CHECK(error == nullptr);
+    rc = tiledb_config_iter_done(config_iter, &done, &error);
+    CHECK(rc == TILEDB_OK);
+    CHECK(error == nullptr);
+  } while (!done);
+  CHECK(gcs_param_values == gcs_iter_map);
+  tiledb_config_iter_free(&config_iter);
+  CHECK(error == nullptr);
 
   // Create an iterator and iterate over azure parameters
   rc = tiledb_config_iter_alloc(config, "vfs.azure.", &config_iter, &error);
