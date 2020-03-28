@@ -116,3 +116,42 @@ TEST_CASE(
 
   remove_array(array_name);
 }
+
+TEST_CASE(
+    "C++ API: Test consolidation with domain expansion",
+    "[cppapi][consolidation]") {
+  std::string array_name = "cppapi_consolidation_domain_exp";
+
+  Context ctx;
+  Domain domain(ctx);
+  auto d = Dimension::create<int>(ctx, "d1", {{10, 110}}, 50);
+  domain.add_dimensions(d);
+  auto a = Attribute::create<float>(ctx, "a");
+  ArraySchema schema(ctx, TILEDB_DENSE);
+  schema.set_domain(domain);
+  schema.add_attributes(a);
+  Array::create(array_name, schema);
+
+  // clean up
+  VFS vfs(ctx);
+  std::shared_ptr<int> cleanup(
+      NULL, [vfs, array_name](int*) { vfs.remove_dir(array_name); });
+
+  Array array(ctx, array_name, TILEDB_WRITE);
+  Query query(ctx, array, TILEDB_WRITE);
+
+  std::vector<float> a1(100);
+  std::fill(a1.begin(), a1.end(), 1.0);
+  std::vector<float> a2({2.0});
+
+  query.set_layout(TILEDB_ROW_MAJOR);
+  query.set_subarray({10, 109});
+  query.set_buffer("a", a1);
+  query.submit();
+  query.set_subarray({110, 110});
+  query.set_buffer("a", a2);
+  query.submit();
+  array.close();
+
+  REQUIRE_NOTHROW(Array::consolidate(ctx, array_name, NULL));
+}
