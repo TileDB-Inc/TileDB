@@ -516,7 +516,9 @@ class Query {
         auto tile_extent =
             *static_cast<const T*>(domain->dimension(i)->tile_extent());
         low = dim_domain[0];
-        high = utils::math::ceil(dim_domain[1], tile_extent) * tile_extent;
+        high = ((((dim_domain[1] - dim_domain[0]) / tile_extent) + 1) *
+                tile_extent) -
+               1 + dim_domain[0];
       } else {
         low = dim_domain[0];
         high = dim_domain[1];

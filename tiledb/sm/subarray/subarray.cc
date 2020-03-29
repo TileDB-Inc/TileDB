@@ -772,7 +772,9 @@ Status Subarray::add_range(
   if (array_->array_schema()->dense() && check_expanded_domain) {
     auto tile_extent =
         *static_cast<const T*>(domain->dimension(dim_idx)->tile_extent());
-    high = utils::math::ceil(dim_domain[1], tile_extent) * tile_extent;
+    high =
+        ((((dim_domain[1] - dim_domain[0]) / tile_extent) + 1) * tile_extent) -
+        1 + dim_domain[0];
   }
 
   if (range[0] < low || range[1] > high)
