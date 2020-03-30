@@ -207,13 +207,26 @@ Status RTree::serialize(Buffer* buff) const {
   RETURN_NOT_OK(buff->write(&fanout_, sizeof(fanout_)));
   auto level_num = (unsigned)levels_.size();
   RETURN_NOT_OK(buff->write(&level_num, sizeof(level_num)));
+  auto dim_num = domain_->dim_num();
 
   for (unsigned l = 0; l < level_num; ++l) {
     auto mbr_num = (uint64_t)levels_[l].size();
     RETURN_NOT_OK(buff->write(&mbr_num, sizeof(uint64_t)));
     for (uint64_t m = 0; m < mbr_num; ++m) {
-      for (const auto& r : levels_[l][m]) {
-        RETURN_NOT_OK(buff->write(r.data(), r.size()));
+      for (unsigned d = 0; d < dim_num; ++d) {
+        const auto& r = levels_[l][m][d];
+        auto dim = domain_->dimension(d);
+        if (!dim->var_size()) {  // Fixed-sized
+          // Just write the plain range
+          RETURN_NOT_OK(buff->write(r.data(), r.size()));
+        } else {  // Var-sized
+          // range_size | start_size | range
+          auto size = r.size();
+          auto start_size = r.start_size();
+          RETURN_NOT_OK(buff->write(&size, sizeof(uint64_t)));
+          RETURN_NOT_OK(buff->write(&start_size, sizeof(uint64_t)));
+          RETURN_NOT_OK(buff->write(r.data(), size));
+        }
       }
     }
   }
@@ -342,9 +355,19 @@ Status RTree::deserialize_v5(ConstBuffer* cbuff, const Domain* domain) {
     for (uint64_t m = 0; m < mbr_num; ++m) {
       levels_[l][m].resize(dim_num);
       for (unsigned d = 0; d < dim_num; ++d) {
-        auto r_size = 2 * domain->dimension(d)->coord_size();
-        levels_[l][m][d].set_range(cbuff->cur_data(), r_size);
-        cbuff->advance_offset(r_size);
+        auto dim = domain_->dimension(d);
+        if (!dim->var_size()) {  // Fixed-sized
+          auto r_size = 2 * domain->dimension(d)->coord_size();
+          levels_[l][m][d].set_range(cbuff->cur_data(), r_size);
+          cbuff->advance_offset(r_size);
+        } else {  // Var-sized
+          // range_size | start_size | range
+          uint64_t r_size, start_size;
+          RETURN_NOT_OK(cbuff->read(&r_size, sizeof(uint64_t)));
+          RETURN_NOT_OK(cbuff->read(&start_size, sizeof(uint64_t)));
+          levels_[l][m][d].set_range(cbuff->cur_data(), r_size, start_size);
+          cbuff->advance_offset(r_size);
+        }
       }
     }
   }

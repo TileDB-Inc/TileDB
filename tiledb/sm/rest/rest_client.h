@@ -88,42 +88,10 @@ class RestClient {
   /**
    * Get array's non_empty domain from rest server
    *
-   * @param uri of array being loaded
-   * @param domain The domain to be retrieved.
-   * @param is_empty The function sets it to `1` if the non-empty domain is
-   *     empty (i.e., the array does not contain any data yet), and `0`
-   * otherwise.
+   * @param array Array model to fetch and set non empty domain on
    * @return Status Ok() on success Error() on failures
    */
-  Status get_array_non_empty_domain(Array* array, void* domain, bool* is_empty);
-
-  /**
-   * Get array's non_empty domain from rest server on the given dimension.
-   *
-   * @param uri of array being loaded
-   * @param idx The dimension index.
-   * @param domain The domain to be retrieved.
-   * @param is_empty The function sets it to `1` if the non-empty domain is
-   *     empty (i.e., the array does not contain any data yet), and `0`
-   * otherwise.
-   * @return Status Ok() on success Error() on failures
-   */
-  Status get_array_non_empty_domain_from_index(
-      Array* array, unsigned idx, void* domain, bool* is_empty);
-
-  /**
-   * Get array's non_empty domain from rest server on the given dimension.
-   *
-   * @param uri of array being loaded
-   * @param name The dimension name.
-   * @param domain The domain to be retrieved.
-   * @param is_empty The function sets it to `1` if the non-empty domain is
-   *     empty (i.e., the array does not contain any data yet), and `0`
-   * otherwise.
-   * @return Status Ok() on success Error() on failures
-   */
-  Status get_array_non_empty_domain_from_name(
-      Array* array, const char* name, void* domain, bool* is_empty);
+  Status get_array_non_empty_domain(Array* array, uint64_t timestamp);
 
   /**
    * Get array's max buffer sizes from rest server.

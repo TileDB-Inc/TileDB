@@ -350,6 +350,16 @@ std::string to_str(const T& value) {
   return ss.str();
 }
 
+uint64_t common_prefix_size(const std::string& a, const std::string& b) {
+  auto size = std::min(a.size(), b.size());
+  for (size_t i = 0; i < size; ++i) {
+    if (a[i] != b[i])
+      return i;
+  }
+
+  return size;
+}
+
 }  // namespace parse
 
 /* ****************************** */

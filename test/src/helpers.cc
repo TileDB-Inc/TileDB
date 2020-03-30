@@ -76,8 +76,8 @@ void check_partitions(
     CHECK(unsplittable);
   } else {
     CHECK(!unsplittable);
-    //    CHECK(partitioner.next(&unsplittable).ok());
-    //    CHECK(!unsplittable);
+    CHECK(partitioner.next(&unsplittable).ok());
+    CHECK(!unsplittable);
     CHECK(partitioner.done());
   }
 }
