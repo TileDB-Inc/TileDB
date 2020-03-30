@@ -1,3 +1,9 @@
+# TileDB v1.7.7 Release Notes
+
+## Bug fixes
+
+* Fix expanded domain consolidation [#1572](https://github.com/TileDB-Inc/TileDB/pull/1572)
+
 # TileDB v1.7.6 Release Notes
 
 ## New features
