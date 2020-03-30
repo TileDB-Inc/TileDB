@@ -76,13 +76,18 @@ Status GCS::init(const Config& config, ThreadPool* const thread_pool) {
     return LOG_STATUS(Status::GCSError("Failed to initialize GCS Client."));
   }
 
-  // TODO from config
-  write_cache_max_size_ = 1024 * 1024 * 1024;
-
   bool found;
+  RETURN_NOT_OK(config.get<uint64_t>(
+      "vfs.gcs.max_parallel_ops", &max_parallel_ops_, &found));
+  assert(found);
   RETURN_NOT_OK(config.get<bool>(
       "vfs.gcs.use_multi_part_upload", &use_multi_part_upload_, &found));
   assert(found);
+  RETURN_NOT_OK(config.get<uint64_t>(
+      "vfs.gcs.multi_part_size", &multi_part_part_size_, &found));
+  assert(found);
+
+  write_cache_max_size_ = max_parallel_ops_ * multi_part_part_size_;
 
   return Status::Ok();
 }
@@ -846,10 +851,6 @@ Status GCS::flush_object(const URI& uri) {
     return Status::Ok();
   }
 
-  // TODO: There is a 32 object limit for object compositions. When we have more
-  // than 32 parts, we need multiple ComposeObject requests to reduce all parts
-  // into a single object.
-
   // Build a list of objects to compose.
   std::vector<google::cloud::storage::ComposeSourceObject> source_objects;
   source_objects.reserve(part_paths.size());
@@ -859,9 +860,21 @@ Status GCS::flush_object(const URI& uri) {
     source_objects.emplace_back(std::move(source_object));
   }
 
+  // Provide a best-effort attempt to delete any stale, intermediate
+  // composed objects.
+  const std::string prefix = object_path + "__compose";
+  google::cloud::storage::DeleteByPrefix(*client_, bucket_name, prefix);
+
+  // Compose all parts into a single object.
+  const bool ignore_cleanup_failures = true;
   google::cloud::StatusOr<google::cloud::storage::ObjectMetadata>
-      object_metadata =
-          client_->ComposeObject(bucket_name, source_objects, object_path);
+      object_metadata = google::cloud::storage::ComposeMany(
+          *client_,
+          bucket_name,
+          source_objects,
+          prefix,
+          object_path,
+          ignore_cleanup_failures);
 
   // Delete all outstanding part objects.
   delete_parts(bucket_name, part_paths);
