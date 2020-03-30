@@ -621,6 +621,10 @@ TEST_CASE_METHOD(
   rc = tiledb_query_add_range(ctx_, query, 0, &v, &v, &v);
   CHECK(rc == TILEDB_ERR);
 
+  // Variable-sized range
+  rc = tiledb_query_add_range_var(ctx_, query, 0, &v, 1, &v, 1);
+  REQUIRE(rc == TILEDB_ERR);
+
   // Add ranges outside the subarray domain
   uint64_t inv_r1[] = {0, 0};
   rc = tiledb_query_add_range(ctx_, query, 0, &inv_r1[0], &inv_r1[1], nullptr);

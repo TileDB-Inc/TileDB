@@ -130,6 +130,9 @@ Status Array::open(
     metadata_.reset(timestamp_);
   }
 
+  // Compute non-empty domain
+  compute_non_empty_domain();
+
   is_open_ = true;
 
   return Status::Ok();
@@ -183,6 +186,9 @@ Status Array::open(
         &fragment_metadata_));
   }
 
+  // Compute non-empty domain
+  compute_non_empty_domain();
+
   is_open_ = true;
 
   return Status::Ok();
@@ -232,6 +238,9 @@ Status Array::open(
     metadata_.reset(timestamp_);
   }
 
+  // Compute non-empty domain
+  compute_non_empty_domain();
+
   query_type_ = query_type;
   is_open_ = true;
 
@@ -245,6 +254,7 @@ Status Array::close() {
     return Status::Ok();
 
   is_open_ = false;
+  non_empty_domain_.clear();
   clear_last_max_buffer_sizes();
   fragment_metadata_.clear();
 
@@ -351,6 +361,12 @@ Status Array::get_max_buffer_size(
         Status::ArrayError("Cannot get max buffer size; Function not "
                            "applicable to heterogeneous domains"));
 
+  // Not applicable to variable-sized dimensions
+  if (!array_schema_->domain()->all_dims_fixed())
+    return LOG_STATUS(Status::ArrayError(
+        "Cannot get max buffer size; Function not "
+        "applicable to domains with variable-sized dimensions"));
+
   // Check if name is attribute or dimension
   bool is_dim = array_schema_->is_dim(name);
   bool is_attr = array_schema_->is_attr(name);
@@ -406,6 +422,12 @@ Status Array::get_max_buffer_size(
         Status::ArrayError("Cannot get max buffer size; Function not "
                            "applicable to heterogeneous domains"));
 
+  // Not applicable to variable-sized dimensions
+  if (!array_schema_->domain()->all_dims_fixed())
+    return LOG_STATUS(Status::ArrayError(
+        "Cannot get max buffer size; Function not "
+        "applicable to domains with variable-sized dimensions"));
+
   RETURN_NOT_OK(compute_max_buffer_sizes(subarray));
 
   // Check if attribute/dimension exists
@@ -455,6 +477,7 @@ Status Array::reopen(uint64_t timestamp) {
   fragment_metadata_.clear();
   metadata_.clear();
   metadata_loaded_ = false;
+  non_empty_domain_.clear();
 
   if (remote_) {
     return open(
@@ -463,12 +486,18 @@ Status Array::reopen(uint64_t timestamp) {
         encryption_key_.key().data(),
         encryption_key_.key().size());
   }
-  return storage_manager_->array_reopen(
+
+  RETURN_NOT_OK(storage_manager_->array_reopen(
       array_uri_,
       timestamp_,
       encryption_key_,
       &array_schema_,
-      &fragment_metadata_);
+      &fragment_metadata_));
+
+  // Compute non-empty domain
+  compute_non_empty_domain();
+
+  return Status::Ok();
 }
 
 uint64_t Array::timestamp() const {
@@ -661,6 +690,10 @@ Status Array::metadata(Metadata** metadata) {
   return Status::Ok();
 }
 
+const NDRange& Array::non_empty_domain() const {
+  return non_empty_domain_;
+}
+
 /* ********************************* */
 /*          PRIVATE METHODS          */
 /* ********************************* */
@@ -803,6 +836,20 @@ Status Array::load_metadata() {
   }
   metadata_loaded_ = true;
   return Status::Ok();
+}
+
+void Array::compute_non_empty_domain() {
+  if (fragment_metadata_.empty())
+    return;
+
+  const auto& frag0_dom = fragment_metadata_[0]->non_empty_domain();
+  non_empty_domain_.assign(frag0_dom.begin(), frag0_dom.end());
+
+  auto metadata_num = fragment_metadata_.size();
+  for (size_t j = 1; j < metadata_num; ++j) {
+    const auto& meta_dom = fragment_metadata_[j]->non_empty_domain();
+    array_schema_->domain()->expand_ndrange(meta_dom, &non_empty_domain_);
+  }
 }
 
 }  // namespace sm

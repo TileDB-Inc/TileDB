@@ -1094,6 +1094,8 @@ TEST_CASE("C++ API: Test heterogeneous dimensions", "[cppapi][sparse][heter]") {
   query_r.set_buffer("d2", buff_d2_r);
   query_r.set_buffer("a", buff_a_r);
   query_r.set_layout(TILEDB_UNORDERED);
+  query_r.add_range(0, 1.0f, 20.0f);
+  query_r.add_range(1, (int64_t)1, (int64_t)30);
   query_r.submit();
   array_r.close();
   array_r.close();
@@ -1101,6 +1103,75 @@ TEST_CASE("C++ API: Test heterogeneous dimensions", "[cppapi][sparse][heter]") {
   CHECK(buff_d1 == buff_d1_r);
   CHECK(buff_d2 == buff_d2_r);
   CHECK(buff_a == buff_a_r);
+
+  if (vfs.is_dir(array_name))
+    vfs.remove_dir(array_name);
+}
+
+TEST_CASE(
+    "C++ API: Test string dimensions, 1d",
+    "[cppapi][sparse][string-dims][1d]") {
+  const std::string array_name = "cpp_unit_array";
+  Context ctx;
+  VFS vfs(ctx);
+
+  if (vfs.is_dir(array_name))
+    vfs.remove_dir(array_name);
+
+  // Create array
+  auto d = Dimension::create(ctx, "d", TILEDB_STRING_ASCII, nullptr, nullptr);
+  Domain dom(ctx);
+  dom.add_dimension(d);
+  ArraySchema schema(ctx, TILEDB_SPARSE);
+  auto a = Attribute::create<int32_t>(ctx, "a");
+  schema.add_attribute(a);
+  schema.set_domain(dom);
+  Array::create(array_name, schema);
+
+  // Write
+  Array array(ctx, array_name, TILEDB_WRITE);
+  std::vector<int32_t> buff_a = {3, 2, 1, 4};
+  std::string d_data("ccbbddddaa");
+  uint64_t d_off[] = {0, 2, 4, 8};
+  uint64_t d_off_size = 4;
+  Query query(ctx, array, TILEDB_WRITE);
+  CHECK_NOTHROW(query.set_buffer(
+      "d", d_off, d_off_size, (void*)d_data.c_str(), d_data.size()));
+  query.set_buffer("a", buff_a);
+  query.set_layout(TILEDB_UNORDERED);
+  CHECK_NOTHROW(query.submit());
+  array.close();
+
+  // Non-empty domain
+  Array array_r(ctx, array_name, TILEDB_READ);
+  auto non_empty_domain = array_r.non_empty_domain_var("d");
+  CHECK(non_empty_domain.first == std::string("aa"));
+  CHECK(non_empty_domain.second == std::string("dddd"));
+  non_empty_domain = array_r.non_empty_domain_var(0);
+  CHECK(non_empty_domain.first == std::string("aa"));
+  CHECK(non_empty_domain.second == std::string("dddd"));
+  CHECK_THROWS(array_r.non_empty_domain_var(1));
+  CHECK_THROWS(array_r.non_empty_domain_var("foo"));
+
+  // Read
+  std::string s1("a", 1);
+  std::string s2("ee", 2);
+  Query query_r(ctx, array_r, TILEDB_READ);
+  query_r.add_range(0, s1, s2);
+  CHECK_THROWS(query_r.add_range(1, s1, s2));
+  CHECK_THROWS(query_r.add_range(0, "", s2));
+  CHECK_THROWS(query_r.add_range(0, s1, ""));
+  std::string data;
+  data.resize(10);
+  std::vector<uint64_t> offsets(4);
+  query_r.set_buffer("d", offsets, data);
+  query_r.submit();
+  CHECK(data == "aabbccdddd");
+  std::vector<uint64_t> c_offsets = {0, 2, 4, 6};
+  CHECK(offsets == c_offsets);
+
+  // Close array
+  array_r.close();
 
   if (vfs.is_dir(array_name))
     vfs.remove_dir(array_name);

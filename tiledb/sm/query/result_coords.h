@@ -77,6 +77,14 @@ struct ResultCoords {
   }
 
   /**
+   * Returns a string coordinate. Applicable only to string
+   * dimensions.
+   */
+  std::string coord_string(unsigned dim_idx) const {
+    return tile_->coord_string(pos_, dim_idx);
+  }
+
+  /**
    * Returns the coordinate at the object's position `pos_` from the object's
    * tile `tile_` on the given dimension.
    *

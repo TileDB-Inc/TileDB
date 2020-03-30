@@ -393,14 +393,18 @@ Status Reader::set_buffer(
     return LOG_STATUS(
         Status::ReaderError("Cannot set buffer; Array schema not set"));
 
+  // For easy reference
+  bool is_dim = array_schema_->is_dim(name);
+  bool is_attr = array_schema_->is_attr(name);
+
   // Check that attribute/dimension exists
-  if (name != constants::coords && array_schema_->attribute(name) == nullptr)
-    return LOG_STATUS(
-        Status::ReaderError("Cannot set buffer; Invalid attribute/dimension"));
+  if (!is_dim && !is_attr)
+    return LOG_STATUS(Status::ReaderError(
+        std::string("Cannot set buffer; Invalid attribute/dimension '") + name +
+        "'"));
 
   // Check that attribute/dimension is var-sized
-  bool var_size = (name != constants::coords && array_schema_->var_size(name));
-  if (!var_size)
+  if (!array_schema_->var_size(name))
     return LOG_STATUS(Status::ReaderError(
         std::string("Cannot set buffer; Input attribute/dimension '") + name +
         "' is fixed-sized"));

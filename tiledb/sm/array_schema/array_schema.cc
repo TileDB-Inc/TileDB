@@ -575,11 +575,13 @@ Status ArraySchema::set_domain(Domain* domain) {
                                    "dimensions must have the same datatype"));
 
     auto type = domain->dimension(0)->type();
-    if (type == Datatype::FLOAT32 || type == Datatype::FLOAT64) {
-      return LOG_STATUS(
-          Status::ArraySchemaError("Cannot set domain; Dense arrays "
-                                   "cannot have floating point domains"));
+    if (!datatype_is_integer(type) && !datatype_is_datetime(type)) {
+      return LOG_STATUS(Status::ArraySchemaError(
+          std::string("Cannot set domain; Dense arrays "
+                      "do not support dimension datatype '") +
+          datatype_str(type) + "'"));
     }
+
     RETURN_NOT_OK(domain->set_null_tile_extents_to_range());
   }
 

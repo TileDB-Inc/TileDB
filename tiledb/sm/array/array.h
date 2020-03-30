@@ -302,6 +302,9 @@ class Array {
    */
   Metadata* metadata();
 
+  /** Returns the non-empty domain of the opened array. */
+  const NDRange& non_empty_domain() const;
+
  private:
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
@@ -362,6 +365,9 @@ class Array {
   /** True if the array metadata is loaded. */
   bool metadata_loaded_;
 
+  /** The non-empty domain of the array. */
+  NDRange non_empty_domain_;
+
   /* ********************************* */
   /*          PRIVATE METHODS          */
   /* ********************************* */
@@ -399,6 +405,9 @@ class Array {
    * @return  Status
    */
   Status load_metadata();
+
+  /** Computes the non-empty domain of the array. */
+  void compute_non_empty_domain();
 };
 
 }  // namespace sm

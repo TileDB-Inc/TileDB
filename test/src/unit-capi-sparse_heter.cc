@@ -447,7 +447,7 @@ void SparseHeterFx::check_non_empty_domain_int64_float(
   // Get non-empty domain for each dimension
   float dom_f_r[2];
   int64_t dom_i_r[2];
-  int is_empty_r;
+  int32_t is_empty_r;
   rc = tiledb_array_get_non_empty_domain_from_name_wrapper(
       ctx_, array, "d1", dom_i_r, &is_empty_r);
   CHECK(rc == TILEDB_OK);
@@ -460,6 +460,15 @@ void SparseHeterFx::check_non_empty_domain_int64_float(
     CHECK(!std::memcmp(dom_f, dom_f_r, sizeof(dom_f_r)));
     CHECK(!std::memcmp(dom_i, dom_i_r, sizeof(dom_i_r)));
   }
+
+  // Errors
+  uint64_t start_size, end_size;
+  rc = tiledb_array_get_non_empty_domain_var_size_from_index(
+      ctx_, array, 0, &start_size, &end_size, &is_empty_r);
+  CHECK(rc == TILEDB_ERR);
+  rc = tiledb_array_get_non_empty_domain_var_size_from_name(
+      ctx_, array, "d1", &start_size, &end_size, &is_empty_r);
+  CHECK(rc == TILEDB_ERR);
 
   // Close array
   rc = tiledb_array_close(ctx_, array);
