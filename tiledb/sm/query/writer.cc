@@ -493,10 +493,11 @@ const std::vector<WrittenFragmentInfo>& Writer::written_fragment_info() const {
 /*          PRIVATE METHODS       */
 /* ****************************** */
 
-void Writer::add_written_fragment_info(const URI& uri) {
-  auto timestamp_range = utils::parse::get_timestamp_range(
-      constants::format_version, uri.last_path_part());
+Status Writer::add_written_fragment_info(const URI& uri) {
+  std::pair<uint64_t, uint64_t> timestamp_range;
+  RETURN_NOT_OK(utils::parse::get_timestamp_range(uri, &timestamp_range));
   written_fragment_info_.emplace_back(uri, timestamp_range);
+  return Status::Ok();
 }
 
 Status Writer::check_buffer_names() {
@@ -1084,7 +1085,7 @@ Status Writer::filter_tile(
 Status Writer::finalize_global_write_state() {
   assert(layout_ == Layout::GLOBAL_ORDER);
   auto meta = global_write_state_->frag_meta_.get();
-  auto uri = meta->fragment_uri();
+  const auto& uri = meta->fragment_uri();
 
   // Handle last tile
   Status st = global_write_handle_last_tile();
@@ -1129,7 +1130,12 @@ Status Writer::finalize_global_write_state() {
   RETURN_NOT_OK_ELSE(meta->store(array_->get_encryption_key()), clean_up(uri));
 
   // Add written fragment info
-  add_written_fragment_info(uri);
+  RETURN_NOT_OK_ELSE(add_written_fragment_info(uri), clean_up(uri));
+
+  // The following will make the fragment visible
+  auto ok_uri =
+      URI(uri.remove_trailing_slash().to_string() + constants::ok_file_suffix);
+  RETURN_NOT_OK_ELSE(storage_manager_->vfs()->touch(ok_uri), clean_up(uri));
 
   // Delete global write state
   global_write_state_.reset(nullptr);
@@ -1523,7 +1529,7 @@ Status Writer::ordered_write() {
   // Create new fragment
   std::shared_ptr<FragmentMetadata> frag_meta;
   RETURN_CANCEL_OR_ERROR(create_fragment(true, &frag_meta));
-  auto uri = frag_meta->fragment_uri();
+  const auto& uri = frag_meta->fragment_uri();
 
   // Initialize dense cell range iterators for each tile in global order
   std::vector<WriteCellSlabIter<T>> dense_cell_range_its;
@@ -1563,7 +1569,12 @@ Status Writer::ordered_write() {
       frag_meta->store(array_->get_encryption_key()), clean_up(uri));
 
   // Add written fragment info
-  add_written_fragment_info(frag_meta->fragment_uri());
+  RETURN_NOT_OK_ELSE(add_written_fragment_info(uri), clean_up(uri));
+
+  // The following will make the fragment visible
+  auto ok_uri =
+      URI(uri.remove_trailing_slash().to_string() + constants::ok_file_suffix);
+  RETURN_NOT_OK_ELSE(storage_manager_->vfs()->touch(ok_uri), clean_up(uri));
 
   return Status::Ok();
 }
@@ -2259,7 +2270,12 @@ Status Writer::unordered_write() {
       frag_meta->store(array_->get_encryption_key()), clean_up(uri));
 
   // Add written fragment info
-  add_written_fragment_info(frag_meta->fragment_uri());
+  RETURN_NOT_OK_ELSE(add_written_fragment_info(uri), clean_up(uri));
+
+  // The following will make the fragment visible
+  auto ok_uri =
+      URI(uri.remove_trailing_slash().to_string() + constants::ok_file_suffix);
+  RETURN_NOT_OK_ELSE(storage_manager_->vfs()->touch(ok_uri), clean_up(uri));
 
   return Status::Ok();
 }

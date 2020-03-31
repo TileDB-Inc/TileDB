@@ -96,6 +96,12 @@ class Metadata {
   /** Clears the metadata. */
   void clear();
 
+  /** Retrieves the array metadata URI. */
+  Status get_uri(const URI& array_uri, URI* meta_uri);
+
+  /** Generates a new array metadata URI. */
+  Status generate_uri(const URI& array_uri);
+
   /**
    * Deserializes the input metadata buffers. Note that the buffers are
    * assummed to be sorted on time. The function will take care of any
@@ -244,6 +250,9 @@ class Metadata {
    * This is needed to know which files to delete upon consolidation.
    */
   std::vector<URI> loaded_metadata_uris_;
+
+  /** The URI of the array metadata file. */
+  URI uri_;
 
   /* ********************************* */
   /*          PRIVATE METHODS          */

@@ -12,6 +12,10 @@
 * Changed `tile_extent` input of `tiledb_dimension_get_tile_extent` to `const void**` (from `void**`).
 * Anonymous attribute and dimensions (i.e., empty strings for attribute/dimension names) is no longer supported. This is because now the user can set separate dimension buffers to the query and, therefore, supporting anonymous attributes and dimensions creates ambiguity in the current API. 
 
+## Breaking behavior
+
+* Now the TileDB consolidation process does not clean up the fragments or array metadata it consolidates. This is (i) to avoid exclusively locking at any point during consolidation, and (ii) to enable fine-grained time traveling even in the presence of consolidated fragments or array metadata. Instead, we added a special vacuuming API which explicitly cleans up consolidated fragments or array metadata (with appropriate configuration parameters). The vacuuming functions briefly exclusively lock the array.
+
 ## New features
 
 * The user can now set separate coordinate buffers to the query. Also any subset of the dimensions is supported.
@@ -24,6 +28,9 @@
 * User can set coordinate buffers separately for write queries.
 * Added option to enable duplicate coordinates for sparse arrays [#1504](https://github.com/TileDB-Inc/TileDB/pull/1504) 
 * Added support for writing at a timestamp by allowing opening an array at a timestamp (previously disabled).
+* Added special files with the same name as a fragment directory and an added suffix ".ok", to indicate a committed fragment. This improved the performance of opening an array on object stores significantly, as it avoids an extra REST request per fragment.
+* Added functionality to consolidation, which allows consolidating the fragment metadata footers in a single file by toggling a new config parameter. This leads to a huge performance boost when opening an array, as it avoids fetching a separate footer per fragment from storage.
+* Various reader parallelizations that boosted read performance significantly.
 
 ## Deprecations
 
@@ -37,11 +44,13 @@
 * Added C API functions `tiledb_array_schema_{set,get}_allows_dups` and C++ API functions `Array::set_allows_dups` and `Array::allows_dups`
 * Added C API functions `tiledb_dimension_{set,get}_filter_list` and `tiledb_dimension_{set,get}_cell_val_num`
 * Added C API functions `tiledb_array_get_non_empty_domain_from_{index,name}`
+* Added C API function `tiledb_array_vacuum`
 * Added C++ API functions `Dimension::set_cell_val_num` and `Dimension::cell_val_num`.
 * Added C++ API functions `Dimension::set_filter_list` and `Dimension::filter_list`.
 * Added C++ API functions `Array::non_empty_domain(unsigned idx)` and `Array::non_empty_domain(const std::string& name)`.
 * Added C++ API functions `Domain::dimension(unsigned idx)` and `Domain::dimension(const std::string& name)`.
 * Added C++ API function `Array::load_schema(ctx, uri)` and `Array::load_schema(ctx, uri, key_type, key, key_len)`.
+* Added C++ API function `Array::vacuum`
 
 ## API removals
 

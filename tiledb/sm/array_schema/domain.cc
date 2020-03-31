@@ -97,6 +97,15 @@ Status Domain::add_dimension(const Dimension* dim) {
   return Status::Ok();
 }
 
+bool Domain::all_dims_fixed() const {
+  for (const auto& dim : dimensions_) {
+    if (dim->var_size())
+      return false;
+  }
+
+  return true;
+}
+
 bool Domain::all_dims_int() const {
   for (const auto& dim : dimensions_) {
     if (!datatype_is_integer(dim->type()))

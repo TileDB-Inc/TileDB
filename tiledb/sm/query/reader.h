@@ -578,6 +578,26 @@ class Reader {
       std::vector<ResultCoords>* range_result_coords);
 
   /**
+   * Computes the result coordinates of a given range of the query
+   * subarray.
+   *
+   * @param range_idx The range to focus on.
+   * @param fragment_idx The fragment to focus on.
+   * @param result_tile_map This is an auxialiary map that helps finding the
+   *     result_tiles overlapping with each range.
+   * @param result_tiles The result tiles to read the coordinates from.
+   * @param range_result_coords The result coordinates to be retrieved.
+   *     It contains a vector for each range of the subarray.
+   * @return Status
+   */
+  Status compute_range_result_coords(
+      uint64_t range_idx,
+      uint32_t fragment_idx,
+      const std::map<std::pair<unsigned, uint64_t>, size_t>& result_tile_map,
+      std::vector<ResultTile>* result_tiles,
+      std::vector<ResultCoords>* range_result_coords);
+
+  /**
    * Computes the final subarray result coordinates, which will be
    * deduplicated and sorted on the specified subarray layout.
    *

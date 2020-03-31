@@ -230,37 +230,42 @@ Status convert(const std::string& str, SerializationType* value) {
   return Status::Ok();
 }
 
-std::pair<uint64_t, uint64_t> get_timestamp_range(
-    uint32_t version, const std::string& fragment_name) {
-  std::pair<uint64_t, uint64_t> ret = {0, 0};
+Status get_timestamp_range(
+    const URI& uri, std::pair<uint64_t, uint64_t>* timestamp_range) {
+  // Initializations
+  auto name = uri.remove_trailing_slash().last_path_part();
+  *timestamp_range = {0, 0};
+
+  // Cut the suffix
+  auto pos = name.find_last_of('.');
+  name = (pos == std::string::npos) ? name : name.substr(0, pos);
+
+  // Get fragment version
+  uint32_t version = 0;
+  RETURN_NOT_OK(utils::parse::get_fragment_name_version(name, &version));
+
   if (version == 1) {  // This is equivalent to format version <=2
-    assert(fragment_name.find_last_of('_') != std::string::npos);
-    auto t_str = fragment_name.substr(fragment_name.find_last_of('_') + 1);
+    assert(name.find_last_of('_') != std::string::npos);
+    auto t_str = name.substr(name.find_last_of('_') + 1);
     sscanf(
         t_str.c_str(),
         (std::string("%") + std::string(PRId64)).c_str(),
-        (long long int*)&ret.first);
-    ret.second = ret.first;
+        (long long int*)&timestamp_range->first);
+    timestamp_range->second = timestamp_range->first;
   } else {
-    assert(fragment_name.find_last_of('_') != std::string::npos);
+    assert(name.find_last_of('_') != std::string::npos);
     sscanf(
-        fragment_name.c_str(),
+        name.c_str(),
         (std::string("__%") + std::string(PRId64) + "_%" + std::string(PRId64))
             .c_str(),
-        (long long int*)&ret.first,
-        (long long int*)&ret.second);
+        (long long int*)&timestamp_range->first,
+        (long long int*)&timestamp_range->second);
   }
 
-  return ret;
+  return Status::Ok();
 }
 
-Status get_fragment_name_version(const URI& uri, uint32_t* version) {
-  // Prepare fragment name string
-  std::string uri_str(uri.c_str());
-  if (uri_str.back() == '/')
-    uri_str.pop_back();
-  std::string name = URI(uri_str).last_path_part();
-
+Status get_fragment_name_version(const std::string& name, uint32_t* version) {
   // First check if it is in version 3, which has 5 '_' in the name
   size_t n = std::count(name.begin(), name.end(), '_');
   if (n == 5) {
@@ -272,6 +277,21 @@ Status get_fragment_name_version(const URI& uri, uint32_t* version) {
   // Version 2 has the 32-byte long UUID at the end
   auto t_str = name.substr(name.find_last_of('_') + 1);
   *version = (t_str.size() == 32) ? 2 : 1;
+
+  return Status::Ok();
+}
+
+Status get_fragment_version(const std::string& name, uint32_t* version) {
+  uint32_t name_version;
+  RETURN_NOT_OK(get_fragment_name_version(name, &name_version));
+
+  if (name_version <= 2) {
+    *version = UINT32_MAX;
+  } else {  // name version >= 3
+    auto v_str = name.substr(name.find_last_of('_') + 1);
+    std::stringstream ss(v_str);
+    ss >> *version;
+  }
 
   return Status::Ok();
 }

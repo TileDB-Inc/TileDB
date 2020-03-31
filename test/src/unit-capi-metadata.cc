@@ -71,6 +71,13 @@ struct CMetadataFx {
   void create_default_array_1d();
   void create_default_array_1d_with_key();
 
+  // Used to get the number of directories or files of another directory
+  struct get_num_struct {
+    int num;
+  };
+
+  static int get_meta_num(const char* path, void* data);
+
   CMetadataFx();
   ~CMetadataFx();
 };
@@ -111,6 +118,14 @@ CMetadataFx::~CMetadataFx() {
   remove_dir(temp_dir_, ctx_, vfs_);
   tiledb_ctx_free(&ctx_);
   tiledb_vfs_free(&vfs_);
+}
+
+int CMetadataFx::get_meta_num(const char* path, void* data) {
+  (void)path;
+  auto data_struct = (CMetadataFx::get_num_struct*)data;
+  ++data_struct->num;
+
+  return 1;
 }
 
 void CMetadataFx::create_default_array_1d() {
@@ -468,7 +483,7 @@ TEST_CASE_METHOD(
   tiledb_array_t* array;
   int rc = tiledb_array_alloc(ctx_, array_name_.c_str(), &array);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_array_open(ctx_, array, TILEDB_WRITE);
+  rc = tiledb_array_open_at(ctx_, array, TILEDB_WRITE, 1);
   REQUIRE(rc == TILEDB_OK);
 
   // Write items
@@ -484,13 +499,10 @@ TEST_CASE_METHOD(
   REQUIRE(rc == TILEDB_OK);
   tiledb_array_free(&array);
 
-  // Prevent array metadata filename/timestamp conflicts
-  std::this_thread::sleep_for(std::chrono::milliseconds(1));
-
   // Update
   rc = tiledb_array_alloc(ctx_, array_name_.c_str(), &array);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_array_open(ctx_, array, TILEDB_WRITE);
+  rc = tiledb_array_open_at(ctx_, array, TILEDB_WRITE, 2);
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_array_delete_metadata(ctx_, array, "aaa");
   CHECK(rc == TILEDB_OK);
@@ -551,8 +563,65 @@ TEST_CASE_METHOD(
   tiledb_array_free(&array);
 
   // Consolidate
-  rc = tiledb_array_consolidate_metadata(ctx_, array_name_.c_str(), nullptr);
+  SECTION("tiledb_array_consolidate_metadata") {
+    rc = tiledb_array_consolidate_metadata(ctx_, array_name_.c_str(), nullptr);
+    CHECK(rc == TILEDB_OK);
+  }
+
+  SECTION("tiledb_array_consolidate") {
+    // Configuration for consolidating array metadata
+    tiledb_config_t* config = nullptr;
+    tiledb_error_t* error = nullptr;
+    REQUIRE(tiledb_config_alloc(&config, &error) == TILEDB_OK);
+    REQUIRE(error == nullptr);
+    int rc = tiledb_config_set(
+        config, "sm.consolidation.mode", "array_meta", &error);
+    REQUIRE(rc == TILEDB_OK);
+    REQUIRE(error == nullptr);
+    rc = tiledb_array_consolidate(ctx_, array_name_.c_str(), config);
+    CHECK(rc == TILEDB_OK);
+    tiledb_config_free(&config);
+  }
+
+  // Check number of metadata files
+  get_num_struct data = {0};
+  auto meta_folder =
+      array_name_ + "/" + tiledb::sm::constants::array_metadata_folder_name;
+  rc = tiledb_vfs_ls(ctx_, vfs_, meta_folder.c_str(), &get_meta_num, &data);
   CHECK(rc == TILEDB_OK);
+  CHECK(data.num == 4);
+
+  // Read at timestamp 1
+  rc = tiledb_array_alloc(ctx_, array_name_.c_str(), &array);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_array_open_at(ctx_, array, TILEDB_READ, 1);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_array_get_metadata(ctx_, array, "aaa", &v_type, &v_num, &v_r);
+  CHECK(rc == TILEDB_OK);
+  CHECK(v_type == TILEDB_INT32);
+  CHECK(*(const int32_t*)v_r == 5);
+  CHECK(v_num == 1);
+  rc = tiledb_array_close(ctx_, array);
+  REQUIRE(rc == TILEDB_OK);
+  tiledb_array_free(&array);
+
+  // Vacuum
+  tiledb_config_t* config_v = nullptr;
+  tiledb_error_t* error_v = nullptr;
+  REQUIRE(tiledb_config_alloc(&config_v, &error_v) == TILEDB_OK);
+  REQUIRE(error_v == nullptr);
+  rc = tiledb_config_set(config_v, "sm.vacuum.mode", "array_meta", &error_v);
+  REQUIRE(rc == TILEDB_OK);
+  REQUIRE(error_v == nullptr);
+  rc = tiledb_array_vacuum(ctx_, array_name_.c_str(), config_v);
+  CHECK(rc == TILEDB_OK);
+  tiledb_config_free(&config_v);
+
+  // Check number of metadata files
+  data = {0};
+  rc = tiledb_vfs_ls(ctx_, vfs_, meta_folder.c_str(), &get_meta_num, &data);
+  CHECK(rc == TILEDB_OK);
+  CHECK(data.num == 1);
 
   // Open the array in read mode
   rc = tiledb_array_alloc(ctx_, array_name_.c_str(), &array);

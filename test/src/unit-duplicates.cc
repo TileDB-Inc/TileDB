@@ -331,6 +331,8 @@ TEST_CASE_METHOD(
   // Consolidate
   rc = tiledb_array_consolidate(ctx_, array_name_.c_str(), nullptr);
   REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_array_vacuum(ctx_, array_name_.c_str(), nullptr);
+  REQUIRE(rc == TILEDB_OK);
 
   // Open array for reading - #2
   rc = tiledb_array_alloc(ctx_, array_name_.c_str(), &array);
