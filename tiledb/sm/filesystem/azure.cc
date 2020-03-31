@@ -166,7 +166,7 @@ Status Azure::create_container(const URI& uri) const {
 Status Azure::wait_for_container_to_propagate(
     const std::string& container_name) const {
   unsigned attempts = 0;
-  while (attempts++ < constants::s3_max_attempts) {
+  while (attempts++ < constants::azure_max_attempts) {
     bool is_container;
     RETURN_NOT_OK(this->is_container(container_name, &is_container));
 
@@ -175,7 +175,7 @@ Status Azure::wait_for_container_to_propagate(
     }
 
     std::this_thread::sleep_for(
-        std::chrono::milliseconds(constants::s3_attempt_sleep_ms));
+        std::chrono::milliseconds(constants::azure_attempt_sleep_ms));
   }
 
   return LOG_STATUS(Status::AzureError(std::string(
@@ -187,7 +187,7 @@ Status Azure::wait_for_container_to_be_deleted(
   assert(client_);
 
   unsigned attempts = 0;
-  while (attempts++ < constants::s3_max_attempts) {
+  while (attempts++ < constants::azure_max_attempts) {
     bool is_container;
     RETURN_NOT_OK(this->is_container(container_name, &is_container));
     if (!is_container) {
@@ -195,7 +195,7 @@ Status Azure::wait_for_container_to_be_deleted(
     }
 
     std::this_thread::sleep_for(
-        std::chrono::milliseconds(constants::s3_attempt_sleep_ms));
+        std::chrono::milliseconds(constants::azure_attempt_sleep_ms));
   }
 
   return LOG_STATUS(Status::AzureError(std::string(
@@ -282,7 +282,7 @@ Status Azure::flush_blob(const URI& uri) {
 
   // Release all instance state associated with this block list
   // transactions so that we can safely return if the following
-  // request fails.
+  // request failed.
   finish_block_list_upload(uri);
 
   std::future<azure::storage_lite::storage_outcome<void>> result =
@@ -580,6 +580,16 @@ Status Azure::move_object(const URI& old_uri, const URI& new_uri) {
 Status Azure::copy_blob(const URI& old_uri, const URI& new_uri) {
   assert(client_);
 
+  if (!old_uri.is_azure()) {
+    return LOG_STATUS(Status::AzureError(
+        std::string("URI is not an Azure URI: " + old_uri.to_string())));
+  }
+
+  if (!new_uri.is_azure()) {
+    return LOG_STATUS(Status::AzureError(
+        std::string("URI is not an Azure URI: " + new_uri.to_string())));
+  }
+
   std::string old_container_name;
   std::string old_blob_path;
   RETURN_NOT_OK(parse_azure_uri(old_uri, &old_container_name, &old_blob_path));
@@ -610,7 +620,7 @@ Status Azure::wait_for_blob_to_propagate(
   assert(client_);
 
   unsigned attempts = 0;
-  while (attempts++ < constants::s3_max_attempts) {
+  while (attempts++ < constants::azure_max_attempts) {
     bool is_blob;
     RETURN_NOT_OK(this->is_blob(container_name, blob_path, &is_blob));
     if (is_blob) {
@@ -618,7 +628,7 @@ Status Azure::wait_for_blob_to_propagate(
     }
 
     std::this_thread::sleep_for(
-        std::chrono::milliseconds(constants::s3_attempt_sleep_ms));
+        std::chrono::milliseconds(constants::azure_attempt_sleep_ms));
   }
 
   return LOG_STATUS(Status::AzureError(
@@ -630,7 +640,7 @@ Status Azure::wait_for_blob_to_be_deleted(
   assert(client_);
 
   unsigned attempts = 0;
-  while (attempts++ < constants::s3_max_attempts) {
+  while (attempts++ < constants::azure_max_attempts) {
     bool is_blob;
     RETURN_NOT_OK(this->is_blob(container_name, blob_path, &is_blob));
     if (!is_blob) {
@@ -638,7 +648,7 @@ Status Azure::wait_for_blob_to_be_deleted(
     }
 
     std::this_thread::sleep_for(
-        std::chrono::milliseconds(constants::s3_attempt_sleep_ms));
+        std::chrono::milliseconds(constants::azure_attempt_sleep_ms));
   }
 
   return LOG_STATUS(Status::AzureError(
