@@ -426,6 +426,9 @@ const std::string filesystem_type_s3_str = "S3";
 /** The string representation for filesystem type Azure. */
 const std::string filesystem_type_azure_str = "AZURE";
 
+/** The string representation for filesystem type GCS. */
+const std::string filesystem_type_gcs_str = "GCS";
+
 /** The string representation for WalkOrder preorder. */
 const std::string walkorder_preorder_str = "PREORDER";
 
@@ -462,6 +465,12 @@ const unsigned int azure_max_attempts = 10;
 
 /** Milliseconds of wait time between Azure attempts. */
 const unsigned int azure_attempt_sleep_ms = 1000;
+
+/** Maximum number of attempts to wait for a GCS response. */
+const unsigned int gcs_max_attempts = 100;
+
+/** Milliseconds of wait time between GCS attempts. */
+const unsigned int gcs_attempt_sleep_ms = 1000;
 
 /** An allocation tag used for logging. */
 const std::string s3_allocation_tag = "TileDB";

@@ -50,6 +50,8 @@
     TILEDB_FILESYSTEM_ENUM(S3) = 1,
     /** Azure filesystem */
     TILEDB_FILESYSTEM_ENUM(AZURE) = 2,
+    /** GCS filesystem */
+    TILEDB_FILESYSTEM_ENUM(GCS) = 3,
 #endif
 
 #ifdef TILEDB_DATATYPE_ENUM
