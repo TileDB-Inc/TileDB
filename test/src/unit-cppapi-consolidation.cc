@@ -31,6 +31,7 @@
  */
 
 #include "catch.hpp"
+#include "helpers.h"
 #include "tiledb/sm/cpp_api/tiledb"
 
 using namespace tiledb;
@@ -86,13 +87,6 @@ void read_array(
   CHECK(values == c_values);
 }
 
-int num_fragments(const std::string& array_name) {
-  Context ctx;
-  VFS vfs(ctx);
-  // Exclude array lock, __meta, schema
-  return (int)vfs.ls(array_name).size() - 3;
-}
-
 TEST_CASE(
     "C++ API: Test consolidation with partial tiles",
     "[cppapi][consolidation]") {
@@ -102,7 +96,7 @@ TEST_CASE(
   create_array(array_name);
   write_array(array_name, {1, 2}, {1, 2});
   write_array(array_name, {3, 3}, {3});
-  CHECK(num_fragments(array_name) == 2);
+  CHECK(tiledb::test::num_fragments(array_name) == 2);
 
   read_array(array_name, {1, 3}, {1, 2, 3});
 
@@ -110,7 +104,9 @@ TEST_CASE(
   Config config;
   config["sm.consolidation.buffer_size"] = "4";
   REQUIRE_NOTHROW(Array::consolidate(ctx, array_name, &config));
-  CHECK(num_fragments(array_name) == 1);
+  CHECK(tiledb::test::num_fragments(array_name) == 3);
+  REQUIRE_NOTHROW(Array::vacuum(ctx, array_name, &config));
+  CHECK(tiledb::test::num_fragments(array_name) == 1);
 
   read_array(array_name, {1, 3}, {1, 2, 3});
 

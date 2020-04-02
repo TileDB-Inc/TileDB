@@ -80,6 +80,9 @@ class Domain {
    */
   Status add_dimension(const Dimension* dim);
 
+  /** Returns true if all dimensions have fixed-sized domain datatypes. */
+  bool all_dims_fixed() const;
+
   /** Returns true if all dimensions have integer domain types. */
   bool all_dims_int() const;
 

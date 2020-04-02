@@ -31,8 +31,10 @@
  */
 
 #include "catch.hpp"
+#include "helpers.h"
 #include "tiledb/sm/cpp_api/tiledb"
 #include "tiledb/sm/misc/constants.h"
+#include "tiledb/sm/misc/uri.h"
 #include "tiledb/sm/misc/utils.h"
 
 using namespace tiledb;
@@ -528,22 +530,11 @@ TEST_CASE(
   query_w.set_buffer("a", data).set_subarray({4, 5}).submit();
   query_w.finalize();
   array_w.close();
+  CHECK(tiledb::test::num_fragments(array_name) == 3);
   Array::consolidate(ctx, array_name);
-
-  // Note: vfs.ls returns all the files and directories in the array
-  // folder, which contains one file for the array schema and one
-  // for the array lock. Therefore, the number of fragments is
-  // what ls returns minus 2. There might also be a `__meta` folder
-  // (potentially not visible on S3 if there are not files in it),
-  // so we need to exclude that as well.
-  auto frags = vfs.ls(array_name);
-  auto frag_num = frags.size() - 2;
-  for (const auto& f : frags) {
-    if (tiledb::sm::utils::parse::ends_with(
-            f, tiledb::sm::constants::array_metadata_folder_name))
-      frag_num--;
-  }
-  CHECK(frag_num == 1);
+  CHECK(tiledb::test::num_fragments(array_name) == 4);
+  Array::vacuum(ctx, array_name);
+  CHECK(tiledb::test::num_fragments(array_name) == 1);
 
   if (vfs.is_dir(array_name))
     vfs.remove_dir(array_name);
@@ -1054,6 +1045,62 @@ TEST_CASE("C++ API: Write cell with large cell val num", "[cppapi][sparse]") {
     REQUIRE(data_r[i] == 2 * i);
 
   array_r.close();
+
+  if (vfs.is_dir(array_name))
+    vfs.remove_dir(array_name);
+}
+
+using namespace tiledb::test;
+
+TEST_CASE("C++ API: Test heterogeneous dimensions", "[cppapi][sparse][heter]") {
+  const std::string array_name = "cpp_unit_array";
+  Context ctx;
+  VFS vfs(ctx);
+
+  if (vfs.is_dir(array_name))
+    vfs.remove_dir(array_name);
+
+  // Create array
+  auto d1 = Dimension::create<float>(ctx, "d1", {1.0f, 20.0f}, 5.0f);
+  auto d2 = Dimension::create<int64_t>(ctx, "d2", {1, 30}, 5);
+  auto a = Attribute::create<int32_t>(ctx, "a");
+  Domain dom(ctx);
+  dom.add_dimensions(d1, d2);
+  ArraySchema schema(ctx, TILEDB_SPARSE);
+  schema.add_attribute(a);
+  schema.set_domain(dom);
+  Array::create(array_name, schema);
+
+  // Write
+  Array array(ctx, array_name, TILEDB_WRITE);
+  std::vector<float> buff_d1 = {1.1f, 1.2f, 1.3f, 1.4f};
+  std::vector<int64_t> buff_d2 = {1, 2, 3, 4};
+  std::vector<int32_t> buff_a = {1, 2, 3, 4};
+  Query query(ctx, array, TILEDB_WRITE);
+  query.set_buffer("d1", buff_d1);
+  query.set_buffer("d2", buff_d2);
+  query.set_buffer("a", buff_a);
+  query.set_layout(TILEDB_UNORDERED);
+  query.submit();
+  array.close();
+
+  // Read
+  Array array_r(ctx, array_name, TILEDB_READ);
+  std::vector<float> buff_d1_r(4);
+  std::vector<int64_t> buff_d2_r(4);
+  std::vector<int32_t> buff_a_r(4);
+  Query query_r(ctx, array_r, TILEDB_READ);
+  query_r.set_buffer("d1", buff_d1_r);
+  query_r.set_buffer("d2", buff_d2_r);
+  query_r.set_buffer("a", buff_a_r);
+  query_r.set_layout(TILEDB_UNORDERED);
+  query_r.submit();
+  array_r.close();
+  array_r.close();
+
+  CHECK(buff_d1 == buff_d1_r);
+  CHECK(buff_d2 == buff_d2_r);
+  CHECK(buff_a == buff_a_r);
 
   if (vfs.is_dir(array_name))
     vfs.remove_dir(array_name);

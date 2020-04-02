@@ -375,6 +375,12 @@ void read_array(
     tiledb_layout_t layout,
     const QueryBuffers& buffers);
 
+/**
+ * Returns the number of fragments in the input array,
+ * appropriately excluding special files and subdirectories.
+ */
+int32_t num_fragments(const std::string& array_name);
+
 }  // End of namespace test
 
 }  // End of namespace tiledb

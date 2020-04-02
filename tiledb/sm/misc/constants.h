@@ -155,6 +155,15 @@ extern const uint8_t empty_any;
 /** The file suffix used in TileDB. */
 extern const std::string file_suffix;
 
+/** Suffix for the special vacuum files used in TileDB. */
+extern const std::string vacuum_file_suffix;
+
+/** Suffix for the special ok files used in TileDB. */
+extern const std::string ok_file_suffix;
+
+/** Suffix for the special metadata files used in TileDB. */
+extern const std::string meta_file_suffix;
+
 /** The fragment metadata file name. */
 extern const std::string fragment_metadata_filename;
 

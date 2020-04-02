@@ -96,13 +96,12 @@ Status convert(const std::string& str, bool* value);
 Status convert(const std::string& str, SerializationType* value);
 
 /**
- * Retrieves the timestamp range from the input fragment
- * name, based on the input version.
- * For format version <= 2, only the range start is valid
+ * Retrieves the timestamp range from the input
+ * URI. For format version <= 2, only the range start is valid
  * (the range end is ignored).
  */
-std::pair<uint64_t, uint64_t> get_timestamp_range(
-    uint32_t version, const std::string& fragment_name);
+Status get_timestamp_range(
+    const URI& uri, std::pair<uint64_t, uint64_t>* timestamp_range);
 
 /**
  * Retrieves the fragment name version.
@@ -113,7 +112,14 @@ std::pair<uint64_t, uint64_t> get_timestamp_range(
  *  - Version 3 corresponds to version 5 or higher
  *      * __t1_t2_uuid_version
  */
-Status get_fragment_name_version(const URI& uri, uint32_t* version);
+Status get_fragment_name_version(const std::string& name, uint32_t* version);
+
+/**
+ * Retrieves the fragment version. This will work only for
+ * name versions > 2, otherwise the function sets `version`
+ * to UINT32_MAX.
+ */
+Status get_fragment_version(const std::string& name, uint32_t* version);
 
 /** Returns `true` if the input string is a (potentially signed) integer. */
 bool is_int(const std::string& str);

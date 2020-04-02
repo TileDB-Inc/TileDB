@@ -385,7 +385,7 @@ class Writer {
   /* ********************************* */
 
   /** Adss a fragment to `written_fragment_info_`. */
-  void add_written_fragment_info(const URI& uri);
+  Status add_written_fragment_info(const URI& uri);
 
   /** Checks if the buffers names have been appropriately set for the query. */
   Status check_buffer_names();

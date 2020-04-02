@@ -75,6 +75,8 @@ const std::string Config::SM_CONSOLIDATION_STEPS = "4294967295";
 const std::string Config::SM_CONSOLIDATION_STEP_MIN_FRAGS = "4294967295";
 const std::string Config::SM_CONSOLIDATION_STEP_MAX_FRAGS = "4294967295";
 const std::string Config::SM_CONSOLIDATION_STEP_SIZE_RATIO = "0.0";
+const std::string Config::SM_CONSOLIDATION_MODE = "fragments";
+const std::string Config::SM_VACUUM_MODE = "fragments";
 const std::string Config::VFS_NUM_THREADS =
     utils::parse::to_str(std::thread::hardware_concurrency());
 const std::string Config::VFS_MIN_PARALLEL_SIZE = "10485760";
@@ -168,6 +170,8 @@ Config::Config() {
   param_values_["sm.consolidation.step_size_ratio"] =
       SM_CONSOLIDATION_STEP_SIZE_RATIO;
   param_values_["sm.consolidation.steps"] = SM_CONSOLIDATION_STEPS;
+  param_values_["sm.consolidation.mode"] = SM_CONSOLIDATION_MODE;
+  param_values_["sm.vacuum.mode"] = SM_VACUUM_MODE;
   param_values_["vfs.num_threads"] = VFS_NUM_THREADS;
   param_values_["vfs.min_parallel_size"] = VFS_MIN_PARALLEL_SIZE;
   param_values_["vfs.min_batch_gap"] = VFS_MIN_BATCH_GAP;
@@ -383,6 +387,10 @@ Status Config::unset(const std::string& param) {
   } else if (param == "sm.consolidation.step_size_ratio") {
     param_values_["sm.consolidation.step_size_ratio"] =
         SM_CONSOLIDATION_STEP_SIZE_RATIO;
+  } else if (param == "sm.consolidation.mode") {
+    param_values_["sm.consolidation.mode"] = SM_CONSOLIDATION_MODE;
+  } else if (param == "sm.vacuum.mode") {
+    param_values_["sm.vacuum.mode"] = SM_VACUUM_MODE;
   } else if (param == "vfs.num_threads") {
     param_values_["vfs.num_threads"] = VFS_NUM_THREADS;
   } else if (param == "vfs.min_parallel_size") {

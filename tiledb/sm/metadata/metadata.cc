@@ -36,8 +36,10 @@
 #include "tiledb/sm/enums/datatype.h"
 #include "tiledb/sm/misc/logger.h"
 #include "tiledb/sm/misc/utils.h"
+#include "tiledb/sm/misc/uuid.h"
 
 #include <iostream>
+#include <sstream>
 
 namespace tiledb {
 namespace sm {
@@ -62,6 +64,28 @@ void Metadata::clear() {
   metadata_index_.clear();
   loaded_metadata_uris_.clear();
   timestamp_range_ = std::make_pair(0, 0);
+  uri_ = URI();
+}
+
+Status Metadata::get_uri(const URI& array_uri, URI* meta_uri) {
+  if (uri_.to_string().empty())
+    RETURN_NOT_OK(generate_uri(array_uri));
+
+  *meta_uri = uri_;
+  return Status::Ok();
+}
+
+Status Metadata::generate_uri(const URI& array_uri) {
+  std::string uuid;
+  RETURN_NOT_OK(uuid::generate_uuid(&uuid, false));
+
+  std::stringstream ss;
+  ss << "__" << timestamp_range_.first << "_" << timestamp_range_.second << "_"
+     << uuid;
+  uri_ = array_uri.join_path(constants::array_metadata_folder_name)
+             .join_path(ss.str());
+
+  return Status::Ok();
 }
 
 Status Metadata::deserialize(

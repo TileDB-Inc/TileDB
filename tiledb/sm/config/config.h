@@ -150,6 +150,23 @@ class Config {
    */
   static const std::string SM_CONSOLIDATION_STEP_SIZE_RATIO;
 
+  /**
+   * The consolidation mode. It can be one of:
+   *     - "fragments": only the fragments will be consolidated
+   *     - "fragment_meta": only the fragment metadata will be consolidated
+   *     - "array_meta": only the array metadata will be consolidated
+
+   */
+  static const std::string SM_CONSOLIDATION_MODE;
+
+  /**
+   * The vacuum mode. It can be one of:
+   *     - "fragments": only the fragments will be vacuumed
+   *     - "fragment_meta": only the fragment metadata will be vacuumed
+   *     - "array_meta": only the array metadata will be vacuumed
+   */
+  static const std::string SM_VACUUM_MODE;
+
   /** The default number of allocated VFS threads. */
   static const std::string VFS_NUM_THREADS;
 

@@ -143,7 +143,7 @@ class StorageManager {
    * @param timestamp The timestamp at which the array will be opened.
    *     In TileDB, timestamps are in ms elapsed since
    *     1970-01-01 00:00:00 +0000 (UTC).
-   * @param encryption_key The encryption key to use.
+   * @param enc_key The encryption key to use.
    * @param array_schema The array schema to be retrieved after the
    *     array is opened.
    * @param fragment_metadata The fragment metadata to be retrieved
@@ -153,7 +153,7 @@ class StorageManager {
   Status array_open_for_reads(
       const URI& array_uri,
       uint64_t timestamp,
-      const EncryptionKey& encryption_key,
+      const EncryptionKey& enc_key,
       ArraySchema** array_schema,
       std::vector<FragmentMetadata*>* fragment_metadata);
 
@@ -163,7 +163,7 @@ class StorageManager {
    *
    * @param array_uri The array URI.
    * @param fragments The fragments to open the array with.
-   * @param encryption_key The encryption key to use.
+   * @param enc_key The encryption key to use.
    * @param array_schema The array schema to be retrieved after the
    *     array is opened.
    * @param fragment_metadata The fragment metadata to be retrieved
@@ -173,21 +173,21 @@ class StorageManager {
   Status array_open_for_reads(
       const URI& array_uri,
       const std::vector<FragmentInfo>& fragments,
-      const EncryptionKey& encryption_key,
+      const EncryptionKey& enc_key,
       ArraySchema** array_schema,
       std::vector<FragmentMetadata*>* fragment_metadata);
 
   /** Opens an array for writes.
    *
    * @param array_uri The array URI.
-   * @param encryption_key The encryption key.
+   * @param enc_key The encryption key.
    * @param array_schema The array schema to be retrieved after the
    *     array is opened.
    * @return
    */
   Status array_open_for_writes(
       const URI& array_uri,
-      const EncryptionKey& encryption_key,
+      const EncryptionKey& enc_key,
       ArraySchema** array_schema);
 
   /**
@@ -199,7 +199,7 @@ class StorageManager {
    * @param timestamp The timestamp at which the array will be opened.
    *     In TileDB, timestamps are in ms elapsed since
    *     1970-01-01 00:00:00 +0000 (UTC).
-   * @param encryption_key The encryption key to use.
+   * @param enc_key The encryption key to use.
    * @param array_schema The array schema to be retrieved after the
    *     array is opened.
    * @param fragment_metadata The fragment metadata to be retrieved
@@ -209,7 +209,7 @@ class StorageManager {
   Status array_reopen(
       const URI& array_uri,
       uint64_t timestamp,
-      const EncryptionKey& encryption_key,
+      const EncryptionKey& enc_key,
       ArraySchema** array_schema,
       std::vector<FragmentMetadata*>* fragment_metadata);
 
@@ -232,6 +232,43 @@ class StorageManager {
       const void* encryption_key,
       uint32_t key_length,
       const Config* config);
+
+  /**
+   * Cleans up the array, such as its consolidated fragments and array
+   * metadata. Note that this will coarsen the granularity of time traveling
+   * (see docs for more information).
+   *
+   * @param array_name The name of the array to be vacuumed.
+   * @param config Configuration parameters for vacuuming.
+   * @return Status
+   */
+  Status array_vacuum(const char* array_name, const Config* config);
+
+  /**
+   * Cleans up fragments that took part in consolidation. Note that this
+   * will coarsen the granularity of time traveling (see docs for more
+   * information).
+   *
+   * @param array_name The name of the array to be vacuumed.
+   * @return Status
+   */
+  Status array_vacuum_fragments(const char* array_name);
+
+  /**
+   * Cleans up consolidated fragment metadata (all except the last one).
+   *
+   * @param array_name The name of the array to be consolidated.
+   * @return Status
+   */
+  Status array_vacuum_fragment_meta(const char* array_name);
+
+  /**
+   * Cleans up consolidated array metadata.
+   *
+   * @param array_name The name of the array to be consolidated.
+   * @return Status
+   */
+  Status array_vacuum_array_meta(const char* array_name);
 
   /**
    * Consolidates the metadata of an array into a single file.
@@ -407,6 +444,15 @@ class StorageManager {
       const URI& fragment_uri,
       FragmentInfo* fragment_info);
 
+  /**
+   * Retrieves all the fragment URIs of an array, along with the latest
+   * consolidated fragment metadata URI `meta_uri`.
+   */
+  Status get_fragment_uris(
+      const URI& array_uri,
+      std::vector<URI>* fragment_uris,
+      URI* meta_uri) const;
+
   /** Returns the current map of any set tags. */
   const std::unordered_map<std::string, std::string>& tags() const;
 
@@ -452,14 +498,22 @@ class StorageManager {
   Status is_dir(const URI& uri, bool* is_dir) const;
 
   /**
-   * Checks if the input URI represents a fragment.
+   * Checks if the input URI represents a fragment. The functions takes into
+   * account the fragment version, which is retrived directly from the URI.
+   * For versions >= 5, the function checks whether the URI is included
+   * in `ok_uris`. For versions < 5, `ok_uris` is empty so the function
+   * checks for the existence of the fragment metadata file in the fragment
+   * URI directory. Therefore, the function is more expensive for earlier
+   * fragment versions.
    *
    * @param The URI to be checked.
-   * @param is_fragment Set to `true` if the URI is a fragment and `false`
+   * @param ok_uris For checking URI existence of versions >= 5.
+   * @param is_fragment Set to `1` if the URI is a fragment and `0`
    *     otherwise.
    * @return Status
    */
-  Status is_fragment(const URI& uri, bool* is_fragment) const;
+  Status is_fragment(
+      const URI& uri, const std::set<URI>& ok_uris, int* is_fragment) const;
 
   /**
    * Checks if the input URI represents a group.
@@ -669,7 +723,7 @@ class StorageManager {
   /**
    * Stores the array metadata into persistent storage.
    *
-   * @param array_uri The URI of the array.
+   * @param array_uri The array URI.
    * @param encryption_key The encryption key to use.
    * @param array_metadata The array metadata.
    * @return Status
@@ -855,10 +909,6 @@ class StorageManager {
   /** Decrement the count of in-progress queries. */
   void decrement_in_progress();
 
-  /** Retrieves all the fragment URI's of an array. */
-  Status get_fragment_uris(
-      const URI& array_uri, std::vector<URI>* fragment_uris) const;
-
   /** Retrieves all the array metadata URI's of an array. */
   Status get_array_metadata_uris(
       const URI& array_uri, std::vector<URI>* array_metadata_uris) const;
@@ -910,6 +960,13 @@ class StorageManager {
    * @param open_array The open array object.
    * @param encryption_key The encryption key to use.
    * @param fragments_to_load The fragments whose metadata to load.
+   * @param meta_buff A buffer that contains the consolidated fragment
+   *     metadata.
+   * @param offsets A map from a fragment name to an offset in `meta_buff`
+   *     where the basic metadata can be found. If the offset cannot be
+   *     found, then the metadata of that fragment will be loaded from
+   *     storage instead.
+   * @param meta_version The version of the consolidated fragment metadata.
    * @param fragment_metadata The fragment metadata retrieved in a
    *     vector.
    * @return Status
@@ -918,7 +975,35 @@ class StorageManager {
       OpenArray* open_array,
       const EncryptionKey& encryption_key,
       const std::vector<TimestampedURI>& fragments_to_load,
+      Buffer* meta_buff,
+      const std::unordered_map<std::string, uint64_t>& offsets,
+      uint32_t meta_version,
       std::vector<FragmentMetadata*>* fragment_metadata);
+
+  /**
+   * Loads the latest consolidated fragment metadata from storage.
+   *
+   * @param uri The URI of the consolidated fragment metadata.
+   * @param enc_key The encryption key that may be needed to access the file.
+   * @param f_buff The buffer to hold the consolidated fragment metadata.
+   * @param offsets A map from the fragment name to the offset in `f_buff` where
+   *     the basic fragment metadata starts.
+   * @param meta_version The version of the consolidated metadata file.
+   * @return Status
+   */
+  Status load_consolidated_fragment_meta(
+      const URI& uri,
+      const EncryptionKey& enc_key,
+      Buffer* f_buff,
+      std::unordered_map<std::string, uint64_t>* offsets,
+      uint32_t* meta_version);
+
+  /**
+   * Retrieves the URI of the latest consolidated fragment metadata,
+   * among the URIs in `uris`.
+   */
+  Status get_consolidated_fragment_meta_uri(
+      const std::vector<URI>& uris, URI* meta_uri) const;
 
   /**
    * Applicable to fragment and array metadata URIs.
@@ -934,20 +1019,23 @@ class StorageManager {
       uint64_t timestamp,
       std::vector<TimestampedURI>* sorted_uris) const;
 
+  /**
+   * It computes the URIs `to_vacuum` from the input `uris`, considering
+   * only the URIs whose second timestamp is smaller than or equal to
+   * `timestamp`. The function also retrieves the `vac_uris` (files with
+   * `.vac` suffix) that were used to compute `to_vaccum`.
+   */
+  Status get_uris_to_vacuum(
+      const std::vector<URI>& uris,
+      uint64_t timestamp,
+      std::vector<URI>* to_vacuum,
+      std::vector<URI>* vac_uris) const;
+
   /** Block until there are zero in-progress queries. */
   void wait_for_zero_in_progress();
 
   /** Initializes a REST client, if one was configured. */
   Status init_rest_client();
-
-  /**
-   * Retrieves a new array metadata URI, incorporating the input timestamp
-   * range.
-   */
-  Status new_array_metadata_uri(
-      const URI& array_uri,
-      const std::pair<uint64_t, uint64_t>& timestamp_range,
-      URI* new_uri) const;
 
   /** Sets default tag values on this StorageManager. */
   Status set_default_tags();

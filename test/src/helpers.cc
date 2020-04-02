@@ -32,6 +32,9 @@
 
 #include "helpers.h"
 #include "catch.hpp"
+#include "tiledb/sm/cpp_api/tiledb"
+#include "tiledb/sm/misc/constants.h"
+#include "tiledb/sm/misc/uri.h"
 #include "tiledb/sm/subarray/subarray_partitioner.h"
 
 namespace tiledb {
@@ -718,6 +721,25 @@ void read_array(
 
   // Clean up
   tiledb_query_free(&query);
+}
+
+int32_t num_fragments(const std::string& array_name) {
+  Context ctx;
+  VFS vfs(ctx);
+
+  // Get all URIs in the array directory
+  auto uris = vfs.ls(array_name);
+
+  // Exclude '__meta' folder and any file with a suffix
+  int ret = 0;
+  for (const auto& uri : uris) {
+    auto name = tiledb::sm::URI(uri).remove_trailing_slash().last_path_part();
+    if (name != tiledb::sm::constants::array_metadata_folder_name &&
+        name.find_first_of('.') == std::string::npos)
+      ++ret;
+  }
+
+  return ret;
 }
 
 // Explicit template instantiations
