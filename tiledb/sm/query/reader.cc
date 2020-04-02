@@ -51,6 +51,8 @@
 #include <iostream>
 #include <unordered_set>
 
+#include <chrono>
+
 namespace tiledb {
 namespace sm {
 
@@ -264,9 +266,14 @@ Reader::ReadState* Reader::read_state() {
 Status Reader::read() {
   STATS_FUNC_IN(reader_read);
 
+  auto start = std::chrono::high_resolution_clock::now();
   // Get next partition
   if (!read_state_.unsplittable_)
     RETURN_NOT_OK(read_state_.next());
+
+  std::chrono::duration<double> elapsed = std::chrono::high_resolution_clock::now() - start;
+  std::cout << " -- reader.cc:268 elapsed " << elapsed.count() << std::endl;
+
 
   // Handle empty array or empty/finished subarray
   if (fragment_metadata_.empty()) {
@@ -630,10 +637,17 @@ Status Reader::compute_range_result_coords(
   range_result_coords->resize(range_num);
   auto cell_order = array_schema_->cell_order();
 
+  std::atomic<double> total_time;
+
   auto statuses = parallel_for(0, range_num, [&](uint64_t r) {
+    auto start = std::chrono::high_resolution_clock::now();
+
     // Compute overlapping coordinates per range
     RETURN_NOT_OK(compute_range_result_coords(
         r, result_tile_map, result_tiles, &((*range_result_coords)[r])));
+
+    std::chrono::duration<double> elapsed = std::chrono::high_resolution_clock::now() - start;
+    total_time = total_time + (double)elapsed.count();
 
     // Sort
     Layout layout =
@@ -653,6 +667,8 @@ Status Reader::compute_range_result_coords(
   });
   for (auto st : statuses)
     RETURN_NOT_OK(st);
+
+  std::cout << std::endl << std::endl << "total time: " << total_time << std::endl;
 
   return Status::Ok();
 }
@@ -1239,9 +1255,14 @@ Status Reader::compute_result_coords(
   typedef std::pair<unsigned, uint64_t> FragTilePair;
   std::map<FragTilePair, size_t> result_tile_map;
   std::vector<bool> single_fragment;
+  std::cout << "starting Reader::compute_result_coords" << std::endl;
+  auto start = std::chrono::high_resolution_clock::now();
 
   RETURN_CANCEL_OR_ERROR(compute_sparse_result_tiles(
       result_tiles, &result_tile_map, &single_fragment));
+
+  std::chrono::duration<double> elapsed = std::chrono::high_resolution_clock::now() - start;
+  std::cout << " -- `compute_sparse_result_tiles` reader.cc:1243 elapsed " << elapsed.count() << std::endl;
 
   if (result_tiles->empty())
     return Status::Ok();
@@ -1254,8 +1275,18 @@ Status Reader::compute_result_coords(
 
   // Read and unfilter coordinate tiles
   // NOTE: these will ignore tiles of fragments with format version >=5
+
+  start = std::chrono::high_resolution_clock::now();
   RETURN_CANCEL_OR_ERROR(read_tiles(constants::coords, tmp_result_tiles));
+  elapsed = std::chrono::high_resolution_clock::now() - start;
+  std::cout << "    >> read_tiles elapsed " << elapsed.count() << std::endl;
+
+  start = std::chrono::high_resolution_clock::now();
   RETURN_CANCEL_OR_ERROR(unfilter_tiles(constants::coords, tmp_result_tiles));
+  elapsed = std::chrono::high_resolution_clock::now() - start;
+  std::cout << "    >> unfilter_tiles elapsed " << elapsed.count() << std::endl;
+
+  start = std::chrono::high_resolution_clock::now();
 
   // Read and unfilter coordinate tiles
   // NOTE: these will ignore tiles of fragments with format version <5
@@ -1266,16 +1297,31 @@ Status Reader::compute_result_coords(
     RETURN_CANCEL_OR_ERROR(unfilter_tiles(dim_name, tmp_result_tiles));
   }
 
+  elapsed = std::chrono::high_resolution_clock::now() - start;
+  std::cout << "    >> coords read_tiles and unfilter_tiles elapsed " << elapsed.count() << std::endl;
+
+
   // Compute the read coordinates for all fragments for each subarray range
   std::vector<std::vector<ResultCoords>> range_result_coords;
+
+  start = std::chrono::high_resolution_clock::now();
+
   RETURN_CANCEL_OR_ERROR(compute_range_result_coords(
       single_fragment, result_tile_map, result_tiles, &range_result_coords));
   result_tile_map.clear();
 
+  elapsed = std::chrono::high_resolution_clock::now() - start;
+  std::cout << "    >> compute_range_result_coords reader.cc:1271 elapsed " << elapsed.count() << std::endl;
+
+  start = std::chrono::high_resolution_clock::now();
   // Compute final coords (sorted in the result layout) of the whole subarray.
   RETURN_CANCEL_OR_ERROR(
       compute_subarray_coords(&range_result_coords, result_coords));
   range_result_coords.clear();
+
+  elapsed = std::chrono::high_resolution_clock::now() - start;
+  std::cout << "    >> reader.cc:1277 elapsed " << elapsed.count() << std::endl;
+
 
   return Status::Ok();
 }
@@ -2076,6 +2122,7 @@ Status Reader::sort_result_coords(
 Status Reader::sparse_read() {
   STATS_FUNC_IN(reader_sparse_read);
 
+  auto start = std::chrono::high_resolution_clock::now();
   // Compute result coordinates from the sparse fragments
   // `sparse_result_tiles` will hold all the relevant result tiles of
   // sparse fragments
@@ -2086,18 +2133,29 @@ Status Reader::sparse_read() {
   for (auto& srt : sparse_result_tiles)
     result_tiles.push_back(&srt);
 
+  std::chrono::duration<double> elapsed = std::chrono::high_resolution_clock::now() - start;
+  std::cout << " -- reader.cc:2082 elapsed " << elapsed.count() << std::endl;
+
+  auto start2 = std::chrono::high_resolution_clock::now();
   // Compute result cell slabs
   std::vector<ResultCellSlab> result_cell_slabs;
   RETURN_CANCEL_OR_ERROR(
       compute_result_cell_slabs(result_coords, &result_cell_slabs));
   result_coords.clear();
 
+  elapsed = std::chrono::high_resolution_clock::now() - start2;
+  std::cout << " -- reader.cc:2090 elapsed " << elapsed.count() << std::endl;
+
   uint64_t stride = UINT64_MAX;
 
+  auto start3 = std::chrono::high_resolution_clock::now();
   // Copy zipped coordinates
   if (buffers_.find(constants::coords) != buffers_.end())
     RETURN_CANCEL_OR_ERROR(
         copy_cells(constants::coords, stride, result_cell_slabs));
+
+  elapsed = std::chrono::high_resolution_clock::now() - start3;
+  std::cout << " -- reader.cc:2098 elapsed " << elapsed.count() << std::endl;
 
   // Clear sparse coordinate tiles (not needed any more)
   erase_coord_tiles(&sparse_result_tiles);
@@ -2110,9 +2168,21 @@ Status Reader::sparse_read() {
     if (name == constants::coords)
       continue;
 
+    auto start4 = std::chrono::high_resolution_clock::now();
     RETURN_CANCEL_OR_ERROR(read_tiles(name, result_tiles));
+    elapsed = std::chrono::high_resolution_clock::now() - start4;
+    std::cout << " -- reader.cc:2113 elapsed " << elapsed.count() << std::endl;
+
+    start4 = std::chrono::high_resolution_clock::now();
     RETURN_CANCEL_OR_ERROR(unfilter_tiles(name, result_tiles));
+    elapsed = std::chrono::high_resolution_clock::now() - start4;
+    std::cout << " -- reader.cc:2114 elapsed " << elapsed.count() << std::endl;
+
+    start4 = std::chrono::high_resolution_clock::now();
     RETURN_CANCEL_OR_ERROR(copy_cells(name, stride, result_cell_slabs));
+    elapsed = std::chrono::high_resolution_clock::now() - start4;
+    std::cout << " -- reader.cc:2115 elapsed " << elapsed.count() << std::endl;
+
     clear_tiles(name, result_tiles);
   }
 
