@@ -78,6 +78,7 @@ if (NOT storage_client_FOUND)
         -DBUILD_SHARED_LIBS=OFF
         -DBUILD_SAMPLES=OFF
         -DCMAKE_PREFIX_PATH=${TILEDB_EP_INSTALL_PREFIX}
+        -DOPENSSL_ROOT_DIR=${TILEDB_OPENSSL_DIR}
       BUILD_COMMAND cmake --build cmake-out -- -j${NCPU}
       INSTALL_COMMAND
           cp -r ${TILEDB_EP_SOURCE_DIR}/ep_gcssdk/cmake-out/external/lib ${TILEDB_EP_INSTALL_PREFIX}

@@ -1,40 +1,63 @@
-From d63126e0b47a020aab1e8d2002d4f81f33d9b88b Mon Sep 17 00:00:00 2001
-From: Joe maley <joe@tiledb.io>
-Date: Wed, 11 Mar 2020 11:26:06 -0400
+From d63d195ca0460835ec5a758fdf46f869f15e1717 Mon Sep 17 00:00:00 2001
+From: Joe Maley <joe@tiledb.com>
+Date: Thu, 2 Apr 2020 09:57:45 -0400
 Subject: GCS Build Patch for TileDB
 
 ---
- CMakeLists.txt                               |  2 +-
+ CMakeLists.txt                               | 25 +-------
  cmake/FindCurlWithTargets.cmake              |  1 +
- super/CMakeLists.txt                         |  9 ++-
+ super/CMakeLists.txt                         | 11 +++-
  super/external/c-ares.cmake                  |  2 +
  super/external/crc32c.cmake                  |  2 +
  super/external/curl.cmake                    | 64 --------------------
- super/external/google-cloud-cpp-common.cmake |  2 +
- super/external/googleapis.cmake              |  2 +
+ super/external/google-cloud-cpp-common.cmake |  4 ++
+ super/external/googleapis.cmake              |  3 +
  super/external/googletest.cmake              |  2 +
- super/external/grpc.cmake                    |  5 +-
+ super/external/grpc.cmake                    |  6 +-
  super/external/protobuf.cmake                |  4 +-
  super/external/ssl.cmake                     | 26 --------
  super/external/zlib.cmake                    | 47 --------------
- 13 files changed, 23 insertions(+), 145 deletions(-)
+ 13 files changed, 29 insertions(+), 168 deletions(-)
  delete mode 100644 super/external/curl.cmake
  delete mode 100644 super/external/ssl.cmake
  delete mode 100644 super/external/zlib.cmake
 
 diff --git a/CMakeLists.txt b/CMakeLists.txt
-index c9275541b..b15cf2ca2 100644
+index c9275541b..2b120fb9a 100644
 --- a/CMakeLists.txt
 +++ b/CMakeLists.txt
-@@ -53,7 +53,7 @@ endif ()
+@@ -53,30 +53,7 @@ endif ()
  
  option(GOOGLE_CLOUD_CPP_ENABLE_MACOS_OPENSSL_CHECK
         "If enabled, check that the user has defined OPENSSL_ROOT_DIR on macOS"
 -       ON)
+-if (APPLE)
+-    # This is an easy mistake to make, and the error messages are very
+-    # confusing. Help our users by giving them some guidance.
+-    if ("${GOOGLE_CLOUD_CPP_ENABLE_MACOS_OPENSSL_CHECK}"
+-        AND NOT DEFINED ENV{OPENSSL_ROOT_DIR})
+-        message(
+-            FATAL_ERROR
+-                [===[
+-The Google Cloud C++ client libraries use the native OpenSSL library. In most
+-macOS systems, you need to set the OPENSSL_ROOT_DIR environment variable to find
+-this dependency, for example:
+-
+-export OPENSSL_ROOT_DIR=/usr/local/opt/libressl
+-
+-You have not set this environment variable. Most likely, this will result in a
+-broken build with fairly obscure error messages. If your environment does not
+-require setting OPENSSL_ROOT_DIR, you can disable this check using:
+-
+-cmake -DGOOGLE_CLOUD_CPP_ENABLE_MACOS_OPENSSL_CHECK=OFF ...
+-
+-]===])
+-    endif ()
+-endif (APPLE)
 +       OFF)
- if (APPLE)
-     # This is an easy mistake to make, and the error messages are very
-     # confusing. Help our users by giving them some guidance.
+ 
+ # If ccache is installed use it for the build. This makes the Travis
+ # configuration agnostic as to wether ccache is installed or not.
 diff --git a/cmake/FindCurlWithTargets.cmake b/cmake/FindCurlWithTargets.cmake
 index 5fe8cbfba..c189c2781 100644
 --- a/cmake/FindCurlWithTargets.cmake
@@ -48,7 +71,7 @@ index 5fe8cbfba..c189c2781 100644
      # https://cmake.org/cmake/help/v3.12/module/FindCURL.html vs
      # https://cmake.org/cmake/help/v3.11/module/FindCURL.html
 diff --git a/super/CMakeLists.txt b/super/CMakeLists.txt
-index 9cc916aed..a5d2680e8 100644
+index 9cc916aed..8f9ac1eb1 100644
 --- a/super/CMakeLists.txt
 +++ b/super/CMakeLists.txt
 @@ -23,7 +23,6 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -68,7 +91,7 @@ index 9cc916aed..a5d2680e8 100644
      googletest-project google-cloud-cpp-common-project)
  
  include(ExternalProject)
-@@ -54,8 +53,12 @@ ExternalProject_Add(
+@@ -54,8 +53,14 @@ ExternalProject_Add(
                 -DCMAKE_PREFIX_PATH=${GOOGLE_CLOUD_CPP_PREFIX_PATH}
                 -DCMAKE_INSTALL_RPATH=${GOOGLE_CLOUD_CPP_INSTALL_RPATH}
                 -DCMAKE_INSTALL_PREFIX=<INSTALL_DIR>
@@ -77,6 +100,8 @@ index 9cc916aed..a5d2680e8 100644
 +               -DBUILD_SAMPLES=${BUILD_SAMPLES}
 +               -DCMAKE_CXX_FLAGS=-fPIC
 +               -DCMAKE_C_FLAGS=-fPIC
++               -DOPENSSL_ROOT_DIR=${OPENSSL_ROOT_DIR}
++               -DGOOGLE_CLOUD_CPP_ENABLE_MACOS_OPENSSL_CHECK=OFF
      BUILD_COMMAND ${CMAKE_COMMAND} --build <BINARY_DIR> ${PARALLEL}
 -    TEST_COMMAND ${CMAKE_CTEST_COMMAND} --output-on-failure
      LOG_DOWNLOAD OFF
@@ -179,28 +204,31 @@ index 6144037bc..000000000
 -        LOG_INSTALL ON)
 -endif ()
 diff --git a/super/external/google-cloud-cpp-common.cmake b/super/external/google-cloud-cpp-common.cmake
-index 3d904d5df..60ad3b856 100644
+index 3d904d5df..d7170ce30 100644
 --- a/super/external/google-cloud-cpp-common.cmake
 +++ b/super/external/google-cloud-cpp-common.cmake
-@@ -52,6 +52,8 @@ if (NOT TARGET google-cloud-cpp-common-project)
+@@ -52,6 +52,10 @@ if (NOT TARGET google-cloud-cpp-common-project)
              -DGOOGLE_CLOUD_CPP_TESTING_UTIL_ENABLE_INSTALL=ON
              -H<SOURCE_DIR>
              -B<BINARY_DIR>
 +            -DCMAKE_CXX_FLAGS=-fPIC
 +            -DCMAKE_C_FLAGS=-fPIC
++            -DOPENSSL_ROOT_DIR=${OPENSSL_ROOT_DIR}
++            -DGOOGLE_CLOUD_CPP_ENABLE_MACOS_OPENSSL_CHECK=OFF
          BUILD_COMMAND ${CMAKE_COMMAND} --build <BINARY_DIR> ${PARALLEL}
          LOG_DOWNLOAD ON
          LOG_CONFIGURE ON
 diff --git a/super/external/googleapis.cmake b/super/external/googleapis.cmake
-index d487511ba..7ea9a3ba2 100644
+index d487511ba..42ffe1066 100644
 --- a/super/external/googleapis.cmake
 +++ b/super/external/googleapis.cmake
-@@ -50,6 +50,8 @@ if (NOT TARGET googleapis-project)
+@@ -50,6 +50,9 @@ if (NOT TARGET googleapis-project)
              -DCMAKE_INSTALL_PREFIX=<INSTALL_DIR>
              -H<SOURCE_DIR>
              -B<BINARY_DIR>
 +            -DCMAKE_CXX_FLAGS=-fPIC
 +            -DCMAKE_C_FLAGS=-fPIC
++            -DOPENSSL_ROOT_DIR=${OPENSSL_ROOT_DIR}
          BUILD_COMMAND ${CMAKE_COMMAND} --build <BINARY_DIR> ${PARALLEL}
          LOG_DOWNLOAD ON
          LOG_CONFIGURE ON
@@ -218,7 +246,7 @@ index 357daae16..e3479f127 100644
          LOG_DOWNLOAD ON
          LOG_CONFIGURE ON
 diff --git a/super/external/grpc.cmake b/super/external/grpc.cmake
-index db41a566a..efe4f39fd 100644
+index db41a566a..37e7a0c92 100644
 --- a/super/external/grpc.cmake
 +++ b/super/external/grpc.cmake
 @@ -16,7 +16,6 @@
@@ -238,12 +266,13 @@ index db41a566a..efe4f39fd 100644
          EXCLUDE_FROM_ALL ON
          PREFIX "${CMAKE_BINARY_DIR}/external/grpc"
          INSTALL_DIR "${GOOGLE_CLOUD_CPP_EXTERNAL_PREFIX}"
-@@ -51,6 +50,8 @@ if (NOT TARGET grpc-project)
+@@ -51,6 +50,9 @@ if (NOT TARGET grpc-project)
                     -DgRPC_SSL_PROVIDER=package
                     -DgRPC_CARES_PROVIDER=package
                     -DgRPC_PROTOBUF_PROVIDER=package
 +                   -DCMAKE_CXX_FLAGS=-fPIC
 +                   -DCMAKE_C_FLAGS=-fPIC
++                   -DOPENSSL_ROOT_DIR=${OPENSSL_ROOT_DIR}
          BUILD_COMMAND ${CMAKE_COMMAND} --build <BINARY_DIR> ${PARALLEL}
          LOG_DOWNLOAD ON
          LOG_CONFIGURE ON
@@ -362,5 +391,5 @@ index 1bf40cde2..000000000
 -        LOG_INSTALL ON)
 -endif ()
 -- 
-2.17.1
+2.21.1 (Apple Git-122.3)
 
