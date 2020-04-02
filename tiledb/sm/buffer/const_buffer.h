@@ -127,7 +127,7 @@ class ConstBuffer {
    * @return The desired value of type T.
    */
   template <class T>
-  inline T value(uint64_t offset) {
+  inline T value(uint64_t offset) const {
     return ((const T*)(((const char*)data_) + offset))[0];
   }
 
@@ -138,7 +138,7 @@ class ConstBuffer {
    * @return The value to be returned of type T.
    */
   template <class T>
-  inline T value() {
+  inline T value() const {
     return ((const T*)(((const char*)data_) + offset_))[0];
   }
 

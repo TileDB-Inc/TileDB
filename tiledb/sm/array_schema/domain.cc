@@ -65,6 +65,7 @@ Domain::Domain(const Domain* domain) {
   cell_order_cmp_func_ = domain->cell_order_cmp_func_;
   tile_order_cmp_func_ = domain->tile_order_cmp_func_;
 
+  dimensions_.reserve(domain->dimensions_.size());
   for (auto dim : domain->dimensions_)
     dimensions_.emplace_back(new Dimension(dim));
 
@@ -247,7 +248,7 @@ const Dimension* Domain::dimension(unsigned int i) const {
   return dimensions_[i];
 }
 
-const Dimension* Domain::dimension(std::string name) const {
+const Dimension* Domain::dimension(const std::string& name) const {
   for (unsigned int i = 0; i < dim_num_; i++) {
     auto dim = dimensions_[i];
     if (dim->name() == name) {
@@ -792,6 +793,7 @@ void Domain::compute_tile_offsets() {
   uint64_t tile_num;  // Per dimension
 
   // Calculate tile offsets for column-major tile order
+  tile_offsets_col_.reserve(dim_num_);
   tile_offsets_col_.push_back(1);
   if (dim_num_ > 1) {
     for (unsigned d = 1; d < dim_num_; ++d) {
@@ -801,6 +803,7 @@ void Domain::compute_tile_offsets() {
   }
 
   // Calculate tile offsets for row-major tile order
+  tile_offsets_row_.reserve(dim_num_);
   tile_offsets_row_.push_back(1);
   if (dim_num_ > 1) {
     for (unsigned d = dim_num_ - 2;; --d) {
@@ -1142,6 +1145,7 @@ template <class T>
 uint64_t Domain::get_tile_pos_col(const T* domain, const T* tile_coords) const {
   // Calculate tile offsets
   std::vector<uint64_t> tile_offsets;
+  tile_offsets.reserve(dim_num_);
   tile_offsets.push_back(1);
   for (unsigned d = 1; d < dim_num_; ++d) {
     // Per dimension
@@ -1179,6 +1183,7 @@ template <class T>
 uint64_t Domain::get_tile_pos_row(const T* domain, const T* tile_coords) const {
   // Calculate tile offsets
   std::vector<uint64_t> tile_offsets;
+  tile_offsets.reserve(dim_num_);
   tile_offsets.push_back(1);
   if (dim_num_ > 1) {
     for (unsigned d = dim_num_ - 2;; --d) {

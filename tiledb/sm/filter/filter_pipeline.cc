@@ -111,6 +111,7 @@ Status FilterPipeline::compute_tile_chunks(
                    uint64_t(bool(dim_tile_size % (chunk_size)));
 
   // Compute the chunks
+  chunks->reserve(dim_num * chunk_num);
   uint64_t offset = 0;
   for (uint64_t i = 0; i < dim_num; i++) {
     for (uint64_t j = 0; j < chunk_num; j++) {

@@ -49,16 +49,12 @@ namespace sm {
 /*   CONSTRUCTORS & DESTRUCTORS   */
 /* ****************************** */
 
-Buffer::Buffer() {
-  alloced_size_ = 0;
-  data_ = nullptr;
-  size_ = 0;
-  offset_ = 0;
+Buffer::Buffer()
+    : Buffer(nullptr, 0) {
   owns_data_ = true;
 }
 
-Buffer::Buffer(void* data, uint64_t size)
-    : Buffer() {
+Buffer::Buffer(void* data, const uint64_t size) {
   offset_ = 0;
   alloced_size_ = 0;
   owns_data_ = false;
@@ -98,11 +94,11 @@ Buffer::~Buffer() {
 /*               API              */
 /* ****************************** */
 
-void Buffer::advance_offset(uint64_t nbytes) {
+void Buffer::advance_offset(const uint64_t nbytes) {
   offset_ += nbytes;
 }
 
-void Buffer::advance_size(uint64_t nbytes) {
+void Buffer::advance_size(const uint64_t nbytes) {
   assert(owns_data_);
   size_ += nbytes;
 }
@@ -131,7 +127,7 @@ void* Buffer::data() const {
   return data_;
 }
 
-void* Buffer::data(uint64_t offset) const {
+void* Buffer::data(const uint64_t offset) const {
   if (data_ == nullptr)
     return nullptr;
   return (char*)data_ + offset;
@@ -154,7 +150,7 @@ bool Buffer::owns_data() const {
   return owns_data_;
 }
 
-Status Buffer::read(void* buffer, uint64_t nbytes) {
+Status Buffer::read(void* buffer, const uint64_t nbytes) {
   if (nbytes + offset_ > size_) {
     return LOG_STATUS(
         Status::BufferError("Read failed; Trying to read beyond buffer size"));
@@ -164,7 +160,7 @@ Status Buffer::read(void* buffer, uint64_t nbytes) {
   return Status::Ok();
 }
 
-Status Buffer::realloc(uint64_t nbytes) {
+Status Buffer::realloc(const uint64_t nbytes) {
   if (!owns_data_) {
     return LOG_STATUS(Status::BufferError(
         "Cannot reallocate buffer; Buffer does not own data"));
@@ -199,11 +195,11 @@ void Buffer::reset_size() {
   size_ = 0;
 }
 
-void Buffer::set_offset(uint64_t offset) {
+void Buffer::set_offset(const uint64_t offset) {
   offset_ = offset;
 }
 
-void Buffer::set_size(uint64_t size) {
+void Buffer::set_size(const uint64_t size) {
   size_ = size;
 }
 
@@ -226,9 +222,10 @@ Status Buffer::write(ConstBuffer* buff) {
     return LOG_STATUS(Status::BufferError(
         "Cannot write to buffer; Buffer does not own the already stored data"));
 
-  uint64_t bytes_left_to_write = alloced_size_ - offset_;
-  uint64_t bytes_left_to_read = buff->nbytes_left_to_read();
-  uint64_t bytes_to_copy = std::min(bytes_left_to_write, bytes_left_to_read);
+  const uint64_t bytes_left_to_write = alloced_size_ - offset_;
+  const uint64_t bytes_left_to_read = buff->nbytes_left_to_read();
+  const uint64_t bytes_to_copy =
+      std::min(bytes_left_to_write, bytes_left_to_read);
 
   buff->read((char*)data_ + offset_, bytes_to_copy);
   offset_ += bytes_to_copy;
@@ -237,7 +234,7 @@ Status Buffer::write(ConstBuffer* buff) {
   return Status::Ok();
 }
 
-Status Buffer::write(ConstBuffer* buff, uint64_t nbytes) {
+Status Buffer::write(ConstBuffer* buff, const uint64_t nbytes) {
   // Sanity check
   if (!owns_data_)
     return LOG_STATUS(Status::BufferError(
@@ -252,7 +249,7 @@ Status Buffer::write(ConstBuffer* buff, uint64_t nbytes) {
   return Status::Ok();
 }
 
-Status Buffer::write(const void* buffer, uint64_t nbytes) {
+Status Buffer::write(const void* buffer, const uint64_t nbytes) {
   // Sanity check
   if (!owns_data_)
     return LOG_STATUS(Status::BufferError(
@@ -267,15 +264,16 @@ Status Buffer::write(const void* buffer, uint64_t nbytes) {
   return Status::Ok();
 }
 
-Status Buffer::write_with_shift(ConstBuffer* buff, uint64_t offset) {
+Status Buffer::write_with_shift(ConstBuffer* buff, const uint64_t offset) {
   // Sanity check
   if (!owns_data_)
     return LOG_STATUS(Status::BufferError(
         "Cannot write to buffer; Buffer does not own the already stored data"));
 
-  uint64_t bytes_left_to_write = alloced_size_ - offset_;
-  uint64_t bytes_left_to_read = buff->nbytes_left_to_read();
-  uint64_t bytes_to_copy = std::min(bytes_left_to_write, bytes_left_to_read);
+  const uint64_t bytes_left_to_write = alloced_size_ - offset_;
+  const uint64_t bytes_left_to_read = buff->nbytes_left_to_read();
+  const uint64_t bytes_to_copy =
+      std::min(bytes_left_to_write, bytes_left_to_read);
   buff->read_with_shift(
       (uint64_t*)(((char*)data_ + offset_)), bytes_to_copy, offset);
 
@@ -301,7 +299,7 @@ Buffer& Buffer::operator=(Buffer&& buff) {
   return *this;
 }
 
-Status Buffer::ensure_alloced_size(uint64_t nbytes) {
+Status Buffer::ensure_alloced_size(const uint64_t nbytes) {
   if (alloced_size_ >= nbytes)
     return Status::Ok();
 

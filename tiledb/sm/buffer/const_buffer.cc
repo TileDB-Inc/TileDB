@@ -42,13 +42,11 @@ namespace sm {
 /*   CONSTRUCTORS & DESTRUCTORS   */
 /* ****************************** */
 
-ConstBuffer::ConstBuffer(Buffer* buff) {
-  data_ = buff->data();
-  size_ = buff->size();
-  offset_ = 0;
+ConstBuffer::ConstBuffer(Buffer* buff)
+    : ConstBuffer(buff->data(), buff->size()) {
 }
 
-ConstBuffer::ConstBuffer(const void* data, uint64_t size)
+ConstBuffer::ConstBuffer(const void* data, const uint64_t size)
     : data_(data)
     , size_(size) {
   offset_ = 0;
@@ -58,7 +56,7 @@ ConstBuffer::ConstBuffer(const void* data, uint64_t size)
 /*               API              */
 /* ****************************** */
 
-void ConstBuffer::advance_offset(uint64_t nbytes) {
+void ConstBuffer::advance_offset(const uint64_t nbytes) {
   offset_ += nbytes;
 }
 
@@ -78,7 +76,7 @@ uint64_t ConstBuffer::nbytes_left_to_read() const {
   return size_ - offset_;
 }
 
-void ConstBuffer::set_offset(uint64_t offset) {
+void ConstBuffer::set_offset(const uint64_t offset) {
   offset_ = offset;
 }
 
@@ -86,7 +84,7 @@ uint64_t ConstBuffer::offset() const {
   return offset_;
 }
 
-Status ConstBuffer::read(void* buffer, uint64_t nbytes) {
+Status ConstBuffer::read(void* buffer, const uint64_t nbytes) {
   if (offset_ + nbytes > size_)
     return Status::ConstBufferError("Read buffer overflow");
 
@@ -97,9 +95,9 @@ Status ConstBuffer::read(void* buffer, uint64_t nbytes) {
 }
 
 void ConstBuffer::read_with_shift(
-    uint64_t* buffer, uint64_t nbytes, uint64_t offset) {
+    uint64_t* buffer, const uint64_t nbytes, const uint64_t offset) {
   // For easy reference
-  uint64_t buffer_cell_num = nbytes / sizeof(uint64_t);
+  const uint64_t buffer_cell_num = nbytes / sizeof(uint64_t);
   const void* data_c = static_cast<const char*>(data_) + offset_;
   auto data = static_cast<const uint64_t*>(data_c);
 

@@ -129,8 +129,9 @@ uint64_t Dimension::coord_size() const {
 }
 
 std::string Dimension::coord_to_str(const void* coord) const {
-  std::stringstream ss;
   assert(coord != nullptr);
+
+  std::stringstream ss;
 
   switch (type_) {
     case Datatype::INT32:
@@ -612,8 +613,8 @@ uint64_t Dimension::tile_num(const Dimension* dim, const Range& range) {
   auto tile_extent = *(const T*)dim->tile_extent().data();
   auto dim_dom = (const T*)dim->domain().data();
   auto r = (const T*)range.data();
-  uint64_t start = floor((r[0] - dim_dom[0]) / tile_extent);
-  uint64_t end = floor((r[1] - dim_dom[0]) / tile_extent);
+  const uint64_t start = floor((r[0] - dim_dom[0]) / tile_extent);
+  const uint64_t end = floor((r[1] - dim_dom[0]) / tile_extent);
   return end - start + 1;
 }
 

@@ -549,6 +549,7 @@ Status FilterBuffer::clear() {
   // Save the raw pointers to the underlying buffers and clear the list, which
   // decrements the ref counts.
   std::vector<Buffer*> buffer_ptrs;
+  buffer_ptrs.reserve(buffers_.size());
   for (const auto& buf : buffers_)
     buffer_ptrs.push_back(buf.underlying_buffer().get());
 
