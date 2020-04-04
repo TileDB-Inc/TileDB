@@ -339,8 +339,8 @@ class Config {
    * - `vfs.azure.block_list_block_size` <br>
    *    The block size (in bytes) used in Azure blob block list writes.
    *    Any `uint64_t` value is acceptable. Note:
-   * `vfs.azure.block_list_block_size * vfs.azure.max_parallel_ops` bytes will
-   * be buffered before issuing block uploads in parallel. <br>
+   *    `vfs.azure.block_list_block_size * vfs.azure.max_parallel_ops` bytes
+   * will be buffered before issuing block uploads in parallel. <br>
    *    **Default**: "5242880"
    * - `vfs.azure.max_parallel_ops` <br>
    *    The maximum number of Azure backend parallel operations. <br>
@@ -350,6 +350,20 @@ class Config {
    *    **Default**: "true"
    * - `vfs.azure.use_https` <br>
    *    Determines if the blob endpoint should use HTTP or HTTPS.
+   *    **Default**: "true"
+   * - `vfs.gcs.project_id` <br>
+   *    Set the GCS project id. <br>
+   * - `vfs.gcs.multi_part_size` <br>
+   *    The part size (in bytes) used in GCS multi part writes.
+   *    Any `uint64_t` value is acceptable. Note:
+   *    `vfs.gcs.multi_part_size * vfs.gcs.max_parallel_ops` bytes will
+   *    be buffered before issuing part uploads in parallel. <br>
+   *    **Default**: "5242880"
+   * - `vfs.gcs.max_parallel_ops` <br>
+   *    The maximum number of GCS backend parallel operations. <br>
+   *    **Default**: `vfs.num_threads`
+   * - `vfs.gcs.use_multi_part_upload` <br>
+   *    Determines if the GCS backend can use chunked part uploads. <br>
    *    **Default**: "true"
    * - `vfs.s3.region` <br>
    *    The S3 region, if S3 is enabled. <br>

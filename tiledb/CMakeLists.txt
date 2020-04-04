@@ -110,6 +110,7 @@ set(TILEDB_CORE_SOURCES
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/crypto/crypto_openssl.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/crypto/crypto_win32.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/filesystem/azure.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/filesystem/gcs.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/filesystem/hdfs_filesystem.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/filesystem/posix.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/filesystem/s3.cc
@@ -311,8 +312,21 @@ if (TILEDB_AZURE)
   add_definitions(-DHAVE_AZURE)
 endif()
 
+# GCS dependencies
+if (TILEDB_GCS)
+  message(STATUS "The TileDB library is compiled with GCS support.")
+  find_package(GCSSDK_EP REQUIRED COMPONENTS gcs)
+  target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
+    INTERFACE
+      GCSSDK::storage_client
+      GCSSDK::google_cloud_cpp_common
+      GCSSDK::crc32c
+  )
+  add_definitions(-DHAVE_GCS)
+endif()
+
 # Libcurl
-if (TILEDB_S3 OR TILEDB_AZURE OR TILEDB_SERIALIZATION)
+if (TILEDB_S3 OR TILEDB_AZURE OR TILEDB_GCS OR TILEDB_SERIALIZATION)
   if (NOT WIN32)
     find_package(Curl_EP REQUIRED)
     target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
@@ -444,7 +458,7 @@ target_include_directories(TILEDB_CORE_OBJECTS
 #   - https://github.com/TileDB-Inc/TileDB/pull/1253
 # NOTE: just like the static dependencies in TileDBConfig create above
 #       (via TILEDB_DEP_STRING), this linkage embeds absolute paths.
-if ((TILEDB_S3 OR TILEDB_AZURE OR TILEDB_SERIALIZATION) AND NOT WIN32)
+if ((TILEDB_S3 OR TILEDB_AZURE OR TILEDB_GCS OR TILEDB_SERIALIZATION) AND NOT WIN32)
   if (TILEDB_CURL_EP_BUILT)
     set(CURL_CONFIG_BINARY "${TILEDB_EP_BASE}/install/bin/curl-config")
 
@@ -546,6 +560,9 @@ if (TILEDB_STATIC)
   append_dep_lib(AWSSDK::aws-checksums)
   append_dep_lib(AWSSDK::aws-c-common)
   append_dep_lib(AzureSDK::AzureSDK)
+  append_dep_lib(GCSSDK::storage_client)
+  append_dep_lib(GCSSDK::google_cloud_cpp_common)
+  append_dep_lib(GCSSDK::crc32c)
 
   # Spdlog is a special case because it is header-only.
   string(CONCAT TILEDB_STATIC_DEP_STRING

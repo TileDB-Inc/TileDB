@@ -1016,6 +1016,20 @@ TILEDB_EXPORT void tiledb_config_free(tiledb_config_t** config);
  * - `vfs.azure.use_https` <br>
  *    Determines if the blob endpoint should use HTTP or HTTPS.
  *    **Default**: "true"
+ * - `vfs.gcs.project_id` <br>
+ *    Set the GCS project id. <br>
+ * - `vfs.gcs.multi_part_size` <br>
+ *    The part size (in bytes) used in GCS multi part writes.
+ *    Any `uint64_t` value is acceptable. Note:
+ *    `vfs.gcs.multi_part_size * vfs.gcs.max_parallel_ops` bytes will
+ *    be buffered before issuing part uploads in parallel. <br>
+ *    **Default**: "5242880"
+ * - `vfs.gcs.max_parallel_ops` <br>
+ *    The maximum number of GCS backend parallel operations. <br>
+ *    **Default**: `vfs.num_threads`
+ * - `vfs.gcs.use_multi_part_upload` <br>
+ *    Determines if the GCS backend can use chunked part uploads. <br>
+ *    **Default**: "true"
  * - `vfs.s3.region` <br>
  *    The S3 region, if S3 is enabled. <br>
  *    **Default**: us-east-1

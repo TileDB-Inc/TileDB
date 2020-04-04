@@ -1,0 +1,40 @@
+From 2b9919c29e5e69df00a77c340579814fd94042e7 Mon Sep 17 00:00:00 2001
+From: Joe maley <joe@tiledb.io>
+Date: Mon, 23 Mar 2020 11:27:35 -0400
+Subject: TileDB Patch
+
+Returns prefixes from ListObjects as individual entities in the return value.
+---
+ google/cloud/storage/internal/object_requests.cc | 16 ++++++++++++++++
+ 1 file changed, 16 insertions(+)
+
+diff --git a/google/cloud/storage/internal/object_requests.cc b/google/cloud/storage/internal/object_requests.cc
+index 71f8b8062..6d13862be 100644
+--- a/google/cloud/storage/internal/object_requests.cc
++++ b/google/cloud/storage/internal/object_requests.cc
+@@ -211,6 +211,22 @@ StatusOr<ListObjectsResponse> ListObjectsResponse::FromHttpResponse(
+     result.items.emplace_back(std::move(*parsed));
+   }
+ 
++  // TileDB Patch:
++  // Return common prefixes (i.e. directories) as objects to match the
++  // behavior of S3/Azure.
++  for (auto const& kv : json["prefixes"].items()) {
++    internal::nl::json obj = {
++      {"kind", "storage#object"},
++      {"name", kv.value()}
++    };
++
++    auto parsed = internal::ObjectMetadataParser::FromJson(obj);
++    if (!parsed.ok()) {
++      return std::move(parsed).status();
++    }
++    result.items.emplace_back(std::move(*parsed));
++  }
++
+   return result;
+ }
+ 
+-- 
+2.17.1
+

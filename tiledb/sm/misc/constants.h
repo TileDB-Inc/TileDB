@@ -414,6 +414,9 @@ extern const std::string filesystem_type_s3_str;
 /** The string representation for filesystem type azure. */
 extern const std::string filesystem_type_azure_str;
 
+/** The string representation for filesystem type gcs. */
+extern const std::string filesystem_type_gcs_str;
+
 /** The string representation for WalkOrder preorder. */
 extern const std::string walkorder_preorder_str;
 
@@ -453,6 +456,12 @@ extern const unsigned int azure_max_attempts;
  * This number will be floored to the nearest second.
  */
 extern const unsigned int azure_attempt_sleep_ms;
+
+/** Maximum number of attempts to wait for an GCS response. */
+extern const unsigned int gcs_max_attempts;
+
+/** Milliseconds of wait time between GCS attempts. */
+extern const unsigned int gcs_attempt_sleep_ms;
 
 /** An allocation tag used for logging. */
 extern const std::string s3_allocation_tag;
