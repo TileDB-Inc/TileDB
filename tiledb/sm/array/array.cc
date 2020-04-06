@@ -694,6 +694,10 @@ const NDRange& Array::non_empty_domain() const {
   return non_empty_domain_;
 }
 
+void Array::set_non_empty_domain(const NDRange& non_empty_domain) {
+  non_empty_domain_ = non_empty_domain;
+}
+
 /* ********************************* */
 /*          PRIVATE METHODS          */
 /* ********************************* */

@@ -86,6 +86,16 @@ Status nonempty_domain_deserialize(
     void* nonempty_domain,
     bool* is_empty);
 
+Status nonempty_domain_serialize(
+    const Array* array,
+    SerializationType serialize_type,
+    Buffer* serialized_buffer);
+
+Status nonempty_domain_deserialize(
+    Array* array,
+    const Buffer& serialized_buffer,
+    SerializationType serialize_type);
+
 Status max_buffer_sizes_serialize(
     Array* array,
     const void* subarray,

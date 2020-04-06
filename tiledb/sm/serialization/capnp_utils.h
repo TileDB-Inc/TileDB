@@ -305,6 +305,85 @@ tiledb::sm::Status copy_capnp_list(
   return tiledb::sm::Status::Ok();
 }
 
+/** Serializes the given array's nonEmptyDomain into the given Capnp builder.
+ *
+ * @tparam CapnpT Capnp builder type
+ * @param builder Builder to set subarray onto
+ * @param array Array to get nonEmptyDomain from
+ * @return Status
+ */
+template <typename CapnpT>
+tiledb::sm::Status serialize_non_empty_domain(
+    CapnpT& builder, const tiledb::sm::Array* array) {
+  const auto& nonEmptyDomain = array->non_empty_domain();
+
+  if (!nonEmptyDomain.empty()) {
+    auto nonEmptyDomainListBuilder =
+        builder.initNonEmptyDomains(array->array_schema()->dim_num());
+
+    for (uint64_t dimIdx = 0; dimIdx < nonEmptyDomain.size(); ++dimIdx) {
+      const auto& dimNonEmptyDomain = nonEmptyDomain[dimIdx];
+
+      auto dimBulder = nonEmptyDomainListBuilder[dimIdx];
+      dimBulder.setIsEmpty(dimNonEmptyDomain.empty());
+
+      if (!dimNonEmptyDomain.empty()) {
+        auto subarray_builder = dimBulder.initNonEmptyDomain();
+        RETURN_NOT_OK(utils::set_capnp_array_ptr(
+            subarray_builder,
+            tiledb::sm::Datatype::UINT8,
+            dimNonEmptyDomain.data(),
+            dimNonEmptyDomain.size()));
+      }
+    }
+  }
+  return tiledb::sm::Status::Ok();
+}
+
+/** Deserializes the given from Capnp build to array's nonEmptyDomain
+ *
+ * @tparam CapnpT Capnp builder type
+ * @param builder Builder to get nonEmptyDomain from
+ * @param array Array to set the nonEmptyDomain on
+ * @return Status
+ */
+template <typename CapnpT>
+tiledb::sm::Status deserialize_non_empty_domain(
+    CapnpT& reader, tiledb::sm::Array* array) {
+  capnp::NonEmptyDomainList::Reader r =
+      (capnp::NonEmptyDomainList::Reader)reader;
+
+  NDRange ndRange;
+  if (r.hasNonEmptyDomains() && r.getNonEmptyDomains().size() > 0) {
+    auto nonEmptyDomains = r.getNonEmptyDomains();
+
+    for (uint32_t i = 0; i < nonEmptyDomains.size(); i++) {
+      Range range;
+      auto nonEmptyDomainObj = nonEmptyDomains[i];
+      // We always store nonEmptyDomain as uint8 lists for the heterogeneous/var
+      // length version
+      auto list = nonEmptyDomainObj.getNonEmptyDomain().getUint8();
+      std::vector<uint8_t> vec(list.size());
+      for (uint32_t index = 0; index < list.size(); index++) {
+        vec[index] = list[index];
+      }
+
+      if (nonEmptyDomainObj.hasSizes()) {
+        auto sizes = nonEmptyDomainObj.getSizes();
+        range.set_range(vec.data(), vec.size(), sizes[0]);
+      } else {
+        range.set_range(vec.data(), vec.size());
+      }
+
+      ndRange.emplace_back(range);
+    }
+  }
+
+  array->set_non_empty_domain(ndRange);
+
+  return tiledb::sm::Status::Ok();
+}
+
 /**
  * Serializes the given arbitrarily typed subarray into the given Capnp builder.
  *

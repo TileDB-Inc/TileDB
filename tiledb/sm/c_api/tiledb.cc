@@ -4619,11 +4619,76 @@ int32_t tiledb_deserialize_array_nonempty_domain(
   return TILEDB_OK;
 }
 
-int32_t tiledb_serialize_array_nonempty_domain_from_dimension(
+// int32_t tiledb_serialize_array_nonempty_domain_from_dimension(
+//    tiledb_ctx_t* ctx,
+//    const tiledb_dimension_t* dimension,
+//    const void* nonempty_domain,
+//    int32_t is_empty,
+//    tiledb_serialization_type_t serialize_type,
+//    int32_t client_side,
+//    tiledb_buffer_t** buffer) {
+//  // Currently unused:
+//  (void)client_side;
+//
+//  // Sanity check
+//  if (sanity_check(ctx) == TILEDB_ERR ||
+//      sanity_check(ctx, dimension) == TILEDB_ERR)
+//    return TILEDB_ERR;
+//
+//  // Create buffer
+//  if (tiledb_buffer_alloc(ctx, buffer) != TILEDB_OK ||
+//      sanity_check(ctx, *buffer) == TILEDB_ERR)
+//    return TILEDB_ERR;
+//
+//  if (SAVE_ERROR_CATCH(
+//          ctx,
+//          tiledb::sm::serialization::nonempty_domain_serialize(
+//              dimension->dim_,
+//              nonempty_domain,
+//              is_empty,
+//              (tiledb::sm::SerializationType)serialize_type,
+//              (*buffer)->buffer_)))
+//    return TILEDB_ERR;
+//
+//  return TILEDB_OK;
+//}
+//
+// int32_t tiledb_deserialize_array_nonempty_domain_from_dimension(
+//    tiledb_ctx_t* ctx,
+//    const tiledb_dimension_t* dimension,
+//    const tiledb_buffer_t* buffer,
+//    tiledb_serialization_type_t serialize_type,
+//    int32_t client_side,
+//    void* nonempty_domain,
+//    int32_t* is_empty) {
+//  // Currently unused:
+//  (void)client_side;
+//
+//  // Sanity check
+//  if (sanity_check(ctx) == TILEDB_ERR ||
+//      sanity_check(ctx, dimension) == TILEDB_ERR ||
+//      sanity_check(ctx, buffer) == TILEDB_ERR)
+//    return TILEDB_ERR;
+//
+//  bool is_empty_bool;
+//  if (SAVE_ERROR_CATCH(
+//          ctx,
+//          tiledb::sm::serialization::nonempty_domain_deserialize(
+//              dimension->dim_,
+//              *buffer->buffer_,
+//              (tiledb::sm::SerializationType)serialize_type,
+//              nonempty_domain,
+//              &is_empty_bool)))
+//    return TILEDB_ERR;
+//
+//  *is_empty = is_empty_bool ? 1 : 0;
+//
+//  return TILEDB_OK;
+//}
+
+int32_t tiledb_serialize_array_nonempty_domain_all_dimensions(
     tiledb_ctx_t* ctx,
-    const tiledb_dimension_t* dimension,
-    const void* nonempty_domain,
-    int32_t is_empty,
+    const tiledb_array_t* array,
     tiledb_serialization_type_t serialize_type,
     int32_t client_side,
     tiledb_buffer_t** buffer) {
@@ -4631,8 +4696,7 @@ int32_t tiledb_serialize_array_nonempty_domain_from_dimension(
   (void)client_side;
 
   // Sanity check
-  if (sanity_check(ctx) == TILEDB_ERR ||
-      sanity_check(ctx, dimension) == TILEDB_ERR)
+  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, array) == TILEDB_ERR)
     return TILEDB_ERR;
 
   // Create buffer
@@ -4643,9 +4707,7 @@ int32_t tiledb_serialize_array_nonempty_domain_from_dimension(
   if (SAVE_ERROR_CATCH(
           ctx,
           tiledb::sm::serialization::nonempty_domain_serialize(
-              dimension->dim_,
-              nonempty_domain,
-              is_empty,
+              array->array_,
               (tiledb::sm::SerializationType)serialize_type,
               (*buffer)->buffer_)))
     return TILEDB_ERR;
@@ -4653,35 +4715,28 @@ int32_t tiledb_serialize_array_nonempty_domain_from_dimension(
   return TILEDB_OK;
 }
 
-int32_t tiledb_deserialize_array_nonempty_domain_from_dimension(
+int32_t tiledb_deserialize_array_nonempty_domain_all_dimensions(
     tiledb_ctx_t* ctx,
-    const tiledb_dimension_t* dimension,
+    const tiledb_array_t* array,
     const tiledb_buffer_t* buffer,
     tiledb_serialization_type_t serialize_type,
-    int32_t client_side,
-    void* nonempty_domain,
-    int32_t* is_empty) {
+    int32_t client_side) {
   // Currently unused:
   (void)client_side;
 
   // Sanity check
   if (sanity_check(ctx) == TILEDB_ERR ||
-      sanity_check(ctx, dimension) == TILEDB_ERR ||
+      sanity_check(ctx, array) == TILEDB_ERR ||
       sanity_check(ctx, buffer) == TILEDB_ERR)
     return TILEDB_ERR;
 
-  bool is_empty_bool;
   if (SAVE_ERROR_CATCH(
           ctx,
           tiledb::sm::serialization::nonempty_domain_deserialize(
-              dimension->dim_,
+              array->array_,
               *buffer->buffer_,
-              (tiledb::sm::SerializationType)serialize_type,
-              nonempty_domain,
-              &is_empty_bool)))
+              (tiledb::sm::SerializationType)serialize_type)))
     return TILEDB_ERR;
-
-  *is_empty = is_empty_bool ? 1 : 0;
 
   return TILEDB_OK;
 }

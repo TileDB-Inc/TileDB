@@ -351,45 +351,27 @@ int ArraySchemaFx::tiledb_array_get_non_empty_domain_from_index_wrapper(
   if (ret != TILEDB_OK || !serialize_array_schema_)
     return ret;
 
-  tiledb_array_schema_t* schema;
-  REQUIRE(tiledb_array_get_schema(ctx, array, &schema) == TILEDB_OK);
-
-  tiledb_domain_t* dom;
-  REQUIRE(tiledb_array_schema_get_domain(ctx, schema, &dom) == TILEDB_OK);
-
-  tiledb_dimension_t* dimension;
-  REQUIRE(
-      tiledb_domain_get_dimension_from_index(ctx, dom, index, &dimension) ==
-      TILEDB_OK);
-
   // Serialize the non_empty_domain
   tiledb_buffer_t* buff;
   REQUIRE(
-      tiledb_serialize_array_nonempty_domain_from_dimension(
+      tiledb_serialize_array_nonempty_domain_all_dimensions(
           ctx,
-          dimension,
-          domain,
-          *is_empty,
+          array,
           (tiledb_serialization_type_t)tiledb::sm::SerializationType::CAPNP,
           0,
           &buff) == TILEDB_OK);
 
   // Deserialize to validate we can round-trip
   REQUIRE(
-      tiledb_deserialize_array_nonempty_domain_from_dimension(
+      tiledb_deserialize_array_nonempty_domain_all_dimensions(
           ctx,
-          dimension,
+          array,
           buff,
           (tiledb_serialization_type_t)tiledb::sm::SerializationType::CAPNP,
-          1,
-          &domain,
-          is_empty) == TILEDB_OK);
+          1) == TILEDB_OK);
 
-  tiledb_dimension_free(&dimension);
-  tiledb_domain_free(&dom);
-  tiledb_array_schema_free(&schema);
-
-  return TILEDB_OK;
+  return tiledb_array_get_non_empty_domain_from_index(
+      ctx, array, index, domain, is_empty);
 }
 
 int ArraySchemaFx::tiledb_array_get_non_empty_domain_from_name_wrapper(
@@ -407,45 +389,27 @@ int ArraySchemaFx::tiledb_array_get_non_empty_domain_from_name_wrapper(
   if (ret != TILEDB_OK || !serialize_array_schema_)
     return ret;
 
-  tiledb_array_schema_t* schema;
-  REQUIRE(tiledb_array_get_schema(ctx, array, &schema) == TILEDB_OK);
-
-  tiledb_domain_t* dom;
-  REQUIRE(tiledb_array_schema_get_domain(ctx, schema, &dom) == TILEDB_OK);
-
-  tiledb_dimension_t* dimension;
-  REQUIRE(
-      tiledb_domain_get_dimension_from_name(ctx, dom, name, &dimension) ==
-      TILEDB_OK);
-
   // Serialize the non_empty_domain
   tiledb_buffer_t* buff;
   REQUIRE(
-      tiledb_serialize_array_nonempty_domain_from_dimension(
+      tiledb_serialize_array_nonempty_domain_all_dimensions(
           ctx,
-          dimension,
-          domain,
-          *is_empty,
+          array,
           (tiledb_serialization_type_t)tiledb::sm::SerializationType::CAPNP,
           0,
           &buff) == TILEDB_OK);
 
   // Deserialize to validate we can round-trip
   REQUIRE(
-      tiledb_deserialize_array_nonempty_domain_from_dimension(
+      tiledb_deserialize_array_nonempty_domain_all_dimensions(
           ctx,
-          dimension,
+          array,
           buff,
           (tiledb_serialization_type_t)tiledb::sm::SerializationType::CAPNP,
-          1,
-          &domain,
-          is_empty) == TILEDB_OK);
+          1) == TILEDB_OK);
 
-  tiledb_dimension_free(&dimension);
-  tiledb_domain_free(&dom);
-  tiledb_array_schema_free(&schema);
-
-  return TILEDB_OK;
+  return tiledb_array_get_non_empty_domain_from_name(
+      ctx, array, name, domain, is_empty);
 }
 
 int ArraySchemaFx::array_create_wrapper(

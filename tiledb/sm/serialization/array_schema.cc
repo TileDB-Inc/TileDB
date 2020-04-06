@@ -887,6 +887,135 @@ Status nonempty_domain_deserialize(
   return Status::Ok();
 }
 
+Status nonempty_domain_serialize(
+    const Array* array,
+    SerializationType serialize_type,
+    Buffer* serialized_buffer) {
+  const auto* schema = array->array_schema();
+  if (schema == nullptr)
+    return LOG_STATUS(Status::SerializationError(
+        "Error serializing nonempty domain; array schema is null."));
+
+  try {
+    // Serialize
+    ::capnp::MallocMessageBuilder message;
+    auto builder = message.initRoot<capnp::NonEmptyDomainList>();
+
+    RETURN_NOT_OK(utils::serialize_non_empty_domain(builder, array));
+    //    auto nonEmptyDomainListBuilder =
+    //    builder.initNonEmptyDomains(array->array_schema()->dim_num());
+    //
+    //    const auto &nonEmptyDomain = array->non_empty_domain();
+    //
+    //    for (uint64_t dimIdx = 0; dimIdx < array->array_schema()->dim_num();
+    //    ++dimIdx) {
+    //      const auto &dimNonEmptyDomain = nonEmptyDomain[dimIdx];
+    //
+    //      auto dimBulder = nonEmptyDomainListBuilder[dimIdx];
+    //      dimBulder.setIsEmpty(dimNonEmptyDomain.empty());
+    //
+    //      if (!dimNonEmptyDomain.empty()) {
+    //        auto subarray_builder = dimBulder.initNonEmptyDomain();
+    //        RETURN_NOT_OK(utils::set_capnp_array_ptr(
+    //            subarray_builder, tiledb::sm::Datatype::UINT8,
+    //            nonEmptyDomain.data(), nonEmptyDomain.size()));
+    //      }
+    //    }
+
+    // Copy to buffer
+    serialized_buffer->reset_size();
+    serialized_buffer->reset_offset();
+
+    switch (serialize_type) {
+      case SerializationType::JSON: {
+        ::capnp::JsonCodec json;
+        kj::String capnp_json = json.encode(builder);
+        const auto json_len = capnp_json.size();
+        const char nul = '\0';
+        // size does not include needed null terminator, so add +1
+        RETURN_NOT_OK(serialized_buffer->realloc(json_len + 1));
+        RETURN_NOT_OK(serialized_buffer->write(capnp_json.cStr(), json_len));
+        RETURN_NOT_OK(serialized_buffer->write(&nul, 1));
+        break;
+      }
+      case SerializationType::CAPNP: {
+        kj::Array<::capnp::word> protomessage = messageToFlatArray(message);
+        kj::ArrayPtr<const char> message_chars = protomessage.asChars();
+        const auto nbytes = message_chars.size();
+        RETURN_NOT_OK(serialized_buffer->realloc(nbytes));
+        RETURN_NOT_OK(serialized_buffer->write(message_chars.begin(), nbytes));
+        break;
+      }
+      default: {
+        return LOG_STATUS(Status::SerializationError(
+            "Error serializing nonempty domain; Unknown serialization type "
+            "passed"));
+      }
+    }
+
+  } catch (kj::Exception& e) {
+    return LOG_STATUS(Status::SerializationError(
+        "Error serializing nonempty domain; kj::Exception: " +
+        std::string(e.getDescription().cStr())));
+  } catch (std::exception& e) {
+    return LOG_STATUS(Status::SerializationError(
+        "Error serializing nonempty domain; exception " +
+        std::string(e.what())));
+  }
+
+  return Status::Ok();
+}
+
+Status nonempty_domain_deserialize(
+    Array* array,
+    const Buffer& serialized_buffer,
+    SerializationType serialize_type) {
+  try {
+    switch (serialize_type) {
+      case SerializationType::JSON: {
+        ::capnp::JsonCodec json;
+        ::capnp::MallocMessageBuilder message_builder;
+        auto builder = message_builder.initRoot<capnp::NonEmptyDomainList>();
+        json.decode(
+            kj::StringPtr(static_cast<const char*>(serialized_buffer.data())),
+            builder);
+        auto reader = builder.asReader();
+
+        // Deserialize
+        RETURN_NOT_OK(utils::deserialize_non_empty_domain(reader, array));
+        break;
+      }
+      case SerializationType::CAPNP: {
+        const auto mBytes =
+            reinterpret_cast<const kj::byte*>(serialized_buffer.data());
+        ::capnp::FlatArrayMessageReader msg_reader(kj::arrayPtr(
+            reinterpret_cast<const ::capnp::word*>(mBytes),
+            serialized_buffer.size() / sizeof(::capnp::word)));
+        auto reader = msg_reader.getRoot<capnp::NonEmptyDomainList>();
+
+        // Deserialize
+        RETURN_NOT_OK(utils::deserialize_non_empty_domain(reader, array));
+        break;
+      }
+      default: {
+        return LOG_STATUS(Status::SerializationError(
+            "Error deserializing nonempty domain; Unknown serialization type "
+            "passed"));
+      }
+    }
+  } catch (kj::Exception& e) {
+    return LOG_STATUS(Status::SerializationError(
+        "Error deserializing nonempty domain; kj::Exception: " +
+        std::string(e.getDescription().cStr())));
+  } catch (std::exception& e) {
+    return LOG_STATUS(Status::SerializationError(
+        "Error deserializing nonempty domain; exception " +
+        std::string(e.what())));
+  }
+
+  return Status::Ok();
+}
+
 Status max_buffer_sizes_serialize(
     Array* array,
     const void* subarray,

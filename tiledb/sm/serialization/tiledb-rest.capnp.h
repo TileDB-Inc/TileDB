@@ -42,6 +42,7 @@ CAPNP_DECLARE_SCHEMA(cbe1e7c13508aa2c);
 CAPNP_DECLARE_SCHEMA(e19754f813ccf79c);
 CAPNP_DECLARE_SCHEMA(96ba49d0f8b23ccc);
 CAPNP_DECLARE_SCHEMA(9df6f2a42c4e5f0b);
+CAPNP_DECLARE_SCHEMA(a18264549448ece3);
 CAPNP_DECLARE_SCHEMA(9be1921b07e6cd2d);
 CAPNP_DECLARE_SCHEMA(f01116579e9ea98e);
 CAPNP_DECLARE_SCHEMA(9737dcafdfce31bb);
@@ -566,7 +567,24 @@ struct NonEmptyDomain {
   class Pipeline;
 
   struct _capnpPrivate {
-    CAPNP_DECLARE_STRUCT_HEADER(9df6f2a42c4e5f0b, 1, 1)
+    CAPNP_DECLARE_STRUCT_HEADER(9df6f2a42c4e5f0b, 1, 2)
+#if !CAPNP_LITE
+    static constexpr ::capnp::_::RawBrandedSchema const* brand() {
+      return &schema->defaultBrand;
+    }
+#endif  // !CAPNP_LITE
+  };
+};
+
+struct NonEmptyDomainList {
+  NonEmptyDomainList() = delete;
+
+  class Reader;
+  class Builder;
+  class Pipeline;
+
+  struct _capnpPrivate {
+    CAPNP_DECLARE_STRUCT_HEADER(a18264549448ece3, 0, 1)
 #if !CAPNP_LITE
     static constexpr ::capnp::_::RawBrandedSchema const* brand() {
       return &schema->defaultBrand;
@@ -4293,6 +4311,9 @@ class NonEmptyDomain::Reader {
 
   inline bool getIsEmpty() const;
 
+  inline bool hasSizes() const;
+  inline ::capnp::List<::uint64_t>::Reader getSizes() const;
+
  private:
   ::capnp::_::StructReader _reader;
   template <typename, ::capnp::Kind>
@@ -4347,6 +4368,14 @@ class NonEmptyDomain::Builder {
   inline bool getIsEmpty();
   inline void setIsEmpty(bool value);
 
+  inline bool hasSizes();
+  inline ::capnp::List<::uint64_t>::Builder getSizes();
+  inline void setSizes(::capnp::List<::uint64_t>::Reader value);
+  inline void setSizes(::kj::ArrayPtr<const ::uint64_t> value);
+  inline ::capnp::List<::uint64_t>::Builder initSizes(unsigned int size);
+  inline void adoptSizes(::capnp::Orphan<::capnp::List<::uint64_t>>&& value);
+  inline ::capnp::Orphan<::capnp::List<::uint64_t>> disownSizes();
+
  private:
   ::capnp::_::StructBuilder _builder;
   template <typename, ::capnp::Kind>
@@ -4370,6 +4399,116 @@ class NonEmptyDomain::Pipeline {
 
   inline ::tiledb::sm::serialization::capnp::DomainArray::Pipeline
   getNonEmptyDomain();
+
+ private:
+  ::capnp::AnyPointer::Pipeline _typeless;
+  friend class ::capnp::PipelineHook;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::ToDynamic_;
+};
+#endif  // !CAPNP_LITE
+
+class NonEmptyDomainList::Reader {
+ public:
+  typedef NonEmptyDomainList Reads;
+
+  Reader() = default;
+  inline explicit Reader(::capnp::_::StructReader base)
+      : _reader(base) {
+  }
+
+  inline ::capnp::MessageSize totalSize() const {
+    return _reader.totalSize().asPublic();
+  }
+
+#if !CAPNP_LITE
+  inline ::kj::StringTree toString() const {
+    return ::capnp::_::structString(_reader, *_capnpPrivate::brand());
+  }
+#endif  // !CAPNP_LITE
+
+  inline bool hasNonEmptyDomains() const;
+  inline ::capnp::List<
+      ::tiledb::sm::serialization::capnp::NonEmptyDomain>::Reader
+  getNonEmptyDomains() const;
+
+ private:
+  ::capnp::_::StructReader _reader;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::ToDynamic_;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::_::PointerHelpers;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::List;
+  friend class ::capnp::MessageBuilder;
+  friend class ::capnp::Orphanage;
+};
+
+class NonEmptyDomainList::Builder {
+ public:
+  typedef NonEmptyDomainList Builds;
+
+  Builder() = delete;  // Deleted to discourage incorrect usage.
+                       // You can explicitly initialize to nullptr instead.
+  inline Builder(decltype(nullptr)) {
+  }
+  inline explicit Builder(::capnp::_::StructBuilder base)
+      : _builder(base) {
+  }
+  inline operator Reader() const {
+    return Reader(_builder.asReader());
+  }
+  inline Reader asReader() const {
+    return *this;
+  }
+
+  inline ::capnp::MessageSize totalSize() const {
+    return asReader().totalSize();
+  }
+#if !CAPNP_LITE
+  inline ::kj::StringTree toString() const {
+    return asReader().toString();
+  }
+#endif  // !CAPNP_LITE
+
+  inline bool hasNonEmptyDomains();
+  inline ::capnp::List<
+      ::tiledb::sm::serialization::capnp::NonEmptyDomain>::Builder
+  getNonEmptyDomains();
+  inline void setNonEmptyDomains(
+      ::capnp::List<::tiledb::sm::serialization::capnp::NonEmptyDomain>::Reader
+          value);
+  inline ::capnp::List<
+      ::tiledb::sm::serialization::capnp::NonEmptyDomain>::Builder
+  initNonEmptyDomains(unsigned int size);
+  inline void adoptNonEmptyDomains(
+      ::capnp::Orphan<
+          ::capnp::List<::tiledb::sm::serialization::capnp::NonEmptyDomain>>&&
+          value);
+  inline ::capnp::Orphan<
+      ::capnp::List<::tiledb::sm::serialization::capnp::NonEmptyDomain>>
+  disownNonEmptyDomains();
+
+ private:
+  ::capnp::_::StructBuilder _builder;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::ToDynamic_;
+  friend class ::capnp::Orphanage;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::_::PointerHelpers;
+};
+
+#if !CAPNP_LITE
+class NonEmptyDomainList::Pipeline {
+ public:
+  typedef NonEmptyDomainList Pipelines;
+
+  inline Pipeline(decltype(nullptr))
+      : _typeless(nullptr) {
+  }
+  inline explicit Pipeline(::capnp::AnyPointer::Pipeline&& typeless)
+      : _typeless(kj::mv(typeless)) {
+  }
 
  private:
   ::capnp::AnyPointer::Pipeline _typeless;
@@ -9181,6 +9320,110 @@ inline bool NonEmptyDomain::Builder::getIsEmpty() {
 }
 inline void NonEmptyDomain::Builder::setIsEmpty(bool value) {
   _builder.setDataField<bool>(::capnp::bounded<0>() * ::capnp::ELEMENTS, value);
+}
+
+inline bool NonEmptyDomain::Reader::hasSizes() const {
+  return !_reader.getPointerField(::capnp::bounded<1>() * ::capnp::POINTERS)
+              .isNull();
+}
+inline bool NonEmptyDomain::Builder::hasSizes() {
+  return !_builder.getPointerField(::capnp::bounded<1>() * ::capnp::POINTERS)
+              .isNull();
+}
+inline ::capnp::List<::uint64_t>::Reader NonEmptyDomain::Reader::getSizes()
+    const {
+  return ::capnp::_::PointerHelpers<::capnp::List<::uint64_t>>::get(
+      _reader.getPointerField(::capnp::bounded<1>() * ::capnp::POINTERS));
+}
+inline ::capnp::List<::uint64_t>::Builder NonEmptyDomain::Builder::getSizes() {
+  return ::capnp::_::PointerHelpers<::capnp::List<::uint64_t>>::get(
+      _builder.getPointerField(::capnp::bounded<1>() * ::capnp::POINTERS));
+}
+inline void NonEmptyDomain::Builder::setSizes(
+    ::capnp::List<::uint64_t>::Reader value) {
+  ::capnp::_::PointerHelpers<::capnp::List<::uint64_t>>::set(
+      _builder.getPointerField(::capnp::bounded<1>() * ::capnp::POINTERS),
+      value);
+}
+inline void NonEmptyDomain::Builder::setSizes(
+    ::kj::ArrayPtr<const ::uint64_t> value) {
+  ::capnp::_::PointerHelpers<::capnp::List<::uint64_t>>::set(
+      _builder.getPointerField(::capnp::bounded<1>() * ::capnp::POINTERS),
+      value);
+}
+inline ::capnp::List<::uint64_t>::Builder NonEmptyDomain::Builder::initSizes(
+    unsigned int size) {
+  return ::capnp::_::PointerHelpers<::capnp::List<::uint64_t>>::init(
+      _builder.getPointerField(::capnp::bounded<1>() * ::capnp::POINTERS),
+      size);
+}
+inline void NonEmptyDomain::Builder::adoptSizes(
+    ::capnp::Orphan<::capnp::List<::uint64_t>>&& value) {
+  ::capnp::_::PointerHelpers<::capnp::List<::uint64_t>>::adopt(
+      _builder.getPointerField(::capnp::bounded<1>() * ::capnp::POINTERS),
+      kj::mv(value));
+}
+inline ::capnp::Orphan<::capnp::List<::uint64_t>>
+NonEmptyDomain::Builder::disownSizes() {
+  return ::capnp::_::PointerHelpers<::capnp::List<::uint64_t>>::disown(
+      _builder.getPointerField(::capnp::bounded<1>() * ::capnp::POINTERS));
+}
+
+inline bool NonEmptyDomainList::Reader::hasNonEmptyDomains() const {
+  return !_reader.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS)
+              .isNull();
+}
+inline bool NonEmptyDomainList::Builder::hasNonEmptyDomains() {
+  return !_builder.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS)
+              .isNull();
+}
+inline ::capnp::List<::tiledb::sm::serialization::capnp::NonEmptyDomain>::Reader
+NonEmptyDomainList::Reader::getNonEmptyDomains() const {
+  return ::capnp::_::PointerHelpers<
+      ::capnp::List<::tiledb::sm::serialization::capnp::NonEmptyDomain>>::
+      get(_reader.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS));
+}
+inline ::capnp::List<
+    ::tiledb::sm::serialization::capnp::NonEmptyDomain>::Builder
+NonEmptyDomainList::Builder::getNonEmptyDomains() {
+  return ::capnp::_::PointerHelpers<
+      ::capnp::List<::tiledb::sm::serialization::capnp::NonEmptyDomain>>::
+      get(_builder.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS));
+}
+inline void NonEmptyDomainList::Builder::setNonEmptyDomains(
+    ::capnp::List<::tiledb::sm::serialization::capnp::NonEmptyDomain>::Reader
+        value) {
+  ::capnp::_::PointerHelpers<
+      ::capnp::List<::tiledb::sm::serialization::capnp::NonEmptyDomain>>::
+      set(_builder.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS),
+          value);
+}
+inline ::capnp::List<
+    ::tiledb::sm::serialization::capnp::NonEmptyDomain>::Builder
+NonEmptyDomainList::Builder::initNonEmptyDomains(unsigned int size) {
+  return ::capnp::_::PointerHelpers<
+      ::capnp::List<::tiledb::sm::serialization::capnp::NonEmptyDomain>>::
+      init(
+          _builder.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS),
+          size);
+}
+inline void NonEmptyDomainList::Builder::adoptNonEmptyDomains(
+    ::capnp::Orphan<
+        ::capnp::List<::tiledb::sm::serialization::capnp::NonEmptyDomain>>&&
+        value) {
+  ::capnp::_::PointerHelpers<
+      ::capnp::List<::tiledb::sm::serialization::capnp::NonEmptyDomain>>::
+      adopt(
+          _builder.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS),
+          kj::mv(value));
+}
+inline ::capnp::Orphan<
+    ::capnp::List<::tiledb::sm::serialization::capnp::NonEmptyDomain>>
+NonEmptyDomainList::Builder::disownNonEmptyDomains() {
+  return ::capnp::_::PointerHelpers<
+      ::capnp::List<::tiledb::sm::serialization::capnp::NonEmptyDomain>>::
+      disown(
+          _builder.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS));
 }
 
 inline bool AttributeBufferSize::Reader::hasAttribute() const {
