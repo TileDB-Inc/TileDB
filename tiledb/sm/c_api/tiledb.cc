@@ -3278,29 +3278,11 @@ int32_t tiledb_array_get_non_empty_domain(
 
   bool is_empty_b;
 
-  if (array->array_->is_remote()) {
-    // Check REST client
-    auto rest_client = ctx->ctx_->storage_manager()->rest_client();
-    if (rest_client == nullptr) {
-      auto st = tiledb::sm::Status::Error(
-          "Failed to get non-empty domain; remote array with no REST client.");
-      LOG_STATUS(st);
-      save_error(ctx, st);
-      return TILEDB_ERR;
-    }
-
-    if (SAVE_ERROR_CATCH(
-            ctx,
-            rest_client->get_array_non_empty_domain(
-                array->array_, domain, &is_empty_b)))
-      return TILEDB_ERR;
-  } else {
-    if (SAVE_ERROR_CATCH(
-            ctx,
-            ctx->ctx_->storage_manager()->array_get_non_empty_domain(
-                array->array_, domain, &is_empty_b)))
-      return TILEDB_ERR;
-  }
+  if (SAVE_ERROR_CATCH(
+          ctx,
+          ctx->ctx_->storage_manager()->array_get_non_empty_domain(
+              array->array_, domain, &is_empty_b)))
+    return TILEDB_ERR;
 
   *is_empty = (int32_t)is_empty_b;
 
@@ -3318,29 +3300,11 @@ int32_t tiledb_array_get_non_empty_domain_from_index(
 
   bool is_empty_b;
 
-  if (array->array_->is_remote()) {
-    // Check REST client
-    auto rest_client = ctx->ctx_->storage_manager()->rest_client();
-    if (rest_client == nullptr) {
-      auto st = tiledb::sm::Status::Error(
-          "Failed to get non-empty domain; remote array with no REST client.");
-      LOG_STATUS(st);
-      save_error(ctx, st);
-      return TILEDB_ERR;
-    }
-
-    if (SAVE_ERROR_CATCH(
-            ctx,
-            rest_client->get_array_non_empty_domain_from_index(
-                array->array_, idx, domain, &is_empty_b)))
-      return TILEDB_ERR;
-  } else {
-    if (SAVE_ERROR_CATCH(
-            ctx,
-            ctx->ctx_->storage_manager()->array_get_non_empty_domain_from_index(
-                array->array_, idx, domain, &is_empty_b)))
-      return TILEDB_ERR;
-  }
+  if (SAVE_ERROR_CATCH(
+          ctx,
+          ctx->ctx_->storage_manager()->array_get_non_empty_domain_from_index(
+              array->array_, idx, domain, &is_empty_b)))
+    return TILEDB_ERR;
 
   *is_empty = (int32_t)is_empty_b;
 
@@ -3358,29 +3322,11 @@ int32_t tiledb_array_get_non_empty_domain_from_name(
 
   bool is_empty_b;
 
-  if (array->array_->is_remote()) {
-    // Check REST client
-    auto rest_client = ctx->ctx_->storage_manager()->rest_client();
-    if (rest_client == nullptr) {
-      auto st = tiledb::sm::Status::Error(
-          "Failed to get non-empty domain; remote array with no REST client.");
-      LOG_STATUS(st);
-      save_error(ctx, st);
-      return TILEDB_ERR;
-    }
-
-    if (SAVE_ERROR_CATCH(
-            ctx,
-            rest_client->get_array_non_empty_domain_from_name(
-                array->array_, name, domain, &is_empty_b)))
-      return TILEDB_ERR;
-  } else {
-    if (SAVE_ERROR_CATCH(
-            ctx,
-            ctx->ctx_->storage_manager()->array_get_non_empty_domain_from_name(
-                array->array_, name, domain, &is_empty_b)))
-      return TILEDB_ERR;
-  }
+  if (SAVE_ERROR_CATCH(
+          ctx,
+          ctx->ctx_->storage_manager()->array_get_non_empty_domain_from_name(
+              array->array_, name, domain, &is_empty_b)))
+    return TILEDB_ERR;
 
   *is_empty = (int32_t)is_empty_b;
 
@@ -3399,35 +3345,12 @@ int32_t tiledb_array_get_non_empty_domain_var_size_from_index(
 
   bool is_empty_b = true;
 
-  if (array->array_->is_remote()) {
-    // TODO: seth remove
-    (void)is_empty_b;
-
-    // Check REST client
-    auto rest_client = ctx->ctx_->storage_manager()->rest_client();
-    if (rest_client == nullptr) {
-      auto st = tiledb::sm::Status::Error(
-          "Failed to get non-empty domain; remote array with no REST client.");
-      LOG_STATUS(st);
-      save_error(ctx, st);
-      return TILEDB_ERR;
-    }
-
-    /* TODO: seth
-    if (SAVE_ERROR_CATCH(
-            ctx,
-            rest_client->get_array_non_empty_domain_from_index(
-                array->array_, idx, domain, &is_empty_b)))
-      return TILEDB_ERR;
-    */
-  } else {
-    if (SAVE_ERROR_CATCH(
-            ctx,
-            ctx->ctx_->storage_manager()
-                ->array_get_non_empty_domain_var_size_from_index(
-                    array->array_, idx, start_size, end_size, &is_empty_b)))
-      return TILEDB_ERR;
-  }
+  if (SAVE_ERROR_CATCH(
+          ctx,
+          ctx->ctx_->storage_manager()
+              ->array_get_non_empty_domain_var_size_from_index(
+                  array->array_, idx, start_size, end_size, &is_empty_b)))
+    return TILEDB_ERR;
 
   *is_empty = (int32_t)is_empty_b;
 
@@ -3446,35 +3369,12 @@ int32_t tiledb_array_get_non_empty_domain_var_size_from_name(
 
   bool is_empty_b = true;
 
-  if (array->array_->is_remote()) {
-    // TODO: seth remove
-    (void)is_empty_b;
-
-    // Check REST client
-    auto rest_client = ctx->ctx_->storage_manager()->rest_client();
-    if (rest_client == nullptr) {
-      auto st = tiledb::sm::Status::Error(
-          "Failed to get non-empty domain; remote array with no REST client.");
-      LOG_STATUS(st);
-      save_error(ctx, st);
-      return TILEDB_ERR;
-    }
-
-    /* TODO: seth
-    if (SAVE_ERROR_CATCH(
-            ctx,
-            rest_client->get_array_non_empty_domain_from_name(
-                array->array_, name, domain, &is_empty_b)))
-      return TILEDB_ERR;
-    */
-  } else {
-    if (SAVE_ERROR_CATCH(
-            ctx,
-            ctx->ctx_->storage_manager()
-                ->array_get_non_empty_domain_var_size_from_name(
-                    array->array_, name, start_size, end_size, &is_empty_b)))
-      return TILEDB_ERR;
-  }
+  if (SAVE_ERROR_CATCH(
+          ctx,
+          ctx->ctx_->storage_manager()
+              ->array_get_non_empty_domain_var_size_from_name(
+                  array->array_, name, start_size, end_size, &is_empty_b)))
+    return TILEDB_ERR;
 
   *is_empty = (int32_t)is_empty_b;
 
@@ -3493,35 +3393,12 @@ int32_t tiledb_array_get_non_empty_domain_var_from_index(
 
   bool is_empty_b = true;
 
-  if (array->array_->is_remote()) {
-    // TODO: seth remove
-    (void)is_empty_b;
-
-    // Check REST client
-    auto rest_client = ctx->ctx_->storage_manager()->rest_client();
-    if (rest_client == nullptr) {
-      auto st = tiledb::sm::Status::Error(
-          "Failed to get non-empty domain; remote array with no REST client.");
-      LOG_STATUS(st);
-      save_error(ctx, st);
-      return TILEDB_ERR;
-    }
-
-    /* TODO: seth
-    if (SAVE_ERROR_CATCH(
-            ctx,
-            rest_client->get_array_non_empty_domain_from_index(
-                array->array_, idx, domain, &is_empty_b)))
-      return TILEDB_ERR;
-    */
-  } else {
-    if (SAVE_ERROR_CATCH(
-            ctx,
-            ctx->ctx_->storage_manager()
-                ->array_get_non_empty_domain_var_from_index(
-                    array->array_, idx, start, end, &is_empty_b)))
-      return TILEDB_ERR;
-  }
+  if (SAVE_ERROR_CATCH(
+          ctx,
+          ctx->ctx_->storage_manager()
+              ->array_get_non_empty_domain_var_from_index(
+                  array->array_, idx, start, end, &is_empty_b)))
+    return TILEDB_ERR;
 
   *is_empty = (int32_t)is_empty_b;
 
@@ -3540,35 +3417,12 @@ int32_t tiledb_array_get_non_empty_domain_var_from_name(
 
   bool is_empty_b = true;
 
-  if (array->array_->is_remote()) {
-    // TODO: seth remove
-    (void)is_empty_b;
-
-    // Check REST client
-    auto rest_client = ctx->ctx_->storage_manager()->rest_client();
-    if (rest_client == nullptr) {
-      auto st = tiledb::sm::Status::Error(
-          "Failed to get non-empty domain; remote array with no REST client.");
-      LOG_STATUS(st);
-      save_error(ctx, st);
-      return TILEDB_ERR;
-    }
-
-    /* TODO: seth
-    if (SAVE_ERROR_CATCH(
-            ctx,
-            rest_client->get_array_non_empty_domain_from_name(
-                array->array_, name, domain, &is_empty_b)))
-      return TILEDB_ERR;
-    */
-  } else {
-    if (SAVE_ERROR_CATCH(
-            ctx,
-            ctx->ctx_->storage_manager()
-                ->array_get_non_empty_domain_var_from_name(
-                    array->array_, name, start, end, &is_empty_b)))
-      return TILEDB_ERR;
-  }
+  if (SAVE_ERROR_CATCH(
+          ctx,
+          ctx->ctx_->storage_manager()
+              ->array_get_non_empty_domain_var_from_name(
+                  array->array_, name, start, end, &is_empty_b)))
+    return TILEDB_ERR;
 
   *is_empty = (int32_t)is_empty_b;
 
@@ -4619,74 +4473,7 @@ int32_t tiledb_deserialize_array_nonempty_domain(
   return TILEDB_OK;
 }
 
-// int32_t tiledb_serialize_array_nonempty_domain_from_dimension(
-//    tiledb_ctx_t* ctx,
-//    const tiledb_dimension_t* dimension,
-//    const void* nonempty_domain,
-//    int32_t is_empty,
-//    tiledb_serialization_type_t serialize_type,
-//    int32_t client_side,
-//    tiledb_buffer_t** buffer) {
-//  // Currently unused:
-//  (void)client_side;
-//
-//  // Sanity check
-//  if (sanity_check(ctx) == TILEDB_ERR ||
-//      sanity_check(ctx, dimension) == TILEDB_ERR)
-//    return TILEDB_ERR;
-//
-//  // Create buffer
-//  if (tiledb_buffer_alloc(ctx, buffer) != TILEDB_OK ||
-//      sanity_check(ctx, *buffer) == TILEDB_ERR)
-//    return TILEDB_ERR;
-//
-//  if (SAVE_ERROR_CATCH(
-//          ctx,
-//          tiledb::sm::serialization::nonempty_domain_serialize(
-//              dimension->dim_,
-//              nonempty_domain,
-//              is_empty,
-//              (tiledb::sm::SerializationType)serialize_type,
-//              (*buffer)->buffer_)))
-//    return TILEDB_ERR;
-//
-//  return TILEDB_OK;
-//}
-//
-// int32_t tiledb_deserialize_array_nonempty_domain_from_dimension(
-//    tiledb_ctx_t* ctx,
-//    const tiledb_dimension_t* dimension,
-//    const tiledb_buffer_t* buffer,
-//    tiledb_serialization_type_t serialize_type,
-//    int32_t client_side,
-//    void* nonempty_domain,
-//    int32_t* is_empty) {
-//  // Currently unused:
-//  (void)client_side;
-//
-//  // Sanity check
-//  if (sanity_check(ctx) == TILEDB_ERR ||
-//      sanity_check(ctx, dimension) == TILEDB_ERR ||
-//      sanity_check(ctx, buffer) == TILEDB_ERR)
-//    return TILEDB_ERR;
-//
-//  bool is_empty_bool;
-//  if (SAVE_ERROR_CATCH(
-//          ctx,
-//          tiledb::sm::serialization::nonempty_domain_deserialize(
-//              dimension->dim_,
-//              *buffer->buffer_,
-//              (tiledb::sm::SerializationType)serialize_type,
-//              nonempty_domain,
-//              &is_empty_bool)))
-//    return TILEDB_ERR;
-//
-//  *is_empty = is_empty_bool ? 1 : 0;
-//
-//  return TILEDB_OK;
-//}
-
-int32_t tiledb_serialize_array_nonempty_domain_all_dimensions(
+int32_t tiledb_serialize_array_non_empty_domain_all_dimensions(
     tiledb_ctx_t* ctx,
     const tiledb_array_t* array,
     tiledb_serialization_type_t serialize_type,
@@ -4715,9 +4502,9 @@ int32_t tiledb_serialize_array_nonempty_domain_all_dimensions(
   return TILEDB_OK;
 }
 
-int32_t tiledb_deserialize_array_nonempty_domain_all_dimensions(
+int32_t tiledb_deserialize_array_non_empty_domain_all_dimensions(
     tiledb_ctx_t* ctx,
-    const tiledb_array_t* array,
+    tiledb_array_t* array,
     const tiledb_buffer_t* buffer,
     tiledb_serialization_type_t serialize_type,
     int32_t client_side) {

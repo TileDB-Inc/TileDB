@@ -888,9 +888,7 @@ Status nonempty_domain_deserialize(
 }
 
 Status nonempty_domain_serialize(
-    const Array* array,
-    SerializationType serialize_type,
-    Buffer* serialized_buffer) {
+    Array* array, SerializationType serialize_type, Buffer* serialized_buffer) {
   const auto* schema = array->array_schema();
   if (schema == nullptr)
     return LOG_STATUS(Status::SerializationError(
@@ -902,25 +900,6 @@ Status nonempty_domain_serialize(
     auto builder = message.initRoot<capnp::NonEmptyDomainList>();
 
     RETURN_NOT_OK(utils::serialize_non_empty_domain(builder, array));
-    //    auto nonEmptyDomainListBuilder =
-    //    builder.initNonEmptyDomains(array->array_schema()->dim_num());
-    //
-    //    const auto &nonEmptyDomain = array->non_empty_domain();
-    //
-    //    for (uint64_t dimIdx = 0; dimIdx < array->array_schema()->dim_num();
-    //    ++dimIdx) {
-    //      const auto &dimNonEmptyDomain = nonEmptyDomain[dimIdx];
-    //
-    //      auto dimBulder = nonEmptyDomainListBuilder[dimIdx];
-    //      dimBulder.setIsEmpty(dimNonEmptyDomain.empty());
-    //
-    //      if (!dimNonEmptyDomain.empty()) {
-    //        auto subarray_builder = dimBulder.initNonEmptyDomain();
-    //        RETURN_NOT_OK(utils::set_capnp_array_ptr(
-    //            subarray_builder, tiledb::sm::Datatype::UINT8,
-    //            nonEmptyDomain.data(), nonEmptyDomain.size()));
-    //      }
-    //    }
 
     // Copy to buffer
     serialized_buffer->reset_size();
@@ -1385,14 +1364,12 @@ Status array_schema_deserialize(
       "Cannot serialize; serialization not enabled."));
 }
 
-Status nonempty_domain_serialize(
-    const Dimension*, const void*, bool, SerializationType, Buffer*) {
+Status nonempty_domain_serialize(Array*, SerializationType, Buffer*) {
   return LOG_STATUS(Status::SerializationError(
       "Cannot serialize; serialization not enabled."));
 }
 
-Status nonempty_domain_deserialize(
-    const Dimension*, const Buffer&, SerializationType, void*, bool*) {
+Status nonempty_domain_deserialize(Array*, const Buffer&, SerializationType) {
   return LOG_STATUS(Status::SerializationError(
       "Cannot serialize; serialization not enabled."));
 }

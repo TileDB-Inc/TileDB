@@ -354,7 +354,7 @@ int ArraySchemaFx::tiledb_array_get_non_empty_domain_from_index_wrapper(
   // Serialize the non_empty_domain
   tiledb_buffer_t* buff;
   REQUIRE(
-      tiledb_serialize_array_nonempty_domain_all_dimensions(
+      tiledb_serialize_array_non_empty_domain_all_dimensions(
           ctx,
           array,
           (tiledb_serialization_type_t)tiledb::sm::SerializationType::CAPNP,
@@ -363,7 +363,7 @@ int ArraySchemaFx::tiledb_array_get_non_empty_domain_from_index_wrapper(
 
   // Deserialize to validate we can round-trip
   REQUIRE(
-      tiledb_deserialize_array_nonempty_domain_all_dimensions(
+      tiledb_deserialize_array_non_empty_domain_all_dimensions(
           ctx,
           array,
           buff,
@@ -392,7 +392,7 @@ int ArraySchemaFx::tiledb_array_get_non_empty_domain_from_name_wrapper(
   // Serialize the non_empty_domain
   tiledb_buffer_t* buff;
   REQUIRE(
-      tiledb_serialize_array_nonempty_domain_all_dimensions(
+      tiledb_serialize_array_non_empty_domain_all_dimensions(
           ctx,
           array,
           (tiledb_serialization_type_t)tiledb::sm::SerializationType::CAPNP,
@@ -401,7 +401,7 @@ int ArraySchemaFx::tiledb_array_get_non_empty_domain_from_name_wrapper(
 
   // Deserialize to validate we can round-trip
   REQUIRE(
-      tiledb_deserialize_array_nonempty_domain_all_dimensions(
+      tiledb_deserialize_array_non_empty_domain_all_dimensions(
           ctx,
           array,
           buff,

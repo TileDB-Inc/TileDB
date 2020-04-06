@@ -314,7 +314,7 @@ tiledb::sm::Status copy_capnp_list(
  */
 template <typename CapnpT>
 tiledb::sm::Status serialize_non_empty_domain(
-    CapnpT& builder, const tiledb::sm::Array* array) {
+    CapnpT& builder, tiledb::sm::Array* array) {
   const auto& nonEmptyDomain = array->non_empty_domain();
 
   if (!nonEmptyDomain.empty()) {

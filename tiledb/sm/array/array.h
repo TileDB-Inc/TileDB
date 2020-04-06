@@ -302,8 +302,11 @@ class Array {
    */
   Metadata* metadata();
 
-  /** Returns the non-empty domain of the opened array. */
-  const NDRange& non_empty_domain() const;
+  /** Returns the non-empty domain of the opened array.
+   *  If the non_empty_domain has not been computed or loaded
+   *  it will be loaded first
+   * */
+  const NDRange& non_empty_domain();
 
   /** Returns the non-empty domain of the opened array. */
   void set_non_empty_domain(const NDRange& non_empty_domain);
@@ -368,6 +371,9 @@ class Array {
   /** True if the array metadata is loaded. */
   bool metadata_loaded_;
 
+  /** True if the non_empty_domain has been computed */
+  bool non_empty_domain_computed_;
+
   /** The non-empty domain of the array. */
   NDRange non_empty_domain_;
 
@@ -409,8 +415,14 @@ class Array {
    */
   Status load_metadata();
 
+  /**
+   * Loads non empty domain from remote array
+   * @return Status
+   */
+  Status load_remote_non_empty_domain();
+
   /** Computes the non-empty domain of the array. */
-  void compute_non_empty_domain();
+  Status compute_non_empty_domain();
 };
 
 }  // namespace sm
