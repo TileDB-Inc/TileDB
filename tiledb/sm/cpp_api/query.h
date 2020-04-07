@@ -418,7 +418,7 @@ class Query {
    */
   template <class T>
   Query& add_range(uint32_t dim_idx, T start, T end, T stride = 0) {
-    impl::type_check<T>(schema_.domain().type());
+    impl::type_check<T>(schema_.domain().dimension(dim_idx).type());
     auto& ctx = ctx_.get();
     ctx.handle_error(tiledb_query_add_range(
         ctx.ptr().get(),
@@ -427,6 +427,42 @@ class Query {
         &start,
         &end,
         (stride == 0) ? nullptr : &stride));
+    return *this;
+  }
+
+  /**
+   * Adds a 1D string range along a subarray dimension, in the form
+   * (start, end). Applicable only to variable-sized dimensions
+   *
+   * **Example:**
+   *
+   * @code{.cpp}
+   * // Set a 1D range on dimension 0, assuming the domain type is int64.
+   * int64_t start = 10;
+   * int64_t end = 20;
+   * // Stride is optional
+   * subarray.add_range(0, start, end);
+   * @endcode
+   *
+   * @tparam T The dimension datatype
+   * @param dim_idx The index of the dimension to add the range to.
+   * @param start The range start to add.
+   * @param end The range end to add.
+   * @param stride The range stride to add.
+   * @return Reference to this Query
+   */
+  Query& add_range(
+      uint32_t dim_idx, const std::string& start, const std::string& end) {
+    impl::type_check<char>(schema_.domain().dimension(dim_idx).type());
+    auto& ctx = ctx_.get();
+    ctx.handle_error(tiledb_query_add_range_var(
+        ctx.ptr().get(),
+        query_.get(),
+        dim_idx,
+        start.c_str(),
+        start.size(),
+        end.c_str(),
+        end.size()));
     return *this;
   }
 
@@ -721,7 +757,7 @@ class Query {
   }
 
   /**
-   * Sets a buffer for a fixed-sized attribute.
+   * Sets a buffer for a fixed-sized attribute/dimension.
    *
    * **Example:**
    * @code{.cpp}
@@ -734,20 +770,33 @@ class Query {
    *
    * @note set_buffer(std::string, std::vector) is preferred as it is safer.
    *
-   * @tparam T Attribute value type
-   * @param attr Attribute name
-   * @param buff Buffer array pointer with elements of the attribute type.
+   * @tparam T Attribute/Dimension value type
+   * @param name Attribute/Dimension name
+   * @param buff Buffer array pointer with elements of the
+   *     attribute/dimension type.
    * @param nelements Number of array elements
    **/
   template <typename T>
-  Query& set_buffer(const std::string& attr, T* buff, uint64_t nelements) {
-    if (attr != TILEDB_COORDS)
-      impl::type_check<T>(schema_.attribute(attr).type());
-    return set_buffer(attr, buff, nelements, sizeof(T));
+  Query& set_buffer(const std::string& name, T* buff, uint64_t nelements) {
+    // Checks
+    auto is_attr = schema_.has_attribute(name);
+    auto is_dim = schema_.domain().has_dimension(name);
+    if (name != TILEDB_COORDS && !is_attr && !is_dim)
+      throw TileDBError(
+          std::string("Cannot set buffer; Attribute/Dimension '") + name +
+          "' does not exist");
+    else if (is_attr)
+      impl::type_check<T>(schema_.attribute(name).type());
+    else if (is_dim)
+      impl::type_check<T>(schema_.domain().dimension(name).type());
+    else if (name == TILEDB_COORDS)
+      impl::type_check<T>(schema_.domain().type());
+
+    return set_buffer(name, buff, nelements, sizeof(T));
   }
 
   /**
-   * Sets a buffer for a fixed-sized attribute.
+   * Sets a buffer for a fixed-sized attribute/dimension.
    *
    * **Example:**
    * @code{.cpp}
@@ -758,37 +807,50 @@ class Query {
    * query.set_buffer("a1", data_a1);
    * @endcode
    *
-   * @tparam T Attribute value type
-   * @param attr Attribute name
-   * @param buf Buffer vector with elements of the attribute type.
+   * @tparam T Attribute/Dimension value type
+   * @param name Attribute/Dimension name
+   * @param buf Buffer vector with elements of the attribute/dimension type.
    **/
   template <typename T>
-  Query& set_buffer(const std::string& attr, std::vector<T>& buf) {
-    return set_buffer(attr, buf.data(), buf.size(), sizeof(T));
+  Query& set_buffer(const std::string& name, std::vector<T>& buf) {
+    return set_buffer(name, buf.data(), buf.size(), sizeof(T));
   }
 
   /**
-   * Sets a buffer for a fixed-sized attribute.
+   * Sets a buffer for a fixed-sized attribute/dimension.
    *
    * @note This unsafe version does not perform type checking; the given buffer
    * is assumed to be the correct type, and the size of an element in the given
    * buffer is assumed to be the size of the datatype of the attribute.
    *
-   * @param attr Attribute name
+   * @param nam Attribute/Dimension name
    * @param buff Buffer array pointer with elements of the attribute type.
    * @param nelements Number of array elements in buffer
    **/
-  Query& set_buffer(const std::string& attr, void* buff, uint64_t nelements) {
+  Query& set_buffer(const std::string& name, void* buff, uint64_t nelements) {
+    // Checks
+    auto is_attr = schema_.has_attribute(name);
+    auto is_dim = schema_.domain().has_dimension(name);
+    if (name != TILEDB_COORDS && !is_attr && !is_dim)
+      throw TileDBError(
+          std::string("Cannot set buffer; Attribute/Dimension '") + name +
+          "' does not exist");
+
     // Compute element size (in bytes).
-    size_t element_size =
-        attr == TILEDB_COORDS ?
-            tiledb_datatype_size(schema_.domain().type()) :
-            tiledb_datatype_size(schema_.attribute(attr).type());
-    return set_buffer(attr, buff, nelements, element_size);
+    size_t element_size = 0;
+    if (name == TILEDB_COORDS)
+      element_size = tiledb_datatype_size(schema_.domain().type());
+    else if (is_attr)
+      element_size = tiledb_datatype_size(schema_.attribute(name).type());
+    else if (is_dim)
+      element_size =
+          tiledb_datatype_size(schema_.domain().dimension(name).type());
+
+    return set_buffer(name, buff, nelements, element_size);
   }
 
   /**
-   * Sets a buffer for a variable-sized attribute.
+   * Sets a buffer for a variable-sized attribute/dimension.
    *
    * **Example:**
    *
@@ -804,8 +866,8 @@ class Query {
    * @note set_buffer(std::string, std::vector, std::vector) is preferred as it
    * is safer.
    *
-   * @tparam T Attribute value type
-   * @param attr Attribute name
+   * @tparam T Attribute/Dimension value type
+   * @param name Attribute/Dimension name
    * @param offsets Offsets array pointer where a new element begins in the data
    *        buffer.
    * @param offsets_nelements Number of elements in offsets buffer.
@@ -815,24 +877,35 @@ class Query {
    **/
   template <typename T>
   Query& set_buffer(
-      const std::string& attr,
+      const std::string& name,
       uint64_t* offsets,
       uint64_t offset_nelements,
       T* data,
       uint64_t data_nelements) {
-    impl::type_check<T>(schema_.attribute(attr).type());
+    // Checks
+    auto is_attr = schema_.has_attribute(name);
+    auto is_dim = schema_.domain().has_dimension(name);
+    if (!is_attr && !is_dim)
+      throw TileDBError(
+          std::string("Cannot set buffer; Attribute/Dimension '") + name +
+          "' does not exist");
+    else if (is_attr)
+      impl::type_check<T>(schema_.attribute(name).type());
+    else if (is_dim)
+      impl::type_check<T>(schema_.domain().dimension(name).type());
+
     return set_buffer(
-        attr, offsets, offset_nelements, data, data_nelements, sizeof(T));
+        name, offsets, offset_nelements, data, data_nelements, sizeof(T));
   }
 
   /**
-   * Sets a buffer for a variable-sized attribute.
+   * Sets a buffer for a variable-sized attribute/dimension.
    *
    * @note This unsafe version does not perform type checking; the given buffer
    * is assumed to be the correct type, and the size of an element in the given
    * buffer is assumed to be the size of the datatype of the attribute.
    *
-   * @param attr Attribute name
+   * @param name Attribute/Dimension name
    * @param offsets Offsets array pointer where a new element begins in the data
    *        buffer.
    * @param offsets_nelements Number of elements in offsets buffer.
@@ -840,19 +913,30 @@ class Query {
    * @param data_nelements Number of array elements in data buffer.
    **/
   Query& set_buffer(
-      const std::string& attr,
+      const std::string& name,
       uint64_t* offsets,
       uint64_t offset_nelements,
       void* data,
       uint64_t data_nelements) {
+    // Checks
+    auto is_attr = schema_.has_attribute(name);
+    auto is_dim = schema_.domain().has_dimension(name);
+    if (!is_attr && !is_dim)
+      throw TileDBError(
+          std::string("Cannot set buffer; Attribute/Dimension '") + name +
+          "' does not exist");
+
     // Compute element size (in bytes).
-    size_t element_size = tiledb_datatype_size(schema_.attribute(attr).type());
+    auto type = is_attr ? schema_.attribute(name).type() :
+                          schema_.domain().dimension(name).type();
+    size_t element_size = tiledb_datatype_size(type);
+
     return set_buffer(
-        attr, offsets, offset_nelements, data, data_nelements, element_size);
+        name, offsets, offset_nelements, data, data_nelements, element_size);
   }
 
   /**
-   * Sets a buffer for a variable-sized attribute.
+   * Sets a buffer for a variable-sized attribute/dimension.
    *
    * **Example:**
    * @code{.cpp}
@@ -864,8 +948,8 @@ class Query {
    * query.set_buffer("a1", offsets_a1, data_a1);
    * @endcode
    *
-   * @tparam T Attribute value type
-   * @param attr Attribute name
+   * @tparam T Attribute/Dimension value type
+   * @param name Attribute/Dimension name
    * @param offsets Offsets where a new element begins in the data buffer.
    * @param data Buffer vector with elements of the attribute type.
    *        For variable sized attributes, the buffer should be flattened. E.x.
@@ -874,43 +958,76 @@ class Query {
    **/
   template <typename T>
   Query& set_buffer(
-      const std::string& attr,
+      const std::string& name,
       std::vector<uint64_t>& offsets,
       std::vector<T>& data) {
-    impl::type_check<T>(schema_.attribute(attr).type());
+    // Checks
+    auto is_attr = schema_.has_attribute(name);
+    auto is_dim = schema_.domain().has_dimension(name);
+    if (!is_attr && !is_dim)
+      throw TileDBError(
+          std::string("Cannot set buffer; Attribute/Dimension '") + name +
+          "' does not exist");
+    else if (is_attr)
+      impl::type_check<T>(schema_.attribute(name).type());
+    else if (is_dim)
+      impl::type_check<T>(schema_.domain().dimension(name).type());
+
     return set_buffer(
-        attr, offsets.data(), offsets.size(), &data[0], data.size(), sizeof(T));
+        name, offsets.data(), offsets.size(), &data[0], data.size(), sizeof(T));
   }
 
   /**
-   * Sets a buffer for a variable-sized attribute.
+   * Sets a buffer for a variable-sized attribute/dimension.
    *
-   * @tparam T Attribute value type
-   * @param attr Attribute name
-   * @param buf pair of offset, data buffers
+   * @tparam T Attribute/Dimension value type
+   * @param attr Attribute/Dimension name
+   * @param buf Pair of offset, data buffers
    **/
   template <typename T>
   Query& set_buffer(
-      const std::string& attr,
+      const std::string& name,
       std::pair<std::vector<uint64_t>, std::vector<T>>& buf) {
-    impl::type_check<T>(schema_.attribute(attr).type());
-    return set_buffer(attr, buf.first, buf.second);
+    // Checks
+    auto is_attr = schema_.has_attribute(name);
+    auto is_dim = schema_.domain().has_dimension(name);
+    if (!is_attr && !is_dim)
+      throw TileDBError(
+          std::string("Cannot set buffer; Attribute/Dimension '") + name +
+          "' does not exist");
+    else if (is_attr)
+      impl::type_check<T>(schema_.attribute(name).type());
+    else if (is_dim)
+      impl::type_check<T>(schema_.domain().dimension(name).type());
+
+    return set_buffer(name, buf.first, buf.second);
   }
 
   /**
-   * Sets a buffer for a string-typed variable-sized attribute.
+   * Sets a buffer for a string-typed variable-sized attribute/dimension.
    *
-   * @param attr Attribute name
+   * @param name Attribute/Dimension name
    * @param offsets Offsets where a new element begins in the data buffer.
    * @param data Pre-allocated string buffer.
    **/
   Query& set_buffer(
-      const std::string& attr,
+      const std::string& name,
       std::vector<uint64_t>& offsets,
       std::string& data) {
-    impl::type_check<char>(schema_.attribute(attr).type());
+    // Checks
+    auto is_attr = schema_.has_attribute(name);
+    auto is_dim = schema_.domain().has_dimension(name);
+    if (!is_attr && !is_dim)
+      throw TileDBError(
+          std::string("Cannot set buffer; Attribute/Dimension '") + name +
+          "' does not exist");
+    else if (is_attr)
+      impl::type_check<char>(schema_.attribute(name).type());
+    else if (is_dim)
+      impl::type_check<char>(schema_.domain().dimension(name).type());
+
     return set_buffer(
-        attr,
+        name,
         offsets.data(),
         offsets.size(),
         &data[0],

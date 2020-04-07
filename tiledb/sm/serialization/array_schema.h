@@ -59,32 +59,26 @@ Status array_schema_deserialize(
     const Buffer& serialized_buffer);
 
 Status nonempty_domain_serialize(
-    const Dimension* dimension,
+    const Array* array,
     const void* nonempty_domain,
     bool is_empty,
     SerializationType serialize_type,
     Buffer* serialized_buffer);
 
 Status nonempty_domain_deserialize(
-    const Dimension* dimension,
+    const Array* array,
     const Buffer& serialized_buffer,
     SerializationType serialize_type,
     void* nonempty_domain,
     bool* is_empty);
 
 Status nonempty_domain_serialize(
-    const Array* array,
-    const void* nonempty_domain,
-    bool is_empty,
-    SerializationType serialize_type,
-    Buffer* serialized_buffer);
+    Array* array, SerializationType serialize_type, Buffer* serialized_buffer);
 
 Status nonempty_domain_deserialize(
-    const Array* array,
+    Array* array,
     const Buffer& serialized_buffer,
-    SerializationType serialize_type,
-    void* nonempty_domain,
-    bool* is_empty);
+    SerializationType serialize_type);
 
 Status max_buffer_sizes_serialize(
     Array* array,

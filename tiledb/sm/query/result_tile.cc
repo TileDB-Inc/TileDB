@@ -147,11 +147,33 @@ const void* ResultTile::coord(uint64_t pos, unsigned dim_idx) const {
   return nullptr;
 }
 
+std::string ResultTile::coord_string(uint64_t pos, unsigned dim_idx) const {
+  const auto& coord_tile_off = coord_tiles_[dim_idx].second.first;
+  const auto& coord_tile_val = coord_tiles_[dim_idx].second.second;
+  assert(!coord_tile_off.empty());
+  assert(!coord_tile_val.empty());
+  auto cell_num = coord_tile_off.cell_num();
+  auto val_size = coord_tile_val.size();
+
+  auto coord_buff_off = (const uint64_t*)coord_tile_off.internal_data();
+  auto coord_buff_val = (const char*)coord_tile_val.internal_data();
+  auto offset = coord_buff_off[pos];
+  auto next_offset = (pos == cell_num - 1) ? val_size : coord_buff_off[pos + 1];
+  auto size = next_offset - offset;
+
+  return std::string(&coord_buff_val[offset], size);
+}
+
 bool ResultTile::coord_in_rect(uint64_t pos, const NDRange& rect) const {
   auto dim_num = domain_->dim_num();
   for (unsigned d = 0; d < dim_num; ++d) {
-    if (!domain_->dimension(d)->value_in_range(coord(pos, d), rect[d]))
-      return false;
+    if (!domain_->dimension(d)->var_size()) {  // Fixed-sized
+      if (!domain_->dimension(d)->value_in_range(coord(pos, d), rect[d]))
+        return false;
+    } else {  // Var-sized
+      if (!domain_->dimension(d)->value_in_range(coord_string(pos, d), rect[d]))
+        return false;
+    }
   }
 
   return true;
@@ -171,8 +193,13 @@ bool ResultTile::same_coords(
     const ResultTile& rt, uint64_t pos_a, uint64_t pos_b) const {
   auto dim_num = coord_tiles_.size();
   for (unsigned d = 0; d < dim_num; ++d) {
-    if (std::memcmp(coord(pos_a, d), rt.coord(pos_b, d), coord_size(d)) != 0)
-      return false;
+    if (!domain_->dimension(d)->var_size()) {  // Fixed-sized
+      if (std::memcmp(coord(pos_a, d), rt.coord(pos_b, d), coord_size(d)) != 0)
+        return false;
+    } else {  // Var-sized
+      if (coord_string(pos_a, d) != rt.coord_string(pos_b, d))
+        return false;
+    }
   }
 
   return true;

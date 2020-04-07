@@ -488,11 +488,16 @@ Status Consolidator::consolidate_fragment_meta(
     offset += footer_size;
   }
 
-  // Serialize all fragment metadata footers into a single buffer
+  // Serialize all fragment metadata footers in parallel
   std::vector<Buffer> buffs(meta.size());
-  for (size_t i = 0; i < buffs.size(); ++i) {
-    meta[i]->write_footer(&buffs[i]);
-  }
+  auto statuses = parallel_for(0, buffs.size(), [&](size_t i) {
+    RETURN_NOT_OK(meta[i]->write_footer(&buffs[i]));
+    return Status::Ok();
+  });
+  for (const auto& st : statuses)
+    RETURN_NOT_OK(st);
+
+  // Combine serialized fragment metadata footers into a single buffer
   for (const auto& b : buffs)
     buff.write(b.data(), b.size());
 
@@ -553,20 +558,25 @@ Status Consolidator::create_buffers(
     std::vector<uint64_t>* buffer_sizes) {
   // For easy reference
   auto attribute_num = array_schema->attribute_num();
+  auto domain = array_schema->domain();
+  auto dim_num = array_schema->dim_num();
   auto sparse = !array_schema->dense() || sparse_mode;
 
   // Calculate number of buffers
   size_t buffer_num = 0;
-  for (unsigned int i = 0; i < attribute_num; ++i)
+  for (unsigned i = 0; i < attribute_num; ++i)
     buffer_num += (array_schema->attributes()[i]->var_size()) ? 2 : 1;
-  buffer_num += (sparse) ? array_schema->dim_num() : 0;
+  if (sparse) {
+    for (unsigned i = 0; i < dim_num; ++i)
+      buffer_num += (domain->dimension(i)->var_size()) ? 2 : 1;
+  }
 
   // Create buffers
   buffers->resize(buffer_num);
   buffer_sizes->resize(buffer_num);
 
   // Allocate space for each buffer
-  for (unsigned int i = 0; i < buffer_num; ++i) {
+  for (unsigned i = 0; i < buffer_num; ++i) {
     (*buffers)[i].resize(config_.buffer_size_);
     (*buffer_sizes)[i] = config_.buffer_size_;
   }
@@ -768,10 +778,21 @@ Status Consolidator::set_query_buffers(
   }
   if (!dense || sparse_mode) {
     for (unsigned d = 0; d < dim_num; ++d) {
-      auto dim_name = array_schema->dimension(d)->name();
-      RETURN_NOT_OK(query->set_buffer(
-          dim_name, (void*)&(*buffers)[bid][0], &(*buffer_sizes)[bid]));
-      ++bid;
+      auto dim = array_schema->dimension(d);
+      auto dim_name = dim->name();
+      if (!dim->var_size()) {
+        RETURN_NOT_OK(query->set_buffer(
+            dim_name, (void*)&(*buffers)[bid][0], &(*buffer_sizes)[bid]));
+        ++bid;
+      } else {
+        RETURN_NOT_OK(query->set_buffer(
+            dim_name,
+            (uint64_t*)&(*buffers)[bid][0],
+            &(*buffer_sizes)[bid],
+            (void*)&(*buffers)[bid + 1][0],
+            &(*buffer_sizes)[bid + 1]));
+        bid += 2;
+      }
     }
   }
 

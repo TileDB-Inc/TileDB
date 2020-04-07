@@ -54,7 +54,7 @@ Dimension::Dimension()
 Dimension::Dimension(const std::string& name, Datatype type)
     : name_(name)
     , type_(type) {
-  cell_val_num_ = 1;
+  cell_val_num_ = (datatype_is_string(type)) ? constants::var_num : 1;
   set_ceil_to_tile_func();
   set_check_range_func();
   set_coincides_with_tiles_func();
@@ -114,7 +114,12 @@ unsigned int Dimension::cell_val_num() const {
 }
 
 Status Dimension::set_cell_val_num(unsigned int cell_val_num) {
-  if (cell_val_num != 1)
+  // Error checkls
+  if (datatype_is_string(type_) && cell_val_num != constants::var_num)
+    return LOG_STATUS(
+        Status::DimensionError("Cannot set non-variable number of values per "
+                               "coordinate for a string dimension"));
+  if (!datatype_is_string(type_) && cell_val_num != 1)
     return LOG_STATUS(Status::DimensionError(
         "Cannot set number of values per coordinate; Currently only one value "
         "per coordinate is supported"));
@@ -128,59 +133,76 @@ uint64_t Dimension::coord_size() const {
   return datatype_size(type_);
 }
 
-std::string Dimension::coord_to_str(const void* coord) const {
-  assert(coord != nullptr);
-
+std::string Dimension::coord_to_str(const QueryBuffer& buff, uint64_t i) const {
   std::stringstream ss;
 
-  switch (type_) {
-    case Datatype::INT32:
-      ss << *((int32_t*)coord);
-      break;
-    case Datatype::INT64:
-      ss << *((int64_t*)coord);
-      break;
-    case Datatype::INT8:
-      ss << *((int8_t*)coord);
-      break;
-    case Datatype::UINT8:
-      ss << *((uint8_t*)coord);
-      break;
-    case Datatype::INT16:
-      ss << *((int16_t*)coord);
-      break;
-    case Datatype::UINT16:
-      ss << *((uint16_t*)coord);
-      break;
-    case Datatype::UINT32:
-      ss << *((uint32_t*)coord);
-      break;
-    case Datatype::UINT64:
-      ss << *((uint64_t*)coord);
-      break;
-    case Datatype::FLOAT32:
-      ss << *((float*)coord);
-      break;
-    case Datatype::FLOAT64:
-      ss << *((double*)coord);
-      break;
-    case Datatype::DATETIME_YEAR:
-    case Datatype::DATETIME_MONTH:
-    case Datatype::DATETIME_WEEK:
-    case Datatype::DATETIME_DAY:
-    case Datatype::DATETIME_HR:
-    case Datatype::DATETIME_MIN:
-    case Datatype::DATETIME_SEC:
-    case Datatype::DATETIME_MS:
-    case Datatype::DATETIME_US:
-    case Datatype::DATETIME_NS:
-    case Datatype::DATETIME_PS:
-    case Datatype::DATETIME_FS:
-    case Datatype::DATETIME_AS:
-      ss << *((int64_t*)coord);
-      break;
-    default:
-      break;
+  // Fixed sized
+  if (!var_size()) {
+    auto cbuff = (const unsigned char*)buff.buffer_;
+    auto coord = cbuff + i * coord_size();
+
+    switch (type_) {
+      case Datatype::INT32:
+        ss << *((int32_t*)coord);
+        break;
+      case Datatype::INT64:
+        ss << *((int64_t*)coord);
+        break;
+      case Datatype::INT8:
+        ss << *((int8_t*)coord);
+        break;
+      case Datatype::UINT8:
+        ss << *((uint8_t*)coord);
+        break;
+      case Datatype::INT16:
+        ss << *((int16_t*)coord);
+        break;
+      case Datatype::UINT16:
+        ss << *((uint16_t*)coord);
+        break;
+      case Datatype::UINT32:
+        ss << *((uint32_t*)coord);
+        break;
+      case Datatype::UINT64:
+        ss << *((uint64_t*)coord);
+        break;
+      case Datatype::FLOAT32:
+        ss << *((float*)coord);
+        break;
+      case Datatype::FLOAT64:
+        ss << *((double*)coord);
+        break;
+      case Datatype::DATETIME_YEAR:
+      case Datatype::DATETIME_MONTH:
+      case Datatype::DATETIME_WEEK:
+      case Datatype::DATETIME_DAY:
+      case Datatype::DATETIME_HR:
+      case Datatype::DATETIME_MIN:
+      case Datatype::DATETIME_SEC:
+      case Datatype::DATETIME_MS:
+      case Datatype::DATETIME_US:
+      case Datatype::DATETIME_NS:
+      case Datatype::DATETIME_PS:
+      case Datatype::DATETIME_FS:
+      case Datatype::DATETIME_AS:
+        ss << *((int64_t*)coord);
+        break;
+      default:
+        break;
+    }
+  } else {  // Var-sized
+    assert(type_ == Datatype::STRING_ASCII);
+    auto offs = (const uint64_t*)buff.buffer_;
+    auto offs_size = *(buff.buffer_size_);
+    auto var_size = *(buff.buffer_var_size_);
+    auto vars = (const char*)buff.buffer_var_;
+    auto coord = &vars[offs[i]];
+    auto next_off = ((i + 1) * constants::cell_var_offset_size == offs_size) ?
+                        var_size :
+                        offs[i + 1];
+    auto coord_size = next_off - offs[i];
+    auto coord_str = std::string(coord, coord_size);
+    ss << coord_str;
   }
 
   return ss.str();
@@ -192,7 +214,8 @@ std::string Dimension::coord_to_str(const void* coord) const {
 // type (uint8_t)
 // cell_val_num (uint32_t)
 // filter_pipeline (see FilterPipeline::serialize)
-// domain (void* - 2*type_size)
+// domain_size (uint64_t)
+// domain (void* - domain_size)
 // null_tile_extent (uint8_t)
 // tile_extent (void* - type_size)
 Status Dimension::deserialize(
@@ -220,10 +243,17 @@ Status Dimension::deserialize(
   }
 
   // Load domain
-  uint64_t domain_size = 2 * coord_size();
-  std::vector<uint8_t> tmp(domain_size);
-  RETURN_NOT_OK(buff->read(&tmp[0], domain_size));
-  domain_ = Range(&tmp[0], domain_size);
+  uint64_t domain_size = 0;
+  if (version >= 5) {
+    RETURN_NOT_OK(buff->read(&domain_size, sizeof(uint64_t)));
+  } else {
+    domain_size = 2 * coord_size();
+  }
+  if (domain_size != 0) {
+    std::vector<uint8_t> tmp(domain_size);
+    RETURN_NOT_OK(buff->read(&tmp[0], domain_size));
+    domain_ = Range(&tmp[0], domain_size);
+  }
 
   // Load tile extent
   tile_extent_.clear();
@@ -270,6 +300,10 @@ void Dimension::dump(FILE* out) const {
   fprintf(out, "### Dimension ###\n");
   fprintf(out, "- Name: %s\n", name_.c_str());
   fprintf(out, "- Type: %s\n", datatype_str(type_).c_str());
+  if (!var_size())
+    fprintf(out, "- Cell val num: %u\n", cell_val_num_);
+  else
+    fprintf(out, "- Cell val num: var\n");
   fprintf(out, "- Domain: %s\n", domain_s.c_str());
   fprintf(out, "- Tile extent: %s\n", tile_extent_s.c_str());
   fprintf(out, "- Filters: %u", (unsigned)filters_.size());
@@ -314,6 +348,10 @@ void Dimension::ceil_to_tile(
 }
 
 Status Dimension::check_range(const Range& range) const {
+  // Inapplicable to string domains
+  if (type_ == Datatype::STRING_ASCII)
+    return Status::Ok();
+
   assert(check_range_func_ != nullptr);
   std::string err_msg;
   auto ret = check_range_func_(this, range, &err_msg);
@@ -362,6 +400,36 @@ void Dimension::compute_mbr(const Tile& tile, Range* mbr) {
 void Dimension::compute_mbr(const Tile& tile, Range* mbr) const {
   assert(compute_mbr_func_ != nullptr);
   compute_mbr_func_(tile, mbr);
+}
+
+template <>
+void Dimension::compute_mbr_var<char>(
+    const Tile& tile_off, const Tile& tile_val, Range* mbr) {
+  assert(mbr != nullptr);
+  auto d_off = (const uint64_t*)(tile_off.internal_data());
+  assert(d_off != nullptr);
+  auto d_val = (const char*)(tile_val.internal_data());
+  assert(d_val != nullptr);
+  auto d_val_size = tile_val.size();
+  auto cell_num = tile_off.cell_num();
+  assert(cell_num > 0);
+
+  // Initialize MBR with the first tile values
+  auto size_0 = (cell_num == 1) ? d_val_size : d_off[1];
+  mbr->set_range_var(d_val, size_0, d_val, size_0);
+
+  // Expand the MBR with the rest tile values
+  for (uint64_t c = 1; c < cell_num; ++c) {
+    auto size =
+        (c == cell_num - 1) ? d_val_size - d_off[c] : d_off[c + 1] - d_off[c];
+    expand_range_var_v(&d_val[d_off[c]], size, mbr);
+  }
+}
+
+void Dimension::compute_mbr_var(
+    const Tile& tile_off, const Tile& tile_val, Range* mbr) const {
+  assert(compute_mbr_var_func_ != nullptr);
+  compute_mbr_var_func_(tile_off, tile_val, mbr);
 }
 
 template <class T>
@@ -417,6 +485,20 @@ void Dimension::expand_range_v(const void* v, Range* r) const {
   expand_range_v_func_(v, r);
 }
 
+void Dimension::expand_range_var_v(const char* v, uint64_t v_size, Range* r) {
+  assert(v != nullptr);
+  assert(r != nullptr);
+  assert(!r->empty());
+  assert(v_size != 0);
+
+  auto start = r->start_str();
+  auto end = r->end_str();
+  auto v_str = std::string(v, v_size);
+
+  r->set_str_range(
+      (v_str < start) ? v_str : start, (v_str > end) ? v_str : end);
+}
+
 template <class T>
 void Dimension::expand_range(const Range& r1, Range* r2) {
   assert(!r1.empty());
@@ -430,6 +512,23 @@ void Dimension::expand_range(const Range& r1, Range* r2) {
 void Dimension::expand_range(const Range& r1, Range* r2) const {
   assert(expand_range_func_ != nullptr);
   expand_range_func_(r1, r2);
+}
+
+void Dimension::expand_range_var(const Range& r1, Range* r2) const {
+  assert(type_ == Datatype::STRING_ASCII);
+  assert(!r1.empty());
+  assert(!r2->empty());
+
+  auto r1_start = r1.start_str();
+  auto r1_end = r1.end_str();
+
+  auto r2_start = r2->start_str();
+  auto r2_end = r2->end_str();
+
+  auto min = (r1_start < r2_start) ? r1_start : r2_start;
+  auto max = (r1_end < r2_end) ? r2_end : r1_end;
+
+  r2->set_str_range(min, max);
 }
 
 template <class T>
@@ -475,6 +574,10 @@ bool Dimension::oob(
 }
 
 Status Dimension::oob(const void* coord) const {
+  // Not applicable to string dimensions
+  if (datatype_is_string(type_))
+    return Status::Ok();
+
   assert(oob_func_ != nullptr);
   std::string err_msg;
   auto ret = oob_func_(this, coord, &err_msg);
@@ -501,6 +604,22 @@ bool Dimension::covered(const Range& r1, const Range& r2) const {
   return covered_func_(r1, r2);
 }
 
+template <>
+bool Dimension::overlap<char>(const Range& r1, const Range& r2) {
+  assert(!r1.empty());
+  assert(!r2.empty());
+
+  auto s1_start = r1.start_str();
+  auto s1_end = r1.end_str();
+  auto s2_start = r2.start_str();
+  auto s2_end = r2.end_str();
+
+  auto r1_after_r2 = s1_start > s2_end;
+  auto r2_after_r1 = s2_start > s1_end;
+
+  return !r1_after_r2 && !r2_after_r1;
+}
+
 template <class T>
 bool Dimension::overlap(const Range& r1, const Range& r2) {
   assert(!r1.empty());
@@ -514,6 +633,51 @@ bool Dimension::overlap(const Range& r1, const Range& r2) {
 bool Dimension::overlap(const Range& r1, const Range& r2) const {
   assert(overlap_func_ != nullptr);
   return overlap_func_(r1, r2);
+}
+
+template <>
+double Dimension::overlap_ratio<char>(const Range& r1, const Range& r2) {
+  assert(!r1.empty());
+  assert(!r2.empty());
+
+  if (!overlap<char>(r1, r2))
+    return 0.0;
+
+  auto r1_start = r1.start_str();
+  auto r1_end = r1.end_str();
+  auto r2_start = r2.start_str();
+  auto r2_end = r2.end_str();
+
+  // Calculate the range of r2
+  uint64_t r2_range, pref_size = 0;
+  if (r2.unary()) {
+    r2_range = 1;
+  } else {
+    pref_size = utils::parse::common_prefix_size(r2_start, r2_end);
+    auto r2_start_c = (r2_start.size() == pref_size) ? 0 : r2_start[pref_size];
+    assert(r2_end.size() > pref_size);
+    r2_range = r2_end[pref_size] - r2_start_c + 1;
+  }
+
+  // Calculate the overlap and its range
+  uint64_t o_range;
+  auto o_start = (r1_start > r2_start) ? r1_start : r2_start;
+  auto o_end = (r1_end < r2_end) ? r1_end : r2_end;
+  if (o_start == o_end) {
+    o_range = 1;
+  } else {
+    assert(o_end.size() > pref_size);
+    auto o_start_c = (o_start.size() == pref_size) ? 0 : o_start[pref_size];
+    o_range = o_end[pref_size] - o_start_c + 1;
+  }
+
+  // If the overlap is not equal to r2, then the ratio cannot be
+  // 1.0 - reduce it by epsilon
+  auto ratio = (double)o_range / r2_range;
+  if (ratio == 1.0 && (o_start != r2_start || o_end != r2_end))
+    ratio = std::nextafter(ratio, std::numeric_limits<double>::min());
+
+  return ratio;
 }
 
 template <class T>
@@ -545,12 +709,36 @@ double Dimension::overlap_ratio(const Range& r1, const Range& r2) {
     if (mbr_range == 0)
       mbr_range = std::nextafter(mbr_range, max);
   }
+
   return (double)overlap_range / mbr_range;
 }
 
 double Dimension::overlap_ratio(const Range& r1, const Range& r2) const {
   assert(overlap_ratio_func_ != nullptr);
   return overlap_ratio_func_(r1, r2);
+}
+
+template <>
+void Dimension::split_range<char>(
+    const Range& r, const ByteVecValue& v, Range* r1, Range* r2) {
+  assert(!r.empty());
+  assert(!v.empty());
+  assert(!r.unary());
+  assert(r1 != nullptr);
+  assert(r2 != nullptr);
+
+  // First range
+  auto new_r1_end = std::string((const char*)v.data(), v.size());
+  r1->set_str_range(r.start_str(), new_r1_end);
+
+  // Second range
+  auto start = std::string((const char*)v.data(), v.size());
+  auto end = r.end_str();
+  auto split_pos = utils::parse::common_prefix_size(start, end);
+  auto new_v = (char)(start[split_pos] + 1);
+  auto new_r2_start = start.substr(0, split_pos) + new_v;
+  assert(new_r2_start > new_r1_end);
+  r2->set_str_range(new_r2_start, r.end_str());
 }
 
 template <class T>
@@ -581,6 +769,41 @@ void Dimension::split_range(
   split_range_func_(r, v, r1, r2);
 }
 
+template <>
+void Dimension::splitting_value<char>(
+    const Range& r, ByteVecValue* v, bool* unsplittable) {
+  assert(!r.empty());
+  assert(v != nullptr);
+  assert(unsplittable != nullptr);
+
+  // Check unsplittable
+  if (r.unary()) {
+    *unsplittable = true;
+    return;
+  }
+
+  *unsplittable = false;
+
+  // Find position to split
+  auto start = r.start_str();
+  auto end = r.end_str();
+  auto pref_size = utils::parse::common_prefix_size(start, end);
+
+  // Check unsplittable
+  if (end[pref_size] == 0) {
+    *unsplittable = true;
+    return;
+  }
+
+  auto start_c = (start.size() == pref_size) ? 0 : start[pref_size];
+  auto split_v = (end[pref_size] - start_c) / 2;
+  auto split_str = start.substr(0, pref_size) + (char)(start_c + split_v);
+  split_str = (split_str < start) ? start : split_str;
+
+  v->resize(split_str.size());
+  std::memcpy(v->data(), split_str.data(), split_str.size());
+}
+
 template <class T>
 void Dimension::splitting_value(
     const Range& r, ByteVecValue* v, bool* unsplittable) {
@@ -599,6 +822,14 @@ void Dimension::splitting_value(
     const Range& r, ByteVecValue* v, bool* unsplittable) const {
   assert(splitting_value_func_ != nullptr);
   splitting_value_func_(r, v, unsplittable);
+}
+
+template <>
+uint64_t Dimension::tile_num<char>(const Dimension* dim, const Range& range) {
+  (void)dim;
+  (void)range;
+
+  return 1;
 }
 
 template <class T>
@@ -637,21 +868,29 @@ bool Dimension::value_in_range(const void* value, const Range& range) const {
   return value_in_range_func_(value, range);
 }
 
+bool Dimension::value_in_range(
+    const std::string& value, const Range& range) const {
+  assert(type_ == Datatype::STRING_ASCII);
+  assert(!value.empty());
+  assert(!range.empty());
+
+  return value >= range.start_str() && value <= range.end_str();
+}
+
 // ===== FORMAT =====
 // dimension_name_size (uint32_t)
 // dimension_name (string)
 // type (uint8_t)
 // cell_val_num (uint32_t)
 // filter_pipeline (see FilterPipeline::serialize)
-// domain (void* - 2*type_size)
+// domain_size (uin64_t)
+// domain (void* - domain_size)
 // null_tile_extent (uint8_t)
 // tile_extent (void* - type_size)
 Status Dimension::serialize(Buffer* buff, uint32_t version) {
   // Sanity check
-  if (domain_.empty()) {
-    return LOG_STATUS(
-        Status::DimensionError("Cannot serialize dimension; Domain not set"));
-  }
+  auto is_str = datatype_is_string(type_);
+  assert(is_str || !domain_.empty());
 
   // Write dimension name
   auto dimension_name_size = (uint32_t)name_.size();
@@ -672,7 +911,8 @@ Status Dimension::serialize(Buffer* buff, uint32_t version) {
   }
 
   // Write domain and tile extent
-  uint64_t domain_size = 2 * coord_size();
+  uint64_t domain_size = (is_str) ? 0 : 2 * coord_size();
+  RETURN_NOT_OK(buff->write(&domain_size, sizeof(uint64_t)));
   RETURN_NOT_OK(buff->write(domain_.data(), domain_size));
 
   auto null_tile_extent = (uint8_t)((tile_extent_.empty()) ? 1 : 0);
@@ -684,6 +924,14 @@ Status Dimension::serialize(Buffer* buff, uint32_t version) {
 }
 
 Status Dimension::set_domain(const void* domain) {
+  if (type_ == Datatype::STRING_ASCII) {
+    if (domain == nullptr)
+      return Status::Ok();
+    return LOG_STATUS(Status::DimensionError(
+        std::string("Setting the domain to a dimension with type '") +
+        datatype_str(type_) + "' is not supported"));
+  }
+
   if (domain == nullptr)
     return Status::Ok();
   return set_domain(Range(domain, 2 * coord_size()));
@@ -718,6 +966,14 @@ Status Dimension::set_filter_pipeline(const FilterPipeline* pipeline) {
 }
 
 Status Dimension::set_tile_extent(const void* tile_extent) {
+  if (type_ == Datatype::STRING_ASCII) {
+    if (tile_extent == nullptr)
+      return Status::Ok();
+    return LOG_STATUS(Status::DimensionError(
+        std::string("Setting the tile extent to a dimension with type '") +
+        datatype_str(type_) + "' is not supported"));
+  }
+
   ByteVecValue te;
   if (tile_extent != nullptr) {
     auto size = coord_size();
@@ -986,7 +1242,7 @@ std::string Dimension::domain_str() const {
   std::stringstream ss;
 
   if (domain_.empty())
-    return "";
+    return constants::null_str;
 
   const int* domain_int32;
   const int64_t* domain_int64;
@@ -1432,55 +1688,62 @@ void Dimension::set_coincides_with_tiles_func() {
 }
 
 void Dimension::set_compute_mbr_func() {
-  switch (type_) {
-    case Datatype::INT32:
-      compute_mbr_func_ = compute_mbr<int32_t>;
-      break;
-    case Datatype::INT64:
-      compute_mbr_func_ = compute_mbr<int64_t>;
-      break;
-    case Datatype::INT8:
-      compute_mbr_func_ = compute_mbr<int8_t>;
-      break;
-    case Datatype::UINT8:
-      compute_mbr_func_ = compute_mbr<uint8_t>;
-      break;
-    case Datatype::INT16:
-      compute_mbr_func_ = compute_mbr<int16_t>;
-      break;
-    case Datatype::UINT16:
-      compute_mbr_func_ = compute_mbr<uint16_t>;
-      break;
-    case Datatype::UINT32:
-      compute_mbr_func_ = compute_mbr<uint32_t>;
-      break;
-    case Datatype::UINT64:
-      compute_mbr_func_ = compute_mbr<uint64_t>;
-      break;
-    case Datatype::FLOAT32:
-      compute_mbr_func_ = compute_mbr<float>;
-      break;
-    case Datatype::FLOAT64:
-      compute_mbr_func_ = compute_mbr<double>;
-      break;
-    case Datatype::DATETIME_YEAR:
-    case Datatype::DATETIME_MONTH:
-    case Datatype::DATETIME_WEEK:
-    case Datatype::DATETIME_DAY:
-    case Datatype::DATETIME_HR:
-    case Datatype::DATETIME_MIN:
-    case Datatype::DATETIME_SEC:
-    case Datatype::DATETIME_MS:
-    case Datatype::DATETIME_US:
-    case Datatype::DATETIME_NS:
-    case Datatype::DATETIME_PS:
-    case Datatype::DATETIME_FS:
-    case Datatype::DATETIME_AS:
-      compute_mbr_func_ = compute_mbr<int64_t>;
-      break;
-    default:
-      compute_mbr_func_ = nullptr;
-      break;
+  if (!var_size()) {  // Fixed-sized
+    compute_mbr_var_func_ = nullptr;
+    switch (type_) {
+      case Datatype::INT32:
+        compute_mbr_func_ = compute_mbr<int32_t>;
+        break;
+      case Datatype::INT64:
+        compute_mbr_func_ = compute_mbr<int64_t>;
+        break;
+      case Datatype::INT8:
+        compute_mbr_func_ = compute_mbr<int8_t>;
+        break;
+      case Datatype::UINT8:
+        compute_mbr_func_ = compute_mbr<uint8_t>;
+        break;
+      case Datatype::INT16:
+        compute_mbr_func_ = compute_mbr<int16_t>;
+        break;
+      case Datatype::UINT16:
+        compute_mbr_func_ = compute_mbr<uint16_t>;
+        break;
+      case Datatype::UINT32:
+        compute_mbr_func_ = compute_mbr<uint32_t>;
+        break;
+      case Datatype::UINT64:
+        compute_mbr_func_ = compute_mbr<uint64_t>;
+        break;
+      case Datatype::FLOAT32:
+        compute_mbr_func_ = compute_mbr<float>;
+        break;
+      case Datatype::FLOAT64:
+        compute_mbr_func_ = compute_mbr<double>;
+        break;
+      case Datatype::DATETIME_YEAR:
+      case Datatype::DATETIME_MONTH:
+      case Datatype::DATETIME_WEEK:
+      case Datatype::DATETIME_DAY:
+      case Datatype::DATETIME_HR:
+      case Datatype::DATETIME_MIN:
+      case Datatype::DATETIME_SEC:
+      case Datatype::DATETIME_MS:
+      case Datatype::DATETIME_US:
+      case Datatype::DATETIME_NS:
+      case Datatype::DATETIME_PS:
+      case Datatype::DATETIME_FS:
+      case Datatype::DATETIME_AS:
+        compute_mbr_func_ = compute_mbr<int64_t>;
+        break;
+      default:
+        compute_mbr_func_ = nullptr;
+        break;
+    }
+  } else {  // Var-sized
+    assert(type_ == Datatype::STRING_ASCII);
+    compute_mbr_func_ = nullptr;
+    compute_mbr_var_func_ = compute_mbr_var<char>;
   }
 }
 
@@ -1796,6 +2059,10 @@ void Dimension::set_overlap_func() {
     case Datatype::DATETIME_AS:
       overlap_func_ = overlap<int64_t>;
       break;
+    case Datatype::STRING_ASCII:
+      assert(var_size());
+      overlap_func_ = overlap<char>;
+      break;
     default:
       overlap_func_ = nullptr;
       break;
@@ -1848,6 +2115,10 @@ void Dimension::set_overlap_ratio_func() {
     case Datatype::DATETIME_FS:
     case Datatype::DATETIME_AS:
       overlap_ratio_func_ = overlap_ratio<int64_t>;
+      break;
+    case Datatype::STRING_ASCII:
+      assert(var_size());
+      overlap_ratio_func_ = overlap_ratio<char>;
       break;
     default:
       overlap_ratio_func_ = nullptr;
@@ -1902,6 +2173,9 @@ void Dimension::set_split_range_func() {
     case Datatype::DATETIME_AS:
       split_range_func_ = split_range<int64_t>;
       break;
+    case Datatype::STRING_ASCII:
+      split_range_func_ = split_range<char>;
+      break;
     default:
       split_range_func_ = nullptr;
       break;
@@ -1955,6 +2229,10 @@ void Dimension::set_splitting_value_func() {
     case Datatype::DATETIME_AS:
       splitting_value_func_ = splitting_value<int64_t>;
       break;
+    case Datatype::STRING_ASCII:
+      assert(var_size());
+      splitting_value_func_ = splitting_value<char>;
+      break;
     default:
       splitting_value_func_ = nullptr;
       break;
@@ -2007,6 +2285,9 @@ void Dimension::set_tile_num_func() {
     case Datatype::DATETIME_FS:
     case Datatype::DATETIME_AS:
       tile_num_func_ = tile_num<int64_t>;
+      break;
+    case Datatype::STRING_ASCII:
+      tile_num_func_ = tile_num<char>;
       break;
     default:
       tile_num_func_ = nullptr;

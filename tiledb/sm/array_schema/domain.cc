@@ -116,6 +116,15 @@ bool Domain::all_dims_int() const {
   return true;
 }
 
+bool Domain::all_dims_string() const {
+  for (const auto& dim : dimensions_) {
+    if (!datatype_is_string(dim->type()))
+      return false;
+  }
+
+  return true;
+}
+
 bool Domain::all_dims_real() const {
   for (const auto& dim : dimensions_) {
     if (!datatype_is_real(dim->type()))
@@ -142,8 +151,87 @@ uint64_t Domain::cell_num_per_tile() const {
   return cell_num_per_tile_;
 }
 
+template <>
+int Domain::cell_order_cmp<char>(
+    const Dimension* dim, const QueryBuffer* buff, uint64_t a, uint64_t b) {
+  // Must be var-sized
+  assert(dim->var_size());
+  (void)dim;
+
+  auto offs = (const uint64_t*)buff->buffer_;
+  auto offs_size = *(buff->buffer_size_);
+  auto var_size = *(buff->buffer_var_size_);
+  auto off_a = offs[a];
+  auto off_b = offs[b];
+  auto var_a = &((const char*)buff->buffer_var_)[off_a];
+  auto var_b = &((const char*)buff->buffer_var_)[off_b];
+
+  // If coordinates are last, the next offset is the size of the variable buffer
+  // Otherwisse, it is just the next offset in the fixed buffer
+  auto next_off_a = ((a + 1) * constants::cell_var_offset_size == offs_size) ?
+                        var_size :
+                        offs[a + 1];
+  auto next_off_b = ((b + 1) * constants::cell_var_offset_size == offs_size) ?
+                        var_size :
+                        offs[b + 1];
+  auto size_a = next_off_a - off_a;
+  auto size_b = next_off_b - off_b;
+  auto size = std::min(size_a, size_b);
+
+  // Check common prefix of size `size`
+  for (uint64_t i = 0; i < size; ++i) {
+    if (var_a[i] < var_b[i])
+      return -1;
+    if (var_a[i] > var_b[i])
+      return 1;
+  }
+
+  // Equal common prefix, so equal if they have the same size
+  if (size_a == size_b)
+    return 0;
+
+  // Equal common prefix, so the smaller size wins
+  return (size_a < size_b) ? -1 : 1;
+}
+
 template <class T>
-int Domain::cell_order_cmp(const void* coord_a, const void* coord_b) {
+int Domain::cell_order_cmp(
+    const Dimension* dim, const QueryBuffer* buff, uint64_t a, uint64_t b) {
+  // Must be fixed-sized
+  assert(!dim->var_size());
+  (void)dim;
+
+  auto ca = ((const T*)buff->buffer_)[a];
+  auto cb = ((const T*)buff->buffer_)[b];
+  if (ca < cb)
+    return -1;
+  if (ca > cb)
+    return 1;
+  return 0;
+}
+
+int Domain::cell_order_cmp(
+    unsigned dim_idx, const ResultCoords& a, const ResultCoords& b) const {
+  // Handle variable-sized dimensions
+  if (dimensions_[dim_idx]->var_size()) {
+    auto s_a = a.coord_string(dim_idx);
+    auto s_b = b.coord_string(dim_idx);
+
+    if (s_a == s_b)
+      return 0;
+    if (s_a < s_b)
+      return -1;
+    return 1;
+  }
+
+  assert(cell_order_cmp_func_2_[dim_idx] != nullptr);
+  auto coord_a = a.coord(dim_idx);
+  auto coord_b = b.coord(dim_idx);
+  return cell_order_cmp_func_2_[dim_idx](coord_a, coord_b);
+}
+
+template <class T>
+int Domain::cell_order_cmp_2(const void* coord_a, const void* coord_b) {
   auto ca = (const T*)coord_a;
   auto cb = (const T*)coord_b;
   if (*ca < *cb)
@@ -154,19 +242,13 @@ int Domain::cell_order_cmp(const void* coord_a, const void* coord_b) {
 }
 
 int Domain::cell_order_cmp(
-    unsigned dim_idx, const void* coord_a, const void* coord_b) const {
-  return cell_order_cmp_func_[dim_idx](coord_a, coord_b);
-}
-
-int Domain::cell_order_cmp(
-    const std::vector<const void*>& coord_buffs, uint64_t a, uint64_t b) const {
+    const std::vector<const QueryBuffer*>& coord_buffs,
+    uint64_t a,
+    uint64_t b) const {
   if (cell_order_ == Layout::ROW_MAJOR) {
     for (unsigned d = 0; d < dim_num_; ++d) {
       auto dim = dimension(d);
-      auto coord_size = dim->coord_size();
-      auto ca = &(((unsigned char*)coord_buffs[d])[a * coord_size]);
-      auto cb = &(((unsigned char*)coord_buffs[d])[b * coord_size]);
-      auto res = cell_order_cmp_func_[d](ca, cb);
+      auto res = cell_order_cmp_func_[d](dim, coord_buffs[d], a, b);
 
       if (res == 1 || res == -1)
         return res;
@@ -175,10 +257,7 @@ int Domain::cell_order_cmp(
   } else {  // COL_MAJOR
     for (unsigned d = dim_num_ - 1;; --d) {
       auto dim = dimension(d);
-      auto coord_size = dim->coord_size();
-      auto ca = &(((unsigned char*)coord_buffs[d])[a * coord_size]);
-      auto cb = &(((unsigned char*)coord_buffs[d])[b * coord_size]);
-      auto res = cell_order_cmp_func_[d](ca, cb);
+      auto res = cell_order_cmp_func_[d](dim, coord_buffs[d], a, b);
 
       if (res == 1 || res == -1)
         return res;
@@ -278,13 +357,22 @@ void Domain::expand_ndrange(const NDRange& r1, NDRange* r2) const {
   }
 
   // Expand r2 along all dimensions
-  for (unsigned d = 0; d < dim_num_; ++d)
-    dimensions_[d]->expand_range(r1[d], &(*r2)[d]);
+  for (unsigned d = 0; d < dim_num_; ++d) {
+    auto dim = dimensions_[d];
+    if (!dim->var_size())
+      dim->expand_range(r1[d], &(*r2)[d]);
+    else
+      dim->expand_range_var(r1[d], &(*r2)[d]);
+  }
 }
 
 void Domain::expand_to_tiles(NDRange* ndrange) const {
-  for (unsigned d = 0; d < dim_num_; ++d)
-    dimensions_[d]->expand_to_tile(&(*ndrange)[d]);
+  for (unsigned d = 0; d < dim_num_; ++d) {
+    auto dim = dimensions_[d];
+    // Applicable only to fixed-sized dimensions
+    if (!dim->var_size())
+      dimensions_[d]->expand_to_tile(&(*ndrange)[d]);
+  }
 }
 
 template <class T>
@@ -464,7 +552,7 @@ Status Domain::serialize(Buffer* buff, uint32_t version) {
   // Write dimensions
   RETURN_NOT_OK(buff->write(&dim_num_, sizeof(uint32_t)));
   for (auto dim : dimensions_)
-    dim->serialize(buff, version);
+    RETURN_NOT_OK(dim->serialize(buff, version));
 
   return Status::Ok();
 }
@@ -596,13 +684,20 @@ int Domain::tile_order_cmp(
 }
 
 int Domain::tile_order_cmp(
-    const std::vector<const void*>& coord_buffs, uint64_t a, uint64_t b) const {
+    const std::vector<const QueryBuffer*>& coord_buffs,
+    uint64_t a,
+    uint64_t b) const {
   if (tile_order_ == Layout::ROW_MAJOR) {
     for (unsigned d = 0; d < dim_num_; ++d) {
       auto dim = dimension(d);
+
+      // Inapplicable to var-sized coordinates
+      if (dim->var_size())
+        continue;
+
       auto coord_size = dim->coord_size();
-      auto ca = &(((unsigned char*)coord_buffs[d])[a * coord_size]);
-      auto cb = &(((unsigned char*)coord_buffs[d])[b * coord_size]);
+      auto ca = &(((unsigned char*)coord_buffs[d]->buffer_)[a * coord_size]);
+      auto cb = &(((unsigned char*)coord_buffs[d]->buffer_)[b * coord_size]);
       auto res = tile_order_cmp_func_[d](dim, ca, cb);
 
       if (res == 1 || res == -1)
@@ -612,9 +707,14 @@ int Domain::tile_order_cmp(
   } else {  // COL_MAJOR
     for (unsigned d = dim_num_ - 1;; --d) {
       auto dim = dimension(d);
+
+      // Inapplicable to var-sized coordinates
+      if (dim->var_size())
+        continue;
+
       auto coord_size = dim->coord_size();
-      auto ca = &(((unsigned char*)coord_buffs[d])[a * coord_size]);
-      auto cb = &(((unsigned char*)coord_buffs[d])[b * coord_size]);
+      auto ca = &(((unsigned char*)coord_buffs[d]->buffer_)[a * coord_size]);
+      auto cb = &(((unsigned char*)coord_buffs[d]->buffer_)[b * coord_size]);
       auto res = tile_order_cmp_func_[d](dim, ca, cb);
 
       if (res == 1 || res == -1)
@@ -711,40 +811,49 @@ void Domain::compute_cell_num_per_tile() {
 void Domain::set_tile_cell_order_cmp_funcs() {
   tile_order_cmp_func_.resize(dim_num_);
   cell_order_cmp_func_.resize(dim_num_);
+  cell_order_cmp_func_2_.resize(dim_num_);
   for (unsigned d = 0; d < dim_num_; ++d) {
     auto type = dimensions_[d]->type();
     switch (type) {
       case Datatype::INT32:
         tile_order_cmp_func_[d] = tile_order_cmp<int32_t>;
         cell_order_cmp_func_[d] = cell_order_cmp<int32_t>;
+        cell_order_cmp_func_2_[d] = cell_order_cmp_2<int32_t>;
         break;
       case Datatype::INT64:
         tile_order_cmp_func_[d] = tile_order_cmp<int64_t>;
         cell_order_cmp_func_[d] = cell_order_cmp<int64_t>;
+        cell_order_cmp_func_2_[d] = cell_order_cmp_2<int64_t>;
         break;
       case Datatype::INT8:
         tile_order_cmp_func_[d] = tile_order_cmp<int8_t>;
         cell_order_cmp_func_[d] = cell_order_cmp<int8_t>;
+        cell_order_cmp_func_2_[d] = cell_order_cmp_2<int8_t>;
         break;
       case Datatype::UINT8:
         tile_order_cmp_func_[d] = tile_order_cmp<uint8_t>;
         cell_order_cmp_func_[d] = cell_order_cmp<uint8_t>;
+        cell_order_cmp_func_2_[d] = cell_order_cmp_2<uint8_t>;
         break;
       case Datatype::INT16:
         tile_order_cmp_func_[d] = tile_order_cmp<int16_t>;
         cell_order_cmp_func_[d] = cell_order_cmp<int16_t>;
+        cell_order_cmp_func_2_[d] = cell_order_cmp_2<int16_t>;
         break;
       case Datatype::UINT16:
         tile_order_cmp_func_[d] = tile_order_cmp<uint16_t>;
         cell_order_cmp_func_[d] = cell_order_cmp<uint16_t>;
+        cell_order_cmp_func_2_[d] = cell_order_cmp_2<uint16_t>;
         break;
       case Datatype::UINT32:
         tile_order_cmp_func_[d] = tile_order_cmp<uint32_t>;
         cell_order_cmp_func_[d] = cell_order_cmp<uint32_t>;
+        cell_order_cmp_func_2_[d] = cell_order_cmp_2<uint32_t>;
         break;
       case Datatype::UINT64:
         tile_order_cmp_func_[d] = tile_order_cmp<uint64_t>;
         cell_order_cmp_func_[d] = cell_order_cmp<uint64_t>;
+        cell_order_cmp_func_2_[d] = cell_order_cmp_2<uint64_t>;
         break;
       case Datatype::DATETIME_YEAR:
       case Datatype::DATETIME_MONTH:
@@ -761,25 +870,33 @@ void Domain::set_tile_cell_order_cmp_funcs() {
       case Datatype::DATETIME_AS:
         tile_order_cmp_func_[d] = tile_order_cmp<int64_t>;
         cell_order_cmp_func_[d] = cell_order_cmp<int64_t>;
+        cell_order_cmp_func_2_[d] = cell_order_cmp_2<int64_t>;
         break;
       case Datatype::FLOAT32:
         tile_order_cmp_func_[d] = tile_order_cmp<float>;
         cell_order_cmp_func_[d] = cell_order_cmp<float>;
+        cell_order_cmp_func_2_[d] = cell_order_cmp_2<float>;
         break;
       case Datatype::FLOAT64:
         tile_order_cmp_func_[d] = tile_order_cmp<double>;
         cell_order_cmp_func_[d] = cell_order_cmp<double>;
+        cell_order_cmp_func_2_[d] = cell_order_cmp_2<double>;
+        break;
+      case Datatype::STRING_ASCII:
+        tile_order_cmp_func_[d] = nullptr;
+        cell_order_cmp_func_[d] = cell_order_cmp<char>;
+        cell_order_cmp_func_2_[d] = nullptr;
         break;
       case Datatype::CHAR:
-      case Datatype::STRING_ASCII:
       case Datatype::STRING_UTF8:
       case Datatype::STRING_UTF16:
       case Datatype::STRING_UTF32:
       case Datatype::STRING_UCS2:
       case Datatype::STRING_UCS4:
       case Datatype::ANY:
-        // Not supported domain types
-        assert(false);
+        tile_order_cmp_func_[d] = nullptr;
+        cell_order_cmp_func_[d] = nullptr;
+        cell_order_cmp_func_2_[d] = nullptr;
     }
   }
 }

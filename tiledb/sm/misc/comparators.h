@@ -63,7 +63,7 @@ class RowCmp {
    */
   bool operator()(const ResultCoords& a, const ResultCoords& b) const {
     for (unsigned int d = 0; d < dim_num_; ++d) {
-      auto res = domain_->cell_order_cmp(d, a.coord(d), b.coord(d));
+      auto res = domain_->cell_order_cmp(d, a, b);
 
       if (res == -1)
         return true;
@@ -100,7 +100,7 @@ class ColCmp {
    */
   bool operator()(const ResultCoords& a, const ResultCoords& b) const {
     for (unsigned int d = dim_num_ - 1;; --d) {
-      auto res = domain_->cell_order_cmp(d, a.coord(d), b.coord(d));
+      auto res = domain_->cell_order_cmp(d, a, b);
 
       if (res == -1)
         return true;
@@ -140,19 +140,18 @@ class GlobalCmp {
     dim_num_ = domain->dim_num();
     tile_order_ = domain->tile_order();
     cell_order_ = domain->cell_order();
-    coord_buffs_ = nullptr;
+    buffs_ = nullptr;
   }
 
   /**
    * Constructor.
    *
    * @param domain The array domain.
-   * @param coord_buffs The coordinate buffers, one per dimension, containing
-   *     the actual values, used in positional comparisons.
+   * @param buffs The coordinate query buffers, one per dimension.
    */
-  GlobalCmp(const Domain* domain, const std::vector<const void*>* coord_buffs)
+  GlobalCmp(const Domain* domain, const std::vector<const QueryBuffer*>* buffs)
       : domain_(domain)
-      , coord_buffs_(coord_buffs) {
+      , buffs_(buffs) {
   }
 
   /**
@@ -163,9 +162,12 @@ class GlobalCmp {
    * @return `true` if `a` precedes `b` and `false` otherwise.
    */
   bool operator()(const ResultCoords& a, const ResultCoords& b) const {
-    // Compare tile order first
     if (tile_order_ == Layout::ROW_MAJOR) {
       for (unsigned d = 0; d < dim_num_; ++d) {
+        // Not applicable to var-sized dimensions
+        if (domain_->dimension(d)->var_size())
+          continue;
+
         auto res = domain_->tile_order_cmp(d, a.coord(d), b.coord(d));
 
         if (res == -1)
@@ -177,6 +179,10 @@ class GlobalCmp {
     } else {  // COL_MAJOR
       assert(tile_order_ == Layout::COL_MAJOR);
       for (unsigned d = dim_num_ - 1;; --d) {
+        // Not applicable to var-sized dimensions
+        if (domain_->dimension(d)->var_size())
+          continue;
+
         auto res = domain_->tile_order_cmp(d, a.coord(d), b.coord(d));
 
         if (res == -1)
@@ -193,7 +199,7 @@ class GlobalCmp {
     // Compare cell order
     if (cell_order_ == Layout::ROW_MAJOR) {
       for (unsigned d = 0; d < dim_num_; ++d) {
-        auto res = domain_->cell_order_cmp(d, a.coord(d), b.coord(d));
+        auto res = domain_->cell_order_cmp(d, a, b);
 
         if (res == -1)
           return true;
@@ -204,7 +210,7 @@ class GlobalCmp {
     } else {  // COL_MAJOR
       assert(cell_order_ == Layout::COL_MAJOR);
       for (unsigned d = dim_num_ - 1;; --d) {
-        auto res = domain_->cell_order_cmp(d, a.coord(d), b.coord(d));
+        auto res = domain_->cell_order_cmp(d, a, b);
 
         if (res == -1)
           return true;
@@ -229,8 +235,8 @@ class GlobalCmp {
    *     cell at `b`, and `false` otherwise.
    */
   bool operator()(uint64_t a, uint64_t b) const {
-    assert(coord_buffs_ != nullptr);
-    auto tile_cmp = domain_->tile_order_cmp(*coord_buffs_, a, b);
+    assert(buffs_ != nullptr);
+    auto tile_cmp = domain_->tile_order_cmp(*buffs_, a, b);
 
     if (tile_cmp == -1)
       return true;
@@ -239,7 +245,7 @@ class GlobalCmp {
     // else tile_cmp == 0 --> continue
 
     // Compare cell order
-    auto cell_cmp = domain_->cell_order_cmp(*coord_buffs_, a, b);
+    auto cell_cmp = domain_->cell_order_cmp(*buffs_, a, b);
     return cell_cmp == -1;
   }
 
@@ -256,7 +262,7 @@ class GlobalCmp {
    * The coordinate buffers, one per dimension, sorted in the order the
    * dimensions are defined in the array schema.
    */
-  const std::vector<const void*>* coord_buffs_;
+  const std::vector<const QueryBuffer*>* buffs_;
 };
 
 }  // namespace sm

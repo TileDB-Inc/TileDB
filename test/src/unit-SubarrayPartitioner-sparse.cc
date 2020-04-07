@@ -2138,3 +2138,335 @@ TEST_CASE_METHOD(
 
   close_array(ctx_, array_);
 }
+
+TEST_CASE_METHOD(
+    SubarrayPartitionerSparseFx,
+    "SubarrayPartitioner (Sparse): 1D, single-range, string dimension",
+    "[SubarrayPartitioner][sparse][1D][SR][string-dims][basic]") {
+  // Create array
+  create_array(
+      ctx_,
+      array_name_,
+      TILEDB_SPARSE,
+      {"d"},
+      {TILEDB_STRING_ASCII},
+      {nullptr},
+      {nullptr},
+      {"a"},
+      {TILEDB_INT32},
+      {1},
+      {tiledb::test::Compressor(TILEDB_FILTER_NONE, -1)},
+      TILEDB_ROW_MAJOR,
+      TILEDB_ROW_MAJOR,
+      2,
+      false,
+      false);
+
+  // ####### WRITE #######
+
+  // Open array
+  tiledb_array_t* array;
+  int rc = tiledb_array_alloc(ctx_, array_name_.c_str(), &array);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_array_open(ctx_, array, TILEDB_WRITE);
+  CHECK(rc == TILEDB_OK);
+
+  // Create and submit query
+  tiledb_query_t* query;
+  rc = tiledb_query_alloc(ctx_, array, TILEDB_WRITE, &query);
+  REQUIRE(rc == TILEDB_OK);
+
+  char d_data[] = "ccbbccddaa";
+  uint64_t d_data_size = sizeof(d_data) - 1;  // Ignore '\0'
+  uint64_t d_off[] = {0, 2, 4, 8};
+  uint64_t d_off_size = sizeof(d_off);
+  int32_t a_data[] = {3, 2, 4, 1};
+  uint64_t a_size = sizeof(a_data);
+  rc = tiledb_query_set_buffer_var(
+      ctx_, query, "d", d_off, &d_off_size, d_data, &d_data_size);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_query_set_buffer(ctx_, query, "a", a_data, &a_size);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_query_set_layout(ctx_, query, TILEDB_UNORDERED);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_query_submit(ctx_, query);
+  REQUIRE(rc == TILEDB_OK);
+
+  // Close array
+  rc = tiledb_array_close(ctx_, array);
+  CHECK(rc == TILEDB_OK);
+
+  // #### PARTITIONER ####
+
+  // Open array
+  rc = tiledb_array_alloc(ctx_, array_name_.c_str(), &array);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_array_open(ctx_, array, TILEDB_READ);
+  CHECK(rc == TILEDB_OK);
+
+  Layout layout = Layout::ROW_MAJOR;
+
+  SECTION("Global order") {
+    layout = Layout::GLOBAL_ORDER;
+  }
+
+  SECTION("Row-major") {
+    layout = Layout::ROW_MAJOR;
+  }
+
+  SECTION("Col-major") {
+    layout = Layout::COL_MAJOR;
+  }
+
+  SECTION("Unordered") {
+    layout = Layout::UNORDERED;
+  }
+
+  // Check unsplittable
+  tiledb::sm::Subarray subarray(array->array_, layout);
+  tiledb::sm::Range r;
+  r.set_str_range("bb", "bb");
+  subarray.add_range(0, r);
+  SubarrayPartitioner partitioner(subarray, memory_budget_, memory_budget_var_);
+  auto st = partitioner.set_result_budget("d", 10);
+  CHECK(!st.ok());
+  uint64_t budget = 0;
+  CHECK(!partitioner.get_result_budget("d", &budget).ok());
+  st = partitioner.set_result_budget("d", 10, 1);
+  CHECK(st.ok());
+  uint64_t budget_off = 0, budget_val = 0;
+  CHECK(partitioner.get_result_budget("d", &budget_off, &budget_val).ok());
+  CHECK(budget_off == 10);
+  CHECK(budget_val == 1);
+  bool unsplittable = true;
+  CHECK(partitioner.next(&unsplittable).ok());
+  CHECK(unsplittable);
+  auto partition = partitioner.current();
+  CHECK(partition.range_num() == 1);
+  const Range* range = nullptr;
+  partition.get_range(0, 0, &range);
+  CHECK(range != nullptr);
+  CHECK(range->start_str() == std::string("bb", 2));
+  CHECK(range->end_str() == std::string("bb", 2));
+
+  // Check full
+  tiledb::sm::Subarray subarray_full(array->array_, layout);
+  r.set_str_range("a", "bb");
+  subarray_full.add_range(0, r);
+  SubarrayPartitioner partitioner_full(
+      subarray_full, memory_budget_, memory_budget_var_);
+  st = partitioner_full.set_result_budget("d", 16, 4);
+  CHECK(st.ok());
+  CHECK(partitioner_full.get_result_budget("d", &budget_off, &budget_val).ok());
+  CHECK(budget_off == 16);
+  CHECK(budget_val == 4);
+  CHECK(partitioner_full.next(&unsplittable).ok());
+  CHECK(!unsplittable);
+  partition = partitioner_full.current();
+  CHECK(partition.range_num() == 1);
+  partition.get_range(0, 0, &range);
+  CHECK(range != nullptr);
+  CHECK(range->start_str() == std::string("a", 1));
+  CHECK(range->end_str() == std::string("bb", 2));
+
+  // Check split
+  tiledb::sm::Subarray subarray_split(array->array_, layout);
+  r.set_str_range("a", "bb");
+  subarray_split.add_range(0, r);
+  SubarrayPartitioner partitioner_split(
+      subarray_split, memory_budget_, memory_budget_var_);
+  st = partitioner_split.set_result_budget("d", 10, 4);
+  CHECK(st.ok());
+  CHECK(
+      partitioner_split.get_result_budget("d", &budget_off, &budget_val).ok());
+  CHECK(budget_off == 10);
+  CHECK(budget_val == 4);
+  CHECK(partitioner_split.next(&unsplittable).ok());
+  CHECK(!unsplittable);
+  partition = partitioner_split.current();
+  CHECK(partition.range_num() == 1);
+  partition.get_range(0, 0, &range);
+  CHECK(range != nullptr);
+  CHECK(range->start_str() == std::string("a", 1));
+  CHECK(range->end_str() == std::string("a", 1));
+  CHECK(partitioner_split.next(&unsplittable).ok());
+  CHECK(!unsplittable);
+  partition = partitioner_split.current();
+  CHECK(partition.range_num() == 1);
+  partition.get_range(0, 0, &range);
+  CHECK(range != nullptr);
+  CHECK(range->start_str() == std::string("b", 1));
+  CHECK(range->end_str() == std::string("bb", 2));
+  CHECK(partitioner_split.done());
+
+  // Check no split 2 MBRs
+  tiledb::sm::Subarray subarray_no_split(array->array_, layout);
+  r.set_str_range("bb", "cc");
+  subarray_no_split.add_range(0, r);
+  SubarrayPartitioner partitioner_no_split(
+      subarray_no_split, memory_budget_, memory_budget_var_);
+  st = partitioner_no_split.set_result_budget("d", 16, 10);
+  CHECK(st.ok());
+  CHECK(partitioner_no_split.get_result_budget("d", &budget_off, &budget_val)
+            .ok());
+  CHECK(budget_off == 16);
+  CHECK(budget_val == 10);
+  CHECK(partitioner_no_split.next(&unsplittable).ok());
+  CHECK(partitioner_no_split.done());
+  CHECK(!unsplittable);
+  partition = partitioner_no_split.current();
+  CHECK(partition.range_num() == 1);
+  partition.get_range(0, 0, &range);
+  CHECK(range != nullptr);
+  CHECK(range->start_str() == std::string("bb", 2));
+  CHECK(range->end_str() == std::string("cc", 2));
+
+  // Check split 2 MBRs
+  tiledb::sm::Subarray subarray_split_2(array->array_, layout);
+  r.set_str_range("bb", "cc");
+  subarray_split_2.add_range(0, r);
+  SubarrayPartitioner partitioner_split_2(
+      subarray_split_2, memory_budget_, memory_budget_var_);
+  st = partitioner_split_2.set_result_budget("d", 8, 10);
+  CHECK(st.ok());
+  CHECK(partitioner_split_2.get_result_budget("d", &budget_off, &budget_val)
+            .ok());
+  CHECK(budget_off == 8);
+  CHECK(budget_val == 10);
+  CHECK(partitioner_split_2.next(&unsplittable).ok());
+  CHECK(!partitioner_split_2.done());
+  CHECK(!unsplittable);
+  partition = partitioner_split_2.current();
+  CHECK(partition.range_num() == 1);
+  partition.get_range(0, 0, &range);
+  CHECK(range != nullptr);
+  CHECK(range->start_str() == std::string("bb", 2));
+  CHECK(range->end_str() == std::string("bb", 2));
+  CHECK(partitioner_split_2.next(&unsplittable).ok());
+  CHECK(!unsplittable);
+  partition = partitioner_split_2.current();
+  CHECK(partition.range_num() == 1);
+  partition.get_range(0, 0, &range);
+  CHECK(range != nullptr);
+  CHECK(range->start_str() == std::string("c", 1));
+  CHECK(range->end_str() == std::string("cc", 2));
+  CHECK(partitioner_split_2.done());
+
+  // Close array
+  rc = tiledb_array_close(ctx_, array);
+  CHECK(rc == TILEDB_OK);
+
+  // Clean up
+  tiledb_array_free(&array);
+  tiledb_query_free(&query);
+}
+
+TEST_CASE_METHOD(
+    SubarrayPartitionerSparseFx,
+    "SubarrayPartitioner (Sparse): 1D, single-range, string dimension, edge "
+    "split",
+    "[SubarrayPartitioner][sparse][1D][SR][string-dims][edge-split]") {
+  // Create array
+  create_array(
+      ctx_,
+      array_name_,
+      TILEDB_SPARSE,
+      {"d"},
+      {TILEDB_STRING_ASCII},
+      {nullptr},
+      {nullptr},
+      {"a"},
+      {TILEDB_INT32},
+      {1},
+      {tiledb::test::Compressor(TILEDB_FILTER_NONE, -1)},
+      TILEDB_ROW_MAJOR,
+      TILEDB_ROW_MAJOR,
+      4,
+      false,
+      false);
+
+  // ####### WRITE #######
+
+  // Open array
+  tiledb_array_t* array;
+  int rc = tiledb_array_alloc(ctx_, array_name_.c_str(), &array);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_array_open(ctx_, array, TILEDB_WRITE);
+  CHECK(rc == TILEDB_OK);
+
+  // Create and submit query
+  tiledb_query_t* query;
+  rc = tiledb_query_alloc(ctx_, array, TILEDB_WRITE, &query);
+  REQUIRE(rc == TILEDB_OK);
+
+  char d_data[] = "ccbbccddaa";
+  uint64_t d_data_size = sizeof(d_data) - 1;  // Ignore '\0'
+  uint64_t d_off[] = {0, 2, 4, 8};
+  uint64_t d_off_size = sizeof(d_off);
+  int32_t a_data[] = {3, 2, 4, 1};
+  uint64_t a_size = sizeof(a_data);
+  rc = tiledb_query_set_buffer_var(
+      ctx_, query, "d", d_off, &d_off_size, d_data, &d_data_size);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_query_set_buffer(ctx_, query, "a", a_data, &a_size);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_query_set_layout(ctx_, query, TILEDB_UNORDERED);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_query_submit(ctx_, query);
+  REQUIRE(rc == TILEDB_OK);
+
+  // Close array
+  rc = tiledb_array_close(ctx_, array);
+  CHECK(rc == TILEDB_OK);
+
+  // #### PARTITIONER ####
+
+  // Open array
+  rc = tiledb_array_alloc(ctx_, array_name_.c_str(), &array);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_array_open(ctx_, array, TILEDB_READ);
+  CHECK(rc == TILEDB_OK);
+
+  // Unsplittable
+  bool unsplittable = false;
+  uint64_t budget_off = 0, budget_val = 0;
+
+  Layout layout = Layout::ROW_MAJOR;
+
+  SECTION("Global order") {
+    layout = Layout::GLOBAL_ORDER;
+  }
+
+  SECTION("Row-major") {
+    layout = Layout::ROW_MAJOR;
+  }
+
+  SECTION("Col-major") {
+    layout = Layout::COL_MAJOR;
+  }
+
+  SECTION("Unordered") {
+    layout = Layout::UNORDERED;
+  }
+
+  tiledb::sm::Subarray subarray(array->array_, layout);
+  tiledb::sm::Range r;
+  r.set_str_range("cc", "ccd");
+  subarray.add_range(0, r);
+  SubarrayPartitioner partitioner(subarray, memory_budget_, memory_budget_var_);
+  auto st = partitioner.set_result_budget("d", 10, 4);
+  CHECK(st.ok());
+  CHECK(partitioner.get_result_budget("d", &budget_off, &budget_val).ok());
+  CHECK(budget_off == 10);
+  CHECK(budget_val == 4);
+  CHECK(partitioner.next(&unsplittable).ok());
+  CHECK(unsplittable);
+
+  // Close array
+  rc = tiledb_array_close(ctx_, array);
+  CHECK(rc == TILEDB_OK);
+
+  // Clean up
+  tiledb_array_free(&array);
+  tiledb_query_free(&query);
+}

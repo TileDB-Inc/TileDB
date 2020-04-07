@@ -210,9 +210,7 @@ TILEDB_EXPORT int32_t tiledb_deserialize_array_nonempty_domain(
  * @note The caller must free the returned `tiledb_buffer_t`.
  *
  * @param ctx The TileDB context.
- * @param dimension Dimension to which the domain belongs to
- * @param nonempty_domain The domain to serialize
- * @param is_empty 1 if the domain is empty
+ * @param Array array to which the domain belongs to
  * @param serialization_type Type of serialization to use
  * @param client_side If set to 1, serialize from "client-side" perspective.
  *    Else, "server-side."
@@ -220,11 +218,9 @@ TILEDB_EXPORT int32_t tiledb_deserialize_array_nonempty_domain(
  *      serialized max buffer sizes.
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
-TILEDB_EXPORT int32_t tiledb_serialize_array_nonempty_domain_from_dimension(
+TILEDB_EXPORT int32_t tiledb_serialize_array_non_empty_domain_all_dimensions(
     tiledb_ctx_t* ctx,
-    const tiledb_dimension_t* dimension,
-    const void* nonempty_domain,
-    int32_t is_empty,
+    const tiledb_array_t* array,
     tiledb_serialization_type_t serialize_type,
     int32_t client_side,
     tiledb_buffer_t** buffer);
@@ -233,23 +229,19 @@ TILEDB_EXPORT int32_t tiledb_serialize_array_nonempty_domain_from_dimension(
  * Deserializes non-empty domain information from the given buffer.
  *
  * @param ctx The TileDB context.
- * @param dimension Dimension to which the domain belongs to
+ * @param array Array to which the domain belongs to
  * @param buffer Buffer to deserialize from
  * @param serialization_type Type of deserialization to use
  * @param client_side If set to 1, deserialize from "client-side" perspective.
  *    Else, "server-side."
- * @param nonempty_domain The buffer to deserialize into
- * @param is_empty Will be set to 1 if the domain is empty
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
-TILEDB_EXPORT int32_t tiledb_deserialize_array_nonempty_domain_from_dimension(
+TILEDB_EXPORT int32_t tiledb_deserialize_array_non_empty_domain_all_dimensions(
     tiledb_ctx_t* ctx,
-    const tiledb_dimension_t* dimension,
+    tiledb_array_t* array,
     const tiledb_buffer_t* buffer,
     tiledb_serialization_type_t serialize_type,
-    int32_t client_side,
-    void* nonempty_domain,
-    int32_t* is_empty);
+    int32_t client_side);
 
 /**
  * Serializes the array max buffer sizes information into the given buffer.

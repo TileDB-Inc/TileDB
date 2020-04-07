@@ -18,6 +18,7 @@
 
 ## New features
 
+* Added string dimension support (currently only `TILEDB_STRING_ASCII`).
 * The user can now set separate coordinate buffers to the query. Also any subset of the dimensions is supported.
 * The user can set separate filter lists per dimension, as well as the number of values per coordinate.
 
@@ -45,12 +46,17 @@
 * Added C API functions `tiledb_dimension_{set,get}_filter_list` and `tiledb_dimension_{set,get}_cell_val_num`
 * Added C API functions `tiledb_array_get_non_empty_domain_from_{index,name}`
 * Added C API function `tiledb_array_vacuum`
+* Added C API functions `tiledb_array_get_non_empty_domain_var_size_from_{index,name}`
+* Added C API functions `tiledb_array_get_non_empty_domain_var_from_{index,name}`
+* Added C API function `tiledb_array_add_range_var`
 * Added C++ API functions `Dimension::set_cell_val_num` and `Dimension::cell_val_num`.
 * Added C++ API functions `Dimension::set_filter_list` and `Dimension::filter_list`.
 * Added C++ API functions `Array::non_empty_domain(unsigned idx)` and `Array::non_empty_domain(const std::string& name)`.
 * Added C++ API functions `Domain::dimension(unsigned idx)` and `Domain::dimension(const std::string& name)`.
 * Added C++ API function `Array::load_schema(ctx, uri)` and `Array::load_schema(ctx, uri, key_type, key, key_len)`.
-* Added C++ API function `Array::vacuum`
+* Added C++ API function `Array::vacuum`.
+* Added C++ API functions `Array::non_empty_domain_var` (from index and name).
+* Added C++ API function `add_range` with string inputs.
 
 ## API removals
 
