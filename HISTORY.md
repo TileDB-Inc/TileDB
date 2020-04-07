@@ -60,6 +60,68 @@
 
 ## API removals
 
+# TileDB v1.7.7 Release Notes
+
+## Bug fixes
+
+* Fix expanded domain consolidation [#1572](https://github.com/TileDB-Inc/TileDB/pull/1572)
+
+# TileDB v1.7.6 Release Notes
+
+## New features
+
+* Add MD5 and SHA256 checksum filters [#1515](https://github.com/TileDB-Inc/TileDB/pull/1515)
+
+## Improvements
+
+* Added support for AWS Security Token Service session tokens via configuration option `vfs.s3.session_token`. [#1472](https://github.com/TileDB-Inc/TileDB/pull/1472)
+
+## Deprecations
+
+## Bug fixes
+
+* Fix new SHA1 for intel TBB in superbuild due to change in repository name [#1551](https://github.com/TileDB-Inc/TileDB/pull/1551)
+
+## API additions
+
+## API removals
+
+# TileDB v1.7.5 Release Notes
+
+## New features
+
+## Improvements
+
+* Avoid useless serialization of Array Metadata on close [#1485](https://github.com/TileDB-Inc/TileDB/pull/1485)
+* Update CONTRIBUTING and Code of Conduct [#1487](https://github.com/TileDB-Inc/TileDB/pull/1487)
+
+## Deprecations
+
+## Bug fixes
+
+* Fix deadlock in writes of TileDB Cloud Arrays [#1486](https://github.com/TileDB-Inc/TileDB/pull/1486)
+
+## API additions
+
+## API removals
+
+
+# TileDB v1.7.4 Release Notes
+
+## New features
+
+## Improvements
+
+* REST requests now will use http compression if available [#1479](https://github.com/TileDB-Inc/TileDB/pull/1479)
+
+## Deprecations
+
+## Bug fixes
+
+## API additions
+
+## API removals
+
 # TileDB v1.7.3 Release Notes
 
 ## New features
