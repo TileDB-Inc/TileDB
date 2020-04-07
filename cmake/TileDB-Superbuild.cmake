@@ -29,6 +29,7 @@ set(INHERITED_CMAKE_ARGS
   -DTILEDB_VERBOSE=${TILEDB_VERBOSE}
   -DTILEDB_S3=${TILEDB_S3}
   -DTILEDB_AZURE=${TILEDB_AZURE}
+  -DTILEDB_GCS=${TILEDB_GCS}
   -DTILEDB_HDFS=${TILEDB_HDFS}
   -DTILEDB_WERROR=${TILEDB_WERROR}
   -DTILEDB_CPP_API=${TILEDB_CPP_API}
@@ -90,7 +91,7 @@ if (NOT WIN32)
   include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules/FindOpenSSL_EP.cmake)
 endif()
 
-if (TILEDB_S3 OR TILEDB_AZURE OR TILEDB_SERIALIZATION)
+if (TILEDB_S3 OR TILEDB_AZURE OR TILEDB_GCS OR TILEDB_SERIALIZATION)
   # Need libcurl either with S3 or serialization support.
   include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules/FindCurl_EP.cmake)
 endif()
@@ -103,6 +104,10 @@ endif()
 
 if (TILEDB_AZURE)
   include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules/FindAzureSDK_EP.cmake)
+endif()
+
+if (TILEDB_GCS)
+  include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules/FindGCSSDK_EP.cmake)
 endif()
 
 if (TILEDB_TBB)

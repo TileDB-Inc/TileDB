@@ -26,6 +26,11 @@ jobs:
         TILEDB_AZURE: ON
         TILEDB_STATIC: OFF
         CXX: g++
+      linux_gcs:
+        imageName: 'ubuntu-16.04'
+        TILEDB_GCS: ON
+        TILEDB_STATIC: OFF
+        CXX: g++
       macOS:
         imageName: 'macOS-10.14'
         TILEDB_S3: ON
@@ -33,6 +38,10 @@ jobs:
       macOS_azure:
         imageName: 'macOS-10.14'
         TILEDB_AZURE: ON
+        CXX: clang++
+      macOS_gcs:
+        imageName: 'macOS-10.14'
+        TILEDB_GCS: ON
         CXX: clang++
       linux_asan:
         imageName: 'ubuntu-16.04'

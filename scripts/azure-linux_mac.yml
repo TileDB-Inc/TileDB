@@ -97,6 +97,9 @@ steps:
     if [[ "$TILEDB_AZURE" == "ON" ]]; then
       bootstrap_args="${bootstrap_args} --enable-azure";
     fi;
+    if [[ "$TILEDB_GCS" == "ON" ]]; then
+      bootstrap_args="${bootstrap_args} --enable-gcs";
+    fi;
     if [[ "$TILEDB_TBB" == "OFF" ]]; then
       bootstrap_args="${bootstrap_args} --disable-tbb";
     fi
@@ -152,7 +155,13 @@ steps:
       export ASAN_OPTIONS=detect_leaks=0 LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libasan.so.4
     fi
 
-    make check
+    # GCS unit tests are temporarily unsupported on CI.
+    if [[ "$TILEDB_GCS" == "ON" ]]; then
+      ./tiledb/test/tiledb_unit --durations=yes --vfs native ~[gcs]	
+    else	
+      make check	
+    fi
+
 
     # Kill the running Minio server, OSX only because Linux runs it within
     # docker.

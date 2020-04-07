@@ -103,6 +103,7 @@ enum class StatusCode : char {
   Utils,
   FS_S3,
   FS_AZURE,
+  FS_GCS,
   FS_HDFS,
   Attribute,
   WriteCellSlabIter,
@@ -288,6 +289,11 @@ class Status {
   /** Return a UtilsError error class Status with a given message **/
   static Status AzureError(const std::string& msg) {
     return Status(StatusCode::FS_AZURE, msg, -1);
+  }
+
+  /** Return a UtilsError error class Status with a given message **/
+  static Status GCSError(const std::string& msg) {
+    return Status(StatusCode::FS_GCS, msg, -1);
   }
 
   /** Return a UtilsError error class Status with a given message **/

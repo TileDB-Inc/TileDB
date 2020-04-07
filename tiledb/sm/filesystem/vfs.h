@@ -55,6 +55,10 @@
 #include "tiledb/sm/filesystem/azure.h"
 #endif
 
+#ifdef HAVE_GCS
+#include "tiledb/sm/filesystem/gcs.h"
+#endif
+
 #ifdef HAVE_S3
 #include "tiledb/sm/filesystem/s3.h"
 #endif
@@ -410,6 +414,10 @@ class VFS {
 
 #ifdef HAVE_AZURE
   Azure azure_;
+#endif
+
+#ifdef HAVE_GCS
+  GCS gcs_;
 #endif
 
 #ifdef HAVE_S3
