@@ -1416,7 +1416,8 @@ Status Reader::dense_read() {
       continue;
 
     RETURN_CANCEL_OR_ERROR(read_tiles(name, result_tiles));
-    RETURN_CANCEL_OR_ERROR(unfilter_tiles(name, result_tiles));
+    RETURN_CANCEL_OR_ERROR(
+        unfilter_tiles(name, result_tiles, &result_cell_slabs));
     RETURN_CANCEL_OR_ERROR(copy_cells(name, stride, result_cell_slabs));
     clear_tiles(name, result_tiles);
   }
@@ -1636,12 +1637,39 @@ void Reader::fill_dense_coords_col_slab(
 
 Status Reader::unfilter_tiles(
     const std::string& name,
-    const std::vector<ResultTile*>& result_tiles) const {
+    const std::vector<ResultTile*>& result_tiles,
+    const std::vector<ResultCellSlab>* const result_cell_slabs) const {
   STATS_FUNC_IN(reader_unfilter_tiles);
 
   auto var_size = array_schema_->var_size(name);
   auto num_tiles = static_cast<uint64_t>(result_tiles.size());
   auto encryption_key = array_->encryption_key();
+
+  // Build an association from the result tile to the cell slab ranges
+  // that it contains.
+  std::unordered_map<
+      ResultTile*,
+      std::forward_list<std::pair<uint64_t, uint64_t>>>
+      cs_ranges;
+
+  // If 'result_cell_slabs' is NULL, the caller intends to bypass
+  // selective unfiltering.
+  if (result_cell_slabs) {
+    std::vector<ResultCellSlab>::const_reverse_iterator rit =
+        result_cell_slabs->rbegin();
+    while (rit != result_cell_slabs->rend()) {
+      std::pair<uint64_t, uint64_t> range =
+          std::make_pair(rit->start_, rit->start_ + rit->length_);
+      if (cs_ranges.find(rit->tile_) == cs_ranges.end()) {
+        std::forward_list<std::pair<uint64_t, uint64_t>> ranges(
+            1, std::move(range));
+        cs_ranges.insert(std::make_pair(rit->tile_, std::move(ranges)));
+      } else {
+        cs_ranges[rit->tile_].emplace_front(std::move(range));
+      }
+      ++rit;
+    }
+  }
 
   auto statuses = parallel_for(0, num_tiles, [&, this](uint64_t i) {
     auto& tile = result_tiles[i];
@@ -1671,13 +1699,28 @@ Status Reader::unfilter_tiles(
       auto& t = tile_pair->first;
       auto& t_var = tile_pair->second;
 
+      // If we're performing selective unfiltering, lookup the result
+      // cell slab ranges associated with this tile. If we do not have
+      // any ranges, use an empty list to indicate that this tile doesn't
+      // contain any results.
+      const std::forward_list<std::pair<uint64_t, uint64_t>>*
+          result_cell_slab_ranges = nullptr;
+      static const std::forward_list<std::pair<uint64_t, uint64_t>>
+          empty_ranges;
+      if (result_cell_slabs) {
+        result_cell_slab_ranges = cs_ranges.find(tile) != cs_ranges.end() ?
+                                      &cs_ranges[tile] :
+                                      &empty_ranges;
+      }
+
       if (t.filtered()) {
         // Store the filtered buffer in the tile cache.
         RETURN_NOT_OK(storage_manager_->write_to_cache(
             tile_attr_uri, tile_attr_offset, t.filtered_buffer()));
 
         // Unfilter the tile buffer within the 't' instance.
-        RETURN_NOT_OK(unfilter_tile(name, &t, var_size));
+        RETURN_NOT_OK(
+            unfilter_tile(name, &t, var_size, result_cell_slab_ranges));
       }
 
       if (var_size && t_var.filtered()) {
@@ -1691,7 +1734,8 @@ Status Reader::unfilter_tiles(
             tile_attr_var_uri, tile_attr_var_offset, t_var.filtered_buffer()));
 
         // Unfilter the tile buffer within the 't_var' instance.
-        RETURN_NOT_OK(unfilter_tile(name, &t_var, false));
+        RETURN_NOT_OK(
+            unfilter_tile(name, &t_var, false, result_cell_slab_ranges));
       }
     }
 
@@ -1707,7 +1751,11 @@ Status Reader::unfilter_tiles(
 }
 
 Status Reader::unfilter_tile(
-    const std::string& name, Tile* tile, bool offsets) const {
+    const std::string& name,
+    Tile* tile,
+    bool offsets,
+    const std::forward_list<std::pair<uint64_t, uint64_t>>* const
+        result_cell_slab_ranges) const {
   // Get a copy of the appropriate filter pipeline.
   FilterPipeline filters =
       (offsets ? array_schema_->cell_var_offsets_filters() :
@@ -1717,7 +1765,8 @@ Status Reader::unfilter_tile(
   RETURN_NOT_OK(FilterPipeline::append_encryption_filter(
       &filters, array_->get_encryption_key()));
 
-  RETURN_NOT_OK(filters.run_reverse(tile, storage_manager_->config()));
+  RETURN_NOT_OK(filters.run_reverse(
+      tile, storage_manager_->config(), result_cell_slab_ranges));
 
   STATS_COUNTER_ADD(reader_num_bytes_after_unfiltering, tile->size());
 
@@ -2118,7 +2167,8 @@ Status Reader::sparse_read() {
       continue;
 
     RETURN_CANCEL_OR_ERROR(read_tiles(name, result_tiles));
-    RETURN_CANCEL_OR_ERROR(unfilter_tiles(name, result_tiles));
+    RETURN_CANCEL_OR_ERROR(
+        unfilter_tiles(name, result_tiles, &result_cell_slabs));
     RETURN_CANCEL_OR_ERROR(copy_cells(name, stride, result_cell_slabs));
     clear_tiles(name, result_tiles);
   }

@@ -61,10 +61,15 @@ ChunkedBuffer::~ChunkedBuffer() {
 void ChunkedBuffer::deep_copy(const ChunkedBuffer& rhs) {
   buffers_.reserve(rhs.buffers_.size());
   for (size_t i = 0; i < rhs.buffers_.size(); ++i) {
-    const uint32_t buffer_size = rhs.get_chunk_capacity(i);
-    void* const buffer_copy = std::malloc(buffer_size);
-    std::memcpy(buffer_copy, rhs.buffers_[i], buffer_size);
-    buffers_.emplace_back(buffer_copy);
+    void* const buffer = rhs.buffers_[i];
+    if (buffer == nullptr) {
+      buffers_.emplace_back(nullptr);
+    } else {
+      const uint32_t buffer_size = rhs.get_chunk_capacity(i);
+      void* const buffer_copy = std::malloc(buffer_size);
+      std::memcpy(buffer_copy, buffer, buffer_size);
+      buffers_.emplace_back(buffer_copy);
+    }
   }
 
   buffer_addressing_ = rhs.buffer_addressing_;
@@ -403,7 +408,7 @@ Status ChunkedBuffer::read(
   uint64_t nbytes_read = 0;
   while (nbytes_read < nbytes) {
     const void* const chunk_buffer = buffers_[chunk_idx];
-    if (!chunk_buffer) {
+    if (chunk_buffer == nullptr) {
       return Status::ChunkedBufferError("Chunk read error; chunk unallocated");
     }
 

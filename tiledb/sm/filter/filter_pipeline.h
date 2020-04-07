@@ -33,6 +33,7 @@
 #ifndef TILEDB_FILTER_PIPELINE_H
 #define TILEDB_FILTER_PIPELINE_H
 
+#include <forward_list>
 #include <memory>
 #include <utility>
 #include <vector>
@@ -208,9 +209,17 @@ class FilterPipeline {
    * to N.
    *
    * @param tile Tile to filter
+   * @param config The global config.
+   * @param result_cell_slab_ranges optional list of result cell slab ranges. If
+   *   this is non-NULL, we will only run the filter pipeline reversal on chunks
+   *   that intersect with at least one range element in this list.
    * @return Status
    */
-  Status run_reverse(Tile* tile, const Config& config) const;
+  Status run_reverse(
+      Tile* tile,
+      const Config& config,
+      const std::forward_list<std::pair<uint64_t, uint64_t>>*
+          result_cell_slab_ranges = nullptr) const;
 
   /**
    * Serializes the pipeline metadata into a binary buffer.
@@ -279,9 +288,29 @@ class FilterPipeline {
    * @return Status
    */
   Status filter_chunks_reverse(
-      const std::vector<std::tuple<void*, uint32_t, uint32_t, uint32_t>>& input,
+      const std::vector<std::tuple<void*, uint32_t, uint32_t, uint32_t, bool>>&
+          input,
       ChunkedBuffer* output,
       const Config& config) const;
+
+  /**
+   * Returns true if we should skip the filter pipeline reversal on a chunk.
+   *
+   * @param chunk_offset The unfiltered (original) offset of the chunk.
+   * @param chunk_length The unfiltered (original) length of the chunk.
+   * @param result_cell_slab_ranges Optional list of result cell slab ranges. If
+   *   this is NULL, we will unconditionally return false. Otherwise, this is
+   *   used to determine if the chunk contains any bytes of a result cell.
+   * @param cell_size The size of a cell (in bytes).
+   * @return bool
+   */
+  bool skip_chunk_reversal(
+      uint64_t chunk_offset,
+      uint64_t chunk_length,
+      uint64_t cell_size,
+      std::forward_list<std::pair<uint64_t, uint64_t>>::const_iterator* cs_it,
+      const std::forward_list<std::pair<uint64_t, uint64_t>>::const_iterator&
+          cs_end) const;
 };
 
 }  // namespace sm

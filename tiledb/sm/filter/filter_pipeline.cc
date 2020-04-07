@@ -247,7 +247,8 @@ Status FilterPipeline::filter_chunks_forward(
 }
 
 Status FilterPipeline::filter_chunks_reverse(
-    const std::vector<std::tuple<void*, uint32_t, uint32_t, uint32_t>>& input,
+    const std::vector<std::tuple<void*, uint32_t, uint32_t, uint32_t, bool>>&
+        input,
     ChunkedBuffer* const output,
     const Config& config) const {
   // Precompute the sizes of the final output chunks.
@@ -294,6 +295,13 @@ Status FilterPipeline::filter_chunks_reverse(
   // Run each chunk through the entire pipeline.
   auto statuses = parallel_for(0, input.size(), [&](uint64_t i) {
     const auto& chunk_input = input[i];
+
+    // Skip chunks that do not interect the query.
+    const bool skip = std::get<4>(chunk_input);
+    if (skip) {
+      return Status::Ok();
+    }
+
     const uint32_t filtered_chunk_len = std::get<1>(chunk_input);
     const uint32_t orig_chunk_len = std::get<2>(chunk_input);
     const uint32_t metadata_len = std::get<3>(chunk_input);
@@ -415,7 +423,11 @@ Status FilterPipeline::run_forward(Tile* tile) const {
   STATS_FUNC_OUT(filter_pipeline_run_forward);
 }
 
-Status FilterPipeline::run_reverse(Tile* tile, const Config& config) const {
+Status FilterPipeline::run_reverse(
+    Tile* tile,
+    const Config& config,
+    const std::forward_list<std::pair<uint64_t, uint64_t>>*
+        result_cell_slab_ranges) const {
   STATS_FUNC_IN(filter_pipeline_run_reverse);
 
   Buffer* const filtered_buffer = tile->filtered_buffer();
@@ -435,20 +447,38 @@ Status FilterPipeline::run_reverse(Tile* tile, const Config& config) const {
   filtered_buffer->reset_offset();
   uint64_t num_chunks;
   RETURN_NOT_OK(filtered_buffer->read(&num_chunks, sizeof(uint64_t)));
-  std::vector<std::tuple<void*, uint32_t, uint32_t, uint32_t>> filtered_chunks(
-      num_chunks);
+  std::vector<std::tuple<void*, uint32_t, uint32_t, uint32_t, bool>>
+      filtered_chunks(num_chunks);
   uint64_t total_orig_size = 0;
+  std::forward_list<std::pair<uint64_t, uint64_t>>::const_iterator cs_it;
+  std::forward_list<std::pair<uint64_t, uint64_t>>::const_iterator cs_end;
+  if (result_cell_slab_ranges) {
+    cs_it = result_cell_slab_ranges->cbegin();
+    cs_end = result_cell_slab_ranges->cend();
+  }
   for (uint64_t i = 0; i < num_chunks; i++) {
     uint32_t filtered_chunk_size, orig_chunk_size, metadata_size;
     RETURN_NOT_OK(filtered_buffer->read(&orig_chunk_size, sizeof(uint32_t)));
     RETURN_NOT_OK(
         filtered_buffer->read(&filtered_chunk_size, sizeof(uint32_t)));
     RETURN_NOT_OK(filtered_buffer->read(&metadata_size, sizeof(uint32_t)));
+
+    // If 'result_cell_slab_ranges' is NULL, we interpret this scenario as the
+    // user opting out of selective unfiltering.
+    const bool skip = result_cell_slab_ranges ? skip_chunk_reversal(
+                                                    total_orig_size,
+                                                    orig_chunk_size,
+                                                    tile->cell_size(),
+                                                    &cs_it,
+                                                    cs_end) :
+                                                false;
+
     filtered_chunks[i] = std::make_tuple(
         filtered_buffer->cur_data(),
         filtered_chunk_size,
         orig_chunk_size,
-        metadata_size);
+        metadata_size,
+        skip);
     filtered_buffer->advance_offset(metadata_size + filtered_chunk_size);
     total_orig_size += orig_chunk_size;
   }
@@ -480,6 +510,64 @@ Status FilterPipeline::run_reverse(Tile* tile, const Config& config) const {
   return Status::Ok();
 
   STATS_FUNC_OUT(filter_pipeline_run_reverse);
+}
+
+bool FilterPipeline::skip_chunk_reversal(
+    const uint64_t chunk_offset,
+    const uint64_t chunk_length,
+    const uint64_t cell_size,
+    std::forward_list<std::pair<uint64_t, uint64_t>>::const_iterator* const
+        cs_it,
+    const std::forward_list<std::pair<uint64_t, uint64_t>>::const_iterator&
+        cs_end) const {
+  // As an optimization, don't waste any more instructions determining if
+  // we need to skip this chunk if there aren't any filters to reverse.
+  if (filters_.empty()) {
+    return false;
+  }
+
+  // Define inclusive bounds for the chunk under consideration.
+  const uint64_t chunk_start = chunk_offset;
+  const uint64_t chunk_end = chunk_start + chunk_length - 1;
+
+  while (*cs_it != cs_end) {
+    // Define inclusive bounds for the cell slab range under consideration.
+    const uint64_t cs_start = (*cs_it)->first * cell_size;
+    const uint64_t cs_end = ((*cs_it)->second - 1) * cell_size;
+
+    // The interface contract enforces that elements in the cell slab range list
+    // do not intersect and are ordered in ascending order. We can start by
+    // checking if the current cell slab range's lower bound is greater than the
+    // upper bound of the current chunk. If this is true, there is not an
+    // insection between the cell slab range and the range of the current chunk.
+    if (chunk_end < cs_start) {
+      // Additionally, we know that this chunk will not intersect with any of
+      // the remaining cell slab ranges because of the properties of the cell
+      // slab range list interface contract.
+      return true;
+    }
+
+    // At this point, we know that 'chunk_end' >= 'cs_start'. We can reason
+    // that we intersect with the current cell slab range if 'chunk_start'
+    // <= 'cs_end'.
+    if (chunk_start <= cs_end) {
+      // This chunk insects with the current cell slab. There is no reason
+      // to check any of the remaining cell slab elements because we have
+      // already decided that we will not skip this chunk. We will not
+      // increment 'cs_it' because the next chunk may also intersect with
+      // the current cell slab.
+      return false;
+    }
+
+    // We don't have an intersection between this chunk and the current cell
+    // slab because the current cell slab range ends before the start of this
+    // chunk offset. We will increment 'cs_it' and repeat the insection check.
+    ++(*cs_it);
+  }
+
+  // No intersection because there aren't any cell slab ranges that end at or
+  // after 'chunk_offset'.
+  return true;
 }
 
 // ===== FORMAT =====
