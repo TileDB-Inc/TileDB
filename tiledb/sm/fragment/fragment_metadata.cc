@@ -732,8 +732,11 @@ uint64_t FragmentMetadata::footer_size_v5_or_higher() const {
     for (unsigned d = 0; d < dim_num; ++d)
       domain_size += 2 * array_schema_->domain()->dimension(d)->coord_size();
   } else {
-    for (const auto& r : non_empty_domain_)
-      domain_size += r.size();
+    for (unsigned d = 0; d < dim_num; ++d) {
+      domain_size += non_empty_domain_[d].size();
+      if (array_schema_->dimension(d)->var_size())
+        domain_size += 2 * sizeof(uint64_t);  // Two more sizes get serialized
+    }
   }
 
   // Get footer size
@@ -741,7 +744,6 @@ uint64_t FragmentMetadata::footer_size_v5_or_higher() const {
   size += sizeof(uint32_t);        // version
   size += sizeof(char);            // dense
   size += sizeof(char);            // null non-empty domain
-  size += sizeof(uint64_t);        // non-empty domain size
   size += domain_size;             // non-empty domain
   size += sizeof(uint64_t);        // sparse tile num
   size += sizeof(uint64_t);        // last tile cell num
@@ -1212,30 +1214,30 @@ Status FragmentMetadata::load_non_empty_domain_v3_v4(ConstBuffer* buff) {
 
 // ===== FORMAT =====
 // null_non_empty_domain
-// non_empty_domain_size (uint64_t)
-// non_empty_domain (void*)
+// fix-sized: range(void*)
+// var-sized: range_size(uint64_t) | start_range_size(uint64_t) | range(void*)
 Status FragmentMetadata::load_non_empty_domain_v5_or_higher(ConstBuffer* buff) {
   // Get null non-empty domain
   char null_non_empty_domain = 0;
   RETURN_NOT_OK(buff->read(&null_non_empty_domain, sizeof(char)));
 
-  // Get domain size
-  uint64_t domain_size = 0;
-  RETURN_NOT_OK(buff->read(&domain_size, sizeof(uint64_t)));
-
-  // Get non-empty domain
-  std::vector<uint8_t> temp(domain_size);
-  RETURN_NOT_OK(buff->read(&temp[0], domain_size));
-
+  auto domain = array_schema_->domain();
   if (null_non_empty_domain == 0) {
     auto dim_num = array_schema_->dim_num();
     non_empty_domain_.resize(dim_num);
-    uint64_t offset = 0;
     for (unsigned d = 0; d < dim_num; ++d) {
-      auto coord_size = array_schema_->dimension(d)->coord_size();
-      Range r(&temp[offset], 2 * coord_size);
-      non_empty_domain_[d] = std::move(r);
-      offset += 2 * coord_size;
+      auto dim = domain->dimension(d);
+      if (!dim->var_size()) {  // Fixed-sized
+        auto r_size = 2 * dim->coord_size();
+        non_empty_domain_[d].set_range(buff->cur_data(), r_size);
+        buff->advance_offset(r_size);
+      } else {  // Var-sized
+        uint64_t r_size, start_size;
+        RETURN_NOT_OK(buff->read(&r_size, sizeof(uint64_t)));
+        RETURN_NOT_OK(buff->read(&start_size, sizeof(uint64_t)));
+        non_empty_domain_[d].set_range(buff->cur_data(), r_size, start_size);
+        buff->advance_offset(r_size);
+      }
     }
   }
 
@@ -1746,8 +1748,9 @@ Status FragmentMetadata::write_rtree(Buffer* buff) {
 
 // ===== FORMAT =====
 // null_non_empty_domain(char)
-// non_empty_domain_size (uint64_t)
-// non_empty_domain (uint8_t[])
+// fix-sized: range(void*)
+// var-sized: range_size(uint64_t) | start_range_size(uint64_t) | range(void*)
+// ...
 Status FragmentMetadata::write_non_empty_domain(Buffer* buff) const {
   // Write null_non_empty_domain
   auto null_non_empty_domain = (char)non_empty_domain_.empty();
@@ -1763,22 +1766,24 @@ Status FragmentMetadata::write_non_empty_domain(Buffer* buff) const {
     assert(domain->all_dims_same_type());
     domain_size = 2 * dim_num * domain->dimension(0)->coord_size();
 
-    // Write domain size
-    RETURN_NOT_OK(buff->write(&domain_size, sizeof(uint64_t)));
-
     // Write domain (dummy values)
     std::vector<uint8_t> d(domain_size, 0);
     RETURN_NOT_OK(buff->write(&d[0], domain_size));
   } else {
-    // Write non-empty domain size
-    for (const auto& r : non_empty_domain_)
-      domain_size += r.size();
-    RETURN_NOT_OK(buff->write(&domain_size, sizeof(uint64_t)));
-
     // Write non-empty domain
-    for (unsigned d = 0; d < dim_num; ++d)
-      RETURN_NOT_OK(buff->write(
-          non_empty_domain_[d].data(), non_empty_domain_[d].size()));
+    for (unsigned d = 0; d < dim_num; ++d) {
+      auto dim = domain->dimension(d);
+      const auto& r = non_empty_domain_[d];
+      if (!dim->var_size()) {  // Fixed-sized
+        RETURN_NOT_OK(buff->write(r.data(), r.size()));
+      } else {  // Var-sized
+        auto r_size = r.size();
+        auto r_start_size = r.start_size();
+        RETURN_NOT_OK(buff->write(&r_size, sizeof(uint64_t)));
+        RETURN_NOT_OK(buff->write(&r_start_size, sizeof(uint64_t)));
+        RETURN_NOT_OK(buff->write(r.data(), r_size));
+      }
+    }
   }
 
   return Status::Ok();

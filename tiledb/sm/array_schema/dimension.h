@@ -92,8 +92,14 @@ class Dimension {
   /** Returns the size (in bytes) of a coordinate in this dimension. */
   uint64_t coord_size() const;
 
-  /** Returns the input coordinate in string format. */
-  std::string coord_to_str(const void* coord) const;
+  /**
+   *  Returns a coordinate in string format.
+   *
+   * @param buff The query buffer that contains all coordinates.
+   * @param i The position of the coordinate in the buffer.
+   * @return The coordinate in string format.
+   */
+  std::string coord_to_str(const QueryBuffer& buff, uint64_t i) const;
 
   /**
    * Populates the object members from the data in the input binary buffer.
@@ -225,8 +231,8 @@ class Dimension {
   static bool coincides_with_tiles(const Dimension* dim, const Range& r);
 
   /**
-   * Computed the minimum bounding range of the values stored in
-   * `tile`.
+   * Computes the minimum bounding range of the values stored in
+   * `tile`. Applicable only to fixed-size dimensions.
    */
   void compute_mbr(const Tile& tile, Range* mbr) const;
 
@@ -236,6 +242,21 @@ class Dimension {
    */
   template <class T>
   static void compute_mbr(const Tile& tile, Range* mbr);
+
+  /**
+   * Computes the minimum bounding range of the values stored in
+   * `tile_val`. Applicable only to var-sized dimensions.
+   */
+  void compute_mbr_var(
+      const Tile& tile_off, const Tile& tile_val, Range* mbr) const;
+
+  /**
+   * Computes the minimum bounding range of the values stored in
+   * `tile_val`. Applicable only to var-sized dimensions.
+   */
+  template <class T>
+  static void compute_mbr_var(
+      const Tile& tile_off, const Tile& tile_val, Range* mbr);
 
   /**
    * Crops the input 1D range such that it does not exceed the
@@ -265,12 +286,15 @@ class Dimension {
   template <class T>
   static uint64_t domain_range(const Range& range);
 
-  /** Expand 1D range `r` using value `v`. */
+  /** Expand fixed-sized 1D range `r` using value `v`. */
   void expand_range_v(const void* v, Range* r) const;
 
-  /** Expand 1D range `r` using value `v`. */
+  /** Expand fixed-sized 1D range `r` using value `v`. */
   template <class T>
   static void expand_range_v(const void* v, Range* r);
+
+  /** Expand var-sized 1D range `r` using value `v`. */
+  static void expand_range_var_v(const char* v, uint64_t v_size, Range* r);
 
   /** Expand 1D range `r2` using 1D range `r1`. */
   void expand_range(const Range& r1, Range* r2) const;
@@ -278,6 +302,12 @@ class Dimension {
   /** Expand 1D range `r2` using 1D range `r1`. */
   template <class T>
   static void expand_range(const Range& r1, Range* r2);
+
+  /**
+   * Expand 1D range `r2` using 1D range `r1`.
+   * Applicable to var-sized ranges.
+   */
+  void expand_range_var(const Range& r1, Range* r2) const;
 
   /**
    * Expands the input 1D range to coincide with the dimension tiles.
@@ -371,6 +401,12 @@ class Dimension {
 
   /** Returns `true` if `value` is within the 1D `range`. */
   bool value_in_range(const void* value, const Range& range) const;
+
+  /**
+   * Returns `true` if `value` is within the 1D `range`.
+   * Applicable only to string dimensions.
+   */
+  bool value_in_range(const std::string& value, const Range& range) const;
 
   /**
    * Serializes the object members into a binary buffer.
@@ -473,6 +509,12 @@ class Dimension {
    * dimension datatype.
    */
   std::function<void(const Tile&, Range*)> compute_mbr_func_;
+
+  /**
+   * Stores the appropriate templated compute_mbr_var() function based on the
+   * dimension datatype.
+   */
+  std::function<void(const Tile&, const Tile&, Range*)> compute_mbr_var_func_;
 
   /**
    * Stores the appropriate templated crop_range() function based on the

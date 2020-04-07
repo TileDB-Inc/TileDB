@@ -358,6 +358,78 @@ class StorageManager {
       Array* array, const char* name, void* domain, bool* is_empty);
 
   /**
+   * Retrieves the non-empty domain size from an array on the given dimension.
+   * This is the union of the non-empty domains of the array fragments.
+   * Applicable only to var-sized dimensions.
+   *
+   * @param array An open array object (must be already open).
+   * @param idx The dimension index.
+   * @param start_size The size in bytes of the range start.
+   * @param end_size The size in bytes of the range end.
+   * @param is_empty `ture` if the non-empty domain is empty (the array
+   *     is empty).
+   * @return Status
+   */
+  Status array_get_non_empty_domain_var_size_from_index(
+      Array* array,
+      unsigned idx,
+      uint64_t* start_size,
+      uint64_t* end_size,
+      bool* is_empty);
+
+  /**
+   * Retrieves the non-empty domain size from an array on the given dimension.
+   * This is the union of the non-empty domains of the array fragments.
+   * Applicable only to var-sized dimensions.
+   *
+   * @param array An open array object (must be already open).
+   * @param name The dimension name.
+   * @param start_size The size in bytes of the range start.
+   * @param end_size The size in bytes of the range end.
+   * @param is_empty `ture` if the non-empty domain is empty (the array
+   *     is empty).
+   * @return Status
+   */
+  Status array_get_non_empty_domain_var_size_from_name(
+      Array* array,
+      const char* name,
+      uint64_t* start_size,
+      uint64_t* end_size,
+      bool* is_empty);
+
+  /**
+   * Retrieves the non-empty domain from an array on the given dimension.
+   * This is the union of the non-empty domains of the array fragments.
+   * Applicable only to var-sized dimensions.
+   *
+   * @param array An open array object (must be already open).
+   * @param idx The dimension index.
+   * @param start The domain range start to set.
+   * @param end The domain range end to set.
+   * @param is_empty `ture` if the non-empty domain is empty (the array
+   *     is empty).
+   * @return Status
+   */
+  Status array_get_non_empty_domain_var_from_index(
+      Array* array, unsigned idx, void* start, void* end, bool* is_empty);
+
+  /**
+   * Retrieves the non-empty domain from an array on the given dimension.
+   * This is the union of the non-empty domains of the array fragments.
+   * Applicable only to var-sized dimensions.
+   *
+   * @param array An open array object (must be already open).
+   * @param name The dimension name.
+   * @param start The domain range start to set.
+   * @param end The domain range end to set.
+   * @param is_empty `ture` if the non-empty domain is empty (the array
+   *     is empty).
+   * @return Status
+   */
+  Status array_get_non_empty_domain_var_from_name(
+      Array* array, const char* name, void* start, void* end, bool* is_empty);
+
+  /**
    * Retrieves the encryption type from an array.
    *
    * @param array_uri URI of the array

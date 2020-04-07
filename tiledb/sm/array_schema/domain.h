@@ -35,6 +35,7 @@
 
 #include "tiledb/sm/misc/status.h"
 #include "tiledb/sm/misc/types.h"
+#include "tiledb/sm/query/result_coords.h"
 
 #include <vector>
 
@@ -86,6 +87,9 @@ class Domain {
   /** Returns true if all dimensions have integer domain types. */
   bool all_dims_int() const;
 
+  /** Returns true if all dimensions have string domain types. */
+  bool all_dims_string() const;
+
   /** Returns true if all dimensions have real domain types. */
   bool all_dims_real() const;
 
@@ -102,15 +106,15 @@ class Domain {
    *
    * @tparam T The coordinates type.
    * @param dim_idx The dimension to compare the coordinates on.
-   * @param coord_a The first input coordinates.
-   * @param coord_b The second input coordinates.
+   * @param a The first input coordinates.
+   * @param b The second input coordinates.
    * @return One of the following:
    *    - -1 if the first coordinate precedes the second
    *    -  0 if the two coordinates are identical
    *    - +1 if the first coordinate succeeds the second
    */
   int cell_order_cmp(
-      unsigned dim_idx, const void* coord_a, const void* coord_b) const;
+      unsigned dim_idx, const ResultCoords& a, const ResultCoords& b) const;
 
   /**
    * Checks the cell order of the input coordinates. Since the coordinates
@@ -125,7 +129,25 @@ class Domain {
    *    - +1 if the first coordinate is larger than the second
    */
   template <class T>
-  static int cell_order_cmp(const void* coord_a, const void* coord_b);
+  static int cell_order_cmp_2(const void* coord_a, const void* coord_b);
+
+  /**
+   * Checks the cell order of the input coordinates. Since the coordinates
+   * are given for a single dimension, this function simply checks which
+   * coordinate is larger.
+   *
+   * @param dim The dimension to check the coordinates on.
+   * @param buff The buffer that stores all coordinates.
+   * @param a The position of the first coordinate in the buffer to check.
+   * @param b The position of the second coordinate in the buffer to check.
+   * @return One of the following:
+   *    - -1 if the first coordinate is smaller than the second
+   *    -  0 if the two coordinates have the same cell order
+   *    - +1 if the first coordinate is larger than the second
+   */
+  template <class T>
+  static int cell_order_cmp(
+      const Dimension* dim, const QueryBuffer* buff, uint64_t a, uint64_t b);
 
   /**
    * Checks the cell order of the input coordinates.
@@ -141,7 +163,7 @@ class Domain {
    *    - +1 if the first coordinates succeed the second on the cell order
    */
   int cell_order_cmp(
-      const std::vector<const void*>& coord_buffs,
+      const std::vector<const QueryBuffer*>& coord_buffs,
       uint64_t a,
       uint64_t b) const;
 
@@ -471,7 +493,7 @@ class Domain {
    *    - +1 if the first coordinates succeed the second on the tile order
    */
   int tile_order_cmp(
-      const std::vector<const void*>& coord_buffs,
+      const std::vector<const QueryBuffer*>& coord_buffs,
       uint64_t a,
       uint64_t b) const;
 
@@ -579,10 +601,22 @@ class Domain {
    * Vector of functions, one per dimension, for comparing the cell order of
    * two coordinates. The inputs to the function are:
    *
+   * - dim: The dimension to check the coordinates on.
+   * - buff: The buffer that stores all coorinates;
+   * - a, b: The positions of the two coordinates in the buffer to compare.
+   */
+  std::vector<int (*)(
+      const Dimension* dim, const QueryBuffer* buff, uint64_t a, uint64_t b)>
+      cell_order_cmp_func_;
+
+  /**
+   * Vector of functions, one per dimension, for comparing the cell order of
+   * two coordinates. The inputs to the function are:
+   *
    * - coord_a, coord_b: The two coordinates to compare.
    */
   std::vector<int (*)(const void* coord_a, const void* coord_b)>
-      cell_order_cmp_func_;
+      cell_order_cmp_func_2_;
 
   /**
    * Vector of functions, one per dimension, for comparing the tile order of

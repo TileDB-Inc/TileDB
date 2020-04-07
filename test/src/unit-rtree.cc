@@ -746,3 +746,426 @@ TEST_CASE(
   CHECK(overlap.tile_ranges_[0].first == 2);
   CHECK(overlap.tile_ranges_[0].second == 3);
 }
+
+// `mbrs` contains a flattened vector of values (low, high)
+// per dimension per MBR
+template <unsigned D>
+std::vector<NDRange> create_str_mbrs(const std::vector<std::string>& mbrs) {
+  assert(mbrs.size() % 2 * D == 0);
+
+  uint64_t mbr_num = (uint64_t)(mbrs.size() / (2 * D));
+  std::vector<NDRange> ret(mbr_num);
+  for (uint64_t m = 0; m < mbr_num; ++m) {
+    ret[m].resize(D);
+    for (unsigned d = 0; d < D; ++d) {
+      const auto& start = mbrs[2 * D * m + 2 * d];
+      const auto& end = mbrs[2 * D * m + 2 * d + 1];
+      ret[m][d].set_range_var(
+          start.data(), start.size(), end.data(), end.size());
+    }
+  }
+
+  return ret;
+}
+
+// `mbrs` contains a flattened vector of values (low, high)
+// per dimension per MBR
+std::vector<NDRange> create_str_int32_mbrs(
+    const std::vector<std::string>& mbrs_str,
+    const std::vector<int32_t> mbrs_int) {
+  assert(mbrs_str.size() == mbrs_int.size());
+  assert(mbrs_str.size() % 2 == 0);
+
+  uint64_t mbr_num = (uint64_t)(mbrs_str.size() / 2);
+  std::vector<NDRange> ret(mbr_num);
+  for (uint64_t m = 0; m < mbr_num; ++m) {
+    ret[m].resize(2);
+    const auto& start = mbrs_str[2 * m];
+    const auto& end = mbrs_str[2 * m + 1];
+    ret[m][0].set_range_var(start.data(), start.size(), end.data(), end.size());
+    int32_t range[] = {mbrs_int[2 * m], mbrs_int[2 * m + 1]};
+    ret[m][1].set_range(range, sizeof(range));
+  }
+
+  return ret;
+}
+
+std::pair<std::string, std::string> range_to_str(const Range& r) {
+  auto start = std::string((const char*)r.start(), r.start_size());
+  auto end = std::string((const char*)r.end(), r.end_size());
+  return std::pair<std::string, std::string>(start, end);
+}
+
+TEST_CASE(
+    "RTree: Test 1D R-tree, string dims, height 2",
+    "[rtree][1d][string-dims][2h]") {
+  // Build tree
+  Domain dom1 =
+      create_domain({"d"}, {Datatype::STRING_ASCII}, {nullptr}, {nullptr});
+  std::vector<NDRange> mbrs =
+      create_str_mbrs<1>({"aa", "b", "eee", "g", "gggg", "ii"});
+
+  RTree rtree(&dom1, 3);
+  rtree.set_leaves(mbrs);
+  rtree.build_tree();
+  CHECK(rtree.height() == 2);
+  CHECK(rtree.dim_num() == 1);
+  CHECK(rtree.fanout() == 3);
+
+  // Subtree leaf num
+  CHECK(rtree.subtree_leaf_num(0) == 3);
+  CHECK(rtree.subtree_leaf_num(1) == 1);
+  CHECK(rtree.subtree_leaf_num(2) == 0);
+
+  // No overlap
+  NDRange range(1);
+  std::string r_no_start = "c";
+  std::string r_no_end = "dd";
+  range[0].set_range_var(
+      r_no_start.data(), r_no_start.size(), r_no_end.data(), r_no_end.size());
+  auto overlap = rtree.get_tile_overlap(range);
+  CHECK(overlap.tiles_.empty());
+  CHECK(overlap.tile_ranges_.empty());
+
+  // Full overlap
+  std::string r_full_start = "a";
+  std::string r_full_end = "iii";
+  range[0].set_range_var(
+      r_full_start.data(),
+      r_full_start.size(),
+      r_full_end.data(),
+      r_full_end.size());
+  overlap = rtree.get_tile_overlap(range);
+  CHECK(overlap.tiles_.empty());
+  CHECK(overlap.tile_ranges_.size() == 1);
+  CHECK(overlap.tile_ranges_[0].first == 0);
+  CHECK(overlap.tile_ranges_[0].second == 2);
+
+  // Partial overlap
+  std::string r_partial_start = "b";
+  std::string r_partial_end = "f";
+  range[0].set_range_var(
+      r_partial_start.data(),
+      r_partial_start.size(),
+      r_partial_end.data(),
+      r_partial_end.size());
+  overlap = rtree.get_tile_overlap(range);
+  CHECK(overlap.tile_ranges_.empty());
+  CHECK(overlap.tiles_.size() == 2);
+  CHECK(overlap.tiles_[0].first == 0);
+  CHECK(overlap.tiles_[0].second == 1.0 / 2);
+  CHECK(overlap.tiles_[1].first == 1);
+  CHECK(overlap.tiles_[1].second == 2.0 / 3);
+
+  // Partial overlap
+  r_partial_start = "eek";
+  r_partial_end = "fff";
+  range[0].set_range_var(
+      r_partial_start.data(),
+      r_partial_start.size(),
+      r_partial_end.data(),
+      r_partial_end.size());
+  overlap = rtree.get_tile_overlap(range);
+  CHECK(overlap.tile_ranges_.empty());
+  CHECK(overlap.tiles_.size() == 1);
+  CHECK(overlap.tiles_[0].first == 1);
+  CHECK(overlap.tiles_[0].second == 2.0 / 3);
+}
+
+TEST_CASE(
+    "RTree: Test 1D R-tree, string dims, height 3",
+    "[rtree][1d][string-dims][3h]") {
+  // Build tree
+  Domain dom1 =
+      create_domain({"d"}, {Datatype::STRING_ASCII}, {nullptr}, {nullptr});
+  std::vector<NDRange> mbrs = create_str_mbrs<1>({"aa",
+                                                  "b",
+                                                  "eee",
+                                                  "g",
+                                                  "gggg",
+                                                  "ii",
+                                                  "jj",
+                                                  "l",
+                                                  "mm",
+                                                  "mmn",
+                                                  "oo",
+                                                  "oop"});
+
+  RTree rtree(&dom1, 3);
+  rtree.set_leaves(mbrs);
+  rtree.build_tree();
+  CHECK(rtree.height() == 3);
+  CHECK(rtree.dim_num() == 1);
+  CHECK(rtree.fanout() == 3);
+
+  // Subtree leaf num
+  CHECK(rtree.subtree_leaf_num(0) == 9);
+  CHECK(rtree.subtree_leaf_num(1) == 3);
+  CHECK(rtree.subtree_leaf_num(2) == 1);
+  CHECK(rtree.subtree_leaf_num(3) == 0);
+
+  // No overlap
+  NDRange range(1);
+  std::string r_no_start = "c";
+  std::string r_no_end = "dd";
+  range[0].set_range_var(
+      r_no_start.data(), r_no_start.size(), r_no_end.data(), r_no_end.size());
+  auto overlap = rtree.get_tile_overlap(range);
+  CHECK(overlap.tiles_.empty());
+  CHECK(overlap.tile_ranges_.empty());
+
+  // Full overlap
+  std::string r_full_start = "a";
+  std::string r_full_end = "oopp";
+  range[0].set_range_var(
+      r_full_start.data(),
+      r_full_start.size(),
+      r_full_end.data(),
+      r_full_end.size());
+  overlap = rtree.get_tile_overlap(range);
+  CHECK(overlap.tiles_.empty());
+  CHECK(overlap.tile_ranges_.size() == 1);
+  CHECK(overlap.tile_ranges_[0].first == 0);
+  CHECK(overlap.tile_ranges_[0].second == 5);
+
+  // Partial overlap
+  std::string r_partial_start = "b";
+  std::string r_partial_end = "f";
+  range[0].set_range_var(
+      r_partial_start.data(),
+      r_partial_start.size(),
+      r_partial_end.data(),
+      r_partial_end.size());
+  overlap = rtree.get_tile_overlap(range);
+  CHECK(overlap.tile_ranges_.empty());
+  CHECK(overlap.tiles_.size() == 2);
+  CHECK(overlap.tiles_[0].first == 0);
+  CHECK(overlap.tiles_[0].second == 1.0 / 2);
+  CHECK(overlap.tiles_[1].first == 1);
+  CHECK(overlap.tiles_[1].second == 2.0 / 3);
+
+  // Partial overlap mixed
+  r_partial_start = "h";
+  r_partial_end = "p";
+  range[0].set_range_var(
+      r_partial_start.data(),
+      r_partial_start.size(),
+      r_partial_end.data(),
+      r_partial_end.size());
+  overlap = rtree.get_tile_overlap(range);
+  CHECK(overlap.tile_ranges_.size() == 1);
+  CHECK(overlap.tile_ranges_[0].first == 3);
+  CHECK(overlap.tile_ranges_[0].second == 5);
+  CHECK(overlap.tiles_.size() == 1);
+  CHECK(overlap.tiles_[0].first == 2);
+  CHECK(overlap.tiles_[0].second == 2.0 / 3);
+}
+
+TEST_CASE(
+    "RTree: Test 2D R-tree, string dims, height 2",
+    "[rtree][2d][string-dims][2h]") {
+  // Build tree
+  Domain dom = create_domain(
+      {"d1", "d2"},
+      {Datatype::STRING_ASCII, Datatype::STRING_ASCII},
+      {nullptr, nullptr},
+      {nullptr, nullptr});
+  std::vector<NDRange> mbrs = create_str_mbrs<2>({"aa",
+                                                  "b",
+                                                  "eee",
+                                                  "g",
+                                                  "gggg",
+                                                  "ii",
+                                                  "jj",
+                                                  "lll",
+                                                  "m",
+                                                  "n",
+                                                  "oo",
+                                                  "qqq"});
+
+  RTree rtree(&dom, 3);
+  rtree.set_leaves(mbrs);
+  rtree.build_tree();
+  CHECK(rtree.height() == 2);
+  CHECK(rtree.dim_num() == 2);
+  CHECK(rtree.fanout() == 3);
+
+  // Subtree leaf num
+  CHECK(rtree.subtree_leaf_num(0) == 3);
+  CHECK(rtree.subtree_leaf_num(1) == 1);
+  CHECK(rtree.subtree_leaf_num(2) == 0);
+
+  // No overlap
+  NDRange range(2);
+  std::string r_no_start = "c";
+  std::string r_no_end = "dd";
+  range[0].set_range_var(
+      r_no_start.data(), r_no_start.size(), r_no_end.data(), r_no_end.size());
+  range[1].set_range_var(
+      r_no_start.data(), r_no_start.size(), r_no_end.data(), r_no_end.size());
+  auto overlap = rtree.get_tile_overlap(range);
+  CHECK(overlap.tiles_.empty());
+  CHECK(overlap.tile_ranges_.empty());
+
+  // Full overlap
+  std::string r_full_start_1 = "a";
+  std::string r_full_end_1 = "nn";
+  range[0].set_range_var(
+      r_full_start_1.data(),
+      r_full_start_1.size(),
+      r_full_end_1.data(),
+      r_full_end_1.size());
+  std::string r_full_start_2 = "e";
+  std::string r_full_end_2 = "r";
+  range[1].set_range_var(
+      r_full_start_2.data(),
+      r_full_start_2.size(),
+      r_full_end_2.data(),
+      r_full_end_2.size());
+  overlap = rtree.get_tile_overlap(range);
+  CHECK(overlap.tiles_.empty());
+  CHECK(overlap.tile_ranges_.size() == 1);
+  CHECK(overlap.tile_ranges_[0].first == 0);
+  CHECK(overlap.tile_ranges_[0].second == 2);
+
+  // Partial overlap
+  std::string r_partial_start_1 = "h";
+  std::string r_partial_end_1 = "i";
+  range[0].set_range_var(
+      r_partial_start_1.data(),
+      r_partial_start_1.size(),
+      r_partial_end_1.data(),
+      r_partial_end_1.size());
+  std::string r_partial_start_2 = "j";
+  std::string r_partial_end_2 = "k";
+  range[1].set_range_var(
+      r_partial_start_2.data(),
+      r_partial_start_2.size(),
+      r_partial_end_2.data(),
+      r_partial_end_2.size());
+  overlap = rtree.get_tile_overlap(range);
+  CHECK(overlap.tile_ranges_.empty());
+  CHECK(overlap.tiles_.size() == 1);
+  CHECK(overlap.tiles_[0].first == 1);
+  CHECK(overlap.tiles_[0].second == (2.0 / 3) * (2.0 / 3));
+
+  // Partial overlap
+  r_partial_start_1 = "b";
+  r_partial_end_1 = "gggg";
+  range[0].set_range_var(
+      r_partial_start_1.data(),
+      r_partial_start_1.size(),
+      r_partial_end_1.data(),
+      r_partial_end_1.size());
+  r_partial_start_2 = "eee";
+  r_partial_end_2 = "lll";
+  range[1].set_range_var(
+      r_partial_start_2.data(),
+      r_partial_start_2.size(),
+      r_partial_end_2.data(),
+      r_partial_end_2.size());
+  overlap = rtree.get_tile_overlap(range);
+  CHECK(overlap.tile_ranges_.empty());
+  CHECK(overlap.tiles_.size() == 2);
+  CHECK(overlap.tiles_[0].first == 0);
+  CHECK(overlap.tiles_[0].second == 1.0 / 2);
+  CHECK(overlap.tiles_[1].first == 1);
+  CHECK(overlap.tiles_[1].second == 1.0 / 3);
+}
+
+TEST_CASE(
+    "RTree: Test 2D R-tree (string, int), height 2",
+    "[rtree][2d][string-dims][heter][2h]") {
+  // Build tree
+  int32_t dom_int32[] = {1, 20};
+  int32_t tile_extent = 5;
+  Domain dom = create_domain(
+      {"d1", "d2"},
+      {Datatype::STRING_ASCII, Datatype::INT32},
+      {nullptr, dom_int32},
+      {nullptr, &tile_extent});
+  std::vector<NDRange> mbrs = create_str_int32_mbrs(
+      {"aa", "b", "eee", "g", "gggg", "ii"}, {1, 5, 7, 8, 10, 14});
+
+  RTree rtree(&dom, 3);
+  rtree.set_leaves(mbrs);
+  rtree.build_tree();
+  CHECK(rtree.height() == 2);
+  CHECK(rtree.dim_num() == 2);
+  CHECK(rtree.fanout() == 3);
+
+  // Subtree leaf num
+  CHECK(rtree.subtree_leaf_num(0) == 3);
+  CHECK(rtree.subtree_leaf_num(1) == 1);
+  CHECK(rtree.subtree_leaf_num(2) == 0);
+
+  // No overlap
+  NDRange range(2);
+  std::string r_no_start = "c";
+  std::string r_no_end = "dd";
+  range[0].set_range_var(
+      r_no_start.data(), r_no_start.size(), r_no_end.data(), r_no_end.size());
+  int32_t r_no[] = {1, 20};
+  range[1].set_range(r_no, sizeof(r_no));
+  auto overlap = rtree.get_tile_overlap(range);
+  CHECK(overlap.tiles_.empty());
+  CHECK(overlap.tile_ranges_.empty());
+
+  // Full overlap
+  std::string r_full_start_1 = "a";
+  std::string r_full_end_1 = "nn";
+  range[0].set_range_var(
+      r_full_start_1.data(),
+      r_full_start_1.size(),
+      r_full_end_1.data(),
+      r_full_end_1.size());
+  int32_t r_full[] = {1, 20};
+  range[1].set_range(r_full, sizeof(r_full));
+  overlap = rtree.get_tile_overlap(range);
+  CHECK(overlap.tiles_.empty());
+  CHECK(overlap.tile_ranges_.size() == 1);
+  CHECK(overlap.tile_ranges_[0].first == 0);
+  CHECK(overlap.tile_ranges_[0].second == 2);
+
+  // Partial overlap
+  std::string r_partial_start_1 = "h";
+  std::string r_partial_end_1 = "i";
+  range[0].set_range_var(
+      r_partial_start_1.data(),
+      r_partial_start_1.size(),
+      r_partial_end_1.data(),
+      r_partial_end_1.size());
+  int32_t r_partial[] = {11, 12};
+  range[1].set_range(r_partial, sizeof(r_partial));
+  overlap = rtree.get_tile_overlap(range);
+  CHECK(overlap.tile_ranges_.empty());
+  CHECK(overlap.tiles_.size() == 1);
+  CHECK(overlap.tiles_[0].first == 2);
+  CHECK(overlap.tiles_[0].second == (2.0 / 3) * (2.0 / 5));
+
+  /*
+
+  // Partial overlap
+  r_partial_start_1 = "b";
+  r_partial_end_1 = "gggg";
+  range[0].set_range_var(
+      r_partial_start_1.data(),
+      r_partial_start_1.size(),
+      r_partial_end_1.data(),
+      r_partial_end_1.size());
+  r_partial_start_2 = "eee";
+  r_partial_end_2 = "lll";
+  range[1].set_range_var(
+      r_partial_start_2.data(),
+      r_partial_start_2.size(),
+      r_partial_end_2.data(),
+      r_partial_end_2.size());
+  overlap = rtree.get_tile_overlap(range);
+  CHECK(overlap.tile_ranges_.empty());
+  CHECK(overlap.tiles_.size() == 2);
+  CHECK(overlap.tiles_[0].first == 0);
+  CHECK(overlap.tiles_[0].second == 1.0 / 2);
+  CHECK(overlap.tiles_[1].first == 1);
+  CHECK(overlap.tiles_[1].second == 1.0 / 3);
+  */
+}

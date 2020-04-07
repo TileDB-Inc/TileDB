@@ -279,45 +279,27 @@ int SparseHeterFx::tiledb_array_get_non_empty_domain_from_index_wrapper(
   if (ret != TILEDB_OK || !serialize_)
     return ret;
 
-  tiledb_array_schema_t* schema;
-  REQUIRE(tiledb_array_get_schema(ctx, array, &schema) == TILEDB_OK);
-
-  tiledb_domain_t* dom;
-  REQUIRE(tiledb_array_schema_get_domain(ctx, schema, &dom) == TILEDB_OK);
-
-  tiledb_dimension_t* dimension;
-  REQUIRE(
-      tiledb_domain_get_dimension_from_index(ctx, dom, index, &dimension) ==
-      TILEDB_OK);
-
   // Serialize the non_empty_domain
   tiledb_buffer_t* buff;
   REQUIRE(
-      tiledb_serialize_array_nonempty_domain_from_dimension(
+      tiledb_serialize_array_non_empty_domain_all_dimensions(
           ctx,
-          dimension,
-          domain,
-          *is_empty,
+          array,
           (tiledb_serialization_type_t)tiledb::sm::SerializationType::CAPNP,
           0,
           &buff) == TILEDB_OK);
 
   // Deserialize to validate we can round-trip
   REQUIRE(
-      tiledb_deserialize_array_nonempty_domain_from_dimension(
+      tiledb_deserialize_array_non_empty_domain_all_dimensions(
           ctx,
-          dimension,
+          array,
           buff,
           (tiledb_serialization_type_t)tiledb::sm::SerializationType::CAPNP,
-          1,
-          &domain,
-          is_empty) == TILEDB_OK);
+          1) == TILEDB_OK);
 
-  tiledb_dimension_free(&dimension);
-  tiledb_domain_free(&dom);
-  tiledb_array_schema_free(&schema);
-
-  return TILEDB_OK;
+  return tiledb_array_get_non_empty_domain_from_index(
+      ctx, array, index, domain, is_empty);
 }
 
 int SparseHeterFx::tiledb_array_get_non_empty_domain_from_name_wrapper(
@@ -335,45 +317,27 @@ int SparseHeterFx::tiledb_array_get_non_empty_domain_from_name_wrapper(
   if (ret != TILEDB_OK || !serialize_)
     return ret;
 
-  tiledb_array_schema_t* schema;
-  REQUIRE(tiledb_array_get_schema(ctx, array, &schema) == TILEDB_OK);
-
-  tiledb_domain_t* dom;
-  REQUIRE(tiledb_array_schema_get_domain(ctx, schema, &dom) == TILEDB_OK);
-
-  tiledb_dimension_t* dimension;
-  REQUIRE(
-      tiledb_domain_get_dimension_from_name(ctx, dom, name, &dimension) ==
-      TILEDB_OK);
-
   // Serialize the non_empty_domain
   tiledb_buffer_t* buff;
   REQUIRE(
-      tiledb_serialize_array_nonempty_domain_from_dimension(
+      tiledb_serialize_array_non_empty_domain_all_dimensions(
           ctx,
-          dimension,
-          domain,
-          *is_empty,
+          array,
           (tiledb_serialization_type_t)tiledb::sm::SerializationType::CAPNP,
           0,
           &buff) == TILEDB_OK);
 
   // Deserialize to validate we can round-trip
   REQUIRE(
-      tiledb_deserialize_array_nonempty_domain_from_dimension(
+      tiledb_deserialize_array_non_empty_domain_all_dimensions(
           ctx,
-          dimension,
+          array,
           buff,
           (tiledb_serialization_type_t)tiledb::sm::SerializationType::CAPNP,
-          1,
-          &domain,
-          is_empty) == TILEDB_OK);
+          1) == TILEDB_OK);
 
-  tiledb_dimension_free(&dimension);
-  tiledb_domain_free(&dom);
-  tiledb_array_schema_free(&schema);
-
-  return TILEDB_OK;
+  return tiledb_array_get_non_empty_domain_from_name(
+      ctx, array, name, domain, is_empty);
 }
 
 void SparseHeterFx::create_temp_dir(const std::string& path) {
@@ -447,7 +411,7 @@ void SparseHeterFx::check_non_empty_domain_int64_float(
   // Get non-empty domain for each dimension
   float dom_f_r[2];
   int64_t dom_i_r[2];
-  int is_empty_r;
+  int32_t is_empty_r;
   rc = tiledb_array_get_non_empty_domain_from_name_wrapper(
       ctx_, array, "d1", dom_i_r, &is_empty_r);
   CHECK(rc == TILEDB_OK);
@@ -460,6 +424,15 @@ void SparseHeterFx::check_non_empty_domain_int64_float(
     CHECK(!std::memcmp(dom_f, dom_f_r, sizeof(dom_f_r)));
     CHECK(!std::memcmp(dom_i, dom_i_r, sizeof(dom_i_r)));
   }
+
+  // Errors
+  uint64_t start_size, end_size;
+  rc = tiledb_array_get_non_empty_domain_var_size_from_index(
+      ctx_, array, 0, &start_size, &end_size, &is_empty_r);
+  CHECK(rc == TILEDB_ERR);
+  rc = tiledb_array_get_non_empty_domain_var_size_from_name(
+      ctx_, array, "d1", &start_size, &end_size, &is_empty_r);
+  CHECK(rc == TILEDB_ERR);
 
   // Close array
   rc = tiledb_array_close(ctx_, array);

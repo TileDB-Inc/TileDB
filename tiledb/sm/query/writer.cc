@@ -570,30 +570,69 @@ Status Writer::check_coord_dups(const std::vector<uint64_t>& cell_pos) const {
 
   // Prepare auxiliary vectors for better performance
   auto dim_num = array_schema_->dim_num();
-  std::vector<unsigned char*> buffs(dim_num);
+  std::vector<const unsigned char*> buffs(dim_num);
   std::vector<uint64_t> coord_sizes(dim_num);
+  std::vector<const unsigned char*> buffs_var(dim_num);
+  std::vector<uint64_t*> buffs_var_sizes(dim_num);
   for (unsigned d = 0; d < dim_num; ++d) {
     const auto& dim_name = array_schema_->dimension(d)->name();
-    buffs[d] = (unsigned char*)buffers_.find(dim_name)->second.buffer_;
+    buffs[d] = (const unsigned char*)buffers_.find(dim_name)->second.buffer_;
     coord_sizes[d] = array_schema_->cell_size(dim_name);
+    buffs_var[d] =
+        (const unsigned char*)buffers_.find(dim_name)->second.buffer_var_;
+    buffs_var_sizes[d] = buffers_.find(dim_name)->second.buffer_var_size_;
   }
 
   auto statuses = parallel_for(1, coords_num_, [&](uint64_t i) {
     // Check for duplicate in adjacent cells
     bool found_dup = true;
     for (unsigned d = 0; d < dim_num; ++d) {
-      if (memcmp(
-              buffs[d] + cell_pos[i] * coord_sizes[d],
-              buffs[d] + cell_pos[i - 1] * coord_sizes[d],
-              coord_sizes[d]) != 0) {  // Not the same
-        found_dup = false;
-        break;
+      auto dim = array_schema_->dimension(d);
+      if (!dim->var_size()) {  // Fixed-sized dimensions
+        if (memcmp(
+                buffs[d] + cell_pos[i] * coord_sizes[d],
+                buffs[d] + cell_pos[i - 1] * coord_sizes[d],
+                coord_sizes[d]) != 0) {  // Not the same
+          found_dup = false;
+          break;
+        }
+      } else {
+        auto offs = (uint64_t*)buffs[d];
+        auto a = cell_pos[i];
+        auto b = cell_pos[i - 1];
+        auto off_a = offs[a];
+        auto off_b = offs[b];
+        auto off_a_plus_1 =
+            (a == coords_num_ - 1) ? *(buffs_var_sizes[d]) : offs[a + 1];
+        auto off_b_plus_1 =
+            (b == coords_num_ - 1) ? *(buffs_var_sizes[d]) : offs[b + 1];
+        auto size_a = off_a_plus_1 - off_a;
+        auto size_b = off_b_plus_1 - off_b;
+
+        // Compare sizes
+        if (size_a != size_b) {  // Not same
+          found_dup = false;
+          break;
+        }
+
+        // Compare var values
+        if (memcmp(
+                buffs_var[d] + off_a,
+                buffs_var[d] + off_b,
+                size_a) != 0) {  // Not the same
+          found_dup = false;
+          break;
+        }
       }
     }
 
     // Found duplicate
-    if (found_dup)
-      return Status::WriterError("Duplicate coordinates are not allowed");
+    if (found_dup) {
+      std::stringstream ss;
+      ss << "Duplicate coordinates " << coords_to_str(cell_pos[i]);
+      ss << " are not allowed";
+      return Status::WriterError(ss.str());
+    }
 
     return Status::Ok();
   });
@@ -624,30 +663,63 @@ Status Writer::check_coord_dups() const {
 
   // Prepare auxiliary vectors for better performance
   auto dim_num = array_schema_->dim_num();
-  std::vector<unsigned char*> buffs(dim_num);
+  std::vector<const unsigned char*> buffs(dim_num);
   std::vector<uint64_t> coord_sizes(dim_num);
+  std::vector<const unsigned char*> buffs_var(dim_num);
+  std::vector<uint64_t*> buffs_var_sizes(dim_num);
   for (unsigned d = 0; d < dim_num; ++d) {
     const auto& dim_name = array_schema_->dimension(d)->name();
-    buffs[d] = (unsigned char*)buffers_.find(dim_name)->second.buffer_;
+    buffs[d] = (const unsigned char*)buffers_.find(dim_name)->second.buffer_;
     coord_sizes[d] = array_schema_->cell_size(dim_name);
+    buffs_var[d] =
+        (const unsigned char*)buffers_.find(dim_name)->second.buffer_var_;
+    buffs_var_sizes[d] = buffers_.find(dim_name)->second.buffer_var_size_;
   }
 
   auto statuses = parallel_for(1, coords_num_, [&](uint64_t i) {
     // Check for duplicate in adjacent cells
     bool found_dup = true;
     for (unsigned d = 0; d < dim_num; ++d) {
-      if (memcmp(
-              buffs[d] + i * coord_sizes[d],
-              buffs[d] + (i - 1) * coord_sizes[d],
-              coord_sizes[d]) != 0) {  // Not the same
-        found_dup = false;
-        break;
+      auto dim = array_schema_->dimension(d);
+      if (!dim->var_size()) {  // Fixed-sized dimensions
+        if (memcmp(
+                buffs[d] + i * coord_sizes[d],
+                buffs[d] + (i - 1) * coord_sizes[d],
+                coord_sizes[d]) != 0) {  // Not the same
+          found_dup = false;
+          break;
+        }
+      } else {
+        auto offs = (uint64_t*)buffs[d];
+        auto off_i_plus_1 =
+            (i == coords_num_ - 1) ? *(buffs_var_sizes[d]) : offs[i + 1];
+        auto size_i_minus_1 = offs[i] - offs[i - 1];
+        auto size_i = off_i_plus_1 - offs[i];
+
+        // Compare sizes
+        if (size_i != size_i_minus_1) {  // Not same
+          found_dup = false;
+          break;
+        }
+
+        // Compare var values
+        if (memcmp(
+                buffs_var[d] + offs[i - 1],
+                buffs_var[d] + offs[i],
+                size_i) != 0) {  // Not the same
+          found_dup = false;
+          break;
+        }
       }
     }
 
     // Found duplicate
-    if (found_dup)
-      return Status::WriterError("Duplicate coordinates are not allowed");
+    if (found_dup) {
+      std::stringstream ss;
+      ss << "Duplicate coordinates " << coords_to_str(i);
+      ss << " are not allowed";
+      return Status::WriterError(ss.str());
+    }
 
     return Status::Ok();
   });
@@ -670,6 +742,10 @@ Status Writer::check_coord_oob() const {
   if (coords_num_ == 0)
     return Status::Ok();
 
+  // Exit if all dimensions are strings
+  if (array_schema_->domain()->all_dims_string())
+    return Status::Ok();
+
   // Prepare auxiliary vectors for better performance
   auto dim_num = array_schema_->dim_num();
   std::vector<unsigned char*> buffs(dim_num);
@@ -684,6 +760,8 @@ Status Writer::check_coord_oob() const {
   auto statuses =
       parallel_for_2d(0, coords_num_, 0, dim_num, [&](uint64_t c, unsigned d) {
         auto dim = array_schema_->dimension(d);
+        if (datatype_is_string(dim->type()))
+          return Status::Ok();
         return dim->oob(buffs[d] + c * coord_sizes[d]);
       });
 
@@ -706,10 +784,10 @@ Status Writer::check_global_order() const {
 
   // Prepare auxiliary vector for better performance
   auto dim_num = array_schema_->dim_num();
-  std::vector<const void*> buffs(dim_num);
+  std::vector<const QueryBuffer*> buffs(dim_num);
   for (unsigned d = 0; d < dim_num; ++d) {
     const auto& dim_name = array_schema_->dimension(d)->name();
-    buffs[d] = buffers_.find(dim_name)->second.buffer_;
+    buffs[d] = &(buffers_.find(dim_name)->second);
   }
 
   // Check if all coordinates fall in the domain in parallel
@@ -726,16 +804,14 @@ Status Writer::check_global_order() const {
       ss << " in the global order";
       if (tile_cmp > 0)
         ss << " due to writes across tiles";
-      return LOG_STATUS(Status::WriterError(ss.str()));
+      return Status::WriterError(ss.str());
     }
     return Status::Ok();
   });
 
   // Check all statuses
-  for (auto& st : statuses) {
-    if (!st.ok())
-      return st;
-  }
+  for (auto& st : statuses)
+    RETURN_NOT_OK_ELSE(st, LOG_STATUS(st));
 
   return Status::Ok();
 }
@@ -796,12 +872,17 @@ Status Writer::compute_coord_dups(
 
   // Prepare auxiliary vectors for better performance
   auto dim_num = array_schema_->dim_num();
-  std::vector<unsigned char*> buffs(dim_num);
+  std::vector<const unsigned char*> buffs(dim_num);
   std::vector<uint64_t> coord_sizes(dim_num);
+  std::vector<const unsigned char*> buffs_var(dim_num);
+  std::vector<uint64_t*> buffs_var_sizes(dim_num);
   for (unsigned d = 0; d < dim_num; ++d) {
     const auto& dim_name = array_schema_->dimension(d)->name();
-    buffs[d] = (unsigned char*)buffers_.find(dim_name)->second.buffer_;
+    buffs[d] = (const unsigned char*)buffers_.find(dim_name)->second.buffer_;
     coord_sizes[d] = array_schema_->cell_size(dim_name);
+    buffs_var[d] =
+        (const unsigned char*)buffers_.find(dim_name)->second.buffer_var_;
+    buffs_var_sizes[d] = buffers_.find(dim_name)->second.buffer_var_size_;
   }
 
   std::mutex mtx;
@@ -809,12 +890,42 @@ Status Writer::compute_coord_dups(
     // Check for duplicate in adjacent cells
     bool found_dup = true;
     for (unsigned d = 0; d < dim_num; ++d) {
-      if (memcmp(
-              buffs[d] + cell_pos[i] * coord_sizes[d],
-              buffs[d] + cell_pos[i - 1] * coord_sizes[d],
-              coord_sizes[d]) != 0) {  // Not the same
-        found_dup = false;
-        break;
+      auto dim = array_schema_->dimension(d);
+      if (!dim->var_size()) {  // Fixed-sized dimensions
+        if (memcmp(
+                buffs[d] + cell_pos[i] * coord_sizes[d],
+                buffs[d] + cell_pos[i - 1] * coord_sizes[d],
+                coord_sizes[d]) != 0) {  // Not the same
+          found_dup = false;
+          break;
+        }
+      } else {
+        auto offs = (uint64_t*)buffs[d];
+        auto a = cell_pos[i];
+        auto b = cell_pos[i - 1];
+        auto off_a = offs[a];
+        auto off_b = offs[b];
+        auto off_a_plus_1 =
+            (a == coords_num_ - 1) ? *(buffs_var_sizes[d]) : offs[a + 1];
+        auto off_b_plus_1 =
+            (b == coords_num_ - 1) ? *(buffs_var_sizes[d]) : offs[b + 1];
+        auto size_a = off_a_plus_1 - off_a;
+        auto size_b = off_b_plus_1 - off_b;
+
+        // Compare sizes
+        if (size_a != size_b) {  // Not same
+          found_dup = false;
+          break;
+        }
+
+        // Compare var values
+        if (memcmp(
+                buffs_var[d] + off_a,
+                buffs_var[d] + off_b,
+                size_a) != 0) {  // Not the same
+          found_dup = false;
+          break;
+        }
       }
     }
 
@@ -850,12 +961,17 @@ Status Writer::compute_coord_dups(std::set<uint64_t>* coord_dups) const {
 
   // Prepare auxiliary vectors for better performance
   auto dim_num = array_schema_->dim_num();
-  std::vector<unsigned char*> buffs(dim_num);
+  std::vector<const unsigned char*> buffs(dim_num);
   std::vector<uint64_t> coord_sizes(dim_num);
+  std::vector<const unsigned char*> buffs_var(dim_num);
+  std::vector<uint64_t*> buffs_var_sizes(dim_num);
   for (unsigned d = 0; d < dim_num; ++d) {
     const auto& dim_name = array_schema_->dimension(d)->name();
-    buffs[d] = (unsigned char*)buffers_.find(dim_name)->second.buffer_;
+    buffs[d] = (const unsigned char*)buffers_.find(dim_name)->second.buffer_;
     coord_sizes[d] = array_schema_->cell_size(dim_name);
+    buffs_var[d] =
+        (const unsigned char*)buffers_.find(dim_name)->second.buffer_var_;
+    buffs_var_sizes[d] = buffers_.find(dim_name)->second.buffer_var_size_;
   }
 
   std::mutex mtx;
@@ -863,12 +979,36 @@ Status Writer::compute_coord_dups(std::set<uint64_t>* coord_dups) const {
     // Check for duplicate in adjacent cells
     bool found_dup = true;
     for (unsigned d = 0; d < dim_num; ++d) {
-      if (memcmp(
-              buffs[d] + i * coord_sizes[d],
-              buffs[d] + (i - 1) * coord_sizes[d],
-              coord_sizes[d]) != 0) {  // Not the same
-        found_dup = false;
-        break;
+      auto dim = array_schema_->dimension(d);
+      if (!dim->var_size()) {  // Fixed-sized dimensions
+        if (memcmp(
+                buffs[d] + i * coord_sizes[d],
+                buffs[d] + (i - 1) * coord_sizes[d],
+                coord_sizes[d]) != 0) {  // Not the same
+          found_dup = false;
+          break;
+        }
+      } else {
+        auto offs = (uint64_t*)buffs[d];
+        auto off_i_plus_1 =
+            (i == coords_num_ - 1) ? *(buffs_var_sizes[d]) : offs[i + 1];
+        auto size_i_minus_1 = offs[i] - offs[i - 1];
+        auto size_i = off_i_plus_1 - offs[i];
+
+        // Compare sizes
+        if (size_i != size_i_minus_1) {  // Not same
+          found_dup = false;
+          break;
+        }
+
+        // Compare var values
+        if (memcmp(
+                buffs_var[d] + offs[i - 1],
+                buffs_var[d] + offs[i],
+                size_i) != 0) {  // Not the same
+          found_dup = false;
+          break;
+        }
       }
     }
 
@@ -919,7 +1059,11 @@ Status Writer::compute_coords_metadata(
       const auto& dim_name = dim->name();
       auto tiles_it = tiles.find(dim_name);
       assert(tiles_it != tiles.end());
-      dim->compute_mbr(tiles_it->second[t], &mbr[d]);
+      if (!dim->var_size())
+        dim->compute_mbr(tiles_it->second[t], &mbr[d]);
+      else
+        dim->compute_mbr_var(
+            tiles_it->second[2 * t], tiles_it->second[2 * t + 1], &mbr[d]);
     }
 
     meta->set_mbr(t, mbr);
@@ -931,9 +1075,11 @@ Status Writer::compute_coords_metadata(
     RETURN_NOT_OK(st);
 
   // Set last tile cell number
-  const auto& dim_name = array_schema_->dimension(0)->name();
-  uint64_t last_tile_cell_num = tiles.find(dim_name)->second.back().cell_num();
-  meta->set_last_tile_cell_num(last_tile_cell_num);
+  auto dim_0 = array_schema_->dimension(0);
+  const auto& dim_tiles = tiles.find(dim_0->name())->second;
+  const auto& last_tile_pos =
+      (!dim_0->var_size()) ? dim_tiles.size() - 1 : dim_tiles.size() - 2;
+  meta->set_last_tile_cell_num(dim_tiles[last_tile_pos].cell_num());
 
   return Status::Ok();
 }
@@ -2151,10 +2297,10 @@ Status Writer::sort_coords(std::vector<uint64_t>* cell_pos) const {
 
   // Prepare auxiliary vector for better performance
   auto dim_num = array_schema_->dim_num();
-  std::vector<const void*> buffs(dim_num);
+  std::vector<const QueryBuffer*> buffs(dim_num);
   for (unsigned d = 0; d < dim_num; ++d) {
     const auto& dim_name = array_schema_->dimension(d)->name();
-    buffs[d] = (const void*)buffers_.find(dim_name)->second.buffer_;
+    buffs[d] = &(buffers_.find(dim_name)->second);
   }
 
   // Populate cell_pos
@@ -2424,9 +2570,8 @@ std::string Writer::coords_to_str(uint64_t i) const {
   for (unsigned d = 0; d < dim_num; ++d) {
     auto dim = array_schema_->dimension(d);
     const auto& dim_name = dim->name();
-    auto buff = (unsigned char*)buffers_.find(dim_name)->second.buffer_;
-    auto coord = buff + i * dim->coord_size();
-    ss << dim->coord_to_str(coord);
+    auto buff = buffers_.find(dim_name)->second;
+    ss << dim->coord_to_str(buff, i);
     if (d < dim_num - 1)
       ss << ", ";
   }

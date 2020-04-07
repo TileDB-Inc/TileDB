@@ -803,6 +803,29 @@ Status Subarray::compute_est_result_size() {
       names[i] = constants::coords;
   }
 
+  // Find the name of some var-sized dimension or attribute
+  std::string name;
+  for (unsigned i = 0; i < num; ++i) {
+    bool var_size = array_schema->var_size(names[i]);
+    if (var_size)
+      name = names[i];
+  }
+
+  // Load in parallel all tile var sizes metadata across fragments
+  auto encryption_key = array_->encryption_key();
+  uint64_t size;
+  if (!name.empty()) {
+    auto fragment_num = meta.size();
+    auto statuses = parallel_for(0, fragment_num, [&](uint64_t f) {
+      auto name = array_schema->attribute(0)->name();
+      RETURN_NOT_OK(meta[f]->tile_var_size(*encryption_key, name, 0, &size));
+      return Status::Ok();
+    });
+    for (auto st : statuses)
+      RETURN_NOT_OK(st);
+  }
+
+  // Compute estimated result sizes in parallel across ranges
   auto statuses = parallel_for(0, range_num, [&](uint64_t r) {
     for (unsigned i = 0; i < num; ++i) {
       bool var_size = array_schema->var_size(names[i]);
@@ -897,7 +920,8 @@ Status Subarray::compute_est_result_size(
   }
 
   // Calibrate result - applicable only to arrays without coordinate duplicates
-  if (!array_->array_schema()->allows_dups()) {
+  // and fixed dimensions
+  if (!array_schema->allows_dups() && domain->all_dims_fixed()) {
     uint64_t max_size_fixed, max_size_var = UINT64_MAX;
     auto cell_num = domain->cell_num(this->ndrange(range_idx));
     if (var_size) {

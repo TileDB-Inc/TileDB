@@ -122,6 +122,17 @@ class Query {
   Status add_range(
       unsigned dim_idx, const void* start, const void* end, const void* stride);
 
+  /**
+   * Adds a variable-sized range to the (read/write) query on the input
+   * dimension, in the form of (start, end).
+   */
+  Status add_range_var(
+      unsigned dim_idx,
+      const void* start,
+      uint64_t start_size,
+      const void* end,
+      uint64_t end_size);
+
   /** Retrieves the number of ranges of the subarray for the given dimension. */
   Status get_range_num(unsigned dim_idx, uint64_t* range_num) const;
 

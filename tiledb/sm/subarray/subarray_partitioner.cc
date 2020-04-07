@@ -171,25 +171,33 @@ Status SubarrayPartitioner::get_result_budget(
     return LOG_STATUS(Status::SubarrayPartitionerError(
         "Cannot get result budget; Attribute/Dimension name cannot be null"));
 
-  if (name == constants::coords)
-    return LOG_STATUS(Status::SubarrayPartitionerError(
-        "Cannot get result budget; Attribute/Dimension must be var-sized"));
-
-  // Check attribute/dimension
-  auto attr = subarray_.array()->array_schema()->attribute(name);
-  if (attr == nullptr)
-    return LOG_STATUS(Status::SubarrayPartitionerError(
-        "Cannot get result budget; Invalid attribute/dimension"));
-
-  // Check budget pointer
+  // Check budget pointers
   if (budget_off == nullptr || budget_val == nullptr)
     return LOG_STATUS(Status::SubarrayPartitionerError(
         "Cannot get result budget; Invalid budget input"));
 
-  // Check if the attribute is var-sized
-  if (!attr->var_size())
+  // Check zipped coordinates
+  if (name == constants::coords)
     return LOG_STATUS(Status::SubarrayPartitionerError(
-        "Cannot get result budget; Attribute/Dimension must be var-sized"));
+        "Cannot get result budget for zipped coordinates; Attribute/Dimension "
+        "must be var-sized"));
+
+  // For easy reference
+  auto array_schema = subarray_.array()->array_schema();
+  bool is_dim = array_schema->is_dim(name);
+  bool is_attr = array_schema->is_attr(name);
+
+  // Check if attribute/dimension exists
+  if (!is_dim && !is_attr)
+    return LOG_STATUS(Status::SubarrayPartitionerError(
+        std::string("Cannot get result budget; Invalid attribute/dimension '") +
+        name + "'"));
+
+  // Check if the attribute/dimension is var-sized
+  if (!array_schema->var_size(name))
+    return LOG_STATUS(Status::SubarrayPartitionerError(
+        std::string("Cannot get result budget; Input attribute/dimension '") +
+        name + "' is fixed-sized"));
 
   // Check if budget has been set
   auto b_it = budget_.find(name);
@@ -253,7 +261,6 @@ Status SubarrayPartitioner::next(bool* unsplittable) {
         subarray_.get_subarray(current_.start_, current_.end_);
     current_.split_multi_range_ = false;
     state_.start_ = current_.end_ + 1;
-
     return Status::Ok();
   }
 
@@ -300,19 +307,25 @@ Status SubarrayPartitioner::set_result_budget(
 
   if (name == constants::coords)
     return LOG_STATUS(Status::SubarrayPartitionerError(
-        "Cannot set result budget; Attribute/Dimension must be var-sized"));
+        "Cannot set result budget for zipped coordinates; Attribute/Dimension "
+        "must be var-sized"));
 
-  // Check attribute/dimension
-  auto attr = subarray_.array()->array_schema()->attribute(name);
-  if (attr == nullptr)
+  // For easy reference
+  auto array_schema = subarray_.array()->array_schema();
+  bool is_dim = array_schema->is_dim(name);
+  bool is_attr = array_schema->is_attr(name);
+
+  // Check if attribute/dimension exists
+  if (!is_dim && !is_attr)
     return LOG_STATUS(Status::SubarrayPartitionerError(
-        std::string("Cannot set result budget; Invalid attribute '") + name +
-        "'"));
+        std::string("Cannot set result budget; Invalid attribute/dimension '") +
+        name + "'"));
 
   // Check if the attribute/dimension is var-sized
-  if (!attr->var_size())
+  if (!array_schema->var_size(name))
     return LOG_STATUS(Status::SubarrayPartitionerError(
-        "Cannot set result budget; Attribute must be var-sized"));
+        std::string("Cannot set result budget; Input attribute/dimension '") +
+        name + "' is fixed-sized"));
 
   budget_[name] = ResultBudget{budget_off, budget_val};
 
@@ -520,6 +533,7 @@ Status SubarrayPartitioner::compute_current_start_end(bool* found) {
         // Range found, make it inclusive
         current_.end_--;
         *found = true;
+
         return Status::Ok();
       }
     }
@@ -767,6 +781,7 @@ Status SubarrayPartitioner::next_from_single_range(bool* unsplittable) {
     do {
       auto& partition = state_.single_range_.front();
       must_split = this->must_split(&partition);
+
       if (must_split)
         RETURN_NOT_OK(split_top_single_range(unsplittable));
     } while (must_split && !*unsplittable);

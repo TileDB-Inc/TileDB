@@ -977,6 +977,104 @@ class Array {
   }
 
   /**
+   * Retrieves the non-empty domain from the array on the given dimension.
+   * This is the union of the non-empty domains of the array fragments.
+   * Applicable only to var-sized dimensions.
+   *
+   * **Example:**
+   * @code{.cpp}
+   * tiledb::Context ctx;
+   * tiledb::Array array(ctx, "s3://bucket-name/array-name", TILEDB_READ);
+   * // Specify the dimension type (example uint32_t)
+   * auto non_empty = array.non_empty_domain_var(0);
+   * @endcode
+   *
+   * @param idx The dimension index.
+   * @return The {lower, upper} pair of the non-empty domain (inclusive)
+   *         on the input dimension.
+   */
+  std::pair<std::string, std::string> non_empty_domain_var(unsigned idx) {
+    auto dim = schema_.domain().dimension(idx);
+    impl::type_check<char>(dim.type());
+    std::pair<std::string, std::string> ret;
+
+    // Get range sizes
+    uint64_t start_size, end_size;
+    int empty;
+    auto& ctx = ctx_.get();
+    ctx.handle_error(tiledb_array_get_non_empty_domain_var_size_from_index(
+        ctx.ptr().get(), array_.get(), idx, &start_size, &end_size, &empty));
+
+    if (empty)
+      return ret;
+
+    // Get ranges
+    ret.first.resize(start_size);
+    ret.second.resize(end_size);
+    ctx.handle_error(tiledb_array_get_non_empty_domain_var_from_index(
+        ctx.ptr().get(),
+        array_.get(),
+        idx,
+        &(ret.first[0]),
+        &(ret.second[0]),
+        &empty));
+
+    return ret;
+  }
+
+  /**
+   * Retrieves the non-empty domain from the array on the given dimension.
+   * This is the union of the non-empty domains of the array fragments.
+   * Applicable only to var-sized dimensions.
+   *
+   * **Example:**
+   * @code{.cpp}
+   * tiledb::Context ctx;
+   * tiledb::Array array(ctx, "s3://bucket-name/array-name", TILEDB_READ);
+   * // Specify the dimension type (example uint32_t)
+   * auto non_empty = array.non_empty_domain_var("d1");
+   * @endcode
+   *
+   * @param name The dimension name.
+   * @return The {lower, upper} pair of the non-empty domain (inclusive)
+   *         on the input dimension.
+   */
+  std::pair<std::string, std::string> non_empty_domain_var(
+      const std::string& name) {
+    auto dim = schema_.domain().dimension(name);
+    impl::type_check<char>(dim.type());
+    std::pair<std::string, std::string> ret;
+
+    // Get range sizes
+    uint64_t start_size, end_size;
+    int empty;
+    auto& ctx = ctx_.get();
+    ctx.handle_error(tiledb_array_get_non_empty_domain_var_size_from_name(
+        ctx.ptr().get(),
+        array_.get(),
+        name.c_str(),
+        &start_size,
+        &end_size,
+        &empty));
+
+    if (empty)
+      return ret;
+
+    // Get ranges
+    ret.first.resize(start_size);
+    ret.second.resize(end_size);
+    ctx.handle_error(tiledb_array_get_non_empty_domain_var_from_name(
+        ctx.ptr().get(),
+        array_.get(),
+        name.c_str(),
+        &(ret.first[0]),
+        &(ret.second[0]),
+        &empty));
+
+    return ret;
+  }
+
+  /**
    * Compute an upper bound on the buffer elements needed to read a subarray.
    *
    * **Example:**

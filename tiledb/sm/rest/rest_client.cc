@@ -159,7 +159,7 @@ Status RestClient::deregister_array_from_rest(const URI& uri) {
 }
 
 Status RestClient::get_array_non_empty_domain(
-    Array* array, void* domain, bool* is_empty) {
+    Array* array, uint64_t timestamp) {
   if (array == nullptr)
     return LOG_STATUS(
         Status::RestError("Cannot get array non-empty domain; array is null"));
@@ -175,8 +175,9 @@ Status RestClient::get_array_non_empty_domain(
   RETURN_NOT_OK(curlc.init(config_, extra_headers_));
   std::string array_ns, array_uri;
   RETURN_NOT_OK(array->array_uri().get_rest_components(&array_ns, &array_uri));
-  std::string url = rest_server_ + "/v1/arrays/" + array_ns + "/" +
-                    curlc.url_escape(array_uri) + "/non_empty_domain";
+  std::string url = rest_server_ + "/v2/arrays/" + array_ns + "/" +
+                    curlc.url_escape(array_uri) +
+                    "/non_empty_domain?timestamp=" + std::to_string(timestamp);
 
   // Get the data
   Buffer returned_data;
@@ -189,27 +190,7 @@ Status RestClient::get_array_non_empty_domain(
 
   // Deserialize data returned
   return serialization::nonempty_domain_deserialize(
-      array, returned_data, serialization_type_, domain, is_empty);
-}
-
-Status RestClient::get_array_non_empty_domain_from_index(
-    Array* array, unsigned idx, void* domain, bool* is_empty) {
-  // TODO: Seth
-  (void)array;
-  (void)idx;
-  (void)domain;
-  (void)is_empty;
-  return Status::Ok();
-}
-
-Status RestClient::get_array_non_empty_domain_from_name(
-    Array* array, const char* name, void* domain, bool* is_empty) {
-  // TODO: Seth
-  (void)array;
-  (void)name;
-  (void)domain;
-  (void)is_empty;
-  return Status::Ok();
+      array, returned_data, serialization_type_);
 }
 
 Status RestClient::get_array_max_buffer_sizes(
@@ -695,19 +676,7 @@ Status RestClient::deregister_array_from_rest(const URI&) {
       Status::RestError("Cannot use rest client; serialization not enabled."));
 }
 
-Status RestClient::get_array_non_empty_domain(Array*, void*, bool*) {
-  return LOG_STATUS(
-      Status::RestError("Cannot use rest client; serialization not enabled."));
-}
-
-Status RestClient::get_array_non_empty_domain_from_index(
-    Array*, unsigned, void*, bool*) {
-  return LOG_STATUS(
-      Status::RestError("Cannot use rest client; serialization not enabled."));
-}
-
-Status RestClient::get_array_non_empty_domain_from_name(
-    Array*, const char*, void*, bool*) {
+Status RestClient::get_array_non_empty_domain(Array*, uint64_t) {
   return LOG_STATUS(
       Status::RestError("Cannot use rest client; serialization not enabled."));
 }

@@ -3450,6 +3450,37 @@ TILEDB_EXPORT int32_t tiledb_query_add_range(
     const void* stride);
 
 /**
+ * Adds a 1D variable-sized range along a subarray dimension, which is in the
+ * form (start, end). Applicable only to variable-sized dimensions.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * uint32_t dim_idx = 2;
+ * char start[] = "a";
+ * char end[] = "bb";
+ * tiledb_query_add_range_var(ctx, query, dim_idx, start, 1, end, 2);
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param query The query to add the range to.
+ * @param dim_idx The index of the dimension to add the range to.
+ * @param start The range start.
+ * @param start_size The size of the range start in bytes.
+ * @param end The range end.
+ * @param end_size The size of the range end in bytes.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_query_add_range_var(
+    tiledb_ctx_t* ctx,
+    tiledb_query_t* query,
+    uint32_t dim_idx,
+    const void* start,
+    uint64_t start_size,
+    const void* end,
+    uint64_t end_size);
+
+/**
  * Retrieves the number of ranges of the query subarray along a given dimension.
  *
  * **Example:**
@@ -4165,6 +4196,168 @@ TILEDB_EXPORT int32_t tiledb_array_get_non_empty_domain_from_name(
     tiledb_array_t* array,
     const char* name,
     void* domain,
+    int32_t* is_empty);
+
+/**
+ * Retrieves the non-empty domain range sizes from an array for a given
+ * dimension index. This is the union of the non-empty domains of the array
+ * fragments on the given dimension. Applicable only to var-sized dimensions.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * uint64_t domain[2];
+ * int32_t is_empty;
+ * tiledb_array_t* array;
+ * tiledb_array_alloc(ctx, "my_array", &array);
+ * tiledb_array_open(ctx, array, TILEDB_READ);
+ * uint64_t start_size, end_size;
+ * tiledb_array_get_non_empty_domain_var_size_from_index(
+ *     ctx, array, 0, &start_size, &end_size, &is_empty);
+ * // If non-empty domain range is `[aa, dddd]`, then `start_size = 2`
+ * // and `end_size = 4`.
+ * @endcode
+ *
+ * @param ctx The TileDB context
+ * @param array The array object (must be opened beforehand).
+ * @param idx The dimension index, following the order as it was defined
+ *      in the domain of the array schema.
+ * @param start_size The size in bytes of the start range.
+ * @param end_size The size in bytes of the end range.
+ * @param is_empty The function sets it to `1` if the non-empty domain is
+ *     empty (i.e., the array does not contain any data yet), and `0` otherwise.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_array_get_non_empty_domain_var_size_from_index(
+    tiledb_ctx_t* ctx,
+    tiledb_array_t* array,
+    uint32_t idx,
+    uint64_t* start_size,
+    uint64_t* end_size,
+    int32_t* is_empty);
+
+/**
+ * Retrieves the non-empty domain range sizes from an array for a given
+ * dimension name. This is the union of the non-empty domains of the array
+ * fragments on the given dimension. Applicable only to var-sized dimensions.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * uint64_t domain[2];
+ * int32_t is_empty;
+ * tiledb_array_t* array;
+ * tiledb_array_alloc(ctx, "my_array", &array);
+ * tiledb_array_open(ctx, array, TILEDB_READ);
+ * uint64_t start_size, end_size;
+ * tiledb_array_get_non_empty_domain_var_size_from_name(
+ *     ctx, array, "d", &start_size, &end_size, &is_empty);
+ * // If non-empty domain range is `[aa, dddd]`, then `start_size = 2`
+ * // and `end_size = 4`.
+ * @endcode
+ *
+ * @param ctx The TileDB context
+ * @param array The array object (must be opened beforehand).
+ * @param name The dimension name.
+ * @param start_size The size in bytes of the start range.
+ * @param end_size The size in bytes of the end range.
+ * @param is_empty The function sets it to `1` if the non-empty domain is
+ *     empty (i.e., the array does not contain any data yet), and `0` otherwise.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_array_get_non_empty_domain_var_size_from_name(
+    tiledb_ctx_t* ctx,
+    tiledb_array_t* array,
+    const char* name,
+    uint64_t* start_size,
+    uint64_t* end_size,
+    int32_t* is_empty);
+
+/**
+ * Retrieves the non-empty domain from an array for a given
+ * dimension index. This is the union of the non-empty domains of the array
+ * fragments on the given dimension. Applicable only to var-sized dimensions.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * uint64_t domain[2];
+ * int32_t is_empty;
+ * tiledb_array_t* array;
+ * tiledb_array_alloc(ctx, "my_array", &array);
+ * tiledb_array_open(ctx, array, TILEDB_READ);
+ *
+ * // Get range sizes first
+ * uint64_t start_size, end_size;
+ * tiledb_array_get_non_empty_domain_var_size_from_index(
+ *     ctx, array, 0, &start_size, &end_size, &is_empty);
+ *
+ * // Get domain
+ * char start[start_size];
+ * char end[end_size];
+ * tiledb_array_get_non_empty_domain_var_from_index(
+ *     ctx, array, 0, start, end, &is_empty);
+ * @endcode
+ *
+ * @param ctx The TileDB context
+ * @param array The array object (must be opened beforehand).
+ * @param idx The dimension index, following the order as it was defined
+ *      in the domain of the array schema.
+ * @param start The domain range start to set.
+ * @param end The domain range end to set.
+ * @param is_empty The function sets it to `1` if the non-empty domain is
+ *     empty (i.e., the array does not contain any data yet), and `0` otherwise.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_array_get_non_empty_domain_var_from_index(
+    tiledb_ctx_t* ctx,
+    tiledb_array_t* array,
+    uint32_t idx,
+    void* start,
+    void* end,
+    int32_t* is_empty);
+
+/**
+ * Retrieves the non-empty domain from an array for a given
+ * dimension name. This is the union of the non-empty domains of the array
+ * fragments on the given dimension. Applicable only to var-sized dimensions.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * uint64_t domain[2];
+ * int32_t is_empty;
+ * tiledb_array_t* array;
+ * tiledb_array_alloc(ctx, "my_array", &array);
+ * tiledb_array_open(ctx, array, TILEDB_READ);
+ *
+ * // Get range sizes first
+ * uint64_t start_size, end_size;
+ * tiledb_array_get_non_empty_domain_var_size_from_name(
+ *     ctx, array, "d", &start_size, &end_size, &is_empty);
+ *
+ * // Get domain
+ * char start[start_size];
+ * char end[end_size];
+ * tiledb_array_get_non_empty_domain_var_from_name(
+ *     ctx, array, "d", start, end, &is_empty);
+ * @endcode
+ *
+ * @param ctx The TileDB context
+ * @param array The array object (must be opened beforehand).
+ * @param name The dimension name.
+ * @param start The domain range start to set.
+ * @param end The domain range end to set.
+ * @param is_empty The function sets it to `1` if the non-empty domain is
+ *     empty (i.e., the array does not contain any data yet), and `0` otherwise.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_array_get_non_empty_domain_var_from_name(
+    tiledb_ctx_t* ctx,
+    tiledb_array_t* array,
+    const char* name,
+    void* start,
+    void* end,
     int32_t* is_empty);
 
 /**

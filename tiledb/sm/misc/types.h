@@ -54,10 +54,13 @@ namespace sm {
 class Range {
  public:
   /** Default constructor. */
-  Range() = default;
+  Range()
+      : range_start_size_(0) {
+  }
 
   /** Constructor setting a range. */
-  Range(const void* range, uint64_t range_size) {
+  Range(const void* range, uint64_t range_size)
+      : Range() {
     set_range(range, range_size);
   }
 
@@ -76,15 +79,44 @@ class Range {
   /** Move-assign operator. */
   Range& operator=(Range&& range) = default;
 
-  /** Sets a range. */
-  void set_range(const void* range, uint64_t range_size) {
-    range_.resize(range_size);
-    std::memcpy(&range_[0], range, range_size);
+  /** Sets a fixed-sized range serialized in `r`. */
+  void set_range(const void* r, uint64_t r_size) {
+    range_.resize(r_size);
+    std::memcpy(&range_[0], r, r_size);
+  }
+
+  /** Sets a var-sized range serialized in `r`. */
+  void set_range(const void* r, uint64_t r_size, uint64_t range_start_size) {
+    range_.resize(r_size);
+    std::memcpy(&range_[0], r, r_size);
+    range_start_size_ = range_start_size;
+  }
+
+  /** Sets a var-sized range `[r1, r2]`. */
+  void set_range_var(
+      const void* r1, uint64_t r1_size, const void* r2, uint64_t r2_size) {
+    range_.resize(r1_size + r2_size);
+    std::memcpy(&range_[0], r1, r1_size);
+    auto c = (char*)(&range_[0]);
+    std::memcpy(c + r1_size, r2, r2_size);
+    range_start_size_ = r1_size;
+  }
+
+  /** Sets a string range. */
+  void set_str_range(const std::string& s1, const std::string& s2) {
+    auto size = s1.size() + s2.size();
+    if (size == 0) {
+      range_.clear();
+      range_start_size_ = 0;
+      return;
+    }
+
+    set_range_var(s1.data(), s1.size(), s2.data(), s2.size());
   }
 
   /** Returns the pointer to the range flattened bytes. */
   const void* data() const {
-    return &range_[0];
+    return range_.empty() ? nullptr : &range_[0];
   }
 
   /** Returns a pointer to the start of the range. */
@@ -92,8 +124,41 @@ class Range {
     return &range_[0];
   }
 
+  /** Returns the start as a string. */
+  std::string start_str() const {
+    if (start_size() == 0)
+      return std::string();
+    return std::string((const char*)start(), start_size());
+  }
+
+  /** Returns the end as a string. */
+  std::string end_str() const {
+    if (end_size() == 0)
+      return std::string();
+    return std::string((const char*)end(), end_size());
+  }
+
+  /**
+   * Returns the size of the start of the range.
+   * Non-zero only for var-sized ranges.
+   */
+  uint64_t start_size() const {
+    return range_start_size_;
+  }
+
+  /**
+   * Returns the size of the end of the range.
+   * Non-zero only for var-sized ranges.
+   */
+  uint64_t end_size() const {
+    return range_.size() - range_start_size_;
+  }
+
+  /** Returns a pointer to the end of the range. */
   const void* end() const {
-    return &range_[range_.size() / 2];
+    auto end_pos =
+        (range_start_size_ == 0) ? range_.size() / 2 : range_start_size_;
+    return range_.empty() ? nullptr : &range_[end_pos];
   }
 
   /** Returns true if the range is empty. */
@@ -113,19 +178,27 @@ class Range {
 
   /** Equality operator. */
   bool operator==(const Range& r) const {
-    return range_ == r.range_;
+    return range_ == r.range_ && range_start_size_ == r.range_start_size_;
   }
 
   /** Returns true if the range start is the same as its end. */
   bool unary() const {
     assert(!range_.empty());
-    return !std::memcmp(
-        &range_[0], &range_[range_.size() / 2], range_.size() / 2);
+    bool same_size =
+        range_start_size_ == 0 || 2 * range_start_size_ == range_.size();
+    return same_size &&
+           !std::memcmp(
+               &range_[0], &range_[range_.size() / 2], range_.size() / 2);
   }
 
  private:
   /** The range as a flat byte vector.*/
   std::vector<uint8_t> range_;
+  /**
+   * Non-zero only for var-sized ranges. It is the size of the
+   * start of `range_`.
+   */
+  uint64_t range_start_size_;
 };
 
 /** An N-dimensional range, consisting of a vector of 1D ranges. */

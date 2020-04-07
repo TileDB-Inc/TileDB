@@ -113,6 +113,12 @@ class ResultTile {
   const void* coord(uint64_t pos, unsigned dim_idx) const;
 
   /**
+   * Returns the string coordinate at position `pos` for
+   * dimension `dim_idx`. Applicable only to string dimensions.
+   */
+  std::string coord_string(uint64_t pos, unsigned dim_idx) const;
+
+  /**
    * Returns true if the coordinates at position `pos` are inside
    * the input multi-dimensional rectangle.
    */
