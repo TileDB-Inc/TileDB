@@ -3403,6 +3403,86 @@ TILEDB_EXPORT int32_t tiledb_query_get_layout(
     tiledb_ctx_t* ctx, tiledb_query_t* query, tiledb_layout_t* query_layout);
 
 /**
+ * Sets an axis array to the query. The axis array should be already open
+ * in read mode. The user must also specify the attribute of the
+ * axis array which contains the index positions to be retrieved,
+ * so that they can be used as subarray ranges to the query array.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * // Supposing the `axis` is an existing array opened in read mode,
+ * // which contains an attribute `d` that contains the positional
+ * // indices that will be used as subarray ranges for the query array.
+ * tiledb_query_set_axis_array(ctx, query, axis, "d");
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param query The query.
+ * @param dim_idx The dimension of the query array to set the axis array for.
+ * @param axis The array containing axes lables. It should be already
+ *     opened in read mode.
+ * @param index_attr The attribute of `axis` that contains the positional
+ *     indices to be used as subarray ranges for the query array.
+ * @return `TILEDB_OK` upon success, and `TILEDB_ERR` upon error.
+ */
+TILEDB_EXPORT int32_t tiledb_query_set_axis_array(
+    tiledb_ctx_t* ctx,
+    tiledb_query_t* query,
+    uint32_t dim_idx,
+    tiledb_array_t* axis,
+    const char* index_attr);
+
+/**
+ * Adds a 1D fixed-sized range to along a dimension of the
+ * axis array of another array (an axis array may be multi-dimensional).
+ *
+ * @param ctx The TileDB context.
+ * @param query The query to add the range to.
+ * @param axis_idx The index of the dimension axis of the query array.
+ * @param axis_dim_idx The index of the dimension to add the range to in
+ *     the axis array.
+ * @param start The range start.
+ * @param end The range end.
+ * @param stride The range stride.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_query_add_axis_range(
+    tiledb_ctx_t* ctx,
+    tiledb_query_t* query,
+    uint32_t axis_idx,
+    uint32_t axis_dim_idx,
+    const void* start,
+    const void* end,
+    const void* stride);
+
+/**
+ * Adds a 1D variable-sized range to along a dimension of the
+ * axis array of another array (an axis array may be multi-dimensional).
+ * Applicable only to variable-sized dimensions.
+ *
+ * @param ctx The TileDB context.
+ * @param query The query to add the range to.
+ * @param axis_idx The index of the dimension axis of the query array.
+ * @param axis_dim_idx The index of the dimension to add the range to in
+ *     the axis array.
+ * @param start The range start.
+ * @param start_size The size of the range start in bytes.
+ * @param end The range end.
+ * @param end_size The size of the range end in bytes.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_query_add_axis_range_var(
+    tiledb_ctx_t* ctx,
+    tiledb_query_t* query,
+    uint32_t axis_idx,
+    uint32_t axis_dim_idx,
+    const void* start,
+    uint64_t start_size,
+    const void* end,
+    uint64_t end_size);
+
+/**
  * Adds a 1D range along a subarray dimension, which is in the form
  * (start, end, stride). The datatype of the range components
  * must be the same as the type of the domain of the array in the query.

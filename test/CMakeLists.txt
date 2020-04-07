@@ -49,6 +49,7 @@ set(TILEDB_TEST_SOURCES
   src/unit-capi-any.cc
   src/unit-capi-array_schema.cc
   src/unit-capi-async.cc
+  src/unit-capi-axes_labels.cc
   src/unit-capi-array.cc
   src/unit-capi-buffer.cc
   src/unit-capi-config.cc
