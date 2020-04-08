@@ -481,6 +481,8 @@ Status Curl::post_data(
     PostResponseCb&& cb) {
   STATS_FUNC_IN(rest_curl_post);
 
+  std::cout << "Making post to " << url << std::endl;
+
   struct curl_slist* headers;
   RETURN_NOT_OK(post_data_common(serialization_type, data, &headers));
 
@@ -537,6 +539,8 @@ Status Curl::get_data(
     SerializationType serialization_type,
     Buffer* returned_data) {
   STATS_FUNC_IN(rest_curl_get);
+
+  std::cout << "Making get to " << url << std::endl;
 
   CURL* curl = curl_.get();
   if (curl == nullptr)

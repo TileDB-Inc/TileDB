@@ -30,6 +30,8 @@
  * This file declares a REST client class.
  */
 
+#include <stdio.h>
+#include <unistd.h>
 #include <cassert>
 
 #include "tiledb/sm/misc/stats.h"
@@ -333,6 +335,22 @@ Status RestClient::post_query_submit(
       &scratch,
       query,
       copy_state);
+
+  std::string name1 = std::tmpnam(nullptr);
+
+  FILE* fp = fopen(name1.c_str(), "wb");
+  if (fp == NULL) {
+    perror("Error creating temporary file");
+    exit(1);
+  }
+  std::cout << "Writing body for " << url << " to " << name1 << std::endl;
+
+  for (uint64_t i = 0; i < serialized.num_buffers(); i++) {
+    Buffer* buff;
+    serialized.get_buffer(i, &buff);
+    fwrite(buff->data(), sizeof(uint8_t), buff->size(), fp);
+  }
+  fclose(fp);
 
   const Status st = curlc.post_data(
       url, serialization_type_, &serialized, std::move(write_cb));
