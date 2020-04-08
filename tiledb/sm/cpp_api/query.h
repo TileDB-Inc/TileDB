@@ -382,8 +382,12 @@ class Query {
       auto attr_name = b_it.first;
       auto size_pair = b_it.second;
       auto var =
-          (attr_name != TILEDB_COORDS &&
-           schema_.attribute(attr_name).cell_val_num() == TILEDB_VAR_NUM);
+          ((attr_name != TILEDB_COORDS) &&
+           ((schema_.has_attribute(attr_name) &&
+             schema_.attribute(attr_name).cell_val_num() == TILEDB_VAR_NUM) ||
+            (schema_.domain().has_dimension(attr_name) &&
+             schema_.domain().dimension(attr_name).cell_val_num() ==
+                 TILEDB_VAR_NUM)));
       auto element_size = element_sizes_.find(attr_name)->second;
       elements[attr_name] = (var) ? std::pair<uint64_t, uint64_t>(
                                         size_pair.first / sizeof(uint64_t),

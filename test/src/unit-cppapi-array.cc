@@ -1097,7 +1097,16 @@ TEST_CASE("C++ API: Test heterogeneous dimensions", "[cppapi][sparse][heter]") {
   query_r.add_range(0, 1.0f, 20.0f);
   query_r.add_range(1, (int64_t)1, (int64_t)30);
   query_r.submit();
-  array_r.close();
+
+  auto ret = query.result_buffer_elements();
+  REQUIRE(ret.size() == 3);
+  CHECK(ret["a"].first == 0);
+  CHECK(ret["a"].second == 4);
+  CHECK(ret["d1"].first == 0);
+  CHECK(ret["d1"].second == 4);
+  CHECK(ret["d2"].first == 0);
+  CHECK(ret["d2"].second == 4);
+
   array_r.close();
 
   CHECK(buff_d1 == buff_d1_r);
@@ -1169,6 +1178,12 @@ TEST_CASE(
   CHECK(data == "aabbccdddd");
   std::vector<uint64_t> c_offsets = {0, 2, 4, 6};
   CHECK(offsets == c_offsets);
+  auto ret = query.result_buffer_elements();
+  REQUIRE(ret.size() == 2);
+  CHECK(ret["a"].first == 0);
+  CHECK(ret["a"].second == 4);
+  CHECK(ret["d"].first == 4);
+  CHECK(ret["d"].second == 10);
 
   // Close array
   array_r.close();
