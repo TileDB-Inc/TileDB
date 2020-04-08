@@ -106,13 +106,13 @@ if (NOT GCSSDK_FOUND)
         patch -N -p1 < ${TILEDB_CMAKE_INPUTS_DIR}/patches/ep_gcssdk/build.patch &&
         patch -N -p1 < ${TILEDB_CMAKE_INPUTS_DIR}/patches/ep_gcssdk/ls.patch
       CONFIGURE_COMMAND
-        cmake -Hsuper -Bcmake-out
+        ${CMAKE_COMMAND} -Hsuper -Bcmake-out
         -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
         -DBUILD_SHARED_LIBS=OFF
         -DBUILD_SAMPLES=OFF
         -DCMAKE_PREFIX_PATH=${TILEDB_EP_INSTALL_PREFIX}
         -DOPENSSL_ROOT_DIR=${TILEDB_OPENSSL_DIR}
-      BUILD_COMMAND cmake --build cmake-out -- -j${NCPU}
+      BUILD_COMMAND ${CMAKE_COMMAND} --build cmake-out -- -j${NCPU}
       INSTALL_COMMAND
           cp -r ${TILEDB_EP_SOURCE_DIR}/ep_gcssdk/cmake-out/external/lib ${TILEDB_EP_INSTALL_PREFIX}
         COMMAND
