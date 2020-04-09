@@ -227,9 +227,9 @@ void check_save_to_file() {
   ss << "sm.memory_budget 5368709120\n";
   ss << "sm.memory_budget_var 10737418240\n";
   ss << "sm.num_async_threads 1\n";
-  ss << "sm.num_reader_threads 1\n";
+  ss << "sm.num_reader_threads " << std::thread::hardware_concurrency() << "\n";
   ss << "sm.num_tbb_threads -1\n";
-  ss << "sm.num_writer_threads 1\n";
+  ss << "sm.num_writer_threads " << std::thread::hardware_concurrency() << "\n";
   ss << "sm.skip_checksum_validation false\n";
   ss << "sm.tile_cache_size 10000000\n";
   ss << "sm.vacuum.mode fragments\n";
@@ -428,8 +428,12 @@ TEST_CASE("C API: Test config iter", "[capi], [config]") {
   all_param_values["sm.memory_budget_var"] = "10737418240";
   all_param_values["sm.enable_signal_handlers"] = "true";
   all_param_values["sm.num_async_threads"] = "1";
-  all_param_values["sm.num_reader_threads"] = "1";
-  all_param_values["sm.num_writer_threads"] = "1";
+  all_param_values["sm.num_reader_threads"] =
+      std::to_string(std::thread::hardware_concurrency());
+  ;
+  all_param_values["sm.num_writer_threads"] =
+      std::to_string(std::thread::hardware_concurrency());
+  ;
   all_param_values["sm.num_tbb_threads"] = "-1";
   all_param_values["sm.skip_checksum_validation"] = "false";
   all_param_values["sm.consolidation.amplification"] = "1.0";
