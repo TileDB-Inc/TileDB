@@ -693,6 +693,7 @@ const NDRange& Array::non_empty_domain() {
 }
 
 void Array::set_non_empty_domain(const NDRange& non_empty_domain) {
+  std::lock_guard<std::mutex> lock{mtx_};
   non_empty_domain_ = non_empty_domain;
 }
 
@@ -841,7 +842,6 @@ Status Array::load_metadata() {
 }
 
 Status Array::load_remote_non_empty_domain() {
-  std::lock_guard<std::mutex> lock{mtx_};
   if (remote_) {
     auto rest_client = storage_manager_->rest_client();
     if (rest_client == nullptr)
@@ -856,6 +856,7 @@ Status Array::compute_non_empty_domain() {
   if (remote_) {
     RETURN_NOT_OK(load_remote_non_empty_domain());
   } else if (!fragment_metadata_.empty()) {
+    std::lock_guard<std::mutex> lock{mtx_};
     const auto& frag0_dom = fragment_metadata_[0]->non_empty_domain();
     non_empty_domain_.assign(frag0_dom.begin(), frag0_dom.end());
 
