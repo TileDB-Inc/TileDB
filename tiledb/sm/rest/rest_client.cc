@@ -163,9 +163,6 @@ Status RestClient::get_array_non_empty_domain(
   if (array == nullptr)
     return LOG_STATUS(
         Status::RestError("Cannot get array non-empty domain; array is null"));
-  if (array->array_schema() == nullptr)
-    return LOG_STATUS(Status::RestError(
-        "Cannot get array non-empty domain; array schema is null"));
   if (array->array_uri().to_string().empty())
     return LOG_STATUS(Status::RestError(
         "Cannot get array non-empty domain; array URI is empty"));

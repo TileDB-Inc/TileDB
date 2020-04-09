@@ -724,8 +724,9 @@ Status StorageManager::array_get_non_empty_domain(
     return LOG_STATUS(Status::StorageManagerError(
         "Cannot get non-empty domain; Array object is null"));
 
-  if (open_arrays_for_reads_.find(array->array_uri().to_string()) ==
-      open_arrays_for_reads_.end())
+  if (!array->is_remote() &&
+      open_arrays_for_reads_.find(array->array_uri().to_string()) ==
+          open_arrays_for_reads_.end())
     return LOG_STATUS(Status::StorageManagerError(
         "Cannot get non-empty domain; Array not opened for reads"));
 
