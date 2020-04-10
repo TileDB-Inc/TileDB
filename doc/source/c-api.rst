@@ -369,6 +369,14 @@ Dimension
     :project: TileDB-C
 .. doxygenfunction:: tiledb_dimension_get_domain
     :project: TileDB-C
+.. doxygenfunction:: tiledb_dimension_get_cell_val_num
+    :project: TileDB-C
+.. doxygenfunction:: tiledb_dimension_set_cell_val_num
+    :project: TileDB-C
+.. doxygenfunction:: tiledb_dimension_get_filter_list
+    :project: TileDB-C
+.. doxygenfunction:: tiledb_dimension_set_filter_list
+    :project: TileDB-C
 .. doxygenfunction:: tiledb_dimension_get_tile_extent
     :project: TileDB-C
 .. doxygenfunction:: tiledb_dimension_dump
@@ -409,6 +417,8 @@ Query
 .. doxygenfunction:: tiledb_query_add_range
     :project: TileDB-C
 .. doxygenfunction:: tiledb_query_get_range
+    :project: TileDB-C
+.. doxygenfunction:: tiledb_query_add_range_var
     :project: TileDB-C
 .. doxygenfunction:: tiledb_query_get_range_num
     :project: TileDB-C
