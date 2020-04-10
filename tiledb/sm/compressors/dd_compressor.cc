@@ -36,7 +36,6 @@
 #include "tiledb/sm/buffer/preallocated_buffer.h"
 #include "tiledb/sm/enums/datatype.h"
 #include "tiledb/sm/misc/logger.h"
-#include "tiledb/sm/misc/stats.h"
 
 /* ****************************** */
 /*             MACROS             */
@@ -55,8 +54,6 @@ const uint64_t DoubleDelta::OVERHEAD = 17;
 
 Status DoubleDelta::compress(
     Datatype type, ConstBuffer* input_buffer, Buffer* output_buffer) {
-  STATS_FUNC_IN(compressor_dd_compress);
-
   switch (type) {
     case Datatype::INT8:
       return DoubleDelta::compress<int8_t>(input_buffer, output_buffer);
@@ -108,16 +105,12 @@ Status DoubleDelta::compress(
   assert(false);
   return LOG_STATUS(Status::TileIOError(
       "Cannot compress tile with DoubleDelta; Not supported datatype"));
-
-  STATS_FUNC_OUT(compressor_dd_compress);
 }
 
 Status DoubleDelta::decompress(
     Datatype type,
     ConstBuffer* input_buffer,
     PreallocatedBuffer* output_buffer) {
-  STATS_FUNC_IN(compressor_dd_decompress);
-
   switch (type) {
     case Datatype::INT8:
       return DoubleDelta::decompress<int8_t>(input_buffer, output_buffer);
@@ -169,8 +162,6 @@ Status DoubleDelta::decompress(
   assert(false);
   return LOG_STATUS(Status::TileIOError(
       "Cannot decompress tile with DoubleDelta; Not supported datatype"));
-
-  STATS_FUNC_OUT(compressor_dd_decompress);
 }
 
 uint64_t DoubleDelta::overhead(uint64_t nbytes) {

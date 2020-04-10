@@ -37,7 +37,6 @@
 #include "tiledb/sm/filter/encryption_aes256gcm_filter.h"
 #include "tiledb/sm/misc/logger.h"
 #include "tiledb/sm/misc/parallel_functions.h"
-#include "tiledb/sm/misc/stats.h"
 #include "tiledb/sm/storage_manager/storage_manager.h"
 #include "tiledb/sm/tile/tile.h"
 
@@ -64,8 +63,6 @@ uint64_t TileIO::file_size() const {
 
 Status TileIO::is_generic_tile(
     const StorageManager* sm, const URI& uri, bool* is_generic_tile) {
-  STATS_FUNC_IN(tileio_is_generic_tile);
-
   *is_generic_tile = false;
 
   bool is_file;
@@ -88,8 +85,6 @@ Status TileIO::is_generic_tile(
 
   *is_generic_tile = true;
   return Status::Ok();
-
-  STATS_FUNC_OUT(tileio_is_generic_tile);
 }
 
 Status TileIO::read_generic(
@@ -97,8 +92,6 @@ Status TileIO::read_generic(
     uint64_t file_offset,
     const EncryptionKey& encryption_key,
     const Config& config) {
-  STATS_FUNC_IN(tileio_read_generic);
-
   GenericTileHeader header;
   RETURN_NOT_OK(
       read_generic_tile_header(storage_manager_, uri_, file_offset, &header));
@@ -139,12 +132,8 @@ Status TileIO::read_generic(
   RETURN_NOT_OK_ELSE(header.filters.run_reverse(*tile, config), delete *tile);
 
   file_size_ = header.persisted_size;
-  STATS_COUNTER_ADD(tileio_read_num_bytes_read, header.persisted_size);
-  STATS_COUNTER_ADD(tileio_read_num_resulting_bytes, (*tile)->size());
 
   return Status::Ok();
-
-  STATS_FUNC_OUT(tileio_read_generic);
 }
 
 Status TileIO::read_generic_tile_header(
@@ -178,21 +167,13 @@ Status TileIO::read_generic_tile_header(
   ConstBuffer cbuf(header_buff->data(), header_buff->size());
   RETURN_NOT_OK(header->filters.deserialize(&cbuf));
 
-  STATS_COUNTER_ADD(
-      tileio_read_num_bytes_read,
-      GenericTileHeader::BASE_SIZE + header->filter_pipeline_size);
-
   return Status::Ok();
 }
 
 Status TileIO::write_generic(
     Tile* tile, const EncryptionKey& encryption_key, uint64_t* nbytes) {
-  STATS_FUNC_IN(tileio_write_generic);
-
   // Reset the tile and buffer offset
   tile->reset_offset();
-
-  STATS_COUNTER_ADD(tileio_write_num_input_bytes, tile->size());
 
   // Create a header
   GenericTileHeader header;
@@ -206,14 +187,11 @@ Status TileIO::write_generic(
   RETURN_NOT_OK(storage_manager_->write(uri_, tile->buffer()));
 
   file_size_ = header.persisted_size;
-  STATS_COUNTER_ADD(tileio_write_num_bytes_written, header.persisted_size);
 
   *nbytes = TileIO::GenericTileHeader::BASE_SIZE + header.filter_pipeline_size +
             header.persisted_size;
 
   return Status::Ok();
-
-  STATS_FUNC_OUT(tileio_write_generic);
 }
 
 Status TileIO::write_generic_tile_header(GenericTileHeader* header) {
@@ -250,9 +228,6 @@ Status TileIO::write_generic_tile_header(GenericTileHeader* header) {
 
   // Write buffer to file
   Status st = storage_manager_->write(uri_, buff);
-
-  STATS_COUNTER_ADD(tileio_write_num_input_bytes, buff->size());
-  STATS_COUNTER_ADD(tileio_write_num_bytes_written, buff->size());
 
   delete buff;
 

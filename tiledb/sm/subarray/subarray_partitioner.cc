@@ -37,6 +37,7 @@
 #include "tiledb/sm/array_schema/dimension.h"
 #include "tiledb/sm/array_schema/domain.h"
 #include "tiledb/sm/enums/layout.h"
+#include "tiledb/sm/stats/stats.h"
 
 #include <iomanip>
 
@@ -227,6 +228,8 @@ Status SubarrayPartitioner::get_memory_budget(
 }
 
 Status SubarrayPartitioner::next(bool* unsplittable) {
+  STATS_START_TIMER(stats::Stats::TimerType::READ_NEXT_PARTITION)
+
   *unsplittable = false;
 
   if (done())
@@ -266,6 +269,8 @@ Status SubarrayPartitioner::next(bool* unsplittable) {
 
   // Must split a multi-range subarray slab
   return next_from_multi_range(unsplittable);
+
+  STATS_END_TIMER(stats::Stats::TimerType::READ_NEXT_PARTITION)
 }
 
 Status SubarrayPartitioner::set_result_budget(
@@ -340,6 +345,8 @@ Status SubarrayPartitioner::set_memory_budget(
 }
 
 Status SubarrayPartitioner::split_current(bool* unsplittable) {
+  STATS_START_TIMER(stats::Stats::TimerType::READ_SPLIT_CURRENT_PARTITION)
+
   *unsplittable = false;
 
   // Current came from splitting a multi-range partition
@@ -370,6 +377,8 @@ Status SubarrayPartitioner::split_current(bool* unsplittable) {
   state_.single_range_.push_front(current_.partition_);
   split_top_single_range(unsplittable);
   return next_from_single_range(unsplittable);
+
+  STATS_END_TIMER(stats::Stats::TimerType::READ_SPLIT_CURRENT_PARTITION)
 }
 
 const SubarrayPartitioner::State* SubarrayPartitioner::state() const {
@@ -497,31 +506,41 @@ SubarrayPartitioner SubarrayPartitioner::clone() const {
 
 Status SubarrayPartitioner::compute_current_start_end(bool* found) {
   // Preparation
-  auto array_schema = subarray_.array()->array_schema();
+  auto array = subarray_.array();
+  auto encryption_key = array->encryption_key();
+  auto array_schema = array->array_schema();
+  auto meta = array->fragment_metadata();
   std::unordered_map<std::string, Subarray::ResultSize> cur_sizes, mem_sizes;
   for (const auto& it : budget_) {
     cur_sizes[it.first] = Subarray::ResultSize();  // Est budget
     mem_sizes[it.first] = Subarray::ResultSize();  // Max memory budget
   }
 
+  std::vector<std::string> names;
+  names.reserve(budget_.size());
+  for (const auto& budget_it : budget_)
+    names.emplace_back(budget_it.first);
+
+  std::mutex mtx;
   current_.start_ = state_.start_;
   for (current_.end_ = state_.start_; current_.end_ <= state_.end_;
        ++current_.end_) {
     // Update current sizes
-    for (const auto& budget_it : budget_) {
-      auto name = budget_it.first;
-      auto var_size = array_schema->var_size(name);
-      Subarray::ResultSize est_size;
-      RETURN_NOT_OK(subarray_.compute_est_result_size(
-          name, current_.end_, var_size, &est_size));
-      auto& cur_size = cur_sizes[name];
-      auto& mem_size = mem_sizes[name];
-      cur_size.size_fixed_ += est_size.size_fixed_;
-      cur_size.size_var_ += est_size.size_var_;
-      mem_size.size_fixed_ += est_size.mem_size_fixed_;
-      mem_size.size_var_ += est_size.mem_size_var_;
-      if (cur_size.size_fixed_ > budget_it.second.size_fixed_ ||
-          cur_size.size_var_ > budget_it.second.size_var_ ||
+    std::vector<Subarray::ResultSize> est_sizes;
+    RETURN_NOT_OK(subarray_.compute_est_result_sizes(
+        encryption_key, array_schema, meta, names, current_.end_, &est_sizes));
+
+    std::lock_guard<std::mutex> block(mtx);
+    for (size_t i = 0; i < est_sizes.size(); ++i) {
+      auto& cur_size = cur_sizes[names[i]];
+      auto& mem_size = mem_sizes[names[i]];
+      auto budget_it = budget_.find(names[i]);
+      cur_size.size_fixed_ += est_sizes[i].size_fixed_;
+      cur_size.size_var_ += est_sizes[i].size_var_;
+      mem_size.size_fixed_ += est_sizes[i].mem_size_fixed_;
+      mem_size.size_var_ += est_sizes[i].mem_size_var_;
+      if (cur_size.size_fixed_ > budget_it->second.size_fixed_ ||
+          cur_size.size_var_ > budget_it->second.size_var_ ||
           mem_size.size_fixed_ > memory_budget_ ||
           mem_size.size_var_ > memory_budget_var_) {
         // Cannot find range that fits in the buffer
@@ -533,7 +552,6 @@ Status SubarrayPartitioner::compute_current_start_end(bool* found) {
         // Range found, make it inclusive
         current_.end_--;
         *found = true;
-
         return Status::Ok();
       }
     }

@@ -44,7 +44,6 @@
 #include "tiledb/sm/enums/serialization_type.h"
 #include "tiledb/sm/misc/constants.h"
 #include "tiledb/sm/misc/logger.h"
-#include "tiledb/sm/misc/stats.h"
 #include "tiledb/sm/serialization/capnp_utils.h"
 
 #include <set>
@@ -480,8 +479,6 @@ Status array_schema_serialize(
     ArraySchema* array_schema,
     SerializationType serialize_type,
     Buffer* serialized_buffer) {
-  STATS_FUNC_IN(serialization_array_schema_serialize);
-
   try {
     ::capnp::MallocMessageBuilder message;
     capnp::ArraySchema::Builder arraySchemaBuilder =
@@ -528,16 +525,12 @@ Status array_schema_serialize(
   }
 
   return Status::Ok();
-
-  STATS_FUNC_OUT(serialization_array_schema_serialize);
 }
 
 Status array_schema_deserialize(
     ArraySchema** array_schema,
     SerializationType serialize_type,
     const Buffer& serialized_buffer) {
-  STATS_FUNC_IN(serialization_array_schema_deserialize);
-
   try {
     std::unique_ptr<ArraySchema> decoded_array_schema = nullptr;
 
@@ -591,8 +584,6 @@ Status array_schema_deserialize(
   }
 
   return Status::Ok();
-
-  STATS_FUNC_OUT(serialization_array_schema_deserialize);
 }
 
 Status nonempty_domain_serialize(

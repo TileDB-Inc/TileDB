@@ -41,6 +41,7 @@
 #include "tiledb/sm/misc/parallel_functions.h"
 #include "tiledb/sm/misc/utils.h"
 #include "tiledb/sm/rtree/rtree.h"
+#include "tiledb/sm/stats/stats.h"
 
 #include <iomanip>
 #include <sstream>
@@ -150,6 +151,66 @@ Status Subarray::add_range_unsafe(uint32_t dim_idx, const Range& range) {
 
 const Array* Subarray::array() const {
   return array_;
+}
+
+uint64_t Subarray::cell_num(uint64_t range_idx) const {
+  uint64_t cell_num = 1, range;
+  auto array_schema = array_->array_schema();
+  unsigned dim_num = array_schema->dim_num();
+  auto cell_order = array_->array_schema()->cell_order();
+  auto layout = (layout_ == Layout::UNORDERED) ? cell_order : layout_;
+  uint64_t tmp_idx = range_idx;
+
+  // Unary case or GLOBAL_ORDER
+  if (range_num() == 1) {
+    for (unsigned d = 0; d < dim_num; ++d) {
+      range = array_schema->dimension(d)->domain_range(ranges_[d][0]);
+      if (range == std::numeric_limits<uint64_t>::max())  // Overflow
+        return range;
+
+      cell_num = utils::math::safe_mul(range, cell_num);
+      if (cell_num == std::numeric_limits<uint64_t>::max())  // Overflow
+        return cell_num;
+    }
+
+    return cell_num;
+  }
+
+  // Non-unary case (range_offsets_ must be computed)
+  if (layout == Layout::ROW_MAJOR) {
+    assert(!range_offsets_.empty());
+    for (unsigned d = 0; d < dim_num; ++d) {
+      range = array_schema->dimension(d)->domain_range(
+          ranges_[d][tmp_idx / range_offsets_[d]]);
+      tmp_idx %= range_offsets_[d];
+      if (range == std::numeric_limits<uint64_t>::max())  // Overflow
+        return range;
+
+      cell_num = utils::math::safe_mul(range, cell_num);
+      if (cell_num == std::numeric_limits<uint64_t>::max())  // Overflow
+        return cell_num;
+    }
+  } else if (layout == Layout::COL_MAJOR) {
+    assert(!range_offsets_.empty());
+    for (unsigned d = dim_num - 1;; --d) {
+      range = array_schema->dimension(d)->domain_range(
+          ranges_[d][tmp_idx / range_offsets_[d]]);
+      tmp_idx %= range_offsets_[d];
+      if (range == std::numeric_limits<uint64_t>::max())  // Overflow
+        return range;
+
+      cell_num = utils::math::safe_mul(range, cell_num);
+      if (cell_num == std::numeric_limits<uint64_t>::max())  // Overflow
+        return cell_num;
+
+      if (d == 0)
+        break;
+    }
+  } else {  // GLOBAL_ORDER handled above
+    assert(false);
+  }
+
+  return cell_num;
 }
 
 void Subarray::clear() {
@@ -699,11 +760,14 @@ const std::vector<std::vector<TileOverlap>>& Subarray::tile_overlap() const {
 }
 
 template <class T>
-void Subarray::compute_tile_coords() {
+Status Subarray::compute_tile_coords() {
+  STATS_START_TIMER(stats::Stats::TimerType::READ_COMPUTE_TILE_COORDS)
+
   if (array_->array_schema()->tile_order() == Layout::ROW_MAJOR)
-    compute_tile_coords_row<T>();
-  else
-    compute_tile_coords_col<T>();
+    return compute_tile_coords_row<T>();
+  return compute_tile_coords_col<T>();
+
+  STATS_END_TIMER(stats::Stats::TimerType::READ_COMPUTE_TILE_COORDS)
 }
 
 template <class T>
@@ -770,6 +834,8 @@ void Subarray::compute_range_offsets() {
 }
 
 Status Subarray::compute_est_result_size() {
+  STATS_START_TIMER(stats::Stats::TimerType::READ_COMPUTE_EST_RESULT_SIZE)
+
   if (est_result_size_computed_)
     return Status::Ok();
 
@@ -790,6 +856,7 @@ Status Subarray::compute_est_result_size() {
 
   // Compute estimated result in parallel over fragments and ranges
   auto meta = array_->fragment_metadata();
+  auto fragment_num = meta.size();
   auto range_num = this->range_num();
 
   // Get attribute and dimension names
@@ -815,7 +882,6 @@ Status Subarray::compute_est_result_size() {
   auto encryption_key = array_->encryption_key();
   uint64_t size;
   if (!name.empty()) {
-    auto fragment_num = meta.size();
     auto statuses = parallel_for(0, fragment_num, [&](uint64_t f) {
       auto name = array_schema->attribute(0)->name();
       RETURN_NOT_OK(meta[f]->tile_var_size(*encryption_key, name, 0, &size));
@@ -827,16 +893,15 @@ Status Subarray::compute_est_result_size() {
 
   // Compute estimated result sizes in parallel across ranges
   auto statuses = parallel_for(0, range_num, [&](uint64_t r) {
-    for (unsigned i = 0; i < num; ++i) {
-      bool var_size = array_schema->var_size(names[i]);
-      ResultSize result_size;
-      RETURN_NOT_OK(
-          compute_est_result_size(names[i], r, var_size, &result_size));
-      std::lock_guard<std::mutex> block(mtx);
-      est_result_size_vec[i].size_fixed_ += result_size.size_fixed_;
-      est_result_size_vec[i].size_var_ += result_size.size_var_;
-      est_result_size_vec[i].mem_size_fixed_ += result_size.mem_size_fixed_;
-      est_result_size_vec[i].mem_size_var_ += result_size.mem_size_var_;
+    std::vector<ResultSize> result_sizes;
+    RETURN_NOT_OK(compute_est_result_sizes(
+        encryption_key, array_schema, meta, names, r, &result_sizes));
+    std::lock_guard<std::mutex> block(mtx);
+    for (size_t i = 0; i < result_sizes.size(); ++i) {
+      est_result_size_vec[i].size_fixed_ += result_sizes[i].size_fixed_;
+      est_result_size_vec[i].size_var_ += result_sizes[i].size_var_;
+      est_result_size_vec[i].mem_size_fixed_ += result_sizes[i].mem_size_fixed_;
+      est_result_size_vec[i].mem_size_var_ += result_sizes[i].mem_size_var_;
     }
     return Status::Ok();
   });
@@ -858,46 +923,47 @@ Status Subarray::compute_est_result_size() {
   est_result_size_computed_ = true;
 
   return Status::Ok();
+
+  STATS_END_TIMER(stats::Stats::TimerType::READ_COMPUTE_EST_RESULT_SIZE)
 }
 
-Status Subarray::compute_est_result_size(
-    const std::string& name,
+Status Subarray::compute_est_result_sizes(
+    const EncryptionKey* encryption_key,
+    const ArraySchema* array_schema,
+    const std::vector<FragmentMetadata*>& fragment_meta,
+    const std::vector<std::string>& names,
     uint64_t range_idx,
-    bool var_size,
-    ResultSize* result_size) const {
-  ResultSize ret{0.0, 0.0, 0, 0};
-
-  // Zipped coords applicable only in homogeneous domains
-  if (name == constants::coords &&
-      !array_->array_schema()->domain()->all_dims_same_type()) {
-    *result_size = ret;
-    return Status::Ok();
-  }
-
-  // For easy reference
-  auto fragment_num = array_->fragment_metadata().size();
-  auto array_schema = array_->array_schema();
-  auto domain = array_schema->domain();
-  auto encryption_key = array_->encryption_key();
-  uint64_t size;
+    std::vector<ResultSize>* result_sizes) const {
+  result_sizes->resize(names.size(), {0.0, 0.0, 0, 0});
+  auto all_dims_same_type = array_schema->domain()->all_dims_same_type();
 
   // Compute estimated result
+  auto fragment_num = (unsigned)fragment_meta.size();
   for (unsigned f = 0; f < fragment_num; ++f) {
     const auto& overlap = tile_overlap_[f][range_idx];
-    auto meta = array_->fragment_metadata()[f];
+    auto meta = fragment_meta[f];
 
     // Parse tile ranges
+    uint64_t tile_size = 0, tile_var_size = 0;
     for (const auto& tr : overlap.tile_ranges_) {
       for (uint64_t tid = tr.first; tid <= tr.second; ++tid) {
-        if (!var_size) {
-          ret.size_fixed_ += meta->tile_size(name, tid);
-          ret.mem_size_fixed_ += meta->tile_size(name, tid);
-        } else {
-          ret.size_fixed_ += meta->tile_size(name, tid);
-          RETURN_NOT_OK(meta->tile_var_size(*encryption_key, name, tid, &size));
-          ret.size_var_ += size;
-          ret.mem_size_fixed_ += meta->tile_size(name, tid);
-          ret.mem_size_var_ += size;
+        for (size_t n = 0; n < names.size(); ++n) {
+          // Zipped coords applicable only in homogeneous domains
+          if (names[n] == constants::coords && !all_dims_same_type)
+            continue;
+
+          tile_size = meta->tile_size(names[n], tid);
+          if (!array_schema->var_size(names[n])) {
+            (*result_sizes)[n].size_fixed_ += tile_size;
+            (*result_sizes)[n].mem_size_fixed_ += tile_size;
+          } else {
+            (*result_sizes)[n].size_fixed_ += tile_size;
+            RETURN_NOT_OK(meta->tile_var_size(
+                *encryption_key, names[n], tid, &tile_var_size));
+            (*result_sizes)[n].size_var_ += tile_var_size;
+            (*result_sizes)[n].mem_size_fixed_ += tile_size;
+            (*result_sizes)[n].mem_size_var_ += tile_var_size;
+          }
         }
       }
     }
@@ -906,42 +972,57 @@ Status Subarray::compute_est_result_size(
     for (const auto& t : overlap.tiles_) {
       auto tid = t.first;
       auto ratio = t.second;
-      if (!var_size) {
-        ret.size_fixed_ += meta->tile_size(name, tid) * ratio;
-        ret.mem_size_fixed_ += meta->tile_size(name, tid);
-      } else {
-        ret.size_fixed_ += meta->tile_size(name, tid) * ratio;
-        RETURN_NOT_OK(meta->tile_var_size(*encryption_key, name, tid, &size));
-        ret.size_var_ += size * ratio;
-        ret.mem_size_fixed_ += meta->tile_size(name, tid);
-        ret.mem_size_var_ += size;
+      for (size_t n = 0; n < names.size(); ++n) {
+        // Zipped coords applicable only in homogeneous domains
+        if (names[n] == constants::coords && !all_dims_same_type)
+          continue;
+
+        tile_size = meta->tile_size(names[n], tid);
+        if (!array_schema->var_size(names[n])) {
+          (*result_sizes)[n].size_fixed_ += tile_size * ratio;
+          (*result_sizes)[n].mem_size_fixed_ += tile_size;
+        } else {
+          (*result_sizes)[n].size_fixed_ += tile_size * ratio;
+          RETURN_NOT_OK(meta->tile_var_size(
+              *encryption_key, names[n], tid, &tile_var_size));
+          (*result_sizes)[n].size_var_ += tile_var_size * ratio;
+          (*result_sizes)[n].mem_size_fixed_ += tile_size;
+          (*result_sizes)[n].mem_size_var_ += tile_var_size;
+        }
       }
     }
   }
 
   // Calibrate result - applicable only to arrays without coordinate duplicates
   // and fixed dimensions
+  auto domain = array_schema->domain();
   if (!array_schema->allows_dups() && domain->all_dims_fixed()) {
     uint64_t max_size_fixed, max_size_var = UINT64_MAX;
-    auto cell_num = domain->cell_num(this->ndrange(range_idx));
-    if (var_size) {
-      max_size_fixed =
-          utils::math::safe_mul(cell_num, constants::cell_var_offset_size);
-    } else {
-      max_size_fixed =
-          utils::math::safe_mul(cell_num, array_schema->cell_size(name));
-    }
-    ret.size_fixed_ = std::min<double>(ret.size_fixed_, max_size_fixed);
-    ret.size_var_ = std::min<double>(ret.size_var_, max_size_var);
-  }
+    auto cell_num = this->cell_num(range_idx);
+    for (size_t n = 0; n < names.size(); ++n) {
+      // Zipped coords applicable only in homogeneous domains
+      if (names[n] == constants::coords && !all_dims_same_type)
+        continue;
 
-  *result_size = ret;
+      if (array_schema->var_size(names[n])) {
+        max_size_fixed =
+            utils::math::safe_mul(cell_num, constants::cell_var_offset_size);
+      } else {
+        max_size_fixed =
+            utils::math::safe_mul(cell_num, array_schema->cell_size(names[n]));
+      }
+      (*result_sizes)[n].size_fixed_ =
+          std::min<double>((*result_sizes)[n].size_fixed_, max_size_fixed);
+      (*result_sizes)[n].size_var_ =
+          std::min<double>((*result_sizes)[n].size_var_, max_size_var);
+    }
+  }
 
   return Status::Ok();
 }
 
 template <class T>
-void Subarray::compute_tile_coords_col() {
+Status Subarray::compute_tile_coords_col() {
   std::vector<std::set<T>> coords_set;
   auto array_schema = array_->array_schema();
   auto domain = array_schema->domain()->domain();
@@ -996,10 +1077,12 @@ void Subarray::compute_tile_coords_col() {
   // Compute `tile_coords_map_`
   for (size_t i = 0; i < tile_coords_.size(); ++i, ++tile_coords_pos)
     tile_coords_map_[tile_coords_[i]] = i;
+
+  return Status::Ok();
 }
 
 template <class T>
-void Subarray::compute_tile_coords_row() {
+Status Subarray::compute_tile_coords_row() {
   std::vector<std::set<T>> coords_set;
   auto array_schema = array_->array_schema();
   auto domain = array_schema->domain()->domain();
@@ -1054,9 +1137,13 @@ void Subarray::compute_tile_coords_row() {
   // Compute `tile_coords_map_`
   for (size_t i = 0; i < tile_coords_.size(); ++i, ++tile_coords_pos)
     tile_coords_map_[tile_coords_[i]] = i;
+
+  return Status::Ok();
 }
 
 Status Subarray::compute_tile_overlap() {
+  STATS_START_TIMER(stats::Stats::TimerType::READ_COMPUTE_TILE_OVERLAP)
+
   if (tile_overlap_computed_)
     return Status::Ok();
 
@@ -1089,6 +1176,8 @@ Status Subarray::compute_tile_overlap() {
   tile_overlap_computed_ = true;
 
   return Status::Ok();
+
+  STATS_END_TIMER(stats::Stats::TimerType::READ_COMPUTE_TILE_OVERLAP)
 }
 
 Subarray Subarray::clone() const {
@@ -1234,16 +1323,16 @@ void Subarray::swap(Subarray& subarray) {
 }
 
 // Explicit instantiations
-template void Subarray::compute_tile_coords<int8_t>();
-template void Subarray::compute_tile_coords<uint8_t>();
-template void Subarray::compute_tile_coords<int16_t>();
-template void Subarray::compute_tile_coords<uint16_t>();
-template void Subarray::compute_tile_coords<int32_t>();
-template void Subarray::compute_tile_coords<uint32_t>();
-template void Subarray::compute_tile_coords<int64_t>();
-template void Subarray::compute_tile_coords<uint64_t>();
-template void Subarray::compute_tile_coords<float>();
-template void Subarray::compute_tile_coords<double>();
+template Status Subarray::compute_tile_coords<int8_t>();
+template Status Subarray::compute_tile_coords<uint8_t>();
+template Status Subarray::compute_tile_coords<int16_t>();
+template Status Subarray::compute_tile_coords<uint16_t>();
+template Status Subarray::compute_tile_coords<int32_t>();
+template Status Subarray::compute_tile_coords<uint32_t>();
+template Status Subarray::compute_tile_coords<int64_t>();
+template Status Subarray::compute_tile_coords<uint64_t>();
+template Status Subarray::compute_tile_coords<float>();
+template Status Subarray::compute_tile_coords<double>();
 
 template const int8_t* Subarray::tile_coords_ptr<int8_t>(
     const std::vector<int8_t>& tile_coords,

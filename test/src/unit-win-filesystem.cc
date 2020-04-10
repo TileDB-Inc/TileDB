@@ -37,7 +37,6 @@
 #include <cassert>
 #include "tiledb/sm/config/config.h"
 #include "tiledb/sm/filesystem/win.h"
-#include "tiledb/sm/misc/stats.h"
 #include "tiledb/sm/misc/status.h"
 #include "tiledb/sm/misc/thread_pool.h"
 
@@ -190,10 +189,6 @@ TEST_CASE_METHOD(WinFx, "Test Windows filesystem", "[windows]") {
     }
   }
   CHECK(allok == true);
-
-  CHECK(
-      tiledb::sm::stats::all_stats.counter_vfs_win32_write_num_parallelized >
-      0);
 
   std::vector<std::string> paths;
   st = win_.ls(test_dir.to_path(), &paths);

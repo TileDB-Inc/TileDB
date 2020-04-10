@@ -37,11 +37,12 @@
 #include "tiledb/sm/filesystem/hdfs_filesystem.h"
 #include "tiledb/sm/misc/logger.h"
 #include "tiledb/sm/misc/parallel_functions.h"
-#include "tiledb/sm/misc/stats.h"
 #include "tiledb/sm/misc/utils.h"
+#include "tiledb/sm/stats/stats.h"
 
 #include <iostream>
 #include <list>
+#include <sstream>
 #include <unordered_map>
 
 namespace tiledb {
@@ -66,8 +67,6 @@ static std::mutex filelock_mtx_;
 /* ********************************* */
 
 VFS::VFS() {
-  STATS_FUNC_VOID_IN(vfs_constructor);
-
 #ifdef HAVE_AZURE
   supported_fs_.insert(Filesystem::AZURE);
 #endif
@@ -82,8 +81,6 @@ VFS::VFS() {
 #endif
 
   init_ = false;
-
-  STATS_FUNC_VOID_OUT(vfs_constructor);
 }
 
 /* ********************************* */
@@ -91,7 +88,6 @@ VFS::VFS() {
 /* ********************************* */
 
 std::string VFS::abs_path(const std::string& path) {
-  STATS_FUNC_IN(vfs_abs_path);
   // workaround for older clang (llvm 3.5) compilers (issue #828)
   std::string path_copy = path;
 #ifdef _WIN32
@@ -113,8 +109,6 @@ std::string VFS::abs_path(const std::string& path) {
     return path_copy;
   // Certainly starts with "<resource>://" other than "file://"
   return path_copy;
-
-  STATS_FUNC_OUT(vfs_abs_path);
 }
 
 Config VFS::config() const {
@@ -122,8 +116,6 @@ Config VFS::config() const {
 }
 
 Status VFS::create_dir(const URI& uri) const {
-  STATS_FUNC_IN(vfs_create_dir);
-
   if (!init_)
     return LOG_STATUS(
         Status::VFSError("Cannot create directory; VFS not initialized"));
@@ -177,13 +169,9 @@ Status VFS::create_dir(const URI& uri) const {
   }
   return LOG_STATUS(Status::VFSError(
       std::string("Unsupported URI scheme: ") + uri.to_string()));
-
-  STATS_FUNC_OUT(vfs_create_dir);
 }
 
 Status VFS::dir_size(const URI& dir_name, uint64_t* dir_size) const {
-  STATS_FUNC_IN(vfs_dir_size);
-
   if (!init_)
     return LOG_STATUS(
         Status::VFSError("Cannot get directory size; VFS not initialized"));
@@ -219,13 +207,9 @@ Status VFS::dir_size(const URI& dir_name, uint64_t* dir_size) const {
   } while (!to_ls.empty());
 
   return Status::Ok();
-
-  STATS_FUNC_OUT(vfs_dir_size);
 }
 
 Status VFS::touch(const URI& uri) const {
-  STATS_FUNC_IN(vfs_create_file);
-
   if (!init_)
     return LOG_STATUS(
         Status::VFSError("Cannot touch file; VFS not initialized"));
@@ -269,8 +253,6 @@ Status VFS::touch(const URI& uri) const {
   }
   return LOG_STATUS(Status::VFSError(
       std::string("Unsupported URI scheme: ") + uri.to_string()));
-
-  STATS_FUNC_OUT(vfs_create_file);
 }
 
 Status VFS::cancel_all_tasks() {
@@ -283,8 +265,6 @@ Status VFS::cancel_all_tasks() {
 }
 
 Status VFS::create_bucket(const URI& uri) const {
-  STATS_FUNC_IN(vfs_create_bucket);
-
   if (!init_)
     return LOG_STATUS(
         Status::VFSError("Cannot create bucket; VFS not initialized"));
@@ -316,13 +296,9 @@ Status VFS::create_bucket(const URI& uri) const {
   return LOG_STATUS(Status::VFSError(
       std::string("Cannot create bucket; Unsupported URI scheme: ") +
       uri.to_string()));
-
-  STATS_FUNC_OUT(vfs_create_bucket);
 }
 
 Status VFS::remove_bucket(const URI& uri) const {
-  STATS_FUNC_IN(vfs_remove_bucket);
-
   if (!init_)
     return LOG_STATUS(
         Status::VFSError("Cannot remove bucket; VFS not initialized"));
@@ -354,13 +330,9 @@ Status VFS::remove_bucket(const URI& uri) const {
   return LOG_STATUS(Status::VFSError(
       std::string("Cannot remove bucket; Unsupported URI scheme: ") +
       uri.to_string()));
-
-  STATS_FUNC_OUT(vfs_remove_bucket);
 }
 
 Status VFS::empty_bucket(const URI& uri) const {
-  STATS_FUNC_IN(vfs_empty_bucket);
-
   if (!init_)
     return LOG_STATUS(
         Status::VFSError("Cannot empty bucket; VFS not "
@@ -393,13 +365,9 @@ Status VFS::empty_bucket(const URI& uri) const {
   return LOG_STATUS(Status::VFSError(
       std::string("Cannot empty bucket; Unsupported URI scheme: ") +
       uri.to_string()));
-
-  STATS_FUNC_OUT(vfs_empty_bucket);
 }
 
 Status VFS::is_empty_bucket(const URI& uri, bool* is_empty) const {
-  STATS_FUNC_IN(vfs_is_empty_bucket);
-
   if (!init_)
     return LOG_STATUS(
         Status::VFSError("Cannot check if bucket is empty; "
@@ -435,13 +403,9 @@ Status VFS::is_empty_bucket(const URI& uri, bool* is_empty) const {
   return LOG_STATUS(Status::VFSError(
       std::string("Cannot remove bucket; Unsupported URI scheme: ") +
       uri.to_string()));
-
-  STATS_FUNC_OUT(vfs_is_empty_bucket);
 }
 
 Status VFS::remove_dir(const URI& uri) const {
-  STATS_FUNC_IN(vfs_remove_dir);
-
   if (!init_)
     return LOG_STATUS(
         Status::VFSError("Cannot remove directory; VFS not "
@@ -483,13 +447,9 @@ Status VFS::remove_dir(const URI& uri) const {
     return LOG_STATUS(
         Status::VFSError("Unsupported URI scheme: " + uri.to_string()));
   }
-
-  STATS_FUNC_OUT(vfs_remove_dir);
 }
 
 Status VFS::remove_file(const URI& uri) const {
-  STATS_FUNC_IN(vfs_remove_file);
-
   if (!init_)
     return LOG_STATUS(
         Status::VFSError("Cannot remove file; VFS not initialized"));
@@ -533,13 +493,9 @@ Status VFS::remove_file(const URI& uri) const {
   }
   return LOG_STATUS(
       Status::VFSError("Unsupported URI scheme: " + uri.to_string()));
-
-  STATS_FUNC_OUT(vfs_remove_file);
 }
 
 Status VFS::filelock_lock(const URI& uri, filelock_t* lock, bool shared) const {
-  STATS_FUNC_IN(vfs_filelock_lock);
-
   if (!init_)
     return LOG_STATUS(
         Status::VFSError("Cannot lock filelock; VFS not initialized"));
@@ -610,13 +566,9 @@ Status VFS::filelock_lock(const URI& uri, filelock_t* lock, bool shared) const {
   }
   return LOG_STATUS(
       Status::VFSError("Unsupported URI scheme: " + uri.to_string()));
-
-  STATS_FUNC_OUT(vfs_filelock_lock);
 }
 
 Status VFS::filelock_unlock(const URI& uri) const {
-  STATS_FUNC_IN(vfs_filelock_unlock);
-
   if (!init_)
     return LOG_STATUS(
         Status::VFSError("Cannot unlock filelock; VFS not initialized"));
@@ -681,8 +633,6 @@ Status VFS::filelock_unlock(const URI& uri) const {
   }
   return LOG_STATUS(
       Status::VFSError("Unsupported URI scheme: " + uri.to_string()));
-
-  STATS_FUNC_OUT(vfs_filelock_unlock);
 }
 
 Status VFS::decr_lock_count(
@@ -743,8 +693,6 @@ Status VFS::max_parallel_ops(const URI& uri, uint64_t* ops) const {
 }
 
 Status VFS::file_size(const URI& uri, uint64_t* size) const {
-  STATS_FUNC_IN(vfs_file_size);
-
   if (!init_)
     return LOG_STATUS(
         Status::VFSError("Cannot get file size; VFS not initialized"));
@@ -788,13 +736,9 @@ Status VFS::file_size(const URI& uri, uint64_t* size) const {
   }
   return LOG_STATUS(
       Status::VFSError("Unsupported URI scheme: " + uri.to_string()));
-
-  STATS_FUNC_OUT(vfs_file_size);
 }
 
 Status VFS::is_dir(const URI& uri, bool* is_dir) const {
-  STATS_FUNC_IN(vfs_is_dir);
-
   if (!init_)
     return LOG_STATUS(
         Status::VFSError("Cannot check directory; VFS not initialized"));
@@ -843,13 +787,9 @@ Status VFS::is_dir(const URI& uri, bool* is_dir) const {
   }
   return LOG_STATUS(
       Status::VFSError("Unsupported URI scheme: " + uri.to_string()));
-
-  STATS_FUNC_OUT(vfs_is_dir);
 }
 
 Status VFS::is_file(const URI& uri, bool* is_file) const {
-  STATS_FUNC_IN(vfs_is_file);
-
   if (!init_)
     return LOG_STATUS(
         Status::VFSError("Cannot check file; VFS not initialized"));
@@ -899,13 +839,9 @@ Status VFS::is_file(const URI& uri, bool* is_file) const {
   }
   return LOG_STATUS(
       Status::VFSError("Unsupported URI scheme: " + uri.to_string()));
-
-  STATS_FUNC_OUT(vfs_is_file);
 }
 
 Status VFS::is_bucket(const URI& uri, bool* is_bucket) const {
-  STATS_FUNC_IN(vfs_is_bucket);
-
   if (!init_)
     return LOG_STATUS(
         Status::VFSError("Cannot check bucket; VFS not initialized"));
@@ -941,13 +877,9 @@ Status VFS::is_bucket(const URI& uri, bool* is_bucket) const {
 
   return LOG_STATUS(
       Status::VFSError("Unsupported URI scheme: " + uri.to_string()));
-
-  STATS_FUNC_OUT(vfs_is_bucket);
 }
 
 Status VFS::init(const Config* ctx_config, const Config* vfs_config) {
-  STATS_FUNC_IN(vfs_init);
-
   // Set appropriately the config
   if (ctx_config)
     config_ = *ctx_config;
@@ -990,25 +922,17 @@ Status VFS::init(const Config* ctx_config, const Config* vfs_config) {
   init_ = true;
 
   return Status::Ok();
-
-  STATS_FUNC_OUT(vfs_init);
 }
 
 Status VFS::terminate() {
-  STATS_FUNC_IN(vfs_terminate);
-
 #ifdef HAVE_S3
   return s3_.disconnect();
 #endif
 
   return Status::Ok();
-
-  STATS_FUNC_OUT(vfs_terminate);
 }
 
 Status VFS::ls(const URI& parent, std::vector<URI>* uris) const {
-  STATS_FUNC_IN(vfs_ls);
-
   if (!init_)
     return LOG_STATUS(Status::VFSError("Cannot list; VFS not initialized"));
 
@@ -1054,13 +978,9 @@ Status VFS::ls(const URI& parent, std::vector<URI>* uris) const {
     uris->emplace_back(path);
   }
   return Status::Ok();
-
-  STATS_FUNC_OUT(vfs_ls);
 }
 
 Status VFS::move_file(const URI& old_uri, const URI& new_uri) {
-  STATS_FUNC_IN(vfs_move_file);
-
   if (!init_)
     return LOG_STATUS(
         Status::VFSError("Cannot move file; VFS not initialized"));
@@ -1140,13 +1060,9 @@ Status VFS::move_file(const URI& old_uri, const URI& new_uri) {
   return LOG_STATUS(Status::VFSError(
       "Unsupported URI schemes: " + old_uri.to_string() + ", " +
       new_uri.to_string()));
-
-  STATS_FUNC_OUT(vfs_move_file);
 }
 
 Status VFS::move_dir(const URI& old_uri, const URI& new_uri) {
-  STATS_FUNC_IN(vfs_move_dir);
-
   if (!init_)
     return LOG_STATUS(
         Status::VFSError("Cannot move directory; VFS not initialized"));
@@ -1220,18 +1136,14 @@ Status VFS::move_dir(const URI& old_uri, const URI& new_uri) {
   return LOG_STATUS(Status::VFSError(
       "Unsupported URI schemes: " + old_uri.to_string() + ", " +
       new_uri.to_string()));
-
-  STATS_FUNC_OUT(vfs_move_dir);
 }
 
 Status VFS::read(
     const URI& uri, uint64_t offset, void* buffer, uint64_t nbytes) {
-  STATS_FUNC_IN(vfs_read);
+  STATS_ADD_COUNTER(stats::Stats::CounterType::READ_BYTE_NUM, nbytes);
 
   if (!init_)
     return LOG_STATUS(Status::VFSError("Cannot read; VFS not initialized"));
-
-  STATS_COUNTER_ADD(vfs_read_total_bytes, nbytes);
 
   // Get config params
   bool found;
@@ -1251,7 +1163,6 @@ Status VFS::read(
   if (num_ops == 1) {
     return read_impl(uri, offset, buffer, nbytes);
   } else {
-    STATS_COUNTER_ADD(vfs_read_num_parallelized, 1);
     std::vector<std::future<Status>> results;
     uint64_t thread_read_nbytes = utils::math::ceil(nbytes, num_ops);
 
@@ -1277,8 +1188,6 @@ Status VFS::read(
     }
     return st;
   }
-
-  STATS_FUNC_OUT(vfs_read);
 }
 
 Status VFS::read_impl(
@@ -1329,12 +1238,8 @@ Status VFS::read_all(
     const std::vector<std::tuple<uint64_t, void*, uint64_t>>& regions,
     ThreadPool* thread_pool,
     std::vector<std::future<Status>>* tasks) {
-  STATS_FUNC_IN(vfs_read_all);
-
   if (!init_)
     return LOG_STATUS(Status::VFSError("Cannot read all; VFS not initialized"));
-
-  STATS_COUNTER_ADD(vfs_read_all_total_regions, regions.size());
 
   // Ensure no deadlock due to shared threadpool
   assert(thread_pool != &thread_pool_);
@@ -1371,8 +1276,6 @@ Status VFS::read_all(
   }
 
   return Status::Ok();
-
-  STATS_FUNC_OUT(vfs_read_all);
 }
 
 Status VFS::compute_read_batches(
@@ -1432,11 +1335,7 @@ Status VFS::compute_read_batches(
 }
 
 bool VFS::supports_fs(Filesystem fs) const {
-  STATS_FUNC_IN(vfs_supports_fs);
-
   return (supported_fs_.find(fs) != supported_fs_.end());
-
-  STATS_FUNC_OUT(vfs_supports_fs);
 }
 
 bool VFS::supports_uri_scheme(const URI& uri) const {
@@ -1454,8 +1353,6 @@ bool VFS::supports_uri_scheme(const URI& uri) const {
 }
 
 Status VFS::sync(const URI& uri) {
-  STATS_FUNC_IN(vfs_sync);
-
   if (!init_)
     return LOG_STATUS(Status::VFSError("Cannot sync; VFS not initialized"));
 
@@ -1498,13 +1395,9 @@ Status VFS::sync(const URI& uri) {
   }
   return LOG_STATUS(
       Status::VFSError("Unsupported URI scheme: " + uri.to_string()));
-
-  STATS_FUNC_OUT(vfs_sync);
 }
 
 Status VFS::open_file(const URI& uri, VFSMode mode) {
-  STATS_FUNC_IN(vfs_open_file);
-
   if (!init_)
     return LOG_STATUS(
         Status::VFSError("Cannot open file; VFS not initialized"));
@@ -1558,13 +1451,9 @@ Status VFS::open_file(const URI& uri, VFSMode mode) {
   }
 
   return Status::Ok();
-
-  STATS_FUNC_OUT(vfs_open_file);
 }
 
 Status VFS::close_file(const URI& uri) {
-  STATS_FUNC_IN(vfs_close_file);
-
   if (!init_)
     return LOG_STATUS(
         Status::VFSError("Cannot close file; VFS not initialized"));
@@ -1608,17 +1497,13 @@ Status VFS::close_file(const URI& uri) {
   }
   return LOG_STATUS(
       Status::VFSError("Unsupported URI schemes: " + uri.to_string()));
-
-  STATS_FUNC_OUT(vfs_close_file);
 }
 
 Status VFS::write(const URI& uri, const void* buffer, uint64_t buffer_size) {
-  STATS_FUNC_IN(vfs_write);
+  STATS_ADD_COUNTER(stats::Stats::CounterType::WRITE_BYTE_NUM, buffer_size);
 
   if (!init_)
     return LOG_STATUS(Status::VFSError("Cannot write; VFS not initialized"));
-
-  STATS_COUNTER_ADD(vfs_write_total_bytes, buffer_size);
 
   if (uri.is_file()) {
 #ifdef _WIN32
@@ -1659,8 +1544,6 @@ Status VFS::write(const URI& uri, const void* buffer, uint64_t buffer_size) {
   }
   return LOG_STATUS(
       Status::VFSError("Unsupported URI schemes: " + uri.to_string()));
-
-  STATS_FUNC_OUT(vfs_write);
 }
 
 }  // namespace sm

@@ -34,7 +34,6 @@
 #include "tiledb/sm/filesystem/win.h"
 #include "tiledb/sm/misc/constants.h"
 #include "tiledb/sm/misc/logger.h"
-#include "tiledb/sm/misc/stats.h"
 #include "tiledb/sm/misc/utils.h"
 
 #include <Shlwapi.h>
@@ -43,6 +42,7 @@
 #include <cassert>
 #include <fstream>
 #include <iostream>
+#include <sstream>
 
 namespace tiledb {
 namespace sm {
@@ -470,7 +470,6 @@ Status Win::write(
           Status::IOError(std::string("Cannot write to file '") + path));
     }
   } else {
-    STATS_COUNTER_ADD(vfs_win32_write_num_parallelized, 1);
     std::vector<std::future<Status>> results;
     uint64_t thread_write_nbytes = utils::math::ceil(buffer_size, num_ops);
     for (uint64_t i = 0; i < num_ops; i++) {
