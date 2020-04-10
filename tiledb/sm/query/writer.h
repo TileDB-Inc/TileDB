@@ -965,6 +965,9 @@ class Writer {
    * @return Status
    */
   Status set_coords_buffer(void* buffer, uint64_t* buffer_size);
+
+  /** Gets statistics about dimensions and attributes written. */
+  void get_dim_attr_stats() const;
 };
 
 }  // namespace sm

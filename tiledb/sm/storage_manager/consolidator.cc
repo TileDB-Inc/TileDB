@@ -42,6 +42,7 @@
 #include "tiledb/sm/misc/utils.h"
 #include "tiledb/sm/misc/uuid.h"
 #include "tiledb/sm/query/query.h"
+#include "tiledb/sm/stats/stats.h"
 #include "tiledb/sm/storage_manager/storage_manager.h"
 #include "tiledb/sm/tile/tile.h"
 #include "tiledb/sm/tile/tile_io.h"
@@ -96,6 +97,8 @@ Status Consolidator::consolidate_array_meta(
     EncryptionType encryption_type,
     const void* encryption_key,
     uint32_t key_length) {
+  STATS_START_TIMER(stats::Stats::TimerType::CONSOLIDATE_ARRAY_META)
+
   // Open array for reading
   auto array_uri = URI(array_name);
   Array array_for_reads(array_uri, storage_manager_);
@@ -165,6 +168,8 @@ Status Consolidator::consolidate_array_meta(
   RETURN_NOT_OK(storage_manager_->vfs()->close_file(vac_uri));
 
   return Status::Ok();
+
+  STATS_END_TIMER(stats::Stats::TimerType::CONSOLIDATE_ARRAY_META)
 }
 
 /* ****************************** */
@@ -176,6 +181,8 @@ Status Consolidator::consolidate_fragments(
     EncryptionType encryption_type,
     const void* encryption_key,
     uint32_t key_length) {
+  STATS_START_TIMER(stats::Stats::TimerType::CONSOLIDATE_FRAGS)
+
   // Get array schema
   URI array_uri = URI(array_name);
   EncryptionKey enc_key;
@@ -192,6 +199,8 @@ Status Consolidator::consolidate_fragments(
   delete array_schema;
 
   return Status::Ok();
+
+  STATS_END_TIMER(stats::Stats::TimerType::CONSOLIDATE_FRAGS)
 }
 
 bool Consolidator::all_sparse(
@@ -431,6 +440,8 @@ Status Consolidator::consolidate_fragment_meta(
     EncryptionType encryption_type,
     const void* encryption_key,
     uint32_t key_length) {
+  STATS_START_TIMER(stats::Stats::TimerType::CONSOLIDATE_FRAG_META)
+
   // Open array for reading
   Array array(array_uri, storage_manager_);
   RETURN_NOT_OK(
@@ -521,6 +532,8 @@ Status Consolidator::consolidate_fragment_meta(
   RETURN_NOT_OK(storage_manager_->close_file(uri));
 
   return Status::Ok();
+
+  STATS_END_TIMER(stats::Stats::TimerType::CONSOLIDATE_FRAG_META)
 }
 
 Status Consolidator::copy_array(

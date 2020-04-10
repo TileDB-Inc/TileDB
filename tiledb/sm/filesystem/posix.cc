@@ -35,7 +35,6 @@
 #include "tiledb/sm/filesystem/posix.h"
 #include "tiledb/sm/misc/constants.h"
 #include "tiledb/sm/misc/logger.h"
-#include "tiledb/sm/misc/stats.h"
 #include "tiledb/sm/misc/thread_pool.h"
 #include "tiledb/sm/misc/utils.h"
 
@@ -45,6 +44,7 @@
 #include <fstream>
 #include <future>
 #include <iostream>
+#include <sstream>
 
 namespace tiledb {
 namespace sm {
@@ -505,7 +505,6 @@ Status Posix::write(
       return LOG_STATUS(Status::IOError(errmsg.str()));
     }
   } else {
-    STATS_COUNTER_ADD(vfs_posix_write_num_parallelized, 1);
     std::vector<std::future<Status>> results;
     uint64_t thread_write_nbytes = utils::math::ceil(buffer_size, num_ops);
     for (uint64_t i = 0; i < num_ops; i++) {

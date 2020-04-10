@@ -33,7 +33,6 @@
 #include "tiledb/sm/cache/lru_cache.h"
 #include "tiledb/sm/buffer/buffer.h"
 #include "tiledb/sm/misc/logger.h"
-#include "tiledb/sm/misc/stats.h"
 
 #include <cassert>
 #include <cstdlib>
@@ -76,8 +75,6 @@ void LRUCache::clear() {
 
 Status LRUCache::insert(
     const std::string& key, void* object, uint64_t size, bool overwrite) {
-  STATS_FUNC_IN(cache_lru_insert);
-
   // Do nothing if the object size is bigger than the cache maximum size
   if (size > max_size_)
     return Status::Ok();
@@ -132,16 +129,10 @@ Status LRUCache::insert(
   }
   size_ += size;
 
-  STATS_COUNTER_ADD(cache_lru_inserts, 1);
-
   return Status::Ok();
-
-  STATS_FUNC_OUT(cache_lru_insert);
 }
 
 Status LRUCache::invalidate(const std::string& key, bool* success) {
-  STATS_FUNC_IN(cache_lru_invalidate);
-
   std::lock_guard<std::mutex> lck(mtx_);
 
   auto item_it = item_map_.find(key);
@@ -158,8 +149,6 @@ Status LRUCache::invalidate(const std::string& key, bool* success) {
   *success = true;
 
   return Status::Ok();
-
-  STATS_FUNC_OUT(cache_lru_invalidate);
 }
 
 uint64_t LRUCache::size() const {
@@ -171,8 +160,6 @@ uint64_t LRUCache::max_size() const {
 }
 
 Status LRUCache::read(const std::string& key, Buffer* buffer, bool* success) {
-  STATS_FUNC_IN(cache_lru_read);
-
   // Lock mutex
   std::lock_guard<std::mutex> lock{mtx_};
 
@@ -180,7 +167,6 @@ Status LRUCache::read(const std::string& key, Buffer* buffer, bool* success) {
   auto item_it = item_map_.find(key);
   if (item_it == item_map_.end()) {
     *success = false;
-    STATS_COUNTER_ADD(cache_lru_read_misses, 1);
     return Status::Ok();
   }
 
@@ -194,11 +180,7 @@ Status LRUCache::read(const std::string& key, Buffer* buffer, bool* success) {
   }
   *success = true;
 
-  STATS_COUNTER_ADD(cache_lru_read_hits, 1);
-
   return Status::Ok();
-
-  STATS_FUNC_OUT(cache_lru_read);
 }
 
 Status LRUCache::read(
@@ -207,14 +189,12 @@ Status LRUCache::read(
     uint64_t offset,
     uint64_t nbytes,
     bool* success) {
-  STATS_FUNC_IN(cache_lru_read_partial);
   std::lock_guard<std::mutex> lock{mtx_};
   *success = false;
 
   // Find cached item
   auto item_it = item_map_.find(key);
   if (item_it == item_map_.end()) {
-    STATS_COUNTER_ADD(cache_lru_read_misses, 1);
     return Status::Ok();
   }
 
@@ -233,11 +213,7 @@ Status LRUCache::read(
   }
   *success = true;
 
-  STATS_COUNTER_ADD(cache_lru_read_hits, 1);
-
   return Status::Ok();
-
-  STATS_FUNC_OUT(cache_lru_read_partial);
 }
 
 std::list<LRUCache::LRUCacheItem>::const_iterator LRUCache::item_iter_begin()
@@ -255,8 +231,6 @@ std::list<LRUCache::LRUCacheItem>::const_iterator LRUCache::item_iter_end()
 /* ****************************** */
 
 void LRUCache::evict() {
-  STATS_FUNC_VOID_IN(cache_lru_evict);
-
   assert(!item_ll_.empty());
 
   auto item = item_ll_.front();
@@ -267,8 +241,6 @@ void LRUCache::evict() {
   item_map_.erase(item.key_);
   size_ -= item.size_;
   item_ll_.pop_front();
-
-  STATS_FUNC_VOID_OUT(cache_lru_evict);
 }
 
 }  // namespace sm

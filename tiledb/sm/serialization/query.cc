@@ -40,7 +40,6 @@
 #include "tiledb/sm/enums/query_type.h"
 #include "tiledb/sm/enums/serialization_type.h"
 #include "tiledb/sm/misc/logger.h"
-#include "tiledb/sm/misc/stats.h"
 #include "tiledb/sm/misc/utils.h"
 #include "tiledb/sm/query/query.h"
 #include "tiledb/sm/query/reader.h"
@@ -720,8 +719,6 @@ Status query_serialize(
     SerializationType serialize_type,
     bool clientside,
     BufferList* serialized_buffer) {
-  STATS_FUNC_IN(serialization_query_serialize);
-
   if (serialize_type == SerializationType::JSON)
     return LOG_STATUS(Status::SerializationError(
         "Cannot serialize query; json format not supported."));
@@ -809,8 +806,6 @@ Status query_serialize(
   }
 
   return Status::Ok();
-
-  STATS_FUNC_OUT(serialization_query_serialize);
 }
 
 Status do_query_deserialize(
@@ -819,8 +814,6 @@ Status do_query_deserialize(
     const SerializationContext context,
     CopyState* const copy_state,
     Query* query) {
-  STATS_FUNC_IN(serialization_query_deserialize);
-
   if (serialize_type == SerializationType::JSON)
     return LOG_STATUS(Status::SerializationError(
         "Cannot deserialize query; json format not supported."));
@@ -879,8 +872,6 @@ Status do_query_deserialize(
         "Cannot deserialize; exception: " + std::string(e.what())));
   }
   return Status::Ok();
-
-  STATS_FUNC_OUT(serialization_query_deserialize);
 }
 
 Status query_deserialize(

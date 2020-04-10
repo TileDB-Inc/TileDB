@@ -39,11 +39,11 @@
 #include "tiledb/sm/misc/comparators.h"
 #include "tiledb/sm/misc/logger.h"
 #include "tiledb/sm/misc/parallel_functions.h"
-#include "tiledb/sm/misc/stats.h"
 #include "tiledb/sm/misc/utils.h"
 #include "tiledb/sm/query/query_macros.h"
 #include "tiledb/sm/query/read_cell_slab_iter.h"
 #include "tiledb/sm/query/result_tile.h"
+#include "tiledb/sm/stats/stats.h"
 #include "tiledb/sm/storage_manager/storage_manager.h"
 #include "tiledb/sm/subarray/cell_slab.h"
 #include "tiledb/sm/tile/tile_io.h"
@@ -262,7 +262,10 @@ Reader::ReadState* Reader::read_state() {
 }
 
 Status Reader::read() {
-  STATS_FUNC_IN(reader_read);
+  get_dim_attr_stats();
+
+  STATS_START_TIMER(stats::Stats::TimerType::READ)
+  STATS_ADD_COUNTER(stats::Stats::CounterType::READ_NUM, 1)
 
   // Get next partition
   if (!read_state_.unsplittable_)
@@ -276,6 +279,8 @@ Status Reader::read() {
 
   // Loop until you find results, or unsplittable, or done
   do {
+    STATS_ADD_COUNTER(stats::Stats::CounterType::READ_LOOP_NUM, 1)
+
     read_state_.overflowed_ = false;
     reset_buffer_sizes();
 
@@ -310,7 +315,7 @@ Status Reader::read() {
 
   return Status::Ok();
 
-  STATS_FUNC_OUT(reader_read);
+  STATS_END_TIMER(stats::Stats::TimerType::READ)
 }
 
 void Reader::set_array(const Array* array) {
@@ -553,7 +558,8 @@ void Reader::clear_tiles(
 Status Reader::compute_result_cell_slabs(
     const std::vector<ResultCoords>& result_coords,
     std::vector<ResultCellSlab>* result_cell_slabs) const {
-  STATS_FUNC_IN(reader_compute_cell_ranges);
+  STATS_START_TIMER(
+      stats::Stats::TimerType::READ_COMPUTE_SPARSE_RESULT_CELL_SLABS_SPARSE)
 
   // Trivial case
   auto coords_num = (uint64_t)result_coords.size();
@@ -591,7 +597,8 @@ Status Reader::compute_result_cell_slabs(
 
   return Status::Ok();
 
-  STATS_FUNC_OUT(reader_compute_cell_ranges);
+  STATS_END_TIMER(
+      stats::Stats::TimerType::READ_COMPUTE_SPARSE_RESULT_CELL_SLABS_SPARSE)
 }
 
 Status Reader::compute_range_result_coords(
@@ -630,9 +637,16 @@ Status Reader::compute_range_result_coords(
     const std::map<std::pair<unsigned, uint64_t>, size_t>& result_tile_map,
     std::vector<ResultTile>* result_tiles,
     std::vector<std::vector<ResultCoords>>* range_result_coords) {
+  STATS_START_TIMER(stats::Stats::TimerType::READ_COMPUTE_RANGE_RESULT_COORDS)
+
   auto range_num = read_state_.partitioner_.current().range_num();
   range_result_coords->resize(range_num);
   auto cell_order = array_schema_->cell_order();
+  Layout layout =
+      (layout_ == Layout::GLOBAL_ORDER || layout_ == Layout::UNORDERED) ?
+          cell_order :
+          layout_;
+  auto allows_dups = array_schema_->allows_dups();
 
   auto statuses = parallel_for(0, range_num, [&](uint64_t r) {
     // Compute overlapping coordinates per range
@@ -640,15 +654,11 @@ Status Reader::compute_range_result_coords(
         r, result_tile_map, result_tiles, &((*range_result_coords)[r])));
 
     // Sort
-    Layout layout =
-        (layout_ == Layout::GLOBAL_ORDER || layout_ == Layout ::UNORDERED) ?
-            cell_order :
-            layout_;
     RETURN_CANCEL_OR_ERROR(
         sort_result_coords(&((*range_result_coords)[r]), layout));
 
     // Dedup unless there is a single fragment or array schema allows duplicates
-    if (!single_fragment[r] && !array_schema_->allows_dups()) {
+    if (!single_fragment[r] && !allows_dups) {
       RETURN_CANCEL_OR_ERROR(dedup_result_coords(&((*range_result_coords)[r])));
     }
 
@@ -659,6 +669,8 @@ Status Reader::compute_range_result_coords(
     RETURN_NOT_OK(st);
 
   return Status::Ok();
+
+  STATS_END_TIMER(stats::Stats::TimerType::READ_COMPUTE_RANGE_RESULT_COORDS)
 }
 
 Status Reader::compute_range_result_coords(
@@ -775,7 +787,7 @@ Status Reader::compute_sparse_result_tiles(
     std::vector<ResultTile>* result_tiles,
     std::map<std::pair<unsigned, uint64_t>, size_t>* result_tile_map,
     std::vector<bool>* single_fragment) {
-  STATS_FUNC_IN(reader_compute_overlapping_tiles);
+  STATS_START_TIMER(stats::Stats::TimerType::READ_COMPUTE_SPARSE_RESULT_TILES)
 
   // For easy reference
   auto domain = array_schema_->domain();
@@ -836,7 +848,7 @@ Status Reader::compute_sparse_result_tiles(
 
   return Status::Ok();
 
-  STATS_FUNC_OUT(reader_compute_overlapping_tiles);
+  STATS_END_TIMER(stats::Stats::TimerType::READ_COMPUTE_SPARSE_RESULT_TILES)
 }
 
 Status Reader::copy_cells(
@@ -857,7 +869,10 @@ Status Reader::copy_fixed_cells(
     const std::string& name,
     uint64_t stride,
     const std::vector<ResultCellSlab>& result_cell_slabs) {
-  STATS_FUNC_IN(reader_copy_fixed_cells);
+  auto stat_type = (array_schema_->is_attr(name)) ?
+                       stats::Stats::TimerType::READ_COPY_FIXED_ATTR_VALUES :
+                       stats::Stats::TimerType::READ_COPY_FIXED_COORDS;
+  STATS_START_TIMER(stat_type)
 
   // For easy reference
   auto it = buffers_.find(name);
@@ -924,18 +939,20 @@ Status Reader::copy_fixed_cells(
 
   // Update buffer offsets
   *(buffers_[name].buffer_size_) = buffer_offset;
-  STATS_COUNTER_ADD(reader_num_fixed_cell_bytes_copied, buffer_offset);
 
   return Status::Ok();
 
-  STATS_FUNC_OUT(reader_copy_fixed_cells);
+  STATS_END_TIMER(stat_type)
 }
 
 Status Reader::copy_var_cells(
     const std::string& name,
     uint64_t stride,
     const std::vector<ResultCellSlab>& result_cell_slabs) {
-  STATS_FUNC_IN(reader_copy_var_cells);
+  auto stat_type = (array_schema_->is_attr(name)) ?
+                       stats::Stats::TimerType::READ_COPY_VAR_ATTR_VALUES :
+                       stats::Stats::TimerType::READ_COPY_VAR_COORDS;
+  STATS_START_TIMER(stat_type);
 
   // For easy reference
   auto it = buffers_.find(name);
@@ -1023,12 +1040,10 @@ Status Reader::copy_var_cells(
   // Update buffer offsets
   *(buffers_[name].buffer_size_) = total_offset_size;
   *(buffers_[name].buffer_var_size_) = total_var_size;
-  STATS_COUNTER_ADD(
-      reader_num_var_cell_bytes_copied, total_offset_size + total_var_size);
 
   return Status::Ok();
 
-  STATS_FUNC_OUT(reader_copy_var_cells);
+  STATS_END_TIMER(stat_type);
 }
 
 Status Reader::compute_var_cell_destinations(
@@ -1137,17 +1152,20 @@ void Reader::compute_result_space_tiles(
 }
 
 template <class T>
-void Reader::compute_result_cell_slabs(
+Status Reader::compute_result_cell_slabs(
     const Subarray& subarray,
     std::map<const T*, ResultSpaceTile<T>>* result_space_tiles,
     std::vector<ResultCoords>* result_coords,
     std::vector<ResultTile*>* result_tiles,
     std::vector<ResultCellSlab>* result_cell_slabs) const {
+  STATS_START_TIMER(
+      stats::Stats::TimerType::READ_COMPUTE_SPARSE_RESULT_CELL_SLABS_DENSE)
+
   auto layout = subarray.layout();
   if (layout == Layout::ROW_MAJOR || layout == Layout::COL_MAJOR) {
     uint64_t result_coords_pos = 0;
     std::set<std::pair<unsigned, uint64_t>> frag_tile_set;
-    compute_result_cell_slabs_row_col<T>(
+    return compute_result_cell_slabs_row_col<T>(
         subarray,
         result_space_tiles,
         result_coords,
@@ -1156,7 +1174,7 @@ void Reader::compute_result_cell_slabs(
         &frag_tile_set,
         result_cell_slabs);
   } else if (layout == Layout::GLOBAL_ORDER) {
-    compute_result_cell_slabs_global<T>(
+    return compute_result_cell_slabs_global<T>(
         subarray,
         result_space_tiles,
         result_coords,
@@ -1165,10 +1183,15 @@ void Reader::compute_result_cell_slabs(
   } else {  // UNORDERED
     assert(false);
   }
+
+  return Status::Ok();
+
+  STATS_END_TIMER(
+      stats::Stats::TimerType::READ_COMPUTE_SPARSE_RESULT_CELL_SLABS_DENSE)
 }
 
 template <class T>
-void Reader::compute_result_cell_slabs_row_col(
+Status Reader::compute_result_cell_slabs_row_col(
     const Subarray& subarray,
     std::map<const T*, ResultSpaceTile<T>>* result_space_tiles,
     std::vector<ResultCoords>* result_coords,
@@ -1203,10 +1226,12 @@ void Reader::compute_result_cell_slabs_row_col(
     }
   }
   *result_coords_pos = rcs_it.result_coords_pos();
+
+  return Status::Ok();
 }
 
 template <class T>
-void Reader::compute_result_cell_slabs_global(
+Status Reader::compute_result_cell_slabs_global(
     const Subarray& subarray,
     std::map<const T*, ResultSpaceTile<T>>* result_space_tiles,
     std::vector<ResultCoords>* result_coords,
@@ -1225,20 +1250,24 @@ void Reader::compute_result_cell_slabs_global(
     auto& tile_subarray = tile_subarrays.back();
     tile_subarray.template compute_tile_coords<T>();
 
-    compute_result_cell_slabs_row_col<T>(
+    RETURN_NOT_OK(compute_result_cell_slabs_row_col<T>(
         tile_subarray,
         result_space_tiles,
         result_coords,
         &result_coords_pos,
         result_tiles,
         &frag_tile_set,
-        result_cell_slabs);
+        result_cell_slabs));
   }
+
+  return Status::Ok();
 }
 
 Status Reader::compute_result_coords(
     std::vector<ResultTile>* result_tiles,
     std::vector<ResultCoords>* result_coords) {
+  STATS_START_TIMER(stats::Stats::TimerType::READ_COMPUTE_RESULT_COORDS)
+
   // Get overlapping tile indexes
   typedef std::pair<unsigned, uint64_t> FragTilePair;
   std::map<FragTilePair, size_t> result_tile_map;
@@ -1282,12 +1311,12 @@ Status Reader::compute_result_coords(
   range_result_coords.clear();
 
   return Status::Ok();
+
+  STATS_END_TIMER(stats::Stats::TimerType::READ_COMPUTE_RESULT_COORDS)
 }
 
 Status Reader::dedup_result_coords(
     std::vector<ResultCoords>* result_coords) const {
-  STATS_FUNC_IN(reader_dedup_coords);
-
   auto coords_end = result_coords->end();
   auto it = skip_invalid_elements(result_coords->begin(), coords_end);
   while (it != coords_end) {
@@ -1304,8 +1333,6 @@ Status Reader::dedup_result_coords(
     }
   }
   return Status::Ok();
-
-  STATS_FUNC_OUT(reader_dedup_coords);
 }
 
 Status Reader::dense_read() {
@@ -1351,8 +1378,6 @@ Status Reader::dense_read() {
 
 template <class T>
 Status Reader::dense_read() {
-  STATS_FUNC_IN(reader_dense_read);
-
   // Sanity checks
   assert(std::is_integral<T>::value);
   assert(!fragment_metadata_.empty());
@@ -1373,45 +1398,35 @@ Status Reader::dense_read() {
   std::vector<ResultTile*> result_tiles;
   auto& subarray = read_state_.partitioner_.current();
 
-  subarray.compute_tile_coords<T>();
-  compute_result_cell_slabs<T>(
+  RETURN_NOT_OK(subarray.compute_tile_coords<T>());
+  RETURN_NOT_OK(compute_result_cell_slabs<T>(
       subarray,
       &result_space_tiles,
       &result_coords,
       &result_tiles,
-      &result_cell_slabs);
+      &result_cell_slabs));
+
+  get_result_tile_stats(result_tiles);
+  get_result_cell_stats(result_cell_slabs);
 
   // Clear sparse coordinate tiles (not needed any more)
   erase_coord_tiles(&sparse_result_tiles);
 
   // Needed when copying the cells
   auto stride = array_schema_->domain()->stride<T>(subarray.layout());
-
-  // Copy cells
-  for (const auto& it : buffers_) {
-    const auto& name = it.first;
-    if (read_state_.overflowed_)
-      break;
-    if (name == constants::coords || array_schema_->is_dim(name))
-      continue;
-
-    RETURN_CANCEL_OR_ERROR(read_tiles(name, result_tiles));
-    RETURN_CANCEL_OR_ERROR(unfilter_tiles(name, result_tiles));
-    RETURN_CANCEL_OR_ERROR(copy_cells(name, stride, result_cell_slabs));
-    clear_tiles(name, result_tiles);
-  }
+  RETURN_NOT_OK(copy_attribute_values(stride, result_tiles, result_cell_slabs));
 
   // Fill coordinates if the user requested them
   if (!read_state_.overflowed_ && has_coords())
     RETURN_CANCEL_OR_ERROR(fill_dense_coords<T>(subarray));
 
   return Status::Ok();
-
-  STATS_FUNC_OUT(reader_dense_read);
 }
 
 template <class T>
 Status Reader::fill_dense_coords(const Subarray& subarray) {
+  STATS_START_TIMER(stats::Stats::TimerType::READ_FILL_DENSE_COORDS)
+
   // Prepare buffers
   std::vector<unsigned> dim_idx;
   std::vector<QueryBuffer*> buffers;
@@ -1446,6 +1461,8 @@ Status Reader::fill_dense_coords(const Subarray& subarray) {
     *(buffers[i]->buffer_size_) = offsets[i];
 
   return Status::Ok();
+
+  STATS_END_TIMER(stats::Stats::TimerType::READ_FILL_DENSE_COORDS)
 }
 
 template <class T>
@@ -1472,8 +1489,6 @@ Status Reader::fill_dense_coords_row_col(
     const std::vector<unsigned>& dim_idx,
     const std::vector<QueryBuffer*>& buffers,
     std::vector<uint64_t>* offsets) {
-  STATS_FUNC_IN(reader_fill_coords);
-
   auto cell_order = array_schema_->cell_order();
   auto dim_num = array_schema_->dim_num();
 
@@ -1511,8 +1526,6 @@ Status Reader::fill_dense_coords_row_col(
   }
 
   return Status::Ok();
-
-  STATS_FUNC_OUT(reader_fill_coords);
 }
 
 template <class T>
@@ -1617,7 +1630,10 @@ void Reader::fill_dense_coords_col_slab(
 Status Reader::unfilter_tiles(
     const std::string& name,
     const std::vector<ResultTile*>& result_tiles) const {
-  STATS_FUNC_IN(reader_unfilter_tiles);
+  auto stat_type = (array_schema_->is_attr(name)) ?
+                       stats::Stats::TimerType::READ_UNFILTER_ATTR_TILES :
+                       stats::Stats::TimerType::READ_UNFILTER_COORD_TILES;
+  STATS_START_TIMER(stat_type);
 
   auto var_size = array_schema_->var_size(name);
   auto num_tiles = static_cast<uint64_t>(result_tiles.size());
@@ -1680,7 +1696,7 @@ Status Reader::unfilter_tiles(
 
   return Status::Ok();
 
-  STATS_FUNC_OUT(reader_unfilter_tiles);
+  STATS_END_TIMER(stat_type);
 }
 
 Status Reader::unfilter_tile(
@@ -1697,8 +1713,6 @@ Status Reader::unfilter_tile(
   RETURN_NOT_OK(filters.run_reverse(tile, storage_manager_->config()));
 
   tile->set_filtered(false);
-
-  STATS_COUNTER_ADD(reader_num_bytes_after_unfiltering, tile->size());
 
   return Status::Ok();
 }
@@ -1731,6 +1745,8 @@ bool Reader::has_separate_coords() const {
 }
 
 Status Reader::init_read_state() {
+  STATS_START_TIMER(stats::Stats::TimerType::READ_INIT_STATE)
+
   // Check subarray
   if (subarray_.layout() == Layout::GLOBAL_ORDER && subarray_.range_num() != 1)
     return LOG_STATUS(
@@ -1778,6 +1794,8 @@ Status Reader::init_read_state() {
   read_state_.initialized_ = true;
 
   return Status::Ok();
+
+  STATS_END_TIMER(stats::Stats::TimerType::READ_INIT_STATE)
 }
 
 Status Reader::init_tile(
@@ -1839,6 +1857,11 @@ Status Reader::init_tile(
 Status Reader::read_tiles(
     const std::string& name,
     const std::vector<ResultTile*>& result_tiles) const {
+  auto stat_type = (array_schema_->is_attr(name)) ?
+                       stats::Stats::TimerType::READ_ATTR_TILES :
+                       stats::Stats::TimerType::READ_COORD_TILES;
+  STATS_START_TIMER(stat_type);
+
   // Shortcut for empty tile vec
   if (result_tiles.empty())
     return Status::Ok();
@@ -1854,6 +1877,8 @@ Status Reader::read_tiles(
     RETURN_CANCEL_OR_ERROR(st);
 
   return Status::Ok();
+
+  STATS_END_TIMER(stat_type);
 }
 
 Status Reader::read_tiles(
@@ -1977,7 +2002,6 @@ Status Reader::read_tiles(
         &cache_hit));
     if (cache_hit) {
       t.set_filtered(true);
-      STATS_COUNTER_ADD(reader_attr_tile_cache_hits, 1);
     } else {
       // Add the region of the fragment to be read.
       RETURN_NOT_OK(t.buffer()->realloc(tile_persisted_size));
@@ -1985,8 +2009,6 @@ Status Reader::read_tiles(
       t.buffer()->reset_offset();
       all_regions[tile_attr_uri].emplace_back(
           tile_attr_offset, t.buffer()->data(), tile_persisted_size);
-
-      STATS_COUNTER_ADD(reader_num_tile_bytes_read, tile_persisted_size);
     }
 
     if (var_size) {
@@ -2007,7 +2029,6 @@ Status Reader::read_tiles(
 
       if (cache_hit) {
         t_var.set_filtered(true);
-        STATS_COUNTER_ADD(reader_attr_tile_cache_hits, 1);
       } else {
         // Add the region of the fragment to be read.
         RETURN_NOT_OK(t_var.buffer()->realloc(tile_var_persisted_size));
@@ -2017,15 +2038,7 @@ Status Reader::read_tiles(
             tile_attr_var_offset,
             t_var.buffer()->data(),
             tile_var_persisted_size);
-
-        STATS_COUNTER_ADD(reader_num_tile_bytes_read, tile_var_persisted_size);
-        STATS_COUNTER_ADD(reader_num_var_cell_bytes_read, tile_persisted_size);
-        STATS_COUNTER_ADD(
-            reader_num_var_cell_bytes_read, tile_var_persisted_size);
       }
-    } else {
-      STATS_COUNTER_ADD_IF(
-          !cache_hit, reader_num_fixed_cell_bytes_read, tile_persisted_size);
     }
   }
 
@@ -2037,9 +2050,6 @@ Status Reader::read_tiles(
         storage_manager_->reader_thread_pool(),
         tasks));
   }
-
-  STATS_COUNTER_ADD(
-      reader_num_attr_tiles_touched, ((var_size ? 2 : 1) * num_tiles));
 
   return Status::Ok();
 }
@@ -2054,8 +2064,6 @@ void Reader::reset_buffer_sizes() {
 
 Status Reader::sort_result_coords(
     std::vector<ResultCoords>* result_coords, Layout layout) const {
-  STATS_FUNC_IN(reader_sort_coords);
-
   // TODO: do not sort if it is single fragment and
   // (i) it is single dimension, or (ii) it is global order
 
@@ -2073,13 +2081,9 @@ Status Reader::sort_result_coords(
   }
 
   return Status::Ok();
-
-  STATS_FUNC_OUT(reader_sort_coords);
 }
 
 Status Reader::sparse_read() {
-  STATS_FUNC_IN(reader_sparse_read);
-
   // Compute result coordinates from the sparse fragments
   // `sparse_result_tiles` will hold all the relevant result tiles of
   // sparse fragments
@@ -2096,22 +2100,52 @@ Status Reader::sparse_read() {
       compute_result_cell_slabs(result_coords, &result_cell_slabs));
   result_coords.clear();
 
+  get_result_tile_stats(result_tiles);
+  get_result_cell_stats(result_cell_slabs);
+
+  RETURN_NOT_OK(copy_coordinates(result_tiles, result_cell_slabs));
+  RETURN_NOT_OK(
+      copy_attribute_values(UINT64_MAX, result_tiles, result_cell_slabs));
+
+  return Status::Ok();
+}
+
+Status Reader::copy_coordinates(
+    const std::vector<ResultTile*>& result_tiles,
+    const std::vector<ResultCellSlab>& result_cell_slabs) {
+  STATS_START_TIMER(stats::Stats::TimerType::READ_COPY_COORDS);
+
   uint64_t stride = UINT64_MAX;
 
-  // Copy zipped coordinates
-  if (buffers_.find(constants::coords) != buffers_.end())
-    RETURN_CANCEL_OR_ERROR(
-        copy_cells(constants::coords, stride, result_cell_slabs));
-
-  // Clear sparse coordinate tiles (not needed any more)
-  erase_coord_tiles(&sparse_result_tiles);
-
-  // Copy cells
+  // Copy coordinates
   for (const auto& it : buffers_) {
     const auto& name = it.first;
     if (read_state_.overflowed_)
       break;
-    if (name == constants::coords)
+    if (!(name == constants::coords || array_schema_->is_dim(name)))
+      continue;
+
+    RETURN_CANCEL_OR_ERROR(copy_cells(name, stride, result_cell_slabs));
+    clear_tiles(name, result_tiles);
+  }
+
+  return Status::Ok();
+
+  STATS_END_TIMER(stats::Stats::TimerType::READ_COPY_COORDS);
+}
+
+Status Reader::copy_attribute_values(
+    uint64_t stride,
+    const std::vector<ResultTile*>& result_tiles,
+    const std::vector<ResultCellSlab>& result_cell_slabs) {
+  STATS_START_TIMER(stats::Stats::TimerType::READ_COPY_ATTR_VALUES);
+
+  // Copy result cells only for the attributes
+  for (const auto& it : buffers_) {
+    const auto& name = it.first;
+    if (read_state_.overflowed_)
+      break;
+    if (name == constants::coords || array_schema_->is_dim(name))
       continue;
 
     RETURN_CANCEL_OR_ERROR(read_tiles(name, result_tiles));
@@ -2121,8 +2155,7 @@ Status Reader::sparse_read() {
   }
 
   return Status::Ok();
-
-  STATS_FUNC_OUT(reader_sparse_read);
+  STATS_END_TIMER(stats::Stats::TimerType::READ_COPY_ATTR_VALUES);
 }
 
 void Reader::zero_out_buffer_sizes() {
@@ -2157,6 +2190,55 @@ void Reader::erase_coord_tiles(std::vector<ResultTile>* result_tiles) const {
       tile.erase_tile(array_schema_->dimension(d)->name());
     tile.erase_tile(constants::coords);
   }
+}
+
+void Reader::get_dim_attr_stats() const {
+  for (const auto& it : buffers_) {
+    const auto& name = it.first;
+    auto var_size = array_schema_->var_size(name);
+    if (array_schema_->is_attr(name)) {
+      STATS_ADD_COUNTER(stats::Stats::CounterType::READ_ATTR_NUM, 1);
+      if (var_size) {
+        STATS_ADD_COUNTER(stats::Stats::CounterType::READ_ATTR_VAR_NUM, 1);
+      } else {
+        STATS_ADD_COUNTER(stats::Stats::CounterType::READ_ATTR_FIXED_NUM, 1);
+      }
+    } else {
+      STATS_ADD_COUNTER(stats::Stats::CounterType::READ_DIM_NUM, 1);
+      if (var_size) {
+        STATS_ADD_COUNTER(stats::Stats::CounterType::READ_DIM_VAR_NUM, 1);
+      } else {
+        if (name == constants::coords) {
+          STATS_ADD_COUNTER(stats::Stats::CounterType::READ_DIM_ZIPPED_NUM, 1);
+        } else {
+          STATS_ADD_COUNTER(stats::Stats::CounterType::READ_DIM_FIXED_NUM, 1);
+        }
+      }
+    }
+  }
+}
+
+void Reader::get_result_cell_stats(
+    const std::vector<ResultCellSlab>& result_cell_slabs) const {
+  uint64_t result_num = 0;
+  for (const auto& rc : result_cell_slabs)
+    result_num += rc.length_;
+  STATS_ADD_COUNTER(stats::Stats::CounterType::READ_RESULT_NUM, result_num);
+}
+
+void Reader::get_result_tile_stats(
+    const std::vector<ResultTile*>& result_tiles) const {
+  STATS_ADD_COUNTER(
+      stats::Stats::CounterType::READ_OVERLAP_TILE_NUM, result_tiles.size());
+
+  uint64_t cell_num = 0;
+  for (const auto& rt : result_tiles) {
+    if (!fragment_metadata_[rt->frag_idx()]->dense())
+      cell_num += rt->cell_num();
+    else
+      cell_num += array_schema_->domain()->cell_num_per_tile();
+  }
+  STATS_ADD_COUNTER(stats::Stats::CounterType::READ_CELL_NUM, cell_num);
 }
 
 }  // namespace sm

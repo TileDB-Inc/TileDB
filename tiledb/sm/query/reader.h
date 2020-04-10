@@ -372,9 +372,10 @@ class Reader {
    * @param result_tiles This will store pointers to the result tiles
    *     of both dense and sparse fragments.
    * @param result_cell_slabs The returned result cell slabs.
+   * @return Status
    */
   template <class T>
-  void compute_result_cell_slabs(
+  Status compute_result_cell_slabs(
       const Subarray& subarray,
       std::map<const T*, ResultSpaceTile<T>>* result_space_tiles,
       std::vector<ResultCoords>* result_coords,
@@ -407,9 +408,10 @@ class Reader {
    * @param frag_tile_set Stores the unique pairs (frag_idx, tile_idx)
    *     for all result tiles.
    * @param result_cell_slabs The returned result cell slabs.
+   * @return Status
    */
   template <class T>
-  void compute_result_cell_slabs_row_col(
+  Status compute_result_cell_slabs_row_col(
       const Subarray& subarray,
       std::map<const T*, ResultSpaceTile<T>>* result_space_tiles,
       std::vector<ResultCoords>* result_coords,
@@ -436,9 +438,10 @@ class Reader {
    * @param result_tiles This will store pointers to the result tiles
    *     of both dense and sparse fragments.
    * @param result_cell_slabs The returned result cell slabs.
+   * @return Status
    */
   template <class T>
-  void compute_result_cell_slabs_global(
+  Status compute_result_cell_slabs_global(
       const Subarray& subarray,
       std::map<const T*, ResultSpaceTile<T>>* result_space_tiles,
       std::vector<ResultCoords>* result_coords,
@@ -997,6 +1000,23 @@ class Reader {
   /** Performs a read on a sparse array. */
   Status sparse_read();
 
+  /**
+   * Copies the result coordinates to the user buffers.
+   * It also appropriately cleans up the used result tiles.
+   */
+  Status copy_coordinates(
+      const std::vector<ResultTile*>& result_tiles,
+      const std::vector<ResultCellSlab>& result_cell_slabs);
+
+  /**
+   * Copies the result attribute values to the user buffers.
+   * It also appropriately cleans up the used result tiles.
+   */
+  Status copy_attribute_values(
+      uint64_t stride,
+      const std::vector<ResultTile*>& result_tiles,
+      const std::vector<ResultCellSlab>& result_cell_slabs);
+
   /** Zeroes out the user buffer sizes, indicating an empty result. */
   void zero_out_buffer_sizes();
 
@@ -1011,6 +1031,20 @@ class Reader {
    * tiles.
    */
   void erase_coord_tiles(std::vector<ResultTile>* result_tiles) const;
+
+  /**
+   * Gets statistics about the number of attributes and dimensions in
+   * the read query.
+   */
+  void get_dim_attr_stats() const;
+
+  /** Gets statistics about the result cells. */
+  void get_result_cell_stats(
+      const std::vector<ResultCellSlab>& result_cell_slabs) const;
+
+  /** Gets statistics about the result tiles. */
+  void get_result_tile_stats(
+      const std::vector<ResultTile*>& result_tiles) const;
 };
 
 }  // namespace sm

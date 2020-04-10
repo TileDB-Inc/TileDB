@@ -34,7 +34,6 @@
 #include <catch.hpp>
 #include "test/src/helpers.h"
 #include "tiledb/sm/filesystem/vfs.h"
-#include "tiledb/sm/misc/stats.h"
 
 using namespace tiledb::sm;
 
@@ -55,10 +54,6 @@ TEST_CASE("VFS: Test read batching", "[vfs]") {
     data_write[i] = i;
   REQUIRE(vfs->write(testfile, data_write, nelts * sizeof(uint32_t)).ok());
 
-  // Enable stats.
-  stats::all_stats.set_enabled(true);
-  stats::all_stats.reset();
-
   std::vector<std::tuple<uint64_t, void*, uint64_t>> batches;
   ThreadPool thread_pool;
   REQUIRE(thread_pool.init(4).ok());
@@ -75,14 +70,9 @@ TEST_CASE("VFS: Test read batching", "[vfs]") {
     tasks.clear();
     for (unsigned i = 0; i < nelts; i++)
       REQUIRE(data_read[i] == i);
-    REQUIRE(stats::all_stats.vfs_read_call_count == 1);
-    REQUIRE(
-        stats::all_stats.counter_vfs_read_total_bytes ==
-        nelts * sizeof(uint32_t));
 
     // Check reading first and last element: 1 reads due to the default
     // batch size.
-    stats::all_stats.reset();
     std::memset(data_read, 0, nelts * sizeof(uint32_t));
     batches.clear();
     batches.emplace_back(0, &data_read[0], sizeof(uint32_t));
@@ -93,14 +83,9 @@ TEST_CASE("VFS: Test read batching", "[vfs]") {
     tasks.clear();
     REQUIRE(data_read[0] == 0);
     REQUIRE(data_read[1] == nelts - 1);
-    REQUIRE(stats::all_stats.vfs_read_call_count == 1);
-    REQUIRE(
-        stats::all_stats.counter_vfs_read_total_bytes ==
-        100 * sizeof(uint32_t));
 
     // Check each element as a different region: single read because there is no
     // amplification required (all work is useful).
-    stats::all_stats.reset();
     std::memset(data_read, 0, nelts * sizeof(uint32_t));
     batches.clear();
     for (unsigned i = 0; i < nelts; i++)
@@ -111,10 +96,6 @@ TEST_CASE("VFS: Test read batching", "[vfs]") {
     tasks.clear();
     for (unsigned i = 0; i < nelts; i++)
       REQUIRE(data_read[i] == i);
-    REQUIRE(stats::all_stats.vfs_read_call_count == 1);
-    REQUIRE(
-        stats::all_stats.counter_vfs_read_total_bytes ==
-        nelts * sizeof(uint32_t));
     REQUIRE(vfs->terminate().ok());
   }
 
@@ -133,14 +114,9 @@ TEST_CASE("VFS: Test read batching", "[vfs]") {
     tasks.clear();
     for (unsigned i = 0; i < nelts; i++)
       REQUIRE(data_read[i] == i);
-    REQUIRE(stats::all_stats.vfs_read_call_count == 1);
-    REQUIRE(
-        stats::all_stats.counter_vfs_read_total_bytes ==
-        nelts * sizeof(uint32_t));
 
     // Check each element as a different region (results in several read
     // operations).
-    stats::all_stats.reset();
     std::memset(data_read, 0, nelts * sizeof(uint32_t));
     batches.clear();
     for (unsigned i = 0; i < nelts / 2; i++)
@@ -151,14 +127,9 @@ TEST_CASE("VFS: Test read batching", "[vfs]") {
     tasks.clear();
     for (unsigned i = 0; i < nelts / 2; i++)
       REQUIRE(data_read[i] == 2 * i);
-    CHECK(stats::all_stats.vfs_read_call_count == nelts / 2);
-    CHECK(
-        stats::all_stats.counter_vfs_read_total_bytes ==
-        (nelts / 2) * sizeof(uint32_t));
 
     // Check reading first and last element (results in 2 reads because the
     // whole region is too big).
-    stats::all_stats.reset();
     std::memset(data_read, 0, nelts * sizeof(uint32_t));
     batches.clear();
     batches.emplace_back(0, &data_read[0], sizeof(uint32_t));
@@ -169,9 +140,6 @@ TEST_CASE("VFS: Test read batching", "[vfs]") {
     tasks.clear();
     REQUIRE(data_read[0] == 0);
     REQUIRE(data_read[1] == nelts - 1);
-    REQUIRE(stats::all_stats.vfs_read_call_count == 2);
-    REQUIRE(
-        stats::all_stats.counter_vfs_read_total_bytes == 2 * sizeof(uint32_t));
     REQUIRE(vfs->terminate().ok());
   }
 
@@ -192,10 +160,6 @@ TEST_CASE("VFS: Test read batching", "[vfs]") {
     tasks.clear();
     for (unsigned i = 0; i < nelts; i++)
       REQUIRE(data_read[i] == i);
-    CHECK(stats::all_stats.vfs_read_call_count == 1);
-    CHECK(
-        stats::all_stats.counter_vfs_read_total_bytes ==
-        nelts * sizeof(uint32_t));
     REQUIRE(vfs->terminate().ok());
   }
 
@@ -216,10 +180,6 @@ TEST_CASE("VFS: Test read batching", "[vfs]") {
     tasks.clear();
     for (unsigned i = 0; i < nelts; i++)
       REQUIRE(data_read[i] == i);
-    CHECK(stats::all_stats.vfs_read_call_count == 1);
-    CHECK(
-        stats::all_stats.counter_vfs_read_total_bytes ==
-        nelts * sizeof(uint32_t));
     REQUIRE(vfs->terminate().ok());
   }
 

@@ -45,7 +45,6 @@
 
 #include "tiledb/sm/global_state/unit_test_config.h"
 #include "tiledb/sm/misc/logger.h"
-#include "tiledb/sm/misc/stats.h"
 #include "tiledb/sm/misc/utils.h"
 
 #ifdef _WIN32
@@ -943,15 +942,11 @@ Status S3::fill_file_buffer(
     const void* buffer,
     uint64_t length,
     uint64_t* nbytes_filled) {
-  STATS_FUNC_IN(vfs_s3_fill_file_buffer);
-
   *nbytes_filled = std::min(file_buffer_size_ - buff->size(), length);
   if (*nbytes_filled > 0)
     RETURN_NOT_OK(buff->write(buffer, *nbytes_filled));
 
   return Status::Ok();
-
-  STATS_FUNC_OUT(vfs_s3_fill_file_buffer);
 }
 
 std::string S3::add_front_slash(const std::string& path) const {
@@ -1100,8 +1095,6 @@ Status S3::wait_for_bucket_to_be_created(const URI& bucket_uri) const {
 }
 
 Status S3::flush_direct(const URI& uri) {
-  // STATS_FUNC_IN(vfs_s3_write_direct); // <TODO>
-
   RETURN_NOT_OK(init_client());
 
   // Get file buffer
@@ -1150,13 +1143,10 @@ Status S3::flush_direct(const URI& uri) {
       put_object_request.GetBucket(), put_object_request.GetKey());
 
   return Status::Ok();
-  // STATS_FUNC_OUT(vfs_s3_write_direct);
 }
 
 Status S3::write_multipart(
     const URI& uri, const void* buffer, uint64_t length, bool last_part) {
-  STATS_FUNC_IN(vfs_s3_write_multipart);
-
   RETURN_NOT_OK(init_client());
 
   // Ensure that each thread is responsible for exactly multipart_part_size_
@@ -1214,8 +1204,6 @@ Status S3::write_multipart(
         make_upload_part_req(aws_uri, buffer, length, upload_id, part_num);
     return get_make_upload_part_req(uri, uri_path, ctx);
   } else {
-    STATS_COUNTER_ADD(vfs_s3_write_num_parallelized, 1);
-
     std::vector<MakeUploadPartCtx> ctx_vec;
     ctx_vec.reserve(num_ops);
     const uint64_t bytes_per_op = multipart_part_size_;
@@ -1250,7 +1238,6 @@ Status S3::write_multipart(
     }
     return aggregate_st;
   }
-  STATS_FUNC_OUT(vfs_s3_write_multipart);
 }
 
 S3::MakeUploadPartCtx S3::make_upload_part_req(
@@ -1314,8 +1301,6 @@ Status S3::get_make_upload_part_req(
     state_iter->second.completed_parts.emplace(
         ctx.upload_part_num, std::move(completed_part));
   }
-
-  STATS_COUNTER_ADD(vfs_s3_num_parts_written, 1);
 
   return Status::Ok();
 }
