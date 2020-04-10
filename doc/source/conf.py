@@ -71,9 +71,9 @@ copyright = '2020 TileDB, Inc'
 author = 'TileDB, Inc.'
 
 # The short X.Y version.
-version = '1.6'
+version = '2.0'
 # The full version, including alpha/beta/rc tags.
-release = '1.6.0'
+release = '2.0.0'
 
 # Breathe extension configuration.
 tiledb_dir = '../../'
