@@ -36,7 +36,6 @@
 #include "tiledb/sm/array_schema/attribute.h"
 #include "tiledb/sm/enums/query_type.h"
 #include "tiledb/sm/misc/logger.h"
-#include "tiledb/sm/misc/stats.h"
 #include "tiledb/sm/misc/utils.h"
 #include "tiledb/sm/query/query.h"
 #include "tiledb/sm/rest/rest_client.h"
@@ -97,8 +96,6 @@ Status RestClient::set_header(
 
 Status RestClient::get_array_schema_from_rest(
     const URI& uri, ArraySchema** array_schema) {
-  STATS_FUNC_IN(rest_array_get_schema);
-
   // Init curl and form the URL
   Curl curlc;
   RETURN_NOT_OK(curlc.init(config_, extra_headers_));
@@ -116,14 +113,10 @@ Status RestClient::get_array_schema_from_rest(
 
   return serialization::array_schema_deserialize(
       array_schema, serialization_type_, returned_data);
-
-  STATS_FUNC_OUT(rest_array_get_schema);
 }
 
 Status RestClient::post_array_schema_to_rest(
     const URI& uri, ArraySchema* array_schema) {
-  STATS_FUNC_IN(rest_array_create);
-
   Buffer buff;
   RETURN_NOT_OK(serialization::array_schema_serialize(
       array_schema, serialization_type_, &buff));
@@ -141,8 +134,6 @@ Status RestClient::post_array_schema_to_rest(
 
   Buffer returned_data;
   return curlc.post_data(url, serialization_type_, &serialized, &returned_data);
-
-  STATS_FUNC_OUT(rest_array_create);
 }
 
 Status RestClient::deregister_array_from_rest(const URI& uri) {
@@ -277,8 +268,6 @@ Status RestClient::post_array_metadata_to_rest(const URI& uri, Array* array) {
 }
 
 Status RestClient::submit_query_to_rest(const URI& uri, Query* query) {
-  STATS_FUNC_IN(rest_query_submit);
-
   // Local state tracking for the current offsets into the user's query buffers.
   // This allows resubmission of incomplete queries while appending to the
   // same user buffers.
@@ -291,8 +280,6 @@ Status RestClient::submit_query_to_rest(const URI& uri, Query* query) {
   RETURN_NOT_OK(update_attribute_buffer_sizes(copy_state, query));
 
   return Status::Ok();
-
-  STATS_FUNC_OUT(rest_query_submit);
 }
 
 Status RestClient::post_query_submit(

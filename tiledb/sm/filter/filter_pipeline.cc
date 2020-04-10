@@ -41,7 +41,6 @@
 #include "tiledb/sm/filter/noop_filter.h"
 #include "tiledb/sm/misc/logger.h"
 #include "tiledb/sm/misc/parallel_functions.h"
-#include "tiledb/sm/misc/stats.h"
 #include "tiledb/sm/tile/tile.h"
 
 namespace tiledb {
@@ -361,8 +360,6 @@ uint32_t FilterPipeline::max_chunk_size() const {
 }
 
 Status FilterPipeline::run_forward(Tile* tile) const {
-  STATS_FUNC_IN(filter_pipeline_run_forward);
-
   current_tile_ = tile;
 
   // Compute the chunks.
@@ -385,13 +382,9 @@ Status FilterPipeline::run_forward(Tile* tile) const {
   RETURN_NOT_OK(tile->buffer()->swap(filtered_tile));
 
   return Status::Ok();
-
-  STATS_FUNC_OUT(filter_pipeline_run_forward);
 }
 
 Status FilterPipeline::run_reverse(Tile* tile, const Config& config) const {
-  STATS_FUNC_IN(filter_pipeline_run_reverse);
-
   auto tile_buff = tile->buffer();
   if (tile_buff == nullptr)
     return LOG_STATUS(
@@ -446,8 +439,6 @@ Status FilterPipeline::run_reverse(Tile* tile, const Config& config) const {
   }
 
   return Status::Ok();
-
-  STATS_FUNC_OUT(filter_pipeline_run_reverse);
 }
 
 // ===== FORMAT =====

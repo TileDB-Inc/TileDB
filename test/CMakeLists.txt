@@ -72,7 +72,6 @@ set(TILEDB_TEST_SOURCES
   src/unit-capi-sparse_neg.cc
   src/unit-capi-sparse_neg_2.cc
   src/unit-capi-sparse_real.cc
-  src/unit-capi-stats.cc
   src/unit-capi-string_dims.cc
   src/unit-capi-sparse_real_2.cc
   src/unit-capi-string.cc

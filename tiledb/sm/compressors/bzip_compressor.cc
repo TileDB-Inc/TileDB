@@ -35,7 +35,6 @@
 #include "tiledb/sm/buffer/const_buffer.h"
 #include "tiledb/sm/buffer/preallocated_buffer.h"
 #include "tiledb/sm/misc/logger.h"
-#include "tiledb/sm/misc/stats.h"
 
 #include <bzlib.h>
 
@@ -44,8 +43,6 @@ namespace sm {
 
 Status BZip::compress(
     int level, ConstBuffer* input_buffer, Buffer* output_buffer) {
-  STATS_FUNC_IN(compressor_bzip_compress);
-
   // Sanity check
   if (input_buffer->data() == nullptr || output_buffer->data() == nullptr)
     return LOG_STATUS(Status::CompressionError(
@@ -91,14 +88,10 @@ Status BZip::compress(
   output_buffer->advance_offset(out_size);
 
   return Status::Ok();
-
-  STATS_FUNC_OUT(compressor_bzip_compress);
 }
 
 Status BZip::decompress(
     ConstBuffer* input_buffer, PreallocatedBuffer* output_buffer) {
-  STATS_FUNC_IN(compressor_bzip_decompress);
-
   // Sanity check
   if (input_buffer->data() == nullptr || output_buffer->data() == nullptr)
     return LOG_STATUS(Status::CompressionError(
@@ -142,8 +135,6 @@ Status BZip::decompress(
   output_buffer->advance_offset(out_size);
 
   return Status::Ok();
-
-  STATS_FUNC_OUT(compressor_bzip_decompress);
 }
 
 uint64_t BZip::overhead(uint64_t nbytes) {

@@ -40,7 +40,6 @@
 #include "tiledb/sm/filesystem/vfs.h"
 #include "tiledb/sm/misc/constants.h"
 #include "tiledb/sm/misc/logger.h"
-#include "tiledb/sm/misc/stats.h"
 #include "tiledb/sm/misc/utils.h"
 #include "tiledb/sm/storage_manager/storage_manager.h"
 #include "tiledb/sm/tile/tile.h"
@@ -1551,7 +1550,6 @@ Status FragmentMetadata::load_v1_v2(const EncryptionKey& encryption_key) {
       &tile, 0, encryption_key, storage_manager_->config()));
   tile->disown_buff();
   auto buff = tile->buffer();
-  STATS_COUNTER_ADD(fragment_metadata_bytes_read, tile_io.file_size());
   delete tile;
 
   // Deserialize

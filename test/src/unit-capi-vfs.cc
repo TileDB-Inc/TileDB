@@ -33,7 +33,6 @@
 #include "catch.hpp"
 #include "test/src/helpers.h"
 #include "tiledb/sm/c_api/tiledb.h"
-#include "tiledb/sm/misc/stats.h"
 #include "tiledb/sm/misc/utils.h"
 #ifdef _WIN32
 #include "tiledb/sm/filesystem/win.h"
@@ -792,11 +791,6 @@ TEST_CASE_METHOD(VFSFx, "C API: Test virtual filesystem", "[capi], [vfs]") {
     check_vfs(HDFS_TEMP_DIR);
   else
     check_vfs(FILE_TEMP_DIR);
-
-  CHECK(tiledb::sm::stats::all_stats.counter_vfs_read_num_parallelized == 0);
-  CHECK(
-      tiledb::sm::stats::all_stats.counter_vfs_posix_write_num_parallelized ==
-      0);
 }
 
 TEST_CASE_METHOD(
@@ -855,21 +849,9 @@ TEST_CASE_METHOD(VFSFx, "C API: Test VFS parallel I/O", "[capi], [vfs]") {
 
   if (supports_s3_) {
     check_vfs(S3_TEMP_DIR);
-    CHECK(tiledb::sm::stats::all_stats.counter_vfs_read_num_parallelized > 0);
   } else if (supports_hdfs_) {
     check_vfs(HDFS_TEMP_DIR);
-    CHECK(tiledb::sm::stats::all_stats.counter_vfs_read_num_parallelized == 0);
   } else {
     check_vfs(FILE_TEMP_DIR);
-    CHECK(tiledb::sm::stats::all_stats.counter_vfs_read_num_parallelized > 0);
-#ifdef _WIN32
-    CHECK(
-        tiledb::sm::stats::all_stats.counter_vfs_win32_write_num_parallelized >
-        0);
-#else
-    CHECK(
-        tiledb::sm::stats::all_stats.counter_vfs_posix_write_num_parallelized >
-        0);
-#endif
   }
 }

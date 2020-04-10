@@ -54,12 +54,12 @@
 #include "tiledb/sm/filter/compression_filter.h"
 #include "tiledb/sm/filter/filter_pipeline.h"
 #include "tiledb/sm/misc/logger.h"
-#include "tiledb/sm/misc/stats.h"
 #include "tiledb/sm/misc/utils.h"
 #include "tiledb/sm/query/query.h"
 #include "tiledb/sm/rest/rest_client.h"
 #include "tiledb/sm/serialization/array_schema.h"
 #include "tiledb/sm/serialization/query.h"
+#include "tiledb/sm/stats/stats.h"
 #include "tiledb/sm/storage_manager/context.h"
 #include "tiledb/sm/subarray/subarray.h"
 #include "tiledb/sm/subarray/subarray_partitioner.h"
@@ -4240,12 +4240,12 @@ int32_t tiledb_uri_to_path(
 /* ****************************** */
 
 int32_t tiledb_stats_enable() {
-  tiledb::sm::stats::all_stats.set_enabled(true);
+  // No op - to be deprecated
   return TILEDB_OK;
 }
 
 int32_t tiledb_stats_disable() {
-  tiledb::sm::stats::all_stats.set_enabled(false);
+  // No op - to be deprecated
   return TILEDB_OK;
 }
 

@@ -39,7 +39,6 @@
 #include "tiledb/sm/misc/comparators.h"
 #include "tiledb/sm/misc/logger.h"
 #include "tiledb/sm/misc/parallel_functions.h"
-#include "tiledb/sm/misc/stats.h"
 #include "tiledb/sm/misc/utils.h"
 #include "tiledb/sm/misc/uuid.h"
 #include "tiledb/sm/query/query_macros.h"
@@ -463,8 +462,6 @@ const void* Writer::subarray() const {
 }
 
 Status Writer::write() {
-  STATS_FUNC_IN(writer_write);
-
   // In case the user has provided a coordinates buffer
   RETURN_NOT_OK(split_coords_buffer());
 
@@ -482,7 +479,6 @@ Status Writer::write() {
   }
 
   return Status::Ok();
-  STATS_FUNC_OUT(writer_write);
 }
 
 const std::vector<WrittenFragmentInfo>& Writer::written_fragment_info() const {
@@ -553,8 +549,6 @@ Status Writer::check_buffer_sizes() const {
 }
 
 Status Writer::check_coord_dups(const std::vector<uint64_t>& cell_pos) const {
-  STATS_FUNC_IN(writer_check_coord_dups);
-
   // Check if applicable
   if (array_schema_->allows_dups() || !check_coord_dups_ || dedup_coords_)
     return Status::Ok();
@@ -642,12 +636,9 @@ Status Writer::check_coord_dups(const std::vector<uint64_t>& cell_pos) const {
     RETURN_NOT_OK_ELSE(st, LOG_STATUS(st));
 
   return Status::Ok();
-  STATS_FUNC_OUT(writer_check_coord_dups);
 }
 
 Status Writer::check_coord_dups() const {
-  STATS_FUNC_IN(writer_check_coord_dups_global);
-
   // Check if applicable
   if (array_schema_->allows_dups() || !check_coord_dups_ || dedup_coords_)
     return Status::Ok();
@@ -729,8 +720,6 @@ Status Writer::check_coord_dups() const {
     RETURN_NOT_OK_ELSE(st, LOG_STATUS(st));
 
   return Status::Ok();
-
-  STATS_FUNC_OUT(writer_check_coord_dups_global);
 }
 
 Status Writer::check_coord_oob() const {
@@ -860,7 +849,6 @@ Status Writer::close_files(FragmentMetadata* meta) const {
 Status Writer::compute_coord_dups(
     const std::vector<uint64_t>& cell_pos,
     std::set<uint64_t>* coord_dups) const {
-  STATS_FUNC_IN(writer_compute_coord_dups);
   if (!has_coords_) {
     return LOG_STATUS(
         Status::WriterError("Cannot check for coordinate duplicates; "
@@ -943,13 +931,9 @@ Status Writer::compute_coord_dups(
     RETURN_NOT_OK(st);
 
   return Status::Ok();
-
-  STATS_FUNC_OUT(writer_compute_coord_dups);
 }
 
 Status Writer::compute_coord_dups(std::set<uint64_t>* coord_dups) const {
-  STATS_FUNC_IN(writer_compute_coord_dups_global);
-
   if (!has_coords_) {
     return LOG_STATUS(
         Status::WriterError("Cannot check for coordinate duplicates; "
@@ -1028,8 +1012,6 @@ Status Writer::compute_coord_dups(std::set<uint64_t>* coord_dups) const {
   }
 
   return Status::Ok();
-
-  STATS_FUNC_OUT(writer_compute_coord_dups_global);
 }
 
 Status Writer::compute_coords_metadata(
@@ -1087,8 +1069,6 @@ Status Writer::compute_coords_metadata(
 template <class T>
 Status Writer::compute_write_cell_ranges(
     WriteCellSlabIter<T>* iter, WriteCellRangeVec* write_cell_ranges) const {
-  STATS_FUNC_IN(writer_compute_write_cell_ranges);
-
   auto domain = array_schema_->domain();
   auto dim_num = array_schema_->dim_num();
   assert(!subarray_flat_.empty());
@@ -1140,14 +1120,10 @@ Status Writer::compute_write_cell_ranges(
   }
 
   return Status::Ok();
-
-  STATS_FUNC_OUT(writer_compute_write_cell_ranges);
 }
 
 Status Writer::create_fragment(
     bool dense, std::shared_ptr<FragmentMetadata>* frag_meta) const {
-  STATS_FUNC_IN(writer_create_fragment);
-
   URI uri;
   uint64_t timestamp = array_->timestamp();
   if (!fragment_uri_.to_string().empty()) {
@@ -1163,8 +1139,6 @@ Status Writer::create_fragment(
 
   RETURN_NOT_OK((*frag_meta)->init(subarray_.ndrange(0)));
   return storage_manager_->create_dir(uri);
-
-  STATS_FUNC_OUT(writer_create_fragment);
 }
 
 Status Writer::filter_tiles(
@@ -1188,8 +1162,6 @@ Status Writer::filter_tiles(
 
 Status Writer::filter_tiles(
     const std::string& name, std::vector<Tile>* tiles) const {
-  STATS_FUNC_IN(writer_filter_tiles);
-
   bool var_size = array_schema_->var_size(name);
   // Filter all tiles
   auto tile_num = tiles->size();
@@ -1202,8 +1174,6 @@ Status Writer::filter_tiles(
   }
 
   return Status::Ok();
-
-  STATS_FUNC_OUT(writer_filter_tiles);
 }
 
 Status Writer::filter_tile(
@@ -1223,7 +1193,6 @@ Status Writer::filter_tile(
 
   tile->set_filtered(true);
   tile->set_pre_filtered_size(orig_size);
-  STATS_COUNTER_ADD(writer_num_bytes_before_filtering, orig_size);
 
   return Status::Ok();
 }
@@ -1422,8 +1391,6 @@ bool Writer::all_last_tiles_empty() const {
 }
 
 Status Writer::init_global_write_state() {
-  STATS_FUNC_IN(writer_init_global_write_state);
-
   // Create global array state object
   if (global_write_state_ != nullptr)
     return LOG_STATUS(
@@ -1459,8 +1426,6 @@ Status Writer::init_global_write_state() {
   }
 
   return Status::Ok();
-
-  STATS_FUNC_OUT(writer_init_global_write_state);
 }
 
 Status Writer::init_tile(const std::string& name, Tile* tile) const {
@@ -1514,8 +1479,6 @@ Status Writer::init_tile(
 template <class T>
 Status Writer::init_tile_dense_cell_range_iters(
     std::vector<WriteCellSlabIter<T>>* iters) const {
-  STATS_FUNC_IN(writer_init_tile_dense_cell_range_iters);
-
   // For easy reference
   auto domain = array_schema_->domain();
   auto dim_num = domain->dim_num();
@@ -1568,8 +1531,6 @@ Status Writer::init_tile_dense_cell_range_iters(
   }
 
   return Status::Ok();
-
-  STATS_FUNC_OUT(writer_init_tile_dense_cell_range_iters);
 }
 
 Status Writer::init_tiles(
@@ -1622,8 +1583,6 @@ void Writer::optimize_layout_for_1D() {
 }
 
 Status Writer::ordered_write() {
-  STATS_FUNC_IN(writer_ordered_write);
-
   // Applicable only to ordered write on dense arrays
   assert(layout_ == Layout::ROW_MAJOR || layout_ == Layout::COL_MAJOR);
   assert(array_schema_->dense());
@@ -1666,8 +1625,6 @@ Status Writer::ordered_write() {
   }
 
   return Status::Ok();
-
-  STATS_FUNC_OUT(writer_ordered_write);
 }
 
 template <class T>
@@ -1788,7 +1745,6 @@ Status Writer::prepare_full_tiles_fixed(
     const std::string& name,
     const std::set<uint64_t>& coord_dups,
     std::vector<Tile>* tiles) const {
-  STATS_FUNC_IN(writer_prepare_full_tiles_fixed);
   // For easy reference
   auto it = buffers_.find(name);
   auto buffer = (unsigned char*)it->second.buffer_;
@@ -1884,16 +1840,12 @@ Status Writer::prepare_full_tiles_fixed(
   global_write_state_->cells_written_[name] += cell_num;
 
   return Status::Ok();
-
-  STATS_FUNC_OUT(writer_prepare_full_tiles_fixed);
 }
 
 Status Writer::prepare_full_tiles_var(
     const std::string& name,
     const std::set<uint64_t>& coord_dups,
     std::vector<Tile>* tiles) const {
-  STATS_FUNC_IN(writer_prepare_full_tiles_var);
-
   // For easy reference
   auto it = buffers_.find(name);
   auto buffer = (uint64_t*)it->second.buffer_;
@@ -2049,16 +2001,12 @@ Status Writer::prepare_full_tiles_var(
   global_write_state_->cells_written_[name] += cell_num;
 
   return Status::Ok();
-
-  STATS_FUNC_OUT(writer_prepare_full_tiles_var);
 }
 
 Status Writer::prepare_tiles(
     const std::string& attribute,
     const std::vector<WriteCellRangeVec>& write_cell_ranges,
     std::vector<Tile>* tiles) const {
-  STATS_FUNC_IN(writer_prepare_tiles_ordered);
-
   // Trivial case
   auto tile_num = write_cell_ranges.size();
   if (tile_num == 0)
@@ -2123,8 +2071,6 @@ Status Writer::prepare_tiles(
   }
 
   return Status::Ok();
-
-  STATS_FUNC_OUT(writer_prepare_tiles_ordered);
 }
 
 Status Writer::prepare_tiles(
@@ -2169,8 +2115,6 @@ Status Writer::prepare_tiles_fixed(
     const std::vector<uint64_t>& cell_pos,
     const std::set<uint64_t>& coord_dups,
     std::vector<Tile>* tiles) const {
-  STATS_FUNC_IN(writer_prepare_tiles_fixed);
-
   // Trivial case
   if (cell_pos.empty())
     return Status::Ok();
@@ -2211,8 +2155,6 @@ Status Writer::prepare_tiles_fixed(
   }
 
   return Status::Ok();
-
-  STATS_FUNC_OUT(writer_prepare_tiles_fixed);
 }
 
 Status Writer::prepare_tiles_var(
@@ -2220,8 +2162,6 @@ Status Writer::prepare_tiles_var(
     const std::vector<uint64_t>& cell_pos,
     const std::set<uint64_t>& coord_dups,
     std::vector<Tile>* tiles) const {
-  STATS_FUNC_IN(writer_prepare_tiles_var);
-
   // For easy reference
   auto it = buffers_.find(name);
   auto buffer = (uint64_t*)it->second.buffer_;
@@ -2279,8 +2219,6 @@ Status Writer::prepare_tiles_var(
   }
 
   return Status::Ok();
-
-  STATS_FUNC_OUT(writer_prepare_tiles_var);
 }
 
 void Writer::reset() {
@@ -2290,8 +2228,6 @@ void Writer::reset() {
 }
 
 Status Writer::sort_coords(std::vector<uint64_t>* cell_pos) const {
-  STATS_FUNC_IN(writer_sort_coords);
-
   // For easy reference
   auto domain = array_schema_->domain();
 
@@ -2312,8 +2248,6 @@ Status Writer::sort_coords(std::vector<uint64_t>* cell_pos) const {
   parallel_sort(cell_pos->begin(), cell_pos->end(), GlobalCmp(domain, &buffs));
 
   return Status::Ok();
-
-  STATS_FUNC_OUT(writer_sort_coords);
 }
 
 Status Writer::split_coords_buffer() {
@@ -2494,8 +2428,6 @@ Status Writer::write_cell_range_to_tile_var(
 Status Writer::write_all_tiles(
     FragmentMetadata* frag_meta,
     const std::unordered_map<std::string, std::vector<Tile>>& tiles) const {
-  STATS_FUNC_IN(writer_write_all_tiles);
-
   assert(!tiles.empty());
 
   std::vector<std::future<Status>> tasks;
@@ -2514,8 +2446,6 @@ Status Writer::write_all_tiles(
     RETURN_NOT_OK(st);
 
   return Status::Ok();
-
-  STATS_FUNC_OUT(writer_write_all_tiles);
 }
 
 Status Writer::write_tiles(
@@ -2537,16 +2467,12 @@ Status Writer::write_tiles(
     RETURN_NOT_OK(storage_manager_->write(uri, tiles[i].buffer()));
     frag_meta->set_tile_offset(name, tile_id, tiles[i].buffer()->size());
 
-    STATS_COUNTER_ADD(writer_num_bytes_written, tiles[i].buffer()->size());
-
     if (var_size) {
       ++i;
 
       RETURN_NOT_OK(storage_manager_->write(var_uri, tiles[i].buffer()));
       frag_meta->set_tile_var_offset(name, tile_id, tiles[i].buffer()->size());
       frag_meta->set_tile_var_size(name, tile_id, tiles[i].pre_filtered_size());
-
-      STATS_COUNTER_ADD(writer_num_bytes_written, tiles[i].buffer()->size());
     }
   }
 
@@ -2556,8 +2482,6 @@ Status Writer::write_tiles(
     if (var_size)
       RETURN_NOT_OK(storage_manager_->close_file(frag_meta->var_uri(name)));
   }
-
-  STATS_COUNTER_ADD(writer_num_attr_tiles_written, tile_num);
 
   return Status::Ok();
 }

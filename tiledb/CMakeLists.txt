@@ -142,7 +142,6 @@ set(TILEDB_CORE_SOURCES
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/misc/cancelable_tasks.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/misc/constants.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/misc/logger.cc
-  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/misc/stats.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/misc/status.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/misc/thread_pool.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/misc/uri.cc
@@ -160,6 +159,7 @@ set(TILEDB_CORE_SOURCES
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/rtree/rtree.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/array_schema.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/query.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/stats/stats.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/storage_manager/context.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/storage_manager/consolidator.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/storage_manager/open_array.cc
@@ -260,11 +260,6 @@ endif()
 if (TILEDB_VERBOSE)
   add_definitions(-DTILEDB_VERBOSE)
   message(STATUS "The TileDB library is compiled with verbosity.")
-endif()
-
-if (TILEDB_STATS)
-  add_definitions(-DTILEDB_STATS)
-  message(STATUS "The TileDB library is compiled with stats enabled.")
 endif()
 
 if (TILEDB_SERIALIZATION)

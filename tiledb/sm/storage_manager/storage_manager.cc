@@ -42,7 +42,6 @@
 #include "tiledb/sm/global_state/global_state.h"
 #include "tiledb/sm/misc/logger.h"
 #include "tiledb/sm/misc/parallel_functions.h"
-#include "tiledb/sm/misc/stats.h"
 #include "tiledb/sm/misc/utils.h"
 #include "tiledb/sm/misc/uuid.h"
 #include "tiledb/sm/query/query.h"
@@ -110,7 +109,6 @@ StorageManager::~StorageManager() {
 /* ****************************** */
 
 Status StorageManager::array_close_for_reads(const URI& array_uri) {
-  STATS_FUNC_IN(sm_array_close_for_reads);
   // Lock mutex
   std::lock_guard<std::mutex> lock{open_array_for_reads_mtx_};
 
@@ -148,14 +146,12 @@ Status StorageManager::array_close_for_reads(const URI& array_uri) {
   xlock_cv_.notify_all();
 
   return Status::Ok();
-  STATS_FUNC_OUT(sm_array_close_for_reads);
 }
 
 Status StorageManager::array_close_for_writes(
     const URI& array_uri,
     const EncryptionKey& encryption_key,
     Metadata* array_metadata) {
-  STATS_FUNC_IN(sm_array_close_for_writes);
   // Lock mutex
   std::lock_guard<std::mutex> lock{open_array_for_writes_mtx_};
 
@@ -188,7 +184,6 @@ Status StorageManager::array_close_for_writes(
   }
 
   return Status::Ok();
-  STATS_FUNC_OUT(sm_array_close_for_writes);
 }
 
 Status StorageManager::array_open_for_reads(
@@ -197,8 +192,6 @@ Status StorageManager::array_open_for_reads(
     const EncryptionKey& enc_key,
     ArraySchema** array_schema,
     std::vector<FragmentMetadata*>* fragment_metadata) {
-  STATS_FUNC_IN(sm_array_open_for_reads);
-
   // Open array without fragments
   auto open_array = (OpenArray*)nullptr;
   RETURN_NOT_OK_ELSE(
@@ -243,8 +236,6 @@ Status StorageManager::array_open_for_reads(
 
   // Note that we retain the (shared) lock on the array filelock
   return Status::Ok();
-
-  STATS_FUNC_OUT(sm_array_open_for_reads);
 }
 
 Status StorageManager::array_open_for_reads(
@@ -253,8 +244,6 @@ Status StorageManager::array_open_for_reads(
     const EncryptionKey& enc_key,
     ArraySchema** array_schema,
     std::vector<FragmentMetadata*>* fragment_metadata) {
-  STATS_FUNC_IN(sm_array_open_for_reads);
-
   // Open array without fragments
   auto open_array = (OpenArray*)nullptr;
   RETURN_NOT_OK_ELSE(
@@ -303,16 +292,12 @@ Status StorageManager::array_open_for_reads(
 
   // Note that we retain the (shared) lock on the array filelock
   return Status::Ok();
-
-  STATS_FUNC_OUT(sm_array_open_for_reads);
 }
 
 Status StorageManager::array_open_for_writes(
     const URI& array_uri,
     const EncryptionKey& encryption_key,
     ArraySchema** array_schema) {
-  STATS_FUNC_IN(sm_array_open_for_writes);
-
   if (!vfs_->supports_uri_scheme(array_uri))
     return LOG_STATUS(Status::StorageManagerError(
         "Cannot open array; URI scheme unsupported."));
@@ -381,8 +366,6 @@ Status StorageManager::array_open_for_writes(
   open_array->mtx_unlock();
 
   return Status::Ok();
-
-  STATS_FUNC_OUT(sm_array_open_for_writes);
 }
 
 Status StorageManager::array_reopen(
@@ -391,8 +374,6 @@ Status StorageManager::array_reopen(
     const EncryptionKey& enc_key,
     ArraySchema** array_schema,
     std::vector<FragmentMetadata*>* fragment_metadata) {
-  STATS_FUNC_IN(sm_array_reopen);
-
   auto open_array = (OpenArray*)nullptr;
 
   // Lock mutex
@@ -450,8 +431,6 @@ Status StorageManager::array_reopen(
   open_array->mtx_unlock();
 
   return st;
-
-  STATS_FUNC_OUT(sm_array_reopen);
 }
 
 Status StorageManager::array_consolidate(
@@ -1380,8 +1359,6 @@ Status StorageManager::init(const Config* config) {
 
   global_state.register_storage_manager(this);
 
-  STATS_COUNTER_ADD(sm_contexts_created, 1);
-
   return Status::Ok();
 }
 
@@ -1714,35 +1691,11 @@ Status StorageManager::object_iter_next_preorder(
 }
 
 Status StorageManager::query_submit(Query* query) {
-  STATS_COUNTER_ADD_IF(
-      query->type() == QueryType::READ, sm_query_submit_read, 1);
-  STATS_COUNTER_ADD_IF(
-      query->type() == QueryType::WRITE, sm_query_submit_write, 1);
-  STATS_COUNTER_ADD_IF(
-      query->layout() == Layout::COL_MAJOR,
-      sm_query_submit_layout_col_major,
-      1);
-  STATS_COUNTER_ADD_IF(
-      query->layout() == Layout::ROW_MAJOR,
-      sm_query_submit_layout_row_major,
-      1);
-  STATS_COUNTER_ADD_IF(
-      query->layout() == Layout::GLOBAL_ORDER,
-      sm_query_submit_layout_global_order,
-      1);
-  STATS_COUNTER_ADD_IF(
-      query->layout() == Layout::UNORDERED,
-      sm_query_submit_layout_unordered,
-      1);
-  STATS_FUNC_IN(sm_query_submit);
-
   // Process the query
   QueryInProgress in_progress(this);
   auto st = query->process();
 
   return st;
-
-  STATS_FUNC_OUT(sm_query_submit);
 }
 
 Status StorageManager::query_submit_async(Query* query) {
@@ -1756,8 +1709,6 @@ Status StorageManager::read_from_cache(
     Buffer* buffer,
     uint64_t nbytes,
     bool* in_cache) const {
-  STATS_FUNC_IN(sm_read_from_cache);
-
   std::stringstream key;
   key << uri.to_string() << "+" << offset;
   RETURN_NOT_OK(tile_cache_->read(key.str(), buffer, 0, nbytes, in_cache));
@@ -1765,8 +1716,6 @@ Status StorageManager::read_from_cache(
   buffer->reset_offset();
 
   return Status::Ok();
-
-  STATS_FUNC_OUT(sm_read_from_cache);
 }
 
 Status StorageManager::read(
@@ -1907,8 +1856,6 @@ Status StorageManager::init_rest_client() {
 
 Status StorageManager::write_to_cache(
     const URI& uri, uint64_t offset, Buffer* buffer) const {
-  STATS_FUNC_IN(sm_write_to_cache);
-
   // Do nothing if the object size is larger than the cache size
   uint64_t object_size = buffer->size();
   if (object_size > tile_cache_->max_size())
@@ -1934,8 +1881,6 @@ Status StorageManager::write_to_cache(
   RETURN_NOT_OK(tile_cache_->insert(key.str(), object, object_size, false));
 
   return Status::Ok();
-
-  STATS_FUNC_OUT(sm_write_to_cache);
 }
 
 Status StorageManager::write(const URI& uri, Buffer* buffer) const {
@@ -2140,8 +2085,6 @@ Status StorageManager::load_fragment_metadata(
   });
   for (auto st : statuses)
     RETURN_NOT_OK(st);
-
-  STATS_COUNTER_ADD(fragment_metadata_num_fragments, fragment_num);
 
   return Status::Ok();
 }
