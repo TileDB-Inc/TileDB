@@ -30,7 +30,7 @@
  * This file contains definitions of statistics-related code.
  */
 
-#include <thread>
+#include <cassert>
 
 #include "tiledb/sm/stats/stats.h"
 
@@ -52,7 +52,27 @@ Stats::Stats() {
 /*              API               */
 /* ****************************** */
 
+void Stats::start_timer(const std::string& stat) {
+  std::unique_lock<std::mutex> lck(mtx_);
+  auto it = time_stats_.find(stat);
+  if (it != time_stats_.end())
+    time_stats_[stat] = std::chrono::duration<double>::zero();
+
+  timers_[stat] = std::chrono::high_resolution_clock::now();
+}
+
+std::chrono::duration<double> Stats::end_timer(const std::string& stat) {
+  std::unique_lock<std::mutex> lck(mtx_);
+  auto it = timers_.find(stat);
+  assert(it != timers_.end());
+  auto dur = std::chrono::high_resolution_clock::now() - it->second;
+  timers_[stat] += dur;
+  timers_.erase(it);
+  return dur;
+}
+
 void Stats::reset() {
+  std::unique_lock<std::mutex> lck(mtx_);
   // TODO
 }
 

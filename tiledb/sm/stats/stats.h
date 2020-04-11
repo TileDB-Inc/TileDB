@@ -41,6 +41,8 @@
 #include <iomanip>
 #include <iostream>
 #include <sstream>
+#include <thread>
+#include <unordered_map>
 
 namespace tiledb {
 namespace sm {
@@ -69,6 +71,17 @@ class Stats {
   /*              API               */
   /* ****************************** */
 
+  /**
+   * Starts a timer for the input `stat`. It also adds `stat` to `time_stats_`
+   * if does not exist, initializing it to zero.
+   */
+  void start_timer(const std::string& stat);
+
+  /**
+   * Ends the timer for the input stat and adds the duration to `time_stats_`.
+   */
+  std::chrono::duration<double> end_timer(const std::string& stat);
+
   /** Reset all counters to zero. */
   void reset();
 
@@ -79,6 +92,22 @@ class Stats {
   void dump(std::string* out) const;
 
  private:
+  /* ****************************** */
+  /*       PRIVATE ATTRIBUTES       */
+  /* ****************************** */
+
+  /** A map of timers. */
+  std::unordered_map<
+      std::string,
+      std::chrono::time_point<std::chrono::high_resolution_clock>>
+      timers_;
+
+  /** A map of time stats, measured in seconds. */
+  std::unordered_map<std::string, std::chrono::duration<double>> time_stats_;
+
+  /** Mutex to protext in multi-threading scenarios. */
+  std::mutex mtx_;
+
   /* ****************************** */
   /*       PRIVATE FUNCTIONS        */
   /* ****************************** */
