@@ -1283,7 +1283,7 @@ TEST_CASE_METHOD(
   std::vector<int32_t> a = {3, 2, 4, 1};
   write_array_1d(ctx_, array_name, TILEDB_UNORDERED, d_off, d_val, a);
 
-  // Write #1
+  // Write #2
   d_off = {0, 1, 2};
   d_val = "abee";
   a = {5, 6, 7};

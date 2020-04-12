@@ -50,6 +50,9 @@ namespace tiledb {
 namespace sm {
 
 class Array;
+class ArraySchema;
+class EncryptionKey;
+class FragmentMetadata;
 
 enum class Layout : uint8_t;
 enum class QueryType : uint8_t;
@@ -191,6 +194,9 @@ class Subarray {
   /** Returns the array the subarray is associated with. */
   const Array* array() const;
 
+  /** Returns the number of cells in the input ND range. */
+  uint64_t cell_num(uint64_t range_idx) const;
+
   /** Clears the contents of the subarray. */
   void clear();
 
@@ -216,6 +222,9 @@ class Subarray {
    * Computes the estimated result size (calibrated using the maximum size)
    * for a given attribute/dimension and range id, for all fragments.
    *
+   * @param encryption_key The encryption key of the array.
+   * @param array_schema The array schema.
+   * @param fragment_meta The fragment metadata of the array.
    * @param name The name of the attribute/dimension to focus on.
    * @param range_idx The id of the subarray range to focus on.
    * @param var_size Whether the attribute/dimension is var-sized or not.
@@ -223,6 +232,9 @@ class Subarray {
    * @return Status
    */
   Status compute_est_result_size(
+      const EncryptionKey* encryption_key,
+      const ArraySchema* array_schema,
+      const std::vector<FragmentMetadata*>& fragment_meta,
       const std::string& name,
       uint64_t range_idx,
       bool var_size,

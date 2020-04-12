@@ -497,7 +497,10 @@ SubarrayPartitioner SubarrayPartitioner::clone() const {
 
 Status SubarrayPartitioner::compute_current_start_end(bool* found) {
   // Preparation
-  auto array_schema = subarray_.array()->array_schema();
+  auto array = subarray_.array();
+  auto encryption_key = array->encryption_key();
+  auto array_schema = array->array_schema();
+  auto meta = array->fragment_metadata();
   std::unordered_map<std::string, Subarray::ResultSize> cur_sizes, mem_sizes;
   for (const auto& it : budget_) {
     cur_sizes[it.first] = Subarray::ResultSize();  // Est budget
@@ -513,7 +516,13 @@ Status SubarrayPartitioner::compute_current_start_end(bool* found) {
       auto var_size = array_schema->var_size(name);
       Subarray::ResultSize est_size;
       RETURN_NOT_OK(subarray_.compute_est_result_size(
-          name, current_.end_, var_size, &est_size));
+          encryption_key,
+          array_schema,
+          meta,
+          name,
+          current_.end_,
+          var_size,
+          &est_size));
       auto& cur_size = cur_sizes[name];
       auto& mem_size = mem_sizes[name];
       cur_size.size_fixed_ += est_size.size_fixed_;

@@ -40,9 +40,9 @@
 #include <chrono>
 #include <iomanip>
 #include <iostream>
+#include <map>
 #include <sstream>
 #include <thread>
-#include <unordered_map>
 
 namespace tiledb {
 namespace sm {
@@ -58,6 +58,13 @@ namespace stats {
 class Stats {
  public:
   /* ****************************** */
+  /*         TYPE DEFINITIONS       */
+  /* ****************************** */
+
+  /** Enumerates the stat types. */
+  enum class StatType { COMPUTE_EST_RESULT_SIZE, COMPUTE_TILE_OVERLAP, DBG };
+
+  /* ****************************** */
   /*   CONSTRUCTORS & DESTRUCTORS   */
   /* ****************************** */
 
@@ -71,16 +78,13 @@ class Stats {
   /*              API               */
   /* ****************************** */
 
-  /**
-   * Starts a timer for the input `stat`. It also adds `stat` to `time_stats_`
-   * if does not exist, initializing it to zero.
-   */
-  void start_timer(const std::string& stat);
+  /** Starts a timer for the input `stat`. */
+  void start_timer(StatType stat);
 
   /**
    * Ends the timer for the input stat and adds the duration to `time_stats_`.
    */
-  std::chrono::duration<double> end_timer(const std::string& stat);
+  std::chrono::duration<double> end_timer(StatType stat);
 
   /** Reset all counters to zero. */
   void reset();
@@ -91,19 +95,21 @@ class Stats {
   /** Dump the current counter values to the given string. */
   void dump(std::string* out) const;
 
+  /** Returns the duration of the input stat in seconds. */
+  double secs(StatType stat) const;
+
  private:
   /* ****************************** */
   /*       PRIVATE ATTRIBUTES       */
   /* ****************************** */
 
   /** A map of timers. */
-  std::unordered_map<
-      std::string,
-      std::chrono::time_point<std::chrono::high_resolution_clock>>
-      timers_;
+  std::
+      map<StatType, std::chrono::time_point<std::chrono::high_resolution_clock>>
+          timers_;
 
   /** A map of time stats, measured in seconds. */
-  std::unordered_map<std::string, std::chrono::duration<double>> time_stats_;
+  std::map<StatType, std::chrono::duration<double>> time_stats_;
 
   /** Mutex to protext in multi-threading scenarios. */
   std::mutex mtx_;

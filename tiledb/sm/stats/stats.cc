@@ -31,6 +31,7 @@
  */
 
 #include <cassert>
+#include <sstream>
 
 #include "tiledb/sm/stats/stats.h"
 
@@ -52,28 +53,42 @@ Stats::Stats() {
 /*              API               */
 /* ****************************** */
 
-void Stats::start_timer(const std::string& stat) {
-  std::unique_lock<std::mutex> lck(mtx_);
-  auto it = time_stats_.find(stat);
-  if (it != time_stats_.end())
-    time_stats_[stat] = std::chrono::duration<double>::zero();
+void Stats::start_timer(StatType stat) {
+  assert(timers_.find(stat) != timers_.end());
+  assert(time_stats_.find(stat) != time_stats_.end());
 
   timers_[stat] = std::chrono::high_resolution_clock::now();
 }
 
-std::chrono::duration<double> Stats::end_timer(const std::string& stat) {
-  std::unique_lock<std::mutex> lck(mtx_);
+std::chrono::duration<double> Stats::end_timer(StatType stat) {
   auto it = timers_.find(stat);
   assert(it != timers_.end());
+  assert(time_stats_.find(stat) != time_stats_.end());
+
   auto dur = std::chrono::high_resolution_clock::now() - it->second;
-  timers_[stat] += dur;
-  timers_.erase(it);
+  time_stats_[stat] += dur;
+  timers_[stat] = std::chrono::high_resolution_clock::now();
   return dur;
 }
 
 void Stats::reset() {
   std::unique_lock<std::mutex> lck(mtx_);
-  // TODO
+
+  timers_.clear();
+  time_stats_.clear();
+
+  timers_[StatType::COMPUTE_TILE_OVERLAP] =
+      std::chrono::high_resolution_clock::now();
+  time_stats_[StatType::COMPUTE_TILE_OVERLAP] =
+      std::chrono::duration<double>::zero();
+
+  timers_[StatType::COMPUTE_EST_RESULT_SIZE] =
+      std::chrono::high_resolution_clock::now();
+  time_stats_[StatType::COMPUTE_EST_RESULT_SIZE] =
+      std::chrono::duration<double>::zero();
+
+  timers_[StatType::DBG] = std::chrono::high_resolution_clock::now();
+  time_stats_[StatType::DBG] = std::chrono::duration<double>::zero();
 }
 
 void Stats::dump(FILE* out) const {
@@ -82,8 +97,24 @@ void Stats::dump(FILE* out) const {
 }
 
 void Stats::dump(std::string* out) const {
-  // TODO
-  (void)out;
+  std::stringstream ss;
+  ss << "==== READS ====\n\n";
+  ss << "- Time to compute estimated result size: "
+     << secs(StatType::COMPUTE_EST_RESULT_SIZE) << " secs\n";
+  ss << "  * Time to compute tile overlap: "
+     << secs(StatType::COMPUTE_TILE_OVERLAP) << " secs\n";
+  ss << "  * Others: "
+     << secs(StatType::COMPUTE_EST_RESULT_SIZE) -
+            secs(StatType::COMPUTE_TILE_OVERLAP)
+     << " secs\n";
+
+  ss << "\n DEBUG: " << secs(StatType::DBG) << "\n";
+  *out = ss.str();
+}
+
+double Stats::secs(StatType stat) const {
+  auto it = time_stats_.find(stat);
+  return it->second.count();
 }
 
 /* ****************************** */
