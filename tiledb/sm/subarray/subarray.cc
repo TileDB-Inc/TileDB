@@ -867,7 +867,7 @@ Status Subarray::compute_est_result_size(
     ResultSize* result_size) const {
   ResultSize ret{0.0, 0.0, 0, 0};
 
-  // Zipped coords applicable only
+  // Zipped coords applicable only in homogeneous domains
   if (name == constants::coords &&
       !array_->array_schema()->domain()->all_dims_same_type()) {
     *result_size = ret;

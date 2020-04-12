@@ -498,10 +498,10 @@ SubarrayPartitioner SubarrayPartitioner::clone() const {
 Status SubarrayPartitioner::compute_current_start_end(bool* found) {
   // Preparation
   auto array_schema = subarray_.array()->array_schema();
-  std::unordered_map<std::string, ResultBudget> cur_sizes, mem_sizes;
+  std::unordered_map<std::string, Subarray::ResultSize> cur_sizes, mem_sizes;
   for (const auto& it : budget_) {
-    cur_sizes[it.first] = ResultBudget();  // Est budget
-    mem_sizes[it.first] = ResultBudget();  // Max memory budget
+    cur_sizes[it.first] = Subarray::ResultSize();  // Est budget
+    mem_sizes[it.first] = Subarray::ResultSize();  // Max memory budget
   }
 
   current_.start_ = state_.start_;
@@ -516,10 +516,10 @@ Status SubarrayPartitioner::compute_current_start_end(bool* found) {
           name, current_.end_, var_size, &est_size));
       auto& cur_size = cur_sizes[name];
       auto& mem_size = mem_sizes[name];
-      cur_size.size_fixed_ += (uint64_t)ceil(est_size.size_fixed_);
-      cur_size.size_var_ += (uint64_t)ceil(est_size.size_var_);
-      mem_size.size_fixed_ += (uint64_t)ceil(est_size.mem_size_fixed_);
-      mem_size.size_var_ += (uint64_t)ceil(est_size.mem_size_var_);
+      cur_size.size_fixed_ += est_size.size_fixed_;
+      cur_size.size_var_ += est_size.size_var_;
+      mem_size.size_fixed_ += est_size.mem_size_fixed_;
+      mem_size.size_var_ += est_size.mem_size_var_;
       if (cur_size.size_fixed_ > budget_it.second.size_fixed_ ||
           cur_size.size_var_ > budget_it.second.size_var_ ||
           mem_size.size_fixed_ > memory_budget_ ||

@@ -109,6 +109,7 @@ void check_subarray(
     for (uint64_t j = 0; j < dim_range_num; ++j) {
       subarray.get_range(i, j, &range);
       auto r = (const T*)range->data();
+
       CHECK(r[0] == ranges[i][2 * j]);
       CHECK(r[1] == ranges[i][2 * j + 1]);
     }

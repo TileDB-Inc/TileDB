@@ -3095,7 +3095,7 @@ TILEDB_EXPORT int32_t tiledb_query_set_buffer(
     uint64_t* buffer_size);
 
 /**
- * Sets the buffer for a var-sized attribute to a query, which will
+ * Sets the buffer for a var-sized attribute/dimension to a query, which will
  * either hold the values to be written (if it is a write query), or will hold
  * the results from a read query.
  *

@@ -1606,8 +1606,7 @@ TEST_CASE_METHOD(
     // subarray: col
     subarray_layout = Layout::COL_MAJOR;
     ranges = {{1, 2, 3, 4}, {1, 2, 3, 5, 7, 9}};
-    partitions = {
-        {{1, 2, 3, 4}, {1, 2}}, {{1, 2, 3, 4}, {3, 5}}, {{1, 2, 3, 4}, {7, 9}}};
+    partitions = {{{1, 2, 3, 4}, {1, 2, 3, 5}}, {{1, 2, 3, 4}, {7, 9}}};
     test_subarray_partitioner(
         subarray_layout, ranges, partitions, attr, budget);
 
@@ -1634,16 +1633,14 @@ TEST_CASE_METHOD(
     // subarray: col
     subarray_layout = Layout::COL_MAJOR;
     ranges = {{1, 2, 3, 4}, {1, 2, 3, 5, 7, 9}};
-    partitions = {
-        {{1, 2, 3, 4}, {1, 2}}, {{1, 2, 3, 4}, {3, 5}}, {{1, 2, 3, 4}, {7, 9}}};
+    partitions = {{{1, 2, 3, 4}, {1, 2, 3, 5}}, {{1, 2, 3, 4}, {7, 9}}};
     test_subarray_partitioner(
         subarray_layout, ranges, partitions, attr, budget);
 
     // subarray: unordered
     subarray_layout = Layout::UNORDERED;
     ranges = {{1, 2, 3, 4}, {1, 2, 3, 5, 7, 9}};
-    partitions = {
-        {{1, 2, 3, 4}, {1, 2}}, {{1, 2, 3, 4}, {3, 5}}, {{1, 2, 3, 4}, {7, 9}}};
+    partitions = {{{1, 2, 3, 4}, {1, 2, 3, 5}}, {{1, 2, 3, 4}, {7, 9}}};
     test_subarray_partitioner(
         subarray_layout, ranges, partitions, attr, budget);
   }
