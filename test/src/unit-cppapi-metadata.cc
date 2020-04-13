@@ -33,6 +33,7 @@
 #include "test/src/helpers.h"
 #include "tiledb/sm/c_api/tiledb.h"
 #include "tiledb/sm/c_api/tiledb_struct_def.h"
+#include "tiledb/sm/config/config.h"
 #include "tiledb/sm/cpp_api/tiledb"
 
 #ifdef _WIN32
@@ -440,7 +441,9 @@ TEST_CASE_METHOD(
   array.close();
 
   // Consolidate
-  Array::consolidate_metadata(ctx, array_name_, nullptr);
+  Config consolidation_cfg;
+  consolidation_cfg["sm.consolidation.mode"] = "array_meta";
+  Array::consolidate(ctx, array_name_, &consolidation_cfg);
 
   // Open the array in read mode
   array.open(TILEDB_READ);
@@ -462,7 +465,7 @@ TEST_CASE_METHOD(
   array.close();
 
   // Consolidate again
-  Array::consolidate_metadata(ctx, array_name_, nullptr);
+  Array::consolidate(ctx, array_name_, &consolidation_cfg);
 
   // Open the array in read mode
   array.open(TILEDB_READ);
@@ -653,11 +656,13 @@ TEST_CASE_METHOD(
   array.close();
 
   // Consolidate without key - error
-  CHECK_THROWS(Array::consolidate_metadata(ctx, array_name_, nullptr));
+  Config consolidation_cfg;
+  consolidation_cfg["sm.consolidation.mode"] = "array_meta";
+  CHECK_THROWS(Array::consolidate(ctx, array_name_, &consolidation_cfg));
 
   // Consolidate with key - ok
-  Array::consolidate_metadata(
-      ctx, array_name_, enc_type_, key_, key_len_, nullptr);
+  Array::consolidate(
+      ctx, array_name_, enc_type_, key_, key_len_, &consolidation_cfg);
 
   // Open the array in read mode
   array.open(TILEDB_READ, enc_type_, key_, key_len_);
@@ -680,7 +685,7 @@ TEST_CASE_METHOD(
 
   // Consolidate again
   Array::consolidate_metadata(
-      ctx, array_name_, enc_type_, key_, key_len_, nullptr);
+      ctx, array_name_, enc_type_, key_, key_len_, &consolidation_cfg);
 
   // Open the array in read mode
   array.open(TILEDB_READ, enc_type_, key_, key_len_);

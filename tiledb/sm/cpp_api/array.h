@@ -1182,7 +1182,14 @@ class Array {
       const Context& ctx,
       const std::string& uri,
       Config* const config = nullptr) {
-    consolidate_metadata(ctx, uri, TILEDB_NO_ENCRYPTION, nullptr, 0, config);
+    Config local_cfg;
+    Config* config_aux = config;
+    if (!config_aux) {
+      config_aux = &local_cfg;
+    }
+
+    (*config)["sm.consolidation.mode"] = "array_meta";
+    consolidate(ctx, uri, TILEDB_NO_ENCRYPTION, nullptr, 0, config_aux);
   }
 
   /**
@@ -1219,13 +1226,15 @@ class Array {
       const void* encryption_key,
       uint32_t key_length,
       Config* const config = nullptr) {
-    ctx.handle_error(tiledb_array_consolidate_metadata_with_key(
-        ctx.ptr().get(),
-        uri.c_str(),
-        encryption_type,
-        encryption_key,
-        key_length,
-        config ? config->ptr().get() : nullptr));
+    Config local_cfg;
+    Config* config_aux = config;
+    if (!config_aux) {
+      config_aux = &local_cfg;
+    }
+
+    (*config)["sm.consolidation.mode"] = "array_meta";
+    consolidate(
+        ctx, uri, encryption_type, encryption_key, key_length, config_aux);
   }
 
   // clang-format off
@@ -1253,13 +1262,20 @@ class Array {
       tiledb_encryption_type_t encryption_type,
       const std::string& encryption_key,
       Config* const config = nullptr) {
-    return consolidate_metadata(
+    Config local_cfg;
+    Config* config_aux = config;
+    if (!config_aux) {
+      config_aux = &local_cfg;
+    }
+
+    (*config)["sm.consolidation.mode"] = "array_meta";
+    consolidate(
         ctx,
         uri,
         encryption_type,
         encryption_key.data(),
         (uint32_t)encryption_key.size(),
-        config);
+        config_aux);
   }
 
   /**

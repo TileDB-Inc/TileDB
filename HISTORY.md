@@ -34,6 +34,8 @@
 * Various reader parallelizations that boosted read performance significantly.
 
 ## Deprecations
+* The TileDB tiledb_array_consolidate_metadata and tiledb_array_consolidate_metadata_with_key C-API routines have been deprecated and will be [removed entirely](https://github.com/TileDB-Inc/TileDB/issues/1591) in a future release. The tiledb_array_consolidate and tiledb_array_consolidate_with_key routines achieve the same behavior when the "sm.consolidation.mode" parameter of the configuration argument is equivalent to "array_meta".
+* The TileDB Array::consolidate_metadata CPP-API routine has been deprecated and will be [removed entirely](https://github.com/TileDB-Inc/TileDB/issues/1591) in a future release. The Array::consolidate routine achieves the same behavior when the "sm.consolidation.mode" parameter of the configuration argument is equivalent to "array_meta".
 
 ## Bug fixes
 
