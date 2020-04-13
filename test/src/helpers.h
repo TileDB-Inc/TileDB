@@ -40,9 +40,27 @@
 #include "tiledb/sm/subarray/subarray.h"
 #include "tiledb_serialization.h"
 
+#include <mutex>
 #include <sstream>
 #include <string>
 #include <thread>
+
+// A mutex for protecting the thread-unsafe Catch2 macros.
+extern std::mutex catch2_macro_mutex;
+
+// A thread-safe variant of the CHECK macro.
+#define CHECK_SAFE(a)                                     \
+  {                                                       \
+    std::lock_guard<std::mutex> lock(catch2_macro_mutex); \
+    CHECK(a);                                             \
+  }
+
+// A thread-safe variant of the REQUIRE macro.
+#define REQUIRE_SAFE(a)                                   \
+  {                                                       \
+    std::lock_guard<std::mutex> lock(catch2_macro_mutex); \
+    REQUIRE(a);                                           \
+  }
 
 namespace tiledb {
 
