@@ -625,31 +625,31 @@ void DenseArrayRESTFx::write_dense_subarray_2D(
   // Open array
   tiledb_array_t* array;
   int rc = tiledb_array_alloc(ctx_, array_name.c_str(), &array);
-  CHECK(rc == TILEDB_OK);
+  CHECK_SAFE(rc == TILEDB_OK);
   rc = tiledb_array_open(ctx_, array, query_type);
-  CHECK(rc == TILEDB_OK);
+  CHECK_SAFE(rc == TILEDB_OK);
 
   // Create query
   tiledb_query_t* query;
   rc = tiledb_query_alloc(ctx_, array, query_type, &query);
-  REQUIRE(rc == TILEDB_OK);
+  REQUIRE_SAFE(rc == TILEDB_OK);
   rc = tiledb_query_set_buffer(
       ctx_, query, attributes[0], buffers[0], &buffer_sizes[0]);
-  REQUIRE(rc == TILEDB_OK);
+  REQUIRE_SAFE(rc == TILEDB_OK);
   rc = tiledb_query_set_subarray(ctx_, query, subarray);
-  REQUIRE(rc == TILEDB_OK);
+  REQUIRE_SAFE(rc == TILEDB_OK);
   rc = tiledb_query_set_layout(ctx_, query, query_layout);
-  REQUIRE(rc == TILEDB_OK);
+  REQUIRE_SAFE(rc == TILEDB_OK);
 
   // Submit query
   rc = tiledb_query_submit(ctx_, query);
-  REQUIRE(rc == TILEDB_OK);
+  REQUIRE_SAFE(rc == TILEDB_OK);
   rc = tiledb_query_finalize(ctx_, query);
-  REQUIRE(rc == TILEDB_OK);
+  REQUIRE_SAFE(rc == TILEDB_OK);
 
   // Close array
   rc = tiledb_array_close(ctx_, array);
-  CHECK(rc == TILEDB_OK);
+  CHECK_SAFE(rc == TILEDB_OK);
 
   // Clean up
   tiledb_array_free(&array);

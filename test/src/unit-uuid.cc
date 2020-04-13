@@ -35,6 +35,7 @@
 #include <thread>
 #include <vector>
 
+#include "test/src/helpers.h"
 #include "tiledb/sm/global_state/global_state.h"
 #include "tiledb/sm/misc/uuid.h"
 
@@ -63,8 +64,8 @@ TEST_CASE("UUID: Test generate", "[uuid]") {
     for (unsigned i = 0; i < nthreads; i++) {
       threads.emplace_back([&uuids, i]() {
         std::string& uuid = uuids[i];
-        REQUIRE(uuid::generate_uuid(&uuid).ok());
-        REQUIRE(uuid.length() == 36);
+        REQUIRE_SAFE(uuid::generate_uuid(&uuid).ok());
+        REQUIRE_SAFE(uuid.length() == 36);
       });
     }
     for (auto& t : threads) {
