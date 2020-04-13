@@ -37,6 +37,8 @@
 #include "tiledb/sm/misc/uri.h"
 #include "tiledb/sm/subarray/subarray_partitioner.h"
 
+std::mutex catch2_macro_mutex;
+
 namespace tiledb {
 namespace test {
 
