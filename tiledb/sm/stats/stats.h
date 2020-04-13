@@ -43,6 +43,7 @@
 #include <map>
 #include <sstream>
 #include <thread>
+#include <mutex>
 
 namespace tiledb {
 namespace sm {

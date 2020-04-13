@@ -33,8 +33,8 @@
 #include "tiledb/sm/rest/curl.h"
 #include "tiledb/sm/global_state/global_state.h"
 #include "tiledb/sm/misc/logger.h"
-#include "tiledb/sm/misc/stats.h"
 #include "tiledb/sm/misc/utils.h"
+#include "tiledb/sm/stats/stats.h"
 
 #include <cstring>
 
@@ -457,7 +457,6 @@ Status Curl::post_data(
     const SerializationType serialization_type,
     const BufferList* data,
     Buffer* const returned_data) {
-  STATS_FUNC_IN(rest_curl_post);
 
   struct curl_slist* headers;
   RETURN_NOT_OK(post_data_common(serialization_type, data, &headers));
@@ -471,8 +470,6 @@ Status Curl::post_data(
   RETURN_NOT_OK(check_curl_errors(ret, "POST", returned_data));
 
   return Status::Ok();
-
-  STATS_FUNC_OUT(rest_curl_post);
 }
 
 Status Curl::post_data(
@@ -480,7 +477,6 @@ Status Curl::post_data(
     const SerializationType serialization_type,
     const BufferList* data,
     PostResponseCb&& cb) {
-  STATS_FUNC_IN(rest_curl_post);
 
   struct curl_slist* headers;
   RETURN_NOT_OK(post_data_common(serialization_type, data, &headers));
@@ -494,8 +490,6 @@ Status Curl::post_data(
   RETURN_NOT_OK(check_curl_errors(ret, "POST"));
 
   return Status::Ok();
-
-  STATS_FUNC_OUT(rest_curl_post);
 }
 
 Status Curl::post_data_common(
@@ -537,7 +531,6 @@ Status Curl::get_data(
     const std::string& url,
     SerializationType serialization_type,
     Buffer* returned_data) {
-  STATS_FUNC_IN(rest_curl_get);
 
   CURL* curl = curl_.get();
   if (curl == nullptr)
@@ -563,15 +556,12 @@ Status Curl::get_data(
   RETURN_NOT_OK(check_curl_errors(ret, "GET", returned_data));
 
   return Status::Ok();
-
-  STATS_FUNC_OUT(rest_curl_get);
 }
 
 Status Curl::delete_data(
     const std::string& url,
     SerializationType serialization_type,
     Buffer* returned_data) {
-  STATS_FUNC_IN(rest_curl_delete);
 
   CURL* curl = curl_.get();
   if (curl == nullptr)
@@ -600,8 +590,6 @@ Status Curl::delete_data(
   RETURN_NOT_OK(check_curl_errors(ret, "DELETE", returned_data));
 
   return Status::Ok();
-
-  STATS_FUNC_OUT(rest_curl_delete);
 }
 
 }  // namespace sm
