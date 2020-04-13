@@ -3613,8 +3613,21 @@ int32_t tiledb_array_has_metadata_key(
 
 int32_t tiledb_array_consolidate_metadata(
     tiledb_ctx_t* ctx, const char* array_uri, tiledb_config_t* config) {
-  return tiledb_array_consolidate_metadata_with_key(
-      ctx, array_uri, TILEDB_NO_ENCRYPTION, nullptr, 0, config);
+  // Sanity checks
+  if (sanity_check(ctx) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  if (SAVE_ERROR_CATCH(
+          ctx,
+          ctx->ctx_->storage_manager()->array_metadata_consolidate(
+              array_uri,
+              static_cast<tiledb::sm::EncryptionType>(TILEDB_NO_ENCRYPTION),
+              nullptr,
+              0,
+              (config == nullptr) ? nullptr : config->config_)))
+    return TILEDB_ERR;
+
+  return TILEDB_OK;
 }
 
 int32_t tiledb_array_consolidate_metadata_with_key(

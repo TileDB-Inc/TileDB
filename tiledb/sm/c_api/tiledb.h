@@ -4042,31 +4042,47 @@ TILEDB_EXPORT int32_t tiledb_array_create_with_key(
     uint32_t key_length);
 
 /**
- * Consolidates the fragments of an array into a single fragment.
+ * Depending on the consoliation mode in the config, consolidates either the
+ * fragment files, fragment metadata files, or array metadata files into a
+ * single file.
+ *
+ * You must first finalize all queries to the array before consolidation can
+ * begin (as consolidation temporarily acquires an exclusive lock on the array).
  *
  * **Example:**
  *
  * @code{.c}
- * tiledb_array_consolidate(ctx, "hdfs:///tiledb_arrays/my_array", nullptr);
+ * tiledb_array_consolidate(
+ *     ctx, "hdfs:///tiledb_arrays/my_array", nullptr);
  * @endcode
  *
  * @param ctx The TileDB context.
- * @param array_uri The name of the TileDB array to be consolidated.
+ * @param array_uri The name of the TileDB array whose metadata will
+ *     be consolidated.
  * @param config Configuration parameters for the consolidation
  *     (`nullptr` means default, which will use the config from `ctx`).
+ *     The `sm.consolidation.mode` parameter determines which type of
+ *     consolidation to perform.
+ *
  * @return `TILEDB_OK` on success, and `TILEDB_ERR` on error.
  */
 TILEDB_EXPORT int32_t tiledb_array_consolidate(
     tiledb_ctx_t* ctx, const char* array_uri, tiledb_config_t* config);
 
 /**
- * Consolidates the fragments of an encrypted array into a single fragment.
+ * Depending on the consoliation mode in the config, consolidates either the
+ * fragment files, fragment metadata files, or array metadata files into a
+ * single file.
+ *
+ * You must first finalize all queries to the array before consolidation can
+ * begin (as consolidation temporarily acquires an exclusive lock on the array).
  *
  * **Example:**
  *
  * @code{.c}
  * uint8_t key[32] = ...;
- * tiledb_array_consolidate_with_key(ctx, "hdfs:///tiledb_arrays/my_array",
+ * tiledb_array_consolidate_with_key(
+ *     ctx, "hdfs:///tiledb_arrays/my_array",
  *     TILEDB_AES_256_GCM, key, sizeof(key), nullptr);
  * @endcode
  *
@@ -4077,6 +4093,8 @@ TILEDB_EXPORT int32_t tiledb_array_consolidate(
  * @param key_length Length in bytes of the encryption key.
  * @param config Configuration parameters for the consolidation
  *     (`nullptr` means default, which will use the config from `ctx`).
+ *     The `sm.consolidation.mode` parameter determines which type of
+ *     consolidation to perform.
  *
  * @return `TILEDB_OK` on success, and `TILEDB_ERR` on error.
  */
@@ -4597,7 +4615,7 @@ TILEDB_EXPORT int32_t tiledb_array_has_metadata_key(
  *     (`nullptr` means default, which will use the config from `ctx`).
  * @return `TILEDB_OK` on success, and `TILEDB_ERR` on error.
  */
-TILEDB_EXPORT int32_t tiledb_array_consolidate_metadata(
+TILEDB_DEPRECATED_EXPORT int32_t tiledb_array_consolidate_metadata(
     tiledb_ctx_t* ctx, const char* array_uri, tiledb_config_t* config);
 
 /**
@@ -4625,7 +4643,7 @@ TILEDB_EXPORT int32_t tiledb_array_consolidate_metadata(
  *
  * @return `TILEDB_OK` on success, and `TILEDB_ERR` on error.
  */
-TILEDB_EXPORT int32_t tiledb_array_consolidate_metadata_with_key(
+TILEDB_DEPRECATED_EXPORT int32_t tiledb_array_consolidate_metadata_with_key(
     tiledb_ctx_t* ctx,
     const char* array_uri,
     tiledb_encryption_type_t encryption_type,

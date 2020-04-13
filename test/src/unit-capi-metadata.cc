@@ -563,11 +563,6 @@ TEST_CASE_METHOD(
   tiledb_array_free(&array);
 
   // Consolidate
-  SECTION("tiledb_array_consolidate_metadata") {
-    rc = tiledb_array_consolidate_metadata(ctx_, array_name_.c_str(), nullptr);
-    CHECK(rc == TILEDB_OK);
-  }
-
   SECTION("tiledb_array_consolidate") {
     // Configuration for consolidating array metadata
     tiledb_config_t* config = nullptr;
@@ -656,8 +651,16 @@ TEST_CASE_METHOD(
   tiledb_array_free(&array);
 
   // Consolidate again
-  rc = tiledb_array_consolidate_metadata(ctx_, array_name_.c_str(), nullptr);
+  tiledb_config_t* config = nullptr;
+  tiledb_error_t* error = nullptr;
+  REQUIRE(tiledb_config_alloc(&config, &error) == TILEDB_OK);
+  REQUIRE(error == nullptr);
+  rc = tiledb_config_set(config, "sm.consolidation.mode", "array_meta", &error);
+  REQUIRE(rc == TILEDB_OK);
+  REQUIRE(error == nullptr);
+  rc = tiledb_array_consolidate(ctx_, array_name_.c_str(), config);
   CHECK(rc == TILEDB_OK);
+  tiledb_config_free(&config);
 
   // Open the array in read mode
   rc = tiledb_array_alloc(ctx_, array_name_.c_str(), &array);
@@ -933,13 +936,29 @@ TEST_CASE_METHOD(
   tiledb_array_free(&array);
 
   // Consolidate without key - error
-  rc = tiledb_array_consolidate_metadata(ctx_, array_name_.c_str(), nullptr);
+  tiledb_config_t* config = nullptr;
+  tiledb_error_t* error = nullptr;
+  REQUIRE(tiledb_config_alloc(&config, &error) == TILEDB_OK);
+  REQUIRE(error == nullptr);
+  rc = tiledb_config_set(config, "sm.consolidation.mode", "array_meta", &error);
+  REQUIRE(rc == TILEDB_OK);
+  REQUIRE(error == nullptr);
+  rc = tiledb_array_consolidate(ctx_, array_name_.c_str(), config);
   CHECK(rc == TILEDB_ERR);
+  tiledb_config_free(&config);
 
   // Consolidate with key - ok
-  rc = tiledb_array_consolidate_metadata_with_key(
-      ctx_, array_name_.c_str(), enc_type_, key_, key_len_, nullptr);
+  config = nullptr;
+  error = nullptr;
+  REQUIRE(tiledb_config_alloc(&config, &error) == TILEDB_OK);
+  REQUIRE(error == nullptr);
+  rc = tiledb_config_set(config, "sm.consolidation.mode", "array_meta", &error);
+  REQUIRE(rc == TILEDB_OK);
+  REQUIRE(error == nullptr);
+  rc = tiledb_array_consolidate_with_key(
+      ctx_, array_name_.c_str(), enc_type_, key_, key_len_, config);
   CHECK(rc == TILEDB_OK);
+  tiledb_config_free(&config);
 
   // Open the array in read mode
   rc = tiledb_array_alloc(ctx_, array_name_.c_str(), &array);
@@ -976,9 +995,17 @@ TEST_CASE_METHOD(
   tiledb_array_free(&array);
 
   // Consolidate again
-  rc = tiledb_array_consolidate_metadata_with_key(
-      ctx_, array_name_.c_str(), enc_type_, key_, key_len_, nullptr);
+  config = nullptr;
+  error = nullptr;
+  REQUIRE(tiledb_config_alloc(&config, &error) == TILEDB_OK);
+  REQUIRE(error == nullptr);
+  rc = tiledb_config_set(config, "sm.consolidation.mode", "array_meta", &error);
+  REQUIRE(rc == TILEDB_OK);
+  REQUIRE(error == nullptr);
+  rc = tiledb_array_consolidate_with_key(
+      ctx_, array_name_.c_str(), enc_type_, key_, key_len_, config);
   CHECK(rc == TILEDB_OK);
+  tiledb_config_free(&config);
 
   // Open the array in read mode
   rc = tiledb_array_alloc(ctx_, array_name_.c_str(), &array);
