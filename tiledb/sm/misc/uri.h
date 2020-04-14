@@ -237,16 +237,16 @@ class URI {
   std::string to_string() const;
 
   /** For comparing URIs alphanumerically. */
-  bool operator<(const URI& uri) const;
-
-  /** For comparing URIs alphanumerically. */
-  bool operator>(const URI& uri) const;
-
-  /** For comparing URIs alphanumerically. */
   bool operator==(const URI& uri) const;
 
   /** For comparing URIs alphanumerically. */
   bool operator!=(const URI& uri) const;
+
+  /** For comparing URIs alphanumerically. */
+  bool operator<(const URI& uri) const;
+
+  /** For comparing URIs alphanumerically. */
+  bool operator>(const URI& uri) const;
 
  private:
   /* ********************************* */
@@ -277,6 +277,15 @@ struct TimestampedURI {
 
   bool has_unary_timestamp_range() const {
     return timestamp_range_.first == timestamp_range_.second;
+  }
+};
+
+/**
+ * URI hash operator.
+ */
+struct URIHasher {
+  std::size_t operator()(const URI& uri) const {
+    return std::hash<std::string>()(uri.to_string());
   }
 };
 

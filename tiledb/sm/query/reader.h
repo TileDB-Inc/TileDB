@@ -33,6 +33,7 @@
 #ifndef TILEDB_READER_H
 #define TILEDB_READER_H
 
+#include <forward_list>
 #include <future>
 #include <list>
 #include <map>
@@ -879,26 +880,52 @@ class Reader {
    * Filters the tiles on a particular attribute/dimension from all input
    * fragments based on the tile info in `result_tiles`.
    *
-   * @param name Attribute/dimension whose tiles will be unfiltered
-   * @param result_tiles Vector containing the tiles to be unfiltered
+   * @param name Attribute/dimension whose tiles will be unfiltered.
+   * @param result_tiles Vector containing the tiles to be unfiltered.
+   * @param result_cell_slabs The result cell slabs to use for selective
+   *    unfiltering. This is optional and will be ignored if NULL.
    * @return Status
    */
   Status unfilter_tiles(
       const std::string& name,
-      const std::vector<ResultTile*>& result_tiles) const;
+      const std::vector<ResultTile*>& result_tiles,
+      const std::vector<ResultCellSlab>* result_cell_slabs = nullptr) const;
 
   /**
-   * Runs the input tile for the input attribute or dimension through the
-   * filter pipeline. The tile buffer is modified to contain the output of the
-   * pipeline.
+   * Runs the input fixed-sized tile for the input attribute or dimension
+   * through the filter pipeline. The tile buffer is modified to contain the
+   * output of the pipeline.
    *
    * @param name The attribute/dimension the tile belong to.
    * @param tile The tile to be unfiltered.
-   * @param offsets True if the tile to be unfiltered contains offsets for a
-   *    var-sized attribute/dimension.
+   * @param result_cell_slab_ranges Result cell slab ranges sorted in ascending
+   *    order.
    * @return Status
    */
-  Status unfilter_tile(const std::string& name, Tile* tile, bool offsets) const;
+  Status unfilter_tile(
+      const std::string& name,
+      Tile* tile,
+      const std::forward_list<std::pair<uint64_t, uint64_t>>*
+          result_cell_slab_ranges) const;
+
+  /**
+   * Runs the input var-sized tile for the input attribute or dimension through
+   * the filter pipeline. The tile buffer is modified to contain the output of
+   * the pipeline.
+   *
+   * @param name The attribute/dimension the tile belong to.
+   * @param tile The offsets tile to be unfiltered.
+   * @param tile_var The value tile to be unfiltered.
+   * @param result_cell_slab_ranges Result cell slab ranges sorted in ascending
+   *    order.
+   * @return Status
+   */
+  Status unfilter_tile(
+      const std::string& name,
+      Tile* tile,
+      Tile* tile_var,
+      const std::forward_list<std::pair<uint64_t, uint64_t>>*
+          result_cell_slab_ranges) const;
 
   /**
    * Gets all the result coordinates of the input tile into `result_coords`.
