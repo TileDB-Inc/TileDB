@@ -94,14 +94,19 @@ TEST_CASE(
 TEST_CASE(
     "Backwards compatibility: Test reading 1.4.0 array with non-split coords",
     "[backwards-compat][non-split-coords]") {
+
+  std::cerr << "JOE 1 " << std::endl;
+
   Context ctx;
   std::string array_uri(arrays_dir + "/non_split_coords_v1_4_0");
   Array array(ctx, array_uri, TILEDB_READ);
   std::vector<int> subarray = {1, 4, 10, 10};
+  std::cerr << "JOE 2 " << std::endl;
   auto max_el = array.max_buffer_elements(subarray);
   std::vector<int> a_read;
   a_read.resize(max_el["a"].second);
   std::vector<int> coords_read;
+  std::cerr << "JOE 3 " << std::endl;
   coords_read.resize(max_el[TILEDB_COORDS].second);
 
   Query query_r(ctx, array);
@@ -109,8 +114,10 @@ TEST_CASE(
       .set_layout(TILEDB_ROW_MAJOR)
       .set_buffer("a", a_read)
       .set_coordinates(coords_read);
+  std::cerr << "JOE 4 " << std::endl;
   query_r.submit();
   array.close();
+  std::cerr << "JOE 5 " << std::endl;
 
   for (int i = 0; i < 4; i++)
     REQUIRE(a_read[i] == i + 1);
