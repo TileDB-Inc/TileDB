@@ -30,10 +30,11 @@
  * This file contains definitions of statistics-related code.
  */
 
-#include <cassert>
-#include <sstream>
-
 #include "tiledb/sm/stats/stats.h"
+
+#include <cassert>
+#include <mutex>
+#include <sstream>
 
 namespace tiledb {
 namespace sm {
