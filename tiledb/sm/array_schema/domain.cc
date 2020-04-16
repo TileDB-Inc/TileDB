@@ -691,8 +691,8 @@ int Domain::tile_order_cmp(
     for (unsigned d = 0; d < dim_num_; ++d) {
       auto dim = dimension(d);
 
-      // Inapplicable to var-sized coordinates
-      if (dim->var_size())
+      // Inapplicable to var-sized dimensions or empty tile extents
+      if (dim->var_size() || dim->tile_extent().empty())
         continue;
 
       auto coord_size = dim->coord_size();
@@ -708,18 +708,17 @@ int Domain::tile_order_cmp(
     for (unsigned d = dim_num_ - 1;; --d) {
       auto dim = dimension(d);
 
-      // Inapplicable to var-sized coordinates
-      if (dim->var_size())
-        continue;
+      // Inapplicable to var-sized dimensions or empty tile extents
+      if (!dim->var_size() && !dim->tile_extent().empty()) {
+        auto coord_size = dim->coord_size();
+        auto ca = &(((unsigned char*)coord_buffs[d]->buffer_)[a * coord_size]);
+        auto cb = &(((unsigned char*)coord_buffs[d]->buffer_)[b * coord_size]);
+        auto res = tile_order_cmp_func_[d](dim, ca, cb);
 
-      auto coord_size = dim->coord_size();
-      auto ca = &(((unsigned char*)coord_buffs[d]->buffer_)[a * coord_size]);
-      auto cb = &(((unsigned char*)coord_buffs[d]->buffer_)[b * coord_size]);
-      auto res = tile_order_cmp_func_[d](dim, ca, cb);
-
-      if (res == 1 || res == -1)
-        return res;
-      // else same tile on dimension d --> continue
+        if (res == 1 || res == -1)
+          return res;
+        // else same tile on dimension d --> continue
+      }
 
       if (d == 0)
         break;
