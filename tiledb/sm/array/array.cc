@@ -683,6 +683,10 @@ Status Array::metadata(Metadata** metadata) {
   return Status::Ok();
 }
 
+uint64_t Array::num_threads() const {
+  return storage_manager_->num_threads();
+}
+
 const NDRange& Array::non_empty_domain() {
   if (!non_empty_domain_computed_) {
     // Compute non-empty domain

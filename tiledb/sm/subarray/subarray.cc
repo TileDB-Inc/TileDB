@@ -43,8 +43,10 @@
 #include "tiledb/sm/rtree/rtree.h"
 #include "tiledb/sm/stats/stats.h"
 
+#include <algorithm>
 #include <iomanip>
 #include <sstream>
+#include <unordered_set>
 
 namespace tiledb {
 namespace sm {
@@ -56,6 +58,7 @@ namespace sm {
 Subarray::Subarray() {
   array_ = nullptr;
   layout_ = Layout::UNORDERED;
+  cell_order_ = Layout::ROW_MAJOR;
   est_result_size_computed_ = false;
   tile_overlap_computed_ = false;
 }
@@ -69,6 +72,7 @@ Subarray::Subarray(const Array* array, Layout layout)
     , layout_(layout) {
   est_result_size_computed_ = false;
   tile_overlap_computed_ = false;
+  cell_order_ = array_->array_schema()->cell_order();
   add_default_ranges();
 }
 
@@ -157,8 +161,7 @@ uint64_t Subarray::cell_num(uint64_t range_idx) const {
   uint64_t cell_num = 1, range;
   auto array_schema = array_->array_schema();
   unsigned dim_num = array_schema->dim_num();
-  auto cell_order = array_->array_schema()->cell_order();
-  auto layout = (layout_ == Layout::UNORDERED) ? cell_order : layout_;
+  auto layout = (layout_ == Layout::UNORDERED) ? cell_order_ : layout_;
   uint64_t tmp_idx = range_idx;
 
   // Unary case or GLOBAL_ORDER
@@ -211,6 +214,23 @@ uint64_t Subarray::cell_num(uint64_t range_idx) const {
   }
 
   return cell_num;
+}
+
+uint64_t Subarray::cell_num(const std::vector<uint64_t>& range_coords) const {
+  auto array_schema = array_->array_schema();
+  auto dim_num = array_->array_schema()->dim_num();
+  assert(dim_num == range_coords.size());
+
+  uint64_t ret = 1;
+  for (unsigned d = 0; d < dim_num; ++d) {
+    auto dim = array_schema->dimension(d);
+    ret = utils::math::safe_mul(
+        ret, dim->domain_range(ranges_[d][range_coords[d]]));
+    if (ret == std::numeric_limits<uint64_t>::max())  // Overflow
+      return ret;
+  }
+
+  return ret;
 }
 
 void Subarray::clear() {
@@ -533,7 +553,7 @@ Status Subarray::get_max_memory_size(const char* name, uint64_t* size) {
 
   // Compute tile overlap for each fragment
   compute_est_result_size();
-  *size = (uint64_t)ceil(est_result_size_[name].mem_size_fixed_);
+  *size = max_mem_size_[name].size_fixed_;
 
   return Status::Ok();
 }
@@ -568,8 +588,8 @@ Status Subarray::get_max_memory_size(
 
   // Compute tile overlap for each fragment
   compute_est_result_size();
-  *size_off = (uint64_t)ceil(est_result_size_[name].mem_size_fixed_);
-  *size_val = (uint64_t)ceil(est_result_size_[name].mem_size_var_);
+  *size_off = max_mem_size_[name].size_fixed_;
+  *size_val = max_mem_size_[name].size_var_;
 
   return Status::Ok();
 }
@@ -579,8 +599,7 @@ std::vector<uint64_t> Subarray::get_range_coords(uint64_t range_idx) const {
 
   uint64_t tmp_idx = range_idx;
   auto dim_num = this->dim_num();
-  auto cell_order = array_->array_schema()->cell_order();
-  auto layout = (layout_ == Layout::UNORDERED) ? cell_order : layout_;
+  auto layout = (layout_ == Layout::UNORDERED) ? cell_order_ : layout_;
 
   if (layout == Layout::ROW_MAJOR) {
     for (unsigned i = 0; i < dim_num; ++i) {
@@ -604,6 +623,32 @@ std::vector<uint64_t> Subarray::get_range_coords(uint64_t range_idx) const {
   }
 
   return ret;
+}
+
+void Subarray::get_next_range_coords(
+    std::vector<uint64_t>* range_coords) const {
+  auto dim_num = array_->array_schema()->dim_num();
+  auto layout = (layout_ == Layout::UNORDERED) ? cell_order_ : layout_;
+
+  if (layout == Layout::ROW_MAJOR) {
+    auto d = dim_num - 1;
+    ++(*range_coords)[d];
+    while ((*range_coords)[d] >= ranges_[d].size() && d != 0) {
+      (*range_coords)[d] = 0;
+      --d;
+      ++(*range_coords)[d];
+    }
+  } else if (layout == Layout::COL_MAJOR) {
+    auto d = (unsigned)0;
+    ++(*range_coords)[d];
+    while ((*range_coords)[d] >= ranges_[d].size() && d != dim_num - 1) {
+      (*range_coords)[d] = 0;
+      ++d;
+      ++(*range_coords)[d];
+    }
+  } else {
+    // Global order - noop
+  }
 }
 
 uint64_t Subarray::range_idx(const std::vector<uint64_t>& range_coords) const {
@@ -630,11 +675,11 @@ NDRange Subarray::ndrange(uint64_t range_idx) const {
   NDRange ret;
   uint64_t tmp_idx = range_idx;
   auto dim_num = this->dim_num();
-  auto cell_order = array_->array_schema()->cell_order();
-  auto layout = (layout_ == Layout::UNORDERED) ? cell_order : layout_;
+  auto layout = (layout_ == Layout::UNORDERED) ? cell_order_ : layout_;
+  ret.reserve(dim_num);
 
   // Unary case or GLOBAL_ORDER
-  if (range_num() == 1) {
+  if (range_idx == 0 && range_num() == 1) {
     for (unsigned d = 0; d < dim_num; ++d)
       ret.emplace_back(ranges_[d][0]);
     return ret;
@@ -660,6 +705,15 @@ NDRange Subarray::ndrange(uint64_t range_idx) const {
     assert(false);
   }
 
+  return ret;
+}
+
+NDRange Subarray::ndrange(const std::vector<uint64_t>& range_coords) const {
+  auto dim_num = this->dim_num();
+  NDRange ret;
+  ret.reserve(dim_num);
+  for (unsigned d = 0; d < dim_num; ++d)
+    ret.emplace_back(ranges_[d][range_coords[d]]);
   return ret;
 }
 
@@ -783,6 +837,114 @@ const T* Subarray::tile_coords_ptr(
   return (const T*)&(tile_coords_[it->second][0]);
 }
 
+Status Subarray::compute_relevant_fragment_est_result_sizes(
+    const std::vector<std::string>& names,
+    uint64_t range_start,
+    uint64_t range_end,
+    std::vector<std::vector<ResultSize>>* result_sizes,
+    std::vector<std::vector<MemorySize>>* mem_sizes) {
+  // For easy reference
+  auto array_schema = array_->array_schema();
+  auto fragment_metadata = array_->fragment_metadata();
+  auto encryption_key = array_->encryption_key();
+  auto dim_num = array_->array_schema()->dim_num();
+  auto layout = (layout_ == Layout::UNORDERED) ? cell_order_ : layout_;
+
+  RETURN_NOT_OK(load_relevant_fragment_tile_var_sizes(names));
+
+  // Prepare result sizes vectors
+  auto range_num = range_end - range_start + 1;
+  result_sizes->resize(range_num);
+  std::vector<std::set<std::pair<unsigned, uint64_t>>> frag_tiles(range_num);
+  for (size_t r = 0; r < range_num; ++r)
+    (*result_sizes)[r].reserve(names.size());
+
+  // Create vector of var sizes
+  std::vector<bool> var_sizes;
+  var_sizes.reserve(names.size());
+  for (const auto& name : names)
+    var_sizes.push_back(array_schema->var_size(name));
+
+  auto all_dims_same_type = array_schema->domain()->all_dims_same_type();
+  auto all_dims_fixed = array_schema->domain()->all_dims_fixed();
+  auto num_threads = array_->num_threads();
+  auto ranges_per_thread = (uint64_t)ceil((double)range_num / num_threads);
+  auto statuses = parallel_for(0, num_threads, [&](uint64_t t) {
+    auto r_start = range_start + t * ranges_per_thread;
+    auto r_end =
+        std::min(range_start + (t + 1) * ranges_per_thread - 1, range_end);
+    auto r_coords = get_range_coords(r_start);
+    for (uint64_t r = r_start; r <= r_end; ++r) {
+      RETURN_NOT_OK(compute_relevant_fragment_est_result_sizes(
+          encryption_key,
+          array_schema,
+          all_dims_same_type,
+          all_dims_fixed,
+          fragment_metadata,
+          names,
+          var_sizes,
+          r,
+          r_coords,
+          &(*result_sizes)[r - range_start],
+          &frag_tiles[r - range_start]));
+
+      // Get next range coordinates
+      if (layout == Layout::ROW_MAJOR) {
+        auto d = dim_num - 1;
+        ++(r_coords)[d];
+        while ((r_coords)[d] >= ranges_[d].size() && d != 0) {
+          (r_coords)[d] = 0;
+          --d;
+          ++(r_coords)[d];
+        }
+      } else if (layout == Layout::COL_MAJOR) {
+        auto d = (unsigned)0;
+        ++(r_coords)[d];
+        while ((r_coords)[d] >= ranges_[d].size() && d != dim_num - 1) {
+          (r_coords)[d] = 0;
+          ++d;
+          ++(r_coords)[d];
+        }
+      } else {
+        // Global order - noop
+      }
+    }
+    return Status::Ok();
+  });
+  for (auto st : statuses)
+    RETURN_NOT_OK(st);
+
+  // Compute the mem sizes vector
+  mem_sizes->resize(range_num);
+  for (auto& ms : *mem_sizes)
+    ms.resize(names.size(), {0, 0});
+  std::unordered_set<std::pair<unsigned, uint64_t>, utils::hash::pair_hash>
+      all_frag_tiles;
+  uint64_t tile_size, tile_var_size;
+  for (uint64_t r = 0; r < range_num; ++r) {
+    auto& mem_vec = (*mem_sizes)[r];
+    for (const auto& ft : frag_tiles[r]) {
+      auto it = all_frag_tiles.insert(ft);
+      if (it.second) {  // If the fragment/tile pair is new
+        auto meta = fragment_metadata[ft.first];
+        for (size_t i = 0; i < names.size(); ++i) {
+          tile_size = meta->tile_size(names[i], ft.second);
+          if (!var_sizes[i]) {
+            mem_vec[i].size_fixed_ += tile_size;
+          } else {
+            RETURN_NOT_OK(meta->tile_var_size(
+                *encryption_key, names[i], ft.second, &tile_var_size));
+            mem_vec[i].size_fixed_ += tile_size;
+            mem_vec[i].size_var_ += tile_var_size;
+          }
+        }
+      }
+    }
+  }
+
+  return Status::Ok();
+}
+
 /* ****************************** */
 /*          PRIVATE METHODS       */
 /* ****************************** */
@@ -802,8 +964,7 @@ void Subarray::compute_range_offsets() {
   range_offsets_.clear();
 
   auto dim_num = this->dim_num();
-  auto cell_order = array_->array_schema()->cell_order();
-  auto layout = (layout_ == Layout::UNORDERED) ? cell_order : layout_;
+  auto layout = (layout_ == Layout::UNORDERED) ? cell_order_ : layout_;
 
   if (layout == Layout::COL_MAJOR) {
     range_offsets_.push_back(1);
@@ -841,8 +1002,6 @@ Status Subarray::compute_est_result_size() {
 
   RETURN_NOT_OK(compute_tile_overlap());
 
-  std::mutex mtx;
-
   // Prepare estimated result size vector for all
   // attributes/dimension and zipped coords
   auto array_schema = array_->array_schema();
@@ -850,14 +1009,10 @@ Status Subarray::compute_est_result_size() {
   auto dim_num = array_schema->dim_num();
   auto attributes = array_schema->attributes();
   auto num = attribute_num + dim_num + 1;
-  std::vector<ResultSize> est_result_size_vec;
-  for (unsigned i = 0; i < num; ++i)
-    est_result_size_vec.emplace_back(ResultSize{0.0, 0.0, 0, 0});
+  auto range_num = this->range_num();
 
   // Compute estimated result in parallel over fragments and ranges
   auto meta = array_->fragment_metadata();
-  auto fragment_num = meta.size();
-  auto range_num = this->range_num();
 
   // Get attribute and dimension names
   std::vector<std::string> names(num);
@@ -870,47 +1025,28 @@ Status Subarray::compute_est_result_size() {
       names[i] = constants::coords;
   }
 
-  // Find the name of some var-sized dimension or attribute
-  std::string name;
-  for (unsigned i = 0; i < num; ++i) {
-    bool var_size = array_schema->var_size(names[i]);
-    if (var_size)
-      name = names[i];
-  }
+  // Compute the estimated result and max memory sizes
+  std::vector<std::vector<ResultSize>> result_sizes;
+  std::vector<std::vector<MemorySize>> mem_sizes;
+  std::vector<std::set<std::pair<unsigned, uint64_t>>> frag_tiles;
+  RETURN_NOT_OK(compute_relevant_fragment_est_result_sizes(
+      names, 0, range_num - 1, &result_sizes, &mem_sizes));
 
-  // Load in parallel all tile var sizes metadata across fragments
-  auto encryption_key = array_->encryption_key();
-  uint64_t size;
-  if (!name.empty()) {
-    auto statuses = parallel_for(0, fragment_num, [&](uint64_t f) {
-      auto name = array_schema->attribute(0)->name();
-      RETURN_NOT_OK(meta[f]->tile_var_size(*encryption_key, name, 0, &size));
-      return Status::Ok();
-    });
-    for (auto st : statuses)
-      RETURN_NOT_OK(st);
-  }
-
-  // Compute estimated result sizes in parallel across ranges
-  auto statuses = parallel_for(0, range_num, [&](uint64_t r) {
-    std::vector<ResultSize> result_sizes;
-    RETURN_NOT_OK(compute_est_result_sizes(
-        encryption_key, array_schema, meta, names, r, &result_sizes));
-    std::lock_guard<std::mutex> block(mtx);
-    for (size_t i = 0; i < result_sizes.size(); ++i) {
-      est_result_size_vec[i].size_fixed_ += result_sizes[i].size_fixed_;
-      est_result_size_vec[i].size_var_ += result_sizes[i].size_var_;
-      est_result_size_vec[i].mem_size_fixed_ += result_sizes[i].mem_size_fixed_;
-      est_result_size_vec[i].mem_size_var_ += result_sizes[i].mem_size_var_;
+  // Accummulate the individual estimated result sizes
+  std::vector<ResultSize> est_vec(num, ResultSize{0.0, 0.0});
+  std::vector<MemorySize> mem_vec(num, MemorySize{0, 0});
+  for (uint64_t r = 0; r < range_num; ++r) {
+    for (size_t i = 0; i < result_sizes[r].size(); ++i) {
+      est_vec[i].size_fixed_ += result_sizes[r][i].size_fixed_;
+      est_vec[i].size_var_ += result_sizes[r][i].size_var_;
+      mem_vec[i].size_fixed_ += mem_sizes[r][i].size_fixed_;
+      mem_vec[i].size_var_ += mem_sizes[r][i].size_var_;
     }
-    return Status::Ok();
-  });
-  for (auto st : statuses)
-    RETURN_NOT_OK(st);
+  }
 
   // Amplify result estimation
   if (constants::est_result_size_amplification != 1.0) {
-    for (auto& r : est_result_size_vec) {
+    for (auto& r : est_vec) {
       r.size_fixed_ *= constants::est_result_size_amplification;
       r.size_var_ *= constants::est_result_size_amplification;
     }
@@ -918,8 +1054,11 @@ Status Subarray::compute_est_result_size() {
 
   // Set the estimated result size map
   est_result_size_.clear();
-  for (unsigned i = 0; i < num; ++i)
-    est_result_size_[names[i]] = est_result_size_vec[i];
+  max_mem_size_.clear();
+  for (unsigned i = 0; i < num; ++i) {
+    est_result_size_[names[i]] = est_vec[i];
+    max_mem_size_[names[i]] = mem_vec[i];
+  }
   est_result_size_computed_ = true;
 
   return Status::Ok();
@@ -927,19 +1066,24 @@ Status Subarray::compute_est_result_size() {
   STATS_END_TIMER(stats::Stats::TimerType::READ_COMPUTE_EST_RESULT_SIZE)
 }
 
-Status Subarray::compute_est_result_sizes(
+Status Subarray::compute_relevant_fragment_est_result_sizes(
     const EncryptionKey* encryption_key,
     const ArraySchema* array_schema,
+    bool all_dims_same_type,
+    bool all_dims_fixed,
     const std::vector<FragmentMetadata*>& fragment_meta,
     const std::vector<std::string>& names,
+    const std::vector<bool>& var_sizes,
     uint64_t range_idx,
-    std::vector<ResultSize>* result_sizes) const {
-  result_sizes->resize(names.size(), {0.0, 0.0, 0, 0});
-  auto all_dims_same_type = array_schema->domain()->all_dims_same_type();
+    const std::vector<uint64_t>& range_coords,
+    std::vector<ResultSize>* result_sizes,
+    std::set<std::pair<unsigned, uint64_t>>* frag_tiles) {
+  result_sizes->resize(names.size(), {0.0, 0.0});
 
   // Compute estimated result
-  auto fragment_num = (unsigned)fragment_meta.size();
-  for (unsigned f = 0; f < fragment_num; ++f) {
+  auto fragment_num = (unsigned)relevant_fragments_.size();
+  for (unsigned i = 0; i < fragment_num; ++i) {
+    auto f = relevant_fragments_[i];
     const auto& overlap = tile_overlap_[f][range_idx];
     auto meta = fragment_meta[f];
 
@@ -952,17 +1096,15 @@ Status Subarray::compute_est_result_sizes(
           if (names[n] == constants::coords && !all_dims_same_type)
             continue;
 
+          frag_tiles->insert(std::pair<unsigned, uint64_t>(f, tid));
           tile_size = meta->tile_size(names[n], tid);
-          if (!array_schema->var_size(names[n])) {
+          if (!var_sizes[n]) {
             (*result_sizes)[n].size_fixed_ += tile_size;
-            (*result_sizes)[n].mem_size_fixed_ += tile_size;
           } else {
             (*result_sizes)[n].size_fixed_ += tile_size;
             RETURN_NOT_OK(meta->tile_var_size(
                 *encryption_key, names[n], tid, &tile_var_size));
             (*result_sizes)[n].size_var_ += tile_var_size;
-            (*result_sizes)[n].mem_size_fixed_ += tile_size;
-            (*result_sizes)[n].mem_size_var_ += tile_var_size;
           }
         }
       }
@@ -977,17 +1119,15 @@ Status Subarray::compute_est_result_sizes(
         if (names[n] == constants::coords && !all_dims_same_type)
           continue;
 
+        frag_tiles->insert(std::pair<unsigned, uint64_t>(f, tid));
         tile_size = meta->tile_size(names[n], tid);
-        if (!array_schema->var_size(names[n])) {
+        if (!var_sizes[n]) {
           (*result_sizes)[n].size_fixed_ += tile_size * ratio;
-          (*result_sizes)[n].mem_size_fixed_ += tile_size;
         } else {
           (*result_sizes)[n].size_fixed_ += tile_size * ratio;
           RETURN_NOT_OK(meta->tile_var_size(
               *encryption_key, names[n], tid, &tile_var_size));
           (*result_sizes)[n].size_var_ += tile_var_size * ratio;
-          (*result_sizes)[n].mem_size_fixed_ += tile_size;
-          (*result_sizes)[n].mem_size_var_ += tile_var_size;
         }
       }
     }
@@ -995,16 +1135,23 @@ Status Subarray::compute_est_result_sizes(
 
   // Calibrate result - applicable only to arrays without coordinate duplicates
   // and fixed dimensions
-  auto domain = array_schema->domain();
-  if (!array_schema->allows_dups() && domain->all_dims_fixed()) {
+  if (!array_schema->allows_dups() && all_dims_fixed) {
+    // Calculate cell num
+    uint64_t cell_num = 1;
+    auto dim_num = array_schema->dim_num();
+    for (unsigned d = 0; d < dim_num; ++d) {
+      auto dim = array_schema->dimension(d);
+      cell_num = utils::math::safe_mul(
+          cell_num, dim->domain_range(ranges_[d][range_coords[d]]));
+    }
+
     uint64_t max_size_fixed, max_size_var = UINT64_MAX;
-    auto cell_num = this->cell_num(range_idx);
     for (size_t n = 0; n < names.size(); ++n) {
       // Zipped coords applicable only in homogeneous domains
       if (names[n] == constants::coords && !all_dims_same_type)
         continue;
 
-      if (array_schema->var_size(names[n])) {
+      if (var_sizes[n]) {
         max_size_fixed =
             utils::math::safe_mul(cell_num, constants::cell_var_offset_size);
       } else {
@@ -1148,6 +1295,8 @@ Status Subarray::compute_tile_overlap() {
     return Status::Ok();
 
   compute_range_offsets();
+
+  // Initialization
   tile_overlap_.clear();
   auto meta = array_->fragment_metadata();
   auto fragment_num = meta.size();
@@ -1156,22 +1305,12 @@ Status Subarray::compute_tile_overlap() {
   for (unsigned i = 0; i < fragment_num; ++i)
     tile_overlap_[i].resize(range_num);
 
-  auto encryption_key = array_->encryption_key();
+  // Compute relevant fragments to the subarray
+  RETURN_NOT_OK(compute_relevant_fragments());
 
-  // Compute estimated tile overlap in parallel over fragments and ranges
-  auto statuses = parallel_for_2d(
-      0, fragment_num, 0, range_num, [&](unsigned i, uint64_t j) {
-        if (meta[i]->dense()) {  // Dense fragment
-          tile_overlap_[i][j] = get_tile_overlap(j, i);
-        } else {  // Sparse fragment
-          const auto& range = this->ndrange(j);
-          RETURN_NOT_OK(meta[i]->get_tile_overlap(
-              *encryption_key, range, &(tile_overlap_[i][j])));
-        }
-        return Status::Ok();
-      });
-  for (const auto& st : statuses)
-    RETURN_NOT_OK(st);
+  // Load the R-Trees and compute tile overlap only for relevant fragments
+  RETURN_NOT_OK(load_relevant_fragment_rtrees());
+  RETURN_NOT_OK(compute_relevant_fragment_tile_overlap());
 
   tile_overlap_computed_ = true;
 
@@ -1184,6 +1323,7 @@ Subarray Subarray::clone() const {
   Subarray clone;
   clone.array_ = array_;
   clone.layout_ = layout_;
+  clone.cell_order_ = cell_order_;
   clone.ranges_ = ranges_;
   clone.is_default_ = is_default_;
   clone.range_offsets_ = range_offsets_;
@@ -1191,6 +1331,8 @@ Subarray Subarray::clone() const {
   clone.est_result_size_computed_ = est_result_size_computed_;
   clone.tile_overlap_computed_ = tile_overlap_computed_;
   clone.est_result_size_ = est_result_size_;
+  clone.max_mem_size_ = max_mem_size_;
+  clone.relevant_fragments_ = relevant_fragments_;
 
   return clone;
 }
@@ -1313,6 +1455,7 @@ TileOverlap Subarray::get_tile_overlap(uint64_t range_idx, unsigned fid) const {
 void Subarray::swap(Subarray& subarray) {
   std::swap(array_, subarray.array_);
   std::swap(layout_, subarray.layout_);
+  std::swap(cell_order_, subarray.cell_order_);
   std::swap(ranges_, subarray.ranges_);
   std::swap(is_default_, subarray.is_default_);
   std::swap(range_offsets_, subarray.range_offsets_);
@@ -1320,6 +1463,133 @@ void Subarray::swap(Subarray& subarray) {
   std::swap(est_result_size_computed_, subarray.est_result_size_computed_);
   std::swap(tile_overlap_computed_, subarray.tile_overlap_computed_);
   std::swap(est_result_size_, subarray.est_result_size_);
+  std::swap(max_mem_size_, subarray.max_mem_size_);
+  std::swap(relevant_fragments_, subarray.relevant_fragments_);
+}
+
+Status Subarray::compute_relevant_fragments() {
+  STATS_START_TIMER(stats::Stats::TimerType::READ_COMPUTE_RELEVANT_FRAGS)
+
+  auto meta = array_->fragment_metadata();
+  auto fragment_num = meta.size();
+  auto range_num = this->range_num();
+  std::vector<uint8_t> frag_bitmap(fragment_num, 0);
+
+  // Compute the relevant fragments
+  auto statuses = parallel_for_2d(
+      0, fragment_num, 0, range_num, [&](unsigned f, uint64_t r) {
+        if (frag_bitmap[f] == 0 &&
+            meta[f]->overlaps_non_empty_domain(this->ndrange(r)))
+          frag_bitmap[f] = 1;
+        return Status::Ok();
+      });
+
+  // Copy to the result
+  relevant_fragments_.reserve(fragment_num);
+  for (unsigned f = 0; f < fragment_num; ++f) {
+    if (frag_bitmap[f])
+      relevant_fragments_.emplace_back(f);
+  }
+  relevant_fragments_.shrink_to_fit();
+
+  return Status::Ok();
+
+  STATS_END_TIMER(stats::Stats::TimerType::READ_COMPUTE_RELEVANT_FRAGS)
+}
+
+Status Subarray::load_relevant_fragment_rtrees() const {
+  STATS_START_TIMER(stats::Stats::TimerType::READ_LOAD_RELEVANT_RTREES)
+
+  auto meta = array_->fragment_metadata();
+  auto encryption_key = array_->encryption_key();
+
+  auto statuses = parallel_for(0, relevant_fragments_.size(), [&](uint64_t f) {
+    return meta[relevant_fragments_[f]]->load_rtree(*encryption_key);
+  });
+  for (auto st : statuses)
+    RETURN_NOT_OK(st);
+
+  return Status::Ok();
+
+  STATS_END_TIMER(stats::Stats::TimerType::READ_LOAD_RELEVANT_RTREES)
+}
+
+Status Subarray::compute_relevant_fragment_tile_overlap() {
+  STATS_START_TIMER(stats::Stats::TimerType::READ_COMPUTE_RELEVANT_TILE_OVERLAP)
+
+  const auto& meta = array_->fragment_metadata();
+  auto range_num = this->range_num();
+
+  auto statuses = parallel_for(0, relevant_fragments_.size(), [&](uint64_t i) {
+    auto f = relevant_fragments_[i];
+    auto dense = meta[f]->dense();
+    return compute_relevant_fragment_tile_overlap(meta[f], f, dense, range_num);
+  });
+  for (const auto& st : statuses)
+    RETURN_NOT_OK(st);
+
+  return Status::Ok();
+
+  STATS_END_TIMER(stats::Stats::TimerType::READ_COMPUTE_RELEVANT_TILE_OVERLAP)
+}
+
+Status Subarray::compute_relevant_fragment_tile_overlap(
+    FragmentMetadata* meta, unsigned frag_idx, bool dense, uint64_t range_num) {
+  auto num_threads = array_->num_threads();
+  auto ranges_per_thread = (uint64_t)ceil((double)range_num / num_threads);
+  auto statuses = parallel_for(0, num_threads, [&](uint64_t t) {
+    auto r_start = t * ranges_per_thread;
+    auto r_end = std::min((t + 1) * ranges_per_thread - 1, range_num - 1);
+    for (uint64_t r = r_start; r <= r_end; ++r) {
+      if (dense) {  // Dense fragment
+        tile_overlap_[frag_idx][r] = get_tile_overlap(r, frag_idx);
+      } else {  // Sparse fragment
+        const auto& range = this->ndrange(r);
+        RETURN_NOT_OK(
+            meta->get_tile_overlap(range, &(tile_overlap_[frag_idx][r])));
+      }
+    }
+
+    return Status::Ok();
+  });
+  for (const auto& st : statuses)
+    RETURN_NOT_OK(st);
+
+  return Status::Ok();
+}
+
+Status Subarray::load_relevant_fragment_tile_var_sizes(
+    const std::vector<std::string>& names) const {
+  auto array_schema = array_->array_schema();
+  auto encryption_key = array_->encryption_key();
+  auto meta = array_->fragment_metadata();
+
+  // Find the names of the var-sized dimensions or attributes
+  std::vector<std::string> var_names;
+  var_names.reserve(names.size());
+  for (unsigned i = 0; i < names.size(); ++i) {
+    if (array_schema->var_size(names[i]))
+      var_names.emplace_back(names[i]);
+  }
+
+  // No var-sized attributes/dimensions in `names`
+  if (var_names.empty())
+    return Status::Ok();
+
+  // Load in parallel all tile var sizes metadata across fragments
+  auto statuses = parallel_for_2d(
+      0,
+      relevant_fragments_.size(),
+      0,
+      var_names.size(),
+      [&](unsigned i, uint64_t j) {
+        auto f = relevant_fragments_[i];
+        return meta[f]->load_tile_var_sizes(*encryption_key, var_names[j]);
+      });
+  for (auto st : statuses)
+    RETURN_NOT_OK(st);
+
+  return Status::Ok();
 }
 
 // Explicit instantiations

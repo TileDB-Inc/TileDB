@@ -114,6 +114,20 @@ struct SubarrayPartitionerSparseFx {
 
   /**
    * Helper function to test the subarray partitioner for the given arguments.
+   */
+  template <class T>
+  void test_subarray_partitioner(
+      Layout subarray_layout,
+      const SubarrayRanges<T>& ranges,
+      const std::vector<SubarrayRanges<T>>& partitions,
+      const std::string& attr,  // Attribute to set the budget for
+      uint64_t result_budget,
+      uint64_t memory_budget,
+      uint64_t memory_budget_var,
+      bool unsplittable = false);
+
+  /**
+   * Helper function to test the subarray partitioner for the given arguments.
    * This is different from the above in that it tests the memory
    * budget.
    */
@@ -344,6 +358,27 @@ void SubarrayPartitionerSparseFx::test_subarray_partitioner(
   SubarrayPartitioner subarray_partitioner(
       subarray, memory_budget_, memory_budget_var_);
   auto st = subarray_partitioner.set_result_budget(attr.c_str(), budget);
+  CHECK(st.ok());
+
+  check_partitions(subarray_partitioner, partitions, unsplittable);
+}
+
+template <class T>
+void SubarrayPartitionerSparseFx::test_subarray_partitioner(
+    Layout subarray_layout,
+    const SubarrayRanges<T>& ranges,
+    const std::vector<SubarrayRanges<T>>& partitions,
+    const std::string& attr,
+    uint64_t result_budget,
+    uint64_t memory_budget,
+    uint64_t memory_budget_var,
+    bool unsplittable) {
+  Subarray subarray;
+  create_subarray(array_->array_, ranges, subarray_layout, &subarray);
+
+  SubarrayPartitioner subarray_partitioner(
+      subarray, memory_budget, memory_budget_var);
+  auto st = subarray_partitioner.set_result_budget(attr.c_str(), result_budget);
   CHECK(st.ok());
 
   check_partitions(subarray_partitioner, partitions, unsplittable);
@@ -2466,4 +2501,37 @@ TEST_CASE_METHOD(
   // Clean up
   tiledb_array_free(&array);
   tiledb_query_free(&query);
+}
+
+TEST_CASE_METHOD(
+    SubarrayPartitionerSparseFx,
+    "SubarrayPartitioner (Sparse): 2D, multi-range, test memory budget "
+    "calibration",
+    "[SubarrayPartitioner][sparse][2D][MR][calibrate-memory_budget]") {
+  Layout subarray_layout = Layout::ROW_MAJOR;
+  std::string attr = "a";
+
+  create_default_2d_array(TILEDB_ROW_MAJOR, TILEDB_ROW_MAJOR);
+  write_default_2d_array();
+  open_array(ctx_, array_, TILEDB_READ);
+
+  subarray_layout = Layout::ROW_MAJOR;
+  SubarrayRanges<uint64_t> ranges = {{1, 1}, {2, 2, 2, 2, 2, 2}};
+  std::vector<SubarrayRanges<uint64_t>> partitions = {
+      {{1, 1}, {2, 2, 2, 2, 2, 2}},
+  };
+
+  uint64_t result_budget = 3 * sizeof(int);
+  uint64_t memory_budget = 2 * sizeof(int);
+  uint64_t memory_budget_var = 20 * sizeof(int);
+  test_subarray_partitioner(
+      subarray_layout,
+      ranges,
+      partitions,
+      attr,
+      result_budget,
+      memory_budget,
+      memory_budget_var);
+
+  close_array(ctx_, array_);
 }

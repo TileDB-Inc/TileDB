@@ -33,6 +33,7 @@
 #ifndef TILEDB_RESULT_TILE_H
 #define TILEDB_RESULT_TILE_H
 
+#include <functional>
 #include <iostream>
 #include <unordered_map>
 #include <vector>
@@ -45,6 +46,7 @@ namespace tiledb {
 namespace sm {
 
 class Domain;
+class FragmentMetadata;
 
 /**
  * Stores information about a logical dense or sparse result tile. Note that it
@@ -60,6 +62,10 @@ class ResultTile {
    * the var-sized values tile.
    */
   typedef std::pair<Tile, Tile> TilePair;
+
+  /* ********************************* */
+  /*     CONSTRUCTORS & DESTRUCTORS    */
+  /* ********************************* */
 
   /** Default constructor. */
   ResultTile() = default;
@@ -79,6 +85,10 @@ class ResultTile {
   /** Default move constructor. */
   ResultTile(ResultTile&& result_tile) = default;
 
+  /* ********************************* */
+  /*                API                */
+  /* ********************************* */
+
   /** Default copy-assign operator. */
   ResultTile& operator=(const ResultTile& result_tile) = default;
 
@@ -93,6 +103,18 @@ class ResultTile {
    * Should be the same across all attributes.
    */
   uint64_t cell_num() const;
+
+  /** Returns true if it stores zipped coordinates. */
+  bool stores_zipped_coords() const;
+
+  /** Returns the zipped coordinates tile. */
+  const Tile& zipped_coords_tile() const;
+
+  /** Returns the coordinate tile for the input dimension. */
+  const TilePair& coord_tile(unsigned dim_idx) const;
+
+  /** Returns the stored domain. */
+  const Domain* domain() const;
 
   /** Erases the tile for the input attribute/dimension. */
   void erase_tile(const std::string& name);
@@ -118,12 +140,6 @@ class ResultTile {
    */
   std::string coord_string(uint64_t pos, unsigned dim_idx) const;
 
-  /**
-   * Returns true if the coordinates at position `pos` are inside
-   * the input multi-dimensional rectangle.
-   */
-  bool coord_in_rect(uint64_t pos, const NDRange& rect) const;
-
   /** Returns the coordinate size on the input dimension. */
   uint64_t coord_size(unsigned dim_idx) const;
 
@@ -146,22 +162,85 @@ class ResultTile {
   Status read(
       const std::string& name, void* buffer, uint64_t pos, uint64_t len);
 
+  /**
+   * Computes a result bitmap for the input dimension for the coordinates that
+   * fall in the input range. It also computes an `overwritten_bitmap` that
+   * checks if the coordinate is overwritten on that dimension by a
+   * future fragment (one with index greater than `frag_idx`).
+   */
+  template <class T>
+  static void compute_results(
+      const ResultTile* result_tile,
+      unsigned dim_idx,
+      const Range& range,
+      const std::vector<FragmentMetadata*> fragment_metadata,
+      unsigned frag_idx,
+      std::vector<uint8_t>* result_bitmap,
+      std::vector<uint8_t>* overwritten_bitmap);
+
+  /**
+   * Accummulates to a result bitmap for the coordinates that
+   * fall in the input range, checking only dimensions `dim_idx`.
+   * It also accummulates to an `overwritten_bitmap` that
+   * checks if the coordinate is overwritten on that dimension by a
+   * future fragment (one with index greater than `frag_idx`). That
+   * is computed only for `dim_idx == dim_num -1`, as it needs
+   * to know if the the coordinates to be checked are already results.
+   */
+  Status compute_results(
+      unsigned dim_idx,
+      const Range& range,
+      const std::vector<FragmentMetadata*> fragment_metadata,
+      unsigned frag_idx,
+      std::vector<uint8_t>* result_bitmap,
+      std::vector<uint8_t>* overwritten_bitmap) const;
+
  private:
+  /* ********************************* */
+  /*         PRIVATE ATTRIBUTES        */
+  /* ********************************* */
+
   /** The array domain. */
   const Domain* domain_;
+
   /** The id of the fragment this tile belongs to. */
   unsigned frag_idx_ = UINT32_MAX;
+
   /** The id of the tile (which helps locating the physical attribute tiles). */
   uint64_t tile_idx_ = UINT64_MAX;
+
   /** Maps attribute names to tiles. */
   std::unordered_map<std::string, TilePair> attr_tiles_;
+
   /** The zipped coordinates tile. */
   TilePair coords_tile_;
+
   /**
    * The separate coordinate tiles along with their names, sorted on the
    * dimension order.
    */
   std::vector<std::pair<std::string, TilePair>> coord_tiles_;
+
+  /**
+   * Stores the appropriate templated compute_results() function based for
+   * each dimension, based on the dimension datatype.
+   */
+  std::vector<std::function<void(
+      const ResultTile*,
+      unsigned,
+      const Range&,
+      const std::vector<FragmentMetadata*>,
+      unsigned,
+      std::vector<uint8_t>*,
+      std::vector<uint8_t>*)>>
+      compute_results_func_;
+
+  /* ********************************* */
+  /*          PRIVATE METHODS          */
+  /* ********************************* */
+
+  /** Sets the templated compute_results() function. */
+  void set_compute_results_func();
 };
 
 }  // namespace sm
