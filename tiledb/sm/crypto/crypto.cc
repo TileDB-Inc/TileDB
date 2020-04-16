@@ -35,7 +35,6 @@
 #include "tiledb/sm/buffer/const_buffer.h"
 #include "tiledb/sm/buffer/preallocated_buffer.h"
 #include "tiledb/sm/misc/logger.h"
-#include "tiledb/sm/misc/stats.h"
 
 #ifdef _WIN32
 #include "tiledb/sm/crypto/crypto_win32.h"
@@ -53,8 +52,6 @@ Status Crypto::encrypt_aes256gcm(
     Buffer* output,
     PreallocatedBuffer* output_iv,
     PreallocatedBuffer* output_tag) {
-  STATS_FUNC_IN(crypto_encrypt_aes256gcm);
-
   if (key->size() != AES256GCM_KEY_BYTES)
     return LOG_STATUS(
         Status::EncryptionError("AES-256-GCM error; unexpected key length."));
@@ -75,8 +72,6 @@ Status Crypto::encrypt_aes256gcm(
   return OpenSSL::encrypt_aes256gcm(
       key, iv, input, output, output_iv, output_tag);
 #endif
-
-  STATS_FUNC_OUT(crypto_encrypt_aes256gcm);
 }
 
 Status Crypto::decrypt_aes256gcm(
@@ -85,8 +80,6 @@ Status Crypto::decrypt_aes256gcm(
     ConstBuffer* tag,
     ConstBuffer* input,
     Buffer* output) {
-  STATS_FUNC_IN(crypto_decrypt_aes256gcm);
-
   if (key == nullptr || key->size() != AES256GCM_KEY_BYTES)
     return LOG_STATUS(
         Status::EncryptionError("AES-256-GCM error; invalid key."));
@@ -102,8 +95,6 @@ Status Crypto::decrypt_aes256gcm(
 #else
   return OpenSSL::decrypt_aes256gcm(key, iv, tag, input, output);
 #endif
-
-  STATS_FUNC_OUT(crypto_decrypt_aes256gcm);
 }
 
 Status Crypto::md5(ConstBuffer* input, Buffer* output) {
@@ -117,13 +108,11 @@ Status Crypto::md5(
 
 Status Crypto::md5(
     const void* input, uint64_t input_read_size, Buffer* output) {
-  STATS_FUNC_IN(crypto_md5);
 #ifdef _WIN32
   return Win32CNG::md5(input, input_read_size, output);
 #else
   return OpenSSL::md5(input, input_read_size, output);
 #endif
-  STATS_FUNC_OUT(crypto_md5);
 }
 
 Status Crypto::sha256(ConstBuffer* input, Buffer* output) {
@@ -137,13 +126,11 @@ Status Crypto::sha256(
 
 Status Crypto::sha256(
     const void* input, uint64_t input_read_size, Buffer* output) {
-  STATS_FUNC_IN(crypto_sha256);
 #ifdef _WIN32
   return Win32CNG::sha256(input, input_read_size, output);
 #else
   return OpenSSL::sha256(input, input_read_size, output);
 #endif
-  STATS_FUNC_OUT(crypto_sha256);
 }
 
 }  // namespace sm

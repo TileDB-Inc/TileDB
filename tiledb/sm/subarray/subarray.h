@@ -50,6 +50,9 @@ namespace tiledb {
 namespace sm {
 
 class Array;
+class ArraySchema;
+class EncryptionKey;
+class FragmentMetadata;
 
 enum class Layout : uint8_t;
 enum class QueryType : uint8_t;
@@ -191,6 +194,9 @@ class Subarray {
   /** Returns the array the subarray is associated with. */
   const Array* array() const;
 
+  /** Returns the number of cells in the input ND range. */
+  uint64_t cell_num(uint64_t range_idx) const;
+
   /** Clears the contents of the subarray. */
   void clear();
 
@@ -214,19 +220,24 @@ class Subarray {
 
   /**
    * Computes the estimated result size (calibrated using the maximum size)
-   * for a given attribute/dimension and range id, for all fragments.
+   * for a vector of given attributes/dimensions and range id, for all
+   * fragments.
    *
-   * @param name The name of the attribute/dimension to focus on.
+   * @param encryption_key The encryption key of the array.
+   * @param array_schema The array schema.
+   * @param fragment_meta The fragment metadata of the array.
+   * @param names The name vector of the attributes/dimensions to focus on.
    * @param range_idx The id of the subarray range to focus on.
-   * @param var_size Whether the attribute/dimension is var-sized or not.
-   * @param result_size The result size to be retrieved.
+   * @param result_sizes The result sizes to be retrieved for all given names.
    * @return Status
    */
-  Status compute_est_result_size(
-      const std::string& name,
+  Status compute_est_result_sizes(
+      const EncryptionKey* encryption_key,
+      const ArraySchema* array_schema,
+      const std::vector<FragmentMetadata*>& fragment_meta,
+      const std::vector<std::string>& name,
       uint64_t range_idx,
-      bool var_size,
-      ResultSize* result_size) const;
+      std::vector<ResultSize>* result_sizes) const;
 
   /**
    * Returns a cropped version of the subarray, constrained in the
@@ -449,9 +460,10 @@ class Subarray {
    * be sorted on the array tile order.
    *
    * @tparam T The subarray datatype.
+   * @return Status
    */
   template <class T>
-  void compute_tile_coords();
+  Status compute_tile_coords();
 
  private:
   /* ********************************* */
@@ -532,18 +544,20 @@ class Subarray {
    * be sorted on col-major tile order.
    *
    * @tparam T The subarray datatype.
+   * @return Status
    */
   template <class T>
-  void compute_tile_coords_col();
+  Status compute_tile_coords_col();
 
   /**
    * Compute `tile_coords_` and `tile_coords_map_`. The coordinates will
    * be sorted on row-major tile order.
    *
    * @tparam T The subarray datatype.
+   * @return Status
    */
   template <class T>
-  void compute_tile_coords_row();
+  Status compute_tile_coords_row();
 
   /** Returns a deep copy of this Subarray. */
   Subarray clone() const;

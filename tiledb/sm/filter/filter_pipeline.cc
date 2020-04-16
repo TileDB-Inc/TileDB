@@ -41,7 +41,7 @@
 #include "tiledb/sm/filter/noop_filter.h"
 #include "tiledb/sm/misc/logger.h"
 #include "tiledb/sm/misc/parallel_functions.h"
-#include "tiledb/sm/misc/stats.h"
+#include "tiledb/sm/stats/stats.h"
 #include "tiledb/sm/tile/tile.h"
 
 namespace tiledb {
@@ -361,9 +361,10 @@ uint32_t FilterPipeline::max_chunk_size() const {
 }
 
 Status FilterPipeline::run_forward(Tile* tile) const {
-  STATS_FUNC_IN(filter_pipeline_run_forward);
-
   current_tile_ = tile;
+
+  STATS_ADD_COUNTER(
+      stats::Stats::CounterType::WRITE_FILTERED_BYTE_NUM, tile->size());
 
   // Compute the chunks.
   std::vector<std::pair<void*, uint32_t>> chunks;
@@ -385,13 +386,9 @@ Status FilterPipeline::run_forward(Tile* tile) const {
   RETURN_NOT_OK(tile->buffer()->swap(filtered_tile));
 
   return Status::Ok();
-
-  STATS_FUNC_OUT(filter_pipeline_run_forward);
 }
 
 Status FilterPipeline::run_reverse(Tile* tile, const Config& config) const {
-  STATS_FUNC_IN(filter_pipeline_run_reverse);
-
   auto tile_buff = tile->buffer();
   if (tile_buff == nullptr)
     return LOG_STATUS(
@@ -426,6 +423,9 @@ Status FilterPipeline::run_reverse(Tile* tile, const Config& config) const {
   Buffer unfiltered_tile;
   RETURN_NOT_OK(unfiltered_tile.realloc(total_orig_size));
 
+  STATS_ADD_COUNTER(
+      stats::Stats::CounterType::READ_UNFILTERED_BYTE_NUM, total_orig_size);
+
   // Run the filters in reverse over all the chunks into the unfiltered_tile
   // buffer.
   RETURN_NOT_OK(filter_chunks_reverse(chunks, &unfiltered_tile, config));
@@ -446,8 +446,6 @@ Status FilterPipeline::run_reverse(Tile* tile, const Config& config) const {
   }
 
   return Status::Ok();
-
-  STATS_FUNC_OUT(filter_pipeline_run_reverse);
 }
 
 // ===== FORMAT =====

@@ -35,7 +35,6 @@
 #include "tiledb/sm/buffer/const_buffer.h"
 #include "tiledb/sm/buffer/preallocated_buffer.h"
 #include "tiledb/sm/misc/logger.h"
-#include "tiledb/sm/misc/stats.h"
 
 #include <zlib.h>
 #include <iostream>
@@ -45,8 +44,6 @@ namespace sm {
 
 Status GZip::compress(
     int level, ConstBuffer* input_buffer, Buffer* output_buffer) {
-  STATS_FUNC_IN(compressor_gzip_compress);
-
   // Sanity check
   if (input_buffer->data() == nullptr || output_buffer->data() == nullptr)
     return LOG_STATUS(Status::CompressionError(
@@ -86,14 +83,10 @@ Status GZip::compress(
   output_buffer->advance_offset(compressed_size);
 
   return Status::Ok();
-
-  STATS_FUNC_OUT(compressor_gzip_compress);
 }
 
 Status GZip::decompress(
     ConstBuffer* input_buffer, PreallocatedBuffer* output_buffer) {
-  STATS_FUNC_IN(compressor_gzip_decompress);
-
   // Sanity check
   if (input_buffer->data() == nullptr || output_buffer->data() == nullptr)
     return LOG_STATUS(Status::CompressionError(
@@ -135,8 +128,6 @@ Status GZip::decompress(
 
   // Success
   return Status::Ok();
-
-  STATS_FUNC_OUT(compressor_gzip_decompress);
 }
 
 uint64_t GZip::overhead(uint64_t buffer_size) {

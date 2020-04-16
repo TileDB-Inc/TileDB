@@ -35,7 +35,6 @@
 #include "tiledb/sm/buffer/const_buffer.h"
 #include "tiledb/sm/buffer/preallocated_buffer.h"
 #include "tiledb/sm/misc/logger.h"
-#include "tiledb/sm/misc/stats.h"
 
 #include <zstd.h>
 #include <iostream>
@@ -45,8 +44,6 @@ namespace sm {
 
 Status ZStd::compress(
     int level, ConstBuffer* input_buffer, Buffer* output_buffer) {
-  STATS_FUNC_IN(compressor_zstd_compress);
-
   // Sanity check
   if (input_buffer->data() == nullptr || output_buffer->data() == nullptr)
     return LOG_STATUS(Status::CompressionError(
@@ -80,14 +77,10 @@ Status ZStd::compress(
   output_buffer->advance_offset(zstd_ret);
 
   return Status::Ok();
-
-  STATS_FUNC_OUT(compressor_zstd_compress);
 }
 
 Status ZStd::decompress(
     ConstBuffer* input_buffer, PreallocatedBuffer* output_buffer) {
-  STATS_FUNC_IN(compressor_zstd_decompress);
-
   // Sanity check
   if (input_buffer->data() == nullptr || output_buffer->data() == nullptr)
     return LOG_STATUS(Status::CompressionError(
@@ -119,8 +112,6 @@ Status ZStd::decompress(
   output_buffer->advance_offset(zstd_ret);
 
   return Status::Ok();
-
-  STATS_FUNC_OUT(compressor_zstd_decompress);
 }
 
 uint64_t ZStd::overhead(uint64_t nbytes) {
