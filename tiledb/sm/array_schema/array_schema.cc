@@ -148,7 +148,6 @@ Layout ArraySchema::cell_order() const {
 uint64_t ArraySchema::cell_size(const std::string& name) const {
   // Special zipped coordinates attribute
   if (name == constants::coords) {
-    assert(domain_->all_dims_same_type());
     auto dim_num = domain_->dim_num();
     assert(dim_num > 0);
     auto coord_size = domain_->dimension(0)->coord_size();

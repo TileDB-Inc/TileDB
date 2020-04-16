@@ -43,6 +43,7 @@
 #include <iostream>
 #include <map>
 #include <memory>
+#include <mutex>
 #include <set>
 #include <vector>
 
@@ -120,17 +121,24 @@ class Subarray {
     double size_fixed_;
     /** Size of values for var-sized attributes/dimensions. */
     double size_var_;
+  };
+
+  /**
+   * Maximum memory size (in bytes) for an attribute/dimension used for
+   * partitioning.
+   */
+  struct MemorySize {
     /**
      * Maximum size of overlapping tiles fetched into memory for
      * fixed-sized attributes/dimensions or offsets of var-sized
      * attributes/dimensions.
      */
-    uint64_t mem_size_fixed_;
+    uint64_t size_fixed_;
     /**
      * Maximum size of overlapping tiles fetched into memory for
      * var-sized attributes/dimensions.
      */
-    uint64_t mem_size_var_;
+    uint64_t size_var_;
   };
 
   /* ********************************* */
@@ -197,6 +205,9 @@ class Subarray {
   /** Returns the number of cells in the input ND range. */
   uint64_t cell_num(uint64_t range_idx) const;
 
+  /** Returns the number of cells in the input ND range. */
+  uint64_t cell_num(const std::vector<uint64_t>& range_coords) const;
+
   /** Clears the contents of the subarray. */
   void clear();
 
@@ -221,23 +232,37 @@ class Subarray {
   /**
    * Computes the estimated result size (calibrated using the maximum size)
    * for a vector of given attributes/dimensions and range id, for all
-   * fragments.
+   * fragments. The function focuses only on fragments relevant to the
+   * subarray query.
    *
    * @param encryption_key The encryption key of the array.
    * @param array_schema The array schema.
+   * @param all_dims_same_type Whether or not all dimensions have the
+   *     same type.
+   * @param all_dims_fixed Whether or not all dimensions are fixed-sized.
    * @param fragment_meta The fragment metadata of the array.
    * @param names The name vector of the attributes/dimensions to focus on.
+   * @param var_sizes A vector indicating which attribute/dimension is
+   *     var-sized.
    * @param range_idx The id of the subarray range to focus on.
+   * @param range_coords The coordinates of the subarray range to focus on.
    * @param result_sizes The result sizes to be retrieved for all given names.
+   * @param frag_tiles The set of unique (fragment id, tile id) pairs across
+   *   all ranges, which is update by this function in a thread-safe manner.
    * @return Status
    */
-  Status compute_est_result_sizes(
+  Status compute_relevant_fragment_est_result_sizes(
       const EncryptionKey* encryption_key,
       const ArraySchema* array_schema,
+      bool all_dims_same_type,
+      bool all_dims_fixed,
       const std::vector<FragmentMetadata*>& fragment_meta,
       const std::vector<std::string>& name,
+      const std::vector<bool>& var_sizes,
       uint64_t range_idx,
-      std::vector<ResultSize>* result_sizes) const;
+      const std::vector<uint64_t>& range_coords,
+      std::vector<ResultSize>* result_sizes,
+      std::set<std::pair<unsigned, uint64_t>>* frag_tiles);
 
   /**
    * Returns a cropped version of the subarray, constrained in the
@@ -347,6 +372,12 @@ class Subarray {
   std::vector<uint64_t> get_range_coords(uint64_t range_idx) const;
 
   /**
+   * Advances the input range coords to the next coords along the
+   * subarray range layout.
+   */
+  void get_next_range_coords(std::vector<uint64_t>* range_coords) const;
+
+  /**
    * Returns a subarray consisting of the ranges specified by
    * the input.
    *
@@ -390,6 +421,9 @@ class Subarray {
    * patterns upon a read query.
    */
   NDRange ndrange(uint64_t range_idx) const;
+
+  /** Returns the NDRange corresponding to the input range coordinates. */
+  NDRange ndrange(const std::vector<uint64_t>& range_coords) const;
 
   /**
    * Returns the `Range` vector for the given dimension index.
@@ -465,6 +499,26 @@ class Subarray {
   template <class T>
   Status compute_tile_coords();
 
+  /**
+   * Computes the estimated result sizes for the input attribute/dimension
+   * names, assuming the tile overlap is already computed. This function focuses
+   * only on fragments relevant to the subarray and the input range ids.
+   * The result retrieved contains the estimated result sizes per
+   * dimension/attribute per range.
+   *
+   * The function also retrieves a `mem_sizes` vector of vectors, which
+   * holds values for each range and each attribute. Each value represents
+   * the **unique** bytes that the correpsonding range contributes to
+   * the maximum memory size for all ranges (i.e., based on whether
+   * it overlaps a unique tile versus all previous ranges in the vector).
+   */
+  Status compute_relevant_fragment_est_result_sizes(
+      const std::vector<std::string>& names,
+      uint64_t range_start,
+      uint64_t range_end,
+      std::vector<std::vector<ResultSize>>* result_sizes,
+      std::vector<std::vector<MemorySize>>* mem_sizes);
+
  private:
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
@@ -476,12 +530,21 @@ class Subarray {
   /** Stores the estimated result size for each array attribute/dimension. */
   std::unordered_map<std::string, ResultSize> est_result_size_;
 
+  /** Stores the maximum memory size for each array attribute/dimension. */
+  std::unordered_map<std::string, MemorySize> max_mem_size_;
+
   /**
    * The layout of the subarray (i.e., of the results
    * if the subarray is used for reads, or of the values provided
    * by the user for writes).
    */
   Layout layout_;
+
+  /**
+   * The array cell order. We explicitly store it as it may be used
+   * numerous times and we'd better have it readily available.
+   */
+  Layout cell_order_;
 
   /** Stores a vector of 1D ranges per dimension. */
   std::vector<std::vector<Range>> ranges_;
@@ -500,6 +563,12 @@ class Subarray {
    * been computed.
    */
   bool est_result_size_computed_;
+
+  /**
+   * The array fragment ids whose non-empty domain intersects at
+   * least one subarray range.
+   */
+  std::vector<unsigned> relevant_fragments_;
 
   /**
    * Stores info about the overlap of the subarray with tiles
@@ -589,6 +658,41 @@ class Subarray {
    * given subarray.
    */
   void swap(Subarray& subarray);
+
+  /**
+   * Computes the indexes of the fragments that are relevant to the query,
+   * that is those whose non-empty domain intersects with at least one
+   * range.
+   */
+  Status compute_relevant_fragments();
+
+  /** Loads the R-Trees of all relevant fragments in parallel. */
+  Status load_relevant_fragment_rtrees() const;
+
+  /** Computes the tile overlap for each range and relevant fragment. */
+  Status compute_relevant_fragment_tile_overlap();
+
+  /**
+   * Computes the tile overlap for all ranges on the given relevant fragment.
+   *
+   * @param meta The fragment metadat to focus on.
+   * @param frag_idx The fragment id.
+   * @param dense Whether the fragment is dense or sparse.
+   * @param range_num The number of ranges.
+   *
+   */
+  Status compute_relevant_fragment_tile_overlap(
+      FragmentMetadata* meta,
+      unsigned frag_idx,
+      bool dense,
+      uint64_t range_num);
+
+  /**
+   * Load the var-sized tile sizes for the input names and from the
+   * relevant fragments.
+   */
+  Status load_relevant_fragment_tile_var_sizes(
+      const std::vector<std::string>& names) const;
 };
 
 }  // namespace sm

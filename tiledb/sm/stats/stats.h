@@ -59,6 +59,13 @@ namespace stats {
 class Stats {
  public:
   /* ****************************** */
+  /*            CONSTANTS           */
+  /* ****************************** */
+
+  /** Used in byte to GB conversion. */
+  const uint64_t GB_BYTES = 1024 * 1024 * 1024;
+
+  /* ****************************** */
   /*         TYPE DEFINITIONS       */
   /* ****************************** */
 
@@ -91,6 +98,9 @@ class Stats {
     READ_COMPUTE_SPARSE_RESULT_TILES,
     READ_COMPUTE_TILE_OVERLAP,
     READ_COMPUTE_TILE_COORDS,
+    READ_COMPUTE_RELEVANT_TILE_OVERLAP,
+    READ_LOAD_RELEVANT_RTREES,
+    READ_COMPUTE_RELEVANT_FRAGS,
     READ_INIT_STATE,
     READ_NEXT_PARTITION,
     READ_SPLIT_CURRENT_PARTITION,

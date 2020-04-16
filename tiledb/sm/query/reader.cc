@@ -607,25 +607,41 @@ Status Reader::compute_range_result_coords(
     const NDRange& ndrange,
     std::vector<ResultCoords>* result_coords) const {
   auto coords_num = tile->cell_num();
-  auto fragment_num = fragment_metadata_.size();
+  auto dim_num = array_schema_->dim_num();
+  (void)frag_idx;
 
+  std::vector<std::vector<uint8_t>> result_bitmap(dim_num);
+  std::vector<std::vector<uint8_t>> overwritten_bitmap(dim_num);
+  for (auto& bm : result_bitmap)
+    bm.resize(coords_num, 0);
+  for (auto& bm : overwritten_bitmap)
+    bm.resize(coords_num, 0);
+
+  auto statuses = parallel_for(0, dim_num, [&](uint64_t d) {
+    return tile->compute_results(
+        d,
+        ndrange[d],
+        fragment_metadata_,
+        frag_idx,
+        &result_bitmap[d],
+        &overwritten_bitmap[d]);
+  });
+  for (auto st : statuses)
+    RETURN_NOT_OK(st);
+
+  // Gather results
+  bool result = true, overwritten = true;
   for (uint64_t pos = 0; pos < coords_num; ++pos) {
-    // Check if the coordinates are in the range
-    if (!tile->coord_in_rect(pos, ndrange))
-      continue;
-
-    // Check if the coordinates are overwritten by a future dense fragment
-    bool overwritten = false;
-    for (unsigned f = frag_idx + 1; !overwritten && f < fragment_num; ++f) {
-      if (fragment_metadata_[f]->dense()) {
-        overwritten =
-            tile->coord_in_rect(pos, fragment_metadata_[f]->non_empty_domain());
-        if (overwritten)
-          break;
+    result = true;
+    overwritten = true;
+    for (unsigned d = 0; d < dim_num; ++d) {
+      if (result_bitmap[d][pos] != 1) {
+        result = false;
+        break;
       }
+      overwritten = (overwritten && overwritten_bitmap[d][pos]);
     }
-
-    if (!overwritten)
+    if (result && !overwritten)
       result_coords->emplace_back(tile, pos);
   }
 
@@ -662,7 +678,6 @@ Status Reader::compute_range_result_coords(
       RETURN_CANCEL_OR_ERROR(dedup_result_coords(&((*range_result_coords)[r])));
     }
 
-    // Compute tile coordinate
     return Status::Ok();
   });
   for (auto st : statuses)

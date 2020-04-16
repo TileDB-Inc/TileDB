@@ -103,6 +103,9 @@ void Stats::reset() {
   timer_stats_[TimerType::READ_COMPUTE_SPARSE_RESULT_CELL_SLABS_DENSE] = 0;
   timer_stats_[TimerType::READ_COMPUTE_SPARSE_RESULT_TILES] = 0;
   timer_stats_[TimerType::READ_COMPUTE_EST_RESULT_SIZE] = 0;
+  timer_stats_[TimerType::READ_COMPUTE_RELEVANT_TILE_OVERLAP] = 0;
+  timer_stats_[TimerType::READ_LOAD_RELEVANT_RTREES] = 0;
+  timer_stats_[TimerType::READ_COMPUTE_RELEVANT_FRAGS] = 0;
   timer_stats_[TimerType::READ_INIT_STATE] = 0;
   timer_stats_[TimerType::READ_NEXT_PARTITION] = 0;
   timer_stats_[TimerType::READ_SPLIT_CURRENT_PARTITION] = 0;
@@ -435,6 +438,12 @@ std::string Stats::dump_read() const {
       timer_stats_.find(TimerType::READ_UNFILTER_ATTR_TILES)->second;
   auto read_unfilter_coord_tiles =
       timer_stats_.find(TimerType::READ_UNFILTER_COORD_TILES)->second;
+  auto read_compute_relevant_tile_overlap =
+      timer_stats_.find(TimerType::READ_COMPUTE_RELEVANT_TILE_OVERLAP)->second;
+  auto read_load_relevant_rtrees =
+      timer_stats_.find(TimerType::READ_LOAD_RELEVANT_RTREES)->second;
+  auto read_compute_relevant_frags =
+      timer_stats_.find(TimerType::READ_COMPUTE_RELEVANT_FRAGS)->second;
 
   auto array_schema_size =
       counter_stats_.find(CounterType::READ_ARRAY_SCHEMA_SIZE)->second;
@@ -539,6 +548,18 @@ std::string Stats::dump_read() const {
           read_compute_est_result_size);
       write(
           &ss, "  * Time to compute tile overlap: ", read_compute_tile_overlap);
+      write(
+          &ss,
+          "    > Time to compute relevant fragments: ",
+          read_compute_relevant_frags);
+      write(
+          &ss,
+          "    > Time to load relevant fragment R-trees: ",
+          read_load_relevant_rtrees);
+      write(
+          &ss,
+          "    > Time to compute relevant fragment tile overlap: ",
+          read_compute_relevant_tile_overlap);
       ss << "\n";
     }
 
@@ -695,7 +716,7 @@ void Stats::write(
 void Stats::write_bytes(
     std::stringstream* ss, const std::string& msg, uint64_t count) const {
   if (count != 0) {
-    auto gbs = (double)count / (1024 * 1024);
+    auto gbs = (double)count / GB_BYTES;
     (*ss) << msg << count << " bytes (" << gbs << " GB) \n";
   }
 }

@@ -33,6 +33,8 @@
 #include "tiledb/sm/query/result_tile.h"
 #include "tiledb/sm/array_schema/dimension.h"
 #include "tiledb/sm/array_schema/domain.h"
+#include "tiledb/sm/enums/datatype.h"
+#include "tiledb/sm/fragment/fragment_metadata.h"
 
 #include <cassert>
 #include <iostream>
@@ -52,6 +54,7 @@ ResultTile::ResultTile(
     , tile_idx_(tile_idx) {
   assert(domain != nullptr);
   coord_tiles_.resize(domain->dim_num());
+  set_compute_results_func();
 }
 
 /* ****************************** */
@@ -73,6 +76,10 @@ uint64_t ResultTile::cell_num() const {
     return attr_tiles_.begin()->second.first.cell_num();
 
   return 0;
+}
+
+const Domain* ResultTile::domain() const {
+  return domain_;
 }
 
 void ResultTile::erase_tile(const std::string& name) {
@@ -164,21 +171,6 @@ std::string ResultTile::coord_string(uint64_t pos, unsigned dim_idx) const {
   return std::string(&coord_buff_val[offset], size);
 }
 
-bool ResultTile::coord_in_rect(uint64_t pos, const NDRange& rect) const {
-  auto dim_num = domain_->dim_num();
-  for (unsigned d = 0; d < dim_num; ++d) {
-    if (!domain_->dimension(d)->var_size()) {  // Fixed-sized
-      if (!domain_->dimension(d)->value_in_range(coord(pos, d), rect[d]))
-        return false;
-    } else {  // Var-sized
-      if (!domain_->dimension(d)->value_in_range(coord_string(pos, d), rect[d]))
-        return false;
-    }
-  }
-
-  return true;
-}
-
 uint64_t ResultTile::coord_size(unsigned dim_idx) const {
   // Handle zipped coordinate tiles
   if (!coords_tile_.first.empty())
@@ -242,6 +234,205 @@ Status ResultTile::read(
   }
 
   return Status::Ok();
+}
+
+bool ResultTile::stores_zipped_coords() const {
+  return !coords_tile_.first.empty();
+}
+
+const Tile& ResultTile::zipped_coords_tile() const {
+  assert(stores_zipped_coords());
+  return coords_tile_.first;
+}
+
+const ResultTile::TilePair& ResultTile::coord_tile(unsigned dim_idx) const {
+  assert(!stores_zipped_coords());
+  assert(!coord_tiles_.empty());
+  return coord_tiles_[dim_idx].second;
+}
+
+template <>
+void ResultTile::compute_results<char>(
+    const ResultTile* result_tile,
+    unsigned dim_idx,
+    const Range& range,
+    const std::vector<FragmentMetadata*> fragment_metadata,
+    unsigned frag_idx,
+    std::vector<uint8_t>* result_bitmap,
+    std::vector<uint8_t>* overwritten_bitmap) {
+  auto coords_num = result_tile->cell_num();
+  auto fragment_num = fragment_metadata.size();
+  auto range_start = range.start_str();
+  auto range_end = range.end_str();
+  std::string coord_str;
+
+  // Compute result bitmap
+  for (uint64_t pos = 0; pos < coords_num; ++pos) {
+    // Check if it is a result
+    coord_str = result_tile->coord_string(pos, dim_idx);
+    if (coord_str >= range_start && coord_str <= range_end)
+      (*result_bitmap)[pos] = 1;
+
+    // Check if overwritten
+    auto& overwritten = (*overwritten_bitmap)[pos];
+    for (unsigned f = frag_idx + 1; !overwritten && f < fragment_num; ++f) {
+      auto meta = fragment_metadata[f];
+      auto dom_start = meta->non_empty_domain()[dim_idx].start_str();
+      auto dom_end = meta->non_empty_domain()[dim_idx].end_str();
+      if (meta->dense()) {
+        overwritten = (coord_str >= dom_start && coord_str <= dom_end);
+      }
+    }
+  }
+}
+
+template <class T>
+void ResultTile::compute_results(
+    const ResultTile* result_tile,
+    unsigned dim_idx,
+    const Range& range,
+    const std::vector<FragmentMetadata*> fragment_metadata,
+    unsigned frag_idx,
+    std::vector<uint8_t>* result_bitmap,
+    std::vector<uint8_t>* overwritten_bitmap) {
+  auto coords_num = result_tile->cell_num();
+  auto frag_num = fragment_metadata.size();
+  auto r = (const T*)range.data();
+  auto stores_zipped_coords = result_tile->stores_zipped_coords();
+
+  // Handle separate coordinate tiles
+  const auto& coord_tile = result_tile->coord_tile(dim_idx).first;
+  if (!stores_zipped_coords) {
+    auto coords = (const T*)coord_tile.internal_data();
+    T c;
+
+    for (uint64_t pos = 0; pos < coords_num; ++pos) {
+      // Check if result
+      c = coords[pos];
+      if (c >= r[0] && c <= r[1])
+        (*result_bitmap)[pos] = 1;
+
+      // Check if overwritten
+      auto& overwritten = (*overwritten_bitmap)[pos];
+      for (auto f = frag_idx + 1; !overwritten && f < frag_num; ++f) {
+        auto meta = fragment_metadata[f];
+        if (meta->dense()) {
+          auto dom = (const T*)meta->non_empty_domain()[dim_idx].data();
+          overwritten = (c >= dom[0] && c <= dom[1]);
+        }
+      }
+    }
+
+    return;
+  }
+
+  // Handle zipped coordinates tile
+  assert(stores_zipped_coords);
+  const auto& coords_tile = result_tile->zipped_coords_tile();
+  auto dim_num = coords_tile.dim_num();
+  auto coords = (const T*)coords_tile.internal_data();
+  T c;
+
+  for (uint64_t pos = 0; pos < coords_num; ++pos) {
+    // Check if result
+    c = coords[pos * dim_num + dim_idx];
+    if (c >= r[0] && c <= r[1])
+      (*result_bitmap)[pos] = 1;
+
+    // Check if overwritten
+    auto& overwritten = (*overwritten_bitmap)[pos];
+    for (auto f = frag_idx + 1; !overwritten && f < frag_num; ++f) {
+      auto meta = fragment_metadata[f];
+      if (meta->dense()) {
+        auto dom = (const T*)meta->non_empty_domain()[dim_idx].data();
+        overwritten = (c >= dom[0] && c <= dom[1]);
+      }
+    }
+  }
+}
+
+Status ResultTile::compute_results(
+    unsigned dim_idx,
+    const Range& range,
+    const std::vector<FragmentMetadata*> fragment_metadata,
+    unsigned frag_idx,
+    std::vector<uint8_t>* result_bitmap,
+    std::vector<uint8_t>* overwritten_bitmap) const {
+  assert(compute_results_func_[dim_idx] != nullptr);
+  compute_results_func_[dim_idx](
+      this,
+      dim_idx,
+      range,
+      fragment_metadata,
+      frag_idx,
+      result_bitmap,
+      overwritten_bitmap);
+  return Status::Ok();
+}
+
+/* ****************************** */
+/*         PRIVATE METHODS        */
+/* ****************************** */
+
+void ResultTile::set_compute_results_func() {
+  auto dim_num = domain_->dim_num();
+  compute_results_func_.resize(dim_num);
+  for (unsigned d = 0; d < dim_num; ++d) {
+    auto dim = domain_->dimension(d);
+    switch (dim->type()) {
+      case Datatype::INT32:
+        compute_results_func_[d] = compute_results<int32_t>;
+        break;
+      case Datatype::INT64:
+        compute_results_func_[d] = compute_results<int64_t>;
+        break;
+      case Datatype::INT8:
+        compute_results_func_[d] = compute_results<int8_t>;
+        break;
+      case Datatype::UINT8:
+        compute_results_func_[d] = compute_results<uint8_t>;
+        break;
+      case Datatype::INT16:
+        compute_results_func_[d] = compute_results<int16_t>;
+        break;
+      case Datatype::UINT16:
+        compute_results_func_[d] = compute_results<uint16_t>;
+        break;
+      case Datatype::UINT32:
+        compute_results_func_[d] = compute_results<uint32_t>;
+        break;
+      case Datatype::UINT64:
+        compute_results_func_[d] = compute_results<uint64_t>;
+        break;
+      case Datatype::FLOAT32:
+        compute_results_func_[d] = compute_results<float>;
+        break;
+      case Datatype::FLOAT64:
+        compute_results_func_[d] = compute_results<double>;
+        break;
+      case Datatype::DATETIME_YEAR:
+      case Datatype::DATETIME_MONTH:
+      case Datatype::DATETIME_WEEK:
+      case Datatype::DATETIME_DAY:
+      case Datatype::DATETIME_HR:
+      case Datatype::DATETIME_MIN:
+      case Datatype::DATETIME_SEC:
+      case Datatype::DATETIME_MS:
+      case Datatype::DATETIME_US:
+      case Datatype::DATETIME_NS:
+      case Datatype::DATETIME_PS:
+      case Datatype::DATETIME_FS:
+      case Datatype::DATETIME_AS:
+        compute_results_func_[d] = compute_results<int64_t>;
+        break;
+      case Datatype::STRING_ASCII:
+        compute_results_func_[d] = compute_results<char>;
+        break;
+      default:
+        compute_results_func_[d] = nullptr;
+        break;
+    }
+  }
 }
 
 }  // namespace sm
