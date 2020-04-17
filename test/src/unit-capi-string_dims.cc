@@ -69,6 +69,12 @@ struct StringDimsFx {
       tiledb::sm::Posix::current_dir() + "/tiledb_test/";
 #endif
 
+  /**
+   * If true, array schema is serialized before submission, to test the
+   * serialization paths.
+   */
+  bool serialize_array_schema_ = false;
+
   // TileDB context
   tiledb_ctx_t* ctx_;
   tiledb_vfs_t* vfs_;
@@ -95,6 +101,10 @@ struct StringDimsFx {
   void remove_temp_dir(const std::string& path);
   void set_supported_fs();
   std::string random_name(const std::string& prefix);
+  int array_create_wrapper(
+      const std::string& path, tiledb_array_schema_t* array_schema);
+  int array_schema_load_wrapper(
+      const std::string& path, tiledb_array_schema_t** array_schema);
   void write_array_ascii(const std::string& array_name);
   void write_array_1d(
       tiledb_ctx_t* ctx,
@@ -303,6 +313,125 @@ int StringDimsFx::get_dir_num(const char* path, void* data) {
   }
 
   return 1;
+}
+
+int StringDimsFx::array_schema_load_wrapper(
+    const std::string& path, tiledb_array_schema_t** array_schema) {
+#ifndef TILEDB_SERIALIZATION
+  return tiledb_array_schema_load(ctx_, path.c_str(), array_schema);
+#endif
+
+  if (!serialize_array_schema_) {
+    return tiledb_array_schema_load(ctx_, path.c_str(), array_schema);
+  }
+
+  // Load array.
+  int rc = tiledb_array_schema_load(ctx_, path.c_str(), array_schema);
+  REQUIRE(rc == TILEDB_OK);
+
+  // Serialize the array
+  tiledb_buffer_t* buff;
+  REQUIRE(
+      tiledb_serialize_array_schema(
+          ctx_,
+          *array_schema,
+          (tiledb_serialization_type_t)tiledb::sm::SerializationType::CAPNP,
+          1,
+          &buff) == TILEDB_OK);
+
+  // Load array schema from the rest server
+  tiledb_array_schema_t* new_array_schema = nullptr;
+  REQUIRE(
+      tiledb_deserialize_array_schema(
+          ctx_,
+          buff,
+          (tiledb_serialization_type_t)tiledb::sm::SerializationType::CAPNP,
+          0,
+          &new_array_schema) == TILEDB_OK);
+
+  // Serialize the new array schema and deserialize into the original array
+  // schema.
+  tiledb_buffer_t* buff2;
+  REQUIRE(
+      tiledb_serialize_array_schema(
+          ctx_,
+          new_array_schema,
+          (tiledb_serialization_type_t)tiledb::sm::SerializationType::CAPNP,
+          0,
+          &buff2) == TILEDB_OK);
+  REQUIRE(
+      tiledb_deserialize_array_schema(
+          ctx_,
+          buff2,
+          (tiledb_serialization_type_t)tiledb::sm::SerializationType::CAPNP,
+          1,
+          array_schema) == TILEDB_OK);
+
+  // Clean up.
+  tiledb_array_schema_free(&new_array_schema);
+  tiledb_buffer_free(&buff);
+  tiledb_buffer_free(&buff2);
+
+  return rc;
+}
+
+int StringDimsFx::array_create_wrapper(
+    const std::string& path, tiledb_array_schema_t* array_schema) {
+#ifndef TILEDB_SERIALIZATION
+  return tiledb_array_create(ctx_, path.c_str(), array_schema);
+#endif
+
+  if (!serialize_array_schema_) {
+    return tiledb_array_create(ctx_, path.c_str(), array_schema);
+  }
+
+  // Serialize the array
+  tiledb_buffer_t* buff;
+  REQUIRE(
+      tiledb_serialize_array_schema(
+          ctx_,
+          array_schema,
+          (tiledb_serialization_type_t)tiledb::sm::SerializationType::CAPNP,
+          1,
+          &buff) == TILEDB_OK);
+
+  // Load array schema from the rest server
+  tiledb_array_schema_t* new_array_schema = nullptr;
+  REQUIRE(
+      tiledb_deserialize_array_schema(
+          ctx_,
+          buff,
+          (tiledb_serialization_type_t)tiledb::sm::SerializationType::CAPNP,
+          0,
+          &new_array_schema) == TILEDB_OK);
+
+  // Create array from new schema
+  int rc = tiledb_array_create(ctx_, path.c_str(), new_array_schema);
+
+  // Serialize the new array schema and deserialize into the original array
+  // schema.
+  tiledb_buffer_t* buff2;
+  REQUIRE(
+      tiledb_serialize_array_schema(
+          ctx_,
+          new_array_schema,
+          (tiledb_serialization_type_t)tiledb::sm::SerializationType::CAPNP,
+          0,
+          &buff2) == TILEDB_OK);
+  REQUIRE(
+      tiledb_deserialize_array_schema(
+          ctx_,
+          buff2,
+          (tiledb_serialization_type_t)tiledb::sm::SerializationType::CAPNP,
+          1,
+          &array_schema) == TILEDB_OK);
+
+  // Clean up.
+  tiledb_array_schema_free(&new_array_schema);
+  tiledb_buffer_free(&buff);
+  tiledb_buffer_free(&buff2);
+
+  return rc;
 }
 
 void StringDimsFx::write_array_ascii(const std::string& array_name) {
@@ -659,6 +788,12 @@ TEST_CASE_METHOD(
     StringDimsFx,
     "C API: Test sparse array with string dimensions, array schema",
     "[capi][sparse][string-dims][array-schema]") {
+  SECTION("- No serialization") {
+    serialize_array_schema_ = false;
+  }
+  SECTION("- Serialization") {
+    serialize_array_schema_ = true;
+  }
   std::string array_name = FILE_URI_PREFIX + FILE_TEMP_DIR + "string_dims";
   create_temp_dir(FILE_URI_PREFIX + FILE_TEMP_DIR);
 
@@ -714,7 +849,7 @@ TEST_CASE_METHOD(
   REQUIRE(rc == TILEDB_OK);
 
   // Create array
-  rc = tiledb_array_create(ctx_, array_name.c_str(), array_schema);
+  rc = array_create_wrapper(array_name, array_schema);
   REQUIRE(rc == TILEDB_OK);
 
   // Clean up
@@ -724,7 +859,7 @@ TEST_CASE_METHOD(
   tiledb_attribute_free(&a);
 
   // Load array schema and domain
-  rc = tiledb_array_schema_load(ctx_, array_name.c_str(), &array_schema);
+  rc = array_schema_load_wrapper(array_name, &array_schema);
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_array_schema_get_domain(ctx_, array_schema, &domain);
   REQUIRE(rc == TILEDB_OK);
@@ -759,6 +894,12 @@ TEST_CASE_METHOD(
     "C API: Test sparse array with string dimensions, check duplicates, global "
     "order",
     "[capi][sparse][string-dims][duplicates][global]") {
+  SECTION("- No serialization") {
+    serialize_array_schema_ = false;
+  }
+  SECTION("- Serialization") {
+    serialize_array_schema_ = true;
+  }
   std::string array_name = FILE_URI_PREFIX + FILE_TEMP_DIR + "string_dims";
   create_temp_dir(FILE_URI_PREFIX + FILE_TEMP_DIR);
 
@@ -826,6 +967,12 @@ TEST_CASE_METHOD(
     "C API: Test sparse array with string dimensions, check duplicates, "
     "unordered",
     "[capi][sparse][string-dims][duplicates][unordered]") {
+  SECTION("- No serialization") {
+    serialize_array_schema_ = false;
+  }
+  SECTION("- Serialization") {
+    serialize_array_schema_ = true;
+  }
   std::string array_name = FILE_URI_PREFIX + FILE_TEMP_DIR + "string_dims";
   create_temp_dir(FILE_URI_PREFIX + FILE_TEMP_DIR);
 
@@ -893,6 +1040,12 @@ TEST_CASE_METHOD(
     "C API: Test sparse array with string dimensions, check global order "
     "violation",
     "[capi][sparse][string-dims][global-order][violation]") {
+  SECTION("- No serialization") {
+    serialize_array_schema_ = false;
+  }
+  SECTION("- Serialization") {
+    serialize_array_schema_ = true;
+  }
   std::string array_name = FILE_URI_PREFIX + FILE_TEMP_DIR + "string_dims";
   create_temp_dir(FILE_URI_PREFIX + FILE_TEMP_DIR);
 
@@ -959,6 +1112,12 @@ TEST_CASE_METHOD(
     StringDimsFx,
     "C API: Test sparse array with string dimensions, errors",
     "[capi][sparse][string-dims][errors]") {
+  SECTION("- No serialization") {
+    serialize_array_schema_ = false;
+  }
+  SECTION("- Serialization") {
+    serialize_array_schema_ = true;
+  }
   std::string array_name = FILE_URI_PREFIX + FILE_TEMP_DIR + "string_dims";
   create_temp_dir(FILE_URI_PREFIX + FILE_TEMP_DIR);
 
@@ -1074,6 +1233,12 @@ TEST_CASE_METHOD(
     StringDimsFx,
     "C API: Test sparse array with string dimensions, 1d",
     "[capi][sparse][string-dims][1d][basic]") {
+  SECTION("- No serialization") {
+    serialize_array_schema_ = false;
+  }
+  SECTION("- Serialization") {
+    serialize_array_schema_ = true;
+  }
   std::string array_name = FILE_URI_PREFIX + FILE_TEMP_DIR + "string_dims";
   create_temp_dir(FILE_URI_PREFIX + FILE_TEMP_DIR);
 
@@ -1255,6 +1420,12 @@ TEST_CASE_METHOD(
     StringDimsFx,
     "C API: Test sparse array with string dimensions, 1d, consolidation",
     "[capi][sparse][string-dims][1d][consolidation]") {
+  SECTION("- No serialization") {
+    serialize_array_schema_ = false;
+  }
+  SECTION("- Serialization") {
+    serialize_array_schema_ = true;
+  }
   std::string array_name = FILE_URI_PREFIX + FILE_TEMP_DIR + "string_dims";
   create_temp_dir(FILE_URI_PREFIX + FILE_TEMP_DIR);
 
@@ -1400,6 +1571,12 @@ TEST_CASE_METHOD(
     StringDimsFx,
     "C API: Test sparse array with string dimensions, 1d, allow duplicates",
     "[capi][sparse][string-dims][1d][allow-dups]") {
+  SECTION("- No serialization") {
+    serialize_array_schema_ = false;
+  }
+  SECTION("- Serialization") {
+    serialize_array_schema_ = true;
+  }
   std::string array_name = FILE_URI_PREFIX + FILE_TEMP_DIR + "string_dims";
   create_temp_dir(FILE_URI_PREFIX + FILE_TEMP_DIR);
 
@@ -1489,6 +1666,12 @@ TEST_CASE_METHOD(
     StringDimsFx,
     "C API: Test sparse array with string dimensions, 1d, dedup",
     "[capi][sparse][string-dims][1d][dedup]") {
+  SECTION("- No serialization") {
+    serialize_array_schema_ = false;
+  }
+  SECTION("- Serialization") {
+    serialize_array_schema_ = true;
+  }
   std::string array_name = FILE_URI_PREFIX + FILE_TEMP_DIR + "string_dims";
   create_temp_dir(FILE_URI_PREFIX + FILE_TEMP_DIR);
 
@@ -1596,6 +1779,12 @@ TEST_CASE_METHOD(
     StringDimsFx,
     "C API: Test sparse array with string dimensions, 2d",
     "[capi][sparse][string-dims][2d]") {
+  SECTION("- No serialization") {
+    serialize_array_schema_ = false;
+  }
+  SECTION("- Serialization") {
+    serialize_array_schema_ = true;
+  }
   std::string array_name = FILE_URI_PREFIX + FILE_TEMP_DIR + "string_dims";
   create_temp_dir(FILE_URI_PREFIX + FILE_TEMP_DIR);
 
