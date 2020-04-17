@@ -173,13 +173,13 @@ if ($EnableBuildDeps.IsPresent) {
 
 # Set TileDB prefix
 $InstallPrefix = $DefaultPrefix
-if ($Prefix.IsPresent) {
+if (![string]::IsNullOrEmpty($Prefix)) {
     $InstallPrefix = $Prefix
 }
 
 # Set TileDB dependency directory string
 $DependencyDir = $DefaultDependency
-if ($Dependency.IsPresent) {
+if (![string]::IsNullOrEmpty($Dependency)) {
     $DependencyDir = $Dependency
 }
 
