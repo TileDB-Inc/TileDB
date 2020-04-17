@@ -121,6 +121,26 @@ struct StringDimsFx {
       const std::string& d1_val,
       const std::vector<int32_t>& d2,
       const std::vector<int32_t>& a);
+  int tiledb_array_get_non_empty_domain_var_size_from_name_wrapper(
+      tiledb_ctx_t* ctx,
+      tiledb_array_t* array,
+      const char* name,
+      uint64_t* start_size,
+      uint64_t* end_size,
+      int32_t* is_empty);
+  int tiledb_array_get_non_empty_domain_var_from_name_wrapper(
+      tiledb_ctx_t* ctx,
+      tiledb_array_t* array,
+      const char* name,
+      void* start,
+      void* end,
+      int32_t* is_empty);
+  int tiledb_array_get_non_empty_domain_from_name_wrapper(
+      tiledb_ctx_t* ctx,
+      tiledb_array_t* array,
+      const char* name,
+      void* domain,
+      int32_t* is_empty);
   void get_non_empty_domain(
       const std::string& array_name,
       const std::string& dim_name,
@@ -578,6 +598,44 @@ void StringDimsFx::write_array_2d(
   tiledb_query_free(&query);
 }
 
+int StringDimsFx::tiledb_array_get_non_empty_domain_from_name_wrapper(
+    tiledb_ctx_t* ctx,
+    tiledb_array_t* array,
+    const char* name,
+    void* domain,
+    int32_t* is_empty) {
+  int ret = tiledb_array_get_non_empty_domain_from_name(
+      ctx, array, name, domain, is_empty);
+#ifndef TILEDB_SERIALIZATION
+  return ret;
+#endif
+
+  if (ret != TILEDB_OK || !serialize_)
+    return ret;
+
+  // Serialize the non_empty_domain
+  tiledb_buffer_t* buff;
+  REQUIRE(
+      tiledb_serialize_array_non_empty_domain_all_dimensions(
+          ctx,
+          array,
+          (tiledb_serialization_type_t)tiledb::sm::SerializationType::CAPNP,
+          0,
+          &buff) == TILEDB_OK);
+
+  // Deserialize to validate we can round-trip
+  REQUIRE(
+      tiledb_deserialize_array_non_empty_domain_all_dimensions(
+          ctx,
+          array,
+          buff,
+          (tiledb_serialization_type_t)tiledb::sm::SerializationType::CAPNP,
+          1) == TILEDB_OK);
+
+  return tiledb_array_get_non_empty_domain_from_name(
+      ctx, array, name, domain, is_empty);
+}
+
 void StringDimsFx::get_non_empty_domain(
     const std::string& array_name,
     const std::string& dim_name,
@@ -593,7 +651,7 @@ void StringDimsFx::get_non_empty_domain(
   CHECK(rc == TILEDB_OK);
 
   // Get non-empty domain
-  rc = tiledb_array_get_non_empty_domain_from_name(
+  rc = tiledb_array_get_non_empty_domain_from_name_wrapper(
       ctx_, array, dim_name.c_str(), &(*dom)[0], is_empty);
   CHECK(rc == TILEDB_OK);
 
@@ -603,6 +661,84 @@ void StringDimsFx::get_non_empty_domain(
 
   // Clean up
   tiledb_array_free(&array);
+}
+
+int StringDimsFx::tiledb_array_get_non_empty_domain_var_size_from_name_wrapper(
+    tiledb_ctx_t* ctx,
+    tiledb_array_t* array,
+    const char* name,
+    uint64_t* start_size,
+    uint64_t* end_size,
+    int32_t* is_empty) {
+  int ret = tiledb_array_get_non_empty_domain_var_size_from_name(
+      ctx, array, name, start_size, end_size, is_empty);
+#ifndef TILEDB_SERIALIZATION
+  return ret;
+#endif
+
+  if (ret != TILEDB_OK || !serialize_)
+    return ret;
+
+  // Serialize the non_empty_domain
+  tiledb_buffer_t* buff;
+  REQUIRE(
+      tiledb_serialize_array_non_empty_domain_all_dimensions(
+          ctx,
+          array,
+          (tiledb_serialization_type_t)tiledb::sm::SerializationType::CAPNP,
+          0,
+          &buff) == TILEDB_OK);
+
+  // Deserialize to validate we can round-trip
+  REQUIRE(
+      tiledb_deserialize_array_non_empty_domain_all_dimensions(
+          ctx,
+          array,
+          buff,
+          (tiledb_serialization_type_t)tiledb::sm::SerializationType::CAPNP,
+          1) == TILEDB_OK);
+
+  return tiledb_array_get_non_empty_domain_var_size_from_name(
+      ctx, array, name, start_size, end_size, is_empty);
+}
+
+int StringDimsFx::tiledb_array_get_non_empty_domain_var_from_name_wrapper(
+    tiledb_ctx_t* ctx,
+    tiledb_array_t* array,
+    const char* name,
+    void* start,
+    void* end,
+    int32_t* is_empty) {
+  int ret = tiledb_array_get_non_empty_domain_var_from_name(
+      ctx, array, name, start, end, is_empty);
+#ifndef TILEDB_SERIALIZATION
+  return ret;
+#endif
+
+  if (ret != TILEDB_OK || !serialize_)
+    return ret;
+
+  // Serialize the non_empty_domain
+  tiledb_buffer_t* buff;
+  REQUIRE(
+      tiledb_serialize_array_non_empty_domain_all_dimensions(
+          ctx,
+          array,
+          (tiledb_serialization_type_t)tiledb::sm::SerializationType::CAPNP,
+          0,
+          &buff) == TILEDB_OK);
+
+  // Deserialize to validate we can round-trip
+  REQUIRE(
+      tiledb_deserialize_array_non_empty_domain_all_dimensions(
+          ctx,
+          array,
+          buff,
+          (tiledb_serialization_type_t)tiledb::sm::SerializationType::CAPNP,
+          1) == TILEDB_OK);
+
+  return tiledb_array_get_non_empty_domain_var_from_name(
+      ctx, array, name, start, end, is_empty);
 }
 
 void StringDimsFx::get_non_empty_domain_var(
@@ -620,14 +756,14 @@ void StringDimsFx::get_non_empty_domain_var(
 
   // Get non-empty domain size
   uint64_t start_size = 0, end_size = 0;
-  rc = tiledb_array_get_non_empty_domain_var_size_from_name(
+  rc = tiledb_array_get_non_empty_domain_var_size_from_name_wrapper(
       ctx_, array, dim_name.c_str(), &start_size, &end_size, is_empty);
   CHECK(rc == TILEDB_OK);
 
   // Get non-empty domain
   start->resize(start_size);
   end->resize(end_size);
-  rc = tiledb_array_get_non_empty_domain_var_from_name(
+  rc = tiledb_array_get_non_empty_domain_var_from_name_wrapper(
       ctx_, array, dim_name.c_str(), &(*start)[0], &(*end)[0], is_empty);
   CHECK(rc == TILEDB_OK);
 
