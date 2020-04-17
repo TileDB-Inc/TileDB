@@ -163,9 +163,11 @@ class Dimension {
 
     // Check range bounds
     if (r[0] > r[1]) {
-      *err_msg =
-          "Cannot add range to dimension; Lower range "
-          "bound cannot be larger than the higher bound";
+      std::stringstream ss;
+      ss << "Cannot add range to dimension; Lower range "
+         << "bound " << r[0] << " cannot be larger than the higher bound "
+         << r[1];
+      *err_msg = ss.str();
       return false;
     }
 
@@ -204,9 +206,11 @@ class Dimension {
 
     // Check range bounds
     if (r[0] > r[1]) {
-      *err_msg =
-          "Cannot add range to dimension; Lower range "
-          "bound cannot be larger than the higher bound";
+      std::stringstream ss;
+      ss << "Cannot add range to dimension; Lower range "
+         << "bound " << r[0] << " cannot be larger than the higher bound "
+         << r[1];
+      *err_msg = ss.str();
       return false;
     }
 
