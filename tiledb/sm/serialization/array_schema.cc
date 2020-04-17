@@ -215,10 +215,15 @@ Status dimension_to_capnp(
   dimension_builder->setType(datatype_str(dimension->type()));
   dimension_builder->setNullTileExtent(dimension->tile_extent().empty());
 
-  auto domain_builder = dimension_builder->initDomain();
-  RETURN_NOT_OK(utils::set_capnp_array_ptr(
-      domain_builder, dimension->type(), dimension->domain().data(), 2));
+  // Only set the domain if its not empty/null. String dimensions have null
+  // domains
+  if (!dimension->domain().empty()) {
+    auto domain_builder = dimension_builder->initDomain();
+    RETURN_NOT_OK(utils::set_capnp_array_ptr(
+        domain_builder, dimension->type(), dimension->domain().data(), 2));
+  }
 
+  // Only set the tile extent if its not empty
   if (!dimension->tile_extent().empty()) {
     auto tile_extent_builder = dimension_builder->initTileExtent();
     RETURN_NOT_OK(utils::set_capnp_scalar(
@@ -242,11 +247,13 @@ Status dimension_from_capnp(
   RETURN_NOT_OK(datatype_enum(dimension_reader.getType().cStr(), &dim_type));
   dimension->reset(new Dimension(dimension_reader.getName(), dim_type));
 
-  auto domain_reader = dimension_reader.getDomain();
-  Buffer domain_buffer;
-  RETURN_NOT_OK(
-      utils::copy_capnp_list(domain_reader, dim_type, &domain_buffer));
-  RETURN_NOT_OK((*dimension)->set_domain(domain_buffer.data()));
+  if (dimension_reader.hasDomain()) {
+    auto domain_reader = dimension_reader.getDomain();
+    Buffer domain_buffer;
+    RETURN_NOT_OK(
+        utils::copy_capnp_list(domain_reader, dim_type, &domain_buffer));
+    RETURN_NOT_OK((*dimension)->set_domain(domain_buffer.data()));
+  }
 
   if (dimension_reader.hasFilterPipeline()) {
     auto reader = dimension_reader.getFilterPipeline();
