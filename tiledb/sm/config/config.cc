@@ -51,6 +51,7 @@ const std::string Config::REST_SERVER_DEFAULT_ADDRESS =
     "https://api.tiledb.com";
 const std::string Config::REST_SERIALIZATION_DEFAULT_FORMAT = "CAPNP";
 const std::string Config::REST_SERVER_DEFAULT_HTTP_COMPRESSOR = "any";
+const std::string Config::CONFIG_ENVIRONMENT_VARIABLE_PREFIX = "TILEDB_";
 const std::string Config::SM_DEDUP_COORDS = "false";
 const std::string Config::SM_CHECK_COORD_DUPS = "true";
 const std::string Config::SM_CHECK_COORD_OOB = "true";
@@ -153,6 +154,7 @@ Config::Config() {
   param_values_["rest.server_serialization_format"] =
       REST_SERIALIZATION_DEFAULT_FORMAT;
   param_values_["rest.http_compressor"] = REST_SERVER_DEFAULT_HTTP_COMPRESSOR;
+  param_values_["config.env_var_prefix"] = CONFIG_ENVIRONMENT_VARIABLE_PREFIX;
   param_values_["sm.dedup_coords"] = SM_DEDUP_COORDS;
   param_values_["sm.check_coord_dups"] = SM_CHECK_COORD_DUPS;
   param_values_["sm.check_coord_oob"] = SM_CHECK_COORD_OOB;
@@ -317,27 +319,27 @@ Status Config::set(const std::string& param, const std::string& value) {
 }
 
 Status Config::get(const std::string& param, const char** value) const {
-  auto it = param_values_.find(param);
-  *value = (it == param_values_.end()) ? nullptr : it->second.c_str();
+  bool found;
+  const char* val = get_from_config_or_env(param, &found);
+  *value = found ? val : nullptr;
+
   return Status::Ok();
 }
 
 std::string Config::get(const std::string& param, bool* found) const {
-  auto it = param_values_.find(param);
-  *found = it != param_values_.end();
-  return *found ? it->second : "";
+  const char* val = get_from_config_or_env(param, found);
+  return found ? val : "";
 }
 
 template <class T>
 Status Config::get(const std::string& param, T* value, bool* found) const {
   // Check if parameter exists
-  auto it = param_values_.find(param);
-  *found = it != param_values_.end();
+  const char* val = get_from_config_or_env(param, found);
   if (!*found)
     return Status::Ok();
 
   // Parameter found, retrieve value
-  return utils::parse::convert(it->second, value);
+  return utils::parse::convert(val, value);
 }
 
 const std::map<std::string, std::string>& Config::param_values() const {
@@ -357,6 +359,8 @@ Status Config::unset(const std::string& param) {
         REST_SERIALIZATION_DEFAULT_FORMAT;
   } else if (param == "rest.http_compressor") {
     param_values_["rest.http_compressor"] = REST_SERVER_DEFAULT_HTTP_COMPRESSOR;
+  } else if (param == "config.env_var_prefix") {
+    param_values_["config.env_var_prefix"] = CONFIG_ENVIRONMENT_VARIABLE_PREFIX;
   } else if (param == "sm.dedup_coords") {
     param_values_["sm.dedup_coords"] = SM_DEDUP_COORDS;
   } else if (param == "sm.check_coord_dups") {
@@ -605,6 +609,76 @@ Status Config::sanity_check(
   }
 
   return Status::Ok();
+}
+
+std::string Config::convert_to_env_param(const std::string& param) const {
+  std::stringstream ss;
+  for (auto& c : param) {
+    // We convert "." in parameter name to "_" for convention
+    if (std::strncmp(&c, ".", 1) == 0) {
+      ss << "_";
+    } else {
+      ss << static_cast<char>(::toupper(c));
+    }
+  }
+
+  return ss.str();
+}
+
+const char* Config::get_from_env(const std::string& param, bool* found) const {
+  std::string env_param = convert_to_env_param(param);
+
+  // Get env variable prefix
+  bool found_prefix;
+  std::string env_prefix =
+      get_from_config("config.env_var_prefix", &found_prefix);
+
+  if (found_prefix)
+    env_param = env_prefix + env_param;
+
+  char* value = std::getenv(env_param.c_str());
+
+  // getenv returns nullptr if variable is not found
+  *found = value != nullptr;
+
+  return value;
+}
+
+const char* Config::get_from_config(
+    const std::string& param, bool* found) const {
+  // First check config
+  auto it = param_values_.find(param);
+  *found = it != param_values_.end();
+  return *found ? it->second.c_str() : "";
+}
+
+const char* Config::get_from_config_or_env(
+    const std::string& param, bool* found) const {
+  // First let's see if the User has set the parameter
+  // If it is not a user set parameter it might be a default value if found in
+  // the config
+  bool user_set_parameter = set_params_.find(param) != set_params_.end();
+
+  // First check config
+  bool found_config;
+  const char* value_config = get_from_config(param, &found_config);
+  // If its a user set parameter from the config return it
+  if (found_config && user_set_parameter) {
+    *found = found_config;
+    return value_config;
+  }
+
+  // Check env if not found in config or if it was found in the config but is a
+  // default value
+  const char* value_env = get_from_env(param, found);
+  if (*found)
+    return value_env;
+
+  // At this point the value was not found to be user set in the config or an
+  // environmental variable so return any default value from the config or
+  // indicate it was not found
+  *found = found_config;
+  return *found ? value_config : "";
 }
 
 // Explicit template instantiations
