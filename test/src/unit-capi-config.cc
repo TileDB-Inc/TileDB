@@ -209,6 +209,7 @@ void check_save_to_file() {
   REQUIRE(rc == TILEDB_OK);
 
   std::stringstream ss;
+  ss << "config.env_var_prefix TILEDB_\n";
   ss << "rest.http_compressor any\n";
   ss << "rest.server_address https://api.tiledb.com\n";
   ss << "rest.server_serialization_format CAPNP\n";
@@ -416,6 +417,7 @@ TEST_CASE("C API: Test config iter", "[capi], [config]") {
 
   // Prepare maps
   std::map<std::string, std::string> all_param_values;
+  all_param_values["config.env_var_prefix"] = "TILEDB_";
   all_param_values["rest.server_address"] = "https://api.tiledb.com";
   all_param_values["rest.server_serialization_format"] = "CAPNP";
   all_param_values["rest.http_compressor"] = "any";

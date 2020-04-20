@@ -66,6 +66,9 @@ class Config {
   /** The default compressor for http requests with the rest server. */
   static const std::string REST_SERVER_DEFAULT_HTTP_COMPRESSOR;
 
+  /** The prefix to use for checking for parameter environmental variables. */
+  static const std::string CONFIG_ENVIRONMENT_VARIABLE_PREFIX;
+
   /** If `true`, this will deduplicate coordinates upon sparse writes. */
   static const std::string SM_DEDUP_COORDS;
 
@@ -386,6 +389,45 @@ class Config {
    * `param` is not a system configuration parameter, the function is a noop.
    */
   Status sanity_check(const std::string& param, const std::string& value) const;
+
+  /**
+   * Convert a parameter in the form of "a.b.c" to expected env string of
+   * "A_B_C"
+   * @param param
+   * @return converted string
+   */
+  std::string convert_to_env_param(const std::string& param) const;
+
+  /**
+   * Get an environmental variable
+   * @param param to fetch
+   * @param found pointer to bool to set if env parameter was found or not
+   * @return parameter value if found or nullptr if not found
+   */
+  const char* get_from_env(const std::string& param, bool* found) const;
+
+  /**
+   * Get an parameter from config variable
+   * @param param to fetch
+   * @param found pointer to bool to set if parameter was found or not
+   * @return parameter value if found or nullptr if not found
+   */
+  const char* get_from_config(const std::string& param, bool* found) const;
+
+  /**
+   * Get a configuration parameter from config object or environmental variables
+   *
+   * The order we look for values are
+   * 1. user set config parameters
+   * 2. env variables
+   * 3. default config value
+   *
+   * @param param parameter to fetch
+   * @param found pointer to bool to set if parameter was found or not
+   * @return parameter value if found or empty string if not
+   */
+  const char* get_from_config_or_env(
+      const std::string& param, bool* found) const;
 };
 
 }  // namespace sm
