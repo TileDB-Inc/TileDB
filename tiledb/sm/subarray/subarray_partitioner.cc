@@ -507,40 +507,40 @@ SubarrayPartitioner SubarrayPartitioner::clone() const {
 Status SubarrayPartitioner::compute_current_start_end(bool* found) {
   // Preparation
   auto array = subarray_.array();
-  auto encryption_key = array->encryption_key();
-  auto array_schema = array->array_schema();
   auto meta = array->fragment_metadata();
-  std::unordered_map<std::string, Subarray::ResultSize> cur_sizes, mem_sizes;
-  for (const auto& it : budget_) {
-    cur_sizes[it.first] = Subarray::ResultSize();  // Est budget
-    mem_sizes[it.first] = Subarray::ResultSize();  // Max memory budget
+  std::vector<Subarray::ResultSize> cur_sizes;
+  std::vector<Subarray::MemorySize> mem_sizes;
+  std::vector<std::string> names;
+  std::vector<ResultBudget> budgets;
+  names.reserve(budget_.size());
+  budgets.reserve(budget_.size());
+  cur_sizes.resize(budget_.size(), Subarray::ResultSize({0.0, 0.0}));
+  mem_sizes.resize(budget_.size(), Subarray::MemorySize({0, 0}));
+  for (const auto& budget_it : budget_) {
+    names.emplace_back(budget_it.first);
+    budgets.emplace_back(budget_it.second);
   }
 
-  std::vector<std::string> names;
-  names.reserve(budget_.size());
-  for (const auto& budget_it : budget_)
-    names.emplace_back(budget_it.first);
+  // Compute the estimated result sizes
+  std::vector<std::vector<Subarray::ResultSize>> result_sizes;
+  std::vector<std::vector<Subarray::MemorySize>> memory_sizes;
+  RETURN_NOT_OK(subarray_.compute_relevant_fragment_est_result_sizes(
+      names, state_.start_, state_.end_, &result_sizes, &memory_sizes));
 
-  std::mutex mtx;
   current_.start_ = state_.start_;
   for (current_.end_ = state_.start_; current_.end_ <= state_.end_;
        ++current_.end_) {
-    // Update current sizes
-    std::vector<Subarray::ResultSize> est_sizes;
-    RETURN_NOT_OK(subarray_.compute_est_result_sizes(
-        encryption_key, array_schema, meta, names, current_.end_, &est_sizes));
-
-    std::lock_guard<std::mutex> block(mtx);
-    for (size_t i = 0; i < est_sizes.size(); ++i) {
-      auto& cur_size = cur_sizes[names[i]];
-      auto& mem_size = mem_sizes[names[i]];
-      auto budget_it = budget_.find(names[i]);
-      cur_size.size_fixed_ += est_sizes[i].size_fixed_;
-      cur_size.size_var_ += est_sizes[i].size_var_;
-      mem_size.size_fixed_ += est_sizes[i].mem_size_fixed_;
-      mem_size.size_var_ += est_sizes[i].mem_size_var_;
-      if (cur_size.size_fixed_ > budget_it->second.size_fixed_ ||
-          cur_size.size_var_ > budget_it->second.size_var_ ||
+    size_t r = current_.end_ - state_.start_;
+    for (size_t i = 0; i < names.size(); ++i) {
+      auto& cur_size = cur_sizes[i];
+      auto& mem_size = mem_sizes[i];
+      const auto& budget = budgets[i];
+      cur_size.size_fixed_ += result_sizes[r][i].size_fixed_;
+      cur_size.size_var_ += result_sizes[r][i].size_var_;
+      mem_size.size_fixed_ += memory_sizes[r][i].size_fixed_;
+      mem_size.size_var_ += memory_sizes[r][i].size_var_;
+      if (cur_size.size_fixed_ > budget.size_fixed_ ||
+          cur_size.size_var_ > budget.size_var_ ||
           mem_size.size_fixed_ > memory_budget_ ||
           mem_size.size_var_ > memory_budget_var_) {
         // Cannot find range that fits in the buffer

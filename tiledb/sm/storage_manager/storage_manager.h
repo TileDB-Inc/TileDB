@@ -44,6 +44,10 @@
 #include <thread>
 #include <unordered_map>
 
+#ifdef HAVE_TBB
+#include <tbb/task_scheduler_init.h>
+#endif
+
 #include "tiledb/sm/config/config.h"
 #include "tiledb/sm/enums/walk_order.h"
 #include "tiledb/sm/filesystem/filelock.h"
@@ -75,6 +79,17 @@ enum class ObjectType : uint8_t;
 /** The storage manager that manages pretty much everything in TileDB. */
 class StorageManager {
  public:
+  /* ********************************* */
+  /*             CONSTANTS             */
+  /* ********************************* */
+
+#ifdef HAVE_TBB
+  const int DEFAULT_CONCURRENCY =
+      tbb::task_scheduler_init::default_num_threads();
+#else
+  const int DEFAULT_CONCURRENCY = 1;
+#endif
+
   /* ********************************* */
   /*          TYPE DEFINITIONS         */
   /* ********************************* */
@@ -850,6 +865,9 @@ class StorageManager {
    */
   Status write(const URI& uri, void* data, uint64_t size) const;
 
+  /** Returns the number of threads used for parallel CPU execution. */
+  int num_threads() const;
+
  private:
   /* ********************************* */
   /*        PRIVATE DATATYPES          */
@@ -936,6 +954,9 @@ class StorageManager {
 
   /** The storage manager's thread pool for Writers. */
   ThreadPool writer_thread_pool_;
+
+  /** Number of threads used for parallel CPU execution. */
+  int num_threads_;
 
   /** Tracks all scheduled tasks that can be safely cancelled before execution.
    */

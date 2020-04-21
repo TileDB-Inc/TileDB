@@ -1351,6 +1351,8 @@ Status StorageManager::init(const Config* config) {
   RETURN_NOT_OK(
       config_.get<uint64_t>("sm.tile_cache_size", &tile_cache_size, &found));
   assert(found);
+  RETURN_NOT_OK(config_.get<int>("sm.num_tbb_threads", &num_threads_, &found));
+  assert(found);
 
   RETURN_NOT_OK(async_thread_pool_.init(num_async_threads));
   RETURN_NOT_OK(reader_thread_pool_.init(num_reader_threads));
@@ -1924,6 +1926,12 @@ Status StorageManager::write(const URI& uri, Buffer* buffer) const {
 
 Status StorageManager::write(const URI& uri, void* data, uint64_t size) const {
   return vfs_->write(uri, data, size);
+}
+
+int StorageManager::num_threads() const {
+  if (num_threads_ < 0)
+    return DEFAULT_CONCURRENCY;
+  return num_threads_;
 }
 
 /* ****************************** */

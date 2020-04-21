@@ -532,16 +532,15 @@ class Reader {
    *
    * @param frag_idx The id of the fragment that the result tile belongs to.
    * @param tile The result tile.
-   * @param ndrange An N-dimensional range (where N is equal to the number
-   *     of dimensions of the array).
+   * @param range_idx The range id.
    * @param result_coords The overlapping coordinates to retrieve.
    * @return Status
    */
   Status compute_range_result_coords(
       unsigned frag_idx,
       ResultTile* tile,
-      const NDRange& ndrange,
-      std::vector<ResultCoords>* result_coords) const;
+      uint64_t range_idx,
+      std::vector<ResultCoords>* result_coords);
 
   /**
    * Computes the result coordinates for each range of the query

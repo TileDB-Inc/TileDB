@@ -604,28 +604,31 @@ Status Reader::compute_result_cell_slabs(
 Status Reader::compute_range_result_coords(
     unsigned frag_idx,
     ResultTile* tile,
-    const NDRange& ndrange,
-    std::vector<ResultCoords>* result_coords) const {
+    uint64_t range_idx,
+    std::vector<ResultCoords>* result_coords) {
   auto coords_num = tile->cell_num();
-  auto fragment_num = fragment_metadata_.size();
+  auto dim_num = array_schema_->dim_num();
+  const auto& subarray = read_state_.partitioner_.current();
+  auto range_coords = subarray.get_range_coords(range_idx);
 
+  std::vector<uint8_t> result_bitmap(coords_num, 1);
+  std::vector<uint8_t> overwritten_bitmap(coords_num, 0);
+
+  // Compute result and overwritten bitmap per dimension
+  for (unsigned d = 0; d < dim_num; ++d) {
+    const auto& ranges = subarray.ranges_for_dim(d);
+    RETURN_NOT_OK(tile->compute_results(
+        d,
+        ranges[range_coords[d]],
+        fragment_metadata_,
+        frag_idx,
+        &result_bitmap,
+        &overwritten_bitmap));
+  }
+
+  // Gather results
   for (uint64_t pos = 0; pos < coords_num; ++pos) {
-    // Check if the coordinates are in the range
-    if (!tile->coord_in_rect(pos, ndrange))
-      continue;
-
-    // Check if the coordinates are overwritten by a future dense fragment
-    bool overwritten = false;
-    for (unsigned f = frag_idx + 1; !overwritten && f < fragment_num; ++f) {
-      if (fragment_metadata_[f]->dense()) {
-        overwritten =
-            tile->coord_in_rect(pos, fragment_metadata_[f]->non_empty_domain());
-        if (overwritten)
-          break;
-      }
-    }
-
-    if (!overwritten)
+    if (result_bitmap[pos] && !overwritten_bitmap[pos])
       result_coords->emplace_back(tile, pos);
   }
 
@@ -653,16 +656,13 @@ Status Reader::compute_range_result_coords(
     RETURN_NOT_OK(compute_range_result_coords(
         r, result_tile_map, result_tiles, &((*range_result_coords)[r])));
 
-    // Sort
-    RETURN_CANCEL_OR_ERROR(
-        sort_result_coords(&((*range_result_coords)[r]), layout));
-
     // Dedup unless there is a single fragment or array schema allows duplicates
     if (!single_fragment[r] && !allows_dups) {
+      RETURN_CANCEL_OR_ERROR(
+          sort_result_coords(&((*range_result_coords)[r]), layout));
       RETURN_CANCEL_OR_ERROR(dedup_result_coords(&((*range_result_coords)[r])));
     }
 
-    // Compute tile coordinate
     return Status::Ok();
   });
   for (auto st : statuses)
@@ -720,9 +720,8 @@ Status Reader::compute_range_result_coords(
         if (!sparse_tile_overwritten(fragment_idx, t->first))
           RETURN_NOT_OK(get_all_result_coords(&tile, range_result_coords));
       } else {  // Partial overlap
-        auto ndrange = subarray.ndrange(range_idx);
         RETURN_NOT_OK(compute_range_result_coords(
-            fragment_idx, &tile, ndrange, range_result_coords));
+            fragment_idx, &tile, range_idx, range_result_coords));
       }
       ++t;
     }

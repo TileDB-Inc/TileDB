@@ -338,16 +338,13 @@ const URI& FragmentMetadata::fragment_uri() const {
   return fragment_uri_;
 }
 
-Status FragmentMetadata::get_tile_overlap(
-    const EncryptionKey& encryption_key,
-    const NDRange& range,
-    TileOverlap* tile_overlap) {
-  // Return if the range does not overlap the non-empty domain of the fragment
-  if (!array_schema_->domain()->overlap(range, non_empty_domain_))
-    return Status::Ok();
+bool FragmentMetadata::overlaps_non_empty_domain(const NDRange& range) const {
+  return array_schema_->domain()->overlap(range, non_empty_domain_);
+}
 
-  // Get overlap
-  RETURN_NOT_OK(load_rtree(encryption_key));
+Status FragmentMetadata::get_tile_overlap(
+    const NDRange& range, TileOverlap* tile_overlap) {
+  assert(version_ <= 2 || loaded_metadata_.rtree_);
   *tile_overlap = rtree_.get_tile_overlap(range);
   return Status::Ok();
 }
@@ -663,6 +660,40 @@ Status FragmentMetadata::write_footer(Buffer* buff) const {
   return Status::Ok();
 }
 
+Status FragmentMetadata::load_rtree(const EncryptionKey& encryption_key) {
+  if (version_ <= 2)
+    return Status::Ok();
+
+  std::lock_guard<std::mutex> lock(mtx_);
+
+  if (loaded_metadata_.rtree_)
+    return Status::Ok();
+
+  Buffer buff;
+  RETURN_NOT_OK(
+      read_generic_tile_from_file(encryption_key, gt_offsets_.rtree_, &buff));
+
+  STATS_ADD_COUNTER(stats::Stats::CounterType::READ_RTREE_SIZE, buff.size());
+
+  ConstBuffer cbuff(&buff);
+  RETURN_NOT_OK(rtree_.deserialize(&cbuff, array_schema_->domain(), version_));
+
+  loaded_metadata_.rtree_ = true;
+
+  return Status::Ok();
+}
+
+Status FragmentMetadata::load_tile_var_sizes(
+    const EncryptionKey& encryption_key, const std::string& name) {
+  if (version_ <= 2)
+    return Status::Ok();
+
+  auto it = idx_map_.find(name);
+  assert(it != idx_map_.end());
+  auto idx = it->second;
+  return (load_tile_var_sizes(encryption_key, idx));
+}
+
 /* ****************************** */
 /*        PRIVATE METHODS         */
 /* ****************************** */
@@ -901,29 +932,6 @@ Status FragmentMetadata::expand_non_empty_domain(const NDRange& mbr) {
 
   // Expand existing non-empty domain
   array_schema_->domain()->expand_ndrange(mbr, &non_empty_domain_);
-
-  return Status::Ok();
-}
-
-Status FragmentMetadata::load_rtree(const EncryptionKey& encryption_key) {
-  if (version_ <= 2)
-    return Status::Ok();
-
-  std::lock_guard<std::mutex> lock(mtx_);
-
-  if (loaded_metadata_.rtree_)
-    return Status::Ok();
-
-  Buffer buff;
-  RETURN_NOT_OK(
-      read_generic_tile_from_file(encryption_key, gt_offsets_.rtree_, &buff));
-
-  STATS_ADD_COUNTER(stats::Stats::CounterType::READ_RTREE_SIZE, buff.size());
-
-  ConstBuffer cbuff(&buff);
-  RETURN_NOT_OK(rtree_.deserialize(&cbuff, array_schema_->domain(), version_));
-
-  loaded_metadata_.rtree_ = true;
 
   return Status::Ok();
 }

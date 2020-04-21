@@ -197,13 +197,16 @@ class FragmentMetadata {
   const URI& fragment_uri() const;
 
   /**
+   * Returns true if the input range overlaps the non-empty
+   * domain of the fragment.
+   */
+  bool overlaps_non_empty_domain(const NDRange& range) const;
+
+  /**
    * Retrieves the overlap of all MBRs with the input ND range. The encryption
    * key is needed because certain metadata may have to be loaded on-the-fly.
    */
-  Status get_tile_overlap(
-      const EncryptionKey& encryption_key,
-      const NDRange& range,
-      TileOverlap* tile_overlap);
+  Status get_tile_overlap(const NDRange& range, TileOverlap* tile_overlap);
 
   /**
    * Initializes the fragment metadata structures.
@@ -440,6 +443,16 @@ class FragmentMetadata {
   /** Serializes the fragment metadata footer into the input buffer. */
   Status write_footer(Buffer* buff) const;
 
+  /** Loads the R-tree from storage. */
+  Status load_rtree(const EncryptionKey& encryption_key);
+
+  /**
+   * Loads the variable tile sizes for the input attribute or dimension idx
+   * from storage.
+   * */
+  Status load_tile_var_sizes(
+      const EncryptionKey& encryption_key, const std::string& name);
+
  private:
   /* ********************************* */
   /*          TYPE DEFINITIONS         */
@@ -609,9 +622,6 @@ class FragmentMetadata {
    * Expands the non-empty domain using the input MBR.
    */
   Status expand_non_empty_domain(const NDRange& mbr);
-
-  /** Loads the R-tree from storage. */
-  Status load_rtree(const EncryptionKey& encryption_key);
 
   /**
    * Loads the tile offsets for the input attribute or dimension idx
