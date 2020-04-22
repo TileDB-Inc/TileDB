@@ -306,8 +306,11 @@ void ResultTile::compute_results_dense(
             if (meta->dense()) {
               overwritten = true;
               for (unsigned d = 0; d < dim_num; ++d) {
+                const auto& coord_tile = result_tile->coord_tile(dim_idx).first;
+                auto coords = (const T*)coord_tile.internal_data();
+                auto c_d = coords[pos];
                 auto dom = (const T*)meta->non_empty_domain()[d].data();
-                if (c < dom[0] || c > dom[1]) {
+                if (c_d < dom[0] || c_d > dom[1]) {
                   overwritten = false;
                   break;
                 }
@@ -347,8 +350,9 @@ void ResultTile::compute_results_dense(
           if (meta->dense()) {
             overwritten = true;
             for (unsigned d = 0; d < dim_num; ++d) {
+              auto c_d = coords[pos * dim_num + d];
               auto dom = (const T*)meta->non_empty_domain()[d].data();
-              if (c < dom[0] || c > dom[1]) {
+              if (c_d < dom[0] || c_d > dom[1]) {
                 overwritten = false;
                 break;
               }
