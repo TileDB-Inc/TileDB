@@ -163,13 +163,18 @@ class ResultTile {
       const std::string& name, void* buffer, uint64_t pos, uint64_t len);
 
   /**
-   * Computes a result bitmap for the input dimension for the coordinates that
-   * fall in the input range. It also computes an `overwritten_bitmap` that
+   * Applicable only to sparse tiles of dense arrays.
+   *
+   * Accummulates to a result bitmap for the coordinates that
+   * fall in the input range, checking only dimensions `dim_idx`.
+   * It also accummulates to an `overwritten_bitmap` that
    * checks if the coordinate is overwritten on that dimension by a
-   * future fragment (one with index greater than `frag_idx`).
+   * future fragment (one with index greater than `frag_idx`). That
+   * is computed only for `dim_idx == dim_num -1`, as it needs
+   * to know if the the coordinates to be checked are already results.
    */
   template <class T>
-  static void compute_results(
+  static void compute_results_dense(
       const ResultTile* result_tile,
       unsigned dim_idx,
       const Range& range,
@@ -179,6 +184,21 @@ class ResultTile {
       std::vector<uint8_t>* overwritten_bitmap);
 
   /**
+   * Applicable only to sparse arrays.
+   *
+   * Computes a result bitmap for the input dimension for the coordinates that
+   * fall in the input range.
+   */
+  template <class T>
+  static void compute_results_sparse(
+      const ResultTile* result_tile,
+      unsigned dim_idx,
+      const Range& range,
+      std::vector<uint8_t>* result_bitmap);
+
+  /**
+   * Applicable only to sparse tiles of dense arrays.
+   *
    * Accummulates to a result bitmap for the coordinates that
    * fall in the input range, checking only dimensions `dim_idx`.
    * It also accummulates to an `overwritten_bitmap` that
@@ -187,13 +207,24 @@ class ResultTile {
    * is computed only for `dim_idx == dim_num -1`, as it needs
    * to know if the the coordinates to be checked are already results.
    */
-  Status compute_results(
+  Status compute_results_dense(
       unsigned dim_idx,
       const Range& range,
       const std::vector<FragmentMetadata*> fragment_metadata,
       unsigned frag_idx,
       std::vector<uint8_t>* result_bitmap,
       std::vector<uint8_t>* overwritten_bitmap) const;
+
+  /**
+   * Applicable only to sparse arrays.
+   *
+   * Accummulates to a result bitmap for the coordinates that
+   * fall in the input range, checking only dimensions `dim_idx`.
+   */
+  Status compute_results_sparse(
+      unsigned dim_idx,
+      const Range& range,
+      std::vector<uint8_t>* result_bitmap) const;
 
  private:
   /* ********************************* */
@@ -222,7 +253,7 @@ class ResultTile {
   std::vector<std::pair<std::string, TilePair>> coord_tiles_;
 
   /**
-   * Stores the appropriate templated compute_results() function based for
+   * Stores the appropriate templated compute_results_dense() function based for
    * each dimension, based on the dimension datatype.
    */
   std::vector<std::function<void(
@@ -233,7 +264,15 @@ class ResultTile {
       unsigned,
       std::vector<uint8_t>*,
       std::vector<uint8_t>*)>>
-      compute_results_func_;
+      compute_results_dense_func_;
+
+  /**
+   * Stores the appropriate templated compute_results_sparse() function based
+   * for each dimension, based on the dimension datatype.
+   */
+  std::vector<std::function<void(
+      const ResultTile*, unsigned, const Range&, std::vector<uint8_t>*)>>
+      compute_results_sparse_func_;
 
   /* ********************************* */
   /*          PRIVATE METHODS          */

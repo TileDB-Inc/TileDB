@@ -252,58 +252,25 @@ const ResultTile::TilePair& ResultTile::coord_tile(unsigned dim_idx) const {
 }
 
 template <>
-void ResultTile::compute_results<char>(
+void ResultTile::compute_results_sparse<char>(
     const ResultTile* result_tile,
     unsigned dim_idx,
     const Range& range,
-    const std::vector<FragmentMetadata*> fragment_metadata,
-    unsigned frag_idx,
-    std::vector<uint8_t>* result_bitmap,
-    std::vector<uint8_t>* overwritten_bitmap) {
+    std::vector<uint8_t>* result_bitmap) {
   auto coords_num = result_tile->cell_num();
-  auto frag_num = fragment_metadata.size();
   auto range_start = range.start_str();
   auto range_end = range.end_str();
   std::string coord_str;
-  auto dim_num = result_tile->domain()->dim_num();
   auto& r_bitmap = (*result_bitmap);
-  auto& o_bitmap = (*overwritten_bitmap);
 
-  if (dim_idx == dim_num - 1) {
-    for (uint64_t pos = 0; pos < coords_num; ++pos) {
-      coord_str = result_tile->coord_string(pos, dim_idx);
-      r_bitmap[pos] &= (coord_str >= range_start && coord_str <= range_end);
-
-      // Check if overwritten only if it is a result
-      if ((*result_bitmap)[pos] == 1) {
-        auto overwritten = false;
-        for (auto f = frag_idx + 1; f < frag_num && !overwritten; ++f) {
-          auto meta = fragment_metadata[f];
-          if (meta->dense()) {
-            overwritten = true;
-            for (unsigned d = 0; d < dim_num; ++d) {
-              auto dom_start = meta->non_empty_domain()[d].start_str();
-              auto dom_end = meta->non_empty_domain()[d].end_str();
-              if (coord_str < dom_start || coord_str > dom_end) {
-                overwritten = false;
-                break;
-              }
-            }
-          }
-        }
-        o_bitmap[pos] = overwritten;
-      }
-    }
-  } else {
-    for (uint64_t pos = 0; pos < coords_num; ++pos) {
-      coord_str = result_tile->coord_string(pos, dim_idx);
-      r_bitmap[pos] &= (coord_str >= range_start && coord_str <= range_end);
-    }
+  for (uint64_t pos = 0; pos < coords_num; ++pos) {
+    coord_str = result_tile->coord_string(pos, dim_idx);
+    r_bitmap[pos] &= (coord_str >= range_start && coord_str <= range_end);
   }
 }
 
 template <class T>
-void ResultTile::compute_results(
+void ResultTile::compute_results_dense(
     const ResultTile* result_tile,
     unsigned dim_idx,
     const Range& range,
@@ -399,15 +366,49 @@ void ResultTile::compute_results(
   }
 }
 
-Status ResultTile::compute_results(
+template <class T>
+void ResultTile::compute_results_sparse(
+    const ResultTile* result_tile,
+    unsigned dim_idx,
+    const Range& range,
+    std::vector<uint8_t>* result_bitmap) {
+  auto coords_num = result_tile->cell_num();
+  auto r = (const T*)range.data();
+  auto stores_zipped_coords = result_tile->stores_zipped_coords();
+  auto dim_num = result_tile->domain()->dim_num();
+  auto& r_bitmap = (*result_bitmap);
+  T c;
+
+  // Handle separate coordinate tiles
+  if (!stores_zipped_coords) {
+    const auto& coord_tile = result_tile->coord_tile(dim_idx).first;
+    auto coords = (const T*)coord_tile.internal_data();
+    for (uint64_t pos = 0; pos < coords_num; ++pos) {
+      c = coords[pos];
+      r_bitmap[pos] &= (uint8_t)(c >= r[0] && c <= r[1]);
+    }
+    return;
+  }
+
+  // Handle zipped coordinates tile
+  assert(stores_zipped_coords);
+  const auto& coords_tile = result_tile->zipped_coords_tile();
+  auto coords = (const T*)coords_tile.internal_data();
+  for (uint64_t pos = 0; pos < coords_num; ++pos) {
+    c = coords[pos * dim_num + dim_idx];
+    r_bitmap[pos] &= (uint8_t)(c >= r[0] && c <= r[1]);
+  }
+}
+
+Status ResultTile::compute_results_dense(
     unsigned dim_idx,
     const Range& range,
     const std::vector<FragmentMetadata*> fragment_metadata,
     unsigned frag_idx,
     std::vector<uint8_t>* result_bitmap,
     std::vector<uint8_t>* overwritten_bitmap) const {
-  assert(compute_results_func_[dim_idx] != nullptr);
-  compute_results_func_[dim_idx](
+  assert(compute_results_dense_func_[dim_idx] != nullptr);
+  compute_results_dense_func_[dim_idx](
       this,
       dim_idx,
       range,
@@ -418,45 +419,65 @@ Status ResultTile::compute_results(
   return Status::Ok();
 }
 
+Status ResultTile::compute_results_sparse(
+    unsigned dim_idx,
+    const Range& range,
+    std::vector<uint8_t>* result_bitmap) const {
+  assert(compute_results_sparse_func_[dim_idx] != nullptr);
+  compute_results_sparse_func_[dim_idx](this, dim_idx, range, result_bitmap);
+  return Status::Ok();
+}
+
 /* ****************************** */
 /*         PRIVATE METHODS        */
 /* ****************************** */
 
 void ResultTile::set_compute_results_func() {
   auto dim_num = domain_->dim_num();
-  compute_results_func_.resize(dim_num);
+  compute_results_dense_func_.resize(dim_num);
+  compute_results_sparse_func_.resize(dim_num);
   for (unsigned d = 0; d < dim_num; ++d) {
     auto dim = domain_->dimension(d);
     switch (dim->type()) {
       case Datatype::INT32:
-        compute_results_func_[d] = compute_results<int32_t>;
+        compute_results_dense_func_[d] = compute_results_dense<int32_t>;
+        compute_results_sparse_func_[d] = compute_results_sparse<int32_t>;
         break;
       case Datatype::INT64:
-        compute_results_func_[d] = compute_results<int64_t>;
+        compute_results_dense_func_[d] = compute_results_dense<int64_t>;
+        compute_results_sparse_func_[d] = compute_results_sparse<int64_t>;
         break;
       case Datatype::INT8:
-        compute_results_func_[d] = compute_results<int8_t>;
+        compute_results_dense_func_[d] = compute_results_dense<int8_t>;
+        compute_results_sparse_func_[d] = compute_results_sparse<int8_t>;
         break;
       case Datatype::UINT8:
-        compute_results_func_[d] = compute_results<uint8_t>;
+        compute_results_dense_func_[d] = compute_results_dense<uint8_t>;
+        compute_results_sparse_func_[d] = compute_results_sparse<uint8_t>;
         break;
       case Datatype::INT16:
-        compute_results_func_[d] = compute_results<int16_t>;
+        compute_results_dense_func_[d] = compute_results_dense<int16_t>;
+        compute_results_sparse_func_[d] = compute_results_sparse<int16_t>;
         break;
       case Datatype::UINT16:
-        compute_results_func_[d] = compute_results<uint16_t>;
+        compute_results_dense_func_[d] = compute_results_dense<uint16_t>;
+        compute_results_sparse_func_[d] = compute_results_sparse<uint16_t>;
         break;
       case Datatype::UINT32:
-        compute_results_func_[d] = compute_results<uint32_t>;
+        compute_results_dense_func_[d] = compute_results_dense<uint32_t>;
+        compute_results_sparse_func_[d] = compute_results_sparse<uint32_t>;
         break;
       case Datatype::UINT64:
-        compute_results_func_[d] = compute_results<uint64_t>;
+        compute_results_dense_func_[d] = compute_results_dense<uint64_t>;
+        compute_results_sparse_func_[d] = compute_results_sparse<uint64_t>;
         break;
       case Datatype::FLOAT32:
-        compute_results_func_[d] = compute_results<float>;
+        compute_results_dense_func_[d] = compute_results_dense<float>;
+        compute_results_sparse_func_[d] = compute_results_sparse<float>;
         break;
       case Datatype::FLOAT64:
-        compute_results_func_[d] = compute_results<double>;
+        compute_results_dense_func_[d] = compute_results_dense<double>;
+        compute_results_sparse_func_[d] = compute_results_sparse<double>;
         break;
       case Datatype::DATETIME_YEAR:
       case Datatype::DATETIME_MONTH:
@@ -471,13 +492,16 @@ void ResultTile::set_compute_results_func() {
       case Datatype::DATETIME_PS:
       case Datatype::DATETIME_FS:
       case Datatype::DATETIME_AS:
-        compute_results_func_[d] = compute_results<int64_t>;
+        compute_results_dense_func_[d] = compute_results_dense<int64_t>;
+        compute_results_sparse_func_[d] = compute_results_sparse<int64_t>;
         break;
       case Datatype::STRING_ASCII:
-        compute_results_func_[d] = compute_results<char>;
+        compute_results_dense_func_[d] = nullptr;
+        compute_results_sparse_func_[d] = compute_results_sparse<char>;
         break;
       default:
-        compute_results_func_[d] = nullptr;
+        compute_results_dense_func_[d] = nullptr;
+        compute_results_sparse_func_[d] = nullptr;
         break;
     }
   }
