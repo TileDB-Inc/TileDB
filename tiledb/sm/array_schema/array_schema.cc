@@ -327,6 +327,7 @@ bool ArraySchema::is_dim(const std::string& name) const {
 
 // ===== FORMAT =====
 // version (uint32_t)
+// allow_dups (bool)
 // array_type (uint8_t)
 // tile_order (uint8_t)
 // cell_order (uint8_t)
@@ -437,20 +438,6 @@ Status ArraySchema::add_attribute(const Attribute* attr, bool check_special) {
   return Status::Ok();
 }
 
-// ===== FORMAT =====
-// version (uint32_t)
-// allows_dups (bool) - for format versions >= 5
-// array_type (uint8_t)
-// tile_order (uint8_t)
-// cell_order (uint8_t)
-// capacity (uint64_t)
-// coords_filters (see FilterPipeline::serialize)
-// cell_var_offsets_filters (see FilterPipeline::serialize)
-// domain
-// attribute_num (uint32_t)
-//   attribute #1
-//   attribute #2
-//   ...
 Status ArraySchema::deserialize(ConstBuffer* buff) {
   // Load version
   RETURN_NOT_OK(buff->read(&version_, sizeof(uint32_t)));
