@@ -611,25 +611,42 @@ Status Reader::compute_range_result_coords(
   const auto& subarray = read_state_.partitioner_.current();
   auto range_coords = subarray.get_range_coords(range_idx);
 
-  std::vector<uint8_t> result_bitmap(coords_num, 1);
-  std::vector<uint8_t> overwritten_bitmap(coords_num, 0);
+  if (array_schema_->dense()) {
+    std::vector<uint8_t> result_bitmap(coords_num, 1);
+    std::vector<uint8_t> overwritten_bitmap(coords_num, 0);
 
-  // Compute result and overwritten bitmap per dimension
-  for (unsigned d = 0; d < dim_num; ++d) {
-    const auto& ranges = subarray.ranges_for_dim(d);
-    RETURN_NOT_OK(tile->compute_results(
-        d,
-        ranges[range_coords[d]],
-        fragment_metadata_,
-        frag_idx,
-        &result_bitmap,
-        &overwritten_bitmap));
-  }
+    // Compute result and overwritten bitmap per dimension
+    for (unsigned d = 0; d < dim_num; ++d) {
+      const auto& ranges = subarray.ranges_for_dim(d);
+      RETURN_NOT_OK(tile->compute_results_dense(
+          d,
+          ranges[range_coords[d]],
+          fragment_metadata_,
+          frag_idx,
+          &result_bitmap,
+          &overwritten_bitmap));
+    }
 
-  // Gather results
-  for (uint64_t pos = 0; pos < coords_num; ++pos) {
-    if (result_bitmap[pos] && !overwritten_bitmap[pos])
-      result_coords->emplace_back(tile, pos);
+    // Gather results
+    for (uint64_t pos = 0; pos < coords_num; ++pos) {
+      if (result_bitmap[pos] && !overwritten_bitmap[pos])
+        result_coords->emplace_back(tile, pos);
+    }
+  } else {  // Sparse
+    std::vector<uint8_t> result_bitmap(coords_num, 1);
+
+    // Compute result and overwritten bitmap per dimension
+    for (unsigned d = 0; d < dim_num; ++d) {
+      const auto& ranges = subarray.ranges_for_dim(d);
+      RETURN_NOT_OK(tile->compute_results_sparse(
+          d, ranges[range_coords[d]], &result_bitmap));
+    }
+
+    // Gather results
+    for (uint64_t pos = 0; pos < coords_num; ++pos) {
+      if (result_bitmap[pos])
+        result_coords->emplace_back(tile, pos);
+    }
   }
 
   return Status::Ok();
