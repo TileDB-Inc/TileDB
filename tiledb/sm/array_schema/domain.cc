@@ -276,12 +276,6 @@ void Domain::crop_ndrange(NDRange* ndrange) const {
     dimensions_[d]->crop_range(&(*ndrange)[d]);
 }
 
-// ===== FORMAT =====
-// type (uint8_t)
-// dim_num (uint32_t)
-// dimension #1
-// dimension #2
-// ...
 Status Domain::deserialize(ConstBuffer* buff, uint32_t version) {
   // Load type
   Datatype type = Datatype::INT32;
@@ -543,7 +537,6 @@ bool Domain::null_tile_extents() const {
 }
 
 // ===== FORMAT =====
-// type (uint8_t)
 // dim_num (uint32_t)
 // dimension #1
 // dimension #2
