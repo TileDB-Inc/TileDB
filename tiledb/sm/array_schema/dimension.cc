@@ -208,16 +208,6 @@ std::string Dimension::coord_to_str(const QueryBuffer& buff, uint64_t i) const {
   return ss.str();
 }
 
-// ===== FORMAT =====
-// dimension_name_size (uint32_t)
-// dimension_name (string)
-// type (uint8_t)
-// cell_val_num (uint32_t)
-// filter_pipeline (see FilterPipeline::serialize)
-// domain_size (uint64_t)
-// domain (void* - domain_size)
-// null_tile_extent (uint8_t)
-// tile_extent (void* - type_size)
 Status Dimension::deserialize(
     ConstBuffer* buff, uint32_t version, Datatype type) {
   // Load dimension name
@@ -883,7 +873,7 @@ bool Dimension::value_in_range(
 // type (uint8_t)
 // cell_val_num (uint32_t)
 // filter_pipeline (see FilterPipeline::serialize)
-// domain_size (uin64_t)
+// domain_size (uint64_t)
 // domain (void* - domain_size)
 // null_tile_extent (uint8_t)
 // tile_extent (void* - type_size)

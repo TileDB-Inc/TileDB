@@ -83,12 +83,6 @@ unsigned int Attribute::cell_val_num() const {
   return cell_val_num_;
 }
 
-// ===== FORMAT =====
-// attribute_name_size (uint32_t)
-// attribute_name (string)
-// type (uint8_t)
-// cell_val_num (uint32_t)
-// filter_pipeline (see FilterPipeline::serialize)
 Status Attribute::deserialize(ConstBuffer* buff) {
   // Load attribute name
   uint32_t attribute_name_size;
