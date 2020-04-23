@@ -813,6 +813,35 @@ void StringDimsFx::read_array_1d(
       ctx, query, 0, start.data(), start.size(), end.data(), end.size());
   CHECK(rc == TILEDB_OK);
 
+  // Check range num
+  uint64_t range_num;
+  rc = tiledb_query_get_range_num(ctx_, query, 0, &range_num);
+  CHECK(rc == TILEDB_OK);
+  CHECK(range_num == 1);
+
+  // Check getting range from an invalid range index
+  uint64_t start_size = 0, end_size = 0;
+  rc = tiledb_query_get_range_var_size(
+      ctx_, query, 0, 2, &start_size, &end_size);
+  CHECK(rc == TILEDB_ERR);
+  std::vector<char> start_data(start_size);
+  std::vector<char> end_data(end_size);
+  rc = tiledb_query_get_range_var(
+      ctx_, query, 0, 2, start_data.data(), end_data.data());
+  CHECK(rc == TILEDB_ERR);
+
+  // Check ranges
+  rc = tiledb_query_get_range_var_size(
+      ctx_, query, 0, 0, &start_size, &end_size);
+  CHECK(rc == TILEDB_OK);
+  start_data.resize(start_size);
+  end_data.resize(end_size);
+  rc = tiledb_query_get_range_var(
+      ctx_, query, 0, 0, start_data.data(), end_data.data());
+  CHECK(rc == TILEDB_OK);
+  CHECK(std::string(start_data.data(), start_data.size()) == start);
+  CHECK(std::string(end_data.data(), end_data.size()) == end);
+
   // Set query buffers
   uint64_t d_off_size = d_off->size() * sizeof(uint64_t);
   uint64_t d_val_size = d_val->size();
@@ -878,6 +907,47 @@ void StringDimsFx::read_array_2d(
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_add_range(ctx, query, 1, &d2_start, &d2_end, nullptr);
   CHECK(rc == TILEDB_OK);
+
+  // Check range num d1
+  uint64_t range_num;
+  rc = tiledb_query_get_range_num(ctx_, query, 0, &range_num);
+  CHECK(rc == TILEDB_OK);
+  CHECK(range_num == 1);
+  // Check range num d2
+  rc = tiledb_query_get_range_num(ctx_, query, 1, &range_num);
+  CHECK(rc == TILEDB_OK);
+  CHECK(range_num == 1);
+
+  // Check getting range from an invalid range index
+  uint64_t d1_start_size = 0, d1_end_size = 0;
+  rc = tiledb_query_get_range_var_size(
+      ctx_, query, 0, 2, &d1_start_size, &d1_end_size);
+  CHECK(rc == TILEDB_ERR);
+  std::vector<char> d1_start_data(d1_start_size);
+  std::vector<char> d1_end_data(d1_end_size);
+  rc = tiledb_query_get_range_var(
+      ctx_, query, 0, 2, d1_start_data.data(), d1_end_data.data());
+  CHECK(rc == TILEDB_ERR);
+
+  // Check ranges
+  rc = tiledb_query_get_range_var_size(
+      ctx_, query, 0, 0, &d1_start_size, &d1_end_size);
+  CHECK(rc == TILEDB_OK);
+  d1_start_data.resize(d1_start_size);
+  d1_end_data.resize(d1_end_size);
+  rc = tiledb_query_get_range_var(
+      ctx_, query, 0, 0, d1_start_data.data(), d1_end_data.data());
+  CHECK(rc == TILEDB_OK);
+  CHECK(std::string(d1_start_data.data(), d1_start_data.size()) == d1_start);
+  CHECK(std::string(d1_end_data.data(), d1_end_data.size()) == d1_end);
+
+  const void *d2_start_data, *d2_end_data, *stride;
+  rc = tiledb_query_get_range(
+      ctx_, query, 1, 0, &d2_start_data, &d2_end_data, &stride);
+  CHECK(rc == TILEDB_OK);
+  CHECK(*(int32_t*)d2_start_data == d2_start);
+  CHECK(*(int32_t*)d2_end_data == d2_end);
+  CHECK(stride == nullptr);
 
   // Set query buffers
   uint64_t d1_off_size = d1_off->size() * sizeof(uint64_t);

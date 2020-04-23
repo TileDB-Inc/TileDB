@@ -511,7 +511,7 @@ class Query {
    */
   template <class T>
   std::array<T, 3> range(unsigned dim_idx, uint64_t range_idx) {
-    impl::type_check<T>(schema_.domain().type());
+    impl::type_check<T>(schema_.domain().dimension(dim_idx).type());
     auto& ctx = ctx_.get();
     const void *start, *end, *stride;
     ctx.handle_error(tiledb_query_get_range(
@@ -525,6 +525,44 @@ class Query {
     std::array<T, 3> ret = {{*(const T*)start,
                              *(const T*)end,
                              (stride == nullptr) ? 0 : *(const T*)stride}};
+    return ret;
+  }
+
+  /**
+   * Retrieves a range for a given variable length string dimension and range
+   * id.
+   *
+   * **Example:**
+   *
+   * @code{.cpp}
+   * unsigned dim_idx = 0;
+   * unsigned range_idx = 0;
+   * std::array<std::string, 2> range = query.range(dim_idx, range_idx);
+   * @endcode
+   *
+   * @param dim_idx The dimension index.
+   * @param range_idx The range index.
+   * @return A pair of the form (start, end).
+   */
+  std::array<std::string, 2> range(unsigned dim_idx, uint64_t range_idx) {
+    impl::type_check<char>(schema_.domain().dimension(dim_idx).type());
+    auto& ctx = ctx_.get();
+    uint64_t start_size, end_size;
+    ctx.handle_error(tiledb_query_get_range_var_size(
+        ctx.ptr().get(),
+        query_.get(),
+        dim_idx,
+        range_idx,
+        &start_size,
+        &end_size));
+
+    std::string start;
+    start.resize(start_size);
+    std::string end;
+    end.resize(end_size);
+    ctx.handle_error(tiledb_query_get_range_var(
+        ctx.ptr().get(), query_.get(), dim_idx, range_idx, &start[0], &end[0]));
+    std::array<std::string, 2> ret = {{std::move(start), std::move(end)}};
     return ret;
   }
 

@@ -154,6 +154,34 @@ class Query {
       const void** stride) const;
 
   /**
+   * Retrieves a range's sizes for a variable-length dimension
+   *
+   * @param dim_idx The dimension to retrieve the range from.
+   * @param range_idx The id of the range to retrieve.
+   * @param start_size range start size in bytes
+   * @param end_size range end size in bytes
+   * @return Status
+   */
+  Status get_range_var_size(
+      unsigned dim_idx,
+      uint64_t range_idx,
+      uint64_t* start_size,
+      uint64_t* end_size) const;
+
+  /**
+   * Retrieves a range from a variable-length dimension in the form (start,
+   * end).
+   *
+   * @param dim_idx The dimension to retrieve the range from.
+   * @param range_idx The id of the range to retrieve.
+   * @param start The range start to retrieve.
+   * @param end The range end to retrieve.
+   * @return Status
+   */
+  Status get_range_var(
+      unsigned dim_idx, uint64_t range_idx, void* start, void* end) const;
+
+  /**
    * Gets the estimated result size (in bytes) for the input fixed-sized
    * attribute/dimension.
    */

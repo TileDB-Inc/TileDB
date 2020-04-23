@@ -344,6 +344,34 @@ Status Subarray::get_range(
   return Status::Ok();
 }
 
+Status Subarray::get_range_var_size(
+    uint32_t dim_idx,
+    uint64_t range_idx,
+    uint64_t* start,
+    uint64_t* end) const {
+  auto schema = array_->array_schema();
+  auto dim_num = schema->dim_num();
+  if (dim_idx >= dim_num)
+    return LOG_STATUS(Status::SubarrayError(
+        "Cannot get var range size; Invalid dimension index"));
+
+  auto dim = schema->domain()->dimension(dim_idx);
+  if (!dim->var_size())
+    return LOG_STATUS(Status::SubarrayError(
+        "Cannot get var range size; Dimension " + dim->name() +
+        " is not var sized"));
+
+  auto range_num = ranges_[dim_idx].size();
+  if (range_idx >= range_num)
+    return LOG_STATUS(Status::SubarrayError(
+        "Cannot get var range size; Invalid range index"));
+
+  *start = ranges_[dim_idx][range_idx].start_size();
+  *end = ranges_[dim_idx][range_idx].end_size();
+
+  return Status::Ok();
+}
+
 Status Subarray::get_range_num(uint32_t dim_idx, uint64_t* range_num) const {
   auto dim_num = array_->array_schema()->dim_num();
   if (dim_idx >= dim_num)

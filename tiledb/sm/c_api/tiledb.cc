@@ -2827,6 +2827,42 @@ int32_t tiledb_query_get_range(
   return TILEDB_OK;
 }
 
+int32_t tiledb_query_get_range_var_size(
+    tiledb_ctx_t* ctx,
+    const tiledb_query_t* query,
+    uint32_t dim_idx,
+    uint64_t range_idx,
+    uint64_t* start_size,
+    uint64_t* end_size) {
+  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, query) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  if (SAVE_ERROR_CATCH(
+          ctx,
+          query->query_->get_range_var_size(
+              dim_idx, range_idx, start_size, end_size)))
+    return TILEDB_ERR;
+
+  return TILEDB_OK;
+}
+
+int32_t tiledb_query_get_range_var(
+    tiledb_ctx_t* ctx,
+    const tiledb_query_t* query,
+    uint32_t dim_idx,
+    uint64_t range_idx,
+    void* start,
+    void* end) {
+  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, query) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  if (SAVE_ERROR_CATCH(
+          ctx, query->query_->get_range_var(dim_idx, range_idx, start, end)))
+    return TILEDB_ERR;
+
+  return TILEDB_OK;
+}
+
 int32_t tiledb_query_get_est_result_size(
     tiledb_ctx_t* ctx,
     const tiledb_query_t* query,

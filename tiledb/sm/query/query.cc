@@ -163,6 +163,40 @@ Status Query::get_range(
   return reader_.get_range(dim_idx, range_idx, start, end, stride);
 }
 
+Status Query::get_range_var_size(
+    unsigned dim_idx,
+    uint64_t range_idx,
+    uint64_t* start_size,
+    uint64_t* end_size) const {
+  if (type_ == QueryType::WRITE)
+    return LOG_STATUS(Status::WriterError(
+        "Getting a var range size from a write query is not applicable"));
+
+  return reader_.get_range_var_size(dim_idx, range_idx, start_size, end_size);
+}
+
+Status Query::get_range_var(
+    unsigned dim_idx, uint64_t range_idx, void* start, void* end) const {
+  if (type_ == QueryType::WRITE)
+    return LOG_STATUS(Status::WriterError(
+        "Getting a var range from a write query is not applicable"));
+
+  uint64_t start_size = 0;
+  uint64_t end_size = 0;
+  reader_.get_range_var_size(dim_idx, range_idx, &start_size, &end_size);
+
+  const void* range_start;
+  const void* range_end;
+  const void* stride;
+  RETURN_NOT_OK(
+      get_range(dim_idx, range_idx, &range_start, &range_end, &stride));
+
+  std::memcpy(start, range_start, start_size);
+  std::memcpy(end, range_end, end_size);
+
+  return Status::Ok();
+}
+
 Status Query::get_est_result_size(const char* name, uint64_t* size) {
   if (type_ == QueryType::WRITE)
     return LOG_STATUS(Status::QueryError(
