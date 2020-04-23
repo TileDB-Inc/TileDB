@@ -174,8 +174,12 @@ void Stats::reset() {
 }
 
 void Stats::dump(FILE* out) const {
-  // TODO
-  (void)out;
+  if (out == nullptr)
+    out = stdout;
+
+  std::string output;
+  Stats::dump(&output);
+  fprintf(out, "%s", output.c_str());
 }
 
 void Stats::dump(std::string* out) const {
