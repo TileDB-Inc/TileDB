@@ -89,7 +89,7 @@ void BenchmarkBase::teardown_base() {
 
   uint64_t ms =
       std::chrono::duration_cast<std::chrono::milliseconds>(t1 - t0).count();
-  print_task("teardown", &ms, nullptr);
+  print_task("teardown", &ms, nullptr, 0);
 }
 
 void BenchmarkBase::setup_base() {
@@ -101,11 +101,14 @@ void BenchmarkBase::setup_base() {
 
   uint64_t ms =
       std::chrono::duration_cast<std::chrono::milliseconds>(t1 - t0).count();
-  print_task("setup", &ms, nullptr);
+  print_task("setup", &ms, nullptr, 0);
 }
 
 void BenchmarkBase::run_base() {
   pre_run();
+
+  // Get a baseline memory sample before running the benchmark.
+  const uint64_t baseline_mem_mb = sample_virt_mem_mb();
 
   bool stop_mem_sampling = false;
   std::vector<uint64_t> mem_samples_mb;
@@ -121,13 +124,14 @@ void BenchmarkBase::run_base() {
 
   uint64_t ms =
       std::chrono::duration_cast<std::chrono::milliseconds>(t1 - t0).count();
-  print_task("run", &ms, &mem_samples_mb);
+  print_task("run", &ms, &mem_samples_mb, baseline_mem_mb);
 }
 
 void BenchmarkBase::print_task(
     const std::string& name,
     const uint64_t* const runtime_ms,
-    const std::vector<uint64_t>* const mem_samples_mb) {
+    const std::vector<uint64_t>* const mem_samples_mb,
+    const uint64_t baseline_mem_mb) {
   std::cout << "{\n";
   std::cout << "  \"phase\": \"" << name << "\"\n";
 
@@ -147,6 +151,20 @@ void BenchmarkBase::print_task(
     }
     avg_mem_mb = avg_mem_mb / mem_samples_mb->size();
 
+    // Subtract the baseline from the memory statistics.
+    peak_mem_mb =
+        (peak_mem_mb > baseline_mem_mb) ? peak_mem_mb - baseline_mem_mb : 0;
+    avg_mem_mb =
+        (avg_mem_mb > baseline_mem_mb) ? avg_mem_mb - baseline_mem_mb : 0;
+
+    // Subtract the size of the memory samples from the
+    // memory statistics.
+    const uint64_t sample_size =
+        mem_samples_mb->size() * sizeof(uint64_t) / 1024;
+    peak_mem_mb = (peak_mem_mb > sample_size) ? peak_mem_mb - sample_size : 0;
+    avg_mem_mb = (avg_mem_mb > sample_size) ? avg_mem_mb - sample_size : 0;
+
+    std::cout << "  \"baseline_mem_mb\": \"" << baseline_mem_mb << "\"\n";
     std::cout << "  \"peak_mem_mb\": \"" << peak_mem_mb << "\"\n";
     std::cout << "  \"avg_mem_mb\": \"" << static_cast<uint64_t>(avg_mem_mb)
               << "\"\n";

@@ -63,6 +63,8 @@ set(BENCHMARKS
   bench_dense_tile_cache
   bench_dense_write_large_tile
   bench_dense_write_small_tile
+  bench_large_io
+  bench_selective_unfiltering
   bench_sparse_read_large_tile
   bench_sparse_read_small_tile
   bench_sparse_tile_cache

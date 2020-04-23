@@ -83,7 +83,8 @@ class BenchmarkBase {
   void print_task(
       const std::string& name,
       const uint64_t* ms,
-      const std::vector<uint64_t>* mem_samples_mb);
+      const std::vector<uint64_t>* mem_samples_mb,
+      uint64_t baseline_mem_mb);
 
   /**
    * Samples the current processes's used virtual memory every 50ms
