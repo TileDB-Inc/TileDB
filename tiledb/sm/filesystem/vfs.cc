@@ -1192,6 +1192,8 @@ Status VFS::read(
 
 Status VFS::read_impl(
     const URI& uri, uint64_t offset, void* buffer, uint64_t nbytes) {
+  STATS_ADD_COUNTER(stats::Stats::CounterType::READ_OPS_NUM, 1);
+
   if (uri.is_file()) {
 #ifdef _WIN32
     return win_.read(uri.to_path(), offset, buffer, nbytes);
@@ -1501,6 +1503,7 @@ Status VFS::close_file(const URI& uri) {
 
 Status VFS::write(const URI& uri, const void* buffer, uint64_t buffer_size) {
   STATS_ADD_COUNTER(stats::Stats::CounterType::WRITE_BYTE_NUM, buffer_size);
+  STATS_ADD_COUNTER(stats::Stats::CounterType::WRITE_OPS_NUM, 1);
 
   if (!init_)
     return LOG_STATUS(Status::VFSError("Cannot write; VFS not initialized"));
