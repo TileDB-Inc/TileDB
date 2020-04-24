@@ -305,6 +305,23 @@ class Subarray {
       const void** start,
       const void** end) const;
 
+  /**
+   * Retrieves a range's start and end size for a given variable-length
+   * dimensions at a given range index.
+   *
+   *
+   * @param dim_idx The dimension to retrieve the range from.
+   * @param range_idx The id of the range to retrieve.
+   * @param start_size range start size in bytes
+   * @param end_size range end size in bytes
+   * @return Status
+   */
+  Status get_range_var_size(
+      uint32_t dim_idx,
+      uint64_t range_idx,
+      uint64_t* start_size,
+      uint64_t* end_size) const;
+
   /** Retrieves the number of ranges on the given dimension index. */
   Status get_range_num(uint32_t dim_idx, uint64_t* range_num) const;
 

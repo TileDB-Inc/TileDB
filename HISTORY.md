@@ -52,6 +52,8 @@
 * Added C API functions `tiledb_array_get_non_empty_domain_var_size_from_{index,name}`
 * Added C API functions `tiledb_array_get_non_empty_domain_var_from_{index,name}`
 * Added C API function `tiledb_array_add_range_var`
+* Added C API function `tiledb_array_get_range_var_size`
+* Added C API function `tiledb_array_get_range_var`
 * Added C++ API functions `Dimension::set_cell_val_num` and `Dimension::cell_val_num`.
 * Added C++ API functions `Dimension::set_filter_list` and `Dimension::filter_list`.
 * Added C++ API functions `Array::non_empty_domain(unsigned idx)` and `Array::non_empty_domain(const std::string& name)`.
@@ -60,6 +62,7 @@
 * Added C++ API function `Array::vacuum`.
 * Added C++ API functions `Array::non_empty_domain_var` (from index and name).
 * Added C++ API function `add_range` with string inputs.
+* Added C++ API function `range` with string outputs.
 
 ## API removals
 

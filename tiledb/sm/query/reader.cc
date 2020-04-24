@@ -128,6 +128,14 @@ Status Reader::get_range(
   return subarray_.get_range(dim_idx, range_idx, start, end);
 }
 
+Status Reader::get_range_var_size(
+    unsigned dim_idx,
+    uint64_t range_idx,
+    uint64_t* start_size,
+    uint64_t* end_size) const {
+  return subarray_.get_range_var_size(dim_idx, range_idx, start_size, end_size);
+}
+
 Status Reader::get_est_result_size(const char* name, uint64_t* size) {
   return subarray_.get_est_result_size(name, size);
 }

@@ -1170,6 +1170,13 @@ TEST_CASE(
   CHECK_THROWS(query_r.add_range(1, s1, s2));
   CHECK_THROWS(query_r.add_range(0, "", s2));
   CHECK_THROWS(query_r.add_range(0, s1, ""));
+
+  // Check range
+  CHECK_THROWS(query_r.range(1, 1));
+  std::array<std::string, 2> range = query_r.range(0, 0);
+  CHECK(range[0] == s1);
+  CHECK(range[1] == s2);
+
   std::string data;
   data.resize(10);
   std::vector<uint64_t> offsets(4);

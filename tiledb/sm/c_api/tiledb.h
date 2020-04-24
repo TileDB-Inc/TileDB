@@ -3534,6 +3534,64 @@ TILEDB_EXPORT int32_t tiledb_query_get_range(
     const void** stride);
 
 /**
+ * Retrieves a range's start and end size for a given variable-length
+ * dimensions at a given range index.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * uint64_t start_size;
+ * uint64_t end_size;
+ * tiledb_query_get_range_var_size(
+ *     ctx, query, dim_idx, range_idx, &start_size, &end_size);
+ * @endcode
+ *
+ * @param ctx The TileDB context
+ * @param query The query.
+ * @param dim_idx The index of the dimension to retrieve the range from.
+ * @param range_idx The index of the range to retrieve.
+ * @param start_size range start size in bytes
+ * @param end_size range end size in bytes
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_query_get_range_var_size(
+    tiledb_ctx_t* ctx,
+    const tiledb_query_t* query,
+    uint32_t dim_idx,
+    uint64_t range_idx,
+    uint64_t* start_size,
+    uint64_t* end_size);
+
+/**
+ * Retrieves a specific range of the query subarray along a given
+ * variable-length dimension.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * const void* start;
+ * const void* end;
+ * tiledb_query_get_range(
+ *     ctx, query, dim_idx, range_idx, &start, &end);
+ * @endcode
+ *
+ * @param ctx The TileDB context
+ * @param query The query.
+ * @param dim_idx The index of the dimension to retrieve the range from.
+ * @param range_idx The index of the range to retrieve.
+ * @param start The range start to retrieve.
+ * @param end The range end to retrieve.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_query_get_range_var(
+    tiledb_ctx_t* ctx,
+    const tiledb_query_t* query,
+    uint32_t dim_idx,
+    uint64_t range_idx,
+    void* start,
+    void* end);
+
+/**
  * Retrieves the estimated result size for a fixed-sized attribute/dimension.
  *
  * **Example:**
