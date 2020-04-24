@@ -149,6 +149,7 @@ class Stats {
     READ_RESULT_NUM,
     READ_CELL_NUM,
     READ_LOOP_NUM,
+    READ_OPS_NUM,
     WRITE_NUM,
     WRITE_ATTR_NUM,
     WRITE_ATTR_FIXED_NUM,
@@ -168,6 +169,7 @@ class Stats {
     WRITE_TILE_NUM,
     WRITE_CELL_NUM,
     WRITE_ARRAY_META_SIZE,
+    WRITE_OPS_NUM,
   };
 
   /* ****************************** */

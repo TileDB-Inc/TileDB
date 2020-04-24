@@ -152,6 +152,7 @@ void Stats::reset() {
   counter_stats_[CounterType::READ_LOOP_NUM] = 0;
   counter_stats_[CounterType::READ_RESULT_NUM] = 0;
   counter_stats_[CounterType::READ_CELL_NUM] = 0;
+  counter_stats_[CounterType::READ_OPS_NUM] = 0;
   counter_stats_[CounterType::WRITE_NUM] = 0;
   counter_stats_[CounterType::WRITE_ATTR_NUM] = 0;
   counter_stats_[CounterType::WRITE_ATTR_FIXED_NUM] = 0;
@@ -171,6 +172,7 @@ void Stats::reset() {
   counter_stats_[CounterType::WRITE_TILE_NUM] = 0;
   counter_stats_[CounterType::WRITE_CELL_NUM] = 0;
   counter_stats_[CounterType::WRITE_ARRAY_META_SIZE] = 0;
+  counter_stats_[CounterType::WRITE_OPS_NUM] = 0;
 }
 
 void Stats::dump(FILE* out) const {
@@ -273,6 +275,7 @@ std::string Stats::dump_write() const {
       counter_stats_.find(CounterType::WRITE_CELL_NUM)->second;
   auto write_array_meta_size =
       counter_stats_.find(CounterType::WRITE_ARRAY_META_SIZE)->second;
+  auto write_ops_num = counter_stats_.find(CounterType::WRITE_OPS_NUM)->second;
 
   std::stringstream ss;
 
@@ -303,6 +306,7 @@ std::string Stats::dump_write() const {
     ss << "\n";
 
     write_bytes(&ss, "- Number of bytes written: ", write_byte_num);
+    write(&ss, "- Number of write operations: ", write_ops_num);
     write_bytes(&ss, "- Number of bytes filtered: ", write_filtered_byte_num);
     write_factor(
         &ss,
@@ -486,6 +490,7 @@ std::string Stats::dump_read() const {
   auto read_result_num =
       counter_stats_.find(CounterType::READ_RESULT_NUM)->second;
   auto read_cell_num = counter_stats_.find(CounterType::READ_CELL_NUM)->second;
+  auto read_ops_num = counter_stats_.find(CounterType::READ_OPS_NUM)->second;
 
   std::stringstream ss;
   if (read_num != 0) {
@@ -536,6 +541,7 @@ std::string Stats::dump_read() const {
     }
 
     write_bytes(&ss, "- Number of bytes read: ", read_byte_num);
+    write(&ss, "- Number of read operations: ", read_ops_num);
     write_bytes(
         &ss, "- Number of bytes unfiltered: ", read_unfiltered_byte_num);
     write_factor(
@@ -567,14 +573,16 @@ std::string Stats::dump_read() const {
       ss << "\n";
     }
 
-    write(&ss, "- Time to open array: ", read_array_open);
-    write(&ss, "  * Time to load array schema: ", read_load_array_schema);
-    write(
-        &ss,
-        "  * Time to load consolidated fragment metadata: ",
-        read_load_consolidated_frag_meta);
-    write(&ss, "  * Time to load fragment metadata: ", read_load_frag_meta);
-    ss << "\n";
+    if (read_array_open > 0) {
+      write(&ss, "- Time to open array: ", read_array_open);
+      write(&ss, "  * Time to load array schema: ", read_load_array_schema);
+      write(
+          &ss,
+          "  * Time to load consolidated fragment metadata: ",
+          read_load_consolidated_frag_meta);
+      write(&ss, "  * Time to load fragment metadata: ", read_load_frag_meta);
+      ss << "\n";
+    }
 
     auto total_meta_size = array_schema_size + consolidated_frag_meta_size +
                            frag_meta_size + rtree_size + tile_offsets_size +
@@ -620,17 +628,17 @@ std::string Stats::dump_read() const {
         read_compute_result_coords);
     write(
         &ss,
-        "    > Time to compute range result coordinates: ",
-        read_compute_range_coords);
-    write(&ss, "      # Time to read coordinate tiles: ", read_coord_tiles);
+        "    > Time to compute sparse result tiles: ",
+        read_compute_sparse_result_tiles);
+    write(&ss, "    > Time to read coordinate tiles: ", read_coord_tiles);
     write(
         &ss,
-        "      # Time to unfilter coordinate tiles: ",
+        "    > Time to unfilter coordinate tiles: ",
         read_unfilter_coord_tiles);
     write(
         &ss,
-        "    > Time to compute sparse result tiles: ",
-        read_compute_sparse_result_tiles);
+        "    > Time to compute range result coordinates: ",
+        read_compute_range_coords);
     write(
         &ss,
         "  * Time to compute sparse result cell slabs: ",
