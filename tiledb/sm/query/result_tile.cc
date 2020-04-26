@@ -207,31 +207,59 @@ uint64_t ResultTile::tile_idx() const {
 
 Status ResultTile::read(
     const std::string& name, void* buffer, uint64_t pos, uint64_t len) {
+  bool is_dim = false;
   // Typical case
-  if (name != constants::coords || coord_tiles_[0].first.empty()) {
+  // If asking for an attribute, or split dim buffers with split coordinates
+  // or coordinates have been fetched as zipped
+  RETURN_NOT_OK(domain_->has_dimension(name, &is_dim));
+  if ((!is_dim && name != constants::coords) ||
+      (is_dim && !coord_tiles_[0].first.empty()) ||
+      (name == constants::coords && !coords_tile_.first.empty())) {
     const auto& tile = this->tile_pair(name)->first;
     auto cell_size = tile.cell_size();
     auto nbytes = len * cell_size;
     auto offset = pos * cell_size;
     return tile.read(buffer, nbytes, offset);
-  }
-
-  // Special case where zipped coordinates are requested, but the
-  // result tile stores separate coordinates
-  auto dim_num = coord_tiles_.size();
-  assert(coords_tile_.first.empty());
-  auto buff = (unsigned char*)buffer;
-  auto buff_offset = 0;
-  for (uint64_t c = 0; c < len; ++c) {
-    for (unsigned d = 0; d < dim_num; ++d) {
-      auto coord_tile = coord_tiles_[d].second.first;
-      auto cell_size = coord_tile.cell_size();
-      auto tile_offset = (pos + c) * cell_size;
-      RETURN_NOT_OK(
-          coord_tile.read(buff + buff_offset, cell_size, tile_offset));
-      buff_offset += cell_size;
+  } else if (
+      name == constants::coords && !coord_tiles_[0].first.empty() &&
+      coords_tile_.first.empty()) {
+    // Special case where zipped coordinates are requested, but the
+    // result tile stores separate coordinates
+    auto dim_num = coord_tiles_.size();
+    assert(coords_tile_.first.empty());
+    auto buff = static_cast<unsigned char*>(buffer);
+    auto buff_offset = 0;
+    for (uint64_t c = 0; c < len; ++c) {
+      for (unsigned d = 0; d < dim_num; ++d) {
+        auto coord_tile = coord_tiles_[d].second.first;
+        auto cell_size = coord_tile.cell_size();
+        auto tile_offset = (pos + c) * cell_size;
+        RETURN_NOT_OK(
+            coord_tile.read(buff + buff_offset, cell_size, tile_offset));
+        buff_offset += cell_size;
+      }
     }
-  }
+  } else {
+    // Last case which is zipped coordinates but split buffers
+    // This is only for backwards compatibility of pre format 5 (v2.0) arrays
+    assert(!coords_tile_.first.empty());
+    assert(name != constants::coords);
+    int dim_offset = 0;
+    for (uint32_t i = 0; i < domain_->dim_num(); ++i) {
+      if (domain_->dimension(i)->name() == name) {
+        dim_offset = i;
+        break;
+      }
+    }
+    auto buff = static_cast<unsigned char*>(buffer);
+    auto cell_size = coords_tile_.first.cell_size();
+    auto dim_size = cell_size / domain_->dim_num();
+    uint64_t offset = dim_size * (dim_offset);
+    for (uint64_t c = 0; c < len; ++c) {
+      RETURN_NOT_OK(coords_tile_.first.read(buff + c, dim_size, offset));
+      offset += cell_size;
+    }
+  };
 
   return Status::Ok();
 }
