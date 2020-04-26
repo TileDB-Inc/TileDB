@@ -4701,10 +4701,10 @@ int32_t tiledb_deserialize_query_est_result_sizes(
   if (SAVE_ERROR_CATCH(
           ctx,
           tiledb::sm::serialization::query_est_result_size_deserialize(
-              *buffer->buffer_,
+              query->query_,
               (tiledb::sm::SerializationType)serialize_type,
               client_side == 1,
-              query->query_)))
+              *buffer->buffer_)))
     return TILEDB_ERR;
 
   return TILEDB_OK;

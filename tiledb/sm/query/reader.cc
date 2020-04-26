@@ -2276,6 +2276,10 @@ Reader::get_est_result_size_map() {
   return subarray_.get_est_result_size_map();
 }
 
+bool Reader::est_result_size_computed() {
+  return subarray_.est_result_size_computed();
+}
+
 std::unordered_map<std::string, Subarray::MemorySize>
 Reader::get_max_mem_size_map() {
   return subarray_.get_max_mem_size_map();

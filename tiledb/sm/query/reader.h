@@ -199,6 +199,9 @@ class Reader {
       std::unordered_map<std::string, Subarray::ResultSize>& est_result_size,
       std::unordered_map<std::string, Subarray::MemorySize>& max_mem_size);
 
+  /** returns whether the estimated result size has been computed or not */
+  bool est_result_size_computed();
+
   /** Returns the array schema. */
   const ArraySchema* array_schema() const;
 

@@ -1122,6 +1122,10 @@ Status Subarray::compute_est_result_size() {
   STATS_END_TIMER(stats::Stats::TimerType::READ_COMPUTE_EST_RESULT_SIZE)
 }
 
+bool Subarray::est_result_size_computed() {
+  return est_result_size_computed_;
+}
+
 Status Subarray::compute_relevant_fragment_est_result_sizes(
     const EncryptionKey* encryption_key,
     const ArraySchema* array_schema,

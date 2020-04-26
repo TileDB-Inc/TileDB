@@ -219,6 +219,19 @@ Status Query::get_est_result_size(const char* name, uint64_t* size) {
         "Cannot get estimated result size; Not applicable to zipped "
         "coordinates in arrays with domains with variable-sized dimensions"));
 
+  if (array_->is_remote() && !reader_.est_result_size_computed()) {
+    auto rest_client = storage_manager_->rest_client();
+    if (rest_client == nullptr)
+      return LOG_STATUS(
+          Status::QueryError("Error in query estimate result size; remote "
+                             "array with no rest client."));
+
+    array_->array_schema()->set_array_uri(array_->array_uri());
+
+    RETURN_NOT_OK(
+        rest_client->get_query_est_result_sizes(array_->array_uri(), this));
+  }
+
   return reader_.get_est_result_size(name, size);
 }
 
@@ -228,6 +241,20 @@ Status Query::get_est_result_size(
     return LOG_STATUS(Status::QueryError(
         "Cannot get estimated result size; Operation currently "
         "unsupported for write queries"));
+
+  if (array_->is_remote() && !reader_.est_result_size_computed()) {
+    auto rest_client = storage_manager_->rest_client();
+    if (rest_client == nullptr)
+      return LOG_STATUS(
+          Status::QueryError("Error in query estimate result size; remote "
+                             "array with no rest client."));
+
+    array_->array_schema()->set_array_uri(array_->array_uri());
+
+    RETURN_NOT_OK(
+        rest_client->get_query_est_result_sizes(array_->array_uri(), this));
+  }
+
   return reader_.get_est_result_size(name, size_off, size_val);
 }
 

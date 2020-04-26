@@ -161,10 +161,10 @@ Status query_est_result_size_serialize(
  * @return Status
  */
 Status query_est_result_size_deserialize(
-    const Buffer& serialized_buffer,
+    Query* query,
     SerializationType serialize_type,
     bool clientside,
-    Query* query);
+    const Buffer& serialized_buffer);
 
 }  // namespace serialization
 }  // namespace sm

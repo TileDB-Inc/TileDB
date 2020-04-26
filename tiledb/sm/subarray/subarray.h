@@ -364,6 +364,9 @@ class Subarray {
   Status get_est_result_size(
       const char* name, uint64_t* size_off, uint64_t* size_val);
 
+  /** returns whether the estimated result size has been computed or not */
+  bool est_result_size_computed();
+
   /*
    * Gets the maximum memory required to produce the result (in bytes)
    * for the input fixed-sized attribute/dimensiom.
