@@ -930,6 +930,180 @@ Status query_deserialize(
   return st;
 }
 
+Status query_est_result_size_reader_to_capnp(
+    Query& query,
+    capnp::EstimatedResultSize::Builder* est_result_size_builder) {
+  using namespace tiledb::sm;
+
+  auto est_buffer_size_map = query.get_est_result_size_map();
+  auto max_mem_size_map = query.get_max_mem_size_map();
+
+  auto result_sizes_builder = est_result_size_builder->initResultSizes();
+  auto result_sizes_builder_entries =
+      result_sizes_builder.initEntries(est_buffer_size_map.size());
+  int i = 0;
+  for (auto& it : est_buffer_size_map) {
+    auto range_builder = result_sizes_builder_entries[i];
+    range_builder.setKey(it.first);
+    capnp::EstimatedResultSize::ResultSize::Builder result_size_builder =
+        range_builder.initValue();
+    result_size_builder.setSizeFixed(it.second.size_fixed_);
+    result_size_builder.setSizeVar(it.second.size_var_);
+    ++i;
+  }
+
+  auto memory_sizes_builder = est_result_size_builder->initMemorySizes();
+  auto memory_sizes_builder_entries =
+      memory_sizes_builder.initEntries(est_buffer_size_map.size());
+  i = 0;
+  for (auto& it : max_mem_size_map) {
+    auto range_builder = memory_sizes_builder_entries[i];
+    range_builder.setKey(it.first);
+    capnp::EstimatedResultSize::MemorySize::Builder result_size_builder =
+        range_builder.initValue();
+    result_size_builder.setSizeFixed(it.second.size_fixed_);
+    result_size_builder.setSizeVar(it.second.size_var_);
+    ++i;
+  }
+
+  return Status::Ok();
+}
+
+Status query_est_result_size_reader_from_capnp(
+    const capnp::EstimatedResultSize::Reader& est_result_size_reader,
+    Query* const query) {
+  using namespace tiledb::sm;
+
+  auto est_result_sizes = est_result_size_reader.getResultSizes();
+  auto max_memory_sizes = est_result_size_reader.getMemorySizes();
+
+  std::unordered_map<std::string, Subarray::ResultSize> est_result_sizes_map;
+  for (auto it : est_result_sizes.getEntries()) {
+    std::string name = it.getKey();
+    auto result_size = it.getValue();
+    est_result_sizes_map.emplace(
+        name,
+        Subarray::ResultSize{result_size.getSizeFixed(),
+                             result_size.getSizeVar()});
+  }
+
+  std::unordered_map<std::string, Subarray::MemorySize> max_memory_sizes_map;
+  for (auto it : max_memory_sizes.getEntries()) {
+    std::string name = it.getKey();
+    auto memory_size = it.getValue();
+    max_memory_sizes_map.emplace(
+        name,
+        Subarray::MemorySize{memory_size.getSizeFixed(),
+                             memory_size.getSizeVar()});
+  }
+
+  return query->set_est_result_size(est_result_sizes_map, max_memory_sizes_map);
+}
+
+Status query_est_result_size_serialize(
+    Query* query,
+    SerializationType serialize_type,
+    bool clientside,
+    Buffer* serialized_buffer) {
+  try {
+    ::capnp::MallocMessageBuilder message;
+    capnp::EstimatedResultSize::Builder est_result_size_builder =
+        message.initRoot<capnp::EstimatedResultSize>();
+    RETURN_NOT_OK(query_est_result_size_reader_to_capnp(
+        *query, &est_result_size_builder));
+
+    switch (serialize_type) {
+      case SerializationType::JSON: {
+        ::capnp::JsonCodec json;
+        kj::String capnp_json = json.encode(est_result_size_builder);
+        const auto json_len = capnp_json.size();
+        const char nul = '\0';
+        // size does not include needed null terminator, so add +1
+        RETURN_NOT_OK(serialized_buffer->realloc(json_len + 1));
+        RETURN_NOT_OK(serialized_buffer->write(capnp_json.cStr(), json_len));
+        RETURN_NOT_OK(serialized_buffer->write(&nul, 1));
+        break;
+        break;
+      }
+      case SerializationType::CAPNP: {
+        kj::Array<::capnp::word> protomessage = messageToFlatArray(message);
+        kj::ArrayPtr<const char> message_chars = protomessage.asChars();
+
+        // Write the serialized query estimated results
+        const auto nbytes = message_chars.size();
+        RETURN_NOT_OK(serialized_buffer->realloc(nbytes));
+        RETURN_NOT_OK(serialized_buffer->write(message_chars.begin(), nbytes));
+        break;
+      }
+      default:
+        return LOG_STATUS(Status::SerializationError(
+            "Cannot serialize; unknown serialization type"));
+    }
+  } catch (kj::Exception& e) {
+    return LOG_STATUS(Status::SerializationError(
+        "Cannot serialize; kj::Exception: " +
+        std::string(e.getDescription().cStr())));
+  } catch (std::exception& e) {
+    return LOG_STATUS(Status::SerializationError(
+        "Cannot serialize; exception: " + std::string(e.what())));
+  }
+
+  return Status::Ok();
+}
+
+Status query_est_result_size_deserialize(
+    const Buffer& serialized_buffer,
+    SerializationType serialize_type,
+    bool clientside,
+    Query* query) {
+  try {
+    switch (serialize_type) {
+      case SerializationType::JSON: {
+        ::capnp::JsonCodec json;
+        ::capnp::MallocMessageBuilder message_builder;
+        capnp::EstimatedResultSize::Builder estimated_result_size_builder =
+            message_builder.initRoot<capnp::EstimatedResultSize>();
+        json.decode(
+            kj::StringPtr(static_cast<const char*>(serialized_buffer.data())),
+            estimated_result_size_builder);
+        capnp::EstimatedResultSize::Reader estimated_result_size_reader =
+            estimated_result_size_builder.asReader();
+        RETURN_NOT_OK(query_est_result_size_reader_from_capnp(
+            estimated_result_size_reader, query));
+        break;
+      }
+      case SerializationType::CAPNP: {
+        const auto mBytes =
+            reinterpret_cast<const kj::byte*>(serialized_buffer.data());
+        ::capnp::FlatArrayMessageReader reader(kj::arrayPtr(
+            reinterpret_cast<const ::capnp::word*>(mBytes),
+            serialized_buffer.size() / sizeof(::capnp::word)));
+        capnp::EstimatedResultSize::Reader estimated_result_size_reader =
+            reader.getRoot<capnp::EstimatedResultSize>();
+        RETURN_NOT_OK(query_est_result_size_reader_from_capnp(
+            estimated_result_size_reader, query));
+        break;
+      }
+      default: {
+        return LOG_STATUS(
+            Status::SerializationError("Error deserializing query est result "
+                                       "size; Unknown serialization type "
+                                       "passed"));
+      }
+    }
+  } catch (kj::Exception& e) {
+    return LOG_STATUS(Status::SerializationError(
+        "Error deserializing query est result size; kj::Exception: " +
+        std::string(e.getDescription().cStr())));
+  } catch (std::exception& e) {
+    return LOG_STATUS(Status::SerializationError(
+        "Error deserializing query est result size; exception " +
+        std::string(e.what())));
+  }
+
+  return Status::Ok();
+}
+
 #else
 
 Status query_serialize(Query*, SerializationType, bool, BufferList*) {
@@ -940,7 +1114,19 @@ Status query_serialize(Query*, SerializationType, bool, BufferList*) {
 Status query_deserialize(
     const Buffer&, SerializationType, bool, CopyState*, Query*) {
   return LOG_STATUS(Status::SerializationError(
+      "Cannot deserialize; serialization not enabled."));
+}
+
+Status query_est_result_size_serialize(
+    Query*, SerializationType, bool, Buffer*) {
+  return LOG_STATUS(Status::SerializationError(
       "Cannot serialize; serialization not enabled."));
+}
+
+Status query_est_result_size_deserialize(
+    Query*, SerializationType, bool, const Buffer&) {
+  return LOG_STATUS(Status::SerializationError(
+      "Cannot deserialize; serialization not enabled."));
 }
 
 #endif  // TILEDB_SERIALIZATION

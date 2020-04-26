@@ -973,6 +973,34 @@ Status Subarray::compute_relevant_fragment_est_result_sizes(
   return Status::Ok();
 }
 
+std::unordered_map<std::string, Subarray::ResultSize>
+Subarray::get_est_result_size_map() {
+  // If the result sizes have not been computed, compute them first
+  if (!est_result_size_computed_)
+    compute_est_result_size();
+
+  return est_result_size_;
+}
+
+std::unordered_map<std::string, Subarray::MemorySize>
+Subarray::get_max_mem_size_map() {
+  // If the result sizes have not been computed, compute them first
+  if (!est_result_size_computed_)
+    compute_est_result_size();
+
+  return max_mem_size_;
+}
+
+Status Subarray::set_est_result_size(
+    std::unordered_map<std::string, ResultSize>& est_result_size,
+    std::unordered_map<std::string, MemorySize>& max_mem_size) {
+  est_result_size_ = est_result_size;
+  max_mem_size_ = max_mem_size;
+  est_result_size_computed_ = true;
+
+  return Status::Ok();
+}
+
 /* ****************************** */
 /*          PRIVATE METHODS       */
 /* ****************************** */

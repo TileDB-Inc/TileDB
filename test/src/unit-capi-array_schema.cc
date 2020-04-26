@@ -333,6 +333,7 @@ int ArraySchemaFx::tiledb_array_get_non_empty_domain_wrapper(
           &domain,
           is_empty) == TILEDB_OK);
 
+  tiledb_buffer_free(&buff);
   return TILEDB_OK;
 }
 
@@ -370,6 +371,7 @@ int ArraySchemaFx::tiledb_array_get_non_empty_domain_from_index_wrapper(
           (tiledb_serialization_type_t)tiledb::sm::SerializationType::CAPNP,
           1) == TILEDB_OK);
 
+  tiledb_buffer_free(&buff);
   return tiledb_array_get_non_empty_domain_from_index(
       ctx, array, index, domain, is_empty);
 }
@@ -408,6 +410,7 @@ int ArraySchemaFx::tiledb_array_get_non_empty_domain_from_name_wrapper(
           (tiledb_serialization_type_t)tiledb::sm::SerializationType::CAPNP,
           1) == TILEDB_OK);
 
+  tiledb_buffer_free(&buff);
   return tiledb_array_get_non_empty_domain_from_name(
       ctx, array, name, domain, is_empty);
 }

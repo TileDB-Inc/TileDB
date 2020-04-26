@@ -2265,5 +2265,21 @@ void Reader::get_result_tile_stats(
   STATS_ADD_COUNTER(stats::Stats::CounterType::READ_CELL_NUM, cell_num);
 }
 
+Status Reader::set_est_result_size(
+    std::unordered_map<std::string, Subarray::ResultSize>& est_result_size,
+    std::unordered_map<std::string, Subarray::MemorySize>& max_mem_size) {
+  return subarray_.set_est_result_size(est_result_size, max_mem_size);
+}
+
+std::unordered_map<std::string, Subarray::ResultSize>
+Reader::get_est_result_size_map() {
+  return subarray_.get_est_result_size_map();
+}
+
+std::unordered_map<std::string, Subarray::MemorySize>
+Reader::get_max_mem_size_map() {
+  return subarray_.get_max_mem_size_map();
+}
+
 }  // namespace sm
 }  // namespace tiledb

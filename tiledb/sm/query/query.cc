@@ -231,6 +231,16 @@ Status Query::get_est_result_size(
   return reader_.get_est_result_size(name, size_off, size_val);
 }
 
+std::unordered_map<std::string, Subarray::ResultSize>
+Query::get_est_result_size_map() {
+  return reader_.get_est_result_size_map();
+}
+
+std::unordered_map<std::string, Subarray::MemorySize>
+Query::get_max_mem_size_map() {
+  return reader_.get_max_mem_size_map();
+}
+
 Status Query::get_written_fragment_num(uint32_t* num) const {
   if (type_ != QueryType::WRITE)
     return LOG_STATUS(Status::WriterError(
@@ -558,6 +568,16 @@ Status Query::set_buffer(
       buffer_val,
       buffer_val_size,
       check_null_buffers);
+}
+
+Status Query::set_est_result_size(
+    std::unordered_map<std::string, Subarray::ResultSize>& est_result_size,
+    std::unordered_map<std::string, Subarray::MemorySize>& max_mem_size) {
+  if (type_ == QueryType::WRITE)
+    return LOG_STATUS(Status::QueryError(
+        "Cannot set estimated result size; Operation currently "
+        "unsupported for write queries"));
+  return reader_.set_est_result_size(est_result_size, max_mem_size);
 }
 
 Status Query::set_layout(Layout layout) {

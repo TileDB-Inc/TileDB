@@ -175,6 +175,30 @@ class Reader {
   Status get_est_result_size(
       const char* name, uint64_t* size_off, uint64_t* size_val);
 
+  /**
+   * Used by serialization to get the map of result sizes
+   * @return
+   */
+  std::unordered_map<std::string, Subarray::ResultSize>
+  get_est_result_size_map();
+
+  /**
+   * Used by serialization to get the map of max mem sizes
+   * @return
+   */
+  std::unordered_map<std::string, Subarray::MemorySize> get_max_mem_size_map();
+
+  /**
+   * Used by serialization to set the estimated result size
+   *
+   * @param est_result_size map to set
+   * @param max_mem_size map to set
+   * @return Status
+   */
+  Status set_est_result_size(
+      std::unordered_map<std::string, Subarray::ResultSize>& est_result_size,
+      std::unordered_map<std::string, Subarray::MemorySize>& max_mem_size);
+
   /** Returns the array schema. */
   const ArraySchema* array_schema() const;
 

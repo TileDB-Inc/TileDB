@@ -146,6 +146,17 @@ struct SparseHeterFx {
       const char* name,
       void* domain,
       int32_t* is_empty);
+  int32_t tiledb_query_get_est_result_size_wrapper(
+      tiledb_ctx_t* ctx,
+      tiledb_query_t* query,
+      const char* name,
+      uint64_t* size);
+  int32_t tiledb_query_get_est_result_size_var_wrapper(
+      tiledb_ctx_t* ctx,
+      tiledb_query_t* query,
+      const char* name,
+      uint64_t* size_off,
+      uint64_t* size_val);
 };
 
 SparseHeterFx::SparseHeterFx() {
@@ -298,6 +309,7 @@ int SparseHeterFx::tiledb_array_get_non_empty_domain_from_index_wrapper(
           (tiledb_serialization_type_t)tiledb::sm::SerializationType::CAPNP,
           1) == TILEDB_OK);
 
+  tiledb_buffer_free(&buff);
   return tiledb_array_get_non_empty_domain_from_index(
       ctx, array, index, domain, is_empty);
 }
@@ -336,8 +348,84 @@ int SparseHeterFx::tiledb_array_get_non_empty_domain_from_name_wrapper(
           (tiledb_serialization_type_t)tiledb::sm::SerializationType::CAPNP,
           1) == TILEDB_OK);
 
+  tiledb_buffer_free(&buff);
   return tiledb_array_get_non_empty_domain_from_name(
       ctx, array, name, domain, is_empty);
+}
+
+int32_t SparseHeterFx::tiledb_query_get_est_result_size_wrapper(
+    tiledb_ctx_t* ctx,
+    tiledb_query_t* query,
+    const char* name,
+    uint64_t* size) {
+  int ret = tiledb_query_get_est_result_size(ctx, query, name, size);
+#ifndef TILEDB_SERIALIZATION
+  return ret;
+#endif
+
+  if (ret != TILEDB_OK || !serialize_)
+    return ret;
+
+  // Serialize the non_empty_domain
+  tiledb_buffer_t* buff;
+  REQUIRE(
+      tiledb_serialize_query_est_result_sizes(
+          ctx,
+          query,
+          (tiledb_serialization_type_t)tiledb::sm::SerializationType::CAPNP,
+          0,
+          &buff) == TILEDB_OK);
+
+  // Deserialize to validate we can round-trip
+  REQUIRE(
+      tiledb_deserialize_query_est_result_sizes(
+          ctx,
+          query,
+          (tiledb_serialization_type_t)tiledb::sm::SerializationType::CAPNP,
+          1,
+          buff) == TILEDB_OK);
+
+  tiledb_buffer_free(&buff);
+  return tiledb_query_get_est_result_size(ctx, query, name, size);
+}
+
+int32_t SparseHeterFx::tiledb_query_get_est_result_size_var_wrapper(
+    tiledb_ctx_t* ctx,
+    tiledb_query_t* query,
+    const char* name,
+    uint64_t* size_off,
+    uint64_t* size_val) {
+  int ret = tiledb_query_get_est_result_size_var(
+      ctx, query, name, size_off, size_val);
+#ifndef TILEDB_SERIALIZATION
+  return ret;
+#endif
+
+  if (ret != TILEDB_OK || !serialize_)
+    return ret;
+
+  // Serialize the non_empty_domain
+  tiledb_buffer_t* buff;
+  REQUIRE(
+      tiledb_serialize_query_est_result_sizes(
+          ctx,
+          query,
+          (tiledb_serialization_type_t)tiledb::sm::SerializationType::CAPNP,
+          0,
+          &buff) == TILEDB_OK);
+
+  // Deserialize to validate we can round-trip
+  REQUIRE(
+      tiledb_deserialize_query_est_result_sizes(
+          ctx,
+          query,
+          (tiledb_serialization_type_t)tiledb::sm::SerializationType::CAPNP,
+          1,
+          buff) == TILEDB_OK);
+
+  tiledb_buffer_free(&buff);
+  return tiledb_query_get_est_result_size_var(
+      ctx, query, name, size_off, size_val);
 }
 
 void SparseHeterFx::create_temp_dir(const std::string& path) {
@@ -467,13 +555,14 @@ void SparseHeterFx::check_est_result_size_float_int64(
 
   // Check error for zipped coordinates
   uint64_t size_r;
-  rc = tiledb_query_get_est_result_size(ctx_, query, TILEDB_COORDS, &size_r);
+  rc = tiledb_query_get_est_result_size_wrapper(
+      ctx_, query, TILEDB_COORDS, &size_r);
   CHECK(rc == TILEDB_ERR);
 
   // Check sizes
   for (const auto& s : sizes) {
-    rc =
-        tiledb_query_get_est_result_size(ctx_, query, s.first.c_str(), &size_r);
+    rc = tiledb_query_get_est_result_size_wrapper(
+        ctx_, query, s.first.c_str(), &size_r);
     CHECK(rc == TILEDB_OK);
     CHECK(size_r == s.second);
   }
@@ -512,13 +601,14 @@ void SparseHeterFx::check_est_result_size_int64_float(
 
   // Check error for zipped coordinates
   uint64_t size_r;
-  rc = tiledb_query_get_est_result_size(ctx_, query, TILEDB_COORDS, &size_r);
+  rc = tiledb_query_get_est_result_size_wrapper(
+      ctx_, query, TILEDB_COORDS, &size_r);
   CHECK(rc == TILEDB_ERR);
 
   // Check sizes
   for (const auto& s : sizes) {
-    rc =
-        tiledb_query_get_est_result_size(ctx_, query, s.first.c_str(), &size_r);
+    rc = tiledb_query_get_est_result_size_wrapper(
+        ctx_, query, s.first.c_str(), &size_r);
     CHECK(rc == TILEDB_OK);
     CHECK(size_r == s.second);
   }
