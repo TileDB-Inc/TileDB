@@ -1348,8 +1348,12 @@ Status Writer::global_write() {
   }
 
   // No cells to be written
-  if (tile_num == 0)
+  if (tile_num == 0) {
+    // reset coord buffer marker at end of global write
+    // this will allow for the user to properly set the next write batch
+    coord_buffer_is_set_ = false;
     return Status::Ok();
+  }
 
   // Set new number of tiles in the fragment metadata
   auto new_num_tiles = frag_meta->tile_index_base() + tile_num;
@@ -1367,6 +1371,10 @@ Status Writer::global_write() {
 
   // Increment the tile index base for the next global order write.
   frag_meta->set_tile_index_base(new_num_tiles);
+
+  // reset coord buffer marker at end of global write
+  // this will allow for the user to properly set the next write batch
+  coord_buffer_is_set_ = false;
 
   return Status::Ok();
 }

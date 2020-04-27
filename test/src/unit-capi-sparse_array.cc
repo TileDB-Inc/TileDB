@@ -6867,3 +6867,139 @@ TEST_CASE_METHOD(
 
   remove_array(array_name);
 }
+
+TEST_CASE_METHOD(
+    SparseArrayFx,
+    "Sparse array: 2D, multi write global order",
+    "[capi][sparse][2D][multi-write]") {
+  // Create and write array
+  std::string array_name =
+      FILE_URI_PREFIX + FILE_TEMP_DIR + "sparse_split_coords_read_subset";
+  create_sparse_array(array_name);
+
+  std::vector<uint64_t> d1 = {1, 1, 2, 2};
+  uint64_t d1_size = d1.size() * sizeof(uint64_t);
+  std::vector<uint64_t> d2 = {1, 2, 1, 2};
+  uint64_t d2_size = d2.size() * sizeof(uint64_t);
+  std::vector<int> a1 = {1, 2, 3, 4};
+  uint64_t a1_size = a1.size() * sizeof(int);
+  std::vector<uint64_t> a2_off = {
+      0, sizeof(char), 3 * sizeof(char), 6 * sizeof(char)};
+
+  uint64_t a2_off_size = a2_off.size() * sizeof(uint64_t);
+  std::vector<char> a2_val = {'a', 'b', 'b', 'c', 'c', 'c', 'd', 'd', 'd'};
+  uint64_t a2_val_size = a2_val.size() * sizeof(char);
+  std::vector<float> a3 = {1.1f, 1.2f, 2.1f, 2.2f, 3.1f, 3.2f, 4.1f, 4.2f};
+  uint64_t a3_size = a3.size() * sizeof(float);
+  tiledb::test::QueryBuffers buffers;
+  buffers["d1"] = tiledb::test::QueryBuffer({&d1[0], d1_size, nullptr, 0});
+  buffers["d2"] = tiledb::test::QueryBuffer({&d2[0], d2_size, nullptr, 0});
+  buffers["a1"] = tiledb::test::QueryBuffer({&a1[0], a1_size, nullptr, 0});
+  buffers["a2"] = tiledb::test::QueryBuffer(
+      {&a2_off[0], a2_off_size, &a2_val[0], a2_val_size});
+  buffers["a3"] = tiledb::test::QueryBuffer({&a3[0], a3_size, nullptr, 0});
+
+  // Open array
+  tiledb_array_t* array;
+  int rc = tiledb_array_alloc(ctx_, array_name.c_str(), &array);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_array_open(ctx_, array, TILEDB_WRITE);
+  CHECK(rc == TILEDB_OK);
+
+  // Create query
+  tiledb_query_t* query;
+  rc = tiledb_query_alloc(ctx_, array, TILEDB_WRITE, &query);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_layout(ctx_, query, TILEDB_GLOBAL_ORDER);
+  CHECK(rc == TILEDB_OK);
+
+  // Set buffers
+  for (const auto& b : buffers) {
+    if (b.second.var_ == nullptr) {  // Fixed-sized
+      rc = tiledb_query_set_buffer(
+          ctx_,
+          query,
+          b.first.c_str(),
+          b.second.fixed_,
+          (uint64_t*)&(b.second.fixed_size_));
+      CHECK(rc == TILEDB_OK);
+    } else {  // Var-sized
+      rc = tiledb_query_set_buffer_var(
+          ctx_,
+          query,
+          b.first.c_str(),
+          (uint64_t*)b.second.fixed_,
+          (uint64_t*)&(b.second.fixed_size_),
+          b.second.var_,
+          (uint64_t*)&(b.second.var_size_));
+      CHECK(rc == TILEDB_OK);
+    }
+  }
+
+  // Submit query
+  rc = tiledb_query_submit(ctx_, query);
+  CHECK(rc == TILEDB_OK);
+
+  // Create new buffers of smaller size to test being able to write multiple
+  // buffer sizes
+  std::vector<uint64_t> d1_2 = {3, 3};
+  uint64_t d1_size_2 = d1_2.size() * sizeof(uint64_t);
+  std::vector<uint64_t> d2_2 = {1, 2};
+  uint64_t d2_size_2 = d2_2.size() * sizeof(uint64_t);
+
+  std::vector<int> a1_2 = {5, 6};
+  uint64_t a1_size_2 = a1_2.size() * sizeof(int);
+  std::vector<uint64_t> a2_off_2 = {0, 2 * sizeof(char)};
+
+  uint64_t a2_off_size_2 = a2_off_2.size() * sizeof(uint64_t);
+  std::vector<char> a2_val_2 = {'e', 'e', 'f', 'f', 'f', 'f'};
+  uint64_t a2_val_size_2 = a2_val_2.size() * sizeof(char);
+  std::vector<float> a3_2 = {5.1f, 5.2f, 6.1f, 6.2f};
+  uint64_t a3_size_2 = a3_2.size() * sizeof(float);
+  tiledb::test::QueryBuffers buffers2;
+  buffers2["d1"] = tiledb::test::QueryBuffer({&d1_2[0], d1_size_2, nullptr, 0});
+  buffers2["d2"] = tiledb::test::QueryBuffer({&d2_2[0], d2_size_2, nullptr, 0});
+  buffers2["a1"] = tiledb::test::QueryBuffer({&a1_2[0], a1_size_2, nullptr, 0});
+  buffers2["a2"] = tiledb::test::QueryBuffer(
+      {&a2_off_2[0], a2_off_size_2, &a2_val_2[0], a2_val_size_2});
+  buffers2["a3"] = tiledb::test::QueryBuffer({&a3_2[0], a3_size_2, nullptr, 0});
+
+  // Set buffers
+  for (const auto& b : buffers2) {
+    if (b.second.var_ == nullptr) {  // Fixed-sized
+      rc = tiledb_query_set_buffer(
+          ctx_,
+          query,
+          b.first.c_str(),
+          b.second.fixed_,
+          (uint64_t*)&(b.second.fixed_size_));
+      CHECK(rc == TILEDB_OK);
+    } else {  // Var-sized
+      rc = tiledb_query_set_buffer_var(
+          ctx_,
+          query,
+          b.first.c_str(),
+          (uint64_t*)b.second.fixed_,
+          (uint64_t*)&(b.second.fixed_size_),
+          b.second.var_,
+          (uint64_t*)&(b.second.var_size_));
+      CHECK(rc == TILEDB_OK);
+    }
+  }
+
+  // Submit query
+  rc = tiledb_query_submit(ctx_, query);
+  CHECK(rc == TILEDB_OK);
+
+  // Finalize query
+  rc = tiledb_query_finalize(ctx_, query);
+  CHECK(rc == TILEDB_OK);
+
+  // Close array
+  rc = tiledb_array_close(ctx_, array);
+  CHECK(rc == TILEDB_OK);
+
+  // Clean up
+  tiledb_array_free(&array);
+  tiledb_query_free(&query);
+}
