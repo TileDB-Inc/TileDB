@@ -33,6 +33,7 @@
 #ifndef TILEDB_FILTER_PIPELINE_H
 #define TILEDB_FILTER_PIPELINE_H
 
+#include <forward_list>
 #include <memory>
 #include <utility>
 #include <vector>
@@ -40,6 +41,7 @@
 #include "tiledb/sm/filter/filter.h"
 #include "tiledb/sm/filter/filter_buffer.h"
 #include "tiledb/sm/misc/status.h"
+#include "tiledb/sm/tile/chunked_buffer.h"
 
 namespace tiledb {
 namespace sm {
@@ -207,9 +209,29 @@ class FilterPipeline {
    * to N.
    *
    * @param tile Tile to filter
+   * @param config The global config.
+   * @param result_cell_slab_ranges optional list of result cell slab ranges. If
+   *   this is non-NULL, we will only run the filter pipeline reversal on chunks
+   *   that intersect with at least one range element in this list.
    * @return Status
    */
-  Status run_reverse(Tile* tile, const Config& config) const;
+  Status run_reverse(
+      Tile* tile,
+      const Config& config,
+      const std::forward_list<std::pair<uint64_t, uint64_t>>*
+          result_cell_slab_ranges = nullptr) const;
+
+  Status run_reverse(
+      Tile* tile,
+      Tile* tile_var,
+      const Config& config,
+      const std::forward_list<std::pair<uint64_t, uint64_t>>*
+          result_cell_slab_ranges = nullptr) const;
+
+  Status run_reverse_internal(
+      Tile* tile,
+      const Config& config,
+      std::function<Status(uint64_t, bool*)>* skip_fn) const;
 
   /**
    * Serializes the pipeline metadata into a binary buffer.
@@ -258,40 +280,104 @@ class FilterPipeline {
   uint32_t max_chunk_size_;
 
   /**
-   * Compute chunks of the given tile, used in the forward direction.
-   *
-   * @param tile Tile to compute chunks for
-   * @param chunks Output parameter storing the computed chunks
-   * @return Status
-   */
-  Status compute_tile_chunks(
-      Tile* tile, std::vector<std::pair<void*, uint32_t>>* chunks) const;
-
-  /**
    * Run the given list of chunks forward through the pipeline.
    *
-   * @param chunks Chunks to process
-   * @param output Buffer where output of last stage will be written.
+   * @param input chunked buffer to process.
+   * @param output buffer where output of the last stage
+   *    will be written.
    * @return Status
    */
   Status filter_chunks_forward(
-      const std::vector<std::pair<void*, uint32_t>>& chunks,
-      Buffer* output) const;
+      const ChunkedBuffer& input, Buffer* output) const;
 
   /**
    * Run the given list of chunks in reverse through the pipeline.
    *
-   * @param chunks Chunks to process. Format is
-   *    (data ptr, filtered size, original size, metadata size).
-   * @param output Buffer where output of last stage will be written.
+   * @param input Filtered chunk buffers to reverse.
+   * @param output Chunked buffer where output of the last stage
+   *    will be written.
+   * @param unfiltering_all True if all all input chunks will be unfiltered.
+   *    This must be consistent with the skip parameter values in 'input'.
    * @param config The global config.
    * @return Status
    */
   Status filter_chunks_reverse(
-      const std::vector<std::tuple<void*, uint32_t, uint32_t, uint32_t>>&
-          chunks,
-      Buffer* output,
+      const std::vector<std::tuple<void*, uint32_t, uint32_t, uint32_t, bool>>&
+          input,
+      ChunkedBuffer* output,
+      bool unfiltering_all,
       const Config& config) const;
+
+  /**
+   * Returns true if we should skip the filter pipeline reversal on a chunk
+   * with fixed-size cells.
+   *
+   * @param chunk_length The unfiltered (original) length of the chunk.
+   * @param cells_processed This is an opaque context variable between
+   * invocations.
+   * @param cell_size Fixed cell size.
+   * @param cs_it An opaque context variable to iterate the cell slab ranges.
+   * @param cs_end The end-iterator for the cell slab ranges.
+   * @param skip The return value for whether the chunk reversal should be
+   * skipped.
+   * @return Status
+   */
+  Status skip_chunk_reversal_fixed(
+      uint64_t chunk_length,
+      uint64_t* cells_processed,
+      uint64_t cell_size,
+      std::forward_list<std::pair<uint64_t, uint64_t>>::const_iterator* cs_it,
+      const std::forward_list<std::pair<uint64_t, uint64_t>>::const_iterator&
+          cs_end,
+      bool* skip) const;
+
+  /**
+   * Returns true if we should skip the filter pipeline reversal on a chunk
+   * with var-sized cells.
+   *
+   * @param chunk_length The unfiltered (original) length of the chunk.
+   * @param d_off The contiguous buffer to the offset tile.
+   * @param d_off_len The number of uint64_t values in `d_off`.
+   * @param cells_processed This is an opaque context variable between
+   * invocations.
+   * @param cells_size_processed This is an opaque context variable between
+   * invocations.
+   * @param cs_it An opaque context variable to iterate the cell slab ranges.
+   * @param cs_end The end-iterator for the cell slab ranges.
+   * @param skip The return value for whether the chunk reversal should be
+   * skipped.
+   * @return Status
+   */
+  Status skip_chunk_reversal_var(
+      uint64_t chunk_length,
+      const uint64_t* d_off,
+      uint64_t d_off_size,
+      uint64_t* cells_processed,
+      uint64_t* cells_size_processed,
+      std::forward_list<std::pair<uint64_t, uint64_t>>::const_iterator* cs_it,
+      const std::forward_list<std::pair<uint64_t, uint64_t>>::const_iterator&
+          cs_end,
+      bool* skip) const;
+
+  /**
+   * Common implementation between 'skip_chunk_reversal_fixed' and
+   * 'skip_chunk_reversal_var'.
+   *
+   * @param chunk_cell_start The starting cell index of the chunk.
+   * @param chunk_cell_end The inclusive ending cell index of the chunk.
+   * @param cs_it An opaque context variable to iterate the cell slab ranges.
+   * @param cs_end The end-iterator for the cell slab ranges.
+   * @param skip The return value for whether the chunk reversal should be
+   * skipped.
+   * @return Status
+   */
+  Status skip_chunk_reversal_common(
+      uint64_t chunk_cell_start,
+      uint64_t chunk_cell_end,
+      std::forward_list<std::pair<uint64_t, uint64_t>>::const_iterator* cs_it,
+      const std::forward_list<std::pair<uint64_t, uint64_t>>::const_iterator&
+          cs_end,
+      bool* skip) const;
 };
 
 }  // namespace sm
