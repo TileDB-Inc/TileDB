@@ -324,16 +324,21 @@ tiledb::sm::Status serialize_non_empty_domain(
     for (uint64_t dimIdx = 0; dimIdx < nonEmptyDomain.size(); ++dimIdx) {
       const auto& dimNonEmptyDomain = nonEmptyDomain[dimIdx];
 
-      auto dimBulder = nonEmptyDomainListBuilder[dimIdx];
-      dimBulder.setIsEmpty(dimNonEmptyDomain.empty());
+      auto dim_builder = nonEmptyDomainListBuilder[dimIdx];
+      dim_builder.setIsEmpty(dimNonEmptyDomain.empty());
+      auto range_start_sizes = dim_builder.initSizes(1);
 
       if (!dimNonEmptyDomain.empty()) {
-        auto subarray_builder = dimBulder.initNonEmptyDomain();
+        auto subarray_builder = dim_builder.initNonEmptyDomain();
         RETURN_NOT_OK(utils::set_capnp_array_ptr(
             subarray_builder,
             tiledb::sm::Datatype::UINT8,
             dimNonEmptyDomain.data(),
             dimNonEmptyDomain.size()));
+
+        if (dimNonEmptyDomain.start_size() != 0) {
+          range_start_sizes.set(0, dimNonEmptyDomain.start_size());
+        }
       }
     }
   }
