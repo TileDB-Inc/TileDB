@@ -432,7 +432,7 @@ struct SubarrayRanges {
   class Pipeline;
 
   struct _capnpPrivate {
-    CAPNP_DECLARE_STRUCT_HEADER(86cfc12d74ed4aa0, 1, 2)
+    CAPNP_DECLARE_STRUCT_HEADER(86cfc12d74ed4aa0, 1, 4)
 #if !CAPNP_LITE
     static constexpr ::capnp::_::RawBrandedSchema const* brand() {
       return &schema->defaultBrand;
@@ -3259,6 +3259,12 @@ class SubarrayRanges::Reader {
   inline bool hasBuffer() const;
   inline ::capnp::Data::Reader getBuffer() const;
 
+  inline bool hasBufferSizes() const;
+  inline ::capnp::List<::uint64_t>::Reader getBufferSizes() const;
+
+  inline bool hasBufferStartSizes() const;
+  inline ::capnp::List<::uint64_t>::Reader getBufferStartSizes() const;
+
  private:
   ::capnp::_::StructReader _reader;
   template <typename, ::capnp::Kind>
@@ -3314,6 +3320,25 @@ class SubarrayRanges::Builder {
   inline ::capnp::Data::Builder initBuffer(unsigned int size);
   inline void adoptBuffer(::capnp::Orphan<::capnp::Data>&& value);
   inline ::capnp::Orphan<::capnp::Data> disownBuffer();
+
+  inline bool hasBufferSizes();
+  inline ::capnp::List<::uint64_t>::Builder getBufferSizes();
+  inline void setBufferSizes(::capnp::List<::uint64_t>::Reader value);
+  inline void setBufferSizes(::kj::ArrayPtr<const ::uint64_t> value);
+  inline ::capnp::List<::uint64_t>::Builder initBufferSizes(unsigned int size);
+  inline void adoptBufferSizes(
+      ::capnp::Orphan<::capnp::List<::uint64_t>>&& value);
+  inline ::capnp::Orphan<::capnp::List<::uint64_t>> disownBufferSizes();
+
+  inline bool hasBufferStartSizes();
+  inline ::capnp::List<::uint64_t>::Builder getBufferStartSizes();
+  inline void setBufferStartSizes(::capnp::List<::uint64_t>::Reader value);
+  inline void setBufferStartSizes(::kj::ArrayPtr<const ::uint64_t> value);
+  inline ::capnp::List<::uint64_t>::Builder initBufferStartSizes(
+      unsigned int size);
+  inline void adoptBufferStartSizes(
+      ::capnp::Orphan<::capnp::List<::uint64_t>>&& value);
+  inline ::capnp::Orphan<::capnp::List<::uint64_t>> disownBufferStartSizes();
 
  private:
   ::capnp::_::StructBuilder _builder;
@@ -8499,6 +8524,102 @@ inline void SubarrayRanges::Builder::adoptBuffer(
 inline ::capnp::Orphan<::capnp::Data> SubarrayRanges::Builder::disownBuffer() {
   return ::capnp::_::PointerHelpers<::capnp::Data>::disown(
       _builder.getPointerField(::capnp::bounded<1>() * ::capnp::POINTERS));
+}
+
+inline bool SubarrayRanges::Reader::hasBufferSizes() const {
+  return !_reader.getPointerField(::capnp::bounded<2>() * ::capnp::POINTERS)
+              .isNull();
+}
+inline bool SubarrayRanges::Builder::hasBufferSizes() {
+  return !_builder.getPointerField(::capnp::bounded<2>() * ::capnp::POINTERS)
+              .isNull();
+}
+inline ::capnp::List<::uint64_t>::Reader
+SubarrayRanges::Reader::getBufferSizes() const {
+  return ::capnp::_::PointerHelpers<::capnp::List<::uint64_t>>::get(
+      _reader.getPointerField(::capnp::bounded<2>() * ::capnp::POINTERS));
+}
+inline ::capnp::List<::uint64_t>::Builder
+SubarrayRanges::Builder::getBufferSizes() {
+  return ::capnp::_::PointerHelpers<::capnp::List<::uint64_t>>::get(
+      _builder.getPointerField(::capnp::bounded<2>() * ::capnp::POINTERS));
+}
+inline void SubarrayRanges::Builder::setBufferSizes(
+    ::capnp::List<::uint64_t>::Reader value) {
+  ::capnp::_::PointerHelpers<::capnp::List<::uint64_t>>::set(
+      _builder.getPointerField(::capnp::bounded<2>() * ::capnp::POINTERS),
+      value);
+}
+inline void SubarrayRanges::Builder::setBufferSizes(
+    ::kj::ArrayPtr<const ::uint64_t> value) {
+  ::capnp::_::PointerHelpers<::capnp::List<::uint64_t>>::set(
+      _builder.getPointerField(::capnp::bounded<2>() * ::capnp::POINTERS),
+      value);
+}
+inline ::capnp::List<::uint64_t>::Builder
+SubarrayRanges::Builder::initBufferSizes(unsigned int size) {
+  return ::capnp::_::PointerHelpers<::capnp::List<::uint64_t>>::init(
+      _builder.getPointerField(::capnp::bounded<2>() * ::capnp::POINTERS),
+      size);
+}
+inline void SubarrayRanges::Builder::adoptBufferSizes(
+    ::capnp::Orphan<::capnp::List<::uint64_t>>&& value) {
+  ::capnp::_::PointerHelpers<::capnp::List<::uint64_t>>::adopt(
+      _builder.getPointerField(::capnp::bounded<2>() * ::capnp::POINTERS),
+      kj::mv(value));
+}
+inline ::capnp::Orphan<::capnp::List<::uint64_t>>
+SubarrayRanges::Builder::disownBufferSizes() {
+  return ::capnp::_::PointerHelpers<::capnp::List<::uint64_t>>::disown(
+      _builder.getPointerField(::capnp::bounded<2>() * ::capnp::POINTERS));
+}
+
+inline bool SubarrayRanges::Reader::hasBufferStartSizes() const {
+  return !_reader.getPointerField(::capnp::bounded<3>() * ::capnp::POINTERS)
+              .isNull();
+}
+inline bool SubarrayRanges::Builder::hasBufferStartSizes() {
+  return !_builder.getPointerField(::capnp::bounded<3>() * ::capnp::POINTERS)
+              .isNull();
+}
+inline ::capnp::List<::uint64_t>::Reader
+SubarrayRanges::Reader::getBufferStartSizes() const {
+  return ::capnp::_::PointerHelpers<::capnp::List<::uint64_t>>::get(
+      _reader.getPointerField(::capnp::bounded<3>() * ::capnp::POINTERS));
+}
+inline ::capnp::List<::uint64_t>::Builder
+SubarrayRanges::Builder::getBufferStartSizes() {
+  return ::capnp::_::PointerHelpers<::capnp::List<::uint64_t>>::get(
+      _builder.getPointerField(::capnp::bounded<3>() * ::capnp::POINTERS));
+}
+inline void SubarrayRanges::Builder::setBufferStartSizes(
+    ::capnp::List<::uint64_t>::Reader value) {
+  ::capnp::_::PointerHelpers<::capnp::List<::uint64_t>>::set(
+      _builder.getPointerField(::capnp::bounded<3>() * ::capnp::POINTERS),
+      value);
+}
+inline void SubarrayRanges::Builder::setBufferStartSizes(
+    ::kj::ArrayPtr<const ::uint64_t> value) {
+  ::capnp::_::PointerHelpers<::capnp::List<::uint64_t>>::set(
+      _builder.getPointerField(::capnp::bounded<3>() * ::capnp::POINTERS),
+      value);
+}
+inline ::capnp::List<::uint64_t>::Builder
+SubarrayRanges::Builder::initBufferStartSizes(unsigned int size) {
+  return ::capnp::_::PointerHelpers<::capnp::List<::uint64_t>>::init(
+      _builder.getPointerField(::capnp::bounded<3>() * ::capnp::POINTERS),
+      size);
+}
+inline void SubarrayRanges::Builder::adoptBufferStartSizes(
+    ::capnp::Orphan<::capnp::List<::uint64_t>>&& value) {
+  ::capnp::_::PointerHelpers<::capnp::List<::uint64_t>>::adopt(
+      _builder.getPointerField(::capnp::bounded<3>() * ::capnp::POINTERS),
+      kj::mv(value));
+}
+inline ::capnp::Orphan<::capnp::List<::uint64_t>>
+SubarrayRanges::Builder::disownBufferStartSizes() {
+  return ::capnp::_::PointerHelpers<::capnp::List<::uint64_t>>::disown(
+      _builder.getPointerField(::capnp::bounded<3>() * ::capnp::POINTERS));
 }
 
 inline bool Subarray::Reader::hasLayout() const {

@@ -119,14 +119,20 @@ Status subarray_to_capnp(
     range_builder.setType(datatype_str(datatype));
 
     range_builder.setHasDefaultRange(subarray->is_default(i));
+    auto range_sizes = range_builder.initBufferSizes(ranges.size());
+    auto range_start_sizes = range_builder.initBufferStartSizes(ranges.size());
     // This will copy all of the ranges into one large byte vector
     // Future improvement is to do this in a zero copy manner
     // (kj::ArrayBuilder?)
     auto capnpVector = kj::Vector<uint8_t>();
+    uint64_t range_idx = 0;
     for (auto& range : ranges) {
       capnpVector.addAll(kj::ArrayPtr<uint8_t>(
           const_cast<uint8_t*>(reinterpret_cast<const uint8_t*>(range.data())),
           range.size()));
+      range_sizes.set(range_idx, range.size());
+      range_start_sizes.set(range_idx, range.start_size());
+      ++range_idx;
     }
     range_builder.setBuffer(capnpVector.asPtr());
   }
@@ -145,11 +151,21 @@ Status subarray_from_capnp(
 
     auto data = range_reader.getBuffer();
     auto data_ptr = data.asBytes();
-    uint64_t range_size = datatype_size(type) * 2;
-    size_t range_count = data_ptr.size() / range_size;
+    auto buffer_sizes = range_reader.getBufferSizes();
+    auto buffer_start_sizes = range_reader.getBufferStartSizes();
+    size_t range_count = buffer_sizes.size();
     std::vector<Range> ranges(range_count);
+    uint64_t offset = 0;
     for (size_t j = 0; j < range_count; j++) {
-      ranges[j] = Range(data_ptr.begin() + (j * range_size), range_size);
+      uint64_t range_size = buffer_sizes[j];
+      uint64_t range_start_size = buffer_start_sizes[j];
+      if (range_start_size != 0) {
+        ranges[j] =
+            Range(data_ptr.begin() + offset, range_size, range_start_size);
+      } else {
+        ranges[j] = Range(data_ptr.begin() + offset, range_size);
+      }
+      offset += range_size;
     }
 
     RETURN_NOT_OK(subarray->set_ranges_for_dim(i, ranges));
