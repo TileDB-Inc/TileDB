@@ -46,7 +46,7 @@ Configuration:
     --disable-avx2                  disables use of AVX2 instructions
     --enable-static-tiledb          enables building TileDB as a static library
     --enable-sanitizer=SAN          enable sanitizer (clang only)
-                                    (address|memory|thread|undefined)
+                                    (address|memory|leak|thread|undefined)
     --enable-debug                  enable debug build
     --enable-coverage               enable build with code coverage support
     --enable-verbose                enable verbose status messages

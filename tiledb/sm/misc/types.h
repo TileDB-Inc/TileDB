@@ -64,6 +64,11 @@ class Range {
     set_range(range, range_size);
   }
 
+  Range(const void* range, uint64_t range_size, uint64_t range_start_size)
+      : Range() {
+    set_range(range, range_size, range_start_size);
+  }
+
   /** Copy constructor. */
   Range(const Range& range) = default;
 

@@ -281,9 +281,10 @@ Status ResultTile::read(
     auto buff = static_cast<unsigned char*>(buffer);
     auto cell_size = coords_tile_.first.cell_size();
     auto dim_size = cell_size / domain_->dim_num();
-    uint64_t offset = dim_size * (dim_offset);
+    uint64_t offset = pos * cell_size + dim_size * dim_offset;
     for (uint64_t c = 0; c < len; ++c) {
-      RETURN_NOT_OK(coords_tile_.first.read(buff + c, dim_size, offset));
+      RETURN_NOT_OK(
+          coords_tile_.first.read(buff + (c * dim_size), dim_size, offset));
       offset += cell_size;
     }
   };
