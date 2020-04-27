@@ -151,27 +151,34 @@ Status subarray_from_capnp(
 
     auto data = range_reader.getBuffer();
     auto data_ptr = data.asBytes();
-    auto buffer_sizes = range_reader.getBufferSizes();
-    auto buffer_start_sizes = range_reader.getBufferStartSizes();
-    size_t range_count = buffer_sizes.size();
-    std::vector<Range> ranges(range_count);
-    uint64_t offset = 0;
-    for (size_t j = 0; j < range_count; j++) {
-      uint64_t range_size = buffer_sizes[j];
-      uint64_t range_start_size = buffer_start_sizes[j];
-      if (range_start_size != 0) {
-        ranges[j] =
-            Range(data_ptr.begin() + offset, range_size, range_start_size);
-      } else {
-        ranges[j] = Range(data_ptr.begin() + offset, range_size);
+    if (range_reader.hasBufferSizes()) {
+      auto buffer_sizes = range_reader.getBufferSizes();
+      auto buffer_start_sizes = range_reader.getBufferStartSizes();
+      size_t range_count = buffer_sizes.size();
+      std::vector<Range> ranges(range_count);
+      uint64_t offset = 0;
+      for (size_t j = 0; j < range_count; j++) {
+        uint64_t range_size = buffer_sizes[j];
+        uint64_t range_start_size = buffer_start_sizes[j];
+        if (range_start_size != 0) {
+          ranges[j] =
+              Range(data_ptr.begin() + offset, range_size, range_start_size);
+        } else {
+          ranges[j] = Range(data_ptr.begin() + offset, range_size);
+        }
+        offset += range_size;
       }
-      offset += range_size;
+
+      RETURN_NOT_OK(subarray->set_ranges_for_dim(i, ranges));
+
+      // Set default indicator
+      subarray->set_is_default(i, range_reader.getHasDefaultRange());
+    } else {
+      // Handle 1.7 style ranges where there is a single range with no sizes
+      Range range(data_ptr.begin(), data.size());
+      RETURN_NOT_OK(subarray->set_ranges_for_dim(i, {range}));
+      subarray->set_is_default(i, range_reader.getHasDefaultRange());
     }
-
-    RETURN_NOT_OK(subarray->set_ranges_for_dim(i, ranges));
-
-    // Set default indicator
-    subarray->set_is_default(i, range_reader.getHasDefaultRange());
   }
 
   return Status::Ok();
@@ -208,13 +215,16 @@ Status subarray_partitioner_to_capnp(
 
   // Current partition info
   const auto* partition_info = partitioner.current_partition_info();
-  auto info_builder = builder->initCurrent();
-  auto info_subarray_builder = info_builder.initSubarray();
-  RETURN_NOT_OK(subarray_to_capnp(
-      schema, &partition_info->partition_, &info_subarray_builder));
-  info_builder.setStart(partition_info->start_);
-  info_builder.setEnd(partition_info->end_);
-  info_builder.setSplitMultiRange(partition_info->split_multi_range_);
+  // If the array is null that means there is no current partition info
+  if (partition_info->partition_.array() != nullptr) {
+    auto info_builder = builder->initCurrent();
+    auto info_subarray_builder = info_builder.initSubarray();
+    RETURN_NOT_OK(subarray_to_capnp(
+        schema, &partition_info->partition_, &info_subarray_builder));
+    info_builder.setStart(partition_info->start_);
+    info_builder.setEnd(partition_info->end_);
+    info_builder.setSplitMultiRange(partition_info->split_multi_range_);
+  }
 
   // Partitioner state
   const auto* state = partitioner.state();
@@ -291,15 +301,17 @@ Status subarray_partitioner_from_capnp(
   }
 
   // Current partition info
-  auto partition_info_reader = reader.getCurrent();
-  auto* partition_info = partitioner->current_partition_info();
-  partition_info->start_ = partition_info_reader.getStart();
-  partition_info->end_ = partition_info_reader.getEnd();
-  partition_info->split_multi_range_ =
-      partition_info_reader.getSplitMultiRange();
-  partition_info->partition_ = Subarray(array, layout);
-  RETURN_NOT_OK(subarray_from_capnp(
-      partition_info_reader.getSubarray(), &partition_info->partition_));
+  if (reader.hasCurrent()) {
+    auto partition_info_reader = reader.getCurrent();
+    auto* partition_info = partitioner->current_partition_info();
+    partition_info->start_ = partition_info_reader.getStart();
+    partition_info->end_ = partition_info_reader.getEnd();
+    partition_info->split_multi_range_ =
+        partition_info_reader.getSplitMultiRange();
+    partition_info->partition_ = Subarray(array, layout);
+    RETURN_NOT_OK(subarray_from_capnp(
+        partition_info_reader.getSubarray(), &partition_info->partition_));
+  }
 
   // Partitioner state
   auto state_reader = reader.getState();
