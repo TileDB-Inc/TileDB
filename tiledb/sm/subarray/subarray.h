@@ -364,6 +364,9 @@ class Subarray {
   Status get_est_result_size(
       const char* name, uint64_t* size_off, uint64_t* size_val);
 
+  /** returns whether the estimated result size has been computed or not */
+  bool est_result_size_computed();
+
   /*
    * Gets the maximum memory required to produce the result (in bytes)
    * for the input fixed-sized attribute/dimensiom.
@@ -535,6 +538,29 @@ class Subarray {
       uint64_t range_end,
       std::vector<std::vector<ResultSize>>* result_sizes,
       std::vector<std::vector<MemorySize>>* mem_sizes);
+
+  /**
+   * Used by serialization to set the estimated result size
+   *
+   * @param est_result_size map to set
+   * @param max_mem_size map to set
+   * @return Status
+   */
+  Status set_est_result_size(
+      std::unordered_map<std::string, ResultSize>& est_result_size,
+      std::unordered_map<std::string, MemorySize>& max_mem_size);
+
+  /**
+   * Used by serialization to get the map of result sizes
+   * @return
+   */
+  std::unordered_map<std::string, ResultSize> get_est_result_size_map();
+
+  /**
+   * Used by serialization to get the map of max mem sizes
+   * @return
+   */
+  std::unordered_map<std::string, MemorySize> get_max_mem_size_map();
 
  private:
   /* ********************************* */

@@ -295,6 +295,19 @@ class Query {
       const std::string& attribute, SerializationState::AttrState** state);
 
   /**
+   * Used by serialization to get the map of result sizes
+   * @return
+   */
+  std::unordered_map<std::string, Subarray::ResultSize>
+  get_est_result_size_map();
+
+  /**
+   * Used by serialization to get the map of max mem sizes
+   * @return
+   */
+  std::unordered_map<std::string, Subarray::MemorySize> get_max_mem_size_map();
+
+  /**
    * Returns `true` if the query has results. Applicable only to read
    * queries (it returns `false` for write queries).
    */
@@ -376,6 +389,17 @@ class Query {
       void* buffer_val,
       uint64_t* buffer_val_size,
       bool check_null_buffers = true);
+
+  /**
+   * Used by serialization to set the estimated result size
+   *
+   * @param est_result_size map to set
+   * @param max_mem_size map to set
+   * @return Status
+   */
+  Status set_est_result_size(
+      std::unordered_map<std::string, Subarray::ResultSize>& est_result_size,
+      std::unordered_map<std::string, Subarray::MemorySize>& max_mem_size);
 
   /**
    * Sets the cell layout of the query. The function will return an error

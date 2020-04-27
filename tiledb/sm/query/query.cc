@@ -219,6 +219,19 @@ Status Query::get_est_result_size(const char* name, uint64_t* size) {
         "Cannot get estimated result size; Not applicable to zipped "
         "coordinates in arrays with domains with variable-sized dimensions"));
 
+  if (array_->is_remote() && !reader_.est_result_size_computed()) {
+    auto rest_client = storage_manager_->rest_client();
+    if (rest_client == nullptr)
+      return LOG_STATUS(
+          Status::QueryError("Error in query estimate result size; remote "
+                             "array with no rest client."));
+
+    array_->array_schema()->set_array_uri(array_->array_uri());
+
+    RETURN_NOT_OK(
+        rest_client->get_query_est_result_sizes(array_->array_uri(), this));
+  }
+
   return reader_.get_est_result_size(name, size);
 }
 
@@ -228,7 +241,31 @@ Status Query::get_est_result_size(
     return LOG_STATUS(Status::QueryError(
         "Cannot get estimated result size; Operation currently "
         "unsupported for write queries"));
+
+  if (array_->is_remote() && !reader_.est_result_size_computed()) {
+    auto rest_client = storage_manager_->rest_client();
+    if (rest_client == nullptr)
+      return LOG_STATUS(
+          Status::QueryError("Error in query estimate result size; remote "
+                             "array with no rest client."));
+
+    array_->array_schema()->set_array_uri(array_->array_uri());
+
+    RETURN_NOT_OK(
+        rest_client->get_query_est_result_sizes(array_->array_uri(), this));
+  }
+
   return reader_.get_est_result_size(name, size_off, size_val);
+}
+
+std::unordered_map<std::string, Subarray::ResultSize>
+Query::get_est_result_size_map() {
+  return reader_.get_est_result_size_map();
+}
+
+std::unordered_map<std::string, Subarray::MemorySize>
+Query::get_max_mem_size_map() {
+  return reader_.get_max_mem_size_map();
 }
 
 Status Query::get_written_fragment_num(uint32_t* num) const {
@@ -558,6 +595,16 @@ Status Query::set_buffer(
       buffer_val,
       buffer_val_size,
       check_null_buffers);
+}
+
+Status Query::set_est_result_size(
+    std::unordered_map<std::string, Subarray::ResultSize>& est_result_size,
+    std::unordered_map<std::string, Subarray::MemorySize>& max_mem_size) {
+  if (type_ == QueryType::WRITE)
+    return LOG_STATUS(Status::QueryError(
+        "Cannot set estimated result size; Operation currently "
+        "unsupported for write queries"));
+  return reader_.set_est_result_size(est_result_size, max_mem_size);
 }
 
 Status Query::set_layout(Layout layout) {

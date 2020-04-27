@@ -148,6 +148,14 @@ class RestClient {
    */
   Status finalize_query_to_rest(const URI& uri, Query* query);
 
+  /**
+   * Get array's non_empty domain from rest server
+   *
+   * @param array Array model to fetch and set non empty domain on
+   * @return Status Ok() on success Error() on failures
+   */
+  Status get_query_est_result_sizes(const URI& uri, Query* query);
+
  private:
   /* ********************************* */
   /*        PRIVATE ATTRIBUTES         */

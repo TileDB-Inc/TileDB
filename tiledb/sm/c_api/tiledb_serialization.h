@@ -297,6 +297,44 @@ TILEDB_EXPORT int32_t tiledb_deserialize_array_metadata(
     tiledb_serialization_type_t serialization_type,
     const tiledb_buffer_t* buffer);
 
+/**
+ * Serializes the given query's estimated result sizes map.
+ *
+ * @note The caller must free the returned `tiledb_buffer_list_t`.
+ *
+ * @param ctx The TileDB context.
+ * @param query The query to get the estimated result sizes of.
+ * @param serialization_type Type of serialization to use
+ * @param client_side currently unused
+ * @param buffer Will be set to a newly allocated buffer containing
+ *    the serialized query estimated result sizes.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_serialize_query_est_result_sizes(
+    tiledb_ctx_t* ctx,
+    const tiledb_query_t* query,
+    tiledb_serialization_type_t serialize_type,
+    int32_t client_side,
+    tiledb_buffer_t** buffer);
+
+/**
+ * Deserializes into an existing query from the given buffer.
+ *
+ *
+ * @param ctx The TileDB context.
+ * @param query The query object to deserialize into (must be pre-allocated).
+ * @param serialization_type Type of deserialization to use
+ * @param client_side currently unused
+ * @param buffer Buffer to deserialize from
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_deserialize_query_est_result_sizes(
+    tiledb_ctx_t* ctx,
+    tiledb_query_t* query,
+    tiledb_serialization_type_t serialize_type,
+    int32_t client_side,
+    const tiledb_buffer_t* buffer);
+
 #ifdef __cplusplus
 }
 #endif

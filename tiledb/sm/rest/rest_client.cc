@@ -627,6 +627,49 @@ Status RestClient::update_attribute_buffer_sizes(
   return Status::Ok();
 }
 
+Status RestClient::get_query_est_result_sizes(const URI& uri, Query* query) {
+  if (query == nullptr)
+    return LOG_STATUS(Status::RestError(
+        "Error getting query estimated result size from REST; Query is null."));
+
+  // Get array
+  const Array* array = query->array();
+  if (array == nullptr) {
+    return LOG_STATUS(Status::RestError(
+        "Error festing query estimated result size from REST; null array."));
+  }
+
+  // Serialize query to send
+  BufferList serialized;
+  RETURN_NOT_OK(serialization::query_serialize(
+      query, serialization_type_, true, &serialized));
+
+  // Init curl and form the URL
+  Curl curlc;
+  RETURN_NOT_OK(curlc.init(config_, extra_headers_));
+  std::string array_ns, array_uri;
+  RETURN_NOT_OK(uri.get_rest_components(&array_ns, &array_uri));
+  std::string url =
+      rest_server_ + "/v1/arrays/" + array_ns + "/" +
+      curlc.url_escape(array_uri) +
+      "/query/est_result_sizes?type=" + query_type_str(query->type());
+
+  // Remote array reads always supply the timestamp.
+  if (query->type() == QueryType::READ)
+    url += "&open_at=" + std::to_string(array->timestamp());
+
+  // Get the data
+  Buffer returned_data;
+  RETURN_NOT_OK(
+      curlc.post_data(url, serialization_type_, &serialized, &returned_data));
+  if (returned_data.data() == nullptr || returned_data.size() == 0)
+    return LOG_STATUS(Status::RestError(
+        "Error getting array metadata from REST; server returned no data."));
+
+  return serialization::query_est_result_size_deserialize(
+      query, serialization_type_, true, returned_data);
+}
+
 #else
 
 RestClient::RestClient() {
@@ -690,6 +733,11 @@ Status RestClient::submit_query_to_rest(const URI&, Query*) {
 }
 
 Status RestClient::finalize_query_to_rest(const URI&, Query*) {
+  return LOG_STATUS(
+      Status::RestError("Cannot use rest client; serialization not enabled."));
+}
+
+Status RestClient::get_query_est_result_sizes(const URI&, Query*) {
   return LOG_STATUS(
       Status::RestError("Cannot use rest client; serialization not enabled."));
 }

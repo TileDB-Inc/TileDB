@@ -135,6 +135,37 @@ Status query_deserialize(
     CopyState* copy_state,
     Query* query);
 
+/**
+ * Serialize an estimated result size map for all fields from a query object
+ *
+ * @param query Query to get est
+ * @param serialize_type
+ * @param clientside
+ * @param serialized_buffer
+ * @return
+ */
+Status query_est_result_size_serialize(
+    Query* query,
+    SerializationType serialize_type,
+    bool clientside,
+    Buffer* serialized_buffer);
+
+/**
+ * Deserialize estimated result sizes into the query object
+ *
+ * @param serialized_buffer Buffer containing serialized query
+ * @param serialize_type Serialization type of serialized query
+ * @param clientside Whether deserialization should be performed from a client
+ *      or server persective
+ * @param query Query to deserialize into
+ * @return Status
+ */
+Status query_est_result_size_deserialize(
+    Query* query,
+    SerializationType serialize_type,
+    bool clientside,
+    const Buffer& serialized_buffer);
+
 }  // namespace serialization
 }  // namespace sm
 }  // namespace tiledb

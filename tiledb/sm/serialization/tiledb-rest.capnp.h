@@ -47,6 +47,9 @@ CAPNP_DECLARE_SCHEMA(9be1921b07e6cd2d);
 CAPNP_DECLARE_SCHEMA(f01116579e9ea98e);
 CAPNP_DECLARE_SCHEMA(9737dcafdfce31bb);
 CAPNP_DECLARE_SCHEMA(926fe1c3b12ed651);
+CAPNP_DECLARE_SCHEMA(8cd4e323f1feea3b);
+CAPNP_DECLARE_SCHEMA(92c8467685565269);
+CAPNP_DECLARE_SCHEMA(bda7916926591c22);
 
 }  // namespace schemas
 }  // namespace capnp
@@ -654,6 +657,59 @@ struct ArrayMetadata::MetadataEntry {
 
   struct _capnpPrivate {
     CAPNP_DECLARE_STRUCT_HEADER(926fe1c3b12ed651, 1, 3)
+#if !CAPNP_LITE
+    static constexpr ::capnp::_::RawBrandedSchema const* brand() {
+      return &schema->defaultBrand;
+    }
+#endif  // !CAPNP_LITE
+  };
+};
+
+struct EstimatedResultSize {
+  EstimatedResultSize() = delete;
+
+  class Reader;
+  class Builder;
+  class Pipeline;
+  struct ResultSize;
+  struct MemorySize;
+
+  struct _capnpPrivate {
+    CAPNP_DECLARE_STRUCT_HEADER(8cd4e323f1feea3b, 0, 2)
+#if !CAPNP_LITE
+    static constexpr ::capnp::_::RawBrandedSchema const* brand() {
+      return &schema->defaultBrand;
+    }
+#endif  // !CAPNP_LITE
+  };
+};
+
+struct EstimatedResultSize::ResultSize {
+  ResultSize() = delete;
+
+  class Reader;
+  class Builder;
+  class Pipeline;
+
+  struct _capnpPrivate {
+    CAPNP_DECLARE_STRUCT_HEADER(92c8467685565269, 2, 0)
+#if !CAPNP_LITE
+    static constexpr ::capnp::_::RawBrandedSchema const* brand() {
+      return &schema->defaultBrand;
+    }
+#endif  // !CAPNP_LITE
+  };
+};
+
+struct EstimatedResultSize::MemorySize {
+  MemorySize() = delete;
+
+  class Reader;
+  class Builder;
+  class Pipeline;
+
+  struct _capnpPrivate {
+    CAPNP_DECLARE_STRUCT_HEADER(bda7916926591c22, 2, 0)
 #if !CAPNP_LITE
     static constexpr ::capnp::_::RawBrandedSchema const* brand() {
       return &schema->defaultBrand;
@@ -4955,6 +5011,364 @@ class ArrayMetadata::MetadataEntry::Builder {
 class ArrayMetadata::MetadataEntry::Pipeline {
  public:
   typedef MetadataEntry Pipelines;
+
+  inline Pipeline(decltype(nullptr))
+      : _typeless(nullptr) {
+  }
+  inline explicit Pipeline(::capnp::AnyPointer::Pipeline&& typeless)
+      : _typeless(kj::mv(typeless)) {
+  }
+
+ private:
+  ::capnp::AnyPointer::Pipeline _typeless;
+  friend class ::capnp::PipelineHook;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::ToDynamic_;
+};
+#endif  // !CAPNP_LITE
+
+class EstimatedResultSize::Reader {
+ public:
+  typedef EstimatedResultSize Reads;
+
+  Reader() = default;
+  inline explicit Reader(::capnp::_::StructReader base)
+      : _reader(base) {
+  }
+
+  inline ::capnp::MessageSize totalSize() const {
+    return _reader.totalSize().asPublic();
+  }
+
+#if !CAPNP_LITE
+  inline ::kj::StringTree toString() const {
+    return ::capnp::_::structString(_reader, *_capnpPrivate::brand());
+  }
+#endif  // !CAPNP_LITE
+
+  inline bool hasResultSizes() const;
+  inline ::tiledb::sm::serialization::capnp::Map<
+      ::capnp::Text,
+      ::tiledb::sm::serialization::capnp::EstimatedResultSize::ResultSize>::
+      Reader
+      getResultSizes() const;
+
+  inline bool hasMemorySizes() const;
+  inline ::tiledb::sm::serialization::capnp::Map<
+      ::capnp::Text,
+      ::tiledb::sm::serialization::capnp::EstimatedResultSize::MemorySize>::
+      Reader
+      getMemorySizes() const;
+
+ private:
+  ::capnp::_::StructReader _reader;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::ToDynamic_;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::_::PointerHelpers;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::List;
+  friend class ::capnp::MessageBuilder;
+  friend class ::capnp::Orphanage;
+};
+
+class EstimatedResultSize::Builder {
+ public:
+  typedef EstimatedResultSize Builds;
+
+  Builder() = delete;  // Deleted to discourage incorrect usage.
+                       // You can explicitly initialize to nullptr instead.
+  inline Builder(decltype(nullptr)) {
+  }
+  inline explicit Builder(::capnp::_::StructBuilder base)
+      : _builder(base) {
+  }
+  inline operator Reader() const {
+    return Reader(_builder.asReader());
+  }
+  inline Reader asReader() const {
+    return *this;
+  }
+
+  inline ::capnp::MessageSize totalSize() const {
+    return asReader().totalSize();
+  }
+#if !CAPNP_LITE
+  inline ::kj::StringTree toString() const {
+    return asReader().toString();
+  }
+#endif  // !CAPNP_LITE
+
+  inline bool hasResultSizes();
+  inline ::tiledb::sm::serialization::capnp::Map<
+      ::capnp::Text,
+      ::tiledb::sm::serialization::capnp::EstimatedResultSize::ResultSize>::
+      Builder
+      getResultSizes();
+  inline void setResultSizes(
+      ::tiledb::sm::serialization::capnp::Map<
+          ::capnp::Text,
+          ::tiledb::sm::serialization::capnp::EstimatedResultSize::ResultSize>::
+          Reader value);
+  inline ::tiledb::sm::serialization::capnp::Map<
+      ::capnp::Text,
+      ::tiledb::sm::serialization::capnp::EstimatedResultSize::ResultSize>::
+      Builder
+      initResultSizes();
+  inline void adoptResultSizes(
+      ::capnp::Orphan<::tiledb::sm::serialization::capnp::Map<
+          ::capnp::Text,
+          ::tiledb::sm::serialization::capnp::EstimatedResultSize::
+              ResultSize>>&& value);
+  inline ::capnp::Orphan<::tiledb::sm::serialization::capnp::Map<
+      ::capnp::Text,
+      ::tiledb::sm::serialization::capnp::EstimatedResultSize::ResultSize>>
+  disownResultSizes();
+
+  inline bool hasMemorySizes();
+  inline ::tiledb::sm::serialization::capnp::Map<
+      ::capnp::Text,
+      ::tiledb::sm::serialization::capnp::EstimatedResultSize::MemorySize>::
+      Builder
+      getMemorySizes();
+  inline void setMemorySizes(
+      ::tiledb::sm::serialization::capnp::Map<
+          ::capnp::Text,
+          ::tiledb::sm::serialization::capnp::EstimatedResultSize::MemorySize>::
+          Reader value);
+  inline ::tiledb::sm::serialization::capnp::Map<
+      ::capnp::Text,
+      ::tiledb::sm::serialization::capnp::EstimatedResultSize::MemorySize>::
+      Builder
+      initMemorySizes();
+  inline void adoptMemorySizes(
+      ::capnp::Orphan<::tiledb::sm::serialization::capnp::Map<
+          ::capnp::Text,
+          ::tiledb::sm::serialization::capnp::EstimatedResultSize::
+              MemorySize>>&& value);
+  inline ::capnp::Orphan<::tiledb::sm::serialization::capnp::Map<
+      ::capnp::Text,
+      ::tiledb::sm::serialization::capnp::EstimatedResultSize::MemorySize>>
+  disownMemorySizes();
+
+ private:
+  ::capnp::_::StructBuilder _builder;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::ToDynamic_;
+  friend class ::capnp::Orphanage;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::_::PointerHelpers;
+};
+
+#if !CAPNP_LITE
+class EstimatedResultSize::Pipeline {
+ public:
+  typedef EstimatedResultSize Pipelines;
+
+  inline Pipeline(decltype(nullptr))
+      : _typeless(nullptr) {
+  }
+  inline explicit Pipeline(::capnp::AnyPointer::Pipeline&& typeless)
+      : _typeless(kj::mv(typeless)) {
+  }
+
+  inline ::tiledb::sm::serialization::capnp::Map<
+      ::capnp::Text,
+      ::tiledb::sm::serialization::capnp::EstimatedResultSize::ResultSize>::
+      Pipeline
+      getResultSizes();
+  inline ::tiledb::sm::serialization::capnp::Map<
+      ::capnp::Text,
+      ::tiledb::sm::serialization::capnp::EstimatedResultSize::MemorySize>::
+      Pipeline
+      getMemorySizes();
+
+ private:
+  ::capnp::AnyPointer::Pipeline _typeless;
+  friend class ::capnp::PipelineHook;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::ToDynamic_;
+};
+#endif  // !CAPNP_LITE
+
+class EstimatedResultSize::ResultSize::Reader {
+ public:
+  typedef ResultSize Reads;
+
+  Reader() = default;
+  inline explicit Reader(::capnp::_::StructReader base)
+      : _reader(base) {
+  }
+
+  inline ::capnp::MessageSize totalSize() const {
+    return _reader.totalSize().asPublic();
+  }
+
+#if !CAPNP_LITE
+  inline ::kj::StringTree toString() const {
+    return ::capnp::_::structString(_reader, *_capnpPrivate::brand());
+  }
+#endif  // !CAPNP_LITE
+
+  inline double getSizeFixed() const;
+
+  inline double getSizeVar() const;
+
+ private:
+  ::capnp::_::StructReader _reader;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::ToDynamic_;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::_::PointerHelpers;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::List;
+  friend class ::capnp::MessageBuilder;
+  friend class ::capnp::Orphanage;
+};
+
+class EstimatedResultSize::ResultSize::Builder {
+ public:
+  typedef ResultSize Builds;
+
+  Builder() = delete;  // Deleted to discourage incorrect usage.
+                       // You can explicitly initialize to nullptr instead.
+  inline Builder(decltype(nullptr)) {
+  }
+  inline explicit Builder(::capnp::_::StructBuilder base)
+      : _builder(base) {
+  }
+  inline operator Reader() const {
+    return Reader(_builder.asReader());
+  }
+  inline Reader asReader() const {
+    return *this;
+  }
+
+  inline ::capnp::MessageSize totalSize() const {
+    return asReader().totalSize();
+  }
+#if !CAPNP_LITE
+  inline ::kj::StringTree toString() const {
+    return asReader().toString();
+  }
+#endif  // !CAPNP_LITE
+
+  inline double getSizeFixed();
+  inline void setSizeFixed(double value);
+
+  inline double getSizeVar();
+  inline void setSizeVar(double value);
+
+ private:
+  ::capnp::_::StructBuilder _builder;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::ToDynamic_;
+  friend class ::capnp::Orphanage;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::_::PointerHelpers;
+};
+
+#if !CAPNP_LITE
+class EstimatedResultSize::ResultSize::Pipeline {
+ public:
+  typedef ResultSize Pipelines;
+
+  inline Pipeline(decltype(nullptr))
+      : _typeless(nullptr) {
+  }
+  inline explicit Pipeline(::capnp::AnyPointer::Pipeline&& typeless)
+      : _typeless(kj::mv(typeless)) {
+  }
+
+ private:
+  ::capnp::AnyPointer::Pipeline _typeless;
+  friend class ::capnp::PipelineHook;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::ToDynamic_;
+};
+#endif  // !CAPNP_LITE
+
+class EstimatedResultSize::MemorySize::Reader {
+ public:
+  typedef MemorySize Reads;
+
+  Reader() = default;
+  inline explicit Reader(::capnp::_::StructReader base)
+      : _reader(base) {
+  }
+
+  inline ::capnp::MessageSize totalSize() const {
+    return _reader.totalSize().asPublic();
+  }
+
+#if !CAPNP_LITE
+  inline ::kj::StringTree toString() const {
+    return ::capnp::_::structString(_reader, *_capnpPrivate::brand());
+  }
+#endif  // !CAPNP_LITE
+
+  inline ::uint64_t getSizeFixed() const;
+
+  inline ::uint64_t getSizeVar() const;
+
+ private:
+  ::capnp::_::StructReader _reader;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::ToDynamic_;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::_::PointerHelpers;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::List;
+  friend class ::capnp::MessageBuilder;
+  friend class ::capnp::Orphanage;
+};
+
+class EstimatedResultSize::MemorySize::Builder {
+ public:
+  typedef MemorySize Builds;
+
+  Builder() = delete;  // Deleted to discourage incorrect usage.
+                       // You can explicitly initialize to nullptr instead.
+  inline Builder(decltype(nullptr)) {
+  }
+  inline explicit Builder(::capnp::_::StructBuilder base)
+      : _builder(base) {
+  }
+  inline operator Reader() const {
+    return Reader(_builder.asReader());
+  }
+  inline Reader asReader() const {
+    return *this;
+  }
+
+  inline ::capnp::MessageSize totalSize() const {
+    return asReader().totalSize();
+  }
+#if !CAPNP_LITE
+  inline ::kj::StringTree toString() const {
+    return asReader().toString();
+  }
+#endif  // !CAPNP_LITE
+
+  inline ::uint64_t getSizeFixed();
+  inline void setSizeFixed(::uint64_t value);
+
+  inline ::uint64_t getSizeVar();
+  inline void setSizeVar(::uint64_t value);
+
+ private:
+  ::capnp::_::StructBuilder _builder;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::ToDynamic_;
+  friend class ::capnp::Orphanage;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::_::PointerHelpers;
+};
+
+#if !CAPNP_LITE
+class EstimatedResultSize::MemorySize::Pipeline {
+ public:
+  typedef MemorySize Pipelines;
 
   inline Pipeline(decltype(nullptr))
       : _typeless(nullptr) {
@@ -9759,6 +10173,232 @@ inline bool ArrayMetadata::MetadataEntry::Builder::getDel() {
 inline void ArrayMetadata::MetadataEntry::Builder::setDel(bool value) {
   _builder.setDataField<bool>(
       ::capnp::bounded<32>() * ::capnp::ELEMENTS, value);
+}
+
+inline bool EstimatedResultSize::Reader::hasResultSizes() const {
+  return !_reader.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS)
+              .isNull();
+}
+inline bool EstimatedResultSize::Builder::hasResultSizes() {
+  return !_builder.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS)
+              .isNull();
+}
+inline ::tiledb::sm::serialization::capnp::Map<
+    ::capnp::Text,
+    ::tiledb::sm::serialization::capnp::EstimatedResultSize::ResultSize>::Reader
+EstimatedResultSize::Reader::getResultSizes() const {
+  return ::capnp::_::PointerHelpers<::tiledb::sm::serialization::capnp::Map<
+      ::capnp::Text,
+      ::tiledb::sm::serialization::capnp::EstimatedResultSize::ResultSize>>::
+      get(_reader.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS));
+}
+inline ::tiledb::sm::serialization::capnp::Map<
+    ::capnp::Text,
+    ::tiledb::sm::serialization::capnp::EstimatedResultSize::ResultSize>::
+    Builder
+    EstimatedResultSize::Builder::getResultSizes() {
+  return ::capnp::_::PointerHelpers<::tiledb::sm::serialization::capnp::Map<
+      ::capnp::Text,
+      ::tiledb::sm::serialization::capnp::EstimatedResultSize::ResultSize>>::
+      get(_builder.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS));
+}
+#if !CAPNP_LITE
+inline ::tiledb::sm::serialization::capnp::Map<
+    ::capnp::Text,
+    ::tiledb::sm::serialization::capnp::EstimatedResultSize::ResultSize>::
+    Pipeline
+    EstimatedResultSize::Pipeline::getResultSizes() {
+  return ::tiledb::sm::serialization::capnp::Map<
+      ::capnp::Text,
+      ::tiledb::sm::serialization::capnp::EstimatedResultSize::ResultSize>::
+      Pipeline(_typeless.getPointerField(0));
+}
+#endif  // !CAPNP_LITE
+inline void EstimatedResultSize::Builder::setResultSizes(
+    ::tiledb::sm::serialization::capnp::Map<
+        ::capnp::Text,
+        ::tiledb::sm::serialization::capnp::EstimatedResultSize::ResultSize>::
+        Reader value) {
+  ::capnp::_::PointerHelpers<::tiledb::sm::serialization::capnp::Map<
+      ::capnp::Text,
+      ::tiledb::sm::serialization::capnp::EstimatedResultSize::ResultSize>>::
+      set(_builder.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS),
+          value);
+}
+inline ::tiledb::sm::serialization::capnp::Map<
+    ::capnp::Text,
+    ::tiledb::sm::serialization::capnp::EstimatedResultSize::ResultSize>::
+    Builder
+    EstimatedResultSize::Builder::initResultSizes() {
+  return ::capnp::_::PointerHelpers<::tiledb::sm::serialization::capnp::Map<
+      ::capnp::Text,
+      ::tiledb::sm::serialization::capnp::EstimatedResultSize::ResultSize>>::
+      init(_builder.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS));
+}
+inline void EstimatedResultSize::Builder::adoptResultSizes(
+    ::capnp::Orphan<::tiledb::sm::serialization::capnp::Map<
+        ::capnp::Text,
+        ::tiledb::sm::serialization::capnp::EstimatedResultSize::ResultSize>>&&
+        value) {
+  ::capnp::_::PointerHelpers<::tiledb::sm::serialization::capnp::Map<
+      ::capnp::Text,
+      ::tiledb::sm::serialization::capnp::EstimatedResultSize::ResultSize>>::
+      adopt(
+          _builder.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS),
+          kj::mv(value));
+}
+inline ::capnp::Orphan<::tiledb::sm::serialization::capnp::Map<
+    ::capnp::Text,
+    ::tiledb::sm::serialization::capnp::EstimatedResultSize::ResultSize>>
+EstimatedResultSize::Builder::disownResultSizes() {
+  return ::capnp::_::PointerHelpers<::tiledb::sm::serialization::capnp::Map<
+      ::capnp::Text,
+      ::tiledb::sm::serialization::capnp::EstimatedResultSize::ResultSize>>::
+      disown(
+          _builder.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS));
+}
+
+inline bool EstimatedResultSize::Reader::hasMemorySizes() const {
+  return !_reader.getPointerField(::capnp::bounded<1>() * ::capnp::POINTERS)
+              .isNull();
+}
+inline bool EstimatedResultSize::Builder::hasMemorySizes() {
+  return !_builder.getPointerField(::capnp::bounded<1>() * ::capnp::POINTERS)
+              .isNull();
+}
+inline ::tiledb::sm::serialization::capnp::Map<
+    ::capnp::Text,
+    ::tiledb::sm::serialization::capnp::EstimatedResultSize::MemorySize>::Reader
+EstimatedResultSize::Reader::getMemorySizes() const {
+  return ::capnp::_::PointerHelpers<::tiledb::sm::serialization::capnp::Map<
+      ::capnp::Text,
+      ::tiledb::sm::serialization::capnp::EstimatedResultSize::MemorySize>>::
+      get(_reader.getPointerField(::capnp::bounded<1>() * ::capnp::POINTERS));
+}
+inline ::tiledb::sm::serialization::capnp::Map<
+    ::capnp::Text,
+    ::tiledb::sm::serialization::capnp::EstimatedResultSize::MemorySize>::
+    Builder
+    EstimatedResultSize::Builder::getMemorySizes() {
+  return ::capnp::_::PointerHelpers<::tiledb::sm::serialization::capnp::Map<
+      ::capnp::Text,
+      ::tiledb::sm::serialization::capnp::EstimatedResultSize::MemorySize>>::
+      get(_builder.getPointerField(::capnp::bounded<1>() * ::capnp::POINTERS));
+}
+#if !CAPNP_LITE
+inline ::tiledb::sm::serialization::capnp::Map<
+    ::capnp::Text,
+    ::tiledb::sm::serialization::capnp::EstimatedResultSize::MemorySize>::
+    Pipeline
+    EstimatedResultSize::Pipeline::getMemorySizes() {
+  return ::tiledb::sm::serialization::capnp::Map<
+      ::capnp::Text,
+      ::tiledb::sm::serialization::capnp::EstimatedResultSize::MemorySize>::
+      Pipeline(_typeless.getPointerField(1));
+}
+#endif  // !CAPNP_LITE
+inline void EstimatedResultSize::Builder::setMemorySizes(
+    ::tiledb::sm::serialization::capnp::Map<
+        ::capnp::Text,
+        ::tiledb::sm::serialization::capnp::EstimatedResultSize::MemorySize>::
+        Reader value) {
+  ::capnp::_::PointerHelpers<::tiledb::sm::serialization::capnp::Map<
+      ::capnp::Text,
+      ::tiledb::sm::serialization::capnp::EstimatedResultSize::MemorySize>>::
+      set(_builder.getPointerField(::capnp::bounded<1>() * ::capnp::POINTERS),
+          value);
+}
+inline ::tiledb::sm::serialization::capnp::Map<
+    ::capnp::Text,
+    ::tiledb::sm::serialization::capnp::EstimatedResultSize::MemorySize>::
+    Builder
+    EstimatedResultSize::Builder::initMemorySizes() {
+  return ::capnp::_::PointerHelpers<::tiledb::sm::serialization::capnp::Map<
+      ::capnp::Text,
+      ::tiledb::sm::serialization::capnp::EstimatedResultSize::MemorySize>>::
+      init(_builder.getPointerField(::capnp::bounded<1>() * ::capnp::POINTERS));
+}
+inline void EstimatedResultSize::Builder::adoptMemorySizes(
+    ::capnp::Orphan<::tiledb::sm::serialization::capnp::Map<
+        ::capnp::Text,
+        ::tiledb::sm::serialization::capnp::EstimatedResultSize::MemorySize>>&&
+        value) {
+  ::capnp::_::PointerHelpers<::tiledb::sm::serialization::capnp::Map<
+      ::capnp::Text,
+      ::tiledb::sm::serialization::capnp::EstimatedResultSize::MemorySize>>::
+      adopt(
+          _builder.getPointerField(::capnp::bounded<1>() * ::capnp::POINTERS),
+          kj::mv(value));
+}
+inline ::capnp::Orphan<::tiledb::sm::serialization::capnp::Map<
+    ::capnp::Text,
+    ::tiledb::sm::serialization::capnp::EstimatedResultSize::MemorySize>>
+EstimatedResultSize::Builder::disownMemorySizes() {
+  return ::capnp::_::PointerHelpers<::tiledb::sm::serialization::capnp::Map<
+      ::capnp::Text,
+      ::tiledb::sm::serialization::capnp::EstimatedResultSize::MemorySize>>::
+      disown(
+          _builder.getPointerField(::capnp::bounded<1>() * ::capnp::POINTERS));
+}
+
+inline double EstimatedResultSize::ResultSize::Reader::getSizeFixed() const {
+  return _reader.getDataField<double>(
+      ::capnp::bounded<0>() * ::capnp::ELEMENTS);
+}
+
+inline double EstimatedResultSize::ResultSize::Builder::getSizeFixed() {
+  return _builder.getDataField<double>(
+      ::capnp::bounded<0>() * ::capnp::ELEMENTS);
+}
+inline void EstimatedResultSize::ResultSize::Builder::setSizeFixed(
+    double value) {
+  _builder.setDataField<double>(
+      ::capnp::bounded<0>() * ::capnp::ELEMENTS, value);
+}
+
+inline double EstimatedResultSize::ResultSize::Reader::getSizeVar() const {
+  return _reader.getDataField<double>(
+      ::capnp::bounded<1>() * ::capnp::ELEMENTS);
+}
+
+inline double EstimatedResultSize::ResultSize::Builder::getSizeVar() {
+  return _builder.getDataField<double>(
+      ::capnp::bounded<1>() * ::capnp::ELEMENTS);
+}
+inline void EstimatedResultSize::ResultSize::Builder::setSizeVar(double value) {
+  _builder.setDataField<double>(
+      ::capnp::bounded<1>() * ::capnp::ELEMENTS, value);
+}
+
+inline ::uint64_t EstimatedResultSize::MemorySize::Reader::getSizeFixed()
+    const {
+  return _reader.getDataField<::uint64_t>(
+      ::capnp::bounded<0>() * ::capnp::ELEMENTS);
+}
+
+inline ::uint64_t EstimatedResultSize::MemorySize::Builder::getSizeFixed() {
+  return _builder.getDataField<::uint64_t>(
+      ::capnp::bounded<0>() * ::capnp::ELEMENTS);
+}
+inline void EstimatedResultSize::MemorySize::Builder::setSizeFixed(
+    ::uint64_t value) {
+  _builder.setDataField<::uint64_t>(
+      ::capnp::bounded<0>() * ::capnp::ELEMENTS, value);
+}
+
+inline ::uint64_t EstimatedResultSize::MemorySize::Reader::getSizeVar() const {
+  return _reader.getDataField<::uint64_t>(
+      ::capnp::bounded<1>() * ::capnp::ELEMENTS);
+}
+
+inline ::uint64_t EstimatedResultSize::MemorySize::Builder::getSizeVar() {
+  return _builder.getDataField<::uint64_t>(
+      ::capnp::bounded<1>() * ::capnp::ELEMENTS);
+}
+inline void EstimatedResultSize::MemorySize::Builder::setSizeVar(
+    ::uint64_t value) {
+  _builder.setDataField<::uint64_t>(
+      ::capnp::bounded<1>() * ::capnp::ELEMENTS, value);
 }
 
 }  // namespace capnp
