@@ -4460,7 +4460,7 @@ TILEDB_EXPORT int32_t tiledb_array_get_non_empty_domain_var_from_name(
  * @param buffer_size The buffer size (in bytes) to be retrieved.
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
-TILEDB_EXPORT int32_t tiledb_array_max_buffer_size(
+TILEDB_DEPRECATED_EXPORT int32_t tiledb_array_max_buffer_size(
     tiledb_ctx_t* ctx,
     tiledb_array_t* array,
     const char* name,
@@ -4493,7 +4493,7 @@ TILEDB_EXPORT int32_t tiledb_array_max_buffer_size(
  * @param buffer_val_size The values buffer size (in bytes) to be retrieved.
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
-TILEDB_EXPORT int32_t tiledb_array_max_buffer_size_var(
+TILEDB_DEPRECATED_EXPORT int32_t tiledb_array_max_buffer_size_var(
     tiledb_ctx_t* ctx,
     tiledb_array_t* array,
     const char* name,

@@ -1108,8 +1108,9 @@ class Array {
    *     number of elements for that attribute in the given subarray.
    */
   template <typename T>
-  std::unordered_map<std::string, std::pair<uint64_t, uint64_t>>
-  max_buffer_elements(const std::vector<T>& subarray) {
+  TILEDB_DEPRECATED
+      std::unordered_map<std::string, std::pair<uint64_t, uint64_t>>
+      max_buffer_elements(const std::vector<T>& subarray) {
     auto ctx = ctx_.get();
     tiledb_ctx_t* c_ctx = ctx.ptr().get();
     impl::type_check<T>(schema_.domain().type(), 1);
