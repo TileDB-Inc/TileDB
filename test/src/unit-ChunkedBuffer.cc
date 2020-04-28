@@ -123,7 +123,8 @@ TEST_CASE(
     CHECK(chunk_buffer != write_buffer);
     if (chunk_buffer < write_buffer) {
       CHECK(
-          static_cast<void*>(static_cast<char*>(chunk_buffer) + chunk_size) <=
+          static_cast<void*>(
+              static_cast<char*>(chunk_buffer) + internal_size) <=
           write_buffer);
     } else {
       CHECK(
@@ -229,7 +230,8 @@ TEST_CASE(
     CHECK(chunk_buffer != write_buffer);
     if (chunk_buffer < write_buffer) {
       CHECK(
-          static_cast<void*>(static_cast<char*>(chunk_buffer) + chunk_size) <=
+          static_cast<void*>(
+              static_cast<char*>(chunk_buffer) + internal_size) <=
           write_buffer);
     } else {
       CHECK(
