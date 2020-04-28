@@ -923,7 +923,7 @@ class Writer {
    */
   Status write_all_tiles(
       FragmentMetadata* frag_meta,
-      const std::unordered_map<std::string, std::vector<Tile>>& tiles) const;
+      std::unordered_map<std::string, std::vector<Tile>>* tiles) const;
 
   /**
    * Writes the input tiles for the input attribute/dimension to storage.
@@ -936,7 +936,7 @@ class Writer {
   Status write_tiles(
       const std::string& name,
       FragmentMetadata* frag_meta,
-      const std::vector<Tile>& tiles) const;
+      std::vector<Tile>* tiles) const;
 
   /**
    * Returns the i-th coordinates in the coordinate buffers in string
