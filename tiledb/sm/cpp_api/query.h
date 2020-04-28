@@ -756,6 +756,10 @@ class Query {
   /**
    * Set the coordinate buffer.
    *
+   * The coordinate buffer has been deprecated. Set the coordinates for
+   * each individual dimension with the `set_buffer` API. Consult the current
+   * documentation for more information.
+   *
    * **Example:**
    * @code{.cpp}
    * tiledb::Context ctx;
@@ -773,12 +777,17 @@ class Query {
    * @param size The number of elements in the coordinate array buffer
    * **/
   template <typename T>
-  Query& set_coordinates(T* buf, uint64_t size) {
+  TILEDB_DEPRECATED Query& set_coordinates(T* buf, uint64_t size) {
     impl::type_check<T>(schema_.domain().type());
     return set_buffer(TILEDB_COORDS, buf, size);
   }
 
-  /** Set the coordinate buffer for unordered queries
+  /**
+   * Set the coordinate buffer for unordered queries.
+   *
+   * The coordinate buffer has been deprecated. Set the coordinates for
+   * each individual dimension with the `set_buffer` API. Consult the current
+   * documentation for more information.
    *
    * **Example:**
    * @code{.cpp}
@@ -794,7 +803,7 @@ class Query {
    * @param buf Coordinate vector
    * **/
   template <typename Vec>
-  Query& set_coordinates(Vec& buf) {
+  TILEDB_DEPRECATED Query& set_coordinates(Vec& buf) {
     return set_coordinates(buf.data(), buf.size());
   }
 
