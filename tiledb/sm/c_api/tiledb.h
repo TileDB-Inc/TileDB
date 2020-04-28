@@ -415,8 +415,14 @@ tiledb_vfs_mode_from_str(const char* str, tiledb_vfs_mode_t* vfs_mode);
 #define TILEDB_OOM (-2)
 /**@}*/
 
-/** Returns a special name indicating the coordinates attribute. */
-TILEDB_EXPORT const char* tiledb_coords();
+/**
+ * Returns a special name indicating the coordinates attribute.
+ *
+ * The coordinate buffer has been deprecated. Set the coordinates for
+ * each individual dimension with the `set_buffer` API. Consult the current
+ * documentation for more information.
+ */
+TILEDB_DEPRECATED_EXPORT const char* tiledb_coords();
 
 /** Returns a special value indicating a variable number of elements. */
 TILEDB_EXPORT uint32_t tiledb_var_num();
@@ -4460,7 +4466,7 @@ TILEDB_EXPORT int32_t tiledb_array_get_non_empty_domain_var_from_name(
  * @param buffer_size The buffer size (in bytes) to be retrieved.
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
-TILEDB_EXPORT int32_t tiledb_array_max_buffer_size(
+TILEDB_DEPRECATED_EXPORT int32_t tiledb_array_max_buffer_size(
     tiledb_ctx_t* ctx,
     tiledb_array_t* array,
     const char* name,
@@ -4493,7 +4499,7 @@ TILEDB_EXPORT int32_t tiledb_array_max_buffer_size(
  * @param buffer_val_size The values buffer size (in bytes) to be retrieved.
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
-TILEDB_EXPORT int32_t tiledb_array_max_buffer_size_var(
+TILEDB_DEPRECATED_EXPORT int32_t tiledb_array_max_buffer_size_var(
     tiledb_ctx_t* ctx,
     tiledb_array_t* array,
     const char* name,
