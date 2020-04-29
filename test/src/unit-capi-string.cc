@@ -242,17 +242,11 @@ void StringFx::read_array(const std::string& array_name) {
 
   // Compute max buffer sizes
   uint64_t subarray[] = {1, 4};
-  uint64_t buffer_a1_size, buffer_a2_off_size, buffer_a2_val_size,
-      buffer_a3_off_size, buffer_a3_val_size;
-  rc =
-      tiledb_array_max_buffer_size(ctx, array, "a1", subarray, &buffer_a1_size);
-  CHECK(rc == TILEDB_OK);
-  rc = tiledb_array_max_buffer_size_var(
-      ctx, array, "a2", subarray, &buffer_a2_off_size, &buffer_a2_val_size);
-  CHECK(rc == TILEDB_OK);
-  rc = tiledb_array_max_buffer_size_var(
-      ctx, array, "a3", subarray, &buffer_a3_off_size, &buffer_a3_val_size);
-  CHECK(rc == TILEDB_OK);
+  uint64_t buffer_a1_size = 8;
+  uint64_t buffer_a2_off_size = 32;
+  uint64_t buffer_a2_val_size = 28;
+  uint64_t buffer_a3_off_size = 32;
+  uint64_t buffer_a3_val_size = 24;
 
   // Prepare cell buffers
   void* buffer_a1 = std::malloc(buffer_a1_size);

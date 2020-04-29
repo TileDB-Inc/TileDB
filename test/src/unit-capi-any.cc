@@ -198,11 +198,9 @@ void AnyFx::read_array(const std::string& array_name) {
   CHECK(rc == TILEDB_OK);
 
   // Get maximum buffer sizes
-  uint64_t size_off, size_val;
+  uint64_t size_off = 32;
+  uint64_t size_val = 32;
   uint64_t subarray[] = {1, 4};
-  rc = tiledb_array_max_buffer_size_var(
-      ctx, array, "a1", subarray, &size_off, &size_val);
-  CHECK(rc == TILEDB_OK);
 
   // Prepare cell buffers
   auto buffer_a1_off = new uint64_t[size_off / sizeof(uint64_t)];
