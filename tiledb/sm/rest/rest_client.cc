@@ -618,9 +618,10 @@ Status RestClient::update_attribute_buffer_sizes(
     const auto& name = cit.first;
     auto state = cit.second;
     auto query_buffer = query->buffer(name);
-    if (query_buffer.buffer_var_size_ != nullptr)
-      *query_buffer.buffer_var_size_ = state.offset_size;
-    if (query_buffer.buffer_size_ != nullptr)
+    if (query_buffer.buffer_var_size_ != nullptr) {
+      *query_buffer.buffer_var_size_ = state.data_size;
+      *query_buffer.buffer_size_ = state.offset_size;
+    } else if (query_buffer.buffer_size_ != nullptr)
       *query_buffer.buffer_size_ = state.data_size;
   }
 
