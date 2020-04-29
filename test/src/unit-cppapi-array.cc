@@ -184,31 +184,13 @@ TEST_CASE_METHOD(CPPArrayFx, "C++ API: Arrays", "[cppapi][basic]") {
 
       Array array(ctx, "cpp_unit_array", TILEDB_READ);
 
-      auto buff_el = array.max_buffer_elements(subarray);
-
-      CHECK(buff_el.count("a1"));
-      CHECK(buff_el.count("a2"));
-      CHECK(buff_el.count("a3"));
-      CHECK(buff_el.count("a4"));
-      CHECK(buff_el.count("a5"));
-      CHECK(buff_el["a1"].first == 0);
-      CHECK(buff_el["a1"].second >= 2);
-      CHECK(buff_el["a2"].first == 2);
-      CHECK(buff_el["a2"].second >= 7);
-      CHECK(buff_el["a3"].first == 0);
-      CHECK(buff_el["a3"].second >= 4);
-      CHECK(buff_el["a4"].first == 2);
-      CHECK(buff_el["a4"].second >= 3);
-      CHECK(buff_el["a5"].first == 0);
-      CHECK(buff_el["a5"].second >= 2);
-
-      a1.resize(buff_el["a1"].second);
-      a2buf.first.resize(buff_el["a2"].first);
-      a2buf.second.resize(buff_el["a2"].second);
-      a1.resize(buff_el["a3"].second);
-      a4buf.first.resize(buff_el["a4"].first);
-      a4buf.second.resize(buff_el["a4"].second);
-      a1.resize(buff_el["a5"].second);
+      a1.resize(2);
+      a2buf.first.resize(2);
+      a2buf.second.resize(57);
+      a1.resize(32);
+      a4buf.first.resize(2);
+      a4buf.second.resize(122);
+      a1.resize(48);
 
       Query query(ctx, array);
 

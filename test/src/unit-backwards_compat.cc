@@ -119,11 +119,10 @@ TEST_CASE(
   std::string array_uri(arrays_dir + "/non_split_coords_v1_4_0");
   Array array(ctx, array_uri, TILEDB_READ);
   std::vector<int> subarray = {1, 4, 10, 10};
-  auto max_el = array.max_buffer_elements(subarray);
   std::vector<int> a_read;
-  a_read.resize(max_el["a"].second);
+  a_read.resize(4);
   std::vector<int> coords_read;
-  coords_read.resize(max_el[TILEDB_COORDS].second);
+  coords_read.resize(8);
 
   Query query_r(ctx, array);
   query_r.set_subarray(subarray)

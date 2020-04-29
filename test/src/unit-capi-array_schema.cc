@@ -1868,7 +1868,7 @@ TEST_CASE_METHOD(
   REQUIRE(rc == TILEDB_OK);
   CHECK(type == TILEDB_INT32);
 
-  // Get non-empty domain and max buffer size should error out
+  // Get non-empty domain should error out
   tiledb_array_t* array;
   rc = tiledb_array_alloc(ctx_, array_name.c_str(), &array);
   REQUIRE(rc == TILEDB_OK);
@@ -1878,13 +1878,7 @@ TEST_CASE_METHOD(
   int is_empty = false;
   rc = tiledb_array_get_non_empty_domain_wrapper(ctx_, array, dom, &is_empty);
   REQUIRE(rc == TILEDB_ERR);
-  uint64_t size, size_var;
   void* subarray = nullptr;
-  rc = tiledb_array_max_buffer_size(ctx_, array, "d1", subarray, &size);
-  REQUIRE(rc == TILEDB_ERR);
-  rc = tiledb_array_max_buffer_size_var(
-      ctx_, array, "d1", subarray, &size, &size_var);
-  REQUIRE(rc == TILEDB_ERR);
 
   // Get non-empty domain per dimension
   dom = nullptr;
@@ -1910,6 +1904,7 @@ TEST_CASE_METHOD(
   rc = tiledb_query_set_subarray(ctx_, query, subarray);
   REQUIRE(rc == TILEDB_ERR);
   void* buff = nullptr;
+  uint64_t size = 1024;
   rc = tiledb_query_set_buffer(ctx_, query, TILEDB_COORDS, buff, &size);
   REQUIRE(rc == TILEDB_ERR);
 

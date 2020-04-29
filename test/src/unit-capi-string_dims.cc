@@ -1678,12 +1678,8 @@ TEST_CASE_METHOD(
   // Get non-empty domain and array max buffer sizes
   int32_t dom[4];
   int32_t is_empty;
-  uint64_t size;
+  uint64_t size = 1024;
   rc = tiledb_array_get_non_empty_domain(ctx_, array, dom, &is_empty);
-  CHECK(rc == TILEDB_ERR);
-  rc = tiledb_array_max_buffer_size(ctx_, array, "a", dom, &size);
-  CHECK(rc == TILEDB_ERR);
-  rc = tiledb_array_max_buffer_size_var(ctx_, array, "a", dom, &size, &size);
   CHECK(rc == TILEDB_ERR);
 
   // Set subarray and buffer
