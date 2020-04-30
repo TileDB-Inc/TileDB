@@ -462,7 +462,7 @@ Status Consolidator::consolidate_fragment_meta(
     return array.close();
 
   // Write number of fragments
-  buff.write(&fragment_num, sizeof(uint32_t));
+  RETURN_NOT_OK(buff.write(&fragment_num, sizeof(uint32_t)));
 
   // Calculate offset of first fragment footer
   uint64_t offset = sizeof(uint32_t);  // Fragment num
@@ -492,9 +492,9 @@ Status Consolidator::consolidate_fragment_meta(
     // Write name size and name
     auto name = m->fragment_uri().to_string();
     auto name_size = (uint64_t)name.size();
-    buff.write(&name_size, sizeof(uint64_t));
-    buff.write(name.c_str(), name_size);
-    buff.write(&offset, sizeof(uint64_t));
+    RETURN_NOT_OK(buff.write(&name_size, sizeof(uint64_t)));
+    RETURN_NOT_OK(buff.write(name.c_str(), name_size));
+    RETURN_NOT_OK(buff.write(&offset, sizeof(uint64_t)));
     RETURN_NOT_OK(m->get_footer_size(meta_version, &footer_size));
     offset += footer_size;
   }
@@ -510,7 +510,7 @@ Status Consolidator::consolidate_fragment_meta(
 
   // Combine serialized fragment metadata footers into a single buffer
   for (const auto& b : buffs)
-    buff.write(b.data(), b.size());
+    RETURN_NOT_OK(buff.write(b.data(), b.size()));
 
   // Close array
   RETURN_NOT_OK(array.close());
