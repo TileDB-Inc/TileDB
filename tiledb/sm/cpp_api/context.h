@@ -103,6 +103,26 @@ class Context {
     set_tag("x-tiledb-api-language", "c++");
   }
 
+  /**
+   * Constructor. Creates a TileDB context from the given pointer.
+   * @param own=true If false, disables underlying cleanup upon destruction.
+   * @throws TileDBError if construction fails
+   */
+  Context(tiledb_ctx_t* ctx, bool own = true) {
+    if (ctx == nullptr)
+      throw TileDBError(
+          "[TileDB::C++API] Error: Failed to create Context from pointer");
+
+    ctx_ = std::shared_ptr<tiledb_ctx_t>(ctx, [own](tiledb_ctx_t* p) {
+      if (own) {
+        Context::free(p);
+      }
+    });
+
+    error_handler_ = default_error_handler;
+
+    set_tag("x-tiledb-api-language", "c++");
+  }
   /* ********************************* */
   /*                API                */
   /* ********************************* */
