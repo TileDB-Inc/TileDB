@@ -2,6 +2,24 @@
 
 ## Disk Format
 
+## Breaking C API changes
+
+## Breaking behavior
+
+## New features
+
+## Improvements
+
+## Deprecations
+
+## Bug fixes
+
+## API additions
+
+# TileDB v2.0.0 Release Notes
+
+## Disk Format
+
 * Removed file `__coords.tdb` that stored the zipped coordinates in sparse fragments
 * Now storing the coordinate tiles on each dimension in separate files
 * Changed fragment name format from `__t1_t2_uuid` to `__t1_t2_uuid_<format_version>`. That was necessary for backwards compatibility
@@ -63,6 +81,7 @@
 * Added C++ API functions `Array::non_empty_domain_var` (from index and name).
 * Added C++ API function `add_range` with string inputs.
 * Added C++ API function `range` with string outputs.
+* Added C++ API functions `Array` and `Context` constructors which take a c_api object to wrap. [#1623](https://github.com/TileDB-Inc/TileDB/pull/1623)
 
 ## API removals
 
