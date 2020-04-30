@@ -284,6 +284,32 @@ class Array {
             timestamp) {
   }
 
+  /**
+   * Constructor. Creates a TileDB Array instance wrapping the given pointer.
+   * @param ctx tiledb::Context
+   * @param own=true If false, disables underlying cleanup upon destruction.
+   * @throws TileDBError if construction fails
+   */
+  Array(const Context& ctx, tiledb_array_t* carray, bool own = true)
+      : ctx_(ctx)
+      , schema_(ArraySchema(ctx, (tiledb_array_schema_t*)nullptr)) {
+    if (carray == nullptr)
+      throw TileDBError(
+          "[TileDB::C++API] Error: Failed to create Array from null pointer");
+
+    tiledb_ctx_t* c_ctx = ctx.ptr().get();
+
+    tiledb_array_schema_t* array_schema;
+    ctx.handle_error(tiledb_array_get_schema(c_ctx, carray, &array_schema));
+    schema_ = ArraySchema(ctx, array_schema);
+
+    array_ = std::shared_ptr<tiledb_array_t>(carray, [own](tiledb_array_t* p) {
+      if (own) {
+        tiledb_array_free(&p);
+      }
+    });
+  }
+
   Array(const Array&) = default;
   Array(Array&&) = default;
   Array& operator=(const Array&) = default;
