@@ -99,12 +99,11 @@ void read_array() {
   const std::vector<int> subarray = {1, 2, 2, 4};
 
   // Prepare the vectors that will hold the result
-  auto max_el_map = array.max_buffer_elements(subarray);
-  std::vector<uint64_t> a1_off(max_el_map["a1"].first);
+  std::vector<uint64_t> a1_off(12);
   std::string a1_data;
-  a1_data.resize(max_el_map["a1"].second);
-  std::vector<uint64_t> a2_off(max_el_map["a2"].first);
-  std::vector<int> a2_data(max_el_map["a2"].second);
+  a1_data.resize(9);
+  std::vector<uint64_t> a2_off(12);
+  std::vector<int> a2_data(32);
 
   // Prepare and submit the query, and close the array
   Query query(ctx, array);

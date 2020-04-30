@@ -90,9 +90,8 @@ void read_array() {
   // Prepare the vector that will hold the result.
   // We take an upper bound on the result size, as we do not
   // know a priori how big it is (since the array is sparse)
-  auto max_el = array.max_buffer_elements(subarray);
-  std::vector<int> data(max_el["a"].second);
-  std::vector<int> coords(max_el[TILEDB_COORDS].second);
+  std::vector<int> data(3);
+  std::vector<int> coords(6);
 
   // Prepare the query
   Query query(ctx, array, TILEDB_READ);

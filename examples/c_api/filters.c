@@ -163,12 +163,9 @@ void read_array() {
   // Slice only rows 1, 2 and cols 2, 3, 4
   int subarray[] = {1, 2, 2, 4};
 
-  // Calculate maximum buffer sizes
-  uint64_t coords_size;
-  uint64_t data_size;
-  tiledb_array_max_buffer_size(ctx, array, "a1", subarray, &data_size);
-  tiledb_array_max_buffer_size(
-      ctx, array, TILEDB_COORDS, subarray, &coords_size);
+  // Set maximum buffer sizes
+  uint64_t coords_size = 24;
+  uint64_t data_size = 12;
 
   // Prepare the vector that will hold the result
   int* coords = (int*)malloc(coords_size);
