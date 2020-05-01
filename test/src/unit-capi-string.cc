@@ -242,17 +242,11 @@ void StringFx::read_array(const std::string& array_name) {
 
   // Compute max buffer sizes
   uint64_t subarray[] = {1, 4};
-  uint64_t buffer_a1_size, buffer_a2_off_size, buffer_a2_val_size,
-      buffer_a3_off_size, buffer_a3_val_size;
-  rc =
-      tiledb_array_max_buffer_size(ctx, array, "a1", subarray, &buffer_a1_size);
-  CHECK(rc == TILEDB_OK);
-  rc = tiledb_array_max_buffer_size_var(
-      ctx, array, "a2", subarray, &buffer_a2_off_size, &buffer_a2_val_size);
-  CHECK(rc == TILEDB_OK);
-  rc = tiledb_array_max_buffer_size_var(
-      ctx, array, "a3", subarray, &buffer_a3_off_size, &buffer_a3_val_size);
-  CHECK(rc == TILEDB_OK);
+  uint64_t buffer_a1_size = 1024;
+  uint64_t buffer_a2_off_size = 1024;
+  uint64_t buffer_a2_val_size = 1024;
+  uint64_t buffer_a3_off_size = 1024;
+  uint64_t buffer_a3_val_size = 1024;
 
   // Prepare cell buffers
   void* buffer_a1 = std::malloc(buffer_a1_size);
@@ -297,11 +291,6 @@ void StringFx::read_array(const std::string& array_name) {
   REQUIRE(rc == TILEDB_OK);
 
   // Check results
-  CHECK(buffer_a1_size == sizeof(UTF8_STRINGS) - UTF8_NULL_SIZE);
-  CHECK(buffer_a2_off_size == 4 * sizeof(uint64_t));
-  CHECK(buffer_a2_val_size == sizeof(UTF8_STRINGS_VAR) - UTF8_NULL_SIZE);
-  CHECK(buffer_a3_off_size == 4 * sizeof(uint64_t));
-  CHECK(buffer_a3_val_size == sizeof(UTF16_STRINGS_VAR) - UTF16_NULL_SIZE);
   CHECK(!std::memcmp(
       buffer_a1, UTF8_STRINGS, sizeof(UTF8_STRINGS) - UTF8_NULL_SIZE));
   CHECK(!std::memcmp(

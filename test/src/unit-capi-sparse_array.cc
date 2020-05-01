@@ -501,12 +501,7 @@ int* SparseArrayFx::read_sparse_array_2D(
   }
 
   // Prepare the buffers that will store the result
-  uint64_t buffer_size;
-  int64_t s[] = {domain_0_lo, domain_0_hi, domain_1_lo, domain_1_hi};
-  rc = tiledb_array_max_buffer_size(
-      ctx_, array, ATTR_NAME.c_str(), s, &buffer_size);
-
-  CHECK(rc == TILEDB_OK);
+  uint64_t buffer_size = 100 * 1024 * 1024;
   auto buffer = new int[buffer_size / sizeof(int)];
   REQUIRE(buffer != nullptr);
 
@@ -2156,11 +2151,7 @@ void SparseArrayFx::check_sparse_array_no_results(
   CHECK(rc == TILEDB_OK);
 
   // Prepare the buffers that will store the result
-  uint64_t buffer_size;
-  uint64_t s[] = {1, 2, 1, 2};
-  rc = tiledb_array_max_buffer_size(ctx_, array, "a1", s, &buffer_size);
-  CHECK(rc == TILEDB_OK);
-
+  uint64_t buffer_size = 0;
   auto buffer = new int[buffer_size / sizeof(int)];
   REQUIRE(buffer != nullptr);
 
@@ -2891,18 +2882,11 @@ TEST_CASE_METHOD(
   CHECK(rc == TILEDB_OK);
 
   // Get max buffer sizes for empty query
-  uint64_t s[] = {1, 1, 3, 3};
-  uint64_t a1_size, a2_off_size, a2_size, a3_size, coords_size;
-  rc = tiledb_array_max_buffer_size(ctx_, array, "a1", s, &a1_size);
-  CHECK(rc == TILEDB_OK);
-  rc = tiledb_array_max_buffer_size_var(
-      ctx_, array, "a2", s, &a2_off_size, &a2_size);
-  CHECK(rc == TILEDB_OK);
-  rc = tiledb_array_max_buffer_size(ctx_, array, "a3", s, &a3_size);
-  CHECK(rc == TILEDB_OK);
-  rc =
-      tiledb_array_max_buffer_size(ctx_, array, TILEDB_COORDS, s, &coords_size);
-  CHECK(rc == TILEDB_OK);
+  uint64_t a1_size = 4;
+  uint64_t a2_off_size = 16;
+  uint64_t a2_size = 7;
+  uint64_t a3_size = 8;
+  uint64_t coords_size = 16;
 
   // Set attribute buffers
   auto a1 = (int*)malloc(a1_size);
@@ -2952,18 +2936,12 @@ TEST_CASE_METHOD(
   rc = tiledb_query_alloc(ctx, array, TILEDB_READ, &query);
   CHECK(rc == TILEDB_OK);
 
-  // Get max buffer sizes for non-empty query
-  uint64_t subarray_2[] = {1, 1, 1, 2};
-  rc = tiledb_array_max_buffer_size(ctx_, array, "a1", subarray_2, &a1_size);
-  CHECK(rc == TILEDB_OK);
-  rc = tiledb_array_max_buffer_size_var(
-      ctx_, array, "a2", subarray_2, &a2_off_size, &a2_size);
-  CHECK(rc == TILEDB_OK);
-  rc = tiledb_array_max_buffer_size(ctx_, array, "a3", subarray_2, &a3_size);
-  CHECK(rc == TILEDB_OK);
-  rc = tiledb_array_max_buffer_size(
-      ctx_, array, TILEDB_COORDS, subarray_2, &coords_size);
-  CHECK(rc == TILEDB_OK);
+  // Set max buffer sizes for non-empty query
+  a1_size = 8;
+  a2_off_size = 16;
+  a2_size = 3;
+  a3_size = 16;
+  coords_size = 32;
 
   // Set attribute buffers
   a1 = (int*)malloc(a1_size);
