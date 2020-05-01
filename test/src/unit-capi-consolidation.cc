@@ -2240,17 +2240,10 @@ void ConsolidationFx::read_dense_full_subarray_unordered() {
 
   // Compute max buffer sizes
   uint64_t subarray[] = {1, 4, 1, 4};
-  uint64_t buffer_a1_size, buffer_a2_off_size, buffer_a2_val_size,
-      buffer_a3_size;
-  rc = tiledb_array_max_buffer_size(
-      ctx_, array, "a1", subarray, &buffer_a1_size);
-  CHECK(rc == TILEDB_OK);
-  rc = tiledb_array_max_buffer_size_var(
-      ctx_, array, "a2", subarray, &buffer_a2_off_size, &buffer_a2_val_size);
-  CHECK(rc == TILEDB_OK);
-  rc = tiledb_array_max_buffer_size(
-      ctx_, array, "a3", subarray, &buffer_a3_size);
-  CHECK(rc == TILEDB_OK);
+  uint64_t buffer_a1_size = 64;
+  uint64_t buffer_a2_off_size = 128;
+  uint64_t buffer_a2_val_size = 114;
+  uint64_t buffer_a3_size = 128;
 
   // Prepare cell buffers
   auto buffer_a1 = (int*)malloc(buffer_a1_size);
@@ -2352,17 +2345,10 @@ void ConsolidationFx::read_dense_subarray_full_unordered() {
 
   // Compute max buffer sizes
   uint64_t subarray[] = {1, 4, 1, 4};
-  uint64_t buffer_a1_size, buffer_a2_off_size, buffer_a2_val_size,
-      buffer_a3_size;
-  rc = tiledb_array_max_buffer_size(
-      ctx_, array, "a1", subarray, &buffer_a1_size);
-  CHECK(rc == TILEDB_OK);
-  rc = tiledb_array_max_buffer_size_var(
-      ctx_, array, "a2", subarray, &buffer_a2_off_size, &buffer_a2_val_size);
-  CHECK(rc == TILEDB_OK);
-  rc = tiledb_array_max_buffer_size(
-      ctx_, array, "a3", subarray, &buffer_a3_size);
-  CHECK(rc == TILEDB_OK);
+  uint64_t buffer_a1_size = 64;
+  uint64_t buffer_a2_off_size = 128;
+  uint64_t buffer_a2_val_size = 114;
+  uint64_t buffer_a3_size = 128;
 
   // Prepare cell buffers
   auto buffer_a1 = (int*)malloc(buffer_a1_size);
@@ -2455,17 +2441,10 @@ void ConsolidationFx::read_dense_subarray_unordered_full() {
 
   // Compute max buffer sizes
   uint64_t subarray[] = {1, 4, 1, 4};
-  uint64_t buffer_a1_size, buffer_a2_off_size, buffer_a2_val_size,
-      buffer_a3_size;
-  rc = tiledb_array_max_buffer_size(
-      ctx_, array, "a1", subarray, &buffer_a1_size);
-  CHECK(rc == TILEDB_OK);
-  rc = tiledb_array_max_buffer_size_var(
-      ctx_, array, "a2", subarray, &buffer_a2_off_size, &buffer_a2_val_size);
-  CHECK(rc == TILEDB_OK);
-  rc = tiledb_array_max_buffer_size(
-      ctx_, array, "a3", subarray, &buffer_a3_size);
-  CHECK(rc == TILEDB_OK);
+  uint64_t buffer_a1_size = 64;
+  uint64_t buffer_a2_off_size = 128;
+  uint64_t buffer_a2_val_size = 114;
+  uint64_t buffer_a3_size = 128;
 
   // Prepare cell buffers
   auto buffer_a1 = (int*)malloc(buffer_a1_size);
@@ -2551,21 +2530,11 @@ void ConsolidationFx::read_sparse_full_unordered() {
   REQUIRE(rc == TILEDB_OK);
 
   // Compute max buffer sizes
-  uint64_t subarray[] = {1, 4, 1, 4};
-  uint64_t buffer_a1_size, buffer_a2_off_size, buffer_a2_val_size,
-      buffer_a3_size, buffer_coords_size;
-  rc = tiledb_array_max_buffer_size(
-      ctx_, array, "a1", subarray, &buffer_a1_size);
-  CHECK(rc == TILEDB_OK);
-  rc = tiledb_array_max_buffer_size_var(
-      ctx_, array, "a2", subarray, &buffer_a2_off_size, &buffer_a2_val_size);
-  CHECK(rc == TILEDB_OK);
-  rc = tiledb_array_max_buffer_size(
-      ctx_, array, "a3", subarray, &buffer_a3_size);
-  CHECK(rc == TILEDB_OK);
-  rc = tiledb_array_max_buffer_size(
-      ctx_, array, TILEDB_COORDS, subarray, &buffer_coords_size);
-  CHECK(rc == TILEDB_OK);
+  uint64_t buffer_a1_size = 64;
+  uint64_t buffer_a2_off_size = 176;
+  uint64_t buffer_a2_val_size = 51;
+  uint64_t buffer_a3_size = 128;
+  uint64_t buffer_coords_size = 256;
 
   // Prepare cell buffers
   auto buffer_a1 = (int*)malloc(buffer_a1_size);
@@ -2655,21 +2624,11 @@ void ConsolidationFx::read_sparse_unordered_full() {
   REQUIRE(rc == TILEDB_OK);
 
   // Compute max buffer sizes
-  uint64_t subarray[] = {1, 4, 1, 4};
-  uint64_t buffer_a1_size, buffer_a2_off_size, buffer_a2_val_size,
-      buffer_a3_size, buffer_coords_size;
-  rc = tiledb_array_max_buffer_size(
-      ctx_, array, "a1", subarray, &buffer_a1_size);
-  CHECK(rc == TILEDB_OK);
-  rc = tiledb_array_max_buffer_size_var(
-      ctx_, array, "a2", subarray, &buffer_a2_off_size, &buffer_a2_val_size);
-  CHECK(rc == TILEDB_OK);
-  rc = tiledb_array_max_buffer_size(
-      ctx_, array, "a3", subarray, &buffer_a3_size);
-  CHECK(rc == TILEDB_OK);
-  rc = tiledb_array_max_buffer_size(
-      ctx_, array, TILEDB_COORDS, subarray, &buffer_coords_size);
-  CHECK(rc == TILEDB_OK);
+  uint64_t buffer_a1_size = 64;
+  uint64_t buffer_a2_off_size = 176;
+  uint64_t buffer_a2_val_size = 54;
+  uint64_t buffer_a3_size = 128;
+  uint64_t buffer_coords_size = 256;
 
   // Prepare cell buffers
   auto buffer_a1 = (int*)malloc(buffer_a1_size);

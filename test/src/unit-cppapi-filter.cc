@@ -191,11 +191,10 @@ TEST_CASE("C++ API: Filter lists on array", "[cppapi], [filter]") {
   // Sanity check reading
   array.open(TILEDB_READ);
   std::vector<int> subarray = {0, 10, 0, 10};
-  auto buff_el = array.max_buffer_elements(subarray);
-  std::vector<int> a1_read(buff_el["a1"].second);
-  std::vector<uint64_t> a2_read_off(buff_el["a2"].first);
+  std::vector<int> a1_read(2);
+  std::vector<uint64_t> a2_read_off(2);
   std::string a2_read_data;
-  a2_read_data.resize(buff_el["a2"].second);
+  a2_read_data.resize(7);
   Query query_r(ctx, array);
   query_r.set_subarray(subarray)
       .set_layout(TILEDB_ROW_MAJOR)

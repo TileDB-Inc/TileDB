@@ -95,11 +95,10 @@ TEST_CASE(
   Query query(ctx, array);
 
   std::vector<int> subarray = {rowmin, rowmax, colmin, colmax};
-  auto buff_el = array.max_buffer_elements(subarray);
   std::vector<uint64_t> r_offsets_a1;
-  r_offsets_a1.resize(buff_el["a1"].first);
+  r_offsets_a1.resize(100);
   std::vector<int> r_data_a1;
-  r_data_a1.resize(buff_el["a1"].second);
+  r_data_a1.resize(300);
 
   query.set_subarray(subarray)
       .set_layout(TILEDB_ROW_MAJOR)

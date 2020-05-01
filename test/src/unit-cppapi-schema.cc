@@ -222,11 +222,9 @@ TEST_CASE(
   // Open array
   Array array(ctx, "sparse_array", TILEDB_READ);
 
-  // Get non-empty domain and max buffer elements should error out
+  // Get non-empty domain should error out
   CHECK_THROWS(array.non_empty_domain<int32_t>());
   std::vector<int32_t> subarray = {1, 2, 1, 3};
-  CHECK_THROWS(array.max_buffer_elements(subarray));
-  CHECK_THROWS(array.max_buffer_elements(subarray));
 
   // Query checks
   Query query(ctx, array, TILEDB_READ);
