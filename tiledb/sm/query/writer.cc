@@ -2624,11 +2624,6 @@ void Writer::clean_up(const URI& uri) {
 }
 
 Status Writer::set_coords_buffer(void* buffer, uint64_t* buffer_size) {
-  // Error if setting non-existing coordinates after initialization
-  if (initialized_ && has_coords_)
-    return LOG_STATUS(Status::WriterError(
-        std::string("Cannot set coordinates after initialization")));
-
   if (coord_buffer_is_set_)
     return LOG_STATUS(Status::WriterError(
         std::string("Cannot set zipped coordinates buffer after having set "
