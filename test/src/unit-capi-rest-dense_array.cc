@@ -1418,26 +1418,11 @@ TEST_CASE_METHOD(
   REQUIRE(tiledb_array_open(ctx_, array, TILEDB_READ) == TILEDB_OK);
 
   uint64_t subarray[] = {1, 4, 1, 4};
-  uint64_t buffer_a1_size, buffer_a2_off_size, buffer_a2_val_size,
-      buffer_a3_size, buffer_coords_size;
-  REQUIRE(
-      tiledb_array_max_buffer_size(
-          ctx_, array, "a1", subarray, &buffer_a1_size) == TILEDB_OK);
-  REQUIRE(
-      tiledb_array_max_buffer_size_var(
-          ctx_,
-          array,
-          "a2",
-          subarray,
-          &buffer_a2_off_size,
-          &buffer_a2_val_size) == TILEDB_OK);
-  REQUIRE(
-      tiledb_array_max_buffer_size(
-          ctx_, array, "a3", subarray, &buffer_a3_size) == TILEDB_OK);
-  REQUIRE(
-      tiledb_array_max_buffer_size(
-          ctx_, array, TILEDB_COORDS, subarray, &buffer_coords_size) ==
-      TILEDB_OK);
+  uint64_t buffer_a1_size = 1024;
+  uint64_t buffer_a2_off_size = 1024;
+  uint64_t buffer_a2_val_size = 1024;
+  uint64_t buffer_a3_size = 1024;
+  uint64_t buffer_coords_size = 1024;
 
   auto buffer_a1 = (int*)malloc(buffer_a1_size);
   auto buffer_a2_off = (uint64_t*)malloc(buffer_a2_off_size);
@@ -2199,17 +2184,6 @@ TEST_CASE_METHOD(
   CHECK(rc == TILEDB_OK);
   rc = tiledb_array_open(ctx_, array, TILEDB_READ);
   CHECK(rc == TILEDB_OK);
-  std::array<uint64_t, 4> subarray_check{1, 4, 1, 4};
-  uint64_t buff_size = 0;
-  REQUIRE(
-      tiledb_array_max_buffer_size(
-          ctx_, array, "a1", subarray_check.data(), &buff_size) == TILEDB_OK);
-  REQUIRE(buff_size == 0);
-  REQUIRE(
-      tiledb_array_max_buffer_size(
-          ctx_, array, TILEDB_COORDS, subarray_check.data(), &buff_size) ==
-      TILEDB_OK);
-  REQUIRE(buff_size == 0);
   REQUIRE(tiledb_array_close(ctx_, array) == TILEDB_OK);
   tiledb_array_free(&array);
 
@@ -2221,64 +2195,6 @@ TEST_CASE_METHOD(
   CHECK(rc == TILEDB_OK);
   rc = tiledb_array_open(ctx_, array, TILEDB_READ);
   CHECK(rc == TILEDB_OK);
-  subarray_check = {1, 4, 1, 4};
-  uint64_t num_cells = (subarray_check[1] - subarray_check[0] + 1) *
-                       (subarray_check[3] - subarray_check[2] + 1);
-  REQUIRE(
-      tiledb_array_max_buffer_size(
-          ctx_, array, "a1", subarray_check.data(), &buff_size) == TILEDB_OK);
-  REQUIRE(buff_size == num_cells * sizeof(int32_t));
-  REQUIRE(
-      tiledb_array_max_buffer_size(
-          ctx_, array, "a2", subarray_check.data(), &buff_size) == TILEDB_ERR);
-  uint64_t buff_off_size = 0;
-  REQUIRE(
-      tiledb_array_max_buffer_size_var(
-          ctx_,
-          array,
-          "a2",
-          subarray_check.data(),
-          &buff_off_size,
-          &buff_size) == TILEDB_OK);
-  REQUIRE(buff_off_size == num_cells * sizeof(uint64_t));
-  REQUIRE(buff_size == 56);
-  REQUIRE(
-      tiledb_array_max_buffer_size(
-          ctx_, array, "a3", subarray_check.data(), &buff_size) == TILEDB_OK);
-  REQUIRE(buff_size == num_cells * 2 * sizeof(float));
-  REQUIRE(
-      tiledb_array_max_buffer_size(
-          ctx_, array, TILEDB_COORDS, subarray_check.data(), &buff_size) ==
-      TILEDB_OK);
-  REQUIRE(buff_size == num_cells * 2 * sizeof(uint64_t));
-
-  // Check again with different subarray
-  subarray_check = {2, 3, 2, 3};
-  num_cells = (subarray_check[1] - subarray_check[0] + 1) *
-              (subarray_check[3] - subarray_check[2] + 1);
-  REQUIRE(
-      tiledb_array_max_buffer_size(
-          ctx_, array, "a1", subarray_check.data(), &buff_size) == TILEDB_OK);
-  REQUIRE(buff_size == num_cells * sizeof(int32_t));
-  REQUIRE(
-      tiledb_array_max_buffer_size_var(
-          ctx_,
-          array,
-          "a2",
-          subarray_check.data(),
-          &buff_off_size,
-          &buff_size) == TILEDB_OK);
-  REQUIRE(buff_off_size == num_cells * sizeof(uint64_t));
-  REQUIRE(buff_size == 44);
-  REQUIRE(
-      tiledb_array_max_buffer_size(
-          ctx_, array, "a3", subarray_check.data(), &buff_size) == TILEDB_OK);
-  REQUIRE(buff_size == num_cells * 2 * sizeof(float));
-  REQUIRE(
-      tiledb_array_max_buffer_size(
-          ctx_, array, TILEDB_COORDS, subarray_check.data(), &buff_size) ==
-      TILEDB_OK);
-  REQUIRE(buff_size == num_cells * 2 * sizeof(uint64_t));
 
   // Clean up
   REQUIRE(tiledb_array_close(ctx_, array) == TILEDB_OK);
