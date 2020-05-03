@@ -2,15 +2,54 @@
 
 [![Azure Pipelines](https://dev.azure.com/TileDB-Inc/CI/_apis/build/status/TileDB-Inc.TileDB?branchName=dev)](https://dev.azure.com/TileDB-Inc/CI/_build/latest?definitionId=2&branchName=dev) ![](doc/anaconda.svg)[![Anaconda download count badge](https://anaconda.org/conda-forge/TileDB/badges/downloads.svg)](https://anaconda.org/conda-forge/TileDB)
 
-# The Fastest Array Storage Engine
+# The Storage Engine for Data Science
 
-TileDB allows you to store and access very large multi-dimensional array data, the data currency of Data Science. It is a powerful storage engine that introduces a novel format that can effectively store both **dense** and **sparse** array data with support for fast updates and reads. It is cloud-optimized and features excellent **compression** and an efficient parallel I/O system for **high scalability**. TileDB works on Linux, macOS, and Windows, and is open-sourced under the permissive MIT License.
+TileDB is a powerful engine for storing and accessing **dense and sparse multi-dimensional arrays**. It is an embeddable C++ library that works on Linux, macOS, and Windows. It is open-sourced under the permissive MIT License.
 
-## Quick Links
+TileDB includes the following features:
 
-- Installation: https://docs.tiledb.com/developer/installation/quick-install
-- Quickstart: https://docs.tiledb.com/developer/quickstart
-- Full developer documentation for all APIs and integrations: https://docs.tiledb.com/developer
+* Support for both **dense** and **sparse arrays**
+* Support for **dataframes** and **key-value stores** (via sparse arrays)
+* **Cloud storage** (AWS S3, Google Cloud Storage, Azure Blob Storage)
+* **Chunked** (tiled) arrays
+* Multiple **compression**, **encryption** and **checksum** filters
+* Fully **multi-threaded** implementation
+* **Parallel IO**
+* **Data versioning** (rapid updates, time traveling)
+* Array **metadata**
+* Array **groups**
+* Numerous **APIs** on top of the C++ library
+* Numerous **integrations** (Spark, Dask, MariaDB, GDAL, etc.)
+ 
+You can use TileDB to store data in a variety of applications, such as Genomics, Geospatial, Finance and more. The power of TileDB stems from the fact that any data can be modeled efficiently as either a dense or a sparse multi-dimensional array, which is the format used internally by most data science tooling. By storing your data and metadata in TileDB arrays, you abstract all the data storage and management pains, while efficiently accessing the data with your favorite data science tool.
+
+## Documentation
+
+You can find the detailed TileDB documentation at [https://docs.tiledb.com](https://docs.tiledb.com).
+
+## Format Specification
+
+The TileDB data format is open-source and can be found [here](format_spec/FORMAT_SPEC.md).
+
+## APIs
+
+The TileDB team maintains a variety of APIs built on top of the C++ library:
+
+* [Python](https://github.com/TileDB-Inc/TileDB-Py)
+* [R](https://github.com/TileDB-Inc/TileDB-R)
+* [Java](https://github.com/TileDB-Inc/TileDB-Java)
+* [Go](https://github.com/TileDB-Inc/TileDB-Go)
+
+## Integrations
+
+TileDB is also integrated with several popular databases and data science tools:
+
+* [Spark](https://docs.tiledb.com/spark/)
+* [Dask](https://docs.tiledb.com/dask/)
+* [MariaDB](https://docs.tiledb.com/mariadb/)
+* [PrestoDB](https://docs.tiledb.com/prestodb/)
+* [Geospatial](https://docs.tiledb.com/geospatial/) (GDAL, PDAL, Rasterio)
+* [Genomics](https://docs.tiledb.com/genomics/) (gVCF)
 
 ## Get involved
 
