@@ -167,8 +167,9 @@ void write_array_3() {
   tiledb_array_open(ctx, array, TILEDB_WRITE);
 
   // Prepare some data for the array
-  int coords[] = {1, 1, 3, 4};
-  uint64_t coords_size = sizeof(coords);
+  int coords_rows[] = {1, 3};
+  int coords_cols[] = {1, 4};
+  uint64_t coords_size = sizeof(coords_rows);
   int data[] = {201, 202};
   uint64_t data_size = sizeof(data);
 
@@ -177,7 +178,8 @@ void write_array_3() {
   tiledb_query_alloc(ctx, array, TILEDB_WRITE, &query);
   tiledb_query_set_layout(ctx, query, TILEDB_UNORDERED);
   tiledb_query_set_buffer(ctx, query, "a", data, &data_size);
-  tiledb_query_set_buffer(ctx, query, TILEDB_COORDS, coords, &coords_size);
+  tiledb_query_set_buffer(ctx, query, "rows", coords_rows, &coords_size);
+  tiledb_query_set_buffer(ctx, query, "cols", coords_cols, &coords_size);
 
   // Submit query
   tiledb_query_submit(ctx, query);
@@ -205,11 +207,12 @@ void read_array() {
   int subarray[] = {1, 4, 1, 4};
 
   // Set maximum buffer sizes
-  uint64_t coords_size = 128;
+  uint64_t coords_size = 64;
   uint64_t data_size = 64;
 
   // Prepare the vectors that will hold the result
-  int coords[32];
+  int coords_rows[16];
+  int coords_cols[16];
   int data[16];
 
   // Create query
@@ -218,7 +221,8 @@ void read_array() {
   tiledb_query_set_subarray(ctx, query, subarray);
   tiledb_query_set_layout(ctx, query, TILEDB_ROW_MAJOR);
   tiledb_query_set_buffer(ctx, query, "a", data, &data_size);
-  tiledb_query_set_buffer(ctx, query, TILEDB_COORDS, coords, &coords_size);
+  tiledb_query_set_buffer(ctx, query, "rows", coords_rows, &coords_size);
+  tiledb_query_set_buffer(ctx, query, "cols", coords_cols, &coords_size);
 
   // Submit query
   tiledb_query_submit(ctx, query);
@@ -229,7 +233,8 @@ void read_array() {
   // Print out the results.
   int result_num = (int)(data_size / sizeof(int));
   for (int r = 0; r < result_num; r++) {
-    int i = coords[2 * r], j = coords[2 * r + 1];
+    int i = coords_rows[r];
+    int j = coords_cols[r];
     int a = data[r];
     printf("Cell (%d, %d) has data %d\n", i, j, a);
   }

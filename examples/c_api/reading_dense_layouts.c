@@ -144,8 +144,9 @@ void read_array(tiledb_layout_t layout) {
   int subarray[] = {1, 2, 2, 4};
 
   // Prepare the vectors that will hold the results
-  int coords[12];
-  uint64_t coords_size = sizeof(coords);
+  int coords_rows[6];
+  int coords_cols[6];
+  uint64_t coords_size = sizeof(coords_rows);
   int data[6];
   uint64_t data_size = sizeof(data);
 
@@ -155,7 +156,8 @@ void read_array(tiledb_layout_t layout) {
   tiledb_query_set_subarray(ctx, query, subarray);
   tiledb_query_set_layout(ctx, query, layout);
   tiledb_query_set_buffer(ctx, query, "a", data, &data_size);
-  tiledb_query_set_buffer(ctx, query, TILEDB_COORDS, coords, &coords_size);
+  tiledb_query_set_buffer(ctx, query, "rows", coords_rows, &coords_size);
+  tiledb_query_set_buffer(ctx, query, "cols", coords_cols, &coords_size);
 
   // Submit query
   tiledb_query_submit(ctx, query);
@@ -166,7 +168,8 @@ void read_array(tiledb_layout_t layout) {
   // Print out the results.
   int result_num = (int)(data_size / sizeof(int));
   for (int r = 0; r < result_num; r++) {
-    int i = coords[2 * r], j = coords[2 * r + 1];
+    int i = coords_rows[r];
+    int j = coords_cols[r];
     int a = data[r];
     printf("Cell (%d, %d) has data %d\n", i, j, a);
   }

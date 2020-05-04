@@ -110,14 +110,16 @@ void read_array() {
   // We take an upper bound on the result size, as we do not
   // know a priori how big it is (since the array is sparse)
   std::vector<int> data(3);
-  std::vector<int> coords(6);
+  std::vector<int> coords_rows(3);
+  std::vector<int> coords_cols(3);
 
   // Prepare the query
   Query query(ctx, array);
   query.set_subarray(subarray)
       .set_layout(TILEDB_ROW_MAJOR)
       .set_buffer("a", data)
-      .set_coordinates(coords);
+      .set_buffer("rows", coords_rows)
+      .set_buffer("cols", coords_cols);
 
   // Submit the query and close the array.
   query.submit();
@@ -126,7 +128,8 @@ void read_array() {
   // Print out the results.
   auto result_num = (int)query.result_buffer_elements()["a"].second;
   for (int r = 0; r < result_num; r++) {
-    int i = coords[2 * r], j = coords[2 * r + 1];
+    int i = coords_rows[r];
+    int j = coords_cols[r];
     int a = data[r];
     std::cout << "Cell (" << i << ", " << j << ") has data " << a << "\n";
   }

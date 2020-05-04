@@ -99,8 +99,9 @@ void write_array() {
   tiledb_array_open(ctx, array, TILEDB_WRITE);
 
   // Prepare some data for the array
-  int coords[] = {1, 1, 2, 1, 2, 2, 4, 3};
-  uint64_t coords_size = sizeof(coords);
+  int coords_rows[] = {1, 2, 2, 4};
+  int coords_cols[] = {1, 1, 2, 3};
+  uint64_t coords_size = sizeof(coords_rows);
   int data[] = {1, 2, 3, 4};
   uint64_t data_size = sizeof(data);
 
@@ -109,7 +110,8 @@ void write_array() {
   tiledb_query_alloc(ctx, array, TILEDB_WRITE, &query);
   tiledb_query_set_layout(ctx, query, TILEDB_GLOBAL_ORDER);
   tiledb_query_set_buffer(ctx, query, "a", data, &data_size);
-  tiledb_query_set_buffer(ctx, query, TILEDB_COORDS, coords, &coords_size);
+  tiledb_query_set_buffer(ctx, query, "rows", coords_rows, &coords_size);
+  tiledb_query_set_buffer(ctx, query, "cols", coords_cols, &coords_size);
 
   // Submit query
   char s[100] = "Callback: Write query completed";
@@ -148,11 +150,12 @@ void read_array() {
   int subarray[] = {1, 4, 1, 4};
 
   // Set maximum buffer sizes
-  uint64_t coords_size = 32;
+  uint64_t coords_size = 16;
   uint64_t data_size = 16;
 
   // Prepare the vector that will hold the result
-  int* coords = (int*)malloc(coords_size);
+  int* coords_rows = (int*)malloc(coords_size);
+  int* coords_cols = (int*)malloc(coords_size);
   int* data = (int*)malloc(data_size);
 
   // Create query
@@ -161,7 +164,8 @@ void read_array() {
   tiledb_query_set_subarray(ctx, query, subarray);
   tiledb_query_set_layout(ctx, query, TILEDB_ROW_MAJOR);
   tiledb_query_set_buffer(ctx, query, "a", data, &data_size);
-  tiledb_query_set_buffer(ctx, query, TILEDB_COORDS, coords, &coords_size);
+  tiledb_query_set_buffer(ctx, query, "rows", coords_rows, &coords_size);
+  tiledb_query_set_buffer(ctx, query, "cols", coords_cols, &coords_size);
 
   // Submit query
   char s[100] = "Callback: Read query completed";
@@ -180,13 +184,15 @@ void read_array() {
   // Print out the results.
   int result_num = (int)(data_size / sizeof(int));
   for (int r = 0; r < result_num; r++) {
-    int i = coords[2 * r], j = coords[2 * r + 1];
+    int i = coords_rows[r];
+    int j = coords_cols[r];
     int a = data[r];
     printf("Cell (%d, %d) has data %d\n", i, j, a);
   }
 
   // Clean up
-  free((void*)coords);
+  free((void*)coords_rows);
+  free((void*)coords_cols);
   free((void*)data);
   tiledb_array_free(&array);
   tiledb_query_free(&query);

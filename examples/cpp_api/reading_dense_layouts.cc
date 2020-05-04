@@ -97,14 +97,16 @@ void read_array(tiledb_layout_t layout) {
 
   // Prepare the vectors that will hold the results
   std::vector<int> data(6);
-  std::vector<int> coords(12);
+  std::vector<int> coords_rows(6);
+  std::vector<int> coords_cols(6);
 
   // Prepare the query
   Query query(ctx, array);
   query.set_subarray(subarray)
       .set_layout(layout)
       .set_buffer("a", data)
-      .set_coordinates(coords);
+      .set_buffer("rows", coords_rows)
+      .set_buffer("cols", coords_cols);
 
   // Submit the query and close the array.
   query.submit();
@@ -112,7 +114,8 @@ void read_array(tiledb_layout_t layout) {
 
   // Print out the results.
   for (int r = 0; r < 6; r++) {
-    int i = coords[2 * r], j = coords[2 * r + 1];
+    int i = coords_rows[r];
+    int j = coords_cols[r];
     int a = data[r];
     std::cout << "Cell (" << i << ", " << j << ") has data " << a << "\n";
   }
