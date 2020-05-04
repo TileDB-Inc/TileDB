@@ -98,9 +98,8 @@ void read_array(tiledb_layout_t layout) {
   const std::vector<int> subarray = {1, 2, 2, 4};
 
   // Prepare buffers that will hold the results
-  auto max_el = array.max_buffer_elements(subarray);
-  std::vector<int> data(max_el["a"].second);
-  std::vector<int> coords(max_el[TILEDB_COORDS].second);
+  std::vector<int> data(6);
+  std::vector<int> coords(12);
 
   // Prepare the query
   Query query(ctx, array, TILEDB_READ);

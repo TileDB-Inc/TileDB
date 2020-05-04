@@ -94,9 +94,8 @@ void read_array() {
 
   // Prepare the buffers
   const std::vector<int> subarray = {1, 4, 1, 4};
-  auto max_el = array.max_buffer_elements(subarray);
-  std::vector<int> data(max_el["a"].second);
-  std::vector<int> coords(max_el[TILEDB_COORDS].second);
+  std::vector<int> data(5);
+  std::vector<int> coords(100);
 
   // Prepare the query
   Query query(ctx, array);

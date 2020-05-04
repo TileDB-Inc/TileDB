@@ -147,12 +147,9 @@ void read_array(tiledb_layout_t layout) {
   // Slice only rows 1, 2 and cols 2, 3, 4
   int subarray[] = {1, 2, 2, 4};
 
-  // Calculate maximum buffer sizes
-  uint64_t coords_size;
-  uint64_t data_size;
-  tiledb_array_max_buffer_size(ctx, array, "a", subarray, &data_size);
-  tiledb_array_max_buffer_size(
-      ctx, array, TILEDB_COORDS, subarray, &coords_size);
+  // Set maximum buffer sizes
+  uint64_t coords_size = 48;
+  uint64_t data_size = 24;
 
   // Prepare the vector that will hold the result (6 cells)
   int* coords = (int*)malloc(coords_size);

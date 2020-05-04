@@ -204,12 +204,9 @@ void read_array() {
   // Read entire array
   int subarray[] = {1, 4, 1, 4};
 
-  // Calculate maximum buffer sizes
-  uint64_t coords_size;
-  uint64_t data_size;
-  tiledb_array_max_buffer_size(ctx, array, "a", subarray, &data_size);
-  tiledb_array_max_buffer_size(
-      ctx, array, TILEDB_COORDS, subarray, &coords_size);
+  // Set maximum buffer sizes
+  uint64_t coords_size = 128;
+  uint64_t data_size = 64;
 
   // Prepare the vectors that will hold the result
   int coords[32];

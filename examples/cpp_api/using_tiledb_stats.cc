@@ -76,7 +76,7 @@ void read_array() {
 
   // Read a slice of 3,000 rows.
   std::vector<uint32_t> subarray = {1, 3000, 1, 12000};
-  std::vector<int32_t> values(array.max_buffer_elements(subarray)["a"].second);
+  std::vector<int32_t> values(3000 * 12000);
   query.set_subarray(subarray).set_buffer("a", values);
 
   // Enable the stats for the read query, and print the report.
