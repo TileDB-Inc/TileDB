@@ -63,7 +63,8 @@ void write_array() {
   Context ctx;
 
   // Prepare some data for the array
-  std::vector<int> coords = {1, 1, 2, 1, 2, 2, 4, 3};
+  std::vector<int> coords_rows = {1, 2, 2, 4};
+  std::vector<int> coords_cols = {1, 1, 2, 3};
   std::vector<int> data = {1, 2, 3, 4};
 
   // Open the array for writing and create the query.
@@ -71,7 +72,8 @@ void write_array() {
   Query query(ctx, array);
   query.set_layout(TILEDB_GLOBAL_ORDER)
       .set_buffer("a", data)
-      .set_coordinates(coords);
+      .set_buffer("rows", coords_rows)
+      .set_buffer("cols", coords_cols);
 
   // Submit query asynchronously with callback
   query.submit_async(
@@ -94,14 +96,16 @@ void read_array() {
   Array array(ctx, array_name, TILEDB_READ);
   const std::vector<int> subarray = {1, 4, 1, 4};
   std::vector<int> data(4);
-  std::vector<int> coords(8);
+  std::vector<int> coords_rows(4);
+  std::vector<int> coords_cols(4);
 
   // Prepare the query
   Query query(ctx, array, TILEDB_READ);
   query.set_subarray(subarray)
       .set_layout(TILEDB_ROW_MAJOR)
       .set_buffer("a", data)
-      .set_coordinates(coords);
+      .set_buffer("rows", coords_rows)
+      .set_buffer("cols", coords_cols);
 
   // Submit query asynchronously with callback
   query.submit_async([]() { std::cout << "Callback: Read query completed\n"; });
@@ -116,7 +120,8 @@ void read_array() {
   // Print out the results.
   auto result_num = (int)query.result_buffer_elements()["a"].second;
   for (int r = 0; r < result_num; r++) {
-    int i = coords[2 * r], j = coords[2 * r + 1];
+    int i = coords_rows[r];
+    int j = coords_cols[r];
     int a = data[r];
     std::cout << "Cell (" << i << ", " << j << ") has data " << a << "\n";
   }

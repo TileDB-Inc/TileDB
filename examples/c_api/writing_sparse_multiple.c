@@ -84,29 +84,6 @@ void create_array() {
 }
 
 void write_array() {
-  /* TODO
-  // Open the array for writing
-  Context ctx;
-  Array array(ctx, array_name, TILEDB_WRITE);
-
-  // First write
-  Query query_1(ctx, array);
-  query_1.set_layout(TILEDB_UNORDERED)
-      .set_buffer("a", data_1)
-      .set_coordinates(coords_1);
-  query_1.submit();
-
-  // Second write
-  Query query_2(ctx, array);
-  query_2.set_layout(TILEDB_UNORDERED)
-      .set_buffer("a", data_2)
-      .set_coordinates(coords_2);
-  query_2.submit();
-
-  // Close the array
-  array.close();
-   */
-
   // Create TileDB context
   tiledb_ctx_t* ctx;
   tiledb_ctx_alloc(NULL, &ctx);
@@ -117,8 +94,9 @@ void write_array() {
   tiledb_array_open(ctx, array, TILEDB_WRITE);
 
   // Prepare data of first query
-  int coords_1[] = {1, 1, 2, 4, 2, 3};
-  uint64_t coords_size_1 = sizeof(coords_1);
+  int coords_rows_1[] = {1, 2, 2};
+  int coords_cols_1[] = {1, 4, 3};
+  uint64_t coords_size_1 = sizeof(coords_rows_1);
   int data_1[] = {1, 2, 3};
   uint64_t data_size_1 = sizeof(data_1);
 
@@ -127,15 +105,16 @@ void write_array() {
   tiledb_query_alloc(ctx, array, TILEDB_WRITE, &query_1);
   tiledb_query_set_layout(ctx, query_1, TILEDB_UNORDERED);
   tiledb_query_set_buffer(ctx, query_1, "a", data_1, &data_size_1);
-  tiledb_query_set_buffer(
-      ctx, query_1, TILEDB_COORDS, coords_1, &coords_size_1);
+  tiledb_query_set_buffer(ctx, query_1, "rows", coords_rows_1, &coords_size_1);
+  tiledb_query_set_buffer(ctx, query_1, "cols", coords_cols_1, &coords_size_1);
 
   // Submit the first query
   tiledb_query_submit(ctx, query_1);
 
   // Prepare data of second query
-  int coords_2[] = {4, 1, 2, 4};
-  uint64_t coords_size_2 = sizeof(coords_2);
+  int coords_rows_2[] = {4, 2};
+  int coords_cols_2[] = {1, 4};
+  uint64_t coords_size_2 = sizeof(coords_rows_2);
   int data_2[] = {4, 20};
   uint64_t data_size_2 = sizeof(data_2);
 
@@ -144,8 +123,8 @@ void write_array() {
   tiledb_query_alloc(ctx, array, TILEDB_WRITE, &query_2);
   tiledb_query_set_layout(ctx, query_2, TILEDB_UNORDERED);
   tiledb_query_set_buffer(ctx, query_2, "a", data_2, &data_size_2);
-  tiledb_query_set_buffer(
-      ctx, query_2, TILEDB_COORDS, coords_2, &coords_size_2);
+  tiledb_query_set_buffer(ctx, query_2, "rows", coords_rows_2, &coords_size_2);
+  tiledb_query_set_buffer(ctx, query_2, "cols", coords_cols_2, &coords_size_2);
 
   // Submit the second query
   tiledb_query_submit(ctx, query_2);
@@ -174,14 +153,12 @@ void read_array() {
   int subarray[] = {1, 4, 1, 4};
 
   // Calculate maximum buffer sizes
-  uint64_t coords_size = 40;
+  uint64_t coords_size = 20;
   uint64_t data_size = 20;
-  tiledb_array_max_buffer_size(ctx, array, "a", subarray, &data_size);
-  tiledb_array_max_buffer_size(
-      ctx, array, TILEDB_COORDS, subarray, &coords_size);
 
   // Prepare the vector that will hold the result (6 cells)
-  int* coords = (int*)malloc(coords_size);
+  int* coords_rows = (int*)malloc(coords_size);
+  int* coords_cols = (int*)malloc(coords_size);
   int* data = (int*)malloc(data_size);
 
   // Create query
@@ -190,7 +167,8 @@ void read_array() {
   tiledb_query_set_subarray(ctx, query, subarray);
   tiledb_query_set_layout(ctx, query, TILEDB_ROW_MAJOR);
   tiledb_query_set_buffer(ctx, query, "a", data, &data_size);
-  tiledb_query_set_buffer(ctx, query, TILEDB_COORDS, coords, &coords_size);
+  tiledb_query_set_buffer(ctx, query, "rows", coords_rows, &coords_size);
+  tiledb_query_set_buffer(ctx, query, "cols", coords_cols, &coords_size);
 
   // Submit query
   tiledb_query_submit(ctx, query);
@@ -201,13 +179,15 @@ void read_array() {
   // Print out the results.
   int result_num = (int)(data_size / sizeof(int));
   for (int r = 0; r < result_num; r++) {
-    int i = coords[2 * r], j = coords[2 * r + 1];
+    int i = coords_rows[r];
+    int j = coords_cols[r];
     int a = data[r];
     printf("Cell (%d, %d) has data %d\n", i, j, a);
   }
 
   // Clean up
-  free((void*)coords);
+  free((void*)coords_rows);
+  free((void*)coords_cols);
   free((void*)data);
   tiledb_array_free(&array);
   tiledb_query_free(&query);

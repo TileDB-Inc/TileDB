@@ -65,21 +65,25 @@ void write_array() {
   Array array(ctx, array_name, TILEDB_WRITE);
 
   // First write
-  std::vector<int> coords_1 = {1, 1, 2, 4, 2, 3};
+  std::vector<int> coords_rows_1 = {1, 2, 2};
+  std::vector<int> coords_cols_1 = {1, 4, 3};
   std::vector<int> data_1 = {1, 2, 3};
   Query query_1(ctx, array);
   query_1.set_layout(TILEDB_UNORDERED)
       .set_buffer("a", data_1)
-      .set_coordinates(coords_1);
+      .set_buffer("rows", coords_rows_1)
+      .set_buffer("cols", coords_cols_1);
   query_1.submit();
 
   // Second write
-  std::vector<int> coords_2 = {4, 1, 2, 4};
+  std::vector<int> coords_rows_2 = {4, 2};
+  std::vector<int> coords_cols_2 = {1, 4};
   std::vector<int> data_2 = {4, 20};
   Query query_2(ctx, array);
   query_2.set_layout(TILEDB_UNORDERED)
       .set_buffer("a", data_2)
-      .set_coordinates(coords_2);
+      .set_buffer("rows", coords_rows_2)
+      .set_buffer("cols", coords_cols_2);
   query_2.submit();
 
   // Close the array
@@ -95,14 +99,16 @@ void read_array() {
   // Prepare the buffers
   const std::vector<int> subarray = {1, 4, 1, 4};
   std::vector<int> data(5);
-  std::vector<int> coords(100);
+  std::vector<int> coords_rows(50);
+  std::vector<int> coords_cols(50);
 
   // Prepare the query
   Query query(ctx, array);
   query.set_subarray(subarray)
       .set_layout(TILEDB_ROW_MAJOR)
       .set_buffer("a", data)
-      .set_coordinates(coords);
+      .set_buffer("rows", coords_rows)
+      .set_buffer("cols", coords_cols);
 
   // Submit the query and close the array.
   query.submit();
@@ -111,7 +117,8 @@ void read_array() {
   // Print out the results.
   auto result_num = (int)query.result_buffer_elements()["a"].second;
   for (int r = 0; r < result_num; r++) {
-    int i = coords[2 * r], j = coords[2 * r + 1];
+    int i = coords_rows[r];
+    int j = coords_cols[r];
     int a = data[r];
     std::cout << "Cell (" << i << ", " << j << ") has data " << a << "\n";
   }
