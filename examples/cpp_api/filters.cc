@@ -80,7 +80,8 @@ void write_array() {
   Context ctx;
 
   // Write some simple data to cells (1, 1), (2, 4) and (2, 3).
-  std::vector<int> coords = {1, 1, 2, 4, 2, 3};
+  std::vector<int> coords_rows = {1, 2, 2};
+  std::vector<int> coords_cols = {1, 4, 3};
   std::vector<uint32_t> data_a1 = {1, 2, 3};
   std::vector<int32_t> data_a2 = {-1, -2, -3};
 
@@ -90,7 +91,8 @@ void write_array() {
   query.set_layout(TILEDB_UNORDERED)
       .set_buffer("a1", data_a1)
       .set_buffer("a2", data_a2)
-      .set_coordinates(coords);
+      .set_buffer("rows", coords_rows)
+      .set_buffer("cols", coords_cols);
 
   // Perform the write and close the array.
   query.submit();
@@ -110,14 +112,16 @@ void read_array() {
   // We take an upper bound on the result size, as we do not
   // know a priori how big it is (since the array is sparse)
   std::vector<uint32_t> data_a1(3);
-  std::vector<int> coords(6);
+  std::vector<int> coords_rows(3);
+  std::vector<int> coords_cols(3);
 
   // Prepare the query
   Query query(ctx, array, TILEDB_READ);
   query.set_subarray(subarray)
       .set_layout(TILEDB_ROW_MAJOR)
       .set_buffer("a1", data_a1)
-      .set_coordinates(coords);
+      .set_buffer("rows", coords_rows)
+      .set_buffer("cols", coords_cols);
 
   // Submit the query and close the array.
   query.submit();
@@ -126,7 +130,8 @@ void read_array() {
   // Print out the results.
   auto result_num = (int)query.result_buffer_elements()["a1"].second;
   for (int r = 0; r < result_num; r++) {
-    int i = coords[2 * r], j = coords[2 * r + 1];
+    int i = coords_rows[r];
+    int j = coords_cols[r];
     int a = data_a1[r];
     std::cout << "Cell (" << i << ", " << j << ") has a1 data " << a << "\n";
   }

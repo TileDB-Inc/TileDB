@@ -100,8 +100,9 @@ void write_array() {
   tiledb_array_open(ctx, array, TILEDB_WRITE);
 
   // Write some simple data to cells (1, 1), (2, 4) and (2, 3).
-  int coords[] = {1, 1, 2, 1, 2, 2};
-  uint64_t coords_size = sizeof(coords);
+  int coords_rows[] = {1, 2, 2};
+  int coords_cols[] = {1, 1, 2};
+  uint64_t coords_size = sizeof(coords_rows);
   int a1_data[] = {1, 2, 3};
   uint64_t a1_data_size = sizeof(a1_data);
   const char* a2_data = "abbccc";
@@ -116,7 +117,8 @@ void write_array() {
   tiledb_query_set_buffer(ctx, query, "a1", a1_data, &a1_data_size);
   tiledb_query_set_buffer_var(
       ctx, query, "a2", a2_off, &a2_off_size, (void*)a2_data, &a2_data_size);
-  tiledb_query_set_buffer(ctx, query, TILEDB_COORDS, coords, &coords_size);
+  tiledb_query_set_buffer(ctx, query, "rows", coords_rows, &coords_size);
+  tiledb_query_set_buffer(ctx, query, "cols", coords_cols, &coords_size);
 
   // Submit query and finalize
   tiledb_query_submit(ctx, query);
@@ -132,7 +134,8 @@ void write_array() {
 }
 
 void reallocate_buffers(
-    int** coords,
+    int** coords_rows,
+    int** coords_cols,
     uint64_t* coords_size,
     int** a1_data,
     uint64_t* a1_data_size,
@@ -144,9 +147,11 @@ void reallocate_buffers(
 
   // Note: this is a naive reallocation - you should handle
   // reallocation properly depending on your application
-  free(*coords);
+  free(*coords_rows);
+  free(*coords_cols);
   *coords_size *= 2;
-  *coords = (int*)malloc(*coords_size);
+  *coords_rows = (int*)malloc(*coords_size);
+  *coords_cols = (int*)malloc(*coords_size);
   free(*a1_data);
   *a1_data_size *= 2;
   *a1_data = (int*)malloc(*a1_data_size);
@@ -159,7 +164,8 @@ void reallocate_buffers(
 }
 
 void print_results(
-    const int* coords,
+    const int* coords_rows,
+    const int* coords_cols,
     const int* a1_data,
     uint64_t a1_data_size,
     const uint64_t* a2_off,
@@ -170,7 +176,8 @@ void print_results(
   // Print the results
   int result_num = (int)(a1_data_size / sizeof(int));  // For clarity
   for (int r = 0; r < result_num; ++r) {
-    int i = coords[2 * r], j = coords[2 * r + 1];
+    int i = coords_rows[r];
+    int j = coords_cols[r];
     int a1 = a1_data[r];
     const char* a2 = &a2_data[a2_off[r]];
     int n;
@@ -196,8 +203,9 @@ void read_array() {
   int subarray[] = {1, 4, 1, 4};
 
   // Prepare buffers such that the results **cannot** fit
-  int* coords = (int*)malloc(2 * sizeof(int));
-  uint64_t coords_size = 2 * sizeof(int);
+  int* coords_rows = (int*)malloc(sizeof(int));
+  int* coords_cols = (int*)malloc(sizeof(int));
+  uint64_t coords_size = sizeof(int);
   int* a1_data = (int*)malloc(sizeof(int));
   uint64_t a1_data_size = sizeof(int);
   char* a2_data = (char*)malloc(sizeof(char));
@@ -219,7 +227,8 @@ void read_array() {
   tiledb_query_set_buffer(ctx, query, "a1", a1_data, &a1_data_size);
   tiledb_query_set_buffer_var(
       ctx, query, "a2", a2_off, &a2_off_size, a2_data, &a2_data_size);
-  tiledb_query_set_buffer(ctx, query, TILEDB_COORDS, coords, &coords_size);
+  tiledb_query_set_buffer(ctx, query, "rows", coords_rows, &coords_size);
+  tiledb_query_set_buffer(ctx, query, "cols", coords_cols, &coords_size);
 
   // Create a loop
   tiledb_query_status_t status;
@@ -232,7 +241,8 @@ void read_array() {
     int result_num = (int)(a1_data_size / sizeof(int));
     if (status == TILEDB_INCOMPLETE && result_num == 0) {  // VERY IMPORTANT!!
       reallocate_buffers(
-          &coords,
+          &coords_rows,
+          &coords_cols,
           &coords_alloced_size,
           &a1_data,
           &a1_data_alloced_size,
@@ -247,10 +257,17 @@ void read_array() {
       tiledb_query_set_buffer(ctx, query, "a1", a1_data, &a1_data_size);
       tiledb_query_set_buffer_var(
           ctx, query, "a2", a2_off, &a2_off_size, a2_data, &a2_data_size);
-      tiledb_query_set_buffer(ctx, query, TILEDB_COORDS, coords, &coords_size);
+      tiledb_query_set_buffer(ctx, query, "rows", coords_rows, &coords_size);
+      tiledb_query_set_buffer(ctx, query, "cols", coords_cols, &coords_size);
     } else if (result_num > 0) {
       print_results(
-          coords, a1_data, a1_data_size, a2_off, a2_data, a2_data_size);
+          coords_rows,
+          coords_cols,
+          a1_data,
+          a1_data_size,
+          a2_off,
+          a2_data,
+          a2_data_size);
     }
   } while (status == TILEDB_INCOMPLETE);
 
@@ -264,7 +281,8 @@ void read_array() {
   tiledb_array_close(ctx, array);
 
   // Clean up
-  free((void*)coords);
+  free((void*)coords_rows);
+  free((void*)coords_cols);
   free((void*)a1_data);
   free((void*)a2_data);
   free((void*)a2_off);

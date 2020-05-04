@@ -64,7 +64,8 @@ void write_array() {
   Context ctx;
 
   // Prepare data for writing.
-  std::vector<int> coords = {1, 1, 1, 2, 2, 2, 1, 4, 2, 3, 2, 4};
+  std::vector<int> coords_rows = {1, 1, 2, 1, 2, 2};
+  std::vector<int> coords_cols = {1, 2, 2, 4, 3, 4};
   std::vector<int> data = {1, 2, 3, 4, 5, 6};
 
   // Open the array for writing and create the query.
@@ -72,7 +73,8 @@ void write_array() {
   Query query(ctx, array);
   query.set_layout(TILEDB_GLOBAL_ORDER)
       .set_buffer("a", data)
-      .set_coordinates(coords);
+      .set_buffer("rows", coords_rows)
+      .set_buffer("cols", coords_cols);
 
   // Perform the write and close the array.
   query.submit();
@@ -99,14 +101,16 @@ void read_array(tiledb_layout_t layout) {
 
   // Prepare buffers that will hold the results
   std::vector<int> data(6);
-  std::vector<int> coords(12);
+  std::vector<int> coords_rows(6);
+  std::vector<int> coords_cols(6);
 
   // Prepare the query
   Query query(ctx, array, TILEDB_READ);
   query.set_subarray(subarray)
       .set_layout(layout)
       .set_buffer("a", data)
-      .set_coordinates(coords);
+      .set_buffer("rows", coords_rows)
+      .set_buffer("cols", coords_cols);
 
   // Submit the query and close the array.
   query.submit();
@@ -115,7 +119,8 @@ void read_array(tiledb_layout_t layout) {
   // Print out the results.
   auto result_num = (int)query.result_buffer_elements()["a"].second;
   for (int r = 0; r < result_num; r++) {
-    int i = coords[2 * r], j = coords[2 * r + 1];
+    int i = coords_rows[r];
+    int j = coords_cols[r];
     int a = data[r];
     std::cout << "Cell (" << i << ", " << j << ") has data " << a << "\n";
   }

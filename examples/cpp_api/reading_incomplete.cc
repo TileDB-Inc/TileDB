@@ -64,7 +64,8 @@ void write_array() {
   Context ctx;
 
   // Prepare some data for the array
-  std::vector<int> coords = {1, 1, 2, 1, 2, 2};
+  std::vector<int> coords_rows = {1, 2, 2};
+  std::vector<int> coords_cols = {1, 1, 2};
   std::vector<int> a1_data = {1, 2, 3};
   std::string a2_data = "abbccc";
   std::vector<uint64_t> a2_off = {0, 1, 3};
@@ -75,7 +76,8 @@ void write_array() {
   query.set_layout(TILEDB_GLOBAL_ORDER)
       .set_buffer("a1", a1_data)
       .set_buffer("a2", a2_off, a2_data)
-      .set_coordinates(coords);
+      .set_buffer("rows", coords_rows)
+      .set_buffer("cols", coords_cols);
 
   // Perform the write and close the array.
   query.submit();
@@ -84,7 +86,8 @@ void write_array() {
 }
 
 void reallocate_buffers(
-    std::vector<int>* coords,
+    std::vector<int>* coords_rows,
+    std::vector<int>* coords_cols,
     std::vector<int>* a1_data,
     std::vector<uint64_t>* a2_off,
     std::string* a2_data) {
@@ -92,14 +95,16 @@ void reallocate_buffers(
 
   // Note: this is a naive reallocation - you should handle
   // reallocation properly depending on your application
-  coords->resize(2 * coords->size());
+  coords_rows->resize(2 * coords_rows->size());
+  coords_cols->resize(2 * coords_cols->size());
   a1_data->resize(2 * a1_data->size());
   a2_off->resize(2 * a2_off->size());
   a2_data->resize(2 * a2_data->size());
 }
 
 void print_results(
-    const std::vector<int>& coords,
+    const std::vector<int>& coords_rows,
+    const std::vector<int>& coords_cols,
     const std::vector<int>& a1_data,
     const std::vector<uint64_t>& a2_off,
     const std::string& a2_data,
@@ -124,7 +129,8 @@ void print_results(
   // Print the results
   auto result_num = result_el_a2_off;  // For clarity
   for (size_t r = 0; r < result_num; ++r) {
-    int i = coords[2 * r], j = coords[2 * r + 1];
+    int i = coords_rows[r];
+    int j = coords_cols[r];
     int a1 = a1_data[r];
     std::cout << "Cell (" << i << ", " << j << "), a1: " << a1
               << ", a2: " << a2_str[r] << "\n";
@@ -141,7 +147,8 @@ void read_array() {
   const std::vector<int> subarray = {1, 4, 1, 4};
 
   // Prepare buffers such that the results **cannot** fit
-  std::vector<int> coords(2);
+  std::vector<int> coords_rows(1);
+  std::vector<int> coords_cols(1);
   std::vector<int> a1_data(1);
   std::vector<uint64_t> a2_off(1);
   std::string a2_data;
@@ -153,7 +160,8 @@ void read_array() {
       .set_layout(TILEDB_ROW_MAJOR)
       .set_buffer("a1", a1_data)
       .set_buffer("a2", a2_off, a2_data)
-      .set_coordinates(coords);
+      .set_buffer("rows", coords_rows)
+      .set_buffer("cols", coords_cols);
 
   // Create a loop
   Query::Status status;
@@ -166,13 +174,20 @@ void read_array() {
     auto result_num = (int)query.result_buffer_elements()["a1"].second;
     if (status == Query::Status::INCOMPLETE &&
         result_num == 0) {  // VERY IMPORTANT!!
-      reallocate_buffers(&coords, &a1_data, &a2_off, &a2_data);
+      reallocate_buffers(
+          &coords_rows, &coords_cols, &a1_data, &a2_off, &a2_data);
       query.set_buffer("a1", a1_data)
           .set_buffer("a2", a2_off, a2_data)
-          .set_coordinates(coords);
+          .set_buffer("rows", coords_rows)
+          .set_buffer("cols", coords_cols);
     } else if (result_num > 0) {
       print_results(
-          coords, a1_data, a2_off, a2_data, query.result_buffer_elements());
+          coords_rows,
+          coords_cols,
+          a1_data,
+          a2_off,
+          a2_data,
+          query.result_buffer_elements());
     }
   } while (status == Query::Status::INCOMPLETE);
 
