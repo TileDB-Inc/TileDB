@@ -94,8 +94,9 @@ void write_array() {
   tiledb_array_open(ctx, array, TILEDB_WRITE);
 
   // Prepare data for first write
-  int coords_1[] = {1, 1, 2, 4};
-  uint64_t coords_size_1 = sizeof(coords_1);
+  int coords_rows_1[] = {1, 2};
+  int coords_cols_1[] = {1, 4};
+  uint64_t coords_size_1 = sizeof(coords_rows_1);
   int data_1[] = {1, 2};
   uint64_t data_size_1 = sizeof(data_1);
 
@@ -104,20 +105,23 @@ void write_array() {
   tiledb_query_alloc(ctx, array, TILEDB_WRITE, &query);
   tiledb_query_set_layout(ctx, query, TILEDB_GLOBAL_ORDER);
   tiledb_query_set_buffer(ctx, query, "a", data_1, &data_size_1);
-  tiledb_query_set_buffer(ctx, query, TILEDB_COORDS, coords_1, &coords_size_1);
+  tiledb_query_set_buffer(ctx, query, "rows", coords_rows_1, &coords_size_1);
+  tiledb_query_set_buffer(ctx, query, "cols", coords_cols_1, &coords_size_1);
 
   // Submit first query
   tiledb_query_submit(ctx, query);
 
   // Prepare data for second write
-  int coords_2[] = {2, 3};
-  uint64_t coords_size_2 = sizeof(coords_2);
+  int coords_rows_2[] = {2};
+  int coords_cols_2[] = {3};
+  uint64_t coords_size_2 = sizeof(coords_rows_2);
   int data_2[] = {3};
   uint64_t data_size_2 = sizeof(data_2);
 
   // Reset buffers
   tiledb_query_set_buffer(ctx, query, "a", data_2, &data_size_2);
-  tiledb_query_set_buffer(ctx, query, TILEDB_COORDS, coords_2, &coords_size_2);
+  tiledb_query_set_buffer(ctx, query, "rows", coords_rows_2, &coords_size_2);
+  tiledb_query_set_buffer(ctx, query, "cols", coords_cols_2, &coords_size_2);
 
   // Submit second query
   tiledb_query_submit(ctx, query);
@@ -148,8 +152,8 @@ void read_array() {
   int subarray[] = {1, 4, 1, 4};
 
   // Calculate maximum buffer sizes
-  uint64_t coords_size;
-  uint64_t data_size;
+  uint64_t coords_size = 24;
+  uint64_t data_size = 12;
   tiledb_array_max_buffer_size(ctx, array, "a", subarray, &data_size);
   tiledb_array_max_buffer_size(
       ctx, array, TILEDB_COORDS, subarray, &coords_size);

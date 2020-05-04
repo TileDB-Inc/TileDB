@@ -73,15 +73,21 @@ void write_array() {
   query.set_layout(TILEDB_GLOBAL_ORDER);
 
   // Submit first query
-  std::vector<int> coords_1 = {1, 1, 2, 4};
+  std::vector<int> coords_rows_1 = {1, 2};
+  std::vector<int> coords_cols_1 = {1, 4};
   std::vector<int> data_1 = {1, 2};
-  query.set_buffer("a", data_1).set_coordinates(coords_1);
+  query.set_buffer("a", data_1)
+      .set_buffer("rows", coords_rows_1)
+      .set_buffer("cols", coords_cols_1);
   query.submit();
 
   // Submit second query
-  std::vector<int> coords_2 = {2, 3};
+  std::vector<int> coords_rows_2 = {2};
+  std::vector<int> coords_cols_2 = {3};
   std::vector<int> data_2 = {3};
-  query.set_buffer("a", data_2).set_coordinates(coords_2);
+  query.set_buffer("a", data_2)
+      .set_buffer("rows", coords_rows_2)
+      .set_buffer("cols", coords_cols_2);
   query.submit();
 
   // Finalize - IMPORTANT!
@@ -103,9 +109,8 @@ void read_array() {
   // Prepare the vector that will hold the result.
   // We take an upper bound on the result size, as we do not
   // know a priori how big it is (since the array is sparse)
-  auto max_el = array.max_buffer_elements(subarray);
-  std::vector<int> data(max_el["a"].second);
-  std::vector<int> coords(max_el[TILEDB_COORDS].second);
+  std::vector<int> data(3);
+  std::vector<int> coords(6);
 
   // Prepare the query
   Query query(ctx, array);
