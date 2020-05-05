@@ -98,8 +98,8 @@ TEST_CASE("C++ API: Datetime dimension", "[cppapi][datetime]") {
   if (vfs.is_dir(array_name))
     vfs.remove_dir(array_name);
 
-  int64_t domain[] = {0, std::numeric_limits<int64_t>::max() - 1};
   int64_t tile_extent = int64_t(1e6);
+  int64_t domain[] = {0, std::numeric_limits<int64_t>::max() - tile_extent};
   auto dim =
       Dimension::create(ctx, "d0", TILEDB_DATETIME_MS, domain, &tile_extent);
   Array::create(

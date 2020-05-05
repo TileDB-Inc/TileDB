@@ -673,6 +673,21 @@ class Dimension {
   template <class T>
   Status check_tile_extent() const;
 
+  /**
+   * Returns an error if the set tile extent exceeds the
+   * upper floor.
+   */
+  template <typename T>
+  Status check_tile_extent_upper_floor(const T* domain, T tile_extent) const;
+
+  /**
+   * The internal work routine for `check_tile_extent_upper_floor`
+   * that accepts a template type for the floor type.
+   */
+  template <typename T_EXTENT, typename T_FLOOR>
+  Status check_tile_extent_upper_floor_internal(
+      const T_EXTENT* domain, T_EXTENT tile_extent) const;
+
   /** Returns the domain in string format. */
   std::string domain_str() const;
 
