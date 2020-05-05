@@ -1284,21 +1284,42 @@ Status Dimension::check_tile_extent() const {
     // In the worst case one tile extent will be added to the upper domain
     // for the dense case, so check if the expanded domain will exceed type
     // T's max limit.
-    if (range % uint64_t(*tile_extent)) {
-      auto upper_floor =
-          ((range - 1) / (*tile_extent)) * (*tile_extent) + domain[0];
-      bool exceeds =
-          (upper_floor >
-           std::numeric_limits<uint64_t>::max() - (*tile_extent - 1));
-      exceeds =
-          (exceeds ||
-           uint64_t(upper_floor) > uint64_t(std::numeric_limits<T>::max()));
-      if (exceeds)
-        return LOG_STATUS(Status::DimensionError(
-            "Tile extent check failed; domain max expanded to multiple of tile "
-            "extent exceeds max value representable by domain type. Reduce "
-            "domain max by 1 tile extent to allow for expansion."));
-    }
+    if (range % uint64_t(*tile_extent))
+      RETURN_NOT_OK(check_tile_extent_upper_floor(domain, *tile_extent));
+  }
+
+  return Status::Ok();
+}
+
+template <typename T>
+Status Dimension::check_tile_extent_upper_floor(
+    const T* const domain, const T tile_extent) const {
+  // The type of the upper floor must match the sign of the extent
+  // type.
+  return std::is_signed<T>::value ?
+             check_tile_extent_upper_floor_internal<T, int64_t>(
+                 domain, tile_extent) :
+             check_tile_extent_upper_floor_internal<T, uint64_t>(
+                 domain, tile_extent);
+}
+
+template <typename T_EXTENT, typename T_FLOOR>
+Status Dimension::check_tile_extent_upper_floor_internal(
+    const T_EXTENT* const domain, const T_EXTENT tile_extent) const {
+  const uint64_t range = domain[1] - domain[0] + 1;
+  const T_FLOOR upper_floor =
+      ((range - 1) / (tile_extent)) * (tile_extent) + domain[0];
+  const T_FLOOR upper_floor_max =
+      std::numeric_limits<T_FLOOR>::max() - (tile_extent - 1);
+  const T_FLOOR extent_max =
+      static_cast<T_FLOOR>(std::numeric_limits<T_EXTENT>::max());
+  const bool exceeds =
+      upper_floor > upper_floor_max || upper_floor > extent_max;
+  if (exceeds) {
+    return LOG_STATUS(Status::DimensionError(
+        "Tile extent check failed; domain max expanded to multiple of tile "
+        "extent exceeds max value representable by domain type. Reduce "
+        "domain max by 1 tile extent to allow for expansion."));
   }
 
   return Status::Ok();
