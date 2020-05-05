@@ -33,6 +33,8 @@
 #include "catch.hpp"
 #include "tiledb/sm/cpp_api/tiledb"
 
+#include <limits>
+
 TEST_CASE("C++ API: Schema", "[cppapi][schema]") {
   using namespace tiledb;
   Context ctx;
@@ -238,4 +240,105 @@ TEST_CASE(
   // Clean up
   VFS vfs(ctx);
   vfs.remove_dir("sparse_array");
+}
+
+TEST_CASE(
+    "C++ API: Schema, Dimension ranges", "[cppapi][schema][dimension-ranges]") {
+  using namespace tiledb;
+  tiledb::Context ctx;
+
+  // Test creating dimensions with signed, unsigned, 32-bit, and 64-bit integer
+  // domain types.
+
+  SECTION("int32 domain [-10, -5]") {
+    const int32_t domain[2] = {-10, -5};
+    const int32_t tile_extent = 5;
+    CHECK_NOTHROW(tiledb::Dimension::create(
+        ctx, "d1", TILEDB_INT32, domain, &tile_extent));
+  }
+
+  SECTION("int32 domain [-10, 5]") {
+    const int32_t domain[2] = {-10, 5};
+    const int32_t tile_extent = 5;
+    CHECK_NOTHROW(tiledb::Dimension::create(
+        ctx, "d1", TILEDB_INT32, domain, &tile_extent));
+  }
+
+  SECTION("int32 domain [5, 10]") {
+    const int32_t domain[2] = {5, 10};
+    const int32_t tile_extent = 5;
+    CHECK_NOTHROW(tiledb::Dimension::create(
+        ctx, "d1", TILEDB_INT32, domain, &tile_extent));
+  }
+
+  SECTION("int32 domain [min, max]") {
+    int32_t domain[2] = {std::numeric_limits<int32_t>::lowest(),
+                         std::numeric_limits<int32_t>::max()};
+    const int32_t tile_extent = 5;
+    domain[1] -= tile_extent;
+    CHECK_NOTHROW(tiledb::Dimension::create(
+        ctx, "d1", TILEDB_INT32, domain, &tile_extent));
+  }
+
+  SECTION("int64 domain [-10, -5]") {
+    const int64_t domain[2] = {-10, -5};
+    const int64_t tile_extent = 5;
+    CHECK_NOTHROW(tiledb::Dimension::create(
+        ctx, "d1", TILEDB_INT64, domain, &tile_extent));
+  }
+
+  SECTION("int64 domain [-10, 5]") {
+    const int64_t domain[2] = {-10, 5};
+    const int64_t tile_extent = 5;
+    CHECK_NOTHROW(tiledb::Dimension::create(
+        ctx, "d1", TILEDB_INT64, domain, &tile_extent));
+  }
+
+  SECTION("int64 domain [5, 10]") {
+    const int64_t domain[2] = {5, 10};
+    const int64_t tile_extent = 5;
+    CHECK_NOTHROW(tiledb::Dimension::create(
+        ctx, "d1", TILEDB_INT64, domain, &tile_extent));
+  }
+
+  SECTION("int64 domain [min, max]") {
+    int64_t domain[2] = {std::numeric_limits<int64_t>::lowest(),
+                         std::numeric_limits<int64_t>::max()};
+    const int64_t tile_extent = 5;
+    domain[1] -= tile_extent;
+    CHECK_NOTHROW(tiledb::Dimension::create(
+        ctx, "d1", TILEDB_INT64, domain, &tile_extent));
+  }
+
+  SECTION("uint32 domain [5, 10]") {
+    const uint32_t domain[2] = {5, 10};
+    const uint32_t tile_extent = 5;
+    CHECK_NOTHROW(tiledb::Dimension::create(
+        ctx, "d1", TILEDB_UINT32, domain, &tile_extent));
+  }
+
+  SECTION("uint32 domain [min, max]") {
+    uint32_t domain[2] = {std::numeric_limits<uint32_t>::lowest(),
+                          std::numeric_limits<uint32_t>::max()};
+    const uint32_t tile_extent = 5;
+    domain[1] -= tile_extent;
+    CHECK_NOTHROW(tiledb::Dimension::create(
+        ctx, "d1", TILEDB_UINT32, domain, &tile_extent));
+  }
+
+  SECTION("uint64 domain [5, 10]") {
+    const uint64_t domain[2] = {5, 10};
+    const uint64_t tile_extent = 5;
+    CHECK_NOTHROW(tiledb::Dimension::create(
+        ctx, "d1", TILEDB_UINT64, domain, &tile_extent));
+  }
+
+  SECTION("uint64 domain [min, max]") {
+    uint64_t domain[2] = {std::numeric_limits<uint64_t>::lowest(),
+                          std::numeric_limits<uint64_t>::max()};
+    const uint64_t tile_extent = 5;
+    domain[1] -= tile_extent;
+    CHECK_NOTHROW(tiledb::Dimension::create(
+        ctx, "d1", TILEDB_UINT64, domain, &tile_extent));
+  }
 }
