@@ -36,8 +36,11 @@ include(TileDBCommon)
 # modules.
 set(CMAKE_PREFIX_PATH ${CMAKE_PREFIX_PATH} "${TILEDB_EP_INSTALL_PREFIX}")
 
-# Try searching for the SDK in the EP prefix.
-set(AWSSDK_ROOT_DIR "${TILEDB_EP_INSTALL_PREFIX}")
+if(DEFINED ENV{AWSSDK_ROOT_DIR})
+  set(AWSSDK_ROOT_DIR $ENV{AWSSDK_ROOT_DIR})
+else()
+  set(AWSSDK_ROOT_DIR "${TILEDB_EP_INSTALL_PREFIX}")
+endif()
 
 # Check to see if the SDK is installed (which provides the find module).
 # This will either use the system-installed AWSSDK find module (if present),
