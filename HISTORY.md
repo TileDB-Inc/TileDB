@@ -14,6 +14,8 @@
 
 ## Bug fixes
 
+Fix C++ Dimension API `{tile_extent,domain}_to_str`. [#1638](https://github.com/TileDB-Inc/TileDB/pull/1638)
+
 ## API additions
 
 # TileDB v2.0.0 Release Notes
