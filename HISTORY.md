@@ -14,7 +14,25 @@
 
 ## Bug fixes
 
-Fix C++ Dimension API `{tile_extent,domain}_to_str`. [#1638](https://github.com/TileDB-Inc/TileDB/pull/1638)
+## API additions
+
+# TileDB v2.0.1 Release Notes
+
+## Improvements
+
+* Remove deprecated max buffer size APIs from unit tests [#1625](https://github.com/TileDB-Inc/TileDB/pull/1625)
+* Remove deprecated max buffer API from examples [#1626](https://github.com/TileDB-Inc/TileDB/pull/1626)
+* Remove zipped coords from examples [#1632](https://github.com/TileDB-Inc/TileDB/pull/1632)
+* Allow AWSSDK_ROOT_DIR override [#1637](https://github.com/TileDB-Inc/TileDB/pull/1637)
+
+## Deprecations
+
+## Bug fixes
+
+* Allow setting zipped coords multiple times [#1627](https://github.com/TileDB-Inc/TileDB/pull/1627)
+* Fix overflow in check_tile_extent [#1635](https://github.com/TileDB-Inc/TileDB/pull/1635)
+* Fix C++ Dimension API `{tile_extent,domain}_to_str`. [#1638](https://github.com/TileDB-Inc/TileDB/pull/1638)
+* Remove xlock in FragmentMetadata::store [#1639](https://github.com/TileDB-Inc/TileDB/pull/1639)
 
 ## API additions
 
