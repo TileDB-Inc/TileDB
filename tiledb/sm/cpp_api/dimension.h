@@ -234,8 +234,11 @@ class Dimension {
         di64 = static_cast<const int64_t*>(domain);
         ss << di64[0] << "," << di64[1];
         break;
-      case TILEDB_CHAR:
       case TILEDB_STRING_ASCII:
+        // Strings have null domains so let's return an empty string
+        // representation
+        return "";
+      case TILEDB_CHAR:
       case TILEDB_STRING_UTF8:
       case TILEDB_STRING_UTF16:
       case TILEDB_STRING_UTF32:
@@ -335,8 +338,11 @@ class Dimension {
         ti64 = static_cast<const int64_t*>(tile_extent);
         ss << *ti64;
         break;
-      case TILEDB_CHAR:
       case TILEDB_STRING_ASCII:
+        // Strings have null tile extents so let's return an empty string
+        // representation
+        return "";
+      case TILEDB_CHAR:
       case TILEDB_STRING_UTF8:
       case TILEDB_STRING_UTF16:
       case TILEDB_STRING_UTF32:
