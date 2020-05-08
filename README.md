@@ -23,6 +23,31 @@ TileDB includes the following features:
  
 You can use TileDB to store data in a variety of applications, such as Genomics, Geospatial, Finance and more. The power of TileDB stems from the fact that any data can be modeled efficiently as either a dense or a sparse multi-dimensional array, which is the format used internally by most data science tooling. By storing your data and metadata in TileDB arrays, you abstract all the data storage and management pains, while efficiently accessing the data with your favorite data science tool.
 
+## Quickstart
+
+You can install the TileDB library as follows:
+
+```bash
+# Homebrew (macOS):
+$ brew update
+$ brew install tiledb-inc/stable/tiledb
+
+# Or Conda (macOS, Linux, Windows):
+$ conda install -c conda-forge tiledb
+```
+
+Alterantively, you can use the Docker image we provide:
+
+```bash
+$ docker pull tiledb/tiledb
+$ docker run -it tiledb/tiledb
+```
+
+We include several [examples](https://github.com/TileDB-Inc/TileDB/tree/dev/examples). You can start with the following:
+
+* [Dense array example](https://github.com/TileDB-Inc/TileDB/blob/dev/examples/cpp_api/quickstart_dense.cc)
+* [Sparse array example](https://github.com/TileDB-Inc/TileDB/blob/dev/examples/cpp_api/quickstart_sparse.cc)
+
 ## Documentation
 
 You can find the detailed TileDB documentation at [https://docs.tiledb.com](https://docs.tiledb.com).
