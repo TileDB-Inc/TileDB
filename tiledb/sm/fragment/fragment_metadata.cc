@@ -444,9 +444,6 @@ Status FragmentMetadata::store(const EncryptionKey& encryption_key) {
   if (!is_dir)
     return Status::Ok();
 
-  // Exclusively lock the array
-  RETURN_NOT_OK(storage_manager_->array_xlock(array_uri));
-
   // Store R-Tree
   gt_offsets_.rtree_ = offset;
   RETURN_NOT_OK_ELSE(store_rtree(encryption_key, &nbytes), clean_up());
@@ -483,12 +480,7 @@ Status FragmentMetadata::store(const EncryptionKey& encryption_key) {
   RETURN_NOT_OK_ELSE(store_footer(encryption_key), clean_up());
 
   // Close file
-  auto st = storage_manager_->close_file(fragment_metadata_uri);
-
-  // Unlock array
-  auto st2 = storage_manager_->array_xunlock(array_uri);
-
-  return !st.ok() ? st : st2;
+  return storage_manager_->close_file(fragment_metadata_uri);
 
   STATS_END_TIMER(stats::Stats::TimerType::WRITE_STORE_FRAG_META)
 }
