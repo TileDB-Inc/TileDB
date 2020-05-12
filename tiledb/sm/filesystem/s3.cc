@@ -1051,7 +1051,8 @@ Status S3::wait_for_object_to_propagate(
   }
 
   return LOG_STATUS(Status::S3Error(
-      "Failed waiting for object " + object_key + " to be created."));
+      "Failed waiting for object " +
+      std::string(object_key.c_str(), object_key.size()) + " to be created."));
 }
 
 Status S3::wait_for_object_to_be_deleted(
@@ -1071,7 +1072,8 @@ Status S3::wait_for_object_to_be_deleted(
   }
 
   return LOG_STATUS(Status::S3Error(
-      "Failed waiting for object " + object_key + " to be deleted."));
+      "Failed waiting for object " +
+      std::string(object_key.c_str(), object_key.size()) + " to be deleted."));
 }
 
 Status S3::wait_for_bucket_to_be_created(const URI& bucket_uri) const {
