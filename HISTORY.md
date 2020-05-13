@@ -24,6 +24,8 @@
 * Remove deprecated max buffer API from examples [#1626](https://github.com/TileDB-Inc/TileDB/pull/1626)
 * Remove zipped coords from examples [#1632](https://github.com/TileDB-Inc/TileDB/pull/1632)
 * Allow AWSSDK_ROOT_DIR override [#1637](https://github.com/TileDB-Inc/TileDB/pull/1637)
+* Quote bootstrap variables to avoid word splitting [#1644](https://github.com/TileDB-Inc/TileDB/pull/1644)
+* Add an axes labels example [#1642](https://github.com/TileDB-Inc/TileDB/pull/1642)
 
 ## Deprecations
 
@@ -33,6 +35,7 @@
 * Fix overflow in check_tile_extent [#1635](https://github.com/TileDB-Inc/TileDB/pull/1635)
 * Fix C++ Dimension API `{tile_extent,domain}_to_str`. [#1638](https://github.com/TileDB-Inc/TileDB/pull/1638)
 * Remove xlock in FragmentMetadata::store [#1639](https://github.com/TileDB-Inc/TileDB/pull/1639)
+* Explicit AWS::String to std::string conversion [#1643](https://github.com/TileDB-Inc/TileDB/pull/1643)
 
 ## API additions
 
