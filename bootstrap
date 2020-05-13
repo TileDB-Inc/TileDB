@@ -16,7 +16,7 @@ source_dir=`cd "\`dirname \"$0\"\`";pwd`
 binary_dir=`pwd`
 
 # Choose the default install prefix.
-default_prefix=${source_dir}/dist
+default_prefix="${source_dir}/dist"
 
 # Choose the default dependency install prefix
 default_dependency=${DEPENDENCY_INSTALL_PREFIX}
@@ -34,7 +34,7 @@ Configuration:
     --help                          print this message
     --prefix=PREFIX                 install files in tree rooted at PREFIX
                                     ['"${default_prefix}"']
-    --dependency=DIRs               specify the dependencies at DIRs, separated by colon 
+    --dependency=DIRs               specify the dependencies at DIRs, separated by colon
                                     ['"${default_dependency}"']
     --force-build-all-deps          force building of all dependencies, even those
                                     already installed at system-level
@@ -59,7 +59,7 @@ Configuration:
     --enable-ccache                 enables use of ccache (if present)
     --enable=arg1,arg2...           same as "--enable-arg1 --enable-arg2 ..."
 
-    
+
 Dependencies:
     c/c++ compiler
     GNU make
@@ -70,7 +70,7 @@ Example:
     cd build
     ../bootstrap --prefix=/path/to/install --dependency=/path/to/dep1:path/to/dep2...
     make
-    make install                  
+    make install
 '
     exit 10
 }
@@ -150,7 +150,7 @@ for en in "${enables[@]}"; do
   esac
 done
 
-if [ ${source_dir} = ${binary_dir} ]; then
+if [ "${source_dir}" = "${binary_dir}" ]; then
     die "cannot build the project in the source directory! Out-of-source build is enforced!"
 fi
 
@@ -181,10 +181,10 @@ fi
 
 # Configure
 ${cmake} -DCMAKE_BUILD_TYPE=${build_type} \
-    -DCMAKE_INSTALL_PREFIX=${prefix_dirs} \
-    -DCMAKE_C_COMPILER=${c_compiler} \
-    -DCMAKE_CXX_COMPILER=${cxx_compiler} \
-    -DCMAKE_PREFIX_PATH=${dependency_dir} \
+    -DCMAKE_INSTALL_PREFIX="${prefix_dirs}" \
+    -DCMAKE_C_COMPILER="${c_compiler}" \
+    -DCMAKE_CXX_COMPILER="${cxx_compiler}" \
+    -DCMAKE_PREFIX_PATH="${dependency_dir}" \
     -DTILEDB_VERBOSE=${tiledb_verbose} \
     -DTILEDB_HDFS=${tiledb_hdfs} \
     -DTILEDB_S3=${tiledb_s3} \
@@ -200,8 +200,8 @@ ${cmake} -DCMAKE_BUILD_TYPE=${build_type} \
     -DTILEDB_TESTS=${tiledb_tests} \
     -DTILEDB_CCACHE=${tiledb_ccache} \
     -DTILEDB_FORCE_ALL_DEPS=${tiledb_force_all_deps} \
-    -DSANITIZER=${sanitizer} \
+    -DSANITIZER="${sanitizer}" \
     ${tiledb_disable_avx2} \
-    ${source_dir} || die "failed to configure the project"
+    "${source_dir}" || die "failed to configure the project"
 
 echo 'bootstrap success. Run "make" to build, "make check" to test, or "make -C tiledb install" to install.'
