@@ -96,6 +96,7 @@ Status RTree::build_tree() {
   assert(levels_.size() == 1);
 
   auto leaf_num = levels_[0].size();
+  assert(leaf_num >= 1);
   if (leaf_num == 1)
     return Status::Ok();
 
