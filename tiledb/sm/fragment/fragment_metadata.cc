@@ -1147,7 +1147,9 @@ Status FragmentMetadata::load_mbrs(ConstBuffer* buff) {
   }
 
   // Build R-tree bottom-up
-  rtree_.build_tree();
+  if (mbr_num > 0) {
+    rtree_.build_tree();
+  }
 
   sparse_tile_num_ = mbr_num;
 
