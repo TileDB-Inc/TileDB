@@ -380,10 +380,6 @@ TEST_CASE(
     q.set_layout(TILEDB_GLOBAL_ORDER);
     q.set_coordinates(coord);
     REQUIRE_THROWS(q.set_buffer("a", a_offset, a));
-
-    a = {0, 1, 2};
-    a_offset = {0, 1, 1};
-    REQUIRE_THROWS(q.set_buffer("a", a_offset, a));
   }
 
   array.close();
