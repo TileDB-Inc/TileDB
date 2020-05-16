@@ -1226,7 +1226,11 @@ Status Writer::filter_tiles(
 
 Status Writer::filter_tile(
     const std::string& name, Tile* tile, bool offsets) const {
-  const auto orig_size = tile->chunked_buffer()->size();
+  // If the chunked buffer is empty, there is nothing to filter
+  auto orig_size = 0;
+  if (tile->chunked_buffer() != nullptr) {
+    orig_size = tile->chunked_buffer()->size();
+  }
 
   // Get a copy of the appropriate filter pipeline.
   FilterPipeline filters =
@@ -1336,14 +1340,25 @@ Status Writer::global_write() {
   // Find number of tiles and gather stats
   uint64_t tile_num = 0;
   if (!tiles.empty()) {
-    auto it = tiles.begin();
-    bool var_size = array_schema_->var_size(it->first);
-    tile_num = var_size ? it->second.size() / 2 : it->second.size();
+    bool var_size;
+    std::string max_key;
+    // We must loop over all buffers because
+    for (const auto& it : tiles) {
+      //    auto it = tiles.begin();
+      bool local_var_size = array_schema_->var_size(it.first);
+      uint64_t local_tile_num = var_size ? it.second.size() / 2 : it.second.size();
+      if (local_tile_num > tile_num) {
+        tile_num = local_tile_num;
+        var_size = local_var_size;
+        max_key = it.first;
+      }
+    }
+    const auto pair = tiles.find(max_key);
 
     uint64_t cell_num = 0;
     for (size_t t = 0; t < tile_num; ++t) {
       cell_num +=
-          var_size ? it->second[2 * t].cell_num() : it->second[t].cell_num();
+          var_size ? pair->second[2 * t].cell_num() : pair->second[t].cell_num();
     }
     STATS_ADD_COUNTER(stats::Stats::CounterType::WRITE_CELL_NUM, cell_num);
     STATS_ADD_COUNTER(stats::Stats::CounterType::WRITE_TILE_NUM, tile_num);

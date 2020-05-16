@@ -698,11 +698,16 @@ Status FilterPipeline::run_reverse_internal(
   STATS_ADD_COUNTER(
       stats::Stats::CounterType::READ_UNFILTERED_BYTE_NUM, total_orig_size);
 
-  const Status st = filter_chunks_reverse(
-      filtered_chunks, tile->chunked_buffer(), unfiltering_all, config);
-  if (!st.ok()) {
-    tile->chunked_buffer()->free();
-    return st;
+  // If the chunk is empty don't try to run the pipeline
+  // This happens when a user writes a zero length var attribute to a single
+  // cell fragment
+  if (!filtered_chunks.empty()) {
+    const Status st = filter_chunks_reverse(
+        filtered_chunks, tile->chunked_buffer(), unfiltering_all, config);
+    if (!st.ok()) {
+      tile->chunked_buffer()->free();
+      return st;
+    }
   }
 
   // Clear the filtered buffer now that we have reverse-filtered it into
