@@ -2090,18 +2090,19 @@ void SparseArrayFx::check_invalid_offsets(const std::string& array_name) {
   rc = tiledb_query_set_layout(ctx_, query, TILEDB_UNORDERED);
   CHECK(rc == TILEDB_OK);
 
-  // Check duplicate offsets error
+  // Check empty single cell error
   buffer_a2[0] = 0;
-  buffer_a2[1] = 4;
-  buffer_a2[2] = 4;
+
+  uint64_t a2_buffer_size = 0;
+  uint64_t a2_buffer_offset_size = 1 * sizeof(uint64_t);
   rc = tiledb_query_set_buffer_var(
       ctx_,
       query,
       "a2",
       (uint64_t*)buffers[0],
-      &buffer_sizes[0],
+      &a2_buffer_offset_size,
       buffers[1],
-      &buffer_sizes[1]);
+      &a2_buffer_size);
   CHECK(rc == TILEDB_ERR);
 
   // Check non-ascending offsets error
@@ -2121,7 +2122,7 @@ void SparseArrayFx::check_invalid_offsets(const std::string& array_name) {
   // Check out-of-bounds offsets error
   buffer_a2[0] = 0;
   buffer_a2[1] = 4;
-  buffer_a2[2] = 7;
+  buffer_a2[2] = 8;
   rc = tiledb_query_set_buffer_var(
       ctx_,
       query,
