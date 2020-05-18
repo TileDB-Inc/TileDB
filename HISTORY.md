@@ -16,6 +16,15 @@
 
 ## API additions
 
+# TileDB v2.0.2 Release Notes
+
+## Bug fixes
+* Fix hang on open array v1.6 [#1645](https://github.com/TileDB-Inc/TileDB/pull/1645)
+
+## Improvements
+* Allow empty values for variable length attributes [#1646](https://github.com/TileDB-Inc/TileDB/pull/1646)
+
+
 # TileDB v2.0.1 Release Notes
 
 ## Improvements
