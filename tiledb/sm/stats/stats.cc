@@ -173,6 +173,7 @@ void Stats::reset() {
   counter_stats_[CounterType::WRITE_CELL_NUM] = 0;
   counter_stats_[CounterType::WRITE_ARRAY_META_SIZE] = 0;
   counter_stats_[CounterType::WRITE_OPS_NUM] = 0;
+  counter_stats_[CounterType::VFS_S3_SLOW_DOWN_RETRIES] = 0;
 }
 
 void Stats::dump(FILE* out) const {
@@ -191,6 +192,8 @@ void Stats::dump(std::string* out) const {
   ss << dump_write();
   ss << "\n";
   ss << dump_consolidate();
+  ss << "\n";
+  ss << dump_vfs();
 
   auto dbg_secs = timer_stats_.find(TimerType::DBG)->second;
   if (dbg_secs != 0)
@@ -239,7 +242,6 @@ std::string Stats::dump_write() const {
       timer_stats_.find(TimerType::WRITE_PREPARE_AND_FILTER_TILES)->second;
   auto write_array_meta =
       timer_stats_.find(TimerType::WRITE_ARRAY_META)->second;
-
   auto write_num = counter_stats_.find(CounterType::WRITE_NUM)->second;
   auto write_attr_num =
       counter_stats_.find(CounterType::WRITE_ATTR_NUM)->second;
@@ -708,6 +710,19 @@ std::string Stats::dump_consolidate() const {
         &ss,
         "  * Time to consolidate fragment metadata: ",
         consolidate_frag_meta);
+  }
+
+  return ss.str();
+}
+
+std::string Stats::dump_vfs() const {
+  auto s3_slow_down_retries =
+      counter_stats_.find(CounterType::VFS_S3_SLOW_DOWN_RETRIES)->second;
+  std::stringstream ss;
+
+  if (s3_slow_down_retries > 0) {
+    ss << "==== VFS ====\n\n";
+    write(&ss, "- S3 SLOW_DOWN retries: ", s3_slow_down_retries);
   }
 
   return ss.str();
