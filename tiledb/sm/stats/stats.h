@@ -170,6 +170,7 @@ class Stats {
     WRITE_CELL_NUM,
     WRITE_ARRAY_META_SIZE,
     WRITE_OPS_NUM,
+    VFS_S3_SLOW_DOWN_RETRIES,
   };
 
   /* ****************************** */
@@ -236,6 +237,9 @@ class Stats {
 
   /** Dump the current read stats. */
   std::string dump_read() const;
+
+  /** Dump the current vfs stats. */
+  std::string dump_vfs() const;
 
   /**
    * Writes the input message and seconds to the string stream, only if
