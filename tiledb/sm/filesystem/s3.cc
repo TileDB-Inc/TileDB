@@ -248,11 +248,10 @@ Status S3::init(const Config& config, ThreadPool* const thread_pool) {
   client_config.caPath = ca_path.c_str();
   client_config.verifySSL = verify_ssl;
 
-  client_config.retryStrategy =
-      Aws::MakeShared<Aws::Client::DefaultRetryStrategy>(
-          constants::s3_allocation_tag.c_str(),
-          (long)connect_max_tries,
-          (long)connect_scale_factor);
+  client_config.retryStrategy = Aws::MakeShared<S3RetryStrategy>(
+      constants::s3_allocation_tag.c_str(),
+      connect_max_tries,
+      connect_scale_factor);
 
 #ifdef __linux__
   // If the user has not set a s3 ca file or ca path then let's attempt to set
