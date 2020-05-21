@@ -378,7 +378,7 @@ std::vector<T> flatten(const V& vec) {
         std::copy(std::begin(i), std::end(i), std::back_inserter(ret));
       });
   return ret;
-};
+}
 
 namespace impl {
 
