@@ -154,7 +154,7 @@ class Dimension {
     impl::type_check<T>(type(), 1);
     auto d = (const T*)_domain();
     return std::pair<T, T>(d[0], d[1]);
-  };
+  }
 
   /**
    * Returns a string representation of the domain.
