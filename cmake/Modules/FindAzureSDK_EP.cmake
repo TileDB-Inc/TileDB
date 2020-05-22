@@ -47,7 +47,7 @@ if (AZURESDK_LIBRARIES)
     PATH_SUFFIXES include
     NO_DEFAULT_PATH
   )
-else()
+elseif(NOT TILEDB_FORCE_ALL_DEPS)
   set(AZURESDK_STATIC_EP_FOUND FALSE)
   # Static EP not found, search in system paths.
   find_library(AZURESDK_LIBRARIES
