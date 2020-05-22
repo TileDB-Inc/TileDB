@@ -43,14 +43,16 @@ if (NOT TILEDB_DEPS_NO_DEFAULT_PATH)
 endif()
 
 # First try the CMake-provided find script.
-# NOTE: must use OPEENS_ROOT_DIR. HINTS does not work.
+# NOTE: must use OPENSSL_ROOT_DIR. HINTS does not work.
 set(OPENSSL_ROOT_DIR ${OPENSSL_PATHS})
-find_package(OpenSSL
-  QUIET
-  ${TILEDB_DEPS_NO_DEFAULT_PATH})
+if (NOT TILEDB_FORCE_ALL_DEPS)
+  find_package(OpenSSL
+    QUIET
+    ${TILEDB_DEPS_NO_DEFAULT_PATH})
+endif()
 
 # Next try finding the superbuild external project
-if (NOT OPENSSL_FOUND)
+if (NOT OPENSSL_FOUND AND TILEDB_FORCE_ALL_DEPS)
   find_path(OPENSSL_INCLUDE_DIR
     NAMES openssl/ssl.h
     PATHS ${OPENSSL_PATHS}

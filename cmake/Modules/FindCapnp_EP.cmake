@@ -36,15 +36,14 @@ include(TileDBCommon)
 # can use with find_package.
 
 # First try the CMake find module.
-find_package(CapnProto
-  QUIET
-  PATHS ${TILEDB_EP_INSTALL_PREFIX}
-  {${TILEDB_DEPS_NO_DEFAULT_PATH}
-  )
-set(CAPNP_FOUND ${CapnProto_FOUND})
-
-# needed for cherry-pick
-find_package(Git REQUIRED)
+if (NOT TILEDB_FORCE_ALL_DEPS OR TILEDB_CAPNP_EP_BUILT)
+  find_package(CapnProto
+    QUIET
+    PATHS ${TILEDB_EP_INSTALL_PREFIX}
+    ${TILEDB_DEPS_NO_DEFAULT_PATH}
+    )
+  set(CAPNP_FOUND ${CapnProto_FOUND})
+endif()
 
 # If not found, add it as an external project
 if (NOT CAPNP_FOUND)
@@ -60,6 +59,9 @@ if (NOT CAPNP_FOUND)
     endif()
 
     if (WIN32)
+      # needed for cherry-pick on windows
+      find_package(Git REQUIRED)
+
       # we cherry-pick fdbf035619 to fix installation on windowsa
       #   https://github.com/capnproto/capnproto/commit/fdbf035619ab2f9e25173bb7361e7e19a52e0fa1
       ExternalProject_Add(ep_capnp

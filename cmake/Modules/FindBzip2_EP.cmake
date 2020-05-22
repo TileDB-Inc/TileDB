@@ -52,7 +52,7 @@ if (BZIP2_LIBRARIES)
     PATH_SUFFIXES include
     NO_DEFAULT_PATH
   )
-else()
+elseif(NOT TILEDB_FORCE_ALL_DEPS)
   set(BZIP2_STATIC_EP_FOUND FALSE)
   # Static EP not found, search in system paths.
   find_library(BZIP2_LIBRARIES
@@ -109,6 +109,9 @@ if (NOT BZIP2_FOUND)
         LOG_OUTPUT_ON_FAILURE ${TILEDB_LOG_OUTPUT_ON_FAILURE}
       )
     endif()
+    list(APPEND FORWARD_EP_CMAKE_ARGS
+        -DTILEDB_BZIP2_EP_BUILT=TRUE
+        )
     list(APPEND TILEDB_EXTERNAL_PROJECTS ep_bzip2)
   else()
     message(FATAL_ERROR "Unable to find Bzip2")
