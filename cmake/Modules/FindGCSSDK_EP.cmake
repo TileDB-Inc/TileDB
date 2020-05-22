@@ -40,42 +40,15 @@ set(CMAKE_PREFIX_PATH ${CMAKE_PREFIX_PATH} "${TILEDB_EP_INSTALL_PREFIX}")
 set(GCSSDK_DIR "${TILEDB_EP_INSTALL_PREFIX}")
 
 # First check for a static version in the EP prefix.
-find_library(GCSSDK_LIBRARY
-  NAMES
-    libstorage_client${CMAKE_STATIC_LIBRARY_SUFFIX}
-  PATHS ${TILEDB_EP_INSTALL_PREFIX}
-  PATH_SUFFIXES lib
-  NO_DEFAULT_PATH
-)
-
-if (GCSSDK_LIBRARY)
-  set(GCSSDK_STATIC_EP_FOUND TRUE)
-  find_path(GCSSDK_INCLUDE_DIR
-    NAMES client.h
+# The storage client is installed as the cmake package storage_client
+# TODO: This should be replaced with proper find_package as google installs cmake targets for the subprojects
+if (NOT TILEDB_FORCE_ALL_DEPS OR TILEDB_CAPNP_EP_BUILT)
+  find_package(storage_client
     PATHS ${TILEDB_EP_INSTALL_PREFIX}
-    PATH_SUFFIXES include/google/cloud/storage
-    NO_DEFAULT_PATH
+          ${TILEDB_DEPS_NO_DEFAULT_PATH}
   )
-elseif(NOT TILEDB_FORCE_ALL_DEPS)
-  set(GCSSDK_STATIC_EP_FOUND FALSE)
-  # Static EP not found, search in system paths.
-  find_library(GCSSDK_LIBRARY
-    NAMES
-      libstorage_client
-    PATH_SUFFIXES lib bin
-    ${TILEDB_DEPS_NO_DEFAULT_PATH}
-  )
-  find_path(GCSSDK_INCLUDE_DIR
-    NAMES client.h
-    PATH_SUFFIXES include/google/cloud/storage
-    ${TILEDB_DEPS_NO_DEFAULT_PATH}
-  )
+  set(GCSSDK_FOUND ${storage_client_FOUND})
 endif()
-
-include(FindPackageHandleStandardArgs)
-FIND_PACKAGE_HANDLE_STANDARD_ARGS(GCSSDK
-  REQUIRED_VARS GCSSDK_LIBRARY GCSSDK_INCLUDE_DIR
-)
 
 if (NOT GCSSDK_FOUND)
   if (TILEDB_SUPERBUILD)
@@ -104,7 +77,9 @@ if (NOT GCSSDK_FOUND)
       BUILD_IN_SOURCE 1
       PATCH_COMMAND
         patch -N -p1 < ${TILEDB_CMAKE_INPUTS_DIR}/patches/ep_gcssdk/build.patch &&
-        patch -N -p1 < ${TILEDB_CMAKE_INPUTS_DIR}/patches/ep_gcssdk/ls.patch
+        patch -N -p1 < ${TILEDB_CMAKE_INPUTS_DIR}/patches/ep_gcssdk/ls.patch &&
+        patch -N -p1 < ${TILEDB_CMAKE_INPUTS_DIR}/patches/ep_gcssdk/disable_tests.patch &&
+        patch -N -p1 < ${TILEDB_CMAKE_INPUTS_DIR}/patches/ep_gcssdk/disable_examples.patch
       CONFIGURE_COMMAND
         ${CMAKE_COMMAND} -Hsuper -Bcmake-out
         -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
@@ -112,11 +87,17 @@ if (NOT GCSSDK_FOUND)
         -DBUILD_SAMPLES=OFF
         -DCMAKE_PREFIX_PATH=${TILEDB_EP_INSTALL_PREFIX}
         -DOPENSSL_ROOT_DIR=${TILEDB_OPENSSL_DIR}
+        -DCMAKE_INSTALL_PREFIX=${TILEDB_EP_INSTALL_PREFIX}
+        # Disable unused api features to speed up build
+        -DGOOGLE_CLOUD_CPP_ENABLE_BIGTABLE=OFF
+        -DGOOGLE_CLOUD_CPP_ENABLE_FIRESTORE=OFF
+        -DGOOGLE_CLOUD_CPP_ENABLE_STORAGE=ON
+        -DBUILD_TESTING=OFF
+        # Google uses their own variable instead of CMAKE_INSTALL_PREFIX
+        -DGOOGLE_CLOUD_CPP_EXTERNAL_PREFIX=${TILEDB_EP_INSTALL_PREFIX}
       BUILD_COMMAND ${CMAKE_COMMAND} --build cmake-out -- -j${NCPU}
-      INSTALL_COMMAND
-          cp -r ${TILEDB_EP_SOURCE_DIR}/ep_gcssdk/cmake-out/external/lib ${TILEDB_EP_INSTALL_PREFIX}
-        COMMAND
-          cp -r ${TILEDB_EP_SOURCE_DIR}/ep_gcssdk/cmake-out/external/include ${TILEDB_EP_INSTALL_PREFIX}
+      # There is no install command, the build process installs the libraries
+      INSTALL_COMMAND ""
       LOG_DOWNLOAD TRUE
       LOG_CONFIGURE TRUE
       LOG_BUILD TRUE
@@ -129,11 +110,13 @@ if (NOT GCSSDK_FOUND)
     list(APPEND FORWARD_EP_CMAKE_ARGS
       -DTILEDB_GCSSDK_EP_BUILT=TRUE
     )
-
+  else()
+    message(FATAL_ERROR "Unable to find GCSSDK")
   endif()
 endif()
 
-if (GCSSDK_FOUND)
+# If we found the SDK but it didn't have a cmake target build them
+if (GCSSDK_FOUND AND NOT TARGET storage_client)
   # Build a list of all GCS libraries to link with.
   list(APPEND GCSSDK_LINKED_LIBS "storage_client"
                                  "google_cloud_cpp_common"
@@ -143,23 +126,22 @@ if (GCSSDK_FOUND)
     find_library(GCS_FOUND_${LIB}
       NAMES lib${LIB}${CMAKE_STATIC_LIBRARY_SUFFIX}
       PATHS ${TILEDB_EP_INSTALL_PREFIX}
-      PATH_SUFFIXES lib
+      PATH_SUFFIXES lib lib64
       ${TILEDB_DEPS_NO_DEFAULT_PATH}
     )
-
     message(STATUS "Found GCS lib: ${LIB} (${GCS_FOUND_${LIB}})")
-    if (NOT TARGET GCSSDK::${LIB})
-      add_library(GCSSDK::${LIB} UNKNOWN IMPORTED)
-      set_target_properties(GCSSDK::${LIB} PROPERTIES
-        IMPORTED_LOCATION "${GCS_FOUND_${LIB}}"
-        INTERFACE_INCLUDE_DIRECTORIES ${TILEDB_EP_INSTALL_PREFIX}/include
-      )
-    endif()
 
     # If we built a static EP, install it if required.
     if (GCSSDK_STATIC_EP_FOUND AND TILEDB_INSTALL_STATIC_DEPS)
       install_target_libs(GCSSDK::${LIB})
     endif()
-
   endforeach ()
+
+  if (NOT TARGET storage_client)
+    add_library(storage_client UNKNOWN IMPORTED)
+    set_target_properties(storage_client PROPERTIES
+      IMPORTED_LOCATION "${GCS_FOUND_storage_client};${GCS_FOUND_google_cloud_cpp_common};${GCS_FOUND_crc32c}"
+      INTERFACE_INCLUDE_DIRECTORIES ${TILEDB_EP_INSTALL_PREFIX}/include
+    )
+  endif()
 endif()

@@ -91,7 +91,7 @@ index 9cc916aed..8f9ac1eb1 100644
      googletest-project google-cloud-cpp-common-project)
  
  include(ExternalProject)
-@@ -54,8 +53,14 @@ ExternalProject_Add(
+@@ -54,8 +53,15 @@ ExternalProject_Add(
                 -DCMAKE_PREFIX_PATH=${GOOGLE_CLOUD_CPP_PREFIX_PATH}
                 -DCMAKE_INSTALL_RPATH=${GOOGLE_CLOUD_CPP_INSTALL_RPATH}
                 -DCMAKE_INSTALL_PREFIX=<INSTALL_DIR>
@@ -102,6 +102,7 @@ index 9cc916aed..8f9ac1eb1 100644
 +               -DCMAKE_C_FLAGS=-fPIC
 +               -DOPENSSL_ROOT_DIR=${OPENSSL_ROOT_DIR}
 +               -DGOOGLE_CLOUD_CPP_ENABLE_MACOS_OPENSSL_CHECK=OFF
++               -DBUILD_TESTING=${BUILD_TESTING}
      BUILD_COMMAND ${CMAKE_COMMAND} --build <BINARY_DIR> ${PARALLEL}
 -    TEST_COMMAND ${CMAKE_CTEST_COMMAND} --output-on-failure
      LOG_DOWNLOAD OFF

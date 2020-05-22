@@ -319,9 +319,7 @@ if (TILEDB_GCS)
   find_package(GCSSDK_EP REQUIRED COMPONENTS gcs)
   target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
     INTERFACE
-      GCSSDK::storage_client
-      GCSSDK::google_cloud_cpp_common
-      GCSSDK::crc32c
+       storage_client
   )
   add_definitions(-DHAVE_GCS)
 endif()
