@@ -80,29 +80,58 @@ if (NOT LZ4_FOUND)
     if (WIN32)
       set(ARCH_SPEC -A X64)
     endif()
-    set(LZ4_CMAKE_DIR "${TILEDB_EP_SOURCE_DIR}/ep_lz4/contrib/cmake_unofficial")
+#    set(LZ4_CMAKE_DIR "${TILEDB_EP_SOURCE_DIR}/ep_lz4/contrib/cmake_unofficial")
+#    ExternalProject_Add(ep_lz4
+#      PREFIX "externals"
+#      URL "https://github.com/lz4/lz4/archive/v1.8.2.zip"
+#      URL_HASH SHA1=ebf6c227965318ecd73820ade8f5dbd83d48b3e8
+#      CONFIGURE_COMMAND
+#        ${CMAKE_COMMAND}
+#          ${ARCH_SPEC}
+#          -DLZ4_BUILD_LEGACY_LZ4C=OFF
+#          -DLZ4_POSITION_INDEPENDENT_LIB=ON
+#          -DBUILD_SHARED_LIBS=OFF
+#          -DBUILD_STATIC_LIBS=ON
+#          -DCMAKE_BUILD_TYPE=Release
+#          -DCMAKE_INSTALL_PREFIX=${TILEDB_EP_INSTALL_PREFIX}
+#          ${LZ4_CMAKE_DIR}
+#      UPDATE_COMMAND ""
+#      LOG_DOWNLOAD TRUE
+#      LOG_CONFIGURE TRUE
+#      LOG_BUILD TRUE
+#      LOG_INSTALL TRUE
+#      LOG_OUTPUT_ON_FAILURE ${TILEDB_LOG_OUTPUT_ON_FAILURE}
+#    )
+    if (WIN32)
+      set(CFLAGS_DEF "")
+    else()
+      set(CFLAGS_DEF "${CMAKE_C_FLAGS} -fPIC")
+    endif()
     ExternalProject_Add(ep_lz4
       PREFIX "externals"
       URL "https://github.com/lz4/lz4/archive/v1.8.2.zip"
       URL_HASH SHA1=ebf6c227965318ecd73820ade8f5dbd83d48b3e8
-      CONFIGURE_COMMAND
-        ${CMAKE_COMMAND}
-          ${ARCH_SPEC}
-          -DLZ4_BUILD_LEGACY_LZ4C=OFF
-          -DLZ4_POSITION_INDEPENDENT_LIB=ON
-          -DBUILD_SHARED_LIBS=OFF
-          -DBUILD_STATIC_LIBS=ON
-          -DCMAKE_BUILD_TYPE=Release
-          -DCMAKE_INSTALL_PREFIX=${TILEDB_EP_INSTALL_PREFIX}
-          ${LZ4_CMAKE_DIR}
-      UPDATE_COMMAND ""
+#      CONFIGURE_COMMAND
+#      ${CMAKE_COMMAND}
+#      ${ARCH_SPEC}
+#      -DLZ4_BUILD_LEGACY_LZ4C=OFF
+#      -DLZ4_POSITION_INDEPENDENT_LIB=ON
+#      -DBUILD_SHARED_LIBS=OFF
+#      -DBUILD_STATIC_LIBS=ON
+#      -DCMAKE_BUILD_TYPE=Release
+#      -DCMAKE_INSTALL_PREFIX=${TILEDB_EP_INSTALL_PREFIX}
+#      ${LZ4_CMAKE_DIR}
+      CONFIGURE_COMMAND ""
+      BUILD_IN_SOURCE TRUE
+      BUILD_COMMAND $(MAKE)
+      INSTALL_COMMAND $(MAKE) install PREFIX=${TILEDB_EP_INSTALL_PREFIX}
       LOG_DOWNLOAD TRUE
       LOG_CONFIGURE TRUE
       LOG_BUILD TRUE
       LOG_INSTALL TRUE
       LOG_OUTPUT_ON_FAILURE ${TILEDB_LOG_OUTPUT_ON_FAILURE}
-    )
-    list(APPEND TILEDB_EXTERNAL_PROJECTS ep_lz4)
+      )
+            list(APPEND TILEDB_EXTERNAL_PROJECTS ep_lz4)
   else()
     message(FATAL_ERROR "Unable to find LZ4")
   endif()
