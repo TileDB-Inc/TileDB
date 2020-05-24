@@ -76,6 +76,9 @@ jobs:
       VS2017:
         imageName: 'vs2017-win2016'
         TILEDB_S3: ON
+      VS2019:
+        imageName: 'windows-2019'
+        TILEDB_S3: ON
   pool:
     vmImage: $(imageName)
   steps:
