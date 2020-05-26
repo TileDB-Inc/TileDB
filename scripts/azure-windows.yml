@@ -1,11 +1,13 @@
 steps:
 - powershell: |
+    Set-PSDebug -Trace 1
+
     mkdir $env:AGENT_BUILDDIRECTORY\build
     cd $env:AGENT_BUILDDIRECTORY\build
 
     if ($env:imageName -eq "vs2017-win2016") {
       $env:Path += ";C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin"
-    elseif ($env:imageName -eq "windows-2019") {
+    } elseif ($env:imageName -eq "windows-2019") {
       # already available
     } else {
       Write-Host "Unknown image name: '$($env:imageName)'"
@@ -42,6 +44,8 @@ steps:
   displayName: "Build"
 
 - powershell: |
+    Set-PSDebug -Trace 1
+
     $env:MINIO_ACCESS_KEY = "minio"
     $env:MINIO_SECRET_KEY = "miniosecretkey"
     $env:AWS_ACCESS_KEY_ID = "minio"
