@@ -1,0 +1,124 @@
+From 95e54c03d877f89cab681e8ac3c747ca017a22ea Mon Sep 17 00:00:00 2001
+From: Seth Shelnutt <Shelnutt2@gmail.com>
+Date: Fri, 22 May 2020 15:29:11 -0400
+Subject: [PATCH] All cloud examples should be wrapped in BUILD_TESTING
+
+---
+ google/cloud/examples/CMakeLists.txt         | 18 +++---
+ google/cloud/storage/examples/CMakeLists.txt | 62 ++++++++++----------
+ 2 files changed, 41 insertions(+), 39 deletions(-)
+
+diff --git a/google/cloud/examples/CMakeLists.txt b/google/cloud/examples/CMakeLists.txt
+index c9f4a4a02..595168720 100644
+--- a/google/cloud/examples/CMakeLists.txt
++++ b/google/cloud/examples/CMakeLists.txt
+@@ -14,13 +14,15 @@
+ # limitations under the License.
+ # ~~~
+ 
+-find_package(google_cloud_cpp_common CONFIG REQUIRED)
+-find_package(google_cloud_cpp_grpc_utils CONFIG REQUIRED)
++if (BUILD_TESTING)
++  find_package(google_cloud_cpp_common CONFIG REQUIRED)
++  find_package(google_cloud_cpp_grpc_utils CONFIG REQUIRED)
+ 
+-# Pick the right MSVC runtime libraries.
+-include(SelectMSVCRuntime)
++  # Pick the right MSVC runtime libraries.
++  include(SelectMSVCRuntime)
+ 
+-add_executable(gcs2cbt gcs2cbt.cc)
+-target_link_libraries(
+-    gcs2cbt bigtable_client storage_client google_cloud_cpp_grpc_utils
+-    google_cloud_cpp_common_options)
++  add_executable(gcs2cbt gcs2cbt.cc)
++  target_link_libraries(
++      gcs2cbt bigtable_client storage_client google_cloud_cpp_grpc_utils
++      google_cloud_cpp_common_options)
++endif()
+diff --git a/google/cloud/storage/examples/CMakeLists.txt b/google/cloud/storage/examples/CMakeLists.txt
+index 6dca71fad..8354bc739 100644
+--- a/google/cloud/storage/examples/CMakeLists.txt
++++ b/google/cloud/storage/examples/CMakeLists.txt
+@@ -18,47 +18,47 @@
+ # to keep this particular file as simple as possible, as it is intended to be
+ # part of the examples.
+ 
+-add_executable(storage_bucket_samples storage_bucket_samples.cc)
+-target_link_libraries(storage_bucket_samples storage_client
+-                      storage_common_options)
++if (BUILD_TESTING)
++    add_executable(storage_bucket_samples storage_bucket_samples.cc)
++    target_link_libraries(storage_bucket_samples storage_client
++                          storage_common_options)
+ 
+-add_executable(storage_bucket_acl_samples storage_bucket_acl_samples.cc)
+-target_link_libraries(storage_bucket_acl_samples storage_client
+-                      storage_common_options)
++    add_executable(storage_bucket_acl_samples storage_bucket_acl_samples.cc)
++    target_link_libraries(storage_bucket_acl_samples storage_client
++                          storage_common_options)
+ 
+-add_executable(storage_bucket_iam_samples storage_bucket_iam_samples.cc)
+-target_link_libraries(storage_bucket_iam_samples storage_client
+-                      storage_common_options)
++    add_executable(storage_bucket_iam_samples storage_bucket_iam_samples.cc)
++    target_link_libraries(storage_bucket_iam_samples storage_client
++                          storage_common_options)
+ 
+-if (BUILD_TESTING)
+     add_executable(storage_client_mock_samples storage_client_mock_samples.cc)
+     target_link_libraries(
+         storage_client_mock_samples storage_client storage_common_options
+         GTest::gmock_main GTest::gmock GTest::gtest)
+-endif ()
+ 
+-add_executable(storage_default_object_acl_samples
+-               storage_default_object_acl_samples.cc)
+-target_link_libraries(storage_default_object_acl_samples storage_client
+-                      storage_common_options)
++    add_executable(storage_default_object_acl_samples
++                   storage_default_object_acl_samples.cc)
++    target_link_libraries(storage_default_object_acl_samples storage_client
++                          storage_common_options)
+ 
+-add_executable(storage_object_samples storage_object_samples.cc)
+-target_link_libraries(storage_object_samples storage_client
+-                      storage_common_options)
++    add_executable(storage_object_samples storage_object_samples.cc)
++    target_link_libraries(storage_object_samples storage_client
++                          storage_common_options)
+ 
+-add_executable(storage_object_acl_samples storage_object_acl_samples.cc)
+-target_link_libraries(storage_object_acl_samples storage_client
+-                      storage_common_options)
++    add_executable(storage_object_acl_samples storage_object_acl_samples.cc)
++    target_link_libraries(storage_object_acl_samples storage_client
++                          storage_common_options)
+ 
+-add_executable(storage_notification_samples storage_notification_samples.cc)
+-target_link_libraries(storage_notification_samples storage_client
+-                      storage_common_options)
++    add_executable(storage_notification_samples storage_notification_samples.cc)
++    target_link_libraries(storage_notification_samples storage_client
++                          storage_common_options)
+ 
+-add_executable(storage_quickstart storage_quickstart.cc)
+-target_link_libraries(storage_quickstart storage_client storage_common_options
+-                      google_cloud_cpp_common_options)
++    add_executable(storage_quickstart storage_quickstart.cc)
++    target_link_libraries(storage_quickstart storage_client storage_common_options
++                          google_cloud_cpp_common_options)
+ 
+-add_executable(storage_service_account_samples
+-               storage_service_account_samples.cc)
+-target_link_libraries(storage_service_account_samples storage_client
+-                      storage_common_options)
++    add_executable(storage_service_account_samples
++                   storage_service_account_samples.cc)
++    target_link_libraries(storage_service_account_samples storage_client
++                          storage_common_options)
++endif ()
+-- 
+2.26.2
+
