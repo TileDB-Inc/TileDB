@@ -37,15 +37,68 @@ include(TileDBCommon)
 
 # First try the CMake find module.
 if (NOT TILEDB_FORCE_ALL_DEPS OR TILEDB_CAPNP_EP_BUILT)
+  if (TILEDB_CAPNP_EP_BUILT)
+      # If we built it from the source always force no default path
+    SET(TILEDB_CAPNP_NO_DEFAULT_PATH NO_DEFAULT_PATH)
+  else()
+    SET(TILEDB_CAPNP_NO_DEFAULT_PATH ${TILEDB_DEPS_NO_DEFAULT_PATH})
+  endif()
+
   find_package(CapnProto
     PATHS ${TILEDB_EP_INSTALL_PREFIX}
-    ${TILEDB_DEPS_NO_DEFAULT_PATH}
+    ${TILEDB_CAPNP_NO_DEFAULT_PATH}
     )
   set(CAPNP_FOUND ${CapnProto_FOUND})
 endif()
 
+# We handle the found case first because ubuntu's install of capnproto is missing libcapnp-json
+# so we must first make sure the found case has all the appropriate libs, else we will build from source
+if (CAPNP_FOUND)
+  # List of all required Capnp libraries.
+  set(CAPNP_LIB_NAMES capnp kj capnp-json)
+  foreach(LIB ${CAPNP_LIB_NAMES})
+    if (NOT TARGET CapnProto::${LIB} AND NOT CAPNP_LIBRARIES)
+      message(FATAL_ERROR "Required target CapnProto::${LIB} not defined")
+    elseif (TARGET CapnProto::${LIB})
+      message(STATUS "Found CapnProto lib: ${LIB}")
+      # If we built a static EP, install it if required.
+      if (TILEDB_CAPNP_EP_BUILT AND TILEDB_INSTALL_STATIC_DEPS)
+        message(STATUS "Adding CapnProto lib: ${LIB} to install target")
+        install_target_libs(CapnProto::${LIB})
+      endif()
+    elseif (NOT TARGET CapnProto::${LIB})
+      message(STATUS "NOT Found Target for CapnProto lib: ${LIB}")
+      set(SHOULD_CAPNP_LIBRARIES 1)
+    endif()
+  endforeach()
+  if (SHOULD_CAPNP_LIBRARIES)
+    message(STATUS "Checking libraries in ${CAPNP_LIBRARIES}")
+    foreach(NEEDED_LIB ${CAPNP_LIB_NAMES})
+      foreach(LIB ${CAPNP_LIBRARIES})
+        if (LIB MATCHES "lib${NEEDED_LIB}.")
+          set(FOUND_${NEEDED_LIB} 1)
+          if (NOT TARGET CapnProto::${NEEDED_LIB})
+            message(STATUS "Adding target for CapnProto::${NEEDED_LIB} from CAPNP_LIBRARIES")
+            add_library(CapnProto::${NEEDED_LIB} UNKNOWN IMPORTED)
+            set_target_properties(CapnProto::${NEEDED_LIB} PROPERTIES
+                  IMPORTED_LOCATION "${LIB}"
+                  INTERFACE_INCLUDE_DIRECTORIES "${CAPNP_INCLUDE_DIR}"
+                  )
+          endif()
+        endif()
+      endforeach()
+      if (NOT FOUND_${NEEDED_LIB})
+        message("Cap'n Proto ${NEEDED_LIB} not found on system, reverting to external project")
+        unset(CAPNP_FOUND)
+      endif()
+    endforeach()
+  endif()
+endif()
+
+
 # If not found, add it as an external project
 if (NOT CAPNP_FOUND)
+  message(STATUS "Cap'n Proto was not found")
   if (TILEDB_SUPERBUILD)
     message(STATUS "Adding Capnp as an external project")
 
@@ -117,19 +170,4 @@ if (NOT CAPNP_FOUND)
   else()
     message(FATAL_ERROR "Unable to find Capnp")
   endif()
-endif()
-
-if (CAPNP_FOUND)
-  # List of all required Capnp libraries.
-  set(CAPNP_LIB_NAMES capnp kj capnp-json)
-  foreach(LIB ${CAPNP_LIB_NAMES})
-    if (NOT TARGET CapnProto::${LIB})
-      message(FATAL_ERROR "Required target CapnProto::${LIB} not defined")
-    endif()
-    message(STATUS "Found CapnProto lib: ${LIB}")
-    # If we built a static EP, install it if required.
-    if (TILEDB_CAPNP_EP_BUILT AND TILEDB_INSTALL_STATIC_DEPS)
-      install_target_libs(CapnProto::${LIB})
-    endif()
-  endforeach()
 endif()
