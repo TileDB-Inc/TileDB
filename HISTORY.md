@@ -5,8 +5,10 @@
 * Fix typo in GCS cmake file for superbuild [#1665](https://github.com/TileDB-Inc/TileDB/pull/1665)
 * Don't error on GCS client init failure [#1667](https://github.com/TileDB-Inc/TileDB/pull/1667)
 * Don't include curl's linking to ssl, avoids build issue on fresh macos 10.14/10.15 installs [#1671](https://github.com/TileDB-Inc/TileDB/pull/1671)
+* Handle ubuntu's cap'n proto package not providing cmake targets [#1659](https://github.com/TileDB-Inc/TileDB/pull/1659)
 
 ## Bug fixes
+
 * The C++ Attribute::create API now correctly builds from an STL array [#1670](https://github.com/TileDB-Inc/TileDB/pull/1670)
 * Allow opening arrays with read-only permission on posix filesystems [#1676](https://github.com/TileDB-Inc/TileDB/pull/1676)
 
