@@ -56,7 +56,7 @@ if (GCSSDK_LIBRARY)
     PATH_SUFFIXES include/google/cloud/storage
     NO_DEFAULT_PATH
   )
-else()
+elseif(NOT TILEDB_FORCE_ALL_DEPS)
   set(GCSSDK_STATIC_EP_FOUND FALSE)
   # Static EP not found, search in system paths.
   find_library(GCSSDK_LIBRARY
