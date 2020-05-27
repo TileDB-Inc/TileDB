@@ -42,12 +42,19 @@ if (NOT TILEDB_DEPS_NO_DEFAULT_PATH)
   list(APPEND OPENSSL_PATHS ${HOMEBREW_BASE})
 endif()
 
+if (TILEDB_OPENSSL_EP_BUILT)
+  # If we built it from the system always force no default path
+  SET(TILEDB_OPENSSL_NO_DEFAULT_PATH NO_DEFAULT_PATH)
+else()
+  SET(TILEDB_OPENSSL_NO_DEFAULT_PATH ${TILEDB_DEPS_NO_DEFAULT_PATH})
+endif()
+
 # First try the CMake-provided find script.
 # NOTE: must use OPENSSL_ROOT_DIR. HINTS does not work.
 set(OPENSSL_ROOT_DIR ${OPENSSL_PATHS})
 if (NOT TILEDB_FORCE_ALL_DEPS)
   find_package(OpenSSL
-    ${TILEDB_DEPS_NO_DEFAULT_PATH})
+    ${TILEDB_OPENSSL_NO_DEFAULT_PATH})
 endif()
 
 # Next try finding the superbuild external project
@@ -56,7 +63,7 @@ if (NOT OPENSSL_FOUND AND TILEDB_FORCE_ALL_DEPS)
     NAMES openssl/ssl.h
     PATHS ${OPENSSL_PATHS}
     PATH_SUFFIXES include
-    ${TILEDB_DEPS_NO_DEFAULT_PATH}
+    ${TILEDB_OPENSSL_NO_DEFAULT_PATH}
   )
 
   # Link statically if installed with the EP.
@@ -65,7 +72,7 @@ if (NOT OPENSSL_FOUND AND TILEDB_FORCE_ALL_DEPS)
       libssl${CMAKE_STATIC_LIBRARY_SUFFIX}
     PATHS ${OPENSSL_PATHS}
     PATH_SUFFIXES lib
-    ${TILEDB_DEPS_NO_DEFAULT_PATH}
+    ${TILEDB_OPENSSL_NO_DEFAULT_PATH}
   )
 
   find_library(OPENSSL_CRYPTO_LIBRARY
@@ -73,7 +80,7 @@ if (NOT OPENSSL_FOUND AND TILEDB_FORCE_ALL_DEPS)
       libcrypto${CMAKE_STATIC_LIBRARY_SUFFIX}
     PATHS ${OPENSSL_PATHS}
     PATH_SUFFIXES lib
-    ${TILEDB_DEPS_NO_DEFAULT_PATH}
+    ${TILEDB_OPENSSL_NO_DEFAULT_PATH}
   )
 
   include(FindPackageHandleStandardArgs)
