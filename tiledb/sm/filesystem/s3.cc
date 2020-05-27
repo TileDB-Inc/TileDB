@@ -692,21 +692,18 @@ Status S3::object_size(const URI& uri, uint64_t* nbytes) const {
 
   Aws::Http::URI aws_uri = uri.to_string().c_str();
   std::string aws_path = remove_front_slash(aws_uri.GetPath().c_str());
-  Aws::S3::Model::ListObjectsRequest list_objects_request;
-  list_objects_request.SetBucket(aws_uri.GetAuthority());
-  list_objects_request.SetPrefix(aws_path.c_str());
-  auto list_objects_outcome = client_->ListObjects(list_objects_request);
 
-  if (!list_objects_outcome.IsSuccess())
+  Aws::S3::Model::HeadObjectRequest head_object_request;
+  head_object_request.SetBucket(aws_uri.GetAuthority());
+  head_object_request.SetKey(aws_path);
+  auto head_object_outcome = client_->HeadObject(head_object_request);
+
+  if (!head_object_outcome.IsSuccess())
     return LOG_STATUS(Status::S3Error(
         "Cannot retrieve S3 object size; Error while listing file " +
-        uri.to_string() + outcome_error_message(list_objects_outcome)));
-  if (list_objects_outcome.GetResult().GetContents().empty())
-    return LOG_STATUS(Status::S3Error(
-        std::string("Cannot retrieve S3 object size; Not a file ") +
-        uri.to_string()));
-  *nbytes = static_cast<uint64_t>(
-      list_objects_outcome.GetResult().GetContents()[0].GetSize());
+        uri.to_string() + outcome_error_message(head_object_outcome)));
+  *nbytes =
+      static_cast<uint64_t>(head_object_outcome.GetResult().GetContentLength());
 
   return Status::Ok();
 }
