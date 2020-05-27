@@ -182,10 +182,10 @@ endfunction()
 if (TILEDB_SUPERBUILD)
   # Don't use find_package in superbuild if we are forcing all deps.
   if (NOT TILEDB_FORCE_ALL_DEPS)
-    find_package(TBB CONFIG QUIET)
+    find_package(TBB CONFIG)
   endif()
 else()
-  find_package(TBB CONFIG QUIET)
+  find_package(TBB CONFIG)
 
   if (NOT TARGET TBB::tbb)
     # Build/setup the EP.
@@ -193,7 +193,7 @@ else()
 
     # Try finding again.
     if (TILEDB_TBB_SHARED)
-      find_package(TBB CONFIG QUIET)
+      find_package(TBB CONFIG)
     else()
       # The TBB find module won't work for static TBB, so use our manual method.
       backup_find_tbb()

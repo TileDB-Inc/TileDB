@@ -47,7 +47,6 @@ endif()
 set(OPENSSL_ROOT_DIR ${OPENSSL_PATHS})
 if (NOT TILEDB_FORCE_ALL_DEPS)
   find_package(OpenSSL
-    QUIET
     ${TILEDB_DEPS_NO_DEFAULT_PATH})
 endif()
 
