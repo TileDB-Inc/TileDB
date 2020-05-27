@@ -38,7 +38,6 @@ include(TileDBCommon)
 # First try the CMake find module.
 if (NOT TILEDB_FORCE_ALL_DEPS OR TILEDB_CAPNP_EP_BUILT)
   find_package(CapnProto
-    QUIET
     PATHS ${TILEDB_EP_INSTALL_PREFIX}
     ${TILEDB_DEPS_NO_DEFAULT_PATH}
     )

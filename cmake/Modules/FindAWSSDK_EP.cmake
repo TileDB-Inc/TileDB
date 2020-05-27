@@ -50,10 +50,10 @@ if (TILEDB_SUPERBUILD)
   # That's because the AWSSDK config file hard-codes a search of /usr,
   # /usr/local, etc.
   if (NOT TILEDB_FORCE_ALL_DEPS)
-    find_package(AWSSDK CONFIG QUIET)
+    find_package(AWSSDK CONFIG)
   endif()
 else()
-  find_package(AWSSDK CONFIG QUIET)
+  find_package(AWSSDK CONFIG)
 endif()
 
 if (NOT AWSSDK_FOUND)
