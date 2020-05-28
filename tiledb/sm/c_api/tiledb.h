@@ -5414,7 +5414,7 @@ TILEDB_EXPORT int32_t tiledb_stats_disable();
 TILEDB_EXPORT int32_t tiledb_stats_reset();
 
 /**
- * Dump all internal statistics counters to to some output (e.g.,
+ * Dump all internal statistics counters to some output (e.g.,
  * file or stdout).
  *
  * @param out The output.
@@ -5439,6 +5439,33 @@ TILEDB_EXPORT int32_t tiledb_stats_dump(FILE* out);
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
 TILEDB_EXPORT int32_t tiledb_stats_dump_str(char** out);
+
+/**
+ * Dump all raw internal statistics counters to some output (e.g.,
+ * file or stdout).
+ *
+ * @param out The output.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_stats_raw_dump(FILE* out);
+
+/**
+ * Dump all raw internal statistics counters to an output string. The caller is
+ * responsible for freeing the resulting string.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * char *stats_str;
+ * tiledb_stats_raw_dump_str(&stats_str);
+ * // ...
+ * tiledb_stats_raw_free_str(&stats_str);
+ * @endcode
+ *
+ * @param out Will be set to point to an allocated string containing the stats.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_stats_raw_dump_str(char** out);
 
 /**
  *
