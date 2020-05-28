@@ -53,7 +53,7 @@ if (ZSTD_LIBRARIES)
     PATH_SUFFIXES include
     NO_DEFAULT_PATH
   )
-else()
+elseif(NOT TILEDB_FORCE_ALL_DEPS)
   set(ZSTD_STATIC_EP_FOUND FALSE)
   # Static EP not found, search in system paths.
   find_library(ZSTD_LIBRARIES

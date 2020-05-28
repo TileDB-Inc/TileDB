@@ -33,11 +33,13 @@
 # Search the path set during the superbuild for the EP.
 set(SPDLOG_PATHS ${TILEDB_EP_SOURCE_DIR}/ep_spdlog/include)
 
-find_path(SPDLOG_INCLUDE_DIR
-  NAMES spdlog/spdlog.h
-  PATHS ${SPDLOG_PATHS}
-  ${TILEDB_DEPS_NO_DEFAULT_PATH}
-)
+if (NOT TILEDB_FORCE_ALL_DEPS OR TILEDB_SPDLOG_EP_BUILT)
+  find_path(SPDLOG_INCLUDE_DIR
+    NAMES spdlog/spdlog.h
+    PATHS ${SPDLOG_PATHS}
+    ${TILEDB_DEPS_NO_DEFAULT_PATH}
+  )
+endif()
 
 include(FindPackageHandleStandardArgs)
 FIND_PACKAGE_HANDLE_STANDARD_ARGS(Spdlog
@@ -58,6 +60,9 @@ if (NOT SPDLOG_FOUND AND TILEDB_SUPERBUILD)
     LOG_OUTPUT_ON_FAILURE ${TILEDB_LOG_OUTPUT_ON_FAILURE}
   )
   list(APPEND TILEDB_EXTERNAL_PROJECTS ep_spdlog)
+  list(APPEND FORWARD_EP_CMAKE_ARGS
+    -DTILEDB_SPDLOG_EP_BUILT=TRUE
+  )
 endif()
 
 if (SPDLOG_FOUND AND NOT TARGET Spdlog::Spdlog)

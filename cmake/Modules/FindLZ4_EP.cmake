@@ -53,7 +53,7 @@ if (LZ4_LIBRARIES)
     PATH_SUFFIXES include
     NO_DEFAULT_PATH
   )
-else()
+elseif(NOT TILEDB_FORCE_ALL_DEPS)
   set(LZ4_STATIC_EP_FOUND FALSE)
   # Static EP not found, search in system paths.
   find_library(LZ4_LIBRARIES
@@ -103,6 +103,9 @@ if (NOT LZ4_FOUND)
       LOG_OUTPUT_ON_FAILURE ${TILEDB_LOG_OUTPUT_ON_FAILURE}
     )
     list(APPEND TILEDB_EXTERNAL_PROJECTS ep_lz4)
+    list(APPEND FORWARD_EP_CMAKE_ARGS
+      -DTILEDB_LZ4_EP_BUILT=TRUE
+    )
   else()
     message(FATAL_ERROR "Unable to find LZ4")
   endif()

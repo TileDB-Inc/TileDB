@@ -319,9 +319,7 @@ if (TILEDB_GCS)
   find_package(GCSSDK_EP REQUIRED COMPONENTS gcs)
   target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
     INTERFACE
-      GCSSDK::storage_client
-      GCSSDK::google_cloud_cpp_common
-      GCSSDK::crc32c
+       storage_client
   )
   add_definitions(-DHAVE_GCS)
 endif()
@@ -765,3 +763,25 @@ install(
   NAMESPACE "${PROJECT_NAME}::"
   DESTINATION "${CONFIG_INSTALL_DIR}"
 )
+
+file(READ "${CMAKE_CURRENT_SOURCE_DIR}/sm/c_api/tiledb_version.h" ver)
+
+string(REGEX MATCH "TILEDB_VERSION_MAJOR ([0-9]*)" _ ${ver})
+set(ver_major ${CMAKE_MATCH_1})
+
+string(REGEX MATCH "TILEDB_VERSION_MINOR ([0-9]*)" _ ${ver})
+set(ver_minor ${CMAKE_MATCH_1})
+
+string(REGEX MATCH "TILEDB_VERSION_PATCH ([0-9]*)" _ ${ver})
+set(ver_patch ${CMAKE_MATCH_1})
+
+set(VERSION "${ver_major}.${ver_minor}.${ver_patch}")
+
+# PKG Config file
+configure_file(
+        ${CMAKE_CURRENT_SOURCE_DIR}/../cmake/inputs/tiledb.pc.in
+        ${CMAKE_CURRENT_BINARY_DIR}/tiledb.pc
+        @ONLY
+)
+install(FILES ${CMAKE_CURRENT_BINARY_DIR}/tiledb.pc
+        DESTINATION ${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR}/pkgconfig)

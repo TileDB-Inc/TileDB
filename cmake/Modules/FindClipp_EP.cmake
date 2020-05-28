@@ -34,12 +34,14 @@
 # Search the path set during the superbuild for the EP.
 set(CLIPP_PATHS ${TILEDB_EP_INSTALL_PREFIX})
 
-find_path(CLIPP_INCLUDE_DIR
-  NAMES clipp.h
-  PATHS ${CLIPP_PATHS}
-  PATH_SUFFIXES include
-  ${TILEDB_DEPS_NO_DEFAULT_PATH}
-)
+if (NOT TILEDB_FORCE_ALL_DEPS OR TILEDB_CLIPP_EP_BUILT)
+  find_path(CLIPP_INCLUDE_DIR
+    NAMES clipp.h
+    PATHS ${CLIPP_PATHS}
+    PATH_SUFFIXES include
+    ${TILEDB_DEPS_NO_DEFAULT_PATH}
+  )
+endif()
 
 include(FindPackageHandleStandardArgs)
 FIND_PACKAGE_HANDLE_STANDARD_ARGS(Clipp
@@ -70,6 +72,9 @@ if (NOT CLIPP_FOUND)
     )
 
     list(APPEND TILEDB_EXTERNAL_PROJECTS ep_clipp)
+    list(APPEND FORWARD_EP_CMAKE_ARGS
+      -DTILEDB_CLIPP_EP_BUILT=TRUE
+    )
   else()
     message(FATAL_ERROR "Unable to find Clipp")
   endif()
