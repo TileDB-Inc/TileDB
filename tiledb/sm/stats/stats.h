@@ -40,10 +40,10 @@
 #include <chrono>
 #include <iomanip>
 #include <iostream>
-#include <map>
 #include <mutex>
 #include <sstream>
 #include <thread>
+#include <unordered_map>
 
 namespace tiledb {
 namespace sm {
@@ -123,6 +123,7 @@ class Stats {
     WRITE_COMPUTE_CELL_RANGES,
     WRITE_PREPARE_AND_FILTER_TILES,
     WRITE_ARRAY_META,
+    __SIZE,
   };
 
   /** Enumerates the stat counter types. */
@@ -171,6 +172,7 @@ class Stats {
     WRITE_ARRAY_META_SIZE,
     WRITE_OPS_NUM,
     VFS_S3_SLOW_DOWN_RETRIES,
+    __SIZE,
   };
 
   /* ****************************** */
@@ -210,6 +212,18 @@ class Stats {
 
  private:
   /* ****************************** */
+  /*       PRIVATE DATATYPES        */
+  /* ****************************** */
+
+  /** An STL hasher for enum definitions. */
+  struct EnumHasher {
+    template <typename T>
+    std::size_t operator()(T t) const {
+      return static_cast<std::size_t>(t);
+    }
+  };
+
+  /* ****************************** */
   /*       PRIVATE ATTRIBUTES       */
   /* ****************************** */
 
@@ -217,10 +231,10 @@ class Stats {
   bool enabled_;
 
   /** A map of timer stats, measured in seconds. */
-  std::map<TimerType, double> timer_stats_;
+  std::unordered_map<TimerType, double, EnumHasher> timer_stats_;
 
   /** A map of counter stats. */
-  std::map<CounterType, uint64_t> counter_stats_;
+  std::unordered_map<CounterType, uint64_t, EnumHasher> counter_stats_;
 
   /** Mutex to protext in multi-threading scenarios. */
   std::mutex mtx_;
