@@ -110,6 +110,65 @@ void Stats::dump(std::string* out) const {
   *out = ss.str();
 }
 
+void Stats::raw_dump(FILE* out) const {
+  if (out == nullptr)
+    out = stdout;
+
+  std::string output;
+  Stats::raw_dump(&output);
+  fprintf(out, "%s", output.c_str());
+}
+
+void Stats::raw_dump(std::string* out) const {
+  std::stringstream ss;
+
+  ss << "{\n";
+
+  // Dump timer stats
+  const std::vector<std::string> timer_names =
+      parse_enum_names(TimerTypeNames_);
+  for (uint64_t i = 0; i != static_cast<uint64_t>(TimerType::__SIZE); ++i) {
+    // The first stat is a special where we do not need to prepend a comma
+    // to the end of the previous stat.
+    if (i == 0) {
+      ss << "  \"" << timer_names[i]
+         << "\": " << timer_stats_.find(static_cast<TimerType>(i))->second;
+    } else {
+      ss << ",\n  \"" << timer_names[i]
+         << "\": " << timer_stats_.find(static_cast<TimerType>(i))->second;
+    }
+  }
+
+  // Dump counter stats
+  const std::vector<std::string> counter_names =
+      parse_enum_names(CounterTypeNames_);
+  for (uint64_t i = 0; i != static_cast<uint64_t>(CounterType::__SIZE); ++i) {
+    ss << ",\n  \"" << counter_names[i]
+       << "\": " << counter_stats_.find(static_cast<CounterType>(i))->second;
+  }
+
+  ss << "\n}\n";
+
+  *out = ss.str();
+}
+
+std::vector<std::string> Stats::parse_enum_names(
+    const std::string& enum_names) const {
+  std::vector<std::string> parsed_enum_names;
+
+  std::string tmp;
+  std::stringstream ss(enum_names);
+  while (getline(ss, tmp, ',')) {
+    if (parsed_enum_names.empty()) {
+      parsed_enum_names.push_back(tmp);
+    } else {
+      parsed_enum_names.push_back(tmp.substr(1));
+    }
+  }
+
+  return parsed_enum_names;
+}
+
 void Stats::set_enabled(bool enabled) {
   enabled_ = enabled;
 }
