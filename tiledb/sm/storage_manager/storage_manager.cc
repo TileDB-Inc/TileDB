@@ -1231,6 +1231,8 @@ Status StorageManager::get_fragment_uris(
   for (size_t i = 0; i < uris.size(); ++i) {
     if (is_fragment[i])
       fragment_uris->emplace_back(uris[i]);
+    else if (this->is_vacuum_file(uris[i]))
+      fragment_uris->emplace_back(uris[i]);
   }
 
   // Get the latest consolidated fragment metadata URI
@@ -1438,6 +1440,14 @@ Status StorageManager::is_group(const URI& uri, bool* is_group) const {
   RETURN_NOT_OK(
       vfs_->is_file(uri.join_path(constants::group_filename), is_group));
   return Status::Ok();
+}
+
+bool StorageManager::is_vacuum_file(const URI& uri) const {
+  // If the URI name has a suffix, then it is not a fragment
+  if (utils::parse::ends_with(uri.to_string(), constants::vacuum_file_suffix))
+    return true;
+
+  return false;
 }
 
 Status StorageManager::load_array_schema(
@@ -2258,6 +2268,10 @@ Status StorageManager::get_sorted_uris(
     if (to_ignore_set.find(uri) != to_ignore_set.end())
       continue;
 
+    // Also ignore any vac uris
+    if (this->is_vacuum_file(uri))
+      continue;
+
     // Add only URIs whose second timestamp is smaller than or equal to
     // the input timestamp
     std::pair<uint64_t, uint64_t> timestamp_range;
@@ -2286,8 +2300,7 @@ Status StorageManager::get_uris_to_vacuum(
     if (timestamp_range.second > timestamp)
       continue;
 
-    if (utils::parse::ends_with(
-            uris[i].to_string(), constants::vacuum_file_suffix))
+    if (this->is_vacuum_file(uris[i]))
       vac_uris->emplace_back(uris[i]);
     else
       uris_map[uris[i].to_string()] = i;
@@ -2302,7 +2315,6 @@ Status StorageManager::get_uris_to_vacuum(
     names.resize(size);
     RETURN_NOT_OK(vfs_->read((*vac_uris)[i], 0, &names[0], size));
     std::stringstream ss(names);
-    std::string uri_str;
     for (std::string uri_str; std::getline(ss, uri_str);) {
       auto it = uris_map.find(uri_str);
       if (it != uris_map.end())
