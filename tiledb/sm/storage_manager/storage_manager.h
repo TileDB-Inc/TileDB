@@ -624,6 +624,13 @@ class StorageManager {
   Status is_file(const URI& uri, bool* is_file) const;
 
   /**
+   * Check if a URI is a vacuum file or not based on the file suffix
+   * @param uri
+   * @return true is vacuum file, false otherwise
+   */
+  bool is_vacuum_file(const URI& uri) const;
+
+  /**
    * Loads the schema of an array from persistent storage into memory.
    *
    * @param array_uri The URI path of the array.

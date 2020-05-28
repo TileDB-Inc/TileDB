@@ -1,5 +1,5 @@
 /**
- * @file   unit-cppapi-consolidation.cc
+ * @file   unit-cppapi-consolidation-sparse.cc
  *
  * @section LICENSE
  *
@@ -36,6 +36,7 @@
 
 using namespace tiledb;
 
+namespace sparse_consolidate {
 void remove_array(const std::string& array_name) {
   Context ctx;
   VFS vfs(ctx);
@@ -49,7 +50,7 @@ void create_array(const std::string& array_name) {
   auto d = Dimension::create<int>(ctx, "d", {{1, 3}}, 2);
   domain.add_dimensions(d);
   auto a = Attribute::create<int>(ctx, "a");
-  ArraySchema schema(ctx, TILEDB_DENSE);
+  ArraySchema schema(ctx, TILEDB_SPARSE);
   schema.set_domain(domain);
   schema.add_attributes(a);
   Array::create(array_name, schema);
@@ -57,13 +58,13 @@ void create_array(const std::string& array_name) {
 
 void write_array(
     const std::string& array_name,
-    const std::vector<int>& subarray,
+    std::vector<int> d,
     std::vector<int> values) {
   Context ctx;
   Array array(ctx, array_name, TILEDB_WRITE);
   Query query(ctx, array, TILEDB_WRITE);
-  query.set_layout(TILEDB_ROW_MAJOR);
-  query.set_subarray(subarray);
+  query.set_layout(TILEDB_UNORDERED);
+  query.set_buffer("d", d);
   query.set_buffer("a", values);
   query.submit();
   array.close();
@@ -78,7 +79,9 @@ void read_array(
   Query query(ctx, array, TILEDB_READ);
   query.set_layout(TILEDB_ROW_MAJOR);
   query.set_subarray(subarray);
-  std::vector<int> values(10);
+  std::vector<int> d(100);
+  std::vector<int> values(100);
+  query.set_buffer("d", d);
   query.set_buffer("a", values);
   query.submit();
   array.close();
@@ -88,14 +91,14 @@ void read_array(
 }
 
 TEST_CASE(
-    "C++ API: Test consolidation with partial tiles",
-    "[cppapi][consolidation]") {
-  std::string array_name = "cppapi_consolidation";
+    "C++ API: Test sparse consolidation with partial tiles",
+    "[cppapi][consolidation][sparse]") {
+  std::string array_name = "cppapi_consolidation_sparse";
   remove_array(array_name);
 
   create_array(array_name);
   write_array(array_name, {1, 2}, {1, 2});
-  write_array(array_name, {3, 3}, {3});
+  write_array(array_name, {3}, {3});
   CHECK(tiledb::test::num_fragments(array_name) == 2);
 
   read_array(array_name, {1, 3}, {1, 2, 3});
@@ -114,80 +117,14 @@ TEST_CASE(
 }
 
 TEST_CASE(
-    "C++ API: Test consolidation with domain expansion",
-    "[cppapi][consolidation][expand-domain]") {
-  std::string array_name = "cppapi_consolidation_domain_exp";
-  remove_array(array_name);
-
-  // Create array
-  Context ctx;
-  Domain domain(ctx);
-  auto d = Dimension::create<int>(ctx, "d1", {{10, 110}}, 50);
-  domain.add_dimensions(d);
-  auto a = Attribute::create<float>(ctx, "a");
-  ArraySchema schema(ctx, TILEDB_DENSE);
-  schema.set_domain(domain);
-  schema.add_attributes(a);
-  Array::create(array_name, schema);
-
-  // Write
-  Array array(ctx, array_name, TILEDB_WRITE);
-  Query query(ctx, array, TILEDB_WRITE);
-
-  std::vector<float> a1(100);
-  std::fill(a1.begin(), a1.end(), 1.0);
-  std::vector<float> a2({2.0});
-
-  query.set_layout(TILEDB_ROW_MAJOR);
-  query.set_subarray({10, 109});
-  query.set_buffer("a", a1);
-  query.submit();
-
-  query = Query(ctx, array, TILEDB_WRITE);
-  query.set_layout(TILEDB_ROW_MAJOR);
-  query.set_subarray({110, 110});
-  query.set_buffer("a", a2);
-  query.submit();
-  array.close();
-
-  // Read
-  Array array_r(ctx, array_name, TILEDB_READ);
-  Query query_r(ctx, array_r, TILEDB_READ);
-  query_r.set_layout(TILEDB_ROW_MAJOR);
-  query_r.set_subarray({10, 110});
-  std::vector<float> a_r(101);
-  query_r.set_buffer("a", a_r);
-  query_r.submit();
-  array_r.close();
-
-  std::vector<float> c_a(100, 1.0f);
-  c_a.push_back(2.0f);
-  CHECK(a_r == c_a);
-
-  // Consolidate
-  REQUIRE_NOTHROW(Array::consolidate(ctx, array_name, nullptr));
-
-  // Read again
-  Array array_c(ctx, array_name, TILEDB_READ);
-  query_r = Query(ctx, array_c, TILEDB_READ);
-  query_r.set_layout(TILEDB_ROW_MAJOR);
-  query_r.set_subarray({10, 110});
-  query_r.set_buffer("a", a_r);
-  query_r.submit();
-  array_c.close();
-  CHECK(a_r == c_a);
-
-  remove_array(array_name);
-}
-
-TEST_CASE(
-    "C++ API: Test consolidation without vacuum", "[cppapi][consolidation]") {
-  std::string array_name = "cppapi_consolidation";
+    "C++ API: Test sparse consolidation without vacuum",
+    "[cppapi][consolidation][sparse]") {
+  std::string array_name = "cppapi_consolidation_sparse";
   remove_array(array_name);
 
   create_array(array_name);
   write_array(array_name, {1, 2}, {1, 2});
-  write_array(array_name, {3, 3}, {3});
+  write_array(array_name, {3}, {3});
   CHECK(tiledb::test::num_fragments(array_name) == 2);
 
   read_array(array_name, {1, 3}, {1, 2, 3});
@@ -202,3 +139,4 @@ TEST_CASE(
 
   remove_array(array_name);
 }
+}  // namespace sparse_consolidate
