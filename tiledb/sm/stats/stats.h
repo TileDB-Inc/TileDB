@@ -40,10 +40,20 @@
 #include <chrono>
 #include <iomanip>
 #include <iostream>
-#include <map>
 #include <mutex>
 #include <sstream>
 #include <thread>
+#include <unordered_map>
+#include <vector>
+
+// Define an enum named <TypeName> and a comma-separated
+// string named <TypeName>Names_ containing the stat names.
+#define DEFINE_TILEDB_STATS(TypeName, ...)           \
+ private:                                            \
+  const std::string TypeName##Names_ = #__VA_ARGS__; \
+                                                     \
+ public:                                             \
+  enum class TypeName { __VA_ARGS__, __SIZE }
 
 namespace tiledb {
 namespace sm {
@@ -70,108 +80,108 @@ class Stats {
   /* ****************************** */
 
   /** Enumerates the stat timer types. */
-  enum class TimerType {
-    CONSOLIDATE_FRAGS,
-    CONSOLIDATE_ARRAY_META,
-    CONSOLIDATE_FRAG_META,
-    READ_ARRAY_OPEN,
-    READ_FILL_DENSE_COORDS,
-    READ_LOAD_ARRAY_SCHEMA,
-    READ_LOAD_ARRAY_META,
-    READ_LOAD_FRAG_META,
-    READ_LOAD_CONSOLIDATED_FRAG_META,
-    READ_ATTR_TILES,
-    READ_COORD_TILES,
-    READ_UNFILTER_ATTR_TILES,
-    READ_UNFILTER_COORD_TILES,
-    READ_COPY_ATTR_VALUES,
-    READ_COPY_COORDS,
-    READ_COPY_FIXED_ATTR_VALUES,
-    READ_COPY_FIXED_COORDS,
-    READ_COPY_VAR_ATTR_VALUES,
-    READ_COPY_VAR_COORDS,
-    READ_COMPUTE_EST_RESULT_SIZE,
-    READ_COMPUTE_RESULT_COORDS,
-    READ_COMPUTE_RANGE_RESULT_COORDS,
-    READ_COMPUTE_SPARSE_RESULT_CELL_SLABS_SPARSE,
-    READ_COMPUTE_SPARSE_RESULT_CELL_SLABS_DENSE,
-    READ_COMPUTE_SPARSE_RESULT_TILES,
-    READ_COMPUTE_TILE_OVERLAP,
-    READ_COMPUTE_TILE_COORDS,
-    READ_COMPUTE_RELEVANT_TILE_OVERLAP,
-    READ_LOAD_RELEVANT_RTREES,
-    READ_COMPUTE_RELEVANT_FRAGS,
-    READ_INIT_STATE,
-    READ_NEXT_PARTITION,
-    READ_SPLIT_CURRENT_PARTITION,
-    READ,
-    DBG,
-    WRITE,
-    WRITE_SPLIT_COORDS_BUFF,
-    WRITE_CHECK_COORD_OOB,
-    WRITE_SORT_COORDS,
-    WRITE_CHECK_COORD_DUPS,
-    WRITE_COMPUTE_COORD_DUPS,
-    WRITE_PREPARE_TILES,
-    WRITE_COMPUTE_COORD_META,
-    WRITE_FILTER_TILES,
-    WRITE_TILES,
-    WRITE_STORE_FRAG_META,
-    WRITE_FINALIZE,
-    WRITE_CHECK_GLOBAL_ORDER,
-    WRITE_INIT_TILE_ITS,
-    WRITE_COMPUTE_CELL_RANGES,
-    WRITE_PREPARE_AND_FILTER_TILES,
-    WRITE_ARRAY_META,
-  };
+  DEFINE_TILEDB_STATS(
+      TimerType,
+      CONSOLIDATE_FRAGS,
+      CONSOLIDATE_ARRAY_META,
+      CONSOLIDATE_FRAG_META,
+      READ_ARRAY_OPEN,
+      READ_FILL_DENSE_COORDS,
+      READ_LOAD_ARRAY_SCHEMA,
+      READ_LOAD_ARRAY_META,
+      READ_LOAD_FRAG_META,
+      READ_LOAD_CONSOLIDATED_FRAG_META,
+      READ_ATTR_TILES,
+      READ_COORD_TILES,
+      READ_UNFILTER_ATTR_TILES,
+      READ_UNFILTER_COORD_TILES,
+      READ_COPY_ATTR_VALUES,
+      READ_COPY_COORDS,
+      READ_COPY_FIXED_ATTR_VALUES,
+      READ_COPY_FIXED_COORDS,
+      READ_COPY_VAR_ATTR_VALUES,
+      READ_COPY_VAR_COORDS,
+      READ_COMPUTE_EST_RESULT_SIZE,
+      READ_COMPUTE_RESULT_COORDS,
+      READ_COMPUTE_RANGE_RESULT_COORDS,
+      READ_COMPUTE_SPARSE_RESULT_CELL_SLABS_SPARSE,
+      READ_COMPUTE_SPARSE_RESULT_CELL_SLABS_DENSE,
+      READ_COMPUTE_SPARSE_RESULT_TILES,
+      READ_COMPUTE_TILE_OVERLAP,
+      READ_COMPUTE_TILE_COORDS,
+      READ_COMPUTE_RELEVANT_TILE_OVERLAP,
+      READ_LOAD_RELEVANT_RTREES,
+      READ_COMPUTE_RELEVANT_FRAGS,
+      READ_INIT_STATE,
+      READ_NEXT_PARTITION,
+      READ_SPLIT_CURRENT_PARTITION,
+      READ,
+      DBG,
+      WRITE,
+      WRITE_SPLIT_COORDS_BUFF,
+      WRITE_CHECK_COORD_OOB,
+      WRITE_SORT_COORDS,
+      WRITE_CHECK_COORD_DUPS,
+      WRITE_COMPUTE_COORD_DUPS,
+      WRITE_PREPARE_TILES,
+      WRITE_COMPUTE_COORD_META,
+      WRITE_FILTER_TILES,
+      WRITE_TILES,
+      WRITE_STORE_FRAG_META,
+      WRITE_FINALIZE,
+      WRITE_CHECK_GLOBAL_ORDER,
+      WRITE_INIT_TILE_ITS,
+      WRITE_COMPUTE_CELL_RANGES,
+      WRITE_PREPARE_AND_FILTER_TILES,
+      WRITE_ARRAY_META);
 
   /** Enumerates the stat counter types. */
-  enum class CounterType {
-    READ_ARRAY_SCHEMA_SIZE,
-    CONSOLIDATED_FRAG_META_SIZE,
-    READ_FRAG_META_SIZE,
-    READ_RTREE_SIZE,
-    READ_TILE_OFFSETS_SIZE,
-    READ_TILE_VAR_OFFSETS_SIZE,
-    READ_TILE_VAR_SIZES_SIZE,
-    READ_ARRAY_META_SIZE,
-    READ_NUM,
-    READ_BYTE_NUM,
-    READ_UNFILTERED_BYTE_NUM,
-    READ_ATTR_NUM,
-    READ_ATTR_FIXED_NUM,
-    READ_ATTR_VAR_NUM,
-    READ_DIM_NUM,
-    READ_DIM_FIXED_NUM,
-    READ_DIM_VAR_NUM,
-    READ_DIM_ZIPPED_NUM,
-    READ_OVERLAP_TILE_NUM,
-    READ_RESULT_NUM,
-    READ_CELL_NUM,
-    READ_LOOP_NUM,
-    READ_OPS_NUM,
-    WRITE_NUM,
-    WRITE_ATTR_NUM,
-    WRITE_ATTR_FIXED_NUM,
-    WRITE_ATTR_VAR_NUM,
-    WRITE_DIM_NUM,
-    WRITE_DIM_FIXED_NUM,
-    WRITE_DIM_VAR_NUM,
-    WRITE_DIM_ZIPPED_NUM,
-    WRITE_BYTE_NUM,
-    WRITE_FILTERED_BYTE_NUM,
-    WRITE_RTREE_SIZE,
-    WRITE_TILE_OFFSETS_SIZE,
-    WRITE_TILE_VAR_OFFSETS_SIZE,
-    WRITE_TILE_VAR_SIZES_SIZE,
-    WRITE_FRAG_META_FOOTER_SIZE,
-    WRITE_ARRAY_SCHEMA_SIZE,
-    WRITE_TILE_NUM,
-    WRITE_CELL_NUM,
-    WRITE_ARRAY_META_SIZE,
-    WRITE_OPS_NUM,
-    VFS_S3_SLOW_DOWN_RETRIES,
-  };
+  DEFINE_TILEDB_STATS(
+      CounterType,
+      READ_ARRAY_SCHEMA_SIZE,
+      CONSOLIDATED_FRAG_META_SIZE,
+      READ_FRAG_META_SIZE,
+      READ_RTREE_SIZE,
+      READ_TILE_OFFSETS_SIZE,
+      READ_TILE_VAR_OFFSETS_SIZE,
+      READ_TILE_VAR_SIZES_SIZE,
+      READ_ARRAY_META_SIZE,
+      READ_NUM,
+      READ_BYTE_NUM,
+      READ_UNFILTERED_BYTE_NUM,
+      READ_ATTR_NUM,
+      READ_ATTR_FIXED_NUM,
+      READ_ATTR_VAR_NUM,
+      READ_DIM_NUM,
+      READ_DIM_FIXED_NUM,
+      READ_DIM_VAR_NUM,
+      READ_DIM_ZIPPED_NUM,
+      READ_OVERLAP_TILE_NUM,
+      READ_RESULT_NUM,
+      READ_CELL_NUM,
+      READ_LOOP_NUM,
+      READ_OPS_NUM,
+      WRITE_NUM,
+      WRITE_ATTR_NUM,
+      WRITE_ATTR_FIXED_NUM,
+      WRITE_ATTR_VAR_NUM,
+      WRITE_DIM_NUM,
+      WRITE_DIM_FIXED_NUM,
+      WRITE_DIM_VAR_NUM,
+      WRITE_DIM_ZIPPED_NUM,
+      WRITE_BYTE_NUM,
+      WRITE_FILTERED_BYTE_NUM,
+      WRITE_RTREE_SIZE,
+      WRITE_TILE_OFFSETS_SIZE,
+      WRITE_TILE_VAR_OFFSETS_SIZE,
+      WRITE_TILE_VAR_SIZES_SIZE,
+      WRITE_FRAG_META_FOOTER_SIZE,
+      WRITE_ARRAY_SCHEMA_SIZE,
+      WRITE_TILE_NUM,
+      WRITE_CELL_NUM,
+      WRITE_ARRAY_META_SIZE,
+      WRITE_OPS_NUM,
+      VFS_S3_SLOW_DOWN_RETRIES);
 
   /* ****************************** */
   /*   CONSTRUCTORS & DESTRUCTORS   */
@@ -208,7 +218,25 @@ class Stats {
   /** Dump the current stats to the given string. */
   void dump(std::string* out) const;
 
+  /** Dump the current raw stats to the given file as a JSON. */
+  void raw_dump(FILE* out) const;
+
+  /** Dump the current raw stats to the given string as a JSON. */
+  void raw_dump(std::string* out) const;
+
  private:
+  /* ****************************** */
+  /*       PRIVATE DATATYPES        */
+  /* ****************************** */
+
+  /** An STL hasher for enum definitions. */
+  struct EnumHasher {
+    template <typename T>
+    std::size_t operator()(T t) const {
+      return static_cast<std::size_t>(t);
+    }
+  };
+
   /* ****************************** */
   /*       PRIVATE ATTRIBUTES       */
   /* ****************************** */
@@ -217,10 +245,10 @@ class Stats {
   bool enabled_;
 
   /** A map of timer stats, measured in seconds. */
-  std::map<TimerType, double> timer_stats_;
+  std::unordered_map<TimerType, double, EnumHasher> timer_stats_;
 
   /** A map of counter stats. */
-  std::map<CounterType, uint64_t> counter_stats_;
+  std::unordered_map<CounterType, uint64_t, EnumHasher> counter_stats_;
 
   /** Mutex to protext in multi-threading scenarios. */
   std::mutex mtx_;
@@ -240,6 +268,10 @@ class Stats {
 
   /** Dump the current vfs stats. */
   std::string dump_vfs() const;
+
+  /** Parse a comma-separated string of enum names. */
+  std::vector<std::string> parse_enum_names(
+      const std::string& enum_names) const;
 
   /**
    * Writes the input message and seconds to the string stream, only if

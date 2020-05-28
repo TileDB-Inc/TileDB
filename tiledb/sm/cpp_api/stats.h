@@ -70,7 +70,7 @@ class Stats {
   }
 
   /**
-   * Dump all statistics counters to to some output (e.g., file or stdout).
+   * Dump all statistics counters to some output (e.g., file or stdout).
    *
    * @param out The output.
    */
@@ -86,6 +86,27 @@ class Stats {
   static void dump(std::string* out) {
     char* c_str = nullptr;
     check_error(tiledb_stats_dump_str(&c_str), "error dumping stats");
+    *out = std::string(c_str);
+    check_error(tiledb_stats_free_str(&c_str), "error freeing stats string");
+  }
+
+  /**
+   * Dump all raw statistics counters to some output (e.g., file or stdout).
+   *
+   * @param out The output.
+   */
+  static void raw_dump(FILE* out = nullptr) {
+    check_error(tiledb_stats_raw_dump(out), "error dumping stats");
+  }
+
+  /**
+   * Dump all raw statistics counters to a string.
+   *
+   * @param out The output.
+   */
+  static void raw_dump(std::string* out) {
+    char* c_str = nullptr;
+    check_error(tiledb_stats_raw_dump_str(&c_str), "error dumping stats");
     *out = std::string(c_str);
     check_error(tiledb_stats_free_str(&c_str), "error freeing stats string");
   }
