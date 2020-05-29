@@ -1,0 +1,135 @@
+steps:
+- bash: |
+    echo "'uname -s' is:"
+    echo "uname: " $(uname)
+    echo "uname -m: " $(uname -m)
+    echo "uname -r:" $(uname -r)
+    echo "uname -s: " $(uname -s)
+    echo "uname -v: " $(uname -v)
+    printenv
+  displayName: 'Print env'
+
+- bash: |
+    set -e pipefail
+    # Install doxygen *before* running cmake
+    sudo apt-get install doxygen
+  condition: eq(variables['Agent.OS'], 'Linux')
+  displayName: 'Install doxygen (linux only)'
+
+- bash: |
+    set -e pipefail
+    brew uninstall --ignore-dependencies lz4
+  condition: eq(variables['Agent.OS'], 'Darwin')
+  displayName: 'Uninstall lz4 for curl (OSX only)'
+
+- bash: |
+    set -e pipefail
+    open /Library/Developer/CommandLineTools/Packages/macOS_SDK_headers_for_macOS_10.14.pkg
+    sudo installer -pkg /Library/Developer/CommandLineTools/Packages/macOS_SDK_headers_for_macOS_10.14.pkg -allowUntrusted -target /
+  condition: eq(variables['Agent.OS'], 'Darwin')
+  displayName: 'Install system headers (OSX only)'
+
+- bash: |
+    # DELETEME work-around for https://github.com/microsoft/azure-pipelines-image-generation/issues/969
+    sudo chown root.root /
+
+    # Azure sets "SYSTEM=build" for unknown reasonas, which breaks the OpenSSL configure script
+    #   - openssl configure uses ENV{SYSTEM} if available:
+    #     https://github.com/openssl/openssl/blob/6d745d740d37d680ff696486218b650512bbbbc6/config#L56
+    #   - error description:
+    #     https://developercommunity.visualstudio.com/content/problem/602584/openssl-build-error-when-using-pipelines.htm
+    unset SYSTEM
+
+    # azure bash does not treat intermediate failure as error
+    # https://github.com/Microsoft/azure-pipelines-yaml/issues/135
+    set -e pipefail
+
+    git config --global user.name 'Azure Pipeline'
+    git config --global user.email 'no-reply@tiledb.io'
+
+    # Set up arguments for bootstrap.sh
+    BUILD_BINARIESDIRECTORY=${BUILD_BINARIESDIRECTORY:-$BUILD_REPOSITORY_LOCALPATH/dist}
+    bootstrap_args="--prefix=${BUILD_BINARIESDIRECTORY} --disable-tests";
+
+    # Enable TILEDB_STATIC by default
+    [ "$TILEDB_STATIC" ] || TILEDB_STATIC=ON
+    if [[ "$TILEDB_STATIC" == "ON" ]]; then
+      bootstrap_args="${bootstrap_args} --enable-static-tiledb";
+    fi
+    if [[ "$TILEDB_HDFS" == "ON" ]]; then
+      bootstrap_args="${bootstrap_args} --enable-hdfs";
+    fi;
+    if [[ "$TILEDB_S3" == "ON" ]]; then
+      bootstrap_args="${bootstrap_args} --enable-s3";
+    fi;
+    if [[ "$TILEDB_AZURE" == "ON" ]]; then
+      bootstrap_args="${bootstrap_args} --enable-azure";
+    fi;
+    if [[ "$TILEDB_GCS" == "ON" ]]; then
+      bootstrap_args="${bootstrap_args} --enable-gcs";
+    fi;
+    if [[ "$TILEDB_TBB" == "OFF" ]]; then
+      bootstrap_args="${bootstrap_args} --disable-tbb";
+    fi
+    if [[ "$TILEDB_TOOLS" == "ON" ]]; then
+      bootstrap_args="${bootstrap_args} --enable-tools";
+    fi
+    if [[ "$TILEDB_DEBUG" == "ON" ]]; then
+      bootstrap_args="${bootstrap_args} --enable-debug";
+    fi
+    if [[ "$TILEDB_CI_ASAN" == "ON" ]]; then
+      # Add address sanitizer flag if necessary
+      bootstrap_args="${bootstrap_args} --enable-sanitizer=address --enable-debug";
+    fi
+    if [[ "$TILEDB_CI_TSAN" == "ON" ]]; then
+      # Add thread sanitizer flag if necessary
+      bootstrap_args="${bootstrap_args} --enable-sanitizer=thread --enable-debug";
+    fi
+    if [[ "$TILEDB_SERIALIZATION" == "ON" ]]; then
+      # Add serialization flag if necessary
+      bootstrap_args="${bootstrap_args} --enable-serialization";
+    fi
+    if [[ "$TILEDB_FORCE_BUILD_DEPS" == "ON" ]]; then
+      # Add superbuild flag
+      bootstrap_args="${bootstrap_args} --force-build-all-deps";
+    fi
+
+    # displayName: 'Install dependencies'
+
+    mkdir -p $BUILD_REPOSITORY_LOCALPATH/build
+    cd $BUILD_REPOSITORY_LOCALPATH/build
+
+    # Configure and build TileDB
+    echo "Bootstrapping with '$bootstrap_args'"
+    $BUILD_REPOSITORY_LOCALPATH/bootstrap $bootstrap_args
+
+    make -j4
+    make -C tiledb install
+  displayName: 'Build libtiledb'
+
+- script: |
+      echo $sourceVersion
+      commitHash=${sourceVersion:0:7}
+      echo $commitHash
+      echo "##vso[task.setvariable variable=commitHash]$commitHash" ## Set variable for using in other tasks.
+  env: { sourceVersion: $(Build.SourceVersion) }
+  displayName: Git Hash 7-digit
+
+# Archive files
+# Compress files into .7z, .tar.gz, or .zip
+- task: ArchiveFiles@2
+  inputs:
+    rootFolderOrFile: '$(Build.BinariesDirectory)'
+    includeRootFolder: false
+    archiveType: 'tar' # Options: zip, 7z, tar, wim
+    tarCompression: 'gz' # Optional. Options: gz, bz2, xz, none
+    archiveFile: $(Build.ArtifactStagingDirectory)/tiledb-$(ARTIFACT_OS)-$(Build.SourceBranchName)-$(commitHash).tar.gz
+    replaceExistingArchive: true
+    verbose: true # Optional
+  condition: succeeded()
+
+- task: PublishBuildArtifacts@1
+  inputs:
+      pathtoPublish: '$(Build.ArtifactStagingDirectory)/tiledb-$(ARTIFACT_OS)-$(Build.SourceBranchName)-$(commitHash).tar.gz'
+      artifactName: 'tiledb-$(ARTIFACT_OS)-$(Build.SourceBranchName)-$(commitHash).tar.gz'
+  condition: succeeded()
