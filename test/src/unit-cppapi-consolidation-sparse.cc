@@ -47,7 +47,7 @@ void remove_array(const std::string& array_name) {
 void create_array(const std::string& array_name) {
   Context ctx;
   Domain domain(ctx);
-  auto d = Dimension::create<int>(ctx, "d", {{1, 3}}, 2);
+  auto d = Dimension::create<int>(ctx, "d", {{1, 4}}, 4);
   domain.add_dimensions(d);
   auto a = Attribute::create<int>(ctx, "a");
   ArraySchema schema(ctx, TILEDB_SPARSE);
@@ -72,13 +72,15 @@ void write_array(
 
 void read_array(
     const std::string& array_name,
-    const std::vector<int>& subarray,
+    const std::vector<int>& ranges,
     const std::vector<int>& c_values) {
   Context ctx;
   Array array(ctx, array_name, TILEDB_READ);
   Query query(ctx, array, TILEDB_READ);
   query.set_layout(TILEDB_ROW_MAJOR);
-  query.set_subarray(subarray);
+  for (auto& r : ranges) {
+    query.add_range(0, r, r);
+  }
   std::vector<int> d(100);
   std::vector<int> values(100);
   query.set_buffer("d", d);
@@ -101,7 +103,7 @@ TEST_CASE(
   write_array(array_name, {3}, {3});
   CHECK(tiledb::test::num_fragments(array_name) == 2);
 
-  read_array(array_name, {1, 3}, {1, 2, 3});
+  read_array(array_name, {1, 2, 3}, {1, 2, 3});
 
   Context ctx;
   Config config;
@@ -111,11 +113,19 @@ TEST_CASE(
   REQUIRE_NOTHROW(Array::vacuum(ctx, array_name, &config));
   CHECK(tiledb::test::num_fragments(array_name) == 1);
 
-  read_array(array_name, {1, 3}, {1, 2, 3});
+  read_array(array_name, {1, 2, 3}, {1, 2, 3});
 
   remove_array(array_name);
 }
 
+/**
+ * The important thing about this test is the multiple ranges all fall inside
+ * a single tile in the consolidated fragment. This covers a case where
+ * we incorrectly were marking a range as being covered by a single fragment,
+ * since with overlap we were only counting a fragment+tile for the first range
+ * we saw it for, thus we might miss that a following range was included in
+ * more than one fragment
+ */
 TEST_CASE(
     "C++ API: Test sparse consolidation without vacuum",
     "[cppapi][consolidation][sparse]") {
@@ -127,7 +137,7 @@ TEST_CASE(
   write_array(array_name, {3}, {3});
   CHECK(tiledb::test::num_fragments(array_name) == 2);
 
-  read_array(array_name, {1, 3}, {1, 2, 3});
+  read_array(array_name, {1, 2, 3}, {1, 2, 3});
 
   Context ctx;
   Config config;
@@ -135,7 +145,7 @@ TEST_CASE(
   REQUIRE_NOTHROW(Array::consolidate(ctx, array_name, &config));
   CHECK(tiledb::test::num_fragments(array_name) == 3);
 
-  read_array(array_name, {1, 3}, {1, 2, 3});
+  read_array(array_name, {1, 2, 3}, {1, 2, 3});
 
   remove_array(array_name);
 }
