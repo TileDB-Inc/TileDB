@@ -117,6 +117,7 @@ if (TILEDB_CPP_API)
     src/unit-cppapi-checksum.cc
     src/unit-cppapi-config.cc
     src/unit-cppapi-consolidation.cc
+    src/unit-cppapi-consolidation-sparse.cc
     src/unit-cppapi-datetimes.cc
     src/unit-cppapi-filter.cc
     src/unit-cppapi-metadata.cc
