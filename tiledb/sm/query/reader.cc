@@ -845,11 +845,12 @@ Status Reader::compute_sparse_result_tiles(
           if (result_tile_map->find(pair) == result_tile_map->end()) {
             result_tiles->emplace_back(f, t, domain);
             (*result_tile_map)[pair] = result_tiles->size() - 1;
-            if (f > first_fragment[r])
-              (*single_fragment)[r] = false;
-            else
-              first_fragment[r] = f;
           }
+          // Always check range for multiple fragments
+          if (f > first_fragment[r])
+            (*single_fragment)[r] = false;
+          else
+            first_fragment[r] = f;
         }
       }
 
@@ -862,11 +863,12 @@ Status Reader::compute_sparse_result_tiles(
         if (result_tile_map->find(pair) == result_tile_map->end()) {
           result_tiles->emplace_back(f, t, domain);
           (*result_tile_map)[pair] = result_tiles->size() - 1;
-          if (f > first_fragment[r])
-            (*single_fragment)[r] = false;
-          else
-            first_fragment[r] = f;
         }
+        // Always check range for multiple fragments
+        if (f > first_fragment[r])
+          (*single_fragment)[r] = false;
+        else
+          first_fragment[r] = f;
       }
     }
   }
