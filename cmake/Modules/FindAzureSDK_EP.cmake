@@ -90,6 +90,14 @@ if (NOT AZURESDK_FOUND)
       set(CXXFLAGS_DEF "${CMAKE_CXX_FLAGS} -fPIC")
     endif()
 
+    if (WIN32)
+        # needed for applying patches on windows
+        find_package(Git REQUIRED)
+        set(PATCH ${GIT_EXECUTABLE} apply -p1)
+    else()
+        set(PATCH patch -N -p1)
+    endif()
+
     ExternalProject_Add(ep_azuresdk
       PREFIX "externals"
       URL "https://github.com/Azure/azure-storage-cpplite/archive/v0.2.0.zip"
@@ -104,8 +112,8 @@ if (NOT AZURESDK_FOUND)
         -DCMAKE_CXX_FLAGS=-fPIC
         -DCMAKE_C_FLAGS=-fPIC
       PATCH_COMMAND
-        patch -N -p1 < ${TILEDB_CMAKE_INPUTS_DIR}/patches/ep_azuresdk/remove-uuid-dep.patch &&
-        patch -N -p1 < ${TILEDB_CMAKE_INPUTS_DIR}/patches/ep_azuresdk/azurite-support.patch
+        ${PATCH} < ${TILEDB_CMAKE_INPUTS_DIR}/patches/ep_azuresdk/remove-uuid-dep.patch &&
+        ${PATCH} < ${TILEDB_CMAKE_INPUTS_DIR}/patches/ep_azuresdk/azurite-support.patch
       LOG_DOWNLOAD TRUE
       LOG_CONFIGURE TRUE
       LOG_BUILD TRUE
