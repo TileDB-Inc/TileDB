@@ -16,6 +16,8 @@ steps:
 
     if ($env:TILEDB_S3 -eq "ON") {
       & "$env:BUILD_SOURCESDIRECTORY\bootstrap.ps1" -EnableS3 -EnableVerbose -EnableStaticTileDB
+    } elseif ($env:TILEDB_BUILD_ALL -eq "ON") {
+      & "$env:BUILD_SOURCESDIRECTORY\bootstrap.ps1" -EnableS3 -EnableGCS -EnableAzure -EnableVerbose -EnableStaticTileDB
     } else {
       & "$env:BUILD_SOURCESDIRECTORY\bootstrap.ps1" -EnableVerbose -EnableStaticTileDB
     }
@@ -120,6 +122,7 @@ steps:
     #7z a tiledb-windows-x64.zip $env:AGENT_BUILDDIRECTORY\s\dist
 
   displayName: "Test"
+  condition: ne(variables['DISABLE_TESTS'], 'ON')
 
 
   #- task: ArchiveFiles@2

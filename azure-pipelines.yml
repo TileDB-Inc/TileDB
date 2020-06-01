@@ -79,6 +79,12 @@ stages:
           VS2017:
             imageName: 'vs2017-win2016'
             TILEDB_S3: ON
+            CMAKE_BUILD_PARALLEL_LEVEL: 4
+          VS2017_ALL:
+            imageName: 'vs2017-win2016'
+            TILEDB_BUILD_ALL: ON
+            DISABLE_TESTS: ON
+            CMAKE_BUILD_PARALLEL_LEVEL: 4
       pool:
         vmImage: $(imageName)
       steps:
@@ -141,6 +147,7 @@ stages:
              TILEDB_STATIC: OFF
 #             TILEDB_SERIALIZATION: OFF
              TILEDB_FORCE_BUILD_DEPS: ON
+             CMAKE_BUILD_PARALLEL_LEVEL: 4
              ARTIFACT_OS: 'windows'
        pool:
          vmImage: $(imageName)
