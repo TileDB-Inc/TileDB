@@ -28,8 +28,6 @@
  * @section DESCRIPTION
  *
  * When run, this program will create a 2D sparse array with one dimension a
- * string type, write some data to it, and read a slice of the data back.
- * When run, this program will create a 2D sparse array with one dimension a
  * string type, and the other an integer. This models closely what a dataframe
  * looks like. The program will write some data to it, and read a slice of the
  * data back.
