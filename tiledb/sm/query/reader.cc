@@ -275,12 +275,14 @@ Status Reader::read() {
   STATS_START_TIMER(stats::Stats::TimerType::READ)
   STATS_ADD_COUNTER(stats::Stats::CounterType::READ_NUM, 1)
 
+  auto dense_mode = array_schema_->dense() && !sparse_mode_;
+
   // Get next partition
   if (!read_state_.unsplittable_)
     RETURN_NOT_OK(read_state_.next());
 
   // Handle empty array or empty/finished subarray
-  if (fragment_metadata_.empty()) {
+  if (!dense_mode && fragment_metadata_.empty()) {
     zero_out_buffer_sizes();
     return Status::Ok();
   }
@@ -293,7 +295,7 @@ Status Reader::read() {
     reset_buffer_sizes();
 
     // Perform read
-    if (array_schema_->dense() && !sparse_mode_) {
+    if (dense_mode) {
       RETURN_NOT_OK(dense_read());
     } else {
       RETURN_NOT_OK(sparse_read());
@@ -906,6 +908,10 @@ Status Reader::copy_fixed_cells(
   auto buffer = (unsigned char*)it->second.buffer_;
   auto buffer_size = it->second.buffer_size_;
   auto cell_size = array_schema_->cell_size(name);
+  ByteVecValue fill_value;
+  if (array_schema_->is_attr(name))
+    fill_value = array_schema_->attribute(name)->fill_value();
+  uint64_t fill_value_size = (uint64_t)fill_value.size();
 
   // Precompute the cell range destination offsets in the buffer
   auto num_cs = result_cell_slabs.size();
@@ -933,15 +939,11 @@ Status Reader::copy_fixed_cells(
 
     // Copy
     if (cs.tile_ == nullptr) {  // Empty range
-      auto type = array_schema_->type(name);
-      auto fill_size = datatype_size(type);
-      auto fill_value = constants::fill_value(type);
-      assert(fill_value != nullptr);
       auto bytes_to_copy = cs.length_ * cell_size;
-      auto fill_num = bytes_to_copy / fill_size;
+      auto fill_num = bytes_to_copy / fill_value_size;
       for (uint64_t j = 0; j < fill_num; ++j) {
-        std::memcpy(buffer + offset, fill_value, fill_size);
-        offset += fill_size;
+        std::memcpy(buffer + offset, fill_value.data(), fill_value_size);
+        offset += fill_value_size;
       }
     } else {  // Non-empty range
       if (stride == UINT64_MAX) {
@@ -987,10 +989,10 @@ Status Reader::copy_var_cells(
   auto buffer_size = it->second.buffer_size_;
   auto buffer_var_size = it->second.buffer_var_size_;
   uint64_t offset_size = constants::cell_var_offset_size;
-  auto type = array_schema_->type(name);
-  auto fill_size = datatype_size(type);
-  auto fill_value = constants::fill_value(type);
-  assert(fill_value != nullptr);
+  ByteVecValue fill_value;
+  if (array_schema_->is_attr(name))
+    fill_value = array_schema_->attribute(name)->fill_value();
+  auto fill_value_size = (uint64_t)fill_value.size();
 
   // Compute the destinations of offsets and var-len data in the buffers.
   std::vector<std::vector<uint64_t>> offset_offsets_per_cs;
@@ -1052,7 +1054,7 @@ Status Reader::copy_var_cells(
 
       // Copy variable-sized value
       if (cs.tile_ == nullptr) {
-        std::memcpy(var_dest, &fill_value, fill_size);
+        std::memcpy(var_dest, fill_value.data(), fill_value_size);
       } else {
         const uint64_t cell_var_size =
             (cell_idx != tile_cell_num - 1) ?
@@ -1091,8 +1093,10 @@ Status Reader::compute_var_cell_destinations(
   // For easy reference
   auto num_cs = result_cell_slabs.size();
   auto offset_size = constants::cell_var_offset_size;
-  auto type = array_schema_->type(name);
-  auto fill_size = datatype_size(type);
+  ByteVecValue fill_value;
+  if (array_schema_->is_attr(name))
+    fill_value = array_schema_->attribute(name)->fill_value();
+  auto fill_value_size = (uint64_t)fill_value.size();
 
   // Resize the output vectors
   offset_offsets_per_cs->resize(num_cs);
@@ -1136,7 +1140,7 @@ Status Reader::compute_var_cell_destinations(
       // Get size of variable-sized cell
       uint64_t cell_var_size = 0;
       if (cs.tile_ == nullptr) {
-        cell_var_size = fill_size;
+        cell_var_size = fill_value_size;
       } else {
         cell_var_size =
             (cell_idx != tile_cell_num - 1) ?
@@ -1423,7 +1427,6 @@ template <class T>
 Status Reader::dense_read() {
   // Sanity checks
   assert(std::is_integral<T>::value);
-  assert(!fragment_metadata_.empty());
 
   // Compute result coordinates from the sparse fragments
   // `sparse_result_tiles` will hold all the relevant result tiles of

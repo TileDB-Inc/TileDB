@@ -148,6 +148,9 @@ bool ends_with(const std::string& value, const std::string& suffix);
 template <class T>
 std::string to_str(const T& value);
 
+/** Converts the input value of input type to string. */
+std::string to_str(const void* value, Datatype type);
+
 /** Returns the size of the common prefix between `a` and `b`. */
 uint64_t common_prefix_size(const std::string& a, const std::string& b);
 

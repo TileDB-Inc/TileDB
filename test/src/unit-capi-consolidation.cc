@@ -4103,7 +4103,7 @@ TEST_CASE_METHOD(
   CHECK(status == TILEDB_COMPLETED);
 
   // Check buffers
-  CHECK(a_size == 0);
+  CHECK(a_size == 410 * sizeof(int32_t));
 
   // Close array
   rc = tiledb_array_close(ctx_, array);

@@ -939,7 +939,7 @@ TEST_CASE_METHOD(
   tiledb_query_free(&query);
 
   // Check correctness
-  int buffer_read_c[] = {1, 2, 3, 4, 50, 60, 70, 8, 9, 10};
+  int32_t buffer_read_c[] = {1, 2, 3, 4, 50, 60, 70, 8, 9, 10};
   CHECK(!std::memcmp(buffer_read, buffer_read_c, sizeof(buffer_read_c)));
   CHECK(buffer_read_size == sizeof(buffer_read_c));
 
@@ -987,7 +987,8 @@ TEST_CASE_METHOD(
   tiledb_query_free(&query);
 
   // Check correctness
-  CHECK(buffer_read_size == 0);  // Empty array
+  // Empty array still returns fill values
+  CHECK(buffer_read_size == 10 * sizeof(int32_t));
 
   // ---- READ AT TIMESTAMP BEFORE UPDATE ----
   buffer_read_size = sizeof(buffer_read);
@@ -1241,7 +1242,8 @@ TEST_CASE_METHOD(
   tiledb_query_free(&query);
 
   // Check correctness
-  CHECK(buffer_read_size == 0);  // Empty array
+  // Empty array still returns fill values
+  CHECK(buffer_read_size == 10 * sizeof(int32_t));
 
   // ---- READ AT THE WRITTEN TIMESTAMP ----
   buffer_read_size = sizeof(buffer_read);

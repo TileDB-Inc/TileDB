@@ -783,7 +783,7 @@ TEST_CASE("C++ API: Open array at", "[cppapi][open-array-at]") {
   query_r_at_0.submit();
   array_r_at_0.close();
   auto result = query_r_at_0.result_buffer_elements();
-  CHECK(result["a"].second == 0);
+  CHECK(result["a"].second == 4);  // Empty arrays return fill values
   CHECK(!std::equal(a_r_at_0.begin(), a_r_at_0.end(), a_w.begin()));
 
   // Read from later timestamp
@@ -885,7 +885,7 @@ TEST_CASE(
   query_r_at_0.submit();
   array_r_at_0.close();
   auto result = query_r_at_0.result_buffer_elements();
-  CHECK(result["a"].second == 0);
+  CHECK(result["a"].second == 4);  // Empty arrays return fill values
   CHECK(!std::equal(a_r_at_0.begin(), a_r_at_0.end(), a_w.begin()));
 
   // Read from later timestamp

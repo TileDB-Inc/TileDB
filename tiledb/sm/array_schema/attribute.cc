@@ -40,6 +40,8 @@
 #include "tiledb/sm/misc/utils.h"
 
 #include <cassert>
+#include <iostream>
+#include <sstream>
 
 namespace tiledb {
 namespace sm {
@@ -56,6 +58,7 @@ Attribute::Attribute(const std::string& name, Datatype type) {
   name_ = name;
   type_ = type;
   cell_val_num_ = (type == Datatype::ANY) ? constants::var_num : 1;
+  set_default_fill_value();
 }
 
 Attribute::Attribute(const Attribute* attr) {
@@ -64,6 +67,7 @@ Attribute::Attribute(const Attribute* attr) {
   type_ = attr->type();
   cell_val_num_ = attr->cell_val_num();
   filters_ = attr->filters_;
+  fill_value_ = attr->fill_value_;
 }
 
 Attribute::~Attribute() = default;
@@ -83,7 +87,7 @@ unsigned int Attribute::cell_val_num() const {
   return cell_val_num_;
 }
 
-Status Attribute::deserialize(ConstBuffer* buff) {
+Status Attribute::deserialize(ConstBuffer* buff, uint32_t version) {
   // Load attribute name
   uint32_t attribute_name_size;
   RETURN_NOT_OK(buff->read(&attribute_name_size, sizeof(uint32_t)));
@@ -101,6 +105,18 @@ Status Attribute::deserialize(ConstBuffer* buff) {
   // Load filter pipeline
   RETURN_NOT_OK(filters_.deserialize(buff));
 
+  // Load fill value
+  if (version >= 6) {
+    uint64_t fill_value_size = 0;
+    RETURN_NOT_OK(buff->read(&fill_value_size, sizeof(uint64_t)));
+    assert(fill_value_size > 0);
+    fill_value_.resize(fill_value_size);
+    fill_value_.shrink_to_fit();
+    RETURN_NOT_OK(buff->read(&fill_value_[0], fill_value_size));
+  } else {
+    set_default_fill_value();
+  }
+
   return Status::Ok();
 }
 
@@ -117,6 +133,8 @@ void Attribute::dump(FILE* out) const {
     fprintf(out, "- Cell val num: var\n");
   fprintf(out, "- Filters: %u", (unsigned)filters_.size());
   filters_.dump(out);
+  fprintf(out, "\n");
+  fprintf(out, "- Fill value: %s", fill_value_str().c_str());
   fprintf(out, "\n");
 }
 
@@ -150,6 +168,12 @@ Status Attribute::serialize(Buffer* buff) {
   // Write filter pipeline
   RETURN_NOT_OK(filters_.serialize(buff));
 
+  // Write fill value
+  auto fill_value_size = (uint64_t)fill_value_.size();
+  assert(fill_value_size != 0);
+  RETURN_NOT_OK(buff->write(&fill_value_size, sizeof(uint64_t)));
+  RETURN_NOT_OK(buff->write(&fill_value_[0], fill_value_.size()));
+
   return Status::Ok();
 }
 
@@ -160,6 +184,7 @@ Status Attribute::set_cell_val_num(unsigned int cell_val_num) {
         "always variable-sized"));
 
   cell_val_num_ = cell_val_num;
+  set_default_fill_value();
 
   return Status::Ok();
 }
@@ -186,12 +211,88 @@ void Attribute::set_name(const std::string& name) {
   name_ = name;
 }
 
+Status Attribute::set_fill_value(const void* value, uint64_t size) {
+  if (value == nullptr) {
+    return LOG_STATUS(Status::AttributeError(
+        "Cannot set fill value; Input value cannot be null"));
+  }
+  if (size == 0) {
+    return LOG_STATUS(Status::AttributeError(
+        "Cannot set fill value; Input size cannot be 0"));
+  }
+  if (!var_size() && size != cell_size()) {
+    return LOG_STATUS(Status::AttributeError(
+        "Cannot set fill value; Input size is not the same as cell size"));
+  }
+
+  fill_value_.resize(size);
+  fill_value_.shrink_to_fit();
+  std::memcpy(&fill_value_[0], value, size);
+
+  return Status::Ok();
+}
+
+Status Attribute::get_fill_value(const void** value, uint64_t* size) const {
+  if (value == nullptr) {
+    return LOG_STATUS(Status::AttributeError(
+        "Cannot get fill value; Input value cannot be null"));
+  }
+  if (size == nullptr) {
+    return LOG_STATUS(Status::AttributeError(
+        "Cannot get fill value; Input size cannot be null"));
+  }
+
+  *value = fill_value_.data();
+  *size = (uint64_t)fill_value_.size();
+
+  return Status::Ok();
+}
+
+const ByteVecValue& Attribute::fill_value() const {
+  return fill_value_;
+}
+
 Datatype Attribute::type() const {
   return type_;
 }
 
 bool Attribute::var_size() const {
   return cell_val_num_ == constants::var_num;
+}
+
+/* ********************************* */
+/*          PRIVATE METHODS          */
+/* ********************************* */
+
+void Attribute::set_default_fill_value() {
+  auto fill_value = constants::fill_value(type_);
+  auto fill_size = datatype_size(type_);
+  auto cell_num = (var_size()) ? 1 : cell_val_num_;
+
+  fill_value_.resize(cell_num * fill_size);
+  fill_value_.shrink_to_fit();
+  uint64_t offset = 0;
+  auto buff = (unsigned char*)&fill_value_[0];
+  for (uint64_t i = 0; i < cell_num; ++i) {
+    std::memcpy(buff + offset, fill_value, fill_size);
+    offset += fill_size;
+  }
+}
+
+std::string Attribute::fill_value_str() const {
+  std::string ret;
+
+  auto v_size = datatype_size(type_);
+  uint64_t num = fill_value_.size() / v_size;
+  auto v = fill_value_.data();
+  for (uint64_t i = 0; i < num; ++i) {
+    ret += utils::parse::to_str(v, type_);
+    v += v_size;
+    if (i != num - 1)
+      ret += ", ";
+  }
+
+  return ret;
 }
 
 }  // namespace sm

@@ -335,6 +335,10 @@ Attribute
     :project: TileDB-C
 .. doxygenfunction:: tiledb_attribute_dump
     :project: TileDB-C
+.. doxygenfunction:: tiledb_attribute_set_fill_value
+    :project: TileDB-C
+.. doxygenfunction:: tiledb_attribute_get_fill_value
+    :project: TileDB-C
 
 Domain
 ------

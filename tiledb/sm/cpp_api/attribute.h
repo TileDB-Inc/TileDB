@@ -225,6 +225,84 @@ class Attribute {
     return *this;
   }
 
+  /**
+   * Sets the default fill value for the input attribute. This value will
+   * be used for the input attribute whenever querying (1) an empty cell in
+   * a dense array, or (2) a non-empty cell (in either dense or sparse array)
+   * when values on the input attribute are missing (e.g., if the user writes
+   * a subset of the attributes in a write operation).
+   *
+   * Applicable to var-sized attributes.
+   *
+   * **Example:**
+   *
+   * @code{.c}
+   * tiledb::Context ctx;
+   *
+   * // Fixed-sized attribute
+   * auto a1 = tiledb::Attribute::create<int>(ctx, "a1");
+   * int32_t value = 0;
+   * uint64_t size = sizeof(value);
+   * a1.set_fill_value(&value, size);
+   *
+   * // Var-sized attribute
+   * auto a2 = tiledb::Attribute::create<std::string>(ctx, "a2");
+   * std::string value("null");
+   * a2.set_fill_value(value.c_str(), value.size());
+   * @endcode
+   *
+   * @param value The fill value to set.
+   * @param size The fill value size in bytes.
+   *
+   * @note A call to `cell_val_num` sets the fill value
+   *     of the attribute to its default. Therefore, make sure you invoke
+   *     `set_fill_value` after deciding on the number
+   *     of values this attribute will hold in each cell.
+   *
+   * @note For fixed-sized attributes, the input `size` should be equal
+   *     to the cell size.
+   */
+  Attribute& set_fill_value(const void* value, uint64_t size) {
+    auto& ctx = ctx_.get();
+    ctx.handle_error(tiledb_attribute_set_fill_value(
+        ctx.ptr().get(), attr_.get(), value, size));
+    return *this;
+  }
+
+  /**
+   * Gets the default fill value for the input attribute. This value will
+   * be used for the input attribute whenever querying (1) an empty cell in
+   * a dense array, or (2) a non-empty cell (in either dense or sparse array)
+   * when values on the input attribute are missing (e.g., if the user writes
+   * a subset of the attributes in a write operation).
+   *
+   * Applicable to both fixed-sized and var-sized attributes.
+   *
+   * **Example:**
+   *
+   * @code{.c}
+   * // Fixed-sized attribute
+   * auto a1 = tiledb::Attribute::create<int>(ctx, "a1");
+   * const int32_t* value;
+   * uint64_t size;
+   * a1.get_fill_value(&value, &size);
+   *
+   * // Var-sized attribute
+   * auto a2 = tiledb::Attribute::create<std::string>(ctx, "a2");
+   * const char* value;
+   * uint64_t size;
+   * a2.get_fill_value(&value, &size);
+   * @endcode
+   *
+   * @param value A pointer to the fill value to get.
+   * @param size The size of the fill value to get.
+   */
+  void get_fill_value(const void** value, uint64_t* size) {
+    auto& ctx = ctx_.get();
+    ctx.handle_error(tiledb_attribute_get_fill_value(
+        ctx.ptr().get(), attr_.get(), value, size));
+  }
+
   /** Check if attribute is variable sized. **/
   bool variable_sized() const {
     return cell_val_num() == TILEDB_VAR_NUM;

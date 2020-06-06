@@ -2028,6 +2028,84 @@ TILEDB_EXPORT int32_t tiledb_attribute_get_cell_size(
 TILEDB_EXPORT int32_t tiledb_attribute_dump(
     tiledb_ctx_t* ctx, const tiledb_attribute_t* attr, FILE* out);
 
+/**
+ * Sets the default fill value for the input attribute. This value will
+ * be used for the input attribute whenever querying (1) an empty cell in
+ * a dense array, or (2) a non-empty cell (in either dense or sparse array)
+ * when values on the input attribute are missing (e.g., if the user writes
+ * a subset of the attributes in a write operation).
+ *
+ * Applicable to var-sized attributes.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * // Assumming a int32 attribute
+ * int32_t value = 0;
+ * uint64_t size = sizeof(value);
+ * tiledb_attribute_set_fill_value(ctx, attr, &value, size);
+ *
+ * // Assumming a var char attribute
+ * const char* value = "null";
+ * uint64_t size = strlen(value);
+ * tiledb_attribute_set_fill_value(ctx, attr, value, size);
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param attr The target attribute.
+ * @param value The fill value to set.
+ * @param size The fill value size in bytes.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ *
+ * @note A call to `tiledb_attribute_cell_val_num` sets the fill value
+ *     of the attribute to its default. Therefore, make sure you invoke
+ *     `tiledb_attribute_set_fill_value` after deciding on the number
+ *     of values this attribute will hold in each cell.
+ *
+ * @note For fixed-sized attributes, the input `size` should be equal
+ *     to the cell size.
+ */
+TILEDB_EXPORT int32_t tiledb_attribute_set_fill_value(
+    tiledb_ctx_t* ctx,
+    tiledb_attribute_t* attr,
+    const void* value,
+    uint64_t size);
+
+/**
+ * Gets the default fill value for the input attribute. This value will
+ * be used for the input attribute whenever querying (1) an empty cell in
+ * a dense array, or (2) a non-empty cell (in either dense or sparse array)
+ * when values on the input attribute are missing (e.g., if the user writes
+ * a subset of the attributes in a write operation).
+ *
+ * Applicable to both fixed-sized and var-sized attributes.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * // Assuming a int32 attribute
+ * const int32_t* value;
+ * uint64_t size;
+ * tiledb_attribute_get_fill_value(ctx, attr, &value, &size);
+ *
+ * // Assuming a var char attribute
+ * const char* value;
+ * uint64_t size;
+ * tiledb_attribute_get_fill_value(ctx, attr, &value, &size);
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param attr The target attribute.
+ * @param value A pointer to the fill value to get.
+ * @param size The size of the fill value to get.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_attribute_get_fill_value(
+    tiledb_ctx_t* ctx,
+    tiledb_attribute_t* attr,
+    const void** value,
+    uint64_t* size);
+
 /* ********************************* */
 /*               DOMAIN              */
 /* ********************************* */

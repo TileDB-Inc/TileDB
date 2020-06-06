@@ -350,6 +350,85 @@ std::string to_str(const T& value) {
   return ss.str();
 }
 
+std::string to_str(const void* value, Datatype type) {
+  std::stringstream ss;
+  switch (type) {
+    case Datatype::INT8:
+      ss << *(const int8_t*)value;
+      break;
+    case Datatype::UINT8:
+      ss << *(const uint8_t*)value;
+      break;
+    case Datatype::INT16:
+      ss << *(const int16_t*)value;
+      break;
+    case Datatype::UINT16:
+      ss << *(const uint16_t*)value;
+      break;
+    case Datatype::INT32:
+      ss << *(const int32_t*)value;
+      break;
+    case Datatype::UINT32:
+      ss << *(const uint32_t*)value;
+      break;
+    case Datatype::INT64:
+      ss << *(const int64_t*)value;
+      break;
+    case Datatype::UINT64:
+      ss << *(const uint64_t*)value;
+      break;
+    case Datatype::FLOAT32:
+      ss << *(const float*)value;
+      break;
+    case Datatype::FLOAT64:
+      ss << *(const double*)value;
+      break;
+    case Datatype::CHAR:
+      ss << *(const char*)value;
+      break;
+    case Datatype::ANY:
+      ss << *(const uint8_t*)value;
+      break;
+    case Datatype::STRING_ASCII:
+      ss << *(const uint8_t*)value;
+      break;
+    case Datatype::STRING_UTF8:
+      ss << *(const uint8_t*)value;
+      break;
+    case Datatype::STRING_UTF16:
+      ss << *(const uint16_t*)value;
+      break;
+    case Datatype::STRING_UTF32:
+      ss << *(const uint32_t*)value;
+      break;
+    case Datatype::STRING_UCS2:
+      ss << *(const uint16_t*)value;
+      break;
+    case Datatype::STRING_UCS4:
+      ss << *(const uint32_t*)value;
+      break;
+    case Datatype::DATETIME_YEAR:
+    case Datatype::DATETIME_MONTH:
+    case Datatype::DATETIME_WEEK:
+    case Datatype::DATETIME_DAY:
+    case Datatype::DATETIME_HR:
+    case Datatype::DATETIME_MIN:
+    case Datatype::DATETIME_SEC:
+    case Datatype::DATETIME_MS:
+    case Datatype::DATETIME_US:
+    case Datatype::DATETIME_NS:
+    case Datatype::DATETIME_PS:
+    case Datatype::DATETIME_FS:
+    case Datatype::DATETIME_AS:
+      ss << *(const int64_t*)value;
+      break;
+    default:
+      assert(false);
+  }
+
+  return ss.str();
+}
+
 uint64_t common_prefix_size(const std::string& a, const std::string& b) {
   auto size = std::min(a.size(), b.size());
   for (size_t i = 0; i < size; ++i) {
