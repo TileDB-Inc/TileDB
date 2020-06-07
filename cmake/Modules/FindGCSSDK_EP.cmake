@@ -72,8 +72,8 @@ if (NOT GCSSDK_FOUND)
 
     ExternalProject_Add(ep_gcssdk
       PREFIX "externals"
-      URL "https://github.com/googleapis/google-cloud-cpp/archive/v0.20.0.zip"
-      URL_HASH SHA1=6e7931a0e62779dfbd07427373373bf1ad6f8686
+      URL "https://github.com/googleapis/google-cloud-cpp/archive/v1.14.0.zip"
+      URL_HASH SHA1=2cc7e5a3b62fb37f1accd405818557e990b91190
       BUILD_IN_SOURCE 1
       PATCH_COMMAND
         patch -N -p1 < ${TILEDB_CMAKE_INPUTS_DIR}/patches/ep_gcssdk/build.patch &&
@@ -81,7 +81,7 @@ if (NOT GCSSDK_FOUND)
         patch -N -p1 < ${TILEDB_CMAKE_INPUTS_DIR}/patches/ep_gcssdk/disable_tests.patch &&
         patch -N -p1 < ${TILEDB_CMAKE_INPUTS_DIR}/patches/ep_gcssdk/disable_examples.patch
       CONFIGURE_COMMAND
-        ${CMAKE_COMMAND} -Hsuper -Bcmake-out
+         ${CMAKE_COMMAND} -Hsuper -Bcmake-out
         -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
         -DBUILD_SHARED_LIBS=OFF
         -DBUILD_SAMPLES=OFF
@@ -89,9 +89,12 @@ if (NOT GCSSDK_FOUND)
         -DOPENSSL_ROOT_DIR=${TILEDB_OPENSSL_DIR}
         -DCMAKE_INSTALL_PREFIX=${TILEDB_EP_INSTALL_PREFIX}
         # Disable unused api features to speed up build
+        -DGOOGLE_CLOUD_CPP_ENABLE_BIGQUERY=OFF
         -DGOOGLE_CLOUD_CPP_ENABLE_BIGTABLE=OFF
+        -DGOOGLE_CLOUD_CPP_ENABLE_SPANNER=OFF
         -DGOOGLE_CLOUD_CPP_ENABLE_FIRESTORE=OFF
         -DGOOGLE_CLOUD_CPP_ENABLE_STORAGE=ON
+        -DGOOGLE_CLOUD_CPP_ENABLE_PUBSUB=OFF
         -DBUILD_TESTING=OFF
         # Google uses their own variable instead of CMAKE_INSTALL_PREFIX
         -DGOOGLE_CLOUD_CPP_EXTERNAL_PREFIX=${TILEDB_EP_INSTALL_PREFIX}
