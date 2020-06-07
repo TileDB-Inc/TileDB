@@ -42,7 +42,7 @@ set(GCSSDK_DIR "${TILEDB_EP_INSTALL_PREFIX}")
 # First check for a static version in the EP prefix.
 # The storage client is installed as the cmake package storage_client
 # TODO: This should be replaced with proper find_package as google installs cmake targets for the subprojects
-if (NOT TILEDB_FORCE_ALL_DEPS OR TILEDB_CAPNP_EP_BUILT)
+if (NOT TILEDB_FORCE_ALL_DEPS OR TILEDB_GCSSDK_EP_BUILT)
   find_package(storage_client
     PATHS ${TILEDB_EP_INSTALL_PREFIX}
           ${TILEDB_DEPS_NO_DEFAULT_PATH}
