@@ -103,26 +103,10 @@ stages:
              imageName: 'ubuntu-16.04'
              CXX: g++
              ARTIFACT_OS: 'linux'
-       pool:
-         vmImage: $(imageName)
-       steps:
-         - template: scripts/azure-linux_mac-release.yml
-     - job:
-       strategy:
-         matrix:
            macOS:
              imageName: 'macOS-10.14'
              CXX: clang++
              ARTIFACT_OS: 'macos'
-             TILEDB_S3: ON
-             TILEDB_AZURE: ON
-             TILEDB_GCS: ON
-             TILEDB_HDFS: ON
-             TILEDB_STATIC: OFF
-             TILEDB_SERIALIZATION: ON
-             # Disable forcing all dependencies. openssl being forced on osx is not working
-             # This will be adjusted but osx ships with openssl libraries so this should be okay for now
-             TILEDB_FORCE_BUILD_DEPS: OFF
        pool:
          vmImage: $(imageName)
        steps:
