@@ -28,6 +28,12 @@
 
 * Added functions `Attribute::{set,get}_fill_value` to get/set default fill values
 
+# TileDB v2.0.4 Release Notes
+
+## Improvements
+
+* Fix typo in GCS cmake file for superbuild [#1665](https://github.com/TileDB-Inc/TileDB/pull/1665)
+
 # TileDB v2.0.3 Release Notes
 
 ## Improvements
