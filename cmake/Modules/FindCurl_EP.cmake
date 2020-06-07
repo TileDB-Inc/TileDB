@@ -120,6 +120,10 @@ if (NOT CURL_FOUND AND TILEDB_SUPERBUILD)
       set(WITH_ZLIB "--with-zlib")
     endif()
 
+    if (TARGET_ARCH STREQUAL "APPLE")
+      set(OS_SPECIFIC_FLAGS "${OS_SPECIFIC_FLAGS} --without-libidn2")
+    endif()
+
     ExternalProject_Add(ep_curl
       PREFIX "externals"
       URL "https://curl.haxx.se/download/curl-7.65.3.tar.gz"
@@ -133,6 +137,7 @@ if (NOT CURL_FOUND AND TILEDB_SUPERBUILD)
           --with-pic=yes
           ${WITH_SSL}
           ${WITH_ZLIB}
+          ${OS_SPECIFIC_FLAGS}
       BUILD_IN_SOURCE TRUE
       BUILD_COMMAND $(MAKE)
       INSTALL_COMMAND $(MAKE) install
