@@ -73,7 +73,8 @@ Status GCS::init(const Config& config, ThreadPool* const thread_pool) {
   // env variable GOOGLE_APPLICATION_CREDENTIALS
   client_ = google::cloud::storage::Client::CreateDefaultClient();
   if (!client_) {
-    return LOG_STATUS(Status::GCSError("Failed to initialize GCS Client; " + client_.status().message()));
+    return LOG_STATUS(Status::GCSError(
+        "Failed to initialize GCS Client; " + client_.status().message()));
   }
 
   bool found;

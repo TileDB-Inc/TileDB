@@ -3,6 +3,7 @@
 ## Improvements
 
 * Fix typo in GCS cmake file for superbuild [#1665](https://github.com/TileDB-Inc/TileDB/pull/1665)
+* Don't error on GCS client init failure [#1667](https://github.com/TileDB-Inc/TileDB/pull/1667)
 
 # TileDB v2.0.3 Release Notes
 
