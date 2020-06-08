@@ -979,7 +979,8 @@ void ArraySchemaFx::load_and_check_array_schema(const std::string& path) {
       "- Type: " + ATTR_TYPE_STR + "\n" +
       "- Cell val num: " + CELL_VAL_NUM_STR + "\n" + "- Filters: 2\n" +
       "  > BZIP2: COMPRESSION_LEVEL=5\n" +
-      "  > BitWidthReduction: BIT_WIDTH_MAX_WINDOW=1000\n";
+      "  > BitWidthReduction: BIT_WIDTH_MAX_WINDOW=1000\n" +
+      "- Fill value: -2147483648\n";
   FILE* gold_fout = fopen("gold_fout.txt", "w");
   const char* dump = dump_str.c_str();
   fwrite(dump, sizeof(char), strlen(dump), gold_fout);

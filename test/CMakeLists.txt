@@ -61,6 +61,7 @@ set(TILEDB_TEST_SOURCES
   src/unit-capi-empty-var-length.cc
   src/unit-capi-enum_values.cc
   src/unit-capi-error.cc
+  src/unit-capi-fill_values.cc
   src/unit-capi-filter.cc
   src/unit-capi-incomplete.cc
   src/unit-capi-incomplete-2.cc
@@ -119,6 +120,7 @@ if (TILEDB_CPP_API)
     src/unit-cppapi-consolidation.cc
     src/unit-cppapi-consolidation-sparse.cc
     src/unit-cppapi-datetimes.cc
+    src/unit-cppapi-fill_values.cc
     src/unit-cppapi-filter.cc
     src/unit-cppapi-metadata.cc
     src/unit-cppapi-query.cc

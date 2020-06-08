@@ -35,6 +35,7 @@
 
 #include "tiledb/sm/filter/filter_pipeline.h"
 #include "tiledb/sm/misc/status.h"
+#include "tiledb/sm/misc/types.h"
 
 namespace tiledb {
 namespace sm {
@@ -93,9 +94,10 @@ class Attribute {
    * Populates the object members from the data in the input binary buffer.
    *
    * @param buff The buffer to deserialize from.
+   * @param version The format spec version.
    * @return Status
    */
-  Status deserialize(ConstBuffer* buff);
+  Status deserialize(ConstBuffer* buff, uint32_t version);
 
   /** Dumps the attribute contents in ASCII form in the selected output. */
   void dump(FILE* out) const;
@@ -129,6 +131,21 @@ class Attribute {
   /** Sets the attribute name. */
   void set_name(const std::string& name);
 
+  /**
+   * Sets the fill value for the attribute. Applicable to
+   * both fixed-sized and var-sized attributes.
+   */
+  Status set_fill_value(const void* value, uint64_t size);
+
+  /**
+   * Gets the fill value for the attribute. Applicable to
+   * fixed-sized and var-sized attributes.
+   */
+  Status get_fill_value(const void** value, uint64_t* size) const;
+
+  /** Returns the fill value. */
+  const ByteVecValue& fill_value() const;
+
   /** Returns the attribute type. */
   Datatype type() const;
 
@@ -154,6 +171,19 @@ class Attribute {
 
   /** The attribute type. */
   Datatype type_;
+
+  /** The fill value. */
+  ByteVecValue fill_value_;
+
+  /* ********************************* */
+  /*         PRIVATE ATTRIBUTES        */
+  /* ********************************* */
+
+  /** Sets the default fill value. */
+  void set_default_fill_value();
+
+  /** Returns the fill value in string form. */
+  std::string fill_value_str() const;
 };
 
 }  // namespace sm

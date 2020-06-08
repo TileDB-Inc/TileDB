@@ -36,7 +36,7 @@
 
 #include <iostream>
 
-TEST_CASE("C API: Test error and error message", "[capi], [error]") {
+TEST_CASE("C API: Test error and error message", "[capi][error]") {
   tiledb_ctx_t* ctx;
   int rc = tiledb_ctx_alloc(nullptr, &ctx);
   CHECK(rc == TILEDB_OK);

@@ -67,4 +67,6 @@ The attribute has internal format:
 | Attribute datatype | `uint8_t` | Datatype of the attribute values |
 | Cell val num | `uint32_t` | Number of attribute values per cell. For variable-length attributes, this is `std::numeric_limits<uint32_t>::max()` |
 | Filters | [Filter Pipeline](./filter_pipeline.md) | The filter pipeline used on attribute value tiles |
+| Fill value size | `uint64_t` | The size in bytes of the fill value |
+| Fill value | `uint8_t[]` | The fill value |
 

@@ -6,6 +6,8 @@
 
 ## Breaking behavior
 
+* Empty dense arrays now return cells with fill values.
+
 ## New features
 
 ## Improvements
@@ -14,7 +16,17 @@
 
 ## Bug fixes
 
+* Fixed bug in setting a fill value for var-sized attributes.
+
 ## API additions
+
+### C API
+
+* Added functions `tiledb_attribute_{set,get}_fill_value` to get/set default fill values
+
+### C++ API
+
+* Added functions `Attribute::{set,get}_fill_value` to get/set default fill values
 
 # TileDB v2.0.2 Release Notes
 
