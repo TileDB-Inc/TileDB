@@ -28,6 +28,30 @@
 
 * Added functions `Attribute::{set,get}_fill_value` to get/set default fill values
 
+# TileDB v2.0.3 Release Notes
+
+## Improvements
+
+* Add robust retries for S3 SLOW_DOWN errors [#1651](https://github.com/TileDB-Inc/TileDB/pull/1651)
+* Improve GCS build process [#1655](https://github.com/TileDB-Inc/TileDB/pull/1655)
+* Add generation of pkg-config file [#1656](https://github.com/TileDB-Inc/TileDB/pull/1656)
+* S3 should use HEADObject for file size [#1657](https://github.com/TileDB-Inc/TileDB/pull/1657)
+* Improvements to stats [#1652](https://github.com/TileDB-Inc/TileDB/pull/1652)
+* Add artifacts to releases from CI [#1663](https://github.com/TileDB-Inc/TileDB/pull/1663)
+
+## Bug fixes
+
+* Remove to unneeded semicolons noticed by the -pedantic flag [#1653](https://github.com/TileDB-Inc/TileDB/pull/1653)
+* Fix cases were TILEDB_FORCE_ALL_DEPS picked up system builds [#1654](https://github.com/TileDB-Inc/TileDB/pull/1654)
+* Allow errors to be show in cmake super build [#1658](https://github.com/TileDB-Inc/TileDB/pull/1658)
+* Properly check vacuum files and limit fragment loading [#1661](https://github.com/TileDB-Inc/TileDB/pull/1661)
+* Fix edge case where consolidated but unvacuumed array can have coordinates report twice [#1662](https://github.com/TileDB-Inc/TileDB/pull/1662)
+
+## API additions
+
+* Add c-api tiledb_stats_raw_dump[_str] function for raw stats dump [#1660](https://github.com/TileDB-Inc/TileDB/pull/1660)
+* Add c++-api Stats::raw_dump function for raw stats dump [#1660](https://github.com/TileDB-Inc/TileDB/pull/1660)
+
 # TileDB v2.0.2 Release Notes
 
 ## Bug fixes
