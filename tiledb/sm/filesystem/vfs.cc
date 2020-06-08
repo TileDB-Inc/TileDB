@@ -910,7 +910,16 @@ Status VFS::init(const Config* ctx_config, const Config* vfs_config) {
 #endif
 
 #ifdef HAVE_GCS
-  RETURN_NOT_OK(gcs_.init(config_, &thread_pool_));
+  Status st = gcs_.init(config_, &thread_pool_);
+  if (!st.ok()) {
+    // We should print some warning here, this LOG_STATUS only prints in
+    // verbose mode. Since this is called in the init of the context, we
+    // can't return the error through the normal set it on the context.
+    LOG_STATUS(Status::GCSError(
+        "GCS failed to initialize, GCS support will not be available in this "
+        "context: " +
+        st.message()));
+  }
 #endif
 
 #ifdef WIN32
