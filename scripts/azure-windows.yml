@@ -24,14 +24,14 @@ steps:
        $host.SetShouldExit($LastExitCode)
     }
 
-    cmake --build $env:AGENT_BUILDDIRECTORY\build --config Release -- /verbosity:minimal
+    cmake --build $env:AGENT_BUILDDIRECTORY\build --config Release -j $env:NUMBER_OF_PROCESSORS -- /verbosity:minimal
 
     if ($LastExitCode -ne 0) {
        Write-Host "Build failed. CMake exit status: " $LastExitCocde
        $host.SetShouldExit($LastExitCode)
     }
 
-    cmake --build $env:AGENT_BUILDDIRECTORY\build --target install-tiledb --config Release
+    cmake --build $env:AGENT_BUILDDIRECTORY\build  -j $env:NUMBER_OF_PROCESSORS --target install-tiledb --config Release
 
     if ($LastExitCode -ne 0) {
       Write-Host "Installation failed."
@@ -55,7 +55,7 @@ steps:
 
     # CMake exits with non-0 status if there are any warnings during the build, so
     # build the unit test executable before running tests.
-    cmake --build $env:AGENT_BUILDDIRECTORY\build\tiledb --target tiledb_unit --config Release -- /verbosity:minimal
+    cmake --build $env:AGENT_BUILDDIRECTORY\build\tiledb  -j $env:NUMBER_OF_PROCESSORS --target tiledb_unit --config Release -- /verbosity:minimal
 
     # Actually run tests
     cmake --build $env:AGENT_BUILDDIRECTORY\build\tiledb --target check --config Release -- /verbosity:minimal
