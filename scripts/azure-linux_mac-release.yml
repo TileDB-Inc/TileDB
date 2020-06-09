@@ -18,9 +18,9 @@ steps:
 
 - bash: |
     set -e pipefail
-    brew uninstall --ignore-dependencies lz4
+    brew uninstall --ignore-dependencies libidn2 brotli rtmpdump
   condition: eq(variables['Agent.OS'], 'Darwin')
-  displayName: 'Uninstall lz4 for curl (OSX only)'
+  displayName: 'Uninstall brew packages for curl (OSX only)'
 
 - bash: |
     set -e pipefail
