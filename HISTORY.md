@@ -4,6 +4,7 @@
 
 * Fix typo in GCS cmake file for superbuild [#1665](https://github.com/TileDB-Inc/TileDB/pull/1665)
 * Don't error on GCS client init failure [#1667](https://github.com/TileDB-Inc/TileDB/pull/1667)
+* Don't include curl's linking to ssl, avoids build issue on fresh macos 10.14/10.15 installs [#1671](https://github.com/TileDB-Inc/TileDB/pull/1671)
 
 # TileDB v2.0.3 Release Notes
 

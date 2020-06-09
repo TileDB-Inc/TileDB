@@ -501,6 +501,15 @@ if ((TILEDB_S3 OR TILEDB_AZURE OR TILEDB_GCS OR TILEDB_SERIALIZATION) AND NOT WI
 endif()
 
 if (CURL_APPEND_LIBS)
+  # OpenSSL is always linked on POSIX for encryption. If we include curl's
+  # linkage we might double link if we built openssl in superbuild
+  # but the system library exists. This happens on macOS 10.14 and 10.15
+  # where openssl is deprecated but the library still ships. OpenSSL headers
+  # are not shipped, thus we build a superbuild of openssl. The -lcrypto then
+  # ends up trying to link against the system shared library while we already
+  # linked the static lib from TileDB supper build.
+  # End result, we remove the -lssl and -lcrypto from the list of curl extra libs
+  list(REMOVE_ITEM CURL_APPEND_LIBS "-lssl" "-lcrypto")
   target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
     INTERFACE
     ${CURL_APPEND_LIBS})
