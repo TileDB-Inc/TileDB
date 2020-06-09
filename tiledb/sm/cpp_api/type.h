@@ -60,11 +60,17 @@ namespace impl {
 template <typename T>
 struct defer_assert : std::false_type {};
 
+/** Used to statically type check for std::array. */
+template <typename T>
+struct is_stl_array : std::false_type {};
+template <typename T, std::size_t N>
+struct is_stl_array<std::array<T, N>> : std::true_type {};
+
 /** SFINAE handler for types that make sense to be bitwise copied. **/
 template <typename T>
 using enable_trivial = typename std::enable_if<
     IS_TRIVIALLY_COPYABLE(T) && !std::is_pointer<T>::value &&
-    !std::is_array<T>::value>::type;
+    !std::is_array<T>::value && !is_stl_array<T>::value>::type;
 
 /**
  * Convert a type into a tiledb_datatype_t. The default for all
@@ -391,6 +397,33 @@ struct TypeHandler<std::vector<T>, enable_trivial<T>> {
   }
 
   static void set(std::vector<T>& dest, const void* d, size_t size) {
+    auto num = size / sizeof(value_type);
+    dest.resize(num);
+    memcpy(data(dest), d, size);
+  }
+};
+
+/** Handler for STL arrays. **/
+template <typename T, std::size_t N>
+struct TypeHandler<std::array<T, N>, enable_trivial<T>> {
+  using element_th = TypeHandler<T>;
+  using value_type = typename element_th::value_type;
+  static constexpr tiledb_datatype_t tiledb_type = element_th::tiledb_type;
+  static constexpr unsigned tiledb_num = N * element_th::tiledb_num;
+
+  static size_t size(const std::array<T, N>& a) {
+    return a.size();
+  }
+
+  static value_type* data(std::array<T, N>& a) {
+    return a.data();
+  }
+
+  static value_type const* data(std::array<T, N> const& a) {
+    return a.data();
+  }
+
+  static void set(std::array<T, N>& dest, const void* d, size_t size) {
     auto num = size / sizeof(value_type);
     dest.resize(num);
     memcpy(data(dest), d, size);

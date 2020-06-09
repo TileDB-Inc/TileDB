@@ -36,6 +36,9 @@
 * Don't error on GCS client init failure [#1667](https://github.com/TileDB-Inc/TileDB/pull/1667)
 * Don't include curl's linking to ssl, avoids build issue on fresh macos 10.14/10.15 installs [#1671](https://github.com/TileDB-Inc/TileDB/pull/1671)
 
+## Bug fixes
+* The C++ Attribute::create API now correctly builds from an STL array [#1670](https://github.com/TileDB-Inc/TileDB/pull/1670)
+
 # TileDB v2.0.3 Release Notes
 
 ## Improvements
