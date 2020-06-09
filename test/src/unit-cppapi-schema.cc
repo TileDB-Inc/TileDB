@@ -95,7 +95,7 @@ TEST_CASE("C++ API: Schema", "[cppapi][schema]") {
         schema.attribute("a1").filter_list().filter(0).filter_type() ==
         TILEDB_FILTER_LZ4);
     CHECK(schema.attribute("a2").cell_val_num() == TILEDB_VAR_NUM);
-    CHECK(schema.attribute("a3").cell_val_num() == 16);
+    CHECK(schema.attribute("a3").cell_val_num() == 2);
     CHECK(schema.attribute("a4").cell_val_num() == TILEDB_VAR_NUM);
     CHECK(schema.attribute("a4").type() == TILEDB_UINT32);
 
@@ -155,7 +155,7 @@ TEST_CASE("C++ API: Schema", "[cppapi][schema]") {
         schema.attribute("a1").filter_list().filter(0).filter_type() ==
         TILEDB_FILTER_LZ4);
     CHECK(schema.attribute("a2").cell_val_num() == TILEDB_VAR_NUM);
-    CHECK(schema.attribute("a3").cell_val_num() == 16);
+    CHECK(schema.attribute("a3").cell_val_num() == 2);
     CHECK(schema.attribute("a4").cell_val_num() == TILEDB_VAR_NUM);
     CHECK(schema.attribute("a4").type() == TILEDB_UINT32);
     CHECK(schema.allows_dups() == true);
