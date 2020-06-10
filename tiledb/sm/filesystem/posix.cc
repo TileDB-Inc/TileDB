@@ -256,7 +256,7 @@ Status Posix::filelock_lock(
   fl.l_pid = getpid();
 
   // Open the file
-  *fd = ::open(filename.c_str(), O_RDWR);
+  *fd = ::open(filename.c_str(), shared ? O_RDONLY : O_WRONLY);
   if (*fd == -1) {
     return LOG_STATUS(Status::IOError(
         "Cannot open filelock '" + filename + "'; " + strerror(errno)));
