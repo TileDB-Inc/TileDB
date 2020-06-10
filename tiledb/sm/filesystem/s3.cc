@@ -691,11 +691,11 @@ Status S3::object_size(const URI& uri, uint64_t* nbytes) const {
   }
 
   Aws::Http::URI aws_uri = uri.to_string().c_str();
-  std::string aws_path = remove_front_slash(aws_uri.GetPath().c_str());
+  auto aws_path = remove_front_slash(aws_uri.GetPath().c_str());
 
   Aws::S3::Model::HeadObjectRequest head_object_request;
   head_object_request.SetBucket(aws_uri.GetAuthority());
-  head_object_request.SetKey(aws_path);
+  head_object_request.SetKey(aws_path.c_str());
   auto head_object_outcome = client_->HeadObject(head_object_request);
 
   if (!head_object_outcome.IsSuccess())
