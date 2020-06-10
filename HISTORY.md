@@ -11,6 +11,7 @@
 
 * The C++ Attribute::create API now correctly builds from an STL array [#1670](https://github.com/TileDB-Inc/TileDB/pull/1670)
 * Allow opening arrays with read-only permission on posix filesystems [#1676](https://github.com/TileDB-Inc/TileDB/pull/1676)
+* Fixed build issue caused by passing std::string to an Aws method [#1678](https://github.com/TileDB-Inc/TileDB/pull/1678)
 
 # TileDB v2.0.3 Release Notes
 
@@ -81,7 +82,7 @@
 
 * Changed `domain` input of `tiledb_dimension_get_domain` to `const void**` (from `void**`).
 * Changed `tile_extent` input of `tiledb_dimension_get_tile_extent` to `const void**` (from `void**`).
-* Anonymous attribute and dimensions (i.e., empty strings for attribute/dimension names) is no longer supported. This is because now the user can set separate dimension buffers to the query and, therefore, supporting anonymous attributes and dimensions creates ambiguity in the current API. 
+* Anonymous attribute and dimensions (i.e., empty strings for attribute/dimension names) is no longer supported. This is because now the user can set separate dimension buffers to the query and, therefore, supporting anonymous attributes and dimensions creates ambiguity in the current API.
 
 ## Breaking behavior
 
@@ -98,7 +99,7 @@
 * Added support for AWS Security Token Service session tokens via configuration option `vfs.s3.session_token`. [#1472](https://github.com/TileDB-Inc/TileDB/pull/1472)
 * Added support for indicating zero-value metadata by returning `value_num` == 1 from the `_get_metadatata` and `Array::get_metadata` APIs [#1438](https://github.com/TileDB-Inc/TileDB/pull/1438) (this is a non-breaking change, as the documented return of `value == nullptr` to indicate missing keys does not change)`
 * User can set coordinate buffers separately for write queries.
-* Added option to enable duplicate coordinates for sparse arrays [#1504](https://github.com/TileDB-Inc/TileDB/pull/1504) 
+* Added option to enable duplicate coordinates for sparse arrays [#1504](https://github.com/TileDB-Inc/TileDB/pull/1504)
 * Added support for writing at a timestamp by allowing opening an array at a timestamp (previously disabled).
 * Added special files with the same name as a fragment directory and an added suffix ".ok", to indicate a committed fragment. This improved the performance of opening an array on object stores significantly, as it avoids an extra REST request per fragment.
 * Added functionality to consolidation, which allows consolidating the fragment metadata footers in a single file by toggling a new config parameter. This leads to a huge performance boost when opening an array, as it avoids fetching a separate footer per fragment from storage.
@@ -560,10 +561,10 @@ The 1.4.0 release brings two new major features, attribute filter lists and at-r
 
 * Removed Blosc compressors.
 * Removed `tiledb_kv_set_max_buffered_items`.
-* Modified `tiledb_kv_open` to not take an attribute subselection, but instead take as input the 
+* Modified `tiledb_kv_open` to not take an attribute subselection, but instead take as input the
 query type (similar to arrays). This makes the key-value store behave similarly to arrays,
 which means that the key-value store does not support interleaved reads/writes any more
-(an opened key-value store is used either for reads or writes, but not both).   
+(an opened key-value store is used either for reads or writes, but not both).
 * `tiledb_kv_close` does not flush the written items. Instead, `tiledb_kv_flush` must be
 invoked explicitly.
 
@@ -571,10 +572,10 @@ invoked explicitly.
 
 * Removed Blosc compressors.
 * Removed `Map::set_max_buffered_items`.
-* Modified `Map::Map` and `Map::open` to not take an attribute subselection, but instead take as input the 
+* Modified `Map::Map` and `Map::open` to not take an attribute subselection, but instead take as input the
 query type (similar to arrays). This makes the key-value store behave similarly to arrays,
 which means that the key-value store does not support interleaved reads/writes any more
-(an opened key-value store is used either for reads or writes, but not both).   
+(an opened key-value store is used either for reads or writes, but not both).
 * `Map::close` does not flush the written items. Instead, `Map::flush` must be
 invoked explicitly.
 
