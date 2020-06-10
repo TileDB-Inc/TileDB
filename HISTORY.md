@@ -8,6 +8,7 @@
 
 ## Bug fixes
 * The C++ Attribute::create API now correctly builds from an STL array [#1670](https://github.com/TileDB-Inc/TileDB/pull/1670)
+* Allow opening arrays with read-only permission on posix filesystems [#1676](https://github.com/TileDB-Inc/TileDB/pull/1676)
 
 # TileDB v2.0.3 Release Notes
 
