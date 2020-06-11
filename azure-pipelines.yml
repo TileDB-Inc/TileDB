@@ -89,7 +89,7 @@ stages:
     variables:
       TILEDB_S3: ON
       TILEDB_AZURE: ON
-      TILEDB_GCS: ON
+      TILEDB_GCS: OFF
       TILEDB_HDFS: ON
       TILEDB_STATIC: OFF
       TILEDB_SERIALIZATION: ON
