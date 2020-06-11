@@ -132,7 +132,8 @@ if (NOT CAPNP_FOUND)
           "-DCMAKE_CXX_FLAGS=${CXXFLAGS_DEF}"
           ${TILEDB_EP_BASE}/src/ep_capnp/c++
         PATCH_COMMAND
-          ${GIT_EXECUTABLE} cherry-pick fdbf035619
+          ${GIT_EXECUTABLE} cherry-pick fdbf035619 &&
+          ${GIT_EXECUTABLE} apply -p1 < ${TILEDB_CMAKE_INPUTS_DIR}/patches/ep_capnp/Fix-new-compiler-warnings.patch
         UPDATE_COMMAND ""
         LOG_DOWNLOAD TRUE
         LOG_CONFIGURE TRUE

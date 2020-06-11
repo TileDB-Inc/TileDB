@@ -79,6 +79,9 @@ stages:
           VS2017:
             imageName: 'vs2017-win2016'
             TILEDB_S3: ON
+          VS2017_serialization:
+            imageName: 'vs2017-win2016'
+            TILEDB_SERIALIZATION: ON
       pool:
         vmImage: $(imageName)
       steps:
@@ -117,13 +120,14 @@ stages:
          matrix:
            VS2017:
              imageName: 'vs2017-win2016'
-             # Only S3 variable is currently supported in boostrap powershell
+             # Only Serialization and S3 variable is currently supported in boostrap powershell
+             # The ENV variables below have no effect currently
              TILEDB_S3: ON
 #             TILEDB_AZURE: OFF
 #             TILEDB_GCS: OFF
 #             TILEDB_HDFS: OFF
              TILEDB_STATIC: OFF
-#             TILEDB_SERIALIZATION: OFF
+             TILEDB_SERIALIZATION: ON
              TILEDB_FORCE_BUILD_DEPS: ON
              ARTIFACT_OS: 'windows'
        pool:

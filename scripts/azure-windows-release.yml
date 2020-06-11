@@ -19,11 +19,7 @@ steps:
       $host.SetShouldExit(1)
     }
 
-    if ($env:TILEDB_S3 -eq "ON") {
-      & "$env:BUILD_SOURCESDIRECTORY\bootstrap.ps1" -EnableS3 -EnableVerbose
-    } else {
-      & "$env:BUILD_SOURCESDIRECTORY\bootstrap.ps1" -EnableVerbose
-    }
+    & "$env:BUILD_SOURCESDIRECTORY\bootstrap.ps1" -EnableS3 -EnableSerialization -EnableBuildDeps
     if ($LastExitCode -ne 0) {
        Write-Host "Bootstrap failed."
        $host.SetShouldExit($LastExitCode)

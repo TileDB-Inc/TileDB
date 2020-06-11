@@ -1,0 +1,161 @@
+From a75953ed0a5feda0795161c85ab02311024fb0dd Mon Sep 17 00:00:00 2001
+From: Kenton Varda <kenton@cloudflare.com>
+Date: Wed, 7 Feb 2018 17:00:22 -0800
+Subject: [PATCH] Fix new compiler warnings.
+
+---
+ c++/src/capnp/compiler/capnpc-c++.c++ | 38 +++++++++++++--------------
+ c++/src/capnp/rpc-test.c++            |  2 --
+ c++/src/kj/main.c++                   |  2 +-
+ c++/src/kj/timer.c++                  |  4 +--
+ 5 files changed, 26 insertions(+), 28 deletions(-)
+
+diff --git a/c++/src/capnp/compiler/capnpc-c++.c++ b/c++/src/capnp/compiler/capnpc-c++.c++
+index f8b694bb..0dedd66f 100644
+--- a/c++/src/capnp/compiler/capnpc-c++.c++
++++ b/c++/src/capnp/compiler/capnpc-c++.c++
+@@ -2475,16 +2475,16 @@ private:
+     const char* linkage = scope.size() == 0 ? "extern " : "static ";
+ 
+     switch (type.which()) {
+-      case schema::Value::BOOL:
+-      case schema::Value::INT8:
+-      case schema::Value::INT16:
+-      case schema::Value::INT32:
+-      case schema::Value::INT64:
+-      case schema::Value::UINT8:
+-      case schema::Value::UINT16:
+-      case schema::Value::UINT32:
+-      case schema::Value::UINT64:
+-      case schema::Value::ENUM:
++      case schema::Type::BOOL:
++      case schema::Type::INT8:
++      case schema::Type::INT16:
++      case schema::Type::INT32:
++      case schema::Type::INT64:
++      case schema::Type::UINT8:
++      case schema::Type::UINT16:
++      case schema::Type::UINT32:
++      case schema::Type::UINT64:
++      case schema::Type::ENUM:
+         return ConstText {
+           false,
+           kj::strTree("static constexpr ", typeName_, ' ', upperCase, " = ",
+@@ -2497,9 +2497,9 @@ private:
+               "#endif\n")
+         };
+ 
+-      case schema::Value::VOID:
+-      case schema::Value::FLOAT32:
+-      case schema::Value::FLOAT64: {
++      case schema::Type::VOID:
++      case schema::Type::FLOAT32:
++      case schema::Type::FLOAT64: {
+         // TODO(msvc): MSVC doesn't like float- or class-typed constexprs. As soon as this is fixed,
+         //   treat VOID, FLOAT32, and FLOAT64 the same as the other primitives.
+         kj::String value = literalValue(schema.getType(), constProto.getValue()).flatten();
+@@ -2513,7 +2513,7 @@ private:
+         };
+       }
+ 
+-      case schema::Value::TEXT: {
++      case schema::Type::TEXT: {
+         kj::String constType = kj::strTree(
+             "::capnp::_::ConstText<", schema.as<Text>().size(), ">").flatten();
+         return ConstText {
+@@ -2524,7 +2524,7 @@ private:
+         };
+       }
+ 
+-      case schema::Value::DATA: {
++      case schema::Type::DATA: {
+         kj::String constType = kj::strTree(
+             "::capnp::_::ConstData<", schema.as<Data>().size(), ">").flatten();
+         return ConstText {
+@@ -2535,7 +2535,7 @@ private:
+         };
+       }
+ 
+-      case schema::Value::STRUCT: {
++      case schema::Type::STRUCT: {
+         kj::String constType = kj::strTree(
+             "::capnp::_::ConstStruct<", typeName_, ">").flatten();
+         return ConstText {
+@@ -2546,7 +2546,7 @@ private:
+         };
+       }
+ 
+-      case schema::Value::LIST: {
++      case schema::Type::LIST: {
+         kj::String constType = kj::strTree(
+             "::capnp::_::ConstList<", typeName(type.asList().getElementType(), nullptr), ">")
+             .flatten();
+@@ -2558,8 +2558,8 @@ private:
+         };
+       }
+ 
+-      case schema::Value::ANY_POINTER:
+-      case schema::Value::INTERFACE:
++      case schema::Type::ANY_POINTER:
++      case schema::Type::INTERFACE:
+         return ConstText { false, kj::strTree(), kj::strTree() };
+     }
+ 
+diff --git a/c++/src/capnp/rpc-test.c++ b/c++/src/capnp/rpc-test.c++
+index d988abd7..0ca78a8a 100644
+--- a/c++/src/capnp/rpc-test.c++
++++ b/c++/src/capnp/rpc-test.c++
+@@ -1168,7 +1168,6 @@ TEST(Rpc, RealmGatewayImportExport) {
+   kj::EventLoop loop;
+   kj::WaitScope waitScope(loop);
+   TestNetwork network;
+-  TestRestorer restorer;
+   TestNetworkAdapter& clientNetwork = network.add("client");
+   TestNetworkAdapter& serverNetwork = network.add("server");
+   RpcSystem<test::TestSturdyRefHostId> rpcClient =
+@@ -1222,7 +1221,6 @@ TEST(Rpc, RealmGatewayImportExport) {
+   kj::EventLoop loop;
+   kj::WaitScope waitScope(loop);
+   TestNetwork network;
+-  TestRestorer restorer;
+   TestNetworkAdapter& clientNetwork = network.add("client");
+   TestNetworkAdapter& serverNetwork = network.add("server");
+   RpcSystem<test::TestSturdyRefHostId> rpcClient =
+diff --git a/c++/src/kj/main.c++ b/c++/src/kj/main.c++
+index 4d84294a..d25369f4 100644
+--- a/c++/src/kj/main.c++
++++ b/c++/src/kj/main.c++
+@@ -631,7 +631,7 @@ void MainBuilder::MainImpl::usageError(StringPtr programName, StringPtr message)
+ 
+ class MainBuilder::Impl::OptionDisplayOrder {
+ public:
+-  bool operator()(const Option* a, const Option* b) {
++  bool operator()(const Option* a, const Option* b) const {
+     if (a == b) return false;
+ 
+     char aShort = '\0';
+diff --git a/c++/src/kj/time.c++ b/c++/src/kj/time.c++
+index 024bcce9..993b683c 100644
+--- a/c++/src/kj/time.c++
++++ b/c++/src/kj/time.c++
+@@ -41,7 +41,7 @@ Clock& nullClock() {
+
+ struct TimerImpl::Impl {
+   struct TimerBefore {
+-    bool operator()(TimerPromiseAdapter* lhs, TimerPromiseAdapter* rhs);
++    bool operator()(TimerPromiseAdapter* lhs, TimerPromiseAdapter* rhs) const;
+   };
+   using Timers = std::multiset<TimerPromiseAdapter*, TimerBefore>;
+   Timers timers;
+@@ -75,7 +75,7 @@ private:
+ };
+
+ inline bool TimerImpl::Impl::TimerBefore::operator()(
+-    TimerPromiseAdapter* lhs, TimerPromiseAdapter* rhs) {
++    TimerPromiseAdapter* lhs, TimerPromiseAdapter* rhs) const {
+   return lhs->time < rhs->time;
+ }
+
+-- 
+2.26.2
+

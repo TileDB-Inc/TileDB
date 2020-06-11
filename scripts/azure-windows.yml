@@ -16,6 +16,8 @@ steps:
 
     if ($env:TILEDB_S3 -eq "ON") {
       & "$env:BUILD_SOURCESDIRECTORY\bootstrap.ps1" -EnableS3 -EnableVerbose -EnableStaticTileDB -EnableBuildDeps
+    } else if ($env:TILEDB_SERIALIZATION -eq "ON") {
+      & "$env:BUILD_SOURCESDIRECTORY\bootstrap.ps1" -EnableSerialization -EnableVerbose -EnableStaticTileDB -EnableBuildDeps
     } else {
       & "$env:BUILD_SOURCESDIRECTORY\bootstrap.ps1" -EnableVerbose -EnableStaticTileDB -EnableBuildDeps
     }
