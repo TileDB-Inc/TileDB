@@ -56,8 +56,24 @@ steps:
       verbose: true # Optional
   condition: succeeded()
 
+- task: ArchiveFiles@2
+  inputs:
+    rootFolderOrFile: '$(Agent.BuildDirectory)\s\'
+    includeRootFolder: false
+    archiveType: 'zip' # Options: zip, 7z, tar, wim
+    archiveFile: $(Build.ArtifactStagingDirectory)/tiledb-$(ARTIFACT_OS)-build-dir.zip
+    replaceExistingArchive: true
+    verbose: true # Optional
+  condition: succeeded()
+
 - task: PublishBuildArtifacts@1
   inputs:
       pathtoPublish: '$(Build.ArtifactStagingDirectory)\tiledb-$(ARTIFACT_OS)-$(Build.SourceBranchName)-$(commitHash).zip'
       artifactName: 'tiledb-$(ARTIFACT_OS)-$(Build.SourceBranchName)-$(commitHash).zip'
+  condition: succeeded()
+
+- task: PublishBuildArtifacts@1
+  inputs:
+    pathtoPublish: '$(Build.ArtifactStagingDirectory)/tiledb-$(ARTIFACT_OS)-build-dir.zip'
+    artifactName: 'tiledb-$(ARTIFACT_OS)-build-dir.zip'
   condition: succeeded()
