@@ -493,7 +493,7 @@ if ((TILEDB_S3 OR TILEDB_AZURE OR TILEDB_GCS OR TILEDB_SERIALIZATION) AND NOT WI
           # Make a list. The variable passed to target_link_libraries *must* be a list.
           string(REGEX REPLACE "[ \t\r\n]" ";" CURL_APPEND_LIBS ${CURL_APPEND_LIBS})
 
-          message(STATUS "Adding transitive Curl library links to TileDB targets: '${CURL_APPEND_LIBS}'")
+          message(STATUS "Computed initial transitive Curl library links to TileDB targets: '${CURL_APPEND_LIBS}'")
         endif()
       endif()
   endif()
@@ -509,7 +509,9 @@ if (CURL_APPEND_LIBS)
   # ends up trying to link against the system shared library while we already
   # linked the static lib from TileDB supper build.
   # End result, we remove the -lssl and -lcrypto from the list of curl extra libs
-  list(REMOVE_ITEM CURL_APPEND_LIBS "-lssl" "-lcrypto")
+  # The same problem exists for libz, so we remove -lz also.
+  list(REMOVE_ITEM CURL_APPEND_LIBS "-lssl" "-lcrypto" "-lz")
+  message(STATUS "Adding final transitive Curl library links to TileDB targets: '${CURL_APPEND_LIBS}'")
   target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
     INTERFACE
     ${CURL_APPEND_LIBS})
