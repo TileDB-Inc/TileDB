@@ -28,6 +28,12 @@
 
 * Added functions `Attribute::{set,get}_fill_value` to get/set default fill values
 
+# TileDB v2.0.5 Release Notes
+
+## Improvements
+
+* Don't include curl's linking to libz, avoids build issue with double libz linkage [#1682](https://github.com/TileDB-Inc/TileDB/pull/1682)
+
 # TileDB v2.0.4 Release Notes
 
 ## Improvements
@@ -36,7 +42,6 @@
 * Don't error on GCS client init failure [#1667](https://github.com/TileDB-Inc/TileDB/pull/1667)
 * Don't include curl's linking to ssl, avoids build issue on fresh macos 10.14/10.15 installs [#1671](https://github.com/TileDB-Inc/TileDB/pull/1671)
 * Handle ubuntu's cap'n proto package not providing cmake targets [#1659](https://github.com/TileDB-Inc/TileDB/pull/1659)
-* Don't include curl's linking to libz, avoids build issue with double libz linkage [#1682](https://github.com/TileDB-Inc/TileDB/pull/1682)
 
 ## Bug fixes
 
