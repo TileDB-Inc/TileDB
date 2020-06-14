@@ -202,6 +202,9 @@ class Subarray {
   /** Returns the array the subarray is associated with. */
   const Array* array() const;
 
+  /** Returns the number of cells in the subarray. */
+  uint64_t cell_num() const;
+
   /** Returns the number of cells in the input ND range. */
   uint64_t cell_num(uint64_t range_idx) const;
 

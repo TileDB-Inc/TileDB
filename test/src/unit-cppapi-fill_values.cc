@@ -70,7 +70,7 @@ void create_array_1d(
   VFS vfs(ctx);
 
   Domain domain(ctx);
-  auto d = Dimension::create<int32_t>(ctx, "d", {{1, 10}}, 10);
+  auto d = Dimension::create<int32_t>(ctx, "d", {{1, 10}}, 5);
   domain.add_dimension(d);
 
   auto a1 = Attribute::create<int32_t>(ctx, "a1");
@@ -369,6 +369,139 @@ TEST_CASE(
   std::string s("abc");
   create_array_1d(array_name, 0, s, {1.0, 2.0});
   read_array_1d_empty(array_name, 0, s, {1.0, 2.0});
+
+  CHECK_NOTHROW(vfs.remove_dir(array_name));
+}
+
+TEST_CASE(
+    "C++ API: Test result estimation, empty dense arrays",
+    "[cppapi][fill-values][empty][est-result]") {
+  Context ctx;
+  VFS vfs(ctx);
+  std::string array_name = "fill_values_est_result_empty";
+
+  // First test with default fill values
+  if (vfs.is_dir(array_name))
+    CHECK_NOTHROW(vfs.remove_dir(array_name));
+
+  SECTION("- Default fill values") {
+    create_array_1d(array_name);
+
+    Array array(ctx, array_name, TILEDB_READ);
+    Query query(ctx, array, TILEDB_READ);
+    auto est_a1 = query.est_result_size("a1");
+    auto est_a2 = query.est_result_size_var("a2");
+    auto est_a3 = query.est_result_size("a3");
+    auto est_d = query.est_result_size("d");
+    CHECK(est_d == 10 * sizeof(int32_t));
+    CHECK(est_a1 == 10 * sizeof(int32_t));
+    CHECK(est_a2.first == 10);
+    CHECK(est_a2.second == 10 * sizeof(char));
+    CHECK(est_a3 == 10 * 2 * sizeof(double));
+  }
+
+  SECTION("- Custom fill values") {
+    std::string s("abc");
+    create_array_1d(array_name, 0, s, {1.0, 2.0});
+
+    Array array(ctx, array_name, TILEDB_READ);
+    Query query(ctx, array, TILEDB_READ);
+    auto est_a1 = query.est_result_size("a1");
+    auto est_a2 = query.est_result_size_var("a2");
+    auto est_a3 = query.est_result_size("a3");
+    auto est_d = query.est_result_size("d");
+    CHECK(est_d == 10 * sizeof(int32_t));
+    CHECK(est_a1 == 10 * sizeof(int32_t));
+    CHECK(est_a2.first == 10);
+    CHECK(est_a2.second == 10 * 3 * sizeof(char));
+    CHECK(est_a3 == 10 * 2 * sizeof(double));
+  }
+
+  SECTION("- Default fill values, multi-range") {
+    create_array_1d(array_name);
+
+    Array array(ctx, array_name, TILEDB_READ);
+    Query query(ctx, array, TILEDB_READ);
+    query.add_range<int32_t>(0, 2, 3);
+    query.add_range<int32_t>(0, 9, 10);
+    auto est_a1 = query.est_result_size("a1");
+    auto est_a2 = query.est_result_size_var("a2");
+    auto est_a3 = query.est_result_size("a3");
+    auto est_d = query.est_result_size("d");
+    CHECK(est_d == 4 * sizeof(int32_t));
+    CHECK(est_a1 == 4 * sizeof(int32_t));
+    CHECK(est_a2.first == 4);
+    CHECK(est_a2.second == 4 * sizeof(char));
+    CHECK(est_a3 == 4 * 2 * sizeof(double));
+  }
+
+  CHECK_NOTHROW(vfs.remove_dir(array_name));
+}
+
+TEST_CASE(
+    "C++ API: Test result estimation, partial dense arrays",
+    "[cppapi][fill-values][partial][est-result]") {
+  Context ctx;
+  VFS vfs(ctx);
+  std::string array_name = "fill_values_est_result_partial";
+
+  // First test with default fill values
+  if (vfs.is_dir(array_name))
+    CHECK_NOTHROW(vfs.remove_dir(array_name));
+
+  SECTION("- Default fill values") {
+    create_array_1d(array_name);
+    write_array_1d_partial(array_name);
+
+    Array array(ctx, array_name, TILEDB_READ);
+    Query query(ctx, array, TILEDB_READ);
+    auto est_a1 = query.est_result_size("a1");
+    auto est_a2 = query.est_result_size_var("a2");
+    auto est_a3 = query.est_result_size("a3");
+    auto est_d = query.est_result_size("d");
+    CHECK(est_d == 10 * sizeof(int32_t));
+    CHECK(est_a1 == 10 * sizeof(int32_t));
+    CHECK(est_a2.first == 10);
+    CHECK(est_a2.second == 10 * sizeof(char));
+    CHECK(est_a3 == 10 * 2 * sizeof(double));
+  }
+
+  SECTION("- Custom fill values") {
+    std::string s("abc");
+    create_array_1d(array_name, 0, s, {1.0, 2.0});
+    write_array_1d_partial(array_name);
+
+    Array array(ctx, array_name, TILEDB_READ);
+    Query query(ctx, array, TILEDB_READ);
+    auto est_a1 = query.est_result_size("a1");
+    auto est_a2 = query.est_result_size_var("a2");
+    auto est_a3 = query.est_result_size("a3");
+    auto est_d = query.est_result_size("d");
+    CHECK(est_d == 10 * sizeof(int32_t));
+    CHECK(est_a1 == 10 * sizeof(int32_t));
+    CHECK(est_a2.first == 10);
+    CHECK(est_a2.second == 10 * 3 * sizeof(char));
+    CHECK(est_a3 == 10 * 2 * sizeof(double));
+  }
+
+  SECTION("- Default fill values, multi-range") {
+    create_array_1d(array_name);
+    write_array_1d_partial(array_name);
+
+    Array array(ctx, array_name, TILEDB_READ);
+    Query query(ctx, array, TILEDB_READ);
+    query.add_range<int32_t>(0, 2, 3);
+    query.add_range<int32_t>(0, 9, 10);
+    auto est_a1 = query.est_result_size("a1");
+    auto est_a2 = query.est_result_size_var("a2");
+    auto est_a3 = query.est_result_size("a3");
+    auto est_d = query.est_result_size("d");
+    CHECK(est_d == 4 * sizeof(int32_t));
+    CHECK(est_a1 == 4 * sizeof(int32_t));
+    CHECK(est_a2.first == 4);
+    CHECK(est_a2.second == 4 * sizeof(char));
+    CHECK(est_a3 == 4 * 2 * sizeof(double));
+  }
 
   CHECK_NOTHROW(vfs.remove_dir(array_name));
 }
