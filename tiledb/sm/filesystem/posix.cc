@@ -255,8 +255,29 @@ Status Posix::filelock_lock(
   fl.l_len = 0;
   fl.l_pid = getpid();
 
+  std::stringstream ss;
+  ss << "[DEBUG filelock_lock]"
+     << " filename: " << filename << " shared: " << shared;
+  LOG_ERROR(ss.str());
+
+  struct stat st;
+  if (stat(filename.c_str(), &st) == 0) {
+    const mode_t perm = st.st_mode;
+    ss.str("");
+    ss << "[DEBUG filelock_lock] " << ((perm & S_IRUSR) ? "r" : "-")
+       << ((perm & S_IWUSR) ? "w" : "-") << ((perm & S_IXUSR) ? "x" : "-")
+       << ((perm & S_IRGRP) ? "r" : "-") << ((perm & S_IWGRP) ? "w" : "-")
+       << ((perm & S_IXGRP) ? "x" : "-") << ((perm & S_IROTH) ? "r" : "-")
+       << ((perm & S_IWOTH) ? "w" : "-") << ((perm & S_IXOTH) ? "x" : "-");
+    LOG_ERROR(ss.str());
+  }
+
   // Open the file
   *fd = ::open(filename.c_str(), shared ? O_RDONLY : O_WRONLY);
+  ss.str("");
+  ss << "[DEBUG filelock_lock]"
+     << " fd: " << *fd;
+  LOG_ERROR(ss.str());
   if (*fd == -1) {
     return LOG_STATUS(Status::IOError(
         "Cannot open filelock '" + filename + "'; " + strerror(errno)));
