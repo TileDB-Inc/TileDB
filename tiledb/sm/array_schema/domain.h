@@ -104,7 +104,7 @@ class Domain {
    * of a regular tile grid, this function assumes that the cells are in the
    * same regular tile.
    *
-   * @tparam T The coordinates type.
+   * @tparam Z True if either coordinate may be zipped.
    * @param dim_idx The dimension to compare the coordinates on.
    * @param a The first input coordinates.
    * @param b The second input coordinates.
@@ -113,6 +113,7 @@ class Domain {
    *    -  0 if the two coordinates are identical
    *    - +1 if the first coordinate succeeds the second
    */
+  template <bool Z>
   int cell_order_cmp(
       unsigned dim_idx, const ResultCoords& a, const ResultCoords& b) const;
 

@@ -84,15 +84,21 @@ struct ResultCoords {
     return tile_->coord_string(pos_, dim_idx);
   }
 
+  const void* coord(unsigned dim_idx) const {
+    return tile_->coord(pos_, dim_idx);
+  }
+
   /**
    * Returns the coordinate at the object's position `pos_` from the object's
    * tile `tile_` on the given dimension.
    *
+   * @tparam Z True if either coordinate may be zipped.
    * @param dim_idx The index of the dimension to retrieve the coordinate for.
    * @return A constant pointer to the requested coordinate.
    */
+  template <bool Z>
   const void* coord(unsigned dim_idx) const {
-    return tile_->coord(pos_, dim_idx);
+    return tile_->coord<Z>(pos_, dim_idx);
   }
 
   /**

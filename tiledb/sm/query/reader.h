@@ -593,6 +593,8 @@ class Reader {
    *     result coordinates come from a single fragment.
    * @param result_tile_map This is an auxialiary map that helps finding the
    *     result tiles of each range.
+   * @param has_zipped_coords true if any of the elements in `result_coords`
+   *        are zipped.
    * @param result_tiles The result tiles to read the coordinates from.
    * @param range_result_coords The result coordinates to be retrieved.
    *     It contains a vector for each range of the subarray.
@@ -601,6 +603,7 @@ class Reader {
   Status compute_range_result_coords(
       const std::vector<bool>& single_fragment,
       const std::map<std::pair<unsigned, uint64_t>, size_t>& result_tile_map,
+      bool has_zipped_coords,
       std::vector<ResultTile>* result_tiles,
       std::vector<std::vector<ResultCoords>>* range_result_coords);
 
@@ -647,6 +650,8 @@ class Reader {
    * deduplicated and sorted on the specified subarray layout.
    *
    * @param range_result_coords The result coordinates for each subarray range.
+   * @param has_zipped_coords true if any of the elements in `result_coords`
+   *        are zipped.
    * @param result_coords The final (subarray) result coordinates to be
    *     retrieved.
    * @return Status
@@ -656,6 +661,7 @@ class Reader {
    */
   Status compute_subarray_coords(
       std::vector<std::vector<ResultCoords>>* range_result_coords,
+      bool has_zipped_coords,
       std::vector<ResultCoords>* result_coords);
 
   /**
@@ -1060,10 +1066,14 @@ class Reader {
    *
    * @param result_coords The coordinates to sort.
    * @param layout The layout to sort into.
+   * @param has_zipped_coords true if any of the elements in `result_coords`
+   *        are zipped.
    * @return Status
    */
   Status sort_result_coords(
-      std::vector<ResultCoords>* result_coords, Layout layout) const;
+      std::vector<ResultCoords>* result_coords,
+      Layout layout,
+      bool has_zipped_coords) const;
 
   /** Performs a read on a sparse array. */
   Status sparse_read();

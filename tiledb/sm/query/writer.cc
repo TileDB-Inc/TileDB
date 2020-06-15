@@ -2341,8 +2341,10 @@ Status Writer::sort_coords(std::vector<uint64_t>* cell_pos) const {
   for (uint64_t i = 0; i < coords_num_; ++i)
     (*cell_pos)[i] = i;
 
-  // Sort the coordinates in global order
-  parallel_sort(cell_pos->begin(), cell_pos->end(), GlobalCmp(domain, &buffs));
+  // Sort the coordinates in global order. The template parameter <false>
+  // indicates that we are only sorting unzipped coordinates.
+  parallel_sort(
+      cell_pos->begin(), cell_pos->end(), GlobalCmp<false>(domain, &buffs));
 
   return Status::Ok();
 

@@ -665,6 +665,7 @@ Status Reader::compute_range_result_coords(
 Status Reader::compute_range_result_coords(
     const std::vector<bool>& single_fragment,
     const std::map<std::pair<unsigned, uint64_t>, size_t>& result_tile_map,
+    const bool has_zipped_coords,
     std::vector<ResultTile>* result_tiles,
     std::vector<std::vector<ResultCoords>>* range_result_coords) {
   STATS_START_TIMER(stats::Stats::TimerType::READ_COMPUTE_RANGE_RESULT_COORDS)
@@ -685,8 +686,8 @@ Status Reader::compute_range_result_coords(
 
     // Dedup unless there is a single fragment or array schema allows duplicates
     if (!single_fragment[r] && !allows_dups) {
-      RETURN_CANCEL_OR_ERROR(
-          sort_result_coords(&((*range_result_coords)[r]), layout));
+      RETURN_CANCEL_OR_ERROR(sort_result_coords(
+          &((*range_result_coords)[r]), layout, has_zipped_coords));
       RETURN_CANCEL_OR_ERROR(dedup_result_coords(&((*range_result_coords)[r])));
     }
 
@@ -788,6 +789,7 @@ Status Reader::compute_range_result_coords(
 
 Status Reader::compute_subarray_coords(
     std::vector<std::vector<ResultCoords>>* range_result_coords,
+    const bool has_zipped_coords,
     std::vector<ResultCoords>* result_coords) {
   // Add all valid ``range_result_coords`` to ``result_coords``
   for (const auto& rv : *range_result_coords) {
@@ -805,7 +807,7 @@ Status Reader::compute_subarray_coords(
   auto cell_order = array_schema_->cell_order();
   Layout layout = (layout_ == Layout ::UNORDERED) ? cell_order : layout_;
 
-  RETURN_NOT_OK(sort_result_coords(result_coords, layout));
+  RETURN_NOT_OK(sort_result_coords(result_coords, layout, has_zipped_coords));
 
   return Status::Ok();
 }
@@ -1337,6 +1339,11 @@ Status Reader::compute_result_coords(
   RETURN_CANCEL_OR_ERROR(read_tiles(constants::coords, tmp_result_tiles));
   RETURN_CANCEL_OR_ERROR(unfilter_tiles(constants::coords, tmp_result_tiles));
 
+  // If we read any tiles with a format version < 5, we know that we have
+  // zipped coords. This is later used as an optimization in the
+  // compute_range_result_coords() and compute_subarray_coords() paths.
+  const bool has_zipped_coords = !tmp_result_tiles.empty();
+
   // Read and unfilter coordinate tiles
   // NOTE: these will ignore tiles of fragments with format version <5
   auto dim_num = array_schema_->dim_num();
@@ -1349,12 +1356,16 @@ Status Reader::compute_result_coords(
   // Compute the read coordinates for all fragments for each subarray range
   std::vector<std::vector<ResultCoords>> range_result_coords;
   RETURN_CANCEL_OR_ERROR(compute_range_result_coords(
-      single_fragment, result_tile_map, result_tiles, &range_result_coords));
+      single_fragment,
+      result_tile_map,
+      has_zipped_coords,
+      result_tiles,
+      &range_result_coords));
   result_tile_map.clear();
 
   // Compute final coords (sorted in the result layout) of the whole subarray.
-  RETURN_CANCEL_OR_ERROR(
-      compute_subarray_coords(&range_result_coords, result_coords));
+  RETURN_CANCEL_OR_ERROR(compute_subarray_coords(
+      &range_result_coords, has_zipped_coords, result_coords));
   range_result_coords.clear();
 
   return Status::Ok();
@@ -2170,19 +2181,39 @@ void Reader::reset_buffer_sizes() {
 }
 
 Status Reader::sort_result_coords(
-    std::vector<ResultCoords>* result_coords, Layout layout) const {
+    std::vector<ResultCoords>* result_coords,
+    const Layout layout,
+    const bool has_zipped_coords) const {
   // TODO: do not sort if it is single fragment and
   // (i) it is single dimension, or (ii) it is global order
 
   auto domain = array_schema_->domain();
 
   if (layout == Layout::ROW_MAJOR) {
-    parallel_sort(result_coords->begin(), result_coords->end(), RowCmp(domain));
+    if (has_zipped_coords)
+      parallel_sort(
+          result_coords->begin(), result_coords->end(), RowCmp<true>(domain));
+    else
+      parallel_sort(
+          result_coords->begin(), result_coords->end(), RowCmp<false>(domain));
   } else if (layout == Layout::COL_MAJOR) {
-    parallel_sort(result_coords->begin(), result_coords->end(), ColCmp(domain));
+    if (has_zipped_coords)
+      parallel_sort(
+          result_coords->begin(), result_coords->end(), ColCmp<true>(domain));
+    else
+      parallel_sort(
+          result_coords->begin(), result_coords->end(), ColCmp<false>(domain));
   } else if (layout == Layout::GLOBAL_ORDER) {
-    parallel_sort(
-        result_coords->begin(), result_coords->end(), GlobalCmp(domain));
+    if (has_zipped_coords)
+      parallel_sort(
+          result_coords->begin(),
+          result_coords->end(),
+          GlobalCmp<true>(domain));
+    else
+      parallel_sort(
+          result_coords->begin(),
+          result_coords->end(),
+          GlobalCmp<false>(domain));
   } else {
     assert(false);
   }

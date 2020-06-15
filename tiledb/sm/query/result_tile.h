@@ -135,6 +135,17 @@ class ResultTile {
   const void* coord(uint64_t pos, unsigned dim_idx) const;
 
   /**
+   * Returns a constant pointer to the coordinate at position `pos` for
+   * dimension `dim_idx`. When template parameter `Z` is true, the
+   * implementation will check if the coordinate is either zipped or
+   * unzipped. When template parameter `Z` is false, the caller knows
+   * that the coordinate is unzipped. This is an optimization that
+   * avoids a branch to check if the coordinate is zipped or not.
+   */
+  template <bool Z>
+  const void* coord(uint64_t pos, unsigned dim_idx) const;
+
+  /**
    * Returns the string coordinate at position `pos` for
    * dimension `dim_idx`. Applicable only to string dimensions.
    */

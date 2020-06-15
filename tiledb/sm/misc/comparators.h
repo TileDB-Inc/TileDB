@@ -45,7 +45,11 @@
 namespace tiledb {
 namespace sm {
 
-/** Wrapper of comparison function for sorting coords on row-major order. */
+/**
+ * Wrapper of comparison function for sorting coords on row-major order.
+ * Template parameter `Z` is true if any coordinate may be zipped.
+ */
+template <bool Z>
 class RowCmp {
  public:
   /** Constructor. */
@@ -63,7 +67,7 @@ class RowCmp {
    */
   bool operator()(const ResultCoords& a, const ResultCoords& b) const {
     for (unsigned int d = 0; d < dim_num_; ++d) {
-      auto res = domain_->cell_order_cmp(d, a, b);
+      auto res = domain_->cell_order_cmp<Z>(d, a, b);
 
       if (res == -1)
         return true;
@@ -82,7 +86,11 @@ class RowCmp {
   unsigned dim_num_;
 };
 
-/** Wrapper of comparison function for sorting coords on col-major order. */
+/**
+ * Wrapper of comparison function for sorting coords on col-major order.
+ * Template parameter `Z` is true if any coordinate may be zipped.
+ */
+template <bool Z>
 class ColCmp {
  public:
   /** Constructor. */
@@ -100,7 +108,7 @@ class ColCmp {
    */
   bool operator()(const ResultCoords& a, const ResultCoords& b) const {
     for (unsigned int d = dim_num_ - 1;; --d) {
-      auto res = domain_->cell_order_cmp(d, a, b);
+      auto res = domain_->cell_order_cmp<Z>(d, a, b);
 
       if (res == -1)
         return true;
@@ -125,7 +133,9 @@ class ColCmp {
 /**
  * Wrapper of comparison function for sorting coords on the global order
  * of some domain.
+ * Template parameter `Z` is true if any coordinate may be zipped.
  */
+template <bool Z>
 class GlobalCmp {
  public:
   /**
@@ -168,7 +178,7 @@ class GlobalCmp {
         if (domain_->dimension(d)->var_size())
           continue;
 
-        auto res = domain_->tile_order_cmp(d, a.coord(d), b.coord(d));
+        auto res = domain_->tile_order_cmp(d, a.coord<Z>(d), b.coord<Z>(d));
 
         if (res == -1)
           return true;
@@ -183,7 +193,7 @@ class GlobalCmp {
         if (domain_->dimension(d)->var_size())
           continue;
 
-        auto res = domain_->tile_order_cmp(d, a.coord(d), b.coord(d));
+        auto res = domain_->tile_order_cmp(d, a.coord<Z>(d), b.coord<Z>(d));
 
         if (res == -1)
           return true;
@@ -199,7 +209,7 @@ class GlobalCmp {
     // Compare cell order
     if (cell_order_ == Layout::ROW_MAJOR) {
       for (unsigned d = 0; d < dim_num_; ++d) {
-        auto res = domain_->cell_order_cmp(d, a, b);
+        auto res = domain_->cell_order_cmp<Z>(d, a, b);
 
         if (res == -1)
           return true;
@@ -210,7 +220,7 @@ class GlobalCmp {
     } else {  // COL_MAJOR
       assert(cell_order_ == Layout::COL_MAJOR);
       for (unsigned d = dim_num_ - 1;; --d) {
-        auto res = domain_->cell_order_cmp(d, a, b);
+        auto res = domain_->cell_order_cmp<Z>(d, a, b);
 
         if (res == -1)
           return true;

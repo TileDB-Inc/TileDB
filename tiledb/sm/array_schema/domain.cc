@@ -210,6 +210,7 @@ int Domain::cell_order_cmp(
   return 0;
 }
 
+template <bool Z>
 int Domain::cell_order_cmp(
     unsigned dim_idx, const ResultCoords& a, const ResultCoords& b) const {
   // Handle variable-sized dimensions
@@ -225,8 +226,8 @@ int Domain::cell_order_cmp(
   }
 
   assert(cell_order_cmp_func_2_[dim_idx] != nullptr);
-  auto coord_a = a.coord(dim_idx);
-  auto coord_b = b.coord(dim_idx);
+  auto coord_a = a.coord<Z>(dim_idx);
+  auto coord_b = b.coord<Z>(dim_idx);
   return cell_order_cmp_func_2_[dim_idx](coord_a, coord_b);
 }
 
@@ -1620,6 +1621,11 @@ template uint64_t Domain::stride<int64_t>(Layout subarray_layout) const;
 template uint64_t Domain::stride<uint64_t>(Layout subarray_layout) const;
 template uint64_t Domain::stride<float>(Layout subarray_layout) const;
 template uint64_t Domain::stride<double>(Layout subarray_layout) const;
+
+template int Domain::cell_order_cmp<true>(
+    unsigned dim_idx, const ResultCoords& a, const ResultCoords& b) const;
+template int Domain::cell_order_cmp<false>(
+    unsigned dim_idx, const ResultCoords& a, const ResultCoords& b) const;
 
 }  // namespace sm
 }  // namespace tiledb
