@@ -157,6 +157,21 @@ const Array* Subarray::array() const {
   return array_;
 }
 
+uint64_t Subarray::cell_num() const {
+  auto array_schema = array_->array_schema();
+  unsigned dim_num = array_schema->dim_num();
+  uint64_t ret = 1;
+  for (unsigned d = 0; d < dim_num; ++d) {
+    auto dim = array_schema->dimension(d);
+    uint64_t num = 0;
+    for (const auto& r : ranges_[d])
+      num += dim->domain_range(r);
+    ret = utils::math::safe_mul(ret, num);
+  }
+
+  return ret;
+}
+
 uint64_t Subarray::cell_num(uint64_t range_idx) const {
   uint64_t cell_num = 1, range;
   auto array_schema = array_->array_schema();
@@ -1097,6 +1112,27 @@ Status Subarray::compute_est_result_size() {
       est_vec[i].size_var_ += result_sizes[r][i].size_var_;
       mem_vec[i].size_fixed_ += mem_sizes[r][i].size_fixed_;
       mem_vec[i].size_var_ += mem_sizes[r][i].size_var_;
+    }
+  }
+
+  // Calibrate for dense arrays
+  uint64_t min_size_fixed, min_size_var;
+  if (array_schema->dense()) {
+    auto cell_num = this->cell_num();
+    for (unsigned i = 0; i < num; ++i) {
+      if (!array_schema->var_size(names[i])) {
+        min_size_fixed = cell_num * array_schema->cell_size(names[i]);
+        min_size_var = 0;
+      } else {
+        min_size_fixed = cell_num * constants::cell_var_offset_size;
+        min_size_var =
+            cell_num * array_schema->attribute(names[i])->fill_value().size();
+      }
+
+      if (est_vec[i].size_fixed_ < min_size_fixed)
+        est_vec[i].size_fixed_ = min_size_fixed;
+      if (est_vec[i].size_var_ < min_size_var)
+        est_vec[i].size_var_ = min_size_var;
     }
   }
 

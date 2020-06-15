@@ -2137,12 +2137,12 @@ TEST_CASE_METHOD(
   // Get estimated result size
   rc = tiledb_query_get_est_result_size_wrapper(ctx_, query, "a", &size);
   CHECK(rc == TILEDB_OK);
-  CHECK(size == 0);
+  CHECK(size == 100 * sizeof(int32_t));
   rc = tiledb_query_get_est_result_size_var_wrapper(
       ctx_, query, "b", &size_off, &size_val);
   CHECK(rc == TILEDB_OK);
-  CHECK(size_off == 0);
-  CHECK(size_val == 0);
+  CHECK(size_off == 100 * sizeof(uint64_t));
+  CHECK(size_val == 100 * sizeof(int32_t));
 
   // Clean-up
   rc = tiledb_array_close(ctx_, array);

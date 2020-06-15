@@ -6,7 +6,7 @@
 
 ## Breaking behavior
 
-* Empty dense arrays now return cells with fill values.
+* Empty dense arrays now return cells with fill values. Also the result estimator is adjusted to work properly with this new behavior.
 
 ## New features
 
