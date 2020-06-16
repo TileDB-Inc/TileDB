@@ -130,9 +130,14 @@ class ResultTile {
 
   /**
    * Returns a constant pointer to the coordinate at position `pos` for
-   * dimension `dim_idx`.
+   * dimension `dim_idx`. This will fetch from the zipped `coord_tile_`
+   * unless at least one `init_coord_tile()` has been invoked on this
+   * instance. The caller must be certain that a coordinate exists at
+   * the requested position and dimension.
    */
-  const void* coord(uint64_t pos, unsigned dim_idx) const;
+  inline const void* coord(uint64_t pos, unsigned dim_idx) const {
+    return (this->*coord_func_)(pos, dim_idx);
+  }
 
   /**
    * Returns the string coordinate at position `pos` for
@@ -267,6 +272,13 @@ class ResultTile {
       compute_results_dense_func_;
 
   /**
+   * Implements coord() with either zipped or unzipped coordinates. This
+   * is invoked in a critical path and is experimentally faster as a c-style
+   * function pointer than a bound `std::function`.
+   */
+  const void* (ResultTile::*coord_func_)(uint64_t, unsigned)const;
+
+  /**
    * Stores the appropriate templated compute_results_sparse() function based
    * for each dimension, based on the dimension datatype.
    */
@@ -280,6 +292,12 @@ class ResultTile {
 
   /** Sets the templated compute_results() function. */
   void set_compute_results_func();
+
+  /** Implements coord() for zipped coordinates. */
+  const void* zipped_coord(uint64_t pos, unsigned dim_idx) const;
+
+  /** Implements coord() for unzipped coordinates. */
+  const void* unzipped_coord(uint64_t pos, unsigned dim_idx) const;
 };
 
 }  // namespace sm
