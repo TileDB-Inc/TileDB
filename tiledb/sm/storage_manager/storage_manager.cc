@@ -2067,7 +2067,7 @@ Status StorageManager::load_array_metadata(
     return Status::Ok();
 
   auto metadata_num = array_metadata_to_load.size();
-  std::vector<std::shared_ptr<ConstBuffer>> metadata_buffs;
+  std::vector<std::shared_ptr<Buffer>> metadata_buffs;
   metadata_buffs.resize(metadata_num);
   auto statuses = parallel_for(0, metadata_num, [&](size_t m) {
     const auto& uri = array_metadata_to_load[m].uri_;
@@ -2078,17 +2078,14 @@ Status StorageManager::load_array_metadata(
       RETURN_NOT_OK(tile_io.read_generic(&tile, 0, encryption_key, config_));
 
       auto chunked_buffer = tile->chunked_buffer();
-      Buffer* const buff = new Buffer();
-      RETURN_NOT_OK(buff->realloc(chunked_buffer->size()));
-      buff->set_size(chunked_buffer->size());
+      metadata_buff = std::make_shared<Buffer>();
+      RETURN_NOT_OK(metadata_buff->realloc(chunked_buffer->size()));
+      metadata_buff->set_size(chunked_buffer->size());
       RETURN_NOT_OK_ELSE(
-          chunked_buffer->read(buff->data(), buff->size(), 0), [&]() {
-            delete tile;
-            delete buff;
-          }());
+          chunked_buffer->read(metadata_buff->data(), metadata_buff->size(), 0),
+          delete tile);
       delete tile;
 
-      metadata_buff = std::make_shared<ConstBuffer>(buff);
       open_array->insert_array_metadata(uri, metadata_buff);
     }
     metadata_buffs[m] = metadata_buff;
