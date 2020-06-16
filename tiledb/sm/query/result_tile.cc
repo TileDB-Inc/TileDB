@@ -55,6 +55,10 @@ ResultTile::ResultTile(
   assert(domain != nullptr);
   coord_tiles_.resize(domain->dim_num());
   set_compute_results_func();
+
+  // Default `coord_func_` to fetch from `coord_tile_` until at least
+  // one unzipped coordinate has been initialized.
+  coord_func_ = &ResultTile::zipped_coord;
 }
 
 /* ****************************** */
@@ -114,6 +118,10 @@ void ResultTile::init_attr_tile(const std::string& name) {
 void ResultTile::init_coord_tile(const std::string& name, unsigned dim_idx) {
   coord_tiles_[dim_idx] =
       std::pair<std::string, TilePair>(name, TilePair(Tile(), Tile()));
+
+  // When at least one unzipped coordinate has been initialized, we will
+  // use the unzipped `coord()` implementation.
+  coord_func_ = &ResultTile::unzipped_coord;
 }
 
 ResultTile::TilePair* ResultTile::tile_pair(const std::string& name) {
@@ -135,35 +143,29 @@ ResultTile::TilePair* ResultTile::tile_pair(const std::string& name) {
   return nullptr;
 }
 
-const void* ResultTile::coord(uint64_t pos, unsigned dim_idx) const {
-  // Handle separate coordinate tiles
+const void* ResultTile::unzipped_coord(uint64_t pos, unsigned dim_idx) const {
   const auto& coord_tile = coord_tiles_[dim_idx].second.first;
-  if (!coord_tile.empty()) {
-    const uint64_t offset = pos * coord_tile.cell_size();
-    ChunkedBuffer* const chunked_buffer = coord_tile.chunked_buffer();
-    assert(
-        chunked_buffer->buffer_addressing() ==
-        ChunkedBuffer::BufferAddressing::CONTIGUOUS);
-    void* const buffer =
-        static_cast<char*>(chunked_buffer->get_contiguous_unsafe()) + offset;
-    return buffer;
-  }
+  const uint64_t offset = pos * coord_tile.cell_size();
+  ChunkedBuffer* const chunked_buffer = coord_tile.chunked_buffer();
+  assert(
+      chunked_buffer->buffer_addressing() ==
+      ChunkedBuffer::BufferAddressing::CONTIGUOUS);
+  void* const buffer =
+      static_cast<char*>(chunked_buffer->get_contiguous_unsafe()) + offset;
+  return buffer;
+}
 
-  // Handle zipped coordinates tile
-  if (!coords_tile_.first.empty()) {
-    auto coords_size = coords_tile_.first.cell_size();
-    auto coord_size = coords_size / coords_tile_.first.dim_num();
-    const uint64_t offset = pos * coords_size + dim_idx * coord_size;
-    ChunkedBuffer* const chunked_buffer = coords_tile_.first.chunked_buffer();
-    assert(
-        chunked_buffer->buffer_addressing() ==
-        ChunkedBuffer::BufferAddressing::CONTIGUOUS);
-    void* const buffer =
-        static_cast<char*>(chunked_buffer->get_contiguous_unsafe()) + offset;
-    return buffer;
-  }
-
-  return nullptr;
+const void* ResultTile::zipped_coord(uint64_t pos, unsigned dim_idx) const {
+  auto coords_size = coords_tile_.first.cell_size();
+  auto coord_size = coords_size / coords_tile_.first.dim_num();
+  const uint64_t offset = pos * coords_size + dim_idx * coord_size;
+  ChunkedBuffer* const chunked_buffer = coords_tile_.first.chunked_buffer();
+  assert(
+      chunked_buffer->buffer_addressing() ==
+      ChunkedBuffer::BufferAddressing::CONTIGUOUS);
+  void* const buffer =
+      static_cast<char*>(chunked_buffer->get_contiguous_unsafe()) + offset;
+  return buffer;
 }
 
 std::string ResultTile::coord_string(uint64_t pos, unsigned dim_idx) const {
