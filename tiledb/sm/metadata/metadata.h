@@ -108,7 +108,7 @@ class Metadata {
    * deleted or overwritten metadata items considering the order.
    */
   Status deserialize(
-      const std::vector<std::shared_ptr<ConstBuffer>>& metadata_buffs);
+      const std::vector<std::shared_ptr<Buffer>>& metadata_buffs);
 
   /** Serializes all key-value metadata items into the input buffer. */
   Status serialize(Buffer* buff) const;
