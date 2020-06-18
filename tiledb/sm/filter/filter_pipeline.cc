@@ -424,17 +424,17 @@ Status FilterPipeline::run_forward(Tile* tile) const {
 Status FilterPipeline::run_reverse(
     Tile* tile,
     const Config& config,
-    const std::forward_list<std::pair<uint64_t, uint64_t>>*
-        result_cell_slab_ranges) const {
+    const std::vector<std::pair<uint64_t, uint64_t>>* result_cell_slab_ranges)
+    const {
   assert(tile->filtered());
 
   if (!result_cell_slab_ranges) {
     return run_reverse_internal(tile, config, nullptr);
   } else {
     uint64_t cells_processed = 0;
-    std::forward_list<std::pair<uint64_t, uint64_t>>::const_iterator cs_it =
+    std::vector<std::pair<uint64_t, uint64_t>>::const_iterator cs_it =
         result_cell_slab_ranges->cbegin();
-    std::forward_list<std::pair<uint64_t, uint64_t>>::const_iterator cs_end =
+    std::vector<std::pair<uint64_t, uint64_t>>::const_iterator cs_end =
         result_cell_slab_ranges->cend();
 
     std::function<Status(uint64_t, bool*)> skip_fn = std::bind(
@@ -455,8 +455,8 @@ Status FilterPipeline::run_reverse(
     Tile* tile,
     Tile* tile_var,
     const Config& config,
-    const std::forward_list<std::pair<uint64_t, uint64_t>>*
-        result_cell_slab_ranges) const {
+    const std::vector<std::pair<uint64_t, uint64_t>>* result_cell_slab_ranges)
+    const {
   assert(!tile->filtered());
   assert(tile_var->filtered());
 
@@ -472,9 +472,9 @@ Status FilterPipeline::run_reverse(
     const uint64_t d_off_len = tile->size() / sizeof(uint64_t);
     uint64_t cells_processed = 0;
     uint64_t cells_size_processed = 0;
-    std::forward_list<std::pair<uint64_t, uint64_t>>::const_iterator cs_it =
+    std::vector<std::pair<uint64_t, uint64_t>>::const_iterator cs_it =
         result_cell_slab_ranges->cbegin();
-    std::forward_list<std::pair<uint64_t, uint64_t>>::const_iterator cs_end =
+    std::vector<std::pair<uint64_t, uint64_t>>::const_iterator cs_end =
         result_cell_slab_ranges->cend();
 
     std::function<Status(uint64_t, bool*)> skip_fn = std::bind(
@@ -497,10 +497,8 @@ Status FilterPipeline::skip_chunk_reversal_fixed(
     const uint64_t chunk_length,
     uint64_t* const cells_processed,
     const uint64_t cell_size,
-    std::forward_list<std::pair<uint64_t, uint64_t>>::const_iterator* const
-        cs_it,
-    const std::forward_list<std::pair<uint64_t, uint64_t>>::const_iterator&
-        cs_end,
+    std::vector<std::pair<uint64_t, uint64_t>>::const_iterator* const cs_it,
+    const std::vector<std::pair<uint64_t, uint64_t>>::const_iterator& cs_end,
     bool* const skip) const {
   assert(cells_processed);
   assert(cs_it);
@@ -530,10 +528,8 @@ Status FilterPipeline::skip_chunk_reversal_var(
     const uint64_t d_off_len,
     uint64_t* const cells_processed,
     uint64_t* const cells_size_processed,
-    std::forward_list<std::pair<uint64_t, uint64_t>>::const_iterator* const
-        cs_it,
-    const std::forward_list<std::pair<uint64_t, uint64_t>>::const_iterator&
-        cs_end,
+    std::vector<std::pair<uint64_t, uint64_t>>::const_iterator* const cs_it,
+    const std::vector<std::pair<uint64_t, uint64_t>>::const_iterator& cs_end,
     bool* const skip) const {
   assert(d_off);
   assert(cells_processed);
@@ -593,10 +589,8 @@ Status FilterPipeline::skip_chunk_reversal_var(
 Status FilterPipeline::skip_chunk_reversal_common(
     const uint64_t chunk_cell_start,
     const uint64_t chunk_cell_end,
-    std::forward_list<std::pair<uint64_t, uint64_t>>::const_iterator* const
-        cs_it,
-    const std::forward_list<std::pair<uint64_t, uint64_t>>::const_iterator&
-        cs_end,
+    std::vector<std::pair<uint64_t, uint64_t>>::const_iterator* const cs_it,
+    const std::vector<std::pair<uint64_t, uint64_t>>::const_iterator& cs_end,
     bool* const skip) const {
   while (*cs_it != cs_end) {
     // Define inclusive cell index bounds for the cell slab range under

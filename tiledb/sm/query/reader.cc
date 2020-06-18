@@ -1688,27 +1688,24 @@ Status Reader::unfilter_tiles(
 
   // Build an association from the result tile to the cell slab ranges
   // that it contains.
-  std::unordered_map<
-      ResultTile*,
-      std::forward_list<std::pair<uint64_t, uint64_t>>>
+  std::unordered_map<ResultTile*, std::vector<std::pair<uint64_t, uint64_t>>>
       cs_ranges;
 
   // If 'result_cell_slabs' is NULL, the caller intends to bypass
   // selective unfiltering.
   if (result_cell_slabs) {
-    std::vector<ResultCellSlab>::const_reverse_iterator rit =
-        result_cell_slabs->rbegin();
-    while (rit != result_cell_slabs->rend()) {
+    std::vector<ResultCellSlab>::const_iterator it =
+        result_cell_slabs->cbegin();
+    while (it != result_cell_slabs->cend()) {
       std::pair<uint64_t, uint64_t> range =
-          std::make_pair(rit->start_, rit->start_ + rit->length_);
-      if (cs_ranges.find(rit->tile_) == cs_ranges.end()) {
-        std::forward_list<std::pair<uint64_t, uint64_t>> ranges(
-            1, std::move(range));
-        cs_ranges.insert(std::make_pair(rit->tile_, std::move(ranges)));
+          std::make_pair(it->start_, it->start_ + it->length_);
+      if (cs_ranges.find(it->tile_) == cs_ranges.end()) {
+        std::vector<std::pair<uint64_t, uint64_t>> ranges(1, std::move(range));
+        cs_ranges.insert(std::make_pair(it->tile_, std::move(ranges)));
       } else {
-        cs_ranges[rit->tile_].emplace_front(std::move(range));
+        cs_ranges[it->tile_].emplace_back(std::move(range));
       }
-      ++rit;
+      ++it;
     }
   }
 
@@ -1744,10 +1741,9 @@ Status Reader::unfilter_tiles(
       // cell slab ranges associated with this tile. If we do not have
       // any ranges, use an empty list to indicate that this tile doesn't
       // contain any results.
-      const std::forward_list<std::pair<uint64_t, uint64_t>>*
+      const std::vector<std::pair<uint64_t, uint64_t>>*
           result_cell_slab_ranges = nullptr;
-      static const std::forward_list<std::pair<uint64_t, uint64_t>>
-          empty_ranges;
+      static const std::vector<std::pair<uint64_t, uint64_t>> empty_ranges;
       if (result_cell_slabs) {
         result_cell_slab_ranges = cs_ranges.find(tile) != cs_ranges.end() ?
                                       &cs_ranges[tile] :
@@ -1796,8 +1792,8 @@ Status Reader::unfilter_tiles(
 Status Reader::unfilter_tile(
     const std::string& name,
     Tile* tile,
-    const std::forward_list<std::pair<uint64_t, uint64_t>>*
-        result_cell_slab_ranges) const {
+    const std::vector<std::pair<uint64_t, uint64_t>>* result_cell_slab_ranges)
+    const {
   FilterPipeline filters = array_schema_->filters(name);
 
   // Append an encryption unfilter when necessary.
@@ -1820,8 +1816,8 @@ Status Reader::unfilter_tile(
     const std::string& name,
     Tile* tile,
     Tile* tile_var,
-    const std::forward_list<std::pair<uint64_t, uint64_t>>*
-        result_cell_slab_ranges) const {
+    const std::vector<std::pair<uint64_t, uint64_t>>* result_cell_slab_ranges)
+    const {
   FilterPipeline offset_filters = array_schema_->cell_var_offsets_filters();
   FilterPipeline filters = array_schema_->filters(name);
 
