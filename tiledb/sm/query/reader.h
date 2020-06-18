@@ -33,11 +33,11 @@
 #ifndef TILEDB_READER_H
 #define TILEDB_READER_H
 
-#include <forward_list>
 #include <future>
 #include <list>
 #include <map>
 #include <memory>
+#include <vector>
 
 #include "tiledb/sm/array_schema/tile_domain.h"
 #include "tiledb/sm/misc/status.h"
@@ -947,8 +947,8 @@ class Reader {
   Status unfilter_tile(
       const std::string& name,
       Tile* tile,
-      const std::forward_list<std::pair<uint64_t, uint64_t>>*
-          result_cell_slab_ranges) const;
+      const std::vector<std::pair<uint64_t, uint64_t>>* result_cell_slab_ranges)
+      const;
 
   /**
    * Runs the input var-sized tile for the input attribute or dimension through
@@ -966,8 +966,8 @@ class Reader {
       const std::string& name,
       Tile* tile,
       Tile* tile_var,
-      const std::forward_list<std::pair<uint64_t, uint64_t>>*
-          result_cell_slab_ranges) const;
+      const std::vector<std::pair<uint64_t, uint64_t>>* result_cell_slab_ranges)
+      const;
 
   /**
    * Gets all the result coordinates of the input tile into `result_coords`.
