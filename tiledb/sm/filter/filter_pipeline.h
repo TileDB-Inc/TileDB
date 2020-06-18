@@ -33,7 +33,6 @@
 #ifndef TILEDB_FILTER_PIPELINE_H
 #define TILEDB_FILTER_PIPELINE_H
 
-#include <forward_list>
 #include <memory>
 #include <utility>
 #include <vector>
@@ -218,14 +217,14 @@ class FilterPipeline {
   Status run_reverse(
       Tile* tile,
       const Config& config,
-      const std::forward_list<std::pair<uint64_t, uint64_t>>*
+      const std::vector<std::pair<uint64_t, uint64_t>>*
           result_cell_slab_ranges = nullptr) const;
 
   Status run_reverse(
       Tile* tile,
       Tile* tile_var,
       const Config& config,
-      const std::forward_list<std::pair<uint64_t, uint64_t>>*
+      const std::vector<std::pair<uint64_t, uint64_t>>*
           result_cell_slab_ranges = nullptr) const;
 
   Status run_reverse_internal(
@@ -326,9 +325,8 @@ class FilterPipeline {
       uint64_t chunk_length,
       uint64_t* cells_processed,
       uint64_t cell_size,
-      std::forward_list<std::pair<uint64_t, uint64_t>>::const_iterator* cs_it,
-      const std::forward_list<std::pair<uint64_t, uint64_t>>::const_iterator&
-          cs_end,
+      std::vector<std::pair<uint64_t, uint64_t>>::const_iterator* cs_it,
+      const std::vector<std::pair<uint64_t, uint64_t>>::const_iterator& cs_end,
       bool* skip) const;
 
   /**
@@ -354,9 +352,8 @@ class FilterPipeline {
       uint64_t d_off_size,
       uint64_t* cells_processed,
       uint64_t* cells_size_processed,
-      std::forward_list<std::pair<uint64_t, uint64_t>>::const_iterator* cs_it,
-      const std::forward_list<std::pair<uint64_t, uint64_t>>::const_iterator&
-          cs_end,
+      std::vector<std::pair<uint64_t, uint64_t>>::const_iterator* cs_it,
+      const std::vector<std::pair<uint64_t, uint64_t>>::const_iterator& cs_end,
       bool* skip) const;
 
   /**
@@ -374,9 +371,8 @@ class FilterPipeline {
   Status skip_chunk_reversal_common(
       uint64_t chunk_cell_start,
       uint64_t chunk_cell_end,
-      std::forward_list<std::pair<uint64_t, uint64_t>>::const_iterator* cs_it,
-      const std::forward_list<std::pair<uint64_t, uint64_t>>::const_iterator&
-          cs_end,
+      std::vector<std::pair<uint64_t, uint64_t>>::const_iterator* cs_it,
+      const std::vector<std::pair<uint64_t, uint64_t>>::const_iterator& cs_end,
       bool* skip) const;
 };
 
