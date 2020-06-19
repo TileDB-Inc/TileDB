@@ -1673,7 +1673,9 @@ void Reader::fill_dense_coords_col_slab(
 Status Reader::unfilter_tiles(
     const std::string& name,
     const std::vector<ResultTile*>& result_tiles,
-    const std::vector<ResultCellSlab>* const result_cell_slabs) const {
+    const std::unordered_map<
+        ResultTile*,
+        std::vector<std::pair<uint64_t, uint64_t>>>* const cs_ranges) const {
   auto stat_type = (array_schema_->is_attr(name)) ?
                        stats::Stats::TimerType::READ_UNFILTER_ATTR_TILES :
                        stats::Stats::TimerType::READ_UNFILTER_COORD_TILES;
@@ -1682,29 +1684,6 @@ Status Reader::unfilter_tiles(
   auto var_size = array_schema_->var_size(name);
   auto num_tiles = static_cast<uint64_t>(result_tiles.size());
   auto encryption_key = array_->encryption_key();
-
-  // Build an association from the result tile to the cell slab ranges
-  // that it contains.
-  std::unordered_map<ResultTile*, std::vector<std::pair<uint64_t, uint64_t>>>
-      cs_ranges;
-
-  // If 'result_cell_slabs' is NULL, the caller intends to bypass
-  // selective unfiltering.
-  if (result_cell_slabs) {
-    std::vector<ResultCellSlab>::const_iterator it =
-        result_cell_slabs->cbegin();
-    while (it != result_cell_slabs->cend()) {
-      std::pair<uint64_t, uint64_t> range =
-          std::make_pair(it->start_, it->start_ + it->length_);
-      if (cs_ranges.find(it->tile_) == cs_ranges.end()) {
-        std::vector<std::pair<uint64_t, uint64_t>> ranges(1, std::move(range));
-        cs_ranges.insert(std::make_pair(it->tile_, std::move(ranges)));
-      } else {
-        cs_ranges[it->tile_].emplace_back(std::move(range));
-      }
-      ++it;
-    }
-  }
 
   auto statuses = parallel_for(0, num_tiles, [&, this](uint64_t i) {
     auto& tile = result_tiles[i];
@@ -1741,9 +1720,9 @@ Status Reader::unfilter_tiles(
       const std::vector<std::pair<uint64_t, uint64_t>>*
           result_cell_slab_ranges = nullptr;
       static const std::vector<std::pair<uint64_t, uint64_t>> empty_ranges;
-      if (result_cell_slabs) {
-        result_cell_slab_ranges = cs_ranges.find(tile) != cs_ranges.end() ?
-                                      &cs_ranges[tile] :
+      if (cs_ranges) {
+        result_cell_slab_ranges = cs_ranges->find(tile) != cs_ranges->end() ?
+                                      &cs_ranges->at(tile) :
                                       &empty_ranges;
       }
 
@@ -2240,6 +2219,23 @@ Status Reader::copy_attribute_values(
     const std::vector<ResultCellSlab>& result_cell_slabs) {
   STATS_START_TIMER(stats::Stats::TimerType::READ_COPY_ATTR_VALUES);
 
+  // Build an association from the result tile to the cell slab ranges
+  // that it contains.
+  std::unordered_map<ResultTile*, std::vector<std::pair<uint64_t, uint64_t>>>
+      cs_ranges;
+  std::vector<ResultCellSlab>::const_iterator it = result_cell_slabs.cbegin();
+  while (it != result_cell_slabs.cend()) {
+    std::pair<uint64_t, uint64_t> range =
+        std::make_pair(it->start_, it->start_ + it->length_);
+    if (cs_ranges.find(it->tile_) == cs_ranges.end()) {
+      std::vector<std::pair<uint64_t, uint64_t>> ranges(1, std::move(range));
+      cs_ranges.insert(std::make_pair(it->tile_, std::move(ranges)));
+    } else {
+      cs_ranges[it->tile_].emplace_back(std::move(range));
+    }
+    ++it;
+  }
+
   // Copy result cells only for the attributes
   for (const auto& it : buffers_) {
     const auto& name = it.first;
@@ -2249,8 +2245,7 @@ Status Reader::copy_attribute_values(
       continue;
 
     RETURN_CANCEL_OR_ERROR(read_tiles(name, result_tiles));
-    RETURN_CANCEL_OR_ERROR(
-        unfilter_tiles(name, result_tiles, &result_cell_slabs));
+    RETURN_CANCEL_OR_ERROR(unfilter_tiles(name, result_tiles, &cs_ranges));
     RETURN_CANCEL_OR_ERROR(copy_cells(name, stride, result_cell_slabs));
     clear_tiles(name, result_tiles);
   }

@@ -924,14 +924,18 @@ class Reader {
    *
    * @param name Attribute/dimension whose tiles will be unfiltered.
    * @param result_tiles Vector containing the tiles to be unfiltered.
-   * @param result_cell_slabs The result cell slabs to use for selective
-   *    unfiltering. This is optional and will be ignored if NULL.
+   * @param cs_ranges An optional association from the result tile to
+   *   the cell slab ranges that it contains. If given, this will be
+   *   used for selective unfiltering.
    * @return Status
    */
   Status unfilter_tiles(
       const std::string& name,
       const std::vector<ResultTile*>& result_tiles,
-      const std::vector<ResultCellSlab>* result_cell_slabs = nullptr) const;
+      const std::unordered_map<
+          ResultTile*,
+          std::vector<std::pair<uint64_t, uint64_t>>>* const cs_ranges =
+          nullptr) const;
 
   /**
    * Runs the input fixed-sized tile for the input attribute or dimension
