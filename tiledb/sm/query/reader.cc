@@ -883,14 +883,17 @@ Status Reader::compute_sparse_result_tiles(
 Status Reader::copy_cells(
     const std::string& attribute,
     uint64_t stride,
-    const std::vector<ResultCellSlab>& result_cell_slabs) {
+    const std::vector<ResultCellSlab>& result_cell_slabs,
+    CopyCellsContextCache* const ctx_cache) {
+  assert(ctx_cache);
+
   if (result_cell_slabs.empty()) {
     zero_out_buffer_sizes();
     return Status::Ok();
   }
 
   if (array_schema_->var_size(attribute))
-    return copy_var_cells(attribute, stride, result_cell_slabs);
+    return copy_var_cells(attribute, stride, result_cell_slabs, ctx_cache);
   return copy_fixed_cells(attribute, stride, result_cell_slabs);
 }
 
@@ -976,7 +979,10 @@ Status Reader::copy_fixed_cells(
 Status Reader::copy_var_cells(
     const std::string& name,
     uint64_t stride,
-    const std::vector<ResultCellSlab>& result_cell_slabs) {
+    const std::vector<ResultCellSlab>& result_cell_slabs,
+    CopyCellsContextCache* const ctx_cache) {
+  assert(ctx_cache);
+
   auto stat_type = (array_schema_->is_attr(name)) ?
                        stats::Stats::TimerType::READ_COPY_VAR_ATTR_VALUES :
                        stats::Stats::TimerType::READ_COPY_VAR_COORDS;
@@ -995,15 +1001,15 @@ Status Reader::copy_var_cells(
   auto fill_value_size = (uint64_t)fill_value.size();
 
   // Compute the destinations of offsets and var-len data in the buffers.
-  std::vector<std::vector<uint64_t>> offset_offsets_per_cs;
-  std::vector<std::vector<uint64_t>> var_offsets_per_cs;
+  auto offset_offsets_per_cs = &ctx_cache->offset_offsets_per_cs;
+  auto var_offsets_per_cs = &ctx_cache->var_offsets_per_cs;
   uint64_t total_offset_size, total_var_size;
   RETURN_NOT_OK(compute_var_cell_destinations(
       name,
       stride,
       result_cell_slabs,
-      &offset_offsets_per_cs,
-      &var_offsets_per_cs,
+      offset_offsets_per_cs,
+      var_offsets_per_cs,
       &total_offset_size,
       &total_var_size));
 
@@ -1017,8 +1023,8 @@ Status Reader::copy_var_cells(
   const auto num_cs = result_cell_slabs.size();
   auto statuses = parallel_for(0, num_cs, [&](uint64_t cs_idx) {
     const auto& cs = result_cell_slabs[cs_idx];
-    const auto& offset_offsets = offset_offsets_per_cs[cs_idx];
-    const auto& var_offsets = var_offsets_per_cs[cs_idx];
+    const auto& offset_offsets = (*offset_offsets_per_cs)[cs_idx];
+    const auto& var_offsets = (*var_offsets_per_cs)[cs_idx];
 
     // Get tile information, if the range is nonempty.
     uint64_t* tile_offsets = nullptr;
@@ -2199,6 +2205,8 @@ Status Reader::copy_coordinates(
 
   uint64_t stride = UINT64_MAX;
 
+  CopyCellsContextCache ctx_cache;
+
   // Copy coordinates
   for (const auto& it : buffers_) {
     const auto& name = it.first;
@@ -2207,7 +2215,8 @@ Status Reader::copy_coordinates(
     if (!(name == constants::coords || array_schema_->is_dim(name)))
       continue;
 
-    RETURN_CANCEL_OR_ERROR(copy_cells(name, stride, result_cell_slabs));
+    RETURN_CANCEL_OR_ERROR(
+        copy_cells(name, stride, result_cell_slabs, &ctx_cache));
     clear_tiles(name, result_tiles);
   }
 
@@ -2239,6 +2248,8 @@ Status Reader::copy_attribute_values(
     ++it;
   }
 
+  CopyCellsContextCache ctx_cache;
+
   // Copy result cells only for the attributes
   for (const auto& it : buffers_) {
     const auto& name = it.first;
@@ -2249,7 +2260,8 @@ Status Reader::copy_attribute_values(
 
     RETURN_CANCEL_OR_ERROR(read_tiles(name, result_tiles));
     RETURN_CANCEL_OR_ERROR(unfilter_tiles(name, result_tiles, &cs_ranges));
-    RETURN_CANCEL_OR_ERROR(copy_cells(name, stride, result_cell_slabs));
+    RETURN_CANCEL_OR_ERROR(
+        copy_cells(name, stride, result_cell_slabs, &ctx_cache));
     clear_tiles(name, result_tiles);
   }
 
