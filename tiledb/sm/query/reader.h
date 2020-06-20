@@ -493,6 +493,23 @@ class Reader {
 
  private:
   /* ********************************* */
+  /*         PRIVATE DATATYPES         */
+  /* ********************************* */
+
+  /**
+   * Contains data structures for re-use between invocations of
+   * `copy_cells`. The intent is to reduce CPU time spent allocating
+   * and deallocating expensive data structures.
+   */
+  struct CopyCellsContextCache {
+    /** An input for `compute_var_cell_destinations`. */
+    std::vector<std::vector<uint64_t>> offset_offsets_per_cs;
+
+    /** An input for `compute_var_cell_destinations`. */
+    std::vector<std::vector<uint64_t>> var_offsets_per_cs;
+  };
+
+  /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
   /* ********************************* */
 
@@ -687,12 +704,15 @@ class Reader {
    *     cell slabs are all contiguous. Otherwise, each cell in the
    *     result cell slabs are `stride` cells apart from each other.
    * @param result_cell_slabs The result cell slabs to copy cells for.
+   * @param ctx_cache An opaque context cache that may be shared between
+   *     calls to improve performance.
    * @return Status
    */
   Status copy_cells(
       const std::string& attribute,
       uint64_t stride,
-      const std::vector<ResultCellSlab>& result_cell_slabs);
+      const std::vector<ResultCellSlab>& result_cell_slabs,
+      CopyCellsContextCache* ctx_cache);
 
   /**
    * Copies the cells for the input **fixed-sized** attribute/dimension and
@@ -719,12 +739,15 @@ class Reader {
    *     cell slabs are all contiguous. Otherwise, each cell in the
    *     result cell slabs are `stride` cells apart from each other.
    * @param result_cell_slabs The result cell slabs to copy cells for.
+   * @param ctx_cache An opaque context cache that may be shared between
+   *     calls to improve performance.
    * @return Status
    */
   Status copy_var_cells(
       const std::string& name,
       uint64_t stride,
-      const std::vector<ResultCellSlab>& result_cell_slabs);
+      const std::vector<ResultCellSlab>& result_cell_slabs,
+      CopyCellsContextCache* ctx_cache);
 
   /**
    * Computes offsets into destination buffers for the given
