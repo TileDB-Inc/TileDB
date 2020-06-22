@@ -36,6 +36,7 @@
 #include "tiledb/sm/array_schema/dimension.h"
 #include "tiledb/sm/filesystem/vfs.h"
 #include "tiledb/sm/fragment/fragment_metadata.h"
+#include "tiledb/sm/global_state/global_state.h"
 #include "tiledb/sm/misc/comparators.h"
 #include "tiledb/sm/misc/logger.h"
 #include "tiledb/sm/misc/parallel_functions.h"
@@ -880,90 +881,57 @@ Status Reader::compute_sparse_result_tiles(
   STATS_END_TIMER(stats::Stats::TimerType::READ_COMPUTE_SPARSE_RESULT_TILES)
 }
 
-Status Reader::copy_cells(
-    const std::string& attribute,
+Status Reader::copy_fixed_cells(
+    const std::string& name,
     uint64_t stride,
     const std::vector<ResultCellSlab>& result_cell_slabs,
-    CopyCellsContextCache* const ctx_cache) {
+    CopyFixedCellsContextCache* const ctx_cache) {
   assert(ctx_cache);
+
+  auto stat_type = (array_schema_->is_attr(name)) ?
+                       stats::Stats::TimerType::READ_COPY_FIXED_ATTR_VALUES :
+                       stats::Stats::TimerType::READ_COPY_FIXED_COORDS;
+  STATS_START_TIMER(stat_type)
 
   if (result_cell_slabs.empty()) {
     zero_out_buffer_sizes();
     return Status::Ok();
   }
 
-  if (array_schema_->var_size(attribute))
-    return copy_var_cells(attribute, stride, result_cell_slabs, ctx_cache);
-  return copy_fixed_cells(attribute, stride, result_cell_slabs);
-}
+  // Perform a lazy initialization of the context cache for copying
+  // fixed cells.
+  populate_cfc_ctx_cache(result_cell_slabs, ctx_cache);
 
-Status Reader::copy_fixed_cells(
-    const std::string& name,
-    uint64_t stride,
-    const std::vector<ResultCellSlab>& result_cell_slabs) {
-  auto stat_type = (array_schema_->is_attr(name)) ?
-                       stats::Stats::TimerType::READ_COPY_FIXED_ATTR_VALUES :
-                       stats::Stats::TimerType::READ_COPY_FIXED_COORDS;
-  STATS_START_TIMER(stat_type)
-
-  // For easy reference
   auto it = buffers_.find(name);
-  auto buffer = (unsigned char*)it->second.buffer_;
   auto buffer_size = it->second.buffer_size_;
   auto cell_size = array_schema_->cell_size(name);
-  ByteVecValue fill_value;
-  if (array_schema_->is_attr(name))
-    fill_value = array_schema_->attribute(name)->fill_value();
-  uint64_t fill_value_size = (uint64_t)fill_value.size();
 
-  // Precompute the cell range destination offsets in the buffer
-  auto num_cs = result_cell_slabs.size();
+  // Precompute the cell range destination offsets in the buffer.
   uint64_t buffer_offset = 0;
-  std::vector<uint64_t> cs_offsets(num_cs);
-  for (uint64_t i = 0; i < num_cs; i++) {
+  for (uint64_t i = 0; i < ctx_cache->cs_offsets.size(); i++) {
     const auto& cs = result_cell_slabs[i];
     auto bytes_to_copy = cs.length_ * cell_size;
-    cs_offsets[i] = buffer_offset;
+    ctx_cache->cs_offsets[i] = buffer_offset;
     buffer_offset += bytes_to_copy;
   }
 
-  // Handle overflow
+  // Handle overflow.
   if (buffer_offset > *buffer_size) {
     read_state_.overflowed_ = true;
     return Status::Ok();
   }
 
-  // Copy cell ranges in parallel.
-  auto statuses = parallel_for(0, num_cs, [&](uint64_t i) {
-    const auto& cs = result_cell_slabs[i];
-    uint64_t offset = cs_offsets[i];
-    // Check for overflow
-    assert(offset + cs.length_ * cell_size <= *buffer_size);
-
-    // Copy
-    if (cs.tile_ == nullptr) {  // Empty range
-      auto bytes_to_copy = cs.length_ * cell_size;
-      auto fill_num = bytes_to_copy / fill_value_size;
-      for (uint64_t j = 0; j < fill_num; ++j) {
-        std::memcpy(buffer + offset, fill_value.data(), fill_value_size);
-        offset += fill_value_size;
-      }
-    } else {  // Non-empty range
-      if (stride == UINT64_MAX) {
-        RETURN_NOT_OK(
-            cs.tile_->read(name, buffer + offset, cs.start_, cs.length_));
-      } else {
-        auto cell_offset = offset;
-        auto start = cs.start_;
-        for (uint64_t j = 0; j < cs.length_; ++j) {
-          RETURN_NOT_OK(cs.tile_->read(name, buffer + cell_offset, start, 1));
-          cell_offset += cell_size;
-          start += stride;
-        }
-      }
-    }
-    return Status::Ok();
-  });
+  // Copy result cell slabs in parallel.
+  std::function<Status(size_t)> copy_fn = std::bind(
+      &Reader::copy_partitioned_fixed_cells,
+      this,
+      std::placeholders::_1,
+      &name,
+      stride,
+      &result_cell_slabs,
+      ctx_cache);
+  auto statuses =
+      parallel_for(0, ctx_cache->cs_partitions.size(), std::move(copy_fn));
 
   for (auto st : statuses)
     RETURN_NOT_OK(st);
@@ -976,11 +944,102 @@ Status Reader::copy_fixed_cells(
   STATS_END_TIMER(stat_type)
 }
 
+void Reader::populate_cfc_ctx_cache(
+    const std::vector<ResultCellSlab>& result_cell_slabs,
+    CopyFixedCellsContextCache* const ctx_cache) {
+  auto cs_offsets = &ctx_cache->cs_offsets;
+  auto cs_partitions = &ctx_cache->cs_partitions;
+
+  // If `ctx_cache` is already populated, we're done.
+  if (!cs_offsets->empty()) {
+    return;
+  }
+
+  // Allocate and resize `cs_offsets`.
+  auto num_cs = result_cell_slabs.size();
+  cs_offsets->resize(num_cs);
+
+  // Partition the range of the `result_cell_slab` into
+  // individual cell ranges for each TBB thread.
+  const int tbb_threads =
+      global_state::GlobalState::GetGlobalState().tbb_threads() > 0 ?
+          global_state::GlobalState::GetGlobalState().tbb_threads() :
+          1;
+  const uint64_t num_cs_partitions = std::min<uint64_t>(tbb_threads, num_cs);
+  const uint64_t cs_per_partition = num_cs / num_cs_partitions;
+  const uint64_t cs_per_partition_carry = num_cs % num_cs_partitions;
+
+  // Calculate the partition offsets into `cs_offsets`.
+  uint64_t num_cs_partitioned = 0;
+  for (uint64_t i = 0; i < num_cs_partitions; ++i) {
+    const uint64_t num_cs_in_partition =
+        cs_per_partition + ((i < cs_per_partition_carry) ? 1 : 0);
+    num_cs_partitioned += num_cs_in_partition;
+    cs_partitions->emplace_back(num_cs_partitioned);
+  }
+}
+
+Status Reader::copy_partitioned_fixed_cells(
+    const size_t partition_idx,
+    const std::string* const name,
+    const uint64_t stride,
+    const std::vector<ResultCellSlab>* const result_cell_slabs,
+    const CopyFixedCellsContextCache* const ctx_cache) {
+  assert(name);
+  assert(result_cell_slabs);
+  assert(ctx_cache);
+
+  // For easy reference.
+  auto it = buffers_.find(*name);
+  auto buffer = (unsigned char*)it->second.buffer_;
+  auto cell_size = array_schema_->cell_size(*name);
+  ByteVecValue fill_value;
+  if (array_schema_->is_attr(*name))
+    fill_value = array_schema_->attribute(*name)->fill_value();
+  uint64_t fill_value_size = (uint64_t)fill_value.size();
+
+  // Calculate the partition to operate on.
+  const uint64_t cs_idx_start =
+      partition_idx == 0 ? 0 : ctx_cache->cs_partitions[partition_idx - 1];
+  const uint64_t cs_idx_end = ctx_cache->cs_partitions[partition_idx];
+
+  // Copy the cells.
+  for (uint64_t cs_idx = cs_idx_start; cs_idx < cs_idx_end; ++cs_idx) {
+    const auto& cs = (*result_cell_slabs)[cs_idx];
+    uint64_t offset = ctx_cache->cs_offsets[cs_idx];
+
+    // Copy
+    if (cs.tile_ == nullptr) {  // Empty range
+      auto bytes_to_copy = cs.length_ * cell_size;
+      auto fill_num = bytes_to_copy / fill_value_size;
+      for (uint64_t j = 0; j < fill_num; ++j) {
+        std::memcpy(buffer + offset, fill_value.data(), fill_value_size);
+        offset += fill_value_size;
+      }
+    } else {  // Non-empty range
+      if (stride == UINT64_MAX) {
+        RETURN_NOT_OK(
+            cs.tile_->read(*name, buffer + offset, cs.start_, cs.length_));
+      } else {
+        auto cell_offset = offset;
+        auto start = cs.start_;
+        for (uint64_t j = 0; j < cs.length_; ++j) {
+          RETURN_NOT_OK(cs.tile_->read(*name, buffer + cell_offset, start, 1));
+          cell_offset += cell_size;
+          start += stride;
+        }
+      }
+    }
+  }
+
+  return Status::Ok();
+}
+
 Status Reader::copy_var_cells(
     const std::string& name,
     uint64_t stride,
     const std::vector<ResultCellSlab>& result_cell_slabs,
-    CopyCellsContextCache* const ctx_cache) {
+    CopyVarCellsContextCache* const ctx_cache) {
   assert(ctx_cache);
 
   auto stat_type = (array_schema_->is_attr(name)) ?
@@ -988,30 +1047,29 @@ Status Reader::copy_var_cells(
                        stats::Stats::TimerType::READ_COPY_VAR_COORDS;
   STATS_START_TIMER(stat_type);
 
-  // For easy reference
-  auto it = buffers_.find(name);
-  auto buffer = (unsigned char*)it->second.buffer_;
-  auto buffer_var = (unsigned char*)it->second.buffer_var_;
-  auto buffer_size = it->second.buffer_size_;
-  auto buffer_var_size = it->second.buffer_var_size_;
-  uint64_t offset_size = constants::cell_var_offset_size;
-  ByteVecValue fill_value;
-  if (array_schema_->is_attr(name))
-    fill_value = array_schema_->attribute(name)->fill_value();
-  auto fill_value_size = (uint64_t)fill_value.size();
+  if (result_cell_slabs.empty()) {
+    zero_out_buffer_sizes();
+    return Status::Ok();
+  }
+
+  // Perform a lazy initialization of the context cache for copying
+  // fixed cells.
+  populate_cvc_ctx_cache(result_cell_slabs, ctx_cache);
 
   // Compute the destinations of offsets and var-len data in the buffers.
-  auto offset_offsets_per_cs = &ctx_cache->offset_offsets_per_cs;
-  auto var_offsets_per_cs = &ctx_cache->var_offsets_per_cs;
   uint64_t total_offset_size, total_var_size;
   RETURN_NOT_OK(compute_var_cell_destinations(
       name,
       stride,
       result_cell_slabs,
-      offset_offsets_per_cs,
-      var_offsets_per_cs,
+      &ctx_cache->offset_offsets_per_cs,
+      &ctx_cache->var_offsets_per_cs,
       &total_offset_size,
       &total_var_size));
+
+  auto it = buffers_.find(name);
+  auto buffer_size = it->second.buffer_size_;
+  auto buffer_var_size = it->second.buffer_var_size_;
 
   // Check for overflow and return early (without copying) in that case.
   if (total_offset_size > *buffer_size || total_var_size > *buffer_var_size) {
@@ -1020,60 +1078,15 @@ Status Reader::copy_var_cells(
   }
 
   // Copy result cell slabs in parallel
-  const auto num_cs = result_cell_slabs.size();
-  auto statuses = parallel_for(0, num_cs, [&](uint64_t cs_idx) {
-    const auto& cs = result_cell_slabs[cs_idx];
-    const auto& offset_offsets = (*offset_offsets_per_cs)[cs_idx];
-    const auto& var_offsets = (*var_offsets_per_cs)[cs_idx];
-
-    // Get tile information, if the range is nonempty.
-    uint64_t* tile_offsets = nullptr;
-    Tile* tile_var = nullptr;
-    uint64_t tile_cell_num = 0;
-    if (cs.tile_ != nullptr) {
-      const auto tile_pair = cs.tile_->tile_pair(name);
-      Tile* const tile = &tile_pair->first;
-      tile_var = &tile_pair->second;
-      // Get the internal buffer to the offset values.
-      ChunkedBuffer* const chunked_buffer = tile->chunked_buffer();
-
-      // Offset tiles are always contiguously allocated.
-      assert(
-          chunked_buffer->buffer_addressing() ==
-          ChunkedBuffer::BufferAddressing::CONTIGUOUS);
-
-      tile_offsets = (uint64_t*)chunked_buffer->get_contiguous_unsafe();
-      tile_cell_num = tile->cell_num();
-    }
-
-    // Copy each cell in the range
-    uint64_t dest_vec_idx = 0;
-    stride = (stride == UINT64_MAX) ? 1 : stride;
-    for (auto cell_idx = cs.start_; dest_vec_idx < cs.length_;
-         cell_idx += stride, dest_vec_idx++) {
-      auto offset_dest = buffer + offset_offsets[dest_vec_idx];
-      auto var_offset = var_offsets[dest_vec_idx];
-      auto var_dest = buffer_var + var_offset;
-
-      // Copy offset
-      std::memcpy(offset_dest, &var_offset, offset_size);
-
-      // Copy variable-sized value
-      if (cs.tile_ == nullptr) {
-        std::memcpy(var_dest, fill_value.data(), fill_value_size);
-      } else {
-        const uint64_t cell_var_size =
-            (cell_idx != tile_cell_num - 1) ?
-                tile_offsets[cell_idx + 1] - tile_offsets[cell_idx] :
-                tile_var->size() - (tile_offsets[cell_idx] - tile_offsets[0]);
-        const uint64_t tile_var_offset =
-            tile_offsets[cell_idx] - tile_offsets[0];
-        RETURN_NOT_OK(tile_var->read(var_dest, cell_var_size, tile_var_offset));
-      }
-    }
-
-    return Status::Ok();
-  });
+  std::function<Status(size_t)> copy_fn = std::bind(
+      &Reader::copy_partitioned_var_cells,
+      this,
+      std::placeholders::_1,
+      &name,
+      stride,
+      &result_cell_slabs,
+      ctx_cache);
+  auto statuses = parallel_for(0, ctx_cache->cs_partitions.size(), copy_fn);
 
   // Check all statuses
   for (auto st : statuses)
@@ -1088,12 +1101,78 @@ Status Reader::copy_var_cells(
   STATS_END_TIMER(stat_type);
 }
 
+void Reader::populate_cvc_ctx_cache(
+    const std::vector<ResultCellSlab>& result_cell_slabs,
+    CopyVarCellsContextCache* const ctx_cache) {
+  assert(ctx_cache);
+
+  auto cs_partitions = &ctx_cache->cs_partitions;
+  auto offset_offsets_per_cs = &ctx_cache->offset_offsets_per_cs;
+  auto var_offsets_per_cs = &ctx_cache->var_offsets_per_cs;
+
+  // If `ctx_cache` is already populated, we're done.
+  if (!cs_partitions->empty()) {
+    return;
+  }
+
+  // Calculate the partition range.
+  const size_t num_cs = result_cell_slabs.size();
+  const int tbb_threads =
+      global_state::GlobalState::GetGlobalState().tbb_threads() > 0 ?
+          global_state::GlobalState::GetGlobalState().tbb_threads() :
+          1;
+  const uint64_t num_cs_partitions = std::min<uint64_t>(tbb_threads, num_cs);
+  const uint64_t cs_per_partition = num_cs / num_cs_partitions;
+  const uint64_t cs_per_partition_carry = num_cs % num_cs_partitions;
+
+  // Allocate space for all of the partitions.
+  cs_partitions->reserve(num_cs_partitions);
+
+  // Compute the boundary between each partition. Each boundary
+  // is represented by an `std::pair` that contains the total
+  // length of each cell slab in the leading partition and an
+  // exclusive cell slab index that ends the partition.
+  size_t total_cs_length = 0;
+  uint64_t next_partition_idx = cs_per_partition;
+  if (cs_per_partition_carry > 0)
+    ++next_partition_idx;
+
+  for (uint64_t cs_idx = 0; cs_idx < num_cs; cs_idx++) {
+    if (cs_idx == next_partition_idx) {
+      cs_partitions->emplace_back(total_cs_length, cs_idx);
+
+      // The final partition may contain extra cell slabs that did
+      // not evenly divide into the partition range. Set the
+      // `next_partition_idx` to zero and build the last boundary
+      // after this for-loop.
+      if (cs_partitions->size() == num_cs_partitions) {
+        next_partition_idx = 0;
+      } else {
+        next_partition_idx += cs_per_partition;
+        if (cs_idx < (cs_per_partition_carry - 1))
+          ++next_partition_idx;
+      }
+    }
+
+    total_cs_length += result_cell_slabs[cs_idx].length_;
+  }
+
+  // Store the final boundary.
+  cs_partitions->emplace_back(total_cs_length, num_cs);
+
+  // Allocate and size both `offset_offsets_per_cs` and
+  // `var_offsets_per_cs` to contain enough elements for
+  // storing any result cell.
+  offset_offsets_per_cs->resize(total_cs_length);
+  var_offsets_per_cs->resize(total_cs_length);
+}
+
 Status Reader::compute_var_cell_destinations(
     const std::string& name,
     uint64_t stride,
     const std::vector<ResultCellSlab>& result_cell_slabs,
-    std::vector<std::vector<uint64_t>>* offset_offsets_per_cs,
-    std::vector<std::vector<uint64_t>>* var_offsets_per_cs,
+    std::vector<uint64_t>* offset_offsets_per_cs,
+    std::vector<uint64_t>* var_offsets_per_cs,
     uint64_t* total_offset_size,
     uint64_t* total_var_size) const {
   // For easy reference
@@ -1104,17 +1183,12 @@ Status Reader::compute_var_cell_destinations(
     fill_value = array_schema_->attribute(name)->fill_value();
   auto fill_value_size = (uint64_t)fill_value.size();
 
-  // Resize the output vectors
-  offset_offsets_per_cs->resize(num_cs);
-  var_offsets_per_cs->resize(num_cs);
-
   // Compute the destinations for all result cell slabs
   *total_offset_size = 0;
   *total_var_size = 0;
+  size_t total_cs_length = 0;
   for (uint64_t cs_idx = 0; cs_idx < num_cs; cs_idx++) {
     const auto& cs = result_cell_slabs[cs_idx];
-    (*offset_offsets_per_cs)[cs_idx].resize(cs.length_);
-    (*var_offsets_per_cs)[cs_idx].resize(cs.length_);
 
     // Get tile information, if the range is nonempty.
     uint64_t* tile_offsets = nullptr;
@@ -1155,11 +1229,105 @@ Status Reader::compute_var_cell_destinations(
       }
 
       // Record destination offsets.
-      (*offset_offsets_per_cs)[cs_idx][dest_vec_idx] = *total_offset_size;
-      (*var_offsets_per_cs)[cs_idx][dest_vec_idx] = *total_var_size;
+      (*offset_offsets_per_cs)[total_cs_length + dest_vec_idx] =
+          *total_offset_size;
+      (*var_offsets_per_cs)[total_cs_length + dest_vec_idx] = *total_var_size;
       *total_offset_size += offset_size;
       *total_var_size += cell_var_size;
     }
+
+    total_cs_length += cs.length_;
+  }
+
+  return Status::Ok();
+}
+
+Status Reader::copy_partitioned_var_cells(
+    const size_t partition_idx,
+    const std::string* const name,
+    uint64_t stride,
+    const std::vector<ResultCellSlab>* const result_cell_slabs,
+    CopyVarCellsContextCache* const ctx_cache) {
+  assert(name);
+  assert(result_cell_slabs);
+  assert(ctx_cache);
+
+  auto it = buffers_.find(*name);
+  auto buffer = (unsigned char*)it->second.buffer_;
+  auto buffer_var = (unsigned char*)it->second.buffer_var_;
+  uint64_t offset_size = constants::cell_var_offset_size;
+  ByteVecValue fill_value;
+  if (array_schema_->is_attr(*name))
+    fill_value = array_schema_->attribute(*name)->fill_value();
+  auto fill_value_size = (uint64_t)fill_value.size();
+  auto cs_partitions = &ctx_cache->cs_partitions;
+  auto offset_offsets_per_cs = &ctx_cache->offset_offsets_per_cs;
+  auto var_offsets_per_cs = &ctx_cache->var_offsets_per_cs;
+
+  // Fetch the starting array offset into both `offset_offsets_per_cs`
+  // and `var_offsets_per_cs`.
+  size_t arr_offset =
+      partition_idx == 0 ? 0 : (*cs_partitions)[partition_idx - 1].first;
+
+  // Fetch the inclusive starting cell slab index and the exclusive ending
+  // cell slab index.
+  const size_t start_cs_idx =
+      partition_idx == 0 ? 0 : (*cs_partitions)[partition_idx - 1].second;
+  const size_t end_cs_idx = (*cs_partitions)[partition_idx].second;
+
+  // Copy all cells within the range of cell slabs.
+  for (uint64_t cs_idx = start_cs_idx; cs_idx < end_cs_idx; ++cs_idx) {
+    const auto& cs = (*result_cell_slabs)[cs_idx];
+
+    // Get tile information, if the range is nonempty.
+    uint64_t* tile_offsets = nullptr;
+    Tile* tile_var = nullptr;
+    uint64_t tile_cell_num = 0;
+    if (cs.tile_ != nullptr) {
+      const auto tile_pair = cs.tile_->tile_pair(*name);
+      Tile* const tile = &tile_pair->first;
+      tile_var = &tile_pair->second;
+      // Get the internal buffer to the offset values.
+      ChunkedBuffer* const chunked_buffer = tile->chunked_buffer();
+
+      // Offset tiles are always contiguously allocated.
+      assert(
+          chunked_buffer->buffer_addressing() ==
+          ChunkedBuffer::BufferAddressing::CONTIGUOUS);
+
+      tile_offsets = (uint64_t*)chunked_buffer->get_contiguous_unsafe();
+      tile_cell_num = tile->cell_num();
+    }
+
+    // Copy each cell in the range
+    uint64_t dest_vec_idx = 0;
+    stride = (stride == UINT64_MAX) ? 1 : stride;
+    for (auto cell_idx = cs.start_; dest_vec_idx < cs.length_;
+         cell_idx += stride, dest_vec_idx++) {
+      auto offset_dest =
+          buffer + (*offset_offsets_per_cs)[arr_offset + dest_vec_idx];
+      // offset_offsets[dest_vec_idx];
+      auto var_offset = (*var_offsets_per_cs)[arr_offset + dest_vec_idx];
+      auto var_dest = buffer_var + var_offset;
+
+      // Copy offset
+      std::memcpy(offset_dest, &var_offset, offset_size);
+
+      // Copy variable-sized value
+      if (cs.tile_ == nullptr) {
+        std::memcpy(var_dest, fill_value.data(), fill_value_size);
+      } else {
+        const uint64_t cell_var_size =
+            (cell_idx != tile_cell_num - 1) ?
+                tile_offsets[cell_idx + 1] - tile_offsets[cell_idx] :
+                tile_var->size() - (tile_offsets[cell_idx] - tile_offsets[0]);
+        const uint64_t tile_var_offset =
+            tile_offsets[cell_idx] - tile_offsets[0];
+        RETURN_NOT_OK(tile_var->read(var_dest, cell_var_size, tile_var_offset));
+      }
+    }
+
+    arr_offset += cs.length_;
   }
 
   return Status::Ok();
@@ -2203,11 +2371,15 @@ Status Reader::copy_coordinates(
     const std::vector<ResultCellSlab>& result_cell_slabs) {
   STATS_START_TIMER(stats::Stats::TimerType::READ_COPY_COORDS);
 
-  uint64_t stride = UINT64_MAX;
+  const uint64_t stride = UINT64_MAX;
 
-  CopyCellsContextCache ctx_cache;
-
-  // Copy coordinates
+  // Build a lists of coordinate names to copy, separating them by
+  // whether they are of fixed or variable length. The motivation
+  // is that copying fixed and variable cells require two different
+  // context caches. Processing them separately allows us to maintain
+  // a single context cache at the same time to reduce memory use.
+  std::vector<std::string> fixed_names;
+  std::vector<std::string> var_names;
   for (const auto& it : buffers_) {
     const auto& name = it.first;
     if (read_state_.overflowed_)
@@ -2215,9 +2387,30 @@ Status Reader::copy_coordinates(
     if (!(name == constants::coords || array_schema_->is_dim(name)))
       continue;
 
-    RETURN_CANCEL_OR_ERROR(
-        copy_cells(name, stride, result_cell_slabs, &ctx_cache));
-    clear_tiles(name, result_tiles);
+    if (array_schema_->var_size(name))
+      var_names.emplace_back(name);
+    else
+      fixed_names.emplace_back(name);
+  }
+
+  // Copy result cells for fixed-sized coordinates.
+  if (!fixed_names.empty()) {
+    CopyFixedCellsContextCache ctx_cache;
+    for (const auto& name : fixed_names) {
+      RETURN_CANCEL_OR_ERROR(
+          copy_fixed_cells(name, stride, result_cell_slabs, &ctx_cache));
+      clear_tiles(name, result_tiles);
+    }
+  }
+
+  // Copy result cells for var-sized coordinates.
+  if (!var_names.empty()) {
+    CopyVarCellsContextCache ctx_cache;
+    for (const auto& name : var_names) {
+      RETURN_CANCEL_OR_ERROR(
+          copy_var_cells(name, stride, result_cell_slabs, &ctx_cache));
+      clear_tiles(name, result_tiles);
+    }
   }
 
   return Status::Ok();
@@ -2248,9 +2441,13 @@ Status Reader::copy_attribute_values(
     ++it;
   }
 
-  CopyCellsContextCache ctx_cache;
-
-  // Copy result cells only for the attributes
+  // Build a lists of attribute names to copy, separating them by
+  // whether they are of fixed or variable length. The motivation
+  // is that copying fixed and variable cells require two different
+  // context caches. Processing them separately allows us to maintain
+  // a single context cache at the same time to reduce memory use.
+  std::vector<std::string> fixed_names;
+  std::vector<std::string> var_names;
   for (const auto& it : buffers_) {
     const auto& name = it.first;
     if (read_state_.overflowed_)
@@ -2258,11 +2455,34 @@ Status Reader::copy_attribute_values(
     if (name == constants::coords || array_schema_->is_dim(name))
       continue;
 
-    RETURN_CANCEL_OR_ERROR(read_tiles(name, result_tiles));
-    RETURN_CANCEL_OR_ERROR(unfilter_tiles(name, result_tiles, &cs_ranges));
-    RETURN_CANCEL_OR_ERROR(
-        copy_cells(name, stride, result_cell_slabs, &ctx_cache));
-    clear_tiles(name, result_tiles);
+    if (array_schema_->var_size(name))
+      var_names.emplace_back(name);
+    else
+      fixed_names.emplace_back(name);
+  }
+
+  // Copy result cells for fixed-sized attributes.
+  if (!fixed_names.empty()) {
+    CopyFixedCellsContextCache ctx_cache;
+    for (const auto& name : fixed_names) {
+      RETURN_CANCEL_OR_ERROR(read_tiles(name, result_tiles));
+      RETURN_CANCEL_OR_ERROR(unfilter_tiles(name, result_tiles, &cs_ranges));
+      RETURN_CANCEL_OR_ERROR(
+          copy_fixed_cells(name, stride, result_cell_slabs, &ctx_cache));
+      clear_tiles(name, result_tiles);
+    }
+  }
+
+  // Copy result cells for var-sized attributes.
+  if (!var_names.empty()) {
+    CopyVarCellsContextCache ctx_cache;
+    for (const auto& name : var_names) {
+      RETURN_CANCEL_OR_ERROR(read_tiles(name, result_tiles));
+      RETURN_CANCEL_OR_ERROR(unfilter_tiles(name, result_tiles, &cs_ranges));
+      RETURN_CANCEL_OR_ERROR(
+          copy_var_cells(name, stride, result_cell_slabs, &ctx_cache));
+      clear_tiles(name, result_tiles);
+    }
   }
 
   return Status::Ok();

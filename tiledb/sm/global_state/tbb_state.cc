@@ -50,7 +50,7 @@ namespace global_state {
 static std::unique_ptr<tbb::task_scheduler_init> tbb_scheduler_;
 
 /** The number of TBB threads the scheduler was configured with **/
-static int tbb_nthreads_;
+int tbb_nthreads_;
 
 Status init_tbb(const Config* config) {
   int nthreads;
@@ -95,6 +95,7 @@ Status init_tbb(const Config* config) {
       return Status::Error(msg.str());
     }
   }
+
   return Status::Ok();
 }
 
@@ -107,6 +108,8 @@ Status init_tbb(const Config* config) {
 namespace tiledb {
 namespace sm {
 namespace global_state {
+
+int tbb_nthreads_ = 0;
 
 Status init_tbb(const Config* config) {
   (void)config;
