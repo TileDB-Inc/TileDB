@@ -50,6 +50,8 @@ namespace tiledb {
 namespace sm {
 namespace global_state {
 
+extern int tbb_nthreads_;
+
 GlobalState& GlobalState::GetGlobalState() {
   // This is thread-safe in C++11.
   static GlobalState globalState;
@@ -120,6 +122,14 @@ std::set<StorageManager*> GlobalState::storage_managers() {
 const std::string& GlobalState::cert_file() {
   return cert_file_;
 }
+
+int GlobalState::tbb_threads() {
+  if (!initialized_)
+    return 0;
+
+  return tbb_nthreads_;
+}
+
 }  // namespace global_state
 }  // namespace sm
 }  // namespace tiledb
