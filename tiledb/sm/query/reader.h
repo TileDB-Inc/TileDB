@@ -496,17 +496,38 @@ class Reader {
   /*         PRIVATE DATATYPES         */
   /* ********************************* */
 
-  /**
-   * Contains data structures for re-use between invocations of
-   * `copy_cells`. The intent is to reduce CPU time spent allocating
-   * and deallocating expensive data structures.
-   */
-  struct CopyCellsContextCache {
-    /** An input for `compute_var_cell_destinations`. */
-    std::vector<std::vector<uint64_t>> offset_offsets_per_cs;
+  struct CopyFixedCellsContextCache {
+    /**
+     * Maps the index of each cell slab to its offset in the
+     * output buffer.
+     */
+    std::vector<uint64_t> cs_offsets;
 
-    /** An input for `compute_var_cell_destinations`. */
-    std::vector<std::vector<uint64_t>> var_offsets_per_cs;
+    /**
+     * Logical partitions of `cs_offsets`. Each element is the
+     * partition's starting index.
+     */
+    std::vector<size_t> cs_partitions;
+  };
+
+  struct CopyVarCellsContextCache {
+    /**
+     * Maps each cell slab to its offset for its attribute offsets.
+     */
+    std::vector<uint64_t> offset_offsets_per_cs;
+
+    /**
+     * Maps each cell slab to its offset for its variable-length data.
+     */
+    std::vector<uint64_t> var_offsets_per_cs;
+
+    /**
+     * Logical partitions of both `offset_offsets_per_cs` and
+     * `var_offsets_per_cs`. Each element contains a pair, where the
+     * first pair-element is the partition's starting index and the
+     * second pair-element is the number of cell slabs in the partition.
+     */
+    std::vector<std::pair<size_t, size_t>> cs_partitions;
   };
 
   /* ********************************* */
@@ -696,10 +717,10 @@ class Reader {
       std::vector<bool>* single_fragment);
 
   /**
-   * Copies the cells for the input attribute and result cell slabs, into
-   * the corresponding result buffers.
+   * Copies the cells for the input **fixed-sized** attribute/dimension and
+   * result cell slabs into the corresponding result buffers.
    *
-   * @param attribute The targeted attribute.
+   * @param name The targeted attribute/dimension.
    * @param stride If it is `UINT64_MAX`, then the cells in the result
    *     cell slabs are all contiguous. Otherwise, each cell in the
    *     result cell slabs are `stride` cells apart from each other.
@@ -708,31 +729,46 @@ class Reader {
    *     calls to improve performance.
    * @return Status
    */
-  Status copy_cells(
-      const std::string& attribute,
+  Status copy_fixed_cells(
+      const std::string& name,
       uint64_t stride,
       const std::vector<ResultCellSlab>& result_cell_slabs,
-      CopyCellsContextCache* ctx_cache);
+      CopyFixedCellsContextCache* ctx_cache);
+
+  /**
+   * Populates 'ctx_cache' for fixed-sized cell copying.
+   *
+   * @param result_cell_slabs The result cell slabs to copy cells for.
+   * @param ctx_cache The context cache to populate.
+   */
+  void populate_cfc_ctx_cache(
+      const std::vector<ResultCellSlab>& result_cell_slabs,
+      CopyFixedCellsContextCache* ctx_cache);
 
   /**
    * Copies the cells for the input **fixed-sized** attribute/dimension and
-   * result cell slabs, into the corresponding result buffers.
+   * result cell slabs into the corresponding result buffers for the
+   * partition in `ctx_cache` at index `partition_idx`.
    *
-   * @param name The targeted attribute/diemnsion.
+   * @param name The partition index.
+   * @param name The targeted attribute/dimension.
    * @param stride If it is `UINT64_MAX`, then the cells in the result
    *     cell slabs are all contiguous. Otherwise, each cell in the
    *     result cell slabs are `stride` cells apart from each other.
    * @param result_cell_slabs The result cell slabs to copy cells for.
+   * @param ctx_cache The context cache containing partition information.
    * @return Status
    */
-  Status copy_fixed_cells(
-      const std::string& name,
+  Status copy_partitioned_fixed_cells(
+      size_t partition_idx,
+      const std::string* name,
       uint64_t stride,
-      const std::vector<ResultCellSlab>& result_cell_slabs);
+      const std::vector<ResultCellSlab>* result_cell_slabs,
+      const CopyFixedCellsContextCache* ctx_cache);
 
   /**
    * Copies the cells for the input **var-sized** attribute/dimension and result
-   * cell slabs, into the corresponding result buffers.
+   * cell slabs into the corresponding result buffers.
    *
    * @param name The targeted attribute/dimension.
    * @param stride If it is `UINT64_MAX`, then the cells in the result
@@ -747,7 +783,17 @@ class Reader {
       const std::string& name,
       uint64_t stride,
       const std::vector<ResultCellSlab>& result_cell_slabs,
-      CopyCellsContextCache* ctx_cache);
+      CopyVarCellsContextCache* ctx_cache);
+
+  /**
+   * Populates 'ctx_cache' for var-sized cell copying.
+   *
+   * @param result_cell_slabs The result cell slabs to copy cells for.
+   * @param ctx_cache The context cache to populate.
+   */
+  void populate_cvc_ctx_cache(
+      const std::vector<ResultCellSlab>& result_cell_slabs,
+      CopyVarCellsContextCache* ctx_cache);
 
   /**
    * Computes offsets into destination buffers for the given
@@ -775,10 +821,31 @@ class Reader {
       const std::string& name,
       uint64_t stride,
       const std::vector<ResultCellSlab>& result_cell_slabs,
-      std::vector<std::vector<uint64_t>>* offset_offsets_per_cs,
-      std::vector<std::vector<uint64_t>>* var_offsets_per_cs,
+      std::vector<uint64_t>* offset_offsets_per_cs,
+      std::vector<uint64_t>* var_offsets_per_cs,
       uint64_t* total_offset_size,
       uint64_t* total_var_size) const;
+
+  /**
+   * Copies the cells for the input **var-sized** attribute/dimension and result
+   * cell slabs into the corresponding result buffers for the
+   * partition in `ctx_cache` at index `partition_idx`.
+   *
+   * @param name The partition index.
+   * @param name The targeted attribute/dimension.
+   * @param stride If it is `UINT64_MAX`, then the cells in the result
+   *     cell slabs are all contiguous. Otherwise, each cell in the
+   *     result cell slabs are `stride` cells apart from each other.
+   * @param result_cell_slabs The result cell slabs to copy cells for.
+   * @param ctx_cache The context cache containing partition information.
+   * @return Status
+   */
+  Status copy_partitioned_var_cells(
+      size_t partition_idx,
+      const std::string* name,
+      uint64_t stride,
+      const std::vector<ResultCellSlab>* result_cell_slabs,
+      CopyVarCellsContextCache* ctx_cache);
 
   /**
    * Computes the result space tiles based on the input subarray.
