@@ -471,6 +471,14 @@ TILEDB_EXPORT uint64_t tiledb_timestamp_now_ms();
  */
 TILEDB_EXPORT void tiledb_version(int32_t* major, int32_t* minor, int32_t* rev);
 
+/**
+ *  Retrieves the source version string of the TileDB library currently being
+ * used. currently this is the 40-char git SHA1 hash of the repository."
+ *
+ *  @param version_string Will store the 40-char SHA1.
+ */
+TILEDB_EXPORT void tiledb_source_version(char* version_string);
+
 /* ********************************* */
 /*           TILEDB TYPES            */
 /* ********************************* */

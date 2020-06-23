@@ -46,3 +46,12 @@ TEST_CASE("C API: Test version", "[capi], [version]") {
   CHECK(minor == tiledb::sm::constants::library_version[1]);
   CHECK(rev == tiledb::sm::constants::library_version[2]);
 }
+
+TEST_CASE("C API: Test source version", "[capi], [version]") {
+  char version[40];
+  tiledb_source_version(version);
+
+  CHECK(
+      std::string(version, 40) ==
+      tiledb::sm::constants::library_source_version);
+}

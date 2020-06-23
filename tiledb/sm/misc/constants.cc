@@ -35,6 +35,7 @@
 #include <thread>
 
 #include "tiledb/sm/c_api/tiledb_version.h"
+#include "tiledb_git_sha.h"
 
 // Include files for platform path max definition.
 #ifdef _WIN32
@@ -447,6 +448,9 @@ const std::string vfsmode_append_str = "VFS_APPEND";
 /** The version in format { major, minor, revision }. */
 const int32_t library_version[3] = {
     TILEDB_VERSION_MAJOR, TILEDB_VERSION_MINOR, TILEDB_VERSION_PATCH};
+
+/** The string representation for the source version hash. */
+const std::string library_source_version = _tiledb_str(TILEDB_GIT_HASH);
 
 /** The TileDB serialization format version number. */
 const uint32_t format_version = 6;
