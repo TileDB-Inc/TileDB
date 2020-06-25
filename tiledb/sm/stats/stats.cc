@@ -503,7 +503,7 @@ std::string Stats::dump_read() const {
       write(&ss, "- Number of result cells: ", read_result_num);
       write_ratio(
           &ss,
-          "- Precentage of usefull cells read: ",
+          "- Percentage of useful cells read: ",
           read_result_num,
           read_cell_num);
       ss << "\n";
