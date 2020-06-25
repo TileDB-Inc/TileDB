@@ -3307,11 +3307,12 @@ TILEDB_EXPORT int32_t tiledb_query_get_buffer_var(
  *      This means that cells are stored or retrieved in the array global
  *      cell order.
  *    - `TILEDB_UNORDERED`:
- *      This is applicable only to writes for sparse arrays, or for sparse
- *      writes to dense arrays. It specifies that the cells are unordered and,
- *      hence, TileDB must sort the cells in the global cell order prior to
- *      writing.
- * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ *      This is applicable only to reads and writes for sparse arrays, or for
+ *      sparse writes to dense arrays. For writes, it specifies that the cells
+ *      are unordered and, hence, TileDB must sort the cells in the global cell
+ *      order prior to writing. For reads, TileDB will return the cells without
+ *      any particular order, which will often lead to better performance.
+ * * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
 TILEDB_EXPORT int32_t tiledb_query_set_layout(
     tiledb_ctx_t* ctx, tiledb_query_t* query, tiledb_layout_t layout);
