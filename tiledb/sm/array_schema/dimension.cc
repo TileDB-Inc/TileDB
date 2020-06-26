@@ -37,6 +37,7 @@
 #include "tiledb/sm/enums/filter_type.h"
 #include "tiledb/sm/misc/utils.h"
 
+#include <bitset>
 #include <cassert>
 #include <iostream>
 
@@ -878,10 +879,76 @@ void Dimension::splitting_value(
   assert(unsplittable != nullptr);
 
   auto r_t = (const T*)r.data();
-  T sp = r_t[0] + (r_t[1] - r_t[0]) / 2;
+
+  // Floating-point template specializations for this routine exist below.
+  // All remaining template types are handled in this implementation,
+  // where all template types are integers. We will calculate the split value
+  // with the following expression: `r_t[0] + (r_t[1] - r_t[0]) / 2`. To
+  // prevent overflow in the `(r_t[1] - r_t[0]) / 2` sub-expression, we will
+  // perform this entire sub-expression with a 65-bit bitset.
+  std::bitset<65> r_t0(r_t[0]);
+  std::bitset<65> r_t1(r_t[1]);
+
+  // Subtract `r_t0` from `r_t1`.
+  while (r_t0 != 0) {
+    const std::bitset<65> carry = (~r_t1) & r_t0;
+    r_t1 = r_t1 ^ r_t0;
+    r_t0 = carry << 1;
+  }
+
+  // Divide by 2.
+  r_t1 = r_t1 >> 1;
+
+  // Truncate the overflow bit. This will only occur if `T` is
+  // a signed integer and the result of `(r_t[1] - r_t[0]) / 2`
+  // is negative. This preserves signed representation when
+  // converting back to 64-bits in the following invocation
+  // of `std::bitset<65>::to_ulong`.
+  r_t1 = r_t1 & std::bitset<65>(UINT64_MAX);
+
+  // Cast the intermediate result back to type `T` to calculate
+  // the split value.
+  const T sp = r_t[0] + static_cast<T>(r_t1.to_ullong());
+
   v->resize(sizeof(T));
   std::memcpy(&(*v)[0], &sp, sizeof(T));
   *unsplittable = !std::memcmp(&sp, &r_t[1], sizeof(T));
+}
+
+template <>
+void Dimension::splitting_value<float>(
+    const Range& r, ByteVecValue* v, bool* unsplittable) {
+  assert(!r.empty());
+  assert(v != nullptr);
+  assert(unsplittable != nullptr);
+
+  auto r_t = (const float*)r.data();
+
+  // Cast `r_t` elements to `double` to prevent overflow before
+  // dividing by 2.
+  const float sp = r_t[0] + ((double)r_t[1] - (double)r_t[0]) / 2;
+
+  v->resize(sizeof(float));
+  std::memcpy(&(*v)[0], &sp, sizeof(float));
+  *unsplittable = !std::memcmp(&sp, &r_t[1], sizeof(float));
+}
+
+template <>
+void Dimension::splitting_value<double>(
+    const Range& r, ByteVecValue* v, bool* unsplittable) {
+  assert(!r.empty());
+  assert(v != nullptr);
+  assert(unsplittable != nullptr);
+
+  auto r_t = (const double*)r.data();
+
+  // Cast `r_t` elements to `long double` to prevent overflow
+  // before dividing by 2.
+  const double sp = r_t[0] + ((long double)r_t[1] - (long double)r_t[0]) / 2;
+
+  v->resize(sizeof(double));
+  std::memcpy(&(*v)[0], &sp, sizeof(double));
+  *unsplittable = !std::memcmp(&sp, &r_t[1], sizeof(double));
 }
 
 void Dimension::splitting_value(
