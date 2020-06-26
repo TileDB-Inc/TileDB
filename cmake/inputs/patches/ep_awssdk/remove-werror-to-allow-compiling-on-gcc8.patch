@@ -1,0 +1,25 @@
+From 962dd7e49511f0ad95704c142b87fdea998ad016 Mon Sep 17 00:00:00 2001
+From: Seth Shelnutt <seth@tiledb.io>
+Date: Fri, 26 Jun 2020 08:07:58 -0400
+Subject: [PATCH] Remove -Werror to allow compiling on gcc8+
+
+---
+ cmake/compiler_settings.cmake | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/cmake/compiler_settings.cmake b/cmake/compiler_settings.cmake
+index 1aca987ce9..ca28352903 100644
+--- a/cmake/compiler_settings.cmake
++++ b/cmake/compiler_settings.cmake
+@@ -49,7 +49,7 @@ macro(set_gcc_flags)
+ endmacro()
+ 
+ macro(set_gcc_warnings)
+-    list(APPEND AWS_COMPILER_WARNINGS "-Wall" "-Werror" "-pedantic" "-Wextra")
++    list(APPEND AWS_COMPILER_WARNINGS "-Wall" "-pedantic" "-Wextra")
+     if(COMPILER_CLANG)
+         if(PLATFORM_ANDROID)
+             # when using clang with libc and API lower than 21 we need to include Android support headers and ignore the gnu-include-next warning.
+-- 
+2.27.0
+

@@ -80,6 +80,8 @@ if (NOT AWSSDK_FOUND)
         -DCUSTOM_MEMORY_MANAGEMENT=0
         -DCMAKE_PREFIX_PATH=${TILEDB_EP_INSTALL_PREFIX}
         -DCMAKE_INSTALL_PREFIX=${TILEDB_EP_INSTALL_PREFIX}
+      PATCH_COMMAND
+        patch -N -p1 < ${TILEDB_CMAKE_INPUTS_DIR}/patches/ep_awssdk/remove-werror-to-allow-compiling-on-gcc8.patch
       UPDATE_COMMAND ""
       LOG_DOWNLOAD TRUE
       LOG_CONFIGURE TRUE
