@@ -878,7 +878,21 @@ void Dimension::splitting_value(
   assert(unsplittable != nullptr);
 
   auto r_t = (const T*)r.data();
-  T sp = r_t[0] + (r_t[1] - r_t[0]) / 2;
+
+  // The split value is calculated as `r_t[0] + (r_t[1] - r_t[0]) / 2`.
+  // To prevent overflow in the `(r_t[1] - r_t[0])` expression, we must
+  // divide both `r_t[1]` and `r_t[0]` before subtracting them. We now
+  // must account for the scenario where `r_t[1]` is odd and `r_t[0]`
+  // is even. In this scenario, our new calculation will positively
+  // off-by-one. We must subtract one to correct the calculation.
+  //
+  // Note that we must explicitly cast to `char` because the modulo
+  // operator does not exist when `T` is a floating-point number.
+  T sp = r_t[0] + ((r_t[1] / 2) - (r_t[0] / 2));
+  if (static_cast<char>(r_t[1] - r_t[0]) % 2 == 1) {
+    if (static_cast<char>(r_t[0]) % 2 == 1)
+      --sp;
+  }
   v->resize(sizeof(T));
   std::memcpy(&(*v)[0], &sp, sizeof(T));
   *unsplittable = !std::memcmp(&sp, &r_t[1], sizeof(T));
