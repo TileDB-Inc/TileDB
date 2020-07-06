@@ -13,6 +13,7 @@
 ## Improvements
 
 * Source built curl only need HTTP support [#1712](https://github.com/TileDB-Inc/TileDB/pull/1712)
+* Improve windows build support of GCS [#1711](https://github.com/TileDB-Inc/TileDB/pull/1711)
 
 ## Deprecations
 

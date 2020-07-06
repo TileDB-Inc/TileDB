@@ -66,9 +66,7 @@ if (NOT GCSSDK_FOUND)
       list(APPEND DEPENDS ep_zlib)
     endif()
 
-    # Fetch the number of CPUs on the this sytem.
-    include(ProcessorCount)
-    processorcount(NCPU)
+    set_external_project_build_parallel_level(PARALLEL)
 
     ExternalProject_Add(ep_gcssdk
       PREFIX "externals"
@@ -99,7 +97,7 @@ if (NOT GCSSDK_FOUND)
         -DBUILD_TESTING=OFF
         # Google uses their own variable instead of CMAKE_INSTALL_PREFIX
         -DGOOGLE_CLOUD_CPP_EXTERNAL_PREFIX=${TILEDB_EP_INSTALL_PREFIX}
-      BUILD_COMMAND ${CMAKE_COMMAND} --build cmake-out -- -j${NCPU}
+      BUILD_COMMAND ${CMAKE_COMMAND} --build cmake-out ${PARALLEL}
       # There is no install command, the build process installs the libraries
       INSTALL_COMMAND ""
       LOG_DOWNLOAD TRUE

@@ -14,8 +14,12 @@ steps:
     # currently we do not run S3 tests on Windows because tests time out (minio+azure slow?)
     #& "$env:BUILD_SOURCESDIRECTORY\scripts\install-minio.ps1"
 
-    if ($env:TILEDB_S3 -eq "ON") {
+    if ($env:TILEDB_S3 -eq "ON" -and $env:TILEDB_GCS -eq "ON" ) {
+      & "$env:BUILD_SOURCESDIRECTORY\bootstrap.ps1" -EnableS3 -EnableGCS -EnableVerbose -EnableStaticTileDB -EnableBuildDeps
+    } elseif ($env:TILEDB_S3 -eq "ON") {
       & "$env:BUILD_SOURCESDIRECTORY\bootstrap.ps1" -EnableS3 -EnableVerbose -EnableStaticTileDB -EnableBuildDeps
+    } elseif ($env:TILEDB_GCS -eq "ON") {
+      & "$env:BUILD_SOURCESDIRECTORY\bootstrap.ps1" -EnableGCS -EnableVerbose -EnableStaticTileDB -EnableBuildDeps
     } else {
       & "$env:BUILD_SOURCESDIRECTORY\bootstrap.ps1" -EnableVerbose -EnableStaticTileDB -EnableBuildDeps
     }

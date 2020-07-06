@@ -19,8 +19,12 @@ steps:
       $host.SetShouldExit(1)
     }
 
-    if ($env:TILEDB_S3 -eq "ON") {
+    if ($env:TILEDB_S3 -eq "ON" -and $env:TILEDB_GCS -eq "ON" ) {
+      & "$env:BUILD_SOURCESDIRECTORY\bootstrap.ps1" -EnableS3 -EnableGCS -EnableVerbose
+    } elseif ($env:TILEDB_S3 -eq "ON") {
       & "$env:BUILD_SOURCESDIRECTORY\bootstrap.ps1" -EnableS3 -EnableVerbose
+    } elseif ($env:TILEDB_GCS -eq "ON") {
+      & "$env:BUILD_SOURCESDIRECTORY\bootstrap.ps1" -EnableGCS -EnableVerbose
     } else {
       & "$env:BUILD_SOURCESDIRECTORY\bootstrap.ps1" -EnableVerbose
     }

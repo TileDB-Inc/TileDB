@@ -56,15 +56,14 @@ index 06eee385c..af52727a6 100644
      crc32c-project
      googleapis-project
      googletest-project
-@@ -76,6 +74,14 @@ ExternalProject_Add(
+@@ -76,6 +74,13 @@ ExternalProject_Add(
                 -DCMAKE_PREFIX_PATH=${GOOGLE_CLOUD_CPP_PREFIX_PATH}
                 -DCMAKE_INSTALL_RPATH=${GOOGLE_CLOUD_CPP_INSTALL_RPATH}
                 -DCMAKE_INSTALL_PREFIX=<INSTALL_DIR>
 +               -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
 +               -DBUILD_SHARED_LIBS=${BUILD_SHARED_LIBS}
 +               -DBUILD_SAMPLES=${BUILD_SAMPLES}
-+               -DCMAKE_CXX_FLAGS=-fPIC
-+               -DCMAKE_C_FLAGS=-fPIC
++               -DCMAKE_POSITION_INDEPENDENT_CODE=ON
 +               -DOPENSSL_ROOT_DIR=${OPENSSL_ROOT_DIR}
 +               -DGOOGLE_CLOUD_CPP_ENABLE_MACOS_OPENSSL_CHECK=OFF
 +               -DBUILD_TESTING=${BUILD_TESTING}
@@ -75,12 +74,11 @@ diff --git a/super/external/c-ares.cmake b/super/external/c-ares.cmake
 index 5b898e3f7..bce363115 100644
 --- a/super/external/c-ares.cmake
 +++ b/super/external/c-ares.cmake
-@@ -40,6 +40,8 @@ if (NOT TARGET c-ares-project)
+@@ -40,6 +40,7 @@ if (NOT TARGET c-ares-project)
                     -DCMAKE_PREFIX_PATH=${GOOGLE_CLOUD_CPP_PREFIX_PATH}
                     -DCMAKE_INSTALL_RPATH=${GOOGLE_CLOUD_CPP_INSTALL_RPATH}
                     -DCMAKE_INSTALL_PREFIX=<INSTALL_DIR>
-+                   -DCMAKE_CXX_FLAGS=-fPIC
-+                   -DCMAKE_C_FLAGS=-fPIC
++                   -DCMAKE_POSITION_INDEPENDENT_CODE=ON
          BUILD_COMMAND ${CMAKE_COMMAND} --build <BINARY_DIR> ${PARALLEL}
          LOG_DOWNLOAD ON
          LOG_CONFIGURE ON
@@ -88,12 +86,11 @@ diff --git a/super/external/crc32c.cmake b/super/external/crc32c.cmake
 index ed35de175..1788581ec 100644
 --- a/super/external/crc32c.cmake
 +++ b/super/external/crc32c.cmake
-@@ -43,6 +43,8 @@ if (NOT TARGET crc32c-project)
+@@ -43,6 +43,7 @@ if (NOT TARGET crc32c-project)
                     -DCRC32C_BUILD_TESTS=OFF
                     -DCRC32C_BUILD_BENCHMARKS=OFF
                     -DCRC32C_USE_GLOG=OFF
-+                   -DCMAKE_CXX_FLAGS=-fPIC
-+                   -DCMAKE_C_FLAGS=-fPIC
++                   -DCMAKE_POSITION_INDEPENDENT_CODE=ON
          BUILD_COMMAND ${CMAKE_COMMAND} --build <BINARY_DIR> ${PARALLEL}
          LOG_DOWNLOAD ON
          LOG_CONFIGURE ON
@@ -170,12 +167,11 @@ diff --git a/super/external/googleapis.cmake b/super/external/googleapis.cmake
 index 9d0bba07a..43426f3a2 100644
 --- a/super/external/googleapis.cmake
 +++ b/super/external/googleapis.cmake
-@@ -49,6 +49,9 @@ if (NOT TARGET googleapis-project)
+@@ -49,6 +49,8 @@ if (NOT TARGET googleapis-project)
              -DCMAKE_INSTALL_PREFIX=<INSTALL_DIR>
              -H<SOURCE_DIR>
              -B<BINARY_DIR>
-+            -DCMAKE_CXX_FLAGS=-fPIC
-+            -DCMAKE_C_FLAGS=-fPIC
++            -DCMAKE_POSITION_INDEPENDENT_CODE=ON
 +            -DOPENSSL_ROOT_DIR=${OPENSSL_ROOT_DIR}
          BUILD_COMMAND ${CMAKE_COMMAND} --build <BINARY_DIR> ${PARALLEL}
          LOG_DOWNLOAD ON
@@ -184,12 +180,11 @@ diff --git a/super/external/googletest.cmake b/super/external/googletest.cmake
 index a4e5220e0..f0d38b32d 100644
 --- a/super/external/googletest.cmake
 +++ b/super/external/googletest.cmake
-@@ -40,6 +40,8 @@ if (NOT TARGET googletest-project)
+@@ -40,6 +40,7 @@ if (NOT TARGET googletest-project)
                     -DCMAKE_PREFIX_PATH=${GOOGLE_CLOUD_CPP_PREFIX_PATH}
                     -DCMAKE_INSTALL_RPATH=${GOOGLE_CLOUD_CPP_INSTALL_RPATH}
                     -DCMAKE_INSTALL_PREFIX=<INSTALL_DIR>
-+                   -DCMAKE_CXX_FLAGS=-fPIC
-+                   -DCMAKE_C_FLAGS=-fPIC
++                   -DCMAKE_POSITION_INDEPENDENT_CODE=ON
          BUILD_COMMAND ${CMAKE_COMMAND} --build <BINARY_DIR> ${PARALLEL}
          LOG_DOWNLOAD ON
          LOG_CONFIGURE ON
@@ -214,12 +209,11 @@ index 91f70eaa9..91dd98595 100644
          EXCLUDE_FROM_ALL ON
          PREFIX "${CMAKE_BINARY_DIR}/external/grpc"
          INSTALL_DIR "${GOOGLE_CLOUD_CPP_EXTERNAL_PREFIX}"
-@@ -52,6 +51,9 @@ if (NOT TARGET grpc-project)
+@@ -52,6 +51,8 @@ if (NOT TARGET grpc-project)
                     -DgRPC_PROTOBUF_PROVIDER=package
                     -DgRPC_SSL_PROVIDER=package
                     -DgRPC_ZLIB_PROVIDER=package
-+                   -DCMAKE_CXX_FLAGS=-fPIC
-+                   -DCMAKE_C_FLAGS=-fPIC
++                   -DCMAKE_POSITION_INDEPENDENT_CODE=ON
 +                   -DOPENSSL_ROOT_DIR=${OPENSSL_ROOT_DIR}
          BUILD_COMMAND ${CMAKE_COMMAND} --build <BINARY_DIR> ${PARALLEL}
          LOG_DOWNLOAD ON
@@ -244,12 +238,11 @@ index 7cc0aae1e..523712b1c 100644
          EXCLUDE_FROM_ALL ON
          PREFIX "${CMAKE_BINARY_DIR}/external/protobuf"
          INSTALL_DIR "${GOOGLE_CLOUD_CPP_EXTERNAL_PREFIX}"
-@@ -51,6 +49,8 @@ if (NOT TARGET protobuf-project)
+@@ -51,6 +49,7 @@ if (NOT TARGET protobuf-project)
              -Dprotobuf_DEBUG_POSTFIX=
              -H<SOURCE_DIR>/cmake
              -B<BINARY_DIR>
-+            -DCMAKE_CXX_FLAGS=-fPIC
-+            -DCMAKE_C_FLAGS=-fPIC
++            -DCMAKE_POSITION_INDEPENDENT_CODE=ON
          BUILD_COMMAND ${CMAKE_COMMAND} --build <BINARY_DIR> ${PARALLEL}
          LOG_DOWNLOAD ON
          LOG_CONFIGURE ON
