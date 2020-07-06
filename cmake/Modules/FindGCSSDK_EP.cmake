@@ -97,6 +97,7 @@ if (NOT GCSSDK_FOUND)
         -DBUILD_TESTING=OFF
         # Google uses their own variable instead of CMAKE_INSTALL_PREFIX
         -DGOOGLE_CLOUD_CPP_EXTERNAL_PREFIX=${TILEDB_EP_INSTALL_PREFIX}
+	-DCMAKE_POSITION_INDEPENDENT_CODE=ON
       BUILD_COMMAND ${CMAKE_COMMAND} --build cmake-out ${PARALLEL}
       # There is no install command, the build process installs the libraries
       INSTALL_COMMAND ""

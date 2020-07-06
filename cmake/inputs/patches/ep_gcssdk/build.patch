@@ -1,21 +1,22 @@
-From c1096826e969c745bf76c35ebc5f25cadd21b8fe Mon Sep 17 00:00:00 2001
+From 7302ecce9b94a034108f90f8b0688e36b9a43856 Mon Sep 17 00:00:00 2001
 From: Seth Shelnutt <Shelnutt2@gmail.com>
 Date: Sun, 7 Jun 2020 13:19:31 -0400
 Subject: [PATCH] GCS Build Patch for TileDB
 
 ---
  CMakeLists.txt                  |  5 +++
- super/CMakeLists.txt            | 10 ++++--
- super/external/c-ares.cmake     |  2 ++
- super/external/crc32c.cmake     |  2 ++
+ super/CMakeLists.txt            | 12 +++++--
+ super/external/abseil.cmake     |  4 ++-
+ super/external/c-ares.cmake     |  4 ++-
+ super/external/crc32c.cmake     |  4 ++-
  super/external/curl.cmake       | 63 ---------------------------------
- super/external/googleapis.cmake |  3 ++
- super/external/googletest.cmake |  2 ++
- super/external/grpc.cmake       |  6 ++--
- super/external/protobuf.cmake   |  4 +--
+ super/external/googleapis.cmake |  5 ++-
+ super/external/googletest.cmake |  4 ++-
+ super/external/grpc.cmake       |  8 +++--
+ super/external/protobuf.cmake   |  6 ++--
  super/external/ssl.cmake        | 26 --------------
  super/external/zlib.cmake       | 46 ------------------------
- 11 files changed, 28 insertions(+), 141 deletions(-)
+ 12 files changed, 38 insertions(+), 149 deletions(-)
  delete mode 100644 super/external/curl.cmake
  delete mode 100644 super/external/ssl.cmake
  delete mode 100644 super/external/zlib.cmake
@@ -37,7 +38,7 @@ index b542ddfa3..568d5202b 100644
      # This is an easy mistake to make, and the error messages are very
      # confusing. Help our users by giving them some guidance.
 diff --git a/super/CMakeLists.txt b/super/CMakeLists.txt
-index 06eee385c..af52727a6 100644
+index 06eee385c..d68ae60ec 100644
 --- a/super/CMakeLists.txt
 +++ b/super/CMakeLists.txt
 @@ -38,7 +38,6 @@ if ("${GOOGLE_CLOUD_CPP_ENABLE_CCACHE}")
@@ -70,11 +71,41 @@ index 06eee385c..af52727a6 100644
      BUILD_COMMAND ${CMAKE_COMMAND} --build <BINARY_DIR> ${PARALLEL}
      TEST_COMMAND
          ${CMAKE_CTEST_COMMAND}
+@@ -88,7 +93,8 @@ ExternalProject_Add(
+     LOG_DOWNLOAD OFF
+     LOG_CONFIGURE OFF
+     LOG_BUILD OFF
+-    LOG_INSTALL OFF)
++    LOG_INSTALL OFF
++    LOG_OUTPUT_ON_FAILURE ON)
+ 
+ # This makes it easy to compile the dependencies before the code.
+ add_custom_target(project-dependencies)
+diff --git a/super/external/abseil.cmake b/super/external/abseil.cmake
+index 10321e5e4..d49ee62eb 100644
+--- a/super/external/abseil.cmake
++++ b/super/external/abseil.cmake
+@@ -45,6 +45,7 @@ if (NOT TARGET abseil-cpp-project)
+                    -DCMAKE_PREFIX_PATH=${GOOGLE_CLOUD_CPP_PREFIX_PATH}
+                    -DCMAKE_INSTALL_RPATH=${GOOGLE_CLOUD_CPP_INSTALL_RPATH}
+                    -DCMAKE_INSTALL_PREFIX=<INSTALL_DIR>
++                   -DCMAKE_POSITION_INDEPENDENT_CODE=ON
+         BUILD_COMMAND
+             ${CMAKE_COMMAND}
+             --build
+@@ -57,5 +58,6 @@ if (NOT TARGET abseil-cpp-project)
+         LOG_DOWNLOAD OFF
+         LOG_CONFIGURE OFF
+         LOG_BUILD ON
+-        LOG_INSTALL ON)
++        LOG_INSTALL ON
++	LOG_OUTPUT_ON_FAILURE ON)
+ endif ()
 diff --git a/super/external/c-ares.cmake b/super/external/c-ares.cmake
-index 5b898e3f7..bce363115 100644
+index 5b898e3f7..b9ceb3e17 100644
 --- a/super/external/c-ares.cmake
 +++ b/super/external/c-ares.cmake
-@@ -40,6 +40,7 @@ if (NOT TARGET c-ares-project)
+@@ -40,9 +40,11 @@ if (NOT TARGET c-ares-project)
                     -DCMAKE_PREFIX_PATH=${GOOGLE_CLOUD_CPP_PREFIX_PATH}
                     -DCMAKE_INSTALL_RPATH=${GOOGLE_CLOUD_CPP_INSTALL_RPATH}
                     -DCMAKE_INSTALL_PREFIX=<INSTALL_DIR>
@@ -82,11 +113,16 @@ index 5b898e3f7..bce363115 100644
          BUILD_COMMAND ${CMAKE_COMMAND} --build <BINARY_DIR> ${PARALLEL}
          LOG_DOWNLOAD ON
          LOG_CONFIGURE ON
+         LOG_BUILD ON
+-        LOG_INSTALL ON)
++        LOG_INSTALL ON
++	LOG_OUTPUT_ON_FAILURE ON)
+ endif ()
 diff --git a/super/external/crc32c.cmake b/super/external/crc32c.cmake
-index ed35de175..1788581ec 100644
+index ed35de175..9820bf945 100644
 --- a/super/external/crc32c.cmake
 +++ b/super/external/crc32c.cmake
-@@ -43,6 +43,7 @@ if (NOT TARGET crc32c-project)
+@@ -43,9 +43,11 @@ if (NOT TARGET crc32c-project)
                     -DCRC32C_BUILD_TESTS=OFF
                     -DCRC32C_BUILD_BENCHMARKS=OFF
                     -DCRC32C_USE_GLOG=OFF
@@ -94,6 +130,11 @@ index ed35de175..1788581ec 100644
          BUILD_COMMAND ${CMAKE_COMMAND} --build <BINARY_DIR> ${PARALLEL}
          LOG_DOWNLOAD ON
          LOG_CONFIGURE ON
+         LOG_BUILD ON
+-        LOG_INSTALL ON)
++        LOG_INSTALL ON
++	LOG_OUTPUT_ON_FAILURE ON)
+ endif ()
 diff --git a/super/external/curl.cmake b/super/external/curl.cmake
 deleted file mode 100644
 index 1a695e098..000000000
@@ -164,10 +205,10 @@ index 1a695e098..000000000
 -        LOG_INSTALL ON)
 -endif ()
 diff --git a/super/external/googleapis.cmake b/super/external/googleapis.cmake
-index 9d0bba07a..43426f3a2 100644
+index 9d0bba07a..94bbfb8e5 100644
 --- a/super/external/googleapis.cmake
 +++ b/super/external/googleapis.cmake
-@@ -49,6 +49,8 @@ if (NOT TARGET googleapis-project)
+@@ -49,9 +49,12 @@ if (NOT TARGET googleapis-project)
              -DCMAKE_INSTALL_PREFIX=<INSTALL_DIR>
              -H<SOURCE_DIR>
              -B<BINARY_DIR>
@@ -176,11 +217,16 @@ index 9d0bba07a..43426f3a2 100644
          BUILD_COMMAND ${CMAKE_COMMAND} --build <BINARY_DIR> ${PARALLEL}
          LOG_DOWNLOAD ON
          LOG_CONFIGURE ON
+         LOG_BUILD ON
+-        LOG_INSTALL ON)
++        LOG_INSTALL ON
++	LOG_OUTPUT_ON_FAILURE ON)
+ endif ()
 diff --git a/super/external/googletest.cmake b/super/external/googletest.cmake
-index a4e5220e0..f0d38b32d 100644
+index a4e5220e0..026a24d23 100644
 --- a/super/external/googletest.cmake
 +++ b/super/external/googletest.cmake
-@@ -40,6 +40,7 @@ if (NOT TARGET googletest-project)
+@@ -40,9 +40,11 @@ if (NOT TARGET googletest-project)
                     -DCMAKE_PREFIX_PATH=${GOOGLE_CLOUD_CPP_PREFIX_PATH}
                     -DCMAKE_INSTALL_RPATH=${GOOGLE_CLOUD_CPP_INSTALL_RPATH}
                     -DCMAKE_INSTALL_PREFIX=<INSTALL_DIR>
@@ -188,8 +234,13 @@ index a4e5220e0..f0d38b32d 100644
          BUILD_COMMAND ${CMAKE_COMMAND} --build <BINARY_DIR> ${PARALLEL}
          LOG_DOWNLOAD ON
          LOG_CONFIGURE ON
+         LOG_BUILD ON
+-        LOG_INSTALL ON)
++        LOG_INSTALL ON
++	LOG_OUTPUT_ON_FAILURE ON)
+ endif ()
 diff --git a/super/external/grpc.cmake b/super/external/grpc.cmake
-index 91f70eaa9..91dd98595 100644
+index 91f70eaa9..b21819da2 100644
 --- a/super/external/grpc.cmake
 +++ b/super/external/grpc.cmake
 @@ -17,7 +17,6 @@
@@ -209,7 +260,7 @@ index 91f70eaa9..91dd98595 100644
          EXCLUDE_FROM_ALL ON
          PREFIX "${CMAKE_BINARY_DIR}/external/grpc"
          INSTALL_DIR "${GOOGLE_CLOUD_CPP_EXTERNAL_PREFIX}"
-@@ -52,6 +51,8 @@ if (NOT TARGET grpc-project)
+@@ -52,9 +51,12 @@ if (NOT TARGET grpc-project)
                     -DgRPC_PROTOBUF_PROVIDER=package
                     -DgRPC_SSL_PROVIDER=package
                     -DgRPC_ZLIB_PROVIDER=package
@@ -218,8 +269,13 @@ index 91f70eaa9..91dd98595 100644
          BUILD_COMMAND ${CMAKE_COMMAND} --build <BINARY_DIR> ${PARALLEL}
          LOG_DOWNLOAD ON
          LOG_CONFIGURE ON
+         LOG_BUILD ON
+-        LOG_INSTALL ON)
++        LOG_INSTALL ON
++	LOG_OUTPUT_ON_FAILURE ON)
+ endif ()
 diff --git a/super/external/protobuf.cmake b/super/external/protobuf.cmake
-index 7cc0aae1e..523712b1c 100644
+index 7cc0aae1e..157562c58 100644
 --- a/super/external/protobuf.cmake
 +++ b/super/external/protobuf.cmake
 @@ -17,7 +17,6 @@
@@ -238,7 +294,7 @@ index 7cc0aae1e..523712b1c 100644
          EXCLUDE_FROM_ALL ON
          PREFIX "${CMAKE_BINARY_DIR}/external/protobuf"
          INSTALL_DIR "${GOOGLE_CLOUD_CPP_EXTERNAL_PREFIX}"
-@@ -51,6 +49,7 @@ if (NOT TARGET protobuf-project)
+@@ -51,9 +49,11 @@ if (NOT TARGET protobuf-project)
              -Dprotobuf_DEBUG_POSTFIX=
              -H<SOURCE_DIR>/cmake
              -B<BINARY_DIR>
@@ -246,6 +302,11 @@ index 7cc0aae1e..523712b1c 100644
          BUILD_COMMAND ${CMAKE_COMMAND} --build <BINARY_DIR> ${PARALLEL}
          LOG_DOWNLOAD ON
          LOG_CONFIGURE ON
+         LOG_BUILD ON
+-        LOG_INSTALL ON)
++        LOG_INSTALL ON
++	LOG_OUTPUT_ON_FAILURE ON)
+ endif ()
 diff --git a/super/external/ssl.cmake b/super/external/ssl.cmake
 deleted file mode 100644
 index 251eed2da..000000000
@@ -331,5 +392,5 @@ index f9df5e4cc..000000000
 -        LOG_INSTALL ON)
 -endif ()
 -- 
-2.26.2
+2.27.0
 
