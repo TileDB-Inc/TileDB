@@ -83,7 +83,8 @@ if (NOT CURL_FOUND AND TILEDB_SUPERBUILD)
         -DCURL_DISABLE_LDAP=ON
         -DCURL_DISABLE_LDAPS=ON
         -DCURL_STATICLIB=ON
-        -DCMAKE_POSITION_INDEPENDENT_CODE:BOOL=true
+	-DCMAKE_POSITION_INDEPENDENT_CODE=ON
+        -DHTTP_ONLY=ON
         "${WITH_SSL}"
         "-DCMAKE_C_FLAGS=${CFLAGS_DEF}"
       UPDATE_COMMAND ""
@@ -129,8 +130,22 @@ if (NOT CURL_FOUND AND TILEDB_SUPERBUILD)
           --prefix=${TILEDB_EP_INSTALL_PREFIX}
           --enable-optimize
           --enable-shared=no
-          --disable-ldap
           --with-pic=yes
+          --disable-dict
+          --disable-file
+          --disable-ftp
+          --disable-gopher
+          --disable-imap
+          --disable-ldap
+          --disable-pop3
+          --disable-rtmp
+          --disable-rtsp
+          --disable-scp
+          --disable-sftp
+          --disable-smb
+          --disable-smtp
+          --disable-telnet
+          --disable-tftp
           ${WITH_SSL}
           ${WITH_ZLIB}
       BUILD_IN_SOURCE TRUE
