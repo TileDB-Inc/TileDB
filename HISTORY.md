@@ -1,5 +1,9 @@
 # TileDB v2.0.6 Release Notes
 
+## Improvements
+
+* Add new config option `vfs.file.posix_permissions` [#1710](https://github.com/TileDB-Inc/TileDB/pull/1710)
+
 # TileDB v2.0.5 Release Notes
 
 ## Improvements
