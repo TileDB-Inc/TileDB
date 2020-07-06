@@ -12,6 +12,8 @@
 
 ## Improvements
 
+* Source built curl only need HTTP support [#1712](https://github.com/TileDB-Inc/TileDB/pull/1712)
+
 ## Deprecations
 
 ## Bug fixes
