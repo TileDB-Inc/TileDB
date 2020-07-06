@@ -242,6 +242,7 @@ void check_save_to_file() {
   ss << "vfs.file.enable_filelocks true\n";
   ss << "vfs.file.max_parallel_ops " << std::thread::hardware_concurrency()
      << "\n";
+  ss << "vfs.file.posix_permissions 755\n";
   ss << "vfs.gcs.max_parallel_ops " << std::thread::hardware_concurrency()
      << "\n";
   ss << "vfs.gcs.multi_part_size 5242880\n";
@@ -465,6 +466,7 @@ TEST_CASE("C API: Test config iter", "[capi], [config]") {
       std::to_string(std::thread::hardware_concurrency());
   all_param_values["vfs.azure.use_block_list_upload"] = "true";
   all_param_values["vfs.azure.use_https"] = "true";
+  all_param_values["vfs.file.posix_permissions"] = "755";
   all_param_values["vfs.file.max_parallel_ops"] =
       std::to_string(std::thread::hardware_concurrency());
   all_param_values["vfs.file.enable_filelocks"] = "true";
@@ -515,6 +517,7 @@ TEST_CASE("C API: Test config iter", "[capi], [config]") {
       std::to_string(std::thread::hardware_concurrency());
   vfs_param_values["azure.use_block_list_upload"] = "true";
   vfs_param_values["azure.use_https"] = "true";
+  vfs_param_values["file.posix_permissions"] = "755";
   vfs_param_values["file.max_parallel_ops"] =
       std::to_string(std::thread::hardware_concurrency());
   vfs_param_values["file.enable_filelocks"] = "true";

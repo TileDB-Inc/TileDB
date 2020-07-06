@@ -85,6 +85,7 @@ const std::string Config::VFS_NUM_THREADS =
 const std::string Config::VFS_MIN_PARALLEL_SIZE = "10485760";
 const std::string Config::VFS_MIN_BATCH_GAP = "512000";
 const std::string Config::VFS_MIN_BATCH_SIZE = "20971520";
+const std::string Config::VFS_FILE_POSIX_PERMISSIONS = "755";
 const std::string Config::VFS_FILE_MAX_PARALLEL_OPS = Config::VFS_NUM_THREADS;
 const std::string Config::VFS_FILE_ENABLE_FILELOCKS = "true";
 const std::string Config::VFS_AZURE_STORAGE_ACCOUNT_NAME = "";
@@ -184,6 +185,7 @@ Config::Config() {
   param_values_["vfs.min_parallel_size"] = VFS_MIN_PARALLEL_SIZE;
   param_values_["vfs.min_batch_gap"] = VFS_MIN_BATCH_GAP;
   param_values_["vfs.min_batch_size"] = VFS_MIN_BATCH_SIZE;
+  param_values_["vfs.file.posix_permissions"] = VFS_FILE_POSIX_PERMISSIONS;
   param_values_["vfs.file.max_parallel_ops"] = VFS_FILE_MAX_PARALLEL_OPS;
   param_values_["vfs.file.enable_filelocks"] = VFS_FILE_ENABLE_FILELOCKS;
   param_values_["vfs.azure.storage_account_name"] =
@@ -414,6 +416,8 @@ Status Config::unset(const std::string& param) {
     param_values_["vfs.min_batch_gap"] = VFS_MIN_BATCH_GAP;
   } else if (param == "vfs.min_batch_size") {
     param_values_["vfs.min_batch_size"] = VFS_MIN_BATCH_SIZE;
+  } else if (param == "vfs.file.posix_permissions") {
+    param_values_["vfs.file.posix_permissions"] = VFS_FILE_POSIX_PERMISSIONS;
   } else if (param == "vfs.file.max_parallel_ops") {
     param_values_["vfs.file.max_parallel_ops"] = VFS_FILE_MAX_PARALLEL_OPS;
   } else if (param == "vfs.file.enable_filelocks") {
@@ -578,6 +582,8 @@ Status Config::sanity_check(
     RETURN_NOT_OK(utils::parse::convert(value, &vuint64));
   } else if (param == "vfs.min_batch_size") {
     RETURN_NOT_OK(utils::parse::convert(value, &vuint64));
+  } else if (param == "vfs.file.posix_permissions") {
+    RETURN_NOT_OK(utils::parse::convert(value, &v32));
   } else if (param == "vfs.file.max_parallel_ops") {
     RETURN_NOT_OK(utils::parse::convert(value, &vuint64));
   } else if (param == "vfs.file.enable_filelocks") {
