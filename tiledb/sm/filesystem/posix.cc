@@ -164,7 +164,11 @@ Status Posix::create_dir(const std::string& path) const {
         std::string("Cannot create directory '") + path +
         "'; Directory already exists"));
   }
-  if (mkdir(path.c_str(), S_IRWXU) != 0) {
+
+  uint32_t permissions = 0;
+  RETURN_NOT_OK(get_posix_permissions(&permissions));
+
+  if (mkdir(path.c_str(), permissions) != 0) {
     return LOG_STATUS(Status::IOError(
         std::string("Cannot create directory '") + path + "'; " +
         strerror(errno)));
@@ -173,7 +177,10 @@ Status Posix::create_dir(const std::string& path) const {
 }
 
 Status Posix::touch(const std::string& filename) const {
-  int fd = ::open(filename.c_str(), O_WRONLY | O_CREAT | O_SYNC, S_IRWXU);
+  uint32_t permissions = 0;
+  RETURN_NOT_OK(get_posix_permissions(&permissions));
+
+  int fd = ::open(filename.c_str(), O_WRONLY | O_CREAT | O_SYNC, permissions);
   if (fd == -1 || ::close(fd) != 0) {
     return LOG_STATUS(Status::IOError(
         std::string("Failed to create file '") + filename + "'; " +
@@ -427,12 +434,15 @@ Status Posix::read(
 }
 
 Status Posix::sync(const std::string& path) {
+  uint32_t permissions = 0;
+  RETURN_NOT_OK(get_posix_permissions(&permissions));
+
   // Open file
   int fd = -1;
   if (is_dir(path))  // DIRECTORY
-    fd = open(path.c_str(), O_RDONLY, S_IRWXU);
+    fd = open(path.c_str(), O_RDONLY, permissions);
   else if (is_file(path))  // FILE
-    fd = open(path.c_str(), O_WRONLY | O_APPEND | O_CREAT, S_IRWXU);
+    fd = open(path.c_str(), O_WRONLY | O_APPEND | O_CREAT, permissions);
   else
     return Status::Ok();  // If file does not exist, exit
 
@@ -473,6 +483,9 @@ Status Posix::write(
       "vfs.file.max_parallel_ops", &max_parallel_ops, &found));
   assert(found);
 
+  uint32_t permissions = 0;
+  RETURN_NOT_OK(get_posix_permissions(&permissions));
+
   // Get file offset (equal to file size)
   Status st;
   uint64_t file_offset = 0;
@@ -486,7 +499,7 @@ Status Posix::write(
   }
 
   // Open or create file.
-  int fd = open(path.c_str(), O_WRONLY | O_CREAT, S_IRWXU);
+  int fd = open(path.c_str(), O_WRONLY | O_CREAT, permissions);
   if (fd == -1) {
     return LOG_STATUS(Status::IOError(
         std::string("Cannot open file '") + path + "'; " + strerror(errno)));
@@ -563,6 +576,19 @@ Status Posix::write_at(
     return LOG_STATUS(Status::IOError(
         std::string("Cannot write to file; File writing error")));
   }
+  return Status::Ok();
+}
+
+Status Posix::get_posix_permissions(uint32_t* permissions) const {
+  // Get config params
+  bool found = false;
+  std::string posix_permissions =
+      config_.get().get("vfs.file.posix_permissions", &found);
+  assert(found);
+
+  // Permissions are passed in octal notation by the user
+  *permissions = std::strtol(posix_permissions.c_str(), NULL, 8);
+
   return Status::Ok();
 }
 
