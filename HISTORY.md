@@ -1,3 +1,5 @@
+# TileDB v2.0.6 Release Notes
+
 # TileDB v2.0.5 Release Notes
 
 ## Improvements
