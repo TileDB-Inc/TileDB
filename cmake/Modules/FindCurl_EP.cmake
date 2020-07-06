@@ -74,8 +74,8 @@ if (NOT CURL_FOUND AND TILEDB_SUPERBUILD)
     set(WITH_SSL "-DCMAKE_USE_WINSSL=ON")
     ExternalProject_Add(ep_curl
       PREFIX "externals"
-      URL "https://curl.haxx.se/download/curl-7.64.1.tar.gz"
-      URL_HASH SHA1=54ee48d81eb9f90d3efdc6cdf964bd0a23abc364
+      URL "https://curl.haxx.se/download/curl-7.71.1.tar.gz"
+      URL_HASH SHA1=9c032e134c7684f34f98afaf9974f048da893930
       CMAKE_ARGS
         -DCMAKE_INSTALL_PREFIX=${TILEDB_EP_INSTALL_PREFIX}
         -DCMAKE_BUILD_TYPE=Release
@@ -83,7 +83,7 @@ if (NOT CURL_FOUND AND TILEDB_SUPERBUILD)
         -DCURL_DISABLE_LDAP=ON
         -DCURL_DISABLE_LDAPS=ON
         -DCURL_STATICLIB=ON
-	-DCMAKE_POSITION_INDEPENDENT_CODE=ON
+        -DCMAKE_POSITION_INDEPENDENT_CODE=ON
         -DHTTP_ONLY=ON
         "${WITH_SSL}"
         "-DCMAKE_C_FLAGS=${CFLAGS_DEF}"
@@ -123,8 +123,8 @@ if (NOT CURL_FOUND AND TILEDB_SUPERBUILD)
 
     ExternalProject_Add(ep_curl
       PREFIX "externals"
-      URL "https://curl.haxx.se/download/curl-7.65.3.tar.gz"
-      URL_HASH SHA1=6468eea5e52ae0aac93f3995ec8e545ecb96f9e9
+      URL "https://curl.haxx.se/download/curl-7.71.1.tar.gz"
+      URL_HASH SHA1=9c032e134c7684f34f98afaf9974f048da893930
       CONFIGURE_COMMAND
         ${TILEDB_EP_BASE}/src/ep_curl/configure
           --prefix=${TILEDB_EP_INSTALL_PREFIX}
