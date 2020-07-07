@@ -68,16 +68,24 @@ if (NOT GCSSDK_FOUND)
 
     set_external_project_build_parallel_level(PARALLEL)
 
+    if (WIN32)
+      # needed for applying patches on windows
+      find_package(Git REQUIRED)
+      set(PATCH ${GIT_EXECUTABLE} apply -p1)
+    else()
+      set(PATCH patch -N -p1)
+    endif()
+
     ExternalProject_Add(ep_gcssdk
       PREFIX "externals"
       URL "https://github.com/googleapis/google-cloud-cpp/archive/v1.15.0.zip"
       URL_HASH SHA1=afe5d71f6e49d30ac59b82551a1ba809e2ebc867
       BUILD_IN_SOURCE 1
       PATCH_COMMAND
-        patch -N -p1 < ${TILEDB_CMAKE_INPUTS_DIR}/patches/ep_gcssdk/build.patch &&
-        patch -N -p1 < ${TILEDB_CMAKE_INPUTS_DIR}/patches/ep_gcssdk/ls.patch &&
-        patch -N -p1 < ${TILEDB_CMAKE_INPUTS_DIR}/patches/ep_gcssdk/disable_tests.patch &&
-        patch -N -p1 < ${TILEDB_CMAKE_INPUTS_DIR}/patches/ep_gcssdk/disable_examples.patch
+        ${PATCH} < ${TILEDB_CMAKE_INPUTS_DIR}/patches/ep_gcssdk/build.patch &&
+        ${PATCH} < ${TILEDB_CMAKE_INPUTS_DIR}/patches/ep_gcssdk/ls.patch &&
+        ${PATCH} < ${TILEDB_CMAKE_INPUTS_DIR}/patches/ep_gcssdk/disable_tests.patch &&
+        ${PATCH} < ${TILEDB_CMAKE_INPUTS_DIR}/patches/ep_gcssdk/disable_examples.patch
       CONFIGURE_COMMAND
          ${CMAKE_COMMAND} -Hsuper -Bcmake-out
         -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
