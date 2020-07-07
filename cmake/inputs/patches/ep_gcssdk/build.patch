@@ -1,28 +1,27 @@
-From 7302ecce9b94a034108f90f8b0688e36b9a43856 Mon Sep 17 00:00:00 2001
+From d3fa8b5a0df9c62693a7cd02f7dab358e738fc4c Mon Sep 17 00:00:00 2001
 From: Seth Shelnutt <Shelnutt2@gmail.com>
 Date: Sun, 7 Jun 2020 13:19:31 -0400
 Subject: [PATCH] GCS Build Patch for TileDB
 
 ---
  CMakeLists.txt                  |  5 +++
- super/CMakeLists.txt            | 12 +++++--
+ super/CMakeLists.txt            | 18 +++++++---
  super/external/abseil.cmake     |  4 ++-
  super/external/c-ares.cmake     |  4 ++-
  super/external/crc32c.cmake     |  4 ++-
  super/external/curl.cmake       | 63 ---------------------------------
- super/external/googleapis.cmake |  5 ++-
  super/external/googletest.cmake |  4 ++-
  super/external/grpc.cmake       |  8 +++--
  super/external/protobuf.cmake   |  6 ++--
  super/external/ssl.cmake        | 26 --------------
  super/external/zlib.cmake       | 46 ------------------------
- 12 files changed, 38 insertions(+), 149 deletions(-)
+ 11 files changed, 39 insertions(+), 149 deletions(-)
  delete mode 100644 super/external/curl.cmake
  delete mode 100644 super/external/ssl.cmake
  delete mode 100644 super/external/zlib.cmake
 
 diff --git a/CMakeLists.txt b/CMakeLists.txt
-index b542ddfa3..568d5202b 100644
+index a7e14cbab..4580259f0 100644
 --- a/CMakeLists.txt
 +++ b/CMakeLists.txt
 @@ -61,6 +61,11 @@ endif ()
@@ -38,7 +37,7 @@ index b542ddfa3..568d5202b 100644
      # This is an easy mistake to make, and the error messages are very
      # confusing. Help our users by giving them some guidance.
 diff --git a/super/CMakeLists.txt b/super/CMakeLists.txt
-index 06eee385c..d68ae60ec 100644
+index 01b41dd3a..e008c240b 100644
 --- a/super/CMakeLists.txt
 +++ b/super/CMakeLists.txt
 @@ -38,7 +38,6 @@ if ("${GOOGLE_CLOUD_CPP_ENABLE_CCACHE}")
@@ -48,16 +47,22 @@ index 06eee385c..d68ae60ec 100644
 -include(external/curl)
  include(external/crc32c)
  include(external/grpc)
- include(external/googleapis)
-@@ -54,7 +53,6 @@ set_external_project_vars()
+ include(external/googletest)
+@@ -51,8 +50,11 @@ set_external_project_build_parallel_level(PARALLEL)
+ set_external_project_vars()
+ 
  set(GOOGLE_CLOUD_CPP_DEPENDENCIES_LIST
-     abseil-cpp-project
-     grpc-project
--    curl-project
-     crc32c-project
-     googleapis-project
-     googletest-project
-@@ -76,6 +74,13 @@ ExternalProject_Add(
+-    abseil-cpp-project grpc-project curl-project crc32c-project
+-    googletest-project benchmark-project)
++    abseil-cpp-project
++    grpc-project
++    crc32c-project
++    googletest-project
++    benchmark-project)
+ 
+ include(ExternalProject)
+ ExternalProject_Add(
+@@ -70,6 +72,13 @@ ExternalProject_Add(
                 -DCMAKE_PREFIX_PATH=${GOOGLE_CLOUD_CPP_PREFIX_PATH}
                 -DCMAKE_INSTALL_RPATH=${GOOGLE_CLOUD_CPP_INSTALL_RPATH}
                 -DCMAKE_INSTALL_PREFIX=<INSTALL_DIR>
@@ -71,7 +76,7 @@ index 06eee385c..d68ae60ec 100644
      BUILD_COMMAND ${CMAKE_COMMAND} --build <BINARY_DIR> ${PARALLEL}
      TEST_COMMAND
          ${CMAKE_CTEST_COMMAND}
-@@ -88,7 +93,8 @@ ExternalProject_Add(
+@@ -82,7 +91,8 @@ ExternalProject_Add(
      LOG_DOWNLOAD OFF
      LOG_CONFIGURE OFF
      LOG_BUILD OFF
@@ -204,24 +209,6 @@ index 1a695e098..000000000
 -        LOG_BUILD ON
 -        LOG_INSTALL ON)
 -endif ()
-diff --git a/super/external/googleapis.cmake b/super/external/googleapis.cmake
-index 9d0bba07a..94bbfb8e5 100644
---- a/super/external/googleapis.cmake
-+++ b/super/external/googleapis.cmake
-@@ -49,9 +49,12 @@ if (NOT TARGET googleapis-project)
-             -DCMAKE_INSTALL_PREFIX=<INSTALL_DIR>
-             -H<SOURCE_DIR>
-             -B<BINARY_DIR>
-+            -DCMAKE_POSITION_INDEPENDENT_CODE=ON
-+            -DOPENSSL_ROOT_DIR=${OPENSSL_ROOT_DIR}
-         BUILD_COMMAND ${CMAKE_COMMAND} --build <BINARY_DIR> ${PARALLEL}
-         LOG_DOWNLOAD ON
-         LOG_CONFIGURE ON
-         LOG_BUILD ON
--        LOG_INSTALL ON)
-+        LOG_INSTALL ON
-+	LOG_OUTPUT_ON_FAILURE ON)
- endif ()
 diff --git a/super/external/googletest.cmake b/super/external/googletest.cmake
 index a4e5220e0..026a24d23 100644
 --- a/super/external/googletest.cmake

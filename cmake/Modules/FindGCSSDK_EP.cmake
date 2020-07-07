@@ -70,8 +70,8 @@ if (NOT GCSSDK_FOUND)
 
     ExternalProject_Add(ep_gcssdk
       PREFIX "externals"
-      URL "https://github.com/googleapis/google-cloud-cpp/archive/v1.14.0.zip"
-      URL_HASH SHA1=2cc7e5a3b62fb37f1accd405818557e990b91190
+      URL "https://github.com/googleapis/google-cloud-cpp/archive/v1.15.0.zip"
+      URL_HASH SHA1=afe5d71f6e49d30ac59b82551a1ba809e2ebc867
       BUILD_IN_SOURCE 1
       PATCH_COMMAND
         patch -N -p1 < ${TILEDB_CMAKE_INPUTS_DIR}/patches/ep_gcssdk/build.patch &&
@@ -94,6 +94,8 @@ if (NOT GCSSDK_FOUND)
         -DGOOGLE_CLOUD_CPP_ENABLE_FIRESTORE=OFF
         -DGOOGLE_CLOUD_CPP_ENABLE_STORAGE=ON
         -DGOOGLE_CLOUD_CPP_ENABLE_PUBSUB=OFF
+	-DGOOGLE_CLOUD_CPP_ENABLE_GRPC=OFF
+	-DGOOGLE_CLOUD_CPP_STORAGE_ENABLE_GRPC=OFF
         -DBUILD_TESTING=OFF
         # Google uses their own variable instead of CMAKE_INSTALL_PREFIX
         -DGOOGLE_CLOUD_CPP_EXTERNAL_PREFIX=${TILEDB_EP_INSTALL_PREFIX}
