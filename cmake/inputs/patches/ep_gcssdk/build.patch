@@ -1,4 +1,4 @@
-From d3fa8b5a0df9c62693a7cd02f7dab358e738fc4c Mon Sep 17 00:00:00 2001
+From 5825cca7ecafb9759b54255362af07665004c4b3 Mon Sep 17 00:00:00 2001
 From: Seth Shelnutt <Shelnutt2@gmail.com>
 Date: Sun, 7 Jun 2020 13:19:31 -0400
 Subject: [PATCH] GCS Build Patch for TileDB
@@ -11,11 +11,11 @@ Subject: [PATCH] GCS Build Patch for TileDB
  super/external/crc32c.cmake     |  4 ++-
  super/external/curl.cmake       | 63 ---------------------------------
  super/external/googletest.cmake |  4 ++-
- super/external/grpc.cmake       |  8 +++--
+ super/external/grpc.cmake       | 14 ++++++--
  super/external/protobuf.cmake   |  6 ++--
  super/external/ssl.cmake        | 26 --------------
  super/external/zlib.cmake       | 46 ------------------------
- 11 files changed, 39 insertions(+), 149 deletions(-)
+ 11 files changed, 45 insertions(+), 149 deletions(-)
  delete mode 100644 super/external/curl.cmake
  delete mode 100644 super/external/ssl.cmake
  delete mode 100644 super/external/zlib.cmake
@@ -227,7 +227,7 @@ index a4e5220e0..026a24d23 100644
 +	LOG_OUTPUT_ON_FAILURE ON)
  endif ()
 diff --git a/super/external/grpc.cmake b/super/external/grpc.cmake
-index 91f70eaa9..b21819da2 100644
+index 91f70eaa9..eb562ae11 100644
 --- a/super/external/grpc.cmake
 +++ b/super/external/grpc.cmake
 @@ -17,7 +17,6 @@
@@ -247,11 +247,17 @@ index 91f70eaa9..b21819da2 100644
          EXCLUDE_FROM_ALL ON
          PREFIX "${CMAKE_BINARY_DIR}/external/grpc"
          INSTALL_DIR "${GOOGLE_CLOUD_CPP_EXTERNAL_PREFIX}"
-@@ -52,9 +51,12 @@ if (NOT TARGET grpc-project)
+@@ -52,9 +51,18 @@ if (NOT TARGET grpc-project)
                     -DgRPC_PROTOBUF_PROVIDER=package
                     -DgRPC_SSL_PROVIDER=package
                     -DgRPC_ZLIB_PROVIDER=package
 +                   -DCMAKE_POSITION_INDEPENDENT_CODE=ON
++                   -DgRPC_BUILD_GRPC_CSHARP_PLUGIN=OFF
++                   -DgRPC_BUILD_GRPC_NODE_PLUGIN=OFF
++                   -DgRPC_BUILD_GRPC_OBJECTIVE_C_PLUGIN=OFF
++                   -DgRPC_BUILD_GRPC_PHP_PLUGIN=OFF
++                   -DgRPC_BUILD_GRPC_PYTHON_PLUGIN=OFF
++                   -DgRPC_BUILD_GRPC_RUBY_PLUGIN=OFF
 +                   -DOPENSSL_ROOT_DIR=${OPENSSL_ROOT_DIR}
          BUILD_COMMAND ${CMAKE_COMMAND} --build <BINARY_DIR> ${PARALLEL}
          LOG_DOWNLOAD ON
@@ -262,7 +268,7 @@ index 91f70eaa9..b21819da2 100644
 +	LOG_OUTPUT_ON_FAILURE ON)
  endif ()
 diff --git a/super/external/protobuf.cmake b/super/external/protobuf.cmake
-index 7cc0aae1e..157562c58 100644
+index 7cc0aae1e..c77ce3c04 100644
 --- a/super/external/protobuf.cmake
 +++ b/super/external/protobuf.cmake
 @@ -17,7 +17,6 @@
@@ -292,7 +298,7 @@ index 7cc0aae1e..157562c58 100644
          LOG_BUILD ON
 -        LOG_INSTALL ON)
 +        LOG_INSTALL ON
-+	LOG_OUTPUT_ON_FAILURE ON)
++        LOG_OUTPUT_ON_FAILURE ON)
  endif ()
 diff --git a/super/external/ssl.cmake b/super/external/ssl.cmake
 deleted file mode 100644
