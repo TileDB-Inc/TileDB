@@ -99,6 +99,9 @@ class ConfigIter {
   /** Current value. */
   std::string value_;
 
+  /** Config */
+  const Config* config_;
+
   /* ********************************* */
   /*         PRIVATE METHODS           */
   /* ********************************* */
