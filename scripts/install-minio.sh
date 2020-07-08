@@ -31,11 +31,17 @@ die() {
 }
 
 install_apt_pkgs() {
-  sudo apt-get -y install docker || die "could not install docker dependency"
+  if ! command -v docker &> /dev/null
+  then
+    sudo apt-get -y install docker || die "could not install docker dependency"
+  fi
 }
 
 install_yum_pkgs() {
-  sudo yum -y install docker || die "could not install docker dependency"
+  if ! command -v docker &> /dev/null
+  then
+    sudo yum -y install docker || die "could not install docker dependency"
+  fi
 }
 
 install_brew_pkgs() {
