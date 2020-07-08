@@ -36,6 +36,10 @@
 
 * Add new config option `vfs.file.posix_permissions` [#1710](https://github.com/TileDB-Inc/TileDB/pull/1710)
 
+## Bug fixes
+
+* Return possible env config variables in config iter [#1714](https://github.com/TileDB-Inc/TileDB/pull/1714)
+
 # TileDB v2.0.5 Release Notes
 
 ## Improvements

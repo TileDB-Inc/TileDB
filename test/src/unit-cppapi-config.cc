@@ -90,18 +90,26 @@ TEST_CASE(
     "C++ API: Config Environment Variables Default Override",
     "[cppapi], [cppapi-config]") {
   tiledb::Config config;
+  const std::string key = "vfs.num_threads";
 
   unsigned int threads = std::thread::hardware_concurrency();
-  std::string result1 = config["vfs.num_threads"];
+  const std::string result1 = config[key];
   CHECK(result1 == std::to_string(threads));
 
-  std::string value2 = std::to_string(threads + 1);
+  const std::string value2 = std::to_string(threads + 1);
   setenv_local("TILEDB_VFS_NUM_THREADS", value2.c_str());
-  std::string result2 = config["vfs.num_threads"];
+  const std::string result2 = config[key];
   CHECK(result2 == value2);
 
-  std::string value3 = std::to_string(threads + 2);
-  config["vfs.num_threads"] = value3;
-  std::string result3 = config["vfs.num_threads"];
+  // Check iterator
+  for (auto& c : config) {
+    if (c.first == key) {
+      CHECK(c.second == value2);
+    }
+  }
+
+  const std::string value3 = std::to_string(threads + 2);
+  config[key] = value3;
+  const std::string result3 = config[key];
   CHECK(result3 == value3);
 }
