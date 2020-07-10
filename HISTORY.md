@@ -1,3 +1,9 @@
+# TileDB v2.0.8 Release Notes
+
+## Improvements
+
+* Split posix permissions into files and folers permissions [#1719](https://github.com/TileDB-Inc/TileDB/pull/1719)
+
 # TileDB v2.0.7 Release Notes
 
 ## Improvements

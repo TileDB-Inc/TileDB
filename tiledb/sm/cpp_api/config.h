@@ -318,7 +318,10 @@ class Config {
    * - `vfs.min_batch_gap` <br>
    *    The minimum number of bytes between two VFS read batches.<br>
    *    **Default**: 500KB
-   * - `vfs.file.posix_permissions` <br>
+   * - `vfs.file.posix_file_permissions` <br>
+   *    permissions to use for posix file system with file or dir creation.<br>
+   *    **Default**: 644
+   * - `vfs.file.posix_directory_permissions` <br>
    *    permissions to use for posix file system with file or dir creation.<br>
    *    **Default**: 755
    * - `vfs.file.max_parallel_ops` <br>
