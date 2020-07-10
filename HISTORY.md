@@ -14,6 +14,7 @@
 
 * Source built curl only need HTTP support [#1712](https://github.com/TileDB-Inc/TileDB/pull/1712)
 * AWS SDK version bumped to 1.8.6 [#1718](https://github.com/TileDB-Inc/TileDB/pull/1718)
+* Split posix permissions into files and folers permissions [#1719](https://github.com/TileDB-Inc/TileDB/pull/1719)
 
 ## Deprecations
 
