@@ -184,8 +184,11 @@ class Config {
   /** The default minimum number of bytes in a batched VFS read operation. */
   static const std::string VFS_MIN_BATCH_SIZE;
 
-  /** The default posix permissions for file or dir creations */
-  static const std::string VFS_FILE_POSIX_PERMISSIONS;
+  /** The default posix permissions for file creations */
+  static const std::string VFS_FILE_POSIX_FILE_PERMISSIONS;
+
+  /** The default posix permissions for directory creations */
+  static const std::string VFS_FILE_POSIX_DIRECTORY_PERMISSIONS;
 
   /** The default maximum number of parallel file:/// operations. */
   static const std::string VFS_FILE_MAX_PARALLEL_OPS;

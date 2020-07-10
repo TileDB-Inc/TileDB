@@ -296,11 +296,18 @@ class Posix {
       int fd, uint64_t file_offset, const void* buffer, uint64_t buffer_size);
 
   /**
-   * Parse config to get posix permissions for creating new files or folder
+   * Parse config to get posix permissions for creating new files
    * @param permissions parsed permissions are set to this parameter
    * @return Status
    */
-  Status get_posix_permissions(uint32_t* permissions) const;
+  Status get_posix_file_permissions(uint32_t* permissions) const;
+
+  /**
+   * Parse config to get posix permissions for creating new directories
+   * @param permissions parsed permissions are set to this parameter
+   * @return Status
+   */
+  Status get_posix_directory_permissions(uint32_t* permissions) const;
 };
 
 }  // namespace sm

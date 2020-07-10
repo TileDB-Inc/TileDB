@@ -989,8 +989,11 @@ TILEDB_EXPORT void tiledb_config_free(tiledb_config_t** config);
  * - `vfs.min_batch_gap` <br>
  *    The minimum number of bytes between two VFS read batches.<br>
  *    **Default**: 500KB
- * - `vfs.file.posix_permissions` <br>
- *    permissions to use for posix file system with file or dir creation.<br>
+ * - `vfs.file.posix_file_permissions` <br>
+ *    permissions to use for posix file system with file creation.<br>
+ *    **Default**: 644
+ * - `vfs.file.posix_directory_permissions` <br>
+ *    permissions to use for posix file system with directory creation.<br>
  *    **Default**: 755
  * - `vfs.file.max_parallel_ops` <br>
  *    The maximum number of parallel operations on objects with `file:///`
