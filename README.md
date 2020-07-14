@@ -2,9 +2,9 @@
 
 [![Azure Pipelines](https://dev.azure.com/TileDB-Inc/CI/_apis/build/status/TileDB-Inc.TileDB?branchName=dev)](https://dev.azure.com/TileDB-Inc/CI/_build/latest?definitionId=2&branchName=dev) ![](doc/anaconda.svg)[![Anaconda download count badge](https://anaconda.org/conda-forge/TileDB/badges/downloads.svg)](https://anaconda.org/conda-forge/TileDB)
 
-# The Storage Engine for Data Science
+# The Universal Storage Engine
 
-TileDB is a powerful engine for storing and accessing **dense and sparse multi-dimensional arrays**. It is an embeddable C++ library that works on Linux, macOS, and Windows. It is open-sourced under the permissive MIT License.
+TileDB is a powerful engine for storing and accessing **dense and sparse multi-dimensional arrays**, which can help you model any complex data efficiently. It is an embeddable C++ library that works on Linux, macOS, and Windows. It is open-sourced under the permissive MIT License, developed and maintained by [TileDB, Inc](https://tiledb.com/). To distinguish this project from other TileDB offerings, we often refer to it as *TileDB Embedded*. 
 
 TileDB includes the following features:
 
@@ -78,6 +78,6 @@ TileDB is also integrated with several popular databases and data science tools:
 
 ## Get involved
 
-TileDB is an open source project and welcomes all forms of contributions. Contributors to the project should read over the [contribution docs](https://github.com/TileDB-Inc/TileDB/blob/dev/CONTRIBUTING.md) for more information.
+TileDB Embedded is an open-source project and welcomes all forms of contributions. Contributors to the project should read over the [contribution docs](https://github.com/TileDB-Inc/TileDB/blob/dev/CONTRIBUTING.md) for more information.
 
 We'd love to hear from you. Drop us a line at [hello@tiledb.com](mailto:hello@tiledb.com), visit our [forum](https://forum.tiledb.com/) or [contact form](https://tiledb.com/contact-us), or [follow us on Twitter](https://twitter.com/tiledb) to stay informed of updates and news.
