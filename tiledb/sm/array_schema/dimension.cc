@@ -889,6 +889,12 @@ void Dimension::splitting_value(
   std::bitset<65> r_t0(r_t[0]);
   std::bitset<65> r_t1(r_t[1]);
 
+  // If `T` is signed, respect two's complement on the high bit.
+  if (std::is_signed<T>::value) {
+    r_t0[64] = r_t0[63];
+    r_t1[64] = r_t1[63];
+  }
+
   // Subtract `r_t0` from `r_t1`.
   while (r_t0 != 0) {
     const std::bitset<65> carry = (~r_t1) & r_t0;
