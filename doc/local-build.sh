@@ -30,6 +30,18 @@ elif [[ $OSTYPE == darwin* ]]; then
   make_jobs=`sysctl -n hw.logicalcpu`
 fi
 
+# Display bootstrap usage
+usage() {
+echo '
+Usage: '"$0"' [<options>]
+Options: [defaults in brackets after descriptions]
+Configuration:
+    --help                          print this message
+    --tiledb_build=PATH                path to existing TileDB build dir root
+'
+    exit 10
+}
+
 die() {
   echo "$@" 1>&2 ; popd 2>/dev/null; exit 1
 }
@@ -38,26 +50,37 @@ arg() {
   echo "$1" | sed "s/^${2-[^=]*=}//" | sed "s/:/;/g"
 }
 
+# Parse arguments
+while test $# != 0; do
+    case "$1" in
+    --tiledb_build=*) dir=`arg "$1"`
+              tiledb_build="$dir";;
+    --help) usage ;;
+    *) die "Unknown option: $1" ;;
+    esac
+    shift
+done
+
 setup_venv() {
   if [ ! -d "${venv_dir}" ]; then
     virtualenv "${venv_dir}" || die "could not create virtualenv"
   fi
   source "${venv_dir}/bin/activate" || die "could not activate virtualenv"
-  pip install 'Sphinx==1.6.7' \
-       'breathe==4.7.3' \
-       'sphinxcontrib-contentui==0.2.2' \
-       'sphinx_rtd_theme==0.3.0' || die "could not install doc dependencies"
+  pip install -r source/requirements.txt || die "could not install doc dependencies"
 }
 
 run_doxygen() {
-    pushd "$tiledb_root_dir"
-    if [ ! -d "build" ]; then
-        mkdir build
-        pushd build
-        ../bootstrap || die "could not bootstrap tiledb"
-        popd
+    if [ -z ${tiledb_build+x} ]; then
+      pushd "$tiledb_root_dir"
+      tiledb_build="build"
+      if [ ! -d "build" ]; then
+          mkdir build
+          pushd build
+          ../bootstrap || die "could not bootstrap tiledb"
+          popd
+      fi
     fi
-    cd build
+    cd $tiledb_build
     make doc || die "could not build doxygen docs"
     popd
 }
