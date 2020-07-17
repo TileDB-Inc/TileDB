@@ -611,6 +611,7 @@ class Reader {
    * Retrieves the coordinates that overlap the input N-dimensional range
    * from the input result tile.
    *
+   * @param subarray The subarray to operate on.
    * @param frag_idx The id of the fragment that the result tile belongs to.
    * @param tile The result tile.
    * @param range_idx The range id.
@@ -618,6 +619,7 @@ class Reader {
    * @return Status
    */
   Status compute_range_result_coords(
+      Subarray* subarray,
       unsigned frag_idx,
       ResultTile* tile,
       uint64_t range_idx,
@@ -627,6 +629,7 @@ class Reader {
    * Computes the result coordinates for each range of the query
    * subarray.
    *
+   * @param subarray The subarray to operate on.
    * @param single_fragment For each range, it indicates whether all
    *     result coordinates come from a single fragment.
    * @param result_tile_map This is an auxialiary map that helps finding the
@@ -637,6 +640,7 @@ class Reader {
    * @return Status
    */
   Status compute_range_result_coords(
+      Subarray* subarray,
       const std::vector<bool>& single_fragment,
       const std::map<std::pair<unsigned, uint64_t>, size_t>& result_tile_map,
       std::vector<ResultTile>* result_tiles,
@@ -646,6 +650,7 @@ class Reader {
    * Computes the result coordinates of a given range of the query
    * subarray.
    *
+   * @param subarray The subarray to operate on.
    * @param range_idx The range to focus on.
    * @param result_tile_map This is an auxialiary map that helps finding the
    *     result_tiles overlapping with each range.
@@ -655,6 +660,7 @@ class Reader {
    * @return Status
    */
   Status compute_range_result_coords(
+      Subarray* subarray,
       uint64_t range_idx,
       const std::map<std::pair<unsigned, uint64_t>, size_t>& result_tile_map,
       std::vector<ResultTile>* result_tiles,
@@ -664,6 +670,7 @@ class Reader {
    * Computes the result coordinates of a given range of the query
    * subarray.
    *
+   * @param subarray The subarray to operate on.
    * @param range_idx The range to focus on.
    * @param fragment_idx The fragment to focus on.
    * @param result_tile_map This is an auxialiary map that helps finding the
@@ -674,6 +681,7 @@ class Reader {
    * @return Status
    */
   Status compute_range_result_coords(
+      Subarray* subarray,
       uint64_t range_idx,
       uint32_t fragment_idx,
       const std::map<std::pair<unsigned, uint64_t>, size_t>& result_tile_map,
@@ -1152,12 +1160,15 @@ class Reader {
   /**
    * Sorts the input result coordinates according to the subarray layout.
    *
-   * @param result_coords The coordinates to sort.
+   * @param iter_begin The start position of the coordinates to sort.
+   * @param iter_end The end position of the coordinates to sort.
    * @param layout The layout to sort into.
    * @return Status
    */
   Status sort_result_coords(
-      std::vector<ResultCoords>* result_coords, Layout layout) const;
+      std::vector<ResultCoords>::iterator iter_begin,
+      std::vector<ResultCoords>::iterator iter_end,
+      Layout layout) const;
 
   /** Performs a read on a sparse array. */
   Status sparse_read();
