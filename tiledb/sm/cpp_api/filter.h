@@ -106,6 +106,8 @@ class Filter {
     return filter_;
   }
 
+  // @cond
+  // doxygen ignore pending https://github.com/sphinx-doc/sphinx/issues/7944
   /**
    * Sets an option on the filter. Options are filter dependent; this function
    * throws an error if the given option is not valid for the given filter.
@@ -135,6 +137,7 @@ class Filter {
         ctx.ptr().get(), filter_.get(), option, &value));
     return *this;
   }
+  // @endcond
 
   /**
    * Sets an option on the filter. Options are filter dependent; this function
@@ -165,6 +168,8 @@ class Filter {
     return *this;
   }
 
+  // @cond
+  // doxygen ignore pending https://github.com/sphinx-doc/sphinx/issues/7944
   /**
    * Gets an option value from the filter.
    *
@@ -196,6 +201,7 @@ class Filter {
     ctx.handle_error(tiledb_filter_get_option(
         ctx.ptr().get(), filter_.get(), option, value));
   }
+  // @endcond
 
   /**
    * Gets an option value from the filter.
