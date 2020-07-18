@@ -82,7 +82,8 @@ class BufferList {
    * Returns an error if the buffers contain less than the requested number of
    * bytes starting from the current offset.
    *
-   * @param dest The buffer to read the data into.
+   * @param dest The buffer to read the data into. If null then will perform
+   * seek.
    * @param nbytes The number of bytes to read.
    * @return Status
    */
@@ -98,6 +99,27 @@ class BufferList {
    * @return Status
    */
   Status read_at_most(void* dest, uint64_t nbytes, uint64_t* bytes_read);
+
+  /**
+   * Seek to an offset, similar to lseek or fseek
+   *
+   * Whence options are:
+   *
+   *  SEEK_SET
+   *    The offset is set to offset bytes.
+   *
+   *  SEEK_CUR
+   *    The offset is set to its current location plus offset bytes
+   *
+   *  SEEK_END
+   *    This is not supported. Its purpose in lseek would be to set
+   *    the offset to the size of the BufferList plus offset bytes.
+   *
+   * @param offset Offset to seek to.
+   * @param whence Location to seek from.
+   * @return Status
+   */
+  Status seek(off_t offset, int whence);
 
   /** Resets the current offset for reading. */
   void reset_offset();
@@ -121,7 +143,7 @@ class BufferList {
   /**
    * Reads from the current offset into the given destination.
    *
-   * @param dest The buffer to read the data into.
+   * @param dest The buffer to read the data into. If null will perform seek.
    * @param nbytes The number of bytes to read.
    * @param bytes_read Set to the number of bytes actually read.
    * @return Status
