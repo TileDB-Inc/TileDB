@@ -94,7 +94,10 @@ Status BufferList::read(void* dest, uint64_t nbytes, uint64_t* bytes_read) {
     // Read from buffer
     const uint64_t bytes_in_src = src.size() - current_relative_offset_;
     const uint64_t bytes_from_src = std::min(bytes_in_src, bytes_left);
-    RETURN_NOT_OK(src.read(dest_ptr + dest_offset, bytes_from_src));
+    // If the destination pointer is not null, then read into it
+    // if it is null then we are just seeking
+    if (dest_ptr != nullptr)
+      RETURN_NOT_OK(src.read(dest_ptr + dest_offset, bytes_from_src));
     bytes_left -= bytes_from_src;
     dest_offset += bytes_from_src;
 
@@ -110,6 +113,24 @@ Status BufferList::read(void* dest, uint64_t nbytes, uint64_t* bytes_read) {
 
   if (bytes_read != nullptr)
     *bytes_read = nbytes - bytes_left;
+
+  return Status::Ok();
+}
+
+Status BufferList::seek(off_t offset, int whence) {
+  switch (whence) {
+    case SEEK_SET:
+      // We just reset the offsets to 0/start, then fall through to seek_current
+      reset_offset();
+      // fall through
+    case SEEK_CUR:
+      return read(nullptr, offset);
+    case SEEK_END:
+      return Status::BufferError(
+          "SEEK_END operation not supported for BufferList");
+    default:
+      return Status::BufferError("Invalid seek operation for BufferList");
+  }
 
   return Status::Ok();
 }

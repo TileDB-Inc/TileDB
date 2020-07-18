@@ -161,6 +161,23 @@ size_t buffer_list_read_memory_callback(
   return num_read;
 }
 
+/**
+ * Seek function to handle curl redirects
+ * @param userp user data (buffer list)
+ * @param offset offset to seek to
+ * @param origin whence to seek from
+ * @return SEEKFUNC status
+ */
+static int buffer_list_seek_callback(
+    void* userp, curl_off_t offset, int origin) {
+  BufferList* data = static_cast<BufferList*>(userp);
+  Status status = data->seek(offset, origin);
+  if (status.ok())
+    return CURL_SEEKFUNC_OK;
+
+  return CURL_SEEKFUNC_FAIL;
+}
+
 Curl::Curl()
     : config_(nullptr)
     , curl_(nullptr, curl_easy_cleanup) {
@@ -521,6 +538,10 @@ Status Curl::post_data_common(
 
   /* pass our list of custom made headers */
   curl_easy_setopt(curl, CURLOPT_HTTPHEADER, *headers);
+
+  /* set seek for handling redirects */
+  curl_easy_setopt(curl, CURLOPT_SEEKFUNCTION, &buffer_list_seek_callback);
+  curl_easy_setopt(curl, CURLOPT_SEEKDATA, data);
 
   return Status::Ok();
 }

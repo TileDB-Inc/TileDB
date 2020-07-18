@@ -3,6 +3,7 @@
 ## Improvements
 
 * Split posix permissions into files and folers permissions [#1719](https://github.com/TileDB-Inc/TileDB/pull/1719)
+* Support seeking for CURL to allow redirects for posting to REST [#1728](https://github.com/TileDB-Inc/TileDB/pull/1728)
 
 # TileDB v2.0.7 Release Notes
 
