@@ -481,9 +481,6 @@ const std::string special_name_prefix = "__";
 /** Number of milliseconds between watchdog thread wakeups. */
 const unsigned watchdog_thread_sleep_ms = 1000;
 
-/** The target sub-partitioner budget for computing result coordinates. */
-const uint64_t sub_partitioner_memory_budget = 1024 * 1024 * 5;
-
 const void* fill_value(Datatype type) {
   switch (type) {
     case Datatype::INT8:

@@ -232,6 +232,7 @@ void check_save_to_file() {
   ss << "sm.num_tbb_threads -1\n";
   ss << "sm.num_writer_threads " << std::thread::hardware_concurrency() << "\n";
   ss << "sm.skip_checksum_validation false\n";
+  ss << "sm.sub_partitioner_memory_budget 0\n";
   ss << "sm.tile_cache_size 10000000\n";
   ss << "sm.vacuum.mode fragments\n";
   ss << "vfs.azure.block_list_block_size 5242880\n";
@@ -430,6 +431,7 @@ TEST_CASE("C API: Test config iter", "[capi], [config]") {
   all_param_values["sm.tile_cache_size"] = "100";
   all_param_values["sm.memory_budget"] = "5368709120";
   all_param_values["sm.memory_budget_var"] = "10737418240";
+  all_param_values["sm.sub_partitioner_memory_budget"] = "0";
   all_param_values["sm.enable_signal_handlers"] = "true";
   all_param_values["sm.num_async_threads"] = "1";
   all_param_values["sm.num_reader_threads"] =
