@@ -33,6 +33,12 @@
 
 * Added functions `Attribute::{set,get}_fill_value` to get/set default fill values
 
+# TileDB v2.0.7 Release Notes
+
+## Bug fixes
+
+* Fixed error "[TileDB::ChunkedBuffer] Error: Chunk read error; chunk unallocated error" that may occur when writing var-sized attributes. [#1732](https://github.com/TileDB-Inc/TileDB/pull/1732)
+
 # TileDB v2.0.6 Release Notes
 
 ## Improvements
