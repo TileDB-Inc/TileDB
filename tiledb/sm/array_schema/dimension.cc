@@ -374,51 +374,23 @@ bool Dimension::coincides_with_tiles(const Range& r) const {
 template <class T>
 Status Dimension::compute_mbr(const Tile& tile, Range* mbr) {
   assert(mbr != nullptr);
-  ChunkedBuffer* const chunked_buffer = tile.chunked_buffer();
   auto cell_num = tile.cell_num();
   assert(cell_num > 0);
 
-  size_t chunk_idx = 0;
-  size_t chunk_offset = 0;
+  // The chunked buffers in the write path are always contiguous.
+  void* tile_buffer = nullptr;
+  ChunkedBuffer* const chunked_buffer = tile.chunked_buffer();
+  RETURN_NOT_OK(chunked_buffer->get_contiguous(&tile_buffer));
+  assert(tile_buffer != nullptr);
 
-  // Fetch the first internal buffer.
-  void* buffer;
-  RETURN_NOT_OK(chunked_buffer->internal_buffer(chunk_idx, &buffer));
+  // Initialize MBR with the first tile values
+  const T* const data = static_cast<T*>(tile_buffer);
+  T res[] = {data[0], data[0]};
+  mbr->set_range(res, sizeof(res));
 
-  for (uint64_t c = 0; c < cell_num; ++c) {
-    // Move to the next internal chunk buffer if the offset exceeds the
-    // current chunk buffer's size.
-    uint32_t chunk_size;
-    RETURN_NOT_OK(chunked_buffer->internal_buffer_size(chunk_idx, &chunk_size));
-    if (chunk_offset >= chunk_size) {
-      ++chunk_idx;
-      chunk_offset = 0;
-
-      // Fetch the next internal buffer and its associated size.
-      RETURN_NOT_OK(chunked_buffer->internal_buffer(chunk_idx, &buffer));
-      RETURN_NOT_OK(
-          chunked_buffer->internal_buffer_size(chunk_idx, &chunk_size));
-    }
-
-    // Sanity check we have sufficient space to perform our random access
-    // read of 'buffer'.
-    if (chunk_size < (chunk_offset + sizeof(T))) {
-      return LOG_STATUS(Status::DimensionError(
-          "Out of bounds read to internal chunk buffer of size " +
-          std::to_string(chunk_size)));
-    }
-
-    const T* const v = static_cast<T*>(
-        static_cast<void*>(static_cast<char*>(buffer) + chunk_offset));
-    chunk_offset += sizeof(T);
-
-    if (c == 0) {
-      T res[] = {*v, *v};
-      mbr->set_range(res, sizeof(res));
-    } else {
-      expand_range_v<T>(v, mbr);
-    }
-  }
+  // Expand the MBR with the rest tile values
+  for (uint64_t c = 1; c < cell_num; ++c)
+    expand_range_v<T>(&data[c], mbr);
 
   return Status::Ok();
 }
@@ -432,62 +404,35 @@ template <>
 Status Dimension::compute_mbr_var<char>(
     const Tile& tile_off, const Tile& tile_val, Range* mbr) {
   assert(mbr != nullptr);
-  ChunkedBuffer* const chunked_buffer_off = tile_off.chunked_buffer();
-  ChunkedBuffer* const chunked_buffer_val = tile_val.chunked_buffer();
+  assert(d_val != nullptr);
   auto d_val_size = tile_val.size();
   auto cell_num = tile_off.cell_num();
   assert(cell_num > 0);
 
-  // Offset tiles are always contiguously allocated.
-  void* tmp_buffer;
-  RETURN_NOT_OK(chunked_buffer_off->get_contiguous(&tmp_buffer));
-  uint64_t* const d_off = static_cast<uint64_t*>(tmp_buffer);
+  // The chunked buffers in the write path are always contiguous.
+  void* tile_buffer_off = nullptr;
+  ChunkedBuffer* const chunked_buffer_off = tile_off.chunked_buffer();
+  RETURN_NOT_OK(chunked_buffer_off->get_contiguous(&tile_buffer_off));
+  assert(tile_buffer_off != nullptr);
 
-  size_t chunk_idx = 0;
-  RETURN_NOT_OK(chunked_buffer_val->internal_buffer(chunk_idx, &tmp_buffer));
-  char* d_val = static_cast<char*>(tmp_buffer);
+  // The chunked buffers in the write path are always contiguous.
+  void* tile_buffer_val = nullptr;
+  ChunkedBuffer* const chunked_buffer_val = tile_val.chunked_buffer();
+  RETURN_NOT_OK(chunked_buffer_val->get_contiguous(&tile_buffer_val));
+  assert(tile_buffer_val != nullptr);
+
+  uint64_t* const d_off = static_cast<uint64_t*>(tile_buffer_off);
+  char* const d_val = static_cast<char*>(tile_buffer_val);
 
   // Initialize MBR with the first tile values
   auto size_0 = (cell_num == 1) ? d_val_size : d_off[1];
   mbr->set_range_var(d_val, size_0, d_val, size_0);
 
   // Expand the MBR with the rest tile values
-  size_t chunk_bytes_processed = 0;
   for (uint64_t c = 1; c < cell_num; ++c) {
-    // Offset values are guaranteed to be in ascending order.
-    assert(chunk_bytes_processed <= d_off[c]);
-
-    // iterate until 'chunk_idx_val' contains 'd_off_c0'
-    uint32_t chunk_size;
-    while (true) {
-      RETURN_NOT_OK(
-          chunked_buffer_val->internal_buffer_size(chunk_idx, &chunk_size));
-      if ((d_off[c] - chunk_bytes_processed) < chunk_size) {
-        break;
-      }
-
-      ++chunk_idx;
-      chunk_bytes_processed += chunk_size;
-    }
-
-    // Fetch the next internal buffer of 'chunked_buffer_val' and its
-    // associated size.
-    RETURN_NOT_OK(chunked_buffer_val->internal_buffer(chunk_idx, &tmp_buffer));
-    d_val = static_cast<char*>(tmp_buffer);
-
-    // Sanity check we have sufficient space to perform our random access
-    // read of 'd_val'.
-    const size_t chunk_offset = d_off[c] - chunk_bytes_processed;
-    const uint64_t size =
+    auto size =
         (c == cell_num - 1) ? d_val_size - d_off[c] : d_off[c + 1] - d_off[c];
-    if (chunk_size < (chunk_offset + size)) {
-      return LOG_STATUS(Status::DimensionError(
-          "Out of bounds read to internal chunk buffer of size " +
-          std::to_string(chunk_size)));
-    }
-
-    const char* const v = d_val + chunk_offset;
-    expand_range_var_v(v, size, mbr);
+    expand_range_var_v(&d_val[d_off[c]], size, mbr);
   }
 
   return Status::Ok();
