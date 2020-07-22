@@ -2523,6 +2523,25 @@ Status Reader::copy_attribute_values(
     ++it;
   }
 
+  // The result cell slab ranges must be sorted in ascending order for the
+  // selective decompression intersection algorithm. For 1-dimensional arrays,
+  // the result cell slab ranges are guaranteed to be sorted in ascending
+  // order. For arrays with more than one dimension, we must sort them.
+  if (array_schema_->dim_num() > 1) {
+    struct RangeCompare {
+      inline bool operator()(
+          const std::pair<uint64_t, uint64_t>& a,
+          const std::pair<uint64_t, uint64_t>& b) const {
+        return a.first < b.first;
+      }
+    };
+
+    // Sort each range, per tile.
+    for (auto& kv : cs_ranges) {
+      parallel_sort(kv.second.begin(), kv.second.end(), RangeCompare());
+    }
+  }
+
   // Build a lists of attribute names to copy, separating them by
   // whether they are of fixed or variable length. The motivation
   // is that copying fixed and variable cells require two different
