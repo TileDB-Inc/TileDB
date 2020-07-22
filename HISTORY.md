@@ -6,6 +6,7 @@
 * Fixed error "Error: Chunk read error; chunk unallocated error" that may occur when reading arrays with more than one dimension. [#1736](https://github.com/TileDB-Inc/TileDB/pull/1736)
 * Fixed a small memory leak when opening arrays. [#1690](https://github.com/TileDB-Inc/TileDB/pull/1690)
 * Fixed an overflow in the partioning path that may result in a hang or poor read performance. [#1725](https://github.com/TileDB-Inc/TileDB/pull/1725)[#1707](https://github.com/TileDB-Inc/TileDB/pull/1707)
+* Fix Catch2 detection of system install [#1733](https://github.com/TileDB-Inc/TileDB/pull/1733)
 
 # TileDB v2.0.6 Release Notes
 
