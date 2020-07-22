@@ -27,17 +27,18 @@
 # Finds the Catch library, installing with an ExternalProject as necessary.
 # This module defines:
 #   - CATCH_INCLUDE_DIR, directory containing headers
-#   - CATCH_FOUND, whether Catch has been found
+#   - CATCH2_FOUND, whether Catch has been found
 #   - The Catch::Catch imported target
 
 # Search the path set during the superbuild for the EP.
 message(STATUS "searching for catch in ${TILEDB_EP_SOURCE_DIR}")
-set(CATCH_PATHS ${TILEDB_EP_SOURCE_DIR}/ep_catch/single_include/catch2)
+set(CATCH_PATHS ${TILEDB_EP_SOURCE_DIR}/ep_catch/single_include)
 
 if (NOT TILEDB_FORCE_ALL_DEPS OR TILEDB_CATCH_EP_BUILT)
   find_path(CATCH_INCLUDE_DIR
     NAMES catch.hpp
     PATHS ${CATCH_PATHS}
+    PATH_SUFFIXES "catch2"
     ${TILEDB_DEPS_NO_DEFAULT_PATH}
   )
 endif()
@@ -47,7 +48,7 @@ FIND_PACKAGE_HANDLE_STANDARD_ARGS(Catch2
   REQUIRED_VARS CATCH_INCLUDE_DIR
 )
 
-if (NOT CATCH_FOUND AND TILEDB_SUPERBUILD)
+if (NOT CATCH2_FOUND AND TILEDB_SUPERBUILD)
   message(STATUS "Adding Catch as an external project")
   ExternalProject_Add(ep_catch
     PREFIX "externals"
