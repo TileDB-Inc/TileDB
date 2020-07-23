@@ -1207,6 +1207,8 @@ class Reader {
   /** Gets statistics about the result tiles. */
   void get_result_tile_stats(
       const std::vector<ResultTile*>& result_tiles) const;
+
+  Logger logger_;
 };
 
 }  // namespace sm

@@ -41,7 +41,10 @@ namespace sm {
 /*     CONSTRUCTORS & DESTRUCTORS    */
 /* ********************************* */
 
-Logger::Logger() {
+Logger::Logger(const char* prefix) :
+  Logger(prefix != nullptr ? std::string(prefix) : std::string()) {}
+
+Logger::Logger(const std::string& prefix) {
   logger_ = spdlog::get("tiledb");
   if (logger_ == nullptr) {
 #ifdef _WIN32
@@ -57,7 +60,10 @@ Logger::Logger() {
   // [Thread: id]
   // [log level]
   // text to log...
-  logger_->set_pattern(
+  if (!prefix.empty()) {
+    prefix_ = "[" + prefix + "]: ";
+  }
+  logger_->set_pattern( prefix_ +
       "[%Y-%m-%d %H:%M:%S.%e] [%n] [Process: %P] [Thread: %t] [%l] %v");
 
 #ifdef TILEDB_VERBOSE
@@ -68,7 +74,7 @@ Logger::Logger() {
 }
 
 Logger::~Logger() {
-  spdlog::drop("tiledb");
+//  spdlog::drop("tiledb");
 }
 
 /* ********************************* */

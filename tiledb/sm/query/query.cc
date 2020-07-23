@@ -77,6 +77,10 @@ Query::Query(StorageManager* storage_manager, Array* array, URI fragment_uri)
     writer_.set_array_schema(array->array_schema());
     writer_.set_fragment_uri(fragment_uri);
   }
+
+  const char* prefix = nullptr;
+  storage_manager->config().get("sm.log_prefix", &prefix);
+  logger_ = Logger(prefix);
 }
 
 Query::~Query() = default;
@@ -688,6 +692,9 @@ Status Query::set_subarray_unsafe(const NDRange& subarray) {
 }
 
 Status Query::submit() {
+  logger_.debug("TEST-TEST-TEST");
+  logger_.error("TEST2-TEST2-TEST2");
+  logger_.debug((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   // Do not resubmit completed reads.
   if (type_ == QueryType::READ && status_ == QueryStatus::COMPLETED) {
     return Status::Ok();

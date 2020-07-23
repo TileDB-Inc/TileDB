@@ -57,7 +57,8 @@ class Logger {
   /* ********************************* */
 
   /** Constructor. */
-  Logger();
+  explicit Logger(const std::string& prefix = "");
+  explicit Logger(const char* prefix);
 
   /** Destructor. */
   ~Logger();
@@ -151,6 +152,8 @@ class Logger {
 
   /** The logger object. */
   std::shared_ptr<spdlog::logger> logger_;
+
+  std::string prefix_;
 };
 
 /* ********************************* */

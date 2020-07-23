@@ -220,6 +220,10 @@ Status Reader::init(const Layout& layout) {
     return LOG_STATUS(Status::ReaderError(
         "Cannot initialize reader; Dense reads must have a subarray set"));
 
+  const char* prefix = nullptr;
+  storage_manager_->config().get("sm.log_prefix", &prefix);
+  logger_ = Logger(prefix);
+
   // Set layout
   RETURN_NOT_OK(set_layout(layout));
 

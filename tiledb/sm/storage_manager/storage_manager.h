@@ -53,6 +53,7 @@
 #include "tiledb/sm/filesystem/filelock.h"
 #include "tiledb/sm/fragment/fragment_info.h"
 #include "tiledb/sm/misc/cancelable_tasks.h"
+#include "tiledb/sm/misc/logger.h"
 #include "tiledb/sm/misc/status.h"
 #include "tiledb/sm/misc/thread_pool.h"
 #include "tiledb/sm/misc/uri.h"
@@ -1152,6 +1153,8 @@ class StorageManager {
 
   /** Sets default tag values on this StorageManager. */
   Status set_default_tags();
+
+  Logger logger_;
 };
 
 }  // namespace sm

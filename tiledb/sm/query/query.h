@@ -496,6 +496,8 @@ class Query {
   /** The current serialization state. */
   SerializationState serialization_state_;
 
+  Logger logger_;
+
   /* ********************************* */
   /*           PRIVATE METHODS         */
   /* ********************************* */

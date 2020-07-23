@@ -1380,6 +1380,10 @@ Status StorageManager::init(const Config* config) {
 
   global_state.register_storage_manager(this);
 
+  const char* prefix = nullptr;
+  config_.get("sm.log_prefix", &prefix);
+  logger_ = Logger(prefix);
+
   return Status::Ok();
 }
 
