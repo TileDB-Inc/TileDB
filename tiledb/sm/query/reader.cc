@@ -275,6 +275,7 @@ Reader::ReadState* Reader::read_state() {
 }
 
 Status Reader::read() {
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   get_dim_attr_stats();
 
   STATS_START_TIMER(stats::Stats::TimerType::READ)
@@ -284,6 +285,7 @@ Status Reader::read() {
   if (!read_state_.unsplittable_)
     RETURN_NOT_OK(read_state_.next());
 
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   // Handle empty array or empty/finished subarray
   if (fragment_metadata_.empty()) {
     zero_out_buffer_sizes();
@@ -291,6 +293,7 @@ Status Reader::read() {
   }
 
   // Loop until you find results, or unsplittable, or done
+    logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   do {
     STATS_ADD_COUNTER(stats::Stats::CounterType::READ_LOOP_NUM, 1)
 
@@ -299,20 +302,24 @@ Status Reader::read() {
 
     // Perform read
     if (array_schema_->dense() && !sparse_mode_) {
+      logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
       RETURN_NOT_OK(dense_read());
     } else {
+      logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
       RETURN_NOT_OK(sparse_read());
     }
 
     // In the case of overflow, we need to split the current partition
     // without advancing to the next partition
     if (read_state_.overflowed_) {
+      logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
       zero_out_buffer_sizes();
       RETURN_NOT_OK(read_state_.split_current());
 
       if (read_state_.unsplittable_)
         return Status::Ok();
     } else {
+      logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
       bool no_results = this->no_results();
 
       // Need to reset unsplittable if the results fit after all
@@ -322,8 +329,10 @@ Status Reader::read() {
       if (!no_results || read_state_.done())
         return Status::Ok();
 
+      logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
       RETURN_NOT_OK(read_state_.next());
     }
+    logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   } while (true);
 
   return Status::Ok();
@@ -1488,6 +1497,7 @@ Status Reader::compute_result_coords(
     std::vector<ResultTile>* result_tiles,
     std::vector<ResultCoords>* result_coords) {
   STATS_START_TIMER(stats::Stats::TimerType::READ_COMPUTE_RESULT_COORDS)
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
 
   // Get overlapping tile indexes
   typedef std::pair<unsigned, uint64_t> FragTilePair;
@@ -1497,6 +1507,7 @@ Status Reader::compute_result_coords(
   RETURN_CANCEL_OR_ERROR(compute_sparse_result_tiles(
       result_tiles, &result_tile_map, &single_fragment));
 
+    logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   if (result_tiles->empty())
     return Status::Ok();
 
@@ -1510,6 +1521,7 @@ Status Reader::compute_result_coords(
   // NOTE: these will ignore tiles of fragments with format version >=5
   RETURN_CANCEL_OR_ERROR(read_tiles(constants::coords, tmp_result_tiles));
   RETURN_CANCEL_OR_ERROR(unfilter_tiles(constants::coords, tmp_result_tiles));
+    logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
 
   // Read and unfilter coordinate tiles
   // NOTE: these will ignore tiles of fragments with format version <5
@@ -1519,6 +1531,7 @@ Status Reader::compute_result_coords(
     RETURN_CANCEL_OR_ERROR(read_tiles(dim_name, tmp_result_tiles));
     RETURN_CANCEL_OR_ERROR(unfilter_tiles(dim_name, tmp_result_tiles));
   }
+    logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
 
   // Compute the read coordinates for all fragments for each subarray range
   std::vector<std::vector<ResultCoords>> range_result_coords;
@@ -1530,6 +1543,7 @@ Status Reader::compute_result_coords(
   RETURN_CANCEL_OR_ERROR(
       compute_subarray_coords(&range_result_coords, result_coords));
   range_result_coords.clear();
+    logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
 
   return Status::Ok();
 
@@ -2341,6 +2355,7 @@ Status Reader::sort_result_coords(
 }
 
 Status Reader::sparse_read() {
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   // Compute result coordinates from the sparse fragments
   // `sparse_result_tiles` will hold all the relevant result tiles of
   // sparse fragments

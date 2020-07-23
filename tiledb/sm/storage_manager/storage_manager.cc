@@ -1735,10 +1735,12 @@ Status StorageManager::object_iter_next_preorder(
 }
 
 Status StorageManager::query_submit(Query* query) {
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   // Process the query
   QueryInProgress in_progress(this);
   auto st = query->process();
 
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   return st;
 }
 

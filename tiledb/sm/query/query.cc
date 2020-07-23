@@ -519,6 +519,7 @@ Status Query::check_var_attr_offsets(
 }
 
 Status Query::process() {
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   if (status_ == QueryStatus::UNINITIALIZED)
     return LOG_STATUS(
         Status::QueryError("Cannot process query; Query is not initialized"));
@@ -531,15 +532,18 @@ Status Query::process() {
   else  // WRITE MODE
     st = writer_.write();
 
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   // Handle error
   if (!st.ok()) {
     status_ = QueryStatus::FAILED;
     return st;
   }
 
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   // Check if the query is complete
   bool completed = (type_ == QueryType::WRITE) ? true : !reader_.incomplete();
 
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   // Handle callback and status
   if (completed) {
     if (callback_ != nullptr)
@@ -549,6 +553,7 @@ Status Query::process() {
     status_ = QueryStatus::INCOMPLETE;
   }
 
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   return Status::Ok();
 }
 
@@ -692,14 +697,13 @@ Status Query::set_subarray_unsafe(const NDRange& subarray) {
 }
 
 Status Query::submit() {
-  logger_.debug("TEST-TEST-TEST");
-  logger_.error("TEST2-TEST2-TEST2");
-  logger_.debug((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   // Do not resubmit completed reads.
   if (type_ == QueryType::READ && status_ == QueryStatus::COMPLETED) {
     return Status::Ok();
   }
   if (array_->is_remote()) {
+    logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
     auto rest_client = storage_manager_->rest_client();
     if (rest_client == nullptr)
       return LOG_STATUS(Status::QueryError(
