@@ -83,7 +83,9 @@ Query::Query(StorageManager* storage_manager, Array* array, URI fragment_uri)
   logger_ = Logger(prefix);
 }
 
-Query::~Query() = default;
+Query::~Query() {
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
+};
 
 /* ****************************** */
 /*               API              */

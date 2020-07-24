@@ -76,38 +76,46 @@ StorageManager::StorageManager() {
 }
 
 StorageManager::~StorageManager() {
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   global_state::GlobalState::GetGlobalState().unregister_storage_manager(this);
 
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   if (vfs_ != nullptr)
     cancel_all_tasks();
 
   delete tile_cache_;
 
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   // Release all filelocks and delete all opened arrays for reads
   for (auto& open_array_it : open_arrays_for_reads_) {
     open_array_it.second->file_unlock(vfs_);
     delete open_array_it.second;
   }
 
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   // Delete all opened arrays for writes
   for (auto& open_array_it : open_arrays_for_writes_)
     delete open_array_it.second;
 
   for (auto& fl_it : xfilelocks_) {
+    logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
     auto filelock = fl_it.second;
     auto lock_uri = URI(fl_it.first).join_path(constants::filelock_name);
     if (filelock != INVALID_FILELOCK)
       vfs_->filelock_unlock(lock_uri);
   }
 
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   if (vfs_ != nullptr) {
     const Status st = vfs_->terminate();
     if (!st.ok()) {
+      logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
       LOG_STATUS(Status::StorageManagerError("Failed to terminate VFS."));
     }
 
     delete vfs_;
   }
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
 }
 
 /* ****************************** */

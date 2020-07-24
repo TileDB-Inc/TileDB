@@ -101,7 +101,9 @@ Reader::Reader() {
   read_state_.initialized_ = false;
 }
 
-Reader::~Reader() = default;
+Reader::~Reader() {
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
+};
 
 /* ****************************** */
 /*               API              */
@@ -221,17 +223,22 @@ Status Reader::init(const Layout& layout) {
     return LOG_STATUS(Status::ReaderError(
         "Cannot initialize reader; Dense reads must have a subarray set"));
 
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   const char* prefix = nullptr;
   storage_manager_->config().get("sm.log_prefix", &prefix);
   logger_ = Logger(prefix);
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
 
   // Set layout
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   RETURN_NOT_OK(set_layout(layout));
 
   // Check subarray
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   RETURN_NOT_OK(check_subarray());
 
   // Get configuration parameters
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   const char *memory_budget, *memory_budget_var;
   auto config = storage_manager_->config();
   RETURN_NOT_OK(config.get("sm.memory_budget", &memory_budget));
@@ -2044,6 +2051,7 @@ bool Reader::has_separate_coords() const {
 Status Reader::init_read_state() {
   STATS_START_TIMER(stats::Stats::TimerType::READ_INIT_STATE)
 
+    logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   // Check subarray
   if (subarray_.layout() == Layout::GLOBAL_ORDER && subarray_.range_num() != 1)
     return LOG_STATUS(
@@ -2062,12 +2070,14 @@ Status Reader::init_read_state() {
       config.get<uint64_t>("sm.memory_budget_var", &memory_budget_var, &found));
   assert(found);
 
+    logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   // Create read state
   read_state_.partitioner_ =
       SubarrayPartitioner(subarray_, memory_budget, memory_budget_var);
   read_state_.overflowed_ = false;
   read_state_.unsplittable_ = false;
 
+    logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   // Set result size budget
   for (const auto& a : buffers_) {
     auto attr_name = a.first;
@@ -2081,6 +2091,7 @@ Status Reader::init_read_state() {
           attr_name.c_str(), *buffer_size, *buffer_var_size));
     }
   }
+    logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
 
   // Set memory budget
   RETURN_NOT_OK(read_state_.partitioner_.set_memory_budget(
@@ -2089,6 +2100,7 @@ Status Reader::init_read_state() {
   read_state_.unsplittable_ = false;
   read_state_.overflowed_ = false;
   read_state_.initialized_ = true;
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
 
   return Status::Ok();
 
