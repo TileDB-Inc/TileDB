@@ -33,10 +33,14 @@
 #ifdef HAVE_GCS
 
 #include <google/cloud/status.h>
+#include <google/cloud/storage/client_options.h>
+#include "google/cloud/storage/oauth2/google_credentials.h"
+
 #include <sstream>
 #include <unordered_set>
 
 #include "tiledb/sm/filesystem/gcs.h"
+#include "tiledb/sm/global_state/global_state.h"
 #include "tiledb/sm/misc/logger.h"
 #include "tiledb/sm/misc/utils.h"
 
@@ -69,9 +73,40 @@ Status GCS::init(const Config& config, ThreadPool* const thread_pool) {
 
   thread_pool_ = thread_pool;
 
-  // Create the client using the credentials file pointed to by the
+  google::cloud::storage::ChannelOptions channel_options;
+
+#ifdef __linux__
+  const std::string cert_file =
+      global_state::GlobalState::GetGlobalState().cert_file();
+  if (!cert_file.empty()) {
+    channel_options.set_ssl_root_path(cert_file);
+  }
+#endif
+
+  // Note that the order here is *extremely important*
+  // We must call ::GoogleDefaultCredentials *with* a channel_options
+  // argument, or else the Curl handle pool will be default-initialized
+  // with no root dir (CURLOPT_CAINFO), defaulting to build host path.
+  // Later initializations of ClientOptions/Client with the channel_options
+  // do not appear to sufficiently reset the internal option, leading to
+  // CA verification failures when using lib from systemA on systemB.
+  // Ideally we could use CreateDefaultClientOptions(channel_options)
+  // signature, but that function is header-only/unimplemented
+  // (as of GCS 1.15).
+
+  // Creates the client using the credentials file pointed to by the
   // env variable GOOGLE_APPLICATION_CREDENTIALS
-  client_ = google::cloud::storage::Client::CreateDefaultClient();
+  auto creds =
+      google::cloud::storage::oauth2::GoogleDefaultCredentials(channel_options);
+  if (!creds) {
+    return LOG_STATUS(Status::GCSError(
+        "Failed to initialize GCS credentials; " + creds.status().message()));
+  }
+
+  google::cloud::storage::ClientOptions client_options(*creds, channel_options);
+  auto client = google::cloud::storage::Client(
+      client_options, google::cloud::storage::StrictIdempotencyPolicy());
+  client_ = google::cloud::StatusOr<google::cloud::storage::Client>(client);
   if (!client_) {
     return LOG_STATUS(Status::GCSError(
         "Failed to initialize GCS Client; " + client_.status().message()));
