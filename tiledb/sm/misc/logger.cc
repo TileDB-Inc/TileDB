@@ -36,6 +36,7 @@
 
 namespace tiledb {
 namespace sm {
+std::mutex logger_sink_create_mutex_;
 
 /* ********************************* */
 /*     CONSTRUCTORS & DESTRUCTORS    */
@@ -45,6 +46,7 @@ Logger::Logger(const char* prefix) :
   Logger(prefix != nullptr ? std::string(prefix) : std::string()) {}
 
 Logger::Logger(const std::string& prefix) {
+  std::lock_guard<std::mutex> lock(logger_sink_create_mutex_);
   logger_ = spdlog::get("tiledb");
   if (logger_ == nullptr) {
 #ifdef _WIN32

@@ -162,6 +162,7 @@ class Logger {
 
 /** Global logger function. */
 Logger& global_logger();
+extern std::mutex logger_sink_create_mutex_;
 
 #ifdef TILEDB_VERBOSE
 /** Logs an error. */
