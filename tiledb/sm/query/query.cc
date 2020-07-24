@@ -711,6 +711,10 @@ Status Query::set_subarray_unsafe(const NDRange& subarray) {
 
 Status Query::submit() {
   logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
+  std::stringstream ss;
+  ss << "query memory address (" << this << ")";
+  logger_.error(ss.str().c_str());
+  std::cerr << ss.str() << std::endl;
   std::stringstream addr;
   addr << this;
   logger_.error(addr.str().c_str());
