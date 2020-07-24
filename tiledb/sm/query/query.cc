@@ -423,8 +423,10 @@ bool Query::has_results() const {
 }
 
 Status Query::init() {
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   // Only if the query has not been initialized before
   if (status_ == QueryStatus::UNINITIALIZED) {
+    logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
     // Check if the array got closed
     if (array_ == nullptr || !array_->is_open())
       return LOG_STATUS(Status::QueryError(
@@ -432,8 +434,10 @@ Status Query::init() {
 
     // Check if the array got re-opened with a different query type
     QueryType array_query_type;
+    logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
     RETURN_NOT_OK(array_->get_query_type(&array_query_type));
     if (array_query_type != type_) {
+      logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
       std::stringstream errmsg;
       errmsg << "Cannot init query; "
              << "Associated array query type does not match query type: "
@@ -441,15 +445,19 @@ Status Query::init() {
              << " != " << query_type_str(type_) << ")";
       return LOG_STATUS(Status::QueryError(errmsg.str()));
     }
+    logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
 
     if (type_ == QueryType::READ) {
       RETURN_NOT_OK(reader_.init(layout_));
     } else {  // Write
       RETURN_NOT_OK(writer_.init(layout_));
     }
+    logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   }
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
 
   status_ = QueryStatus::INPROGRESS;
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
 
   return Status::Ok();
 }
@@ -526,6 +534,7 @@ Status Query::process() {
   status_ = QueryStatus::INPROGRESS;
 
   // Process query
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   Status st = Status::Ok();
   if (type_ == QueryType::READ)
     st = reader_.read();
@@ -698,10 +707,15 @@ Status Query::set_subarray_unsafe(const NDRange& subarray) {
 
 Status Query::submit() {
   logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
+  std::stringstream addr;
+  addr << this;
+  logger_.error(addr.str().c_str());
   // Do not resubmit completed reads.
   if (type_ == QueryType::READ && status_ == QueryStatus::COMPLETED) {
+    logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
     return Status::Ok();
   }
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   if (array_->is_remote()) {
     logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
     auto rest_client = storage_manager_->rest_client();
@@ -709,11 +723,15 @@ Status Query::submit() {
       return LOG_STATUS(Status::QueryError(
           "Error in query submission; remote array with no rest client."));
 
+    logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
     array_->array_schema()->set_array_uri(array_->array_uri());
 
+    logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
     return rest_client->submit_query_to_rest(array_->array_uri(), this);
   }
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   RETURN_NOT_OK(init());
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   return storage_manager_->query_submit(this);
 }
 

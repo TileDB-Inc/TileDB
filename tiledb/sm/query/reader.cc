@@ -206,6 +206,7 @@ Status Reader::get_buffer(
 }
 
 Status Reader::init(const Layout& layout) {
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   // Sanity checks
   if (storage_manager_ == nullptr)
     return LOG_STATUS(Status::ReaderError(
@@ -239,6 +240,7 @@ Status Reader::init(const Layout& layout) {
   RETURN_NOT_OK(utils::parse::convert(memory_budget_var, &memory_budget_var_));
   RETURN_NOT_OK(init_read_state());
 
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   return Status::Ok();
 }
 
@@ -308,6 +310,7 @@ Status Reader::read() {
       logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
       RETURN_NOT_OK(sparse_read());
     }
+    logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
 
     // In the case of overflow, we need to split the current partition
     // without advancing to the next partition
@@ -335,6 +338,7 @@ Status Reader::read() {
     logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   } while (true);
 
+    logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   return Status::Ok();
 
   STATS_END_TIMER(stats::Stats::TimerType::READ)
@@ -2366,19 +2370,23 @@ Status Reader::sparse_read() {
   for (auto& srt : sparse_result_tiles)
     result_tiles.push_back(&srt);
 
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   // Compute result cell slabs
   std::vector<ResultCellSlab> result_cell_slabs;
   RETURN_CANCEL_OR_ERROR(
       compute_result_cell_slabs(result_coords, &result_cell_slabs));
   result_coords.clear();
 
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   get_result_tile_stats(result_tiles);
   get_result_cell_stats(result_cell_slabs);
 
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   RETURN_NOT_OK(copy_coordinates(result_tiles, result_cell_slabs));
   RETURN_NOT_OK(
       copy_attribute_values(UINT64_MAX, result_tiles, result_cell_slabs));
 
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   return Status::Ok();
 }
 
