@@ -1,6 +1,7 @@
 # TileDB v2.0.7 Release Notes
 
 ## Improvements
+* Various performance optimizations in the read path. [#1689](https://github.com/TileDB-Inc/TileDB/pull/1689) [#1692](https://github.com/TileDB-Inc/TileDB/pull/1692) [#1693](https://github.com/TileDB-Inc/TileDB/pull/1693) [#1694](https://github.com/TileDB-Inc/TileDB/pull/1694) [#1695](https://github.com/TileDB-Inc/TileDB/pull/1695)
 * Google Cloud SDK bumped to 1.14. [#1687](https://github.com/TileDB-Inc/TileDB/pull/1687), [#1742](https://github.com/TileDB-Inc/TileDB/pull/1742)
 
 ## Bug fixes
@@ -17,7 +18,6 @@
 ## Improvements
 
 * Add new config option `vfs.file.posix_permissions`. [#1710](https://github.com/TileDB-Inc/TileDB/pull/1710)
-* Various performance optimizations in the read path. [#1689](https://github.com/TileDB-Inc/TileDB/pull/1689) [#1692](https://github.com/TileDB-Inc/TileDB/pull/1692) [#1693](https://github.com/TileDB-Inc/TileDB/pull/1693) [#1694](https://github.com/TileDB-Inc/TileDB/pull/1694) [#1695](https://github.com/TileDB-Inc/TileDB/pull/1695)
 
 ## Bug fixes
 
