@@ -67,11 +67,17 @@ Subarray::Subarray(const Array* array)
     : Subarray(array, Layout::UNORDERED) {
 }
 
-Subarray::Subarray(const Array* array, Layout layout)
+Subarray::Subarray(const Array* array, Layout layout, const Config& config)
     : array_(array)
     , layout_(layout) {
   est_result_size_computed_ = false;
   tile_overlap_computed_ = false;
+
+  const char* prefix = nullptr;
+  config.get("sm.log_prefix", &prefix);
+  logger_ = Logger(prefix);
+
+
   cell_order_ = array_->array_schema()->cell_order();
   add_default_ranges();
 }
@@ -1351,12 +1357,14 @@ Status Subarray::compute_tile_coords_row() {
 Status Subarray::compute_tile_overlap() {
   STATS_START_TIMER(stats::Stats::TimerType::READ_COMPUTE_TILE_OVERLAP)
 
+    logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   if (tile_overlap_computed_)
     return Status::Ok();
 
   compute_range_offsets();
 
   // Initialization
+    logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   tile_overlap_.clear();
   auto meta = array_->fragment_metadata();
   auto fragment_num = meta.size();
@@ -1365,15 +1373,21 @@ Status Subarray::compute_tile_overlap() {
   for (unsigned i = 0; i < fragment_num; ++i)
     tile_overlap_[i].resize(range_num);
 
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
+
   // Compute relevant fragments to the subarray
   RETURN_NOT_OK(compute_relevant_fragments());
 
+    logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   // Load the R-Trees and compute tile overlap only for relevant fragments
   RETURN_NOT_OK(load_relevant_fragment_rtrees());
+    logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   RETURN_NOT_OK(compute_relevant_fragment_tile_overlap());
 
+    logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   tile_overlap_computed_ = true;
 
+    logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   return Status::Ok();
 
   STATS_END_TIMER(stats::Stats::TimerType::READ_COMPUTE_TILE_OVERLAP)
@@ -1393,6 +1407,7 @@ Subarray Subarray::clone() const {
   clone.est_result_size_ = est_result_size_;
   clone.max_mem_size_ = max_mem_size_;
   clone.relevant_fragments_ = relevant_fragments_;
+  clone.logger_ = logger_;
 
   return clone;
 }
@@ -1530,12 +1545,14 @@ void Subarray::swap(Subarray& subarray) {
 Status Subarray::compute_relevant_fragments() {
   STATS_START_TIMER(stats::Stats::TimerType::READ_COMPUTE_RELEVANT_FRAGS)
 
+    logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   auto meta = array_->fragment_metadata();
   auto fragment_num = meta.size();
   auto range_num = this->range_num();
   std::vector<uint8_t> frag_bitmap(fragment_num, 0);
 
   // Compute the relevant fragments
+    logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   auto statuses = parallel_for_2d(
       0, fragment_num, 0, range_num, [&](unsigned f, uint64_t r) {
         if (frag_bitmap[f] == 0 &&
@@ -1545,6 +1562,7 @@ Status Subarray::compute_relevant_fragments() {
       });
 
   // Copy to the result
+    logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   relevant_fragments_.reserve(fragment_num);
   for (unsigned f = 0; f < fragment_num; ++f) {
     if (frag_bitmap[f])
@@ -1552,6 +1570,7 @@ Status Subarray::compute_relevant_fragments() {
   }
   relevant_fragments_.shrink_to_fit();
 
+    logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   return Status::Ok();
 
   STATS_END_TIMER(stats::Stats::TimerType::READ_COMPUTE_RELEVANT_FRAGS)
@@ -1577,17 +1596,21 @@ Status Subarray::load_relevant_fragment_rtrees() const {
 Status Subarray::compute_relevant_fragment_tile_overlap() {
   STATS_START_TIMER(stats::Stats::TimerType::READ_COMPUTE_RELEVANT_TILE_OVERLAP)
 
+    logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   const auto& meta = array_->fragment_metadata();
   auto range_num = this->range_num();
 
+    logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   auto statuses = parallel_for(0, relevant_fragments_.size(), [&](uint64_t i) {
     auto f = relevant_fragments_[i];
     auto dense = meta[f]->dense();
     return compute_relevant_fragment_tile_overlap(meta[f], f, dense, range_num);
   });
+    logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   for (const auto& st : statuses)
     RETURN_NOT_OK(st);
 
+    logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   return Status::Ok();
 
   STATS_END_TIMER(stats::Stats::TimerType::READ_COMPUTE_RELEVANT_TILE_OVERLAP)

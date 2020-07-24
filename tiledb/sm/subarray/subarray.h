@@ -39,6 +39,7 @@
 #include "tiledb/sm/misc/tile_overlap.h"
 #include "tiledb/sm/misc/types.h"
 
+#include <tiledb/sm/config/config.h>
 #include <cmath>
 #include <iostream>
 #include <map>
@@ -163,7 +164,7 @@ class Subarray {
    *     if the subarray is used for reads, or of the values provided
    *     by the user for writes).
    */
-  Subarray(const Array* array, Layout layout);
+  Subarray(const Array* array, Layout layout, const Config& config = Config());
 
   /**
    * Copy constructor. This performs a deep copy (including memcpy of
@@ -736,6 +737,8 @@ class Subarray {
    */
   Status load_relevant_fragment_tile_var_sizes(
       const std::vector<std::string>& names) const;
+
+  Logger logger_;
 };
 
 }  // namespace sm

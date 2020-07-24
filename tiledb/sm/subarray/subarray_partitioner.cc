@@ -61,14 +61,22 @@ SubarrayPartitioner::SubarrayPartitioner() = default;
 SubarrayPartitioner::SubarrayPartitioner(
     const Subarray& subarray,
     uint64_t memory_budget,
-    uint64_t memory_budget_var)
+    uint64_t memory_budget_var,
+    const Config& config)
     : subarray_(subarray)
     , memory_budget_(memory_budget)
     , memory_budget_var_(memory_budget_var) {
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   subarray_.compute_tile_overlap();
   state_.start_ = 0;
   auto range_num = subarray_.range_num();
   state_.end_ = (range_num > 0) ? range_num - 1 : 0;
+
+
+  const char* prefix = nullptr;
+  config.get("sm.log_prefix", &prefix);
+  logger_ = Logger(prefix);
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
 }
 
 SubarrayPartitioner::~SubarrayPartitioner() = default;
@@ -105,6 +113,7 @@ SubarrayPartitioner& SubarrayPartitioner::operator=(
 /* ****************************** */
 
 Subarray& SubarrayPartitioner::current() {
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   return current_.partition_;
 }
 
@@ -115,6 +124,7 @@ SubarrayPartitioner::current_partition_info() const {
 
 SubarrayPartitioner::PartitionInfo*
 SubarrayPartitioner::current_partition_info() {
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   return &current_;
 }
 
@@ -500,6 +510,7 @@ SubarrayPartitioner SubarrayPartitioner::clone() const {
   clone.state_ = state_;
   clone.memory_budget_ = memory_budget_;
   clone.memory_budget_var_ = memory_budget_var_;
+  clone.logger_ = logger_;
 
   return clone;
 }

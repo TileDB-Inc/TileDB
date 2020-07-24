@@ -35,6 +35,7 @@
 
 #include <list>
 
+#include <tiledb/sm/config/config.h>
 #include <unordered_map>
 #include "tiledb/sm/misc/constants.h"
 #include "tiledb/sm/subarray/subarray.h"
@@ -154,7 +155,8 @@ class SubarrayPartitioner {
   SubarrayPartitioner(
       const Subarray& subarray,
       uint64_t memory_budget,
-      uint64_t memory_budget_var);
+      uint64_t memory_budget_var,
+      const Config& config = Config());
 
   /** Destructor. */
   ~SubarrayPartitioner();
@@ -409,6 +411,8 @@ class SubarrayPartitioner {
    * the given partitioner.
    */
   void swap(SubarrayPartitioner& partitioner);
+
+    Logger logger_;
 };
 
 }  // namespace sm
