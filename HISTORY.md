@@ -1,5 +1,8 @@
 # TileDB v2.0.7 Release Notes
 
+## Improvements
+* Google Cloud SDK bumped to 1.14. [#1687](https://github.com/TileDB-Inc/TileDB/pull/1687), [#1742](https://github.com/TileDB-Inc/TileDB/pull/1742)
+
 ## Bug fixes
 
 * Fixed error "Error: Out of bounds read to internal chunk buffer of size 65536" that may occur when writing var-sized attributes. [#1732](https://github.com/TileDB-Inc/TileDB/pull/1732)
