@@ -226,7 +226,9 @@ Status Reader::init(const Layout& layout) {
   logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   const char* prefix = nullptr;
   storage_manager_->config().get("sm.log_prefix", &prefix);
-  logger_ = Logger(prefix);
+  std::stringstream ss;
+  ss << "(" << this << ") " << prefix;
+  logger_ = Logger(ss.str());
   logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
 
   // Set layout

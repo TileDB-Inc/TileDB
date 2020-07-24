@@ -80,7 +80,9 @@ Query::Query(StorageManager* storage_manager, Array* array, URI fragment_uri)
 
   const char* prefix = nullptr;
   storage_manager->config().get("sm.log_prefix", &prefix);
-  logger_ = Logger(prefix);
+  std::stringstream ss;
+  ss << "(" << this << ") " << prefix;
+  logger_ = Logger(ss.str());
 }
 
 Query::~Query() {

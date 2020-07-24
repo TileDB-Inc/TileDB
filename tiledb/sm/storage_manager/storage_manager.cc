@@ -1390,7 +1390,9 @@ Status StorageManager::init(const Config* config) {
 
   const char* prefix = nullptr;
   config_.get("sm.log_prefix", &prefix);
-  logger_ = Logger(prefix);
+  std::stringstream ss;
+  ss << "(" << this << ") " << prefix;
+  logger_ = Logger(ss.str());
 
   return Status::Ok();
 }
