@@ -50,9 +50,9 @@ Logger::Logger(const std::string& prefix) {
   logger_ = spdlog::get("tiledb");
   if (logger_ == nullptr) {
 #ifdef _WIN32
-    logger_ = spdlog::stdout_logger_mt("tiledb");
+    logger_ = spdlog::stderr_logger_mt("tiledb");
 #else
-    logger_ = spdlog::stdout_color_mt("tiledb");
+    logger_ = spdlog::stderr_color_mt("tiledb");
 #endif
   }
   // Set the default logging format
