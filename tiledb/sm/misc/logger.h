@@ -37,6 +37,7 @@
 
 #include <spdlog/fmt/ostr.h>
 #include <spdlog/spdlog.h>
+#include <iostream>
 
 #include "tiledb/sm/misc/status.h"
 
@@ -72,7 +73,7 @@ class Logger {
    * @param msg The string to log.
    */
   void debug(const char* msg) {
-    logger_->debug(msg);
+    std::cerr << msg << std::endl;
   }
 
   /**
@@ -86,7 +87,8 @@ class Logger {
    */
   template <typename Arg1, typename... Args>
   void debug(const char* fmt, const Arg1& arg1, const Args&... args) {
-    logger_->debug(fmt, arg1, args...);
+    std::string s = std::string(fmt) + "\n";
+    fprintf(std::cerr, s.c_str(), arg1, args...);
   }
 
   /**
@@ -95,7 +97,7 @@ class Logger {
    * @param msg The string to log
    * */
   void error(const char* msg) {
-    logger_->error(msg);
+    std::cerr << msg << std::endl;
   }
 
   /** A formatted error statement.
@@ -107,7 +109,8 @@ class Logger {
    */
   template <typename Arg1, typename... Args>
   void error(const char* fmt, const Arg1& arg1, const Args&... args) {
-    logger_->error(fmt, arg1, args...);
+    std::string s = std::string(fmt) + "\n";
+    fprintf(std::cerr, s.c_str(), arg1, args...);
   }
 
   /**
@@ -117,14 +120,15 @@ class Logger {
    *    Status Error's.
    */
   void set_level(Logger::Level lvl) {
-    switch (lvl) {
+    lvl_ = lvl;
+/*    switch (lvl) {
       case Logger::Level::VERBOSE:
         logger_->set_level(spdlog::level::debug);
         break;
       case Logger::Level::ERROR:
         logger_->set_level(spdlog::level::err);
         break;
-    }
+    }*/
   }
 
   /**
@@ -136,12 +140,13 @@ class Logger {
    *     otherwise.
    */
   bool should_log(Logger::Level lvl) {
-    switch (lvl) {
+    return lvl >= lvl_;
+/*    switch (lvl) {
       case Logger::Level::VERBOSE:
         return logger_->should_log(spdlog::level::debug);
       case Logger::Level::ERROR:
         return logger_->should_log(spdlog::level::err);
-    }
+    }*/
   }
 
  private:
@@ -150,7 +155,8 @@ class Logger {
   /* ********************************* */
 
   /** The logger object. */
-  std::shared_ptr<spdlog::logger> logger_;
+//  std::shared_ptr<spdlog::logger> logger_;
+  Logger::Level lvl_;
 };
 
 /* ********************************* */

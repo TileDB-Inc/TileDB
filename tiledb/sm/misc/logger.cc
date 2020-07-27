@@ -42,7 +42,7 @@ namespace sm {
 /* ********************************* */
 
 Logger::Logger() {
-  logger_ = spdlog::get("tiledb");
+  /*logger_ = spdlog::get("tiledb");
   if (logger_ == nullptr) {
 #ifdef _WIN32
     logger_ = spdlog::stdout_logger_mt("tiledb");
@@ -58,17 +58,17 @@ Logger::Logger() {
   // [log level]
   // text to log...
   logger_->set_pattern(
-      "[%Y-%m-%d %H:%M:%S.%e] [%n] [Process: %P] [Thread: %t] [%l] %v");
+      "[%Y-%m-%d %H:%M:%S.%e] [%n] [Process: %P] [Thread: %t] [%l] %v");*/
 
 #ifdef TILEDB_VERBOSE
-  logger_->set_level(spdlog::level::err);
+  set_level(Level::VERBOSE);
 #else
-  logger_->set_level(spdlog::level::critical);
+  set_level(Level::ERROR);
 #endif
 }
 
 Logger::~Logger() {
-  spdlog::drop("tiledb");
+//  spdlog::drop("tiledb");
 }
 
 /* ********************************* */
