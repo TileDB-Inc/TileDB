@@ -98,7 +98,7 @@ Status FilterPipeline::filter_chunks_forward(
 
   // We will only filter chunks that contain data at or below
   // the logical chunked buffer size.
-  size_t populated_nchunks = input.nchunks();
+  uint64_t populated_nchunks = input.nchunks();
   if (input.size() != input.capacity()) {
     populated_nchunks = 0;
     for (uint64_t i = 0; i < input.nchunks(); ++i) {
