@@ -44,7 +44,7 @@
 namespace tiledb {
 namespace sm {
 
-extern std::mutex logger_sink_create_mutex_;
+//extern std::mutex logger_sink_create_mutex_;
 /** Definition of class Logger. */
 class Logger {
   /** Verbosity level. */
@@ -75,8 +75,9 @@ class Logger {
    * @param msg The string to log.
    */
   void debug(const char* msg) {
-    std::lock_guard<std::mutex> lock(logger_sink_create_mutex_);
-    logger_->debug(msg);
+//    std::lock_guard<std::mutex> lock(logger_sink_create_mutex_);
+//    logger_->debug(msg);
+      std::cerr << prefix_ << " " << msg << std::endl;
   }
 
   /**
@@ -90,8 +91,11 @@ class Logger {
    */
   template <typename Arg1, typename... Args>
   void debug(const char* fmt, const Arg1& arg1, const Args&... args) {
-    std::lock_guard<std::mutex> lock(logger_sink_create_mutex_);
-    logger_->debug(fmt, arg1, args...);
+//    std::lock_guard<std::mutex> lock(logger_sink_create_mutex_);
+//    logger_->debug(fmt, arg1, args...);
+//    std::cerr << prefix_ << " " << msg << std::endl;
+    std::string s = prefix_ + " " + fmt + "\n";
+    fprintf(std::cerr, s.c_str(), arg1, args...);
   }
 
   /**
@@ -100,8 +104,9 @@ class Logger {
    * @param msg The string to log
    * */
   void error(const char* msg) {
-    std::lock_guard<std::mutex> lock(logger_sink_create_mutex_);
-    logger_->error(msg);
+//    std::lock_guard<std::mutex> lock(logger_sink_create_mutex_);
+//    logger_->error(msg);
+    std::cerr << prefix_ << " " << msg << std::endl;
   }
 
   /** A formatted error statement.
@@ -113,8 +118,11 @@ class Logger {
    */
   template <typename Arg1, typename... Args>
   void error(const char* fmt, const Arg1& arg1, const Args&... args) {
-    std::lock_guard<std::mutex> lock(logger_sink_create_mutex_);
-    logger_->error(fmt, arg1, args...);
+//    std::lock_guard<std::mutex> lock(logger_sink_create_mutex_);
+//    sprintf(fmt, arg1, args...);
+//    std::cerr << prefix_ << " " << msg << std::endl;
+    std::string s = prefix_ + " " + fmt + "\n";
+    fprintf(std::cerr, s.c_str(), arg1, args...);
   }
 
   /**
@@ -124,15 +132,16 @@ class Logger {
    *    Status Error's.
    */
   void set_level(Logger::Level lvl) {
-    std::lock_guard<std::mutex> lock(logger_sink_create_mutex_);
-    switch (lvl) {
-      case Logger::Level::VERBOSE:
-        logger_->set_level(spdlog::level::debug);
-        break;
-      case Logger::Level::ERROR:
-        logger_->set_level(spdlog::level::err);
-        break;
-    }
+//    std::lock_guard<std::mutex> lock(logger_sink_create_mutex_);
+//    switch (lvl) {
+//      case Logger::Level::VERBOSE:
+//        logger_->set_level(spdlog::level::debug);
+//        break;
+//      case Logger::Level::ERROR:
+//        logger_->set_level(spdlog::level::err);
+//        break;
+//    }
+    lvl_ = lvl;
   }
 
   /**
@@ -144,13 +153,14 @@ class Logger {
    *     otherwise.
    */
   bool should_log(Logger::Level lvl) {
-    std::lock_guard<std::mutex> lock(logger_sink_create_mutex_);
-    switch (lvl) {
-      case Logger::Level::VERBOSE:
-        return logger_->should_log(spdlog::level::debug);
-      case Logger::Level::ERROR:
-        return logger_->should_log(spdlog::level::err);
-    }
+    return lvl >= lvl_;
+//    std::lock_guard<std::mutex> lock(logger_sink_create_mutex_);
+//    switch (lvl) {
+//      case Logger::Level::VERBOSE:
+//        return logger_->should_log(spdlog::level::debug);
+//      case Logger::Level::ERROR:
+//        return logger_->should_log(spdlog::level::err);
+//    }
   }
 
  private:
@@ -159,7 +169,8 @@ class Logger {
   /* ********************************* */
 
   /** The logger object. */
-  std::shared_ptr<spdlog::logger> logger_;
+//  std::shared_ptr<spdlog::logger> logger_;
+  Logger::Level lvl_;
 
   std::string prefix_;
 };
@@ -174,34 +185,34 @@ Logger& global_logger();
 #ifdef TILEDB_VERBOSE
 /** Logs an error. */
 inline void LOG_ERROR(const std::string& msg) {
-  std::lock_guard<std::mutex> lock(logger_sink_create_mutex_);
+//  std::lock_guard<std::mutex> lock(logger_sink_create_mutex_);
   global_logger().error(msg.c_str());
 }
 
 /** Logs a status. */
 inline Status LOG_STATUS(const Status& st) {
-  std::lock_guard<std::mutex> lock(logger_sink_create_mutex_);
+//  std::lock_guard<std::mutex> lock(logger_sink_create_mutex_);
   global_logger().error(st.to_string().c_str());
   return st;
 }
 #else
 /** Logs an error. */
 inline void LOG_ERROR(const std::string& msg) {
-  std::lock_guard<std::mutex> lock(logger_sink_create_mutex_);
+//  std::lock_guard<std::mutex> lock(logger_sink_create_mutex_);
   (void)msg;
   return;
 }
 
 /** Logs a status. */
 inline Status LOG_STATUS(const Status& st) {
-  std::lock_guard<std::mutex> lock(logger_sink_create_mutex_);
+//  std::lock_guard<std::mutex> lock(logger_sink_create_mutex_);
   return st;
 }
 #endif
 
 /** Logs an error and exits with a non-zero status. */
 inline void LOG_FATAL(const std::string& msg) {
-  std::lock_guard<std::mutex> lock(logger_sink_create_mutex_);
+//  std::lock_guard<std::mutex> lock(logger_sink_create_mutex_);
   global_logger().error(msg.c_str());
   exit(1);
 }

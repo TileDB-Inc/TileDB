@@ -46,7 +46,7 @@ Logger::Logger(const char* prefix) :
   Logger(prefix != nullptr ? std::string(prefix) : std::string()) {}
 
 Logger::Logger(const std::string& prefix) {
-  std::lock_guard<std::mutex> lock(logger_sink_create_mutex_);
+/*  std::lock_guard<std::mutex> lock(logger_sink_create_mutex_);
   logger_ = spdlog::get("tiledb");
   if (logger_ == nullptr) {
 #ifdef _WIN32
@@ -54,7 +54,7 @@ Logger::Logger(const std::string& prefix) {
 #else
     logger_ = spdlog::stderr_color_mt("tiledb");
 #endif
-  }
+  }*/
   // Set the default logging format
   // [Year-month-day 24hr-min-second.microsecond]
   // [logger]
@@ -65,13 +65,13 @@ Logger::Logger(const std::string& prefix) {
   if (!prefix.empty()) {
     prefix_ = "[" + prefix + "]: ";
   }
-  logger_->set_pattern( prefix_ +
-      "[%Y-%m-%d %H:%M:%S.%e] [%n] [Process: %P] [Thread: %t] [%l] %v");
+//  logger_->set_pattern( prefix_ +
+//      "[%Y-%m-%d %H:%M:%S.%e] [%n] [Process: %P] [Thread: %t] [%l] %v");
 
 #ifdef TILEDB_VERBOSE
-  logger_->set_level(spdlog::level::err);
+  set_level(Level::VERBOSE);
 #else
-  logger_->set_level(spdlog::level::critical);
+  set_level(Level::ERROR);
 #endif
 }
 
