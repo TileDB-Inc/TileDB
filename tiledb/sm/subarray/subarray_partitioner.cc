@@ -287,15 +287,20 @@ Status SubarrayPartitioner::next(bool* unsplittable) {
   // Find the [start, end] of the subarray ranges that fit in the budget
   bool interval_found;
   RETURN_NOT_OK(compute_current_start_end(&interval_found));
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
 
   // Single-range partition that must be split
   // Note: this applies only to UNORDERED and GLOBAL_ORDER layouts,
   // since otherwise we may have to calibrate the range start and end
   if (!interval_found && (subarray_.layout() == Layout::UNORDERED ||
-                          subarray_.layout() == Layout::GLOBAL_ORDER))
+                          subarray_.layout() == Layout::GLOBAL_ORDER)) {
+    logger_.error(
+        (__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
     return next_from_single_range(unsplittable);
+  }
 
   // An interval of whole ranges that may need calibration
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   bool must_split_slab;
   calibrate_current_start_end(&must_split_slab);
   logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());

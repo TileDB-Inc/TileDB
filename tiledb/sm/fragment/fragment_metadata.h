@@ -936,6 +936,8 @@ class FragmentMetadata {
    * fragment metadata file and unlocks the array.
    */
   void clean_up();
+
+  Logger logger_;
 };
 
 }  // namespace sm
