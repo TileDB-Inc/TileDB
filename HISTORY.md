@@ -37,16 +37,28 @@
 
 # TileDB v2.0.7 Release Notes
 
+## Improvements
+* Google Cloud SDK bumped to 1.14. [#1687](https://github.com/TileDB-Inc/TileDB/pull/1687), [#1742](https://github.com/TileDB-Inc/TileDB/pull/1742)
+
 ## Bug fixes
 
 * Fixed error "Error: Out of bounds read to internal chunk buffer of size 65536" that may occur when writing var-sized attributes. [#1732](https://github.com/TileDB-Inc/TileDB/pull/1732)
 * Fixed error "Error: Chunk read error; chunk unallocated error" that may occur when reading arrays with more than one dimension. [#1736](https://github.com/TileDB-Inc/TileDB/pull/1736)
+* Fix Catch2 detection of system install [#1733](https://github.com/TileDB-Inc/TileDB/pull/1733)
+* Use libtiledb-detected certificate path for Google Cloud Storage, for better linux binary/wheel portability. [#1741](https://github.com/TileDB-Inc/TileDB/pull/1741)
+* Fixed a small memory leak when opening arrays. [#1690](https://github.com/TileDB-Inc/TileDB/pull/1690)
+* Fixed an overflow in the partioning path that may result in a hang or poor read performance. [#1725](https://github.com/TileDB-Inc/TileDB/pull/1725)[#1707](https://github.com/TileDB-Inc/TileDB/pull/1707)
+* Fix compilation on gcc 10.1 for blosc [#1740](https://github.com/TileDB-Inc/TileDB/pull/1740)
+
+## Improvements
+
+* Various performance optimizations in the read path. [#1689](https://github.com/TileDB-Inc/TileDB/pull/1689) [#1692](https://github.com/TileDB-Inc/TileDB/pull/1692) [#1693](https://github.com/TileDB-Inc/TileDB/pull/1693) [#1694](https://github.com/TileDB-Inc/TileDB/pull/1694) [#1695](https://github.com/TileDB-Inc/TileDB/pull/1695)
 
 # TileDB v2.0.6 Release Notes
 
 ## Improvements
 
-* Add new config option `vfs.file.posix_permissions` [#1710](https://github.com/TileDB-Inc/TileDB/pull/1710)
+* Add new config option `vfs.file.posix_permissions`. [#1710](https://github.com/TileDB-Inc/TileDB/pull/1710)
 
 ## Bug fixes
 
