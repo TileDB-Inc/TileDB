@@ -744,7 +744,7 @@ Status FragmentMetadata::load_rtree(const EncryptionKey& encryption_key) {
     return Status::Ok();
 
   logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
-  std::lock_guard<std::mutex> lock(mtx_);
+  std::lock_guard<std::recursive_mutex> lock(mtx_);
 
   logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   if (loaded_metadata_.rtree_)
@@ -1055,7 +1055,7 @@ void FragmentMetadata::get_subarray_tile_domain(
 
 Status FragmentMetadata::expand_non_empty_domain(const NDRange& mbr) {
   logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
-  std::lock_guard<std::mutex> lock(mtx_);
+  std::lock_guard<std::recursive_mutex> lock(mtx_);
 
   logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   // Case the non-empty domain is not initialized yet
@@ -1079,7 +1079,7 @@ Status FragmentMetadata::load_tile_offsets(
   if (version_ <= 2)
     return Status::Ok();
 
-  std::lock_guard<std::mutex> lock(mtx_);
+  std::lock_guard<std::recursive_mutex> lock(mtx_);
 
   logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   if (loaded_metadata_.tile_offsets_[idx])
@@ -1111,7 +1111,7 @@ Status FragmentMetadata::load_tile_var_offsets(
   if (version_ <= 2)
     return Status::Ok();
 
-  std::lock_guard<std::mutex> lock(mtx_);
+  std::lock_guard<std::recursive_mutex> lock(mtx_);
 
   logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   if (loaded_metadata_.tile_var_offsets_[idx])
@@ -1144,7 +1144,7 @@ Status FragmentMetadata::load_tile_var_sizes(
   if (version_ <= 2)
     return Status::Ok();
 
-  std::lock_guard<std::mutex> lock(mtx_);
+  std::lock_guard<std::recursive_mutex> lock(mtx_);
 
   logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   if (loaded_metadata_.tile_var_sizes_[idx])
@@ -1934,7 +1934,7 @@ Status FragmentMetadata::load_footer(
     uint32_t meta_version) {
   (void)encryption_key;  // Not used for now, perhaps in the future
   logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
-  std::lock_guard<std::mutex> lock(mtx_);
+  std::lock_guard<std::recursive_mutex> lock(mtx_);
 
   logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   if (loaded_metadata_.footer_)

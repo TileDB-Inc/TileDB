@@ -532,7 +532,7 @@ class FragmentMetadata {
   uint64_t meta_file_size_;
 
   /** Local mutex for thread-safety. */
-  std::mutex mtx_;
+  std::recursive_mutex mtx_;
 
   /** The non-empty domain of the fragment. */
   NDRange non_empty_domain_;
