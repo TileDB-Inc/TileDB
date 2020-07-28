@@ -291,6 +291,7 @@ Status Reader::read() {
 
   STATS_START_TIMER(stats::Stats::TimerType::READ)
   STATS_ADD_COUNTER(stats::Stats::CounterType::READ_NUM, 1)
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
 
   // Get next partition
   if (!read_state_.unsplittable_)
@@ -2581,7 +2582,9 @@ void Reader::erase_coord_tiles(std::vector<ResultTile>* result_tiles) const {
 }
 
 void Reader::get_dim_attr_stats() const {
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   for (const auto& it : buffers_) {
+    logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
     const auto& name = it.first;
     auto var_size = array_schema_->var_size(name);
     if (array_schema_->is_attr(name)) {
@@ -2604,21 +2607,26 @@ void Reader::get_dim_attr_stats() const {
       }
     }
   }
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
 }
 
 void Reader::get_result_cell_stats(
     const std::vector<ResultCellSlab>& result_cell_slabs) const {
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   uint64_t result_num = 0;
   for (const auto& rc : result_cell_slabs)
     result_num += rc.length_;
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   STATS_ADD_COUNTER(stats::Stats::CounterType::READ_RESULT_NUM, result_num);
 }
 
 void Reader::get_result_tile_stats(
     const std::vector<ResultTile*>& result_tiles) const {
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   STATS_ADD_COUNTER(
       stats::Stats::CounterType::READ_OVERLAP_TILE_NUM, result_tiles.size());
 
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   uint64_t cell_num = 0;
   for (const auto& rt : result_tiles) {
     if (!fragment_metadata_[rt->frag_idx()]->dense())
@@ -2626,26 +2634,31 @@ void Reader::get_result_tile_stats(
     else
       cell_num += array_schema_->domain()->cell_num_per_tile();
   }
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   STATS_ADD_COUNTER(stats::Stats::CounterType::READ_CELL_NUM, cell_num);
 }
 
 Status Reader::set_est_result_size(
     std::unordered_map<std::string, Subarray::ResultSize>& est_result_size,
     std::unordered_map<std::string, Subarray::MemorySize>& max_mem_size) {
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   return subarray_.set_est_result_size(est_result_size, max_mem_size);
 }
 
 std::unordered_map<std::string, Subarray::ResultSize>
 Reader::get_est_result_size_map() {
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   return subarray_.get_est_result_size_map();
 }
 
 bool Reader::est_result_size_computed() {
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   return subarray_.est_result_size_computed();
 }
 
 std::unordered_map<std::string, Subarray::MemorySize>
 Reader::get_max_mem_size_map() {
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   return subarray_.get_max_mem_size_map();
 }
 

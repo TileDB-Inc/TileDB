@@ -109,6 +109,13 @@ class Logger {
     std::cerr << prefix_ << " " << msg << std::endl;
   }
 
+  void error(const char* msg) const {
+//    std::lock_guard<std::mutex> lock(logger_sink_create_mutex_);
+//    logger_->error(msg);
+    std::cerr << prefix_ << " " << msg << std::endl;
+  }
+
+
   /** A formatted error statement.
    *
    * @param fmt A fmtlib format string, see http://fmtlib.net/latest/ for
