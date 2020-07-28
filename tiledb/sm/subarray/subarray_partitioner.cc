@@ -119,6 +119,7 @@ Subarray& SubarrayPartitioner::current() {
 
 const SubarrayPartitioner::PartitionInfo*
 SubarrayPartitioner::current_partition_info() const {
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   return &current_;
 }
 
@@ -129,38 +130,45 @@ SubarrayPartitioner::current_partition_info() {
 }
 
 bool SubarrayPartitioner::done() const {
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   return subarray_.empty() || state_.start_ > state_.end_;
 }
 
 Status SubarrayPartitioner::get_result_budget(
     const char* name, uint64_t* budget) const {
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   // Check attribute/dimension name
   if (name == nullptr)
     return LOG_STATUS(Status::SubarrayPartitionerError(
         "Cannot get result budget; Attribute/Dimension name cannot be null"));
 
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   // Check budget pointer
   if (budget == nullptr)
     return LOG_STATUS(Status::SubarrayPartitionerError(
         "Cannot get result budget; Invalid budget input"));
 
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   // For easy reference
   auto array_schema = subarray_.array()->array_schema();
   bool is_dim = array_schema->is_dim(name);
   bool is_attr = array_schema->is_attr(name);
 
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   // Check if attribute/dimension exists
   if (name != constants::coords && !is_dim && !is_attr)
     return LOG_STATUS(Status::SubarrayPartitionerError(
         std::string("Cannot get result budget; Invalid attribute/dimension '") +
         name + "'"));
 
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   // Check if the attribute/dimension is fixed-sized
   if (array_schema->var_size(name))
     return LOG_STATUS(Status::SubarrayPartitionerError(
         std::string("Cannot get result budget; Input attribute/dimension '") +
         name + "' is var-sized"));
 
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   // Check if budget has been set
   auto b_it = budget_.find(name);
   if (b_it == budget_.end())
@@ -172,44 +180,52 @@ Status SubarrayPartitioner::get_result_budget(
   // Get budget
   *budget = b_it->second.size_fixed_;
 
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   return Status::Ok();
 }
 
 Status SubarrayPartitioner::get_result_budget(
     const char* name, uint64_t* budget_off, uint64_t* budget_val) const {
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   // Check attribute/dimension name
   if (name == nullptr)
     return LOG_STATUS(Status::SubarrayPartitionerError(
         "Cannot get result budget; Attribute/Dimension name cannot be null"));
 
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   // Check budget pointers
   if (budget_off == nullptr || budget_val == nullptr)
     return LOG_STATUS(Status::SubarrayPartitionerError(
         "Cannot get result budget; Invalid budget input"));
 
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   // Check zipped coordinates
   if (name == constants::coords)
     return LOG_STATUS(Status::SubarrayPartitionerError(
         "Cannot get result budget for zipped coordinates; Attribute/Dimension "
         "must be var-sized"));
 
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   // For easy reference
   auto array_schema = subarray_.array()->array_schema();
   bool is_dim = array_schema->is_dim(name);
   bool is_attr = array_schema->is_attr(name);
 
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   // Check if attribute/dimension exists
   if (!is_dim && !is_attr)
     return LOG_STATUS(Status::SubarrayPartitionerError(
         std::string("Cannot get result budget; Invalid attribute/dimension '") +
         name + "'"));
 
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   // Check if the attribute/dimension is var-sized
   if (!array_schema->var_size(name))
     return LOG_STATUS(Status::SubarrayPartitionerError(
         std::string("Cannot get result budget; Input attribute/dimension '") +
         name + "' is fixed-sized"));
 
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   // Check if budget has been set
   auto b_it = budget_.find(name);
   if (b_it == budget_.end())
@@ -218,6 +234,8 @@ Status SubarrayPartitioner::get_result_budget(
                     "attribute/dimension '") +
         name + "'"));
 
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   // Get budget
   *budget_off = b_it->second.size_fixed_;
   *budget_val = b_it->second.size_var_;
@@ -232,6 +250,7 @@ SubarrayPartitioner::get_result_budgets() const {
 
 Status SubarrayPartitioner::get_memory_budget(
     uint64_t* budget, uint64_t* budget_var) const {
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   *budget = memory_budget_;
   *budget_var = memory_budget_var_;
   return Status::Ok();
@@ -239,20 +258,24 @@ Status SubarrayPartitioner::get_memory_budget(
 
 Status SubarrayPartitioner::next(bool* unsplittable) {
   STATS_START_TIMER(stats::Stats::TimerType::READ_NEXT_PARTITION)
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
 
   *unsplittable = false;
 
   if (done())
     return Status::Ok();
 
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   // Handle single range partitions, remaining from previous iteration
   if (!state_.single_range_.empty())
     return next_from_single_range(unsplittable);
 
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   // Handle multi-range partitions, remaining from slab splits
   if (!state_.multi_range_.empty())
     return next_from_multi_range(unsplittable);
 
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   // Find the [start, end] of the subarray ranges that fit in the budget
   bool interval_found;
   RETURN_NOT_OK(compute_current_start_end(&interval_found));
@@ -267,6 +290,7 @@ Status SubarrayPartitioner::next(bool* unsplittable) {
   // An interval of whole ranges that may need calibration
   bool must_split_slab;
   calibrate_current_start_end(&must_split_slab);
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
 
   // Handle case the next partition is composed of whole ND ranges
   if (interval_found && !must_split_slab) {
@@ -276,6 +300,7 @@ Status SubarrayPartitioner::next(bool* unsplittable) {
     state_.start_ = current_.end_ + 1;
     return Status::Ok();
   }
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
 
   // Must split a multi-range subarray slab
   return next_from_multi_range(unsplittable);
@@ -285,23 +310,27 @@ Status SubarrayPartitioner::next(bool* unsplittable) {
 
 Status SubarrayPartitioner::set_result_budget(
     const char* name, uint64_t budget) {
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   // Check attribute/dimension name
   if (name == nullptr)
     return LOG_STATUS(Status::SubarrayPartitionerError(
         "Cannot set result budget; Attribute/Dimension name cannot be null"));
 
   // For easy reference
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   auto array_schema = subarray_.array()->array_schema();
   bool is_dim = array_schema->is_dim(name);
   bool is_attr = array_schema->is_attr(name);
 
   // Check if attribute/dimension exists
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   if (name != constants::coords && !is_dim && !is_attr)
     return LOG_STATUS(Status::SubarrayPartitionerError(
         std::string("Cannot set result budget; Invalid attribute/dimension '") +
         name + "'"));
 
   // Check if the attribute/dimension is fixed-sized
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   bool var_size = (name != constants::coords && array_schema->var_size(name));
   if (var_size)
     return LOG_STATUS(Status::SubarrayPartitionerError(
@@ -309,6 +338,7 @@ Status SubarrayPartitioner::set_result_budget(
         name + "' is var-sized"));
 
   budget_[name] = ResultBudget{budget, 0};
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
 
   return Status::Ok();
 }
@@ -316,27 +346,32 @@ Status SubarrayPartitioner::set_result_budget(
 Status SubarrayPartitioner::set_result_budget(
     const char* name, uint64_t budget_off, uint64_t budget_val) {
   // Check attribute/dimension name
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   if (name == nullptr)
     return LOG_STATUS(Status::SubarrayPartitionerError(
         "Cannot set result budget; Attribute/Dimension name cannot be null"));
 
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   if (name == constants::coords)
     return LOG_STATUS(Status::SubarrayPartitionerError(
         "Cannot set result budget for zipped coordinates; Attribute/Dimension "
         "must be var-sized"));
 
   // For easy reference
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   auto array_schema = subarray_.array()->array_schema();
   bool is_dim = array_schema->is_dim(name);
   bool is_attr = array_schema->is_attr(name);
 
   // Check if attribute/dimension exists
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   if (!is_dim && !is_attr)
     return LOG_STATUS(Status::SubarrayPartitionerError(
         std::string("Cannot set result budget; Invalid attribute/dimension '") +
         name + "'"));
 
   // Check if the attribute/dimension is var-sized
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   if (!array_schema->var_size(name))
     return LOG_STATUS(Status::SubarrayPartitionerError(
         std::string("Cannot set result budget; Input attribute/dimension '") +
@@ -344,11 +379,13 @@ Status SubarrayPartitioner::set_result_budget(
 
   budget_[name] = ResultBudget{budget_off, budget_val};
 
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   return Status::Ok();
 }
 
 Status SubarrayPartitioner::set_memory_budget(
     uint64_t budget, uint64_t budget_var) {
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   memory_budget_ = budget;
   memory_budget_var_ = budget_var;
   return Status::Ok();
@@ -356,6 +393,7 @@ Status SubarrayPartitioner::set_memory_budget(
 
 Status SubarrayPartitioner::split_current(bool* unsplittable) {
   STATS_START_TIMER(stats::Stats::TimerType::READ_SPLIT_CURRENT_PARTITION)
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
 
   *unsplittable = false;
 
@@ -367,6 +405,7 @@ Status SubarrayPartitioner::split_current(bool* unsplittable) {
     split_top_multi_range(unsplittable);
     return next_from_multi_range(unsplittable);
   }
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
 
   // Current came from retrieving a multi-range partition from subarray
   if (current_.start_ < current_.end_) {
@@ -380,30 +419,36 @@ Status SubarrayPartitioner::split_current(bool* unsplittable) {
     state_.start_ = current_.end_ + 1;
     return Status::Ok();
   }
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
 
   // Current came from splitting a single-range partition
   if (state_.single_range_.empty())
     state_.start_--;
   state_.single_range_.push_front(current_.partition_);
   split_top_single_range(unsplittable);
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   return next_from_single_range(unsplittable);
 
   STATS_END_TIMER(stats::Stats::TimerType::READ_SPLIT_CURRENT_PARTITION)
 }
 
 const SubarrayPartitioner::State* SubarrayPartitioner::state() const {
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   return &state_;
 }
 
 SubarrayPartitioner::State* SubarrayPartitioner::state() {
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   return &state_;
 }
 
 const Subarray* SubarrayPartitioner::subarray() const {
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   return &subarray_;
 }
 
 Subarray* SubarrayPartitioner::subarray() {
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   return &subarray_;
 }
 
@@ -412,31 +457,39 @@ Subarray* SubarrayPartitioner::subarray() {
 /* ****************************** */
 
 void SubarrayPartitioner::calibrate_current_start_end(bool* must_split_slab) {
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   // Initialize (may be reset below)
   *must_split_slab = false;
 
   // Special case of single range and global layout
   if (subarray_.layout() == Layout::GLOBAL_ORDER) {
+    logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
     assert(current_.start_ == current_.end_);
     return;
   }
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
 
   auto start_coords = subarray_.get_range_coords(current_.start_);
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   auto end_coords = subarray_.get_range_coords(current_.end_);
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
 
   std::vector<uint64_t> range_num;
   auto dim_num = subarray_.dim_num();
   uint64_t num;
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   for (unsigned i = 0; i < dim_num; ++i) {
     subarray_.get_range_num(i, &num);
     range_num.push_back(num);
   }
 
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   auto layout = subarray_.layout();
   auto cell_order = subarray_.array()->array_schema()->cell_order();
   layout = (layout == Layout::UNORDERED) ? cell_order : layout;
   assert(layout == Layout::ROW_MAJOR || layout == Layout::COL_MAJOR);
 
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   for (unsigned d = 0; d < dim_num - 1; ++d) {
     unsigned major_dim = (layout == Layout::ROW_MAJOR) ? d : dim_num - d - 1;
     std::vector<unsigned> minor_dims;
@@ -451,6 +504,7 @@ void SubarrayPartitioner::calibrate_current_start_end(bool* must_split_slab) {
       }
     }
 
+    logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
     bool start_minor_coords_at_beginning = true;
     for (auto dim : minor_dims) {
       if (start_coords[dim] != 0) {
@@ -459,6 +513,7 @@ void SubarrayPartitioner::calibrate_current_start_end(bool* must_split_slab) {
       }
     }
 
+    logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
     bool end_minor_coords_at_end = true;
     for (auto dim : minor_dims) {
       if (end_coords[dim] != range_num[dim] - 1) {
@@ -467,6 +522,7 @@ void SubarrayPartitioner::calibrate_current_start_end(bool* must_split_slab) {
       }
     }
 
+    logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
     if (start_minor_coords_at_beginning) {
       if (end_minor_coords_at_end) {
         break;
@@ -489,6 +545,7 @@ void SubarrayPartitioner::calibrate_current_start_end(bool* must_split_slab) {
     }
   }
 
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   // Calibrate the range to a slab if layout is row-/col-major
   if (dim_num > 1 && subarray_.layout() != Layout::UNORDERED) {
     auto d = (subarray_.layout() == Layout::ROW_MAJOR) ? dim_num - 1 : 0;
@@ -500,6 +557,7 @@ void SubarrayPartitioner::calibrate_current_start_end(bool* must_split_slab) {
 
   // Get current_.end_. based on end_coords
   current_.end_ = subarray_.range_idx(end_coords);
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
 }
 
 SubarrayPartitioner SubarrayPartitioner::clone() const {
@@ -516,6 +574,7 @@ SubarrayPartitioner SubarrayPartitioner::clone() const {
 }
 
 Status SubarrayPartitioner::compute_current_start_end(bool* found) {
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   // Preparation
   auto array = subarray_.array();
   auto meta = array->fragment_metadata();
@@ -527,10 +586,12 @@ Status SubarrayPartitioner::compute_current_start_end(bool* found) {
   budgets.reserve(budget_.size());
   cur_sizes.resize(budget_.size(), Subarray::ResultSize({0.0, 0.0}));
   mem_sizes.resize(budget_.size(), Subarray::MemorySize({0, 0}));
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   for (const auto& budget_it : budget_) {
     names.emplace_back(budget_it.first);
     budgets.emplace_back(budget_it.second);
   }
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
 
   // Compute the estimated result sizes
   std::vector<std::vector<Subarray::ResultSize>> result_sizes;
@@ -538,6 +599,7 @@ Status SubarrayPartitioner::compute_current_start_end(bool* found) {
   RETURN_NOT_OK(subarray_.compute_relevant_fragment_est_result_sizes(
       names, state_.start_, state_.end_, &result_sizes, &memory_sizes));
 
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   current_.start_ = state_.start_;
   for (current_.end_ = state_.start_; current_.end_ <= state_.end_;
        ++current_.end_) {
@@ -568,10 +630,12 @@ Status SubarrayPartitioner::compute_current_start_end(bool* found) {
     }
   }
 
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   // Range found, make it inclusive
   current_.end_--;
   *found = true;
 
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   return Status::Ok();
 }
 
@@ -580,15 +644,18 @@ void SubarrayPartitioner::compute_splitting_value_on_tiles(
     unsigned* splitting_dim,
     ByteVecValue* splitting_value,
     bool* unsplittable) {
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   assert(range.layout() == Layout::GLOBAL_ORDER);
   *unsplittable = true;
 
   // For easy reference
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   auto array_schema = subarray_.array()->array_schema();
   auto dim_num = subarray_.array()->array_schema()->dim_num();
   auto layout = subarray_.array()->array_schema()->tile_order();
   *splitting_dim = UINT32_MAX;
 
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   std::vector<unsigned> dims;
   if (layout == Layout::ROW_MAJOR) {
     for (unsigned i = 0; i < dim_num; ++i)
@@ -598,6 +665,7 @@ void SubarrayPartitioner::compute_splitting_value_on_tiles(
       dims.push_back(dim_num - i - 1);
   }
 
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   // Compute splitting dimension and value
   const Range* r;
   for (auto d : dims) {
@@ -612,6 +680,7 @@ void SubarrayPartitioner::compute_splitting_value_on_tiles(
       break;
     }
   }
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
 }
 
 // TODO (sp): in the future this can be more sophisticated, taking into
@@ -621,8 +690,10 @@ void SubarrayPartitioner::compute_splitting_value_single_range(
     unsigned* splitting_dim,
     ByteVecValue* splitting_value,
     bool* unsplittable) {
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   // Special case for global order
   if (subarray_.layout() == Layout::GLOBAL_ORDER) {
+    logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
     compute_splitting_value_on_tiles(
         range, splitting_dim, splitting_value, unsplittable);
 
@@ -633,6 +704,7 @@ void SubarrayPartitioner::compute_splitting_value_single_range(
     // Else `range` is contained within a tile.
     // The rest of the function will find the splitting dim/value
   }
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
 
   // For easy reference
   auto array_schema = subarray_.array()->array_schema();
@@ -645,6 +717,7 @@ void SubarrayPartitioner::compute_splitting_value_single_range(
                layout;
   *splitting_dim = UINT32_MAX;
 
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   std::vector<unsigned> dims;
   if (layout == Layout::ROW_MAJOR) {
     for (unsigned d = 0; d < dim_num; ++d)
@@ -654,6 +727,7 @@ void SubarrayPartitioner::compute_splitting_value_single_range(
       dims.push_back(dim_num - d - 1);
   }
 
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   // Compute splitting dimension and value
   const Range* r;
   for (auto d : dims) {
@@ -671,6 +745,7 @@ void SubarrayPartitioner::compute_splitting_value_single_range(
     }
   }
 
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   assert(*splitting_dim != UINT32_MAX);
 }
 
@@ -679,6 +754,7 @@ void SubarrayPartitioner::compute_splitting_value_multi_range(
     uint64_t* splitting_range,
     ByteVecValue* splitting_value,
     bool* unsplittable) {
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   const auto& partition = state_.multi_range_.front();
 
   // Single-range partittion
@@ -687,6 +763,7 @@ void SubarrayPartitioner::compute_splitting_value_multi_range(
         partition, splitting_dim, splitting_value, unsplittable);
     return;
   }
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
 
   // Multi-range partition
   auto layout = subarray_.layout();
@@ -697,6 +774,7 @@ void SubarrayPartitioner::compute_splitting_value_multi_range(
   *splitting_dim = UINT32_MAX;
   uint64_t range_num;
 
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   std::vector<unsigned> dims;
   if (layout == Layout::ROW_MAJOR) {
     for (unsigned d = 0; d < dim_num; ++d)
@@ -706,6 +784,7 @@ void SubarrayPartitioner::compute_splitting_value_multi_range(
       dims.push_back(dim_num - d - 1);
   }
 
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   // Compute splitting dimension, range and value
   const Range* r;
   for (auto d : dims) {
@@ -728,14 +807,17 @@ void SubarrayPartitioner::compute_splitting_value_multi_range(
       break;
     }
   }
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
 
   assert(*splitting_dim != UINT32_MAX);
 }
 
 bool SubarrayPartitioner::must_split(Subarray* partition) {
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   auto array_schema = subarray_.array()->array_schema();
   bool must_split = false;
 
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   uint64_t size_fixed, size_var, mem_size_fixed, mem_size_var;
   for (const auto& b : budget_) {
     // Compute max sizes
@@ -764,17 +846,20 @@ bool SubarrayPartitioner::must_split(Subarray* partition) {
     }
   }
 
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   return must_split;
 }
 
 Status SubarrayPartitioner::next_from_multi_range(bool* unsplittable) {
   // A new multi-range subarray may need to be put in the list and split
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   if (state_.multi_range_.empty()) {
     auto s = subarray_.get_subarray(current_.start_, current_.end_);
     state_.multi_range_.push_front(std::move(s));
     split_top_multi_range(unsplittable);
   }
 
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   // Loop until you find a partition that fits or unsplittable
   if (!*unsplittable) {
     bool must_split;
@@ -786,6 +871,7 @@ Status SubarrayPartitioner::next_from_multi_range(bool* unsplittable) {
     } while (must_split && !*unsplittable);
   }
 
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   // At this point, the top mulit-range is the next partition
   current_.partition_ = std::move(state_.multi_range_.front());
   current_.split_multi_range_ = true;
@@ -793,10 +879,12 @@ Status SubarrayPartitioner::next_from_multi_range(bool* unsplittable) {
   if (state_.multi_range_.empty())
     state_.start_ = current_.end_ + 1;
 
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   return Status::Ok();
 }
 
 Status SubarrayPartitioner::next_from_single_range(bool* unsplittable) {
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   // Handle case where a new single range must be put in the list and split
   if (state_.single_range_.empty()) {
     auto s = subarray_.get_subarray(current_.start_, current_.end_);
@@ -804,6 +892,7 @@ Status SubarrayPartitioner::next_from_single_range(bool* unsplittable) {
     split_top_single_range(unsplittable);
   }
 
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   // Loop until you find a partition that fits or unsplittable
   if (!*unsplittable) {
     bool must_split;
@@ -816,6 +905,7 @@ Status SubarrayPartitioner::next_from_single_range(bool* unsplittable) {
     } while (must_split && !*unsplittable);
   }
 
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   // At this point, the top range is the next partition
   current_.partition_ = std::move(state_.single_range_.front());
   current_.split_multi_range_ = false;
@@ -827,15 +917,18 @@ Status SubarrayPartitioner::next_from_single_range(bool* unsplittable) {
 }
 
 Status SubarrayPartitioner::split_top_single_range(bool* unsplittable) {
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   // For easy reference
   const auto& range = state_.single_range_.front();
 
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   // Check if unsplittable
   if (range.is_unary()) {
     *unsplittable = true;
     return Status::Ok();
   }
 
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   // Finding splitting value
   ByteVecValue splitting_value;
   unsigned splitting_dim;
@@ -845,28 +938,34 @@ Status SubarrayPartitioner::split_top_single_range(bool* unsplittable) {
   if (*unsplittable)
     return Status::Ok();
 
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   // Split remaining range into two ranges
   Subarray r1, r2;
   RETURN_NOT_OK(range.split(splitting_dim, splitting_value, &r1, &r2));
 
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   // Update list
   state_.single_range_.pop_front();
   state_.single_range_.push_front(std::move(r2));
   state_.single_range_.push_front(std::move(r1));
 
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   return Status::Ok();
 }
 
 Status SubarrayPartitioner::split_top_multi_range(bool* unsplittable) {
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   // For easy reference
   const auto& partition = state_.multi_range_.front();
 
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   // Check if unsplittable
   if (partition.is_unary()) {
     *unsplittable = true;
     return Status::Ok();
   }
 
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   // Finding splitting value
   unsigned splitting_dim;
   uint64_t splitting_range = UINT64_MAX;
@@ -874,20 +973,24 @@ Status SubarrayPartitioner::split_top_multi_range(bool* unsplittable) {
   compute_splitting_value_multi_range(
       &splitting_dim, &splitting_range, &splitting_value, unsplittable);
 
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   if (*unsplittable)
     return Status::Ok();
 
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   // Split partition into two partitions
   Subarray p1(subarray_.array(), subarray_.layout());
   Subarray p2(subarray_.array(), subarray_.layout());
   RETURN_NOT_OK(partition.split(
       splitting_range, splitting_dim, splitting_value, &p1, &p2));
 
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   // Update list
   state_.multi_range_.pop_front();
   state_.multi_range_.push_front(std::move(p2));
   state_.multi_range_.push_front(std::move(p1));
 
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   return Status::Ok();
 }
 

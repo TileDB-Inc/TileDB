@@ -686,22 +686,28 @@ void Subarray::get_next_range_coords(
 }
 
 uint64_t Subarray::range_idx(const std::vector<uint64_t>& range_coords) const {
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   uint64_t ret = 0;
   auto dim_num = this->dim_num();
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   for (unsigned i = 0; i < dim_num; ++i)
     ret += range_offsets_[i] * range_coords[i];
 
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   return ret;
 }
 
 uint64_t Subarray::range_num() const {
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   if (ranges_.empty())
     return 0;
 
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   uint64_t ret = 1;
   for (const auto& r : ranges_)
     ret *= r.size();
 
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   return ret;
 }
 
