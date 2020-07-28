@@ -56,7 +56,13 @@ namespace sm {
 /*   CONSTRUCTORS & DESTRUCTORS   */
 /* ****************************** */
 
-SubarrayPartitioner::SubarrayPartitioner() = default;
+SubarrayPartitioner::SubarrayPartitioner(const Config& config) : subarray_(config), current_(config) {
+  config_ = config;
+  const char* prefix = nullptr;
+  config.get("sm.log_prefix", &prefix);
+  logger_ = Logger(prefix);
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
+}
 
 SubarrayPartitioner::SubarrayPartitioner(
     const Subarray& subarray,
@@ -64,6 +70,7 @@ SubarrayPartitioner::SubarrayPartitioner(
     uint64_t memory_budget_var,
     const Config& config)
     : subarray_(subarray)
+    , current_(config)
     , memory_budget_(memory_budget)
     , memory_budget_var_(memory_budget_var) {
   logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
@@ -83,14 +90,14 @@ SubarrayPartitioner::SubarrayPartitioner(
 SubarrayPartitioner::~SubarrayPartitioner() = default;
 
 SubarrayPartitioner::SubarrayPartitioner(const SubarrayPartitioner& partitioner)
-    : SubarrayPartitioner() {
+    : SubarrayPartitioner(partitioner.config_) {
   auto clone = partitioner.clone();
   swap(clone);
 }
 
 SubarrayPartitioner::SubarrayPartitioner(
     SubarrayPartitioner&& partitioner) noexcept
-    : SubarrayPartitioner() {
+    : SubarrayPartitioner(partitioner.config_) {
   swap(partitioner);
 }
 
@@ -562,7 +569,7 @@ void SubarrayPartitioner::calibrate_current_start_end(bool* must_split_slab) {
 }
 
 SubarrayPartitioner SubarrayPartitioner::clone() const {
-  SubarrayPartitioner clone;
+  SubarrayPartitioner clone(config_);
   clone.subarray_ = subarray_;
   clone.budget_ = budget_;
   clone.current_ = current_;
@@ -570,6 +577,11 @@ SubarrayPartitioner SubarrayPartitioner::clone() const {
   clone.memory_budget_ = memory_budget_;
   clone.memory_budget_var_ = memory_budget_var_;
   clone.logger_ = logger_;
+  clone.config_ = config_;
+
+  const char* prefix = nullptr;
+  config_.get("sm.log_prefix", &prefix);
+  clone.logger_ = Logger(prefix);
 
   return clone;
 }
@@ -941,7 +953,7 @@ Status SubarrayPartitioner::split_top_single_range(bool* unsplittable) {
 
   logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   // Split remaining range into two ranges
-  Subarray r1, r2;
+  Subarray r1(config_), r2(config_);
   RETURN_NOT_OK(range.split(splitting_dim, splitting_value, &r1, &r2));
 
   logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
@@ -1004,5 +1016,7 @@ void SubarrayPartitioner::swap(SubarrayPartitioner& partitioner) {
   std::swap(memory_budget_var_, partitioner.memory_budget_var_);
 }
 
+SubarrayPartitioner::PartitionInfo::PartitionInfo(const Config& config) : partition_(config) {
+}
 }  // namespace sm
 }  // namespace tiledb

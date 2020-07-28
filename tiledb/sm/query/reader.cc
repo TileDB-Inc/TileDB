@@ -92,13 +92,19 @@ inline IterT skip_invalid_elements(IterT it, const IterT& end) {
 /*   CONSTRUCTORS & DESTRUCTORS   */
 /* ****************************** */
 
-Reader::Reader() {
+Reader::Reader(const Config& config) : read_state_(config), subarray_(config){
   array_ = nullptr;
   array_schema_ = nullptr;
   storage_manager_ = nullptr;
   layout_ = Layout::ROW_MAJOR;
   sparse_mode_ = false;
   read_state_.initialized_ = false;
+
+  const char* prefix = nullptr;
+  config.get("sm.log_prefix", &prefix);
+  std::stringstream ss;
+  ss << "(" << this << ") " << prefix;
+  logger_ = Logger(ss.str());
 }
 
 Reader::~Reader() {
@@ -2662,5 +2668,6 @@ Reader::get_max_mem_size_map() {
   return subarray_.get_max_mem_size_map();
 }
 
+Reader::ReadState::ReadState(const Config& config) : partitioner_(config) {};
 }  // namespace sm
 }  // namespace tiledb

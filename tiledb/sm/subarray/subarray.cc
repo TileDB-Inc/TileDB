@@ -55,21 +55,29 @@ namespace sm {
 /*   CONSTRUCTORS & DESTRUCTORS   */
 /* ****************************** */
 
-Subarray::Subarray() {
+Subarray::Subarray(const Config& config) {
   array_ = nullptr;
   layout_ = Layout::UNORDERED;
   cell_order_ = Layout::ROW_MAJOR;
   est_result_size_computed_ = false;
   tile_overlap_computed_ = false;
+
+  const char* prefix = nullptr;
+  config.get("sm.log_prefix", &prefix);
+  logger_ = Logger(prefix);
+  config_ = config;
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
 }
 
 Subarray::Subarray(const Array* array, const Config& config)
     : Subarray(array, Layout::UNORDERED, config) {
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
 }
 
 Subarray::Subarray(const Array* array, Layout layout, const Config& config)
     : array_(array)
     , layout_(layout) {
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   est_result_size_computed_ = false;
   tile_overlap_computed_ = false;
 
@@ -80,19 +88,22 @@ Subarray::Subarray(const Array* array, Layout layout, const Config& config)
 
   cell_order_ = array_->array_schema()->cell_order();
   add_default_ranges();
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
 }
 
 Subarray::Subarray(const Subarray& subarray)
-    : Subarray() {
+    : Subarray(subarray.config_) {
   // Make a deep-copy clone
   auto clone = subarray.clone();
   // Swap with the clone
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   swap(clone);
 }
 
 Subarray::Subarray(Subarray&& subarray) noexcept
-    : Subarray() {
+    : Subarray(subarray.config_) {
   // Swap with the argument
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   swap(subarray);
 }
 
@@ -102,6 +113,7 @@ Subarray& Subarray::operator=(const Subarray& subarray) {
   // Swap with the clone
   swap(clone);
 
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   return *this;
 }
 
@@ -109,6 +121,7 @@ Subarray& Subarray::operator=(Subarray&& subarray) noexcept {
   // Swap with the argument
   swap(subarray);
 
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   return *this;
 }
 
@@ -117,32 +130,38 @@ Subarray& Subarray::operator=(Subarray&& subarray) noexcept {
 /* ****************************** */
 
 Status Subarray::add_range(uint32_t dim_idx, const Range& range) {
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   auto dim_num = array_->array_schema()->dim_num();
   if (dim_idx >= dim_num)
     return LOG_STATUS(Status::SubarrayError(
         "Cannot add range to dimension; Invalid dimension index"));
 
   // Must reset the result size and tile overlap
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   est_result_size_computed_ = false;
   tile_overlap_computed_ = false;
 
   // Remove the default range
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   if (is_default_[dim_idx]) {
     ranges_[dim_idx].clear();
     is_default_[dim_idx] = false;
   }
 
   // Correctness checks
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   auto dim = array_->array_schema()->dimension(dim_idx);
   RETURN_NOT_OK(dim->check_range(range));
 
   // Add the range
   ranges_[dim_idx].emplace_back(range);
 
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   return Status::Ok();
 }
 
 Status Subarray::add_range_unsafe(uint32_t dim_idx, const Range& range) {
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   // Must reset the result size and tile overlap
   est_result_size_computed_ = false;
   tile_overlap_computed_ = false;
@@ -154,16 +173,19 @@ Status Subarray::add_range_unsafe(uint32_t dim_idx, const Range& range) {
   }
 
   // Add the range
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   ranges_[dim_idx].emplace_back(range);
 
   return Status::Ok();
 }
 
 const Array* Subarray::array() const {
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   return array_;
 }
 
 uint64_t Subarray::cell_num(uint64_t range_idx) const {
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   uint64_t cell_num = 1, range;
   auto array_schema = array_->array_schema();
   unsigned dim_num = array_schema->dim_num();
@@ -171,6 +193,7 @@ uint64_t Subarray::cell_num(uint64_t range_idx) const {
   uint64_t tmp_idx = range_idx;
 
   // Unary case or GLOBAL_ORDER
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   if (range_num() == 1) {
     for (unsigned d = 0; d < dim_num; ++d) {
       range = array_schema->dimension(d)->domain_range(ranges_[d][0]);
@@ -185,6 +208,7 @@ uint64_t Subarray::cell_num(uint64_t range_idx) const {
     return cell_num;
   }
 
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   // Non-unary case (range_offsets_ must be computed)
   if (layout == Layout::ROW_MAJOR) {
     assert(!range_offsets_.empty());
@@ -219,10 +243,12 @@ uint64_t Subarray::cell_num(uint64_t range_idx) const {
     assert(false);
   }
 
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   return cell_num;
 }
 
 uint64_t Subarray::cell_num(const std::vector<uint64_t>& range_coords) const {
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   auto array_schema = array_->array_schema();
   auto dim_num = array_->array_schema()->dim_num();
   assert(dim_num == range_coords.size());
@@ -236,6 +262,7 @@ uint64_t Subarray::cell_num(const std::vector<uint64_t>& range_coords) const {
       return ret;
   }
 
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   return ret;
 }
 
@@ -248,6 +275,7 @@ void Subarray::clear() {
 }
 
 bool Subarray::coincides_with_tiles() const {
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   if (range_num() != 1)
     return false;
 
@@ -258,16 +286,19 @@ bool Subarray::coincides_with_tiles() const {
       return false;
   }
 
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   return true;
 }
 
 template <class T>
 Subarray Subarray::crop_to_tile(const T* tile_coords, Layout layout) const {
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   Subarray ret(array_, layout, config_);
   T new_range[2];
   bool overlaps;
 
   // Get tile subarray based on the input coordinates
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   auto array_schema = array_->array_schema();
   std::vector<T> tile_subarray(2 * dim_num());
   array_schema->domain()->get_tile_subarray(tile_coords, &tile_subarray[0]);
@@ -289,31 +320,38 @@ Subarray Subarray::crop_to_tile(const T* tile_coords, Layout layout) const {
     }
   }
 
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   return ret;
 }
 
 uint32_t Subarray::dim_num() const {
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   return array_->array_schema()->dim_num();
 }
 
 NDRange Subarray::domain() const {
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   return array_->array_schema()->domain()->domain();
 }
 
 bool Subarray::empty() const {
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   return range_num() == 0;
 }
 
 Status Subarray::get_query_type(QueryType* type) const {
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   if (array_ == nullptr)
     return LOG_STATUS(Status::SubarrayError(
         "Cannot get query type from array; Invalid array"));
 
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   return array_->get_query_type(type);
 }
 
 Status Subarray::get_range(
     uint32_t dim_idx, uint64_t range_idx, const Range** range) const {
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   auto dim_num = array_->array_schema()->dim_num();
   if (dim_idx >= dim_num)
     return LOG_STATUS(
@@ -326,6 +364,7 @@ Status Subarray::get_range(
 
   *range = &ranges_[dim_idx][range_idx];
 
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   return Status::Ok();
 }
 
@@ -335,10 +374,12 @@ Status Subarray::get_range(
     const void** start,
     const void** end) const {
   auto dim_num = array_->array_schema()->dim_num();
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   if (dim_idx >= dim_num)
     return LOG_STATUS(
         Status::SubarrayError("Cannot get range; Invalid dimension index"));
 
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   auto range_num = ranges_[dim_idx].size();
   if (range_idx >= range_num)
     return LOG_STATUS(
@@ -347,6 +388,7 @@ Status Subarray::get_range(
   *start = ranges_[dim_idx][range_idx].start();
   *end = ranges_[dim_idx][range_idx].end();
 
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   return Status::Ok();
 }
 
@@ -355,30 +397,36 @@ Status Subarray::get_range_var_size(
     uint64_t range_idx,
     uint64_t* start,
     uint64_t* end) const {
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   auto schema = array_->array_schema();
   auto dim_num = schema->dim_num();
   if (dim_idx >= dim_num)
     return LOG_STATUS(Status::SubarrayError(
         "Cannot get var range size; Invalid dimension index"));
 
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   auto dim = schema->domain()->dimension(dim_idx);
   if (!dim->var_size())
     return LOG_STATUS(Status::SubarrayError(
         "Cannot get var range size; Dimension " + dim->name() +
         " is not var sized"));
 
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   auto range_num = ranges_[dim_idx].size();
   if (range_idx >= range_num)
     return LOG_STATUS(Status::SubarrayError(
         "Cannot get var range size; Invalid range index"));
 
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   *start = ranges_[dim_idx][range_idx].start_size();
   *end = ranges_[dim_idx][range_idx].end_size();
 
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   return Status::Ok();
 }
 
 Status Subarray::get_range_num(uint32_t dim_idx, uint64_t* range_num) const {
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   auto dim_num = array_->array_schema()->dim_num();
   if (dim_idx >= dim_num)
     return LOG_STATUS(
@@ -387,6 +435,7 @@ Status Subarray::get_range_num(uint32_t dim_idx, uint64_t* range_num) const {
 
   *range_num = ranges_[dim_idx].size();
 
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   return Status::Ok();
 }
 
@@ -1449,7 +1498,7 @@ Status Subarray::compute_tile_overlap() {
 }
 
 Subarray Subarray::clone() const {
-  Subarray clone;
+  Subarray clone(config_);
   clone.array_ = array_;
   clone.layout_ = layout_;
   clone.cell_order_ = cell_order_;
@@ -1464,6 +1513,10 @@ Subarray Subarray::clone() const {
   clone.relevant_fragments_ = relevant_fragments_;
   clone.logger_ = logger_;
   clone.config_ = config_;
+
+  const char* prefix = nullptr;
+  config_.get("sm.log_prefix", &prefix);
+  clone.logger_ = Logger(prefix);
 
   return clone;
 }
@@ -1603,6 +1656,10 @@ void Subarray::swap(Subarray& subarray) {
   std::swap(est_result_size_, subarray.est_result_size_);
   std::swap(max_mem_size_, subarray.max_mem_size_);
   std::swap(relevant_fragments_, subarray.relevant_fragments_);
+
+  const char* prefix = nullptr;
+  config_.get("sm.log_prefix", &prefix);
+  subarray.logger_ = Logger(prefix);
 }
 
 Status Subarray::compute_relevant_fragments() {

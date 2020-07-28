@@ -51,7 +51,8 @@ namespace sm {
 
 Query::Query(StorageManager* storage_manager, Array* array, URI fragment_uri)
     : array_(array)
-    , storage_manager_(storage_manager) {
+    , storage_manager_(storage_manager)
+    , reader_(storage_manager->config()) {
   assert(array != nullptr && array->is_open());
 
   callback_ = nullptr;
@@ -60,6 +61,8 @@ Query::Query(StorageManager* storage_manager, Array* array, URI fragment_uri)
   status_ = QueryStatus::UNINITIALIZED;
   auto st = array->get_query_type(&type_);
   assert(st.ok());
+
+//  writer_ = Writer(storage_manager->config());
 
   if (type_ == QueryType::WRITE)
     writer_.set_storage_manager(storage_manager);

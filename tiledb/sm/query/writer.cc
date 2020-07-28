@@ -56,7 +56,7 @@ namespace sm {
 /*   CONSTRUCTORS & DESTRUCTORS   */
 /* ****************************** */
 
-Writer::Writer() {
+Writer::Writer(const Config& config) : subarray_(config){
   array_ = nullptr;
   array_schema_ = nullptr;
   coords_buffer_ = nullptr;

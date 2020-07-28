@@ -67,6 +67,7 @@ class Reader {
 
   /** The state for a read query. */
   struct ReadState {
+    ReadState(const Config& config);
     /**
      * True if the query led to a result that does not fit in
      * the user buffers.
@@ -113,7 +114,7 @@ class Reader {
    * @param array_schema The array schema.
    * @param fragment_metadata The fragment metadata.
    */
-  Reader();
+  Reader(const Config& config);
 
   /** Destructor. */
   ~Reader();

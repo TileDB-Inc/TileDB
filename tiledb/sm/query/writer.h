@@ -107,7 +107,7 @@ class Writer {
   /* ********************************* */
 
   /** Constructor. */
-  Writer();
+  Writer(const Config& config = Config());
 
   /** Destructor. */
   ~Writer();

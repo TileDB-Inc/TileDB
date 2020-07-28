@@ -86,6 +86,7 @@ class SubarrayPartitioner {
    * partitioner state as well).
    */
   struct PartitionInfo {
+    PartitionInfo(const Config& config);
     /** The current partition. */
     Subarray partition_;
     /**
@@ -149,7 +150,7 @@ class SubarrayPartitioner {
   /* ********************************* */
 
   /** Constructor. */
-  SubarrayPartitioner();
+  SubarrayPartitioner(const Config& config);
 
   /** Constructor. */
   SubarrayPartitioner(

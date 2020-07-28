@@ -147,7 +147,7 @@ class Subarray {
   /* ********************************* */
 
   /** Constructor. */
-  Subarray();
+  Subarray(const Config& config);
 
   /**
    * Constructor.
