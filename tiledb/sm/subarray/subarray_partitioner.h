@@ -156,7 +156,7 @@ class SubarrayPartitioner {
       const Subarray& subarray,
       uint64_t memory_budget,
       uint64_t memory_budget_var,
-      const Config& config = Config());
+      const Config& config);
 
   /** Destructor. */
   ~SubarrayPartitioner();
@@ -412,7 +412,8 @@ class SubarrayPartitioner {
    */
   void swap(SubarrayPartitioner& partitioner);
 
-    Logger logger_;
+  Logger logger_;
+  Config config_;
 };
 
 }  // namespace sm

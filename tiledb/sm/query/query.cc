@@ -666,7 +666,7 @@ Status Query::set_subarray(const void* subarray) {
                            "domains with variable-sized dimensions"));
 
   // Prepare a subarray object
-  Subarray sub(array_, layout_);
+  Subarray sub(array_, layout_, storage_manager_->config());
   if (subarray != nullptr) {
     auto dim_num = array_->array_schema()->dim_num();
     auto s_ptr = (const unsigned char*)subarray;
@@ -691,7 +691,7 @@ Status Query::set_subarray(const void* subarray) {
 
 Status Query::set_subarray_unsafe(const NDRange& subarray) {
   // Prepare a subarray object
-  Subarray sub(array_, layout_);
+  Subarray sub(array_, layout_, storage_manager_->config());
   if (!subarray.empty()) {
     auto dim_num = array_->array_schema()->dim_num();
     for (unsigned d = 0; d < dim_num; ++d)

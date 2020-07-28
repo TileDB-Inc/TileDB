@@ -248,7 +248,7 @@ Status Writer::init(const Layout& layout) {
 
   // Set a default subarray
   if (!subarray_.is_set())
-    subarray_ = Subarray(array_, layout);
+    subarray_ = Subarray(array_, layout, storage_manager_->config());
 
   RETURN_NOT_OK(set_layout(layout));
   RETURN_NOT_OK(check_subarray());
@@ -283,7 +283,7 @@ Layout Writer::layout() const {
 
 void Writer::set_array(const Array* array) {
   array_ = array;
-  subarray_ = Subarray(array);
+  subarray_ = Subarray(array, storage_manager_->config());
 }
 
 void Writer::set_array_schema(const ArraySchema* array_schema) {

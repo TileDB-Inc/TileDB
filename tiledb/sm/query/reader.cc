@@ -356,7 +356,7 @@ Status Reader::read() {
 
 void Reader::set_array(const Array* array) {
   array_ = array;
-  subarray_ = Subarray(array, Layout::ROW_MAJOR);
+  subarray_ = Subarray(array, Layout::ROW_MAJOR, storage_manager_->config());
 }
 
 void Reader::set_array_schema(const ArraySchema* array_schema) {
@@ -2076,7 +2076,7 @@ Status Reader::init_read_state() {
     logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   // Create read state
   read_state_.partitioner_ =
-      SubarrayPartitioner(subarray_, memory_budget, memory_budget_var);
+      SubarrayPartitioner(subarray_, memory_budget, memory_budget_var, config);
   read_state_.overflowed_ = false;
   read_state_.unsplittable_ = false;
 

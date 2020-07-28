@@ -275,10 +275,10 @@ Status subarray_partitioner_from_capnp(
   RETURN_NOT_OK(layout_enum(subarray_reader.getLayout(), &layout));
 
   // Subarray, which is used to initialize the partitioner.
-  Subarray subarray(array, layout);
+  Subarray subarray(array, layout, Config());
   RETURN_NOT_OK(subarray_from_capnp(reader.getSubarray(), &subarray));
   *partitioner =
-      SubarrayPartitioner(subarray, memory_budget, memory_budget_var);
+      SubarrayPartitioner(subarray, memory_budget, memory_budget_var, Config());
 
   // Per-attr mem budgets
   if (reader.hasBudget()) {
@@ -308,7 +308,7 @@ Status subarray_partitioner_from_capnp(
     partition_info->end_ = partition_info_reader.getEnd();
     partition_info->split_multi_range_ =
         partition_info_reader.getSplitMultiRange();
-    partition_info->partition_ = Subarray(array, layout);
+    partition_info->partition_ = Subarray(array, layout, Config());
     RETURN_NOT_OK(subarray_from_capnp(
         partition_info_reader.getSubarray(), &partition_info->partition_));
   }
@@ -322,7 +322,7 @@ Status subarray_partitioner_from_capnp(
   const unsigned num_sr = sr_reader.size();
   for (unsigned i = 0; i < num_sr; i++) {
     auto subarray_reader_ = sr_reader[i];
-    state->single_range_.emplace_back(array, layout);
+    state->single_range_.emplace_back(array, layout, Config());
     Subarray& subarray_ = state->single_range_.back();
     RETURN_NOT_OK(subarray_from_capnp(subarray_reader_, &subarray_));
   }
@@ -330,7 +330,7 @@ Status subarray_partitioner_from_capnp(
   const unsigned num_m = m_reader.size();
   for (unsigned i = 0; i < num_m; i++) {
     auto subarray_reader_ = m_reader[i];
-    state->multi_range_.emplace_back(array, layout);
+    state->multi_range_.emplace_back(array, layout, Config());
     Subarray& subarray_ = state->multi_range_.back();
     RETURN_NOT_OK(subarray_from_capnp(subarray_reader_, &subarray_));
   }
@@ -411,7 +411,7 @@ Status reader_from_capnp(
   RETURN_NOT_OK(reader->set_layout(layout));
 
   // Subarray
-  Subarray subarray(array, layout);
+  Subarray subarray(array, layout, Config());
   auto subarray_reader = reader_reader.getSubarray();
   RETURN_NOT_OK(subarray_from_capnp(subarray_reader, &subarray));
   RETURN_NOT_OK(reader->set_subarray(subarray));

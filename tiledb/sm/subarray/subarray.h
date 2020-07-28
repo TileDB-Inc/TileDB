@@ -154,7 +154,7 @@ class Subarray {
    *
    * @param array The array the subarray is associated with.
    */
-  Subarray(const Array* array);
+  Subarray(const Array* array, const Config& config);
 
   /**
    * Constructor.
@@ -164,7 +164,7 @@ class Subarray {
    *     if the subarray is used for reads, or of the values provided
    *     by the user for writes).
    */
-  Subarray(const Array* array, Layout layout, const Config& config = Config());
+  Subarray(const Array* array, Layout layout, const Config& config);
 
   /**
    * Copy constructor. This performs a deep copy (including memcpy of
@@ -739,6 +739,7 @@ class Subarray {
       const std::vector<std::string>& names) const;
 
   Logger logger_;
+  Config config_;
 };
 
 }  // namespace sm

@@ -63,8 +63,8 @@ Subarray::Subarray() {
   tile_overlap_computed_ = false;
 }
 
-Subarray::Subarray(const Array* array)
-    : Subarray(array, Layout::UNORDERED) {
+Subarray::Subarray(const Array* array, const Config& config)
+    : Subarray(array, Layout::UNORDERED, config) {
 }
 
 Subarray::Subarray(const Array* array, Layout layout, const Config& config)
@@ -76,7 +76,7 @@ Subarray::Subarray(const Array* array, Layout layout, const Config& config)
   const char* prefix = nullptr;
   config.get("sm.log_prefix", &prefix);
   logger_ = Logger(prefix);
-
+  config_ = config;
 
   cell_order_ = array_->array_schema()->cell_order();
   add_default_ranges();
@@ -263,7 +263,7 @@ bool Subarray::coincides_with_tiles() const {
 
 template <class T>
 Subarray Subarray::crop_to_tile(const T* tile_coords, Layout layout) const {
-  Subarray ret(array_, layout);
+  Subarray ret(array_, layout, config_);
   T new_range[2];
   bool overlaps;
 
@@ -391,8 +391,10 @@ Status Subarray::get_range_num(uint32_t dim_idx, uint64_t* range_num) const {
 }
 
 Subarray Subarray::get_subarray(uint64_t start, uint64_t end) const {
-  Subarray ret(array_, layout_);
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
+  Subarray ret(array_, layout_, config_);
 
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   auto start_coords = get_range_coords(start);
   auto end_coords = get_range_coords(end);
 
@@ -404,6 +406,7 @@ Subarray Subarray::get_subarray(uint64_t start, uint64_t end) const {
   }
 
   // Set tile overlap
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   auto fragment_num = tile_overlap_.size();
   ret.tile_overlap_.resize(fragment_num);
   for (unsigned i = 0; i < fragment_num; ++i) {
@@ -415,6 +418,7 @@ Subarray Subarray::get_subarray(uint64_t start, uint64_t end) const {
   // Compute range offsets
   ret.compute_range_offsets();
 
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   return ret;
 }
 
@@ -712,6 +716,7 @@ uint64_t Subarray::range_num() const {
 }
 
 NDRange Subarray::ndrange(uint64_t range_idx) const {
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   NDRange ret;
   uint64_t tmp_idx = range_idx;
   auto dim_num = this->dim_num();
@@ -719,6 +724,7 @@ NDRange Subarray::ndrange(uint64_t range_idx) const {
   ret.reserve(dim_num);
 
   // Unary case or GLOBAL_ORDER
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   if (range_idx == 0 && range_num() == 1) {
     for (unsigned d = 0; d < dim_num; ++d)
       ret.emplace_back(ranges_[d][0]);
@@ -726,6 +732,7 @@ NDRange Subarray::ndrange(uint64_t range_idx) const {
   }
 
   // Non-unary case (range_offsets_ must be computed)
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   if (layout == Layout::ROW_MAJOR) {
     assert(!range_offsets_.empty());
     for (unsigned d = 0; d < dim_num; ++d) {
@@ -745,15 +752,18 @@ NDRange Subarray::ndrange(uint64_t range_idx) const {
     assert(false);
   }
 
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   return ret;
 }
 
 NDRange Subarray::ndrange(const std::vector<uint64_t>& range_coords) const {
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   auto dim_num = this->dim_num();
   NDRange ret;
   ret.reserve(dim_num);
   for (unsigned d = 0; d < dim_num; ++d)
     ret.emplace_back(ranges_[d][range_coords[d]]);
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   return ret;
 }
 
@@ -763,8 +773,10 @@ const std::vector<Range>& Subarray::ranges_for_dim(uint32_t dim_idx) const {
 
 Status Subarray::set_ranges_for_dim(
     uint32_t dim_idx, const std::vector<Range>& ranges) {
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   ranges_.resize(dim_idx + 1);
   ranges_[dim_idx] = ranges;
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   return Status::Ok();
 }
 
@@ -773,11 +785,13 @@ Status Subarray::split(
     const ByteVecValue& splitting_value,
     Subarray* r1,
     Subarray* r2) const {
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   assert(r1 != nullptr);
   assert(r2 != nullptr);
-  *r1 = Subarray(array_, layout_);
-  *r2 = Subarray(array_, layout_);
+  *r1 = Subarray(array_, layout_, config_);
+  *r2 = Subarray(array_, layout_, config_);
 
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   auto dim_num = array_->array_schema()->dim_num();
 
   Range sr1, sr2;
@@ -793,6 +807,7 @@ Status Subarray::split(
       RETURN_NOT_OK(r2->add_range_unsafe(d, r));
     }
   }
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
 
   return Status::Ok();
 }
@@ -803,17 +818,20 @@ Status Subarray::split(
     const ByteVecValue& splitting_value,
     Subarray* r1,
     Subarray* r2) const {
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   assert(r1 != nullptr);
   assert(r2 != nullptr);
-  *r1 = Subarray(array_, layout_);
-  *r2 = Subarray(array_, layout_);
+  *r1 = Subarray(array_, layout_, config_);
+  *r2 = Subarray(array_, layout_, config_);
 
   // For easy reference
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   auto array_schema = array_->array_schema();
   auto dim_num = array_schema->dim_num();
   uint64_t range_num;
   Range sr1, sr2;
 
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   for (unsigned d = 0; d < dim_num; ++d) {
     RETURN_NOT_OK(this->get_range_num(d, &range_num));
     if (d != splitting_dim) {
@@ -842,14 +860,17 @@ Status Subarray::split(
     }
   }
 
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   return Status::Ok();
 }
 
 const std::vector<std::vector<uint8_t>>& Subarray::tile_coords() const {
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   return tile_coords_;
 }
 
 const std::vector<std::vector<TileOverlap>>& Subarray::tile_overlap() const {
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   return tile_overlap_;
 }
 
@@ -857,6 +878,7 @@ template <class T>
 Status Subarray::compute_tile_coords() {
   STATS_START_TIMER(stats::Stats::TimerType::READ_COMPUTE_TILE_COORDS)
 
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   if (array_->array_schema()->tile_order() == Layout::ROW_MAJOR)
     return compute_tile_coords_row<T>();
   return compute_tile_coords_col<T>();
@@ -868,12 +890,16 @@ template <class T>
 const T* Subarray::tile_coords_ptr(
     const std::vector<T>& tile_coords,
     std::vector<uint8_t>* aux_tile_coords) const {
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   auto dim_num = array_->array_schema()->dim_num();
   auto coord_size = array_->array_schema()->dimension(0)->coord_size();
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   std::memcpy(&((*aux_tile_coords)[0]), &tile_coords[0], dim_num * coord_size);
   auto it = tile_coords_map_.find(*aux_tile_coords);
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   if (it == tile_coords_map_.end())
     return nullptr;
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   return (const T*)&(tile_coords_[it->second][0]);
 }
 
@@ -884,15 +910,18 @@ Status Subarray::compute_relevant_fragment_est_result_sizes(
     std::vector<std::vector<ResultSize>>* result_sizes,
     std::vector<std::vector<MemorySize>>* mem_sizes) {
   // For easy reference
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   auto array_schema = array_->array_schema();
   auto fragment_metadata = array_->fragment_metadata();
   auto encryption_key = array_->encryption_key();
   auto dim_num = array_->array_schema()->dim_num();
   auto layout = (layout_ == Layout::UNORDERED) ? cell_order_ : layout_;
 
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   RETURN_NOT_OK(load_relevant_fragment_tile_var_sizes(names));
 
   // Prepare result sizes vectors
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   auto range_num = range_end - range_start + 1;
   result_sizes->resize(range_num);
   std::vector<std::set<std::pair<unsigned, uint64_t>>> frag_tiles(range_num);
@@ -900,11 +929,13 @@ Status Subarray::compute_relevant_fragment_est_result_sizes(
     (*result_sizes)[r].reserve(names.size());
 
   // Create vector of var sizes
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   std::vector<bool> var_sizes;
   var_sizes.reserve(names.size());
   for (const auto& name : names)
     var_sizes.push_back(array_schema->var_size(name));
 
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   auto all_dims_same_type = array_schema->domain()->all_dims_same_type();
   auto all_dims_fixed = array_schema->domain()->all_dims_fixed();
   auto num_threads = array_->num_threads();
@@ -949,12 +980,15 @@ Status Subarray::compute_relevant_fragment_est_result_sizes(
         // Global order - noop
       }
     }
+    logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
     return Status::Ok();
   });
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   for (auto st : statuses)
     RETURN_NOT_OK(st);
 
   // Compute the mem sizes vector
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   mem_sizes->resize(range_num);
   for (auto& ms : *mem_sizes)
     ms.resize(names.size(), {0, 0});
@@ -982,34 +1016,41 @@ Status Subarray::compute_relevant_fragment_est_result_sizes(
     }
   }
 
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   return Status::Ok();
 }
 
 std::unordered_map<std::string, Subarray::ResultSize>
 Subarray::get_est_result_size_map() {
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   // If the result sizes have not been computed, compute them first
   if (!est_result_size_computed_)
     compute_est_result_size();
 
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   return est_result_size_;
 }
 
 std::unordered_map<std::string, Subarray::MemorySize>
 Subarray::get_max_mem_size_map() {
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   // If the result sizes have not been computed, compute them first
   if (!est_result_size_computed_)
     compute_est_result_size();
 
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   return max_mem_size_;
 }
 
 Status Subarray::set_est_result_size(
     std::unordered_map<std::string, ResultSize>& est_result_size,
     std::unordered_map<std::string, MemorySize>& max_mem_size) {
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   est_result_size_ = est_result_size;
   max_mem_size_ = max_mem_size;
   est_result_size_computed_ = true;
 
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   return Status::Ok();
 }
 
@@ -1018,6 +1059,7 @@ Status Subarray::set_est_result_size(
 /* ****************************** */
 
 void Subarray::add_default_ranges() {
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   auto array_schema = array_->array_schema();
   auto dim_num = array_schema->dim_num();
   auto domain = array_schema->domain()->domain();
@@ -1026,14 +1068,17 @@ void Subarray::add_default_ranges() {
   is_default_.resize(dim_num, true);
   for (unsigned d = 0; d < dim_num; ++d)
     ranges_[d].emplace_back(domain[d]);
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
 }
 
 void Subarray::compute_range_offsets() {
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   range_offsets_.clear();
 
   auto dim_num = this->dim_num();
   auto layout = (layout_ == Layout::UNORDERED) ? cell_order_ : layout_;
 
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   if (layout == Layout::COL_MAJOR) {
     range_offsets_.push_back(1);
     if (dim_num > 1) {
@@ -1060,18 +1105,22 @@ void Subarray::compute_range_offsets() {
         range_offsets_.push_back(1);
     }
   }
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
 }
 
 Status Subarray::compute_est_result_size() {
   STATS_START_TIMER(stats::Stats::TimerType::READ_COMPUTE_EST_RESULT_SIZE)
 
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   if (est_result_size_computed_)
     return Status::Ok();
 
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   RETURN_NOT_OK(compute_tile_overlap());
 
   // Prepare estimated result size vector for all
   // attributes/dimension and zipped coords
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   auto array_schema = array_->array_schema();
   auto attribute_num = array_schema->attribute_num();
   auto dim_num = array_schema->dim_num();
@@ -1363,14 +1412,14 @@ Status Subarray::compute_tile_coords_row() {
 Status Subarray::compute_tile_overlap() {
   STATS_START_TIMER(stats::Stats::TimerType::READ_COMPUTE_TILE_OVERLAP)
 
-    logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   if (tile_overlap_computed_)
     return Status::Ok();
 
   compute_range_offsets();
 
   // Initialization
-    logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   tile_overlap_.clear();
   auto meta = array_->fragment_metadata();
   auto fragment_num = meta.size();
@@ -1384,16 +1433,16 @@ Status Subarray::compute_tile_overlap() {
   // Compute relevant fragments to the subarray
   RETURN_NOT_OK(compute_relevant_fragments());
 
-    logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   // Load the R-Trees and compute tile overlap only for relevant fragments
   RETURN_NOT_OK(load_relevant_fragment_rtrees());
-    logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   RETURN_NOT_OK(compute_relevant_fragment_tile_overlap());
 
-    logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   tile_overlap_computed_ = true;
 
-    logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   return Status::Ok();
 
   STATS_END_TIMER(stats::Stats::TimerType::READ_COMPUTE_TILE_OVERLAP)
@@ -1414,6 +1463,7 @@ Subarray Subarray::clone() const {
   clone.max_mem_size_ = max_mem_size_;
   clone.relevant_fragments_ = relevant_fragments_;
   clone.logger_ = logger_;
+  clone.config_ = config_;
 
   return clone;
 }
@@ -1464,11 +1514,14 @@ TileOverlap Subarray::get_tile_overlap(uint64_t range_idx, unsigned fid) const {
 
 template <class T>
 TileOverlap Subarray::get_tile_overlap(uint64_t range_idx, unsigned fid) const {
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   assert(array_->array_schema()->dense());
   TileOverlap ret;
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   auto ndrange = this->ndrange(range_idx);
 
   // Prepare a range copy
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   auto dim_num = array_->array_schema()->dim_num();
   std::vector<T> range_cpy;
   range_cpy.resize(2 * dim_num);
@@ -1479,6 +1532,7 @@ TileOverlap Subarray::get_tile_overlap(uint64_t range_idx, unsigned fid) const {
   }
 
   // Get tile overlap from fragment
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   auto meta = array_->fragment_metadata()[fid];
   auto frag_overlap = meta->compute_overlapping_tile_ids_cov<T>(&range_cpy[0]);
 
@@ -1486,6 +1540,7 @@ TileOverlap Subarray::get_tile_overlap(uint64_t range_idx, unsigned fid) const {
   // will be grouped together
   uint64_t start_tid = UINT64_MAX;  // Indicates no new range has started
   uint64_t end_tid = UINT64_MAX;    // Indicates no new range has started
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   for (auto o : frag_overlap) {
     // Partial overlap
     if (o.second != 1.0) {
@@ -1523,6 +1578,7 @@ TileOverlap Subarray::get_tile_overlap(uint64_t range_idx, unsigned fid) const {
   }
 
   // Potentially add last tile range
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   if (start_tid != UINT64_MAX) {
     if (start_tid != end_tid)
       ret.tile_ranges_.emplace_back(start_tid, end_tid);
@@ -1530,6 +1586,7 @@ TileOverlap Subarray::get_tile_overlap(uint64_t range_idx, unsigned fid) const {
       ret.tiles_.emplace_back(start_tid, 1.0);
   }
 
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   return ret;
 }
 
@@ -1551,14 +1608,14 @@ void Subarray::swap(Subarray& subarray) {
 Status Subarray::compute_relevant_fragments() {
   STATS_START_TIMER(stats::Stats::TimerType::READ_COMPUTE_RELEVANT_FRAGS)
 
-    logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   auto meta = array_->fragment_metadata();
   auto fragment_num = meta.size();
   auto range_num = this->range_num();
   std::vector<uint8_t> frag_bitmap(fragment_num, 0);
 
   // Compute the relevant fragments
-    logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   auto statuses = parallel_for_2d(
       0, fragment_num, 0, range_num, [&](unsigned f, uint64_t r) {
         if (frag_bitmap[f] == 0 &&
@@ -1568,7 +1625,7 @@ Status Subarray::compute_relevant_fragments() {
       });
 
   // Copy to the result
-    logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   relevant_fragments_.reserve(fragment_num);
   for (unsigned f = 0; f < fragment_num; ++f) {
     if (frag_bitmap[f])
@@ -1576,7 +1633,7 @@ Status Subarray::compute_relevant_fragments() {
   }
   relevant_fragments_.shrink_to_fit();
 
-    logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   return Status::Ok();
 
   STATS_END_TIMER(stats::Stats::TimerType::READ_COMPUTE_RELEVANT_FRAGS)
@@ -1584,6 +1641,7 @@ Status Subarray::compute_relevant_fragments() {
 
 Status Subarray::load_relevant_fragment_rtrees() const {
   STATS_START_TIMER(stats::Stats::TimerType::READ_LOAD_RELEVANT_RTREES)
+    logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
 
   auto meta = array_->fragment_metadata();
   auto encryption_key = array_->encryption_key();
@@ -1594,6 +1652,7 @@ Status Subarray::load_relevant_fragment_rtrees() const {
   for (auto st : statuses)
     RETURN_NOT_OK(st);
 
+    logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   return Status::Ok();
 
   STATS_END_TIMER(stats::Stats::TimerType::READ_LOAD_RELEVANT_RTREES)
@@ -1602,21 +1661,23 @@ Status Subarray::load_relevant_fragment_rtrees() const {
 Status Subarray::compute_relevant_fragment_tile_overlap() {
   STATS_START_TIMER(stats::Stats::TimerType::READ_COMPUTE_RELEVANT_TILE_OVERLAP)
 
-    logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   const auto& meta = array_->fragment_metadata();
   auto range_num = this->range_num();
 
-    logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   auto statuses = parallel_for(0, relevant_fragments_.size(), [&](uint64_t i) {
+    logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
     auto f = relevant_fragments_[i];
     auto dense = meta[f]->dense();
+    logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
     return compute_relevant_fragment_tile_overlap(meta[f], f, dense, range_num);
   });
-    logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   for (const auto& st : statuses)
     RETURN_NOT_OK(st);
 
-    logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   return Status::Ok();
 
   STATS_END_TIMER(stats::Stats::TimerType::READ_COMPUTE_RELEVANT_TILE_OVERLAP)
@@ -1624,11 +1685,14 @@ Status Subarray::compute_relevant_fragment_tile_overlap() {
 
 Status Subarray::compute_relevant_fragment_tile_overlap(
     FragmentMetadata* meta, unsigned frag_idx, bool dense, uint64_t range_num) {
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   auto num_threads = array_->num_threads();
   auto ranges_per_thread = (uint64_t)ceil((double)range_num / num_threads);
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   auto statuses = parallel_for(0, num_threads, [&](uint64_t t) {
     auto r_start = t * ranges_per_thread;
     auto r_end = std::min((t + 1) * ranges_per_thread - 1, range_num - 1);
+    logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
     for (uint64_t r = r_start; r <= r_end; ++r) {
       if (dense) {  // Dense fragment
         tile_overlap_[frag_idx][r] = get_tile_overlap(r, frag_idx);
@@ -1639,16 +1703,19 @@ Status Subarray::compute_relevant_fragment_tile_overlap(
       }
     }
 
+    logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
     return Status::Ok();
   });
   for (const auto& st : statuses)
     RETURN_NOT_OK(st);
 
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   return Status::Ok();
 }
 
 Status Subarray::load_relevant_fragment_tile_var_sizes(
     const std::vector<std::string>& names) const {
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   auto array_schema = array_->array_schema();
   auto encryption_key = array_->encryption_key();
   auto meta = array_->fragment_metadata();
@@ -1656,6 +1723,7 @@ Status Subarray::load_relevant_fragment_tile_var_sizes(
   // Find the names of the var-sized dimensions or attributes
   std::vector<std::string> var_names;
   var_names.reserve(names.size());
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   for (unsigned i = 0; i < names.size(); ++i) {
     if (array_schema->var_size(names[i]))
       var_names.emplace_back(names[i]);
@@ -1665,6 +1733,7 @@ Status Subarray::load_relevant_fragment_tile_var_sizes(
   if (var_names.empty())
     return Status::Ok();
 
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   // Load in parallel all tile var sizes metadata across fragments
   auto statuses = parallel_for_2d(
       0,
@@ -1673,11 +1742,13 @@ Status Subarray::load_relevant_fragment_tile_var_sizes(
       var_names.size(),
       [&](unsigned i, uint64_t j) {
         auto f = relevant_fragments_[i];
+        logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
         return meta[f]->load_tile_var_sizes(*encryption_key, var_names[j]);
       });
   for (auto st : statuses)
     RETURN_NOT_OK(st);
 
+  logger_.error((__FILE__ + std::string(":") + std::to_string(__LINE__)).c_str());
   return Status::Ok();
 }
 
