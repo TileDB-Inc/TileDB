@@ -1636,18 +1636,17 @@ Status Subarray::load_relevant_fragment_tile_var_sizes(
   if (var_names.empty())
     return Status::Ok();
 
-  // Load in parallel all tile var sizes metadata across fragments
-  auto statuses = parallel_for_2d(
-      0,
-      relevant_fragments_.size(),
-      0,
-      var_names.size(),
-      [&](unsigned i, uint64_t j) {
-        auto f = relevant_fragments_[i];
-        return meta[f]->load_tile_var_sizes(*encryption_key, var_names[j]);
-      });
-  for (auto st : statuses)
-    RETURN_NOT_OK(st);
+  // Load all metadata for tile var sizes among fragments.
+  for (const auto& var_name : var_names) {
+    const auto statuses =
+        parallel_for(0, relevant_fragments_.size(), [&](const size_t i) {
+          auto f = relevant_fragments_[i];
+          return meta[f]->load_tile_var_sizes(*encryption_key, var_name);
+        });
+
+    for (const auto& st : statuses)
+      RETURN_NOT_OK(st);
+  }
 
   return Status::Ok();
 }
