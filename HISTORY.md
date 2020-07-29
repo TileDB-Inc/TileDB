@@ -10,6 +10,8 @@
 
 ## New features
 
+* Added configuration option "sm.sub_partitioner_memory_budget" [#1729](https://github.com/TileDB-Inc/TileDB/pull/1729)
+
 ## Improvements
 
 * Source built curl only need HTTP support [#1712](https://github.com/TileDB-Inc/TileDB/pull/1712)

@@ -472,9 +472,6 @@ extern const std::string special_name_prefix;
 /** Number of milliseconds between watchdog thread wakeups. */
 extern const unsigned watchdog_thread_sleep_ms;
 
-/** The target sub-partitioner budget for computing result coordinates. */
-extern const uint64_t sub_partitioner_memory_budget;
-
 /** Returns the empty fill value based on the input datatype. */
 const void* fill_value(Datatype type);
 

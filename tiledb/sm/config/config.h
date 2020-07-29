@@ -105,6 +105,16 @@ class Config {
    */
   static const std::string SM_MEMORY_BUDGET_VAR;
 
+  /**
+   * The maximum memory budget for further partitioning result partitions.
+   * If `0`, the sub-partitioner will not be used. This is an advanced
+   * tuning parameter for use on workloads where partitioning time is
+   * quicker than sorting result coordinates. This budget is used as
+   * a target and may be adjusted if it is too small. Additionally, it
+   * is used for both fixed and var-sized budgets.
+   */
+  static const std::string SM_SUB_PARTITIONER_MEMORY_BUDGET;
+
   /** Whether or not the signal handlers are installed. */
   static const std::string SM_ENABLE_SIGNAL_HANDLERS;
 
