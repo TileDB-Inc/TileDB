@@ -38,6 +38,8 @@
 # TileDB v2.0.7 Release Notes
 
 ## Improvements
+
+* Various performance optimizations in the read path. [#1689](https://github.com/TileDB-Inc/TileDB/pull/1689) [#1692](https://github.com/TileDB-Inc/TileDB/pull/1692) [#1693](https://github.com/TileDB-Inc/TileDB/pull/1693) [#1694](https://github.com/TileDB-Inc/TileDB/pull/1694) [#1695](https://github.com/TileDB-Inc/TileDB/pull/1695)
 * Google Cloud SDK bumped to 1.14. [#1687](https://github.com/TileDB-Inc/TileDB/pull/1687), [#1742](https://github.com/TileDB-Inc/TileDB/pull/1742)
 
 ## Bug fixes
@@ -49,10 +51,8 @@
 * Fixed a small memory leak when opening arrays. [#1690](https://github.com/TileDB-Inc/TileDB/pull/1690)
 * Fixed an overflow in the partioning path that may result in a hang or poor read performance. [#1725](https://github.com/TileDB-Inc/TileDB/pull/1725)[#1707](https://github.com/TileDB-Inc/TileDB/pull/1707)
 * Fix compilation on gcc 10.1 for blosc [#1740](https://github.com/TileDB-Inc/TileDB/pull/1740)
+* Fixed a rare hang in the usage of `load_tile_var_sizes`. [#1748](https://github.com/TileDB-Inc/TileDB/pull/1748)
 
-## Improvements
-
-* Various performance optimizations in the read path. [#1689](https://github.com/TileDB-Inc/TileDB/pull/1689) [#1692](https://github.com/TileDB-Inc/TileDB/pull/1692) [#1693](https://github.com/TileDB-Inc/TileDB/pull/1693) [#1694](https://github.com/TileDB-Inc/TileDB/pull/1694) [#1695](https://github.com/TileDB-Inc/TileDB/pull/1695)
 
 # TileDB v2.0.6 Release Notes
 
