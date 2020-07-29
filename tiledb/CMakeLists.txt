@@ -322,7 +322,20 @@ if (TILEDB_GCS)
        storage_client
   )
   add_definitions(-DHAVE_GCS)
+
+  # work around for GCS finding the shared version of zlib: we will see the Zlib::Zlib
+  # transitive linkage later, and we can use the correct version there.
+  unset(ZLIB_FOUND)
+  unset(ZLIB_LIBRARIES)
+  unset(ZLIB_INCLUDE_DIR)
 endif()
+
+get_target_property(_GCS_INTERFACE_LIBS storage_client INTERFACE_LINK_LIBRARIES)
+if ("ZLIB::ZLIB" IN_LIST _GCS_INTERFACE_LIBS)
+  list(REMOVE_ITEM _GCS_INTERFACE_LIBS "ZLIB::ZLIB")
+  set_property(TARGET storage_client PROPERTY INTERFACE_LINK_LIBRARIES "${_GCS_INTERFACE_LIBS}")
+endif()
+get_target_property(_GCS_INTERFACE_LIBS storage_client INTERFACE_LINK_LIBRARIES)
 
 # Libcurl
 if (TILEDB_S3 OR TILEDB_AZURE OR TILEDB_GCS OR TILEDB_SERIALIZATION)
