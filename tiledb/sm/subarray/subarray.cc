@@ -61,19 +61,22 @@ Subarray::Subarray() {
   cell_order_ = Layout::ROW_MAJOR;
   est_result_size_computed_ = false;
   tile_overlap_computed_ = false;
+  coalesce_ranges_ = true;
 }
 
-Subarray::Subarray(const Array* array)
-    : Subarray(array, Layout::UNORDERED) {
+Subarray::Subarray(const Array* array, bool coalesce_ranges)
+    : Subarray(array, Layout::UNORDERED, coalesce_ranges) {
 }
 
-Subarray::Subarray(const Array* array, Layout layout)
+Subarray::Subarray(const Array* array, Layout layout, bool coalesce_ranges)
     : array_(array)
-    , layout_(layout) {
+    , layout_(layout)
+    , coalesce_ranges_(coalesce_ranges) {
   est_result_size_computed_ = false;
   tile_overlap_computed_ = false;
   cell_order_ = array_->array_schema()->cell_order();
   add_default_ranges();
+  set_add_or_coalesce_range_func();
 }
 
 Subarray::Subarray(const Subarray& subarray)
@@ -131,7 +134,7 @@ Status Subarray::add_range(uint32_t dim_idx, const Range& range) {
   RETURN_NOT_OK(dim->check_range(range));
 
   // Add the range
-  ranges_[dim_idx].emplace_back(range);
+  add_or_coalesce_range_func_[dim_idx](this, dim_idx, range);
 
   return Status::Ok();
 }
@@ -148,7 +151,7 @@ Status Subarray::add_range_unsafe(uint32_t dim_idx, const Range& range) {
   }
 
   // Add the range
-  ranges_[dim_idx].emplace_back(range);
+  add_or_coalesce_range_func_[dim_idx](this, dim_idx, range);
 
   return Status::Ok();
 }
@@ -254,6 +257,7 @@ void Subarray::clear() {
   tile_overlap_.clear();
   est_result_size_computed_ = false;
   tile_overlap_computed_ = false;
+  add_or_coalesce_range_func_.clear();
 }
 
 bool Subarray::coincides_with_tiles() const {
@@ -272,7 +276,8 @@ bool Subarray::coincides_with_tiles() const {
 
 template <class T>
 Subarray Subarray::crop_to_tile(const T* tile_coords, Layout layout) const {
-  Subarray ret(array_, layout);
+  Subarray ret(array_, layout, coalesce_ranges_);
+
   T new_range[2];
   bool overlaps;
 
@@ -400,7 +405,7 @@ Status Subarray::get_range_num(uint32_t dim_idx, uint64_t* range_num) const {
 }
 
 Subarray Subarray::get_subarray(uint64_t start, uint64_t end) const {
-  Subarray ret(array_, layout_);
+  Subarray ret(array_, layout_, coalesce_ranges_);
 
   auto start_coords = get_range_coords(start);
   auto end_coords = get_range_coords(end);
@@ -766,8 +771,14 @@ const std::vector<Range>& Subarray::ranges_for_dim(uint32_t dim_idx) const {
 
 Status Subarray::set_ranges_for_dim(
     uint32_t dim_idx, const std::vector<Range>& ranges) {
-  ranges_.resize(dim_idx + 1);
-  ranges_[dim_idx] = ranges;
+  ranges_.resize(dim_idx + 1, std::vector<Range>());
+
+  // Add each range individually so that contiguous
+  // ranges may be coalesced.
+  ranges_[dim_idx].clear();
+  for (const auto& range : ranges)
+    add_or_coalesce_range_func_[dim_idx](this, dim_idx, range);
+
   return Status::Ok();
 }
 
@@ -778,8 +789,8 @@ Status Subarray::split(
     Subarray* r2) const {
   assert(r1 != nullptr);
   assert(r2 != nullptr);
-  *r1 = Subarray(array_, layout_);
-  *r2 = Subarray(array_, layout_);
+  *r1 = Subarray(array_, layout_, coalesce_ranges_);
+  *r2 = Subarray(array_, layout_, coalesce_ranges_);
 
   auto dim_num = array_->array_schema()->dim_num();
 
@@ -808,8 +819,8 @@ Status Subarray::split(
     Subarray* r2) const {
   assert(r1 != nullptr);
   assert(r2 != nullptr);
-  *r1 = Subarray(array_, layout_);
-  *r2 = Subarray(array_, layout_);
+  *r1 = Subarray(array_, layout_, coalesce_ranges_);
+  *r2 = Subarray(array_, layout_, coalesce_ranges_);
 
   // For easy reference
   auto array_schema = array_->array_schema();
@@ -1014,6 +1025,188 @@ Status Subarray::set_est_result_size(
   est_result_size_computed_ = true;
 
   return Status::Ok();
+}
+
+void Subarray::set_add_or_coalesce_range_func() {
+  const unsigned int dim_num = array_->array_schema()->dim_num();
+
+  // Bind an `add_or_coalesce_range_func_` for each dimension.
+  add_or_coalesce_range_func_.resize(dim_num);
+  for (unsigned int dim_idx = 0; dim_idx < dim_num; ++dim_idx) {
+    const Dimension* const dim = array_->array_schema()->dimension(dim_idx);
+
+    // We only coalesce ranges of fixed sizes. If the dimension
+    // is of a var-sized data type, we will not attempt to
+    // coalesce its ranges.
+    if (dim->var_size()) {
+      add_or_coalesce_range_func_[dim_idx] = std::bind(
+          &Subarray::add_range_without_coalesce,
+          std::placeholders::_1,
+          std::placeholders::_2,
+          std::placeholders::_3);
+      continue;
+    }
+
+    // If this instance was constructed to disable coalescing
+    // ranges, we will use the routine that does not attempt
+    // to coalesce ranges.
+    if (!coalesce_ranges_) {
+      add_or_coalesce_range_func_[dim_idx] = std::bind(
+          &Subarray::add_range_without_coalesce,
+          std::placeholders::_1,
+          std::placeholders::_2,
+          std::placeholders::_3);
+      continue;
+    }
+
+    const Datatype type = dim->type();
+    switch (type) {
+      case Datatype::INT8:
+        add_or_coalesce_range_func_[dim_idx] = std::bind(
+            &Subarray::add_or_coalesce_range<int8_t>,
+            std::placeholders::_1,
+            std::placeholders::_2,
+            std::placeholders::_3);
+        break;
+      case Datatype::UINT8:
+        add_or_coalesce_range_func_[dim_idx] = std::bind(
+            &Subarray::add_or_coalesce_range<uint8_t>,
+            std::placeholders::_1,
+            std::placeholders::_2,
+            std::placeholders::_3);
+        break;
+      case Datatype::INT16:
+        add_or_coalesce_range_func_[dim_idx] = std::bind(
+            &Subarray::add_or_coalesce_range<int16_t>,
+            std::placeholders::_1,
+            std::placeholders::_2,
+            std::placeholders::_3);
+        break;
+      case Datatype::UINT16:
+        add_or_coalesce_range_func_[dim_idx] = std::bind(
+            &Subarray::add_or_coalesce_range<uint16_t>,
+            std::placeholders::_1,
+            std::placeholders::_2,
+            std::placeholders::_3);
+        break;
+      case Datatype::INT32:
+        add_or_coalesce_range_func_[dim_idx] = std::bind(
+            &Subarray::add_or_coalesce_range<int32_t>,
+            std::placeholders::_1,
+            std::placeholders::_2,
+            std::placeholders::_3);
+        break;
+      case Datatype::UINT32:
+        add_or_coalesce_range_func_[dim_idx] = std::bind(
+            &Subarray::add_or_coalesce_range<uint32_t>,
+            std::placeholders::_1,
+            std::placeholders::_2,
+            std::placeholders::_3);
+        break;
+      case Datatype::INT64:
+        add_or_coalesce_range_func_[dim_idx] = std::bind(
+            &Subarray::add_or_coalesce_range<int64_t>,
+            std::placeholders::_1,
+            std::placeholders::_2,
+            std::placeholders::_3);
+        break;
+      case Datatype::UINT64:
+        add_or_coalesce_range_func_[dim_idx] = std::bind(
+            &Subarray::add_or_coalesce_range<uint64_t>,
+            std::placeholders::_1,
+            std::placeholders::_2,
+            std::placeholders::_3);
+        break;
+      case Datatype::FLOAT32:
+      case Datatype::FLOAT64:
+        // We can not reasonably coalesce floating point types.
+        add_or_coalesce_range_func_[dim_idx] = std::bind(
+            &Subarray::add_range_without_coalesce,
+            std::placeholders::_1,
+            std::placeholders::_2,
+            std::placeholders::_3);
+        break;
+      case Datatype::DATETIME_YEAR:
+      case Datatype::DATETIME_MONTH:
+      case Datatype::DATETIME_WEEK:
+      case Datatype::DATETIME_DAY:
+      case Datatype::DATETIME_HR:
+      case Datatype::DATETIME_MIN:
+      case Datatype::DATETIME_SEC:
+      case Datatype::DATETIME_MS:
+      case Datatype::DATETIME_US:
+      case Datatype::DATETIME_NS:
+      case Datatype::DATETIME_PS:
+      case Datatype::DATETIME_FS:
+      case Datatype::DATETIME_AS:
+        add_or_coalesce_range_func_[dim_idx] = std::bind(
+            &Subarray::add_or_coalesce_range<int64_t>,
+            std::placeholders::_1,
+            std::placeholders::_2,
+            std::placeholders::_3);
+        break;
+      case Datatype::CHAR:
+        add_or_coalesce_range_func_[dim_idx] = std::bind(
+            &Subarray::add_or_coalesce_range<char>,
+            std::placeholders::_1,
+            std::placeholders::_2,
+            std::placeholders::_3);
+        break;
+      case Datatype::STRING_ASCII:
+      case Datatype::STRING_UTF8:
+      case Datatype::STRING_UTF16:
+      case Datatype::STRING_UTF32:
+      case Datatype::STRING_UCS2:
+      case Datatype::STRING_UCS4:
+        // We can not reasonably coalesce string types.
+        add_or_coalesce_range_func_[dim_idx] = std::bind(
+            &Subarray::add_range_without_coalesce,
+            std::placeholders::_1,
+            std::placeholders::_2,
+            std::placeholders::_3);
+        break;
+      case Datatype::ANY:
+        add_or_coalesce_range_func_[dim_idx] = std::bind(
+            &Subarray::add_or_coalesce_range<uint8_t>,
+            std::placeholders::_1,
+            std::placeholders::_2,
+            std::placeholders::_3);
+        break;
+      default:
+        LOG_FATAL("Unexpected datatype " + datatype_str(type));
+    }
+  }
+}
+
+void Subarray::add_range_without_coalesce(
+    const uint32_t dim_idx, const Range& range) {
+  ranges_[dim_idx].emplace_back(range);
+}
+
+template <class T>
+void Subarray::add_or_coalesce_range(
+    const uint32_t dim_idx, const Range& range) {
+  std::vector<Range>* const ranges = &ranges_[dim_idx];
+
+  // If `ranges` is empty, there is not an existing range to coalesce with.
+  if (ranges->empty()) {
+    ranges->emplace_back(range);
+    return;
+  }
+
+  // If the start index of `range` immediately proceeds the end of the
+  // last range on `ranges`, they are contiguous and will be coalesced.
+  Range& last_range = ranges->back();
+  const bool contiguous = *static_cast<const T*>(last_range.end()) !=
+                              std::numeric_limits<T>::max() &&
+                          *static_cast<const T*>(last_range.end()) + 1 ==
+                              *static_cast<const T*>(range.start());
+
+  // Coalesce `range` with `last_range` if they are contiguous.
+  if (contiguous)
+    last_range.set_end(range.end());
+  else
+    ranges->emplace_back(range);
 }
 
 /* ****************************** */
@@ -1426,6 +1619,8 @@ Subarray Subarray::clone() const {
   clone.tile_overlap_ = tile_overlap_;
   clone.est_result_size_computed_ = est_result_size_computed_;
   clone.tile_overlap_computed_ = tile_overlap_computed_;
+  clone.coalesce_ranges_ = coalesce_ranges_;
+  clone.add_or_coalesce_range_func_ = add_or_coalesce_range_func_;
   clone.est_result_size_ = est_result_size_;
   clone.max_mem_size_ = max_mem_size_;
   clone.relevant_fragments_ = relevant_fragments_;
@@ -1558,6 +1753,8 @@ void Subarray::swap(Subarray& subarray) {
   std::swap(tile_overlap_, subarray.tile_overlap_);
   std::swap(est_result_size_computed_, subarray.est_result_size_computed_);
   std::swap(tile_overlap_computed_, subarray.tile_overlap_computed_);
+  std::swap(coalesce_ranges_, subarray.coalesce_ranges_);
+  std::swap(add_or_coalesce_range_func_, subarray.add_or_coalesce_range_func_);
   std::swap(est_result_size_, subarray.est_result_size_);
   std::swap(max_mem_size_, subarray.max_mem_size_);
   std::swap(relevant_fragments_, subarray.relevant_fragments_);
@@ -1698,6 +1895,16 @@ template Status Subarray::compute_tile_coords<int64_t>();
 template Status Subarray::compute_tile_coords<uint64_t>();
 template Status Subarray::compute_tile_coords<float>();
 template Status Subarray::compute_tile_coords<double>();
+
+template void Subarray::add_or_coalesce_range<int8_t>(uint32_t, const Range&);
+template void Subarray::add_or_coalesce_range<uint8_t>(uint32_t, const Range&);
+template void Subarray::add_or_coalesce_range<int16_t>(uint32_t, const Range&);
+template void Subarray::add_or_coalesce_range<uint16_t>(uint32_t, const Range&);
+template void Subarray::add_or_coalesce_range<int32_t>(uint32_t, const Range&);
+template void Subarray::add_or_coalesce_range<uint32_t>(uint32_t, const Range&);
+template void Subarray::add_or_coalesce_range<int64_t>(uint32_t, const Range&);
+template void Subarray::add_or_coalesce_range<uint64_t>(uint32_t, const Range&);
+template void Subarray::add_or_coalesce_range<char>(uint32_t, const Range&);
 
 template const int8_t* Subarray::tile_coords_ptr<int8_t>(
     const std::vector<int8_t>& tile_coords,

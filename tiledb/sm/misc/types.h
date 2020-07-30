@@ -37,6 +37,8 @@
 #include <cstring>
 #include <vector>
 
+#include "tiledb/sm/misc/logger.h"
+
 namespace tiledb {
 namespace sm {
 
@@ -129,6 +131,14 @@ class Range {
     return &range_[0];
   }
 
+  /** Copies 'start' into this range's start bytes for fixed-size ranges. */
+  void set_start(const void* const start) {
+    if (range_start_size_ != 0)
+      LOG_FATAL("Unexpected var-sized range; cannot set end range.");
+    const size_t fixed_size = range_.size() / 2;
+    std::memcpy(&range_[0], start, fixed_size);
+  }
+
   /** Returns the start as a string. */
   std::string start_str() const {
     if (start_size() == 0)
@@ -166,6 +176,14 @@ class Range {
     auto end_pos =
         (range_start_size_ == 0) ? range_.size() / 2 : range_start_size_;
     return range_.empty() ? nullptr : &range_[end_pos];
+  }
+
+  /** Copies 'end' into this range's end bytes for fixed-size ranges. */
+  void set_end(const void* const end) {
+    if (range_start_size_ != 0)
+      LOG_FATAL("Unexpected var-sized range; cannot set end range.");
+    const size_t fixed_size = range_.size() / 2;
+    std::memcpy(&range_[fixed_size], end, fixed_size);
   }
 
   /** Returns true if the range is empty. */

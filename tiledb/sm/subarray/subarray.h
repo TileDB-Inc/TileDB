@@ -152,8 +152,10 @@ class Subarray {
    * Constructor.
    *
    * @param array The array the subarray is associated with.
+   * @param coalesce_ranges When enabled, ranges will attempt to coalesce
+   *     with existing ranges as they are added.
    */
-  Subarray(const Array* array);
+  Subarray(const Array* array, bool coalesce_ranges = true);
 
   /**
    * Constructor.
@@ -162,8 +164,10 @@ class Subarray {
    * @param layout The layout of the values of the subarray (of the results
    *     if the subarray is used for reads, or of the values provided
    *     by the user for writes).
+   * @param coalesce_ranges When enabled, ranges will attempt to coalesce
+   *     with existing ranges as they are added.
    */
-  Subarray(const Array* array, Layout layout);
+  Subarray(const Array* array, Layout layout, bool coalesce_ranges = true);
 
   /**
    * Copy constructor. This performs a deep copy (including memcpy of
@@ -631,6 +635,21 @@ class Subarray {
   bool tile_overlap_computed_;
 
   /**
+   * ``True`` if ranges should attempt to be coalesced as they are added.
+   */
+  bool coalesce_ranges_;
+
+  /**
+   * Each element on the vector contains a template-bound variant of
+   * `add_or_coalesce_range()` for the respective dimension's data
+   * type. Dimensions with data types that we do not attempt to
+   * coalesce (e.g. floats and var-sized data types), this will be
+   * bound to `add_range_without_coalesce` as an optimization.
+   */
+  std::vector<std::function<void(Subarray*, uint32_t, const Range&)>>
+      add_or_coalesce_range_func_;
+
+  /**
    * The tile coordinates that the subarray overlaps with. Note that
    * the datatype must be casted to the datatype of the subarray upon use.
    */
@@ -725,7 +744,7 @@ class Subarray {
    * @param frag_idx The fragment id.
    * @param dense Whether the fragment is dense or sparse.
    * @param range_num The number of ranges.
-   *
+   * @return Status
    */
   Status compute_relevant_fragment_tile_overlap(
       FragmentMetadata* meta,
@@ -739,6 +758,30 @@ class Subarray {
    */
   Status load_relevant_fragment_tile_var_sizes(
       const std::vector<std::string>& names) const;
+
+  /**
+   * Constructs `add_or_coalesce_range_func_` for all dimensions
+   * in `array_->array_schema()`.
+   */
+  void set_add_or_coalesce_range_func();
+
+  /**
+   * Appends `range` onto `ranges_[dim_idx]` without attempting to
+   * coalesce `range` with any existing ranges.
+   */
+  void add_range_without_coalesce(uint32_t dim_idx, const Range& range);
+
+  /**
+   * Coalesces `range` with the last element on `ranges_[dim_idx]`
+   * if they are contiguous. Otherwise, `range` will be appended to
+   * `ranges_[dim_idx]`.
+   *
+   * @tparam T The range data type.
+   * @param dim_idx The dimension index into `ranges_`.
+   * @param range The range to add or coalesce.
+   */
+  template <class T>
+  void add_or_coalesce_range(uint32_t dim_idx, const Range& range);
 };
 
 }  // namespace sm
