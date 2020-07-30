@@ -96,20 +96,26 @@ Status GCS::init(const Config& config, ThreadPool* const thread_pool) {
 
   // Creates the client using the credentials file pointed to by the
   // env variable GOOGLE_APPLICATION_CREDENTIALS
-  auto creds =
-      google::cloud::storage::oauth2::GoogleDefaultCredentials(channel_options);
-  if (!creds) {
-    return LOG_STATUS(Status::GCSError(
-        "Failed to initialize GCS credentials; " + creds.status().message()));
-  }
+  try {
+    auto creds = google::cloud::storage::oauth2::GoogleDefaultCredentials(
+        channel_options);
+    if (!creds) {
+      return LOG_STATUS(Status::GCSError(
+          "Failed to initialize GCS credentials: " + creds.status().message()));
+    }
 
-  google::cloud::storage::ClientOptions client_options(*creds, channel_options);
-  auto client = google::cloud::storage::Client(
-      client_options, google::cloud::storage::StrictIdempotencyPolicy());
-  client_ = google::cloud::StatusOr<google::cloud::storage::Client>(client);
-  if (!client_) {
-    return LOG_STATUS(Status::GCSError(
-        "Failed to initialize GCS Client; " + client_.status().message()));
+    google::cloud::storage::ClientOptions client_options(
+        *creds, channel_options);
+    auto client = google::cloud::storage::Client(
+        client_options, google::cloud::storage::StrictIdempotencyPolicy());
+    client_ = google::cloud::StatusOr<google::cloud::storage::Client>(client);
+    if (!client_) {
+      return LOG_STATUS(Status::GCSError(
+          "Failed to initialize GCS Client; " + client_.status().message()));
+    }
+  } catch (const std::exception& e) {
+    return LOG_STATUS(
+        Status::GCSError("Failed to initialize GCS: " + std::string(e.what())));
   }
 
   bool found;
