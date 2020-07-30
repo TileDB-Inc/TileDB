@@ -5,6 +5,11 @@
 * Split posix permissions into files and folers permissions [#1719](https://github.com/TileDB-Inc/TileDB/pull/1719)
 * Support seeking for CURL to allow redirects for posting to REST [#1728](https://github.com/TileDB-Inc/TileDB/pull/1728)
 * Add additional release artifacts which include disabling TBB [#1753](https://github.com/TileDB-Inc/TileDB/pull/1753)
+* Lazy initialization for GCS backend [#1752](https://github.com/TileDB-Inc/TileDB/pull/1752)
+
+## Bug fixes
+
+* Fix crash during GCS backend initialization due to upstream bug. [#1752](https://github.com/TileDB-Inc/TileDB/pull/1752)
 
 # TileDB v2.0.7 Release Notes
 

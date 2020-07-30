@@ -276,6 +276,11 @@ class GCS {
   /*         PRIVATE DATATYPES         */
   /* ********************************* */
 
+  /**
+   * Identifies the current state of this class.
+   */
+  enum State { UNINITIALIZED, INITIALIZED };
+
   /** Contains all state associated with a part list upload transaction. */
   class MultiPartUploadState {
    public:
@@ -329,6 +334,15 @@ class GCS {
   /*         PRIVATE ATTRIBUTES        */
   /* ********************************* */
 
+  /** The current state. */
+  State state_;
+
+  /**
+   * Mutex protecting client initialization. This is mutable so that nominally
+   * const functions can call init_client().
+   */
+  mutable std::mutex client_init_mtx_;
+
   /** The VFS thread pool. */
   ThreadPool* thread_pool_;
 
@@ -366,6 +380,13 @@ class GCS {
   /* ********************************* */
   /*          PRIVATE METHODS          */
   /* ********************************* */
+
+  /**
+   * Initializes the client, if it has not already been initialized.
+   *
+   * @return Status
+   */
+  Status init_client() const;
 
   /**
    * Parses a URI into a bucket name and object path. For example,

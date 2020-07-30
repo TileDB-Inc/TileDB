@@ -52,7 +52,8 @@ namespace sm {
 /* ********************************* */
 
 GCS::GCS()
-    : write_cache_max_size_(0)
+    : state_(State::UNINITIALIZED)
+    , write_cache_max_size_(0)
     , max_parallel_ops_(1)
     , multi_part_part_size_(0)
     , use_multi_part_upload_(true) {
@@ -71,7 +72,39 @@ Status GCS::init(const Config& config, ThreadPool* const thread_pool) {
         Status::GCSError("Can't initialize with null thread pool."));
   }
 
+  assert(state_ == State::UNINITIALIZED);
+
   thread_pool_ = thread_pool;
+
+  bool found;
+  project_id_ = config.get("vfs.gcs.project_id", &found);
+  assert(found);
+  RETURN_NOT_OK(config.get<uint64_t>(
+      "vfs.gcs.max_parallel_ops", &max_parallel_ops_, &found));
+  assert(found);
+  RETURN_NOT_OK(config.get<bool>(
+      "vfs.gcs.use_multi_part_upload", &use_multi_part_upload_, &found));
+  assert(found);
+  RETURN_NOT_OK(config.get<uint64_t>(
+      "vfs.gcs.multi_part_size", &multi_part_part_size_, &found));
+  assert(found);
+
+  write_cache_max_size_ = max_parallel_ops_ * multi_part_part_size_;
+
+  state_ = State::INITIALIZED;
+  return Status::Ok();
+}
+
+Status GCS::init_client() const {
+  assert(state_ == State::INITIALIZED);
+
+  std::lock_guard<std::mutex> lck(client_init_mtx_);
+
+  // Client is a google::cloud::storage::StatusOr which compares (in)valid as
+  // bool
+  if (client_) {
+    return Status::Ok();
+  }
 
   google::cloud::storage::ChannelOptions channel_options;
 
@@ -118,26 +151,11 @@ Status GCS::init(const Config& config, ThreadPool* const thread_pool) {
         Status::GCSError("Failed to initialize GCS: " + std::string(e.what())));
   }
 
-  bool found;
-  project_id_ = config.get("vfs.gcs.project_id", &found);
-  assert(found);
-  RETURN_NOT_OK(config.get<uint64_t>(
-      "vfs.gcs.max_parallel_ops", &max_parallel_ops_, &found));
-  assert(found);
-  RETURN_NOT_OK(config.get<bool>(
-      "vfs.gcs.use_multi_part_upload", &use_multi_part_upload_, &found));
-  assert(found);
-  RETURN_NOT_OK(config.get<uint64_t>(
-      "vfs.gcs.multi_part_size", &multi_part_part_size_, &found));
-  assert(found);
-
-  write_cache_max_size_ = max_parallel_ops_ * multi_part_part_size_;
-
   return Status::Ok();
 }
 
 Status GCS::create_bucket(const URI& uri) const {
-  assert(client_);
+  RETURN_NOT_OK(init_client());
 
   if (!uri.is_gcs()) {
     return LOG_STATUS(Status::GCSError(
@@ -161,7 +179,7 @@ Status GCS::create_bucket(const URI& uri) const {
 }
 
 Status GCS::empty_bucket(const URI& uri) const {
-  assert(client_);
+  RETURN_NOT_OK(init_client());
 
   if (!uri.is_gcs()) {
     return LOG_STATUS(Status::GCSError(
@@ -172,7 +190,7 @@ Status GCS::empty_bucket(const URI& uri) const {
 }
 
 Status GCS::is_empty_bucket(const URI& uri, bool* is_empty) const {
-  assert(client_);
+  RETURN_NOT_OK(init_client());
   assert(is_empty);
 
   if (!uri.is_gcs()) {
@@ -240,7 +258,7 @@ Status GCS::is_bucket(
 }
 
 Status GCS::is_dir(const URI& uri, bool* const exists) const {
-  assert(client_);
+  RETURN_NOT_OK(init_client());
   assert(exists);
 
   if (!uri.is_gcs()) {
@@ -255,7 +273,7 @@ Status GCS::is_dir(const URI& uri, bool* const exists) const {
 }
 
 Status GCS::remove_bucket(const URI& uri) const {
-  assert(client_);
+  RETURN_NOT_OK(init_client());
 
   if (!uri.is_gcs()) {
     return LOG_STATUS(Status::GCSError(
@@ -279,7 +297,7 @@ Status GCS::remove_bucket(const URI& uri) const {
 }
 
 Status GCS::remove_object(const URI& uri) const {
-  assert(client_);
+  RETURN_NOT_OK(init_client());
 
   if (!uri.is_gcs()) {
     return LOG_STATUS(Status::GCSError(
@@ -302,7 +320,7 @@ Status GCS::remove_object(const URI& uri) const {
 }
 
 Status GCS::remove_dir(const URI& uri) const {
-  assert(client_);
+  RETURN_NOT_OK(init_client());
 
   if (!uri.is_gcs()) {
     return LOG_STATUS(Status::GCSError(
@@ -347,7 +365,7 @@ Status GCS::ls(
     std::vector<std::string>* paths,
     const std::string& delimiter,
     const int max_paths) const {
-  assert(client_);
+  RETURN_NOT_OK(init_client());
   assert(paths);
 
   const URI uri_dir = uri.add_trailing_slash();
@@ -391,7 +409,7 @@ Status GCS::ls(
 }
 
 Status GCS::move_object(const URI& old_uri, const URI& new_uri) {
-  assert(client_);
+  RETURN_NOT_OK(init_client());
 
   RETURN_NOT_OK(copy_object(old_uri, new_uri));
   RETURN_NOT_OK(remove_object(old_uri));
@@ -399,7 +417,7 @@ Status GCS::move_object(const URI& old_uri, const URI& new_uri) {
 }
 
 Status GCS::copy_object(const URI& old_uri, const URI& new_uri) {
-  assert(client_);
+  RETURN_NOT_OK(init_client());
 
   if (!old_uri.is_gcs()) {
     return LOG_STATUS(Status::GCSError(
@@ -436,7 +454,7 @@ Status GCS::copy_object(const URI& old_uri, const URI& new_uri) {
 
 Status GCS::wait_for_object_to_propagate(
     const std::string& bucket_name, const std::string& object_path) const {
-  assert(client_);
+  RETURN_NOT_OK(init_client());
 
   unsigned attempts = 0;
   while (attempts++ < constants::gcs_max_attempts) {
@@ -456,7 +474,7 @@ Status GCS::wait_for_object_to_propagate(
 
 Status GCS::wait_for_object_to_be_deleted(
     const std::string& bucket_name, const std::string& object_path) const {
-  assert(client_);
+  RETURN_NOT_OK(init_client());
 
   unsigned attempts = 0;
   while (attempts++ < constants::gcs_max_attempts) {
@@ -494,7 +512,7 @@ Status GCS::wait_for_bucket_to_propagate(const std::string& bucket_name) const {
 
 Status GCS::wait_for_bucket_to_be_deleted(
     const std::string& bucket_name) const {
-  assert(client_);
+  RETURN_NOT_OK(init_client());
 
   unsigned attempts = 0;
   while (attempts++ < constants::gcs_max_attempts) {
@@ -513,7 +531,7 @@ Status GCS::wait_for_bucket_to_be_deleted(
 }
 
 Status GCS::move_dir(const URI& old_uri, const URI& new_uri) {
-  assert(client_);
+  RETURN_NOT_OK(init_client());
 
   std::vector<std::string> paths;
   RETURN_NOT_OK(ls(old_uri, &paths, ""));
@@ -526,7 +544,7 @@ Status GCS::move_dir(const URI& old_uri, const URI& new_uri) {
 }
 
 Status GCS::touch(const URI& uri) const {
-  assert(client_);
+  RETURN_NOT_OK(init_client());
 
   if (!uri.is_gcs()) {
     return LOG_STATUS(Status::GCSError(
@@ -552,7 +570,7 @@ Status GCS::touch(const URI& uri) const {
 }
 
 Status GCS::is_object(const URI& uri, bool* const is_object) const {
-  assert(client_);
+  RETURN_NOT_OK(init_client());
   assert(is_object);
 
   if (!uri.is_gcs()) {
@@ -651,7 +669,7 @@ Status GCS::write(
 }
 
 Status GCS::object_size(const URI& uri, uint64_t* const nbytes) const {
-  assert(client_);
+  RETURN_NOT_OK(init_client());
   assert(nbytes);
 
   if (!uri.is_gcs()) {
@@ -845,7 +863,7 @@ Status GCS::upload_part(
 }
 
 Status GCS::flush_object(const URI& uri) {
-  assert(client_);
+  RETURN_NOT_OK(init_client());
 
   if (!uri.is_gcs()) {
     return LOG_STATUS(Status::GCSError(
@@ -1021,7 +1039,7 @@ Status GCS::read(
     const off_t offset,
     void* const buffer,
     const uint64_t length) const {
-  assert(client_);
+  RETURN_NOT_OK(init_client());
 
   if (!uri.is_gcs()) {
     return LOG_STATUS(Status::GCSError(
