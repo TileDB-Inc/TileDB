@@ -156,6 +156,8 @@ class Range {
    * Non-zero only for var-sized ranges.
    */
   uint64_t end_size() const {
+    if (range_start_size_ == 0)
+      return 0;
     return range_.size() - range_start_size_;
   }
 
