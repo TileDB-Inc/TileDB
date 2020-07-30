@@ -725,7 +725,7 @@ class Subarray {
    * @param frag_idx The fragment id.
    * @param dense Whether the fragment is dense or sparse.
    * @param range_num The number of ranges.
-   *
+   * @return Status
    */
   Status compute_relevant_fragment_tile_overlap(
       FragmentMetadata* meta,
@@ -739,6 +739,21 @@ class Subarray {
    */
   Status load_relevant_fragment_tile_var_sizes(
       const std::vector<std::string>& names) const;
+
+  /**
+   * Coalesces contiguous ranges within ``ranges_``.
+   */
+  void coalesce_ranges();
+
+  /**
+   * Coalesces contiguous ranges within ``ranges_`` at the given
+   * dimension index.
+   *
+   * @tparam T The dimension data type.
+   * @param dim_idx The index into ``ranges_``.
+   */
+  template <class T>
+  void coalesce_dim_ranges(size_t dim_idx);
 };
 
 }  // namespace sm

@@ -90,6 +90,14 @@ class Range {
     std::memcpy(&range_[0], r, r_size);
   }
 
+  /** Sets a fixed-sized range `[r1, r2]`. */
+  void set_range(const void* r1, const void* r2, uint64_t range_size) {
+    range_.resize(range_size);
+    std::memcpy(&range_[0], r1, (range_size / 2));
+    auto c = (char*)(&range_[0]);
+    std::memcpy(c + (range_size / 2), r2, (range_size / 2));
+  }
+
   /** Sets a var-sized range serialized in `r`. */
   void set_range(const void* r, uint64_t r_size, uint64_t range_start_size) {
     range_.resize(r_size);

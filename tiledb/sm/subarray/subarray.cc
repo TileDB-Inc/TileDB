@@ -1016,6 +1016,130 @@ Status Subarray::set_est_result_size(
   return Status::Ok();
 }
 
+void Subarray::coalesce_ranges() {
+  for (size_t dim_idx = 0; dim_idx < ranges_.size(); ++dim_idx) {
+    const auto type = array_->array_schema()->dimension(dim_idx)->type();
+    switch (type) {
+      case Datatype::INT8:
+        coalesce_dim_ranges<int8_t>(dim_idx);
+        break;
+      case Datatype::UINT8:
+        coalesce_dim_ranges<uint8_t>(dim_idx);
+        break;
+      case Datatype::INT16:
+        coalesce_dim_ranges<int16_t>(dim_idx);
+        break;
+      case Datatype::UINT16:
+        coalesce_dim_ranges<uint16_t>(dim_idx);
+        break;
+      case Datatype::INT32:
+        coalesce_dim_ranges<int32_t>(dim_idx);
+        break;
+      case Datatype::UINT32:
+        coalesce_dim_ranges<uint32_t>(dim_idx);
+        break;
+      case Datatype::INT64:
+        coalesce_dim_ranges<int64_t>(dim_idx);
+        break;
+      case Datatype::UINT64:
+        coalesce_dim_ranges<uint64_t>(dim_idx);
+        break;
+      case Datatype::FLOAT32:
+      case Datatype::FLOAT64:
+        // We can not reasonably coalesce floating point types.
+        break;
+      case Datatype::DATETIME_YEAR:
+      case Datatype::DATETIME_MONTH:
+      case Datatype::DATETIME_WEEK:
+      case Datatype::DATETIME_DAY:
+      case Datatype::DATETIME_HR:
+      case Datatype::DATETIME_MIN:
+      case Datatype::DATETIME_SEC:
+      case Datatype::DATETIME_MS:
+      case Datatype::DATETIME_US:
+      case Datatype::DATETIME_NS:
+      case Datatype::DATETIME_PS:
+      case Datatype::DATETIME_FS:
+      case Datatype::DATETIME_AS:
+        coalesce_dim_ranges<int64_t>(dim_idx);
+        break;
+      case Datatype::CHAR:
+        coalesce_dim_ranges<char>(dim_idx);
+        break;
+      case Datatype::STRING_ASCII:
+      case Datatype::STRING_UTF8:
+      case Datatype::STRING_UTF16:
+      case Datatype::STRING_UTF32:
+      case Datatype::STRING_UCS2:
+      case Datatype::STRING_UCS4:
+        // We can not reasonably coalesce string types.
+        break;
+      case Datatype::ANY:
+        coalesce_dim_ranges<uint8_t>(dim_idx);
+        break;
+      default:
+        assert(false);
+    }
+  }
+}
+
+template <class T>
+void Subarray::coalesce_dim_ranges(const size_t dim_idx) {
+  // Fetch the ranges to coalesce.
+  std::vector<Range>* const ranges = &ranges_[dim_idx];
+
+  // Ensure we have at least two ranges to attempt to coalesce.
+  if (ranges->size() <= 1)
+    return;
+
+  std::vector<Range> coalesced_ranges;
+  const Range* last_range = &(*ranges)[0];
+  const Range* start_range = &(*ranges)[0];
+  for (size_t i = 1; i < ranges->size(); ++i) {
+    const Range* curr_range = &(*ranges)[i];
+
+    // The `last_range` and `curr_range` are contiguous if the start
+    // index of `curr_range` immediately proceeds the end index of
+    // `last_range`.
+    const bool contiguous = *static_cast<const T*>(last_range->end()) + 1 ==
+                            *static_cast<const T*>(curr_range->start());
+
+    // If they are not contiguous, construct the in-progress contiguous
+    // range as a single coalesced range. As an optimization for ranges
+    // that were not coalesced, we will `move` them onto `coalesced_ranges`
+    // instead of constructing a new range.
+    if (!contiguous) {
+      if (start_range != last_range) {
+        Range coalesced_range;
+        coalesced_range.set_range(
+            start_range->start(), last_range->end(), sizeof(T) * 2);
+        coalesced_ranges.emplace_back(std::move(coalesced_range));
+      } else {
+        coalesced_ranges.emplace_back(std::move(*start_range));
+      }
+
+      start_range = curr_range;
+    }
+
+    last_range = curr_range;
+  }
+
+  // Construct the in-progress contiguous range as a single coalesced range.
+  // As an optimization for ranges that were not coalesced, we will `move`
+  // them onto `coalesced_ranges` instead of constructing a new range.
+  if (start_range != last_range) {
+    Range coalesced_range;
+    coalesced_range.set_range(
+        start_range->start(), last_range->end(), sizeof(T) * 2);
+    coalesced_ranges.emplace_back(std::move(coalesced_range));
+  } else {
+    coalesced_ranges.emplace_back(std::move(*start_range));
+  }
+
+  // Replace the original ranges with the coalesced ranges.
+  ranges_[dim_idx] = std::move(coalesced_ranges);
+}
+
 /* ****************************** */
 /*          PRIVATE METHODS       */
 /* ****************************** */
@@ -1390,6 +1514,7 @@ Status Subarray::compute_tile_overlap() {
   if (tile_overlap_computed_)
     return Status::Ok();
 
+  coalesce_ranges();
   compute_range_offsets();
 
   // Initialization
@@ -1699,6 +1824,16 @@ template Status Subarray::compute_tile_coords<int64_t>();
 template Status Subarray::compute_tile_coords<uint64_t>();
 template Status Subarray::compute_tile_coords<float>();
 template Status Subarray::compute_tile_coords<double>();
+
+template void Subarray::coalesce_dim_ranges<int8_t>(size_t);
+template void Subarray::coalesce_dim_ranges<uint8_t>(size_t);
+template void Subarray::coalesce_dim_ranges<int16_t>(size_t);
+template void Subarray::coalesce_dim_ranges<uint16_t>(size_t);
+template void Subarray::coalesce_dim_ranges<int32_t>(size_t);
+template void Subarray::coalesce_dim_ranges<uint32_t>(size_t);
+template void Subarray::coalesce_dim_ranges<int64_t>(size_t);
+template void Subarray::coalesce_dim_ranges<uint64_t>(size_t);
+template void Subarray::coalesce_dim_ranges<char>(size_t);
 
 template const int8_t* Subarray::tile_coords_ptr<int8_t>(
     const std::vector<int8_t>& tile_coords,
