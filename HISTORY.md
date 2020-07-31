@@ -35,6 +35,12 @@
 
 * Added functions `Attribute::{set,get}_fill_value` to get/set default fill values
 
+# TileDB v2.0.8 Release Notes
+
+## Improvements
+
+* Add additional release artifacts which include disabling TBB [#1753](https://github.com/TileDB-Inc/TileDB/pull/1753)
+
 # TileDB v2.0.7 Release Notes
 
 ## Improvements
