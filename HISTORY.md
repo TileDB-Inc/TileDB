@@ -21,6 +21,8 @@
 
 ## Deprecations
 
+* Support for MacOS older than 10.13 is being dropped when using the AWS SDK. Prebuilt Binaries now target 10.13 [#1753](https://github.com/TileDB-Inc/TileDB/pull/1753)
+
 ## Bug fixes
 
 * Fixed bug in setting a fill value for var-sized attributes.
