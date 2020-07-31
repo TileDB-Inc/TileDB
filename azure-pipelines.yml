@@ -94,7 +94,7 @@ stages:
       TILEDB_STATIC: OFF
       TILEDB_SERIALIZATION: ON
       TILEDB_FORCE_BUILD_DEPS: ON
-      MACOSX_DEPLOYMENT_TARGET: 10.9
+      MACOSX_DEPLOYMENT_TARGET: 10.13
     jobs:
      - job:
        strategy:
