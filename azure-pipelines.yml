@@ -10,7 +10,7 @@ pr:
     - '*'  # must quote since "*" is a YAML reserved character; we want a string
 stages:
   - stage: CI
-    condition: not(or(startsWith(variables['Build.SourceBranch'], 'refs/tags'), contains(variables['Build.SourceBranchName'], 'release-')))
+    condition: not(startsWith(variables['Build.SourceBranch'], 'refs/tags'))
     jobs:
     - job:
       strategy:
