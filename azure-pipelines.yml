@@ -85,7 +85,7 @@ stages:
       - template: scripts/azure-windows.yml
 
   - stage: Build_Release
-    condition: or(or(startsWith(variables['Build.SourceBranch'], 'refs/tags'), eq(variables['Build.SourceBranch'], 'dev')), startsWith(variables['Build.SourceBranch'], 'release-'))
+    condition: or(or(startsWith(variables['Build.SourceBranch'], 'refs/tags'), eq(variables['Build.SourceBranchName'], 'dev')), startsWith(variables['Build.SourceBranchName'], 'release-'))
     variables:
       TILEDB_S3: ON
       TILEDB_AZURE: ON
