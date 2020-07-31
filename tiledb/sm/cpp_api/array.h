@@ -320,6 +320,11 @@ class Array {
     close();
   }
 
+  /** Returns a shared pointer to the C TileDB Context */
+  const std::reference_wrapper<const Context> ctx() const {
+    return ctx_;
+  }
+
   /** Checks if the array is open. */
   bool is_open() const {
     auto& ctx = ctx_.get();

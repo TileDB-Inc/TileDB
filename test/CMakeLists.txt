@@ -145,6 +145,12 @@ if (TILEDB_TESTS_ENABLE_REST)
   )
 endif()
 
+if (TILEDB_TESTS_ENABLE_ARROW)
+  list(APPEND TILEDB_TEST_SOURCES
+    src/unit-arrow.cc
+  )
+endif()
+
 # unit test executable
 add_executable(
   tiledb_unit EXCLUDE_FROM_ALL
@@ -207,6 +213,14 @@ endif()
 
 if (TILEDB_SERIALIZATION)
   target_compile_definitions(tiledb_unit PRIVATE -DTILEDB_SERIALIZATION)
+endif()
+
+if (TILEDB_TESTS_ENABLE_ARROW)
+  find_package(pybind11 REQUIRED)
+  target_link_libraries(tiledb_unit PRIVATE pybind11::embed)
+
+  # install the python helper next to the executable for import
+  configure_file("${CMAKE_CURRENT_SOURCE_DIR}/src/unit_arrow.py" "${CMAKE_CURRENT_BINARY_DIR}" COPYONLY)
 endif()
 
 # This is necessary only because we are linking directly to the core objects.

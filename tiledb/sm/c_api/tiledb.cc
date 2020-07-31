@@ -53,6 +53,7 @@
 #include "tiledb/sm/filesystem/vfs_file_handle.h"
 #include "tiledb/sm/filter/compression_filter.h"
 #include "tiledb/sm/filter/filter_pipeline.h"
+#include "tiledb/sm/misc/arrow_io.h"
 #include "tiledb/sm/misc/logger.h"
 #include "tiledb/sm/misc/utils.h"
 #include "tiledb/sm/query/query.h"
@@ -2574,6 +2575,17 @@ int32_t tiledb_query_alloc(
   return TILEDB_OK;
 }
 
+int32_t tiledb_query_get_array(
+    tiledb_ctx_t* ctx, tiledb_query_t* query, tiledb_array_t** array) {
+  // Sanity check
+  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, query) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  (void)array;
+
+  return TILEDB_OK;
+}
+
 int32_t tiledb_query_set_subarray(
     tiledb_ctx_t* ctx, tiledb_query_t* query, const void* subarray) {
   // Sanity check
@@ -2674,6 +2686,46 @@ int32_t tiledb_query_get_buffer_var(
 
   return TILEDB_OK;
 }
+
+/* TBD
+int32_t tiledb_query_get_buffer_arrow_array(
+    tiledb_ctx_t* ctx,
+    tiledb_query_t* query,
+    const char* name,
+    void** arrow_schema,
+    void** arrow_array) {
+  // Sanity check
+  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, query) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  if (SAVE_ERROR_CATCH(
+          ctx,
+          tiledb::sm::utils::query_get_buffer_arrow_array(
+              ctx, query, name, arrow_schema, arrow_array)))
+    return TILEDB_ERR;
+
+  return TILEDB_OK;
+}
+
+int32_t tiledb_query_set_buffer_arrow_array(
+    tiledb_ctx_t* ctx,
+    tiledb_query_t* query,
+    const char* name,
+    void* arrow_schema,
+    void* arrow_array) {
+  // Sanity check
+  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, query) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  if (SAVE_ERROR_CATCH(
+          ctx,
+          tiledb::sm::utils::query_set_buffer_arrow_array(
+              ctx, query, name, arrow_schema, arrow_array)))
+    return TILEDB_ERR;
+
+  return TILEDB_OK;
+}
+*/
 
 int32_t tiledb_query_set_layout(
     tiledb_ctx_t* ctx, tiledb_query_t* query, tiledb_layout_t layout) {

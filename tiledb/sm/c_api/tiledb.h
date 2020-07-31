@@ -3113,6 +3113,24 @@ TILEDB_EXPORT int32_t tiledb_query_alloc(
     tiledb_query_t** query);
 
 /**
+ * Gets the array associated with a query.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * tiledb_array_t* array;
+ * tiledb_query_get_array(ctx, query, &array);
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param query The TileDB query.
+ * @param array Pointer to tiledb_array_t* out variable.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_query_get_array(
+    tiledb_ctx_t* ctx, tiledb_query_t* query, tiledb_array_t** array);
+
+/**
  * Indicates that the query will write or read a subarray, and provides
  * the appropriate information.
  *
@@ -3804,6 +3822,42 @@ TILEDB_EXPORT int32_t tiledb_query_get_fragment_timestamp_range(
     uint64_t idx,
     uint64_t* t1,
     uint64_t* t2);
+
+/**
+ * Gets the buffer of a query as an ArrowSchema/ArrowArray pair.
+ * If preconditions are not met then the `arrow_schema` and
+ * `arrow_array` are set to NULL.
+ *
+ * @param ctx The TileDB context.
+ * @param query The TileDB query.
+ * @param name The attribute/dimension to get the buffer for. Note that the
+ *     zipped coordinates have special name `TILEDB_COORDS`.
+ * @param buffer The buffer to retrieve.
+ * @param buffer_size A pointer to the size of the buffer.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_query_get_buffer_arrow_array(
+    tiledb_ctx_t* ctx,
+    tiledb_query_t* query,
+    const char* name,
+    void** arrow_schema,
+    void** arrow_array);
+
+/**
+ * Sets the buffers of a query from an Apache Arrow Array/Schema
+ *
+ * @param ctx The TileDB context.
+ * @param query The TileDB query.
+ * @param name The attribute/dimension to set the buffer for. Note that
+ *             the `name` of the ArrowSchema will be ignored (if set).
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_query_set_buffer_arrow_array(
+    tiledb_ctx_t* ctx,
+    tiledb_query_t* query,
+    const char* name,
+    void* arrow_schema,
+    void* arrow_array);
 
 /* ********************************* */
 /*               ARRAY               */

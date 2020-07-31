@@ -129,6 +129,7 @@ class Query {
    */
   Query(const Context& ctx, const Array& array, tiledb_query_type_t type)
       : ctx_(ctx)
+      , array_(array)
       , schema_(array.schema()) {
     tiledb_query_t* q;
     ctx.handle_error(
@@ -163,6 +164,7 @@ class Query {
    */
   Query(const Context& ctx, const Array& array)
       : ctx_(ctx)
+      , array_(array)
       , schema_(array.schema()) {
     tiledb_query_t* q;
     auto type = array.query_type();
@@ -170,6 +172,29 @@ class Query {
         tiledb_query_alloc(ctx.ptr().get(), array.ptr().get(), type, &q));
     query_ = std::shared_ptr<tiledb_query_t>(q, deleter_);
   }
+
+  /**
+   * Constructor. Creates a TileDB C++ Query instance wrapping the given
+   * pointer.
+   * @param ctx tiledb::Context
+   * @param own=true If false, disables underlying cleanup upon destruction.
+   * @throws TileDBError if construction fails
+   */
+  /* TBD
+  Query(const Context& ctx, tiledb_query_t* cquery, bool own = true)
+      : ctx_(ctx)
+      , schema_(ArraySchema(ctx, (tiledb_array_schema_t*)nullptr)) {
+    if (cquery == nullptr)
+      throw TileDBError(
+          "[TileDB::C++API] Error: Failed to create Array from null pointer");
+
+    query_ = std::shared_ptr<tiledb_query_t>(cquery, [own](tiledb_query_t* p) {
+      if (own) {
+        tiledb_query_free(&p);
+      }
+    });
+  }
+  */
 
   Query(const Query&) = default;
   Query(Query&&) = default;
@@ -183,6 +208,14 @@ class Query {
   /** Returns a shared pointer to the C TileDB query object. */
   std::shared_ptr<tiledb_query_t> ptr() const {
     return query_;
+  }
+
+  const ArraySchema& schema() const {
+    return schema_;
+  }
+
+  const Array& array() const {
+    return array_;
   }
 
   /** Returns the query type (read or write). */
@@ -1086,6 +1119,76 @@ class Query {
         sizeof(char));
   }
 
+  /**
+   * Gets a buffer for a fixed-sized attribute.
+   *
+   * @param attr Attribute name
+   * @param buff Buffer array pointer with elements of the attribute type.
+   * @param nelements Number of array elements.
+   * @param element_size Size of array elements (in bytes).
+   **/
+  Query& get_buffer(
+      const std::string& attr,
+      void** buffer,
+      uint64_t** nelements,
+      uint64_t* element_size) {
+    auto ctx = ctx_.get();
+
+    auto elem_size_iter = element_sizes_.find(attr);
+    if (elem_size_iter == element_sizes_.end()) {
+      throw TileDBError(
+          "[TileDB::C++API] Error: No attribute named '" + attr + "'!");
+    }
+
+    ctx.handle_error(tiledb_query_get_buffer(
+        ctx.ptr().get(), query_.get(), attr.c_str(), buffer, nelements));
+
+    // TODO throw error here if null
+
+    *element_size = elem_size_iter->second;
+
+    return *this;
+  }
+
+  /**
+   * Gets a buffer for a var-sized attribute.
+   *
+   * @param attr Attribute name
+   * @param offsets Offsets array pointer with elements of uint64_t type.
+   * @param offsets_nelements Number of array elements.
+   * @param data Buffer array pointer with elements of the attribute type.
+   * @param data_nelements Number of array elements.
+   * @param element_size Size of array elements (in bytes).
+   **/
+  Query& get_buffer(
+      const std::string& attr,
+      uint64_t** offsets,
+      uint64_t** offsets_nelements,
+      void** data,
+      uint64_t** data_nelements,
+      uint64_t* element_size) {
+    auto ctx = ctx_.get();
+
+    auto elem_size_iter = element_sizes_.find(attr);
+    if (elem_size_iter == element_sizes_.end()) {
+      throw TileDBError(
+          "[TileDB::C++API] Error: No attribute named '" + attr + "'!");
+    }
+
+    ctx.handle_error(tiledb_query_get_buffer_var(
+        ctx.ptr().get(),
+        query_.get(),
+        attr.c_str(),
+        offsets,
+        offsets_nelements,
+        data,
+        data_nelements));
+
+    *element_size = elem_size_iter->second;
+
+    return *this;
+  }
+
   /* ********************************* */
   /*         STATIC FUNCTIONS          */
   /* ********************************* */
@@ -1142,6 +1245,9 @@ class Query {
 
   /** The TileDB context. */
   std::reference_wrapper<const Context> ctx_;
+
+  /** The TileDB array. */
+  std::reference_wrapper<const Array> array_;
 
   /** Deleter wrapper. */
   impl::Deleter deleter_;
