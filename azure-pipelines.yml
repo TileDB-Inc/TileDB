@@ -156,32 +156,32 @@ stages:
          vmImage: $(imageName)
        steps:
          - template: scripts/azure-windows-release.yml
-  - ${{ if eq(variables.Build.Repository.Name, 'TileDB-Inc/TileDB') }}:
-    - stage: Github_Release
-      condition: startsWith(variables['Build.SourceBranch'], 'refs/tags')
-      jobs:
-       - job:
-         steps:
-          # First download artifacts
-         - task: DownloadBuildArtifacts@0
-           inputs:
-            downloadType: 'specific'
-         - script: |
-             echo $sourceVersion
-             commitHash=${sourceVersion:0:7}
-             echo $commitHash
-             echo "##vso[task.setvariable variable=commitHash]$commitHash" ## Set variable for using in other tasks.
-           env: { sourceVersion: $(Build.SourceVersion) }
-           displayName: Git Hash 7-digit
-         - task: GithubRelease@0
-           condition: succeeded() # only run this job if the build step succeeded
-           displayName: 'Add artifacts to GitHub Release'
-           inputs:
-             gitHubConnection: TileDB-Inc-Release
-             repositoryName: TileDB-Inc/TileDB
-             addChangeLog: false
-             action: edit
-             tag: $(Build.SourceBranchName)
-             assets: |
-               $(Build.ArtifactStagingDirectory)/full/*
-               $(Build.ArtifactStagingDirectory)/without_tbb/*
+
+  - stage: Github_Release
+    condition: startsWith(variables['Build.SourceBranch'], 'refs/tags')
+    jobs:
+     - job:
+       steps:
+        # First download artifacts
+       - task: DownloadBuildArtifacts@0
+         inputs:
+          downloadType: 'specific'
+       - script: |
+           echo $sourceVersion
+           commitHash=${sourceVersion:0:7}
+           echo $commitHash
+           echo "##vso[task.setvariable variable=commitHash]$commitHash" ## Set variable for using in other tasks.
+         env: { sourceVersion: $(Build.SourceVersion) }
+         displayName: Git Hash 7-digit
+       - task: GithubRelease@0
+         condition: succeeded() # only run this job if the build step succeeded
+         displayName: 'Add artifacts to GitHub Release'
+         inputs:
+           gitHubConnection: TileDB-Inc-Release
+           repositoryName: TileDB-Inc/TileDB
+           addChangeLog: false
+           action: edit
+           tag: $(Build.SourceBranchName)
+           assets: |
+             $(Build.ArtifactStagingDirectory)/full/*
+             $(Build.ArtifactStagingDirectory)/without_tbb/*
