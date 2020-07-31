@@ -99,14 +99,30 @@ stages:
      - job:
        strategy:
          matrix:
+           linux_without_tbb:
+             imageName: 'ubuntu-16.04'
+             CXX: g++
+             TILEDB_TBB: OFF
+             ARTIFACT_OS: 'linux'
+             ARTIFACT_EXTRAS: 'without_tbb'
            linux:
              imageName: 'ubuntu-16.04'
              CXX: g++
+             TILEDB_TBB: ON
              ARTIFACT_OS: 'linux'
+             ARTIFACT_EXTRAS: 'full'
+           macOS_without_tbb:
+             imageName: 'macOS-10.14'
+             CXX: clang++
+             TILEDB_TBB: OFF
+             ARTIFACT_OS: 'macos'
+             ARTIFACT_EXTRAS: 'without_tbb'
            macOS:
              imageName: 'macOS-10.14'
              CXX: clang++
+             TILEDB_TBB: ON
              ARTIFACT_OS: 'macos'
+             ARTIFACT_EXTRAS: 'full'
        pool:
          vmImage: $(imageName)
        steps:
@@ -124,39 +140,49 @@ stages:
 #             TILEDB_HDFS: OFF
              TILEDB_STATIC: OFF
 #             TILEDB_SERIALIZATION: OFF
+             TILEDB_TBB: ON
              TILEDB_FORCE_BUILD_DEPS: ON
              ARTIFACT_OS: 'windows'
+             ARTIFACT_EXTRAS: 'full'
+           VS2017_without_tbb:
+             imageName: 'vs2017-win2016'
+             TILEDB_S3: ON
+             TILEDB_TBB: OFF
+             TILEDB_STATIC: OFF
+             TILEDB_FORCE_BUILD_DEPS: ON
+             ARTIFACT_OS: 'windows'
+             ARTIFACT_EXTRAS: 'without_tbb'
        pool:
          vmImage: $(imageName)
        steps:
          - template: scripts/azure-windows-release.yml
 
-  - stage: Github_Release
-    condition: startsWith(variables['Build.SourceBranch'], 'refs/tags')
-    jobs:
-     - job:
-       steps:
-        # First download artifacts
-       - task: DownloadBuildArtifacts@0
-         inputs:
-          downloadType: 'specific'
-       - script: |
-           echo $sourceVersion
-           commitHash=${sourceVersion:0:7}
-           echo $commitHash
-           echo "##vso[task.setvariable variable=commitHash]$commitHash" ## Set variable for using in other tasks.
-         env: { sourceVersion: $(Build.SourceVersion) }
-         displayName: Git Hash 7-digit
-       - task: GithubRelease@0
-         condition: succeeded() # only run this job if the build step succeeded
-         displayName: 'Add artifacts to GitHub Release'
-         inputs:
-           gitHubConnection: TileDB-Inc-Release
-           repositoryName: TileDB-Inc/TileDB
-           addChangeLog: false
-           action: edit
-           tag: $(Build.SourceBranchName)
-           assets: |
-             $(Build.ArtifactStagingDirectory)/tiledb-linux-$(Build.SourceBranchName)-$(commitHash).tar.gz/tiledb-linux-$(Build.SourceBranchName)-$(commitHash).tar.gz
-             $(Build.ArtifactStagingDirectory)/tiledb-macos-$(Build.SourceBranchName)-$(commitHash).tar.gz/tiledb-macos-$(Build.SourceBranchName)-$(commitHash).tar.gz
-             $(Build.ArtifactStagingDirectory)/tiledb-windows-$(Build.SourceBranchName)-$(commitHash).zip/tiledb-windows-$(Build.SourceBranchName)-$(commitHash).zip
+  - ${{ if eq(variables.Build.Repository.Name, 'TileDB-Inc/TileDB') }}:
+    - stage: Github_Release
+      condition: startsWith(variables['Build.SourceBranch'], 'refs/tags')
+      jobs:
+       - job:
+         steps:
+          # First download artifacts
+         - task: DownloadBuildArtifacts@0
+           inputs:
+            downloadType: 'specific'
+         - script: |
+             echo $sourceVersion
+             commitHash=${sourceVersion:0:7}
+             echo $commitHash
+             echo "##vso[task.setvariable variable=commitHash]$commitHash" ## Set variable for using in other tasks.
+           env: { sourceVersion: $(Build.SourceVersion) }
+           displayName: Git Hash 7-digit
+         - task: GithubRelease@0
+           condition: succeeded() # only run this job if the build step succeeded
+           displayName: 'Add artifacts to GitHub Release'
+           inputs:
+             gitHubConnection: TileDB-Inc-Release
+             repositoryName: TileDB-Inc/TileDB
+             addChangeLog: false
+             action: edit
+             tag: $(Build.SourceBranchName)
+             assets: |
+               $(Build.ArtifactStagingDirectory)/full/*
+               $(Build.ArtifactStagingDirectory)/without_tbb/*
