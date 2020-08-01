@@ -129,7 +129,7 @@ Status Azure::init(const Config& config, ThreadPool* const thread_pool) {
           account_name, credential, use_https, blob_endpoint);
 
   // Construct the Azure SDK blob client with a concurrency level
-  // equal to 'thread_pool_->num_threads'. Internally, the client
+  // equal to 'thread_pool_->concurrency_level'. Internally, the client
   // will allocate an equal number of libcurl sessions with
   // 'curl_easy_init'. This ensures that our 'thread_pool_' threads
   // will not block on the blob client's internal request queue
@@ -141,10 +141,10 @@ Status Azure::init(const Config& config, ThreadPool* const thread_pool) {
   const std::string cert_file =
       global_state::GlobalState::GetGlobalState().cert_file();
   client_ = std::make_shared<azure::storage_lite::blob_client>(
-      account, thread_pool_->num_threads(), cert_file);
+      account, thread_pool_->concurrency_level(), cert_file);
 #else
   client_ = std::make_shared<azure::storage_lite::blob_client>(
-      account, thread_pool_->num_threads());
+      account, thread_pool_->concurrency_level());
 #endif
 
   // The Azure SDK does not provide a way to configure the retry

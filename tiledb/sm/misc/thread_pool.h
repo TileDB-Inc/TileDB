@@ -36,7 +36,7 @@
 #include <condition_variable>
 #include <future>
 #include <mutex>
-#include <queue>
+#include <stack>
 #include <thread>
 #include <vector>
 
@@ -46,38 +46,48 @@ namespace tiledb {
 namespace sm {
 
 /**
- * Thread pool class.
+ * A recusive-safe thread pool.
  */
 class ThreadPool {
  public:
+  /* ********************************* */
+  /*     CONSTRUCTORS & DESTRUCTORS    */
+  /* ********************************* */
+
   /** Constructor. */
   ThreadPool();
 
   /** Destructor. */
   ~ThreadPool();
 
+  /* ********************************* */
+  /*                API                */
+  /* ********************************* */
+
   /**
    * Initialize the thread pool.
    *
-   * @param num_threads Number of threads to create (default 1).
+   * @param concurrency_level Maximum level of concurrency.
    * @return Status
    */
-  Status init(uint64_t num_threads = 1);
+  Status init(uint64_t concurrency_level = 1);
 
   /**
-   * Enqueue a new task to be executed by a thread. If the returned
-   * `future` object is valid, `function` is guaranteed to execute.
+   * Enqueue a new task to be executed. If the returned `future` object
+   * is valid, `function` is guaranteed to execute. The 'function' may
+   * execute on the calling thread.
    *
    * @param function Task function to execute.
    * @return Future for the return value of the task.
    */
   std::future<Status> enqueue(std::function<Status()>&& function);
 
-  /** Return the number of threads in this pool. */
-  uint64_t num_threads() const;
+  /** Return the maximum level of concurrency. */
+  uint64_t concurrency_level() const;
 
   /**
-   * Wait on all the given tasks to complete.
+   * Wait on all the given tasks to complete. This is safe to call recusively
+   * and may execute enqueued tasks on this thread while waiting.
    *
    * @param tasks Task list to wait on.
    * @return Status::Ok if all tasks returned Status::Ok, otherwise the first
@@ -87,7 +97,8 @@ class ThreadPool {
 
   /**
    * Wait on all the given tasks to complete, return a vector of their return
-   * Status.
+   * Status. This is safe to call recusively and may execute enqueued tasks
+   * on this thread while waiting.
    *
    * @param tasks Task list to wait on
    * @return Vector of each task's Status.
@@ -95,19 +106,43 @@ class ThreadPool {
   std::vector<Status> wait_all_status(std::vector<std::future<Status>>& tasks);
 
  private:
-  std::mutex queue_mutex_;
+  /* ********************************* */
+  /*         PRIVATE ATTRIBUTES        */
+  /* ********************************* */
 
-  std::condition_variable queue_cv_;
+  uint64_t concurrency_level_;
 
+  /** Protects `task_stack_` */
+  std::mutex task_stack_mutex_;
+
+  /** Notifies work threads to check `task_stack_` for work. */
+  std::condition_variable task_stack_cv_;
+
+  /** Pending tasks in LIFO ordering. */
+  std::stack<std::packaged_task<Status()>> task_stack_;
+
+  /** The worker threads. */
+  std::vector<std::thread> threads_;
+
+  /** When true, all pending tasks will remain unscheduled. */
   bool should_terminate_;
 
-  std::queue<std::packaged_task<Status()>> task_queue_;
+  /* ********************************* */
+  /*          PRIVATE METHODS          */
+  /* ********************************* */
 
-  std::vector<std::thread> threads_;
+  /**
+   * Waits for `task`, but will execute other tasks from `task_stack_`
+   * while waiting. While this may be an performance optimization
+   * to perform work on this thread rather than waiting, the primary
+   * motiviation is to prevent deadlock when tasks are enqueued recursively.
+   */
+  Status wait_or_work(std::future<Status>&& task);
 
   /** Terminate the threads in the thread pool. */
   void terminate();
 
+  /** The worker thread routine. */
   static void worker(ThreadPool& pool);
 };
 

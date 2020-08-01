@@ -36,6 +36,7 @@
 #ifdef HAVE_S3
 
 #include <aws/core/utils/threading/Executor.h>
+#include <mutex>
 #include <unordered_set>
 
 #include "tiledb/sm/misc/thread_pool.h"
@@ -84,7 +85,7 @@ class S3ThreadPoolExecutor : public Aws::Utils::Threading::Executor {
   std::unordered_set<std::shared_ptr<std::future<Status>>> tasks_;
 
   /** Protects 'state_' and 'tasks_'. */
-  std::mutex lock_;
+  std::recursive_mutex lock_;
 };
 
 }  // namespace sm
