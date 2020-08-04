@@ -2542,7 +2542,7 @@ Status Writer::write_all_tiles(
   std::vector<std::future<Status>> tasks;
   for (auto& it : *tiles) {
     tasks.push_back(
-        storage_manager_->writer_thread_pool()->enqueue([&, this]() {
+        storage_manager_->writer_thread_pool()->execute([&, this]() {
           RETURN_CANCEL_OR_ERROR(write_tiles(it.first, frag_meta, &it.second));
           return Status::Ok();
         }));

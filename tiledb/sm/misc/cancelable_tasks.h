@@ -58,18 +58,19 @@ class CancelableTasks {
   ~CancelableTasks() = default;
 
   /**
-   * Enqueue a new task to be executed on the specified thread pool.
+   * Execute a task on the specified thread pool.
    *
    * @param function Task to be executed.
    * @param function Optional routine to execute on cancelation.
    * @return Future for the return value of the task.
    */
-  std::future<Status> enqueue(
+  std::future<Status> execute(
       ThreadPool* thread_pool,
       std::function<Status()>&& fn,
       std::function<void()>&& on_cancel = nullptr);
+
   /**
-   * Waits for all enqueued tasks to cancel. If a task is already running, it
+   * Waits for all pending tasks to cancel. If a task is already running, it
    * will run to completion.
    */
   void cancel_all_tasks();

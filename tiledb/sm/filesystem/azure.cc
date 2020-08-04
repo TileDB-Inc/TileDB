@@ -1067,7 +1067,7 @@ Status Azure::write_blocks(
           thread_buffer_len,
           block_id);
       std::future<Status> task =
-          thread_pool_->enqueue(std::move(upload_block_fn));
+          thread_pool_->execute(std::move(upload_block_fn));
       tasks.emplace_back(std::move(task));
     }
 

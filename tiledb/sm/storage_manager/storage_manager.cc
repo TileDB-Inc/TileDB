@@ -1030,7 +1030,7 @@ Status StorageManager::array_xunlock(const URI& array_uri) {
 }
 
 Status StorageManager::async_push_query(Query* query) {
-  cancelable_tasks_.enqueue(
+  cancelable_tasks_.execute(
       &async_thread_pool_,
       [this, query]() {
         // Process query.

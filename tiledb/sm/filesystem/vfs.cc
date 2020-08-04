@@ -1181,7 +1181,7 @@ Status VFS::read(
       uint64_t thread_nbytes = end - begin + 1;
       uint64_t thread_offset = offset + begin;
       auto thread_buffer = reinterpret_cast<char*>(buffer) + begin;
-      auto task = cancelable_tasks_.enqueue(
+      auto task = cancelable_tasks_.execute(
           &thread_pool_,
           [this, uri, thread_offset, thread_buffer, thread_nbytes]() {
             return read_impl(uri, thread_offset, thread_buffer, thread_nbytes);
@@ -1266,7 +1266,7 @@ Status VFS::read_all(
   for (const auto& batch : batches) {
     URI uri_copy = uri;
     BatchedRead batch_copy = batch;
-    auto task = thread_pool->enqueue([uri_copy, batch_copy, this]() {
+    auto task = thread_pool->execute([uri_copy, batch_copy, this]() {
       Buffer buffer;
       RETURN_NOT_OK(buffer.realloc(batch_copy.nbytes));
       RETURN_NOT_OK(

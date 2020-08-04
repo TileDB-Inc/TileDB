@@ -102,10 +102,10 @@ bool S3ThreadPoolExecutor::SubmitToThread(std::function<void()>&& fn) {
     return false;
   }
 
-  // 'ThreadPool::enqueue' may execute 'wrapped_fn' on this thread.
+  // 'ThreadPool::execute' may invoke 'wrapped_fn' on this thread.
   // Although we are holding 'lock_', it is safe because it is a
   // recursive mutex.
-  *task_ptr = thread_pool_->enqueue(wrapped_fn);
+  *task_ptr = thread_pool_->execute(wrapped_fn);
   if (!task_ptr->valid()) {
     return false;
   }

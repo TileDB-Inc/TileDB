@@ -316,7 +316,7 @@ class VFS {
    * @param uri The URI of the file.
    * @param regions The list of regions to read. Each region is a tuple
    *    `(file_offset, dest_buffer, nbytes)`.
-   * @param thread_pool Thread pool to enqueue async read tasks to.
+   * @param thread_pool Thread pool to execute async read tasks to.
    * @param tasks Vector to which new async read tasks are pushed.
    * @return Status
    */
