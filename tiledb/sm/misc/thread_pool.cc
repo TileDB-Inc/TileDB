@@ -81,10 +81,10 @@ Status ThreadPool::init(const uint64_t concurrency_level) {
   return st;
 }
 
-std::future<Status> ThreadPool::enqueue(std::function<Status()>&& function) {
+std::future<Status> ThreadPool::execute(std::function<Status()>&& function) {
   if (concurrency_level_ == 0) {
     std::future<Status> invalid_future;
-    LOG_ERROR("Cannot enqueue task; thread pool uninitialized.");
+    LOG_ERROR("Cannot execute task; thread pool uninitialized.");
     return invalid_future;
   }
 
@@ -92,7 +92,7 @@ std::future<Status> ThreadPool::enqueue(std::function<Status()>&& function) {
 
   if (should_terminate_) {
     std::future<Status> invalid_future;
-    LOG_ERROR("Cannot enqueue task; thread pool has terminated.");
+    LOG_ERROR("Cannot execute task; thread pool has terminated.");
     return invalid_future;
   }
 

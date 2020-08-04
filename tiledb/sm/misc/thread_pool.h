@@ -73,21 +73,22 @@ class ThreadPool {
   Status init(uint64_t concurrency_level = 1);
 
   /**
-   * Enqueue a new task to be executed. If the returned `future` object
+   * Schedule a new task to be executed. If the returned `future` object
    * is valid, `function` is guaranteed to execute. The 'function' may
-   * execute on the calling thread.
+   * execute immediately on the calling thread. To avoid deadlock, `function`
+   * should not aquire non-recursive locks held by the calling thread.
    *
    * @param function Task function to execute.
    * @return Future for the return value of the task.
    */
-  std::future<Status> enqueue(std::function<Status()>&& function);
+  std::future<Status> execute(std::function<Status()>&& function);
 
   /** Return the maximum level of concurrency. */
   uint64_t concurrency_level() const;
 
   /**
    * Wait on all the given tasks to complete. This is safe to call recusively
-   * and may execute enqueued tasks on this thread while waiting.
+   * and may execute pending tasks on the calling thread while waiting.
    *
    * @param tasks Task list to wait on.
    * @return Status::Ok if all tasks returned Status::Ok, otherwise the first
@@ -97,8 +98,8 @@ class ThreadPool {
 
   /**
    * Wait on all the given tasks to complete, return a vector of their return
-   * Status. This is safe to call recusively and may execute enqueued tasks
-   * on this thread while waiting.
+   * Status. This is safe to call recusively and may execute pending tasks
+   * on the calling thread while waiting.
    *
    * @param tasks Task list to wait on
    * @return Vector of each task's Status.

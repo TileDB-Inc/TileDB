@@ -827,7 +827,7 @@ Status GCS::write_parts(
           thread_buffer,
           thread_buffer_len);
       std::future<Status> task =
-          thread_pool_->enqueue(std::move(upload_part_fn));
+          thread_pool_->execute(std::move(upload_part_fn));
       tasks.emplace_back(std::move(task));
     }
 
@@ -965,7 +965,7 @@ void GCS::delete_parts(
   for (const auto& part_path : part_paths) {
     std::function<Status()> delete_part_fn =
         std::bind(&GCS::delete_part, this, bucket_name, part_path);
-    std::future<Status> task = thread_pool_->enqueue(std::move(delete_part_fn));
+    std::future<Status> task = thread_pool_->execute(std::move(delete_part_fn));
     tasks.emplace_back(std::move(task));
   }
 

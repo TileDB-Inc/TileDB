@@ -479,7 +479,7 @@ Status Win::write(
       uint64_t thread_nbytes = end - begin + 1;
       uint64_t thread_file_offset = file_offset + begin;
       auto thread_buffer = reinterpret_cast<const char*>(buffer) + begin;
-      results.push_back(vfs_thread_pool_->enqueue(
+      results.push_back(vfs_thread_pool_->execute(
           [file_h, thread_file_offset, thread_buffer, thread_nbytes]() {
             return write_at(
                 file_h, thread_file_offset, thread_buffer, thread_nbytes);
