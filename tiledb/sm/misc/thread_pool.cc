@@ -38,31 +38,43 @@
 namespace tiledb {
 namespace sm {
 
-ThreadPool::ThreadPool() {
-  should_terminate_ = false;
+ThreadPool::ThreadPool()
+    : concurrency_level_(0)
+    , should_terminate_(false) {
 }
 
 ThreadPool::~ThreadPool() {
   terminate();
 }
 
-Status ThreadPool::init(uint64_t num_threads) {
+Status ThreadPool::init(const uint64_t concurrency_level) {
+  if (concurrency_level == 0) {
+    return Status::ThreadPoolError(
+        "Unable to initialize a thread pool with a concurrency level of 0.");
+  }
+
   Status st = Status::Ok();
 
+  // We allocate one less thread than `concurrency_level` because
+  // the `wait_all*()` routines may service tasks concurrently with
+  // the worker threads.
+  const uint64_t num_threads = concurrency_level - 1;
   for (uint64_t i = 0; i < num_threads; i++) {
     try {
       threads_.emplace_back([this]() { worker(*this); });
     } catch (const std::exception& e) {
-      st = Status::Error(
-          "Error allocating thread pool of " + std::to_string(num_threads) +
-          " threads; " + e.what());
+      st = Status::ThreadPoolError(
+          "Error initializing thread pool of concurrencylevel " +
+          std::to_string(concurrency_level) + "; " + e.what());
       LOG_STATUS(st);
       break;
     }
   }
 
-  // Join any created threads on error.
-  if (!st.ok()) {
+  if (st.ok()) {
+    concurrency_level_ = concurrency_level;
+  } else {
+    // Join any created threads on error.
     terminate();
   }
 
@@ -70,13 +82,13 @@ Status ThreadPool::init(uint64_t num_threads) {
 }
 
 std::future<Status> ThreadPool::enqueue(std::function<Status()>&& function) {
-  if (threads_.empty()) {
+  if (concurrency_level_ == 0) {
     std::future<Status> invalid_future;
-    LOG_ERROR("Cannot enqueue task; thread pool has no threads.");
+    LOG_ERROR("Cannot enqueue task; thread pool uninitialized.");
     return invalid_future;
   }
 
-  std::unique_lock<std::mutex> lck(queue_mutex_);
+  std::unique_lock<std::mutex> lck(task_stack_mutex_);
 
   if (should_terminate_) {
     std::future<Status> invalid_future;
@@ -84,19 +96,29 @@ std::future<Status> ThreadPool::enqueue(std::function<Status()>&& function) {
     return invalid_future;
   }
 
-  std::packaged_task<Status()> task(move(function));
+  std::packaged_task<Status()> task(std::move(function));
   auto future = task.get_future();
 
-  task_queue_.push(std::move(task));
-  queue_cv_.notify_one();
-  lck.unlock();
+  // When we have a concurrency level > 1, we will have at least
+  // one thread available to pick up the task. For a concurrency
+  // level == 1, we have no worker threads available. When no
+  // worker threads are available, execute the task on this
+  // thread.
+  if (concurrency_level_ > 1) {
+    task_stack_.push(std::move(task));
+    task_stack_cv_.notify_one();
+    lck.unlock();
+  } else {
+    lck.unlock();
+    task();
+  }
 
   assert(future.valid());
   return future;
 }
 
-uint64_t ThreadPool::num_threads() const {
-  return threads_.size();
+uint64_t ThreadPool::concurrency_level() const {
+  return concurrency_level_;
 }
 
 Status ThreadPool::wait_all(std::vector<std::future<Status>>& tasks) {
@@ -112,12 +134,12 @@ Status ThreadPool::wait_all(std::vector<std::future<Status>>& tasks) {
 std::vector<Status> ThreadPool::wait_all_status(
     std::vector<std::future<Status>>& tasks) {
   std::vector<Status> statuses;
-  for (auto& future : tasks) {
-    if (!future.valid()) {
-      LOG_ERROR("Waiting on invalid future.");
-      statuses.push_back(Status::Error("Invalid future"));
+  for (auto& task : tasks) {
+    if (!task.valid()) {
+      LOG_ERROR("Waiting on invalid task future.");
+      statuses.push_back(Status::ThreadPoolError("Invalid task future"));
     } else {
-      Status status = future.get();
+      Status status = wait_or_work(std::move(task));
       if (!status.ok()) {
         LOG_STATUS(status);
       }
@@ -127,11 +149,47 @@ std::vector<Status> ThreadPool::wait_all_status(
   return statuses;
 }
 
+Status ThreadPool::wait_or_work(std::future<Status>&& task) {
+  do {
+    // If `task` has completed, we're done.
+    const std::future_status task_status =
+        task.wait_for(std::chrono::seconds(0));
+    if (task_status == std::future_status::ready) {
+      break;
+    }
+
+    // The task has not completed.
+    assert(task_status != std::future_status::deferred);
+    assert(task_status == std::future_status::timeout);
+
+    // Lock the `task_stack_` to receive the next task to work on.
+    std::unique_lock<std::mutex> lck(task_stack_mutex_);
+
+    // If there are no pending tasks, we will wait for `task` to complete.
+    if (task_stack_.empty())
+      break;
+
+    // Pull the next task off of the task stack. We specifically use a LIFO
+    // ordering to prevent overflowing the call stack.
+    std::packaged_task<Status()> inner_task = std::move(task_stack_.top());
+    task_stack_.pop();
+
+    // We're done mutating `task_stack_`.
+    lck.unlock();
+
+    // Execute the inner task.
+    if (inner_task.valid())
+      inner_task();
+  } while (true);
+
+  return task.get();
+}
+
 void ThreadPool::terminate() {
   {
-    std::unique_lock<std::mutex> lck(queue_mutex_);
+    std::unique_lock<std::mutex> lck(task_stack_mutex_);
     should_terminate_ = true;
-    queue_cv_.notify_all();
+    task_stack_cv_.notify_all();
   }
 
   for (auto& t : threads_) {
@@ -147,24 +205,22 @@ void ThreadPool::worker(ThreadPool& pool) {
 
     {
       // Wait until there's work to do.
-      std::unique_lock<std::mutex> lck(pool.queue_mutex_);
-      pool.queue_cv_.wait(lck, [&pool]() {
-        return pool.should_terminate_ || !pool.task_queue_.empty();
+      std::unique_lock<std::mutex> lck(pool.task_stack_mutex_);
+      pool.task_stack_cv_.wait(lck, [&pool]() {
+        return pool.should_terminate_ || !pool.task_stack_.empty();
       });
 
-      if (!pool.task_queue_.empty()) {
-        task = std::move(pool.task_queue_.front());
-        pool.task_queue_.pop();
+      if (!pool.task_stack_.empty()) {
+        task = std::move(pool.task_stack_.top());
+        pool.task_stack_.pop();
       }
     }
 
-    if (task.valid()) {
+    if (task.valid())
       task();
-    }
 
-    if (pool.should_terminate_) {
+    if (pool.should_terminate_)
       break;
-    }
   }
 }
 

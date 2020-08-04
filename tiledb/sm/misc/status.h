@@ -122,7 +122,8 @@ enum class StatusCode : char {
   CellSlabIterError,
   RestError,
   SerializationError,
-  ChecksumError
+  ChecksumError,
+  ThreadPoolError
 };
 
 class Status {
@@ -388,6 +389,11 @@ class Status {
   /** Return a SerializationError error class Status with a given message **/
   static Status SerializationError(const std::string& msg) {
     return Status(StatusCode::SerializationError, msg, -1);
+  }
+
+  /** Return a ThreadPoolError error class Status with a given message **/
+  static Status ThreadPoolError(const std::string& msg) {
+    return Status(StatusCode::ThreadPoolError, msg, -1);
   }
 
   /** Returns true iff the status indicates success **/

@@ -57,7 +57,7 @@ Status S3ThreadPoolExecutor::Stop() {
 
   Status ret_st = Status::Ok();
 
-  std::unique_lock<std::mutex> lock_guard(lock_);
+  std::unique_lock<std::recursive_mutex> lock_guard(lock_);
   assert(state_ == State::RUNNING);
   state_ = State::STOPPING;
   std::unordered_set<std::shared_ptr<std::future<Status>>> tasks =
@@ -88,7 +88,7 @@ bool S3ThreadPoolExecutor::SubmitToThread(std::function<void()>&& fn) {
   auto wrapped_fn = [this, fn, task_ptr]() -> Status {
     fn();
 
-    std::unique_lock<std::mutex> lock_guard(lock_);
+    std::unique_lock<std::recursive_mutex> lock_guard(lock_);
     assert(state_ != State::STOPPED);
     if (state_ == State::RUNNING) {
       tasks_.erase(task_ptr);
@@ -97,11 +97,14 @@ bool S3ThreadPoolExecutor::SubmitToThread(std::function<void()>&& fn) {
     return Status::Ok();
   };
 
-  std::unique_lock<std::mutex> lock_guard(lock_);
+  std::unique_lock<std::recursive_mutex> lock_guard(lock_);
   if (state_ != State::RUNNING) {
     return false;
   }
 
+  // 'ThreadPool::enqueue' may execute 'wrapped_fn' on this thread.
+  // Although we are holding 'lock_', it is safe because it is a
+  // recursive mutex.
   *task_ptr = thread_pool_->enqueue(wrapped_fn);
   if (!task_ptr->valid()) {
     return false;

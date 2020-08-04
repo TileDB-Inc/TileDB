@@ -222,6 +222,9 @@ std::string Status::code_to_string() const {
     case StatusCode::SerializationError:
       type = "[TileDB::Serialization] Error";
       break;
+    case StatusCode::ThreadPoolError:
+      type = "[TileDB::ThreadPool] Error";
+      break;
     default:
       type = "[TileDB::?] Error:";
   }

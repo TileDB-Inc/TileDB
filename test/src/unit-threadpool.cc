@@ -177,28 +177,56 @@ TEST_CASE(
 TEST_CASE("ThreadPool: Test enqueue with empty pool", "[threadpool]") {
   ThreadPool pool;
   std::atomic<int> result(0);
-  auto status = pool.enqueue([&result]() {
+  auto task = pool.enqueue([&result]() {
     result = 100;
     return Status::Ok();
   });
 
-  CHECK(!status.valid());
+  CHECK(!task.valid());
   CHECK(result == 0);
 }
 
-// TODO: This test is too aggressive, as it can/will exhaust memory, which
-// is a problem both on some CI machines as well as development machines.
-// TEST_CASE("ThreadPool: Too many threads", "[threadpool]") {
-//  const auto nthreads = 1000 * std::thread::hardware_concurrency();
-//  const unsigned max_iters = 100;
-//  std::vector<std::unique_ptr<ThreadPool>> pools;
-//  bool success = false;
-//  for (unsigned i = 0; i < max_iters; i++) {
-//    pools.push_back(std::unique_ptr<ThreadPool>(new ThreadPool()));
-//    if (!pools.back()->init(nthreads).ok()) {
-//      success = true;
-//      break;
-//    }
-//  }
-//  REQUIRE(success);
-//}
+TEST_CASE("ThreadPool: Test recursion", "[threadpool]") {
+  ThreadPool pool;
+
+  SECTION("- One thread") {
+    REQUIRE(pool.init(1).ok());
+  }
+
+  SECTION("- Two threads") {
+    REQUIRE(pool.init(2).ok());
+  }
+
+  SECTION("- Ten threads") {
+    REQUIRE(pool.init(10).ok());
+  }
+
+  std::atomic<int> result(0);
+
+  const size_t num_tasks = 100;
+  const size_t num_nested_tasks = 10;
+  std::vector<std::future<Status>> tasks;
+  for (size_t i = 0; i < num_tasks; ++i) {
+    auto task = pool.enqueue([&]() {
+      std::vector<std::future<Status>> inner_tasks;
+      for (size_t j = 0; j < num_nested_tasks; ++j) {
+        auto inner_task = pool.enqueue([&result]() {
+          ++result;
+          return Status::Ok();
+        });
+
+        CHECK(inner_task.valid());
+        inner_tasks.emplace_back(std::move(inner_task));
+      }
+
+      CHECK(pool.wait_all(inner_tasks).ok());
+      return Status::Ok();
+    });
+
+    CHECK(task.valid());
+    tasks.emplace_back(std::move(task));
+  }
+
+  CHECK(pool.wait_all(tasks).ok());
+  CHECK(result == (num_tasks * num_nested_tasks));
+}
