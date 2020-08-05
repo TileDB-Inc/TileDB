@@ -200,9 +200,9 @@ Status S3::init(const Config& config, ThreadPool* const thread_pool) {
   if (!proxy_host.empty()) {
     client_config.proxyHost = proxy_host.c_str();
     client_config.proxyPort = proxy_port;
-    client_config.proxyScheme = proxy_scheme == "http" ?
-                                    Aws::Http::Scheme::HTTP :
-                                    Aws::Http::Scheme::HTTPS;
+    client_config.proxyScheme = proxy_scheme == "https" ?
+                                    Aws::Http::Scheme::HTTPS :
+                                    Aws::Http::Scheme::HTTP;
     client_config.proxyUserName = proxy_username.c_str();
     client_config.proxyPassword = proxy_password.c_str();
   }

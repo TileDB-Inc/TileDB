@@ -18,6 +18,8 @@
 * AWS SDK version bumped to 1.8.6 [#1718](https://github.com/TileDB-Inc/TileDB/pull/1718)
 * Split posix permissions into files and folers permissions [#1719](https://github.com/TileDB-Inc/TileDB/pull/1719)
 * Support seeking for CURL to allow redirects for posting to REST [#1728](https://github.com/TileDB-Inc/TileDB/pull/1728)
+* Changed default setting for `vfs.s3.proxy_scheme` from `https` to `http` to match common usage needs [#1759](https://github.com/TileDB-Inc/TileDB/pull/1759)
+
 
 ## Deprecations
 
