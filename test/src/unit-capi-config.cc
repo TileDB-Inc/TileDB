@@ -261,7 +261,7 @@ void check_save_to_file() {
      << "\n";
   ss << "vfs.s3.multipart_part_size 5242880\n";
   ss << "vfs.s3.proxy_port 0\n";
-  ss << "vfs.s3.proxy_scheme https\n";
+  ss << "vfs.s3.proxy_scheme http\n";
   ss << "vfs.s3.region us-east-1\n";
   ss << "vfs.s3.request_timeout_ms 3000\n";
   ss << "vfs.s3.scheme https\n";
@@ -495,7 +495,7 @@ TEST_CASE("C API: Test config iter", "[capi], [config]") {
   all_param_values["vfs.s3.proxy_host"] = "";
   all_param_values["vfs.s3.proxy_password"] = "";
   all_param_values["vfs.s3.proxy_port"] = "0";
-  all_param_values["vfs.s3.proxy_scheme"] = "https";
+  all_param_values["vfs.s3.proxy_scheme"] = "http";
   all_param_values["vfs.s3.proxy_username"] = "";
   all_param_values["vfs.s3.verify_ssl"] = "true";
   all_param_values["vfs.hdfs.username"] = "stavros";
@@ -547,7 +547,7 @@ TEST_CASE("C API: Test config iter", "[capi], [config]") {
   vfs_param_values["s3.proxy_host"] = "";
   vfs_param_values["s3.proxy_password"] = "";
   vfs_param_values["s3.proxy_port"] = "0";
-  vfs_param_values["s3.proxy_scheme"] = "https";
+  vfs_param_values["s3.proxy_scheme"] = "http";
   vfs_param_values["s3.proxy_username"] = "";
   vfs_param_values["s3.verify_ssl"] = "true";
   vfs_param_values["hdfs.username"] = "stavros";
@@ -593,7 +593,7 @@ TEST_CASE("C API: Test config iter", "[capi], [config]") {
   s3_param_values["proxy_host"] = "";
   s3_param_values["proxy_password"] = "";
   s3_param_values["proxy_port"] = "0";
-  s3_param_values["proxy_scheme"] = "https";
+  s3_param_values["proxy_scheme"] = "http";
   s3_param_values["proxy_username"] = "";
   s3_param_values["verify_ssl"] = "true";
 

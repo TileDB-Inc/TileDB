@@ -1113,7 +1113,7 @@ TILEDB_EXPORT void tiledb_config_free(tiledb_config_t** config);
  *    **Default**: 0
  * - `vfs.s3.proxy_scheme` <br>
  *    The S3 proxy scheme. <br>
- *    **Default**: "https"
+ *    **Default**: "http"
  * - `vfs.s3.proxy_username` <br>
  *    The S3 proxy username. Note: this parameter is not serialized by
  *    `tiledb_config_save_to_file`. <br>
