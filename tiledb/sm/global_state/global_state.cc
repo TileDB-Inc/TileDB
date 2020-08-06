@@ -40,7 +40,6 @@
 
 #ifdef __linux__
 #include "tiledb/sm/filesystem/posix.h"
-#include "tiledb/sm/misc/thread_pool.h"
 #include "tiledb/sm/misc/utils.h"
 #endif
 
@@ -50,7 +49,11 @@ namespace tiledb {
 namespace sm {
 namespace global_state {
 
+#ifdef HAVE_TBB
 extern int tbb_nthreads_;
+#else
+extern std::shared_ptr<ThreadPool> global_tp_;
+#endif
 
 GlobalState& GlobalState::GetGlobalState() {
   // This is thread-safe in C++11.
@@ -127,7 +130,19 @@ int GlobalState::tbb_threads() {
   if (!initialized_)
     return 0;
 
+#ifdef HAVE_TBB
   return tbb_nthreads_;
+#else
+  return global_tp_->concurrency_level();
+#endif
+}
+
+std::shared_ptr<ThreadPool> GlobalState::tp() {
+#ifdef HAVE_TBB
+  return nullptr;
+#else
+  return global_tp_;
+#endif
 }
 
 }  // namespace global_state

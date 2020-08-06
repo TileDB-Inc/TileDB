@@ -200,9 +200,13 @@ TEST_CASE_METHOD(
   CHECK(coords_size == coords_r_size);
 
   int coords_c[] = {1, 1, 2, 4, 5};
-  int data_c[] = {1, 3, 2, 4, 5};
+  // The ordering for duplicates is undefined, check all variations.
+  int data_c_1[] = {1, 3, 2, 4, 5};
+  int data_c_2[] = {3, 1, 2, 4, 5};
   CHECK(!std::memcmp(coords_c, coords_r, coords_r_size));
-  CHECK(!std::memcmp(data_c, data_r, data_r_size));
+  const bool data_c_matches = !std::memcmp(data_c_1, data_r, data_r_size) ||
+                              !std::memcmp(data_c_2, data_r, data_r_size);
+  CHECK(data_c_matches);
 }
 
 TEST_CASE_METHOD(
@@ -324,9 +328,13 @@ TEST_CASE_METHOD(
   CHECK(coords_1_size + coords_2_size == coords_r_size);
 
   int coords_c[] = {1, 1, 2, 4, 5};
-  int data_c[] = {1, 3, 2, 4, 5};
+  // The ordering for duplicates is undefined, check all variations.
+  int data_c_1[] = {1, 3, 2, 4, 5};
+  int data_c_2[] = {3, 1, 2, 4, 5};
   CHECK(!std::memcmp(coords_c, coords_r, coords_r_size));
-  CHECK(!std::memcmp(data_c, data_r, data_r_size));
+  bool data_c_matches = !std::memcmp(data_c_1, data_r, data_r_size) ||
+                        !std::memcmp(data_c_2, data_r, data_r_size);
+  CHECK(data_c_matches);
 
   // Consolidate
   rc = tiledb_array_consolidate(ctx_, array_name_.c_str(), nullptr);
@@ -371,5 +379,8 @@ TEST_CASE_METHOD(
   CHECK(coords_1_size + coords_2_size == coords_r_size);
 
   CHECK(!std::memcmp(coords_c, coords_r, coords_r_size));
-  CHECK(!std::memcmp(data_c, data_r, data_r_size));
+  // The ordering for duplicates is undefined, check all variations.
+  data_c_matches = !std::memcmp(data_c_1, data_r, data_r_size) ||
+                   !std::memcmp(data_c_2, data_r, data_r_size);
+  CHECK(data_c_matches);
 }
