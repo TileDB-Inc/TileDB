@@ -2133,8 +2133,12 @@ TEST_CASE_METHOD(
   CHECK(r_d_val == "aaccccdddd");
   std::vector<uint64_t> c_d_off = {0, 2, 4, 6};
   CHECK(r_d_off == c_d_off);
-  std::vector<int32_t> c_a = {1, 2, 3, 4};
-  CHECK(r_a == c_a);
+  // The ordering of 'a' is undefined for duplicate dimension
+  // elements. Check both for dimension element "c".
+  std::vector<int32_t> c_a_1 = {1, 3, 2, 4};
+  std::vector<int32_t> c_a_2 = {1, 2, 3, 4};
+  const bool c_a_matches = r_a == c_a_1 || r_a == c_a_2;
+  CHECK(c_a_matches);
 
   // Close array
   rc = tiledb_array_close(ctx_, array);
@@ -2245,8 +2249,11 @@ TEST_CASE_METHOD(
   CHECK(r_d_val == "aaccdddd");
   std::vector<uint64_t> c_d_off = {0, 2, 4};
   CHECK(r_d_off == c_d_off);
-  std::vector<int32_t> c_a = {1, 2, 4};
-  CHECK(r_a == c_a);
+  // Either value for dimension index 'cc' may be de-duped.
+  std::vector<int32_t> c_a_1 = {1, 2, 4};
+  std::vector<int32_t> c_a_2 = {1, 3, 4};
+  const bool c_a_matches = r_a == c_a_1 || r_a == c_a_2;
+  CHECK(c_a_matches);
 
   // Close array
   rc = tiledb_array_close(ctx, array);

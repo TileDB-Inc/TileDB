@@ -33,18 +33,51 @@
 
 #include "tiledb/sm/global_state/tbb_state.h"
 #include "tiledb/sm/config/config.h"
+#include "tiledb/sm/misc/thread_pool.h"
+
+#include <cassert>
+#include <sstream>
 
 #ifdef HAVE_TBB
-
 #include <tbb/task_scheduler_init.h>
-#include <cassert>
 #include <cstdlib>
 #include <memory>
-#include <sstream>
+#endif
 
 namespace tiledb {
 namespace sm {
 namespace global_state {
+
+Status get_nthreads(const Config* const config, int* const nthreads) {
+  if (!config) {
+    *nthreads = std::strtol(Config::SM_NUM_TBB_THREADS.c_str(), nullptr, 10);
+  } else {
+    bool found = false;
+    RETURN_NOT_OK(config->get<int>("sm.num_tbb_threads", nthreads, &found));
+    assert(found);
+  }
+
+#ifdef HAVE_TBB
+  if (*nthreads == tbb::task_scheduler_init::automatic) {
+    *nthreads = tbb::task_scheduler_init::default_num_threads();
+  }
+#else
+  if (*nthreads <= 0) {
+    *nthreads = std::thread::hardware_concurrency();
+  }
+#endif
+
+  if (*nthreads < 1) {
+    std::stringstream msg;
+    msg << "TBB thread runtime must be initialized with >= 1 threads, got: "
+        << *nthreads;
+    return Status::Error(msg.str());
+  }
+
+  return Status::Ok();
+}
+
+#ifdef HAVE_TBB
 
 /** The TBB scheduler, used for controlling the number of TBB threads. */
 static std::unique_ptr<tbb::task_scheduler_init> tbb_scheduler_;
@@ -52,25 +85,10 @@ static std::unique_ptr<tbb::task_scheduler_init> tbb_scheduler_;
 /** The number of TBB threads the scheduler was configured with **/
 int tbb_nthreads_;
 
-Status init_tbb(const Config* config) {
+Status init_tbb(const Config* const config) {
   int nthreads;
-  if (!config) {
-    nthreads = std::strtol(Config::SM_NUM_TBB_THREADS.c_str(), nullptr, 10);
-  } else {
-    bool found = false;
-    RETURN_NOT_OK(config->get<int>("sm.num_tbb_threads", &nthreads, &found));
-    assert(found);
-  }
+  RETURN_NOT_OK(get_nthreads(config, &nthreads));
 
-  if (nthreads == tbb::task_scheduler_init::automatic) {
-    nthreads = tbb::task_scheduler_init::default_num_threads();
-  }
-  if (nthreads < 1) {
-    std::stringstream msg;
-    msg << "TBB thread runtime must be initialized with >= 1 threads, got: "
-        << nthreads;
-    return Status::Error(msg.str());
-  }
   if (!tbb_scheduler_) {
     // initialize scheduler in process for a custom number of threads (upon
     // first thread calling init_tbb)
@@ -99,25 +117,39 @@ Status init_tbb(const Config* config) {
   return Status::Ok();
 }
 
-}  // namespace global_state
-}  // namespace sm
-}  // namespace tiledb
-
 #else
 
-namespace tiledb {
-namespace sm {
-namespace global_state {
-
-int tbb_nthreads_ = 0;
+/** The ThreadPool to use when TBB is disabled. */
+std::shared_ptr<ThreadPool> global_tp_;
 
 Status init_tbb(const Config* config) {
-  (void)config;
+  int nthreads;
+  RETURN_NOT_OK(get_nthreads(config, &nthreads));
+
+  if (!global_tp_) {
+    global_tp_ = std::make_shared<ThreadPool>();
+    const Status st = global_tp_->init(nthreads);
+    if (!st.ok()) {
+      global_tp_ = nullptr;
+    }
+    RETURN_NOT_OK(st);
+  } else {
+    // If the thread pool has already been initialized, check
+    // invariants.
+    if (nthreads != static_cast<int>(global_tp_->concurrency_level())) {
+      std::stringstream msg;
+      msg << "Global thread pool must be initialized with the same number of "
+             "threads: "
+          << nthreads << " != " << global_tp_->concurrency_level();
+      return Status::Error(msg.str());
+    }
+  }
+
   return Status::Ok();
 }
 
+#endif
+
 }  // namespace global_state
 }  // namespace sm
 }  // namespace tiledb
-
-#endif

@@ -934,10 +934,11 @@ TILEDB_EXPORT void tiledb_config_free(tiledb_config_t** config);
  *    parallel.<br>
  *    **Default**: 1
  * - `sm.num_tbb_threads` <br>
- *    The number of threads allocated for the TBB thread pool (if TBB is
- *    enabled). Note: this is a whole-program setting. Usually this should not
- *    be modified from the default. See also the documentation for TBB's
- *    `task_scheduler_init` class.<br>
+ *    The number of threads allocated for the TBB thread pool. Note: this
+ *    is a whole-program setting. Usually this should not be modified from
+ *    the default. See also the documentation for TBB's `task_scheduler_init`
+ *    class. When TBB is disabled, this will be used to set the level of
+ *    concurrency for generic threading where TBB is otherwise used. <br>
  *    **Default**: TBB automatic
  * - `sm.consolidation.amplification` <br>
  *    The factor by which the size of the dense fragment resulting

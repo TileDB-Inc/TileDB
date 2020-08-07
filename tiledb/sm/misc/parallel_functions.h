@@ -33,6 +33,8 @@
 #ifndef TILEDB_PARALLEL_FUNCTIONS_H
 #define TILEDB_PARALLEL_FUNCTIONS_H
 
+#include "tiledb/sm/global_state/global_state.h"
+
 #include <algorithm>
 #include <cassert>
 
@@ -55,74 +57,176 @@ namespace sm {
  * @param end End of range to sort (exclusive).
  * @param cmp Comparator.
  */
-template <typename IterT, typename CmpT>
-void parallel_sort(IterT begin, IterT end, CmpT cmp) {
+template <
+    typename IterT,
+    typename CmpT = std::less<typename std::iterator_traits<IterT>::value_type>>
+void parallel_sort(IterT begin, IterT end, const CmpT& cmp = CmpT()) {
 #ifdef HAVE_TBB
   tbb::parallel_sort(begin, end, cmp);
 #else
-  std::sort(begin, end, cmp);
-#endif
-}
+  // Sort the range using a quicksort. The algorithm is:
+  // 1. Pick a pivot value in the range.
+  // 2. Re-order the range so that all values less than the
+  //    pivot value are ordered left of the pivot's index.
+  // 3. Recursively invoke step 1.
+  //
+  // To parallelize the algorithm, step #3 is modified to execute
+  // the recursion on the global thread pool.
+  std::shared_ptr<ThreadPool> tp =
+      global_state::GlobalState::GetGlobalState().tp();
 
-/**
- * Sort the given iterator range, possibly in parallel.
- *
- * @tparam IterT Iterator type
- * @param begin Beginning of range to sort (inclusive).
- * @param end End of range to sort (exclusive).
- */
-template <typename IterT>
-void parallel_sort(IterT begin, IterT end) {
-#ifdef HAVE_TBB
-  tbb::parallel_sort(begin, end);
-#else
-  std::sort(begin, end);
-#endif
-}
-
-/**
- * Call the given function on each element in the given iterator range,
- * possibly in parallel.
- *
- * @tparam IterT Iterator type
- * @tparam FuncT Function type (returning Status).
- * @param begin Beginning of range to sort (inclusive).
- * @param end End of range to sort (exclusive).
- * @param F Function to call on each item
- * @return Vector of Status objects, one for each function invocation.
- */
-template <typename IterT, typename FuncT>
-std::vector<Status> parallel_for_each(IterT begin, IterT end, const FuncT& F) {
-  auto niters = static_cast<uint64_t>(std::distance(begin, end));
-  std::vector<Status> result(niters);
-#ifdef HAVE_TBB
-  tbb::parallel_for(uint64_t(0), niters, [begin, &result, &F](uint64_t i) {
-    auto it = std::next(begin, i);
-    result[i] = F(*it);
-  });
-#else
-  for (uint64_t i = 0; i < niters; i++) {
-    auto it = std::next(begin, i);
-    result[i] = F(*it);
+  // Calculate the maximum height of the recursive call stack tree
+  // where each leaf node can be assigned to a single level of
+  // concurrency on the thread pool. The motiviation is to stop the
+  // recursion when all concurrency levels are utilized. When all
+  // concurrency levels have their own subrange to operate on, we
+  // will stop the quicksort and invoke std::sort() to sort the
+  // their subrange.
+  uint64_t height = 1;
+  uint64_t width = 1;
+  while (width <= tp->concurrency_level()) {
+    ++height;
+    width = 2 * width;
   }
+
+  // To fully utilize the all concurrency levels, increment
+  // the target height of the call stack tree if there would
+  // be idle concurrency levels.
+  if (width > tp->concurrency_level()) {
+    ++height;
+  }
+
+  // Define a work routine that encapsulates steps #1 - #3 in the
+  // algorithm.
+  std::function<Status(uint64_t, IterT, IterT)> quick_sort;
+  quick_sort = [&](const uint64_t depth, IterT begin, IterT end) -> Status {
+    const size_t elements = std::distance(begin, end);
+
+    // Stop the recursion if this subrange does not contain
+    // any elements to sort.
+    if (elements <= 1) {
+      return Status::Ok();
+    }
+
+    // If there are only two elements remaining, directly sort them.
+    if (elements <= 2) {
+      std::sort(begin, end, cmp);
+      return Status::Ok();
+    }
+
+    // If we have reached the target height of the call stack tree,
+    // we will defer sorting to std::sort() to finish sorting the
+    // subrange. This is an optimization because all concurrency
+    // levels in the threadpool should be utilized if the work was
+    // evenly distributed among them.
+    if (depth + 1 == height) {
+      std::sort(begin, end, cmp);
+      return Status::Ok();
+    }
+
+    // Step #1: Pick a pivot value in the range.
+    auto pivot_iter = begin + (elements / 2);
+    const auto pivot_value = *pivot_iter;
+    if ((end - 1) != pivot_iter)
+      std::iter_swap((end - 1), pivot_iter);
+
+    // Step #2: Partition the subrange.
+    auto middle = begin;
+    for (auto iter = begin; iter != end - 1; ++iter) {
+      if (cmp(*iter, pivot_value)) {
+        std::iter_swap(middle, iter);
+        ++middle;
+      }
+    }
+    std::iter_swap(middle, (end - 1));
+
+    // Step #3: Recursively sort the left and right partitions.
+    std::vector<std::future<Status>> tasks;
+    if (begin != middle) {
+      std::function<Status()> quick_sort_left =
+          std::bind(quick_sort, depth + 1, begin, middle);
+      std::future<Status> left_task = tp->execute(std::move(quick_sort_left));
+      tasks.emplace_back(std::move(left_task));
+    }
+    if (middle != end) {
+      std::function<Status()> quick_sort_right =
+          std::bind(quick_sort, depth + 1, middle + 1, end);
+      std::future<Status> right_task = tp->execute(std::move(quick_sort_right));
+      tasks.emplace_back(std::move(right_task));
+    }
+
+    // Wait for the sorted partitions.
+    tp->wait_all(tasks);
+    return Status::Ok();
+  };
+
+  // Start the quicksort from the entire range.
+  quick_sort(0, begin, end);
 #endif
-  return result;
 }
 
 template <typename FuncT>
 std::vector<Status> parallel_for(uint64_t begin, uint64_t end, const FuncT& F) {
   assert(begin <= end);
-  uint64_t num_iters = end - begin + 1;
-  std::vector<Status> result(num_iters);
+
+  const uint64_t range_len = end - begin;
+  std::vector<Status> result(range_len);
+
+  if (range_len == 0)
+    return result;
+
 #ifdef HAVE_TBB
   tbb::parallel_for(begin, end, [begin, &result, &F](uint64_t i) {
     result[i - begin] = F(i);
   });
 #else
-  for (uint64_t i = begin; i < end; i++) {
-    result[i - begin] = F(i);
+  // Executes subrange [subrange_start, subrange_end) that exists
+  // within the range [begin, end).
+  std::function<Status(uint64_t, uint64_t)> execute_subrange =
+      [begin, &result, &F](
+          const uint64_t subrange_start,
+          const uint64_t subrange_end) -> Status {
+    for (uint64_t i = subrange_start; i < subrange_end; ++i)
+      result[i - begin] = F(i);
+
+    return Status::Ok();
+  };
+
+  // Fetch the global thread pool.
+  std::shared_ptr<ThreadPool> tp =
+      global_state::GlobalState::GetGlobalState().tp();
+
+  // Calculate the length of the subrange that each thread will
+  // be responsible for.
+  const uint64_t concurrency_level = tp->concurrency_level();
+  const uint64_t subrange_len = range_len / concurrency_level;
+  const uint64_t subrange_len_carry = range_len % concurrency_level;
+
+  // Execute a bound instance of `execute_subrange` for each
+  // subrange on the global thread pool.
+  uint64_t fn_iter = 0;
+  std::vector<std::future<Status>> tasks;
+  tasks.reserve(concurrency_level);
+  for (size_t i = 0; i < concurrency_level; ++i) {
+    const uint64_t task_subrange_len =
+        subrange_len + ((i < subrange_len_carry) ? 1 : 0);
+
+    if (task_subrange_len == 0)
+      break;
+
+    const uint64_t subrange_start = begin + fn_iter;
+    const uint64_t subrange_end = begin + fn_iter + task_subrange_len;
+    std::function<Status()> bound_fn =
+        std::bind(execute_subrange, subrange_start, subrange_end);
+    tasks.emplace_back(tp->execute(std::move(bound_fn)));
+
+    fn_iter += task_subrange_len;
   }
+
+  // Wait for all instances of `execute_subrange` to complete.
+  tp->wait_all(tasks);
 #endif
+
   return result;
 }
 
@@ -143,10 +247,10 @@ std::vector<Status> parallel_for_2d(
     uint64_t i0, uint64_t i1, uint64_t j0, uint64_t j1, const FuncT& F) {
   assert(i0 <= i1);
   assert(j0 <= j1);
+#ifdef HAVE_TBB
   const uint64_t num_i_iters = i1 - i0 + 1, num_j_iters = j1 - j0 + 1;
   const uint64_t num_iters = num_i_iters * num_j_iters;
   std::vector<Status> result(num_iters);
-#ifdef HAVE_TBB
   auto range = tbb::blocked_range2d<uint64_t>(i0, i1, j0, j1);
   tbb::parallel_for(
       range,
@@ -161,15 +265,95 @@ std::vector<Status> parallel_for_2d(
           }
         }
       });
+  return result;
 #else
-  for (uint64_t i = i0; i < i1; i++) {
-    for (uint64_t j = j0; j < j1; j++) {
-      uint64_t idx = (i - i0) * num_j_iters + (j - j0);
-      result[idx] = F(i, j);
+  const uint64_t range_len_i = i1 - i0;
+  const uint64_t range_len_j = j1 - j0;
+  const uint64_t size_ij = range_len_i * range_len_j;
+  std::vector<Status> result(size_ij);
+
+  if (size_ij == 0)
+    return result;
+
+  // Fetch the global thread pool.
+  std::shared_ptr<ThreadPool> tp =
+      global_state::GlobalState::GetGlobalState().tp();
+
+  // Calculate the length of the subrange-i and subrange-j that
+  // each thread will be responsible for.
+  const uint64_t concurrency_level = tp->concurrency_level();
+  const uint64_t subrange_len_i = range_len_i / concurrency_level;
+  const uint64_t subrange_len_i_carry = range_len_i % concurrency_level;
+  const uint64_t subrange_len_j = range_len_j / concurrency_level;
+  const uint64_t subrange_len_j_carry = range_len_j % concurrency_level;
+
+  // Executes subarray [begin_i, end_i) x [start_j, end_j) within the
+  // array [i0, i1) x [j0, j1).
+  std::function<Status(uint64_t, uint64_t, uint64_t, uint64_t)>
+      execute_subrange_ij = [i0, j0, j1, &result, &F](
+                                const uint64_t begin_i,
+                                const uint64_t end_i,
+                                const uint64_t start_j,
+                                const uint64_t end_j) -> Status {
+    for (uint64_t i = begin_i; i < end_i; ++i) {
+      for (uint64_t j = start_j; j < end_j; ++j) {
+        const uint64_t idx = (i - i0) * (j1 - j0) + (j - j0);
+        result[idx] = F(i, j);
+      }
+    }
+
+    return Status::Ok();
+  };
+
+  // Calculate the subranges for each dimension, i and j.
+  std::vector<std::pair<uint64_t, uint64_t>> subranges_i;
+  std::vector<std::pair<uint64_t, uint64_t>> subranges_j;
+  uint64_t iter_i = 0;
+  uint64_t iter_j = 0;
+  for (size_t t = 0; t < concurrency_level; ++t) {
+    const uint64_t task_subrange_len_i =
+        subrange_len_i + ((t < subrange_len_i_carry) ? 1 : 0);
+    const uint64_t task_subrange_len_j =
+        subrange_len_j + ((t < subrange_len_j_carry) ? 1 : 0);
+
+    if (task_subrange_len_i == 0 && task_subrange_len_j == 0)
+      break;
+
+    if (task_subrange_len_i > 0) {
+      const uint64_t begin_i = i0 + iter_i;
+      const uint64_t end_i = i0 + iter_i + task_subrange_len_i;
+      subranges_i.emplace_back(begin_i, end_i);
+      iter_i += task_subrange_len_i;
+    }
+
+    if (task_subrange_len_j > 0) {
+      const uint64_t start_j = j0 + iter_j;
+      const uint64_t end_j = j0 + iter_j + task_subrange_len_j;
+      subranges_j.emplace_back(start_j, end_j);
+      iter_j += task_subrange_len_j;
     }
   }
-#endif
+
+  // Execute a bound instance of `execute_subrange_ij` for each
+  // 2D subarray on the global thread pool.
+  std::vector<std::future<Status>> tasks;
+  tasks.reserve(concurrency_level * concurrency_level);
+  for (const auto& subrange_i : subranges_i) {
+    for (const auto& subrange_j : subranges_j) {
+      std::function<Status()> bound_fn = std::bind(
+          execute_subrange_ij,
+          subrange_i.first,
+          subrange_i.second,
+          subrange_j.first,
+          subrange_j.second);
+      tasks.emplace_back(tp->execute(std::move(bound_fn)));
+    }
+  }
+
+  // Wait for all instances of `execute_subrange` to complete.
+  tp->wait_all(tasks);
   return result;
+#endif
 }
 
 }  // namespace sm
