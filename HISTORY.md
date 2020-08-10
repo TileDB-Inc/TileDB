@@ -20,6 +20,7 @@
 * Support seeking for CURL to allow redirects for posting to REST [#1728](https://github.com/TileDB-Inc/TileDB/pull/1728)
 * Changed default setting for `vfs.s3.proxy_scheme` from `https` to `http` to match common usage needs [#1759](https://github.com/TileDB-Inc/TileDB/pull/1759)
 * Enabled parallelization with native system threads when TBB is disabled [#1760](https://github.com/TileDB-Inc/TileDB/pull/1760)
+* Subarray ranges will be automatically coalesced as they are added [#1755](https://github.com/TileDB-Inc/TileDB/pull/1755)
 
 ## Deprecations
 

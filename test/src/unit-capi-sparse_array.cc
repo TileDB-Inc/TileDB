@@ -3583,7 +3583,7 @@ TEST_CASE_METHOD(
       tiledb_query_set_buffer(ctx_, query, TILEDB_COORDS, coords, &coords_size);
   REQUIRE(rc == TILEDB_OK);
 
-  // Set some subarray
+  // Set some subarray.
   uint64_t s00[] = {1, 1};
   uint64_t s01[] = {3, 4};
   uint64_t s10[] = {2, 2};
@@ -3608,17 +3608,17 @@ TEST_CASE_METHOD(
 
   CHECK(a1_size == 5 * sizeof(int));
   CHECK(a1[0] == 1);
-  CHECK(a1[1] == 5);
-  CHECK(a1[2] == 2);
+  CHECK(a1[1] == 2);
+  CHECK(a1[2] == 5);
   CHECK(a1[3] == 6);
   CHECK(a1[4] == 7);
   CHECK(coords_size == 10 * sizeof(uint64_t));
   CHECK(coords[0] == 1);
   CHECK(coords[1] == 2);
-  CHECK(coords[2] == 4);
-  CHECK(coords[3] == 2);
-  CHECK(coords[4] == 1);
-  CHECK(coords[5] == 4);
+  CHECK(coords[2] == 1);
+  CHECK(coords[3] == 4);
+  CHECK(coords[4] == 4);
+  CHECK(coords[5] == 2);
   CHECK(coords[6] == 3);
   CHECK(coords[7] == 3);
   CHECK(coords[8] == 3);

@@ -867,8 +867,8 @@ Status SubarrayPartitioner::split_top_multi_range(bool* unsplittable) {
     return Status::Ok();
 
   // Split partition into two partitions
-  Subarray p1(subarray_.array(), subarray_.layout());
-  Subarray p2(subarray_.array(), subarray_.layout());
+  Subarray p1;
+  Subarray p2;
   RETURN_NOT_OK(partition.split(
       splitting_range, splitting_dim, splitting_value, &p1, &p2));
 

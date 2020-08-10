@@ -216,7 +216,8 @@ TEST_CASE(
   auto range_num = query.range_num(0);
   CHECK(range_num == 1);
   range_num = query.range_num(1);
-  CHECK(range_num == 2);
+  // Ranges `col_range0` and `col_range1` are coalesced.
+  CHECK(range_num == 1);
 
   // Allocate buffers large enough to hold 2 cells at a time.
   std::vector<char> data(2, '\0');

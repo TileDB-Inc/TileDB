@@ -105,7 +105,7 @@ typedef std::map<std::string, QueryBuffer> QueryBuffers;
  *
  * @tparam T The datatype of the subarray of the partitioner.
  * @param partitioner The partitioner.
- * @param ranges The ranges to be checked.
+ * @param partitions The ranges to be checked.
  * @param last_unsplittable Whether the last partition is unsplittable.
  */
 template <class T>
@@ -273,13 +273,15 @@ void create_azure_container(
  * @param ranges The ranges of the subarray to be created.
  * @param layout The layout of the subarray.
  * @param subarray The subarray to be set.
+ * @param coalesce_ranges Whether the subarray should coalesce ranges.
  */
 template <class T>
 void create_subarray(
     tiledb::sm::Array* array,
     const SubarrayRanges<T>& ranges,
     tiledb::sm::Layout layout,
-    tiledb::sm::Subarray* subarray);
+    tiledb::sm::Subarray* subarray,
+    bool coalesce_ranges = false);
 
 /**
  * Helper method that creates a TileDB context and a VFS object.

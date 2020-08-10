@@ -479,8 +479,9 @@ void create_subarray(
     tiledb::sm::Array* array,
     const SubarrayRanges<T>& ranges,
     tiledb::sm::Layout layout,
-    tiledb::sm::Subarray* subarray) {
-  tiledb::sm::Subarray ret(array, layout);
+    tiledb::sm::Subarray* subarray,
+    bool coalesce_ranges) {
+  tiledb::sm::Subarray ret(array, layout, coalesce_ranges);
 
   auto dim_num = (unsigned)ranges.size();
   for (unsigned d = 0; d < dim_num; ++d) {
@@ -745,7 +746,6 @@ int32_t num_fragments(const std::string& array_name) {
   return ret;
 }
 
-// Explicit template instantiations
 template void check_subarray<int8_t>(
     tiledb::sm::Subarray& subarray, const SubarrayRanges<int8_t>& ranges);
 template void check_subarray<uint8_t>(
@@ -771,52 +771,62 @@ template void create_subarray<int8_t>(
     tiledb::sm::Array* array,
     const SubarrayRanges<int8_t>& ranges,
     tiledb::sm::Layout layout,
-    tiledb::sm::Subarray* subarray);
+    tiledb::sm::Subarray* subarray,
+    bool coalesce_ranges);
 template void create_subarray<uint8_t>(
     tiledb::sm::Array* array,
     const SubarrayRanges<uint8_t>& ranges,
     tiledb::sm::Layout layout,
-    tiledb::sm::Subarray* subarray);
+    tiledb::sm::Subarray* subarray,
+    bool coalesce_ranges);
 template void create_subarray<int16_t>(
     tiledb::sm::Array* array,
     const SubarrayRanges<int16_t>& ranges,
     tiledb::sm::Layout layout,
-    tiledb::sm::Subarray* subarray);
+    tiledb::sm::Subarray* subarray,
+    bool coalesce_ranges);
 template void create_subarray<uint16_t>(
     tiledb::sm::Array* array,
     const SubarrayRanges<uint16_t>& ranges,
     tiledb::sm::Layout layout,
-    tiledb::sm::Subarray* subarray);
+    tiledb::sm::Subarray* subarray,
+    bool coalesce_ranges);
 template void create_subarray<int32_t>(
     tiledb::sm::Array* array,
     const SubarrayRanges<int32_t>& ranges,
     tiledb::sm::Layout layout,
-    tiledb::sm::Subarray* subarray);
+    tiledb::sm::Subarray* subarray,
+    bool coalesce_ranges);
 template void create_subarray<uint32_t>(
     tiledb::sm::Array* array,
     const SubarrayRanges<uint32_t>& ranges,
     tiledb::sm::Layout layout,
-    tiledb::sm::Subarray* subarray);
+    tiledb::sm::Subarray* subarray,
+    bool coalesce_ranges);
 template void create_subarray<int64_t>(
     tiledb::sm::Array* array,
     const SubarrayRanges<int64_t>& ranges,
     tiledb::sm::Layout layout,
-    tiledb::sm::Subarray* subarray);
+    tiledb::sm::Subarray* subarray,
+    bool coalesce_ranges);
 template void create_subarray<uint64_t>(
     tiledb::sm::Array* array,
     const SubarrayRanges<uint64_t>& ranges,
     tiledb::sm::Layout layout,
-    tiledb::sm::Subarray* subarray);
+    tiledb::sm::Subarray* subarray,
+    bool coalesce_ranges);
 template void create_subarray<float>(
     tiledb::sm::Array* array,
     const SubarrayRanges<float>& ranges,
     tiledb::sm::Layout layout,
-    tiledb::sm::Subarray* subarray);
+    tiledb::sm::Subarray* subarray,
+    bool coalesce_ranges);
 template void create_subarray<double>(
     tiledb::sm::Array* array,
     const SubarrayRanges<double>& ranges,
     tiledb::sm::Layout layout,
-    tiledb::sm::Subarray* subarray);
+    tiledb::sm::Subarray* subarray,
+    bool coalesce_ranges);
 
 template void check_partitions<int8_t>(
     tiledb::sm::SubarrayPartitioner& partitioner,
