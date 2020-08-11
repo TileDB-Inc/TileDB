@@ -25,6 +25,7 @@
 ## Deprecations
 
 * Support for MacOS older than 10.13 is being dropped when using the AWS SDK. Prebuilt Binaries now target 10.13 [#1753](https://github.com/TileDB-Inc/TileDB/pull/1753)
+* Use of Intel's Thread Building Blocks (TBB) will be discontinued in the future. It is now disabled by default [#1762](https://github.com/TileDB-Inc/TileDB/pull/1762)
 
 ## Bug fixes
 
