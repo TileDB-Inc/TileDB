@@ -363,7 +363,7 @@ class Query {
    * auto num_a1_elements = result_el["a1"].second;
    *
    * // Coords are also fixed-sized.
-   * auto num_coords = result_el[TILEDB_COORDS].second;
+   * auto num_coords = result_el["__coords"].second;
    *
    * // In variable attributes, e.g. std::string type, need two buffers,
    * // one for offsets and one for cell data ("elements").
@@ -382,7 +382,7 @@ class Query {
       auto attr_name = b_it.first;
       auto size_pair = b_it.second;
       auto var =
-          ((attr_name != TILEDB_COORDS) &&
+          ((attr_name != "__coords") &&
            ((schema_.has_attribute(attr_name) &&
              schema_.attribute(attr_name).cell_val_num() == TILEDB_VAR_NUM) ||
             (schema_.domain().has_dimension(attr_name) &&
@@ -779,7 +779,7 @@ class Query {
   template <typename T>
   TILEDB_DEPRECATED Query& set_coordinates(T* buf, uint64_t size) {
     impl::type_check<T>(schema_.domain().type());
-    return set_buffer(TILEDB_COORDS, buf, size);
+    return set_buffer("__coords", buf, size);
   }
 
   /**
@@ -832,7 +832,7 @@ class Query {
     // Checks
     auto is_attr = schema_.has_attribute(name);
     auto is_dim = schema_.domain().has_dimension(name);
-    if (name != TILEDB_COORDS && !is_attr && !is_dim)
+    if (name != "__coords" && !is_attr && !is_dim)
       throw TileDBError(
           std::string("Cannot set buffer; Attribute/Dimension '") + name +
           "' does not exist");
@@ -840,7 +840,7 @@ class Query {
       impl::type_check<T>(schema_.attribute(name).type());
     else if (is_dim)
       impl::type_check<T>(schema_.domain().dimension(name).type());
-    else if (name == TILEDB_COORDS)
+    else if (name == "__coords")
       impl::type_check<T>(schema_.domain().type());
 
     return set_buffer(name, buff, nelements, sizeof(T));
@@ -882,14 +882,14 @@ class Query {
     // Checks
     auto is_attr = schema_.has_attribute(name);
     auto is_dim = schema_.domain().has_dimension(name);
-    if (name != TILEDB_COORDS && !is_attr && !is_dim)
+    if (name != "__coords" && !is_attr && !is_dim)
       throw TileDBError(
           std::string("Cannot set buffer; Attribute/Dimension '") + name +
           "' does not exist");
 
     // Compute element size (in bytes).
     size_t element_size = 0;
-    if (name == TILEDB_COORDS)
+    if (name == "__coords")
       element_size = tiledb_datatype_size(schema_.domain().type());
     else if (is_attr)
       element_size = tiledb_datatype_size(schema_.attribute(name).type());

@@ -1115,7 +1115,7 @@ class Array {
    * std::vector<int> data_a1(max_elements["a1"].second);
    *
    * // In sparse reads, coords are also fixed-sized attributes.
-   * std::vector<int> coords(max_elements[TILEDB_COORDS].second);
+   * std::vector<int> coords(max_elements["__coords"].second);
    *
    * // In variable attributes, e.g. std::string type, need two buffers,
    * // one for offsets and one for cell data.
@@ -1125,7 +1125,7 @@ class Array {
    *
    * @tparam T The domain datatype
    * @param subarray Targeted subarray.
-   * @return A map of attribute name (including `TILEDB_COORDS`) to
+   * @return A map of attribute name (including `"__coords"`) to
    *     the maximum number of elements that can be read in the given subarray.
    *     For each attribute, a pair of numbers are returned. The first,
    *     for variable-length attributes, is the maximum number of offsets
@@ -1172,9 +1172,8 @@ class Array {
     // Handle coordinates
     type_size = tiledb_datatype_size(schema_.domain().type());
     ctx.handle_error(tiledb_array_max_buffer_size(
-        c_ctx, array_.get(), TILEDB_COORDS, subarray.data(), &attr_size));
-    ret[TILEDB_COORDS] =
-        std::pair<uint64_t, uint64_t>(0, attr_size / type_size);
+        c_ctx, array_.get(), "__coords", subarray.data(), &attr_size));
+    ret["__coords"] = std::pair<uint64_t, uint64_t>(0, attr_size / type_size);
 
     return ret;
   }
