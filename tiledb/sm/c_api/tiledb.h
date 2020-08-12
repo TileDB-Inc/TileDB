@@ -422,7 +422,7 @@ tiledb_vfs_mode_from_str(const char* str, tiledb_vfs_mode_t* vfs_mode);
  * each individual dimension with the `set_buffer` API. Consult the current
  * documentation for more information.
  */
-TILEDB_DEPRECATED_EXPORT const char* tiledb_coords();
+TILEDB_EXPORT const char* tiledb_coords();
 
 /** Returns a special value indicating a variable number of elements. */
 TILEDB_EXPORT uint32_t tiledb_var_num();
