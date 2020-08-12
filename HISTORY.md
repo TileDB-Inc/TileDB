@@ -30,6 +30,7 @@
 ## Bug fixes
 
 * Fixed bug in setting a fill value for var-sized attributes.
+* Fixed a bug where the cpp headers would always produce compile-time warnings about using the deprecated c-api "tiledb_coords()" [#1765](https://github.com/TileDB-Inc/TileDB/pull/1765)
 
 ## API additions
 
