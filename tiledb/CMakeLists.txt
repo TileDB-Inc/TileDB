@@ -390,6 +390,7 @@ find_package(LZ4_EP REQUIRED)
 find_package(Spdlog_EP REQUIRED)
 find_package(Zlib_EP REQUIRED)
 find_package(Zstd_EP REQUIRED)
+find_package(fmt REQUIRED)
 target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
   INTERFACE
     Bzip2::Bzip2
@@ -398,6 +399,7 @@ target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
     Zlib::Zlib
     Zstd::Zstd
 )
+target_link_libraries(TILEDB_CORE_OBJECTS_ILIB INTERFACE fmt::fmt)
 if (NOT WIN32)
   target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
     INTERFACE
