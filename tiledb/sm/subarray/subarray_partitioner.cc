@@ -61,11 +61,13 @@ SubarrayPartitioner::SubarrayPartitioner() = default;
 SubarrayPartitioner::SubarrayPartitioner(
     const Subarray& subarray,
     uint64_t memory_budget,
-    uint64_t memory_budget_var)
+    uint64_t memory_budget_var,
+    ThreadPool* const compute_tp)
     : subarray_(subarray)
     , memory_budget_(memory_budget)
-    , memory_budget_var_(memory_budget_var) {
-  subarray_.compute_tile_overlap();
+    , memory_budget_var_(memory_budget_var)
+    , compute_tp_(compute_tp) {
+  subarray_.compute_tile_overlap(compute_tp_);
   state_.start_ = 0;
   auto range_num = subarray_.range_num();
   state_.end_ = (range_num > 0) ? range_num - 1 : 0;
@@ -500,6 +502,7 @@ SubarrayPartitioner SubarrayPartitioner::clone() const {
   clone.state_ = state_;
   clone.memory_budget_ = memory_budget_;
   clone.memory_budget_var_ = memory_budget_var_;
+  clone.compute_tp_ = compute_tp_;
 
   return clone;
 }
@@ -525,7 +528,12 @@ Status SubarrayPartitioner::compute_current_start_end(bool* found) {
   std::vector<std::vector<Subarray::ResultSize>> result_sizes;
   std::vector<std::vector<Subarray::MemorySize>> memory_sizes;
   RETURN_NOT_OK(subarray_.compute_relevant_fragment_est_result_sizes(
-      names, state_.start_, state_.end_, &result_sizes, &memory_sizes));
+      names,
+      state_.start_,
+      state_.end_,
+      &result_sizes,
+      &memory_sizes,
+      compute_tp_));
 
   current_.start_ = state_.start_;
   for (current_.end_ = state_.start_; current_.end_ <= state_.end_;
@@ -737,12 +745,14 @@ bool SubarrayPartitioner::must_split(Subarray* partition) {
     mem_size_fixed = 0;
     mem_size_var = 0;
     if (var_size) {
-      partition->get_est_result_size(b.first.c_str(), &size_fixed, &size_var);
+      partition->get_est_result_size(
+          b.first.c_str(), &size_fixed, &size_var, compute_tp_);
       partition->get_max_memory_size(
-          b.first.c_str(), &mem_size_fixed, &mem_size_var);
+          b.first.c_str(), &mem_size_fixed, &mem_size_var, compute_tp_);
     } else {
-      partition->get_est_result_size(b.first.c_str(), &size_fixed);
-      partition->get_max_memory_size(b.first.c_str(), &mem_size_fixed);
+      partition->get_est_result_size(b.first.c_str(), &size_fixed, compute_tp_);
+      partition->get_max_memory_size(
+          b.first.c_str(), &mem_size_fixed, compute_tp_);
     }
 
     // Check for budget overflow
@@ -887,6 +897,7 @@ void SubarrayPartitioner::swap(SubarrayPartitioner& partitioner) {
   std::swap(state_, partitioner.state_);
   std::swap(memory_budget_, partitioner.memory_budget_);
   std::swap(memory_budget_var_, partitioner.memory_budget_var_);
+  std::swap(compute_tp_, partitioner.compute_tp_);
 }
 
 }  // namespace sm

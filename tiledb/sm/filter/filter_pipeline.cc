@@ -93,7 +93,9 @@ const Tile* FilterPipeline::current_tile() const {
 }
 
 Status FilterPipeline::filter_chunks_forward(
-    const ChunkedBuffer& input, Buffer* output) const {
+    const ChunkedBuffer& input,
+    Buffer* const output,
+    ThreadPool* const compute_tp) const {
   assert(output);
 
   // We will only filter chunks that contain data at or below
@@ -117,57 +119,59 @@ Status FilterPipeline::filter_chunks_forward(
       populated_nchunks);
 
   // Run each chunk through the entire pipeline.
-  auto statuses = parallel_for(0, populated_nchunks, [&](uint64_t i) {
-    // TODO(ttd): can we instead allocate one FilterStorage per thread?
-    // or make it threadsafe?
-    FilterStorage storage;
-    FilterBuffer input_data(&storage), output_data(&storage);
-    FilterBuffer input_metadata(&storage), output_metadata(&storage);
+  auto statuses =
+      parallel_for(compute_tp, 0, populated_nchunks, [&](uint64_t i) {
+        // TODO(ttd): can we instead allocate one FilterStorage per thread?
+        // or make it threadsafe?
+        FilterStorage storage;
+        FilterBuffer input_data(&storage), output_data(&storage);
+        FilterBuffer input_metadata(&storage), output_metadata(&storage);
 
-    // First filter's input is the original chunk.
-    void* chunk_buffer = nullptr;
-    RETURN_NOT_OK(input.internal_buffer(i, &chunk_buffer));
-    uint32_t chunk_buffer_size;
-    RETURN_NOT_OK(input.internal_buffer_size(i, &chunk_buffer_size));
-    RETURN_NOT_OK(input_data.init(chunk_buffer, chunk_buffer_size));
+        // First filter's input is the original chunk.
+        void* chunk_buffer = nullptr;
+        RETURN_NOT_OK(input.internal_buffer(i, &chunk_buffer));
+        uint32_t chunk_buffer_size;
+        RETURN_NOT_OK(input.internal_buffer_size(i, &chunk_buffer_size));
+        RETURN_NOT_OK(input_data.init(chunk_buffer, chunk_buffer_size));
 
-    // Apply the filters sequentially.
-    for (auto it = filters_.begin(), ite = filters_.end(); it != ite; ++it) {
-      auto& f = *it;
+        // Apply the filters sequentially.
+        for (auto it = filters_.begin(), ite = filters_.end(); it != ite;
+             ++it) {
+          auto& f = *it;
 
-      // Clear and reset I/O buffers
-      input_data.reset_offset();
-      input_data.set_read_only(true);
-      input_metadata.reset_offset();
-      input_metadata.set_read_only(true);
+          // Clear and reset I/O buffers
+          input_data.reset_offset();
+          input_data.set_read_only(true);
+          input_metadata.reset_offset();
+          input_metadata.set_read_only(true);
 
-      output_data.clear();
-      output_metadata.clear();
+          output_data.clear();
+          output_metadata.clear();
 
-      RETURN_NOT_OK(f->run_forward(
-          &input_metadata, &input_data, &output_metadata, &output_data));
+          RETURN_NOT_OK(f->run_forward(
+              &input_metadata, &input_data, &output_metadata, &output_data));
 
-      input_data.set_read_only(false);
-      input_data.swap(output_data);
-      input_metadata.set_read_only(false);
-      input_metadata.swap(output_metadata);
-      // Next input (input_buffers) now stores this output (output_buffers).
-    }
+          input_data.set_read_only(false);
+          input_data.swap(output_data);
+          input_metadata.set_read_only(false);
+          input_metadata.swap(output_metadata);
+          // Next input (input_buffers) now stores this output (output_buffers).
+        }
 
-    // Save the finished chunk (last stage's output). This is safe to do because
-    // when the local FilterStorage goes out of scope, it will not free the
-    // buffers saved here as their shared_ptr counters will not be zero.
-    // However, as the output may have been a view on the input, we do need to
-    // save both here to prevent the input buffer from being freed.
-    auto& io = final_stage_io[i];
-    auto& io_input = io.first;
-    auto& io_output = io.second;
-    io_input.first.swap(input_metadata);
-    io_input.second.swap(input_data);
-    io_output.first.swap(output_metadata);
-    io_output.second.swap(output_data);
-    return Status::Ok();
-  });
+        // Save the finished chunk (last stage's output). This is safe to do
+        // because when the local FilterStorage goes out of scope, it will not
+        // free the buffers saved here as their shared_ptr counters will not be
+        // zero. However, as the output may have been a view on the input, we do
+        // need to save both here to prevent the input buffer from being freed.
+        auto& io = final_stage_io[i];
+        auto& io_input = io.first;
+        auto& io_output = io.second;
+        io_input.first.swap(input_metadata);
+        io_input.second.swap(input_data);
+        io_output.first.swap(output_metadata);
+        io_output.second.swap(output_data);
+        return Status::Ok();
+      });
 
   // Check statuses
   for (auto st : statuses)
@@ -207,33 +211,38 @@ Status FilterPipeline::filter_chunks_forward(
   RETURN_NOT_OK(output->write(&populated_nchunks, sizeof(uint64_t)));
 
   // Concatenate all processed chunks into the final output buffer.
-  statuses = parallel_for(0, final_stage_io.size(), [&](uint64_t i) {
-    auto& final_stage_output_metadata = final_stage_io[i].first.first;
-    auto& final_stage_output_data = final_stage_io[i].first.second;
-    auto filtered_size = (uint32_t)final_stage_output_data.size();
-    uint32_t orig_chunk_size;
-    RETURN_NOT_OK(input.internal_buffer_size(i, &orig_chunk_size));
-    auto metadata_size = (uint32_t)final_stage_output_metadata.size();
-    void* dest = output->data(offsets[i]);
-    uint64_t dest_offset = 0;
+  statuses =
+      parallel_for(compute_tp, 0, final_stage_io.size(), [&](uint64_t i) {
+        auto& final_stage_output_metadata = final_stage_io[i].first.first;
+        auto& final_stage_output_data = final_stage_io[i].first.second;
+        auto filtered_size = (uint32_t)final_stage_output_data.size();
+        uint32_t orig_chunk_size;
+        RETURN_NOT_OK(input.internal_buffer_size(i, &orig_chunk_size));
+        auto metadata_size = (uint32_t)final_stage_output_metadata.size();
+        void* dest = output->data(offsets[i]);
+        uint64_t dest_offset = 0;
 
-    // Write the original (unfiltered) chunk size
-    std::memcpy((char*)dest + dest_offset, &orig_chunk_size, sizeof(uint32_t));
-    dest_offset += sizeof(uint32_t);
-    // Write the filtered chunk size
-    std::memcpy((char*)dest + dest_offset, &filtered_size, sizeof(uint32_t));
-    dest_offset += sizeof(uint32_t);
-    // Write the metadata size
-    std::memcpy((char*)dest + dest_offset, &metadata_size, sizeof(uint32_t));
-    dest_offset += sizeof(uint32_t);
-    // Write the chunk metadata
-    RETURN_NOT_OK(
-        final_stage_output_metadata.copy_to((char*)dest + dest_offset));
-    dest_offset += metadata_size;
-    // Write the chunk data
-    RETURN_NOT_OK(final_stage_output_data.copy_to((char*)dest + dest_offset));
-    return Status::Ok();
-  });
+        // Write the original (unfiltered) chunk size
+        std::memcpy(
+            (char*)dest + dest_offset, &orig_chunk_size, sizeof(uint32_t));
+        dest_offset += sizeof(uint32_t);
+        // Write the filtered chunk size
+        std::memcpy(
+            (char*)dest + dest_offset, &filtered_size, sizeof(uint32_t));
+        dest_offset += sizeof(uint32_t);
+        // Write the metadata size
+        std::memcpy(
+            (char*)dest + dest_offset, &metadata_size, sizeof(uint32_t));
+        dest_offset += sizeof(uint32_t);
+        // Write the chunk metadata
+        RETURN_NOT_OK(
+            final_stage_output_metadata.copy_to((char*)dest + dest_offset));
+        dest_offset += metadata_size;
+        // Write the chunk data
+        RETURN_NOT_OK(
+            final_stage_output_data.copy_to((char*)dest + dest_offset));
+        return Status::Ok();
+      });
 
   // Check statuses
   for (auto st : statuses)
@@ -250,6 +259,7 @@ Status FilterPipeline::filter_chunks_reverse(
     const std::vector<std::tuple<void*, uint32_t, uint32_t, uint32_t, bool>>&
         input,
     ChunkedBuffer* const output,
+    ThreadPool* const compute_tp,
     const bool unfiltering_all,
     const Config& config) const {
   // Precompute the sizes of the final output chunks.
@@ -291,7 +301,7 @@ Status FilterPipeline::filter_chunks_reverse(
   }
 
   // Run each chunk through the entire pipeline.
-  auto statuses = parallel_for(0, input.size(), [&](uint64_t i) {
+  auto statuses = parallel_for(compute_tp, 0, input.size(), [&](uint64_t i) {
     const auto& chunk_input = input[i];
 
     // Skip chunks that do not interect the query.
@@ -399,7 +409,8 @@ uint32_t FilterPipeline::max_chunk_size() const {
   return max_chunk_size_;
 }
 
-Status FilterPipeline::run_forward(Tile* tile) const {
+Status FilterPipeline::run_forward(
+    Tile* const tile, ThreadPool* const compute_tp) const {
   current_tile_ = tile;
 
   STATS_ADD_COUNTER(
@@ -407,8 +418,8 @@ Status FilterPipeline::run_forward(Tile* tile) const {
 
   // Run the filters over all the chunks and store the result in
   // 'filtered_buffer_chunks'.
-  const Status st =
-      filter_chunks_forward(*tile->chunked_buffer(), tile->filtered_buffer());
+  const Status st = filter_chunks_forward(
+      *tile->chunked_buffer(), tile->filtered_buffer(), compute_tp);
   if (!st.ok()) {
     tile->filtered_buffer()->clear();
     return st;
@@ -422,14 +433,15 @@ Status FilterPipeline::run_forward(Tile* tile) const {
 }
 
 Status FilterPipeline::run_reverse(
-    Tile* tile,
+    Tile* const tile,
+    ThreadPool* const compute_tp,
     const Config& config,
     const std::vector<std::pair<uint64_t, uint64_t>>* result_cell_slab_ranges)
     const {
   assert(tile->filtered());
 
   if (!result_cell_slab_ranges) {
-    return run_reverse_internal(tile, config, nullptr);
+    return run_reverse_internal(tile, compute_tp, config, nullptr);
   } else {
     uint64_t cells_processed = 0;
     std::vector<std::pair<uint64_t, uint64_t>>::const_iterator cs_it =
@@ -447,13 +459,14 @@ Status FilterPipeline::run_reverse(
         cs_end,
         std::placeholders::_2);
 
-    return run_reverse_internal(tile, config, &skip_fn);
+    return run_reverse_internal(tile, compute_tp, config, &skip_fn);
   }
 }
 
 Status FilterPipeline::run_reverse(
-    Tile* tile,
-    Tile* tile_var,
+    Tile* const tile,
+    Tile* const tile_var,
+    ThreadPool* const compute_tp,
     const Config& config,
     const std::vector<std::pair<uint64_t, uint64_t>>* result_cell_slab_ranges)
     const {
@@ -461,7 +474,7 @@ Status FilterPipeline::run_reverse(
   assert(tile_var->filtered());
 
   if (!result_cell_slab_ranges) {
-    return run_reverse_internal(tile_var, config, nullptr);
+    return run_reverse_internal(tile_var, compute_tp, config, nullptr);
   } else {
     ChunkedBuffer* const chunked_buffer_off = tile->chunked_buffer();
     void* tmp_buffer;
@@ -489,7 +502,7 @@ Status FilterPipeline::run_reverse(
         cs_end,
         std::placeholders::_2);
 
-    return run_reverse_internal(tile_var, config, &skip_fn);
+    return run_reverse_internal(tile_var, compute_tp, config, &skip_fn);
   }
 }
 
@@ -638,6 +651,7 @@ Status FilterPipeline::skip_chunk_reversal_common(
 
 Status FilterPipeline::run_reverse_internal(
     Tile* tile,
+    ThreadPool* const compute_tp,
     const Config& config,
     std::function<Status(uint64_t, bool*)>* const skip_fn) const {
   Buffer* const filtered_buffer = tile->filtered_buffer();
@@ -693,7 +707,11 @@ Status FilterPipeline::run_reverse_internal(
       stats::Stats::CounterType::READ_UNFILTERED_BYTE_NUM, total_orig_size);
 
   const Status st = filter_chunks_reverse(
-      filtered_chunks, tile->chunked_buffer(), unfiltering_all, config);
+      filtered_chunks,
+      tile->chunked_buffer(),
+      compute_tp,
+      unfiltering_all,
+      config);
   if (!st.ok()) {
     tile->chunked_buffer()->free();
     return st;

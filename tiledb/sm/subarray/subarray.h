@@ -36,6 +36,7 @@
 #include "tiledb/sm/buffer/buffer.h"
 #include "tiledb/sm/enums/datatype.h"
 #include "tiledb/sm/misc/logger.h"
+#include "tiledb/sm/misc/thread_pool.h"
 #include "tiledb/sm/misc/tile_overlap.h"
 #include "tiledb/sm/misc/types.h"
 
@@ -234,7 +235,7 @@ class Subarray {
    * Computes the tile overlap with all subarray ranges for
    * all fragments.
    */
-  Status compute_tile_overlap();
+  Status compute_tile_overlap(ThreadPool* compute_tp);
 
   /**
    * Computes the estimated result size (calibrated using the maximum size)
@@ -362,14 +363,18 @@ class Subarray {
    * Gets the estimated result size (in bytes) for the input fixed-sized
    * attribute/dimension.
    */
-  Status get_est_result_size(const char* name, uint64_t* size);
+  Status get_est_result_size(
+      const char* name, uint64_t* size, ThreadPool* compute_tp);
 
   /**
    * Gets the estimated result size (in bytes) for the input var-sized
    * attribute/dimension.
    */
   Status get_est_result_size(
-      const char* name, uint64_t* size_off, uint64_t* size_val);
+      const char* name,
+      uint64_t* size_off,
+      uint64_t* size_val,
+      ThreadPool* compute_tp);
 
   /** returns whether the estimated result size has been computed or not */
   bool est_result_size_computed();
@@ -378,14 +383,18 @@ class Subarray {
    * Gets the maximum memory required to produce the result (in bytes)
    * for the input fixed-sized attribute/dimensiom.
    */
-  Status get_max_memory_size(const char* name, uint64_t* size);
+  Status get_max_memory_size(
+      const char* name, uint64_t* size, ThreadPool* compute_tp);
 
   /**
    * Gets the maximum memory required to produce the result (in bytes)
    * for the input var-sized attribute/dimension.
    */
   Status get_max_memory_size(
-      const char* name, uint64_t* size_off, uint64_t* size_val);
+      const char* name,
+      uint64_t* size_off,
+      uint64_t* size_val,
+      ThreadPool* compute_tp);
 
   /** Retrieves the query type of the subarray's array. */
   Status get_query_type(QueryType* type) const;
@@ -544,7 +553,8 @@ class Subarray {
       uint64_t range_start,
       uint64_t range_end,
       std::vector<std::vector<ResultSize>>* result_sizes,
-      std::vector<std::vector<MemorySize>>* mem_sizes);
+      std::vector<std::vector<MemorySize>>* mem_sizes,
+      ThreadPool* compute_tp);
 
   /**
    * Used by serialization to set the estimated result size
@@ -561,13 +571,15 @@ class Subarray {
    * Used by serialization to get the map of result sizes
    * @return
    */
-  std::unordered_map<std::string, ResultSize> get_est_result_size_map();
+  std::unordered_map<std::string, ResultSize> get_est_result_size_map(
+      ThreadPool* compute_tp);
 
   /**
    * Used by serialization to get the map of max mem sizes
    * @return
    */
-  std::unordered_map<std::string, MemorySize> get_max_mem_size_map();
+  std::unordered_map<std::string, MemorySize> get_max_mem_size_map(
+      ThreadPool* compute_tp);
 
  private:
   /* ********************************* */
@@ -671,7 +683,7 @@ class Subarray {
   void add_default_ranges();
 
   /** Computes the estimated result size for all attributes/dimensions. */
-  Status compute_est_result_size();
+  Status compute_est_result_size(ThreadPool* compute_tp);
 
   /**
    * Compute `tile_coords_` and `tile_coords_map_`. The coordinates will
@@ -729,13 +741,13 @@ class Subarray {
    * that is those whose non-empty domain intersects with at least one
    * range.
    */
-  Status compute_relevant_fragments();
+  Status compute_relevant_fragments(ThreadPool* compute_tp);
 
   /** Loads the R-Trees of all relevant fragments in parallel. */
-  Status load_relevant_fragment_rtrees() const;
+  Status load_relevant_fragment_rtrees(ThreadPool* compute_tp) const;
 
   /** Computes the tile overlap for each range and relevant fragment. */
-  Status compute_relevant_fragment_tile_overlap();
+  Status compute_relevant_fragment_tile_overlap(ThreadPool* compute_tp);
 
   /**
    * Computes the tile overlap for all ranges on the given relevant fragment.
@@ -744,20 +756,22 @@ class Subarray {
    * @param frag_idx The fragment id.
    * @param dense Whether the fragment is dense or sparse.
    * @param range_num The number of ranges.
+   * @param compute_tp The thread pool for compute-bound tasks.
    * @return Status
    */
   Status compute_relevant_fragment_tile_overlap(
       FragmentMetadata* meta,
       unsigned frag_idx,
       bool dense,
-      uint64_t range_num);
+      uint64_t range_num,
+      ThreadPool* compute_tp);
 
   /**
    * Load the var-sized tile sizes for the input names and from the
    * relevant fragments.
    */
   Status load_relevant_fragment_tile_var_sizes(
-      const std::vector<std::string>& names) const;
+      const std::vector<std::string>& names, ThreadPool* compute_tp) const;
 
   /**
    * Constructs `add_or_coalesce_range_func_` for all dimensions

@@ -138,12 +138,14 @@ Status Reader::get_range_var_size(
 }
 
 Status Reader::get_est_result_size(const char* name, uint64_t* size) {
-  return subarray_.get_est_result_size(name, size);
+  return subarray_.get_est_result_size(
+      name, size, storage_manager_->compute_tp());
 }
 
 Status Reader::get_est_result_size(
     const char* name, uint64_t* size_off, uint64_t* size_val) {
-  return subarray_.get_est_result_size(name, size_off, size_val);
+  return subarray_.get_est_result_size(
+      name, size_off, size_val, storage_manager_->compute_tp());
 }
 
 const ArraySchema* Reader::array_schema() const {
@@ -680,26 +682,29 @@ Status Reader::compute_range_result_coords(
           layout_;
   auto allows_dups = array_schema_->allows_dups();
 
-  auto statuses = parallel_for(0, range_num, [&](uint64_t r) {
-    // Compute overlapping coordinates per range
-    RETURN_NOT_OK(compute_range_result_coords(
-        subarray,
-        r,
-        result_tile_map,
-        result_tiles,
-        &((*range_result_coords)[r])));
+  auto statuses = parallel_for(
+      storage_manager_->compute_tp(), 0, range_num, [&](uint64_t r) {
+        // Compute overlapping coordinates per range
+        RETURN_NOT_OK(compute_range_result_coords(
+            subarray,
+            r,
+            result_tile_map,
+            result_tiles,
+            &((*range_result_coords)[r])));
 
-    // Dedup unless there is a single fragment or array schema allows duplicates
-    if (!single_fragment[r] && !allows_dups) {
-      RETURN_CANCEL_OR_ERROR(sort_result_coords(
-          ((*range_result_coords)[r]).begin(),
-          ((*range_result_coords)[r]).end(),
-          layout));
-      RETURN_CANCEL_OR_ERROR(dedup_result_coords(&((*range_result_coords)[r])));
-    }
+        // Dedup unless there is a single fragment or array schema allows
+        // duplicates
+        if (!single_fragment[r] && !allows_dups) {
+          RETURN_CANCEL_OR_ERROR(sort_result_coords(
+              ((*range_result_coords)[r]).begin(),
+              ((*range_result_coords)[r]).end(),
+              layout));
+          RETURN_CANCEL_OR_ERROR(
+              dedup_result_coords(&((*range_result_coords)[r])));
+        }
 
-    return Status::Ok();
-  });
+        return Status::Ok();
+      });
 
   for (auto st : statuses)
     RETURN_NOT_OK(st);
@@ -775,15 +780,16 @@ Status Reader::compute_range_result_coords(
   // Gather result range coordinates per fragment
   auto fragment_num = fragment_metadata_.size();
   std::vector<std::vector<ResultCoords>> range_result_coords_vec(fragment_num);
-  auto statuses = parallel_for(0, fragment_num, [&](uint32_t f) {
-    return compute_range_result_coords(
-        subarray,
-        range_idx,
-        f,
-        result_tile_map,
-        result_tiles,
-        &range_result_coords_vec[f]);
-  });
+  auto statuses = parallel_for(
+      storage_manager_->compute_tp(), 0, fragment_num, [&](uint32_t f) {
+        return compute_range_result_coords(
+            subarray,
+            range_idx,
+            f,
+            result_tile_map,
+            result_tiles,
+            &range_result_coords_vec[f]);
+      });
   for (const auto& st : statuses)
     RETURN_NOT_OK(st);
 
@@ -946,8 +952,11 @@ Status Reader::copy_fixed_cells(
       stride,
       &result_cell_slabs,
       ctx_cache);
-  auto statuses =
-      parallel_for(0, ctx_cache->cs_partitions.size(), std::move(copy_fn));
+  auto statuses = parallel_for(
+      storage_manager_->compute_tp(),
+      0,
+      ctx_cache->cs_partitions.size(),
+      std::move(copy_fn));
 
   for (auto st : statuses)
     RETURN_NOT_OK(st);
@@ -976,12 +985,14 @@ void Reader::populate_cfc_ctx_cache(
   cs_offsets->resize(num_cs);
 
   // Partition the range of the `result_cell_slab` into
-  // individual cell ranges for each TBB thread.
-  const int tbb_threads =
+  // individual cell ranges for each TBB thread. If TBB
+  // is disabled, we will use the concurrency level from
+  // the compute thread pool.
+  const int num_threads =
       global_state::GlobalState::GetGlobalState().tbb_threads() > 0 ?
           global_state::GlobalState::GetGlobalState().tbb_threads() :
-          1;
-  const uint64_t num_cs_partitions = std::min<uint64_t>(tbb_threads, num_cs);
+          storage_manager_->compute_tp()->concurrency_level();
+  const uint64_t num_cs_partitions = std::min<uint64_t>(num_threads, num_cs);
   const uint64_t cs_per_partition = num_cs / num_cs_partitions;
   const uint64_t cs_per_partition_carry = num_cs % num_cs_partitions;
 
@@ -1102,7 +1113,11 @@ Status Reader::copy_var_cells(
       stride,
       &result_cell_slabs,
       ctx_cache);
-  auto statuses = parallel_for(0, ctx_cache->cs_partitions.size(), copy_fn);
+  auto statuses = parallel_for(
+      storage_manager_->compute_tp(),
+      0,
+      ctx_cache->cs_partitions.size(),
+      copy_fn);
 
   // Check all statuses
   for (auto st : statuses)
@@ -1133,11 +1148,11 @@ void Reader::populate_cvc_ctx_cache(
 
   // Calculate the partition range.
   const size_t num_cs = result_cell_slabs.size();
-  const int tbb_threads =
+  const int num_threads =
       global_state::GlobalState::GetGlobalState().tbb_threads() > 0 ?
           global_state::GlobalState::GetGlobalState().tbb_threads() :
-          1;
-  const uint64_t num_cs_partitions = std::min<uint64_t>(tbb_threads, num_cs);
+          storage_manager_->compute_tp()->concurrency_level();
+  const uint64_t num_cs_partitions = std::min<uint64_t>(num_threads, num_cs);
   const uint64_t cs_per_partition = num_cs / num_cs_partitions;
   const uint64_t cs_per_partition_carry = num_cs % num_cs_partitions;
 
@@ -1578,7 +1593,8 @@ Status Reader::compute_result_coords(
     SubarrayPartitioner sub_partitioner(
         partitioner->current(),
         sub_partitioner_memory_budget,
-        sub_partitioner_memory_budget);
+        sub_partitioner_memory_budget,
+        storage_manager_->compute_tp());
 
     // Set the individual attribute budgets in the sub-partitioner
     // to the same values as in the parent partitioner.
@@ -1973,77 +1989,82 @@ Status Reader::unfilter_tiles(
   auto num_tiles = static_cast<uint64_t>(result_tiles.size());
   auto encryption_key = array_->encryption_key();
 
-  auto statuses = parallel_for(0, num_tiles, [&, this](uint64_t i) {
-    auto& tile = result_tiles[i];
-    auto& fragment = fragment_metadata_[tile->frag_idx()];
-    auto format_version = fragment->format_version();
+  auto statuses = parallel_for(
+      storage_manager_->compute_tp(), 0, num_tiles, [&, this](uint64_t i) {
+        auto& tile = result_tiles[i];
+        auto& fragment = fragment_metadata_[tile->frag_idx()];
+        auto format_version = fragment->format_version();
 
-    // Applicable for zipped coordinates only to versions < 5
-    // Applicable for separate coordinates only to version >= 5
-    if (name != constants::coords ||
-        (name == constants::coords && format_version < 5) ||
-        (array_schema_->is_dim(name) && format_version >= 5)) {
-      auto tile_pair = tile->tile_pair(name);
+        // Applicable for zipped coordinates only to versions < 5
+        // Applicable for separate coordinates only to version >= 5
+        if (name != constants::coords ||
+            (name == constants::coords && format_version < 5) ||
+            (array_schema_->is_dim(name) && format_version >= 5)) {
+          auto tile_pair = tile->tile_pair(name);
 
-      // Skip non-existent attributes/dimensions (e.g. coords in the
-      // dense case).
-      if (tile_pair == nullptr ||
-          tile_pair->first.filtered_buffer()->size() == 0)
+          // Skip non-existent attributes/dimensions (e.g. coords in the
+          // dense case).
+          if (tile_pair == nullptr ||
+              tile_pair->first.filtered_buffer()->size() == 0)
+            return Status::Ok();
+
+          // Get information about the tile in its fragment
+          auto tile_attr_uri = fragment->uri(name);
+          auto tile_idx = tile->tile_idx();
+          uint64_t tile_attr_offset;
+          RETURN_NOT_OK(fragment->file_offset(
+              *encryption_key, name, tile_idx, &tile_attr_offset));
+
+          auto& t = tile_pair->first;
+          auto& t_var = tile_pair->second;
+
+          // If we're performing selective unfiltering, lookup the result
+          // cell slab ranges associated with this tile. If we do not have
+          // any ranges, use an empty list to indicate that this tile doesn't
+          // contain any results.
+          const std::vector<std::pair<uint64_t, uint64_t>>*
+              result_cell_slab_ranges = nullptr;
+          static const std::vector<std::pair<uint64_t, uint64_t>> empty_ranges;
+          if (cs_ranges) {
+            result_cell_slab_ranges =
+                cs_ranges->find(tile) != cs_ranges->end() ?
+                    &cs_ranges->at(tile) :
+                    &empty_ranges;
+          }
+
+          // Cache 't'.
+          if (t.filtered()) {
+            // Store the filtered buffer in the tile cache.
+            RETURN_NOT_OK(storage_manager_->write_to_cache(
+                tile_attr_uri, tile_attr_offset, t.filtered_buffer()));
+          }
+
+          // Cache 't_var'.
+          if (var_size && t_var.filtered()) {
+            auto tile_attr_var_uri = fragment->var_uri(name);
+            uint64_t tile_attr_var_offset;
+            RETURN_NOT_OK(fragment->file_var_offset(
+                *encryption_key, name, tile_idx, &tile_attr_var_offset));
+
+            // Store the filtered buffer in the tile cache.
+            RETURN_NOT_OK(storage_manager_->write_to_cache(
+                tile_attr_var_uri,
+                tile_attr_var_offset,
+                t_var.filtered_buffer()));
+          }
+
+          // Unfilter 't' for fixed-sized tiles, otherwise unfilter both 't' and
+          // 't_var' for var-sized tiles.
+          if (!var_size) {
+            RETURN_NOT_OK(unfilter_tile(name, &t, result_cell_slab_ranges));
+          } else {
+            RETURN_NOT_OK(
+                unfilter_tile(name, &t, &t_var, result_cell_slab_ranges));
+          }
+        }
+
         return Status::Ok();
-
-      // Get information about the tile in its fragment
-      auto tile_attr_uri = fragment->uri(name);
-      auto tile_idx = tile->tile_idx();
-      uint64_t tile_attr_offset;
-      RETURN_NOT_OK(fragment->file_offset(
-          *encryption_key, name, tile_idx, &tile_attr_offset));
-
-      auto& t = tile_pair->first;
-      auto& t_var = tile_pair->second;
-
-      // If we're performing selective unfiltering, lookup the result
-      // cell slab ranges associated with this tile. If we do not have
-      // any ranges, use an empty list to indicate that this tile doesn't
-      // contain any results.
-      const std::vector<std::pair<uint64_t, uint64_t>>*
-          result_cell_slab_ranges = nullptr;
-      static const std::vector<std::pair<uint64_t, uint64_t>> empty_ranges;
-      if (cs_ranges) {
-        result_cell_slab_ranges = cs_ranges->find(tile) != cs_ranges->end() ?
-                                      &cs_ranges->at(tile) :
-                                      &empty_ranges;
-      }
-
-      // Cache 't'.
-      if (t.filtered()) {
-        // Store the filtered buffer in the tile cache.
-        RETURN_NOT_OK(storage_manager_->write_to_cache(
-            tile_attr_uri, tile_attr_offset, t.filtered_buffer()));
-      }
-
-      // Cache 't_var'.
-      if (var_size && t_var.filtered()) {
-        auto tile_attr_var_uri = fragment->var_uri(name);
-        uint64_t tile_attr_var_offset;
-        RETURN_NOT_OK(fragment->file_var_offset(
-            *encryption_key, name, tile_idx, &tile_attr_var_offset));
-
-        // Store the filtered buffer in the tile cache.
-        RETURN_NOT_OK(storage_manager_->write_to_cache(
-            tile_attr_var_uri, tile_attr_var_offset, t_var.filtered_buffer()));
-      }
-
-      // Unfilter 't' for fixed-sized tiles, otherwise unfilter both 't' and
-      // 't_var' for var-sized tiles.
-      if (!var_size) {
-        RETURN_NOT_OK(unfilter_tile(name, &t, result_cell_slab_ranges));
-      } else {
-        RETURN_NOT_OK(unfilter_tile(name, &t, &t_var, result_cell_slab_ranges));
-      }
-    }
-
-    return Status::Ok();
-  });
+      });
 
   for (const auto& st : statuses)
     RETURN_CANCEL_OR_ERROR(st);
@@ -2071,7 +2092,10 @@ Status Reader::unfilter_tile(
 
   // Reverse the tile filters.
   RETURN_NOT_OK(filters.run_reverse(
-      tile, storage_manager_->config(), result_cell_slab_ranges));
+      tile,
+      storage_manager_->compute_tp(),
+      storage_manager_->config(),
+      result_cell_slab_ranges));
 
   return Status::Ok();
 }
@@ -2098,10 +2122,17 @@ Status Reader::unfilter_tile(
 
   // Reverse the tile filters, but do not use selective
   // unfiltering for offset tiles.
-  RETURN_NOT_OK(
-      offset_filters.run_reverse(tile, storage_manager_->config(), nullptr));
+  RETURN_NOT_OK(offset_filters.run_reverse(
+      tile,
+      storage_manager_->compute_tp(),
+      storage_manager_->config(),
+      nullptr));
   RETURN_NOT_OK(filters.run_reverse(
-      tile, tile_var, storage_manager_->config(), result_cell_slab_ranges));
+      tile,
+      tile_var,
+      storage_manager_->compute_tp(),
+      storage_manager_->config(),
+      result_cell_slab_ranges));
 
   return Status::Ok();
 }
@@ -2155,8 +2186,11 @@ Status Reader::init_read_state() {
   assert(found);
 
   // Create read state
-  read_state_.partitioner_ =
-      SubarrayPartitioner(subarray_, memory_budget, memory_budget_var);
+  read_state_.partitioner_ = SubarrayPartitioner(
+      subarray_,
+      memory_budget,
+      memory_budget_var,
+      storage_manager_->compute_tp());
   read_state_.overflowed_ = false;
   read_state_.unsplittable_ = false;
 
@@ -2233,8 +2267,7 @@ Status Reader::read_tiles(
   RETURN_CANCEL_OR_ERROR(read_tiles(name, result_tiles, &tasks));
 
   // Wait for the reads to finish and check statuses.
-  auto statuses =
-      storage_manager_->reader_thread_pool()->wait_all_status(tasks);
+  auto statuses = storage_manager_->io_tp()->wait_all_status(tasks);
   for (const auto& st : statuses)
     RETURN_CANCEL_OR_ERROR(st);
 
@@ -2267,44 +2300,53 @@ Status Reader::read_tiles(
     fragment_idxs_vec.emplace_back(idx);
 
   // In parallel, force the required fragment metadata to be loaded
-  auto statuses = parallel_for(0, fragment_idxs_vec.size(), [&](uint64_t i) {
-    auto& fragment = fragment_metadata_[fragment_idxs_vec[i]];
-    auto format_version = fragment->format_version();
+  auto statuses = parallel_for(
+      storage_manager_->compute_tp(),
+      0,
+      fragment_idxs_vec.size(),
+      [&](uint64_t i) {
+        auto& fragment = fragment_metadata_[fragment_idxs_vec[i]];
+        auto format_version = fragment->format_version();
 
-    // Applicable for zipped coordinates only to versions < 5
-    if (name == constants::coords && format_version >= 5)
-      return Status::Ok();
+        // Applicable for zipped coordinates only to versions < 5
+        if (name == constants::coords && format_version >= 5)
+          return Status::Ok();
 
-    // Applicable to separate coordinates only to versions >= 5
-    auto is_dim = array_schema_->is_dim(name);
-    if (is_dim && format_version < 5)
-      return Status::Ok();
+        // Applicable to separate coordinates only to versions >= 5
+        auto is_dim = array_schema_->is_dim(name);
+        if (is_dim && format_version < 5)
+          return Status::Ok();
 
-    uint64_t tmp = 0;
-    RETURN_NOT_OK(fragment->file_offset(*encryption_key, name, 0, &tmp));
-    return Status::Ok();
-  });
+        uint64_t tmp = 0;
+        RETURN_NOT_OK(fragment->file_offset(*encryption_key, name, 0, &tmp));
+        return Status::Ok();
+      });
   for (const auto& st : statuses)
     RETURN_NOT_OK(st);
 
   if (var_size) {
-    auto statuses = parallel_for(0, fragment_idxs_vec.size(), [&](uint64_t i) {
-      auto& fragment = fragment_metadata_[fragment_idxs_vec[i]];
-      auto format_version = fragment->format_version();
+    auto statuses = parallel_for(
+        storage_manager_->compute_tp(),
+        0,
+        fragment_idxs_vec.size(),
+        [&](uint64_t i) {
+          auto& fragment = fragment_metadata_[fragment_idxs_vec[i]];
+          auto format_version = fragment->format_version();
 
-      // Applicable for zipped coordinates only to versions < 5
-      if (name == constants::coords && format_version >= 5)
-        return Status::Ok();
+          // Applicable for zipped coordinates only to versions < 5
+          if (name == constants::coords && format_version >= 5)
+            return Status::Ok();
 
-      // Applicable to separate coordinates only to versions >= 5
-      auto is_dim = array_schema_->is_dim(name);
-      if (is_dim && format_version < 5)
-        return Status::Ok();
+          // Applicable to separate coordinates only to versions >= 5
+          auto is_dim = array_schema_->is_dim(name);
+          if (is_dim && format_version < 5)
+            return Status::Ok();
 
-      uint64_t tmp = 0;
-      RETURN_NOT_OK(fragment->file_var_offset(*encryption_key, name, 0, &tmp));
-      return Status::Ok();
-    });
+          uint64_t tmp = 0;
+          RETURN_NOT_OK(
+              fragment->file_var_offset(*encryption_key, name, 0, &tmp));
+          return Status::Ok();
+        });
     for (auto st : statuses)
       RETURN_NOT_OK(st);
   }
@@ -2408,10 +2450,7 @@ Status Reader::read_tiles(
   // Enqueue all regions to be read.
   for (const auto& item : all_regions) {
     RETURN_NOT_OK(storage_manager_->vfs()->read_all(
-        item.first,
-        item.second,
-        storage_manager_->reader_thread_pool(),
-        tasks));
+        item.first, item.second, storage_manager_->io_tp(), tasks));
   }
 
   return Status::Ok();
@@ -2435,11 +2474,17 @@ Status Reader::sort_result_coords(
   auto domain = array_schema_->domain();
 
   if (layout == Layout::ROW_MAJOR) {
-    parallel_sort(iter_begin, iter_end, RowCmp(domain));
+    parallel_sort(
+        storage_manager_->compute_tp(), iter_begin, iter_end, RowCmp(domain));
   } else if (layout == Layout::COL_MAJOR) {
-    parallel_sort(iter_begin, iter_end, ColCmp(domain));
+    parallel_sort(
+        storage_manager_->compute_tp(), iter_begin, iter_end, ColCmp(domain));
   } else if (layout == Layout::GLOBAL_ORDER) {
-    parallel_sort(iter_begin, iter_end, GlobalCmp(domain));
+    parallel_sort(
+        storage_manager_->compute_tp(),
+        iter_begin,
+        iter_end,
+        GlobalCmp(domain));
   } else {
     assert(false);
   }
@@ -2564,7 +2609,11 @@ Status Reader::copy_attribute_values(
 
     // Sort each range, per tile.
     for (auto& kv : cs_ranges) {
-      parallel_sort(kv.second.begin(), kv.second.end(), RangeCompare());
+      parallel_sort(
+          storage_manager_->compute_tp(),
+          kv.second.begin(),
+          kv.second.end(),
+          RangeCompare());
     }
   }
 
@@ -2707,7 +2756,7 @@ Status Reader::set_est_result_size(
 
 std::unordered_map<std::string, Subarray::ResultSize>
 Reader::get_est_result_size_map() {
-  return subarray_.get_est_result_size_map();
+  return subarray_.get_est_result_size_map(storage_manager_->compute_tp());
 }
 
 bool Reader::est_result_size_computed() {
@@ -2716,7 +2765,7 @@ bool Reader::est_result_size_computed() {
 
 std::unordered_map<std::string, Subarray::MemorySize>
 Reader::get_max_mem_size_map() {
-  return subarray_.get_max_mem_size_map();
+  return subarray_.get_max_mem_size_map(storage_manager_->compute_tp());
 }
 
 }  // namespace sm

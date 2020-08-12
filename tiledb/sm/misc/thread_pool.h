@@ -38,6 +38,7 @@
 #include <mutex>
 #include <stack>
 #include <thread>
+#include <unordered_map>
 #include <vector>
 
 #include "tiledb/sm/misc/status.h"
@@ -128,6 +129,12 @@ class ThreadPool {
   /** When true, all pending tasks will remain unscheduled. */
   bool should_terminate_;
 
+  /** Indexes thread ids to the ThreadPool instance they belong to. */
+  static std::unordered_map<std::thread::id, ThreadPool*> tp_index_;
+
+  /** Protects 'tp_index_'. */
+  static std::mutex tp_index_lock_;
+
   /* ********************************* */
   /*          PRIVATE METHODS          */
   /* ********************************* */
@@ -145,6 +152,15 @@ class ThreadPool {
 
   /** The worker thread routine. */
   static void worker(ThreadPool& pool);
+
+  // Add indexes from each thread to this instance.
+  void add_tp_index();
+
+  // Remove indexes from each thread to this instance.
+  void remove_tp_index();
+
+  // Lookup the thread pool instance from the calling thread.
+  ThreadPool* lookup_tp();
 };
 
 }  // namespace sm

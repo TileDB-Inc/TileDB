@@ -38,6 +38,10 @@
 namespace tiledb {
 namespace sm {
 
+// Define the static ThreadPool member variables.
+std::unordered_map<std::thread::id, ThreadPool*> ThreadPool::tp_index_;
+std::mutex ThreadPool::tp_index_lock_;
+
 ThreadPool::ThreadPool()
     : concurrency_level_(0)
     , should_terminate_(false) {
@@ -71,12 +75,17 @@ Status ThreadPool::init(const uint64_t concurrency_level) {
     }
   }
 
-  if (st.ok()) {
-    concurrency_level_ = concurrency_level;
-  } else {
+  if (!st.ok()) {
     // Join any created threads on error.
     terminate();
+    return st;
   }
+
+  // Save the concurrency level.
+  concurrency_level_ = concurrency_level;
+
+  // Index this ThreadPool instance from all of its thread ids.
+  add_tp_index();
 
   return st;
 }
@@ -162,20 +171,25 @@ Status ThreadPool::wait_or_work(std::future<Status>&& task) {
     assert(task_status != std::future_status::deferred);
     assert(task_status == std::future_status::timeout);
 
-    // Lock the `task_stack_` to receive the next task to work on.
-    std::unique_lock<std::mutex> lck(task_stack_mutex_);
+    // Lookup the thread pool that this thread belongs to. If it
+    // does not belong to a thread pool, `lookup_tp` will return
+    // `this`.
+    ThreadPool* const tp = lookup_tp();
+
+    // Lock the `tp->task_stack_` to receive the next task to work on.
+    std::unique_lock<std::mutex> lock(tp->task_stack_mutex_);
 
     // If there are no pending tasks, we will wait for `task` to complete.
-    if (task_stack_.empty())
+    if (tp->task_stack_.empty())
       break;
 
     // Pull the next task off of the task stack. We specifically use a LIFO
     // ordering to prevent overflowing the call stack.
-    std::packaged_task<Status()> inner_task = std::move(task_stack_.top());
-    task_stack_.pop();
+    std::packaged_task<Status()> inner_task = std::move(tp->task_stack_.top());
+    tp->task_stack_.pop();
 
-    // We're done mutating `task_stack_`.
-    lck.unlock();
+    // We're done mutating `tp->task_stack_`.
+    lock.unlock();
 
     // Execute the inner task.
     if (inner_task.valid())
@@ -191,6 +205,8 @@ void ThreadPool::terminate() {
     should_terminate_ = true;
     task_stack_cv_.notify_all();
   }
+
+  remove_tp_index();
 
   for (auto& t : threads_) {
     t.join();
@@ -222,6 +238,26 @@ void ThreadPool::worker(ThreadPool& pool) {
     if (pool.should_terminate_)
       break;
   }
+}
+
+void ThreadPool::add_tp_index() {
+  std::lock_guard<std::mutex> lock(tp_index_lock_);
+  for (const auto& thread : threads_)
+    tp_index_[thread.get_id()] = this;
+}
+
+void ThreadPool::remove_tp_index() {
+  std::lock_guard<std::mutex> lock(tp_index_lock_);
+  for (const auto& thread : threads_)
+    tp_index_.erase(thread.get_id());
+}
+
+ThreadPool* ThreadPool::lookup_tp() {
+  const std::thread::id tid = std::this_thread::get_id();
+  std::lock_guard<std::mutex> lock(tp_index_lock_);
+  if (tp_index_.count(tid) == 1)
+    return tp_index_[tid];
+  return this;
 }
 
 }  // namespace sm

@@ -261,7 +261,11 @@ class VFS {
    * @param config Configuration parameters
    * @return Status
    */
-  Status init(const Config* ctx_config, const Config* vfs_config);
+  Status init(
+      ThreadPool* compute_tp,
+      ThreadPool* io_tp,
+      const Config* ctx_config,
+      const Config* vfs_config);
 
   /**
    * Terminates the virtual system. Must only be called if init() returned
@@ -443,8 +447,11 @@ class VFS {
   /** The set with the supported filesystems. */
   std::set<Filesystem> supported_fs_;
 
-  /** Thread pool for parallel I/O operations. */
-  ThreadPool thread_pool_;
+  /** Thread pool for compute-bound tasks. */
+  ThreadPool* compute_tp_;
+
+  /** Thread pool for io-bound tasks. */
+  ThreadPool* io_tp_;
 
   /** Wrapper for tracking and canceling certain tasks on 'thread_pool' */
   CancelableTasks cancelable_tasks_;

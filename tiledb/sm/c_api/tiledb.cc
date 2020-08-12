@@ -3895,9 +3895,13 @@ int32_t tiledb_vfs_alloc(
   }
 
   // Initialize VFS object
+  auto compute_tp = ctx->ctx_->storage_manager()->compute_tp();
+  auto io_tp = ctx->ctx_->storage_manager()->io_tp();
   auto vfs_config = config ? config->config_ : nullptr;
   auto ctx_config = ctx->ctx_->storage_manager()->config();
-  if (SAVE_ERROR_CATCH(ctx, (*vfs)->vfs_->init(&ctx_config, vfs_config))) {
+  if (SAVE_ERROR_CATCH(
+          ctx,
+          (*vfs)->vfs_->init(compute_tp, io_tp, &ctx_config, vfs_config))) {
     delete (*vfs)->vfs_;
     delete vfs;
     return TILEDB_ERR;
@@ -4500,7 +4504,8 @@ int32_t tiledb_deserialize_query(
               (tiledb::sm::SerializationType)serialize_type,
               client_side == 1,
               nullptr,
-              query->query_)))
+              query->query_,
+              ctx->ctx_->storage_manager()->compute_tp())))
     return TILEDB_ERR;
 
   return TILEDB_OK;
