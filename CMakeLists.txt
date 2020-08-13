@@ -110,12 +110,12 @@ option(TILEDB_LOG_OUTPUT_ON_FAILURE "If true, print error logs if dependency sub
 
 set(TILEDB_INSTALL_LIBDIR "" CACHE STRING "If non-empty, install TileDB library to this directory instead of CMAKE_INSTALL_LIBDIR.")
 
-if (WIN32 AND NOT TILEDB_TBB_SHARED)
+if (MSVC AND NOT TILEDB_TBB_SHARED)
   message(WARNING "Static TBB build not supported on Windows. Continuing with TILEDB_TBB_SHARED=ON.")
   set(TILEDB_TBB_SHARED ON)
 endif()
 
-if (WIN32 AND TILEDB_SERIALIZATION)
+if (MSVC AND TILEDB_SERIALIZATION)
   message(FATAL_ERROR "Serialization support not yet supported on Windows.")
 endif()
 
@@ -164,7 +164,7 @@ set(TILEDB_EP_INSTALL_PREFIX "${TILEDB_EP_BASE}/install")
 ############################################################
 
 # Set compiler flags
-if (WIN32)
+if (MSVC)
   # We disable some warnings that are not present in gcc/clang -Wall:
   #   C4101: unreferenced local variable
   #   C4146: unary minus operator applied to unsigned type
