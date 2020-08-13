@@ -415,9 +415,8 @@ if (WIN32)
   endif()
 
   foreach (LIB ${WIN32_LIBS})
-    find_library(LIB_${LIB} ${LIB})
-    message(STATUS "Found Win32 lib ${LIB}: ${LIB_${LIB}}")
-    target_link_libraries(TILEDB_CORE_OBJECTS_ILIB INTERFACE ${LIB_${LIB}})
+    message(STATUS "Linking to Win32 lib ${LIB}")
+    target_link_libraries(TILEDB_CORE_OBJECTS_ILIB INTERFACE -l${LIB})
   endforeach()
 endif()
 
@@ -795,4 +794,4 @@ configure_file(
         @ONLY
 )
 install(FILES ${CMAKE_CURRENT_BINARY_DIR}/tiledb.pc
-        DESTINATION ${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR}/pkgconfig)
+        DESTINATION ${CMAKE_INSTALL_LIBDIR}/pkgconfig)
