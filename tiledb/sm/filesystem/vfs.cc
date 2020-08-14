@@ -1174,7 +1174,7 @@ Status VFS::read(
   if (num_ops == 1) {
     return read_impl(uri, offset, buffer, nbytes);
   } else {
-    std::vector<std::future<Status>> results;
+    std::vector<ThreadPool::Task> results;
     uint64_t thread_read_nbytes = utils::math::ceil(nbytes, num_ops);
 
     for (uint64_t i = 0; i < num_ops; i++) {
@@ -1249,7 +1249,7 @@ Status VFS::read_all(
     const URI& uri,
     const std::vector<std::tuple<uint64_t, void*, uint64_t>>& regions,
     ThreadPool* thread_pool,
-    std::vector<std::future<Status>>* tasks) {
+    std::vector<ThreadPool::Task>* tasks) {
   if (!init_)
     return LOG_STATUS(Status::VFSError("Cannot read all; VFS not initialized"));
 

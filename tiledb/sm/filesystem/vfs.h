@@ -328,7 +328,7 @@ class VFS {
       const URI& uri,
       const std::vector<std::tuple<uint64_t, void*, uint64_t>>& regions,
       ThreadPool* thread_pool,
-      std::vector<std::future<Status>>* tasks);
+      std::vector<ThreadPool::Task>* tasks);
 
   /** Checks if a given filesystem is supported. */
   bool supports_fs(Filesystem fs) const;
