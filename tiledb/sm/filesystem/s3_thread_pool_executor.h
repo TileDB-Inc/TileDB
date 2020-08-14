@@ -82,7 +82,7 @@ class S3ThreadPoolExecutor : public Aws::Utils::Threading::Executor {
   State state_;
 
   /** All future handles associated with outstanding tasks. */
-  std::unordered_set<std::shared_ptr<std::future<Status>>> tasks_;
+  std::unordered_set<std::shared_ptr<ThreadPool::Task<Status>>> tasks_;
 
   /** Protects 'state_' and 'tasks_'. */
   std::recursive_mutex lock_;

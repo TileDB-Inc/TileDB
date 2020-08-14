@@ -90,9 +90,10 @@ Status ThreadPool::init(const uint64_t concurrency_level) {
   return st;
 }
 
-std::future<Status> ThreadPool::execute(std::function<Status()>&& function) {
+ThreadPool::Task<Status> ThreadPool::execute(
+    std::function<Status()>&& function) {
   if (concurrency_level_ == 0) {
-    std::future<Status> invalid_future;
+    Task<Status> invalid_future;
     LOG_ERROR("Cannot execute task; thread pool uninitialized.");
     return invalid_future;
   }
@@ -100,13 +101,13 @@ std::future<Status> ThreadPool::execute(std::function<Status()>&& function) {
   std::unique_lock<std::mutex> lck(task_stack_mutex_);
 
   if (should_terminate_) {
-    std::future<Status> invalid_future;
+    Task<Status> invalid_future;
     LOG_ERROR("Cannot execute task; thread pool has terminated.");
     return invalid_future;
   }
 
-  std::packaged_task<Status()> task(std::move(function));
-  auto future = task.get_future();
+  PackagedTask<Status()> task(std::move(function));
+  ThreadPool::Task<Status> future = task.get_future();
 
   // When we have a concurrency level > 1, we will have at least
   // one thread available to pick up the task. For a concurrency
@@ -130,7 +131,7 @@ uint64_t ThreadPool::concurrency_level() const {
   return concurrency_level_;
 }
 
-Status ThreadPool::wait_all(std::vector<std::future<Status>>& tasks) {
+Status ThreadPool::wait_all(std::vector<Task<Status>>& tasks) {
   auto statuses = wait_all_status(tasks);
   for (auto& st : statuses) {
     if (!st.ok()) {
@@ -141,7 +142,7 @@ Status ThreadPool::wait_all(std::vector<std::future<Status>>& tasks) {
 }
 
 std::vector<Status> ThreadPool::wait_all_status(
-    std::vector<std::future<Status>>& tasks) {
+    std::vector<Task<Status>>& tasks) {
   std::vector<Status> statuses;
   for (auto& task : tasks) {
     if (!task.valid()) {
@@ -158,18 +159,10 @@ std::vector<Status> ThreadPool::wait_all_status(
   return statuses;
 }
 
-Status ThreadPool::wait_or_work(std::future<Status>&& task) {
+Status ThreadPool::wait_or_work(Task<Status>&& task) {
   do {
-    // If `task` has completed, we're done.
-    const std::future_status task_status =
-        task.wait_for(std::chrono::seconds(0));
-    if (task_status == std::future_status::ready) {
+    if (task.done())
       break;
-    }
-
-    // The task has not completed.
-    assert(task_status != std::future_status::deferred);
-    assert(task_status == std::future_status::timeout);
 
     // Lookup the thread pool that this thread belongs to. If it
     // does not belong to a thread pool, `lookup_tp` will return
@@ -185,7 +178,7 @@ Status ThreadPool::wait_or_work(std::future<Status>&& task) {
 
     // Pull the next task off of the task stack. We specifically use a LIFO
     // ordering to prevent overflowing the call stack.
-    std::packaged_task<Status()> inner_task = std::move(tp->task_stack_.top());
+    PackagedTask<Status()> inner_task = std::move(tp->task_stack_.top());
     tp->task_stack_.pop();
 
     // We're done mutating `tp->task_stack_`.
@@ -196,6 +189,7 @@ Status ThreadPool::wait_or_work(std::future<Status>&& task) {
       inner_task();
   } while (true);
 
+  task.wait();
   return task.get();
 }
 
@@ -217,7 +211,7 @@ void ThreadPool::terminate() {
 
 void ThreadPool::worker(ThreadPool& pool) {
   while (true) {
-    std::packaged_task<Status()> task;
+    PackagedTask<Status()> task;
 
     {
       // Wait until there's work to do.

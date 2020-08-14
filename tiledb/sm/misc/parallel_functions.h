@@ -144,17 +144,19 @@ void parallel_sort(
     std::iter_swap(middle, (end - 1));
 
     // Step #3: Recursively sort the left and right partitions.
-    std::vector<std::future<Status>> tasks;
+    std::vector<ThreadPool::Task<Status>> tasks;
     if (begin != middle) {
       std::function<Status()> quick_sort_left =
           std::bind(quick_sort, depth + 1, begin, middle);
-      std::future<Status> left_task = tp->execute(std::move(quick_sort_left));
+      ThreadPool::Task<Status> left_task =
+          tp->execute(std::move(quick_sort_left));
       tasks.emplace_back(std::move(left_task));
     }
     if (middle != end) {
       std::function<Status()> quick_sort_right =
           std::bind(quick_sort, depth + 1, middle + 1, end);
-      std::future<Status> right_task = tp->execute(std::move(quick_sort_right));
+      ThreadPool::Task<Status> right_task =
+          tp->execute(std::move(quick_sort_right));
       tasks.emplace_back(std::move(right_task));
     }
 
@@ -233,7 +235,7 @@ std::vector<Status> parallel_for(
   // Execute a bound instance of `execute_subrange` for each
   // subrange on the global thread pool.
   uint64_t fn_iter = 0;
-  std::vector<std::future<Status>> tasks;
+  std::vector<ThreadPool::Task<Status>> tasks;
   tasks.reserve(concurrency_level);
   for (size_t i = 0; i < concurrency_level; ++i) {
     const uint64_t task_subrange_len =
@@ -384,7 +386,7 @@ std::vector<Status> parallel_for_2d(
 
   // Execute a bound instance of `execute_subrange_ij` for each
   // 2D subarray on the global thread pool.
-  std::vector<std::future<Status>> tasks;
+  std::vector<ThreadPool::Task<Status>> tasks;
   tasks.reserve(concurrency_level * concurrency_level);
   for (const auto& subrange_i : subranges_i) {
     for (const auto& subrange_j : subranges_j) {

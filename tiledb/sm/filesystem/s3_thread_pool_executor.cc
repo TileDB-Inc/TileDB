@@ -55,36 +55,29 @@ Status S3ThreadPoolExecutor::Stop() {
   if (state_ == State::STOPPED)
     return Status::Ok();
 
-  Status ret_st = Status::Ok();
-
   std::unique_lock<std::recursive_mutex> lock_guard(lock_);
   assert(state_ == State::RUNNING);
   state_ = State::STOPPING;
-  std::unordered_set<std::shared_ptr<std::future<Status>>> tasks =
-      std::move(tasks_);
+  std::vector<ThreadPool::Task<Status>> tasks;
+  tasks.reserve(tasks_->size());
+  for (auto& task : tasks_)
+    tasks.emplace_back(std::move(*task));
   tasks_.clear();
   lock_guard.unlock();
 
   // Wait for all outstanding tasks to complete.
-  for (auto& task : tasks) {
-    assert(task->valid());
-    task->wait();
-    const Status st = task->get();
-    if (!st.ok()) {
-      ret_st = st;
-    }
-  }
+  const Status st = thread_pool_->wait_all(tasks);
 
   lock_guard.lock();
   state_ = State::STOPPED;
   lock_guard.unlock();
 
-  return ret_st;
+  return st;
 }
 
 bool S3ThreadPoolExecutor::SubmitToThread(std::function<void()>&& fn) {
-  std::shared_ptr<std::future<Status>> task_ptr =
-      std::make_shared<std::future<Status>>();
+  std::shared_ptr<ThreadPool::Task<Status>> task_ptr =
+      std::make_shared<ThreadPool::Task<Status>>();
   auto wrapped_fn = [this, fn, task_ptr]() -> Status {
     fn();
 

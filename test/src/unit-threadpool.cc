@@ -46,14 +46,16 @@ TEST_CASE("ThreadPool: Test empty", "[threadpool]") {
 
 TEST_CASE("ThreadPool: Test single thread", "[threadpool]") {
   int result = 0;
-  std::vector<std::future<Status>> results;
+  std::vector<ThreadPool::Task<Status>> results;
   ThreadPool pool;
   REQUIRE(pool.init().ok());
   for (int i = 0; i < 100; i++) {
-    results.push_back(pool.execute([&result]() {
+    ThreadPool::Task<Status> task = pool.execute([&result]() {
       result++;
       return Status::Ok();
-    }));
+    });
+    REQUIRE(task.valid());
+    results.emplace_back(std::move(task));
   }
   CHECK(pool.wait_all(results).ok());
   CHECK(result == 100);
@@ -61,7 +63,7 @@ TEST_CASE("ThreadPool: Test single thread", "[threadpool]") {
 
 TEST_CASE("ThreadPool: Test multiple threads", "[threadpool]") {
   std::atomic<int> result(0);
-  std::vector<std::future<Status>> results;
+  std::vector<ThreadPool::Task<Status>> results;
   ThreadPool pool;
   REQUIRE(pool.init(4).ok());
   for (int i = 0; i < 100; i++) {
@@ -76,7 +78,7 @@ TEST_CASE("ThreadPool: Test multiple threads", "[threadpool]") {
 
 TEST_CASE("ThreadPool: Test wait status", "[threadpool]") {
   std::atomic<int> result(0);
-  std::vector<std::future<Status>> results;
+  std::vector<ThreadPool::Task<Status>> results;
   ThreadPool pool;
   REQUIRE(pool.init(4).ok());
   for (int i = 0; i < 100; i++) {
@@ -95,7 +97,7 @@ TEST_CASE("ThreadPool: Test no wait", "[threadpool]") {
     REQUIRE(pool.init(4).ok());
     std::atomic<int> result(0);
     for (int i = 0; i < 5; i++) {
-      std::future<Status> task = pool.execute([&result]() {
+      ThreadPool::Task<Status> task = pool.execute([&result]() {
         result++;
         std::this_thread::sleep_for(std::chrono::seconds(1));
         return Status::Ok();
@@ -114,7 +116,7 @@ TEST_CASE(
     CancelableTasks cancelable_tasks;
     REQUIRE(pool.init(2).ok());
     std::atomic<int> result(0);
-    std::vector<std::future<Status>> tasks;
+    std::vector<ThreadPool::Task<Status>> tasks;
 
     for (int i = 0; i < 5; i++) {
       tasks.push_back(cancelable_tasks.execute(&pool, [&result]() {
@@ -144,7 +146,7 @@ TEST_CASE(
     CancelableTasks cancelable_tasks;
     REQUIRE(pool.init(2).ok());
     std::atomic<int> result(0), num_cancelled(0);
-    std::vector<std::future<Status>> tasks;
+    std::vector<ThreadPool::Task<Status>> tasks;
 
     for (int i = 0; i < 5; i++) {
       tasks.push_back(cancelable_tasks.execute(
@@ -205,10 +207,10 @@ TEST_CASE("ThreadPool: Test recursion", "[threadpool]") {
 
   const size_t num_tasks = 100;
   const size_t num_nested_tasks = 10;
-  std::vector<std::future<Status>> tasks;
+  std::vector<ThreadPool::Task<Status>> tasks;
   for (size_t i = 0; i < num_tasks; ++i) {
     auto task = pool.execute([&]() {
-      std::vector<std::future<Status>> inner_tasks;
+      std::vector<ThreadPool::Task<Status>> inner_tasks;
       for (size_t j = 0; j < num_nested_tasks; ++j) {
         auto inner_task = pool.execute([&result]() {
           ++result;
