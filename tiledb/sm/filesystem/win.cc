@@ -245,7 +245,7 @@ Status Win::filelock_lock(
     return LOG_STATUS(Status::IOError(
         std::string("Failed to lock '" + filename + "'; CreateFile error")));
   }
-  OVERLAPPED overlapped = {0};
+  OVERLAPPED overlapped = {0, 0, 0, 0, 0};
   if (LockFileEx(
           file_h,
           shared ? 0 : LOCKFILE_EXCLUSIVE_LOCK,
@@ -264,7 +264,7 @@ Status Win::filelock_lock(
 }
 
 Status Win::filelock_unlock(filelock_t fd) const {
-  OVERLAPPED overlapped = {0};
+  OVERLAPPED overlapped = {0, 0, 0, 0, 0};
   if (UnlockFileEx(fd, 0, MAXDWORD, MAXDWORD, &overlapped) == 0) {
     CloseHandle(fd);
     return LOG_STATUS(
@@ -517,7 +517,7 @@ Status Win::write_at(
   while (buffer_size > constants::max_write_bytes) {
     LARGE_INTEGER offset;
     offset.QuadPart = file_offset;
-    OVERLAPPED ov = {0};
+    OVERLAPPED ov = {0, 0, 0, 0, 0};
     ov.Offset = offset.LowPart;
     ov.OffsetHigh = offset.HighPart;
     if (WriteFile(
@@ -537,7 +537,7 @@ Status Win::write_at(
   }
   LARGE_INTEGER offset;
   offset.QuadPart = file_offset;
-  OVERLAPPED ov = {0};
+  OVERLAPPED ov = {0, 0, 0, 0, 0};
   ov.Offset = offset.LowPart;
   ov.OffsetHigh = offset.HighPart;
   if (WriteFile(
@@ -558,7 +558,7 @@ std::string Win::uri_from_path(const std::string& path) {
   unsigned long uri_length = INTERNET_MAX_URL_LENGTH;
   char uri[INTERNET_MAX_URL_LENGTH];
   std::string str_uri;
-  if (UrlCreateFromPath(path.c_str(), uri, &uri_length, NULL) != S_OK) {
+  if (UrlCreateFromPath(path.c_str(), uri, &uri_length, 0) != S_OK) {
     LOG_STATUS(Status::IOError(
         std::string("Failed to convert path '" + path + "' to URI.")));
   }
@@ -577,7 +577,7 @@ std::string Win::path_from_uri(const std::string& uri) {
   unsigned long path_length = MAX_PATH;
   char path[MAX_PATH];
   std::string str_path;
-  if (PathCreateFromUrl(uri_with_scheme.c_str(), path, &path_length, NULL) !=
+  if (PathCreateFromUrl(uri_with_scheme.c_str(), path, &path_length, 0) !=
       S_OK) {
     LOG_STATUS(Status::IOError(std::string(
         "Failed to convert URI '" + uri_with_scheme + "' to path.")));

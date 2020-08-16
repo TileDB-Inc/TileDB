@@ -48,7 +48,7 @@ class Logger {
   /** Verbosity level. */
   enum class Level : char {
     VERBOSE,
-    ERROR,
+    ERR,
   };
 
  public:
@@ -113,7 +113,7 @@ class Logger {
   /**
    * Set the logger level.
    *
-   * @param lvl Logger::Level VERBOSE logs debug statements, ERROR only logs
+   * @param lvl Logger::Level VERBOSE logs debug statements, ERR only logs
    *    Status Error's.
    */
   void set_level(Logger::Level lvl) {
@@ -121,7 +121,7 @@ class Logger {
       case Logger::Level::VERBOSE:
         logger_->set_level(spdlog::level::debug);
         break;
-      case Logger::Level::ERROR:
+      case Logger::Level::ERR:
         logger_->set_level(spdlog::level::err);
         break;
     }
@@ -139,7 +139,7 @@ class Logger {
     switch (lvl) {
       case Logger::Level::VERBOSE:
         return logger_->should_log(spdlog::level::debug);
-      case Logger::Level::ERROR:
+      case Logger::Level::ERR:
         return logger_->should_log(spdlog::level::err);
     }
   }
