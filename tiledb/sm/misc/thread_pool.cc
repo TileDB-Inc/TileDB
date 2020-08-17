@@ -91,30 +91,39 @@ Status ThreadPool::init(const uint64_t concurrency_level) {
   return st;
 }
 
-std::future<Status> ThreadPool::execute(std::function<Status()>&& function) {
+ThreadPool::Task ThreadPool::execute(std::function<Status()>&& function) {
   if (concurrency_level_ == 0) {
-    std::future<Status> invalid_future;
+    Task invalid_future;
     LOG_ERROR("Cannot execute task; thread pool uninitialized.");
     return invalid_future;
   }
 
-  std::unique_lock<std::mutex> lck(task_stack_mutex_);
+  if (!function) {
+    Task invalid_future;
+    LOG_ERROR("Cannot execute task; invalid function.");
+    return invalid_future;
+  }
+
+  std::unique_lock<std::mutex> ul(task_stack_mutex_);
 
   if (should_terminate_) {
-    std::future<Status> invalid_future;
+    Task invalid_future;
     LOG_ERROR("Cannot execute task; thread pool has terminated.");
     return invalid_future;
   }
 
-  std::packaged_task<Status()> task(std::move(function));
-  auto future = task.get_future();
+  PackagedTask task(std::move(function));
+  ThreadPool::Task future = task.get_future();
 
   // When we have a concurrency level > 1, we will have at least
   // one thread available to pick up the task. For a concurrency
   // level == 1, we have no worker threads available. When no
   // worker threads are available, execute the task on this
   // thread.
-  if (concurrency_level_ > 1) {
+  if (concurrency_level_ == 1) {
+    ul.unlock();
+    task();
+  } else {
     // Lookup the thread pool that this thread belongs to. If it
     // does not belong to a thread pool, `lookup_tp` will return
     // `nullptr`.
@@ -124,16 +133,41 @@ std::future<Status> ThreadPool::execute(std::function<Status()>&& function) {
     // execute the task if this thread belongs to `this`. Otherwise,
     // queue it for a worker thread.
     if (tp == this && idle_threads_ == 0) {
-      lck.unlock();
+      ul.unlock();
       task();
     } else {
+      // Add `task` to the stack of pending tasks.
       task_stack_.push(std::move(task));
       task_stack_cv_.notify_one();
-      lck.unlock();
+
+      // The `ul` protects both `task_stack_` and `idle_threads_`,
+      // save a copy of `idle_threads_` before releasing the lock.
+      const uint64_t idle_threads_cp = idle_threads_;
+      ul.unlock();
+
+      // If all threads are busy, signal a thread in `this` that is
+      // blocked waiting on another task. This wakes up one of those
+      // threads to service the `task` that we just added to `task_stack_`.
+      // There is a race here on `idle_threads_` because we just released
+      // the lock. If a thread became idle and picks up `task`, we have
+      // spuriously unlocked a thread in the `wait` path. It will find
+      // that the `task_stack_` is empty and re-enter its wait.
+      if (idle_threads_cp == 0) {
+        blocked_tasks_mutex_.lock();
+        if (!blocked_tasks_.empty()) {
+          // Signal the first blocked task to wake up and check the task
+          // stack for a task to execute.
+          std::shared_ptr<TaskState> blocked_task = *blocked_tasks_.begin();
+          {
+            std::lock_guard<std::mutex> lg(blocked_task->return_st_mutex_);
+            blocked_task->check_task_stack_ = true;
+          }
+          blocked_task->cv_.notify_all();
+          blocked_tasks_.erase(blocked_task);
+        }
+        blocked_tasks_mutex_.unlock();
+      }
     }
-  } else {
-    lck.unlock();
-    task();
   }
 
   assert(future.valid());
@@ -144,7 +178,7 @@ uint64_t ThreadPool::concurrency_level() const {
   return concurrency_level_;
 }
 
-Status ThreadPool::wait_all(std::vector<std::future<Status>>& tasks) {
+Status ThreadPool::wait_all(std::vector<Task>& tasks) {
   auto statuses = wait_all_status(tasks);
   for (auto& st : statuses) {
     if (!st.ok()) {
@@ -154,8 +188,7 @@ Status ThreadPool::wait_all(std::vector<std::future<Status>>& tasks) {
   return Status::Ok();
 }
 
-std::vector<Status> ThreadPool::wait_all_status(
-    std::vector<std::future<Status>>& tasks) {
+std::vector<Status> ThreadPool::wait_all_status(std::vector<Task>& tasks) {
   std::vector<Status> statuses;
   for (auto& task : tasks) {
     if (!task.valid()) {
@@ -172,18 +205,10 @@ std::vector<Status> ThreadPool::wait_all_status(
   return statuses;
 }
 
-Status ThreadPool::wait_or_work(std::future<Status>&& task) {
+Status ThreadPool::wait_or_work(Task&& task) {
   do {
-    // If `task` has completed, we're done.
-    const std::future_status task_status =
-        task.wait_for(std::chrono::seconds(0));
-    if (task_status == std::future_status::ready) {
+    if (task.done())
       break;
-    }
-
-    // The task has not completed.
-    assert(task_status != std::future_status::deferred);
-    assert(task_status == std::future_status::timeout);
 
     // Lookup the thread pool that this thread belongs to. If it
     // does not belong to a thread pool, `lookup_tp` will return
@@ -197,31 +222,73 @@ Status ThreadPool::wait_or_work(std::future<Status>&& task) {
     }
 
     // Lock the `tp->task_stack_` to receive the next task to work on.
-    std::unique_lock<std::mutex> lock(tp->task_stack_mutex_);
+    tp->task_stack_mutex_.lock();
 
     // If there are no pending tasks, we will wait for `task` to complete.
-    if (tp->task_stack_.empty())
-      break;
+    if (tp->task_stack_.empty()) {
+      tp->task_stack_mutex_.unlock();
 
-    // Pull the next task off of the task stack. We specifically use a LIFO
-    // ordering to prevent overflowing the call stack.
-    std::packaged_task<Status()> inner_task = std::move(tp->task_stack_.top());
-    tp->task_stack_.pop();
+      // Add `task` to `blocked_tasks_` so that the `execute()` path can
+      // signal it when a new pending task is available.
+      tp->blocked_tasks_mutex_.lock();
+      tp->blocked_tasks_.insert(task.task_state_);
+      tp->blocked_tasks_mutex_.unlock();
 
-    // We're done mutating `tp->task_stack_`.
-    lock.unlock();
+      // Block until the task is signaled. It will be signaled when it
+      // has completed or when there is new work to execute on `task_stack_`.
+      task.wait();
 
-    // Execute the inner task.
-    if (inner_task.valid())
+      // Remove `task` from `blocked_tasks_`.
+      tp->blocked_tasks_mutex_.lock();
+      if (tp->blocked_tasks_.count(task.task_state_) > 0)
+        tp->blocked_tasks_.erase(task.task_state_);
+      tp->blocked_tasks_mutex_.unlock();
+
+      // After the task has been woken up, check to see if it has completed.
+      if (task.done()) {
+        break;
+      }
+
+      // The task did not complete. This task has been signaled because a new
+      // pending task was added to `task_stack_`. Reset the `check_task_stack_`
+      // flag.
+      {
+        std::lock_guard<std::mutex> lg(task.task_state_->return_st_mutex_);
+        task.task_state_->check_task_stack_ = false;
+      }
+
+      // Lock the `task_stack_` again before checking for the next pending task.
+      tp->task_stack_mutex_.lock();
+    }
+
+    // We may have released and re-aquired the `task_stack_mutex_`. We must
+    // check if it is still non-empty.
+    if (!tp->task_stack_.empty()) {
+      // Pull the next task off of the task stack. We specifically use a LIFO
+      // ordering to prevent overflowing the call stack.
+      PackagedTask inner_task = std::move(tp->task_stack_.top());
+      tp->task_stack_.pop();
+
+      // We're done mutating `tp->task_stack_`.
+      tp->task_stack_mutex_.unlock();
+
+      // Execute the inner task.
+      assert(task.valid());
       inner_task();
+    } else {
+      // The task stack is now empty, retry.
+      tp->task_stack_mutex_.unlock();
+    }
   } while (true);
 
+  // The task has completed and will not block.
+  assert(task.done());
   return task.get();
 }
 
 void ThreadPool::terminate() {
   {
-    std::unique_lock<std::mutex> lck(task_stack_mutex_);
+    std::unique_lock<std::mutex> ul(task_stack_mutex_);
     should_terminate_ = true;
     task_stack_cv_.notify_all();
   }
@@ -237,13 +304,13 @@ void ThreadPool::terminate() {
 
 void ThreadPool::worker(ThreadPool& pool) {
   while (true) {
-    std::packaged_task<Status()> task;
+    PackagedTask task;
 
     {
       // Wait until there's work to do.
-      std::unique_lock<std::mutex> lck(pool.task_stack_mutex_);
+      std::unique_lock<std::mutex> ul(pool.task_stack_mutex_);
       ++pool.idle_threads_;
-      pool.task_stack_cv_.wait(lck, [&pool]() {
+      pool.task_stack_cv_.wait(ul, [&pool]() {
         return pool.should_terminate_ || !pool.task_stack_.empty();
       });
 

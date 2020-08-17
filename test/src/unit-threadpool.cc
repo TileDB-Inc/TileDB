@@ -32,6 +32,7 @@
 
 #include <atomic>
 #include <catch.hpp>
+#include <iostream>
 #include "tiledb/sm/misc/cancelable_tasks.h"
 #include "tiledb/sm/misc/thread_pool.h"
 
@@ -46,14 +47,16 @@ TEST_CASE("ThreadPool: Test empty", "[threadpool]") {
 
 TEST_CASE("ThreadPool: Test single thread", "[threadpool]") {
   int result = 0;
-  std::vector<std::future<Status>> results;
+  std::vector<ThreadPool::Task> results;
   ThreadPool pool;
   REQUIRE(pool.init().ok());
   for (int i = 0; i < 100; i++) {
-    results.push_back(pool.execute([&result]() {
+    ThreadPool::Task task = pool.execute([&result]() {
       result++;
       return Status::Ok();
-    }));
+    });
+    REQUIRE(task.valid());
+    results.emplace_back(std::move(task));
   }
   CHECK(pool.wait_all(results).ok());
   CHECK(result == 100);
@@ -61,7 +64,7 @@ TEST_CASE("ThreadPool: Test single thread", "[threadpool]") {
 
 TEST_CASE("ThreadPool: Test multiple threads", "[threadpool]") {
   std::atomic<int> result(0);
-  std::vector<std::future<Status>> results;
+  std::vector<ThreadPool::Task> results;
   ThreadPool pool;
   REQUIRE(pool.init(4).ok());
   for (int i = 0; i < 100; i++) {
@@ -76,7 +79,7 @@ TEST_CASE("ThreadPool: Test multiple threads", "[threadpool]") {
 
 TEST_CASE("ThreadPool: Test wait status", "[threadpool]") {
   std::atomic<int> result(0);
-  std::vector<std::future<Status>> results;
+  std::vector<ThreadPool::Task> results;
   ThreadPool pool;
   REQUIRE(pool.init(4).ok());
   for (int i = 0; i < 100; i++) {
@@ -95,7 +98,7 @@ TEST_CASE("ThreadPool: Test no wait", "[threadpool]") {
     REQUIRE(pool.init(4).ok());
     std::atomic<int> result(0);
     for (int i = 0; i < 5; i++) {
-      std::future<Status> task = pool.execute([&result]() {
+      ThreadPool::Task task = pool.execute([&result]() {
         result++;
         std::this_thread::sleep_for(std::chrono::seconds(1));
         return Status::Ok();
@@ -114,7 +117,7 @@ TEST_CASE(
     CancelableTasks cancelable_tasks;
     REQUIRE(pool.init(2).ok());
     std::atomic<int> result(0);
-    std::vector<std::future<Status>> tasks;
+    std::vector<ThreadPool::Task> tasks;
 
     for (int i = 0; i < 5; i++) {
       tasks.push_back(cancelable_tasks.execute(&pool, [&result]() {
@@ -144,7 +147,7 @@ TEST_CASE(
     CancelableTasks cancelable_tasks;
     REQUIRE(pool.init(2).ok());
     std::atomic<int> result(0), num_cancelled(0);
-    std::vector<std::future<Status>> tasks;
+    std::vector<ThreadPool::Task> tasks;
 
     for (int i = 0; i < 5; i++) {
       tasks.push_back(cancelable_tasks.execute(
@@ -205,12 +208,12 @@ TEST_CASE("ThreadPool: Test recursion", "[threadpool]") {
   std::atomic<int> result(0);
   const size_t num_tasks = 100;
   const size_t num_nested_tasks = 10;
-  std::vector<std::future<Status>> tasks;
+  std::vector<ThreadPool::Task> tasks;
   for (size_t i = 0; i < num_tasks; ++i) {
     auto task = pool.execute([&]() {
-      std::vector<std::future<Status>> inner_tasks;
+      std::vector<ThreadPool::Task> inner_tasks;
       for (size_t j = 0; j < num_nested_tasks; ++j) {
-        auto inner_task = pool.execute([&result]() {
+        auto inner_task = pool.execute([&]() {
           ++result;
           return Status::Ok();
         });
@@ -230,16 +233,15 @@ TEST_CASE("ThreadPool: Test recursion", "[threadpool]") {
   CHECK(result == (num_tasks * num_nested_tasks));
 
   // Test a top-level execute-and-wait with async-style inner tasks.
-  result = 0;
   std::condition_variable cv;
   std::mutex cv_mutex;
   tasks.clear();
   for (size_t i = 0; i < num_tasks; ++i) {
     auto task = pool.execute([&]() {
       for (size_t j = 0; j < num_nested_tasks; ++j) {
-        pool.execute([&result, &cv, &cv_mutex]() {
+        pool.execute([&]() {
+          std::unique_lock<std::mutex> ul(cv_mutex);
           if (--result == 0) {
-            std::unique_lock<std::mutex> ul(cv_mutex);
             cv.notify_all();
           }
           return Status::Ok();
@@ -254,9 +256,110 @@ TEST_CASE("ThreadPool: Test recursion", "[threadpool]") {
   }
 
   CHECK(pool.wait_all(tasks).ok());
-  std::unique_lock<std::mutex> ul(cv_mutex);
 
   // Wait all inner tasks to complete.
+  std::unique_lock<std::mutex> ul(cv_mutex);
+  while (result > 0)
+    cv.wait(ul);
+}
+
+TEST_CASE("ThreadPool: Test recursion, two pools", "[threadpool]") {
+  ThreadPool pool_a;
+  ThreadPool pool_b;
+
+  SECTION("- One thread") {
+    REQUIRE(pool_a.init(1).ok());
+    REQUIRE(pool_b.init(1).ok());
+  }
+
+  SECTION("- Two threads") {
+    REQUIRE(pool_a.init(2).ok());
+    REQUIRE(pool_b.init(2).ok());
+  }
+
+  SECTION("- Ten threads") {
+    REQUIRE(pool_a.init(10).ok());
+    REQUIRE(pool_b.init(2).ok());
+  }
+
+  // Test recursive execute-and-wait.
+  std::atomic<int> result(0);
+  const size_t num_tasks_a = 10;
+  const size_t num_tasks_b = 10;
+  const size_t num_tasks_c = 10;
+  std::vector<ThreadPool::Task> tasks_a;
+  for (size_t i = 0; i < num_tasks_a; ++i) {
+    auto task_a = pool_a.execute([&]() {
+      std::vector<ThreadPool::Task> tasks_b;
+      for (size_t j = 0; j < num_tasks_b; ++j) {
+        auto task_b = pool_b.execute([&]() {
+          std::vector<ThreadPool::Task> tasks_c;
+          for (size_t k = 0; k < num_tasks_b; ++k) {
+            auto task_c = pool_a.execute([&result]() {
+              ++result;
+              return Status::Ok();
+            });
+
+            tasks_c.emplace_back(std::move(task_c));
+          }
+
+          pool_a.wait_all(tasks_c);
+          return Status::Ok();
+        });
+
+        tasks_b.emplace_back(std::move(task_b));
+      }
+
+      pool_b.wait_all(tasks_b).ok();
+      return Status::Ok();
+    });
+
+    CHECK(task_a.valid());
+    tasks_a.emplace_back(std::move(task_a));
+  }
+  CHECK(pool_a.wait_all(tasks_a).ok());
+  CHECK(result == (num_tasks_a * num_tasks_b * num_tasks_c));
+
+  // Test a top-level execute-and-wait with async-style inner tasks.
+  std::condition_variable cv;
+  std::mutex cv_mutex;
+  tasks_a.clear();
+  for (size_t i = 0; i < num_tasks_a; ++i) {
+    auto task_a = pool_a.execute([&]() {
+      std::vector<ThreadPool::Task> tasks_b;
+      for (size_t j = 0; j < num_tasks_b; ++j) {
+        auto task_b = pool_b.execute([&]() {
+          std::vector<ThreadPool::Task> tasks_c;
+          for (size_t k = 0; k < num_tasks_b; ++k) {
+            auto task_c = pool_a.execute([&]() {
+              if (--result == 0) {
+                std::unique_lock<std::mutex> ul(cv_mutex);
+                cv.notify_all();
+              }
+              return Status::Ok();
+            });
+
+            tasks_c.emplace_back(std::move(task_c));
+          }
+
+          pool_a.wait_all(tasks_c);
+          return Status::Ok();
+        });
+
+        tasks_b.emplace_back(std::move(task_b));
+      }
+
+      pool_b.wait_all(tasks_b).ok();
+      return Status::Ok();
+    });
+
+    CHECK(task_a.valid());
+    tasks_a.emplace_back(std::move(task_a));
+  }
+  CHECK(pool_a.wait_all(tasks_a).ok());
+
+  // Wait all inner tasks to complete.
+  std::unique_lock<std::mutex> ul(cv_mutex);
   while (result > 0)
     cv.wait(ul);
 }

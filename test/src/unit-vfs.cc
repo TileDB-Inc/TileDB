@@ -61,7 +61,7 @@ TEST_CASE("VFS: Test read batching", "[vfs]") {
   REQUIRE(vfs->terminate().ok());
 
   std::vector<std::tuple<uint64_t, void*, uint64_t>> batches;
-  std::vector<std::future<Status>> tasks;
+  std::vector<ThreadPool::Task> tasks;
 
   SECTION("- Default config") {
     // Check reading in one batch: single read operation.

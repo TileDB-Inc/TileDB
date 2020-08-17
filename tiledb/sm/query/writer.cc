@@ -2561,7 +2561,7 @@ Status Writer::write_all_tiles(
 
   assert(!tiles->empty());
 
-  std::vector<std::future<Status>> tasks;
+  std::vector<ThreadPool::Task> tasks;
   for (auto& it : *tiles) {
     tasks.push_back(storage_manager_->io_tp()->execute([&, this]() {
       RETURN_CANCEL_OR_ERROR(write_tiles(it.first, frag_meta, &it.second));

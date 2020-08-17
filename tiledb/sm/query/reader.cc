@@ -2263,7 +2263,7 @@ Status Reader::read_tiles(
     return Status::Ok();
 
   // Read the tiles asynchronously
-  std::vector<std::future<Status>> tasks;
+  std::vector<ThreadPool::Task> tasks;
   RETURN_CANCEL_OR_ERROR(read_tiles(name, result_tiles, &tasks));
 
   // Wait for the reads to finish and check statuses.
@@ -2279,7 +2279,7 @@ Status Reader::read_tiles(
 Status Reader::read_tiles(
     const std::string& name,
     const std::vector<ResultTile*>& result_tiles,
-    std::vector<std::future<Status>>* const tasks) const {
+    std::vector<ThreadPool::Task>* const tasks) const {
   // Shortcut for empty tile vec
   if (result_tiles.empty())
     return Status::Ok();

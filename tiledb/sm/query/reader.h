@@ -1148,7 +1148,7 @@ class Reader {
   Status read_tiles(
       const std::string& name,
       const std::vector<ResultTile*>& result_tiles,
-      std::vector<std::future<Status>>* tasks) const;
+      std::vector<ThreadPool::Task>* tasks) const;
 
   /**
    * Resets the buffer sizes to the original buffer sizes. This is because
