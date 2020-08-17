@@ -218,11 +218,10 @@ TEST_CASE("ThreadPool: Test recursion", "[threadpool]") {
           return Status::Ok();
         });
 
-        CHECK(inner_task.valid());
         inner_tasks.emplace_back(std::move(inner_task));
       }
 
-      CHECK(pool.wait_all(inner_tasks).ok());
+      pool.wait_all(inner_tasks).ok();
       return Status::Ok();
     });
 
