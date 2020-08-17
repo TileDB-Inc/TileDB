@@ -498,7 +498,8 @@ Layout Subarray::layout() const {
   return layout_;
 }
 
-Status Subarray::get_est_result_size(const char* name, uint64_t* size) {
+Status Subarray::get_est_result_size(
+    const char* name, uint64_t* size, ThreadPool* const compute_tp) {
   // Check attribute/dimension name
   if (name == nullptr)
     return LOG_STATUS(
@@ -528,14 +529,17 @@ Status Subarray::get_est_result_size(const char* name, uint64_t* size) {
                               "Attribute/Dimension must be fixed-sized"));
 
   // Compute tile overlap for each fragment
-  RETURN_NOT_OK(compute_est_result_size());
+  RETURN_NOT_OK(compute_est_result_size(compute_tp));
   *size = (uint64_t)ceil(est_result_size_[name].size_fixed_);
 
   return Status::Ok();
 }
 
 Status Subarray::get_est_result_size(
-    const char* name, uint64_t* size_off, uint64_t* size_val) {
+    const char* name,
+    uint64_t* size_off,
+    uint64_t* size_val,
+    ThreadPool* const compute_tp) {
   // Check attribute/dimension name
   if (name == nullptr)
     return LOG_STATUS(
@@ -565,14 +569,15 @@ Status Subarray::get_est_result_size(
                               "Attribute/Dimension must be var-sized"));
 
   // Compute tile overlap for each fragment
-  RETURN_NOT_OK(compute_est_result_size());
+  RETURN_NOT_OK(compute_est_result_size(compute_tp));
   *size_off = (uint64_t)ceil(est_result_size_[name].size_fixed_);
   *size_val = (uint64_t)ceil(est_result_size_[name].size_var_);
 
   return Status::Ok();
 }
 
-Status Subarray::get_max_memory_size(const char* name, uint64_t* size) {
+Status Subarray::get_max_memory_size(
+    const char* name, uint64_t* size, ThreadPool* const compute_tp) {
   // Check attribute/dimension name
   if (name == nullptr)
     return LOG_STATUS(Status::SubarrayError(
@@ -600,14 +605,17 @@ Status Subarray::get_max_memory_size(const char* name, uint64_t* size) {
         "Cannot get max memory size; Attribute/Dimension must be fixed-sized"));
 
   // Compute tile overlap for each fragment
-  compute_est_result_size();
+  compute_est_result_size(compute_tp);
   *size = max_mem_size_[name].size_fixed_;
 
   return Status::Ok();
 }
 
 Status Subarray::get_max_memory_size(
-    const char* name, uint64_t* size_off, uint64_t* size_val) {
+    const char* name,
+    uint64_t* size_off,
+    uint64_t* size_val,
+    ThreadPool* const compute_tp) {
   // Check attribute/dimension name
   if (name == nullptr)
     return LOG_STATUS(Status::SubarrayError(
@@ -635,7 +643,7 @@ Status Subarray::get_max_memory_size(
         "Cannot get max memory size; Attribute/Dimension must be var-sized"));
 
   // Compute tile overlap for each fragment
-  compute_est_result_size();
+  compute_est_result_size(compute_tp);
   *size_off = max_mem_size_[name].size_fixed_;
   *size_val = max_mem_size_[name].size_var_;
 
@@ -896,7 +904,8 @@ Status Subarray::compute_relevant_fragment_est_result_sizes(
     uint64_t range_start,
     uint64_t range_end,
     std::vector<std::vector<ResultSize>>* result_sizes,
-    std::vector<std::vector<MemorySize>>* mem_sizes) {
+    std::vector<std::vector<MemorySize>>* mem_sizes,
+    ThreadPool* const compute_tp) {
   // For easy reference
   auto array_schema = array_->array_schema();
   auto fragment_metadata = array_->fragment_metadata();
@@ -904,7 +913,7 @@ Status Subarray::compute_relevant_fragment_est_result_sizes(
   auto dim_num = array_->array_schema()->dim_num();
   auto layout = (layout_ == Layout::UNORDERED) ? cell_order_ : layout_;
 
-  RETURN_NOT_OK(load_relevant_fragment_tile_var_sizes(names));
+  RETURN_NOT_OK(load_relevant_fragment_tile_var_sizes(names, compute_tp));
 
   // Prepare result sizes vectors
   auto range_num = range_end - range_start + 1;
@@ -921,9 +930,9 @@ Status Subarray::compute_relevant_fragment_est_result_sizes(
 
   auto all_dims_same_type = array_schema->domain()->all_dims_same_type();
   auto all_dims_fixed = array_schema->domain()->all_dims_fixed();
-  auto num_threads = array_->num_threads();
+  auto num_threads = compute_tp->concurrency_level();
   auto ranges_per_thread = (uint64_t)ceil((double)range_num / num_threads);
-  auto statuses = parallel_for(0, num_threads, [&](uint64_t t) {
+  auto statuses = parallel_for(compute_tp, 0, num_threads, [&](uint64_t t) {
     auto r_start = range_start + t * ranges_per_thread;
     auto r_end =
         std::min(range_start + (t + 1) * ranges_per_thread - 1, range_end);
@@ -1000,19 +1009,19 @@ Status Subarray::compute_relevant_fragment_est_result_sizes(
 }
 
 std::unordered_map<std::string, Subarray::ResultSize>
-Subarray::get_est_result_size_map() {
+Subarray::get_est_result_size_map(ThreadPool* const compute_tp) {
   // If the result sizes have not been computed, compute them first
   if (!est_result_size_computed_)
-    compute_est_result_size();
+    compute_est_result_size(compute_tp);
 
   return est_result_size_;
 }
 
 std::unordered_map<std::string, Subarray::MemorySize>
-Subarray::get_max_mem_size_map() {
+Subarray::get_max_mem_size_map(ThreadPool* const compute_tp) {
   // If the result sizes have not been computed, compute them first
   if (!est_result_size_computed_)
-    compute_est_result_size();
+    compute_est_result_size(compute_tp);
 
   return max_mem_size_;
 }
@@ -1258,13 +1267,13 @@ void Subarray::compute_range_offsets() {
   }
 }
 
-Status Subarray::compute_est_result_size() {
+Status Subarray::compute_est_result_size(ThreadPool* const compute_tp) {
   STATS_START_TIMER(stats::Stats::TimerType::READ_COMPUTE_EST_RESULT_SIZE)
 
   if (est_result_size_computed_)
     return Status::Ok();
 
-  RETURN_NOT_OK(compute_tile_overlap());
+  RETURN_NOT_OK(compute_tile_overlap(compute_tp));
 
   // Prepare estimated result size vector for all
   // attributes/dimension and zipped coords
@@ -1294,7 +1303,7 @@ Status Subarray::compute_est_result_size() {
   std::vector<std::vector<MemorySize>> mem_sizes;
   std::vector<std::set<std::pair<unsigned, uint64_t>>> frag_tiles;
   RETURN_NOT_OK(compute_relevant_fragment_est_result_sizes(
-      names, 0, range_num - 1, &result_sizes, &mem_sizes));
+      names, 0, range_num - 1, &result_sizes, &mem_sizes, compute_tp));
 
   // Accummulate the individual estimated result sizes
   std::vector<ResultSize> est_vec(num, ResultSize{0.0, 0.0});
@@ -1577,7 +1586,7 @@ Status Subarray::compute_tile_coords_row() {
   return Status::Ok();
 }
 
-Status Subarray::compute_tile_overlap() {
+Status Subarray::compute_tile_overlap(ThreadPool* const compute_tp) {
   STATS_START_TIMER(stats::Stats::TimerType::READ_COMPUTE_TILE_OVERLAP)
 
   if (tile_overlap_computed_)
@@ -1595,11 +1604,11 @@ Status Subarray::compute_tile_overlap() {
     tile_overlap_[i].resize(range_num);
 
   // Compute relevant fragments to the subarray
-  RETURN_NOT_OK(compute_relevant_fragments());
+  RETURN_NOT_OK(compute_relevant_fragments(compute_tp));
 
   // Load the R-Trees and compute tile overlap only for relevant fragments
-  RETURN_NOT_OK(load_relevant_fragment_rtrees());
-  RETURN_NOT_OK(compute_relevant_fragment_tile_overlap());
+  RETURN_NOT_OK(load_relevant_fragment_rtrees(compute_tp));
+  RETURN_NOT_OK(compute_relevant_fragment_tile_overlap(compute_tp));
 
   tile_overlap_computed_ = true;
 
@@ -1760,7 +1769,7 @@ void Subarray::swap(Subarray& subarray) {
   std::swap(relevant_fragments_, subarray.relevant_fragments_);
 }
 
-Status Subarray::compute_relevant_fragments() {
+Status Subarray::compute_relevant_fragments(ThreadPool* const compute_tp) {
   STATS_START_TIMER(stats::Stats::TimerType::READ_COMPUTE_RELEVANT_FRAGS)
 
   auto meta = array_->fragment_metadata();
@@ -1770,7 +1779,7 @@ Status Subarray::compute_relevant_fragments() {
 
   // Compute the relevant fragments
   auto statuses = parallel_for_2d(
-      0, fragment_num, 0, range_num, [&](unsigned f, uint64_t r) {
+      compute_tp, 0, fragment_num, 0, range_num, [&](unsigned f, uint64_t r) {
         if (frag_bitmap[f] == 0 &&
             meta[f]->overlaps_non_empty_domain(this->ndrange(r)))
           frag_bitmap[f] = 1;
@@ -1790,15 +1799,17 @@ Status Subarray::compute_relevant_fragments() {
   STATS_END_TIMER(stats::Stats::TimerType::READ_COMPUTE_RELEVANT_FRAGS)
 }
 
-Status Subarray::load_relevant_fragment_rtrees() const {
+Status Subarray::load_relevant_fragment_rtrees(
+    ThreadPool* const compute_tp) const {
   STATS_START_TIMER(stats::Stats::TimerType::READ_LOAD_RELEVANT_RTREES)
 
   auto meta = array_->fragment_metadata();
   auto encryption_key = array_->encryption_key();
 
-  auto statuses = parallel_for(0, relevant_fragments_.size(), [&](uint64_t f) {
-    return meta[relevant_fragments_[f]]->load_rtree(*encryption_key);
-  });
+  auto statuses =
+      parallel_for(compute_tp, 0, relevant_fragments_.size(), [&](uint64_t f) {
+        return meta[relevant_fragments_[f]]->load_rtree(*encryption_key);
+      });
   for (auto st : statuses)
     RETURN_NOT_OK(st);
 
@@ -1807,17 +1818,20 @@ Status Subarray::load_relevant_fragment_rtrees() const {
   STATS_END_TIMER(stats::Stats::TimerType::READ_LOAD_RELEVANT_RTREES)
 }
 
-Status Subarray::compute_relevant_fragment_tile_overlap() {
+Status Subarray::compute_relevant_fragment_tile_overlap(
+    ThreadPool* const compute_tp) {
   STATS_START_TIMER(stats::Stats::TimerType::READ_COMPUTE_RELEVANT_TILE_OVERLAP)
 
   const auto& meta = array_->fragment_metadata();
   auto range_num = this->range_num();
 
-  auto statuses = parallel_for(0, relevant_fragments_.size(), [&](uint64_t i) {
-    auto f = relevant_fragments_[i];
-    auto dense = meta[f]->dense();
-    return compute_relevant_fragment_tile_overlap(meta[f], f, dense, range_num);
-  });
+  auto statuses =
+      parallel_for(compute_tp, 0, relevant_fragments_.size(), [&](uint64_t i) {
+        auto f = relevant_fragments_[i];
+        auto dense = meta[f]->dense();
+        return compute_relevant_fragment_tile_overlap(
+            meta[f], f, dense, range_num, compute_tp);
+      });
   for (const auto& st : statuses)
     RETURN_NOT_OK(st);
 
@@ -1827,10 +1841,14 @@ Status Subarray::compute_relevant_fragment_tile_overlap() {
 }
 
 Status Subarray::compute_relevant_fragment_tile_overlap(
-    FragmentMetadata* meta, unsigned frag_idx, bool dense, uint64_t range_num) {
-  auto num_threads = array_->num_threads();
+    FragmentMetadata* meta,
+    unsigned frag_idx,
+    bool dense,
+    uint64_t range_num,
+    ThreadPool* const compute_tp) {
+  auto num_threads = compute_tp->concurrency_level();
   auto ranges_per_thread = (uint64_t)ceil((double)range_num / num_threads);
-  auto statuses = parallel_for(0, num_threads, [&](uint64_t t) {
+  auto statuses = parallel_for(compute_tp, 0, num_threads, [&](uint64_t t) {
     auto r_start = t * ranges_per_thread;
     auto r_end = std::min((t + 1) * ranges_per_thread - 1, range_num - 1);
     for (uint64_t r = r_start; r <= r_end; ++r) {
@@ -1852,7 +1870,7 @@ Status Subarray::compute_relevant_fragment_tile_overlap(
 }
 
 Status Subarray::load_relevant_fragment_tile_var_sizes(
-    const std::vector<std::string>& names) const {
+    const std::vector<std::string>& names, ThreadPool* const compute_tp) const {
   auto array_schema = array_->array_schema();
   auto encryption_key = array_->encryption_key();
   auto meta = array_->fragment_metadata();
@@ -1871,8 +1889,8 @@ Status Subarray::load_relevant_fragment_tile_var_sizes(
 
   // Load all metadata for tile var sizes among fragments.
   for (const auto& var_name : var_names) {
-    const auto statuses =
-        parallel_for(0, relevant_fragments_.size(), [&](const size_t i) {
+    const auto statuses = parallel_for(
+        compute_tp, 0, relevant_fragments_.size(), [&](const size_t i) {
           auto f = relevant_fragments_[i];
           return meta[f]->load_tile_var_sizes(*encryption_key, var_name);
         });

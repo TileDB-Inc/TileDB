@@ -36,6 +36,7 @@
 #include <unordered_map>
 
 #include "tiledb/sm/misc/status.h"
+#include "tiledb/sm/misc/thread_pool.h"
 
 namespace tiledb {
 namespace sm {
@@ -133,7 +134,8 @@ Status query_deserialize(
     SerializationType serialize_type,
     bool clientside,
     CopyState* copy_state,
-    Query* query);
+    Query* query,
+    ThreadPool* compute_tp);
 
 /**
  * Serialize an estimated result size map for all fields from a query object

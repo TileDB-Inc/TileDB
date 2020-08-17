@@ -879,19 +879,21 @@ Status VFS::is_bucket(const URI& uri, bool* is_bucket) const {
       Status::VFSError("Unsupported URI scheme: " + uri.to_string()));
 }
 
-Status VFS::init(const Config* ctx_config, const Config* vfs_config) {
+Status VFS::init(
+    ThreadPool* const compute_tp,
+    ThreadPool* const io_tp,
+    const Config* const ctx_config,
+    const Config* const vfs_config) {
+  assert(compute_tp);
+  assert(io_tp);
+  compute_tp_ = compute_tp;
+  io_tp_ = io_tp;
+
   // Set appropriately the config
   if (ctx_config)
     config_ = *ctx_config;
   if (vfs_config)
     config_.inherit(*vfs_config);
-
-  bool found = false;
-  uint64_t nthreads = 0;
-  RETURN_NOT_OK(config_.get<uint64_t>("vfs.num_threads", &nthreads, &found));
-  assert(found);
-
-  RETURN_NOT_OK(thread_pool_.init(nthreads));
 
 #ifdef HAVE_HDFS
   hdfs_ = std::unique_ptr<hdfs::HDFS>(new (std::nothrow) hdfs::HDFS());
@@ -902,15 +904,15 @@ Status VFS::init(const Config* ctx_config, const Config* vfs_config) {
 #endif
 
 #ifdef HAVE_S3
-  RETURN_NOT_OK(s3_.init(config_, &thread_pool_));
+  RETURN_NOT_OK(s3_.init(config_, io_tp_));
 #endif
 
 #ifdef HAVE_AZURE
-  RETURN_NOT_OK(azure_.init(config_, &thread_pool_));
+  RETURN_NOT_OK(azure_.init(config_, io_tp_));
 #endif
 
 #ifdef HAVE_GCS
-  Status st = gcs_.init(config_, &thread_pool_);
+  Status st = gcs_.init(config_, io_tp_);
   if (!st.ok()) {
     // We should print some warning here, this LOG_STATUS only prints in
     // verbose mode. Since this is called in the init of the context, we
@@ -923,9 +925,9 @@ Status VFS::init(const Config* ctx_config, const Config* vfs_config) {
 #endif
 
 #ifdef WIN32
-  win_.init(config_, &thread_pool_);
+  win_.init(config_, io_tp_);
 #else
-  posix_.init(config_, &thread_pool_);
+  posix_.init(config_, io_tp_);
 #endif
 
   init_ = true;
@@ -982,7 +984,7 @@ Status VFS::ls(const URI& parent, std::vector<URI>* uris) const {
     return LOG_STATUS(
         Status::VFSError("Unsupported URI scheme: " + parent.to_string()));
   }
-  parallel_sort(paths.begin(), paths.end());
+  parallel_sort(compute_tp_, paths.begin(), paths.end());
   for (auto& path : paths) {
     uris->emplace_back(path);
   }
@@ -1182,13 +1184,12 @@ Status VFS::read(
       uint64_t thread_offset = offset + begin;
       auto thread_buffer = reinterpret_cast<char*>(buffer) + begin;
       auto task = cancelable_tasks_.execute(
-          &thread_pool_,
-          [this, uri, thread_offset, thread_buffer, thread_nbytes]() {
+          io_tp_, [this, uri, thread_offset, thread_buffer, thread_nbytes]() {
             return read_impl(uri, thread_offset, thread_buffer, thread_nbytes);
           });
       results.push_back(std::move(task));
     }
-    Status st = thread_pool_.wait_all(results);
+    Status st = io_tp_->wait_all(results);
     if (!st.ok()) {
       std::stringstream errmsg;
       errmsg << "VFS parallel read error '" << uri.to_string() << "'; "
@@ -1252,9 +1253,6 @@ Status VFS::read_all(
   if (!init_)
     return LOG_STATUS(Status::VFSError("Cannot read all; VFS not initialized"));
 
-  // Ensure no deadlock due to shared threadpool
-  assert(thread_pool != &thread_pool_);
-
   if (regions.empty())
     return Status::Ok();
 
@@ -1307,6 +1305,7 @@ Status VFS::compute_read_batches(
   std::vector<std::tuple<uint64_t, void*, uint64_t>> sorted_regions(
       regions.begin(), regions.end());
   parallel_sort(
+      compute_tp_,
       sorted_regions.begin(),
       sorted_regions.end(),
       [](const std::tuple<uint64_t, void*, uint64_t>& a,

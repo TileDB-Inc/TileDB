@@ -264,8 +264,10 @@ void SubarrayPartitionerDenseFx::test_subarray_partitioner(
   Subarray subarray;
   create_subarray(array_->array_, ranges, subarray_layout, &subarray);
 
+  ThreadPool tp;
+  CHECK(tp.init(4).ok());
   SubarrayPartitioner subarray_partitioner(
-      subarray, memory_budget_, memory_budget_var_);
+      subarray, memory_budget_, memory_budget_var_, &tp);
   auto st = subarray_partitioner.set_result_budget(attr.c_str(), budget);
   CHECK(st.ok());
 
@@ -283,8 +285,10 @@ void SubarrayPartitionerDenseFx::test_subarray_partitioner(
   Subarray subarray;
   create_subarray(array_->array_, ranges, subarray_layout, &subarray);
 
+  ThreadPool tp;
+  CHECK(tp.init(4).ok());
   SubarrayPartitioner subarray_partitioner(
-      subarray, memory_budget_, memory_budget_var_);
+      subarray, memory_budget_, memory_budget_var_, &tp);
 
   // Note: this is necessary, otherwise the subarray partitioner does
   // not check if the memory budget is exceeded for attributes whose
@@ -555,8 +559,10 @@ TEST_CASE_METHOD(
 
   create_subarray(array_->array_, ranges, subarray_layout, &subarray);
 
+  ThreadPool tp;
+  CHECK(tp.init(4).ok());
   SubarrayPartitioner subarray_partitioner(
-      subarray, memory_budget_, memory_budget_var_);
+      subarray, memory_budget_, memory_budget_var_, &tp);
   auto st = subarray_partitioner.set_result_budget("a", 100 * sizeof(int));
   CHECK(st.ok());
   st = subarray_partitioner.set_result_budget("b", 1, 1);

@@ -38,6 +38,7 @@
 #include <mutex>
 #include <stack>
 #include <thread>
+#include <unordered_map>
 #include <vector>
 
 #include "tiledb/sm/misc/status.h"
@@ -113,7 +114,7 @@ class ThreadPool {
 
   uint64_t concurrency_level_;
 
-  /** Protects `task_stack_` */
+  /** Protects `task_stack_` and `idle_threads_`. */
   std::mutex task_stack_mutex_;
 
   /** Notifies work threads to check `task_stack_` for work. */
@@ -122,11 +123,23 @@ class ThreadPool {
   /** Pending tasks in LIFO ordering. */
   std::stack<std::packaged_task<Status()>> task_stack_;
 
+  /**
+   * The number of threads waiting for the `task_stack_` to
+   * become non-empty.
+   */
+  uint64_t idle_threads_;
+
   /** The worker threads. */
   std::vector<std::thread> threads_;
 
   /** When true, all pending tasks will remain unscheduled. */
   bool should_terminate_;
+
+  /** Indexes thread ids to the ThreadPool instance they belong to. */
+  static std::unordered_map<std::thread::id, ThreadPool*> tp_index_;
+
+  /** Protects 'tp_index_'. */
+  static std::mutex tp_index_lock_;
 
   /* ********************************* */
   /*          PRIVATE METHODS          */
@@ -145,6 +158,15 @@ class ThreadPool {
 
   /** The worker thread routine. */
   static void worker(ThreadPool& pool);
+
+  // Add indexes from each thread to this instance.
+  void add_tp_index();
+
+  // Remove indexes from each thread to this instance.
+  void remove_tp_index();
+
+  // Lookup the thread pool instance from the calling thread.
+  ThreadPool* lookup_tp();
 };
 
 }  // namespace sm

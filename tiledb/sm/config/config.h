@@ -118,14 +118,11 @@ class Config {
   /** Whether or not the signal handlers are installed. */
   static const std::string SM_ENABLE_SIGNAL_HANDLERS;
 
-  /** The number of threads allocated per StorageManager for async queries. */
-  static const std::string SM_NUM_ASYNC_THREADS;
+  /** The maximum concurrency level for compute-bound operations. */
+  static const std::string SM_COMPUTE_CONCURRENCY_LEVEL;
 
-  /** The number of threads allocated per StorageManager for the Reader pool. */
-  static const std::string SM_NUM_READER_THREADS;
-
-  /** The number of threads allocated per StorageManager for the Writer pool. */
-  static const std::string SM_NUM_WRITER_THREADS;
+  /** The maximum concurrency level for io-bound operations. */
+  static const std::string SM_IO_CONCURRENCY_LEVEL;
 
   /** The number of threads allocated for TBB. */
   static const std::string SM_NUM_TBB_THREADS;
@@ -179,9 +176,6 @@ class Config {
    *     - "array_meta": only the array metadata will be vacuumed
    */
   static const std::string SM_VACUUM_MODE;
-
-  /** The default number of allocated VFS threads. */
-  static const std::string VFS_NUM_THREADS;
 
   /** The default minimum number of bytes in a parallel VFS operation. */
   static const std::string VFS_MIN_PARALLEL_SIZE;

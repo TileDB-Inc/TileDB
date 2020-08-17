@@ -37,6 +37,7 @@
 
 #include <unordered_map>
 #include "tiledb/sm/misc/constants.h"
+#include "tiledb/sm/misc/thread_pool.h"
 #include "tiledb/sm/subarray/subarray.h"
 
 namespace tiledb {
@@ -154,7 +155,8 @@ class SubarrayPartitioner {
   SubarrayPartitioner(
       const Subarray& subarray,
       uint64_t memory_budget,
-      uint64_t memory_budget_var);
+      uint64_t memory_budget_var,
+      ThreadPool* compute_tp);
 
   /** Destructor. */
   ~SubarrayPartitioner();
@@ -299,6 +301,9 @@ class SubarrayPartitioner {
 
   /** The memory budget for the var-sized attributes. */
   uint64_t memory_budget_var_;
+
+  /** The thread pool for compute-bound tasks. */
+  ThreadPool* compute_tp_;
 
   /* ********************************* */
   /*           PRIVATE METHODS         */

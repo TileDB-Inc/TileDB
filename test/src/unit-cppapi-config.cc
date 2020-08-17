@@ -60,7 +60,7 @@ TEST_CASE("C++ API: Config iterator", "[cppapi], [cppapi-config]") {
     names.push_back(it->first);
   }
   // Check number of VFS params in default config object.
-  CHECK(names.size() == 45);
+  CHECK(names.size() == 44);
 }
 
 TEST_CASE(
@@ -90,14 +90,14 @@ TEST_CASE(
     "C++ API: Config Environment Variables Default Override",
     "[cppapi], [cppapi-config]") {
   tiledb::Config config;
-  const std::string key = "vfs.num_threads";
+  const std::string key = "sm.io_concurrency_level";
 
   unsigned int threads = std::thread::hardware_concurrency();
   const std::string result1 = config[key];
   CHECK(result1 == std::to_string(threads));
 
   const std::string value2 = std::to_string(threads + 1);
-  setenv_local("TILEDB_VFS_NUM_THREADS", value2.c_str());
+  setenv_local("TILEDB_SM_IO_CONCURRENCY_LEVEL", value2.c_str());
   const std::string result2 = config[key];
   CHECK(result2 == value2);
 

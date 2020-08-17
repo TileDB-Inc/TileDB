@@ -34,6 +34,7 @@
 #define TILEDB_PARALLEL_FUNCTIONS_H
 
 #include "tiledb/sm/global_state/global_state.h"
+#include "tiledb/sm/misc/thread_pool.h"
 
 #include <algorithm>
 #include <cassert>
@@ -53,6 +54,7 @@ namespace sm {
  *
  * @tparam IterT Iterator type
  * @tparam CmpT Comparator type
+ * @param tp The threadpool to use.
  * @param begin Beginning of range to sort (inclusive).
  * @param end End of range to sort (exclusive).
  * @param cmp Comparator.
@@ -60,8 +62,10 @@ namespace sm {
 template <
     typename IterT,
     typename CmpT = std::less<typename std::iterator_traits<IterT>::value_type>>
-void parallel_sort(IterT begin, IterT end, const CmpT& cmp = CmpT()) {
+void parallel_sort(
+    ThreadPool* const tp, IterT begin, IterT end, const CmpT& cmp = CmpT()) {
 #ifdef HAVE_TBB
+  (void)tp;
   tbb::parallel_sort(begin, end, cmp);
 #else
   // Sort the range using a quicksort. The algorithm is:
@@ -71,9 +75,8 @@ void parallel_sort(IterT begin, IterT end, const CmpT& cmp = CmpT()) {
   // 3. Recursively invoke step 1.
   //
   // To parallelize the algorithm, step #3 is modified to execute
-  // the recursion on the global thread pool.
-  std::shared_ptr<ThreadPool> tp =
-      global_state::GlobalState::GetGlobalState().tp();
+  // the recursion on the thread pool.
+  assert(tp);
 
   // Calculate the maximum height of the recursive call stack tree
   // where each leaf node can be assigned to a single level of
@@ -165,8 +168,20 @@ void parallel_sort(IterT begin, IterT end, const CmpT& cmp = CmpT()) {
 #endif
 }
 
+/**
+ * Call the given function on each element in the given iterator range.
+ *
+ * @tparam IterT Iterator type
+ * @tparam FuncT Function type (returning Status).
+ * @param tp The threadpool to use.
+ * @param begin Beginning of range (inclusive).
+ * @param end End of range (exclusive).
+ * @param F Function to call on each item
+ * @return Vector of Status objects, one for each function invocation.
+ */
 template <typename FuncT>
-std::vector<Status> parallel_for(uint64_t begin, uint64_t end, const FuncT& F) {
+std::vector<Status> parallel_for(
+    ThreadPool* const tp, uint64_t begin, uint64_t end, const FuncT& F) {
   assert(begin <= end);
 
   std::vector<Status> result;
@@ -176,11 +191,14 @@ std::vector<Status> parallel_for(uint64_t begin, uint64_t end, const FuncT& F) {
     return result;
 
 #ifdef HAVE_TBB
+  (void)tp;
   result.resize(range_len);
   tbb::parallel_for(begin, end, [begin, &result, &F](uint64_t i) {
     result[i - begin] = F(i);
   });
 #else
+  assert(tp);
+
   // The return vector will be a single Status object containing
   // the first failed status that we encounter. When we remove TBB,
   // we will change the interface to return a single Status object.
@@ -205,10 +223,6 @@ std::vector<Status> parallel_for(uint64_t begin, uint64_t end, const FuncT& F) {
 
     return Status::Ok();
   };
-
-  // Fetch the global thread pool.
-  std::shared_ptr<ThreadPool> tp =
-      global_state::GlobalState::GetGlobalState().tp();
 
   // Calculate the length of the subrange that each thread will
   // be responsible for.
@@ -252,6 +266,7 @@ std::vector<Status> parallel_for(uint64_t begin, uint64_t end, const FuncT& F) {
  * possibly in parallel.
  *
  * @tparam FuncT Function type (returning Status).
+ * @param tp The threadpool to use.
  * @param i0 Inclusive start of outer (rows) range.
  * @param i1 Exclusive end of outer range.
  * @param j0 Inclusive start of inner (cols) range.
@@ -261,13 +276,19 @@ std::vector<Status> parallel_for(uint64_t begin, uint64_t end, const FuncT& F) {
  */
 template <typename FuncT>
 std::vector<Status> parallel_for_2d(
-    uint64_t i0, uint64_t i1, uint64_t j0, uint64_t j1, const FuncT& F) {
+    ThreadPool* const tp,
+    uint64_t i0,
+    uint64_t i1,
+    uint64_t j0,
+    uint64_t j1,
+    const FuncT& F) {
   assert(i0 <= i1);
   assert(j0 <= j1);
 
   std::vector<Status> result;
 
 #ifdef HAVE_TBB
+  (void)tp;
   const uint64_t num_i_iters = i1 - i0 + 1, num_j_iters = j1 - j0 + 1;
   const uint64_t num_iters = num_i_iters * num_j_iters;
   result.resize(num_iters);
@@ -287,6 +308,8 @@ std::vector<Status> parallel_for_2d(
       });
   return result;
 #else
+  assert(tp);
+
   const uint64_t range_len_i = i1 - i0;
   const uint64_t range_len_j = j1 - j0;
 
@@ -299,10 +322,6 @@ std::vector<Status> parallel_for_2d(
   bool failed = false;
   Status return_st = Status::Ok();
   std::mutex return_st_mutex;
-
-  // Fetch the global thread pool.
-  std::shared_ptr<ThreadPool> tp =
-      global_state::GlobalState::GetGlobalState().tp();
 
   // Calculate the length of the subrange-i and subrange-j that
   // each thread will be responsible for.

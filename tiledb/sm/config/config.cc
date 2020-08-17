@@ -61,10 +61,9 @@ const std::string Config::SM_MEMORY_BUDGET = "5368709120";       // 5GB
 const std::string Config::SM_MEMORY_BUDGET_VAR = "10737418240";  // 10GB;
 const std::string Config::SM_SUB_PARTITIONER_MEMORY_BUDGET = "0";
 const std::string Config::SM_ENABLE_SIGNAL_HANDLERS = "true";
-const std::string Config::SM_NUM_ASYNC_THREADS = "1";
-const std::string Config::SM_NUM_READER_THREADS =
+const std::string Config::SM_COMPUTE_CONCURRENCY_LEVEL =
     utils::parse::to_str(std::thread::hardware_concurrency());
-const std::string Config::SM_NUM_WRITER_THREADS =
+const std::string Config::SM_IO_CONCURRENCY_LEVEL =
     utils::parse::to_str(std::thread::hardware_concurrency());
 #ifdef HAVE_TBB
 const std::string Config::SM_NUM_TBB_THREADS =
@@ -81,24 +80,25 @@ const std::string Config::SM_CONSOLIDATION_STEP_MAX_FRAGS = "4294967295";
 const std::string Config::SM_CONSOLIDATION_STEP_SIZE_RATIO = "0.0";
 const std::string Config::SM_CONSOLIDATION_MODE = "fragments";
 const std::string Config::SM_VACUUM_MODE = "fragments";
-const std::string Config::VFS_NUM_THREADS =
-    utils::parse::to_str(std::thread::hardware_concurrency());
 const std::string Config::VFS_MIN_PARALLEL_SIZE = "10485760";
 const std::string Config::VFS_MIN_BATCH_GAP = "512000";
 const std::string Config::VFS_MIN_BATCH_SIZE = "20971520";
 const std::string Config::VFS_FILE_POSIX_FILE_PERMISSIONS = "644";
 const std::string Config::VFS_FILE_POSIX_DIRECTORY_PERMISSIONS = "755";
-const std::string Config::VFS_FILE_MAX_PARALLEL_OPS = Config::VFS_NUM_THREADS;
+const std::string Config::VFS_FILE_MAX_PARALLEL_OPS =
+    Config::SM_IO_CONCURRENCY_LEVEL;
 const std::string Config::VFS_FILE_ENABLE_FILELOCKS = "true";
 const std::string Config::VFS_AZURE_STORAGE_ACCOUNT_NAME = "";
 const std::string Config::VFS_AZURE_STORAGE_ACCOUNT_KEY = "";
 const std::string Config::VFS_AZURE_BLOB_ENDPOINT = "";
 const std::string Config::VFS_AZURE_USE_HTTPS = "true";
-const std::string Config::VFS_AZURE_MAX_PARALLEL_OPS = Config::VFS_NUM_THREADS;
+const std::string Config::VFS_AZURE_MAX_PARALLEL_OPS =
+    Config::SM_IO_CONCURRENCY_LEVEL;
 const std::string Config::VFS_AZURE_BLOCK_LIST_BLOCK_SIZE = "5242880";
 const std::string Config::VFS_AZURE_USE_BLOCK_LIST_UPLOAD = "true";
 const std::string Config::VFS_GCS_PROJECT_ID = "";
-const std::string Config::VFS_GCS_MAX_PARALLEL_OPS = Config::VFS_NUM_THREADS;
+const std::string Config::VFS_GCS_MAX_PARALLEL_OPS =
+    Config::SM_IO_CONCURRENCY_LEVEL;
 const std::string Config::VFS_GCS_MULTI_PART_SIZE = "5242880";
 const std::string Config::VFS_GCS_USE_MULTI_PART_UPLOAD = "true";
 const std::string Config::VFS_S3_REGION = "us-east-1";
@@ -109,7 +109,8 @@ const std::string Config::VFS_S3_SCHEME = "https";
 const std::string Config::VFS_S3_ENDPOINT_OVERRIDE = "";
 const std::string Config::VFS_S3_USE_VIRTUAL_ADDRESSING = "true";
 const std::string Config::VFS_S3_USE_MULTIPART_UPLOAD = "true";
-const std::string Config::VFS_S3_MAX_PARALLEL_OPS = Config::VFS_NUM_THREADS;
+const std::string Config::VFS_S3_MAX_PARALLEL_OPS =
+    Config::SM_IO_CONCURRENCY_LEVEL;
 const std::string Config::VFS_S3_MULTIPART_PART_SIZE = "5242880";
 const std::string Config::VFS_S3_CA_FILE = "";
 const std::string Config::VFS_S3_CA_PATH = "";
@@ -168,9 +169,8 @@ Config::Config() {
   param_values_["sm.sub_partitioner_memory_budget"] =
       SM_SUB_PARTITIONER_MEMORY_BUDGET;
   param_values_["sm.enable_signal_handlers"] = SM_ENABLE_SIGNAL_HANDLERS;
-  param_values_["sm.num_async_threads"] = SM_NUM_ASYNC_THREADS;
-  param_values_["sm.num_reader_threads"] = SM_NUM_READER_THREADS;
-  param_values_["sm.num_writer_threads"] = SM_NUM_WRITER_THREADS;
+  param_values_["sm.compute_concurrency_level"] = SM_COMPUTE_CONCURRENCY_LEVEL;
+  param_values_["sm.io_concurrency_level"] = SM_IO_CONCURRENCY_LEVEL;
   param_values_["sm.num_tbb_threads"] = SM_NUM_TBB_THREADS;
   param_values_["sm.skip_checksum_validation"] = SM_SKIP_CHECKSUM_VALIDATION;
   param_values_["sm.consolidation.amplification"] =
@@ -185,7 +185,6 @@ Config::Config() {
   param_values_["sm.consolidation.steps"] = SM_CONSOLIDATION_STEPS;
   param_values_["sm.consolidation.mode"] = SM_CONSOLIDATION_MODE;
   param_values_["sm.vacuum.mode"] = SM_VACUUM_MODE;
-  param_values_["vfs.num_threads"] = VFS_NUM_THREADS;
   param_values_["vfs.min_parallel_size"] = VFS_MIN_PARALLEL_SIZE;
   param_values_["vfs.min_batch_gap"] = VFS_MIN_BATCH_GAP;
   param_values_["vfs.min_batch_size"] = VFS_MIN_BATCH_SIZE;
@@ -389,12 +388,11 @@ Status Config::unset(const std::string& param) {
         SM_SUB_PARTITIONER_MEMORY_BUDGET;
   } else if (param == "sm.enable_signal_handlers") {
     param_values_["sm.enable_signal_handlers"] = SM_ENABLE_SIGNAL_HANDLERS;
-  } else if (param == "sm.num_async_threads") {
-    param_values_["sm.num_async_threads"] = SM_NUM_ASYNC_THREADS;
-  } else if (param == "sm.num_reader_threads") {
-    param_values_["sm.num_reader_threads"] = SM_NUM_READER_THREADS;
-  } else if (param == "sm.num_writer_threads") {
-    param_values_["sm.num_writer_threads"] = SM_NUM_WRITER_THREADS;
+  } else if (param == "sm.compute_concurrency_level") {
+    param_values_["sm.compute_concurrency_level"] =
+        SM_COMPUTE_CONCURRENCY_LEVEL;
+  } else if (param == "sm.io_concurrency_level") {
+    param_values_["sm.io_concurrency_level"] = SM_IO_CONCURRENCY_LEVEL;
   } else if (param == "sm.num_tbb_threads") {
     param_values_["sm.num_tbb_threads"] = SM_NUM_TBB_THREADS;
   } else if (param == "sm.consolidation.amplification") {
@@ -418,8 +416,6 @@ Status Config::unset(const std::string& param) {
     param_values_["sm.consolidation.mode"] = SM_CONSOLIDATION_MODE;
   } else if (param == "sm.vacuum.mode") {
     param_values_["sm.vacuum.mode"] = SM_VACUUM_MODE;
-  } else if (param == "vfs.num_threads") {
-    param_values_["vfs.num_threads"] = VFS_NUM_THREADS;
   } else if (param == "vfs.min_parallel_size") {
     param_values_["vfs.min_parallel_size"] = VFS_MIN_PARALLEL_SIZE;
   } else if (param == "vfs.min_batch_gap") {
@@ -570,11 +566,9 @@ Status Config::sanity_check(
     RETURN_NOT_OK(utils::parse::convert(value, &vuint64));
   } else if (param == "sm.enable_signal_handlers") {
     RETURN_NOT_OK(utils::parse::convert(value, &v));
-  } else if (param == "sm.num_async_threads") {
+  } else if (param == "sm.compute_concurrency_level") {
     RETURN_NOT_OK(utils::parse::convert(value, &vuint64));
-  } else if (param == "sm.num_reader_threads") {
-    RETURN_NOT_OK(utils::parse::convert(value, &vuint64));
-  } else if (param == "sm.num_writer_threads") {
+  } else if (param == "sm.io_concurrency_level") {
     RETURN_NOT_OK(utils::parse::convert(value, &vuint64));
   } else if (param == "sm.num_tbb_threads") {
     RETURN_NOT_OK(utils::parse::convert(value, &vint));
@@ -590,8 +584,6 @@ Status Config::sanity_check(
     RETURN_NOT_OK(utils::parse::convert(value, &v32));
   } else if (param == "sm.consolidation.step_size_ratio") {
     RETURN_NOT_OK(utils::parse::convert(value, &vf));
-  } else if (param == "vfs.num_threads") {
-    RETURN_NOT_OK(utils::parse::convert(value, &vuint64));
   } else if (param == "vfs.min_parallel_size") {
     RETURN_NOT_OK(utils::parse::convert(value, &vuint64));
   } else if (param == "vfs.min_batch_gap") {

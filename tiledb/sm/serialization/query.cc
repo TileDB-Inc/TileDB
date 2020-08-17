@@ -260,7 +260,8 @@ Status subarray_partitioner_to_capnp(
 Status subarray_partitioner_from_capnp(
     const Array* array,
     const capnp::SubarrayPartitioner::Reader& reader,
-    SubarrayPartitioner* partitioner) {
+    SubarrayPartitioner* partitioner,
+    ThreadPool* compute_tp) {
   // Get memory budget
   uint64_t memory_budget = 0;
   RETURN_NOT_OK(tiledb::sm::utils::parse::convert(
@@ -277,8 +278,8 @@ Status subarray_partitioner_from_capnp(
   // Subarray, which is used to initialize the partitioner.
   Subarray subarray(array, layout, false);
   RETURN_NOT_OK(subarray_from_capnp(reader.getSubarray(), &subarray));
-  *partitioner =
-      SubarrayPartitioner(subarray, memory_budget, memory_budget_var);
+  *partitioner = SubarrayPartitioner(
+      subarray, memory_budget, memory_budget_var, compute_tp);
 
   // Per-attr mem budgets
   if (reader.hasBudget()) {
@@ -364,7 +365,8 @@ Status read_state_to_capnp(
 Status read_state_from_capnp(
     const Array* array,
     const capnp::ReadState::Reader& read_state_reader,
-    Reader* reader) {
+    Reader* reader,
+    ThreadPool* compute_tp) {
   auto read_state = reader->read_state();
 
   read_state->overflowed_ = read_state_reader.getOverflowed();
@@ -376,7 +378,8 @@ Status read_state_from_capnp(
     RETURN_NOT_OK(subarray_partitioner_from_capnp(
         array,
         read_state_reader.getSubarrayPartitioner(),
-        &read_state->partitioner_));
+        &read_state->partitioner_,
+        compute_tp));
   }
 
   return Status::Ok();
@@ -402,7 +405,9 @@ Status reader_to_capnp(
 }
 
 Status reader_from_capnp(
-    const capnp::QueryReader::Reader& reader_reader, Reader* reader) {
+    const capnp::QueryReader::Reader& reader_reader,
+    Reader* reader,
+    ThreadPool* compute_tp) {
   auto array = reader->array();
 
   // Layout
@@ -418,8 +423,8 @@ Status reader_from_capnp(
 
   // Read state
   if (reader_reader.hasReadState())
-    RETURN_NOT_OK(
-        read_state_from_capnp(array, reader_reader.getReadState(), reader));
+    RETURN_NOT_OK(read_state_from_capnp(
+        array, reader_reader.getReadState(), reader, compute_tp));
 
   return Status::Ok();
 }
@@ -509,7 +514,8 @@ Status query_from_capnp(
     const SerializationContext context,
     void* buffer_start,
     CopyState* const copy_state,
-    Query* const query) {
+    Query* const query,
+    ThreadPool* compute_tp) {
   using namespace tiledb::sm;
 
   auto type = query->type();
@@ -714,7 +720,8 @@ Status query_from_capnp(
   // heterogeneous coordinate changes
   if (type == QueryType::READ) {
     auto reader_reader = query_reader.getReader();
-    RETURN_NOT_OK(reader_from_capnp(reader_reader, query->reader()));
+    RETURN_NOT_OK(
+        reader_from_capnp(reader_reader, query->reader(), compute_tp));
   } else {
     auto writer_reader = query_reader.getWriter();
     RETURN_NOT_OK(writer_from_capnp(writer_reader, query->writer()));
@@ -841,7 +848,8 @@ Status do_query_deserialize(
     SerializationType serialize_type,
     const SerializationContext context,
     CopyState* const copy_state,
-    Query* query) {
+    Query* query,
+    ThreadPool* compute_tp) {
   if (serialize_type == SerializationType::JSON)
     return LOG_STATUS(Status::SerializationError(
         "Cannot deserialize query; json format not supported."));
@@ -859,7 +867,7 @@ Status do_query_deserialize(
             query_builder);
         capnp::Query::Reader query_reader = query_builder.asReader();
         return query_from_capnp(
-            query_reader, context, nullptr, copy_state, query);
+            query_reader, context, nullptr, copy_state, query, compute_tp);
       }
       case SerializationType::CAPNP: {
         // Capnp FlatArrayMessageReader requires 64-bit alignment.
@@ -885,7 +893,7 @@ Status do_query_deserialize(
         auto attribute_buffer_start = reader.getEnd();
         auto buffer_start = const_cast<::capnp::word*>(attribute_buffer_start);
         return query_from_capnp(
-            query_reader, context, buffer_start, copy_state, query);
+            query_reader, context, buffer_start, copy_state, query, compute_tp);
       }
       default:
         return LOG_STATUS(Status::SerializationError(
@@ -907,7 +915,8 @@ Status query_deserialize(
     SerializationType serialize_type,
     bool clientside,
     CopyState* copy_state,
-    Query* query) {
+    Query* query,
+    ThreadPool* compute_tp) {
   // Create an original, serialized copy of the 'query' that we will revert
   // to if we are unable to deserialize 'serialized_buffer'.
   BufferList original_bufferlist;
@@ -932,7 +941,8 @@ Status query_deserialize(
       serialize_type,
       clientside ? SerializationContext::CLIENT : SerializationContext::SERVER,
       copy_state,
-      query);
+      query,
+      compute_tp);
 
   // If the deserialization failed, deserialize 'serialized_query_original'
   // into 'query' to ensure that 'query' is in the state it was before the
@@ -949,7 +959,8 @@ Status query_deserialize(
         serialize_type,
         SerializationContext::BACKUP,
         copy_state,
-        query);
+        query,
+        compute_tp);
     if (!st2.ok()) {
       LOG_FATAL(st2.message());
     }
@@ -1140,7 +1151,7 @@ Status query_serialize(Query*, SerializationType, bool, BufferList*) {
 }
 
 Status query_deserialize(
-    const Buffer&, SerializationType, bool, CopyState*, Query*) {
+    const Buffer&, SerializationType, bool, CopyState*, Query*, ThreadPool*) {
   return LOG_STATUS(Status::SerializationError(
       "Cannot deserialize; serialization not enabled."));
 }
