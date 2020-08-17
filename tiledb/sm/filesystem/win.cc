@@ -470,7 +470,7 @@ Status Win::write(
           Status::IOError(std::string("Cannot write to file '") + path));
     }
   } else {
-    std::vector<std::future<Status>> results;
+    std::vector<ThreadPool::Task> results;
     uint64_t thread_write_nbytes = utils::math::ceil(buffer_size, num_ops);
     for (uint64_t i = 0; i < num_ops; i++) {
       uint64_t begin = i * thread_write_nbytes,

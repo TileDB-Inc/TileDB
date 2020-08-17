@@ -81,17 +81,6 @@ enum class ObjectType : uint8_t;
 class StorageManager {
  public:
   /* ********************************* */
-  /*             CONSTANTS             */
-  /* ********************************* */
-
-#ifdef HAVE_TBB
-  const int DEFAULT_CONCURRENCY =
-      tbb::task_scheduler_init::default_num_threads();
-#else
-  const int DEFAULT_CONCURRENCY = 1;
-#endif
-
-  /* ********************************* */
   /*          TYPE DEFINITIONS         */
   /* ********************************* */
 
@@ -561,6 +550,20 @@ class StorageManager {
   Status init(const Config* config);
 
   /**
+   * Initializes the storage manager's thread pools.
+   *
+   * @param config The configuration parameters.
+   * @return Status
+   */
+  Status init_thread_pools();
+
+  /** Returns the thread pool for compute-bound tasks. */
+  ThreadPool* compute_tp();
+
+  /** Returns the thread pool for io-bound tasks. */
+  ThreadPool* io_tp();
+
+  /**
    * If the storage manager was configured with a REST server, return the
    * client instance. Else, return nullptr.
    */
@@ -778,9 +781,6 @@ class StorageManager {
       uint64_t nbytes,
       bool* in_cache) const;
 
-  /** Returns the Reader thread pool. */
-  ThreadPool* reader_thread_pool();
-
   /**
    * Reads from a file into the input buffer.
    *
@@ -846,9 +846,6 @@ class StorageManager {
   /** Syncs a file or directory, flushing its contents to persistent storage. */
   Status sync(const URI& uri);
 
-  /** Returns the Writer thread pool. */
-  ThreadPool* writer_thread_pool();
-
   /** Returns the virtual filesystem object. */
   VFS* vfs() const;
 
@@ -884,9 +881,6 @@ class StorageManager {
    * @return Status.
    */
   Status write(const URI& uri, void* data, uint64_t size) const;
-
-  /** Returns the number of threads used for parallel CPU execution. */
-  int num_threads() const;
 
  private:
   /* ********************************* */
@@ -966,17 +960,11 @@ class StorageManager {
   /** Guards queries_in_progress_ counter. */
   std::condition_variable queries_in_progress_cv_;
 
-  /** The storage manager's thread pool for async queries. */
-  ThreadPool async_thread_pool_;
+  /** The thread pool for compute-bound tasks. */
+  mutable ThreadPool compute_tp_;
 
-  /** The storage manager's thread pool for Readers. */
-  ThreadPool reader_thread_pool_;
-
-  /** The storage manager's thread pool for Writers. */
-  ThreadPool writer_thread_pool_;
-
-  /** Number of threads used for parallel CPU execution. */
-  int num_threads_;
+  /** The thread pool for io-bound tasks. */
+  mutable ThreadPool io_tp_;
 
   /** Tracks all scheduled tasks that can be safely cancelled before execution.
    */

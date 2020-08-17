@@ -37,6 +37,7 @@
 #include <unordered_map>
 
 #include "tiledb/sm/misc/status.h"
+#include "tiledb/sm/misc/thread_pool.h"
 #include "tiledb/sm/serialization/query.h"
 
 namespace tiledb {
@@ -54,7 +55,7 @@ class RestClient {
   RestClient();
 
   /** Initialize the REST client with the given config. */
-  Status init(const Config* config);
+  Status init(const Config* config, ThreadPool* compute_tp);
 
   /** Sets a header that will be attached to all requests. */
   Status set_header(const std::string& name, const std::string& value);
@@ -163,6 +164,9 @@ class RestClient {
 
   /** The TileDB config options (contains server and auth info). */
   const Config* config_;
+
+  /** The thread pool for compute-bound tasks. */
+  ThreadPool* compute_tp_;
 
   /** Rest server config param. */
   std::string rest_server_;

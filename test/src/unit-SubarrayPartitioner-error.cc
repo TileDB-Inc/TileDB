@@ -140,8 +140,10 @@ TEST_CASE_METHOD(
   SubarrayRanges<uint64_t> ranges = {};
   Layout subarray_layout = Layout::GLOBAL_ORDER;
   create_subarray(array_->array_, ranges, subarray_layout, &subarray);
+  ThreadPool tp;
+  CHECK(tp.init(4).ok());
   SubarrayPartitioner subarray_partitioner(
-      subarray, memory_budget_, memory_budget_var_);
+      subarray, memory_budget_, memory_budget_var_, &tp);
   uint64_t budget, budget_off, budget_val;
 
   auto st = subarray_partitioner.get_result_budget("a", &budget);

@@ -519,7 +519,7 @@ Status Posix::write(
       return LOG_STATUS(Status::IOError(errmsg.str()));
     }
   } else {
-    std::vector<std::future<Status>> results;
+    std::vector<ThreadPool::Task> results;
     uint64_t thread_write_nbytes = utils::math::ceil(buffer_size, num_ops);
     for (uint64_t i = 0; i < num_ops; i++) {
       uint64_t begin = i * thread_write_nbytes,
@@ -528,7 +528,7 @@ Status Posix::write(
       uint64_t thread_nbytes = end - begin + 1;
       uint64_t thread_file_offset = file_offset + begin;
       auto thread_buffer = reinterpret_cast<const char*>(buffer) + begin;
-      results.push_back(vfs_thread_pool_->execute(
+      results.emplace_back(vfs_thread_pool_->execute(
           [fd, thread_file_offset, thread_buffer, thread_nbytes]() {
             return write_at(
                 fd, thread_file_offset, thread_buffer, thread_nbytes);

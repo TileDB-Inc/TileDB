@@ -55,6 +55,7 @@ namespace sm {
 
 RestClient::RestClient()
     : config_(nullptr)
+    , compute_tp_(nullptr)
     , resubmit_incomplete_(true) {
   auto st = utils::parse::convert(
       Config::REST_SERIALIZATION_DEFAULT_FORMAT, &serialization_type_);
@@ -62,12 +63,13 @@ RestClient::RestClient()
   (void)st;
 }
 
-Status RestClient::init(const Config* config) {
+Status RestClient::init(const Config* config, ThreadPool* compute_tp) {
   if (config == nullptr)
     return LOG_STATUS(
         Status::RestError("Error initializing rest client; config is null."));
 
   config_ = config;
+  compute_tp_ = compute_tp;
 
   const char* c_str;
   RETURN_NOT_OK(config_->get("rest.server_address", &c_str));
@@ -444,7 +446,7 @@ size_t RestClient::post_data_write_cb(
       // error status.
       aux.reset_offset();
       st = serialization::query_deserialize(
-          aux, serialization_type_, true, copy_state, query);
+          aux, serialization_type_, true, copy_state, query, compute_tp_);
       if (!st.ok()) {
         scratch->set_offset(scratch->offset() - 8);
         scratch->set_size(scratch->offset());
@@ -456,7 +458,7 @@ size_t RestClient::post_data_write_cb(
       // data when deserializing read queries, this will return an
       // error status.
       st = serialization::query_deserialize(
-          *scratch, serialization_type_, true, copy_state, query);
+          *scratch, serialization_type_, true, copy_state, query, compute_tp_);
       if (!st.ok()) {
         scratch->set_offset(scratch->offset() - 8);
         scratch->set_size(scratch->offset());
@@ -532,7 +534,7 @@ Status RestClient::finalize_query_to_rest(const URI& uri, Query* query) {
   // Deserialize data returned
   returned_data.set_offset(0);
   return serialization::query_deserialize(
-      returned_data, serialization_type_, true, nullptr, query);
+      returned_data, serialization_type_, true, nullptr, query, compute_tp_);
 }
 
 Status RestClient::subarray_to_str(
@@ -679,7 +681,7 @@ RestClient::RestClient() {
   (void)serialization_type_;
 }
 
-Status RestClient::init(const Config*) {
+Status RestClient::init(const Config*, ThreadPool*) {
   return LOG_STATUS(
       Status::RestError("Cannot use rest client; serialization not enabled."));
 }

@@ -40,6 +40,7 @@
 #include "tiledb/sm/filter/filter.h"
 #include "tiledb/sm/filter/filter_buffer.h"
 #include "tiledb/sm/misc/status.h"
+#include "tiledb/sm/misc/thread_pool.h"
 #include "tiledb/sm/tile/chunked_buffer.h"
 
 namespace tiledb {
@@ -171,9 +172,10 @@ class FilterPipeline {
    * data.
    *
    * @param tile Tile to filter.
+   * @param compute_tp The thread pool for compute-bound tasks.
    * @return Status
    */
-  Status run_forward(Tile* tile) const;
+  Status run_forward(Tile* tile, ThreadPool* compute_tp) const;
 
   /**
    * Runs the pipeline in reverse on the given filtered tile. This is used
@@ -208,6 +210,7 @@ class FilterPipeline {
    * to N.
    *
    * @param tile Tile to filter
+   * @param compute_tp The thread pool for compute-bound tasks.
    * @param config The global config.
    * @param result_cell_slab_ranges optional list of result cell slab ranges. If
    *   this is non-NULL, we will only run the filter pipeline reversal on chunks
@@ -216,21 +219,21 @@ class FilterPipeline {
    */
   Status run_reverse(
       Tile* tile,
+      ThreadPool* compute_tp,
       const Config& config,
       const std::vector<std::pair<uint64_t, uint64_t>>*
           result_cell_slab_ranges = nullptr) const;
 
+  /**
+   * The var-length overload of `run_reverse`.
+   */
   Status run_reverse(
       Tile* tile,
       Tile* tile_var,
+      ThreadPool* compute_tp,
       const Config& config,
       const std::vector<std::pair<uint64_t, uint64_t>>*
           result_cell_slab_ranges = nullptr) const;
-
-  Status run_reverse_internal(
-      Tile* tile,
-      const Config& config,
-      std::function<Status(uint64_t, bool*)>* skip_fn) const;
 
   /**
    * Serializes the pipeline metadata into a binary buffer.
@@ -284,10 +287,11 @@ class FilterPipeline {
    * @param input chunked buffer to process.
    * @param output buffer where output of the last stage
    *    will be written.
+   * @param compute_tp The thread pool for compute-bound tasks.
    * @return Status
    */
   Status filter_chunks_forward(
-      const ChunkedBuffer& input, Buffer* output) const;
+      const ChunkedBuffer& input, Buffer* output, ThreadPool* compute_tp) const;
 
   /**
    * Run the given list of chunks in reverse through the pipeline.
@@ -295,6 +299,7 @@ class FilterPipeline {
    * @param input Filtered chunk buffers to reverse.
    * @param output Chunked buffer where output of the last stage
    *    will be written.
+   * @param compute_tp The thread pool for compute-bound tasks.
    * @param unfiltering_all True if all all input chunks will be unfiltered.
    *    This must be consistent with the skip parameter values in 'input'.
    * @param config The global config.
@@ -304,6 +309,7 @@ class FilterPipeline {
       const std::vector<std::tuple<void*, uint32_t, uint32_t, uint32_t, bool>>&
           input,
       ChunkedBuffer* output,
+      ThreadPool* compute_tp,
       bool unfiltering_all,
       const Config& config) const;
 
@@ -374,6 +380,22 @@ class FilterPipeline {
       std::vector<std::pair<uint64_t, uint64_t>>::const_iterator* cs_it,
       const std::vector<std::pair<uint64_t, uint64_t>>::const_iterator& cs_end,
       bool* skip) const;
+
+  /**
+   * The internal work routine for `run_reverse`.
+   *
+   * @param tile Tile to filter
+   * @param compute_tp The thread pool for compute-bound tasks.
+   * @param config The global config.
+   * @param skip_fn The function to determine if the given tile should be
+   *   skipped.
+   * @return Status
+   */
+  Status run_reverse_internal(
+      Tile* tile,
+      ThreadPool* compute_tp,
+      const Config& config,
+      std::function<Status(uint64_t, bool*)>* skip_fn) const;
 };
 
 }  // namespace sm

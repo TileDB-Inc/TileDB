@@ -302,9 +302,6 @@ class Array {
    */
   Metadata* metadata();
 
-  /** Returns the number of threads used for parallel execution. */
-  uint64_t num_threads() const;
-
   /** Returns the non-empty domain of the opened array.
    *  If the non_empty_domain has not been computed or loaded
    *  it will be loaded first

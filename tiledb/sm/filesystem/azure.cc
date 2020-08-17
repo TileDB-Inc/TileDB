@@ -33,6 +33,7 @@
 #ifdef HAVE_AZURE
 
 #include <put_block_list_request_base.h>
+#include <future>
 
 #include "tiledb/sm/filesystem/azure.h"
 #include "tiledb/sm/global_state/global_state.h"
@@ -1047,7 +1048,7 @@ Status Azure::write_blocks(
     state->update_st(st);
     return st;
   } else {
-    std::vector<std::future<Status>> tasks;
+    std::vector<ThreadPool::Task> tasks;
     tasks.reserve(num_ops);
     for (uint64_t i = 0; i < num_ops; i++) {
       const uint64_t begin = i * block_list_block_size_;
@@ -1066,8 +1067,7 @@ Status Azure::write_blocks(
           thread_buffer,
           thread_buffer_len,
           block_id);
-      std::future<Status> task =
-          thread_pool_->execute(std::move(upload_block_fn));
+      ThreadPool::Task task = thread_pool_->execute(std::move(upload_block_fn));
       tasks.emplace_back(std::move(task));
     }
 

@@ -808,7 +808,7 @@ Status GCS::write_parts(
     state->update_st(st);
     return st;
   } else {
-    std::vector<std::future<Status>> tasks;
+    std::vector<ThreadPool::Task> tasks;
     tasks.reserve(num_ops);
     for (uint64_t i = 0; i < num_ops; i++) {
       const uint64_t begin = i * multi_part_part_size_;
@@ -826,8 +826,7 @@ Status GCS::write_parts(
           object_part_path,
           thread_buffer,
           thread_buffer_len);
-      std::future<Status> task =
-          thread_pool_->execute(std::move(upload_part_fn));
+      ThreadPool::Task task = thread_pool_->execute(std::move(upload_part_fn));
       tasks.emplace_back(std::move(task));
     }
 
@@ -960,12 +959,12 @@ Status GCS::flush_object(const URI& uri) {
 void GCS::delete_parts(
     const std::string& bucket_name,
     const std::vector<std::string>& part_paths) {
-  std::vector<std::future<Status>> tasks;
+  std::vector<ThreadPool::Task> tasks;
   tasks.reserve(part_paths.size());
   for (const auto& part_path : part_paths) {
     std::function<Status()> delete_part_fn =
         std::bind(&GCS::delete_part, this, bucket_name, part_path);
-    std::future<Status> task = thread_pool_->execute(std::move(delete_part_fn));
+    ThreadPool::Task task = thread_pool_->execute(std::move(delete_part_fn));
     tasks.emplace_back(std::move(task));
   }
 

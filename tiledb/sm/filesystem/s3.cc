@@ -441,6 +441,11 @@ Status S3::flush_object(const URI& uri) {
     Aws::S3::Model::CompleteMultipartUploadRequest complete_request =
         make_multipart_complete_request(state);
     auto outcome = client_->CompleteMultipartUpload(complete_request);
+    if (!outcome.IsSuccess()) {
+      return LOG_STATUS(Status::S3Error(
+          std::string("Failed to flush S3 object ") + uri.c_str() +
+          outcome_error_message(outcome)));
+    }
 
     auto bucket = state.bucket;
     auto key = state.key;
