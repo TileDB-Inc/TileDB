@@ -114,7 +114,7 @@ class ThreadPool {
 
   uint64_t concurrency_level_;
 
-  /** Protects `task_stack_` */
+  /** Protects `task_stack_` and `idle_threads_`. */
   std::mutex task_stack_mutex_;
 
   /** Notifies work threads to check `task_stack_` for work. */
@@ -122,6 +122,12 @@ class ThreadPool {
 
   /** Pending tasks in LIFO ordering. */
   std::stack<std::packaged_task<Status()>> task_stack_;
+
+  /**
+   * The number of threads waiting for the `task_stack_` to
+   * become non-empty.
+   */
+  uint64_t idle_threads_;
 
   /** The worker threads. */
   std::vector<std::thread> threads_;

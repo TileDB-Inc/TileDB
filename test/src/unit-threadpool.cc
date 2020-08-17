@@ -201,8 +201,8 @@ TEST_CASE("ThreadPool: Test recursion", "[threadpool]") {
     REQUIRE(pool.init(10).ok());
   }
 
+  // Test recursive execute-and-wait.
   std::atomic<int> result(0);
-
   const size_t num_tasks = 100;
   const size_t num_nested_tasks = 10;
   std::vector<std::future<Status>> tasks;
@@ -226,7 +226,37 @@ TEST_CASE("ThreadPool: Test recursion", "[threadpool]") {
     CHECK(task.valid());
     tasks.emplace_back(std::move(task));
   }
-
   CHECK(pool.wait_all(tasks).ok());
   CHECK(result == (num_tasks * num_nested_tasks));
+
+  // Test a top-level execute-and-wait with async-style inner tasks.
+  result = 0;
+  std::condition_variable cv;
+  std::mutex cv_mutex;
+  tasks.clear();
+  for (size_t i = 0; i < num_tasks; ++i) {
+    auto task = pool.execute([&]() {
+      for (size_t j = 0; j < num_nested_tasks; ++j) {
+        pool.execute([&result, &cv, &cv_mutex]() {
+          if (--result == 0) {
+            std::unique_lock<std::mutex> ul(cv_mutex);
+            cv.notify_all();
+          }
+          return Status::Ok();
+        });
+      }
+
+      return Status::Ok();
+    });
+
+    CHECK(task.valid());
+    tasks.emplace_back(std::move(task));
+  }
+
+  CHECK(pool.wait_all(tasks).ok());
+  std::unique_lock<std::mutex> ul(cv_mutex);
+
+  // Wait all inner tasks to complete.
+  while (result > 0)
+    cv.wait(ul);
 }

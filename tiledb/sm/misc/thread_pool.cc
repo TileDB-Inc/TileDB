@@ -44,6 +44,7 @@ std::mutex ThreadPool::tp_index_lock_;
 
 ThreadPool::ThreadPool()
     : concurrency_level_(0)
+    , idle_threads_(0)
     , should_terminate_(false) {
 }
 
@@ -68,7 +69,7 @@ Status ThreadPool::init(const uint64_t concurrency_level) {
       threads_.emplace_back([this]() { worker(*this); });
     } catch (const std::exception& e) {
       st = Status::ThreadPoolError(
-          "Error initializing thread pool of concurrencylevel " +
+          "Error initializing thread pool of concurrency level " +
           std::to_string(concurrency_level) + "; " + e.what());
       LOG_STATUS(st);
       break;
@@ -114,9 +115,22 @@ std::future<Status> ThreadPool::execute(std::function<Status()>&& function) {
   // worker threads are available, execute the task on this
   // thread.
   if (concurrency_level_ > 1) {
-    task_stack_.push(std::move(task));
-    task_stack_cv_.notify_one();
-    lck.unlock();
+    // Lookup the thread pool that this thread belongs to. If it
+    // does not belong to a thread pool, `lookup_tp` will return
+    // `nullptr`.
+    ThreadPool* const tp = lookup_tp();
+
+    // As both an optimization and a means of breaking deadlock,
+    // execute the task if this thread belongs to `this`. Otherwise,
+    // queue it for a worker thread.
+    if (tp == this && idle_threads_ == 0) {
+      lck.unlock();
+      task();
+    } else {
+      task_stack_.push(std::move(task));
+      task_stack_cv_.notify_one();
+      lck.unlock();
+    }
   } else {
     lck.unlock();
     task();
@@ -173,8 +187,14 @@ Status ThreadPool::wait_or_work(std::future<Status>&& task) {
 
     // Lookup the thread pool that this thread belongs to. If it
     // does not belong to a thread pool, `lookup_tp` will return
-    // `this`.
-    ThreadPool* const tp = lookup_tp();
+    // `nullptr`.
+    ThreadPool* tp = lookup_tp();
+
+    // If the calling thread exists outside of a thread pool, it may
+    // service pending tasks from this thread pool.
+    if (tp == nullptr) {
+      tp = this;
+    }
 
     // Lock the `tp->task_stack_` to receive the next task to work on.
     std::unique_lock<std::mutex> lock(tp->task_stack_mutex_);
@@ -222,6 +242,7 @@ void ThreadPool::worker(ThreadPool& pool) {
     {
       // Wait until there's work to do.
       std::unique_lock<std::mutex> lck(pool.task_stack_mutex_);
+      ++pool.idle_threads_;
       pool.task_stack_cv_.wait(lck, [&pool]() {
         return pool.should_terminate_ || !pool.task_stack_.empty();
       });
@@ -229,6 +250,13 @@ void ThreadPool::worker(ThreadPool& pool) {
       if (!pool.task_stack_.empty()) {
         task = std::move(pool.task_stack_.top());
         pool.task_stack_.pop();
+        --pool.idle_threads_;
+      } else {
+        // The task stack was empty, ensure `task` is invalid.
+        if (task.valid()) {
+          task.reset();
+          assert(!task.valid());
+        }
       }
     }
 
@@ -257,7 +285,7 @@ ThreadPool* ThreadPool::lookup_tp() {
   std::lock_guard<std::mutex> lock(tp_index_lock_);
   if (tp_index_.count(tid) == 1)
     return tp_index_[tid];
-  return this;
+  return nullptr;
 }
 
 }  // namespace sm
