@@ -36,6 +36,7 @@
 #ifdef HAVE_S3
 
 #include <aws/core/utils/threading/Executor.h>
+#include <condition_variable>
 #include <mutex>
 #include <unordered_set>
 
@@ -81,11 +82,14 @@ class S3ThreadPoolExecutor : public Aws::Utils::Threading::Executor {
   /** The current state. */
   State state_;
 
-  /** All future handles associated with outstanding tasks. */
-  std::unordered_set<std::shared_ptr<std::future<Status>>> tasks_;
+  /** The number of outstanding tasks. */
+  uint64_t outstanding_tasks_;
 
-  /** Protects 'state_' and 'tasks_'. */
-  std::recursive_mutex lock_;
+  /** Protects 'state_' and `outstanding_tasks_`. */
+  std::mutex lock_;
+
+  /** Notifies `Stop()` when all outstanding tasks have completed. */
+  std::condition_variable cv_;
 };
 
 }  // namespace sm

@@ -216,6 +216,8 @@ void check_save_to_file() {
   ss << "sm.check_coord_dups true\n";
   ss << "sm.check_coord_oob true\n";
   ss << "sm.check_global_order true\n";
+  ss << "sm.compute_concurrency_level " << std::thread::hardware_concurrency()
+     << "\n";
   ss << "sm.consolidation.amplification 1.0\n";
   ss << "sm.consolidation.buffer_size 50000000\n";
   ss << "sm.consolidation.mode fragments\n";
@@ -225,12 +227,11 @@ void check_save_to_file() {
   ss << "sm.consolidation.steps 4294967295\n";
   ss << "sm.dedup_coords false\n";
   ss << "sm.enable_signal_handlers true\n";
+  ss << "sm.io_concurrency_level " << std::thread::hardware_concurrency()
+     << "\n";
   ss << "sm.memory_budget 5368709120\n";
   ss << "sm.memory_budget_var 10737418240\n";
-  ss << "sm.num_async_threads 1\n";
-  ss << "sm.num_reader_threads " << std::thread::hardware_concurrency() << "\n";
   ss << "sm.num_tbb_threads -1\n";
-  ss << "sm.num_writer_threads " << std::thread::hardware_concurrency() << "\n";
   ss << "sm.skip_checksum_validation false\n";
   ss << "sm.sub_partitioner_memory_budget 0\n";
   ss << "sm.tile_cache_size 10000000\n";
@@ -252,7 +253,6 @@ void check_save_to_file() {
   ss << "vfs.min_batch_gap 512000\n";
   ss << "vfs.min_batch_size 20971520\n";
   ss << "vfs.min_parallel_size 10485760\n";
-  ss << "vfs.num_threads " << std::thread::hardware_concurrency() << "\n";
   ss << "vfs.s3.connect_max_tries 5\n";
   ss << "vfs.s3.connect_scale_factor 25\n";
   ss << "vfs.s3.connect_timeout_ms 3000\n";
@@ -433,11 +433,10 @@ TEST_CASE("C API: Test config iter", "[capi], [config]") {
   all_param_values["sm.memory_budget_var"] = "10737418240";
   all_param_values["sm.sub_partitioner_memory_budget"] = "0";
   all_param_values["sm.enable_signal_handlers"] = "true";
-  all_param_values["sm.num_async_threads"] = "1";
-  all_param_values["sm.num_reader_threads"] =
+  all_param_values["sm.compute_concurrency_level"] =
       std::to_string(std::thread::hardware_concurrency());
   ;
-  all_param_values["sm.num_writer_threads"] =
+  all_param_values["sm.io_concurrency_level"] =
       std::to_string(std::thread::hardware_concurrency());
   ;
   all_param_values["sm.num_tbb_threads"] = "-1";
@@ -451,8 +450,6 @@ TEST_CASE("C API: Test config iter", "[capi], [config]") {
   all_param_values["sm.consolidation.mode"] = "fragments";
   all_param_values["sm.vacuum.mode"] = "fragments";
 
-  all_param_values["vfs.num_threads"] =
-      std::to_string(std::thread::hardware_concurrency());
   all_param_values["vfs.min_batch_gap"] = "512000";
   all_param_values["vfs.min_batch_size"] = "20971520";
   all_param_values["vfs.min_parallel_size"] = "10485760";
@@ -503,8 +500,6 @@ TEST_CASE("C API: Test config iter", "[capi], [config]") {
   all_param_values["vfs.hdfs.name_node_uri"] = "";
 
   std::map<std::string, std::string> vfs_param_values;
-  vfs_param_values["num_threads"] =
-      std::to_string(std::thread::hardware_concurrency());
   vfs_param_values["min_batch_gap"] = "512000";
   vfs_param_values["min_batch_size"] = "20971520";
   vfs_param_values["min_parallel_size"] = "10485760";

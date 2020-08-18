@@ -35,15 +35,13 @@
 
 #include <condition_variable>
 #include <functional>
-#include <future>
 #include <mutex>
 
 #include "tiledb/sm/misc/status.h"
+#include "tiledb/sm/misc/thread_pool.h"
 
 namespace tiledb {
 namespace sm {
-
-class ThreadPool;
 
 class CancelableTasks {
  public:
@@ -62,9 +60,9 @@ class CancelableTasks {
    *
    * @param function Task to be executed.
    * @param function Optional routine to execute on cancelation.
-   * @return Future for the return value of the task.
+   * @return Task for the return value of the task.
    */
-  std::future<Status> execute(
+  ThreadPool::Task execute(
       ThreadPool* thread_pool,
       std::function<Status()>&& fn,
       std::function<void()>&& on_cancel = nullptr);

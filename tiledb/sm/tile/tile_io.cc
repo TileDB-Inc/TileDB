@@ -132,7 +132,9 @@ Status TileIO::read_generic(
 
   // Unfilter
   assert((*tile)->filtered());
-  RETURN_NOT_OK_ELSE(header.filters.run_reverse(*tile, config), delete *tile);
+  RETURN_NOT_OK_ELSE(
+      header.filters.run_reverse(*tile, storage_manager_->compute_tp(), config),
+      delete *tile);
   assert(!(*tile)->filtered());
 
   file_size_ = header.persisted_size;
@@ -185,7 +187,8 @@ Status TileIO::write_generic(
 
   // Filter tile
   assert(!tile->filtered());
-  RETURN_NOT_OK(header.filters.run_forward(tile));
+  RETURN_NOT_OK(
+      header.filters.run_forward(tile, storage_manager_->compute_tp()));
   header.persisted_size = tile->filtered_buffer()->size();
   assert(tile->filtered());
 

@@ -41,14 +41,14 @@ CancelableTasks::CancelableTasks()
     , should_cancel_(false) {
 }
 
-std::future<Status> CancelableTasks::execute(
+ThreadPool::Task CancelableTasks::execute(
     ThreadPool* const thread_pool,
     std::function<Status()>&& fn,
     std::function<void()>&& on_cancel) {
   std::function<Status()> wrapped_fn =
       std::bind(&CancelableTasks::fn_wrapper, this, fn, on_cancel);
 
-  std::future<Status> task = thread_pool->execute(std::move(wrapped_fn));
+  ThreadPool::Task task = thread_pool->execute(std::move(wrapped_fn));
   if (task.valid()) {
     std::unique_lock<std::mutex> lck(outstanding_tasks_mutex_);
     ++outstanding_tasks_;

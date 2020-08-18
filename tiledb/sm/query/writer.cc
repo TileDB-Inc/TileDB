@@ -591,59 +591,60 @@ Status Writer::check_coord_dups(const std::vector<uint64_t>& cell_pos) const {
     buffs_var_sizes[d] = buffers_.find(dim_name)->second.buffer_var_size_;
   }
 
-  auto statuses = parallel_for(1, coords_num_, [&](uint64_t i) {
-    // Check for duplicate in adjacent cells
-    bool found_dup = true;
-    for (unsigned d = 0; d < dim_num; ++d) {
-      auto dim = array_schema_->dimension(d);
-      if (!dim->var_size()) {  // Fixed-sized dimensions
-        if (memcmp(
-                buffs[d] + cell_pos[i] * coord_sizes[d],
-                buffs[d] + cell_pos[i - 1] * coord_sizes[d],
-                coord_sizes[d]) != 0) {  // Not the same
-          found_dup = false;
-          break;
+  auto statuses = parallel_for(
+      storage_manager_->compute_tp(), 1, coords_num_, [&](uint64_t i) {
+        // Check for duplicate in adjacent cells
+        bool found_dup = true;
+        for (unsigned d = 0; d < dim_num; ++d) {
+          auto dim = array_schema_->dimension(d);
+          if (!dim->var_size()) {  // Fixed-sized dimensions
+            if (memcmp(
+                    buffs[d] + cell_pos[i] * coord_sizes[d],
+                    buffs[d] + cell_pos[i - 1] * coord_sizes[d],
+                    coord_sizes[d]) != 0) {  // Not the same
+              found_dup = false;
+              break;
+            }
+          } else {
+            auto offs = (uint64_t*)buffs[d];
+            auto a = cell_pos[i];
+            auto b = cell_pos[i - 1];
+            auto off_a = offs[a];
+            auto off_b = offs[b];
+            auto off_a_plus_1 =
+                (a == coords_num_ - 1) ? *(buffs_var_sizes[d]) : offs[a + 1];
+            auto off_b_plus_1 =
+                (b == coords_num_ - 1) ? *(buffs_var_sizes[d]) : offs[b + 1];
+            auto size_a = off_a_plus_1 - off_a;
+            auto size_b = off_b_plus_1 - off_b;
+
+            // Compare sizes
+            if (size_a != size_b) {  // Not same
+              found_dup = false;
+              break;
+            }
+
+            // Compare var values
+            if (memcmp(
+                    buffs_var[d] + off_a,
+                    buffs_var[d] + off_b,
+                    size_a) != 0) {  // Not the same
+              found_dup = false;
+              break;
+            }
+          }
         }
-      } else {
-        auto offs = (uint64_t*)buffs[d];
-        auto a = cell_pos[i];
-        auto b = cell_pos[i - 1];
-        auto off_a = offs[a];
-        auto off_b = offs[b];
-        auto off_a_plus_1 =
-            (a == coords_num_ - 1) ? *(buffs_var_sizes[d]) : offs[a + 1];
-        auto off_b_plus_1 =
-            (b == coords_num_ - 1) ? *(buffs_var_sizes[d]) : offs[b + 1];
-        auto size_a = off_a_plus_1 - off_a;
-        auto size_b = off_b_plus_1 - off_b;
 
-        // Compare sizes
-        if (size_a != size_b) {  // Not same
-          found_dup = false;
-          break;
+        // Found duplicate
+        if (found_dup) {
+          std::stringstream ss;
+          ss << "Duplicate coordinates " << coords_to_str(cell_pos[i]);
+          ss << " are not allowed";
+          return Status::WriterError(ss.str());
         }
 
-        // Compare var values
-        if (memcmp(
-                buffs_var[d] + off_a,
-                buffs_var[d] + off_b,
-                size_a) != 0) {  // Not the same
-          found_dup = false;
-          break;
-        }
-      }
-    }
-
-    // Found duplicate
-    if (found_dup) {
-      std::stringstream ss;
-      ss << "Duplicate coordinates " << coords_to_str(cell_pos[i]);
-      ss << " are not allowed";
-      return Status::WriterError(ss.str());
-    }
-
-    return Status::Ok();
-  });
+        return Status::Ok();
+      });
 
   // Check all statuses
   for (auto& st : statuses)
@@ -685,53 +686,54 @@ Status Writer::check_coord_dups() const {
     buffs_var_sizes[d] = buffers_.find(dim_name)->second.buffer_var_size_;
   }
 
-  auto statuses = parallel_for(1, coords_num_, [&](uint64_t i) {
-    // Check for duplicate in adjacent cells
-    bool found_dup = true;
-    for (unsigned d = 0; d < dim_num; ++d) {
-      auto dim = array_schema_->dimension(d);
-      if (!dim->var_size()) {  // Fixed-sized dimensions
-        if (memcmp(
-                buffs[d] + i * coord_sizes[d],
-                buffs[d] + (i - 1) * coord_sizes[d],
-                coord_sizes[d]) != 0) {  // Not the same
-          found_dup = false;
-          break;
+  auto statuses = parallel_for(
+      storage_manager_->compute_tp(), 1, coords_num_, [&](uint64_t i) {
+        // Check for duplicate in adjacent cells
+        bool found_dup = true;
+        for (unsigned d = 0; d < dim_num; ++d) {
+          auto dim = array_schema_->dimension(d);
+          if (!dim->var_size()) {  // Fixed-sized dimensions
+            if (memcmp(
+                    buffs[d] + i * coord_sizes[d],
+                    buffs[d] + (i - 1) * coord_sizes[d],
+                    coord_sizes[d]) != 0) {  // Not the same
+              found_dup = false;
+              break;
+            }
+          } else {
+            auto offs = (uint64_t*)buffs[d];
+            auto off_i_plus_1 =
+                (i == coords_num_ - 1) ? *(buffs_var_sizes[d]) : offs[i + 1];
+            auto size_i_minus_1 = offs[i] - offs[i - 1];
+            auto size_i = off_i_plus_1 - offs[i];
+
+            // Compare sizes
+            if (size_i != size_i_minus_1) {  // Not same
+              found_dup = false;
+              break;
+            }
+
+            // Compare var values
+            if (memcmp(
+                    buffs_var[d] + offs[i - 1],
+                    buffs_var[d] + offs[i],
+                    size_i) != 0) {  // Not the same
+              found_dup = false;
+              break;
+            }
+          }
         }
-      } else {
-        auto offs = (uint64_t*)buffs[d];
-        auto off_i_plus_1 =
-            (i == coords_num_ - 1) ? *(buffs_var_sizes[d]) : offs[i + 1];
-        auto size_i_minus_1 = offs[i] - offs[i - 1];
-        auto size_i = off_i_plus_1 - offs[i];
 
-        // Compare sizes
-        if (size_i != size_i_minus_1) {  // Not same
-          found_dup = false;
-          break;
+        // Found duplicate
+        if (found_dup) {
+          std::stringstream ss;
+          ss << "Duplicate coordinates " << coords_to_str(i);
+          ss << " are not allowed";
+          return Status::WriterError(ss.str());
         }
 
-        // Compare var values
-        if (memcmp(
-                buffs_var[d] + offs[i - 1],
-                buffs_var[d] + offs[i],
-                size_i) != 0) {  // Not the same
-          found_dup = false;
-          break;
-        }
-      }
-    }
-
-    // Found duplicate
-    if (found_dup) {
-      std::stringstream ss;
-      ss << "Duplicate coordinates " << coords_to_str(i);
-      ss << " are not allowed";
-      return Status::WriterError(ss.str());
-    }
-
-    return Status::Ok();
-  });
+        return Status::Ok();
+      });
 
   // Check all statuses
   for (auto& st : statuses)
@@ -768,8 +770,13 @@ Status Writer::check_coord_oob() const {
   }
 
   // Check if all coordinates fall in the domain in parallel
-  auto statuses =
-      parallel_for_2d(0, coords_num_, 0, dim_num, [&](uint64_t c, unsigned d) {
+  auto statuses = parallel_for_2d(
+      storage_manager_->compute_tp(),
+      0,
+      coords_num_,
+      0,
+      dim_num,
+      [&](uint64_t c, unsigned d) {
         auto dim = array_schema_->dimension(d);
         if (datatype_is_string(dim->type()))
           return Status::Ok();
@@ -807,22 +814,24 @@ Status Writer::check_global_order() const {
 
   // Check if all coordinates fall in the domain in parallel
   auto domain = array_schema_->domain();
-  auto statuses = parallel_for(0, coords_num_ - 1, [&](uint64_t i) {
-    auto tile_cmp = domain->tile_order_cmp(buffs, i, i + 1);
-    auto fail = (tile_cmp > 0) || ((tile_cmp == 0) &&
-                                   domain->cell_order_cmp(buffs, i, i + 1) > 0);
+  auto statuses = parallel_for(
+      storage_manager_->compute_tp(), 0, coords_num_ - 1, [&](uint64_t i) {
+        auto tile_cmp = domain->tile_order_cmp(buffs, i, i + 1);
+        auto fail =
+            (tile_cmp > 0) ||
+            ((tile_cmp == 0) && domain->cell_order_cmp(buffs, i, i + 1) > 0);
 
-    if (fail) {
-      std::stringstream ss;
-      ss << "Write failed; Coordinates " << coords_to_str(i);
-      ss << " succeed " << coords_to_str(i + 1);
-      ss << " in the global order";
-      if (tile_cmp > 0)
-        ss << " due to writes across tiles";
-      return Status::WriterError(ss.str());
-    }
-    return Status::Ok();
-  });
+        if (fail) {
+          std::stringstream ss;
+          ss << "Write failed; Coordinates " << coords_to_str(i);
+          ss << " succeed " << coords_to_str(i + 1);
+          ss << " in the global order";
+          if (tile_cmp > 0)
+            ss << " due to writes across tiles";
+          return Status::WriterError(ss.str());
+        }
+        return Status::Ok();
+      });
 
   // Check all statuses
   for (auto& st : statuses)
@@ -904,57 +913,58 @@ Status Writer::compute_coord_dups(
   }
 
   std::mutex mtx;
-  auto statuses = parallel_for(1, coords_num_, [&](uint64_t i) {
-    // Check for duplicate in adjacent cells
-    bool found_dup = true;
-    for (unsigned d = 0; d < dim_num; ++d) {
-      auto dim = array_schema_->dimension(d);
-      if (!dim->var_size()) {  // Fixed-sized dimensions
-        if (memcmp(
-                buffs[d] + cell_pos[i] * coord_sizes[d],
-                buffs[d] + cell_pos[i - 1] * coord_sizes[d],
-                coord_sizes[d]) != 0) {  // Not the same
-          found_dup = false;
-          break;
+  auto statuses = parallel_for(
+      storage_manager_->compute_tp(), 1, coords_num_, [&](uint64_t i) {
+        // Check for duplicate in adjacent cells
+        bool found_dup = true;
+        for (unsigned d = 0; d < dim_num; ++d) {
+          auto dim = array_schema_->dimension(d);
+          if (!dim->var_size()) {  // Fixed-sized dimensions
+            if (memcmp(
+                    buffs[d] + cell_pos[i] * coord_sizes[d],
+                    buffs[d] + cell_pos[i - 1] * coord_sizes[d],
+                    coord_sizes[d]) != 0) {  // Not the same
+              found_dup = false;
+              break;
+            }
+          } else {
+            auto offs = (uint64_t*)buffs[d];
+            auto a = cell_pos[i];
+            auto b = cell_pos[i - 1];
+            auto off_a = offs[a];
+            auto off_b = offs[b];
+            auto off_a_plus_1 =
+                (a == coords_num_ - 1) ? *(buffs_var_sizes[d]) : offs[a + 1];
+            auto off_b_plus_1 =
+                (b == coords_num_ - 1) ? *(buffs_var_sizes[d]) : offs[b + 1];
+            auto size_a = off_a_plus_1 - off_a;
+            auto size_b = off_b_plus_1 - off_b;
+
+            // Compare sizes
+            if (size_a != size_b) {  // Not same
+              found_dup = false;
+              break;
+            }
+
+            // Compare var values
+            if (memcmp(
+                    buffs_var[d] + off_a,
+                    buffs_var[d] + off_b,
+                    size_a) != 0) {  // Not the same
+              found_dup = false;
+              break;
+            }
+          }
         }
-      } else {
-        auto offs = (uint64_t*)buffs[d];
-        auto a = cell_pos[i];
-        auto b = cell_pos[i - 1];
-        auto off_a = offs[a];
-        auto off_b = offs[b];
-        auto off_a_plus_1 =
-            (a == coords_num_ - 1) ? *(buffs_var_sizes[d]) : offs[a + 1];
-        auto off_b_plus_1 =
-            (b == coords_num_ - 1) ? *(buffs_var_sizes[d]) : offs[b + 1];
-        auto size_a = off_a_plus_1 - off_a;
-        auto size_b = off_b_plus_1 - off_b;
 
-        // Compare sizes
-        if (size_a != size_b) {  // Not same
-          found_dup = false;
-          break;
+        // Found duplicate
+        if (found_dup) {
+          std::lock_guard<std::mutex> lock(mtx);
+          coord_dups->insert(cell_pos[i]);
         }
 
-        // Compare var values
-        if (memcmp(
-                buffs_var[d] + off_a,
-                buffs_var[d] + off_b,
-                size_a) != 0) {  // Not the same
-          found_dup = false;
-          break;
-        }
-      }
-    }
-
-    // Found duplicate
-    if (found_dup) {
-      std::lock_guard<std::mutex> lock(mtx);
-      coord_dups->insert(cell_pos[i]);
-    }
-
-    return Status::Ok();
-  });
+        return Status::Ok();
+      });
 
   // Check all statuses
   for (auto& st : statuses)
@@ -993,51 +1003,52 @@ Status Writer::compute_coord_dups(std::set<uint64_t>* coord_dups) const {
   }
 
   std::mutex mtx;
-  auto statuses = parallel_for(1, coords_num_, [&](uint64_t i) {
-    // Check for duplicate in adjacent cells
-    bool found_dup = true;
-    for (unsigned d = 0; d < dim_num; ++d) {
-      auto dim = array_schema_->dimension(d);
-      if (!dim->var_size()) {  // Fixed-sized dimensions
-        if (memcmp(
-                buffs[d] + i * coord_sizes[d],
-                buffs[d] + (i - 1) * coord_sizes[d],
-                coord_sizes[d]) != 0) {  // Not the same
-          found_dup = false;
-          break;
+  auto statuses = parallel_for(
+      storage_manager_->compute_tp(), 1, coords_num_, [&](uint64_t i) {
+        // Check for duplicate in adjacent cells
+        bool found_dup = true;
+        for (unsigned d = 0; d < dim_num; ++d) {
+          auto dim = array_schema_->dimension(d);
+          if (!dim->var_size()) {  // Fixed-sized dimensions
+            if (memcmp(
+                    buffs[d] + i * coord_sizes[d],
+                    buffs[d] + (i - 1) * coord_sizes[d],
+                    coord_sizes[d]) != 0) {  // Not the same
+              found_dup = false;
+              break;
+            }
+          } else {
+            auto offs = (uint64_t*)buffs[d];
+            auto off_i_plus_1 =
+                (i == coords_num_ - 1) ? *(buffs_var_sizes[d]) : offs[i + 1];
+            auto size_i_minus_1 = offs[i] - offs[i - 1];
+            auto size_i = off_i_plus_1 - offs[i];
+
+            // Compare sizes
+            if (size_i != size_i_minus_1) {  // Not same
+              found_dup = false;
+              break;
+            }
+
+            // Compare var values
+            if (memcmp(
+                    buffs_var[d] + offs[i - 1],
+                    buffs_var[d] + offs[i],
+                    size_i) != 0) {  // Not the same
+              found_dup = false;
+              break;
+            }
+          }
         }
-      } else {
-        auto offs = (uint64_t*)buffs[d];
-        auto off_i_plus_1 =
-            (i == coords_num_ - 1) ? *(buffs_var_sizes[d]) : offs[i + 1];
-        auto size_i_minus_1 = offs[i] - offs[i - 1];
-        auto size_i = off_i_plus_1 - offs[i];
 
-        // Compare sizes
-        if (size_i != size_i_minus_1) {  // Not same
-          found_dup = false;
-          break;
+        // Found duplicate
+        if (found_dup) {
+          std::lock_guard<std::mutex> lock(mtx);
+          coord_dups->insert(i);
         }
 
-        // Compare var values
-        if (memcmp(
-                buffs_var[d] + offs[i - 1],
-                buffs_var[d] + offs[i],
-                size_i) != 0) {  // Not the same
-          found_dup = false;
-          break;
-        }
-      }
-    }
-
-    // Found duplicate
-    if (found_dup) {
-      std::lock_guard<std::mutex> lock(mtx);
-      coord_dups->insert(i);
-    }
-
-    return Status::Ok();
-  });
+        return Status::Ok();
+      });
 
   // Check all statuses
   for (auto& st : statuses) {
@@ -1071,24 +1082,25 @@ Status Writer::compute_coords_metadata(
   auto dim_num = array_schema_->dim_num();
 
   // Compute MBRs
-  auto statuses = parallel_for(0, tile_num, [&](uint64_t t) {
-    NDRange mbr(dim_num);
-    std::vector<const void*> data(dim_num);
-    for (unsigned d = 0; d < dim_num; ++d) {
-      auto dim = array_schema_->dimension(d);
-      const auto& dim_name = dim->name();
-      auto tiles_it = tiles.find(dim_name);
-      assert(tiles_it != tiles.end());
-      if (!dim->var_size())
-        dim->compute_mbr(tiles_it->second[t], &mbr[d]);
-      else
-        dim->compute_mbr_var(
-            tiles_it->second[2 * t], tiles_it->second[2 * t + 1], &mbr[d]);
-    }
+  auto statuses = parallel_for(
+      storage_manager_->compute_tp(), 0, tile_num, [&](uint64_t t) {
+        NDRange mbr(dim_num);
+        std::vector<const void*> data(dim_num);
+        for (unsigned d = 0; d < dim_num; ++d) {
+          auto dim = array_schema_->dimension(d);
+          const auto& dim_name = dim->name();
+          auto tiles_it = tiles.find(dim_name);
+          assert(tiles_it != tiles.end());
+          if (!dim->var_size())
+            dim->compute_mbr(tiles_it->second[t], &mbr[d]);
+          else
+            dim->compute_mbr_var(
+                tiles_it->second[2 * t], tiles_it->second[2 * t + 1], &mbr[d]);
+        }
 
-    meta->set_mbr(t, mbr);
-    return Status::Ok();
-  });
+        meta->set_mbr(t, mbr);
+        return Status::Ok();
+      });
 
   // Check all statuses
   for (auto& st : statuses)
@@ -1191,13 +1203,14 @@ Status Writer::filter_tiles(
 
   // Coordinates
   auto num = buffers_.size();
-  auto statuses = parallel_for(0, num, [&](uint64_t i) {
-    auto buff_it = buffers_.begin();
-    std::advance(buff_it, i);
-    const auto& name = buff_it->first;
-    RETURN_CANCEL_OR_ERROR(filter_tiles(name, &((*tiles)[name])));
-    return Status::Ok();
-  });
+  auto statuses =
+      parallel_for(storage_manager_->compute_tp(), 0, num, [&](uint64_t i) {
+        auto buff_it = buffers_.begin();
+        std::advance(buff_it, i);
+        const auto& name = buff_it->first;
+        RETURN_CANCEL_OR_ERROR(filter_tiles(name, &((*tiles)[name])));
+        return Status::Ok();
+      });
 
   // Check all statuses
   for (auto& st : statuses)
@@ -1238,7 +1251,7 @@ Status Writer::filter_tile(
       &filters, array_->get_encryption_key()));
 
   assert(!tile->filtered());
-  RETURN_NOT_OK(filters.run_forward(tile));
+  RETURN_NOT_OK(filters.run_forward(tile, storage_manager_->compute_tp()));
   assert(tile->filtered());
 
   tile->set_pre_filtered_size(orig_size);
@@ -1412,24 +1425,25 @@ Status Writer::filter_last_tiles(
 
   // Prepare the tiles first
   uint64_t num = buffers_.size();
-  auto statuses = parallel_for(0, num, [&](uint64_t i) {
-    auto buff_it = buffers_.begin();
-    std::advance(buff_it, i);
-    const auto& name = &(buff_it->first);
+  auto statuses =
+      parallel_for(storage_manager_->compute_tp(), 0, num, [&](uint64_t i) {
+        auto buff_it = buffers_.begin();
+        std::advance(buff_it, i);
+        const auto& name = &(buff_it->first);
 
-    auto& last_tile = global_write_state_->last_tiles_[*name].first;
-    auto& last_tile_var = global_write_state_->last_tiles_[*name].second;
+        auto& last_tile = global_write_state_->last_tiles_[*name].first;
+        auto& last_tile_var = global_write_state_->last_tiles_[*name].second;
 
-    if (!last_tile.empty()) {
-      std::vector<Tile>& tiles_ref = (*tiles)[*name];
-      // Note making shallow clones here, as it's not necessary to copy the
-      // underlying tile Buffers.
-      tiles_ref.push_back(last_tile.clone(false));
-      if (!last_tile_var.empty())
-        tiles_ref.push_back(last_tile_var.clone(false));
-    }
-    return Status::Ok();
-  });
+        if (!last_tile.empty()) {
+          std::vector<Tile>& tiles_ref = (*tiles)[*name];
+          // Note making shallow clones here, as it's not necessary to copy the
+          // underlying tile Buffers.
+          tiles_ref.push_back(last_tile.clone(false));
+          if (!last_tile_var.empty())
+            tiles_ref.push_back(last_tile_var.clone(false));
+        }
+        return Status::Ok();
+      });
 
   // Check statuses
   for (auto& st : statuses)
@@ -1758,30 +1772,32 @@ Status Writer::prepare_and_filter_attr_tiles(
     (*attr_tiles)[it.first] = std::vector<Tile>();
 
   uint64_t attr_num = buffers_.size();
-  auto statuses = parallel_for(0, attr_num, [&](uint64_t i) {
-    auto buff_it = buffers_.begin();
-    std::advance(buff_it, i);
-    const auto& attr = buff_it->first;
-    auto& tiles = (*attr_tiles)[attr];
-    RETURN_CANCEL_OR_ERROR(prepare_tiles(attr, write_cell_ranges, &tiles));
+  auto statuses = parallel_for(
+      storage_manager_->compute_tp(), 0, attr_num, [&](uint64_t i) {
+        auto buff_it = buffers_.begin();
+        std::advance(buff_it, i);
+        const auto& attr = buff_it->first;
+        auto& tiles = (*attr_tiles)[attr];
+        RETURN_CANCEL_OR_ERROR(prepare_tiles(attr, write_cell_ranges, &tiles));
 
-    /*
-        if (i == 0) {
-          // Gather stats
-          const uint64_t tile_num = write_cell_ranges.size();
-          uint64_t cell_num = 0;
-          auto var_size = array_schema_->var_size(attr);
-          for (size_t t = 0; t < tile_num; ++t)
-            cell_num += var_size ? tiles[2 * t].cell_num() :
-       tiles[t].cell_num();
-          STATS_ADD_COUNTER(stats::Stats::CounterType::WRITE_CELL_NUM,
-       cell_num); STATS_ADD_COUNTER(stats::Stats::CounterType::WRITE_TILE_NUM,
-       tile_num);
-        }
-    */
-    RETURN_CANCEL_OR_ERROR(filter_tiles(attr, &tiles));
-    return Status::Ok();
-  });
+        /*
+            if (i == 0) {
+              // Gather stats
+              const uint64_t tile_num = write_cell_ranges.size();
+              uint64_t cell_num = 0;
+              auto var_size = array_schema_->var_size(attr);
+              for (size_t t = 0; t < tile_num; ++t)
+                cell_num += var_size ? tiles[2 * t].cell_num() :
+           tiles[t].cell_num();
+              STATS_ADD_COUNTER(stats::Stats::CounterType::WRITE_CELL_NUM,
+           cell_num);
+           STATS_ADD_COUNTER(stats::Stats::CounterType::WRITE_TILE_NUM,
+           tile_num);
+            }
+        */
+        RETURN_CANCEL_OR_ERROR(filter_tiles(attr, &tiles));
+        return Status::Ok();
+      });
 
   // Check all statuses
   for (auto& st : statuses)
@@ -1802,14 +1818,15 @@ Status Writer::prepare_full_tiles(
     (*tiles)[it.first] = std::vector<Tile>();
 
   auto num = buffers_.size();
-  auto statuses = parallel_for(0, num, [&](uint64_t i) {
-    auto buff_it = buffers_.begin();
-    std::advance(buff_it, i);
-    const auto& name = buff_it->first;
-    RETURN_CANCEL_OR_ERROR(
-        prepare_full_tiles(name, coord_dups, &(*tiles)[name]));
-    return Status::Ok();
-  });
+  auto statuses =
+      parallel_for(storage_manager_->compute_tp(), 0, num, [&](uint64_t i) {
+        auto buff_it = buffers_.begin();
+        std::advance(buff_it, i);
+        const auto& name = buff_it->first;
+        RETURN_CANCEL_OR_ERROR(
+            prepare_full_tiles(name, coord_dups, &(*tiles)[name]));
+        return Status::Ok();
+      });
 
   // Check all statuses
   for (auto& st : statuses)
@@ -2177,14 +2194,15 @@ Status Writer::prepare_tiles(
 
   // Prepare tiles for all attributes and coordinates
   auto buffer_num = buffers_.size();
-  auto statuses = parallel_for(0, buffer_num, [&](uint64_t i) {
-    auto buff_it = buffers_.begin();
-    std::advance(buff_it, i);
-    const auto& name = buff_it->first;
-    RETURN_CANCEL_OR_ERROR(
-        prepare_tiles(name, cell_pos, coord_dups, &((*tiles)[name])));
-    return Status::Ok();
-  });
+  auto statuses = parallel_for(
+      storage_manager_->compute_tp(), 0, buffer_num, [&](uint64_t i) {
+        auto buff_it = buffers_.begin();
+        std::advance(buff_it, i);
+        const auto& name = buff_it->first;
+        RETURN_CANCEL_OR_ERROR(
+            prepare_tiles(name, cell_pos, coord_dups, &((*tiles)[name])));
+        return Status::Ok();
+      });
 
   // Check all statuses
   for (auto& st : statuses)
@@ -2342,7 +2360,11 @@ Status Writer::sort_coords(std::vector<uint64_t>* cell_pos) const {
     (*cell_pos)[i] = i;
 
   // Sort the coordinates in global order
-  parallel_sort(cell_pos->begin(), cell_pos->end(), GlobalCmp(domain, &buffs));
+  parallel_sort(
+      storage_manager_->compute_tp(),
+      cell_pos->begin(),
+      cell_pos->end(),
+      GlobalCmp(domain, &buffs));
 
   return Status::Ok();
 
@@ -2539,18 +2561,16 @@ Status Writer::write_all_tiles(
 
   assert(!tiles->empty());
 
-  std::vector<std::future<Status>> tasks;
+  std::vector<ThreadPool::Task> tasks;
   for (auto& it : *tiles) {
-    tasks.push_back(
-        storage_manager_->writer_thread_pool()->execute([&, this]() {
-          RETURN_CANCEL_OR_ERROR(write_tiles(it.first, frag_meta, &it.second));
-          return Status::Ok();
-        }));
+    tasks.push_back(storage_manager_->io_tp()->execute([&, this]() {
+      RETURN_CANCEL_OR_ERROR(write_tiles(it.first, frag_meta, &it.second));
+      return Status::Ok();
+    }));
   }
 
   // Wait for writes and check all statuses
-  auto statuses =
-      storage_manager_->writer_thread_pool()->wait_all_status(tasks);
+  auto statuses = storage_manager_->io_tp()->wait_all_status(tasks);
   for (auto& st : statuses)
     RETURN_NOT_OK(st);
 

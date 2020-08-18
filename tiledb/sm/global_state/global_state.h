@@ -39,7 +39,6 @@
 
 #include "tiledb/sm/config/config.h"
 #include "tiledb/sm/misc/status.h"
-#include "tiledb/sm/misc/thread_pool.h"
 
 namespace tiledb {
 namespace sm {
@@ -99,12 +98,6 @@ class GlobalState {
    * @return the number of configured TBB threads.
    */
   int tbb_threads();
-
-  /**
-   * Returns the global ThreadPool instance for use when TBB is disabled.
-   * @return The thread pool instance.
-   */
-  std::shared_ptr<ThreadPool> tp();
 
  private:
   /** The TileDB configuration parameters. */
