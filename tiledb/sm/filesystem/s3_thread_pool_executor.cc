@@ -49,7 +49,7 @@ S3ThreadPoolExecutor::S3ThreadPoolExecutor(ThreadPool* const thread_pool)
 
 S3ThreadPoolExecutor::~S3ThreadPoolExecutor() {
   assert(state_ == State::STOPPED);
-  assert(tasks_.empty());
+  assert(outstanding_tasks_ == 0);
 }
 
 Status S3ThreadPoolExecutor::Stop() {
