@@ -23,7 +23,9 @@ Watchdog::~Watchdog() {
   {
     std::unique_lock<std::mutex> lck(mtx_);
     should_exit_ = true;
+#ifndef __MINGW32__
     cv_.notify_one();
+#endif
   }
   thread_.join();
 }
