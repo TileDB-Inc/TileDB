@@ -39,7 +39,10 @@ install_yum_pkgs() {
 }
 
 install_brew_pkgs() {
-  brew install node || brew link --overwrite node
+  # Now installed on AZP images by default
+  if [[ `which node` == "" ]]; then
+    brew install node || brew link --overwrite node
+  fi
 }
 
 install_deps() {
