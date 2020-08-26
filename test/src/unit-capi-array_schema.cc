@@ -97,6 +97,9 @@ struct ArraySchemaFx {
   const char* DIM1_DOMAIN_STR = "[0,99]";
   const char* DIM2_DOMAIN_STR = "[20,60]";
   const uint64_t DIM_DOMAIN_SIZE = sizeof(DIM_DOMAIN) / DIM_NUM;
+  const uint32_t FILL_VALUE = 10;
+  const char* FILL_VALUE_STR = "10";
+  const uint32_t FILL_VALUE_SIZE = sizeof(uint32_t);
   const int64_t TILE_EXTENTS[2] = {10, 5};
   const char* DIM1_TILE_EXTENT_STR = "10";
   const char* DIM2_TILE_EXTENT_STR = "5";
@@ -754,6 +757,9 @@ void ArraySchemaFx::create_array(const std::string& path) {
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_attribute_set_filter_list(ctx_, attr, filter_list);
   REQUIRE(rc == TILEDB_OK);
+  rc =
+      tiledb_attribute_set_fill_value(ctx_, attr, &FILL_VALUE, FILL_VALUE_SIZE);
+  REQUIRE(rc == TILEDB_OK);
   rc = tiledb_array_schema_add_attribute(ctx_, array_schema, attr);
   REQUIRE(rc == TILEDB_OK);
 
@@ -877,6 +883,14 @@ void ArraySchemaFx::load_and_check_array_schema(const std::string& path) {
   REQUIRE(rc == TILEDB_OK);
   CHECK(cell_val_num == CELL_VAL_NUM);
 
+  const void* fill_value;
+  uint64_t fill_value_size;
+  rc = tiledb_attribute_get_fill_value(
+      ctx_, attr, &fill_value, &fill_value_size);
+  REQUIRE(rc == TILEDB_OK);
+  CHECK(fill_value_size == FILL_VALUE_SIZE);
+  CHECK(!memcmp(fill_value, &FILL_VALUE, FILL_VALUE_SIZE));
+
   unsigned int num_attributes = 0;
   rc = tiledb_array_schema_get_attribute_num(
       ctx_, array_schema, &num_attributes);
@@ -980,7 +994,7 @@ void ArraySchemaFx::load_and_check_array_schema(const std::string& path) {
       "- Cell val num: " + CELL_VAL_NUM_STR + "\n" + "- Filters: 2\n" +
       "  > BZIP2: COMPRESSION_LEVEL=5\n" +
       "  > BitWidthReduction: BIT_WIDTH_MAX_WINDOW=1000\n" +
-      "- Fill value: -2147483648\n";
+      "- Fill value: " + FILL_VALUE_STR + "\n";
   FILE* gold_fout = fopen("gold_fout.txt", "w");
   const char* dump = dump_str.c_str();
   fwrite(dump, sizeof(char), strlen(dump), gold_fout);
