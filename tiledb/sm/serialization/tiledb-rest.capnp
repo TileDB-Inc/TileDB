@@ -77,6 +77,9 @@ struct Attribute {
 
     filterPipeline @3 :FilterPipeline;
     # TileDB FilterPipeline for Attribute
+
+    fillValue @4 :Data;
+    # Default fill value
 }
 
 struct AttributeBufferHeader {

@@ -118,7 +118,7 @@ struct Attribute {
   class Pipeline;
 
   struct _capnpPrivate {
-    CAPNP_DECLARE_STRUCT_HEADER(92ad78f56de3d76a, 1, 3)
+    CAPNP_DECLARE_STRUCT_HEADER(92ad78f56de3d76a, 1, 4)
 #if !CAPNP_LITE
     static constexpr ::capnp::_::RawBrandedSchema const* brand() {
       return &schema->defaultBrand;
@@ -1281,6 +1281,9 @@ class Attribute::Reader {
   inline ::tiledb::sm::serialization::capnp::FilterPipeline::Reader
   getFilterPipeline() const;
 
+  inline bool hasFillValue() const;
+  inline ::capnp::Data::Reader getFillValue() const;
+
  private:
   ::capnp::_::StructReader _reader;
   template <typename, ::capnp::Kind>
@@ -1349,6 +1352,13 @@ class Attribute::Builder {
           value);
   inline ::capnp::Orphan<::tiledb::sm::serialization::capnp::FilterPipeline>
   disownFilterPipeline();
+
+  inline bool hasFillValue();
+  inline ::capnp::Data::Builder getFillValue();
+  inline void setFillValue(::capnp::Data::Reader value);
+  inline ::capnp::Data::Builder initFillValue(unsigned int size);
+  inline void adoptFillValue(::capnp::Orphan<::capnp::Data>&& value);
+  inline ::capnp::Orphan<::capnp::Data> disownFillValue();
 
  private:
   ::capnp::_::StructBuilder _builder;
@@ -6547,6 +6557,44 @@ Attribute::Builder::disownFilterPipeline() {
       ::tiledb::sm::serialization::capnp::FilterPipeline>::
       disown(
           _builder.getPointerField(::capnp::bounded<2>() * ::capnp::POINTERS));
+}
+
+inline bool Attribute::Reader::hasFillValue() const {
+  return !_reader.getPointerField(::capnp::bounded<3>() * ::capnp::POINTERS)
+              .isNull();
+}
+inline bool Attribute::Builder::hasFillValue() {
+  return !_builder.getPointerField(::capnp::bounded<3>() * ::capnp::POINTERS)
+              .isNull();
+}
+inline ::capnp::Data::Reader Attribute::Reader::getFillValue() const {
+  return ::capnp::_::PointerHelpers<::capnp::Data>::get(
+      _reader.getPointerField(::capnp::bounded<3>() * ::capnp::POINTERS));
+}
+inline ::capnp::Data::Builder Attribute::Builder::getFillValue() {
+  return ::capnp::_::PointerHelpers<::capnp::Data>::get(
+      _builder.getPointerField(::capnp::bounded<3>() * ::capnp::POINTERS));
+}
+inline void Attribute::Builder::setFillValue(::capnp::Data::Reader value) {
+  ::capnp::_::PointerHelpers<::capnp::Data>::set(
+      _builder.getPointerField(::capnp::bounded<3>() * ::capnp::POINTERS),
+      value);
+}
+inline ::capnp::Data::Builder Attribute::Builder::initFillValue(
+    unsigned int size) {
+  return ::capnp::_::PointerHelpers<::capnp::Data>::init(
+      _builder.getPointerField(::capnp::bounded<3>() * ::capnp::POINTERS),
+      size);
+}
+inline void Attribute::Builder::adoptFillValue(
+    ::capnp::Orphan<::capnp::Data>&& value) {
+  ::capnp::_::PointerHelpers<::capnp::Data>::adopt(
+      _builder.getPointerField(::capnp::bounded<3>() * ::capnp::POINTERS),
+      kj::mv(value));
+}
+inline ::capnp::Orphan<::capnp::Data> Attribute::Builder::disownFillValue() {
+  return ::capnp::_::PointerHelpers<::capnp::Data>::disown(
+      _builder.getPointerField(::capnp::bounded<3>() * ::capnp::POINTERS));
 }
 
 inline bool AttributeBufferHeader::Reader::hasName() const {

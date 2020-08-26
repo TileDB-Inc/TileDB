@@ -177,6 +177,20 @@ Status attribute_to_capnp(
   attribute_builder->setType(datatype_str(attribute->type()));
   attribute_builder->setCellValNum(attribute->cell_val_num());
 
+  // Get the fill value from `attribute`.
+  const void* fill_value;
+  uint64_t fill_value_size;
+  RETURN_NOT_OK(attribute->get_fill_value(&fill_value, &fill_value_size));
+
+  // Copy the fill value buffer into a capnp vector of bytes.
+  auto capnpFillValue = kj::Vector<uint8_t>();
+  capnpFillValue.addAll(kj::ArrayPtr<uint8_t>(
+      const_cast<uint8_t*>(reinterpret_cast<const uint8_t*>(fill_value)),
+      fill_value_size));
+
+  // Store the fill value vector of bytes.
+  attribute_builder->setFillValue(capnpFillValue.asPtr());
+
   const auto& filters = attribute->filters();
   auto filter_pipeline_builder = attribute_builder->initFilterPipeline();
   RETURN_NOT_OK(filter_pipeline_to_capnp(&filters, &filter_pipeline_builder));
@@ -193,6 +207,10 @@ Status attribute_from_capnp(
   attribute->reset(new Attribute(attribute_reader.getName(), datatype));
   RETURN_NOT_OK(
       (*attribute)->set_cell_val_num(attribute_reader.getCellValNum()));
+
+  // Set the fill value.
+  auto fill_value = attribute_reader.getFillValue();
+  (*attribute)->set_fill_value(fill_value.asBytes().begin(), fill_value.size());
 
   // Set filter pipelines
   if (attribute_reader.hasFilterPipeline()) {
