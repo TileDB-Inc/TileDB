@@ -3718,6 +3718,60 @@ int32_t tiledb_array_consolidate_metadata_with_key(
   return TILEDB_OK;
 }
 
+int32_t tiledb_array_get_fragments(
+    tiledb_ctx_t* ctx,
+    const char* array_uri,
+    char*** fragment_uris,
+    uint32_t* fragment_uris_len) {
+  if (sanity_check(ctx) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  // Check array name
+  tiledb::sm::URI uri(array_uri);
+  if (uri.is_invalid()) {
+    auto st = tiledb::sm::Status::Error(
+        "Failed to load array schema; Invalid array URI");
+    LOG_STATUS(st);
+    save_error(ctx, st);
+    return TILEDB_ERR;
+  }
+
+  std::vector<tiledb::sm::URI> fragment_uris_vec;
+  if (SAVE_ERROR_CATCH(
+          ctx,
+          ctx->ctx_->storage_manager()->get_fragment_uris(
+              uri, &fragment_uris_vec)))
+    return TILEDB_ERR;
+
+  // Store the number of fragment URIs to return.
+  *fragment_uris_len = static_cast<uint32_t>(fragment_uris_vec.size());
+
+  // Allocate an array of c-strings.
+  *fragment_uris =
+      static_cast<char**>(malloc(*fragment_uris_len * sizeof(char*)));
+  if (*fragment_uris == nullptr)
+    return TILEDB_ERR;
+
+  // Populate each element in `*fragment_uris` with a c-string for each
+  // element in `fragment_uris`.
+  for (uint32_t i = 0; i < *fragment_uris_len; ++i) {
+    const char* const c_str = fragment_uris_vec[i].c_str();
+    const size_t c_str_len = strlen(c_str);
+
+    (*fragment_uris)[i] =
+        static_cast<char*>(malloc((c_str_len + 1) * sizeof(char)));
+    if ((*fragment_uris)[i] == nullptr) {
+      for (uint32_t j = 0; j <= i; ++j)
+        free((*fragment_uris)[j]);
+      free(*fragment_uris);
+      return TILEDB_ERR;
+    }
+    memcpy((*fragment_uris)[i], c_str, c_str_len + 1);
+  }
+
+  return TILEDB_OK;
+}
+
 /* ****************************** */
 /*         OBJECT MANAGEMENT      */
 /* ****************************** */

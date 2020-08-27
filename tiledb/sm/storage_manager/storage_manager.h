@@ -522,10 +522,16 @@ class StorageManager {
       FragmentInfo* fragment_info);
 
   /**
+   * Retrieves all the fragment URIs of an array.
+   */
+  Status get_fragment_uris(
+      const URI& array_uri, std::vector<URI>* fragment_uris) const;
+
+  /**
    * Retrieves all the fragment URIs of an array, along with the latest
    * consolidated fragment metadata URI `meta_uri`.
    */
-  Status get_fragment_uris(
+  Status get_fragment_uris_ext(
       const URI& array_uri,
       std::vector<URI>* fragment_uris,
       URI* meta_uri) const;
@@ -1119,6 +1125,14 @@ class StorageManager {
       const std::vector<URI>& uris,
       uint64_t timestamp,
       std::vector<TimestampedURI>* sorted_uris) const;
+
+  /**
+   * Retrieves all the fragment URIs from `uris` and stores them
+   * inside `fragment_uris`. This an internal work routine for
+   * `get_fragment_uris` and `get_fragment_uris_ext`.
+   */
+  Status get_fragment_uris_internal(
+      const std::vector<URI>& uris, std::vector<URI>* fragment_uris) const;
 
   /**
    * It computes the URIs `to_vacuum` from the input `uris`, considering

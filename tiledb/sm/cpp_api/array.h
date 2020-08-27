@@ -1442,6 +1442,24 @@ class Array {
     std::memcpy((void*)key->data(), key_c, key_len);
   }
 
+  /** Returns commited fragment URIs associated with this array. */
+  std::vector<std::string> get_fragment_uris() {
+    const std::string array_uri = uri();
+    auto& ctx = ctx_.get();
+    tiledb_ctx_t* c_ctx = ctx.ptr().get();
+    char** c_fragment_uris;
+    uint32_t c_fragment_uris_len;
+    ctx.handle_error(tiledb_array_get_fragments(
+        c_ctx, array_uri.c_str(), &c_fragment_uris, &c_fragment_uris_len));
+
+    std::vector<std::string> fragment_uris;
+    fragment_uris.reserve(c_fragment_uris_len);
+    for (uint32_t i = 0; i < c_fragment_uris_len; ++i)
+      fragment_uris.emplace_back(c_fragment_uris[i]);
+  
+    return fragment_uris;
+  }
+
  private:
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */

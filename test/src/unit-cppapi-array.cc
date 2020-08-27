@@ -1243,3 +1243,82 @@ TEST_CASE(
   if (vfs.is_dir(array_name))
     vfs.remove_dir(array_name);
 }
+
+TEST_CASE("C++ API: Get fragment URIs", "[cppapi][get_fragment_uris]") {
+  Context ctx;
+  VFS vfs(ctx);
+  const std::string array_name = "cpp_unit_fragment_uris";
+
+  if (vfs.is_dir(array_name))
+    vfs.remove_dir(array_name);
+
+  // Verify that the `get_fragment_uris` throws an exception when the
+  // array does not exist.
+  CHECK_THROWS(
+      tiledb::Array(ctx, array_name, TILEDB_WRITE).get_fragment_uris());
+
+  Domain domain(ctx);
+  domain.add_dimension(Dimension::create<int>(ctx, "d", {{1, 10}}, 1));
+  ArraySchema schema(ctx, TILEDB_DENSE);
+  schema.set_domain(domain);
+  schema.add_attribute(Attribute::create<int>(ctx, "a"));
+  Array::create(array_name, schema);
+
+  // Verify that an empty array does not have any fragment URIs.
+  Array array1(ctx, array_name, TILEDB_WRITE);
+  std::vector<std::string> fragment_uris = array1.get_fragment_uris();
+  CHECK(fragment_uris.empty());
+
+  // Write one fragment.
+  std::vector<int> data1 = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
+  Query query1(ctx, array1);
+  query1.set_layout(TILEDB_ROW_MAJOR).set_buffer("a", data1);
+  query1.submit();
+  array1.close();
+
+  // Verify that we have one fragment after the first write.
+  fragment_uris = array1.get_fragment_uris();
+  CHECK(fragment_uris.size() == 1);
+  std::vector<std::string> test_fragment_uris =
+      tiledb::test::get_fragments(array_name);
+  CHECK(
+      std::unordered_set<std::string>(
+          fragment_uris.begin(), fragment_uris.end()) ==
+      std::unordered_set<std::string>(
+          test_fragment_uris.begin(), test_fragment_uris.end()));
+
+  // Write a second fragment.
+  Array array2(ctx, array_name, TILEDB_WRITE);
+  std::vector<int> data2 = {11, 12, 13, 14, 15, 16, 17, 18, 19, 20};
+  Query query2(ctx, array2);
+  query2.set_layout(TILEDB_ROW_MAJOR).set_buffer("a", data2);
+  query2.submit();
+  array2.close();
+
+  // Verify that we have two fragments after the second write.
+  fragment_uris = array2.get_fragment_uris();
+  CHECK(fragment_uris.size() == 2);
+  test_fragment_uris = tiledb::test::get_fragments(array_name);
+  CHECK(
+      std::unordered_set<std::string>(
+          fragment_uris.begin(), fragment_uris.end()) ==
+      std::unordered_set<std::string>(
+          test_fragment_uris.begin(), test_fragment_uris.end()));
+
+  // Consolidate and vacuum the two fragments.
+  Array::consolidate(ctx, array_name);
+  Array::vacuum(ctx, array_name);
+
+  // Verify that we have one fragment after the consolidation and vacuum.
+  fragment_uris = array2.get_fragment_uris();
+  CHECK(fragment_uris.size() == 1);
+  test_fragment_uris = tiledb::test::get_fragments(array_name);
+  CHECK(
+      std::unordered_set<std::string>(
+          fragment_uris.begin(), fragment_uris.end()) ==
+      std::unordered_set<std::string>(
+          test_fragment_uris.begin(), test_fragment_uris.end()));
+
+  if (vfs.is_dir(array_name))
+    vfs.remove_dir(array_name);
+}

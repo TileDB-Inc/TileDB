@@ -213,7 +213,7 @@ Status StorageManager::array_open_for_reads(
   std::vector<TimestampedURI> fragments_to_load;
   std::vector<URI> fragment_uris;
   URI meta_uri;
-  RETURN_NOT_OK(get_fragment_uris(array_uri, &fragment_uris, &meta_uri));
+  RETURN_NOT_OK(get_fragment_uris_ext(array_uri, &fragment_uris, &meta_uri));
   RETURN_NOT_OK(get_sorted_uris(fragment_uris, timestamp, &fragments_to_load));
 
   // Get the consolidated fragment metadata
@@ -413,7 +413,7 @@ Status StorageManager::array_reopen(
   std::vector<TimestampedURI> fragments_to_load;
   std::vector<URI> fragment_uris;
   URI meta_uri;
-  RETURN_NOT_OK(get_fragment_uris(array_uri, &fragment_uris, &meta_uri));
+  RETURN_NOT_OK(get_fragment_uris_ext(array_uri, &fragment_uris, &meta_uri));
   RETURN_NOT_OK(get_sorted_uris(fragment_uris, timestamp, &fragments_to_load));
 
   // Get the consolidated fragment metadata
@@ -1204,6 +1204,18 @@ Status StorageManager::get_fragment_info(
 }
 
 Status StorageManager::get_fragment_uris(
+    const URI& array_uri, std::vector<URI>* fragment_uris) const {
+  // Get all uris in the array directory
+  std::vector<URI> uris;
+  RETURN_NOT_OK(vfs_->ls(array_uri.add_trailing_slash(), &uris));
+
+  // Copy fragment uris in 'uris' into 'fragment_uris'.
+  RETURN_NOT_OK(get_fragment_uris_internal(uris, fragment_uris));
+
+  return Status::Ok();
+}
+
+Status StorageManager::get_fragment_uris_ext(
     const URI& array_uri,
     std::vector<URI>* fragment_uris,
     URI* meta_uri) const {
@@ -1211,6 +1223,17 @@ Status StorageManager::get_fragment_uris(
   std::vector<URI> uris;
   RETURN_NOT_OK(vfs_->ls(array_uri.add_trailing_slash(), &uris));
 
+  // Copy fragment uris in 'uris' into 'fragment_uris'.
+  RETURN_NOT_OK(get_fragment_uris_internal(uris, fragment_uris));
+
+  // Get the latest consolidated fragment metadata URI.
+  RETURN_NOT_OK(get_consolidated_fragment_meta_uri(uris, meta_uri));
+
+  return Status::Ok();
+}
+
+Status StorageManager::get_fragment_uris_internal(
+    const std::vector<URI>& uris, std::vector<URI>* fragment_uris) const {
   // Get the fragments that have special "ok" URIs, which indicate
   // that fragments are "committed" for versions >= 5
   std::set<URI> ok_uris;
@@ -1235,14 +1258,11 @@ Status StorageManager::get_fragment_uris(
     RETURN_NOT_OK(st);
 
   for (size_t i = 0; i < uris.size(); ++i) {
-    if (is_fragment[i])
+    if (is_fragment[i]) {
       fragment_uris->emplace_back(uris[i]);
-    else if (this->is_vacuum_file(uris[i]))
+    } else if (this->is_vacuum_file(uris[i]))
       fragment_uris->emplace_back(uris[i]);
   }
-
-  // Get the latest consolidated fragment metadata URI
-  RETURN_NOT_OK(get_consolidated_fragment_meta_uri(uris, meta_uri));
 
   return Status::Ok();
 }

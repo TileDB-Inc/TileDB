@@ -396,6 +396,12 @@ void read_array(
     const QueryBuffers& buffers);
 
 /**
+ * Returns the fragment URIs in the input array (either commited or
+ * uncommited), appropriately excluding special files and subdirectories.
+ */
+std::vector<std::string> get_fragments(const std::string& array_name);
+
+/**
  * Returns the number of fragments in the input array,
  * appropriately excluding special files and subdirectories.
  */

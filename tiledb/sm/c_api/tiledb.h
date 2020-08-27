@@ -4801,6 +4801,32 @@ TILEDB_DEPRECATED_EXPORT int32_t tiledb_array_consolidate_metadata_with_key(
     uint32_t key_length,
     tiledb_config_t* config);
 
+/**
+ * Returns an array of commited fragment uris for `array_uri`. The
+ * array does not need to be open.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * char** fragment_uris;
+ * uint32_t fragment_uris_len;
+ * tiledb_array_get_fragments(
+ *   ctx, "s3://tiledb_bucket/my_array", &fragment_uris, &fragment_uris_len);
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param array_uri The array whose fragments will be retrieved.
+ * @param fragment_uris An array of c-string elements, where each element
+ *        is the uri of a commited fragment.
+ * @param fragment_uris_len The number of elements in `fragment_uris`.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_array_get_fragments(
+    tiledb_ctx_t* ctx,
+    const char* array_uri,
+    char*** fragment_uris,
+    uint32_t* fragment_uris_len);
+
 /* ********************************* */
 /*          OBJECT MANAGEMENT        */
 /* ********************************* */

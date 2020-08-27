@@ -727,7 +727,7 @@ void read_array(
   tiledb_query_free(&query);
 }
 
-int32_t num_fragments(const std::string& array_name) {
+std::vector<std::string> get_fragments(const std::string& array_name) {
   Context ctx;
   VFS vfs(ctx);
 
@@ -735,15 +735,20 @@ int32_t num_fragments(const std::string& array_name) {
   auto uris = vfs.ls(array_name);
 
   // Exclude '__meta' folder and any file with a suffix
-  int ret = 0;
+  std::vector<std::string> fragment_uris;
   for (const auto& uri : uris) {
     auto name = tiledb::sm::URI(uri).remove_trailing_slash().last_path_part();
     if (name != tiledb::sm::constants::array_metadata_folder_name &&
-        name.find_first_of('.') == std::string::npos)
-      ++ret;
+        name.find_first_of('.') == std::string::npos) {
+      fragment_uris.emplace_back(uri);
+    }
   }
 
-  return ret;
+  return fragment_uris;
+}
+
+int32_t num_fragments(const std::string& array_name) {
+  return get_fragments(array_name).size();
 }
 
 template void check_subarray<int8_t>(
