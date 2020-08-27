@@ -209,8 +209,11 @@ Status attribute_from_capnp(
       (*attribute)->set_cell_val_num(attribute_reader.getCellValNum()));
 
   // Set the fill value.
-  auto fill_value = attribute_reader.getFillValue();
-  (*attribute)->set_fill_value(fill_value.asBytes().begin(), fill_value.size());
+  if (attribute_reader.hasFillValue()) {
+    auto fill_value = attribute_reader.getFillValue();
+    (*attribute)
+        ->set_fill_value(fill_value.asBytes().begin(), fill_value.size());
+  }
 
   // Set filter pipelines
   if (attribute_reader.hasFilterPipeline()) {
