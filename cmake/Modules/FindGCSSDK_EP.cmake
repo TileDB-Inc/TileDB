@@ -72,12 +72,11 @@ if (NOT GCSSDK_FOUND)
 
     ExternalProject_Add(ep_gcssdk
       PREFIX "externals"
-      URL "https://github.com/googleapis/google-cloud-cpp/archive/v1.14.0.zip"
-      URL_HASH SHA1=2cc7e5a3b62fb37f1accd405818557e990b91190
+      URL "https://github.com/googleapis/google-cloud-cpp/archive/v1.16.0.zip"
+      URL_HASH SHA1=562ae055ebd6304b7fdf58a7b18c867b870bac95
       BUILD_IN_SOURCE 1
       PATCH_COMMAND
         patch -N -p1 < ${TILEDB_CMAKE_INPUTS_DIR}/patches/ep_gcssdk/build.patch &&
-        patch -N -p1 < ${TILEDB_CMAKE_INPUTS_DIR}/patches/ep_gcssdk/ls.patch &&
         patch -N -p1 < ${TILEDB_CMAKE_INPUTS_DIR}/patches/ep_gcssdk/disable_tests.patch &&
         patch -N -p1 < ${TILEDB_CMAKE_INPUTS_DIR}/patches/ep_gcssdk/disable_examples.patch
       CONFIGURE_COMMAND
@@ -99,6 +98,7 @@ if (NOT GCSSDK_FOUND)
         -DBUILD_TESTING=OFF
         # Google uses their own variable instead of CMAKE_INSTALL_PREFIX
         -DGOOGLE_CLOUD_CPP_EXTERNAL_PREFIX=${TILEDB_EP_INSTALL_PREFIX}
+        -DCMAKE_POSITION_INDEPENDENT_CODE=ON
       BUILD_COMMAND ${CMAKE_COMMAND} --build cmake-out -- -j${NCPU}
       # There is no install command, the build process installs the libraries
       INSTALL_COMMAND ""
