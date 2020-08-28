@@ -383,12 +383,14 @@ Status GCS::ls(
   google::cloud::storage::Prefix prefix_option(object_path);
   google::cloud::storage::Delimiter delimiter_option(delimiter);
 
-  google::cloud::storage::ListObjectsReader objects_reader =
-      client_->ListObjects(
+  google::cloud::storage::internal::PaginationRange<
+      google::cloud::storage::ObjectOrPrefix,
+      google::cloud::storage::internal::ListObjectsRequest,
+      google::cloud::storage::internal::ListObjectsResponse>
+      objects_reader = client_->ListObjectsAndPrefixes(
           bucket_name, std::move(prefix_option), std::move(delimiter_option));
 
-  for (const google::cloud::StatusOr<google::cloud::storage::ObjectMetadata>&
-           object_metadata : objects_reader) {
+  for (const auto& object_metadata : objects_reader) {
     if (!object_metadata.ok()) {
       const google::cloud::Status status = object_metadata.status();
 
@@ -401,9 +403,21 @@ Status GCS::ls(
       break;
     }
 
-    paths->emplace_back(
-        "gcs://" + bucket_name + "/" +
-        remove_front_slash(remove_trailing_slash(object_metadata->name())));
+    auto& results = object_metadata.value();
+
+    if (absl::holds_alternative<google::cloud::storage::ObjectMetadata>(
+            results)) {
+      paths->emplace_back(
+          "gcs://" + bucket_name + "/" +
+          remove_front_slash(remove_trailing_slash(
+              absl::get<google::cloud::storage::ObjectMetadata>(results)
+                  .name())));
+    } else if (absl::holds_alternative<std::string>(results)) {
+      paths->emplace_back(
+          "gcs://" + bucket_name + "/" +
+          remove_front_slash(
+              remove_trailing_slash(absl::get<std::string>(results))));
+    }
   }
 
   return Status::Ok();
