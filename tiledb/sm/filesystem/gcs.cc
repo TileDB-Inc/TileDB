@@ -221,6 +221,7 @@ Status GCS::is_empty_bucket(const URI& uri, bool* is_empty) const {
 }
 
 Status GCS::is_bucket(const URI& uri, bool* const is_bucket) const {
+  RETURN_NOT_OK(init_client());
   assert(is_bucket);
 
   if (!uri.is_gcs()) {
