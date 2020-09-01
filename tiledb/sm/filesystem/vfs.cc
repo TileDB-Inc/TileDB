@@ -66,7 +66,11 @@ static std::mutex filelock_mtx_;
 /*     CONSTRUCTORS & DESTRUCTORS    */
 /* ********************************* */
 
-VFS::VFS() {
+VFS::VFS()
+    : init_(false)
+    , read_ahead_size_(0)
+    , compute_tp_(nullptr)
+    , io_tp_(nullptr) {
 #ifdef HAVE_AZURE
   supported_fs_.insert(Filesystem::AZURE);
 #endif
@@ -79,8 +83,6 @@ VFS::VFS() {
 #ifdef HAVE_S3
   supported_fs_.insert(Filesystem::S3);
 #endif
-
-  init_ = false;
 }
 
 /* ********************************* */
@@ -895,6 +897,20 @@ Status VFS::init(
   if (vfs_config)
     config_.inherit(*vfs_config);
 
+  // Construct the read-ahead cache.
+  bool found = false;
+  uint64_t read_ahead_cache_size = 0;
+  RETURN_NOT_OK(config_.get<uint64_t>(
+      "vfs.read_ahead_cache_size", &read_ahead_cache_size, &found));
+  assert(found);
+  read_ahead_cache_ = std::unique_ptr<ReadAheadCache>(
+      new ReadAheadCache(read_ahead_cache_size));
+
+  // Store the read-ahead size.
+  RETURN_NOT_OK(
+      config_.get<uint64_t>("vfs.read_ahead_size", &read_ahead_size_, &found));
+  assert(found);
+
 #ifdef HAVE_HDFS
   hdfs_ = std::unique_ptr<hdfs::HDFS>(new (std::nothrow) hdfs::HDFS());
   if (hdfs_.get() == nullptr) {
@@ -1150,7 +1166,11 @@ Status VFS::move_dir(const URI& old_uri, const URI& new_uri) {
 }
 
 Status VFS::read(
-    const URI& uri, uint64_t offset, void* buffer, uint64_t nbytes) {
+    const URI& uri,
+    const uint64_t offset,
+    void* const buffer,
+    const uint64_t nbytes,
+    const bool use_read_ahead) {
   STATS_ADD_COUNTER(stats::Stats::CounterType::READ_BYTE_NUM, nbytes);
 
   if (!init_)
@@ -1172,7 +1192,7 @@ Status VFS::read(
       std::min(std::max(nbytes / min_parallel_size, uint64_t(1)), max_ops);
 
   if (num_ops == 1) {
-    return read_impl(uri, offset, buffer, nbytes);
+    return read_impl(uri, offset, buffer, nbytes, use_read_ahead);
   } else {
     std::vector<ThreadPool::Task> results;
     uint64_t thread_read_nbytes = utils::math::ceil(nbytes, num_ops);
@@ -1184,8 +1204,19 @@ Status VFS::read(
       uint64_t thread_offset = offset + begin;
       auto thread_buffer = reinterpret_cast<char*>(buffer) + begin;
       auto task = cancelable_tasks_.execute(
-          io_tp_, [this, uri, thread_offset, thread_buffer, thread_nbytes]() {
-            return read_impl(uri, thread_offset, thread_buffer, thread_nbytes);
+          io_tp_,
+          [this,
+           uri,
+           thread_offset,
+           thread_buffer,
+           thread_nbytes,
+           use_read_ahead]() {
+            return read_impl(
+                uri,
+                thread_offset,
+                thread_buffer,
+                thread_nbytes,
+                use_read_ahead);
           });
       results.push_back(std::move(task));
     }
@@ -1201,8 +1232,17 @@ Status VFS::read(
 }
 
 Status VFS::read_impl(
-    const URI& uri, uint64_t offset, void* buffer, uint64_t nbytes) {
+    const URI& uri,
+    const uint64_t offset,
+    void* const buffer,
+    const uint64_t nbytes,
+    const bool use_read_ahead) {
   STATS_ADD_COUNTER(stats::Stats::CounterType::READ_OPS_NUM, 1);
+
+  // We only check to use the read-ahead cache for cloud-storage
+  // backends. No-op the `use_read_ahead` to prevent the unused
+  // variable compiler warning.
+  (void)use_read_ahead;
 
   if (uri.is_file()) {
 #ifdef _WIN32
@@ -1221,14 +1261,34 @@ Status VFS::read_impl(
   }
   if (uri.is_s3()) {
 #ifdef HAVE_S3
-    return s3_.read(uri, offset, buffer, nbytes);
+    const auto read_fn = std::bind(
+        &S3::read,
+        &s3_,
+        std::placeholders::_1,
+        std::placeholders::_2,
+        std::placeholders::_3,
+        std::placeholders::_4,
+        std::placeholders::_5,
+        std::placeholders::_6);
+    return read_ahead_impl(
+        read_fn, uri, offset, buffer, nbytes, use_read_ahead);
 #else
     return LOG_STATUS(Status::VFSError("TileDB was built without S3 support"));
 #endif
   }
   if (uri.is_azure()) {
 #ifdef HAVE_AZURE
-    return azure_.read(uri, offset, buffer, nbytes);
+    const auto read_fn = std::bind(
+        &Azure::read,
+        &azure_,
+        std::placeholders::_1,
+        std::placeholders::_2,
+        std::placeholders::_3,
+        std::placeholders::_4,
+        std::placeholders::_5,
+        std::placeholders::_6);
+    return read_ahead_impl(
+        read_fn, uri, offset, buffer, nbytes, use_read_ahead);
 #else
     return LOG_STATUS(
         Status::VFSError("TileDB was built without Azure support"));
@@ -1236,20 +1296,94 @@ Status VFS::read_impl(
   }
   if (uri.is_gcs()) {
 #ifdef HAVE_GCS
-    return gcs_.read(uri, offset, buffer, nbytes);
+    const auto read_fn = std::bind(
+        &GCS::read,
+        &gcs_,
+        std::placeholders::_1,
+        std::placeholders::_2,
+        std::placeholders::_3,
+        std::placeholders::_4,
+        std::placeholders::_5,
+        std::placeholders::_6);
+    return read_ahead_impl(
+        read_fn, uri, offset, buffer, nbytes, use_read_ahead);
 #else
     return LOG_STATUS(Status::VFSError("TileDB was built without GCS support"));
 #endif
   }
+
   return LOG_STATUS(
       Status::VFSError("Unsupported URI schemes: " + uri.to_string()));
+}
+
+Status VFS::read_ahead_impl(
+    const std::function<Status(
+        const URI&, off_t, void*, uint64_t, uint64_t, uint64_t*)>& read_fn,
+    const URI& uri,
+    const uint64_t offset,
+    void* const buffer,
+    const uint64_t nbytes,
+    const bool use_read_ahead) {
+  // Stores the total number of bytes read.
+  uint64_t nbytes_read = 0;
+
+  // Do not use the read-ahead cache if disabled by the caller.
+  if (!use_read_ahead)
+    return read_fn(uri, offset, buffer, nbytes, 0, &nbytes_read);
+
+  // Only perform a read-ahead if the requested read size
+  // is smaller than the size of the buffers in the read-ahead
+  // cache. This is because:
+  // 1. The read-ahead is primarily beneficial for IO patterns
+  //    that consist of numerous small reads.
+  // 2. Large reads may evict cached buffers that would be useful
+  //    to a future small read.
+  // 3. It saves us a copy. We must make a copy of the buffer at
+  //    some point (one for the user, one for the cache).
+  if (nbytes >= read_ahead_size_)
+    return read_fn(uri, offset, buffer, nbytes, 0, &nbytes_read);
+
+  // Avoid a read if the requested buffer can be read from the
+  // read cache. Note that we intentionally do not use a read
+  // cache for local files because we rely on the operating
+  // system's file system to cache readahead data in memory.
+  // Additionally, we do not perform readahead with HDFS.
+  bool success;
+  RETURN_NOT_OK(read_ahead_cache_->read(uri, offset, buffer, nbytes, &success));
+  if (success)
+    return Status::Ok();
+
+  // We will read directly into the read-ahead buffer and then copy
+  // the subrange of this buffer back to the user to satisfy the
+  // read request.
+  Buffer ra_buffer;
+  RETURN_NOT_OK(ra_buffer.realloc(read_ahead_size_));
+
+  // Calculate the exact number of bytes to populate `ra_buffer`
+  // with `read_ahead_size_` bytes.
+  const uint64_t ra_nbytes = read_ahead_size_ - nbytes;
+
+  // Read into `ra_buffer`.
+  RETURN_NOT_OK(
+      read_fn(uri, offset, ra_buffer.data(), nbytes, ra_nbytes, &nbytes_read));
+
+  // Copy the requested read range back into the caller's output `buffer`.
+  assert(nbytes_read >= nbytes);
+  std::memcpy(buffer, ra_buffer.data(), nbytes);
+
+  // Cache `ra_buffer` at `offset`.
+  ra_buffer.set_size(nbytes_read);
+  RETURN_NOT_OK(read_ahead_cache_->insert(uri, offset, std::move(ra_buffer)));
+
+  return Status::Ok();
 }
 
 Status VFS::read_all(
     const URI& uri,
     const std::vector<std::tuple<uint64_t, void*, uint64_t>>& regions,
     ThreadPool* thread_pool,
-    std::vector<ThreadPool::Task>* tasks) {
+    std::vector<ThreadPool::Task>* tasks,
+    const bool use_read_ahead) {
   if (!init_)
     return LOG_STATUS(Status::VFSError("Cannot read all; VFS not initialized"));
 
@@ -1264,22 +1398,27 @@ Status VFS::read_all(
   for (const auto& batch : batches) {
     URI uri_copy = uri;
     BatchedRead batch_copy = batch;
-    auto task = thread_pool->execute([uri_copy, batch_copy, this]() {
-      Buffer buffer;
-      RETURN_NOT_OK(buffer.realloc(batch_copy.nbytes));
-      RETURN_NOT_OK(
-          read(uri_copy, batch_copy.offset, buffer.data(), batch_copy.nbytes));
-      // Parallel copy back into the individual destinations.
-      for (uint64_t i = 0; i < batch_copy.regions.size(); i++) {
-        const auto& region = batch_copy.regions[i];
-        uint64_t offset = std::get<0>(region);
-        void* dest = std::get<1>(region);
-        uint64_t nbytes = std::get<2>(region);
-        std::memcpy(dest, buffer.data(offset - batch_copy.offset), nbytes);
-      }
+    auto task =
+        thread_pool->execute([this, uri_copy, batch_copy, use_read_ahead]() {
+          Buffer buffer;
+          RETURN_NOT_OK(buffer.realloc(batch_copy.nbytes));
+          RETURN_NOT_OK(read(
+              uri_copy,
+              batch_copy.offset,
+              buffer.data(),
+              batch_copy.nbytes,
+              use_read_ahead));
+          // Parallel copy back into the individual destinations.
+          for (uint64_t i = 0; i < batch_copy.regions.size(); i++) {
+            const auto& region = batch_copy.regions[i];
+            uint64_t offset = std::get<0>(region);
+            void* dest = std::get<1>(region);
+            uint64_t nbytes = std::get<2>(region);
+            std::memcpy(dest, buffer.data(offset - batch_copy.offset), nbytes);
+          }
 
-      return Status::Ok();
-    });
+          return Status::Ok();
+        });
 
     tasks->push_back(std::move(task));
   }

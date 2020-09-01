@@ -88,6 +88,8 @@ const std::string Config::VFS_FILE_POSIX_DIRECTORY_PERMISSIONS = "755";
 const std::string Config::VFS_FILE_MAX_PARALLEL_OPS =
     Config::SM_IO_CONCURRENCY_LEVEL;
 const std::string Config::VFS_FILE_ENABLE_FILELOCKS = "true";
+const std::string Config::VFS_READ_AHEAD_SIZE = "102400";          // 100KiB
+const std::string Config::VFS_READ_AHEAD_CACHE_SIZE = "10485760";  // 10MiB;
 const std::string Config::VFS_AZURE_STORAGE_ACCOUNT_NAME = "";
 const std::string Config::VFS_AZURE_STORAGE_ACCOUNT_KEY = "";
 const std::string Config::VFS_AZURE_BLOB_ENDPOINT = "";
@@ -188,6 +190,8 @@ Config::Config() {
   param_values_["vfs.min_parallel_size"] = VFS_MIN_PARALLEL_SIZE;
   param_values_["vfs.min_batch_gap"] = VFS_MIN_BATCH_GAP;
   param_values_["vfs.min_batch_size"] = VFS_MIN_BATCH_SIZE;
+  param_values_["vfs.read_ahead_size"] = VFS_READ_AHEAD_SIZE;
+  param_values_["vfs.read_ahead_cache_size"] = VFS_READ_AHEAD_CACHE_SIZE;
   param_values_["vfs.file.posix_file_permissions"] =
       VFS_FILE_POSIX_FILE_PERMISSIONS;
   param_values_["vfs.file.posix_directory_permissions"] =
@@ -422,6 +426,10 @@ Status Config::unset(const std::string& param) {
     param_values_["vfs.min_batch_gap"] = VFS_MIN_BATCH_GAP;
   } else if (param == "vfs.min_batch_size") {
     param_values_["vfs.min_batch_size"] = VFS_MIN_BATCH_SIZE;
+  } else if (param == "vfs.read_ahead_size") {
+    param_values_["vfs.read_ahead_size"] = VFS_READ_AHEAD_SIZE;
+  } else if (param == "vfs.read_ahead_cache_size") {
+    param_values_["vfs.read_ahead_cache_size"] = VFS_READ_AHEAD_CACHE_SIZE;
   } else if (param == "vfs.file.posix_file_permissions") {
     param_values_["vfs.file.posix_file_permissions"] =
         VFS_FILE_POSIX_FILE_PERMISSIONS;
@@ -589,6 +597,10 @@ Status Config::sanity_check(
   } else if (param == "vfs.min_batch_gap") {
     RETURN_NOT_OK(utils::parse::convert(value, &vuint64));
   } else if (param == "vfs.min_batch_size") {
+    RETURN_NOT_OK(utils::parse::convert(value, &vuint64));
+  } else if (param == "vfs.read_ahead_size") {
+    RETURN_NOT_OK(utils::parse::convert(value, &vuint64));
+  } else if (param == "vfs.read_ahead_cache_size") {
     RETURN_NOT_OK(utils::parse::convert(value, &vuint64));
   } else if (param == "vfs.file.posix_file_permissions") {
     RETURN_NOT_OK(utils::parse::convert(value, &v32));

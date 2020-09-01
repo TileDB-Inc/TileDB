@@ -13,6 +13,8 @@
 * Added configuration option "sm.compute_concurrency_level" [#1766](https://github.com/TileDB-Inc/TileDB/pull/1766)
 * Added configuration option "sm.io_concurrency_level" [#1766](https://github.com/TileDB-Inc/TileDB/pull/1766)
 * Added configuration option "sm.sub_partitioner_memory_budget" [#1729](https://github.com/TileDB-Inc/TileDB/pull/1729)
+* Added configuration option "vfs.read_ahead_size" [#1785](https://github.com/TileDB-Inc/TileDB/pull/1785)
+* Added configuration option "vfs.read_ahead_cache_size" [#1785](https://github.com/TileDB-Inc/TileDB/pull/1785)
 
 ## Improvements
 
@@ -24,6 +26,7 @@
 * Enabled parallelization with native system threads when TBB is disabled [#1760](https://github.com/TileDB-Inc/TileDB/pull/1760)
 * Subarray ranges will be automatically coalesced as they are added [#1755](https://github.com/TileDB-Inc/TileDB/pull/1755)
 * Update GCS SDK to v1.16.0 to fixes multiple bugs reported [#1768](https://github.com/TileDB-Inc/TileDB/pull/1768)
+* Read-ahead cache for cloud-storage backends [#1785](https://github.com/TileDB-Inc/TileDB/pull/1785)
 
 ## Deprecations
 

@@ -253,6 +253,8 @@ void check_save_to_file() {
   ss << "vfs.min_batch_gap 512000\n";
   ss << "vfs.min_batch_size 20971520\n";
   ss << "vfs.min_parallel_size 10485760\n";
+  ss << "vfs.read_ahead_cache_size 10485760\n";
+  ss << "vfs.read_ahead_size 102400\n";
   ss << "vfs.s3.connect_max_tries 5\n";
   ss << "vfs.s3.connect_scale_factor 25\n";
   ss << "vfs.s3.connect_timeout_ms 3000\n";
@@ -453,6 +455,8 @@ TEST_CASE("C API: Test config iter", "[capi], [config]") {
   all_param_values["vfs.min_batch_gap"] = "512000";
   all_param_values["vfs.min_batch_size"] = "20971520";
   all_param_values["vfs.min_parallel_size"] = "10485760";
+  all_param_values["vfs.read_ahead_size"] = "102400";
+  all_param_values["vfs.read_ahead_cache_size"] = "10485760";
   all_param_values["vfs.gcs.project_id"] = "";
   all_param_values["vfs.gcs.max_parallel_ops"] =
       std::to_string(std::thread::hardware_concurrency());
@@ -503,6 +507,8 @@ TEST_CASE("C API: Test config iter", "[capi], [config]") {
   vfs_param_values["min_batch_gap"] = "512000";
   vfs_param_values["min_batch_size"] = "20971520";
   vfs_param_values["min_parallel_size"] = "10485760";
+  vfs_param_values["read_ahead_size"] = "102400";
+  vfs_param_values["read_ahead_cache_size"] = "10485760";
   vfs_param_values["gcs.project_id"] = "";
   vfs_param_values["gcs.max_parallel_ops"] =
       std::to_string(std::thread::hardware_concurrency());

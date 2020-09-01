@@ -209,10 +209,17 @@ class Azure {
    * @param offset The offset in the object from which the read will start.
    * @param buffer The buffer into which the data will be written.
    * @param length The size of the data to be read from the object.
+   * @param read_ahead_length The additional length to read ahead.
+   * @param length_returned Returns the total length read into `buffer`.
    * @return Status
    */
   Status read(
-      const URI& uri, off_t offset, void* buffer, uint64_t length) const;
+      const URI& uri,
+      off_t offset,
+      void* buffer,
+      uint64_t length,
+      uint64_t read_ahead_length,
+      uint64_t* length_returned) const;
 
   /**
    * Deletes a container.
