@@ -33,79 +33,78 @@
 #ifndef TILEDB_LRU_CACHE_H
 #define TILEDB_LRU_CACHE_H
 
+#include "tiledb/sm/misc/logger.h"
+#include "tiledb/sm/misc/macros.h"
 #include "tiledb/sm/misc/status.h"
 
 #include <list>
-#include <map>
 #include <mutex>
+#include <unordered_map>
 
 namespace tiledb {
 namespace sm {
 
-class Buffer;
-
 /**
- * Implements an LRU cache of opaque (`void*`) objects that can be located via
- * a string key. This class is thread-safe, providing also thread-safe
- * copying of portions of the opaque objects. Note that, after inserting
- * an object into the cache, the cache **owns** the object and will delete
- * it upon eviction.
+ * A base class for implementing an LRU. This maps a unique
+ * key to a value. The LRU takes ownership of the objects
+ * stored in the cache.
+ *
+ * This class is not thread-safe.
+ *
+ * @tparam K the type of the key.
+ * @tparam V the type of the value.
  */
+template <typename K, typename V>
 class LRUCache {
  public:
   /* ********************************* */
-  /*          TYPE DEFINITIONS         */
+  /*       PUBLIC DATA STRUCTURES      */
   /* ********************************* */
 
+  /**
+   * The internal data structure stored on the cache. This
+   * is public for unit test purposes only.
+   */
   struct LRUCacheItem {
-    /** The object lable. */
-    std::string key_;
-    /** The opaque object. */
-    void* object_;
-    /** The object size. */
+    /** The key that maps to the object. */
+    K key_;
+
+    /** The object. */
+    V object_;
+
+    /** The logical object size. */
     uint64_t size_;
   };
 
-  /* ********************************* */
-  /*     CONSTRUCTORS & DESTRUCTORS    */
-  /* ********************************* */
+ protected:
+  /* ************************************ */
+  /* PROTECTED CONSTRUCTORS & DESTRUCTORS */
+  /* ************************************ */
 
-  /** Constructor.
+  /**
+   * Constructor.
    *
-   * @param size The maximum cache size.
-   * @param evict_callback The function to be called upon evicting a cache
-   *     object. It takes as input the cache object to be evicted, and
-   *     `evict_callback_data`.
-   * @param evict_callback_data The data input to `evict_callback`.
+   * @param size The maximum logical cache size.
    */
-  LRUCache(
-      uint64_t max_size,
-      void* (*evict_callback)(LRUCacheItem*, void*) = nullptr,
-      void* evict_callback_data = nullptr);
+  explicit LRUCache(const uint64_t max_size)
+      : max_size_(max_size)
+      , size_(0) {
+    assert(max_size_ > 0);
+    if (max_size_ == 0)
+      LOG_FATAL("LRUCache initialized without capacity.");
+  }
 
   /** Destructor. */
-  ~LRUCache();
+  virtual ~LRUCache() = default;
 
   /* ********************************* */
-  /*                API                */
+  /*        PROTECTED ROUTINES         */
   /* ********************************* */
 
   /** Clears the cache, deleting all cached items. */
-  void clear();
-
-  /**
-   * Returns a constant iterator at the beginning of the linked list of
-   * cached items, where items closest to the head (beginning) are going
-   * to be evicted from the cache sooner.
-   */
-  std::list<LRUCacheItem>::const_iterator item_iter_begin() const;
-
-  /**
-   * Returns a constant iterator at the end of the linked list of
-   * cached items, where items closest to the head (beginning) are going
-   * to be evicted from the cache sooner.
-   */
-  std::list<LRUCacheItem>::const_iterator item_iter_end() const;
+  void clear() {
+    item_ll_.clear();
+  }
 
   /**
    * Inserts an object with a given key and size into the cache. Note that
@@ -113,16 +112,93 @@ class LRUCache {
    *
    * @param key The key that describes the inserted object.
    * @param object The opaque object to be stored.
-   * @param size The size of the object.
+   * @param size The logical size of the object.
    * @param overwrite If `true`, if the object exists in the cache it will be
    *     overwritten. Otherwise, the new object will be deleted.
    * @return Status
    */
   Status insert(
-      const std::string& key,
-      void* object,
-      uint64_t size,
-      bool overwrite = true);
+      const K& key, V&& object, uint64_t size, bool overwrite = true) {
+    // Do nothing if the object size is bigger than the cache maximum size
+    if (size > max_size_)
+      return Status::Ok();
+
+    const auto item_it = item_map_.find(key);
+    const bool exists = item_it != item_map_.end();
+
+    if (exists && !overwrite)
+      return Status::Ok();
+
+    // Evict if necessary
+    while (size_ + size > max_size_)
+      evict();
+
+    // Key exists
+    if (exists) {
+      // Replace cache item
+      auto& node = item_it->second;
+      auto& item = *node;
+      item.object_ = std::move(object);
+      item.size_ = size;
+
+      // Move cache item node to the end of the list
+      if (std::next(node) != item_ll_.end()) {
+        item_ll_.splice(item_ll_.end(), item_ll_, node, std::next(node));
+      }
+    } else {  // Key does not exist
+      // Create a new cache item
+      LRUCacheItem new_item;
+      new_item.key_ = key;
+      new_item.object_ = std::move(object);
+      new_item.size_ = size;
+
+      // Create new node in linked list
+      item_ll_.emplace_back(new_item);
+
+      // Create new element in the hash table
+      item_map_[key] = --(item_ll_.end());
+    }
+
+    size_ += size;
+
+    return Status::Ok();
+  }
+
+  /**
+   * Returns true if an item in the cache exists with the given key.
+   *
+   * @param key The item key.
+   * @return bool
+   */
+  bool has_item(const K& key) {
+    return item_map_.count(key) > 0;
+  }
+
+  /**
+   * Returns the item in the cache associated with `key`. The item
+   * will be invalid if later evicted from the cache. The caller
+   * must be certain that an item exists for `key`.
+   *
+   * @param key The item key.
+   * @return V* A pointer to the item instance.
+   */
+  const V* get_item(const K& key) {
+    assert(item_map_.count(key) == 1);
+    return &item_map_.at(key)->object_;
+  }
+
+  /**
+   * Touches the item associated with `key` to make it the most
+   * recently used item. The caller must be certain that an item
+   * exists for `key`.
+   *
+   * @param key The item key.
+   */
+  void touch_item(const K& key) {
+    auto& item = item_map_.at(key);
+    if (std::next(item) != item_ll_.end())
+      item_ll_.splice(item_ll_.end(), item_ll_, item, std::next(item));
+  }
 
   /**
    * Invalidates and evicts the object in the cache with the given key.
@@ -132,57 +208,54 @@ class LRUCache {
    *    the object did not exist in the cache, set to `false`.
    * @return Status
    */
-  Status invalidate(const std::string& key, bool* success);
+  Status invalidate(const K& key, bool* success) {
+    assert(success);
 
-  /** Returns the current size of cache in bytes. */
-  uint64_t size() const;
+    const auto item_it = item_map_.find(key);
+    const bool exists = item_it != item_map_.end();
+    if (!exists) {
+      *success = false;
+      return Status::Ok();
+    }
 
-  /** Returns the maximum size of the cache in bytes. */
-  uint64_t max_size() const;
+    // Move item to the head of the list and evict it.
+    auto& node = item_it->second;
+    item_ll_.splice(item_ll_.begin(), item_ll_, node);
+    evict();
+    *success = true;
+
+    return Status::Ok();
+  }
 
   /**
-   * Reads an entire cached object labeled by `key`.
-   *
-   * @param key The label of the object to be read.
-   * @param buffer The buffer that will store the data to be read. It will be
-   *     resized appropriately.
-   * @param success `true` if the data were read from the cache and `false`
-   *     otherwise.
-   * @return Status.
+   * Returns a constant iterator at the beginning of the linked list of
+   * cached items, where items closest to the head (beginning) are going
+   * to be evicted from the cache sooner.
    */
-  Status read(const std::string& key, Buffer* buffer, bool* success);
+  typename std::list<LRUCacheItem>::const_iterator item_iter_begin() const {
+    return item_ll_.cbegin();
+  }
 
   /**
-   * Reads a portion of the object labeled by `key`.
-   *
-   * @param key The label of the object to be read.
-   * @param buffer The buffer that will store the data to be read.
-   * @param offset The offset where the read will start.
-   * @param nbytes The number of bytes to be read.
-   * @param success `true` if the data were read from the cache and `false`
-   *     otherwise.
-   * @return Status.
+   * Returns a constant iterator at the end of the linked list of
+   * cached items, where items closest to the head (beginning) are going
+   * to be evicted from the cache sooner.
    */
-  Status read(
-      const std::string& key,
-      Buffer* buffer,
-      uint64_t offset,
-      uint64_t nbytes,
-      bool* success);
+  typename std::list<LRUCacheItem>::const_iterator item_iter_end() const {
+    return item_ll_.cend();
+  }
 
  private:
   /* ********************************* */
-  /*         PRIVATE ATTRIBUTES        */
+  /*         PRIVATE OPERATORS         */
   /* ********************************* */
 
-  /**
-   * A function that will be called upon evicting a cache object. I takes
-   * as input the cache object to be evicted and `evict_callback_data_`.
-   */
-  void* (*evict_callback_)(LRUCacheItem*, void*);
+  DISABLE_COPY_AND_COPY_ASSIGN(LRUCache);
+  DISABLE_MOVE_AND_MOVE_ASSIGN(LRUCache);
 
-  /** The data input to the evict callback function. */
-  void* evict_callback_data_;
+  /* ********************************* */
+  /*         PRIVATE ATTRIBUTES        */
+  /* ********************************* */
 
   /**
    * Doubly-connected linked list of cache items. The head of the list is the
@@ -191,23 +264,27 @@ class LRUCache {
   std::list<LRUCacheItem> item_ll_;
 
   /** Maps a key label to an iterator (list node of) of `item_ll_`. */
-  std::map<std::string, std::list<LRUCacheItem>::iterator> item_map_;
+  std::unordered_map<K, typename std::list<LRUCacheItem>::iterator> item_map_;
 
   /** The maximum cache size. */
-  uint64_t max_size_;
-
-  /** The mutex for thread-safety. */
-  std::mutex mtx_;
+  const uint64_t max_size_;
 
   /** The current cache size. */
   uint64_t size_;
 
   /* ********************************* */
-  /*          PRIVATE METHODS          */
+  /*         PRIVATE ROUTINES          */
   /* ********************************* */
 
   /** Evicts the next object. */
-  void evict();
+  void evict() {
+    assert(!item_ll_.empty());
+
+    auto item = item_ll_.front();
+    item_map_.erase(item.key_);
+    size_ -= item.size_;
+    item_ll_.pop_front();
+  }
 };
 
 }  // namespace sm

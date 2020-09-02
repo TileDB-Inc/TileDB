@@ -95,7 +95,7 @@ set(TILEDB_CORE_SOURCES
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/buffer/const_buffer.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/buffer/preallocated_buffer.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/c_api/tiledb.cc
-  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cache/lru_cache.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cache/buffer_lru_cache.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/compressors/bzip_compressor.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/compressors/dd_compressor.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/compressors/gzip_compressor.cc

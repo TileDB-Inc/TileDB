@@ -227,7 +227,7 @@ Status Buffer::write(ConstBuffer* buff) {
   const uint64_t bytes_to_copy =
       std::min(bytes_left_to_write, bytes_left_to_read);
 
-  buff->read((char*)data_ + offset_, bytes_to_copy);
+  RETURN_NOT_OK(buff->read((char*)data_ + offset_, bytes_to_copy));
   offset_ += bytes_to_copy;
   size_ = offset_;
 
@@ -242,7 +242,7 @@ Status Buffer::write(ConstBuffer* buff, const uint64_t nbytes) {
 
   RETURN_NOT_OK(ensure_alloced_size(offset_ + nbytes));
 
-  buff->read((char*)data_ + offset_, nbytes);
+  RETURN_NOT_OK(buff->read((char*)data_ + offset_, nbytes));
   offset_ += nbytes;
   size_ = offset_;
 

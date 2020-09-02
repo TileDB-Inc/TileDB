@@ -63,11 +63,11 @@ namespace sm {
 class Array;
 class ArraySchema;
 class Buffer;
+class BufferLRUCache;
 class ChunkedBuffer;
 class Consolidator;
 class EncryptionKey;
 class FragmentMetadata;
-class LRUCache;
 class Metadata;
 class OpenArray;
 class Query;
@@ -974,7 +974,7 @@ class StorageManager {
   std::unordered_map<std::string, std::string> tags_;
 
   /** A tile cache. */
-  LRUCache* tile_cache_;
+  std::unique_ptr<BufferLRUCache> tile_cache_;
 
   /**
    * Virtual filesystem handler. It directs queries to the appropriate
