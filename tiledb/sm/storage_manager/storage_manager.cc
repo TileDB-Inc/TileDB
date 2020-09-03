@@ -38,7 +38,7 @@
 
 #include "tiledb/sm/array/array.h"
 #include "tiledb/sm/array_schema/array_schema.h"
-#include "tiledb/sm/cache/lru_cache.h"
+#include "tiledb/sm/cache/buffer_lru_cache.h"
 #include "tiledb/sm/enums/layout.h"
 #include "tiledb/sm/enums/object_type.h"
 #include "tiledb/sm/enums/query_type.h"
@@ -69,7 +69,6 @@ namespace sm {
 /* ****************************** */
 
 StorageManager::StorageManager() {
-  tile_cache_ = nullptr;
   vfs_ = nullptr;
   cancellation_in_progress_ = false;
   queries_in_progress_ = 0;
@@ -80,8 +79,6 @@ StorageManager::~StorageManager() {
 
   if (vfs_ != nullptr)
     cancel_all_tasks();
-
-  delete tile_cache_;
 
   // Release all filelocks and delete all opened arrays for reads
   for (auto& open_array_it : open_arrays_for_reads_) {
@@ -1354,7 +1351,8 @@ Status StorageManager::init(const Config* config) {
       config_.get<uint64_t>("sm.tile_cache_size", &tile_cache_size, &found));
   assert(found);
 
-  tile_cache_ = new LRUCache(tile_cache_size);
+  tile_cache_ =
+      std::unique_ptr<BufferLRUCache>(new BufferLRUCache(tile_cache_size));
 
   // GlobalState must be initialized before `vfs->init` because S3::init calls
   // GetGlobalState
@@ -2001,11 +1999,6 @@ Status StorageManager::init_rest_client() {
 
 Status StorageManager::write_to_cache(
     const URI& uri, uint64_t offset, Buffer* buffer) const {
-  // Do nothing if the object size is larger than the cache size
-  uint64_t object_size = buffer->size();
-  if (object_size > tile_cache_->max_size())
-    return Status::Ok();
-
   // Do not write metadata to cache
   std::string filename = uri.last_path_part();
   if (filename == constants::fragment_metadata_filename ||
@@ -2018,12 +2011,10 @@ Status StorageManager::write_to_cache(
   key << uri.to_string() << "+" << offset;
 
   // Insert to cache
-  void* object = std::malloc(object_size);
-  if (object == nullptr)
-    return LOG_STATUS(Status::StorageManagerError(
-        "Cannot write to cache; Object memory allocation failed"));
-  std::memcpy(object, buffer->data(), object_size);
-  RETURN_NOT_OK(tile_cache_->insert(key.str(), object, object_size, false));
+  Buffer cached_buffer;
+  RETURN_NOT_OK(cached_buffer.write(buffer->data(), buffer->size()));
+  RETURN_NOT_OK(
+      tile_cache_->insert(key.str(), std::move(cached_buffer), false));
 
   return Status::Ok();
 }
