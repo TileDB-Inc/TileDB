@@ -66,6 +66,37 @@ class LRUCache {
    * is public for unit test purposes only.
    */
   struct LRUCacheItem {
+    /* ********************************* */
+    /*            CONSTRUCTORS           */
+    /* ********************************* */
+
+    /** Value Constructor. */
+    LRUCacheItem(const K& key, V&& object, const uint64_t size)
+        : key_(key)
+        , object_(std::move(object))
+        , size_(size) {
+    }
+
+    DISABLE_MOVE(LRUCacheItem);
+
+    /* ********************************* */
+    /*             OPERATORS             */
+    /* ********************************* */
+
+    /** Move-Assign Operator. */
+    LRUCacheItem& operator=(LRUCacheItem&& other) {
+      key_ = other.key_;
+      object_ = std::move(other.object_);
+      size_ = other.size_;
+      return *this;
+    }
+
+    DISABLE_COPY_AND_COPY_ASSIGN(LRUCacheItem);
+
+    /* ********************************* */
+    /*             ATTRIBUTES            */
+    /* ********************************* */
+
     /** The key that maps to the object. */
     K key_;
 
@@ -146,14 +177,8 @@ class LRUCache {
         item_ll_.splice(item_ll_.end(), item_ll_, node, std::next(node));
       }
     } else {  // Key does not exist
-      // Create a new cache item
-      LRUCacheItem new_item;
-      new_item.key_ = key;
-      new_item.object_ = std::move(object);
-      new_item.size_ = size;
-
       // Create new node in linked list
-      item_ll_.emplace_back(new_item);
+      item_ll_.emplace_back(key, std::move(object), size);
 
       // Create new element in the hash table
       item_map_[key] = --(item_ll_.end());
@@ -280,7 +305,7 @@ class LRUCache {
   void evict() {
     assert(!item_ll_.empty());
 
-    auto item = item_ll_.front();
+    auto& item = item_ll_.front();
     item_map_.erase(item.key_);
     size_ -= item.size_;
     item_ll_.pop_front();

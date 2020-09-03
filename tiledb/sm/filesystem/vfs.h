@@ -34,13 +34,17 @@
 #define TILEDB_VFS_H
 
 #include <functional>
+#include <list>
 #include <set>
 #include <string>
 #include <vector>
 
+#include "tiledb/sm/buffer/buffer.h"
+#include "tiledb/sm/cache/lru_cache.h"
 #include "tiledb/sm/config/config.h"
 #include "tiledb/sm/filesystem/filelock.h"
 #include "tiledb/sm/misc/cancelable_tasks.h"
+#include "tiledb/sm/misc/macros.h"
 #include "tiledb/sm/misc/status.h"
 #include "tiledb/sm/misc/thread_pool.h"
 #include "tiledb/sm/misc/uri.h"
@@ -310,9 +314,15 @@ class VFS {
    * @param offset The offset where the read begins.
    * @param buffer The buffer to read into.
    * @param nbytes Number of bytes to read.
+   * @param use_read_ahead Whether to use the read-ahead cache.
    * @return Status
    */
-  Status read(const URI& uri, uint64_t offset, void* buffer, uint64_t nbytes);
+  Status read(
+      const URI& uri,
+      uint64_t offset,
+      void* buffer,
+      uint64_t nbytes,
+      bool use_read_ahead = true);
 
   /**
    * Reads multiple regions from a file.
@@ -322,13 +332,15 @@ class VFS {
    *    `(file_offset, dest_buffer, nbytes)`.
    * @param thread_pool Thread pool to execute async read tasks to.
    * @param tasks Vector to which new async read tasks are pushed.
+   * @param use_read_ahead Whether to use the read-ahead cache.
    * @return Status
    */
   Status read_all(
       const URI& uri,
       const std::vector<std::tuple<uint64_t, void*, uint64_t>>& regions,
       ThreadPool* thread_pool,
-      std::vector<ThreadPool::Task>* tasks);
+      std::vector<ThreadPool::Task>* tasks,
+      bool use_read_ahead = true);
 
   /** Checks if a given filesystem is supported. */
   bool supports_fs(Filesystem fs) const;
@@ -412,6 +424,159 @@ class VFS {
     std::vector<std::tuple<uint64_t, void*, uint64_t>> regions;
   };
 
+  /**
+   * Represents a sub-range of data within a URI file at a
+   * specific file offset.
+   */
+  struct ReadAheadBuffer {
+    /* ********************************* */
+    /*            CONSTRUCTORS           */
+    /* ********************************* */
+
+    /** Value Constructor. */
+    ReadAheadBuffer(const uint64_t offset, Buffer&& buffer)
+        : offset_(offset)
+        , buffer_(std::move(buffer)) {
+    }
+
+    /** Move Constructor. */
+    ReadAheadBuffer(ReadAheadBuffer&& other)
+        : offset_(other.offset_)
+        , buffer_(std::move(other.buffer_)) {
+    }
+
+    /* ********************************* */
+    /*             OPERATORS             */
+    /* ********************************* */
+
+    /** Move-Assign Operator. */
+    ReadAheadBuffer& operator=(ReadAheadBuffer&& other) {
+      offset_ = other.offset_;
+      buffer_ = std::move(other.buffer_);
+      return *this;
+    }
+
+    DISABLE_COPY_AND_COPY_ASSIGN(ReadAheadBuffer);
+
+    /* ********************************* */
+    /*             ATTRIBUTES            */
+    /* ********************************* */
+
+    /** The offset within the associated URI. */
+    uint64_t offset_;
+
+    /** The buffered data at `offset`. */
+    Buffer buffer_;
+  };
+
+  /**
+   * An LRU cache of `ReadAheadBuffer` objects keyed by a URI string.
+   */
+  class ReadAheadCache : public LRUCache<std::string, ReadAheadBuffer> {
+   public:
+    /* ********************************* */
+    /*     CONSTRUCTORS & DESTRUCTORS    */
+    /* ********************************* */
+
+    /** Constructor. */
+    ReadAheadCache(const uint64_t max_cached_buffers)
+        : LRUCache(max_cached_buffers) {
+    }
+
+    /** Destructor. */
+    virtual ~ReadAheadCache() = default;
+
+    /* ********************************* */
+    /*                API                */
+    /* ********************************* */
+
+    /**
+     * Attempts to read a buffer from the cache.
+     *
+     * @param uri The URI associated with the buffer to cache.
+     * @param offset The offset that buffer starts at within the URI.
+     * @param buffer The buffer to cache.
+     * @param nbytes The number of bytes within the buffer.
+     * @param success True if `buffer` was read from the cache.
+     * @return Status
+     */
+    Status read(
+        const URI& uri,
+        const uint64_t offset,
+        void* const buffer,
+        const uint64_t nbytes,
+        bool* const success) {
+      assert(success);
+      *success = false;
+
+      // Store the URI's string representation.
+      const std::string uri_str = uri.to_string();
+
+      // Protect access to the derived LRUCache routines.
+      std::lock_guard<std::mutex> lg(lru_mtx_);
+
+      // Check that a cached buffer exists for `uri`.
+      if (!has_item(uri_str))
+        return Status::Ok();
+
+      // Store a reference to the cached buffer.
+      const ReadAheadBuffer* const ra_buffer = get_item(uri_str);
+
+      // Check that the read offset is not below the offset of
+      // the cached buffer.
+      if (offset < ra_buffer->offset_)
+        return Status::Ok();
+
+      // Calculate the offset within the cached buffer that corresponds
+      // to the requested read offset.
+      const uint64_t offset_in_buffer = offset - ra_buffer->offset_;
+
+      // Check that both the start and end positions of the requested
+      // read range reside within the cached buffer.
+      if (offset_in_buffer + nbytes > ra_buffer->buffer_.size())
+        return Status::Ok();
+
+      // Copy the subrange of the cached buffer that satisfies the caller's
+      // read request back into their output `buffer`.
+      std::memcpy(
+          buffer,
+          static_cast<uint8_t*>(ra_buffer->buffer_.data()) + offset_in_buffer,
+          nbytes);
+
+      // Touch the item to make it the most recently used item.
+      touch_item(uri_str);
+
+      *success = true;
+      return Status::Ok();
+    }
+
+    /**
+     * Writes a cached buffer for the given uri.
+     *
+     * @param uri The URI associated with the buffer to cache.
+     * @param offset The offset that buffer starts at within the URI.
+     * @param buffer The buffer to cache.
+     * @return Status
+     */
+    Status insert(const URI& uri, const uint64_t offset, Buffer&& buffer) {
+      // Protect access to the derived LRUCache routines.
+      std::lock_guard<std::mutex> lg(lru_mtx_);
+
+      const uint64_t size = buffer.size();
+      ReadAheadBuffer ra_buffer(offset, std::move(buffer));
+      return LRUCache<std::string, ReadAheadBuffer>::insert(
+          uri.to_string(), std::move(ra_buffer), size);
+    }
+
+   private:
+    /* ********************************* */
+    /*         PRIVATE ATTRIBUTES        */
+    /* ********************************* */
+
+    // Protects LRUCache routines.
+    std::mutex lru_mtx_;
+  };
+
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
   /* ********************************* */
@@ -444,6 +609,9 @@ class VFS {
   /** `true` if the VFS object has been initialized. */
   bool init_;
 
+  /** The byte size to read-ahead for each read. */
+  uint64_t read_ahead_size_;
+
   /** The set with the supported filesystems. */
   std::set<Filesystem> supported_fs_;
 
@@ -455,6 +623,13 @@ class VFS {
 
   /** Wrapper for tracking and canceling certain tasks on 'thread_pool' */
   CancelableTasks cancelable_tasks_;
+
+  /** The read-ahead cache. */
+  std::unique_ptr<ReadAheadCache> read_ahead_cache_;
+
+  /* ********************************* */
+  /*          PRIVATE METHODS          */
+  /* ********************************* */
 
   /**
    * Groups the given vector of regions to be read into a possibly smaller
@@ -476,10 +651,35 @@ class VFS {
    * @param offset The offset where the read begins.
    * @param buffer The buffer to read into.
    * @param nbytes Number of bytes to read.
+   * @param use_read_ahead Whether to use the read-ahead cache.
    * @return Status
    */
   Status read_impl(
-      const URI& uri, uint64_t offset, void* buffer, uint64_t nbytes);
+      const URI& uri,
+      uint64_t offset,
+      void* buffer,
+      uint64_t nbytes,
+      bool use_read_ahead);
+
+  /**
+   * Executes a read, using the read-ahead cache as necessary.
+   *
+   * @param read_fn The read routine to execute.
+   * @param uri The URI of the file.
+   * @param offset The offset where the read begins.
+   * @param buffer The buffer to read into.
+   * @param nbytes Number of bytes to read.
+   * @param use_read_ahead Whether to use the read-ahead cache.
+   * @return Status
+   */
+  Status read_ahead_impl(
+      const std::function<Status(
+          const URI&, off_t, void*, uint64_t, uint64_t, uint64_t*)>& read_fn,
+      const URI& uri,
+      const uint64_t offset,
+      void* const buffer,
+      const uint64_t nbytes,
+      const bool use_read_ahead);
 
   /**
    * Decrement the lock count of the given URI.

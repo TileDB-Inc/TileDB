@@ -1052,7 +1052,9 @@ Status GCS::read(
     const URI& uri,
     const off_t offset,
     void* const buffer,
-    const uint64_t length) const {
+    const uint64_t length,
+    const uint64_t read_ahead_length,
+    uint64_t* const length_returned) const {
   RETURN_NOT_OK(init_client());
 
   if (!uri.is_gcs()) {
@@ -1073,7 +1075,8 @@ Status GCS::read(
         stream.status().message() + ")")));
   }
 
-  stream.read(static_cast<char*>(buffer), length);
+  stream.read(static_cast<char*>(buffer), length + read_ahead_length);
+  *length_returned = stream.gcount();
 
   if (!stream) {
     return LOG_STATUS(Status::GCSError(
@@ -1081,6 +1084,11 @@ Status GCS::read(
   }
 
   stream.Close();
+
+  if (*length_returned < length) {
+    return LOG_STATUS(Status::GCSError(
+        std::string("Read operation read unexpected number of bytes.")));
+  }
 
   return Status::Ok();
 }

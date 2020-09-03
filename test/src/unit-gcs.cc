@@ -276,7 +276,9 @@ TEST_CASE_METHOD(
 
   // Read from the beginning
   auto read_buffer = new char[26];
-  REQUIRE(gcs_.read(URI(largefile), 0, read_buffer, 26).ok());
+  uint64_t bytes_read;
+  REQUIRE(gcs_.read(URI(largefile), 0, read_buffer, 26, 0, &bytes_read).ok());
+  CHECK(26 == bytes_read);
   bool allok = true;
   for (int i = 0; i < 26; i++) {
     if (read_buffer[i] != static_cast<char>('a' + i)) {
@@ -287,7 +289,8 @@ TEST_CASE_METHOD(
   REQUIRE(allok);
 
   // Read from a different offset
-  REQUIRE(gcs_.read(URI(largefile), 11, read_buffer, 26).ok());
+  REQUIRE(gcs_.read(URI(largefile), 11, read_buffer, 26, 0, &bytes_read).ok());
+  CHECK(26 == bytes_read);
   allok = true;
   for (int i = 0; i < 26; i++) {
     if (read_buffer[i] != static_cast<char>('a' + (i + 11) % 26)) {
@@ -351,7 +354,9 @@ TEST_CASE_METHOD(
 
   // Read from the beginning
   auto read_buffer = new char[26];
-  REQUIRE(gcs_.read(URI(smallfile), 0, read_buffer, 26).ok());
+  uint64_t bytes_read;
+  REQUIRE(gcs_.read(URI(smallfile), 0, read_buffer, 26, 0, &bytes_read).ok());
+  CHECK(26 == bytes_read);
   bool allok = true;
   for (int i = 0; i < 26; i++) {
     if (read_buffer[i] != static_cast<char>('a' + i)) {
@@ -362,7 +367,8 @@ TEST_CASE_METHOD(
   REQUIRE(allok);
 
   // Read from a different offset
-  REQUIRE(gcs_.read(URI(smallfile), 11, read_buffer, 26).ok());
+  REQUIRE(gcs_.read(URI(smallfile), 11, read_buffer, 26, 0, &bytes_read).ok());
+  CHECK(26 == bytes_read);
   allok = true;
   for (int i = 0; i < 26; i++) {
     if (read_buffer[i] != static_cast<char>('a' + (i + 11) % 26)) {
@@ -433,7 +439,9 @@ TEST_CASE_METHOD(
 
   // Read from the beginning
   auto read_buffer = new char[26];
-  REQUIRE(gcs_.read(URI(largefile), 0, read_buffer, 26).ok());
+  uint64_t bytes_read;
+  REQUIRE(gcs_.read(URI(largefile), 0, read_buffer, 26, 0, &bytes_read).ok());
+  CHECK(26 == bytes_read);
   bool allok = true;
   for (int i = 0; i < 26; i++) {
     if (read_buffer[i] != static_cast<char>('a' + i)) {
@@ -444,7 +452,8 @@ TEST_CASE_METHOD(
   REQUIRE(allok);
 
   // Read from a different offset
-  REQUIRE(gcs_.read(URI(largefile), 11, read_buffer, 26).ok());
+  REQUIRE(gcs_.read(URI(largefile), 11, read_buffer, 26, 0, &bytes_read).ok());
+  CHECK(26 == bytes_read);
   allok = true;
   for (int i = 0; i < 26; i++) {
     if (read_buffer[i] != static_cast<char>('a' + (i + 11) % 26)) {
@@ -508,7 +517,9 @@ TEST_CASE_METHOD(
 
   // Read from the beginning
   auto read_buffer = new char[26];
-  REQUIRE(gcs_.read(URI(smallfile), 0, read_buffer, 26).ok());
+  uint64_t bytes_read;
+  REQUIRE(gcs_.read(URI(smallfile), 0, read_buffer, 26, 0, &bytes_read).ok());
+  CHECK(26 == bytes_read);
   bool allok = true;
   for (int i = 0; i < 26; i++) {
     if (read_buffer[i] != static_cast<char>('a' + i)) {
@@ -519,7 +530,8 @@ TEST_CASE_METHOD(
   REQUIRE(allok);
 
   // Read from a different offset
-  REQUIRE(gcs_.read(URI(smallfile), 11, read_buffer, 26).ok());
+  REQUIRE(gcs_.read(URI(smallfile), 11, read_buffer, 26, 0, &bytes_read).ok());
+  CHECK(26 == bytes_read);
   allok = true;
   for (int i = 0; i < 26; i++) {
     if (read_buffer[i] != static_cast<char>('a' + (i + 11) % 26)) {
@@ -575,7 +587,9 @@ TEST_CASE_METHOD(
 
   // Read from the beginning
   auto read_buffer = new char[26];
-  REQUIRE(gcs_.read(URI(largefile), 0, read_buffer, 26).ok());
+  uint64_t bytes_read;
+  REQUIRE(gcs_.read(URI(largefile), 0, read_buffer, 26, 0, &bytes_read).ok());
+  CHECK(26 == bytes_read);
   bool allok = true;
   for (int i = 0; i < 26; i++) {
     if (read_buffer[i] != static_cast<char>('a' + i)) {
@@ -586,7 +600,8 @@ TEST_CASE_METHOD(
   REQUIRE(allok);
 
   // Read from a different offset
-  REQUIRE(gcs_.read(URI(largefile), 11, read_buffer, 26).ok());
+  REQUIRE(gcs_.read(URI(largefile), 11, read_buffer, 26, 0, &bytes_read).ok());
+  CHECK(26 == bytes_read);
   allok = true;
   for (int i = 0; i < 26; i++) {
     if (read_buffer[i] != static_cast<char>('a' + (i + 11) % 26)) {

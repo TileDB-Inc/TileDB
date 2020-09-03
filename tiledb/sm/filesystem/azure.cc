@@ -744,7 +744,9 @@ Status Azure::read(
     const URI& uri,
     const off_t offset,
     void* const buffer,
-    const uint64_t length) const {
+    const uint64_t length,
+    const uint64_t read_ahead_length,
+    uint64_t* const length_returned) const {
   assert(client_);
 
   if (!uri.is_azure()) {
@@ -759,7 +761,7 @@ Status Azure::read(
   std::stringstream ss;
   std::future<azure::storage_lite::storage_outcome<void>> result =
       client_->download_blob_to_stream(
-          container_name, blob_path, offset, length, ss);
+          container_name, blob_path, offset, length + read_ahead_length, ss);
   if (!result.valid()) {
     return LOG_STATUS(Status::AzureError(
         std::string("Read blob failed on: " + uri.to_string())));
@@ -771,7 +773,13 @@ Status Azure::read(
         std::string("Read blob failed on: " + uri.to_string())));
   }
 
-  ss.read(static_cast<char*>(buffer), length);
+  ss.read(static_cast<char*>(buffer), length + read_ahead_length);
+  *length_returned = ss.gcount();
+
+  if (*length_returned < length) {
+    return LOG_STATUS(Status::AzureError(
+        std::string("Read operation read unexpected number of bytes.")));
+  }
 
   return Status::Ok();
 }

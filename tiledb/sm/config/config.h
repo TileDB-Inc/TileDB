@@ -200,6 +200,12 @@ class Config {
   /** Whether or not filelocks are enabled for VFS. */
   static const std::string VFS_FILE_ENABLE_FILELOCKS;
 
+  /** The maximum size (in bytes) to read-ahead in the VFS. */
+  static const std::string VFS_READ_AHEAD_SIZE;
+
+  /** The maximum size (in bytes) of the VFS read-ahead cache . */
+  static const std::string VFS_READ_AHEAD_CACHE_SIZE;
+
   /** Azure storage account name. */
   static const std::string VFS_AZURE_STORAGE_ACCOUNT_NAME;
 

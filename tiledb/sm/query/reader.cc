@@ -2447,10 +2447,18 @@ Status Reader::read_tiles(
     }
   }
 
+  // Do not use the read-ahead cache because tiles will be
+  // cached in the tile cache.
+  const bool use_read_ahead = false;
+
   // Enqueue all regions to be read.
   for (const auto& item : all_regions) {
     RETURN_NOT_OK(storage_manager_->vfs()->read_all(
-        item.first, item.second, storage_manager_->io_tp(), tasks));
+        item.first,
+        item.second,
+        storage_manager_->io_tp(),
+        tasks,
+        use_read_ahead));
   }
 
   return Status::Ok();

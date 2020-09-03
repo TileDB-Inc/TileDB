@@ -152,7 +152,9 @@ TEST_CASE_METHOD(
 
   // Read from the beginning
   auto read_buffer = new char[26];
-  CHECK(s3_.read(URI(largefile), 0, read_buffer, 26).ok());
+  uint64_t bytes_read;
+  CHECK(s3_.read(URI(largefile), 0, read_buffer, 26, 0, &bytes_read).ok());
+  assert(26 == bytes_read);
   bool allok = true;
   for (int i = 0; i < 26; i++) {
     if (read_buffer[i] != static_cast<char>('a' + i)) {
@@ -163,7 +165,8 @@ TEST_CASE_METHOD(
   CHECK(allok);
 
   // Read from a different offset
-  CHECK(s3_.read(URI(largefile), 11, read_buffer, 26).ok());
+  CHECK(s3_.read(URI(largefile), 11, read_buffer, 26, 0, &bytes_read).ok());
+  assert(26 == bytes_read);
   allok = true;
   for (int i = 0; i < 26; i++) {
     if (read_buffer[i] != static_cast<char>('a' + (i + 11) % 26)) {
