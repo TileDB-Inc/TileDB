@@ -273,6 +273,10 @@ class Writer {
   /** Returns the written fragment info. */
   const std::vector<WrittenFragmentInfo>& written_fragment_info() const;
 
+  /** Returns the array schema of an opened array. */
+  Status get_array_schema() const;
+
+
  private:
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */

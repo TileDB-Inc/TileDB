@@ -2635,6 +2635,37 @@ int32_t tiledb_query_set_buffer_var(
   return TILEDB_OK;
 }
 
+int32_t tiledb_query_get_array_schema(
+    tiledb_ctx_t* ctx,
+    tiledb_query_t* query,
+    tiledb_array_schema_t** array_schema) {
+    if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, query) == TILEDB_ERR) {
+      return TILEDB_ERR;
+    }
+
+  *array_schema = new (std::nothrow) tiledb_array_schema_t;
+  if (*array_schema == nullptr) {
+    auto st =
+        tiledb::sm::Status::Error("Failed to allocate TileDB array schema");
+    LOG_STATUS(st);
+    save_error(ctx, st);
+    return TILEDB_OOM;
+  }
+
+  // Get schema
+  auto schema = (tiledb::sm::ArraySchema*)nullptr;
+  if (SAVE_ERROR_CATCH(ctx, query->query_->array()->get_array_schema(&schema))) {
+    delete *array_schema;
+    *array_schema = nullptr;
+    return TILEDB_ERR;
+  }
+
+  (*array_schema)->array_schema_ =
+      new (std::nothrow) tiledb::sm::ArraySchema(schema);
+
+  return TILEDB_OK;
+}
+
 int32_t tiledb_query_get_buffer(
     tiledb_ctx_t* ctx,
     tiledb_query_t* query,

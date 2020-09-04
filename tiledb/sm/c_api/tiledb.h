@@ -3258,6 +3258,28 @@ TILEDB_EXPORT int32_t tiledb_query_get_buffer(
     uint64_t** buffer_size);
 
 /**
+ * Gets the open array's schema object from a query.
+ * The user is responsible for de-allocating the array schema object.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * tiledb_array_schema_t* array_schema;
+ * tiledb_array_get_array_schema(ctx, array, &array_schema);
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param query The TileDB query.
+ * @param array_schema The array schema to be retrieved.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+
+TILEDB_EXPORT int32_t tiledb_query_get_array_schema(
+    tiledb_ctx_t* ctx,
+    tiledb_query_t* query,
+    tiledb_array_schema_t** array_schema);
+
+/**
  * Gets the values and offsets buffers for a var-sized attribute/dimension
  * to a query. If the buffers have not been set, then `buffer_off` and
  * `buffer_val` are set to `nullptr`.
@@ -3282,6 +3304,7 @@ TILEDB_EXPORT int32_t tiledb_query_get_buffer(
  * @param buffer_val_size A pointer to the size of the values buffer.
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
+
 TILEDB_EXPORT int32_t tiledb_query_get_buffer_var(
     tiledb_ctx_t* ctx,
     tiledb_query_t* query,
