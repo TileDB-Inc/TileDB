@@ -120,6 +120,10 @@ const ArraySchema* Writer::array_schema() const {
   return array_schema_;
 }
 
+Status Writer::get_array_schema() const {
+  return Status::Ok();
+}
+
 std::vector<std::string> Writer::buffer_names() const {
   std::vector<std::string> ret;
 
