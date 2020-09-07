@@ -111,7 +111,7 @@ if (TILEDB_GCS)
 endif()
 
 if (TILEDB_TBB)
-  include(${CMAKE_SOURCE_DIR}/cmake/Modules/FindTBB_EP.cmake)
+  include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules/FindTBB_EP.cmake)
 endif()
 
 if (TILEDB_TESTS)
