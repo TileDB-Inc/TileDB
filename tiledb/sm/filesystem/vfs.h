@@ -568,6 +568,24 @@ class VFS {
           uri.to_string(), std::move(ra_buffer), size);
     }
 
+    /**
+     * Invalidates and evicts the object in the cache with the given key.
+     *
+     * @param uri The URI associated with the buffer to invalidate.
+     * @param success Set to `true` if the object was removed successfully; if
+     *    the object did not exist in the cache, set to `false`.
+     * @return Status
+     */
+    Status invalidate(const URI& uri, bool* const success) {
+      assert(success);
+
+      // Protect access to the derived LRUCache routines.
+      std::lock_guard<std::mutex> lg(lru_mtx_);
+
+      return LRUCache<std::string, ReadAheadBuffer>::invalidate(
+          uri.to_string(), success);
+    }
+
    private:
     /* ********************************* */
     /*         PRIVATE ATTRIBUTES        */

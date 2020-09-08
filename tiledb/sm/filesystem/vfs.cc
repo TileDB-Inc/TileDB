@@ -1670,6 +1670,12 @@ Status VFS::write(const URI& uri, const void* buffer, uint64_t buffer_size) {
         Status::VFSError("TileDB was built without HDFS support"));
 #endif
   }
+
+  // Invalidate read cache entries for `uri`. We only attempt this for cloud
+  // storage backends.
+  bool tmp;
+  RETURN_NOT_OK(read_ahead_cache_->invalidate(uri, &tmp));
+
   if (uri.is_s3()) {
 #ifdef HAVE_S3
     return s3_.write(uri, buffer, buffer_size);
