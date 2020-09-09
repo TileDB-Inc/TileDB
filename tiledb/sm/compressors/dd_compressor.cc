@@ -97,13 +97,13 @@ Status DoubleDelta::compress(
       return DoubleDelta::compress<uint8_t>(input_buffer, output_buffer);
     case Datatype::FLOAT32:
     case Datatype::FLOAT64:
-      return LOG_STATUS(
-          Status::TileIOError("Cannot compress tile with DoubleDelta; Float "
-                              "datatypes are not supported"));
+      return LOG_STATUS(Status::CompressionError(
+          "Cannot compress tile with DoubleDelta; Float "
+          "datatypes are not supported"));
   }
 
   assert(false);
-  return LOG_STATUS(Status::TileIOError(
+  return LOG_STATUS(Status::CompressionError(
       "Cannot compress tile with DoubleDelta; Not supported datatype"));
 }
 
@@ -154,13 +154,13 @@ Status DoubleDelta::decompress(
       return DoubleDelta::decompress<uint8_t>(input_buffer, output_buffer);
     case Datatype::FLOAT32:
     case Datatype::FLOAT64:
-      return LOG_STATUS(
-          Status::TileIOError("Cannot decompress tile with DoubleDelta; Float "
-                              "datatypes are not supported"));
+      return LOG_STATUS(Status::CompressionError(
+          "Cannot decompress tile with DoubleDelta; Float "
+          "datatypes are not supported"));
   }
 
   assert(false);
-  return LOG_STATUS(Status::TileIOError(
+  return LOG_STATUS(Status::CompressionError(
       "Cannot decompress tile with DoubleDelta; Not supported datatype"));
 }
 
