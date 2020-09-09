@@ -44,7 +44,7 @@
 #include "tiledb/sm/query/query_macros.h"
 #include "tiledb/sm/stats/stats.h"
 #include "tiledb/sm/storage_manager/storage_manager.h"
-#include "tiledb/sm/tile/tile_io.h"
+#include "tiledb/sm/tile/generic_tile_io.h"
 
 #include <iostream>
 #include <sstream>

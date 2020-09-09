@@ -43,8 +43,8 @@
 #include "tiledb/sm/misc/utils.h"
 #include "tiledb/sm/stats/stats.h"
 #include "tiledb/sm/storage_manager/storage_manager.h"
+#include "tiledb/sm/tile/generic_tile_io.h"
 #include "tiledb/sm/tile/tile.h"
-#include "tiledb/sm/tile/tile_io.h"
 
 #include <cassert>
 #include <iostream>
@@ -1565,7 +1565,7 @@ Status FragmentMetadata::load_v1_v2(const EncryptionKey& encryption_key) {
   URI fragment_metadata_uri = fragment_uri_.join_path(
       std::string(constants::fragment_metadata_filename));
   // Read metadata
-  TileIO tile_io(storage_manager_, fragment_metadata_uri);
+  GenericTileIO tile_io(storage_manager_, fragment_metadata_uri);
   auto tile = (Tile*)nullptr;
   RETURN_NOT_OK(tile_io.read_generic(
       &tile, 0, encryption_key, storage_manager_->config()));
@@ -1824,7 +1824,7 @@ Status FragmentMetadata::read_generic_tile_from_file(
       std::string(constants::fragment_metadata_filename));
 
   // Read metadata
-  TileIO tile_io(storage_manager_, fragment_metadata_uri);
+  GenericTileIO tile_io(storage_manager_, fragment_metadata_uri);
   Tile* tile = nullptr;
   RETURN_NOT_OK(tile_io.read_generic(
       &tile, offset, encryption_key, storage_manager_->config()));
@@ -1876,7 +1876,7 @@ Status FragmentMetadata::write_generic_tile_to_file(
       chunked_buffer,
       true);
 
-  TileIO tile_io(storage_manager_, fragment_metadata_uri);
+  GenericTileIO tile_io(storage_manager_, fragment_metadata_uri);
   RETURN_NOT_OK(tile_io.write_generic(&tile, encryption_key, nbytes));
 
   return Status::Ok();

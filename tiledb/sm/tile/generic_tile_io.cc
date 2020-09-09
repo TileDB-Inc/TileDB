@@ -1,5 +1,5 @@
 /**
- * @file   tile_io.cc
+ * @file   generic_tile_io.cc
  *
  * @section LICENSE
  *
@@ -27,10 +27,10 @@
  *
  * @section DESCRIPTION
  *
- * This file implements class TileIO.
+ * This file implements class GenericTileIO.
  */
 
-#include "tiledb/sm/tile/tile_io.h"
+#include "tiledb/sm/tile/generic_tile_io.h"
 #include "tiledb/sm/crypto/encryption_key.h"
 #include "tiledb/sm/filesystem/vfs.h"
 #include "tiledb/sm/filter/compression_filter.h"
@@ -47,47 +47,16 @@ namespace sm {
 /*   CONSTRUCTORS & DESTRUCTORS   */
 /* ****************************** */
 
-TileIO::TileIO(StorageManager* storage_manager, const URI& uri)
+GenericTileIO::GenericTileIO(StorageManager* storage_manager, const URI& uri)
     : storage_manager_(storage_manager)
     , uri_(uri) {
-  file_size_ = 0;
 }
 
 /* ****************************** */
 /*               API              */
 /* ****************************** */
 
-uint64_t TileIO::file_size() const {
-  return file_size_;
-}
-
-Status TileIO::is_generic_tile(
-    const StorageManager* sm, const URI& uri, bool* is_generic_tile) {
-  *is_generic_tile = false;
-
-  bool is_file;
-  RETURN_NOT_OK(sm->vfs()->is_file(uri, &is_file));
-  if (!is_file)
-    return Status::Ok();
-
-  uint64_t file_size;
-  RETURN_NOT_OK(sm->vfs()->file_size(uri, &file_size));
-  if (file_size < GenericTileHeader::BASE_SIZE)
-    return Status::Ok();
-
-  GenericTileHeader header;
-  RETURN_NOT_OK(read_generic_tile_header(sm, uri, 0, &header));
-
-  auto expected_size = GenericTileHeader::BASE_SIZE +
-                       header.filter_pipeline_size + header.persisted_size;
-  if (file_size != expected_size)
-    return Status::Ok();
-
-  *is_generic_tile = true;
-  return Status::Ok();
-}
-
-Status TileIO::read_generic(
+Status GenericTileIO::read_generic(
     Tile** tile,
     uint64_t file_offset,
     const EncryptionKey& encryption_key,
@@ -137,12 +106,10 @@ Status TileIO::read_generic(
       delete *tile);
   assert(!(*tile)->filtered());
 
-  file_size_ = header.persisted_size;
-
   return Status::Ok();
 }
 
-Status TileIO::read_generic_tile_header(
+Status GenericTileIO::read_generic_tile_header(
     const StorageManager* sm,
     const URI& uri,
     uint64_t file_offset,
@@ -176,7 +143,7 @@ Status TileIO::read_generic_tile_header(
   return Status::Ok();
 }
 
-Status TileIO::write_generic(
+Status GenericTileIO::write_generic(
     Tile* tile, const EncryptionKey& encryption_key, uint64_t* nbytes) {
   // Reset the tile and buffer offset
   tile->reset_offset();
@@ -195,15 +162,13 @@ Status TileIO::write_generic(
   RETURN_NOT_OK(write_generic_tile_header(&header));
   RETURN_NOT_OK(storage_manager_->write(uri_, tile->filtered_buffer()));
 
-  file_size_ = header.persisted_size;
-
-  *nbytes = TileIO::GenericTileHeader::BASE_SIZE + header.filter_pipeline_size +
-            header.persisted_size;
+  *nbytes = GenericTileIO::GenericTileHeader::BASE_SIZE +
+            header.filter_pipeline_size + header.persisted_size;
 
   return Status::Ok();
 }
 
-Status TileIO::write_generic_tile_header(GenericTileHeader* header) {
+Status GenericTileIO::write_generic_tile_header(GenericTileHeader* header) {
   // Write to buffer
   auto buff = new Buffer();
   RETURN_NOT_OK_ELSE(
@@ -243,7 +208,7 @@ Status TileIO::write_generic_tile_header(GenericTileHeader* header) {
   return st;
 }
 
-Status TileIO::configure_encryption_filter(
+Status GenericTileIO::configure_encryption_filter(
     GenericTileHeader* header, const EncryptionKey& encryption_key) const {
   switch ((EncryptionType)header->encryption_type) {
     case EncryptionType::NO_ENCRYPTION:
@@ -265,7 +230,7 @@ Status TileIO::configure_encryption_filter(
   return Status::Ok();
 }
 
-Status TileIO::init_generic_tile_header(
+Status GenericTileIO::init_generic_tile_header(
     Tile* tile,
     GenericTileHeader* header,
     const EncryptionKey& encryption_key) const {

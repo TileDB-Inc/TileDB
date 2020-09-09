@@ -1,5 +1,5 @@
 /**
- * @file   tile_io.h
+ * @file   generic_tile_io.h
  *
  * @section LICENSE
  *
@@ -27,11 +27,11 @@
  *
  * @section DESCRIPTION
  *
- * This file defines class TileIO.
+ * This file defines class GenericTileIO.
  */
 
-#ifndef TILEDB_TILE_IO_H
-#define TILEDB_TILE_IO_H
+#ifndef TILEDB_GENERIC_TILE_IO_H
+#define TILEDB_GENERIC_TILE_IO_H
 
 #include "tiledb/sm/enums/datatype.h"
 #include "tiledb/sm/enums/encryption_type.h"
@@ -45,7 +45,7 @@ class StorageManager;
 class Tile;
 
 /** Handles IO (reading/writing) for tiles. */
-class TileIO {
+class GenericTileIO {
  public:
   /* ********************************* */
   /*       PUBLIC TYPE DEFINITIONS     */
@@ -100,31 +100,15 @@ class TileIO {
    * @param storage_manager The storage manager.
    * @param uri The name of the file that stores data.
    */
-  TileIO(StorageManager* storage_manager, const URI& uri);
+  GenericTileIO(StorageManager* storage_manager, const URI& uri);
 
-  TileIO() = delete;
-  TileIO(const TileIO& other) = delete;
-  TileIO(TileIO&& other) = delete;
-  TileIO& operator=(const TileIO& other) = delete;
-  TileIO& operator=(TileIO&& other) = delete;
+  GenericTileIO() = delete;
+  DISABLE_COPY_AND_COPY_ASSIGN(GenericTileIO);
+  DISABLE_MOVE_AND_MOVE_ASSIGN(GenericTileIO);
 
   /* ********************************* */
   /*                API                */
   /* ********************************* */
-
-  /** Returns the size of the file. */
-  uint64_t file_size() const;
-
-  /**
-   * Checks whether the file at the given URI is a valid generic tile.
-   *
-   * @param sm StorageManager instance to use.
-   * @param uri The file URI.
-   * @param is_generic_tile Set to `true` iff the file is a valid generic tile.
-   * @return Status
-   */
-  static Status is_generic_tile(
-      const StorageManager* sm, const URI& uri, bool* is_generic_tile);
 
   /**
    * Reads a generic tile from the file. A generic tile is a tile residing
@@ -192,9 +176,6 @@ class TileIO {
   /*         PRIVATE ATTRIBUTES        */
   /* ********************************* */
 
-  /** The size of the file pointed by `uri_`. */
-  uint64_t file_size_;
-
   /** The storage manager object. */
   StorageManager* storage_manager_;
 
@@ -230,4 +211,4 @@ class TileIO {
 }  // namespace sm
 }  // namespace tiledb
 
-#endif  // TILEDB_TILE_IO_H
+#endif  // TILEDB_GENERIC_TILE_IO_H

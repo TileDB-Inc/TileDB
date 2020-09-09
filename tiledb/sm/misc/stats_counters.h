@@ -110,7 +110,6 @@ STATS_DEFINE_FUNC_STAT(sm_read_from_cache)
 STATS_DEFINE_FUNC_STAT(sm_write_to_cache)
 STATS_DEFINE_FUNC_STAT(sm_query_submit)
 // TileIO
-STATS_DEFINE_FUNC_STAT(tileio_is_generic_tile)
 STATS_DEFINE_FUNC_STAT(tileio_read_generic)
 STATS_DEFINE_FUNC_STAT(tileio_write_generic)
 // VFS
