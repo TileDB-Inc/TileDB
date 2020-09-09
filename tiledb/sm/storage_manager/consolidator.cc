@@ -45,7 +45,7 @@
 #include "tiledb/sm/stats/stats.h"
 #include "tiledb/sm/storage_manager/storage_manager.h"
 #include "tiledb/sm/tile/tile.h"
-#include "tiledb/sm/tile/tile_io.h"
+#include "tiledb/sm/tile/generic_tile_io.h"
 
 #include <iostream>
 #include <sstream>
@@ -531,7 +531,7 @@ Status Consolidator::consolidate_fragment_meta(
       0,
       &chunked_buffer,
       false);
-  TileIO tile_io(storage_manager_, uri);
+  GenericTileIO tile_io(storage_manager_, uri);
   uint64_t nbytes = 0;
   RETURN_NOT_OK_ELSE(
       tile_io.write_generic(&tile, enc_key, &nbytes), chunked_buffer.free());

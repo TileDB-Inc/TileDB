@@ -55,7 +55,7 @@
 #include "tiledb/sm/storage_manager/open_array.h"
 #include "tiledb/sm/storage_manager/storage_manager.h"
 #include "tiledb/sm/tile/tile.h"
-#include "tiledb/sm/tile/tile_io.h"
+#include "tiledb/sm/tile/generic_tile_io.h"
 
 #include <algorithm>
 #include <iostream>
@@ -984,8 +984,8 @@ Status StorageManager::array_get_encryption(
   URI schema_uri = uri.join_path(constants::array_schema_filename);
 
   // Read tile header.
-  TileIO::GenericTileHeader header;
-  RETURN_NOT_OK(TileIO::read_generic_tile_header(this, schema_uri, 0, &header));
+  GenericTileIO::GenericTileHeader header;
+  RETURN_NOT_OK(GenericTileIO::read_generic_tile_header(this, schema_uri, 0, &header));
   *encryption_type = static_cast<EncryptionType>(header.encryption_type);
 
   return Status::Ok();
@@ -1550,7 +1550,7 @@ Status StorageManager::load_array_schema(
 
   URI schema_uri = array_uri.join_path(constants::array_schema_filename);
 
-  TileIO tile_io(this, schema_uri);
+  GenericTileIO tile_io(this, schema_uri);
   Tile* tile = nullptr;
   RETURN_NOT_OK(tile_io.read_generic(&tile, 0, encryption_key, config_));
 
@@ -1903,7 +1903,7 @@ Status StorageManager::store_array_schema(
       0,
       &chunked_buffer,
       false);
-  TileIO tile_io(this, schema_uri);
+  GenericTileIO tile_io(this, schema_uri);
   uint64_t nbytes;
   Status st = tile_io.write_generic(&tile, encryption_key, &nbytes);
   (void)nbytes;
@@ -1954,7 +1954,7 @@ Status StorageManager::store_array_metadata(
       chunked_buffer,
       true);
 
-  TileIO tile_io(this, array_metadata_uri);
+  GenericTileIO tile_io(this, array_metadata_uri);
   uint64_t nbytes;
   Status st = tile_io.write_generic(&tile, encryption_key, &nbytes);
   (void)nbytes;
@@ -2140,7 +2140,7 @@ Status StorageManager::load_array_metadata(
     const auto& uri = array_metadata_to_load[m].uri_;
     auto metadata_buff = open_array->array_metadata(uri);
     if (metadata_buff == nullptr) {  // Array metadata does not exist - load it
-      TileIO tile_io(this, uri);
+      GenericTileIO tile_io(this, uri);
       auto tile = (Tile*)nullptr;
       RETURN_NOT_OK(tile_io.read_generic(&tile, 0, encryption_key, config_));
 
@@ -2255,7 +2255,7 @@ Status StorageManager::load_consolidated_fragment_meta(
   if (uri.to_string().empty())
     return Status::Ok();
 
-  TileIO tile_io(this, uri);
+  GenericTileIO tile_io(this, uri);
   Tile* tile = nullptr;
   RETURN_NOT_OK(tile_io.read_generic(&tile, 0, enc_key, config_));
 
