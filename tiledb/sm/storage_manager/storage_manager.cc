@@ -54,8 +54,8 @@
 #include "tiledb/sm/storage_manager/consolidator.h"
 #include "tiledb/sm/storage_manager/open_array.h"
 #include "tiledb/sm/storage_manager/storage_manager.h"
-#include "tiledb/sm/tile/tile.h"
 #include "tiledb/sm/tile/generic_tile_io.h"
+#include "tiledb/sm/tile/tile.h"
 
 #include <algorithm>
 #include <iostream>

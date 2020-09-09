@@ -103,10 +103,8 @@ class GenericTileIO {
   GenericTileIO(StorageManager* storage_manager, const URI& uri);
 
   GenericTileIO() = delete;
-  GenericTileIO(const GenericTileIO& other) = delete;
-  GenericTileIO(GenericTileIO&& other) = delete;
-  GenericTileIO& operator=(const GenericTileIO& other) = delete;
-  GenericTileIO& operator=(GenericTileIO&& other) = delete;
+  DISABLE_COPY_AND_COPY_ASSIGN(GenericTileIO);
+  DISABLE_MOVE_AND_MOVE_ASSIGN(GenericTileIO);
 
   /* ********************************* */
   /*                API                */
