@@ -30,6 +30,7 @@
  * This file implements class GenericTileIO.
  */
 
+#include "tiledb/sm/tile/generic_tile_io.h"
 #include "tiledb/sm/crypto/encryption_key.h"
 #include "tiledb/sm/filesystem/vfs.h"
 #include "tiledb/sm/filter/compression_filter.h"
@@ -37,7 +38,6 @@
 #include "tiledb/sm/misc/logger.h"
 #include "tiledb/sm/misc/parallel_functions.h"
 #include "tiledb/sm/storage_manager/storage_manager.h"
-#include "tiledb/sm/tile/generic_tile_io.h"
 #include "tiledb/sm/tile/tile.h"
 
 namespace tiledb {
@@ -162,8 +162,8 @@ Status GenericTileIO::write_generic(
   RETURN_NOT_OK(write_generic_tile_header(&header));
   RETURN_NOT_OK(storage_manager_->write(uri_, tile->filtered_buffer()));
 
-  *nbytes = GenericTileIO::GenericTileHeader::BASE_SIZE + header.filter_pipeline_size +
-            header.persisted_size;
+  *nbytes = GenericTileIO::GenericTileHeader::BASE_SIZE +
+            header.filter_pipeline_size + header.persisted_size;
 
   return Status::Ok();
 }

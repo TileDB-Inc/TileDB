@@ -985,7 +985,8 @@ Status StorageManager::array_get_encryption(
 
   // Read tile header.
   GenericTileIO::GenericTileHeader header;
-  RETURN_NOT_OK(GenericTileIO::read_generic_tile_header(this, schema_uri, 0, &header));
+  RETURN_NOT_OK(
+      GenericTileIO::read_generic_tile_header(this, schema_uri, 0, &header));
   *encryption_type = static_cast<EncryptionType>(header.encryption_type);
 
   return Status::Ok();
