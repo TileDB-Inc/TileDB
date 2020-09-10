@@ -1537,16 +1537,27 @@ Status Reader::compute_result_coords(
   for (auto& result_tile : *result_tiles)
     tmp_result_tiles.push_back(&result_tile);
 
-  // Read and unfilter coordinate tiles
-  // NOTE: these will ignore tiles of fragments with format version >=5
+  // Preload zipped coordinate tile offsets. Note that this will
+  // ignore fragments with a version >= 5.
+  RETURN_CANCEL_OR_ERROR(load_offsets({constants::coords}));
+
+  // Preload unzipped coordinate tile offsets. Note that this will
+  // ignore fragments with a version < 5.
+  const auto dim_num = array_schema_->dim_num();
+  std::vector<std::string> dim_names;
+  dim_names.reserve(dim_num);
+  for (unsigned d = 0; d < dim_num; ++d)
+    dim_names.emplace_back(array_schema_->dimension(d)->name());
+  RETURN_CANCEL_OR_ERROR(load_offsets(dim_names));
+
+  // Read and unfilter zipped coordinate tiles. Note that
+  // this will ignore fragments with a version >= 5.
   RETURN_CANCEL_OR_ERROR(read_tiles(constants::coords, tmp_result_tiles));
   RETURN_CANCEL_OR_ERROR(unfilter_tiles(constants::coords, tmp_result_tiles));
 
-  // Read and unfilter coordinate tiles
-  // NOTE: these will ignore tiles of fragments with format version <5
-  auto dim_num = array_schema_->dim_num();
-  for (unsigned d = 0; d < dim_num; ++d) {
-    const auto& dim_name = array_schema_->dimension(d)->name();
+  // Read and unfilter unzipped coordinate tiles. Note that
+  // this will ignore fragments with a version < 5.
+  for (const auto& dim_name : dim_names) {
     RETURN_CANCEL_OR_ERROR(read_tiles(dim_name, tmp_result_tiles));
     RETURN_CANCEL_OR_ERROR(unfilter_tiles(dim_name, tmp_result_tiles));
   }
@@ -2250,6 +2261,43 @@ Status Reader::init_tile(
   return Status::Ok();
 }
 
+Status Reader::load_offsets(const std::vector<std::string>& names) {
+  const auto encryption_key = array_->encryption_key();
+
+  const auto statuses = parallel_for(
+      storage_manager_->compute_tp(),
+      0,
+      fragment_metadata_.size(),
+      [&](const uint64_t i) {
+        auto& fragment = fragment_metadata_[i];
+        const auto format_version = fragment->format_version();
+
+        // Filter the 'names' for format-specific names.
+        std::vector<std::string> filtered_names;
+        filtered_names.reserve(names.size());
+        for (const auto& name : names) {
+          // Applicable for zipped coordinates only to versions < 5
+          if (name == constants::coords && format_version >= 5)
+            continue;
+
+          // Applicable to separate coordinates only to versions >= 5
+          const auto is_dim = array_schema_->is_dim(name);
+          if (is_dim && format_version < 5)
+            continue;
+
+          filtered_names.emplace_back(name);
+        }
+
+        fragment->load_tile_offsets(*encryption_key, std::move(filtered_names));
+        return Status::Ok();
+      });
+
+  for (const auto& st : statuses)
+    RETURN_NOT_OK(st);
+
+  return Status::Ok();
+}
+
 Status Reader::read_tiles(
     const std::string& name,
     const std::vector<ResultTile*>& result_tiles) const {
@@ -2298,58 +2346,6 @@ Status Reader::read_tiles(
   fragment_idxs_vec.reserve(fragment_idxs_set.size());
   for (const auto& idx : fragment_idxs_set)
     fragment_idxs_vec.emplace_back(idx);
-
-  // In parallel, force the required fragment metadata to be loaded
-  auto statuses = parallel_for(
-      storage_manager_->compute_tp(),
-      0,
-      fragment_idxs_vec.size(),
-      [&](uint64_t i) {
-        auto& fragment = fragment_metadata_[fragment_idxs_vec[i]];
-        auto format_version = fragment->format_version();
-
-        // Applicable for zipped coordinates only to versions < 5
-        if (name == constants::coords && format_version >= 5)
-          return Status::Ok();
-
-        // Applicable to separate coordinates only to versions >= 5
-        auto is_dim = array_schema_->is_dim(name);
-        if (is_dim && format_version < 5)
-          return Status::Ok();
-
-        uint64_t tmp = 0;
-        RETURN_NOT_OK(fragment->file_offset(*encryption_key, name, 0, &tmp));
-        return Status::Ok();
-      });
-  for (const auto& st : statuses)
-    RETURN_NOT_OK(st);
-
-  if (var_size) {
-    auto statuses = parallel_for(
-        storage_manager_->compute_tp(),
-        0,
-        fragment_idxs_vec.size(),
-        [&](uint64_t i) {
-          auto& fragment = fragment_metadata_[fragment_idxs_vec[i]];
-          auto format_version = fragment->format_version();
-
-          // Applicable for zipped coordinates only to versions < 5
-          if (name == constants::coords && format_version >= 5)
-            return Status::Ok();
-
-          // Applicable to separate coordinates only to versions >= 5
-          auto is_dim = array_schema_->is_dim(name);
-          if (is_dim && format_version < 5)
-            return Status::Ok();
-
-          uint64_t tmp = 0;
-          RETURN_NOT_OK(
-              fragment->file_var_offset(*encryption_key, name, 0, &tmp));
-          return Status::Ok();
-        });
-    for (auto st : statuses)
-      RETURN_NOT_OK(st);
-  }
 
   // Populate the list of regions per file to be read.
   std::map<URI, std::vector<std::tuple<uint64_t, void*, uint64_t>>> all_regions;
@@ -2625,13 +2621,8 @@ Status Reader::copy_attribute_values(
     }
   }
 
-  // Build a lists of attribute names to copy, separating them by
-  // whether they are of fixed or variable length. The motivation
-  // is that copying fixed and variable cells require two different
-  // context caches. Processing them separately allows us to maintain
-  // a single context cache at the same time to reduce memory use.
-  std::vector<std::string> fixed_names;
-  std::vector<std::string> var_names;
+  // Build a list of attribute names to copy.
+  std::vector<std::string> names;
   for (const auto& it : buffers_) {
     const auto& name = it.first;
     if (read_state_.overflowed_)
@@ -2639,34 +2630,25 @@ Status Reader::copy_attribute_values(
     if (name == constants::coords || array_schema_->is_dim(name))
       continue;
 
-    if (array_schema_->var_size(name))
-      var_names.emplace_back(name);
+    names.emplace_back(name);
+  }
+
+  // Pre-load all attribute offsets into memory.
+  load_offsets(names);
+
+  // Read, unfilter, and copy all attributes into memory.
+  CopyFixedCellsContextCache fixed_ctx_cache;
+  CopyVarCellsContextCache var_ctx_cache;
+  for (const auto& name : names) {
+    RETURN_CANCEL_OR_ERROR(read_tiles(name, result_tiles));
+    RETURN_CANCEL_OR_ERROR(unfilter_tiles(name, result_tiles, &cs_ranges));
+    if (!array_schema_->var_size(name))
+      RETURN_CANCEL_OR_ERROR(
+          copy_fixed_cells(name, stride, result_cell_slabs, &fixed_ctx_cache));
     else
-      fixed_names.emplace_back(name);
-  }
-
-  // Copy result cells for fixed-sized attributes.
-  if (!fixed_names.empty()) {
-    CopyFixedCellsContextCache ctx_cache;
-    for (const auto& name : fixed_names) {
-      RETURN_CANCEL_OR_ERROR(read_tiles(name, result_tiles));
-      RETURN_CANCEL_OR_ERROR(unfilter_tiles(name, result_tiles, &cs_ranges));
       RETURN_CANCEL_OR_ERROR(
-          copy_fixed_cells(name, stride, result_cell_slabs, &ctx_cache));
-      clear_tiles(name, result_tiles);
-    }
-  }
-
-  // Copy result cells for var-sized attributes.
-  if (!var_names.empty()) {
-    CopyVarCellsContextCache ctx_cache;
-    for (const auto& name : var_names) {
-      RETURN_CANCEL_OR_ERROR(read_tiles(name, result_tiles));
-      RETURN_CANCEL_OR_ERROR(unfilter_tiles(name, result_tiles, &cs_ranges));
-      RETURN_CANCEL_OR_ERROR(
-          copy_var_cells(name, stride, result_cell_slabs, &ctx_cache));
-      clear_tiles(name, result_tiles);
-    }
+          copy_var_cells(name, stride, result_cell_slabs, &var_ctx_cache));
+    clear_tiles(name, result_tiles);
   }
 
   return Status::Ok();

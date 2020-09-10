@@ -1120,6 +1120,15 @@ class Reader {
       Tile* tile_var) const;
 
   /**
+   * Loads offsets for each attribute/dimension name into
+   * their associated element in `fragment_metadata_`.
+   *
+   * @param names The attribute/dimension names.
+   * @return Status
+   */
+  Status load_offsets(const std::vector<std::string>& names);
+
+  /**
    * Retrieves the tiles on a particular attribute or dimension and stores it
    * in the appropriate result tile.
    *
