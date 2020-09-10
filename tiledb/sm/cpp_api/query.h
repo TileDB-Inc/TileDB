@@ -236,8 +236,8 @@ class Query {
   tiledb_array_schema_t query_array_schema() const {
     auto& ctx = ctx_.get();
     tiledb_array_schema_t* query_array_schema;
-    ctx.handle_error(
-        tiledb_query_get_array_schema(ctx.ptr().get(), query_.get(), &query_array_schema));
+    ctx.handle_error(tiledb_query_get_array_schema(
+        ctx.ptr().get(), query_.get(), &query_array_schema));
     return *query_array_schema;
   }
 
@@ -532,9 +532,10 @@ class Query {
         &start,
         &end,
         &stride));
-    std::array<T, 3> ret = {{*(const T*)start,
-                             *(const T*)end,
-                             (stride == nullptr) ? 0 : *(const T*)stride}};
+    std::array<T, 3> ret = {
+        {*(const T*)start,
+         *(const T*)end,
+         (stride == nullptr) ? 0 : *(const T*)stride}};
     return ret;
   }
 

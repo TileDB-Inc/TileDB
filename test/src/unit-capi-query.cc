@@ -70,7 +70,7 @@ struct QueryFx {
 
 #endif
 
-  //Constant parameters
+  // Constant parameters
   tiledb_array_type_t ARRAY_TYPE = TILEDB_DENSE;
   const uint64_t CAPACITY = 500;
   const tiledb_layout_t TILE_ORDER = TILEDB_ROW_MAJOR;
@@ -587,7 +587,6 @@ TEST_CASE_METHOD(
     QueryFx,
     "C API: Test write query get array schema ",
     "[capi], [query], [query-get-array-schema]") {
-
   std::string temp_dir = FILE_URI_PREFIX + FILE_TEMP_DIR;
   std::string array_name = temp_dir + "query_get_array_schema";
   create_temp_dir(temp_dir);
@@ -603,7 +602,7 @@ TEST_CASE_METHOD(
 
   tiledb_array_schema_t* arraySchema;
 
-  //Check when array is close
+  // Check when array is close
   rc = tiledb_query_get_array_schema(ctx_, query, &arraySchema);
   REQUIRE(rc == TILEDB_ERR);
 
@@ -613,7 +612,7 @@ TEST_CASE_METHOD(
   rc = tiledb_query_alloc(ctx_, array, TILEDB_WRITE, &query);
   REQUIRE(rc == TILEDB_OK);
 
-  //Check when array is open
+  // Check when array is open
   rc = tiledb_query_get_array_schema(ctx_, query, &arraySchema);
   REQUIRE(rc == TILEDB_OK);
 
@@ -642,12 +641,10 @@ TEST_CASE_METHOD(
   remove_temp_dir(temp_dir);
 }
 
-
 TEST_CASE_METHOD(
     QueryFx,
     "C API: Test read query get array schema",
     "[capi], [query], [query-get-array-schema]") {
-
   std::string temp_dir = FILE_URI_PREFIX + FILE_TEMP_DIR;
   std::string array_name = temp_dir + "query_get_array_schema";
   create_temp_dir(temp_dir);
@@ -663,7 +660,7 @@ TEST_CASE_METHOD(
 
   tiledb_array_schema_t* arraySchema;
 
-  //Check when array is close
+  // Check when array is close
   rc = tiledb_query_get_array_schema(ctx_, query, &arraySchema);
   REQUIRE(rc == TILEDB_ERR);
 
@@ -673,7 +670,7 @@ TEST_CASE_METHOD(
   rc = tiledb_query_alloc(ctx_, array, TILEDB_READ, &query);
   REQUIRE(rc == TILEDB_OK);
 
-  //Check when array is open
+  // Check when array is open
   rc = tiledb_query_get_array_schema(ctx_, query, &arraySchema);
   REQUIRE(rc == TILEDB_OK);
 
