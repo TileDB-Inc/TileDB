@@ -67,7 +67,14 @@ struct QueryFx {
   const std::string FILE_URI_PREFIX = "file://";
   const std::string FILE_TEMP_DIR =
       tiledb::sm::Posix::current_dir() + "/tiledb_test/";
+
 #endif
+
+  //Constant parameters
+  tiledb_array_type_t ARRAY_TYPE = TILEDB_DENSE;
+  const uint64_t CAPACITY = 500;
+  const tiledb_layout_t TILE_ORDER = TILEDB_ROW_MAJOR;
+  const tiledb_layout_t CELL_ORDER = TILEDB_COL_MAJOR;
 
   // TileDB context and vfs
   tiledb_ctx_t* ctx_;
@@ -86,6 +93,8 @@ struct QueryFx {
   void create_array(const std::string& path);
   void test_get_buffer_write(const std::string& path);
   void test_get_buffer_read(const std::string& path);
+  void test_get_array_schema_write(const std::string& path);
+  void test_get_array_schema_read(const std::string& path);
   static std::string random_name(const std::string& prefix);
   void set_supported_fs();
 };
@@ -571,5 +580,124 @@ TEST_CASE_METHOD(
 
   tiledb_query_free(&query);
   tiledb_array_free(&array);
+  remove_temp_dir(temp_dir);
+}
+
+TEST_CASE_METHOD(
+    QueryFx,
+    "C API: Test write query get array schema ",
+    "[capi], [query], [query-get-array-schema]") {
+
+  std::string temp_dir = FILE_URI_PREFIX + FILE_TEMP_DIR;
+  std::string array_name = temp_dir + "query_get_array_schema";
+  create_temp_dir(temp_dir);
+  create_array(array_name);
+
+  tiledb_array_t* array;
+  int rc = tiledb_array_alloc(ctx_, array_name.c_str(), &array);
+  REQUIRE(rc == TILEDB_OK);
+
+  tiledb_query_t* query;
+  rc = tiledb_query_alloc(ctx_, array, TILEDB_WRITE, &query);
+  REQUIRE(rc == TILEDB_ERR);
+
+  tiledb_array_schema_t* arraySchema;
+
+  //Check when array is close
+  rc = tiledb_query_get_array_schema(ctx_, query, &arraySchema);
+  REQUIRE(rc == TILEDB_ERR);
+
+  rc = tiledb_array_open(ctx_, array, TILEDB_WRITE);
+  REQUIRE(rc == TILEDB_OK);
+
+  rc = tiledb_query_alloc(ctx_, array, TILEDB_WRITE, &query);
+  REQUIRE(rc == TILEDB_OK);
+
+  //Check when array is open
+  rc = tiledb_query_get_array_schema(ctx_, query, &arraySchema);
+  REQUIRE(rc == TILEDB_OK);
+
+  uint64_t capacity;
+  rc = tiledb_array_schema_get_capacity(ctx_, arraySchema, &capacity);
+  REQUIRE(rc == TILEDB_OK);
+  CHECK(capacity == 10000);
+
+  tiledb_layout_t layout;
+  rc = tiledb_array_schema_get_cell_order(ctx_, arraySchema, &layout);
+  REQUIRE(rc == TILEDB_OK);
+  CHECK(layout == TILEDB_ROW_MAJOR);
+
+  rc = tiledb_array_schema_get_tile_order(ctx_, arraySchema, &layout);
+  REQUIRE(rc == TILEDB_OK);
+  CHECK(layout == TILEDB_ROW_MAJOR);
+
+  // Close array
+  rc = tiledb_array_close(ctx_, array);
+  CHECK(rc == TILEDB_OK);
+
+  // Clean up
+  tiledb_array_free(&array);
+  tiledb_query_free(&query);
+  tiledb_array_schema_free(&arraySchema);
+  remove_temp_dir(temp_dir);
+}
+
+
+TEST_CASE_METHOD(
+    QueryFx,
+    "C API: Test read query get array schema",
+    "[capi], [query], [query-get-array-schema]") {
+
+  std::string temp_dir = FILE_URI_PREFIX + FILE_TEMP_DIR;
+  std::string array_name = temp_dir + "query_get_array_schema";
+  create_temp_dir(temp_dir);
+  create_array(array_name);
+
+  tiledb_array_t* array;
+  int rc = tiledb_array_alloc(ctx_, array_name.c_str(), &array);
+  REQUIRE(rc == TILEDB_OK);
+
+  tiledb_query_t* query;
+  rc = tiledb_query_alloc(ctx_, array, TILEDB_READ, &query);
+  REQUIRE(rc == TILEDB_ERR);
+
+  tiledb_array_schema_t* arraySchema;
+
+  //Check when array is close
+  rc = tiledb_query_get_array_schema(ctx_, query, &arraySchema);
+  REQUIRE(rc == TILEDB_ERR);
+
+  rc = tiledb_array_open(ctx_, array, TILEDB_READ);
+  REQUIRE(rc == TILEDB_OK);
+
+  rc = tiledb_query_alloc(ctx_, array, TILEDB_READ, &query);
+  REQUIRE(rc == TILEDB_OK);
+
+  //Check when array is open
+  rc = tiledb_query_get_array_schema(ctx_, query, &arraySchema);
+  REQUIRE(rc == TILEDB_OK);
+
+  uint64_t capacity;
+  rc = tiledb_array_schema_get_capacity(ctx_, arraySchema, &capacity);
+  REQUIRE(rc == TILEDB_OK);
+  CHECK(capacity == 10000);
+
+  tiledb_layout_t layout;
+  rc = tiledb_array_schema_get_cell_order(ctx_, arraySchema, &layout);
+  REQUIRE(rc == TILEDB_OK);
+  CHECK(layout == TILEDB_ROW_MAJOR);
+
+  rc = tiledb_array_schema_get_tile_order(ctx_, arraySchema, &layout);
+  REQUIRE(rc == TILEDB_OK);
+  CHECK(layout == TILEDB_ROW_MAJOR);
+
+  // Close array
+  rc = tiledb_array_close(ctx_, array);
+  CHECK(rc == TILEDB_OK);
+
+  // Clean up
+  tiledb_array_free(&array);
+  tiledb_query_free(&query);
+  tiledb_array_schema_free(&arraySchema);
   remove_temp_dir(temp_dir);
 }
