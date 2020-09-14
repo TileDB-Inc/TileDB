@@ -243,7 +243,7 @@ void DenseVectorFx::create_dense_vector(
   REQUIRE(rc == TILEDB_OK);
   tiledb_dimension_t* dim;
   rc = tiledb_dimension_alloc(
-      ctx_, DIM0_NAME, TILEDB_INT64, dim_domain, &tile_extent, &dim);
+      ctx_, "d", TILEDB_INT64, dim_domain, &tile_extent, &dim);
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_domain_add_dimension(ctx_, domain, dim);
   REQUIRE(rc == TILEDB_OK);
@@ -444,7 +444,7 @@ void DenseVectorFx::check_duplicate_coords(const std::string& path) {
 
   const int64_t num_writes = 5;
   for (int64_t write_num = 0; write_num < num_writes; write_num++) {
-    const char* attributes[] = {ATTR_NAME.c_str(), TILEDB_COORDS};
+    const char* attributes[] = {ATTR_NAME.c_str(), "d"};
     int64_t update_buffer[] = {write_num, write_num, write_num};
     int64_t coords_buffer[] = {7, 8, 9};
     void* update_buffers[] = {update_buffer, coords_buffer};

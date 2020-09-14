@@ -600,13 +600,13 @@ int StringDimsFx::tiledb_query_submit_wrapper(
     uint64_t* buff_size;
     REQUIRE(
         tiledb_query_get_buffer(
-            ctx, new_query, TILEDB_COORDS, &buff, &buff_size) == TILEDB_OK);
+            ctx, new_query, "buff", &buff, &buff_size) == TILEDB_OK);
     if (buff_size != nullptr) {
       buff = std::malloc(*buff_size);
       to_free.push_back(buff);
       REQUIRE(
           tiledb_query_set_buffer(
-              ctx, new_query, TILEDB_COORDS, buff, buff_size) == TILEDB_OK);
+              ctx, new_query, "buff", buff, buff_size) == TILEDB_OK);
     }
 
     // Repeat for split dimensions, if they are set we will set the buffer
@@ -1689,7 +1689,7 @@ TEST_CASE_METHOD(
   REQUIRE(rc == TILEDB_ERR);
   int32_t buff[10];
   uint64_t buff_size = sizeof(buff);
-  rc = tiledb_query_set_buffer(ctx_, query, TILEDB_COORDS, buff, &buff_size);
+  rc = tiledb_query_set_buffer(ctx_, query, "buff", buff, &buff_size);
   REQUIRE(rc == TILEDB_ERR);
   int data[1];
   uint64_t data_size;
@@ -1697,7 +1697,7 @@ TEST_CASE_METHOD(
   REQUIRE(rc == TILEDB_ERR);
 
   // Get estimated buffer size
-  rc = tiledb_query_get_est_result_size(ctx_, query, TILEDB_COORDS, &size);
+  rc = tiledb_query_get_est_result_size(ctx_, query, "buff", &size);
   CHECK(rc == TILEDB_ERR);
   rc = tiledb_query_get_est_result_size(ctx_, query, "d", &size);
   CHECK(rc == TILEDB_ERR);

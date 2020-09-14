@@ -356,15 +356,17 @@ void AsyncFx::write_sparse_async() {
                        6.2f,
                        7.1f,
                        7.2f};
-  uint64_t buffer_coords[] = {1, 1, 1, 2, 1, 4, 2, 3, 3, 1, 4, 2, 3, 3, 3, 4};
+  uint64_t buffer_coords_dim1[] = {1, 1, 1, 2, 3, 4, 3, 3};
+  uint64_t buffer_coords_dim2[] = {1, 2, 4, 3, 1, 2, 3, 4};
+
   void* buffers[] = {
-      buffer_a1, buffer_a2, buffer_var_a2, buffer_a3, buffer_coords};
+      buffer_a1, buffer_a2, buffer_var_a2, buffer_a3, buffer_coords_dim1, buffer_coords_dim2};
   uint64_t buffer_sizes[] = {
       sizeof(buffer_a1),
       sizeof(buffer_a2),
       sizeof(buffer_var_a2) - 1,  // No need to store the last '\0' character
       sizeof(buffer_a3),
-      sizeof(buffer_coords)};
+      sizeof(buffer_coords_dim1)};
 
   // Open array
   tiledb_array_t* array;
@@ -375,7 +377,7 @@ void AsyncFx::write_sparse_async() {
 
   // Create query
   tiledb_query_t* query;
-  const char* attributes[] = {"a1", "a2", "a3", TILEDB_COORDS};
+  const char* attributes[] = {"a1", "a2", "a3", "d1", "d2"};
   rc = tiledb_query_alloc(ctx_, array, TILEDB_WRITE, &query);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_layout(ctx_, query, TILEDB_GLOBAL_ORDER);
@@ -397,6 +399,9 @@ void AsyncFx::write_sparse_async() {
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_buffer(
       ctx_, query, attributes[3], buffers[4], &buffer_sizes[4]);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_buffer(
+      ctx_, query, attributes[4], buffers[5], &buffer_sizes[4]);
   CHECK(rc == TILEDB_OK);
 
   // Submit query asynchronously
@@ -448,15 +453,17 @@ void AsyncFx::write_sparse_async_cancelled() {
                        6.2f,
                        7.1f,
                        7.2f};
-  uint64_t buffer_coords[] = {1, 1, 1, 2, 1, 4, 2, 3, 3, 1, 4, 2, 3, 3, 3, 4};
+  //uint64_t buffer_coords[] = {1, 1, 1, 2, 1, 4, 2, 3, 3, 1, 4, 2, 3, 3, 3, 4};
+  uint64_t buffer_coords_dim1[] = {1, 1, 1, 2, 3, 4, 3, 3};
+  uint64_t buffer_coords_dim2[] = {1, 2, 4, 3, 1, 2, 3, 4};
   void* buffers[] = {
-      buffer_a1, buffer_a2, buffer_var_a2, buffer_a3, buffer_coords};
+      buffer_a1, buffer_a2, buffer_var_a2, buffer_a3, buffer_coords_dim1, buffer_coords_dim2};
   uint64_t buffer_sizes[] = {
       sizeof(buffer_a1),
       sizeof(buffer_a2),
       sizeof(buffer_var_a2) - 1,  // No need to store the last '\0' character
       sizeof(buffer_a3),
-      sizeof(buffer_coords)};
+      sizeof(buffer_coords_dim1)};
 
   // Open array
   tiledb_array_t* array;
@@ -467,7 +474,7 @@ void AsyncFx::write_sparse_async_cancelled() {
 
   // Create query
   tiledb_query_t* query;
-  const char* attributes[] = {"a1", "a2", "a3", TILEDB_COORDS};
+  const char* attributes[] = {"a1", "a2", "a3", "d1", "d2"};
   rc = tiledb_query_alloc(ctx_, array, TILEDB_WRITE, &query);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_layout(ctx_, query, TILEDB_UNORDERED);
@@ -489,6 +496,9 @@ void AsyncFx::write_sparse_async_cancelled() {
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_buffer(
       ctx_, query, attributes[3], buffers[4], &buffer_sizes[4]);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_buffer(
+      ctx_, query, attributes[4], buffers[5], &buffer_sizes[4]);
   CHECK(rc == TILEDB_OK);
 
   // Submit query asynchronously
@@ -643,14 +653,16 @@ void AsyncFx::read_sparse_async() {
   uint64_t buffer_a2_off_size = 64;
   uint64_t buffer_a2_val_size = 20;
   uint64_t buffer_a3_size = 64;
-  uint64_t buffer_coords_size = 128;
+  uint64_t buffer_coords_dim1_size = 64;
+  uint64_t buffer_coords_dim2_size = 64;
 
   // Prepare cell buffers
   auto buffer_a1 = (int*)malloc(buffer_a1_size);
   auto buffer_a2_off = (uint64_t*)malloc(buffer_a2_off_size);
   auto buffer_a2_val = (char*)malloc(buffer_a2_val_size);
   auto buffer_a3 = (float*)malloc(buffer_a3_size);
-  auto buffer_coords = (uint64_t*)malloc(buffer_coords_size);
+  auto buffer_coords_dim1 = (uint64_t*)malloc(buffer_coords_dim1_size);
+  auto buffer_coords_dim2 = (uint64_t*)malloc(buffer_coords_dim2_size);
 
   // Create query
   tiledb_query_t* query;
@@ -672,8 +684,12 @@ void AsyncFx::read_sparse_async() {
   rc = tiledb_query_set_buffer(ctx_, query, "a3", buffer_a3, &buffer_a3_size);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_buffer(
-      ctx_, query, TILEDB_COORDS, buffer_coords, &buffer_coords_size);
+      ctx_, query, "d1", buffer_coords_dim1, &buffer_coords_dim1_size);
   CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_buffer(
+      ctx_, query, "d2", buffer_coords_dim2, &buffer_coords_dim2_size);
+  CHECK(rc == TILEDB_OK);
+  
 
   // Submit query with callback
   int callback_made = 0;
@@ -713,14 +729,17 @@ void AsyncFx::read_sparse_async() {
                          6.2f,
                          7.1f,
                          7.2f};
-  uint64_t c_buffer_coords[] = {1, 1, 1, 2, 1, 4, 2, 3, 3, 1, 4, 2, 3, 3, 3, 4};
+  uint64_t c_buffer_coords_dim1[] = {1, 1, 1, 2, 3, 4, 3, 3};
+  uint64_t c_buffer_coords_dim2[] = {1, 2, 4, 3, 1, 2, 3, 4};
+
 
   // Check buffers
   CHECK(!memcmp(buffer_a1, c_buffer_a1, sizeof(c_buffer_a1)));
   CHECK(!memcmp(buffer_a2_off, c_buffer_a2_off, sizeof(c_buffer_a2_off)));
   CHECK(!memcmp(buffer_a2_val, c_buffer_a2_val, sizeof(c_buffer_a2_val) - 1));
   CHECK(!memcmp(buffer_a3, c_buffer_a3, sizeof(c_buffer_a3)));
-  CHECK(!memcmp(buffer_coords, c_buffer_coords, sizeof(c_buffer_coords)));
+  CHECK(!memcmp(buffer_coords_dim1, c_buffer_coords_dim1, sizeof(c_buffer_coords_dim1)));
+  CHECK(!memcmp(buffer_coords_dim2, c_buffer_coords_dim2, sizeof(c_buffer_coords_dim2)));
 
   // Close array
   rc = tiledb_array_close(ctx_, array);
@@ -733,7 +752,8 @@ void AsyncFx::read_sparse_async() {
   free(buffer_a2_off);
   free(buffer_a2_val);
   free(buffer_a3);
-  free(buffer_coords);
+  free(buffer_coords_dim1);
+  free(buffer_coords_dim2);
 }
 
 void AsyncFx::remove_array(const std::string& array_name) {

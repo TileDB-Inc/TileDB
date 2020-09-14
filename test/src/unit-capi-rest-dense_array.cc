@@ -1452,7 +1452,7 @@ TEST_CASE_METHOD(
       TILEDB_OK);
   REQUIRE(
       tiledb_query_set_buffer(
-          ctx_, query, TILEDB_COORDS, buffer_coords, &buffer_coords_size) ==
+          ctx_, query, "d1", buffer_coords, &buffer_coords_size) ==
       TILEDB_OK);
   REQUIRE(tiledb_query_submit(ctx_, query) == TILEDB_OK);
 
@@ -1584,8 +1584,9 @@ TEST_CASE_METHOD(
   // Write a slice
   int write_a1[] = {1, 2, 3, 4};
   uint64_t write_a1_size = sizeof(write_a1);
-  uint64_t write_coords[] = {1, 2, 2, 1, 4, 3, 1, 4};
-  uint64_t write_coords_size = sizeof(write_coords);
+  uint64_t write_coords_dim1[] = {1, 2, 4, 1};
+  uint64_t write_coords_dim2[] = {2, 1, 3, 4};
+  uint64_t write_coords_size = sizeof(write_coords_dim1);
   tiledb_array_t* array;
   int rc = tiledb_array_alloc(ctx_, array_name.c_str(), &array);
   CHECK(rc == TILEDB_OK);
@@ -1599,7 +1600,10 @@ TEST_CASE_METHOD(
   rc = tiledb_query_set_buffer(ctx_, query, "a1", write_a1, &write_a1_size);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_buffer(
-      ctx_, query, TILEDB_COORDS, write_coords, &write_coords_size);
+      ctx_, query, "d1", write_coords_dim1, &write_coords_size);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_buffer(
+      ctx_, query, "d2", write_coords_dim2, &write_coords_size);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_submit(ctx_, query);
   CHECK(rc == TILEDB_OK);
@@ -1645,7 +1649,7 @@ TEST_CASE_METHOD(
   rc = tiledb_query_set_buffer(ctx_, query, "a1", read_a1, &read_a1_size);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_buffer(
-      ctx_, query, TILEDB_COORDS, read_coords, &read_coords_size);
+      ctx_, query, "d1", read_coords, &read_coords_size);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_submit(ctx_, query);
   CHECK(rc == TILEDB_OK);
@@ -2005,10 +2009,14 @@ TEST_CASE_METHOD(
   CHECK(tiledb_query_submit(ctx_, query) == TILEDB_ERR);
 
   // Set coordinates
-  uint64_t coords[] = {1, 2, 1, 1};
-  uint64_t coords_size = sizeof(coords);
+  uint64_t coords_dim1[] = {1, 1};
+  uint64_t coords_dim2[] = {2, 1};
+  uint64_t coords_size = sizeof(coords_dim1);
   rc =
-      tiledb_query_set_buffer(ctx_, query, TILEDB_COORDS, coords, &coords_size);
+      tiledb_query_set_buffer(ctx_, query, "d1", coords_dim1, &coords_size);
+  CHECK(rc == TILEDB_OK);
+  rc =
+      tiledb_query_set_buffer(ctx_, query, "d2", coords_dim2, &coords_size);
   CHECK(rc == TILEDB_OK);
 
   // Submit query - ok

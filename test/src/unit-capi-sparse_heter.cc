@@ -556,7 +556,7 @@ void SparseHeterFx::check_est_result_size_float_int64(
   // Check error for zipped coordinates
   uint64_t size_r;
   rc = tiledb_query_get_est_result_size_wrapper(
-      ctx_, query, TILEDB_COORDS, &size_r);
+      ctx_, query, array_name.c_str(), &size_r);
   CHECK(rc == TILEDB_ERR);
 
   // Check sizes
@@ -602,7 +602,7 @@ void SparseHeterFx::check_est_result_size_int64_float(
   // Check error for zipped coordinates
   uint64_t size_r;
   rc = tiledb_query_get_est_result_size_wrapper(
-      ctx_, query, TILEDB_COORDS, &size_r);
+      ctx_, query, array_name.c_str(), &size_r);
   CHECK(rc == TILEDB_ERR);
 
   // Check sizes

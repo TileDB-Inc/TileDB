@@ -779,7 +779,7 @@ void ConsolidationFx::write_dense_vector_4_fragments_mixed() {
   rc = tiledb_query_set_buffer(ctx_, query_2, "a", a_2, &a_2_size);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_buffer(
-      ctx_, query_2, TILEDB_COORDS, coords_2, &coords_2_size);
+      ctx_, query_2, "d", coords_2, &coords_2_size);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_submit(ctx_, query_2);
   CHECK(rc == TILEDB_OK);
@@ -794,7 +794,7 @@ void ConsolidationFx::write_dense_vector_4_fragments_mixed() {
   rc = tiledb_query_set_buffer(ctx_, query_3, "a", a_3, &a_3_size);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_buffer(
-      ctx_, query_3, TILEDB_COORDS, coords_3, &coords_3_size);
+      ctx_, query_3, "d", coords_3, &coords_3_size);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_submit(ctx_, query_3);
   CHECK(rc == TILEDB_OK);
@@ -876,7 +876,7 @@ void ConsolidationFx::write_dense_vector_consolidatable_1() {
   rc = tiledb_query_set_buffer(ctx_, query_2, "a", a_2, &a_2_size);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_buffer(
-      ctx_, query_2, TILEDB_COORDS, coords_2, &coords_2_size);
+      ctx_, query_2, "d", coords_2, &coords_2_size);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_submit(ctx_, query_2);
   CHECK(rc == TILEDB_OK);
@@ -1029,7 +1029,7 @@ void ConsolidationFx::write_dense_vector_del_1() {
   rc = tiledb_query_set_buffer(ctx_, query_2, "a", a_2, &a_2_size);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_buffer(
-      ctx_, query_2, TILEDB_COORDS, coords_2, &coords_2_size);
+      ctx_, query_2, "d", coords_2, &coords_2_size);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_submit(ctx_, query_2);
   CHECK(rc == TILEDB_OK);
@@ -1044,7 +1044,7 @@ void ConsolidationFx::write_dense_vector_del_1() {
   rc = tiledb_query_set_buffer(ctx_, query_3, "a", a_3, &a_3_size);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_buffer(
-      ctx_, query_3, TILEDB_COORDS, coords_3, &coords_3_size);
+      ctx_, query_3, "d", coords_3, &coords_3_size);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_submit(ctx_, query_3);
   CHECK(rc == TILEDB_OK);
@@ -1132,7 +1132,7 @@ void ConsolidationFx::write_dense_vector_del_2() {
   rc = tiledb_query_set_buffer(ctx_, query_2, "a", a_2, &a_2_size);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_buffer(
-      ctx_, query_2, TILEDB_COORDS, coords_2, &coords_2_size);
+      ctx_, query_2, "d", coords_2, &coords_2_size);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_submit(ctx_, query_2);
   CHECK(rc == TILEDB_OK);
@@ -1147,7 +1147,7 @@ void ConsolidationFx::write_dense_vector_del_2() {
   rc = tiledb_query_set_buffer(ctx_, query_3, "a", a_3, &a_3_size);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_buffer(
-      ctx_, query_3, TILEDB_COORDS, coords_3, &coords_3_size);
+      ctx_, query_3, "d", coords_3, &coords_3_size);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_submit(ctx_, query_3);
   CHECK(rc == TILEDB_OK);
@@ -1235,7 +1235,7 @@ void ConsolidationFx::write_dense_vector_del_3() {
   rc = tiledb_query_set_buffer(ctx_, query_2, "a", a_2, &a_2_size);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_buffer(
-      ctx_, query_2, TILEDB_COORDS, coords_2, &coords_2_size);
+      ctx_, query_2, "d", coords_2, &coords_2_size);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_submit(ctx_, query_2);
   CHECK(rc == TILEDB_OK);
@@ -1266,7 +1266,7 @@ void ConsolidationFx::write_dense_vector_del_3() {
   rc = tiledb_query_set_buffer(ctx_, query_4, "a", a_4, &a_4_size);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_buffer(
-      ctx_, query_4, TILEDB_COORDS, coords_4, &coords_4_size);
+      ctx_, query_4, "d", coords_4, &coords_4_size);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_submit(ctx_, query_4);
   CHECK(rc == TILEDB_OK);
@@ -1450,15 +1450,17 @@ void ConsolidationFx::write_dense_unordered() {
   char buffer_var_a2[] = "wwwwyyxu";
   float buffer_a3[] = {
       211.1f, 211.2f, 213.1f, 213.2f, 212.1f, 212.2f, 208.1f, 208.2f};
-  uint64_t buffer_coords[] = {4, 2, 3, 4, 3, 3, 3, 1};
+  uint64_t buffer_coords_dim1[] = {4, 3, 3, 3};
+  uint64_t buffer_coords_dim2[] = {2, 4, 3, 1};
+
   void* buffers[] = {
-      buffer_a1, buffer_a2, buffer_var_a2, buffer_a3, buffer_coords};
+      buffer_a1, buffer_a2, buffer_var_a2, buffer_a3, buffer_coords_dim1, buffer_coords_dim2};
   uint64_t buffer_sizes[] = {
       sizeof(buffer_a1),
       sizeof(buffer_a2),
       sizeof(buffer_var_a2) - 1,  // No need to store the last '\0' character
       sizeof(buffer_a3),
-      sizeof(buffer_coords)};
+      sizeof(buffer_coords_dim1)};
 
   // Open array
   tiledb_array_t* array;
@@ -1479,7 +1481,7 @@ void ConsolidationFx::write_dense_unordered() {
 
   // Create query
   tiledb_query_t* query;
-  const char* attributes[] = {"a1", "a2", "a3", TILEDB_COORDS};
+  const char* attributes[] = {"a1", "a2", "a3", "d1", "d2"};
   rc = tiledb_query_alloc(ctx_, array, TILEDB_WRITE, &query);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_layout(ctx_, query, TILEDB_UNORDERED);
@@ -1501,6 +1503,9 @@ void ConsolidationFx::write_dense_unordered() {
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_buffer(
       ctx_, query, attributes[3], buffers[4], &buffer_sizes[4]);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_buffer(
+      ctx_, query, attributes[4], buffers[5], &buffer_sizes[4]);
   CHECK(rc == TILEDB_OK);
 
   // Submit query
@@ -1541,15 +1546,17 @@ void ConsolidationFx::write_sparse_full() {
                        6.2f,
                        7.1f,
                        7.2f};
-  uint64_t buffer_coords[] = {1, 1, 1, 2, 1, 4, 2, 3, 3, 1, 4, 2, 3, 3, 3, 4};
+  uint64_t buffer_coords_dim1[] = {1, 1, 1, 2, 3, 4, 3, 3};
+  uint64_t buffer_coords_dim2[] = {1, 2, 4, 3, 1, 2, 3, 4};
+
   void* buffers[] = {
-      buffer_a1, buffer_a2, buffer_var_a2, buffer_a3, buffer_coords};
+      buffer_a1, buffer_a2, buffer_var_a2, buffer_a3, buffer_coords_dim1, buffer_coords_dim2};
   uint64_t buffer_sizes[] = {
       sizeof(buffer_a1),
       sizeof(buffer_a2),
       sizeof(buffer_var_a2) - 1,  // No need to store the last '\0' character
       sizeof(buffer_a3),
-      sizeof(buffer_coords)};
+      sizeof(buffer_coords_dim1)};
 
   // Open array
   tiledb_array_t* array;
@@ -1570,7 +1577,7 @@ void ConsolidationFx::write_sparse_full() {
 
   // Create query
   tiledb_query_t* query;
-  const char* attributes[] = {"a1", "a2", "a3", TILEDB_COORDS};
+  const char* attributes[] = {"a1", "a2", "a3", "d1", "d2"};
   rc = tiledb_query_alloc(ctx_, array, TILEDB_WRITE, &query);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_layout(ctx_, query, TILEDB_GLOBAL_ORDER);
@@ -1592,6 +1599,9 @@ void ConsolidationFx::write_sparse_full() {
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_buffer(
       ctx_, query, attributes[3], buffers[4], &buffer_sizes[4]);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_buffer(
+      ctx_, query, attributes[4], buffers[5], &buffer_sizes[4]);
   CHECK(rc == TILEDB_OK);
 
   // Submit query
@@ -1618,15 +1628,17 @@ void ConsolidationFx::write_sparse_unordered() {
   char buffer_var_a2[] = "yyyuwvvvv";
   float buffer_a3[] = {
       107.1f, 107.2f, 104.1f, 104.2f, 106.1f, 106.2f, 105.1f, 105.2f};
-  uint64_t buffer_coords[] = {3, 4, 3, 2, 3, 3, 4, 1};
+  uint64_t buffer_coords_dim1[] = {3, 3, 3, 4};
+  uint64_t buffer_coords_dim2[] = {4, 2, 3, 1};
+
   void* buffers[] = {
-      buffer_a1, buffer_a2, buffer_var_a2, buffer_a3, buffer_coords};
+      buffer_a1, buffer_a2, buffer_var_a2, buffer_a3, buffer_coords_dim1, buffer_coords_dim2};
   uint64_t buffer_sizes[] = {
       sizeof(buffer_a1),
       sizeof(buffer_a2),
       sizeof(buffer_var_a2) - 1,  // No need to store the last '\0' character
       sizeof(buffer_a3),
-      sizeof(buffer_coords)};
+      sizeof(buffer_coords_dim1)};
 
   // Open array
   tiledb_array_t* array;
@@ -1647,7 +1659,7 @@ void ConsolidationFx::write_sparse_unordered() {
 
   // Create query
   tiledb_query_t* query;
-  const char* attributes[] = {"a1", "a2", "a3", TILEDB_COORDS};
+  const char* attributes[] = {"a1", "a2", "a3", "d1", "d2"};
   rc = tiledb_query_alloc(ctx_, array, TILEDB_WRITE, &query);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_layout(ctx_, query, TILEDB_UNORDERED);
@@ -1669,6 +1681,9 @@ void ConsolidationFx::write_sparse_unordered() {
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_buffer(
       ctx_, query, attributes[3], buffers[4], &buffer_sizes[4]);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_buffer(
+      ctx_, query, attributes[4], buffers[5], &buffer_sizes[4]);
   CHECK(rc == TILEDB_OK);
 
   // Submit query
@@ -2509,8 +2524,8 @@ void ConsolidationFx::read_sparse_full_unordered() {
   float c_buffer_a3[] = {0.1f, 0.2f, 1.1f,   1.2f,   2.1f,   2.2f,   3.1f,
                          3.2f, 4.1f, 4.2f,   104.1f, 104.2f, 105.1f, 105.2f,
                          5.1f, 5.2f, 106.1f, 106.2f, 107.1f, 107.2f};
-  uint64_t c_buffer_coords[] = {1, 1, 1, 2, 1, 4, 2, 3, 3, 1,
-                                3, 2, 4, 1, 4, 2, 3, 3, 3, 4};
+  uint64_t c_buffer_coords_dim1[] = {1, 1, 1, 2, 3, 3, 4, 4, 3, 3};
+  uint64_t c_buffer_coords_dim2[] = {1, 2, 4, 3, 1, 2, 1, 2, 3, 4};                              
 
   // Open array
   tiledb_array_t* array;
@@ -2534,14 +2549,16 @@ void ConsolidationFx::read_sparse_full_unordered() {
   uint64_t buffer_a2_off_size = 176;
   uint64_t buffer_a2_val_size = 51;
   uint64_t buffer_a3_size = 128;
-  uint64_t buffer_coords_size = 256;
+  uint64_t buffer_coords_dim1_size = 128;
+  uint64_t buffer_coords_dim2_size = 128;
 
   // Prepare cell buffers
   auto buffer_a1 = (int*)malloc(buffer_a1_size);
   auto buffer_a2_off = (uint64_t*)malloc(buffer_a2_off_size);
   auto buffer_a2_val = (char*)malloc(buffer_a2_val_size);
   auto buffer_a3 = (float*)malloc(buffer_a3_size);
-  auto buffer_coords = (uint64_t*)malloc(buffer_coords_size);
+  auto buffer_coords_dim1 = (uint64_t*)malloc(buffer_coords_dim1_size);
+  auto buffer_coords_dim2 = (uint64_t*)malloc(buffer_coords_dim2_size);
 
   // Create query
   tiledb_query_t* query;
@@ -2563,7 +2580,10 @@ void ConsolidationFx::read_sparse_full_unordered() {
   rc = tiledb_query_set_buffer(ctx_, query, "a3", buffer_a3, &buffer_a3_size);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_buffer(
-      ctx_, query, TILEDB_COORDS, buffer_coords, &buffer_coords_size);
+      ctx_, query, "d1", buffer_coords_dim1, &buffer_coords_dim1_size);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_buffer(
+      ctx_, query, "d2", buffer_coords_dim2, &buffer_coords_dim2_size);
   CHECK(rc == TILEDB_OK);
 
   // Submit query
@@ -2579,7 +2599,8 @@ void ConsolidationFx::read_sparse_full_unordered() {
   CHECK(!memcmp(buffer_a2_off, c_buffer_a2_off, sizeof(c_buffer_a2_off)));
   CHECK(!memcmp(buffer_a2_val, c_buffer_a2_val, sizeof(c_buffer_a2_val) - 1));
   CHECK(!memcmp(buffer_a3, c_buffer_a3, sizeof(c_buffer_a3)));
-  CHECK(!memcmp(buffer_coords, c_buffer_coords, sizeof(c_buffer_coords)));
+  CHECK(!memcmp(buffer_coords_dim1, c_buffer_coords_dim1, sizeof(c_buffer_coords_dim1)));
+  CHECK(!memcmp(buffer_coords_dim2, c_buffer_coords_dim2, sizeof(c_buffer_coords_dim2)));
 
   // Close array
   rc = tiledb_array_close(ctx_, array);
@@ -2592,7 +2613,8 @@ void ConsolidationFx::read_sparse_full_unordered() {
   free(buffer_a2_off);
   free(buffer_a2_val);
   free(buffer_a3);
-  free(buffer_coords);
+  free(buffer_coords_dim1);
+  free(buffer_coords_dim2);
 }
 
 void ConsolidationFx::read_sparse_unordered_full() {
@@ -2603,8 +2625,8 @@ void ConsolidationFx::read_sparse_unordered_full() {
   float c_buffer_a3[] = {0.1f, 0.2f, 1.1f, 1.2f,   2.1f,   2.2f,   3.1f,
                          3.2f, 4.1f, 4.2f, 104.1f, 104.2f, 105.1f, 105.2f,
                          5.1f, 5.2f, 6.1f, 6.2f,   7.1f,   7.2f};
-  uint64_t c_buffer_coords[] = {1, 1, 1, 2, 1, 4, 2, 3, 3, 1,
-                                3, 2, 4, 1, 4, 2, 3, 3, 3, 4};
+  uint64_t c_buffer_coords_dim1[] = {1, 1, 1, 2, 3, 3, 4, 4, 3, 3};
+  uint64_t c_buffer_coords_dim2[] = {1, 2, 4, 3, 1, 2, 1, 2, 3, 4};                             
 
   // Open array
   tiledb_array_t* array;
@@ -2628,14 +2650,16 @@ void ConsolidationFx::read_sparse_unordered_full() {
   uint64_t buffer_a2_off_size = 176;
   uint64_t buffer_a2_val_size = 54;
   uint64_t buffer_a3_size = 128;
-  uint64_t buffer_coords_size = 256;
+  uint64_t buffer_coords_dim1_size = 128;
+  uint64_t buffer_coords_dim2_size = 128;
 
   // Prepare cell buffers
   auto buffer_a1 = (int*)malloc(buffer_a1_size);
   auto buffer_a2_off = (uint64_t*)malloc(buffer_a2_off_size);
   auto buffer_a2_val = (char*)malloc(buffer_a2_val_size);
   auto buffer_a3 = (float*)malloc(buffer_a3_size);
-  auto buffer_coords = (uint64_t*)malloc(buffer_coords_size);
+  auto buffer_coords_dim1 = (uint64_t*)malloc(buffer_coords_dim1_size);
+  auto buffer_coords_dim2 = (uint64_t*)malloc(buffer_coords_dim2_size);
 
   // Create query
   tiledb_query_t* query;
@@ -2656,8 +2680,11 @@ void ConsolidationFx::read_sparse_unordered_full() {
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_buffer(ctx_, query, "a3", buffer_a3, &buffer_a3_size);
   CHECK(rc == TILEDB_OK);
+ rc = tiledb_query_set_buffer(
+      ctx_, query, "d1", buffer_coords_dim1, &buffer_coords_dim1_size);
+  CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_buffer(
-      ctx_, query, TILEDB_COORDS, buffer_coords, &buffer_coords_size);
+      ctx_, query, "d2", buffer_coords_dim2, &buffer_coords_dim2_size);
   CHECK(rc == TILEDB_OK);
 
   // Submit query
@@ -2673,7 +2700,9 @@ void ConsolidationFx::read_sparse_unordered_full() {
   CHECK(!memcmp(buffer_a2_off, c_buffer_a2_off, sizeof(c_buffer_a2_off)));
   CHECK(!memcmp(buffer_a2_val, c_buffer_a2_val, sizeof(c_buffer_a2_val) - 1));
   CHECK(!memcmp(buffer_a3, c_buffer_a3, sizeof(c_buffer_a3)));
-  CHECK(!memcmp(buffer_coords, c_buffer_coords, sizeof(c_buffer_coords)));
+  //CHECK(!memcmp(buffer_coords, c_buffer_coords, sizeof(c_buffer_coords)));
+  CHECK(!memcmp(buffer_coords_dim1, c_buffer_coords_dim1, sizeof(c_buffer_coords_dim1)));
+  CHECK(!memcmp(buffer_coords_dim2, c_buffer_coords_dim2, sizeof(c_buffer_coords_dim2)));
 
   // Close array
   rc = tiledb_array_close(ctx_, array);
@@ -2686,7 +2715,9 @@ void ConsolidationFx::read_sparse_unordered_full() {
   free(buffer_a2_off);
   free(buffer_a2_val);
   free(buffer_a3);
-  free(buffer_coords);
+  //free(buffer_coords);
+  free(buffer_coords_dim1);
+  free(buffer_coords_dim2);
 }
 
 void ConsolidationFx::consolidate_dense() {
