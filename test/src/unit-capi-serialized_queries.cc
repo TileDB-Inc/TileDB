@@ -305,7 +305,11 @@ struct SerializationFx {
         &unused1,
         &a3_size));
     ctx.handle_error(tiledb_query_get_buffer(
-        ctx.ptr().get(), query->ptr().get(), "d1", &unused1, &coords_size));
+        ctx.ptr().get(),
+        query->ptr().get(),
+        TILEDB_COORDS,
+        &unused1,
+        &coords_size));
 
     if (a1_size != nullptr) {
       void* buff = std::malloc(*a1_size);
@@ -339,7 +343,11 @@ struct SerializationFx {
     if (coords_size != nullptr) {
       void* buff = std::malloc(*coords_size);
       ctx.handle_error(tiledb_query_set_buffer(
-          ctx.ptr().get(), query->ptr().get(), "d1", buff, coords_size));
+          ctx.ptr().get(),
+          query->ptr().get(),
+          TILEDB_COORDS,
+          buff,
+          coords_size));
       to_free.push_back(buff);
     }
 
@@ -551,7 +559,7 @@ TEST_CASE_METHOD(
     REQUIRE(query.query_status() == Query::Status::COMPLETE);
 
     auto result_el = query.result_buffer_elements();
-    REQUIRE(result_el["d1"].second == 20);
+    REQUIRE(result_el[TILEDB_COORDS].second == 20);
     REQUIRE(result_el["a1"].second == 10);
     REQUIRE(result_el["a2"].second == 20);
     REQUIRE(result_el["a3"].first == 10);
@@ -600,7 +608,7 @@ TEST_CASE_METHOD(
     REQUIRE(query.query_status() == Query::Status::COMPLETE);
 
     auto result_el = query.result_buffer_elements();
-    REQUIRE(result_el["d1"].second == 20);
+    REQUIRE(result_el[TILEDB_COORDS].second == 20);
     REQUIRE(result_el["a1"].second == 10);
     REQUIRE(result_el["a2"].second == 20);
     REQUIRE(result_el["a3"].first == 10);

@@ -3162,14 +3162,14 @@ int DenseArrayFx::submit_query_wrapper(
     void* buff;
     uint64_t* buff_size;
     REQUIRE(
-        tiledb_query_get_buffer(ctx_, new_query, "buff", &buff, &buff_size) ==
-        TILEDB_OK);
+        tiledb_query_get_buffer(
+            ctx_, new_query, TILEDB_COORDS, &buff, &buff_size) == TILEDB_OK);
     if (buff_size != nullptr) {
       buff = std::malloc(*buff_size);
       to_free.push_back(buff);
       REQUIRE(
-          tiledb_query_set_buffer(ctx_, new_query, "buff", buff, buff_size) ==
-          TILEDB_OK);
+          tiledb_query_set_buffer(
+              ctx_, new_query, TILEDB_COORDS, buff, buff_size) == TILEDB_OK);
     }
 
     // Repeat for split dimensions, if they are set we will set the buffer
