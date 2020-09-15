@@ -454,11 +454,7 @@ void DenseArrayFx::check_buffer_after_updates(
         // The difference is due to an update
         if (r == buffer_updates_a1[k] &&
             (l / domain_size_1) == buffer_updates_coords_dim1[k] &&
-<<<<<<< HEAD
             (l % domain_size_1) == buffer_updates_coords_dim2[k]) {
-=======
-            (l % domain_size_1) == buffer_updates_coords_dim2[k]) {
->>>>>>> coords_unit_tests
           found = true;
           break;
         }
