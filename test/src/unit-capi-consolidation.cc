@@ -778,8 +778,7 @@ void ConsolidationFx::write_dense_vector_4_fragments_mixed() {
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_buffer(ctx_, query_2, "a", a_2, &a_2_size);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_buffer(
-      ctx_, query_2, "d", coords_2, &coords_2_size);
+  rc = tiledb_query_set_buffer(ctx_, query_2, "d", coords_2, &coords_2_size);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_submit(ctx_, query_2);
   CHECK(rc == TILEDB_OK);
@@ -793,8 +792,7 @@ void ConsolidationFx::write_dense_vector_4_fragments_mixed() {
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_buffer(ctx_, query_3, "a", a_3, &a_3_size);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_buffer(
-      ctx_, query_3, "d", coords_3, &coords_3_size);
+  rc = tiledb_query_set_buffer(ctx_, query_3, "d", coords_3, &coords_3_size);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_submit(ctx_, query_3);
   CHECK(rc == TILEDB_OK);
@@ -875,8 +873,7 @@ void ConsolidationFx::write_dense_vector_consolidatable_1() {
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_buffer(ctx_, query_2, "a", a_2, &a_2_size);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_buffer(
-      ctx_, query_2, "d", coords_2, &coords_2_size);
+  rc = tiledb_query_set_buffer(ctx_, query_2, "d", coords_2, &coords_2_size);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_submit(ctx_, query_2);
   CHECK(rc == TILEDB_OK);
@@ -1028,8 +1025,7 @@ void ConsolidationFx::write_dense_vector_del_1() {
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_buffer(ctx_, query_2, "a", a_2, &a_2_size);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_buffer(
-      ctx_, query_2, "d", coords_2, &coords_2_size);
+  rc = tiledb_query_set_buffer(ctx_, query_2, "d", coords_2, &coords_2_size);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_submit(ctx_, query_2);
   CHECK(rc == TILEDB_OK);
@@ -1043,8 +1039,7 @@ void ConsolidationFx::write_dense_vector_del_1() {
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_buffer(ctx_, query_3, "a", a_3, &a_3_size);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_buffer(
-      ctx_, query_3, "d", coords_3, &coords_3_size);
+  rc = tiledb_query_set_buffer(ctx_, query_3, "d", coords_3, &coords_3_size);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_submit(ctx_, query_3);
   CHECK(rc == TILEDB_OK);
@@ -1131,8 +1126,7 @@ void ConsolidationFx::write_dense_vector_del_2() {
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_buffer(ctx_, query_2, "a", a_2, &a_2_size);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_buffer(
-      ctx_, query_2, "d", coords_2, &coords_2_size);
+  rc = tiledb_query_set_buffer(ctx_, query_2, "d", coords_2, &coords_2_size);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_submit(ctx_, query_2);
   CHECK(rc == TILEDB_OK);
@@ -1146,8 +1140,7 @@ void ConsolidationFx::write_dense_vector_del_2() {
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_buffer(ctx_, query_3, "a", a_3, &a_3_size);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_buffer(
-      ctx_, query_3, "d", coords_3, &coords_3_size);
+  rc = tiledb_query_set_buffer(ctx_, query_3, "d", coords_3, &coords_3_size);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_submit(ctx_, query_3);
   CHECK(rc == TILEDB_OK);
@@ -1234,8 +1227,7 @@ void ConsolidationFx::write_dense_vector_del_3() {
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_buffer(ctx_, query_2, "a", a_2, &a_2_size);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_buffer(
-      ctx_, query_2, "d", coords_2, &coords_2_size);
+  rc = tiledb_query_set_buffer(ctx_, query_2, "d", coords_2, &coords_2_size);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_submit(ctx_, query_2);
   CHECK(rc == TILEDB_OK);
@@ -1265,8 +1257,7 @@ void ConsolidationFx::write_dense_vector_del_3() {
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_buffer(ctx_, query_4, "a", a_4, &a_4_size);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_buffer(
-      ctx_, query_4, "d", coords_4, &coords_4_size);
+  rc = tiledb_query_set_buffer(ctx_, query_4, "d", coords_4, &coords_4_size);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_submit(ctx_, query_4);
   CHECK(rc == TILEDB_OK);
@@ -1453,8 +1444,12 @@ void ConsolidationFx::write_dense_unordered() {
   uint64_t buffer_coords_dim1[] = {4, 3, 3, 3};
   uint64_t buffer_coords_dim2[] = {2, 4, 3, 1};
 
-  void* buffers[] = {
-      buffer_a1, buffer_a2, buffer_var_a2, buffer_a3, buffer_coords_dim1, buffer_coords_dim2};
+  void* buffers[] = {buffer_a1,
+                     buffer_a2,
+                     buffer_var_a2,
+                     buffer_a3,
+                     buffer_coords_dim1,
+                     buffer_coords_dim2};
   uint64_t buffer_sizes[] = {
       sizeof(buffer_a1),
       sizeof(buffer_a2),
@@ -1549,8 +1544,12 @@ void ConsolidationFx::write_sparse_full() {
   uint64_t buffer_coords_dim1[] = {1, 1, 1, 2, 3, 4, 3, 3};
   uint64_t buffer_coords_dim2[] = {1, 2, 4, 3, 1, 2, 3, 4};
 
-  void* buffers[] = {
-      buffer_a1, buffer_a2, buffer_var_a2, buffer_a3, buffer_coords_dim1, buffer_coords_dim2};
+  void* buffers[] = {buffer_a1,
+                     buffer_a2,
+                     buffer_var_a2,
+                     buffer_a3,
+                     buffer_coords_dim1,
+                     buffer_coords_dim2};
   uint64_t buffer_sizes[] = {
       sizeof(buffer_a1),
       sizeof(buffer_a2),
@@ -1631,8 +1630,12 @@ void ConsolidationFx::write_sparse_unordered() {
   uint64_t buffer_coords_dim1[] = {3, 3, 3, 4};
   uint64_t buffer_coords_dim2[] = {4, 2, 3, 1};
 
-  void* buffers[] = {
-      buffer_a1, buffer_a2, buffer_var_a2, buffer_a3, buffer_coords_dim1, buffer_coords_dim2};
+  void* buffers[] = {buffer_a1,
+                     buffer_a2,
+                     buffer_var_a2,
+                     buffer_a3,
+                     buffer_coords_dim1,
+                     buffer_coords_dim2};
   uint64_t buffer_sizes[] = {
       sizeof(buffer_a1),
       sizeof(buffer_a2),
@@ -2525,7 +2528,7 @@ void ConsolidationFx::read_sparse_full_unordered() {
                          3.2f, 4.1f, 4.2f,   104.1f, 104.2f, 105.1f, 105.2f,
                          5.1f, 5.2f, 106.1f, 106.2f, 107.1f, 107.2f};
   uint64_t c_buffer_coords_dim1[] = {1, 1, 1, 2, 3, 3, 4, 4, 3, 3};
-  uint64_t c_buffer_coords_dim2[] = {1, 2, 4, 3, 1, 2, 1, 2, 3, 4};                              
+  uint64_t c_buffer_coords_dim2[] = {1, 2, 4, 3, 1, 2, 1, 2, 3, 4};
 
   // Open array
   tiledb_array_t* array;
@@ -2599,8 +2602,10 @@ void ConsolidationFx::read_sparse_full_unordered() {
   CHECK(!memcmp(buffer_a2_off, c_buffer_a2_off, sizeof(c_buffer_a2_off)));
   CHECK(!memcmp(buffer_a2_val, c_buffer_a2_val, sizeof(c_buffer_a2_val) - 1));
   CHECK(!memcmp(buffer_a3, c_buffer_a3, sizeof(c_buffer_a3)));
-  CHECK(!memcmp(buffer_coords_dim1, c_buffer_coords_dim1, sizeof(c_buffer_coords_dim1)));
-  CHECK(!memcmp(buffer_coords_dim2, c_buffer_coords_dim2, sizeof(c_buffer_coords_dim2)));
+  CHECK(!memcmp(
+      buffer_coords_dim1, c_buffer_coords_dim1, sizeof(c_buffer_coords_dim1)));
+  CHECK(!memcmp(
+      buffer_coords_dim2, c_buffer_coords_dim2, sizeof(c_buffer_coords_dim2)));
 
   // Close array
   rc = tiledb_array_close(ctx_, array);
@@ -2626,7 +2631,7 @@ void ConsolidationFx::read_sparse_unordered_full() {
                          3.2f, 4.1f, 4.2f, 104.1f, 104.2f, 105.1f, 105.2f,
                          5.1f, 5.2f, 6.1f, 6.2f,   7.1f,   7.2f};
   uint64_t c_buffer_coords_dim1[] = {1, 1, 1, 2, 3, 3, 4, 4, 3, 3};
-  uint64_t c_buffer_coords_dim2[] = {1, 2, 4, 3, 1, 2, 1, 2, 3, 4};                             
+  uint64_t c_buffer_coords_dim2[] = {1, 2, 4, 3, 1, 2, 1, 2, 3, 4};
 
   // Open array
   tiledb_array_t* array;
@@ -2680,7 +2685,7 @@ void ConsolidationFx::read_sparse_unordered_full() {
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_buffer(ctx_, query, "a3", buffer_a3, &buffer_a3_size);
   CHECK(rc == TILEDB_OK);
- rc = tiledb_query_set_buffer(
+  rc = tiledb_query_set_buffer(
       ctx_, query, "d1", buffer_coords_dim1, &buffer_coords_dim1_size);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_buffer(
@@ -2700,9 +2705,11 @@ void ConsolidationFx::read_sparse_unordered_full() {
   CHECK(!memcmp(buffer_a2_off, c_buffer_a2_off, sizeof(c_buffer_a2_off)));
   CHECK(!memcmp(buffer_a2_val, c_buffer_a2_val, sizeof(c_buffer_a2_val) - 1));
   CHECK(!memcmp(buffer_a3, c_buffer_a3, sizeof(c_buffer_a3)));
-  //CHECK(!memcmp(buffer_coords, c_buffer_coords, sizeof(c_buffer_coords)));
-  CHECK(!memcmp(buffer_coords_dim1, c_buffer_coords_dim1, sizeof(c_buffer_coords_dim1)));
-  CHECK(!memcmp(buffer_coords_dim2, c_buffer_coords_dim2, sizeof(c_buffer_coords_dim2)));
+  // CHECK(!memcmp(buffer_coords, c_buffer_coords, sizeof(c_buffer_coords)));
+  CHECK(!memcmp(
+      buffer_coords_dim1, c_buffer_coords_dim1, sizeof(c_buffer_coords_dim1)));
+  CHECK(!memcmp(
+      buffer_coords_dim2, c_buffer_coords_dim2, sizeof(c_buffer_coords_dim2)));
 
   // Close array
   rc = tiledb_array_close(ctx_, array);
@@ -2715,7 +2722,7 @@ void ConsolidationFx::read_sparse_unordered_full() {
   free(buffer_a2_off);
   free(buffer_a2_val);
   free(buffer_a3);
-  //free(buffer_coords);
+  // free(buffer_coords);
   free(buffer_coords_dim1);
   free(buffer_coords_dim2);
 }

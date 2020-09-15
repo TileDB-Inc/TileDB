@@ -286,7 +286,7 @@ void CDenseArrayFx::write_sparse_fragment_2d() {
   buffers["d1"] =
       tiledb::test::QueryBuffer({&coords_dim1[0], coords_size, nullptr, 0});
   buffers["d2"] =
-    tiledb::test::QueryBuffer({&coords_dim2[0], coords_size, nullptr, 0});
+      tiledb::test::QueryBuffer({&coords_dim2[0], coords_size, nullptr, 0});
   write_array(ctx_, array_name_, TILEDB_UNORDERED, buffers);
 }
 

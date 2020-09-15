@@ -305,11 +305,7 @@ struct SerializationFx {
         &unused1,
         &a3_size));
     ctx.handle_error(tiledb_query_get_buffer(
-        ctx.ptr().get(),
-        query->ptr().get(),
-        "d1",
-        &unused1,
-        &coords_size));
+        ctx.ptr().get(), query->ptr().get(), "d1", &unused1, &coords_size));
 
     if (a1_size != nullptr) {
       void* buff = std::malloc(*a1_size);
@@ -343,11 +339,7 @@ struct SerializationFx {
     if (coords_size != nullptr) {
       void* buff = std::malloc(*coords_size);
       ctx.handle_error(tiledb_query_set_buffer(
-          ctx.ptr().get(),
-          query->ptr().get(),
-          "d1",
-          buff,
-          coords_size));
+          ctx.ptr().get(), query->ptr().get(), "d1", buff, coords_size));
       to_free.push_back(buff);
     }
 

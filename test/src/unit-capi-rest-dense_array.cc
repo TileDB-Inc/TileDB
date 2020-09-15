@@ -1452,8 +1452,7 @@ TEST_CASE_METHOD(
       TILEDB_OK);
   REQUIRE(
       tiledb_query_set_buffer(
-          ctx_, query, "d1", buffer_coords, &buffer_coords_size) ==
-      TILEDB_OK);
+          ctx_, query, "d1", buffer_coords, &buffer_coords_size) == TILEDB_OK);
   REQUIRE(tiledb_query_submit(ctx_, query) == TILEDB_OK);
 
   tiledb_query_status_t status;
@@ -2012,11 +2011,9 @@ TEST_CASE_METHOD(
   uint64_t coords_dim1[] = {1, 1};
   uint64_t coords_dim2[] = {2, 1};
   uint64_t coords_size = sizeof(coords_dim1);
-  rc =
-      tiledb_query_set_buffer(ctx_, query, "d1", coords_dim1, &coords_size);
+  rc = tiledb_query_set_buffer(ctx_, query, "d1", coords_dim1, &coords_size);
   CHECK(rc == TILEDB_OK);
-  rc =
-      tiledb_query_set_buffer(ctx_, query, "d2", coords_dim2, &coords_size);
+  rc = tiledb_query_set_buffer(ctx_, query, "d2", coords_dim2, &coords_size);
   CHECK(rc == TILEDB_OK);
 
   // Submit query - ok

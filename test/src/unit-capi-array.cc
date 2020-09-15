@@ -1443,10 +1443,9 @@ TEST_CASE_METHOD(
   rc = tiledb_query_set_buffer(
       ctx, query, "d1", buffer_coords_dim1, &buffer_coords_size);
   CHECK(rc == TILEDB_OK);
-  if(dimension == 2)
-  {
+  if (dimension == 2) {
     rc = tiledb_query_set_buffer(
-      ctx, query, "d2", buffer_coords_dim2, &buffer_coords_size);
+        ctx, query, "d2", buffer_coords_dim2, &buffer_coords_size);
     CHECK(rc == TILEDB_OK);
   }
   rc = tiledb_query_submit(ctx, query);
@@ -1820,11 +1819,9 @@ TEST_CASE_METHOD(
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_buffer(ctx_, query, "a", a, &a_size);
   CHECK(rc == TILEDB_OK);
-  rc =
-      tiledb_query_set_buffer(ctx_, query, "d1", coords_dim1, &coords_size);
+  rc = tiledb_query_set_buffer(ctx_, query, "d1", coords_dim1, &coords_size);
   CHECK(rc == TILEDB_OK);
-  rc =
-      tiledb_query_set_buffer(ctx_, query, "d2", coords_dim2, &coords_size);
+  rc = tiledb_query_set_buffer(ctx_, query, "d2", coords_dim2, &coords_size);
   CHECK(rc == TILEDB_OK);
 
   int64_t subarray[] = {2, 3, 4, 5};

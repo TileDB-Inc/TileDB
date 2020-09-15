@@ -307,11 +307,9 @@ void SparseRealFx::write_sparse_array(const std::string& path) {
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_query_set_buffer(ctx_, query, "a", a, &a_size);
   REQUIRE(rc == TILEDB_OK);
-  rc =
-      tiledb_query_set_buffer(ctx_, query, "d1", coords_dim1, &coords_size);
+  rc = tiledb_query_set_buffer(ctx_, query, "d1", coords_dim1, &coords_size);
   REQUIRE(rc == TILEDB_OK);
-  rc =
-      tiledb_query_set_buffer(ctx_, query, "d2", coords_dim2, &coords_size);
+  rc = tiledb_query_set_buffer(ctx_, query, "d2", coords_dim2, &coords_size);
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_query_set_layout(ctx_, query, TILEDB_UNORDERED);
   REQUIRE(rc == TILEDB_OK);
@@ -348,11 +346,9 @@ void SparseRealFx::write_sparse_array_next_partition_bug(
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_query_set_buffer(ctx_, query, "a", a, &a_size);
   REQUIRE(rc == TILEDB_OK);
-  rc =
-      tiledb_query_set_buffer(ctx_, query, "d1", coords_dim1, &coords_size);
+  rc = tiledb_query_set_buffer(ctx_, query, "d1", coords_dim1, &coords_size);
   REQUIRE(rc == TILEDB_OK);
-  rc =
-      tiledb_query_set_buffer(ctx_, query, "d2", coords_dim2, &coords_size);
+  rc = tiledb_query_set_buffer(ctx_, query, "d2", coords_dim2, &coords_size);
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_query_set_layout(ctx_, query, TILEDB_UNORDERED);
   REQUIRE(rc == TILEDB_OK);
@@ -628,11 +624,9 @@ TEST_CASE_METHOD(
     REQUIRE(rc == TILEDB_OK);
     rc = tiledb_query_set_buffer(ctx_, query, "a", a, &a_size);
     REQUIRE(rc == TILEDB_OK);
-    rc = tiledb_query_set_buffer(
-        ctx_, query, "d1", coords_dim1, &coords_size);
+    rc = tiledb_query_set_buffer(ctx_, query, "d1", coords_dim1, &coords_size);
     REQUIRE(rc == TILEDB_OK);
-    rc = tiledb_query_set_buffer(
-        ctx_, query, "d2", coords_dim2, &coords_size);
+    rc = tiledb_query_set_buffer(ctx_, query, "d2", coords_dim2, &coords_size);
     REQUIRE(rc == TILEDB_OK);
     rc = tiledb_query_set_layout(ctx_, query, TILEDB_UNORDERED);
     REQUIRE(rc == TILEDB_OK);

@@ -359,8 +359,12 @@ void AsyncFx::write_sparse_async() {
   uint64_t buffer_coords_dim1[] = {1, 1, 1, 2, 3, 4, 3, 3};
   uint64_t buffer_coords_dim2[] = {1, 2, 4, 3, 1, 2, 3, 4};
 
-  void* buffers[] = {
-      buffer_a1, buffer_a2, buffer_var_a2, buffer_a3, buffer_coords_dim1, buffer_coords_dim2};
+  void* buffers[] = {buffer_a1,
+                     buffer_a2,
+                     buffer_var_a2,
+                     buffer_a3,
+                     buffer_coords_dim1,
+                     buffer_coords_dim2};
   uint64_t buffer_sizes[] = {
       sizeof(buffer_a1),
       sizeof(buffer_a2),
@@ -453,11 +457,16 @@ void AsyncFx::write_sparse_async_cancelled() {
                        6.2f,
                        7.1f,
                        7.2f};
-  //uint64_t buffer_coords[] = {1, 1, 1, 2, 1, 4, 2, 3, 3, 1, 4, 2, 3, 3, 3, 4};
+  // uint64_t buffer_coords[] = {1, 1, 1, 2, 1, 4, 2, 3, 3, 1, 4, 2, 3, 3, 3,
+  // 4};
   uint64_t buffer_coords_dim1[] = {1, 1, 1, 2, 3, 4, 3, 3};
   uint64_t buffer_coords_dim2[] = {1, 2, 4, 3, 1, 2, 3, 4};
-  void* buffers[] = {
-      buffer_a1, buffer_a2, buffer_var_a2, buffer_a3, buffer_coords_dim1, buffer_coords_dim2};
+  void* buffers[] = {buffer_a1,
+                     buffer_a2,
+                     buffer_var_a2,
+                     buffer_a3,
+                     buffer_coords_dim1,
+                     buffer_coords_dim2};
   uint64_t buffer_sizes[] = {
       sizeof(buffer_a1),
       sizeof(buffer_a2),
@@ -689,7 +698,6 @@ void AsyncFx::read_sparse_async() {
   rc = tiledb_query_set_buffer(
       ctx_, query, "d2", buffer_coords_dim2, &buffer_coords_dim2_size);
   CHECK(rc == TILEDB_OK);
-  
 
   // Submit query with callback
   int callback_made = 0;
@@ -732,14 +740,15 @@ void AsyncFx::read_sparse_async() {
   uint64_t c_buffer_coords_dim1[] = {1, 1, 1, 2, 3, 4, 3, 3};
   uint64_t c_buffer_coords_dim2[] = {1, 2, 4, 3, 1, 2, 3, 4};
 
-
   // Check buffers
   CHECK(!memcmp(buffer_a1, c_buffer_a1, sizeof(c_buffer_a1)));
   CHECK(!memcmp(buffer_a2_off, c_buffer_a2_off, sizeof(c_buffer_a2_off)));
   CHECK(!memcmp(buffer_a2_val, c_buffer_a2_val, sizeof(c_buffer_a2_val) - 1));
   CHECK(!memcmp(buffer_a3, c_buffer_a3, sizeof(c_buffer_a3)));
-  CHECK(!memcmp(buffer_coords_dim1, c_buffer_coords_dim1, sizeof(c_buffer_coords_dim1)));
-  CHECK(!memcmp(buffer_coords_dim2, c_buffer_coords_dim2, sizeof(c_buffer_coords_dim2)));
+  CHECK(!memcmp(
+      buffer_coords_dim1, c_buffer_coords_dim1, sizeof(c_buffer_coords_dim1)));
+  CHECK(!memcmp(
+      buffer_coords_dim2, c_buffer_coords_dim2, sizeof(c_buffer_coords_dim2)));
 
   // Close array
   rc = tiledb_array_close(ctx_, array);
