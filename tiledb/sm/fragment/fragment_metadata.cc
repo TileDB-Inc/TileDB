@@ -530,6 +530,36 @@ URI FragmentMetadata::var_uri(const std::string& name) const {
   return fragment_uri_.join_path(name + "_var" + constants::file_suffix);
 }
 
+Status FragmentMetadata::load_tile_offsets(
+    const EncryptionKey& encryption_key, std::vector<std::string>&& names) {
+  // Sort 'names' in ascending order of their index. The
+  // motivation is to load the offsets in order of their
+  // layout for sequential reads to the file.
+  std::sort(
+      names.begin(),
+      names.end(),
+      [&](const std::string& lhs, const std::string& rhs) {
+        assert(idx_map_.count(lhs) > 0);
+        assert(idx_map_.count(rhs) > 0);
+        return idx_map_[lhs] < idx_map_[rhs];
+      });
+
+  // The fixed offsets are located before the
+  // var offsets. Load all of the fixed offsets
+  // first.
+  for (const auto& name : names) {
+    RETURN_NOT_OK(load_tile_offsets(encryption_key, idx_map_[name]));
+  }
+
+  // Load all of the var offsets.
+  for (const auto& name : names) {
+    if (array_schema_->var_size(name))
+      RETURN_NOT_OK(load_tile_var_offsets(encryption_key, idx_map_[name]));
+  }
+
+  return Status::Ok();
+}
+
 Status FragmentMetadata::file_offset(
     const EncryptionKey& encryption_key,
     const std::string& name,
