@@ -453,6 +453,16 @@ class FragmentMetadata {
   Status load_tile_var_sizes(
       const EncryptionKey& encryption_key, const std::string& name);
 
+  /**
+   * Loads tile offsets for the attribute/dimension names.
+   *
+   * @param encryption_key The key the array got opened with.
+   * @param names The attribute/dimension names.
+   * @return Status
+   */
+  Status load_tile_offsets(
+      const EncryptionKey& encryption_key, std::vector<std::string>&& names);
+
  private:
   /* ********************************* */
   /*          TYPE DEFINITIONS         */
