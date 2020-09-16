@@ -3247,7 +3247,9 @@ TILEDB_EXPORT int32_t tiledb_query_set_buffer_var(
  * @param name The attribute/dimension to get the buffer for. Note that the
  *     zipped coordinates have special name `TILEDB_COORDS`.
  * @param buffer The buffer to retrieve.
- * @param buffer_size A pointer to the size of the buffer.
+ * @param buffer_size A pointer to the size of the buffer. Note that this is
+ *     a double pointer and returns the original variable address from
+ *     `set_buffer`.
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
 TILEDB_EXPORT int32_t tiledb_query_get_buffer(
@@ -3277,9 +3279,13 @@ TILEDB_EXPORT int32_t tiledb_query_get_buffer(
  * @param query The TileDB query.
  * @param name The attribute/dimension to set the buffer for.
  * @param buffer_off The offsets buffer to be retrieved.
- * @param buffer_off_size A pointer to the size of the offsets buffer.
+ * @param buffer_off_size A pointer to the size of the offsets buffer. Note that
+ *     this is a `uint_64**` pointer and returns the original variable address
+ * from `set_buffer`.
  * @param buffer_val The values buffer to be retrieved.
- * @param buffer_val_size A pointer to the size of the values buffer.
+ * @param buffer_val_size A pointer to the size of the values buffer. Note that
+ *     this is a `uint_64**` pointer and returns the original variable address
+ * from `set_buffer`.
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
 TILEDB_EXPORT int32_t tiledb_query_get_buffer_var(
