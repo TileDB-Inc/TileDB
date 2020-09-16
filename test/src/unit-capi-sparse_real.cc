@@ -299,16 +299,17 @@ void SparseRealFx::write_sparse_array(const std::string& path) {
 
   int a[] = {1, 2, 3, 4, 5};
   uint64_t a_size = sizeof(a);
-  float coords[] = {
-      -23.5f, -20.0f, 43.56f, 80.0f, 66.2f, -0.3f, -160.1f, 89.1f, 1.0f, 1.0f};
-  uint64_t coords_size = sizeof(coords);
+  float coords_dim1[] = {-23.5f, 43.56f, 66.2f, -160.1f, 1.0f};
+  float coords_dim2[] = {-20.0f, 80.0f, -0.3f, 89.1f, 1.0f};
+  uint64_t coords_size = sizeof(coords_dim1);
   tiledb_query_t* query;
   rc = tiledb_query_alloc(ctx_, array, TILEDB_WRITE, &query);
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_query_set_buffer(ctx_, query, "a", a, &a_size);
   REQUIRE(rc == TILEDB_OK);
-  rc =
-      tiledb_query_set_buffer(ctx_, query, TILEDB_COORDS, coords, &coords_size);
+  rc = tiledb_query_set_buffer(ctx_, query, "d1", coords_dim1, &coords_size);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_query_set_buffer(ctx_, query, "d2", coords_dim2, &coords_size);
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_query_set_layout(ctx_, query, TILEDB_UNORDERED);
   REQUIRE(rc == TILEDB_OK);
@@ -337,15 +338,17 @@ void SparseRealFx::write_sparse_array_next_partition_bug(
 
   int a[] = {1, 2};
   uint64_t a_size = sizeof(a);
-  float coords[] = {-180.0f, 1.0f, -180.0f, 2.0f};
-  uint64_t coords_size = sizeof(coords);
+  float coords_dim1[] = {-180.0f, -180.0f};
+  float coords_dim2[] = {1.0f, 2.0f};
+  uint64_t coords_size = sizeof(coords_dim1);
   tiledb_query_t* query;
   rc = tiledb_query_alloc(ctx_, array, TILEDB_WRITE, &query);
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_query_set_buffer(ctx_, query, "a", a, &a_size);
   REQUIRE(rc == TILEDB_OK);
-  rc =
-      tiledb_query_set_buffer(ctx_, query, TILEDB_COORDS, coords, &coords_size);
+  rc = tiledb_query_set_buffer(ctx_, query, "d1", coords_dim1, &coords_size);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_query_set_buffer(ctx_, query, "d2", coords_dim2, &coords_size);
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_query_set_layout(ctx_, query, TILEDB_UNORDERED);
   REQUIRE(rc == TILEDB_OK);
@@ -612,16 +615,18 @@ TEST_CASE_METHOD(
 
     int a[] = {1, 2};
     uint64_t a_size = sizeof(a);
-    double coords[] = {-180.0, 1.0, -179.99999999999997, 0.9999999999999999};
+    double coords_dim1[] = {-180.0, -179.99999999999997};
+    double coords_dim2[] = {1.0, 0.9999999999999999};
 
-    uint64_t coords_size = sizeof(coords);
+    uint64_t coords_size = sizeof(coords_dim1);
     tiledb_query_t* query;
     rc = tiledb_query_alloc(ctx_, array, TILEDB_WRITE, &query);
     REQUIRE(rc == TILEDB_OK);
     rc = tiledb_query_set_buffer(ctx_, query, "a", a, &a_size);
     REQUIRE(rc == TILEDB_OK);
-    rc = tiledb_query_set_buffer(
-        ctx_, query, TILEDB_COORDS, coords, &coords_size);
+    rc = tiledb_query_set_buffer(ctx_, query, "d1", coords_dim1, &coords_size);
+    REQUIRE(rc == TILEDB_OK);
+    rc = tiledb_query_set_buffer(ctx_, query, "d2", coords_dim2, &coords_size);
     REQUIRE(rc == TILEDB_OK);
     rc = tiledb_query_set_layout(ctx_, query, TILEDB_UNORDERED);
     REQUIRE(rc == TILEDB_OK);

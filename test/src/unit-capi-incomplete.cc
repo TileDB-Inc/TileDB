@@ -355,15 +355,21 @@ void IncompleteFx::write_sparse_full() {
                        6.2f,
                        7.1f,
                        7.2f};
-  uint64_t buffer_coords[] = {1, 1, 1, 2, 1, 4, 2, 3, 3, 1, 4, 2, 3, 3, 3, 4};
-  void* buffers[] = {
-      buffer_a1, buffer_a2, buffer_var_a2, buffer_a3, buffer_coords};
+  uint64_t buffer_coords_dim1[] = {1, 1, 1, 2, 3, 4, 3, 3};
+  uint64_t buffer_coords_dim2[] = {1, 2, 4, 3, 1, 2, 3, 4};
+
+  void* buffers[] = {buffer_a1,
+                     buffer_a2,
+                     buffer_var_a2,
+                     buffer_a3,
+                     buffer_coords_dim1,
+                     buffer_coords_dim2};
   uint64_t buffer_sizes[] = {
       sizeof(buffer_a1),
       sizeof(buffer_a2),
       sizeof(buffer_var_a2) - 1,  // No need to store the last '\0' character
       sizeof(buffer_a3),
-      sizeof(buffer_coords)};
+      sizeof(buffer_coords_dim1)};
 
   // Open array
   tiledb_array_t* array;
@@ -374,7 +380,7 @@ void IncompleteFx::write_sparse_full() {
 
   // Create query
   tiledb_query_t* query;
-  const char* attributes[] = {"a1", "a2", "a3", TILEDB_COORDS};
+  const char* attributes[] = {"a1", "a2", "a3", "d1", "d2"};
   rc = tiledb_query_alloc(ctx_, array, TILEDB_WRITE, &query);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_layout(ctx_, query, TILEDB_GLOBAL_ORDER);
@@ -396,6 +402,9 @@ void IncompleteFx::write_sparse_full() {
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_buffer(
       ctx_, query, attributes[3], buffers[4], &buffer_sizes[4]);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_buffer(
+      ctx_, query, attributes[4], buffers[5], &buffer_sizes[4]);
   CHECK(rc == TILEDB_OK);
 
   // Submit query

@@ -321,15 +321,14 @@ void QueryFx::test_get_buffer_write(const std::string& path) {
   CHECK(rc == TILEDB_ERR);
 
   // Test getting the coords buffer
-  rc = tiledb_query_get_buffer(
-      ctx_, query, TILEDB_COORDS, &a1_got, &a1_got_size);
+  rc = tiledb_query_get_buffer(ctx_, query, "dim_1", &a1_got, &a1_got_size);
   CHECK(rc == TILEDB_OK);
   CHECK(a1_got == nullptr);
   CHECK(a1_got_size == nullptr);
   rc = tiledb_query_get_buffer_var(
       ctx_,
       query,
-      TILEDB_COORDS,
+      "dim_1",
       &a2_off_got,
       &a2_off_got_size,
       &a2_val_got,
@@ -447,15 +446,14 @@ void QueryFx::test_get_buffer_read(const std::string& path) {
   CHECK(rc == TILEDB_ERR);
 
   // Test getting the coords buffer
-  rc = tiledb_query_get_buffer(
-      ctx_, query, TILEDB_COORDS, &a1_got, &a1_got_size);
+  rc = tiledb_query_get_buffer(ctx_, query, "dim_1", &a1_got, &a1_got_size);
   CHECK(rc == TILEDB_OK);
   CHECK(a1_got == nullptr);
   CHECK(a1_got_size == nullptr);
   rc = tiledb_query_get_buffer_var(
       ctx_,
       query,
-      TILEDB_COORDS,
+      "dim_1",
       &a2_off_got,
       &a2_off_got_size,
       &a2_val_got,

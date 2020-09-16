@@ -1920,7 +1920,7 @@ TEST_CASE_METHOD(
   REQUIRE(rc == TILEDB_ERR);
   void* buff = nullptr;
   uint64_t size = 1024;
-  rc = tiledb_query_set_buffer(ctx_, query, TILEDB_COORDS, buff, &size);
+  rc = tiledb_query_set_buffer(ctx_, query, "buff", buff, &size);
   REQUIRE(rc == TILEDB_ERR);
 
   rc = tiledb_array_close(ctx_, array);

@@ -254,7 +254,7 @@ void ArrayFx::create_sparse_vector(const std::string& path) {
   REQUIRE(rc == TILEDB_OK);
   tiledb_dimension_t* dim;
   rc = tiledb_dimension_alloc(
-      ctx_, "d0", TILEDB_INT64, dim_domain, &tile_extent, &dim);
+      ctx_, "d1", TILEDB_INT64, dim_domain, &tile_extent, &dim);
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_domain_add_dimension(ctx_, domain, dim);
   REQUIRE(rc == TILEDB_OK);
@@ -351,7 +351,7 @@ void ArrayFx::create_dense_vector(const std::string& path) {
   REQUIRE(rc == TILEDB_OK);
   tiledb_dimension_t* dim;
   rc = tiledb_dimension_alloc(
-      ctx_, "dim", TILEDB_INT64, dim_domain, &tile_extent, &dim);
+      ctx_, "d1", TILEDB_INT64, dim_domain, &tile_extent, &dim);
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_domain_add_dimension(ctx_, domain, dim);
   REQUIRE(rc == TILEDB_OK);
@@ -1300,7 +1300,9 @@ TEST_CASE_METHOD(
   std::string array_name = temp_dir + "array-write-coords-oob";
   create_temp_dir(temp_dir);
 
-  int64_t buffer_coords[6];
+  int dimension = 0;
+  int64_t buffer_coords_dim1[3];
+  int64_t buffer_coords_dim2[3];
   int buffer_a1[3];
   uint64_t buffer_a1_size, buffer_coords_size;
   int rc;
@@ -1320,6 +1322,7 @@ TEST_CASE_METHOD(
     REQUIRE(error == nullptr);
 
     SECTION("** 1D") {
+      dimension = 1;
       SECTION("### dense") {
         create_dense_vector(array_name);
       }
@@ -1329,9 +1332,9 @@ TEST_CASE_METHOD(
       }
 
       // Prepare cell buffers
-      buffer_coords[0] = 1;
-      buffer_coords[1] = 2;
-      buffer_coords[2] = 30;
+      buffer_coords_dim1[0] = 1;
+      buffer_coords_dim1[1] = 2;
+      buffer_coords_dim1[2] = 30;
       buffer_a1[0] = 1;
       buffer_a1[1] = 2;
       buffer_a1[2] = 3;
@@ -1340,6 +1343,7 @@ TEST_CASE_METHOD(
     }
 
     SECTION("** 2D") {
+      dimension = 2;
       SECTION("### dense") {
         create_dense_array(array_name);
       }
@@ -1349,16 +1353,16 @@ TEST_CASE_METHOD(
       }
 
       // Prepare cell buffers
-      buffer_coords[0] = 1;
-      buffer_coords[1] = 1;
-      buffer_coords[2] = 2;
-      buffer_coords[3] = 30;
-      buffer_coords[4] = 3;
-      buffer_coords[5] = 3;
+      buffer_coords_dim1[0] = 1;
+      buffer_coords_dim1[1] = 2;
+      buffer_coords_dim1[2] = 3;
+      buffer_coords_dim2[0] = 1;
+      buffer_coords_dim2[1] = 30;
+      buffer_coords_dim2[2] = 3;
       buffer_a1[0] = 1;
       buffer_a1[1] = 2;
       buffer_a1[2] = 3;
-      buffer_coords_size = 6 * sizeof(int64_t);
+      buffer_coords_size = 3 * sizeof(int64_t);
       buffer_a1_size = 3 * sizeof(int);
     }
   }
@@ -1372,6 +1376,7 @@ TEST_CASE_METHOD(
     REQUIRE(error == nullptr);
 
     SECTION("** 1D") {
+      dimension = 1;
       SECTION("### dense") {
         create_dense_vector(array_name);
       }
@@ -1381,9 +1386,9 @@ TEST_CASE_METHOD(
       }
 
       // Prepare cell buffers
-      buffer_coords[0] = 1;
-      buffer_coords[1] = 2;
-      buffer_coords[2] = 30;
+      buffer_coords_dim1[0] = 1;
+      buffer_coords_dim1[1] = 2;
+      buffer_coords_dim1[2] = 30;
       buffer_a1[0] = 1;
       buffer_a1[1] = 2;
       buffer_a1[2] = 3;
@@ -1392,6 +1397,7 @@ TEST_CASE_METHOD(
     }
 
     SECTION("** 2D") {
+      dimension = 2;
       SECTION("### dense") {
         create_dense_array(array_name);
       }
@@ -1401,16 +1407,16 @@ TEST_CASE_METHOD(
       }
 
       // Prepare cell buffers
-      buffer_coords[0] = 1;
-      buffer_coords[1] = 1;
-      buffer_coords[2] = 2;
-      buffer_coords[3] = 30;
-      buffer_coords[4] = 3;
-      buffer_coords[5] = 3;
+      buffer_coords_dim1[0] = 1;
+      buffer_coords_dim1[1] = 2;
+      buffer_coords_dim1[2] = 3;
+      buffer_coords_dim2[0] = 1;
+      buffer_coords_dim2[1] = 30;
+      buffer_coords_dim2[2] = 3;
       buffer_a1[0] = 1;
       buffer_a1[1] = 2;
       buffer_a1[2] = 3;
-      buffer_coords_size = 6 * sizeof(int64_t);
+      buffer_coords_size = 3 * sizeof(int64_t);
       buffer_a1_size = 3 * sizeof(int);
     }
   }
@@ -1435,8 +1441,13 @@ TEST_CASE_METHOD(
   rc = tiledb_query_set_buffer(ctx, query, "a", buffer_a1, &buffer_a1_size);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_buffer(
-      ctx, query, TILEDB_COORDS, buffer_coords, &buffer_coords_size);
+      ctx, query, "d1", buffer_coords_dim1, &buffer_coords_size);
   CHECK(rc == TILEDB_OK);
+  if (dimension == 2) {
+    rc = tiledb_query_set_buffer(
+        ctx, query, "d2", buffer_coords_dim2, &buffer_coords_size);
+    CHECK(rc == TILEDB_OK);
+  }
   rc = tiledb_query_submit(ctx, query);
   if (check_coords_oob)
     CHECK(rc == TILEDB_ERR);
@@ -1797,8 +1808,10 @@ TEST_CASE_METHOD(
 
   int32_t a[] = {1, 2, 3, 4};
   uint64_t a_size = sizeof(a);
-  uint64_t coords[] = {1, 1, 1, 2, 1, 3, 1, 4};
-  uint64_t coords_size = sizeof(coords);
+  uint64_t coords_dim1[] = {1, 1, 1, 1};
+  uint64_t coords_dim2[] = {1, 2, 3, 4};
+
+  uint64_t coords_size = sizeof(coords_dim1);
 
   // Prepare query
   tiledb_query_t* query;
@@ -1806,8 +1819,9 @@ TEST_CASE_METHOD(
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_buffer(ctx_, query, "a", a, &a_size);
   CHECK(rc == TILEDB_OK);
-  rc =
-      tiledb_query_set_buffer(ctx_, query, TILEDB_COORDS, coords, &coords_size);
+  rc = tiledb_query_set_buffer(ctx_, query, "d1", coords_dim1, &coords_size);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_buffer(ctx_, query, "d2", coords_dim2, &coords_size);
   CHECK(rc == TILEDB_OK);
 
   int64_t subarray[] = {2, 3, 4, 5};
