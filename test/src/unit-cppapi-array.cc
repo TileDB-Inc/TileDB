@@ -1232,7 +1232,6 @@ TEST_CASE(
   std::vector<uint64_t> offsets(4);
   query_r.set_buffer("d", offsets, data);
   query_r.submit();
-  std::cout << "Data read: " << data << std::endl;
   CHECK(data == "aabbccdddd");
   std::vector<uint64_t> c_offsets = {0, 2, 4, 6};
   CHECK(offsets == c_offsets);
