@@ -133,6 +133,12 @@ TEST_CASE_METHOD(CPPArrayFx, "C++ API: Arrays", "[cppapi][basic]") {
 
     std::vector<int> subarray = {0, 1, 0, 0};
 
+    uint64_t buf_back_elem_size;
+    void* buf_back;
+    uint64_t buf_back_nelem = 0;
+    uint64_t* offsets_back;
+    uint64_t offsets_back_nelem = 0;
+
     REQUIRE(
         Array::encryption_type(ctx, "cpp_unit_array") == TILEDB_NO_ENCRYPTION);
 
@@ -159,6 +165,26 @@ TEST_CASE_METHOD(CPPArrayFx, "C++ API: Arrays", "[cppapi][basic]") {
       query.set_layout(TILEDB_ROW_MAJOR);
 
       REQUIRE(query.submit() == Query::Status::COMPLETE);
+
+      // check a1 buffers
+      query.get_buffer("a1", &buf_back, &buf_back_nelem, &buf_back_elem_size);
+      REQUIRE(buf_back == a1.data());
+      REQUIRE(buf_back_nelem == 2);
+      REQUIRE(buf_back_elem_size == sizeof(int));
+
+      // check a2 buffers
+      query.get_buffer(
+          "a2",
+          &offsets_back,
+          &offsets_back_nelem,
+          &buf_back,
+          &buf_back_nelem,
+          &buf_back_elem_size);
+      REQUIRE(buf_back == a2buf.second.data());
+      REQUIRE(buf_back_nelem == 7);
+      REQUIRE(buf_back_elem_size == sizeof(char));
+      REQUIRE(offsets_back == a2buf.first.data());
+      REQUIRE(offsets_back_nelem == 2);
 
       CHECK(!query.has_results());
 

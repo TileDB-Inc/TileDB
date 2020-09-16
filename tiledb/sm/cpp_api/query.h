@@ -1086,6 +1086,85 @@ class Query {
         sizeof(char));
   }
 
+  /**
+   * Gets a buffer for a fixed-sized attribute/dimension.
+   *
+   * @param name Attribute/dimension name
+   * @param data Buffer array pointer with elements of the attribute type.
+   * @param data_nelements Number of array elements.
+   * @param element_size Size of array elements (in bytes).
+   **/
+  Query& get_buffer(
+      const std::string& name,
+      void** data,
+      uint64_t* data_nelements,
+      uint64_t* element_size) {
+    auto ctx = ctx_.get();
+    uint64_t* data_nbytes = nullptr;
+    auto elem_size_iter = element_sizes_.find(name);
+    if (elem_size_iter == element_sizes_.end()) {
+      throw TileDBError(
+          "[TileDB::C++API] Error: No buffer set for attribute '" + name +
+          "'!");
+    }
+
+    ctx.handle_error(tiledb_query_get_buffer(
+        ctx.ptr().get(), query_.get(), name.c_str(), data, &data_nbytes));
+
+    assert(*data_nbytes % elem_size_iter->second == 0);
+
+    *data_nelements = (*data_nbytes) / elem_size_iter->second;
+    *element_size = elem_size_iter->second;
+
+    return *this;
+  }
+
+  /**
+   * Gets a buffer for a var-sized attribute/dimension.
+   *
+   * @param name Attribute/dimension name
+   * @param offsets Offsets array pointer with elements of uint64_t type.
+   * @param offsets_nelements Number of array elements.
+   * @param data Buffer array pointer with elements of the attribute type.
+   * @param data_nelements Number of array elements.
+   * @param element_size Size of array elements (in bytes).
+   **/
+  Query& get_buffer(
+      const std::string& name,
+      uint64_t** offsets,
+      uint64_t* offsets_nelements,
+      void** data,
+      uint64_t* data_nelements,
+      uint64_t* element_size) {
+    auto ctx = ctx_.get();
+    uint64_t* offsets_nbytes = nullptr;
+    uint64_t* data_nbytes = nullptr;
+    auto elem_size_iter = element_sizes_.find(name);
+    if (elem_size_iter == element_sizes_.end()) {
+      throw TileDBError(
+          "[TileDB::C++API] Error: No buffer set for attribute '" + name +
+          "'!");
+    }
+
+    ctx.handle_error(tiledb_query_get_buffer_var(
+        ctx.ptr().get(),
+        query_.get(),
+        name.c_str(),
+        offsets,
+        &offsets_nbytes,
+        data,
+        &data_nbytes));
+
+    assert(*data_nbytes % elem_size_iter->second == 0);
+    assert(*offsets_nbytes % sizeof(uint64_t) == 0);
+
+    *data_nelements = (*data_nbytes) / elem_size_iter->second;
+    *offsets_nelements = (*offsets_nbytes) / sizeof(uint64_t);
+    *element_size = elem_size_iter->second;
+
+    return *this;
+  }
+
   /* ********************************* */
   /*         STATIC FUNCTIONS          */
   /* ********************************* */
