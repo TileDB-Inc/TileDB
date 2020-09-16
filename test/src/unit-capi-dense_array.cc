@@ -720,7 +720,6 @@ void DenseArrayFx::update_dense_array_2D(
 
   // For easy reference
   auto buffer_a1 = (int*)buffers[0];
-  // auto buffer_coords = (int64_t*)buffers[1];
   auto buffer_coords_dim1 = (int64_t*)buffers[1];
   auto buffer_coords_dim2 = (int64_t*)buffers[2];
 
@@ -730,7 +729,6 @@ void DenseArrayFx::update_dense_array_2D(
   // Populate buffers with random updates
   std::srand(seed);
   int64_t x, y, v;
-  // int64_t coords_index = 0L;
   std::map<std::string, int> my_map;
   std::map<std::string, int>::iterator it;
   my_map.clear();
@@ -4105,7 +4103,6 @@ TEST_CASE_METHOD(
   // Write a slice
   int write_a1[] = {1, 2, 3, 4};
   uint64_t write_a1_size = sizeof(write_a1);
-  // uint64_t write_coords[] = {1, 2, 2, 1, 4, 3, 1, 4};
 
   uint64_t write_coords_dim1[] = {1, 2, 4, 1};
   uint64_t write_coords_dim2[] = {2, 1, 3, 4};

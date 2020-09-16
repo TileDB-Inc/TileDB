@@ -382,7 +382,6 @@ void SparseNegFx::write_sparse_array(const std::string& path) {
 
   int a[] = {1, 2, 3, 4};
   uint64_t a_size = sizeof(a);
-  // int64_t coords[] = {-2, 0, 1, 1, -1, -1, 1, -1};
   int64_t coords_dim1[] = {-2, 1, -1, 1};
   int64_t coords_dim2[] = {0, 1, -1, -1};
   uint64_t coords_size = sizeof(coords_dim1);

@@ -2705,7 +2705,6 @@ void ConsolidationFx::read_sparse_unordered_full() {
   CHECK(!memcmp(buffer_a2_off, c_buffer_a2_off, sizeof(c_buffer_a2_off)));
   CHECK(!memcmp(buffer_a2_val, c_buffer_a2_val, sizeof(c_buffer_a2_val) - 1));
   CHECK(!memcmp(buffer_a3, c_buffer_a3, sizeof(c_buffer_a3)));
-  // CHECK(!memcmp(buffer_coords, c_buffer_coords, sizeof(c_buffer_coords)));
   CHECK(!memcmp(
       buffer_coords_dim1, c_buffer_coords_dim1, sizeof(c_buffer_coords_dim1)));
   CHECK(!memcmp(
@@ -2722,7 +2721,6 @@ void ConsolidationFx::read_sparse_unordered_full() {
   free(buffer_a2_off);
   free(buffer_a2_val);
   free(buffer_a3);
-  // free(buffer_coords);
   free(buffer_coords_dim1);
   free(buffer_coords_dim2);
 }

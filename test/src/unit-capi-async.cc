@@ -358,7 +358,6 @@ void AsyncFx::write_sparse_async() {
                        7.2f};
   uint64_t buffer_coords_dim1[] = {1, 1, 1, 2, 3, 4, 3, 3};
   uint64_t buffer_coords_dim2[] = {1, 2, 4, 3, 1, 2, 3, 4};
-
   void* buffers[] = {buffer_a1,
                      buffer_a2,
                      buffer_var_a2,
@@ -457,8 +456,6 @@ void AsyncFx::write_sparse_async_cancelled() {
                        6.2f,
                        7.1f,
                        7.2f};
-  // uint64_t buffer_coords[] = {1, 1, 1, 2, 1, 4, 2, 3, 3, 1, 4, 2, 3, 3, 3,
-  // 4};
   uint64_t buffer_coords_dim1[] = {1, 1, 1, 2, 3, 4, 3, 3};
   uint64_t buffer_coords_dim2[] = {1, 2, 4, 3, 1, 2, 3, 4};
   void* buffers[] = {buffer_a1,
