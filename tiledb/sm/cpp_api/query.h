@@ -42,7 +42,6 @@
 #include "deleter.h"
 #include "exception.h"
 #include "tiledb.h"
-#include "tiledb_struct_def.h"
 #include "type.h"
 #include "utils.h"
 
@@ -235,9 +234,9 @@ class Query {
   /** Returns the array of the query. */
   Array query_array() {
     auto& ctx = ctx_.get();
-    tiledb_array_t* c_query_array = new (std::nothrow) tiledb_array_t;
+    tiledb_array_t* c_query_array;
     ctx.handle_error(
-        tiledb_query_get_array(ctx.ptr().get(), query_.get(), c_query_array));
+        tiledb_query_get_array(ctx.ptr().get(), query_.get(), &c_query_array));
     return Array(ctx, c_query_array, false);
   }
 
