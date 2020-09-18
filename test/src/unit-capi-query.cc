@@ -594,13 +594,13 @@ TEST_CASE_METHOD(
   rc = tiledb_query_alloc(ctx_, array, TILEDB_READ, &query);
 
   REQUIRE(rc == TILEDB_OK);
-  tiledb_array_t rarray;
+  tiledb_array_t* rarray;
   rc = tiledb_query_get_array(ctx_, query, &rarray);
   REQUIRE(rc == TILEDB_OK);
-  CHECK(rarray.array_ == array->array_);
+  CHECK(rarray->array_ == array->array_);
 
   tiledb_array_schema_t* rschema;
-  rc = tiledb_array_get_schema(ctx_, &rarray, &rschema);
+  rc = tiledb_array_get_schema(ctx_, rarray, &rschema);
   REQUIRE(rc == TILEDB_OK);
 
   // Get schema members

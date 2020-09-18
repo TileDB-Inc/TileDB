@@ -3514,7 +3514,7 @@ TILEDB_EXPORT int32_t tiledb_query_get_layout(
  * **Example:**
  *
  * @code{.c}
- * tiledb_array_t query_array;
+ * tiledb_array_t* query_array;
  * tiledb_query_get_array(ctx, query, &query_array);
  * @endcode
  *
@@ -3524,7 +3524,7 @@ TILEDB_EXPORT int32_t tiledb_query_get_layout(
  * @return `TILEDB_OK` upon success, and `TILEDB_ERR` upon error.
  */
 TILEDB_EXPORT int32_t tiledb_query_get_array(
-    tiledb_ctx_t* ctx, tiledb_query_t* query, tiledb_array_t* query_array);
+    tiledb_ctx_t* ctx, tiledb_query_t* query, tiledb_array_t** query_array);
 /**
  * Adds a 1D range along a subarray dimension, which is in the form
  * (start, end, stride). The datatype of the range components
