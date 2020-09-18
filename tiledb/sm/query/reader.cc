@@ -2694,14 +2694,12 @@ void Reader::get_dim_attr_stats() const {
     const auto& name = it.first;
     auto var_size = array_schema_->var_size(name);
     if (array_schema_->is_attr(name)) {
-      STATS_ADD_COUNTER(stats::Stats::CounterType::READ_ATTR_NUM, 1);
       if (var_size) {
         STATS_ADD_COUNTER(stats::Stats::CounterType::READ_ATTR_VAR_NUM, 1);
       } else {
         STATS_ADD_COUNTER(stats::Stats::CounterType::READ_ATTR_FIXED_NUM, 1);
       }
     } else {
-      STATS_ADD_COUNTER(stats::Stats::CounterType::READ_DIM_NUM, 1);
       if (var_size) {
         STATS_ADD_COUNTER(stats::Stats::CounterType::READ_DIM_VAR_NUM, 1);
       } else {
