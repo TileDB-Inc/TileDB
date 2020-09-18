@@ -45,6 +45,7 @@
 #include "type.h"
 #include "utils.h"
 
+#include <tiledb/sm/c_api/tiledb_struct_def.h>
 #include <algorithm>
 #include <cassert>
 #include <functional>
