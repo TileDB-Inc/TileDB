@@ -42,9 +42,9 @@
 #include "deleter.h"
 #include "exception.h"
 #include "tiledb.h"
+#include "tiledb_struct_def.h"
 #include "type.h"
 #include "utils.h"
-#include "tiledb_struct_def.h"
 
 #include <algorithm>
 #include <cassert>
