@@ -375,8 +375,9 @@ void SparseRealFx2::read_sparse_array(const std::string& path) {
 
   int a[16];
   uint64_t a_size = sizeof(a);
-  float coords[32];
-  uint64_t coords_size = sizeof(coords);
+  float coords_dim1[16];
+  float coords_dim2[16];
+  uint64_t coords_size = sizeof(coords_dim1);
   tiledb_query_t* query;
   rc = tiledb_query_alloc(ctx_, array, TILEDB_READ, &query);
   REQUIRE(rc == TILEDB_OK);
@@ -393,8 +394,9 @@ void SparseRealFx2::read_sparse_array(const std::string& path) {
 
   rc = tiledb_query_set_buffer(ctx_, query, "a", a, &a_size);
   REQUIRE(rc == TILEDB_OK);
-  rc =
-      tiledb_query_set_buffer(ctx_, query, TILEDB_COORDS, coords, &coords_size);
+  rc = tiledb_query_set_buffer(ctx_, query, "d1", coords_dim1, &coords_size);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_query_set_buffer(ctx_, query, "d2", coords_dim2, &coords_size);
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_query_submit(ctx_, query);
   REQUIRE(rc == TILEDB_OK);
@@ -402,12 +404,13 @@ void SparseRealFx2::read_sparse_array(const std::string& path) {
   REQUIRE(rc == TILEDB_OK);
 
   int a_c[] = {4, 1, 5, 2, 3};
-  float coords_c[] = {
-      -160.1f, 89.1f, -23.5f, -20.0f, 1.0f, 1.0f, 43.56f, 80.0f, 66.2f, -0.3f};
+  float coords_c_dim1[] = {-160.1f, -23.5f, 1.0f, 43.56f, 66.2f};
+  float coords_c_dim2[] = {89.1f, -20.0f, 1.0f, 80.0f, -0.3f};
   CHECK(a_size == sizeof(a_c));
   CHECK(!memcmp(a, a_c, sizeof(a_c)));
-  CHECK(coords_size == sizeof(coords_c));
-  CHECK(!memcmp(coords, coords_c, sizeof(coords_c)));
+  CHECK(coords_size == sizeof(coords_c_dim1));
+  CHECK(!memcmp(coords_dim1, coords_c_dim1, sizeof(coords_c_dim1)));
+  CHECK(!memcmp(coords_dim2, coords_c_dim2, sizeof(coords_c_dim2)));
 
   // Close array
   rc = tiledb_array_close(ctx_, array);
@@ -429,8 +432,9 @@ void SparseRealFx2::read_sparse_array_next_partition_bug(
 
   int a[1];
   uint64_t a_size = sizeof(a);
-  float coords[8];
-  uint64_t coords_size = sizeof(coords);
+  float coords_dim1[4];
+  float coords_dim2[4];
+  uint64_t coords_size = sizeof(coords_dim1);
   tiledb_query_t* query;
   rc = tiledb_query_alloc(ctx_, array, TILEDB_READ, &query);
   REQUIRE(rc == TILEDB_OK);
@@ -447,16 +451,17 @@ void SparseRealFx2::read_sparse_array_next_partition_bug(
 
   rc = tiledb_query_set_buffer(ctx_, query, "a", a, &a_size);
   REQUIRE(rc == TILEDB_OK);
-  rc =
-      tiledb_query_set_buffer(ctx_, query, TILEDB_COORDS, coords, &coords_size);
+  rc = tiledb_query_set_buffer(ctx_, query, "d1", coords_dim1, &coords_size);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_query_set_buffer(ctx_, query, "d2", coords_dim2, &coords_size);
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_query_submit(ctx_, query);
   REQUIRE(rc == TILEDB_OK);
 
   CHECK(a_size == sizeof(int));
   CHECK(a[0] == 1);
-  CHECK(coords[0] == -180.0f);
-  CHECK(coords[1] == 1.0f);
+  CHECK(coords_dim1[0] == -180.0f);
+  CHECK(coords_dim2[0] == 1.0f);
 
   // Close array
   rc = tiledb_array_close(ctx_, array);
@@ -559,8 +564,9 @@ TEST_CASE_METHOD(
 
   int a[1];
   uint64_t a_size = sizeof(a);
-  float coords[2];
-  uint64_t coords_size = sizeof(coords);
+  float coords_dim1[1];
+  float coords_dim2[1];
+  uint64_t coords_size = sizeof(coords_dim1);
   tiledb_query_t* query;
   rc = tiledb_query_alloc(ctx_, array, TILEDB_READ, &query);
   REQUIRE(rc == TILEDB_OK);
@@ -577,8 +583,9 @@ TEST_CASE_METHOD(
 
   rc = tiledb_query_set_buffer(ctx_, query, "a", a, &a_size);
   REQUIRE(rc == TILEDB_OK);
-  rc =
-      tiledb_query_set_buffer(ctx_, query, TILEDB_COORDS, coords, &coords_size);
+  rc = tiledb_query_set_buffer(ctx_, query, "d1", coords_dim1, &coords_size);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_query_set_buffer(ctx_, query, "d2", coords_dim2, &coords_size);
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_query_submit(ctx_, query);
   REQUIRE(rc == TILEDB_OK);
@@ -586,11 +593,13 @@ TEST_CASE_METHOD(
   REQUIRE(rc == TILEDB_OK);
 
   int a_c[] = {1};
-  float coords_c[] = {-23.5f, -20.0f};
+  float coords_c_dim1[] = {-23.5f};
+  float coords_c_dim2[] = {-20.0f};
   CHECK(a_size == sizeof(a_c));
   CHECK(!memcmp(a, a_c, sizeof(a_c)));
-  CHECK(coords_size == sizeof(coords_c));
-  CHECK(!memcmp(coords, coords_c, sizeof(coords_c)));
+  CHECK(coords_size == sizeof(coords_c_dim1));
+  CHECK(!memcmp(coords_dim1, coords_c_dim1, sizeof(coords_c_dim1)));
+  CHECK(!memcmp(coords_dim2, coords_c_dim2, sizeof(coords_c_dim2)));
 
   // Close array
   rc = tiledb_array_close(ctx_, array);

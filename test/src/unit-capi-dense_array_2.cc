@@ -558,10 +558,13 @@ TEST_CASE_METHOD(
   buffers["b"] =
       tiledb::test::QueryBuffer({&b_off[0], b_off_size, &b_val[0], b_val_size});
   buffers["c"] = tiledb::test::QueryBuffer({&c[0], c_size, nullptr, 0});
-  std::vector<uint64_t> coords(32);
-  uint64_t coords_size = coords.size() * sizeof(uint64_t);
-  buffers[TILEDB_COORDS] =
-      tiledb::test::QueryBuffer({&coords[0], coords_size, nullptr, 0});
+  std::vector<uint64_t> coords_dim1(16);
+  std::vector<uint64_t> coords_dim2(16);
+  uint64_t coords_size = coords_dim1.size() * sizeof(uint64_t);
+  buffers["d1"] =
+      tiledb::test::QueryBuffer({&coords_dim1[0], coords_size, nullptr, 0});
+  buffers["d2"] =
+      tiledb::test::QueryBuffer({&coords_dim2[0], coords_size, nullptr, 0});
 
   // Open array
   open_array(ctx_, array_, TILEDB_READ);
@@ -571,7 +574,8 @@ TEST_CASE_METHOD(
   std::vector<uint64_t> c_b_off = {};
   std::vector<char> c_b_val = {};
   std::vector<float> c_c = {};
-  std::vector<uint64_t> c_coords = {};
+  std::vector<uint64_t> c_coords_dim1 = {};
+  std::vector<uint64_t> c_coords_dim2 = {};
 
   SECTION("- subarray: row") {
     subarray_layout = TILEDB_ROW_MAJOR;
@@ -599,8 +603,8 @@ TEST_CASE_METHOD(
            5.1f,  5.2f,  6.1f,  6.2f,  7.1f,  7.2f,  8.1f,  8.2f,
            9.1f,  9.2f,  10.1f, 10.2f, 11.1f, 11.2f, 12.1f, 12.2f,
            13.1f, 13.2f, 14.1f, 14.2f, 15.1f, 15.2f, 16.1f, 16.2f};
-    c_coords = {1, 1, 1, 2, 1, 3, 1, 4, 2, 1, 2, 2, 2, 3, 2, 4,
-                3, 1, 3, 2, 3, 3, 3, 4, 4, 1, 4, 2, 4, 3, 4, 4};
+    c_coords_dim1 = {1, 1, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3, 4, 4, 4, 4};
+    c_coords_dim2 = {1, 2, 3, 4, 1, 2, 3, 4, 1, 2, 3, 4, 1, 2, 3, 4};
   }
 
   SECTION("- subarray: col") {
@@ -629,8 +633,8 @@ TEST_CASE_METHOD(
            2.1f, 2.2f, 6.1f, 6.2f, 10.1f, 10.2f, 14.1f, 14.2f,
            3.1f, 3.2f, 7.1f, 7.2f, 11.1f, 11.2f, 15.1f, 15.2f,
            4.1f, 4.2f, 8.1f, 8.2f, 12.1f, 12.2f, 16.1f, 16.2f};
-    c_coords = {1, 1, 2, 1, 3, 1, 4, 1, 1, 2, 2, 2, 3, 2, 4, 2,
-                1, 3, 2, 3, 3, 3, 4, 3, 1, 4, 2, 4, 3, 4, 4, 4};
+    c_coords_dim1 = {1, 2, 3, 4, 1, 2, 3, 4, 1, 2, 3, 4, 1, 2, 3, 4};
+    c_coords_dim2 = {1, 1, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3, 4, 4, 4, 4};
   }
 
   SECTION("- subarray: global") {
@@ -659,8 +663,8 @@ TEST_CASE_METHOD(
            3.1f,  3.2f,  4.1f,  4.2f,  7.1f,  7.2f,  8.1f,  8.2f,
            9.1f,  9.2f,  10.1f, 10.2f, 13.1f, 13.2f, 14.1f, 14.2f,
            11.1f, 11.2f, 12.1f, 12.2f, 15.1f, 15.2f, 16.1f, 16.2f};
-    c_coords = {1, 1, 1, 2, 2, 1, 2, 2, 1, 3, 1, 4, 2, 3, 2, 4,
-                3, 1, 3, 2, 4, 1, 4, 2, 3, 3, 3, 4, 4, 3, 4, 4};
+    c_coords_dim1 = {1, 1, 2, 2, 1, 1, 2, 2, 3, 3, 4, 4, 3, 3, 4, 4};
+    c_coords_dim2 = {1, 2, 1, 2, 3, 4, 3, 4, 1, 2, 1, 2, 3, 4, 3, 4};
   }
 
   // Read
@@ -673,7 +677,8 @@ TEST_CASE_METHOD(
   b_val.resize(c_b_val.size());
   CHECK(b_val == c_b_val);
   CHECK(c == c_c);
-  CHECK(coords == c_coords);
+  CHECK(coords_dim1 == c_coords_dim1);
+  CHECK(coords_dim2 == c_coords_dim2);
 
   // Clean up
   close_array(ctx_, array_);
@@ -746,10 +751,13 @@ TEST_CASE_METHOD(
   buffers["b"] =
       tiledb::test::QueryBuffer({&b_off[0], b_off_size, &b_val[0], b_val_size});
   buffers["c"] = tiledb::test::QueryBuffer({&c[0], c_size, nullptr, 0});
-  std::vector<uint64_t> coords(32);
-  uint64_t coords_size = coords.size() * sizeof(uint64_t);
-  buffers[TILEDB_COORDS] =
-      tiledb::test::QueryBuffer({&coords[0], coords_size, nullptr, 0});
+  std::vector<uint64_t> coords_dim1(16);
+  std::vector<uint64_t> coords_dim2(16);
+  uint64_t coords_size = coords_dim1.size() * sizeof(uint64_t);
+  buffers["d1"] =
+      tiledb::test::QueryBuffer({&coords_dim1[0], coords_size, nullptr, 0});
+  buffers["d2"] =
+      tiledb::test::QueryBuffer({&coords_dim2[0], coords_size, nullptr, 0});
 
   // Open array
   open_array(ctx_, array_, TILEDB_READ);
@@ -759,7 +767,8 @@ TEST_CASE_METHOD(
   std::vector<uint64_t> c_b_off = {};
   std::vector<char> c_b_val = {};
   std::vector<float> c_c = {};
-  std::vector<uint64_t> c_coords = {};
+  std::vector<uint64_t> c_coords_dim1 = {};
+  std::vector<uint64_t> c_coords_dim2 = {};
 
   SECTION("- subarray: row") {
     subarray_layout = TILEDB_ROW_MAJOR;
@@ -787,8 +796,8 @@ TEST_CASE_METHOD(
            105.1f, 105.2f, 6.1f,   6.2f,   7.1f,   7.2f,   8.1f,  8.2f,
            109.1f, 109.2f, 10.1f,  10.2f,  11.1f,  11.2f,  12.1f, 12.2f,
            13.1f,  13.2f,  14.1f,  14.2f,  15.1f,  15.2f,  16.1f, 16.2f};
-    c_coords = {1, 1, 1, 2, 1, 3, 1, 4, 2, 1, 2, 2, 2, 3, 2, 4,
-                3, 1, 3, 2, 3, 3, 3, 4, 4, 1, 4, 2, 4, 3, 4, 4};
+    c_coords_dim1 = {1, 1, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3, 4, 4, 4, 4};
+    c_coords_dim2 = {1, 2, 3, 4, 1, 2, 3, 4, 1, 2, 3, 4, 1, 2, 3, 4};
   }
 
   SECTION("- subarray: col") {
@@ -817,8 +826,8 @@ TEST_CASE_METHOD(
            102.1f, 102.2f, 6.1f,   6.2f,   10.1f,  10.2f,  14.1f, 14.2f,
            103.1f, 103.2f, 7.1f,   7.2f,   11.1f,  11.2f,  15.1f, 15.2f,
            4.1f,   4.2f,   8.1f,   8.2f,   12.1f,  12.2f,  16.1f, 16.2f};
-    c_coords = {1, 1, 2, 1, 3, 1, 4, 1, 1, 2, 2, 2, 3, 2, 4, 2,
-                1, 3, 2, 3, 3, 3, 4, 3, 1, 4, 2, 4, 3, 4, 4, 4};
+    c_coords_dim1 = {1, 2, 3, 4, 1, 2, 3, 4, 1, 2, 3, 4, 1, 2, 3, 4};
+    c_coords_dim2 = {1, 1, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3, 4, 4, 4, 4};
   }
 
   SECTION("- subarray: global") {
@@ -847,8 +856,8 @@ TEST_CASE_METHOD(
            103.1f, 103.2f, 4.1f,   4.2f,   7.1f,   7.2f,   8.1f,  8.2f,
            109.1f, 109.2f, 10.1f,  10.2f,  13.1f,  13.2f,  14.1f, 14.2f,
            11.1f,  11.2f,  12.1f,  12.2f,  15.1f,  15.2f,  16.1f, 16.2f};
-    c_coords = {1, 1, 1, 2, 2, 1, 2, 2, 1, 3, 1, 4, 2, 3, 2, 4,
-                3, 1, 3, 2, 4, 1, 4, 2, 3, 3, 3, 4, 4, 3, 4, 4};
+    c_coords_dim1 = {1, 1, 2, 2, 1, 1, 2, 2, 3, 3, 4, 4, 3, 3, 4, 4};
+    c_coords_dim2 = {1, 2, 1, 2, 3, 4, 3, 4, 1, 2, 1, 2, 3, 4, 3, 4};
   }
 
   // Read from the array
@@ -861,7 +870,8 @@ TEST_CASE_METHOD(
   b_val.resize(c_b_val.size());
   CHECK(b_val == c_b_val);
   CHECK(c == c_c);
-  CHECK(coords == c_coords);
+  CHECK(coords_dim1 == c_coords_dim1);
+  CHECK(coords_dim2 == c_coords_dim2);
 
   // Clean up
   close_array(ctx_, array_);
@@ -890,10 +900,13 @@ TEST_CASE_METHOD(
   buffers["b"] =
       tiledb::test::QueryBuffer({&b_off[0], b_off_size, &b_val[0], b_val_size});
   buffers["c"] = tiledb::test::QueryBuffer({&c[0], c_size, nullptr, 0});
-  std::vector<uint64_t> coords(32);
-  uint64_t coords_size = coords.size() * sizeof(uint64_t);
-  buffers[TILEDB_COORDS] =
-      tiledb::test::QueryBuffer({&coords[0], coords_size, nullptr, 0});
+  std::vector<uint64_t> coords_dim1(16);
+  std::vector<uint64_t> coords_dim2(16);
+  uint64_t coords_size = coords_dim1.size() * sizeof(uint64_t);
+  buffers["d1"] =
+      tiledb::test::QueryBuffer({&coords_dim1[0], coords_size, nullptr, 0});
+  buffers["d2"] =
+      tiledb::test::QueryBuffer({&coords_dim2[0], coords_size, nullptr, 0});
 
   // Open array
   open_array(ctx_, array_, TILEDB_READ);
@@ -903,7 +916,8 @@ TEST_CASE_METHOD(
   std::vector<uint64_t> c_b_off = {};
   std::vector<char> c_b_val = {};
   std::vector<float> c_c = {};
-  std::vector<uint64_t> c_coords = {};
+  std::vector<uint64_t> c_coords_dim1 = {};
+  std::vector<uint64_t> c_coords_dim2 = {};
 
   SECTION("- subarray: row") {
     subarray_layout = TILEDB_ROW_MAJOR;
@@ -931,8 +945,8 @@ TEST_CASE_METHOD(
            105.1f, 105.2f, 6.1f,   6.2f,   7.1f,   7.2f,   8.1f,  8.2f,
            109.1f, 109.2f, 10.1f,  10.2f,  11.1f,  11.2f,  12.1f, 12.2f,
            13.1f,  13.2f,  14.1f,  14.2f,  15.1f,  15.2f,  16.1f, 16.2f};
-    c_coords = {1, 1, 1, 2, 1, 3, 1, 4, 2, 1, 2, 2, 2, 3, 2, 4,
-                3, 1, 3, 2, 3, 3, 3, 4, 4, 1, 4, 2, 4, 3, 4, 4};
+    c_coords_dim1 = {1, 1, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3, 4, 4, 4, 4};
+    c_coords_dim2 = {1, 2, 3, 4, 1, 2, 3, 4, 1, 2, 3, 4, 1, 2, 3, 4};
   }
 
   SECTION("- subarray: col") {
@@ -961,8 +975,8 @@ TEST_CASE_METHOD(
            102.1f, 102.2f, 6.1f,   6.2f,   10.1f,  10.2f,  14.1f, 14.2f,
            103.1f, 103.2f, 7.1f,   7.2f,   11.1f,  11.2f,  15.1f, 15.2f,
            4.1f,   4.2f,   8.1f,   8.2f,   12.1f,  12.2f,  16.1f, 16.2f};
-    c_coords = {1, 1, 2, 1, 3, 1, 4, 1, 1, 2, 2, 2, 3, 2, 4, 2,
-                1, 3, 2, 3, 3, 3, 4, 3, 1, 4, 2, 4, 3, 4, 4, 4};
+    c_coords_dim1 = {1, 2, 3, 4, 1, 2, 3, 4, 1, 2, 3, 4, 1, 2, 3, 4};
+    c_coords_dim2 = {1, 1, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3, 4, 4, 4, 4};
   }
 
   // Read from the array
@@ -975,7 +989,8 @@ TEST_CASE_METHOD(
   b_val.resize(c_b_val.size());
   CHECK(b_val == c_b_val);
   CHECK(c == c_c);
-  CHECK(coords == c_coords);
+  CHECK(coords_dim1 == c_coords_dim1);
+  CHECK(coords_dim2 == c_coords_dim2);
 
   // Clean up
   close_array(ctx_, array_);
