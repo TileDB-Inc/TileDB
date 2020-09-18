@@ -460,11 +460,12 @@ The 1.6.0 release adds the major new feature of non-continuous range slicing, as
 * Added string conversion functions `tiledb_*_to_str()` and `tiledb_*_from_str()` for all public enum types.
 * Added config param `vfs.file.enable_filelocks`
 * Added datatypes `TILEDB_DATETIME_*`
+* Added function `tiledb_query_get_array`
+
 
 ### C++ API
 
-* Added functions `Query::{query_layout, add_range, range, range_num}`.
-
+* Added functions `Query::{query_layout, add_range, range, range_num, array}`.
 ## Breaking changes
 
 ### C API
