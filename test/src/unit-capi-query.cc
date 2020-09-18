@@ -31,6 +31,7 @@
  * Tests for the C API tiledb_query_t spec.
  */
 
+#include <tiledb/sm/c_api/tiledb_struct_def.h>
 #include <cassert>
 #include <cstring>
 #include <iostream>
@@ -563,6 +564,57 @@ TEST_CASE_METHOD(
   rc = tiledb_query_get_layout(ctx_, query, &layout);
   REQUIRE(rc == TILEDB_OK);
   REQUIRE(layout == TILEDB_UNORDERED);
+
+  rc = tiledb_array_close(ctx_, array);
+  REQUIRE(rc == TILEDB_OK);
+
+  tiledb_query_free(&query);
+  tiledb_array_free(&array);
+  remove_temp_dir(temp_dir);
+}
+
+TEST_CASE_METHOD(
+    QueryFx,
+    "C API: Test query get array",
+    "[capi], [query], [query-get-array]") {
+  std::string temp_dir = FILE_URI_PREFIX + FILE_TEMP_DIR;
+  std::string array_name = temp_dir + "query_get_array";
+  create_temp_dir(temp_dir);
+  create_array(array_name);
+
+  tiledb_array_t* array;
+  int rc = tiledb_array_alloc(ctx_, array_name.c_str(), &array);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_array_open(ctx_, array, TILEDB_READ);
+  REQUIRE(rc == TILEDB_OK);
+
+  tiledb_query_t* query;
+  rc = tiledb_query_alloc(ctx_, array, TILEDB_READ, &query);
+
+  REQUIRE(rc == TILEDB_OK);
+  tiledb_array_t* rarray;
+  rc = tiledb_query_get_array(ctx_, query, &rarray);
+  REQUIRE(rc == TILEDB_OK);
+  CHECK(rarray->array_ == array->array_);
+
+  tiledb_array_schema_t* rschema;
+  rc = tiledb_array_get_schema(ctx_, rarray, &rschema);
+  REQUIRE(rc == TILEDB_OK);
+
+  // Get schema members
+  uint64_t rcapacity;
+  rc = tiledb_array_schema_get_capacity(ctx_, rschema, &rcapacity);
+  REQUIRE(rc == TILEDB_OK);
+  REQUIRE(rcapacity == 10000);
+
+  tiledb_layout_t layout;
+  rc = tiledb_array_schema_get_cell_order(ctx_, rschema, &layout);
+  REQUIRE(rc == TILEDB_OK);
+  REQUIRE(layout == TILEDB_ROW_MAJOR);
+
+  rc = tiledb_array_schema_get_tile_order(ctx_, rschema, &layout);
+  REQUIRE(rc == TILEDB_OK);
+  REQUIRE(layout == TILEDB_ROW_MAJOR);
 
   rc = tiledb_array_close(ctx_, array);
   REQUIRE(rc == TILEDB_OK);
