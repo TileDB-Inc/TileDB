@@ -465,7 +465,7 @@ The 1.6.0 release adds the major new feature of non-continuous range slicing, as
 
 ### C++ API
 
-* Added functions `Query::{query_layout, add_range, range, range_num, query_array}`.
+* Added functions `Query::{query_layout, add_range, range, range_num, array}`.
 ## Breaking changes
 
 ### C API
