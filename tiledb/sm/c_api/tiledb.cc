@@ -2791,7 +2791,7 @@ int32_t tiledb_query_get_array(
   if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, query) == TILEDB_ERR)
     return TILEDB_ERR;
 
-  //Create array datatype
+  // Create array datatype
   *query_array = new (std::nothrow) tiledb_array_t;
 
   // Get array
