@@ -129,6 +129,7 @@ class Query {
    */
   Query(const Context& ctx, const Array& array, tiledb_query_type_t type)
       : ctx_(ctx)
+      , array_(array)
       , schema_(array.schema()) {
     tiledb_query_t* q;
     ctx.handle_error(
@@ -163,6 +164,7 @@ class Query {
    */
   Query(const Context& ctx, const Array& array)
       : ctx_(ctx)
+      , array_(array)
       , schema_(array.schema()) {
     tiledb_query_t* q;
     auto type = array.query_type();
@@ -232,12 +234,8 @@ class Query {
   }
 
   /** Returns the array of the query. */
-  Array array() {
-    auto& ctx = ctx_.get();
-    tiledb_array_t* c_query_array;
-    ctx.handle_error(
-        tiledb_query_get_array(ctx.ptr().get(), query_.get(), &c_query_array));
-    return Array(ctx, c_query_array, false);
+  const Array& array() {
+    return array_;
   }
 
   /** Returns the query status. */
@@ -1230,6 +1228,9 @@ class Query {
 
   /** The TileDB context. */
   std::reference_wrapper<const Context> ctx_;
+
+  /** The TileDB array. */
+  std::reference_wrapper<const Array> array_;
 
   /** Deleter wrapper. */
   impl::Deleter deleter_;

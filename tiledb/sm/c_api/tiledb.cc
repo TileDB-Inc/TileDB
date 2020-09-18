@@ -2786,16 +2786,16 @@ int32_t tiledb_query_get_layout(
 }
 
 int32_t tiledb_query_get_array(
-    tiledb_ctx_t* ctx, tiledb_query_t* query, tiledb_array_t** query_array) {
+    tiledb_ctx_t* ctx, tiledb_query_t* query, tiledb_array_t** array) {
   // Sanity check
   if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, query) == TILEDB_ERR)
     return TILEDB_ERR;
 
   // Create array datatype
-  *query_array = new (std::nothrow) tiledb_array_t;
+  *array = new (std::nothrow) tiledb_array_t;
 
   // Get array
-  (*query_array)->array_ = query->query_->array();
+  (*array)->array_ = query->query_->array();
 
   return TILEDB_OK;
 }
