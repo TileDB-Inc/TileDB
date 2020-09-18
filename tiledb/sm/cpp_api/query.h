@@ -232,7 +232,7 @@ class Query {
   }
 
   /** Returns the array of the query. */
-  Array query_array() {
+  Array array() {
     auto& ctx = ctx_.get();
     tiledb_array_t* c_query_array;
     ctx.handle_error(

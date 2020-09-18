@@ -89,7 +89,7 @@ TEST_CASE("C++ API: Test get query array", "[cppapi][query]") {
   Array array(ctx, array_name, TILEDB_READ);
   Query query(ctx, array);
 
-  Array rquery = query.query_array();
+  Array rquery = query.array();
   // The two arrays are of the same query type
   REQUIRE(array.query_type() == TILEDB_READ);
   REQUIRE(rquery.query_type() == TILEDB_READ);
