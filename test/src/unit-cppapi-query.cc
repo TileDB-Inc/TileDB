@@ -69,6 +69,47 @@ TEST_CASE("C++ API: Test get query layout", "[cppapi][query]") {
     vfs.remove_dir(array_name);
 }
 
+TEST_CASE("C++ API: Test get query array", "[cppapi][query]") {
+  const std::string array_name = "cpp_unit_array";
+  Context ctx;
+  VFS vfs(ctx);
+
+  if (vfs.is_dir(array_name))
+    vfs.remove_dir(array_name);
+
+  // Create
+  Domain domain(ctx);
+  domain.add_dimension(Dimension::create<int>(ctx, "rows", {{0, 3}}, 4))
+      .add_dimension(Dimension::create<int>(ctx, "cols", {{0, 3}}, 4));
+  ArraySchema schema(ctx, TILEDB_SPARSE);
+  schema.set_domain(domain).set_order({{TILEDB_ROW_MAJOR, TILEDB_ROW_MAJOR}});
+  schema.add_attribute(Attribute::create<int>(ctx, "a"));
+  Array::create(array_name, schema);
+
+  Array array(ctx, array_name, TILEDB_READ);
+  Query query(ctx, array);
+
+  Array rquery = query.query_array();
+  // The two arrays are of the same query type
+  REQUIRE(array.query_type() == TILEDB_READ);
+  REQUIRE(rquery.query_type() == TILEDB_READ);
+
+  // Get the information of is_open() by either sources - should match
+  REQUIRE(array.is_open());
+  REQUIRE(rquery.is_open());
+
+  // The schema values are the same by either source
+  REQUIRE(rquery.schema().cell_order() == array.schema().cell_order());
+  array.close();
+
+  // When one of the instances is closed the mirror should be close as well
+  CHECK(rquery.is_open() == false);
+  CHECK(array.is_open() == false);
+
+  if (vfs.is_dir(array_name))
+    vfs.remove_dir(array_name);
+}
+
 TEST_CASE(
     "C++ API: Test get written fragments for reads",
     "[cppapi][query][written-fragments][read]") {

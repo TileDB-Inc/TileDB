@@ -3515,6 +3515,23 @@ TILEDB_EXPORT int32_t tiledb_query_get_layout(
     tiledb_ctx_t* ctx, tiledb_query_t* query, tiledb_layout_t* query_layout);
 
 /**
+ * Retrieves the query array.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * tiledb_array_t query_array;
+ * tiledb_query_get_array(ctx, query, &query_array);
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param query The query.
+ * @param query_array The query array to be retrieved.
+ * @return `TILEDB_OK` upon success, and `TILEDB_ERR` upon error.
+ */
+TILEDB_EXPORT int32_t tiledb_query_get_array(
+    tiledb_ctx_t* ctx, tiledb_query_t* query, tiledb_array_t* query_array);
+/**
  * Adds a 1D range along a subarray dimension, which is in the form
  * (start, end, stride). The datatype of the range components
  * must be the same as the type of the domain of the array in the query.

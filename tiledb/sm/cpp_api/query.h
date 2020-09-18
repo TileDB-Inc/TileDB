@@ -45,6 +45,7 @@
 #include "type.h"
 #include "utils.h"
 
+#include <tiledb/sm/c_api/tiledb_struct_def.h>
 #include <algorithm>
 #include <cassert>
 #include <functional>
@@ -229,6 +230,15 @@ class Query {
     ctx.handle_error(
         tiledb_query_get_layout(ctx.ptr().get(), query_.get(), &query_layout));
     return query_layout;
+  }
+
+  /** Returns the array of the query. */
+  Array query_array() {
+    auto& ctx = ctx_.get();
+    tiledb_array_t* c_query_array = new (std::nothrow) tiledb_array_t;
+    ctx.handle_error(
+        tiledb_query_get_array(ctx.ptr().get(), query_.get(), c_query_array));
+    return Array(ctx, c_query_array, false);
   }
 
   /** Returns the query status. */
