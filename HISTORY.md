@@ -28,6 +28,7 @@
 * Update GCS SDK to v1.16.0 to fixes multiple bugs reported [#1768](https://github.com/TileDB-Inc/TileDB/pull/1768)
 * Read-ahead cache for cloud-storage backends [#1785](https://github.com/TileDB-Inc/TileDB/pull/1785)
 * Allow multiple empty values at the end of a variable-length write [#1805](https://github.com/TileDB-Inc/TileDB/pull/1805)
+* Build system will raise overridable error if important paths contain regex character [#1808](https://github.com/TileDB-Inc/TileDB/pull/1808)
 
 ## Deprecations
 
