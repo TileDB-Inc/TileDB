@@ -353,8 +353,7 @@ void SparseNegFx::write_sparse_vector(const std::string& path) {
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_query_set_buffer(ctx_, query, "a", a, &a_size);
   REQUIRE(rc == TILEDB_OK);
-  rc =
-      tiledb_query_set_buffer(ctx_, query, TILEDB_COORDS, coords, &coords_size);
+  rc = tiledb_query_set_buffer(ctx_, query, "d0", coords, &coords_size);
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_query_set_layout(ctx_, query, TILEDB_GLOBAL_ORDER);
   REQUIRE(rc == TILEDB_OK);
@@ -430,9 +429,9 @@ void SparseNegFx::read_sparse_vector(const std::string& path) {
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_query_set_buffer(ctx_, query, "a", a, &a_size);
   REQUIRE(rc == TILEDB_OK);
-  rc =
-      tiledb_query_set_buffer(ctx_, query, TILEDB_COORDS, coords, &coords_size);
+  rc = tiledb_query_set_buffer(ctx_, query, "d0", coords, &coords_size);
   REQUIRE(rc == TILEDB_OK);
+  ;
   rc = tiledb_query_set_layout(ctx_, query, TILEDB_ROW_MAJOR);
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_query_submit(ctx_, query);
@@ -466,15 +465,17 @@ void SparseNegFx::read_sparse_array_global(const std::string& path) {
 
   int a[4];
   uint64_t a_size = sizeof(a);
-  int64_t coords[8];
-  uint64_t coords_size = sizeof(coords);
+  int64_t coords_dim1[4];
+  int64_t coords_dim2[4];
+  uint64_t coords_size = sizeof(coords_dim1);
   tiledb_query_t* query;
   rc = tiledb_query_alloc(ctx_, array, TILEDB_READ, &query);
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_query_set_buffer(ctx_, query, "a", a, &a_size);
   REQUIRE(rc == TILEDB_OK);
-  rc =
-      tiledb_query_set_buffer(ctx_, query, TILEDB_COORDS, coords, &coords_size);
+  rc = tiledb_query_set_buffer(ctx_, query, "d1", coords_dim1, &coords_size);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_query_set_buffer(ctx_, query, "d2", coords_dim2, &coords_size);
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_query_set_layout(ctx_, query, TILEDB_GLOBAL_ORDER);
   REQUIRE(rc == TILEDB_OK);
@@ -484,11 +485,13 @@ void SparseNegFx::read_sparse_array_global(const std::string& path) {
   REQUIRE(rc == TILEDB_OK);
 
   int a_c[] = {3, 1, 4, 2};
-  int64_t coords_c[] = {-1, -1, -2, 0, 1, -1, 1, 1};
+  int64_t coords_c_dim1[] = {-1, -2, 1, 1};
+  int64_t coords_c_dim2[] = {-1, 0, -1, 1};
   CHECK(a_size == sizeof(a_c));
-  CHECK(coords_size == sizeof(coords_c));
+  CHECK(coords_size == sizeof(coords_c_dim1));
   CHECK(!memcmp(a, a_c, sizeof(a_c)));
-  CHECK(!memcmp(coords, coords_c, sizeof(coords_c)));
+  CHECK(!memcmp(coords_dim1, coords_c_dim1, sizeof(coords_c_dim1)));
+  CHECK(!memcmp(coords_dim2, coords_c_dim2, sizeof(coords_c_dim2)));
 
   // Close array
   rc = tiledb_array_close(ctx_, array);
@@ -509,15 +512,17 @@ void SparseNegFx::read_sparse_array_row(const std::string& path) {
 
   int a[4];
   uint64_t a_size = sizeof(a);
-  int64_t coords[8];
-  uint64_t coords_size = sizeof(coords);
+  int64_t coords_dim1[4];
+  int64_t coords_dim2[4];
+  uint64_t coords_size = sizeof(coords_dim1);
   tiledb_query_t* query;
   rc = tiledb_query_alloc(ctx_, array, TILEDB_READ, &query);
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_query_set_buffer(ctx_, query, "a", a, &a_size);
   REQUIRE(rc == TILEDB_OK);
-  rc =
-      tiledb_query_set_buffer(ctx_, query, TILEDB_COORDS, coords, &coords_size);
+  rc = tiledb_query_set_buffer(ctx_, query, "d1", coords_dim1, &coords_size);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_query_set_buffer(ctx_, query, "d2", coords_dim2, &coords_size);
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_query_set_layout(ctx_, query, TILEDB_ROW_MAJOR);
   REQUIRE(rc == TILEDB_OK);
@@ -527,11 +532,13 @@ void SparseNegFx::read_sparse_array_row(const std::string& path) {
   REQUIRE(rc == TILEDB_OK);
 
   int a_c[] = {1, 3, 4, 2};
-  int64_t coords_c[] = {-2, 0, -1, -1, 1, -1, 1, 1};
+  int64_t coords_c_dim1[] = {-2, -1, 1, 1};
+  int64_t coords_c_dim2[] = {0, -1, -1, 1};
   CHECK(a_size == sizeof(a_c));
-  CHECK(coords_size == sizeof(coords_c));
+  CHECK(coords_size == sizeof(coords_c_dim1));
   CHECK(!memcmp(a, a_c, sizeof(a_c)));
-  CHECK(!memcmp(coords, coords_c, sizeof(coords_c)));
+  CHECK(!memcmp(coords_dim1, coords_c_dim1, sizeof(coords_c_dim1)));
+  CHECK(!memcmp(coords_dim2, coords_c_dim2, sizeof(coords_c_dim2)));
 
   // Close array
   rc = tiledb_array_close(ctx_, array);
@@ -552,15 +559,17 @@ void SparseNegFx::read_sparse_array_col(const std::string& path) {
 
   int a[4];
   uint64_t a_size = sizeof(a);
-  int64_t coords[8];
-  uint64_t coords_size = sizeof(coords);
+  int64_t coords_dim1[4];
+  int64_t coords_dim2[4];
+  uint64_t coords_size = sizeof(coords_dim1);
   tiledb_query_t* query;
   rc = tiledb_query_alloc(ctx_, array, TILEDB_READ, &query);
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_query_set_buffer(ctx_, query, "a", a, &a_size);
   REQUIRE(rc == TILEDB_OK);
-  rc =
-      tiledb_query_set_buffer(ctx_, query, TILEDB_COORDS, coords, &coords_size);
+  rc = tiledb_query_set_buffer(ctx_, query, "d1", coords_dim1, &coords_size);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_query_set_buffer(ctx_, query, "d2", coords_dim2, &coords_size);
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_query_set_layout(ctx_, query, TILEDB_COL_MAJOR);
   REQUIRE(rc == TILEDB_OK);
@@ -570,11 +579,13 @@ void SparseNegFx::read_sparse_array_col(const std::string& path) {
   REQUIRE(rc == TILEDB_OK);
 
   int a_c[] = {3, 4, 1, 2};
-  int64_t coords_c[] = {-1, -1, 1, -1, -2, 0, 1, 1};
+  int64_t coords_c_dim1[] = {-1, 1, -2, 1};
+  int64_t coords_c_dim2[] = {-1, -1, 0, 1};
   CHECK(a_size == sizeof(a_c));
-  CHECK(coords_size == sizeof(coords_c));
+  CHECK(coords_size == sizeof(coords_c_dim1));
   CHECK(!memcmp(a, a_c, sizeof(a_c)));
-  CHECK(!memcmp(coords, coords_c, sizeof(coords_c)));
+  CHECK(!memcmp(coords_dim1, coords_c_dim1, sizeof(coords_c_dim1)));
+  CHECK(!memcmp(coords_dim2, coords_c_dim2, sizeof(coords_c_dim2)));
 
   // Close array
   rc = tiledb_array_close(ctx_, array);
