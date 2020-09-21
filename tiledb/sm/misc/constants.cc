@@ -481,6 +481,9 @@ const std::string special_name_prefix = "__";
 /** Number of milliseconds between watchdog thread wakeups. */
 const unsigned watchdog_thread_sleep_ms = 1000;
 
+/** Maximum number of concurrent attribute reads. */
+const unsigned concurrent_attr_reads = 2;
+
 const void* fill_value(Datatype type) {
   switch (type) {
     case Datatype::INT8:
