@@ -441,12 +441,10 @@ std::string Stats::dump_read() const {
   auto read_byte_num = counter_stats_.find(CounterType::READ_BYTE_NUM)->second;
   auto read_unfiltered_byte_num =
       counter_stats_.find(CounterType::READ_UNFILTERED_BYTE_NUM)->second;
-  auto read_attr_num = counter_stats_.find(CounterType::READ_ATTR_NUM)->second;
   auto read_attr_fixed_num =
       counter_stats_.find(CounterType::READ_ATTR_FIXED_NUM)->second;
   auto read_attr_var_num =
       counter_stats_.find(CounterType::READ_ATTR_VAR_NUM)->second;
-  auto read_dim_num = counter_stats_.find(CounterType::READ_DIM_NUM)->second;
   auto read_dim_fixed_num =
       counter_stats_.find(CounterType::READ_DIM_FIXED_NUM)->second;
   auto read_dim_var_num =
@@ -460,6 +458,16 @@ std::string Stats::dump_read() const {
       counter_stats_.find(CounterType::READ_RESULT_NUM)->second;
   auto read_cell_num = counter_stats_.find(CounterType::READ_CELL_NUM)->second;
   auto read_ops_num = counter_stats_.find(CounterType::READ_OPS_NUM)->second;
+
+  // Derived counters.
+  auto read_dim_num =
+      read_dim_var_num + read_dim_fixed_num + read_dim_zipped_num;
+  auto read_attr_num = read_attr_fixed_num + read_attr_var_num;
+  auto read_fixed_phys_tiles_num =
+      read_overlap_tile_num *
+      (read_dim_fixed_num + read_dim_zipped_num + read_attr_fixed_num);
+  auto read_var_phys_tiles_num =
+      2 * read_overlap_tile_num * (read_dim_var_num + read_attr_var_num);
 
   std::stringstream ss;
   if (read_num != 0) {
@@ -489,16 +497,15 @@ std::string Stats::dump_read() const {
       write(
           &ss,
           "- Number of physical tiles read: ",
-          read_overlap_tile_num * (read_dim_num + read_attr_num));
+          read_fixed_phys_tiles_num + read_var_phys_tiles_num);
       write(
           &ss,
           "  * Number of physical fixed-sized tiles read: ",
-          read_overlap_tile_num *
-              (read_dim_fixed_num + read_dim_zipped_num + read_attr_fixed_num));
+          read_fixed_phys_tiles_num);
       write(
           &ss,
           "  * Number of physical var-sized tiles read: ",
-          2 * read_overlap_tile_num * (read_dim_var_num + read_attr_var_num));
+          read_var_phys_tiles_num);
       write(&ss, "- Number of cells read: ", read_cell_num);
       write(&ss, "- Number of result cells: ", read_result_num);
       write_ratio(
