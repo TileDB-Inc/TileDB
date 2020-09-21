@@ -312,20 +312,43 @@ TEST_CASE(
             }
             break;
           }
-
-          case TILEDB_CHAR:
-          case TILEDB_STRING_ASCII:
-          case TILEDB_STRING_UTF8:
-          case TILEDB_STRING_UTF16:
-          case TILEDB_STRING_UTF32:
-          case TILEDB_STRING_UCS2:
-          case TILEDB_STRING_UCS4:
-          case TILEDB_ANY: {
+          case TILEDB_ANY:
+          case TILEDB_CHAR: {
             if (attr.second.variable_sized()) {
               query.set_buffer(
                   attribute_name, offsets, 1, static_cast<char*>(values), 1);
             } else {
               query.set_buffer(attribute_name, static_cast<char*>(values), 1);
+            }
+            break;
+          }
+          case TILEDB_STRING_ASCII:
+          case TILEDB_STRING_UTF8:{
+            if (attr.second.variable_sized()) {
+              query.set_buffer(
+                  attribute_name, offsets, 1, static_cast<std::string*>(values), 1);
+            } else {
+              query.set_buffer(attribute_name, static_cast<std::string*>(values), 1);
+            }
+            break;
+          }
+          case TILEDB_STRING_UCS2:
+          case TILEDB_STRING_UTF16:{
+            if (attr.second.variable_sized()) {
+              query.set_buffer(
+                  attribute_name, offsets, 1, static_cast<std::u16string*>(values), 1);
+            } else {
+              query.set_buffer(attribute_name, static_cast<std::u16string*>(values), 1);
+            }
+            break;
+          }
+          case TILEDB_STRING_UTF32:
+          case TILEDB_STRING_UCS4:{
+            if (attr.second.variable_sized()) {
+              query.set_buffer(
+                  attribute_name, offsets, 1, static_cast<std::u32string*>(values), 1);
+            } else {
+              query.set_buffer(attribute_name, static_cast<std::u32string*>(values), 1);
             }
             break;
           }
@@ -393,6 +416,25 @@ TEST_CASE(
         case TILEDB_DATETIME_FS:
         case TILEDB_DATETIME_AS:
           set_query_coords<int64_t>(
+              domain, &query, &coordinates, &expected_coordinates);
+          break;
+        case TILEDB_CHAR:
+          set_query_coords<char>(
+              domain, &query, &coordinates, &expected_coordinates);
+          break;
+        case TILEDB_STRING_ASCII:
+        case TILEDB_STRING_UTF8:
+          set_query_coords<std::string>(
+              domain, &query, &coordinates, &expected_coordinates);
+          break;
+        case TILEDB_STRING_UTF16:
+        case TILEDB_STRING_UCS2:
+          set_query_coords<std::u16string>(
+              domain, &query, &coordinates, &expected_coordinates);
+          break;
+        case TILEDB_STRING_UTF32:
+        case TILEDB_STRING_UCS4:
+          set_query_coords<std::u32string>(
               domain, &query, &coordinates, &expected_coordinates);
           break;
         default:
@@ -471,13 +513,19 @@ TEST_CASE(
             REQUIRE(static_cast<int64_t*>(buffer.second)[0] == 1);
             break;
           }
-          case TILEDB_CHAR:
           case TILEDB_STRING_ASCII:
           case TILEDB_STRING_UTF8:
+            REQUIRE(static_cast<std::string*>(buffer.second)[0] == "1");
+            break;
           case TILEDB_STRING_UTF16:
-          case TILEDB_STRING_UTF32:
           case TILEDB_STRING_UCS2:
+            REQUIRE(static_cast<std::u16string*>(buffer.second)[0] == u"1");
+            break;
+          case TILEDB_STRING_UTF32:
           case TILEDB_STRING_UCS4:
+            REQUIRE(static_cast<std::u32string *>(buffer.second)[0] == U"1");
+            break;
+          case TILEDB_CHAR:
           case TILEDB_ANY: {
             REQUIRE(static_cast<char*>(buffer.second)[0] == '1');
             break;
@@ -721,14 +769,37 @@ TEST_CASE(
             }
             break;
           }
-
-          case TILEDB_CHAR:
           case TILEDB_STRING_ASCII:
-          case TILEDB_STRING_UTF8:
+          case TILEDB_STRING_UTF8:{
+            if (attr.second.variable_sized()) {
+              query.set_buffer(
+                  attribute_name, offsets, 1, static_cast<std::string*>(values), 1);
+            } else {
+              query.set_buffer(attribute_name, static_cast<std::string*>(values), 1);
+            }
+            break;
+          }
           case TILEDB_STRING_UTF16:
+          case TILEDB_STRING_UCS2:{
+            if (attr.second.variable_sized()) {
+              query.set_buffer(
+                  attribute_name, offsets, 1, static_cast<std::u16string*>(values), 1);
+            } else {
+              query.set_buffer(attribute_name, static_cast<std::u16string*>(values), 1);
+            }
+            break;
+          }
           case TILEDB_STRING_UTF32:
-          case TILEDB_STRING_UCS2:
-          case TILEDB_STRING_UCS4:
+          case TILEDB_STRING_UCS4:{
+            if (attr.second.variable_sized()) {
+              query.set_buffer(
+                  attribute_name, offsets, 1, static_cast<std::u32string*>(values), 1);
+            } else {
+              query.set_buffer(attribute_name, static_cast<std::u32string*>(values), 1);
+            }
+            break;
+          }
+          case TILEDB_CHAR:
           case TILEDB_ANY: {
             if (attr.second.variable_sized()) {
               query.set_buffer(
@@ -805,6 +876,10 @@ TEST_CASE(
           case TILEDB_DATETIME_FS:
           case TILEDB_DATETIME_AS:
             set_query_dimension_buffer<int64_t>(
+                domain, i, &query, &buffer, &expected_results);
+            break;
+          case TILEDB_STRING_ASCII:
+            set_query_dimension_buffer<std::string>(
                 domain, i, &query, &buffer, &expected_results);
             break;
           default:
@@ -892,13 +967,22 @@ TEST_CASE(
             REQUIRE(static_cast<int64_t*>(buffer.second)[0] == 1);
             break;
           }
-          case TILEDB_CHAR:
           case TILEDB_STRING_ASCII:
-          case TILEDB_STRING_UTF8:
+          case TILEDB_STRING_UTF8:{
+            REQUIRE(static_cast<std::string*>(buffer.second)[0] == '1');
+            break;
+          }
           case TILEDB_STRING_UTF16:
+          case TILEDB_STRING_UCS2:{
+            REQUIRE(static_cast<std::u16string*>(buffer.second)[0] == '1');
+            break;
+          }
           case TILEDB_STRING_UTF32:
-          case TILEDB_STRING_UCS2:
-          case TILEDB_STRING_UCS4:
+          case TILEDB_STRING_UCS4:{
+            REQUIRE(static_cast<std::u32string*>(buffer.second)[0] == '1');
+            break;
+          }
+          case TILEDB_CHAR:
           case TILEDB_ANY: {
             REQUIRE(static_cast<char*>(buffer.second)[0] == '1');
             break;
