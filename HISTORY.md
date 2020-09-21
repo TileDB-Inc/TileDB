@@ -7,6 +7,7 @@
 ## Breaking behavior
 
 * Empty dense arrays now return cells with fill values. Also the result estimator is adjusted to work properly with this new behavior.
+* Empty char and signed integers now return their maximum value for empty cells instead of their minimum value.
 
 ## New features
 

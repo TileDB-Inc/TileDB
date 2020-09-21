@@ -4039,22 +4039,22 @@ TEST_CASE_METHOD(
 
   // Read whole array
   uint64_t subarray_read[] = {1, 4, 1, 4};
-  int c_a1[] = {INT_MIN,
-                INT_MIN,
-                INT_MIN,
-                INT_MIN,
+  int c_a1[] = {INT_MAX,
+                INT_MAX,
+                INT_MAX,
+                INT_MAX,
                 1,
                 2,
-                INT_MIN,
-                INT_MIN,
+                INT_MAX,
+                INT_MAX,
                 3,
                 4,
-                INT_MIN,
-                INT_MIN,
-                INT_MIN,
-                INT_MIN,
-                INT_MIN,
-                INT_MIN};
+                INT_MAX,
+                INT_MAX,
+                INT_MAX,
+                INT_MAX,
+                INT_MAX,
+                INT_MAX};
   int read_a1[16];
   uint64_t read_a1_size = sizeof(read_a1);
   rc = tiledb_array_alloc(ctx_, array_name.c_str(), &array);
@@ -4135,22 +4135,22 @@ TEST_CASE_METHOD(
 
   // Read whole array
   uint64_t subarray_read[] = {1, 4, 1, 4};
-  int c_a1[] = {INT_MIN,
+  int c_a1[] = {INT_MAX,
                 1,
-                INT_MIN,
+                INT_MAX,
                 4,
                 2,
-                INT_MIN,
-                INT_MIN,
-                INT_MIN,
-                INT_MIN,
-                INT_MIN,
-                INT_MIN,
-                INT_MIN,
-                INT_MIN,
-                INT_MIN,
+                INT_MAX,
+                INT_MAX,
+                INT_MAX,
+                INT_MAX,
+                INT_MAX,
+                INT_MAX,
+                INT_MAX,
+                INT_MAX,
+                INT_MAX,
                 3,
-                INT_MIN};
+                INT_MAX};
   uint64_t c_coords_dim1[] = {1, 1, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3, 4, 4, 4, 4};
   uint64_t c_coords_dim2[] = {1, 2, 3, 4, 1, 2, 3, 4, 1, 2, 3, 4, 1, 2, 3, 4};
   int read_a1[16];
@@ -4239,22 +4239,22 @@ TEST_CASE_METHOD(
 
   // Read whole array
   uint64_t subarray_read[] = {1, 4, 1, 4};
-  int c_a1[] = {INT_MIN,
-                INT_MIN,
-                INT_MIN,
-                INT_MIN,
-                INT_MIN,
+  int c_a1[] = {INT_MAX,
+                INT_MAX,
+                INT_MAX,
+                INT_MAX,
+                INT_MAX,
                 1,
                 2,
-                INT_MIN,
-                INT_MIN,
+                INT_MAX,
+                INT_MAX,
                 3,
                 4,
-                INT_MIN,
-                INT_MIN,
-                INT_MIN,
-                INT_MIN,
-                INT_MIN};
+                INT_MAX,
+                INT_MAX,
+                INT_MAX,
+                INT_MAX,
+                INT_MAX};
   int read_a1[16];
   uint64_t read_a1_size = sizeof(read_a1);
   rc = tiledb_array_alloc(ctx_, array_name.c_str(), &array);
@@ -4357,14 +4357,14 @@ TEST_CASE_METHOD(
                101,
                102,
                8,
-               INT_MIN,
+               INT_MAX,
                103,
                104,
-               INT_MIN,
-               INT_MIN,
-               INT_MIN,
-               INT_MIN,
-               INT_MIN};
+               INT_MAX,
+               INT_MAX,
+               INT_MAX,
+               INT_MAX,
+               INT_MAX};
   int read_a[16];
   uint64_t read_a_size = sizeof(read_a);
   rc = tiledb_array_alloc(ctx_, array_name.c_str(), &array);
