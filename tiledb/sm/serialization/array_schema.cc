@@ -397,12 +397,15 @@ Status domain_from_capnp(
 
 Status array_schema_to_capnp(
     const ArraySchema* array_schema,
-    capnp::ArraySchema::Builder* array_schema_builder) {
+    capnp::ArraySchema::Builder* array_schema_builder,
+    const bool client_side) {
   if (array_schema == nullptr)
     return LOG_STATUS(Status::SerializationError(
         "Error serializing array schema; array schema is null."));
 
-  array_schema_builder->setUri(array_schema->array_uri().to_string());
+  // Only set the URI if client side
+  if (client_side)
+    array_schema_builder->setUri(array_schema->array_uri().to_string());
   auto v = kj::heapArray<int32_t>(1);
   v[0] = array_schema->version();
   array_schema_builder->setVersion(v);
@@ -456,7 +459,9 @@ Status array_schema_from_capnp(
   (*array_schema)->set_tile_order(layout);
   RETURN_NOT_OK(layout_enum(schema_reader.getCellOrder().cStr(), &layout));
 
-  (*array_schema)->set_array_uri(URI(schema_reader.getUri().cStr()));
+  if (schema_reader.hasUri())
+    (*array_schema)->set_array_uri(URI(schema_reader.getUri().cStr()));
+
   (*array_schema)->set_cell_order(layout);
   (*array_schema)->set_capacity(schema_reader.getCapacity());
   (*array_schema)->set_allows_dups(schema_reader.getAllowsDuplicates());
@@ -506,12 +511,14 @@ Status array_schema_from_capnp(
 Status array_schema_serialize(
     ArraySchema* array_schema,
     SerializationType serialize_type,
-    Buffer* serialized_buffer) {
+    Buffer* serialized_buffer,
+    const bool client_side) {
   try {
     ::capnp::MallocMessageBuilder message;
     capnp::ArraySchema::Builder arraySchemaBuilder =
         message.initRoot<capnp::ArraySchema>();
-    RETURN_NOT_OK(array_schema_to_capnp(array_schema, &arraySchemaBuilder));
+    RETURN_NOT_OK(
+        array_schema_to_capnp(array_schema, &arraySchemaBuilder, client_side));
 
     serialized_buffer->reset_size();
     serialized_buffer->reset_offset();
@@ -1372,7 +1379,8 @@ Status array_metadata_deserialize(
 
 #else
 
-Status array_schema_serialize(ArraySchema*, SerializationType, Buffer*) {
+Status array_schema_serialize(
+    ArraySchema*, SerializationType, Buffer*, const bool) {
   return LOG_STATUS(Status::SerializationError(
       "Cannot serialize; serialization not enabled."));
 }
