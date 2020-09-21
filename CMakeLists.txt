@@ -50,8 +50,24 @@ set(TILEDB_VERSION_PATCH ${CMAKE_MATCH_1})
 
 set(TILEDB_VERSION "${TILEDB_VERSION_MAJOR}.${TILEDB_VERSION_MINOR}.${TILEDB_VERSION_PATCH}")
 ############################################################
+# Check for regex characters in the most important paths
+# fixes https://github.com/TileDB-Inc/TileDB/issues/1799
+option(TILEDB_ALLOW_REGEX_CHAR_PATH "If true, allow regex characters in source, build, or install path." FALSE)
+mark_as_advanced(TILEDB_ALLOW_REGEX_CHAR_PATH)
+set(REGEX_CHARS "[\\^\\$\\+\\*\\?\\|\\(\\)]") # note: must be escaped, and regex doesn't work with \[\] entries
+set(REGEX_CHAR_PATH_MSG " contains a REGEX character and may break CMakeList processing. Please use"
+                        " a different path, or set TILEDB_ALLOW_REGEX_CHAR_PATH to override.")
+if (NOT TILEDB_ALLOW_REGEX_CHAR_PATH)
+  if (CMAKE_CURRENT_SOURCE_DIR MATCHES ${REGEX_CHARS})
+    message(FATAL_ERROR "CMAKE_CURRENT_SOURCE_DIR ${REGEX_CHAR_PATH_MSG}:\n  '${CMAKE_CURRENT_SOURCE_DIR}'")
+  elseif (CMAKE_CURRENT_SOURCE_DIR MATCHES ${REGEX_CHARS})
+    message(FATAL_ERROR "CMAKE_CURRENT_BINARY_DIR ${REGEX_CHAR_PATH_MSG}:\n  '${CMAKE_CURRENT_BINARY_DIR}'")
+  elseif (CMAKE_CURRENT_SOURCE_DIR MATCHES ${REGEX_CHARS})
+    message(FATAL_ERROR "CMAKE_INSTALL_PREFIX ${REGEX_CHAR_PATH_MSG}:\n  '${CMAKE_INSTALL_PREFIX}'")
+  endif()
+endif()
 
-
+############################################################
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules/")
 
 set(TILEDB_CMAKE_INPUTS_DIR "${CMAKE_CURRENT_SOURCE_DIR}/cmake/inputs")
