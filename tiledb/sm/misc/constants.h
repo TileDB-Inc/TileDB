@@ -472,6 +472,9 @@ extern const std::string special_name_prefix;
 /** Number of milliseconds between watchdog thread wakeups. */
 extern const unsigned watchdog_thread_sleep_ms;
 
+/** Maximum number of concurrent attribute reads. */
+extern const unsigned concurrent_attr_reads;
+
 /** Returns the empty fill value based on the input datatype. */
 const void* fill_value(Datatype type);
 
