@@ -164,6 +164,21 @@ TEST_CASE(
   auto dir_size = vfs.dir_size(path);
   CHECK(dir_size == 15);
 
+  // Copy file when running on POSIX
+  if (!path.compare(
+          std::string("file://") + sm::Posix::current_dir() + "/vfs_test/")) {
+    tiledb::VFS::filebuf fbuf(vfs);
+    fbuf.open(file, std::ios::out);
+    std::ostream os5(&fbuf);
+    std::string s5 = "copy data";
+    os5.write(s5.data(), s5.size());
+    fbuf.close();
+    fbuf.open(file2, std::ios::out);
+    std::ostream os6(&fbuf);
+    os6.write(s5.data(), s5.size());
+    fbuf.close();
+  }
+
   // Clean up
   vfs.remove_dir(path);
 }

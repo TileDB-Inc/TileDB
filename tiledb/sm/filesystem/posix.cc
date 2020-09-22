@@ -337,6 +337,14 @@ Status Posix::move_path(
   return Status::Ok();
 }
 
+Status Posix::copy_file(
+    const std::string& old_path, const std::string& new_path) {
+  std::ifstream src(old_path, std::ios::binary);
+  std::ofstream dst(new_path, std::ios::binary);
+  dst << src.rdbuf();
+  return Status::Ok();
+}
+
 void Posix::purge_dots_from_path(std::string* path) {
   // Trivial case
   if (path == nullptr)

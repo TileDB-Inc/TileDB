@@ -185,6 +185,15 @@ class Posix {
   Status move_path(const std::string& old_path, const std::string& new_path);
 
   /**
+   * Copy a given filesystem file.
+   *
+   * @param old_path The old path.
+   * @param new_path The new path.
+   * @return Status
+   */
+  Status copy_file(const std::string& old_path, const std::string& new_path);
+
+  /**
    * Reads data from a file into a buffer.
    *
    * @param path The name of the file.
