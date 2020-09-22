@@ -121,7 +121,7 @@ Status RestClient::post_array_schema_to_rest(
     const URI& uri, ArraySchema* array_schema) {
   Buffer buff;
   RETURN_NOT_OK(serialization::array_schema_serialize(
-      array_schema, serialization_type_, &buff));
+      array_schema, serialization_type_, &buff, false));
   // Wrap in a list
   BufferList serialized;
   RETURN_NOT_OK(serialized.add_buffer(std::move(buff)));
