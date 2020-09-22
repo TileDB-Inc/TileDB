@@ -43,7 +43,7 @@
 
 * Fixed bug in setting a fill value for var-sized attributes.
 * Fixed a bug where the cpp headers would always produce compile-time warnings about using the deprecated c-api "tiledb_coords()" [#1765](https://github.com/TileDB-Inc/TileDB/pull/1765)
-* Only serialize the Array URI in the array schema client size. [#1806](https://github.com/TileDB-Inc/TileDB/pull/1806)
+* Only serialize the Array URI in the array schema client side. [#1806](https://github.com/TileDB-Inc/TileDB/pull/1806)
 
 ## API additions
 
