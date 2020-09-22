@@ -4428,9 +4428,6 @@ int32_t tiledb_serialize_array_schema(
     tiledb_serialization_type_t serialize_type,
     int32_t client_side,
     tiledb_buffer_t** buffer) {
-  // Currently unused:
-  (void)client_side;
-
   // Sanity check
   if (sanity_check(ctx) == TILEDB_ERR ||
       sanity_check(ctx, array_schema) == TILEDB_ERR)
@@ -4446,7 +4443,8 @@ int32_t tiledb_serialize_array_schema(
           tiledb::sm::serialization::array_schema_serialize(
               array_schema->array_schema_,
               (tiledb::sm::SerializationType)serialize_type,
-              (*buffer)->buffer_)))
+              (*buffer)->buffer_,
+              client_side)))
     return TILEDB_ERR;
 
   return TILEDB_OK;

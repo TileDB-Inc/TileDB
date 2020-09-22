@@ -1182,7 +1182,6 @@ Status VFS::copy_file(const URI& old_uri, const URI& new_uri) {
 #ifdef _WIN32
       return LOG_STATUS(Status::IOError(
           std::string("Copying files on Windows is not yet supported.")));
-      // return win_.copy_file(old_uri.to_path(), new_uri.to_path());
 #else
       return posix_.copy_file(old_uri.to_path(), new_uri.to_path());
 #endif
@@ -1197,7 +1196,6 @@ Status VFS::copy_file(const URI& old_uri, const URI& new_uri) {
 #ifdef HAVE_HDFS
       return LOG_STATUS(Status::IOError(
           std::string("Copying files on HDFS is not yet supported.")));
-      // return hdfs_->move_path(old_uri, new_uri);
 #else
       return LOG_STATUS(
           Status::VFSError("TileDB was built without HDFS support"));
@@ -1210,7 +1208,6 @@ Status VFS::copy_file(const URI& old_uri, const URI& new_uri) {
   if (old_uri.is_s3()) {
     if (new_uri.is_s3())
 #ifdef HAVE_S3
-      // return s3_.move_object(old_uri, new_uri);
       return LOG_STATUS(Status::IOError(
           std::string("Copying files on S3 is not yet supported.")));
 #else
@@ -1225,7 +1222,6 @@ Status VFS::copy_file(const URI& old_uri, const URI& new_uri) {
   if (old_uri.is_azure()) {
     if (new_uri.is_azure())
 #ifdef HAVE_AZURE
-      // return azure_.move_object(old_uri, new_uri);
       return LOG_STATUS(Status::IOError(
           std::string("Copying files on Azure is not yet supported.")));
 #else
@@ -1240,7 +1236,6 @@ Status VFS::copy_file(const URI& old_uri, const URI& new_uri) {
   if (old_uri.is_gcs()) {
     if (new_uri.is_gcs())
 #ifdef HAVE_GCS
-      // return gcs_.move_object(old_uri, new_uri);
       return LOG_STATUS(Status::IOError(
           std::string("Copying files on GCS is not yet supported.")));
 #else

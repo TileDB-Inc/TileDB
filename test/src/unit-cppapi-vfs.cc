@@ -120,6 +120,7 @@ TEST_CASE(
   std::string subdir2 = dir + "/subdir2";
   std::string subdir_file = subdir + "/file";
   std::string subdir_file2 = subdir + "/file2";
+  std::string subdir_file3 = subdir + "/file3";
 
   // Create directories and files
   vfs.create_dir(path);
@@ -167,16 +168,31 @@ TEST_CASE(
   // Copy file when running on POSIX
   if (!path.compare(
           std::string("file://") + sm::Posix::current_dir() + "/vfs_test/")) {
+    std::string subdir_file3 = subdir + "/file3";
     tiledb::VFS::filebuf fbuf(vfs);
-    fbuf.open(file, std::ios::out);
-    std::ostream os5(&fbuf);
-    std::string s5 = "copy data";
-    os5.write(s5.data(), s5.size());
+    fbuf.open(subdir_file, std::ios::out);
+    vfs.copy_file(subdir_file, subdir_file3);
     fbuf.close();
-    fbuf.open(file2, std::ios::out);
-    std::ostream os6(&fbuf);
-    os6.write(s5.data(), s5.size());
-    fbuf.close();
+
+    if (vfs.is_file(subdir_file3)) {
+      std::cerr << "SUBDIR_FILE3 IS A FILE" << std::endl;
+
+      std::string line1, line2;
+      fbuf.open(subdir_file, std::ios::in);
+      for (uint64_t i = 0; i < vfs.file_size(subdir_file); i++) {
+        std::getline(subdir_file, line1);
+      }
+      fbuf.close();
+
+      fbuf.open(subdir_file3, std::ios::in);
+      for (uint64_t i = 0; i < vfs.file_size(subdir_file3); i++) {
+        std::getline(subdir_file3, line2);
+      }
+      fbuf.close();
+
+      if (line1 == line2)
+        std::cerr << "FILES ARE EQUAL" << std::endl;
+    }
   }
 
   // Clean up

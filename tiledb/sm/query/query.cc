@@ -500,10 +500,11 @@ Status Query::check_var_attr_offsets(
           Status::QueryError("Invalid offsets; offsets must be given in "
                              "strictly ascending order."));
 
-    // Allow the last offset to be equal to the size, this indicates the last
-    // value is to be empty
+    // Allow the last offset(s) to be equal to the size, this indicates the last
+    // value(s) are to be empty
     if (buffer_off[i] > *buffer_val_size ||
-        (buffer_off[i] == *buffer_val_size && i != num_offsets - 1))
+        (buffer_off[i] == *buffer_val_size &&
+         buffer_off[(i < num_offsets - 1 ? i + 1 : i)] != *buffer_val_size))
       return LOG_STATUS(Status::QueryError(
           "Invalid offsets; offset " + std::to_string(buffer_off[i]) +
           " specified for buffer of size " + std::to_string(*buffer_val_size)));

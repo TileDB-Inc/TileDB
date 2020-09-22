@@ -48,10 +48,20 @@ enum class SerializationType : uint8_t;
 
 namespace serialization {
 
+/**
+ * Serialize an array schema via Cap'n Prto
+ * @param array_schema schema object to serialize
+ * @param serialize_type format to serialize into Cap'n Proto or JSON
+ * @param serialized_buffer buffer to store serialized bytes in
+ * @param client_side indicate if client or server side. If server side we won't
+ * serialize the array URI
+ * @return
+ */
 Status array_schema_serialize(
     ArraySchema* array_schema,
     SerializationType serialize_type,
-    Buffer* serialized_buffer);
+    Buffer* serialized_buffer,
+    const bool client_side);
 
 Status array_schema_deserialize(
     ArraySchema** array_schema,
