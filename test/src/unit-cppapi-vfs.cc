@@ -120,7 +120,6 @@ TEST_CASE(
   std::string subdir2 = dir + "/subdir2";
   std::string subdir_file = subdir + "/file";
   std::string subdir_file2 = subdir + "/file2";
-  std::string subdir_file3 = subdir + "/file3";
 
   // Create directories and files
   vfs.create_dir(path);
@@ -165,35 +164,41 @@ TEST_CASE(
   auto dir_size = vfs.dir_size(path);
   CHECK(dir_size == 15);
 
-  // Copy file when running on POSIX
-  if (!path.compare(
-          std::string("file://") + sm::Posix::current_dir() + "/vfs_test/")) {
-    std::string subdir_file3 = subdir + "/file3";
-    tiledb::VFS::filebuf fbuf(vfs);
-    fbuf.open(subdir_file, std::ios::out);
-    vfs.copy_file(subdir_file, subdir_file3);
-    fbuf.close();
+// Copy file when running on POSIX
+#ifndef _WIN32
+  std::string subdir_file3 = subdir + "/file3";
+  vfs.copy_file(subdir_file, subdir_file3);
+  REQUIRE(vfs.is_file(subdir_file3));
 
-    if (vfs.is_file(subdir_file3)) {
-      std::cerr << "SUBDIR_FILE3 IS A FILE" << std::endl;
-
-      std::string line1, line2;
-      fbuf.open(subdir_file, std::ios::in);
-      for (uint64_t i = 0; i < vfs.file_size(subdir_file); i++) {
-        std::getline(subdir_file, line1);
-      }
-      fbuf.close();
-
-      fbuf.open(subdir_file3, std::ios::in);
-      for (uint64_t i = 0; i < vfs.file_size(subdir_file3); i++) {
-        std::getline(subdir_file3, line2);
-      }
-      fbuf.close();
-
-      if (line1 == line2)
-        std::cerr << "FILES ARE EQUAL" << std::endl;
-    }
+  fbuf.open(subdir_file, std::ios::in);
+  std::istream is1(&fbuf);
+  if (!is1.good()) {
+    std::cerr << "Error opening file.\n";
+    return;
   }
+  float f1;
+  std::string s5;
+  is1.read((char*)&f1, sizeof(f1));
+  is1.read((char*)s5.data(), vfs.file_size(subdir_file) - sizeof(float));
+  std::cerr << "F1:  " << f1 << "   S5:   " << s5 << std::endl;
+  fbuf.close();
+
+  fbuf.open(subdir_file3, std::ios::in);
+  std::istream is2(&fbuf);
+  if (!is2.good()) {
+    std::cerr << "Error opening file.\n";
+    return;
+  }
+  float f2;
+  std::string s6;
+  is2.read((char*)&f2, sizeof(f2));
+  is2.read((char*)s6.data(), vfs.file_size(subdir_file3) - sizeof(float));
+  std::cerr << "F2:  " << f2 << "   S6:   " << s6 << std::endl;
+  fbuf.close();
+
+  REQUIRE(f1 == f2);
+  REQUIRE(s5 == s6);
+#endif
 
   // Clean up
   vfs.remove_dir(path);
