@@ -177,10 +177,11 @@ stages:
          env: { sourceVersion: $(Build.SourceVersion) }
          displayName: Git Hash 7-digit
        - task: GithubRelease@0
-         condition: succeeded() # only run this job if the build step succeeded
+         # only run this job if the build step succeeded and this is running from the TileDB-Inc repository
+         condition: and(succeeded(), eq(variables['Build.Repository.Name'], 'TileDB-Inc/TileDB'))
          displayName: 'Add artifacts to GitHub Release'
          inputs:
-           gitHubConnection: TileDB-Inc-Release
+           gitHubConnection: ${{ variables.gitHubConnection }}
            repositoryName: TileDB-Inc/TileDB
            addChangeLog: false
            action: edit
