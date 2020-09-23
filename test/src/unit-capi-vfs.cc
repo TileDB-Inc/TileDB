@@ -470,34 +470,32 @@ void VFSFx::check_move(const std::string& path) {
   }
 }
 
+#ifndef _WIN32
 void VFSFx::check_copy(const std::string& path) {
-  if (!FILE_TEMP_DIR.compare(
-          std::string("file://") + tiledb::sm::Posix::current_dir() +
-          "/tiledb_test/")) {
-    // Copy file when running on POSIX
-    auto file = path + "file";
-    auto file2 = path + "file2";
-    int is_file = 0;
-    int rc = tiledb_vfs_touch(ctx_, vfs_, file.c_str());
-    REQUIRE(rc == TILEDB_OK);
-    rc = tiledb_vfs_is_file(ctx_, vfs_, file.c_str(), &is_file);
-    REQUIRE(rc == TILEDB_OK);
-    REQUIRE(is_file);
-    rc = tiledb_vfs_copy_file(ctx_, vfs_, file.c_str(), file2.c_str());
-    REQUIRE(rc == TILEDB_OK);
-    rc = tiledb_vfs_is_file(ctx_, vfs_, file.c_str(), &is_file);
-    REQUIRE(rc == TILEDB_OK);
-    REQUIRE(!is_file);
-    rc = tiledb_vfs_is_file(ctx_, vfs_, file2.c_str(), &is_file);
-    REQUIRE(rc == TILEDB_OK);
-    REQUIRE(is_file);
-    rc = tiledb_vfs_remove_file(ctx_, vfs_, file2.c_str());
-    REQUIRE(rc == TILEDB_OK);
-    rc = tiledb_vfs_is_file(ctx_, vfs_, file2.c_str(), &is_file);
-    REQUIRE(rc == TILEDB_OK);
-    REQUIRE(!is_file);
-  }
+  // Copy file when running on POSIX
+  auto file = path + "file";
+  auto file2 = path + "file2";
+  int is_file = 0;
+  int rc = tiledb_vfs_touch(ctx_, vfs_, file.c_str());
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_vfs_is_file(ctx_, vfs_, file.c_str(), &is_file);
+  REQUIRE(rc == TILEDB_OK);
+  REQUIRE(is_file);
+  rc = tiledb_vfs_copy_file(ctx_, vfs_, file.c_str(), file2.c_str());
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_vfs_is_file(ctx_, vfs_, file.c_str(), &is_file);
+  REQUIRE(rc == TILEDB_OK);
+  REQUIRE(!is_file);
+  rc = tiledb_vfs_is_file(ctx_, vfs_, file2.c_str(), &is_file);
+  REQUIRE(rc == TILEDB_OK);
+  REQUIRE(is_file);
+  rc = tiledb_vfs_remove_file(ctx_, vfs_, file2.c_str());
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_vfs_is_file(ctx_, vfs_, file2.c_str(), &is_file);
+  REQUIRE(rc == TILEDB_OK);
+  REQUIRE(!is_file);
 }
+#endif
 
 void VFSFx::check_write(const std::string& path) {
   // File write and file size

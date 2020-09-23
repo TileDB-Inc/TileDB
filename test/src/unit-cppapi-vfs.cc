@@ -164,42 +164,71 @@ TEST_CASE(
   auto dir_size = vfs.dir_size(path);
   CHECK(dir_size == 15);
 
-// Copy file when running on POSIX
-#ifndef _WIN32
-  std::string subdir_file3 = subdir + "/file3";
-  vfs.copy_file(subdir_file, subdir_file3);
-  REQUIRE(vfs.is_file(subdir_file3));
+  // Clean up
+  vfs.remove_dir(path);
+}
 
-  fbuf.open(subdir_file, std::ios::in);
+TEST_CASE(
+    "C++ API: Test VFS copy file",
+    "[cppapi], [cppapi-vfs], [cppapi-vfs-copy-file]") {
+  using namespace tiledb;
+  Context ctx;
+  VFS vfs(ctx);
+
+#ifndef _WIN32
+  std::string path =
+      std::string("file://") + sm::Posix::current_dir() + "/vfs_test/";
+
+  // Clean up
+  if (vfs.is_dir(path))
+    vfs.remove_dir(path);
+
+  std::string dir = path + "ls_dir";
+  std::string file = dir + "/file";
+  std::string file2 = dir + "/file2";
+
+  // Create directories and files
+  vfs.create_dir(path);
+  vfs.create_dir(dir);
+  vfs.touch(file);
+
+  // Write to file
+  tiledb::VFS::filebuf fbuf(vfs);
+  fbuf.open(file, std::ios::out);
+  std::ostream os(&fbuf);
+  std::string s1 = "abcd";
+  os.write(s1.data(), s1.size());
+
+  // Copy file when running on POSIX
+  vfs.copy_file(file, file2);
+  REQUIRE(vfs.is_file(file2));
+
+  fbuf.open(file, std::ios::in);
   std::istream is1(&fbuf);
   if (!is1.good()) {
     std::cerr << "Error opening file.\n";
     return;
   }
-  float f1;
-  std::string s5;
-  is1.read((char*)&f1, sizeof(f1));
-  is1.read((char*)s5.data(), vfs.file_size(subdir_file) - sizeof(float));
-  std::cerr << "F1:  " << f1 << "   S5:   " << s5 << std::endl;
+  std::string s2;
+  s2.resize(vfs.file_size(file));
+  is1.read((char*)s2.data(), vfs.file_size(file));
   fbuf.close();
 
-  fbuf.open(subdir_file3, std::ios::in);
+  fbuf.open(file2, std::ios::in);
   std::istream is2(&fbuf);
   if (!is2.good()) {
     std::cerr << "Error opening file.\n";
     return;
   }
-  float f2;
-  std::string s6;
-  is2.read((char*)&f2, sizeof(f2));
-  is2.read((char*)s6.data(), vfs.file_size(subdir_file3) - sizeof(float));
-  std::cerr << "F2:  " << f2 << "   S6:   " << s6 << std::endl;
+  std::string s3;
+  s3.resize(vfs.file_size(file2));
+  is2.read((char*)s3.data(), vfs.file_size(file2));
   fbuf.close();
 
-  REQUIRE(f1 == f2);
-  REQUIRE(s5 == s6);
-#endif
+  REQUIRE(s2 == s3);
 
   // Clean up
   vfs.remove_dir(path);
+
+#endif
 }

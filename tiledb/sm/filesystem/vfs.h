@@ -308,17 +308,6 @@ class VFS {
   Status move_dir(const URI& old_uri, const URI& new_uri);
 
   /**
-   * Reads from a file.
-   *
-   * @param uri The URI of the file.
-   * @param offset The offset where the read begins.
-   * @param buffer The buffer to read into.
-   * @param nbytes Number of bytes to read.
-   * @param use_read_ahead Whether to use the read-ahead cache.
-   * @return Status
-   */
-
-  /**
    * Copies a file.
    *
    * @param old_uri The old URI.
@@ -337,7 +326,6 @@ class VFS {
    * @param use_read_ahead Whether to use the read-ahead cache.
    * @return Status
    */
-
   Status read(
       const URI& uri,
       uint64_t offset,
