@@ -89,10 +89,15 @@ Status DoubleDelta::compress(
       return DoubleDelta::compress<int64_t>(input_buffer, output_buffer);
     case Datatype::STRING_ASCII:
     case Datatype::STRING_UTF8:
+      return DoubleDelta::compress<uint8_t>(input_buffer, output_buffer);
     case Datatype::STRING_UTF16:
+      return DoubleDelta::compress<uint16_t>(input_buffer, output_buffer);
     case Datatype::STRING_UTF32:
+      return DoubleDelta::compress<uint32_t>(input_buffer, output_buffer);
     case Datatype::STRING_UCS2:
+      return DoubleDelta::compress<uint16_t>(input_buffer, output_buffer);
     case Datatype::STRING_UCS4:
+      return DoubleDelta::compress<uint32_t>(input_buffer, output_buffer);
     case Datatype::ANY:
       return DoubleDelta::compress<uint8_t>(input_buffer, output_buffer);
     case Datatype::FLOAT32:

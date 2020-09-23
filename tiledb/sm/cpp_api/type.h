@@ -256,6 +256,36 @@ inline bool tiledb_string_type(tiledb_datatype_t type) {
   }
 }
 
+inline bool tiledb_1_byte_string_type(tiledb_datatype_t type) {
+  switch (type) {
+    case TILEDB_STRING_ASCII:
+    case TILEDB_STRING_UTF8:
+      return true;
+    default:
+      return false;
+  }
+}
+
+inline bool tiledb_2_byte_string_type(tiledb_datatype_t type) {
+  switch (type) {
+    case TILEDB_STRING_UTF16:
+    case TILEDB_STRING_UCS2:
+      return true;
+    default:
+      return false;
+  }
+}
+
+inline bool tiledb_4_byte_string_type(tiledb_datatype_t type) {
+  switch (type) {
+    case TILEDB_STRING_UTF32:
+    case TILEDB_STRING_UCS4:
+      return true;
+    default:
+      return false;
+  }
+}
+
 inline bool tiledb_datetime_type(tiledb_datatype_t type) {
   switch (type) {
     case TILEDB_DATETIME_YEAR:
