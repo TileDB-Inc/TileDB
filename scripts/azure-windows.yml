@@ -1,4 +1,16 @@
 steps:
+
+# Need this for virtualenv
+- task: UsePythonVersion@0
+  inputs:
+    versionSpec: '3.x'
+
+- bash: |
+    set -e pipefail
+    if [[ "$TILEDB_TESTS_ENABLE_ARROW" == "ON" ]]; then
+      pip install pyarrow pybind11 numpy
+    fi
+
 - powershell: |
     mkdir $env:AGENT_BUILDDIRECTORY\build
     cd $env:AGENT_BUILDDIRECTORY\build
