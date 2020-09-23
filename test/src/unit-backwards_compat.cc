@@ -93,6 +93,34 @@ void set_query_dimension_buffer(
   query->add_range(dim_idx, dom.first, dom.second);
 }
 
+template <typename T>
+void set_query_var_dimension_buffer(
+    const Domain& domain,
+    const uint64_t dim_idx,
+    Query* query,
+    uint64_t** offsets,
+    void** buffer,
+    uint64_t** expected_offsets,
+    void** expected_buffer) {
+  Dimension dimension = domain.dimension(dim_idx);
+  // Make the buffer size a bit larger because the estimator
+  // works on the zipped coords size
+  const uint64_t buffer_size =
+      1 * tiledb_datatype_size(dimension.type()) * domain.ndim();
+  *offsets = static_cast<uint64_t*>(std::malloc(sizeof(uint64_t)));
+  *buffer = std::malloc(buffer_size);
+  *expected_offsets = static_cast<uint64_t*>(std::malloc(sizeof(uint64_t)));
+  (*expected_offsets)[0] = 0;
+  *expected_buffer = std::malloc(buffer_size);
+  static_cast<T*>(*expected_buffer)[0] = '1';
+
+  memset(*offsets, 0, sizeof(uint64_t));
+  memset(*buffer, 0, buffer_size);
+  query->set_buffer<T>(
+      dimension.name(), *offsets, 1, static_cast<T*>(*buffer), buffer_size);
+  query->add_range(dim_idx, std::string("1"), std::string("1"));
+}
+
 }  // namespace
 
 TEST_CASE(
@@ -151,8 +179,8 @@ TEST_CASE(
   for (const auto& group_versions : versions_iter) {
     tiledb::ObjectIter obj_iter(ctx, group_versions.uri());
     for (const auto& object : obj_iter) {
-      // REQUIRE(read_array(object.uri()))
       Array* array;
+
       // Check for if array is encrypted based on name for now
       if (object.uri().find("_encryption_AES_256_GCM") != std::string::npos) {
         array = new Array(
@@ -165,6 +193,13 @@ TEST_CASE(
       } else {
         array = new Array(ctx, object.uri(), TILEDB_READ);
       }
+
+      // Skip domain types that are unsupported with zipped coordinates.
+      Domain domain = array->schema().domain();
+      if (domain.type() == TILEDB_STRING_ASCII) {
+        continue;
+      }
+
       Query query(ctx, *array);
 
       std::unordered_map<std::string, std::pair<uint64_t*, void*>> buffers;
@@ -312,14 +347,9 @@ TEST_CASE(
             }
             break;
           }
-
           case TILEDB_CHAR:
           case TILEDB_STRING_ASCII:
           case TILEDB_STRING_UTF8:
-          case TILEDB_STRING_UTF16:
-          case TILEDB_STRING_UTF32:
-          case TILEDB_STRING_UCS2:
-          case TILEDB_STRING_UCS4:
           case TILEDB_ANY: {
             if (attr.second.variable_sized()) {
               query.set_buffer(
@@ -329,11 +359,40 @@ TEST_CASE(
             }
             break;
           }
+          case TILEDB_STRING_UTF16:
+          case TILEDB_STRING_UCS2: {
+            if (attr.second.variable_sized()) {
+              query.set_buffer(
+                  attribute_name,
+                  offsets,
+                  1,
+                  static_cast<uint16_t*>(values),
+                  1);
+            } else {
+              query.set_buffer(
+                  attribute_name, static_cast<uint16_t*>(values), 1);
+            }
+            break;
+          }
+          case TILEDB_STRING_UTF32:
+          case TILEDB_STRING_UCS4: {
+            if (attr.second.variable_sized()) {
+              query.set_buffer(
+                  attribute_name,
+                  offsets,
+                  1,
+                  static_cast<uint32_t*>(values),
+                  1);
+            } else {
+              query.set_buffer(
+                  attribute_name, static_cast<uint32_t*>(values), 1);
+            }
+            break;
+          }
         }
       }
 
-      // Get domain to build coordinates
-      Domain domain = array->schema().domain();
+      // Build coordinates from the domain.
       uint64_t ndim = domain.ndim();
       uint64_t coords_size = tiledb_datatype_size(domain.type()) * ndim;
       void *coordinates = nullptr, *expected_coordinates = nullptr;
@@ -474,12 +533,18 @@ TEST_CASE(
           case TILEDB_CHAR:
           case TILEDB_STRING_ASCII:
           case TILEDB_STRING_UTF8:
-          case TILEDB_STRING_UTF16:
-          case TILEDB_STRING_UTF32:
-          case TILEDB_STRING_UCS2:
-          case TILEDB_STRING_UCS4:
           case TILEDB_ANY: {
             REQUIRE(static_cast<char*>(buffer.second)[0] == '1');
+            break;
+          }
+          case TILEDB_STRING_UTF16:
+          case TILEDB_STRING_UCS2: {
+            REQUIRE(static_cast<uint16_t*>(buffer.second)[0] == u'1');
+            break;
+          }
+          case TILEDB_STRING_UTF32:
+          case TILEDB_STRING_UCS4: {
+            REQUIRE(static_cast<uint32_t*>(buffer.second)[0] == U'1');
             break;
           }
         }
@@ -560,8 +625,8 @@ TEST_CASE(
   for (const auto& group_versions : versions_iter) {
     tiledb::ObjectIter obj_iter(ctx, group_versions.uri());
     for (const auto& object : obj_iter) {
-      // REQUIRE(read_array(object.uri()))
       Array* array;
+
       // Check for if array is encrypted based on name for now
       if (object.uri().find("_encryption_AES_256_GCM") != std::string::npos) {
         array = new Array(
@@ -574,6 +639,7 @@ TEST_CASE(
       } else {
         array = new Array(ctx, object.uri(), TILEDB_READ);
       }
+
       Query query(ctx, *array);
 
       std::unordered_map<std::string, std::pair<uint64_t*, void*>> buffers;
@@ -725,16 +791,42 @@ TEST_CASE(
           case TILEDB_CHAR:
           case TILEDB_STRING_ASCII:
           case TILEDB_STRING_UTF8:
-          case TILEDB_STRING_UTF16:
-          case TILEDB_STRING_UTF32:
-          case TILEDB_STRING_UCS2:
-          case TILEDB_STRING_UCS4:
           case TILEDB_ANY: {
             if (attr.second.variable_sized()) {
               query.set_buffer(
                   attribute_name, offsets, 1, static_cast<char*>(values), 1);
             } else {
               query.set_buffer(attribute_name, static_cast<char*>(values), 1);
+            }
+            break;
+          }
+          case TILEDB_STRING_UTF16:
+          case TILEDB_STRING_UCS2: {
+            if (attr.second.variable_sized()) {
+              query.set_buffer(
+                  attribute_name,
+                  offsets,
+                  1,
+                  static_cast<uint16_t*>(values),
+                  1);
+            } else {
+              query.set_buffer(
+                  attribute_name, static_cast<uint16_t*>(values), 1);
+            }
+            break;
+          }
+          case TILEDB_STRING_UTF32:
+          case TILEDB_STRING_UCS4: {
+            if (attr.second.variable_sized()) {
+              query.set_buffer(
+                  attribute_name,
+                  offsets,
+                  1,
+                  static_cast<uint32_t*>(values),
+                  1);
+            } else {
+              query.set_buffer(
+                  attribute_name, static_cast<uint32_t*>(values), 1);
             }
             break;
           }
@@ -746,10 +838,15 @@ TEST_CASE(
       uint64_t ndim = domain.ndim();
       // Store one buffer per dimension
       std::vector<void*> dim_buffers(ndim);
+      std::vector<uint64_t*> dim_offsets(ndim);
       std::vector<void*> dim_expected_buffers(ndim);
+      std::vector<uint64_t*> dim_expected_offsets(ndim);
       for (uint64_t i = 0; i < ndim; ++i) {
         Dimension dim = domain.dimension(i);
-        void *buffer = nullptr, *expected_results = nullptr;
+        uint64_t* offsets = nullptr;
+        void* buffer = nullptr;
+        uint64_t* expected_offsets = nullptr;
+        void* expected_results = nullptr;
         switch (dim.type()) {
           case TILEDB_INT8:
             set_query_dimension_buffer<int8_t>(
@@ -807,10 +904,23 @@ TEST_CASE(
             set_query_dimension_buffer<int64_t>(
                 domain, i, &query, &buffer, &expected_results);
             break;
+          case TILEDB_STRING_ASCII: {
+            set_query_var_dimension_buffer<char>(
+                domain,
+                i,
+                &query,
+                &offsets,
+                &buffer,
+                &expected_offsets,
+                &expected_results);
+            break;
+          }
           default:
             REQUIRE(false);
         }
+        dim_offsets[i] = offsets;
         dim_buffers[i] = buffer;
+        dim_expected_offsets[i] = expected_offsets;
         dim_expected_buffers[i] = expected_results;
       }
 
@@ -818,12 +928,16 @@ TEST_CASE(
       query.submit();
 
       for (uint64_t i = 0; i < ndim; ++i) {
+        auto& offsets = dim_offsets[i];
         auto& buff = dim_buffers[i];
+        auto& expected_offsets = dim_expected_offsets[i];
         auto& expected_results = dim_expected_buffers[i];
         Dimension dimension = domain.dimension(i);
         const uint64_t buffer_size = tiledb_datatype_size(dimension.type());
         REQUIRE(memcmp(buff, expected_results, buffer_size) == 0);
+        std::free(offsets);
         std::free(buff);
+        std::free(expected_offsets);
         std::free(expected_results);
       }
 
@@ -895,12 +1009,18 @@ TEST_CASE(
           case TILEDB_CHAR:
           case TILEDB_STRING_ASCII:
           case TILEDB_STRING_UTF8:
-          case TILEDB_STRING_UTF16:
-          case TILEDB_STRING_UTF32:
-          case TILEDB_STRING_UCS2:
-          case TILEDB_STRING_UCS4:
           case TILEDB_ANY: {
             REQUIRE(static_cast<char*>(buffer.second)[0] == '1');
+            break;
+          }
+          case TILEDB_STRING_UTF16:
+          case TILEDB_STRING_UCS2: {
+            REQUIRE(static_cast<uint16_t*>(buffer.second)[0] == u'1');
+            break;
+          }
+          case TILEDB_STRING_UTF32:
+          case TILEDB_STRING_UCS4: {
+            REQUIRE(static_cast<uint16_t*>(buffer.second)[0] == U'1');
             break;
           }
         }
