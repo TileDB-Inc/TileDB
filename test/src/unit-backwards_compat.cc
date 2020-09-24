@@ -194,8 +194,22 @@ TEST_CASE(
         array = new Array(ctx, object.uri(), TILEDB_READ);
       }
 
-      // Skip domain types that are unsupported with zipped coordinates.
+      // Skip arrays with heterogeneous dimension types.
       Domain domain = array->schema().domain();
+      REQUIRE(domain.ndim() > 0);
+      tiledb_datatype_t last_datatype = domain.dimension(0).type();
+      bool heterogeneous = false;
+      for (uint32_t i = 1; i < domain.ndim(); ++i) {
+        if (domain.dimension(i).type() != last_datatype) {
+          heterogeneous = true;
+          break;
+        }
+      }
+
+      if (heterogeneous)
+        continue;
+
+      // Skip domain types that are unsupported with zipped coordinates.
       if (domain.type() == TILEDB_STRING_ASCII) {
         continue;
       }
