@@ -167,3 +167,68 @@ TEST_CASE(
   // Clean up
   vfs.remove_dir(path);
 }
+
+TEST_CASE(
+    "C++ API: Test VFS copy file",
+    "[cppapi], [cppapi-vfs], [cppapi-vfs-copy-file]") {
+  using namespace tiledb;
+  Context ctx;
+  VFS vfs(ctx);
+
+#ifndef _WIN32
+  std::string path =
+      std::string("file://") + sm::Posix::current_dir() + "/vfs_test/";
+
+  // Clean up
+  if (vfs.is_dir(path))
+    vfs.remove_dir(path);
+
+  std::string dir = path + "ls_dir";
+  std::string file = dir + "/file";
+  std::string file2 = dir + "/file2";
+
+  // Create directories and files
+  vfs.create_dir(path);
+  vfs.create_dir(dir);
+  vfs.touch(file);
+
+  // Write to file
+  tiledb::VFS::filebuf fbuf(vfs);
+  fbuf.open(file, std::ios::out);
+  std::ostream os(&fbuf);
+  std::string s1 = "abcd";
+  os.write(s1.data(), s1.size());
+
+  // Copy file when running on POSIX
+  vfs.copy_file(file, file2);
+  REQUIRE(vfs.is_file(file2));
+
+  fbuf.open(file, std::ios::in);
+  std::istream is1(&fbuf);
+  if (!is1.good()) {
+    std::cerr << "Error opening file.\n";
+    return;
+  }
+  std::string s2;
+  s2.resize(vfs.file_size(file));
+  is1.read((char*)s2.data(), vfs.file_size(file));
+  fbuf.close();
+
+  fbuf.open(file2, std::ios::in);
+  std::istream is2(&fbuf);
+  if (!is2.good()) {
+    std::cerr << "Error opening file.\n";
+    return;
+  }
+  std::string s3;
+  s3.resize(vfs.file_size(file2));
+  is2.read((char*)s3.data(), vfs.file_size(file2));
+  fbuf.close();
+
+  REQUIRE(s2 == s3);
+
+  // Clean up
+  vfs.remove_dir(path);
+
+#endif
+}

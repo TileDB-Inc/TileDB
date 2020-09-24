@@ -308,6 +308,15 @@ class VFS {
   Status move_dir(const URI& old_uri, const URI& new_uri);
 
   /**
+   * Copies a file.
+   *
+   * @param old_uri The old URI.
+   * @param new_uri The new URI.
+   * @return Status
+   */
+  Status copy_file(const URI& old_uri, const URI& new_uri);
+
+  /**
    * Reads from a file.
    *
    * @param uri The URI of the file.
