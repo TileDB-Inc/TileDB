@@ -95,7 +95,7 @@ class DataFactory():
     self.data['utf_string2'][1] = ''
     self.data['utf_string2'][3] = ''
     self.data['utf_string2'][-1] = ''
-    self.data['utf_string2'][-2] = '' #-> TODO core bug
+    self.data['utf_string2'][-2] = ''
     self.data['utf_string2'][-3] = ''
 
     self.data['datetime_ns'] = rand_datetime64_array(col_size)
@@ -115,5 +115,3 @@ class DataFactory():
       res_val = self.results[key]
       assert_array_equal(val, res_val)
     return True
-
-d = DataFactory(10)

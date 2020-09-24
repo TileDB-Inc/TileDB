@@ -1,11 +1,11 @@
 /**
- * @file   unit-arrow_io.cc
+ * @file   unit-arrow.cc
  *
  * @section LICENSE
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2020 TileDB Inc.
+ * @copyright Copyright (c) 2020 TileDB Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -47,19 +47,16 @@ namespace py = pybind11;
 namespace {
 struct CPPArrayFx {
  public:
-  CPPArrayFx(std::string uri, const uint64_t col_size = 111)
+  CPPArrayFx(std::string uri, const uint64_t col_size)
       : vfs(ctx)
-      , uri_(uri) {
-    using namespace tiledb;
+      , uri(uri) {
 
     if (vfs.is_dir(uri))
       vfs.remove_dir(uri);
 
-    const uint64_t d1_tile = 10;
-
     Domain domain(ctx);
     auto d1 =
-        Dimension::create<int>(ctx, "d1", {{0, (int)col_size - 1}}, d1_tile);
+        Dimension::create<int>(ctx, "d1", {{0, (int)col_size - 1}}, col_size);
     domain.add_dimensions(d1);
 
     std::vector<Attribute> attrs;
@@ -110,23 +107,24 @@ struct CPPArrayFx {
   }
 
   ~CPPArrayFx() {
-    if (vfs.is_dir(uri_)) {
-      vfs.remove_dir(uri_);
+    if (vfs.is_dir(uri)) {
+      vfs.remove_dir(uri);
     }
   }
 
+private:
   Context ctx;
   VFS vfs;
-  std::string uri_;
+  std::string uri;
 };
 
 void free_query_buffers(std::shared_ptr<tiledb::Query> query) {
   auto schema = query->array().schema();
-  void* data;
-  uint64_t data_nelem;
-  uint64_t elem_size;
-  uint64_t* offsets;
-  uint64_t offset_nelem;
+  void* data = nullptr;
+  uint64_t data_nelem = 0;
+  uint64_t elem_size = 0;
+  uint64_t* offsets = nullptr;
+  uint64_t offset_nelem = 0;
 
   for (auto attr_iter : schema.attributes()) {
     auto name = attr_iter.first;
@@ -212,7 +210,7 @@ void allocate_query_buffers(std::shared_ptr<tiledb::Query> query) {
 
 TEST_CASE("Arrow IO integration tests", "[arrow]") {
   std::string uri("test_arrow_io");
-  const uint64_t col_size = 10;
+  const uint64_t col_size = 111;
 
   CPPArrayFx _fx(uri, col_size);
 
@@ -221,43 +219,34 @@ TEST_CASE("Arrow IO integration tests", "[arrow]") {
   py::object py_data_arrays;
   py::object py_data_names;
   py::object ds_import;
+  py::module unit_arrow;
   size_t data_len = 0;
 
   // create (arrow) schema and array from pyarrow RecordBatch
-  try {
-    py::module py_sys = py::module::import("sys");
+  py::module py_sys = py::module::import("sys");
 
 #ifdef TILEDB_PYTHON_UNIT_PATH
     // append the tiledb_unit exe dir so that we can import the helper
-    py_sys.attr("path").attr("insert")(1, TILEDB_PYTHON_UNIT_PATH);
+  py_sys.attr("path").attr("insert")(1, TILEDB_PYTHON_UNIT_PATH);
 #endif
 #ifdef TILEDB_PYTHON_SITELIB_PATH
-    // append the site-packages path from cmake
-    // this is not necessary with conda
-    py_sys.attr("path").attr("insert")(1, TILEDB_PYTHON_SITELIB_PATH);
+  // append the site-packages path from cmake
+  // this is not necessary with conda
+  py_sys.attr("path").attr("insert")(1, TILEDB_PYTHON_SITELIB_PATH);
 #endif
 
-    // import the arrow helper
-    py::module unit_arrow = py::module::import("unit_arrow");
+  // import the arrow helper
+  unit_arrow = py::module::import("unit_arrow");
 
-    // this class generates random test data for each attribute
-    auto h_data_source = unit_arrow.attr("DataFactory");
-    py_data_source = h_data_source(py::int_(col_size));
-    py_data_names = py_data_source.attr("names");
-    py_data_arrays = py_data_source.attr("arrays");
-    data_len = py::len(py_data_arrays);
-    ds_import = py_data_source.attr("import_result");
-  } catch (std::exception& e) {
-    std::cerr << std::string("[pybind11 error] ") + e.what() << std::endl;
-    CHECK(false);
-  } catch (...) {
-    std::cerr << "[pybind11 error] unknown exception!" << std::endl;
-    CHECK(false);
-  }
+  // this class generates random test data for each attribute
+  auto h_data_source = unit_arrow.attr("DataFactory");
+  py_data_source = h_data_source(py::int_(col_size));
+  py_data_names = py_data_source.attr("names");
+  py_data_arrays = py_data_source.attr("arrays");
+  data_len = py::len(py_data_arrays);
+  ds_import = py_data_source.attr("import_result");
 
-  ////////////////////////////////////////////////////////////////////////////
-  using namespace tiledb;
-
+  //SECTION("Test writing data via ArrowAdapter from pyarrow arrays")
   {
     /*
      * Test write
@@ -267,7 +256,7 @@ TEST_CASE("Arrow IO integration tests", "[arrow]") {
     Array array(ctx, uri, TILEDB_WRITE);
     std::shared_ptr<Query> query(new Query(ctx, array));
     query->set_layout(TILEDB_COL_MAJOR);
-    query->add_range(0, 0, 9);
+    query->add_range(0, (int32_t)0, (int32_t)(col_size - 1));
 
     std::vector<ArrowArray*> vec_array;
     std::vector<ArrowSchema*> vec_schema;
@@ -305,6 +294,10 @@ TEST_CASE("Arrow IO integration tests", "[arrow]") {
     }
   }
 
+  // TODO: Ideally these scopes should be separate Catch2 SECTION blocks.
+  // However, there is an unexplained crash due to an early destructor
+  // when both brace scopes are converted to SECTIONs.
+  //SECTION("Test reading data back via ArrowAdapter into pyarrow arrays")
   {
     /*
      * Test read
@@ -313,7 +306,7 @@ TEST_CASE("Arrow IO integration tests", "[arrow]") {
     Array array(ctx, uri, TILEDB_READ);
     std::shared_ptr<Query> query(new Query(ctx, array));
     query->set_layout(TILEDB_COL_MAJOR);
-    query->add_range(0, 0, 9);
+    query->add_range(0, (int32_t)0, (int32_t)(col_size-1));
 
     std::vector<void*> data_buffers;
     std::vector<uint64_t*> offset_buffers;
