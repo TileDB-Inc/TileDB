@@ -7,6 +7,7 @@
 ## Breaking behavior
 
 * Empty dense arrays now return cells with fill values. Also the result estimator is adjusted to work properly with this new behavior.
+* Empty char and signed integers now return their maximum value for empty cells instead of their minimum value.
 
 ## New features
 
@@ -29,6 +30,7 @@
 * Read-ahead cache for cloud-storage backends [#1785](https://github.com/TileDB-Inc/TileDB/pull/1785)
 * Allow multiple empty values at the end of a variable-length write [#1805](https://github.com/TileDB-Inc/TileDB/pull/1805)
 * Build system will raise overridable error if important paths contain regex character [#1808](https://github.com/TileDB-Inc/TileDB/pull/1808)
+* Prebuilt artifacts for release now target `haswell` for minimum architecture for linux/macos and `AVX2` for msvcc [#1809](https://github.com/TileDB-Inc/TileDB/pull/1809)
 
 ## Deprecations
 
