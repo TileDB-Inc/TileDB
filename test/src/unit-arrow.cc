@@ -50,7 +50,6 @@ struct CPPArrayFx {
   CPPArrayFx(std::string uri, const uint64_t col_size)
       : vfs(ctx)
       , uri(uri) {
-
     if (vfs.is_dir(uri))
       vfs.remove_dir(uri);
 
@@ -112,7 +111,7 @@ struct CPPArrayFx {
     }
   }
 
-private:
+ private:
   Context ctx;
   VFS vfs;
   std::string uri;
@@ -226,7 +225,7 @@ TEST_CASE("Arrow IO integration tests", "[arrow]") {
   py::module py_sys = py::module::import("sys");
 
 #ifdef TILEDB_PYTHON_UNIT_PATH
-    // append the tiledb_unit exe dir so that we can import the helper
+  // append the tiledb_unit exe dir so that we can import the helper
   py_sys.attr("path").attr("insert")(1, TILEDB_PYTHON_UNIT_PATH);
 #endif
 #ifdef TILEDB_PYTHON_SITELIB_PATH
@@ -246,7 +245,7 @@ TEST_CASE("Arrow IO integration tests", "[arrow]") {
   data_len = py::len(py_data_arrays);
   ds_import = py_data_source.attr("import_result");
 
-  //SECTION("Test writing data via ArrowAdapter from pyarrow arrays")
+  // SECTION("Test writing data via ArrowAdapter from pyarrow arrays")
   {
     /*
      * Test write
@@ -297,7 +296,7 @@ TEST_CASE("Arrow IO integration tests", "[arrow]") {
   // TODO: Ideally these scopes should be separate Catch2 SECTION blocks.
   // However, there is an unexplained crash due to an early destructor
   // when both brace scopes are converted to SECTIONs.
-  //SECTION("Test reading data back via ArrowAdapter into pyarrow arrays")
+  // SECTION("Test reading data back via ArrowAdapter into pyarrow arrays")
   {
     /*
      * Test read
@@ -306,7 +305,7 @@ TEST_CASE("Arrow IO integration tests", "[arrow]") {
     Array array(ctx, uri, TILEDB_READ);
     std::shared_ptr<Query> query(new Query(ctx, array));
     query->set_layout(TILEDB_COL_MAJOR);
-    query->add_range(0, (int32_t)0, (int32_t)(col_size-1));
+    query->add_range(0, (int32_t)0, (int32_t)(col_size - 1));
 
     std::vector<void*> data_buffers;
     std::vector<uint64_t*> offset_buffers;

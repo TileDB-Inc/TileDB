@@ -285,7 +285,8 @@ TypeInfo arrow_type_to_tiledb(ArrowSchema* arw_schema) {
         "'");
 }
 
-TypeInfo tiledb_dt_info(const tiledb::ArraySchema& schema, const std::string& name) {
+TypeInfo tiledb_dt_info(
+    const tiledb::ArraySchema& schema, const std::string& name) {
   if (schema.has_attribute(name)) {
     auto attr = schema.attribute(name);
 
@@ -499,7 +500,6 @@ struct CPPArrowArray {
       int64_t offset,
       std::vector<std::shared_ptr<CPPArrowArray>> children,
       std::vector<void*> buffers) {
-
     array_ = static_cast<ArrowArray*>(std::malloc(sizeof(ArrowArray)));
     if (array_ == nullptr)
       throw tiledb::TileDBError("Failed to allocate ArrowArray");
@@ -549,7 +549,7 @@ struct CPPArrowArray {
    * callback. Owned member data is released via default destructors.
    */
   ~CPPArrowArray() {
-    if (array_  != nullptr) {
+    if (array_ != nullptr) {
       // did not export
       std::free(array_);
     }
@@ -612,10 +612,9 @@ void ArrowImporter::import_(
   if (typeinfo.cell_val_num == TILEDB_VAR_NUM) {
     assert(arw_array->n_buffers == 3);
 
-    const void* p_offsets_arw =
-        const_cast<void*>(arw_array->buffers[1]);
+    const void* p_offsets_arw = const_cast<void*>(arw_array->buffers[1]);
     const void* p_data = const_cast<void*>(arw_array->buffers[2]);
-    uint64_t data_num = arw_array->length;              // <- number of elements
+    uint64_t data_num = arw_array->length;  // <- number of elements
     uint64_t data_nbytes = 0;
 
     uint64_t* p_offsets =
@@ -768,7 +767,8 @@ void ArrowExporter::export_(
 /* Begin TileDB Arrow IO public API implementation */
 
 ArrowAdapter::ArrowAdapter(std::shared_ptr<tiledb::Query> query)
-: importer_(nullptr), exporter_(nullptr) {
+    : importer_(nullptr)
+    , exporter_(nullptr) {
   importer_ = new ArrowImporter(query);
   if (!importer_) {
     throw tiledb::TileDBError(
