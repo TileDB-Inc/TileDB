@@ -9,6 +9,18 @@ steps:
     printenv
   displayName: 'Print env'
 
+# Need this for virtualenv and arrow tests if enabled
+- task: UsePythonVersion@0
+  inputs:
+    versionSpec: '3.x'
+
+- bash: |
+    set -e pipefail
+    python -m pip install --upgrade pip virtualenv
+    if [[ "$TILEDB_TESTS_ENABLE_ARROW" == "ON" ]]; then
+      pip install pyarrow pybind11 numpy
+    fi
+
 - bash: |
     set -e pipefail
     # Install doxygen *before* running cmake
@@ -255,12 +267,6 @@ steps:
       done;
   condition: failed() # only run this job if the build step failed
   displayName: "Print log files (failed build only)"
-
-
-# Need this for virtualenv
-- task: UsePythonVersion@0
-  inputs:
-    versionSpec: '3.x'
 
 - bash: |
     set -e pipefail
