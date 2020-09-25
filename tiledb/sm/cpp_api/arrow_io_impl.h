@@ -534,7 +534,7 @@ struct CPPArrowArray {
       // mark the ArrowArray struct as released
       array_p->release = nullptr;
 
-      delete static_cast<CPPArrowArray*>((array_p->private_data));
+      delete static_cast<CPPArrowArray*>(array_p->private_data);
     });
     array_->private_data = this;
 

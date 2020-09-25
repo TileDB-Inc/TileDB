@@ -291,8 +291,8 @@ TEST_CASE("Arrow IO integration tests", "[arrow]") {
     CHECK(query->query_status() == Query::Status::COMPLETE);
 
     for (size_t i = 0; i < data_len; i++) {
-      free(vec_array[i]);
-      free(vec_schema[i]);
+      std::free(vec_array[i]);
+      std::free(vec_schema[i]);
     }
   }
 
