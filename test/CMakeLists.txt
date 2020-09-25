@@ -32,6 +32,52 @@ find_package(Catch_EP REQUIRED)
 option(TILEDB_TESTS_AWS_S3_CONFIG "Use an S3 config appropriate for AWS in tests" OFF)
 option(TILEDB_TESTS_ENABLE_REST "Enables REST tests (requires running REST server)" OFF)
 
+# Arrow integration test config and dependencies
+# Override from environment if not set in cache
+if (NOT DEFINED $CACHE{TILEDB_TESTS_ENABLE_ARROW})
+  if ($ENV{TILEDB_TESTS_ENABLE_ARROW})
+    message(STATUS "Enabling Apache Arrow integration test")
+    # Technically this would be an "option", but we want conditional override from ENV
+    set(TILEDB_TESTS_ENABLE_ARROW ON CACHE BOOL "Enable Arrow tests (requires Python with pyarrow and numpy)")
+    mark_as_advanced(TILEDB_TESTS_ENABLE_ARROW)
+  endif()
+endif()
+
+if (${TILEDB_TESTS_ENABLE_ARROW})
+  find_package(Python COMPONENTS Interpreter Development REQUIRED)
+  find_package(pybind11)
+
+  # If we can't find the pybind11 cmake config (not available in pypi yet)
+  # try to find with the current executable.
+  if (NOT ${pybind11_FOUND})
+    # Get the include arguments from the python executable (has "-I" compiler option)
+    execute_process(COMMAND  ${Python_EXECUTABLE} -m pybind11 --includes
+                    OUTPUT_VARIABLE CMD_PYBIND11_INCLUDE
+                    RESULT_VARIABLE CMD_PYBIND11_RESULT
+                    OUTPUT_STRIP_TRAILING_WHITESPACE)
+    if (${CMD_PYBIND11_RESULT})
+      message(FATAL_ERROR "Unable to find pybind11 via cmake or 'python3 -m pybind11 --includes'")
+    endif()
+
+    # Convert args to list
+    separate_arguments(CMD_PARSED_INCLUDES NATIVE_COMMAND ${CMD_PYBIND11_INCLUDE})
+    # Remove the "-I" from each include
+    foreach(INCL_PATH IN LISTS CMD_PARSED_INCLUDES)
+      string(REPLACE "-I" "" INCL_PATH ${INCL_PATH})
+      list(APPEND PYBIND11_INCLUDE_DIRECTORIES ${INCL_PATH})
+    endforeach()
+
+    file(TO_CMAKE_PATH ${Python_SITELIB} SAFE_Python_SITELIB)
+    set(pybind11_FOUND TRUE CACHE BOOL "pybind11 include path found")
+    add_library(pybind11::embed INTERFACE IMPORTED)
+    target_include_directories(pybind11::embed INTERFACE ${PYBIND11_INCLUDE_DIRECTORIES})
+    target_link_libraries(pybind11::embed INTERFACE Python::Python)
+    target_compile_definitions(pybind11::embed INTERFACE -DTILEDB_PYTHON_SITELIB_PATH="${SAFE_Python_SITELIB}")
+  endif()
+  file(TO_CMAKE_PATH ${CMAKE_CURRENT_BINARY_DIR} SAFE_CURRENT_BINARY_DIR)
+  target_compile_definitions(pybind11::embed INTERFACE -DTILEDB_PYTHON_UNIT_PATH="${SAFE_CURRENT_BINARY_DIR}")
+endif()
+
 # Include TileDB core header directories
 set(TILEDB_CORE_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/..")
 # Include the C API directory so that the C++ 'tiledb' file can directly
@@ -145,6 +191,12 @@ if (TILEDB_TESTS_ENABLE_REST)
   )
 endif()
 
+if (TILEDB_TESTS_ENABLE_ARROW)
+  list(APPEND TILEDB_TEST_SOURCES
+    src/unit-arrow.cc
+  )
+endif()
+
 # unit test executable
 add_executable(
   tiledb_unit EXCLUDE_FROM_ALL
@@ -207,6 +259,13 @@ endif()
 
 if (TILEDB_SERIALIZATION)
   target_compile_definitions(tiledb_unit PRIVATE -DTILEDB_SERIALIZATION)
+endif()
+
+if (TILEDB_TESTS_ENABLE_ARROW)
+  target_link_libraries(tiledb_unit PRIVATE pybind11::embed)
+
+  # install the python helper next to the executable for import
+  configure_file("${CMAKE_CURRENT_SOURCE_DIR}/src/unit_arrow.py" "${CMAKE_CURRENT_BINARY_DIR}" COPYONLY)
 endif()
 
 # This is necessary only because we are linking directly to the core objects.

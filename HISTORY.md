@@ -16,6 +16,7 @@
 * Added configuration option "sm.sub_partitioner_memory_budget" [#1729](https://github.com/TileDB-Inc/TileDB/pull/1729)
 * Added configuration option "vfs.read_ahead_size" [#1785](https://github.com/TileDB-Inc/TileDB/pull/1785)
 * Added configuration option "vfs.read_ahead_cache_size" [#1785](https://github.com/TileDB-Inc/TileDB/pull/1785)
+* Added support for getting/setting Apache Arrow buffers from a Query [#1816](https://github.com/TileDB-Inc/TileDB/pull/1816)
 
 ## Improvements
 
