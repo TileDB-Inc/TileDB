@@ -272,7 +272,7 @@ TypeInfo arrow_type_to_tiledb(ArrowSchema* arw_schema) {
     return {TILEDB_UINT64, 8, 1, large};
   // this is kind of a hack
   // technically 'tsn:' is timezone-specific, which we don't support
-  // however, the blank (no suffix) base is interconvertible w/ datetime64
+  // however, the blank (no suffix) base is interconvertible w/ np.datetime64
   else if (fmt == "tsn:")
     return {TILEDB_DATETIME_NS, 8, 1, large};
   else if (fmt == "z" || fmt == "Z")
@@ -321,7 +321,7 @@ void offsets_to_arrow(const BufferInfo& binfo) {
   size_t elem_size = binfo.elem_size;
 
   uint64_t* offsets = binfo.offsets;
-  int32_t* offsets_i32 = (int32_t*)binfo.offsets;
+  int32_t* offsets_i32 = reinterpret_cast<int32_t*>(binfo.offsets);
 
   uint64_t idx = 1;  // important: don't divide by 0
   while (idx < binfo.offset_num) {
@@ -331,7 +331,7 @@ void offsets_to_arrow(const BufferInfo& binfo) {
     // skip the assignment because
     //   offsets[idx] == 0 => offsets_i32[i:i+1] == 0
     if (offsets[idx] != 0)
-      offsets_i32[idx] = (int32_t)(offsets[idx] / elem_size);
+      offsets_i32[idx] = static_cast<int32_t>(offsets[idx] / elem_size);
     ++idx;
   }
   offsets_i32[idx] = binfo.elem_num;
@@ -410,27 +410,26 @@ struct CPPArrowSchema {
       for (int64_t i = 0; i < schema_p->n_children; i++) {
         ArrowSchema* child_schema = schema_p->children[i];
         child_schema->release(child_schema);
-        assert(child_schema->release == NULL);
+        assert(child_schema->release == nullptr);
       }
-
-      // Release dictionary
+      // Release dictionary struct
       struct ArrowSchema* dict = schema_p->dictionary;
-      if (dict != NULL && dict->release != NULL) {
+      if (dict != nullptr && dict->release != nullptr) {
         dict->release(dict);
-        assert(dict->release == NULL);
+        assert(dict->release == nullptr);
       }
 
       // mark the ArrowSchema struct as released
-      schema_p->release = NULL;
+      schema_p->release = nullptr;
 
-      delete (CPPArrowSchema*)(schema_p->private_data);
+      delete static_cast<CPPArrowSchema*>(schema_p->private_data);
     });
 
     // Private data for release callback
     schema_->private_data = this;
 
     if (n_children_ > 0) {
-      schema_->children = (ArrowSchema**)children.data();
+      schema_->children = static_cast<ArrowSchema**>(children.data());
     }
 
     if (dictionary) {
@@ -457,9 +456,10 @@ struct CPPArrowSchema {
    * by the ArrowSchema.release callback, which frees the
    * CPPArrowSchema structure (via ArrowSchema.private_data).
    */
-  void export_ptr(ArrowSchema* schema_out) {
-    memcpy(schema_out, schema_, sizeof(ArrowSchema));
-    free(schema_);
+  void export_ptr(ArrowSchema* out_schema) {
+    assert(out_schema != nullptr);
+    memcpy(out_schema, schema_, sizeof(ArrowSchema));
+    std::free(schema_);
     schema_ = nullptr;
   }
 
@@ -508,8 +508,8 @@ struct CPPArrowArray {
     array_->length = elem_num;
     array_->null_count = null_num;
     array_->offset = offset;
-    array_->n_buffers = (int64_t)buffers.size();
-    array_->n_children = (int64_t)children.size();
+    array_->n_buffers = static_cast<int64_t>(buffers.size());
+    array_->n_children = static_cast<int64_t>(children.size());
     array_->buffers = nullptr;
     array_->children = nullptr;
     array_->dictionary = nullptr;
@@ -526,20 +526,20 @@ struct CPPArrowArray {
 
       // Release dictionary
       struct ArrowArray* dict = array_p->dictionary;
-      if (dict != NULL && dict->release != NULL) {
+      if (dict != nullptr && dict->release != nullptr) {
         dict->release(dict);
-        assert(dict->release == NULL);
+        assert(dict->release == nullptr);
       }
 
       // mark the ArrowArray struct as released
       array_p->release = nullptr;
 
-      delete (CPPArrowArray*)(array_p->private_data);
+      delete static_cast<CPPArrowArray*>((array_p->private_data));
     });
     array_->private_data = this;
 
     buffers_ = buffers;
-    array_->buffers = (const void**)buffers_.data();
+    array_->buffers = const_cast<const void**>(buffers_.data());
   }
 
   /*
@@ -555,9 +555,10 @@ struct CPPArrowArray {
     }
   }
 
-  void export_ptr(ArrowArray* array) {
-    memcpy(array, array_, sizeof(ArrowArray));
-    free(array_);
+  void export_ptr(ArrowArray* out_array) {
+    assert(out_array != nullptr);
+    memcpy(out_array, array_, sizeof(ArrowArray));
+    std::free(array_);
     array_ = nullptr;
   }
 
@@ -589,7 +590,7 @@ class ArrowImporter {
 
  private:
   std::shared_ptr<tiledb::Query> query_;
-  std::vector<void*> offset_buffers_;  //
+  std::vector<void*> offset_buffers_;
 
 };  // class ArrowExporter
 
@@ -612,40 +613,44 @@ void ArrowImporter::import_(
   if (typeinfo.cell_val_num == TILEDB_VAR_NUM) {
     assert(arw_array->n_buffers == 3);
 
-    const void* p_offsets_arw = const_cast<void*>(arw_array->buffers[1]);
-    const void* p_data = const_cast<void*>(arw_array->buffers[2]);
+    void* p_offsets_arw = const_cast<void*>(arw_array->buffers[1]);
+    void* p_data = const_cast<void*>(arw_array->buffers[2]);
     uint64_t data_num = arw_array->length;  // <- number of elements
     uint64_t data_nbytes = 0;
 
-    uint64_t* p_offsets =
-        (uint64_t*)std::malloc(arw_array->length * sizeof(uint64_t));
-    offset_buffers_.push_back((void*)p_offsets);
+    uint64_t* p_offsets = static_cast<uint64_t*>(
+        std::malloc(arw_array->length * sizeof(uint64_t)));
+    offset_buffers_.push_back(static_cast<void*>(p_offsets));
 
     if (typeinfo.arrow_large) {
-      int64_t* p_offsets_int64 = (int64_t*)p_offsets_arw;
+      int64_t* p_offsets_int64 = static_cast<int64_t*>(p_offsets_arw);
       // the Arrow offsets buffer has length+1 elements
-      for (size_t i = 0; i < (size_t)data_num; i++) {
+      for (size_t i = 0; i < static_cast<size_t>(data_num); i++) {
         p_offsets[i] = p_offsets_int64[i] * typeinfo.elem_size;
       }
       data_nbytes = p_offsets_int64[data_num] * typeinfo.elem_size;
     } else {
-      int32_t* p_offsets_int32 = (int32_t*)p_offsets_arw;
+      int32_t* p_offsets_int32 = static_cast<int32_t*>(p_offsets_arw);
       // the Arrow offsets buffer has length+1 elements
-      for (size_t i = 0; i < (size_t)data_num; i++) {
+      for (size_t i = 0; i < static_cast<size_t>(data_num); i++) {
         p_offsets[i] = p_offsets_int32[i] * typeinfo.elem_size;
       }
       data_nbytes = p_offsets_int32[data_num] * typeinfo.elem_size;
     }
     query_->set_buffer(
-        name, (uint64_t*)p_offsets, data_num, (void*)p_data, data_nbytes);
+        name,
+        const_cast<uint64_t*>(p_offsets),
+        data_num,
+        const_cast<void*>(p_data),
+        data_nbytes);
   } else {
     // fixed-size attribute (not TILEDB_VAR_NUM)
     assert(arw_array->n_buffers == 2);
 
-    const void* p_data = (void*)arw_array->buffers[1];  // note: cast away const
+    void* p_data = const_cast<void*>(arw_array->buffers[1]);
     uint64_t data_num = arw_array->length;
 
-    query_->set_buffer(name, (void*)p_data, data_num);
+    query_->set_buffer(name, static_cast<void*>(p_data), data_num);
   }
 }
 
@@ -743,19 +748,20 @@ void ArrowExporter::export_(
   std::vector<void*> buffers;
   if (bufferinfo.is_var) {
     offsets_to_arrow(bufferinfo);  // convert in-place
-    buffers = {NULL, bufferinfo.offsets, bufferinfo.data};
+    buffers = {nullptr, bufferinfo.offsets, bufferinfo.data};
   } else {
     cpp_schema =
         new CPPArrowSchema(name, arrow_fmt.fmt_, "", arrow_flags, {}, {});
-    buffers = {NULL, bufferinfo.data};
+    buffers = {nullptr, bufferinfo.data};
   }
   cpp_schema->export_ptr(schema);
 
   auto cpp_arrow_array = new CPPArrowArray(
-      (bufferinfo.is_var ? bufferinfo.offset_num : bufferinfo.elem_num),
-      0,  // null_num
-      0,
-      {},
+      (bufferinfo.is_var ? bufferinfo.offset_num :
+                           bufferinfo.elem_num),  // elem_num
+      0,                                          // null_num
+      0,                                          // offset
+      {},                                         // children
       buffers);
   cpp_arrow_array->export_ptr(array);
 }

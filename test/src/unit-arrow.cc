@@ -131,12 +131,12 @@ void free_query_buffers(std::shared_ptr<tiledb::Query> query) {
 
     if (attr.cell_val_num() != TILEDB_VAR_NUM) {
       query->get_buffer(name, &data, &data_nelem, &elem_size);
-      free(data);
+      std::free(data);
     } else {
       query->get_buffer(
           name, &offsets, &offset_nelem, &data, &data_nelem, &elem_size);
-      free(data);
-      free(offsets);
+      std::free(data);
+      std::free(offsets);
     }
   }
 
@@ -145,12 +145,12 @@ void free_query_buffers(std::shared_ptr<tiledb::Query> query) {
 
     if (dim.cell_val_num() != TILEDB_VAR_NUM) {
       query->get_buffer(name, &data, &data_nelem, &elem_size);
-      free(data);
+      std::free(data);
     } else {
       query->get_buffer(
           name, &offsets, &offset_nelem, &data, &data_nelem, &elem_size);
-      free(data);
-      free(offsets);
+      std::free(data);
+      std::free(offsets);
     }
   }
 }
@@ -175,13 +175,13 @@ void allocate_query_buffers(std::shared_ptr<tiledb::Query> query) {
 
     if (attr.cell_val_num() != TILEDB_VAR_NUM) {
       auto est_size = query->est_result_size(attr.name());
-      void* data = malloc(est_size);
+      void* data = std::malloc(est_size);
       query->set_buffer(name, data, est_size);
     } else {
       auto est_size_var = query->est_result_size_var(attr.name());
-      void* data = malloc(est_size_var.second);
-      uint64_t* offsets =
-          (uint64_t*)malloc(est_size_var.first * sizeof(uint64_t));
+      void* data = std::malloc(est_size_var.second);
+      uint64_t* offsets = static_cast<uint64_t*>(
+          std::malloc(est_size_var.first * sizeof(uint64_t)));
       query->set_buffer(
           name, offsets, est_size_var.first, data, est_size_var.second);
     }
@@ -192,13 +192,13 @@ void allocate_query_buffers(std::shared_ptr<tiledb::Query> query) {
 
     if (dim.cell_val_num() != TILEDB_VAR_NUM) {
       auto est_size = query->est_result_size(dim.name());
-      void* data = malloc(est_size);
+      void* data = std::malloc(est_size);
       query->set_buffer(name, data, est_size);
     } else {
       auto est_size_var = query->est_result_size_var(dim.name());
-      void* data = malloc(est_size_var.second);
-      uint64_t* offsets =
-          (uint64_t*)malloc(est_size_var.first * sizeof(uint64_t));
+      void* data = std::malloc(est_size_var.second);
+      uint64_t* offsets = static_cast<uint64_t*>(
+          std::malloc(est_size_var.first * sizeof(uint64_t)));
       query->set_buffer(
           name, offsets, est_size_var.first, data, est_size_var.second);
     }
@@ -263,8 +263,9 @@ TEST_CASE("Arrow IO integration tests", "[arrow]") {
     vec_schema.resize(data_len);
 
     for (size_t i = 0; i < data_len; i++) {
-      vec_array[i] = (ArrowArray*)malloc(sizeof(ArrowArray));
-      vec_schema[i] = (ArrowSchema*)malloc(sizeof(ArrowSchema));
+      vec_array[i] = static_cast<ArrowArray*>(std::malloc(sizeof(ArrowArray)));
+      vec_schema[i] =
+          static_cast<ArrowSchema*>(std::malloc(sizeof(ArrowSchema)));
     }
 
     tiledb::arrow::ArrowAdapter adapter(query);
@@ -276,13 +277,15 @@ TEST_CASE("Arrow IO integration tests", "[arrow]") {
 
       try {
         pa_array.attr("_export_to_c")(
-            py::int_((uint64_t)(vec_array.at(i))),
-            py::int_((uint64_t)(vec_schema.at(i))));
+            py::int_(reinterpret_cast<uintptr_t>(vec_array.at(i))),
+            py::int_(reinterpret_cast<uintptr_t>(vec_schema.at(i))));
       } catch (std::exception& e) {
         std::cerr << "unexpected error: " << e.what() << std::endl;
       }
       adapter.import_buffer(
-          pa_name.c_str(), (void*)vec_array.at(i), (void*)vec_schema.at(i));
+          pa_name.c_str(),
+          static_cast<void*>(vec_array.at(i)),
+          static_cast<void*>(vec_schema.at(i)));
     }
     query->submit();
     CHECK(query->query_status() == Query::Status::COMPLETE);
@@ -305,7 +308,8 @@ TEST_CASE("Arrow IO integration tests", "[arrow]") {
     Array array(ctx, uri, TILEDB_READ);
     std::shared_ptr<Query> query(new Query(ctx, array));
     query->set_layout(TILEDB_COL_MAJOR);
-    query->add_range(0, (int32_t)0, (int32_t)(col_size - 1));
+    query->add_range(
+        0, static_cast<int32_t>(0), static_cast<int32_t>(col_size - 1));
 
     std::vector<void*> data_buffers;
     std::vector<uint64_t*> offset_buffers;
@@ -320,8 +324,9 @@ TEST_CASE("Arrow IO integration tests", "[arrow]") {
     vec_schema.resize(data_len);
 
     for (size_t i = 0; i < data_len; i++) {
-      vec_array[i] = (ArrowArray*)malloc(sizeof(ArrowArray));
-      vec_schema[i] = (ArrowSchema*)malloc(sizeof(ArrowSchema));
+      vec_array[i] = static_cast<ArrowArray*>(std::malloc(sizeof(ArrowArray)));
+      vec_schema[i] =
+          static_cast<ArrowSchema*>(std::malloc(sizeof(ArrowSchema)));
     }
 
     tiledb::arrow::ArrowAdapter adapter(query);
@@ -332,7 +337,9 @@ TEST_CASE("Arrow IO integration tests", "[arrow]") {
       auto pa_array = py_data_arrays[py_i];
 
       adapter.export_buffer(
-          pa_name.c_str(), (void*)(vec_array.at(i)), (void*)(vec_schema.at(i)));
+          pa_name.c_str(),
+          static_cast<void*>(vec_array.at(i)),
+          static_cast<void*>(vec_schema.at(i)));
 
       ds_import(
           pa_name,
@@ -353,10 +360,10 @@ TEST_CASE("Arrow IO integration tests", "[arrow]") {
 
     // free structs
     for (auto array_p : vec_array)
-      free(array_p);
+      std::free(array_p);
 
     for (auto schema_p : vec_schema)
-      free(schema_p);
+      std::free(schema_p);
 
     free_query_buffers(query);
   }

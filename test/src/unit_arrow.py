@@ -114,4 +114,5 @@ class DataFactory():
 
       res_val = self.results[key]
       assert_array_equal(val, res_val)
+
     return True
