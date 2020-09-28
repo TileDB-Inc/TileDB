@@ -71,11 +71,17 @@ extern const std::string array_metadata_folder_name;
 /** The default tile capacity. */
 extern const uint64_t capacity;
 
-/** The size of a variable cell offset. */
+/** The size of a variable offset cell. */
 extern const uint64_t cell_var_offset_size;
 
-/** The type of a variable cell offset. */
+/** The type of a variable offset cell. */
 extern const Datatype cell_var_offset_type;
+
+/** The size of a validity cell. */
+extern const uint64_t cell_validity_size;
+
+/** The type of a validity cell. */
+extern const Datatype cell_validity_type;
 
 /** A special value indicating varibale size. */
 extern const uint64_t var_size;

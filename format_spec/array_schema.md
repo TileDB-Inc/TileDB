@@ -1,4 +1,4 @@
-# Array Schema File
+#Array Schema File
 
 The array schema file has name `__array_schema.tdb` and is located here:
 
@@ -69,4 +69,4 @@ The attribute has internal format:
 | Filters | [Filter Pipeline](./filter_pipeline.md) | The filter pipeline used on attribute value tiles |
 | Fill value size | `uint64_t` | The size in bytes of the fill value |
 | Fill value | `uint8_t[]` | The fill value |
-
+| Nullable | `bool` | Whether or not the attribute can be null |

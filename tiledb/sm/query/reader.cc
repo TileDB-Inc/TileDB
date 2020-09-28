@@ -163,13 +163,6 @@ std::vector<std::string> Reader::buffer_names() const {
   return ret;
 }
 
-QueryBuffer Reader::buffer(const std::string& name) const {
-  auto buf = buffers_.find(name);
-  if (buf == buffers_.end())
-    return QueryBuffer{};
-  return buf->second;
-}
-
 bool Reader::incomplete() const {
   return read_state_.overflowed_ || !read_state_.done();
 }
@@ -206,6 +199,51 @@ Status Reader::get_buffer(
     *buffer_val = it->second.buffer_var_;
     *buffer_val_size = it->second.buffer_var_size_;
   }
+
+  return Status::Ok();
+}
+
+Status Reader::get_buffer_nullable(
+    const std::string& name,
+    void** buffer,
+    uint64_t** buffer_size,
+    const ValidityVector** valdity_vector) const {
+  auto it = buffers_.find(name);
+  if (it == buffers_.end()) {
+    *buffer = nullptr;
+    *buffer_size = nullptr;
+    *valdity_vector = nullptr;
+  } else {
+    *buffer = it->second.buffer_;
+    *buffer_size = it->second.buffer_size_;
+    *valdity_vector = &it->second.validity_vector_;
+  }
+
+  return Status::Ok();
+}
+
+Status Reader::get_buffer_nullable(
+    const std::string& name,
+    uint64_t** buffer_off,
+    uint64_t** buffer_off_size,
+    void** buffer_val,
+    uint64_t** buffer_val_size,
+    const ValidityVector** valdity_vector) const {
+  auto it = buffers_.find(name);
+  if (it == buffers_.end()) {
+    *buffer_off = nullptr;
+    *buffer_off_size = nullptr;
+    *buffer_val = nullptr;
+    *buffer_val_size = nullptr;
+    *valdity_vector = nullptr;
+  } else {
+    *buffer_off = (uint64_t*)it->second.buffer_;
+    *buffer_off_size = it->second.buffer_size_;
+    *buffer_val = it->second.buffer_var_;
+    *buffer_val_size = it->second.buffer_var_size_;
+    *valdity_vector = &it->second.validity_vector_;
+  }
+
   return Status::Ok();
 }
 
@@ -344,9 +382,9 @@ void Reader::set_array_schema(const ArraySchema* array_schema) {
 
 Status Reader::set_buffer(
     const std::string& name,
-    void* buffer,
-    uint64_t* buffer_size,
-    bool check_null_buffers) {
+    void* const buffer,
+    uint64_t* const buffer_size,
+    const bool check_null_buffers) {
   // Check buffer
   if (check_null_buffers && (buffer == nullptr || buffer_size == nullptr))
     return LOG_STATUS(Status::ReaderError(
@@ -358,8 +396,8 @@ Status Reader::set_buffer(
         Status::ReaderError("Cannot set buffer; Array schema not set"));
 
   // For easy reference
-  bool is_dim = array_schema_->is_dim(name);
-  bool is_attr = array_schema_->is_attr(name);
+  const bool is_dim = array_schema_->is_dim(name);
+  const bool is_attr = array_schema_->is_attr(name);
 
   // Check that attribute/dimension exists
   if (name != constants::coords && !is_dim && !is_attr)
@@ -367,8 +405,15 @@ Status Reader::set_buffer(
         std::string("Cannot set buffer; Invalid attribute/dimension '") + name +
         "'"));
 
+  // Must not be nullable
+  if (array_schema_->is_nullable(name))
+    return LOG_STATUS(Status::WriterError(
+        std::string("Cannot set buffer; Input attribute/dimension '") + name +
+        "' is nullable"));
+
   // Check that attribute/dimension is fixed-sized
-  bool var_size = (name != constants::coords && array_schema_->var_size(name));
+  const bool var_size =
+      (name != constants::coords && array_schema_->var_size(name));
   if (var_size)
     return LOG_STATUS(Status::ReaderError(
         std::string("Cannot set buffer; Input attribute/dimension '") + name +
@@ -382,7 +427,7 @@ Status Reader::set_buffer(
                     "a zipped coordinate buffer in the same query")));
 
   // Error if setting a new attribute/dimension after initialization
-  bool exists = buffers_.find(name) != buffers_.end();
+  const bool exists = buffers_.find(name) != buffers_.end();
   if (read_state_.initialized_ && !exists)
     return LOG_STATUS(Status::ReaderError(
         std::string("Cannot set buffer for new attribute/dimension '") + name +
@@ -396,11 +441,11 @@ Status Reader::set_buffer(
 
 Status Reader::set_buffer(
     const std::string& name,
-    uint64_t* buffer_off,
-    uint64_t* buffer_off_size,
-    void* buffer_val,
-    uint64_t* buffer_val_size,
-    bool check_null_buffers) {
+    uint64_t* const buffer_off,
+    uint64_t* const buffer_off_size,
+    void* const buffer_val,
+    uint64_t* const buffer_val_size,
+    const bool check_null_buffers) {
   // Check buffer
   if (check_null_buffers &&
       (buffer_off == nullptr || buffer_off_size == nullptr ||
@@ -414,14 +459,20 @@ Status Reader::set_buffer(
         Status::ReaderError("Cannot set buffer; Array schema not set"));
 
   // For easy reference
-  bool is_dim = array_schema_->is_dim(name);
-  bool is_attr = array_schema_->is_attr(name);
+  const bool is_dim = array_schema_->is_dim(name);
+  const bool is_attr = array_schema_->is_attr(name);
 
   // Check that attribute/dimension exists
   if (!is_dim && !is_attr)
     return LOG_STATUS(Status::ReaderError(
         std::string("Cannot set buffer; Invalid attribute/dimension '") + name +
         "'"));
+
+  // Must not be nullable
+  if (array_schema_->is_nullable(name))
+    return LOG_STATUS(Status::WriterError(
+        std::string("Cannot set buffer; Input attribute/dimension '") + name +
+        "' is nullable"));
 
   // Check that attribute/dimension is var-sized
   if (!array_schema_->var_size(name))
@@ -430,7 +481,7 @@ Status Reader::set_buffer(
         "' is fixed-sized"));
 
   // Error if setting a new attribute/dimension after initialization
-  bool exists = buffers_.find(name) != buffers_.end();
+  const bool exists = buffers_.find(name) != buffers_.end();
   if (read_state_.initialized_ && !exists)
     return LOG_STATUS(Status::ReaderError(
         std::string("Cannot set buffer for new attribute/dimension '") + name +
@@ -439,6 +490,110 @@ Status Reader::set_buffer(
   // Set attribute/dimension buffer
   buffers_[name] =
       QueryBuffer(buffer_off, buffer_val, buffer_off_size, buffer_val_size);
+
+  return Status::Ok();
+}
+
+Status Reader::set_buffer(
+    const std::string& name,
+    void* const buffer,
+    uint64_t* const buffer_size,
+    ValidityVector&& validity_vector,
+    const bool check_null_buffers) {
+  // Check buffer
+  if (check_null_buffers && (buffer == nullptr || buffer_size == nullptr))
+    return LOG_STATUS(Status::ReaderError(
+        "Cannot set buffer; Buffer or buffer size is null"));
+
+  // Array schema must exist
+  if (array_schema_ == nullptr)
+    return LOG_STATUS(
+        Status::ReaderError("Cannot set buffer; Array schema not set"));
+
+  // Must be an attribute
+  if (!array_schema_->is_attr(name))
+    return LOG_STATUS(Status::WriterError(
+        std::string("Cannot set buffer; Buffer name '") + name +
+        "' is not an attribute"));
+
+  // Must be fixed-size
+  if (array_schema_->var_size(name))
+    return LOG_STATUS(Status::WriterError(
+        std::string("Cannot set buffer; Input attribute '") + name +
+        "' is var-sized"));
+
+  // Must be nullable
+  if (!array_schema_->is_nullable(name))
+    return LOG_STATUS(Status::WriterError(
+        std::string("Cannot set buffer; Input attribute '") + name +
+        "' is not nullable"));
+
+  // Error if setting a new attribute/dimension after initialization
+  const bool exists = buffers_.find(name) != buffers_.end();
+  if (read_state_.initialized_ && !exists)
+    return LOG_STATUS(Status::ReaderError(
+        std::string("Cannot set buffer for new attribute '") + name +
+        "' after initialization"));
+
+  // Set attribute buffer
+  buffers_[name] = QueryBuffer(
+      buffer, nullptr, buffer_size, nullptr, std::move(validity_vector));
+
+  return Status::Ok();
+}
+
+Status Reader::set_buffer(
+    const std::string& name,
+    uint64_t* const buffer_off,
+    uint64_t* const buffer_off_size,
+    void* const buffer_val,
+    uint64_t* const buffer_val_size,
+    ValidityVector&& validity_vector,
+    const bool check_null_buffers) {
+  // Check buffer
+  if (check_null_buffers &&
+      (buffer_off == nullptr || buffer_off_size == nullptr ||
+       buffer_val == nullptr || buffer_val_size == nullptr))
+    return LOG_STATUS(Status::ReaderError(
+        "Cannot set buffer; Buffer or buffer size is null"));
+
+  // Array schema must exist
+  if (array_schema_ == nullptr)
+    return LOG_STATUS(
+        Status::ReaderError("Cannot set buffer; Array schema not set"));
+
+  // Must be an attribute
+  if (!array_schema_->is_attr(name))
+    return LOG_STATUS(Status::WriterError(
+        std::string("Cannot set buffer; Buffer name '") + name +
+        "' is not an attribute"));
+
+  // Must be fixed-size
+  if (!array_schema_->var_size(name))
+    return LOG_STATUS(Status::WriterError(
+        std::string("Cannot set buffer; Input attribute '") + name +
+        "' is fixed-sized"));
+
+  // Must be nullable
+  if (!array_schema_->is_nullable(name))
+    return LOG_STATUS(Status::WriterError(
+        std::string("Cannot set buffer; Input attribute '") + name +
+        "' is not nullable"));
+
+  // Error if setting a new attribute after initialization
+  const bool exists = buffers_.find(name) != buffers_.end();
+  if (read_state_.initialized_ && !exists)
+    return LOG_STATUS(Status::ReaderError(
+        std::string("Cannot set buffer for new attribute '") + name +
+        "' after initialization"));
+
+  // Set attribute/dimension buffer
+  buffers_[name] = QueryBuffer(
+      buffer_off,
+      buffer_val,
+      buffer_off_size,
+      buffer_val_size,
+      std::move(validity_vector));
 
   return Status::Ok();
 }
@@ -503,6 +658,14 @@ void Reader::compute_result_space_tiles(
     const TileDomain<T>& array_tile_domain,
     const std::vector<TileDomain<T>>& frag_tile_domains,
     std::map<const T*, ResultSpaceTile<T>>* result_space_tiles) {
+  // std::cerr << "JOE compute_result_space_tiles 2 " << std::endl;
+  // std::cerr << "JOE compute_result_space_tiles 2 tile_coords.size() " <<
+  // tile_coords.size() << std::endl; std::cerr << "JOE
+  // compute_result_space_tiles 2 frag_tile_domains.size() " <<
+  // frag_tile_domains.size() << std::endl; std::cerr << "JOE
+  // compute_result_space_tiles 2 result_space_tiles->size() " <<
+  // result_space_tiles->size() << std::endl;
+
   auto fragment_num = (unsigned)frag_tile_domains.size();
   auto dim_num = array_tile_domain.dim_num();
   std::vector<T> start_coords;
@@ -576,6 +739,9 @@ Status Reader::compute_result_cell_slabs(
   STATS_START_TIMER(
       stats::Stats::TimerType::READ_COMPUTE_SPARSE_RESULT_CELL_SLABS_SPARSE)
 
+  // std::cerr << "JOE compute_result_cell_slabs 1, result_cell_slabs->size() "
+  // << result_cell_slabs->size() << std::endl;
+
   // Trivial case
   auto coords_num = (uint64_t)result_coords.size();
   if (coords_num == 0)
@@ -607,8 +773,14 @@ Status Reader::compute_result_cell_slabs(
     it = skip_invalid_elements(++it, coords_end);
   }
 
+  // std::cerr << "JOE compute_result_cell_slabs 2, result_cell_slabs->size() "
+  //  << result_cell_slabs->size() << std::endl;
+
   // Append the last range
   result_cell_slabs->emplace_back(tile, start_pos, end_pos - start_pos + 1);
+
+  // std::cerr << "JOE compute_result_cell_slabs 3, result_cell_slabs->size() "
+  //  << result_cell_slabs->size() << std::endl;
 
   return Status::Ok();
 
@@ -968,6 +1140,9 @@ Status Reader::copy_fixed_cells(
 
   // Update buffer offsets
   *(buffers_[name].buffer_size_) = buffer_offset;
+  if (array_schema_->is_nullable(name))
+    *(buffers_[name].validity_vector_.buffer_size()) =
+        (buffer_offset / cell_size) * constants::cell_validity_size;
 
   return Status::Ok();
 
@@ -1000,8 +1175,10 @@ Status Reader::copy_partitioned_fixed_cells(
   assert(result_cell_slabs);
 
   // For easy reference.
+  auto nullable = array_schema_->is_nullable(*name);
   auto it = buffers_.find(*name);
   auto buffer = (unsigned char*)it->second.buffer_;
+  auto buffer_validity = (unsigned char*)it->second.validity_vector_.buffer();
   auto cell_size = array_schema_->cell_size(*name);
   ByteVecValue fill_value;
   if (array_schema_->is_attr(*name))
@@ -1024,17 +1201,32 @@ Status Reader::copy_partitioned_fixed_cells(
       auto fill_num = bytes_to_copy / fill_value_size;
       for (uint64_t j = 0; j < fill_num; ++j) {
         std::memcpy(buffer + offset, fill_value.data(), fill_value_size);
+        if (nullable) {
+          std::memset(
+              buffer_validity +
+                  (offset / cell_size * constants::cell_validity_size),
+              0,
+              fill_value_size / cell_size * constants::cell_validity_size);
+        }
         offset += fill_value_size;
       }
     } else {  // Non-empty range
       if (stride == UINT64_MAX) {
-        RETURN_NOT_OK(
-            cs.tile_->read(*name, buffer + offset, cs.start_, cs.length_));
+        if (!nullable)
+          RETURN_NOT_OK(
+              cs.tile_->read(*name, buffer, offset, cs.start_, cs.length_));
+        else
+          RETURN_NOT_OK(cs.tile_->read_nullable(
+              *name, buffer, offset, cs.start_, cs.length_, buffer_validity));
       } else {
         auto cell_offset = offset;
         auto start = cs.start_;
         for (uint64_t j = 0; j < cs.length_; ++j) {
-          RETURN_NOT_OK(cs.tile_->read(*name, buffer + cell_offset, start, 1));
+          if (!nullable)
+            RETURN_NOT_OK(cs.tile_->read(*name, buffer, cell_offset, start, 1));
+          else
+            RETURN_NOT_OK(cs.tile_->read_nullable(
+                *name, buffer, cell_offset, start, 1, buffer_validity));
           cell_offset += cell_size;
           start += stride;
         }
@@ -1067,7 +1259,7 @@ Status Reader::copy_var_cells(
   populate_cvc_ctx_cache(result_cell_slabs, ctx_cache);
 
   // Compute the destinations of offsets and var-len data in the buffers.
-  uint64_t total_offset_size, total_var_size;
+  uint64_t total_offset_size, total_var_size, total_validity_size;
   std::unique_ptr<std::vector<uint64_t>> offset_offsets_per_cs =
       ctx_cache->get_offset_offsets_per_cs();
   std::unique_ptr<std::vector<uint64_t>> var_offsets_per_cs =
@@ -1079,14 +1271,17 @@ Status Reader::copy_var_cells(
       offset_offsets_per_cs.get(),
       var_offsets_per_cs.get(),
       &total_offset_size,
-      &total_var_size));
+      &total_var_size,
+      &total_validity_size));
 
   auto it = buffers_.find(name);
   auto buffer_size = it->second.buffer_size_;
   auto buffer_var_size = it->second.buffer_var_size_;
+  auto buffer_validity_size = it->second.validity_vector_.buffer_size();
 
   // Check for overflow and return early (without copying) in that case.
-  if (total_offset_size > *buffer_size || total_var_size > *buffer_var_size) {
+  if (total_offset_size > *buffer_size || total_var_size > *buffer_var_size ||
+      (buffer_validity_size && total_validity_size > *buffer_validity_size)) {
     read_state_.overflowed_ = true;
     return Status::Ok();
   }
@@ -1115,6 +1310,8 @@ Status Reader::copy_var_cells(
   // Update buffer offsets
   *(buffers_[name].buffer_size_) = total_offset_size;
   *(buffers_[name].buffer_var_size_) = total_var_size;
+  if (array_schema_->is_nullable(name))
+    *(buffers_[name].validity_vector_.buffer_size()) = total_validity_size;
 
   return Status::Ok();
 
@@ -1143,8 +1340,10 @@ Status Reader::compute_var_cell_destinations(
     std::vector<uint64_t>* offset_offsets_per_cs,
     std::vector<uint64_t>* var_offsets_per_cs,
     uint64_t* total_offset_size,
-    uint64_t* total_var_size) const {
+    uint64_t* total_var_size,
+    uint64_t* total_validity_size) const {
   // For easy reference
+  auto nullable = array_schema_->is_nullable(name);
   auto num_cs = result_cell_slabs.size();
   auto offset_size = constants::cell_var_offset_size;
   ByteVecValue fill_value;
@@ -1155,6 +1354,7 @@ Status Reader::compute_var_cell_destinations(
   // Compute the destinations for all result cell slabs
   *total_offset_size = 0;
   *total_var_size = 0;
+  *total_validity_size = 0;
   size_t total_cs_length = 0;
   for (uint64_t cs_idx = 0; cs_idx < num_cs; cs_idx++) {
     const auto& cs = result_cell_slabs[cs_idx];
@@ -1163,10 +1363,11 @@ Status Reader::compute_var_cell_destinations(
     uint64_t* tile_offsets = nullptr;
     uint64_t tile_cell_num = 0;
     uint64_t tile_var_size = 0;
+    uint64_t tile_var_cell_size = 0;
     if (cs.tile_ != nullptr) {
-      const auto tile_pair = cs.tile_->tile_pair(name);
-      const auto& tile = tile_pair->first;
-      const auto& tile_var = tile_pair->second;
+      const auto tile_tuple = cs.tile_->tile_tuple(name);
+      const auto& tile = std::get<0>(*tile_tuple);
+      const auto& tile_var = std::get<1>(*tile_tuple);
 
       // Get the internal buffer to the offset values.
       ChunkedBuffer* const chunked_buffer = tile.chunked_buffer();
@@ -1179,6 +1380,7 @@ Status Reader::compute_var_cell_destinations(
       tile_offsets = (uint64_t*)chunked_buffer->get_contiguous_unsafe();
       tile_cell_num = tile.cell_num();
       tile_var_size = tile_var.size();
+      tile_var_cell_size = tile_var.cell_size();
     }
 
     // Compute the destinations for each cell in the range.
@@ -1203,6 +1405,9 @@ Status Reader::compute_var_cell_destinations(
       (*var_offsets_per_cs)[total_cs_length + dest_vec_idx] = *total_var_size;
       *total_offset_size += offset_size;
       *total_var_size += cell_var_size;
+      if (nullable)
+        *total_validity_size +=
+            cell_var_size / tile_var_cell_size * constants::cell_validity_size;
     }
 
     total_cs_length += cs.length_;
@@ -1223,8 +1428,10 @@ Status Reader::copy_partitioned_var_cells(
   assert(result_cell_slabs);
 
   auto it = buffers_.find(*name);
+  auto nullable = array_schema_->is_nullable(*name);
   auto buffer = (unsigned char*)it->second.buffer_;
   auto buffer_var = (unsigned char*)it->second.buffer_var_;
+  auto buffer_validity = (unsigned char*)it->second.validity_vector_.buffer();
   uint64_t offset_size = constants::cell_var_offset_size;
   ByteVecValue fill_value;
   if (array_schema_->is_attr(*name))
@@ -1249,11 +1456,15 @@ Status Reader::copy_partitioned_var_cells(
     // Get tile information, if the range is nonempty.
     uint64_t* tile_offsets = nullptr;
     Tile* tile_var = nullptr;
+    Tile* tile_validity = nullptr;
     uint64_t tile_cell_num = 0;
+    uint64_t tile_var_cell_size = 0;
     if (cs.tile_ != nullptr) {
-      const auto tile_pair = cs.tile_->tile_pair(*name);
-      Tile* const tile = &tile_pair->first;
-      tile_var = &tile_pair->second;
+      const auto tile_tuple = cs.tile_->tile_tuple(*name);
+      Tile* const tile = &std::get<0>(*tile_tuple);
+      tile_var = &std::get<1>(*tile_tuple);
+      tile_validity = &std::get<2>(*tile_tuple);
+
       // Get the internal buffer to the offset values.
       ChunkedBuffer* const chunked_buffer = tile->chunked_buffer();
 
@@ -1264,6 +1475,7 @@ Status Reader::copy_partitioned_var_cells(
 
       tile_offsets = (uint64_t*)chunked_buffer->get_contiguous_unsafe();
       tile_cell_num = tile->cell_num();
+      tile_var_cell_size = tile_var->cell_size();
     }
 
     // Copy each cell in the range
@@ -1276,6 +1488,7 @@ Status Reader::copy_partitioned_var_cells(
       // offset_offsets[dest_vec_idx];
       auto var_offset = (*var_offsets_per_cs)[arr_offset + dest_vec_idx];
       auto var_dest = buffer_var + var_offset;
+      auto validity_dest = buffer_validity + (var_offset / tile_var_cell_size);
 
       // Copy offset
       std::memcpy(offset_dest, &var_offset, offset_size);
@@ -1283,6 +1496,12 @@ Status Reader::copy_partitioned_var_cells(
       // Copy variable-sized value
       if (cs.tile_ == nullptr) {
         std::memcpy(var_dest, fill_value.data(), fill_value_size);
+        if (nullable)
+          std::memset(
+              validity_dest,
+              0,
+              fill_value_size / tile_var_cell_size *
+                  constants::cell_validity_size);
       } else {
         const uint64_t cell_var_size =
             (cell_idx != tile_cell_num - 1) ?
@@ -1290,7 +1509,14 @@ Status Reader::copy_partitioned_var_cells(
                 tile_var->size() - (tile_offsets[cell_idx] - tile_offsets[0]);
         const uint64_t tile_var_offset =
             tile_offsets[cell_idx] - tile_offsets[0];
+
         RETURN_NOT_OK(tile_var->read(var_dest, cell_var_size, tile_var_offset));
+
+        if (nullable)
+          RETURN_NOT_OK(tile_validity->read(
+              validity_dest,
+              cell_var_size / tile_var_cell_size,
+              tile_var_offset / tile_var_cell_size));
       }
     }
 
@@ -1304,6 +1530,8 @@ template <class T>
 void Reader::compute_result_space_tiles(
     const Subarray& subarray,
     std::map<const T*, ResultSpaceTile<T>>* result_space_tiles) const {
+  // std::cerr << "JOE compute_result_space_tiles 1 " << std::endl;
+
   // For easy reference
   auto domain = array_schema_->domain()->domain();
   auto tile_extents = array_schema_->domain()->tile_extents();
@@ -1391,6 +1619,10 @@ Status Reader::compute_result_cell_slabs_row_col(
   // relevant result tiles of the dense fragments
   compute_result_space_tiles<T>(subarray, result_space_tiles);
 
+  // std::cerr << "JOE compute_result_cell_slabs_row_col,
+  // result_space_tiles->size() "
+  //  << result_space_tiles->size() << std::endl;
+
   // Gather result cell slabs and pointers to result tiles
   // `result_tiles` holds pointers to tiles that store actual results,
   // which can be stored either in `sparse_result_tiles` (sparse)
@@ -1405,15 +1637,19 @@ Status Reader::compute_result_cell_slabs_row_col(
     if (result_cell_slab.tile_ != nullptr) {
       auto frag_idx = result_cell_slab.tile_->frag_idx();
       auto tile_idx = result_cell_slab.tile_->tile_idx();
-      auto frag_tile_pair = std::pair<unsigned, uint64_t>(frag_idx, tile_idx);
-      auto it = frag_tile_set->find(frag_tile_pair);
+      auto frag_tile_tuple = std::pair<unsigned, uint64_t>(frag_idx, tile_idx);
+      auto it = frag_tile_set->find(frag_tile_tuple);
       if (it == frag_tile_set->end()) {
-        frag_tile_set->insert(frag_tile_pair);
+        frag_tile_set->insert(frag_tile_tuple);
         result_tiles->push_back(result_cell_slab.tile_);
       }
     }
   }
   *result_coords_pos = rcs_it.result_coords_pos();
+
+  // std::cerr << "JOE compute_result_cell_slabs_row_col,
+  // result_cell_slabs->size() "
+  //  << result_cell_slabs->size() << std::endl;
 
   return Status::Ok();
 }
@@ -1457,8 +1693,8 @@ Status Reader::compute_result_coords(
   STATS_START_TIMER(stats::Stats::TimerType::READ_COMPUTE_RESULT_COORDS)
 
   // Get overlapping tile indexes
-  typedef std::pair<unsigned, uint64_t> FragTilePair;
-  std::map<FragTilePair, size_t> result_tile_map;
+  typedef std::pair<unsigned, uint64_t> FragTileTuple;
+  std::map<FragTileTuple, size_t> result_tile_map;
   std::vector<bool> single_fragment;
 
   RETURN_CANCEL_OR_ERROR(compute_sparse_result_tiles(
@@ -1543,6 +1779,8 @@ Status Reader::compute_result_coords(
         sub_partitioner_memory_budget,
         sub_partitioner_memory_budget,
         storage_manager_->compute_tp());
+
+    // TODO JOE: set null budget?
 
     // Set the individual attribute budgets in the sub-partitioner
     // to the same values as in the parent partitioner.
@@ -1694,12 +1932,17 @@ Status Reader::dense_read() {
   auto& subarray = read_state_.partitioner_.current();
 
   RETURN_NOT_OK(subarray.compute_tile_coords<T>());
+  // std::cerr << "JOE subarray.tile_coords().size() " <<
+  // subarray.tile_coords().size() << std::endl;
   RETURN_NOT_OK(compute_result_cell_slabs<T>(
       subarray,
       &result_space_tiles,
       &result_coords,
       &result_tiles,
       &result_cell_slabs));
+
+  // std::cerr << "JOE dense_read result_cell_slabs.size() " <<
+  // result_cell_slabs.size() << std::endl;
 
   get_result_tile_stats(result_tiles);
   get_result_cell_stats(result_cell_slabs);
@@ -1934,6 +2177,7 @@ Status Reader::unfilter_tiles(
   STATS_START_TIMER(stat_type);
 
   auto var_size = array_schema_->var_size(name);
+  auto nullable = array_schema_->is_nullable(name);
   auto num_tiles = static_cast<uint64_t>(result_tiles.size());
   auto encryption_key = array_->encryption_key();
 
@@ -1949,12 +2193,12 @@ Status Reader::unfilter_tiles(
         if (name != constants::coords ||
             (name == constants::coords && format_version < 5) ||
             (array_schema_->is_dim(name) && format_version >= 5)) {
-          auto tile_pair = tile->tile_pair(name);
+          auto tile_tuple = tile->tile_tuple(name);
 
           // Skip non-existent attributes/dimensions (e.g. coords in the
           // dense case).
-          if (tile_pair == nullptr ||
-              tile_pair->first.filtered_buffer()->size() == 0)
+          if (tile_tuple == nullptr ||
+              std::get<0>(*tile_tuple).filtered_buffer()->size() == 0)
             return Status::Ok();
 
           // Get information about the tile in its fragment.
@@ -1964,8 +2208,9 @@ Status Reader::unfilter_tiles(
           RETURN_NOT_OK(fragment->file_offset(
               *encryption_key, name, tile_idx, &tile_attr_offset));
 
-          auto& t = tile_pair->first;
-          auto& t_var = tile_pair->second;
+          auto& t = std::get<0>(*tile_tuple);
+          auto& t_var = std::get<1>(*tile_tuple);
+          auto& t_validity = std::get<2>(*tile_tuple);
 
           // If we're performing selective unfiltering, lookup the result
           // cell slab ranges associated with this tile. If we do not have
@@ -2002,13 +2247,35 @@ Status Reader::unfilter_tiles(
                 t_var.filtered_buffer()));
           }
 
+          // Cache 't_validity'.
+          if (nullable && t_validity.filtered()) {
+            auto tile_attr_validity_uri = fragment->validity_uri(name);
+            uint64_t tile_attr_validity_offset;
+            RETURN_NOT_OK(fragment->file_validity_offset(
+                *encryption_key, name, tile_idx, &tile_attr_validity_offset));
+
+            // Store the filtered buffer in the tile cache.
+            RETURN_NOT_OK(storage_manager_->write_to_cache(
+                tile_attr_validity_uri,
+                tile_attr_validity_offset,
+                t_validity.filtered_buffer()));
+          }
+
           // Unfilter 't' for fixed-sized tiles, otherwise unfilter both 't' and
           // 't_var' for var-sized tiles.
           if (!var_size) {
-            RETURN_NOT_OK(unfilter_tile(name, &t, result_cell_slab_ranges));
+            if (!nullable)
+              RETURN_NOT_OK(unfilter_tile(name, &t, result_cell_slab_ranges));
+            else
+              RETURN_NOT_OK(unfilter_tile_nullable(
+                  name, &t, &t_validity, result_cell_slab_ranges));
           } else {
-            RETURN_NOT_OK(
-                unfilter_tile(name, &t, &t_var, result_cell_slab_ranges));
+            if (!nullable)
+              RETURN_NOT_OK(
+                  unfilter_tile(name, &t, &t_var, result_cell_slab_ranges));
+            else
+              RETURN_NOT_OK(unfilter_tile_nullable(
+                  name, &t, &t_var, &t_validity, result_cell_slab_ranges));
           }
         }
 
@@ -2086,6 +2353,85 @@ Status Reader::unfilter_tile(
   return Status::Ok();
 }
 
+Status Reader::unfilter_tile_nullable(
+    const std::string& name,
+    Tile* tile,
+    Tile* tile_validity,
+    const std::vector<std::pair<uint64_t, uint64_t>>* result_cell_slab_ranges)
+    const {
+  FilterPipeline filters = array_schema_->filters(name);
+
+  // Append an encryption unfilter when necessary.
+  RETURN_NOT_OK(FilterPipeline::append_encryption_filter(
+      &filters, array_->get_encryption_key()));
+
+  // Skip selective unfiltering on coordinate tiles.
+  if (name == constants::coords || tile->stores_coords()) {
+    result_cell_slab_ranges = nullptr;
+  }
+
+  // Reverse the tile filters.
+  RETURN_NOT_OK(filters.run_reverse(
+      tile,
+      storage_manager_->compute_tp(),
+      storage_manager_->config(),
+      result_cell_slab_ranges));
+
+  // Reverse the validity tile filters.
+  RETURN_NOT_OK(filters.run_reverse(
+      tile_validity,
+      storage_manager_->compute_tp(),
+      storage_manager_->config(),
+      nullptr));
+
+  return Status::Ok();
+}
+
+Status Reader::unfilter_tile_nullable(
+    const std::string& name,
+    Tile* tile,
+    Tile* tile_var,
+    Tile* tile_validity,
+    const std::vector<std::pair<uint64_t, uint64_t>>* result_cell_slab_ranges)
+    const {
+  FilterPipeline offset_filters = array_schema_->cell_var_offsets_filters();
+  FilterPipeline filters = array_schema_->filters(name);
+
+  // Append an encryption unfilter when necessary.
+  RETURN_NOT_OK(FilterPipeline::append_encryption_filter(
+      &offset_filters, array_->get_encryption_key()));
+  RETURN_NOT_OK(FilterPipeline::append_encryption_filter(
+      &filters, array_->get_encryption_key()));
+
+  // Skip selective unfiltering on coordinate tiles.
+  if (name == constants::coords || tile->stores_coords()) {
+    result_cell_slab_ranges = nullptr;
+  }
+
+  // Reverse the tile filters, but do not use selective
+  // unfiltering for offset tiles.
+  RETURN_NOT_OK(offset_filters.run_reverse(
+      tile,
+      storage_manager_->compute_tp(),
+      storage_manager_->config(),
+      nullptr));
+  RETURN_NOT_OK(filters.run_reverse(
+      tile,
+      tile_var,
+      storage_manager_->compute_tp(),
+      storage_manager_->config(),
+      result_cell_slab_ranges));
+
+  // Reverse the validity tile filters.
+  RETURN_NOT_OK(filters.run_reverse(
+      tile_validity,
+      storage_manager_->compute_tp(),
+      storage_manager_->config(),
+      nullptr));
+
+  return Status::Ok();
+}
+
 Status Reader::get_all_result_coords(
     ResultTile* tile, std::vector<ResultCoords>* result_coords) const {
   auto coords_num = tile->cell_num();
@@ -2144,6 +2490,7 @@ Status Reader::init_read_state() {
   read_state_.unsplittable_ = false;
 
   // Set result size budget
+  // TODO JOE
   for (const auto& a : buffers_) {
     auto attr_name = a.first;
     auto buffer_size = a.second.buffer_size_;
@@ -2196,6 +2543,53 @@ Status Reader::init_tile(
       0));
   RETURN_NOT_OK(
       tile_var->init_filtered(format_version, type, datatype_size(type), 0));
+  return Status::Ok();
+}
+
+Status Reader::init_tile_nullable(
+    uint32_t format_version,
+    const std::string& name,
+    Tile* tile,
+    Tile* tile_validity) const {
+  // For easy reference
+  auto cell_size = array_schema_->cell_size(name);
+  auto type = array_schema_->type(name);
+  auto is_coords = (name == constants::coords);
+  auto dim_num = (is_coords) ? array_schema_->dim_num() : 0;
+
+  // Initialize
+  RETURN_NOT_OK(tile->init_filtered(format_version, type, cell_size, dim_num));
+  RETURN_NOT_OK(tile_validity->init_filtered(
+      format_version,
+      constants::cell_validity_type,
+      constants::cell_validity_size,
+      0));
+
+  return Status::Ok();
+}
+
+Status Reader::init_tile_nullable(
+    uint32_t format_version,
+    const std::string& name,
+    Tile* tile,
+    Tile* tile_var,
+    Tile* tile_validity) const {
+  // For easy reference
+  auto type = array_schema_->type(name);
+
+  // Initialize
+  RETURN_NOT_OK(tile->init_filtered(
+      format_version,
+      constants::cell_var_offset_type,
+      constants::cell_var_offset_size,
+      0));
+  RETURN_NOT_OK(
+      tile_var->init_filtered(format_version, type, datatype_size(type), 0));
+  RETURN_NOT_OK(tile_validity->init_filtered(
+      format_version,
+      constants::cell_validity_type,
+      constants::cell_validity_size,
+      0));
   return Status::Ok();
 }
 
@@ -2302,6 +2696,7 @@ Status Reader::read_tiles(
 
   // For each tile, read from its fragment.
   const bool var_size = array_schema_->var_size(name);
+  const bool nullable = array_schema_->is_nullable(name);
   const auto encryption_key = array_->encryption_key();
 
   // Gather the unique fragments indexes for which there are tiles
@@ -2346,14 +2741,22 @@ Status Reader::read_tiles(
       tile->init_attr_tile(name);
     }
 
-    ResultTile::TilePair* const tile_pair = tile->tile_pair(name);
-    assert(tile_pair != nullptr);
-    Tile* const t = &tile_pair->first;
-    Tile* const t_var = &tile_pair->second;
+    ResultTile::TileTuple* const tile_tuple = tile->tile_tuple(name);
+    assert(tile_tuple != nullptr);
+    Tile* const t = &std::get<0>(*tile_tuple);
+    Tile* const t_var = &std::get<1>(*tile_tuple);
+    Tile* const t_validity = &std::get<2>(*tile_tuple);
     if (!var_size) {
-      RETURN_NOT_OK(init_tile(format_version, name, t));
+      if (nullable)
+        RETURN_NOT_OK(init_tile_nullable(format_version, name, t, t_validity));
+      else
+        RETURN_NOT_OK(init_tile(format_version, name, t));
     } else {
-      RETURN_NOT_OK(init_tile(format_version, name, t, t_var));
+      if (nullable)
+        RETURN_NOT_OK(
+            init_tile_nullable(format_version, name, t, t_var, t_validity));
+      else
+        RETURN_NOT_OK(init_tile(format_version, name, t, t_var));
     }
 
     // Get information about the tile in its fragment
@@ -2374,6 +2777,7 @@ Status Reader::read_tiles(
         t->filtered_buffer(),
         tile_persisted_size,
         &cache_hit));
+
     if (!cache_hit) {
       // Add the region of the fragment to be read.
       RETURN_NOT_OK(t->filtered_buffer()->realloc(tile_persisted_size));
@@ -2412,6 +2816,36 @@ Status Reader::read_tiles(
             tile_var_persisted_size);
       }
     }
+
+    if (nullable) {
+      auto tile_validity_attr_uri = fragment->validity_uri(name);
+      uint64_t tile_attr_validity_offset;
+      RETURN_NOT_OK(fragment->file_validity_offset(
+          *encryption_key, name, tile_idx, &tile_attr_validity_offset));
+      uint64_t tile_validity_persisted_size;
+      RETURN_NOT_OK(fragment->persisted_tile_validity_size(
+          *encryption_key, name, tile_idx, &tile_validity_persisted_size));
+
+      Buffer cached_valdity_buffer;
+      RETURN_NOT_OK(storage_manager_->read_from_cache(
+          tile_validity_attr_uri,
+          tile_attr_validity_offset,
+          t_validity->filtered_buffer(),
+          tile_validity_persisted_size,
+          &cache_hit));
+
+      if (!cache_hit) {
+        // Add the region of the fragment to be read.
+        RETURN_NOT_OK(t_validity->filtered_buffer()->realloc(
+            tile_validity_persisted_size));
+        t_validity->filtered_buffer()->set_size(tile_validity_persisted_size);
+        t_validity->filtered_buffer()->reset_offset();
+        all_regions[tile_validity_attr_uri].emplace_back(
+            tile_attr_validity_offset,
+            t_validity->filtered_buffer()->data(),
+            tile_validity_persisted_size);
+      }
+    }
   }
 
   // We're done accessing elements within `result_tiles`.
@@ -2439,6 +2873,9 @@ void Reader::reset_buffer_sizes() {
     *(it.second.buffer_size_) = it.second.original_buffer_size_;
     if (it.second.buffer_var_size_ != nullptr)
       *(it.second.buffer_var_size_) = it.second.original_buffer_var_size_;
+    if (it.second.validity_vector_.buffer_size() != nullptr)
+      *(it.second.validity_vector_.buffer_size()) =
+          it.second.original_validity_vector_size_;
   }
 }
 
@@ -2671,6 +3108,8 @@ void Reader::zero_out_buffer_sizes() {
       *(buffer.second.buffer_size_) = 0;
     if (buffer.second.buffer_var_size_ != nullptr)
       *(buffer.second.buffer_var_size_) = 0;
+    if (buffer.second.validity_vector_.buffer_size() != nullptr)
+      *(buffer.second.validity_vector_.buffer_size()) = 0;
   }
 }
 
@@ -2700,6 +3139,7 @@ void Reader::erase_coord_tiles(std::vector<ResultTile>* result_tiles) const {
 }
 
 void Reader::get_dim_attr_stats() const {
+  // TODO JOE
   for (const auto& it : buffers_) {
     const auto& name = it.first;
     auto var_size = array_schema_->var_size(name);

@@ -67,7 +67,7 @@ class Attribute {
    * @note The default number of values per cell is 1 for all datatypes except
    *     `ANY`, which is always variable-sized.
    */
-  Attribute(const std::string& name, Datatype type);
+  Attribute(const std::string& name, Datatype type, bool nullable = false);
 
   /**
    * Constructor. It clones the input attribute.
@@ -128,6 +128,13 @@ class Attribute {
    */
   Status set_cell_val_num(unsigned int cell_val_num);
 
+  /**
+   * Sets the nullability for this attribute.
+   *
+   * @return Status
+   */
+  Status set_nullable(bool nullable);
+
   /** Sets the filter pipeline for this attribute. */
   Status set_filter_pipeline(const FilterPipeline* pipeline);
 
@@ -158,6 +165,12 @@ class Attribute {
    */
   bool var_size() const;
 
+  /**
+   * Returns *true* if this is a nullable attribute, and *false*
+   * otherwise.
+   */
+  bool nullable() const;
+
  private:
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
@@ -165,6 +178,9 @@ class Attribute {
 
   /** The attribute number of values per cell. */
   unsigned cell_val_num_;
+
+  /** True if this attribute may be null. */
+  bool nullable_;
 
   /** The attribute filter pipeline. */
   FilterPipeline filters_;

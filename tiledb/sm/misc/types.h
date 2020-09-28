@@ -237,65 +237,6 @@ typedef std::vector<uint8_t> ByteVecValue;
 /** A byte vector. */
 typedef std::vector<uint8_t> ByteVec;
 
-/** Contains the buffer(s) and buffer size(s) for some attribute/dimension. */
-struct QueryBuffer {
-  /**
-   * The attribute/dimension buffer. In case the attribute/dimension is
-   * var-sized, this is the offsets buffer.
-   */
-  void* buffer_;
-  /**
-   * For a var-sized attribute/dimension, this is the data buffer. It is
-   * `nullptr` for fixed-sized attributes/dimensions.
-   */
-  void* buffer_var_;
-  /**
-   * The size (in bytes) of `buffer_`. Note that this size may be altered by
-   * a read query to reflect the useful data written in the buffer.
-   */
-  uint64_t* buffer_size_;
-  /**
-   * The size (in bytes) of `buffer_var_`. Note that this size may be altered
-   * by a read query to reflect the useful data written in the buffer.
-   */
-  uint64_t* buffer_var_size_;
-  /**
-   * This is the original size (in bytes) of `buffer_` (before
-   * potentially altered by the query).
-   */
-  uint64_t original_buffer_size_;
-  /**
-   * This is the original size (in bytes) of `buffer_var_` (before
-   * potentially altered by the query).
-   */
-  uint64_t original_buffer_var_size_;
-
-  /** Constructor. */
-  QueryBuffer() {
-    buffer_ = nullptr;
-    buffer_var_ = nullptr;
-    buffer_size_ = nullptr;
-    buffer_var_size_ = nullptr;
-    original_buffer_size_ = 0;
-    original_buffer_var_size_ = 0;
-  }
-
-  /** Constructor. */
-  QueryBuffer(
-      void* buffer,
-      void* buffer_var,
-      uint64_t* buffer_size,
-      uint64_t* buffer_var_size)
-      : buffer_(buffer)
-      , buffer_var_(buffer_var)
-      , buffer_size_(buffer_size)
-      , buffer_var_size_(buffer_var_size) {
-    original_buffer_size_ = *buffer_size;
-    original_buffer_var_size_ =
-        (buffer_var_size_ != nullptr) ? *buffer_var_size : 0;
-  }
-};
-
 }  // namespace sm
 
 }  // namespace tiledb

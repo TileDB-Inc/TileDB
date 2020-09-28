@@ -86,6 +86,12 @@ const uint64_t cell_var_offset_size = sizeof(uint64_t);
 /** The type of a variable cell offset. */
 const Datatype cell_var_offset_type = Datatype::UINT64;
 
+/** The size of a validity cell. */
+const uint64_t cell_validity_size = sizeof(uint8_t);
+
+/** The type of a validity cell. */
+const Datatype cell_validity_type = Datatype::UINT8;
+
 /** A special value indicating variable size. */
 const uint64_t var_size = std::numeric_limits<uint64_t>::max();
 
@@ -449,7 +455,7 @@ const int32_t library_version[3] = {
     TILEDB_VERSION_MAJOR, TILEDB_VERSION_MINOR, TILEDB_VERSION_PATCH};
 
 /** The TileDB serialization format version number. */
-const uint32_t format_version = 6;
+const uint32_t format_version = 7;
 
 /** The maximum size of a tile chunk (unit of compression) in bytes. */
 const uint64_t max_tile_chunk_size = 64 * 1024;

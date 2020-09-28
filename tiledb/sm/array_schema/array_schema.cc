@@ -327,6 +327,13 @@ bool ArraySchema::is_dim(const std::string& name) const {
   return this->dimension(name) != nullptr;
 }
 
+bool ArraySchema::is_nullable(const std::string& name) const {
+  const Attribute* const attr = this->attribute(name);
+  if (attr == nullptr)
+    return false;
+  return attr->nullable();
+}
+
 // ===== FORMAT =====
 // version (uint32_t)
 // allow_dups (bool)
