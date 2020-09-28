@@ -230,6 +230,7 @@ void check_save_to_file() {
   ss << "sm.io_concurrency_level " << std::thread::hardware_concurrency()
      << "\n";
   ss << "sm.memory_budget 5368709120\n";
+  ss << "sm.memory_budget_validity 5368709120\n";
   ss << "sm.memory_budget_var 10737418240\n";
   ss << "sm.num_tbb_threads -1\n";
   ss << "sm.skip_checksum_validation false\n";
@@ -433,6 +434,7 @@ TEST_CASE("C API: Test config iter", "[capi], [config]") {
   all_param_values["sm.tile_cache_size"] = "100";
   all_param_values["sm.memory_budget"] = "5368709120";
   all_param_values["sm.memory_budget_var"] = "10737418240";
+  all_param_values["sm.memory_budget_validity"] = "5368709120";
   all_param_values["sm.sub_partitioner_memory_budget"] = "0";
   all_param_values["sm.enable_signal_handlers"] = "true";
   all_param_values["sm.compute_concurrency_level"] =

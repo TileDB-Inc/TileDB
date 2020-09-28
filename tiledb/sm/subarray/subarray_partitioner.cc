@@ -64,10 +64,12 @@ SubarrayPartitioner::SubarrayPartitioner(
     const Subarray& subarray,
     uint64_t memory_budget,
     uint64_t memory_budget_var,
+    uint64_t memory_budget_validity,
     ThreadPool* const compute_tp)
     : subarray_(subarray)
     , memory_budget_(memory_budget)
     , memory_budget_var_(memory_budget_var)
+    , memory_budget_validity_(memory_budget_validity)
     , compute_tp_(compute_tp) {
   subarray_.compute_tile_overlap(compute_tp_);
   state_.start_ = 0;
@@ -155,6 +157,12 @@ Status SubarrayPartitioner::get_result_budget(
         std::string("Cannot get result budget; Input attribute/dimension '") +
         name + "' is var-sized"));
 
+  // Check if the attribute is nullable
+  if (array_schema->is_nullable(name))
+    return LOG_STATUS(Status::SubarrayPartitionerError(
+        std::string("Cannot get result budget; Input attribute/dimension '") +
+        name + "' is nullable"));
+
   // Check if budget has been set
   auto b_it = budget_.find(name);
   if (b_it == budget_.end())
@@ -204,6 +212,12 @@ Status SubarrayPartitioner::get_result_budget(
         std::string("Cannot get result budget; Input attribute/dimension '") +
         name + "' is fixed-sized"));
 
+  // Check if the attribute is nullable
+  if (array_schema->is_nullable(name))
+    return LOG_STATUS(Status::SubarrayPartitionerError(
+        std::string("Cannot get result budget; Input attribute/dimension '") +
+        name + "' is nullable"));
+
   // Check if budget has been set
   auto b_it = budget_.find(name);
   if (b_it == budget_.end())
@@ -219,15 +233,119 @@ Status SubarrayPartitioner::get_result_budget(
   return Status::Ok();
 }
 
+Status SubarrayPartitioner::get_result_budget_nullable(
+    const char* name, uint64_t* budget, uint64_t* budget_validity) const {
+  // Check attribute name
+  if (name == nullptr)
+    return LOG_STATUS(Status::SubarrayPartitionerError(
+        "Cannot get result budget; Attribute name cannot be null"));
+
+  // Check budget pointers
+  if (budget == nullptr || budget_validity == nullptr)
+    return LOG_STATUS(Status::SubarrayPartitionerError(
+        "Cannot get result budget; Invalid budget input"));
+
+  // For easy reference
+  auto array_schema = subarray_.array()->array_schema();
+  bool is_attr = array_schema->is_attr(name);
+
+  // Check if attribute exists
+  if (!is_attr)
+    return LOG_STATUS(Status::SubarrayPartitionerError(
+        std::string("Cannot get result budget; Invalid attribute '") + name +
+        "'"));
+
+  // Check if the attribute is fixed-sized
+  if (array_schema->var_size(name))
+    return LOG_STATUS(Status::SubarrayPartitionerError(
+        std::string("Cannot get result budget; Input attribute '") + name +
+        "' is var-sized"));
+
+  // Check if the attribute is nullable
+  if (!array_schema->is_nullable(name))
+    return LOG_STATUS(Status::SubarrayPartitionerError(
+        std::string("Cannot get result budget; Input attribute '") + name +
+        "' is not nullable"));
+
+  // Check if budget has been set
+  auto b_it = budget_.find(name);
+  if (b_it == budget_.end())
+    return LOG_STATUS(Status::SubarrayPartitionerError(
+        std::string("Cannot get result budget; Budget not set for "
+                    "attribute '") +
+        name + "'"));
+
+  // Get budgets
+  *budget = b_it->second.size_fixed_;
+  *budget_validity = b_it->second.size_validity_;
+
+  return Status::Ok();
+}
+
+Status SubarrayPartitioner::get_result_budget_nullable(
+    const char* name,
+    uint64_t* budget_off,
+    uint64_t* budget_val,
+    uint64_t* budget_validity) const {
+  // Check attribute/dimension name
+  if (name == nullptr)
+    return LOG_STATUS(Status::SubarrayPartitionerError(
+        "Cannot get result budget; Attribute/Dimension name cannot be null"));
+
+  // Check budget pointers
+  if (budget_off == nullptr || budget_val == nullptr ||
+      budget_validity == nullptr)
+    return LOG_STATUS(Status::SubarrayPartitionerError(
+        "Cannot get result budget; Invalid budget input"));
+
+  // For easy reference
+  auto array_schema = subarray_.array()->array_schema();
+  bool is_attr = array_schema->is_attr(name);
+
+  // Check if attribute exists
+  if (!is_attr)
+    return LOG_STATUS(Status::SubarrayPartitionerError(
+        std::string("Cannot get result budget; Invalid attribute '") + name +
+        "'"));
+
+  // Check if the attribute is var-sized
+  if (!array_schema->var_size(name))
+    return LOG_STATUS(Status::SubarrayPartitionerError(
+        std::string("Cannot get result budget; Input attribute '") + name +
+        "' is fixed-sized"));
+
+  // Check if the attribute is nullable
+  if (!array_schema->is_nullable(name))
+    return LOG_STATUS(Status::SubarrayPartitionerError(
+        std::string("Cannot get result budget; Input attribute '") + name +
+        "' is not nullable"));
+
+  // Check if budget has been set
+  auto b_it = budget_.find(name);
+  if (b_it == budget_.end())
+    return LOG_STATUS(Status::SubarrayPartitionerError(
+        std::string("Cannot get result budget; Budget not set for "
+                    "attribute '") +
+        name + "'"));
+
+  // Get budget
+  *budget_off = b_it->second.size_fixed_;
+  *budget_val = b_it->second.size_var_;
+  *budget_validity = b_it->second.size_validity_;
+
+  return Status::Ok();
+}
+
 const std::unordered_map<std::string, SubarrayPartitioner::ResultBudget>*
 SubarrayPartitioner::get_result_budgets() const {
   return &budget_;
 }
 
 Status SubarrayPartitioner::get_memory_budget(
-    uint64_t* budget, uint64_t* budget_var) const {
+    uint64_t* budget, uint64_t* budget_var, uint64_t* budget_validity) const {
   *budget = memory_budget_;
   *budget_var = memory_budget_var_;
+  *budget_validity = memory_budget_validity_;
   return Status::Ok();
 }
 
@@ -302,7 +420,14 @@ Status SubarrayPartitioner::set_result_budget(
         std::string("Cannot set result budget; Input attribute/dimension '") +
         name + "' is var-sized"));
 
-  budget_[name] = ResultBudget{budget, 0};
+  // Check if the attribute/dimension is nullable
+  bool nullable = array_schema->is_nullable(name);
+  if (nullable)
+    return LOG_STATUS(Status::SubarrayPartitionerError(
+        std::string("Cannot set result budget; Input attribute/dimension '") +
+        name + "' is nullable"));
+
+  budget_[name] = ResultBudget{budget, 0, 0};
 
   return Status::Ok();
 }
@@ -336,15 +461,97 @@ Status SubarrayPartitioner::set_result_budget(
         std::string("Cannot set result budget; Input attribute/dimension '") +
         name + "' is fixed-sized"));
 
-  budget_[name] = ResultBudget{budget_off, budget_val};
+  // Check if the attribute/dimension is nullable
+  bool nullable = array_schema->is_nullable(name);
+  if (nullable)
+    return LOG_STATUS(Status::SubarrayPartitionerError(
+        std::string("Cannot set result budget; Input attribute/dimension '") +
+        name + "' is nullable"));
+
+  budget_[name] = ResultBudget{budget_off, budget_val, 0};
+
+  return Status::Ok();
+}
+
+Status SubarrayPartitioner::set_result_budget_nullable(
+    const char* name, uint64_t budget, uint64_t budget_validity) {
+  // Check attribute/dimension name
+  if (name == nullptr)
+    return LOG_STATUS(Status::SubarrayPartitionerError(
+        "Cannot set result budget; Attribute name cannot be null"));
+
+  // For easy reference
+  auto array_schema = subarray_.array()->array_schema();
+  bool is_attr = array_schema->is_attr(name);
+
+  // Check if attribute exists
+  if (!is_attr)
+    return LOG_STATUS(Status::SubarrayPartitionerError(
+        std::string("Cannot set result budget; Invalid attribute '") + name +
+        "'"));
+
+  // Check if the attribute is fixed-sized
+  bool var_size = array_schema->var_size(name);
+  if (var_size)
+    return LOG_STATUS(Status::SubarrayPartitionerError(
+        std::string("Cannot set result budget; Input attribute '") + name +
+        "' is var-sized"));
+
+  // Check if the attribute is nullable
+  bool nullable = array_schema->is_nullable(name);
+  if (!nullable)
+    return LOG_STATUS(Status::SubarrayPartitionerError(
+        std::string("Cannot set result budget; Input attribute '") + name +
+        "' is not nullable"));
+
+  budget_[name] = ResultBudget{budget, 0, budget_validity};
+
+  return Status::Ok();
+}
+
+Status SubarrayPartitioner::set_result_budget_nullable(
+    const char* name,
+    uint64_t budget_off,
+    uint64_t budget_val,
+    uint64_t budget_validity) {
+  // Check attribute/dimension name
+  if (name == nullptr)
+    return LOG_STATUS(Status::SubarrayPartitionerError(
+        "Cannot set result budget; Attribute name cannot be null"));
+
+  // For easy reference
+  auto array_schema = subarray_.array()->array_schema();
+  bool is_attr = array_schema->is_attr(name);
+
+  // Check if attribute exists
+  if (!is_attr)
+    return LOG_STATUS(Status::SubarrayPartitionerError(
+        std::string("Cannot set result budget; Invalid attribute '") + name +
+        "'"));
+
+  // Check if the attribute is var-sized
+  if (!array_schema->var_size(name))
+    return LOG_STATUS(Status::SubarrayPartitionerError(
+        std::string("Cannot set result budget; Input attribute '") + name +
+        "' is fixed-sized"));
+
+  // Check if the attribute is nullable
+  bool nullable = array_schema->is_nullable(name);
+  if (!nullable)
+    return LOG_STATUS(Status::SubarrayPartitionerError(
+        std::string("Cannot set result budget; Input attribute '") + name +
+        "' is not nullable"));
+
+  budget_[name] = ResultBudget{budget_off, budget_val, budget_validity};
 
   return Status::Ok();
 }
 
 Status SubarrayPartitioner::set_memory_budget(
-    uint64_t budget, uint64_t budget_var) {
+    uint64_t budget, uint64_t budget_var, uint64_t budget_validity) {
   memory_budget_ = budget;
   memory_budget_var_ = budget_var;
+  memory_budget_validity_ = budget_validity;
   return Status::Ok();
 }
 
@@ -504,6 +711,7 @@ SubarrayPartitioner SubarrayPartitioner::clone() const {
   clone.state_ = state_;
   clone.memory_budget_ = memory_budget_;
   clone.memory_budget_var_ = memory_budget_var_;
+  clone.memory_budget_validity_ = memory_budget_validity_;
   clone.compute_tp_ = compute_tp_;
 
   return clone;
@@ -519,8 +727,8 @@ Status SubarrayPartitioner::compute_current_start_end(bool* found) {
   std::vector<ResultBudget> budgets;
   names.reserve(budget_.size());
   budgets.reserve(budget_.size());
-  cur_sizes.resize(budget_.size(), Subarray::ResultSize({0.0, 0.0}));
-  mem_sizes.resize(budget_.size(), Subarray::MemorySize({0, 0}));
+  cur_sizes.resize(budget_.size(), Subarray::ResultSize({0.0, 0.0, 0.0}));
+  mem_sizes.resize(budget_.size(), Subarray::MemorySize({0, 0, 0}));
   for (const auto& budget_it : budget_) {
     names.emplace_back(budget_it.first);
     budgets.emplace_back(budget_it.second);
@@ -547,12 +755,16 @@ Status SubarrayPartitioner::compute_current_start_end(bool* found) {
       const auto& budget = budgets[i];
       cur_size.size_fixed_ += result_sizes[r][i].size_fixed_;
       cur_size.size_var_ += result_sizes[r][i].size_var_;
+      cur_size.size_validity_ += result_sizes[r][i].size_validity_;
       mem_size.size_fixed_ += memory_sizes[r][i].size_fixed_;
       mem_size.size_var_ += memory_sizes[r][i].size_var_;
+      mem_size.size_validity_ += memory_sizes[r][i].size_validity_;
       if (cur_size.size_fixed_ > budget.size_fixed_ ||
           cur_size.size_var_ > budget.size_var_ ||
+          cur_size.size_validity_ > budget.size_validity_ ||
           mem_size.size_fixed_ > memory_budget_ ||
-          mem_size.size_var_ > memory_budget_var_) {
+          mem_size.size_var_ > memory_budget_var_ ||
+          mem_size.size_validity_ > memory_budget_validity_) {
         // Cannot find range that fits in the buffer
         if (current_.end_ == current_.start_) {
           *found = false;
@@ -735,31 +947,64 @@ bool SubarrayPartitioner::must_split(Subarray* partition) {
   auto array_schema = subarray_.array()->array_schema();
   bool must_split = false;
 
-  uint64_t size_fixed, size_var, mem_size_fixed, mem_size_var;
+  uint64_t size_fixed;
+  uint64_t size_var;
+  uint64_t size_validity;
+  uint64_t mem_size_fixed;
+  uint64_t mem_size_var;
+  uint64_t mem_size_validity;
   for (const auto& b : budget_) {
     // Compute max sizes
     auto name = b.first;
     auto var_size = array_schema->var_size(name);
+    auto nullable = array_schema->is_nullable(name);
 
     // Compute est sizes
     size_fixed = 0;
     size_var = 0;
+    size_validity = 0;
     mem_size_fixed = 0;
     mem_size_var = 0;
+    mem_size_validity = 0;
     if (var_size) {
-      partition->get_est_result_size(
-          b.first.c_str(), &size_fixed, &size_var, compute_tp_);
-      partition->get_max_memory_size(
-          b.first.c_str(), &mem_size_fixed, &mem_size_var, compute_tp_);
+      if (!nullable) {
+        partition->get_est_result_size(
+            b.first.c_str(), &size_fixed, &size_var, compute_tp_);
+        partition->get_max_memory_size(
+            b.first.c_str(), &mem_size_fixed, &mem_size_var, compute_tp_);
+      } else {
+        partition->get_est_result_size_nullable(
+            b.first.c_str(),
+            &size_fixed,
+            &size_var,
+            &size_validity,
+            compute_tp_);
+        partition->get_max_memory_size_nullable(
+            b.first.c_str(),
+            &mem_size_fixed,
+            &mem_size_var,
+            &mem_size_validity,
+            compute_tp_);
+      }
     } else {
-      partition->get_est_result_size(b.first.c_str(), &size_fixed, compute_tp_);
-      partition->get_max_memory_size(
-          b.first.c_str(), &mem_size_fixed, compute_tp_);
+      if (!nullable) {
+        partition->get_est_result_size(
+            b.first.c_str(), &size_fixed, compute_tp_);
+        partition->get_max_memory_size(
+            b.first.c_str(), &mem_size_fixed, compute_tp_);
+      } else {
+        partition->get_est_result_size_nullable(
+            b.first.c_str(), &size_fixed, &size_validity, compute_tp_);
+        partition->get_max_memory_size_nullable(
+            b.first.c_str(), &mem_size_fixed, &mem_size_validity, compute_tp_);
+      }
     }
 
     // Check for budget overflow
     if (size_fixed > b.second.size_fixed_ || size_var > b.second.size_var_ ||
-        mem_size_fixed > memory_budget_ || mem_size_var > memory_budget_var_) {
+        size_validity > b.second.size_validity_ ||
+        mem_size_fixed > memory_budget_ || mem_size_var > memory_budget_var_ ||
+        mem_size_validity > memory_budget_validity_) {
       must_split = true;
       break;
     }
@@ -899,6 +1144,7 @@ void SubarrayPartitioner::swap(SubarrayPartitioner& partitioner) {
   std::swap(state_, partitioner.state_);
   std::swap(memory_budget_, partitioner.memory_budget_);
   std::swap(memory_budget_var_, partitioner.memory_budget_var_);
+  std::swap(memory_budget_validity_, partitioner.memory_budget_validity_);
   std::swap(compute_tp_, partitioner.compute_tp_);
 }
 

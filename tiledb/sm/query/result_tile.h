@@ -59,11 +59,12 @@ class FragmentMetadata;
 class ResultTile {
  public:
   /**
-   * For each fixed-sized attributes, the second tile in the pair is ignored.
-   * For var-sized attributes, the first is the offsets tile and the second is
-   * the var-sized values tile.
+   * For each fixed-sized attributes, the second tile in the tuple is ignored.
+   * For var-sized attributes, the first tile is the offsets tile and the second
+   * tile is the var-sized values tile. If the attribute is nullable, the third
+   * tile contains the validity vector.
    */
-  typedef std::pair<Tile, Tile> TilePair;
+  typedef std::tuple<Tile, Tile, Tile> TileTuple;
 
   /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */
@@ -113,7 +114,7 @@ class ResultTile {
   const Tile& zipped_coords_tile() const;
 
   /** Returns the coordinate tile for the input dimension. */
-  const TilePair& coord_tile(unsigned dim_idx) const;
+  const TileTuple& coord_tile(unsigned dim_idx) const;
 
   /** Returns the stored domain. */
   const Domain* domain() const;
@@ -128,7 +129,7 @@ class ResultTile {
   void init_coord_tile(const std::string& name, unsigned dim_idx);
 
   /** Returns the tile pair for the input attribute or dimension. */
-  TilePair* tile_pair(const std::string& name);
+  TileTuple* tile_tuple(const std::string& name);
 
   /**
    * Returns a constant pointer to the coordinate at position `pos` for
@@ -167,7 +168,24 @@ class ResultTile {
    * the coordinates at position `pos`.
    */
   Status read(
-      const std::string& name, void* buffer, uint64_t pos, uint64_t len);
+      const std::string& name,
+      void* buffer,
+      uint64_t buffer_offset,
+      uint64_t pos,
+      uint64_t len);
+
+  /**
+   * Reads `len` coordinates the from the tile, starting at the beginning of
+   * the coordinates at position `pos`. The associated validity values are
+   * stored in the `buffer_validity`.
+   */
+  Status read_nullable(
+      const std::string& name,
+      void* buffer,
+      uint64_t buffer_offset,
+      uint64_t pos,
+      uint64_t len,
+      void* buffer_validity);
 
   /**
    * Applicable only to sparse tiles of dense arrays.
@@ -248,16 +266,16 @@ class ResultTile {
   uint64_t tile_idx_ = UINT64_MAX;
 
   /** Maps attribute names to tiles. */
-  std::unordered_map<std::string, TilePair> attr_tiles_;
+  std::unordered_map<std::string, TileTuple> attr_tiles_;
 
   /** The zipped coordinates tile. */
-  TilePair coords_tile_;
+  TileTuple coords_tile_;
 
   /**
    * The separate coordinate tiles along with their names, sorted on the
    * dimension order.
    */
-  std::vector<std::pair<std::string, TilePair>> coord_tiles_;
+  std::vector<std::pair<std::string, TileTuple>> coord_tiles_;
 
   /**
    * Stores the appropriate templated compute_results_dense() function based for

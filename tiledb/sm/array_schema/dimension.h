@@ -39,6 +39,7 @@
 #include "tiledb/common/logger.h"
 #include "tiledb/common/status.h"
 #include "tiledb/sm/misc/types.h"
+#include "tiledb/sm/query/query_buffer.h"
 #include "tiledb/sm/tile/tile.h"
 
 using namespace tiledb::common;

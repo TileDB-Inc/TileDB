@@ -91,6 +91,7 @@ enum class StatusCode : char {
   ChunkedBuffer,
   Buffer,
   Query,
+  ValidityVector,
   VFS,
   ConstBuffer,
   Dimension,
@@ -231,6 +232,11 @@ class Status {
   /** Return a QueryError error class Status with a given message **/
   static Status QueryError(const std::string& msg) {
     return Status(StatusCode::Query, msg, -1);
+  }
+
+  /** Return a ValidityVectorError error class Status with a given message **/
+  static Status ValidityVectorError(const std::string& msg) {
+    return Status(StatusCode::ValidityVector, msg, -1);
   }
 
   /** Return a VFSError error class Status with a given message **/

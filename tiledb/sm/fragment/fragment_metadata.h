@@ -311,6 +311,18 @@ class FragmentMetadata {
    */
   void set_tile_var_size(const std::string& name, uint64_t tid, uint64_t size);
 
+  /**
+   * Sets a validity tile offset for the input attribute.
+   *
+   * @param name The attribute for which the offset is set.
+   * @param tid The index of the tile for which the offset is set.
+   * @param step This is essentially the step by which the previous
+   *     offset will be expanded. It is practically the last tile size.
+   * @return void
+   */
+  void set_tile_validity_offset(
+      const std::string& name, uint64_t tid, uint64_t step);
+
   /** Returns the tile index base value. */
   uint64_t tile_index_base() const;
 
@@ -322,6 +334,9 @@ class FragmentMetadata {
 
   /** Returns the URI of the input variable-sized attribute/dimension. */
   URI var_uri(const std::string& name) const;
+
+  /** Returns the validity URI of the input nullable attribute. */
+  URI validity_uri(const std::string& name) const;
 
   /**
    * Retrieves the starting offset of the input tile of the input attribute
@@ -351,6 +366,22 @@ class FragmentMetadata {
    * @return Status
    */
   Status file_var_offset(
+      const EncryptionKey& encryption_key,
+      const std::string& name,
+      uint64_t tile_idx,
+      uint64_t* offset);
+
+  /**
+   * Retrieves the starting offset of the input validity tile of the
+   * input attribute in the file.
+   *
+   * @param encryption_key The key the array got opened with.
+   * @param name The input attribute.
+   * @param tile_idx The index of the tile in the metadata.
+   * @param offset The file offset to be retrieved.
+   * @return Status
+   */
+  Status file_validity_offset(
       const EncryptionKey& encryption_key,
       const std::string& name,
       uint64_t tile_idx,
@@ -398,6 +429,22 @@ class FragmentMetadata {
    * @return Status
    */
   Status persisted_tile_var_size(
+      const EncryptionKey& encryption_key,
+      const std::string& name,
+      uint64_t tile_idx,
+      uint64_t* tile_size);
+
+  /**
+   * Retrieves the size of the validity tile when it is persisted (e.g. the size
+   * of the compressed tile on disk) for a given attribute.
+   *
+   * @param encryption_key The key the array got opened with.
+   * @param name The input attribute.
+   * @param tile_idx The index of the tile in the metadata.
+   * @param tile_size The tile size to be retrieved.
+   * @return Status
+   */
+  Status persisted_tile_validity_size(
       const EncryptionKey& encryption_key,
       const std::string& name,
       uint64_t tile_idx,
@@ -465,6 +512,16 @@ class FragmentMetadata {
   Status load_tile_offsets(
       const EncryptionKey& encryption_key, std::vector<std::string>&& names);
 
+  /**
+   * Loads validity tile offsets for the attribute names.
+   *
+   * @param encryption_key The key the array got opened with.
+   * @param names The attribute names.
+   * @return Status
+   */
+  Status load_tile_validity_offsets(
+      const EncryptionKey& encryption_key, std::vector<std::string>&& names);
+
  private:
   /* ********************************* */
   /*          TYPE DEFINITIONS         */
@@ -480,6 +537,7 @@ class FragmentMetadata {
     std::vector<uint64_t> tile_offsets_;
     std::vector<uint64_t> tile_var_offsets_;
     std::vector<uint64_t> tile_var_sizes_;
+    std::vector<uint64_t> tile_validity_offsets_;
   };
 
   /** Keeps track of which metadata is loaded. */
@@ -489,6 +547,7 @@ class FragmentMetadata {
     std::vector<bool> tile_offsets_;
     std::vector<bool> tile_var_offsets_;
     std::vector<bool> tile_var_sizes_;
+    std::vector<bool> tile_validity_offsets_;
   };
 
   /* ********************************* */
@@ -527,6 +586,9 @@ class FragmentMetadata {
 
   /** Stores the size of each variable attribute file. */
   std::vector<uint64_t> file_var_sizes_;
+
+  /** Stores the size of each validity attribute file. */
+  std::vector<uint64_t> file_validity_sizes_;
 
   /** The uri of the fragment the metadata belongs to. */
   URI fragment_uri_;
@@ -576,6 +638,12 @@ class FragmentMetadata {
    */
   std::vector<std::vector<uint64_t>> tile_var_sizes_;
 
+  /**
+   * The validity tile offsets in their corresponding attribute files.
+   * Meaningful only when there is compression.
+   */
+  std::vector<std::vector<uint64_t>> tile_validity_offsets_;
+
   /** The format version of this metadata. */
   uint32_t version_;
 
@@ -607,9 +675,17 @@ class FragmentMetadata {
    * Returns the size of the fragment metadata footer
    * (which contains the generic tile offsets) along with its size.
    *
-   * Applicable to format version 5 or higher.
+   * Applicable to format versions 5 and 6.
    */
-  uint64_t footer_size_v5_or_higher() const;
+  uint64_t footer_size_v5_v6() const;
+
+  /**
+   * Returns the size of the fragment metadata footer
+   * (which contains the generic tile offsets) along with its size.
+   *
+   * Applicable to format version 7 or higher.
+   */
+  uint64_t footer_size_v7_or_higher() const;
 
   /**
    * Returns the ids (positions) of the tiles overlapping `subarray`.
@@ -654,6 +730,13 @@ class FragmentMetadata {
    * */
   Status load_tile_var_sizes(const EncryptionKey& encryption_key, unsigned idx);
 
+  /**
+   * Loads the validity tile offsets for the input attribute idx
+   * from storage.
+   */
+  Status load_tile_validity_offsets(
+      const EncryptionKey& encryption_key, unsigned idx);
+
   /** Loads the generic tile offsets from the buffer. */
   Status load_generic_tile_offsets(ConstBuffer* buff, uint32_t version);
 
@@ -665,9 +748,15 @@ class FragmentMetadata {
 
   /**
    * Loads the generic tile offsets from the buffer. Applicable to
-   * versions 5 or higher.
+   * versions 5 and 6.
    */
-  Status load_generic_tile_offsets_v5_or_higher(ConstBuffer* buff);
+  Status load_generic_tile_offsets_v5_v6(ConstBuffer* buff);
+
+  /**
+   * Loads the generic tile offsets from the buffer. Applicable to
+   * versions 7 or higher.
+   */
+  Status load_generic_tile_offsets_v7_or_higher(ConstBuffer* buff);
 
   /**
    * Loads the bounding coordinates from the fragment metadata buffer.
@@ -709,6 +798,9 @@ class FragmentMetadata {
    * buffer. Applicable to version 5 or higher.
    */
   Status load_file_var_sizes_v5_or_higher(ConstBuffer* buff);
+
+  /** Loads the sizes of each attribute validity file from the buffer. */
+  Status load_file_validity_sizes(ConstBuffer* buff, uint32_t version);
 
   /**
    * Loads the cell number of the last tile from the fragment metadata buffer.
@@ -780,6 +872,12 @@ class FragmentMetadata {
    */
   Status load_tile_var_sizes(unsigned idx, ConstBuffer* buff);
 
+  /**
+   * Loads the validity tile offsets for the input attribute from the
+   * input buffer.
+   */
+  Status load_tile_validity_offsets(unsigned idx, ConstBuffer* buff);
+
   /** Loads the format version from the buffer. */
   Status load_version(ConstBuffer* buff);
 
@@ -819,6 +917,9 @@ class FragmentMetadata {
 
   /** Writes the sizes of each variable attribute file to the buffer. */
   Status write_file_var_sizes(Buffer* buff) const;
+
+  /** Writes the sizes of each validitiy attribute file to the buffer. */
+  Status write_file_validity_sizes(Buffer* buff) const;
 
   /** Writes the generic tile offsets to the buffer. */
   Status write_generic_tile_offsets(Buffer* buff) const;
@@ -898,6 +999,24 @@ class FragmentMetadata {
    * to storage.
    */
   Status write_tile_var_sizes(unsigned idx, Buffer* buff);
+
+  /**
+   * Writes the validity tile offsets of the input attribute to storage.
+   *
+   * @param idx The index of the attribute.
+   * @param encryption_key The encryption key.
+   * @param nbytes The total number of bytes written for the validity tile
+   * offsets.
+   * @return Status
+   */
+  Status store_tile_validity_offsets(
+      unsigned idx, const EncryptionKey& encryption_key, uint64_t* nbytes);
+
+  /**
+   * Writes the validity tile offsets of the input attribute idx to the
+   * input buffer.
+   */
+  Status write_tile_validity_offsets(unsigned idx, Buffer* buff);
 
   /** Writes the format version to the buffer. */
   Status write_version(Buffer* buff) const;

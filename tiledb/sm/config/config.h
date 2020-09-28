@@ -108,12 +108,18 @@ class Config {
   static const std::string SM_MEMORY_BUDGET_VAR;
 
   /**
+   * The maximum memory budget for producing the validity vector
+   * result (in bytes) for a nullable attribute.
+   */
+  static const std::string SM_MEMORY_BUDGET_VALIDITY;
+
+  /**
    * The maximum memory budget for further partitioning result partitions.
    * If `0`, the sub-partitioner will not be used. This is an advanced
    * tuning parameter for use on workloads where partitioning time is
    * quicker than sorting result coordinates. This budget is used as
    * a target and may be adjusted if it is too small. Additionally, it
-   * is used for both fixed and var-sized budgets.
+   * is used for fixed, var-sized, and validity vector budgets.
    */
   static const std::string SM_SUB_PARTITIONER_MEMORY_BUDGET;
 

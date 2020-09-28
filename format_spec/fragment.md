@@ -27,7 +27,7 @@ my_array                              # array folder
 
 There can be any number of fragments in an array. The fragment folder contains:
 * A single [fragment metadata file](#fragment-metadata-file) named `__fragment_metadata.tdb`. 
-* Any number of [data files](#data-file). For each fixed-sized attribute `a1` (or dimension `d1`), there is a single data file `a1.tdb` (`d1.tdb`) containing the values along this attribute (dimension). For every var-sized attribute `a2` (or dimensions `d2`), there are two data files; `a2_var.tdb` (`d2_var.tdb`) containing the var-sized values of the attribute (dimension) and `a2.tdb` (`d2.tdb`) containing the starting offsets of each value in `a2_var.tdb` (`d2_var.rdb`).
+* Any number of [data files](#data-file). For each fixed-sized attribute `a1` (or dimension `d1`), there is a single data file `a1.tdb` (`d1.tdb`) containing the values along this attribute (dimension). For every var-sized attribute `a2` (or dimensions `d2`), there are two data files; `a2_var.tdb` (`d2_var.tdb`) containing the var-sized values of the attribute (dimension) and `a2.tdb` (`d2.tdb`) containing the starting offsets of each value in `a2_var.tdb` (`d2_var.rdb`). Both fixed-sized and var-sized attributes can be nullable. A nullable attribute, `a3`, will have an additional file `a3_validity.tdb` that contains its validity vector.
 
 ## Fragment Metadata File 
 
@@ -127,6 +127,7 @@ The footer is a simple blob \(i.e., _not a generic tile_\) with the following in
 | Last tile cell num | `uint64_t` | For sparse arrays, the number of cells in the last tile in the fragment |
 | File sizes | `uint64_t[]` | The size in bytes of each attribute/dimension file in the fragment. For var-length attributes/dimensions, this is the size of the offsets file. |
 | File var sizes | `uint64_t[]` | The size in bytes of each var-length attribute/dimension file in the fragment. |
+| File validity sizes | `uint64_t[]` | The size in bytes of each attribute/dimension validity vector file in the fragment. |
 | R-Tree offset | `uint64_t` | The offset to the generic tile storing the R-Tree in the metadata file. |
 | Tile offset for attribute/dimension 1 | `uint64_t` | The offset to the generic tile storing the tile offsets for attribute/dimension 1. |
 | … | … | … |
@@ -137,6 +138,9 @@ The footer is a simple blob \(i.e., _not a generic tile_\) with the following in
 | Tile var sizes offset for attribute/dimension 1 | `uint64_t` | The offset to the generic tile storing the variable tile sizes for attribute/dimension 1. |
 | … | … | … |
 | Tile var sizes offset for attribute/dimension N | `uint64_t` | The offset to the generic tile storing the variable tile sizes for attribute/dimension N. |
+| Tile validity offset for attribute/dimension 1 | `uint64_t` | The offset to the generic tile storing the tile validity offsets for attribute/dimension 1. |
+| … | … | … |
+| Tile validity offset for attribute/dimension N | `uint64_t` | The offset to the generic tile storing the tile validity offsets for attribute/dimension N |
 | Footer length | `uint64_t` | Sum of bytes of the above fields. Only present when there is at least one var-sized dimension. |
 
 ## Data File 

@@ -53,13 +53,16 @@ namespace sm {
 /* ********************************* */
 
 Attribute::Attribute()
-    : Attribute("", Datatype::CHAR) {
+    : Attribute("", Datatype::CHAR, false) {
 }
 
-Attribute::Attribute(const std::string& name, Datatype type) {
+Attribute::Attribute(
+    const std::string& name, const Datatype type, const bool nullable) {
   name_ = name;
   type_ = type;
+  nullable_ = nullable;
   cell_val_num_ = (type == Datatype::ANY) ? constants::var_num : 1;
+  nullable_ = false;
   set_default_fill_value();
 }
 
@@ -68,6 +71,7 @@ Attribute::Attribute(const Attribute* attr) {
   name_ = attr->name();
   type_ = attr->type();
   cell_val_num_ = attr->cell_val_num();
+  nullable_ = attr->nullable();
   filters_ = attr->filters_;
   fill_value_ = attr->fill_value_;
 }
@@ -89,7 +93,7 @@ unsigned int Attribute::cell_val_num() const {
   return cell_val_num_;
 }
 
-Status Attribute::deserialize(ConstBuffer* buff, uint32_t version) {
+Status Attribute::deserialize(ConstBuffer* buff, const uint32_t version) {
   // Load attribute name
   uint32_t attribute_name_size;
   RETURN_NOT_OK(buff->read(&attribute_name_size, sizeof(uint32_t)));
@@ -119,6 +123,10 @@ Status Attribute::deserialize(ConstBuffer* buff, uint32_t version) {
     set_default_fill_value();
   }
 
+  // Load nullable flag
+  if (version >= 7)
+    RETURN_NOT_OK(buff->read(&nullable_, sizeof(bool)));
+
   return Status::Ok();
 }
 
@@ -129,6 +137,7 @@ void Attribute::dump(FILE* out) const {
   fprintf(out, "### Attribute ###\n");
   fprintf(out, "- Name: %s\n", name_.c_str());
   fprintf(out, "- Type: %s\n", datatype_str(type_).c_str());
+  fprintf(out, "- Nullable: %s\n", (nullable_ ? "true" : "false"));
   if (!var_size())
     fprintf(out, "- Cell val num: %u\n", cell_val_num_);
   else
@@ -154,7 +163,8 @@ const std::string& Attribute::name() const {
 // type (uint8_t)
 // cell_val_num (uint32_t)
 // filter_pipeline (see FilterPipeline::serialize)
-Status Attribute::serialize(Buffer* buff, uint32_t version) {
+// nullable (bool)
+Status Attribute::serialize(Buffer* buff, const uint32_t version) {
   // Write attribute name
   auto attribute_name_size = (uint32_t)name_.size();
   RETURN_NOT_OK(buff->write(&attribute_name_size, sizeof(uint32_t)));
@@ -178,6 +188,10 @@ Status Attribute::serialize(Buffer* buff, uint32_t version) {
     RETURN_NOT_OK(buff->write(&fill_value_[0], fill_value_.size()));
   }
 
+  // Write nullable
+  if (version >= 7)
+    RETURN_NOT_OK(buff->write(&nullable_, sizeof(bool)));
+
   return Status::Ok();
 }
 
@@ -190,6 +204,11 @@ Status Attribute::set_cell_val_num(unsigned int cell_val_num) {
   cell_val_num_ = cell_val_num;
   set_default_fill_value();
 
+  return Status::Ok();
+}
+
+Status Attribute::set_nullable(const bool nullable) {
+  nullable_ = nullable;
   return Status::Ok();
 }
 
@@ -262,6 +281,10 @@ Datatype Attribute::type() const {
 
 bool Attribute::var_size() const {
   return cell_val_num_ == constants::var_num;
+}
+
+bool Attribute::nullable() const {
+  return nullable_;
 }
 
 /* ********************************* */

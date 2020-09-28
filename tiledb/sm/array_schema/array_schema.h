@@ -128,8 +128,11 @@ class ArraySchema {
   /** Returns the number of values per cell of the input attribute/dimension. */
   unsigned int cell_val_num(const std::string& name) const;
 
-  /** Return the fileter pipeline used for offsets of variable-sized cells. */
+  /** Return the filter pipeline used for offsets of variable-sized cells. */
   const FilterPipeline& cell_var_offsets_filters() const;
+
+  /** Return the filter pipeline used for validity cells. */
+  const FilterPipeline& cell_validity_filters() const;
 
   /**
    * Checks the correctness of the array schema.
@@ -189,6 +192,9 @@ class ArraySchema {
 
   /** Returns true if the input name is a dimension. */
   bool is_dim(const std::string& name) const;
+
+  /** Returns true if the input name is nullable. */
+  bool is_nullable(const std::string& name) const;
 
   /**
    * Serializes the array schema object into a buffer.
@@ -257,6 +263,9 @@ class ArraySchema {
   /** Sets the filter pipeline for the variable cell offsets. */
   Status set_cell_var_offsets_filter_pipeline(const FilterPipeline* pipeline);
 
+  /** Sets the filter pipeline for the validity cell offsets. */
+  Status set_cell_validity_filter_pipeline(const FilterPipeline* pipeline);
+
   /** Sets the filter pipeline for the coordinates. */
   Status set_coords_filter_pipeline(const FilterPipeline* pipeline);
 
@@ -317,6 +326,9 @@ class ArraySchema {
 
   /** The filter pipeline run on offset tiles for var-length attributes. */
   FilterPipeline cell_var_offsets_filters_;
+
+  /** The filter pipeline run on validity tiles for nullable attributes. */
+  FilterPipeline cell_validity_filters_;
 
   /** The filter pipeline run on coordinate tiles. */
   FilterPipeline coords_filters_;

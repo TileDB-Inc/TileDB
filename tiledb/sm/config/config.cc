@@ -59,8 +59,9 @@ const std::string Config::SM_CHECK_COORD_DUPS = "true";
 const std::string Config::SM_CHECK_COORD_OOB = "true";
 const std::string Config::SM_CHECK_GLOBAL_ORDER = "true";
 const std::string Config::SM_TILE_CACHE_SIZE = "10000000";
-const std::string Config::SM_MEMORY_BUDGET = "5368709120";       // 5GB
-const std::string Config::SM_MEMORY_BUDGET_VAR = "10737418240";  // 10GB;
+const std::string Config::SM_MEMORY_BUDGET = "5368709120";           // 5GB
+const std::string Config::SM_MEMORY_BUDGET_VAR = "10737418240";      // 10GB;
+const std::string Config::SM_MEMORY_BUDGET_VALIDITY = "5368709120";  // 5GB;
 const std::string Config::SM_SUB_PARTITIONER_MEMORY_BUDGET = "0";
 const std::string Config::SM_ENABLE_SIGNAL_HANDLERS = "true";
 const std::string Config::SM_COMPUTE_CONCURRENCY_LEVEL =
@@ -170,6 +171,7 @@ Config::Config() {
   param_values_["sm.tile_cache_size"] = SM_TILE_CACHE_SIZE;
   param_values_["sm.memory_budget"] = SM_MEMORY_BUDGET;
   param_values_["sm.memory_budget_var"] = SM_MEMORY_BUDGET_VAR;
+  param_values_["sm.memory_budget_validity"] = SM_MEMORY_BUDGET_VALIDITY;
   param_values_["sm.sub_partitioner_memory_budget"] =
       SM_SUB_PARTITIONER_MEMORY_BUDGET;
   param_values_["sm.enable_signal_handlers"] = SM_ENABLE_SIGNAL_HANDLERS;
@@ -389,6 +391,8 @@ Status Config::unset(const std::string& param) {
     param_values_["sm.memory_budget"] = SM_MEMORY_BUDGET;
   } else if (param == "sm.memory_budget_var") {
     param_values_["sm.memory_budget_var"] = SM_MEMORY_BUDGET_VAR;
+  } else if (param == "sm.memory_budget_validity") {
+    param_values_["sm.memory_budget_validity"] = SM_MEMORY_BUDGET_VALIDITY;
   } else if (param == "sm.memory_budget") {
     param_values_["sm.sub_partitioner_memory_budget"] =
         SM_SUB_PARTITIONER_MEMORY_BUDGET;
@@ -571,6 +575,8 @@ Status Config::sanity_check(
   } else if (param == "sm.memory_budget") {
     RETURN_NOT_OK(utils::parse::convert(value, &vuint64));
   } else if (param == "sm.memory_budget_var") {
+    RETURN_NOT_OK(utils::parse::convert(value, &vuint64));
+  } else if (param == "sm.memory_budget_validity") {
     RETURN_NOT_OK(utils::parse::convert(value, &vuint64));
   } else if (param == "sm.sub_partitioner_memory_budget") {
     RETURN_NOT_OK(utils::parse::convert(value, &vuint64));

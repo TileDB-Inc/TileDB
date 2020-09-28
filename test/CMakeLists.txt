@@ -93,9 +93,9 @@ set(TILEDB_TEST_SOURCES
   src/unit-buffer.cc
   src/unit-bufferlist.cc
   src/unit-capi-any.cc
+  src/unit-capi-array.cc
   src/unit-capi-array_schema.cc
   src/unit-capi-async.cc
-  src/unit-capi-array.cc
   src/unit-capi-buffer.cc
   src/unit-capi-config.cc
   src/unit-capi-consolidation.cc
@@ -103,15 +103,15 @@ set(TILEDB_TEST_SOURCES
   src/unit-capi-dense_array_2.cc
   src/unit-capi-dense_neg.cc
   src/unit-capi-dense_vector.cc
-  src/unit-duplicates.cc
   src/unit-capi-empty-var-length.cc
   src/unit-capi-enum_values.cc
   src/unit-capi-error.cc
   src/unit-capi-fill_values.cc
   src/unit-capi-filter.cc
-  src/unit-capi-incomplete.cc
   src/unit-capi-incomplete-2.cc
+  src/unit-capi-incomplete.cc
   src/unit-capi-metadata.cc
+  src/unit-capi-nullable.cc
   src/unit-capi-object_mgmt.cc
   src/unit-capi-query.cc
   src/unit-capi-query_2.cc
@@ -120,12 +120,13 @@ set(TILEDB_TEST_SOURCES
   src/unit-capi-sparse_neg.cc
   src/unit-capi-sparse_neg_2.cc
   src/unit-capi-sparse_real.cc
-  src/unit-capi-string_dims.cc
   src/unit-capi-sparse_real_2.cc
   src/unit-capi-string.cc
+  src/unit-capi-string_dims.cc
   src/unit-capi-uri.cc
   src/unit-capi-version.cc
   src/unit-capi-vfs.cc
+  src/unit-duplicates.cc
   src/unit-CellSlabIter.cc
   src/unit-compression-dd.cc
   src/unit-compression-rle.cc
@@ -153,6 +154,7 @@ set(TILEDB_TEST_SOURCES
   src/unit-TileDomain.cc
   src/unit-uri.cc
   src/unit-uuid.cc
+  src/unit-ValidityVector.cc
   src/unit-vfs.cc
   src/unit-win-filesystem.cc
   src/unit.cc
@@ -163,12 +165,13 @@ if (TILEDB_CPP_API)
     src/unit-cppapi-array.cc
     src/unit-cppapi-checksum.cc
     src/unit-cppapi-config.cc
-    src/unit-cppapi-consolidation.cc
     src/unit-cppapi-consolidation-sparse.cc
+    src/unit-cppapi-consolidation.cc
     src/unit-cppapi-datetimes.cc
     src/unit-cppapi-fill_values.cc
     src/unit-cppapi-filter.cc
     src/unit-cppapi-metadata.cc
+    src/unit-cppapi-nullable.cc
     src/unit-cppapi-query.cc
     src/unit-cppapi-schema.cc
     src/unit-cppapi-subarray.cc

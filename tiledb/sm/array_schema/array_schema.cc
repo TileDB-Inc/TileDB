@@ -72,12 +72,15 @@ ArraySchema::ArraySchema(ArrayType array_type)
   tile_order_ = Layout::ROW_MAJOR;
   version_ = constants::format_version;
 
-  // Set up default filter pipelines for coords and offsets
+  // Set up default filter pipelines for coords, offsets, and validity values.
   coords_filters_.add_filter(CompressionFilter(
       constants::coords_compression, constants::coords_compression_level));
   cell_var_offsets_filters_.add_filter(CompressionFilter(
       constants::cell_var_offsets_compression,
       constants::cell_var_offsets_compression_level));
+  cell_validity_filters_.add_filter(CompressionFilter(
+      constants::cell_validity_compression,
+      constants::cell_validity_compression_level));
 }
 
 ArraySchema::ArraySchema(const ArraySchema* array_schema) {
@@ -89,6 +92,7 @@ ArraySchema::ArraySchema(const ArraySchema* array_schema) {
   capacity_ = array_schema->capacity_;
   cell_order_ = array_schema->cell_order_;
   cell_var_offsets_filters_ = array_schema->cell_var_offsets_filters_;
+  cell_validity_filters_ = array_schema->cell_validity_filters_;
   coords_filters_ = array_schema->coords_filters_;
   tile_order_ = array_schema->tile_order_;
   version_ = array_schema->version_;
@@ -196,6 +200,10 @@ const FilterPipeline& ArraySchema::cell_var_offsets_filters() const {
   return cell_var_offsets_filters_;
 }
 
+const FilterPipeline& ArraySchema::cell_validity_filters() const {
+  return cell_validity_filters_;
+}
+
 Status ArraySchema::check() const {
   if (domain_ == nullptr)
     return LOG_STATUS(
@@ -294,6 +302,9 @@ void ArraySchema::dump(FILE* out) const {
       "\n- Offsets filters: %u",
       (unsigned)cell_var_offsets_filters_.size());
   cell_var_offsets_filters_.dump(out);
+  fprintf(
+      out, "\n- Validity filters: %u", (unsigned)cell_validity_filters_.size());
+  cell_validity_filters_.dump(out);
   fprintf(out, "\n");
 
   if (domain_ != nullptr)
@@ -327,6 +338,13 @@ bool ArraySchema::is_dim(const std::string& name) const {
   return this->dimension(name) != nullptr;
 }
 
+bool ArraySchema::is_nullable(const std::string& name) const {
+  const Attribute* const attr = this->attribute(name);
+  if (attr == nullptr)
+    return false;
+  return attr->nullable();
+}
+
 // ===== FORMAT =====
 // version (uint32_t)
 // allow_dups (bool)
@@ -336,6 +354,7 @@ bool ArraySchema::is_dim(const std::string& name) const {
 // capacity (uint64_t)
 // coords_filters (see FilterPipeline::serialize)
 // cell_var_offsets_filters (see FilterPipeline::serialize)
+// cell_validity_filters (see FilterPipeline::serialize)
 // domain
 // attribute_num (uint32_t)
 //   attribute #1
@@ -366,6 +385,9 @@ Status ArraySchema::serialize(Buffer* buff) const {
 
   // Write offsets filters
   RETURN_NOT_OK(cell_var_offsets_filters_.serialize(buff));
+
+  // Write validity filters
+  RETURN_NOT_OK(cell_validity_filters_.serialize(buff));
 
   // Write domain
   RETURN_NOT_OK(domain_->serialize(buff, version_));
@@ -472,6 +494,10 @@ Status ArraySchema::deserialize(ConstBuffer* buff) {
   // Load offsets filters
   RETURN_NOT_OK(cell_var_offsets_filters_.deserialize(buff));
 
+  // Load validity filters
+  if (version_ >= 7)
+    RETURN_NOT_OK(cell_validity_filters_.deserialize(buff));
+
   // Load domain
   domain_ = new Domain();
   RETURN_NOT_OK(domain_->deserialize(buff, version_));
@@ -540,6 +566,12 @@ Status ArraySchema::set_coords_filter_pipeline(const FilterPipeline* pipeline) {
 Status ArraySchema::set_cell_var_offsets_filter_pipeline(
     const FilterPipeline* pipeline) {
   cell_var_offsets_filters_ = *pipeline;
+  return Status::Ok();
+}
+
+Status ArraySchema::set_cell_validity_filter_pipeline(
+    const FilterPipeline* pipeline) {
+  cell_validity_filters_ = *pipeline;
   return Status::Ok();
 }
 
