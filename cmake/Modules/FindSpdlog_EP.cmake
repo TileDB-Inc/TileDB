@@ -67,7 +67,7 @@ endif()
 
 if (SPDLOG_FOUND AND NOT TARGET Spdlog::Spdlog)
   add_library(Spdlog::Spdlog INTERFACE IMPORTED)
-  find_package(fmt)
+  find_package(fmt QUIET)
   if (${fmt_FOUND})
     target_link_libraries(Spdlog::Spdlog INTERFACE fmt::fmt)
   endif()
