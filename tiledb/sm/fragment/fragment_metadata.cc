@@ -139,6 +139,17 @@ void FragmentMetadata::set_tile_var_size(
   tile_var_sizes_[idx][tid] = size;
 }
 
+void FragmentMetadata::set_tile_validity_offset(
+    const std::string& name, uint64_t tid, uint64_t step) {
+  auto it = idx_map_.find(name);
+  assert(it != idx_map_.end());
+  auto idx = it->second;
+  tid += tile_index_base_;
+  assert(tid < tile_validity_offsets_[idx].size());
+  tile_validity_offsets_[idx][tid] = file_validity_sizes_[idx];
+  file_validity_sizes_[idx] += step;
+}
+
 uint64_t FragmentMetadata::cell_num(uint64_t tile_pos) const {
   if (dense_)
     return array_schema_->domain()->cell_num_per_tile();
@@ -328,6 +339,8 @@ Status FragmentMetadata::fragment_size(uint64_t* size) const {
     *size += file_size;
   for (const auto& file_var_size : file_var_sizes_)
     *size += file_var_size;
+  for (const auto& file_validity_size : file_validity_sizes_)
+    *size += file_validity_size;
 
   // Add fragment metadata file size
   assert(meta_file_size_ != 0);  // The file size should be loaded
@@ -395,6 +408,12 @@ Status FragmentMetadata::init(const NDRange& non_empty_domain) {
 
   // Initialize variable tile sizes
   tile_var_sizes_.resize(num);
+
+  // Initialize validity tile offsets
+  tile_validity_offsets_.resize(num);
+  file_validity_sizes_.resize(num);
+  for (unsigned int i = 0; i < num; ++i)
+    file_validity_sizes_[i] = 0;
 
   return Status::Ok();
 }
@@ -478,6 +497,17 @@ Status FragmentMetadata::store(const EncryptionKey& encryption_key) {
     offset += nbytes;
   }
 
+  // Store validity tile offsets
+  if (version_ >= 7) {
+    gt_offsets_.tile_validity_offsets_.resize(num);
+    for (unsigned int i = 0; i < num; ++i) {
+      gt_offsets_.tile_validity_offsets_[i] = offset;
+      RETURN_NOT_OK_ELSE(
+          store_tile_validity_offsets(i, encryption_key, &nbytes), clean_up());
+      offset += nbytes;
+    }
+  }
+
   // Store footer
   RETURN_NOT_OK_ELSE(store_footer(encryption_key), clean_up());
 
@@ -499,6 +529,7 @@ Status FragmentMetadata::set_num_tiles(uint64_t num_tiles) {
     tile_offsets_[i].resize(num_tiles, 0);
     tile_var_offsets_[i].resize(num_tiles, 0);
     tile_var_sizes_[i].resize(num_tiles, 0);
+    tile_validity_offsets_[i].resize(num_tiles, 0);
   }
 
   if (!dense_) {
@@ -532,6 +563,10 @@ URI FragmentMetadata::var_uri(const std::string& name) const {
   return fragment_uri_.join_path(name + "_var" + constants::file_suffix);
 }
 
+URI FragmentMetadata::validity_uri(const std::string& name) const {
+  return fragment_uri_.join_path(name + "_validity" + constants::file_suffix);
+}
+
 Status FragmentMetadata::load_tile_offsets(
     const EncryptionKey& encryption_key, std::vector<std::string>&& names) {
   // Sort 'names' in ascending order of their index. The
@@ -557,6 +592,12 @@ Status FragmentMetadata::load_tile_offsets(
   for (const auto& name : names) {
     if (array_schema_->var_size(name))
       RETURN_NOT_OK(load_tile_var_offsets(encryption_key, idx_map_[name]));
+  }
+
+  // Load all of the var offsets.
+  for (const auto& name : names) {
+    if (array_schema_->is_nullable(name))
+      RETURN_NOT_OK(load_tile_validity_offsets(encryption_key, idx_map_[name]));
   }
 
   return Status::Ok();
@@ -585,6 +626,19 @@ Status FragmentMetadata::file_var_offset(
   auto idx = it->second;
   RETURN_NOT_OK(load_tile_var_offsets(encryption_key, idx));
   *offset = tile_var_offsets_[idx][tile_idx];
+  return Status::Ok();
+}
+
+Status FragmentMetadata::file_validity_offset(
+    const EncryptionKey& encryption_key,
+    const std::string& name,
+    uint64_t tile_idx,
+    uint64_t* offset) {
+  auto it = idx_map_.find(name);
+  assert(it != idx_map_.end());
+  auto idx = it->second;
+  RETURN_NOT_OK(load_tile_validity_offsets(encryption_key, idx));
+  *offset = tile_validity_offsets_[idx][tile_idx];
   return Status::Ok();
 }
 
@@ -625,12 +679,34 @@ Status FragmentMetadata::persisted_tile_var_size(
   assert(it != idx_map_.end());
   auto idx = it->second;
   RETURN_NOT_OK(load_tile_var_offsets(encryption_key, idx));
+
   auto tile_num = this->tile_num();
 
   *tile_size = (tile_idx != tile_num - 1) ?
                    tile_var_offsets_[idx][tile_idx + 1] -
                        tile_var_offsets_[idx][tile_idx] :
                    file_var_sizes_[idx] - tile_var_offsets_[idx][tile_idx];
+
+  return Status::Ok();
+}
+
+Status FragmentMetadata::persisted_tile_validity_size(
+    const EncryptionKey& encryption_key,
+    const std::string& name,
+    uint64_t tile_idx,
+    uint64_t* tile_size) {
+  auto it = idx_map_.find(name);
+  assert(it != idx_map_.end());
+  auto idx = it->second;
+  RETURN_NOT_OK(load_tile_validity_offsets(encryption_key, idx));
+
+  auto tile_num = this->tile_num();
+
+  *tile_size =
+      (tile_idx != tile_num - 1) ?
+          tile_validity_offsets_[idx][tile_idx + 1] -
+              tile_validity_offsets_[idx][tile_idx] :
+          file_validity_sizes_[idx] - tile_validity_offsets_[idx][tile_idx];
 
   return Status::Ok();
 }
@@ -679,6 +755,7 @@ Status FragmentMetadata::write_footer(Buffer* buff) const {
   RETURN_NOT_OK(write_last_tile_cell_num(buff));
   RETURN_NOT_OK(write_file_sizes(buff));
   RETURN_NOT_OK(write_file_var_sizes(buff));
+  RETURN_NOT_OK(write_file_validity_sizes(buff));
   RETURN_NOT_OK(write_generic_tile_offsets(buff));
 
   return Status::Ok();
@@ -724,7 +801,13 @@ Status FragmentMetadata::load_tile_var_sizes(
 
 Status FragmentMetadata::get_footer_size(
     uint32_t version, uint64_t* size) const {
-  *size = (version < 3) ? footer_size_v3_v4() : footer_size_v5_or_higher();
+  if (version < 3) {
+    *size = footer_size_v3_v4();
+  } else if (version < 4) {
+    *size = footer_size_v5_v6();
+  } else {
+    *size = footer_size_v7_or_higher();
+  }
 
   return Status::Ok();
 }
@@ -778,7 +861,7 @@ uint64_t FragmentMetadata::footer_size_v3_v4() const {
   return size;
 }
 
-uint64_t FragmentMetadata::footer_size_v5_or_higher() const {
+uint64_t FragmentMetadata::footer_size_v5_v6() const {
   auto dim_num = array_schema_->dim_num();
   auto num = array_schema_->attribute_num() + dim_num + 1;
   uint64_t domain_size = 0;
@@ -814,6 +897,48 @@ uint64_t FragmentMetadata::footer_size_v5_or_higher() const {
   size += num * sizeof(uint64_t);  // tile offsets
   size += num * sizeof(uint64_t);  // tile var offsets
   size += num * sizeof(uint64_t);  // tile var sizes
+
+  return size;
+}
+
+uint64_t FragmentMetadata::footer_size_v7_or_higher() const {
+  auto dim_num = array_schema_->dim_num();
+  auto num = array_schema_->attribute_num() + dim_num + 1;
+  uint64_t domain_size = 0;
+
+  if (non_empty_domain_.empty()) {
+    // For var-sized dimensions, this function would be called only upon
+    // writing the footer to storage, in which case the non-empty domain
+    // would not be empty. For reading the footer from storage, the footer
+    // size is explicitly stored to and retrieved from storage, so this
+    // function is not called then.
+    assert(array_schema_->domain()->all_dims_fixed());
+    for (unsigned d = 0; d < dim_num; ++d)
+      domain_size += 2 * array_schema_->domain()->dimension(d)->coord_size();
+  } else {
+    for (unsigned d = 0; d < dim_num; ++d) {
+      domain_size += non_empty_domain_[d].size();
+      if (array_schema_->dimension(d)->var_size())
+        domain_size += 2 * sizeof(uint64_t);  // Two more sizes get serialized
+    }
+  }
+
+  // Get footer size
+  uint64_t size = 0;
+  size += sizeof(uint32_t);        // version
+  size += sizeof(char);            // dense
+  size += sizeof(char);            // null non-empty domain
+  size += domain_size;             // non-empty domain
+  size += sizeof(uint64_t);        // sparse tile num
+  size += sizeof(uint64_t);        // last tile cell num
+  size += num * sizeof(uint64_t);  // file sizes
+  size += num * sizeof(uint64_t);  // file var sizes
+  size += num * sizeof(uint64_t);  // file validity sizes
+  size += sizeof(uint64_t);        // R-Tree offset
+  size += num * sizeof(uint64_t);  // tile offsets
+  size += num * sizeof(uint64_t);  // tile var offsets
+  size += num * sizeof(uint64_t);  // tile var sizes
+  size += num * sizeof(uint64_t);  // tile validity sizes
 
   return size;
 }
@@ -1035,6 +1160,31 @@ Status FragmentMetadata::load_tile_var_sizes(
   return Status::Ok();
 }
 
+Status FragmentMetadata::load_tile_validity_offsets(
+    const EncryptionKey& encryption_key, unsigned idx) {
+  if (version_ <= 6)
+    return Status::Ok();
+
+  std::lock_guard<std::mutex> lock(mtx_);
+
+  if (loaded_metadata_.tile_validity_offsets_[idx])
+    return Status::Ok();
+
+  Buffer buff;
+  RETURN_NOT_OK(read_generic_tile_from_file(
+      encryption_key, gt_offsets_.tile_validity_offsets_[idx], &buff));
+
+  STATS_ADD_COUNTER(
+      stats::Stats::CounterType::READ_TILE_VALIDITY_OFFSETS_SIZE, buff.size());
+
+  ConstBuffer cbuff(&buff);
+  RETURN_NOT_OK(load_tile_validity_offsets(idx, &cbuff));
+
+  loaded_metadata_.tile_validity_offsets_[idx] = true;
+
+  return Status::Ok();
+}
+
 // ===== FORMAT =====
 //  bounding_coords_num (uint64_t)
 //  bounding_coords_#1 (void*) bounding_coords_#2 (void*) ...
@@ -1132,6 +1282,23 @@ Status FragmentMetadata::load_file_var_sizes_v5_or_higher(ConstBuffer* buff) {
   auto num = array_schema_->attribute_num() + array_schema_->dim_num() + 1;
   file_var_sizes_.resize(num);
   Status st = buff->read(&file_var_sizes_[0], num * sizeof(uint64_t));
+
+  if (!st.ok()) {
+    return LOG_STATUS(Status::FragmentMetadataError(
+        "Cannot load fragment metadata; Reading tile offsets failed"));
+  }
+
+  return Status::Ok();
+}
+
+Status FragmentMetadata::load_file_validity_sizes(
+    ConstBuffer* buff, uint32_t version) {
+  if (version <= 6)
+    return Status::Ok();
+
+  auto num = array_schema_->attribute_num() + array_schema_->dim_num() + 1;
+  file_validity_sizes_.resize(num);
+  Status st = buff->read(&file_validity_sizes_[0], num * sizeof(uint64_t));
 
   if (!st.ok()) {
     return LOG_STATUS(Status::FragmentMetadataError(
@@ -1510,6 +1677,37 @@ Status FragmentMetadata::load_tile_var_sizes(unsigned idx, ConstBuffer* buff) {
   return Status::Ok();
 }
 
+Status FragmentMetadata::load_tile_validity_offsets(
+    unsigned idx, ConstBuffer* buff) {
+  Status st;
+  uint64_t tile_validity_offsets_num = 0;
+
+  // Get number of tile offsets
+  st = buff->read(&tile_validity_offsets_num, sizeof(uint64_t));
+  if (!st.ok()) {
+    return LOG_STATUS(
+        Status::FragmentMetadataError("Cannot load fragment metadata; Reading "
+                                      "number of validity tile offsets "
+                                      "failed"));
+  }
+
+  // Get tile offsets
+  if (tile_validity_offsets_num != 0) {
+    tile_validity_offsets_[idx].resize(tile_validity_offsets_num);
+    st = buff->read(
+        &tile_validity_offsets_[idx][0],
+        tile_validity_offsets_num * sizeof(uint64_t));
+
+    if (!st.ok()) {
+      return LOG_STATUS(Status::FragmentMetadataError(
+          "Cannot load fragment metadata; Reading validity tile offsets "
+          "failed"));
+    }
+  }
+
+  return Status::Ok();
+}
+
 Status FragmentMetadata::load_version(ConstBuffer* buff) {
   RETURN_NOT_OK(buff->read(&version_, sizeof(uint32_t)));
   return Status::Ok();
@@ -1529,8 +1727,10 @@ Status FragmentMetadata::load_generic_tile_offsets(
     ConstBuffer* buff, uint32_t version) {
   if (version == 3 || version == 4)
     return load_generic_tile_offsets_v3_v4(buff);
-  else if (version > 4)
-    return load_generic_tile_offsets_v5_or_higher(buff);
+  else if (version >= 5 && version < 7)
+    return load_generic_tile_offsets_v5_v6(buff);
+  else if (version >= 7)
+    return load_generic_tile_offsets_v7_or_higher(buff);
 
   assert(false);
   return Status::Ok();
@@ -1564,7 +1764,35 @@ Status FragmentMetadata::load_generic_tile_offsets_v3_v4(ConstBuffer* buff) {
   return Status::Ok();
 }
 
-Status FragmentMetadata::load_generic_tile_offsets_v5_or_higher(
+Status FragmentMetadata::load_generic_tile_offsets_v5_v6(ConstBuffer* buff) {
+  // Load R-Tree offset
+  RETURN_NOT_OK(buff->read(&gt_offsets_.rtree_, sizeof(uint64_t)));
+
+  // Load offsets for tile offsets
+  auto num = array_schema_->attribute_num() + array_schema_->dim_num() + 1;
+  gt_offsets_.tile_offsets_.resize(num);
+  for (unsigned i = 0; i < num; ++i) {
+    RETURN_NOT_OK(buff->read(&gt_offsets_.tile_offsets_[i], sizeof(uint64_t)));
+  }
+
+  // Load offsets for tile var offsets
+  gt_offsets_.tile_var_offsets_.resize(num);
+  for (unsigned i = 0; i < num; ++i) {
+    RETURN_NOT_OK(
+        buff->read(&gt_offsets_.tile_var_offsets_[i], sizeof(uint64_t)));
+  }
+
+  // Load offsets for tile var sizes
+  gt_offsets_.tile_var_sizes_.resize(num);
+  for (unsigned i = 0; i < num; ++i) {
+    RETURN_NOT_OK(
+        buff->read(&gt_offsets_.tile_var_sizes_[i], sizeof(uint64_t)));
+  }
+
+  return Status::Ok();
+}
+
+Status FragmentMetadata::load_generic_tile_offsets_v7_or_higher(
     ConstBuffer* buff) {
   // Load R-Tree offset
   RETURN_NOT_OK(buff->read(&gt_offsets_.rtree_, sizeof(uint64_t)));
@@ -1588,6 +1816,15 @@ Status FragmentMetadata::load_generic_tile_offsets_v5_or_higher(
   for (unsigned i = 0; i < num; ++i) {
     RETURN_NOT_OK(
         buff->read(&gt_offsets_.tile_var_sizes_[i], sizeof(uint64_t)));
+  }
+
+  // Load offsets for tile validity offsets
+  if (version_ >= 7) {
+    gt_offsets_.tile_validity_offsets_.resize(num);
+    for (unsigned i = 0; i < num; ++i) {
+      RETURN_NOT_OK(
+          buff->read(&gt_offsets_.tile_validity_offsets_[i], sizeof(uint64_t)));
+    }
   }
 
   return Status::Ok();
@@ -1625,6 +1862,7 @@ Status FragmentMetadata::load_v1_v2(const EncryptionKey& encryption_key) {
   RETURN_NOT_OK(load_last_tile_cell_num(&cbuff));
   RETURN_NOT_OK(load_file_sizes(&cbuff, version_));
   RETURN_NOT_OK(load_file_var_sizes(&cbuff, version_));
+  RETURN_NOT_OK(load_file_validity_sizes(&cbuff, version_));
 
   return Status::Ok();
 }
@@ -1668,6 +1906,7 @@ Status FragmentMetadata::load_footer(
   RETURN_NOT_OK(load_last_tile_cell_num(cbuff.get()));
   RETURN_NOT_OK(load_file_sizes(cbuff.get(), version));
   RETURN_NOT_OK(load_file_var_sizes(cbuff.get(), version));
+  RETURN_NOT_OK(load_file_validity_sizes(cbuff.get(), version));
 
   unsigned num = array_schema_->attribute_num() + 1;
   num += (version >= 5) ? array_schema_->dim_num() : 0;
@@ -1675,10 +1914,12 @@ Status FragmentMetadata::load_footer(
   tile_offsets_.resize(num);
   tile_var_offsets_.resize(num);
   tile_var_sizes_.resize(num);
+  tile_validity_offsets_.resize(num);
 
   loaded_metadata_.tile_offsets_.resize(num, false);
   loaded_metadata_.tile_var_offsets_.resize(num, false);
   loaded_metadata_.tile_var_sizes_.resize(num, false);
+  loaded_metadata_.tile_validity_offsets_.resize(num, false);
 
   RETURN_NOT_OK(load_generic_tile_offsets(cbuff.get(), version));
 
@@ -1709,6 +1950,24 @@ Status FragmentMetadata::write_file_sizes(Buffer* buff) const {
 Status FragmentMetadata::write_file_var_sizes(Buffer* buff) const {
   auto num = array_schema_->attribute_num() + array_schema_->dim_num() + 1;
   Status st = buff->write(&file_var_sizes_[0], num * sizeof(uint64_t));
+  if (!st.ok()) {
+    return LOG_STATUS(Status::FragmentMetadataError(
+        "Cannot serialize fragment metadata; Writing file sizes failed"));
+  }
+
+  return Status::Ok();
+}
+
+// ===== FORMAT =====
+// file_validity_sizes#0 (uint64_t)
+// ...
+// file_validity_sizes#{attribute_num+dim_num} (uint64_t)
+Status FragmentMetadata::write_file_validity_sizes(Buffer* buff) const {
+  if (version_ <= 6)
+    return Status::Ok();
+
+  auto num = array_schema_->attribute_num() + array_schema_->dim_num() + 1;
+  Status st = buff->write(&file_validity_sizes_[0], num * sizeof(uint64_t));
   if (!st.ok()) {
     return LOG_STATUS(Status::FragmentMetadataError(
         "Cannot serialize fragment metadata; Writing file sizes failed"));
@@ -1763,6 +2022,18 @@ Status FragmentMetadata::write_generic_tile_offsets(Buffer* buff) const {
     if (!st.ok()) {
       return LOG_STATUS(Status::FragmentMetadataError(
           "Cannot serialize fragment metadata; Writing tile var sizes failed"));
+    }
+  }
+
+  // Write tile validity offsets
+  if (version_ >= 7) {
+    for (unsigned i = 0; i < num; ++i) {
+      st =
+          buff->write(&gt_offsets_.tile_validity_offsets_[i], sizeof(uint64_t));
+      if (!st.ok()) {
+        return LOG_STATUS(Status::FragmentMetadataError(
+            "Cannot serialize fragment metadata; Writing tile offsets failed"));
+      }
     }
   }
 
@@ -2041,6 +2312,47 @@ Status FragmentMetadata::write_tile_var_sizes(unsigned idx, Buffer* buff) {
                                         "Writing variable tile sizes failed"));
     }
   }
+  return Status::Ok();
+}
+
+Status FragmentMetadata::store_tile_validity_offsets(
+    unsigned idx, const EncryptionKey& encryption_key, uint64_t* nbytes) {
+  Buffer buff;
+  RETURN_NOT_OK(write_tile_validity_offsets(idx, &buff));
+  RETURN_NOT_OK(
+      write_generic_tile_to_file(encryption_key, std::move(buff), nbytes));
+
+  STATS_ADD_COUNTER(
+      stats::Stats::CounterType::WRITE_TILE_VALIDITY_OFFSETS_SIZE, *nbytes);
+
+  return Status::Ok();
+}
+
+Status FragmentMetadata::write_tile_validity_offsets(
+    unsigned idx, Buffer* buff) {
+  Status st;
+
+  // Write number of tile offsets
+  uint64_t tile_validity_offsets_num = tile_validity_offsets_[idx].size();
+  st = buff->write(&tile_validity_offsets_num, sizeof(uint64_t));
+  if (!st.ok()) {
+    return LOG_STATUS(
+        Status::FragmentMetadataError("Cannot serialize fragment metadata; "
+                                      "Writing number of validity tile offsets "
+                                      "failed"));
+  }
+
+  // Write tile offsets
+  if (tile_validity_offsets_num != 0) {
+    st = buff->write(
+        &tile_validity_offsets_[idx][0],
+        tile_validity_offsets_num * sizeof(uint64_t));
+    if (!st.ok()) {
+      return LOG_STATUS(Status::FragmentMetadataError(
+          "Cannot serialize fragment metadata; Writing tile offsets failed"));
+    }
+  }
+
   return Status::Ok();
 }
 

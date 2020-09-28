@@ -319,6 +319,8 @@ Attribute
     :project: TileDB-C
 .. doxygenfunction:: tiledb_attribute_free
     :project: TileDB-C
+.. doxygenfunction:: tiledb_attribute_set_nullable
+    :project: TileDB-C
 .. doxygenfunction:: tiledb_attribute_set_filter_list
     :project: TileDB-C
 .. doxygenfunction:: tiledb_attribute_set_cell_val_num
@@ -326,6 +328,8 @@ Attribute
 .. doxygenfunction:: tiledb_attribute_get_name
     :project: TileDB-C
 .. doxygenfunction:: tiledb_attribute_get_type
+    :project: TileDB-C
+.. doxygenfunction:: tiledb_attribute_get_nullable
     :project: TileDB-C
 .. doxygenfunction:: tiledb_attribute_get_filter_list
     :project: TileDB-C
@@ -396,9 +400,17 @@ Query
     :project: TileDB-C
 .. doxygenfunction:: tiledb_query_set_buffer_var
     :project: TileDB-C
+.. doxygenfunction:: tiledb_query_set_buffer_nullable
+    :project: TileDB-C
+.. doxygenfunction:: tiledb_query_set_buffer_var_nullable
+    :project: TileDB-C
 .. doxygenfunction:: tiledb_query_get_buffer
     :project: TileDB-C
 .. doxygenfunction:: tiledb_query_get_buffer_var
+    :project: TileDB-C
+.. doxygenfunction:: tiledb_query_get_buffer_nullable
+    :project: TileDB-C
+.. doxygenfunction:: tiledb_query_get_buffer_var_nullable
     :project: TileDB-C
 .. doxygenfunction:: tiledb_query_set_layout
     :project: TileDB-C

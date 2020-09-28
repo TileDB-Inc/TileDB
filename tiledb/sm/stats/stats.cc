@@ -216,6 +216,8 @@ std::string Stats::dump_write() const {
       counter_stats_.find(CounterType::WRITE_ATTR_FIXED_NUM)->second;
   auto write_attr_var_num =
       counter_stats_.find(CounterType::WRITE_ATTR_VAR_NUM)->second;
+  auto write_attr_nullable_num =
+      counter_stats_.find(CounterType::WRITE_ATTR_NULLABLE_NUM)->second;
   auto write_dim_num = counter_stats_.find(CounterType::WRITE_DIM_NUM)->second;
   auto write_dim_fixed_num =
       counter_stats_.find(CounterType::WRITE_DIM_FIXED_NUM)->second;
@@ -234,6 +236,9 @@ std::string Stats::dump_write() const {
       counter_stats_.find(CounterType::WRITE_TILE_VAR_OFFSETS_SIZE)->second;
   auto tile_var_sizes_size =
       counter_stats_.find(CounterType::WRITE_TILE_VAR_SIZES_SIZE)->second;
+  auto tile_validity_offsets_size =
+      counter_stats_.find(CounterType::WRITE_TILE_VALIDITY_OFFSETS_SIZE)
+          ->second;
   auto frag_meta_footer_size =
       counter_stats_.find(CounterType::WRITE_FRAG_META_FOOTER_SIZE)->second;
   auto array_schema_size =
@@ -286,7 +291,8 @@ std::string Stats::dump_write() const {
 
     auto total_meta_size = array_schema_size + frag_meta_footer_size +
                            rtree_size + tile_offsets_size +
-                           tile_var_offsets_size + tile_var_sizes_size;
+                           tile_var_offsets_size + tile_var_sizes_size +
+                           tile_validity_offsets_size;
     write_bytes(&ss, "- Total metadata written: ", total_meta_size);
     write_bytes(&ss, "  * Array schema: ", array_schema_size);
     write_bytes(&ss, "  * Fragment metadata footer: ", frag_meta_footer_size);
@@ -294,6 +300,7 @@ std::string Stats::dump_write() const {
     write_bytes(&ss, "  * Fixed-sized tile offsets: ", tile_offsets_size);
     write_bytes(&ss, "  * Var-sized tile offsets: ", tile_var_offsets_size);
     write_bytes(&ss, "  * Var-sized tile sizes: ", tile_var_sizes_size);
+    write_bytes(&ss, "  * Validity tile sizes: ", tile_validity_offsets_size);
     ss << "\n";
 
     if (write_array_meta_size != 0) {
@@ -312,6 +319,9 @@ std::string Stats::dump_write() const {
     auto var_tiles =
         2 * write_tile_num * (write_attr_var_num + write_dim_var_num);
     write(&ss, "  * Number of var-sized physical tiles written: ", var_tiles);
+    auto validity_tiles = write_tile_num * write_attr_nullable_num;
+    write(
+        &ss, "  * Number of validity physical tiles written: ", validity_tiles);
     ss << "\n";
 
     write(&ss, "- Write time: ", write_time);
@@ -435,6 +445,8 @@ std::string Stats::dump_read() const {
       counter_stats_.find(CounterType::READ_TILE_VAR_OFFSETS_SIZE)->second;
   auto tile_var_sizes_size =
       counter_stats_.find(CounterType::READ_TILE_VAR_SIZES_SIZE)->second;
+  auto tile_validity_offsets_size =
+      counter_stats_.find(CounterType::READ_TILE_VALIDITY_OFFSETS_SIZE)->second;
   auto read_array_meta_size =
       counter_stats_.find(CounterType::READ_ARRAY_META_SIZE)->second;
   auto read_num = counter_stats_.find(CounterType::READ_NUM)->second;
@@ -445,6 +457,8 @@ std::string Stats::dump_read() const {
       counter_stats_.find(CounterType::READ_ATTR_FIXED_NUM)->second;
   auto read_attr_var_num =
       counter_stats_.find(CounterType::READ_ATTR_VAR_NUM)->second;
+  auto read_attr_nullable_num =
+      counter_stats_.find(CounterType::READ_ATTR_NULLABLE_NUM)->second;
   auto read_dim_fixed_num =
       counter_stats_.find(CounterType::READ_DIM_FIXED_NUM)->second;
   auto read_dim_var_num =
@@ -468,6 +482,8 @@ std::string Stats::dump_read() const {
       (read_dim_fixed_num + read_dim_zipped_num + read_attr_fixed_num);
   auto read_var_phys_tiles_num =
       2 * read_overlap_tile_num * (read_dim_var_num + read_attr_var_num);
+  auto read_validity_phys_tiles_num =
+      read_overlap_tile_num * read_attr_nullable_num;
 
   std::stringstream ss;
   if (read_num != 0) {
@@ -497,7 +513,8 @@ std::string Stats::dump_read() const {
       write(
           &ss,
           "- Number of physical tiles read: ",
-          read_fixed_phys_tiles_num + read_var_phys_tiles_num);
+          read_fixed_phys_tiles_num + read_var_phys_tiles_num +
+              read_validity_phys_tiles_num);
       write(
           &ss,
           "  * Number of physical fixed-sized tiles read: ",
@@ -506,6 +523,10 @@ std::string Stats::dump_read() const {
           &ss,
           "  * Number of physical var-sized tiles read: ",
           read_var_phys_tiles_num);
+      write(
+          &ss,
+          "  * Number of physical validity tiles read: ",
+          read_validity_phys_tiles_num);
       write(&ss, "- Number of cells read: ", read_cell_num);
       write(&ss, "- Number of result cells: ", read_result_num);
       write_ratio(
@@ -562,7 +583,8 @@ std::string Stats::dump_read() const {
 
     auto total_meta_size = array_schema_size + consolidated_frag_meta_size +
                            frag_meta_size + rtree_size + tile_offsets_size +
-                           tile_var_offsets_size + tile_var_sizes_size;
+                           tile_var_offsets_size + tile_var_sizes_size +
+                           tile_validity_offsets_size;
     write_bytes(&ss, "- Total metadata read: ", total_meta_size);
     write_bytes(&ss, "  * Array schema: ", array_schema_size);
     write_bytes(
@@ -574,6 +596,7 @@ std::string Stats::dump_read() const {
     write_bytes(&ss, "  * Fixed-sized tile offsets: ", tile_offsets_size);
     write_bytes(&ss, "  * Var-sized tile offsets: ", tile_var_offsets_size);
     write_bytes(&ss, "  * Var-sized tile sizes: ", tile_var_sizes_size);
+    write_bytes(&ss, "  * Validity tile offsets: ", tile_validity_offsets_size);
     ss << "\n";
 
     if (read_load_array_meta != 0) {

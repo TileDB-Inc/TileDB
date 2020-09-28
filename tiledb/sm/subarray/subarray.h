@@ -122,8 +122,12 @@ class Subarray {
      * attributes/dimensions.
      */
     double size_fixed_;
+
     /** Size of values for var-sized attributes/dimensions. */
     double size_var_;
+
+    /** Size of validity values for nullable attributes. */
+    double size_validity_;
   };
 
   /**
@@ -137,11 +141,18 @@ class Subarray {
      * attributes/dimensions.
      */
     uint64_t size_fixed_;
+
     /**
      * Maximum size of overlapping tiles fetched into memory for
      * var-sized attributes/dimensions.
      */
     uint64_t size_var_;
+
+    /**
+     * Maximum size of overlapping validity tiles fetched into memory for
+     * nullable attributes.
+     */
+    uint64_t size_validity_;
   };
 
   /* ********************************* */
@@ -254,6 +265,7 @@ class Subarray {
    * @param names The name vector of the attributes/dimensions to focus on.
    * @param var_sizes A vector indicating which attribute/dimension is
    *     var-sized.
+   * @param nullable A vector indicating which attribute is nullable.
    * @param range_idx The id of the subarray range to focus on.
    * @param range_coords The coordinates of the subarray range to focus on.
    * @param result_sizes The result sizes to be retrieved for all given names.
@@ -269,6 +281,7 @@ class Subarray {
       const std::vector<FragmentMetadata*>& fragment_meta,
       const std::vector<std::string>& name,
       const std::vector<bool>& var_sizes,
+      const std::vector<bool>& nullable,
       uint64_t range_idx,
       const std::vector<uint64_t>& range_coords,
       std::vector<ResultSize>* result_sizes,
@@ -378,6 +391,27 @@ class Subarray {
       uint64_t* size_val,
       ThreadPool* compute_tp);
 
+  /**
+   * Gets the estimated result size (in bytes) for the input fixed-sized,
+   * nullable attribute.
+   */
+  Status get_est_result_size_nullable(
+      const char* name,
+      uint64_t* size,
+      uint64_t* size_validity,
+      ThreadPool* compute_tp);
+
+  /**
+   * Gets the estimated result size (in bytes) for the input var-sized,
+   * nullable attribute.
+   */
+  Status get_est_result_size_nullable(
+      const char* name,
+      uint64_t* size_off,
+      uint64_t* size_val,
+      uint64_t* size_validity,
+      ThreadPool* compute_tp);
+
   /** returns whether the estimated result size has been computed or not */
   bool est_result_size_computed();
 
@@ -396,6 +430,27 @@ class Subarray {
       const char* name,
       uint64_t* size_off,
       uint64_t* size_val,
+      ThreadPool* compute_tp);
+
+  /*
+   * Gets the maximum memory required to produce the result (in bytes)
+   * for the input fixed-sized, nullable attribute.
+   */
+  Status get_max_memory_size_nullable(
+      const char* name,
+      uint64_t* size,
+      uint64_t* size_validity,
+      ThreadPool* compute_tp);
+
+  /**
+   * Gets the maximum memory required to produce the result (in bytes)
+   * for the input var-sized, nullable attribute.
+   */
+  Status get_max_memory_size_nullable(
+      const char* name,
+      uint64_t* size_off,
+      uint64_t* size_val,
+      uint64_t* size_validity,
       ThreadPool* compute_tp);
 
   /** Retrieves the query type of the subarray's array. */
