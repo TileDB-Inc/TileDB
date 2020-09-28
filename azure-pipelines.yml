@@ -103,24 +103,12 @@ stages:
      - job:
        strategy:
          matrix:
-           linux_without_tbb:
-             imageName: 'ubuntu-16.04'
-             CXX: g++
-             TILEDB_TBB: OFF
-             ARTIFACT_OS: 'linux'
-             ARTIFACT_EXTRAS: 'without_tbb'
            linux:
              imageName: 'ubuntu-16.04'
              CXX: g++
              TILEDB_TBB: ON
              ARTIFACT_OS: 'linux'
              ARTIFACT_EXTRAS: 'full'
-           macOS_without_tbb:
-             imageName: 'macOS-10.14'
-             CXX: clang++
-             TILEDB_TBB: OFF
-             ARTIFACT_OS: 'macos'
-             ARTIFACT_EXTRAS: 'without_tbb'
            macOS:
              imageName: 'macOS-10.14'
              CXX: clang++
@@ -148,15 +136,6 @@ stages:
              TILEDB_FORCE_BUILD_DEPS: ON
              ARTIFACT_OS: 'windows'
              ARTIFACT_EXTRAS: 'full'
-             CL: "/arch:AVX2"
-           VS2017_without_tbb:
-             imageName: 'vs2017-win2016'
-             TILEDB_S3: ON
-             TILEDB_TBB: OFF
-             TILEDB_STATIC: OFF
-             TILEDB_FORCE_BUILD_DEPS: ON
-             ARTIFACT_OS: 'windows'
-             ARTIFACT_EXTRAS: 'without_tbb'
              CL: "/arch:AVX2"
        pool:
          vmImage: $(imageName)
@@ -190,4 +169,3 @@ stages:
            tag: $(Build.SourceBranchName)
            assets: |
              $(Build.ArtifactStagingDirectory)/full/*
-             $(Build.ArtifactStagingDirectory)/without_tbb/*
