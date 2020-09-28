@@ -173,116 +173,8 @@ Status S3::init(const Config& config, ThreadPool* const thread_pool) {
   RETURN_NOT_OK(config.get<bool>(
       "vfs.s3.use_multipart_upload", &use_multipart_upload_, &found));
   assert(found);
-  auto s3_endpoint_override = config.get("vfs.s3.endpoint_override", &found);
-  assert(found);
 
-  client_config_ = std::unique_ptr<Aws::Client::ClientConfiguration>(
-      new Aws::Client::ClientConfiguration);
-  s3_tp_executor_ = std::make_shared<S3ThreadPoolExecutor>(thread_pool);
-  client_config_->executor = s3_tp_executor_;
-  auto& client_config = *client_config_.get();
-  if (!region_.empty())
-    client_config.region = region_.c_str();
-  if (!s3_endpoint_override.empty())
-    client_config.endpointOverride = s3_endpoint_override.c_str();
-
-  auto proxy_host = config.get("vfs.s3.proxy_host", &found);
-  assert(found);
-  uint32_t proxy_port = 0;
-  RETURN_NOT_OK(config.get<uint32_t>("vfs.s3.proxy_port", &proxy_port, &found));
-  assert(found);
-  auto proxy_username = config.get("vfs.s3.proxy_username", &found);
-  assert(found);
-  auto proxy_password = config.get("vfs.s3.proxy_password", &found);
-  assert(found);
-  auto proxy_scheme = config.get("vfs.s3.proxy_scheme", &found);
-  assert(found);
-  if (!proxy_host.empty()) {
-    client_config.proxyHost = proxy_host.c_str();
-    client_config.proxyPort = proxy_port;
-    client_config.proxyScheme = proxy_scheme == "https" ?
-                                    Aws::Http::Scheme::HTTPS :
-                                    Aws::Http::Scheme::HTTP;
-    client_config.proxyUserName = proxy_username.c_str();
-    client_config.proxyPassword = proxy_password.c_str();
-  }
-
-  auto s3_scheme = config.get("vfs.s3.scheme", &found);
-  assert(found);
-  int64_t connect_timeout_ms = 0;
-  RETURN_NOT_OK(config.get<int64_t>(
-      "vfs.s3.connect_timeout_ms", &connect_timeout_ms, &found));
-  assert(found);
-  int64_t request_timeout_ms = 0;
-  RETURN_NOT_OK(config.get<int64_t>(
-      "vfs.s3.request_timeout_ms", &request_timeout_ms, &found));
-  assert(found);
-  auto ca_file = config.get("vfs.s3.ca_file", &found);
-  assert(found);
-  auto ca_path = config.get("vfs.s3.ca_path", &found);
-  assert(found);
-  bool verify_ssl = false;
-  RETURN_NOT_OK(config.get<bool>("vfs.s3.verify_ssl", &verify_ssl, &found));
-  assert(found);
-  auto aws_access_key_id = config.get("vfs.s3.aws_access_key_id", &found);
-  assert(found);
-  auto aws_secret_access_key =
-      config.get("vfs.s3.aws_secret_access_key", &found);
-  assert(found);
-  auto aws_session_token = config.get("vfs.s3.aws_session_token", &found);
-  assert(found);
-  int64_t connect_max_tries = 0;
-  RETURN_NOT_OK(config.get<int64_t>(
-      "vfs.s3.connect_max_tries", &connect_max_tries, &found));
-  assert(found);
-  int64_t connect_scale_factor = 0;
-  RETURN_NOT_OK(config.get<int64_t>(
-      "vfs.s3.connect_scale_factor", &connect_scale_factor, &found));
-  assert(found);
-
-  client_config.scheme = (s3_scheme == "http") ? Aws::Http::Scheme::HTTP :
-                                                 Aws::Http::Scheme::HTTPS;
-  client_config.connectTimeoutMs = (long)connect_timeout_ms;
-  client_config.requestTimeoutMs = (long)request_timeout_ms;
-  client_config.caFile = ca_file.c_str();
-  client_config.caPath = ca_path.c_str();
-  client_config.verifySSL = verify_ssl;
-
-  client_config.retryStrategy = Aws::MakeShared<S3RetryStrategy>(
-      constants::s3_allocation_tag.c_str(),
-      connect_max_tries,
-      connect_scale_factor);
-
-#ifdef __linux__
-  // If the user has not set a s3 ca file or ca path then let's attempt to set
-  // the cert file if we've autodetected it
-  if (ca_file.empty() && ca_path.empty()) {
-    const std::string cert_file =
-        global_state::GlobalState::GetGlobalState().cert_file();
-    if (!cert_file.empty()) {
-      client_config.caFile = cert_file.c_str();
-    }
-  }
-#endif
-
-  // If the user set config variables for AWS keys use them.
-  if (!aws_access_key_id.empty() && !aws_secret_access_key.empty()) {
-    Aws::String access_key_id(aws_access_key_id.c_str());
-    Aws::String secret_access_key(aws_secret_access_key.c_str());
-    client_creds_ = std::unique_ptr<Aws::Auth::AWSCredentials>(
-        new Aws::Auth::AWSCredentials(access_key_id, secret_access_key));
-
-    // If the user has set a session token (for AWS Security Token Service)
-    // then use it:
-    //     - https://docs.aws.amazon.com/STS/latest/APIReference/Welcome.html
-    // For testing run: `aws sts get-session-token --duration-seconds 900`. See:
-    //     -
-    //     https://docs.aws.amazon.com/cli/latest/reference/sts/get-session-token.html
-    if (!aws_session_token.empty()) {
-      Aws::String session_token(aws_session_token.c_str());
-      client_creds_->SetSessionToken(session_token);
-    }
-  }
+  config_ = config;
 
   state_ = State::INITIALIZED;
   return Status::Ok();
@@ -902,10 +794,127 @@ Status S3::init_client() const {
 
   std::lock_guard<std::mutex> lck(client_init_mtx_);
 
-  if (client_.get() != nullptr)
+  if (client_ != nullptr)
     return Status::Ok();
 
-  if (client_creds_.get() == nullptr) {
+  bool found;
+  auto s3_endpoint_override = config_.get("vfs.s3.endpoint_override", &found);
+  assert(found);
+
+  // ClientConfiguration should be lazily init'ed here in init_client to avoid
+  // potential slowdowns for non s3 users as the ClientConfig now attempts to
+  // check for client configuration on create, which can be slow if aws is not
+  // configured on a users systems due to ec2 metadata check
+  client_config_ = std::unique_ptr<Aws::Client::ClientConfiguration>(
+      new Aws::Client::ClientConfiguration);
+  s3_tp_executor_ = std::make_shared<S3ThreadPoolExecutor>(vfs_thread_pool_);
+  client_config_->executor = s3_tp_executor_;
+  auto& client_config = *client_config_.get();
+  if (!region_.empty())
+    client_config.region = region_.c_str();
+  if (!s3_endpoint_override.empty())
+    client_config.endpointOverride = s3_endpoint_override.c_str();
+
+  auto proxy_host = config_.get("vfs.s3.proxy_host", &found);
+  assert(found);
+  uint32_t proxy_port = 0;
+  RETURN_NOT_OK(
+      config_.get<uint32_t>("vfs.s3.proxy_port", &proxy_port, &found));
+  assert(found);
+  auto proxy_username = config_.get("vfs.s3.proxy_username", &found);
+  assert(found);
+  auto proxy_password = config_.get("vfs.s3.proxy_password", &found);
+  assert(found);
+  auto proxy_scheme = config_.get("vfs.s3.proxy_scheme", &found);
+  assert(found);
+  if (!proxy_host.empty()) {
+    client_config.proxyHost = proxy_host.c_str();
+    client_config.proxyPort = proxy_port;
+    client_config.proxyScheme = proxy_scheme == "https" ?
+                                    Aws::Http::Scheme::HTTPS :
+                                    Aws::Http::Scheme::HTTP;
+    client_config.proxyUserName = proxy_username.c_str();
+    client_config.proxyPassword = proxy_password.c_str();
+  }
+
+  auto s3_scheme = config_.get("vfs.s3.scheme", &found);
+  assert(found);
+  int64_t connect_timeout_ms = 0;
+  RETURN_NOT_OK(config_.get<int64_t>(
+      "vfs.s3.connect_timeout_ms", &connect_timeout_ms, &found));
+  assert(found);
+  int64_t request_timeout_ms = 0;
+  RETURN_NOT_OK(config_.get<int64_t>(
+      "vfs.s3.request_timeout_ms", &request_timeout_ms, &found));
+  assert(found);
+  auto ca_file = config_.get("vfs.s3.ca_file", &found);
+  assert(found);
+  auto ca_path = config_.get("vfs.s3.ca_path", &found);
+  assert(found);
+  bool verify_ssl = false;
+  RETURN_NOT_OK(config_.get<bool>("vfs.s3.verify_ssl", &verify_ssl, &found));
+  assert(found);
+  auto aws_access_key_id = config_.get("vfs.s3.aws_access_key_id", &found);
+  assert(found);
+  auto aws_secret_access_key =
+      config_.get("vfs.s3.aws_secret_access_key", &found);
+  assert(found);
+  auto aws_session_token = config_.get("vfs.s3.aws_session_token", &found);
+  assert(found);
+  int64_t connect_max_tries = 0;
+  RETURN_NOT_OK(config_.get<int64_t>(
+      "vfs.s3.connect_max_tries", &connect_max_tries, &found));
+  assert(found);
+  int64_t connect_scale_factor = 0;
+  RETURN_NOT_OK(config_.get<int64_t>(
+      "vfs.s3.connect_scale_factor", &connect_scale_factor, &found));
+  assert(found);
+
+  client_config.scheme = (s3_scheme == "http") ? Aws::Http::Scheme::HTTP :
+                                                 Aws::Http::Scheme::HTTPS;
+  client_config.connectTimeoutMs = (long)connect_timeout_ms;
+  client_config.requestTimeoutMs = (long)request_timeout_ms;
+  client_config.caFile = ca_file.c_str();
+  client_config.caPath = ca_path.c_str();
+  client_config.verifySSL = verify_ssl;
+
+  client_config.retryStrategy = Aws::MakeShared<S3RetryStrategy>(
+      constants::s3_allocation_tag.c_str(),
+      connect_max_tries,
+      connect_scale_factor);
+
+#ifdef __linux__
+  // If the user has not set a s3 ca file or ca path then let's attempt to set
+  // the cert file if we've autodetected it
+  if (ca_file.empty() && ca_path.empty()) {
+    const std::string cert_file =
+        global_state::GlobalState::GetGlobalState().cert_file();
+    if (!cert_file.empty()) {
+      client_config.caFile = cert_file.c_str();
+    }
+  }
+#endif
+
+  // If the user set config variables for AWS keys use them.
+  if (!aws_access_key_id.empty() && !aws_secret_access_key.empty()) {
+    Aws::String access_key_id(aws_access_key_id.c_str());
+    Aws::String secret_access_key(aws_secret_access_key.c_str());
+    client_creds_ = std::unique_ptr<Aws::Auth::AWSCredentials>(
+        new Aws::Auth::AWSCredentials(access_key_id, secret_access_key));
+
+    // If the user has set a session token (for AWS Security Token Service)
+    // then use it:
+    //     - https://docs.aws.amazon.com/STS/latest/APIReference/Welcome.html
+    // For testing run: `aws sts get-session-token --duration-seconds 900`. See:
+    //     -
+    //     https://docs.aws.amazon.com/cli/latest/reference/sts/get-session-token.html
+    if (!aws_session_token.empty()) {
+      Aws::String session_token(aws_session_token.c_str());
+      client_creds_->SetSessionToken(session_token);
+    }
+  }
+
+  if (client_creds_ == nullptr) {
     client_ = Aws::MakeShared<Aws::S3::S3Client>(
         constants::s3_allocation_tag.c_str(),
         *client_config_,

@@ -472,13 +472,13 @@ class S3 {
   mutable std::mutex client_init_mtx_;
 
   /** Configuration object used to initialize the client. */
-  std::unique_ptr<Aws::Client::ClientConfiguration> client_config_;
+  mutable std::unique_ptr<Aws::Client::ClientConfiguration> client_config_;
 
   /** The executor  used by 'client_'. */
-  std::shared_ptr<S3ThreadPoolExecutor> s3_tp_executor_;
+  mutable std::shared_ptr<S3ThreadPoolExecutor> s3_tp_executor_;
 
   /** Credentials object used to initialize the client. */
-  std::unique_ptr<Aws::Auth::AWSCredentials> client_creds_;
+  mutable std::unique_ptr<Aws::Auth::AWSCredentials> client_creds_;
 
   /** The size of the file buffers used in multipart uploads. */
   uint64_t file_buffer_size_;
@@ -513,6 +513,9 @@ class S3 {
 
   /** Whether or not to use multipart upload. */
   bool use_multipart_upload_;
+
+  /** Config stored from init for lazy client_init. */
+  Config config_;
 
   /* ********************************* */
   /*          PRIVATE METHODS          */
