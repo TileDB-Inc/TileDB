@@ -109,7 +109,7 @@ class StorageManager {
   /* ********************************* */
 
   /** Constructor. */
-  StorageManager();
+  StorageManager(ThreadPool* compute_tp, ThreadPool* io_tp);
 
   /** Destructor. */
   ~StorageManager();
@@ -549,14 +549,6 @@ class StorageManager {
    */
   Status init(const Config* config);
 
-  /**
-   * Initializes the storage manager's thread pools.
-   *
-   * @param config The configuration parameters.
-   * @return Status
-   */
-  Status init_thread_pools();
-
   /** Returns the thread pool for compute-bound tasks. */
   ThreadPool* compute_tp();
 
@@ -961,10 +953,10 @@ class StorageManager {
   std::condition_variable queries_in_progress_cv_;
 
   /** The thread pool for compute-bound tasks. */
-  mutable ThreadPool compute_tp_;
+  ThreadPool* const compute_tp_;
 
   /** The thread pool for io-bound tasks. */
-  mutable ThreadPool io_tp_;
+  ThreadPool* const io_tp_;
 
   /** Tracks all scheduled tasks that can be safely cancelled before execution.
    */

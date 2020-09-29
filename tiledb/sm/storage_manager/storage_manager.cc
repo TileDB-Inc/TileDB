@@ -68,10 +68,13 @@ namespace sm {
 /*   CONSTRUCTORS & DESTRUCTORS   */
 /* ****************************** */
 
-StorageManager::StorageManager() {
-  vfs_ = nullptr;
-  cancellation_in_progress_ = false;
-  queries_in_progress_ = 0;
+StorageManager::StorageManager(
+    ThreadPool* const compute_tp, ThreadPool* const io_tp)
+    : cancellation_in_progress_(false)
+    , queries_in_progress_(0)
+    , compute_tp_(compute_tp)
+    , io_tp_(io_tp)
+    , vfs_(nullptr) {
 }
 
 StorageManager::~StorageManager() {
@@ -527,7 +530,7 @@ Status StorageManager::array_vacuum_fragments(const char* array_name) {
   // Delete the ok files
   RETURN_NOT_OK(array_xlock(array_uri));
   auto statuses =
-      parallel_for(&compute_tp_, 0, to_vacuum.size(), [&, this](size_t i) {
+      parallel_for(compute_tp_, 0, to_vacuum.size(), [&, this](size_t i) {
         auto uri = URI(to_vacuum[i].to_string() + constants::ok_file_suffix);
         RETURN_NOT_OK(vfs_->remove_file(uri));
 
@@ -539,7 +542,7 @@ Status StorageManager::array_vacuum_fragments(const char* array_name) {
 
   // Delete fragment directories
   statuses =
-      parallel_for(&compute_tp_, 0, to_vacuum.size(), [&, this](size_t i) {
+      parallel_for(compute_tp_, 0, to_vacuum.size(), [&, this](size_t i) {
         RETURN_NOT_OK(vfs_->remove_dir(to_vacuum[i]));
 
         return Status::Ok();
@@ -548,11 +551,10 @@ Status StorageManager::array_vacuum_fragments(const char* array_name) {
     RETURN_NOT_OK(st);
 
   // Delete vacuum files
-  statuses =
-      parallel_for(&compute_tp_, 0, vac_uris.size(), [&, this](size_t i) {
-        RETURN_NOT_OK(vfs_->remove_file(vac_uris[i]));
-        return Status::Ok();
-      });
+  statuses = parallel_for(compute_tp_, 0, vac_uris.size(), [&, this](size_t i) {
+    RETURN_NOT_OK(vfs_->remove_file(vac_uris[i]));
+    return Status::Ok();
+  });
   for (const auto& st : statuses)
     RETURN_NOT_OK(st);
 
@@ -581,7 +583,7 @@ Status StorageManager::array_vacuum_fragment_meta(const char* array_name) {
   // Vacuum after exclusively locking the array
   RETURN_NOT_OK(array_xlock(array_uri));
   auto statuses =
-      parallel_for(&compute_tp_, 0, to_vacuum.size(), [&, this](size_t i) {
+      parallel_for(compute_tp_, 0, to_vacuum.size(), [&, this](size_t i) {
         RETURN_NOT_OK(vfs_->remove_file(to_vacuum[i]));
         return Status::Ok();
       });
@@ -611,7 +613,7 @@ Status StorageManager::array_vacuum_array_meta(const char* array_name) {
   // Delete the array metadata files
   RETURN_NOT_OK(array_xlock(array_uri));
   auto statuses =
-      parallel_for(&compute_tp_, 0, to_vacuum.size(), [&, this](size_t i) {
+      parallel_for(compute_tp_, 0, to_vacuum.size(), [&, this](size_t i) {
         RETURN_NOT_OK(vfs_->remove_file(to_vacuum[i]));
 
         return Status::Ok();
@@ -621,11 +623,10 @@ Status StorageManager::array_vacuum_array_meta(const char* array_name) {
   RETURN_NOT_OK(array_xunlock(array_uri));
 
   // Delete vacuum files
-  statuses =
-      parallel_for(&compute_tp_, 0, vac_uris.size(), [&, this](size_t i) {
-        RETURN_NOT_OK(vfs_->remove_file(vac_uris[i]));
-        return Status::Ok();
-      });
+  statuses = parallel_for(compute_tp_, 0, vac_uris.size(), [&, this](size_t i) {
+    RETURN_NOT_OK(vfs_->remove_file(vac_uris[i]));
+    return Status::Ok();
+  });
   for (const auto& st : statuses)
     RETURN_NOT_OK(st);
 
@@ -1035,7 +1036,7 @@ Status StorageManager::array_xunlock(const URI& array_uri) {
 
 Status StorageManager::async_push_query(Query* query) {
   cancelable_tasks_.execute(
-      &compute_tp_,
+      compute_tp_,
       [this, query]() {
         // Process query.
         Status st = query_submit(query);
@@ -1223,7 +1224,7 @@ Status StorageManager::get_fragment_uris(
 
   // Get only the committed fragment uris
   std::vector<int> is_fragment(uris.size(), 0);
-  auto statuses = parallel_for(&compute_tp_, 0, uris.size(), [&](size_t i) {
+  auto statuses = parallel_for(compute_tp_, 0, uris.size(), [&](size_t i) {
     if (utils::parse::starts_with(uris[i].last_path_part(), "."))
       return Status::Ok();
     RETURN_NOT_OK(this->is_fragment(uris[i], ok_uris, &is_fragment[i]));
@@ -1343,8 +1344,6 @@ Status StorageManager::init(const Config* config) {
   if (config != nullptr)
     config_ = *config;
 
-  RETURN_NOT_OK(init_thread_pools());
-
   // Get config params
   bool found = false;
   uint64_t tile_cache_size = 0;
@@ -1361,7 +1360,7 @@ Status StorageManager::init(const Config* config) {
   RETURN_NOT_OK(global_state.init(config));
 
   vfs_ = new VFS();
-  RETURN_NOT_OK(vfs_->init(&compute_tp_, &io_tp_, &config_, nullptr));
+  RETURN_NOT_OK(vfs_->init(compute_tp_, io_tp_, &config_, nullptr));
 #ifdef TILEDB_SERIALIZATION
   RETURN_NOT_OK(init_rest_client());
 #endif
@@ -1373,103 +1372,12 @@ Status StorageManager::init(const Config* config) {
   return Status::Ok();
 }
 
-Status StorageManager::init_thread_pools() {
-  // The "sm.num_async_threads", "sm.num_reader_threads",
-  // "sm.num_writer_threads", and "sm.num_vfs_threads" have
-  // been removed. If they are set, we will log an error message.
-  // To error on the side of maintaining high-performance for
-  // existing users, we will take the maximum thread count
-  // among all of these configurations and set them to the new
-  // "sm.compute_concurrency_level" and "sm.io_concurrency_level".
-  uint64_t max_thread_count = 0;
-
-  bool found;
-  uint64_t num_async_threads = 0;
-  RETURN_NOT_OK(config_.get<uint64_t>(
-      "sm.num_async_threads", &num_async_threads, &found));
-  if (found) {
-    max_thread_count = std::max(max_thread_count, num_async_threads);
-    LOG_STATUS(Status::StorageManagerError(
-        "Config parameter \"sm.num_async_threads\" has been removed; use "
-        "config parameter \"sm.compute_concurrency_level\"."));
-  }
-
-  uint64_t num_reader_threads = 0;
-  RETURN_NOT_OK(config_.get<uint64_t>(
-      "sm.num_reader_threads", &num_reader_threads, &found));
-  if (found) {
-    max_thread_count = std::max(max_thread_count, num_reader_threads);
-    LOG_STATUS(Status::StorageManagerError(
-        "Config parameter \"sm.num_reader_threads\" has been removed; use "
-        "config parameter \"sm.compute_concurrency_level\"."));
-  }
-
-  uint64_t num_writer_threads = 0;
-  RETURN_NOT_OK(config_.get<uint64_t>(
-      "sm.num_writer_threads", &num_writer_threads, &found));
-  if (found) {
-    max_thread_count = std::max(max_thread_count, num_writer_threads);
-    LOG_STATUS(Status::StorageManagerError(
-        "Config parameter \"sm.num_writer_threads\" has been removed; use "
-        "config parameter \"sm.compute_concurrency_level\"."));
-  }
-
-  uint64_t num_vfs_threads = 0;
-  RETURN_NOT_OK(
-      config_.get<uint64_t>("sm.num_vfs_threads", &num_vfs_threads, &found));
-  if (found) {
-    max_thread_count = std::max(max_thread_count, num_vfs_threads);
-    LOG_STATUS(Status::StorageManagerError(
-        "Config parameter \"sm.num_vfs_threads\" has been removed; use "
-        "config parameter \"sm.io_concurrency_level\"."));
-  }
-
-  // Fetch the compute and io concurrency levels.
-  uint64_t compute_concurrency_level = 0;
-  RETURN_NOT_OK(config_.get<uint64_t>(
-      "sm.compute_concurrency_level", &compute_concurrency_level, &found));
-  assert(found);
-  uint64_t io_concurrency_level = 0;
-  RETURN_NOT_OK(config_.get<uint64_t>(
-      "sm.io_concurrency_level", &io_concurrency_level, &found));
-  assert(found);
-
-#ifndef HAVE_TBB
-  // The "sm.num_tbb_threads" has been deprecated when TBB is disabled.
-  // Now that TBB is disabled by default, users may still be setting this
-  // configuration parameter larger than the default value. In this scenario,
-  // we will override the compute and io concurrency levels if the configured
-  // tbb threads are greater. We will do this silently because the
-  // "sm.num_tbb_threads" still has a default value in the config. When we
-  // remove TBB, we will also remove this configuration parameter.
-  int num_tbb_threads = 0;
-  RETURN_NOT_OK(
-      config_.get<int>("sm.num_tbb_threads", &num_tbb_threads, &found));
-  assert(found);
-  if (num_tbb_threads > 0)
-    max_thread_count =
-        std::max(max_thread_count, static_cast<uint64_t>(num_tbb_threads));
-#endif
-
-  // If 'max_thread_count' is larger than the compute or io concurrency levels,
-  // use that instead.
-  compute_concurrency_level =
-      std::max(max_thread_count, compute_concurrency_level);
-  io_concurrency_level = std::max(max_thread_count, io_concurrency_level);
-
-  // Initialize the thread pools.
-  RETURN_NOT_OK(compute_tp_.init(compute_concurrency_level));
-  RETURN_NOT_OK(io_tp_.init(io_concurrency_level));
-
-  return Status::Ok();
-}
-
 ThreadPool* StorageManager::compute_tp() {
-  return &compute_tp_;
+  return compute_tp_;
 }
 
 ThreadPool* StorageManager::io_tp() {
-  return &io_tp_;
+  return io_tp_;
 }
 
 RestClient* StorageManager::rest_client() const {
@@ -1992,7 +1900,7 @@ Status StorageManager::init_rest_client() {
   RETURN_NOT_OK(config_.get("rest.server_address", &server_address));
   if (server_address != nullptr) {
     rest_client_.reset(new RestClient);
-    RETURN_NOT_OK(rest_client_->init(&config_, &compute_tp_));
+    RETURN_NOT_OK(rest_client_->init(&config_, compute_tp_));
   }
 
   return Status::Ok();
@@ -2137,7 +2045,7 @@ Status StorageManager::load_array_metadata(
   auto metadata_num = array_metadata_to_load.size();
   std::vector<std::shared_ptr<Buffer>> metadata_buffs;
   metadata_buffs.resize(metadata_num);
-  auto statuses = parallel_for(&compute_tp_, 0, metadata_num, [&](size_t m) {
+  auto statuses = parallel_for(compute_tp_, 0, metadata_num, [&](size_t m) {
     const auto& uri = array_metadata_to_load[m].uri_;
     auto metadata_buff = open_array->array_metadata(uri);
     if (metadata_buff == nullptr) {  // Array metadata does not exist - load it
@@ -2191,7 +2099,7 @@ Status StorageManager::load_fragment_metadata(
   auto fragment_num = fragments_to_load.size();
   fragment_metadata->resize(fragment_num);
   uint32_t f_version;
-  auto statuses = parallel_for(&compute_tp_, 0, fragment_num, [&](size_t f) {
+  auto statuses = parallel_for(compute_tp_, 0, fragment_num, [&](size_t f) {
     const auto& sf = fragments_to_load[f];
     auto array_schema = open_array->array_schema();
     auto metadata = open_array->fragment_metadata(sf.uri_);
@@ -2374,7 +2282,7 @@ Status StorageManager::get_uris_to_vacuum(
   // Compute fragment URIs to vacuum as a bitmap vector
   std::vector<int32_t> to_vacuum_vec(uris.size(), 0);
   auto statuses =
-      parallel_for(&compute_tp_, 0, vac_uris->size(), [&, this](size_t i) {
+      parallel_for(compute_tp_, 0, vac_uris->size(), [&, this](size_t i) {
         uint64_t size = 0;
         RETURN_NOT_OK(vfs_->file_size((*vac_uris)[i], &size));
         std::string names;
