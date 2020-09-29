@@ -110,7 +110,7 @@ if (NOT ZLIB_FOUND)
 endif()
 
 if (ZLIB_FOUND AND NOT TARGET Zlib::Zlib)
-  message(STATUS "Found Zlib: ${ZLIB_LIBRARIES}")
+  message(STATUS "Found Zlib, adding imported target: ${ZLIB_LIBRARIES}")
   add_library(Zlib::Zlib UNKNOWN IMPORTED)
   set_target_properties(Zlib::Zlib PROPERTIES
     IMPORTED_LOCATION "${ZLIB_LIBRARIES}"
