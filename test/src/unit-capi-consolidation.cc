@@ -1713,25 +1713,25 @@ void ConsolidationFx::read_dense_vector(uint64_t timestamp) {
     if (timestamp >= 1)
       c_a[i] = i;
     else
-      c_a[i] = 2147483647;
+      c_a[i] = -2147483648;
   }
   for (int i = 200; i < 250; ++i) {
     if (timestamp >= 2)
       c_a[i] = i;
     else
-      c_a[i] = 2147483647;
+      c_a[i] = -2147483648;
   }
   for (int i = 250; i < 310; ++i) {
     if (timestamp >= 3)
       c_a[i] = i;
     else
-      c_a[i] = 2147483647;
+      c_a[i] = -2147483648;
   }
   for (int i = 310; i < 410; ++i) {
     if (timestamp == 0 || timestamp >= 4)
       c_a[i] = i;
     else
-      c_a[i] = 2147483647;
+      c_a[i] = -2147483648;
   }
 
   // Open array
@@ -1793,10 +1793,10 @@ void ConsolidationFx::read_dense_vector_with_gaps() {
   int c_a[410];
   for (int i = 0; i < 410; ++i)
     c_a[i] = i;
-  c_a[200] = INT_MAX;
-  c_a[201] = INT_MAX;
-  c_a[308] = INT_MAX;
-  c_a[309] = INT_MAX;
+  c_a[200] = INT_MIN;
+  c_a[201] = INT_MIN;
+  c_a[308] = INT_MIN;
+  c_a[309] = INT_MIN;
 
   // Open array
   tiledb_array_t* array;
@@ -1982,7 +1982,7 @@ void ConsolidationFx::read_dense_vector_consolidatable_2() {
   for (int i = 0; i < 100; ++i)
     c_a[i] = i;
   for (int i = 100; i < 200; ++i)
-    c_a[i] = INT_MAX;
+    c_a[i] = INT_MIN;
   for (int i = 200; i < 300; ++i)
     c_a[i] = i + 1;
 

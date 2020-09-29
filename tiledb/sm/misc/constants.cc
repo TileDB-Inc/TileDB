@@ -111,10 +111,10 @@ int coords_compression_level = -1;
 const std::string filelock_name = "__lock.tdb";
 
 /** The special value for an empty int32. */
-const int empty_int32 = std::numeric_limits<int32_t>::max();
+const int empty_int32 = std::numeric_limits<int32_t>::min();
 
 /** The special value for an empty int64. */
-const int64_t empty_int64 = std::numeric_limits<int64_t>::max();
+const int64_t empty_int64 = std::numeric_limits<int64_t>::min();
 
 /** The special value for an empty float32. */
 const float empty_float32 = std::numeric_limits<float>::quiet_NaN();
@@ -123,16 +123,16 @@ const float empty_float32 = std::numeric_limits<float>::quiet_NaN();
 const double empty_float64 = std::numeric_limits<double>::quiet_NaN();
 
 /** The special value for an empty char. */
-const char empty_char = std::numeric_limits<char>::max();
+const char empty_char = std::numeric_limits<char>::min();
 
 /** The special value for an empty int8. */
-const int8_t empty_int8 = std::numeric_limits<int8_t>::max();
+const int8_t empty_int8 = std::numeric_limits<int8_t>::min();
 
 /** The special value for an empty uint8. */
 const uint8_t empty_uint8 = std::numeric_limits<uint8_t>::max();
 
 /** The special value for an empty int16. */
-const int16_t empty_int16 = std::numeric_limits<int16_t>::max();
+const int16_t empty_int16 = std::numeric_limits<int16_t>::min();
 
 /** The special value for an empty uint16. */
 const uint16_t empty_uint16 = std::numeric_limits<uint16_t>::max();
