@@ -88,13 +88,13 @@ TEST_CASE(
   const void* value_ptr;
   rc = tiledb_attribute_get_fill_value(ctx, a, &value_ptr, &value_size);
   CHECK(rc == TILEDB_OK);
-  CHECK(*(const int32_t*)value_ptr == 2147483647);
+  CHECK(*(const int32_t*)value_ptr == -2147483648);
   CHECK(value_size == sizeof(int32_t));
 
   // Check dump
   std::string dump = std::string("### Attribute ###\n") + "- Name: a\n" +
                      "- Type: INT32\n" + "- Cell val num: 1\n" +
-                     "- Filters: 0\n" + "- Fill value: 2147483647\n";
+                     "- Filters: 0\n" + "- Fill value: -2147483648\n";
   check_dump(ctx, a, dump);
 
   // Correct setter
@@ -118,14 +118,14 @@ TEST_CASE(
   CHECK(rc == TILEDB_OK);
   rc = tiledb_attribute_get_fill_value(ctx, a, &value_ptr, &value_size);
   CHECK(rc == TILEDB_OK);
-  CHECK(((const int32_t*)value_ptr)[0] == 2147483647);
-  CHECK(((const int32_t*)value_ptr)[1] == 2147483647);
+  CHECK(((const int32_t*)value_ptr)[0] == -2147483648);
+  CHECK(((const int32_t*)value_ptr)[1] == -2147483648);
   CHECK(value_size == 2 * sizeof(int32_t));
 
   // Check dump
   dump = std::string("### Attribute ###\n") + "- Name: a\n" +
          "- Type: INT32\n" + "- Cell val num: 2\n" + "- Filters: 0\n" +
-         "- Fill value: 2147483647, 2147483647\n";
+         "- Fill value: -2147483648, -2147483648\n";
   check_dump(ctx, a, dump);
 
   // Set a fill value that is comprised of two integers
@@ -153,13 +153,13 @@ TEST_CASE(
   // Check dump
   dump = std::string("### Attribute ###\n") + "- Name: a\n" +
          "- Type: INT32\n" + "- Cell val num: var\n" + "- Filters: 0\n" +
-         "- Fill value: 2147483647\n";
+         "- Fill value: -2147483648\n";
   check_dump(ctx, a, dump);
 
   // Get the default var-sized fill value
   rc = tiledb_attribute_get_fill_value(ctx, a, &value_ptr, &value_size);
   CHECK(rc == TILEDB_OK);
-  CHECK(*(const int32_t*)value_ptr == 2147483647);
+  CHECK(*(const int32_t*)value_ptr == -2147483648);
   CHECK(value_size == sizeof(int32_t));
 
   // Set a new fill value for the var-sized attribute
