@@ -120,9 +120,6 @@ class LRUCache {
   explicit LRUCache(const uint64_t max_size)
       : max_size_(max_size)
       , size_(0) {
-    assert(max_size_ > 0);
-    if (max_size_ == 0)
-      LOG_FATAL("LRUCache initialized without capacity.");
   }
 
   /** Destructor. */
