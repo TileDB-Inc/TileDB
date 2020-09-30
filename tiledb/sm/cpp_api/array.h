@@ -1214,7 +1214,7 @@ class Array {
       config_aux = &local_cfg;
     }
 
-    (*config)["sm.consolidation.mode"] = "array_meta";
+    (*config_aux)["sm.consolidation.mode"] = "array_meta";
     consolidate(ctx, uri, TILEDB_NO_ENCRYPTION, nullptr, 0, config_aux);
   }
 
