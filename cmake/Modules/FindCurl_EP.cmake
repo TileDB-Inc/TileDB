@@ -132,6 +132,7 @@ if (NOT CURL_FOUND AND TILEDB_SUPERBUILD)
           --enable-optimize
           --enable-shared=no
           --with-pic=yes
+          --without-nghttp2
           --disable-dict
           --disable-file
           --disable-ftp
