@@ -73,6 +73,12 @@ class Context {
   /** Returns the storage manager. */
   StorageManager* storage_manager() const;
 
+  /** Returns the thread pool for compute-bound tasks. */
+  ThreadPool* compute_tp() const;
+
+  /** Returns the thread pool for io-bound tasks. */
+  ThreadPool* io_tp() const;
+
  private:
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
@@ -86,6 +92,24 @@ class Context {
 
   /** The storage manager. */
   StorageManager* storage_manager_;
+
+  /** The thread pool for compute-bound tasks. */
+  mutable ThreadPool compute_tp_;
+
+  /** The thread pool for io-bound tasks. */
+  mutable ThreadPool io_tp_;
+
+  /* ********************************* */
+  /*         PRIVATE METHODS           */
+  /* ********************************* */
+
+  /**
+   * Initializes the thread pools.
+   *
+   * @param config The configuration parameters.
+   * @return Status
+   */
+  Status init_thread_pools(Config* config);
 };
 
 }  // namespace sm
