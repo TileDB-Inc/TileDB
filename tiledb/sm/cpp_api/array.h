@@ -1258,7 +1258,7 @@ class Array {
       config_aux = &local_cfg;
     }
 
-    (*config)["sm.consolidation.mode"] = "array_meta";
+    (*config_aux)["sm.consolidation.mode"] = "array_meta";
     consolidate(
         ctx, uri, encryption_type, encryption_key, key_length, config_aux);
   }
@@ -1294,7 +1294,7 @@ class Array {
       config_aux = &local_cfg;
     }
 
-    (*config)["sm.consolidation.mode"] = "array_meta";
+    (*config_aux)["sm.consolidation.mode"] = "array_meta";
     consolidate(
         ctx,
         uri,
