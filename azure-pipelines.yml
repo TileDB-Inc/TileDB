@@ -97,8 +97,6 @@ stages:
       TILEDB_SERIALIZATION: ON
       TILEDB_FORCE_BUILD_DEPS: ON
       MACOSX_DEPLOYMENT_TARGET: 10.13
-      CFLAGS: "-march=haswell"
-      CXXFLAGS: "-march=haswell"
     jobs:
      - job:
        strategy:
@@ -133,7 +131,6 @@ stages:
              TILEDB_FORCE_BUILD_DEPS: ON
              ARTIFACT_OS: 'windows'
              ARTIFACT_EXTRAS: 'full'
-             CL: "/arch:AVX2"
        pool:
          vmImage: $(imageName)
        steps:
