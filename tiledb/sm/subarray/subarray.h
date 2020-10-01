@@ -33,10 +33,10 @@
 #ifndef TILEDB_SUBARRAY_H
 #define TILEDB_SUBARRAY_H
 
+#include "tiledb/common/logger.h"
+#include "tiledb/common/thread_pool.h"
 #include "tiledb/sm/buffer/buffer.h"
 #include "tiledb/sm/enums/datatype.h"
-#include "tiledb/sm/misc/logger.h"
-#include "tiledb/sm/misc/thread_pool.h"
 #include "tiledb/sm/misc/tile_overlap.h"
 #include "tiledb/sm/misc/types.h"
 
@@ -47,6 +47,8 @@
 #include <mutex>
 #include <set>
 #include <vector>
+
+using namespace tiledb::common;
 
 namespace tiledb {
 namespace sm {

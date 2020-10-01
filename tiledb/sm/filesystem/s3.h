@@ -34,13 +34,13 @@
 #define TILEDB_S3_H
 
 #ifdef HAVE_S3
+#include "tiledb/common/logger.h"
+#include "tiledb/common/status.h"
+#include "tiledb/common/thread_pool.h"
 #include "tiledb/sm/buffer/buffer.h"
 #include "tiledb/sm/config/config.h"
 #include "tiledb/sm/filesystem/s3_thread_pool_executor.h"
 #include "tiledb/sm/misc/constants.h"
-#include "tiledb/sm/misc/logger.h"
-#include "tiledb/sm/misc/status.h"
-#include "tiledb/sm/misc/thread_pool.h"
 #include "tiledb/sm/misc/uri.h"
 #include "tiledb/sm/stats/stats.h"
 
@@ -73,6 +73,8 @@
 #include <mutex>
 #include <string>
 #include <vector>
+
+using namespace tiledb::common;
 
 namespace tiledb {
 namespace sm {

@@ -36,6 +36,8 @@
 #include <cinttypes>
 #include <vector>
 
+using namespace tiledb::common;
+
 namespace tiledb {
 namespace sm {
 

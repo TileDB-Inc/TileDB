@@ -35,11 +35,12 @@
 #include "catch.hpp"
 
 #include <cassert>
+#include "tiledb/common/status.h"
+#include "tiledb/common/thread_pool.h"
 #include "tiledb/sm/config/config.h"
 #include "tiledb/sm/filesystem/win.h"
-#include "tiledb/sm/misc/status.h"
-#include "tiledb/sm/misc/thread_pool.h"
 
+using namespace tiledb::common;
 using namespace tiledb::sm;
 
 static bool starts_with(const std::string& value, const std::string& prefix) {

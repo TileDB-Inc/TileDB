@@ -56,7 +56,7 @@
 #include <string>
 
 namespace tiledb {
-namespace sm {
+namespace common {
 
 #define RETURN_NOT_OK(s) \
   do {                   \
@@ -467,7 +467,8 @@ inline void Status::operator=(const Status& s) {
     state_ = (s.state_ == nullptr) ? nullptr : copy_state(s.state_);
   }
 }
-}  // namespace sm
+
+}  // namespace common
 }  // namespace tiledb
 
 #endif  // TILEDB_STATUS_H

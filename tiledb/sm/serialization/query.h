@@ -35,8 +35,10 @@
 
 #include <unordered_map>
 
-#include "tiledb/sm/misc/status.h"
-#include "tiledb/sm/misc/thread_pool.h"
+#include "tiledb/common/status.h"
+#include "tiledb/common/thread_pool.h"
+
+using namespace tiledb::common;
 
 namespace tiledb {
 namespace sm {

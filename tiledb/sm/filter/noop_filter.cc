@@ -31,9 +31,11 @@
  */
 
 #include "tiledb/sm/filter/noop_filter.h"
+#include "tiledb/common/logger.h"
 #include "tiledb/sm/enums/filter_type.h"
 #include "tiledb/sm/filter/filter_buffer.h"
-#include "tiledb/sm/misc/logger.h"
+
+using namespace tiledb::common;
 
 namespace tiledb {
 namespace sm {

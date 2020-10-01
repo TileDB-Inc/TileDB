@@ -32,8 +32,8 @@
 #ifdef _WIN32
 
 #include "tiledb/sm/filesystem/win.h"
+#include "tiledb/common/logger.h"
 #include "tiledb/sm/misc/constants.h"
-#include "tiledb/sm/misc/logger.h"
 #include "tiledb/sm/misc/utils.h"
 
 #include <Shlwapi.h>
@@ -43,6 +43,8 @@
 #include <fstream>
 #include <iostream>
 #include <sstream>
+
+using namespace tiledb::common;
 
 namespace tiledb {
 namespace sm {

@@ -42,6 +42,8 @@
 #include "tiledb/sm/misc/types.h"
 #include "tiledb/sm/query/result_tile.h"
 
+using namespace tiledb::common;
+
 namespace tiledb {
 namespace sm {
 

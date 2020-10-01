@@ -39,10 +39,12 @@
 #include <sstream>
 #include <unordered_set>
 
+#include "tiledb/common/logger.h"
 #include "tiledb/sm/filesystem/gcs.h"
 #include "tiledb/sm/global_state/global_state.h"
-#include "tiledb/sm/misc/logger.h"
 #include "tiledb/sm/misc/utils.h"
+
+using namespace tiledb::common;
 
 namespace tiledb {
 namespace sm {

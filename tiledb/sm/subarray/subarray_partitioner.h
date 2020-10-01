@@ -36,9 +36,11 @@
 #include <list>
 
 #include <unordered_map>
+#include "tiledb/common/thread_pool.h"
 #include "tiledb/sm/misc/constants.h"
-#include "tiledb/sm/misc/thread_pool.h"
 #include "tiledb/sm/subarray/subarray.h"
+
+using namespace tiledb::common;
 
 namespace tiledb {
 namespace sm {

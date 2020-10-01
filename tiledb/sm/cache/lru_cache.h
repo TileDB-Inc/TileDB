@@ -33,13 +33,15 @@
 #ifndef TILEDB_LRU_CACHE_H
 #define TILEDB_LRU_CACHE_H
 
-#include "tiledb/sm/misc/logger.h"
+#include "tiledb/common/logger.h"
+#include "tiledb/common/status.h"
 #include "tiledb/sm/misc/macros.h"
-#include "tiledb/sm/misc/status.h"
 
 #include <list>
 #include <mutex>
 #include <unordered_map>
+
+using namespace tiledb::common;
 
 namespace tiledb {
 namespace sm {

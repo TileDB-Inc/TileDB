@@ -37,11 +37,13 @@
 #include <tbb/task_scheduler_init.h>
 #endif
 
-#include "tiledb/sm/misc/status.h"
+#include "tiledb/common/status.h"
 
 #include <map>
 #include <set>
 #include <string>
+
+using namespace tiledb::common;
 
 namespace tiledb {
 namespace sm {

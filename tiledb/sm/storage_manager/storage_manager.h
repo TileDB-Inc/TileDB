@@ -48,14 +48,16 @@
 #include <tbb/task_scheduler_init.h>
 #endif
 
+#include "tiledb/common/status.h"
+#include "tiledb/common/thread_pool.h"
 #include "tiledb/sm/config/config.h"
 #include "tiledb/sm/enums/walk_order.h"
 #include "tiledb/sm/filesystem/filelock.h"
 #include "tiledb/sm/fragment/fragment_info.h"
 #include "tiledb/sm/misc/cancelable_tasks.h"
-#include "tiledb/sm/misc/status.h"
-#include "tiledb/sm/misc/thread_pool.h"
 #include "tiledb/sm/misc/uri.h"
+
+using namespace tiledb::common;
 
 namespace tiledb {
 namespace sm {

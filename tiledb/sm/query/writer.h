@@ -37,12 +37,14 @@
 #include <set>
 #include <unordered_map>
 
+#include "tiledb/common/status.h"
 #include "tiledb/sm/fragment/written_fragment_info.h"
-#include "tiledb/sm/misc/status.h"
 #include "tiledb/sm/misc/types.h"
 #include "tiledb/sm/query/write_cell_slab_iter.h"
 #include "tiledb/sm/subarray/subarray.h"
 #include "tiledb/sm/tile/tile.h"
+
+using namespace tiledb::common;
 
 namespace tiledb {
 namespace sm {

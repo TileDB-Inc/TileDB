@@ -32,6 +32,7 @@
  */
 
 #include "tiledb/sm/array_schema/array_schema.h"
+#include "tiledb/common/logger.h"
 #include "tiledb/sm/array_schema/attribute.h"
 #include "tiledb/sm/array_schema/dimension.h"
 #include "tiledb/sm/array_schema/domain.h"
@@ -42,12 +43,13 @@
 #include "tiledb/sm/enums/filter_type.h"
 #include "tiledb/sm/enums/layout.h"
 #include "tiledb/sm/filter/compression_filter.h"
-#include "tiledb/sm/misc/logger.h"
 
 #include <cassert>
 #include <iostream>
 #include <set>
 #include <sstream>
+
+using namespace tiledb::common;
 
 namespace tiledb {
 namespace sm {

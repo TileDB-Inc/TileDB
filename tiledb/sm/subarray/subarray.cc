@@ -48,6 +48,8 @@
 #include <sstream>
 #include <unordered_set>
 
+using namespace tiledb::common;
+
 namespace tiledb {
 namespace sm {
 

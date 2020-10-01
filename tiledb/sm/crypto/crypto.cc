@@ -31,16 +31,18 @@
  */
 
 #include "tiledb/sm/crypto/crypto.h"
+#include "tiledb/common/logger.h"
 #include "tiledb/sm/buffer/buffer.h"
 #include "tiledb/sm/buffer/const_buffer.h"
 #include "tiledb/sm/buffer/preallocated_buffer.h"
-#include "tiledb/sm/misc/logger.h"
 
 #ifdef _WIN32
 #include "tiledb/sm/crypto/crypto_win32.h"
 #else
 #include "tiledb/sm/crypto/crypto_openssl.h"
 #endif
+
+using namespace tiledb::common;
 
 namespace tiledb {
 namespace sm {

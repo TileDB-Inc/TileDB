@@ -31,11 +31,13 @@
  */
 
 #include "tiledb/sm/global_state/libcurl_state.h"
-#include "tiledb/sm/misc/logger.h"
+#include "tiledb/common/logger.h"
 
 #ifdef TILEDB_SERIALIZATION
 #include <curl/curl.h>
 #endif
+
+using namespace tiledb::common;
 
 namespace tiledb {
 namespace sm {

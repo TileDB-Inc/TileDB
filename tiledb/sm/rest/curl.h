@@ -47,6 +47,8 @@
 #include "tiledb/sm/config/config.h"
 #include "tiledb/sm/enums/serialization_type.h"
 
+using namespace tiledb::common;
+
 namespace tiledb {
 namespace sm {
 

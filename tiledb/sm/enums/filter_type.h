@@ -35,8 +35,10 @@
 #define TILEDB_FILTER_TYPE_H
 
 #include <cassert>
+#include "tiledb/common/status.h"
 #include "tiledb/sm/misc/constants.h"
-#include "tiledb/sm/misc/status.h"
+
+using namespace tiledb::common;
 
 namespace tiledb {
 namespace sm {

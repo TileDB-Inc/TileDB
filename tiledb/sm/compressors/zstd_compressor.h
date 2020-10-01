@@ -33,7 +33,9 @@
 #ifndef TILEDB_ZSTD_H
 #define TILEDB_ZSTD_H
 
-#include "tiledb/sm/misc/status.h"
+#include "tiledb/common/status.h"
+
+using namespace tiledb::common;
 
 namespace tiledb {
 namespace sm {

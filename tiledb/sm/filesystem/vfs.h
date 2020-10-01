@@ -39,14 +39,14 @@
 #include <string>
 #include <vector>
 
+#include "tiledb/common/status.h"
+#include "tiledb/common/thread_pool.h"
 #include "tiledb/sm/buffer/buffer.h"
 #include "tiledb/sm/cache/lru_cache.h"
 #include "tiledb/sm/config/config.h"
 #include "tiledb/sm/filesystem/filelock.h"
 #include "tiledb/sm/misc/cancelable_tasks.h"
 #include "tiledb/sm/misc/macros.h"
-#include "tiledb/sm/misc/status.h"
-#include "tiledb/sm/misc/thread_pool.h"
 #include "tiledb/sm/misc/uri.h"
 
 #ifdef _WIN32
@@ -70,6 +70,8 @@
 #ifdef HAVE_HDFS
 #include "tiledb/sm/filesystem/hdfs_filesystem.h"
 #endif
+
+using namespace tiledb::common;
 
 namespace tiledb {
 namespace sm {

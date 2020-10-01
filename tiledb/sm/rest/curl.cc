@@ -31,8 +31,8 @@
  */
 
 #include "tiledb/sm/rest/curl.h"
+#include "tiledb/common/logger.h"
 #include "tiledb/sm/global_state/global_state.h"
-#include "tiledb/sm/misc/logger.h"
 #include "tiledb/sm/misc/utils.h"
 
 #include <cstring>
@@ -40,6 +40,8 @@
 
 // TODO: replace this with config option
 #define CURL_MAX_RETRIES 3
+
+using namespace tiledb::common;
 
 namespace tiledb {
 namespace sm {

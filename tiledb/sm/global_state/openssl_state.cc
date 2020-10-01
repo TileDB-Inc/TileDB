@@ -34,6 +34,8 @@
 
 #ifdef _WIN32
 
+using namespace tiledb::common;
+
 namespace tiledb {
 namespace sm {
 namespace global_state {
@@ -53,6 +55,8 @@ Status init_openssl() {
 #include <memory>
 #include <mutex>
 #include <vector>
+
+using namespace tiledb::common;
 
 namespace tiledb {
 namespace sm {

@@ -45,11 +45,11 @@
  * external synchronization.
  */
 
-#include "tiledb/sm/misc/status.h"
+#include "tiledb/common/status.h"
 #include <cassert>
 
 namespace tiledb {
-namespace sm {
+namespace common {
 
 Status::Status(StatusCode code, const std::string& msg, int16_t posix_code) {
   assert(code != StatusCode::Ok);
@@ -240,5 +240,5 @@ int16_t Status::posix_code() const {
   return code;
 }
 
-}  // namespace sm
+}  // namespace common
 }  // namespace tiledb

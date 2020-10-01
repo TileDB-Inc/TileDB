@@ -31,16 +31,18 @@
  */
 
 #include "tiledb/sm/subarray/cell_slab_iter.h"
+#include "tiledb/common/logger.h"
 #include "tiledb/sm/array/array.h"
 #include "tiledb/sm/array_schema/array_schema.h"
 #include "tiledb/sm/array_schema/dimension.h"
 #include "tiledb/sm/array_schema/domain.h"
 #include "tiledb/sm/enums/layout.h"
-#include "tiledb/sm/misc/logger.h"
 #include "tiledb/sm/misc/types.h"
 
 #include <cassert>
 #include <iostream>
+
+using namespace tiledb::common;
 
 namespace tiledb {
 namespace sm {

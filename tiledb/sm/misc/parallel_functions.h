@@ -33,8 +33,8 @@
 #ifndef TILEDB_PARALLEL_FUNCTIONS_H
 #define TILEDB_PARALLEL_FUNCTIONS_H
 
+#include "tiledb/common/thread_pool.h"
 #include "tiledb/sm/global_state/global_state.h"
-#include "tiledb/sm/misc/thread_pool.h"
 
 #include <algorithm>
 #include <cassert>
@@ -45,6 +45,8 @@
 #include <tbb/parallel_for_each.h>
 #include <tbb/parallel_sort.h>
 #endif
+
+using namespace tiledb::common;
 
 namespace tiledb {
 namespace sm {

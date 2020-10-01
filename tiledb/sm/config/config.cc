@@ -31,14 +31,16 @@
  */
 
 #include "tiledb/sm/config/config.h"
+#include "tiledb/common/logger.h"
 #include "tiledb/sm/enums/serialization_type.h"
 #include "tiledb/sm/misc/constants.h"
-#include "tiledb/sm/misc/logger.h"
 #include "tiledb/sm/misc/utils.h"
 
 #include <fstream>
 #include <iostream>
 #include <sstream>
+
+using namespace tiledb::common;
 
 namespace tiledb {
 namespace sm {

@@ -39,8 +39,10 @@
 #include <type_traits>
 #include <vector>
 
-#include "tiledb/sm/misc/status.h"
+#include "tiledb/common/status.h"
 #include "tiledb/sm/misc/types.h"
+
+using namespace tiledb::common;
 
 namespace tiledb {
 namespace sm {

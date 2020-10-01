@@ -31,14 +31,16 @@
  */
 
 #include "tiledb/sm/tile/generic_tile_io.h"
+#include "tiledb/common/logger.h"
 #include "tiledb/sm/crypto/encryption_key.h"
 #include "tiledb/sm/filesystem/vfs.h"
 #include "tiledb/sm/filter/compression_filter.h"
 #include "tiledb/sm/filter/encryption_aes256gcm_filter.h"
-#include "tiledb/sm/misc/logger.h"
 #include "tiledb/sm/misc/parallel_functions.h"
 #include "tiledb/sm/storage_manager/storage_manager.h"
 #include "tiledb/sm/tile/tile.h"
+
+using namespace tiledb::common;
 
 namespace tiledb {
 namespace sm {

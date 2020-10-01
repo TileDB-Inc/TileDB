@@ -31,16 +31,18 @@
  */
 
 #include "tiledb/sm/rtree/rtree.h"
+#include "tiledb/common/logger.h"
 #include "tiledb/sm/array_schema/dimension.h"
 #include "tiledb/sm/buffer/buffer.h"
 #include "tiledb/sm/buffer/const_buffer.h"
 #include "tiledb/sm/enums/datatype.h"
-#include "tiledb/sm/misc/logger.h"
 #include "tiledb/sm/misc/utils.h"
 
 #include <cassert>
 #include <iostream>
 #include <list>
+
+using namespace tiledb::common;
 
 namespace tiledb {
 namespace sm {

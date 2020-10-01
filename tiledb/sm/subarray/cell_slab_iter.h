@@ -36,6 +36,8 @@
 #include "tiledb/sm/subarray/cell_slab.h"
 #include "tiledb/sm/subarray/subarray.h"
 
+using namespace tiledb::common;
+
 namespace tiledb {
 namespace sm {
 

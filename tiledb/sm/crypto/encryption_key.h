@@ -33,9 +33,11 @@
 #ifndef TILEDB_ENCRYPTION_KEY_H
 #define TILEDB_ENCRYPTION_KEY_H
 
+#include "tiledb/common/status.h"
 #include "tiledb/sm/buffer/buffer.h"
 #include "tiledb/sm/buffer/const_buffer.h"
-#include "tiledb/sm/misc/status.h"
+
+using namespace tiledb::common;
 
 namespace tiledb {
 namespace sm {

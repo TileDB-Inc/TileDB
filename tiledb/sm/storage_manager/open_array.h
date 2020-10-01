@@ -45,6 +45,8 @@
 #include "tiledb/sm/fragment/fragment_metadata.h"
 #include "tiledb/sm/misc/uri.h"
 
+using namespace tiledb::common;
+
 namespace tiledb {
 namespace sm {
 

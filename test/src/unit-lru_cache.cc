@@ -34,6 +34,7 @@
 #include "tiledb/sm/buffer/buffer.h"
 #include "tiledb/sm/cache/buffer_lru_cache.h"
 
+using namespace tiledb::common;
 using namespace tiledb::sm;
 
 #define CACHE_SIZE 10 * sizeof(int)

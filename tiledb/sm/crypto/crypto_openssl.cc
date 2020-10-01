@@ -33,17 +33,19 @@
 #ifndef _WIN32
 
 #include "tiledb/sm/crypto/crypto_openssl.h"
+#include "tiledb/common/logger.h"
 #include "tiledb/sm/buffer/buffer.h"
 #include "tiledb/sm/buffer/const_buffer.h"
 #include "tiledb/sm/buffer/preallocated_buffer.h"
 #include "tiledb/sm/crypto/crypto.h"
-#include "tiledb/sm/misc/logger.h"
 
 #include <openssl/err.h>
 #include <openssl/evp.h>
 #include <openssl/md5.h>
 #include <openssl/rand.h>
 #include <openssl/sha.h>
+
+using namespace tiledb::common;
 
 namespace tiledb {
 namespace sm {

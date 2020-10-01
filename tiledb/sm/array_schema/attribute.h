@@ -33,9 +33,11 @@
 #ifndef TILEDB_ATTRIBUTE_H
 #define TILEDB_ATTRIBUTE_H
 
+#include "tiledb/common/status.h"
 #include "tiledb/sm/filter/filter_pipeline.h"
-#include "tiledb/sm/misc/status.h"
 #include "tiledb/sm/misc/types.h"
+
+using namespace tiledb::common;
 
 namespace tiledb {
 namespace sm {

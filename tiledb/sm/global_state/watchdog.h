@@ -37,7 +37,9 @@
 #include <mutex>
 #include <thread>
 
-#include "tiledb/sm/misc/status.h"
+#include "tiledb/common/status.h"
+
+using namespace tiledb::common;
 
 namespace tiledb {
 namespace sm {

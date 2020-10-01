@@ -41,12 +41,12 @@
 #include <unordered_set>
 #include <vector>
 
-#include "tiledb/sm/misc/logger.h"
+#include "tiledb/common/logger.h"
+#include "tiledb/common/status.h"
 #include "tiledb/sm/misc/macros.h"
-#include "tiledb/sm/misc/status.h"
 
 namespace tiledb {
-namespace sm {
+namespace common {
 
 /**
  * A recusive-safe thread pool.
@@ -360,7 +360,7 @@ class ThreadPool {
   ThreadPool* lookup_tp();
 };
 
-}  // namespace sm
+}  // namespace common
 }  // namespace tiledb
 
 #endif  // TILEDB_THREAD_POOL_H

@@ -33,10 +33,12 @@
 #ifndef TILEDB_CONTEXT_H
 #define TILEDB_CONTEXT_H
 
-#include "tiledb/sm/misc/status.h"
+#include "tiledb/common/status.h"
 #include "tiledb/sm/storage_manager/storage_manager.h"
 
 #include <mutex>
+
+using namespace tiledb::common;
 
 namespace tiledb {
 namespace sm {

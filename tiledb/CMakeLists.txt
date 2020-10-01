@@ -87,6 +87,9 @@ endif()
 
 # List of all core source files
 set(TILEDB_CORE_SOURCES
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/common/logger.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/common/status.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/common/thread_pool.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/array/array.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/array_schema/array_schema.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/array_schema/attribute.cc
@@ -143,9 +146,6 @@ set(TILEDB_CORE_SOURCES
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/metadata/metadata.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/misc/cancelable_tasks.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/misc/constants.cc
-  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/misc/logger.cc
-  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/misc/status.cc
-  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/misc/thread_pool.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/misc/uri.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/misc/utils.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/misc/uuid.cc

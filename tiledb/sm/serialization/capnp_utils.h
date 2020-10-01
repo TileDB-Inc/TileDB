@@ -35,11 +35,13 @@
 
 #ifdef TILEDB_SERIALIZATION
 
+#include "tiledb/common/status.h"
 #include "tiledb/sm/array_schema/array_schema.h"
 #include "tiledb/sm/buffer/buffer.h"
 #include "tiledb/sm/enums/datatype.h"
-#include "tiledb/sm/misc/status.h"
 #include "tiledb/sm/serialization/tiledb-rest.capnp.h"
+
+using namespace tiledb::common;
 
 namespace tiledb {
 namespace sm {
@@ -67,7 +69,7 @@ inline bool is_aligned(const void* ptr) {
  * @return Status
  */
 template <typename CapnpT>
-tiledb::sm::Status set_capnp_array_ptr(
+Status set_capnp_array_ptr(
     CapnpT& builder,
     tiledb::sm::Datatype datatype,
     const void* ptr,
@@ -124,11 +126,11 @@ tiledb::sm::Status set_capnp_array_ptr(
       builder.setFloat64(kj::arrayPtr(static_cast<const double*>(ptr), size));
       break;
     default:
-      return tiledb::sm::Status::SerializationError(
+      return Status::SerializationError(
           "Cannot set capnp array pointer; unknown TileDB datatype.");
   }
 
-  return tiledb::sm::Status::Ok();
+  return Status::Ok();
 }
 
 /**
@@ -143,7 +145,7 @@ tiledb::sm::Status set_capnp_array_ptr(
  * @return Status
  */
 template <typename CapnpT>
-tiledb::sm::Status set_capnp_scalar(
+Status set_capnp_scalar(
     CapnpT& builder, tiledb::sm::Datatype datatype, const void* value) {
   switch (datatype) {
     case tiledb::sm::Datatype::INT8:
@@ -190,11 +192,11 @@ tiledb::sm::Status set_capnp_scalar(
       builder.setFloat64(*static_cast<const double*>(value));
       break;
     default:
-      return tiledb::sm::Status::SerializationError(
+      return Status::SerializationError(
           "Cannot set capnp scalar; unknown TileDB datatype.");
   }
 
-  return tiledb::sm::Status::Ok();
+  return Status::Ok();
 }
 
 /**
@@ -207,8 +209,7 @@ tiledb::sm::Status set_capnp_scalar(
  * @return Status
  */
 template <typename T, typename CapnpT>
-tiledb::sm::Status copy_capnp_list(
-    const CapnpT& list_reader, tiledb::sm::Buffer* buffer) {
+Status copy_capnp_list(const CapnpT& list_reader, tiledb::sm::Buffer* buffer) {
   const auto nelts = list_reader.size();
   RETURN_NOT_OK(buffer->realloc(nelts * sizeof(T)));
 
@@ -217,7 +218,7 @@ tiledb::sm::Status copy_capnp_list(
     RETURN_NOT_OK(buffer->write(&val, sizeof(val)));
   }
 
-  return tiledb::sm::Status::Ok();
+  return Status::Ok();
 }
 
 /**
@@ -236,7 +237,7 @@ tiledb::sm::Status copy_capnp_list(
  * @return Status
  */
 template <typename CapnpT>
-tiledb::sm::Status copy_capnp_list(
+Status copy_capnp_list(
     const CapnpT& reader,
     tiledb::sm::Datatype datatype,
     tiledb::sm::Buffer* buffer) {
@@ -298,11 +299,11 @@ tiledb::sm::Status copy_capnp_list(
         RETURN_NOT_OK(copy_capnp_list<double>(reader.getFloat64(), buffer));
       break;
     default:
-      return tiledb::sm::Status::SerializationError(
+      return Status::SerializationError(
           "Cannot copy capnp list; unhandled TileDB datatype.");
   }
 
-  return tiledb::sm::Status::Ok();
+  return Status::Ok();
 }
 
 /** Serializes the given array's nonEmptyDomain into the given Capnp builder.
@@ -313,8 +314,7 @@ tiledb::sm::Status copy_capnp_list(
  * @return Status
  */
 template <typename CapnpT>
-tiledb::sm::Status serialize_non_empty_domain(
-    CapnpT& builder, tiledb::sm::Array* array) {
+Status serialize_non_empty_domain(CapnpT& builder, tiledb::sm::Array* array) {
   const auto& nonEmptyDomain = array->non_empty_domain();
 
   if (!nonEmptyDomain.empty()) {
@@ -342,7 +342,7 @@ tiledb::sm::Status serialize_non_empty_domain(
       }
     }
   }
-  return tiledb::sm::Status::Ok();
+  return Status::Ok();
 }
 
 /** Deserializes the given from Capnp build to array's nonEmptyDomain
@@ -353,8 +353,7 @@ tiledb::sm::Status serialize_non_empty_domain(
  * @return Status
  */
 template <typename CapnpT>
-tiledb::sm::Status deserialize_non_empty_domain(
-    CapnpT& reader, tiledb::sm::Array* array) {
+Status deserialize_non_empty_domain(CapnpT& reader, tiledb::sm::Array* array) {
   capnp::NonEmptyDomainList::Reader r =
       (capnp::NonEmptyDomainList::Reader)reader;
 
@@ -386,7 +385,7 @@ tiledb::sm::Status deserialize_non_empty_domain(
 
   array->set_non_empty_domain(ndRange);
 
-  return tiledb::sm::Status::Ok();
+  return Status::Ok();
 }
 
 /**
@@ -399,7 +398,7 @@ tiledb::sm::Status deserialize_non_empty_domain(
  * @return Status
  */
 template <typename CapnpT>
-tiledb::sm::Status serialize_subarray(
+Status serialize_subarray(
     CapnpT& builder,
     const tiledb::sm::ArraySchema* array_schema,
     const void* subarray) {
@@ -428,7 +427,7 @@ tiledb::sm::Status serialize_subarray(
       case tiledb::sm::Datatype::STRING_UCS4:
       case tiledb::sm::Datatype::ANY:
         // String dimensions not yet supported
-        return LOG_STATUS(tiledb::sm::Status::SerializationError(
+        return LOG_STATUS(Status::SerializationError(
             "Cannot serialize subarray; unsupported domain type."));
       default:
         break;
@@ -442,11 +441,11 @@ tiledb::sm::Status serialize_subarray(
   RETURN_NOT_OK(set_capnp_array_ptr(
       builder, first_dimension_datatype, subarray, subarray_length));
 
-  return tiledb::sm::Status::Ok();
+  return Status::Ok();
 }
 
 template <typename CapnpT>
-tiledb::sm::Status deserialize_subarray(
+Status deserialize_subarray(
     const CapnpT& reader,
     const tiledb::sm::ArraySchema* array_schema,
     void** subarray) {
@@ -473,7 +472,7 @@ tiledb::sm::Status deserialize_subarray(
       case tiledb::sm::Datatype::STRING_UCS4:
       case tiledb::sm::Datatype::ANY:
         // String dimensions not yet supported
-        return LOG_STATUS(tiledb::sm::Status::SerializationError(
+        return LOG_STATUS(Status::SerializationError(
             "Cannot deserialize subarray; unsupported domain type."));
       default:
         break;
@@ -494,7 +493,7 @@ tiledb::sm::Status deserialize_subarray(
     std::memcpy(*subarray, subarray_buff.data(), subarray_size);
   }
 
-  return tiledb::sm::Status::Ok();
+  return Status::Ok();
 }
 
 /**
@@ -508,7 +507,7 @@ tiledb::sm::Status deserialize_subarray(
  * @return Status
  */
 template <typename CapnpT>
-tiledb::sm::Status serialize_coords(
+Status serialize_coords(
     CapnpT& builder,
     const tiledb::sm::Dimension* dimension,
     const void* subarray) {
@@ -521,11 +520,11 @@ tiledb::sm::Status serialize_coords(
   RETURN_NOT_OK(set_capnp_array_ptr(
       builder, dimension->type(), subarray, subarray_length));
 
-  return tiledb::sm::Status::Ok();
+  return Status::Ok();
 }
 
 template <typename CapnpT>
-tiledb::sm::Status deserialize_coords(
+Status deserialize_coords(
     const CapnpT& reader,
     const tiledb::sm::Dimension* dimension,
     void** subarray) {
@@ -542,7 +541,7 @@ tiledb::sm::Status deserialize_coords(
     std::memcpy(*subarray, subarray_buff.data(), subarray_size);
   }
 
-  return tiledb::sm::Status::Ok();
+  return Status::Ok();
 }
 
 }  // namespace utils

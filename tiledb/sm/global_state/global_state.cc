@@ -39,12 +39,14 @@
 #include "tiledb/sm/misc/constants.h"
 
 #ifdef __linux__
+#include "tiledb/common/thread_pool.h"
 #include "tiledb/sm/filesystem/posix.h"
-#include "tiledb/sm/misc/thread_pool.h"
 #include "tiledb/sm/misc/utils.h"
 #endif
 
 #include <cassert>
+
+using namespace tiledb::common;
 
 namespace tiledb {
 namespace sm {

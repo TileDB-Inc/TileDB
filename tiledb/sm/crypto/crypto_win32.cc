@@ -33,15 +33,17 @@
 #ifdef _WIN32
 
 #include "tiledb/sm/crypto/crypto_win32.h"
+#include "tiledb/common/logger.h"
 #include "tiledb/sm/buffer/buffer.h"
 #include "tiledb/sm/buffer/const_buffer.h"
 #include "tiledb/sm/buffer/preallocated_buffer.h"
 #include "tiledb/sm/crypto/crypto.h"
-#include "tiledb/sm/misc/logger.h"
 
 #ifndef NT_SUCCESS
 #define NT_SUCCESS(Status) (((NTSTATUS)(Status)) >= 0)
 #endif
+
+using namespace tiledb::common;
 
 namespace tiledb {
 namespace sm {

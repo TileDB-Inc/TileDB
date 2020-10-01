@@ -33,6 +33,8 @@
 #ifndef TILEDB_QUERY_MACROS_H
 #define TILEDB_QUERY_MACROS_H
 
+using namespace tiledb::common;
+
 namespace tiledb {
 namespace sm {
 

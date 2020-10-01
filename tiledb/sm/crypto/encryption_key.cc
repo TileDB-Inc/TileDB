@@ -31,9 +31,11 @@
  */
 
 #include "tiledb/sm/crypto/encryption_key.h"
+#include "tiledb/common/logger.h"
 #include "tiledb/sm/crypto/crypto.h"
 #include "tiledb/sm/enums/encryption_type.h"
-#include "tiledb/sm/misc/logger.h"
+
+using namespace tiledb::common;
 
 namespace tiledb {
 namespace sm {

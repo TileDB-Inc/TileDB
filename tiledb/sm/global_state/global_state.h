@@ -37,8 +37,10 @@
 #include <set>
 #include <string>
 
+#include "tiledb/common/status.h"
 #include "tiledb/sm/config/config.h"
-#include "tiledb/sm/misc/status.h"
+
+using namespace tiledb::common;
 
 namespace tiledb {
 namespace sm {

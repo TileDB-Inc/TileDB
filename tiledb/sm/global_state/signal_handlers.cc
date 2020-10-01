@@ -43,8 +43,10 @@
 #include <unistd.h>
 #endif
 
+#include "tiledb/common/logger.h"
 #include "tiledb/sm/global_state/signal_handlers.h"
-#include "tiledb/sm/misc/logger.h"
+
+using namespace tiledb::common;
 
 namespace tiledb {
 namespace sm {

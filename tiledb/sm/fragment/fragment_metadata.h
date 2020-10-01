@@ -38,10 +38,12 @@
 #include <unordered_map>
 #include <vector>
 
-#include "tiledb/sm/misc/status.h"
+#include "tiledb/common/status.h"
 #include "tiledb/sm/misc/types.h"
 #include "tiledb/sm/misc/uri.h"
 #include "tiledb/sm/rtree/rtree.h"
+
+using namespace tiledb::common;
 
 namespace tiledb {
 namespace sm {

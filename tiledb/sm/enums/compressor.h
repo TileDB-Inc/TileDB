@@ -34,10 +34,12 @@
 #ifndef TILEDB_COMPRESSOR_H
 #define TILEDB_COMPRESSOR_H
 
+#include "tiledb/common/status.h"
 #include "tiledb/sm/misc/constants.h"
-#include "tiledb/sm/misc/status.h"
 
 #include <cassert>
+
+using namespace tiledb::common;
 
 namespace tiledb {
 namespace sm {

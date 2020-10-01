@@ -36,6 +36,7 @@
 #include <catch.hpp>
 #include <iostream>
 
+using namespace tiledb::common;
 using namespace tiledb::sm;
 
 TEST_CASE("Buffer: Test default constructor with write void*", "[buffer]") {

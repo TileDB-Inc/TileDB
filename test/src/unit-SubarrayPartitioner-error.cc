@@ -43,6 +43,7 @@
 #include <catch.hpp>
 #include <iostream>
 
+using namespace tiledb::common;
 using namespace tiledb::sm;
 using namespace tiledb::test;
 

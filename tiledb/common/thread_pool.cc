@@ -32,11 +32,11 @@
 
 #include <cassert>
 
-#include "tiledb/sm/misc/logger.h"
-#include "tiledb/sm/misc/thread_pool.h"
+#include "tiledb/common/logger.h"
+#include "tiledb/common/thread_pool.h"
 
 namespace tiledb {
-namespace sm {
+namespace common {
 
 // Define the static ThreadPool member variables.
 std::unordered_map<std::thread::id, ThreadPool*> ThreadPool::tp_index_;
@@ -355,5 +355,5 @@ ThreadPool* ThreadPool::lookup_tp() {
   return nullptr;
 }
 
-}  // namespace sm
+}  // namespace common
 }  // namespace tiledb

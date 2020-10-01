@@ -40,6 +40,8 @@
 #include "tiledb/sm/query/result_space_tile.h"
 #include "tiledb/sm/subarray/cell_slab_iter.h"
 
+using namespace tiledb::common;
+
 namespace tiledb {
 namespace sm {
 

@@ -33,13 +33,15 @@
 #ifndef TILEDB_TILE_H
 #define TILEDB_TILE_H
 
+#include "tiledb/common/status.h"
 #include "tiledb/sm/array_schema/attribute.h"
 #include "tiledb/sm/buffer/buffer.h"
 #include "tiledb/sm/buffer/const_buffer.h"
-#include "tiledb/sm/misc/status.h"
 #include "tiledb/sm/tile/chunked_buffer.h"
 
 #include <cinttypes>
+
+using namespace tiledb::common;
 
 namespace tiledb {
 namespace sm {

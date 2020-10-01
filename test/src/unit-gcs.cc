@@ -33,14 +33,15 @@
 #ifdef HAVE_GCS
 
 #include "catch.hpp"
+#include "tiledb/common/thread_pool.h"
 #include "tiledb/sm/config/config.h"
 #include "tiledb/sm/filesystem/gcs.h"
 #include "tiledb/sm/global_state/unit_test_config.h"
-#include "tiledb/sm/misc/thread_pool.h"
 #include "tiledb/sm/misc/utils.h"
 
 #include <sstream>
 
+using namespace tiledb::common;
 using namespace tiledb::sm;
 
 struct GCSFx {
