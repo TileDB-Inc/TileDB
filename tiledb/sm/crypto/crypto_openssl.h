@@ -35,7 +35,9 @@
 
 #ifndef _WIN32
 
-#include "tiledb/sm/misc/status.h"
+#include "tiledb/common/status.h"
+
+using namespace tiledb::common;
 
 namespace tiledb {
 namespace sm {

@@ -42,6 +42,8 @@
 #include "tiledb/sm/enums/layout.h"
 #include "tiledb/sm/query/result_coords.h"
 
+using namespace tiledb::common;
+
 namespace tiledb {
 namespace sm {
 

@@ -38,7 +38,9 @@
 #include <windows.h>
 
 #include <bcrypt.h>
-#include "tiledb/sm/misc/status.h"
+#include "tiledb/common/status.h"
+
+using namespace tiledb::common;
 
 namespace tiledb {
 namespace sm {

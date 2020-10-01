@@ -31,10 +31,12 @@
  */
 
 #include "tiledb/sm/tile/tile.h"
+#include "tiledb/common/logger.h"
 #include "tiledb/sm/enums/datatype.h"
-#include "tiledb/sm/misc/logger.h"
 
 #include <iostream>
+
+using namespace tiledb::common;
 
 namespace tiledb {
 namespace sm {

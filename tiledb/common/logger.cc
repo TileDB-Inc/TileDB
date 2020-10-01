@@ -30,12 +30,12 @@
  * This file implements class Logger.
  */
 
-#include "tiledb/sm/misc/logger.h"
+#include "tiledb/common/logger.h"
 
 #include <spdlog/sinks/stdout_sinks.h>
 
 namespace tiledb {
-namespace sm {
+namespace common {
 
 /* ********************************* */
 /*     CONSTRUCTORS & DESTRUCTORS    */
@@ -80,5 +80,5 @@ Logger& global_logger() {
   return l;
 }
 
-}  // namespace sm
+}  // namespace common
 }  // namespace tiledb

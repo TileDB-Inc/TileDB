@@ -33,6 +33,8 @@
 #include "tiledb/sm/filter/filter_storage.h"
 #include "tiledb/sm/buffer/buffer.h"
 
+using namespace tiledb::common;
+
 namespace tiledb {
 namespace sm {
 

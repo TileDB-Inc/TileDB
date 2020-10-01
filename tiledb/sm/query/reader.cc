@@ -31,6 +31,7 @@
  */
 
 #include "tiledb/sm/query/reader.h"
+#include "tiledb/common/logger.h"
 #include "tiledb/sm/array/array.h"
 #include "tiledb/sm/array_schema/array_schema.h"
 #include "tiledb/sm/array_schema/dimension.h"
@@ -38,7 +39,6 @@
 #include "tiledb/sm/fragment/fragment_metadata.h"
 #include "tiledb/sm/global_state/global_state.h"
 #include "tiledb/sm/misc/comparators.h"
-#include "tiledb/sm/misc/logger.h"
 #include "tiledb/sm/misc/parallel_functions.h"
 #include "tiledb/sm/misc/utils.h"
 #include "tiledb/sm/query/query_macros.h"
@@ -51,6 +51,8 @@
 
 #include <iostream>
 #include <unordered_set>
+
+using namespace tiledb::common;
 
 namespace tiledb {
 namespace sm {

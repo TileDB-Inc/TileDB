@@ -35,9 +35,11 @@
 
 #include <vector>
 
+#include "tiledb/common/status.h"
 #include "tiledb/sm/array_schema/domain.h"
-#include "tiledb/sm/misc/status.h"
 #include "tiledb/sm/misc/tile_overlap.h"
+
+using namespace tiledb::common;
 
 namespace tiledb {
 namespace sm {

@@ -39,9 +39,11 @@
 #include <string>
 #include <vector>
 
-#include "tiledb/sm/misc/status.h"
+#include "tiledb/common/status.h"
 
 #include "hadoop/hdfs.h"
+
+using namespace tiledb::common;
 
 namespace tiledb {
 namespace sm {

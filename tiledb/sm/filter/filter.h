@@ -33,8 +33,10 @@
 #ifndef TILEDB_FILTER_H
 #define TILEDB_FILTER_H
 
+#include "tiledb/common/status.h"
 #include "tiledb/sm/config/config.h"
-#include "tiledb/sm/misc/status.h"
+
+using namespace tiledb::common;
 
 namespace tiledb {
 namespace sm {

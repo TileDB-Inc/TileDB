@@ -42,6 +42,8 @@
 #include "tiledb/sm/misc/types.h"
 #include "tiledb/sm/tile/tile.h"
 
+using namespace tiledb::common;
+
 namespace tiledb {
 namespace sm {
 

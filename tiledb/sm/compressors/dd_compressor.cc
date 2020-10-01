@@ -31,17 +31,19 @@
  */
 
 #include "tiledb/sm/compressors/dd_compressor.h"
+#include "tiledb/common/logger.h"
 #include "tiledb/sm/buffer/buffer.h"
 #include "tiledb/sm/buffer/const_buffer.h"
 #include "tiledb/sm/buffer/preallocated_buffer.h"
 #include "tiledb/sm/enums/datatype.h"
-#include "tiledb/sm/misc/logger.h"
 
 /* ****************************** */
 /*             MACROS             */
 /* ****************************** */
 
 #define ABS(x) ((x) < 0) ? uint64_t(-(x)) : uint64_t(x)
+
+using namespace tiledb::common;
 
 namespace tiledb {
 namespace sm {

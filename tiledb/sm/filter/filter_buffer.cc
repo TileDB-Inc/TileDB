@@ -31,8 +31,10 @@
  */
 
 #include "tiledb/sm/filter/filter_buffer.h"
+#include "tiledb/common/logger.h"
 #include "tiledb/sm/filter/filter_storage.h"
-#include "tiledb/sm/misc/logger.h"
+
+using namespace tiledb::common;
 
 namespace tiledb {
 namespace sm {

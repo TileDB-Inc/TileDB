@@ -43,8 +43,8 @@
 #include <iostream>
 #include "tiledb/sm/global_state/global_state.h"
 
+#include "tiledb/common/logger.h"
 #include "tiledb/sm/global_state/unit_test_config.h"
-#include "tiledb/sm/misc/logger.h"
 #include "tiledb/sm/misc/utils.h"
 
 #ifdef _WIN32
@@ -75,6 +75,8 @@ Aws::Utils::Logging::LogLevel aws_log_name_to_level(std::string loglevel) {
     return Aws::Utils::Logging::LogLevel::Off;
 }
 }  // namespace
+
+using namespace tiledb::common;
 
 namespace tiledb {
 namespace sm {

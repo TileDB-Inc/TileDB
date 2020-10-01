@@ -49,6 +49,8 @@
 #define MAX(a, b) ((a) > (b) ? (a) : (b))
 #endif
 
+using namespace tiledb::common;
+
 namespace tiledb {
 namespace sm {
 

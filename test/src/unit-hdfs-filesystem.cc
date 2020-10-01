@@ -40,6 +40,7 @@
 #include <fstream>
 #include <iostream>
 
+using namespace tiledb::common;
 using namespace tiledb::sm;
 using namespace tiledb::sm::hdfs;
 

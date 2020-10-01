@@ -38,10 +38,10 @@
 #include <spdlog/fmt/ostr.h>
 #include <spdlog/spdlog.h>
 
-#include "tiledb/sm/misc/status.h"
+#include "tiledb/common/status.h"
 
 namespace tiledb {
-namespace sm {
+namespace common {
 
 /** Definition of class Logger. */
 class Logger {
@@ -190,7 +190,7 @@ inline void LOG_FATAL(const std::string& msg) {
   exit(1);
 }
 
-}  // namespace sm
+}  // namespace common
 }  // namespace tiledb
 
 #endif  // TILEDB_LOGGER_H

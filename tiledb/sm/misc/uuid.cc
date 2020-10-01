@@ -43,6 +43,8 @@
 #include <cstdio>
 #endif
 
+using namespace tiledb::common;
+
 namespace tiledb {
 namespace sm {
 namespace uuid {

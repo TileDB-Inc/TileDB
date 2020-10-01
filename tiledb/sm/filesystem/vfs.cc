@@ -31,11 +31,11 @@
  */
 
 #include "tiledb/sm/filesystem/vfs.h"
+#include "tiledb/common/logger.h"
 #include "tiledb/sm/buffer/buffer.h"
 #include "tiledb/sm/enums/filesystem.h"
 #include "tiledb/sm/enums/vfs_mode.h"
 #include "tiledb/sm/filesystem/hdfs_filesystem.h"
-#include "tiledb/sm/misc/logger.h"
 #include "tiledb/sm/misc/parallel_functions.h"
 #include "tiledb/sm/misc/utils.h"
 #include "tiledb/sm/stats/stats.h"
@@ -44,6 +44,8 @@
 #include <list>
 #include <sstream>
 #include <unordered_map>
+
+using namespace tiledb::common;
 
 namespace tiledb {
 namespace sm {

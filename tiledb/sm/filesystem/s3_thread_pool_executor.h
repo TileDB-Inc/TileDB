@@ -40,7 +40,9 @@
 #include <mutex>
 #include <unordered_set>
 
-#include "tiledb/sm/misc/thread_pool.h"
+#include "tiledb/common/thread_pool.h"
+
+using namespace tiledb::common;
 
 namespace tiledb {
 namespace sm {

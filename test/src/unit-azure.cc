@@ -33,15 +33,16 @@
 #ifdef HAVE_AZURE
 
 #include "catch.hpp"
+#include "tiledb/common/thread_pool.h"
 #include "tiledb/sm/config/config.h"
 #include "tiledb/sm/filesystem/azure.h"
 #include "tiledb/sm/global_state/unit_test_config.h"
-#include "tiledb/sm/misc/thread_pool.h"
 #include "tiledb/sm/misc/utils.h"
 
 #include <fstream>
 #include <thread>
 
+using namespace tiledb::common;
 using namespace tiledb::sm;
 
 struct AzureFx {

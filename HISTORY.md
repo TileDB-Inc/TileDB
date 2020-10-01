@@ -46,6 +46,7 @@
 * Build system will raise overridable error if important paths contain regex character [#1808](https://github.com/TileDB-Inc/TileDB/pull/1808)
 * Prebuilt artifacts for release now target `haswell` for minimum architecture for linux/macos and `AVX2` for msvcc [#1809](https://github.com/TileDB-Inc/TileDB/pull/1809)
 * Lazily create AWS ClientConfiguration to avoid slow context creations for non S3 usage after the AWS SDK version bump [#1821](https://github.com/TileDB-Inc/TileDB/pull/1821)
+* Moved `Status`, `ThreadPool`, and `Logger` classes from folder `tiledb/sm` to `tiledb/common` [#1843](https://github.com/TileDB-Inc/TileDB/pull/1843)
 
 ## Deprecations
 

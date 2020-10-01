@@ -35,6 +35,7 @@
 #include "test/src/helpers.h"
 #include "tiledb/sm/filesystem/vfs.h"
 
+using namespace tiledb::common;
 using namespace tiledb::sm;
 
 TEST_CASE("VFS: Test read batching", "[vfs]") {

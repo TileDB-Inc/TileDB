@@ -32,10 +32,10 @@
  */
 
 #include "tiledb/sm/misc/utils.h"
+#include "tiledb/common/logger.h"
 #include "tiledb/sm/enums/datatype.h"
 #include "tiledb/sm/enums/serialization_type.h"
 #include "tiledb/sm/misc/constants.h"
-#include "tiledb/sm/misc/logger.h"
 #include "tiledb/sm/misc/uri.h"
 
 #include <iostream>
@@ -52,6 +52,8 @@
 #ifdef __linux__
 #include "tiledb/sm/filesystem/posix.h"
 #endif
+
+using namespace tiledb::common;
 
 namespace tiledb {
 namespace sm {

@@ -31,17 +31,19 @@
  */
 
 #include "tiledb/sm/array_schema/attribute.h"
+#include "tiledb/common/logger.h"
 #include "tiledb/sm/buffer/const_buffer.h"
 #include "tiledb/sm/enums/compressor.h"
 #include "tiledb/sm/enums/datatype.h"
 #include "tiledb/sm/enums/filter_type.h"
 #include "tiledb/sm/filter/compression_filter.h"
-#include "tiledb/sm/misc/logger.h"
 #include "tiledb/sm/misc/utils.h"
 
 #include <cassert>
 #include <iostream>
 #include <sstream>
+
+using namespace tiledb::common;
 
 namespace tiledb {
 namespace sm {

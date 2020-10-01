@@ -36,6 +36,7 @@
 #include <iostream>
 #include <sstream>
 
+#include "tiledb/common/logger.h"
 #include "tiledb/sm/array/array.h"
 #include "tiledb/sm/array_schema/array_schema.h"
 #include "tiledb/sm/cache/buffer_lru_cache.h"
@@ -44,7 +45,6 @@
 #include "tiledb/sm/enums/query_type.h"
 #include "tiledb/sm/filesystem/vfs.h"
 #include "tiledb/sm/global_state/global_state.h"
-#include "tiledb/sm/misc/logger.h"
 #include "tiledb/sm/misc/parallel_functions.h"
 #include "tiledb/sm/misc/utils.h"
 #include "tiledb/sm/misc/uuid.h"
@@ -60,6 +60,8 @@
 #include <algorithm>
 #include <iostream>
 #include <sstream>
+
+using namespace tiledb::common;
 
 namespace tiledb {
 namespace sm {

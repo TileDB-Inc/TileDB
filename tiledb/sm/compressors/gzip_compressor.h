@@ -33,9 +33,11 @@
 #ifndef TILEDB_GZIP_H
 #define TILEDB_GZIP_H
 
-#include "tiledb/sm/misc/status.h"
+#include "tiledb/common/status.h"
 
 #include <cmath>
+
+using namespace tiledb::common;
 
 namespace tiledb {
 namespace sm {

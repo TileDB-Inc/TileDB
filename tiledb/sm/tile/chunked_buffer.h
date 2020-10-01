@@ -70,11 +70,13 @@
 #ifndef TILEDB_chunked_buffer_H
 #define TILEDB_chunked_buffer_H
 
-#include "tiledb/sm/misc/logger.h"
-#include "tiledb/sm/misc/status.h"
+#include "tiledb/common/logger.h"
+#include "tiledb/common/status.h"
 
 #include <cinttypes>
 #include <vector>
+
+using namespace tiledb::common;
 
 namespace tiledb {
 namespace sm {

@@ -31,13 +31,15 @@
  */
 
 #include "tiledb/sm/filter/encryption_aes256gcm_filter.h"
+#include "tiledb/common/logger.h"
 #include "tiledb/sm/buffer/preallocated_buffer.h"
 #include "tiledb/sm/crypto/crypto.h"
 #include "tiledb/sm/crypto/encryption_key.h"
 #include "tiledb/sm/enums/encryption_type.h"
 #include "tiledb/sm/enums/filter_type.h"
-#include "tiledb/sm/misc/logger.h"
 #include "tiledb/sm/tile/tile.h"
+
+using namespace tiledb::common;
 
 namespace tiledb {
 namespace sm {

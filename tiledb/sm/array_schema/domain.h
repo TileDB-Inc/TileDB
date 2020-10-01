@@ -33,11 +33,13 @@
 #ifndef TILEDB_DOMAIN_H
 #define TILEDB_DOMAIN_H
 
-#include "tiledb/sm/misc/status.h"
+#include "tiledb/common/status.h"
 #include "tiledb/sm/misc/types.h"
 #include "tiledb/sm/query/result_coords.h"
 
 #include <vector>
+
+using namespace tiledb::common;
 
 namespace tiledb {
 namespace sm {

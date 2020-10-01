@@ -35,8 +35,8 @@
 #define TILEDB_SERIALIZATION_TYPE_H
 
 #include <cassert>
+#include "tiledb/common/status.h"
 #include "tiledb/sm/misc/constants.h"
-#include "tiledb/sm/misc/status.h"
 
 namespace tiledb {
 namespace sm {

@@ -42,6 +42,8 @@
 #include <memory>
 #include <sstream>
 
+using namespace tiledb::common;
+
 namespace tiledb {
 namespace sm {
 namespace global_state {

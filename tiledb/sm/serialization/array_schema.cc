@@ -31,6 +31,7 @@
  */
 
 #include "tiledb/sm/serialization/array_schema.h"
+#include "tiledb/common/logger.h"
 #include "tiledb/sm/array/array.h"
 #include "tiledb/sm/array_schema/attribute.h"
 #include "tiledb/sm/array_schema/dimension.h"
@@ -43,7 +44,6 @@
 #include "tiledb/sm/enums/layout.h"
 #include "tiledb/sm/enums/serialization_type.h"
 #include "tiledb/sm/misc/constants.h"
-#include "tiledb/sm/misc/logger.h"
 #include "tiledb/sm/serialization/capnp_utils.h"
 
 #include <set>
@@ -52,6 +52,8 @@
 #include <capnp/compat/json.h>
 #include <capnp/serialize.h>
 #endif
+
+using namespace tiledb::common;
 
 namespace tiledb {
 namespace sm {

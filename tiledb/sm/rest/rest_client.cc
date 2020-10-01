@@ -32,10 +32,10 @@
 
 #include <cassert>
 
+#include "tiledb/common/logger.h"
 #include "tiledb/sm/array/array.h"
 #include "tiledb/sm/array_schema/attribute.h"
 #include "tiledb/sm/enums/query_type.h"
-#include "tiledb/sm/misc/logger.h"
 #include "tiledb/sm/misc/utils.h"
 #include "tiledb/sm/query/query.h"
 #include "tiledb/sm/rest/rest_client.h"
@@ -47,6 +47,8 @@
 #include "tiledb/sm/rest/curl.h"
 #include "tiledb/sm/serialization/tiledb-rest.capnp.h"
 #endif
+
+using namespace tiledb::common;
 
 namespace tiledb {
 namespace sm {

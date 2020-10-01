@@ -33,9 +33,9 @@
 #ifndef _WIN32
 
 #include "tiledb/sm/filesystem/posix.h"
+#include "tiledb/common/logger.h"
+#include "tiledb/common/thread_pool.h"
 #include "tiledb/sm/misc/constants.h"
-#include "tiledb/sm/misc/logger.h"
-#include "tiledb/sm/misc/thread_pool.h"
 #include "tiledb/sm/misc/utils.h"
 
 #include <dirent.h>
@@ -45,6 +45,8 @@
 #include <future>
 #include <iostream>
 #include <sstream>
+
+using namespace tiledb::common;
 
 namespace tiledb {
 namespace sm {

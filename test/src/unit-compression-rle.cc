@@ -40,16 +40,16 @@
 #include <cstring>
 #include <iostream>
 
+using namespace tiledb::common;
 using namespace tiledb::sm;
 
 TEST_CASE("Compression-RLE: Test invalid format", "[compression], [rle]") {
   // Initializations
   auto input = new ConstBuffer(nullptr, 0);
   auto compressed = new Buffer();
-  tiledb::sm::Status st;
 
   // Test empty buffer
-  st = tiledb::sm::RLE::compress(sizeof(int), input, compressed);
+  auto st = tiledb::sm::RLE::compress(sizeof(int), input, compressed);
   CHECK(!st.ok());
   delete input;
 
@@ -113,7 +113,7 @@ TEST_CASE("Compression-RLE: Test all values the same", "[compression], [rle]") {
   uint64_t run_size = 6;
   auto compressed = new Buffer();
   auto decompressed = new Buffer();
-  tiledb::sm::Status st;
+  Status st;
 
   int data[100];
   REQUIRE(st.ok());
@@ -153,7 +153,7 @@ TEST_CASE(
     "[compression], [rle]") {
   // Initializations
   uint64_t run_size = 6;
-  tiledb::sm::Status st;
+  Status st;
 
   // Prepare data
   int data[110];
@@ -198,7 +198,7 @@ TEST_CASE(
   // Initializations
   uint64_t run_size = 6;
   auto decompressed = new Buffer();
-  tiledb::sm::Status st;
+  Status st;
 
   // Prepare data
   int data[70030];
@@ -240,7 +240,7 @@ TEST_CASE(
     "Compression-RLE: Test compression/decompression with type double:2",
     "[compression], [rle]") {
   // Initializations
-  tiledb::sm::Status st;
+  Status st;
   uint64_t value_size = 2 * sizeof(double);
   uint64_t run_size = value_size + 2;
 

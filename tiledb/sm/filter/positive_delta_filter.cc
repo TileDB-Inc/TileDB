@@ -31,13 +31,15 @@
  */
 
 #include "tiledb/sm/filter/positive_delta_filter.h"
+#include "tiledb/common/logger.h"
 #include "tiledb/sm/enums/datatype.h"
 #include "tiledb/sm/enums/filter_option.h"
 #include "tiledb/sm/enums/filter_type.h"
 #include "tiledb/sm/filter/filter_pipeline.h"
-#include "tiledb/sm/misc/logger.h"
 #include "tiledb/sm/misc/utils.h"
 #include "tiledb/sm/tile/tile.h"
+
+using namespace tiledb::common;
 
 namespace tiledb {
 namespace sm {

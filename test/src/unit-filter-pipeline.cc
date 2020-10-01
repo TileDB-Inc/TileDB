@@ -57,6 +57,7 @@
 #include <iostream>
 #include <random>
 
+using namespace tiledb::common;
 using namespace tiledb::sm;
 
 /**

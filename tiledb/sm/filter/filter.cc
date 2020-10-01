@@ -31,6 +31,7 @@
  */
 
 #include "tiledb/sm/filter/filter.h"
+#include "tiledb/common/logger.h"
 #include "tiledb/sm/buffer/buffer.h"
 #include "tiledb/sm/enums/filter_type.h"
 #include "tiledb/sm/filter/bit_width_reduction_filter.h"
@@ -42,7 +43,8 @@
 #include "tiledb/sm/filter/encryption_aes256gcm_filter.h"
 #include "tiledb/sm/filter/noop_filter.h"
 #include "tiledb/sm/filter/positive_delta_filter.h"
-#include "tiledb/sm/misc/logger.h"
+
+using namespace tiledb::common;
 
 namespace tiledb {
 namespace sm {

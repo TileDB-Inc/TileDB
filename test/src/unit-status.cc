@@ -31,9 +31,9 @@
  */
 
 #include <catch.hpp>
-#include "tiledb/sm/misc/status.h"
+#include "tiledb/common/status.h"
 
-using namespace tiledb::sm;
+using namespace tiledb::common;
 
 TEST_CASE("Status: Test ok", "[status]") {
   Status st = Status::Ok();

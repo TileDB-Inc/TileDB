@@ -31,12 +31,14 @@
  */
 
 #include "tiledb/sm/cache/buffer_lru_cache.h"
+#include "tiledb/common/logger.h"
 #include "tiledb/sm/buffer/buffer.h"
-#include "tiledb/sm/misc/logger.h"
 
 #include <cassert>
 #include <cstdlib>
 #include <iostream>
+
+using namespace tiledb::common;
 
 namespace tiledb {
 namespace sm {

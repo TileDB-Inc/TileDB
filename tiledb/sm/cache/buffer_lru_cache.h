@@ -33,12 +33,14 @@
 #ifndef TILEDB_BUFFER_LRU_CACHE_H
 #define TILEDB_BUFFER_LRU_CACHE_H
 
+#include "tiledb/common/status.h"
 #include "tiledb/sm/cache/lru_cache.h"
-#include "tiledb/sm/misc/status.h"
 
 #include <list>
 #include <map>
 #include <mutex>
+
+using namespace tiledb::common;
 
 namespace tiledb {
 namespace sm {

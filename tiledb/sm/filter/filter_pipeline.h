@@ -37,11 +37,13 @@
 #include <utility>
 #include <vector>
 
+#include "tiledb/common/status.h"
+#include "tiledb/common/thread_pool.h"
 #include "tiledb/sm/filter/filter.h"
 #include "tiledb/sm/filter/filter_buffer.h"
-#include "tiledb/sm/misc/status.h"
-#include "tiledb/sm/misc/thread_pool.h"
 #include "tiledb/sm/tile/chunked_buffer.h"
+
+using namespace tiledb::common;
 
 namespace tiledb {
 namespace sm {

@@ -31,7 +31,9 @@
  */
 
 #include "tiledb/sm/storage_manager/context.h"
-#include "tiledb/sm/misc/logger.h"
+#include "tiledb/common/logger.h"
+
+using namespace tiledb::common;
 
 namespace tiledb {
 namespace sm {

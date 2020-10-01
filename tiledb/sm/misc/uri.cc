@@ -31,8 +31,8 @@
  */
 
 #include "tiledb/sm/misc/uri.h"
+#include "tiledb/common/logger.h"
 #include "tiledb/sm/filesystem/vfs.h"
-#include "tiledb/sm/misc/logger.h"
 #include "tiledb/sm/misc/utils.h"
 
 #ifdef _WIN32
@@ -40,6 +40,8 @@
 #endif
 
 #include <iostream>
+
+using namespace tiledb::common;
 
 namespace tiledb {
 namespace sm {
