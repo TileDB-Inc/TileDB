@@ -300,7 +300,8 @@ if (TILEDB_S3)
       AWSSDK::aws-c-event-stream
       AWSSDK::aws-checksums
       AWSSDK::aws-c-common
-  )
+      AWSSDK::aws-cpp-sdk-identity-management
+      AWSSDK::aws-cpp-sdk-sts)
   add_definitions(-DHAVE_S3)
 endif()
 
@@ -588,6 +589,8 @@ if (TILEDB_STATIC)
   append_dep_lib(AWSSDK::aws-c-event-stream)
   append_dep_lib(AWSSDK::aws-checksums)
   append_dep_lib(AWSSDK::aws-c-common)
+  append_dep_lib(AWSSDK::aws-cpp-sdk-sts)
+  append_dep_lib(AWSSDK::aws-cpp-sdk-identity-management)
   append_dep_lib(AzureSDK::AzureSDK)
   append_dep_lib(GCSSDK::storage_client)
   append_dep_lib(GCSSDK::google_cloud_cpp_common)

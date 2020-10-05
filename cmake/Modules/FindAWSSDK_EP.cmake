@@ -101,8 +101,8 @@ if (NOT AWSSDK_FOUND)
       CMAKE_ARGS
         -DCMAKE_BUILD_TYPE=${AWS_CMAKE_BUILD_TYPE}
         -DENABLE_TESTING=OFF
-        -DBUILD_ONLY=s3\\$<SEMICOLON>core
-        -DBUILD_SHARED_LIBS=OFF
+        -DBUILD_ONLY=s3\\$<SEMICOLON>core\\$<SEMICOLON>identity-management\\$<SEMICOLON>sts
+        -DBUILD_SHARED_LIBS=ON
         -DCMAKE_INSTALL_BINDIR=lib
         -DENABLE_UNITY_BUILD=ON
         -DCUSTOM_MEMORY_MANAGEMENT=0
@@ -138,7 +138,9 @@ if (AWSSDK_FOUND)
   AWSSDK_DETERMINE_LIBS_TO_LINK(AWS_SERVICES AWS_LINKED_LIBS)
   list(APPEND AWS_LINKED_LIBS aws-c-common
                               aws-c-event-stream
-                              aws-checksums)
+                              aws-checksums
+                              aws-cpp-sdk-sts
+                              aws-cpp-sdk-identity-management)
 
   foreach (LIB ${AWS_LINKED_LIBS})
     if (NOT ${LIB} MATCHES "aws-*")
