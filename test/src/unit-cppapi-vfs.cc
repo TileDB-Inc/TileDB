@@ -232,3 +232,35 @@ TEST_CASE(
 
 #endif
 }
+
+TEST_CASE(
+    "C++ API: Test VFS copy directory",
+    "[cppapi], [cppapi-vfs], [cppapi-vfs-copy-dir]") {
+  using namespace tiledb;
+  Context ctx;
+  VFS vfs(ctx);
+
+#ifndef _WIN32
+  std::string path =
+      std::string("file://") + sm::Posix::current_dir() + "/vfs_test/";
+
+  // Clean up
+  if (vfs.is_dir(path))
+    vfs.remove_dir(path);
+
+  std::string dir = path + "ls_dir";
+  std::string dir2 = path + "ls_dir2";
+
+  vfs.create_dir(path);
+  vfs.create_dir(dir);
+  vfs.create_dir(dir2);
+
+  // Copy directory when running on POSIX
+  vfs.copy_dir(dir, dir2);
+  // REQUIRE(vfs.is_dir(dir2));
+
+  // Clean up
+  vfs.remove_dir(path);
+
+#endif
+}

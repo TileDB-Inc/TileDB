@@ -494,6 +494,22 @@ void VFSFx::check_copy(const std::string& path) {
   rc = tiledb_vfs_is_file(ctx_, vfs_, file2.c_str(), &is_file);
   REQUIRE(rc == TILEDB_OK);
   REQUIRE(!is_file);
+
+  // Move directory with subdirectories and files while running on POSIX
+  auto dir = path + "dir/";
+  auto dir2 = path + "dir2/";
+  int is_dir = 0;
+  rc = tiledb_vfs_create_dir(ctx_, vfs_, dir.c_str());
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_vfs_is_dir(ctx_, vfs_, dir.c_str(), &is_dir);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_vfs_copy_dir(ctx_, vfs_, dir.c_str(), dir2.c_str());
+  REQUIRE(rc == TILEDB_OK);
+
+  rc = tiledb_vfs_is_dir(ctx_, vfs_, dir.c_str(), &is_dir);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_vfs_is_dir(ctx_, vfs_, dir2.c_str(), &is_dir);
+  REQUIRE(rc == TILEDB_OK);
 }
 #endif
 

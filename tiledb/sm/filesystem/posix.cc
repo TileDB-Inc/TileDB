@@ -347,6 +347,83 @@ Status Posix::copy_file(
   return Status::Ok();
 }
 
+Status Posix::copy_dir(
+    const std::string& old_path, const std::string& new_path) {
+  std::cerr << "TESTING" << std::endl;
+  create_dir(new_path);
+  std::vector<std::string>* paths = nullptr;
+
+  ls(old_path, paths);
+  std::cerr << "LISTING" << std::endl;
+
+  // copy ls code - can't access queue when call function
+  /*
+  struct dirent* next_path = nullptr;
+  DIR* dir = opendir(old_path.c_str());
+  if (dir == nullptr) {
+    return Status::Ok();
+  }
+  while ((next_path = readdir(dir)) != nullptr) {
+    if (!strcmp(next_path->d_name, ".") || !strcmp(next_path->d_name, ".."))
+      continue;
+    auto abspath = old_path + "/" + next_path->d_name;
+    paths->push_back(abspath);
+  }
+  // close parent directory
+  if (closedir(dir) != 0) {
+    return LOG_STATUS(Status::IOError(
+        std::string("Cannot close parent directory; ") + strerror(errno)));
+  }
+  */
+
+  if (paths->empty()) {
+    std::cerr << "EMPTY" << std::endl;
+  } else {
+    std::cerr << "NOT EMPTY" << std::endl;
+  }
+
+  // iterate through paths
+  /*
+    while (!paths->empty()) {
+      std::cout<<"IN WHILE";
+    // pop the first file name from the queue
+      std::string file_name = paths->front();
+      paths->erase(paths->front());
+
+
+      if (is_dir(file_name)) {
+        // add children of `file_name` to the queue
+        ls(file_name, paths);
+        // create the directory
+        create_dir(new_path + file_name);
+      } else {
+        // if not a directory, it must be a file
+        assert(is_file(file_name));
+        // copy the file
+        copy_file(old_path + file_name, new_path + file_name);
+      }
+
+    }
+  */
+
+  // check to see if entry is directory or file
+  /*
+    for(auto i = paths->begin(); i != paths->end(); i++)
+    {
+      if(is_dir(*i))
+      {
+        std::cerr<<"DIRECTORY"<<std::endl;
+      }
+      else
+      {
+        std::cerr<<"FILE"<<std::endl;
+      }
+    }
+    */
+
+  return Status::Ok();
+}
+
 void Posix::purge_dots_from_path(std::string* path) {
   // Trivial case
   if (path == nullptr)

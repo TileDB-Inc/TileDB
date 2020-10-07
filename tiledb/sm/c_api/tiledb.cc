@@ -4112,6 +4112,23 @@ int32_t tiledb_vfs_copy_file(
   return TILEDB_OK;
 }
 
+int32_t tiledb_vfs_copy_dir(
+    tiledb_ctx_t* ctx,
+    tiledb_vfs_t* vfs,
+    const char* old_uri,
+    const char* new_uri) {
+  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, vfs) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  if (SAVE_ERROR_CATCH(
+          ctx,
+          vfs->vfs_->copy_dir(
+              tiledb::sm::URI(old_uri), tiledb::sm::URI(new_uri))))
+    return TILEDB_ERR;
+
+  return TILEDB_OK;
+}
+
 int32_t tiledb_vfs_open(
     tiledb_ctx_t* ctx,
     tiledb_vfs_t* vfs,
