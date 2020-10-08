@@ -14,6 +14,8 @@
 
 ## Bug fixes
 
+* The result size estimatation routines will no longer return non-zero sizes that can not contain a single value. [#1849](https://github.com/TileDB-Inc/TileDB/pull/1849)
+
 ## API additions
 
 # TileDB v2.1.0 Release Notes

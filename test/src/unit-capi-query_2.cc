@@ -1818,34 +1818,44 @@ TEST_CASE_METHOD(
       rc = tiledb_query_get_est_result_size_wrapper(
           ctx_, query, TILEDB_COORDS, &size);
       CHECK(rc == TILEDB_OK);
-      auto coords_size = (uint64_t)ceil(
-          (1.0 / 2) * (1.0 / 4) * 4 * sizeof(uint64_t) +
-          1.0 * (2.0 / 7) * 4 * sizeof(uint64_t));
+      auto coords_size = std::max<uint64_t>(
+          (uint64_t)ceil(
+              (1.0 / 2) * (1.0 / 4) * 4 * sizeof(uint64_t) +
+              1.0 * (2.0 / 7) * 4 * sizeof(uint64_t)),
+          2 * sizeof(uint64_t));
       CHECK(size == coords_size);
       rc = tiledb_query_get_est_result_size_wrapper(ctx_, query, "d1", &size);
       CHECK(rc == TILEDB_OK);
-      auto d1_size = (uint64_t)ceil(
-          (1.0 / 2) * (1.0 / 4) * 2 * sizeof(uint64_t) +
-          1.0 * (2.0 / 7) * 2 * sizeof(uint64_t));
+      auto d1_size = std::max<uint64_t>(
+          (uint64_t)ceil(
+              (1.0 / 2) * (1.0 / 4) * 2 * sizeof(uint64_t) +
+              1.0 * (2.0 / 7) * 2 * sizeof(uint64_t)),
+          sizeof(uint64_t));
       CHECK(size == d1_size);
       rc = tiledb_query_get_est_result_size_wrapper(ctx_, query, "d2", &size);
       CHECK(rc == TILEDB_OK);
-      auto d2_size = (uint64_t)ceil(
-          (1.0 / 2) * (1.0 / 4) * 2 * sizeof(uint64_t) +
-          1.0 * (2.0 / 7) * 2 * sizeof(uint64_t));
+      auto d2_size = std::max<uint64_t>(
+          (uint64_t)ceil(
+              (1.0 / 2) * (1.0 / 4) * 2 * sizeof(uint64_t) +
+              1.0 * (2.0 / 7) * 2 * sizeof(uint64_t)),
+          sizeof(uint64_t));
       CHECK(size == d2_size);
       rc = tiledb_query_get_est_result_size_wrapper(ctx_, query, "a", &size);
       CHECK(rc == TILEDB_OK);
-      auto a_size = (uint64_t)ceil(
-          (1.0 / 2) * (1.0 / 4) * 2 * sizeof(int) +
-          1.0 * (2.0 / 7) * 2 * sizeof(int));
+      auto a_size = std::max<uint64_t>(
+          (uint64_t)ceil(
+              (1.0 / 2) * (1.0 / 4) * 2 * sizeof(int) +
+              1.0 * (2.0 / 7) * 2 * sizeof(int)),
+          sizeof(int));
       CHECK(size == a_size);
       rc = tiledb_query_get_est_result_size_var_wrapper(
           ctx_, query, "b", &size_off, &size_val);
       CHECK(rc == TILEDB_OK);
-      auto b_off_size = (uint64_t)ceil(
-          (1.0 / 2) * (1.0 / 4) * 2 * sizeof(uint64_t) +
-          1.0 * (2.0 / 7) * 2 * sizeof(uint64_t));
+      auto b_off_size = std::max<uint64_t>(
+          (uint64_t)ceil(
+              (1.0 / 2) * (1.0 / 4) * 2 * sizeof(uint64_t) +
+              1.0 * (2.0 / 7) * 2 * sizeof(uint64_t)),
+          sizeof(uint64_t));
       CHECK(size_off == b_off_size);
       auto b_val_size = (uint64_t)ceil(
           (1.0 / 2) * (1.0 / 4) * 3 * sizeof(int) +
@@ -2014,26 +2024,36 @@ TEST_CASE_METHOD(
       rc = tiledb_query_get_est_result_size_wrapper(
           ctx_, query, TILEDB_COORDS, &size);
       CHECK(rc == TILEDB_OK);
-      auto coords_size = (uint64_t)ceil(1.0 * (1.0 / 3) * 4 * sizeof(uint64_t));
+      auto coords_size = std::max<uint64_t>(
+          (uint64_t)ceil(1.0 * (1.0 / 3) * 4 * sizeof(uint64_t)),
+          2 * sizeof(uint64_t));
       CHECK(size == coords_size);
       rc = tiledb_query_get_est_result_size_wrapper(ctx_, query, "d1", &size);
       CHECK(rc == TILEDB_OK);
-      auto d1_size = (uint64_t)ceil(1.0 * (1.0 / 3) * 2 * sizeof(uint64_t));
+      auto d1_size = std::max<uint64_t>(
+          (uint64_t)ceil(1.0 * (1.0 / 3) * 2 * sizeof(uint64_t)),
+          sizeof(uint64_t));
       CHECK(size == d1_size);
       rc = tiledb_query_get_est_result_size_wrapper(ctx_, query, "d2", &size);
       CHECK(rc == TILEDB_OK);
-      auto d2_size = (uint64_t)ceil(1.0 * (1.0 / 3) * 2 * sizeof(uint64_t));
+      auto d2_size = std::max<uint64_t>(
+          (uint64_t)ceil(1.0 * (1.0 / 3) * 2 * sizeof(uint64_t)),
+          sizeof(uint64_t));
       CHECK(size == d2_size);
       rc = tiledb_query_get_est_result_size_wrapper(ctx_, query, "a", &size);
       CHECK(rc == TILEDB_OK);
-      auto a_size = (uint64_t)ceil(1.0 * (1.0 / 3) * 2 * sizeof(int));
+      auto a_size = std::max<uint64_t>(
+          (uint64_t)ceil(1.0 * (1.0 / 3) * 2 * sizeof(int)), sizeof(int));
       CHECK(size == a_size);
       rc = tiledb_query_get_est_result_size_var_wrapper(
           ctx_, query, "b", &size_off, &size_val);
       CHECK(rc == TILEDB_OK);
-      auto b_off_size = (uint64_t)ceil(1.0 * (1.0 / 3) * 2 * sizeof(uint64_t));
+      auto b_off_size = std::max<uint64_t>(
+          (uint64_t)ceil(1.0 * (1.0 / 3) * 2 * sizeof(uint64_t)),
+          sizeof(uint64_t));
       CHECK(size_off == b_off_size);
-      auto b_val_size = (uint64_t)ceil(1.0 * (1.0 / 3) * 5 * sizeof(int));
+      auto b_val_size = std::max<uint64_t>(
+          (uint64_t)ceil(1.0 * (1.0 / 3) * 5 * sizeof(int)), sizeof(int));
       CHECK(size_val == b_val_size);
     }
 
