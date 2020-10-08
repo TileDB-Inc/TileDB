@@ -512,6 +512,13 @@ class VFS {
         ctx.ptr().get(), vfs_.get(), old_uri.c_str(), new_uri.c_str()));
   }
 
+  /** Copies a TileDB directory from an old URI to a new URI. */
+  void copy_dir(const std::string& old_uri, const std::string& new_uri) const {
+    auto& ctx = ctx_.get();
+    ctx.handle_error(tiledb_vfs_copy_dir(
+        ctx.ptr().get(), vfs_.get(), old_uri.c_str(), new_uri.c_str()));
+  }
+
   /** Touches a file with the input URI, i.e., creates a new empty file. */
   void touch(const std::string& uri) const {
     auto& ctx = ctx_.get();

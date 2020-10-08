@@ -5288,6 +5288,29 @@ TILEDB_EXPORT int32_t tiledb_vfs_copy_file(
     const char* new_uri);
 
 /**
+ * Copies a directory. If the destination directory exists, it will be
+ * overwritten.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * tiledb_vfs_copy_dir(
+ *  ctx, vfs, "hdfs:///temp/my_dir", "hdfs::///new_dir");
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param vfs The virtual filesystem object.
+ * @param old_uri The old URI.
+ * @param new_uri The new URI.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_vfs_copy_dir(
+    tiledb_ctx_t* ctx,
+    tiledb_vfs_t* vfs,
+    const char* old_uri,
+    const char* new_uri);
+
+/**
  * Prepares a file for reading/writing.
  *
  * **Example:**

@@ -494,6 +494,71 @@ void VFSFx::check_copy(const std::string& path) {
   rc = tiledb_vfs_is_file(ctx_, vfs_, file2.c_str(), &is_file);
   REQUIRE(rc == TILEDB_OK);
   REQUIRE(!is_file);
+
+  // Move directory with subdirectories and files while running on POSIX
+  auto dir = path + "dir/";
+  auto dir2 = path + "dir2/";
+  auto subdir = path + "dir/subdir/";
+  auto subdir2 = path + "dir2/subdir/";
+  file = dir + "file";
+  file2 = subdir + "file2";
+  auto new_file = dir2 + "file";
+  auto new_file2 = subdir2 + "file2";
+  int is_dir = 0;
+  rc = tiledb_vfs_create_dir(ctx_, vfs_, dir.c_str());
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_vfs_is_dir(ctx_, vfs_, dir.c_str(), &is_dir);
+  REQUIRE(rc == TILEDB_OK);
+  if (path == S3_TEMP_DIR)
+    REQUIRE(!is_dir);  // No empty dirs exist in S3
+  else
+    REQUIRE(is_dir);
+  rc = tiledb_vfs_create_dir(ctx_, vfs_, subdir.c_str());
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_vfs_is_dir(ctx_, vfs_, subdir.c_str(), &is_dir);
+  REQUIRE(rc == TILEDB_OK);
+  if (path == S3_TEMP_DIR)
+    REQUIRE(!is_dir);  // No empty dirs exist in S3
+  else
+    REQUIRE(is_dir);
+  rc = tiledb_vfs_touch(ctx_, vfs_, file.c_str());
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_vfs_is_file(ctx_, vfs_, file.c_str(), &is_file);
+  REQUIRE(rc == TILEDB_OK);
+  REQUIRE(is_file);
+  rc = tiledb_vfs_touch(ctx_, vfs_, file2.c_str());
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_vfs_is_file(ctx_, vfs_, file2.c_str(), &is_file);
+  REQUIRE(rc == TILEDB_OK);
+  REQUIRE(is_file);
+  rc = tiledb_vfs_copy_dir(ctx_, vfs_, dir.c_str(), dir2.c_str());
+  REQUIRE(rc == TILEDB_OK);
+
+  rc = tiledb_vfs_is_dir(ctx_, vfs_, dir.c_str(), &is_dir);
+  REQUIRE(rc == TILEDB_OK);
+  REQUIRE(!is_dir);
+  rc = tiledb_vfs_is_dir(ctx_, vfs_, subdir.c_str(), &is_dir);
+  REQUIRE(rc == TILEDB_OK);
+  REQUIRE(!is_dir);
+  rc = tiledb_vfs_is_file(ctx_, vfs_, file.c_str(), &is_file);
+  REQUIRE(rc == TILEDB_OK);
+  REQUIRE(!is_file);
+  rc = tiledb_vfs_is_file(ctx_, vfs_, file2.c_str(), &is_file);
+  REQUIRE(rc == TILEDB_OK);
+  REQUIRE(!is_file);
+
+  rc = tiledb_vfs_is_dir(ctx_, vfs_, dir2.c_str(), &is_dir);
+  REQUIRE(rc == TILEDB_OK);
+  REQUIRE(is_dir);
+  rc = tiledb_vfs_is_dir(ctx_, vfs_, subdir2.c_str(), &is_dir);
+  REQUIRE(rc == TILEDB_OK);
+  REQUIRE(is_dir);
+  rc = tiledb_vfs_is_file(ctx_, vfs_, new_file.c_str(), &is_file);
+  REQUIRE(rc == TILEDB_OK);
+  REQUIRE(is_file);
+  rc = tiledb_vfs_is_file(ctx_, vfs_, new_file2.c_str(), &is_file);
+  REQUIRE(rc == TILEDB_OK);
+  REQUIRE(is_file);
 }
 #endif
 
