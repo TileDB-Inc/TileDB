@@ -5295,7 +5295,7 @@ TILEDB_EXPORT int32_t tiledb_vfs_copy_file(
  *
  * @code{.c}
  * tiledb_vfs_copy_dir(
- * ctx, vfs, "hdfs:///temp/my_dir", "hdfs::///new_dir");
+ *  ctx, vfs, "hdfs:///temp/my_dir", "hdfs::///new_dir");
  * @endcode
  *
  * @param ctx The TileDB context.
