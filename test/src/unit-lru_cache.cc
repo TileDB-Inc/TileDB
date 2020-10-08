@@ -38,6 +38,7 @@ using namespace tiledb::common;
 using namespace tiledb::sm;
 
 #define CACHE_SIZE 10 * sizeof(int)
+#define CACHE_ZERO_SIZE 0
 
 struct BufferLRUCacheFx {
   BufferLRUCache* lru_cache_;
@@ -223,4 +224,38 @@ TEST_CASE_METHOD(
   auto it = lru_cache_->item_iter_begin();
   auto it_end = lru_cache_->item_iter_end();
   CHECK(it == it_end);
+}
+
+TEST_CASE("BufferLRUCache of 0 capacity", "[lru_cache]") {
+  // Create 0 size cache
+  BufferLRUCache* lru_cache = new BufferLRUCache(CACHE_ZERO_SIZE);
+  auto it = lru_cache->item_iter_begin();
+  auto it_end = lru_cache->item_iter_end();
+  CHECK(it == it_end);
+
+  // Test insert
+  Buffer v;
+  CHECK(v.realloc(CACHE_ZERO_SIZE + 1).ok());
+  Status st = lru_cache->insert("key", std::move(v));
+  CHECK(st.ok());
+
+  // Test read
+  Buffer v_buf;
+  bool success;
+  st = lru_cache->read("key", &v_buf, 0, sizeof(int), &success);
+  CHECK(st.ok());
+  CHECK(!success);
+
+  // Test invalidate
+  st = lru_cache->invalidate("key", &success);
+  CHECK(st.ok());
+  CHECK(!success);
+
+  // Test clear
+  lru_cache->clear();
+  it = lru_cache->item_iter_begin();
+  it_end = lru_cache->item_iter_end();
+  CHECK(it == it_end);
+
+  delete lru_cache;
 }
