@@ -351,7 +351,7 @@ Status Posix::copy_dir(
     const std::string& old_path, const std::string& new_path) {
   RETURN_NOT_OK(create_dir(new_path));
   std::vector<std::string> paths;
-  ls(old_path, &paths);
+  RETURN_NOT_OK(ls(old_path, &paths));
   while (!paths.empty()) {
     std::string file_name_abs = paths.front();
     std::string file_name = file_name_abs.substr(old_path.length() + 1);
@@ -359,11 +359,12 @@ Status Posix::copy_dir(
     if (is_dir(file_name_abs)) {
       RETURN_NOT_OK(create_dir(new_path + "/" + file_name));
       std::vector<std::string> child_paths;
-      ls(file_name_abs, &child_paths);
+      RETURN_NOT_OK(ls(file_name_abs, &child_paths));
       paths.insert(paths.end(), child_paths.begin(), child_paths.end());
     } else {
       assert(is_file(file_name_abs));
-      copy_file(old_path + "/" + file_name, new_path + "/" + file_name);
+      RETURN_NOT_OK(
+          copy_file(old_path + "/" + file_name, new_path + "/" + file_name));
     }
   }
 
