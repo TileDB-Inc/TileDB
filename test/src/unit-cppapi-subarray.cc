@@ -73,7 +73,7 @@ TEST_CASE("C++ API: Test subarray", "[cppapi][sparse][subarray]") {
     query.add_range(1, range[0], range[1]);
 
     auto est_size = query.est_result_size("a");
-    REQUIRE(est_size == 1);
+    REQUIRE(est_size == 4);
 
     std::vector<int> data(est_size);
     query.set_layout(TILEDB_ROW_MAJOR).set_buffer("a", data);
