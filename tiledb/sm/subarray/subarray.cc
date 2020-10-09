@@ -514,9 +514,9 @@ Status Subarray::get_est_result_size(
         "Cannot get estimated result size; Input size cannot be null"));
 
   // Check if name is attribute or dimension
-  auto array_schema = array_->array_schema();
-  bool is_dim = array_schema->is_dim(name);
-  bool is_attr = array_schema->is_attr(name);
+  const auto array_schema = array_->array_schema();
+  const bool is_dim = array_schema->is_dim(name);
+  const bool is_attr = array_schema->is_attr(name);
 
   // Check if attribute/dimension exists
   if (name != constants::coords && !is_dim && !is_attr)
@@ -532,7 +532,13 @@ Status Subarray::get_est_result_size(
 
   // Compute tile overlap for each fragment
   RETURN_NOT_OK(compute_est_result_size(compute_tp));
-  *size = (uint64_t)ceil(est_result_size_[name].size_fixed_);
+  *size = static_cast<uint64_t>(ceil(est_result_size_[name].size_fixed_));
+
+  // If the size is non-zero, ensure it is large enough to
+  // contain at least one cell.
+  const auto cell_size = array_schema->cell_size(name);
+  if (*size > 0 && *size < cell_size)
+    *size = cell_size;
 
   return Status::Ok();
 }
@@ -554,9 +560,9 @@ Status Subarray::get_est_result_size(
         "Cannot get estimated result size; Input sizes cannot be null"));
 
   // Check if name is attribute or dimension
-  auto array_schema = array_->array_schema();
-  bool is_dim = array_schema->is_dim(name);
-  bool is_attr = array_schema->is_attr(name);
+  const auto array_schema = array_->array_schema();
+  const bool is_dim = array_schema->is_dim(name);
+  const bool is_attr = array_schema->is_attr(name);
 
   // Check if attribute/dimension exists
   if (name != constants::coords && !is_dim && !is_attr)
@@ -572,8 +578,23 @@ Status Subarray::get_est_result_size(
 
   // Compute tile overlap for each fragment
   RETURN_NOT_OK(compute_est_result_size(compute_tp));
-  *size_off = (uint64_t)ceil(est_result_size_[name].size_fixed_);
-  *size_val = (uint64_t)ceil(est_result_size_[name].size_var_);
+  *size_off = static_cast<uint64_t>(ceil(est_result_size_[name].size_fixed_));
+  *size_val = static_cast<uint64_t>(ceil(est_result_size_[name].size_var_));
+
+  // If the value size is non-zero, ensure both it and the offset size
+  // are large enough to contain at least one cell. Otherwise, ensure
+  // the offset size is also zero.
+  if (*size_val > 0) {
+    const auto off_cell_size = constants::cell_var_offset_size;
+    if (*size_off < off_cell_size)
+      *size_off = off_cell_size;
+
+    const uint64_t val_cell_size = datatype_size(array_schema->type(name));
+    if (*size_val < val_cell_size)
+      *size_val = val_cell_size;
+  } else {
+    *size_off = 0;
+  }
 
   return Status::Ok();
 }
