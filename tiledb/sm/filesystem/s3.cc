@@ -243,6 +243,9 @@ Status S3::disconnect() {
     return ret_st;
   }
 
+  // Take a lock protecting 'multipart_upload_states_'.
+  std::unique_lock<std::mutex> multipart_lck(multipart_upload_mtx_);
+
   if (multipart_upload_states_.size() > 0) {
     RETURN_NOT_OK(init_client());
 
@@ -276,6 +279,8 @@ Status S3::disconnect() {
       }
     }
   }
+
+  multipart_lck.unlock();
 
   if (options_.loggingOptions.logLevel != Aws::Utils::Logging::LogLevel::Off) {
     Aws::Utils::Logging::ShutdownAWSLogging();
