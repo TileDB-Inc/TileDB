@@ -1170,7 +1170,7 @@ Status VFS::move_dir(const URI& old_uri, const URI& new_uri) {
 Status VFS::copy_file(const URI& old_uri, const URI& new_uri) {
   if (!init_)
     return LOG_STATUS(
-        Status::VFSError("Cannot move file; VFS not initialized"));
+        Status::VFSError("Cannot copy file; VFS not initialized"));
 
   // If new_uri exists, delete it or raise an error based on `force`
   bool is_file;
@@ -1246,6 +1246,87 @@ Status VFS::copy_file(const URI& old_uri, const URI& new_uri) {
 #endif
     return LOG_STATUS(Status::VFSError(
         "Copying files across filesystems is not supported yet"));
+  }
+
+  // Unsupported filesystem
+  return LOG_STATUS(Status::VFSError(
+      "Unsupported URI schemes: " + old_uri.to_string() + ", " +
+      new_uri.to_string()));
+}
+
+Status VFS::copy_dir(const URI& old_uri, const URI& new_uri) {
+  if (!init_)
+    return LOG_STATUS(
+        Status::VFSError("Cannot copy directory; VFS not initialized"));
+
+  // File
+  if (old_uri.is_file()) {
+    if (new_uri.is_file()) {
+#ifdef _WIN32
+      return LOG_STATUS(Status::IOError(
+          std::string("Copying directories on Windows is not yet supported.")));
+#else
+      return posix_.copy_dir(old_uri.to_path(), new_uri.to_path());
+#endif
+    }
+    return LOG_STATUS(Status::VFSError(
+        "Copying directories across filesystems is not supported yet"));
+  }
+
+  // HDFS
+  if (old_uri.is_hdfs()) {
+    if (new_uri.is_hdfs())
+#ifdef HAVE_HDFS
+      return LOG_STATUS(Status::IOError(
+          std::string("Copying directories on HDFS is not yet supported.")));
+#else
+      return LOG_STATUS(
+          Status::VFSError("TileDB was built without HDFS support"));
+#endif
+    return LOG_STATUS(Status::VFSError(
+        "Copying directories across filesystems is not supported yet"));
+  }
+
+  // S3
+  if (old_uri.is_s3()) {
+    if (new_uri.is_s3())
+#ifdef HAVE_S3
+      return LOG_STATUS(Status::IOError(
+          std::string("Copying directories on S3 is not yet supported.")));
+#else
+      return LOG_STATUS(
+          Status::VFSError("TileDB was built without S3 support"));
+#endif
+    return LOG_STATUS(Status::VFSError(
+        "Copying directories across filesystems is not supported yet"));
+  }
+
+  // Azure
+  if (old_uri.is_azure()) {
+    if (new_uri.is_azure())
+#ifdef HAVE_AZURE
+      return LOG_STATUS(Status::IOError(
+          std::string("Copying directories on Azure is not yet supported.")));
+#else
+      return LOG_STATUS(
+          Status::VFSError("TileDB was built without Azure support"));
+#endif
+    return LOG_STATUS(Status::VFSError(
+        "Copying directories across filesystems is not supported yet"));
+  }
+
+  // GCS
+  if (old_uri.is_gcs()) {
+    if (new_uri.is_gcs())
+#ifdef HAVE_GCS
+      return LOG_STATUS(Status::IOError(
+          std::string("Copying directories on GCS is not yet supported.")));
+#else
+      return LOG_STATUS(
+          Status::VFSError("TileDB was built without GCS support"));
+#endif
+    return LOG_STATUS(Status::VFSError(
+        "Copying directories across filesystems is not supported yet"));
   }
 
   // Unsupported filesystem
