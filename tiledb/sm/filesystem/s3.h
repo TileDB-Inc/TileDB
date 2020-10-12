@@ -56,6 +56,7 @@
 #include <aws/core/utils/memory/stl/AWSStringStream.h>
 #include <aws/core/utils/ratelimiter/DefaultRateLimiter.h>
 #include <aws/core/utils/threading/Executor.h>
+#include <aws/identity-management/auth/STSAssumeRoleCredentialsProvider.h>
 #include <aws/s3/S3Client.h>
 #include <aws/s3/model/CompleteMultipartUploadRequest.h>
 #include <aws/s3/model/CopyObjectRequest.h>
@@ -498,7 +499,9 @@ class S3 {
   mutable std::shared_ptr<S3ThreadPoolExecutor> s3_tp_executor_;
 
   /** Credentials object used to initialize the client. */
-  mutable std::unique_ptr<Aws::Auth::AWSCredentials> client_creds_;
+//  mutable std::unique_ptr<Aws::Auth::AWSCredentials> client_creds_;
+
+  mutable std::shared_ptr<Aws::Auth::AWSCredentialsProvider> credentials_provider_;
 
   /** The size of the file buffers used in multipart uploads. */
   uint64_t file_buffer_size_;

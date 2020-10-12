@@ -253,6 +253,15 @@ class Config {
   /** S3 aws session token. */
   static const std::string VFS_S3_AWS_SESSION_TOKEN;
 
+  /** S3 aws role arn. */
+  static const std::string VFS_S3_AWS_ROLE_ARN;
+
+  /** S3 aws external id. */
+  static const std::string VFS_S3_AWS_EXTERNAL_ID;
+
+  /** S3 aws load frequency. */
+  static const std::string VFS_S3_AWS_LOAD_FREQUENCY;
+
   /** S3 scheme (http for local minio, https for AWS S3). */
   static const std::string VFS_S3_SCHEME;
 

@@ -109,6 +109,9 @@ const std::string Config::VFS_S3_REGION = "us-east-1";
 const std::string Config::VFS_S3_AWS_ACCESS_KEY_ID = "";
 const std::string Config::VFS_S3_AWS_SECRET_ACCESS_KEY = "";
 const std::string Config::VFS_S3_AWS_SESSION_TOKEN = "";
+const std::string Config::VFS_S3_AWS_ROLE_ARN = "";
+const std::string Config::VFS_S3_AWS_EXTERNAL_ID = "";
+const std::string Config::VFS_S3_AWS_LOAD_FREQUENCY = "";
 const std::string Config::VFS_S3_SCHEME = "https";
 const std::string Config::VFS_S3_ENDPOINT_OVERRIDE = "";
 const std::string Config::VFS_S3_USE_VIRTUAL_ADDRESSING = "true";
@@ -147,6 +150,9 @@ const std::set<std::string> Config::unserialized_params_ = {
     "vfs.s3.aws_access_key_id",
     "vfs.s3.aws_secret_access_key",
     "vfs.s3.aws_session_token",
+    "vfs.s3.aws_role_arn",
+    "vfs.s3.aws_external_id",
+    "vfs.s3.aws_load_frequency",
     "rest.username",
     "rest.password",
     "rest.token",
@@ -220,6 +226,9 @@ Config::Config() {
   param_values_["vfs.s3.aws_access_key_id"] = VFS_S3_AWS_ACCESS_KEY_ID;
   param_values_["vfs.s3.aws_secret_access_key"] = VFS_S3_AWS_SECRET_ACCESS_KEY;
   param_values_["vfs.s3.aws_session_token"] = VFS_S3_AWS_SESSION_TOKEN;
+  param_values_["vfs.s3.aws_role_arn"] = VFS_S3_AWS_ROLE_ARN;
+  param_values_["vfs.s3.aws_external_id"] = VFS_S3_AWS_EXTERNAL_ID;
+  param_values_["vfs.s3.aws_load_frequency"] = VFS_S3_AWS_LOAD_FREQUENCY;
   param_values_["vfs.s3.scheme"] = VFS_S3_SCHEME;
   param_values_["vfs.s3.endpoint_override"] = VFS_S3_ENDPOINT_OVERRIDE;
   param_values_["vfs.s3.use_virtual_addressing"] =
