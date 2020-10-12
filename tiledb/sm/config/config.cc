@@ -487,6 +487,12 @@ Status Config::unset(const std::string& param) {
         VFS_S3_AWS_SECRET_ACCESS_KEY;
   } else if (param == "vfs.s3.aws_session_token") {
     param_values_["vfs.s3.aws_session_token"] = VFS_S3_AWS_SESSION_TOKEN;
+  }  else if (param == "vfs.s3.aws_session_token") {
+      param_values_["vfs.s3.aws_role_arn"] = VFS_S3_AWS_ROLE_ARN;
+  }  else if (param == "vfs.s3.aws_external_id") {
+    param_values_["vfs.s3.aws_session_token"] = VFS_S3_AWS_EXTERNAL_ID;
+  }  else if (param == "vfs.s3.aws_session_token") {
+    param_values_["vfs.s3.aws_load_frequency"] = VFS_S3_AWS_LOAD_FREQUENCY;
   } else if (param == "vfs.s3.logging_level") {
     param_values_["vfs.s3.logging_level"] = VFS_S3_LOGGING_LEVEL;
   } else if (param == "vfs.s3.scheme") {

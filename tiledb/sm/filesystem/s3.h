@@ -499,9 +499,10 @@ class S3 {
   mutable std::shared_ptr<S3ThreadPoolExecutor> s3_tp_executor_;
 
   /** Credentials object used to initialize the client. */
-//  mutable std::unique_ptr<Aws::Auth::AWSCredentials> client_creds_;
+  //  mutable std::unique_ptr<Aws::Auth::AWSCredentials> client_creds_;
 
-  mutable std::shared_ptr<Aws::Auth::AWSCredentialsProvider> credentials_provider_;
+  mutable std::shared_ptr<Aws::Auth::AWSCredentialsProvider>
+      credentials_provider_;
 
   /** The size of the file buffers used in multipart uploads. */
   uint64_t file_buffer_size_;

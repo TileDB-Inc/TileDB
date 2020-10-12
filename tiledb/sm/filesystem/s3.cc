@@ -41,8 +41,8 @@
 #include <boost/interprocess/streams/bufferstream.hpp>
 #include <fstream>
 #include <iostream>
-#include "tiledb/sm/global_state/global_state.h"
 #include "tiledb/common/logger.h"
+#include "tiledb/sm/global_state/global_state.h"
 #include "tiledb/sm/global_state/unit_test_config.h"
 #include "tiledb/sm/misc/utils.h"
 
@@ -857,30 +857,23 @@ Status S3::init_client() const {
   // check for client configuration on create, which can be slow if aws is not
   // configured on a users systems due to ec2 metadata check
 
-
   client_config_ = std::unique_ptr<Aws::Client::ClientConfiguration>(
       new Aws::Client::ClientConfiguration);
 
-
   s3_tp_executor_ = std::make_shared<S3ThreadPoolExecutor>(vfs_thread_pool_);
-
 
   client_config_->executor = s3_tp_executor_;
 
-
   auto& client_config = *client_config_.get();
-
 
   if (!region_.empty())
     client_config.region = region_.c_str();
-
 
   if (!s3_endpoint_override.empty())
     client_config.endpointOverride = s3_endpoint_override.c_str();
 
   auto proxy_host = config_.get("vfs.s3.proxy_host", &found);
   assert(found);
-
 
   uint32_t proxy_port = 0;
   RETURN_NOT_OK(
@@ -906,7 +899,7 @@ Status S3::init_client() const {
     client_config.proxyPassword = proxy_password.c_str();
   }
 
-  auto   s3_scheme = config_.get("vfs.s3.scheme", &found);
+  auto s3_scheme = config_.get("vfs.s3.scheme", &found);
   assert(found);
 
   int64_t connect_timeout_ms = 0;
@@ -915,7 +908,7 @@ Status S3::init_client() const {
   assert(found);
 
   int64_t request_timeout_ms = 0;
-   (config_.get<int64_t>(
+  RETURN_NOT_OK(config_.get<int64_t>(
       "vfs.s3.request_timeout_ms", &request_timeout_ms, &found));
   assert(found);
 
@@ -987,20 +980,26 @@ Status S3::init_client() const {
   if (!aws_access_key_id.empty() && !aws_secret_access_key.empty()) {
     Aws::String access_key_id(aws_access_key_id.c_str());
     Aws::String secret_access_key(aws_secret_access_key.c_str());
-    Aws::String session_token(!aws_session_token.empty() ? aws_session_token.c_str() : "");
-    credentials_provider_ = std::make_shared<Aws::Auth::SimpleAWSCredentialsProvider>(
-        access_key_id, secret_access_key, session_token);
+    Aws::String session_token(
+        !aws_session_token.empty() ? aws_session_token.c_str() : "");
+    credentials_provider_ =
+        std::make_shared<Aws::Auth::SimpleAWSCredentialsProvider>(
+            access_key_id, secret_access_key, session_token);
   }
 
   // If AWS Role ARN provided instead of access_key and secret_key,
   // temporary credentials will be fetched by assuming this role.
-  else if(!aws_role_arn.empty()) {
+  else if (!aws_role_arn.empty()) {
     Aws::String role_arn(aws_role_arn.c_str());
-    Aws::String external_id(!aws_external_id.empty() ? aws_external_id.c_str() : "");
-    int load_frequency(!aws_load_frequency.empty() ? std::stoi(aws_load_frequency) : 999);
-    Aws::String session_token(!aws_session_token.empty() ? aws_session_token.c_str() : "");
-    credentials_provider_ = std::make_shared<Aws::Auth::STSAssumeRoleCredentialsProvider>(
-        role_arn, session_token, external_id, load_frequency, nullptr);
+    Aws::String external_id(
+        !aws_external_id.empty() ? aws_external_id.c_str() : "");
+    int load_frequency(
+        !aws_load_frequency.empty() ? std::stoi(aws_load_frequency) : 999);
+    Aws::String session_token(
+        !aws_session_token.empty() ? aws_session_token.c_str() : "");
+    credentials_provider_ =
+        std::make_shared<Aws::Auth::STSAssumeRoleCredentialsProvider>(
+            role_arn, session_token, external_id, load_frequency, nullptr);
   }
 
   if (credentials_provider_ == nullptr) {
