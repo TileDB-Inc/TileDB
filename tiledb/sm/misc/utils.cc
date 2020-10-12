@@ -82,6 +82,16 @@ namespace parse {
 /*          PARSING FUNCTIONS        */
 /* ********************************* */
 
+int32_t bitsize(uint64_t value) {
+  int32_t ret = 0;
+  do {
+    value >>= 1;
+    ++ret;
+  } while (value > 0);
+
+  return ret;
+}
+
 Status convert(const std::string& str, int* value) {
   if (!is_int(str)) {
     auto errmsg = std::string("Failed to convert string '") + str +
@@ -673,6 +683,32 @@ T safe_mul(T a, T b) {
   }
 
   return prod;
+}
+
+uint64_t left_p2_m1(uint64_t value) {
+  // Edge case
+  if (value == UINT64_MAX)
+    return value;
+
+  uint64_t ret = 0;  // Min power of 2 minus 1
+  while (ret <= value) {
+    ret = (ret << 1) + 1;  // Next larger power of 2 minus 1
+  }
+
+  return ret >> 1;
+}
+
+uint64_t right_p2_m1(uint64_t value) {
+  // Edge case
+  if (value == 0)
+    return value;
+
+  uint64_t ret = UINT64_MAX;  // Max power of 2 minus 1
+  while (ret >= value) {
+    ret >>= 1;  // Next smaller power of 2 minus 1
+  }
+
+  return (ret << 1) + 1;
 }
 
 }  // namespace math

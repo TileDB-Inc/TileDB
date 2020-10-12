@@ -694,8 +694,8 @@ std::vector<uint64_t> Subarray::get_range_coords(uint64_t range_idx) const {
     }
     std::reverse(ret.begin(), ret.end());
   } else {
-    // Global order - single range
-    assert(layout == Layout::GLOBAL_ORDER);
+    // Global order or Hilbert - single range
+    assert(layout == Layout::GLOBAL_ORDER || layout == Layout::HILBERT);
     assert(range_num() == 1);
     for (unsigned i = 0; i < dim_num; ++i)
       ret.push_back(0);
@@ -1279,8 +1279,8 @@ void Subarray::compute_range_offsets() {
     }
     std::reverse(range_offsets_.begin(), range_offsets_.end());
   } else {
-    // Global order - single range
-    assert(layout == Layout::GLOBAL_ORDER);
+    // Global order or Hilbert - single range
+    assert(layout == Layout::GLOBAL_ORDER || layout == Layout::HILBERT);
     assert(range_num() == 1);
     range_offsets_.push_back(1);
     if (dim_num > 1) {

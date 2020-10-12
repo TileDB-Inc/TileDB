@@ -662,12 +662,24 @@ std::string Stats::dump_read() const {
 }
 
 std::string Stats::dump_consolidate() const {
+  auto consolidate_steps =
+      counter_stats_.find(CounterType::CONSOLIDATE_STEP_NUM)->second;
   auto consolidate_frags =
       timer_stats_.find(TimerType::CONSOLIDATE_FRAGS)->second;
+  auto consolidate_main =
+      timer_stats_.find(TimerType::CONSOLIDATE_MAIN)->second;
+  auto consolidate_compute_next =
+      timer_stats_.find(TimerType::CONSOLIDATE_COMPUTE_NEXT)->second;
   auto consolidate_array_meta =
       timer_stats_.find(TimerType::CONSOLIDATE_ARRAY_META)->second;
   auto consolidate_frag_meta =
       timer_stats_.find(TimerType::CONSOLIDATE_FRAG_META)->second;
+  auto consolidate_create_buffers =
+      timer_stats_.find(TimerType::CONSOLIDATE_CREATE_BUFFERS)->second;
+  auto consolidate_create_queries =
+      timer_stats_.find(TimerType::CONSOLIDATE_CREATE_QUERIES)->second;
+  auto consolidate_copy_array =
+      timer_stats_.find(TimerType::CONSOLIDATE_COPY_ARRAY)->second;
   std::stringstream ss;
 
   auto consolidate =
@@ -675,7 +687,16 @@ std::string Stats::dump_consolidate() const {
   if (consolidate != 0) {
     ss << "==== CONSOLIDATION ====\n\n";
     write(&ss, "- Consolidation time: ", consolidate);
+    write(&ss, "  * Number of consolidation steps: ", consolidate_steps);
     write(&ss, "  * Time to consolidate fragments: ", consolidate_frags);
+    write(
+        &ss,
+        "    > Time to compute next to consolidate: ",
+        consolidate_compute_next);
+    write(&ss, "    > Time for main consolidation: ", consolidate_main);
+    write(&ss, "      # Time to create buffers: ", consolidate_create_buffers);
+    write(&ss, "      # Time to create queries: ", consolidate_create_queries);
+    write(&ss, "      # Time to copy the array: ", consolidate_copy_array);
     write(
         &ss,
         "  * Time to consolidate array metadata: ",

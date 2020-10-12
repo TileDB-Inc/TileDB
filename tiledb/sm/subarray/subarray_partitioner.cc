@@ -37,6 +37,8 @@
 #include "tiledb/sm/array_schema/dimension.h"
 #include "tiledb/sm/array_schema/domain.h"
 #include "tiledb/sm/enums/layout.h"
+#include "tiledb/sm/misc/hilbert.h"
+#include "tiledb/sm/misc/utils.h"
 #include "tiledb/sm/stats/stats.h"
 
 #include <iomanip>
@@ -49,10 +51,9 @@
 #define MAX(a, b) ((a) > (b) ? (a) : (b))
 #endif
 
+using namespace tiledb;
 using namespace tiledb::common;
-
-namespace tiledb {
-namespace sm {
+using namespace tiledb::sm;
 
 /* ****************************** */
 /*   CONSTRUCTORS & DESTRUCTORS   */
@@ -428,6 +429,7 @@ void SubarrayPartitioner::calibrate_current_start_end(bool* must_split_slab) {
 
   auto layout = subarray_.layout();
   auto cell_order = subarray_.array()->array_schema()->cell_order();
+  cell_order = (cell_order == Layout::HILBERT) ? Layout::ROW_MAJOR : cell_order;
   layout = (layout == Layout::UNORDERED) ? cell_order : layout;
   assert(layout == Layout::ROW_MAJOR || layout == Layout::COL_MAJOR);
 
@@ -582,6 +584,10 @@ void SubarrayPartitioner::compute_splitting_value_on_tiles(
   assert(range.layout() == Layout::GLOBAL_ORDER);
   *unsplittable = true;
 
+  // Inapplicable to Hilbert cell order
+  if (subarray_.array()->array_schema()->cell_order() == Layout::HILBERT)
+    return;
+
   // For easy reference
   auto array_schema = subarray_.array()->array_schema();
   auto dim_num = subarray_.array()->array_schema()->dim_num();
@@ -619,7 +625,10 @@ void SubarrayPartitioner::compute_splitting_value_single_range(
     const Subarray& range,
     unsigned* splitting_dim,
     ByteVecValue* splitting_value,
+    bool* normal_order,
     bool* unsplittable) {
+  *normal_order = true;
+
   // Special case for global order
   if (subarray_.layout() == Layout::GLOBAL_ORDER) {
     compute_splitting_value_on_tiles(
@@ -643,6 +652,16 @@ void SubarrayPartitioner::compute_splitting_value_single_range(
                cell_order :
                layout;
   *splitting_dim = UINT32_MAX;
+
+  // Special case for Hilbert cell order
+  if (cell_order == Layout::HILBERT) {
+    compute_splitting_value_single_range_hilbert(
+        range, splitting_dim, splitting_value, normal_order, unsplittable);
+    return;
+  }
+
+  // Cell order is either row- or col-major
+  assert(cell_order == Layout::ROW_MAJOR || cell_order == Layout::COL_MAJOR);
 
   std::vector<unsigned> dims;
   if (layout == Layout::ROW_MAJOR) {
@@ -673,17 +692,69 @@ void SubarrayPartitioner::compute_splitting_value_single_range(
   assert(*splitting_dim != UINT32_MAX);
 }
 
+void SubarrayPartitioner::compute_splitting_value_single_range_hilbert(
+    const Subarray& range,
+    unsigned* splitting_dim,
+    ByteVecValue* splitting_value,
+    bool* normal_order,
+    bool* unsplittable) {
+  // For easy reference
+  auto array_schema = subarray_.array()->array_schema();
+  auto dim_num = array_schema->dim_num();
+  hilbert::Hilbert h(dim_num);
+
+  // Compute the uint64 mapping of the range (bits properly shifted)
+  std::vector<std::array<uint64_t, 2>> range_uint64;
+  compute_range_uint64(range, &range_uint64, unsplittable);
+
+  // Check if unsplittable (range_uint64 is unary)
+  if (*unsplittable)
+    return;
+
+  // Compute the splitting dimension
+  compute_splitting_dim_hilbert(range_uint64, splitting_dim);
+
+  // Compute splitting value
+  compute_splitting_value_hilbert(
+      range_uint64[*splitting_dim], *splitting_dim, splitting_value);
+
+  // Check for unsplittable again
+  auto dim = array_schema->dimension(*splitting_dim);
+  const Range* r;
+  range.get_range(*splitting_dim, 0, &r);
+  if (dim->smaller_than(*splitting_value, *r)) {
+    *unsplittable = true;
+    return;
+  }
+
+  // Set normal order
+  std::vector<uint64_t> hilbert_coords(dim_num);
+  for (uint32_t d = 0; d < dim_num; ++d)
+    hilbert_coords[d] = range_uint64[d][0];
+  auto hilbert_left = h.coords_to_hilbert(&hilbert_coords[0]);
+  for (uint32_t d = 0; d < dim_num; ++d) {
+    if (d == *splitting_dim)
+      hilbert_coords[d] = range_uint64[d][1];
+    else
+      hilbert_coords[d] = range_uint64[d][0];
+  }
+  auto hilbert_right = h.coords_to_hilbert(&hilbert_coords[0]);
+  *normal_order = (hilbert_left < hilbert_right);
+}
+
 void SubarrayPartitioner::compute_splitting_value_multi_range(
     unsigned* splitting_dim,
     uint64_t* splitting_range,
     ByteVecValue* splitting_value,
+    bool* normal_order,
     bool* unsplittable) {
   const auto& partition = state_.multi_range_.front();
+  *normal_order = true;
 
   // Single-range partittion
   if (partition.range_num() == 1) {
     compute_splitting_value_single_range(
-        partition, splitting_dim, splitting_value, unsplittable);
+        partition, splitting_dim, splitting_value, normal_order, unsplittable);
     return;
   }
 
@@ -811,7 +882,6 @@ Status SubarrayPartitioner::next_from_single_range(bool* unsplittable) {
     do {
       auto& partition = state_.single_range_.front();
       must_split = this->must_split(&partition);
-
       if (must_split)
         RETURN_NOT_OK(split_top_single_range(unsplittable));
     } while (must_split && !*unsplittable);
@@ -840,8 +910,9 @@ Status SubarrayPartitioner::split_top_single_range(bool* unsplittable) {
   // Finding splitting value
   ByteVecValue splitting_value;
   unsigned splitting_dim;
+  bool normal_order;
   compute_splitting_value_single_range(
-      range, &splitting_dim, &splitting_value, unsplittable);
+      range, &splitting_dim, &splitting_value, &normal_order, unsplittable);
 
   if (*unsplittable)
     return Status::Ok();
@@ -852,8 +923,13 @@ Status SubarrayPartitioner::split_top_single_range(bool* unsplittable) {
 
   // Update list
   state_.single_range_.pop_front();
-  state_.single_range_.push_front(std::move(r2));
-  state_.single_range_.push_front(std::move(r1));
+  if (normal_order) {
+    state_.single_range_.push_front(std::move(r2));
+    state_.single_range_.push_front(std::move(r1));
+  } else {
+    state_.single_range_.push_front(std::move(r1));
+    state_.single_range_.push_front(std::move(r2));
+  }
 
   return Status::Ok();
 }
@@ -872,8 +948,13 @@ Status SubarrayPartitioner::split_top_multi_range(bool* unsplittable) {
   unsigned splitting_dim;
   uint64_t splitting_range = UINT64_MAX;
   ByteVecValue splitting_value;
+  bool normal_order;
   compute_splitting_value_multi_range(
-      &splitting_dim, &splitting_range, &splitting_value, unsplittable);
+      &splitting_dim,
+      &splitting_range,
+      &splitting_value,
+      &normal_order,
+      unsplittable);
 
   if (*unsplittable)
     return Status::Ok();
@@ -886,8 +967,13 @@ Status SubarrayPartitioner::split_top_multi_range(bool* unsplittable) {
 
   // Update list
   state_.multi_range_.pop_front();
-  state_.multi_range_.push_front(std::move(p2));
-  state_.multi_range_.push_front(std::move(p1));
+  if (normal_order) {
+    state_.multi_range_.push_front(std::move(p2));
+    state_.multi_range_.push_front(std::move(p1));
+  } else {
+    state_.multi_range_.push_front(std::move(p1));
+    state_.multi_range_.push_front(std::move(p2));
+  }
 
   return Status::Ok();
 }
@@ -902,5 +988,164 @@ void SubarrayPartitioner::swap(SubarrayPartitioner& partitioner) {
   std::swap(compute_tp_, partitioner.compute_tp_);
 }
 
-}  // namespace sm
-}  // namespace tiledb
+void SubarrayPartitioner::compute_range_uint64(
+    const Subarray& range,
+    std::vector<std::array<uint64_t, 2>>* range_uint64,
+    bool* unsplittable) const {
+  // Initializations
+  auto array_schema = subarray_.array()->array_schema();
+  auto dim_num = array_schema->dim_num();
+  const Range* r;
+  *unsplittable = true;
+  range_uint64->resize(dim_num);
+  hilbert::Hilbert h(dim_num);
+  auto bits = h.bits();
+  auto bucket_num = ((uint64_t)1 << bits) - 1;
+
+  // Default values for empty range start/end
+  auto max_string = std::string("\x7F\x7F\x7F\x7F\x7F\x7F\x7F\x7F", 8);
+
+  // Calculate mapped range
+  bool empty_start, empty_end;
+  for (uint32_t d = 0; d < dim_num; ++d) {
+    auto dim = array_schema->dimension(d);
+    auto var = dim->var_size();
+    range.get_range(d, 0, &r);
+    empty_start = var ? (r->start_size() == 0) : r->empty();
+    empty_end = var ? (r->end_size() == 0) : r->empty();
+    auto max_default =
+        var ? dim->map_to_uint64(
+                  max_string.data(), max_string.size(), bits, bucket_num) :
+              (UINT64_MAX >> (64 - bits));
+
+    (*range_uint64)[d][0] =
+        empty_start ? 0 :  // min default
+            dim->map_to_uint64(r->start(), r->start_size(), bits, bucket_num);
+    (*range_uint64)[d][1] =
+        empty_end ?
+            max_default :
+            dim->map_to_uint64(r->end(), r->end_size(), bits, bucket_num);
+
+    assert((*range_uint64)[d][0] <= (*range_uint64)[d][1]);
+
+    if ((*range_uint64)[d][0] != (*range_uint64)[d][1])
+      *unsplittable = false;
+  }
+}
+
+void SubarrayPartitioner::compute_splitting_dim_hilbert(
+    const std::vector<std::array<uint64_t, 2>>& range_uint64,
+    uint32_t* splitting_dim) const {
+  // For easy reference
+  auto array_schema = subarray_.array()->array_schema();
+  auto dim_num = array_schema->dim_num();
+
+  // Prepare candidate splitting dimensions
+  std::set<uint32_t> splitting_dims;
+  for (uint32_t d = 0; d < dim_num; ++d) {
+    if (range_uint64[d][0] != range_uint64[d][1])  // If not unary
+      splitting_dims.insert(d);
+  }
+
+  // This vector stores the coordinates of the range grid
+  // defined over the potential split of a range across all
+  // the dimensions. If there are dim_num dimensions, this
+  // will contain 2^{dim_num} elements. The coordinates will be
+  // (1,1,..., 1), (1,1,...,1), (2,1,...,1), (2,1,....,2), ...,
+  // Each such coordinate is also associated with a hilbert value.
+  std::vector<std::pair<uint64_t, std::vector<uint64_t>>> range_grid;
+
+  // Auxiliary grid size in order to exclude unary ranges. For instance,
+  // for 2D, if the range on the second dimension is unary, only
+  // coordinates (1,1) and (2,1) will appear, with coordinates
+  // (1,2) and (2,2) being excluded.
+  std::vector<uint64_t> grid_size(dim_num);
+  bool unary;
+  for (uint32_t d = 0; d < dim_num; ++d) {
+    unary = (range_uint64[d][0] == range_uint64[d][1]);
+    grid_size[d] = 1 + (int32_t)!unary;
+  }
+
+  // Prepare the grid
+  std::vector<uint64_t> grid_coords(dim_num, 1);
+  std::vector<uint64_t> hilbert_coords(dim_num);
+  uint64_t hilbert_value;
+  hilbert::Hilbert h(dim_num);
+  while (grid_coords[0] < grid_size[0] + 1) {
+    // Map hilbert values of range_uint64 endpoints to range grid
+    for (uint32_t d = 0; d < dim_num; ++d)
+      hilbert_coords[d] = range_uint64[d][grid_coords[d] - 1];
+    hilbert_value = h.coords_to_hilbert(&hilbert_coords[0]);
+    range_grid.push_back(std::make_pair(hilbert_value, grid_coords));
+
+    // Advance coordinates
+    auto d = (int32_t)dim_num - 1;
+    ++grid_coords[d];
+    while (d > 0 && grid_coords[d] == grid_size[d] + 1) {
+      grid_coords[d--] = 1;
+      ++grid_coords[d];
+    }
+  }
+
+  // Choose splitting dimension
+  std::sort(range_grid.begin(), range_grid.end());
+  auto next_coords = range_grid[0].second;
+  size_t c = 1;
+  while (splitting_dims.size() != 1) {
+    assert(c < range_grid.size());
+    for (uint32_t d = 0; d < dim_num; ++d) {
+      if (range_grid[c].second[d] != next_coords[d]) {  // Exclude dimension
+        splitting_dims.erase(d);
+        break;
+      }
+    }
+    ++c;
+  }
+
+  // The remaining dimension is the splitting dimension
+  assert(splitting_dims.size() == 1);
+  *splitting_dim = *(splitting_dims.begin());
+}
+
+void SubarrayPartitioner::compute_splitting_value_hilbert(
+    const std::array<uint64_t, 2>& range_uint64,
+    uint32_t splitting_dim,
+    ByteVecValue* splitting_value) const {
+  auto array_schema = subarray_.array()->array_schema();
+  auto dim_num = array_schema->dim_num();
+  uint64_t splitting_value_uint64;   // Splitting value
+  uint64_t left_p2_m1, right_p2_m1;  // Left/right powers of 2 minus 1
+
+  // Compute left and right (2^i-1) enclosing the uint64 range
+  left_p2_m1 = utils::math::left_p2_m1(range_uint64[0]);
+  right_p2_m1 = utils::math::right_p2_m1(range_uint64[1]);
+  assert(left_p2_m1 != right_p2_m1);  // Cannot be unary
+
+  // Compute splitting value
+  uint64_t splitting_offset = 0;
+  auto range_uint64_start = range_uint64[0];
+  auto range_uint64_end = range_uint64[1];
+  while (true) {
+    if (((left_p2_m1 << 1) + 1) != right_p2_m1) {
+      // More than one power of 2 apart, split at largest power of 2 in between
+      splitting_value_uint64 = splitting_offset + (right_p2_m1 >> 1);
+      break;
+    } else {  // One power apart - need to normalize and repeat
+      range_uint64_start -= (left_p2_m1 + 1);
+      range_uint64_end -= (left_p2_m1 + 1);
+      left_p2_m1 = utils::math::left_p2_m1(range_uint64_start);
+      right_p2_m1 = utils::math::right_p2_m1(range_uint64_end);
+      assert(left_p2_m1 != right_p2_m1);  // Cannot be unary
+      splitting_offset += left_p2_m1 + 1;
+    }
+  }
+
+  // Set real splitting value
+  hilbert::Hilbert h(dim_num);
+  auto bits = h.bits();
+  auto bucket_num = ((uint64_t)1 << bits) - 1;
+
+  *splitting_value =
+      array_schema->dimension(splitting_dim)
+          ->map_from_uint64(splitting_value_uint64, bits, bucket_num);
+}

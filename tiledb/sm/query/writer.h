@@ -124,6 +124,12 @@ class Writer {
   /** Adds a range to the subarray on the input dimension. */
   Status add_range(unsigned dim_idx, const Range& range);
 
+  /**
+   * Disables checking the global order. Applicable only to writes.
+   * This option will supercede the config.
+   */
+  void disable_check_global_order();
+
   /** Retrieves the number of ranges of the subarray for the given dimension. */
   Status get_range_num(unsigned dim_idx, uint64_t* range_num) const;
 
@@ -315,6 +321,12 @@ class Writer {
   uint64_t coords_num_;
 
   /**
+   * If `true`, it will not check if the written coordinates are
+   * in the global order. This supercedes the config.
+   */
+  bool disable_check_global_order_;
+
+  /**
    * True if either zipped coordinates buffer or separate coordinate
    * buffers are set.
    */
@@ -434,6 +446,14 @@ class Writer {
    * @return Status
    */
   Status check_global_order() const;
+
+  /**
+   * Throws an error if there are coordinates that do not obey the
+   * global order. Applicable only to Hilbert order.
+   *
+   * @return Status
+   */
+  Status check_global_order_hilbert() const;
 
   /** Correctness checks for `subarray_`. */
   Status check_subarray() const;
@@ -976,6 +996,11 @@ class Writer {
 
   /** Gets statistics about dimensions and attributes written. */
   void get_dim_attr_stats() const;
+
+  /** Calculates the hilbert values of the input coordinate buffers. */
+  Status calculate_hilbert_values(
+      const std::vector<const QueryBuffer*>& buffs,
+      std::vector<uint64_t>* hilbert_values) const;
 };
 
 }  // namespace sm

@@ -1477,12 +1477,14 @@ class Reader {
    *
    * @param iter_begin The start position of the coordinates to sort.
    * @param iter_end The end position of the coordinates to sort.
+   * @param coords_num The number of coordinates to be sorted.
    * @param layout The layout to sort into.
    * @return Status
    */
   Status sort_result_coords(
       std::vector<ResultCoords>::iterator iter_begin,
       std::vector<ResultCoords>::iterator iter_end,
+      size_t coords_num,
       Layout layout) const;
 
   /** Performs a read on a sparse array. */
@@ -1533,6 +1535,40 @@ class Reader {
   /** Gets statistics about the result tiles. */
   void get_result_tile_stats(
       const std::vector<ResultTile*>& result_tiles) const;
+
+  /**
+   * Calculates the hilbert values of the result coordinates between
+   * `iter_begin` and `iter_begin + hilbert_values.size()`.
+   * The hilbert values are stored
+   * in `hilbert_values`, where the first pair value is the hilbert value
+   * and the second is the position of the result coords after the
+   * input iterator.
+   */
+  Status calculate_hilbert_values(
+      std::vector<ResultCoords>::iterator iter_begin,
+      std::vector<std::pair<uint64_t, uint64_t>>* hilbert_values) const;
+
+  /**
+   * It reorganizes the result coords given the iterator offsets in
+   * `hilbert_values` (second values in the pair). This essentially
+   * sorts the result coordinates starting at `iter_begin` based
+   * on the already sorted hilbert values.
+   *
+   * The algorithm is in-place, operates with O(1) memory and
+   * in O(coords_num) time, but modifies the offsets/positions in
+   * `hilbert_values`.
+   */
+  Status reorganize_result_coords(
+      std::vector<ResultCoords>::iterator iter_begin,
+      std::vector<std::pair<uint64_t, uint64_t>>* hilbert_values) const;
+
+  /**
+   * Returns true if the result coordinates between the two iterators
+   * belong to the same fragment.
+   */
+  bool belong_to_single_fragment(
+      std::vector<ResultCoords>::iterator iter_begin,
+      std::vector<ResultCoords>::iterator iter_end) const;
 };
 
 }  // namespace sm

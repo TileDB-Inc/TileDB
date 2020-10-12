@@ -39,6 +39,7 @@
 #include "tiledb/sm/fragment/fragment_metadata.h"
 #include "tiledb/sm/global_state/global_state.h"
 #include "tiledb/sm/misc/comparators.h"
+#include "tiledb/sm/misc/hilbert.h"
 #include "tiledb/sm/misc/parallel_functions.h"
 #include "tiledb/sm/misc/utils.h"
 #include "tiledb/sm/query/query_macros.h"
@@ -52,6 +53,7 @@
 #include <iostream>
 #include <unordered_set>
 
+using namespace tiledb;
 using namespace tiledb::common;
 
 namespace tiledb {
@@ -678,10 +680,7 @@ Status Reader::compute_range_result_coords(
   auto range_num = subarray->range_num();
   range_result_coords->resize(range_num);
   auto cell_order = array_schema_->cell_order();
-  Layout layout =
-      (layout_ == Layout::GLOBAL_ORDER || layout_ == Layout::UNORDERED) ?
-          cell_order :
-          layout_;
+  Layout layout = (layout_ == Layout::UNORDERED) ? cell_order : layout_;
   auto allows_dups = array_schema_->allows_dups();
 
   auto statuses = parallel_for(
@@ -700,6 +699,7 @@ Status Reader::compute_range_result_coords(
           RETURN_CANCEL_OR_ERROR(sort_result_coords(
               ((*range_result_coords)[r]).begin(),
               ((*range_result_coords)[r]).end(),
+              ((*range_result_coords)[r]).size(),
               layout));
           RETURN_CANCEL_OR_ERROR(
               dedup_result_coords(&((*range_result_coords)[r])));
@@ -823,14 +823,30 @@ Status Reader::compute_subarray_coords(
   if (layout_ == Layout::UNORDERED)
     return Status::Ok();
 
-  // Sort
-  auto cell_order = array_schema_->cell_order();
-  Layout layout = (layout_ == Layout ::UNORDERED) ? cell_order : layout_;
+  // We should not sort if:
+  // - there is a single fragment and global order
+  // - there is a single fragment and one dimension
+  // - there are multiple fragments and a single range and dups are not allowed
+  //   (therefore, the coords in that range have already been sorted)
+  auto dim_num = array_schema_->dim_num();
+  bool must_sort = true;
+  auto allows_dups = array_schema_->allows_dups();
+  auto single_range = (range_result_coords->size() == 1);
+  if (layout_ == Layout::GLOBAL_ORDER || dim_num == 1) {
+    must_sort = !belong_to_single_fragment(
+        result_coords->begin() + result_coords_size, result_coords->end());
+  } else if (single_range && !allows_dups) {
+    must_sort = belong_to_single_fragment(
+        result_coords->begin() + result_coords_size, result_coords->end());
+  }
 
-  RETURN_NOT_OK(sort_result_coords(
-      result_coords->begin() + result_coords_size,
-      result_coords->end(),
-      layout));
+  if (must_sort) {
+    RETURN_NOT_OK(sort_result_coords(
+        result_coords->begin() + result_coords_size,
+        result_coords->end(),
+        result_coords->size() - result_coords_size,
+        layout_));
+  }
 
   return Status::Ok();
 }
@@ -2445,10 +2461,8 @@ void Reader::reset_buffer_sizes() {
 Status Reader::sort_result_coords(
     std::vector<ResultCoords>::iterator iter_begin,
     std::vector<ResultCoords>::iterator iter_end,
+    size_t coords_num,
     Layout layout) const {
-  // TODO: do not sort if it is single fragment and
-  // (i) it is single dimension, or (ii) it is global order
-
   auto domain = array_schema_->domain();
 
   if (layout == Layout::ROW_MAJOR) {
@@ -2458,11 +2472,22 @@ Status Reader::sort_result_coords(
     parallel_sort(
         storage_manager_->compute_tp(), iter_begin, iter_end, ColCmp(domain));
   } else if (layout == Layout::GLOBAL_ORDER) {
-    parallel_sort(
-        storage_manager_->compute_tp(),
-        iter_begin,
-        iter_end,
-        GlobalCmp(domain));
+    if (array_schema_->cell_order() == Layout::HILBERT) {
+      std::vector<std::pair<uint64_t, uint64_t>> hilbert_values(coords_num);
+      RETURN_NOT_OK(calculate_hilbert_values(iter_begin, &hilbert_values));
+      parallel_sort(
+          storage_manager_->compute_tp(),
+          hilbert_values.begin(),
+          hilbert_values.end(),
+          HilbertCmp(domain, iter_begin));
+      RETURN_NOT_OK(reorganize_result_coords(iter_begin, &hilbert_values));
+    } else {
+      parallel_sort(
+          storage_manager_->compute_tp(),
+          iter_begin,
+          iter_end,
+          GlobalCmp(domain));
+    }
   } else {
     assert(false);
   }
@@ -2476,6 +2501,7 @@ Status Reader::sparse_read() {
   // sparse fragments
   std::vector<ResultCoords> result_coords;
   std::vector<ResultTile> sparse_result_tiles;
+
   RETURN_NOT_OK(compute_result_coords(&sparse_result_tiles, &result_coords));
   std::vector<ResultTile*> result_tiles;
   for (auto& srt : sparse_result_tiles)
@@ -2764,6 +2790,82 @@ bool Reader::est_result_size_computed() {
 std::unordered_map<std::string, Subarray::MemorySize>
 Reader::get_max_mem_size_map() {
   return subarray_.get_max_mem_size_map(storage_manager_->compute_tp());
+}
+
+Status Reader::calculate_hilbert_values(
+    std::vector<ResultCoords>::iterator iter_begin,
+    std::vector<std::pair<uint64_t, uint64_t>>* hilbert_values) const {
+  auto dim_num = array_schema_->dim_num();
+  hilbert::Hilbert h(dim_num);
+  auto bits = h.bits();
+  auto bucket_num = ((uint64_t)1 << bits) - 1;
+  auto coords_num = (uint64_t)hilbert_values->size();
+
+  // Calculate Hilbert values in parallel
+  auto statuses = parallel_for(
+      storage_manager_->compute_tp(), 0, coords_num, [&](uint64_t c) {
+        uint64_t coords[dim_num];
+        for (uint32_t d = 0; d < dim_num; ++d) {
+          auto dim = array_schema_->dimension(d);
+          coords[d] =
+              dim->map_to_uint64(*(iter_begin + c), d, bits, bucket_num);
+        }
+        (*hilbert_values)[c] =
+            std::pair<uint64_t, uint64_t>(h.coords_to_hilbert(&coords[0]), c);
+        return Status::Ok();
+      });
+
+  // Check all statuses
+  for (auto& st : statuses)
+    RETURN_NOT_OK_ELSE(st, LOG_STATUS(st));
+
+  return Status::Ok();
+}
+
+Status Reader::reorganize_result_coords(
+    std::vector<ResultCoords>::iterator iter_begin,
+    std::vector<std::pair<uint64_t, uint64_t>>* hilbert_values) const {
+  auto coords_num = hilbert_values->size();
+  size_t i_src, i_dst;
+  ResultCoords pending;
+  for (size_t i_dst_first = 0; i_dst_first < coords_num; ++i_dst_first) {
+    // Check if this element needs to be permuted
+    i_src = (*hilbert_values)[i_dst_first].second;
+    if (i_src == i_dst_first)
+      continue;
+
+    i_dst = i_dst_first;
+    pending = std::move(*(iter_begin + i_dst));
+
+    // Follow the permutation cycle
+    do {
+      *(iter_begin + i_dst) = std::move(*(iter_begin + i_src));
+      (*hilbert_values)[i_dst].second = i_dst;
+
+      i_dst = i_src;
+      i_src = (*hilbert_values)[i_src].second;
+    } while (i_src != i_dst_first);
+
+    *(iter_begin + i_dst) = std::move(pending);
+    (*hilbert_values)[i_dst].second = i_dst;
+  }
+
+  return Status::Ok();
+}
+
+bool Reader::belong_to_single_fragment(
+    std::vector<ResultCoords>::iterator iter_begin,
+    std::vector<ResultCoords>::iterator iter_end) const {
+  if (iter_begin == iter_end)
+    return true;
+
+  uint32_t last_frag_idx = iter_begin->tile_->frag_idx();
+  for (auto it = iter_begin + 1; it != iter_end; ++it) {
+    if (it->tile_->frag_idx() != last_frag_idx)
+      return false;
+  }
+
+  return true;
 }
 
 }  // namespace sm

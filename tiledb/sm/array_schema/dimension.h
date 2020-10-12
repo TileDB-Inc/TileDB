@@ -33,12 +33,17 @@
 #ifndef TILEDB_DIMENSION_H
 #define TILEDB_DIMENSION_H
 
+#include <bitset>
+#include <iomanip>
+#include <iostream>
 #include <sstream>
 #include <string>
 
 #include "tiledb/common/logger.h"
 #include "tiledb/common/status.h"
 #include "tiledb/sm/misc/types.h"
+#include "tiledb/sm/misc/utils.h"
+#include "tiledb/sm/query/result_coords.h"
 #include "tiledb/sm/tile/tile.h"
 
 using namespace tiledb::common;
@@ -415,6 +420,105 @@ class Dimension {
   bool value_in_range(const std::string& value, const Range& range) const;
 
   /**
+   * Maps the c-th cell in the input query buffer to a uint64 value,
+   * based on discretizing the domain into `bucket_num` buckets.
+   * This value is used to compute a Hilbert value.
+   */
+  uint64_t map_to_uint64(
+      const QueryBuffer* buff,
+      uint64_t c,
+      uint64_t coords_num,
+      int bits,
+      uint64_t bucket_num) const;
+
+  /**
+   * Maps the c-th cell in the input query buffer to a uint64 value,
+   * based on discretizing the domain into `bucket_num` buckets.
+   * This value is used to compute a Hilbert value.
+   */
+  template <class T>
+  static uint64_t map_to_uint64(
+      const Dimension* dim,
+      const QueryBuffer* buff,
+      uint64_t c,
+      uint64_t coords_num,
+      int bits,
+      uint64_t bucket_num);
+
+  /**
+   * Maps the input coordinate to a uint64 value,
+   * based on discretizing the domain into `bucket_num` buckets.
+   * This value is used to compute a Hilbert value.
+   */
+  uint64_t map_to_uint64(
+      const void* coord,
+      uint64_t coord_size,
+      int bits,
+      uint64_t bucket_num) const;
+
+  /**
+   * Maps the input coordinate to a uint64 value,
+   * based on discretizing the domain into `bucket_num` buckets.
+   * This value is used to compute a Hilbert value.
+   */
+  template <class T>
+  static uint64_t map_to_uint64_2(
+      const Dimension* dim,
+      const void* coord,
+      uint64_t coord_size,
+      int bits,
+      uint64_t bucket_num);
+
+  /**
+   * Maps the input result coordinate to a uint64 value,
+   * based on discretizing the domain into `bucket_num` buckets.
+   * This value is used to compute a Hilbert value.
+   */
+  uint64_t map_to_uint64(
+      const ResultCoords& coord,
+      uint32_t dim_idx,
+      int bits,
+      uint64_t bucket_num) const;
+
+  /**
+   * Maps the input result coordinate to a uint64 value,
+   * based on discretizing the domain into `bucket_num` buckets.
+   * This value is used to compute a Hilbert value.
+   */
+  template <class T>
+  static uint64_t map_to_uint64_3(
+      const Dimension* dim,
+      const ResultCoords& coord,
+      uint32_t dim_idx,
+      int bits,
+      uint64_t bucket_num);
+
+  /**
+   * Maps a uint64 value (produced by `map_to_uint64`) to its corresponding
+   * value in the original dimension domain. `bucket_num` is the number
+   * of buckets used to discretize the original value.
+   */
+  ByteVecValue map_from_uint64(
+      uint64_t value, int bits, uint64_t bucket_num) const;
+
+  /**
+   * Maps a uint64 value (produced by `map_to_uint64`) to its corresponding
+   * value in the original dimension domain. `bucket_num` is the number
+   * of buckets used to discretize the original value.
+   */
+  template <class T>
+  static ByteVecValue map_from_uint64(
+      const Dimension* dim, uint64_t value, int bits, uint64_t bucket_num);
+
+  /** Returns `true` if `value` is smaller than the start of `range`. */
+  bool smaller_than(const ByteVecValue& value, const Range& range) const;
+
+  /** Returns `true` if `value` is smaller than the start of `range`. */
+  template <class T>
+  static bool smaller_than(
+      const Dimension* dim, const ByteVecValue& value, const Range& range);
+
+  /**
    * Serializes the object members into a binary buffer.
    *
    * @param buff The buffer to serialize the data into.
@@ -603,6 +707,44 @@ class Dimension {
    */
   std::function<bool(const void*, const Range&)> value_in_range_func_;
 
+  /**
+   * Stores the appropriate templated map_to_uint64() function based on
+   * the dimension datatype.
+   */
+  std::function<uint64_t(
+      const Dimension*, const QueryBuffer*, uint64_t, uint64_t, int, uint64_t)>
+      map_to_uint64_func_;
+
+  /**
+   * Stores the appropriate templated map_to_uint64_2() function based on
+   * the dimension datatype.
+   */
+  std::function<uint64_t(
+      const Dimension*, const void*, uint64_t, int, uint64_t)>
+      map_to_uint64_2_func_;
+
+  /**
+   * Stores the appropriate templated map_to_uint64_3() function based on
+   * the dimension datatype.
+   */
+  std::function<uint64_t(
+      const Dimension*, const ResultCoords&, uint32_t, int, uint64_t)>
+      map_to_uint64_3_func_;
+
+  /**
+   * Stores the appropriate templated map_from_uint64() function based on
+   * the dimension datatype.
+   */
+  std::function<ByteVecValue(const Dimension*, uint64_t, int, uint64_t)>
+      map_from_uint64_func_;
+
+  /**
+   * Stores the appropriate templated smaller_than() function based on
+   * the dimension datatype.
+   */
+  std::function<bool(const Dimension*, const ByteVecValue&, const Range&)>
+      smaller_than_func_;
+
   /* ********************************* */
   /*          PRIVATE METHODS          */
   /* ********************************* */
@@ -650,14 +792,12 @@ class Dimension {
     auto domain = (const T*)domain_.data();
 
     // Check for NAN and INF
-    if (std::is_integral<T>::value) {
-      if (std::isinf(domain[0]) || std::isinf(domain[1]))
-        return LOG_STATUS(
-            Status::DimensionError("Domain check failed; domain contains NaN"));
-      if (std::isnan(domain[0]) || std::isnan(domain[1]))
-        return LOG_STATUS(
-            Status::DimensionError("Domain check failed; domain contains NaN"));
-    }
+    if (std::isinf(domain[0]) || std::isinf(domain[1]))
+      return LOG_STATUS(
+          Status::DimensionError("Domain check failed; domain contains NaN"));
+    if (std::isnan(domain[0]) || std::isnan(domain[1]))
+      return LOG_STATUS(
+          Status::DimensionError("Domain check failed; domain contains NaN"));
 
     // Upper bound should not be smaller than lower
     if (domain[1] < domain[0])
@@ -746,6 +886,21 @@ class Dimension {
 
   /** Sets the templated value_in_range() function. */
   void set_value_in_range_func();
+
+  /** Sets the templated map_to_uint64() function. */
+  void set_map_to_uint64_func();
+
+  /** Sets the templated map_to_uint64_2() function. */
+  void set_map_to_uint64_2_func();
+
+  /** Sets the templated map_to_uint64_3() function. */
+  void set_map_to_uint64_3_func();
+
+  /** Sets the templated map_from_uint64() function. */
+  void set_map_from_uint64_func();
+
+  /** Sets the templated smaller_than() function. */
+  void set_smaller_than_func();
 };
 
 }  // namespace sm

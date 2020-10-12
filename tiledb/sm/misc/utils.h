@@ -73,6 +73,13 @@ namespace parse {
 /*          PARSING FUNCTIONS        */
 /* ********************************* */
 
+/**
+ * Returns the bitsize of the input value. For instance,
+ * the bitsize of 3 (11 in binary) is 2, and the bitsize
+ * of 32 (100000 in binary) is 6.
+ */
+int32_t bitsize(uint64_t value);
+
 /** Converts the input string into an `int` value. */
 Status convert(const std::string& str, int* value);
 
@@ -314,6 +321,18 @@ double log(double b, double x);
  */
 template <class T>
 T safe_mul(T a, T b);
+
+/**
+ * Returns the maximum power of 2 minus one that is smaller than
+ * or equal to `value`.
+ */
+uint64_t left_p2_m1(uint64_t value);
+
+/**
+ * Returns the minimum power of 2 minus one that is larger than
+ * or equal to `value`.
+ */
+uint64_t right_p2_m1(uint64_t value);
 
 }  // namespace math
 

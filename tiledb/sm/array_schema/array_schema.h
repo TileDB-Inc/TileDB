@@ -264,7 +264,7 @@ class ArraySchema {
   void set_capacity(uint64_t capacity);
 
   /** Sets the cell order. */
-  void set_cell_order(Layout cell_order);
+  Status set_cell_order(Layout cell_order);
 
   /**
    * Sets the domain. The function returns an error if the array has been
@@ -273,7 +273,7 @@ class ArraySchema {
   Status set_domain(Domain* domain);
 
   /** Sets the tile order. */
-  void set_tile_order(Layout tile_order);
+  Status set_tile_order(Layout tile_order);
 
   /** Set version of schema, only used for serialization */
   void set_version(uint32_t version);
