@@ -62,6 +62,13 @@ struct ResultCoords {
   bool valid_;
 
   /** Constructor. */
+  ResultCoords()
+      : tile_(nullptr)
+      , pos_(0)
+      , valid_(false) {
+  }
+
+  /** Constructor. */
   ResultCoords(ResultTile* tile, uint64_t pos)
       : tile_(tile)
       , pos_(pos)

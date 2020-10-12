@@ -38,6 +38,7 @@
 #include "tiledb/sm/filesystem/vfs.h"
 #include "tiledb/sm/fragment/fragment_metadata.h"
 #include "tiledb/sm/misc/comparators.h"
+#include "tiledb/sm/misc/hilbert.h"
 #include "tiledb/sm/misc/parallel_functions.h"
 #include "tiledb/sm/misc/utils.h"
 #include "tiledb/sm/misc/uuid.h"
@@ -49,6 +50,7 @@
 #include <iostream>
 #include <sstream>
 
+using namespace tiledb;
 using namespace tiledb::common;
 
 namespace tiledb {
@@ -64,6 +66,7 @@ Writer::Writer() {
   coords_buffer_ = nullptr;
   coords_buffer_size_ = nullptr;
   coords_num_ = 0;
+  disable_check_global_order_ = false;
   has_coords_ = false;
   coord_buffer_is_set_ = false;
   global_write_state_.reset(nullptr);
@@ -276,7 +279,8 @@ Status Writer::init(const Layout& layout) {
   assert(check_coord_dups != nullptr && dedup_coords != nullptr);
   check_coord_dups_ = !strcmp(check_coord_dups, "true");
   check_coord_oob_ = !strcmp(check_coord_oob, "true");
-  check_global_order_ = !strcmp(check_global_order, "true");
+  check_global_order_ =
+      disable_check_global_order_ ? false : !strcmp(check_global_order, "true");
   dedup_coords_ = !strcmp(dedup_coords, "true");
   initialized_ = true;
 
@@ -814,6 +818,10 @@ Status Writer::check_global_order() const {
   if (!has_coords_ || coords_num_ < 2)
     return Status::Ok();
 
+  // Special case for Hilbert
+  if (array_schema_->cell_order() == Layout::HILBERT)
+    return check_global_order_hilbert();
+
   // Prepare auxiliary vector for better performance
   auto dim_num = array_schema_->dim_num();
   std::vector<const QueryBuffer*> buffs(dim_num);
@@ -850,6 +858,43 @@ Status Writer::check_global_order() const {
   return Status::Ok();
 
   STATS_END_TIMER(stats::Stats::TimerType::WRITE_CHECK_GLOBAL_ORDER)
+}
+
+Status Writer::check_global_order_hilbert() const {
+  // Prepare auxiliary vector for better performance
+  auto dim_num = array_schema_->dim_num();
+  std::vector<const QueryBuffer*> buffs(dim_num);
+  for (unsigned d = 0; d < dim_num; ++d) {
+    const auto& dim_name = array_schema_->dimension(d)->name();
+    buffs[d] = &buffers_.at(dim_name);
+  }
+
+  // Compute hilbert values
+  std::vector<uint64_t> hilbert_values(coords_num_);
+  RETURN_NOT_OK(calculate_hilbert_values(buffs, &hilbert_values));
+
+  // Check if all coordinates fall in the domain in parallel
+  auto statuses = parallel_for(
+      storage_manager_->compute_tp(), 0, coords_num_ - 1, [&](uint64_t i) {
+        if (hilbert_values[i] > hilbert_values[i + 1]) {
+          std::stringstream ss;
+          ss << "Write failed; Coordinates " << coords_to_str(i);
+          ss << " succeed " << coords_to_str(i + 1);
+          ss << " in the global order";
+          return Status::WriterError(ss.str());
+        }
+        return Status::Ok();
+      });
+
+  // Check all statuses
+  for (auto& st : statuses)
+    RETURN_NOT_OK_ELSE(st, LOG_STATUS(st));
+
+  return Status::Ok();
+}
+
+void Writer::disable_check_global_order() {
+  disable_check_global_order_ = true;
 }
 
 Status Writer::check_subarray() const {
@@ -2355,6 +2400,7 @@ Status Writer::sort_coords(std::vector<uint64_t>* cell_pos) const {
 
   // For easy reference
   auto domain = array_schema_->domain();
+  auto cell_order = array_schema_->cell_order();
 
   // Prepare auxiliary vector for better performance
   auto dim_num = array_schema_->dim_num();
@@ -2370,11 +2416,21 @@ Status Writer::sort_coords(std::vector<uint64_t>* cell_pos) const {
     (*cell_pos)[i] = i;
 
   // Sort the coordinates in global order
-  parallel_sort(
-      storage_manager_->compute_tp(),
-      cell_pos->begin(),
-      cell_pos->end(),
-      GlobalCmp(domain, &buffs));
+  if (cell_order != Layout::HILBERT) {  // Row- or col-major
+    parallel_sort(
+        storage_manager_->compute_tp(),
+        cell_pos->begin(),
+        cell_pos->end(),
+        GlobalCmp(domain, &buffs));
+  } else {  // Hilbert order
+    std::vector<uint64_t> hilbert_values(coords_num_);
+    RETURN_NOT_OK(calculate_hilbert_values(buffs, &hilbert_values));
+    parallel_sort(
+        storage_manager_->compute_tp(),
+        cell_pos->begin(),
+        cell_pos->end(),
+        HilbertCmp(domain, &buffs, &hilbert_values));
+  }
 
   return Status::Ok();
 
@@ -2691,6 +2747,36 @@ void Writer::get_dim_attr_stats() const {
       }
     }
   }
+}
+
+Status Writer::calculate_hilbert_values(
+    const std::vector<const QueryBuffer*>& buffs,
+    std::vector<uint64_t>* hilbert_values) const {
+  auto dim_num = array_schema_->dim_num();
+  Hilbert h(dim_num);
+  auto bits = h.bits();
+  auto bucket_num = ((uint64_t)1 << bits) - 1;
+
+  // Calculate Hilbert values in parallel
+  assert(hilbert_values->size() >= coords_num_);
+  auto statuses = parallel_for(
+      storage_manager_->compute_tp(), 0, coords_num_, [&](uint64_t c) {
+        std::vector<uint64_t> coords(dim_num);
+        for (uint32_t d = 0; d < dim_num; ++d) {
+          auto dim = array_schema_->dimension(d);
+          coords[d] =
+              dim->map_to_uint64(buffs[d], c, coords_num_, bits, bucket_num);
+        }
+        (*hilbert_values)[c] = h.coords_to_hilbert(&coords[0]);
+
+        return Status::Ok();
+      });
+
+  // Check all statuses
+  for (auto& st : statuses)
+    RETURN_NOT_OK_ELSE(st, LOG_STATUS(st));
+
+  return Status::Ok();
 }
 
 }  // namespace sm

@@ -2065,8 +2065,11 @@ int32_t tiledb_array_schema_set_cell_order(
   if (sanity_check(ctx) == TILEDB_ERR ||
       sanity_check(ctx, array_schema) == TILEDB_ERR)
     return TILEDB_ERR;
-  array_schema->array_schema_->set_cell_order(
-      static_cast<tiledb::sm::Layout>(cell_order));
+  if (SAVE_ERROR_CATCH(
+          ctx,
+          array_schema->array_schema_->set_cell_order(
+              static_cast<tiledb::sm::Layout>(cell_order))))
+    return TILEDB_ERR;
   return TILEDB_OK;
 }
 
@@ -2077,8 +2080,11 @@ int32_t tiledb_array_schema_set_tile_order(
   if (sanity_check(ctx) == TILEDB_ERR ||
       sanity_check(ctx, array_schema) == TILEDB_ERR)
     return TILEDB_ERR;
-  array_schema->array_schema_->set_tile_order(
-      static_cast<tiledb::sm::Layout>(tile_order));
+  if (SAVE_ERROR_CATCH(
+          ctx,
+          array_schema->array_schema_->set_tile_order(
+              static_cast<tiledb::sm::Layout>(tile_order))))
+    return TILEDB_ERR;
   return TILEDB_OK;
 }
 

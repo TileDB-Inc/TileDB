@@ -567,6 +567,15 @@ Writer* Query::writer() {
   return &writer_;
 }
 
+Status Query::disable_check_global_order() {
+  if (type_ == QueryType::READ)
+    return LOG_STATUS(Status::QueryError(
+        "Cannot disable checking global order; Applicable only to writes"));
+
+  writer_.disable_check_global_order();
+  return Status::Ok();
+}
+
 Status Query::set_buffer(
     const std::string& name,
     void* buffer,
@@ -619,6 +628,10 @@ Status Query::set_est_result_size(
 }
 
 Status Query::set_layout(Layout layout) {
+  if (layout == Layout::HILBERT)
+    return LOG_STATUS(Status::QueryError(
+        "Cannot set layout; Hilbert order is not applicable to queries"));
+
   layout_ = layout;
   return Status::Ok();
 }

@@ -43,6 +43,7 @@
 #include "tiledb/sm/enums/filter_type.h"
 #include "tiledb/sm/enums/layout.h"
 #include "tiledb/sm/filter/compression_filter.h"
+#include "tiledb/sm/misc/hilbert.h"
 
 #include <cassert>
 #include <iostream>
@@ -201,9 +202,16 @@ Status ArraySchema::check() const {
     return LOG_STATUS(
         Status::ArraySchemaError("Array schema check failed; Domain not set"));
 
-  if (dim_num() == 0)
+  auto dim_num = this->dim_num();
+  if (dim_num == 0)
     return LOG_STATUS(Status::ArraySchemaError(
         "Array schema check failed; No dimensions provided"));
+
+  if (cell_order_ == Layout::HILBERT && dim_num > Hilbert::HC_MAX_DIM) {
+    return LOG_STATUS(Status::ArraySchemaError(
+        "Array schema check failed; Maximum dimensions supported by Hilbert "
+        "order exceeded"));
+  }
 
   if (array_type_ == ArrayType::DENSE) {
     auto type = domain_->dimension(0)->type();
@@ -543,8 +551,14 @@ Status ArraySchema::set_cell_var_offsets_filter_pipeline(
   return Status::Ok();
 }
 
-void ArraySchema::set_cell_order(Layout cell_order) {
+Status ArraySchema::set_cell_order(Layout cell_order) {
+  if (dense() && cell_order == Layout::HILBERT)
+    return LOG_STATUS(
+        Status::ArraySchemaError("Cannot set cell order; Hilbert order is only "
+                                 "applicable to sparse arrays"));
+
   cell_order_ = cell_order;
+  return Status::Ok();
 }
 
 Status ArraySchema::set_domain(Domain* domain) {
@@ -569,9 +583,9 @@ Status ArraySchema::set_domain(Domain* domain) {
                       "do not support dimension datatype '") +
           datatype_str(type) + "'"));
     }
-
-    RETURN_NOT_OK(domain->set_null_tile_extents_to_range());
   }
+
+  RETURN_NOT_OK(domain->set_null_tile_extents_to_range());
 
   // Set domain
   delete domain_;
@@ -588,8 +602,13 @@ Status ArraySchema::set_domain(Domain* domain) {
   return Status::Ok();
 }
 
-void ArraySchema::set_tile_order(Layout tile_order) {
+Status ArraySchema::set_tile_order(Layout tile_order) {
+  if (tile_order == Layout::HILBERT)
+    return LOG_STATUS(Status::ArraySchemaError(
+        "Cannot set tile order; Hilbert order is not applicable to tiles"));
+
   tile_order_ = tile_order;
+  return Status::Ok();
 }
 
 void ArraySchema::set_version(uint32_t version) {
