@@ -148,6 +148,16 @@ Status S3::init(const Config& config, ThreadPool* const thread_pool) {
 
   options_.loggingOptions.logLevel = aws_log_name_to_level(logging_level);
 
+  // By default, curl sets the signal handler for SIGPIPE to SIG_IGN while
+  // executing. When curl is done executing, it restores the previous signal
+  // handler. This is not thread safe, so the AWS SDK disables this behavior
+  // in curl using the `CURLOPT_NOSIGNAL` option.
+  // Here, we set the `installSigPipeHandler` AWS SDK option to `true` to allow
+  // the AWS SDK to set its own signal handler to ignore SIGPIPE signals. A
+  // SIGPIPE may be raised from the socket library when the peer disconnects
+  // unexpectedly.
+  options_.httpOptions.installSigPipeHandler = true;
+
   // Initialize the library once per process.
   std::call_once(aws_lib_initialized, [this]() { Aws::InitAPI(options_); });
 
