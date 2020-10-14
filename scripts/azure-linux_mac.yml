@@ -12,7 +12,7 @@ steps:
 # Need this for virtualenv and arrow tests if enabled
 - task: UsePythonVersion@0
   inputs:
-    versionSpec: '3.x'
+    versionSpec: '3.8'
 
 - bash: |
     set -e pipefail
