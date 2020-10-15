@@ -78,32 +78,6 @@ Status array_from_capnp(
   return Status::Ok();
 }
 
-Status writer_to_capnp(
-    const Writer& writer, capnp::Writer::Builder* writer_builder) {
-  writer_builder->setCheckCoordDups(writer.get_check_coord_dups());
-  writer_builder->setCheckCoordOOB(writer.get_check_coord_oob());
-  writer_builder->setDedupCoords(writer.get_dedup_coords());
-
-  const auto* schema = writer.array_schema();
-  const auto* subarray = writer.subarray();
-  if (subarray != nullptr) {
-    auto subarray_builder = writer_builder->initSubarray();
-    RETURN_NOT_OK(
-        utils::serialize_subarray(subarray_builder, schema, subarray));
-  }
-
-  return Status::Ok();
-}
-
-Status writer_from_capnp(
-    const capnp::Writer::Reader& writer_reader, Writer* writer) {
-  writer->set_check_coord_dups(writer_reader.getCheckCoordDups());
-  writer->set_check_coord_oob(writer_reader.getCheckCoordOOB());
-  writer->set_dedup_coords(writer_reader.getDedupCoords());
-
-  return Status::Ok();
-}
-
 Status subarray_to_capnp(
     const ArraySchema* schema,
     const Subarray* subarray,
@@ -429,6 +403,41 @@ Status reader_from_capnp(
   return Status::Ok();
 }
 
+Status writer_to_capnp(
+    const Writer& writer, capnp::Writer::Builder* writer_builder) {
+  writer_builder->setCheckCoordDups(writer.get_check_coord_dups());
+  writer_builder->setCheckCoordOOB(writer.get_check_coord_oob());
+  writer_builder->setDedupCoords(writer.get_dedup_coords());
+
+  const auto* schema = writer.array_schema();
+  const auto* subarray = writer.subarray();
+  if (subarray != nullptr) {
+    auto subarray_builder = writer_builder->initSubarray();
+    RETURN_NOT_OK(
+        utils::serialize_subarray(subarray_builder, schema, subarray));
+  }
+
+  // Subarray
+  const auto subarray_ranges = writer.subarray_ranges();
+  if (!subarray_ranges->empty()) {
+    auto subarray_builder = writer_builder->initSubarrayRanges();
+    const ArraySchema* array_schema = writer.array_schema();
+    RETURN_NOT_OK(
+        subarray_to_capnp(array_schema, subarray_ranges, &subarray_builder));
+  }
+
+  return Status::Ok();
+}
+
+Status writer_from_capnp(
+    const capnp::Writer::Reader& writer_reader, Writer* writer) {
+  writer->set_check_coord_dups(writer_reader.getCheckCoordDups());
+  writer->set_check_coord_oob(writer_reader.getCheckCoordOOB());
+  writer->set_dedup_coords(writer_reader.getDedupCoords());
+
+  return Status::Ok();
+}
+
 Status query_to_capnp(
     const Query& query, capnp::Query::Builder* query_builder) {
   // For easy reference
@@ -729,13 +738,23 @@ Status query_from_capnp(
     // For sparse writes we want to explicitly set subarray to nullptr.
     const bool sparse_write =
         !schema->dense() || query->layout() == Layout::UNORDERED;
-    if (writer_reader.hasSubarray() && !sparse_write) {
-      auto subarray_reader = writer_reader.getSubarray();
-      void* subarray = nullptr;
-      RETURN_NOT_OK(
-          utils::deserialize_subarray(subarray_reader, schema, &subarray));
-      RETURN_NOT_OK_ELSE(query->set_subarray(subarray), std::free(subarray));
-      std::free(subarray);
+    if (!sparse_write) {
+      if (writer_reader.hasSubarray()) {
+        auto subarray_reader = writer_reader.getSubarray();
+        void* subarray = nullptr;
+        RETURN_NOT_OK(
+            utils::deserialize_subarray(subarray_reader, schema, &subarray));
+        RETURN_NOT_OK_ELSE(query->set_subarray(subarray), std::free(subarray));
+        std::free(subarray);
+      }
+
+      // Subarray
+      if (writer_reader.hasSubarrayRanges()) {
+        Subarray subarray(array, layout, false);
+        auto subarray_reader = writer_reader.getSubarrayRanges();
+        RETURN_NOT_OK(subarray_from_capnp(subarray_reader, &subarray));
+        RETURN_NOT_OK(query->writer()->set_subarray(subarray));
+      }
     }
   }
 
