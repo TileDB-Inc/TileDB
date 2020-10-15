@@ -14,10 +14,15 @@
 
 ## Bug fixes
 
+## API additions
+
+# TileDB v2.1.1 Release Notes
+
+## Bug fixes
+
 * The result size estimatation routines will no longer return non-zero sizes that can not contain a single value. [#1849](https://github.com/TileDB-Inc/TileDB/pull/1849)
 * Fix serialization of dense writes that use ranges [#1860](https://github.com/TileDB-Inc/TileDB/pull/1860)
-
-## API additions
+* Fixed a crash from an unhandled SIGPIPE signal that may raise when using S3 [#1856](https://github.com/TileDB-Inc/TileDB/pull/1856)
 
 # TileDB v2.1.0 Release Notes
 
