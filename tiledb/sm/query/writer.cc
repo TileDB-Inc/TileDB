@@ -80,6 +80,10 @@ Writer::~Writer() {
 /*               API              */
 /* ****************************** */
 
+const Array* Writer::array() const {
+  return array_;
+}
+
 Status Writer::add_range(unsigned dim_idx, const Range& range) {
   if (!array_schema_->dense())
     return LOG_STATUS(
@@ -466,6 +470,10 @@ const void* Writer::subarray() const {
     return &subarray_flat_[0];
 
   return nullptr;
+}
+
+const Subarray* Writer::subarray_ranges() const {
+  return &subarray_;
 }
 
 Status Writer::write() {
