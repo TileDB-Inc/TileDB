@@ -273,7 +273,7 @@ Status ThreadPool::wait_or_work(Task&& task) {
       tp->task_stack_mutex_.unlock();
 
       // Execute the inner task.
-      assert(task.valid());
+      assert(inner_task.valid());
       inner_task();
     } else {
       // The task stack is now empty, retry.
