@@ -432,6 +432,9 @@ const std::string filesystem_type_azure_str = "AZURE";
 /** The string representation for filesystem type GCS. */
 const std::string filesystem_type_gcs_str = "GCS";
 
+/** The string representation for in-memory filesystem */
+const std::string filesystem_type_mem_str = "MEM";
+
 /** The string representation for WalkOrder preorder. */
 const std::string walkorder_preorder_str = "PREORDER";
 

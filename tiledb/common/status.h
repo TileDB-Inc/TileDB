@@ -106,6 +106,7 @@ enum class StatusCode : char {
   FS_AZURE,
   FS_GCS,
   FS_HDFS,
+  FS_MEM,
   Attribute,
   WriteCellSlabIter,
   Reader,
@@ -306,6 +307,11 @@ class Status {
   /** Return a UtilsError error class Status with a given message **/
   static Status HDFSError(const std::string& msg) {
     return Status(StatusCode::FS_HDFS, msg, -1);
+  }
+
+  /** Return a UtilsError error class Status with a given message **/
+  static Status MEMFSError(const std::string& msg) {
+    return Status(StatusCode::FS_MEM, msg, -1);
   }
 
   /** Return a AttributeError error class Status with a given message **/

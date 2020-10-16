@@ -116,6 +116,7 @@ set(TILEDB_CORE_SOURCES
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/crypto/crypto_win32.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/filesystem/azure.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/filesystem/gcs.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/filesystem/mem_filesystem.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/filesystem/hdfs_filesystem.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/filesystem/posix.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/filesystem/s3.cc

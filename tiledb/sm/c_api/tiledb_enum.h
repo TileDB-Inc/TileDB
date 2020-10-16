@@ -52,6 +52,8 @@
     TILEDB_FILESYSTEM_ENUM(AZURE) = 2,
     /** GCS filesystem */
     TILEDB_FILESYSTEM_ENUM(GCS) = 3,
+    /** In-memory filesystem */
+    TILEDB_FILESYSTEM_ENUM(MEMFS) = 4,
 #endif
 
 #ifdef TILEDB_DATATYPE_ENUM

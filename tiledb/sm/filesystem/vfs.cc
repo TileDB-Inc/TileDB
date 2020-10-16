@@ -73,6 +73,8 @@ VFS::VFS()
     , read_ahead_size_(0)
     , compute_tp_(nullptr)
     , io_tp_(nullptr) {
+  // TODO: check if this is actually needed or not
+  supported_fs_.insert(Filesystem::MEMFS);
 #ifdef HAVE_AZURE
   supported_fs_.insert(Filesystem::AZURE);
 #endif
