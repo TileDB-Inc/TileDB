@@ -152,7 +152,7 @@ const std::string& Attribute::name() const {
 // type (uint8_t)
 // cell_val_num (uint32_t)
 // filter_pipeline (see FilterPipeline::serialize)
-Status Attribute::serialize(Buffer* buff) {
+Status Attribute::serialize(Buffer* buff, uint32_t version) {
   // Write attribute name
   auto attribute_name_size = (uint32_t)name_.size();
   RETURN_NOT_OK(buff->write(&attribute_name_size, sizeof(uint32_t)));
@@ -169,10 +169,12 @@ Status Attribute::serialize(Buffer* buff) {
   RETURN_NOT_OK(filters_.serialize(buff));
 
   // Write fill value
-  auto fill_value_size = (uint64_t)fill_value_.size();
-  assert(fill_value_size != 0);
-  RETURN_NOT_OK(buff->write(&fill_value_size, sizeof(uint64_t)));
-  RETURN_NOT_OK(buff->write(&fill_value_[0], fill_value_.size()));
+  if (version >= 6) {
+    auto fill_value_size = (uint64_t)fill_value_.size();
+    assert(fill_value_size != 0);
+    RETURN_NOT_OK(buff->write(&fill_value_size, sizeof(uint64_t)));
+    RETURN_NOT_OK(buff->write(&fill_value_[0], fill_value_.size()));
+  }
 
   return Status::Ok();
 }

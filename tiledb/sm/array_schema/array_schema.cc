@@ -372,7 +372,7 @@ Status ArraySchema::serialize(Buffer* buff) const {
   auto attribute_num = (uint32_t)attributes_.size();
   RETURN_NOT_OK(buff->write(&attribute_num, sizeof(uint32_t)));
   for (auto& attr : attributes_)
-    RETURN_NOT_OK(attr->serialize(buff));
+    RETURN_NOT_OK(attr->serialize(buff, version_));
 
   return Status::Ok();
 }
