@@ -113,6 +113,8 @@ std::string VFS::abs_path(const std::string& path) {
     return path_copy;
   if (URI::is_gcs(path))
     return path_copy;
+  if (URI::is_memfs(path))
+    return path_copy;
   // Certainly starts with "<resource>://" other than "file://"
   return path_copy;
 }

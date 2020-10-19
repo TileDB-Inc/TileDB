@@ -33,22 +33,19 @@
 #ifndef TILEDB_MEMORY_FILESYSTEM_H
 #define TILEDB_MEMORY_FILESYSTEM_H
 
-#include <ftw.h>
-#include <sys/types.h>
-
-#include <functional>
+#include <sstream>
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 #include "tiledb/common/status.h"
-#include "tiledb/common/thread_pool.h"
-#include "tiledb/sm/config/config.h"
-#include "tiledb/sm/filesystem/filelock.h"
 
 using namespace tiledb::common;
 
 namespace tiledb {
 namespace sm {
+
+// TODO: add docstrings everywhere
 
 class MemFilesystem {
  public:
@@ -61,6 +58,54 @@ class MemFilesystem {
 
   /** Destructor. */
   ~MemFilesystem();
+
+  /* ********************************* */
+  /*             OPERATORS             */
+  /* ********************************* */
+
+  Status create_dir(const std::string& path);
+
+  Status ls(const std::string& path, std::vector<std::string>* paths) const;
+
+  Status read(
+      const std::string& path,
+      const uint64_t offset,
+      void* buffer,
+      const uint64_t nbytes) const;
+
+  Status remove(const std::string& path);
+
+  Status touch(const std::string& path);
+
+  Status write(
+      const std::string& path, const void* data, const uint64_t nbytes);
+
+ private:
+  /* ********************************* */
+  /*         PRIVATE DATATYPES         */
+  /* ********************************* */
+
+  class FSNode;
+  class File;
+  class Directory;
+
+  /* ********************************* */
+  /*         PRIVATE ATTRIBUTES        */
+  /* ********************************* */
+  FSNode* root_;
+
+  /* ********************************* */
+  /*          PRIVATE METHODS          */
+  /* ********************************* */
+
+  void delete_rec(FSNode* node);
+
+  Status get_node(const std::string& path, FSNode** node) const;
+
+  static std::vector<std::string> tokenize(
+      const std::string& path, const char delim = '/');
+
+  Status touch(const std::string& path, FSNode** new_node);
 };
 
 }  // namespace sm

@@ -309,8 +309,8 @@ class Status {
     return Status(StatusCode::FS_HDFS, msg, -1);
   }
 
-  /** Return a UtilsError error class Status with a given message **/
-  static Status MEMFSError(const std::string& msg) {
+  /** Return a MemFSError error class Status with a given message **/
+  static Status MemFSError(const std::string& msg) {
     return Status(StatusCode::FS_MEM, msg, -1);
   }
 
