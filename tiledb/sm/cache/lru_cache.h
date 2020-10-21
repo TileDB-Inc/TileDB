@@ -151,29 +151,37 @@ class LRUCache {
     if (size > max_size_)
       return Status::Ok();
 
-    const auto item_it = item_map_.find(key);
-    const bool exists = item_it != item_map_.end();
-
+    const bool exists = item_map_.count(key) == 1;
     if (exists && !overwrite)
       return Status::Ok();
 
-    // Evict if necessary
+    // Evict objects until there is room for `object`. Note that this
+    // invalidates the state in `exists`.
     while (size_ + size > max_size_)
       evict();
 
-    // Key exists
-    if (exists) {
+    // If an object associated with `key` still exists in the cache, replace it.
+    // Otherwise, add a new entry in the cache.
+    auto item_it = item_map_.find(key);
+    if (item_it != item_map_.end()) {
       // Replace cache item
       auto& node = item_it->second;
       auto& item = *node;
+
+      // Replace the object in the cache item.
       item.object_ = std::move(object);
+
+      // Subtract the old size from `size_`.
+      size_ -= item.size_;
+
+      // Replace the object size in the cache item.
       item.size_ = size;
 
       // Move cache item node to the end of the list
       if (std::next(node) != item_ll_.end()) {
         item_ll_.splice(item_ll_.end(), item_ll_, node, std::next(node));
       }
-    } else {  // Key does not exist
+    } else {
       // Create new node in linked list
       item_ll_.emplace_back(key, std::move(object), size);
 
