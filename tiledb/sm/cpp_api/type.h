@@ -45,6 +45,9 @@
 #include <type_traits>
 #include <vector>
 
+#include <exception>
+#include <stdexcept>
+
 // Workaround for GCC < 5.0
 #if __GNUG__ && __GNUC__ < 5
 #define IS_TRIVIALLY_COPYABLE(T) __has_trivial_copy(T)
