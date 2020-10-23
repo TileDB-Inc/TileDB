@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2020 TileDB, Inc.
+ * @copyright Copyright (c) 2020 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -39,36 +39,37 @@
 #include "tiledb/sm/misc/utils.h"
 
 using namespace tiledb::common;
+using namespace std;
 
 namespace tiledb {
 namespace sm {
 
 class MemFilesystem::FSNode {
  public:
-  FSNode(const std::string& name)
+  FSNode(const string& name)
       : name_(name){};
 
   virtual ~FSNode() = default;
 
-  std::string get_name() const {
+  string get_name() const {
     return name_;
   }
 
   virtual bool is_dir() const = 0;
   virtual bool is_file() const = 0;
-  virtual std::vector<std::string> ls(const std::string& dir) const = 0;
-  virtual bool has_child(const std::string& child) const = 0;
+  virtual vector<string> ls(const string& full_path) const = 0;
+  virtual bool has_child(const string& child) const = 0;
 
   // check if map instead
-  std::unordered_map<std::string, FSNode*> children_;
+  unordered_map<string, unique_ptr<FSNode>> children_;
 
  protected:
-  std::string name_;
+  string name_;
 };
 
 class MemFilesystem::File : public MemFilesystem::FSNode {
  public:
-  File(const std::string& name)
+  File(const string& name)
       : FSNode(name){};
 
   ~File() {
@@ -83,11 +84,11 @@ class MemFilesystem::File : public MemFilesystem::FSNode {
     return true;
   }
 
-  std::vector<std::string> ls(const std::string& dir) const override {
-    return {dir + name_};
+  vector<string> ls(const string& full_path) const override {
+    return {full_path + name_};
   }
 
-  bool has_child(const std::string&) const override {
+  bool has_child(const string&) const override {
     return false;
   }
 
@@ -95,11 +96,10 @@ class MemFilesystem::File : public MemFilesystem::FSNode {
     return size_;
   }
 
-  // TODO: size is in number of bytes
   Status append(const void* data, const uint64_t nbytes) {
     if ((data == nullptr) || nbytes == 0) {
-      return LOG_STATUS(Status::MemFSError(std::string(
-          "Wrong input buffer or size when writing to file: " + name_)));
+      return LOG_STATUS(Status::MemFSError(
+          string("Wrong input buffer or size when writing to file: " + name_)));
     }
 
     /* if the file was empty */
@@ -107,7 +107,7 @@ class MemFilesystem::File : public MemFilesystem::FSNode {
       data_ = malloc(nbytes);
       if (data_ == nullptr) {
         return LOG_STATUS(Status::MemFSError(
-            std::string("Out of memory, cannot write to file: " + name_)));
+            string("Out of memory, cannot write to file: " + name_)));
       }
 
       size_ = nbytes;
@@ -117,12 +117,12 @@ class MemFilesystem::File : public MemFilesystem::FSNode {
       new_data = realloc(data_, size_ + nbytes);
 
       if (new_data == nullptr) {
-        return LOG_STATUS(Status::MemFSError(std::string(
+        return LOG_STATUS(Status::MemFSError(string(
             "Out of memory, cannot append new data to file: " + name_ +
             "with size " + "size_")));
       }
 
-      std::memcpy((char*)new_data + size_, data, nbytes);
+      memcpy((char*)new_data + size_, data, nbytes);
       data_ = new_data;
       size_ += nbytes;
     }
@@ -137,7 +137,7 @@ class MemFilesystem::File : public MemFilesystem::FSNode {
       return LOG_STATUS(
           Status::MemFSError("Cannot read from file; Read exceeds file size"));
 
-    std::memcpy(buffer, (char*)data_ + offset, nbytes);
+    memcpy(buffer, (char*)data_ + offset, nbytes);
     return Status::Ok();
   }
 
@@ -148,10 +148,9 @@ class MemFilesystem::File : public MemFilesystem::FSNode {
 
 class MemFilesystem::Directory : public MemFilesystem::FSNode {
  public:
-  Directory(const std::string& name)
+  Directory(const string& name)
       : FSNode(name){};
 
-  // TODO: add body
   ~Directory(){};
 
   bool is_dir() const override {
@@ -162,109 +161,108 @@ class MemFilesystem::Directory : public MemFilesystem::FSNode {
     return false;
   }
 
-  std::vector<std::string> ls(const std::string& dir) const override {
-    std::vector<std::string> names;
+  vector<string> ls(const string& full_path) const override {
+    vector<string> names;
     for (const auto& child : children_) {
-      names.emplace_back(dir + child.first);
+      names.emplace_back(full_path + child.first);
     }
-    /* TODO: check if needed
-    sort(result.begin(), result.end());
-    */
+
+    sort(names.begin(), names.end());
     return names;
   }
 
-  bool has_child(const std::string& child) const override {
+  bool has_child(const string& child) const override {
     return (children_.count(child) != 0);
   }
 };
 
 /** Constructor. */
 MemFilesystem::MemFilesystem()
-    : root_(new Directory("")){};
+    : root_(unique_ptr<Directory>(new Directory(""))){};
 
 /** Destructor. */
-MemFilesystem::~MemFilesystem() {
-  delete_rec(root_);
-};
+MemFilesystem::~MemFilesystem(){};
 
-Status MemFilesystem::ls(
-    const std::string& path, std::vector<std::string>* paths) const {
+Status MemFilesystem::ls(const string& path, vector<string>* paths) const {
   assert(paths);
   if (root_ == nullptr) {
-    return LOG_STATUS(Status::MemFSError(std::string(
-        "ls not possible, in-memory filesystem is not initialized")));
+    return LOG_STATUS(Status::MemFSError(
+        string("ls not possible, in-memory filesystem is not initialized")));
   }
 
-  std::vector<std::string> tokens = tokenize(path);
-  FSNode* cur = root_;
-  std::string dir;
+  vector<string> tokens = tokenize(path);
+  FSNode* cur = root_.get();
+  string dir;
   for (auto& token : tokens) {
     dir = dir + "/" + token;
-    cur = cur->children_[token];
+    cur = cur->children_[token].get();
   }
 
   *paths = cur->ls(dir);
   return Status::Ok();
 }
 
-Status MemFilesystem::create_dir(const std::string& path) {
+Status MemFilesystem::create_dir(const string& path) {
   if (root_ == nullptr) {
     return LOG_STATUS(Status::MemFSError(
-        std::string("Directory creation not possible, in-memory filesystem is "
-                    "not initialized")));
+        string("Directory creation not possible, in-memory filesystem is "
+               "not initialized")));
   }
 
-  std::vector<std::string> tokens = tokenize(path);
-  FSNode* cur = root_;
+  vector<string> tokens = tokenize(path);
+  FSNode* cur = root_.get();
   for (auto& token : tokens) {
     if (!cur->has_child(token)) {
-      cur->children_[token] = new Directory(token);
+      cur->children_[token] = unique_ptr<Directory>(new Directory(token));
     }
-    cur = cur->children_[token];
+    cur = cur->children_[token].get();
   }
 
   return Status::Ok();
 }
 
-Status MemFilesystem::touch(const std::string& path) {
-  FSNode* node;
-  return touch(path, &node);
-}
-
-Status MemFilesystem::touch(const std::string& path, FSNode** new_node) {
-  // TODO: check if path is well formatted
-  assert(new_node);
-  if (root_ == nullptr) {
-    root_ = new Directory("");
+Status MemFilesystem::touch(const string& path) {
+  FSNode* node = create_file(path);
+  if (node == nullptr) {
+    return LOG_STATUS(
+        Status::MemFSError(string("Failed to create file: " + path)));
   }
 
-  std::vector<std::string> tokens = tokenize(path);
-  FSNode* cur = root_;
+  return Status::Ok();
+}
+
+MemFilesystem::FSNode* MemFilesystem::create_file(const string& path) {
+  // TODO: check if path is well formatted
+  assert(root_);
+
+  vector<string> tokens = tokenize(path);
+  FSNode* cur = root_.get();
   for (unsigned long i = 0; i < tokens.size() - 1; i++) {
     auto token = tokens[i];
     if (!cur->has_child(token)) {
-      cur->children_[token] = new Directory(token);
+      cur->children_[token] = unique_ptr<Directory>(new Directory(token));
     }
-    cur = cur->children_[token];
+    cur = cur->children_[token].get();
   }
 
-  std::string filename = tokens[tokens.size() - 1];
-  cur->children_[filename] = new File(filename);
-  *new_node = cur->children_[filename];
-
-  return Status::Ok();
+  string filename = tokens[tokens.size() - 1];
+  cur->children_[filename] = unique_ptr<File>(new File(filename));
+  return cur->children_[filename].get();
 }
 
 Status MemFilesystem::write(
-    const std::string& path, const void* data, const uint64_t nbytes) {
-  FSNode* node;
-  RETURN_NOT_OK(get_node(path, &node));
+    const string& path, const void* data, const uint64_t nbytes) {
+  FSNode* node = lookup_node(path);
   /* If the file doesn't exist, create it */
   if (node == nullptr) {
-    touch(path, &node);
+    node = create_file(path);
+    if (node == nullptr) {
+      return LOG_STATUS(
+          Status::MemFSError(string("Failed to create file: " + path)));
+    }
     /* If it's a directory, ignore */
   } else if (node->is_dir()) {
-    return LOG_STATUS(Status::MemFSError(std::string(
+    return LOG_STATUS(Status::MemFSError(string(
         "Failed to write on directory, write is only possible on files.")));
   }
 
@@ -272,26 +270,24 @@ Status MemFilesystem::write(
 }
 
 Status MemFilesystem::read(
-    const std::string& path,
+    const string& path,
     const uint64_t offset,
     void* buffer,
     const uint64_t nbytes) const {
-  FSNode* node;
-  RETURN_NOT_OK(get_node(path, &node));
+  FSNode* node = lookup_node(path);
   if ((node == nullptr) || node->is_dir()) {
     return LOG_STATUS(Status::MemFSError(
-        std::string("File not found, read failed for : " + path)));
+        string("File not found, read failed for : " + path)));
   }
 
   return ((File*)node)->read(offset, buffer, nbytes);
 }
 
-std::vector<std::string> MemFilesystem::tokenize(
-    const std::string& path, const char delim) {
-  std::vector<std::string> tokens;
-  std::stringstream ss(path);
-  std::string token;
-  while (std::getline(ss, token, delim)) {
+vector<string> MemFilesystem::tokenize(const string& path, const char delim) {
+  vector<string> tokens;
+  stringstream ss(path);
+  string token;
+  while (getline(ss, token, delim)) {
     if (!token.empty()) {
       tokens.emplace_back(token);
     }
@@ -300,53 +296,36 @@ std::vector<std::string> MemFilesystem::tokenize(
   return tokens;
 }
 
-Status MemFilesystem::get_node(const std::string& path, FSNode** node) const {
-  assert(node);
-  if (root_ == nullptr) {
-    return LOG_STATUS(Status::MemFSError(
-        std::string("Directory creation not possible, in-memory filesystem not "
-                    "initialized")));
-  }
+MemFilesystem::FSNode* MemFilesystem::lookup_node(const string& path) const {
+  assert(root_);
 
-  std::vector<std::string> tokens = tokenize(path);
-  auto cur = root_;
+  vector<string> tokens = tokenize(path);
+  auto cur = root_.get();
   for (const auto& token : tokens) {
     if (cur->has_child(token)) {
-      cur = cur->children_[token];
+      cur = cur->children_[token].get();
     } else {
-      *node = nullptr;
-      return Status::Ok();
+      return nullptr;
     }
   }
 
-  *node = cur;
-  return Status::Ok();
+  return cur;
 }
 
-void MemFilesystem::delete_rec(FSNode* node) {
-  for (auto child : node->children_) {
-    delete_rec(child.second);
-  }
-  delete node;
-}
-
-Status MemFilesystem::remove(const std::string& path) {
-  FSNode* node;
-  RETURN_NOT_OK(get_node(path, &node));
-  if (node == nullptr) {
-    return LOG_STATUS(Status::MemFSError(
-        std::string("File not found, remove failed for : " + path)));
-  }
-
-  std::vector<std::string> tokens = tokenize(path);
-  auto cur = root_;
+Status MemFilesystem::remove(const string& path) {
+  vector<string> tokens = tokenize(path);
+  auto cur = root_.get();
   FSNode* parent = nullptr;
   for (const auto& token : tokens) {
-    parent = cur;
-    cur = cur->children_[token];
+    if (cur->has_child(token)) {
+      parent = cur;
+      cur = cur->children_[token].get();
+    } else {
+      return LOG_STATUS(Status::MemFSError(
+          string("File not found, remove failed for : " + path)));
+    }
   }
 
-  delete_rec(cur);
   if (parent) {
     parent->children_.erase(tokens.back());
   }

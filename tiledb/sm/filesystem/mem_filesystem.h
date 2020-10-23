@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2020 TileDB, Inc.
+ * @copyright Copyright (c) 2020 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -33,7 +33,7 @@
 #ifndef TILEDB_MEMORY_FILESYSTEM_H
 #define TILEDB_MEMORY_FILESYSTEM_H
 
-#include <sstream>
+#include <memory>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -92,7 +92,8 @@ class MemFilesystem {
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
   /* ********************************* */
-  FSNode* root_;
+
+  std::unique_ptr<FSNode> root_;
 
   /* ********************************* */
   /*          PRIVATE METHODS          */
@@ -100,12 +101,12 @@ class MemFilesystem {
 
   void delete_rec(FSNode* node);
 
-  Status get_node(const std::string& path, FSNode** node) const;
+  FSNode* lookup_node(const std::string& path) const;
 
   static std::vector<std::string> tokenize(
       const std::string& path, const char delim = '/');
 
-  Status touch(const std::string& path, FSNode** new_node);
+  FSNode* create_file(const std::string& path);
 };
 
 }  // namespace sm
