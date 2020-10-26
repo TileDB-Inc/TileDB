@@ -596,6 +596,41 @@ Status S3::move_dir(const URI& old_uri, const URI& new_uri) {
   return Status::Ok();
 }
 
+Status S3::copy_file(const URI& old_uri, const URI& new_uri) {
+  RETURN_NOT_OK(init_client());
+
+  RETURN_NOT_OK(copy_object(old_uri, new_uri));
+  return Status::Ok();
+}
+
+Status S3::copy_dir(const URI& old_uri, const URI& new_uri) {
+  RETURN_NOT_OK(init_client());
+
+  std::string old_uri_string = old_uri.to_string();
+  std::vector<std::string> paths;
+  RETURN_NOT_OK(ls(old_uri, &paths));
+  while (!paths.empty()) {
+    std::string file_name_abs = paths.front();
+    URI file_name_uri = URI(file_name_abs);
+    std::string file_name = file_name_abs.substr(old_uri_string.length());
+    paths.erase(paths.begin());
+
+    bool dir_exists;
+    RETURN_NOT_OK(is_dir(file_name_uri, &dir_exists));
+    if (dir_exists) {
+      std::vector<std::string> child_paths;
+      RETURN_NOT_OK(ls(file_name_uri, &child_paths));
+      paths.insert(paths.end(), child_paths.begin(), child_paths.end());
+    } else {
+      std::string new_path_string = new_uri.to_string() + file_name;
+      URI new_path_uri = URI(new_path_string);
+      RETURN_NOT_OK(copy_object(file_name_uri, new_path_uri));
+    }
+  }
+
+  return Status::Ok();
+}
+
 Status S3::object_size(const URI& uri, uint64_t* nbytes) const {
   RETURN_NOT_OK(init_client());
 

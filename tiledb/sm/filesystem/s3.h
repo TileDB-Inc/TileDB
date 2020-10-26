@@ -228,6 +228,24 @@ class S3 {
   Status move_dir(const URI& old_uri, const URI& new_uri);
 
   /**
+   * Copies a file.
+   *
+   * @param old_uri The URI of the old path.
+   * @param new_uri The URI of the new path.
+   * @return Status
+   */
+  Status copy_file(const URI& old_uri, const URI& new_uri);
+
+  /**
+   * Copies a directory. All subdirectories and files are copied.
+   *
+   * @param old_uri The URI of the old path.
+   * @param new_uri The URI of the new path.
+   * @return Status
+   */
+  Status copy_dir(const URI& old_uri, const URI& new_uri);
+
+  /**
    * Returns the size of the input object with a given URI in bytes.
    *
    * @param uri The URI of the object.

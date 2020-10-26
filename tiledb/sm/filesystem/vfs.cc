@@ -1210,8 +1210,7 @@ Status VFS::copy_file(const URI& old_uri, const URI& new_uri) {
   if (old_uri.is_s3()) {
     if (new_uri.is_s3())
 #ifdef HAVE_S3
-      return LOG_STATUS(Status::IOError(
-          std::string("Copying files on S3 is not yet supported.")));
+      return s3_.copy_file(old_uri, new_uri);
 #else
       return LOG_STATUS(
           Status::VFSError("TileDB was built without S3 support"));
@@ -1291,8 +1290,7 @@ Status VFS::copy_dir(const URI& old_uri, const URI& new_uri) {
   if (old_uri.is_s3()) {
     if (new_uri.is_s3())
 #ifdef HAVE_S3
-      return LOG_STATUS(Status::IOError(
-          std::string("Copying directories on S3 is not yet supported.")));
+      return s3_.copy_dir(old_uri, new_uri);
 #else
       return LOG_STATUS(
           Status::VFSError("TileDB was built without S3 support"));
