@@ -44,6 +44,9 @@ if (NOT DEFINED $CACHE{TILEDB_TESTS_ENABLE_ARROW})
 endif()
 
 if (${TILEDB_TESTS_ENABLE_ARROW})
+  # In order to respect the UsePythonVersion version spec, must set the FIND_STRATEGY
+  # here so that CMake prefers the first python in PATH rather than the latest version.
+  set(Python_FIND_STRATEGY "LOCATION")
   find_package(Python COMPONENTS Interpreter Development REQUIRED)
   find_package(pybind11)
 
