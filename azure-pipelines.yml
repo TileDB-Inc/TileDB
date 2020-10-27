@@ -80,7 +80,7 @@ stages:
           VS2017:
             imageName: 'vs2017-win2016'
             TILEDB_S3: ON
-            TILEDB_TESTS_ENABLE_ARROW: ON
+            TILEDB_TESTS_ENABLE_ARROW: OFF
       pool:
         vmImage: $(imageName)
       steps:
