@@ -246,8 +246,12 @@ std::string URI::to_path(const std::string& uri) {
 #endif
   }
 
+  if (is_memfs(uri)) {
+    return uri.substr(std::string("mem://").size());
+  }
+
   if (is_hdfs(uri) || is_s3(uri) || is_azure(uri) || is_gcs(uri) ||
-      is_memfs(uri) || is_tiledb(uri))
+      is_tiledb(uri))
     return uri;
 
   // Error

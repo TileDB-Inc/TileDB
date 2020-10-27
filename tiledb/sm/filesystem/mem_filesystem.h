@@ -63,9 +63,17 @@ class MemFilesystem {
   /*             OPERATORS             */
   /* ********************************* */
 
-  Status create_dir(const std::string& path);
+  Status create_dir(const std::string& path) const;
+
+  Status file_size(const std::string& path, uint64_t* size) const;
+
+  bool is_dir(const std::string& path) const;
+
+  bool is_file(const std::string& path) const;
 
   Status ls(const std::string& path, std::vector<std::string>* paths) const;
+
+  Status move(const std::string& old_path, const std::string& new_path) const;
 
   Status read(
       const std::string& path,
@@ -73,9 +81,9 @@ class MemFilesystem {
       void* buffer,
       const uint64_t nbytes) const;
 
-  Status remove(const std::string& path);
+  Status remove(const std::string& path, bool is_dir) const;
 
-  Status touch(const std::string& path);
+  Status touch(const std::string& path) const;
 
   Status write(
       const std::string& path, const void* data, const uint64_t nbytes);
@@ -99,14 +107,14 @@ class MemFilesystem {
   /*          PRIVATE METHODS          */
   /* ********************************* */
 
-  void delete_rec(FSNode* node);
-
   FSNode* lookup_node(const std::string& path) const;
+
+  FSNode* lookup_parent_node(const std::string& path) const;
 
   static std::vector<std::string> tokenize(
       const std::string& path, const char delim = '/');
 
-  FSNode* create_file(const std::string& path);
+  FSNode* create_file(const std::string& path) const;
 };
 
 }  // namespace sm
