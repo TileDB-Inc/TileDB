@@ -1024,6 +1024,7 @@ Status VFS::ls(const URI& parent, std::vector<URI>* uris) const {
 #endif
   } else if (parent.is_memfs()) {
     RETURN_NOT_OK(memfs_.ls(parent.to_path(), &paths));
+    // URI class expects paths to be prepended
     for (std::string& path : paths) {
       path.insert(0, "mem://");
     }
