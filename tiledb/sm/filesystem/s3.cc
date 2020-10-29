@@ -976,9 +976,11 @@ Status S3::init_client() const {
   }
 #endif
 
-  if (!aws_access_key_id.empty() && !aws_secret_access_key.empty() && !aws_role_arn.empty()){
-    return Status::S3Error("Authentication credentials can exclusively be either long lived access credentials"
-        "or temporal ones assumed by the role");
+  if (!aws_access_key_id.empty() && !aws_secret_access_key.empty() &&
+      !aws_role_arn.empty()) {
+    return Status::S3Error(
+        "Ambiguous authentication credentials; both permanent and temporary "
+        "authentication credentials are configured");
   }
 
   // If the user set config variables for AWS keys use them.
@@ -990,11 +992,10 @@ Status S3::init_client() const {
     credentials_provider_ =
         std::make_shared<Aws::Auth::SimpleAWSCredentialsProvider>(
             access_key_id, secret_access_key, session_token);
-  }
+  } else if (!aws_role_arn.empty()) {
+    // If AWS Role ARN provided instead of access_key and secret_key,
+    // temporary credentials will be fetched by assuming this role.
 
-  // If AWS Role ARN provided instead of access_key and secret_key,
-  // temporary credentials will be fetched by assuming this role.
-  else if (!aws_role_arn.empty()) {
     Aws::String role_arn(aws_role_arn.c_str());
     Aws::String external_id(
         !aws_external_id.empty() ? aws_external_id.c_str() : "");
@@ -1006,7 +1007,8 @@ Status S3::init_client() const {
         std::make_shared<Aws::Auth::STSAssumeRoleCredentialsProvider>(
             role_arn, session_token, external_id, load_frequency, nullptr);
   }
-  else{
+
+  if (credentials_provider_ == nullptr) {
     client_ = Aws::MakeShared<Aws::S3::S3Client>(
         constants::s3_allocation_tag.c_str(),
         *client_config_,
@@ -1014,14 +1016,14 @@ Status S3::init_client() const {
         use_virtual_addressing_);
 
     return Status::Ok();
+  } else {
+    client_ = Aws::MakeShared<Aws::S3::S3Client>(
+        constants::s3_allocation_tag.c_str(),
+        credentials_provider_,
+        *client_config_,
+        Aws::Client::AWSAuthV4Signer::PayloadSigningPolicy::Never,
+        use_virtual_addressing_);
   }
-
-  client_ = Aws::MakeShared<Aws::S3::S3Client>(
-      constants::s3_allocation_tag.c_str(),
-      credentials_provider_,
-      *client_config_,
-      Aws::Client::AWSAuthV4Signer::PayloadSigningPolicy::Never,
-      use_virtual_addressing_);
 
   return Status::Ok();
 }
