@@ -498,9 +498,7 @@ class S3 {
   /** The executor  used by 'client_'. */
   mutable std::shared_ptr<S3ThreadPoolExecutor> s3_tp_executor_;
 
-  /** Credentials object used to initialize the client. */
-  //  mutable std::unique_ptr<Aws::Auth::AWSCredentials> client_creds_;
-
+  /** Credentials provider object used to initialize the client. */
   mutable std::shared_ptr<Aws::Auth::AWSCredentialsProvider>
       credentials_provider_;
 
