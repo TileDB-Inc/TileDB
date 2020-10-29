@@ -73,6 +73,11 @@ class GZip {
   /** Returns the compression overhead for the given input. */
   static uint64_t overhead(uint64_t buffer_size);
 
+  /** Returns the maximum compression level. */
+  static int maximum_level() {
+    return 9;
+  }
+
   /** Returns the default compression level. */
   static int default_level() {
     return -1;
