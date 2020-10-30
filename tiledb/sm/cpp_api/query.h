@@ -1,5 +1,5 @@
 /**
- * @file   tiledb_cpp_api_query.h
+ * @file   query.h
  *
  * @author Ravi Gaddipati
  *

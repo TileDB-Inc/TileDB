@@ -109,3 +109,9 @@ Stats
 .. doxygenclass:: tiledb::Stats
     :project: TileDB-C++
     :members:
+    
+FragmentInfo
+------------
+.. doxygenclass:: tiledb::FragmentInfo
+    :project: TileDB-C++
+    :members:

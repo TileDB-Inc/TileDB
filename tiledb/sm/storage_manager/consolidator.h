@@ -190,9 +190,7 @@ class Consolidator {
    * (inclusive) in `fragments` are sparse.
    */
   bool all_sparse(
-      const std::vector<FragmentInfo>& fragments,
-      size_t start,
-      size_t end) const;
+      const FragmentInfo& fragment_info, size_t start, size_t end) const;
 
   /**
    * Checks if the fragments between `start` and `end` (inclusive)
@@ -205,7 +203,7 @@ class Consolidator {
    * sum of sizes of the separate fragment non-empty domains.
    *
    * @param domain The array domain.
-   * @param fragments The input fragments.
+   * @param fragment_info The input fragment info.
    * @param start The function will focus on fragments between
    *     positions `start` and `end`.
    * @param end The function will focus on fragments between
@@ -217,7 +215,7 @@ class Consolidator {
    */
   bool are_consolidatable(
       const Domain* domain,
-      const std::vector<FragmentInfo>& fragments,
+      const FragmentInfo& fragment_info,
       size_t start,
       size_t end,
       const NDRange& union_non_empty_domains) const;
@@ -258,7 +256,7 @@ class Consolidator {
    */
   Status consolidate(
       const URI& array_uri,
-      const std::vector<FragmentInfo>& to_consolidate,
+      const FragmentInfo& to_consolidate,
       const NDRange& union_non_empty_domains,
       EncryptionType encryption_type,
       const void* encryption_key,
@@ -361,7 +359,7 @@ class Consolidator {
    * of fragments to be consolidated in the next consolidation step.
    *
    * @param array_schema The array schema.
-   * @param fragments Information about all the fragments.
+   * @param fragment_info Information about all the fragments.
    * @param to_consolidate The fragments to consolidate in the next step.
    * @param union_non_empty_domains The function will return here the
    *     union of the non-empty domains of the fragments in `to_consolidate`.
@@ -369,8 +367,8 @@ class Consolidator {
    */
   Status compute_next_to_consolidate(
       const ArraySchema* array_schema,
-      const std::vector<FragmentInfo>& fragments,
-      std::vector<FragmentInfo>* to_consolidate,
+      const FragmentInfo& fragment_info,
+      FragmentInfo* to_consolidate,
       NDRange* union_non_empty_domains) const;
 
   /**
@@ -415,15 +413,14 @@ class Consolidator {
    *     `fragment_info` of size >=0.
    */
   void update_fragment_info(
-      const std::vector<FragmentInfo>& to_consolidate,
-      const FragmentInfo& new_fragment_info,
-      std::vector<FragmentInfo>* fragment_info) const;
+      const FragmentInfo& to_consolidate,
+      const SingleFragmentInfo& new_fragment_info,
+      FragmentInfo* fragment_info) const;
 
   /** Writes the vacuum file that contains the URIs of the consolidated
    * fragments. */
   Status write_vacuum_file(
-      const URI& new_uri,
-      const std::vector<FragmentInfo>& to_consolidate) const;
+      const URI& new_uri, const FragmentInfo& to_consolidate) const;
 };
 
 }  // namespace sm

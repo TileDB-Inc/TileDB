@@ -141,7 +141,7 @@ Status Array::open(
 // Used in Consolidator
 Status Array::open(
     QueryType query_type,
-    const std::vector<FragmentInfo>& fragments,
+    const FragmentInfo& fragment_info,
     EncryptionType encryption_type,
     const void* encryption_key,
     uint32_t key_length) {
@@ -181,7 +181,7 @@ Status Array::open(
     // Open the array.
     RETURN_NOT_OK(storage_manager_->array_open_for_reads(
         array_uri_,
-        fragments,
+        fragment_info,
         encryption_key_,
         &array_schema_,
         &fragment_metadata_));

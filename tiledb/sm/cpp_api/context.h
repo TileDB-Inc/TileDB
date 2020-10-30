@@ -1,5 +1,5 @@
 /**
- * @file   tiledb_cpp_api_context.h
+ * @file   context.h
  *
  * @author Ravi Gaddipati
  *

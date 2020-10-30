@@ -1,5 +1,5 @@
 /**
- * @file   tiledb_cpp_api_deleter.h
+ * @file   deleter.h
  *
  * @author Ravi Gaddipati
  *
@@ -104,6 +104,10 @@ class Deleter {
 
   void operator()(tiledb_filter_list_t* p) const {
     tiledb_filter_list_free(&p);
+  }
+
+  void operator()(tiledb_fragment_info_t* p) const {
+    tiledb_fragment_info_free(&p);
   }
 
  private:

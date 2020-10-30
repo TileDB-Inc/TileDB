@@ -1,5 +1,5 @@
 /**
- * @file   tiledb_cpp_api_domain.h
+ * @file   domain.h
  *
  * @author Ravi Gaddipati
  *
