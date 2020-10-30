@@ -389,6 +389,8 @@ TileDB 1.7.1 contains build system and bug fixes, and one non-breaking API updat
 
 ## New features
 
+* Added support for an in-memory backend used when array URIs are prefixed with "mem://" [#1873](https://github.com/TileDB-Inc/TileDB/pull/1873)
+
 ## Improvements
 
 ## Deprecations
