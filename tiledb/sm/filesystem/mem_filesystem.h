@@ -33,11 +33,13 @@
 #ifndef TILEDB_MEMORY_FILESYSTEM_H
 #define TILEDB_MEMORY_FILESYSTEM_H
 
+#include <mutex>
 #include <string>
 #include <unordered_map>
 #include <vector>
 
 #include "tiledb/common/status.h"
+#include "tiledb/sm/misc/macros.h"
 
 using namespace tiledb::common;
 
@@ -180,9 +182,15 @@ class MemFilesystem {
   /* The node that represents the root of the in-memory filesystem */
   std::unique_ptr<FSNode> root_;
 
+  /** Protects the filesystem for parallel reads/writes */
+  mutable std::mutex memfilesystem_mutex_;
+
   /* ********************************* */
   /*          PRIVATE METHODS          */
   /* ********************************* */
+
+  DISABLE_COPY_AND_COPY_ASSIGN(MemFilesystem);
+  DISABLE_MOVE_AND_MOVE_ASSIGN(MemFilesystem);
 
   /**
    * Finds the node in the filesystem tree that corresponds to a path
@@ -193,17 +201,6 @@ class MemFilesystem {
   FSNode* lookup_node(const std::string& path) const;
 
   /**
-   * Finds the parent of the node in the filesystem tree that corresponds to a
-   * path
-   *
-   * @param path The full name of the file/directory whose parent we are looking
-   * for
-   * @return The node that represents the parent of this file/directory in the
-   * filesystem tree
-   */
-  FSNode* lookup_parent_node(const std::string& path) const;
-
-  /**
    * Splits a path into file/directory names
    *
    * @param path The full name of the file/directory
@@ -212,6 +209,22 @@ class MemFilesystem {
    */
   static std::vector<std::string> tokenize(
       const std::string& path, const char delim = '/');
+
+  /**
+   * Creates a new directory without acquiring the lock
+   *
+   * @param path The full name of the directory to be created
+   * @return Status
+   */
+  Status create_dir_unsafe(const std::string& path) const;
+
+  /**
+   * Creates an empty file without acquiring the lock
+   *
+   * @param path The full name of the file to be created
+   * @return Status
+   */
+  Status touch_unsafe(const std::string& path) const;
 };
 
 }  // namespace sm

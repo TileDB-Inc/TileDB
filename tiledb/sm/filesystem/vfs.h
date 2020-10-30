@@ -624,6 +624,9 @@ class VFS {
   std::unique_ptr<hdfs::HDFS> hdfs_;
 #endif
 
+  /** The in-memory filesystem which is always supported */
+  MemFilesystem memfs_;
+
   /** Config. */
   Config config_;
 
@@ -647,8 +650,6 @@ class VFS {
 
   /** The read-ahead cache. */
   std::unique_ptr<ReadAheadCache> read_ahead_cache_;
-
-  MemFilesystem memfs_;
 
   /* ********************************* */
   /*          PRIVATE METHODS          */
