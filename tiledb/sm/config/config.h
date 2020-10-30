@@ -262,6 +262,9 @@ class Config {
   /** S3 aws load frequency. */
   static const std::string VFS_S3_AWS_LOAD_FREQUENCY;
 
+  /** S3 aws session name. */
+  static const std::string VFS_S3_AWS_SESSION_NAME;
+
   /** S3 scheme (http for local minio, https for AWS S3). */
   static const std::string VFS_S3_SCHEME;
 

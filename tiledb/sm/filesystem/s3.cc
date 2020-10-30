@@ -941,6 +941,9 @@ Status S3::init_client() const {
   auto aws_load_frequency = config_.get("vfs.s3.aws_load_frequency", &found);
   assert(found);
 
+  auto aws_session_name = config_.get("vfs.s3.aws_session_name", &found);
+  assert(found);
+
   int64_t connect_max_tries = 0;
   RETURN_NOT_OK(config_.get<int64_t>(
       "vfs.s3.connect_max_tries", &connect_max_tries, &found));
@@ -976,13 +979,6 @@ Status S3::init_client() const {
   }
 #endif
 
-  if (!aws_access_key_id.empty() && !aws_secret_access_key.empty() &&
-      !aws_role_arn.empty()) {
-    return Status::S3Error(
-        "Ambiguous authentication credentials; both permanent and temporary "
-        "authentication credentials are configured");
-  }
-
   // If the user set config variables for AWS keys use them.
   if (!aws_access_key_id.empty() && !aws_secret_access_key.empty()) {
     Aws::String access_key_id(aws_access_key_id.c_str());
@@ -1000,12 +996,18 @@ Status S3::init_client() const {
     Aws::String external_id(
         !aws_external_id.empty() ? aws_external_id.c_str() : "");
     int load_frequency(
-        !aws_load_frequency.empty() ? std::stoi(aws_load_frequency) : 999);
-    Aws::String session_token(
-        !aws_session_token.empty() ? aws_session_token.c_str() : "");
+        !aws_load_frequency.empty() ?
+            std::stoi(aws_load_frequency) :
+            Aws::Auth::DEFAULT_CREDS_LOAD_FREQ_SECONDS);
+    Aws::String session_name(
+        !aws_session_name.empty() ? aws_session_name.c_str() : "");
     credentials_provider_ =
         std::make_shared<Aws::Auth::STSAssumeRoleCredentialsProvider>(
-            role_arn, session_token, external_id, load_frequency, nullptr);
+            role_arn, session_name, external_id, load_frequency, nullptr);
+  } else {
+    return Status::S3Error(
+        "Ambiguous authentication credentials; both permanent and temporary "
+        "authentication credentials are configured");
   }
 
   if (credentials_provider_ == nullptr) {
