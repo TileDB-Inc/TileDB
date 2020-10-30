@@ -202,11 +202,11 @@ if (MSVC)
   # Add /MPn flag from CMake invocation (if defined).
   add_compile_options(${MSVC_MP_FLAG})
   # Build-specific flags
-  if (CMAKE_BUILD_TYPE MATCHES "Debug")
-    add_compile_options(/DDEBUG /Od /Zi /bigobj)
-  elseif (CMAKE_BUILD_TYPE MATCHES "Release")
-    add_compile_options(/DNDEBUG /Ox)
-  endif()
+  add_compile_options(
+                      "$<$<CONFIG:Debug>:/DDEBUG /Od /Zi /bigobj>"
+                      "$<$<CONFIG:Release>:/DNDEBUG /Ox>"
+                      "$<$<CONFIG:RelWithDebInfo>:/DNDEBUG /Ox /Zi>"
+                      )
 else()
   add_compile_options(-Wall -Wextra)
   if (TILEDB_WERROR)
@@ -217,6 +217,8 @@ else()
     add_compile_options(-DDEBUG -O0 -g3 -ggdb3 -gdwarf-3)
   elseif (CMAKE_BUILD_TYPE MATCHES "Release")
     add_compile_options(-DNDEBUG -O3)
+  elseif (CMAKE_BUILD_TYPE MATCHES "RelWithDebInfo")
+    add_compile_options(-DNDEBUG -O3 -g3 -ggdb3 -gdwarf-3)
   elseif (CMAKE_BUILD_TYPE MATCHES "Coverage")
     add_compile_options(-DDEBUG -g3 -gdwarf-3 --coverage)
   endif()
