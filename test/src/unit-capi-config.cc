@@ -480,6 +480,9 @@ TEST_CASE("C API: Test config iter", "[capi], [config]") {
   all_param_values["vfs.s3.aws_access_key_id"] = "";
   all_param_values["vfs.s3.aws_secret_access_key"] = "";
   all_param_values["vfs.s3.aws_session_token"] = "";
+  all_param_values["vfs.s3.aws_role_arn"] = "";
+  all_param_values["vfs.s3.aws_external_id"] = "";
+  all_param_values["vfs.s3.aws_load_frequency"] = "";
   all_param_values["vfs.s3.endpoint_override"] = "";
   all_param_values["vfs.s3.use_virtual_addressing"] = "true";
   all_param_values["vfs.s3.use_multipart_upload"] = "true";
@@ -532,6 +535,9 @@ TEST_CASE("C API: Test config iter", "[capi], [config]") {
   vfs_param_values["s3.aws_access_key_id"] = "";
   vfs_param_values["s3.aws_secret_access_key"] = "";
   vfs_param_values["s3.aws_session_token"] = "";
+  vfs_param_values["s3.aws_role_arn"] = "";
+  vfs_param_values["s3.aws_external_id"] = "";
+  vfs_param_values["s3.aws_load_frequency"] = "";
   vfs_param_values["s3.endpoint_override"] = "";
   vfs_param_values["s3.use_virtual_addressing"] = "true";
   vfs_param_values["s3.use_multipart_upload"] = "true";
@@ -578,6 +584,9 @@ TEST_CASE("C API: Test config iter", "[capi], [config]") {
   s3_param_values["aws_access_key_id"] = "";
   s3_param_values["aws_secret_access_key"] = "";
   s3_param_values["aws_session_token"] = "";
+  s3_param_values["aws_role_arn"] = "";
+  s3_param_values["aws_external_id"] = "";
+  s3_param_values["aws_load_frequency"] = "";
   s3_param_values["endpoint_override"] = "";
   s3_param_values["use_virtual_addressing"] = "true";
   s3_param_values["use_multipart_upload"] = "true";
