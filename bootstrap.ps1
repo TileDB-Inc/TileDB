@@ -76,7 +76,7 @@ Param(
     [string]$Dependency,
     [string]$CMakeGenerator,
     [switch]$EnableDebug,
-	[switch]$EnableReleaseSymbols,
+    [switch]$EnableReleaseSymbols,
     [switch]$EnableCoverage,
     [switch]$EnableVerbose,
     [switch]$EnableS3,
