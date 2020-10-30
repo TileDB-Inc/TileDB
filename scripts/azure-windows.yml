@@ -3,7 +3,7 @@ steps:
 # Need this for virtualenv
 - task: UsePythonVersion@0
   inputs:
-    versionSpec: '3.x'
+    versionSpec: '3.8'
 
 - bash: |
     set -e pipefail

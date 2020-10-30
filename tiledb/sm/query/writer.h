@@ -118,6 +118,9 @@ class Writer {
   /*                 API               */
   /* ********************************* */
 
+  /** Returns the array. */
+  const Array* array() const;
+
   /** Adds a range to the subarray on the input dimension. */
   Status add_range(unsigned dim_idx, const Range& range);
 
@@ -268,6 +271,9 @@ class Writer {
 
   /* Return the subarray. */
   const void* subarray() const;
+
+  /** Returns the query subarray object. */
+  const Subarray* subarray_ranges() const;
 
   /** Performs a write query using its set members. */
   Status write();

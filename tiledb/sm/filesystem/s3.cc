@@ -150,6 +150,16 @@ Status S3::init(const Config& config, ThreadPool* const thread_pool) {
 
   options_.loggingOptions.logLevel = aws_log_name_to_level(logging_level);
 
+  // By default, curl sets the signal handler for SIGPIPE to SIG_IGN while
+  // executing. When curl is done executing, it restores the previous signal
+  // handler. This is not thread safe, so the AWS SDK disables this behavior
+  // in curl using the `CURLOPT_NOSIGNAL` option.
+  // Here, we set the `installSigPipeHandler` AWS SDK option to `true` to allow
+  // the AWS SDK to set its own signal handler to ignore SIGPIPE signals. A
+  // SIGPIPE may be raised from the socket library when the peer disconnects
+  // unexpectedly.
+  options_.httpOptions.installSigPipeHandler = true;
+
   // Initialize the library once per process.
   std::call_once(aws_lib_initialized, [this]() { Aws::InitAPI(options_); });
 
@@ -581,6 +591,41 @@ Status S3::move_dir(const URI& old_uri, const URI& new_uri) {
     auto suffix = path.substr(old_uri.to_string().size());
     auto new_path = new_uri.join_path(suffix);
     RETURN_NOT_OK(move_object(URI(path), URI(new_path)));
+  }
+
+  return Status::Ok();
+}
+
+Status S3::copy_file(const URI& old_uri, const URI& new_uri) {
+  RETURN_NOT_OK(init_client());
+
+  RETURN_NOT_OK(copy_object(old_uri, new_uri));
+  return Status::Ok();
+}
+
+Status S3::copy_dir(const URI& old_uri, const URI& new_uri) {
+  RETURN_NOT_OK(init_client());
+
+  std::string old_uri_string = old_uri.to_string();
+  std::vector<std::string> paths;
+  RETURN_NOT_OK(ls(old_uri, &paths));
+  while (!paths.empty()) {
+    std::string file_name_abs = paths.front();
+    URI file_name_uri = URI(file_name_abs);
+    std::string file_name = file_name_abs.substr(old_uri_string.length());
+    paths.erase(paths.begin());
+
+    bool dir_exists;
+    RETURN_NOT_OK(is_dir(file_name_uri, &dir_exists));
+    if (dir_exists) {
+      std::vector<std::string> child_paths;
+      RETURN_NOT_OK(ls(file_name_uri, &child_paths));
+      paths.insert(paths.end(), child_paths.begin(), child_paths.end());
+    } else {
+      std::string new_path_string = new_uri.to_string() + file_name;
+      URI new_path_uri = URI(new_path_string);
+      RETURN_NOT_OK(copy_object(file_name_uri, new_path_uri));
+    }
   }
 
   return Status::Ok();

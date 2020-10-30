@@ -51,6 +51,10 @@ Status GZip::compress(
     return LOG_STATUS(Status::CompressionError(
         "Failed compressing with GZip; invalid buffer format"));
 
+  if (level > GZip::maximum_level())
+    return LOG_STATUS(Status::CompressionError(
+        "Failed compressing with GZip; invalid compression level."));
+
   int ret;
   z_stream strm;
 

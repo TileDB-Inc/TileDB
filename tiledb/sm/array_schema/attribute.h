@@ -114,9 +114,10 @@ class Attribute {
    * Serializes the object members into a binary buffer.
    *
    * @param buff The buffer to serialize the data into.
+   * @param version The format spec version.
    * @return Status
    */
-  Status serialize(Buffer* buff);
+  Status serialize(Buffer* buff, uint32_t version);
 
   /**
    * Sets the attribute number of values per cell. Note that if the attribute

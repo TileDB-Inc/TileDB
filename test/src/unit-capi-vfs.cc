@@ -322,6 +322,11 @@ void VFSFx::check_vfs(const std::string& path) {
   // Move
   check_move(path);
 
+#ifndef _WIN32
+  // Copy
+  check_copy(path);
+#endif
+
   // Ls
   check_ls(path);
 
@@ -472,7 +477,11 @@ void VFSFx::check_move(const std::string& path) {
 
 #ifndef _WIN32
 void VFSFx::check_copy(const std::string& path) {
-  // Copy file when running on POSIX
+  // Do not support HDFS
+  if (supports_hdfs_)
+    return;
+
+  // Copy file
   auto file = path + "file";
   auto file2 = path + "file2";
   int is_file = 0;
@@ -485,17 +494,12 @@ void VFSFx::check_copy(const std::string& path) {
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_vfs_is_file(ctx_, vfs_, file.c_str(), &is_file);
   REQUIRE(rc == TILEDB_OK);
-  REQUIRE(!is_file);
+  REQUIRE(is_file);
   rc = tiledb_vfs_is_file(ctx_, vfs_, file2.c_str(), &is_file);
   REQUIRE(rc == TILEDB_OK);
   REQUIRE(is_file);
-  rc = tiledb_vfs_remove_file(ctx_, vfs_, file2.c_str());
-  REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_vfs_is_file(ctx_, vfs_, file2.c_str(), &is_file);
-  REQUIRE(rc == TILEDB_OK);
-  REQUIRE(!is_file);
 
-  // Move directory with subdirectories and files while running on POSIX
+  // Move directory with subdirectories and files
   auto dir = path + "dir/";
   auto dir2 = path + "dir2/";
   auto subdir = path + "dir/subdir/";
@@ -531,22 +535,15 @@ void VFSFx::check_copy(const std::string& path) {
   rc = tiledb_vfs_is_file(ctx_, vfs_, file2.c_str(), &is_file);
   REQUIRE(rc == TILEDB_OK);
   REQUIRE(is_file);
+
+  rc = tiledb_vfs_is_dir(ctx_, vfs_, dir2.c_str(), &is_dir);
+  REQUIRE(rc == TILEDB_OK);
+  if (is_dir) {
+    rc = tiledb_vfs_remove_dir(ctx_, vfs_, dir2.c_str());
+    REQUIRE(rc == TILEDB_OK);
+  }
   rc = tiledb_vfs_copy_dir(ctx_, vfs_, dir.c_str(), dir2.c_str());
   REQUIRE(rc == TILEDB_OK);
-
-  rc = tiledb_vfs_is_dir(ctx_, vfs_, dir.c_str(), &is_dir);
-  REQUIRE(rc == TILEDB_OK);
-  REQUIRE(!is_dir);
-  rc = tiledb_vfs_is_dir(ctx_, vfs_, subdir.c_str(), &is_dir);
-  REQUIRE(rc == TILEDB_OK);
-  REQUIRE(!is_dir);
-  rc = tiledb_vfs_is_file(ctx_, vfs_, file.c_str(), &is_file);
-  REQUIRE(rc == TILEDB_OK);
-  REQUIRE(!is_file);
-  rc = tiledb_vfs_is_file(ctx_, vfs_, file2.c_str(), &is_file);
-  REQUIRE(rc == TILEDB_OK);
-  REQUIRE(!is_file);
-
   rc = tiledb_vfs_is_dir(ctx_, vfs_, dir2.c_str(), &is_dir);
   REQUIRE(rc == TILEDB_OK);
   REQUIRE(is_dir);
@@ -559,6 +556,33 @@ void VFSFx::check_copy(const std::string& path) {
   rc = tiledb_vfs_is_file(ctx_, vfs_, new_file2.c_str(), &is_file);
   REQUIRE(rc == TILEDB_OK);
   REQUIRE(is_file);
+
+  // Copy from one bucket to another (only for S3)
+  if (supports_s3_) {
+    std::string bucket2 = S3_PREFIX + random_name("tiledb") + "/";
+    std::string subdir3 = bucket2 + "tiledb_test/subdir3/";
+    std::string file3 = subdir3 + "file2";
+    int is_bucket = 0;
+
+    rc = tiledb_vfs_is_bucket(ctx_, vfs_, bucket2.c_str(), &is_bucket);
+    REQUIRE(rc == TILEDB_OK);
+    if (is_bucket) {
+      rc = tiledb_vfs_remove_bucket(ctx_, vfs_, bucket2.c_str());
+      REQUIRE(rc == TILEDB_OK);
+    }
+
+    rc = tiledb_vfs_create_bucket(ctx_, vfs_, bucket2.c_str());
+    REQUIRE(rc == TILEDB_OK);
+
+    rc = tiledb_vfs_copy_dir(ctx_, vfs_, subdir2.c_str(), subdir3.c_str());
+    REQUIRE(rc == TILEDB_OK);
+    rc = tiledb_vfs_is_file(ctx_, vfs_, file3.c_str(), &is_file);
+    REQUIRE(rc == TILEDB_OK);
+    REQUIRE(is_file);
+
+    rc = tiledb_vfs_remove_bucket(ctx_, vfs_, bucket2.c_str());
+    REQUIRE(rc == TILEDB_OK);
+  }
 }
 #endif
 
