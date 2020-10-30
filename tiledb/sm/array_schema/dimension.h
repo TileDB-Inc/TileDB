@@ -78,8 +78,18 @@ class Dimension {
    */
   explicit Dimension(const Dimension* dim);
 
+  /** Copy constructor. */
+  DISABLE_COPY(Dimension);
+
   /** Destructor. */
   ~Dimension() = default;
+
+  /* ********************************* */
+  /*             OPERATORS             */
+  /* ********************************* */
+
+  /** Copy-assignment operator. */
+  DISABLE_COPY_ASSIGN(Dimension);
 
   /* ********************************* */
   /*                API                */
