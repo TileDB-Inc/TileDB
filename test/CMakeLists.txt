@@ -44,7 +44,7 @@ if (NOT DEFINED $CACHE{TILEDB_TESTS_ENABLE_ARROW})
 endif()
 
 if (${TILEDB_TESTS_ENABLE_ARROW})
-  find_package(Python COMPONENTS Interpreter Development REQUIRED)
+  find_package(Python 3.8 EXACT COMPONENTS Interpreter Development REQUIRED)
   find_package(pybind11)
 
   # If we can't find the pybind11 cmake config (not available in pypi yet)
