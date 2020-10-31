@@ -48,6 +48,7 @@ Configuration:
     --enable-sanitizer=SAN          enable sanitizer (clang only)
                                     (address|memory|leak|thread|undefined)
     --enable-debug                  enable debug build
+    --enable-release-symbols        enable create symbols for release build
     --enable-coverage               enable build with code coverage support
     --enable-verbose                enable verbose status messages
     --enable-hdfs                   enables the hdfs storage backend
@@ -114,6 +115,7 @@ while test $# != 0; do
     --enable-sanitizer=*) san=`arg "$1"`
                 sanitizer="$san";;
     --enable-debug) build_type="Debug";;
+    --enable-release-symbols) build_type="RelWithDebInfo";;
     --enable-coverage) build_type="Coverage";;
     --enable-verbose) tiledb_verbose="ON";;
     --enable-hdfs) tiledb_hdfs="ON";;
@@ -136,6 +138,7 @@ IFS=',' read -ra enables <<< "$enable_multiple"
 for en in "${enables[@]}"; do
   case "$en" in
     debug) build_type="Debug";;
+    release-symbols) build_type="RelWithDebInfo";;
     coverage) build_type="Coverage";;
     verbose) tiledb_verbose="ON";;
     s3) tiledb_s3="ON";;
