@@ -1634,6 +1634,8 @@ TEST_CASE(
   off_d1 = {0, 3, 8, 10};
   buff_d2 = std::string("stopstockt1cat");
   off_d2 = {0, 4, 9, 11};
+  query_w.set_buffer("d1", off_d1, buff_d1);
+  query_w.set_buffer("d2", off_d2, buff_d2);
   CHECK_NOTHROW(query_w.submit());
   query_w.finalize();
   array_w.close();
