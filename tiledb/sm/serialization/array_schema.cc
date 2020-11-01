@@ -124,7 +124,7 @@ Status filter_pipeline_from_capnp(
     return Status::Ok();
 
   auto filter_list_reader = filter_pipeline_reader.getFilters();
-  for (const auto& filter_reader : filter_list_reader) {
+  for (auto filter_reader : filter_list_reader) {
     FilterType type = FilterType::FILTER_NONE;
     RETURN_NOT_OK(filter_type_enum(filter_reader.getType().cStr(), &type));
     std::unique_ptr<Filter> filter(Filter::create(type));
@@ -388,7 +388,7 @@ Status domain_from_capnp(
   domain->reset(new Domain());
 
   auto dimensions = domain_reader.getDimensions();
-  for (const auto& dimension : dimensions) {
+  for (auto dimension : dimensions) {
     std::unique_ptr<Dimension> dim;
     RETURN_NOT_OK(dimension_from_capnp(dimension, &dim));
     RETURN_NOT_OK((*domain)->add_dimension(dim.get()));
@@ -498,7 +498,7 @@ Status array_schema_from_capnp(
 
   // Set attributes
   auto attributes_reader = schema_reader.getAttributes();
-  for (const auto& attr_reader : attributes_reader) {
+  for (auto attr_reader : attributes_reader) {
     std::unique_ptr<Attribute> attribute;
     RETURN_NOT_OK(attribute_from_capnp(attr_reader, &attribute));
     RETURN_NOT_OK((*array_schema)->add_attribute(attribute.get(), false));
