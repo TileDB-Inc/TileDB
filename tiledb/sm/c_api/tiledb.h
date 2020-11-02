@@ -1267,6 +1267,25 @@ TILEDB_EXPORT int32_t tiledb_config_unset(
 TILEDB_EXPORT int32_t tiledb_config_save_to_file(
     tiledb_config_t* config, const char* filename, tiledb_error_t** error);
 
+/**
+ * Compares 2 configurations for equality
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * tiledb_error_t* error = NULL;
+ * tiledb_config_compare(lhs, rhs, &equal);
+ * @endcode
+ *
+ * @param lhs The left-hand side config object.
+ * @param lhs The right-hand side config object.
+ * @param equal Integer of equality comparison
+ *      1 = true, 0 = false
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_config_compare(
+    tiledb_config_t* lhs, tiledb_config_t* rhs, uint8_t* equal);
+
 /* ****************************** */
 /*            CONFIG ITER         */
 /* ****************************** */

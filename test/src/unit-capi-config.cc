@@ -395,8 +395,30 @@ TEST_CASE("C API: Test config", "[capi], [config]") {
       error,
       "[TileDB::Utils] Error: Failed to convert string '100000000000000000000' "
       "to uint64_t; Value out of range");
+
+  // Check config and config2 are the same
+  tiledb_config_t* config2 = config;
+  uint8_t equal = 2;
+  rc = tiledb_config_compare(config, config2, &equal);
+  CHECK(rc == TILEDB_OK);
+  CHECK(equal == 1);
+
+  // Check config and config3 are not the same
+  tiledb_config_t* config3 = nullptr;
+  tiledb_error_t* error2 = nullptr;
+  rc = tiledb_config_alloc(&config3, &error2);
+  REQUIRE(rc == TILEDB_OK);
+  CHECK(error2 == nullptr);
+
+  uint8_t equal2 = 0;
+  rc = tiledb_config_compare(config, config3, &equal2);
+  CHECK(rc == TILEDB_ERR);
+  CHECK(equal2 == 0);
+
   tiledb_error_free(&error);
   tiledb_config_free(&config);
+  tiledb_error_free(&error2);
+  tiledb_config_free(&config3);
 }
 
 TEST_CASE("C API: Test config iter", "[capi], [config]") {

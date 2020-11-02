@@ -376,6 +376,9 @@ class Config {
   /** Inherits the **set** parameters of the input `config`. */
   void inherit(const Config& config);
 
+  /** Compares configs for equality. */
+  bool operator==(const Config& rhs) const;
+
  private:
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */

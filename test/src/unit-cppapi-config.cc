@@ -113,3 +113,21 @@ TEST_CASE(
   const std::string result3 = config[key];
   CHECK(result3 == value3);
 }
+
+TEST_CASE("C++ API: Config Equality", "[cppapi], [cppapi-config]") {
+  tiledb::Config config1;
+
+  setenv_local("TILEDB_FOO", "bar");
+  std::string result1 = config1["foo"];
+  CHECK(result1 == "bar");
+
+  setenv_local("TILEDB_FOO", "bar2");
+  std::string result2 = config1["foo"];
+  CHECK(result2 == "bar2");
+
+  tiledb::Config config2 = config1;
+  CHECK(config1 == config2);
+
+  std::string result3 = config2["foo"];
+  CHECK(result3 == "bar2");
+}

@@ -208,6 +208,14 @@ class Config {
     impl::check_config_error(err);
   }
 
+  /** Compares configs for equality. */
+  bool operator==(const Config& rhs) const {
+    if (config_ == rhs.config_)
+      return true;
+    else
+      return false;
+  }
+
   /** Returns the pointer to the TileDB C config object. */
   std::shared_ptr<tiledb_config_t> ptr() const {
     return config_;
