@@ -34,6 +34,7 @@
 #define TILEDB_DOMAIN_H
 
 #include "tiledb/common/status.h"
+#include "tiledb/sm/misc/macros.h"
 #include "tiledb/sm/misc/types.h"
 #include "tiledb/sm/query/result_coords.h"
 
@@ -68,8 +69,24 @@ class Domain {
    */
   explicit Domain(const Domain* domain);
 
+  /** Copy constructor. */
+  DISABLE_COPY(Domain);
+
+  /** Move constructor. */
+  Domain(Domain&& rhs);
+
   /** Destructor. */
-  ~Domain();
+  ~Domain() = default;
+
+  /* ********************************* */
+  /*             OPERATORS             */
+  /* ********************************* */
+
+  /** Copy-assignment operator. */
+  DISABLE_COPY_ASSIGN(Domain);
+
+  /** Move-assignment operator. */
+  Domain& operator=(Domain&& rhs);
 
   /* ********************************* */
   /*                 API               */
@@ -579,7 +596,7 @@ class Domain {
   Layout cell_order_;
 
   /** The domain dimensions. */
-  std::vector<Dimension*> dimensions_;
+  std::vector<std::unique_ptr<Dimension>> dimensions_;
 
   /** The number of dimensions. */
   unsigned dim_num_;
