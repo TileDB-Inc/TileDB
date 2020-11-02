@@ -979,45 +979,55 @@ Status S3::init_client() const {
   }
 #endif
 
-  // If the user set config variables for AWS keys use them.
-  if (!aws_access_key_id.empty() && !aws_secret_access_key.empty()) {
-    Aws::String access_key_id(aws_access_key_id.c_str());
-    Aws::String secret_access_key(aws_secret_access_key.c_str());
-    Aws::String session_token(
-        !aws_session_token.empty() ? aws_session_token.c_str() : "");
-    credentials_provider_ =
-        std::make_shared<Aws::Auth::SimpleAWSCredentialsProvider>(
-            access_key_id, secret_access_key, session_token);
-  } else if (!aws_role_arn.empty()) {
-    // If AWS Role ARN provided instead of access_key and secret_key,
-    // temporary credentials will be fetched by assuming this role.
-
-    Aws::String role_arn(aws_role_arn.c_str());
-    Aws::String external_id(
-        !aws_external_id.empty() ? aws_external_id.c_str() : "");
-    int load_frequency(
-        !aws_load_frequency.empty() ?
-            std::stoi(aws_load_frequency) :
-            Aws::Auth::DEFAULT_CREDS_LOAD_FREQ_SECONDS);
-    Aws::String session_name(
-        !aws_session_name.empty() ? aws_session_name.c_str() : "");
-    credentials_provider_ =
-        std::make_shared<Aws::Auth::STSAssumeRoleCredentialsProvider>(
-            role_arn, session_name, external_id, load_frequency, nullptr);
-  } else {
-    return Status::S3Error(
-        "Ambiguous authentication credentials; both permanent and temporary "
-        "authentication credentials are configured");
+  switch ((!aws_access_key_id.empty() ? 1 : 0) +
+          (!aws_secret_access_key.empty() ? 2 : 0) +
+          (!aws_role_arn.empty() ? 4 : 0)) {
+    case 0:
+      credentials_provider_ = nullptr;
+      break;
+    case 1:
+    case 2:
+      return Status::S3Error(
+          "Insufficient authentication credentials; "
+          "Both access key id and secret key are needed");
+    case 3: {
+      Aws::String access_key_id(aws_access_key_id.c_str());
+      Aws::String secret_access_key(aws_secret_access_key.c_str());
+      Aws::String session_token(
+          !aws_session_token.empty() ? aws_session_token.c_str() : "");
+      credentials_provider_ =
+          std::make_shared<Aws::Auth::SimpleAWSCredentialsProvider>(
+              access_key_id, secret_access_key, session_token);
+      break;
+    }
+    case 4: {
+      // If AWS Role ARN provided instead of access_key and secret_key,
+      // temporary credentials will be fetched by assuming this role.
+      Aws::String role_arn(aws_role_arn.c_str());
+      Aws::String external_id(
+          !aws_external_id.empty() ? aws_external_id.c_str() : "");
+      int load_frequency(
+          !aws_load_frequency.empty() ?
+              std::stoi(aws_load_frequency) :
+              Aws::Auth::DEFAULT_CREDS_LOAD_FREQ_SECONDS);
+      Aws::String session_name(
+          !aws_session_name.empty() ? aws_session_name.c_str() : "");
+      credentials_provider_ =
+          std::make_shared<Aws::Auth::STSAssumeRoleCredentialsProvider>(
+              role_arn, session_name, external_id, load_frequency, nullptr);
+      break;
+    }
+    default:
+      return Status::S3Error(
+          "Ambiguous authentication credentials; both permanent and temporary "
+          "authentication credentials are configured");
   }
-
   if (credentials_provider_ == nullptr) {
     client_ = Aws::MakeShared<Aws::S3::S3Client>(
         constants::s3_allocation_tag.c_str(),
         *client_config_,
         Aws::Client::AWSAuthV4Signer::PayloadSigningPolicy::Never,
         use_virtual_addressing_);
-
-    return Status::Ok();
   } else {
     client_ = Aws::MakeShared<Aws::S3::S3Client>(
         constants::s3_allocation_tag.c_str(),
