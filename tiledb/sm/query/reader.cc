@@ -1230,6 +1230,7 @@ Status Reader::copy_partitioned_var_cells(
   if (array_schema_->is_attr(*name))
     fill_value = array_schema_->attribute(*name)->fill_value();
   auto fill_value_size = (uint64_t)fill_value.size();
+  auto val_cell_size = array_schema_->cell_size(*name);
 
   // Fetch the starting array offset into both `offset_offsets_per_cs`
   // and `var_offsets_per_cs`.
@@ -1278,7 +1279,18 @@ Status Reader::copy_partitioned_var_cells(
       auto var_dest = buffer_var + var_offset;
 
       // Copy offset
-      std::memcpy(offset_dest, &var_offset, offset_size);
+      if (true /* TODO: replace with config option where "sm.offsets_format" == "byte"*/) {
+        std::memcpy(offset_dest, &var_offset, offset_size);
+      } else {
+        /* assert config "sm.offsets_format" == "count" */
+        if (val_cell_size == 1) {
+          std::memcpy(offset_dest, &var_offset, offset_size);
+        } else {
+          // loop through `var_offset`, which if of size `offset_size. each
+          // element is a uint64_t. divide the value of each element by
+          // val_cell_size and copy it into `offset_dest`.
+        }
+      }
 
       // Copy variable-sized value
       if (cs.tile_ == nullptr) {
