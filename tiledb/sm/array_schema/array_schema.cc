@@ -342,8 +342,11 @@ bool ArraySchema::is_dim(const std::string& name) const {
 //   attribute #2
 //   ...
 Status ArraySchema::serialize(Buffer* buff) const {
-  // Write version
-  RETURN_NOT_OK(buff->write(&version_, sizeof(uint32_t)));
+  // Write version, which is always the current version. Despite
+  // the in-memory `version_`, we will serialize every array schema
+  // as the latest version.
+  const uint32_t version = constants::format_version;
+  RETURN_NOT_OK(buff->write(&version, sizeof(uint32_t)));
 
   // Write allows_dups
   RETURN_NOT_OK(buff->write(&allows_dups_, sizeof(bool)));
@@ -368,13 +371,13 @@ Status ArraySchema::serialize(Buffer* buff) const {
   RETURN_NOT_OK(cell_var_offsets_filters_.serialize(buff));
 
   // Write domain
-  RETURN_NOT_OK(domain_->serialize(buff, version_));
+  RETURN_NOT_OK(domain_->serialize(buff, version));
 
   // Write attributes
   auto attribute_num = (uint32_t)attributes_.size();
   RETURN_NOT_OK(buff->write(&attribute_num, sizeof(uint32_t)));
   for (auto& attr : attributes_)
-    RETURN_NOT_OK(attr->serialize(buff, version_));
+    RETURN_NOT_OK(attr->serialize(buff, version));
 
   return Status::Ok();
 }
