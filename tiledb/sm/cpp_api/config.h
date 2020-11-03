@@ -208,6 +208,24 @@ class Config {
     impl::check_config_error(err);
   }
 
+  /** Compares configs for equality. */
+  bool operator==(const Config& rhs) const {
+    uint8_t equal;
+    int rc = tiledb_config_compare(config_.get(), rhs.config_.get(), &equal);
+    if (rc != TILEDB_OK)
+      throw std::runtime_error(
+          "[TileDB::C++API] Error: Failed to compare configurations");
+    if (equal == 1)
+      return true;
+    else
+      return false;
+  }
+
+  /** Compares configs for inequality. */
+  bool operator!=(const Config& rhs) const {
+    return !(*this == rhs);
+  }
+
   /** Returns the pointer to the TileDB C config object. */
   std::shared_ptr<tiledb_config_t> ptr() const {
     return config_;

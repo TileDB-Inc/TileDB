@@ -562,6 +562,20 @@ void Config::inherit(const Config& config) {
   }
 }
 
+bool Config::operator==(const Config& rhs) const {
+  if (param_values_.size() != rhs.param_values_.size())
+    return false;
+  for (const auto& pv : param_values_) {
+    const std::string& key = pv.first;
+    if (rhs.param_values_.count(key) == 0)
+      return false;
+    const std::string& value = pv.second;
+    if (rhs.param_values_.at(key) != value)
+      return false;
+  }
+  return true;
+}
+
 /* ****************************** */
 /*          PRIVATE METHODS       */
 /* ****************************** */
