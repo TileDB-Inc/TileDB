@@ -73,6 +73,7 @@ struct VFSFx {
   bool supports_s3_;
   bool supports_hdfs_;
   bool supports_azure_;
+  bool supports_memfs_;
 
   // Functions
   VFSFx();
@@ -110,6 +111,7 @@ void VFSFx::set_supported_fs() {
   REQUIRE(tiledb_ctx_alloc(nullptr, &ctx) == TILEDB_OK);
 
   get_supported_fs(&supports_s3_, &supports_hdfs_, &supports_azure_);
+  get_supported_memfs(&supports_memfs_);
 
   tiledb_ctx_free(&ctx);
 }
@@ -915,7 +917,9 @@ TEST_CASE_METHOD(VFSFx, "C API: Test virtual filesystem", "[capi], [vfs]") {
     check_vfs(HDFS_TEMP_DIR);
   else {
     check_vfs(FILE_TEMP_DIR);
-    check_vfs(MEMFS_TEMP_DIR);
+    if (supports_memfs_) {
+      check_vfs(MEMFS_TEMP_DIR);
+    }
   }
 }
 
@@ -979,6 +983,8 @@ TEST_CASE_METHOD(VFSFx, "C API: Test VFS parallel I/O", "[capi], [vfs]") {
     check_vfs(HDFS_TEMP_DIR);
   } else {
     check_vfs(FILE_TEMP_DIR);
-    check_vfs(MEMFS_TEMP_DIR);
+    if (supports_memfs_) {
+      check_vfs(MEMFS_TEMP_DIR);
+    }
   }
 }
