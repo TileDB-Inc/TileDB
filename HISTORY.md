@@ -8,6 +8,8 @@
 
 ## New features
 
+* Support for AWS S3 "AssumeRole" temporary credentials [#1882](https://github.com/TileDB-Inc/TileDB/pull/1882)
+
 ## Improvements
 
 ## Deprecations

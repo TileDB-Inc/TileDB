@@ -65,20 +65,44 @@ Domain::Domain(const Domain* domain) {
   cell_order_ = domain->cell_order_;
   dim_num_ = domain->dim_num_;
   cell_order_cmp_func_ = domain->cell_order_cmp_func_;
+  cell_order_cmp_func_2_ = domain->cell_order_cmp_func_2_;
   tile_order_cmp_func_ = domain->tile_order_cmp_func_;
 
   dimensions_.reserve(domain->dimensions_.size());
-  for (auto dim : domain->dimensions_)
-    dimensions_.emplace_back(new Dimension(dim));
+  for (const auto& dim : domain->dimensions_)
+    dimensions_.emplace_back(new Dimension(dim.get()));
 
   tile_order_ = domain->tile_order_;
   tile_offsets_col_ = domain->tile_offsets_col_;
   tile_offsets_row_ = domain->tile_offsets_row_;
 }
 
-Domain::~Domain() {
-  for (auto dim : dimensions_)
-    delete dim;
+Domain::Domain(Domain&& rhs)
+    : cell_num_per_tile_(rhs.cell_num_per_tile_)
+    , cell_order_(rhs.cell_order_)
+    , dimensions_(std::move(rhs.dimensions_))
+    , dim_num_(rhs.dim_num_)
+    , tile_offsets_col_(std::move(rhs.tile_offsets_col_))
+    , tile_offsets_row_(std::move(rhs.tile_offsets_row_))
+    , tile_order_(rhs.tile_order_)
+    , cell_order_cmp_func_(std::move(rhs.cell_order_cmp_func_))
+    , cell_order_cmp_func_2_(std::move(rhs.cell_order_cmp_func_2_))
+    , tile_order_cmp_func_(std::move(rhs.tile_order_cmp_func_)) {
+}
+
+Domain& Domain::operator=(Domain&& rhs) {
+  cell_num_per_tile_ = rhs.cell_num_per_tile_;
+  cell_order_ = rhs.cell_order_;
+  dim_num_ = rhs.dim_num_;
+  cell_order_cmp_func_ = std::move(rhs.cell_order_cmp_func_);
+  tile_order_cmp_func_ = std::move(rhs.tile_order_cmp_func_);
+  dimensions_ = std::move(rhs.dimensions_);
+  tile_order_ = rhs.tile_order_;
+  tile_offsets_col_ = std::move(rhs.tile_offsets_col_);
+  cell_order_cmp_func_2_ = std::move(rhs.cell_order_cmp_func_2_);
+  tile_offsets_row_ = std::move(rhs.tile_offsets_row_);
+
+  return *this;
 }
 
 /* ********************************* */
@@ -320,14 +344,14 @@ NDRange Domain::domain() const {
 const Dimension* Domain::dimension(unsigned int i) const {
   if (i > dim_num_)
     return nullptr;
-  return dimensions_[i];
+  return dimensions_[i].get();
 }
 
 const Dimension* Domain::dimension(const std::string& name) const {
   for (unsigned int i = 0; i < dim_num_; i++) {
-    auto dim = dimensions_[i];
+    const auto& dim = dimensions_[i];
     if (dim->name() == name) {
-      return dim;
+      return dim.get();
     }
   }
   return nullptr;
@@ -337,7 +361,7 @@ void Domain::dump(FILE* out) const {
   if (out == nullptr)
     out = stdout;
 
-  for (auto& dim : dimensions_) {
+  for (const auto& dim : dimensions_) {
     fprintf(out, "\n");
     dim->dump(out);
   }
@@ -354,7 +378,7 @@ void Domain::expand_ndrange(const NDRange& r1, NDRange* r2) const {
 
   // Expand r2 along all dimensions
   for (unsigned d = 0; d < dim_num_; ++d) {
-    auto dim = dimensions_[d];
+    const auto& dim = dimensions_[d];
     if (!dim->var_size())
       dim->expand_range(r1[d], &(*r2)[d]);
     else
@@ -364,7 +388,7 @@ void Domain::expand_ndrange(const NDRange& r1, NDRange* r2) const {
 
 void Domain::expand_to_tiles(NDRange* ndrange) const {
   for (unsigned d = 0; d < dim_num_; ++d) {
-    auto dim = dimensions_[d];
+    const auto& dim = dimensions_[d];
     // Applicable only to fixed-sized dimensions
     if (!dim->var_size())
       dimensions_[d]->expand_to_tile(&(*ndrange)[d]);
@@ -546,7 +570,7 @@ bool Domain::null_tile_extents() const {
 Status Domain::serialize(Buffer* buff, uint32_t version) {
   // Write dimensions
   RETURN_NOT_OK(buff->write(&dim_num_, sizeof(uint32_t)));
-  for (auto dim : dimensions_)
+  for (const auto& dim : dimensions_)
     RETURN_NOT_OK(dim->serialize(buff, version));
 
   return Status::Ok();

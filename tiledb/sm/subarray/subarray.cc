@@ -439,7 +439,7 @@ bool Subarray::is_default(uint32_t dim_index) const {
 }
 
 bool Subarray::is_set() const {
-  for (const auto& d : is_default_)
+  for (auto d : is_default_)
     if (d == false)
       return true;
   return false;

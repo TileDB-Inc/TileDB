@@ -76,6 +76,16 @@ class Attribute {
    */
   explicit Attribute(const Attribute* attr);
 
+  /** Copy constructor. */
+  DISABLE_COPY(Attribute);
+
+  /* ********************************* */
+  /*             OPERATORS             */
+  /* ********************************* */
+
+  /** Copy-assignment operator. */
+  DISABLE_COPY_ASSIGN(Attribute);
+
   /** Destructor. */
   ~Attribute();
 
