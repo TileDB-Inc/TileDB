@@ -1273,7 +1273,8 @@ TILEDB_EXPORT int32_t tiledb_config_save_to_file(
  * **Example:**
  *
  * @code{.c}
- * tiledb_error_t* error = NULL;
+ * tiledb_error_t error;
+ * uint8_t equal;
  * tiledb_config_compare(lhs, rhs, &equal);
  * @endcode
  *

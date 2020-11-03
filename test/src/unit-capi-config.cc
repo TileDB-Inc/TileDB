@@ -412,7 +412,7 @@ TEST_CASE("C API: Test config", "[capi], [config]") {
 
   uint8_t equal2 = 0;
   rc = tiledb_config_compare(config, config3, &equal2);
-  CHECK(rc == TILEDB_ERR);
+  CHECK(rc == TILEDB_OK);
   CHECK(equal2 == 0);
 
   tiledb_error_free(&error);

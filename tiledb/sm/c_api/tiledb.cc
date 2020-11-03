@@ -937,13 +937,19 @@ int32_t tiledb_config_unset(
 
 int32_t tiledb_config_compare(
     tiledb_config_t* lhs, tiledb_config_t* rhs, uint8_t* equal) {
-  if (*lhs->config_ == *rhs->config_) {
-    *equal = 1;
-    return TILEDB_OK;
-  } else {
-    *equal = 0;
+  auto st = Status::Error("Invalid \"equal\" argument");
+  if (equal == nullptr)
+    LOG_STATUS(st);
+  tiledb_error_t* error = nullptr;
+  if (sanity_check(lhs, &error) == TILEDB_ERR)
     return TILEDB_ERR;
-  }
+  if (sanity_check(rhs, &error) == TILEDB_ERR)
+    return TILEDB_ERR;
+  if (*lhs->config_ == *rhs->config_)
+    *equal = 1;
+  else
+    *equal = 0;
+  return TILEDB_OK;
 }
 
 /* ****************************** */
