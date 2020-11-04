@@ -2332,7 +2332,7 @@ TEST_CASE_METHOD(
   partition.get_range(0, 0, &range);
   CHECK(range != nullptr);
   CHECK(range->start_str() == std::string("a", 1));
-  CHECK(range->end_str() == std::string("a", 1));
+  CHECK(range->end_str() == std::string("a\x7F", 2));
   CHECK(partitioner_split.next(&unsplittable).ok());
   CHECK(!unsplittable);
   partition = partitioner_split.current();
@@ -2385,7 +2385,7 @@ TEST_CASE_METHOD(
   partition.get_range(0, 0, &range);
   CHECK(range != nullptr);
   CHECK(range->start_str() == std::string("bb", 2));
-  CHECK(range->end_str() == std::string("bb", 2));
+  CHECK(range->end_str() == std::string("b\x7F", 2));
   CHECK(partitioner_split_2.next(&unsplittable).ok());
   CHECK(!unsplittable);
   partition = partitioner_split_2.current();

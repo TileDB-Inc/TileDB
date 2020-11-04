@@ -124,6 +124,98 @@ class ColCmp {
   unsigned dim_num_;
 };
 
+/** Wrapper of comparison function for sorting coords on Hilbert values. */
+class HilbertCmp {
+ public:
+  /** Constructor. */
+  HilbertCmp(
+      const Domain* domain,
+      const std::vector<const QueryBuffer*>* buffs,
+      const std::vector<uint64_t>* hilbert_values)
+      : buffs_(buffs)
+      , domain_(domain)
+      , hilbert_values_(hilbert_values) {
+    dim_num_ = domain->dim_num();
+  }
+
+  /** Constructor. */
+  HilbertCmp(
+      const Domain* domain, std::vector<ResultCoords>::iterator iter_begin)
+      : domain_(domain)
+      , iter_begin_(iter_begin) {
+    dim_num_ = domain->dim_num();
+  }
+
+  /**
+   * Positional comparison operator.
+   *
+   * @param a The first cell position.
+   * @param b The second cell position.
+   * @return `true` if cell at `a` precedes
+   *     cell at `b` on the hilbert value, and `false` otherwise.
+   */
+  bool operator()(uint64_t a, uint64_t b) const {
+    assert(hilbert_values_ != nullptr);
+    if ((*hilbert_values_)[a] < (*hilbert_values_)[b])
+      return true;
+    else if ((*hilbert_values_)[a] > (*hilbert_values_)[b])
+      return false;
+    // else the hilbert values are equal
+
+    // Compare cell order
+    auto cell_cmp = domain_->cell_order_cmp(*buffs_, a, b);
+    return cell_cmp == -1;
+  }
+
+  /**
+   * (Hilbert, iterator offset) comparison operator.
+   *
+   * @param a The first (Hilbert, iterator offset).
+   * @param b The second (Hilbert, iterator offset).
+   * @return `true` if cell represented by `a` across precedes
+   *     cell at `b` on the hilbert value, and `false` otherwise.
+   */
+  bool operator()(
+      const std::pair<uint64_t, uint64_t>& a,
+      const std::pair<uint64_t, uint64_t>& b) const {
+    assert(hilbert_values_ != nullptr);
+    if (a.first < b.first)
+      return true;
+    else if (a.first > b.first)
+      return false;
+    // else the hilbert values are equal
+
+    // Compare cell order on row-major to break the tie
+    const auto& a_coord = *(iter_begin_ + a.second);
+    const auto& b_coord = *(iter_begin_ + b.second);
+    for (unsigned d = 0; d < dim_num_; ++d) {
+      auto res = domain_->cell_order_cmp(d, a_coord, b_coord);
+      if (res == -1)
+        return true;
+      if (res == 1)
+        return false;
+      // else same tile on dimension d --> continue
+    }
+
+    return false;
+  }
+
+ private:
+  /**
+   * The coordinate buffers, one per dimension, sorted in the order the
+   * dimensions are defined in the array schema.
+   */
+  const std::vector<const QueryBuffer*>* buffs_;
+  /** The array domain. */
+  const Domain* domain_;
+  /** The number of dimensions. */
+  unsigned dim_num_;
+  /** Start iterator of result coords vector. */
+  std::vector<ResultCoords>::iterator iter_begin_;
+  /** The Hilbert values vector. */
+  const std::vector<uint64_t>* hilbert_values_;
+};
+
 /**
  * Wrapper of comparison function for sorting coords on the global order
  * of some domain.

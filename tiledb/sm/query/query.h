@@ -343,6 +343,12 @@ class Query {
   Writer* writer();
 
   /**
+   * Disables checking the global order. Applicable only to writes.
+   * This option will supercede the config.
+   */
+  Status disable_check_global_order();
+
+  /**
    * Sets the buffer for a fixed-sized attribute/dimension.
    *
    * @param name The attribute/dimension to set the buffer for.

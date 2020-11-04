@@ -393,6 +393,9 @@ extern const std::string global_order_str;
 /** The string representation for the unordered layout. */
 extern const std::string unordered_str;
 
+/** The string representation for the Hilbert layout. */
+extern const std::string hilbert_str;
+
 /** The string representation of null. */
 extern const std::string null_str;
 

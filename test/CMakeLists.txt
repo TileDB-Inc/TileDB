@@ -129,12 +129,14 @@ set(TILEDB_TEST_SOURCES
   src/unit-CellSlabIter.cc
   src/unit-compression-dd.cc
   src/unit-compression-rle.cc
-  src/unit-ctx.cc
   src/unit-crypto.cc
+  src/unit-ctx.cc
+  src/unit-dimension.cc
   src/unit-filter-buffer.cc
   src/unit-filter-pipeline.cc
   src/unit-gcs.cc
   src/unit-hdfs-filesystem.cc
+  src/unit-hilbert.cc
   src/unit-lru_cache.cc
   src/unit-Reader.cc
   src/unit-ReadCellSlabIter.cc
@@ -152,6 +154,7 @@ set(TILEDB_TEST_SOURCES
   src/unit-Tile.cc
   src/unit-TileDomain.cc
   src/unit-uri.cc
+  src/unit-utils.cc
   src/unit-uuid.cc
   src/unit-vfs.cc
   src/unit-win-filesystem.cc
@@ -168,6 +171,7 @@ if (TILEDB_CPP_API)
     src/unit-cppapi-datetimes.cc
     src/unit-cppapi-fill_values.cc
     src/unit-cppapi-filter.cc
+    src/unit-cppapi-hilbert.cc
     src/unit-cppapi-metadata.cc
     src/unit-cppapi-query.cc
     src/unit-cppapi-schema.cc

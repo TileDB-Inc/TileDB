@@ -359,24 +359,45 @@ class SubarrayPartitioner {
   /**
    * Computes the splitting value and dimension for the input range.
    * In case of real domains, if this function may not be able to find a
-   * splitting value and set ``unsplittable`` to ``true``.
+   * splitting value and set ``unsplittable`` to ``true``. Value
+   * `normal_order` is `true` if after the split, the first range
+   * precedes the second in the query layout. Otherwise, it is
+   * the reverse order (this is used in global order reads when
+   * the cell order is Hilbert).
    */
   void compute_splitting_value_single_range(
       const Subarray& range,
       unsigned* splitting_dim,
       ByteVecValue* splitting_value,
+      bool* normal_order,
+      bool* unsplittable);
+
+  /**
+   * Same as `compute_splitting_value_single_range` but this is applicable
+   * only to global order reads when the cell order is Hilbert.
+   */
+  void compute_splitting_value_single_range_hilbert(
+      const Subarray& range,
+      unsigned* splitting_dim,
+      ByteVecValue* splitting_value,
+      bool* normal_order,
       bool* unsplittable);
 
   /**
    * Computes the splitting value and dimension for
    * ``state_.multi_range_.front()``. In case of real domains, if this
    * function may not be able to find a splitting value and set
-   * ``unsplittable`` to ``true``.
+   * ``unsplittable`` to ``true``. Value
+   * `normal_order` is `true` if after the split, the first range
+   * precedes the second in the query layout. Otherwise, it is
+   * the reverse order (this is used in global order reads when
+   * the cell order is Hilbert).
    */
   void compute_splitting_value_multi_range(
       unsigned* splitting_dim,
       uint64_t* splitting_range,
       ByteVecValue* splitting_value,
+      bool* normal_order,
       bool* unsplittable);
 
   /** Returns ``true`` if the input partition must be split. */
@@ -416,6 +437,42 @@ class SubarrayPartitioner {
    * the given partitioner.
    */
   void swap(SubarrayPartitioner& partitioner);
+
+  /**
+   * Maps the input `range` to `range_uint64` that uses only
+   * uint64 values, with the number of bits calculated by
+   * the Hilbert order on the array dimensions. These values
+   * will be used as coordinates to calculate Hilbert values.
+   *
+   * @param range The input ND range.
+   * @param range_uint64 The mapped ND range to be calculated.
+   * @param unsplittable Set to `true` if the mapped ND `range_uint64`
+   *     is unary and `false` otherwise.
+   * @return void
+   */
+  void compute_range_uint64(
+      const Subarray& range,
+      std::vector<std::array<uint64_t, 2>>* range_uint64,
+      bool* unsplittable) const;
+
+  /**
+   * Calculates the splitting dimension for Hilbert cell order,
+   * based on the mapped uint64 range.
+   */
+  void compute_splitting_dim_hilbert(
+      const std::vector<std::array<uint64_t, 2>>& range_uint64,
+      uint32_t* splitting_dim) const;
+
+  /**
+   * Given the input mapped `range_uint64` on the splitting
+   * dimension, it calcuates the real spliting value
+   * for the original range (i.e., in the original dimension domain,
+   * not the mapped uint64 domain).
+   */
+  void compute_splitting_value_hilbert(
+      const std::array<uint64_t, 2>& range_uint64,
+      uint32_t splitting_dim,
+      ByteVecValue* splitting_value) const;
 };
 
 }  // namespace sm

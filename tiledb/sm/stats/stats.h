@@ -82,7 +82,12 @@ class Stats {
   /** Enumerates the stat timer types. */
   DEFINE_TILEDB_STATS(
       TimerType,
+      CONSOLIDATE_CREATE_BUFFERS,
+      CONSOLIDATE_CREATE_QUERIES,
+      CONSOLIDATE_COPY_ARRAY,
       CONSOLIDATE_FRAGS,
+      CONSOLIDATE_MAIN,
+      CONSOLIDATE_COMPUTE_NEXT,
       CONSOLIDATE_ARRAY_META,
       CONSOLIDATE_FRAG_META,
       READ_ARRAY_OPEN,
@@ -179,6 +184,7 @@ class Stats {
       WRITE_CELL_NUM,
       WRITE_ARRAY_META_SIZE,
       WRITE_OPS_NUM,
+      CONSOLIDATE_STEP_NUM,
       VFS_S3_SLOW_DOWN_RETRIES);
 
   /* ****************************** */

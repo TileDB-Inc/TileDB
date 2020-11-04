@@ -135,6 +135,8 @@
     TILEDB_LAYOUT_ENUM(GLOBAL_ORDER) = 2,
     /** Unordered layout */
     TILEDB_LAYOUT_ENUM(UNORDERED) = 3,
+    /** Hilbert layout */
+    TILEDB_LAYOUT_ENUM(HILBERT) = 4,
 #endif
 
 #ifdef TILEDB_FILTER_TYPE_ENUM
