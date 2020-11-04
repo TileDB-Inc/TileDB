@@ -12,6 +12,7 @@
 
 * Support for AWS S3 "AssumeRole" temporary credentials [#1882](https://github.com/TileDB-Inc/TileDB/pull/1882)
 * Added support for Hilbert order sorting for sparse arrays. [#1880](https://github.com/TileDB-Inc/TileDB/pull/1880)
+* Added support for an in-memory backend used with bootstrap option "--enable-memfs" [#1873](https://github.com/TileDB-Inc/TileDB/pull/1873)
 
 ## Improvements
 
@@ -388,8 +389,6 @@ TileDB 1.7.2 contains bug fixes and several internal optimizations.
 TileDB 1.7.1 contains build system and bug fixes, and one non-breaking API update.
 
 ## New features
-
-* Added support for an in-memory backend used when array URIs are prefixed with "mem://" [#1873](https://github.com/TileDB-Inc/TileDB/pull/1873)
 
 ## Improvements
 

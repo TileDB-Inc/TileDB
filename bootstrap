@@ -55,7 +55,7 @@ Configuration:
     --enable-s3                     enables the s3 storage backend
     --enable-azure                  enables the azure storage backend
     --enable-gcs                    enables the gcs storage backend
-    --enable-memfs                 enables the in-memory backend
+    --enable-memfs                  enables the in-memory backend
     --enable-serialization          enables query serialization support
     --enable-tools                  enables TileDB CLI tools (experimental)
     --enable-ccache                 enables use of ccache (if present)
