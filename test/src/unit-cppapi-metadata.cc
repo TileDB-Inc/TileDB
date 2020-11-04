@@ -228,8 +228,8 @@ TEST_CASE_METHOD(
   array.get_metadata("bb", &v_type, &v_num, &v_r);
   CHECK(v_type == TILEDB_FLOAT32);
   CHECK(v_num == 2);
-  CHECK(((const float_t*)v_r)[0] == 1.1f);
-  CHECK(((const float_t*)v_r)[1] == 1.2f);
+  CHECK(((const float*)v_r)[0] == 1.1f);
+  CHECK(((const float*)v_r)[1] == 1.2f);
 
   array.get_metadata("zero_val", &v_type, &v_num, &v_r);
   CHECK(v_type == TILEDB_FLOAT32);
@@ -248,8 +248,8 @@ TEST_CASE_METHOD(
   array.get_metadata_from_index(1, &key, &v_type, &v_num, &v_r);
   CHECK(v_type == TILEDB_FLOAT32);
   CHECK(v_num == 2);
-  CHECK(((const float_t*)v_r)[0] == 1.1f);
-  CHECK(((const float_t*)v_r)[1] == 1.2f);
+  CHECK(((const float*)v_r)[0] == 1.1f);
+  CHECK(((const float*)v_r)[1] == 1.2f);
   CHECK(key.size() == strlen("bb"));
   CHECK(!strncmp(key.data(), "bb", strlen("bb")));
 
@@ -352,8 +352,8 @@ TEST_CASE_METHOD(
   array.get_metadata("bb", &v_type, &v_num, &v_r);
   CHECK(v_type == TILEDB_FLOAT32);
   CHECK(v_num == 2);
-  CHECK(((const float_t*)v_r)[0] == 1.1f);
-  CHECK(((const float_t*)v_r)[1] == 1.2f);
+  CHECK(((const float*)v_r)[0] == 1.1f);
+  CHECK(((const float*)v_r)[1] == 1.2f);
 
   array.get_metadata("foo", &v_type, &v_num, &v_r);
   CHECK(v_r == nullptr);
@@ -365,8 +365,8 @@ TEST_CASE_METHOD(
   array.get_metadata_from_index(0, &key, &v_type, &v_num, &v_r);
   CHECK(v_type == TILEDB_FLOAT32);
   CHECK(v_num == 2);
-  CHECK(((const float_t*)v_r)[0] == 1.1f);
-  CHECK(((const float_t*)v_r)[1] == 1.2f);
+  CHECK(((const float*)v_r)[0] == 1.1f);
+  CHECK(((const float*)v_r)[1] == 1.2f);
   CHECK(key.size() == strlen("bb"));
   CHECK(!strncmp(key.data(), "bb", strlen("bb")));
 
@@ -417,8 +417,8 @@ TEST_CASE_METHOD(
   array.get_metadata("bb", &v_type, &v_num, &v_r);
   CHECK(v_type == TILEDB_FLOAT32);
   CHECK(v_num == 2);
-  CHECK(((const float_t*)v_r)[0] == 1.1f);
-  CHECK(((const float_t*)v_r)[1] == 1.2f);
+  CHECK(((const float*)v_r)[0] == 1.1f);
+  CHECK(((const float*)v_r)[1] == 1.2f);
 
   array.get_metadata("cccc", &v_type, &v_num, &v_r);
   CHECK(v_type == TILEDB_INT32);
@@ -432,8 +432,8 @@ TEST_CASE_METHOD(
   array.get_metadata_from_index(0, &key, &v_type, &v_num, &v_r);
   CHECK(v_type == TILEDB_FLOAT32);
   CHECK(v_num == 2);
-  CHECK(((const float_t*)v_r)[0] == 1.1f);
-  CHECK(((const float_t*)v_r)[1] == 1.2f);
+  CHECK(((const float*)v_r)[0] == 1.1f);
+  CHECK(((const float*)v_r)[1] == 1.2f);
   CHECK(key.size() == strlen("bb"));
   CHECK(!strncmp(key.data(), "bb", strlen("bb")));
 
@@ -632,8 +632,8 @@ TEST_CASE_METHOD(
   array.get_metadata("bb", &v_type, &v_num, &v_r);
   CHECK(v_type == TILEDB_FLOAT32);
   CHECK(v_num == 2);
-  CHECK(((const float_t*)v_r)[0] == 1.1f);
-  CHECK(((const float_t*)v_r)[1] == 1.2f);
+  CHECK(((const float*)v_r)[0] == 1.1f);
+  CHECK(((const float*)v_r)[1] == 1.2f);
 
   array.get_metadata("cccc", &v_type, &v_num, &v_r);
   CHECK(v_type == TILEDB_INT32);
@@ -647,8 +647,8 @@ TEST_CASE_METHOD(
   array.get_metadata_from_index(0, &key, &v_type, &v_num, &v_r);
   CHECK(v_type == TILEDB_FLOAT32);
   CHECK(v_num == 2);
-  CHECK(((const float_t*)v_r)[0] == 1.1f);
-  CHECK(((const float_t*)v_r)[1] == 1.2f);
+  CHECK(((const float*)v_r)[0] == 1.1f);
+  CHECK(((const float*)v_r)[1] == 1.2f);
   CHECK(key.size() == strlen("bb"));
   CHECK(!strncmp(key.data(), "bb", strlen("bb")));
 
