@@ -396,6 +396,36 @@ class Dimension {
   }
 
   /**
+   * Factory function for creating a new dimension with datatype T and
+   * without specifying a tile extent.
+   *
+   * **Example:**
+   * @code{.cpp}
+   * tiledb::Context ctx;
+   * // Create a dimension with inclusive domain [0,1000] and no tile extent.
+   * auto dim = Dimension::create<int32_t>(ctx, "d", {{0, 1000}});
+   * @endcode
+   *
+   * @tparam T int, char, etc...
+   * @param ctx The TileDB context.
+   * @param name The dimension name.
+   * @param domain The dimension domain. A pair [lower,upper] of inclusive
+   * bounds.
+   * @return A new `Dimension` object.
+   */
+  template <typename T>
+  static Dimension create(
+      const Context& ctx,
+      const std::string& name,
+      const std::array<T, 2>& domain) {
+    using DataT = impl::TypeHandler<T>;
+    static_assert(
+        DataT::tiledb_num == 1,
+        "Dimension types cannot be compound, use arithmetic type.");
+    return create_impl(ctx, name, DataT::tiledb_type, &domain, nullptr);
+  }
+
+  /**
    * Factory function for creating a new dimension (non typechecked).
    *
    * @param ctx The TileDB context.

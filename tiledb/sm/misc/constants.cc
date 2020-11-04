@@ -405,6 +405,9 @@ const std::string global_order_str = "global-order";
 /** The string representation for the unordered layout. */
 const std::string unordered_str = "unordered";
 
+/** The string representation for the Hilbert layout. */
+const std::string hilbert_str = "hilbert";
+
 /** The string representation of null. */
 const std::string null_str = "null";
 

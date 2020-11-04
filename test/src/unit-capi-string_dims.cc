@@ -1873,10 +1873,10 @@ TEST_CASE_METHOD(
   read_array_1d(
       ctx_, array, layout, "aa", "cc", &r_d_off, &r_d_val, &r_a, &status);
   CHECK(status == TILEDB_INCOMPLETE);
-  CHECK(r_d_val == "aa");
-  c_d_off = {0};
+  CHECK(r_d_val == "aabb");
+  c_d_off = {0, 2};
   CHECK(r_d_off == c_d_off);
-  c_a = {1};
+  c_a = {1, 2};
   CHECK(r_a == c_a);
 
   // Read [aa, cc] - INCOMPLETE, no result

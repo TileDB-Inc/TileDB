@@ -210,7 +210,11 @@ class Range {
 
   /** Returns true if the range start is the same as its end. */
   bool unary() const {
-    assert(!range_.empty());
+    // If the range is empty, then it corresponds to strings
+    // covering the whole domain (so it is not unary)
+    if (range_.empty())
+      return false;
+
     bool same_size =
         range_start_size_ == 0 || 2 * range_start_size_ == range_.size();
     return same_size &&

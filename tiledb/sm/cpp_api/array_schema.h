@@ -592,6 +592,8 @@ class ArraySchema : public Schema {
         return "COL-MAJOR";
       case TILEDB_UNORDERED:
         return "UNORDERED";
+      case TILEDB_HILBERT:
+        return "HILBERT";
     }
     return "";
   }
