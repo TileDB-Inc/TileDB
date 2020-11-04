@@ -48,6 +48,8 @@ if (${TILEDB_TESTS_ENABLE_ARROW})
   if (CMAKE_VERSION VERSION_LESS "3.12")
     message(FATAL_ERROR "CMake >= 3.12 is required for TileDB Arrow Tests. (found ${CMAKE_VERSION})")
   endif()
+  # Tell CMake to check the Python registry entry last on Windows
+  set(Python_FIND_REGISTRY "LAST")
   # Tell CMake to prefer Python from the PATH
   set(Python_FIND_STRATEGY "LOCATION")
   find_package(Python COMPONENTS Interpreter Development REQUIRED)
