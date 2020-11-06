@@ -844,19 +844,24 @@ Status VFS::is_file(const URI& uri, bool* is_file) const {
 }
 
 Status VFS::is_bucket(const URI& uri, bool* is_bucket) const {
+  std::cerr << "[DEBUG] VFS is_bucket: " << uri.to_string() << std::endl;
+
   if (!init_)
     return LOG_STATUS(
         Status::VFSError("Cannot check bucket; VFS not initialized"));
 
   if (uri.is_s3()) {
 #ifdef HAVE_S3
+    std::cerr << "[DEBUG] VFS is_bucket, is_s3 " << std::endl;
     RETURN_NOT_OK(s3_.is_bucket(uri, is_bucket));
     return Status::Ok();
 #else
+    std::cerr << "[DEBUG] VFS is_bucket, is_s3, 2 " << std::endl;
     *is_bucket = false;
     return LOG_STATUS(Status::VFSError("TileDB was built without S3 support"));
 #endif
   }
+  std::cerr << "[DEBUG] VFS is_bucket, 2 " << std::endl;
   if (uri.is_azure()) {
 #ifdef HAVE_AZURE
     RETURN_NOT_OK(azure_.is_container(uri, is_bucket));

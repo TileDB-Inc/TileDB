@@ -49,28 +49,40 @@ namespace sm {
 /* ********************************* */
 
 URI::URI() {
+  std::cerr << "[DEBUG] URI 1" << std::endl;
   uri_ = "";
 }
 
 URI::URI(char* path)
     : URI((path == nullptr) ? std::string("") : std::string(path)) {
+  std::cerr << "[DEBUG] URI 2" << std::endl;
 }
 
 URI::URI(const char* path)
     : URI((path == nullptr) ? std::string("") : std::string(path)) {
+  std::cerr << "[DEBUG] URI 3" << std::endl;
 }
 
 URI::URI(const std::string& path) {
-  if (path.empty())
+  std::cerr << "[DEBUG] URI 4" << std::endl;
+  if (path.empty()) {
+    std::cerr << "[DEBUG] URI 5" << std::endl;
     uri_ = "";
-  else if (URI::is_file(path))
+  } else if (URI::is_file(path)) {
+    std::cerr << "[DEBUG] URI 6" << std::endl;
     uri_ = VFS::abs_path(path);
-  else if (
+    std::cerr << "[DEBUG] URI 7" << std::endl;
+  } else if (
       URI::is_hdfs(path) || URI::is_s3(path) || URI::is_azure(path) ||
-      URI::is_gcs(path) || URI::is_tiledb(path))
+      URI::is_gcs(path) || URI::is_tiledb(path)) {
+    std::cerr << "[DEBUG] URI 8" << std::endl;
     uri_ = path;
-  else
+    std::cerr << "[DEBUG] URI 9" << std::endl;
+  } else {
     uri_ = "";
+  }
+
+  std::cerr << "[DEBUG] URI 10" << std::endl;
 }
 
 URI::~URI() = default;
@@ -80,6 +92,7 @@ URI::~URI() = default;
 /* ********************************* */
 
 URI URI::add_trailing_slash() const {
+  std::cerr << "[DEBUG] URI add_trailing_slash" << std::endl;
   if (uri_.empty()) {
     return URI("/");
   } else if (uri_.back() != '/') {
@@ -90,6 +103,7 @@ URI URI::add_trailing_slash() const {
 }
 
 URI URI::remove_trailing_slash() const {
+  std::cerr << "[DEBUG] URI remove_trailing_slash" << std::endl;
   if (uri_.back() == '/') {
     std::string uri_str = uri_;
     uri_str.pop_back();
@@ -100,55 +114,67 @@ URI URI::remove_trailing_slash() const {
 }
 
 const char* URI::c_str() const {
+  std::cerr << "[DEBUG] URI c_str, size: " << uri_.size() << std::endl;
   return uri_.c_str();
 }
 
 bool URI::is_invalid() const {
+  std::cerr << "[DEBUG] URI is_invalid, size: " << uri_.size() << std::endl;
   return uri_.empty();
 }
 
 bool URI::is_file(const std::string& path) {
+  std::cerr << "[DEBUG] URI is_file, size: " << path.size() << std::endl;
   return utils::parse::starts_with(path, "file:///") ||
          path.find("://") == std::string::npos;
 }
 
 bool URI::is_file() const {
+  std::cerr << "[DEBUG] URI is_file 2, size: " << uri_.size() << std::endl;
   return utils::parse::starts_with(uri_, "file:///");
 }
 
 bool URI::is_hdfs(const std::string& path) {
+  std::cerr << "[DEBUG] URI is_hdfs 1, size: " << path.size() << std::endl;
   return utils::parse::starts_with(path, "hdfs://");
 }
 
 bool URI::is_hdfs() const {
+  std::cerr << "[DEBUG] URI is_hdfs 2, size: " << uri_.size() << std::endl;
   return utils::parse::starts_with(uri_, "hdfs://");
 }
 
 bool URI::is_s3(const std::string& path) {
+  std::cerr << "[DEBUG] URI is_s3 1, size: " << path.size() << std::endl;
   return utils::parse::starts_with(path, "s3://") ||
          utils::parse::starts_with(path, "http://") ||
          utils::parse::starts_with(path, "https://");
 }
 
 bool URI::is_s3() const {
+  std::cerr << "[DEBUG] URI is_s3 2, size: " << uri_.size() << std::endl;
   return utils::parse::starts_with(uri_, "s3://") ||
          utils::parse::starts_with(uri_, "http://") ||
          utils::parse::starts_with(uri_, "https://");
 }
 
 bool URI::is_azure(const std::string& path) {
+  std::cerr << "[DEBUG] URI is_azure 1, size: " << path.size() << std::endl;
   return utils::parse::starts_with(path, "azure://");
 }
 
 bool URI::is_azure() const {
+  std::cerr << "[DEBUG] URI is_azure 2, size: " << uri_.size() << std::endl;
   return utils::parse::starts_with(uri_, "azure://");
 }
 
 bool URI::is_gcs(const std::string& path) {
+  std::cerr << "[DEBUG] URI is_gcs 1, size: " << path.size() << std::endl;
   return utils::parse::starts_with(path, "gcs://");
 }
 
 bool URI::is_gcs() const {
+  std::cerr << "[DEBUG] URI is_gcs 2, size: " << uri_.size() << std::endl;
   return utils::parse::starts_with(uri_, "gcs://");
 }
 
@@ -189,6 +215,7 @@ Status URI::get_rest_components(
 }
 
 URI URI::join_path(const std::string& path) const {
+  std::cerr << "[DEBUG] URI join_path, size: " << path.size() << std::endl;
   // Check for empty strings.
   if (path.empty()) {
     return URI(uri_);
@@ -211,10 +238,12 @@ URI URI::join_path(const std::string& path) const {
 }
 
 std::string URI::last_path_part() const {
+  std::cerr << "[DEBUG] URI last_path_part, size: " << uri_.size() << std::endl;
   return uri_.substr(uri_.find_last_of('/') + 1);
 }
 
 URI URI::parent() const {
+  std::cerr << "[DEBUG] URI parent, size: " << uri_.size() << std::endl;
   if (uri_.empty())
     return URI();
 
@@ -228,6 +257,7 @@ URI URI::parent() const {
 }
 
 std::string URI::to_path(const std::string& uri) {
+  std::cerr << "[DEBUG] URI to_path 1, size: " << uri.size() << std::endl;
   if (is_file(uri)) {
 #ifdef _WIN32
     return Win::path_from_uri(uri);
@@ -245,6 +275,7 @@ std::string URI::to_path(const std::string& uri) {
 }
 
 std::string URI::to_path() const {
+  std::cerr << "[DEBUG] URI to_path 2, size: " << uri_.size() << std::endl;
   return to_path(uri_);
 }
 

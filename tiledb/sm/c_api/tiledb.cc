@@ -4010,13 +4010,16 @@ int32_t tiledb_vfs_is_empty_bucket(
 
 int32_t tiledb_vfs_is_bucket(
     tiledb_ctx_t* ctx, tiledb_vfs_t* vfs, const char* uri, int32_t* is_bucket) {
+  std::cerr << "[DEBUG] tiledb_vfs_is_bucket 1" << std::endl;
   if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, vfs) == TILEDB_ERR)
     return TILEDB_ERR;
 
+  std::cerr << "[DEBUG] tiledb_vfs_is_bucket 2" << std::endl;
   bool exists;
   if (SAVE_ERROR_CATCH(
           ctx, vfs->vfs_->is_bucket(tiledb::sm::URI(uri), &exists)))
     return TILEDB_ERR;
+  std::cerr << "[DEBUG] tiledb_vfs_is_bucket 3" << std::endl;
 
   *is_bucket = (int32_t)exists;
 

@@ -444,18 +444,27 @@ Status S3::is_empty_bucket(const URI& bucket, bool* is_empty) const {
 }
 
 Status S3::is_bucket(const URI& uri, bool* const exists) const {
+  std::cerr << "[DEBUG] S3 is_bucket 1 " << std::endl;
   init_client();
+  std::cerr << "[DEBUG] S3 is_bucket 2 " << std::endl;
 
   if (!uri.is_s3()) {
+    std::cerr << "[DEBUG] S3 is_bucket 3 " << std::endl;
     return LOG_STATUS(Status::S3Error(
         std::string("URI is not an S3 URI: " + uri.to_string())));
   }
 
+  std::cerr << "[DEBUG] S3 is_bucket 4 " << std::endl;
   Aws::Http::URI aws_uri = uri.c_str();
+  std::cerr << "[DEBUG] S3 is_bucket 5 " << std::endl;
   Aws::S3::Model::HeadBucketRequest head_bucket_request;
+  std::cerr << "[DEBUG] S3 is_bucket 6 " << std::endl;
   head_bucket_request.SetBucket(aws_uri.GetAuthority());
+  std::cerr << "[DEBUG] S3 is_bucket 7 " << std::endl;
   auto head_bucket_outcome = client_->HeadBucket(head_bucket_request);
+  std::cerr << "[DEBUG] S3 is_bucket 8 " << std::endl;
   *exists = head_bucket_outcome.IsSuccess();
+  std::cerr << "[DEBUG] S3 is_bucket 9 " << std::endl;
 
   return Status::Ok();
 }
@@ -800,6 +809,7 @@ Status S3::write(const URI& uri, const void* buffer, uint64_t length) {
 /* ********************************* */
 
 Status S3::init_client() const {
+  std::cerr << "[DEBUG] S3 init_client 1 " << std::endl;
   assert(state_ == State::INITIALIZED);
 
   std::lock_guard<std::mutex> lck(client_init_mtx_);
@@ -807,9 +817,14 @@ Status S3::init_client() const {
   if (client_ != nullptr)
     return Status::Ok();
 
+  std::cerr << "[DEBUG] S3 init_client 2 " << std::endl;
+
   bool found;
   auto s3_endpoint_override = config_.get("vfs.s3.endpoint_override", &found);
   assert(found);
+
+  std::cerr << "[DEBUG] S3 init_client 3 " << s3_endpoint_override.size()
+            << std::endl;
 
   // ClientConfiguration should be lazily init'ed here in init_client to avoid
   // potential slowdowns for non s3 users as the ClientConfig now attempts to
@@ -820,64 +835,98 @@ Status S3::init_client() const {
   s3_tp_executor_ = std::make_shared<S3ThreadPoolExecutor>(vfs_thread_pool_);
   client_config_->executor = s3_tp_executor_;
   auto& client_config = *client_config_.get();
+  std::cerr << "[DEBUG] S3 init_client 4 " << std::endl;
   if (!region_.empty())
     client_config.region = region_.c_str();
+  std::cerr << "[DEBUG] S3 init_client 5 " << region_.size() << std::endl;
   if (!s3_endpoint_override.empty())
     client_config.endpointOverride = s3_endpoint_override.c_str();
+  std::cerr << "[DEBUG] S3 init_client 6 " << s3_endpoint_override.size()
+            << std::endl;
 
   auto proxy_host = config_.get("vfs.s3.proxy_host", &found);
   assert(found);
+  std::cerr << "[DEBUG] S3 init_client 7 " << proxy_host.size() << std::endl;
   uint32_t proxy_port = 0;
   RETURN_NOT_OK(
       config_.get<uint32_t>("vfs.s3.proxy_port", &proxy_port, &found));
+  std::cerr << "[DEBUG] S3 init_client 8 " << proxy_port << std::endl;
   assert(found);
   auto proxy_username = config_.get("vfs.s3.proxy_username", &found);
+  std::cerr << "[DEBUG] S3 init_client 9 " << proxy_username.size()
+            << std::endl;
   assert(found);
   auto proxy_password = config_.get("vfs.s3.proxy_password", &found);
+  std::cerr << "[DEBUG] S3 init_client 10 " << proxy_password.size()
+            << std::endl;
   assert(found);
   auto proxy_scheme = config_.get("vfs.s3.proxy_scheme", &found);
+  std::cerr << "[DEBUG] S3 init_client 11 " << proxy_scheme.size() << std::endl;
   assert(found);
   if (!proxy_host.empty()) {
+    std::cerr << "[DEBUG] S3 init_client 12 " << std::endl;
     client_config.proxyHost = proxy_host.c_str();
+    std::cerr << "[DEBUG] S3 init_client 13 " << std::endl;
     client_config.proxyPort = proxy_port;
+    std::cerr << "[DEBUG] S3 init_client 14 " << std::endl;
     client_config.proxyScheme = proxy_scheme == "https" ?
                                     Aws::Http::Scheme::HTTPS :
                                     Aws::Http::Scheme::HTTP;
+    std::cerr << "[DEBUG] S3 init_client 15 " << std::endl;
     client_config.proxyUserName = proxy_username.c_str();
+    std::cerr << "[DEBUG] S3 init_client 16 " << std::endl;
     client_config.proxyPassword = proxy_password.c_str();
+    std::cerr << "[DEBUG] S3 init_client 17 " << std::endl;
   }
 
+  std::cerr << "[DEBUG] S3 init_client 18 " << std::endl;
   auto s3_scheme = config_.get("vfs.s3.scheme", &found);
   assert(found);
+  std::cerr << "[DEBUG] S3 init_client 19 " << s3_scheme.size() << std::endl;
   int64_t connect_timeout_ms = 0;
   RETURN_NOT_OK(config_.get<int64_t>(
       "vfs.s3.connect_timeout_ms", &connect_timeout_ms, &found));
+  std::cerr << "[DEBUG] S3 init_client 20 " << connect_timeout_ms << std::endl;
   assert(found);
   int64_t request_timeout_ms = 0;
   RETURN_NOT_OK(config_.get<int64_t>(
       "vfs.s3.request_timeout_ms", &request_timeout_ms, &found));
+  std::cerr << "[DEBUG] S3 init_client 20.5 " << request_timeout_ms
+            << std::endl;
   assert(found);
   auto ca_file = config_.get("vfs.s3.ca_file", &found);
+  std::cerr << "[DEBUG] S3 init_client 21 " << ca_file.size() << std::endl;
   assert(found);
   auto ca_path = config_.get("vfs.s3.ca_path", &found);
+  std::cerr << "[DEBUG] S3 init_client 22 " << ca_path.size() << std::endl;
   assert(found);
   bool verify_ssl = false;
   RETURN_NOT_OK(config_.get<bool>("vfs.s3.verify_ssl", &verify_ssl, &found));
+  std::cerr << "[DEBUG] S3 init_client 23 " << verify_ssl << std::endl;
   assert(found);
   auto aws_access_key_id = config_.get("vfs.s3.aws_access_key_id", &found);
+  std::cerr << "[DEBUG] S3 init_client 24 " << aws_access_key_id.size()
+            << std::endl;
   assert(found);
   auto aws_secret_access_key =
       config_.get("vfs.s3.aws_secret_access_key", &found);
+  std::cerr << "[DEBUG] S3 init_client 25 " << aws_secret_access_key.size()
+            << std::endl;
   assert(found);
   auto aws_session_token = config_.get("vfs.s3.aws_session_token", &found);
+  std::cerr << "[DEBUG] S3 init_client 26 " << aws_session_token.size()
+            << std::endl;
   assert(found);
   int64_t connect_max_tries = 0;
   RETURN_NOT_OK(config_.get<int64_t>(
       "vfs.s3.connect_max_tries", &connect_max_tries, &found));
+  std::cerr << "[DEBUG] S3 init_client 27 " << connect_max_tries << std::endl;
   assert(found);
   int64_t connect_scale_factor = 0;
   RETURN_NOT_OK(config_.get<int64_t>(
       "vfs.s3.connect_scale_factor", &connect_scale_factor, &found));
+  std::cerr << "[DEBUG] S3 init_client 28 " << connect_scale_factor
+            << std::endl;
   assert(found);
 
   client_config.scheme = (s3_scheme == "http") ? Aws::Http::Scheme::HTTP :
@@ -887,30 +936,42 @@ Status S3::init_client() const {
   client_config.caFile = ca_file.c_str();
   client_config.caPath = ca_path.c_str();
   client_config.verifySSL = verify_ssl;
+  std::cerr << "[DEBUG] S3 init_client 29 " << std::endl;
 
   client_config.retryStrategy = Aws::MakeShared<S3RetryStrategy>(
       constants::s3_allocation_tag.c_str(),
       connect_max_tries,
       connect_scale_factor);
 
+  std::cerr << "[DEBUG] S3 init_client 30 " << std::endl;
+
 #ifdef __linux__
   // If the user has not set a s3 ca file or ca path then let's attempt to set
   // the cert file if we've autodetected it
   if (ca_file.empty() && ca_path.empty()) {
+    std::cerr << "[DEBUG] S3 init_client 31 " << std::endl;
     const std::string cert_file =
         global_state::GlobalState::GetGlobalState().cert_file();
+    std::cerr << "[DEBUG] S3 init_client 32 " << cert_file << std::endl;
     if (!cert_file.empty()) {
+      std::cerr << "[DEBUG] S3 init_client 33 " << std::endl;
       client_config.caFile = cert_file.c_str();
     }
   }
 #endif
 
+  std::cerr << "[DEBUG] S3 init_client 34 " << std::endl;
+
   // If the user set config variables for AWS keys use them.
   if (!aws_access_key_id.empty() && !aws_secret_access_key.empty()) {
+    std::cerr << "[DEBUG] S3 init_client 35 " << std::endl;
     Aws::String access_key_id(aws_access_key_id.c_str());
     Aws::String secret_access_key(aws_secret_access_key.c_str());
+    std::cerr << "[DEBUG] S3 init_client 36 " << std::endl;
     client_creds_ = std::unique_ptr<Aws::Auth::AWSCredentials>(
         new Aws::Auth::AWSCredentials(access_key_id, secret_access_key));
+
+    std::cerr << "[DEBUG] S3 init_client 37 " << std::endl;
 
     // If the user has set a session token (for AWS Security Token Service)
     // then use it:
@@ -919,18 +980,25 @@ Status S3::init_client() const {
     //     -
     //     https://docs.aws.amazon.com/cli/latest/reference/sts/get-session-token.html
     if (!aws_session_token.empty()) {
+      std::cerr << "[DEBUG] S3 init_client 38 " << std::endl;
       Aws::String session_token(aws_session_token.c_str());
+      std::cerr << "[DEBUG] S3 init_client 39 " << std::endl;
       client_creds_->SetSessionToken(session_token);
+      std::cerr << "[DEBUG] S3 init_client 40 " << std::endl;
     }
   }
 
+  std::cerr << "[DEBUG] S3 init_client 41 " << std::endl;
+
   if (client_creds_ == nullptr) {
+    std::cerr << "[DEBUG] S3 init_client 42 " << std::endl;
     client_ = Aws::MakeShared<Aws::S3::S3Client>(
         constants::s3_allocation_tag.c_str(),
         *client_config_,
         Aws::Client::AWSAuthV4Signer::PayloadSigningPolicy::Never,
         use_virtual_addressing_);
   } else {
+    std::cerr << "[DEBUG] S3 init_client 43 " << std::endl;
     client_ = Aws::MakeShared<Aws::S3::S3Client>(
         constants::s3_allocation_tag.c_str(),
         *client_creds_,
@@ -938,6 +1006,8 @@ Status S3::init_client() const {
         Aws::Client::AWSAuthV4Signer::PayloadSigningPolicy::Never,
         use_virtual_addressing_);
   }
+
+  std::cerr << "[DEBUG] S3 init_client 44 " << std::endl;
 
   return Status::Ok();
 }
