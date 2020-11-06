@@ -85,6 +85,9 @@ VFS::VFS()
 #ifdef HAVE_S3
   supported_fs_.insert(Filesystem::S3);
 #endif
+#ifdef HAVE_MEMFS
+  supported_fs_.insert(Filesystem::MEMFS);
+#endif
 }
 
 /* ********************************* */
@@ -110,6 +113,8 @@ std::string VFS::abs_path(const std::string& path) {
   if (URI::is_azure(path))
     return path_copy;
   if (URI::is_gcs(path))
+    return path_copy;
+  if (URI::is_memfs(path))
     return path_copy;
   // Certainly starts with "<resource>://" other than "file://"
   return path_copy;
@@ -170,6 +175,9 @@ Status VFS::create_dir(const URI& uri) const {
 #else
     return LOG_STATUS(Status::VFSError("TileDB was built without GCS support"));
 #endif
+  }
+  if (uri.is_memfs()) {
+    return memfs_.create_dir(uri.to_path());
   }
   return LOG_STATUS(Status::VFSError(
       std::string("Unsupported URI scheme: ") + uri.to_string()));
@@ -254,6 +262,9 @@ Status VFS::touch(const URI& uri) const {
 #else
     return LOG_STATUS(Status::VFSError("TileDB was built without GCS support"));
 #endif
+  }
+  if (uri.is_memfs()) {
+    return memfs_.touch(uri.to_path());
   }
   return LOG_STATUS(Status::VFSError(
       std::string("Unsupported URI scheme: ") + uri.to_string()));
@@ -447,6 +458,8 @@ Status VFS::remove_dir(const URI& uri) const {
 #else
     return LOG_STATUS(Status::VFSError("TileDB was built without GCS support"));
 #endif
+  } else if (uri.is_memfs()) {
+    return memfs_.remove(uri.to_path(), true);
   } else {
     return LOG_STATUS(
         Status::VFSError("Unsupported URI scheme: " + uri.to_string()));
@@ -494,6 +507,9 @@ Status VFS::remove_file(const URI& uri) const {
 #else
     return LOG_STATUS(Status::VFSError("TileDB was built without GCS support"));
 #endif
+  }
+  if (uri.is_memfs()) {
+    return memfs_.remove(uri.to_path(), false);
   }
   return LOG_STATUS(
       Status::VFSError("Unsupported URI scheme: " + uri.to_string()));
@@ -738,6 +754,9 @@ Status VFS::file_size(const URI& uri, uint64_t* size) const {
     return LOG_STATUS(Status::VFSError("TileDB was built without GCS support"));
 #endif
   }
+  if (uri.is_memfs()) {
+    return memfs_.file_size(uri.to_path(), size);
+  }
   return LOG_STATUS(
       Status::VFSError("Unsupported URI scheme: " + uri.to_string()));
 }
@@ -788,6 +807,10 @@ Status VFS::is_dir(const URI& uri, bool* is_dir) const {
     *is_dir = false;
     return LOG_STATUS(Status::VFSError("TileDB was built without GCS support"));
 #endif
+  }
+  if (uri.is_memfs()) {
+    *is_dir = memfs_.is_dir(uri.to_path());
+    return Status::Ok();
   }
   return LOG_STATUS(
       Status::VFSError("Unsupported URI scheme: " + uri.to_string()));
@@ -840,6 +863,10 @@ Status VFS::is_file(const URI& uri, bool* is_file) const {
     *is_file = false;
     return LOG_STATUS(Status::VFSError("TileDB was built without GCS support"));
 #endif
+  }
+  if (uri.is_memfs()) {
+    *is_file = memfs_.is_file(uri.to_path());
+    return Status::Ok();
   }
   return LOG_STATUS(
       Status::VFSError("Unsupported URI scheme: " + uri.to_string()));
@@ -998,6 +1025,12 @@ Status VFS::ls(const URI& parent, std::vector<URI>* uris) const {
 #else
     return LOG_STATUS(Status::VFSError("TileDB was built without GCS support"));
 #endif
+  } else if (parent.is_memfs()) {
+    RETURN_NOT_OK(memfs_.ls(parent.to_path(), &paths));
+    // URI class expects paths to be prepended
+    for (std::string& path : paths) {
+      path.insert(0, "mem://");
+    }
   } else {
     return LOG_STATUS(
         Status::VFSError("Unsupported URI scheme: " + parent.to_string()));
@@ -1085,6 +1118,15 @@ Status VFS::move_file(const URI& old_uri, const URI& new_uri) {
         "Moving files across filesystems is not supported yet"));
   }
 
+  // In-memory filesystem
+  if (old_uri.is_memfs()) {
+    if (new_uri.is_memfs()) {
+      return memfs_.move(old_uri.to_path(), new_uri.to_path());
+    }
+    return LOG_STATUS(Status::VFSError(
+        "Moving files across filesystems is not supported yet"));
+  }
+
   // Unsupported filesystem
   return LOG_STATUS(Status::VFSError(
       "Unsupported URI schemes: " + old_uri.to_string() + ", " +
@@ -1157,6 +1199,15 @@ Status VFS::move_dir(const URI& old_uri, const URI& new_uri) {
       return LOG_STATUS(
           Status::VFSError("TileDB was built without GCS support"));
 #endif
+    return LOG_STATUS(Status::VFSError(
+        "Moving files across filesystems is not supported yet"));
+  }
+
+  // In-memory filesystem
+  if (old_uri.is_memfs()) {
+    if (new_uri.is_memfs()) {
+      return memfs_.move(old_uri.to_path(), new_uri.to_path());
+    }
     return LOG_STATUS(Status::VFSError(
         "Moving files across filesystems is not supported yet"));
   }
@@ -1479,6 +1530,9 @@ Status VFS::read_impl(
     return LOG_STATUS(Status::VFSError("TileDB was built without GCS support"));
 #endif
   }
+  if (uri.is_memfs()) {
+    return memfs_.read(uri.to_path(), offset, buffer, nbytes);
+  }
 
   return LOG_STATUS(
       Status::VFSError("Unsupported URI schemes: " + uri.to_string()));
@@ -1710,6 +1764,9 @@ Status VFS::sync(const URI& uri) {
     return LOG_STATUS(Status::VFSError("TileDB was built without GCS support"));
 #endif
   }
+  if (uri.is_memfs()) {
+    return Status::Ok();
+  }
   return LOG_STATUS(
       Status::VFSError("Unsupported URI scheme: " + uri.to_string()));
 }
@@ -1812,6 +1869,9 @@ Status VFS::close_file(const URI& uri) {
     return LOG_STATUS(Status::VFSError("TileDB was built without GCS support"));
 #endif
   }
+  if (uri.is_memfs()) {
+    return Status::Ok();
+  }
   return LOG_STATUS(
       Status::VFSError("Unsupported URI schemes: " + uri.to_string()));
 }
@@ -1859,6 +1919,9 @@ Status VFS::write(const URI& uri, const void* buffer, uint64_t buffer_size) {
 #else
     return LOG_STATUS(Status::VFSError("TileDB was built without GCS support"));
 #endif
+  }
+  if (uri.is_memfs()) {
+    return memfs_.write(uri.to_path(), buffer, buffer_size);
   }
   return LOG_STATUS(
       Status::VFSError("Unsupported URI schemes: " + uri.to_string()));

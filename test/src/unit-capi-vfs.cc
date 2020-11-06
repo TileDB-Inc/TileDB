@@ -63,6 +63,7 @@ struct VFSFx {
                                     tiledb::sm::Posix::current_dir() +
                                     "/tiledb_test/";
 #endif
+  const std::string MEMFS_TEMP_DIR = std::string("mem://tiledb_test/");
 
   // TileDB context and vfs
   tiledb_ctx_t* ctx_;
@@ -72,6 +73,7 @@ struct VFSFx {
   bool supports_s3_;
   bool supports_hdfs_;
   bool supports_azure_;
+  bool supports_memfs_;
 
   // Functions
   VFSFx();
@@ -109,6 +111,7 @@ void VFSFx::set_supported_fs() {
   REQUIRE(tiledb_ctx_alloc(nullptr, &ctx) == TILEDB_OK);
 
   get_supported_fs(&supports_s3_, &supports_hdfs_, &supports_azure_);
+  get_supported_memfs(&supports_memfs_);
 
   tiledb_ctx_free(&ctx);
 }
@@ -311,6 +314,9 @@ void VFSFx::check_vfs(const std::string& path) {
   REQUIRE(is_file);
   rc = tiledb_vfs_remove_file(ctx_, vfs_, foo_file.c_str());
   REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_vfs_is_file(ctx_, vfs_, foo_file.c_str(), &is_file);
+  REQUIRE(rc == TILEDB_OK);
+  REQUIRE(!is_file);
 
   // Check write and append
   check_write(path);
@@ -324,7 +330,10 @@ void VFSFx::check_vfs(const std::string& path) {
 
 #ifndef _WIN32
   // Copy
-  check_copy(path);
+  if (path != MEMFS_TEMP_DIR) {
+    // copy not yet supported for memfs
+    check_copy(path);
+  }
 #endif
 
   // Ls
@@ -906,8 +915,12 @@ TEST_CASE_METHOD(VFSFx, "C API: Test virtual filesystem", "[capi], [vfs]") {
     check_vfs(S3_TEMP_DIR);
   else if (supports_hdfs_)
     check_vfs(HDFS_TEMP_DIR);
-  else
+  else {
     check_vfs(FILE_TEMP_DIR);
+    if (supports_memfs_) {
+      check_vfs(MEMFS_TEMP_DIR);
+    }
+  }
 }
 
 TEST_CASE_METHOD(
@@ -970,5 +983,8 @@ TEST_CASE_METHOD(VFSFx, "C API: Test VFS parallel I/O", "[capi], [vfs]") {
     check_vfs(HDFS_TEMP_DIR);
   } else {
     check_vfs(FILE_TEMP_DIR);
+    if (supports_memfs_) {
+      check_vfs(MEMFS_TEMP_DIR);
+    }
   }
 }

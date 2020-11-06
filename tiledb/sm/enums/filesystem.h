@@ -57,6 +57,8 @@ inline const std::string& filesystem_str(Filesystem filesystem_type) {
       return constants::filesystem_type_azure_str;
     case Filesystem::GCS:
       return constants::filesystem_type_gcs_str;
+    case Filesystem::MEMFS:
+      return constants::filesystem_type_mem_str;
     default:
       return constants::empty_str;
   }
@@ -73,6 +75,8 @@ inline Status filesystem_enum(
     *filesystem_type = Filesystem::AZURE;
   else if (filesystem_type_str == constants::filesystem_type_gcs_str)
     *filesystem_type = Filesystem::GCS;
+  else if (filesystem_type_str == constants::filesystem_type_mem_str)
+    *filesystem_type = Filesystem::MEMFS;
   else
     return Status::Error("Invalid Filesystem " + filesystem_type_str);
 

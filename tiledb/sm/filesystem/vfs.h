@@ -45,6 +45,7 @@
 #include "tiledb/sm/cache/lru_cache.h"
 #include "tiledb/sm/config/config.h"
 #include "tiledb/sm/filesystem/filelock.h"
+#include "tiledb/sm/filesystem/mem_filesystem.h"
 #include "tiledb/sm/misc/cancelable_tasks.h"
 #include "tiledb/sm/misc/macros.h"
 #include "tiledb/sm/misc/uri.h"
@@ -622,6 +623,9 @@ class VFS {
 #ifdef HAVE_HDFS
   std::unique_ptr<hdfs::HDFS> hdfs_;
 #endif
+
+  /** The in-memory filesystem which is always supported */
+  MemFilesystem memfs_;
 
   /** Config. */
   Config config_;

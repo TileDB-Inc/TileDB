@@ -1011,7 +1011,7 @@ Status Azure::write_blocks(
 
   if (!last_block && length % block_list_block_size_ != 0) {
     return LOG_STATUS(
-        Status::S3Error("Length not evenly divisible by block size"));
+        Status::AzureError("Length not evenly divisible by block size"));
   }
 
   // Protect 'block_list_upload_states_' from concurrent read and writes.
