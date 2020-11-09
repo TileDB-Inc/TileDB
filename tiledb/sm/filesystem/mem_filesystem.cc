@@ -30,11 +30,14 @@
  * This file implements the in-memory filesystem class
  */
 
+#include <mutex>
 #include <sstream>
 #include <unordered_set>
 
 #include "tiledb/common/logger.h"
 #include "tiledb/sm/filesystem/mem_filesystem.h"
+#include "tiledb/sm/misc/macros.h"
+#include "tiledb/sm/misc/utils.h"
 
 using namespace tiledb::common;
 
@@ -43,112 +46,146 @@ namespace sm {
 
 class MemFilesystem::FSNode {
  public:
-  FSNode(const std::string& name, FSNode* parent)
-      : name_(name)
-      , parent_(parent){};
+  /* ********************************* */
+  /*     CONSTRUCTORS & DESTRUCTORS    */
+  /* ********************************* */
 
+  /** Default constructor. */
+  FSNode() = default;
+
+  /** Copy constructor. */
+  DISABLE_COPY(FSNode);
+
+  /** Move constructor. */
+  DISABLE_MOVE(FSNode);
+
+  /** Destructor. */
   virtual ~FSNode() = default;
 
-  /* Indicates if it's a file or a directory */
+  /* ********************************* */
+  /*             OPERATORS             */
+  /* ********************************* */
+
+  /** Copy-assignment. */
+  DISABLE_COPY_ASSIGN(FSNode);
+
+  /** Move-assignment. */
+  DISABLE_MOVE_ASSIGN(FSNode);
+
+  /* ********************************* */
+  /*                API                */
+  /* ********************************* */
+
+  /** Indicates if it's a file or a directory */
   virtual bool is_dir() const = 0;
 
-  /* Lists the contents of a node */
-  virtual std::vector<std::string> ls(const std::string& full_path) const = 0;
+  /** Lists the contents of a node */
+  virtual Status ls(
+      const std::string& full_path,
+      std::vector<std::string>* children) const = 0;
 
-  /* Indicates if a given node is a child of this node */
+  /** Indicates if a given node is a child of this node */
   virtual bool has_child(const std::string& child) const = 0;
 
-  /* Gets the size in bytes of this node */
+  /** Gets the size in bytes of this node */
   virtual Status get_size(uint64_t* size) const = 0;
 
-  /* Outputs the contents of the node to a buffer */
+  /** Outputs the contents of the node to a buffer */
   virtual Status read(
       const uint64_t offset, void* buffer, const uint64_t nbytes) const = 0;
 
-  /* Outputs the contents of a buffer to this node */
+  /** Outputs the contents of a buffer to this node */
   virtual Status append(const void* data, const uint64_t nbytes) = 0;
 
-  /* A hashtable of all the next-level subnodes of this node*/
+  /* ********************************* */
+  /*         PUBLIC ATTRIBUTES         */
+  /* ********************************* */
+
+  /** Protects `children_`. */
+  mutable std::mutex mutex_;
+
+  /** A hashtable of all the next-level subnodes of this node*/
   std::unordered_map<std::string, std::unique_ptr<FSNode>> children_;
-
-  /* The name of this node */
-  std::string name_;
-
-  /* A pointer to the parent node of this node */
-  FSNode* parent_;
 };
 
 class MemFilesystem::File : public MemFilesystem::FSNode {
  public:
-  /** Constructor. */
-  File(const std::string& name, FSNode* parent)
-      : FSNode(name, parent)
+  /* ********************************* */
+  /*     CONSTRUCTORS & DESTRUCTORS    */
+  /* ********************************* */
+
+  /** Default constructor. */
+  File()
+      : FSNode()
       , data_(nullptr)
-      , size_(0){};
+      , size_(0) {
+  }
+
+  /** Copy constructor. */
+  DISABLE_COPY(File);
+
+  /** Move constructor. */
+  DISABLE_MOVE(File);
 
   /** Destructor. */
   ~File() {
     if (data_) {
       free(data_);
     }
-  };
+  }
+
+  /* ********************************* */
+  /*             OPERATORS             */
+  /* ********************************* */
+
+  /** Copy-assignment. */
+  DISABLE_COPY_ASSIGN(File);
+
+  /** Move-assignment. */
+  DISABLE_MOVE_ASSIGN(File);
+
+  /* ********************************* */
+  /*                 API               */
+  /* ********************************* */
 
   bool is_dir() const override {
+    assert(!mutex_.try_lock());
     return false;
   }
 
-  /* Returns the full path to this file */
-  std::vector<std::string> ls(const std::string& full_path) const override {
-    return {full_path + name_};
+  /** Returns the full path to this file */
+  Status ls(
+      const std::string& full_path,
+      std::vector<std::string>* const children) const override {
+    assert(!mutex_.try_lock());
+    assert(children);
+
+    (void)full_path;
+    (void)children;
+
+    return Status::MemFSError(
+        std::string("Cannot get children, the path is a file"));
   }
 
-  bool has_child(const std::string&) const override {
+  bool has_child(const std::string& child) const override {
+    assert(!mutex_.try_lock());
+
+    (void)child;
     return false;
   }
 
-  Status get_size(uint64_t* size) const override {
+  Status get_size(uint64_t* const size) const override {
+    assert(!mutex_.try_lock());
+    assert(size);
+
     *size = size_;
     return Status::Ok();
   }
 
-  /* Writes nbytes of data in the end of this file */
-  Status append(const void* data, const uint64_t nbytes) override {
-    if ((data == nullptr) || nbytes == 0) {
-      return LOG_STATUS(Status::MemFSError(std::string(
-          "Wrong input buffer or size when writing to file: " + name_)));
-    }
-
-    /* if the file was empty */
-    if (data_ == nullptr) {
-      data_ = malloc(nbytes);
-      if (data_ == nullptr) {
-        return LOG_STATUS(Status::MemFSError(
-            std::string("Out of memory, cannot write to file: " + name_)));
-      }
-      memcpy(data_, data, nbytes);
-      size_ = nbytes;
-    } else {
-      /* if the file already had some data */
-      void* new_data;
-      new_data = realloc(data_, size_ + nbytes);
-
-      if (new_data == nullptr) {
-        return LOG_STATUS(Status::MemFSError(std::string(
-            "Out of memory, cannot append new data to file: " + name_ +
-            "with size " + "size_")));
-      }
-
-      memcpy((char*)new_data + size_, data, nbytes);
-      data_ = new_data;
-      size_ += nbytes;
-    }
-
-    return Status::Ok();
-  }
-
-  /* Outputs in a buffer nbytes of this file starting at offset */
+  /** Outputs in a buffer nbytes of this file starting at offset */
   Status read(const uint64_t offset, void* buffer, const uint64_t nbytes)
       const override {
+    assert(!mutex_.try_lock());
     assert(buffer);
 
     if (offset + nbytes > size_)
@@ -159,91 +196,166 @@ class MemFilesystem::File : public MemFilesystem::FSNode {
     return Status::Ok();
   }
 
+  /** Writes nbytes of data in the end of this file */
+  Status append(const void* const data, const uint64_t nbytes) override {
+    assert(!mutex_.try_lock());
+    assert(data);
+
+    if ((data == nullptr) || nbytes == 0) {
+      return LOG_STATUS(Status::MemFSError(
+          std::string("Wrong input buffer or size when writing to file")));
+    }
+
+    if (data_ == nullptr) {
+      data_ = malloc(nbytes);
+      if (data_ == nullptr) {
+        return LOG_STATUS(Status::MemFSError(
+            std::string("Out of memory, cannot write to file")));
+      }
+      memcpy(data_, data, nbytes);
+      size_ = nbytes;
+    } else {
+      void* new_data;
+      new_data = realloc(data_, size_ + nbytes);
+
+      if (new_data == nullptr) {
+        return LOG_STATUS(Status::MemFSError(
+            "Out of memory, cannot append new data to file"));
+      }
+
+      memcpy((char*)new_data + size_, data, nbytes);
+      data_ = new_data;
+      size_ += nbytes;
+    }
+
+    return Status::Ok();
+  }
+
  private:
-  /* the data stored in this file */
+  /* ********************************* */
+  /*         PRIVATE ATTRIBUTES         */
+  /* ********************************* */
+
+  /** the data stored in this file */
   void* data_;
-  /* the size in bytes of the data in this file */
+
+  /** the size in bytes of the data in this file */
   uint64_t size_;
 };
 
 class MemFilesystem::Directory : public MemFilesystem::FSNode {
  public:
-  Directory(const std::string& name, FSNode* parent)
-      : FSNode(name, parent){};
+  /* ********************************* */
+  /*     CONSTRUCTORS & DESTRUCTORS    */
+  /* ********************************* */
 
-  ~Directory(){};
+  Directory()
+      : FSNode() {
+  }
+
+  /** Copy constructor. */
+  DISABLE_COPY(Directory);
+
+  /** Move constructor. */
+  DISABLE_MOVE(Directory);
+
+  /** Destructor. */
+  ~Directory() = default;
+
+  /* ********************************* */
+  /*             OPERATORS             */
+  /* ********************************* */
+
+  /** Copy-assignment. */
+  DISABLE_COPY_ASSIGN(Directory);
+
+  /** Move-assignment. */
+  DISABLE_MOVE_ASSIGN(Directory);
+
+  /* ********************************* */
+  /*                 API               */
+  /* ********************************* */
 
   bool is_dir() const override {
+    assert(!mutex_.try_lock());
     return true;
   }
 
-  std::vector<std::string> ls(const std::string& full_path) const override {
+  Status ls(
+      const std::string& full_path,
+      std::vector<std::string>* const children) const override {
+    assert(!mutex_.try_lock());
+
     std::vector<std::string> names;
+    names.reserve(children_.size());
     for (const auto& child : children_) {
       names.emplace_back(full_path + child.first);
     }
 
     sort(names.begin(), names.end());
-    return names;
+    *children = names;
+
+    return Status::Ok();
   }
 
   bool has_child(const std::string& child) const override {
+    assert(!mutex_.try_lock());
+
     return children_.count(child) != 0;
   }
 
-  Status get_size(uint64_t*) const override {
-    /* we don't store the size of directories */
+  Status get_size(uint64_t* const size) const override {
+    assert(!mutex_.try_lock());
+    assert(size);
+
+    (void)size;
     return Status::MemFSError(
         std::string("Cannot get size, the path is a directory"));
   }
 
-  Status read(const uint64_t, void*, const uint64_t) const override {
-    /* we can't read the contents of directories */
+  Status read(const uint64_t offset, void* buffer, const uint64_t nbytes)
+      const override {
+    assert(!mutex_.try_lock());
+    assert(buffer);
+
+    (void)offset;
+    (void)buffer;
+    (void)nbytes;
     return Status::MemFSError(
         std::string("Cannot read contents, the path is a directory"));
   }
 
-  Status append(const void*, const uint64_t) override {
-    /* we can't write in a directory */
+  Status append(const void* const data, const uint64_t nbytes) override {
+    assert(!mutex_.try_lock());
+    assert(data);
+
+    (void)data;
+    (void)nbytes;
     return Status::MemFSError(
         std::string("Cannot append contents, the path is a directory"));
   }
 };
 
 MemFilesystem::MemFilesystem()
-    : root_(std::unique_ptr<Directory>(new Directory("", nullptr))) {
+    : root_(std::unique_ptr<Directory>(new Directory())) {
   assert(root_);
-};
+}
 
-MemFilesystem::~MemFilesystem(){};
+MemFilesystem::~MemFilesystem() {
+}
 
 Status MemFilesystem::create_dir(const std::string& path) const {
-  std::unique_lock<std::mutex> fs_lock(memfilesystem_mutex_);
-  return create_dir_unsafe(path);
+  return create_dir_internal(path);
 }
 
-Status MemFilesystem::create_dir_unsafe(const std::string& path) const {
-  std::vector<std::string> tokens = tokenize(path);
-  FSNode* cur = root_.get();
-  for (auto& token : tokens) {
-    if (!cur->has_child(token)) {
-      cur->children_[token] =
-          std::unique_ptr<Directory>(new Directory(token, cur));
-    } else if (!cur->is_dir()) {
-      return LOG_STATUS(Status::MemFSError(std::string(
-          "Cannot create directory, a file with that name exists already: " +
-          path)));
-    }
-    cur = cur->children_[token].get();
-  }
+Status MemFilesystem::file_size(
+    const std::string& path, uint64_t* const size) const {
+  assert(size);
 
-  return Status::Ok();
-}
+  FSNode* cur;
+  std::unique_lock<std::mutex> cur_lock;
+  RETURN_NOT_OK(lookup_node(path, &cur, &cur_lock));
 
-Status MemFilesystem::file_size(const std::string& path, uint64_t* size) const {
-  std::unique_lock<std::mutex> fs_lock(memfilesystem_mutex_);
-
-  FSNode* cur = lookup_node(path);
   if (cur == nullptr) {
     return LOG_STATUS(
         Status::MemFSError(std::string("Cannot get file size of :" + path)));
@@ -253,10 +365,9 @@ Status MemFilesystem::file_size(const std::string& path, uint64_t* size) const {
 }
 
 bool MemFilesystem::is_dir(const std::string& path) const {
-  std::unique_lock<std::mutex> fs_lock(memfilesystem_mutex_);
-
-  FSNode* cur = lookup_node(path);
-  if (cur == nullptr) {
+  FSNode* cur;
+  std::unique_lock<std::mutex> cur_lock;
+  if (!lookup_node(path, &cur, &cur_lock).ok() || cur == nullptr) {
     return false;
   }
 
@@ -264,10 +375,9 @@ bool MemFilesystem::is_dir(const std::string& path) const {
 }
 
 bool MemFilesystem::is_file(const std::string& path) const {
-  std::unique_lock<std::mutex> fs_lock(memfilesystem_mutex_);
-
-  FSNode* cur = lookup_node(path);
-  if (cur == nullptr) {
+  FSNode* cur;
+  std::unique_lock<std::mutex> cur_lock;
+  if (!lookup_node(path, &cur, &cur_lock).ok() || cur == nullptr) {
     return false;
   }
 
@@ -275,63 +385,81 @@ bool MemFilesystem::is_file(const std::string& path) const {
 }
 
 Status MemFilesystem::ls(
-    const std::string& path, std::vector<std::string>* paths) const {
+    const std::string& path, std::vector<std::string>* const paths) const {
   assert(paths);
-  if (root_ == nullptr) {
-    return LOG_STATUS(Status::MemFSError(std::string(
-        "ls not possible, in-memory filesystem is not initialized")));
-  }
 
   std::vector<std::string> tokens = tokenize(path);
 
-  std::unique_lock<std::mutex> fs_lock(memfilesystem_mutex_);
-
   FSNode* cur = root_.get();
+  std::unique_lock<std::mutex> cur_lock(cur->mutex_);
   std::string dir;
   for (auto& token : tokens) {
+    assert(cur_lock.owns_lock());
+    assert(cur_lock.mutex() == &cur->mutex_);
+
     dir = dir + token + "/";
     cur = cur->children_[token].get();
+    cur_lock = std::unique_lock<std::mutex>(cur->mutex_);
   }
 
-  *paths = cur->ls(dir);
+  assert(cur_lock.owns_lock());
+  assert(cur_lock.mutex() == &cur->mutex_);
+  RETURN_NOT_OK(cur->ls(dir, paths));
+
   return Status::Ok();
 }
 
 Status MemFilesystem::move(
     const std::string& old_path, const std::string& new_path) const {
-  std::unique_lock<std::mutex> fs_lock(memfilesystem_mutex_);
-
-  FSNode* old_node = lookup_node(old_path);
-  if (old_node == nullptr) {
-    return LOG_STATUS(Status::MemFSError(
-        std::string("Move failed, file not found: " + old_path)));
-  }
-
-  FSNode* old_parent_node = old_node->parent_;
-  if (old_parent_node == nullptr) {
+  std::vector<std::string> old_path_tokens = tokenize(old_path);
+  if (old_path_tokens.size() <= 1) {
     return LOG_STATUS(
         Status::MemFSError(std::string("Cannot move the root directory")));
   }
 
-  /* get the path to the directory where the new file is to be created */
-  std::vector<std::string> new_tokens = tokenize(new_path);
-  std::string new_dir;
-  for (unsigned long i = 0; i < new_tokens.size() - 1; i++) {
-    new_dir = new_dir + new_tokens[i] + "/";
+  // Remove the last token so that `old_path_tokens` contains the path
+  // tokens to the parent of `old_path`.
+  const std::string old_path_last_token = old_path_tokens.back();
+  old_path_tokens.pop_back();
+
+  // Lookup the `old_path` parent.
+  FSNode* old_node_parent;
+  std::unique_lock<std::mutex> old_node_parent_lock;
+  RETURN_NOT_OK(
+      lookup_node(old_path_tokens, &old_node_parent, &old_node_parent_lock));
+
+  // Detach `old_path` from the directory tree.
+  if (old_node_parent->children_.count(old_path_last_token) == 0) {
+    return LOG_STATUS(Status::MemFSError(
+        std::string("Move failed, file not found: " + old_path)));
+  }
+  std::unique_ptr<FSNode> old_node_ptr =
+      std::move(old_node_parent->children_[old_path_last_token]);
+  old_node_parent->children_.erase(old_path_last_token);
+  old_node_parent_lock.unlock();
+
+  // We now have a handle to the old node. It is detached from its
+  // parent and we hold no locks. Next, we add the old node to the
+  // parent of the new node.
+  std::vector<std::string> new_path_tokens = tokenize(new_path);
+  if (new_path_tokens.size() <= 1) {
+    return LOG_STATUS(
+        Status::MemFSError(std::string("Cannot move to the root directory")));
   }
 
-  FSNode* new_parent_node = lookup_node(new_dir);
-  if (new_parent_node == nullptr) {
-    create_dir_unsafe(new_dir);
-    new_parent_node = lookup_node(new_dir);
-  }
+  // Remove the last token so that `new_path_tokens` contains the path
+  // tokens to the parent of `new_path`.
+  const std::string new_path_last_token = new_path_tokens.back();
+  new_path_tokens.pop_back();
 
-  std::vector<std::string> old_tokens = tokenize(old_path);
-  new_parent_node->children_[new_tokens.back()] =
-      std::move(old_parent_node->children_[old_tokens.back()]);
-  new_parent_node->children_[new_tokens.back()]->name_ = new_tokens.back();
-  new_parent_node->children_[new_tokens.back()]->parent_ = new_parent_node;
-  old_parent_node->children_.erase(old_tokens.back());
+  // Lookup the `new_path` parent.
+  FSNode* new_node_parent;
+  std::unique_lock<std::mutex> new_node_parent_lock;
+  RETURN_NOT_OK(
+      lookup_node(new_path_tokens, &new_node_parent, &new_node_parent_lock));
+
+  // Add `old_path` to the directory tree.
+  new_node_parent->children_[new_path_last_token] = std::move(old_node_ptr);
 
   return Status::Ok();
 }
@@ -339,11 +467,12 @@ Status MemFilesystem::move(
 Status MemFilesystem::read(
     const std::string& path,
     const uint64_t offset,
-    void* buffer,
+    void* const buffer,
     const uint64_t nbytes) const {
-  std::unique_lock<std::mutex> fs_lock(memfilesystem_mutex_);
+  FSNode* node;
+  std::unique_lock<std::mutex> node_lock;
+  RETURN_NOT_OK(lookup_node(path, &node, &node_lock));
 
-  FSNode* node = lookup_node(path);
   if (node == nullptr) {
     return LOG_STATUS(Status::MemFSError(
         std::string("File not found, read failed for : " + path)));
@@ -352,21 +481,30 @@ Status MemFilesystem::read(
   return node->read(offset, buffer, nbytes);
 }
 
-Status MemFilesystem::remove(const std::string& path, bool is_dir) const {
+Status MemFilesystem::remove(const std::string& path, const bool is_dir) const {
   std::vector<std::string> tokens = tokenize(path);
 
-  std::unique_lock<std::mutex> fs_lock(memfilesystem_mutex_);
-
-  auto cur = root_.get();
+  FSNode* cur = root_.get();
+  std::unique_lock<std::mutex> cur_lock(cur->mutex_);
   FSNode* parent = nullptr;
+  std::unique_lock<std::mutex> parent_lock;
   for (const auto& token : tokens) {
-    if (cur->has_child(token)) {
-      parent = cur;
-      cur = cur->children_[token].get();
-    } else {
+    assert(cur_lock.owns_lock());
+    assert(cur_lock.mutex() == &cur->mutex_);
+
+    assert(!parent || parent_lock.owns_lock());
+    assert(!parent || parent_lock.mutex() == &parent->mutex_);
+
+    if (!cur->has_child(token)) {
       return LOG_STATUS(Status::MemFSError(
           std::string("File not found, remove failed for : " + path)));
     }
+
+    parent = cur;
+    std::swap(parent_lock, cur_lock);
+
+    cur = cur->children_[token].get();
+    cur_lock = std::unique_lock<std::mutex>(cur->mutex_);
   }
 
   if (cur == root_.get()) {
@@ -382,24 +520,74 @@ Status MemFilesystem::remove(const std::string& path, bool is_dir) const {
   if (parent) {
     parent->children_.erase(tokens.back());
   }
-  return Status::Ok();
-};
 
-Status MemFilesystem::touch(const std::string& path) const {
-  std::unique_lock<std::mutex> fs_lock(memfilesystem_mutex_);
-  return touch_unsafe(path);
+  return Status::Ok();
 }
 
-Status MemFilesystem::touch_unsafe(const std::string& path) const {
+Status MemFilesystem::touch(const std::string& path) const {
+  return touch_internal(path);
+}
+
+Status MemFilesystem::create_dir_internal(
+    const std::string& path, FSNode** const node) const {
   std::vector<std::string> tokens = tokenize(path);
+
   FSNode* cur = root_.get();
-  for (unsigned long i = 0; i < tokens.size() - 1; i++) {
-    auto token = tokens[i];
+  std::unique_lock<std::mutex> cur_lock(cur->mutex_);
+
+  for (auto iter = tokens.begin(); iter != tokens.end(); ++iter) {
+    const std::string& token = *iter;
+
+    assert(cur_lock.owns_lock());
+    assert(cur_lock.mutex() == &cur->mutex_);
+
+    if (!cur->has_child(token)) {
+      cur->children_[token] = std::unique_ptr<Directory>(new Directory());
+    } else if (!cur->is_dir()) {
+      return LOG_STATUS(Status::MemFSError(std::string(
+          "Cannot create directory, a file with that name exists already: " +
+          path)));
+    }
+
+    cur = cur->children_[token].get();
+
+    // Only take the lock for `cur` if it is not the newly-created
+    // directory.
+    if (std::next(iter) != tokens.end()) {
+      cur_lock = std::unique_lock<std::mutex>(cur->mutex_);
+    }
+  }
+
+  assert(cur_lock.owns_lock());
+  cur_lock.unlock();
+
+  // Save the output argument, `node`, if requested.
+  if (node != nullptr) {
+    *node = cur;
+  }
+
+  return Status::Ok();
+}
+
+Status MemFilesystem::touch_internal(
+    const std::string& path, FSNode** const node) const {
+  std::vector<std::string> tokens = tokenize(path);
+
+  FSNode* cur = root_.get();
+  std::unique_lock<std::mutex> cur_lock(cur->mutex_);
+  for (unsigned long i = 0; i < tokens.size() - 1; ++i) {
+    const std::string& token = tokens[i];
+
+    assert(cur_lock.owns_lock());
+    assert(cur_lock.mutex() == &cur->mutex_);
+
     if (!cur->has_child(token)) {
       return LOG_STATUS(Status::MemFSError(std::string(
           "Failed to create file, the parent directory doesn't exist.")));
     }
+
     cur = cur->children_[token].get();
+    cur_lock = std::unique_lock<std::mutex>(cur->mutex_);
   }
 
   if (!cur->is_dir()) {
@@ -407,27 +595,32 @@ Status MemFilesystem::touch_unsafe(const std::string& path) const {
         "Failed to create file, the parent directory doesn't exist.")));
   }
 
-  std::string filename = tokens[tokens.size() - 1];
-  cur->children_[filename] = std::unique_ptr<File>(new File(filename, cur));
+  const std::string& filename = tokens[tokens.size() - 1];
+  cur->children_[filename] = std::unique_ptr<File>(new File());
+
+  // Save the output argument, `node`, if requested.
+  if (node != nullptr) {
+    *node = cur->children_[filename].get();
+  }
+
   return Status::Ok();
 }
 
 Status MemFilesystem::write(
-    const std::string& path, const void* data, const uint64_t nbytes) {
-  std::unique_lock<std::mutex> fs_lock(memfilesystem_mutex_);
+    const std::string& path, const void* const data, const uint64_t nbytes) {
+  assert(data);
 
-  FSNode* node = lookup_node(path);
-  /* If the file doesn't exist, create it */
+  FSNode* node;
+  std::unique_lock<std::mutex> node_lock;
+  RETURN_NOT_OK(lookup_node(path, &node, &node_lock));
+
+  // If the file doesn't exist, create it.
   if (node == nullptr) {
-    touch_unsafe(path);
-    node = lookup_node(path);
-    /* If it's a directory, ignore */
-  } else if (node->is_dir()) {
-    return LOG_STATUS(Status::MemFSError(std::string(
-        "Failed to write on directory, write is only possible on files.")));
+    RETURN_NOT_OK(touch_internal(path, &node));
+    node_lock = std::unique_lock<std::mutex>(node->mutex_);
   }
 
-  return ((File*)node)->append(data, nbytes);
+  return node->append(data, nbytes);
 }
 
 std::vector<std::string> MemFilesystem::tokenize(
@@ -444,19 +637,49 @@ std::vector<std::string> MemFilesystem::tokenize(
   return tokens;
 }
 
-MemFilesystem::FSNode* MemFilesystem::lookup_node(
-    const std::string& path) const {
-  std::vector<std::string> tokens = tokenize(path);
-  auto cur = root_.get();
+Status MemFilesystem::lookup_node(
+    const std::string& path,
+    MemFilesystem::FSNode** node,
+    std::unique_lock<std::mutex>* node_lock) const {
+  assert(node);
+  assert(node_lock);
+  assert(!node_lock->owns_lock());
+
+  const std::vector<std::string> tokens = tokenize(path);
+  return lookup_node(tokens, node, node_lock);
+}
+
+Status MemFilesystem::lookup_node(
+    const std::vector<std::string>& tokens,
+    MemFilesystem::FSNode** node,
+    std::unique_lock<std::mutex>* node_lock) const {
+  assert(node);
+  assert(node_lock);
+  assert(!node_lock->owns_lock());
+
+  FSNode* cur = root_.get();
+  std::unique_lock<std::mutex> cur_lock(cur->mutex_);
   for (const auto& token : tokens) {
+    assert(cur_lock.owns_lock());
+    assert(cur_lock.mutex() == &cur->mutex_);
+
     if (cur->has_child(token)) {
       cur = cur->children_[token].get();
     } else {
-      return nullptr;
+      *node = nullptr;
+      return Status::Ok();
     }
+
+    cur_lock = std::unique_lock<std::mutex>(cur->mutex_);
   }
 
-  return cur;
+  assert(cur_lock.owns_lock());
+  assert(cur_lock.mutex() == &cur->mutex_);
+
+  *node = cur;
+  std::swap(*node_lock, cur_lock);
+
+  return Status::Ok();
 }
 
 }  // namespace sm
