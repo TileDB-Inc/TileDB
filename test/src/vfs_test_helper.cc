@@ -45,6 +45,28 @@ class SupportedFs {
   std::vector<SupportedFs> fs_vec;
 };
 
+Status::SupportedFsS3 prepare_config(
+    tiledb_config_t* config, tiledb_error_t* error) {
+#ifndef TILEDB_TESTS_AWS_S3_CONFIG
+  REQUIRE(
+      tiledb_config_set(
+          config, "vfs.s3.endpoint_override", "localhost:9999", &error) ==
+      TILEDB_OK);
+  REQUIRE(
+      tiledb_config_set(config, "vfs.s3.scheme", "https", &error) == TILEDB_OK);
+  REQUIRE(
+      tiledb_config_set(
+          config, "vfs.s3.use_virtual_addressing", "false", &error) ==
+      TILEDB_OK);
+  REQUIRE(
+      tiledb_config_set(config, "vfs.s3.verify_ssl", "false", &error) ==
+      TILEDB_OK);
+  REQUIRE(error == nullptr);
+#endif
+
+  return Status::Ok();
+}
+
 Status SupportedFsS3::prepare_config(
     tiledb_config_t* config, tiledb_error_t* error) {
 #ifndef TILEDB_TESTS_AWS_S3_CONFIG
@@ -67,143 +89,108 @@ Status SupportedFsS3::prepare_config(
   return Status::Ok();
 }
 
-/*
-class SupportedFsS3 : SupportedFs {
-    public:
-        virtual Status prepare_config
-        (tiledb_config_t* config, tiledb_error_t* error) {
-            #ifndef TILEDB_TESTS_AWS_S3_CONFIG
-                REQUIRE(
-                    tiledb_config_set(
-                        config, "vfs.s3.endpoint_override", "localhost:9999",
-&error) == TILEDB_OK); REQUIRE( tiledb_config_set(config, "vfs.s3.scheme",
-"https", &error) == TILEDB_OK); REQUIRE( tiledb_config_set( config,
-"vfs.s3.use_virtual_addressing", "false", &error) == TILEDB_OK); REQUIRE(
-                    tiledb_config_set(config, "vfs.s3.verify_ssl", "false",
-&error) == TILEDB_OK); REQUIRE(error == nullptr); #endif
-
-        return Status::Ok();
-        }
-
-        virtual Status init
-            (tiledb_ctx_t* ctx, tiledb_vfs_t* vfs) {
-
-            int is_bucket = 0;
-                int rc = tiledb_vfs_is_bucket(ctx, vfs, S3_BUCKET.c_str(),
-&is_bucket); REQUIRE(rc == TILEDB_OK); if (!is_bucket) { rc =
-tiledb_vfs_create_bucket(ctx, vfs, S3_BUCKET.c_str()); REQUIRE(rc == TILEDB_OK);
-                }
-        }
-
-        virtual Status close
-            (tiledb_ctx_t* ctx, tiledb_vfs_t* vfs) {
-
-            int is_bucket = 0;
-                int rc = tiledb_vfs_is_bucket(ctx, vfs, S3_BUCKET.c_str(),
-&is_bucket); CHECK(rc == TILEDB_OK); if (is_bucket) { CHECK(
-                        tiledb_vfs_remove_bucket(ctx, vfs, S3_BUCKET.c_str()) ==
-TILEDB_OK);
-                }
-            }
-
-};
-*/
-
-class SupportedFsHDFS : SupportedFs {
- public:
-  virtual Status prepare_config(
-      tiledb_config_t* config, tiledb_error_t* error) {
-    return Status::Ok();
-  }
-
-  virtual Status init(tiledb_ctx_t* ctx, tiledb_vfs_t* vfs) {
-    return Status::Ok();
-  }
-
-  virtual Status close(tiledb_ctx_t* ctx, tiledb_vfs_t* vfs) {
-    return Status::Ok();
-  }
-};
-
-class SupportedFsAzure : SupportedFs {
- public:
-  virtual Status prepare_config(
-      tiledb_config_t* config, tiledb_error_t* error) {
-    REQUIRE(
-        tiledb_config_set(
-            config,
-            "vfs.azure.storage_account_name",
-            "devstoreaccount1",
-            &error) == TILEDB_OK);
-    REQUIRE(
-        tiledb_config_set(
-            config,
-            "vfs.azure.storage_account_key",
-            "Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/"
-            "K1SZFPTOtr/KBHBeksoGMGw==",
-            &error) == TILEDB_OK);
-    REQUIRE(
-        tiledb_config_set(
-            config,
-            "vfs.azure.blob_endpoint",
-            "127.0.0.1:10000/devstoreaccount1",
-            &error) == TILEDB_OK);
-    REQUIRE(
-        tiledb_config_set(config, "vfs.azure.use_https", "false", &error) ==
-        TILEDB_OK);
-  }
-
-  virtual Status init(tiledb_ctx_t* ctx, tiledb_vfs_t* vfs) {
-    int is_container = 0;
-    int rc = tiledb_vfs_is_bucket(ctx_, vfs_, container.c_str(), &is_container);
+Status SupportedFsS3::init(tiledb_ctx_t* ctx, tiledb_vfs_t* vfs) {
+  int is_bucket = 0;
+  int rc = tiledb_vfs_is_bucket(ctx, vfs, S3_BUCKET.c_str(), &is_bucket);
+  REQUIRE(rc == TILEDB_OK);
+  if (!is_bucket) {
+    rc = tiledb_vfs_create_bucket(ctx, vfs, S3_BUCKET.c_str());
     REQUIRE(rc == TILEDB_OK);
-    if (!is_container) {
-      rc = tiledb_vfs_create_bucket(ctx_, vfs_, container.c_str());
-      REQUIRE(rc == TILEDB_OK);
-    }
   }
+}
 
-  virtual Status close(tiledb_ctx_t* ctx, tiledb_vfs_t* vfs) {
-    int is_container = 0;
-    int rc = tiledb_vfs_is_bucket(ctx, vfs, container.c_str(), &is_bucket);
-    CHECK(rc == TILEDB_OK);
-    if (is_bucket) {
-      CHECK(tiledb_vfs_remove_bucket(ctx, vfs, container.c_str()) == TILEDB_OK);
-    }
+Status SupportedFsS3::close(tiledb_ctx_t* ctx, tiledb_vfs_t* vfs) {
+  int is_bucket = 0;
+  int rc = tiledb_vfs_is_bucket(ctx, vfs, S3_BUCKET.c_str(), &is_bucket);
+  CHECK(rc == TILEDB_OK);
+  if (is_bucket) {
+    CHECK(tiledb_vfs_remove_bucket(ctx, vfs, S3_BUCKET.c_str()) == TILEDB_OK);
   }
-};
+}
 
-class SupportedFsWindows : SupportedFs {
- public:
-  virtual Status prepare_config(
-      tiledb_config_t* config, tiledb_error_t* error) {
-    return Status::Ok();
-  }
+Status SupportedFsHDFS::prepare_config(
+    tiledb_config_t* config, tiledb_error_t* error) {
+  return Status::Ok();
+}
 
-  virtual Status init(tiledb_ctx_t* ctx, tiledb_vfs_t* vfs) {
-    return Status::Ok();
-  }
+Status SupportedFsHDFS::init(tiledb_ctx_t* ctx, tiledb_vfs_t* vfs) {
+  return Status::Ok();
+}
 
-  virtual Status close(tiledb_ctx_t* ctx, tiledb_vfs_t* vfs) {
-    return Status::Ok();
-  }
-};
+Status SupportedFsHDFS::close(tiledb_ctx_t* ctx, tiledb_vfs_t* vfs) {
+  return Status::Ok();
+}
 
-class SupportedFsPosix : SupportedFs {
- public:
-  virtual Status prepare_config(
-      tiledb_config_t* config, tiledb_error_t* error) {
-    return Status::Ok();
-  }
+Status SupportedFsAzure::prepare_config(
+    tiledb_config_t* config, tiledb_error_t* error) {
+  REQUIRE(
+      tiledb_config_set(
+          config,
+          "vfs.azure.storage_account_name",
+          "devstoreaccount1",
+          &error) == TILEDB_OK);
+  REQUIRE(
+      tiledb_config_set(
+          config,
+          "vfs.azure.storage_account_key",
+          "Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/"
+          "K1SZFPTOtr/KBHBeksoGMGw==",
+          &error) == TILEDB_OK);
+  REQUIRE(
+      tiledb_config_set(
+          config,
+          "vfs.azure.blob_endpoint",
+          "127.0.0.1:10000/devstoreaccount1",
+          &error) == TILEDB_OK);
+  REQUIRE(
+      tiledb_config_set(config, "vfs.azure.use_https", "false", &error) ==
+      TILEDB_OK);
+}
 
-  virtual Status init(tiledb_ctx_t* ctx, tiledb_vfs_t* vfs) {
-    return Status::Ok();
+Status SupportedFsAzure::init(tiledb_ctx_t* ctx, tiledb_vfs_t* vfs) {
+  int is_container = 0;
+  int rc = tiledb_vfs_is_bucket(ctx_, vfs_, container.c_str(), &is_container);
+  REQUIRE(rc == TILEDB_OK);
+  if (!is_container) {
+    rc = tiledb_vfs_create_bucket(ctx_, vfs_, container.c_str());
+    REQUIRE(rc == TILEDB_OK);
   }
+}
 
-  virtual Status close(tiledb_ctx_t* ctx, tiledb_vfs_t* vfs) {
-    return Status::Ok();
+Status SupportedFsAzure::close(tiledb_ctx_t* ctx, tiledb_vfs_t* vfs) {
+  int is_container = 0;
+  int rc = tiledb_vfs_is_bucket(ctx, vfs, container.c_str(), &is_bucket);
+  CHECK(rc == TILEDB_OK);
+  if (is_bucket) {
+    CHECK(tiledb_vfs_remove_bucket(ctx, vfs, container.c_str()) == TILEDB_OK);
   }
-};
+}
+
+Status SupportedFsWindows::prepare_config(
+    tiledb_config_t* config, tiledb_error_t* error) {
+  return Status::Ok();
+}
+
+Status SupportedFsWindows::init(tiledb_ctx_t* ctx, tiledb_vfs_t* vfs) {
+  return Status::Ok();
+}
+
+Status SupportedFsWindows::close(tiledb_ctx_t* ctx, tiledb_vfs_t* vfs) {
+  return Status::Ok();
+}
+
+Status SupportedFsPosix::prepare_config(
+    tiledb_config_t* config, tiledb_error_t* error) {
+  return Status::Ok();
+}
+
+Status SupportedFsPosix::init(tiledb_ctx_t* ctx, tiledb_vfs_t* vfs) {
+  return Status::Ok();
+}
+
+Status SupportedFsPosix::close(tiledb_ctx_t* ctx, tiledb_vfs_t* vfs) {
+  return Status::Ok();
+}
 
 std::vector<SupportedFs> vfs_test_get_fs_vec() {
   std::vector<SupportedFs> fs_vec;
