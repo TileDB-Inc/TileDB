@@ -93,8 +93,9 @@ TEST_CASE(
 
   // Check dump
   std::string dump = std::string("### Attribute ###\n") + "- Name: a\n" +
-                     "- Type: INT32\n" + "- Cell val num: 1\n" +
-                     "- Filters: 0\n" + "- Fill value: -2147483648\n";
+                     "- Type: INT32\n" + "- Nullable: false\n" +
+                     "- Cell val num: 1\n" + "- Filters: 0\n" +
+                     "- Fill value: -2147483648\n";
   check_dump(ctx, a, dump);
 
   // Correct setter
@@ -109,8 +110,8 @@ TEST_CASE(
 
   // Check dump
   dump = std::string("### Attribute ###\n") + "- Name: a\n" +
-         "- Type: INT32\n" + "- Cell val num: 1\n" + "- Filters: 0\n" +
-         "- Fill value: 5\n";
+         "- Type: INT32\n" + "- Nullable: false\n" + "- Cell val num: 1\n" +
+         "- Filters: 0\n" + "- Fill value: 5\n";
   check_dump(ctx, a, dump);
 
   // Setting the cell val num, also sets the fill value to a new default
@@ -124,8 +125,8 @@ TEST_CASE(
 
   // Check dump
   dump = std::string("### Attribute ###\n") + "- Name: a\n" +
-         "- Type: INT32\n" + "- Cell val num: 2\n" + "- Filters: 0\n" +
-         "- Fill value: -2147483648, -2147483648\n";
+         "- Type: INT32\n" + "- Nullable: false\n" + "- Cell val num: 2\n" +
+         "- Filters: 0\n" + "- Fill value: -2147483648, -2147483648\n";
   check_dump(ctx, a, dump);
 
   // Set a fill value that is comprised of two integers
@@ -142,8 +143,8 @@ TEST_CASE(
 
   // Check dump
   dump = std::string("### Attribute ###\n") + "- Name: a\n" +
-         "- Type: INT32\n" + "- Cell val num: 2\n" + "- Filters: 0\n" +
-         "- Fill value: 1, 2\n";
+         "- Type: INT32\n" + "- Nullable: false\n" + "- Cell val num: 2\n" +
+         "- Filters: 0\n" + "- Fill value: 1, 2\n";
   check_dump(ctx, a, dump);
 
   // Make the attribute var-sized
@@ -152,8 +153,8 @@ TEST_CASE(
 
   // Check dump
   dump = std::string("### Attribute ###\n") + "- Name: a\n" +
-         "- Type: INT32\n" + "- Cell val num: var\n" + "- Filters: 0\n" +
-         "- Fill value: -2147483648\n";
+         "- Type: INT32\n" + "- Nullable: false\n" + "- Cell val num: var\n" +
+         "- Filters: 0\n" + "- Fill value: -2147483648\n";
   check_dump(ctx, a, dump);
 
   // Get the default var-sized fill value
@@ -177,8 +178,8 @@ TEST_CASE(
 
   // Check dump
   dump = std::string("### Attribute ###\n") + "- Name: a\n" +
-         "- Type: INT32\n" + "- Cell val num: var\n" + "- Filters: 0\n" +
-         "- Fill value: 1, 2, 3\n";
+         "- Type: INT32\n" + "- Nullable: false\n" + "- Cell val num: var\n" +
+         "- Filters: 0\n" + "- Fill value: 1, 2, 3\n";
   check_dump(ctx, a, dump);
 
   // Clean up

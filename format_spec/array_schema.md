@@ -1,4 +1,4 @@
-# Array Schema File
+#Array Schema File
 
 The array schema file has name `__array_schema.tdb` and is located here:
 
@@ -23,6 +23,7 @@ The array schema file consists of a single [generic tile](./generic_tile.md), wi
 | Capacity | `uint64_t` | For sparse fragments, the data tile capacity |
 | Coords filters | [Filter Pipeline](./filter_pipeline.md) | The filter pipeline used as default for coordinate tiles |
 | Offsets filters | [Filter Pipeline](./filter_pipeline.md) | The filter pipeline used for cell var-len offset tiles |
+| Validity filters | [Filter Pipeline](./filter_pipeline.md) | The filter pipeline used for cell validity tiles |
 | Domain | [Domain](#domain) | The array domain |
 | Num attributes | `uint32_t` | Number of attributes in the array |
 | Attribute 1 | [Attribute](#attribute) | First attribute |
@@ -69,4 +70,4 @@ The attribute has internal format:
 | Filters | [Filter Pipeline](./filter_pipeline.md) | The filter pipeline used on attribute value tiles |
 | Fill value size | `uint64_t` | The size in bytes of the fill value |
 | Fill value | `uint8_t[]` | The fill value |
-
+| Nullable | `bool` | Whether or not the attribute can be null |

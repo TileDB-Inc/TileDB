@@ -268,10 +268,18 @@ Status get_timestamp_range(
 }
 
 Status get_fragment_name_version(const std::string& name, uint32_t* version) {
-  // First check if it is in version 3, which has 5 '_' in the name
+  // First check if it is version 3 or greater, which has 5 '_'
+  // characters in the name.
   size_t n = std::count(name.begin(), name.end(), '_');
   if (n == 5) {
-    *version = 3;
+    // Fetch the fragment version from the fragment name. If the fragment
+    // version is greater than or equal to 7, we have a footer version of 4.
+    // Otherwise, it is version 3.
+    const int frag_version = std::stoi(name.substr(name.find_last_of('_') + 1));
+    if (frag_version >= 7)
+      *version = 4;
+    else
+      *version = 3;
     return Status::Ok();
   }
 

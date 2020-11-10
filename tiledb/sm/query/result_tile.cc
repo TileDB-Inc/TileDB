@@ -72,14 +72,14 @@ bool ResultTile::operator==(const ResultTile& rt) const {
 }
 
 uint64_t ResultTile::cell_num() const {
-  if (!coord_tiles_[0].second.first.empty())
-    return coord_tiles_[0].second.first.cell_num();
+  if (!std::get<0>(coord_tiles_[0].second).empty())
+    return std::get<0>(coord_tiles_[0].second).cell_num();
 
-  if (!coords_tile_.first.empty())
-    return coords_tile_.first.cell_num();
+  if (!std::get<0>(coords_tile_).empty())
+    return std::get<0>(coords_tile_).cell_num();
 
   if (!attr_tiles_.empty())
-    return attr_tiles_.begin()->second.first.cell_num();
+    return std::get<0>(attr_tiles_.begin()->second).cell_num();
 
   return 0;
 }
@@ -91,14 +91,14 @@ const Domain* ResultTile::domain() const {
 void ResultTile::erase_tile(const std::string& name) {
   // Handle zipped coordinates tiles
   if (name == constants::coords) {
-    coords_tile_ = TilePair(Tile(), Tile());
+    coords_tile_ = TileTuple(Tile(), Tile(), Tile());
     return;
   }
 
   // Handle dimension tile
   for (auto& ct : coord_tiles_) {
     if (ct.first == name) {
-      ct.second = TilePair(Tile(), Tile());
+      ct.second = TileTuple(Tile(), Tile(), Tile());
       return;
     }
   }
@@ -114,19 +114,19 @@ void ResultTile::init_attr_tile(const std::string& name) {
 
   // Handle attributes
   if (attr_tiles_.find(name) == attr_tiles_.end())
-    attr_tiles_.emplace(name, TilePair(Tile(), Tile()));
+    attr_tiles_.emplace(name, TileTuple(Tile(), Tile(), Tile()));
 }
 
 void ResultTile::init_coord_tile(const std::string& name, unsigned dim_idx) {
-  coord_tiles_[dim_idx] =
-      std::pair<std::string, TilePair>(name, TilePair(Tile(), Tile()));
+  coord_tiles_[dim_idx] = std::pair<std::string, TileTuple>(
+      name, TileTuple(Tile(), Tile(), Tile()));
 
   // When at least one unzipped coordinate has been initialized, we will
   // use the unzipped `coord()` implementation.
   coord_func_ = &ResultTile::unzipped_coord;
 }
 
-ResultTile::TilePair* ResultTile::tile_pair(const std::string& name) {
+ResultTile::TileTuple* ResultTile::tile_tuple(const std::string& name) {
   // Handle zipped coordinates tile
   if (name == constants::coords)
     return &coords_tile_;
@@ -146,7 +146,7 @@ ResultTile::TilePair* ResultTile::tile_pair(const std::string& name) {
 }
 
 const void* ResultTile::unzipped_coord(uint64_t pos, unsigned dim_idx) const {
-  const auto& coord_tile = coord_tiles_[dim_idx].second.first;
+  const auto& coord_tile = std::get<0>(coord_tiles_[dim_idx].second);
   const uint64_t offset = pos * coord_tile.cell_size();
   ChunkedBuffer* const chunked_buffer = coord_tile.chunked_buffer();
   assert(
@@ -158,10 +158,11 @@ const void* ResultTile::unzipped_coord(uint64_t pos, unsigned dim_idx) const {
 }
 
 const void* ResultTile::zipped_coord(uint64_t pos, unsigned dim_idx) const {
-  auto coords_size = coords_tile_.first.cell_size();
-  auto coord_size = coords_size / coords_tile_.first.dim_num();
+  auto coords_size = std::get<0>(coords_tile_).cell_size();
+  auto coord_size = coords_size / std::get<0>(coords_tile_).dim_num();
   const uint64_t offset = pos * coords_size + dim_idx * coord_size;
-  ChunkedBuffer* const chunked_buffer = coords_tile_.first.chunked_buffer();
+  ChunkedBuffer* const chunked_buffer =
+      std::get<0>(coords_tile_).chunked_buffer();
   assert(
       chunked_buffer->buffer_addressing() ==
       ChunkedBuffer::BufferAddressing::CONTIGUOUS);
@@ -171,8 +172,8 @@ const void* ResultTile::zipped_coord(uint64_t pos, unsigned dim_idx) const {
 }
 
 std::string ResultTile::coord_string(uint64_t pos, unsigned dim_idx) const {
-  const auto& coord_tile_off = coord_tiles_[dim_idx].second.first;
-  const auto& coord_tile_val = coord_tiles_[dim_idx].second.second;
+  const auto& coord_tile_off = std::get<0>(coord_tiles_[dim_idx].second);
+  const auto& coord_tile_val = std::get<1>(coord_tiles_[dim_idx].second);
   assert(!coord_tile_off.empty());
   assert(!coord_tile_val.empty());
   auto cell_num = coord_tile_off.cell_num();
@@ -204,12 +205,13 @@ std::string ResultTile::coord_string(uint64_t pos, unsigned dim_idx) const {
 
 uint64_t ResultTile::coord_size(unsigned dim_idx) const {
   // Handle zipped coordinate tiles
-  if (!coords_tile_.first.empty())
-    return coords_tile_.first.cell_size() / coords_tile_.first.dim_num();
+  if (!std::get<0>(coords_tile_).empty())
+    return std::get<0>(coords_tile_).cell_size() /
+           std::get<0>(coords_tile_).dim_num();
 
   // Handle separate coordinate tiles
   assert(dim_idx < coord_tiles_.size());
-  return coord_tiles_[dim_idx].second.first.cell_size();
+  return std::get<0>(coord_tiles_[dim_idx].second).cell_size();
 }
 
 bool ResultTile::same_coords(
@@ -237,32 +239,39 @@ uint64_t ResultTile::tile_idx() const {
 }
 
 Status ResultTile::read(
-    const std::string& name, void* buffer, uint64_t pos, uint64_t len) {
+    const std::string& name,
+    void* buffer,
+    uint64_t buffer_offset,
+    uint64_t pos,
+    uint64_t len) {
+  buffer = static_cast<char*>(buffer) + buffer_offset;
+
   bool is_dim = false;
+  RETURN_NOT_OK(domain_->has_dimension(name, &is_dim));
+
   // Typical case
   // If asking for an attribute, or split dim buffers with split coordinates
   // or coordinates have been fetched as zipped
-  RETURN_NOT_OK(domain_->has_dimension(name, &is_dim));
   if ((!is_dim && name != constants::coords) ||
       (is_dim && !coord_tiles_[0].first.empty()) ||
-      (name == constants::coords && !coords_tile_.first.empty())) {
-    const auto& tile = this->tile_pair(name)->first;
+      (name == constants::coords && !std::get<0>(coords_tile_).empty())) {
+    const auto& tile = std::get<0>(*this->tile_tuple(name));
     auto cell_size = tile.cell_size();
     auto nbytes = len * cell_size;
     auto offset = pos * cell_size;
     return tile.read(buffer, nbytes, offset);
   } else if (
       name == constants::coords && !coord_tiles_[0].first.empty() &&
-      coords_tile_.first.empty()) {
+      std::get<0>(coords_tile_).empty()) {
     // Special case where zipped coordinates are requested, but the
     // result tile stores separate coordinates
     auto dim_num = coord_tiles_.size();
-    assert(coords_tile_.first.empty());
+    assert(std::get<0>(coords_tile_).empty());
     auto buff = static_cast<unsigned char*>(buffer);
     auto buff_offset = 0;
     for (uint64_t c = 0; c < len; ++c) {
       for (unsigned d = 0; d < dim_num; ++d) {
-        auto coord_tile = coord_tiles_[d].second.first;
+        auto coord_tile = std::get<0>(coord_tiles_[d].second);
         auto cell_size = coord_tile.cell_size();
         auto tile_offset = (pos + c) * cell_size;
         RETURN_NOT_OK(
@@ -273,7 +282,7 @@ Status ResultTile::read(
   } else {
     // Last case which is zipped coordinates but split buffers
     // This is only for backwards compatibility of pre format 5 (v2.0) arrays
-    assert(!coords_tile_.first.empty());
+    assert(!std::get<0>(coords_tile_).empty());
     assert(name != constants::coords);
     int dim_offset = 0;
     for (uint32_t i = 0; i < domain_->dim_num(); ++i) {
@@ -283,12 +292,12 @@ Status ResultTile::read(
       }
     }
     auto buff = static_cast<unsigned char*>(buffer);
-    auto cell_size = coords_tile_.first.cell_size();
+    auto cell_size = std::get<0>(coords_tile_).cell_size();
     auto dim_size = cell_size / domain_->dim_num();
     uint64_t offset = pos * cell_size + dim_size * dim_offset;
     for (uint64_t c = 0; c < len; ++c) {
-      RETURN_NOT_OK(
-          coords_tile_.first.read(buff + (c * dim_size), dim_size, offset));
+      RETURN_NOT_OK(std::get<0>(coords_tile_)
+                        .read(buff + (c * dim_size), dim_size, offset));
       offset += cell_size;
     }
   };
@@ -296,16 +305,45 @@ Status ResultTile::read(
   return Status::Ok();
 }
 
+Status ResultTile::read_nullable(
+    const std::string& name,
+    void* buffer,
+    uint64_t buffer_offset,
+    uint64_t pos,
+    uint64_t len,
+    void* buffer_validity) {
+  const auto& tile = std::get<0>(*this->tile_tuple(name));
+  const auto& tile_validity = std::get<2>(*this->tile_tuple(name));
+
+  auto cell_size = tile.cell_size();
+  auto validity_cell_size = tile_validity.cell_size();
+
+  buffer = static_cast<char*>(buffer) + buffer_offset;
+  buffer_validity = static_cast<char*>(buffer_validity) +
+                    (buffer_offset / cell_size * validity_cell_size);
+
+  auto nbytes = len * cell_size;
+  auto offset = pos * cell_size;
+  auto validity_nbytes = len * validity_cell_size;
+  auto validity_offset = pos * validity_cell_size;
+
+  RETURN_NOT_OK(tile.read(buffer, nbytes, offset));
+  RETURN_NOT_OK(
+      tile_validity.read(buffer_validity, validity_nbytes, validity_offset));
+
+  return Status::Ok();
+}
+
 bool ResultTile::stores_zipped_coords() const {
-  return !coords_tile_.first.empty();
+  return !std::get<0>(coords_tile_).empty();
 }
 
 const Tile& ResultTile::zipped_coords_tile() const {
   assert(stores_zipped_coords());
-  return coords_tile_.first;
+  return std::get<0>(coords_tile_);
 }
 
-const ResultTile::TilePair& ResultTile::coord_tile(unsigned dim_idx) const {
+const ResultTile::TileTuple& ResultTile::coord_tile(unsigned dim_idx) const {
   assert(!stores_zipped_coords());
   assert(!coord_tiles_.empty());
   return coord_tiles_[dim_idx].second;
@@ -348,7 +386,7 @@ void ResultTile::compute_results_dense(
 
   // Handle separate coordinate tiles
   if (!stores_zipped_coords) {
-    const auto& coord_tile = result_tile->coord_tile(dim_idx).first;
+    const auto& coord_tile = std::get<0>(result_tile->coord_tile(dim_idx));
 
     ChunkedBuffer* const chunked_buffer = coord_tile.chunked_buffer();
     assert(
@@ -371,7 +409,8 @@ void ResultTile::compute_results_dense(
             if (meta->dense()) {
               overwritten = true;
               for (unsigned d = 0; d < dim_num; ++d) {
-                const auto& coord_tile = result_tile->coord_tile(dim_idx).first;
+                const auto& coord_tile =
+                    std::get<0>(result_tile->coord_tile(dim_idx));
                 ChunkedBuffer* const chunked_buffer =
                     coord_tile.chunked_buffer();
                 assert(
@@ -460,7 +499,7 @@ void ResultTile::compute_results_sparse(
 
   // Handle separate coordinate tiles
   if (!stores_zipped_coords) {
-    const auto& coord_tile = result_tile->coord_tile(dim_idx).first;
+    const auto& coord_tile = std::get<0>(result_tile->coord_tile(dim_idx));
     ChunkedBuffer* const chunked_buffer = coord_tile.chunked_buffer();
     assert(
         chunked_buffer->buffer_addressing() ==
