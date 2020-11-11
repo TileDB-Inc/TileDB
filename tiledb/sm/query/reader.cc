@@ -1482,6 +1482,12 @@ Status Reader::copy_partitioned_var_cells(
       tile_cell_num = tile->cell_num();
     }
 
+    // Fetch the offsets format from config
+    bool found = false;
+    auto config = storage_manager_->config();
+    std::string cfg_offsets_format = config.get("sm.offsets_format", &found);
+    assert(found);
+
     // Copy each cell in the range
     uint64_t dest_vec_idx = 0;
     stride = (stride == UINT64_MAX) ? 1 : stride;
@@ -1495,7 +1501,17 @@ Status Reader::copy_partitioned_var_cells(
       auto validity_dest = buffer_validity + (var_offset / attr_datatype_size);
 
       // Copy offset
-      std::memcpy(offset_dest, &var_offset, offset_size);
+      if (cfg_offsets_format == "bytes") {
+        std::memcpy(offset_dest, &var_offset, offset_size);
+      } else {
+        assert(cfg_offsets_format == "elements");
+        if (fill_value_size == 1) {
+          std::memcpy(offset_dest, &var_offset, offset_size);
+        } else {
+          uint64_t element_offset = var_offset / fill_value_size;
+          std::memcpy(offset_dest, &element_offset, offset_size);
+        }
+      }
 
       // Copy variable-sized value
       if (cs.tile_ == nullptr) {
