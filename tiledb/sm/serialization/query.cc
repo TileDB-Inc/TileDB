@@ -80,32 +80,6 @@ Status array_from_capnp(
   return Status::Ok();
 }
 
-Status writer_to_capnp(
-    const Writer& writer, capnp::Writer::Builder* writer_builder) {
-  writer_builder->setCheckCoordDups(writer.get_check_coord_dups());
-  writer_builder->setCheckCoordOOB(writer.get_check_coord_oob());
-  writer_builder->setDedupCoords(writer.get_dedup_coords());
-
-  const auto* schema = writer.array_schema();
-  const auto* subarray = writer.subarray();
-  if (subarray != nullptr) {
-    auto subarray_builder = writer_builder->initSubarray();
-    RETURN_NOT_OK(
-        utils::serialize_subarray(subarray_builder, schema, subarray));
-  }
-
-  return Status::Ok();
-}
-
-Status writer_from_capnp(
-    const capnp::Writer::Reader& writer_reader, Writer* writer) {
-  writer->set_check_coord_dups(writer_reader.getCheckCoordDups());
-  writer->set_check_coord_oob(writer_reader.getCheckCoordOOB());
-  writer->set_dedup_coords(writer_reader.getDedupCoords());
-
-  return Status::Ok();
-}
-
 Status subarray_to_capnp(
     const ArraySchema* schema,
     const Subarray* subarray,
@@ -251,8 +225,9 @@ Status subarray_partitioner_to_capnp(
   }
 
   // Overall mem budget
-  uint64_t mem_budget, mem_budget_var;
-  RETURN_NOT_OK(partitioner.get_memory_budget(&mem_budget, &mem_budget_var));
+  uint64_t mem_budget, mem_budget_var, mem_budget_validity;
+  RETURN_NOT_OK(partitioner.get_memory_budget(
+      &mem_budget, &mem_budget_var, &mem_budget_validity));
   builder->setMemoryBudget(mem_budget);
   builder->setMemoryBudgetVar(mem_budget_var);
 
@@ -271,6 +246,7 @@ Status subarray_partitioner_from_capnp(
   uint64_t memory_budget_var = 0;
   RETURN_NOT_OK(tiledb::sm::utils::parse::convert(
       Config::SM_MEMORY_BUDGET_VAR, &memory_budget_var));
+  uint64_t memory_budget_validity = 0;
 
   // Get subarray layout first
   Layout layout = Layout::ROW_MAJOR;
@@ -281,7 +257,11 @@ Status subarray_partitioner_from_capnp(
   Subarray subarray(array, layout, false);
   RETURN_NOT_OK(subarray_from_capnp(reader.getSubarray(), &subarray));
   *partitioner = SubarrayPartitioner(
-      subarray, memory_budget, memory_budget_var, compute_tp);
+      subarray,
+      memory_budget,
+      memory_budget_var,
+      memory_budget_validity,
+      compute_tp);
 
   // Per-attr mem budgets
   if (reader.hasBudget()) {
@@ -340,7 +320,7 @@ Status subarray_partitioner_from_capnp(
 
   // Overall mem budget
   RETURN_NOT_OK(partitioner->set_memory_budget(
-      reader.getMemoryBudget(), reader.getMemoryBudgetVar()));
+      reader.getMemoryBudget(), reader.getMemoryBudgetVar(), 0));
 
   return Status::Ok();
 }
@@ -427,6 +407,41 @@ Status reader_from_capnp(
   if (reader_reader.hasReadState())
     RETURN_NOT_OK(read_state_from_capnp(
         array, reader_reader.getReadState(), reader, compute_tp));
+
+  return Status::Ok();
+}
+
+Status writer_to_capnp(
+    const Writer& writer, capnp::Writer::Builder* writer_builder) {
+  writer_builder->setCheckCoordDups(writer.get_check_coord_dups());
+  writer_builder->setCheckCoordOOB(writer.get_check_coord_oob());
+  writer_builder->setDedupCoords(writer.get_dedup_coords());
+
+  const auto* schema = writer.array_schema();
+  const auto* subarray = writer.subarray();
+  if (subarray != nullptr) {
+    auto subarray_builder = writer_builder->initSubarray();
+    RETURN_NOT_OK(
+        utils::serialize_subarray(subarray_builder, schema, subarray));
+  }
+
+  // Subarray
+  const auto subarray_ranges = writer.subarray_ranges();
+  if (!subarray_ranges->empty()) {
+    auto subarray_builder = writer_builder->initSubarrayRanges();
+    const ArraySchema* array_schema = writer.array_schema();
+    RETURN_NOT_OK(
+        subarray_to_capnp(array_schema, subarray_ranges, &subarray_builder));
+  }
+
+  return Status::Ok();
+}
+
+Status writer_from_capnp(
+    const capnp::Writer::Reader& writer_reader, Writer* writer) {
+  writer->set_check_coord_dups(writer_reader.getCheckCoordDups());
+  writer->set_check_coord_oob(writer_reader.getCheckCoordOOB());
+  writer->set_dedup_coords(writer_reader.getDedupCoords());
 
   return Status::Ok();
 }
@@ -731,13 +746,23 @@ Status query_from_capnp(
     // For sparse writes we want to explicitly set subarray to nullptr.
     const bool sparse_write =
         !schema->dense() || query->layout() == Layout::UNORDERED;
-    if (writer_reader.hasSubarray() && !sparse_write) {
-      auto subarray_reader = writer_reader.getSubarray();
-      void* subarray = nullptr;
-      RETURN_NOT_OK(
-          utils::deserialize_subarray(subarray_reader, schema, &subarray));
-      RETURN_NOT_OK_ELSE(query->set_subarray(subarray), std::free(subarray));
-      std::free(subarray);
+    if (!sparse_write) {
+      if (writer_reader.hasSubarray()) {
+        auto subarray_reader = writer_reader.getSubarray();
+        void* subarray = nullptr;
+        RETURN_NOT_OK(
+            utils::deserialize_subarray(subarray_reader, schema, &subarray));
+        RETURN_NOT_OK_ELSE(query->set_subarray(subarray), std::free(subarray));
+        std::free(subarray);
+      }
+
+      // Subarray
+      if (writer_reader.hasSubarrayRanges()) {
+        Subarray subarray(array, layout, false);
+        auto subarray_reader = writer_reader.getSubarrayRanges();
+        RETURN_NOT_OK(subarray_from_capnp(subarray_reader, &subarray));
+        RETURN_NOT_OK(query->writer()->set_subarray(subarray));
+      }
     }
   }
 
@@ -1024,8 +1049,8 @@ Status query_est_result_size_reader_from_capnp(
     auto result_size = it.getValue();
     est_result_sizes_map.emplace(
         name,
-        Subarray::ResultSize{result_size.getSizeFixed(),
-                             result_size.getSizeVar()});
+        Subarray::ResultSize{
+            result_size.getSizeFixed(), result_size.getSizeVar(), 0});
   }
 
   std::unordered_map<std::string, Subarray::MemorySize> max_memory_sizes_map;
@@ -1034,8 +1059,8 @@ Status query_est_result_size_reader_from_capnp(
     auto memory_size = it.getValue();
     max_memory_sizes_map.emplace(
         name,
-        Subarray::MemorySize{memory_size.getSizeFixed(),
-                             memory_size.getSizeVar()});
+        Subarray::MemorySize{
+            memory_size.getSizeFixed(), memory_size.getSizeVar(), 0});
   }
 
   return query->set_est_result_size(est_result_sizes_map, max_memory_sizes_map);

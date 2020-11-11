@@ -208,6 +208,24 @@ class Config {
     impl::check_config_error(err);
   }
 
+  /** Compares configs for equality. */
+  bool operator==(const Config& rhs) const {
+    uint8_t equal;
+    int rc = tiledb_config_compare(config_.get(), rhs.config_.get(), &equal);
+    if (rc != TILEDB_OK)
+      throw std::runtime_error(
+          "[TileDB::C++API] Error: Failed to compare configurations");
+    if (equal == 1)
+      return true;
+    else
+      return false;
+  }
+
+  /** Compares configs for inequality. */
+  bool operator!=(const Config& rhs) const {
+    return !(*this == rhs);
+  }
+
   /** Returns the pointer to the TileDB C config object. */
   std::shared_ptr<tiledb_config_t> ptr() const {
     return config_;
@@ -384,6 +402,23 @@ class Config {
    *    **Default**: ""
    * - `vfs.s3.aws_session_token` <br>
    *    Set the AWS_SESSION_TOKEN <br>
+   *    **Default**: ""
+   * - `vfs.s3.aws_role_arn` <br>
+   *    Determines the role that we want to assume.
+   *    Set the AWS_ROLE_ARN <br>
+   *    **Default**: ""
+   * - `vfs.s3.aws_external_id` <br>
+   *    Third party access ID to your resources when assuming a role.
+   *    Set the AWS_EXTERNAL_ID <br>
+   *    **Default**: ""
+   * - `vfs.s3.aws_load_frequency` <br>
+   *    Session time limit when assuming a role.
+   *    Set the AWS_LOAD_FREQUENCY <br>
+   *    **Default**: ""
+   * - `vfs.s3.aws_session_name` <br>
+   *    (Optional) session name when assuming a role.
+   *    Can be used for tracing and bookkeeping.
+   *    Set the AWS_SESSION_NAME <br>
    *    **Default**: ""
    * - `vfs.s3.scheme` <br>
    *    The S3 scheme (`http` or `https`), if S3 is enabled. <br>

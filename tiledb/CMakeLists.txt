@@ -116,6 +116,7 @@ set(TILEDB_CORE_SOURCES
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/crypto/crypto_win32.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/filesystem/azure.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/filesystem/gcs.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/filesystem/mem_filesystem.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/filesystem/hdfs_filesystem.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/filesystem/posix.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/filesystem/s3.cc
@@ -300,7 +301,8 @@ if (TILEDB_S3)
       AWSSDK::aws-c-event-stream
       AWSSDK::aws-checksums
       AWSSDK::aws-c-common
-  )
+      AWSSDK::aws-cpp-sdk-identity-management
+      AWSSDK::aws-cpp-sdk-sts)
   add_definitions(-DHAVE_S3)
 endif()
 
@@ -336,6 +338,12 @@ if (TILEDB_GCS)
     list(REMOVE_ITEM _GCS_INTERFACE_LIBS "ZLIB::ZLIB")
     set_property(TARGET storage_client PROPERTY INTERFACE_LINK_LIBRARIES "${_GCS_INTERFACE_LIBS}")
   endif()
+endif()
+
+# MEMFS dependencies
+if (TILEDB_MEMFS)
+    message(STATUS "The TileDB library is compiled with in-memory flesystem support.")
+    add_definitions(-DHAVE_MEMFS)
 endif()
 
 # Libcurl
@@ -588,6 +596,8 @@ if (TILEDB_STATIC)
   append_dep_lib(AWSSDK::aws-c-event-stream)
   append_dep_lib(AWSSDK::aws-checksums)
   append_dep_lib(AWSSDK::aws-c-common)
+  append_dep_lib(AWSSDK::aws-cpp-sdk-sts)
+  append_dep_lib(AWSSDK::aws-cpp-sdk-identity-management)
   append_dep_lib(AzureSDK::AzureSDK)
   append_dep_lib(GCSSDK::storage_client)
   append_dep_lib(GCSSDK::google_cloud_cpp_common)

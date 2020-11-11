@@ -12,7 +12,7 @@ steps:
 # Need this for virtualenv and arrow tests if enabled
 - task: UsePythonVersion@0
   inputs:
-    versionSpec: '3.x'
+    versionSpec: '3.8'
 
 - bash: |
     set -e pipefail
@@ -32,8 +32,8 @@ steps:
     set -e pipefail
     open /Library/Developer/CommandLineTools/Packages/macOS_SDK_headers_for_macOS_10.14.pkg
     sudo installer -pkg /Library/Developer/CommandLineTools/Packages/macOS_SDK_headers_for_macOS_10.14.pkg -allowUntrusted -target /
-  condition: eq(variables['Agent.OS'], 'Darwin')
-  displayName: 'Install system headers (OSX only)'
+  condition: and(eq(variables['Agent.OS'], 'Darwin'), eq(variables['imageName'], 'macOS-10.14'))
+  displayName: 'Install system headers (OSX 10.14 only)'
 
 - bash: |
     set -e pipefail
@@ -108,6 +108,9 @@ steps:
     fi;
     if [[ "$TILEDB_GCS" == "ON" ]]; then
       bootstrap_args="${bootstrap_args} --enable-gcs";
+    fi;
+    if [[ "$TILEDB_MEMFS" == "ON" ]]; then
+      bootstrap_args="${bootstrap_args} --enable-memfs";
     fi;
     if [[ "$TILEDB_TBB" == "OFF" ]]; then
       bootstrap_args="${bootstrap_args} --disable-tbb";

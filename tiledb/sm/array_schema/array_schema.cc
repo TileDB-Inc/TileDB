@@ -43,6 +43,7 @@
 #include "tiledb/sm/enums/filter_type.h"
 #include "tiledb/sm/enums/layout.h"
 #include "tiledb/sm/filter/compression_filter.h"
+#include "tiledb/sm/misc/hilbert.h"
 
 #include <cassert>
 #include <iostream>
@@ -72,12 +73,15 @@ ArraySchema::ArraySchema(ArrayType array_type)
   tile_order_ = Layout::ROW_MAJOR;
   version_ = constants::format_version;
 
-  // Set up default filter pipelines for coords and offsets
+  // Set up default filter pipelines for coords, offsets, and validity values.
   coords_filters_.add_filter(CompressionFilter(
       constants::coords_compression, constants::coords_compression_level));
   cell_var_offsets_filters_.add_filter(CompressionFilter(
       constants::cell_var_offsets_compression,
       constants::cell_var_offsets_compression_level));
+  cell_validity_filters_.add_filter(CompressionFilter(
+      constants::cell_validity_compression,
+      constants::cell_validity_compression_level));
 }
 
 ArraySchema::ArraySchema(const ArraySchema* array_schema) {
@@ -89,6 +93,7 @@ ArraySchema::ArraySchema(const ArraySchema* array_schema) {
   capacity_ = array_schema->capacity_;
   cell_order_ = array_schema->cell_order_;
   cell_var_offsets_filters_ = array_schema->cell_var_offsets_filters_;
+  cell_validity_filters_ = array_schema->cell_validity_filters_;
   coords_filters_ = array_schema->coords_filters_;
   tile_order_ = array_schema->tile_order_;
   version_ = array_schema->version_;
@@ -196,14 +201,25 @@ const FilterPipeline& ArraySchema::cell_var_offsets_filters() const {
   return cell_var_offsets_filters_;
 }
 
+const FilterPipeline& ArraySchema::cell_validity_filters() const {
+  return cell_validity_filters_;
+}
+
 Status ArraySchema::check() const {
   if (domain_ == nullptr)
     return LOG_STATUS(
         Status::ArraySchemaError("Array schema check failed; Domain not set"));
 
-  if (dim_num() == 0)
+  auto dim_num = this->dim_num();
+  if (dim_num == 0)
     return LOG_STATUS(Status::ArraySchemaError(
         "Array schema check failed; No dimensions provided"));
+
+  if (cell_order_ == Layout::HILBERT && dim_num > Hilbert::HC_MAX_DIM) {
+    return LOG_STATUS(Status::ArraySchemaError(
+        "Array schema check failed; Maximum dimensions supported by Hilbert "
+        "order exceeded"));
+  }
 
   if (array_type_ == ArrayType::DENSE) {
     auto type = domain_->dimension(0)->type();
@@ -294,6 +310,9 @@ void ArraySchema::dump(FILE* out) const {
       "\n- Offsets filters: %u",
       (unsigned)cell_var_offsets_filters_.size());
   cell_var_offsets_filters_.dump(out);
+  fprintf(
+      out, "\n- Validity filters: %u", (unsigned)cell_validity_filters_.size());
+  cell_validity_filters_.dump(out);
   fprintf(out, "\n");
 
   if (domain_ != nullptr)
@@ -327,6 +346,13 @@ bool ArraySchema::is_dim(const std::string& name) const {
   return this->dimension(name) != nullptr;
 }
 
+bool ArraySchema::is_nullable(const std::string& name) const {
+  const Attribute* const attr = this->attribute(name);
+  if (attr == nullptr)
+    return false;
+  return attr->nullable();
+}
+
 // ===== FORMAT =====
 // version (uint32_t)
 // allow_dups (bool)
@@ -336,14 +362,18 @@ bool ArraySchema::is_dim(const std::string& name) const {
 // capacity (uint64_t)
 // coords_filters (see FilterPipeline::serialize)
 // cell_var_offsets_filters (see FilterPipeline::serialize)
+// cell_validity_filters (see FilterPipeline::serialize)
 // domain
 // attribute_num (uint32_t)
 //   attribute #1
 //   attribute #2
 //   ...
 Status ArraySchema::serialize(Buffer* buff) const {
-  // Write version
-  RETURN_NOT_OK(buff->write(&version_, sizeof(uint32_t)));
+  // Write version, which is always the current version. Despite
+  // the in-memory `version_`, we will serialize every array schema
+  // as the latest version.
+  const uint32_t version = constants::format_version;
+  RETURN_NOT_OK(buff->write(&version, sizeof(uint32_t)));
 
   // Write allows_dups
   RETURN_NOT_OK(buff->write(&allows_dups_, sizeof(bool)));
@@ -367,14 +397,17 @@ Status ArraySchema::serialize(Buffer* buff) const {
   // Write offsets filters
   RETURN_NOT_OK(cell_var_offsets_filters_.serialize(buff));
 
+  // Write validity filters
+  RETURN_NOT_OK(cell_validity_filters_.serialize(buff));
+
   // Write domain
-  RETURN_NOT_OK(domain_->serialize(buff, version_));
+  RETURN_NOT_OK(domain_->serialize(buff, version));
 
   // Write attributes
   auto attribute_num = (uint32_t)attributes_.size();
   RETURN_NOT_OK(buff->write(&attribute_num, sizeof(uint32_t)));
   for (auto& attr : attributes_)
-    RETURN_NOT_OK(attr->serialize(buff));
+    RETURN_NOT_OK(attr->serialize(buff, version));
 
   return Status::Ok();
 }
@@ -472,6 +505,10 @@ Status ArraySchema::deserialize(ConstBuffer* buff) {
   // Load offsets filters
   RETURN_NOT_OK(cell_var_offsets_filters_.deserialize(buff));
 
+  // Load validity filters
+  if (version_ >= 7)
+    RETURN_NOT_OK(cell_validity_filters_.deserialize(buff));
+
   // Load domain
   domain_ = new Domain();
   RETURN_NOT_OK(domain_->deserialize(buff, version_));
@@ -543,8 +580,20 @@ Status ArraySchema::set_cell_var_offsets_filter_pipeline(
   return Status::Ok();
 }
 
-void ArraySchema::set_cell_order(Layout cell_order) {
+Status ArraySchema::set_cell_order(Layout cell_order) {
+  if (dense() && cell_order == Layout::HILBERT)
+    return LOG_STATUS(
+        Status::ArraySchemaError("Cannot set cell order; Hilbert order is only "
+                                 "applicable to sparse arrays"));
+
   cell_order_ = cell_order;
+  return Status::Ok();
+}
+
+Status ArraySchema::set_cell_validity_filter_pipeline(
+    const FilterPipeline* pipeline) {
+  cell_validity_filters_ = *pipeline;
+  return Status::Ok();
 }
 
 Status ArraySchema::set_domain(Domain* domain) {
@@ -569,9 +618,9 @@ Status ArraySchema::set_domain(Domain* domain) {
                       "do not support dimension datatype '") +
           datatype_str(type) + "'"));
     }
-
-    RETURN_NOT_OK(domain->set_null_tile_extents_to_range());
   }
+
+  RETURN_NOT_OK(domain->set_null_tile_extents_to_range());
 
   // Set domain
   delete domain_;
@@ -588,8 +637,13 @@ Status ArraySchema::set_domain(Domain* domain) {
   return Status::Ok();
 }
 
-void ArraySchema::set_tile_order(Layout tile_order) {
+Status ArraySchema::set_tile_order(Layout tile_order) {
+  if (tile_order == Layout::HILBERT)
+    return LOG_STATUS(Status::ArraySchemaError(
+        "Cannot set tile order; Hilbert order is not applicable to tiles"));
+
   tile_order_ = tile_order;
+  return Status::Ok();
 }
 
 void ArraySchema::set_version(uint32_t version) {

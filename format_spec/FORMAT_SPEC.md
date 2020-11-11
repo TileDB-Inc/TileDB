@@ -2,7 +2,7 @@
 
 
 :information_source: **Notes:**  
-- The current TileDB format version number is **5** (`uint32_t`).
+- The current TileDB format version number is **7** (`uint32_t`).
 - All data written by TileDB and referenced in this document is **little-endian**. 
 
 ## Table of Contents

@@ -979,7 +979,8 @@ void ArraySchemaFx::load_and_check_array_schema(const std::string& path) {
       "false\n"
       "- Coordinates filters: 1\n" +
       "  > ZSTD: COMPRESSION_LEVEL=-1\n" + "- Offsets filters: 1\n" +
-      "  > ZSTD: COMPRESSION_LEVEL=-1\n\n" + "### Dimension ###\n" +
+      "  > ZSTD: COMPRESSION_LEVEL=-1\n" + "- Validity filters: 1\n" +
+      "  > RLE: COMPRESSION_LEVEL=-1\n\n" + "### Dimension ###\n" +
       "- Name: " + DIM1_NAME + "\n" + "- Type: INT64\n" +
       "- Cell val num: 1\n" + "- Domain: " + DIM1_DOMAIN_STR + "\n" +
       "- Tile extent: " + DIM1_TILE_EXTENT_STR + "\n" + "- Filters: 0\n\n" +
@@ -990,7 +991,7 @@ void ArraySchemaFx::load_and_check_array_schema(const std::string& path) {
       "  > BZIP2: COMPRESSION_LEVEL=5\n" +
       "  > BitWidthReduction: BIT_WIDTH_MAX_WINDOW=1000\n\n" +
       "### Attribute ###\n" + "- Name: " + ATTR_NAME + "\n" +
-      "- Type: " + ATTR_TYPE_STR + "\n" +
+      "- Type: " + ATTR_TYPE_STR + "\n" + "- Nullable: false\n" +
       "- Cell val num: " + CELL_VAL_NUM_STR + "\n" + "- Filters: 2\n" +
       "  > BZIP2: COMPRESSION_LEVEL=5\n" +
       "  > BitWidthReduction: BIT_WIDTH_MAX_WINDOW=1000\n" +
@@ -1167,7 +1168,7 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     ArraySchemaFx,
     "C API: Test array schema with invalid dimension domain and tile extent",
-    "[capi], [array-schema]") {
+    "[capi][array-schema]") {
   // Domain range exceeds type range - error
   tiledb_dimension_t* d0;
   uint64_t dim_domain[] = {0, UINT64_MAX};
@@ -1175,12 +1176,16 @@ TEST_CASE_METHOD(
       ctx_, "d0", TILEDB_UINT64, dim_domain, nullptr, &d0);
   CHECK(rc == TILEDB_ERR);
 
-  // Create dimension with huge range and no tile extent - not ok
+  // Create dimension with huge range and no tile extent - this should be ok
   tiledb_dimension_t* d1;
   dim_domain[1] = UINT64_MAX - 1;
   rc = tiledb_dimension_alloc(
       ctx_, "d1", TILEDB_UINT64, dim_domain, nullptr, &d1);
-  CHECK(rc == TILEDB_ERR);
+  CHECK(rc == TILEDB_OK);
+  const void* extent;
+  rc = tiledb_dimension_get_tile_extent(ctx_, d1, &extent);
+  CHECK(rc == TILEDB_OK);
+  CHECK(extent == nullptr);
 
   // Create dimension with huge range and tile extent - error
   tiledb_dimension_t* d2;
@@ -1224,7 +1229,7 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     ArraySchemaFx,
     "C API: Test NAN and INF in dimensions",
-    "[capi][array-schema][array-schema-nan-inf]") {
+    "[capi][array-schema][nan-inf]") {
   // Create dimension with INF
   tiledb_dimension_t* d;
   float dim_domain[] = {0, std::numeric_limits<float>::infinity()};
@@ -1241,8 +1246,69 @@ TEST_CASE_METHOD(
 
 TEST_CASE_METHOD(
     ArraySchemaFx,
+    "C API: Test setting null extent to domain range",
+    "[capi][array-schema][null-extent-default]") {
+  // Create dimensions
+  tiledb_dimension_t* d1;
+  int32_t d1_dom[] = {1, 100};
+  int rc =
+      tiledb_dimension_alloc(ctx_, "d1", TILEDB_INT32, d1_dom, nullptr, &d1);
+  CHECK(rc == TILEDB_OK);
+  tiledb_dimension_t* d2;
+  float d2_dom[] = {1.1f, 1.3f};
+  rc = tiledb_dimension_alloc(ctx_, "d2", TILEDB_FLOAT32, d2_dom, nullptr, &d2);
+  CHECK(rc == TILEDB_OK);
+
+  // Create array schema
+  tiledb_array_schema_t* array_schema;
+  rc = tiledb_array_schema_alloc(ctx_, TILEDB_SPARSE, &array_schema);
+  REQUIRE(rc == TILEDB_OK);
+
+  // Set domain
+  tiledb_domain_t* domain;
+  rc = tiledb_domain_alloc(ctx_, &domain);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_domain_add_dimension(ctx_, domain, d1);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_domain_add_dimension(ctx_, domain, d2);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_array_schema_set_domain(ctx_, array_schema, domain);
+  REQUIRE(rc == TILEDB_OK);
+
+  // Get extents
+  tiledb_domain_t* r_domain;
+  rc = tiledb_array_schema_get_domain(ctx_, array_schema, &r_domain);
+  REQUIRE(rc == TILEDB_OK);
+  tiledb_dimension_t* r_d1;
+  rc = tiledb_domain_get_dimension_from_index(ctx_, r_domain, 0, &r_d1);
+  REQUIRE(rc == TILEDB_OK);
+  const void* extent = NULL;
+  rc = tiledb_dimension_get_tile_extent(ctx_, r_d1, &extent);
+  REQUIRE(rc == TILEDB_OK);
+  REQUIRE(extent != NULL);
+  CHECK(*(const int32_t*)extent == 100);
+  tiledb_dimension_t* r_d2;
+  rc = tiledb_domain_get_dimension_from_index(ctx_, r_domain, 1, &r_d2);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_dimension_get_tile_extent(ctx_, r_d2, &extent);
+  REQUIRE(rc == TILEDB_OK);
+  REQUIRE(extent != NULL);
+  CHECK(*(const float*)extent == d2_dom[1] - d2_dom[0]);
+
+  // Clean up
+  tiledb_dimension_free(&d1);
+  tiledb_dimension_free(&d2);
+  tiledb_dimension_free(&r_d1);
+  tiledb_dimension_free(&r_d2);
+  tiledb_domain_free(&domain);
+  tiledb_domain_free(&r_domain);
+  tiledb_array_schema_free(&array_schema);
+}
+
+TEST_CASE_METHOD(
+    ArraySchemaFx,
     "C API: Test array schema offsets/coords filter lists",
-    "[capi], [array-schema], [filter]") {
+    "[capi][array-schema][filter]") {
   SECTION("- No serialization") {
     serialize_array_schema_ = false;
   }

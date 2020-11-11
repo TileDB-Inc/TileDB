@@ -67,7 +67,7 @@ class Attribute {
    * @note The default number of values per cell is 1 for all datatypes except
    *     `ANY`, which is always variable-sized.
    */
-  Attribute(const std::string& name, Datatype type);
+  Attribute(const std::string& name, Datatype type, bool nullable = false);
 
   /**
    * Constructor. It clones the input attribute.
@@ -75,6 +75,16 @@ class Attribute {
    * @param attr The attribute to be cloned.
    */
   explicit Attribute(const Attribute* attr);
+
+  /** Copy constructor. */
+  DISABLE_COPY(Attribute);
+
+  /* ********************************* */
+  /*             OPERATORS             */
+  /* ********************************* */
+
+  /** Copy-assignment operator. */
+  DISABLE_COPY_ASSIGN(Attribute);
 
   /** Destructor. */
   ~Attribute();
@@ -114,9 +124,10 @@ class Attribute {
    * Serializes the object members into a binary buffer.
    *
    * @param buff The buffer to serialize the data into.
+   * @param version The format spec version.
    * @return Status
    */
-  Status serialize(Buffer* buff);
+  Status serialize(Buffer* buff, uint32_t version);
 
   /**
    * Sets the attribute number of values per cell. Note that if the attribute
@@ -126,6 +137,21 @@ class Attribute {
    * @return Status
    */
   Status set_cell_val_num(unsigned int cell_val_num);
+
+  /**
+   * Sets the nullability for this attribute.
+   *
+   * @return Status
+   */
+  Status set_nullable(bool nullable);
+
+  /**
+   * Gets the nullability for this attribute.
+   *
+   * @param nullable Mutates to true or false.
+   * @return Status
+   */
+  Status get_nullable(bool* nullable);
 
   /** Sets the filter pipeline for this attribute. */
   Status set_filter_pipeline(const FilterPipeline* pipeline);
@@ -157,6 +183,12 @@ class Attribute {
    */
   bool var_size() const;
 
+  /**
+   * Returns *true* if this is a nullable attribute, and *false*
+   * otherwise.
+   */
+  bool nullable() const;
+
  private:
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
@@ -164,6 +196,9 @@ class Attribute {
 
   /** The attribute number of values per cell. */
   unsigned cell_val_num_;
+
+  /** True if this attribute may be null. */
+  bool nullable_;
 
   /** The attribute filter pipeline. */
   FilterPipeline filters_;

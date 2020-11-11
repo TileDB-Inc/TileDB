@@ -415,7 +415,7 @@ struct Writer {
   class Pipeline;
 
   struct _capnpPrivate {
-    CAPNP_DECLARE_STRUCT_HEADER(8ba60147a0e6735e, 1, 1)
+    CAPNP_DECLARE_STRUCT_HEADER(8ba60147a0e6735e, 1, 2)
 #if !CAPNP_LITE
     static constexpr ::capnp::_::RawBrandedSchema const* brand() {
       return &schema->defaultBrand;
@@ -3151,6 +3151,10 @@ class Writer::Reader {
   inline ::tiledb::sm::serialization::capnp::DomainArray::Reader getSubarray()
       const;
 
+  inline bool hasSubarrayRanges() const;
+  inline ::tiledb::sm::serialization::capnp::Subarray::Reader
+  getSubarrayRanges() const;
+
  private:
   ::capnp::_::StructReader _reader;
   template <typename, ::capnp::Kind>
@@ -3210,6 +3214,18 @@ class Writer::Builder {
   inline ::capnp::Orphan<::tiledb::sm::serialization::capnp::DomainArray>
   disownSubarray();
 
+  inline bool hasSubarrayRanges();
+  inline ::tiledb::sm::serialization::capnp::Subarray::Builder
+  getSubarrayRanges();
+  inline void setSubarrayRanges(
+      ::tiledb::sm::serialization::capnp::Subarray::Reader value);
+  inline ::tiledb::sm::serialization::capnp::Subarray::Builder
+  initSubarrayRanges();
+  inline void adoptSubarrayRanges(
+      ::capnp::Orphan<::tiledb::sm::serialization::capnp::Subarray>&& value);
+  inline ::capnp::Orphan<::tiledb::sm::serialization::capnp::Subarray>
+  disownSubarrayRanges();
+
  private:
   ::capnp::_::StructBuilder _builder;
   template <typename, ::capnp::Kind>
@@ -3233,6 +3249,8 @@ class Writer::Pipeline {
 
   inline ::tiledb::sm::serialization::capnp::DomainArray::Pipeline
   getSubarray();
+  inline ::tiledb::sm::serialization::capnp::Subarray::Pipeline
+  getSubarrayRanges();
 
  private:
   ::capnp::AnyPointer::Pipeline _typeless;
@@ -8485,6 +8503,59 @@ Writer::Builder::disownSubarray() {
   return ::capnp::_::
       PointerHelpers<::tiledb::sm::serialization::capnp::DomainArray>::disown(
           _builder.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS));
+}
+
+inline bool Writer::Reader::hasSubarrayRanges() const {
+  return !_reader.getPointerField(::capnp::bounded<1>() * ::capnp::POINTERS)
+              .isNull();
+}
+inline bool Writer::Builder::hasSubarrayRanges() {
+  return !_builder.getPointerField(::capnp::bounded<1>() * ::capnp::POINTERS)
+              .isNull();
+}
+inline ::tiledb::sm::serialization::capnp::Subarray::Reader
+Writer::Reader::getSubarrayRanges() const {
+  return ::capnp::_::
+      PointerHelpers<::tiledb::sm::serialization::capnp::Subarray>::get(
+          _reader.getPointerField(::capnp::bounded<1>() * ::capnp::POINTERS));
+}
+inline ::tiledb::sm::serialization::capnp::Subarray::Builder
+Writer::Builder::getSubarrayRanges() {
+  return ::capnp::_::
+      PointerHelpers<::tiledb::sm::serialization::capnp::Subarray>::get(
+          _builder.getPointerField(::capnp::bounded<1>() * ::capnp::POINTERS));
+}
+#if !CAPNP_LITE
+inline ::tiledb::sm::serialization::capnp::Subarray::Pipeline
+Writer::Pipeline::getSubarrayRanges() {
+  return ::tiledb::sm::serialization::capnp::Subarray::Pipeline(
+      _typeless.getPointerField(1));
+}
+#endif  // !CAPNP_LITE
+inline void Writer::Builder::setSubarrayRanges(
+    ::tiledb::sm::serialization::capnp::Subarray::Reader value) {
+  ::capnp::_::PointerHelpers<::tiledb::sm::serialization::capnp::Subarray>::set(
+      _builder.getPointerField(::capnp::bounded<1>() * ::capnp::POINTERS),
+      value);
+}
+inline ::tiledb::sm::serialization::capnp::Subarray::Builder
+Writer::Builder::initSubarrayRanges() {
+  return ::capnp::_::
+      PointerHelpers<::tiledb::sm::serialization::capnp::Subarray>::init(
+          _builder.getPointerField(::capnp::bounded<1>() * ::capnp::POINTERS));
+}
+inline void Writer::Builder::adoptSubarrayRanges(
+    ::capnp::Orphan<::tiledb::sm::serialization::capnp::Subarray>&& value) {
+  ::capnp::_::PointerHelpers<::tiledb::sm::serialization::capnp::Subarray>::
+      adopt(
+          _builder.getPointerField(::capnp::bounded<1>() * ::capnp::POINTERS),
+          kj::mv(value));
+}
+inline ::capnp::Orphan<::tiledb::sm::serialization::capnp::Subarray>
+Writer::Builder::disownSubarrayRanges() {
+  return ::capnp::_::
+      PointerHelpers<::tiledb::sm::serialization::capnp::Subarray>::disown(
+          _builder.getPointerField(::capnp::bounded<1>() * ::capnp::POINTERS));
 }
 
 inline bool SubarrayRanges::Reader::hasType() const {

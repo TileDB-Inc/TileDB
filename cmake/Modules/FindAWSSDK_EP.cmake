@@ -96,12 +96,12 @@ if (NOT AWSSDK_FOUND)
 
     ExternalProject_Add(ep_awssdk
       PREFIX "externals"
-      URL "https://github.com/aws/aws-sdk-cpp/archive/1.8.6.zip"
-      URL_HASH SHA1=5f4f58adabe2c7a241d49cb3ab2c96962fed1466
+      URL "https://github.com/aws/aws-sdk-cpp/archive/1.8.84.zip"
+      URL_HASH SHA1=e32a53a01c75ca7fdfe9feed9c5bbcedd98708e3
       CMAKE_ARGS
         -DCMAKE_BUILD_TYPE=${AWS_CMAKE_BUILD_TYPE}
         -DENABLE_TESTING=OFF
-        -DBUILD_ONLY=s3\\$<SEMICOLON>core
+        -DBUILD_ONLY=s3\\$<SEMICOLON>core\\$<SEMICOLON>identity-management\\$<SEMICOLON>sts
         -DBUILD_SHARED_LIBS=OFF
         -DCMAKE_INSTALL_BINDIR=lib
         -DENABLE_UNITY_BUILD=ON
@@ -138,7 +138,9 @@ if (AWSSDK_FOUND)
   AWSSDK_DETERMINE_LIBS_TO_LINK(AWS_SERVICES AWS_LINKED_LIBS)
   list(APPEND AWS_LINKED_LIBS aws-c-common
                               aws-c-event-stream
-                              aws-checksums)
+                              aws-checksums
+                              aws-cpp-sdk-sts
+                              aws-cpp-sdk-identity-management)
 
   foreach (LIB ${AWS_LINKED_LIBS})
     if (NOT ${LIB} MATCHES "aws-*")

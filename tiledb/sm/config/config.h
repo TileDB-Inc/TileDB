@@ -113,7 +113,7 @@ class Config {
    * tuning parameter for use on workloads where partitioning time is
    * quicker than sorting result coordinates. This budget is used as
    * a target and may be adjusted if it is too small. Additionally, it
-   * is used for both fixed and var-sized budgets.
+   * is used for fixed, var-sized, and validity vector budgets.
    */
   static const std::string SM_SUB_PARTITIONER_MEMORY_BUDGET;
 
@@ -253,6 +253,18 @@ class Config {
   /** S3 aws session token. */
   static const std::string VFS_S3_AWS_SESSION_TOKEN;
 
+  /** S3 aws role arn. */
+  static const std::string VFS_S3_AWS_ROLE_ARN;
+
+  /** S3 aws external id. */
+  static const std::string VFS_S3_AWS_EXTERNAL_ID;
+
+  /** S3 aws load frequency. */
+  static const std::string VFS_S3_AWS_LOAD_FREQUENCY;
+
+  /** S3 aws session name. */
+  static const std::string VFS_S3_AWS_SESSION_NAME;
+
   /** S3 scheme (http for local minio, https for AWS S3). */
   static const std::string VFS_S3_SCHEME;
 
@@ -375,6 +387,9 @@ class Config {
 
   /** Inherits the **set** parameters of the input `config`. */
   void inherit(const Config& config);
+
+  /** Compares configs for equality. */
+  bool operator==(const Config& rhs) const;
 
  private:
   /* ********************************* */

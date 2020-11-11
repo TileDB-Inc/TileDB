@@ -86,6 +86,12 @@ const uint64_t cell_var_offset_size = sizeof(uint64_t);
 /** The type of a variable cell offset. */
 const Datatype cell_var_offset_type = Datatype::UINT64;
 
+/** The size of a validity cell. */
+const uint64_t cell_validity_size = sizeof(uint8_t);
+
+/** The type of a validity cell. */
+const Datatype cell_validity_type = Datatype::UINT8;
+
 /** A special value indicating variable size. */
 const uint64_t var_size = std::numeric_limits<uint64_t>::max();
 
@@ -94,6 +100,12 @@ Compressor cell_var_offsets_compression = Compressor::ZSTD;
 
 /** The default compression level for the offsets of variable-sized cells. */
 int cell_var_offsets_compression_level = -1;
+
+/** The default compressor for the validity value cells. */
+Compressor cell_validity_compression = Compressor::RLE;
+
+/** The default compression level for the validity value cells. */
+int cell_validity_compression_level = -1;
 
 /** Special name reserved for the coordinates attribute. */
 const std::string coords = "__coords";
@@ -405,6 +417,9 @@ const std::string global_order_str = "global-order";
 /** The string representation for the unordered layout. */
 const std::string unordered_str = "unordered";
 
+/** The string representation for the Hilbert layout. */
+const std::string hilbert_str = "hilbert";
+
 /** The string representation of null. */
 const std::string null_str = "null";
 
@@ -429,6 +444,9 @@ const std::string filesystem_type_azure_str = "AZURE";
 /** The string representation for filesystem type GCS. */
 const std::string filesystem_type_gcs_str = "GCS";
 
+/** The string representation for in-memory filesystem */
+const std::string filesystem_type_mem_str = "MEM";
+
 /** The string representation for WalkOrder preorder. */
 const std::string walkorder_preorder_str = "PREORDER";
 
@@ -449,7 +467,7 @@ const int32_t library_version[3] = {
     TILEDB_VERSION_MAJOR, TILEDB_VERSION_MINOR, TILEDB_VERSION_PATCH};
 
 /** The TileDB serialization format version number. */
-const uint32_t format_version = 6;
+const uint32_t format_version = 7;
 
 /** The maximum size of a tile chunk (unit of compression) in bytes. */
 const uint64_t max_tile_chunk_size = 64 * 1024;

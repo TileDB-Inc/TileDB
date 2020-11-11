@@ -408,6 +408,101 @@ Status Query::get_buffer(
       name, buffer_off, buffer_off_size, buffer_val, buffer_val_size);
 }
 
+Status Query::get_buffer_vbytemap(
+    const char* name,
+    uint64_t** buffer_off,
+    uint64_t** buffer_off_size,
+    void** buffer_val,
+    uint64_t** buffer_val_size,
+    uint8_t** buffer_validity_bytemap,
+    uint64_t** buffer_validity_bytemap_size) const {
+  const ValidityVector* vv;
+  RETURN_NOT_OK(get_buffer(
+      name, buffer_off, buffer_off_size, buffer_val, buffer_val_size, &vv));
+
+  *buffer_validity_bytemap = vv->bytemap();
+  *buffer_validity_bytemap_size = vv->bytemap_size();
+
+  return Status::Ok();
+}
+
+Status Query::get_buffer_vbytemap(
+    const char* name,
+    void** buffer,
+    uint64_t** buffer_size,
+    uint8_t** buffer_validity_bytemap,
+    uint64_t** buffer_validity_bytemap_size) const {
+  const ValidityVector* vv;
+  RETURN_NOT_OK(get_buffer(name, buffer, buffer_size, &vv));
+
+  *buffer_validity_bytemap = vv->bytemap();
+  *buffer_validity_bytemap_size = vv->bytemap_size();
+
+  return Status::Ok();
+}
+
+Status Query::get_buffer(
+    const char* name,
+    void** buffer,
+    uint64_t** buffer_size,
+    const ValidityVector** validity_vector) const {
+  // Check nullable attribute
+  auto array_schema = this->array_schema();
+  if (array_schema->attribute(name) == nullptr)
+    return LOG_STATUS(Status::QueryError(
+        std::string("Cannot get buffer; Invalid attribute name '") + name +
+        "'"));
+  if (array_schema->var_size(name))
+    return LOG_STATUS(Status::QueryError(
+        std::string("Cannot get buffer; '") + name + "' is var-sized"));
+  if (!array_schema->is_nullable(name))
+    return LOG_STATUS(Status::QueryError(
+        std::string("Cannot get buffer; '") + name + "' is non-nullable"));
+
+  if (type_ == QueryType::WRITE)
+    return writer_.get_buffer_nullable(
+        name, buffer, buffer_size, validity_vector);
+  return reader_.get_buffer_nullable(
+      name, buffer, buffer_size, validity_vector);
+}
+
+Status Query::get_buffer(
+    const char* name,
+    uint64_t** buffer_off,
+    uint64_t** buffer_off_size,
+    void** buffer_val,
+    uint64_t** buffer_val_size,
+    const ValidityVector** validity_vector) const {
+  // Check attribute
+  auto array_schema = this->array_schema();
+  if (array_schema->attribute(name) == nullptr)
+    return LOG_STATUS(Status::QueryError(
+        std::string("Cannot get buffer; Invalid attribute name '") + name +
+        "'"));
+  if (!array_schema->var_size(name))
+    return LOG_STATUS(Status::QueryError(
+        std::string("Cannot get buffer; '") + name + "' is fixed-sized"));
+  if (!array_schema->is_nullable(name))
+    return LOG_STATUS(Status::QueryError(
+        std::string("Cannot get buffer; '") + name + "' is non-nullable"));
+
+  if (type_ == QueryType::WRITE)
+    return writer_.get_buffer_nullable(
+        name,
+        buffer_off,
+        buffer_off_size,
+        buffer_val,
+        buffer_val_size,
+        validity_vector);
+  return reader_.get_buffer_nullable(
+      name,
+      buffer_off,
+      buffer_off_size,
+      buffer_val,
+      buffer_val_size,
+      validity_vector);
+}
+
 Status Query::get_attr_serialization_state(
     const std::string& attribute, SerializationState::AttrState** state) {
   *state = &serialization_state_.attribute_states[attribute];
@@ -567,11 +662,16 @@ Writer* Query::writer() {
   return &writer_;
 }
 
-Status Query::set_buffer(
-    const std::string& name,
-    void* buffer,
-    uint64_t* buffer_size,
-    bool check_null_buffers) {
+Status Query::disable_check_global_order() {
+  if (type_ == QueryType::READ)
+    return LOG_STATUS(Status::QueryError(
+        "Cannot disable checking global order; Applicable only to writes"));
+
+  writer_.disable_check_global_order();
+  return Status::Ok();
+}
+
+Status Query::check_set_fixed_buffer(const std::string& name) {
   if (name == constants::coords &&
       !array_->array_schema()->domain()->all_dims_same_type())
     return LOG_STATUS(Status::QueryError(
@@ -584,6 +684,16 @@ Status Query::set_buffer(
         "Cannot set buffer; Setting a buffer for zipped coordinates is not "
         "applicable to domains with variable-sized dimensions"));
 
+  return Status::Ok();
+}
+
+Status Query::set_buffer(
+    const std::string& name,
+    void* const buffer,
+    uint64_t* const buffer_size,
+    const bool check_null_buffers) {
+  RETURN_NOT_OK(check_set_fixed_buffer(name));
+
   if (type_ == QueryType::WRITE)
     return writer_.set_buffer(name, buffer, buffer_size);
   return reader_.set_buffer(name, buffer, buffer_size, check_null_buffers);
@@ -591,11 +701,11 @@ Status Query::set_buffer(
 
 Status Query::set_buffer(
     const std::string& name,
-    uint64_t* buffer_off,
-    uint64_t* buffer_off_size,
-    void* buffer_val,
-    uint64_t* buffer_val_size,
-    bool check_null_buffers) {
+    uint64_t* const buffer_off,
+    uint64_t* const buffer_off_size,
+    void* const buffer_val,
+    uint64_t* const buffer_val_size,
+    const bool check_null_buffers) {
   if (type_ == QueryType::WRITE)
     return writer_.set_buffer(
         name, buffer_off, buffer_off_size, buffer_val, buffer_val_size);
@@ -605,6 +715,91 @@ Status Query::set_buffer(
       buffer_off_size,
       buffer_val,
       buffer_val_size,
+      check_null_buffers);
+}
+
+Status Query::set_buffer_vbytemap(
+    const std::string& name,
+    void* const buffer,
+    uint64_t* const buffer_size,
+    uint8_t* const buffer_validity_bytemap,
+    uint64_t* const buffer_validity_bytemap_size,
+    const bool check_null_buffers) {
+  // Convert the bytemap into a ValidityVector.
+  ValidityVector vv;
+  RETURN_NOT_OK(
+      vv.init_bytemap(buffer_validity_bytemap, buffer_validity_bytemap_size));
+
+  return set_buffer(
+      name, buffer, buffer_size, std::move(vv), check_null_buffers);
+}
+
+Status Query::set_buffer_vbytemap(
+    const std::string& name,
+    uint64_t* const buffer_off,
+    uint64_t* const buffer_off_size,
+    void* const buffer_val,
+    uint64_t* const buffer_val_size,
+    uint8_t* const buffer_validity_bytemap,
+    uint64_t* const buffer_validity_bytemap_size,
+    const bool check_null_buffers) {
+  // Convert the bytemap into a ValidityVector.
+  ValidityVector vv;
+  RETURN_NOT_OK(
+      vv.init_bytemap(buffer_validity_bytemap, buffer_validity_bytemap_size));
+
+  return set_buffer(
+      name,
+      buffer_off,
+      buffer_off_size,
+      buffer_val,
+      buffer_val_size,
+      std::move(vv),
+      check_null_buffers);
+}
+
+Status Query::set_buffer(
+    const std::string& name,
+    void* const buffer,
+    uint64_t* const buffer_size,
+    ValidityVector&& validity_vector,
+    const bool check_null_buffers) {
+  RETURN_NOT_OK(check_set_fixed_buffer(name));
+
+  if (type_ == QueryType::WRITE)
+    return writer_.set_buffer(
+        name, buffer, buffer_size, std::move(validity_vector));
+  return reader_.set_buffer(
+      name,
+      buffer,
+      buffer_size,
+      std::move(validity_vector),
+      check_null_buffers);
+}
+
+Status Query::set_buffer(
+    const std::string& name,
+    uint64_t* const buffer_off,
+    uint64_t* const buffer_off_size,
+    void* const buffer_val,
+    uint64_t* const buffer_val_size,
+    ValidityVector&& validity_vector,
+    const bool check_null_buffers) {
+  if (type_ == QueryType::WRITE)
+    return writer_.set_buffer(
+        name,
+        buffer_off,
+        buffer_off_size,
+        buffer_val,
+        buffer_val_size,
+        std::move(validity_vector));
+  return reader_.set_buffer(
+      name,
+      buffer_off,
+      buffer_off_size,
+      buffer_val,
+      buffer_val_size,
+      std::move(validity_vector),
       check_null_buffers);
 }
 
@@ -619,6 +814,10 @@ Status Query::set_est_result_size(
 }
 
 Status Query::set_layout(Layout layout) {
+  if (layout == Layout::HILBERT)
+    return LOG_STATUS(Status::QueryError(
+        "Cannot set layout; Hilbert order is not applicable to queries"));
+
   layout_ = layout;
   return Status::Ok();
 }

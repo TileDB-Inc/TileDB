@@ -439,7 +439,7 @@ bool Subarray::is_default(uint32_t dim_index) const {
 }
 
 bool Subarray::is_set() const {
-  for (const auto& d : is_default_)
+  for (auto d : is_default_)
     if (d == false)
       return true;
   return false;
@@ -530,6 +530,12 @@ Status Subarray::get_est_result_size(
         Status::SubarrayError("Cannot get estimated result size; "
                               "Attribute/Dimension must be fixed-sized"));
 
+  // Check if attribute/dimension is nullable
+  if (array_schema->is_nullable(name))
+    return LOG_STATUS(
+        Status::SubarrayError("Cannot get estimated result size; "
+                              "Attribute/Dimension must not be nullable"));
+
   // Compute tile overlap for each fragment
   RETURN_NOT_OK(compute_est_result_size(compute_tp));
   *size = static_cast<uint64_t>(ceil(est_result_size_[name].size_fixed_));
@@ -576,6 +582,12 @@ Status Subarray::get_est_result_size(
         Status::SubarrayError("Cannot get estimated result size; "
                               "Attribute/Dimension must be var-sized"));
 
+  // Check if attribute/dimension is nullable
+  if (array_schema->is_nullable(name))
+    return LOG_STATUS(
+        Status::SubarrayError("Cannot get estimated result size; "
+                              "Attribute/Dimension must not be nullable"));
+
   // Compute tile overlap for each fragment
   RETURN_NOT_OK(compute_est_result_size(compute_tp));
   *size_off = static_cast<uint64_t>(ceil(est_result_size_[name].size_fixed_));
@@ -599,6 +611,130 @@ Status Subarray::get_est_result_size(
   return Status::Ok();
 }
 
+Status Subarray::get_est_result_size_nullable(
+    const char* name,
+    uint64_t* size,
+    uint64_t* size_validity,
+    ThreadPool* const compute_tp) {
+  // Check attribute/dimension name
+  if (name == nullptr)
+    return LOG_STATUS(
+        Status::SubarrayError("Cannot get estimated result size; "
+                              "Attribute name cannot be null"));
+
+  // Check size pointer
+  if (size == nullptr || size_validity == nullptr)
+    return LOG_STATUS(Status::SubarrayError(
+        "Cannot get estimated result size; Input sizes cannot be null"));
+
+  // Check if name is attribute
+  const auto array_schema = array_->array_schema();
+  const bool is_attr = array_schema->is_attr(name);
+
+  // Check if attribute exists
+  if (!is_attr)
+    return LOG_STATUS(Status::SubarrayError(
+        std::string("Cannot get estimated result size; Attribute '") + name +
+        "' does not exist"));
+
+  // Check if the attribute is fixed-sized
+  if (array_schema->var_size(name))
+    return LOG_STATUS(
+        Status::SubarrayError("Cannot get estimated result size; "
+                              "Attribute must be fixed-sized"));
+
+  // Check if attribute is nullable
+  if (!array_schema->is_nullable(name))
+    return LOG_STATUS(
+        Status::SubarrayError("Cannot get estimated result size; "
+                              "Attribute must be nullable"));
+
+  // Compute tile overlap for each fragment
+  RETURN_NOT_OK(compute_est_result_size(compute_tp));
+  *size = static_cast<uint64_t>(ceil(est_result_size_[name].size_fixed_));
+  *size_validity =
+      static_cast<uint64_t>(ceil(est_result_size_[name].size_validity_));
+
+  // If the size is non-zero, ensure it is large enough to
+  // contain at least one cell.
+  const auto cell_size = array_schema->cell_size(name);
+  if (*size > 0 && *size < cell_size) {
+    *size = cell_size;
+    *size_validity = 1;
+  }
+
+  return Status::Ok();
+}
+
+Status Subarray::get_est_result_size_nullable(
+    const char* name,
+    uint64_t* size_off,
+    uint64_t* size_val,
+    uint64_t* size_validity,
+    ThreadPool* const compute_tp) {
+  // Check attribute/dimension name
+  if (name == nullptr)
+    return LOG_STATUS(
+        Status::SubarrayError("Cannot get estimated result size; "
+                              "Attribute name cannot be null"));
+
+  // Check size pointer
+  if (size_off == nullptr || size_val == nullptr || size_validity == nullptr)
+    return LOG_STATUS(Status::SubarrayError(
+        "Cannot get estimated result size; Input sizes cannot be null"));
+
+  // Check if name is attribute
+  const auto array_schema = array_->array_schema();
+  const bool is_attr = array_schema->is_attr(name);
+
+  // Check if attribute exists
+  if (!is_attr)
+    return LOG_STATUS(Status::SubarrayError(
+        std::string("Cannot get estimated result size; Attribute '") + name +
+        "' does not exist"));
+
+  // Check if the attribute is var-sized
+  if (!array_schema->var_size(name))
+    return LOG_STATUS(
+        Status::SubarrayError("Cannot get estimated result size; "
+                              "Attribute must be var-sized"));
+
+  // Check if attribute is nullable
+  if (!array_schema->is_nullable(name))
+    return LOG_STATUS(
+        Status::SubarrayError("Cannot get estimated result size; "
+                              "Attribute must be nullable"));
+
+  // Compute tile overlap for each fragment
+  RETURN_NOT_OK(compute_est_result_size(compute_tp));
+  *size_off = static_cast<uint64_t>(ceil(est_result_size_[name].size_fixed_));
+  *size_val = static_cast<uint64_t>(ceil(est_result_size_[name].size_var_));
+  *size_validity =
+      static_cast<uint64_t>(ceil(est_result_size_[name].size_validity_));
+
+  // If the value size is non-zero, ensure both it and the offset and
+  // validity sizes are large enough to contain at least one cell. Otherwise,
+  // ensure the offset and validity sizes are also zero.
+  if (*size_val > 0) {
+    const uint64_t off_cell_size = constants::cell_var_offset_size;
+    if (*size_off < off_cell_size)
+      *size_off = off_cell_size;
+
+    const uint64_t val_cell_size = datatype_size(array_schema->type(name));
+    if (*size_val < val_cell_size)
+      *size_val = val_cell_size;
+
+    const uint64_t validity_cell_size = constants::cell_validity_size;
+    if (*size_validity < validity_cell_size)
+      *size_validity = validity_cell_size;
+  } else {
+    *size_off = 0;
+    *size_validity = 0;
+  }
+
+  return Status::Ok();
+}
+
 Status Subarray::get_max_memory_size(
     const char* name, uint64_t* size, ThreadPool* const compute_tp) {
   // Check attribute/dimension name
@@ -609,7 +745,7 @@ Status Subarray::get_max_memory_size(
   // Check size pointer
   if (size == nullptr)
     return LOG_STATUS(Status::SubarrayError(
-        "Cannot get max memory size; Inpute size cannot be null"));
+        "Cannot get max memory size; Input size cannot be null"));
 
   // Check if name is attribute or dimension
   auto array_schema = array_->array_schema();
@@ -626,6 +762,12 @@ Status Subarray::get_max_memory_size(
   if (name != constants::coords && array_schema->var_size(name))
     return LOG_STATUS(Status::SubarrayError(
         "Cannot get max memory size; Attribute/Dimension must be fixed-sized"));
+
+  // Check if attribute/dimension is nullable
+  if (array_schema->is_nullable(name))
+    return LOG_STATUS(
+        Status::SubarrayError("Cannot get estimated result size; "
+                              "Attribute/Dimension must not be nullable"));
 
   // Compute tile overlap for each fragment
   compute_est_result_size(compute_tp);
@@ -665,10 +807,106 @@ Status Subarray::get_max_memory_size(
     return LOG_STATUS(Status::SubarrayError(
         "Cannot get max memory size; Attribute/Dimension must be var-sized"));
 
+  // Check if attribute/dimension is nullable
+  if (array_schema->is_nullable(name))
+    return LOG_STATUS(
+        Status::SubarrayError("Cannot get estimated result size; "
+                              "Attribute/Dimension must not be nullable"));
+
   // Compute tile overlap for each fragment
   compute_est_result_size(compute_tp);
   *size_off = max_mem_size_[name].size_fixed_;
   *size_val = max_mem_size_[name].size_var_;
+
+  return Status::Ok();
+}
+
+Status Subarray::get_max_memory_size_nullable(
+    const char* name,
+    uint64_t* size,
+    uint64_t* size_validity,
+    ThreadPool* const compute_tp) {
+  // Check attribute name
+  if (name == nullptr)
+    return LOG_STATUS(Status::SubarrayError(
+        "Cannot get max memory size; Attribute cannot be null"));
+
+  // Check size pointer
+  if (size == nullptr || size_validity == nullptr)
+    return LOG_STATUS(Status::SubarrayError(
+        "Cannot get max memory size; Input sizes cannot be null"));
+
+  // Check if name is attribute
+  auto array_schema = array_->array_schema();
+  bool is_attr = array_schema->is_attr(name);
+
+  // Check if attribute exists
+  if (!is_attr)
+    return LOG_STATUS(Status::SubarrayError(
+        std::string("Cannot get max memory size; Attribute '") + name +
+        "' does not exist"));
+
+  // Check if the attribute is fixed-sized
+  if (array_schema->var_size(name))
+    return LOG_STATUS(Status::SubarrayError(
+        "Cannot get max memory size; Attribute must be fixed-sized"));
+
+  // Check if attribute is nullable
+  if (!array_schema->is_nullable(name))
+    return LOG_STATUS(
+        Status::SubarrayError("Cannot get estimated result size; "
+                              "Attribute must be nullable"));
+
+  // Compute tile overlap for each fragment
+  compute_est_result_size(compute_tp);
+  *size = max_mem_size_[name].size_fixed_;
+  *size_validity = max_mem_size_[name].size_validity_;
+
+  return Status::Ok();
+}
+
+Status Subarray::get_max_memory_size_nullable(
+    const char* name,
+    uint64_t* size_off,
+    uint64_t* size_val,
+    uint64_t* size_validity,
+    ThreadPool* const compute_tp) {
+  // Check attribute/dimension name
+  if (name == nullptr)
+    return LOG_STATUS(Status::SubarrayError(
+        "Cannot get max memory size; Attribute/Dimension cannot be null"));
+
+  // Check size pointer
+  if (size_off == nullptr || size_val == nullptr || size_validity == nullptr)
+    return LOG_STATUS(Status::SubarrayError(
+        "Cannot get max memory size; Input sizes cannot be null"));
+
+  // Check if name is attribute or dimension
+  auto array_schema = array_->array_schema();
+  bool is_attr = array_schema->is_attr(name);
+
+  // Check if attribute exists
+  if (!is_attr)
+    return LOG_STATUS(Status::SubarrayError(
+        std::string("Cannot get max memory size; Attribute '") + name +
+        "' does not exist"));
+
+  // Check if the attribute is var-sized
+  if (!array_schema->var_size(name))
+    return LOG_STATUS(Status::SubarrayError(
+        "Cannot get max memory size; Attribute/Dimension must be var-sized"));
+
+  // Check if attribute is nullable
+  if (!array_schema->is_nullable(name))
+    return LOG_STATUS(
+        Status::SubarrayError("Cannot get estimated result size; "
+                              "Attribute must be nullable"));
+
+  // Compute tile overlap for each fragment
+  compute_est_result_size(compute_tp);
+  *size_off = max_mem_size_[name].size_fixed_;
+  *size_val = max_mem_size_[name].size_var_;
+  *size_validity = max_mem_size_[name].size_validity_;
 
   return Status::Ok();
 }
@@ -694,8 +932,8 @@ std::vector<uint64_t> Subarray::get_range_coords(uint64_t range_idx) const {
     }
     std::reverse(ret.begin(), ret.end());
   } else {
-    // Global order - single range
-    assert(layout == Layout::GLOBAL_ORDER);
+    // Global order or Hilbert - single range
+    assert(layout == Layout::GLOBAL_ORDER || layout == Layout::HILBERT);
     assert(range_num() == 1);
     for (unsigned i = 0; i < dim_num; ++i)
       ret.push_back(0);
@@ -945,11 +1183,15 @@ Status Subarray::compute_relevant_fragment_est_result_sizes(
   for (size_t r = 0; r < range_num; ++r)
     (*result_sizes)[r].reserve(names.size());
 
-  // Create vector of var sizes
+  // Create vector of var and validity flags
   std::vector<bool> var_sizes;
+  std::vector<bool> nullable;
   var_sizes.reserve(names.size());
-  for (const auto& name : names)
+  nullable.reserve(names.size());
+  for (const auto& name : names) {
     var_sizes.push_back(array_schema->var_size(name));
+    nullable.push_back(array_schema->is_nullable(name));
+  }
 
   auto all_dims_same_type = array_schema->domain()->all_dims_same_type();
   auto all_dims_fixed = array_schema->domain()->all_dims_fixed();
@@ -969,6 +1211,7 @@ Status Subarray::compute_relevant_fragment_est_result_sizes(
           fragment_metadata,
           names,
           var_sizes,
+          nullable,
           r,
           r_coords,
           &(*result_sizes)[r - range_start],
@@ -995,6 +1238,7 @@ Status Subarray::compute_relevant_fragment_est_result_sizes(
         // Global order - noop
       }
     }
+
     return Status::Ok();
   });
   for (auto st : statuses)
@@ -1003,7 +1247,7 @@ Status Subarray::compute_relevant_fragment_est_result_sizes(
   // Compute the mem sizes vector
   mem_sizes->resize(range_num);
   for (auto& ms : *mem_sizes)
-    ms.resize(names.size(), {0, 0});
+    ms.resize(names.size(), {0, 0, 0});
   std::unordered_set<std::pair<unsigned, uint64_t>, utils::hash::pair_hash>
       all_frag_tiles;
   uint64_t tile_size, tile_var_size;
@@ -1015,13 +1259,20 @@ Status Subarray::compute_relevant_fragment_est_result_sizes(
         auto meta = fragment_metadata[ft.first];
         for (size_t i = 0; i < names.size(); ++i) {
           tile_size = meta->tile_size(names[i], ft.second);
+          auto cell_size = array_schema->cell_size(names[i]);
           if (!var_sizes[i]) {
             mem_vec[i].size_fixed_ += tile_size;
+            if (nullable[i])
+              mem_vec[i].size_validity_ +=
+                  tile_size / cell_size * constants::cell_validity_size;
           } else {
             RETURN_NOT_OK(meta->tile_var_size(
                 *encryption_key, names[i], ft.second, &tile_var_size));
             mem_vec[i].size_fixed_ += tile_size;
             mem_vec[i].size_var_ += tile_var_size;
+            if (nullable[i])
+              mem_vec[i].size_validity_ +=
+                  tile_var_size / cell_size * constants::cell_validity_size;
           }
         }
       }
@@ -1279,8 +1530,8 @@ void Subarray::compute_range_offsets() {
     }
     std::reverse(range_offsets_.begin(), range_offsets_.end());
   } else {
-    // Global order - single range
-    assert(layout == Layout::GLOBAL_ORDER);
+    // Global order or Hilbert - single range
+    assert(layout == Layout::GLOBAL_ORDER || layout == Layout::HILBERT);
     assert(range_num() == 1);
     range_offsets_.push_back(1);
     if (dim_num > 1) {
@@ -1329,19 +1580,21 @@ Status Subarray::compute_est_result_size(ThreadPool* const compute_tp) {
       names, 0, range_num - 1, &result_sizes, &mem_sizes, compute_tp));
 
   // Accummulate the individual estimated result sizes
-  std::vector<ResultSize> est_vec(num, ResultSize{0.0, 0.0});
-  std::vector<MemorySize> mem_vec(num, MemorySize{0, 0});
+  std::vector<ResultSize> est_vec(num, ResultSize{0.0, 0.0, 0.0});
+  std::vector<MemorySize> mem_vec(num, MemorySize{0, 0, 0});
   for (uint64_t r = 0; r < range_num; ++r) {
     for (size_t i = 0; i < result_sizes[r].size(); ++i) {
       est_vec[i].size_fixed_ += result_sizes[r][i].size_fixed_;
       est_vec[i].size_var_ += result_sizes[r][i].size_var_;
+      est_vec[i].size_validity_ += result_sizes[r][i].size_validity_;
       mem_vec[i].size_fixed_ += mem_sizes[r][i].size_fixed_;
       mem_vec[i].size_var_ += mem_sizes[r][i].size_var_;
+      mem_vec[i].size_validity_ += mem_sizes[r][i].size_validity_;
     }
   }
 
   // Calibrate for dense arrays
-  uint64_t min_size_fixed, min_size_var;
+  uint64_t min_size_fixed, min_size_var, min_size_validity;
   if (array_schema->dense()) {
     auto cell_num = this->cell_num();
     for (unsigned i = 0; i < num; ++i) {
@@ -1354,10 +1607,18 @@ Status Subarray::compute_est_result_size(ThreadPool* const compute_tp) {
             cell_num * array_schema->attribute(names[i])->fill_value().size();
       }
 
+      if (array_schema->is_nullable(names[i])) {
+        min_size_validity = cell_num * constants::cell_validity_size;
+      } else {
+        min_size_validity = 0;
+      }
+
       if (est_vec[i].size_fixed_ < min_size_fixed)
         est_vec[i].size_fixed_ = min_size_fixed;
       if (est_vec[i].size_var_ < min_size_var)
         est_vec[i].size_var_ = min_size_var;
+      if (est_vec[i].size_validity_ < min_size_validity)
+        est_vec[i].size_validity_ = min_size_validity;
     }
   }
 
@@ -1366,6 +1627,7 @@ Status Subarray::compute_est_result_size(ThreadPool* const compute_tp) {
     for (auto& r : est_vec) {
       r.size_fixed_ *= constants::est_result_size_amplification;
       r.size_var_ *= constants::est_result_size_amplification;
+      r.size_validity_ *= constants::est_result_size_amplification;
     }
   }
 
@@ -1395,11 +1657,12 @@ Status Subarray::compute_relevant_fragment_est_result_sizes(
     const std::vector<FragmentMetadata*>& fragment_meta,
     const std::vector<std::string>& names,
     const std::vector<bool>& var_sizes,
+    const std::vector<bool>& nullable,
     uint64_t range_idx,
     const std::vector<uint64_t>& range_coords,
     std::vector<ResultSize>* result_sizes,
     std::set<std::pair<unsigned, uint64_t>>* frag_tiles) {
-  result_sizes->resize(names.size(), {0.0, 0.0});
+  result_sizes->resize(names.size(), {0.0, 0.0, 0.0});
 
   // Compute estimated result
   auto fragment_num = (unsigned)relevant_fragments_.size();
@@ -1419,13 +1682,22 @@ Status Subarray::compute_relevant_fragment_est_result_sizes(
 
           frag_tiles->insert(std::pair<unsigned, uint64_t>(f, tid));
           tile_size = meta->tile_size(names[n], tid);
+          auto attr_datatype_size = datatype_size(array_schema->type(names[n]));
           if (!var_sizes[n]) {
             (*result_sizes)[n].size_fixed_ += tile_size;
+            if (nullable[n])
+              (*result_sizes)[n].size_validity_ +=
+                  tile_size / attr_datatype_size *
+                  constants::cell_validity_size;
           } else {
             (*result_sizes)[n].size_fixed_ += tile_size;
             RETURN_NOT_OK(meta->tile_var_size(
                 *encryption_key, names[n], tid, &tile_var_size));
             (*result_sizes)[n].size_var_ += tile_var_size;
+            if (nullable[n])
+              (*result_sizes)[n].size_validity_ +=
+                  tile_var_size / attr_datatype_size *
+                  constants::cell_validity_size;
           }
         }
       }
@@ -1442,13 +1714,25 @@ Status Subarray::compute_relevant_fragment_est_result_sizes(
 
         frag_tiles->insert(std::pair<unsigned, uint64_t>(f, tid));
         tile_size = meta->tile_size(names[n], tid);
+        auto attr_datatype_size = datatype_size(array_schema->type(names[n]));
         if (!var_sizes[n]) {
           (*result_sizes)[n].size_fixed_ += tile_size * ratio;
+          if (nullable[n])
+            (*result_sizes)[n].size_validity_ +=
+                (tile_size / attr_datatype_size *
+                 constants::cell_validity_size) *
+                ratio;
+
         } else {
           (*result_sizes)[n].size_fixed_ += tile_size * ratio;
           RETURN_NOT_OK(meta->tile_var_size(
               *encryption_key, names[n], tid, &tile_var_size));
           (*result_sizes)[n].size_var_ += tile_var_size * ratio;
+          if (nullable[n])
+            (*result_sizes)[n].size_validity_ +=
+                (tile_var_size / attr_datatype_size *
+                 constants::cell_validity_size) *
+                ratio;
         }
       }
     }
@@ -1466,7 +1750,9 @@ Status Subarray::compute_relevant_fragment_est_result_sizes(
           cell_num, dim->domain_range(ranges_[d][range_coords[d]]));
     }
 
-    uint64_t max_size_fixed, max_size_var = UINT64_MAX;
+    uint64_t max_size_fixed = UINT64_MAX;
+    uint64_t max_size_var = UINT64_MAX;
+    uint64_t max_size_validity = UINT64_MAX;
     for (size_t n = 0; n < names.size(); ++n) {
       // Zipped coords applicable only in homogeneous domains
       if (names[n] == constants::coords && !all_dims_same_type)
@@ -1478,11 +1764,17 @@ Status Subarray::compute_relevant_fragment_est_result_sizes(
       } else {
         max_size_fixed =
             utils::math::safe_mul(cell_num, array_schema->cell_size(names[n]));
+        if (nullable[n])
+          max_size_validity =
+              utils::math::safe_mul(cell_num, constants::cell_validity_size);
       }
+
       (*result_sizes)[n].size_fixed_ =
           std::min<double>((*result_sizes)[n].size_fixed_, max_size_fixed);
       (*result_sizes)[n].size_var_ =
           std::min<double>((*result_sizes)[n].size_var_, max_size_var);
+      (*result_sizes)[n].size_validity_ = std::min<double>(
+          (*result_sizes)[n].size_validity_, max_size_validity);
     }
   }
 

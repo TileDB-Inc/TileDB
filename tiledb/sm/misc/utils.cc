@@ -268,10 +268,18 @@ Status get_timestamp_range(
 }
 
 Status get_fragment_name_version(const std::string& name, uint32_t* version) {
-  // First check if it is in version 3, which has 5 '_' in the name
+  // First check if it is version 3 or greater, which has 5 '_'
+  // characters in the name.
   size_t n = std::count(name.begin(), name.end(), '_');
   if (n == 5) {
-    *version = 3;
+    // Fetch the fragment version from the fragment name. If the fragment
+    // version is greater than or equal to 7, we have a footer version of 4.
+    // Otherwise, it is version 3.
+    const int frag_version = std::stoi(name.substr(name.find_last_of('_') + 1));
+    if (frag_version >= 7)
+      *version = 4;
+    else
+      *version = 3;
     return Status::Ok();
   }
 
@@ -673,6 +681,32 @@ T safe_mul(T a, T b) {
   }
 
   return prod;
+}
+
+uint64_t left_p2_m1(uint64_t value) {
+  // Edge case
+  if (value == UINT64_MAX)
+    return value;
+
+  uint64_t ret = 0;  // Min power of 2 minus 1
+  while (ret <= value) {
+    ret = (ret << 1) | 1;  // Next larger power of 2 minus 1
+  }
+
+  return ret >> 1;
+}
+
+uint64_t right_p2_m1(uint64_t value) {
+  // Edge case
+  if (value == 0)
+    return value;
+
+  uint64_t ret = UINT64_MAX;  // Max power of 2 minus 1
+  while (ret >= value) {
+    ret >>= 1;  // Next smaller power of 2 minus 1
+  }
+
+  return (ret << 1) | 1;
 }
 
 }  // namespace math

@@ -71,11 +71,17 @@ extern const std::string array_metadata_folder_name;
 /** The default tile capacity. */
 extern const uint64_t capacity;
 
-/** The size of a variable cell offset. */
+/** The size of a variable offset cell. */
 extern const uint64_t cell_var_offset_size;
 
-/** The type of a variable cell offset. */
+/** The type of a variable offset cell. */
 extern const Datatype cell_var_offset_type;
+
+/** The size of a validity cell. */
+extern const uint64_t cell_validity_size;
+
+/** The type of a validity cell. */
+extern const Datatype cell_validity_type;
 
 /** A special value indicating varibale size. */
 extern const uint64_t var_size;
@@ -85,6 +91,12 @@ extern Compressor cell_var_offsets_compression;
 
 /** The default compression level for the offsets of variable-sized cells. */
 extern int cell_var_offsets_compression_level;
+
+/** The default compressor for the validity value cells. */
+extern Compressor cell_validity_compression;
+
+/** The default compression level for the validity value cells. */
+extern int cell_validity_compression_level;
 
 /** The default compressor for the coordinates. */
 extern Compressor coords_compression;
@@ -393,6 +405,9 @@ extern const std::string global_order_str;
 /** The string representation for the unordered layout. */
 extern const std::string unordered_str;
 
+/** The string representation for the Hilbert layout. */
+extern const std::string hilbert_str;
+
 /** The string representation of null. */
 extern const std::string null_str;
 
@@ -416,6 +431,9 @@ extern const std::string filesystem_type_azure_str;
 
 /** The string representation for filesystem type gcs. */
 extern const std::string filesystem_type_gcs_str;
+
+/** The string representation for in-memory filesystem. */
+extern const std::string filesystem_type_mem_str;
 
 /** The string representation for WalkOrder preorder. */
 extern const std::string walkorder_preorder_str;

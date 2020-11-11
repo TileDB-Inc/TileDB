@@ -91,6 +91,7 @@ enum class StatusCode : char {
   ChunkedBuffer,
   Buffer,
   Query,
+  ValidityVector,
   VFS,
   ConstBuffer,
   Dimension,
@@ -106,6 +107,7 @@ enum class StatusCode : char {
   FS_AZURE,
   FS_GCS,
   FS_HDFS,
+  FS_MEM,
   Attribute,
   WriteCellSlabIter,
   Reader,
@@ -233,6 +235,11 @@ class Status {
     return Status(StatusCode::Query, msg, -1);
   }
 
+  /** Return a ValidityVectorError error class Status with a given message **/
+  static Status ValidityVectorError(const std::string& msg) {
+    return Status(StatusCode::ValidityVector, msg, -1);
+  }
+
   /** Return a VFSError error class Status with a given message **/
   static Status VFSError(const std::string& msg) {
     return Status(StatusCode::VFS, msg, -1);
@@ -306,6 +313,11 @@ class Status {
   /** Return a UtilsError error class Status with a given message **/
   static Status HDFSError(const std::string& msg) {
     return Status(StatusCode::FS_HDFS, msg, -1);
+  }
+
+  /** Return a MemFSError error class Status with a given message **/
+  static Status MemFSError(const std::string& msg) {
+    return Status(StatusCode::FS_MEM, msg, -1);
   }
 
   /** Return a AttributeError error class Status with a given message **/

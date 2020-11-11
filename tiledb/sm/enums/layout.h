@@ -62,6 +62,8 @@ inline const std::string& layout_str(Layout layout) {
       return constants::global_order_str;
     case Layout::UNORDERED:
       return constants::unordered_str;
+    case Layout::HILBERT:
+      return constants::hilbert_str;
     default:
       return constants::empty_str;
   }
@@ -77,6 +79,8 @@ inline Status layout_enum(const std::string& layout_str, Layout* layout) {
     *layout = Layout::GLOBAL_ORDER;
   else if (layout_str == constants::unordered_str)
     *layout = Layout::UNORDERED;
+  else if (layout_str == constants::hilbert_str)
+    *layout = Layout::HILBERT;
   else {
     return Status::Error("Invalid Layout " + layout_str);
   }

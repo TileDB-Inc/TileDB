@@ -60,7 +60,7 @@ TEST_CASE("C++ API: Config iterator", "[cppapi], [cppapi-config]") {
     names.push_back(it->first);
   }
   // Check number of VFS params in default config object.
-  CHECK(names.size() == 46);
+  CHECK(names.size() == 50);
 }
 
 TEST_CASE(
@@ -112,4 +112,17 @@ TEST_CASE(
   config[key] = value3;
   const std::string result3 = config[key];
   CHECK(result3 == value3);
+}
+
+TEST_CASE("C++ API: Config Equality", "[cppapi], [cppapi-config]") {
+  // Check for equality
+  tiledb::Config config1;
+  config1["foo"] = "bar";
+  tiledb::Config config2;
+  config2["foo"] = "bar";
+  CHECK(config1 == config2);
+
+  // Check for inequality
+  config2["foo"] = "bar2";
+  CHECK(config1 != config2);
 }

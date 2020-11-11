@@ -207,6 +207,9 @@ struct Writer {
 
   subarray @3 :DomainArray;
   # Old-style (single-range) subarray for dense writes
+
+  subarrayRanges @4 :Subarray;
+  # The query subarray/ranges object, new style range object
 }
 
 struct SubarrayRanges {
