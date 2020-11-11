@@ -51,8 +51,7 @@ void create_array() {
   int32_t dim_domain[] = {1, 4};
   int32_t tile_extents[] = {4};
   tiledb_dimension_t* d1;
-  tiledb_dimension_alloc(
-      ctx, "rows", TILEDB_STRING_ASCII, 0, 0, &d1);
+  tiledb_dimension_alloc(ctx, "rows", TILEDB_STRING_ASCII, 0, 0, &d1);
   tiledb_dimension_t* d2;
   tiledb_dimension_alloc(
       ctx, "cols", TILEDB_INT32, &dim_domain[0], &tile_extents[0], &d2);
@@ -98,7 +97,7 @@ void write_array() {
   tiledb_array_open(ctx, array, TILEDB_WRITE);
 
   // Write some simple data to cells ("a", 1), ("bb", 4) and ("c", 3).
-  char rows[] =  {'a', 'b', 'b', 'c'};
+  char rows[] = {'a', 'b', 'b', 'c'};
   uint64_t rows_size = sizeof(rows);
   uint64_t rows_offsets[] = {0, 1, 3};
   uint64_t rows_offsets_size = sizeof(rows_offsets);
@@ -112,14 +111,8 @@ void write_array() {
   tiledb_query_alloc(ctx, array, TILEDB_WRITE, &query);
   tiledb_query_set_layout(ctx, query, TILEDB_UNORDERED);
   tiledb_query_set_buffer(ctx, query, "a", data, &data_size);
-  tiledb_query_set_buffer_var
-     ( ctx,
-       query,
-       "rows",
-       rows_offsets,
-       &rows_offsets_size,
-       rows,
-       &rows_size);
+  tiledb_query_set_buffer_var(
+      ctx, query, "rows", rows_offsets, &rows_offsets_size, rows, &rows_size);
   tiledb_query_set_buffer(ctx, query, "cols", cols, &col_coords_size);
 
   // Submit query
@@ -147,10 +140,10 @@ void read_array() {
   // Slice only rows 1, 2 and cols 2, 3, 4
 
   // Set maximum buffer sizes
-  uint64_t cols_size = sizeof(int32_t)*3;
-  uint64_t rows_size = sizeof(char)*4;
-  uint64_t data_size = sizeof(int32_t)*3; //*7; //3;
-  uint64_t rows_offsets[3];// = {0, 1, 3};
+  uint64_t cols_size = sizeof(int32_t) * 3;
+  uint64_t rows_size = sizeof(char) * 4;
+  uint64_t data_size = sizeof(int32_t) * 3;  //*7; //3;
+  uint64_t rows_offsets[3];                  // = {0, 1, 3};
   uint64_t rows_offsets_size = sizeof(rows_offsets);
 
   // Prepare the vector that will hold the result
@@ -165,19 +158,14 @@ void read_array() {
   // Slice only rows "bb", "c" and cols 3, 4
   int cols_start = 2, cols_end = 4;
   tiledb_query_add_range_var(ctx, query, 0, "a", strlen("a"), "c", strlen("c"));
-  tiledb_query_add_range(ctx, query, 1, &cols_start, &cols_end, NULL); //'1', cols
+  tiledb_query_add_range(
+      ctx, query, 1, &cols_start, &cols_end, NULL);  //'1', cols
 
   tiledb_query_set_layout(ctx, query, TILEDB_ROW_MAJOR);
   tiledb_query_set_buffer(ctx, query, "a", data, &data_size);
 
-  tiledb_query_set_buffer_var
-     ( ctx,
-       query,
-       "rows",
-       rows_offsets,
-       &rows_offsets_size,
-       rows,
-       &rows_size);
+  tiledb_query_set_buffer_var(
+      ctx, query, "rows", rows_offsets, &rows_offsets_size, rows, &rows_size);
   tiledb_query_set_buffer(ctx, query, "cols", cols, &cols_size);
 
   // Submit query
@@ -193,7 +181,7 @@ void read_array() {
     uint64_t row_start = rows_offsets[r];
     uint64_t row_end =
         r == result_num - 1 ? result_num : rows_offsets[r + 1] - 1;
-    char *i = (char*)(rows + row_start);
+    char* i = (char*)(rows + row_start);
     int szdata = row_end - row_start + 1;
     int32_t j = cols[r];
     char a = data[r];
