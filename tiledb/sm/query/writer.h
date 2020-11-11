@@ -40,6 +40,8 @@
 #include "tiledb/common/status.h"
 #include "tiledb/sm/fragment/written_fragment_info.h"
 #include "tiledb/sm/misc/types.h"
+#include "tiledb/sm/query/query_buffer.h"
+#include "tiledb/sm/query/validity_vector.h"
 #include "tiledb/sm/query/write_cell_slab_iter.h"
 #include "tiledb/sm/subarray/subarray.h"
 #include "tiledb/sm/tile/tile.h"
@@ -70,9 +72,10 @@ class Writer {
      * Stores the last tile of each attribute/dimension for each write
      * operation. For fixed-sized attributes/dimensions, the second tile is
      * ignored. For var-sized attributes/dimensions, the first tile is the
-     * offsets tile, whereas the second tile is the values tile.
+     * offsets tile, whereas the second tile is the values tile. In both cases,
+     * the third tile stores a validity tile for nullable attributes.
      */
-    std::unordered_map<std::string, std::pair<Tile, Tile>> last_tiles_;
+    std::unordered_map<std::string, std::tuple<Tile, Tile, Tile>> last_tiles_;
 
     /**
      * Stores the number of cells written for each attribute/dimension across
@@ -195,6 +198,42 @@ class Writer {
       void** buffer_val,
       uint64_t** buffer_val_size) const;
 
+  /**
+   * Retrieves the buffer of a fixed-sized, nullable attribute.
+   *
+   * @param name The buffer name.
+   * @param buffer The buffer to be retrieved.
+   * @param buffer_size A pointer to the buffer size to be retrieved.
+   * @param validity_vector A pointer to the validity vector to be retrieved.
+   * @return Status
+   */
+  Status get_buffer_nullable(
+      const std::string& name,
+      void** buffer,
+      uint64_t** buffer_size,
+      const ValidityVector** validity_vector) const;
+
+  /**
+   * Retrieves the offsets and values buffers of a var-sized,
+   * nullable attribute.
+   *
+   * @param name The buffer attribute/dimension.
+   * @param buffer_off The offsets buffer to be retrieved.
+   * @param buffer_off_size A pointer to the offsets buffer size to be
+   * retrieved.
+   * @param buffer_val The values buffer to be retrieved.
+   * @param buffer_val_size A pointer to the values buffer size to be retrieved.
+   * @param validity_vector A pointer to the validity vector to be retrieved.
+   * @return Status
+   */
+  Status get_buffer_nullable(
+      const std::string& name,
+      uint64_t** buffer_off,
+      uint64_t** buffer_off_size,
+      void** buffer_val,
+      uint64_t** buffer_val_size,
+      const ValidityVector** validity_vector) const;
+
   /** Returns current setting of check_coord_dups_ */
   bool get_check_coord_dups() const;
 
@@ -249,6 +288,45 @@ class Writer {
       uint64_t* buffer_off_size,
       void* buffer_val,
       uint64_t* buffer_val_size);
+
+  /**
+   * Sets the buffer for a fixed-sized, nullable attribute.
+   *
+   * @param name The attribute to set the buffer for.
+   * @param buffer The buffer that has the input data to be written.
+   * @param buffer_size The size of `buffer` in bytes.
+   * @param validity_vector The validity vector associated with values in
+   * `buffer`.
+   * @return Status
+   */
+  Status set_buffer(
+      const std::string& name,
+      void* buffer,
+      uint64_t* buffer_size,
+      ValidityVector&& validity_vector);
+
+  /**
+   * Sets the buffer for a var-sized, nullable attribute.
+   *
+   * @param name The attribute to set the buffer for.
+   * @param buffer_off The buffer that has the input data to be written,
+   *     This buffer holds the starting offsets of each cell value in
+   *     `buffer_val`.
+   * @param buffer_off_size The size of `buffer_off` in bytes.
+   * @param buffer_val The buffer that has the input data to be written.
+   *     This buffer holds the actual var-sized cell values.
+   * @param buffer_val_size The size of `buffer_val` in bytes.
+   * @param validity_vector The validity vector associated with values in
+   * `buffer_val`.
+   * @return Status
+   */
+  Status set_buffer(
+      const std::string& name,
+      uint64_t* buffer_off,
+      uint64_t* buffer_off_size,
+      void* buffer_val,
+      uint64_t* buffer_val_size,
+      ValidityVector&& validity_vector);
 
   /** Sets current setting of check_coord_dups_ */
   void set_check_coord_dups(bool b);
@@ -570,9 +648,11 @@ class Writer {
    * @param tile The tile to be filtered.
    * @param offsets True if the tile to be filtered contains offsets for a
    *    var-sized attribute/dimension.
+   * @param offsets True if the tile to be filtered contains validity values.
    * @return Status
    */
-  Status filter_tile(const std::string& name, Tile* tile, bool offsets) const;
+  Status filter_tile(
+      const std::string& name, Tile* tile, bool offsets, bool nullable) const;
 
   /** Finalizes the global write state. */
   Status finalize_global_write_state();
@@ -613,6 +693,32 @@ class Writer {
    * @return Status
    */
   Status init_tile(const std::string& name, Tile* tile, Tile* tile_var) const;
+
+  /**
+   * Initializes a fixed-sized, nullable tile.
+   *
+   * @param name The attribute the tile belongs to.
+   * @param tile The tile to be initialized.
+   * @param tile_validity The validity tile to be initialized.
+   * @return Status
+   */
+  Status init_tile_nullable(
+      const std::string& name, Tile* tile, Tile* tile_validity) const;
+
+  /**
+   * Initializes a var-sized, nullable tile.
+   *
+   * @param name The attribute the tile belongs to.
+   * @param tile The offsets tile to be initialized.
+   * @param tile_var The var-sized data tile to be initialized.
+   * @param tile_validity The validity tile to be initialized.
+   * @return Status
+   */
+  Status init_tile_nullable(
+      const std::string& name,
+      Tile* tile,
+      Tile* tile_var,
+      Tile* tile_validity) const;
 
   /**
    * Initializes dense cell range iterators for the subarray to be writte,
@@ -898,6 +1004,18 @@ class Writer {
 
   /**
    * Writes an empty cell range to the input tile.
+   * Applicable to **fixed-sized** attributes.
+   *
+   * @param num Number of empty values to write.
+   * @param tile The tile to write to.
+   * @param tile_validity The tile with the validity cells to write to.
+   * @return Status
+   */
+  Status write_empty_cell_range_to_tile_nullable(
+      uint64_t num, Tile* tile, Tile* tile_validity) const;
+
+  /**
+   * Writes an empty cell range to the input tile.
    * Applicable to **variable-sized** attributes.
    *
    * @param num Number of empty values to write.
@@ -907,6 +1025,19 @@ class Writer {
    */
   Status write_empty_cell_range_to_tile_var(
       uint64_t num, Tile* tile, Tile* tile_var) const;
+
+  /**
+   * Writes an empty cell range to the input tile.
+   * Applicable to **variable-sized** attributes.
+   *
+   * @param num Number of empty values to write.
+   * @param tile The tile offsets to write to.
+   * @param tile_var The tile with the var-sized cells to write to.
+   * @param tile_validity The tile with the validity cells to write to.
+   * @return Status
+   */
+  Status write_empty_cell_range_to_tile_var_nullable(
+      uint64_t num, Tile* tile, Tile* tile_var, Tile* tile_validity) const;
 
   /**
    * Writes the input cell range to the input tile, for a particular
@@ -920,6 +1051,27 @@ class Writer {
    */
   Status write_cell_range_to_tile(
       ConstBuffer* buff, uint64_t start, uint64_t end, Tile* tile) const;
+
+  /**
+   * Writes the input cell range to the input tile, for a particular
+   * buffer. Applicable to **fixed-sized** attributes.
+   *
+   * @param buff The write buffer where the cells will be copied from.
+   * @param buff_validity The write buffer where the validity cell values will
+   * be copied from.
+   * @param start The start element in the write buffer.
+   * @param end The end element in the write buffer.
+   * @param tile The tile to write to.
+   * @param tile_validity The validity tile to be initialized.
+   * @return Status
+   */
+  Status write_cell_range_to_tile_nullable(
+      ConstBuffer* buff,
+      ConstBuffer* buff_validity,
+      uint64_t start,
+      uint64_t end,
+      Tile* tile,
+      Tile* tile_validity) const;
 
   /**
    * Writes the input cell range to the input tile, for a particular
@@ -940,6 +1092,33 @@ class Writer {
       uint64_t end,
       Tile* tile,
       Tile* tile_var) const;
+
+  /**
+   * Writes the input cell range to the input tile, for a particular
+   * buffer. Applicable to **variable-sized**, nullable attributes.
+   *
+   * @param buff The write buffer where the cell offsets will be copied from.
+   * @param buff_var The write buffer where the cell values will be copied from.
+   * @param buff_validity The write buffer where the validity cell values will
+   * be copied from.
+   * @param start The start element in the write buffer.
+   * @param end The end element in the write buffer.
+   * @param attr_datatype_size The size of each attribute value in `buff_var`.
+   * @param tile The tile offsets to write to.
+   * @param tile_var The tile with the var-sized cells to write to.
+   * @param tile_validity The validity tile to be initialized.
+   * @return Status
+   */
+  Status write_cell_range_to_tile_var_nullable(
+      ConstBuffer* buff,
+      ConstBuffer* buff_var,
+      ConstBuffer* buff_validity,
+      uint64_t start,
+      uint64_t end,
+      uint64_t attr_datatype_size,
+      Tile* tile,
+      Tile* tile_var,
+      Tile* tile_validity) const;
 
   /**
    * Writes all the input tiles to storage.

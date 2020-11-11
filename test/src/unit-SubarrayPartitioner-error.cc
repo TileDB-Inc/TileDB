@@ -144,7 +144,7 @@ TEST_CASE_METHOD(
   ThreadPool tp;
   CHECK(tp.init(4).ok());
   SubarrayPartitioner subarray_partitioner(
-      subarray, memory_budget_, memory_budget_var_, &tp);
+      subarray, memory_budget_, memory_budget_var_, 0, &tp);
   uint64_t budget, budget_off, budget_val;
 
   auto st = subarray_partitioner.get_result_budget("a", &budget);
@@ -207,16 +207,16 @@ TEST_CASE_METHOD(
   CHECK(st.ok());
   CHECK(budget == 1000);
 
-  uint64_t memory_budget, memory_budget_var;
+  uint64_t memory_budget, memory_budget_var, memory_budget_validity;
   st = subarray_partitioner.get_memory_budget(
-      &memory_budget, &memory_budget_var);
+      &memory_budget, &memory_budget_var, &memory_budget_validity);
   CHECK(st.ok());
   CHECK(memory_budget == memory_budget_);
   CHECK(memory_budget_var == memory_budget_var_);
-  st = subarray_partitioner.set_memory_budget(16, 16);
+  st = subarray_partitioner.set_memory_budget(16, 16, 0);
   CHECK(st.ok());
   st = subarray_partitioner.get_memory_budget(
-      &memory_budget, &memory_budget_var);
+      &memory_budget, &memory_budget_var, &memory_budget_validity);
   CHECK(st.ok());
   CHECK(memory_budget == 16);
   CHECK(memory_budget_var == 16);

@@ -359,7 +359,7 @@ void SubarrayPartitionerSparseFx::test_subarray_partitioner(
   ThreadPool tp;
   CHECK(tp.init(4).ok());
   SubarrayPartitioner subarray_partitioner(
-      subarray, memory_budget_, memory_budget_var_, &tp);
+      subarray, memory_budget_, memory_budget_var_, 0, &tp);
   auto st = subarray_partitioner.set_result_budget(attr.c_str(), budget);
   CHECK(st.ok());
 
@@ -382,7 +382,7 @@ void SubarrayPartitionerSparseFx::test_subarray_partitioner(
   ThreadPool tp;
   CHECK(tp.init(4).ok());
   SubarrayPartitioner subarray_partitioner(
-      subarray, memory_budget, memory_budget_var, &tp);
+      subarray, memory_budget, memory_budget_var, 0, &tp);
   auto st = subarray_partitioner.set_result_budget(attr.c_str(), result_budget);
   CHECK(st.ok());
 
@@ -403,7 +403,7 @@ void SubarrayPartitionerSparseFx::test_subarray_partitioner(
   ThreadPool tp;
   CHECK(tp.init(4).ok());
   SubarrayPartitioner subarray_partitioner(
-      subarray, memory_budget_, memory_budget_var_, &tp);
+      subarray, memory_budget_, memory_budget_var_, 0, &tp);
 
   // Note: this is necessary, otherwise the subarray partitioner does
   // not check if the memory budget is exceeded for attributes whose
@@ -415,7 +415,7 @@ void SubarrayPartitionerSparseFx::test_subarray_partitioner(
   st = subarray_partitioner.set_result_budget("b", 1000000, 1000000);
   CHECK(st.ok());
 
-  st = subarray_partitioner.set_memory_budget(budget, budget_var);
+  st = subarray_partitioner.set_memory_budget(budget, budget_var, 0);
   CHECK(st.ok());
 
   check_partitions(subarray_partitioner, partitions, unsplittable);
@@ -677,7 +677,7 @@ TEST_CASE_METHOD(
   ThreadPool tp;
   CHECK(tp.init(4).ok());
   SubarrayPartitioner subarray_partitioner(
-      subarray, memory_budget_, memory_budget_var_, &tp);
+      subarray, memory_budget_, memory_budget_var_, 0, &tp);
   auto st = subarray_partitioner.set_result_budget("a", 100);
   CHECK(st.ok());
   st = subarray_partitioner.set_result_budget("b", 1, 1);
@@ -2271,7 +2271,7 @@ TEST_CASE_METHOD(
   ThreadPool tp;
   CHECK(tp.init(4).ok());
   SubarrayPartitioner partitioner(
-      subarray, memory_budget_, memory_budget_var_, &tp);
+      subarray, memory_budget_, memory_budget_var_, 0, &tp);
   auto st = partitioner.set_result_budget("d", 10);
   CHECK(!st.ok());
   uint64_t budget = 0;
@@ -2298,7 +2298,7 @@ TEST_CASE_METHOD(
   r.set_str_range("a", "bb");
   subarray_full.add_range(0, r);
   SubarrayPartitioner partitioner_full(
-      subarray_full, memory_budget_, memory_budget_var_, &tp);
+      subarray_full, memory_budget_, memory_budget_var_, 0, &tp);
   st = partitioner_full.set_result_budget("d", 16, 4);
   CHECK(st.ok());
   CHECK(partitioner_full.get_result_budget("d", &budget_off, &budget_val).ok());
@@ -2318,7 +2318,7 @@ TEST_CASE_METHOD(
   r.set_str_range("a", "bb");
   subarray_split.add_range(0, r);
   SubarrayPartitioner partitioner_split(
-      subarray_split, memory_budget_, memory_budget_var_, &tp);
+      subarray_split, memory_budget_, memory_budget_var_, 0, &tp);
   st = partitioner_split.set_result_budget("d", 10, 4);
   CHECK(st.ok());
   CHECK(
@@ -2348,7 +2348,7 @@ TEST_CASE_METHOD(
   r.set_str_range("bb", "cc");
   subarray_no_split.add_range(0, r);
   SubarrayPartitioner partitioner_no_split(
-      subarray_no_split, memory_budget_, memory_budget_var_, &tp);
+      subarray_no_split, memory_budget_, memory_budget_var_, 0, &tp);
   st = partitioner_no_split.set_result_budget("d", 16, 10);
   CHECK(st.ok());
   CHECK(partitioner_no_split.get_result_budget("d", &budget_off, &budget_val)
@@ -2370,7 +2370,7 @@ TEST_CASE_METHOD(
   r.set_str_range("bb", "cc");
   subarray_split_2.add_range(0, r);
   SubarrayPartitioner partitioner_split_2(
-      subarray_split_2, memory_budget_, memory_budget_var_, &tp);
+      subarray_split_2, memory_budget_, memory_budget_var_, 0, &tp);
   st = partitioner_split_2.set_result_budget("d", 8, 10);
   CHECK(st.ok());
   CHECK(partitioner_split_2.get_result_budget("d", &budget_off, &budget_val)
@@ -2500,7 +2500,7 @@ TEST_CASE_METHOD(
   ThreadPool tp;
   CHECK(tp.init(4).ok());
   SubarrayPartitioner partitioner(
-      subarray, memory_budget_, memory_budget_var_, &tp);
+      subarray, memory_budget_, memory_budget_var_, 0, &tp);
   auto st = partitioner.set_result_budget("d", 10, 4);
   CHECK(st.ok());
   CHECK(partitioner.get_result_budget("d", &budget_off, &budget_val).ok());

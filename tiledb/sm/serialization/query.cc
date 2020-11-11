@@ -225,8 +225,9 @@ Status subarray_partitioner_to_capnp(
   }
 
   // Overall mem budget
-  uint64_t mem_budget, mem_budget_var;
-  RETURN_NOT_OK(partitioner.get_memory_budget(&mem_budget, &mem_budget_var));
+  uint64_t mem_budget, mem_budget_var, mem_budget_validity;
+  RETURN_NOT_OK(partitioner.get_memory_budget(
+      &mem_budget, &mem_budget_var, &mem_budget_validity));
   builder->setMemoryBudget(mem_budget);
   builder->setMemoryBudgetVar(mem_budget_var);
 
@@ -245,6 +246,7 @@ Status subarray_partitioner_from_capnp(
   uint64_t memory_budget_var = 0;
   RETURN_NOT_OK(tiledb::sm::utils::parse::convert(
       Config::SM_MEMORY_BUDGET_VAR, &memory_budget_var));
+  uint64_t memory_budget_validity = 0;
 
   // Get subarray layout first
   Layout layout = Layout::ROW_MAJOR;
@@ -255,7 +257,11 @@ Status subarray_partitioner_from_capnp(
   Subarray subarray(array, layout, false);
   RETURN_NOT_OK(subarray_from_capnp(reader.getSubarray(), &subarray));
   *partitioner = SubarrayPartitioner(
-      subarray, memory_budget, memory_budget_var, compute_tp);
+      subarray,
+      memory_budget,
+      memory_budget_var,
+      memory_budget_validity,
+      compute_tp);
 
   // Per-attr mem budgets
   if (reader.hasBudget()) {
@@ -314,7 +320,7 @@ Status subarray_partitioner_from_capnp(
 
   // Overall mem budget
   RETURN_NOT_OK(partitioner->set_memory_budget(
-      reader.getMemoryBudget(), reader.getMemoryBudgetVar()));
+      reader.getMemoryBudget(), reader.getMemoryBudgetVar(), 0));
 
   return Status::Ok();
 }
@@ -1043,8 +1049,8 @@ Status query_est_result_size_reader_from_capnp(
     auto result_size = it.getValue();
     est_result_sizes_map.emplace(
         name,
-        Subarray::ResultSize{result_size.getSizeFixed(),
-                             result_size.getSizeVar()});
+        Subarray::ResultSize{
+            result_size.getSizeFixed(), result_size.getSizeVar(), 0});
   }
 
   std::unordered_map<std::string, Subarray::MemorySize> max_memory_sizes_map;
@@ -1053,8 +1059,8 @@ Status query_est_result_size_reader_from_capnp(
     auto memory_size = it.getValue();
     max_memory_sizes_map.emplace(
         name,
-        Subarray::MemorySize{memory_size.getSizeFixed(),
-                             memory_size.getSizeVar()});
+        Subarray::MemorySize{
+            memory_size.getSizeFixed(), memory_size.getSizeVar(), 0});
   }
 
   return query->set_est_result_size(est_result_sizes_map, max_memory_sizes_map);

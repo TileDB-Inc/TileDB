@@ -70,8 +70,12 @@ class SubarrayPartitioner {
      * attributes/dimensions.
      */
     uint64_t size_fixed_;
+
     /** Size of values for var-sized attributes/dimensions. */
     uint64_t size_var_;
+
+    /** Size of validity for nullable attributes. */
+    uint64_t size_validity_;
   };
 
   /**
@@ -158,6 +162,7 @@ class SubarrayPartitioner {
       const Subarray& subarray,
       uint64_t memory_budget,
       uint64_t memory_budget_var,
+      uint64_t memory_budget_validity,
       ThreadPool* compute_tp);
 
   /** Destructor. */
@@ -208,6 +213,23 @@ class SubarrayPartitioner {
       const char* name, uint64_t* budget_off, uint64_t* budget_val) const;
 
   /**
+   * Gets result size budget (in bytes) for the input fixed-sized
+   * nullable attribute.
+   */
+  Status get_result_budget_nullable(
+      const char* name, uint64_t* budget, uint64_t* budget_validity) const;
+
+  /**
+   * Gets result size budget (in bytes) for the input var-sized
+   * nullable attribute.
+   */
+  Status get_result_budget_nullable(
+      const char* name,
+      uint64_t* budget_off,
+      uint64_t* budget_val,
+      uint64_t* budget_validity) const;
+
+  /**
    * Returns a pointer to mapping containing all attribute/dimension result
    * budgets that have been set.
    */
@@ -222,7 +244,8 @@ class SubarrayPartitioner {
    * @param budget_var The budget for the var-sized attributes.
    * @return Status
    */
-  Status get_memory_budget(uint64_t* budget, uint64_t* budget_var) const;
+  Status get_memory_budget(
+      uint64_t* budget, uint64_t* budget_var, uint64_t* budget_validity) const;
 
   /**
    * The partitioner iterates over the partitions of the subarray it is
@@ -241,9 +264,11 @@ class SubarrayPartitioner {
    * @param budget The budget for the fixed-sized attributes and the
    *     offsets of the var-sized attributes.
    * @param budget_var The budget for the var-sized attributes.
+   * @param budget_validity The budget for validity vectors.
    * @return Status
    */
-  Status set_memory_budget(uint64_t budget, uint64_t budget_var);
+  Status set_memory_budget(
+      uint64_t budget, uint64_t budget_var, uint64_t budget_validity);
 
   /**
    * Sets result size budget (in bytes) for the input fixed-sized
@@ -257,6 +282,23 @@ class SubarrayPartitioner {
    */
   Status set_result_budget(
       const char* name, uint64_t budget_off, uint64_t budget_val);
+
+  /**
+   * Sets result size budget (in bytes) for the input fixed-sized,
+   * nullable attribute.
+   */
+  Status set_result_budget_nullable(
+      const char* name, uint64_t budget, uint64_t budget_validity);
+
+  /**
+   * Sets result size budget (in bytes) for the input var-sized
+   * nullable attribute.
+   */
+  Status set_result_budget_nullable(
+      const char* name,
+      uint64_t budget_off,
+      uint64_t budget_val,
+      uint64_t budget_validity);
 
   /**
    * Splits the current partition and updates the state, retrieving
@@ -303,6 +345,9 @@ class SubarrayPartitioner {
 
   /** The memory budget for the var-sized attributes. */
   uint64_t memory_budget_var_;
+
+  /** The memory budget for the validity vectors. */
+  uint64_t memory_budget_validity_;
 
   /** The thread pool for compute-bound tasks. */
   ThreadPool* compute_tp_;
