@@ -232,6 +232,7 @@ void check_save_to_file() {
   ss << "sm.memory_budget 5368709120\n";
   ss << "sm.memory_budget_var 10737418240\n";
   ss << "sm.num_tbb_threads -1\n";
+  ss << "sm.offsets_format bytes\n";
   ss << "sm.skip_checksum_validation false\n";
   ss << "sm.sub_partitioner_memory_budget 0\n";
   ss << "sm.tile_cache_size 10000000\n";
@@ -441,6 +442,9 @@ TEST_CASE("C API: Test config iter", "[capi], [config]") {
   rc = tiledb_config_set(config, "vfs.hdfs.username", "stavros", &error);
   CHECK(rc == TILEDB_OK);
   CHECK(error == nullptr);
+  rc = tiledb_config_set(config, "sm.offsets_format", "elements", &error);
+  CHECK(rc == TILEDB_OK);
+  CHECK(error == nullptr);
 
   // Prepare maps
   std::map<std::string, std::string> all_param_values;
@@ -473,6 +477,7 @@ TEST_CASE("C API: Test config iter", "[capi], [config]") {
   all_param_values["sm.consolidation.step_size_ratio"] = "0.0";
   all_param_values["sm.consolidation.mode"] = "fragments";
   all_param_values["sm.vacuum.mode"] = "fragments";
+  all_param_values["sm.offsets_format"] = "elements";
 
   all_param_values["vfs.min_batch_gap"] = "512000";
   all_param_values["vfs.min_batch_size"] = "20971520";
