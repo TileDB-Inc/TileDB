@@ -179,7 +179,8 @@ class Config {
    */
   static const std::string SM_VACUUM_MODE;
 
-  /** The offset format to be used for variable-sized attributes. It can be one
+  /**
+   * The offset format to be used for variable-sized attributes. It can be one
    * of:
    *    - "bytes": express offsets in bytes
    *    - "elements": express offsets in number of elements

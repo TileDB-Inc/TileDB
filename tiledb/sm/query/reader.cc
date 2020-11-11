@@ -1482,12 +1482,6 @@ Status Reader::copy_partitioned_var_cells(
       tile_cell_num = tile->cell_num();
     }
 
-    // Fetch the offsets format from config
-    bool found = false;
-    auto config = storage_manager_->config();
-    std::string cfg_offsets_format = config.get("sm.offsets_format", &found);
-    assert(found);
-
     // Copy each cell in the range
     uint64_t dest_vec_idx = 0;
     stride = (stride == UINT64_MAX) ? 1 : stride;
@@ -1500,18 +1494,11 @@ Status Reader::copy_partitioned_var_cells(
       auto var_dest = buffer_var + var_offset;
       auto validity_dest = buffer_validity + (var_offset / attr_datatype_size);
 
-      // Copy offset
-      if (cfg_offsets_format == "bytes") {
-        std::memcpy(offset_dest, &var_offset, offset_size);
-      } else {
-        assert(cfg_offsets_format == "elements");
-        if (fill_value_size == 1) {
-          std::memcpy(offset_dest, &var_offset, offset_size);
-        } else {
-          uint64_t element_offset = var_offset / fill_value_size;
-          std::memcpy(offset_dest, &element_offset, offset_size);
-        }
+      if (offsets_format_ == "elements") {
+        var_offset = var_offset / attr_datatype_size;
       }
+      // Copy offset
+      std::memcpy(offset_dest, &var_offset, offset_size);
 
       // Copy variable-sized value
       if (cs.tile_ == nullptr) {
@@ -2514,6 +2501,13 @@ Status Reader::init_read_state() {
   uint64_t memory_budget_var = 0;
   RETURN_NOT_OK(
       config.get<uint64_t>("sm.memory_budget_var", &memory_budget_var, &found));
+  assert(found);
+  offsets_format_ = config.get("sm.offsets_format", &found);
+  if (offsets_format_ != "bytes" && offsets_format_ != "elements") {
+    return LOG_STATUS(
+        Status::ReaderError("Cannot initialize reader; Unsupported offsets "
+                            "format in configuration"));
+  }
   assert(found);
 
   // Consider the validity memory budget to be identical to `sm.memory_budget`

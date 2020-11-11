@@ -1309,7 +1309,7 @@ TEST_CASE("C++ API: Test element offsets", "[cppapi][sparse][element-offset]") {
 
   array.close();
 
-  // 1. READ when offset format is bytes (default case)
+  // 1. Read when offset format is bytes (default case)
   Config config = ctx.config();
   CHECK((std::string)config["sm.offsets_format"] == "bytes");
 
@@ -1328,7 +1328,7 @@ TEST_CASE("C++ API: Test element offsets", "[cppapi][sparse][element-offset]") {
 
   array.close();
 
-  // 2. READ again using element offsets
+  // 2. Read again using element offsets
 
   Config config2;
   // Change config of offsets format from bytes to elements
@@ -1336,9 +1336,6 @@ TEST_CASE("C++ API: Test element offsets", "[cppapi][sparse][element-offset]") {
   Context ctx2(config2);
 
   array.open(TILEDB_READ);
-
-  // TODO: Add +1 when the final version is ready
-  b_off.resize(data_offsets.size());
 
   Query query3(ctx2, array, TILEDB_READ);
   query3.set_buffer("attr", b_off, b_val);
