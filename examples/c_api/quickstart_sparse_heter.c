@@ -60,7 +60,7 @@ void create_array() {
   int32_t dim_domain[] = {1, 4, 1, 4};
   float dim_float_domain[] = {1, 4, 1, 4};
   int32_t tile_int_extents[] = {4, 4};
-  float tile_float_extents[] = {4, 4};
+  float tile_float_extents[] = {4.0, 4.0};
   tiledb_dimension_t* d1;
   apistatus = tiledb_dimension_alloc (ctx, "rows", TILEDB_INT32, &dim_domain[0], &tile_int_extents[0], &d1 );
   check_report_error_from  ( apistatus, "tiledb_dimension_alloc"  );
