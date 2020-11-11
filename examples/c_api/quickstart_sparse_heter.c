@@ -39,84 +39,50 @@
 // Name of array.
 const char* array_name = "quickstart_sparse_heter_array";
 
-void check_report_error_from(int32_t tiledb_status_val, char* who) {
-  if (tiledb_status_val != TILEDB_OK) {
-    printf(
-        "error %d%s%s\n",
-        tiledb_status_val,
-        who ? " from " : "",
-        who ? who : "");
-  }
-}
-
-void check_report_error(int32_t tiledb_status_val) {
-  check_report_error_from(tiledb_status_val, "");
-}
-
 void create_array() {
-  int32_t apistatus;
   // Create TileDB context
   tiledb_ctx_t* ctx;
-  apistatus = tiledb_ctx_alloc(NULL, &ctx);
-  check_report_error_from(apistatus, "tiledb_ctx_alloc");
+  tiledb_ctx_alloc(NULL, &ctx);
 
   // The array will be 4x4 with dimensions "rows" and "cols", with domain [1,4].
   int32_t dim_domain[] = {1, 4, 1, 4};
   float dim_float_domain[] = {1, 4, 1, 4};
   int32_t tile_int_extents[] = {4, 4};
-  float tile_float_extents[] = {4.0, 4.0};
+  float tile_float_extents[] = {4, 4};
   tiledb_dimension_t* d1;
-  apistatus = tiledb_dimension_alloc(
+  tiledb_dimension_alloc(
       ctx, "rows", TILEDB_INT32, &dim_domain[0], &tile_int_extents[0], &d1);
-  check_report_error_from(apistatus, "tiledb_dimension_alloc");
 
   tiledb_dimension_t* d2;
   // note, type of variable needs to match TILDB_type specified
-  apistatus = tiledb_dimension_alloc(
+  tiledb_dimension_alloc(
       ctx,
       "cols",
       TILEDB_FLOAT32,
       &dim_float_domain[2],
       &tile_float_extents[1],
       &d2);
-  check_report_error_from(apistatus, "tiledb_dimension_alloc");
 
   // Create domain
   tiledb_domain_t* domain;
-  apistatus = tiledb_domain_alloc(ctx, &domain);
-  check_report_error_from(apistatus, "tiledb_domain_alloc");
-  apistatus = tiledb_domain_add_dimension(ctx, domain, d1);
-  check_report_error_from(apistatus, "tiledb_domain_add_dimension");
-  apistatus = tiledb_domain_add_dimension(ctx, domain, d2);
-  check_report_error_from(apistatus, "tiledb_domain_dimension");
+  tiledb_domain_alloc(ctx, &domain);
+  tiledb_domain_add_dimension(ctx, domain, d1);
+  tiledb_domain_add_dimension(ctx, domain, d2);
 
   // Create a single attribute "a" so each (i,j) cell can store an integer
   tiledb_attribute_t* a;
-  apistatus = tiledb_attribute_alloc(ctx, "a", TILEDB_INT32, &a);
-  check_report_error_from(apistatus, "tiledb_attribute_alloc");
+  tiledb_attribute_alloc(ctx, "a", TILEDB_INT32, &a);
 
   // Create array schema
   tiledb_array_schema_t* array_schema;
-  apistatus = tiledb_array_schema_alloc(ctx, TILEDB_SPARSE, &array_schema);
-  check_report_error_from(apistatus, "tiledb_array_schema_alloc");
-
-  apistatus =
-      tiledb_array_schema_set_cell_order(ctx, array_schema, TILEDB_ROW_MAJOR);
-  check_report_error_from(apistatus, "tiledb_array_schema_set_cell");
-
-  apistatus =
-      tiledb_array_schema_set_tile_order(ctx, array_schema, TILEDB_ROW_MAJOR);
-  check_report_error_from(apistatus, "tiledb_schema_set_tile_order");
-
-  apistatus = tiledb_array_schema_set_domain(ctx, array_schema, domain);
-  check_report_error_from(apistatus, "tiledb_schema_set");
-
-  apistatus = tiledb_array_schema_add_attribute(ctx, array_schema, a);
-  check_report_error_from(apistatus, "tiledb_schema_add_attribute");
+  tiledb_array_schema_alloc(ctx, TILEDB_SPARSE, &array_schema);
+  tiledb_array_schema_set_cell_order(ctx, array_schema, TILEDB_ROW_MAJOR);
+  tiledb_array_schema_set_tile_order(ctx, array_schema, TILEDB_ROW_MAJOR);
+  tiledb_array_schema_set_domain(ctx, array_schema, domain);
+  tiledb_array_schema_add_attribute(ctx, array_schema, a);
 
   // Create array
-  apistatus = tiledb_array_create(ctx, array_name, array_schema);
-  check_report_error_from(apistatus, "tiledb_array_create");
+  tiledb_array_create(ctx, array_name, array_schema);
 
   // Clean up
   tiledb_attribute_free(&a);
@@ -128,18 +94,14 @@ void create_array() {
 }
 
 void write_array() {
-  int32_t apistatus;
-
   // Create TileDB context
   tiledb_ctx_t* ctx;
   tiledb_ctx_alloc(NULL, &ctx);
 
   // Open array for writing
   tiledb_array_t* array;
-  apistatus = tiledb_array_alloc(ctx, array_name, &array);
-  check_report_error_from(apistatus, "tiledb_array_alloc");
-  apistatus = tiledb_array_open(ctx, array, TILEDB_WRITE);
-  check_report_error_from(apistatus, "tiledb_array_open");
+  tiledb_array_alloc(ctx, array_name, &array);
+  tiledb_array_open(ctx, array, TILEDB_WRITE);
 
   // Write some simple data to cells (1, 1), (2, 4) and (2, 3).
   int32_t rows[] = {1, 2, 2};
@@ -151,28 +113,17 @@ void write_array() {
 
   // Create the query
   tiledb_query_t* query;
-  apistatus = tiledb_query_alloc(ctx, array, TILEDB_WRITE, &query);
-  check_report_error_from(apistatus, "tiledb_query_alloc");
-  apistatus = tiledb_query_set_layout(ctx, query, TILEDB_UNORDERED);
-  if (apistatus != TILEDB_OK)
-    printf("error %d\n", apistatus);
-  check_report_error_from(apistatus, "tiledb_query_set_alloc");
-  apistatus = tiledb_query_set_buffer(ctx, query, "a", data, &data_size);
-  check_report_error_from(apistatus, "tiledb_query_set_buffer");
-  apistatus =
-      tiledb_query_set_buffer(ctx, query, "rows", rows, &row_coords_size);
-  check_report_error_from(apistatus, "tiledb_query_set_buffer");
-  apistatus =
-      tiledb_query_set_buffer(ctx, query, "cols", cols, &col_coords_size);
-  check_report_error_from(apistatus, "tiledb_query_set_buffer");
+  tiledb_query_alloc(ctx, array, TILEDB_WRITE, &query);
+  tiledb_query_set_layout(ctx, query, TILEDB_UNORDERED);
+  tiledb_query_set_buffer(ctx, query, "a", data, &data_size);
+  tiledb_query_set_buffer(ctx, query, "rows", rows, &row_coords_size);
+  tiledb_query_set_buffer(ctx, query, "cols", cols, &col_coords_size);
 
   // Submit query
-  apistatus = tiledb_query_submit(ctx, query);
-  check_report_error_from(apistatus, "tiledb_query_submit");
+  tiledb_query_submit(ctx, query);
 
   // Close array
-  apistatus = tiledb_array_close(ctx, array);
-  check_report_error_from(apistatus, "tiledb_array_close");
+  tiledb_array_close(ctx, array);
 
   // Clean up
   tiledb_array_free(&array);
@@ -181,18 +132,14 @@ void write_array() {
 }
 
 void read_array() {
-  int32_t apistatus;
   // Create TileDB context
   tiledb_ctx_t* ctx;
-  apistatus = tiledb_ctx_alloc(NULL, &ctx);
-  check_report_error_from(apistatus, "tiledb_ctx_alloc");
+  tiledb_ctx_alloc(NULL, &ctx);
 
   // Open array for reading
   tiledb_array_t* array;
-  apistatus = tiledb_array_alloc(ctx, array_name, &array);
-  check_report_error_from(apistatus, "tiledb_array_alloc");
-  apistatus = tiledb_array_open(ctx, array, TILEDB_READ);
-  check_report_error_from(apistatus, "tiledb_array_open");
+  tiledb_array_alloc(ctx, array_name, &array);
+  tiledb_array_open(ctx, array, TILEDB_READ);
 
   // Set maximum buffer sizes
   uint64_t row_coords_size = sizeof(int32_t) * 3;
@@ -206,37 +153,26 @@ void read_array() {
 
   // Create query
   tiledb_query_t* query;
-  apistatus = tiledb_query_alloc(ctx, array, TILEDB_READ, &query);
-  check_report_error_from(apistatus, "tiledb_query_alloc");
+  tiledb_query_alloc(ctx, array, TILEDB_READ, &query);
 
-  apistatus = tiledb_query_set_layout(ctx, query, TILEDB_ROW_MAJOR);
-  check_report_error_from(apistatus, "tiledb_query_set_layout");
-  apistatus = tiledb_query_set_buffer(ctx, query, "a", data, &data_size);
-  check_report_error_from(apistatus, "tiledb_query_set_buffer");
-  apistatus =
-      tiledb_query_set_buffer(ctx, query, "rows", rows, &row_coords_size);
-  check_report_error_from(apistatus, "tiledb_query_set_buffer");
-  apistatus =
-      tiledb_query_set_buffer(ctx, query, "cols", cols, &cols_coords_size);
-  check_report_error_from(apistatus, "tiledb_query_set_buffer");
+  tiledb_query_set_layout(ctx, query, TILEDB_ROW_MAJOR);
+  tiledb_query_set_buffer(ctx, query, "a", data, &data_size);
+  tiledb_query_set_buffer(ctx, query, "rows", rows, &row_coords_size);
+  tiledb_query_set_buffer(ctx, query, "cols", cols, &cols_coords_size);
 
   int row_start = 1, row_end = 2;
   float cols_start = 1,
         cols_end = 2;  // note 'float', type needs to match for item being added
-  apistatus = tiledb_query_add_range(
+  tiledb_query_add_range(
       ctx, query, 0, &row_start, &row_end, NULL);  //'0' dimension, rows
-  check_report_error_from(apistatus, "tiledb_query_add_range");
-  apistatus = tiledb_query_add_range(
+  tiledb_query_add_range(
       ctx, query, 1, &cols_start, &cols_end, NULL);  //'1' dimension, cols
-  check_report_error_from(apistatus, "tiledb_query_add_range");
 
   // Submit query
-  apistatus = tiledb_query_submit(ctx, query);
-  check_report_error_from(apistatus, "tiledb_query_submit");
+  tiledb_query_submit(ctx, query);
 
   // Close array
-  apistatus = tiledb_array_close(ctx, array);
-  check_report_error_from(apistatus, "tiledb_array_close");
+  tiledb_array_close(ctx, array);
 
   // Print out the results.
   uint64_t result_num = (uint64_t)(data_size / sizeof(int32_t));
