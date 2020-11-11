@@ -632,6 +632,10 @@ Status Config::sanity_check(
     RETURN_NOT_OK(utils::parse::convert(value, &v32));
   } else if (param == "sm.consolidation.step_size_ratio") {
     RETURN_NOT_OK(utils::parse::convert(value, &vf));
+  } else if (param == "sm.offsets_format") {
+    if (value != "bytes" && value != "elements")
+      return LOG_STATUS(
+          Status::ConfigError("Invalid offsets format parameter value"));
   } else if (param == "vfs.min_parallel_size") {
     RETURN_NOT_OK(utils::parse::convert(value, &vuint64));
   } else if (param == "vfs.min_batch_gap") {
