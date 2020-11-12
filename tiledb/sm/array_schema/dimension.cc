@@ -345,7 +345,8 @@ void Dimension::ceil_to_tile(
   auto floored_mid = (T)div * tile_extent + dim_dom[0];
   T sp = (std::numeric_limits<T>::is_integer) ?
              floored_mid - 1 :
-             std::nextafter(floored_mid, std::numeric_limits<T>::lowest());
+             static_cast<T>(
+                 std::nextafter(floored_mid, std::numeric_limits<T>::lowest()));
   std::memcpy(&(*v)[0], &sp, sizeof(T));
 }
 
@@ -811,7 +812,7 @@ void Dimension::split_range(
   ret[0] = r_t[0];
   ret[1] = v_t;
   r1->set_range(ret, sizeof(ret));
-  ret[0] = (int_domain) ? (v_t + 1) : std::nextafter(v_t, max);
+  ret[0] = int_domain ? (v_t + 1) : static_cast<T>(std::nextafter(v_t, max));
   ret[1] = r_t[1];
   r2->set_range(ret, sizeof(ret));
 }
