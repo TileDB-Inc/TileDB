@@ -108,8 +108,9 @@ set(TILEDB_TEST_SOURCES
   src/unit-capi-error.cc
   src/unit-capi-fill_values.cc
   src/unit-capi-filter.cc
-  src/unit-capi-incomplete-2.cc
+  src/unit-capi-fragment_info.cc
   src/unit-capi-incomplete.cc
+  src/unit-capi-incomplete-2.cc
   src/unit-capi-metadata.cc
   src/unit-capi-nullable.cc
   src/unit-capi-object_mgmt.cc
@@ -173,6 +174,7 @@ if (TILEDB_CPP_API)
     src/unit-cppapi-datetimes.cc
     src/unit-cppapi-fill_values.cc
     src/unit-cppapi-filter.cc
+    src/unit-cppapi-fragment_info.cc
     src/unit-cppapi-hilbert.cc
     src/unit-cppapi-metadata.cc
     src/unit-cppapi-nullable.cc

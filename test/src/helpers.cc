@@ -624,17 +624,171 @@ void write_array(
     const std::string& array_name,
     tiledb_layout_t layout,
     const QueryBuffers& buffers) {
+  write_array(
+      ctx, array_name, TILEDB_TIMESTAMP_NOW_MS, nullptr, layout, buffers);
+}
+
+void write_array(
+    tiledb_ctx_t* ctx,
+    const std::string& array_name,
+    uint64_t timestamp,
+    tiledb_layout_t layout,
+    const QueryBuffers& buffers) {
+  write_array(ctx, array_name, timestamp, nullptr, layout, buffers);
+}
+
+void write_array(
+    tiledb_ctx_t* ctx,
+    const std::string& array_name,
+    tiledb_encryption_type_t encryption_type,
+    const char* key,
+    uint64_t key_len,
+    uint64_t timestamp,
+    tiledb_layout_t layout,
+    const QueryBuffers& buffers) {
+  write_array(
+      ctx,
+      array_name,
+      encryption_type,
+      key,
+      key_len,
+      timestamp,
+      nullptr,
+      layout,
+      buffers);
+}
+
+void write_array(
+    tiledb_ctx_t* ctx,
+    const std::string& array_name,
+    const void* subarray,
+    tiledb_layout_t layout,
+    const QueryBuffers& buffers) {
+  write_array(
+      ctx, array_name, TILEDB_TIMESTAMP_NOW_MS, subarray, layout, buffers);
+}
+
+void write_array(
+    tiledb_ctx_t* ctx,
+    const std::string& array_name,
+    uint64_t timestamp,
+    const void* subarray,
+    tiledb_layout_t layout,
+    const QueryBuffers& buffers) {
+  std::string uri;
+  write_array(ctx, array_name, timestamp, subarray, layout, buffers, &uri);
+  (void)uri;
+}
+
+void write_array(
+    tiledb_ctx_t* ctx,
+    const std::string& array_name,
+    tiledb_encryption_type_t encryption_type,
+    const char* key,
+    uint64_t key_len,
+    uint64_t timestamp,
+    const void* subarray,
+    tiledb_layout_t layout,
+    const QueryBuffers& buffers) {
+  std::string uri;
+  write_array(
+      ctx,
+      array_name,
+      encryption_type,
+      key,
+      key_len,
+      timestamp,
+      subarray,
+      layout,
+      buffers,
+      &uri);
+  (void)uri;
+}
+
+void write_array(
+    tiledb_ctx_t* ctx,
+    const std::string& array_name,
+    uint64_t timestamp,
+    tiledb_layout_t layout,
+    const QueryBuffers& buffers,
+    std::string* uri) {
+  write_array(ctx, array_name, timestamp, nullptr, layout, buffers, uri);
+}
+
+void write_array(
+    tiledb_ctx_t* ctx,
+    const std::string& array_name,
+    tiledb_encryption_type_t encryption_type,
+    const char* key,
+    uint64_t key_len,
+    uint64_t timestamp,
+    tiledb_layout_t layout,
+    const QueryBuffers& buffers,
+    std::string* uri) {
+  write_array(
+      ctx,
+      array_name,
+      encryption_type,
+      key,
+      key_len,
+      timestamp,
+      nullptr,
+      layout,
+      buffers,
+      uri);
+}
+
+void write_array(
+    tiledb_ctx_t* ctx,
+    const std::string& array_name,
+    uint64_t timestamp,
+    const void* subarray,
+    tiledb_layout_t layout,
+    const QueryBuffers& buffers,
+    std::string* uri) {
+  write_array(
+      ctx,
+      array_name,
+      TILEDB_NO_ENCRYPTION,
+      nullptr,
+      0,
+      timestamp,
+      subarray,
+      layout,
+      buffers,
+      uri);
+}
+
+void write_array(
+    tiledb_ctx_t* ctx,
+    const std::string& array_name,
+    tiledb_encryption_type_t encryption_type,
+    const char* key,
+    uint64_t key_len,
+    uint64_t timestamp,
+    const void* subarray,
+    tiledb_layout_t layout,
+    const QueryBuffers& buffers,
+    std::string* uri) {
   // Open array
   tiledb_array_t* array;
   int rc = tiledb_array_alloc(ctx, array_name.c_str(), &array);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_array_open(ctx, array, TILEDB_WRITE);
+  if (encryption_type == TILEDB_NO_ENCRYPTION)
+    rc = tiledb_array_open_at(ctx, array, TILEDB_WRITE, timestamp);
+  else
+    rc = tiledb_array_open_at_with_key(
+        ctx, array, TILEDB_WRITE, encryption_type, key, key_len, timestamp);
   CHECK(rc == TILEDB_OK);
 
   // Create query
   tiledb_query_t* query;
   rc = tiledb_query_alloc(ctx, array, TILEDB_WRITE, &query);
   CHECK(rc == TILEDB_OK);
+  if (subarray != nullptr) {
+    rc = tiledb_query_set_subarray(ctx, query, subarray);
+    CHECK(rc == TILEDB_OK);
+  }
   rc = tiledb_query_set_layout(ctx, query, layout);
   CHECK(rc == TILEDB_OK);
 
@@ -668,6 +822,12 @@ void write_array(
   // Finalize query
   rc = tiledb_query_finalize(ctx, query);
   CHECK(rc == TILEDB_OK);
+
+  // Get fragment uri
+  const char* temp_uri;
+  rc = tiledb_query_get_fragment_uri(ctx, query, 0, &temp_uri);
+  CHECK(rc == TILEDB_OK);
+  *uri = std::string(temp_uri);
 
   // Close array
   rc = tiledb_array_close(ctx, array);

@@ -101,7 +101,8 @@ class Array {
    *
    * @param query_type The query type. This should always be READ. It
    *    is here only for sanity check.
-   * @param fragments The fragments to open the array with.
+   * @param fragment_info Information about the fragments to open the
+   *     array with.
    * @param encryption_type The encryption type of the array
    * @param encryption_key If the array is encrypted, the private encryption
    *    key. For unencrypted arrays, pass `nullptr`.
@@ -112,7 +113,7 @@ class Array {
    */
   Status open(
       QueryType query_type,
-      const std::vector<FragmentInfo>& fragments,
+      const FragmentInfo& fragment_info,
       EncryptionType encryption_type,
       const void* encryption_key,
       uint32_t key_length);

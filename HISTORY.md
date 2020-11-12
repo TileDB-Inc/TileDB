@@ -18,6 +18,7 @@
 
 ## Improvements
 
+* Added functionality to get fragment information from an array.
 * Prevented unnecessary sorting when (1) there is a single fragment and (i) either the query layout is global order, or (ii) the number of dimensions is 1, and (2) when there is a single range for which the result coordinates have already been sorted. [#1880](https://github.com/TileDB-Inc/TileDB/pull/1880)
 * Added extra stats for consolidation. [#1880](https://github.com/TileDB-Inc/TileDB/pull/1880)
 * Disabled checking if cells are written in global order when consolidating, as it was redundant (the cells are already being read in global order during consolidation). [#1880](https://github.com/TileDB-Inc/TileDB/pull/1880) 
@@ -32,11 +33,18 @@
 * Fixed issue with string dimensions and non-set subarray (which implies spanning the whole domain). There was an assertion being triggered. Now it works properly.
 * Fixed bug when checking the dimension domain for infinity or NaN values. [#1880](https://github.com/TileDB-Inc/TileDB/pull/1880)
 * Fixed bug with string dimension partitioning. [#1880](https://github.com/TileDB-Inc/TileDB/pull/1880)
+* Updated the AWS SDK to v1.8.84 to fix an uncaught exception when using S3 [#1899](https://github.com/TileDB-Inc/TileDB/pull/1899)[TileDB-Py #409](https://github.com/TileDB-Inc/TileDB-Py/issues/409)
+* Fixed bug where a read on a sparse array may return duplicate values. [#1905](https://github.com/TileDB-Inc/TileDB/pull/1905)
 
 ## API additions
 
 ### C++ API
 
+* Added functions for getting fragment information. [#1900](https://github.com/TileDB-Inc/TileDB/pull/1900)
+
+### C++ API
+
+* Added class `FragmentInfo` and functions for getting fragment information. [#1900](https://github.com/TileDB-Inc/TileDB/pull/1900)
 * Added function `Dimension::create` that allows not setting a space tile extent. [#1880](https://github.com/TileDB-Inc/TileDB/pull/1880)
 
 # TileDB v2.1.0 Release Notes

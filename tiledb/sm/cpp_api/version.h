@@ -1,5 +1,5 @@
 /**
- * @file   tiledb_cpp_api_version.h
+ * @file   version.h
  *
  * @section LICENSE
  *

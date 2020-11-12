@@ -554,6 +554,9 @@ Status VFS::filelock_lock(const URI& uri, filelock_t* lock, bool shared) const {
     return st;
   }
 
+  if (uri.is_memfs()) {
+    return Status::Ok();
+  }
   if (uri.is_hdfs()) {
 #ifdef HAVE_HDFS
     return Status::Ok();

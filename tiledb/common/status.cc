@@ -228,6 +228,9 @@ std::string Status::code_to_string() const {
     case StatusCode::ThreadPoolError:
       type = "[TileDB::ThreadPool] Error";
       break;
+    case StatusCode::FragmentInfoError:
+      type = "[TileDB::FragmentInfo] Error";
+      break;
     default:
       type = "[TileDB::?] Error:";
   }

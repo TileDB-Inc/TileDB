@@ -33,7 +33,6 @@
 #ifndef TILEDB_MEMORY_FILESYSTEM_H
 #define TILEDB_MEMORY_FILESYSTEM_H
 
-#include <mutex>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -55,8 +54,24 @@ class MemFilesystem {
   /** Constructor. */
   MemFilesystem();
 
+  /** Copy constructor. */
+  DISABLE_COPY(MemFilesystem);
+
+  /** Move constructor. */
+  DISABLE_MOVE(MemFilesystem);
+
   /** Destructor. */
   ~MemFilesystem();
+
+  /* ********************************* */
+  /*             OPERATORS             */
+  /* ********************************* */
+
+  /** Copy-assignment. */
+  DISABLE_COPY_ASSIGN(MemFilesystem);
+
+  /** Move-assignment. */
+  DISABLE_MOVE_ASSIGN(MemFilesystem);
 
   /* ********************************* */
   /*                 API               */
@@ -179,26 +194,39 @@ class MemFilesystem {
   /*         PRIVATE ATTRIBUTES        */
   /* ********************************* */
 
-  /* The node that represents the root of the in-memory filesystem */
+  /* The node that represents the root of the directory tree. */
   std::unique_ptr<FSNode> root_;
-
-  /** Protects the filesystem for parallel reads/writes */
-  mutable std::mutex memfilesystem_mutex_;
 
   /* ********************************* */
   /*          PRIVATE METHODS          */
   /* ********************************* */
 
-  DISABLE_COPY_AND_COPY_ASSIGN(MemFilesystem);
-  DISABLE_MOVE_AND_MOVE_ASSIGN(MemFilesystem);
-
   /**
    * Finds the node in the filesystem tree that corresponds to a path
    *
    * @param path The full name of the file/directory to be looked up
-   * @return The node that represents this file/directory in the filesystem tree
+   * @param node The output node, nullptr if not found.
+   * @param node_lock Mutates to a lock on `node->mutex_`, if found.
+   * @return Status
    */
-  FSNode* lookup_node(const std::string& path) const;
+  Status lookup_node(
+      const std::string& path,
+      FSNode** node,
+      std::unique_lock<std::mutex>* node_lock) const;
+
+  /**
+   * Finds the node in the filesystem tree that corresponds to a vector
+   * of tokens.
+   *
+   * @param tokens The path tokens.
+   * @param node The output node, nullptr if not found.
+   * @param node_lock Mutates to a lock on `node->mutex_`, if found.
+   * @return Status
+   */
+  Status lookup_node(
+      const std::vector<std::string>& tokens,
+      FSNode** node,
+      std::unique_lock<std::mutex>* node_lock) const;
 
   /**
    * Splits a path into file/directory names
@@ -213,18 +241,23 @@ class MemFilesystem {
   /**
    * Creates a new directory without acquiring the lock
    *
-   * @param path The full name of the directory to be created
+   * @param path The full name of the directory to be created.
+   * @param node Optional output argument to the node of the
+   *    created directory.
    * @return Status
    */
-  Status create_dir_unsafe(const std::string& path) const;
+  Status create_dir_internal(
+      const std::string& path, FSNode** node = nullptr) const;
 
   /**
    * Creates an empty file without acquiring the lock
    *
-   * @param path The full name of the file to be created
+   * @param path The full name of the file to be created.
+   * @param node Optional output argument to the node of the
+   *    created file.
    * @return Status
    */
-  Status touch_unsafe(const std::string& path) const;
+  Status touch_internal(const std::string& path, FSNode** node = nullptr) const;
 };
 
 }  // namespace sm
