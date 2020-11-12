@@ -40,6 +40,7 @@
 
 #include "catch.hpp"
 #include "test/src/helpers.h"
+#include "test/src/vfs_test_helper.h"
 #ifdef _WIN32
 #include "tiledb/sm/filesystem/win.h"
 #else
@@ -160,6 +161,12 @@ struct ArraySchemaFx {
 };
 
 ArraySchemaFx::ArraySchemaFx() {
+  // Initialize vfs test
+  ctx_ = nullptr;
+  vfs_ = nullptr;
+  vfs_test_init(&ctx_, &vfs_);
+
+  /*
   // Supported filesystems
   set_supported_fs();
 
@@ -242,6 +249,7 @@ ArraySchemaFx::ArraySchemaFx() {
       REQUIRE(rc == TILEDB_OK);
     }
   }
+  */
 }
 
 ArraySchemaFx::~ArraySchemaFx() {

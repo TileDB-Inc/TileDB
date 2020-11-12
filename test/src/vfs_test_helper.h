@@ -56,8 +56,11 @@ class SupportedFs {
   /**
    * Returns Status upon setting up the associated
    * filesystem's configuration
+   * Only for S3, Azure
+   * No-op otherwise
    *
    * @param config Configuration parameters
+   * @param error Error parameter
    * @return Status OK if successful
    */
   virtual Status prepare_config(
@@ -68,7 +71,7 @@ class SupportedFs {
    * Only for S3, Azure
    * No-op otherwise
    *
-   * @param ctx The TileDB.
+   * @param ctx The TileDB context.
    * @param vfs The VFS object.
    * @return Status OK if successful
    */
@@ -79,7 +82,7 @@ class SupportedFs {
    * Only for S3, Azure
    * No-op otherwise
    *
-   * @param ctx The TileDB.
+   * @param ctx The TileDB context.
    * @param vfs The VFS object.
    * @return Status OK if successful
    */
@@ -93,7 +96,7 @@ class SupportedFs {
   std::string vfs_helper_temp_dir_;
 
   /** The vector of supported filesystems. */
-  std::vector<SupportedFs> fs_vec;
+  std::vector<SupportedFs*> fs_vec;
 };
 
 /**
@@ -118,7 +121,7 @@ class SupportedFsS3 : public SupportedFs {
   /**
    * Creates bucket if does not exist
    *
-   * @param ctx The TileDB.
+   * @param ctx The TileDB context.
    * @param vfs The VFS object.
    * @return Status OK if successful
    */
@@ -127,7 +130,7 @@ class SupportedFsS3 : public SupportedFs {
   /**
    * Removes bucket if exists
    *
-   * @param ctx The TileDB.
+   * @param ctx The TileDB context.
    * @param vfs The VFS object.
    * @return Status OK if successful
    */
@@ -161,8 +164,7 @@ class SupportedFsHDFS : public SupportedFs {
   /* ********************************* */
 
   /**
-   * Returns Status upon setting up the associated
-   * filesystem's configuration
+   * No-op
    *
    * @param config Configuration parameters
    * @return Status OK if successful
@@ -172,7 +174,7 @@ class SupportedFsHDFS : public SupportedFs {
   /**
    * No-op
    *
-   * @param ctx The TileDB.
+   * @param ctx The TileDB context.
    * @param vfs The VFS object.
    * @return Status OK if successful
    */
@@ -181,7 +183,7 @@ class SupportedFsHDFS : public SupportedFs {
   /**
    * No-op
    *
-   * @param ctx The TileDB.
+   * @param ctx The TileDB context.
    * @param vfs The VFS object.
    * @return Status OK if successful
    */
@@ -220,7 +222,7 @@ class SupportedFsAzure : public SupportedFs {
   /**
    * Creates container if does not exist
    *
-   * @param ctx The TileDB.
+   * @param ctx The TileDB context.
    * @param vfs The VFS object.
    * @return Status OK if successful
    */
@@ -229,7 +231,7 @@ class SupportedFsAzure : public SupportedFs {
   /**
    * Removes container if exists
    *
-   * @param ctx The TileDB.
+   * @param ctx The TileDB context.
    * @param vfs The VFS object.
    * @return Status OK if successful
    */
@@ -263,8 +265,7 @@ class SupportedFsWindows : public SupportedFs {
   /* ********************************* */
 
   /**
-   * Returns Status upon setting up the associated
-   * filesystem's configuration
+   * No-op
    *
    * @param config Configuration parameters
    * @return Status OK if successful
@@ -274,7 +275,7 @@ class SupportedFsWindows : public SupportedFs {
   /**
    * No-op
    *
-   * @param ctx The TileDB.
+   * @param ctx The TileDB context.
    * @param vfs The VFS object.
    * @return Status OK if successful
    */
@@ -283,7 +284,7 @@ class SupportedFsWindows : public SupportedFs {
   /**
    * No-op
    *
-   * @param ctx The TileDB.
+   * @param ctx The TileDB context.
    * @param vfs The VFS object.
    * @return Status OK if successful
    */
@@ -311,11 +312,9 @@ class SupportedFsPosix : public SupportedFs {
   /* ********************************* */
 
   /**
-   * Returns Status upon setting up the associated
-   * filesystem's configuration
+   * No-op
    *
    * @param config Configuration parameters
-   * @param error Error
    * @return Status OK if successful
    */
   virtual Status prepare_config(tiledb_config_t* config, tiledb_error_t* error);
@@ -323,7 +322,7 @@ class SupportedFsPosix : public SupportedFs {
   /**
    * No-op
    *
-   * @param ctx The TileDB.
+   * @param ctx The TileDB context.
    * @param vfs The VFS object.
    * @return Status OK if successful
    */
@@ -332,7 +331,7 @@ class SupportedFsPosix : public SupportedFs {
   /**
    * No-op
    *
-   * @param ctx The TileDB.
+   * @param ctx The TileDB context.
    * @param vfs The VFS object.
    * @return Status OK if successful
    */
@@ -352,12 +351,12 @@ class SupportedFsPosix : public SupportedFs {
 /**
  * Create the vector of supported filesystems.
  */
-std::vector<SupportedFs> vfs_test_get_fs_vec();
+std::vector<SupportedFs*> vfs_test_get_fs_vec();
 
 /**
  * Initialize the vfs test.
  *
- * @param ctx The TileDB.
+ * @param ctx The TileDB context.
  * @param vfs The VFS object.
  */
 void vfs_test_init(tiledb_ctx_t** ctx, tiledb_vfs_t** vfs);
@@ -366,8 +365,11 @@ void vfs_test_init(tiledb_ctx_t** ctx, tiledb_vfs_t** vfs);
  * Close the vfs test.
  *
  * @param fs_vec The vector of supported filesystems.
+ * @param ctx The TileDB context.
+ * @param vfs The VFS object.
  */
-Status vfs_test_close(std::vector<SupportedFs> fs_vec);
+Status vfs_test_close(
+    std::vector<SupportedFs*> fs_vec, tiledb_ctx_t* ctx, tiledb_vfs_t* vfs);
 
 }  // End of namespace test
 }  // End of namespace tiledb
