@@ -2503,12 +2503,12 @@ Status Reader::init_read_state() {
       config.get<uint64_t>("sm.memory_budget_var", &memory_budget_var, &found));
   assert(found);
   offsets_format_ = config.get("sm.offsets_format", &found);
+  assert(found);
   if (offsets_format_ != "bytes" && offsets_format_ != "elements") {
     return LOG_STATUS(
         Status::ReaderError("Cannot initialize reader; Unsupported offsets "
                             "format in configuration"));
   }
-  assert(found);
 
   // Consider the validity memory budget to be identical to `sm.memory_budget`
   // because the validity vector is currently a bytemap. When converted to a
