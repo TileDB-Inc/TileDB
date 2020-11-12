@@ -291,6 +291,26 @@ const Dimension* ArraySchema::dimension(const std::string& name) const {
   return it == dim_map_.end() ? nullptr : it->second;
 }
 
+std::vector<std::string> ArraySchema::dim_names() const {
+  auto dim_num = this->dim_num();
+  std::vector<std::string> ret;
+  ret.reserve(dim_num);
+  for (uint32_t d = 0; d < dim_num; ++d)
+    ret.emplace_back(domain_->dimension(d)->name());
+
+  return ret;
+}
+
+std::vector<Datatype> ArraySchema::dim_types() const {
+  auto dim_num = this->dim_num();
+  std::vector<Datatype> ret;
+  ret.reserve(dim_num);
+  for (uint32_t d = 0; d < dim_num; ++d)
+    ret.emplace_back(domain_->dimension(d)->type());
+
+  return ret;
+}
+
 unsigned int ArraySchema::dim_num() const {
   return domain_->dim_num();
 }

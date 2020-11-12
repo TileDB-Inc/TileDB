@@ -222,6 +222,11 @@ class Range {
                &range_[0], &range_[range_.size() / 2], range_.size() / 2);
   }
 
+  /** True if the range is variable sized. */
+  bool var_size() const {
+    return range_start_size_ != 0;
+  }
+
  private:
   /** The range as a flat byte vector.*/
   std::vector<uint8_t> range_;

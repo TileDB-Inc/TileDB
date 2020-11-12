@@ -31,8 +31,8 @@
  * This file defines class ArraySchema.
  */
 
-#ifndef TILEDB_ARRAY_METADATA_H
-#define TILEDB_ARRAY_METADATA_H
+#ifndef TILEDB_ARRAY_SCHEMA_H
+#define TILEDB_ARRAY_SCHEMA_H
 
 #include <unordered_map>
 
@@ -168,6 +168,12 @@ class ArraySchema {
    * does not exist).
    */
   const Dimension* dimension(const std::string& name) const;
+
+  /** Returns the dimension names. */
+  std::vector<std::string> dim_names() const;
+
+  /** Returns the dimension types. */
+  std::vector<Datatype> dim_types() const;
 
   /** Returns the number of dimensions. */
   unsigned int dim_num() const;
@@ -370,4 +376,4 @@ class ArraySchema {
 }  // namespace sm
 }  // namespace tiledb
 
-#endif  // TILEDB_ARRAY_METADATA_H
+#endif  // TILEDB_ARRAY_SCHEMA_H

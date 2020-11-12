@@ -1,5 +1,5 @@
 /**
- * @file   tiledb_cpp_api_attribute.h
+ * @file   attribute.h
  *
  * @author Ravi Gaddipati
  *

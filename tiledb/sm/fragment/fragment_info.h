@@ -5,8 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2020 TileDB, Inc.
- * @copyright Copyright (c) 2016 MIT and Intel Corporation
+ * @copyright Copyright (c) 2020 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -34,142 +33,201 @@
 #ifndef TILEDB_FRAGMENT_INFO_H
 #define TILEDB_FRAGMENT_INFO_H
 
-#include "tiledb/sm/misc/types.h"
+#include "tiledb/common/status.h"
+#include "tiledb/sm/crypto/encryption_key.h"
+#include "tiledb/sm/fragment/single_fragment_info.h"
 #include "tiledb/sm/misc/uri.h"
-
-#include <vector>
+#include "tiledb/sm/storage_manager/storage_manager.h"
 
 using namespace tiledb::common;
 
 namespace tiledb {
 namespace sm {
 
-/** Stores basic information about a fragment. */
+/** Stores basic information about fragments in an array. */
 class FragmentInfo {
  public:
-  /** Constructor. */
-  FragmentInfo() {
-    uri_ = URI("");
-    sparse_ = false;
-    timestamp_range_ = {0, 0};
-    fragment_size_ = 0;
-  }
+  /* ********************************* */
+  /*     CONSTRUCTORS & DESTRUCTORS    */
+  /* ********************************* */
 
   /** Constructor. */
-  FragmentInfo(
-      const URI& uri,
-      bool sparse,
-      const std::pair<uint64_t, uint64_t>& timestamp_range,
-      uint64_t fragment_size,
-      const NDRange& non_empty_domain,
-      const NDRange& expanded_non_empty_domain)
-      : uri_(uri)
-      , sparse_(sparse)
-      , timestamp_range_(timestamp_range)
-      , fragment_size_(fragment_size)
-      , non_empty_domain_(non_empty_domain)
-      , expanded_non_empty_domain_(expanded_non_empty_domain) {
-  }
+  FragmentInfo();
+
+  /** Constructor. */
+  FragmentInfo(const URI& array_uri, StorageManager* storage_manager);
+
+  /** Destructor. */
+  ~FragmentInfo();
 
   /** Copy constructor. */
-  FragmentInfo(const FragmentInfo& info)
-      : FragmentInfo() {
-    auto clone = info.clone();
-    swap(clone);
-  }
+  FragmentInfo(const FragmentInfo& fragment_info);
 
   /** Move constructor. */
-  FragmentInfo(FragmentInfo&& info)
-      : FragmentInfo() {
-    swap(info);
-  }
+  FragmentInfo(FragmentInfo&& fragment_info);
 
-  /** Copy assignment operator. */
-  FragmentInfo& operator=(const FragmentInfo& info) {
-    auto clone = info.clone();
-    swap(clone);
-    return *this;
-  }
+  /** Copy-assign operator. */
+  FragmentInfo& operator=(const FragmentInfo& fragment_info);
 
-  /** Move assignment operator. */
-  FragmentInfo& operator=(FragmentInfo&& info) {
-    swap(info);
-    return *this;
-  }
+  /** Move-assign operator. */
+  FragmentInfo& operator=(FragmentInfo&& fragment_info);
 
-  /** Returns `true` if the fragment is sparse. */
-  bool sparse() const {
-    return sparse_;
-  }
+  /* ********************************* */
+  /*                API                */
+  /* ********************************* */
 
-  /** Returns the fragment URI. */
-  const URI& uri() const {
-    return uri_;
-  }
+  /** Appends the info about a single fragment at the end of `fragments_`. */
+  void append(const SingleFragmentInfo& fragment);
 
-  /** Returns the timestamp range. */
-  const std::pair<uint64_t, uint64_t>& timestamp_range() const {
-    return timestamp_range_;
-  }
+  /** Clears the object. */
+  void clear();
 
-  /** Returns the fragment size. */
-  uint64_t fragment_size() const {
-    return fragment_size_;
-  }
+  /** Dumps the fragment info in ASCII format in the selected output. */
+  void dump(FILE* out) const;
 
-  /** Returns the non-empty domain. */
-  const NDRange& non_empty_domain() const {
-    return non_empty_domain_;
-  }
+  /** Retrieves whether the fragment with the given index is dense. */
+  Status get_dense(uint32_t fid, int32_t* dense) const;
 
-  /** Returns the expanded non-empty domain. */
-  const NDRange& expanded_non_empty_domain() const {
-    return expanded_non_empty_domain_;
-  }
+  /** Retrieves whether the fragment with the given index is sparse. */
+  Status get_sparse(uint32_t fid, int32_t* sparse) const;
+
+  /** Returns the number of fragments described in this object. */
+  uint32_t fragment_num() const;
+
+  /** Retrieves the number of cells in the fragment with the given index. */
+  Status get_cell_num(uint32_t fid, uint64_t* cell_num) const;
+
+  /** Retrieves the size of the fragment with the given index. */
+  Status get_fragment_size(uint32_t fid, uint64_t* size) const;
+
+  /** Retrieves the URI of the fragment with the given index. */
+  Status get_fragment_uri(uint32_t fid, const char** uri) const;
+
+  /** Retrieves the URI of the fragment to vacuum with the given index. */
+  Status get_to_vacuum_uri(uint32_t fid, const char** uri) const;
+
+  /** Retrieves the timestamp range of the fragment with the given index. */
+  Status get_timestamp_range(
+      uint32_t fid, uint64_t* start, uint64_t* end) const;
+
+  /**
+   * Retrieves the non-empty domain of the fragment with the given index
+   * on the given dimension index.
+   */
+  Status get_non_empty_domain(uint32_t fid, uint32_t did, void* domain) const;
+
+  /**
+   * Retrieves the non-empty domain of the fragment with the given index
+   * on the given dimension name.
+   */
+  Status get_non_empty_domain(
+      uint32_t fid, const char* dim_name, void* domain) const;
+
+  /**
+   * Retrieves the sizes of the start and end values of the non-empty domain
+   * of the fragment with the given index on the given dimension index.
+   * Applicable only to var-sized dimensions.
+   */
+  Status get_non_empty_domain_var_size(
+      uint32_t fid,
+      uint32_t did,
+      uint64_t* start_size,
+      uint64_t* end_size) const;
+
+  /**
+   * Retrieves the sizes of the start and end values of the non-empty domain
+   * of the fragment with the given index on the given dimension name.
+   * Applicable only to var-sized dimensions.
+   */
+  Status get_non_empty_domain_var_size(
+      uint32_t fid,
+      const char* dim_name,
+      uint64_t* start_size,
+      uint64_t* end_size) const;
+
+  /**
+   * Retrieves the non-empty domain of the fragment with the given index
+   * on the given dimension index. Applicable to var-sized dimensions.
+   */
+  Status get_non_empty_domain_var(
+      uint32_t fid, uint32_t did, void* start, void* end) const;
+
+  /**
+   * Retrieves the non-empty domain of the fragment with the given index
+   * on the given dimension name. Applicable to var-sized dimensions.
+   */
+  Status get_non_empty_domain_var(
+      uint32_t fid, const char* dim_name, void* start, void* end) const;
+
+  /** Retrieves the version of the fragment with the given index. */
+  Status get_version(uint32_t fid, uint32_t* version) const;
+
+  /**
+   * Checks if the fragment with the given index has consolidated metadata.
+   */
+  Status has_consolidated_metadata(uint32_t fid, int32_t* has) const;
+
+  /**
+   * Loads the fragment info from an array. The encryption key is used
+   * only if the array is encrypted.
+   */
+  Status load(const EncryptionKey& encryption_key);
+
+  /** Set the dimension names and types to the object. */
+  void set_dim_info(
+      const std::vector<std::string>& dim_names,
+      const std::vector<Datatype>& dim_types_);
+
+  /** Sets the URIs of the fragments to vacuum. */
+  void set_to_vacuum(const std::vector<URI>& to_vacuum);
+
+  /** Returns the vector with the info about individual fragments. */
+  const std::vector<SingleFragmentInfo>& fragments() const;
+
+  /** Returns the number of fragments to vacuum. */
+  uint32_t to_vacuum_num() const;
+
+  /** Returns the number of fragments with unconsolidated metadata. */
+  uint32_t unconsolidated_metadata_num() const;
 
  private:
-  /** The fragment URI. */
-  URI uri_;
-  /** True if the fragment is sparse, and false if it is dense. */
-  bool sparse_;
-  /** The timestamp range of the fragment. */
-  std::pair<uint64_t, uint64_t> timestamp_range_;
-  /** The size of the entire fragment directory. */
-  uint64_t fragment_size_;
-  /** The fragment's non-empty domain. */
-  NDRange non_empty_domain_;
-  /**
-   * The fragment's expanded non-empty domain (in a way that
-   * it coincides with tile boundaries. Applicable only to
-   * dense fragments. For sparse fragments, the expanded
-   * domain is the same as the non-empty domain.
-   */
-  NDRange expanded_non_empty_domain_;
+  /* ********************************* */
+  /*         PRIVATE ATTRIBUTES        */
+  /* ********************************* */
+
+  /** The URI of the array the fragments belong to. */
+  URI array_uri_;
+
+  /** Information about fragments in the array. */
+  std::vector<SingleFragmentInfo> fragments_;
+
+  /** The dimension names of the array. */
+  std::vector<std::string> dim_names_;
+
+  /** The dimension types of the array. */
+  std::vector<Datatype> dim_types_;
+
+  /** The storage manager. */
+  StorageManager* storage_manager_;
+
+  /** The URIs of the fragments to vacuum. */
+  std::vector<URI> to_vacuum_;
+
+  /** The number of fragments with unconsolidated metadata. */
+  uint32_t unconsolidated_metadata_num_;
+
+  /* ********************************* */
+  /*          PRIVATE METHODS          */
+  /* ********************************* */
+
+  /** Returns a copy of this object. */
+  FragmentInfo clone() const;
 
   /**
-   * Returns a deep copy of this FragmentInfo.
-   * @return New FragmentInfo
+   * Swaps the contents (all field values) of this object with the
+   * given object.
    */
-  FragmentInfo clone() const {
-    FragmentInfo clone;
-    clone.uri_ = uri_;
-    clone.sparse_ = sparse_;
-    clone.timestamp_range_ = timestamp_range_;
-    clone.fragment_size_ = fragment_size_;
-    clone.non_empty_domain_ = non_empty_domain_;
-    clone.expanded_non_empty_domain_ = expanded_non_empty_domain_;
-    return clone;
-  }
-
-  /** Swaps the contents (all field values) of this info with the given info. */
-  void swap(FragmentInfo& info) {
-    std::swap(uri_, info.uri_);
-    std::swap(sparse_, info.sparse_);
-    std::swap(timestamp_range_, info.timestamp_range_);
-    std::swap(fragment_size_, info.fragment_size_);
-    std::swap(non_empty_domain_, info.non_empty_domain_);
-    std::swap(expanded_non_empty_domain_, info.expanded_non_empty_domain_);
-  }
+  void swap(FragmentInfo& fragment_info);
 };
 
 }  // namespace sm

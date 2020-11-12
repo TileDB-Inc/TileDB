@@ -44,6 +44,7 @@
 #include "tiledb/sm/enums/object_type.h"
 #include "tiledb/sm/enums/query_type.h"
 #include "tiledb/sm/filesystem/vfs.h"
+#include "tiledb/sm/fragment/fragment_info.h"
 #include "tiledb/sm/global_state/global_state.h"
 #include "tiledb/sm/misc/parallel_functions.h"
 #include "tiledb/sm/misc/utils.h"
@@ -252,7 +253,7 @@ Status StorageManager::array_open_for_reads(
 
 Status StorageManager::array_open_for_reads(
     const URI& array_uri,
-    const std::vector<FragmentInfo>& fragments,
+    const FragmentInfo& fragment_info,
     const EncryptionKey& enc_key,
     ArraySchema** array_schema,
     std::vector<FragmentMetadata*>* fragment_metadata) {
@@ -269,6 +270,7 @@ Status StorageManager::array_open_for_reads(
 
   // Determine which fragments to load
   std::vector<TimestampedURI> fragments_to_load;
+  const auto& fragments = fragment_info.fragments();
   for (const auto& fragment : fragments)
     fragments_to_load.emplace_back(fragment.uri(), fragment.timestamp_range());
 
@@ -1153,22 +1155,21 @@ Status StorageManager::object_move(
 }
 
 Status StorageManager::get_fragment_info(
-    const ArraySchema* array_schema,
+    const URI& array_uri,
     uint64_t timestamp,
     const EncryptionKey& encryption_key,
-    std::vector<FragmentInfo>* fragment_info) {
+    FragmentInfo* fragment_info,
+    bool get_to_vacuum) {
   fragment_info->clear();
 
   // Open array for reading
-  auto array_uri = array_schema->array_uri();
-  auto array_schema_tmp = (ArraySchema*)nullptr;
+  auto array_schema = (ArraySchema*)nullptr;
   std::vector<FragmentMetadata*> fragment_metadata;
   RETURN_NOT_OK(array_open_for_reads(
-      array_uri,
-      timestamp,
-      encryption_key,
-      &array_schema_tmp,
-      &fragment_metadata));
+      array_uri, timestamp, encryption_key, &array_schema, &fragment_metadata));
+
+  fragment_info->set_dim_info(
+      array_schema->dim_names(), array_schema->dim_types());
 
   // Return if array is empty
   if (fragment_metadata.empty())
@@ -1191,17 +1192,44 @@ Status StorageManager::get_fragment_info(
       array_schema->domain()->expand_to_tiles(&expanded_non_empty_domain);
 
     // Push new fragment info
-    fragment_info->push_back(FragmentInfo(
+    fragment_info->append(SingleFragmentInfo(
         uri,
+        meta->format_version(),
         sparse,
         meta->timestamp_range(),
+        meta->cell_num(),
         size,
+        meta->has_consolidated_footer(),
         non_empty_domain,
         expanded_non_empty_domain));
   }
 
+  // Optionally get the URIs to vacuum
+  if (get_to_vacuum) {
+    std::vector<URI> to_vacuum, vac_uris, fragment_uris;
+    URI meta_uri;
+    RETURN_NOT_OK(get_fragment_uris(array_uri, &fragment_uris, &meta_uri));
+    RETURN_NOT_OK(
+        get_uris_to_vacuum(fragment_uris, timestamp, &to_vacuum, &vac_uris));
+    fragment_info->set_to_vacuum(to_vacuum);
+  }
+
   // Close array
   return array_close_for_reads(array_uri);
+}
+
+Status StorageManager::get_fragment_info(
+    const ArraySchema* array_schema,
+    uint64_t timestamp,
+    const EncryptionKey& encryption_key,
+    FragmentInfo* fragment_info,
+    bool get_to_vacuum) {
+  fragment_info->clear();
+
+  // Open array for reading
+  const auto& array_uri = array_schema->array_uri();
+  return get_fragment_info(
+      array_uri, timestamp, encryption_key, fragment_info, get_to_vacuum);
 }
 
 Status StorageManager::get_fragment_uris(
@@ -1257,7 +1285,7 @@ Status StorageManager::get_fragment_info(
     const ArraySchema* array_schema,
     const EncryptionKey& encryption_key,
     const URI& fragment_uri,
-    FragmentInfo* fragment_info) {
+    SingleFragmentInfo* fragment_info) {
   // Get timestamp range
   std::pair<uint64_t, uint64_t> timestamp_range;
   RETURN_NOT_OK(
@@ -1301,11 +1329,14 @@ Status StorageManager::get_fragment_info(
     array_schema->domain()->expand_to_tiles(&expanded_non_empty_domain);
 
   // Set fragment info
-  *fragment_info = FragmentInfo(
+  *fragment_info = SingleFragmentInfo(
       fragment_uri,
+      meta.format_version(),
       sparse,
       timestamp_range,
+      meta.cell_num(),
       size,
+      meta.has_consolidated_footer(),
       non_empty_domain,
       expanded_non_empty_domain);
 

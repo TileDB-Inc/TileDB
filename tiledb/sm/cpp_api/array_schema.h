@@ -1,5 +1,5 @@
 /**
- * @file  tiledb_cpp_api_array_schema.h
+ * @file  array_schema.h
  *
  * @author Ravi Gaddipati
  *
