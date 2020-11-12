@@ -44,6 +44,7 @@
 #include <fstream>
 #include <future>
 #include <iostream>
+#include <queue>
 #include <sstream>
 
 using namespace tiledb::common;
@@ -319,8 +320,8 @@ Status Posix::ls(
   while ((next_path = readdir(dir)) != nullptr) {
     if (!strcmp(next_path->d_name, ".") || !strcmp(next_path->d_name, ".."))
       continue;
-    auto abspath = path + "/" + next_path->d_name;
-    paths->push_back(abspath);
+    std::string abspath = path + "/" + next_path->d_name;
+    paths->emplace_back(abspath);
   }
   // close parent directory
   if (closedir(dir) != 0) {
@@ -352,15 +353,22 @@ Status Posix::copy_dir(
   RETURN_NOT_OK(create_dir(new_path));
   std::vector<std::string> paths;
   RETURN_NOT_OK(ls(old_path, &paths));
-  while (!paths.empty()) {
-    std::string file_name_abs = paths.front();
+
+  std::queue<std::string> path_queue;
+  for (auto& path : paths)
+    path_queue.emplace(std::move(path));
+
+  while (!path_queue.empty()) {
+    std::string file_name_abs = path_queue.front();
     std::string file_name = file_name_abs.substr(old_path.length() + 1);
-    paths.erase(paths.begin());
+    path_queue.pop();
+
     if (is_dir(file_name_abs)) {
       RETURN_NOT_OK(create_dir(new_path + "/" + file_name));
       std::vector<std::string> child_paths;
       RETURN_NOT_OK(ls(file_name_abs, &child_paths));
-      paths.insert(paths.end(), child_paths.begin(), child_paths.end());
+      for (auto& path : child_paths)
+        path_queue.emplace(std::move(path));
     } else {
       assert(is_file(file_name_abs));
       RETURN_NOT_OK(
