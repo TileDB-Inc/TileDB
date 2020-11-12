@@ -46,6 +46,7 @@
 #include "exception.h"
 #include "filter.h"
 #include "filter_list.h"
+#include "fragment_info.h"
 #include "group.h"
 #include "object.h"
 #include "object_iter.h"

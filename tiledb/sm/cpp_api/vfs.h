@@ -1,5 +1,5 @@
 /**
- * @file   tiledb_cpp_api_vfs.h
+ * @file   vfs.h
  *
  * @author Ravi Gaddipati
  *

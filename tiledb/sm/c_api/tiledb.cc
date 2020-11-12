@@ -524,6 +524,17 @@ inline int32_t sanity_check(tiledb_ctx_t* ctx, const tiledb_vfs_fh_t* fh) {
   return TILEDB_OK;
 }
 
+inline int32_t sanity_check(
+    tiledb_ctx_t* ctx, const tiledb_fragment_info_t* fragment_info) {
+  if (fragment_info == nullptr || fragment_info->fragment_info_ == nullptr) {
+    auto st = Status::Error("Invalid TileDB fragment info object");
+    LOG_STATUS(st);
+    save_error(ctx, st);
+    return TILEDB_ERR;
+  }
+  return TILEDB_OK;
+}
+
 inline int32_t check_filter_type(
     tiledb_ctx_t* ctx, tiledb_filter_t* filter, tiledb_filter_type_t type) {
   auto cpp_type = static_cast<tiledb::sm::FilterType>(type);
@@ -4954,5 +4965,414 @@ int32_t tiledb::impl::tiledb_query_submit_async_func(
           ctx, query->query_->submit_async(callback, callback_data)))
     return TILEDB_ERR;
 
+  return TILEDB_OK;
+}
+
+/* ****************************** */
+/*          FRAGMENT INFO         */
+/* ****************************** */
+
+int32_t tiledb_fragment_info_alloc(
+    tiledb_ctx_t* ctx,
+    const char* array_uri,
+    tiledb_fragment_info_t** fragment_info) {
+  if (sanity_check(ctx) == TILEDB_ERR) {
+    *fragment_info = nullptr;
+    return TILEDB_ERR;
+  }
+
+  // Create fragment info struct
+  *fragment_info = new (std::nothrow) tiledb_fragment_info_t;
+  if (*fragment_info == nullptr) {
+    auto st = Status::Error(
+        "Failed to create TileDB fragment info object; Memory allocation "
+        "error");
+    LOG_STATUS(st);
+    save_error(ctx, st);
+    return TILEDB_OOM;
+  }
+
+  // Check array URI
+  auto uri = tiledb::sm::URI(array_uri);
+  if (uri.is_invalid()) {
+    auto st = Status::Error(
+        "Failed to create TileDB fragment info object; Invalid URI");
+    delete *fragment_info;
+    *fragment_info = nullptr;
+    LOG_STATUS(st);
+    save_error(ctx, st);
+    return TILEDB_ERR;
+  }
+
+  // Allocate a fragment info object
+  (*fragment_info)->fragment_info_ = new (std::nothrow)
+      tiledb::sm::FragmentInfo(uri, ctx->ctx_->storage_manager());
+  if ((*fragment_info)->fragment_info_ == nullptr) {
+    delete *fragment_info;
+    *fragment_info = nullptr;
+    auto st = Status::Error(
+        "Failed to create TileDB fragment info object; Memory allocation "
+        "error");
+    LOG_STATUS(st);
+    save_error(ctx, st);
+    return TILEDB_OOM;
+  }
+
+  // Success
+  return TILEDB_OK;
+}
+
+void tiledb_fragment_info_free(tiledb_fragment_info_t** fragment_info) {
+  if (fragment_info != nullptr && *fragment_info != nullptr) {
+    delete (*fragment_info)->fragment_info_;
+    delete *fragment_info;
+    *fragment_info = nullptr;
+  }
+}
+
+int32_t tiledb_fragment_info_load(
+    tiledb_ctx_t* ctx, tiledb_fragment_info_t* fragment_info) {
+  return tiledb_fragment_info_load_with_key(
+      ctx, fragment_info, TILEDB_NO_ENCRYPTION, nullptr, 0);
+}
+
+int32_t tiledb_fragment_info_load_with_key(
+    tiledb_ctx_t* ctx,
+    tiledb_fragment_info_t* fragment_info,
+    tiledb_encryption_type_t encryption_type,
+    const void* encryption_key,
+    uint32_t key_length) {
+  if (sanity_check(ctx) == TILEDB_ERR ||
+      sanity_check(ctx, fragment_info) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  // Create key
+  tiledb::sm::EncryptionKey key;
+  if (SAVE_ERROR_CATCH(
+          ctx,
+          key.set_key(
+              static_cast<tiledb::sm::EncryptionType>(encryption_type),
+              encryption_key,
+              key_length)))
+    return TILEDB_ERR;
+
+  // Load fragment info
+  if (SAVE_ERROR_CATCH(ctx, fragment_info->fragment_info_->load(key)))
+    return TILEDB_ERR;
+
+  return TILEDB_OK;
+}
+
+int32_t tiledb_fragment_info_get_fragment_num(
+    tiledb_ctx_t* ctx,
+    tiledb_fragment_info_t* fragment_info,
+    uint32_t* fragment_num) {
+  if (sanity_check(ctx) == TILEDB_ERR ||
+      sanity_check(ctx, fragment_info) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  *fragment_num = fragment_info->fragment_info_->fragment_num();
+
+  return TILEDB_OK;
+}
+
+int32_t tiledb_fragment_info_get_fragment_uri(
+    tiledb_ctx_t* ctx,
+    tiledb_fragment_info_t* fragment_info,
+    uint32_t fid,
+    const char** uri) {
+  if (sanity_check(ctx) == TILEDB_ERR ||
+      sanity_check(ctx, fragment_info) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  if (SAVE_ERROR_CATCH(
+          ctx, fragment_info->fragment_info_->get_fragment_uri(fid, uri)))
+    return TILEDB_ERR;
+
+  return TILEDB_OK;
+}
+
+int32_t tiledb_fragment_info_get_fragment_size(
+    tiledb_ctx_t* ctx,
+    tiledb_fragment_info_t* fragment_info,
+    uint32_t fid,
+    uint64_t* size) {
+  if (sanity_check(ctx) == TILEDB_ERR ||
+      sanity_check(ctx, fragment_info) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  if (SAVE_ERROR_CATCH(
+          ctx, fragment_info->fragment_info_->get_fragment_size(fid, size)))
+    return TILEDB_ERR;
+
+  return TILEDB_OK;
+}
+
+int32_t tiledb_fragment_info_get_dense(
+    tiledb_ctx_t* ctx,
+    tiledb_fragment_info_t* fragment_info,
+    uint32_t fid,
+    int32_t* dense) {
+  if (sanity_check(ctx) == TILEDB_ERR ||
+      sanity_check(ctx, fragment_info) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  if (SAVE_ERROR_CATCH(
+          ctx, fragment_info->fragment_info_->get_dense(fid, dense)))
+    return TILEDB_ERR;
+
+  return TILEDB_OK;
+}
+
+int32_t tiledb_fragment_info_get_sparse(
+    tiledb_ctx_t* ctx,
+    tiledb_fragment_info_t* fragment_info,
+    uint32_t fid,
+    int32_t* sparse) {
+  if (sanity_check(ctx) == TILEDB_ERR ||
+      sanity_check(ctx, fragment_info) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  if (SAVE_ERROR_CATCH(
+          ctx, fragment_info->fragment_info_->get_sparse(fid, sparse)))
+    return TILEDB_ERR;
+
+  return TILEDB_OK;
+}
+
+int32_t tiledb_fragment_info_get_timestamp_range(
+    tiledb_ctx_t* ctx,
+    tiledb_fragment_info_t* fragment_info,
+    uint32_t fid,
+    uint64_t* start,
+    uint64_t* end) {
+  if (sanity_check(ctx) == TILEDB_ERR ||
+      sanity_check(ctx, fragment_info) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  if (SAVE_ERROR_CATCH(
+          ctx,
+          fragment_info->fragment_info_->get_timestamp_range(fid, start, end)))
+    return TILEDB_ERR;
+
+  return TILEDB_OK;
+}
+
+int32_t tiledb_fragment_info_get_non_empty_domain_from_index(
+    tiledb_ctx_t* ctx,
+    tiledb_fragment_info_t* fragment_info,
+    uint32_t fid,
+    uint32_t did,
+    void* domain) {
+  if (sanity_check(ctx) == TILEDB_ERR ||
+      sanity_check(ctx, fragment_info) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  if (SAVE_ERROR_CATCH(
+          ctx,
+          fragment_info->fragment_info_->get_non_empty_domain(
+              fid, did, domain)))
+    return TILEDB_ERR;
+
+  return TILEDB_OK;
+}
+
+int32_t tiledb_fragment_info_get_non_empty_domain_from_name(
+    tiledb_ctx_t* ctx,
+    tiledb_fragment_info_t* fragment_info,
+    uint32_t fid,
+    const char* dim_name,
+    void* domain) {
+  if (sanity_check(ctx) == TILEDB_ERR ||
+      sanity_check(ctx, fragment_info) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  if (SAVE_ERROR_CATCH(
+          ctx,
+          fragment_info->fragment_info_->get_non_empty_domain(
+              fid, dim_name, domain)))
+    return TILEDB_ERR;
+
+  return TILEDB_OK;
+}
+
+int32_t tiledb_fragment_info_get_non_empty_domain_var_size_from_index(
+    tiledb_ctx_t* ctx,
+    tiledb_fragment_info_t* fragment_info,
+    uint32_t fid,
+    uint32_t did,
+    uint64_t* start_size,
+    uint64_t* end_size) {
+  if (sanity_check(ctx) == TILEDB_ERR ||
+      sanity_check(ctx, fragment_info) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  if (SAVE_ERROR_CATCH(
+          ctx,
+          fragment_info->fragment_info_->get_non_empty_domain_var_size(
+              fid, did, start_size, end_size)))
+    return TILEDB_ERR;
+
+  return TILEDB_OK;
+}
+
+int32_t tiledb_fragment_info_get_non_empty_domain_var_size_from_name(
+    tiledb_ctx_t* ctx,
+    tiledb_fragment_info_t* fragment_info,
+    uint32_t fid,
+    const char* dim_name,
+    uint64_t* start_size,
+    uint64_t* end_size) {
+  if (sanity_check(ctx) == TILEDB_ERR ||
+      sanity_check(ctx, fragment_info) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  if (SAVE_ERROR_CATCH(
+          ctx,
+          fragment_info->fragment_info_->get_non_empty_domain_var_size(
+              fid, dim_name, start_size, end_size)))
+    return TILEDB_ERR;
+
+  return TILEDB_OK;
+}
+
+int32_t tiledb_fragment_info_get_non_empty_domain_var_from_index(
+    tiledb_ctx_t* ctx,
+    tiledb_fragment_info_t* fragment_info,
+    uint32_t fid,
+    uint32_t did,
+    void* start,
+    void* end) {
+  if (sanity_check(ctx) == TILEDB_ERR ||
+      sanity_check(ctx, fragment_info) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  if (SAVE_ERROR_CATCH(
+          ctx,
+          fragment_info->fragment_info_->get_non_empty_domain_var(
+              fid, did, start, end)))
+    return TILEDB_ERR;
+
+  return TILEDB_OK;
+}
+
+int32_t tiledb_fragment_info_get_non_empty_domain_var_from_name(
+    tiledb_ctx_t* ctx,
+    tiledb_fragment_info_t* fragment_info,
+    uint32_t fid,
+    const char* dim_name,
+    void* start,
+    void* end) {
+  if (sanity_check(ctx) == TILEDB_ERR ||
+      sanity_check(ctx, fragment_info) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  if (SAVE_ERROR_CATCH(
+          ctx,
+          fragment_info->fragment_info_->get_non_empty_domain_var(
+              fid, dim_name, start, end)))
+    return TILEDB_ERR;
+
+  return TILEDB_OK;
+}
+
+int32_t tiledb_fragment_info_get_cell_num(
+    tiledb_ctx_t* ctx,
+    tiledb_fragment_info_t* fragment_info,
+    uint32_t fid,
+    uint64_t* cell_num) {
+  if (sanity_check(ctx) == TILEDB_ERR ||
+      sanity_check(ctx, fragment_info) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  if (SAVE_ERROR_CATCH(
+          ctx, fragment_info->fragment_info_->get_cell_num(fid, cell_num)))
+    return TILEDB_ERR;
+
+  return TILEDB_OK;
+}
+
+int32_t tiledb_fragment_info_get_version(
+    tiledb_ctx_t* ctx,
+    tiledb_fragment_info_t* fragment_info,
+    uint32_t fid,
+    uint32_t* version) {
+  if (sanity_check(ctx) == TILEDB_ERR ||
+      sanity_check(ctx, fragment_info) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  if (SAVE_ERROR_CATCH(
+          ctx, fragment_info->fragment_info_->get_version(fid, version)))
+    return TILEDB_ERR;
+
+  return TILEDB_OK;
+}
+
+int32_t tiledb_fragment_info_has_consolidated_metadata(
+    tiledb_ctx_t* ctx,
+    tiledb_fragment_info_t* fragment_info,
+    uint32_t fid,
+    int32_t* has) {
+  if (sanity_check(ctx) == TILEDB_ERR ||
+      sanity_check(ctx, fragment_info) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  if (SAVE_ERROR_CATCH(
+          ctx,
+          fragment_info->fragment_info_->has_consolidated_metadata(fid, has)))
+    return TILEDB_ERR;
+
+  return TILEDB_OK;
+}
+
+int32_t tiledb_fragment_info_get_unconsolidated_metadata_num(
+    tiledb_ctx_t* ctx,
+    tiledb_fragment_info_t* fragment_info,
+    uint32_t* unconsolidated) {
+  if (sanity_check(ctx) == TILEDB_ERR ||
+      sanity_check(ctx, fragment_info) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  *unconsolidated =
+      fragment_info->fragment_info_->unconsolidated_metadata_num();
+
+  return TILEDB_OK;
+}
+
+int32_t tiledb_fragment_info_get_to_vacuum_num(
+    tiledb_ctx_t* ctx,
+    tiledb_fragment_info_t* fragment_info,
+    uint32_t* to_vacuum_num) {
+  if (sanity_check(ctx) == TILEDB_ERR ||
+      sanity_check(ctx, fragment_info) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  *to_vacuum_num = fragment_info->fragment_info_->to_vacuum_num();
+
+  return TILEDB_OK;
+}
+
+int32_t tiledb_fragment_info_get_to_vacuum_uri(
+    tiledb_ctx_t* ctx,
+    tiledb_fragment_info_t* fragment_info,
+    uint32_t fid,
+    const char** uri) {
+  if (sanity_check(ctx) == TILEDB_ERR ||
+      sanity_check(ctx, fragment_info) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  if (SAVE_ERROR_CATCH(
+          ctx, fragment_info->fragment_info_->get_to_vacuum_uri(fid, uri)))
+    return TILEDB_ERR;
+
+  return TILEDB_OK;
+}
+
+int32_t tiledb_fragment_info_dump(
+    tiledb_ctx_t* ctx, const tiledb_fragment_info_t* fragment_info, FILE* out) {
+  if (sanity_check(ctx) == TILEDB_ERR ||
+      sanity_check(ctx, fragment_info) == TILEDB_ERR)
+    return TILEDB_ERR;
+  fragment_info->fragment_info_->dump(out);
   return TILEDB_OK;
 }

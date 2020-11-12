@@ -88,6 +88,9 @@ class FragmentMetadata {
   /** Returns the array URI. */
   const URI& array_uri() const;
 
+  /** Returns the number of cells in the fragment. */
+  uint64_t cell_num() const;
+
   /** Returns the number of cells in the tile at the input position. */
   uint64_t cell_num(uint64_t tile_pos) const;
 
@@ -197,6 +200,9 @@ class FragmentMetadata {
 
   /** Returns the fragment URI. */
   const URI& fragment_uri() const;
+
+  /** Returns true if the metadata footer is consolidated. */
+  bool has_consolidated_footer() const;
 
   /**
    * Returns true if the input range overlaps the non-empty
@@ -592,6 +598,9 @@ class FragmentMetadata {
 
   /** The uri of the fragment the metadata belongs to. */
   URI fragment_uri_;
+
+  /** True if the fragment metadata footer appears in a consolidated file. */
+  bool has_consolidated_footer_;
 
   /** Number of cells in the last tile (meaningful only in the sparse case). */
   uint64_t last_tile_cell_num_;

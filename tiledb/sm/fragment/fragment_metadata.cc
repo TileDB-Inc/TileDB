@@ -1,5 +1,5 @@
 /**
- * @file   book_keeping.cc
+ * @file   fragment_metadata.cc
  *
  * @section LICENSE
  *
@@ -28,7 +28,7 @@
  *
  * @section DESCRIPTION
  *
- * This file implements the BookKeeping class.
+ * This file implements the FragmentMetadata class.
  */
 
 #include "tiledb/sm/fragment/fragment_metadata.h"
@@ -69,6 +69,7 @@ FragmentMetadata::FragmentMetadata(
     , dense_(dense)
     , fragment_uri_(fragment_uri)
     , timestamp_range_(timestamp_range) {
+  has_consolidated_footer_ = false;
   rtree_ = RTree(array_schema_->domain(), constants::rtree_fanout);
   meta_file_size_ = 0;
   version_ = constants::format_version;
@@ -148,6 +149,16 @@ void FragmentMetadata::set_tile_validity_offset(
   assert(tid < tile_validity_offsets_[idx].size());
   tile_validity_offsets_[idx][tid] = file_validity_sizes_[idx];
   file_validity_sizes_[idx] += step;
+}
+
+uint64_t FragmentMetadata::cell_num() const {
+  auto tile_num = this->tile_num();
+  assert(tile_num != 0);
+  if (dense_) {  // Dense fragment
+    return tile_num * array_schema_->domain()->cell_num_per_tile();
+  } else {  // Sparse fragment
+    return (tile_num - 1) * array_schema_->capacity() + last_tile_cell_num();
+  }
 }
 
 uint64_t FragmentMetadata::cell_num(uint64_t tile_pos) const {
@@ -351,6 +362,10 @@ Status FragmentMetadata::fragment_size(uint64_t* size) const {
 
 const URI& FragmentMetadata::fragment_uri() const {
   return fragment_uri_;
+}
+
+bool FragmentMetadata::has_consolidated_footer() const {
+  return has_consolidated_footer_;
 }
 
 bool FragmentMetadata::overlaps_non_empty_domain(const NDRange& range) const {
@@ -1890,9 +1905,11 @@ Status FragmentMetadata::load_footer(
   Buffer buff;
   std::shared_ptr<ConstBuffer> cbuff = nullptr;
   if (f_buff == nullptr) {
+    has_consolidated_footer_ = false;
     RETURN_NOT_OK(read_file_footer(&buff));
     cbuff = std::make_shared<ConstBuffer>(&buff);
   } else {
+    has_consolidated_footer_ = true;
     cbuff = std::make_shared<ConstBuffer>(f_buff);
     cbuff->set_offset(offset);
   }

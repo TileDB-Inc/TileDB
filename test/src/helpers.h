@@ -371,6 +371,44 @@ int set_attribute_compression_filter(
     int32_t level);
 
 /**
+ * Performs a single write to an array, at a timestamp.
+ *
+ * @param ctx The TileDB context.
+ * @param array_name The array name.
+ * @param timestamp The timestamp to write at.
+ * @param layout The layout to write into.
+ * @param buffers The attribute/dimension buffers to be written.
+ */
+void write_array(
+    tiledb_ctx_t* ctx,
+    const std::string& array_name,
+    uint64_t timestamp,
+    tiledb_layout_t layout,
+    const QueryBuffers& buffers);
+
+/**
+ * Performs a single write to an array, at a timestamp.
+ *
+ * @param ctx The TileDB context.
+ * @param array_name The array name.
+ * @param encyrption_type The type of encryption.
+ * @param key The encryption key.
+ * @param key_len The encryption key length.
+ * @param timestamp The timestamp to write at.
+ * @param layout The layout to write into.
+ * @param buffers The attribute/dimension buffers to be written.
+ */
+void write_array(
+    tiledb_ctx_t* ctx,
+    const std::string& array_name,
+    tiledb_encryption_type_t encryption_type,
+    const char* key,
+    uint64_t key_len,
+    uint64_t timestamp,
+    tiledb_layout_t layout,
+    const QueryBuffers& buffers);
+
+/**
  * Performs a single write to an array.
  *
  * @param ctx The TileDB context.
@@ -383,6 +421,156 @@ void write_array(
     const std::string& array_name,
     tiledb_layout_t layout,
     const QueryBuffers& buffers);
+
+/**
+ * Performs a single write to an array, inside a given subarray.
+ *
+ * @param ctx The TileDB context.
+ * @param array_name The array name.
+ * @param subarray The subarray to write into.
+ * @param layout The layout to write into.
+ * @param buffers The attribute/dimension buffers to be written.
+ */
+void write_array(
+    tiledb_ctx_t* ctx,
+    const std::string& array_name,
+    const void* subarray,
+    tiledb_layout_t layout,
+    const QueryBuffers& buffers);
+
+/**
+ * Performs a single write to an array, inside a given subarray and
+ * at a timestamp.
+ *
+ * @param ctx The TileDB context.
+ * @param array_name The array name.
+ * @param timestamp The timestamp to write at.
+ * @param subarray The subarray to write into.
+ * @param layout The layout to write into.
+ * @param buffers The attribute/dimension buffers to be written.
+ */
+void write_array(
+    tiledb_ctx_t* ctx,
+    const std::string& array_name,
+    uint64_t timestamp,
+    const void* subarray,
+    tiledb_layout_t layout,
+    const QueryBuffers& buffers);
+
+/**
+ * Performs a single write to an array, inside a given subarray and
+ * at a timestamp.
+ *
+ * @param ctx The TileDB context.
+ * @param array_name The array name.
+ * @param encyrption_type The type of encryption.
+ * @param key The encryption key.
+ * @param key_len The encryption key length.
+ * @param timestamp The timestamp to write at.
+ * @param subarray The subarray to write into.
+ * @param layout The layout to write into.
+ * @param buffers The attribute/dimension buffers to be written.
+ */
+void write_array(
+    tiledb_ctx_t* ctx,
+    const std::string& array_name,
+    tiledb_encryption_type_t encryption_type,
+    const char* key,
+    uint64_t key_len,
+    uint64_t timestamp,
+    const void* subarray,
+    tiledb_layout_t layout,
+    const QueryBuffers& buffers);
+
+/**
+ * Performs a single write to an array at a timestamp.
+ *
+ * @param ctx The TileDB context.
+ * @param array_name The array name.
+ * @param timestamp The timestamp to write at.
+ * @param layout The layout to write into.
+ * @param buffers The attribute/dimension buffers to be written.
+ * @param uri The written fragment URI.
+ */
+void write_array(
+    tiledb_ctx_t* ctx,
+    const std::string& array_name,
+    uint64_t timestamp,
+    tiledb_layout_t layout,
+    const QueryBuffers& buffers,
+    std::string* uri);
+
+/**
+ * Performs a single write to an array at a timestamp.
+ *
+ * @param ctx The TileDB context.
+ * @param array_name The array name.
+ * @param encyrption_type The type of encryption.
+ * @param key The encryption key.
+ * @param key_len The encryption key length.
+ * @param timestamp The timestamp to write at.
+ * @param layout The layout to write into.
+ * @param buffers The attribute/dimension buffers to be written.
+ * @param uri The written fragment URI.
+ */
+void write_array(
+    tiledb_ctx_t* ctx,
+    const std::string& array_name,
+    tiledb_encryption_type_t encryption_type,
+    const char* key,
+    uint64_t key_len,
+    uint64_t timestamp,
+    tiledb_layout_t layout,
+    const QueryBuffers& buffers,
+    std::string* uri);
+
+/**
+ * Performs a single write to an array, inside a given subarray and
+ * at a timestamp.
+ *
+ * @param ctx The TileDB context.
+ * @param array_name The array name.
+ * @param timestamp The timestamp to write at.
+ * @param subarray The subarray to write into.
+ * @param layout The layout to write into.
+ * @param buffers The attribute/dimension buffers to be written.
+ * @param uri The written fragment URI.
+ */
+void write_array(
+    tiledb_ctx_t* ctx,
+    const std::string& array_name,
+    uint64_t timestamp,
+    const void* subarray,
+    tiledb_layout_t layout,
+    const QueryBuffers& buffers,
+    std::string* uri);
+
+/**
+ * Performs a single write to an array, inside a given subarray and
+ * at a timestamp.
+ *
+ * @param ctx The TileDB context.
+ * @param array_name The array name.
+ * @param encyrption_type The type of encryption.
+ * @param key The encryption key.
+ * @param key_len The encryption key length.
+ * @param timestamp The timestamp to write at.
+ * @param subarray The subarray to write into.
+ * @param layout The layout to write into.
+ * @param buffers The attribute/dimension buffers to be written.
+ * @param uri The written fragment URI.
+ */
+void write_array(
+    tiledb_ctx_t* ctx,
+    const std::string& array_name,
+    tiledb_encryption_type_t encryption_type,
+    const char* key,
+    uint64_t key_len,
+    uint64_t timestamp,
+    const void* subarray,
+    tiledb_layout_t layout,
+    const QueryBuffers& buffers,
+    std::string* uri);
 
 /**
  * Performs a single read to an array.

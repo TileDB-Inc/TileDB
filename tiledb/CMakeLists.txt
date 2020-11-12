@@ -68,6 +68,7 @@ if (TILEDB_CPP_API)
     ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/exception.h
     ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/filter.h
     ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/filter_list.h
+    ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/fragment_info.h
     ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/group.h
     ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/object.h
     ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/object_iter.h
@@ -137,6 +138,7 @@ set(TILEDB_CORE_SOURCES
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/filter/filter_storage.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/filter/noop_filter.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/filter/positive_delta_filter.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/fragment/fragment_info.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/fragment/fragment_metadata.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/global_state/global_state.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/global_state/libcurl_state.cc

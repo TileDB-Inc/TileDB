@@ -1,5 +1,5 @@
 /**
- * @file   tiledb_cpp_api_exception.h
+ * @file   exception.h
  *
  * @author Ravi Gaddipati
  *

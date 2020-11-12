@@ -53,7 +53,7 @@
 #include "tiledb/sm/config/config.h"
 #include "tiledb/sm/enums/walk_order.h"
 #include "tiledb/sm/filesystem/filelock.h"
-#include "tiledb/sm/fragment/fragment_info.h"
+#include "tiledb/sm/fragment/single_fragment_info.h"
 #include "tiledb/sm/misc/cancelable_tasks.h"
 #include "tiledb/sm/misc/uri.h"
 
@@ -70,6 +70,7 @@ class ChunkedBuffer;
 class Consolidator;
 class EncryptionKey;
 class FragmentMetadata;
+class FragmentInfo;
 class Metadata;
 class OpenArray;
 class Query;
@@ -169,7 +170,7 @@ class StorageManager {
    * Only the metadata of the input fragments are retrieved.
    *
    * @param array_uri The array URI.
-   * @param fragments The fragments to open the array with.
+   * @param fragment_info Info about the fragments to open the array with.
    * @param enc_key The encryption key to use.
    * @param array_schema The array schema to be retrieved after the
    *     array is opened.
@@ -179,7 +180,7 @@ class StorageManager {
    */
   Status array_open_for_reads(
       const URI& array_uri,
-      const std::vector<FragmentInfo>& fragments,
+      const FragmentInfo& fragment_info,
       const EncryptionKey& enc_key,
       ArraySchema** array_schema,
       std::vector<FragmentMetadata*>* fragment_metadata);
@@ -497,16 +498,40 @@ class StorageManager {
    * @param array_schema The array schema.
    * @param timestamp The function will consider fragments created
    *     at or before this timestamp.
+   * @param encryption_key The encryption key in case the array is encrypted.
    * @param fragment_info The fragment information to be retrieved.
    *     The fragments are sorted in chronological creation order.
-   * @param encryption_key The encryption key in case the array is encrypted.
+   * @param get_to_vacuum Whether or not to receive information about
+   *     fragments to vacuum.
    * @return Status
    */
   Status get_fragment_info(
       const ArraySchema* array_schema,
       uint64_t timestamp,
       const EncryptionKey& encryption_key,
-      std::vector<FragmentInfo>* fragment_info);
+      FragmentInfo* fragment_info,
+      bool get_to_vacuum = false);
+
+  /**
+   * Gets the fragment information for a given array at a particular
+   * timestamp.
+   *
+   * @param array_uri The array URI.
+   * @param timestamp The function will consider fragments created
+   *     at or before this timestamp.
+   * @param encryption_key The encryption key in case the array is encrypted.
+   * @param fragment_info The fragment information to be retrieved.
+   *     The fragments are sorted in chronological creation order.
+   * @param get_to_vacuum Whether or not to receive information about
+   *     fragments to vacuum.
+   * @return Status
+   */
+  Status get_fragment_info(
+      const URI& array_uri,
+      uint64_t timestamp,
+      const EncryptionKey& encryption_key,
+      FragmentInfo* fragment_info,
+      bool get_to_vacuum = false);
 
   /**
    * Gets the fragment info for a single fragment URI.
@@ -521,7 +546,7 @@ class StorageManager {
       const ArraySchema* array_schema,
       const EncryptionKey& encryption_key,
       const URI& fragment_uri,
-      FragmentInfo* fragment_info);
+      SingleFragmentInfo* fragment_info);
 
   /**
    * Retrieves all the fragment URIs of an array, along with the latest

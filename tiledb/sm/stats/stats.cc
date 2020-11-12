@@ -790,13 +790,10 @@ void Stats::report_ratio(
     const char* unit,
     uint64_t numerator,
     uint64_t denominator) const {
-  fprintf(
-      out,
-      "%s: %" PRIu64 " / %" PRIu64 " %s",
-      msg,
-      numerator,
-      denominator,
-      unit);
+  std::stringstream ss;
+  ss << msg << ": " << numerator << " / " << denominator << " " << unit;
+  fprintf(out, "%s", ss.str().c_str());
+
   if (denominator > 0) {
     fprintf(out, " (%.1fx)", double(numerator) / double(denominator));
   }
@@ -809,13 +806,10 @@ void Stats::report_ratio_pct(
     const char* unit,
     uint64_t numerator,
     uint64_t denominator) const {
-  fprintf(
-      out,
-      "%s: %" PRIu64 " / %" PRIu64 " %s",
-      msg,
-      numerator,
-      denominator,
-      unit);
+  std::stringstream ss;
+  ss << msg << ": " << numerator << " / " << denominator << " " << unit;
+  fprintf(out, "%s", ss.str().c_str());
+
   if (denominator > 0) {
     fprintf(out, " (%.1f%%)", 100.0 * double(numerator) / double(denominator));
   }

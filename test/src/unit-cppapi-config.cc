@@ -43,7 +43,7 @@ int setenv_local(const char* __name, const char* __value) {
 #endif
 }
 
-TEST_CASE("C++ API: Config", "[cppapi], [cppapi-config]") {
+TEST_CASE("C++ API: Config", "[cppapi][config]") {
   tiledb::Config config;
   config["foo"] = "bar";
   std::string result1 = config["foo"];
