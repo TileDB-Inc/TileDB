@@ -298,12 +298,16 @@ unsigned int ArraySchema::dim_num() const {
 void ArraySchema::dump(FILE* out) const {
   if (out == nullptr)
     out = stdout;
-  fprintf(out, "- Array type: %s\n", array_type_str(array_type_).c_str());
-  fprintf(out, "- Cell order: %s\n", layout_str(cell_order_).c_str());
-  fprintf(out, "- Tile order: %s\n", layout_str(tile_order_).c_str());
-  fprintf(out, "- Capacity: %" PRIu64 "\n", capacity_);
-  fprintf(out, "- Allows duplicates: %s\n", (allows_dups_ ? "true" : "false"));
-  fprintf(out, "- Coordinates filters: %u", (unsigned)coords_filters_.size());
+
+  std::stringstream ss;
+  ss << "- Array type: " << array_type_str(array_type_) << "\n";
+  ss << "- Cell order: " << layout_str(cell_order_) << "\n";
+  ss << "- Tile order: " << layout_str(tile_order_) << "\n";
+  ss << "- Capacity: " << capacity_ << "\n";
+  ss << "- Allows duplicates: " << (allows_dups_ ? "true" : "false") << "\n";
+  ss << "- Coordinates filters: " << coords_filters_.size();
+  fprintf(out, "%s", ss.str().c_str());
+
   coords_filters_.dump(out);
   fprintf(
       out,

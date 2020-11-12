@@ -34,8 +34,6 @@
 #ifndef TILEDB_ARRAY_METADATA_H
 #define TILEDB_ARRAY_METADATA_H
 
-#define __STDC_FORMAT_MACROS
-
 #include <unordered_map>
 
 #include "tiledb/common/status.h"
