@@ -14,6 +14,7 @@
 * Support for Hilbert order sorting for sparse arrays. [#1880](https://github.com/TileDB-Inc/TileDB/pull/1880)
 * Support for AWS S3 "AssumeRole" temporary credentials [#1882](https://github.com/TileDB-Inc/TileDB/pull/1882)
 * Experimental support for an in-memory backend used with bootstrap option "--enable-memfs" [#1873](https://github.com/TileDB-Inc/TileDB/pull/1873)
+* Support for element offsets for var-sized attributes. [#1897] (https://github.com/TileDB-Inc/TileDB/pull/1897)
 
 ## Improvements
 

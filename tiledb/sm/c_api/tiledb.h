@@ -978,6 +978,10 @@ TILEDB_EXPORT void tiledb_config_free(tiledb_config_t** config);
  *    The memory budget for tiles of var-sized attributes
  *    to be fetched during reads.<br>
  *    **Default**: 10GB
+ * - `sm.offsets_format` <br>
+ *    The offsets format (`bytes` or `elements`) to be used for
+ *    var-sized attributes.<br>
+ *    **Default**: bytes
  * - `vfs.num_threads` <br>
  *    The number of threads allocated for VFS operations (any backend), per VFS
  *    instance. <br>

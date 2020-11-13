@@ -913,6 +913,9 @@ class Reader {
   /** The query subarray (initially the whole domain by default). */
   Subarray subarray_;
 
+  /** The offset format used for variable-sized attributes. */
+  std::string offsets_format_;
+
   /** Protects result tiles. */
   mutable std::mutex result_tiles_mutex_;
 

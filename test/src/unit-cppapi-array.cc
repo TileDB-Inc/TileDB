@@ -1268,3 +1268,87 @@ TEST_CASE(
   if (vfs.is_dir(array_name))
     vfs.remove_dir(array_name);
 }
+
+TEST_CASE("C++ API: Test element offsets", "[cppapi][sparse][element-offset]") {
+  Context ctx;
+  VFS vfs(ctx);
+
+  // Create the array
+  std::string array_name = "test_element_offset";
+  if (vfs.is_dir(array_name))
+    vfs.remove_dir(array_name);
+
+  Domain dom(ctx);
+  dom.add_dimension(Dimension::create<int64_t>(ctx, "d1", {{1, 4}}, 4))
+      .add_dimension(Dimension::create<int64_t>(ctx, "d2", {{1, 4}}, 4));
+
+  ArraySchema schema(ctx, TILEDB_SPARSE);
+  Attribute attr(ctx, "attr", TILEDB_INT32);
+  attr.set_cell_val_num(TILEDB_VAR_NUM);
+  schema.add_attribute(attr);
+  schema.set_tile_order(TILEDB_ROW_MAJOR);
+  schema.set_cell_order(TILEDB_ROW_MAJOR);
+  schema.set_domain(dom);
+
+  Array::create(array_name, schema);
+
+  // Write some variable-sized data in the array
+  std::vector<int64_t> d1 = {1, 2, 3, 4};
+  std::vector<int64_t> d2 = {2, 1, 3, 4};
+
+  std::vector<int32_t> data = {1, 1, 2, 3, 3, 3, 4};
+  std::vector<uint64_t> data_offsets = {0, 8, 12, 24};
+
+  Array array(ctx, array_name, TILEDB_WRITE);
+  Query query(ctx, array, TILEDB_WRITE);
+  query.set_layout(TILEDB_UNORDERED)
+      .set_buffer("d1", d1)
+      .set_buffer("d2", d2)
+      .set_buffer("attr", data_offsets, data);
+  CHECK_NOTHROW(query.submit());
+
+  array.close();
+
+  // 1. Read when offset format is bytes (default case)
+  Config config = ctx.config();
+  CHECK((std::string)config["sm.offsets_format"] == "bytes");
+
+  array.open(TILEDB_READ);
+  Query query2(ctx, array, TILEDB_READ);
+
+  std::vector<int32_t> b_val(data.size());
+  std::vector<uint64_t> b_off(data_offsets.size());
+  query2.set_buffer("attr", b_off, b_val);
+
+  CHECK_NOTHROW(query2.submit());
+
+  // Check that bytes offsets are properly returned
+  CHECK(b_val == data);
+  CHECK(b_off == data_offsets);
+
+  array.close();
+
+  // 2. Read again using element offsets
+
+  Config config2;
+  // Change config of offsets format from bytes to elements
+  config2["sm.offsets_format"] = "elements";
+  Context ctx2(config2);
+
+  array.open(TILEDB_READ);
+
+  Query query3(ctx2, array, TILEDB_READ);
+  query3.set_buffer("attr", b_off, b_val);
+  CHECK_NOTHROW(query3.submit());
+
+  // Check the element offsets are properly returned
+  std::vector<uint64_t> data_off_elements = {0, 2, 3, 6};
+  CHECK(b_val == data);
+  CHECK(b_off == data_off_elements);
+
+  array.close();
+
+  // Clean up
+  if (vfs.is_dir(array_name))
+    vfs.remove_dir(array_name);
+}
