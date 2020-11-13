@@ -69,17 +69,6 @@ void create_array() {
   Array::create(array_name, schema);
 }
 
-template <typename T>
-std::ostream& operator<<(std::ostream& os, std::vector<T> vec) {
-  os << "{";
-  for (unsigned long i = 0; i < vec.size() - 1; i++) {
-    os << +vec[i] << " ";
-  }
-
-  os << +vec.back() << "}";
-  return os;
-}
-
 void write_array() {
   Context ctx;
 
@@ -99,13 +88,6 @@ void write_array() {
   // Specify the validity buffer for each attribute
   std::vector<uint8_t> a1_validity_buf = {1, 0, 0, 1};
   std::vector<uint8_t> a2_validity_buf = {0, 1, 1, 1, 0, 0, 1, 1};
-
-  // Print out the data we are writing.
-  std::cout << "Write attribute a1:\n Data: " << a1_data
-            << "\n Validity: " << a1_validity_buf << "\n";
-  std::cout << "Write attribute a2:\n Data: " << a2_data
-            << "\n Validity: " << a2_validity_buf << "\n Offsets: " << a2_off
-            << "\n";
 
   // Set the query buffers specifying the validity for each data
   query.set_buffer_nullable("a1", a1_data, a1_validity_buf)
@@ -144,10 +126,21 @@ void read_array() {
   query.submit();
   array.close();
 
-  // Print out the results.
-  std::cout << "Read attribute a1:\n Validity: " << a1_validity_buf << "\n";
-  std::cout << "Read attribute a2:\n Validity: " << a2_validity_buf
-            << "\n Offsets: " << a2_off << "\n";
+  // Print out the data we read for each nullable atttribute
+  unsigned long i = 0;
+  std::cout << "a1: " << std::endl;
+  for (i = 0; i < 4; ++i) {
+    std::cout << (a1_validity_buf[i] > 0 ? std::to_string(a1_data[i]) : "NULL");
+    std::cout << " ";
+  }
+  std::cout << std::endl;
+
+  std::cout << "a2: " << std::endl;
+  for (i = 0; i < 8; ++i) {
+    std::cout << (a2_validity_buf[i] > 0 ? std::to_string(a2_data[i]) : "NULL");
+    std::cout << " ";
+  }
+  std::cout << std::endl;
 }
 
 int main() {
