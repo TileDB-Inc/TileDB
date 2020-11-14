@@ -59,7 +59,7 @@ void check_load_correct_file() {
   ofs << "   # comment line\n";
   ofs << "sm.tile_cache_size 1000\n";
   ofs << "# another comment line\n";
-  ofs << "sm.num_async_threads 10 # some comment\n";
+  ofs << "sm.consolidation.steps 2 # some comment\n";
   ofs << "#    last comment line\n";
   ofs.close();
 
@@ -112,7 +112,7 @@ void check_load_incorrect_file_missing_value() {
   ofs << "   # comment line\n";
   ofs << "sm.tile_cache_size    \n";
   ofs << "# another comment line\n";
-  ofs << "sm.num_async_threads 10\n";
+  ofs << "sm.consolidation.steps 2 # some comment\n";
   ofs << "#    last comment line\n";
   ofs.close();
 
@@ -142,7 +142,7 @@ void check_load_incorrect_file_extra_word() {
   ofs << "   # comment line\n";
   ofs << "sm.tile_cache_size 1000\n";
   ofs << "# another comment line\n";
-  ofs << "sm.num_async_threads 10 some comment\n";
+  ofs << "sm.consolidation.steps 2 some comment\n";
   ofs << "#    last comment line\n";
   ofs.close();
 

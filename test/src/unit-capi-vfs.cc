@@ -175,12 +175,6 @@ void VFSFx::set_num_vfs_threads(unsigned num_threads) {
   REQUIRE(
       tiledb_config_set(
           config,
-          "vfs.num_threads",
-          std::to_string(num_threads).c_str(),
-          &error) == TILEDB_OK);
-  REQUIRE(
-      tiledb_config_set(
-          config,
           "vfs.s3.max_parallel_ops",
           std::to_string(num_threads).c_str(),
           &error) == TILEDB_OK);
