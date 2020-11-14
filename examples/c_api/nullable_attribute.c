@@ -128,23 +128,23 @@ void write_array() {
 
   // Set the query buffers specifying the validity for each data
   tiledb_query_set_buffer_nullable(
-    ctx,
-    query,
-    "a1",
-    (void*)a1_data,
-    &a1_data_size,
-    a1_validity_buf,
-    &a1_validity_buf_size);
+      ctx,
+      query,
+      "a1",
+      (void*)a1_data,
+      &a1_data_size,
+      a1_validity_buf,
+      &a1_validity_buf_size);
   tiledb_query_set_buffer_var_nullable(
-    ctx,
-    query,
-    "a2",
-    a2_off,
-    &a2_off_size,
-    (void*)a2_data,
-    &a2_data_size,
-    a2_validity_buf,
-    &a2_validity_buf_size);
+      ctx,
+      query,
+      "a2",
+      a2_off,
+      &a2_off_size,
+      (void*)a2_data,
+      &a2_data_size,
+      a2_validity_buf,
+      &a2_validity_buf_size);
 
   // Submit query
   tiledb_query_submit(ctx, query);
