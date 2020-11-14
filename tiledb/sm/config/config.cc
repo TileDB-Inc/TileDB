@@ -403,7 +403,7 @@ Status Config::unset(const std::string& param) {
     param_values_["sm.memory_budget"] = SM_MEMORY_BUDGET;
   } else if (param == "sm.memory_budget_var") {
     param_values_["sm.memory_budget_var"] = SM_MEMORY_BUDGET_VAR;
-  } else if (param == "sm.memory_budget") {
+  } else if (param == "sm.sub_partitioner_memory_budget") {
     param_values_["sm.sub_partitioner_memory_budget"] =
         SM_SUB_PARTITIONER_MEMORY_BUDGET;
   } else if (param == "sm.enable_signal_handlers") {
@@ -541,7 +541,7 @@ Status Config::unset(const std::string& param) {
     param_values_["vfs.s3.proxy_password"] = VFS_S3_PROXY_PASSWORD;
   } else if (param == "vfs.s3.verify_ssl") {
     param_values_["vfs.s3.verify_ssl"] = VFS_S3_VERIFY_SSL;
-  } else if (param == "vfs.hdfs.name_node") {
+  } else if (param == "vfs.hdfs.name_node_uri") {
     param_values_["vfs.hdfs.name_node_uri"] = VFS_HDFS_NAME_NODE_URI;
   } else if (param == "vfs.hdfs.username") {
     param_values_["vfs.hdfs.username"] = VFS_HDFS_USERNAME;
