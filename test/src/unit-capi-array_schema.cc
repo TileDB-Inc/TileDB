@@ -162,116 +162,134 @@ struct ArraySchemaFx {
 
 ArraySchemaFx::ArraySchemaFx() {
   // Initialize vfs test
-  ctx_ = nullptr;
-  vfs_ = nullptr;
-  vfs_test_init(&ctx_, &vfs_);
 
-  /*
-  // Supported filesystems
-  set_supported_fs();
-
-  // Create TileDB context
   tiledb_config_t* config = nullptr;
   tiledb_error_t* error = nullptr;
   REQUIRE(tiledb_config_alloc(&config, &error) == TILEDB_OK);
   REQUIRE(error == nullptr);
-
-  if (supports_s3_) {
-#ifndef TILEDB_TESTS_AWS_S3_CONFIG
-    REQUIRE(
-        tiledb_config_set(
-            config, "vfs.s3.endpoint_override", "localhost:9999", &error) ==
-        TILEDB_OK);
-    REQUIRE(
-        tiledb_config_set(config, "vfs.s3.scheme", "https", &error) ==
-        TILEDB_OK);
-    REQUIRE(
-        tiledb_config_set(
-            config, "vfs.s3.use_virtual_addressing", "false", &error) ==
-        TILEDB_OK);
-    REQUIRE(
-        tiledb_config_set(config, "vfs.s3.verify_ssl", "false", &error) ==
-        TILEDB_OK);
-    REQUIRE(error == nullptr);
-#endif
-  }
-  if (supports_azure_) {
-    REQUIRE(
-        tiledb_config_set(
-            config,
-            "vfs.azure.storage_account_name",
-            "devstoreaccount1",
-            &error) == TILEDB_OK);
-    REQUIRE(
-        tiledb_config_set(
-            config,
-            "vfs.azure.storage_account_key",
-            "Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/"
-            "K1SZFPTOtr/KBHBeksoGMGw==",
-            &error) == TILEDB_OK);
-    REQUIRE(
-        tiledb_config_set(
-            config,
-            "vfs.azure.blob_endpoint",
-            "127.0.0.1:10000/devstoreaccount1",
-            &error) == TILEDB_OK);
-    REQUIRE(
-        tiledb_config_set(config, "vfs.azure.use_https", "false", &error) ==
-        TILEDB_OK);
-  }
 
   ctx_ = nullptr;
   REQUIRE(tiledb_ctx_alloc(config, &ctx_) == TILEDB_OK);
   REQUIRE(error == nullptr);
   vfs_ = nullptr;
   REQUIRE(tiledb_vfs_alloc(ctx_, config, &vfs_) == TILEDB_OK);
+
+  vfs_test_init(&ctx_, &vfs_);
+
   tiledb_config_free(&config);
 
-  // Connect to S3
-  if (supports_s3_) {
-    // Create bucket if it does not exist
-    int is_bucket = 0;
-    int rc = tiledb_vfs_is_bucket(ctx_, vfs_, S3_BUCKET.c_str(), &is_bucket);
-    REQUIRE(rc == TILEDB_OK);
-    if (!is_bucket) {
-      rc = tiledb_vfs_create_bucket(ctx_, vfs_, S3_BUCKET.c_str());
-      REQUIRE(rc == TILEDB_OK);
-    }
-  }
+  /*
+    // Supported filesystems
+    set_supported_fs();
 
-  // Connect to Azure
-  if (supports_azure_) {
-    int is_container = 0;
-    int rc = tiledb_vfs_is_bucket(ctx_, vfs_, bucket.c_str(), &is_container);
-    REQUIRE(rc == TILEDB_OK);
-    if (!is_container) {
-      rc = tiledb_vfs_create_bucket(ctx_, vfs_, bucket.c_str());
-      REQUIRE(rc == TILEDB_OK);
+    // Create TileDB context
+    tiledb_config_t* config = nullptr;
+    tiledb_error_t* error = nullptr;
+    REQUIRE(tiledb_config_alloc(&config, &error) == TILEDB_OK);
+    REQUIRE(error == nullptr);
+
+    if (supports_s3_) {
+  #ifndef TILEDB_TESTS_AWS_S3_CONFIG
+      REQUIRE(
+          tiledb_config_set(
+              config, "vfs.s3.endpoint_override", "localhost:9999", &error) ==
+          TILEDB_OK);
+      REQUIRE(
+          tiledb_config_set(config, "vfs.s3.scheme", "https", &error) ==
+          TILEDB_OK);
+      REQUIRE(
+          tiledb_config_set(
+              config, "vfs.s3.use_virtual_addressing", "false", &error) ==
+          TILEDB_OK);
+      REQUIRE(
+          tiledb_config_set(config, "vfs.s3.verify_ssl", "false", &error) ==
+          TILEDB_OK);
+      REQUIRE(error == nullptr);
+  #endif
     }
-  }
+    if (supports_azure_) {
+      REQUIRE(
+          tiledb_config_set(
+              config,
+              "vfs.azure.storage_account_name",
+              "devstoreaccount1",
+              &error) == TILEDB_OK);
+      REQUIRE(
+          tiledb_config_set(
+              config,
+              "vfs.azure.storage_account_key",
+              "Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/"
+              "K1SZFPTOtr/KBHBeksoGMGw==",
+              &error) == TILEDB_OK);
+      REQUIRE(
+          tiledb_config_set(
+              config,
+              "vfs.azure.blob_endpoint",
+              "127.0.0.1:10000/devstoreaccount1",
+              &error) == TILEDB_OK);
+      REQUIRE(
+          tiledb_config_set(config, "vfs.azure.use_https", "false", &error) ==
+          TILEDB_OK);
+    }
+
+    ctx_ = nullptr;
+    REQUIRE(tiledb_ctx_alloc(config, &ctx_) == TILEDB_OK);
+    REQUIRE(error == nullptr);
+    vfs_ = nullptr;
+    REQUIRE(tiledb_vfs_alloc(ctx_, config, &vfs_) == TILEDB_OK);
+    tiledb_config_free(&config);
+
+    // Connect to S3
+    if (supports_s3_) {
+      // Create bucket if it does not exist
+      int is_bucket = 0;
+      int rc = tiledb_vfs_is_bucket(ctx_, vfs_, S3_BUCKET.c_str(), &is_bucket);
+      REQUIRE(rc == TILEDB_OK);
+      if (!is_bucket) {
+        rc = tiledb_vfs_create_bucket(ctx_, vfs_, S3_BUCKET.c_str());
+        REQUIRE(rc == TILEDB_OK);
+      }
+    }
+
+    // Connect to Azure
+    if (supports_azure_) {
+      int is_container = 0;
+      int rc = tiledb_vfs_is_bucket(ctx_, vfs_, bucket.c_str(), &is_container);
+      REQUIRE(rc == TILEDB_OK);
+      if (!is_container) {
+        rc = tiledb_vfs_create_bucket(ctx_, vfs_, bucket.c_str());
+        REQUIRE(rc == TILEDB_OK);
+      }
+    }
   */
 }
 
 ArraySchemaFx::~ArraySchemaFx() {
-  if (supports_s3_) {
-    int is_bucket = 0;
-    int rc = tiledb_vfs_is_bucket(ctx_, vfs_, S3_BUCKET.c_str(), &is_bucket);
-    CHECK(rc == TILEDB_OK);
-    if (is_bucket) {
-      CHECK(
-          tiledb_vfs_remove_bucket(ctx_, vfs_, S3_BUCKET.c_str()) == TILEDB_OK);
-    }
-  }
+  // Close vfs test
+  vfs_test_close(ctx_, vfs_);
 
-  if (supports_azure_) {
-    int is_container = 0;
-    int rc = tiledb_vfs_is_bucket(ctx_, vfs_, bucket.c_str(), &is_container);
-    REQUIRE(rc == TILEDB_OK);
-    if (is_container) {
-      rc = tiledb_vfs_remove_bucket(ctx_, vfs_, bucket.c_str());
-      REQUIRE(rc == TILEDB_OK);
+  /*
+    if (supports_s3_) {
+      int is_bucket = 0;
+      int rc = tiledb_vfs_is_bucket(ctx_, vfs_, S3_BUCKET.c_str(), &is_bucket);
+      CHECK(rc == TILEDB_OK);
+      if (is_bucket) {
+        CHECK(
+            tiledb_vfs_remove_bucket(ctx_, vfs_, S3_BUCKET.c_str()) ==
+    TILEDB_OK);
+      }
     }
-  }
+
+    if (supports_azure_) {
+      int is_container = 0;
+      int rc = tiledb_vfs_is_bucket(ctx_, vfs_, bucket.c_str(), &is_container);
+      REQUIRE(rc == TILEDB_OK);
+      if (is_container) {
+        rc = tiledb_vfs_remove_bucket(ctx_, vfs_, bucket.c_str());
+        REQUIRE(rc == TILEDB_OK);
+      }
+    }
+  */
 
   tiledb_vfs_free(&vfs_);
   tiledb_ctx_free(&ctx_);

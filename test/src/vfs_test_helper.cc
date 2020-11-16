@@ -40,6 +40,7 @@ namespace test {
 Status SupportedFsS3::prepare_config(
     tiledb_config_t* config, tiledb_error_t* error) {
 #ifndef TILEDB_TESTS_AWS_S3_CONFIG
+  std::cerr << "PREPARING CONFIG - S3!! \n" << std::endl;
   REQUIRE(
       tiledb_config_set(
           config, "vfs.s3.endpoint_override", "localhost:9999", &error) ==
@@ -82,6 +83,7 @@ Status SupportedFsS3::close(tiledb_ctx_t* ctx, tiledb_vfs_t* vfs) {
 
 Status SupportedFsHDFS::prepare_config(
     tiledb_config_t* config, tiledb_error_t* error) {
+  std::cerr << "PREPARING CONFIG - HDFS!! \n" << std::endl;
   (void)config;
   (void)error;
   return Status::Ok();
@@ -101,6 +103,7 @@ Status SupportedFsHDFS::close(tiledb_ctx_t* ctx, tiledb_vfs_t* vfs) {
 
 Status SupportedFsAzure::prepare_config(
     tiledb_config_t* config, tiledb_error_t* error) {
+  std::cerr << "PREPARING CONFIG - AZURE!! \n" << std::endl;
   REQUIRE(
       tiledb_config_set(
           config,
@@ -149,6 +152,7 @@ Status SupportedFsAzure::close(tiledb_ctx_t* ctx, tiledb_vfs_t* vfs) {
 
 Status SupportedFsWindows::prepare_config(
     tiledb_config_t* config, tiledb_error_t* error) {
+  std::cerr << "PREPARING CONFIG - WINDOWS!! \n" << std::endl;
   (void)config;
   (void)error;
   return Status::Ok();
@@ -168,6 +172,7 @@ Status SupportedFsWindows::close(tiledb_ctx_t* ctx, tiledb_vfs_t* vfs) {
 
 Status SupportedFsPosix::prepare_config(
     tiledb_config_t* config, tiledb_error_t* error) {
+  std::cerr << "PREPARING CONFIG - POSIX!! \n" << std::endl;
   (void)config;
   (void)error;
   return Status::Ok();
@@ -192,22 +197,22 @@ std::vector<SupportedFs*> vfs_test_get_fs_vec() {
   bool supports_azure_ = false;
   get_supported_fs(&supports_s3_, &supports_hdfs_, &supports_azure_);
   if (supports_s3_) {
-    SupportedFsS3* s3_fs;
+    SupportedFsS3* s3_fs = new SupportedFsS3();
     fs_vec.emplace_back(s3_fs);
   }
   if (supports_hdfs_) {
-    SupportedFsHDFS* hdfs_fs;
+    SupportedFsHDFS* hdfs_fs = new SupportedFsHDFS();
     fs_vec.emplace_back(hdfs_fs);
   }
   if (supports_azure_) {
-    SupportedFsAzure* azure_fs;
+    SupportedFsAzure* azure_fs = new SupportedFsAzure();
     fs_vec.emplace_back(azure_fs);
   }
 #ifdef _WIN32
-  SupportedFsWindows* windows_fs;
+  SupportedFsWindows* windows_fs = new SupportedFsWindows();
   fs_vec.emplace_back(windows_fs);
 #else
-  SupportedFsPosix* posix_fs;
+  SupportedFsPosix* posix_fs = new SupportedFsPosix();
   fs_vec.emplace_back(posix_fs);
 #endif
 
@@ -221,21 +226,21 @@ void vfs_test_init(tiledb_ctx_t** ctx, tiledb_vfs_t** vfs) {
   REQUIRE(tiledb_config_alloc(&config, &error) == TILEDB_OK);
   REQUIRE(error == nullptr);
   for (auto& supported_fs : fs_vec) {
-    std::cout << "supported_fs address: " << supported_fs << std::endl;
+    std::cerr << "PREPARING CONFIG" << std::endl;
     REQUIRE(supported_fs->prepare_config(config, error).ok());
   }
   REQUIRE(tiledb_ctx_alloc(config, ctx) == TILEDB_OK);
   REQUIRE(error == nullptr);
-  vfs = nullptr;
   REQUIRE(tiledb_vfs_alloc(*ctx, config, vfs) == TILEDB_OK);
   tiledb_config_free(&config);
   for (auto& supported_fs : fs_vec) {
+    std::cerr << "INITING" << std::endl;
     REQUIRE(supported_fs->init(*ctx, *vfs).ok());
   }
 }
 
-Status vfs_test_close(
-    std::vector<SupportedFs*> fs_vec, tiledb_ctx_t* ctx, tiledb_vfs_t* vfs) {
+Status vfs_test_close(tiledb_ctx_t* ctx, tiledb_vfs_t* vfs) {
+  std::vector<SupportedFs*> fs_vec = vfs_test_get_fs_vec();
   for (auto& fs : fs_vec) {
     RETURN_NOT_OK(fs->close(ctx, vfs));
   }

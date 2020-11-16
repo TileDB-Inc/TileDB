@@ -364,12 +364,10 @@ void vfs_test_init(tiledb_ctx_t** ctx, tiledb_vfs_t** vfs);
 /**
  * Close the vfs test.
  *
- * @param fs_vec The vector of supported filesystems.
  * @param ctx The TileDB context.
  * @param vfs The VFS object.
  */
-Status vfs_test_close(
-    std::vector<SupportedFs*> fs_vec, tiledb_ctx_t* ctx, tiledb_vfs_t* vfs);
+Status vfs_test_close(tiledb_ctx_t* ctx, tiledb_vfs_t* vfs);
 
 }  // End of namespace test
 }  // End of namespace tiledb
