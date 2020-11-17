@@ -1494,7 +1494,7 @@ Status Reader::copy_partitioned_var_cells(
       auto var_dest = buffer_var + var_offset;
       auto validity_dest = buffer_validity + (var_offset / attr_datatype_size);
 
-      if (offsets_format_ == "elements") {
+      if (offsets_format_mode_ == "elements") {
         var_offset = var_offset / attr_datatype_size;
       }
       // Copy offset
@@ -2502,9 +2502,9 @@ Status Reader::init_read_state() {
   RETURN_NOT_OK(
       config.get<uint64_t>("sm.memory_budget_var", &memory_budget_var, &found));
   assert(found);
-  offsets_format_ = config.get("sm.offsets_format", &found);
+  offsets_format_mode_ = config.get("sm.var_offsets.mode", &found);
   assert(found);
-  if (offsets_format_ != "bytes" && offsets_format_ != "elements") {
+  if (offsets_format_mode_ != "bytes" && offsets_format_mode_ != "elements") {
     return LOG_STATUS(
         Status::ReaderError("Cannot initialize reader; Unsupported offsets "
                             "format in configuration"));
