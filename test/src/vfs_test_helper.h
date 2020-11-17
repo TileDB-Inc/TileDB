@@ -88,6 +88,13 @@ class SupportedFs {
    */
   virtual Status close(tiledb_ctx_t* ctx, tiledb_vfs_t* vfs) = 0;
 
+  /**
+   * Get the name of the filesystem's directory
+   *
+   * @return string directory name
+   */
+  virtual std::string temp_dir() = 0;
+
   /* ********************************* */
   /*             ATTRIBUTES            */
   /* ********************************* */
@@ -136,6 +143,13 @@ class SupportedFsS3 : public SupportedFs {
    */
   virtual Status close(tiledb_ctx_t* ctx, tiledb_vfs_t* vfs);
 
+  /**
+   * Get the name of the filesystem's directory
+   *
+   * @return string directory name
+   */
+  virtual std::string temp_dir();
+
   /* ********************************* */
   /*             ATTRIBUTES            */
   /* ********************************* */
@@ -150,7 +164,7 @@ class SupportedFsS3 : public SupportedFs {
   const std::string S3_TEMP_DIR;
 
   /** The directory name of the S3 filesystem. */
-  std::string vfs_helper_temp_dir = S3_TEMP_DIR;
+  std::string vfs_helper_temp_dir;
 };
 
 /**
@@ -189,6 +203,13 @@ class SupportedFsHDFS : public SupportedFs {
    */
   virtual Status close(tiledb_ctx_t* ctx, tiledb_vfs_t* vfs);
 
+  /**
+   * Get the name of the filesystem's directory
+   *
+   * @return string directory name
+   */
+  virtual std::string temp_dir();
+
   /* ********************************* */
   /*             ATTRIBUTES            */
   /* ********************************* */
@@ -197,7 +218,7 @@ class SupportedFsHDFS : public SupportedFs {
   const std::string HDFS_TEMP_DIR;
 
   /** The directory name of the HDFS filesystem. */
-  std::string vfs_helper_temp_dir = HDFS_TEMP_DIR;
+  std::string vfs_helper_temp_dir;
 };
 
 /**
@@ -237,6 +258,13 @@ class SupportedFsAzure : public SupportedFs {
    */
   virtual Status close(tiledb_ctx_t* ctx, tiledb_vfs_t* vfs);
 
+  /**
+   * Get the name of the filesystem's directory
+   *
+   * @return string directory name
+   */
+  virtual std::string temp_dir();
+
   /* ********************************* */
   /*             ATTRIBUTES            */
   /* ********************************* */
@@ -251,14 +279,14 @@ class SupportedFsAzure : public SupportedFs {
   const std::string AZURE_TEMP_DIR;
 
   /** The directory name of the Azure filesystem. */
-  std::string vfs_helper_temp_dir = AZURE_TEMP_DIR;
+  std::string vfs_helper_temp_dir;
 };
 
 /**
  * This class provides support for
- * the Windows filesystem.
+ * the Windows or Posix (local) filesystem.
  */
-class SupportedFsWindows : public SupportedFs {
+class SupportedFsLocal : public SupportedFs {
  public:
   /* ********************************* */
   /*               API                 */
@@ -290,62 +318,29 @@ class SupportedFsWindows : public SupportedFs {
    */
   virtual Status close(tiledb_ctx_t* ctx, tiledb_vfs_t* vfs);
 
-  /* ********************************* */
-  /*             ATTRIBUTES            */
-  /* ********************************* */
-
-  /** The directory name of the Windows filesystem. */
-  const std::string WIN_TEMP_DIR;
-
-  /** The directory name of the Windows filesystem. */
-  std::string vfs_helper_temp_dir = WIN_TEMP_DIR;
-};
-
-/**
- * This class provides support for
- * the Posix filesystem.
- */
-class SupportedFsPosix : public SupportedFs {
- public:
-  /* ********************************* */
-  /*               API                 */
-  /* ********************************* */
+  /**
+   * Get the name of the filesystem's directory
+   *
+   * @return string directory name
+   */
+  virtual std::string temp_dir();
 
   /**
-   * No-op
+   * Get the name of the filesystem's file prefix
    *
-   * @param config Configuration parameters
-   * @return Status OK if successful
+   * @return string prefix name
    */
-  virtual Status prepare_config(tiledb_config_t* config, tiledb_error_t* error);
-
-  /**
-   * No-op
-   *
-   * @param ctx The TileDB context.
-   * @param vfs The VFS object.
-   * @return Status OK if successful
-   */
-  virtual Status init(tiledb_ctx_t* ctx, tiledb_vfs_t* vfs);
-
-  /**
-   * No-op
-   *
-   * @param ctx The TileDB context.
-   * @param vfs The VFS object.
-   * @return Status OK if successful
-   */
-  virtual Status close(tiledb_ctx_t* ctx, tiledb_vfs_t* vfs);
+  std::string file_prefix();
 
   /* ********************************* */
   /*             ATTRIBUTES            */
   /* ********************************* */
 
   /** The directory name of the Posix filesystem. */
-  const std::string POSIX_TEMP_DIR;
+  std::string vfs_helper_temp_dir;
 
-  /** The directory name of the Posix filesystem. */
-  std::string vfs_helper_temp_dir = POSIX_TEMP_DIR;
+  /** The file prefix name of the Posix filesystem. */
+  std::string vfs_helper_file_prefix;
 };
 
 /**
@@ -359,7 +354,7 @@ std::vector<SupportedFs*> vfs_test_get_fs_vec();
  * @param ctx The TileDB context.
  * @param vfs The VFS object.
  */
-void vfs_test_init(tiledb_ctx_t** ctx, tiledb_vfs_t** vfs);
+Status vfs_test_init(tiledb_ctx_t** ctx, tiledb_vfs_t** vfs);
 
 /**
  * Close the vfs test.

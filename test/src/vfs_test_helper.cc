@@ -29,10 +29,16 @@
  *
  * This file defines some vfs-specific test suite helper functions.
  */
-
-#include "test/src/vfs_test_helper.h"
 #include "catch.hpp"
+
 #include "test/src/helpers.h"
+#include "test/src/vfs_test_helper.h"
+
+#ifdef _WIN32
+#include "tiledb/sm/filesystem/win.h"
+#else
+#include "tiledb/sm/filesystem/posix.h"
+#endif
 
 namespace tiledb {
 namespace test {
@@ -40,7 +46,6 @@ namespace test {
 Status SupportedFsS3::prepare_config(
     tiledb_config_t* config, tiledb_error_t* error) {
 #ifndef TILEDB_TESTS_AWS_S3_CONFIG
-  std::cerr << "PREPARING CONFIG - S3!! \n" << std::endl;
   REQUIRE(
       tiledb_config_set(
           config, "vfs.s3.endpoint_override", "localhost:9999", &error) ==
@@ -81,9 +86,16 @@ Status SupportedFsS3::close(tiledb_ctx_t* ctx, tiledb_vfs_t* vfs) {
   return Status::Ok();
 }
 
+std::string SupportedFsS3::temp_dir() {
+  const std::string S3_PREFIX = "s3://";
+  const std::string S3_BUCKET = S3_PREFIX + random_name("tiledb") + "/";
+  const std::string S3_TEMP_DIR = S3_BUCKET + "tiledb_test/";
+  std::string vfs_helper_temp_dir = S3_TEMP_DIR;
+  return vfs_helper_temp_dir;
+}
+
 Status SupportedFsHDFS::prepare_config(
     tiledb_config_t* config, tiledb_error_t* error) {
-  std::cerr << "PREPARING CONFIG - HDFS!! \n" << std::endl;
   (void)config;
   (void)error;
   return Status::Ok();
@@ -101,9 +113,14 @@ Status SupportedFsHDFS::close(tiledb_ctx_t* ctx, tiledb_vfs_t* vfs) {
   return Status::Ok();
 }
 
+std::string SupportedFsHDFS::temp_dir() {
+  const std::string HDFS_TEMP_DIR = "hdfs:///tiledb_test/";
+  std::string vfs_helper_temp_dir = HDFS_TEMP_DIR;
+  return vfs_helper_temp_dir;
+}
+
 Status SupportedFsAzure::prepare_config(
     tiledb_config_t* config, tiledb_error_t* error) {
-  std::cerr << "PREPARING CONFIG - AZURE!! \n" << std::endl;
   REQUIRE(
       tiledb_config_set(
           config,
@@ -150,45 +167,64 @@ Status SupportedFsAzure::close(tiledb_ctx_t* ctx, tiledb_vfs_t* vfs) {
   return Status::Ok();
 }
 
-Status SupportedFsWindows::prepare_config(
+std::string SupportedFsAzure::temp_dir() {
+  const std::string AZURE_PREFIX = "azure://";
+  const std::string container = AZURE_PREFIX + random_name("tiledb") + "/";
+  const std::string AZURE_TEMP_DIR = container + "tiledb_test/";
+  std::string vfs_helper_temp_dir = AZURE_TEMP_DIR;
+  return vfs_helper_temp_dir;
+}
+
+Status SupportedFsLocal::prepare_config(
     tiledb_config_t* config, tiledb_error_t* error) {
-  std::cerr << "PREPARING CONFIG - WINDOWS!! \n" << std::endl;
   (void)config;
   (void)error;
   return Status::Ok();
 }
 
-Status SupportedFsWindows::init(tiledb_ctx_t* ctx, tiledb_vfs_t* vfs) {
+Status SupportedFsLocal::init(tiledb_ctx_t* ctx, tiledb_vfs_t* vfs) {
   (void)ctx;
   (void)vfs;
   return Status::Ok();
 }
 
-Status SupportedFsWindows::close(tiledb_ctx_t* ctx, tiledb_vfs_t* vfs) {
+Status SupportedFsLocal::close(tiledb_ctx_t* ctx, tiledb_vfs_t* vfs) {
   (void)ctx;
   (void)vfs;
   return Status::Ok();
 }
 
-Status SupportedFsPosix::prepare_config(
-    tiledb_config_t* config, tiledb_error_t* error) {
-  std::cerr << "PREPARING CONFIG - POSIX!! \n" << std::endl;
-  (void)config;
-  (void)error;
-  return Status::Ok();
+#ifdef _WIN32
+// Windows local filesystem
+std::string SupportedFsLocal::temp_dir() {
+  const std::string FILE_URI_PREFIX = "";
+  const std::string WIN_TEMP_DIR =
+      tiledb::sm::Win::current_dir() + "\\tiledb_test\\";
+  std::string vfs_helper_temp_dir = WIN_TEMP_DIR;
+  return vfs_helper_temp_dir;
 }
 
-Status SupportedFsPosix::init(tiledb_ctx_t* ctx, tiledb_vfs_t* vfs) {
-  (void)ctx;
-  (void)vfs;
-  return Status::Ok();
+std::string SupportedFsLocal::file_prefix() {
+  const std::string FILE_URI_PREFIX = "";
+  std::string vfs_helper_file_prefix = FILE_URI_PREFIX;
+  return vfs_helper_file_prefix;
+}
+#else
+// Posix local filesystem
+std::string SupportedFsLocal::file_prefix() {
+  const std::string FILE_URI_PREFIX = "file://";
+  std::string vfs_helper_file_prefix = FILE_URI_PREFIX;
+  return vfs_helper_file_prefix;
 }
 
-Status SupportedFsPosix::close(tiledb_ctx_t* ctx, tiledb_vfs_t* vfs) {
-  (void)ctx;
-  (void)vfs;
-  return Status::Ok();
+std::string SupportedFsLocal::temp_dir() {
+  const std::string FILE_URI_PREFIX = "file://";
+  const std::string POSIX_TEMP_DIR =
+      tiledb::sm::Posix::current_dir() + "/tiledb_test/";
+  std::string vfs_helper_temp_dir = POSIX_TEMP_DIR;
+  return vfs_helper_temp_dir;
 }
+#endif
 
 std::vector<SupportedFs*> vfs_test_get_fs_vec() {
   std::vector<SupportedFs*> fs_vec;
@@ -208,25 +244,19 @@ std::vector<SupportedFs*> vfs_test_get_fs_vec() {
     SupportedFsAzure* azure_fs = new SupportedFsAzure();
     fs_vec.emplace_back(azure_fs);
   }
-#ifdef _WIN32
-  SupportedFsWindows* windows_fs = new SupportedFsWindows();
-  fs_vec.emplace_back(windows_fs);
-#else
-  SupportedFsPosix* posix_fs = new SupportedFsPosix();
-  fs_vec.emplace_back(posix_fs);
-#endif
+  SupportedFsLocal* local_fs = new SupportedFsLocal();
+  fs_vec.emplace_back(local_fs);
 
   return fs_vec;
 }
 
-void vfs_test_init(tiledb_ctx_t** ctx, tiledb_vfs_t** vfs) {
+Status vfs_test_init(tiledb_ctx_t** ctx, tiledb_vfs_t** vfs) {
   std::vector<SupportedFs*> fs_vec = vfs_test_get_fs_vec();
   tiledb_config_t* config = nullptr;
   tiledb_error_t* error = nullptr;
   REQUIRE(tiledb_config_alloc(&config, &error) == TILEDB_OK);
   REQUIRE(error == nullptr);
   for (auto& supported_fs : fs_vec) {
-    std::cerr << "PREPARING CONFIG" << std::endl;
     REQUIRE(supported_fs->prepare_config(config, error).ok());
   }
   REQUIRE(tiledb_ctx_alloc(config, ctx) == TILEDB_OK);
@@ -234,9 +264,9 @@ void vfs_test_init(tiledb_ctx_t** ctx, tiledb_vfs_t** vfs) {
   REQUIRE(tiledb_vfs_alloc(*ctx, config, vfs) == TILEDB_OK);
   tiledb_config_free(&config);
   for (auto& supported_fs : fs_vec) {
-    std::cerr << "INITING" << std::endl;
     REQUIRE(supported_fs->init(*ctx, *vfs).ok());
   }
+  return Status::Ok();
 }
 
 Status vfs_test_close(tiledb_ctx_t* ctx, tiledb_vfs_t* vfs) {

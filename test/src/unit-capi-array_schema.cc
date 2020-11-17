@@ -54,24 +54,6 @@
 using namespace tiledb::test;
 
 struct ArraySchemaFx {
-  // Filesystem related
-  const std::string HDFS_TEMP_DIR = "hdfs:///tiledb_test/";
-  const std::string S3_PREFIX = "s3://";
-  const std::string S3_BUCKET = S3_PREFIX + random_name("tiledb") + "/";
-  const std::string S3_TEMP_DIR = S3_BUCKET + "tiledb_test/";
-  const std::string AZURE_PREFIX = "azure://";
-  const std::string bucket = AZURE_PREFIX + random_name("tiledb") + "/";
-  const std::string AZURE_TEMP_DIR = bucket + "tiledb_test/";
-#ifdef _WIN32
-  const std::string FILE_URI_PREFIX = "";
-  const std::string FILE_TEMP_DIR =
-      tiledb::sm::Win::current_dir() + "\\tiledb_test\\";
-#else
-  const std::string FILE_URI_PREFIX = "file://";
-  const std::string FILE_TEMP_DIR =
-      tiledb::sm::Posix::current_dir() + "/tiledb_test/";
-#endif
-
   // Constant parameters
   const std::string ARRAY_NAME = "dense_test_100x100_10x10";
   tiledb_array_type_t ARRAY_TYPE = TILEDB_DENSE;
@@ -116,10 +98,8 @@ struct ArraySchemaFx {
   tiledb_ctx_t* ctx_;
   tiledb_vfs_t* vfs_;
 
-  // Supported filesystems
-  bool supports_s3_;
-  bool supports_hdfs_;
-  bool supports_azure_;
+  // Vector of supported filsystems
+  const std::vector<SupportedFs*> fs_vec = vfs_test_get_fs_vec();
 
   // Functions
   ArraySchemaFx();
@@ -131,7 +111,6 @@ struct ArraySchemaFx {
   bool is_array(const std::string& path);
   void load_and_check_array_schema(const std::string& path);
   static std::string random_name(const std::string& prefix);
-  void set_supported_fs();
 
   int array_create_wrapper(
       const std::string& path, tiledb_array_schema_t* array_schema);
@@ -162,146 +141,14 @@ struct ArraySchemaFx {
 
 ArraySchemaFx::ArraySchemaFx() {
   // Initialize vfs test
-
-  tiledb_config_t* config = nullptr;
-  tiledb_error_t* error = nullptr;
-  REQUIRE(tiledb_config_alloc(&config, &error) == TILEDB_OK);
-  REQUIRE(error == nullptr);
-
-  ctx_ = nullptr;
-  REQUIRE(tiledb_ctx_alloc(config, &ctx_) == TILEDB_OK);
-  REQUIRE(error == nullptr);
-  vfs_ = nullptr;
-  REQUIRE(tiledb_vfs_alloc(ctx_, config, &vfs_) == TILEDB_OK);
-
-  vfs_test_init(&ctx_, &vfs_);
-
-  tiledb_config_free(&config);
-
-  /*
-    // Supported filesystems
-    set_supported_fs();
-
-    // Create TileDB context
-    tiledb_config_t* config = nullptr;
-    tiledb_error_t* error = nullptr;
-    REQUIRE(tiledb_config_alloc(&config, &error) == TILEDB_OK);
-    REQUIRE(error == nullptr);
-
-    if (supports_s3_) {
-  #ifndef TILEDB_TESTS_AWS_S3_CONFIG
-      REQUIRE(
-          tiledb_config_set(
-              config, "vfs.s3.endpoint_override", "localhost:9999", &error) ==
-          TILEDB_OK);
-      REQUIRE(
-          tiledb_config_set(config, "vfs.s3.scheme", "https", &error) ==
-          TILEDB_OK);
-      REQUIRE(
-          tiledb_config_set(
-              config, "vfs.s3.use_virtual_addressing", "false", &error) ==
-          TILEDB_OK);
-      REQUIRE(
-          tiledb_config_set(config, "vfs.s3.verify_ssl", "false", &error) ==
-          TILEDB_OK);
-      REQUIRE(error == nullptr);
-  #endif
-    }
-    if (supports_azure_) {
-      REQUIRE(
-          tiledb_config_set(
-              config,
-              "vfs.azure.storage_account_name",
-              "devstoreaccount1",
-              &error) == TILEDB_OK);
-      REQUIRE(
-          tiledb_config_set(
-              config,
-              "vfs.azure.storage_account_key",
-              "Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/"
-              "K1SZFPTOtr/KBHBeksoGMGw==",
-              &error) == TILEDB_OK);
-      REQUIRE(
-          tiledb_config_set(
-              config,
-              "vfs.azure.blob_endpoint",
-              "127.0.0.1:10000/devstoreaccount1",
-              &error) == TILEDB_OK);
-      REQUIRE(
-          tiledb_config_set(config, "vfs.azure.use_https", "false", &error) ==
-          TILEDB_OK);
-    }
-
-    ctx_ = nullptr;
-    REQUIRE(tiledb_ctx_alloc(config, &ctx_) == TILEDB_OK);
-    REQUIRE(error == nullptr);
-    vfs_ = nullptr;
-    REQUIRE(tiledb_vfs_alloc(ctx_, config, &vfs_) == TILEDB_OK);
-    tiledb_config_free(&config);
-
-    // Connect to S3
-    if (supports_s3_) {
-      // Create bucket if it does not exist
-      int is_bucket = 0;
-      int rc = tiledb_vfs_is_bucket(ctx_, vfs_, S3_BUCKET.c_str(), &is_bucket);
-      REQUIRE(rc == TILEDB_OK);
-      if (!is_bucket) {
-        rc = tiledb_vfs_create_bucket(ctx_, vfs_, S3_BUCKET.c_str());
-        REQUIRE(rc == TILEDB_OK);
-      }
-    }
-
-    // Connect to Azure
-    if (supports_azure_) {
-      int is_container = 0;
-      int rc = tiledb_vfs_is_bucket(ctx_, vfs_, bucket.c_str(), &is_container);
-      REQUIRE(rc == TILEDB_OK);
-      if (!is_container) {
-        rc = tiledb_vfs_create_bucket(ctx_, vfs_, bucket.c_str());
-        REQUIRE(rc == TILEDB_OK);
-      }
-    }
-  */
+  REQUIRE(vfs_test_init(&ctx_, &vfs_).ok());
 }
 
 ArraySchemaFx::~ArraySchemaFx() {
   // Close vfs test
-  vfs_test_close(ctx_, vfs_);
-
-  /*
-    if (supports_s3_) {
-      int is_bucket = 0;
-      int rc = tiledb_vfs_is_bucket(ctx_, vfs_, S3_BUCKET.c_str(), &is_bucket);
-      CHECK(rc == TILEDB_OK);
-      if (is_bucket) {
-        CHECK(
-            tiledb_vfs_remove_bucket(ctx_, vfs_, S3_BUCKET.c_str()) ==
-    TILEDB_OK);
-      }
-    }
-
-    if (supports_azure_) {
-      int is_container = 0;
-      int rc = tiledb_vfs_is_bucket(ctx_, vfs_, bucket.c_str(), &is_container);
-      REQUIRE(rc == TILEDB_OK);
-      if (is_container) {
-        rc = tiledb_vfs_remove_bucket(ctx_, vfs_, bucket.c_str());
-        REQUIRE(rc == TILEDB_OK);
-      }
-    }
-  */
-
+  REQUIRE(vfs_test_close(ctx_, vfs_).ok());
   tiledb_vfs_free(&vfs_);
   tiledb_ctx_free(&ctx_);
-}
-
-void ArraySchemaFx::set_supported_fs() {
-  tiledb_ctx_t* ctx = nullptr;
-  REQUIRE(tiledb_ctx_alloc(nullptr, &ctx) == TILEDB_OK);
-
-  get_supported_fs(&supports_s3_, &supports_hdfs_, &supports_azure_);
-
-  tiledb_ctx_free(&ctx);
 }
 
 void ArraySchemaFx::create_temp_dir(const std::string& path) {
@@ -1064,46 +911,13 @@ TEST_CASE_METHOD(
 
   std::string array_name;
 
-  // S3
-  if (supports_s3_) {
-    array_name = S3_TEMP_DIR + ARRAY_NAME;
-    create_temp_dir(S3_TEMP_DIR);
+  for (const auto& supported_fs : fs_vec) {
+    array_name = supported_fs->temp_dir() + ARRAY_NAME;
+    create_temp_dir(supported_fs->temp_dir());
     create_array(array_name);
     load_and_check_array_schema(array_name);
     delete_array(array_name);
-    remove_temp_dir(S3_TEMP_DIR);
-  } else if (supports_azure_) {
-    // Azure
-    array_name = AZURE_TEMP_DIR + ARRAY_NAME;
-    create_temp_dir(AZURE_TEMP_DIR);
-    create_array(array_name);
-    load_and_check_array_schema(array_name);
-    delete_array(array_name);
-    remove_temp_dir(AZURE_TEMP_DIR);
-  } else if (supports_hdfs_) {
-    // HDFS
-    array_name = HDFS_TEMP_DIR + ARRAY_NAME;
-    create_temp_dir(HDFS_TEMP_DIR);
-    create_array(array_name);
-    load_and_check_array_schema(array_name);
-    delete_array(array_name);
-    remove_temp_dir(HDFS_TEMP_DIR);
-  } else if (supports_azure_) {
-    // Azure
-    array_name = AZURE_TEMP_DIR + ARRAY_NAME;
-    create_temp_dir(AZURE_TEMP_DIR);
-    create_array(array_name);
-    load_and_check_array_schema(array_name);
-    delete_array(array_name);
-    remove_temp_dir(AZURE_TEMP_DIR);
-  } else {
-    // File
-    array_name = FILE_URI_PREFIX + FILE_TEMP_DIR + ARRAY_NAME;
-    create_temp_dir(FILE_URI_PREFIX + FILE_TEMP_DIR);
-    create_array(array_name);
-    load_and_check_array_schema(array_name);
-    delete_array(array_name);
-    remove_temp_dir(FILE_URI_PREFIX + FILE_TEMP_DIR);
+    remove_temp_dir(supported_fs->temp_dir());
   }
 }
 
@@ -1404,9 +1218,13 @@ TEST_CASE_METHOD(
   rc = tiledb_array_schema_check(ctx_, array_schema);
   REQUIRE(rc == TILEDB_OK);
 
+  // Instantiate Posix class
+  SupportedFsLocal* local_fs = new SupportedFsLocal();
+
   // Create array
-  std::string array_name = FILE_URI_PREFIX + FILE_TEMP_DIR + ARRAY_NAME;
-  create_temp_dir(FILE_URI_PREFIX + FILE_TEMP_DIR);
+  std::string array_name =
+      local_fs->file_prefix() + local_fs->temp_dir() + ARRAY_NAME;
+  create_temp_dir(local_fs->file_prefix() + local_fs->temp_dir());
   rc = array_create_wrapper(array_name, array_schema);
   REQUIRE(rc == TILEDB_OK);
 
@@ -1469,7 +1287,7 @@ TEST_CASE_METHOD(
   tiledb_array_schema_free(&read_schema);
   tiledb_array_free(&array);
   delete_array(array_name);
-  remove_temp_dir(FILE_URI_PREFIX + FILE_TEMP_DIR);
+  remove_temp_dir(local_fs->file_prefix() + local_fs->temp_dir());
 }
 
 TEST_CASE_METHOD(
@@ -1524,9 +1342,13 @@ TEST_CASE_METHOD(
   rc = tiledb_array_schema_check(ctx_, array_schema);
   REQUIRE(rc == TILEDB_OK);
 
+  // Instantiate Posix class
+  SupportedFsLocal* local_fs = new SupportedFsLocal();
+
   // Create array
-  std::string array_name = FILE_URI_PREFIX + FILE_TEMP_DIR + ARRAY_NAME;
-  create_temp_dir(FILE_URI_PREFIX + FILE_TEMP_DIR);
+  std::string array_name =
+      local_fs->file_prefix() + local_fs->temp_dir() + ARRAY_NAME;
+  create_temp_dir(local_fs->file_prefix() + local_fs->temp_dir());
   rc = array_create_wrapper(array_name, array_schema);
   REQUIRE(rc == TILEDB_OK);
 
@@ -1559,7 +1381,7 @@ TEST_CASE_METHOD(
   // Clean up
   tiledb_array_free(&array);
   delete_array(array_name);
-  remove_temp_dir(FILE_URI_PREFIX + FILE_TEMP_DIR);
+  remove_temp_dir(local_fs->file_prefix() + local_fs->temp_dir());
 }
 
 TEST_CASE_METHOD(
@@ -1605,9 +1427,13 @@ TEST_CASE_METHOD(
   rc = tiledb_array_schema_add_attribute(ctx_, array_schema, attr2);
   REQUIRE(rc == TILEDB_OK);
 
+  // Instantiate Posix class
+  SupportedFsLocal* local_fs = new SupportedFsLocal();
+
   // Create array
-  std::string array_name = FILE_URI_PREFIX + FILE_TEMP_DIR + "datetime-dims";
-  create_temp_dir(FILE_URI_PREFIX + FILE_TEMP_DIR);
+  std::string array_name =
+      local_fs->file_prefix() + local_fs->temp_dir() + "datetime-dims";
+  create_temp_dir(local_fs->file_prefix() + local_fs->temp_dir());
   rc = array_create_wrapper(array_name, array_schema);
   REQUIRE(rc == TILEDB_OK);
 
@@ -1618,7 +1444,7 @@ TEST_CASE_METHOD(
   tiledb_domain_free(&domain);
   tiledb_array_schema_free(&array_schema);
   delete_array(array_name);
-  remove_temp_dir(FILE_URI_PREFIX + FILE_TEMP_DIR);
+  remove_temp_dir(local_fs->file_prefix() + local_fs->temp_dir());
 }
 
 TEST_CASE_METHOD(
@@ -1675,9 +1501,13 @@ TEST_CASE_METHOD(
   rc = tiledb_array_schema_set_allows_dups(ctx_, array_schema, allows_dups);
   CHECK(rc == TILEDB_OK);
 
+  // Instantiate Posix class
+  SupportedFsLocal* local_fs = new SupportedFsLocal();
+
   // Create array
-  std::string array_name = FILE_URI_PREFIX + FILE_TEMP_DIR + "duplicates";
-  create_temp_dir(FILE_URI_PREFIX + FILE_TEMP_DIR);
+  std::string array_name =
+      local_fs->file_prefix() + local_fs->temp_dir() + "duplicates";
+  create_temp_dir(local_fs->file_prefix() + local_fs->temp_dir());
   rc = array_create_wrapper(array_name, array_schema);
   REQUIRE(rc == TILEDB_OK);
 
@@ -1700,7 +1530,7 @@ TEST_CASE_METHOD(
   // Clean up
   tiledb_array_schema_free(&array_schema);
   delete_array(array_name);
-  remove_temp_dir(FILE_URI_PREFIX + FILE_TEMP_DIR);
+  remove_temp_dir(local_fs->file_prefix() + local_fs->temp_dir());
 }
 
 TEST_CASE_METHOD(
@@ -1761,9 +1591,13 @@ TEST_CASE_METHOD(
   rc = tiledb_array_schema_add_attribute(ctx_, array_schema, a);
   REQUIRE(rc == TILEDB_OK);
 
+  // Instantiate Posix class
+  SupportedFsLocal* local_fs = new SupportedFsLocal();
+
   // Create array
-  std::string array_name = FILE_URI_PREFIX + FILE_TEMP_DIR + "dimension";
-  create_temp_dir(FILE_URI_PREFIX + FILE_TEMP_DIR);
+  std::string array_name =
+      local_fs->file_prefix() + local_fs->temp_dir() + "dimension";
+  create_temp_dir(local_fs->file_prefix() + local_fs->temp_dir());
   rc = array_create_wrapper(array_name, array_schema);
   REQUIRE(rc == TILEDB_OK);
 
@@ -1816,7 +1650,7 @@ TEST_CASE_METHOD(
   tiledb_domain_free(&domain);
   tiledb_array_schema_free(&array_schema);
   delete_array(array_name);
-  remove_temp_dir(FILE_URI_PREFIX + FILE_TEMP_DIR);
+  remove_temp_dir(local_fs->file_prefix() + local_fs->temp_dir());
 }
 
 TEST_CASE_METHOD(
@@ -1945,9 +1779,12 @@ TEST_CASE_METHOD(
   rc = tiledb_array_schema_add_attribute(ctx_, array_schema, a);
   REQUIRE(rc == TILEDB_OK);
 
+  // Instantiate Posix class
+  SupportedFsLocal* local_fs = new SupportedFsLocal();
+
   // Create array
-  create_temp_dir(FILE_URI_PREFIX + FILE_TEMP_DIR);
-  auto array_name = FILE_URI_PREFIX + FILE_TEMP_DIR + ARRAY_NAME;
+  create_temp_dir(local_fs->file_prefix() + local_fs->temp_dir());
+  auto array_name = local_fs->file_prefix() + local_fs->temp_dir() + ARRAY_NAME;
   rc = tiledb_array_create(ctx_, array_name.c_str(), array_schema);
   REQUIRE(rc == TILEDB_OK);
   tiledb_array_schema_free(&array_schema);
@@ -2027,5 +1864,5 @@ TEST_CASE_METHOD(
   tiledb_array_free(&array);
   tiledb_query_free(&query);
   tiledb_array_schema_free(&array_schema);
-  remove_temp_dir(FILE_URI_PREFIX + FILE_TEMP_DIR);
+  remove_temp_dir(local_fs->file_prefix() + local_fs->temp_dir());
 }
