@@ -134,12 +134,9 @@ Status RestClient::post_array_schema_to_rest(
   RETURN_NOT_OK(curlc.init(config_, extra_headers_, res_headers_));
   std::string array_ns, array_uri;
   RETURN_NOT_OK(uri.get_rest_components(&array_ns, &array_uri));
-  //  std::string url = (redirect_uri().empty() ? rest_server_ : redirect_uri())
-  //  + "/v1/arrays/" + array_ns + "/" +
-  //                    curlc.url_escape(array_uri);
-  std::string url =
-      "https://multiregion-router-production.tiledb.workers.dev/v1/arrays/"
-      "TileDB-Inc/quickstart_dense/metadata";
+  std::string url = (redirect_uri().empty() ? rest_server_ : redirect_uri()) +
+                    "/v1/arrays/" + array_ns + "/" +
+                    curlc.url_escape(array_uri);
 
   Buffer returned_data;
   return curlc.post_data(url, serialization_type_, &serialized, &returned_data);
