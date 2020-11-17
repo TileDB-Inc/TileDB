@@ -32,6 +32,7 @@
 
 #ifndef TILEDB_REST_CLIENT_H
 #define TILEDB_REST_CLIENT_H
+#define REDIRECTION_HEADER_KEY "x-tiledb-full-region-domain"
 
 #include <string>
 #include <unordered_map>
@@ -190,6 +191,8 @@ class RestClient {
   /** Collection of extra headers that are attached to REST requests. */
   std::unordered_map<std::string, std::string> extra_headers_;
 
+  /** Collection of response headers that are attached to REST response. */
+  std::unordered_map<std::string, std::string> res_headers_;
   /* ********************************* */
   /*         PRIVATE METHODS           */
   /* ********************************* */
@@ -270,6 +273,14 @@ class RestClient {
    */
   Status update_attribute_buffer_sizes(
       const serialization::CopyState& copy_state, Query* query) const;
+
+  /**
+   * Helper function encapsulating the functionality of looking up for cached
+   * redirected rest server addresses to avoid the redirection overhead
+   *
+   * @return Returns the redirection URI if exists and empty string otherwise
+   */
+  std::string redirect_uri();
 };
 
 }  // namespace sm

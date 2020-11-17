@@ -36,8 +36,8 @@
 #include "tiledb/sm/misc/utils.h"
 
 #include <cstring>
+#include <iostream>
 #include <sstream>
-
 // TODO: replace this with config option
 #define CURL_MAX_RETRIES 3
 
@@ -187,7 +187,8 @@ Curl::Curl()
 
 Status Curl::init(
     const Config* config,
-    const std::unordered_map<std::string, std::string>& extra_headers) {
+    const std::unordered_map<std::string, std::string>& extra_headers,
+    const std::unordered_map<std::string, std::string>& res_headers) {
   if (config == nullptr)
     return LOG_STATUS(
         Status::RestError("Error initializing libcurl; config is null."));
@@ -195,7 +196,7 @@ Status Curl::init(
   config_ = config;
   curl_.reset(curl_easy_init());
   extra_headers_ = extra_headers;
-
+  res_headers_ = res_headers;
   // See https://curl.haxx.se/libcurl/c/threadsafe.html
   CURLcode rc = curl_easy_setopt(curl_.get(), CURLOPT_NOSIGNAL, 1);
   if (rc != CURLE_OK)
@@ -210,6 +211,22 @@ Status Curl::init(
   if (rc != CURLE_OK)
     return LOG_STATUS(Status::RestError(
         "Error initializing libcurl; failed to set CURLOPT_ERRORBUFFER"));
+
+  rc = curl_easy_setopt(curl_.get(), CURLOPT_HEADERFUNCTION, OnReceiveData);
+  if (rc != CURLE_OK)
+    return LOG_STATUS(Status::RestError(
+        "Error initializing libcurl; failed to set CURLOPT_HEADERFUNCTION"));
+
+  rc = curl_easy_setopt(curl_.get(), CURLOPT_HEADER, 1);
+  if (rc != CURLE_OK)
+    return LOG_STATUS(Status::RestError(
+        "Error initializing libcurl; failed to set CURLOPT_HEADERFUNCTION"));
+
+  /* set url to fetch */
+  rc = curl_easy_setopt(curl_.get(), CURLOPT_HEADERDATA, &res_headers_);
+  if (rc != CURLE_OK)
+    return LOG_STATUS(Status::RestError(
+        "Error initializing libcurl; failed to set CURLOPT_HEADERFUNCTION"));
 
   // Ignore ssl validation if the user has set rest.ignore_ssl_validation = true
   const char* ignore_ssl_validation_str = nullptr;
@@ -239,6 +256,27 @@ Status Curl::init(
 #endif
 
   return Status::Ok();
+}
+
+size_t Curl::OnReceiveData(
+    void* res_data, size_t tSize, size_t tCount, void* userdata) {
+  size_t length = tSize * tCount, index = 0;
+  while (index < length) {
+    unsigned char* temp = (unsigned char*)res_data + index;
+    if ((temp[0] == '\r') || (temp[0] == '\n'))
+      break;
+    index++;
+  }
+
+  std::string str((unsigned char*)res_data, (unsigned char*)res_data + index);
+  std::unordered_map<std::string, std::string>* pmHeader =
+      (std::unordered_map<std::string, std::string>*)userdata;
+  size_t pos = str.find(": ");
+  if (pos != std::string::npos) {
+    pmHeader->insert(std::make_pair<std::string, std::string>(
+        str.substr(0, pos), str.substr(pos + 2, index - 1)));
+  }
+  return (tCount);
 }
 
 std::string Curl::url_escape(const std::string& url) const {
@@ -348,7 +386,7 @@ Status Curl::make_curl_request_common(
   for (uint8_t i = 0; i < CURL_MAX_RETRIES; i++) {
     WriteCbState write_cb_state;
     write_cb_state.arg = write_cb_arg;
-
+    std::map<std::string, std::string> mHeader;
     /* set url to fetch */
     curl_easy_setopt(curl, CURLOPT_URL, url);
 
@@ -565,6 +603,7 @@ Status Curl::get_data(
       curl_slist_free_all(headers));
 
   /* pass our list of custom made headers */
+  curl_easy_setopt(curl, CURLOPT_HEADER, 1);
   curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
 
   CURLcode ret;
