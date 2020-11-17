@@ -386,7 +386,6 @@ Status Curl::make_curl_request_common(
   for (uint8_t i = 0; i < CURL_MAX_RETRIES; i++) {
     WriteCbState write_cb_state;
     write_cb_state.arg = write_cb_arg;
-    std::map<std::string, std::string> mHeader;
     /* set url to fetch */
     curl_easy_setopt(curl, CURLOPT_URL, url);
 
