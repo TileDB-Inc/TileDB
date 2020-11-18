@@ -61,7 +61,7 @@ struct ArrayFx {
   tiledb_vfs_t* vfs_;
 
   // Vector of supported filesystems
-  const std::vector<SupportedFs*> fs_vec = vfs_test_get_fs_vec();
+  const std::vector<std::unique_ptr<SupportedFs>> fs_vec_;
 
   // Encryption parameters
   tiledb_encryption_type_t encryption_type_ = TILEDB_NO_ENCRYPTION;
@@ -85,14 +85,15 @@ static const std::string test_ca_path =
 static const std::string test_ca_file =
     std::string(TILEDB_TEST_INPUTS_DIR) + "/test_certs/public.crt";
 
-ArrayFx::ArrayFx() {
+ArrayFx::ArrayFx()
+    : fs_vec_(std::move(vfs_test_get_fs_vec())) {
   // Initialize vfs test
-  REQUIRE(vfs_test_init(&ctx_, &vfs_).ok());
+  REQUIRE(vfs_test_init(fs_vec_, &ctx_, &vfs_).ok());
 }
 
 ArrayFx::~ArrayFx() {
   // Close vfs test
-  REQUIRE(vfs_test_close(ctx_, vfs_).ok());
+  REQUIRE(vfs_test_close(fs_vec_, ctx_, vfs_).ok());
   tiledb_vfs_free(&vfs_);
   tiledb_ctx_free(&ctx_);
 }
@@ -322,11 +323,10 @@ void ArrayFx::create_dense_array(const std::string& path) {
 
 TEST_CASE_METHOD(
     ArrayFx, "C API: Test getting array URI", "[capi], [array], [array-uri]") {
-  // Instantiate Posix class
-  SupportedFsLocal* local_fs = new SupportedFsLocal();
+  SupportedFsLocal local_fs;
   std::string array_name =
-      local_fs->file_prefix() + local_fs->temp_dir() + "array_uri";
-  create_temp_dir(local_fs->file_prefix() + local_fs->temp_dir());
+      local_fs.file_prefix() + local_fs.temp_dir() + "array_uri";
+  create_temp_dir(local_fs.file_prefix() + local_fs.temp_dir());
 
   // Create array
   tiledb_array_t* array;
@@ -362,7 +362,7 @@ TEST_CASE_METHOD(
   // Clean up
   tiledb_array_free(&array);
 
-  remove_temp_dir(local_fs->file_prefix() + local_fs->temp_dir());
+  remove_temp_dir(local_fs.file_prefix() + local_fs.temp_dir());
 }
 
 TEST_CASE_METHOD(
@@ -416,16 +416,16 @@ TEST_CASE_METHOD(
   rc = tiledb_array_schema_set_tile_order(ctx_, array_schema, TILEDB_ROW_MAJOR);
   REQUIRE(rc == TILEDB_OK);
 
-  // Instantiate Posix class
-  SupportedFsLocal* local_fs = new SupportedFsLocal();
+  // Instantiate local class
+  SupportedFsLocal local_fs;
 
   // Check for invalid array schema
   rc = tiledb_array_schema_check(ctx_, array_schema);
   REQUIRE(rc == TILEDB_OK);
 
   std::string array_name =
-      local_fs->file_prefix() + local_fs->temp_dir() + "encrypyted_array";
-  create_temp_dir(local_fs->file_prefix() + local_fs->temp_dir());
+      local_fs.file_prefix() + local_fs.temp_dir() + "encrypyted_array";
+  create_temp_dir(local_fs.file_prefix() + local_fs.temp_dir());
 
   SECTION("- API calls with encrypted schema") {
     const char key[] = "0123456789abcdeF0123456789abcdeF";
@@ -580,7 +580,7 @@ TEST_CASE_METHOD(
     tiledb_array_schema_free(&read_schema);
     tiledb_array_free(&array);
     tiledb_array_free(&array2);
-    remove_temp_dir(local_fs->file_prefix() + local_fs->temp_dir());
+    remove_temp_dir(local_fs.file_prefix() + local_fs.temp_dir());
   }
 
   SECTION("- API calls with unencrypted schema") {
@@ -661,7 +661,7 @@ TEST_CASE_METHOD(
     // Clean up
     tiledb_array_schema_free(&read_schema);
     tiledb_array_free(&array);
-    remove_temp_dir(local_fs->file_prefix() + local_fs->temp_dir());
+    remove_temp_dir(local_fs.file_prefix() + local_fs.temp_dir());
   }
 }
 
@@ -669,10 +669,8 @@ TEST_CASE_METHOD(
     ArrayFx,
     "C API: Test opening array at timestamp, reads",
     "[capi][array][open-at][reads]") {
-  std::string temp_dir;
-  for (const auto& supported_fs : fs_vec) {
-    temp_dir = supported_fs->temp_dir();
-  }
+  // TODO: refactor for each supported FS.
+  std::string temp_dir = fs_vec_[0]->temp_dir();
 
   std::string array_name = temp_dir + "array-open-at-reads";
   SECTION("- without encryption") {
@@ -993,10 +991,8 @@ TEST_CASE_METHOD(
     ArrayFx,
     "C API: Test opening array at timestamp, writes",
     "[capi][array][open-at][writes]") {
-  std::string temp_dir;
-  for (const auto& supported_fs : fs_vec) {
-    temp_dir = supported_fs->temp_dir();
-  }
+  // TODO: refactor for each supported FS.
+  std::string temp_dir = fs_vec_[0]->temp_dir();
 
   std::string array_name = temp_dir + "array-open-at-writes";
   SECTION("- without encryption") {
@@ -1166,8 +1162,8 @@ TEST_CASE_METHOD(
     ArrayFx,
     "C API: Check writing coordinates out of bounds",
     "[capi], [array], [array-write-coords-oob]") {
-  SupportedFsLocal* local_fs = new SupportedFsLocal();
-  std::string temp_dir = local_fs->file_prefix() + local_fs->temp_dir();
+  SupportedFsLocal local_fs;
+  std::string temp_dir = local_fs.file_prefix() + local_fs.temp_dir();
   std::string array_name = temp_dir + "array-write-coords-oob";
   create_temp_dir(temp_dir);
 
@@ -1339,10 +1335,10 @@ TEST_CASE_METHOD(
 
 TEST_CASE_METHOD(
     ArrayFx, "C API: Test empty array", "[capi], [array], [array-empty]") {
-  SupportedFsLocal* local_fs = new SupportedFsLocal();
+  SupportedFsLocal local_fs;
   std::string array_name =
-      local_fs->file_prefix() + local_fs->temp_dir() + "array_empty";
-  create_temp_dir(local_fs->file_prefix() + local_fs->temp_dir());
+      local_fs.file_prefix() + local_fs.temp_dir() + "array_empty";
+  create_temp_dir(local_fs.file_prefix() + local_fs.temp_dir());
 
   create_sparse_vector(array_name);
 
@@ -1385,17 +1381,15 @@ TEST_CASE_METHOD(
   tiledb_array_free(&array);
   tiledb_query_free(&query);
 
-  remove_temp_dir(local_fs->file_prefix() + local_fs->temp_dir());
+  remove_temp_dir(local_fs.file_prefix() + local_fs.temp_dir());
 }
 
 TEST_CASE_METHOD(
     ArrayFx,
     "C API: Test array with no filelocks",
     "[capi], [array], [array-no-filelocks]") {
-  std::string temp_dir;
-  for (const auto& supported_fs : fs_vec) {
-    temp_dir = supported_fs->temp_dir();
-  }
+  // TODO: refactor for each supported FS.
+  std::string temp_dir = fs_vec_[0]->temp_dir();
 
   std::string array_name = temp_dir + "array-no-filelocks";
 
@@ -1412,7 +1406,7 @@ TEST_CASE_METHOD(
       TILEDB_OK);
   REQUIRE(error == nullptr);
 
-  REQUIRE(vfs_test_init(&ctx_, &vfs_).ok());
+  REQUIRE(vfs_test_init(fs_vec_, &ctx_, &vfs_).ok());
 
   REQUIRE(tiledb_ctx_alloc(config, &ctx_) == TILEDB_OK);
   REQUIRE(error == nullptr);
@@ -1497,10 +1491,10 @@ TEST_CASE_METHOD(
     "C API: Test query errors, getting subarray info from write queries in "
     "sparse arrays",
     "[capi][query][error][sparse]") {
-  SupportedFsLocal* local_fs = new SupportedFsLocal();
+  SupportedFsLocal local_fs;
   std::string array_name =
-      local_fs->file_prefix() + local_fs->temp_dir() + "query_error_sparse";
-  create_temp_dir(local_fs->file_prefix() + local_fs->temp_dir());
+      local_fs.file_prefix() + local_fs.temp_dir() + "query_error_sparse";
+  create_temp_dir(local_fs.file_prefix() + local_fs.temp_dir());
 
   create_sparse_vector(array_name);
 
@@ -1537,17 +1531,17 @@ TEST_CASE_METHOD(
   tiledb_array_free(&array);
   tiledb_query_free(&query);
 
-  remove_temp_dir(local_fs->file_prefix() + local_fs->temp_dir());
+  remove_temp_dir(local_fs.file_prefix() + local_fs.temp_dir());
 }
 
 TEST_CASE_METHOD(
     ArrayFx,
     "C API: Test query errors, dense writes",
     "[capi][query][error][dense]") {
-  SupportedFsLocal* local_fs = new SupportedFsLocal();
+  SupportedFsLocal local_fs;
   std::string array_name =
-      local_fs->file_prefix() + local_fs->temp_dir() + "query_error_dense";
-  create_temp_dir(local_fs->file_prefix() + local_fs->temp_dir());
+      local_fs.file_prefix() + local_fs.temp_dir() + "query_error_dense";
+  create_temp_dir(local_fs.file_prefix() + local_fs.temp_dir());
 
   create_dense_array(array_name);
 
@@ -1612,17 +1606,17 @@ TEST_CASE_METHOD(
   tiledb_array_free(&array);
   tiledb_query_free(&query);
 
-  remove_temp_dir(local_fs->file_prefix() + local_fs->temp_dir());
+  remove_temp_dir(local_fs.file_prefix() + local_fs.temp_dir());
 }
 
 TEST_CASE_METHOD(
     ArrayFx,
     "C API: Test query errors, dense unordered writes",
     "[capi][query][error][dense]") {
-  SupportedFsLocal* local_fs = new SupportedFsLocal();
+  SupportedFsLocal local_fs;
   std::string array_name =
-      local_fs->file_prefix() + local_fs->temp_dir() + "query_error_dense";
-  create_temp_dir(local_fs->file_prefix() + local_fs->temp_dir());
+      local_fs.file_prefix() + local_fs.temp_dir() + "query_error_dense";
+  create_temp_dir(local_fs.file_prefix() + local_fs.temp_dir());
 
   create_dense_array(array_name);
 
@@ -1668,17 +1662,17 @@ TEST_CASE_METHOD(
   tiledb_array_free(&array);
   tiledb_query_free(&query);
 
-  remove_temp_dir(local_fs->file_prefix() + local_fs->temp_dir());
+  remove_temp_dir(local_fs.file_prefix() + local_fs.temp_dir());
 }
 
 TEST_CASE_METHOD(
     ArrayFx,
     "C API: Test query errors, dense reads in global order",
     "[capi][query][error][dense]") {
-  SupportedFsLocal* local_fs = new SupportedFsLocal();
+  SupportedFsLocal local_fs;
   std::string array_name =
-      local_fs->file_prefix() + local_fs->temp_dir() + "query_error_dense";
-  create_temp_dir(local_fs->file_prefix() + local_fs->temp_dir());
+      local_fs.file_prefix() + local_fs.temp_dir() + "query_error_dense";
+  create_temp_dir(local_fs.file_prefix() + local_fs.temp_dir());
 
   create_dense_array(array_name);
 
@@ -1720,5 +1714,5 @@ TEST_CASE_METHOD(
   tiledb_array_free(&array);
   tiledb_query_free(&query);
 
-  remove_temp_dir(local_fs->file_prefix() + local_fs->temp_dir());
+  remove_temp_dir(local_fs.file_prefix() + local_fs.temp_dir());
 }

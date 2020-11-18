@@ -80,7 +80,7 @@ struct DenseArrayFx {
   tiledb_vfs_t* vfs_;
 
   // Vector of supported filsystems
-  const std::vector<SupportedFs*> fs_vec = vfs_test_get_fs_vec();
+  const std::vector<std::unique_ptr<SupportedFs>> fs_vec_;
 
   // Functions
   DenseArrayFx();
@@ -279,15 +279,16 @@ struct DenseArrayFx {
       uint64_t* buffer_sizes);
 };
 
-DenseArrayFx::DenseArrayFx() {
+DenseArrayFx::DenseArrayFx()
+    : fs_vec_(std::move(vfs_test_get_fs_vec())) {
   // Initialize vfs test
-  REQUIRE(vfs_test_init(&ctx_, &vfs_).ok());
+  REQUIRE(vfs_test_init(fs_vec_, &ctx_, &vfs_).ok());
   std::srand(0);
 }
 
 DenseArrayFx::~DenseArrayFx() {
   // Close vfs test
-  REQUIRE(vfs_test_close(ctx_, vfs_).ok());
+  REQUIRE(vfs_test_close(fs_vec_, ctx_, vfs_).ok());
   tiledb_vfs_free(&vfs_);
   CHECK(vfs_ == nullptr);
   tiledb_ctx_free(&ctx_);
@@ -3149,11 +3150,11 @@ TEST_CASE_METHOD(
     serialize_query_ = true;
   }
 
-  for (const auto& supported_fs : fs_vec) {
-    create_temp_dir(supported_fs->temp_dir());
-    check_sorted_reads(supported_fs->temp_dir());
-    remove_temp_dir(supported_fs->temp_dir());
-  }
+  // TODO: refactor for each supported FS.
+  std::string temp_dir = fs_vec_[0]->temp_dir();
+  create_temp_dir(temp_dir);
+  check_sorted_reads(temp_dir);
+  remove_temp_dir(temp_dir);
 }
 
 TEST_CASE_METHOD(
@@ -3167,11 +3168,11 @@ TEST_CASE_METHOD(
     serialize_query_ = true;
   }
 
-  for (const auto& supported_fs : fs_vec) {
-    create_temp_dir(supported_fs->temp_dir());
-    check_invalid_cell_num_in_dense_writes(supported_fs->temp_dir());
-    remove_temp_dir(supported_fs->temp_dir());
-  }
+  // TODO: refactor for each supported FS.
+  std::string temp_dir = fs_vec_[0]->temp_dir();
+  create_temp_dir(temp_dir);
+  check_invalid_cell_num_in_dense_writes(temp_dir);
+  remove_temp_dir(temp_dir);
 }
 
 TEST_CASE_METHOD(
@@ -3183,11 +3184,11 @@ TEST_CASE_METHOD(
     serialize_query_ = true;
   }
 
-  for (const auto& supported_fs : fs_vec) {
-    create_temp_dir(supported_fs->temp_dir());
-    check_sorted_writes(supported_fs->temp_dir());
-    remove_temp_dir(supported_fs->temp_dir());
-  }
+  // TODO: refactor for each supported FS.
+  std::string temp_dir = fs_vec_[0]->temp_dir();
+  create_temp_dir(temp_dir);
+  check_sorted_writes(temp_dir);
+  remove_temp_dir(temp_dir);
 }
 
 TEST_CASE_METHOD(
@@ -3201,11 +3202,11 @@ TEST_CASE_METHOD(
     serialize_query_ = true;
   }
 
-  for (const auto& supported_fs : fs_vec) {
-    create_temp_dir(supported_fs->temp_dir());
-    check_sparse_writes(supported_fs->temp_dir());
-    remove_temp_dir(supported_fs->temp_dir());
-  }
+  // TODO: refactor for each supported FS.
+  std::string temp_dir = fs_vec_[0]->temp_dir();
+  create_temp_dir(temp_dir);
+  check_sparse_writes(temp_dir);
+  remove_temp_dir(temp_dir);
 }
 
 TEST_CASE_METHOD(
@@ -3219,11 +3220,8 @@ TEST_CASE_METHOD(
     serialize_query_ = true;
   }
 
-  std::string temp_dir;
-  for (const auto& supported_fs : fs_vec) {
-    temp_dir = supported_fs->temp_dir();
-  }
-
+  // TODO: refactor for each supported FS.
+  std::string temp_dir = fs_vec_[0]->temp_dir();
   create_temp_dir(temp_dir);
   check_simultaneous_writes(temp_dir);
   remove_temp_dir(temp_dir);
@@ -3240,10 +3238,8 @@ TEST_CASE_METHOD(
     serialize_query_ = true;
   }
 
-  std::string temp_dir;
-  for (const auto& supported_fs : fs_vec) {
-    temp_dir = supported_fs->temp_dir();
-  }
+  // TODO: refactor for each supported FS.
+  std::string temp_dir = fs_vec_[0]->temp_dir();
   create_temp_dir(temp_dir);
   check_cancel_and_retry_writes(temp_dir);
   remove_temp_dir(temp_dir);
@@ -3278,11 +3274,8 @@ TEST_CASE_METHOD(
     }
   }
 
-  std::string temp_dir;
-  for (const auto& supported_fs : fs_vec) {
-    temp_dir = supported_fs->temp_dir();
-  }
-
+  // TODO: refactor for each supported FS.
+  std::string temp_dir = fs_vec_[0]->temp_dir();
   create_temp_dir(temp_dir);
   check_return_coords(temp_dir, split_coords);
   remove_temp_dir(temp_dir);
@@ -3299,9 +3292,9 @@ TEST_CASE_METHOD(
     serialize_query_ = true;
   }
 
-  SupportedFsLocal* local_fs = new SupportedFsLocal();
+  SupportedFsLocal local_fs;
 
-  std::string temp_dir = local_fs->file_prefix() + local_fs->temp_dir();
+  std::string temp_dir = local_fs.file_prefix() + local_fs.temp_dir();
   create_temp_dir(temp_dir);
   check_non_empty_domain(temp_dir);
   remove_temp_dir(temp_dir);
@@ -3318,8 +3311,8 @@ TEST_CASE_METHOD(
     serialize_query_ = true;
   }
 
-  SupportedFsLocal* local_fs = new SupportedFsLocal();
-  std::string temp_dir = local_fs->file_prefix() + local_fs->temp_dir();
+  SupportedFsLocal local_fs;
+  std::string temp_dir = local_fs.file_prefix() + local_fs.temp_dir();
   create_temp_dir(temp_dir);
 
   // Create and write dense array
@@ -3400,8 +3393,8 @@ TEST_CASE_METHOD(
     DenseArrayFx,
     "C API: Test dense array, open array checks",
     "[capi], [dense], [dense-open-array-checks]") {
-  SupportedFsLocal* local_fs = new SupportedFsLocal();
-  std::string temp_dir = local_fs->file_prefix() + local_fs->temp_dir();
+  SupportedFsLocal local_fs;
+  std::string temp_dir = local_fs.file_prefix() + local_fs.temp_dir();
   create_temp_dir(temp_dir);
 
   // Create and write dense array
@@ -3482,8 +3475,8 @@ TEST_CASE_METHOD(
     DenseArrayFx,
     "C API: Test dense array, reopen array checks",
     "[capi], [dense], [dense-reopen-array-checks]") {
-  SupportedFsLocal* local_fs = new SupportedFsLocal();
-  std::string temp_dir = local_fs->file_prefix() + local_fs->temp_dir();
+  SupportedFsLocal local_fs;
+  std::string temp_dir = local_fs.file_prefix() + local_fs.temp_dir();
   create_temp_dir(temp_dir);
 
   // Create and write dense array
@@ -3589,8 +3582,8 @@ TEST_CASE_METHOD(
     serialize_query_ = true;
   }
 
-  SupportedFsLocal* local_fs = new SupportedFsLocal();
-  std::string temp_dir = local_fs->file_prefix() + local_fs->temp_dir();
+  SupportedFsLocal local_fs;
+  std::string temp_dir = local_fs.file_prefix() + local_fs.temp_dir();
   std::string array_name = temp_dir + "reset_read_subarray";
   create_temp_dir(temp_dir);
   create_dense_array(array_name);
@@ -3658,8 +3651,8 @@ TEST_CASE_METHOD(
     serialize_query_ = true;
   }
 
-  SupportedFsLocal* local_fs = new SupportedFsLocal();
-  std::string temp_dir = local_fs->file_prefix() + local_fs->temp_dir();
+  SupportedFsLocal local_fs;
+  std::string temp_dir = local_fs.file_prefix() + local_fs.temp_dir();
   std::string array_name = temp_dir + "reset_write_subarray";
   create_temp_dir(temp_dir);
   create_dense_array(array_name);
@@ -3768,8 +3761,8 @@ TEST_CASE_METHOD(
     serialize_query_ = true;
   }
 
-  SupportedFsLocal* local_fs = new SupportedFsLocal();
-  std::string temp_dir = local_fs->file_prefix() + local_fs->temp_dir();
+  SupportedFsLocal local_fs;
+  std::string temp_dir = local_fs.file_prefix() + local_fs.temp_dir();
   std::string array_name = temp_dir + "with_ending_slash/";
   create_temp_dir(temp_dir);
   create_dense_array(array_name);
@@ -3789,8 +3782,8 @@ TEST_CASE_METHOD(
     serialize_query_ = true;
   }
 
-  SupportedFsLocal* local_fs = new SupportedFsLocal();
-  std::string temp_dir = local_fs->file_prefix() + local_fs->temp_dir();
+  SupportedFsLocal local_fs;
+  std::string temp_dir = local_fs.file_prefix() + local_fs.temp_dir();
   std::string array_name = temp_dir + "dense_write_missing_attributes/";
   create_temp_dir(temp_dir);
   create_dense_array(array_name);
@@ -3809,8 +3802,8 @@ TEST_CASE_METHOD(
     serialize_query_ = true;
   }
 
-  SupportedFsLocal* local_fs = new SupportedFsLocal();
-  std::string temp_dir = local_fs->file_prefix() + local_fs->temp_dir();
+  SupportedFsLocal local_fs;
+  std::string temp_dir = local_fs.file_prefix() + local_fs.temp_dir();
   std::string array_name = temp_dir + "dense_read_empty/";
   create_temp_dir(temp_dir);
 
@@ -3900,8 +3893,8 @@ TEST_CASE_METHOD(
     serialize_query_ = true;
   }
 
-  SupportedFsLocal* local_fs = new SupportedFsLocal();
-  std::string temp_dir = local_fs->file_prefix() + local_fs->temp_dir();
+  SupportedFsLocal local_fs;
+  std::string temp_dir = local_fs.file_prefix() + local_fs.temp_dir();
   std::string array_name = temp_dir + "dense_read_empty_sparse/";
   create_temp_dir(temp_dir);
 
@@ -4011,8 +4004,8 @@ TEST_CASE_METHOD(
     serialize_query_ = true;
   }
 
-  SupportedFsLocal* local_fs = new SupportedFsLocal();
-  std::string temp_dir = local_fs->file_prefix() + local_fs->temp_dir();
+  SupportedFsLocal local_fs;
+  std::string temp_dir = local_fs.file_prefix() + local_fs.temp_dir();
   std::string array_name = temp_dir + "dense_read_empty_merge/";
   create_temp_dir(temp_dir);
 
@@ -4101,8 +4094,8 @@ TEST_CASE_METHOD(
     serialize_query_ = true;
   }
 
-  SupportedFsLocal* local_fs = new SupportedFsLocal();
-  std::string temp_dir = local_fs->file_prefix() + local_fs->temp_dir();
+  SupportedFsLocal local_fs;
+  std::string temp_dir = local_fs.file_prefix() + local_fs.temp_dir();
   std::string array_name = temp_dir + "dense_multi_fragment/";
   create_temp_dir(temp_dir);
 
@@ -4211,8 +4204,8 @@ TEST_CASE_METHOD(
     serialize_query_ = true;
   }
 
-  SupportedFsLocal* local_fs = new SupportedFsLocal();
-  std::string temp_dir = local_fs->file_prefix() + local_fs->temp_dir();
+  SupportedFsLocal local_fs;
+  std::string temp_dir = local_fs.file_prefix() + local_fs.temp_dir();
   std::string array_name = temp_dir + "dense_is_open/";
   create_temp_dir(temp_dir);
   create_dense_array(array_name);
@@ -4256,8 +4249,8 @@ TEST_CASE_METHOD(
     serialize_query_ = true;
   }
 
-  SupportedFsLocal* local_fs = new SupportedFsLocal();
-  std::string temp_dir = local_fs->file_prefix() + local_fs->temp_dir();
+  SupportedFsLocal local_fs;
+  std::string temp_dir = local_fs.file_prefix() + local_fs.temp_dir();
   std::string array_name = temp_dir + "dense_get_schema/";
   create_temp_dir(temp_dir);
   create_dense_array(array_name);
@@ -4296,10 +4289,10 @@ TEST_CASE_METHOD(
     serialize_query_ = true;
   }
 
-  SupportedFsLocal* local_fs = new SupportedFsLocal();
-  std::string array_name = local_fs->file_prefix() + local_fs->temp_dir() +
+  SupportedFsLocal local_fs;
+  std::string array_name = local_fs.file_prefix() + local_fs.temp_dir() +
                            "dense_coords_exist_unordered";
-  std::string temp_dir = local_fs->file_prefix() + local_fs->temp_dir();
+  std::string temp_dir = local_fs.file_prefix() + local_fs.temp_dir();
   create_temp_dir(temp_dir);
   create_dense_array(array_name);
 
@@ -4376,10 +4369,10 @@ TEST_CASE_METHOD(
     serialize_query_ = true;
   }
 
-  SupportedFsLocal* local_fs = new SupportedFsLocal();
+  SupportedFsLocal local_fs;
   std::string array_name =
-      local_fs->file_prefix() + local_fs->temp_dir() + "dense-col-updates";
-  std::string temp_dir = local_fs->file_prefix() + local_fs->temp_dir();
+      local_fs.file_prefix() + local_fs.temp_dir() + "dense-col-updates";
+  std::string temp_dir = local_fs.file_prefix() + local_fs.temp_dir();
   create_temp_dir(temp_dir);
   create_dense_array_1_attribute(array_name);
 
@@ -4514,21 +4507,19 @@ TEST_CASE_METHOD(
   encryption_type = TILEDB_AES_256_GCM;
   encryption_key = "0123456789abcdeF0123456789abcdeF";
 
-  for (const auto& supported_fs : fs_vec) {
-    create_temp_dir(supported_fs->temp_dir());
-    check_sorted_reads(supported_fs->temp_dir());
-    remove_temp_dir(supported_fs->temp_dir());
-  }
+  // TODO: refactor for each supported FS.
+  std::string temp_dir = fs_vec_[0]->temp_dir();
+  create_temp_dir(temp_dir);
+  check_sorted_reads(temp_dir);
+  remove_temp_dir(temp_dir);
 }
 
 TEST_CASE_METHOD(
     DenseArrayFx,
     "C API: Test dense vector, mixed dense and sparse fragments",
     "[capi][dense][mixed]") {
-  std::string path;
-  for (const auto& supported_fs : fs_vec) {
-    path = supported_fs->temp_dir();
-  }
+  // TODO: refactor for each supported FS.
+  std::string path = fs_vec_[0]->temp_dir();
 
   std::string array_name = path + "test_dense_mixed";
 

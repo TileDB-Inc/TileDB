@@ -49,6 +49,7 @@ namespace test {
  */
 class SupportedFs {
  public:
+  virtual ~SupportedFs() = 0;
   /* ********************************* */
   /*               API                 */
   /* ********************************* */
@@ -103,7 +104,7 @@ class SupportedFs {
   std::string vfs_helper_temp_dir_;
 
   /** The vector of supported filesystems. */
-  std::vector<SupportedFs*> fs_vec;
+  const std::vector<SupportedFs*> fs_vec;
 };
 
 /**
@@ -346,23 +347,31 @@ class SupportedFsLocal : public SupportedFs {
 /**
  * Create the vector of supported filesystems.
  */
-std::vector<SupportedFs*> vfs_test_get_fs_vec();
+const std::vector<std::unique_ptr<SupportedFs>> vfs_test_get_fs_vec();
 
 /**
  * Initialize the vfs test.
  *
+ * @param fs_vec The vector of supported filesystems
  * @param ctx The TileDB context.
  * @param vfs The VFS object.
  */
-Status vfs_test_init(tiledb_ctx_t** ctx, tiledb_vfs_t** vfs);
+Status vfs_test_init(
+    const std::vector<std::unique_ptr<SupportedFs>> fs_vec,
+    tiledb_ctx_t** ctx,
+    tiledb_vfs_t** vfs);
 
 /**
  * Close the vfs test.
  *
+ * @param fs_vec The vector of supported filesystems
  * @param ctx The TileDB context.
  * @param vfs The VFS object.
  */
-Status vfs_test_close(tiledb_ctx_t* ctx, tiledb_vfs_t* vfs);
+Status vfs_test_close(
+    const std::vector<std::unique_ptr<SupportedFs>> fs_vec,
+    tiledb_ctx_t* ctx,
+    tiledb_vfs_t* vfs);
 
 }  // End of namespace test
 }  // End of namespace tiledb

@@ -226,8 +226,8 @@ std::string SupportedFsLocal::temp_dir() {
 }
 #endif
 
-std::vector<SupportedFs*> vfs_test_get_fs_vec() {
-  std::vector<SupportedFs*> fs_vec;
+const std::vector<std::unique_ptr<SupportedFs>> vfs_test_get_fs_vec() {
+  std::vector<std::unique_ptr<SupportedFs>> fs_vec;
   bool supports_s3_ = false;
   bool supports_hdfs_ = false;
   bool supports_azure_ = false;
@@ -250,8 +250,10 @@ std::vector<SupportedFs*> vfs_test_get_fs_vec() {
   return fs_vec;
 }
 
-Status vfs_test_init(tiledb_ctx_t** ctx, tiledb_vfs_t** vfs) {
-  std::vector<SupportedFs*> fs_vec = vfs_test_get_fs_vec();
+Status vfs_test_init(
+    const std::vector<std::unique_ptr<SupportedFs>> fs_vec,
+    tiledb_ctx_t** ctx,
+    tiledb_vfs_t** vfs) {
   tiledb_config_t* config = nullptr;
   tiledb_error_t* error = nullptr;
   REQUIRE(tiledb_config_alloc(&config, &error) == TILEDB_OK);
@@ -269,8 +271,10 @@ Status vfs_test_init(tiledb_ctx_t** ctx, tiledb_vfs_t** vfs) {
   return Status::Ok();
 }
 
-Status vfs_test_close(tiledb_ctx_t* ctx, tiledb_vfs_t* vfs) {
-  std::vector<SupportedFs*> fs_vec = vfs_test_get_fs_vec();
+Status vfs_test_close(
+    const std::vector<std::unique_ptr<SupportedFs>> fs_vec,
+    tiledb_ctx_t* ctx,
+    tiledb_vfs_t* vfs) {
   for (auto& fs : fs_vec) {
     RETURN_NOT_OK(fs->close(ctx, vfs));
   }

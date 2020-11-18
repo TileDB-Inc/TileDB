@@ -99,7 +99,7 @@ struct ArraySchemaFx {
   tiledb_vfs_t* vfs_;
 
   // Vector of supported filsystems
-  const std::vector<SupportedFs*> fs_vec = vfs_test_get_fs_vec();
+  const std::vector<std::unique_ptr<SupportedFs>> fs_vec_;
 
   // Functions
   ArraySchemaFx();
@@ -139,14 +139,15 @@ struct ArraySchemaFx {
       int32_t* is_empty);
 };
 
-ArraySchemaFx::ArraySchemaFx() {
+ArraySchemaFx::ArraySchemaFx()
+    : fs_vec_(std::move(vfs_test_get_fs_vec())) {
   // Initialize vfs test
-  REQUIRE(vfs_test_init(&ctx_, &vfs_).ok());
+  REQUIRE(vfs_test_init(fs_vec_, &ctx_, &vfs_).ok());
 }
 
 ArraySchemaFx::~ArraySchemaFx() {
   // Close vfs test
-  REQUIRE(vfs_test_close(ctx_, vfs_).ok());
+  REQUIRE(vfs_test_close(fs_vec_, ctx_, vfs_).ok());
   tiledb_vfs_free(&vfs_);
   tiledb_ctx_free(&ctx_);
 }
@@ -909,16 +910,14 @@ TEST_CASE_METHOD(
     serialize_array_schema_ = true;
   }
 
-  std::string array_name;
-
-  for (const auto& supported_fs : fs_vec) {
-    array_name = supported_fs->temp_dir() + ARRAY_NAME;
-    create_temp_dir(supported_fs->temp_dir());
-    create_array(array_name);
-    load_and_check_array_schema(array_name);
-    delete_array(array_name);
-    remove_temp_dir(supported_fs->temp_dir());
-  }
+  // TODO: refactor for each supported FS.
+  std::string array_name = fs_vec_[0]->temp_dir() + ARRAY_NAME;
+  std::string temp_dir = fs_vec_[0]->temp_dir();
+  create_temp_dir(temp_dir);
+  create_array(array_name);
+  load_and_check_array_schema(array_name);
+  delete_array(array_name);
+  remove_temp_dir(temp_dir);
 }
 
 TEST_CASE_METHOD(
@@ -1218,13 +1217,13 @@ TEST_CASE_METHOD(
   rc = tiledb_array_schema_check(ctx_, array_schema);
   REQUIRE(rc == TILEDB_OK);
 
-  // Instantiate Posix class
-  SupportedFsLocal* local_fs = new SupportedFsLocal();
+  // Instantiate local class
+  SupportedFsLocal local_fs;
 
   // Create array
   std::string array_name =
-      local_fs->file_prefix() + local_fs->temp_dir() + ARRAY_NAME;
-  create_temp_dir(local_fs->file_prefix() + local_fs->temp_dir());
+      local_fs.file_prefix() + local_fs.temp_dir() + ARRAY_NAME;
+  create_temp_dir(local_fs.file_prefix() + local_fs.temp_dir());
   rc = array_create_wrapper(array_name, array_schema);
   REQUIRE(rc == TILEDB_OK);
 
@@ -1287,7 +1286,7 @@ TEST_CASE_METHOD(
   tiledb_array_schema_free(&read_schema);
   tiledb_array_free(&array);
   delete_array(array_name);
-  remove_temp_dir(local_fs->file_prefix() + local_fs->temp_dir());
+  remove_temp_dir(local_fs.file_prefix() + local_fs.temp_dir());
 }
 
 TEST_CASE_METHOD(
@@ -1342,13 +1341,13 @@ TEST_CASE_METHOD(
   rc = tiledb_array_schema_check(ctx_, array_schema);
   REQUIRE(rc == TILEDB_OK);
 
-  // Instantiate Posix class
-  SupportedFsLocal* local_fs = new SupportedFsLocal();
+  // Instantiate local class
+  SupportedFsLocal local_fs;
 
   // Create array
   std::string array_name =
-      local_fs->file_prefix() + local_fs->temp_dir() + ARRAY_NAME;
-  create_temp_dir(local_fs->file_prefix() + local_fs->temp_dir());
+      local_fs.file_prefix() + local_fs.temp_dir() + ARRAY_NAME;
+  create_temp_dir(local_fs.file_prefix() + local_fs.temp_dir());
   rc = array_create_wrapper(array_name, array_schema);
   REQUIRE(rc == TILEDB_OK);
 
@@ -1381,7 +1380,7 @@ TEST_CASE_METHOD(
   // Clean up
   tiledb_array_free(&array);
   delete_array(array_name);
-  remove_temp_dir(local_fs->file_prefix() + local_fs->temp_dir());
+  remove_temp_dir(local_fs.file_prefix() + local_fs.temp_dir());
 }
 
 TEST_CASE_METHOD(
@@ -1427,13 +1426,13 @@ TEST_CASE_METHOD(
   rc = tiledb_array_schema_add_attribute(ctx_, array_schema, attr2);
   REQUIRE(rc == TILEDB_OK);
 
-  // Instantiate Posix class
-  SupportedFsLocal* local_fs = new SupportedFsLocal();
+  // Instantiate local class
+  SupportedFsLocal local_fs;
 
   // Create array
   std::string array_name =
-      local_fs->file_prefix() + local_fs->temp_dir() + "datetime-dims";
-  create_temp_dir(local_fs->file_prefix() + local_fs->temp_dir());
+      local_fs.file_prefix() + local_fs.temp_dir() + "datetime-dims";
+  create_temp_dir(local_fs.file_prefix() + local_fs.temp_dir());
   rc = array_create_wrapper(array_name, array_schema);
   REQUIRE(rc == TILEDB_OK);
 
@@ -1444,7 +1443,7 @@ TEST_CASE_METHOD(
   tiledb_domain_free(&domain);
   tiledb_array_schema_free(&array_schema);
   delete_array(array_name);
-  remove_temp_dir(local_fs->file_prefix() + local_fs->temp_dir());
+  remove_temp_dir(local_fs.file_prefix() + local_fs.temp_dir());
 }
 
 TEST_CASE_METHOD(
@@ -1501,13 +1500,13 @@ TEST_CASE_METHOD(
   rc = tiledb_array_schema_set_allows_dups(ctx_, array_schema, allows_dups);
   CHECK(rc == TILEDB_OK);
 
-  // Instantiate Posix class
-  SupportedFsLocal* local_fs = new SupportedFsLocal();
+  // Instantiate local class
+  SupportedFsLocal local_fs;
 
   // Create array
   std::string array_name =
-      local_fs->file_prefix() + local_fs->temp_dir() + "duplicates";
-  create_temp_dir(local_fs->file_prefix() + local_fs->temp_dir());
+      local_fs.file_prefix() + local_fs.temp_dir() + "duplicates";
+  create_temp_dir(local_fs.file_prefix() + local_fs.temp_dir());
   rc = array_create_wrapper(array_name, array_schema);
   REQUIRE(rc == TILEDB_OK);
 
@@ -1530,7 +1529,7 @@ TEST_CASE_METHOD(
   // Clean up
   tiledb_array_schema_free(&array_schema);
   delete_array(array_name);
-  remove_temp_dir(local_fs->file_prefix() + local_fs->temp_dir());
+  remove_temp_dir(local_fs.file_prefix() + local_fs.temp_dir());
 }
 
 TEST_CASE_METHOD(
@@ -1591,13 +1590,13 @@ TEST_CASE_METHOD(
   rc = tiledb_array_schema_add_attribute(ctx_, array_schema, a);
   REQUIRE(rc == TILEDB_OK);
 
-  // Instantiate Posix class
-  SupportedFsLocal* local_fs = new SupportedFsLocal();
+  // Instantiate local class
+  SupportedFsLocal local_fs;
 
   // Create array
   std::string array_name =
-      local_fs->file_prefix() + local_fs->temp_dir() + "dimension";
-  create_temp_dir(local_fs->file_prefix() + local_fs->temp_dir());
+      local_fs.file_prefix() + local_fs.temp_dir() + "dimension";
+  create_temp_dir(local_fs.file_prefix() + local_fs.temp_dir());
   rc = array_create_wrapper(array_name, array_schema);
   REQUIRE(rc == TILEDB_OK);
 
@@ -1650,7 +1649,7 @@ TEST_CASE_METHOD(
   tiledb_domain_free(&domain);
   tiledb_array_schema_free(&array_schema);
   delete_array(array_name);
-  remove_temp_dir(local_fs->file_prefix() + local_fs->temp_dir());
+  remove_temp_dir(local_fs.file_prefix() + local_fs.temp_dir());
 }
 
 TEST_CASE_METHOD(
@@ -1779,12 +1778,12 @@ TEST_CASE_METHOD(
   rc = tiledb_array_schema_add_attribute(ctx_, array_schema, a);
   REQUIRE(rc == TILEDB_OK);
 
-  // Instantiate Posix class
-  SupportedFsLocal* local_fs = new SupportedFsLocal();
+  // Instantiate local class
+  SupportedFsLocal local_fs;
 
   // Create array
-  create_temp_dir(local_fs->file_prefix() + local_fs->temp_dir());
-  auto array_name = local_fs->file_prefix() + local_fs->temp_dir() + ARRAY_NAME;
+  create_temp_dir(local_fs.file_prefix() + local_fs.temp_dir());
+  auto array_name = local_fs.file_prefix() + local_fs.temp_dir() + ARRAY_NAME;
   rc = tiledb_array_create(ctx_, array_name.c_str(), array_schema);
   REQUIRE(rc == TILEDB_OK);
   tiledb_array_schema_free(&array_schema);
@@ -1864,5 +1863,5 @@ TEST_CASE_METHOD(
   tiledb_array_free(&array);
   tiledb_query_free(&query);
   tiledb_array_schema_free(&array_schema);
-  remove_temp_dir(local_fs->file_prefix() + local_fs->temp_dir());
+  remove_temp_dir(local_fs.file_prefix() + local_fs.temp_dir());
 }
