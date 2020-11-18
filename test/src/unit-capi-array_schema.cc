@@ -140,7 +140,7 @@ struct ArraySchemaFx {
 };
 
 ArraySchemaFx::ArraySchemaFx()
-    : fs_vec_(std::move(vfs_test_get_fs_vec())) {
+    : fs_vec_(vfs_test_get_fs_vec()) {
   // Initialize vfs test
   REQUIRE(vfs_test_init(fs_vec_, &ctx_, &vfs_).ok());
 }

@@ -1,11 +1,11 @@
 /**
- * @file   helpers.h
+ * @file   vfs_test_helper.h
  *
  * @section LICENSE
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2020 TileDB, Inc.
+ * @copyright Copyright (c) 2020 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -35,6 +35,12 @@
 
 #include "test/src/helpers.h"
 
+#ifdef _WIN32
+#include "tiledb/sm/filesystem/win.h"
+#else
+#include "tiledb/sm/filesystem/posix.h"
+#endif
+
 using namespace tiledb::common;
 
 namespace tiledb {
@@ -49,7 +55,7 @@ namespace test {
  */
 class SupportedFs {
  public:
-  virtual ~SupportedFs() = 0;
+  virtual ~SupportedFs() = default;
   /* ********************************* */
   /*               API                 */
   /* ********************************* */
@@ -97,11 +103,11 @@ class SupportedFs {
   virtual std::string temp_dir() = 0;
 
   /* ********************************* */
-  /*             ATTRIBUTES            */
+  /*           ATTRIBUTES              */
   /* ********************************* */
 
   /** The directory name of the associated filesystem. */
-  std::string vfs_helper_temp_dir_;
+  std::string temp_dir_;
 
   /** The vector of supported filesystems. */
   const std::vector<SupportedFs*> fs_vec;
@@ -113,6 +119,8 @@ class SupportedFs {
  */
 class SupportedFsS3 : public SupportedFs {
  public:
+  ~SupportedFsS3() = default;
+
   /* ********************************* */
   /*               API                 */
   /* ********************************* */
@@ -152,20 +160,20 @@ class SupportedFsS3 : public SupportedFs {
   virtual std::string temp_dir();
 
   /* ********************************* */
-  /*             ATTRIBUTES            */
+  /*           ATTRIBUTES              */
   /* ********************************* */
 
   /** The directory prefix of the S3 filesystem. */
-  const std::string S3_PREFIX;
+  const std::string s3_prefix_ = "s3://";
 
   /** The bucket name for the S3 filesystem. */
-  const std::string S3_BUCKET;
+  const std::string s3_bucket_ = s3_prefix_ + random_name("tiledb") + "/";
 
   /** The directory name of the S3 filesystem. */
-  const std::string S3_TEMP_DIR;
+  const std::string s3_temp_dir_ = s3_bucket_ + "tiledb_test/";
 
   /** The directory name of the S3 filesystem. */
-  std::string vfs_helper_temp_dir;
+  std::string temp_dir_ = s3_temp_dir_;
 };
 
 /**
@@ -174,6 +182,7 @@ class SupportedFsS3 : public SupportedFs {
  */
 class SupportedFsHDFS : public SupportedFs {
  public:
+  ~SupportedFsHDFS() = default;
   /* ********************************* */
   /*               API                 */
   /* ********************************* */
@@ -212,14 +221,14 @@ class SupportedFsHDFS : public SupportedFs {
   virtual std::string temp_dir();
 
   /* ********************************* */
-  /*             ATTRIBUTES            */
+  /*           ATTRIBUTES              */
   /* ********************************* */
 
   /** The directory name of the HDFS filesystem. */
-  const std::string HDFS_TEMP_DIR;
+  const std::string hdfs_temp_dir_ = "hdfs:///tiledb_test/";
 
   /** The directory name of the HDFS filesystem. */
-  std::string vfs_helper_temp_dir;
+  std::string temp_dir_ = hdfs_temp_dir_;
 };
 
 /**
@@ -228,6 +237,7 @@ class SupportedFsHDFS : public SupportedFs {
  */
 class SupportedFsAzure : public SupportedFs {
  public:
+  ~SupportedFsAzure() = default;
   /* ********************************* */
   /*               API                 */
   /* ********************************* */
@@ -267,20 +277,20 @@ class SupportedFsAzure : public SupportedFs {
   virtual std::string temp_dir();
 
   /* ********************************* */
-  /*             ATTRIBUTES            */
+  /*           ATTRIBUTES              */
   /* ********************************* */
 
   /** The directory prefix of the Azure filesystem. */
-  const std::string AZURE_PREFIX;
+  const std::string azure_prefix_ = "azure://";
 
   /** The container name for the Azure filesystem. */
-  const std::string container;
+  const std::string container = azure_prefix_ + random_name("tiledb") + "/";
 
   /** The directory name of the Azure filesystem. */
-  const std::string AZURE_TEMP_DIR;
+  const std::string azure_temp_dir_ = container + "tiledb_test/";
 
   /** The directory name of the Azure filesystem. */
-  std::string vfs_helper_temp_dir;
+  std::string temp_dir_ = azure_temp_dir_;
 };
 
 /**
@@ -289,6 +299,7 @@ class SupportedFsAzure : public SupportedFs {
  */
 class SupportedFsLocal : public SupportedFs {
  public:
+  ~SupportedFsLocal() = default;
   /* ********************************* */
   /*               API                 */
   /* ********************************* */
@@ -334,20 +345,29 @@ class SupportedFsLocal : public SupportedFs {
   std::string file_prefix();
 
   /* ********************************* */
-  /*             ATTRIBUTES            */
+  /*           ATTRIBUTES              */
   /* ********************************* */
 
+#ifdef _WIN32
+  /** The directory name of the Windows filesystem. */
+  std::string temp_dir_ = tiledb::sm::Win::current_dir() + "\\tiledb_test\\";
+
+  /** The file prefix name of the Windows filesystem. */
+  std::string file_prefix_ = "";
+#else
   /** The directory name of the Posix filesystem. */
-  std::string vfs_helper_temp_dir;
+  std::string temp_dir_ = tiledb::sm::Posix::current_dir() + "/tiledb_test/";
 
   /** The file prefix name of the Posix filesystem. */
-  std::string vfs_helper_file_prefix;
+  std::string file_prefix_ = "file://";
+
+#endif
 };
 
 /**
  * Create the vector of supported filesystems.
  */
-const std::vector<std::unique_ptr<SupportedFs>> vfs_test_get_fs_vec();
+std::vector<std::unique_ptr<SupportedFs>> vfs_test_get_fs_vec();
 
 /**
  * Initialize the vfs test.
@@ -357,7 +377,7 @@ const std::vector<std::unique_ptr<SupportedFs>> vfs_test_get_fs_vec();
  * @param vfs The VFS object.
  */
 Status vfs_test_init(
-    const std::vector<std::unique_ptr<SupportedFs>> fs_vec,
+    const std::vector<std::unique_ptr<SupportedFs>>& fs_vec,
     tiledb_ctx_t** ctx,
     tiledb_vfs_t** vfs);
 
@@ -369,7 +389,7 @@ Status vfs_test_init(
  * @param vfs The VFS object.
  */
 Status vfs_test_close(
-    const std::vector<std::unique_ptr<SupportedFs>> fs_vec,
+    const std::vector<std::unique_ptr<SupportedFs>>& fs_vec,
     tiledb_ctx_t* ctx,
     tiledb_vfs_t* vfs);
 

@@ -1,11 +1,11 @@
 /**
- * @file   helpers.cc
+ * @file   vfs_test_helper.cc
  *
  * @section LICENSE
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2020 TileDB, Inc.
+ * @copyright Copyright (c) 2020 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -34,12 +34,6 @@
 #include "test/src/helpers.h"
 #include "test/src/vfs_test_helper.h"
 
-#ifdef _WIN32
-#include "tiledb/sm/filesystem/win.h"
-#else
-#include "tiledb/sm/filesystem/posix.h"
-#endif
-
 namespace tiledb {
 namespace test {
 
@@ -67,10 +61,10 @@ Status SupportedFsS3::prepare_config(
 
 Status SupportedFsS3::init(tiledb_ctx_t* ctx, tiledb_vfs_t* vfs) {
   int is_bucket = 0;
-  int rc = tiledb_vfs_is_bucket(ctx, vfs, S3_BUCKET.c_str(), &is_bucket);
+  int rc = tiledb_vfs_is_bucket(ctx, vfs, s3_bucket_.c_str(), &is_bucket);
   REQUIRE(rc == TILEDB_OK);
   if (!is_bucket) {
-    rc = tiledb_vfs_create_bucket(ctx, vfs, S3_BUCKET.c_str());
+    rc = tiledb_vfs_create_bucket(ctx, vfs, s3_bucket_.c_str());
     REQUIRE(rc == TILEDB_OK);
   }
   return Status::Ok();
@@ -78,20 +72,16 @@ Status SupportedFsS3::init(tiledb_ctx_t* ctx, tiledb_vfs_t* vfs) {
 
 Status SupportedFsS3::close(tiledb_ctx_t* ctx, tiledb_vfs_t* vfs) {
   int is_bucket = 0;
-  int rc = tiledb_vfs_is_bucket(ctx, vfs, S3_BUCKET.c_str(), &is_bucket);
+  int rc = tiledb_vfs_is_bucket(ctx, vfs, s3_bucket_.c_str(), &is_bucket);
   CHECK(rc == TILEDB_OK);
   if (is_bucket) {
-    CHECK(tiledb_vfs_remove_bucket(ctx, vfs, S3_BUCKET.c_str()) == TILEDB_OK);
+    CHECK(tiledb_vfs_remove_bucket(ctx, vfs, s3_bucket_.c_str()) == TILEDB_OK);
   }
   return Status::Ok();
 }
 
 std::string SupportedFsS3::temp_dir() {
-  const std::string S3_PREFIX = "s3://";
-  const std::string S3_BUCKET = S3_PREFIX + random_name("tiledb") + "/";
-  const std::string S3_TEMP_DIR = S3_BUCKET + "tiledb_test/";
-  std::string vfs_helper_temp_dir = S3_TEMP_DIR;
-  return vfs_helper_temp_dir;
+  return temp_dir_;
 }
 
 Status SupportedFsHDFS::prepare_config(
@@ -114,9 +104,7 @@ Status SupportedFsHDFS::close(tiledb_ctx_t* ctx, tiledb_vfs_t* vfs) {
 }
 
 std::string SupportedFsHDFS::temp_dir() {
-  const std::string HDFS_TEMP_DIR = "hdfs:///tiledb_test/";
-  std::string vfs_helper_temp_dir = HDFS_TEMP_DIR;
-  return vfs_helper_temp_dir;
+  return temp_dir_;
 }
 
 Status SupportedFsAzure::prepare_config(
@@ -168,11 +156,7 @@ Status SupportedFsAzure::close(tiledb_ctx_t* ctx, tiledb_vfs_t* vfs) {
 }
 
 std::string SupportedFsAzure::temp_dir() {
-  const std::string AZURE_PREFIX = "azure://";
-  const std::string container = AZURE_PREFIX + random_name("tiledb") + "/";
-  const std::string AZURE_TEMP_DIR = container + "tiledb_test/";
-  std::string vfs_helper_temp_dir = AZURE_TEMP_DIR;
-  return vfs_helper_temp_dir;
+  return temp_dir_;
 }
 
 Status SupportedFsLocal::prepare_config(
@@ -197,36 +181,22 @@ Status SupportedFsLocal::close(tiledb_ctx_t* ctx, tiledb_vfs_t* vfs) {
 #ifdef _WIN32
 // Windows local filesystem
 std::string SupportedFsLocal::temp_dir() {
-  const std::string FILE_URI_PREFIX = "";
-  const std::string WIN_TEMP_DIR =
-      tiledb::sm::Win::current_dir() + "\\tiledb_test\\";
-  std::string vfs_helper_temp_dir = WIN_TEMP_DIR;
-  return vfs_helper_temp_dir;
+  return temp_dir_;
 }
-
 std::string SupportedFsLocal::file_prefix() {
-  const std::string FILE_URI_PREFIX = "";
-  std::string vfs_helper_file_prefix = FILE_URI_PREFIX;
-  return vfs_helper_file_prefix;
+  return file_prefix_;
 }
 #else
+std::string SupportedFsLocal::temp_dir() {
+  return temp_dir_;
+}
 // Posix local filesystem
 std::string SupportedFsLocal::file_prefix() {
-  const std::string FILE_URI_PREFIX = "file://";
-  std::string vfs_helper_file_prefix = FILE_URI_PREFIX;
-  return vfs_helper_file_prefix;
-}
-
-std::string SupportedFsLocal::temp_dir() {
-  const std::string FILE_URI_PREFIX = "file://";
-  const std::string POSIX_TEMP_DIR =
-      tiledb::sm::Posix::current_dir() + "/tiledb_test/";
-  std::string vfs_helper_temp_dir = POSIX_TEMP_DIR;
-  return vfs_helper_temp_dir;
+  return file_prefix_;
 }
 #endif
 
-const std::vector<std::unique_ptr<SupportedFs>> vfs_test_get_fs_vec() {
+std::vector<std::unique_ptr<SupportedFs>> vfs_test_get_fs_vec() {
   std::vector<std::unique_ptr<SupportedFs>> fs_vec;
   bool supports_s3_ = false;
   bool supports_hdfs_ = false;
@@ -251,7 +221,7 @@ const std::vector<std::unique_ptr<SupportedFs>> vfs_test_get_fs_vec() {
 }
 
 Status vfs_test_init(
-    const std::vector<std::unique_ptr<SupportedFs>> fs_vec,
+    const std::vector<std::unique_ptr<SupportedFs>>& fs_vec,
     tiledb_ctx_t** ctx,
     tiledb_vfs_t** vfs) {
   tiledb_config_t* config = nullptr;
@@ -272,7 +242,7 @@ Status vfs_test_init(
 }
 
 Status vfs_test_close(
-    const std::vector<std::unique_ptr<SupportedFs>> fs_vec,
+    const std::vector<std::unique_ptr<SupportedFs>>& fs_vec,
     tiledb_ctx_t* ctx,
     tiledb_vfs_t* vfs) {
   for (auto& fs : fs_vec) {

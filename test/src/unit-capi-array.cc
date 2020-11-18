@@ -86,7 +86,7 @@ static const std::string test_ca_file =
     std::string(TILEDB_TEST_INPUTS_DIR) + "/test_certs/public.crt";
 
 ArrayFx::ArrayFx()
-    : fs_vec_(std::move(vfs_test_get_fs_vec())) {
+    : fs_vec_(vfs_test_get_fs_vec()) {
   // Initialize vfs test
   REQUIRE(vfs_test_init(fs_vec_, &ctx_, &vfs_).ok());
 }
