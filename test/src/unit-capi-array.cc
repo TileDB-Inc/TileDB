@@ -1406,11 +1406,8 @@ TEST_CASE_METHOD(
       TILEDB_OK);
   REQUIRE(error == nullptr);
 
-  REQUIRE(vfs_test_init(fs_vec_, &ctx_, &vfs_).ok());
+  REQUIRE(vfs_test_init(fs_vec_, &ctx_, &vfs_, config).ok());
 
-  REQUIRE(tiledb_ctx_alloc(config, &ctx_) == TILEDB_OK);
-  REQUIRE(error == nullptr);
-  REQUIRE(tiledb_vfs_alloc(ctx_, config, &vfs_) == TILEDB_OK);
   tiledb_config_free(&config);
 
   create_temp_dir(temp_dir);

@@ -375,11 +375,13 @@ std::vector<std::unique_ptr<SupportedFs>> vfs_test_get_fs_vec();
  * @param fs_vec The vector of supported filesystems
  * @param ctx The TileDB context.
  * @param vfs The VFS object.
+ * @param config An optional configuration argument.
  */
 Status vfs_test_init(
     const std::vector<std::unique_ptr<SupportedFs>>& fs_vec,
     tiledb_ctx_t** ctx,
-    tiledb_vfs_t** vfs);
+    tiledb_vfs_t** vfs,
+    tiledb_config_t* config = nullptr);
 
 /**
  * Close the vfs test.
