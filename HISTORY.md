@@ -10,6 +10,8 @@
 
 ## Improvements
 
+* Optimized string dimension performance. [#1922](https://github.com/TileDB-Inc/TileDB/pull/1922)
+
 ## Deprecations
 
 ## Bug fixes
