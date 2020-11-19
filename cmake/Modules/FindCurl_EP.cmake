@@ -129,16 +129,33 @@ if (NOT CURL_FOUND AND TILEDB_SUPERBUILD)
       CONFIGURE_COMMAND
         ${CMAKE_COMMAND} -E env PKG_CONFIG_PATH=${SSL_PKG_CONFIG_PATH} ${TILEDB_EP_BASE}/src/ep_curl/configure
           --prefix=${TILEDB_EP_INSTALL_PREFIX}
+          --enable-http
           --enable-optimize
           --enable-shared=no
           --with-pic=yes
+          --without-brotli
+          --without-bearssl
+          --without-cyassl
+          --without-wolfssl
+          --without-polarssl
+          --without-mbedtls
+          --without-gnutls
+          --without-gssapi
+          --without-idn2
+          --without-libmetalink
+          --without-libssh2
+          --without-librtmp
           --without-nghttp2
+          --without-zstd
+          --disable-ares
           --disable-dict
           --disable-file
           --disable-ftp
           --disable-gopher
           --disable-imap
+          --disable-mqtt
           --disable-ldap
+          --disable-ldaps
           --disable-pop3
           --disable-rtmp
           --disable-rtsp
