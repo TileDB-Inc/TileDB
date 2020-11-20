@@ -168,7 +168,7 @@ void read_array() {
   tiledb_array_alloc(ctx, array_name, &array);
   tiledb_array_open(ctx, array, TILEDB_READ);
 
-  // Slice only rows 1, 2 and cols 2, 3, 4
+  // Read the full array
   int subarray_full[] = {1, 2, 1, 2};
 
   // Set maximum buffer sizes

@@ -577,6 +577,15 @@ Status SubarrayPartitioner::split_current(bool* unsplittable) {
     auto new_range_num =
         range_num * (1 - constants::multi_range_reduction_in_split);
     current_.end_ = current_.start_ + (uint64_t)new_range_num - 1;
+
+    // Calibrating `current_` will never increase the size. If the
+    // `must_split_slab` returns `true`, we know that `current_` needed
+    // to be split, both before and after calibrating its `start` and
+    // `end`. For now, we will ignore the return value of `must_split_slab`.
+    bool must_split_slab;
+    calibrate_current_start_end(&must_split_slab);
+    (void)must_split_slab;
+
     current_.partition_ =
         subarray_.get_subarray(current_.start_, current_.end_);
     state_.start_ = current_.end_ + 1;

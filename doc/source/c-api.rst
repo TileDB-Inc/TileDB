@@ -432,11 +432,27 @@ Query
     :project: TileDB-C
 .. doxygenfunction:: tiledb_query_add_range
     :project: TileDB-C
+.. doxygenfunction:: tiledb_query_add_range_by_name
+    :project: TileDB-C
 .. doxygenfunction:: tiledb_query_get_range
+    :project: TileDB-C
+.. doxygenfunction:: tiledb_query_get_range_from_name
     :project: TileDB-C
 .. doxygenfunction:: tiledb_query_add_range_var
     :project: TileDB-C
+.. doxygenfunction:: tiledb_query_add_range_var_by_name
+    :project: TileDB-C
+.. doxygenfunction:: tiledb_query_get_range_var
+    :project: TileDB-C
+.. doxygenfunction:: tiledb_query_get_range_var_from_name
+    :project: TileDB-C
+.. doxygenfunction:: tiledb_query_get_range_var_size
+    :project: TileDB-C
+.. doxygenfunction:: tiledb_query_get_range_var_size_from_name
+    :project: TileDB-C
 .. doxygenfunction:: tiledb_query_get_range_num
+    :project: TileDB-C
+.. doxygenfunction:: tiledb_query_get_range_num_from_name
     :project: TileDB-C
 .. doxygenfunction:: tiledb_query_get_est_result_size
     :project: TileDB-C

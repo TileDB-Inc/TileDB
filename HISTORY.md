@@ -18,7 +18,8 @@
 
 ## Improvements
 
-* Added functionality to get fragment information from an array.
+* Optimized string dimension performance. 
+* Added functionality to get fragment information from an array. [#1900](https://github.com/TileDB-Inc/TileDB/pull/1900)
 * Prevented unnecessary sorting when (1) there is a single fragment and (i) either the query layout is global order, or (ii) the number of dimensions is 1, and (2) when there is a single range for which the result coordinates have already been sorted. [#1880](https://github.com/TileDB-Inc/TileDB/pull/1880)
 * Added extra stats for consolidation. [#1880](https://github.com/TileDB-Inc/TileDB/pull/1880)
 * Disabled checking if cells are written in global order when consolidating, as it was redundant (the cells are already being read in global order during consolidation). [#1880](https://github.com/TileDB-Inc/TileDB/pull/1880) 
@@ -42,11 +43,13 @@
 ### C++ API
 
 * Added functions for getting fragment information. [#1900](https://github.com/TileDB-Inc/TileDB/pull/1900)
+* Added APIs for getting and setting ranges of queries using a dimension name. [#1920](https://github.com/TileDB-Inc/TileDB/pull/1920)
 
 ### C++ API
 
 * Added class `FragmentInfo` and functions for getting fragment information. [#1900](https://github.com/TileDB-Inc/TileDB/pull/1900)
 * Added function `Dimension::create` that allows not setting a space tile extent. [#1880](https://github.com/TileDB-Inc/TileDB/pull/1880)
+* Added APIs for getting and setting ranges of queries using a dimension name. [#1920](https://github.com/TileDB-Inc/TileDB/pull/1920)
 
 # TileDB v2.1.0 Release Notes
 
