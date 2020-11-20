@@ -98,6 +98,10 @@ if (NOT CURL_FOUND AND TILEDB_SUPERBUILD)
   else()
     set(DEPENDS)
     if (TARGET ep_openssl)
+      # This branch specifically intends that curl will find our OpenSSL
+      # via pkg-config. Ensure it exists to avoid confusing errors.
+      find_package(PkgConfig REQUIRED)
+
       list(APPEND DEPENDS ep_openssl)
       set(WITH_SSL "--with-ssl")
       set(SSL_PKG_CONFIG_PATH "${TILEDB_EP_INSTALL_PREFIX}/lib/pkgconfig:${TILEDB_EP_INSTALL_PREFIX}/lib64/pkgconfig")
