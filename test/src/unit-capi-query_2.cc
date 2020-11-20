@@ -2978,8 +2978,8 @@ TEST_CASE_METHOD(
   rc = tiledb_query_get_range_var_from_name(
       ctx_, query, "d1", 0, start_data.data(), end_data.data());
   CHECK(rc == TILEDB_OK);
-  CHECK(std::string(start_data.data()) == "a");
-  CHECK(std::string(end_data.data()) == "cc");
+  CHECK(std::string(start_data.begin(), start_data.end()) == "a");
+  CHECK(std::string(end_data.begin(), end_data.end()) == "cc");
 
   // Clean-up
   rc = tiledb_array_close(ctx_, array);

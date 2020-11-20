@@ -279,10 +279,10 @@ TEST_CASE(
   std::array<std::string, 2> range1 = query.range("d1", 0);
   CHECK(range1[0] == s1);
   CHECK(range1[1] == s2);
-  auto range2 = query.range<int>("d2", 0);
+  std::array<int, 3> range2 = query.range<int>("d2", 0);
   CHECK(range2[0] == 1);
   CHECK(range2[1] == 2);
-  CHECK(range[2] == 0);
+  CHECK(range2[2] == 0);
 
   // Close array
   array.close();
