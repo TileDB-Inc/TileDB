@@ -416,6 +416,15 @@ class Domain {
   Status has_dimension(const std::string& name, bool* has_dim) const;
 
   /**
+   * Gets the index in the domain of a given dimension name
+   *
+   * @param name Name of dimension to check for
+   * @param dim_idx The index of this dimension in the domain
+   * @return Status
+   */
+  Status get_dimension_index(const std::string& name, unsigned* dim_idx) const;
+
+  /**
    * Initializes the domain.
    *
    * @param cell_order The cell order of the array the domain belongs to.

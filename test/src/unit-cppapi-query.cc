@@ -229,3 +229,64 @@ TEST_CASE(
   array1.close();
   array2.close();
 }
+
+TEST_CASE(
+    "C++ API: Test add and get ranges by name",
+    "[cppapi][query][range][string-dims]") {
+  const std::string array_name = "test_ranges";
+  Context ctx;
+  VFS vfs(ctx);
+
+  if (vfs.is_dir(array_name))
+    vfs.remove_dir(array_name);
+
+  // Create array with string and fixed dimensions
+  auto d1 = Dimension::create(ctx, "d1", TILEDB_STRING_ASCII, nullptr, nullptr);
+  auto d2 = Dimension::create<int>(ctx, "d2", {{1, 10}}, 5);
+
+  Domain dom(ctx);
+  dom.add_dimension(d1);
+  dom.add_dimension(d2);
+  ArraySchema schema(ctx, TILEDB_SPARSE);
+  auto a = Attribute::create<int32_t>(ctx, "a");
+  schema.add_attribute(a);
+  schema.set_domain(dom);
+  Array::create(array_name, schema);
+
+  // set dimensions
+  Array array(ctx, array_name, TILEDB_READ);
+  std::string d1_data("abbccdddd");
+  uint64_t d1_off[] = {0, 1, 3, 5};
+  uint64_t d1_off_size = 4;
+  Query query(ctx, array, TILEDB_READ);
+  CHECK_NOTHROW(query.set_buffer(
+      "d1", d1_off, d1_off_size, (void*)d1_data.c_str(), d1_data.size()));
+
+  // Add 1 range per dimension
+  std::string s1("a", 1);
+  std::string s2("cc", 2);
+  CHECK_NOTHROW(query.add_range("d1", s1, s2));
+  int range[] = {1, 2};
+  CHECK_NOTHROW(query.add_range("d2", range[0], range[1]));
+
+  // Check number of ranges on each dimension
+  int range_num = query.range_num("d1");
+  CHECK(range_num == 1);
+  range_num = query.range_num("d2");
+  CHECK(range_num == 1);
+
+  // Check ranges
+  std::array<std::string, 2> range1 = query.range("d1", 0);
+  CHECK(range1[0] == s1);
+  CHECK(range1[1] == s2);
+  std::array<int, 3> range2 = query.range<int>("d2", 0);
+  CHECK(range2[0] == 1);
+  CHECK(range2[1] == 2);
+  CHECK(range2[2] == 0);
+
+  // Close array
+  array.close();
+
+  if (vfs.is_dir(array_name))
+    vfs.remove_dir(array_name);
+}

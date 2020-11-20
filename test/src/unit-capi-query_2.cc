@@ -232,7 +232,7 @@ void Query2Fx::create_dense_array(const std::string& array_name, bool anon) {
   rc = tiledb_attribute_set_cell_val_num(ctx_, b, TILEDB_VAR_NUM);
   CHECK(rc == TILEDB_OK);
 
-  // Create array schmea
+  // Create array schema
   tiledb_array_schema_t* array_schema;
   rc = tiledb_array_schema_alloc(ctx_, TILEDB_DENSE, &array_schema);
   CHECK(rc == TILEDB_OK);
@@ -2886,6 +2886,108 @@ TEST_CASE_METHOD(
   // Clean up
   tiledb_array_free(&array);
   tiledb_query_free(&query);
+
+  remove_array(array_name);
+}
+
+TEST_CASE_METHOD(
+    Query2Fx,
+    "C API: Test range by name APIs",
+    "[capi][query_2][range][string-dims]") {
+  std::string array_name = "query_ranges";
+  remove_array(array_name);
+
+  // Create array
+  uint64_t dom[] = {1, 10};
+  uint64_t extent = 5;
+  create_array(
+      ctx_,
+      array_name,
+      TILEDB_SPARSE,
+      {"d1", "d2"},
+      {TILEDB_STRING_ASCII, TILEDB_UINT64},
+      {nullptr, dom},
+      {nullptr, &extent},
+      {"a"},
+      {TILEDB_INT32},
+      {1},
+      {tiledb::test::Compressor(TILEDB_FILTER_NONE, -1)},
+      TILEDB_ROW_MAJOR,
+      TILEDB_ROW_MAJOR,
+      2,
+      false,
+      false);
+
+  // Open array
+  tiledb_array_t* array = nullptr;
+  int rc = tiledb_array_alloc(ctx_, array_name.c_str(), &array);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_array_open(ctx_, array, TILEDB_READ);
+  CHECK(rc == TILEDB_OK);
+
+  // Create query
+  tiledb_query_t* query = nullptr;
+  rc = tiledb_query_alloc(ctx_, array, TILEDB_READ, &query);
+  CHECK(rc == TILEDB_OK);
+
+  // set dimensions
+  char d1_data[] = "abbccdddd";
+  uint64_t d1_data_size = sizeof(d1_data) - 1;  // Ignore '\0'
+  uint64_t d1_off[] = {0, 1, 3, 5};
+  uint64_t d1_off_size = sizeof(d1_off);
+  rc = tiledb_query_set_buffer_var(
+      ctx_, query, "d1", d1_off, &d1_off_size, d1_data, &d1_data_size);
+  REQUIRE(rc == TILEDB_OK);
+
+  // Add 1 range per dimension
+  char s1[] = "a";
+  char s2[] = "cc";
+  // Variable-sized range
+  rc = tiledb_query_add_range_var_by_name(ctx_, query, "d1", s1, 1, s2, 2);
+  CHECK(rc == TILEDB_OK);
+  // fixed-sized range
+  uint64_t r[] = {1, 2};
+  rc = tiledb_query_add_range_by_name(ctx_, query, "d2", &r[0], &r[1], nullptr);
+  CHECK(rc == TILEDB_OK);
+
+  // Check number of ranges on each dimension
+  uint64_t range_num;
+  rc = tiledb_query_get_range_num_from_name(ctx_, query, "d1", &range_num);
+  CHECK(rc == TILEDB_OK);
+  CHECK(range_num == 1);
+  rc = tiledb_query_get_range_num_from_name(ctx_, query, "d2", &range_num);
+  CHECK(rc == TILEDB_OK);
+  CHECK(range_num == 1);
+
+  // Check ranges
+  const void *start, *end, *stride;
+  rc = tiledb_query_get_range_from_name(
+      ctx_, query, "d2", 0, &start, &end, &stride);
+  CHECK(rc == TILEDB_OK);
+  CHECK(*(const uint64_t*)start == 1);
+  CHECK(*(const uint64_t*)end == 2);
+
+  uint64_t start_size = 0, end_size = 0;
+  rc = tiledb_query_get_range_var_size_from_name(
+      ctx_, query, "d1", 0, &start_size, &end_size);
+  CHECK(rc == TILEDB_OK);
+  CHECK(start_size == 1);
+  CHECK(end_size == 2);
+  std::vector<char> start_data(start_size);
+  std::vector<char> end_data(end_size);
+  rc = tiledb_query_get_range_var_from_name(
+      ctx_, query, "d1", 0, start_data.data(), end_data.data());
+  CHECK(rc == TILEDB_OK);
+  CHECK(std::string(start_data.begin(), start_data.end()) == "a");
+  CHECK(std::string(end_data.begin(), end_data.end()) == "cc");
+
+  // Clean-up
+  rc = tiledb_array_close(ctx_, array);
+  CHECK(rc == TILEDB_OK);
+  tiledb_array_free(&array);
+  CHECK(array == nullptr);
+  tiledb_query_free(&query);
+  CHECK(query == nullptr);
 
   remove_array(array_name);
 }

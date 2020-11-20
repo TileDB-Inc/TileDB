@@ -43,11 +43,13 @@
 ### C++ API
 
 * Added functions for getting fragment information. [#1900](https://github.com/TileDB-Inc/TileDB/pull/1900)
+* Added APIs for getting and setting ranges of queries using a dimension name. [#1920](https://github.com/TileDB-Inc/TileDB/pull/1920)
 
 ### C++ API
 
 * Added class `FragmentInfo` and functions for getting fragment information. [#1900](https://github.com/TileDB-Inc/TileDB/pull/1900)
 * Added function `Dimension::create` that allows not setting a space tile extent. [#1880](https://github.com/TileDB-Inc/TileDB/pull/1880)
+* Added APIs for getting and setting ranges of queries using a dimension name. [#1920](https://github.com/TileDB-Inc/TileDB/pull/1920)
 
 # TileDB v2.1.0 Release Notes
 
