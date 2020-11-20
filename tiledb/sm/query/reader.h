@@ -914,7 +914,7 @@ class Reader {
   Subarray subarray_;
 
   /** The offset format used for variable-sized attributes. */
-  std::string offsets_format_;
+  std::string offsets_format_mode_;
 
   /** Protects result tiles. */
   mutable std::mutex result_tiles_mutex_;
