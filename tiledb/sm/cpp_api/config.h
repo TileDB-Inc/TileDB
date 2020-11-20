@@ -327,6 +327,10 @@ class Config {
    *    The memory budget for tiles of var-sized attributes
    *    to be fetched during reads.<br>
    *    **Default**: 10GB
+   * - `sm.var_offsets.extra_element` <br>
+   *    Add an extra element in the end of the offsets buffer of var-sized
+   *    attributes which will point to the end of the values buffer.<br>
+   *    **Default**: false
    * - `sm.var_offsets.mode` <br>
    *    The offsets format (`bytes` or `elements`) to be used for
    *    var-sized attributes.<br>

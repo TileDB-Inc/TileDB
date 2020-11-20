@@ -236,6 +236,7 @@ void check_save_to_file() {
   ss << "sm.sub_partitioner_memory_budget 0\n";
   ss << "sm.tile_cache_size 10000000\n";
   ss << "sm.vacuum.mode fragments\n";
+  ss << "sm.var_offsets.extra_element false\n";
   ss << "sm.var_offsets.mode bytes\n";
   ss << "vfs.azure.block_list_block_size 5242880\n";
   ss << "vfs.azure.max_parallel_ops " << std::thread::hardware_concurrency()
@@ -445,6 +446,10 @@ TEST_CASE("C API: Test config iter", "[capi], [config]") {
   rc = tiledb_config_set(config, "sm.var_offsets.mode", "elements", &error);
   CHECK(rc == TILEDB_OK);
   CHECK(error == nullptr);
+  rc =
+      tiledb_config_set(config, "sm.var_offsets.extra_element", "true", &error);
+  CHECK(rc == TILEDB_OK);
+  CHECK(error == nullptr);
 
   // Prepare maps
   std::map<std::string, std::string> all_param_values;
@@ -477,6 +482,7 @@ TEST_CASE("C API: Test config iter", "[capi], [config]") {
   all_param_values["sm.consolidation.step_size_ratio"] = "0.0";
   all_param_values["sm.consolidation.mode"] = "fragments";
   all_param_values["sm.vacuum.mode"] = "fragments";
+  all_param_values["sm.var_offsets.extra_element"] = "true";
   all_param_values["sm.var_offsets.mode"] = "elements";
 
   all_param_values["vfs.min_batch_gap"] = "512000";
