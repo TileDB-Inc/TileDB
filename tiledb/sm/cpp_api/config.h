@@ -327,7 +327,7 @@ class Config {
    *    The memory budget for tiles of var-sized attributes
    *    to be fetched during reads.<br>
    *    **Default**: 10GB
-   * - `sm.offsets_format` <br>
+   * - `sm.var_offsets.mode` <br>
    *    The offsets format (`bytes` or `elements`) to be used for
    *    var-sized attributes.<br>
    *    **Default**: bytes

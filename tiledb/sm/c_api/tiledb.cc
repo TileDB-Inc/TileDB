@@ -2954,6 +2954,23 @@ int32_t tiledb_query_add_range(
   return TILEDB_OK;
 }
 
+int32_t tiledb_query_add_range_by_name(
+    tiledb_ctx_t* ctx,
+    tiledb_query_t* query,
+    const char* dim_name,
+    const void* start,
+    const void* end,
+    const void* stride) {
+  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, query) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  if (SAVE_ERROR_CATCH(
+          ctx, query->query_->add_range_by_name(dim_name, start, end, stride)))
+    return TILEDB_ERR;
+
+  return TILEDB_OK;
+}
+
 int32_t tiledb_query_add_range_var(
     tiledb_ctx_t* ctx,
     tiledb_query_t* query,
@@ -2974,6 +2991,26 @@ int32_t tiledb_query_add_range_var(
   return TILEDB_OK;
 }
 
+int32_t tiledb_query_add_range_var_by_name(
+    tiledb_ctx_t* ctx,
+    tiledb_query_t* query,
+    const char* dim_name,
+    const void* start,
+    uint64_t start_size,
+    const void* end,
+    uint64_t end_size) {
+  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, query) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  if (SAVE_ERROR_CATCH(
+          ctx,
+          query->query_->add_range_var_by_name(
+              dim_name, start, start_size, end, end_size)))
+    return TILEDB_ERR;
+
+  return TILEDB_OK;
+}
+
 int32_t tiledb_query_get_range_num(
     tiledb_ctx_t* ctx,
     const tiledb_query_t* query,
@@ -2983,6 +3020,21 @@ int32_t tiledb_query_get_range_num(
     return TILEDB_ERR;
 
   if (SAVE_ERROR_CATCH(ctx, query->query_->get_range_num(dim_idx, range_num)))
+    return TILEDB_ERR;
+
+  return TILEDB_OK;
+}
+
+int32_t tiledb_query_get_range_num_from_name(
+    tiledb_ctx_t* ctx,
+    const tiledb_query_t* query,
+    const char* dim_name,
+    uint64_t* range_num) {
+  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, query) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  if (SAVE_ERROR_CATCH(
+          ctx, query->query_->get_range_num_from_name(dim_name, range_num)))
     return TILEDB_ERR;
 
   return TILEDB_OK;
@@ -3007,6 +3059,26 @@ int32_t tiledb_query_get_range(
   return TILEDB_OK;
 }
 
+int32_t tiledb_query_get_range_from_name(
+    tiledb_ctx_t* ctx,
+    const tiledb_query_t* query,
+    const char* dim_name,
+    uint64_t range_idx,
+    const void** start,
+    const void** end,
+    const void** stride) {
+  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, query) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  if (SAVE_ERROR_CATCH(
+          ctx,
+          query->query_->get_range_from_name(
+              dim_name, range_idx, start, end, stride)))
+    return TILEDB_ERR;
+
+  return TILEDB_OK;
+}
+
 int32_t tiledb_query_get_range_var_size(
     tiledb_ctx_t* ctx,
     const tiledb_query_t* query,
@@ -3026,6 +3098,25 @@ int32_t tiledb_query_get_range_var_size(
   return TILEDB_OK;
 }
 
+int32_t tiledb_query_get_range_var_size_from_name(
+    tiledb_ctx_t* ctx,
+    const tiledb_query_t* query,
+    const char* dim_name,
+    uint64_t range_idx,
+    uint64_t* start_size,
+    uint64_t* end_size) {
+  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, query) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  if (SAVE_ERROR_CATCH(
+          ctx,
+          query->query_->get_range_var_size_from_name(
+              dim_name, range_idx, start_size, end_size)))
+    return TILEDB_ERR;
+
+  return TILEDB_OK;
+}
+
 int32_t tiledb_query_get_range_var(
     tiledb_ctx_t* ctx,
     const tiledb_query_t* query,
@@ -3038,6 +3129,25 @@ int32_t tiledb_query_get_range_var(
 
   if (SAVE_ERROR_CATCH(
           ctx, query->query_->get_range_var(dim_idx, range_idx, start, end)))
+    return TILEDB_ERR;
+
+  return TILEDB_OK;
+}
+
+int32_t tiledb_query_get_range_var_from_name(
+    tiledb_ctx_t* ctx,
+    const tiledb_query_t* query,
+    const char* dim_name,
+    uint64_t range_idx,
+    void* start,
+    void* end) {
+  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, query) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  if (SAVE_ERROR_CATCH(
+          ctx,
+          query->query_->get_range_var_from_name(
+              dim_name, range_idx, start, end)))
     return TILEDB_ERR;
 
   return TILEDB_OK;
