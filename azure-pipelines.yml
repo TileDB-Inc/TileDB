@@ -19,6 +19,7 @@ stages:
             imageName: 'ubuntu-16.04'
             TILEDB_S3: ON
             TILEDB_STATIC: OFF
+            TILEDB_TOOLS: ON
             CXX: g++
           linux_hdfs:
             imageName: 'ubuntu-16.04'

@@ -53,6 +53,12 @@ namespace cli {
 
 using namespace tiledb::sm;
 
+/** The thread pool for compute-bound tasks. */
+ThreadPool compute_tp_;
+
+/** The thread pool for io-bound tasks. */
+ThreadPool io_tp_;
+
 clipp::group InfoCommand::get_cli() {
   using namespace clipp;
   auto array_arg =
@@ -90,6 +96,9 @@ clipp::group InfoCommand::get_cli() {
 }
 
 void InfoCommand::run() {
+  io_tp_.init(std::thread::hardware_concurrency());
+  compute_tp_.init(std::thread::hardware_concurrency());
+
   switch (type_) {
     case InfoType::None:
       break;
@@ -109,7 +118,7 @@ void InfoCommand::run() {
 }
 
 void InfoCommand::print_tile_sizes() const {
-  StorageManager sm;
+  StorageManager sm(&compute_tp_, &io_tp_);
   THROW_NOT_OK(sm.init(nullptr));
 
   // Open the array
@@ -180,7 +189,7 @@ void InfoCommand::print_tile_sizes() const {
 }
 
 void InfoCommand::print_schema_info() const {
-  StorageManager sm;
+  StorageManager sm(&compute_tp_, &io_tp_);
   THROW_NOT_OK(sm.init(nullptr));
 
   // Open the array
@@ -196,7 +205,7 @@ void InfoCommand::print_schema_info() const {
 }
 
 void InfoCommand::write_svg_mbrs() const {
-  StorageManager sm;
+  StorageManager sm(&compute_tp_, &io_tp_);
   THROW_NOT_OK(sm.init(nullptr));
 
   // Open the array
@@ -270,7 +279,7 @@ void InfoCommand::write_svg_mbrs() const {
 }
 
 void InfoCommand::write_text_mbrs() const {
-  StorageManager sm;
+  StorageManager sm(&compute_tp_, &io_tp_);
   THROW_NOT_OK(sm.init(nullptr));
 
   // Open the array
@@ -279,11 +288,13 @@ void InfoCommand::write_text_mbrs() const {
   THROW_NOT_OK(
       array.open(QueryType::READ, EncryptionType::NO_ENCRYPTION, nullptr, 0));
 
+  auto encryption_key = array.encryption_key();
   const auto* schema = array.array_schema();
   auto dim_num = schema->dim_num();
   auto fragment_metadata = array.fragment_metadata();
   std::stringstream text;
   for (const auto& f : fragment_metadata) {
+    f->load_rtree(*encryption_key);
     const auto& mbrs = f->mbrs();
     for (const auto& mbr : mbrs) {
       auto str_mbr = mbr_to_string(mbr, schema->domain());
@@ -461,6 +472,10 @@ std::vector<std::string> InfoCommand::mbr_to_string(
   for (unsigned d = 0; d < dim_num; d++) {
     auto type = domain->dimension(d)->type();
     switch (type) {
+      case sm::Datatype::STRING_ASCII:
+        result.push_back(mbr[d].start_str());
+        result.push_back(mbr[d].end_str());
+        break;
       case Datatype::INT8:
         r8 = (const int8_t*)mbr[d].data();
         result.push_back(std::to_string(r8[0]));
