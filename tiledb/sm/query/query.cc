@@ -487,12 +487,14 @@ Status Query::get_buffer_vbytemap(
     uint64_t** buffer_val_size,
     uint8_t** buffer_validity_bytemap,
     uint64_t** buffer_validity_bytemap_size) const {
-  const ValidityVector* vv;
+  const ValidityVector* vv = nullptr;
   RETURN_NOT_OK(get_buffer(
       name, buffer_off, buffer_off_size, buffer_val, buffer_val_size, &vv));
 
-  *buffer_validity_bytemap = vv->bytemap();
-  *buffer_validity_bytemap_size = vv->bytemap_size();
+  if (vv != nullptr) {
+    *buffer_validity_bytemap = vv->bytemap();
+    *buffer_validity_bytemap_size = vv->bytemap_size();
+  }
 
   return Status::Ok();
 }
@@ -503,11 +505,13 @@ Status Query::get_buffer_vbytemap(
     uint64_t** buffer_size,
     uint8_t** buffer_validity_bytemap,
     uint64_t** buffer_validity_bytemap_size) const {
-  const ValidityVector* vv;
+  const ValidityVector* vv = nullptr;
   RETURN_NOT_OK(get_buffer(name, buffer, buffer_size, &vv));
 
-  *buffer_validity_bytemap = vv->bytemap();
-  *buffer_validity_bytemap_size = vv->bytemap_size();
+  if (vv != nullptr) {
+    *buffer_validity_bytemap = vv->bytemap();
+    *buffer_validity_bytemap_size = vv->bytemap_size();
+  }
 
   return Status::Ok();
 }

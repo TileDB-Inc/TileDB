@@ -178,6 +178,7 @@ Status attribute_to_capnp(
   attribute_builder->setName(attribute->name());
   attribute_builder->setType(datatype_str(attribute->type()));
   attribute_builder->setCellValNum(attribute->cell_val_num());
+  attribute_builder->setNullable(attribute->nullable());
 
   // Get the fill value from `attribute`.
   const void* fill_value;
@@ -192,6 +193,10 @@ Status attribute_to_capnp(
 
   // Store the fill value vector of bytes.
   attribute_builder->setFillValue(capnpFillValue.asPtr());
+
+  // Set the validity fill value.
+  attribute_builder->setFillValueValidity(
+      attribute->fill_value_validity() ? true : false);
 
   const auto& filters = attribute->filters();
   auto filter_pipeline_builder = attribute_builder->initFilterPipeline();
@@ -210,20 +215,35 @@ Status attribute_from_capnp(
   RETURN_NOT_OK(
       (*attribute)->set_cell_val_num(attribute_reader.getCellValNum()));
 
+  // Set nullable.
+  const bool nullable = attribute_reader.getNullable();
+  RETURN_NOT_OK((*attribute)->set_nullable(nullable));
+
   // Set the fill value.
   if (attribute_reader.hasFillValue()) {
     auto fill_value = attribute_reader.getFillValue();
-    (*attribute)
-        ->set_fill_value(fill_value.asBytes().begin(), fill_value.size());
+    if (nullable) {
+      (*attribute)
+          ->set_fill_value(
+              fill_value.asBytes().begin(),
+              fill_value.size(),
+              attribute_reader.getFillValueValidity());
+    } else {
+      (*attribute)
+          ->set_fill_value(fill_value.asBytes().begin(), fill_value.size());
+    }
   }
 
-  // Set filter pipelines
+  // Set filter pipelines.
   if (attribute_reader.hasFilterPipeline()) {
     auto filter_pipeline_reader = attribute_reader.getFilterPipeline();
     std::unique_ptr<FilterPipeline> filters;
     RETURN_NOT_OK(filter_pipeline_from_capnp(filter_pipeline_reader, &filters));
     RETURN_NOT_OK((*attribute)->set_filter_pipeline(filters.get()));
   }
+
+  // Set nullable.
+  RETURN_NOT_OK((*attribute)->set_nullable(attribute_reader.getNullable()));
 
   return Status::Ok();
 }
@@ -433,6 +453,14 @@ Status array_schema_to_capnp(
   RETURN_NOT_OK(
       filter_pipeline_to_capnp(&offsets_filters, &offsets_filters_builder));
 
+  // Set validity filters
+  const FilterPipeline& validity_filters =
+      array_schema->cell_validity_filters();
+  capnp::FilterPipeline::Builder validity_filters_builder =
+      array_schema_builder->initValidityFilterPipeline();
+  RETURN_NOT_OK(
+      filter_pipeline_to_capnp(&validity_filters, &validity_filters_builder));
+
   // Domain
   auto domain_builder = array_schema_builder->initDomain();
   RETURN_NOT_OK(domain_to_capnp(array_schema->domain(), &domain_builder));
@@ -494,6 +522,15 @@ Status array_schema_from_capnp(
     RETURN_NOT_OK(filter_pipeline_from_capnp(reader, &filters));
     RETURN_NOT_OK(
         (*array_schema)->set_cell_var_offsets_filter_pipeline(filters.get()));
+  }
+
+  // Set validity filter pipelines
+  if (schema_reader.hasValidityFilterPipeline()) {
+    auto reader = schema_reader.getValidityFilterPipeline();
+    std::unique_ptr<FilterPipeline> filters;
+    RETURN_NOT_OK(filter_pipeline_from_capnp(reader, &filters));
+    RETURN_NOT_OK(
+        (*array_schema)->set_cell_validity_filter_pipeline(filters.get()));
   }
 
   // Set attributes

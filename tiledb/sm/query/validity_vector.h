@@ -53,7 +53,7 @@ class ValidityVector {
   /** Default constructor. */
   ValidityVector()
       : buffer_(nullptr)
-      , buffer_size_(0) {
+      , buffer_size_(nullptr) {
   }
 
   /** Copy constructor. */

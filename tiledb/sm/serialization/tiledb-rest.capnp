@@ -62,6 +62,9 @@ struct ArraySchema {
     allowsDuplicates @10 :Bool;
     # True if the array allows coordinate duplicates.
     # Applicable only to sparse arrays.
+
+    validityFilterPipeline @11 :FilterPipeline;
+    # Type of compression for validity buffers (enum)
 }
 
 struct Attribute {
@@ -80,6 +83,12 @@ struct Attribute {
 
     fillValue @4 :Data;
     # Default fill value
+
+    nullable @5 :Bool;
+    # Is attribute nullable
+
+    fillValueValidity @6 :Bool;
+    # Default validity fill value for nullable attributes
 }
 
 struct AttributeBufferHeader {
@@ -93,6 +102,9 @@ struct AttributeBufferHeader {
 
     varLenBufferSizeInBytes @2 :UInt64;
     # Number of bytes in the var-length attribute data buffer
+
+    validityLenBufferSizeInBytes @3 :UInt64;
+    # Number of bytes in the validity data buffer
 }
 
 struct Dimension {
@@ -275,6 +287,9 @@ struct SubarrayPartitioner {
 
   memoryBudgetVar @5 :UInt64;
   # The memory budget for the var-sized attributes
+
+  memoryBudgetValidity @6 :UInt64;
+  # The memory budget for the validity buffers
 }
 
 struct ReadState {
@@ -337,6 +352,9 @@ struct Query {
 
     totalVarLenBufferBytes @8: UInt64;
     # Total number of bytes in variable size attribute buffers
+
+    totalValidityBufferBytes @9: UInt64;
+    # Total number of bytes in validity buffers
 }
 
 struct NonEmptyDomain {
@@ -368,6 +386,9 @@ struct AttributeBufferSize {
 
   dataBytes @2: UInt64;
   # size (in bytes) of data buffer
+
+  validityBytes @3: UInt64;
+  # size (in bytes) of data buffer
 }
 
 struct MaxBufferSizes {
@@ -396,12 +417,14 @@ struct EstimatedResultSize {
     # Result size 
     sizeFixed @0 :Float64;
     sizeVar @1 :Float64;
+    sizeValidity @2 :Float64;
   }
   
   struct MemorySize {
     # Memory Size
     sizeFixed @0 :UInt64;
     sizeVar @1 :UInt64;
+    sizeValidity @2 :UInt64;
   }
 
   resultSizes @0 :Map(Text, ResultSize);
