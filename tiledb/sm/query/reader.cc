@@ -2566,6 +2566,9 @@ Status Reader::init_read_state() {
         Status::ReaderError("Cannot initialize reader; Unsupported offsets "
                             "format in configuration"));
   }
+  RETURN_NOT_OK(config.get<bool>(
+      "sm.var_offsets.extra_element", &offsets_extra_element_, &found));
+  assert(found);
 
   // Consider the validity memory budget to be identical to `sm.memory_budget`
   // because the validity vector is currently a bytemap. When converted to a
@@ -3047,6 +3050,10 @@ Status Reader::sparse_read() {
   RETURN_NOT_OK(
       copy_attribute_values(UINT64_MAX, result_tiles, result_cell_slabs));
 
+  if (offsets_extra_element_) {
+    RETURN_NOT_OK(add_extra_offset());
+  }
+
   return Status::Ok();
 }
 
@@ -3101,6 +3108,40 @@ Status Reader::copy_coordinates(
   return Status::Ok();
 
   STATS_END_TIMER(stats::Stats::TimerType::READ_COPY_COORDS);
+}
+
+Status Reader::add_extra_offset() {
+  for (const auto& it : buffers_) {
+    const auto& name = it.first;
+    // TODO: keep that check?
+    if (read_state_.overflowed_)
+      break;
+
+    if (!array_schema_->is_attr(name) || !array_schema_->var_size(name))
+      continue;
+
+    if (*it.second.buffer_size_ >= it.second.original_buffer_size_) {
+      // error out for now
+      return LOG_STATUS(Status::ReaderError(
+          "Not enough memory in user buffer for extra element"));
+    }
+
+    auto buffer = (unsigned char*)it.second.buffer_;
+    if (offsets_format_mode_ == "bytes") {
+      memcpy(
+          buffer + *it.second.buffer_size_,
+          it.second.buffer_var_size_,
+          sizeof(uint64_t));
+    } else {
+      auto elements = *it.second.buffer_var_size_ /
+                      datatype_size(array_schema_->type(name));
+      memcpy(buffer + *it.second.buffer_size_, &elements, sizeof(uint64_t));
+    }
+
+    *it.second.buffer_size_ += sizeof(uint64_t);
+  }
+
+  return Status::Ok();
 }
 
 Status Reader::copy_attribute_values(

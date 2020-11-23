@@ -916,6 +916,12 @@ class Reader {
   /** The offset format used for variable-sized attributes. */
   std::string offsets_format_mode_;
 
+  /**
+   * If `true`, an extra element that points to the end of the values buffer
+   * will be added in the end of the offsets buffer of var-sized attributes
+   */
+  bool offsets_extra_element_;
+
   /** Protects result tiles. */
   mutable std::mutex result_tiles_mutex_;
 
@@ -1653,6 +1659,9 @@ class Reader {
   Status copy_coordinates(
       const std::vector<ResultTile*>& result_tiles,
       const std::vector<ResultCellSlab>& result_cell_slabs);
+
+  // TODO: add docstring
+  Status add_extra_offset();
 
   /**
    * Copies the result attribute values to the user buffers.
