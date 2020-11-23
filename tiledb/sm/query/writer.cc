@@ -353,9 +353,14 @@ void Writer::set_array_schema(const ArraySchema* array_schema) {
 Status Writer::set_buffer(
     const std::string& name, void* const buffer, uint64_t* const buffer_size) {
   // Check buffer
-  if (buffer == nullptr || buffer_size == nullptr)
+  if (buffer == nullptr)
+    return LOG_STATUS(
+        Status::WriterError("Cannot set buffer; " + name + " buffer is null"));
+
+  // Check buffer size
+  if (buffer_size == nullptr)
     return LOG_STATUS(Status::WriterError(
-        "Cannot set buffer; Buffer or buffer size is null"));
+        "Cannot set buffer; " + name + " buffer size is null"));
 
   // Array schema must exist
   if (array_schema_ == nullptr)
@@ -429,10 +434,24 @@ Status Writer::set_buffer(
     void* const buffer_val,
     uint64_t* const buffer_val_size) {
   // Check buffer
-  if (buffer_off == nullptr || buffer_off_size == nullptr ||
-      buffer_val == nullptr || buffer_val_size == nullptr)
+  if (buffer_val == nullptr)
+    return LOG_STATUS(
+        Status::WriterError("Cannot set buffer; " + name + " buffer is null"));
+
+  // Check buffer size
+  if (buffer_val_size == nullptr)
     return LOG_STATUS(Status::WriterError(
-        "Cannot set buffer; Buffer or buffer size is null"));
+        "Cannot set buffer; " + name + " buffer size is null"));
+
+  // Check offset buffer
+  if (buffer_off == nullptr)
+    return LOG_STATUS(Status::WriterError(
+        "Cannot set buffer; " + name + " offset buffer is null"));
+
+  // Check offset buffer size
+  if (buffer_off_size == nullptr)
+    return LOG_STATUS(Status::WriterError(
+        "Cannot set buffer; " + name + " offset buffer size is null"));
 
   // Array schema must exist
   if (array_schema_ == nullptr)
@@ -496,9 +515,24 @@ Status Writer::set_buffer(
     uint64_t* const buffer_size,
     ValidityVector&& validity_vector) {
   // Check buffer
-  if (buffer == nullptr || buffer_size == nullptr)
+  if (buffer == nullptr)
+    return LOG_STATUS(
+        Status::WriterError("Cannot set buffer; " + name + " buffer is null"));
+
+  // Check buffer size
+  if (buffer_size == nullptr)
     return LOG_STATUS(Status::WriterError(
-        "Cannot set buffer; Buffer or buffer size is null"));
+        "Cannot set buffer; " + name + " buffer size is null"));
+
+  // Check validity buffer
+  if (validity_vector.buffer() == nullptr)
+    return LOG_STATUS(Status::WriterError(
+        "Cannot set buffer; " + name + " validity buffer is null"));
+
+  // Check validity buffer size
+  if (validity_vector.buffer_size() == nullptr)
+    return LOG_STATUS(Status::WriterError(
+        "Cannot set buffer; " + name + " validity buffer size is null"));
 
   // Array schema must exist
   if (array_schema_ == nullptr)
@@ -545,10 +579,34 @@ Status Writer::set_buffer(
     uint64_t* const buffer_val_size,
     ValidityVector&& validity_vector) {
   // Check buffer
-  if (buffer_off == nullptr || buffer_off_size == nullptr ||
-      buffer_val == nullptr || buffer_val_size == nullptr)
+  if (buffer_val == nullptr)
+    return LOG_STATUS(
+        Status::WriterError("Cannot set buffer; " + name + " buffer is null"));
+
+  // Check buffer size
+  if (buffer_val_size == nullptr)
     return LOG_STATUS(Status::WriterError(
-        "Cannot set buffer; Buffer or buffer size is null"));
+        "Cannot set buffer; " + name + " buffer size is null"));
+
+  // Check offset buffer
+  if (buffer_off == nullptr)
+    return LOG_STATUS(Status::WriterError(
+        "Cannot set buffer; " + name + " offset buffer is null"));
+
+  // Check offset buffer size
+  if (buffer_off_size == nullptr)
+    return LOG_STATUS(Status::WriterError(
+        "Cannot set buffer; " + name + " offset buffer size is null"));
+
+  // Check validity buffer
+  if (validity_vector.buffer() == nullptr)
+    return LOG_STATUS(Status::WriterError(
+        "Cannot set buffer; " + name + " validity buffer is null"));
+
+  // Check validity buffer size
+  if (validity_vector.buffer_size() == nullptr)
+    return LOG_STATUS(Status::WriterError(
+        "Cannot set buffer; " + name + " validity buffer size is null"));
 
   // Array schema must exist
   if (array_schema_ == nullptr)
