@@ -101,7 +101,7 @@ struct ArraySchema {
   class Pipeline;
 
   struct _capnpPrivate {
-    CAPNP_DECLARE_STRUCT_HEADER(d71de32f98e296fe, 2, 9)
+    CAPNP_DECLARE_STRUCT_HEADER(d71de32f98e296fe, 2, 10)
 #if !CAPNP_LITE
     static constexpr ::capnp::_::RawBrandedSchema const* brand() {
       return &schema->defaultBrand;
@@ -135,7 +135,7 @@ struct AttributeBufferHeader {
   class Pipeline;
 
   struct _capnpPrivate {
-    CAPNP_DECLARE_STRUCT_HEADER(d20a578112fa92a2, 2, 1)
+    CAPNP_DECLARE_STRUCT_HEADER(d20a578112fa92a2, 3, 1)
 #if !CAPNP_LITE
     static constexpr ::capnp::_::RawBrandedSchema const* brand() {
       return &schema->defaultBrand;
@@ -468,7 +468,7 @@ struct SubarrayPartitioner {
   struct State;
 
   struct _capnpPrivate {
-    CAPNP_DECLARE_STRUCT_HEADER(ff14003c70494585, 2, 4)
+    CAPNP_DECLARE_STRUCT_HEADER(ff14003c70494585, 3, 4)
 #if !CAPNP_LITE
     static constexpr ::capnp::_::RawBrandedSchema const* brand() {
       return &schema->defaultBrand;
@@ -553,7 +553,7 @@ struct Query {
   class Pipeline;
 
   struct _capnpPrivate {
-    CAPNP_DECLARE_STRUCT_HEADER(96ba49d0f8b23ccc, 2, 7)
+    CAPNP_DECLARE_STRUCT_HEADER(96ba49d0f8b23ccc, 3, 7)
 #if !CAPNP_LITE
     static constexpr ::capnp::_::RawBrandedSchema const* brand() {
       return &schema->defaultBrand;
@@ -604,7 +604,7 @@ struct AttributeBufferSize {
   class Pipeline;
 
   struct _capnpPrivate {
-    CAPNP_DECLARE_STRUCT_HEADER(9be1921b07e6cd2d, 2, 1)
+    CAPNP_DECLARE_STRUCT_HEADER(9be1921b07e6cd2d, 3, 1)
 #if !CAPNP_LITE
     static constexpr ::capnp::_::RawBrandedSchema const* brand() {
       return &schema->defaultBrand;
@@ -692,7 +692,7 @@ struct EstimatedResultSize::ResultSize {
   class Pipeline;
 
   struct _capnpPrivate {
-    CAPNP_DECLARE_STRUCT_HEADER(92c8467685565269, 2, 0)
+    CAPNP_DECLARE_STRUCT_HEADER(92c8467685565269, 3, 0)
 #if !CAPNP_LITE
     static constexpr ::capnp::_::RawBrandedSchema const* brand() {
       return &schema->defaultBrand;
@@ -709,7 +709,7 @@ struct EstimatedResultSize::MemorySize {
   class Pipeline;
 
   struct _capnpPrivate {
-    CAPNP_DECLARE_STRUCT_HEADER(bda7916926591c22, 2, 0)
+    CAPNP_DECLARE_STRUCT_HEADER(bda7916926591c22, 3, 0)
 #if !CAPNP_LITE
     static constexpr ::capnp::_::RawBrandedSchema const* brand() {
       return &schema->defaultBrand;
@@ -1082,6 +1082,10 @@ class ArraySchema::Reader {
 
   inline bool getAllowsDuplicates() const;
 
+  inline bool hasValidityFilterPipeline() const;
+  inline ::tiledb::sm::serialization::capnp::FilterPipeline::Reader
+  getValidityFilterPipeline() const;
+
  private:
   ::capnp::_::StructReader _reader;
   template <typename, ::capnp::Kind>
@@ -1215,6 +1219,19 @@ class ArraySchema::Builder {
   inline bool getAllowsDuplicates();
   inline void setAllowsDuplicates(bool value);
 
+  inline bool hasValidityFilterPipeline();
+  inline ::tiledb::sm::serialization::capnp::FilterPipeline::Builder
+  getValidityFilterPipeline();
+  inline void setValidityFilterPipeline(
+      ::tiledb::sm::serialization::capnp::FilterPipeline::Reader value);
+  inline ::tiledb::sm::serialization::capnp::FilterPipeline::Builder
+  initValidityFilterPipeline();
+  inline void adoptValidityFilterPipeline(
+      ::capnp::Orphan<::tiledb::sm::serialization::capnp::FilterPipeline>&&
+          value);
+  inline ::capnp::Orphan<::tiledb::sm::serialization::capnp::FilterPipeline>
+  disownValidityFilterPipeline();
+
  private:
   ::capnp::_::StructBuilder _builder;
   template <typename, ::capnp::Kind>
@@ -1241,6 +1258,8 @@ class ArraySchema::Pipeline {
   inline ::tiledb::sm::serialization::capnp::Domain::Pipeline getDomain();
   inline ::tiledb::sm::serialization::capnp::FilterPipeline::Pipeline
   getOffsetFilterPipeline();
+  inline ::tiledb::sm::serialization::capnp::FilterPipeline::Pipeline
+  getValidityFilterPipeline();
 
  private:
   ::capnp::AnyPointer::Pipeline _typeless;
@@ -1283,6 +1302,8 @@ class Attribute::Reader {
 
   inline bool hasFillValue() const;
   inline ::capnp::Data::Reader getFillValue() const;
+
+  inline bool getNullable() const;
 
  private:
   ::capnp::_::StructReader _reader;
@@ -1360,6 +1381,9 @@ class Attribute::Builder {
   inline void adoptFillValue(::capnp::Orphan<::capnp::Data>&& value);
   inline ::capnp::Orphan<::capnp::Data> disownFillValue();
 
+  inline bool getNullable();
+  inline void setNullable(bool value);
+
  private:
   ::capnp::_::StructBuilder _builder;
   template <typename, ::capnp::Kind>
@@ -1418,6 +1442,8 @@ class AttributeBufferHeader::Reader {
 
   inline ::uint64_t getVarLenBufferSizeInBytes() const;
 
+  inline ::uint64_t getValidityLenBufferSizeInBytes() const;
+
  private:
   ::capnp::_::StructReader _reader;
   template <typename, ::capnp::Kind>
@@ -1469,6 +1495,9 @@ class AttributeBufferHeader::Builder {
 
   inline ::uint64_t getVarLenBufferSizeInBytes();
   inline void setVarLenBufferSizeInBytes(::uint64_t value);
+
+  inline ::uint64_t getValidityLenBufferSizeInBytes();
+  inline void setValidityLenBufferSizeInBytes(::uint64_t value);
 
  private:
   ::capnp::_::StructBuilder _builder;
@@ -3558,6 +3587,8 @@ class SubarrayPartitioner::Reader {
 
   inline ::uint64_t getMemoryBudgetVar() const;
 
+  inline ::uint64_t getMemoryBudgetValidity() const;
+
  private:
   ::capnp::_::StructReader _reader;
   template <typename, ::capnp::Kind>
@@ -3661,6 +3692,9 @@ class SubarrayPartitioner::Builder {
 
   inline ::uint64_t getMemoryBudgetVar();
   inline void setMemoryBudgetVar(::uint64_t value);
+
+  inline ::uint64_t getMemoryBudgetValidity();
+  inline void setMemoryBudgetValidity(::uint64_t value);
 
  private:
   ::capnp::_::StructBuilder _builder;
@@ -4250,6 +4284,8 @@ class Query::Reader {
 
   inline ::uint64_t getTotalVarLenBufferBytes() const;
 
+  inline ::uint64_t getTotalValidityBufferBytes() const;
+
  private:
   ::capnp::_::StructReader _reader;
   template <typename, ::capnp::Kind>
@@ -4361,6 +4397,9 @@ class Query::Builder {
 
   inline ::uint64_t getTotalVarLenBufferBytes();
   inline void setTotalVarLenBufferBytes(::uint64_t value);
+
+  inline ::uint64_t getTotalValidityBufferBytes();
+  inline void setTotalValidityBufferBytes(::uint64_t value);
 
  private:
   ::capnp::_::StructBuilder _builder;
@@ -4653,6 +4692,8 @@ class AttributeBufferSize::Reader {
 
   inline ::uint64_t getDataBytes() const;
 
+  inline ::uint64_t getValidityBytes() const;
+
  private:
   ::capnp::_::StructReader _reader;
   template <typename, ::capnp::Kind>
@@ -4704,6 +4745,9 @@ class AttributeBufferSize::Builder {
 
   inline ::uint64_t getDataBytes();
   inline void setDataBytes(::uint64_t value);
+
+  inline ::uint64_t getValidityBytes();
+  inline void setValidityBytes(::uint64_t value);
 
  private:
   ::capnp::_::StructBuilder _builder;
@@ -5267,6 +5311,8 @@ class EstimatedResultSize::ResultSize::Reader {
 
   inline double getSizeVar() const;
 
+  inline double getSizeValidity() const;
+
  private:
   ::capnp::_::StructReader _reader;
   template <typename, ::capnp::Kind>
@@ -5311,6 +5357,9 @@ class EstimatedResultSize::ResultSize::Builder {
 
   inline double getSizeVar();
   inline void setSizeVar(double value);
+
+  inline double getSizeValidity();
+  inline void setSizeValidity(double value);
 
  private:
   ::capnp::_::StructBuilder _builder;
@@ -5364,6 +5413,8 @@ class EstimatedResultSize::MemorySize::Reader {
 
   inline ::uint64_t getSizeVar() const;
 
+  inline ::uint64_t getSizeValidity() const;
+
  private:
   ::capnp::_::StructReader _reader;
   template <typename, ::capnp::Kind>
@@ -5408,6 +5459,9 @@ class EstimatedResultSize::MemorySize::Builder {
 
   inline ::uint64_t getSizeVar();
   inline void setSizeVar(::uint64_t value);
+
+  inline ::uint64_t getSizeValidity();
+  inline void setSizeValidity(::uint64_t value);
 
  private:
   ::capnp::_::StructBuilder _builder;
@@ -6433,6 +6487,62 @@ inline void ArraySchema::Builder::setAllowsDuplicates(bool value) {
       ::capnp::bounded<64>() * ::capnp::ELEMENTS, value);
 }
 
+inline bool ArraySchema::Reader::hasValidityFilterPipeline() const {
+  return !_reader.getPointerField(::capnp::bounded<9>() * ::capnp::POINTERS)
+              .isNull();
+}
+inline bool ArraySchema::Builder::hasValidityFilterPipeline() {
+  return !_builder.getPointerField(::capnp::bounded<9>() * ::capnp::POINTERS)
+              .isNull();
+}
+inline ::tiledb::sm::serialization::capnp::FilterPipeline::Reader
+ArraySchema::Reader::getValidityFilterPipeline() const {
+  return ::capnp::_::
+      PointerHelpers<::tiledb::sm::serialization::capnp::FilterPipeline>::get(
+          _reader.getPointerField(::capnp::bounded<9>() * ::capnp::POINTERS));
+}
+inline ::tiledb::sm::serialization::capnp::FilterPipeline::Builder
+ArraySchema::Builder::getValidityFilterPipeline() {
+  return ::capnp::_::
+      PointerHelpers<::tiledb::sm::serialization::capnp::FilterPipeline>::get(
+          _builder.getPointerField(::capnp::bounded<9>() * ::capnp::POINTERS));
+}
+#if !CAPNP_LITE
+inline ::tiledb::sm::serialization::capnp::FilterPipeline::Pipeline
+ArraySchema::Pipeline::getValidityFilterPipeline() {
+  return ::tiledb::sm::serialization::capnp::FilterPipeline::Pipeline(
+      _typeless.getPointerField(9));
+}
+#endif  // !CAPNP_LITE
+inline void ArraySchema::Builder::setValidityFilterPipeline(
+    ::tiledb::sm::serialization::capnp::FilterPipeline::Reader value) {
+  ::capnp::_::
+      PointerHelpers<::tiledb::sm::serialization::capnp::FilterPipeline>::set(
+          _builder.getPointerField(::capnp::bounded<9>() * ::capnp::POINTERS),
+          value);
+}
+inline ::tiledb::sm::serialization::capnp::FilterPipeline::Builder
+ArraySchema::Builder::initValidityFilterPipeline() {
+  return ::capnp::_::
+      PointerHelpers<::tiledb::sm::serialization::capnp::FilterPipeline>::init(
+          _builder.getPointerField(::capnp::bounded<9>() * ::capnp::POINTERS));
+}
+inline void ArraySchema::Builder::adoptValidityFilterPipeline(
+    ::capnp::Orphan<::tiledb::sm::serialization::capnp::FilterPipeline>&&
+        value) {
+  ::capnp::_::
+      PointerHelpers<::tiledb::sm::serialization::capnp::FilterPipeline>::adopt(
+          _builder.getPointerField(::capnp::bounded<9>() * ::capnp::POINTERS),
+          kj::mv(value));
+}
+inline ::capnp::Orphan<::tiledb::sm::serialization::capnp::FilterPipeline>
+ArraySchema::Builder::disownValidityFilterPipeline() {
+  return ::capnp::_::PointerHelpers<
+      ::tiledb::sm::serialization::capnp::FilterPipeline>::
+      disown(
+          _builder.getPointerField(::capnp::bounded<9>() * ::capnp::POINTERS));
+}
+
 inline ::uint32_t Attribute::Reader::getCellValNum() const {
   return _reader.getDataField<::uint32_t>(
       ::capnp::bounded<0>() * ::capnp::ELEMENTS);
@@ -6615,6 +6725,19 @@ inline ::capnp::Orphan<::capnp::Data> Attribute::Builder::disownFillValue() {
       _builder.getPointerField(::capnp::bounded<3>() * ::capnp::POINTERS));
 }
 
+inline bool Attribute::Reader::getNullable() const {
+  return _reader.getDataField<bool>(::capnp::bounded<32>() * ::capnp::ELEMENTS);
+}
+
+inline bool Attribute::Builder::getNullable() {
+  return _builder.getDataField<bool>(
+      ::capnp::bounded<32>() * ::capnp::ELEMENTS);
+}
+inline void Attribute::Builder::setNullable(bool value) {
+  _builder.setDataField<bool>(
+      ::capnp::bounded<32>() * ::capnp::ELEMENTS, value);
+}
+
 inline bool AttributeBufferHeader::Reader::hasName() const {
   return !_reader.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS)
               .isNull();
@@ -6686,6 +6809,23 @@ inline void AttributeBufferHeader::Builder::setVarLenBufferSizeInBytes(
     ::uint64_t value) {
   _builder.setDataField<::uint64_t>(
       ::capnp::bounded<1>() * ::capnp::ELEMENTS, value);
+}
+
+inline ::uint64_t
+AttributeBufferHeader::Reader::getValidityLenBufferSizeInBytes() const {
+  return _reader.getDataField<::uint64_t>(
+      ::capnp::bounded<2>() * ::capnp::ELEMENTS);
+}
+
+inline ::uint64_t
+AttributeBufferHeader::Builder::getValidityLenBufferSizeInBytes() {
+  return _builder.getDataField<::uint64_t>(
+      ::capnp::bounded<2>() * ::capnp::ELEMENTS);
+}
+inline void AttributeBufferHeader::Builder::setValidityLenBufferSizeInBytes(
+    ::uint64_t value) {
+  _builder.setDataField<::uint64_t>(
+      ::capnp::bounded<2>() * ::capnp::ELEMENTS, value);
 }
 
 inline bool Dimension::Reader::hasName() const {
@@ -9096,6 +9236,21 @@ inline void SubarrayPartitioner::Builder::setMemoryBudgetVar(::uint64_t value) {
       ::capnp::bounded<1>() * ::capnp::ELEMENTS, value);
 }
 
+inline ::uint64_t SubarrayPartitioner::Reader::getMemoryBudgetValidity() const {
+  return _reader.getDataField<::uint64_t>(
+      ::capnp::bounded<2>() * ::capnp::ELEMENTS);
+}
+
+inline ::uint64_t SubarrayPartitioner::Builder::getMemoryBudgetValidity() {
+  return _builder.getDataField<::uint64_t>(
+      ::capnp::bounded<2>() * ::capnp::ELEMENTS);
+}
+inline void SubarrayPartitioner::Builder::setMemoryBudgetValidity(
+    ::uint64_t value) {
+  _builder.setDataField<::uint64_t>(
+      ::capnp::bounded<2>() * ::capnp::ELEMENTS, value);
+}
+
 inline bool SubarrayPartitioner::PartitionInfo::Reader::hasSubarray() const {
   return !_reader.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS)
               .isNull();
@@ -9912,6 +10067,20 @@ inline void Query::Builder::setTotalVarLenBufferBytes(::uint64_t value) {
       ::capnp::bounded<1>() * ::capnp::ELEMENTS, value);
 }
 
+inline ::uint64_t Query::Reader::getTotalValidityBufferBytes() const {
+  return _reader.getDataField<::uint64_t>(
+      ::capnp::bounded<2>() * ::capnp::ELEMENTS);
+}
+
+inline ::uint64_t Query::Builder::getTotalValidityBufferBytes() {
+  return _builder.getDataField<::uint64_t>(
+      ::capnp::bounded<2>() * ::capnp::ELEMENTS);
+}
+inline void Query::Builder::setTotalValidityBufferBytes(::uint64_t value) {
+  _builder.setDataField<::uint64_t>(
+      ::capnp::bounded<2>() * ::capnp::ELEMENTS, value);
+}
+
 inline bool NonEmptyDomain::Reader::hasNonEmptyDomain() const {
   return !_reader.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS)
               .isNull();
@@ -10146,6 +10315,20 @@ inline ::uint64_t AttributeBufferSize::Builder::getDataBytes() {
 inline void AttributeBufferSize::Builder::setDataBytes(::uint64_t value) {
   _builder.setDataField<::uint64_t>(
       ::capnp::bounded<1>() * ::capnp::ELEMENTS, value);
+}
+
+inline ::uint64_t AttributeBufferSize::Reader::getValidityBytes() const {
+  return _reader.getDataField<::uint64_t>(
+      ::capnp::bounded<2>() * ::capnp::ELEMENTS);
+}
+
+inline ::uint64_t AttributeBufferSize::Builder::getValidityBytes() {
+  return _builder.getDataField<::uint64_t>(
+      ::capnp::bounded<2>() * ::capnp::ELEMENTS);
+}
+inline void AttributeBufferSize::Builder::setValidityBytes(::uint64_t value) {
+  _builder.setDataField<::uint64_t>(
+      ::capnp::bounded<2>() * ::capnp::ELEMENTS, value);
 }
 
 inline bool MaxBufferSizes::Reader::hasMaxBufferSizes() const {
@@ -10610,6 +10793,21 @@ inline void EstimatedResultSize::ResultSize::Builder::setSizeVar(double value) {
       ::capnp::bounded<1>() * ::capnp::ELEMENTS, value);
 }
 
+inline double EstimatedResultSize::ResultSize::Reader::getSizeValidity() const {
+  return _reader.getDataField<double>(
+      ::capnp::bounded<2>() * ::capnp::ELEMENTS);
+}
+
+inline double EstimatedResultSize::ResultSize::Builder::getSizeValidity() {
+  return _builder.getDataField<double>(
+      ::capnp::bounded<2>() * ::capnp::ELEMENTS);
+}
+inline void EstimatedResultSize::ResultSize::Builder::setSizeValidity(
+    double value) {
+  _builder.setDataField<double>(
+      ::capnp::bounded<2>() * ::capnp::ELEMENTS, value);
+}
+
 inline ::uint64_t EstimatedResultSize::MemorySize::Reader::getSizeFixed()
     const {
   return _reader.getDataField<::uint64_t>(
@@ -10639,6 +10837,22 @@ inline void EstimatedResultSize::MemorySize::Builder::setSizeVar(
     ::uint64_t value) {
   _builder.setDataField<::uint64_t>(
       ::capnp::bounded<1>() * ::capnp::ELEMENTS, value);
+}
+
+inline ::uint64_t EstimatedResultSize::MemorySize::Reader::getSizeValidity()
+    const {
+  return _reader.getDataField<::uint64_t>(
+      ::capnp::bounded<2>() * ::capnp::ELEMENTS);
+}
+
+inline ::uint64_t EstimatedResultSize::MemorySize::Builder::getSizeValidity() {
+  return _builder.getDataField<::uint64_t>(
+      ::capnp::bounded<2>() * ::capnp::ELEMENTS);
+}
+inline void EstimatedResultSize::MemorySize::Builder::setSizeValidity(
+    ::uint64_t value) {
+  _builder.setDataField<::uint64_t>(
+      ::capnp::bounded<2>() * ::capnp::ELEMENTS, value);
 }
 
 }  // namespace capnp

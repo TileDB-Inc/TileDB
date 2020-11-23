@@ -178,13 +178,18 @@ Status subarray_partitioner_to_capnp(
       const std::string& name = pair.first;
       auto budget_builder = mem_budgets_builder[idx];
       budget_builder.setAttribute(name);
-      if (name == constants::coords || !schema->var_size(name)) {
+      auto var_size = schema->var_size(name);
+
+      if (name == constants::coords || !var_size) {
         budget_builder.setOffsetBytes(0);
         budget_builder.setDataBytes(pair.second.size_fixed_);
       } else {
         budget_builder.setOffsetBytes(pair.second.size_fixed_);
         budget_builder.setDataBytes(pair.second.size_var_);
       }
+
+      budget_builder.setValidityBytes(pair.second.size_validity_);
+
       idx++;
     }
   }
@@ -230,6 +235,7 @@ Status subarray_partitioner_to_capnp(
       &mem_budget, &mem_budget_var, &mem_budget_validity));
   builder->setMemoryBudget(mem_budget);
   builder->setMemoryBudgetVar(mem_budget_var);
+  builder->setMemoryBudgetValidity(mem_budget_validity);
 
   return Status::Ok();
 }
@@ -271,14 +277,32 @@ Status subarray_partitioner_from_capnp(
     for (size_t i = 0; i < num_attrs; i++) {
       auto mem_budget_reader = mem_budgets_reader[i];
       std::string attr_name = mem_budget_reader.getAttribute();
-      if (attr_name == constants::coords || !schema->var_size(attr_name)) {
-        RETURN_NOT_OK(partitioner->set_result_budget(
-            attr_name.c_str(), mem_budget_reader.getDataBytes()));
+      auto var_size = schema->var_size(attr_name);
+      auto nullable = schema->is_nullable(attr_name);
+
+      if (attr_name == constants::coords || !var_size) {
+        if (nullable) {
+          RETURN_NOT_OK(partitioner->set_result_budget_nullable(
+              attr_name.c_str(),
+              mem_budget_reader.getDataBytes(),
+              mem_budget_reader.getValidityBytes()));
+        } else {
+          RETURN_NOT_OK(partitioner->set_result_budget(
+              attr_name.c_str(), mem_budget_reader.getDataBytes()));
+        }
       } else {
-        RETURN_NOT_OK(partitioner->set_result_budget(
-            attr_name.c_str(),
-            mem_budget_reader.getOffsetBytes(),
-            mem_budget_reader.getDataBytes()));
+        if (nullable) {
+          RETURN_NOT_OK(partitioner->set_result_budget_nullable(
+              attr_name.c_str(),
+              mem_budget_reader.getOffsetBytes(),
+              mem_budget_reader.getDataBytes(),
+              mem_budget_reader.getValidityBytes()));
+        } else {
+          RETURN_NOT_OK(partitioner->set_result_budget(
+              attr_name.c_str(),
+              mem_budget_reader.getOffsetBytes(),
+              mem_budget_reader.getDataBytes()));
+        }
       }
     }
   }
@@ -320,7 +344,9 @@ Status subarray_partitioner_from_capnp(
 
   // Overall mem budget
   RETURN_NOT_OK(partitioner->set_memory_budget(
-      reader.getMemoryBudget(), reader.getMemoryBudgetVar(), 0));
+      reader.getMemoryBudget(),
+      reader.getMemoryBudgetVar(),
+      reader.getMemoryBudgetValidity()));
 
   return Status::Ok();
 }
@@ -489,6 +515,7 @@ Status query_to_capnp(
       query_builder->initAttributeBufferHeaders(buffer_names.size());
   uint64_t total_fixed_len_bytes = 0;
   uint64_t total_var_len_bytes = 0;
+  uint64_t total_validity_len_bytes = 0;
   for (uint64_t i = 0; i < buffer_names.size(); i++) {
     auto attr_buffer_builder = attr_buffers_builder[i];
     const auto& name = buffer_names[i];
@@ -508,10 +535,17 @@ Status query_to_capnp(
     } else {
       assert(false);
     }
+
+    if (buff.validity_vector_.buffer_size() != nullptr) {
+      total_validity_len_bytes += *buff.validity_vector_.buffer_size();
+      attr_buffer_builder.setValidityLenBufferSizeInBytes(
+          *buff.validity_vector_.buffer_size());
+    }
   }
 
   query_builder->setTotalFixedLengthBufferBytes(total_fixed_len_bytes);
   query_builder->setTotalVarLenBufferBytes(total_var_len_bytes);
+  query_builder->setTotalValidityBufferBytes(total_validity_len_bytes);
 
   if (type == QueryType::READ) {
     auto builder = query_builder->initReader();
@@ -581,6 +615,8 @@ Status query_from_capnp(
     // Get buffer sizes required
     const uint64_t fixedlen_size = buffer_header.getFixedLenBufferSizeInBytes();
     const uint64_t varlen_size = buffer_header.getVarLenBufferSizeInBytes();
+    const uint64_t validitylen_size =
+        buffer_header.getValidityLenBufferSizeInBytes();
 
     // Get current copy state for the attribute (contains destination offsets
     // for memcpy into user buffers).
@@ -593,18 +629,41 @@ Status query_from_capnp(
     uint64_t* existing_offset_buffer_size = nullptr;
     void* existing_buffer = nullptr;
     uint64_t* existing_buffer_size = nullptr;
+    uint8_t* existing_validity_buffer = nullptr;
+    uint64_t* existing_validity_buffer_size = nullptr;
 
     auto var_size = schema->var_size(name);
+    auto nullable = schema->is_nullable(name);
     if (var_size) {
-      RETURN_NOT_OK(query->get_buffer(
-          name.c_str(),
-          &existing_offset_buffer,
-          &existing_offset_buffer_size,
-          &existing_buffer,
-          &existing_buffer_size));
+      if (!nullable) {
+        RETURN_NOT_OK(query->get_buffer(
+            name.c_str(),
+            &existing_offset_buffer,
+            &existing_offset_buffer_size,
+            &existing_buffer,
+            &existing_buffer_size));
+      } else {
+        RETURN_NOT_OK(query->get_buffer_vbytemap(
+            name.c_str(),
+            &existing_offset_buffer,
+            &existing_offset_buffer_size,
+            &existing_buffer,
+            &existing_buffer_size,
+            &existing_validity_buffer,
+            &existing_validity_buffer_size));
+      }
     } else {
-      RETURN_NOT_OK(query->get_buffer(
-          name.c_str(), &existing_buffer, &existing_buffer_size));
+      if (!nullable) {
+        RETURN_NOT_OK(query->get_buffer(
+            name.c_str(), &existing_buffer, &existing_buffer_size));
+      } else {
+        RETURN_NOT_OK(query->get_buffer_vbytemap(
+            name.c_str(),
+            &existing_buffer,
+            &existing_buffer_size,
+            &existing_validity_buffer,
+            &existing_validity_buffer_size));
+      }
     }
 
     if (context == SerializationContext::CLIENT) {
@@ -621,10 +680,20 @@ Status query_from_capnp(
           existing_offset_buffer_size == nullptr ?
               0 :
               *existing_offset_buffer_size - curr_offset_size;
+      const uint64_t curr_validity_size =
+          attr_copy_state == nullptr ? 0 : attr_copy_state->validity_size;
+      const uint64_t validity_size_left =
+          existing_validity_buffer_size == nullptr ?
+              0 :
+              *existing_validity_buffer_size - curr_validity_size;
 
-      if ((var_size && (offset_size_left < fixedlen_size ||
-                        data_size_left < varlen_size)) ||
-          (!var_size && data_size_left < fixedlen_size)) {
+      const bool has_mem_for_data =
+          (var_size && data_size_left >= varlen_size) ||
+          (!var_size && data_size_left >= fixedlen_size);
+      const bool has_mem_for_offset =
+          (var_size && offset_size_left >= fixedlen_size) || !var_size;
+      const bool has_mem_for_validity = validity_size_left >= validitylen_size;
+      if (!has_mem_for_data || !has_mem_for_offset || !has_mem_for_validity) {
         return LOG_STATUS(Status::SerializationError(
             "Error deserializing read query; buffer too small for buffer "
             "'" +
@@ -635,13 +704,20 @@ Status query_from_capnp(
       // nothing to do.
       if (type == QueryType::READ) {
         if (var_size) {
+          // Var size attribute; buffers already set.
           char* offset_dest = (char*)existing_offset_buffer + curr_offset_size;
           char* data_dest = (char*)existing_buffer + curr_data_size;
-          // Var size attribute; buffers already set.
+          char* validity_dest = (char*)existing_buffer + curr_validity_size;
+
           std::memcpy(offset_dest, attribute_buffer_start, fixedlen_size);
           attribute_buffer_start += fixedlen_size;
           std::memcpy(data_dest, attribute_buffer_start, varlen_size);
           attribute_buffer_start += varlen_size;
+          if (nullable) {
+            std::memcpy(
+                validity_dest, attribute_buffer_start, validitylen_size);
+            attribute_buffer_start += validitylen_size;
+          }
 
           // The offsets in each buffer correspond to the values in its
           // data buffer. To build a single contigious buffer, we must
@@ -675,28 +751,44 @@ Status query_from_capnp(
             // result size).
             *existing_offset_buffer_size = fixedlen_size;
             *existing_buffer_size = varlen_size;
+            if (nullable)
+              *existing_validity_buffer_size = validitylen_size;
           } else {
             // Accumulate total bytes copied (caller's responsibility to
             // eventually update the query).
             attr_copy_state->offset_size += fixedlen_size;
             attr_copy_state->data_size += varlen_size;
+            if (nullable)
+              attr_copy_state->validity_size += validitylen_size;
           }
         } else {
           // Fixed size attribute; buffers already set.
           char* data_dest = (char*)existing_buffer + curr_data_size;
+          char* validity_dest = (char*)existing_buffer + curr_validity_size;
+
           std::memcpy(data_dest, attribute_buffer_start, fixedlen_size);
           attribute_buffer_start += fixedlen_size;
+          if (nullable) {
+            std::memcpy(
+                validity_dest, attribute_buffer_start, validitylen_size);
+            attribute_buffer_start += validitylen_size;
+          }
 
           if (attr_copy_state == nullptr) {
             *existing_buffer_size = fixedlen_size;
+            if (nullable)
+              *existing_validity_buffer_size = validitylen_size;
           } else {
             attr_copy_state->data_size += fixedlen_size;
+            if (nullable)
+              attr_copy_state->validity_size += validitylen_size;
           }
         }
       }
     } else if (context == SerializationContext::SERVER) {
       // Always expect null buffers when deserializing.
-      if (existing_buffer != nullptr || existing_offset_buffer != nullptr)
+      if (existing_buffer != nullptr || existing_offset_buffer != nullptr ||
+          existing_validity_buffer != nullptr)
         return LOG_STATUS(Status::SerializationError(
             "Error deserializing read query; unexpected "
             "buffer set on server-side."));
@@ -708,51 +800,119 @@ Status query_from_capnp(
         // server can introspect and allocate properly sized buffers separately.
         Buffer offsets_buff(nullptr, fixedlen_size);
         Buffer varlen_buff(nullptr, varlen_size);
+        Buffer validitylen_buff(nullptr, validitylen_size);
         attr_state->fixed_len_size = fixedlen_size;
         attr_state->var_len_size = varlen_size;
+        attr_state->validity_len_size = validitylen_size;
         attr_state->fixed_len_data.swap(offsets_buff);
         attr_state->var_len_data.swap(varlen_buff);
+        attr_state->validity_len_data.swap(validitylen_buff);
         if (var_size) {
-          RETURN_NOT_OK(query->set_buffer(
-              name,
-              nullptr,
-              &attr_state->fixed_len_size,
-              nullptr,
-              &attr_state->var_len_size,
-              false));
+          if (!nullable) {
+            RETURN_NOT_OK(query->set_buffer(
+                name,
+                nullptr,
+                &attr_state->fixed_len_size,
+                nullptr,
+                &attr_state->var_len_size,
+                false));
+          } else {
+            RETURN_NOT_OK(query->set_buffer_vbytemap(
+                name,
+                nullptr,
+                &attr_state->fixed_len_size,
+                nullptr,
+                &attr_state->var_len_size,
+                nullptr,
+                &attr_state->validity_len_size,
+                false));
+          }
         } else {
-          RETURN_NOT_OK(query->set_buffer(
-              name, nullptr, &attr_state->fixed_len_size, false));
+          if (!nullable) {
+            RETURN_NOT_OK(query->set_buffer(
+                name, nullptr, &attr_state->fixed_len_size, false));
+          } else {
+            RETURN_NOT_OK(query->set_buffer_vbytemap(
+                name,
+                nullptr,
+                &attr_state->fixed_len_size,
+                nullptr,
+                &attr_state->validity_len_size,
+                false));
+          }
         }
       } else {
         // On writes, just set buffer pointers wrapping the data in the message.
         if (var_size) {
           auto* offsets = reinterpret_cast<uint64_t*>(attribute_buffer_start);
           auto* varlen_data = attribute_buffer_start + fixedlen_size;
-          attribute_buffer_start += fixedlen_size + varlen_size;
+          auto* validity =
+              reinterpret_cast<uint8_t*>(attribute_buffer_start + varlen_size);
+
+          attribute_buffer_start +=
+              fixedlen_size + varlen_size + validitylen_size;
+
           Buffer offsets_buff(offsets, fixedlen_size);
           Buffer varlen_buff(varlen_data, varlen_size);
+          Buffer validity_buff(
+              validitylen_size > 0 ? validity : nullptr, validitylen_size);
+
           attr_state->fixed_len_size = fixedlen_size;
           attr_state->var_len_size = varlen_size;
+          attr_state->validity_len_size = validitylen_size;
+
           attr_state->fixed_len_data.swap(offsets_buff);
           attr_state->var_len_data.swap(varlen_buff);
-          RETURN_NOT_OK(query->set_buffer(
-              name,
-              offsets,
-              &attr_state->fixed_len_size,
-              varlen_data,
-              &attr_state->var_len_size));
+          attr_state->validity_len_data.swap(validity_buff);
+
+          if (!nullable) {
+            RETURN_NOT_OK(query->set_buffer(
+                name,
+                offsets,
+                &attr_state->fixed_len_size,
+                varlen_data,
+                &attr_state->var_len_size));
+          } else {
+            RETURN_NOT_OK(query->set_buffer_vbytemap(
+                name,
+                offsets,
+                &attr_state->fixed_len_size,
+                varlen_data,
+                &attr_state->var_len_size,
+                validity,
+                &attr_state->validity_len_size));
+          }
         } else {
           auto* data = attribute_buffer_start;
-          attribute_buffer_start += fixedlen_size;
+          auto* validity = reinterpret_cast<uint8_t*>(
+              attribute_buffer_start + fixedlen_size);
+
+          attribute_buffer_start += fixedlen_size + validitylen_size;
+
           Buffer buff(data, fixedlen_size);
           Buffer varlen_buff(nullptr, 0);
+          Buffer validity_buff(
+              validitylen_size > 0 ? validity : nullptr, validitylen_size);
+
           attr_state->fixed_len_size = fixedlen_size;
           attr_state->var_len_size = varlen_size;
+          attr_state->validity_len_size = validitylen_size;
+
           attr_state->fixed_len_data.swap(buff);
           attr_state->var_len_data.swap(varlen_buff);
-          RETURN_NOT_OK(
-              query->set_buffer(name, data, &attr_state->fixed_len_size));
+          attr_state->validity_len_data.swap(validity_buff);
+
+          if (!nullable) {
+            RETURN_NOT_OK(
+                query->set_buffer(name, data, &attr_state->fixed_len_size));
+          } else {
+            RETURN_NOT_OK(query->set_buffer_vbytemap(
+                name,
+                data,
+                &attr_state->fixed_len_size,
+                validity,
+                &attr_state->validity_len_size));
+          }
         }
       }
     }
@@ -875,6 +1035,13 @@ Status query_serialize(
               RETURN_NOT_OK(serialized_buffer->add_buffer(std::move(data)));
             } else {
               assert(false);
+            }
+
+            if (query_buffer.validity_vector_.buffer_size() != nullptr) {
+              Buffer validity(
+                  query_buffer.validity_vector_.buffer(),
+                  *query_buffer.validity_vector_.buffer_size());
+              RETURN_NOT_OK(serialized_buffer->add_buffer(std::move(validity)));
             }
           }
         }
@@ -1042,6 +1209,7 @@ Status query_est_result_size_reader_to_capnp(
         range_builder.initValue();
     result_size_builder.setSizeFixed(it.second.size_fixed_);
     result_size_builder.setSizeVar(it.second.size_var_);
+    result_size_builder.setSizeValidity(it.second.size_validity_);
     ++i;
   }
 
@@ -1056,6 +1224,7 @@ Status query_est_result_size_reader_to_capnp(
         range_builder.initValue();
     result_size_builder.setSizeFixed(it.second.size_fixed_);
     result_size_builder.setSizeVar(it.second.size_var_);
+    result_size_builder.setSizeValidity(it.second.size_validity_);
     ++i;
   }
 
@@ -1076,8 +1245,9 @@ Status query_est_result_size_reader_from_capnp(
     auto result_size = it.getValue();
     est_result_sizes_map.emplace(
         name,
-        Subarray::ResultSize{
-            result_size.getSizeFixed(), result_size.getSizeVar(), 0});
+        Subarray::ResultSize{result_size.getSizeFixed(),
+                             result_size.getSizeVar(),
+                             result_size.getSizeValidity()});
   }
 
   std::unordered_map<std::string, Subarray::MemorySize> max_memory_sizes_map;
@@ -1086,8 +1256,9 @@ Status query_est_result_size_reader_from_capnp(
     auto memory_size = it.getValue();
     max_memory_sizes_map.emplace(
         name,
-        Subarray::MemorySize{
-            memory_size.getSizeFixed(), memory_size.getSizeVar(), 0});
+        Subarray::MemorySize{memory_size.getSizeFixed(),
+                             memory_size.getSizeVar(),
+                             memory_size.getSizeValidity()});
   }
 
   return query->set_est_result_size(est_result_sizes_map, max_memory_sizes_map);
