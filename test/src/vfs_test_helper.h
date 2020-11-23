@@ -55,6 +55,11 @@ namespace test {
  */
 class SupportedFs {
  public:
+  SupportedFs()
+      : temp_dir_()
+      , fs_vec() {
+  }
+
   virtual ~SupportedFs() = default;
   /* ********************************* */
   /*               API                 */
@@ -102,6 +107,7 @@ class SupportedFs {
    */
   virtual std::string temp_dir() = 0;
 
+ private:
   /* ********************************* */
   /*           ATTRIBUTES              */
   /* ********************************* */
@@ -119,6 +125,13 @@ class SupportedFs {
  */
 class SupportedFsS3 : public SupportedFs {
  public:
+  SupportedFsS3()
+      : s3_prefix_("s3://")
+      , s3_bucket_(s3_prefix_ + random_name("tiledb") + "/")
+      , s3_temp_dir_(s3_bucket_ + "tiledb_test/")
+      , temp_dir_(s3_temp_dir_) {
+  }
+
   ~SupportedFsS3() = default;
 
   /* ********************************* */
@@ -159,21 +172,22 @@ class SupportedFsS3 : public SupportedFs {
    */
   virtual std::string temp_dir();
 
+ private:
   /* ********************************* */
   /*           ATTRIBUTES              */
   /* ********************************* */
 
   /** The directory prefix of the S3 filesystem. */
-  const std::string s3_prefix_ = "s3://";
+  const std::string s3_prefix_;
 
   /** The bucket name for the S3 filesystem. */
-  const std::string s3_bucket_ = s3_prefix_ + random_name("tiledb") + "/";
+  const std::string s3_bucket_;
 
   /** The directory name of the S3 filesystem. */
-  const std::string s3_temp_dir_ = s3_bucket_ + "tiledb_test/";
+  const std::string s3_temp_dir_;
 
   /** The directory name of the S3 filesystem. */
-  std::string temp_dir_ = s3_temp_dir_;
+  std::string temp_dir_;
 };
 
 /**
@@ -182,6 +196,11 @@ class SupportedFsS3 : public SupportedFs {
  */
 class SupportedFsHDFS : public SupportedFs {
  public:
+  SupportedFsHDFS()
+      : hdfs_temp_dir_("hdfs:///tiledb_test/")
+      , temp_dir_(hdfs_temp_dir_) {
+  }
+
   ~SupportedFsHDFS() = default;
   /* ********************************* */
   /*               API                 */
@@ -220,15 +239,16 @@ class SupportedFsHDFS : public SupportedFs {
    */
   virtual std::string temp_dir();
 
+ private:
   /* ********************************* */
   /*           ATTRIBUTES              */
   /* ********************************* */
 
   /** The directory name of the HDFS filesystem. */
-  const std::string hdfs_temp_dir_ = "hdfs:///tiledb_test/";
+  const std::string hdfs_temp_dir_;
 
   /** The directory name of the HDFS filesystem. */
-  std::string temp_dir_ = hdfs_temp_dir_;
+  std::string temp_dir_;
 };
 
 /**
@@ -237,6 +257,13 @@ class SupportedFsHDFS : public SupportedFs {
  */
 class SupportedFsAzure : public SupportedFs {
  public:
+  SupportedFsAzure()
+      : azure_prefix_("azure://")
+      , container(azure_prefix_ + random_name("tiledb") + "/")
+      , azure_temp_dir_(container + "tiledb_test/")
+      , temp_dir_(azure_temp_dir_) {
+  }
+
   ~SupportedFsAzure() = default;
   /* ********************************* */
   /*               API                 */
@@ -276,21 +303,22 @@ class SupportedFsAzure : public SupportedFs {
    */
   virtual std::string temp_dir();
 
+ private:
   /* ********************************* */
   /*           ATTRIBUTES              */
   /* ********************************* */
 
   /** The directory prefix of the Azure filesystem. */
-  const std::string azure_prefix_ = "azure://";
+  const std::string azure_prefix_;
 
   /** The container name for the Azure filesystem. */
-  const std::string container = azure_prefix_ + random_name("tiledb") + "/";
+  const std::string container;
 
   /** The directory name of the Azure filesystem. */
-  const std::string azure_temp_dir_ = container + "tiledb_test/";
+  const std::string azure_temp_dir_;
 
   /** The directory name of the Azure filesystem. */
-  std::string temp_dir_ = azure_temp_dir_;
+  std::string temp_dir_;
 };
 
 /**
@@ -299,6 +327,18 @@ class SupportedFsAzure : public SupportedFs {
  */
 class SupportedFsLocal : public SupportedFs {
  public:
+#ifdef _WIN32
+  SupportedFsLocal()
+      : temp_dir_(tiledb::sm::Win::current_dir() + "\\tiledb_test\\")
+      , file_prefix_("") {
+  }
+#else
+  SupportedFsLocal()
+      : temp_dir_(tiledb::sm::Posix::current_dir() + "/tiledb_test/")
+      , file_prefix_("file://") {
+  }
+#endif
+
   ~SupportedFsLocal() = default;
   /* ********************************* */
   /*               API                 */
@@ -344,22 +384,24 @@ class SupportedFsLocal : public SupportedFs {
    */
   std::string file_prefix();
 
+ private:
   /* ********************************* */
   /*           ATTRIBUTES              */
   /* ********************************* */
 
 #ifdef _WIN32
   /** The directory name of the Windows filesystem. */
-  std::string temp_dir_ = tiledb::sm::Win::current_dir() + "\\tiledb_test\\";
+  std::string temp_dir_;
 
   /** The file prefix name of the Windows filesystem. */
-  std::string file_prefix_ = "";
+  std::string file_prefix_;
+
 #else
   /** The directory name of the Posix filesystem. */
-  std::string temp_dir_ = tiledb::sm::Posix::current_dir() + "/tiledb_test/";
+  std::string temp_dir_;
 
   /** The file prefix name of the Posix filesystem. */
-  std::string file_prefix_ = "file://";
+  std::string file_prefix_;
 
 #endif
 };

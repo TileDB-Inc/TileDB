@@ -67,6 +67,7 @@ Status SupportedFsS3::init(tiledb_ctx_t* ctx, tiledb_vfs_t* vfs) {
     rc = tiledb_vfs_create_bucket(ctx, vfs, s3_bucket_.c_str());
     REQUIRE(rc == TILEDB_OK);
   }
+
   return Status::Ok();
 }
 
@@ -77,6 +78,7 @@ Status SupportedFsS3::close(tiledb_ctx_t* ctx, tiledb_vfs_t* vfs) {
   if (is_bucket) {
     CHECK(tiledb_vfs_remove_bucket(ctx, vfs, s3_bucket_.c_str()) == TILEDB_OK);
   }
+
   return Status::Ok();
 }
 
@@ -142,6 +144,7 @@ Status SupportedFsAzure::init(tiledb_ctx_t* ctx, tiledb_vfs_t* vfs) {
     rc = tiledb_vfs_create_bucket(ctx, vfs, container.c_str());
     REQUIRE(rc == TILEDB_OK);
   }
+
   return Status::Ok();
 }
 
@@ -152,6 +155,7 @@ Status SupportedFsAzure::close(tiledb_ctx_t* ctx, tiledb_vfs_t* vfs) {
   if (is_container) {
     CHECK(tiledb_vfs_remove_bucket(ctx, vfs, container.c_str()) == TILEDB_OK);
   }
+
   return Status::Ok();
 }
 
@@ -183,17 +187,21 @@ Status SupportedFsLocal::close(tiledb_ctx_t* ctx, tiledb_vfs_t* vfs) {
 std::string SupportedFsLocal::temp_dir() {
   return temp_dir_;
 }
+
 std::string SupportedFsLocal::file_prefix() {
   return file_prefix_;
 }
+
 #else
 std::string SupportedFsLocal::temp_dir() {
   return temp_dir_;
 }
+
 // Posix local filesystem
 std::string SupportedFsLocal::file_prefix() {
   return file_prefix_;
 }
+
 #endif
 
 std::vector<std::unique_ptr<SupportedFs>> vfs_test_get_fs_vec() {
@@ -206,14 +214,17 @@ std::vector<std::unique_ptr<SupportedFs>> vfs_test_get_fs_vec() {
     SupportedFsS3* s3_fs = new SupportedFsS3();
     fs_vec.emplace_back(s3_fs);
   }
+
   if (supports_hdfs_) {
     SupportedFsHDFS* hdfs_fs = new SupportedFsHDFS();
     fs_vec.emplace_back(hdfs_fs);
   }
+
   if (supports_azure_) {
     SupportedFsAzure* azure_fs = new SupportedFsAzure();
     fs_vec.emplace_back(azure_fs);
   }
+
   SupportedFsLocal* local_fs = new SupportedFsLocal();
   fs_vec.emplace_back(local_fs);
 
@@ -226,18 +237,23 @@ Status vfs_test_init(
     tiledb_vfs_t** vfs,
     tiledb_config_t* config) {
   tiledb_error_t* error = nullptr;
-  REQUIRE(tiledb_config_alloc(&config, &error) == TILEDB_OK);
+  tiledb_config_t* config_tmp = config;
+  if (config_tmp == nullptr)
+    REQUIRE(tiledb_config_alloc(&config_tmp, &error) == TILEDB_OK);
   REQUIRE(error == nullptr);
   for (auto& supported_fs : fs_vec) {
-    REQUIRE(supported_fs->prepare_config(config, error).ok());
+    REQUIRE(supported_fs->prepare_config(config_tmp, error).ok());
   }
-  REQUIRE(tiledb_ctx_alloc(config, ctx) == TILEDB_OK);
+
+  REQUIRE(tiledb_ctx_alloc(config_tmp, ctx) == TILEDB_OK);
   REQUIRE(error == nullptr);
-  REQUIRE(tiledb_vfs_alloc(*ctx, config, vfs) == TILEDB_OK);
-  tiledb_config_free(&config);
+  REQUIRE(tiledb_vfs_alloc(*ctx, config_tmp, vfs) == TILEDB_OK);
+  if (config_tmp == nullptr)
+    tiledb_config_free(&config_tmp);
   for (auto& supported_fs : fs_vec) {
     REQUIRE(supported_fs->init(*ctx, *vfs).ok());
   }
+
   return Status::Ok();
 }
 
@@ -248,6 +264,7 @@ Status vfs_test_close(
   for (auto& fs : fs_vec) {
     RETURN_NOT_OK(fs->close(ctx, vfs));
   }
+
   return Status::Ok();
 }
 
