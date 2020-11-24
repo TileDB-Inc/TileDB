@@ -162,7 +162,7 @@ set(TILEDB_TEST_SOURCES
   src/unit-vfs.cc
   src/unit-win-filesystem.cc
   src/unit.cc
-  src/vfs_test_helper.cc
+  src/vfs_helpers.cc
 )
 
 if (TILEDB_CPP_API)

@@ -38,7 +38,7 @@
 
 #include "catch.hpp"
 #include "test/src/helpers.h"
-#include "test/src/vfs_test_helper.h"
+#include "test/src/vfs_helpers.h"
 #ifdef _WIN32
 #include <Windows.h>
 #include "tiledb/sm/filesystem/win.h"
