@@ -32,7 +32,6 @@
 
 #ifndef TILEDB_REST_CLIENT_H
 #define TILEDB_REST_CLIENT_H
-#define REDIRECTION_HEADER_KEY "x-tiledb-full-region-domain"
 
 #include <string>
 #include <unordered_map>
@@ -192,7 +191,9 @@ class RestClient {
   std::unordered_map<std::string, std::string> extra_headers_;
 
   /** Collection of response headers that are attached to REST response. */
-  std::unordered_map<std::string, std::string> res_headers_;
+  std::pair<std::string, std::unordered_map<std::string, std::string>>
+      res_headers_;
+
   /* ********************************* */
   /*         PRIVATE METHODS           */
   /* ********************************* */

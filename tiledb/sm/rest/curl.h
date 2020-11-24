@@ -74,7 +74,8 @@ class Curl {
   Status init(
       const Config* config,
       const std::unordered_map<std::string, std::string>& extra_headers,
-      const std::unordered_map<std::string, std::string>& res_headers);
+      std::pair<std::string, std::unordered_map<std::string, std::string>>*
+          res_headers);
 
   /**
    * Escapes the given URL.
@@ -187,23 +188,8 @@ class Curl {
   std::unordered_map<std::string, std::string> extra_headers_;
 
   /** Response headers attached to each response. */
-  std::unordered_map<std::string, std::string> res_headers_;
-
-  /**
-   * This callback function gets called by libcurl as soon as a header has been
-   * received. libcurl buffers headers and delivers only "full" headers, one by
-   * one, to this callback. This callback should return the number of bytes
-   * actually taken care of if that number differs from the number passed to
-   * your callback function, it signals an error condition to the library
-   *
-   * @param res_data points to the delivered data
-   * @param tSize the size of that data is size multiplied with nmemb
-   * @param tCount number of bytes actually taken care of
-   * @param userdata the userdata argument is set with CURLOPT_HEADERDATA
-   * @return
-   */
-  static size_t OnReceiveData(
-      void* res_data, size_t tSize, size_t tCount, void* userdata);
+  std::pair<std::string, std::unordered_map<std::string, std::string>>*
+      res_headers_;
 
   /**
    * Populates the curl slist with authorization (token or username+password),

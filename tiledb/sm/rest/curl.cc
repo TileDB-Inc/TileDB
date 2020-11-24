@@ -180,15 +180,58 @@ static int buffer_list_seek_callback(
   return CURL_SEEKFUNC_FAIL;
 }
 
+/**
+ * This callback function gets called by libcurl as soon as a header has been
+ * received. libcurl buffers headers and delivers only "full" headers, one by
+ * one, to this callback. This callback should return the number of bytes
+ * actually taken care of if that number differs from the number passed to
+ * your callback function, it signals an error condition to the library
+ *
+ * @param res_data points to the delivered data
+ * @param tSize the size of that data is size multiplied with nmemb
+ * @param tCount number of bytes actually taken care of
+ * @param userdata the userdata argument is set with CURLOPT_HEADERDATA
+ * @return
+ */
+
+size_t OnReceiveData(
+    void* res_data, size_t size, size_t count, void* userdata) {
+  size_t length = size * count;
+  size_t index = 0;
+  auto* buffer = static_cast<unsigned char*>(res_data);
+
+  while (index < length) {
+    unsigned char* temp = buffer + index;
+    if ((temp[0] == '\r') || (temp[0] == '\n'))
+      break;
+    index++;
+  }
+
+  std::string str(buffer, buffer + index);
+  size_t pos = str.find(": ");
+  auto* pmHeader = static_cast<
+      std::pair<std::string, std::unordered_map<std::string, std::string>>*>(
+      userdata);
+  if (pos != std::string::npos) {
+    if (str.substr(0, pos) == constants::redirection_header_key) {
+      pmHeader->second.insert(
+          std::make_pair(pmHeader->first, str.substr(pos + 2, index - 1)));
+    }
+  }
+  return count;
+}
+
 Curl::Curl()
     : config_(nullptr)
-    , curl_(nullptr, curl_easy_cleanup) {
+    , curl_(nullptr, curl_easy_cleanup)
+    , res_headers_(nullptr) {
 }
 
 Status Curl::init(
     const Config* config,
     const std::unordered_map<std::string, std::string>& extra_headers,
-    const std::unordered_map<std::string, std::string>& res_headers) {
+    std::pair<std::string, std::unordered_map<std::string, std::string>>*
+        res_headers) {
   if (config == nullptr)
     return LOG_STATUS(
         Status::RestError("Error initializing libcurl; config is null."));
@@ -223,7 +266,7 @@ Status Curl::init(
         "Error initializing libcurl; failed to set CURLOPT_HEADERFUNCTION"));
 
   /* set url to fetch */
-  rc = curl_easy_setopt(curl_.get(), CURLOPT_HEADERDATA, &res_headers_);
+  rc = curl_easy_setopt(curl_.get(), CURLOPT_HEADERDATA, res_headers_);
   if (rc != CURLE_OK)
     return LOG_STATUS(Status::RestError(
         "Error initializing libcurl; failed to set CURLOPT_HEADERFUNCTION"));
@@ -256,27 +299,6 @@ Status Curl::init(
 #endif
 
   return Status::Ok();
-}
-
-size_t Curl::OnReceiveData(
-    void* res_data, size_t tSize, size_t tCount, void* userdata) {
-  size_t length = tSize * tCount, index = 0;
-  while (index < length) {
-    unsigned char* temp = (unsigned char*)res_data + index;
-    if ((temp[0] == '\r') || (temp[0] == '\n'))
-      break;
-    index++;
-  }
-
-  std::string str((unsigned char*)res_data, (unsigned char*)res_data + index);
-  std::unordered_map<std::string, std::string>* pmHeader =
-      (std::unordered_map<std::string, std::string>*)userdata;
-  size_t pos = str.find(": ");
-  if (pos != std::string::npos) {
-    pmHeader->insert(std::make_pair<std::string, std::string>(
-        str.substr(0, pos), str.substr(pos + 2, index - 1)));
-  }
-  return (tCount);
 }
 
 std::string Curl::url_escape(const std::string& url) const {
@@ -518,6 +540,7 @@ Status Curl::post_data(
 
   CURLcode ret;
   auto st = make_curl_request(url.c_str(), &ret, returned_data);
+
   curl_slist_free_all(headers);
   RETURN_NOT_OK(st);
 
@@ -602,7 +625,6 @@ Status Curl::get_data(
       curl_slist_free_all(headers));
 
   /* pass our list of custom made headers */
-  curl_easy_setopt(curl, CURLOPT_HEADER, 1);
   curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
 
   CURLcode ret;

@@ -219,7 +219,9 @@ DenseArrayRESTFx::~DenseArrayRESTFx() {
   config.set("rest.password", rest_server_password_);
 
   tiledb::sm::RestClient rest_client;
-  REQUIRE(rest_client.init(&config, nullptr).ok());
+  ThreadPool tp;
+  REQUIRE(tp.init(4).ok());
+  REQUIRE(rest_client.init(&config, &tp).ok());
   for (const auto& uri : to_deregister_) {
     CHECK(rest_client.deregister_array_from_rest(tiledb::sm::URI(uri)).ok());
   }
