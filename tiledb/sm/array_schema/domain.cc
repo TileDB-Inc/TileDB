@@ -536,6 +536,19 @@ Status Domain::has_dimension(const std::string& name, bool* has_dim) const {
   return Status::Ok();
 }
 
+Status Domain::get_dimension_index(
+    const std::string& name, unsigned* dim_idx) const {
+  for (unsigned d = 0; d < dim_num_; ++d) {
+    if (dimensions_[d]->name() == name) {
+      *dim_idx = d;
+      return Status::Ok();
+    }
+  }
+
+  return Status::DomainError(
+      "Cannot get dimension index; Invalid dimension name");
+}
+
 Status Domain::init(Layout cell_order, Layout tile_order) {
   // Set cell and tile order
   cell_order_ = cell_order;

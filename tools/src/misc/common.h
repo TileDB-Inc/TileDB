@@ -33,7 +33,7 @@
 #ifndef TILEDB_CLI_COMMON_H
 #define TILEDB_CLI_COMMON_H
 
-#include "tiledb/sm/misc/status.h"
+#include "tiledb/common/status.h"
 
 namespace tiledb {
 namespace cli {
@@ -41,7 +41,7 @@ namespace cli {
 /** Throws an exception if the given Status is not ok. */
 #define THROW_NOT_OK(s)                                          \
   do {                                                           \
-    tiledb::sm::Status _s = (s);                                 \
+    tiledb::common::Status _s = (s);                             \
     if (!_s.ok())                                                \
       throw std::runtime_error("TileDB Error: " + _s.message()); \
   } while (0)

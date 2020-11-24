@@ -44,7 +44,15 @@ if (NOT DEFINED $CACHE{TILEDB_TESTS_ENABLE_ARROW})
 endif()
 
 if (${TILEDB_TESTS_ENABLE_ARROW})
-  find_package(Python 3.8 EXACT COMPONENTS Interpreter Development REQUIRED)
+  # Reworked FindPython was introducted in 3.12 with features used below
+  if (CMAKE_VERSION VERSION_LESS "3.12")
+    message(FATAL_ERROR "CMake >= 3.12 is required for TileDB Arrow Tests. (found ${CMAKE_VERSION})")
+  endif()
+  # Tell CMake to check the Python registry entry last on Windows
+  set(Python_FIND_REGISTRY "LAST")
+  # Tell CMake to prefer Python from the PATH
+  set(Python_FIND_STRATEGY "LOCATION")
+  find_package(Python COMPONENTS Interpreter Development REQUIRED)
   find_package(pybind11)
 
   # If we can't find the pybind11 cmake config (not available in pypi yet)
@@ -67,7 +75,7 @@ if (${TILEDB_TESTS_ENABLE_ARROW})
       list(APPEND PYBIND11_INCLUDE_DIRECTORIES ${INCL_PATH})
     endforeach()
 
-    file(TO_CMAKE_PATH ${Python_SITELIB} SAFE_Python_SITELIB)
+    file(TO_CMAKE_PATH "${Python_SITELIB}" SAFE_Python_SITELIB)
     set(pybind11_FOUND TRUE CACHE BOOL "pybind11 include path found")
     add_library(pybind11::embed INTERFACE IMPORTED)
     target_include_directories(pybind11::embed INTERFACE ${PYBIND11_INCLUDE_DIRECTORIES})

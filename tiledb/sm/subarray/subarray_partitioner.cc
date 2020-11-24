@@ -577,9 +577,29 @@ Status SubarrayPartitioner::split_current(bool* unsplittable) {
     auto new_range_num =
         range_num * (1 - constants::multi_range_reduction_in_split);
     current_.end_ = current_.start_ + (uint64_t)new_range_num - 1;
+
+    bool must_split_slab;
+    calibrate_current_start_end(&must_split_slab);
+
+    // If the range between `current_.start_` and `current_.end_`
+    // will not fit within the memory contraints, `must_split_slab`
+    // will be true. We must split the current partition.
+    //
+    // This is a difficult path to reach, but this has been manually
+    // tested. This path was reached by re-assigning the query
+    // buffers with smaller buffers after an incomplete read.
+    if (must_split_slab) {
+      if (state_.multi_range_.empty())
+        state_.start_ = current_.start_;
+      state_.multi_range_.push_front(current_.partition_);
+      split_top_multi_range(unsplittable);
+      return next_from_multi_range(unsplittable);
+    }
+
     current_.partition_ =
         subarray_.get_subarray(current_.start_, current_.end_);
     state_.start_ = current_.end_ + 1;
+
     return Status::Ok();
   }
 

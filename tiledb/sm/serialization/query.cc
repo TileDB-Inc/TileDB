@@ -643,6 +643,33 @@ Status query_from_capnp(
           std::memcpy(data_dest, attribute_buffer_start, varlen_size);
           attribute_buffer_start += varlen_size;
 
+          // The offsets in each buffer correspond to the values in its
+          // data buffer. To build a single contigious buffer, we must
+          // ensure the offset values continue in ascending order from the
+          // previous buffer. For example, consider the following example
+          // storing int32 values.
+          //
+          // Buffer #1:
+          //   offsets: [0, 8, 16]
+          //   values:  [1, 2, 3, 4, 5, 6, 7]
+          //
+          // Buffer #2:
+          //   offsets: [0, 12]
+          //   values:  [100, 200, 300, 400, 500]
+          //
+          // The final, contigious buffer will be:
+          //   offsets: [0, 8, 16, 28, 40]
+          //   values:  [1, 2, 3, 4, 5, 6, 7, 100, 200, 300, 400, 500]
+          //
+          // The last two offsets, `28, 40` were calculated by adding `28`
+          // to offsets of Buffer #2: [0, 12]. The `28` was calculated as
+          // the byte size of the values in Buffer #1.
+          if (curr_data_size > 0) {
+            for (uint64_t i = 0; i < (fixedlen_size / sizeof(uint64_t)); ++i) {
+              reinterpret_cast<uint64_t*>(offset_dest)[i] += curr_data_size;
+            }
+          }
+
           if (attr_copy_state == nullptr) {
             // Set the size directly on the query (so user can introspect on
             // result size).

@@ -902,19 +902,18 @@ TILEDB_EXPORT void tiledb_config_free(tiledb_config_t** config);
  *
  * - `sm.dedup_coords` <br>
  *    If `true`, cells with duplicate coordinates will be removed during sparse
- *    array writes. Note that ties during deduplication are broken
+ *    fragment writes. Note that ties during deduplication are broken
  *    arbitrarily. <br>
  *    **Default**: false
  * - `sm.check_coord_dups` <br>
  *    This is applicable only if `sm.dedup_coords` is `false`.
  *    If `true`, an error will be thrown if there are cells with duplicate
- *    coordinates during sparse array writes. If `false` and there are
- *    duplicates, the duplicates will be written without errors, but the
- *    TileDB behavior could be unpredictable. <br>
+ *    coordinates during sparse fragmnet writes. If `false` and there are
+ *    duplicates, the duplicates will be written without errors. <br>
  *    **Default**: true
  * - `sm.check_coord_oob` <br>
  *    If `true`, an error will be thrown if there are cells with coordinates
- *    lying outside the domain during sparse array writes.  <br>
+ *    lying outside the domain during sparse fragment writes.  <br>
  *    **Default**: true
  * - `sm.check_global_order` <br>
  *    Checks if the coordinates obey the global array order. Applicable only
@@ -926,16 +925,12 @@ TILEDB_EXPORT void tiledb_config_free(tiledb_config_t** config);
  * - `sm.enable_signal_handlers` <br>
  *    Determines whether or not TileDB will install signal handlers. <br>
  *    **Default**: true
- * - `sm.num_async_threads` <br>
- *    The number of threads allocated for async queries. <br>
- *    **Default**: 1
- * - `sm.num_reader_threads` <br>
- *    The number of threads allocated for issuing reads to VFS in parallel. <br>
- *    **Default**: 1
- * - `sm.num_writer_threads` <br>
- *    The number of threads allocated for issuing writes to VFS in
- *    parallel.<br>
- *    **Default**: 1
+ * - `sm.compute_concurrency_level` <br>
+ *    Upper-bound on number of threads to allocate for compute-bound tasks. <br>
+ *    **Default*: # cores
+ * - `sm.io_concurrency_level` <br>
+ *    Upper-bound on number of threads to allocate for IO-bound tasks. <br>
+ *    **Default*: # cores
  * - `sm.num_tbb_threads` <br>
  *    The number of threads allocated for the TBB thread pool. Note: this
  *    is a whole-program setting. Usually this should not be modified from
@@ -943,6 +938,16 @@ TILEDB_EXPORT void tiledb_config_free(tiledb_config_t** config);
  *    class. When TBB is disabled, this will be used to set the level of
  *    concurrency for generic threading where TBB is otherwise used. <br>
  *    **Default**: TBB automatic
+ * - `sm.vacuum.mode` <br>
+ *    The vacuuming mode, one of `fragments` (remove consolidated fragments),
+ *    `fragment_meta` (remove only consolidated fragment metadata), or
+ *    `array_meta` (remove consolidated array metadata files). <br>
+ *    **Default**: fragments
+ * - `sm.consolidation_mode` <br>
+ *    The consolidation mode, one of `fragments` (consolidate all fragments),
+ *    `fragment_meta` (consolidate only fragment metadata footers to a single
+ *    file), or `array_meta` (consolidate array metadata only). <br>
+ *    **Default**: "fragments"
  * - `sm.consolidation.amplification` <br>
  *    The factor by which the size of the dense fragment resulting
  *    from consolidating a set of fragments (containing at least one
@@ -978,14 +983,21 @@ TILEDB_EXPORT void tiledb_config_free(tiledb_config_t** config);
  *    The memory budget for tiles of var-sized attributes
  *    to be fetched during reads.<br>
  *    **Default**: 10GB
- * - `sm.offsets_format` <br>
+ * - `sm.var_offsets.mode` <br>
  *    The offsets format (`bytes` or `elements`) to be used for
  *    var-sized attributes.<br>
  *    **Default**: bytes
- * - `vfs.num_threads` <br>
- *    The number of threads allocated for VFS operations (any backend), per VFS
- *    instance. <br>
- *    **Default**: number of cores
+ * - `sm.sub_partitioner_memory_budget` <br>
+ *    The memory budget used by the read algorithm to force partition the
+ *    query range in case sorting is much slower than the partitioning
+ *    overhead. <br>
+ *    **Default**: 0
+ * - `vfs.read_ahead_size` <br>
+ *    The maximum byte size to read-ahead from the backend. <br>
+ *    **Default**: 102400
+ * -  `vfs.read_ahead_cache_size` <br>
+ *    The the total maximum size of the read-ahead cache, which is an LRU. <br>
+ *    **Default**: 10485760
  * - `vfs.min_parallel_size` <br>
  *    The minimum number of bytes in a parallel VFS operation
  *    (except parallel S3 writes, which are controlled by
@@ -998,15 +1010,15 @@ TILEDB_EXPORT void tiledb_config_free(tiledb_config_t** config);
  *    The minimum number of bytes between two VFS read batches.<br>
  *    **Default**: 500KB
  * - `vfs.file.posix_file_permissions` <br>
- *    permissions to use for posix file system with file creation.<br>
+ *    Permissions to use for posix file system with file creation.<br>
  *    **Default**: 644
  * - `vfs.file.posix_directory_permissions` <br>
- *    permissions to use for posix file system with directory creation.<br>
+ *    Permissions to use for posix file system with directory creation.<br>
  *    **Default**: 755
  * - `vfs.file.max_parallel_ops` <br>
  *    The maximum number of parallel operations on objects with `file:///`
  *    URIs. <br>
- *    **Default**: `vfs.num_threads`
+ *    **Default**: `sm.io_concurrency_level`
  * - `vfs.file.enable_filelocks` <br>
  *    If set to `false`, file locking operations are no-ops for `file:///` URIs
  *    in VFS. <br>
@@ -1030,7 +1042,7 @@ TILEDB_EXPORT void tiledb_config_free(tiledb_config_t** config);
  *    **Default**: "5242880"
  * - `vfs.azure.max_parallel_ops` <br>
  *    The maximum number of Azure backend parallel operations. <br>
- *    **Default**: `vfs.num_threads`
+ *    **Default**: `sm.io_concurrency_level`
  * - `vfs.azure.use_block_list_upload` <br>
  *    Determines if the Azure backend can use chunked block uploads. <br>
  *    **Default**: "true"
@@ -1039,6 +1051,7 @@ TILEDB_EXPORT void tiledb_config_free(tiledb_config_t** config);
  *    **Default**: "true"
  * - `vfs.gcs.project_id` <br>
  *    Set the GCS project id. <br>
+ *    **Default**: ""
  * - `vfs.gcs.multi_part_size` <br>
  *    The part size (in bytes) used in GCS multi part writes.
  *    Any `uint64_t` value is acceptable. Note:
@@ -1047,7 +1060,7 @@ TILEDB_EXPORT void tiledb_config_free(tiledb_config_t** config);
  *    **Default**: "5242880"
  * - `vfs.gcs.max_parallel_ops` <br>
  *    The maximum number of GCS backend parallel operations. <br>
- *    **Default**: `vfs.num_threads`
+ *    **Default**: `sm.io_concurrency_level`
  * - `vfs.gcs.use_multi_part_upload` <br>
  *    Determines if the GCS backend can use chunked part uploads. <br>
  *    **Default**: "true"
@@ -1096,7 +1109,7 @@ TILEDB_EXPORT void tiledb_config_free(tiledb_config_t** config);
  *    **Default**: true
  * - `vfs.s3.max_parallel_ops` <br>
  *    The maximum number of S3 backend parallel operations. <br>
- *    **Default**: `vfs.num_threads`
+ *    **Default**: `sm.io_concurrency_level`
  * - `vfs.s3.multipart_part_size` <br>
  *    The part size (in bytes) used in S3 multipart writes.
  *    Any `uint64_t` value is acceptable. Note: `vfs.s3.multipart_part_size *
@@ -1151,7 +1164,7 @@ TILEDB_EXPORT void tiledb_config_free(tiledb_config_t** config);
  * - `vfs.s3.verify_ssl` <br>
  *    Enable HTTPS certificate verification. <br>
  *    **Default**: true""
- * - `vfs.hdfs.name_node"` <br>
+ * - `vfs.hdfs.name_node_uri"` <br>
  *    Name node for HDFS. <br>
  *    **Default**: ""
  * - `vfs.hdfs.username` <br>
@@ -1160,6 +1173,10 @@ TILEDB_EXPORT void tiledb_config_free(tiledb_config_t** config);
  * - `vfs.hdfs.kerb_ticket_cache_path` <br>
  *    HDFS kerb ticket cache path. <br>
  *    **Default**: ""
+ * - `config.env_var_prefix` <br>
+ *    Prefix of environmental variables for reading configuration
+ *    parameters. <br>
+ *    **Default**: "TILEDB_"
  *
  * <br>
  *
@@ -1171,7 +1188,7 @@ TILEDB_EXPORT void tiledb_config_free(tiledb_config_t** config);
  *    JSON). <br>
  *    **Default**: "CAPNP"
  * - `rest.username` <br>
- *    Username for login to REST server (a token can be used instead). <br>
+ *    Username for login to REST server. <br>
  *    **Default**: ""
  * - `rest.password` <br>
  *    Password for login to REST server. <br>
@@ -3801,7 +3818,7 @@ TILEDB_EXPORT int32_t tiledb_query_get_layout(
 TILEDB_EXPORT int32_t tiledb_query_get_array(
     tiledb_ctx_t* ctx, tiledb_query_t* query, tiledb_array_t** array);
 /**
- * Adds a 1D range along a subarray dimension, which is in the form
+ * Adds a 1D range along a subarray dimension index, which is in the form
  * (start, end, stride). The datatype of the range components
  * must be the same as the type of the domain of the array in the query.
  *
@@ -3834,8 +3851,41 @@ TILEDB_EXPORT int32_t tiledb_query_add_range(
     const void* stride);
 
 /**
- * Adds a 1D variable-sized range along a subarray dimension, which is in the
- * form (start, end). Applicable only to variable-sized dimensions.
+ * Adds a 1D range along a subarray dimension name, which is in the form
+ * (start, end, stride). The datatype of the range components
+ * must be the same as the type of the domain of the array in the query.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * uint32_t dim_name = "rows";
+ * int64_t start = 10;
+ * int64_t end = 20;
+ * tiledb_query_add_range_by_name(ctx, query, dim_name, &start, &end, nullptr);
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param query The query to add the range to.
+ * @param dim_name The name of the dimension to add the range to.
+ * @param start The range start.
+ * @param end The range end.
+ * @param stride The range stride.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ *
+ * @note The stride is currently unsupported. Use `nullptr` as the
+ *     stride argument.
+ */
+int32_t tiledb_query_add_range_by_name(
+    tiledb_ctx_t* ctx,
+    tiledb_query_t* query,
+    const char* dim_name,
+    const void* start,
+    const void* end,
+    const void* stride);
+
+/**
+ * Adds a 1D variable-sized range along a subarray dimension index, which is in
+ * the form (start, end). Applicable only to variable-sized dimensions.
  *
  * **Example:**
  *
@@ -3865,7 +3915,39 @@ TILEDB_EXPORT int32_t tiledb_query_add_range_var(
     uint64_t end_size);
 
 /**
- * Retrieves the number of ranges of the query subarray along a given dimension.
+ * Adds a 1D variable-sized range along a subarray dimension name, which is in
+ * the form (start, end). Applicable only to variable-sized dimensions.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * uint32_t dim_name = "rows";
+ * char start[] = "a";
+ * char end[] = "bb";
+ * tiledb_query_add_range_var_by_name(ctx, query, dim_name, start, 1, end, 2);
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param query The query to add the range to.
+ * @param dim_name The name of the dimension to add the range to.
+ * @param start The range start.
+ * @param start_size The size of the range start in bytes.
+ * @param end The range end.
+ * @param end_size The size of the range end in bytes.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_query_add_range_var_by_name(
+    tiledb_ctx_t* ctx,
+    tiledb_query_t* query,
+    const char* dim_name,
+    const void* start,
+    uint64_t start_size,
+    const void* end,
+    uint64_t end_size);
+
+/**
+ * Retrieves the number of ranges of the query subarray along a given dimension
+ * index.
  *
  * **Example:**
  *
@@ -3887,7 +3969,31 @@ TILEDB_EXPORT int32_t tiledb_query_get_range_num(
     uint64_t* range_num);
 
 /**
- * Retrieves a specific range of the query subarray along a given dimension.
+ * Retrieves the number of ranges of the query subarray along a given dimension
+ * name.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * uint64_t range_num;
+ * tiledb_query_get_range_num_from_name(ctx, query, dim_name, &range_num);
+ * @endcode
+ *
+ * @param ctx The TileDB context
+ * @param query The query.
+ * @param dim_name The name of the dimension whose range number to retrieve.
+ * @param range_num The number of ranges to retrieve.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_query_get_range_num_from_name(
+    tiledb_ctx_t* ctx,
+    const tiledb_query_t* query,
+    const char* dim_name,
+    uint64_t* range_num);
+
+/**
+ * Retrieves a specific range of the query subarray along a given dimension
+ * index.
  *
  * **Example:**
  *
@@ -3918,8 +4024,40 @@ TILEDB_EXPORT int32_t tiledb_query_get_range(
     const void** stride);
 
 /**
+ * Retrieves a specific range of the query subarray along a given dimension
+ * name.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * const void* start;
+ * const void* end;
+ * const void* stride;
+ * tiledb_query_get_range_from_name(
+ *     ctx, query, dim_name, range_idx, &start, &end, &stride);
+ * @endcode
+ *
+ * @param ctx The TileDB context
+ * @param query The query.
+ * @param dim_name The name of the dimension to retrieve the range from.
+ * @param range_idx The index of the range to retrieve.
+ * @param start The range start to retrieve.
+ * @param end The range end to retrieve.
+ * @param stride The range stride to retrieve.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_query_get_range_from_name(
+    tiledb_ctx_t* ctx,
+    const tiledb_query_t* query,
+    const char* dim_name,
+    uint64_t range_idx,
+    const void** start,
+    const void** end,
+    const void** stride);
+
+/**
  * Retrieves a range's start and end size for a given variable-length
- * dimensions at a given range index.
+ * dimension index at a given range index.
  *
  * **Example:**
  *
@@ -3947,15 +4085,44 @@ TILEDB_EXPORT int32_t tiledb_query_get_range_var_size(
     uint64_t* end_size);
 
 /**
+ * Retrieves a range's start and end size for a given variable-length
+ * dimension name at a given range index.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * uint64_t start_size;
+ * uint64_t end_size;
+ * tiledb_query_get_range_var_size_from_name(
+ *     ctx, query, dim_name, range_idx, &start_size, &end_size);
+ * @endcode
+ *
+ * @param ctx The TileDB context
+ * @param query The query.
+ * @param dim_name The name of the dimension to retrieve the range from.
+ * @param range_idx The index of the range to retrieve.
+ * @param start_size range start size in bytes
+ * @param end_size range end size in bytes
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_query_get_range_var_size_from_name(
+    tiledb_ctx_t* ctx,
+    const tiledb_query_t* query,
+    const char* dim_name,
+    uint64_t range_idx,
+    uint64_t* start_size,
+    uint64_t* end_size);
+
+/**
  * Retrieves a specific range of the query subarray along a given
- * variable-length dimension.
+ * variable-length dimension index.
  *
  * **Example:**
  *
  * @code{.c}
  * const void* start;
  * const void* end;
- * tiledb_query_get_range(
+ * tiledb_query_get_range_var(
  *     ctx, query, dim_idx, range_idx, &start, &end);
  * @endcode
  *
@@ -3971,6 +4138,35 @@ TILEDB_EXPORT int32_t tiledb_query_get_range_var(
     tiledb_ctx_t* ctx,
     const tiledb_query_t* query,
     uint32_t dim_idx,
+    uint64_t range_idx,
+    void* start,
+    void* end);
+
+/**
+ * Retrieves a specific range of the query subarray along a given
+ * variable-length dimension name.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * const void* start;
+ * const void* end;
+ * tiledb_query_get_range_var_from_name(
+ *     ctx, query, dim_name, range_idx, &start, &end);
+ * @endcode
+ *
+ * @param ctx The TileDB context
+ * @param query The query.
+ * @param dim_name The name of the dimension to retrieve the range from.
+ * @param range_idx The index of the range to retrieve.
+ * @param start The range start to retrieve.
+ * @param end The range end to retrieve.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_query_get_range_var_from_name(
+    tiledb_ctx_t* ctx,
+    const tiledb_query_t* query,
+    const char* dim_name,
     uint64_t range_idx,
     void* start,
     void* end);

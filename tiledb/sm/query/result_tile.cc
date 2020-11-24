@@ -349,24 +349,6 @@ const ResultTile::TileTuple& ResultTile::coord_tile(unsigned dim_idx) const {
   return coord_tiles_[dim_idx].second;
 }
 
-template <>
-void ResultTile::compute_results_sparse<char>(
-    const ResultTile* result_tile,
-    unsigned dim_idx,
-    const Range& range,
-    std::vector<uint8_t>* result_bitmap) {
-  auto coords_num = result_tile->cell_num();
-  auto range_start = range.start_str();
-  auto range_end = range.end_str();
-  std::string coord_str;
-  auto& r_bitmap = (*result_bitmap);
-
-  for (uint64_t pos = 0; pos < coords_num; ++pos) {
-    coord_str = result_tile->coord_string(pos, dim_idx);
-    r_bitmap[pos] &= (coord_str >= range_start && coord_str <= range_end);
-  }
-}
-
 template <class T>
 void ResultTile::compute_results_dense(
     const ResultTile* result_tile,
@@ -481,6 +463,89 @@ void ResultTile::compute_results_dense(
       c = coords[pos * dim_num + dim_idx];
       r_bitmap[pos] &= (uint8_t)(c >= r[0] && c <= r[1]);
     }
+  }
+}
+
+template <>
+void ResultTile::compute_results_sparse<char>(
+    const ResultTile* result_tile,
+    unsigned dim_idx,
+    const Range& range,
+    std::vector<uint8_t>* result_bitmap) {
+  auto coords_num = result_tile->cell_num();
+  auto range_start = range.start_str();
+  auto range_start_size = (uint64_t)range_start.size();
+  auto range_end = range.end_str();
+  auto range_end_size = (uint64_t)range_end.size();
+  auto& r_bitmap = (*result_bitmap);
+
+  // Get coordinate tile
+  const auto& coord_tile = result_tile->coord_tile(dim_idx);
+
+  // Get offset buffer
+  const auto& coord_tile_off = std::get<0>(coord_tile);
+  assert(
+      coord_tile_off.chunked_buffer()->buffer_addressing() ==
+      ChunkedBuffer::BufferAddressing::CONTIGUOUS);
+  auto buff_off = static_cast<const uint64_t*>(
+      coord_tile_off.chunked_buffer()->get_contiguous_unsafe());
+
+  // Get string buffer
+  const auto& coord_tile_str = std::get<1>(coord_tile);
+  assert(
+      coord_tile_str.chunked_buffer()->buffer_addressing() ==
+      ChunkedBuffer::BufferAddressing::CONTIGUOUS);
+  auto buff_str = static_cast<const char*>(
+      coord_tile_str.chunked_buffer()->get_contiguous_unsafe());
+  auto buff_str_size = coord_tile_str.size();
+
+  // Compute results
+  uint64_t offset = 0, pos = 0, str_size = 0, min_size = 0;
+  bool geq_start = false, seq_end = false, all_chars_match = false;
+  for (; pos < coords_num; ++pos) {
+    offset = buff_off[pos];
+    str_size = (pos < coords_num - 1) ? buff_off[pos + 1] - offset :
+                                        buff_str_size - offset;
+
+    // Test against start
+    geq_start = true;
+    all_chars_match = true;
+    min_size = std::min(str_size, range_start_size);
+    for (uint64_t i = 0; i < min_size; ++i) {
+      if (buff_str[offset + i] < range_start[i]) {
+        geq_start = false;
+        all_chars_match = false;
+        break;
+      } else if (buff_str[offset + i] > range_start[i]) {
+        all_chars_match = false;
+        break;
+      }  // Else characters match
+    }
+    if (geq_start && all_chars_match && str_size < range_start_size) {
+      geq_start = false;
+    }
+
+    // Test against end
+    if (geq_start) {
+      seq_end = true;
+      all_chars_match = true;
+      min_size = std::min(str_size, range_end_size);
+      for (uint64_t i = 0; i < min_size; ++i) {
+        if (buff_str[offset + i] > range_end[i]) {
+          geq_start = false;
+          break;
+        } else if (buff_str[offset + i] < range_end[i]) {
+          all_chars_match = false;
+          break;
+        }  // Else characters match
+      }
+      if (seq_end && all_chars_match && str_size > range_end_size) {
+        seq_end = false;
+      }
+    }
+
+    // Set the result
+    r_bitmap[pos] &= (geq_start && seq_end);
   }
 }
 

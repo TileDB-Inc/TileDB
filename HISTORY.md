@@ -18,10 +18,12 @@
 
 ## Improvements
 
-* Added functionality to get fragment information from an array.
+* Optimized string dimension performance. 
+* Added functionality to get fragment information from an array. [#1900](https://github.com/TileDB-Inc/TileDB/pull/1900)
 * Prevented unnecessary sorting when (1) there is a single fragment and (i) either the query layout is global order, or (ii) the number of dimensions is 1, and (2) when there is a single range for which the result coordinates have already been sorted. [#1880](https://github.com/TileDB-Inc/TileDB/pull/1880)
 * Added extra stats for consolidation. [#1880](https://github.com/TileDB-Inc/TileDB/pull/1880)
 * Disabled checking if cells are written in global order when consolidating, as it was redundant (the cells are already being read in global order during consolidation). [#1880](https://github.com/TileDB-Inc/TileDB/pull/1880) 
+* Add support for printing MBRs with string dimensions in TileDB Tools [#1926](https://github.com/TileDB-Inc/TileDB/pull/1926)
 
 ## Deprecations
 
@@ -36,17 +38,20 @@
 * Updated the AWS SDK to v1.8.84 to fix an uncaught exception when using S3 [#1899](https://github.com/TileDB-Inc/TileDB/pull/1899)[TileDB-Py #409](https://github.com/TileDB-Inc/TileDB-Py/issues/409)
 * Fixed bug where a read on a sparse array may return duplicate values. [#1905](https://github.com/TileDB-Inc/TileDB/pull/1905)
 * Fixed bug where an array could not be opened if created with an array schema from an older version [#1889](https://github.com/TileDB-Inc/TileDB/pull/1889)
+* Fix compilation of TileDB Tools [#1926](https://github.com/TileDB-Inc/TileDB/pull/1926)
 
 ## API additions
 
 ### C++ API
 
 * Added functions for getting fragment information. [#1900](https://github.com/TileDB-Inc/TileDB/pull/1900)
+* Added APIs for getting and setting ranges of queries using a dimension name. [#1920](https://github.com/TileDB-Inc/TileDB/pull/1920)
 
 ### C++ API
 
 * Added class `FragmentInfo` and functions for getting fragment information. [#1900](https://github.com/TileDB-Inc/TileDB/pull/1900)
 * Added function `Dimension::create` that allows not setting a space tile extent. [#1880](https://github.com/TileDB-Inc/TileDB/pull/1880)
+* Added APIs for getting and setting ranges of queries using a dimension name. [#1920](https://github.com/TileDB-Inc/TileDB/pull/1920)
 
 # TileDB v2.1.0 Release Notes
 
@@ -90,7 +95,7 @@
 * Deprecated config option "sm.num_async_threads" [#1766](https://github.com/TileDB-Inc/TileDB/pull/1766)
 * Deprecated config option "sm.num_reader_threads" [#1766](https://github.com/TileDB-Inc/TileDB/pull/1766)
 * Deprecated config option "sm.num_writer_threads" [#1766](https://github.com/TileDB-Inc/TileDB/pull/1766)
-* Deprecated config option "sm.num_vfs_threads" [#1766](https://github.com/TileDB-Inc/TileDB/pull/1766)
+* Deprecated config option "vfs.num_threads" [#1766](https://github.com/TileDB-Inc/TileDB/pull/1766)
 * Support for MacOS older than 10.13 is being dropped when using the AWS SDK. Prebuilt Binaries now target 10.13 [#1753](https://github.com/TileDB-Inc/TileDB/pull/1753)
 * Use of Intel's Thread Building Blocks (TBB) will be discontinued in the future. It is now disabled by default [#1762](https://github.com/TileDB-Inc/TileDB/pull/1762)
 * No longer building release artifacts with Intel's Thread Building Blocks (TBB) enabled [#1825](https://github.com/TileDB-Inc/TileDB/pull/1825)

@@ -389,9 +389,14 @@ Status Reader::set_buffer(
     uint64_t* const buffer_size,
     const bool check_null_buffers) {
   // Check buffer
-  if (check_null_buffers && (buffer == nullptr || buffer_size == nullptr))
-    return LOG_STATUS(Status::ReaderError(
-        "Cannot set buffer; Buffer or buffer size is null"));
+  if (check_null_buffers && buffer == nullptr)
+    return LOG_STATUS(
+        Status::ReaderError("Cannot set buffer; " + name + " buffer is null"));
+
+  // Check buffer size
+  if (check_null_buffers && buffer_size == nullptr)
+    return LOG_STATUS(
+        Status::ReaderError("Cannot set buffer; " + name + " buffer is null"));
 
   // Array schema must exist
   if (array_schema_ == nullptr)
@@ -450,11 +455,24 @@ Status Reader::set_buffer(
     uint64_t* const buffer_val_size,
     const bool check_null_buffers) {
   // Check buffer
-  if (check_null_buffers &&
-      (buffer_off == nullptr || buffer_off_size == nullptr ||
-       buffer_val == nullptr || buffer_val_size == nullptr))
+  if (check_null_buffers && buffer_val == nullptr)
+    return LOG_STATUS(
+        Status::ReaderError("Cannot set buffer; " + name + " buffer is null"));
+
+  // Check buffer size
+  if (check_null_buffers && buffer_val_size == nullptr)
     return LOG_STATUS(Status::ReaderError(
-        "Cannot set buffer; Buffer or buffer size is null"));
+        "Cannot set buffer; " + name + " buffer size is null"));
+
+  // Check offset buffer
+  if (check_null_buffers && buffer_off == nullptr)
+    return LOG_STATUS(Status::ReaderError(
+        "Cannot set buffer; " + name + " offset buffer is null"));
+
+  // Check offset buffer size
+  if (check_null_buffers && buffer_off_size == nullptr)
+    return LOG_STATUS(Status::ReaderError(
+        "Cannot set buffer; " + name + " offset buffer size is null"));
 
   // Array schema must exist
   if (array_schema_ == nullptr)
@@ -504,9 +522,24 @@ Status Reader::set_buffer(
     ValidityVector&& validity_vector,
     const bool check_null_buffers) {
   // Check buffer
-  if (check_null_buffers && (buffer == nullptr || buffer_size == nullptr))
+  if (check_null_buffers && buffer == nullptr)
+    return LOG_STATUS(
+        Status::ReaderError("Cannot set buffer; " + name + " buffer is null"));
+
+  // Check buffer size
+  if (check_null_buffers && buffer_size == nullptr)
     return LOG_STATUS(Status::ReaderError(
-        "Cannot set buffer; Buffer or buffer size is null"));
+        "Cannot set buffer; " + name + " buffer size is null"));
+
+  // Check validity buffer offset
+  if (check_null_buffers && validity_vector.buffer() == nullptr)
+    return LOG_STATUS(Status::ReaderError(
+        "Cannot set buffer; " + name + " validity buffer is null"));
+
+  // Check validity buffer size
+  if (check_null_buffers && validity_vector.buffer_size() == nullptr)
+    return LOG_STATUS(Status::ReaderError(
+        "Cannot set buffer; " + name + " validity buffer size is null"));
 
   // Array schema must exist
   if (array_schema_ == nullptr)
@@ -554,11 +587,35 @@ Status Reader::set_buffer(
     ValidityVector&& validity_vector,
     const bool check_null_buffers) {
   // Check buffer
-  if (check_null_buffers &&
-      (buffer_off == nullptr || buffer_off_size == nullptr ||
-       buffer_val == nullptr || buffer_val_size == nullptr))
+  if (check_null_buffers && buffer_val == nullptr)
+    return LOG_STATUS(
+        Status::ReaderError("Cannot set buffer; " + name + " buffer is null"));
+
+  // Check buffer size
+  if (check_null_buffers && buffer_val_size == nullptr)
     return LOG_STATUS(Status::ReaderError(
-        "Cannot set buffer; Buffer or buffer size is null"));
+        "Cannot set buffer; " + name + " buffer size is null"));
+
+  // Check buffer offset
+  if (check_null_buffers && buffer_off == nullptr)
+    return LOG_STATUS(Status::ReaderError(
+        "Cannot set buffer; " + name + " offset buffer is null"));
+
+  // Check buffer offset size
+  if (check_null_buffers && buffer_off_size == nullptr)
+    return LOG_STATUS(Status::ReaderError(
+        "Cannot set buffer; " + name + " offset buffer size is null"));
+  ;
+
+  // Check validity buffer offset
+  if (check_null_buffers && validity_vector.buffer() == nullptr)
+    return LOG_STATUS(Status::ReaderError(
+        "Cannot set buffer; " + name + " validity buffer is null"));
+
+  // Check validity buffer size
+  if (check_null_buffers && validity_vector.buffer_size() == nullptr)
+    return LOG_STATUS(Status::ReaderError(
+        "Cannot set buffer; " + name + " validity buffer size is null"));
 
   // Array schema must exist
   if (array_schema_ == nullptr)
@@ -1494,7 +1551,7 @@ Status Reader::copy_partitioned_var_cells(
       auto var_dest = buffer_var + var_offset;
       auto validity_dest = buffer_validity + (var_offset / attr_datatype_size);
 
-      if (offsets_format_ == "elements") {
+      if (offsets_format_mode_ == "elements") {
         var_offset = var_offset / attr_datatype_size;
       }
       // Copy offset
@@ -2502,9 +2559,9 @@ Status Reader::init_read_state() {
   RETURN_NOT_OK(
       config.get<uint64_t>("sm.memory_budget_var", &memory_budget_var, &found));
   assert(found);
-  offsets_format_ = config.get("sm.offsets_format", &found);
+  offsets_format_mode_ = config.get("sm.var_offsets.mode", &found);
   assert(found);
-  if (offsets_format_ != "bytes" && offsets_format_ != "elements") {
+  if (offsets_format_mode_ != "bytes" && offsets_format_mode_ != "elements") {
     return LOG_STATUS(
         Status::ReaderError("Cannot initialize reader; Unsupported offsets "
                             "format in configuration"));
