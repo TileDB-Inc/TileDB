@@ -3110,40 +3110,6 @@ Status Reader::copy_coordinates(
   STATS_END_TIMER(stats::Stats::TimerType::READ_COPY_COORDS);
 }
 
-Status Reader::add_extra_offset() {
-  for (const auto& it : buffers_) {
-    const auto& name = it.first;
-    // TODO: keep that check?
-    if (read_state_.overflowed_)
-      break;
-
-    if (!array_schema_->is_attr(name) || !array_schema_->var_size(name))
-      continue;
-
-    if (*it.second.buffer_size_ >= it.second.original_buffer_size_) {
-      // error out for now
-      return LOG_STATUS(Status::ReaderError(
-          "Not enough memory in user buffer for extra element"));
-    }
-
-    auto buffer = (unsigned char*)it.second.buffer_;
-    if (offsets_format_mode_ == "bytes") {
-      memcpy(
-          buffer + *it.second.buffer_size_,
-          it.second.buffer_var_size_,
-          sizeof(uint64_t));
-    } else {
-      auto elements = *it.second.buffer_var_size_ /
-                      datatype_size(array_schema_->type(name));
-      memcpy(buffer + *it.second.buffer_size_, &elements, sizeof(uint64_t));
-    }
-
-    *it.second.buffer_size_ += sizeof(uint64_t);
-  }
-
-  return Status::Ok();
-}
-
 Status Reader::copy_attribute_values(
     const uint64_t stride,
     const std::vector<ResultTile*>& result_tiles,
@@ -3257,6 +3223,43 @@ Status Reader::copy_attribute_values(
 
   return Status::Ok();
   STATS_END_TIMER(stats::Stats::TimerType::READ_COPY_ATTR_VALUES);
+}
+
+Status Reader::add_extra_offset() {
+  for (const auto& it : buffers_) {
+    const auto& name = it.first;
+    // TODO: keep that check?
+    if (read_state_.overflowed_)
+      break;
+
+    if (!array_schema_->is_attr(name) || !array_schema_->var_size(name))
+      continue;
+
+    if (*it.second.buffer_size_ >= it.second.original_buffer_size_) {
+      // Error out for now
+      return LOG_STATUS(Status::ReaderError(
+          "Not enough memory in user buffer for extra element"));
+    }
+
+    auto buffer = (unsigned char*)it.second.buffer_;
+    if (offsets_format_mode_ == "bytes") {
+      memcpy(
+          buffer + *it.second.buffer_size_,
+          it.second.buffer_var_size_,
+          constants::cell_var_offset_size);
+    } else {
+      auto elements = *it.second.buffer_var_size_ /
+                      datatype_size(array_schema_->type(name));
+      memcpy(
+          buffer + *it.second.buffer_size_,
+          &elements,
+          constants::cell_var_offset_size);
+    }
+
+    *it.second.buffer_size_ += constants::cell_var_offset_size;
+  }
+
+  return Status::Ok();
 }
 
 void Reader::zero_out_buffer_sizes() {

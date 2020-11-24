@@ -1355,10 +1355,6 @@ TEST_CASE(
     vfs.remove_dir(array_name);
 }
 
-// TODO: add test for extra element + element offset
-// TODO: add test for "just check if there is memory to add the extra element.
-// If not, error-out the read."
-// TODO: test multiple attributes
 TEST_CASE(
     "C++ API: Test offsets extra element",
     "[cppapi][sparse][extra-offset][arrow]") {
@@ -1401,88 +1397,168 @@ TEST_CASE(
 
   array.close();
 
-  // 1a. Complete read when no extra offset is configured (default case)
-  Config config = ctx.config();
-  CHECK((std::string)config["sm.var_offsets.extra_element"] == "false");
+  SECTION("Full read") {
+    array.open(TILEDB_READ);
+    Config config;
 
-  array.open(TILEDB_READ);
-  Query query2(ctx, array, TILEDB_READ);
+    // Buffers to store the read results
+    std::vector<int32_t> attr_val(data.size());
+    std::vector<uint64_t> attr_off(data_offsets.size());
 
-  std::vector<int32_t> b_val(data.size());
-  std::vector<uint64_t> b_off(data_offsets.size());
-  query2.set_buffer("attr", b_off, b_val);
+    SECTION("No extra element (default case)") {
+      config = ctx.config();
+      CHECK((std::string)config["sm.var_offsets.extra_element"] == "false");
 
-  CHECK_NOTHROW(query2.submit());
+      // Submit read query
+      Query query_r(ctx, array, TILEDB_READ);
+      query_r.set_buffer("attr", attr_off, attr_val);
+      CHECK_NOTHROW(query_r.submit());
 
-  // Check that bytes offsets are properly returned
-  CHECK(b_val == data);
-  CHECK(b_off == data_offsets);
+      // Check that bytes offsets are properly returned
+      CHECK(attr_val == data);
+      CHECK(attr_off == data_offsets);
+    }
 
-  // 1b. Partial reads when no extra offset is configured (default case)
-  Query query3(ctx, array, TILEDB_READ);
+    SECTION("Extra element") {
+      config["sm.var_offsets.extra_element"] = "true";
+      // Extend offsets buffer to accomodate for the extra element
+      attr_off.resize(attr_off.size() + 1);
 
-  // TODO: play a bit with those lengths
-  std::vector<int32_t> b_val_par(data.size() - 3);
-  std::vector<uint64_t> b_off_par(data_offsets.size() - 2);
-  query3.set_buffer("attr", b_off_par, b_val_par);
+      SECTION("Byte offsets (default config)") {
+        CHECK((std::string)config["sm.var_offsets.mode"] == "bytes");
+        Context ctx(config);
 
-  CHECK_NOTHROW(query3.submit());
+        // Submit read query
+        Query query_r(ctx, array, TILEDB_READ);
+        query_r.set_buffer("attr", attr_off, attr_val);
+        CHECK_NOTHROW(query_r.submit());
 
-  // Check that bytes offsets are properly returned
-  std::vector<int32_t> data_par = {1, 2, 3};
-  std::vector<uint64_t> data_off_par = {0, 4};
-  CHECK(b_val_par == data_par);
-  CHECK(b_off_par == data_off_par);
+        // Check the extra element is included in the offsets
+        data_offsets.push_back(sizeof(data[0]) * data.size());
+        CHECK(attr_val == data);
+        CHECK(attr_off == data_offsets);
+      }
 
-  CHECK_NOTHROW(query3.submit());
+      SECTION("Element offsets") {
+        config["sm.var_offsets.mode"] = "elements";
+        Context ctx(config);
 
-  // Check that bytes offsets are properly returned
-  data_par = {4, 5, 6};
-  data_off_par = {0, 8};
-  CHECK(b_val_par == data_par);
-  CHECK(b_off_par == data_off_par);
+        // Submit read query
+        Query query_r(ctx, array, TILEDB_READ);
+        query_r.set_buffer("attr", attr_off, attr_val);
+        CHECK_NOTHROW(query_r.submit());
 
-  // 2a. Complete read using the extra element
-  Config config2;
-  // Change config to require the extra element in the end
-  config2["sm.var_offsets.extra_element"] = "true";
-  // if elements format then expect { 0, 1, 3, 5, 6 }
-  // config2["sm.var_offsets.mode"] = "elements";
-  Context ctx2(config2);
+        // Check the extra element is included in the offsets
+        data_offsets = {0, 1, 3, 5, 6};
+        CHECK(attr_val == data);
+        CHECK(attr_off == data_offsets);
+      }
 
-  Query query4(ctx2, array, TILEDB_READ);
-  std::vector<int32_t> b_val_extra(data.size());
-  std::vector<uint64_t> b_off_extra(data_offsets.size() + 1);
-  query4.set_buffer("attr", b_off_extra, b_val_extra);
-  CHECK_NOTHROW(query4.submit());
+      SECTION("User offsets buffer too small") {
+        // Assume no size for the extra element
+        attr_off.resize(attr_off.size() - 1);
 
-  // Check the extra element is included in the offsets
-  std::vector<uint64_t> data_off_exp(data_offsets);
-  data_off_exp.push_back(sizeof(data));
-  CHECK(b_val_extra == data);
-  CHECK(b_off_extra == data_off_exp);
+        // Submit read query
+        Context ctx(config);
+        Query query_r(ctx, array, TILEDB_READ);
+        query_r.set_buffer("attr", attr_off, attr_val);
+        CHECK_THROWS(query_r.submit());
+      }
+    }
+  }
 
-  // 2b. Partial read using the extra element
+  SECTION("Partial read") {
+    array.open(TILEDB_READ);
+    Config config;
 
-  Query query5(ctx2, array, TILEDB_READ);
-  std::vector<int32_t> b_val_extra_par(data.size() - 3);
-  std::vector<uint64_t> b_off_extra_par(data_offsets.size() - 1);
-  query5.set_buffer("attr", b_off_extra_par, b_val_extra_par);
-  CHECK_NOTHROW(query5.submit());
+    // Assume the user buffers can only store half the data
+    std::vector<int32_t> attr_val(data.size() / 2);
+    std::vector<uint64_t> attr_off(data_offsets.size() - 2);
 
-  // Check that bytes offsets are properly returned
-  data_par = {1, 2, 3};
-  data_off_par = {0, 4, 12};
-  CHECK(b_val_extra_par == data_par);
-  CHECK(b_off_extra_par == data_off_par);
+    // The expected buffers to be returned after 2 partial reads
+    std::vector<int32_t> data_part1 = {1, 2, 3};
+    std::vector<uint64_t> data_off_part1 = {0, 4};
+    std::vector<int32_t> data_part2 = {4, 5, 6};
+    std::vector<uint64_t> data_off_part2 = {0, 8};
 
-  CHECK_NOTHROW(query5.submit());
+    SECTION("No extra element (default case)") {
+      config = ctx.config();
+      CHECK((std::string)config["sm.var_offsets.extra_element"] == "false");
 
-  // Check that bytes offsets are properly returned
-  data_par = {4, 5, 6};
-  data_off_par = {0, 8, 12};
-  CHECK(b_val_extra_par == data_par);
-  CHECK(b_off_extra_par == data_off_par);
+      // Submit read query
+      Query query_r(ctx, array, TILEDB_READ);
+      query_r.set_buffer("attr", attr_off, attr_val);
+
+      // Check that first partial read returns expected results
+      CHECK_NOTHROW(query_r.submit());
+      CHECK(attr_val == data_part1);
+      CHECK(attr_off == data_off_part1);
+
+      // Check that second partial read returns expected results
+      CHECK_NOTHROW(query_r.submit());
+      CHECK(attr_val == data_part2);
+      CHECK(attr_off == data_off_part2);
+    }
+
+    SECTION("Extra element") {
+      config["sm.var_offsets.extra_element"] = "true";
+      // Extend offsets buffer to accomodate for the extra element
+      attr_off.resize(attr_off.size() + 1);
+
+      SECTION("Byte offsets (default config)") {
+        CHECK((std::string)config["sm.var_offsets.mode"] == "bytes");
+        Context ctx(config);
+
+        // Submit read query
+        Query query_r(ctx, array, TILEDB_READ);
+        query_r.set_buffer("attr", attr_off, attr_val);
+
+        // Check the extra element is included in the offsets part1
+        CHECK_NOTHROW(query_r.submit());
+        data_off_part1.push_back(sizeof(data_part1[0]) * data_part1.size());
+        CHECK(attr_val == data_part1);
+        CHECK(attr_off == data_off_part1);
+
+        // Check the extra element is included in the offsets part1
+        CHECK_NOTHROW(query_r.submit());
+        data_off_part2.push_back(sizeof(data_part2[0]) * data_part2.size());
+        CHECK(attr_val == data_part2);
+        CHECK(attr_off == data_off_part2);
+      }
+
+      SECTION("Element offsets") {
+        config["sm.var_offsets.mode"] = "elements";
+        Context ctx(config);
+
+        // Submit read query
+        Query query_r(ctx, array, TILEDB_READ);
+        query_r.set_buffer("attr", attr_off, attr_val);
+
+        // Check the extra element is included in the offsets part1
+        CHECK_NOTHROW(query_r.submit());
+        data_off_part1 = {0, 1, 3};
+        CHECK(attr_val == data_part1);
+        CHECK(attr_off == data_off_part1);
+
+        // Check the extra element is included in the offsets part1
+        CHECK_NOTHROW(query_r.submit());
+        data_off_part2 = {0, 2, 3};
+        CHECK(attr_val == data_part2);
+        CHECK(attr_off == data_off_part2);
+      }
+
+      SECTION("User offsets buffer too small") {
+        // Assume no size for the extra element
+        attr_off.resize(attr_off.size() - 1);
+
+        // Submit read query
+        Context ctx(config);
+        Query query_r(ctx, array, TILEDB_READ);
+        query_r.set_buffer("attr", attr_off, attr_val);
+        CHECK_THROWS(query_r.submit());
+      }
+    }
+  }
 
   array.close();
 

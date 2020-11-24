@@ -1660,7 +1660,11 @@ class Reader {
       const std::vector<ResultTile*>& result_tiles,
       const std::vector<ResultCellSlab>& result_cell_slabs);
 
-  // TODO: add docstring
+  /**
+   * Adds an extra offset in the end of the offsets buffer indicating the
+   * returned data size, if an attribute is var-sized and the
+   * sm.var_offsets.extra_element config option has been enabled.
+   */
   Status add_extra_offset();
 
   /**
