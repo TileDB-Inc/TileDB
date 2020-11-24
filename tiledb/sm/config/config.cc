@@ -82,6 +82,7 @@ const std::string Config::SM_CONSOLIDATION_STEP_MAX_FRAGS = "4294967295";
 const std::string Config::SM_CONSOLIDATION_STEP_SIZE_RATIO = "0.0";
 const std::string Config::SM_CONSOLIDATION_MODE = "fragments";
 const std::string Config::SM_VACUUM_MODE = "fragments";
+const std::string Config::SM_OFFSETS_BITSIZE = "64";
 const std::string Config::SM_OFFSETS_EXTRA_ELEMENT = "false";
 const std::string Config::SM_OFFSETS_FORMAT_MODE = "bytes";
 const std::string Config::VFS_MIN_PARALLEL_SIZE = "10485760";
@@ -199,6 +200,7 @@ Config::Config() {
   param_values_["sm.consolidation.steps"] = SM_CONSOLIDATION_STEPS;
   param_values_["sm.consolidation.mode"] = SM_CONSOLIDATION_MODE;
   param_values_["sm.vacuum.mode"] = SM_VACUUM_MODE;
+  param_values_["sm.var_offsets.bitsize"] = SM_OFFSETS_BITSIZE;
   param_values_["sm.var_offsets.extra_element"] = SM_OFFSETS_EXTRA_ELEMENT;
   param_values_["sm.var_offsets.mode"] = SM_OFFSETS_FORMAT_MODE;
   param_values_["vfs.min_parallel_size"] = VFS_MIN_PARALLEL_SIZE;
@@ -438,6 +440,8 @@ Status Config::unset(const std::string& param) {
     param_values_["sm.consolidation.mode"] = SM_CONSOLIDATION_MODE;
   } else if (param == "sm.vacuum.mode") {
     param_values_["sm.vacuum.mode"] = SM_VACUUM_MODE;
+  } else if (param == "sm.var_offsets.bitsize") {
+    param_values_["sm.var_offsets.bitsize"] = SM_OFFSETS_BITSIZE;
   } else if (param == "sm.var_offsets.extra_element") {
     param_values_["sm.var_offsets.extra_element"] = SM_OFFSETS_EXTRA_ELEMENT;
   } else if (param == "sm.var_offsets.mode") {
@@ -636,6 +640,8 @@ Status Config::sanity_check(
     RETURN_NOT_OK(utils::parse::convert(value, &v32));
   } else if (param == "sm.consolidation.step_size_ratio") {
     RETURN_NOT_OK(utils::parse::convert(value, &vf));
+  } else if (param == "sm.var_offsets.bitsize") {
+    RETURN_NOT_OK(utils::parse::convert(value, &vint));
   } else if (param == "sm.var_offsets.extra_element") {
     RETURN_NOT_OK(utils::parse::convert(value, &v));
   } else if (param == "sm.var_offsets.mode") {
