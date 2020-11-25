@@ -192,7 +192,10 @@ class RestClient {
 
   /** Collection of response headers that are attached to REST response. */
   std::pair<std::string, std::unordered_map<std::string, std::string>>
-      res_headers_;
+      redirect_meta_;
+
+  /** Mutex for thread-safety. */
+  mutable std::mutex redirect_mtx_;
 
   /* ********************************* */
   /*         PRIVATE METHODS           */
