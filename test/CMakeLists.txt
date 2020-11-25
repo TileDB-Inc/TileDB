@@ -167,6 +167,7 @@ set(TILEDB_TEST_SOURCES
   src/unit-utils.cc
   src/unit-uuid.cc
   src/unit-ValidityVector.cc
+  src/unit-var_offsets.cc
   src/unit-vfs.cc
   src/unit-win-filesystem.cc
   src/unit.cc

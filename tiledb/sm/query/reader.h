@@ -1662,8 +1662,7 @@ class Reader {
 
   /**
    * Adds an extra offset in the end of the offsets buffer indicating the
-   * returned data size, if an attribute is var-sized and the
-   * sm.var_offsets.extra_element config option has been enabled.
+   * returned data size if an attribute is var-sized.
    */
   Status add_extra_offset();
 

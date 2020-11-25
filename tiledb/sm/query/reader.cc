@@ -353,8 +353,12 @@ Status Reader::read() {
       zero_out_buffer_sizes();
       RETURN_NOT_OK(read_state_.split_current());
 
-      if (read_state_.unsplittable_)
+      if (read_state_.unsplittable_) {
+        if (offsets_extra_element_) {
+          RETURN_NOT_OK(add_extra_offset());
+        }
         return Status::Ok();
+      }
     } else {
       bool no_results = this->no_results();
 
@@ -362,8 +366,12 @@ Status Reader::read() {
       if (!no_results)
         read_state_.unsplittable_ = false;
 
-      if (!no_results || read_state_.done())
+      if (!no_results || read_state_.done()) {
+        if (offsets_extra_element_) {
+          RETURN_NOT_OK(add_extra_offset());
+        }
         return Status::Ok();
+      }
 
       RETURN_NOT_OK(read_state_.next());
     }
@@ -3050,10 +3058,6 @@ Status Reader::sparse_read() {
   RETURN_NOT_OK(
       copy_attribute_values(UINT64_MAX, result_tiles, result_cell_slabs));
 
-  if (offsets_extra_element_) {
-    RETURN_NOT_OK(add_extra_offset());
-  }
-
   return Status::Ok();
 }
 
@@ -3228,14 +3232,11 @@ Status Reader::copy_attribute_values(
 Status Reader::add_extra_offset() {
   for (const auto& it : buffers_) {
     const auto& name = it.first;
-    // TODO: keep that check?
-    if (read_state_.overflowed_)
-      break;
-
     if (!array_schema_->is_attr(name) || !array_schema_->var_size(name))
       continue;
 
-    if (*it.second.buffer_size_ >= it.second.original_buffer_size_) {
+    if (*it.second.buffer_size_ + constants::cell_var_offset_size >
+        it.second.original_buffer_size_) {
       // Error out for now
       return LOG_STATUS(Status::ReaderError(
           "Not enough memory in user buffer for extra element"));

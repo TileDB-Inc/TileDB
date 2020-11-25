@@ -181,7 +181,7 @@ class Config {
 
   /**
    * If `true`, an extra element that points to the end of the values buffer
-   * will be added in the end of the offsets buffer of var-sized attributes
+   * will be added to the end of the offsets buffer of var-sized attributes
    */
   static const std::string SM_OFFSETS_EXTRA_ELEMENT;
 
