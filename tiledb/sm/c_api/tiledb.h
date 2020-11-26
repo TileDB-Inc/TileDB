@@ -523,7 +523,7 @@ typedef struct tiledb_vfs_t tiledb_vfs_t;
 /** A virtual filesystem file handle. */
 typedef struct tiledb_vfs_fh_t tiledb_vfs_fh_t;
 
-/** A fragment ingo object. */
+/** A fragment info object. */
 typedef struct tiledb_fragment_info_t tiledb_fragment_info_t;
 
 /* ********************************* */
