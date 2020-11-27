@@ -119,7 +119,7 @@ void write_dense_array(
 
 TEST_CASE(
     "C++ API: Test element offsets : sparse array",
-    "[var-offsets][sparse][element-offset][arrow]") {
+    "[var-offsets][element-offset][arrow]") {
   std::string array_name = "test_element_offset";
   create_sparse_array(array_name);
 
@@ -168,7 +168,6 @@ TEST_CASE(
 
     array.close();
   }
-
   // Clean up
   VFS vfs(ctx);
   if (vfs.is_dir(array_name))
@@ -177,7 +176,7 @@ TEST_CASE(
 
 TEST_CASE(
     "C++ API: Test element offsets : dense array",
-    "[var-offsets][dense][element-offset][arrow]") {
+    "[var-offsets][element-offset][arrow]") {
   std::string array_name = "test_element_offset";
   create_dense_array(array_name);
 
@@ -237,7 +236,7 @@ TEST_CASE(
 
 TEST_CASE(
     "C++ API: Test offsets extra element: sparse array",
-    "[var-offsets][sparse][extra-offset][arrow]") {
+    "[var-offsets][extra-offset][arrow]") {
   std::string array_name = "test_extra_offset";
   create_sparse_array(array_name);
 
@@ -419,7 +418,7 @@ TEST_CASE(
 
 TEST_CASE(
     "C++ API: Test offsets extra element: dense array",
-    "[var-offsets][dense][extra-offset][arrow]") {
+    "[var-offsets][extra-offset][arrow]") {
   std::string array_name = "test_extra_offset";
   create_dense_array(array_name);
 
@@ -517,26 +516,6 @@ TEST_CASE(
     std::vector<int32_t> data_part2 = {4, 5, 6};
     std::vector<uint64_t> data_off_part2 = {0, 8};
 
-    SECTION("No extra element (default case)") {
-      config = ctx.config();
-      CHECK((std::string)config["sm.var_offsets.extra_element"] == "false");
-
-      // Submit read query
-      Query query_r(ctx, array, TILEDB_READ);
-      query_r.set_buffer("attr", attr_off, attr_val);
-      query_r.set_subarray<int64_t>({1, 2, 1, 2});
-
-      // Check that first partial read returns expected results
-      CHECK_NOTHROW(query_r.submit());
-      CHECK(attr_val == data_part1);
-      CHECK(attr_off == data_off_part1);
-
-      // Check that second partial read returns expected results
-      CHECK_NOTHROW(query_r.submit());
-      CHECK(attr_val == data_part2);
-      CHECK(attr_off == data_off_part2);
-    }
-
     SECTION("Extra element") {
       config["sm.var_offsets.extra_element"] = "true";
       // Extend offsets buffer to accomodate for the extra element
@@ -597,6 +576,26 @@ TEST_CASE(
         query_r.set_subarray<int64_t>({1, 2, 1, 2});
         CHECK_THROWS(query_r.submit());
       }
+    }
+
+    SECTION("No extra element (default case)") {
+      config["sm.var_offsets.extra_element"] = "false";
+      Context ctx(config);
+
+      // Submit read query
+      Query query_r(ctx, array, TILEDB_READ);
+      query_r.set_buffer("attr", attr_off, attr_val);
+      query_r.set_subarray<int64_t>({1, 2, 1, 2});
+
+      // Check that first partial read returns expected results
+      CHECK_NOTHROW(query_r.submit());
+      CHECK(attr_val == data_part1);
+      CHECK(attr_off == data_off_part1);
+
+      // Check that second partial read returns expected results
+      CHECK_NOTHROW(query_r.submit());
+      CHECK(attr_val == data_part2);
+      CHECK(attr_off == data_off_part2);
     }
     array.close();
   }
