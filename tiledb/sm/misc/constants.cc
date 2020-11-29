@@ -71,6 +71,9 @@ const unsigned rtree_fanout = 10;
 /** The array schema file name. */
 const std::string array_schema_filename = "__array_schema.tdb";
 
+/** The array schema folder name. */
+const std::string array_schema_folder_name = "__schema";
+
 /** The array metadata folder name. */
 const std::string array_metadata_folder_name = "__meta";
 

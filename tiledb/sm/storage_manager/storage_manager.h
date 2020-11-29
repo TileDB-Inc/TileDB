@@ -656,11 +656,35 @@ class StorageManager {
    * Loads the schema of an array from persistent storage into memory.
    *
    * @param array_uri The URI path of the array.
+   * @param schema_uri The URI path of the array scehma.
    * @param encryption_key The encryption key to use.
    * @param array_schema The array schema to be retrieved.
    * @return Status
    */
   Status load_array_schema(
+      const URI& array_uri,
+      const URI& schema_uri,
+      const EncryptionKey& encryption_key,
+      ArraySchema** array_schema);
+
+  /**
+   * List all array schemas found for an array
+   *
+   * @param array_uri The URI path of the array.
+   * @param uris The URIs that contain array schemas.
+   * @return
+   */
+  Status list_array_schema_uris(const URI& array_uri, std::vector<URI>* uris);
+
+  /**
+   * Load the most recent array schema of an array
+   *
+   * @param array_uri The URI path of the array.
+   * @param encryption_key The encryption key to use.
+   * @param array_schema The array schema to be retrieved.
+   * @return Status
+   */
+  Status load_latest_array_schema(
       const URI& array_uri,
       const EncryptionKey& encryption_key,
       ArraySchema** array_schema);

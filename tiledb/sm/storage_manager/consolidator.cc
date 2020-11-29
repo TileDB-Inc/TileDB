@@ -190,8 +190,8 @@ Status Consolidator::consolidate_fragments(
   EncryptionKey enc_key;
   RETURN_NOT_OK(enc_key.set_key(encryption_type, encryption_key, key_length));
   auto array_schema = (ArraySchema*)nullptr;
-  RETURN_NOT_OK(
-      storage_manager_->load_array_schema(array_uri, enc_key, &array_schema));
+  RETURN_NOT_OK(storage_manager_->load_latest_array_schema(
+      array_uri, enc_key, &array_schema));
 
   // Consolidate fragments
   RETURN_NOT_OK_ELSE(

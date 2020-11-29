@@ -1482,6 +1482,60 @@ bool StorageManager::is_vacuum_file(const URI& uri) const {
 
 Status StorageManager::load_array_schema(
     const URI& array_uri,
+    const URI& schema_uri,
+    const EncryptionKey& encryption_key,
+    ArraySchema** array_schema) {
+  STATS_START_TIMER(stats::Stats::TimerType::READ_LOAD_ARRAY_SCHEMA)
+
+  if (schema_uri.is_invalid())
+    return LOG_STATUS(Status::StorageManagerError(
+        "Cannot load array schema; Invalid array URI"));
+
+  GenericTileIO tile_io(this, schema_uri);
+  Tile* tile = nullptr;
+  RETURN_NOT_OK(tile_io.read_generic(&tile, 0, encryption_key, config_));
+
+  auto chunked_buffer = tile->chunked_buffer();
+  Buffer buff;
+  buff.realloc(chunked_buffer->size());
+  buff.set_size(chunked_buffer->size());
+  RETURN_NOT_OK_ELSE(
+      chunked_buffer->read(buff.data(), buff.size(), 0), delete tile);
+  delete tile;
+
+  STATS_ADD_COUNTER(
+      stats::Stats::CounterType::READ_ARRAY_SCHEMA_SIZE, buff.size());
+
+  // Deserialize
+  ConstBuffer cbuff(&buff);
+  *array_schema = new ArraySchema();
+  (*array_schema)->set_array_uri(array_uri);
+  Status st = (*array_schema)->deserialize(&cbuff);
+  if (!st.ok()) {
+    delete *array_schema;
+    *array_schema = nullptr;
+  }
+
+  return st;
+
+  STATS_END_TIMER(stats::Stats::TimerType::READ_LOAD_ARRAY_SCHEMA)
+}
+
+Status StorageManager::list_array_schema_uris(
+    const URI& array_uri, std::vector<URI>* uris) {
+  STATS_START_TIMER(stats::Stats::TimerType::READ_LIST_ARRAY_SCHEMAS)
+  const URI schema_uri =
+      array_uri.join_path(constants::array_schema_folder_name);
+  RETURN_NOT_OK(vfs_->ls(schema_uri, uris));
+
+  // Make sure URIs are sorted
+  std::sort(uris->begin(), uris->end());
+  return Status::Ok();
+  STATS_END_TIMER(stats::Stats::TimerType::READ_LIST_ARRAY_SCHEMAS)
+}
+
+Status StorageManager::load_latest_array_schema(
+    const URI& array_uri,
     const EncryptionKey& encryption_key,
     ArraySchema** array_schema) {
   STATS_START_TIMER(stats::Stats::TimerType::READ_LOAD_ARRAY_SCHEMA)
@@ -1490,7 +1544,21 @@ Status StorageManager::load_array_schema(
     return LOG_STATUS(Status::StorageManagerError(
         "Cannot load array schema; Invalid array URI"));
 
-  URI schema_uri = array_uri.join_path(constants::array_schema_filename);
+  std::vector<URI> uris;
+  list_array_schema_uris(array_uri, &uris);
+  URI schema_uri;
+
+  if (!uris.empty()) {
+    schema_uri = uris.back().join_path(constants::array_schema_filename);
+  } else {
+    // If there are no array schemas in the array schema folder, this is a
+    // pre 2.3 array and we should look for static array schema file
+    schema_uri = array_uri.join_path(constants::array_schema_filename);
+  }
+
+  if (schema_uri.is_invalid())
+    return LOG_STATUS(Status::StorageManagerError(
+        "Cannot load array schema; Could not find array schema URI"));
 
   GenericTileIO tile_io(this, schema_uri);
   Tile* tile = nullptr;
@@ -2060,7 +2128,8 @@ Status StorageManager::load_array_schema(
     return Status::Ok();
 
   auto array_schema = (ArraySchema*)nullptr;
-  RETURN_NOT_OK(load_array_schema(array_uri, encryption_key, &array_schema));
+  RETURN_NOT_OK(
+      load_latest_array_schema(array_uri, encryption_key, &array_schema));
   open_array->set_array_schema(array_schema);
 
   return Status::Ok();

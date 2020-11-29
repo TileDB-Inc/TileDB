@@ -2269,7 +2269,7 @@ int32_t tiledb_array_schema_load_with_key(
     auto storage_manager = ctx->ctx_->storage_manager();
     if (SAVE_ERROR_CATCH(
             ctx,
-            storage_manager->load_array_schema(
+            storage_manager->load_latest_array_schema(
                 uri, key, &((*array_schema)->array_schema_)))) {
       delete *array_schema;
       return TILEDB_ERR;
