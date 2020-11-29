@@ -44,6 +44,7 @@
 #include "tiledb/sm/enums/layout.h"
 #include "tiledb/sm/filter/compression_filter.h"
 #include "tiledb/sm/misc/hilbert.h"
+#include "tiledb/sm/misc/uuid.h"
 
 #include <cassert>
 #include <iostream>
@@ -67,6 +68,7 @@ ArraySchema::ArraySchema(ArrayType array_type)
     : array_type_(array_type) {
   allows_dups_ = false;
   array_uri_ = URI();
+  uri_ = URI();
   capacity_ = constants::capacity;
   cell_order_ = Layout::ROW_MAJOR;
   domain_ = nullptr;
@@ -82,11 +84,15 @@ ArraySchema::ArraySchema(ArrayType array_type)
   cell_validity_filters_.add_filter(CompressionFilter(
       constants::cell_validity_compression,
       constants::cell_validity_compression_level));
+
+  auto t = utils::time::timestamp_now_ms();
+  timestamp_range_ = std::make_pair(t, t);
 }
 
 ArraySchema::ArraySchema(const ArraySchema* array_schema) {
   allows_dups_ = array_schema->allows_dups_;
   array_uri_ = array_schema->array_uri_;
+  uri_ = array_schema->uri_;
   array_type_ = array_schema->array_type_;
   domain_ = nullptr;
 
@@ -103,6 +109,8 @@ ArraySchema::ArraySchema(const ArraySchema* array_schema) {
   attribute_map_.clear();
   for (auto attr : array_schema->attributes_)
     add_attribute(attr, false);
+
+  timestamp_range_ = array_schema->timestamp_range_;
 }
 
 ArraySchema::~ArraySchema() {
@@ -678,6 +686,25 @@ uint32_t ArraySchema::version() const {
   return version_;
 }
 
+Status ArraySchema::set_timestamp_range(
+    const std::pair<uint64_t, uint64_t>& timestamp_range) {
+  timestamp_range_ = timestamp_range;
+  return Status::Ok();
+}
+
+const std::pair<uint64_t, uint64_t>& ArraySchema::timestamp_range() const {
+  return timestamp_range_;
+}
+
+const URI& ArraySchema::uri() {
+  std::lock_guard<std::mutex> lck(mtx_);
+  if (uri_.is_invalid()) {
+    generate_uri();
+  }
+
+  return uri_;
+}
+
 /* ****************************** */
 /*         PRIVATE METHODS        */
 /* ****************************** */
@@ -725,6 +752,7 @@ Status ArraySchema::check_double_delta_compressor() const {
 
 void ArraySchema::clear() {
   array_uri_ = URI();
+  uri_ = URI();
   array_type_ = ArrayType::DENSE;
   capacity_ = constants::capacity;
   cell_order_ = Layout::ROW_MAJOR;
@@ -736,6 +764,21 @@ void ArraySchema::clear() {
 
   delete domain_;
   domain_ = nullptr;
+
+  timestamp_range_ = std::make_pair(0, 0);
+}
+
+Status ArraySchema::generate_uri() {
+  std::string uuid;
+  RETURN_NOT_OK(uuid::generate_uuid(&uuid, false));
+
+  std::stringstream ss;
+  ss << "__" << timestamp_range_.first << "_" << timestamp_range_.second << "_"
+     << uuid;
+  uri_ = array_uri_.join_path(constants::array_schema_folder_name)
+             .join_path(ss.str());
+
+  return Status::Ok();
 }
 
 }  // namespace sm

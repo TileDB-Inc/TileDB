@@ -291,6 +291,15 @@ class ArraySchema {
   /** Set version of schema, only used for serialization */
   void set_version(uint32_t version);
 
+  /** Set a timestamp range for the array schema */
+  Status set_timestamp_range(
+      const std::pair<uint64_t, uint64_t>& timestamp_range);
+
+  /** Returns the timestamp range. */
+  const std::pair<uint64_t, uint64_t>& timestamp_range() const;
+
+  const URI& uri();
+
   /** Returns the array schema version. */
   uint32_t version() const;
 
@@ -350,8 +359,23 @@ class ArraySchema {
    */
   Layout tile_order_;
 
+  /**
+   * The timestamp the array schema was written at.
+   * This is used to determine the array schema file name.
+   * This is stored as a pair to keep the timestamp usage consistent with
+   * metadata and fragments even though there isn't really a range here. The two
+   * timestamps will be identical.
+   */
+  std::pair<uint64_t, uint64_t> timestamp_range_;
+
+  /** The schema uri */
+  URI uri_;
+
   /** The format version of this array schema. */
   uint32_t version_;
+
+  /** Mutex to protect uri generation */
+  std::mutex mtx_;
 
   /* ********************************* */
   /*           PRIVATE METHODS         */
@@ -371,6 +395,9 @@ class ArraySchema {
 
   /** Clears all members. Use with caution! */
   void clear();
+
+  /** Generates a new array schema URI. */
+  Status generate_uri();
 };
 
 }  // namespace sm

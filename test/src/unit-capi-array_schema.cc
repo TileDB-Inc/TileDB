@@ -101,6 +101,14 @@ struct ArraySchemaFx {
   // Vector of supported filsystems
   const std::vector<std::unique_ptr<SupportedFs>> fs_vec_;
 
+  // Used to get the number of directories or files of another directory
+  struct get_schema_file_struct {
+    tiledb_ctx_t* ctx;
+    tiledb_vfs_t* vfs;
+    std::string path;
+  };
+  static int get_schema_file(const char* path, void* data);
+
   // Functions
   ArraySchemaFx();
   ~ArraySchemaFx();
@@ -899,6 +907,18 @@ std::string ArraySchemaFx::random_name(const std::string& prefix) {
   return ss.str();
 }
 
+int ArraySchemaFx::get_schema_file(const char* path, void* data) {
+  auto data_struct = (ArraySchemaFx::get_schema_file_struct*)data;
+  auto ctx = data_struct->ctx;
+  auto vfs = data_struct->vfs;
+  int is_dir;
+  int rc = tiledb_vfs_is_dir(ctx, vfs, path, &is_dir);
+  CHECK(rc == TILEDB_OK);
+
+  data_struct->path = path;
+  return 1;
+}
+
 TEST_CASE_METHOD(
     ArraySchemaFx,
     "C API: Test array schema creation and retrieval",
@@ -1358,9 +1378,17 @@ TEST_CASE_METHOD(
   tiledb_array_schema_free(&array_schema);
 
   // Corrupt the array schema
-  std::string schema_path = array_name + "/__array_schema.tdb";
   std::string to_write = "garbage";
   tiledb_vfs_fh_t* fh;
+
+  std::string schema_path =
+      array_name + "/" + tiledb::sm::constants::array_schema_folder_name;
+  get_schema_file_struct data = {ctx_, vfs_, ""};
+  rc = tiledb_vfs_ls(ctx_, vfs_, schema_path.c_str(), &get_schema_file, &data);
+  CHECK(rc == TILEDB_OK);
+
+  schema_path = data.path;
+
   rc = tiledb_vfs_open(ctx_, vfs_, schema_path.c_str(), TILEDB_VFS_WRITE, &fh);
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_vfs_write(ctx_, fh, to_write.c_str(), to_write.size());

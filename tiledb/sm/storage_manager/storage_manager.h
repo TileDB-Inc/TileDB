@@ -674,7 +674,8 @@ class StorageManager {
    * @param uris The URIs that contain array schemas.
    * @return
    */
-  Status list_array_schema_uris(const URI& array_uri, std::vector<URI>* uris);
+  Status list_array_schema_uris(
+      const URI& array_uri, std::vector<URI>* uris) const;
 
   /**
    * Load the most recent array schema of an array
