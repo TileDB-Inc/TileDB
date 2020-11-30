@@ -126,7 +126,8 @@ enum class StatusCode : char {
   SerializationError,
   ChecksumError,
   ThreadPoolError,
-  FragmentInfoError
+  FragmentInfoError,
+  ArenaAllocError
 };
 
 class Status {
@@ -412,6 +413,11 @@ class Status {
   /** Return a FragmentInfoError error class Status with a given message **/
   static Status FragmentInfoError(const std::string& msg) {
     return Status(StatusCode::FragmentInfoError, msg, -1);
+  }
+
+  /** Return a ArenaAllocError error class Status with a given message **/
+  static Status ArenaAllocError(const std::string& msg) {
+    return Status(StatusCode::ArenaAllocError, msg, -1);
   }
 
   /** Returns true iff the status indicates success **/
