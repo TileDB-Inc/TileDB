@@ -167,7 +167,6 @@ set(TILEDB_TEST_SOURCES
   src/unit-utils.cc
   src/unit-uuid.cc
   src/unit-ValidityVector.cc
-  src/unit-var_offsets.cc
   src/unit-vfs.cc
   src/unit-win-filesystem.cc
   src/unit.cc
@@ -193,6 +192,7 @@ if (TILEDB_CPP_API)
     src/unit-cppapi-type.cc
     src/unit-cppapi-updates.cc
     src/unit-cppapi-util.cc
+    src/unit-cppapi-var-offsets.cc
     src/unit-cppapi-vfs.cc
   )
 endif()

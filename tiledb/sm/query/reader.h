@@ -1737,6 +1737,9 @@ class Reader {
   bool belong_to_single_fragment(
       std::vector<ResultCoords>::iterator iter_begin,
       std::vector<ResultCoords>::iterator iter_end) const;
+
+  /** Perform necessary checks before exiting a read loop */
+  Status complete_read_loop();
 };
 
 }  // namespace sm

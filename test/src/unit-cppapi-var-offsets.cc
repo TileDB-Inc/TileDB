@@ -27,7 +27,8 @@
  *
  * @section DESCRIPTION
  *
- * Tests the different configurations of var-sized attribute offsets
+ * Tests the different configurations of var-sized attribute offsets using the
+ * C++ API.
  */
 
 #include "catch.hpp"
@@ -35,7 +36,7 @@
 
 using namespace tiledb;
 
-void create_sparse_array(std::string& array_name) {
+void create_sparse_array(const std::string& array_name) {
   Context ctx;
   VFS vfs(ctx);
 
@@ -59,7 +60,7 @@ void create_sparse_array(std::string& array_name) {
 }
 
 void write_sparse_array(
-    std::string& array_name,
+    const std::string& array_name,
     std::vector<int32_t>& data,
     std::vector<uint64_t>& data_offsets) {
   // Write some variable-sized data in the array
@@ -78,7 +79,7 @@ void write_sparse_array(
   array.close();
 }
 
-void create_dense_array(std::string& array_name) {
+void create_dense_array(const std::string& array_name) {
   Context ctx;
   VFS vfs(ctx);
 
@@ -102,7 +103,7 @@ void create_dense_array(std::string& array_name) {
 }
 
 void write_dense_array(
-    std::string& array_name,
+    const std::string& array_name,
     std::vector<int32_t>& data,
     std::vector<uint64_t>& data_offsets) {
   // Write some variable-sized data in the array

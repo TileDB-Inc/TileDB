@@ -315,6 +315,14 @@ Reader::ReadState* Reader::read_state() {
   return &read_state_;
 }
 
+Status Reader::complete_read_loop() {
+  if (offsets_extra_element_) {
+    RETURN_NOT_OK(add_extra_offset());
+  }
+
+  return Status::Ok();
+}
+
 Status Reader::read() {
   get_dim_attr_stats();
 
@@ -354,10 +362,7 @@ Status Reader::read() {
       RETURN_NOT_OK(read_state_.split_current());
 
       if (read_state_.unsplittable_) {
-        if (offsets_extra_element_) {
-          RETURN_NOT_OK(add_extra_offset());
-        }
-        return Status::Ok();
+        return complete_read_loop();
       }
     } else {
       bool no_results = this->no_results();
@@ -367,10 +372,7 @@ Status Reader::read() {
         read_state_.unsplittable_ = false;
 
       if (!no_results || read_state_.done()) {
-        if (offsets_extra_element_) {
-          RETURN_NOT_OK(add_extra_offset());
-        }
-        return Status::Ok();
+        return complete_read_loop();
       }
 
       RETURN_NOT_OK(read_state_.next());
@@ -3242,19 +3244,22 @@ Status Reader::add_extra_offset() {
           "Not enough memory in user buffer for extra element"));
     }
 
-    auto buffer = (unsigned char*)it.second.buffer_;
+    auto buffer = static_cast<unsigned char*>(it.second.buffer_);
     if (offsets_format_mode_ == "bytes") {
       memcpy(
           buffer + *it.second.buffer_size_,
           it.second.buffer_var_size_,
           constants::cell_var_offset_size);
-    } else {
+    } else if (offsets_format_mode_ == "elements") {
       auto elements = *it.second.buffer_var_size_ /
                       datatype_size(array_schema_->type(name));
       memcpy(
           buffer + *it.second.buffer_size_,
           &elements,
           constants::cell_var_offset_size);
+    } else {
+      return LOG_STATUS(Status::ReaderError(
+          "Cannot add extra offset to buffer; Unsupported offsets format"));
     }
 
     *it.second.buffer_size_ += constants::cell_var_offset_size;
