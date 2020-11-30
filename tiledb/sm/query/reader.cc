@@ -1241,8 +1241,12 @@ Status Reader::copy_partitioned_fixed_cells(
   auto buffer_validity = (unsigned char*)it->second.validity_vector_.buffer();
   auto cell_size = array_schema_->cell_size(*name);
   ByteVecValue fill_value;
-  if (array_schema_->is_attr(*name))
+  uint8_t fill_value_validity = 0;
+  if (array_schema_->is_attr(*name)) {
     fill_value = array_schema_->attribute(*name)->fill_value();
+    fill_value_validity =
+        array_schema_->attribute(*name)->fill_value_validity();
+  }
   uint64_t fill_value_size = (uint64_t)fill_value.size();
 
   // Calculate the partition to operate on.
@@ -1267,7 +1271,7 @@ Status Reader::copy_partitioned_fixed_cells(
           std::memset(
               buffer_validity +
                   (offset / attr_datatype_size * constants::cell_validity_size),
-              0,
+              fill_value_validity,
               fill_value_size / attr_datatype_size *
                   constants::cell_validity_size);
         }
@@ -1496,8 +1500,12 @@ Status Reader::copy_partitioned_var_cells(
   auto buffer_validity = (unsigned char*)it->second.validity_vector_.buffer();
   uint64_t offset_size = constants::cell_var_offset_size;
   ByteVecValue fill_value;
-  if (array_schema_->is_attr(*name))
+  uint8_t fill_value_validity = 0;
+  if (array_schema_->is_attr(*name)) {
     fill_value = array_schema_->attribute(*name)->fill_value();
+    fill_value_validity =
+        array_schema_->attribute(*name)->fill_value_validity();
+  }
   auto fill_value_size = (uint64_t)fill_value.size();
   auto attr_datatype_size = datatype_size(array_schema_->type(*name));
 
@@ -1563,7 +1571,7 @@ Status Reader::copy_partitioned_var_cells(
         if (nullable)
           std::memset(
               validity_dest,
-              0,
+              fill_value_validity,
               fill_value_size / attr_datatype_size *
                   constants::cell_validity_size);
       } else {

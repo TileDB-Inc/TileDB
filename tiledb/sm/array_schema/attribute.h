@@ -171,8 +171,24 @@ class Attribute {
    */
   Status get_fill_value(const void** value, uint64_t* size) const;
 
+  /**
+   * Sets the fill value for the nullable attribute. Applicable to
+   * both fixed-sized and var-sized attributes.
+   */
+  Status set_fill_value(const void* value, uint64_t size, uint8_t valid);
+
+  /**
+   * Gets the fill value for the nullable attribute. Applicable to
+   * fixed-sized and var-sized attributes.
+   */
+  Status get_fill_value(
+      const void** value, uint64_t* size, uint8_t* valid) const;
+
   /** Returns the fill value. */
   const ByteVecValue& fill_value() const;
+
+  /** Returns the fill value validity. */
+  uint8_t fill_value_validity() const;
 
   /** Returns the attribute type. */
   Datatype type() const;
@@ -211,6 +227,9 @@ class Attribute {
 
   /** The fill value. */
   ByteVecValue fill_value_;
+
+  /** The fill value validity, applicable only to nullable attributes. */
+  uint8_t fill_value_validity_;
 
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
