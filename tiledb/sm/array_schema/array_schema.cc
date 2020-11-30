@@ -705,6 +705,47 @@ const URI& ArraySchema::uri() {
   return uri_;
 }
 
+void ArraySchema::set_uri(URI& uri) {
+  std::lock_guard<std::mutex> lck(mtx_);
+  uri_ = uri;
+  name_ = uri.last_path_part();
+
+  std::pair<uint64_t, uint64_t> schema_timestamp_range;
+  utils::parse::get_timestamp_range(uri, &timestamp_range_);
+}
+
+Status ArraySchema::uri(URI& uri) const {
+  //  std::lock_guard<std::mutex> lck(mtx_);
+  if (uri_.is_invalid()) {
+    return LOG_STATUS(
+        Status::ArraySchemaError("Error in ArraySchema; URI not set"));
+  }
+
+  uri = uri_;
+
+  return Status::Ok();
+}
+
+const std::string& ArraySchema::name() {
+  std::lock_guard<std::mutex> lck(mtx_);
+  if (name_.empty()) {
+    generate_uri();
+  }
+
+  return name_;
+}
+
+Status ArraySchema::name(std::string& name) const {
+  //  std::lock_guard<std::mutex> lck(mtx_);
+  if (name_.empty()) {
+    return LOG_STATUS(
+        Status::ArraySchemaError("Error in ArraySchema; Name not set"));
+  }
+  name = name_;
+
+  return Status::Ok();
+}
+
 /* ****************************** */
 /*         PRIVATE METHODS        */
 /* ****************************** */
@@ -753,6 +794,7 @@ Status ArraySchema::check_double_delta_compressor() const {
 void ArraySchema::clear() {
   array_uri_ = URI();
   uri_ = URI();
+  name_.clear();
   array_type_ = ArrayType::DENSE;
   capacity_ = constants::capacity;
   cell_order_ = Layout::ROW_MAJOR;
@@ -775,8 +817,9 @@ Status ArraySchema::generate_uri() {
   std::stringstream ss;
   ss << "__" << timestamp_range_.first << "_" << timestamp_range_.second << "_"
      << uuid;
+  name_ = ss.str();
   uri_ = array_uri_.join_path(constants::array_schema_folder_name)
-             .join_path(ss.str());
+             .join_path(name_);
 
   return Status::Ok();
 }

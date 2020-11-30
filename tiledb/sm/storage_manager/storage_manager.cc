@@ -1612,6 +1612,8 @@ Status StorageManager::load_latest_array_schema(
     *array_schema = nullptr;
   }
 
+  (*array_schema)->set_uri(schema_uri);
+
   return st;
 
   STATS_END_TIMER(stats::Stats::TimerType::READ_LOAD_ARRAY_SCHEMA)

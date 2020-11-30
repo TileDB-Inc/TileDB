@@ -568,6 +568,8 @@ class FragmentMetadata {
   /** The array schema */
   const ArraySchema* array_schema_;
 
+  std::string array_schema_name_;
+
   /**
    * Maps an attribute or dimension to an index used in the various vector
    * class members. Attributes are first, then TILEDB_COORDS, then the
@@ -675,12 +677,6 @@ class FragmentMetadata {
   /* ********************************* */
 
   /**
-   * Retrieves the offset in the fragment metadata file of the footer
-   * (which contains the generic tile offsets) along with its size.
-   */
-  Status get_footer_offset_and_size(uint64_t* offset, uint64_t* size) const;
-
-  /**
    * Returns the size of the fragment metadata footer
    * (which contains the generic tile offsets) along with its size.
    *
@@ -774,6 +770,8 @@ class FragmentMetadata {
    * versions 7 or higher.
    */
   Status load_generic_tile_offsets_v7_or_higher(ConstBuffer* buff);
+
+  Status load_array_schema_name(ConstBuffer* buff);
 
   /**
    * Loads the bounding coordinates from the fragment metadata buffer.
@@ -940,6 +938,9 @@ class FragmentMetadata {
 
   /** Writes the generic tile offsets to the buffer. */
   Status write_generic_tile_offsets(Buffer* buff) const;
+
+  /** Writes the array schema name. */
+  Status write_array_schema_name(Buffer* buff) const;
 
   /**
    * Writes the cell number of the last tile to the fragment metadata buffer.

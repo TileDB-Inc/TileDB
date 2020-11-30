@@ -298,7 +298,22 @@ class ArraySchema {
   /** Returns the timestamp range. */
   const std::pair<uint64_t, uint64_t>& timestamp_range() const;
 
+  /** Returns the schema URI. If its not set, will build it */
   const URI& uri();
+
+  /** Returns the schema URI. If not set returns error status */
+  Status uri(URI& uri) const;
+
+  /** Set URI of schema, along with parsing out timestamp ranges and name */
+  void set_uri(URI& uri);
+
+  /** Returns the schema name (last part of URI). If its not set, will build it
+   */
+  const std::string& name();
+
+  /** Returns the schema name (last part of URI). If not set returns error
+   * status */
+  Status name(std::string& name) const;
 
   /** Returns the array schema version. */
   uint32_t version() const;
@@ -358,6 +373,9 @@ class ArraySchema {
    *    - TILEDB_COL_MAJOR
    */
   Layout tile_order_;
+
+  /** The array schema file name */
+  std::string name_;
 
   /**
    * The timestamp the array schema was written at.
