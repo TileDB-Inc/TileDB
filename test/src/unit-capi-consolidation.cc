@@ -47,6 +47,9 @@ struct ConsolidationFx {
   const char* DENSE_VECTOR_NAME = "test_consolidate_dense_vector";
   const char* DENSE_ARRAY_NAME = "test_consolidate_dense_array";
   const char* SPARSE_ARRAY_NAME = "test_consolidate_sparse_array";
+  const char* SPARSE_HETEROGENEOUS_ARRAY_NAME =
+      "test_consolidate_sparse_heterogeneous_array";
+  const char* SPARSE_STRING_ARRAY_NAME = "test_consolidate_sparse_string_array";
 
   // TileDB context
   tiledb_ctx_t* ctx_;
@@ -64,6 +67,8 @@ struct ConsolidationFx {
   void create_dense_vector();
   void create_dense_array();
   void create_sparse_array();
+  void create_sparse_heterogeneous_array();
+  void create_sparse_string_array();
   void write_dense_vector_4_fragments(uint64_t timestamp = 0);
   void write_dense_vector_4_fragments_not_coinciding();
   void write_dense_vector_4_fragments_not_coinciding_with_gaps();
@@ -78,6 +83,10 @@ struct ConsolidationFx {
   void write_dense_unordered();
   void write_sparse_full();
   void write_sparse_unordered();
+  void write_sparse_heterogeneous_full();
+  void write_sparse_heterogeneous_unordered();
+  void write_sparse_string_full();
+  void write_sparse_string_unordered();
   void read_dense_vector(uint64_t timestamp = UINT64_MAX);
   void read_dense_vector_with_gaps();
   void read_dense_vector_mixed();
@@ -91,11 +100,19 @@ struct ConsolidationFx {
   void read_dense_subarray_unordered_full();
   void read_sparse_full_unordered();
   void read_sparse_unordered_full();
+  void read_sparse_heterogeneous_full_unordered();
+  void read_sparse_heterogeneous_unordered_full();
+  void read_sparse_string_full_unordered();
+  void read_sparse_string_unordered_full();
   void consolidate_dense();
   void consolidate_sparse();
+  void consolidate_sparse_heterogeneous();
+  void consolidate_sparse_string();
   void remove_dense_vector();
   void remove_dense_array();
   void remove_sparse_array();
+  void remove_sparse_heterogeneous_array();
+  void remove_sparse_string_array();
   void remove_array(const std::string& array_name);
   bool is_array(const std::string& array_name);
 
@@ -348,6 +365,193 @@ void ConsolidationFx::create_sparse_array() {
     rc = tiledb_array_create_with_key(
         ctx_,
         SPARSE_ARRAY_NAME,
+        array_schema,
+        encryption_type_,
+        encryption_key_,
+        (uint32_t)strlen(encryption_key_));
+  }
+  CHECK(rc == TILEDB_OK);
+
+  // Clean up
+  tiledb_attribute_free(&a1);
+  tiledb_attribute_free(&a2);
+  tiledb_attribute_free(&a3);
+  tiledb_dimension_free(&d1);
+  tiledb_dimension_free(&d2);
+  tiledb_domain_free(&domain);
+  tiledb_array_schema_free(&array_schema);
+}
+
+void ConsolidationFx::create_sparse_heterogeneous_array() {
+  // Create dimensions
+  uint64_t dim1_domain[] = {1, 4};
+  uint32_t dim2_domain[] = {1, 4};
+  uint64_t dim1_tile_extents = 2;
+  uint32_t dim2_tile_extents = 2;
+  tiledb_dimension_t* d1;
+  int rc = tiledb_dimension_alloc(
+      ctx_, "d1", TILEDB_UINT64, &dim1_domain[0], &dim1_tile_extents, &d1);
+  CHECK(rc == TILEDB_OK);
+  tiledb_dimension_t* d2;
+  rc = tiledb_dimension_alloc(
+      ctx_, "d2", TILEDB_UINT32, &dim2_domain[0], &dim2_tile_extents, &d2);
+  CHECK(rc == TILEDB_OK);
+
+  // Create domain
+  tiledb_domain_t* domain;
+  rc = tiledb_domain_alloc(ctx_, &domain);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_domain_add_dimension(ctx_, domain, d1);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_domain_add_dimension(ctx_, domain, d2);
+  CHECK(rc == TILEDB_OK);
+
+  // Create attributes
+  tiledb_attribute_t* a1;
+  rc = tiledb_attribute_alloc(ctx_, "a1", TILEDB_INT32, &a1);
+  CHECK(rc == TILEDB_OK);
+  rc = set_attribute_compression_filter(ctx_, a1, TILEDB_FILTER_LZ4, -1);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_attribute_set_cell_val_num(ctx_, a1, 1);
+  CHECK(rc == TILEDB_OK);
+  tiledb_attribute_t* a2;
+  rc = tiledb_attribute_alloc(ctx_, "a2", TILEDB_CHAR, &a2);
+  CHECK(rc == TILEDB_OK);
+  rc = set_attribute_compression_filter(ctx_, a2, TILEDB_FILTER_GZIP, -1);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_attribute_set_cell_val_num(ctx_, a2, TILEDB_VAR_NUM);
+  CHECK(rc == TILEDB_OK);
+  tiledb_attribute_t* a3;
+  rc = tiledb_attribute_alloc(ctx_, "a3", TILEDB_FLOAT32, &a3);
+  CHECK(rc == TILEDB_OK);
+  rc = set_attribute_compression_filter(ctx_, a3, TILEDB_FILTER_ZSTD, -1);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_attribute_set_cell_val_num(ctx_, a3, 2);
+  CHECK(rc == TILEDB_OK);
+
+  // Create array schmea
+  tiledb_array_schema_t* array_schema;
+  rc = tiledb_array_schema_alloc(ctx_, TILEDB_SPARSE, &array_schema);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_array_schema_set_cell_order(ctx_, array_schema, TILEDB_ROW_MAJOR);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_array_schema_set_tile_order(ctx_, array_schema, TILEDB_ROW_MAJOR);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_array_schema_set_capacity(ctx_, array_schema, 2);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_array_schema_set_domain(ctx_, array_schema, domain);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_array_schema_add_attribute(ctx_, array_schema, a1);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_array_schema_add_attribute(ctx_, array_schema, a2);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_array_schema_add_attribute(ctx_, array_schema, a3);
+  CHECK(rc == TILEDB_OK);
+
+  // Check array schema
+  rc = tiledb_array_schema_check(ctx_, array_schema);
+  CHECK(rc == TILEDB_OK);
+
+  // Create array
+  if (encryption_type_ == TILEDB_NO_ENCRYPTION) {
+    rc = tiledb_array_create(
+        ctx_, SPARSE_HETEROGENEOUS_ARRAY_NAME, array_schema);
+  } else {
+    rc = tiledb_array_create_with_key(
+        ctx_,
+        SPARSE_HETEROGENEOUS_ARRAY_NAME,
+        array_schema,
+        encryption_type_,
+        encryption_key_,
+        (uint32_t)strlen(encryption_key_));
+  }
+  CHECK(rc == TILEDB_OK);
+
+  // Clean up
+  tiledb_attribute_free(&a1);
+  tiledb_attribute_free(&a2);
+  tiledb_attribute_free(&a3);
+  tiledb_dimension_free(&d1);
+  tiledb_dimension_free(&d2);
+  tiledb_domain_free(&domain);
+  tiledb_array_schema_free(&array_schema);
+}
+
+void ConsolidationFx::create_sparse_string_array() {
+  // Create dimensions
+  uint64_t dim1_domain[] = {1, 4};
+  uint64_t dim1_tile_extents = 2;
+  tiledb_dimension_t* d1;
+  int rc = tiledb_dimension_alloc(
+      ctx_, "d1", TILEDB_UINT64, &dim1_domain[0], &dim1_tile_extents, &d1);
+  CHECK(rc == TILEDB_OK);
+  tiledb_dimension_t* d2;
+  rc = tiledb_dimension_alloc(
+      ctx_, "d2", TILEDB_STRING_ASCII, nullptr, nullptr, &d2);
+  CHECK(rc == TILEDB_OK);
+
+  // Create domain
+  tiledb_domain_t* domain;
+  rc = tiledb_domain_alloc(ctx_, &domain);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_domain_add_dimension(ctx_, domain, d1);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_domain_add_dimension(ctx_, domain, d2);
+  CHECK(rc == TILEDB_OK);
+
+  // Create attributes
+  tiledb_attribute_t* a1;
+  rc = tiledb_attribute_alloc(ctx_, "a1", TILEDB_INT32, &a1);
+  CHECK(rc == TILEDB_OK);
+  rc = set_attribute_compression_filter(ctx_, a1, TILEDB_FILTER_LZ4, -1);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_attribute_set_cell_val_num(ctx_, a1, 1);
+  CHECK(rc == TILEDB_OK);
+  tiledb_attribute_t* a2;
+  rc = tiledb_attribute_alloc(ctx_, "a2", TILEDB_CHAR, &a2);
+  CHECK(rc == TILEDB_OK);
+  rc = set_attribute_compression_filter(ctx_, a2, TILEDB_FILTER_GZIP, -1);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_attribute_set_cell_val_num(ctx_, a2, TILEDB_VAR_NUM);
+  CHECK(rc == TILEDB_OK);
+  tiledb_attribute_t* a3;
+  rc = tiledb_attribute_alloc(ctx_, "a3", TILEDB_FLOAT32, &a3);
+  CHECK(rc == TILEDB_OK);
+  rc = set_attribute_compression_filter(ctx_, a3, TILEDB_FILTER_ZSTD, -1);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_attribute_set_cell_val_num(ctx_, a3, 2);
+  CHECK(rc == TILEDB_OK);
+
+  // Create array schmea
+  tiledb_array_schema_t* array_schema;
+  rc = tiledb_array_schema_alloc(ctx_, TILEDB_SPARSE, &array_schema);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_array_schema_set_cell_order(ctx_, array_schema, TILEDB_ROW_MAJOR);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_array_schema_set_tile_order(ctx_, array_schema, TILEDB_ROW_MAJOR);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_array_schema_set_capacity(ctx_, array_schema, 2);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_array_schema_set_domain(ctx_, array_schema, domain);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_array_schema_add_attribute(ctx_, array_schema, a1);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_array_schema_add_attribute(ctx_, array_schema, a2);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_array_schema_add_attribute(ctx_, array_schema, a3);
+  CHECK(rc == TILEDB_OK);
+
+  // Check array schema
+  rc = tiledb_array_schema_check(ctx_, array_schema);
+  CHECK(rc == TILEDB_OK);
+
+  // Create array
+  if (encryption_type_ == TILEDB_NO_ENCRYPTION) {
+    rc = tiledb_array_create(ctx_, SPARSE_STRING_ARRAY_NAME, array_schema);
+  } else {
+    rc = tiledb_array_create_with_key(
+        ctx_,
+        SPARSE_STRING_ARRAY_NAME,
         array_schema,
         encryption_type_,
         encryption_key_,
@@ -1706,6 +1910,402 @@ void ConsolidationFx::write_sparse_unordered() {
   tiledb_query_free(&query);
 }
 
+void ConsolidationFx::write_sparse_heterogeneous_full() {
+  // Prepare cell buffers
+  int buffer_a1[] = {0, 1, 2, 3, 4, 5, 6, 7};
+  uint64_t buffer_a2[] = {0, 1, 3, 6, 10, 11, 13, 16};
+  char buffer_var_a2[] = "abbcccddddeffggghhhh";
+  float buffer_a3[] = {0.1f,
+                       0.2f,
+                       1.1f,
+                       1.2f,
+                       2.1f,
+                       2.2f,
+                       3.1f,
+                       3.2f,
+                       4.1f,
+                       4.2f,
+                       5.1f,
+                       5.2f,
+                       6.1f,
+                       6.2f,
+                       7.1f,
+                       7.2f};
+  uint64_t buffer_coords_dim1[] = {1, 1, 1, 2, 3, 4, 3, 3};
+  uint32_t buffer_coords_dim2[] = {1, 2, 4, 3, 1, 2, 3, 4};
+
+  void* buffers[] = {buffer_a1,
+                     buffer_a2,
+                     buffer_var_a2,
+                     buffer_a3,
+                     buffer_coords_dim1,
+                     buffer_coords_dim2};
+  uint64_t buffer_sizes[] = {
+      sizeof(buffer_a1),
+      sizeof(buffer_a2),
+      sizeof(buffer_var_a2) - 1,  // No need to store the last '\0' character
+      sizeof(buffer_a3),
+      sizeof(buffer_coords_dim1),
+      sizeof(buffer_coords_dim2)};
+
+  // Open array
+  tiledb_array_t* array;
+  int rc = tiledb_array_alloc(ctx_, SPARSE_HETEROGENEOUS_ARRAY_NAME, &array);
+  CHECK(rc == TILEDB_OK);
+  if (encryption_type_ == TILEDB_NO_ENCRYPTION) {
+    rc = tiledb_array_open(ctx_, array, TILEDB_WRITE);
+  } else {
+    rc = tiledb_array_open_with_key(
+        ctx_,
+        array,
+        TILEDB_WRITE,
+        encryption_type_,
+        encryption_key_,
+        (uint32_t)strlen(encryption_key_));
+  }
+  REQUIRE(rc == TILEDB_OK);
+
+  // Create query
+  tiledb_query_t* query;
+  const char* attributes[] = {"a1", "a2", "a3", "d1", "d2"};
+  rc = tiledb_query_alloc(ctx_, array, TILEDB_WRITE, &query);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_layout(ctx_, query, TILEDB_GLOBAL_ORDER);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_buffer(
+      ctx_, query, attributes[0], buffers[0], &buffer_sizes[0]);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_buffer_var(
+      ctx_,
+      query,
+      attributes[1],
+      (uint64_t*)buffers[1],
+      &buffer_sizes[1],
+      buffers[2],
+      &buffer_sizes[2]);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_buffer(
+      ctx_, query, attributes[2], buffers[3], &buffer_sizes[3]);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_buffer(
+      ctx_, query, attributes[3], buffers[4], &buffer_sizes[4]);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_buffer(
+      ctx_, query, attributes[4], buffers[5], &buffer_sizes[5]);
+  CHECK(rc == TILEDB_OK);
+
+  // Submit query
+  rc = tiledb_query_submit(ctx_, query);
+  CHECK(rc == TILEDB_OK);
+
+  // Finalize query
+  rc = tiledb_query_finalize(ctx_, query);
+  CHECK(rc == TILEDB_OK);
+
+  // Close array
+  rc = tiledb_array_close(ctx_, array);
+  CHECK(rc == TILEDB_OK);
+
+  // Clean up
+  tiledb_array_free(&array);
+  tiledb_query_free(&query);
+}
+
+void ConsolidationFx::write_sparse_heterogeneous_unordered() {
+  // Prepare cell buffers
+  int buffer_a1[] = {107, 104, 106, 105};
+  uint64_t buffer_a2[] = {0, 3, 4, 5};
+  char buffer_var_a2[] = "yyyuwvvvv";
+  float buffer_a3[] = {
+      107.1f, 107.2f, 104.1f, 104.2f, 106.1f, 106.2f, 105.1f, 105.2f};
+  uint64_t buffer_coords_dim1[] = {3, 3, 3, 4};
+  uint32_t buffer_coords_dim2[] = {4, 2, 3, 1};
+
+  void* buffers[] = {buffer_a1,
+                     buffer_a2,
+                     buffer_var_a2,
+                     buffer_a3,
+                     buffer_coords_dim1,
+                     buffer_coords_dim2};
+  uint64_t buffer_sizes[] = {
+      sizeof(buffer_a1),
+      sizeof(buffer_a2),
+      sizeof(buffer_var_a2) - 1,  // No need to store the last '\0' character
+      sizeof(buffer_a3),
+      sizeof(buffer_coords_dim1),
+      sizeof(buffer_coords_dim2)};
+
+  // Open array
+  tiledb_array_t* array;
+  int rc = tiledb_array_alloc(ctx_, SPARSE_HETEROGENEOUS_ARRAY_NAME, &array);
+  CHECK(rc == TILEDB_OK);
+  if (encryption_type_ == TILEDB_NO_ENCRYPTION) {
+    rc = tiledb_array_open(ctx_, array, TILEDB_WRITE);
+  } else {
+    rc = tiledb_array_open_with_key(
+        ctx_,
+        array,
+        TILEDB_WRITE,
+        encryption_type_,
+        encryption_key_,
+        (uint32_t)strlen(encryption_key_));
+  }
+  REQUIRE(rc == TILEDB_OK);
+
+  // Create query
+  tiledb_query_t* query;
+  const char* attributes[] = {"a1", "a2", "a3", "d1", "d2"};
+  rc = tiledb_query_alloc(ctx_, array, TILEDB_WRITE, &query);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_layout(ctx_, query, TILEDB_UNORDERED);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_buffer(
+      ctx_, query, attributes[0], buffers[0], &buffer_sizes[0]);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_buffer_var(
+      ctx_,
+      query,
+      attributes[1],
+      (uint64_t*)buffers[1],
+      &buffer_sizes[1],
+      buffers[2],
+      &buffer_sizes[2]);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_buffer(
+      ctx_, query, attributes[2], buffers[3], &buffer_sizes[3]);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_buffer(
+      ctx_, query, attributes[3], buffers[4], &buffer_sizes[4]);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_buffer(
+      ctx_, query, attributes[4], buffers[5], &buffer_sizes[5]);
+  CHECK(rc == TILEDB_OK);
+
+  // Submit query
+  rc = tiledb_query_submit(ctx_, query);
+  CHECK(rc == TILEDB_OK);
+
+  // Finalize query
+  rc = tiledb_query_finalize(ctx_, query);
+  CHECK(rc == TILEDB_OK);
+
+  // Close array
+  rc = tiledb_array_close(ctx_, array);
+  CHECK(rc == TILEDB_OK);
+
+  // Clean up
+  tiledb_array_free(&array);
+  tiledb_query_free(&query);
+}
+
+void ConsolidationFx::write_sparse_string_full() {
+  // Prepare cell buffers
+  int buffer_a1[] = {0, 1, 2, 3, 4, 6, 7, 5};
+  uint64_t buffer_a2[] = {0, 1, 3, 6, 10, 11, 14, 18};
+  char buffer_var_a2[] = "abbcccddddeggghhhhff";
+  float buffer_a3[] = {
+      0.1f,
+      0.2f,
+      1.1f,
+      1.2f,
+      2.1f,
+      2.2f,
+      3.1f,
+      3.2f,
+      4.1f,
+      4.2f,
+      6.1f,
+      6.2f,
+      7.1f,
+      7.2f,
+      5.1f,
+      5.2f,
+  };
+  uint64_t buffer_coords_dim1[] = {1, 1, 1, 2, 3, 3, 3, 4};
+  char buffer_coords_dim2[] = {'a', 'b', 'd', 'c', 'a', 'c', 'd', 'b'};
+  uint64_t buffer_coords_dim2_off[] = {0, 1, 2, 3, 4, 5, 6, 7};
+
+  void* buffers[] = {buffer_a1,
+                     buffer_a2,
+                     buffer_var_a2,
+                     buffer_a3,
+                     buffer_coords_dim1,
+                     buffer_coords_dim2_off,
+                     buffer_coords_dim2};
+  uint64_t buffer_sizes[] = {
+      sizeof(buffer_a1),
+      sizeof(buffer_a2),
+      sizeof(buffer_var_a2) - 1,  // No need to store the last '\0' character
+      sizeof(buffer_a3),
+      sizeof(buffer_coords_dim1),
+      sizeof(buffer_coords_dim2_off),
+      sizeof(buffer_coords_dim2)};
+
+  // Open array
+  tiledb_array_t* array;
+  int rc = tiledb_array_alloc(ctx_, SPARSE_STRING_ARRAY_NAME, &array);
+  CHECK(rc == TILEDB_OK);
+  if (encryption_type_ == TILEDB_NO_ENCRYPTION) {
+    rc = tiledb_array_open(ctx_, array, TILEDB_WRITE);
+  } else {
+    rc = tiledb_array_open_with_key(
+        ctx_,
+        array,
+        TILEDB_WRITE,
+        encryption_type_,
+        encryption_key_,
+        (uint32_t)strlen(encryption_key_));
+  }
+  REQUIRE(rc == TILEDB_OK);
+
+  // Create query
+  tiledb_query_t* query;
+  const char* attributes[] = {"a1", "a2", "a3", "d1", "d2"};
+  rc = tiledb_query_alloc(ctx_, array, TILEDB_WRITE, &query);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_layout(ctx_, query, TILEDB_GLOBAL_ORDER);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_buffer(
+      ctx_, query, attributes[0], buffers[0], &buffer_sizes[0]);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_buffer_var(
+      ctx_,
+      query,
+      attributes[1],
+      (uint64_t*)buffers[1],
+      &buffer_sizes[1],
+      buffers[2],
+      &buffer_sizes[2]);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_buffer(
+      ctx_, query, attributes[2], buffers[3], &buffer_sizes[3]);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_buffer(
+      ctx_, query, attributes[3], buffers[4], &buffer_sizes[4]);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_buffer_var(
+      ctx_,
+      query,
+      attributes[4],
+      (uint64_t*)buffers[5],
+      &buffer_sizes[5],
+      buffers[6],
+      &buffer_sizes[6]);
+  CHECK(rc == TILEDB_OK);
+
+  // Submit query
+  rc = tiledb_query_submit(ctx_, query);
+  CHECK(rc == TILEDB_OK);
+
+  // Finalize query
+  rc = tiledb_query_finalize(ctx_, query);
+  CHECK(rc == TILEDB_OK);
+
+  // Close array
+  rc = tiledb_array_close(ctx_, array);
+  CHECK(rc == TILEDB_OK);
+
+  // Clean up
+  tiledb_array_free(&array);
+  tiledb_query_free(&query);
+}
+
+void ConsolidationFx::write_sparse_string_unordered() {
+  // Prepare cell buffers
+  int buffer_a1[] = {107, 104, 106, 105};
+  uint64_t buffer_a2[] = {0, 3, 4, 5};
+  char buffer_var_a2[] = "yyyuwvvvv";
+  float buffer_a3[] = {
+      107.1f, 107.2f, 104.1f, 104.2f, 106.1f, 106.2f, 105.1f, 105.2f};
+  uint64_t buffer_coords_dim1[] = {3, 3, 3, 4};
+  char buffer_coords_dim2[] = {'d', 'b', 'c', 'a'};
+  uint64_t buffer_coords_dim2_off[] = {0, 1, 2, 3};
+
+  void* buffers[] = {buffer_a1,
+                     buffer_a2,
+                     buffer_var_a2,
+                     buffer_a3,
+                     buffer_coords_dim1,
+                     buffer_coords_dim2_off,
+                     buffer_coords_dim2};
+  uint64_t buffer_sizes[] = {
+      sizeof(buffer_a1),
+      sizeof(buffer_a2),
+      sizeof(buffer_var_a2) - 1,  // No need to store the last '\0' character
+      sizeof(buffer_a3),
+      sizeof(buffer_coords_dim1),
+      sizeof(buffer_coords_dim2_off),
+      sizeof(buffer_coords_dim2)};
+
+  // Open array
+  tiledb_array_t* array;
+  int rc = tiledb_array_alloc(ctx_, SPARSE_STRING_ARRAY_NAME, &array);
+  CHECK(rc == TILEDB_OK);
+  if (encryption_type_ == TILEDB_NO_ENCRYPTION) {
+    rc = tiledb_array_open(ctx_, array, TILEDB_WRITE);
+  } else {
+    rc = tiledb_array_open_with_key(
+        ctx_,
+        array,
+        TILEDB_WRITE,
+        encryption_type_,
+        encryption_key_,
+        (uint32_t)strlen(encryption_key_));
+  }
+  REQUIRE(rc == TILEDB_OK);
+
+  // Create query
+  tiledb_query_t* query;
+  const char* attributes[] = {"a1", "a2", "a3", "d1", "d2"};
+  rc = tiledb_query_alloc(ctx_, array, TILEDB_WRITE, &query);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_layout(ctx_, query, TILEDB_UNORDERED);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_buffer(
+      ctx_, query, attributes[0], buffers[0], &buffer_sizes[0]);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_buffer_var(
+      ctx_,
+      query,
+      attributes[1],
+      (uint64_t*)buffers[1],
+      &buffer_sizes[1],
+      buffers[2],
+      &buffer_sizes[2]);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_buffer(
+      ctx_, query, attributes[2], buffers[3], &buffer_sizes[3]);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_buffer(
+      ctx_, query, attributes[3], buffers[4], &buffer_sizes[4]);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_buffer_var(
+      ctx_,
+      query,
+      attributes[4],
+      (uint64_t*)buffers[5],
+      &buffer_sizes[5],
+      buffers[6],
+      &buffer_sizes[6]);
+  CHECK(rc == TILEDB_OK);
+
+  // Submit query
+  rc = tiledb_query_submit(ctx_, query);
+  CHECK(rc == TILEDB_OK);
+
+  // Finalize query
+  rc = tiledb_query_finalize(ctx_, query);
+  CHECK(rc == TILEDB_OK);
+
+  // Close array
+  rc = tiledb_array_close(ctx_, array);
+  CHECK(rc == TILEDB_OK);
+
+  // Clean up
+  tiledb_array_free(&array);
+  tiledb_query_free(&query);
+}
+
 void ConsolidationFx::read_dense_vector(uint64_t timestamp) {
   // Correct buffer
   int c_a[410];
@@ -2725,6 +3325,448 @@ void ConsolidationFx::read_sparse_unordered_full() {
   free(buffer_coords_dim2);
 }
 
+void ConsolidationFx::read_sparse_heterogeneous_full_unordered() {
+  // Correct buffers
+  int c_buffer_a1[] = {0, 1, 2, 3, 4, 104, 105, 5, 106, 107};
+  uint64_t c_buffer_a2_off[] = {0, 1, 3, 6, 10, 11, 12, 16, 18, 19};
+  char c_buffer_a2_val[] = "abbcccddddeuvvvvffwyyy";
+  float c_buffer_a3[] = {0.1f, 0.2f, 1.1f,   1.2f,   2.1f,   2.2f,   3.1f,
+                         3.2f, 4.1f, 4.2f,   104.1f, 104.2f, 105.1f, 105.2f,
+                         5.1f, 5.2f, 106.1f, 106.2f, 107.1f, 107.2f};
+  uint64_t c_buffer_coords_dim1[] = {1, 1, 1, 2, 3, 3, 4, 4, 3, 3};
+  uint32_t c_buffer_coords_dim2[] = {1, 2, 4, 3, 1, 2, 1, 2, 3, 4};
+
+  // Open array
+  tiledb_array_t* array;
+  int rc = tiledb_array_alloc(ctx_, SPARSE_HETEROGENEOUS_ARRAY_NAME, &array);
+  CHECK(rc == TILEDB_OK);
+  if (encryption_type_ == TILEDB_NO_ENCRYPTION) {
+    rc = tiledb_array_open(ctx_, array, TILEDB_READ);
+  } else {
+    rc = tiledb_array_open_with_key(
+        ctx_,
+        array,
+        TILEDB_READ,
+        encryption_type_,
+        encryption_key_,
+        (uint32_t)strlen(encryption_key_));
+  }
+  REQUIRE(rc == TILEDB_OK);
+
+  // Compute max buffer sizes
+  uint64_t buffer_a1_size = 64;
+  uint64_t buffer_a2_off_size = 176;
+  uint64_t buffer_a2_val_size = 51;
+  uint64_t buffer_a3_size = 128;
+  uint64_t buffer_coords_dim1_size = 128;
+  uint64_t buffer_coords_dim2_size = 64;
+
+  // Prepare cell buffers
+  auto buffer_a1 = (int*)malloc(buffer_a1_size);
+  auto buffer_a2_off = (uint64_t*)malloc(buffer_a2_off_size);
+  auto buffer_a2_val = (char*)malloc(buffer_a2_val_size);
+  auto buffer_a3 = (float*)malloc(buffer_a3_size);
+  auto buffer_coords_dim1 = (uint64_t*)malloc(buffer_coords_dim1_size);
+  auto buffer_coords_dim2 = (uint32_t*)malloc(buffer_coords_dim2_size);
+
+  // Create query
+  tiledb_query_t* query;
+  rc = tiledb_query_alloc(ctx_, array, TILEDB_READ, &query);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_layout(ctx_, query, TILEDB_GLOBAL_ORDER);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_buffer(ctx_, query, "a1", buffer_a1, &buffer_a1_size);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_buffer_var(
+      ctx_,
+      query,
+      "a2",
+      buffer_a2_off,
+      &buffer_a2_off_size,
+      buffer_a2_val,
+      &buffer_a2_val_size);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_buffer(ctx_, query, "a3", buffer_a3, &buffer_a3_size);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_buffer(
+      ctx_, query, "d1", buffer_coords_dim1, &buffer_coords_dim1_size);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_buffer(
+      ctx_, query, "d2", buffer_coords_dim2, &buffer_coords_dim2_size);
+  CHECK(rc == TILEDB_OK);
+
+  // Submit query
+  rc = tiledb_query_submit(ctx_, query);
+  CHECK(rc == TILEDB_OK);
+
+  // Finalize query
+  rc = tiledb_query_finalize(ctx_, query);
+  CHECK(rc == TILEDB_OK);
+
+  // Check buffers
+  CHECK(!memcmp(buffer_a1, c_buffer_a1, sizeof(c_buffer_a1)));
+  CHECK(!memcmp(buffer_a2_off, c_buffer_a2_off, sizeof(c_buffer_a2_off)));
+  CHECK(!memcmp(buffer_a2_val, c_buffer_a2_val, sizeof(c_buffer_a2_val) - 1));
+  CHECK(!memcmp(buffer_a3, c_buffer_a3, sizeof(c_buffer_a3)));
+  CHECK(!memcmp(
+      buffer_coords_dim1, c_buffer_coords_dim1, sizeof(c_buffer_coords_dim1)));
+  CHECK(!memcmp(
+      buffer_coords_dim2, c_buffer_coords_dim2, sizeof(c_buffer_coords_dim2)));
+
+  // Close array
+  rc = tiledb_array_close(ctx_, array);
+  CHECK(rc == TILEDB_OK);
+
+  // Clean up
+  tiledb_array_free(&array);
+  tiledb_query_free(&query);
+  free(buffer_a1);
+  free(buffer_a2_off);
+  free(buffer_a2_val);
+  free(buffer_a3);
+  free(buffer_coords_dim1);
+  free(buffer_coords_dim2);
+}
+
+void ConsolidationFx::read_sparse_heterogeneous_unordered_full() {
+  // Correct buffers
+  int c_buffer_a1[] = {0, 1, 2, 3, 4, 104, 105, 5, 6, 7};
+  uint64_t c_buffer_a2_off[] = {0, 1, 3, 6, 10, 11, 12, 16, 18, 21};
+  char c_buffer_a2_val[] = "abbcccddddeuvvvvffggghhhh";
+  float c_buffer_a3[] = {0.1f, 0.2f, 1.1f, 1.2f,   2.1f,   2.2f,   3.1f,
+                         3.2f, 4.1f, 4.2f, 104.1f, 104.2f, 105.1f, 105.2f,
+                         5.1f, 5.2f, 6.1f, 6.2f,   7.1f,   7.2f};
+  uint64_t c_buffer_coords_dim1[] = {1, 1, 1, 2, 3, 3, 4, 4, 3, 3};
+  uint32_t c_buffer_coords_dim2[] = {1, 2, 4, 3, 1, 2, 1, 2, 3, 4};
+
+  // Open array
+  tiledb_array_t* array;
+  int rc = tiledb_array_alloc(ctx_, SPARSE_HETEROGENEOUS_ARRAY_NAME, &array);
+  CHECK(rc == TILEDB_OK);
+  if (encryption_type_ == TILEDB_NO_ENCRYPTION) {
+    rc = tiledb_array_open(ctx_, array, TILEDB_READ);
+  } else {
+    rc = tiledb_array_open_with_key(
+        ctx_,
+        array,
+        TILEDB_READ,
+        encryption_type_,
+        encryption_key_,
+        (uint32_t)strlen(encryption_key_));
+  }
+  REQUIRE(rc == TILEDB_OK);
+
+  // Compute max buffer sizes
+  uint64_t buffer_a1_size = 64;
+  uint64_t buffer_a2_off_size = 176;
+  uint64_t buffer_a2_val_size = 54;
+  uint64_t buffer_a3_size = 128;
+  uint64_t buffer_coords_dim1_size = 128;
+  uint64_t buffer_coords_dim2_size = 64;
+
+  // Prepare cell buffers
+  auto buffer_a1 = (int*)malloc(buffer_a1_size);
+  auto buffer_a2_off = (uint64_t*)malloc(buffer_a2_off_size);
+  auto buffer_a2_val = (char*)malloc(buffer_a2_val_size);
+  auto buffer_a3 = (float*)malloc(buffer_a3_size);
+  auto buffer_coords_dim1 = (uint64_t*)malloc(buffer_coords_dim1_size);
+  auto buffer_coords_dim2 = (uint32_t*)malloc(buffer_coords_dim2_size);
+
+  // Create query
+  tiledb_query_t* query;
+  rc = tiledb_query_alloc(ctx_, array, TILEDB_READ, &query);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_layout(ctx_, query, TILEDB_GLOBAL_ORDER);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_buffer(ctx_, query, "a1", buffer_a1, &buffer_a1_size);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_buffer_var(
+      ctx_,
+      query,
+      "a2",
+      buffer_a2_off,
+      &buffer_a2_off_size,
+      buffer_a2_val,
+      &buffer_a2_val_size);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_buffer(ctx_, query, "a3", buffer_a3, &buffer_a3_size);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_buffer(
+      ctx_, query, "d1", buffer_coords_dim1, &buffer_coords_dim1_size);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_buffer(
+      ctx_, query, "d2", buffer_coords_dim2, &buffer_coords_dim2_size);
+  CHECK(rc == TILEDB_OK);
+
+  // Submit query
+  rc = tiledb_query_submit(ctx_, query);
+  CHECK(rc == TILEDB_OK);
+
+  // Finalize query
+  rc = tiledb_query_finalize(ctx_, query);
+  CHECK(rc == TILEDB_OK);
+
+  // Check buffers
+  CHECK(!memcmp(buffer_a1, c_buffer_a1, sizeof(c_buffer_a1)));
+  CHECK(!memcmp(buffer_a2_off, c_buffer_a2_off, sizeof(c_buffer_a2_off)));
+  CHECK(!memcmp(buffer_a2_val, c_buffer_a2_val, sizeof(c_buffer_a2_val) - 1));
+  CHECK(!memcmp(buffer_a3, c_buffer_a3, sizeof(c_buffer_a3)));
+  CHECK(!memcmp(
+      buffer_coords_dim1, c_buffer_coords_dim1, sizeof(c_buffer_coords_dim1)));
+  CHECK(!memcmp(
+      buffer_coords_dim2, c_buffer_coords_dim2, sizeof(c_buffer_coords_dim2)));
+
+  // Close array
+  rc = tiledb_array_close(ctx_, array);
+  CHECK(rc == TILEDB_OK);
+
+  // Clean up
+  tiledb_array_free(&array);
+  tiledb_query_free(&query);
+  free(buffer_a1);
+  free(buffer_a2_off);
+  free(buffer_a2_val);
+  free(buffer_a3);
+  free(buffer_coords_dim1);
+  free(buffer_coords_dim2);
+}
+
+void ConsolidationFx::read_sparse_string_full_unordered() {
+  // Correct buffers
+  int c_buffer_a1[] = {0, 1, 2, 3, 4, 104, 106, 107, 105, 5};
+  uint64_t c_buffer_a2_off[] = {0, 1, 3, 6, 10, 11, 12, 13, 16, 20};
+  char c_buffer_a2_val[] = "abbcccddddeuwyyyvvvvff";
+  float c_buffer_a3[] = {0.1f,   0.2f,   1.1f,   1.2f,   2.1f,   2.2f,   3.1f,
+                         3.2f,   4.1f,   4.2f,   104.1f, 104.2f, 106.1f, 106.2f,
+                         107.1f, 107.2f, 105.1f, 105.2f, 5.1f,   5.2f};
+  uint64_t c_buffer_coords_dim1[] = {1, 1, 1, 2, 3, 3, 3, 3, 4, 4};
+  char c_buffer_coords_dim2[] = {
+      'a', 'b', 'd', 'c', 'a', 'b', 'c', 'd', 'a', 'b'};
+  uint64_t c_buffer_coords_dim2_off[] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9};
+
+  // Open array
+  tiledb_array_t* array;
+  int rc = tiledb_array_alloc(ctx_, SPARSE_STRING_ARRAY_NAME, &array);
+  CHECK(rc == TILEDB_OK);
+  if (encryption_type_ == TILEDB_NO_ENCRYPTION) {
+    rc = tiledb_array_open(ctx_, array, TILEDB_READ);
+  } else {
+    rc = tiledb_array_open_with_key(
+        ctx_,
+        array,
+        TILEDB_READ,
+        encryption_type_,
+        encryption_key_,
+        (uint32_t)strlen(encryption_key_));
+  }
+  REQUIRE(rc == TILEDB_OK);
+
+  // Compute max buffer sizes
+  uint64_t buffer_a1_size = 64;
+  uint64_t buffer_a2_off_size = 176;
+  uint64_t buffer_a2_val_size = 51;
+  uint64_t buffer_a3_size = 128;
+  uint64_t buffer_coords_dim1_size = 128;
+  uint64_t buffer_coords_dim2_size = 16;
+  uint64_t buffer_coords_dim2_off_size = 176;
+
+  // Prepare cell buffers
+  auto buffer_a1 = (int*)malloc(buffer_a1_size);
+  auto buffer_a2_off = (uint64_t*)malloc(buffer_a2_off_size);
+  auto buffer_a2_val = (char*)malloc(buffer_a2_val_size);
+  auto buffer_a3 = (float*)malloc(buffer_a3_size);
+  auto buffer_coords_dim1 = (uint64_t*)malloc(buffer_coords_dim1_size);
+  auto buffer_coords_dim2 = (char*)malloc(buffer_coords_dim2_size);
+  auto buffer_coords_dim2_off = (uint64_t*)malloc(buffer_coords_dim2_off_size);
+
+  // Create query
+  tiledb_query_t* query;
+  rc = tiledb_query_alloc(ctx_, array, TILEDB_READ, &query);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_layout(ctx_, query, TILEDB_GLOBAL_ORDER);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_buffer(ctx_, query, "a1", buffer_a1, &buffer_a1_size);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_buffer_var(
+      ctx_,
+      query,
+      "a2",
+      buffer_a2_off,
+      &buffer_a2_off_size,
+      buffer_a2_val,
+      &buffer_a2_val_size);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_buffer(ctx_, query, "a3", buffer_a3, &buffer_a3_size);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_buffer(
+      ctx_, query, "d1", buffer_coords_dim1, &buffer_coords_dim1_size);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_buffer_var(
+      ctx_,
+      query,
+      "d2",
+      buffer_coords_dim2_off,
+      &buffer_coords_dim2_off_size,
+      buffer_coords_dim2,
+      &buffer_coords_dim2_size);
+  CHECK(rc == TILEDB_OK);
+
+  // Submit query
+  rc = tiledb_query_submit(ctx_, query);
+  CHECK(rc == TILEDB_OK);
+
+  // Finalize query
+  rc = tiledb_query_finalize(ctx_, query);
+  CHECK(rc == TILEDB_OK);
+
+  // Check buffers
+  CHECK(!memcmp(buffer_a1, c_buffer_a1, sizeof(c_buffer_a1)));
+  CHECK(!memcmp(buffer_a2_off, c_buffer_a2_off, sizeof(c_buffer_a2_off)));
+  CHECK(!memcmp(buffer_a2_val, c_buffer_a2_val, sizeof(c_buffer_a2_val) - 1));
+  CHECK(!memcmp(buffer_a3, c_buffer_a3, sizeof(c_buffer_a3)));
+  CHECK(!memcmp(
+      buffer_coords_dim1, c_buffer_coords_dim1, sizeof(c_buffer_coords_dim1)));
+  CHECK(!memcmp(
+      buffer_coords_dim2_off,
+      c_buffer_coords_dim2_off,
+      sizeof(c_buffer_coords_dim2_off)));
+  CHECK(!memcmp(
+      buffer_coords_dim2, c_buffer_coords_dim2, sizeof(c_buffer_coords_dim2)));
+
+  // Close array
+  rc = tiledb_array_close(ctx_, array);
+  CHECK(rc == TILEDB_OK);
+
+  // Clean up
+  tiledb_array_free(&array);
+  tiledb_query_free(&query);
+  free(buffer_a1);
+  free(buffer_a2_off);
+  free(buffer_a2_val);
+  free(buffer_a3);
+  free(buffer_coords_dim1);
+  free(buffer_coords_dim2);
+  free(buffer_coords_dim2_off);
+}
+
+void ConsolidationFx::read_sparse_string_unordered_full() {
+  // Correct buffers
+  int c_buffer_a1[] = {0, 1, 2, 3, 4, 104, 6, 7, 105, 5};
+  uint64_t c_buffer_a2_off[] = {0, 1, 3, 6, 10, 11, 12, 15, 19, 23};
+  char c_buffer_a2_val[] = "abbcccddddeuggghhhhvvvvff";
+  float c_buffer_a3[] = {0.1f, 0.2f, 1.1f,   1.2f,   2.1f,   2.2f, 3.1f,
+                         3.2f, 4.1f, 4.2f,   104.1f, 104.2f, 6.1f, 6.2f,
+                         7.1f, 7.2f, 105.1f, 105.2f, 5.1f,   5.2f};
+  uint64_t c_buffer_coords_dim1[] = {1, 1, 1, 2, 3, 3, 3, 3, 4, 4};
+  char c_buffer_coords_dim2[] = {
+      'a', 'b', 'd', 'c', 'a', 'b', 'c', 'd', 'a', 'b'};
+  uint64_t c_buffer_coords_dim2_off[] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9};
+
+  // Open array
+  tiledb_array_t* array;
+  int rc = tiledb_array_alloc(ctx_, SPARSE_STRING_ARRAY_NAME, &array);
+  CHECK(rc == TILEDB_OK);
+  if (encryption_type_ == TILEDB_NO_ENCRYPTION) {
+    rc = tiledb_array_open(ctx_, array, TILEDB_READ);
+  } else {
+    rc = tiledb_array_open_with_key(
+        ctx_,
+        array,
+        TILEDB_READ,
+        encryption_type_,
+        encryption_key_,
+        (uint32_t)strlen(encryption_key_));
+  }
+  REQUIRE(rc == TILEDB_OK);
+
+  // Compute max buffer sizes
+  uint64_t buffer_a1_size = 64;
+  uint64_t buffer_a2_off_size = 176;
+  uint64_t buffer_a2_val_size = 54;
+  uint64_t buffer_a3_size = 128;
+  uint64_t buffer_coords_dim1_size = 128;
+  uint64_t buffer_coords_dim2_size = 16;
+  uint64_t buffer_coords_dim2_off_size = 176;
+
+  // Prepare cell buffers
+  auto buffer_a1 = (int*)malloc(buffer_a1_size);
+  auto buffer_a2_off = (uint64_t*)malloc(buffer_a2_off_size);
+  auto buffer_a2_val = (char*)malloc(buffer_a2_val_size);
+  auto buffer_a3 = (float*)malloc(buffer_a3_size);
+  auto buffer_coords_dim1 = (uint64_t*)malloc(buffer_coords_dim1_size);
+  auto buffer_coords_dim2 = (char*)malloc(buffer_coords_dim2_size);
+  auto buffer_coords_dim2_off = (uint64_t*)malloc(buffer_coords_dim2_off_size);
+
+  // Create query
+  tiledb_query_t* query;
+  rc = tiledb_query_alloc(ctx_, array, TILEDB_READ, &query);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_layout(ctx_, query, TILEDB_GLOBAL_ORDER);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_buffer(ctx_, query, "a1", buffer_a1, &buffer_a1_size);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_buffer_var(
+      ctx_,
+      query,
+      "a2",
+      buffer_a2_off,
+      &buffer_a2_off_size,
+      buffer_a2_val,
+      &buffer_a2_val_size);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_buffer(ctx_, query, "a3", buffer_a3, &buffer_a3_size);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_buffer(
+      ctx_, query, "d1", buffer_coords_dim1, &buffer_coords_dim1_size);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_buffer_var(
+      ctx_,
+      query,
+      "d2",
+      buffer_coords_dim2_off,
+      &buffer_coords_dim2_off_size,
+      buffer_coords_dim2,
+      &buffer_coords_dim2_size);
+  CHECK(rc == TILEDB_OK);
+
+  // Submit query
+  rc = tiledb_query_submit(ctx_, query);
+  CHECK(rc == TILEDB_OK);
+
+  // Finalize query
+  rc = tiledb_query_finalize(ctx_, query);
+  CHECK(rc == TILEDB_OK);
+
+  // Check buffers
+  CHECK(!memcmp(buffer_a1, c_buffer_a1, sizeof(c_buffer_a1)));
+  CHECK(!memcmp(buffer_a2_off, c_buffer_a2_off, sizeof(c_buffer_a2_off)));
+  CHECK(!memcmp(buffer_a2_val, c_buffer_a2_val, sizeof(c_buffer_a2_val) - 1));
+  CHECK(!memcmp(buffer_a3, c_buffer_a3, sizeof(c_buffer_a3)));
+  CHECK(!memcmp(
+      buffer_coords_dim1, c_buffer_coords_dim1, sizeof(c_buffer_coords_dim1)));
+  CHECK(!memcmp(
+      buffer_coords_dim2_off,
+      c_buffer_coords_dim2_off,
+      sizeof(c_buffer_coords_dim2_off)));
+  CHECK(!memcmp(
+      buffer_coords_dim2, c_buffer_coords_dim2, sizeof(c_buffer_coords_dim2)));
+
+  // Close array
+  rc = tiledb_array_close(ctx_, array);
+  CHECK(rc == TILEDB_OK);
+
+  // Clean up
+  tiledb_array_free(&array);
+  tiledb_query_free(&query);
+  free(buffer_a1);
+  free(buffer_a2_off);
+  free(buffer_a2_val);
+  free(buffer_a3);
+  free(buffer_coords_dim1);
+  free(buffer_coords_dim2);
+  free(buffer_coords_dim2_off);
+}
+
 void ConsolidationFx::consolidate_dense() {
   int rc;
   if (encryption_type_ == TILEDB_NO_ENCRYPTION) {
@@ -2757,6 +3799,39 @@ void ConsolidationFx::consolidate_sparse() {
   REQUIRE(rc == TILEDB_OK);
 }
 
+void ConsolidationFx::consolidate_sparse_heterogeneous() {
+  int rc;
+  if (encryption_type_ == TILEDB_NO_ENCRYPTION) {
+    rc = tiledb_array_consolidate(
+        ctx_, SPARSE_HETEROGENEOUS_ARRAY_NAME, nullptr);
+  } else {
+    rc = tiledb_array_consolidate_with_key(
+        ctx_,
+        SPARSE_HETEROGENEOUS_ARRAY_NAME,
+        encryption_type_,
+        encryption_key_,
+        (uint32_t)strlen(encryption_key_),
+        nullptr);
+  }
+  REQUIRE(rc == TILEDB_OK);
+}
+
+void ConsolidationFx::consolidate_sparse_string() {
+  int rc;
+  if (encryption_type_ == TILEDB_NO_ENCRYPTION) {
+    rc = tiledb_array_consolidate(ctx_, SPARSE_STRING_ARRAY_NAME, nullptr);
+  } else {
+    rc = tiledb_array_consolidate_with_key(
+        ctx_,
+        SPARSE_STRING_ARRAY_NAME,
+        encryption_type_,
+        encryption_key_,
+        (uint32_t)strlen(encryption_key_),
+        nullptr);
+  }
+  REQUIRE(rc == TILEDB_OK);
+}
+
 void ConsolidationFx::remove_array(const std::string& array_name) {
   if (!is_array(array_name))
     return;
@@ -2774,6 +3849,14 @@ void ConsolidationFx::remove_dense_array() {
 
 void ConsolidationFx::remove_sparse_array() {
   remove_array(SPARSE_ARRAY_NAME);
+}
+
+void ConsolidationFx::remove_sparse_heterogeneous_array() {
+  remove_array(SPARSE_HETEROGENEOUS_ARRAY_NAME);
+}
+
+void ConsolidationFx::remove_sparse_string_array() {
+  remove_array(SPARSE_STRING_ARRAY_NAME);
 }
 
 bool ConsolidationFx::is_array(const std::string& array_name) {
@@ -4278,4 +5361,137 @@ TEST_CASE_METHOD(
 
   tiledb_config_free(&config);
   remove_dense_vector();
+}
+
+TEST_CASE_METHOD(
+    ConsolidationFx,
+    "C API: Test consolidation, sparse heterogeneous",
+    "[capi][consolidation][sparse][heter]") {
+  remove_sparse_heterogeneous_array();
+  create_sparse_heterogeneous_array();
+
+  SECTION("- write full, unordered") {
+    write_sparse_heterogeneous_full();
+    write_sparse_heterogeneous_unordered();
+    consolidate_sparse_heterogeneous();
+    read_sparse_heterogeneous_full_unordered();
+  }
+
+  SECTION("- write unordered, full") {
+    write_sparse_heterogeneous_unordered();
+    write_sparse_heterogeneous_full();
+    consolidate_sparse_heterogeneous();
+    read_sparse_heterogeneous_unordered_full();
+  }
+
+  SECTION("- write (encrypted) unordered, full") {
+    remove_sparse_heterogeneous_array();
+    encryption_type_ = TILEDB_AES_256_GCM;
+    encryption_key_ = "0123456789abcdeF0123456789abcdeF";
+    create_sparse_heterogeneous_array();
+    write_sparse_heterogeneous_unordered();
+    write_sparse_heterogeneous_full();
+    consolidate_sparse_heterogeneous();
+    read_sparse_heterogeneous_unordered_full();
+  }
+
+  remove_sparse_heterogeneous_array();
+}
+
+TEST_CASE_METHOD(
+    ConsolidationFx,
+    "C API: Test consolidation, sparse string",
+    "[capi][consolidation][sparse][string]") {
+  remove_sparse_string_array();
+  create_sparse_string_array();
+
+  SECTION("- write full, unordered") {
+    write_sparse_string_full();
+    write_sparse_string_unordered();
+    consolidate_sparse_string();
+    read_sparse_string_full_unordered();
+  }
+
+  SECTION("- write unordered, full") {
+    write_sparse_string_unordered();
+    write_sparse_string_full();
+    consolidate_sparse_string();
+    read_sparse_string_unordered_full();
+  }
+
+  SECTION("- write (encrypted) unordered, full") {
+    remove_sparse_string_array();
+    encryption_type_ = TILEDB_AES_256_GCM;
+    encryption_key_ = "0123456789abcdeF0123456789abcdeF";
+    create_sparse_string_array();
+    write_sparse_string_unordered();
+    write_sparse_string_full();
+    consolidate_sparse_string();
+    read_sparse_string_unordered_full();
+  }
+
+  remove_sparse_string_array();
+}
+
+TEST_CASE_METHOD(
+    ConsolidationFx,
+    "C API: Test consolidating fragment metadata, sparse string",
+    "[capi][consolidation][fragment-meta][sparse][string]") {
+  remove_sparse_string_array();
+  create_sparse_string_array();
+  write_sparse_string_full();
+  write_sparse_string_unordered();
+
+  // Validate read
+  read_sparse_string_full_unordered();
+
+  // Configuration for consolidating fragment metadata
+  tiledb_config_t* config = nullptr;
+  tiledb_error_t* error = nullptr;
+  REQUIRE(tiledb_config_alloc(&config, &error) == TILEDB_OK);
+  REQUIRE(error == nullptr);
+  int rc = tiledb_config_set(
+      config, "sm.consolidation.mode", "fragment_meta", &error);
+  REQUIRE(rc == TILEDB_OK);
+  REQUIRE(error == nullptr);
+
+  // Consolidate - this will consolidate only the fragment metadata
+  rc = tiledb_array_consolidate(ctx_, SPARSE_STRING_ARRAY_NAME, config);
+  CHECK(rc == TILEDB_OK);
+
+  // Check number of fragments
+  get_num_struct data = {ctx_, vfs_, 0};
+  rc = tiledb_vfs_ls(ctx_, vfs_, SPARSE_STRING_ARRAY_NAME, &get_dir_num, &data);
+  CHECK(rc == TILEDB_OK);
+  CHECK(data.num == 2);
+
+  // Check number of consolidated metadata files
+  data = {ctx_, vfs_, 0};
+  rc =
+      tiledb_vfs_ls(ctx_, vfs_, SPARSE_STRING_ARRAY_NAME, &get_meta_num, &data);
+  CHECK(rc == TILEDB_OK);
+  CHECK(data.num == 1);
+
+  // Validate read
+  read_sparse_string_full_unordered();
+
+  // Vacuum consolidated fragment metadata
+  rc = tiledb_config_set(config, "sm.vacuum.mode", "fragment_meta", &error);
+  REQUIRE(rc == TILEDB_OK);
+  REQUIRE(error == nullptr);
+  rc = tiledb_array_vacuum(ctx_, SPARSE_STRING_ARRAY_NAME, config);
+  CHECK(rc == TILEDB_OK);
+
+  // Check number of consolidated metadata files
+  data = {ctx_, vfs_, 0};
+  rc =
+      tiledb_vfs_ls(ctx_, vfs_, SPARSE_STRING_ARRAY_NAME, &get_meta_num, &data);
+  CHECK(rc == TILEDB_OK);
+  CHECK(data.num == 1);
+
+  // Validate read
+  read_sparse_string_full_unordered();
+
+  tiledb_config_free(&config);
+  remove_sparse_string_array();
 }
