@@ -858,7 +858,7 @@ class Query {
    * @endcode
    *
    * @param attr_name The attribute name.
-   * @return A pair with first element containing the estimated size of
+   * @return An array with first element containing the estimated size of
    *    the result offsets in bytes, and second element containing the
    *    estimated size of the result values in bytes.
    */
@@ -873,6 +873,68 @@ class Query {
         &size_off,
         &size_val));
     return {size_off, size_val};
+  }
+
+  /**
+   * Retrieves the estimated result size for a fixed-size, nullable attribute.
+   *
+   * **Example:**
+   *
+   * @code{.cpp}
+   * std::array<uint64_t, 2> est_size =
+   *    query.est_result_size_nullable("attr1");
+   * @endcode
+   *
+   * @param attr_name The attribute name.
+   * @return An array with first element containing the estimated size of
+   *    the result values in bytes, and second element containing the
+   *    estimated size of the result validity values in bytes.
+   */
+  std::array<uint64_t, 2> est_result_size_nullable(
+      const std::string& attr_name) const {
+    auto& ctx = ctx_.get();
+    uint64_t size_val = 0;
+    uint64_t size_validity = 0;
+    ctx.handle_error(tiledb_query_get_est_result_size_nullable(
+        ctx.ptr().get(),
+        query_.get(),
+        attr_name.c_str(),
+        &size_val,
+        &size_validity));
+    return {size_val, size_validity};
+  }
+
+  /**
+   * Retrieves the estimated result size for a variable-size, nullable
+   * attribute.
+   *
+   * **Example:**
+   *
+   * @code{.cpp}
+   * std::array<uint64_t, 3> est_size =
+   *     query.est_result_size_var_nullable("attr1");
+   * @endcode
+   *
+   * @param attr_name The attribute name.
+   * @return An array with first element containing the estimated size of
+   *    the offset values in bytes, second element containing the
+   *    estimated size of the result values in bytes, and the third element
+   *    containing the estimated size of the validity values in bytes.
+   */
+  std::array<uint64_t, 3> est_result_size_var_nullable(
+      const std::string& attr_name) const {
+    auto& ctx = ctx_.get();
+    uint64_t size_off = 0;
+    uint64_t size_val = 0;
+    uint64_t size_validity = 0;
+    ctx.handle_error(tiledb_query_get_est_result_size_var_nullable(
+        ctx.ptr().get(),
+        query_.get(),
+        attr_name.c_str(),
+        &size_off,
+        &size_val,
+        &size_validity));
+    return {size_off, size_val, size_validity};
   }
 
   /**
