@@ -399,6 +399,8 @@ class FragmentMetadata {
    */
   Status get_footer_size(uint32_t version, uint64_t* size) const;
 
+  uint64_t footer_size() const;
+
   /** Returns the MBR of the input tile. */
   const NDRange& mbr(uint64_t tile_idx) const;
 
@@ -595,6 +597,12 @@ class FragmentMetadata {
 
   /** Stores the size of each validity attribute file. */
   std::vector<uint64_t> file_validity_sizes_;
+
+  /** Size of the fragment metadata footer. */
+  uint64_t footer_size_;
+
+  /** Offset of the fragment metadata footer. */
+  uint64_t footer_offset_;
 
   /** The uri of the fragment the metadata belongs to. */
   URI fragment_uri_;
@@ -1047,7 +1055,8 @@ class FragmentMetadata {
    * Reads the fragment metadata file footer (which contains the generic tile
    * offsets) into the input buffer.
    */
-  Status read_file_footer(Buffer* buff) const;
+  Status read_file_footer(
+      Buffer* buff, uint64_t* footer_offset, uint64_t* footer_size) const;
 
   /**
    * Writes the contents of the input buffer as a separate
