@@ -717,6 +717,26 @@ const Subarray* Reader::subarray() const {
   return &subarray_;
 }
 
+std::string Reader::offsets_mode() const {
+  return offsets_format_mode_;
+}
+
+Status Reader::set_offsets_mode(const std::string& offsets_mode) {
+  offsets_format_mode_ = offsets_mode;
+
+  return Status::Ok();
+}
+
+bool Reader::offsets_extra_element() const {
+  return offsets_extra_element_;
+}
+
+Status Reader::set_offsets_extra_element(bool add_extra_element) {
+  offsets_extra_element_ = add_extra_element;
+
+  return Status::Ok();
+}
+
 /* ********************************* */
 /*          STATIC FUNCTIONS         */
 /* ********************************* */

@@ -458,6 +458,18 @@ class Reader {
   /** Returns the query subarray. */
   const Subarray* subarray() const;
 
+  /** Returns the configured offsets format mode. */
+  std::string offsets_mode() const;
+
+  /** Sets the offsets format mode. */
+  Status set_offsets_mode(const std::string& offsets_mode);
+
+  /** Returns `True` if offsets are configured to have an extra element. */
+  bool offsets_extra_element() const;
+
+  /** Sets if offsets are configured to have an extra element. */
+  Status set_offsets_extra_element(bool add_extra_element);
+
   /* ********************************* */
   /*          STATIC FUNCTIONS         */
   /* ********************************* */
