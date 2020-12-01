@@ -98,9 +98,20 @@ TEST_CASE(
                      "- Fill value: -2147483648\n";
   check_dump(ctx, a, dump);
 
+  // Correct setter, nullable API
+  uint8_t valid = 1;
+  rc = tiledb_attribute_set_fill_value_nullable(
+      ctx, a, &value, value_size, valid);
+  CHECK(rc == TILEDB_ERR);
+
   // Correct setter
   rc = tiledb_attribute_set_fill_value(ctx, a, &value, value_size);
   CHECK(rc == TILEDB_OK);
+
+  // Get the set value, nullable API
+  rc = tiledb_attribute_get_fill_value_nullable(
+      ctx, a, &value_ptr, &value_size, &valid);
+  CHECK(rc == TILEDB_ERR);
 
   // Get the set value
   rc = tiledb_attribute_get_fill_value(ctx, a, &value_ptr, &value_size);
@@ -180,6 +191,104 @@ TEST_CASE(
   dump = std::string("### Attribute ###\n") + "- Name: a\n" +
          "- Type: INT32\n" + "- Nullable: false\n" + "- Cell val num: var\n" +
          "- Filters: 0\n" + "- Fill value: 1, 2, 3\n";
+  check_dump(ctx, a, dump);
+
+  // Clean up
+  tiledb_ctx_free(&ctx);
+  tiledb_attribute_free(&a);
+}
+
+TEST_CASE(
+    "C API: Test fill values, basic errors, nullable",
+    "[capi][fill-values][basic][nullable]") {
+  int32_t value = 5;
+  uint64_t value_size = sizeof(int32_t);
+
+  tiledb_ctx_t* ctx;
+  int32_t rc = tiledb_ctx_alloc(nullptr, &ctx);
+  CHECK(rc == TILEDB_OK);
+
+  // Fixed-sized, nullable
+  tiledb_attribute_t* a;
+  rc = tiledb_attribute_alloc(ctx, "a", TILEDB_INT32, &a);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_attribute_set_nullable(ctx, a, 1);
+  CHECK(rc == TILEDB_OK);
+
+  // Null value
+  rc = tiledb_attribute_set_fill_value_nullable(ctx, a, NULL, value_size, 0);
+  CHECK(rc == TILEDB_ERR);
+
+  // Zero size
+  rc = tiledb_attribute_set_fill_value_nullable(ctx, a, &value, 0, 0);
+  CHECK(rc == TILEDB_ERR);
+
+  // Wrong size
+  rc = tiledb_attribute_set_fill_value_nullable(ctx, a, &value, 100, 0);
+  CHECK(rc == TILEDB_ERR);
+
+  // Get default
+  const void* value_ptr;
+  uint8_t valid;
+  rc = tiledb_attribute_get_fill_value_nullable(
+      ctx, a, &value_ptr, &value_size, &valid);
+  CHECK(rc == TILEDB_OK);
+  CHECK(*(const int32_t*)value_ptr == -2147483648);
+  CHECK(value_size == sizeof(int32_t));
+  CHECK(valid == 0);
+
+  // Check dump
+  std::string dump =
+      std::string("### Attribute ###\n") + "- Name: a\n" + "- Type: INT32\n" +
+      "- Nullable: true\n" + "- Cell val num: 1\n" + "- Filters: 0\n" +
+      "- Fill value: -2147483648\n" + "- Fill value validity: 0\n";
+  check_dump(ctx, a, dump);
+
+  // Correct setter, non-nullable API
+  rc = tiledb_attribute_set_fill_value(ctx, a, &value, value_size);
+  CHECK(rc == TILEDB_ERR);
+
+  // Correct setter
+  valid = 1;
+  rc = tiledb_attribute_set_fill_value_nullable(
+      ctx, a, &value, value_size, valid);
+  CHECK(rc == TILEDB_OK);
+
+  // Get the set value, non-nullable API
+  rc = tiledb_attribute_get_fill_value(ctx, a, &value_ptr, &value_size);
+  CHECK(rc == TILEDB_ERR);
+
+  // Get the set value
+  valid = 0;
+  rc = tiledb_attribute_get_fill_value_nullable(
+      ctx, a, &value_ptr, &value_size, &valid);
+  CHECK(rc == TILEDB_OK);
+  CHECK(*(const int32_t*)value_ptr == 5);
+  CHECK(value_size == sizeof(int32_t));
+  CHECK(valid == 1);
+
+  // Check dump
+  dump = std::string("### Attribute ###\n") + "- Name: a\n" +
+         "- Type: INT32\n" + "- Nullable: true\n" + "- Cell val num: 1\n" +
+         "- Filters: 0\n" + "- Fill value: 5\n" + "- Fill value validity: 1\n";
+  check_dump(ctx, a, dump);
+
+  // Setting the cell val num, also sets the fill value to a new default
+  rc = tiledb_attribute_set_cell_val_num(ctx, a, 2);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_attribute_get_fill_value_nullable(
+      ctx, a, &value_ptr, &value_size, &valid);
+  CHECK(rc == TILEDB_OK);
+  CHECK(((const int32_t*)value_ptr)[0] == -2147483648);
+  CHECK(((const int32_t*)value_ptr)[1] == -2147483648);
+  CHECK(value_size == 2 * sizeof(int32_t));
+  CHECK(valid == 0);
+
+  // Check dump
+  dump = std::string("### Attribute ###\n") + "- Name: a\n" +
+         "- Type: INT32\n" + "- Nullable: true\n" + "- Cell val num: 2\n" +
+         "- Filters: 0\n" + "- Fill value: -2147483648, -2147483648\n" +
+         "- Fill value validity: 0\n";
   check_dump(ctx, a, dump);
 
   // Clean up

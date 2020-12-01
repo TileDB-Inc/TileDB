@@ -61,6 +61,7 @@ void check_dump(const Attribute& attr, const std::string& gold_out) {
 
 void create_array_1d(
     const std::string& array_name,
+    bool nullable_attributes = false,
     int32_t fill_int32 = tiledb::sm::constants::empty_int32,
     std::string fill_char = std::string() + tiledb::sm::constants::empty_char,
     std::array<double, 2> fill_double = {
@@ -74,12 +75,24 @@ void create_array_1d(
   domain.add_dimension(d);
 
   auto a1 = Attribute::create<int32_t>(ctx, "a1");
-  a1.set_fill_value(&fill_int32, sizeof(fill_int32));
   auto a2 = Attribute::create<std::string>(ctx, "a2");
-  a2.set_fill_value(fill_char.c_str(), fill_char.size());
   auto a3 = Attribute::create<double>(ctx, "a3");
-  a3.set_cell_val_num(2);
-  a3.set_fill_value(fill_double.data(), 2 * sizeof(double));
+
+  a1.set_nullable(nullable_attributes);
+  a2.set_nullable(nullable_attributes);
+  a3.set_nullable(nullable_attributes);
+
+  if (!nullable_attributes) {
+    a1.set_fill_value(&fill_int32, sizeof(fill_int32));
+    a2.set_fill_value(fill_char.c_str(), fill_char.size());
+    a3.set_cell_val_num(2);
+    a3.set_fill_value(fill_double.data(), 2 * sizeof(double));
+  } else {
+    a1.set_fill_value(&fill_int32, sizeof(fill_int32), 1);
+    a2.set_fill_value(fill_char.c_str(), fill_char.size(), 0);
+    a3.set_cell_val_num(2);
+    a3.set_fill_value(fill_double.data(), 2 * sizeof(double), 1);
+  }
 
   ArraySchema schema(ctx, TILEDB_DENSE);
   schema.set_domain(domain);
@@ -88,19 +101,29 @@ void create_array_1d(
   CHECK_NOTHROW(Array::create(array_name, schema));
 }
 
-void write_array_1d_partial(const std::string& array_name) {
+void write_array_1d_partial(
+    const std::string& array_name, bool nullable_attributes = false) {
   Context ctx;
 
   std::vector<int32_t> a1 = {3, 4};
+  std::vector<uint8_t> a1_validity = {1, 0};
   std::vector<char> a2_val = {'3', '3', '4', '4', '4'};
   std::vector<uint64_t> a2_off = {0, 2};
+  std::vector<uint8_t> a2_validity = {1, 0, 0, 0, 1};
   std::vector<double> a3 = {3.1, 3.2, 4.1, 4.2};
+  std::vector<uint8_t> a3_validity = {1, 0, 1, 0};
 
   Array array(ctx, array_name, TILEDB_WRITE);
   Query query(ctx, array, TILEDB_WRITE);
-  CHECK_NOTHROW(query.set_buffer("a1", a1));
-  CHECK_NOTHROW(query.set_buffer("a2", a2_off, a2_val));
-  CHECK_NOTHROW(query.set_buffer("a3", a3));
+  if (!nullable_attributes) {
+    CHECK_NOTHROW(query.set_buffer("a1", a1));
+    CHECK_NOTHROW(query.set_buffer("a2", a2_off, a2_val));
+    CHECK_NOTHROW(query.set_buffer("a3", a3));
+  } else {
+    CHECK_NOTHROW(query.set_buffer_nullable("a1", a1, a1_validity));
+    CHECK_NOTHROW(query.set_buffer_nullable("a2", a2_off, a2_val, a2_validity));
+    CHECK_NOTHROW(query.set_buffer_nullable("a3", a3, a3_validity));
+  }
   CHECK_NOTHROW(query.set_subarray<int32_t>({3, 4}));
   CHECK_NOTHROW(query.set_layout(TILEDB_ROW_MAJOR));
   REQUIRE(query.submit() == Query::Status::COMPLETE);
@@ -109,6 +132,7 @@ void write_array_1d_partial(const std::string& array_name) {
 
 void read_array_1d_partial(
     const std::string& array_name,
+    bool nullable_attributes = false,
     int32_t fill_int32 = tiledb::sm::constants::empty_int32,
     std::string fill_char = std::string() + tiledb::sm::constants::empty_char,
     std::array<double, 2> fill_double = {
@@ -117,24 +141,38 @@ void read_array_1d_partial(
   Context ctx;
 
   std::vector<int32_t> a1(10);
+  std::vector<uint8_t> a1_validity(10);
   std::vector<char> a2_val(100);
   std::vector<uint64_t> a2_off(20);
+  std::vector<uint8_t> a2_validity(100);
   std::vector<double> a3(20);
+  std::vector<uint8_t> a3_validity(20);
 
   Array array(ctx, array_name, TILEDB_READ);
   Query query(ctx, array, TILEDB_READ);
-  CHECK_NOTHROW(query.set_buffer("a1", a1));
-  CHECK_NOTHROW(query.set_buffer("a2", a2_off, a2_val));
-  CHECK_NOTHROW(query.set_buffer("a3", a3));
+  if (!nullable_attributes) {
+    CHECK_NOTHROW(query.set_buffer("a1", a1));
+    CHECK_NOTHROW(query.set_buffer("a2", a2_off, a2_val));
+    CHECK_NOTHROW(query.set_buffer("a3", a3));
+  } else {
+    CHECK_NOTHROW(query.set_buffer_nullable("a1", a1, a1_validity));
+    CHECK_NOTHROW(query.set_buffer_nullable("a2", a2_off, a2_val, a2_validity));
+    CHECK_NOTHROW(query.set_buffer_nullable("a3", a3, a3_validity));
+  }
   CHECK_NOTHROW(query.set_subarray<int32_t>({1, 10}));
 
   REQUIRE(query.submit() == Query::Status::COMPLETE);
 
-  auto res = query.result_buffer_elements();
-  REQUIRE(res["a1"].second == 10);
-  REQUIRE(res["a2"].first == 10);
-  REQUIRE(res["a2"].second == 5 + 8 * fill_char.size());
-  REQUIRE(res["a3"].second == 20);
+  auto res = query.result_buffer_elements_nullable();
+  REQUIRE(std::get<1>(res["a1"]) == 10);
+  REQUIRE(std::get<0>(res["a2"]) == 10);
+  REQUIRE(std::get<1>(res["a2"]) == 5 + 8 * fill_char.size());
+  REQUIRE(std::get<1>(res["a3"]) == 20);
+  if (nullable_attributes) {
+    REQUIRE(std::get<2>(res["a1"]) == 10);
+    REQUIRE(std::get<2>(res["a2"]) == 5 + 8 * fill_char.size());
+    REQUIRE(std::get<2>(res["a3"]) == 20);
+  }
 
   uint64_t off = 0;
   for (size_t i = 0; i < 2; ++i) {
@@ -148,29 +186,58 @@ void read_array_1d_partial(
     CHECK(!std::memcmp(&a3[2 * i + 1], &fill_double[1], sizeof(double)));
   }
   CHECK(a1[2] == 3);
+  if (nullable_attributes)
+    CHECK(a1_validity[2] == 1);
   CHECK(a1[3] == 4);
+  if (nullable_attributes)
+    CHECK(a1_validity[3] == 0);
   CHECK(a2_off[2] == off);
   CHECK(a2_val[off] == '3');
   CHECK(a2_val[off + 1] == '3');
+  if (nullable_attributes) {
+    CHECK(a2_validity[off] == 1);
+    CHECK(a2_validity[off + 1] == 0);
+  }
   off += 2;
   CHECK(a2_off[3] == off);
   CHECK(a2_val[off] == '4');
   CHECK(a2_val[off + 1] == '4');
   CHECK(a2_val[off + 2] == '4');
+  if (nullable_attributes) {
+    CHECK(a2_validity[off] == 0);
+    CHECK(a2_validity[off + 1] == 0);
+    CHECK(a2_validity[off + 2] == 1);
+  }
   off += 3;
   CHECK(a3[4] == 3.1);
   CHECK(a3[5] == 3.2);
   CHECK(a3[6] == 4.1);
   CHECK(a3[7] == 4.2);
+  if (nullable_attributes) {
+    CHECK(a3_validity[4] == 0);
+    CHECK(a3_validity[5] == 0);
+    CHECK(a3_validity[6] == 0);
+    CHECK(a3_validity[7] == 0);
+  }
   for (size_t i = 4; i < 10; ++i) {
     CHECK(a1[i] == fill_int32);
+    if (nullable_attributes) {
+      CHECK(a1_validity[i] == 1);
+    }
     CHECK(a2_off[i] == off);
     for (size_t c = 0; c < fill_char.size(); ++c) {
       CHECK(a2_val[off] == fill_char[c]);
+      if (nullable_attributes) {
+        CHECK(a2_validity[off] == 0);
+      }
       ++off;
     }
     CHECK(!std::memcmp(&a3[2 * i], &fill_double[0], sizeof(double)));
     CHECK(!std::memcmp(&a3[2 * i + 1], &fill_double[1], sizeof(double)));
+    if (nullable_attributes) {
+      CHECK(a3_validity[2 * i] == 1);
+      CHECK(a3_validity[2 * i + 1] == 1);
+    }
   }
 
   array.close();
@@ -252,8 +319,15 @@ TEST_CASE(
                      "- Fill value: -2147483648\n";
   check_dump(a, dump);
 
+  // Correct setter, nullable API
+  CHECK_THROWS(a.set_fill_value(&value, value_size, 1));
+
   // Correct setter
   CHECK_NOTHROW(a.set_fill_value(&value, value_size));
+
+  // Get the set value, nullable API
+  uint8_t valid;
+  CHECK_THROWS(a.get_fill_value(&value_ptr, &value_size, &valid));
 
   // Get the set value
   CHECK_NOTHROW(a.get_fill_value(&value_ptr, &value_size));
@@ -328,6 +402,80 @@ TEST_CASE(
 }
 
 TEST_CASE(
+    "C++ API: Test fill values, basic errors, nullable",
+    "[cppapi][fill-values][basic][nullable]") {
+  int32_t value = 5;
+  uint64_t value_size = sizeof(int32_t);
+
+  Context ctx;
+
+  // Fixed-sized
+  auto a = tiledb::Attribute::create<int32_t>(ctx, "a");
+  a.set_nullable(true);
+
+  // Null value
+  CHECK_THROWS(a.set_fill_value(nullptr, value_size, 0));
+
+  // Zero size
+  CHECK_THROWS(a.set_fill_value(&value, 0, 0));
+
+  // Wrong size
+  CHECK_THROWS(a.set_fill_value(&value, 100, 0));
+
+  // Get default
+  const void* value_ptr;
+  uint8_t valid;
+  CHECK_NOTHROW(a.get_fill_value(&value_ptr, &value_size, &valid));
+  CHECK(*(const int32_t*)value_ptr == -2147483648);
+  CHECK(value_size == sizeof(int32_t));
+  CHECK(valid == 0);
+
+  // Check dump
+  std::string dump =
+      std::string("### Attribute ###\n") + "- Name: a\n" + "- Type: INT32\n" +
+      "- Nullable: true\n" + "- Cell val num: 1\n" + "- Filters: 0\n" +
+      "- Fill value: -2147483648\n" + "- Fill value validity: 0\n";
+  check_dump(a, dump);
+
+  // Correct setter, non-nullable API
+  CHECK_THROWS(a.set_fill_value(&value, value_size));
+
+  // Correct setter
+  valid = 1;
+  CHECK_NOTHROW(a.set_fill_value(&value, value_size, valid));
+
+  // Get the set value, non-nullable API
+  CHECK_THROWS(a.get_fill_value(&value_ptr, &value_size));
+
+  // Get the set value
+  CHECK_NOTHROW(a.get_fill_value(&value_ptr, &value_size, &valid));
+  CHECK(*(const int32_t*)value_ptr == 5);
+  CHECK(value_size == sizeof(int32_t));
+  CHECK(valid == 1);
+
+  // Check dump
+  dump = std::string("### Attribute ###\n") + "- Name: a\n" +
+         "- Type: INT32\n" + "- Nullable: true\n" + "- Cell val num: 1\n" +
+         "- Filters: 0\n" + "- Fill value: 5\n" + "- Fill value validity: 1\n";
+  check_dump(a, dump);
+
+  // Setting the cell val num, also sets the fill value to a new default
+  CHECK_NOTHROW(a.set_cell_val_num(2));
+  CHECK_NOTHROW(a.get_fill_value(&value_ptr, &value_size, &valid));
+  CHECK(((const int32_t*)value_ptr)[0] == -2147483648);
+  CHECK(((const int32_t*)value_ptr)[1] == -2147483648);
+  CHECK(value_size == 2 * sizeof(int32_t));
+  CHECK(valid == 0);
+
+  // Check dump
+  dump = std::string("### Attribute ###\n") + "- Name: a\n" +
+         "- Type: INT32\n" + "- Nullable: true\n" + "- Cell val num: 2\n" +
+         "- Filters: 0\n" + "- Fill value: -2147483648, -2147483648\n" +
+         "- Fill value validity: 0\n";
+  check_dump(a, dump);
+}
+
+TEST_CASE(
     "C++ API: Test fill values, partial array",
     "[cppapi][fill-values][partial]") {
   Context ctx;
@@ -345,9 +493,9 @@ TEST_CASE(
   CHECK_NOTHROW(vfs.remove_dir(array_name));
 
   std::string s("abc");
-  create_array_1d(array_name, 0, s, {1.0, 2.0});
+  create_array_1d(array_name, false, 0, s, {1.0, 2.0});
   write_array_1d_partial(array_name);
-  read_array_1d_partial(array_name, 0, s, {1.0, 2.0});
+  read_array_1d_partial(array_name, false, 0, s, {1.0, 2.0});
 
   CHECK_NOTHROW(vfs.remove_dir(array_name));
 }
@@ -368,7 +516,7 @@ TEST_CASE(
   CHECK_NOTHROW(vfs.remove_dir(array_name));
 
   std::string s("abc");
-  create_array_1d(array_name, 0, s, {1.0, 2.0});
+  create_array_1d(array_name, false, 0, s, {1.0, 2.0});
   read_array_1d_empty(array_name, 0, s, {1.0, 2.0});
 
   CHECK_NOTHROW(vfs.remove_dir(array_name));
@@ -403,7 +551,7 @@ TEST_CASE(
 
   SECTION("- Custom fill values") {
     std::string s("abc");
-    create_array_1d(array_name, 0, s, {1.0, 2.0});
+    create_array_1d(array_name, false, 0, s, {1.0, 2.0});
 
     Array array(ctx, array_name, TILEDB_READ);
     Query query(ctx, array, TILEDB_READ);
@@ -469,7 +617,7 @@ TEST_CASE(
 
   SECTION("- Custom fill values") {
     std::string s("abc");
-    create_array_1d(array_name, 0, s, {1.0, 2.0});
+    create_array_1d(array_name, false, 0, s, {1.0, 2.0});
     write_array_1d_partial(array_name);
 
     Array array(ctx, array_name, TILEDB_READ);
@@ -503,6 +651,31 @@ TEST_CASE(
     CHECK(est_a2.second == 4 * sizeof(char));
     CHECK(est_a3 == 4 * 2 * sizeof(double));
   }
+
+  CHECK_NOTHROW(vfs.remove_dir(array_name));
+}
+
+TEST_CASE(
+    "C++ API: Test fill values, partial array, nullable",
+    "[cppapi][fill-values][partial][nullable]") {
+  Context ctx;
+  VFS vfs(ctx);
+  std::string array_name = "fill_values_partial_nullable";
+
+  // First test with default fill values
+  if (vfs.is_dir(array_name))
+    CHECK_NOTHROW(vfs.remove_dir(array_name));
+
+  create_array_1d(array_name, true);
+  write_array_1d_partial(array_name, true);
+  read_array_1d_partial(array_name, true);
+
+  CHECK_NOTHROW(vfs.remove_dir(array_name));
+
+  std::string s("abc");
+  create_array_1d(array_name, true, 0, s, {1.0, 2.0});
+  write_array_1d_partial(array_name, true);
+  read_array_1d_partial(array_name, true, 0, s, {1.0, 2.0});
 
   CHECK_NOTHROW(vfs.remove_dir(array_name));
 }
