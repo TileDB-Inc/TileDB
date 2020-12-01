@@ -523,7 +523,7 @@ typedef struct tiledb_vfs_t tiledb_vfs_t;
 /** A virtual filesystem file handle. */
 typedef struct tiledb_vfs_fh_t tiledb_vfs_fh_t;
 
-/** A fragment ingo object. */
+/** A fragment info object. */
 typedef struct tiledb_fragment_info_t tiledb_fragment_info_t;
 
 /* ********************************* */
@@ -2155,7 +2155,7 @@ TILEDB_EXPORT int32_t tiledb_attribute_dump(
  * tiledb_attribute_set_fill_value(ctx, attr, &value, size);
  *
  * // Assumming a var char attribute
- * const char* value = "null";
+ * const char* value = "foo";
  * uint64_t size = strlen(value);
  * tiledb_attribute_set_fill_value(ctx, attr, value, size);
  * @endcode
@@ -2214,6 +2214,93 @@ TILEDB_EXPORT int32_t tiledb_attribute_get_fill_value(
     tiledb_attribute_t* attr,
     const void** value,
     uint64_t* size);
+
+/**
+ * Sets the default fill value for the input, nullable attribute. This value
+ * will be used for the input attribute whenever querying (1) an empty cell in
+ * a dense array, or (2) a non-empty cell (in either dense or sparse array)
+ * when values on the input attribute are missing (e.g., if the user writes
+ * a subset of the attributes in a write operation).
+ *
+ * Applicable to var-sized attributes.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * // Assumming a int32 attribute
+ * int32_t value = 0;
+ * uint64_t size = sizeof(value);
+ * uint8_t valid = 0;
+ * tiledb_attribute_set_fill_value_nullable(ctx, attr, &value, size, valid);
+ *
+ * // Assumming a var char attribute
+ * const char* value = "foo";
+ * uint64_t size = strlen(value);
+ * uint8_t valid = 1;
+ * tiledb_attribute_set_fill_value(ctx, attr, value, size, valid);
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param attr The target attribute.
+ * @param value The fill value to set.
+ * @param size The fill value size in bytes.
+ * @param valid The validity fill value, zero for a null value and
+ *     non-zero for a valid attribute.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ *
+ * @note A call to `tiledb_attribute_cell_val_num` sets the fill value
+ *     of the attribute to its default. Therefore, make sure you invoke
+ *     `tiledb_attribute_set_fill_value_nullable` after deciding on the
+ *     number of values this attribute will hold in each cell.
+ *
+ * @note For fixed-sized attributes, the input `size` should be equal
+ *     to the cell size.
+ */
+TILEDB_EXPORT int32_t tiledb_attribute_set_fill_value_nullable(
+    tiledb_ctx_t* ctx,
+    tiledb_attribute_t* attr,
+    const void* value,
+    uint64_t size,
+    uint8_t validity);
+
+/**
+ * Gets the default fill value for the input, nullable attribute. This value
+ * will be used for the input attribute whenever querying (1) an empty cell in
+ * a dense array, or (2) a non-empty cell (in either dense or sparse array)
+ * when values on the input attribute are missing (e.g., if the user writes
+ * a subset of the attributes in a write operation).
+ *
+ * Applicable to both fixed-sized and var-sized attributes.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * // Assuming a int32 attribute
+ * const int32_t* value;
+ * uint64_t size;
+ * uint8_t valid;
+ * tiledb_attribute_get_fill_value(ctx, attr, &value, &size, &valid);
+ *
+ * // Assuming a var char attribute
+ * const char* value;
+ * uint64_t size;
+ * uint8_t valid;
+ * tiledb_attribute_get_fill_value(ctx, attr, &value, &size, &valid);
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param attr The target attribute.
+ * @param value A pointer to the fill value to get.
+ * @param size The size of the fill value to get.
+ * @param valid The fill value validity to get.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_attribute_get_fill_value_nullable(
+    tiledb_ctx_t* ctx,
+    tiledb_attribute_t* attr,
+    const void** value,
+    uint64_t* size,
+    uint8_t* valid);
 
 /* ********************************* */
 /*               DOMAIN              */

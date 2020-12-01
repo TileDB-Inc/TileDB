@@ -71,3 +71,4 @@ The attribute has internal format:
 | Fill value size | `uint64_t` | The size in bytes of the fill value |
 | Fill value | `uint8_t[]` | The fill value |
 | Nullable | `bool` | Whether or not the attribute can be null |
+| Fill value validity | `uint8_t` | The validity fill value |

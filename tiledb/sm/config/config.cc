@@ -358,7 +358,7 @@ Status Config::get(const std::string& param, const char** value) const {
 
 std::string Config::get(const std::string& param, bool* found) const {
   const char* val = get_from_config_or_env(param, found);
-  return found ? val : "";
+  return *found ? val : "";
 }
 
 template <class T>

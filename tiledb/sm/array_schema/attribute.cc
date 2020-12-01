@@ -73,6 +73,7 @@ Attribute::Attribute(const Attribute* attr) {
   nullable_ = attr->nullable();
   filters_ = attr->filters_;
   fill_value_ = attr->fill_value_;
+  fill_value_validity_ = attr->fill_value_validity_;
 }
 
 Attribute::~Attribute() = default;
@@ -126,6 +127,10 @@ Status Attribute::deserialize(ConstBuffer* buff, const uint32_t version) {
   if (version >= 7)
     RETURN_NOT_OK(buff->read(&nullable_, sizeof(bool)));
 
+  // Load validity fill value
+  if (version >= 7)
+    RETURN_NOT_OK(buff->read(&fill_value_validity_, sizeof(uint8_t)));
+
   return Status::Ok();
 }
 
@@ -145,6 +150,10 @@ void Attribute::dump(FILE* out) const {
   filters_.dump(out);
   fprintf(out, "\n");
   fprintf(out, "- Fill value: %s", fill_value_str().c_str());
+  if (nullable_) {
+    fprintf(out, "\n");
+    fprintf(out, "- Fill value validity: %u", fill_value_validity_);
+  }
   fprintf(out, "\n");
 }
 
@@ -162,7 +171,10 @@ const std::string& Attribute::name() const {
 // type (uint8_t)
 // cell_val_num (uint32_t)
 // filter_pipeline (see FilterPipeline::serialize)
+// fill_value_size (uint64_t)
+// fill_value (uint8_t[])
 // nullable (bool)
+// fill_value_validity (uint8_t)
 Status Attribute::serialize(Buffer* buff, const uint32_t version) {
   // Write attribute name
   auto attribute_name_size = (uint32_t)name_.size();
@@ -190,6 +202,10 @@ Status Attribute::serialize(Buffer* buff, const uint32_t version) {
   // Write nullable
   if (version >= 7)
     RETURN_NOT_OK(buff->write(&nullable_, sizeof(bool)));
+
+  // Write validity fill value
+  if (version >= 7)
+    RETURN_NOT_OK(buff->write(&fill_value_validity_, sizeof(uint8_t)));
 
   return Status::Ok();
 }
@@ -243,10 +259,17 @@ Status Attribute::set_fill_value(const void* value, uint64_t size) {
     return LOG_STATUS(Status::AttributeError(
         "Cannot set fill value; Input value cannot be null"));
   }
+
   if (size == 0) {
     return LOG_STATUS(Status::AttributeError(
         "Cannot set fill value; Input size cannot be 0"));
   }
+
+  if (nullable()) {
+    return LOG_STATUS(
+        Status::AttributeError("Cannot set fill value; Attribute is nullable"));
+  }
+
   if (!var_size() && size != cell_size()) {
     return LOG_STATUS(Status::AttributeError(
         "Cannot set fill value; Input size is not the same as cell size"));
@@ -264,9 +287,15 @@ Status Attribute::get_fill_value(const void** value, uint64_t* size) const {
     return LOG_STATUS(Status::AttributeError(
         "Cannot get fill value; Input value cannot be null"));
   }
+
   if (size == nullptr) {
     return LOG_STATUS(Status::AttributeError(
         "Cannot get fill value; Input size cannot be null"));
+  }
+
+  if (nullable()) {
+    return LOG_STATUS(
+        Status::AttributeError("Cannot get fill value; Attribute is nullable"));
   }
 
   *value = fill_value_.data();
@@ -275,8 +304,66 @@ Status Attribute::get_fill_value(const void** value, uint64_t* size) const {
   return Status::Ok();
 }
 
+Status Attribute::set_fill_value(
+    const void* value, uint64_t size, uint8_t valid) {
+  if (value == nullptr) {
+    return LOG_STATUS(Status::AttributeError(
+        "Cannot set fill value; Input value cannot be null"));
+  }
+
+  if (size == 0) {
+    return LOG_STATUS(Status::AttributeError(
+        "Cannot set fill value; Input size cannot be 0"));
+  }
+
+  if (!nullable()) {
+    return LOG_STATUS(Status::AttributeError(
+        "Cannot set fill value; Attribute is not nullable"));
+  }
+
+  if (!var_size() && size != cell_size()) {
+    return LOG_STATUS(Status::AttributeError(
+        "Cannot set fill value; Input size is not the same as cell size"));
+  }
+
+  fill_value_.resize(size);
+  fill_value_.shrink_to_fit();
+  std::memcpy(&fill_value_[0], value, size);
+  fill_value_validity_ = valid;
+
+  return Status::Ok();
+}
+
+Status Attribute::get_fill_value(
+    const void** value, uint64_t* size, uint8_t* valid) const {
+  if (value == nullptr) {
+    return LOG_STATUS(Status::AttributeError(
+        "Cannot get fill value; Input value cannot be null"));
+  }
+
+  if (size == nullptr) {
+    return LOG_STATUS(Status::AttributeError(
+        "Cannot get fill value; Input size cannot be null"));
+  }
+
+  if (!nullable()) {
+    return LOG_STATUS(Status::AttributeError(
+        "Cannot get fill value; Attribute is not nullable"));
+  }
+
+  *value = fill_value_.data();
+  *size = (uint64_t)fill_value_.size();
+  *valid = fill_value_validity_;
+
+  return Status::Ok();
+}
+
 const ByteVecValue& Attribute::fill_value() const {
   return fill_value_;
+}
+
+uint8_t Attribute::fill_value_validity() const {
+  return fill_value_validity_;
 }
 
 Datatype Attribute::type() const {
@@ -308,6 +395,8 @@ void Attribute::set_default_fill_value() {
     std::memcpy(buff + offset, fill_value, fill_size);
     offset += fill_size;
   }
+
+  fill_value_validity_ = 0;
 }
 
 std::string Attribute::fill_value_str() const {
