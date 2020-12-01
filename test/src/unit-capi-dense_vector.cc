@@ -32,6 +32,7 @@
 
 #include "catch.hpp"
 #include "test/src/helpers.h"
+#include "test/src/vfs_helpers.h"
 #ifdef _WIN32
 #include "tiledb/sm/filesystem/win.h"
 #else
@@ -51,32 +52,14 @@ struct DenseVectorFx {
   const tiledb_datatype_t ATTR_TYPE = TILEDB_INT64;
   const char* DIM0_NAME = "dim0";
   const tiledb_datatype_t DIM_TYPE = TILEDB_INT64;
-  const std::string HDFS_TEMP_DIR = "hdfs:///tiledb_test/";
-  const std::string S3_PREFIX = "s3://";
-  const std::string S3_BUCKET = S3_PREFIX + random_name("tiledb") + "/";
-  const std::string S3_TEMP_DIR = S3_BUCKET + "tiledb_test/";
-  const std::string AZURE_PREFIX = "azure://";
-  const std::string bucket = AZURE_PREFIX + random_name("tiledb") + "/";
-  const std::string AZURE_TEMP_DIR = bucket + "tiledb_test/";
-#ifdef _WIN32
-  const std::string FILE_URI_PREFIX = "";
-  const std::string FILE_TEMP_DIR =
-      tiledb::sm::Win::current_dir() + "\\tiledb_test\\";
-#else
-  const std::string FILE_URI_PREFIX = "file://";
-  const std::string FILE_TEMP_DIR =
-      tiledb::sm::Posix::current_dir() + "/tiledb_test/";
-#endif
   const std::string VECTOR = "vector";
 
   // TileDB context
   tiledb_ctx_t* ctx_;
   tiledb_vfs_t* vfs_;
 
-  // Supported filesystems
-  bool supports_s3_;
-  bool supports_hdfs_;
-  bool supports_azure_;
+  // Vector of supported filsystems
+  const std::vector<std::unique_ptr<SupportedFs>> fs_vec_;
 
   // Functions
   DenseVectorFx();
@@ -91,123 +74,19 @@ struct DenseVectorFx {
   void create_temp_dir(const std::string& path);
   void remove_temp_dir(const std::string& path);
   static std::string random_name(const std::string& prefix);
-  void set_supported_fs();
 };
 
-DenseVectorFx::DenseVectorFx() {
-  // Supported filesystems
-  set_supported_fs();
-
-  // Create TileDB context
-  tiledb_config_t* config = nullptr;
-  tiledb_error_t* error = nullptr;
-  REQUIRE(tiledb_config_alloc(&config, &error) == TILEDB_OK);
-  REQUIRE(error == nullptr);
-  if (supports_s3_) {
-#ifndef TILEDB_TESTS_AWS_S3_CONFIG
-    REQUIRE(
-        tiledb_config_set(
-            config, "vfs.s3.endpoint_override", "localhost:9999", &error) ==
-        TILEDB_OK);
-    REQUIRE(
-        tiledb_config_set(config, "vfs.s3.scheme", "https", &error) ==
-        TILEDB_OK);
-    REQUIRE(
-        tiledb_config_set(
-            config, "vfs.s3.use_virtual_addressing", "false", &error) ==
-        TILEDB_OK);
-    REQUIRE(
-        tiledb_config_set(config, "vfs.s3.verify_ssl", "false", &error) ==
-        TILEDB_OK);
-    REQUIRE(error == nullptr);
-#endif
-  }
-  if (supports_azure_) {
-    REQUIRE(
-        tiledb_config_set(
-            config,
-            "vfs.azure.storage_account_name",
-            "devstoreaccount1",
-            &error) == TILEDB_OK);
-    REQUIRE(
-        tiledb_config_set(
-            config,
-            "vfs.azure.storage_account_key",
-            "Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/"
-            "K1SZFPTOtr/KBHBeksoGMGw==",
-            &error) == TILEDB_OK);
-    REQUIRE(
-        tiledb_config_set(
-            config,
-            "vfs.azure.blob_endpoint",
-            "127.0.0.1:10000/devstoreaccount1",
-            &error) == TILEDB_OK);
-    REQUIRE(
-        tiledb_config_set(config, "vfs.azure.use_https", "false", &error) ==
-        TILEDB_OK);
-  }
-  REQUIRE(tiledb_ctx_alloc(config, &ctx_) == TILEDB_OK);
-  REQUIRE(error == nullptr);
-  vfs_ = nullptr;
-  REQUIRE(tiledb_vfs_alloc(ctx_, config, &vfs_) == TILEDB_OK);
-  tiledb_config_free(&config);
-
-  // Connect to S3
-  if (supports_s3_) {
-    // Create bucket if it does not exist
-    int is_bucket = 0;
-    int rc = tiledb_vfs_is_bucket(ctx_, vfs_, S3_BUCKET.c_str(), &is_bucket);
-    REQUIRE(rc == TILEDB_OK);
-    if (!is_bucket) {
-      rc = tiledb_vfs_create_bucket(ctx_, vfs_, S3_BUCKET.c_str());
-      REQUIRE(rc == TILEDB_OK);
-    }
-  }
-
-  // Connect to Azure
-  if (supports_azure_) {
-    int is_container = 0;
-    int rc = tiledb_vfs_is_bucket(ctx_, vfs_, bucket.c_str(), &is_container);
-    REQUIRE(rc == TILEDB_OK);
-    if (!is_container) {
-      rc = tiledb_vfs_create_bucket(ctx_, vfs_, bucket.c_str());
-      REQUIRE(rc == TILEDB_OK);
-    }
-  }
+DenseVectorFx::DenseVectorFx()
+    : fs_vec_(vfs_test_get_fs_vec()) {
+  // Initialize vfs test
+  REQUIRE(vfs_test_init(fs_vec_, &ctx_, &vfs_).ok());
 }
 
 DenseVectorFx::~DenseVectorFx() {
-  if (supports_s3_) {
-    int is_bucket = 0;
-    int rc = tiledb_vfs_is_bucket(ctx_, vfs_, S3_BUCKET.c_str(), &is_bucket);
-    CHECK(rc == TILEDB_OK);
-    if (is_bucket) {
-      CHECK(
-          tiledb_vfs_remove_bucket(ctx_, vfs_, S3_BUCKET.c_str()) == TILEDB_OK);
-    }
-  }
-
-  if (supports_azure_) {
-    int is_container = 0;
-    int rc = tiledb_vfs_is_bucket(ctx_, vfs_, bucket.c_str(), &is_container);
-    REQUIRE(rc == TILEDB_OK);
-    if (is_container) {
-      rc = tiledb_vfs_remove_bucket(ctx_, vfs_, bucket.c_str());
-      REQUIRE(rc == TILEDB_OK);
-    }
-  }
-
+  // Close vfs test
+  REQUIRE(vfs_test_close(fs_vec_, ctx_, vfs_).ok());
   tiledb_vfs_free(&vfs_);
   tiledb_ctx_free(&ctx_);
-}
-
-void DenseVectorFx::set_supported_fs() {
-  tiledb_ctx_t* ctx = nullptr;
-  REQUIRE(tiledb_ctx_alloc(nullptr, &ctx) == TILEDB_OK);
-
-  get_supported_fs(&supports_s3_, &supports_hdfs_, &supports_azure_);
-
-  tiledb_ctx_free(&ctx);
 }
 
 void DenseVectorFx::create_temp_dir(const std::string& path) {
@@ -524,47 +403,16 @@ TEST_CASE_METHOD(
     DenseVectorFx, "C API: Test 1d dense vector", "[capi], [dense-vector]") {
   std::string vector_name;
 
-  if (supports_s3_) {
-    // S3
-    create_temp_dir(S3_TEMP_DIR);
-    vector_name = S3_TEMP_DIR + VECTOR;
-    create_dense_vector(vector_name, TILEDB_ROW_MAJOR, TILEDB_ROW_MAJOR);
-    check_read(vector_name, TILEDB_ROW_MAJOR);
-    check_read(vector_name, TILEDB_COL_MAJOR);
-    check_update(vector_name);
-    check_duplicate_coords(vector_name);
-    remove_temp_dir(S3_TEMP_DIR);
-  } else if (supports_azure_) {
-    // Azure
-    create_temp_dir(AZURE_TEMP_DIR);
-    vector_name = AZURE_TEMP_DIR + VECTOR;
-    create_dense_vector(vector_name, TILEDB_ROW_MAJOR, TILEDB_ROW_MAJOR);
-    check_read(vector_name, TILEDB_ROW_MAJOR);
-    check_read(vector_name, TILEDB_COL_MAJOR);
-    check_update(vector_name);
-    check_duplicate_coords(vector_name);
-    remove_temp_dir(AZURE_TEMP_DIR);
-  } else if (supports_hdfs_) {
-    // HDFS
-    create_temp_dir(HDFS_TEMP_DIR);
-    vector_name = HDFS_TEMP_DIR + VECTOR;
-    create_dense_vector(vector_name, TILEDB_ROW_MAJOR, TILEDB_ROW_MAJOR);
-    check_read(vector_name, TILEDB_ROW_MAJOR);
-    check_read(vector_name, TILEDB_COL_MAJOR);
-    check_update(vector_name);
-    check_duplicate_coords(vector_name);
-    remove_temp_dir(HDFS_TEMP_DIR);
-  } else {
-    // File
-    create_temp_dir(FILE_URI_PREFIX + FILE_TEMP_DIR);
-    vector_name = FILE_URI_PREFIX + FILE_TEMP_DIR + VECTOR;
-    create_dense_vector(vector_name, TILEDB_ROW_MAJOR, TILEDB_ROW_MAJOR);
-    check_read(vector_name, TILEDB_ROW_MAJOR);
-    check_read(vector_name, TILEDB_COL_MAJOR);
-    check_update(vector_name);
-    check_duplicate_coords(vector_name);
-    remove_temp_dir(FILE_URI_PREFIX + FILE_TEMP_DIR);
-  }
+  // TODO: refactor for each supported FS.
+  std::string temp_dir = fs_vec_[0]->temp_dir();
+  create_temp_dir(temp_dir);
+  vector_name = temp_dir + VECTOR;
+  create_dense_vector(vector_name, TILEDB_ROW_MAJOR, TILEDB_ROW_MAJOR);
+  check_read(vector_name, TILEDB_ROW_MAJOR);
+  check_read(vector_name, TILEDB_COL_MAJOR);
+  check_update(vector_name);
+  check_duplicate_coords(vector_name);
+  remove_temp_dir(temp_dir);
 }
 
 TEST_CASE_METHOD(
@@ -573,22 +421,27 @@ TEST_CASE_METHOD(
     "[capi], [dense-vector], [anon-attr]") {
   ATTR_NAME = "";
 
-  std::string vector_name = FILE_URI_PREFIX + FILE_TEMP_DIR + VECTOR;
-  create_temp_dir(FILE_URI_PREFIX + FILE_TEMP_DIR);
+  SupportedFsLocal local_fs;
+
+  std::string vector_name =
+      local_fs.file_prefix() + local_fs.temp_dir() + VECTOR;
+  create_temp_dir(local_fs.file_prefix() + local_fs.temp_dir());
   create_dense_vector(vector_name, TILEDB_ROW_MAJOR, TILEDB_ROW_MAJOR);
   check_read(vector_name, TILEDB_ROW_MAJOR);
   check_read(vector_name, TILEDB_COL_MAJOR);
   check_update(vector_name);
   check_duplicate_coords(vector_name);
-  remove_temp_dir(FILE_URI_PREFIX + FILE_TEMP_DIR);
+  remove_temp_dir(local_fs.file_prefix() + local_fs.temp_dir());
 }
 
 TEST_CASE_METHOD(
     DenseVectorFx,
     "C API: Test 1d dense vector cell/tile layout",
     "[capi], [dense-vector], [dense-vector-layout]") {
-  std::string vector_name = FILE_URI_PREFIX + FILE_TEMP_DIR + VECTOR;
-  create_temp_dir(FILE_URI_PREFIX + FILE_TEMP_DIR);
+  SupportedFsLocal local_fs;
+  std::string vector_name =
+      local_fs.file_prefix() + local_fs.temp_dir() + VECTOR;
+  create_temp_dir(local_fs.file_prefix() + local_fs.temp_dir());
   create_dense_vector(vector_name, TILEDB_COL_MAJOR, TILEDB_COL_MAJOR);
 
   // Check layout
@@ -604,15 +457,17 @@ TEST_CASE_METHOD(
   CHECK(tile_order == TILEDB_COL_MAJOR);
   tiledb_array_schema_free(&array_schema);
 
-  remove_temp_dir(FILE_URI_PREFIX + FILE_TEMP_DIR);
+  remove_temp_dir(local_fs.file_prefix() + local_fs.temp_dir());
 }
 
 TEST_CASE_METHOD(
     DenseVectorFx,
     "C API: Test 1d dense vector, update",
     "[capi], [dense-vector], [dense-vector-update]") {
-  std::string vector_name = FILE_URI_PREFIX + FILE_TEMP_DIR + VECTOR;
-  create_temp_dir(FILE_URI_PREFIX + FILE_TEMP_DIR);
+  SupportedFsLocal local_fs;
+  std::string vector_name =
+      local_fs.file_prefix() + local_fs.temp_dir() + VECTOR;
+  create_temp_dir(local_fs.file_prefix() + local_fs.temp_dir());
   int rc;
 
   // --- Create array ----
@@ -864,5 +719,5 @@ TEST_CASE_METHOD(
   tiledb_array_free(&array);
   tiledb_query_free(&read_query);
 
-  remove_temp_dir(FILE_URI_PREFIX + FILE_TEMP_DIR);
+  remove_temp_dir(local_fs.file_prefix() + local_fs.temp_dir());
 }

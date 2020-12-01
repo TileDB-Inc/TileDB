@@ -40,6 +40,7 @@
 
 #include "catch.hpp"
 #include "test/src/helpers.h"
+#include "test/src/vfs_helpers.h"
 #ifdef _WIN32
 #include "tiledb/sm/filesystem/win.h"
 #else
@@ -51,33 +52,12 @@
 using namespace tiledb::test;
 
 struct QueryFx {
-  // Filesystem related
-  const std::string HDFS_TEMP_DIR = "hdfs:///tiledb_test/";
-  const std::string S3_PREFIX = "s3://";
-  const std::string S3_BUCKET = S3_PREFIX + random_name("tiledb") + "/";
-  const std::string S3_TEMP_DIR = S3_BUCKET + "tiledb_test/";
-  const std::string AZURE_PREFIX = "azure://";
-  const std::string AZURE_CONTAINER =
-      AZURE_PREFIX + random_name("tiledb") + "/";
-  const std::string AZURE_TEMP_DIR = AZURE_CONTAINER + "tiledb_test/";
-#ifdef _WIN32
-  const std::string FILE_URI_PREFIX = "";
-  const std::string FILE_TEMP_DIR =
-      tiledb::sm::Win::current_dir() + "\\tiledb_test\\";
-#else
-  const std::string FILE_URI_PREFIX = "file://";
-  const std::string FILE_TEMP_DIR =
-      tiledb::sm::Posix::current_dir() + "/tiledb_test/";
-#endif
-
   // TileDB context and vfs
   tiledb_ctx_t* ctx_;
   tiledb_vfs_t* vfs_;
 
-  // Supported filesystems
-  bool supports_s3_;
-  bool supports_hdfs_;
-  bool supports_azure_;
+  // Vector of supported filsystems
+  const std::vector<std::unique_ptr<SupportedFs>> fs_vec_;
 
   // Functions
   QueryFx();
@@ -88,70 +68,17 @@ struct QueryFx {
   void test_get_buffer_write(const std::string& path);
   void test_get_buffer_read(const std::string& path);
   static std::string random_name(const std::string& prefix);
-  void set_supported_fs();
 };
 
-QueryFx::QueryFx() {
-  // Supported filesystems
-  set_supported_fs();
-
-  // Create TileDB context
-  tiledb_config_t* config = nullptr;
-  tiledb_error_t* error = nullptr;
-  REQUIRE(tiledb_config_alloc(&config, &error) == TILEDB_OK);
-  REQUIRE(error == nullptr);
-
-  if (supports_s3_) {
-#ifndef TILEDB_TESTS_AWS_S3_CONFIG
-    REQUIRE(
-        tiledb_config_set(
-            config, "vfs.s3.endpoint_override", "localhost:9999", &error) ==
-        TILEDB_OK);
-    REQUIRE(
-        tiledb_config_set(config, "vfs.s3.scheme", "https", &error) ==
-        TILEDB_OK);
-    REQUIRE(
-        tiledb_config_set(
-            config, "vfs.s3.use_virtual_addressing", "false", &error) ==
-        TILEDB_OK);
-    REQUIRE(
-        tiledb_config_set(config, "vfs.s3.verify_ssl", "false", &error) ==
-        TILEDB_OK);
-    REQUIRE(error == nullptr);
-#endif
-  }
-
-  ctx_ = nullptr;
-  REQUIRE(tiledb_ctx_alloc(config, &ctx_) == TILEDB_OK);
-  REQUIRE(error == nullptr);
-  vfs_ = nullptr;
-  REQUIRE(tiledb_vfs_alloc(ctx_, config, &vfs_) == TILEDB_OK);
-  tiledb_config_free(&config);
-
-  // Connect to S3
-  if (supports_s3_) {
-    // Create bucket if it does not exist
-    int is_bucket = 0;
-    int rc = tiledb_vfs_is_bucket(ctx_, vfs_, S3_BUCKET.c_str(), &is_bucket);
-    REQUIRE(rc == TILEDB_OK);
-    if (!is_bucket) {
-      rc = tiledb_vfs_create_bucket(ctx_, vfs_, S3_BUCKET.c_str());
-      REQUIRE(rc == TILEDB_OK);
-    }
-  }
+QueryFx::QueryFx()
+    : fs_vec_(vfs_test_get_fs_vec()) {
+  // Initialize vfs test
+  REQUIRE(vfs_test_init(fs_vec_, &ctx_, &vfs_).ok());
 }
 
 QueryFx::~QueryFx() {
-  if (supports_s3_) {
-    int is_bucket = 0;
-    int rc = tiledb_vfs_is_bucket(ctx_, vfs_, S3_BUCKET.c_str(), &is_bucket);
-    CHECK(rc == TILEDB_OK);
-    if (is_bucket) {
-      CHECK(
-          tiledb_vfs_remove_bucket(ctx_, vfs_, S3_BUCKET.c_str()) == TILEDB_OK);
-    }
-  }
-
+  // Close vfs test
+  REQUIRE(vfs_test_close(fs_vec_, ctx_, vfs_).ok());
   tiledb_vfs_free(&vfs_);
   tiledb_ctx_free(&ctx_);
 }
@@ -161,15 +88,6 @@ std::string QueryFx::random_name(const std::string& prefix) {
   ss << prefix << "-" << std::this_thread::get_id() << "-"
      << TILEDB_TIMESTAMP_NOW_MS;
   return ss.str();
-}
-
-void QueryFx::set_supported_fs() {
-  tiledb_ctx_t* ctx = nullptr;
-  REQUIRE(tiledb_ctx_alloc(nullptr, &ctx) == TILEDB_OK);
-
-  get_supported_fs(&supports_s3_, &supports_hdfs_, &supports_azure_);
-
-  tiledb_ctx_free(&ctx);
 }
 
 void QueryFx::create_temp_dir(const std::string& path) {
@@ -506,18 +424,9 @@ TEST_CASE_METHOD(
     QueryFx,
     "C API: Test query get buffer",
     "[capi], [query], [query-get-buffer]") {
-  std::string temp_dir;
-
-  // S3
-  if (supports_s3_) {
-    temp_dir = S3_TEMP_DIR;
-  } else if (supports_hdfs_) {
-    // HDFS
-    temp_dir = HDFS_TEMP_DIR;
-  } else {
-    // File
-    temp_dir = FILE_URI_PREFIX + FILE_TEMP_DIR;
-  }
+  // TODO: refactor for each supported FS.
+  SupportedFsLocal local_fs;
+  std::string temp_dir = local_fs.file_prefix() + local_fs.temp_dir();
 
   std::string array_name = temp_dir + "query_get_buffer";
   create_temp_dir(temp_dir);
@@ -531,7 +440,8 @@ TEST_CASE_METHOD(
     QueryFx,
     "C API: Test query get layout",
     "[capi], [query], [query-get-layout]") {
-  std::string temp_dir = FILE_URI_PREFIX + FILE_TEMP_DIR;
+  SupportedFsLocal local_fs;
+  std::string temp_dir = local_fs.file_prefix() + local_fs.temp_dir();
   std::string array_name = temp_dir + "query_get_layout";
   create_temp_dir(temp_dir);
   create_array(array_name);
@@ -577,7 +487,8 @@ TEST_CASE_METHOD(
     QueryFx,
     "C API: Test query get array",
     "[capi], [query], [query-get-array]") {
-  std::string temp_dir = FILE_URI_PREFIX + FILE_TEMP_DIR;
+  SupportedFsLocal local_fs;
+  std::string temp_dir = local_fs.file_prefix() + local_fs.temp_dir();
   std::string array_name = temp_dir + "query_get_array";
   create_temp_dir(temp_dir);
   create_array(array_name);
