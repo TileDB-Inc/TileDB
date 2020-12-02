@@ -90,7 +90,7 @@ TEST_CASE("C++ API: Test subarray", "[cppapi][sparse][subarray]") {
 
     auto est_size = query.est_result_size("a");
     REQUIRE(est_size == 4);
-    std::pair<uint64_t, uint64_t> est_size_var;
+    std::array<uint64_t, 2> est_size_var;
     CHECK_THROWS(est_size_var = query.est_result_size_var("a"));
 
     std::vector<int> data(est_size);

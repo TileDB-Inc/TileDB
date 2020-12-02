@@ -179,11 +179,15 @@ void allocate_query_buffers(std::shared_ptr<tiledb::Query> query) {
       query->set_buffer(name, data, est_size);
     } else {
       auto est_size_var = query->est_result_size_var(attr.name());
-      void* data = std::malloc(est_size_var.second);
+      void* data = std::malloc(std::get<1>(est_size_var));
       uint64_t* offsets = static_cast<uint64_t*>(
-          std::malloc(est_size_var.first * sizeof(uint64_t)));
+          std::malloc(std::get<0>(est_size_var) * sizeof(uint64_t)));
       query->set_buffer(
-          name, offsets, est_size_var.first, data, est_size_var.second);
+          name,
+          offsets,
+          std::get<0>(est_size_var),
+          data,
+          std::get<1>(est_size_var));
     }
   }
 
@@ -196,11 +200,15 @@ void allocate_query_buffers(std::shared_ptr<tiledb::Query> query) {
       query->set_buffer(name, data, est_size);
     } else {
       auto est_size_var = query->est_result_size_var(dim.name());
-      void* data = std::malloc(est_size_var.second);
+      void* data = std::malloc(std::get<1>(est_size_var));
       uint64_t* offsets = static_cast<uint64_t*>(
-          std::malloc(est_size_var.first * sizeof(uint64_t)));
+          std::malloc(std::get<0>(est_size_var) * sizeof(uint64_t)));
       query->set_buffer(
-          name, offsets, est_size_var.first, data, est_size_var.second);
+          name,
+          offsets,
+          std::get<0>(est_size_var),
+          data,
+          std::get<1>(est_size_var));
     }
   }
 }

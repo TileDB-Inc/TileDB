@@ -7,6 +7,7 @@
 ## Breaking behavior
 
 * The tile extent can now be set to null, in which case internally TileDB sets the extent to the dimension domain range. [#1880](https://github.com/TileDB-Inc/TileDB/pull/1880)
+* The C++ API `std::pair<uint64_t, uint64_t> Query::est_result_size_var` has been changed to 1) a return type of `std::array<uint64_t, 2>` and 2) returns the offsets as a size in bytes rather than elements. [#1946](https://github.com/TileDB-Inc/TileDB/pull/1946)
 
 ## New features
 
@@ -54,6 +55,7 @@
 * Added class `FragmentInfo` and functions for getting fragment information. [#1900](https://github.com/TileDB-Inc/TileDB/pull/1900)
 * Added function `Dimension::create` that allows not setting a space tile extent. [#1880](https://github.com/TileDB-Inc/TileDB/pull/1880)
 * Added APIs for getting and setting ranges of queries using a dimension name. [#1920](https://github.com/TileDB-Inc/TileDB/pull/1920)
+* Changed `std::pair<uint64_t, uint64_t> Query::est_result_size_var` to `std::array<uint64_t, 2> Query::est_result_size_var`. Additionally, the size estimate for the offsets have been changed from elements to bytes. [#1946](https://github.com/TileDB-Inc/TileDB/pull/1946)
 
 # TileDB v2.1.0 Release Notes
 
