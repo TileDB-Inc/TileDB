@@ -315,6 +315,14 @@ Reader::ReadState* Reader::read_state() {
   return &read_state_;
 }
 
+Status Reader::complete_read_loop() {
+  if (offsets_extra_element_) {
+    RETURN_NOT_OK(add_extra_offset());
+  }
+
+  return Status::Ok();
+}
+
 Status Reader::read() {
   get_dim_attr_stats();
 
@@ -353,8 +361,9 @@ Status Reader::read() {
       zero_out_buffer_sizes();
       RETURN_NOT_OK(read_state_.split_current());
 
-      if (read_state_.unsplittable_)
-        return Status::Ok();
+      if (read_state_.unsplittable_) {
+        return complete_read_loop();
+      }
     } else {
       bool no_results = this->no_results();
 
@@ -362,8 +371,9 @@ Status Reader::read() {
       if (!no_results)
         read_state_.unsplittable_ = false;
 
-      if (!no_results || read_state_.done())
-        return Status::Ok();
+      if (!no_results || read_state_.done()) {
+        return complete_read_loop();
+      }
 
       RETURN_NOT_OK(read_state_.next());
     }
@@ -389,9 +399,14 @@ Status Reader::set_buffer(
     uint64_t* const buffer_size,
     const bool check_null_buffers) {
   // Check buffer
-  if (check_null_buffers && (buffer == nullptr || buffer_size == nullptr))
-    return LOG_STATUS(Status::ReaderError(
-        "Cannot set buffer; Buffer or buffer size is null"));
+  if (check_null_buffers && buffer == nullptr)
+    return LOG_STATUS(
+        Status::ReaderError("Cannot set buffer; " + name + " buffer is null"));
+
+  // Check buffer size
+  if (check_null_buffers && buffer_size == nullptr)
+    return LOG_STATUS(
+        Status::ReaderError("Cannot set buffer; " + name + " buffer is null"));
 
   // Array schema must exist
   if (array_schema_ == nullptr)
@@ -450,11 +465,24 @@ Status Reader::set_buffer(
     uint64_t* const buffer_val_size,
     const bool check_null_buffers) {
   // Check buffer
-  if (check_null_buffers &&
-      (buffer_off == nullptr || buffer_off_size == nullptr ||
-       buffer_val == nullptr || buffer_val_size == nullptr))
+  if (check_null_buffers && buffer_val == nullptr)
+    return LOG_STATUS(
+        Status::ReaderError("Cannot set buffer; " + name + " buffer is null"));
+
+  // Check buffer size
+  if (check_null_buffers && buffer_val_size == nullptr)
     return LOG_STATUS(Status::ReaderError(
-        "Cannot set buffer; Buffer or buffer size is null"));
+        "Cannot set buffer; " + name + " buffer size is null"));
+
+  // Check offset buffer
+  if (check_null_buffers && buffer_off == nullptr)
+    return LOG_STATUS(Status::ReaderError(
+        "Cannot set buffer; " + name + " offset buffer is null"));
+
+  // Check offset buffer size
+  if (check_null_buffers && buffer_off_size == nullptr)
+    return LOG_STATUS(Status::ReaderError(
+        "Cannot set buffer; " + name + " offset buffer size is null"));
 
   // Array schema must exist
   if (array_schema_ == nullptr)
@@ -504,9 +532,24 @@ Status Reader::set_buffer(
     ValidityVector&& validity_vector,
     const bool check_null_buffers) {
   // Check buffer
-  if (check_null_buffers && (buffer == nullptr || buffer_size == nullptr))
+  if (check_null_buffers && buffer == nullptr)
+    return LOG_STATUS(
+        Status::ReaderError("Cannot set buffer; " + name + " buffer is null"));
+
+  // Check buffer size
+  if (check_null_buffers && buffer_size == nullptr)
     return LOG_STATUS(Status::ReaderError(
-        "Cannot set buffer; Buffer or buffer size is null"));
+        "Cannot set buffer; " + name + " buffer size is null"));
+
+  // Check validity buffer offset
+  if (check_null_buffers && validity_vector.buffer() == nullptr)
+    return LOG_STATUS(Status::ReaderError(
+        "Cannot set buffer; " + name + " validity buffer is null"));
+
+  // Check validity buffer size
+  if (check_null_buffers && validity_vector.buffer_size() == nullptr)
+    return LOG_STATUS(Status::ReaderError(
+        "Cannot set buffer; " + name + " validity buffer size is null"));
 
   // Array schema must exist
   if (array_schema_ == nullptr)
@@ -554,11 +597,35 @@ Status Reader::set_buffer(
     ValidityVector&& validity_vector,
     const bool check_null_buffers) {
   // Check buffer
-  if (check_null_buffers &&
-      (buffer_off == nullptr || buffer_off_size == nullptr ||
-       buffer_val == nullptr || buffer_val_size == nullptr))
+  if (check_null_buffers && buffer_val == nullptr)
+    return LOG_STATUS(
+        Status::ReaderError("Cannot set buffer; " + name + " buffer is null"));
+
+  // Check buffer size
+  if (check_null_buffers && buffer_val_size == nullptr)
     return LOG_STATUS(Status::ReaderError(
-        "Cannot set buffer; Buffer or buffer size is null"));
+        "Cannot set buffer; " + name + " buffer size is null"));
+
+  // Check buffer offset
+  if (check_null_buffers && buffer_off == nullptr)
+    return LOG_STATUS(Status::ReaderError(
+        "Cannot set buffer; " + name + " offset buffer is null"));
+
+  // Check buffer offset size
+  if (check_null_buffers && buffer_off_size == nullptr)
+    return LOG_STATUS(Status::ReaderError(
+        "Cannot set buffer; " + name + " offset buffer size is null"));
+  ;
+
+  // Check validity buffer offset
+  if (check_null_buffers && validity_vector.buffer() == nullptr)
+    return LOG_STATUS(Status::ReaderError(
+        "Cannot set buffer; " + name + " validity buffer is null"));
+
+  // Check validity buffer size
+  if (check_null_buffers && validity_vector.buffer_size() == nullptr)
+    return LOG_STATUS(Status::ReaderError(
+        "Cannot set buffer; " + name + " validity buffer size is null"));
 
   // Array schema must exist
   if (array_schema_ == nullptr)
@@ -648,6 +715,26 @@ Status Reader::set_subarray(const Subarray& subarray) {
 
 const Subarray* Reader::subarray() const {
   return &subarray_;
+}
+
+std::string Reader::offsets_mode() const {
+  return offsets_format_mode_;
+}
+
+Status Reader::set_offsets_mode(const std::string& offsets_mode) {
+  offsets_format_mode_ = offsets_mode;
+
+  return Status::Ok();
+}
+
+bool Reader::offsets_extra_element() const {
+  return offsets_extra_element_;
+}
+
+Status Reader::set_offsets_extra_element(bool add_extra_element) {
+  offsets_extra_element_ = add_extra_element;
+
+  return Status::Ok();
 }
 
 /* ********************************* */
@@ -1184,8 +1271,12 @@ Status Reader::copy_partitioned_fixed_cells(
   auto buffer_validity = (unsigned char*)it->second.validity_vector_.buffer();
   auto cell_size = array_schema_->cell_size(*name);
   ByteVecValue fill_value;
-  if (array_schema_->is_attr(*name))
+  uint8_t fill_value_validity = 0;
+  if (array_schema_->is_attr(*name)) {
     fill_value = array_schema_->attribute(*name)->fill_value();
+    fill_value_validity =
+        array_schema_->attribute(*name)->fill_value_validity();
+  }
   uint64_t fill_value_size = (uint64_t)fill_value.size();
 
   // Calculate the partition to operate on.
@@ -1210,7 +1301,7 @@ Status Reader::copy_partitioned_fixed_cells(
           std::memset(
               buffer_validity +
                   (offset / attr_datatype_size * constants::cell_validity_size),
-              0,
+              fill_value_validity,
               fill_value_size / attr_datatype_size *
                   constants::cell_validity_size);
         }
@@ -1439,8 +1530,12 @@ Status Reader::copy_partitioned_var_cells(
   auto buffer_validity = (unsigned char*)it->second.validity_vector_.buffer();
   uint64_t offset_size = constants::cell_var_offset_size;
   ByteVecValue fill_value;
-  if (array_schema_->is_attr(*name))
+  uint8_t fill_value_validity = 0;
+  if (array_schema_->is_attr(*name)) {
     fill_value = array_schema_->attribute(*name)->fill_value();
+    fill_value_validity =
+        array_schema_->attribute(*name)->fill_value_validity();
+  }
   auto fill_value_size = (uint64_t)fill_value.size();
   auto attr_datatype_size = datatype_size(array_schema_->type(*name));
 
@@ -1494,7 +1589,7 @@ Status Reader::copy_partitioned_var_cells(
       auto var_dest = buffer_var + var_offset;
       auto validity_dest = buffer_validity + (var_offset / attr_datatype_size);
 
-      if (offsets_format_ == "elements") {
+      if (offsets_format_mode_ == "elements") {
         var_offset = var_offset / attr_datatype_size;
       }
       // Copy offset
@@ -1506,7 +1601,7 @@ Status Reader::copy_partitioned_var_cells(
         if (nullable)
           std::memset(
               validity_dest,
-              0,
+              fill_value_validity,
               fill_value_size / attr_datatype_size *
                   constants::cell_validity_size);
       } else {
@@ -2502,13 +2597,16 @@ Status Reader::init_read_state() {
   RETURN_NOT_OK(
       config.get<uint64_t>("sm.memory_budget_var", &memory_budget_var, &found));
   assert(found);
-  offsets_format_ = config.get("sm.offsets_format", &found);
+  offsets_format_mode_ = config.get("sm.var_offsets.mode", &found);
   assert(found);
-  if (offsets_format_ != "bytes" && offsets_format_ != "elements") {
+  if (offsets_format_mode_ != "bytes" && offsets_format_mode_ != "elements") {
     return LOG_STATUS(
         Status::ReaderError("Cannot initialize reader; Unsupported offsets "
                             "format in configuration"));
   }
+  RETURN_NOT_OK(config.get<bool>(
+      "sm.var_offsets.extra_element", &offsets_extra_element_, &found));
+  assert(found);
 
   // Consider the validity memory budget to be identical to `sm.memory_budget`
   // because the validity vector is currently a bytemap. When converted to a
@@ -3159,6 +3257,43 @@ Status Reader::copy_attribute_values(
 
   return Status::Ok();
   STATS_END_TIMER(stats::Stats::TimerType::READ_COPY_ATTR_VALUES);
+}
+
+Status Reader::add_extra_offset() {
+  for (const auto& it : buffers_) {
+    const auto& name = it.first;
+    if (!array_schema_->is_attr(name) || !array_schema_->var_size(name))
+      continue;
+
+    if (*it.second.buffer_size_ + constants::cell_var_offset_size >
+        it.second.original_buffer_size_) {
+      // Error out for now
+      return LOG_STATUS(Status::ReaderError(
+          "Not enough memory in user buffer for extra element"));
+    }
+
+    auto buffer = static_cast<unsigned char*>(it.second.buffer_);
+    if (offsets_format_mode_ == "bytes") {
+      memcpy(
+          buffer + *it.second.buffer_size_,
+          it.second.buffer_var_size_,
+          constants::cell_var_offset_size);
+    } else if (offsets_format_mode_ == "elements") {
+      auto elements = *it.second.buffer_var_size_ /
+                      datatype_size(array_schema_->type(name));
+      memcpy(
+          buffer + *it.second.buffer_size_,
+          &elements,
+          constants::cell_var_offset_size);
+    } else {
+      return LOG_STATUS(Status::ReaderError(
+          "Cannot add extra offset to buffer; Unsupported offsets format"));
+    }
+
+    *it.second.buffer_size_ += constants::cell_var_offset_size;
+  }
+
+  return Status::Ok();
 }
 
 void Reader::zero_out_buffer_sizes() {

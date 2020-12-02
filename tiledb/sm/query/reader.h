@@ -458,6 +458,18 @@ class Reader {
   /** Returns the query subarray. */
   const Subarray* subarray() const;
 
+  /** Returns the configured offsets format mode. */
+  std::string offsets_mode() const;
+
+  /** Sets the offsets format mode. */
+  Status set_offsets_mode(const std::string& offsets_mode);
+
+  /** Returns `True` if offsets are configured to have an extra element. */
+  bool offsets_extra_element() const;
+
+  /** Sets if offsets are configured to have an extra element. */
+  Status set_offsets_extra_element(bool add_extra_element);
+
   /* ********************************* */
   /*          STATIC FUNCTIONS         */
   /* ********************************* */
@@ -914,7 +926,13 @@ class Reader {
   Subarray subarray_;
 
   /** The offset format used for variable-sized attributes. */
-  std::string offsets_format_;
+  std::string offsets_format_mode_;
+
+  /**
+   * If `true`, an extra element that points to the end of the values buffer
+   * will be added in the end of the offsets buffer of var-sized attributes
+   */
+  bool offsets_extra_element_;
 
   /** Protects result tiles. */
   mutable std::mutex result_tiles_mutex_;
@@ -1655,6 +1673,12 @@ class Reader {
       const std::vector<ResultCellSlab>& result_cell_slabs);
 
   /**
+   * Adds an extra offset in the end of the offsets buffer indicating the
+   * returned data size if an attribute is var-sized.
+   */
+  Status add_extra_offset();
+
+  /**
    * Copies the result attribute values to the user buffers.
    * It also appropriately cleans up the used result tiles.
    */
@@ -1725,6 +1749,9 @@ class Reader {
   bool belong_to_single_fragment(
       std::vector<ResultCoords>::iterator iter_begin,
       std::vector<ResultCoords>::iterator iter_end) const;
+
+  /** Perform necessary checks before exiting a read loop */
+  Status complete_read_loop();
 };
 
 }  // namespace sm

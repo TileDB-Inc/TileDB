@@ -207,17 +207,13 @@ SparseArrayFx::SparseArrayFx()
   REQUIRE(vfs_test_init(fs_vec_, &ctx_, &vfs_).ok());
   std::srand(0);
 
-  // TODO: refactor for each supported FS.
-  SupportedFsLocal local_fs;
-  std::string temp_dir = local_fs.file_prefix() + local_fs.temp_dir();
-  create_temp_dir(temp_dir);
+  for (const auto& fs : fs_vec_)
+    create_temp_dir(fs->temp_dir());
 }
 
 SparseArrayFx::~SparseArrayFx() {
-  // TODO: refactor for each supported FS.
-  SupportedFsLocal local_fs;
-  std::string temp_dir = local_fs.file_prefix() + local_fs.temp_dir();
-  remove_temp_dir(temp_dir);
+  for (const auto& fs : fs_vec_)
+    remove_temp_dir(fs->temp_dir());
 
   // Close vfs test
   REQUIRE(vfs_test_close(fs_vec_, ctx_, vfs_).ok());
@@ -2893,7 +2889,8 @@ TEST_CASE_METHOD(
   encryption_key = "0123456789abcdeF0123456789abcdeF";
 
   // TODO: refactor for each supported FS.
-  std::string temp_dir = fs_vec_[0]->temp_dir();
+  SupportedFsLocal local_fs;
+  std::string temp_dir = local_fs.file_prefix() + local_fs.temp_dir();
   array_name = temp_dir + ARRAY;
   check_sorted_reads(
       array_name, TILEDB_FILTER_BZIP2, TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR);

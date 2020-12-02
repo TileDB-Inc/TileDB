@@ -180,12 +180,18 @@ class Config {
   static const std::string SM_VACUUM_MODE;
 
   /**
-   * The offset format to be used for variable-sized attributes. It can be one
-   * of:
+   * If `true`, an extra element that points to the end of the values buffer
+   * will be added to the end of the offsets buffer of var-sized attributes.
+   */
+  static const std::string SM_OFFSETS_EXTRA_ELEMENT;
+
+  /**
+   * The offset format mode to be used for variable-sized attributes. It can
+   * be one of:
    *    - "bytes": express offsets in bytes
    *    - "elements": express offsets in number of elements
    */
-  static const std::string SM_OFFSETS_FORMAT;
+  static const std::string SM_OFFSETS_FORMAT_MODE;
 
   /** The default minimum number of bytes in a parallel VFS operation. */
   static const std::string VFS_MIN_PARALLEL_SIZE;

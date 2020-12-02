@@ -484,7 +484,7 @@ class Query {
   }
 
   /**
-   * Adds a 1D range along a subarray dimension, in the form
+   * Adds a 1D range along a subarray dimension index, in the form
    * (start, end, stride). The datatype of the range
    * must be the same as the dimension datatype.
    *
@@ -520,7 +520,44 @@ class Query {
   }
 
   /**
-   * Adds a 1D string range along a subarray dimension, in the form
+   * Adds a 1D range along a subarray dimension name, specified by its name, in
+   * the form (start, end, stride). The datatype of the range must be the same
+   * as the dimension datatype.
+   *
+   * **Example:**
+   *
+   * @code{.cpp}
+   * // Set a 1D range on dimension "rows", assuming the domain type is int64.
+   * int64_t start = 10;
+   * int64_t end = 20;
+   * const std::string dim_name = "rows";
+   * // Stride is optional
+   * subarray.add_range(dim_name, start, end);
+   * @endcode
+   *
+   * @tparam T The dimension datatype
+   * @param dim_name The name of the dimension to add the range to.
+   * @param start The range start to add.
+   * @param end The range end to add.
+   * @param stride The range stride to add.
+   * @return Reference to this Query
+   */
+  template <class T>
+  Query& add_range(const std::string& dim_name, T start, T end, T stride = 0) {
+    impl::type_check<T>(schema_.domain().dimension(dim_name).type());
+    auto& ctx = ctx_.get();
+    ctx.handle_error(tiledb_query_add_range_by_name(
+        ctx.ptr().get(),
+        query_.get(),
+        dim_name.c_str(),
+        &start,
+        &end,
+        (stride == 0) ? nullptr : &stride));
+    return *this;
+  }
+
+  /**
+   * Adds a 1D string range along a subarray dimension index, in the form
    * (start, end). Applicable only to variable-sized dimensions
    *
    * **Example:**
@@ -537,7 +574,6 @@ class Query {
    * @param dim_idx The index of the dimension to add the range to.
    * @param start The range start to add.
    * @param end The range end to add.
-   * @param stride The range stride to add.
    * @return Reference to this Query
    */
   Query& add_range(
@@ -556,7 +592,45 @@ class Query {
   }
 
   /**
-   * Retrieves the number of ranges for a given dimension.
+   * Adds a 1D string range along a subarray dimension name, in the form (start,
+   * end). Applicable only to variable-sized dimensions
+   *
+   * **Example:**
+   *
+   * @code{.cpp}
+   * // Set a 1D range on dimension "rows", assuming the domain type is int64.
+   * int64_t start = 10;
+   * int64_t end = 20;
+   * const std::string dim_name = "rows";
+   * // Stride is optional
+   * subarray.add_range(dim_name, start, end);
+   * @endcode
+   *
+   * @tparam T The dimension datatype
+   * @param dim_name The name of the dimension to add the range to.
+   * @param start The range start to add.
+   * @param end The range end to add.
+   * @return Reference to this Query
+   */
+  Query& add_range(
+      const std::string& dim_name,
+      const std::string& start,
+      const std::string& end) {
+    impl::type_check<char>(schema_.domain().dimension(dim_name).type());
+    auto& ctx = ctx_.get();
+    ctx.handle_error(tiledb_query_add_range_var_by_name(
+        ctx.ptr().get(),
+        query_.get(),
+        dim_name.c_str(),
+        start.c_str(),
+        start.size(),
+        end.c_str(),
+        end.size()));
+    return *this;
+  }
+
+  /**
+   * Retrieves the number of ranges for a given dimension index.
    *
    * **Example:**
    *
@@ -577,7 +651,28 @@ class Query {
   }
 
   /**
-   * Retrieves a range for a given dimension and range id.
+   * Retrieves the number of ranges for a given dimension name.
+   *
+   * **Example:**
+   *
+   * @code{.cpp}
+   * unsigned dim_name = "rows";
+   * uint64_t range_num = query.range_num(dim_name);
+   * @endcode
+   *
+   * @param dim_name The dimension name.
+   * @return The number of ranges.
+   */
+  uint64_t range_num(const std::string& dim_name) const {
+    auto& ctx = ctx_.get();
+    uint64_t range_num;
+    ctx.handle_error(tiledb_query_get_range_num_from_name(
+        ctx.ptr().get(), query_.get(), dim_name.c_str(), &range_num));
+    return range_num;
+  }
+
+  /**
+   * Retrieves a range for a given dimension index and range id.
    * The template datatype must be the same as that of the
    * underlying array.
    *
@@ -614,8 +709,45 @@ class Query {
   }
 
   /**
-   * Retrieves a range for a given variable length string dimension and range
-   * id.
+   * Retrieves a range for a given dimension name and range id.
+   * The template datatype must be the same as that of the
+   * underlying array.
+   *
+   * **Example:**
+   *
+   * @code{.cpp}
+   * unsigned dim_name = "rows";
+   * unsigned range_idx = 0;
+   * auto range = query.range<int32_t>(dim_name, range_idx);
+   * @endcode
+   *
+   * @tparam T The dimension datatype.
+   * @param dim_name The dimension name.
+   * @param range_idx The range index.
+   * @return A triplet of the form (start, end, stride).
+   */
+  template <class T>
+  std::array<T, 3> range(const std::string& dim_name, uint64_t range_idx) {
+    impl::type_check<T>(schema_.domain().dimension(dim_name).type());
+    auto& ctx = ctx_.get();
+    const void *start, *end, *stride;
+    ctx.handle_error(tiledb_query_get_range_from_name(
+        ctx.ptr().get(),
+        query_.get(),
+        dim_name.c_str(),
+        range_idx,
+        &start,
+        &end,
+        &stride));
+    std::array<T, 3> ret = {{*(const T*)start,
+                             *(const T*)end,
+                             (stride == nullptr) ? 0 : *(const T*)stride}};
+    return ret;
+  }
+
+  /**
+   * Retrieves a range for a given variable length string dimension index and
+   * range id.
    *
    * **Example:**
    *
@@ -647,6 +779,50 @@ class Query {
     end.resize(end_size);
     ctx.handle_error(tiledb_query_get_range_var(
         ctx.ptr().get(), query_.get(), dim_idx, range_idx, &start[0], &end[0]));
+    std::array<std::string, 2> ret = {{std::move(start), std::move(end)}};
+    return ret;
+  }
+
+  /**
+   * Retrieves a range for a given variable length string dimension name and
+   * range id.
+   *
+   * **Example:**
+   *
+   * @code{.cpp}
+   * unsigned dim_name = "rows";
+   * unsigned range_idx = 0;
+   * std::array<std::string, 2> range = query.range(dim_name, range_idx);
+   * @endcode
+   *
+   * @param dim_name The dimension name.
+   * @param range_idx The range index.
+   * @return A pair of the form (start, end).
+   */
+  std::array<std::string, 2> range(
+      const std::string& dim_name, uint64_t range_idx) {
+    impl::type_check<char>(schema_.domain().dimension(dim_name).type());
+    auto& ctx = ctx_.get();
+    uint64_t start_size, end_size;
+    ctx.handle_error(tiledb_query_get_range_var_size_from_name(
+        ctx.ptr().get(),
+        query_.get(),
+        dim_name.c_str(),
+        range_idx,
+        &start_size,
+        &end_size));
+
+    std::string start;
+    start.resize(start_size);
+    std::string end;
+    end.resize(end_size);
+    ctx.handle_error(tiledb_query_get_range_var_from_name(
+        ctx.ptr().get(),
+        query_.get(),
+        dim_name.c_str(),
+        range_idx,
+        &start[0],
+        &end[0]));
     std::array<std::string, 2> ret = {{std::move(start), std::move(end)}};
     return ret;
   }
