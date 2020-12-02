@@ -379,26 +379,59 @@ TEST_CASE_METHOD(
   std::string walk_str, ls_str;
   int rc;
 
-  // TODO: refactor for each supported FS.
-  SupportedFsLocal local_fs;
-  std::string temp_dir = local_fs.file_prefix() + local_fs.temp_dir();
-  remove_temp_dir(temp_dir);
-  create_hierarchy(temp_dir);
-  golden_walk = get_golden_walk(temp_dir);
-  golden_ls = get_golden_ls(temp_dir);
-  walk_str.clear();
-  ls_str.clear();
-  rc = tiledb_object_walk(
-      ctx_, temp_dir.c_str(), TILEDB_PREORDER, write_path, &walk_str);
-  CHECK(rc == TILEDB_OK);
-  rc = tiledb_object_walk(
-      ctx_, temp_dir.c_str(), TILEDB_POSTORDER, write_path, &walk_str);
-  CHECK(rc == TILEDB_OK);
-  CHECK_THAT(golden_walk, Catch::Equals(walk_str));
-  rc = tiledb_object_ls(ctx_, temp_dir.c_str(), write_path, &ls_str);
-  CHECK(rc == TILEDB_OK);
-  CHECK_THAT(golden_ls, Catch::Equals(ls_str));
-  remove_temp_dir(temp_dir);
+  SupportedFs* const fs = fs_vec_[0].get();
+  if (dynamic_cast<SupportedFsLocal*>(fs) != nullptr) {
+    SupportedFsLocal local_fs;
+    std::string local_dir = local_fs.file_prefix() + local_fs.temp_dir();
+    remove_temp_dir(local_dir);
+    create_hierarchy(local_dir);
+#ifdef _WIN32
+    // `VFS::ls(...)` returns `file:///` URIs instead of Windows paths.
+    SupportedFsLocal windows_fs;
+    std::string temp_dir = windows_fs.file_prefix() + windows_fs.temp_dir();
+    golden_walk = get_golden_walk(tiledb::sm::Win::uri_from_path(temp_dir));
+    golden_ls = get_golden_ls(tiledb::sm::Win::uri_from_path(temp_dir));
+#else
+    SupportedFsLocal posix_fs;
+    std::string temp_dir = posix_fs.file_prefix() + posix_fs.temp_dir();
+    golden_walk = get_golden_walk(temp_dir);
+    golden_ls = get_golden_ls(temp_dir);
+#endif
+
+    walk_str.clear();
+    ls_str.clear();
+    rc = tiledb_object_walk(
+        ctx_, temp_dir.c_str(), TILEDB_PREORDER, write_path, &walk_str);
+    CHECK(rc == TILEDB_OK);
+    rc = tiledb_object_walk(
+        ctx_, temp_dir.c_str(), TILEDB_POSTORDER, write_path, &walk_str);
+    CHECK(rc == TILEDB_OK);
+    CHECK_THAT(golden_walk, Catch::Equals(walk_str));
+    rc = tiledb_object_ls(ctx_, temp_dir.c_str(), write_path, &ls_str);
+    CHECK(rc == TILEDB_OK);
+    CHECK_THAT(golden_ls, Catch::Equals(ls_str));
+    remove_temp_dir(temp_dir);
+  } else {
+    // TODO: refactor for each supported FS.
+    std::string temp_dir = fs->temp_dir();
+    remove_temp_dir(temp_dir);
+    create_hierarchy(temp_dir);
+    golden_walk = get_golden_walk(temp_dir);
+    golden_ls = get_golden_ls(temp_dir);
+    walk_str.clear();
+    ls_str.clear();
+    rc = tiledb_object_walk(
+        ctx_, temp_dir.c_str(), TILEDB_PREORDER, write_path, &walk_str);
+    CHECK(rc == TILEDB_OK);
+    rc = tiledb_object_walk(
+        ctx_, temp_dir.c_str(), TILEDB_POSTORDER, write_path, &walk_str);
+    CHECK(rc == TILEDB_OK);
+    CHECK_THAT(golden_walk, Catch::Equals(walk_str));
+    rc = tiledb_object_ls(ctx_, temp_dir.c_str(), write_path, &ls_str);
+    CHECK(rc == TILEDB_OK);
+    CHECK_THAT(golden_ls, Catch::Equals(ls_str));
+    remove_temp_dir(temp_dir);
+  }
 }
 
 TEST_CASE_METHOD(
