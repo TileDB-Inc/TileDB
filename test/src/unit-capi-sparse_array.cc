@@ -33,6 +33,7 @@
 
 #include "catch.hpp"
 #include "test/src/helpers.h"
+#include "test/src/vfs_helpers.h"
 #ifdef _WIN32
 #include "tiledb/sm/filesystem/win.h"
 #else
@@ -64,22 +65,6 @@ struct SparseArrayFx {
   const tiledb_datatype_t DIM_TYPE = TILEDB_INT64;
   const tiledb_array_type_t ARRAY_TYPE = TILEDB_SPARSE;
   int COMPRESSION_LEVEL = -1;
-  const std::string HDFS_TEMP_DIR = "hdfs:///tiledb_test/";
-  const std::string S3_PREFIX = "s3://";
-  const std::string S3_BUCKET = S3_PREFIX + random_name("tiledb") + "/";
-  const std::string S3_TEMP_DIR = S3_BUCKET + "tiledb_test/";
-  const std::string AZURE_PREFIX = "azure://";
-  const std::string bucket = AZURE_PREFIX + random_name("tiledb") + "/";
-  const std::string AZURE_TEMP_DIR = bucket + "tiledb_test/";
-#ifdef _WIN32
-  const std::string FILE_URI_PREFIX = "";
-  const std::string FILE_TEMP_DIR =
-      tiledb::sm::Win::current_dir() + "\\tiledb_test\\";
-#else
-  const std::string FILE_URI_PREFIX = "file://";
-  const std::string FILE_TEMP_DIR =
-      tiledb::sm::Posix::current_dir() + "/tiledb_test/";
-#endif
   int ITER_NUM = 5;
   const std::string ARRAY = "sparse_array";
 
@@ -90,10 +75,8 @@ struct SparseArrayFx {
   tiledb_ctx_t* ctx_;
   tiledb_vfs_t* vfs_;
 
-  // Supported filesystems
-  bool supports_s3_;
-  bool supports_hdfs_;
-  bool supports_azure_;
+  // Vector of supported filsystems
+  const std::vector<std::unique_ptr<SupportedFs>> fs_vec_;
 
   // Functions
   SparseArrayFx();
@@ -133,7 +116,6 @@ struct SparseArrayFx {
       const std::vector<uint64_t>& a2_off,
       const std::vector<char>& a2_val,
       const std::vector<float>& a3);
-  void set_supported_fs();
   void create_temp_dir(const std::string& path);
   void remove_temp_dir(const std::string& path);
   static std::string random_name(const std::string& prefix);
@@ -219,125 +201,26 @@ struct SparseArrayFx {
       int iter_num);
 };
 
-SparseArrayFx::SparseArrayFx() {
-  // Supported filesystems
-  set_supported_fs();
-
-  // Create TileDB context
-  tiledb_config_t* config = nullptr;
-  tiledb_error_t* error = nullptr;
-  REQUIRE(tiledb_config_alloc(&config, &error) == TILEDB_OK);
-  REQUIRE(error == nullptr);
-  if (supports_s3_) {
-#ifndef TILEDB_TESTS_AWS_S3_CONFIG
-    REQUIRE(
-        tiledb_config_set(
-            config, "vfs.s3.endpoint_override", "localhost:9999", &error) ==
-        TILEDB_OK);
-    REQUIRE(
-        tiledb_config_set(config, "vfs.s3.scheme", "https", &error) ==
-        TILEDB_OK);
-    REQUIRE(
-        tiledb_config_set(
-            config, "vfs.s3.use_virtual_addressing", "false", &error) ==
-        TILEDB_OK);
-    REQUIRE(
-        tiledb_config_set(config, "vfs.s3.verify_ssl", "false", &error) ==
-        TILEDB_OK);
-    REQUIRE(error == nullptr);
-#endif
-  }
-  if (supports_azure_) {
-    REQUIRE(
-        tiledb_config_set(
-            config,
-            "vfs.azure.storage_account_name",
-            "devstoreaccount1",
-            &error) == TILEDB_OK);
-    REQUIRE(
-        tiledb_config_set(
-            config,
-            "vfs.azure.storage_account_key",
-            "Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/"
-            "K1SZFPTOtr/KBHBeksoGMGw==",
-            &error) == TILEDB_OK);
-    REQUIRE(
-        tiledb_config_set(
-            config,
-            "vfs.azure.blob_endpoint",
-            "127.0.0.1:10000/devstoreaccount1",
-            &error) == TILEDB_OK);
-    REQUIRE(
-        tiledb_config_set(config, "vfs.azure.use_https", "false", &error) ==
-        TILEDB_OK);
-  }
-  REQUIRE(tiledb_ctx_alloc(config, &ctx_) == TILEDB_OK);
-  REQUIRE(error == nullptr);
-  vfs_ = nullptr;
-  REQUIRE(tiledb_vfs_alloc(ctx_, config, &vfs_) == TILEDB_OK);
-  tiledb_config_free(&config);
-
-  // Connect to S3
-  if (supports_s3_) {
-    // Create bucket if it does not exist
-    int is_bucket = 0;
-    int rc = tiledb_vfs_is_bucket(ctx_, vfs_, S3_BUCKET.c_str(), &is_bucket);
-    REQUIRE(rc == TILEDB_OK);
-    if (!is_bucket) {
-      rc = tiledb_vfs_create_bucket(ctx_, vfs_, S3_BUCKET.c_str());
-      REQUIRE(rc == TILEDB_OK);
-    }
-  }
-
-  // Connect to Azure
-  if (supports_azure_) {
-    int is_container = 0;
-    int rc = tiledb_vfs_is_bucket(ctx_, vfs_, bucket.c_str(), &is_container);
-    REQUIRE(rc == TILEDB_OK);
-    if (!is_container) {
-      rc = tiledb_vfs_create_bucket(ctx_, vfs_, bucket.c_str());
-      REQUIRE(rc == TILEDB_OK);
-    }
-  }
-
+SparseArrayFx::SparseArrayFx()
+    : fs_vec_(vfs_test_get_fs_vec()) {
+  // Initialize vfs test
+  REQUIRE(vfs_test_init(fs_vec_, &ctx_, &vfs_).ok());
   std::srand(0);
 
-  create_temp_dir(FILE_URI_PREFIX + FILE_TEMP_DIR);
-  if (supports_s3_)
-    create_temp_dir(S3_TEMP_DIR);
-  if (supports_azure_)
-    create_temp_dir(AZURE_TEMP_DIR);
-  if (supports_hdfs_)
-    create_temp_dir(HDFS_TEMP_DIR);
+  // TODO: refactor for each supported FS.
+  SupportedFsLocal local_fs;
+  std::string temp_dir = local_fs.file_prefix() + local_fs.temp_dir();
+  create_temp_dir(temp_dir);
 }
 
 SparseArrayFx::~SparseArrayFx() {
-  remove_temp_dir(FILE_URI_PREFIX + FILE_TEMP_DIR);
+  // TODO: refactor for each supported FS.
+  SupportedFsLocal local_fs;
+  std::string temp_dir = local_fs.file_prefix() + local_fs.temp_dir();
+  remove_temp_dir(temp_dir);
 
-  if (supports_s3_) {
-    remove_temp_dir(S3_TEMP_DIR);
-    int is_bucket = 0;
-    int rc = tiledb_vfs_is_bucket(ctx_, vfs_, S3_BUCKET.c_str(), &is_bucket);
-    CHECK(rc == TILEDB_OK);
-    if (is_bucket) {
-      CHECK(
-          tiledb_vfs_remove_bucket(ctx_, vfs_, S3_BUCKET.c_str()) == TILEDB_OK);
-    }
-  }
-
-  if (supports_azure_) {
-    int is_container = 0;
-    int rc = tiledb_vfs_is_bucket(ctx_, vfs_, bucket.c_str(), &is_container);
-    REQUIRE(rc == TILEDB_OK);
-    if (is_container) {
-      rc = tiledb_vfs_remove_bucket(ctx_, vfs_, bucket.c_str());
-      REQUIRE(rc == TILEDB_OK);
-    }
-  }
-
-  if (supports_hdfs_)
-    remove_temp_dir(HDFS_TEMP_DIR);
-
+  // Close vfs test
+  REQUIRE(vfs_test_close(fs_vec_, ctx_, vfs_).ok());
   tiledb_vfs_free(&vfs_);
   tiledb_ctx_free(&ctx_);
 }
@@ -353,15 +236,6 @@ void SparseArrayFx::remove_array(const std::string& array_name) {
     return;
 
   CHECK(tiledb_object_remove(ctx_, array_name.c_str()) == TILEDB_OK);
-}
-
-void SparseArrayFx::set_supported_fs() {
-  tiledb_ctx_t* ctx = nullptr;
-  REQUIRE(tiledb_ctx_alloc(nullptr, &ctx) == TILEDB_OK);
-
-  get_supported_fs(&supports_s3_, &supports_hdfs_, &supports_azure_);
-
-  tiledb_ctx_free(&ctx);
 }
 
 void SparseArrayFx::create_temp_dir(const std::string& path) {
@@ -2501,279 +2375,94 @@ TEST_CASE_METHOD(
   std::string array_name;
 
   SECTION("- no compression, row/row-major") {
-    if (supports_s3_) {
-      // S3
-      array_name = S3_TEMP_DIR + ARRAY;
-      check_sorted_reads(
-          array_name, TILEDB_FILTER_NONE, TILEDB_ROW_MAJOR, TILEDB_ROW_MAJOR);
-    } else if (supports_azure_) {
-      // Azure
-      array_name = AZURE_TEMP_DIR + ARRAY;
-      check_sorted_reads(
-          array_name, TILEDB_FILTER_NONE, TILEDB_ROW_MAJOR, TILEDB_ROW_MAJOR);
-    } else if (supports_hdfs_) {
-      // HDFS
-      array_name = HDFS_TEMP_DIR + ARRAY;
-      check_sorted_reads(
-          array_name, TILEDB_FILTER_NONE, TILEDB_ROW_MAJOR, TILEDB_ROW_MAJOR);
-    } else {
-      // File
-      array_name = FILE_URI_PREFIX + FILE_TEMP_DIR + ARRAY;
-      check_sorted_reads(
-          array_name, TILEDB_FILTER_NONE, TILEDB_ROW_MAJOR, TILEDB_ROW_MAJOR);
-    }
+    // TODO: refactor for each supported FS.
+    std::string temp_dir = fs_vec_[0]->temp_dir();
+    array_name = temp_dir + ARRAY;
+    check_sorted_reads(
+        array_name, TILEDB_FILTER_NONE, TILEDB_ROW_MAJOR, TILEDB_ROW_MAJOR);
   }
 
   SECTION("- no compression, col/col-major") {
-    if (supports_s3_) {
-      // S3
-      array_name = S3_TEMP_DIR + ARRAY;
-      check_sorted_reads(
-          array_name, TILEDB_FILTER_NONE, TILEDB_COL_MAJOR, TILEDB_COL_MAJOR);
-    } else if (supports_azure_) {
-      // Azure
-      array_name = AZURE_TEMP_DIR + ARRAY;
-      check_sorted_reads(
-          array_name, TILEDB_FILTER_NONE, TILEDB_COL_MAJOR, TILEDB_COL_MAJOR);
-    } else if (supports_hdfs_) {
-      // HDFS
-      array_name = HDFS_TEMP_DIR + ARRAY;
-      check_sorted_reads(
-          array_name, TILEDB_FILTER_NONE, TILEDB_COL_MAJOR, TILEDB_COL_MAJOR);
-    } else {
-      // File
-      array_name = FILE_URI_PREFIX + FILE_TEMP_DIR + ARRAY;
-      check_sorted_reads(
-          array_name, TILEDB_FILTER_NONE, TILEDB_COL_MAJOR, TILEDB_COL_MAJOR);
-    }
+    // TODO: refactor for each supported FS.
+    std::string temp_dir = fs_vec_[0]->temp_dir();
+    array_name = temp_dir + ARRAY;
+    check_sorted_reads(
+        array_name, TILEDB_FILTER_NONE, TILEDB_COL_MAJOR, TILEDB_COL_MAJOR);
   }
 
   SECTION("- no compression, row/col-major") {
-    if (supports_s3_) {
-      // S3
-      array_name = S3_TEMP_DIR + ARRAY;
-      check_sorted_reads(
-          array_name, TILEDB_FILTER_NONE, TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR);
-    } else if (supports_azure_) {
-      // Azure
-      array_name = AZURE_TEMP_DIR + ARRAY;
-      check_sorted_reads(
-          array_name, TILEDB_FILTER_NONE, TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR);
-    } else if (supports_hdfs_) {
-      // HDFS
-      array_name = HDFS_TEMP_DIR + ARRAY;
-      check_sorted_reads(
-          array_name, TILEDB_FILTER_NONE, TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR);
-    } else {
-      // File
-      array_name = FILE_URI_PREFIX + FILE_TEMP_DIR + ARRAY;
-      check_sorted_reads(
-          array_name, TILEDB_FILTER_NONE, TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR);
-    }
+    // TODO: refactor for each supported FS.
+    std::string temp_dir = fs_vec_[0]->temp_dir();
+    array_name = temp_dir + ARRAY;
+    check_sorted_reads(
+        array_name, TILEDB_FILTER_NONE, TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR);
   }
 
   SECTION("- gzip compression, row/row-major") {
-    if (supports_s3_) {
-      // S3
-      array_name = S3_TEMP_DIR + ARRAY;
-      check_sorted_reads(
-          array_name, TILEDB_FILTER_GZIP, TILEDB_ROW_MAJOR, TILEDB_ROW_MAJOR);
-    } else if (supports_azure_) {
-      // Azure
-      array_name = AZURE_TEMP_DIR + ARRAY;
-      check_sorted_reads(
-          array_name, TILEDB_FILTER_GZIP, TILEDB_ROW_MAJOR, TILEDB_ROW_MAJOR);
-    } else if (supports_hdfs_) {
-      // HDFS
-      array_name = HDFS_TEMP_DIR + ARRAY;
-      check_sorted_reads(
-          array_name, TILEDB_FILTER_GZIP, TILEDB_ROW_MAJOR, TILEDB_ROW_MAJOR);
-    } else {
-      // File
-      array_name = FILE_URI_PREFIX + FILE_TEMP_DIR + ARRAY;
-      check_sorted_reads(
-          array_name, TILEDB_FILTER_GZIP, TILEDB_ROW_MAJOR, TILEDB_ROW_MAJOR);
-    }
+    // TODO: refactor for each supported FS.
+    std::string temp_dir = fs_vec_[0]->temp_dir();
+    array_name = temp_dir + ARRAY;
+    check_sorted_reads(
+        array_name, TILEDB_FILTER_GZIP, TILEDB_ROW_MAJOR, TILEDB_ROW_MAJOR);
   }
 
   SECTION("- gzip compression, col/col-major") {
-    if (supports_s3_) {
-      // S3
-      array_name = S3_TEMP_DIR + ARRAY;
-      check_sorted_reads(
-          array_name, TILEDB_FILTER_GZIP, TILEDB_COL_MAJOR, TILEDB_COL_MAJOR);
-    } else if (supports_azure_) {
-      // Azure
-      array_name = AZURE_TEMP_DIR + ARRAY;
-      check_sorted_reads(
-          array_name, TILEDB_FILTER_GZIP, TILEDB_COL_MAJOR, TILEDB_COL_MAJOR);
-    } else if (supports_hdfs_) {
-      // HDFS
-      array_name = HDFS_TEMP_DIR + ARRAY;
-      check_sorted_reads(
-          array_name, TILEDB_FILTER_GZIP, TILEDB_COL_MAJOR, TILEDB_COL_MAJOR);
-    } else {
-      // File
-      array_name = FILE_URI_PREFIX + FILE_TEMP_DIR + ARRAY;
-      check_sorted_reads(
-          array_name, TILEDB_FILTER_GZIP, TILEDB_ROW_MAJOR, TILEDB_ROW_MAJOR);
-    }
+    // TODO: refactor for each supported FS.
+    std::string temp_dir = fs_vec_[0]->temp_dir();
+    array_name = temp_dir + ARRAY;
+    check_sorted_reads(
+        array_name, TILEDB_FILTER_GZIP, TILEDB_COL_MAJOR, TILEDB_COL_MAJOR);
   }
 
   SECTION("- gzip compression, row/col-major") {
-    if (supports_s3_) {
-      // S3
-      array_name = S3_TEMP_DIR + ARRAY;
-      check_sorted_reads(
-          array_name, TILEDB_FILTER_GZIP, TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR);
-    } else if (supports_azure_) {
-      // Azure
-      array_name = AZURE_TEMP_DIR + ARRAY;
-      check_sorted_reads(
-          array_name, TILEDB_FILTER_GZIP, TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR);
-    } else if (supports_hdfs_) {
-      // HDFS
-      array_name = HDFS_TEMP_DIR + ARRAY;
-      check_sorted_reads(
-          array_name, TILEDB_FILTER_GZIP, TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR);
-    } else {
-      // File
-      array_name = FILE_URI_PREFIX + FILE_TEMP_DIR + ARRAY;
-      check_sorted_reads(
-          array_name, TILEDB_FILTER_GZIP, TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR);
-    }
+    // TODO: refactor for each supported FS.
+    std::string temp_dir = fs_vec_[0]->temp_dir();
+    array_name = temp_dir + ARRAY;
+    check_sorted_reads(
+        array_name, TILEDB_FILTER_GZIP, TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR);
   }
 
   SECTION("- bzip compression, row/col-major") {
-    if (supports_s3_) {
-      // S3
-      array_name = S3_TEMP_DIR + ARRAY;
-      check_sorted_reads(
-          array_name, TILEDB_FILTER_BZIP2, TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR);
-    } else if (supports_azure_) {
-      // Azure
-      array_name = AZURE_TEMP_DIR + ARRAY;
-      check_sorted_reads(
-          array_name, TILEDB_FILTER_BZIP2, TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR);
-    } else if (supports_hdfs_) {
-      // HDFS
-      array_name = HDFS_TEMP_DIR + ARRAY;
-      check_sorted_reads(
-          array_name, TILEDB_FILTER_BZIP2, TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR);
-    } else {
-      // File
-      array_name = FILE_URI_PREFIX + FILE_TEMP_DIR + ARRAY;
-      check_sorted_reads(
-          array_name, TILEDB_FILTER_BZIP2, TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR);
-    }
+    // TODO: refactor for each supported FS.
+    std::string temp_dir = fs_vec_[0]->temp_dir();
+    array_name = temp_dir + ARRAY;
+    check_sorted_reads(
+        array_name, TILEDB_FILTER_BZIP2, TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR);
   }
 
   SECTION("- lz4 compression, row/col-major") {
-    if (supports_s3_) {
-      // S3
-      array_name = S3_TEMP_DIR + ARRAY;
-      check_sorted_reads(
-          array_name, TILEDB_FILTER_LZ4, TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR);
-    } else if (supports_azure_) {
-      // Azure
-      array_name = AZURE_TEMP_DIR + ARRAY;
-      check_sorted_reads(
-          array_name, TILEDB_FILTER_LZ4, TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR);
-    } else if (supports_hdfs_) {
-      // HDFS
-      array_name = HDFS_TEMP_DIR + ARRAY;
-      check_sorted_reads(
-          array_name, TILEDB_FILTER_LZ4, TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR);
-    } else {
-      // File
-      array_name = FILE_URI_PREFIX + FILE_TEMP_DIR + ARRAY;
-      check_sorted_reads(
-          array_name, TILEDB_FILTER_LZ4, TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR);
-    }
+    // TODO: refactor for each supported FS.
+    std::string temp_dir = fs_vec_[0]->temp_dir();
+    array_name = temp_dir + ARRAY;
+    check_sorted_reads(
+        array_name, TILEDB_FILTER_LZ4, TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR);
   }
 
   SECTION("- rle compression, row/col-major") {
-    if (supports_s3_) {
-      // S3
-      array_name = S3_TEMP_DIR + ARRAY;
-      check_sorted_reads(
-          array_name, TILEDB_FILTER_RLE, TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR);
-    } else if (supports_azure_) {
-      // Azure
-      array_name = AZURE_TEMP_DIR + ARRAY;
-      check_sorted_reads(
-          array_name, TILEDB_FILTER_RLE, TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR);
-    } else if (supports_hdfs_) {
-      // HDFS
-      array_name = HDFS_TEMP_DIR + ARRAY;
-      check_sorted_reads(
-          array_name, TILEDB_FILTER_RLE, TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR);
-    } else {
-      // File
-      array_name = FILE_URI_PREFIX + FILE_TEMP_DIR + ARRAY;
-      check_sorted_reads(
-          array_name, TILEDB_FILTER_RLE, TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR);
-    }
+    // TODO: refactor for each supported FS.
+    std::string temp_dir = fs_vec_[0]->temp_dir();
+    array_name = temp_dir + ARRAY;
+    check_sorted_reads(
+        array_name, TILEDB_FILTER_RLE, TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR);
   }
 
   SECTION("- zstd compression, row/col-major") {
-    if (supports_s3_) {
-      // S3
-      array_name = S3_TEMP_DIR + ARRAY;
-      check_sorted_reads(
-          array_name, TILEDB_FILTER_ZSTD, TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR);
-    } else if (supports_azure_) {
-      // Azure
-      array_name = AZURE_TEMP_DIR + ARRAY;
-      check_sorted_reads(
-          array_name, TILEDB_FILTER_ZSTD, TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR);
-    } else if (supports_hdfs_) {
-      // HDFS
-      array_name = HDFS_TEMP_DIR + ARRAY;
-      check_sorted_reads(
-          array_name, TILEDB_FILTER_ZSTD, TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR);
-    } else {
-      // File
-      array_name = FILE_URI_PREFIX + FILE_TEMP_DIR + ARRAY;
-      check_sorted_reads(
-          array_name, TILEDB_FILTER_ZSTD, TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR);
-    }
+    // TODO: refactor for each supported FS.
+    std::string temp_dir = fs_vec_[0]->temp_dir();
+    array_name = temp_dir + ARRAY;
+    check_sorted_reads(
+        array_name, TILEDB_FILTER_ZSTD, TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR);
   }
 
   SECTION("- double-delta compression, row/col-major") {
-    if (supports_s3_) {
-      // S3
-      array_name = S3_TEMP_DIR + ARRAY;
-      check_sorted_reads(
-          array_name,
-          TILEDB_FILTER_DOUBLE_DELTA,
-          TILEDB_ROW_MAJOR,
-          TILEDB_COL_MAJOR);
-    } else if (supports_azure_) {
-      // Azure
-      array_name = AZURE_TEMP_DIR + ARRAY;
-      check_sorted_reads(
-          array_name,
-          TILEDB_FILTER_DOUBLE_DELTA,
-          TILEDB_ROW_MAJOR,
-          TILEDB_COL_MAJOR);
-    } else if (supports_hdfs_) {
-      // HDFS
-      array_name = HDFS_TEMP_DIR + ARRAY;
-      check_sorted_reads(
-          array_name,
-          TILEDB_FILTER_DOUBLE_DELTA,
-          TILEDB_ROW_MAJOR,
-          TILEDB_COL_MAJOR);
-    } else {
-      // File
-      array_name = FILE_URI_PREFIX + FILE_TEMP_DIR + ARRAY;
-      check_sorted_reads(
-          array_name,
-          TILEDB_FILTER_DOUBLE_DELTA,
-          TILEDB_ROW_MAJOR,
-          TILEDB_COL_MAJOR);
-    }
+    // TODO: refactor for each supported FS.
+    std::string temp_dir = fs_vec_[0]->temp_dir();
+    array_name = temp_dir + ARRAY;
+    check_sorted_reads(
+        array_name,
+        TILEDB_FILTER_DOUBLE_DELTA,
+        TILEDB_ROW_MAJOR,
+        TILEDB_COL_MAJOR);
   }
 }
 
@@ -2781,7 +2470,9 @@ TEST_CASE_METHOD(
     SparseArrayFx,
     "C API: Test sparse array, duplicates",
     "[capi][sparse][dups]") {
-  std::string array_name = FILE_URI_PREFIX + FILE_TEMP_DIR + "dups";
+  SupportedFsLocal local_fs;
+  std::string array_name =
+      local_fs.file_prefix() + local_fs.temp_dir() + "dups";
   create_sparse_array(array_name);
 
   SECTION("- unordered, error check") {
@@ -2821,7 +2512,8 @@ TEST_CASE_METHOD(
     SparseArrayFx,
     "C API: Test sparse array, non-empty domain",
     "[capi][sparse][non-empty]") {
-  std::string temp_dir = FILE_URI_PREFIX + FILE_TEMP_DIR;
+  SupportedFsLocal local_fs;
+  std::string temp_dir = local_fs.file_prefix() + local_fs.temp_dir();
   create_temp_dir(temp_dir);
   check_non_empty_domain(temp_dir);
   remove_temp_dir(temp_dir);
@@ -2831,7 +2523,9 @@ TEST_CASE_METHOD(
     SparseArrayFx,
     "C API: Test sparse array, invalid offsets on write",
     "[capi][sparse][invalid-offsets]") {
-  std::string array_name = FILE_URI_PREFIX + FILE_TEMP_DIR + "invalid_offs";
+  SupportedFsLocal local_fs;
+  std::string array_name =
+      local_fs.file_prefix() + local_fs.temp_dir() + "invalid_offs";
   create_sparse_array(array_name);
   check_invalid_offsets(array_name);
 }
@@ -2840,7 +2534,9 @@ TEST_CASE_METHOD(
     SparseArrayFx,
     "C API: Test sparse array, no results",
     "[capi][sparse][no-results]") {
-  std::string array_name = FILE_URI_PREFIX + FILE_TEMP_DIR + "no_results";
+  SupportedFsLocal local_fs;
+  std::string array_name =
+      local_fs.file_prefix() + local_fs.temp_dir() + "no_results";
   create_sparse_array(array_name);
   write_partial_sparse_array(array_name);
   check_sparse_array_no_results(array_name);
@@ -2850,8 +2546,9 @@ TEST_CASE_METHOD(
     SparseArrayFx,
     "C API: Test sparse array, missing attributes in writes",
     "[capi][sparse][write-missing-attributes]") {
-  std::string array_name =
-      FILE_URI_PREFIX + FILE_TEMP_DIR + "sparse_write_missing_attributes";
+  SupportedFsLocal local_fs;
+  std::string array_name = local_fs.file_prefix() + local_fs.temp_dir() +
+                           "sparse_write_missing_attributes";
   create_sparse_array(array_name);
   write_sparse_array_missing_attributes(array_name);
   check_sparse_array_no_results(array_name);
@@ -2861,8 +2558,9 @@ TEST_CASE_METHOD(
     SparseArrayFx,
     "C API: Test sparse array, set subarray should error",
     "[capi][sparse][set-subarray]") {
+  SupportedFsLocal local_fs;
   std::string array_name =
-      FILE_URI_PREFIX + FILE_TEMP_DIR + "sparse_set_subarray";
+      local_fs.file_prefix() + local_fs.temp_dir() + "sparse_set_subarray";
   create_sparse_array(array_name);
 
   // Create TileDB context
@@ -2901,8 +2599,9 @@ TEST_CASE_METHOD(
     SparseArrayFx,
     "C API: Test sparse array, check if coords exist",
     "[capi][sparse][coords-exist]") {
+  SupportedFsLocal local_fs;
   std::string array_name =
-      FILE_URI_PREFIX + FILE_TEMP_DIR + "sparse_coords_exist";
+      local_fs.file_prefix() + local_fs.temp_dir() + "sparse_coords_exist";
   create_sparse_array(array_name);
 
   // Create TileDB context
@@ -2968,8 +2667,9 @@ TEST_CASE_METHOD(
     SparseArrayFx,
     "C API: Test sparse array, global order check on write",
     "[capi][sparse][write-global-check]") {
-  std::string array_name =
-      FILE_URI_PREFIX + FILE_TEMP_DIR + "sparse_write_global_check";
+  SupportedFsLocal local_fs;
+  std::string array_name = local_fs.file_prefix() + local_fs.temp_dir() +
+                           "sparse_write_global_check";
   create_sparse_array(array_name);
 
   // Create TileDB context
@@ -3032,8 +2732,9 @@ TEST_CASE_METHOD(
     SparseArrayFx,
     "C API: Test sparse array, invalidate cached max buffer sizes",
     "[capi][sparse][invalidate-max-sizes]") {
-  std::string array_name =
-      FILE_URI_PREFIX + FILE_TEMP_DIR + "sparse_invalidate_max_sizes";
+  SupportedFsLocal local_fs;
+  std::string array_name = local_fs.file_prefix() + local_fs.temp_dir() +
+                           "sparse_invalidate_max_sizes";
   create_sparse_array(array_name);
   write_sparse_array(array_name);
 
@@ -3191,35 +2892,20 @@ TEST_CASE_METHOD(
   encryption_type = TILEDB_AES_256_GCM;
   encryption_key = "0123456789abcdeF0123456789abcdeF";
 
-  if (supports_s3_) {
-    // S3
-    array_name = S3_TEMP_DIR + ARRAY;
-    check_sorted_reads(
-        array_name, TILEDB_FILTER_BZIP2, TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR);
-  } else if (supports_azure_) {
-    // Azure
-    array_name = AZURE_TEMP_DIR + ARRAY;
-    check_sorted_reads(
-        array_name, TILEDB_FILTER_BZIP2, TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR);
-  } else if (supports_hdfs_) {
-    // HDFS
-    array_name = HDFS_TEMP_DIR + ARRAY;
-    check_sorted_reads(
-        array_name, TILEDB_FILTER_BZIP2, TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR);
-  } else {
-    // File
-    array_name = FILE_URI_PREFIX + FILE_TEMP_DIR + ARRAY;
-    check_sorted_reads(
-        array_name, TILEDB_FILTER_BZIP2, TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR);
-  }
+  // TODO: refactor for each supported FS.
+  std::string temp_dir = fs_vec_[0]->temp_dir();
+  array_name = temp_dir + ARRAY;
+  check_sorted_reads(
+      array_name, TILEDB_FILTER_BZIP2, TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR);
 }
 
 TEST_CASE_METHOD(
     SparseArrayFx,
     "C API: Test sparse array, calibrate est size",
     "[capi][sparse][calibrate-est-size]") {
-  std::string array_name =
-      FILE_URI_PREFIX + FILE_TEMP_DIR + "sparse_calibrate_est_size";
+  SupportedFsLocal local_fs;
+  std::string array_name = local_fs.file_prefix() + local_fs.temp_dir() +
+                           "sparse_calibrate_est_size";
   remove_array(array_name);
   create_sparse_array(array_name);
 
@@ -3297,8 +2983,9 @@ TEST_CASE_METHOD(
     SparseArrayFx,
     "C API: Test sparse array, calibrate est size, unary",
     "[capi][sparse][calibrate-est-size-unary]") {
-  std::string array_name =
-      FILE_URI_PREFIX + FILE_TEMP_DIR + "sparse_calibrate_est_size_unary";
+  SupportedFsLocal local_fs;
+  std::string array_name = local_fs.file_prefix() + local_fs.temp_dir() +
+                           "sparse_calibrate_est_size_unary";
   remove_array(array_name);
   create_sparse_array(array_name);
 
@@ -3372,8 +3059,9 @@ TEST_CASE_METHOD(
     SparseArrayFx,
     "C API: Test sparse array, calibrate est size, huge range",
     "[capi][sparse][calibrate-est-size-huge-range]") {
-  std::string array_name =
-      FILE_URI_PREFIX + FILE_TEMP_DIR + "sparse_calibrate_est_size_huge_range";
+  SupportedFsLocal local_fs;
+  std::string array_name = local_fs.file_prefix() + local_fs.temp_dir() +
+                           "sparse_calibrate_est_size_huge_range";
   const uint64_t dim_domain[4] = {1, UINT64_MAX - 1, 1, UINT64_MAX - 1};
   remove_array(array_name);
   create_sparse_array(array_name, TILEDB_ROW_MAJOR, dim_domain);
@@ -3452,8 +3140,9 @@ TEST_CASE_METHOD(
     SparseArrayFx,
     "C API: Test sparse array, multi-subarray, 2D, complete",
     "[capi][sparse][MR][2D][complete]") {
-  std::string array_name =
-      FILE_URI_PREFIX + FILE_TEMP_DIR + "sparse_multi_subarray_2d_complete";
+  SupportedFsLocal local_fs;
+  std::string array_name = local_fs.file_prefix() + local_fs.temp_dir() +
+                           "sparse_multi_subarray_2d_complete";
   remove_array(array_name);
   create_sparse_array(array_name);
   write_sparse_array(array_name);
@@ -3541,7 +3230,8 @@ TEST_CASE_METHOD(
     SparseArrayFx,
     "C API: Test sparse array, multi-subarray, 2D, multiplicities",
     "[capi][sparse][multi-subarray-2d-multiplicities]") {
-  std::string array_name = FILE_URI_PREFIX + FILE_TEMP_DIR +
+  SupportedFsLocal local_fs;
+  std::string array_name = local_fs.file_prefix() + local_fs.temp_dir() +
                            "sparse_multi_subarray_2d_multiplicities";
   remove_array(array_name);
   create_sparse_array(array_name);
@@ -3638,8 +3328,9 @@ TEST_CASE_METHOD(
     SparseArrayFx,
     "C API: Test sparse array, multi-subarray, 2D, incomplete",
     "[capi][sparse][multi-subarray-2d-incomplete]") {
-  std::string array_name =
-      FILE_URI_PREFIX + FILE_TEMP_DIR + "sparse_multi_subarray_2d_incomplete";
+  SupportedFsLocal local_fs;
+  std::string array_name = local_fs.file_prefix() + local_fs.temp_dir() +
+                           "sparse_multi_subarray_2d_incomplete";
   remove_array(array_name);
   create_sparse_array(array_name);
   write_sparse_array(array_name);
@@ -3736,8 +3427,9 @@ TEST_CASE_METHOD(
     SparseArrayFx,
     "C API: Test sparse array, multi-subarray, 2D, complete, col",
     "[capi][sparse][multi-subarray-2d-complete-col]") {
-  std::string array_name =
-      FILE_URI_PREFIX + FILE_TEMP_DIR + "sparse_multi_subarray_2d_complete_col";
+  SupportedFsLocal local_fs;
+  std::string array_name = local_fs.file_prefix() + local_fs.temp_dir() +
+                           "sparse_multi_subarray_2d_complete_col";
   remove_array(array_name);
   create_sparse_array(array_name, TILEDB_COL_MAJOR);
   write_sparse_array(array_name);
@@ -3825,8 +3517,9 @@ TEST_CASE_METHOD(
     SparseArrayFx,
     "C API: Test sparse array 2, multi-range subarray, row-major",
     "[capi][sparse][multi-range-row]") {
+  SupportedFsLocal local_fs;
   std::string array_name =
-      FILE_URI_PREFIX + FILE_TEMP_DIR + "sparse_multi_range_row";
+      local_fs.file_prefix() + local_fs.temp_dir() + "sparse_multi_range_row";
   remove_array(array_name);
 
   // Create array
@@ -3992,8 +3685,9 @@ TEST_CASE_METHOD(
     SparseArrayFx,
     "C API: Test sparse array, multi-range subarray, col-major",
     "[capi][sparse][multi-range-col]") {
+  SupportedFsLocal local_fs;
   std::string array_name =
-      FILE_URI_PREFIX + FILE_TEMP_DIR + "sparse_multi_range_col";
+      local_fs.file_prefix() + local_fs.temp_dir() + "sparse_multi_range_col";
   remove_array(array_name);
 
   // Create array
@@ -4159,8 +3853,9 @@ TEST_CASE_METHOD(
     SparseArrayFx,
     "C API: Test sparse array, multi-range subarray, row-major, incomplete 1",
     "[capi][sparse][multi-range-row-incomplete-1]") {
-  std::string array_name =
-      FILE_URI_PREFIX + FILE_TEMP_DIR + "sparse_multi_range_row_incomplete_1";
+  SupportedFsLocal local_fs;
+  std::string array_name = local_fs.file_prefix() + local_fs.temp_dir() +
+                           "sparse_multi_range_row_incomplete_1";
   remove_array(array_name);
 
   // Create array
@@ -4346,8 +4041,9 @@ TEST_CASE_METHOD(
     SparseArrayFx,
     "C API: Test sparse array, multi-range subarray, col-major, incomplete 1",
     "[capi][sparse][multi-range-col-incomplete-1]") {
-  std::string array_name =
-      FILE_URI_PREFIX + FILE_TEMP_DIR + "sparse_multi_range_col_incomplete_1";
+  SupportedFsLocal local_fs;
+  std::string array_name = local_fs.file_prefix() + local_fs.temp_dir() +
+                           "sparse_multi_range_col_incomplete_1";
   remove_array(array_name);
 
   // Create array
@@ -4533,8 +4229,9 @@ TEST_CASE_METHOD(
     SparseArrayFx,
     "C API: Test sparse array, multi-range subarray, row-major, incomplete 2",
     "[capi][sparse][multi-range-row-incomplete-2]") {
-  std::string array_name =
-      FILE_URI_PREFIX + FILE_TEMP_DIR + "sparse_multi_range_row_incomplete_2";
+  SupportedFsLocal local_fs;
+  std::string array_name = local_fs.file_prefix() + local_fs.temp_dir() +
+                           "sparse_multi_range_row_incomplete_2";
   remove_array(array_name);
 
   // Create array
@@ -4760,8 +4457,9 @@ TEST_CASE_METHOD(
     SparseArrayFx,
     "C API: Test sparse array, multi-range subarray, col-major, incomplete 2",
     "[capi][sparse][multi-range-col-incomplete-2]") {
-  std::string array_name =
-      FILE_URI_PREFIX + FILE_TEMP_DIR + "sparse_multi_range_col_incomplete_2";
+  SupportedFsLocal local_fs;
+  std::string array_name = local_fs.file_prefix() + local_fs.temp_dir() +
+                           "sparse_multi_range_col_incomplete_2";
   remove_array(array_name);
 
   // Create array
@@ -4987,8 +4685,9 @@ TEST_CASE_METHOD(
     SparseArrayFx,
     "C API: Test sparse array, multi-range subarray, row-major, incomplete 3",
     "[capi][sparse][multi-range-row-incomplete-3]") {
-  std::string array_name =
-      FILE_URI_PREFIX + FILE_TEMP_DIR + "sparse_multi_range_row_incomplete_3";
+  SupportedFsLocal local_fs;
+  std::string array_name = local_fs.file_prefix() + local_fs.temp_dir() +
+                           "sparse_multi_range_row_incomplete_3";
   remove_array(array_name);
 
   // Create array
@@ -5254,8 +4953,9 @@ TEST_CASE_METHOD(
     SparseArrayFx,
     "C API: Test sparse array, multi-range subarray, row-major, incomplete 4",
     "[capi][sparse][multi-range-row-incomplete-4]") {
-  std::string array_name =
-      FILE_URI_PREFIX + FILE_TEMP_DIR + "sparse_multi_range_row_incomplete_4";
+  SupportedFsLocal local_fs;
+  std::string array_name = local_fs.file_prefix() + local_fs.temp_dir() +
+                           "sparse_multi_range_row_incomplete_4";
   remove_array(array_name);
 
   // Create array
@@ -5561,8 +5261,9 @@ TEST_CASE_METHOD(
     SparseArrayFx,
     "C API: Test sparse array, multi-range subarray, col-major, incomplete 4",
     "[capi][sparse][multi-range-col-incomplete-4]") {
-  std::string array_name =
-      FILE_URI_PREFIX + FILE_TEMP_DIR + "sparse_multi_range_col_incomplete_4";
+  SupportedFsLocal local_fs;
+  std::string array_name = local_fs.file_prefix() + local_fs.temp_dir() +
+                           "sparse_multi_range_col_incomplete_4";
   remove_array(array_name);
 
   // Create array
@@ -5868,8 +5569,9 @@ TEST_CASE_METHOD(
     SparseArrayFx,
     "C API: Test sparse array, multi-range subarray, row-major, incomplete 5",
     "[capi][sparse][multi-range-row-incomplete-5]") {
-  std::string array_name =
-      FILE_URI_PREFIX + FILE_TEMP_DIR + "sparse_multi_range_row_incomplete_5";
+  SupportedFsLocal local_fs;
+  std::string array_name = local_fs.file_prefix() + local_fs.temp_dir() +
+                           "sparse_multi_range_row_incomplete_5";
   remove_array(array_name);
 
   // Create array
@@ -5994,8 +5696,9 @@ TEST_CASE_METHOD(
     SparseArrayFx,
     "C API: Test sparse array, multi-range subarray, col-major, incomplete 5",
     "[capi][sparse][multi-range-col-incomplete-5]") {
-  std::string array_name =
-      FILE_URI_PREFIX + FILE_TEMP_DIR + "sparse_multi_range_col_incomplete_5";
+  SupportedFsLocal local_fs;
+  std::string array_name = local_fs.file_prefix() + local_fs.temp_dir() +
+                           "sparse_multi_range_col_incomplete_5";
   remove_array(array_name);
 
   // Create array
@@ -6120,8 +5823,9 @@ TEST_CASE_METHOD(
     SparseArrayFx,
     "C API: Test sparse array, global order with 0-sized buffers",
     "[capi][sparse][global-check][zero-buffers]") {
-  std::string array_name =
-      FILE_URI_PREFIX + FILE_TEMP_DIR + "sparse_write_global_check";
+  SupportedFsLocal local_fs;
+  std::string array_name = local_fs.file_prefix() + local_fs.temp_dir() +
+                           "sparse_write_global_check";
   create_sparse_array(array_name);
 
   // Create TileDB context
@@ -6180,8 +5884,9 @@ TEST_CASE_METHOD(
     SparseArrayFx,
     "C API: Test sparse array, split coordinate buffers",
     "[capi][sparse][split-coords]") {
+  SupportedFsLocal local_fs;
   std::string array_name =
-      FILE_URI_PREFIX + FILE_TEMP_DIR + "sparse_split_coords";
+      local_fs.file_prefix() + local_fs.temp_dir() + "sparse_split_coords";
   create_sparse_array(array_name);
 
   // ---- WRITE ----
@@ -6370,8 +6075,9 @@ TEST_CASE_METHOD(
     SparseArrayFx,
     "C API: Test sparse array, split coordinate buffers, global write",
     "[capi][sparse][split-coords][global]") {
-  std::string array_name =
-      FILE_URI_PREFIX + FILE_TEMP_DIR + "sparse_split_coords_global";
+  SupportedFsLocal local_fs;
+  std::string array_name = local_fs.file_prefix() + local_fs.temp_dir() +
+                           "sparse_split_coords_global";
   create_sparse_array(array_name);
 
   // ---- WRITE ----
@@ -6560,8 +6266,9 @@ TEST_CASE_METHOD(
     SparseArrayFx,
     "C API: Test sparse array, split coordinate buffers, errors",
     "[capi][sparse][split-coords][errors]") {
-  std::string array_name =
-      FILE_URI_PREFIX + FILE_TEMP_DIR + "sparse_split_coords_errors";
+  SupportedFsLocal local_fs;
+  std::string array_name = local_fs.file_prefix() + local_fs.temp_dir() +
+                           "sparse_split_coords_errors";
   create_sparse_array(array_name);
 
   // Prepare cell buffers
@@ -6737,8 +6444,9 @@ TEST_CASE_METHOD(
     SparseArrayFx,
     "C API: Test sparse array, split coordinate buffers for reads",
     "[capi][sparse][split-coords][read]") {
+  SupportedFsLocal local_fs;
   std::string array_name =
-      FILE_URI_PREFIX + FILE_TEMP_DIR + "sparse_split_coords_read";
+      local_fs.file_prefix() + local_fs.temp_dir() + "sparse_split_coords_read";
   create_sparse_array(array_name);
 
   // ---- WRITE ----
@@ -6928,8 +6636,9 @@ TEST_CASE_METHOD(
     "C API: Test sparse array, split coordinate buffers for reads, subset of "
     "dimensions",
     "[capi][sparse][split-coords][read][subset]") {
-  std::string array_name =
-      FILE_URI_PREFIX + FILE_TEMP_DIR + "sparse_split_coords_read_subset";
+  SupportedFsLocal local_fs;
+  std::string array_name = local_fs.file_prefix() + local_fs.temp_dir() +
+                           "sparse_split_coords_read_subset";
   create_sparse_array(array_name);
 
   // ---- WRITE ----
@@ -7112,8 +6821,9 @@ TEST_CASE_METHOD(
     "Sparse array: 2D, multi write global order",
     "[capi][sparse][2D][multi-write]") {
   // Create and write array
-  std::string array_name =
-      FILE_URI_PREFIX + FILE_TEMP_DIR + "sparse_split_coords_read_subset";
+  SupportedFsLocal local_fs;
+  std::string array_name = local_fs.file_prefix() + local_fs.temp_dir() +
+                           "sparse_split_coords_read_subset";
   create_sparse_array(array_name);
 
   std::vector<uint64_t> d1 = {1, 1, 2, 2};
