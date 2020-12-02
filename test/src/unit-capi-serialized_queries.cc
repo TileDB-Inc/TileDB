@@ -68,9 +68,11 @@ struct SerializationFx {
         .add_dimension(Dimension::create<int32_t>(ctx, "d2", {1, 10}, 2));
     schema.set_domain(domain);
 
-    schema.add_attribute(Attribute::create<uint32_t>(ctx, "a1"))
-        .add_attribute(Attribute::create<std::array<uint32_t, 2>>(ctx, "a2"))
-        .add_attribute(Attribute::create<std::vector<char>>(ctx, "a3"));
+    schema.add_attribute(Attribute::create<uint32_t>(ctx, "a1"));
+    schema.add_attribute(
+        Attribute::create<std::array<uint32_t, 2>>(ctx, "a2").set_nullable(
+            true));
+    schema.add_attribute(Attribute::create<std::vector<char>>(ctx, "a3"));
 
     Array::create(array_uri, schema);
   }
@@ -79,6 +81,7 @@ struct SerializationFx {
     std::vector<int32_t> subarray = {1, 10, 1, 10};
     std::vector<uint32_t> a1;
     std::vector<uint32_t> a2;
+    std::vector<uint8_t> a2_nullable;
     std::vector<char> a3_data;
     std::vector<uint64_t> a3_offsets;
 
@@ -87,7 +90,9 @@ struct SerializationFx {
     for (unsigned i = 0; i < ncells; i++) {
       a1.push_back(i);
       a2.push_back(i);
+      a2_nullable.push_back(a2.back() % 5 == 0 ? 0 : 1);
       a2.push_back(2 * i);
+      a2_nullable.push_back(a2.back() % 5 == 0 ? 0 : 1);
 
       std::string a3 = "a";
       for (unsigned j = 0; j < i; j++)
@@ -100,7 +105,7 @@ struct SerializationFx {
     Query query(ctx, array);
     query.set_subarray(subarray);
     query.set_buffer("a1", a1);
-    query.set_buffer("a2", a2);
+    query.set_buffer_nullable("a2", a2, a2_nullable);
     query.set_buffer("a3", a3_offsets, a3_data);
 
     // Serialize into a copy and submit.
@@ -118,6 +123,7 @@ struct SerializationFx {
     std::vector<int32_t> subarray = {1, 10, 1, 10};
     std::vector<uint32_t> a1;
     std::vector<uint32_t> a2;
+    std::vector<uint8_t> a2_nullable;
     std::vector<char> a3_data;
     std::vector<uint64_t> a3_offsets;
 
@@ -126,7 +132,9 @@ struct SerializationFx {
     for (unsigned i = 0; i < ncells; i++) {
       a1.push_back(i);
       a2.push_back(i);
+      a2_nullable.push_back(a2.back() % 5 == 0 ? 0 : 1);
       a2.push_back(2 * i);
+      a2_nullable.push_back(a2.back() % 5 == 0 ? 0 : 1);
 
       std::string a3 = "a";
       for (unsigned j = 0; j < i; j++)
@@ -140,7 +148,7 @@ struct SerializationFx {
     query.add_range(0, subarray[0], subarray[1]);
     query.add_range(1, subarray[2], subarray[3]);
     query.set_buffer("a1", a1);
-    query.set_buffer("a2", a2);
+    query.set_buffer_nullable("a2", a2, a2_nullable);
     query.set_buffer("a3", a3_offsets, a3_data);
 
     // Serialize into a copy and submit.
@@ -159,6 +167,7 @@ struct SerializationFx {
                                    6, 6, 7, 7, 8, 8, 9, 9, 10, 10};
     std::vector<uint32_t> a1;
     std::vector<uint32_t> a2;
+    std::vector<uint8_t> a2_nullable;
     std::vector<char> a3_data;
     std::vector<uint64_t> a3_offsets;
 
@@ -166,7 +175,9 @@ struct SerializationFx {
     for (unsigned i = 0; i < ncells; i++) {
       a1.push_back(i);
       a2.push_back(i);
+      a2_nullable.push_back(a2.back() % 5 == 0 ? 0 : 1);
       a2.push_back(2 * i);
+      a2_nullable.push_back(a2.back() % 5 == 0 ? 0 : 1);
 
       std::string a3 = "a";
       for (unsigned j = 0; j < i; j++)
@@ -180,7 +191,7 @@ struct SerializationFx {
     query.set_layout(TILEDB_UNORDERED);
     query.set_coordinates(coords);
     query.set_buffer("a1", a1);
-    query.set_buffer("a2", a2);
+    query.set_buffer_nullable("a2", a2, a2_nullable);
     query.set_buffer("a3", a3_offsets, a3_data);
 
     // Serialize into a copy and submit.
@@ -201,6 +212,7 @@ struct SerializationFx {
 
     std::vector<uint32_t> a1;
     std::vector<uint32_t> a2;
+    std::vector<uint8_t> a2_nullable;
     std::vector<char> a3_data;
     std::vector<uint64_t> a3_offsets;
 
@@ -208,7 +220,9 @@ struct SerializationFx {
     for (unsigned i = 0; i < ncells; i++) {
       a1.push_back(i);
       a2.push_back(i);
+      a2_nullable.push_back(a2.back() % 5 == 0 ? 0 : 1);
       a2.push_back(2 * i);
+      a2_nullable.push_back(a2.back() % 5 == 0 ? 0 : 1);
 
       std::string a3 = "a";
       for (unsigned j = 0; j < i; j++)
@@ -223,7 +237,7 @@ struct SerializationFx {
     query.set_buffer("d1", d1);
     query.set_buffer("d2", d2);
     query.set_buffer("a1", a1);
-    query.set_buffer("a2", a2);
+    query.set_buffer_nullable("a2", a2, a2_nullable);
     query.set_buffer("a3", a3_offsets, a3_data);
 
     // Serialize into a copy and submit.
@@ -331,11 +345,19 @@ struct SerializationFx {
     std::vector<void*> to_free;
     void* unused1;
     uint64_t* unused2;
-    uint64_t *a1_size, *a2_size, *a3_size, *a3_offset_size, *coords_size;
+    uint8_t* unused3;
+    uint64_t *a1_size, *a2_size, *a2_validity_size, *a3_size, *a3_offset_size,
+        *coords_size;
     ctx.handle_error(tiledb_query_get_buffer(
         ctx.ptr().get(), query->ptr().get(), "a1", &unused1, &a1_size));
-    ctx.handle_error(tiledb_query_get_buffer(
-        ctx.ptr().get(), query->ptr().get(), "a2", &unused1, &a2_size));
+    ctx.handle_error(tiledb_query_get_buffer_nullable(
+        ctx.ptr().get(),
+        query->ptr().get(),
+        "a2",
+        &unused1,
+        &a2_size,
+        &unused3,
+        &a2_validity_size));
     ctx.handle_error(tiledb_query_get_buffer_var(
         ctx.ptr().get(),
         query->ptr().get(),
@@ -360,8 +382,15 @@ struct SerializationFx {
 
     if (a2_size != nullptr) {
       void* buff = std::malloc(*a2_size);
-      ctx.handle_error(tiledb_query_set_buffer(
-          ctx.ptr().get(), query->ptr().get(), "a2", buff, a2_size));
+      uint8_t* validity = (uint8_t*)std::malloc(*a2_validity_size);
+      ctx.handle_error(tiledb_query_set_buffer_nullable(
+          ctx.ptr().get(),
+          query->ptr().get(),
+          "a2",
+          buff,
+          a2_size,
+          validity,
+          a2_validity_size));
       to_free.push_back(buff);
     }
 
@@ -409,13 +438,14 @@ TEST_CASE_METHOD(
     Query query(ctx, array);
     std::vector<uint32_t> a1(1000);
     std::vector<uint32_t> a2(1000);
+    std::vector<uint8_t> a2_nullable(1000);
     std::vector<char> a3_data(1000 * 100);
     std::vector<uint64_t> a3_offsets(1000);
     std::vector<int32_t> subarray = {1, 10, 1, 10};
 
     query.set_subarray(subarray);
     query.set_buffer("a1", a1);
-    query.set_buffer("a2", a2);
+    query.set_buffer_nullable("a2", a2, a2_nullable);
     query.set_buffer("a3", a3_offsets, a3_data);
 
     // Serialize into a copy (client side).
@@ -436,11 +466,12 @@ TEST_CASE_METHOD(
     deserialize_query(ctx, serialized, &query, true);
     REQUIRE(query.query_status() == Query::Status::COMPLETE);
 
-    auto result_el = query.result_buffer_elements();
-    REQUIRE(result_el["a1"].second == 100);
-    REQUIRE(result_el["a2"].second == 200);
-    REQUIRE(result_el["a3"].first == 100);
-    REQUIRE(result_el["a3"].second == 5050);
+    auto result_el = query.result_buffer_elements_nullable();
+    REQUIRE(std::get<1>(result_el["a1"]) == 100);
+    REQUIRE(std::get<1>(result_el["a2"]) == 200);
+    REQUIRE(std::get<2>(result_el["a2"]) == 200);
+    REQUIRE(std::get<0>(result_el["a3"]) == 100);
+    REQUIRE(std::get<1>(result_el["a3"]) == 5050);
 
     for (void* b : to_free)
       std::free(b);
@@ -451,13 +482,14 @@ TEST_CASE_METHOD(
     Query query(ctx, array);
     std::vector<uint32_t> a1(1000);
     std::vector<uint32_t> a2(1000);
+    std::vector<uint8_t> a2_nullable(1000);
     std::vector<char> a3_data(1000 * 100);
     std::vector<uint64_t> a3_offsets(1000);
     std::vector<int32_t> subarray = {3, 4, 3, 4};
 
     query.set_subarray(subarray);
     query.set_buffer("a1", a1);
-    query.set_buffer("a2", a2);
+    query.set_buffer_nullable("a2", a2, a2_nullable);
     query.set_buffer("a3", a3_offsets, a3_data);
 
     // Serialize into a copy (client side).
@@ -478,11 +510,12 @@ TEST_CASE_METHOD(
     deserialize_query(ctx, serialized, &query, true);
     REQUIRE(query.query_status() == Query::Status::COMPLETE);
 
-    auto result_el = query.result_buffer_elements();
-    REQUIRE(result_el["a1"].second == 4);
-    REQUIRE(result_el["a2"].second == 8);
-    REQUIRE(result_el["a3"].first == 4);
-    REQUIRE(result_el["a3"].second == 114);
+    auto result_el = query.result_buffer_elements_nullable();
+    REQUIRE(std::get<1>(result_el["a1"]) == 4);
+    REQUIRE(std::get<1>(result_el["a2"]) == 8);
+    REQUIRE(std::get<2>(result_el["a2"]) == 8);
+    REQUIRE(std::get<0>(result_el["a3"]) == 4);
+    REQUIRE(std::get<1>(result_el["a3"]) == 114);
 
     for (void* b : to_free)
       std::free(b);
@@ -493,6 +526,7 @@ TEST_CASE_METHOD(
     Query query(ctx, array);
     std::vector<uint32_t> a1(4);
     std::vector<uint32_t> a2(4);
+    std::vector<uint8_t> a2_nullable(4);
     std::vector<char> a3_data(60);
     std::vector<uint64_t> a3_offsets(4);
     std::vector<int32_t> subarray = {3, 4, 3, 4};
@@ -500,7 +534,7 @@ TEST_CASE_METHOD(
 
     auto set_buffers = [&](Query& q) {
       q.set_buffer("a1", a1);
-      q.set_buffer("a2", a2);
+      q.set_buffer_nullable("a2", a2, a2_nullable);
       q.set_buffer("a3", a3_offsets, a3_data);
     };
 
@@ -531,33 +565,36 @@ TEST_CASE_METHOD(
     serialize_and_submit(query);
     REQUIRE(query.query_status() == Query::Status::INCOMPLETE);
 
-    auto result_el = query.result_buffer_elements();
-    REQUIRE(result_el["a1"].second == 2);
-    REQUIRE(result_el["a2"].second == 4);
-    REQUIRE(result_el["a3"].first == 2);
-    REQUIRE(result_el["a3"].second == 47);
+    auto result_el = query.result_buffer_elements_nullable();
+    REQUIRE(std::get<1>(result_el["a1"]) == 2);
+    REQUIRE(std::get<1>(result_el["a2"]) == 4);
+    REQUIRE(std::get<2>(result_el["a2"]) == 4);
+    REQUIRE(std::get<0>(result_el["a3"]) == 2);
+    REQUIRE(std::get<1>(result_el["a3"]) == 47);
 
     // Reset buffers, serialize and resubmit
     set_buffers(query);
     serialize_and_submit(query);
 
     REQUIRE(query.query_status() == Query::Status::INCOMPLETE);
-    result_el = query.result_buffer_elements();
-    REQUIRE(result_el["a1"].second == 1);
-    REQUIRE(result_el["a2"].second == 2);
-    REQUIRE(result_el["a3"].first == 1);
-    REQUIRE(result_el["a3"].second == 33);
+    result_el = query.result_buffer_elements_nullable();
+    REQUIRE(std::get<1>(result_el["a1"]) == 1);
+    REQUIRE(std::get<1>(result_el["a2"]) == 2);
+    REQUIRE(std::get<2>(result_el["a2"]) == 2);
+    REQUIRE(std::get<0>(result_el["a3"]) == 1);
+    REQUIRE(std::get<1>(result_el["a3"]) == 33);
 
     // Reset buffers, serialize and resubmit
     set_buffers(query);
     serialize_and_submit(query);
 
     REQUIRE(query.query_status() == Query::Status::COMPLETE);
-    result_el = query.result_buffer_elements();
-    REQUIRE(result_el["a1"].second == 1);
-    REQUIRE(result_el["a2"].second == 2);
-    REQUIRE(result_el["a3"].first == 1);
-    REQUIRE(result_el["a3"].second == 34);
+    result_el = query.result_buffer_elements_nullable();
+    REQUIRE(std::get<1>(result_el["a1"]) == 1);
+    REQUIRE(std::get<1>(result_el["a2"]) == 2);
+    REQUIRE(std::get<2>(result_el["a2"]) == 2);
+    REQUIRE(std::get<0>(result_el["a3"]) == 1);
+    REQUIRE(std::get<1>(result_el["a3"]) == 34);
   }
 }
 
@@ -574,6 +611,7 @@ TEST_CASE_METHOD(
     std::vector<int32_t> coords(1000);
     std::vector<uint32_t> a1(1000);
     std::vector<uint32_t> a2(1000);
+    std::vector<uint8_t> a2_nullable(1000);
     std::vector<char> a3_data(1000 * 100);
     std::vector<uint64_t> a3_offsets(1000);
     std::vector<int32_t> subarray = {1, 10, 1, 10};
@@ -581,7 +619,7 @@ TEST_CASE_METHOD(
     query.set_subarray(subarray);
     query.set_coordinates(coords);
     query.set_buffer("a1", a1);
-    query.set_buffer("a2", a2);
+    query.set_buffer_nullable("a2", a2, a2_nullable);
     query.set_buffer("a3", a3_offsets, a3_data);
 
     // Serialize into a copy and submit.
@@ -598,12 +636,12 @@ TEST_CASE_METHOD(
     deserialize_query(ctx, serialized, &query, true);
     REQUIRE(query.query_status() == Query::Status::COMPLETE);
 
-    auto result_el = query.result_buffer_elements();
-    REQUIRE(result_el[TILEDB_COORDS].second == 20);
-    REQUIRE(result_el["a1"].second == 10);
-    REQUIRE(result_el["a2"].second == 20);
-    REQUIRE(result_el["a3"].first == 10);
-    REQUIRE(result_el["a3"].second == 55);
+    auto result_el = query.result_buffer_elements_nullable();
+    REQUIRE(std::get<1>(result_el["a1"]) == 10);
+    REQUIRE(std::get<1>(result_el["a2"]) == 20);
+    REQUIRE(std::get<2>(result_el["a2"]) == 20);
+    REQUIRE(std::get<0>(result_el["a3"]) == 10);
+    REQUIRE(std::get<1>(result_el["a3"]) == 55);
 
     for (void* b : to_free)
       std::free(b);
@@ -623,6 +661,7 @@ TEST_CASE_METHOD(
     std::vector<int32_t> coords(1000);
     std::vector<uint32_t> a1(1000);
     std::vector<uint32_t> a2(1000);
+    std::vector<uint8_t> a2_nullable(1000);
     std::vector<char> a3_data(1000 * 100);
     std::vector<uint64_t> a3_offsets(1000);
     std::vector<int32_t> subarray = {1, 10, 1, 10};
@@ -630,7 +669,7 @@ TEST_CASE_METHOD(
     query.set_subarray(subarray);
     query.set_coordinates(coords);
     query.set_buffer("a1", a1);
-    query.set_buffer("a2", a2);
+    query.set_buffer_nullable("a2", a2, a2_nullable);
     query.set_buffer("a3", a3_offsets, a3_data);
 
     // Serialize into a copy and submit.
@@ -647,12 +686,13 @@ TEST_CASE_METHOD(
     deserialize_query(ctx, serialized, &query, true);
     REQUIRE(query.query_status() == Query::Status::COMPLETE);
 
-    auto result_el = query.result_buffer_elements();
-    REQUIRE(result_el[TILEDB_COORDS].second == 20);
-    REQUIRE(result_el["a1"].second == 10);
-    REQUIRE(result_el["a2"].second == 20);
-    REQUIRE(result_el["a3"].first == 10);
-    REQUIRE(result_el["a3"].second == 55);
+    auto result_el = query.result_buffer_elements_nullable();
+    REQUIRE(std::get<1>(result_el[TILEDB_COORDS]) == 20);
+    REQUIRE(std::get<1>(result_el["a1"]) == 10);
+    REQUIRE(std::get<1>(result_el["a2"]) == 20);
+    REQUIRE(std::get<2>(result_el["a2"]) == 20);
+    REQUIRE(std::get<0>(result_el["a3"]) == 10);
+    REQUIRE(std::get<1>(result_el["a3"]) == 55);
 
     for (void* b : to_free)
       std::free(b);
@@ -671,6 +711,7 @@ TEST_CASE_METHOD(
     Query query(ctx, array);
     std::vector<uint32_t> a1(1000);
     std::vector<uint32_t> a2(1000);
+    std::vector<uint8_t> a2_nullable(1000);
     std::vector<char> a3_data(1000 * 100);
     std::vector<uint64_t> a3_offsets(1000);
     std::vector<int32_t> subarray = {1, 10, 1, 10};
@@ -678,7 +719,7 @@ TEST_CASE_METHOD(
     query.add_range(0, subarray[0], subarray[1]);
     query.add_range(1, subarray[2], subarray[3]);
     query.set_buffer("a1", a1);
-    query.set_buffer("a2", a2);
+    query.set_buffer_nullable("a2", a2, a2_nullable);
     query.set_buffer("a3", a3_offsets, a3_data);
 
     // Serialize into a copy (client side).
@@ -699,11 +740,12 @@ TEST_CASE_METHOD(
     deserialize_query(ctx, serialized, &query, true);
     REQUIRE(query.query_status() == Query::Status::COMPLETE);
 
-    auto result_el = query.result_buffer_elements();
-    REQUIRE(result_el["a1"].second == 100);
-    REQUIRE(result_el["a2"].second == 200);
-    REQUIRE(result_el["a3"].first == 100);
-    REQUIRE(result_el["a3"].second == 5050);
+    auto result_el = query.result_buffer_elements_nullable();
+    REQUIRE(std::get<1>(result_el["a1"]) == 100);
+    REQUIRE(std::get<1>(result_el["a2"]) == 200);
+    REQUIRE(std::get<2>(result_el["a2"]) == 200);
+    REQUIRE(std::get<0>(result_el["a3"]) == 100);
+    REQUIRE(std::get<1>(result_el["a3"]) == 5050);
 
     for (void* b : to_free)
       std::free(b);
@@ -714,6 +756,7 @@ TEST_CASE_METHOD(
     Query query(ctx, array);
     std::vector<uint32_t> a1(1000);
     std::vector<uint32_t> a2(1000);
+    std::vector<uint8_t> a2_nullable(1000);
     std::vector<char> a3_data(1000 * 100);
     std::vector<uint64_t> a3_offsets(1000);
     std::vector<int32_t> subarray = {3, 4, 3, 4};
@@ -721,7 +764,7 @@ TEST_CASE_METHOD(
     query.add_range(0, subarray[0], subarray[1]);
     query.add_range(1, subarray[2], subarray[3]);
     query.set_buffer("a1", a1);
-    query.set_buffer("a2", a2);
+    query.set_buffer_nullable("a2", a2, a2_nullable);
     query.set_buffer("a3", a3_offsets, a3_data);
 
     // Serialize into a copy (client side).
@@ -742,11 +785,12 @@ TEST_CASE_METHOD(
     deserialize_query(ctx, serialized, &query, true);
     REQUIRE(query.query_status() == Query::Status::COMPLETE);
 
-    auto result_el = query.result_buffer_elements();
-    REQUIRE(result_el["a1"].second == 4);
-    REQUIRE(result_el["a2"].second == 8);
-    REQUIRE(result_el["a3"].first == 4);
-    REQUIRE(result_el["a3"].second == 114);
+    auto result_el = query.result_buffer_elements_nullable();
+    REQUIRE(std::get<1>(result_el["a1"]) == 4);
+    REQUIRE(std::get<1>(result_el["a2"]) == 8);
+    REQUIRE(std::get<2>(result_el["a2"]) == 8);
+    REQUIRE(std::get<0>(result_el["a3"]) == 4);
+    REQUIRE(std::get<1>(result_el["a3"]) == 114);
 
     for (void* b : to_free)
       std::free(b);
@@ -757,6 +801,7 @@ TEST_CASE_METHOD(
     Query query(ctx, array);
     std::vector<uint32_t> a1(4);
     std::vector<uint32_t> a2(4);
+    std::vector<uint8_t> a2_nullable(4);
     std::vector<char> a3_data(60);
     std::vector<uint64_t> a3_offsets(4);
     std::vector<int32_t> subarray = {3, 4, 3, 4};
@@ -765,7 +810,7 @@ TEST_CASE_METHOD(
 
     auto set_buffers = [&](Query& q) {
       q.set_buffer("a1", a1);
-      q.set_buffer("a2", a2);
+      q.set_buffer_nullable("a2", a2, a2_nullable);
       q.set_buffer("a3", a3_offsets, a3_data);
     };
 
@@ -796,32 +841,35 @@ TEST_CASE_METHOD(
     serialize_and_submit(query);
     REQUIRE(query.query_status() == Query::Status::INCOMPLETE);
 
-    auto result_el = query.result_buffer_elements();
-    REQUIRE(result_el["a1"].second == 2);
-    REQUIRE(result_el["a2"].second == 4);
-    REQUIRE(result_el["a3"].first == 2);
-    REQUIRE(result_el["a3"].second == 47);
+    auto result_el = query.result_buffer_elements_nullable();
+    REQUIRE(std::get<1>(result_el["a1"]) == 2);
+    REQUIRE(std::get<1>(result_el["a2"]) == 4);
+    REQUIRE(std::get<2>(result_el["a2"]) == 4);
+    REQUIRE(std::get<0>(result_el["a3"]) == 2);
+    REQUIRE(std::get<1>(result_el["a3"]) == 47);
 
     // Reset buffers, serialize and resubmit
     set_buffers(query);
     serialize_and_submit(query);
 
     REQUIRE(query.query_status() == Query::Status::INCOMPLETE);
-    result_el = query.result_buffer_elements();
-    REQUIRE(result_el["a1"].second == 1);
-    REQUIRE(result_el["a2"].second == 2);
-    REQUIRE(result_el["a3"].first == 1);
-    REQUIRE(result_el["a3"].second == 33);
+    result_el = query.result_buffer_elements_nullable();
+    REQUIRE(std::get<1>(result_el["a1"]) == 1);
+    REQUIRE(std::get<1>(result_el["a2"]) == 2);
+    REQUIRE(std::get<2>(result_el["a2"]) == 2);
+    REQUIRE(std::get<0>(result_el["a3"]) == 1);
+    REQUIRE(std::get<1>(result_el["a3"]) == 33);
 
     // Reset buffers, serialize and resubmit
     set_buffers(query);
     serialize_and_submit(query);
 
     REQUIRE(query.query_status() == Query::Status::COMPLETE);
-    result_el = query.result_buffer_elements();
-    REQUIRE(result_el["a1"].second == 1);
-    REQUIRE(result_el["a2"].second == 2);
-    REQUIRE(result_el["a3"].first == 1);
-    REQUIRE(result_el["a3"].second == 34);
+    result_el = query.result_buffer_elements_nullable();
+    REQUIRE(std::get<1>(result_el["a1"]) == 1);
+    REQUIRE(std::get<1>(result_el["a2"]) == 2);
+    REQUIRE(std::get<2>(result_el["a2"]) == 2);
+    REQUIRE(std::get<0>(result_el["a3"]) == 1);
+    REQUIRE(std::get<1>(result_el["a3"]) == 34);
   }
 }

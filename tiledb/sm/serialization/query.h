@@ -63,22 +63,28 @@ struct QueryBufferCopyState {
   /** Accumulated number of bytes copied into user's data buffer. */
   uint64_t data_size;
 
+  /** Accumulated number of bytes copied into user's validity buffer. */
+  uint64_t validity_size;
+
   /** Constructor. */
   QueryBufferCopyState()
       : offset_size(0)
-      , data_size(0) {
+      , data_size(0)
+      , validity_size(0) {
   }
 
   /** Copy constructor. */
   QueryBufferCopyState(const QueryBufferCopyState& rhs)
       : offset_size(rhs.offset_size)
-      , data_size(rhs.data_size) {
+      , data_size(rhs.data_size)
+      , validity_size(rhs.validity_size) {
   }
 
   /** Move constructor. */
   QueryBufferCopyState(QueryBufferCopyState&& rhs)
       : offset_size(rhs.offset_size)
-      , data_size(rhs.data_size) {
+      , data_size(rhs.data_size)
+      , validity_size(rhs.validity_size) {
   }
 
   /** Destructor. */
@@ -89,6 +95,7 @@ struct QueryBufferCopyState {
   QueryBufferCopyState& operator=(const QueryBufferCopyState& rhs) {
     offset_size = rhs.offset_size;
     data_size = rhs.data_size;
+    validity_size = rhs.validity_size;
     return *this;
   }
 
@@ -96,6 +103,7 @@ struct QueryBufferCopyState {
   QueryBufferCopyState& operator=(QueryBufferCopyState&& rhs) {
     offset_size = rhs.offset_size;
     data_size = rhs.data_size;
+    validity_size = rhs.validity_size;
     return *this;
   }
 };
