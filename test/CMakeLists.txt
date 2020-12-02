@@ -192,6 +192,7 @@ if (TILEDB_CPP_API)
     src/unit-cppapi-type.cc
     src/unit-cppapi-updates.cc
     src/unit-cppapi-util.cc
+    src/unit-cppapi-var-offsets.cc
     src/unit-cppapi-vfs.cc
   )
 endif()

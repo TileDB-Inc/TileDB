@@ -383,6 +383,12 @@ Status reader_to_capnp(
   // Read state
   RETURN_NOT_OK(read_state_to_capnp(array_schema, reader, reader_builder));
 
+  // Offsets mode
+  reader_builder->setVarOffsetsMode(reader.offsets_mode());
+
+  // Offsets extra element
+  reader_builder->setVarOffsetsAddExtraElement(reader.offsets_extra_element());
+
   return Status::Ok();
 }
 
@@ -407,6 +413,15 @@ Status reader_from_capnp(
   if (reader_reader.hasReadState())
     RETURN_NOT_OK(read_state_from_capnp(
         array, reader_reader.getReadState(), reader, compute_tp));
+
+  // Offsets mode
+  if (reader_reader.hasVarOffsetsMode()) {
+    RETURN_NOT_OK(reader->set_offsets_mode(reader_reader.getVarOffsetsMode()));
+  }
+
+  // Offsets extra element
+  RETURN_NOT_OK(reader->set_offsets_extra_element(
+      reader_reader.getVarOffsetsAddExtraElement()));
 
   return Status::Ok();
 }
