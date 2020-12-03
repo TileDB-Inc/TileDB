@@ -184,6 +184,12 @@ class RestClient {
   /** Collection of extra headers that are attached to REST requests. */
   std::unordered_map<std::string, std::string> extra_headers_;
 
+  /** Array URI to redirected server mapping */
+  std::unordered_map<std::string, std::string> redirect_meta_;
+
+  /** Mutex for thread-safety. */
+  mutable std::mutex redirect_mtx_;
+
   /* ********************************* */
   /*         PRIVATE METHODS           */
   /* ********************************* */
@@ -264,6 +270,14 @@ class RestClient {
    */
   Status update_attribute_buffer_sizes(
       const serialization::CopyState& copy_state, Query* query) const;
+
+  /**
+   * Helper function encapsulating the functionality of looking up for cached
+   * redirected rest server addresses to avoid the redirection overhead
+   *
+   * @return Returns the redirection URI if exists and empty string otherwise
+   */
+  std::string redirect_uri();
 };
 
 }  // namespace sm

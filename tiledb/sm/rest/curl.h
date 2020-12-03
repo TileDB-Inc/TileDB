@@ -39,9 +39,9 @@
 #include <cstdlib>
 #include <functional>
 #include <memory>
+#include <mutex>
 #include <string>
 #include <unordered_map>
-
 #include "tiledb/sm/buffer/buffer.h"
 #include "tiledb/sm/buffer/buffer_list.h"
 #include "tiledb/sm/config/config.h"
@@ -57,6 +57,17 @@ namespace sm {
  * presented by this class is not threadsafe either. See
  * https://curl.haxx.se/libcurl/c/threadsafe.html
  */
+
+/**
+ * Wraps opaque user data to be invoked with a header callback.
+ */
+typedef struct HeaderCbData {
+  /** Default constructor. */
+  std::string uri;
+  std::unordered_map<std::string, std::string>* redirect_uri_map;
+  std::mutex* redirect_uri_map_lock;
+} HeaderCbData;
+
 class Curl {
  public:
   /** Constructor. */
@@ -71,7 +82,9 @@ class Curl {
    */
   Status init(
       const Config* config,
-      const std::unordered_map<std::string, std::string>& extra_headers);
+      const std::unordered_map<std::string, std::string>& extra_headers,
+      std::unordered_map<std::string, std::string>* res_headers,
+      std::mutex* res_mtx);
 
   /**
    * Escapes the given URL.
@@ -182,6 +195,9 @@ class Curl {
 
   /** Extra headers to attach to each request. */
   std::unordered_map<std::string, std::string> extra_headers_;
+
+  /** Response headers attached to each response. */
+  HeaderCbData headerData;
 
   /**
    * Populates the curl slist with authorization (token or username+password),

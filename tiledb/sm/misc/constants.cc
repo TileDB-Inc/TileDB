@@ -481,6 +481,9 @@ const std::string special_name_prefix = "__";
 /** Number of milliseconds between watchdog thread wakeups. */
 const unsigned watchdog_thread_sleep_ms = 1000;
 
+/** The redirection header key in REST response. */
+extern const std::string redirection_header_key = "x-tiledb-full-region-domain";
+
 const void* fill_value(Datatype type) {
   switch (type) {
     case Datatype::INT8:

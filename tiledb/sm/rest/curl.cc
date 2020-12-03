@@ -36,8 +36,8 @@
 #include "tiledb/sm/misc/utils.h"
 
 #include <cstring>
+#include <iostream>
 #include <sstream>
-
 // TODO: replace this with config option
 #define CURL_MAX_RETRIES 3
 
@@ -178,6 +178,52 @@ static int buffer_list_seek_callback(
   return CURL_SEEKFUNC_FAIL;
 }
 
+/**
+ * This callback function gets called by libcurl as soon as a header has been
+ * received. libcurl buffers headers and delivers only "full" headers, one by
+ * one, to this callback. This callback should return the number of bytes
+ * actually taken care of if that number differs from the number passed to
+ * your callback function, it signals an error condition to the library
+ *
+ * @param res_data points to the delivered data
+ * @param size the size of that data is size multiplied with nmemb
+ * @param count number of bytes actually taken care of
+ * @param userdata the userdata argument is set with CURLOPT_HEADERDATA
+ * @return
+ */
+size_t OnReceiveData(
+    void* res_data, size_t size, size_t count, void* userdata) {
+  size_t header_length = size * count;
+  char* const header_buffer = static_cast<char*>(res_data);
+  HeaderCbData* const pmHeader = static_cast<HeaderCbData*>(userdata);
+
+  std::string header(header_buffer, header_length);
+
+  const size_t header_key_end_pos = header.find(": ");
+  if (header_key_end_pos != std::string::npos) {
+    // Fetch the header key and ensure the header is lowercase.
+    std::string header_key = header.substr(0, header_key_end_pos);
+    std::transform(
+        header_key.begin(), header_key.end(), header_key.begin(), ::tolower);
+
+    if (header_key == constants::redirection_header_key) {
+      // Fetch the header value. Subtract 2 from the `header_length` to
+      // remove the trailing CR LF ("\r\n") and subtract another 2
+      // for the ": ". Ensure this ends with a null terminator.
+      const std::string header_value =
+          header.substr(
+              header_key_end_pos + 2, header_length - header_key_end_pos - 4) +
+          "\0";
+
+      std::unique_lock<std::mutex> rd_lck(*(pmHeader->redirect_uri_map_lock));
+      pmHeader->redirect_uri_map->insert(
+          std::make_pair(constants::redirection_header_key, header_value));
+    }
+  }
+
+  return size * count;
+}
+
 Curl::Curl()
     : config_(nullptr)
     , curl_(nullptr, curl_easy_cleanup) {
@@ -185,7 +231,9 @@ Curl::Curl()
 
 Status Curl::init(
     const Config* config,
-    const std::unordered_map<std::string, std::string>& extra_headers) {
+    const std::unordered_map<std::string, std::string>& extra_headers,
+    std::unordered_map<std::string, std::string>* const res_headers,
+    std::mutex* const res_mtx) {
   if (config == nullptr)
     return LOG_STATUS(
         Status::RestError("Error initializing libcurl; config is null."));
@@ -193,6 +241,14 @@ Status Curl::init(
   config_ = config;
   curl_.reset(curl_easy_init());
   extra_headers_ = extra_headers;
+  headerData.redirect_uri_map = res_headers;
+  headerData.redirect_uri_map_lock = res_mtx;
+
+  std::cerr << "JOE Curl::init headerData.redirect_uri_map->size() "
+            << headerData.redirect_uri_map->size() << std::endl;
+  for (const auto& kv : *headerData.redirect_uri_map)
+    std::cerr << "  kv.first " << kv.first << ", kv.second " << kv.second
+              << std::endl;
 
   // See https://curl.haxx.se/libcurl/c/threadsafe.html
   CURLcode rc = curl_easy_setopt(curl_.get(), CURLOPT_NOSIGNAL, 1);
@@ -208,6 +264,17 @@ Status Curl::init(
   if (rc != CURLE_OK)
     return LOG_STATUS(Status::RestError(
         "Error initializing libcurl; failed to set CURLOPT_ERRORBUFFER"));
+
+  rc = curl_easy_setopt(curl_.get(), CURLOPT_HEADERFUNCTION, OnReceiveData);
+  if (rc != CURLE_OK)
+    return LOG_STATUS(Status::RestError(
+        "Error initializing libcurl; failed to set CURLOPT_HEADERFUNCTION"));
+
+  /* set url to fetch */
+  rc = curl_easy_setopt(curl_.get(), CURLOPT_HEADERDATA, &headerData);
+  if (rc != CURLE_OK)
+    return LOG_STATUS(Status::RestError(
+        "Error initializing libcurl; failed to set CURLOPT_HEADERFUNCTION"));
 
   // Ignore ssl validation if the user has set rest.ignore_ssl_validation = true
   const char* ignore_ssl_validation_str = nullptr;
@@ -346,7 +413,6 @@ Status Curl::make_curl_request_common(
   for (uint8_t i = 0; i < CURL_MAX_RETRIES; i++) {
     WriteCbState write_cb_state;
     write_cb_state.arg = write_cb_arg;
-
     /* set url to fetch */
     curl_easy_setopt(curl, CURLOPT_URL, url);
 
@@ -390,6 +456,9 @@ Status Curl::make_curl_request_common(
 
     /* set maximum allowed redirects */
     curl_easy_setopt(curl, CURLOPT_MAXREDIRS, 1);
+
+    /* enable forwarding auth to redirects */
+    curl_easy_setopt(curl, CURLOPT_UNRESTRICTED_AUTH, 1L);
 
     /* fetch the url */
     CURLcode tmp_curl_code = curl_easy_perform(curl);
@@ -478,7 +547,9 @@ Status Curl::post_data(
   RETURN_NOT_OK(post_data_common(serialization_type, data, &headers));
 
   CURLcode ret;
+  headerData.uri = url;
   auto st = make_curl_request(url.c_str(), &ret, returned_data);
+
   curl_slist_free_all(headers);
   RETURN_NOT_OK(st);
 
@@ -497,6 +568,7 @@ Status Curl::post_data(
   RETURN_NOT_OK(post_data_common(serialization_type, data, &headers));
 
   CURLcode ret;
+  headerData.uri = url;
   auto st = make_curl_request(url.c_str(), &ret, std::move(cb));
   curl_slist_free_all(headers);
   RETURN_NOT_OK(st);
@@ -550,6 +622,8 @@ Status Curl::get_data(
     const std::string& url,
     SerializationType serialization_type,
     Buffer* returned_data) {
+  std::cerr << "JOE Curl::get_data 1 " << url << std::endl;
+
   CURL* curl = curl_.get();
   if (curl == nullptr)
     return LOG_STATUS(
@@ -562,10 +636,13 @@ Status Curl::get_data(
       set_content_type(serialization_type, &headers),
       curl_slist_free_all(headers));
 
+  std::cerr << "JOE Curl::get_data 2 " << std::endl;
+
   /* pass our list of custom made headers */
   curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
 
   CURLcode ret;
+  headerData.uri = url;
   auto st = make_curl_request(url.c_str(), &ret, returned_data);
   curl_slist_free_all(headers);
   RETURN_NOT_OK(st);
@@ -599,6 +676,7 @@ Status Curl::delete_data(
   curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
 
   CURLcode ret;
+  headerData.uri = url;
   auto st = make_curl_request(url.c_str(), &ret, returned_data);
   curl_slist_free_all(headers);
   RETURN_NOT_OK(st);
