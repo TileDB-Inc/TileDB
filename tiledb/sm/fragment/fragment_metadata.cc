@@ -75,6 +75,8 @@ FragmentMetadata::FragmentMetadata(
   version_ = constants::format_version;
   tile_index_base_ = 0;
   sparse_tile_num_ = 0;
+  footer_size_ = 0;
+  footer_offset_ = 0;
   auto attributes = array_schema_->attributes();
   for (unsigned i = 0; i < attributes.size(); ++i) {
     auto attr_name = attributes[i]->name();
@@ -825,6 +827,10 @@ Status FragmentMetadata::get_footer_size(
   }
 
   return Status::Ok();
+}
+
+uint64_t FragmentMetadata::footer_size() const {
+  return footer_size_;
 }
 
 Status FragmentMetadata::get_footer_offset_and_size(
@@ -1906,9 +1912,11 @@ Status FragmentMetadata::load_footer(
   std::shared_ptr<ConstBuffer> cbuff = nullptr;
   if (f_buff == nullptr) {
     has_consolidated_footer_ = false;
-    RETURN_NOT_OK(read_file_footer(&buff));
+    RETURN_NOT_OK(read_file_footer(&buff, &footer_offset_, &footer_size_));
     cbuff = std::make_shared<ConstBuffer>(&buff);
   } else {
+    footer_size_ = 0;
+    footer_offset_ = offset;
     has_consolidated_footer_ = true;
     cbuff = std::make_shared<ConstBuffer>(f_buff);
     cbuff->set_offset(offset);
@@ -1941,6 +1949,11 @@ Status FragmentMetadata::load_footer(
   RETURN_NOT_OK(load_generic_tile_offsets(cbuff.get(), version));
 
   loaded_metadata_.footer_ = true;
+
+  // If the footer_size is not set lets calculate from how much of the buffer we
+  // read
+  if (footer_size_ == 0)
+    footer_size_ = cbuff->offset() - offset;
 
   return Status::Ok();
 }
@@ -2159,20 +2172,20 @@ Status FragmentMetadata::read_generic_tile_from_file(
   return Status::Ok();
 }
 
-Status FragmentMetadata::read_file_footer(Buffer* buff) const {
+Status FragmentMetadata::read_file_footer(
+    Buffer* buff, uint64_t* footer_offset, uint64_t* footer_size) const {
   URI fragment_metadata_uri = fragment_uri_.join_path(
       std::string(constants::fragment_metadata_filename));
 
   // Get footer offset
-  uint64_t footer_offset = 0, footer_size = 0;
-  RETURN_NOT_OK(get_footer_offset_and_size(&footer_offset, &footer_size));
+  RETURN_NOT_OK(get_footer_offset_and_size(footer_offset, footer_size));
 
   STATS_ADD_COUNTER(
-      stats::Stats::CounterType::READ_FRAG_META_SIZE, footer_size);
+      stats::Stats::CounterType::READ_FRAG_META_SIZE, *footer_size);
 
   // Read footer
   return storage_manager_->read(
-      fragment_metadata_uri, footer_offset, buff, footer_size);
+      fragment_metadata_uri, *footer_offset, buff, *footer_size);
 }
 
 Status FragmentMetadata::write_generic_tile_to_file(

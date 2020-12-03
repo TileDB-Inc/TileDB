@@ -80,12 +80,21 @@ class Query {
        * offset data.
        */
       Buffer fixed_len_data;
+
       /** Buffer holding (or wrapping) variable-length data. */
       Buffer var_len_data;
+
+      /** Buffer holding (or wrapping) validity vector data. */
+      Buffer validity_len_data;
+
       /** Value holding the length of the fixed-length data. */
       uint64_t fixed_len_size = 0;
+
       /** Value holding the length of the variable-length data. */
       uint64_t var_len_size = 0;
+
+      /** Value holding the length of the validity vector data. */
+      uint64_t validity_len_size = 0;
     };
 
     /** Serialization state per attribute. */

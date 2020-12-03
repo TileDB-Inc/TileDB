@@ -496,7 +496,6 @@ Status Consolidator::consolidate_fragment_meta(
   RETURN_NOT_OK(utils::parse::get_fragment_version(meta_name, &meta_version));
 
   // Serialize all fragment names and footer offsets into a single buffer
-  uint64_t footer_size = 0;
   for (auto m : meta) {
     // Write name size and name
     auto name = m->fragment_uri().to_string();
@@ -504,8 +503,8 @@ Status Consolidator::consolidate_fragment_meta(
     RETURN_NOT_OK(buff.write(&name_size, sizeof(uint64_t)));
     RETURN_NOT_OK(buff.write(name.c_str(), name_size));
     RETURN_NOT_OK(buff.write(&offset, sizeof(uint64_t)));
-    RETURN_NOT_OK(m->get_footer_size(meta_version, &footer_size));
-    offset += footer_size;
+
+    offset += m->footer_size();
   }
 
   // Serialize all fragment metadata footers in parallel
