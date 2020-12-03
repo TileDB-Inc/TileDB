@@ -16,6 +16,12 @@
 
 ## API additions
 
+# TileDB v2.1.4 Release Notes
+
+## Bug fixes
+
+* Fix corruption of fragment metadata when consolidation fragment metadata on array with String dimensions [#1941](https://github.com/TileDB-Inc/TileDB/pull/1941)
+
 # TileDB v2.1.3 Release Notes
 
 ## Improvements
