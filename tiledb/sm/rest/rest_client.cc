@@ -102,7 +102,8 @@ Status RestClient::get_array_schema_from_rest(
     const URI& uri, ArraySchema** array_schema) {
   // Init curl and form the URL
   Curl curlc;
-  RETURN_NOT_OK(curlc.init(config_, extra_headers_, &redirect_meta_));
+  RETURN_NOT_OK(
+      curlc.init(config_, extra_headers_, &redirect_meta_, &redirect_mtx_));
   std::string array_ns, array_uri;
   RETURN_NOT_OK(uri.get_rest_components(&array_ns, &array_uri));
   std::string url = (redirect_uri().empty() ? rest_server_ : redirect_uri()) +
@@ -111,8 +112,6 @@ Status RestClient::get_array_schema_from_rest(
 
   // Get the data
   Buffer returned_data;
-  std::unique_lock<std::mutex> rd_lck(redirect_mtx_);
-
   RETURN_NOT_OK(curlc.get_data(url, serialization_type_, &returned_data));
   if (returned_data.data() == nullptr || returned_data.size() == 0)
     return LOG_STATUS(Status::RestError(
@@ -133,25 +132,24 @@ Status RestClient::post_array_schema_to_rest(
 
   // Init curl and form the URL
   Curl curlc;
-  RETURN_NOT_OK(curlc.init(config_, extra_headers_, &redirect_meta_));
+  RETURN_NOT_OK(
+      curlc.init(config_, extra_headers_, &redirect_meta_, &redirect_mtx_));
   std::string array_ns, array_uri;
   RETURN_NOT_OK(uri.get_rest_components(&array_ns, &array_uri));
-  redirect_meta_.first =
-      (redirect_uri().empty() ? rest_server_ : redirect_uri()) + "/v1/arrays/" +
-      array_ns + "/" + curlc.url_escape(array_uri);
-
+  auto deduced_url = (redirect_uri().empty() ? rest_server_ : redirect_uri()) +
+                     "/v1/arrays/" + array_ns + "/" +
+                     curlc.url_escape(array_uri);
   Buffer returned_data;
-  std::unique_lock<std::mutex> rd_lck(redirect_mtx_);
-
   Status sc = curlc.post_data(
-      redirect_meta_.first, serialization_type_, &serialized, &returned_data);
+      deduced_url, serialization_type_, &serialized, &returned_data);
   return sc;
 }
 
 Status RestClient::deregister_array_from_rest(const URI& uri) {
   // Init curl and form the URL
   Curl curlc;
-  RETURN_NOT_OK(curlc.init(config_, extra_headers_, &redirect_meta_));
+  RETURN_NOT_OK(
+      curlc.init(config_, extra_headers_, &redirect_meta_, &redirect_mtx_));
   std::string array_ns, array_uri;
   RETURN_NOT_OK(uri.get_rest_components(&array_ns, &array_uri));
   std::string url = (redirect_uri().empty() ? rest_server_ : redirect_uri()) +
@@ -159,8 +157,6 @@ Status RestClient::deregister_array_from_rest(const URI& uri) {
                     curlc.url_escape(array_uri) + "/deregister";
 
   Buffer returned_data;
-  std::unique_lock<std::mutex> rd_lck(redirect_mtx_);
-
   return curlc.delete_data(url, serialization_type_, &returned_data);
 }
 
@@ -175,7 +171,8 @@ Status RestClient::get_array_non_empty_domain(
 
   // Init curl and form the URL
   Curl curlc;
-  RETURN_NOT_OK(curlc.init(config_, extra_headers_, &redirect_meta_));
+  RETURN_NOT_OK(
+      curlc.init(config_, extra_headers_, &redirect_meta_, &redirect_mtx_));
   std::string array_ns, array_uri;
   RETURN_NOT_OK(array->array_uri().get_rest_components(&array_ns, &array_uri));
   std::string url = (redirect_uri().empty() ? rest_server_ : redirect_uri()) +
@@ -213,7 +210,8 @@ Status RestClient::get_array_max_buffer_sizes(
 
   // Init curl and form the URL
   Curl curlc;
-  RETURN_NOT_OK(curlc.init(config_, extra_headers_, &redirect_meta_));
+  RETURN_NOT_OK(
+      curlc.init(config_, extra_headers_, &redirect_meta_, &redirect_mtx_));
   std::string array_ns, array_uri;
   RETURN_NOT_OK(uri.get_rest_components(&array_ns, &array_uri));
   std::string url = (redirect_uri().empty() ? rest_server_ : redirect_uri()) +
@@ -223,7 +221,6 @@ Status RestClient::get_array_max_buffer_sizes(
 
   // Get the data
   Buffer returned_data;
-  std::unique_lock<std::mutex> rd_lck(redirect_mtx_);
 
   RETURN_NOT_OK(curlc.get_data(url, serialization_type_, &returned_data));
 
@@ -245,7 +242,8 @@ Status RestClient::get_array_metadata_from_rest(
 
   // Init curl and form the URL
   Curl curlc;
-  RETURN_NOT_OK(curlc.init(config_, extra_headers_, &redirect_meta_));
+  RETURN_NOT_OK(
+      curlc.init(config_, extra_headers_, &redirect_meta_, &redirect_mtx_));
   std::string array_ns, array_uri;
   RETURN_NOT_OK(uri.get_rest_components(&array_ns, &array_uri));
   std::string url = (redirect_uri().empty() ? rest_server_ : redirect_uri()) +
@@ -255,8 +253,6 @@ Status RestClient::get_array_metadata_from_rest(
 
   // Get the data
   Buffer returned_data;
-  std::unique_lock<std::mutex> rd_lck(redirect_mtx_);
-
   RETURN_NOT_OK(curlc.get_data(url, serialization_type_, &returned_data));
   if (returned_data.data() == nullptr || returned_data.size() == 0)
     return LOG_STATUS(Status::RestError(
@@ -280,7 +276,8 @@ Status RestClient::post_array_metadata_to_rest(const URI& uri, Array* array) {
 
   // Init curl and form the URL
   Curl curlc;
-  RETURN_NOT_OK(curlc.init(config_, extra_headers_, &redirect_meta_));
+  RETURN_NOT_OK(
+      curlc.init(config_, extra_headers_, &redirect_meta_, &redirect_mtx_));
   std::string array_ns, array_uri;
   RETURN_NOT_OK(uri.get_rest_components(&array_ns, &array_uri));
   std::string url = (redirect_uri().empty() ? rest_server_ : redirect_uri()) +
@@ -289,8 +286,6 @@ Status RestClient::post_array_metadata_to_rest(const URI& uri, Array* array) {
 
   // Put the data
   Buffer returned_data;
-  std::unique_lock<std::mutex> rd_lck(redirect_mtx_);
-
   return curlc.post_data(url, serialization_type_, &serialized, &returned_data);
 }
 
@@ -325,7 +320,8 @@ Status RestClient::post_query_submit(
 
   // Init curl and form the URL
   Curl curlc;
-  RETURN_NOT_OK(curlc.init(config_, extra_headers_, &redirect_meta_));
+  RETURN_NOT_OK(
+      curlc.init(config_, extra_headers_, &redirect_meta_, &redirect_mtx_));
   std::string array_ns, array_uri;
   RETURN_NOT_OK(uri.get_rest_components(&array_ns, &array_uri));
   std::string url = (redirect_uri().empty() ? rest_server_ : redirect_uri()) +
@@ -352,7 +348,6 @@ Status RestClient::post_query_submit(
       query,
       copy_state);
 
-  std::unique_lock<std::mutex> rd_lck(redirect_mtx_);
   const Status st = curlc.post_data(
       url, serialization_type_, &serialized, std::move(write_cb));
 
@@ -543,7 +538,8 @@ Status RestClient::finalize_query_to_rest(const URI& uri, Query* query) {
 
   // Init curl and form the URL
   Curl curlc;
-  RETURN_NOT_OK(curlc.init(config_, extra_headers_, &redirect_meta_));
+  RETURN_NOT_OK(
+      curlc.init(config_, extra_headers_, &redirect_meta_, &redirect_mtx_));
   std::string array_ns, array_uri;
   RETURN_NOT_OK(uri.get_rest_components(&array_ns, &array_uri));
   std::string url = (redirect_uri().empty() ? rest_server_ : redirect_uri()) +
@@ -551,8 +547,6 @@ Status RestClient::finalize_query_to_rest(const URI& uri, Query* query) {
                     curlc.url_escape(array_uri) +
                     "/query/finalize?type=" + query_type_str(query->type());
   Buffer returned_data;
-  std::unique_lock<std::mutex> rd_lck(redirect_mtx_);
-
   RETURN_NOT_OK(
       curlc.post_data(url, serialization_type_, &serialized, &returned_data));
 
@@ -678,7 +672,8 @@ Status RestClient::get_query_est_result_sizes(const URI& uri, Query* query) {
 
   // Init curl and form the URL
   Curl curlc;
-  RETURN_NOT_OK(curlc.init(config_, extra_headers_, &redirect_meta_));
+  RETURN_NOT_OK(
+      curlc.init(config_, extra_headers_, &redirect_meta_, &redirect_mtx_));
   std::string array_ns, array_uri;
   RETURN_NOT_OK(uri.get_rest_components(&array_ns, &array_uri));
   std::string url =
@@ -692,8 +687,6 @@ Status RestClient::get_query_est_result_sizes(const URI& uri, Query* query) {
 
   // Get the data
   Buffer returned_data;
-  std::unique_lock<std::mutex> rd_lck(redirect_mtx_);
-
   RETURN_NOT_OK(
       curlc.post_data(url, serialization_type_, &serialized, &returned_data));
   if (returned_data.data() == nullptr || returned_data.size() == 0)
@@ -706,8 +699,8 @@ Status RestClient::get_query_est_result_sizes(const URI& uri, Query* query) {
 std::string RestClient::redirect_uri() {
   std::unique_lock<std::mutex> rd_lck(redirect_mtx_);
   std::unordered_map<std::string, std::string>::const_iterator got =
-      redirect_meta_.second.find(constants::redirection_header_key);
-  return (got == redirect_meta_.second.end()) ? std::string() : got->second;
+      redirect_meta_.find(constants::redirection_header_key);
+  return (got == redirect_meta_.end()) ? std::string() : got->second;
 }
 
 #else
