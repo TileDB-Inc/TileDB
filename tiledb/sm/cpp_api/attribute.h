@@ -445,6 +445,25 @@ class Attribute {
     return *this;
   }
 
+  /**
+   * Gets the nullability of an attribute.
+   *
+   * **Example:**
+   * @code{.cpp}
+   * auto a1 = Attribute::create<int>(...);
+   * auto nullable = a1.nullable();
+   * @endcode
+   *
+   * @return Whether the attribute is nullable.
+   */
+  bool nullable() {
+    auto& ctx = ctx_.get();
+    uint8_t nullable;
+    ctx.handle_error(
+        tiledb_attribute_get_nullable(ctx.ptr().get(), attr_.get(), &nullable));
+    return static_cast<bool>(nullable);
+  }
+
   /** Returns the C TileDB attribute object pointer. */
   std::shared_ptr<tiledb_attribute_t> ptr() const {
     return attr_;
