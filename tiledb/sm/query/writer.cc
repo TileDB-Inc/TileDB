@@ -3306,36 +3306,70 @@ Status Writer::write_tiles(
   const auto& uri = frag_meta->uri(name);
   const auto& var_uri = var_size ? frag_meta->var_uri(name) : URI("");
   const auto& validity_uri = nullable ? frag_meta->validity_uri(name) : URI("");
+  const auto tile_num = tiles->size();
 
-  // Write tiles
-  auto tile_num = tiles->size();
+  // Build a vector of arguments for each write tile task. The
+  // tuple is: tile, uri, tile id, and a uint8_t indicating whether
+  // the tile is for the fixed (0), var (1), or validity tile (2).
+  std::vector<std::tuple<Tile*, const URI*, uint64_t, uint8_t>> args;
+  args.reserve(tile_num);
   for (size_t i = 0, tile_id = 0; i < tile_num; ++i, ++tile_id) {
-    Tile* tile = &(*tiles)[i];
-    RETURN_NOT_OK(storage_manager_->write(uri, tile->filtered_buffer()));
-    frag_meta->set_tile_offset(name, tile_id, tile->filtered_buffer()->size());
+    Tile* const tile = &(*tiles)[i];
+    args.emplace_back(tile, &uri, tile_id, 0);
 
     if (var_size) {
       ++i;
-
-      tile = &(*tiles)[i];
-      RETURN_NOT_OK(storage_manager_->write(var_uri, tile->filtered_buffer()));
-      frag_meta->set_tile_var_offset(
-          name, tile_id, tile->filtered_buffer()->size());
-      frag_meta->set_tile_var_size(name, tile_id, tile->pre_filtered_size());
+      Tile* const tile = &(*tiles)[i];
+      args.emplace_back(tile, &var_uri, tile_id, 1);
     }
 
-    if (nullable) {
+    if (var_size) {
       ++i;
-
-      tile = &(*tiles)[i];
-      RETURN_NOT_OK(
-          storage_manager_->write(validity_uri, tile->filtered_buffer()));
-      frag_meta->set_tile_validity_offset(
-          name, tile_id, tile->filtered_buffer()->size());
+      Tile* const tile = &(*tiles)[i];
+      args.emplace_back(tile, &validity_uri, tile_id, 2);
     }
   }
 
-  // Close files, except in the case of global order
+  // Package tile writes into tasks and execute them.
+  std::vector<ThreadPool::Task> tasks;
+  for (const auto& arg : args) {
+    std::function<Status()> task_fn = [this, arg, &name, frag_meta]() {
+      Tile* const tile = std::get<0>(arg);
+      const URI* const uri = std::get<1>(arg);
+      const uint64_t tile_id = std::get<2>(arg);
+      const uint8_t tile_type = std::get<2>(arg);
+
+      // Write the tile buffer to the URI.
+      RETURN_NOT_OK(storage_manager_->write(*uri, tile->filtered_buffer()));
+
+      // Update the fragment metadata, depending on the tile type (fixed,
+      // variable, or validity).
+      if (tile_type == 0) {
+        frag_meta->set_tile_offset(
+            name, tile_id, tile->filtered_buffer()->size());
+      } else if (tile_type == 1) {
+        frag_meta->set_tile_var_offset(
+            name, tile_id, tile->filtered_buffer()->size());
+        frag_meta->set_tile_var_size(name, tile_id, tile->pre_filtered_size());
+      } else {
+        frag_meta->set_tile_validity_offset(
+            name, tile_id, tile->filtered_buffer()->size());
+        assert(tile_type == 2);
+      }
+
+      return Status::Ok();
+    };
+
+    // Execute this task on the IO-bound threadpool.
+    tasks.push_back(storage_manager_->io_tp()->execute(std::move(task_fn)));
+  }
+
+  // Wait for tile writes and check all statuses.
+  auto statuses = storage_manager_->io_tp()->wait_all_status(tasks);
+  for (auto& st : statuses)
+    RETURN_NOT_OK(st);
+
+  // Close files, except in the case of global order.
   if (layout_ != Layout::GLOBAL_ORDER) {
     RETURN_NOT_OK(storage_manager_->close_file(frag_meta->uri(name)));
     if (var_size)
