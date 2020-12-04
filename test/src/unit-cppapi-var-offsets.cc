@@ -606,3 +606,106 @@ TEST_CASE(
   if (vfs.is_dir(array_name))
     vfs.remove_dir(array_name);
 }
+
+TEST_CASE(
+    "C++ API: Test 32-bit offsets",
+    "[var-offsets][sparse][32bit-offset][arrow]") {
+  std::string array_name = "test_32bit_offset";
+  create_sparse_array(array_name);
+
+  std::vector<int32_t> data = {1, 2, 3, 4, 5, 6};
+  // TODO: use a 32-bit offset vector when it's supported on the write path
+  std::vector<uint64_t> data_offsets = {0, 4, 12, 20};
+  write_sparse_array(array_name, data, data_offsets);
+  Config config;
+  // Change config of offsets bitsize from 64 to 32
+  config["sm.var_offsets.bitsize"] = 32;
+
+  std::vector<int32_t> attr_val(data.size());
+  std::vector<uint32_t> attr_off(data_offsets.size());
+
+  SECTION("Byte offsets (default case)") {
+    CHECK((std::string)config["sm.var_offsets.mode"] == "bytes");
+    Context ctx(config);
+
+    Array array(ctx, array_name, TILEDB_READ);
+    Query query(ctx, array, TILEDB_READ);
+
+    // Read using a 32-bit vector, but cast it to 64-bit pointer so that the API
+    // accepts it
+    query.set_buffer(
+        "attr",
+        reinterpret_cast<uint64_t*>(attr_off.data()),
+        attr_off.size(),
+        attr_val.data(),
+        attr_val.size());
+    CHECK_NOTHROW(query.submit());
+
+    // Check that byte offsets are properly returned
+    std::vector<uint32_t> data_offsets_exp = {0, 4, 12, 20};
+    CHECK(attr_val == data);
+    CHECK(attr_off == data_offsets_exp);
+  }
+
+  SECTION("Element offsets") {
+    // Change config of offsets format from bytes to elements
+    config["sm.var_offsets.mode"] = "elements";
+    Context ctx(config);
+
+    Array array(ctx, array_name, TILEDB_READ);
+    Query query(ctx, array, TILEDB_READ);
+
+    // Read using a 32-bit vector, but cast it to 64-bit pointer so that the API
+    // accepts it
+    query.set_buffer(
+        "attr",
+        reinterpret_cast<uint64_t*>(attr_off.data()),
+        attr_off.size(),
+        attr_val.data(),
+        attr_val.size());
+    CHECK_NOTHROW(query.submit());
+
+    // Check that element offsets are properly returned
+    std::vector<uint32_t> data_offsets_exp = {0, 1, 3, 5};
+    CHECK(attr_val == data);
+    CHECK(attr_off == data_offsets_exp);
+
+    array.close();
+  }
+
+  SECTION("Extra element") {
+    config["sm.var_offsets.extra_element"] = "true";
+    Context ctx(config);
+
+    // Extend offsets buffer to accomodate for the extra element
+    attr_off.resize(attr_off.size() + 1);
+
+    Array array(ctx, array_name, TILEDB_READ);
+    Query query(ctx, array, TILEDB_READ);
+
+    // Read using a 32-bit vector, but cast it to 64-bit pointer so that the API
+    // accepts it
+    query.set_buffer(
+        "attr",
+        reinterpret_cast<uint64_t*>(attr_off.data()),
+        attr_off.size(),
+        attr_val.data(),
+        attr_val.size());
+    CHECK_NOTHROW(query.submit());
+
+    // Check the extra element is included in the offsets
+    uint32_t data_size = sizeof(data[0]) * data.size();
+    std::vector<uint32_t> data_offsets_exp = {0, 4, 12, 20, data_size};
+    CHECK(attr_val == data);
+    CHECK(attr_off == data_offsets_exp);
+  }
+
+  // Clean up
+  config["sm.var_offsets.extra_element"] = "false";
+  config["sm.var_offsets.mode"] = "bytes";
+  config["sm.var_offsets.bitsize"] = 64;
+  Context ctx2(config);
+  VFS vfs(ctx2);
+  if (vfs.is_dir(array_name))
+    vfs.remove_dir(array_name);
+}

@@ -1442,7 +1442,8 @@ Status Reader::compute_var_cell_destinations(
   // For easy reference
   auto nullable = array_schema_->is_nullable(name);
   auto num_cs = result_cell_slabs.size();
-  auto offset_size = constants::cell_var_offset_size;
+  auto offset_size = offsets_bitsize_ == 32 ? sizeof(uint32_t) :
+                                              constants::cell_var_offset_size;
   ByteVecValue fill_value;
   if (array_schema_->is_attr(name))
     fill_value = array_schema_->attribute(name)->fill_value();
@@ -1528,7 +1529,8 @@ Status Reader::copy_partitioned_var_cells(
   auto buffer = (unsigned char*)it->second.buffer_;
   auto buffer_var = (unsigned char*)it->second.buffer_var_;
   auto buffer_validity = (unsigned char*)it->second.validity_vector_.buffer();
-  uint64_t offset_size = constants::cell_var_offset_size;
+  auto offset_size = offsets_bitsize_ == 32 ? sizeof(uint32_t) :
+                                              constants::cell_var_offset_size;
   ByteVecValue fill_value;
   uint8_t fill_value_validity = 0;
   if (array_schema_->is_attr(*name)) {
@@ -2606,6 +2608,9 @@ Status Reader::init_read_state() {
   }
   RETURN_NOT_OK(config.get<bool>(
       "sm.var_offsets.extra_element", &offsets_extra_element_, &found));
+  assert(found);
+  RETURN_NOT_OK(
+      config.get<int>("sm.var_offsets.bitsize", &offsets_bitsize_, &found));
   assert(found);
 
   // Consider the validity memory budget to be identical to `sm.memory_budget`

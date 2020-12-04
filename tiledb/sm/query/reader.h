@@ -934,6 +934,9 @@ class Reader {
    */
   bool offsets_extra_element_;
 
+  /** The offset bitsize used for variable-sized attributes. */
+  int offsets_bitsize_;
+
   /** Protects result tiles. */
   mutable std::mutex result_tiles_mutex_;
 
