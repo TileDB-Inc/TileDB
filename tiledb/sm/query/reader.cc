@@ -737,6 +737,16 @@ Status Reader::set_offsets_extra_element(bool add_extra_element) {
   return Status::Ok();
 }
 
+int Reader::offsets_bitsize() const {
+  return offsets_bitsize_;
+}
+
+Status Reader::set_offsets_bitsize(int bitsize) {
+  offsets_bitsize_ = bitsize;
+
+  return Status::Ok();
+}
+
 /* ********************************* */
 /*          STATIC FUNCTIONS         */
 /* ********************************* */

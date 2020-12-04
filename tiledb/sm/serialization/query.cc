@@ -415,6 +415,9 @@ Status reader_to_capnp(
   // Offsets extra element
   reader_builder->setVarOffsetsAddExtraElement(reader.offsets_extra_element());
 
+  // Offsets bitsize
+  reader_builder->setVarOffsetsBitsize(reader.offsets_bitsize());
+
   return Status::Ok();
 }
 
@@ -448,6 +451,12 @@ Status reader_from_capnp(
   // Offsets extra element
   RETURN_NOT_OK(reader->set_offsets_extra_element(
       reader_reader.getVarOffsetsAddExtraElement()));
+
+  // Offsets mode
+  if (reader_reader.hasVarOffsetsBitsize()) {
+    RETURN_NOT_OK(
+        reader->set_offsets_bitsize(reader_reader.getVarOffsetsBitsize()));
+  }
 
   return Status::Ok();
 }

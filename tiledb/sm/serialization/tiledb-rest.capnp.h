@@ -4149,6 +4149,8 @@ class QueryReader::Reader {
 
   inline bool getVarOffsetsAddExtraElement() const;
 
+  inline ::int32_t getVarOffsetsBitsize() const;
+
  private:
   ::capnp::_::StructReader _reader;
   template <typename, ::capnp::Kind>
@@ -4224,6 +4226,9 @@ class QueryReader::Builder {
 
   inline bool getVarOffsetsAddExtraElement();
   inline void setVarOffsetsAddExtraElement(bool value);
+
+  inline ::int32_t getVarOffsetsBitsize();
+  inline void setVarOffsetsBitsize(::int32_t value);
 
  private:
   ::capnp::_::StructBuilder _builder;
@@ -9800,6 +9805,20 @@ inline bool QueryReader::Builder::getVarOffsetsAddExtraElement() {
 }
 inline void QueryReader::Builder::setVarOffsetsAddExtraElement(bool value) {
   _builder.setDataField<bool>(::capnp::bounded<0>() * ::capnp::ELEMENTS, value);
+}
+
+inline ::int32_t QueryReader::Reader::getVarOffsetsBitsize() const {
+  return _reader.getDataField<::int32_t>(
+      ::capnp::bounded<1>() * ::capnp::ELEMENTS);
+}
+
+inline ::int32_t QueryReader::Builder::getVarOffsetsBitsize() {
+  return _builder.getDataField<::int32_t>(
+      ::capnp::bounded<1>() * ::capnp::ELEMENTS);
+}
+inline void QueryReader::Builder::setVarOffsetsBitsize(::int32_t value) {
+  _builder.setDataField<::int32_t>(
+      ::capnp::bounded<1>() * ::capnp::ELEMENTS, value);
 }
 
 inline bool Query::Reader::hasAttributeBufferHeaders() const {

@@ -323,6 +323,9 @@ struct QueryReader {
 
   varOffsetsAddExtraElement @4 :Bool;
   # `True` if an extra element is to be added to the end of the offsets buffer
+
+  varOffsetsBitsize @5 :Int32;
+  # The offsets bitsize (`32` or `64`) to be used
 }
 
 struct Query {

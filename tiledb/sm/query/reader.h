@@ -470,6 +470,12 @@ class Reader {
   /** Sets if offsets are configured to have an extra element. */
   Status set_offsets_extra_element(bool add_extra_element);
 
+  /** Returns the configured offsets bitsize */
+  int offsets_bitsize() const;
+
+  /** Sets the bitsize of offsets */
+  Status set_offsets_bitsize(int bitsize);
+
   /* ********************************* */
   /*          STATIC FUNCTIONS         */
   /* ********************************* */
