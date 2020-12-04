@@ -103,6 +103,7 @@ Reader::Reader() {
   layout_ = Layout::ROW_MAJOR;
   sparse_mode_ = false;
   read_state_.initialized_ = false;
+  offsets_bitsize_ = constants::cell_var_offset_size * 8;
 }
 
 Reader::~Reader() = default;
@@ -737,13 +738,18 @@ Status Reader::set_offsets_extra_element(bool add_extra_element) {
   return Status::Ok();
 }
 
-int Reader::offsets_bitsize() const {
+uint32_t Reader::offsets_bitsize() const {
   return offsets_bitsize_;
 }
 
-Status Reader::set_offsets_bitsize(int bitsize) {
-  offsets_bitsize_ = bitsize;
+Status Reader::set_offsets_bitsize(const uint32_t bitsize) {
+  if (bitsize != 32 && bitsize != 64) {
+    return LOG_STATUS(Status::ReaderError(
+        "Cannot set offset bitsize to " + std::to_string(bitsize) +
+        "; Only 32 and 64 are acceptable bitsize values"));
+  }
 
+  offsets_bitsize_ = bitsize;
   return Status::Ok();
 }
 
@@ -1264,6 +1270,12 @@ void Reader::populate_cfc_ctx_cache(
   ctx_cache->initialize(result_cell_slabs, num_copy_threads);
 }
 
+inline uint64_t Reader::offsets_bytesize() const {
+  assert(offsets_bitsize_ == 32 || offsets_bitsize_ == 64);
+  return offsets_bitsize_ == 32 ? sizeof(uint32_t) :
+                                  constants::cell_var_offset_size;
+}
+
 Status Reader::copy_partitioned_fixed_cells(
     const size_t partition_idx,
     const std::string* const name,
@@ -1452,8 +1464,7 @@ Status Reader::compute_var_cell_destinations(
   // For easy reference
   auto nullable = array_schema_->is_nullable(name);
   auto num_cs = result_cell_slabs.size();
-  auto offset_size = offsets_bitsize_ == 32 ? sizeof(uint32_t) :
-                                              constants::cell_var_offset_size;
+  auto offset_size = offsets_bytesize();
   ByteVecValue fill_value;
   if (array_schema_->is_attr(name))
     fill_value = array_schema_->attribute(name)->fill_value();
@@ -1539,8 +1550,7 @@ Status Reader::copy_partitioned_var_cells(
   auto buffer = (unsigned char*)it->second.buffer_;
   auto buffer_var = (unsigned char*)it->second.buffer_var_;
   auto buffer_validity = (unsigned char*)it->second.validity_vector_.buffer();
-  auto offset_size = offsets_bitsize_ == 32 ? sizeof(uint32_t) :
-                                              constants::cell_var_offset_size;
+  auto offset_size = offsets_bytesize();
   ByteVecValue fill_value;
   uint8_t fill_value_validity = 0;
   if (array_schema_->is_attr(*name)) {
@@ -2619,8 +2629,13 @@ Status Reader::init_read_state() {
   RETURN_NOT_OK(config.get<bool>(
       "sm.var_offsets.extra_element", &offsets_extra_element_, &found));
   assert(found);
-  RETURN_NOT_OK(
-      config.get<int>("sm.var_offsets.bitsize", &offsets_bitsize_, &found));
+  RETURN_NOT_OK(config.get<uint32_t>(
+      "sm.var_offsets.bitsize", &offsets_bitsize_, &found));
+  if (offsets_bitsize_ != 32 && offsets_bitsize_ != 64) {
+    return LOG_STATUS(
+        Status::ReaderError("Cannot initialize reader; Unsupported offsets "
+                            "bitsize in configuration"));
+  }
   assert(found);
 
   // Consider the validity memory budget to be identical to `sm.memory_budget`

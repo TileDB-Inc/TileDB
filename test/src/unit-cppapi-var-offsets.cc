@@ -120,7 +120,7 @@ void write_dense_array(
 
 TEST_CASE(
     "C++ API: Test element offsets : sparse array",
-    "[var-offsets][element-offset][arrow]") {
+    "[var-offsets][element-offset]") {
   std::string array_name = "test_element_offset";
   create_sparse_array(array_name);
 
@@ -177,7 +177,7 @@ TEST_CASE(
 
 TEST_CASE(
     "C++ API: Test element offsets : dense array",
-    "[var-offsets][element-offset][arrow]") {
+    "[var-offsets][element-offset]") {
   std::string array_name = "test_element_offset";
   create_dense_array(array_name);
 
@@ -237,7 +237,7 @@ TEST_CASE(
 
 TEST_CASE(
     "C++ API: Test offsets extra element: sparse array",
-    "[var-offsets][extra-offset][arrow]") {
+    "[var-offsets][extra-offset]") {
   std::string array_name = "test_extra_offset";
   create_sparse_array(array_name);
 
@@ -419,7 +419,7 @@ TEST_CASE(
 
 TEST_CASE(
     "C++ API: Test offsets extra element: dense array",
-    "[var-offsets][extra-offset][arrow]") {
+    "[var-offsets][extra-offset]") {
   std::string array_name = "test_extra_offset";
   create_dense_array(array_name);
 
@@ -608,8 +608,7 @@ TEST_CASE(
 }
 
 TEST_CASE(
-    "C++ API: Test 32-bit offsets",
-    "[var-offsets][sparse][32bit-offset][arrow]") {
+    "C++ API: Test 32-bit offsets", "[var-offsets][sparse][32bit-offset]") {
   std::string array_name = "test_32bit_offset";
   create_sparse_array(array_name);
 

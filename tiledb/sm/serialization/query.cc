@@ -453,7 +453,7 @@ Status reader_from_capnp(
       reader_reader.getVarOffsetsAddExtraElement()));
 
   // Offsets mode
-  if (reader_reader.hasVarOffsetsBitsize()) {
+  if (reader_reader.getVarOffsetsBitsize() > 0) {
     RETURN_NOT_OK(
         reader->set_offsets_bitsize(reader_reader.getVarOffsetsBitsize()));
   }

@@ -471,10 +471,10 @@ class Reader {
   Status set_offsets_extra_element(bool add_extra_element);
 
   /** Returns the configured offsets bitsize */
-  int offsets_bitsize() const;
+  uint32_t offsets_bitsize() const;
 
   /** Sets the bitsize of offsets */
-  Status set_offsets_bitsize(int bitsize);
+  Status set_offsets_bitsize(const uint32_t bitsize);
 
   /* ********************************* */
   /*          STATIC FUNCTIONS         */
@@ -941,7 +941,7 @@ class Reader {
   bool offsets_extra_element_;
 
   /** The offset bitsize used for variable-sized attributes. */
-  int offsets_bitsize_;
+  uint32_t offsets_bitsize_;
 
   /** Protects result tiles. */
   mutable std::mutex result_tiles_mutex_;
@@ -1120,6 +1120,11 @@ class Reader {
   void populate_cfc_ctx_cache(
       const std::vector<ResultCellSlab>& result_cell_slabs,
       CopyFixedCellsContextCache* ctx_cache);
+
+  /**
+   * Returns the configured bytesize for var-sized attribute offsets
+   */
+  uint64_t offsets_bytesize() const;
 
   /**
    * Copies the cells for the input **fixed-sized** attribute/dimension and

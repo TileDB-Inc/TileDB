@@ -641,7 +641,7 @@ Status Config::sanity_check(
   } else if (param == "sm.consolidation.step_size_ratio") {
     RETURN_NOT_OK(utils::parse::convert(value, &vf));
   } else if (param == "sm.var_offsets.bitsize") {
-    RETURN_NOT_OK(utils::parse::convert(value, &vint));
+    RETURN_NOT_OK(utils::parse::convert(value, &v32));
   } else if (param == "sm.var_offsets.extra_element") {
     RETURN_NOT_OK(utils::parse::convert(value, &v));
   } else if (param == "sm.var_offsets.mode") {
