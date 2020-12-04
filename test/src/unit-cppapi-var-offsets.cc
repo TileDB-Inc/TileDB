@@ -693,7 +693,7 @@ TEST_CASE(
     CHECK_NOTHROW(query.submit());
 
     // Check the extra element is included in the offsets
-    uint32_t data_size = sizeof(data[0]) * data.size();
+    uint32_t data_size = static_cast<uint32_t>(sizeof(data[0]) * data.size());
     std::vector<uint32_t> data_offsets_exp = {0, 4, 12, 20, data_size};
     CHECK(attr_val == data);
     CHECK(attr_off == data_offsets_exp);
