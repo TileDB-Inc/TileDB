@@ -10,7 +10,7 @@
 
 ## New features
 
-* Support for nullable attributes. [#1895](https://github.com/TileDB-Inc/TileDB/pull/1895) [#1938](https://github.com/TileDB-Inc/TileDB/pull/1938)
+* Support for nullable attributes. [#1895](https://github.com/TileDB-Inc/TileDB/pull/1895) [#1938](https://github.com/TileDB-Inc/TileDB/pull/1938) [#1948](https://github.com/TileDB-Inc/TileDB/pull/1948)
 * Support for Hilbert order sorting for sparse arrays. [#1880](https://github.com/TileDB-Inc/TileDB/pull/1880)
 * Support for AWS S3 "AssumeRole" temporary credentials [#1882](https://github.com/TileDB-Inc/TileDB/pull/1882)
 * Experimental support for an in-memory backend used with bootstrap option "--enable-memfs" [#1873](https://github.com/TileDB-Inc/TileDB/pull/1873)
@@ -44,7 +44,7 @@
 
 ## API additions
 
-### C++ API
+### C API
 
 * Added functions for getting fragment information. [#1900](https://github.com/TileDB-Inc/TileDB/pull/1900)
 * Added APIs for getting and setting ranges of queries using a dimension name. [#1920](https://github.com/TileDB-Inc/TileDB/pull/1920)
