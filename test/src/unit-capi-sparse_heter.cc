@@ -32,6 +32,7 @@
 
 #include "catch.hpp"
 #include "test/src/helpers.h"
+#include "test/src/vfs_helpers.h"
 #ifdef _WIN32
 #include "tiledb/sm/filesystem/win.h"
 #else
@@ -51,31 +52,12 @@ using namespace tiledb::test;
 typedef std::pair<std::string, uint64_t> EstSize;
 
 struct SparseHeterFx {
-  const std::string HDFS_TEMP_DIR = "hdfs:///tiledb_test/";
-  const std::string S3_PREFIX = "s3://";
-  const std::string S3_BUCKET = S3_PREFIX + random_name("tiledb") + "/";
-  const std::string S3_TEMP_DIR = S3_BUCKET + "tiledb_test/";
-  const std::string AZURE_PREFIX = "azure://";
-  const std::string bucket = AZURE_PREFIX + random_name("tiledb") + "/";
-  const std::string AZURE_TEMP_DIR = bucket + "tiledb_test/";
-#ifdef _WIN32
-  const std::string FILE_URI_PREFIX = "";
-  const std::string FILE_TEMP_DIR =
-      tiledb::sm::Win::current_dir() + "\\tiledb_test\\";
-#else
-  const std::string FILE_URI_PREFIX = "file://";
-  const std::string FILE_TEMP_DIR =
-      tiledb::sm::Posix::current_dir() + "/tiledb_test/";
-#endif
-
   // TileDB context
   tiledb_ctx_t* ctx_;
   tiledb_vfs_t* vfs_;
 
-  // Supported filesystems
-  bool supports_s3_;
-  bool supports_hdfs_;
-  bool supports_azure_;
+  // Vector of supported filsystems
+  const std::vector<std::unique_ptr<SupportedFs>> fs_vec_;
 
   bool serialize_ = false;
 
@@ -133,7 +115,6 @@ struct SparseHeterFx {
       const std::vector<float>& buff_d2,
       const std::vector<int32_t>& buff_a);
   static std::string random_name(const std::string& prefix);
-  void set_supported_fs();
   int tiledb_array_get_non_empty_domain_from_index_wrapper(
       tiledb_ctx_t* ctx,
       tiledb_array_t* array,
@@ -159,120 +140,17 @@ struct SparseHeterFx {
       uint64_t* size_val);
 };
 
-SparseHeterFx::SparseHeterFx() {
-  // Supported filesystems
-  set_supported_fs();
-
-  // Create TileDB context
-  tiledb_config_t* config = nullptr;
-  tiledb_error_t* error = nullptr;
-  REQUIRE(tiledb_config_alloc(&config, &error) == TILEDB_OK);
-  REQUIRE(error == nullptr);
-  if (supports_s3_) {
-#ifndef TILEDB_TESTS_AWS_S3_CONFIG
-    REQUIRE(
-        tiledb_config_set(
-            config, "vfs.s3.endpoint_override", "localhost:9999", &error) ==
-        TILEDB_OK);
-    REQUIRE(
-        tiledb_config_set(config, "vfs.s3.scheme", "https", &error) ==
-        TILEDB_OK);
-    REQUIRE(
-        tiledb_config_set(
-            config, "vfs.s3.use_virtual_addressing", "false", &error) ==
-        TILEDB_OK);
-    REQUIRE(
-        tiledb_config_set(config, "vfs.s3.verify_ssl", "false", &error) ==
-        TILEDB_OK);
-    REQUIRE(error == nullptr);
-#endif
-  }
-  if (supports_azure_) {
-    REQUIRE(
-        tiledb_config_set(
-            config,
-            "vfs.azure.storage_account_name",
-            "devstoreaccount1",
-            &error) == TILEDB_OK);
-    REQUIRE(
-        tiledb_config_set(
-            config,
-            "vfs.azure.storage_account_key",
-            "Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/"
-            "K1SZFPTOtr/KBHBeksoGMGw==",
-            &error) == TILEDB_OK);
-    REQUIRE(
-        tiledb_config_set(
-            config,
-            "vfs.azure.blob_endpoint",
-            "127.0.0.1:10000/devstoreaccount1",
-            &error) == TILEDB_OK);
-    REQUIRE(
-        tiledb_config_set(config, "vfs.azure.use_https", "false", &error) ==
-        TILEDB_OK);
-  }
-  REQUIRE(tiledb_ctx_alloc(config, &ctx_) == TILEDB_OK);
-  REQUIRE(error == nullptr);
-  vfs_ = nullptr;
-  REQUIRE(tiledb_vfs_alloc(ctx_, config, &vfs_) == TILEDB_OK);
-  tiledb_config_free(&config);
-
-  // Connect to S3
-  if (supports_s3_) {
-    // Create bucket if it does not exist
-    int is_bucket = 0;
-    int rc = tiledb_vfs_is_bucket(ctx_, vfs_, S3_BUCKET.c_str(), &is_bucket);
-    REQUIRE(rc == TILEDB_OK);
-    if (!is_bucket) {
-      rc = tiledb_vfs_create_bucket(ctx_, vfs_, S3_BUCKET.c_str());
-      REQUIRE(rc == TILEDB_OK);
-    }
-  }
-
-  // Connect to Azure
-  if (supports_azure_) {
-    int is_container = 0;
-    int rc = tiledb_vfs_is_bucket(ctx_, vfs_, bucket.c_str(), &is_container);
-    REQUIRE(rc == TILEDB_OK);
-    if (!is_container) {
-      rc = tiledb_vfs_create_bucket(ctx_, vfs_, bucket.c_str());
-      REQUIRE(rc == TILEDB_OK);
-    }
-  }
+SparseHeterFx::SparseHeterFx()
+    : fs_vec_(vfs_test_get_fs_vec()) {
+  // Initialize vfs test
+  REQUIRE(vfs_test_init(fs_vec_, &ctx_, &vfs_).ok());
 }
 
 SparseHeterFx::~SparseHeterFx() {
-  if (supports_s3_) {
-    int is_bucket = 0;
-    int rc = tiledb_vfs_is_bucket(ctx_, vfs_, S3_BUCKET.c_str(), &is_bucket);
-    CHECK(rc == TILEDB_OK);
-    if (is_bucket) {
-      CHECK(
-          tiledb_vfs_remove_bucket(ctx_, vfs_, S3_BUCKET.c_str()) == TILEDB_OK);
-    }
-  }
-
-  if (supports_azure_) {
-    int is_container = 0;
-    int rc = tiledb_vfs_is_bucket(ctx_, vfs_, bucket.c_str(), &is_container);
-    REQUIRE(rc == TILEDB_OK);
-    if (is_container) {
-      rc = tiledb_vfs_remove_bucket(ctx_, vfs_, bucket.c_str());
-      REQUIRE(rc == TILEDB_OK);
-    }
-  }
-
+  // Close vfs test
+  REQUIRE(vfs_test_close(fs_vec_, ctx_, vfs_).ok());
   tiledb_vfs_free(&vfs_);
   tiledb_ctx_free(&ctx_);
-}
-
-void SparseHeterFx::set_supported_fs() {
-  tiledb_ctx_t* ctx = nullptr;
-  REQUIRE(tiledb_ctx_alloc(nullptr, &ctx) == TILEDB_OK);
-
-  get_supported_fs(&supports_s3_, &supports_hdfs_, &supports_azure_);
-
-  tiledb_ctx_free(&ctx);
 }
 
 int SparseHeterFx::tiledb_array_get_non_empty_domain_from_index_wrapper(
@@ -849,9 +727,10 @@ TEST_CASE_METHOD(
     serialize_ = true;
   }
 
+  SupportedFsLocal local_fs;
   std::string array_name =
-      FILE_URI_PREFIX + FILE_TEMP_DIR + "sparse_array_heter";
-  create_temp_dir(FILE_URI_PREFIX + FILE_TEMP_DIR);
+      local_fs.file_prefix() + local_fs.temp_dir() + "sparse_array_heter";
+  create_temp_dir(local_fs.file_prefix() + local_fs.temp_dir());
 
   // Create array
   float dom_f[] = {1.0f, 20.0f};
@@ -1187,7 +1066,7 @@ TEST_CASE_METHOD(
       buff_d2_r,
       buff_a_r);
 
-  remove_temp_dir(FILE_URI_PREFIX + FILE_TEMP_DIR);
+  remove_temp_dir(local_fs.file_prefix() + local_fs.temp_dir());
 }
 
 TEST_CASE_METHOD(
@@ -1201,9 +1080,10 @@ TEST_CASE_METHOD(
     serialize_ = true;
   }
 
+  SupportedFsLocal local_fs;
   std::string array_name =
-      FILE_URI_PREFIX + FILE_TEMP_DIR + "sparse_array_heter";
-  create_temp_dir(FILE_URI_PREFIX + FILE_TEMP_DIR);
+      local_fs.file_prefix() + local_fs.temp_dir() + "sparse_array_heter";
+  create_temp_dir(local_fs.file_prefix() + local_fs.temp_dir());
 
   // Create array
   float dom_f[] = {1.0f, 20.0f};
@@ -1539,5 +1419,5 @@ TEST_CASE_METHOD(
       buff_d2_r,
       buff_a_r);
 
-  remove_temp_dir(FILE_URI_PREFIX + FILE_TEMP_DIR);
+  remove_temp_dir(local_fs.file_prefix() + local_fs.temp_dir());
 }

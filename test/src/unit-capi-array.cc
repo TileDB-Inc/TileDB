@@ -38,6 +38,7 @@
 
 #include "catch.hpp"
 #include "test/src/helpers.h"
+#include "test/src/vfs_helpers.h"
 #ifdef _WIN32
 #include <Windows.h>
 #include "tiledb/sm/filesystem/win.h"
@@ -55,31 +56,12 @@
 using namespace tiledb::test;
 
 struct ArrayFx {
-  const std::string HDFS_TEMP_DIR = "hdfs:///tiledb_test/";
-  const std::string S3_PREFIX = "s3://";
-  const std::string S3_BUCKET = S3_PREFIX + random_name("tiledb") + "/";
-  const std::string S3_TEMP_DIR = S3_BUCKET + "tiledb_test/";
-  const std::string AZURE_PREFIX = "azure://";
-  const std::string bucket = AZURE_PREFIX + random_name("tiledb") + "/";
-  const std::string AZURE_TEMP_DIR = bucket + "tiledb_test/";
-#ifdef _WIN32
-  const std::string FILE_URI_PREFIX = "";
-  const std::string FILE_TEMP_DIR =
-      tiledb::sm::Win::current_dir() + "\\tiledb_test\\";
-#else
-  const std::string FILE_URI_PREFIX = "file://";
-  const std::string FILE_TEMP_DIR =
-      tiledb::sm::Posix::current_dir() + "/tiledb_test/";
-#endif
-
   // TileDB context
   tiledb_ctx_t* ctx_;
   tiledb_vfs_t* vfs_;
 
-  // Supported filesystems
-  bool supports_s3_;
-  bool supports_hdfs_;
-  bool supports_azure_;
+  // Vector of supported filesystems
+  const std::vector<std::unique_ptr<SupportedFs>> fs_vec_;
 
   // Encryption parameters
   tiledb_encryption_type_t encryption_type_ = TILEDB_NO_ENCRYPTION;
@@ -95,7 +77,6 @@ struct ArrayFx {
   void create_dense_vector(const std::string& path);
   void create_dense_array(const std::string& path);
   static std::string random_name(const std::string& prefix);
-  void set_supported_fs();
 };
 
 static const std::string test_ca_path =
@@ -104,124 +85,17 @@ static const std::string test_ca_path =
 static const std::string test_ca_file =
     std::string(TILEDB_TEST_INPUTS_DIR) + "/test_certs/public.crt";
 
-ArrayFx::ArrayFx() {
-  // Supported filesystems
-  set_supported_fs();
-
-  // Create TileDB context
-  tiledb_config_t* config = nullptr;
-  tiledb_error_t* error = nullptr;
-  REQUIRE(tiledb_config_alloc(&config, &error) == TILEDB_OK);
-  REQUIRE(error == nullptr);
-  if (supports_s3_) {
-#ifndef TILEDB_TESTS_AWS_S3_CONFIG
-    REQUIRE(
-        tiledb_config_set(
-            config, "vfs.s3.endpoint_override", "localhost:9999", &error) ==
-        TILEDB_OK);
-    REQUIRE(
-        tiledb_config_set(config, "vfs.s3.scheme", "https", &error) ==
-        TILEDB_OK);
-    REQUIRE(
-        tiledb_config_set(
-            config, "vfs.s3.use_virtual_addressing", "false", &error) ==
-        TILEDB_OK);
-    REQUIRE(
-        tiledb_config_set(
-            config, "vfs.s3.ca_file", test_ca_file.c_str(), &error) ==
-        TILEDB_OK);
-    REQUIRE(
-        tiledb_config_set(config, "vfs.s3.verify_ssl", "false", &error) ==
-        TILEDB_OK);
-    REQUIRE(error == nullptr);
-#endif
-  }
-  if (supports_azure_) {
-    REQUIRE(
-        tiledb_config_set(
-            config,
-            "vfs.azure.storage_account_name",
-            "devstoreaccount1",
-            &error) == TILEDB_OK);
-    REQUIRE(
-        tiledb_config_set(
-            config,
-            "vfs.azure.storage_account_key",
-            "Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/"
-            "K1SZFPTOtr/KBHBeksoGMGw==",
-            &error) == TILEDB_OK);
-    REQUIRE(
-        tiledb_config_set(
-            config,
-            "vfs.azure.blob_endpoint",
-            "127.0.0.1:10000/devstoreaccount1",
-            &error) == TILEDB_OK);
-    REQUIRE(
-        tiledb_config_set(config, "vfs.azure.use_https", "false", &error) ==
-        TILEDB_OK);
-  }
-  REQUIRE(tiledb_ctx_alloc(config, &ctx_) == TILEDB_OK);
-  REQUIRE(error == nullptr);
-  vfs_ = nullptr;
-  REQUIRE(tiledb_vfs_alloc(ctx_, config, &vfs_) == TILEDB_OK);
-  tiledb_config_free(&config);
-
-  // Connect to S3
-  if (supports_s3_) {
-    // Create bucket if it does not exist
-    int is_bucket = 0;
-    int rc = tiledb_vfs_is_bucket(ctx_, vfs_, S3_BUCKET.c_str(), &is_bucket);
-    REQUIRE(rc == TILEDB_OK);
-    if (!is_bucket) {
-      rc = tiledb_vfs_create_bucket(ctx_, vfs_, S3_BUCKET.c_str());
-      REQUIRE(rc == TILEDB_OK);
-    }
-  }
-
-  // Connect to Azure
-  if (supports_azure_) {
-    int is_container = 0;
-    int rc = tiledb_vfs_is_bucket(ctx_, vfs_, bucket.c_str(), &is_container);
-    REQUIRE(rc == TILEDB_OK);
-    if (!is_container) {
-      rc = tiledb_vfs_create_bucket(ctx_, vfs_, bucket.c_str());
-      REQUIRE(rc == TILEDB_OK);
-    }
-  }
+ArrayFx::ArrayFx()
+    : fs_vec_(vfs_test_get_fs_vec()) {
+  // Initialize vfs test
+  REQUIRE(vfs_test_init(fs_vec_, &ctx_, &vfs_).ok());
 }
 
 ArrayFx::~ArrayFx() {
-  if (supports_s3_) {
-    int is_bucket = 0;
-    int rc = tiledb_vfs_is_bucket(ctx_, vfs_, S3_BUCKET.c_str(), &is_bucket);
-    CHECK(rc == TILEDB_OK);
-    if (is_bucket) {
-      CHECK(
-          tiledb_vfs_remove_bucket(ctx_, vfs_, S3_BUCKET.c_str()) == TILEDB_OK);
-    }
-  }
-
-  if (supports_azure_) {
-    int is_container = 0;
-    int rc = tiledb_vfs_is_bucket(ctx_, vfs_, bucket.c_str(), &is_container);
-    REQUIRE(rc == TILEDB_OK);
-    if (is_container) {
-      rc = tiledb_vfs_remove_bucket(ctx_, vfs_, bucket.c_str());
-      REQUIRE(rc == TILEDB_OK);
-    }
-  }
-
+  // Close vfs test
+  REQUIRE(vfs_test_close(fs_vec_, ctx_, vfs_).ok());
   tiledb_vfs_free(&vfs_);
   tiledb_ctx_free(&ctx_);
-}
-
-void ArrayFx::set_supported_fs() {
-  tiledb_ctx_t* ctx = nullptr;
-  REQUIRE(tiledb_ctx_alloc(nullptr, &ctx) == TILEDB_OK);
-
-  get_supported_fs(&supports_s3_, &supports_hdfs_, &supports_azure_);
-
-  tiledb_ctx_free(&ctx);
 }
 
 void ArrayFx::create_temp_dir(const std::string& path) {
@@ -449,8 +323,10 @@ void ArrayFx::create_dense_array(const std::string& path) {
 
 TEST_CASE_METHOD(
     ArrayFx, "C API: Test getting array URI", "[capi], [array], [array-uri]") {
-  std::string array_name = FILE_URI_PREFIX + FILE_TEMP_DIR + "array_uri";
-  create_temp_dir(FILE_URI_PREFIX + FILE_TEMP_DIR);
+  SupportedFsLocal local_fs;
+  std::string array_name =
+      local_fs.file_prefix() + local_fs.temp_dir() + "array_uri";
+  create_temp_dir(local_fs.file_prefix() + local_fs.temp_dir());
 
   // Create array
   tiledb_array_t* array;
@@ -486,7 +362,7 @@ TEST_CASE_METHOD(
   // Clean up
   tiledb_array_free(&array);
 
-  remove_temp_dir(FILE_URI_PREFIX + FILE_TEMP_DIR);
+  remove_temp_dir(local_fs.file_prefix() + local_fs.temp_dir());
 }
 
 TEST_CASE_METHOD(
@@ -540,12 +416,16 @@ TEST_CASE_METHOD(
   rc = tiledb_array_schema_set_tile_order(ctx_, array_schema, TILEDB_ROW_MAJOR);
   REQUIRE(rc == TILEDB_OK);
 
+  // Instantiate local class
+  SupportedFsLocal local_fs;
+
   // Check for invalid array schema
   rc = tiledb_array_schema_check(ctx_, array_schema);
   REQUIRE(rc == TILEDB_OK);
 
-  std::string array_name = FILE_URI_PREFIX + FILE_TEMP_DIR + "encrypyted_array";
-  create_temp_dir(FILE_URI_PREFIX + FILE_TEMP_DIR);
+  std::string array_name =
+      local_fs.file_prefix() + local_fs.temp_dir() + "encrypyted_array";
+  create_temp_dir(local_fs.file_prefix() + local_fs.temp_dir());
 
   SECTION("- API calls with encrypted schema") {
     const char key[] = "0123456789abcdeF0123456789abcdeF";
@@ -700,7 +580,7 @@ TEST_CASE_METHOD(
     tiledb_array_schema_free(&read_schema);
     tiledb_array_free(&array);
     tiledb_array_free(&array2);
-    remove_temp_dir(FILE_URI_PREFIX + FILE_TEMP_DIR);
+    remove_temp_dir(local_fs.file_prefix() + local_fs.temp_dir());
   }
 
   SECTION("- API calls with unencrypted schema") {
@@ -781,7 +661,7 @@ TEST_CASE_METHOD(
     // Clean up
     tiledb_array_schema_free(&read_schema);
     tiledb_array_free(&array);
-    remove_temp_dir(FILE_URI_PREFIX + FILE_TEMP_DIR);
+    remove_temp_dir(local_fs.file_prefix() + local_fs.temp_dir());
   }
 }
 
@@ -789,15 +669,8 @@ TEST_CASE_METHOD(
     ArrayFx,
     "C API: Test opening array at timestamp, reads",
     "[capi][array][open-at][reads]") {
-  std::string temp_dir;
-  if (supports_s3_)
-    temp_dir = S3_TEMP_DIR;
-  else if (supports_azure_)
-    temp_dir = AZURE_TEMP_DIR;
-  else if (supports_hdfs_)
-    temp_dir = HDFS_TEMP_DIR;
-  else
-    temp_dir = FILE_URI_PREFIX + FILE_TEMP_DIR;
+  // TODO: refactor for each supported FS.
+  std::string temp_dir = fs_vec_[0]->temp_dir();
 
   std::string array_name = temp_dir + "array-open-at-reads";
   SECTION("- without encryption") {
@@ -1118,15 +991,8 @@ TEST_CASE_METHOD(
     ArrayFx,
     "C API: Test opening array at timestamp, writes",
     "[capi][array][open-at][writes]") {
-  std::string temp_dir;
-  if (supports_s3_)
-    temp_dir = S3_TEMP_DIR;
-  else if (supports_azure_)
-    temp_dir = AZURE_TEMP_DIR;
-  else if (supports_hdfs_)
-    temp_dir = HDFS_TEMP_DIR;
-  else
-    temp_dir = FILE_URI_PREFIX + FILE_TEMP_DIR;
+  // TODO: refactor for each supported FS.
+  std::string temp_dir = fs_vec_[0]->temp_dir();
 
   std::string array_name = temp_dir + "array-open-at-writes";
   SECTION("- without encryption") {
@@ -1296,7 +1162,8 @@ TEST_CASE_METHOD(
     ArrayFx,
     "C API: Check writing coordinates out of bounds",
     "[capi], [array], [array-write-coords-oob]") {
-  std::string temp_dir = FILE_URI_PREFIX + FILE_TEMP_DIR;
+  SupportedFsLocal local_fs;
+  std::string temp_dir = local_fs.file_prefix() + local_fs.temp_dir();
   std::string array_name = temp_dir + "array-write-coords-oob";
   create_temp_dir(temp_dir);
 
@@ -1468,8 +1335,10 @@ TEST_CASE_METHOD(
 
 TEST_CASE_METHOD(
     ArrayFx, "C API: Test empty array", "[capi], [array], [array-empty]") {
-  std::string array_name = FILE_URI_PREFIX + FILE_TEMP_DIR + "array_empty";
-  create_temp_dir(FILE_URI_PREFIX + FILE_TEMP_DIR);
+  SupportedFsLocal local_fs;
+  std::string array_name =
+      local_fs.file_prefix() + local_fs.temp_dir() + "array_empty";
+  create_temp_dir(local_fs.file_prefix() + local_fs.temp_dir());
 
   create_sparse_vector(array_name);
 
@@ -1512,22 +1381,15 @@ TEST_CASE_METHOD(
   tiledb_array_free(&array);
   tiledb_query_free(&query);
 
-  remove_temp_dir(FILE_URI_PREFIX + FILE_TEMP_DIR);
+  remove_temp_dir(local_fs.file_prefix() + local_fs.temp_dir());
 }
 
 TEST_CASE_METHOD(
     ArrayFx,
     "C API: Test array with no filelocks",
     "[capi], [array], [array-no-filelocks]") {
-  std::string temp_dir;
-  if (supports_s3_)
-    temp_dir = S3_TEMP_DIR;
-  else if (supports_azure_)
-    temp_dir = AZURE_TEMP_DIR;
-  else if (supports_hdfs_)
-    temp_dir = HDFS_TEMP_DIR;
-  else
-    temp_dir = FILE_URI_PREFIX + FILE_TEMP_DIR;
+  // TODO: refactor for each supported FS.
+  std::string temp_dir = fs_vec_[0]->temp_dir();
 
   std::string array_name = temp_dir + "array-no-filelocks";
 
@@ -1543,56 +1405,9 @@ TEST_CASE_METHOD(
       tiledb_config_set(config, "vfs.file.enable_filelocks", "false", &error) ==
       TILEDB_OK);
   REQUIRE(error == nullptr);
-  if (supports_s3_) {
-#ifndef TILEDB_TESTS_AWS_S3_CONFIG
-    REQUIRE(
-        tiledb_config_set(
-            config, "vfs.s3.endpoint_override", "localhost:9999", &error) ==
-        TILEDB_OK);
-    REQUIRE(
-        tiledb_config_set(config, "vfs.s3.scheme", "https", &error) ==
-        TILEDB_OK);
-    REQUIRE(
-        tiledb_config_set(
-            config, "vfs.s3.use_virtual_addressing", "false", &error) ==
-        TILEDB_OK);
-    REQUIRE(
-        tiledb_config_set(
-            config, "vfs.s3.ca_path", test_ca_path.c_str(), &error) ==
-        TILEDB_OK);
-    REQUIRE(
-        tiledb_config_set(config, "vfs.s3.verify_ssl", "false", &error) ==
-        TILEDB_OK);
-    REQUIRE(error == nullptr);
-#endif
-  }
-  if (supports_azure_) {
-    REQUIRE(
-        tiledb_config_set(
-            config,
-            "vfs.azure.storage_account_name",
-            "devstoreaccount1",
-            &error) == TILEDB_OK);
-    REQUIRE(
-        tiledb_config_set(
-            config,
-            "vfs.azure.storage_account_key",
-            "Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/"
-            "K1SZFPTOtr/KBHBeksoGMGw==",
-            &error) == TILEDB_OK);
-    REQUIRE(
-        tiledb_config_set(
-            config,
-            "vfs.azure.blob_endpoint",
-            "127.0.0.1:10000/devstoreaccount1",
-            &error) == TILEDB_OK);
-    REQUIRE(
-        tiledb_config_set(config, "vfs.azure.use_https", "false", &error) ==
-        TILEDB_OK);
-  }
-  REQUIRE(tiledb_ctx_alloc(config, &ctx_) == TILEDB_OK);
-  REQUIRE(error == nullptr);
-  REQUIRE(tiledb_vfs_alloc(ctx_, config, &vfs_) == TILEDB_OK);
+
+  REQUIRE(vfs_test_init(fs_vec_, &ctx_, &vfs_, config).ok());
+
   tiledb_config_free(&config);
 
   create_temp_dir(temp_dir);
@@ -1673,9 +1488,10 @@ TEST_CASE_METHOD(
     "C API: Test query errors, getting subarray info from write queries in "
     "sparse arrays",
     "[capi][query][error][sparse]") {
+  SupportedFsLocal local_fs;
   std::string array_name =
-      FILE_URI_PREFIX + FILE_TEMP_DIR + "query_error_sparse";
-  create_temp_dir(FILE_URI_PREFIX + FILE_TEMP_DIR);
+      local_fs.file_prefix() + local_fs.temp_dir() + "query_error_sparse";
+  create_temp_dir(local_fs.file_prefix() + local_fs.temp_dir());
 
   create_sparse_vector(array_name);
 
@@ -1712,16 +1528,17 @@ TEST_CASE_METHOD(
   tiledb_array_free(&array);
   tiledb_query_free(&query);
 
-  remove_temp_dir(FILE_URI_PREFIX + FILE_TEMP_DIR);
+  remove_temp_dir(local_fs.file_prefix() + local_fs.temp_dir());
 }
 
 TEST_CASE_METHOD(
     ArrayFx,
     "C API: Test query errors, dense writes",
     "[capi][query][error][dense]") {
+  SupportedFsLocal local_fs;
   std::string array_name =
-      FILE_URI_PREFIX + FILE_TEMP_DIR + "query_error_dense";
-  create_temp_dir(FILE_URI_PREFIX + FILE_TEMP_DIR);
+      local_fs.file_prefix() + local_fs.temp_dir() + "query_error_dense";
+  create_temp_dir(local_fs.file_prefix() + local_fs.temp_dir());
 
   create_dense_array(array_name);
 
@@ -1786,16 +1603,17 @@ TEST_CASE_METHOD(
   tiledb_array_free(&array);
   tiledb_query_free(&query);
 
-  remove_temp_dir(FILE_URI_PREFIX + FILE_TEMP_DIR);
+  remove_temp_dir(local_fs.file_prefix() + local_fs.temp_dir());
 }
 
 TEST_CASE_METHOD(
     ArrayFx,
     "C API: Test query errors, dense unordered writes",
     "[capi][query][error][dense]") {
+  SupportedFsLocal local_fs;
   std::string array_name =
-      FILE_URI_PREFIX + FILE_TEMP_DIR + "query_error_dense";
-  create_temp_dir(FILE_URI_PREFIX + FILE_TEMP_DIR);
+      local_fs.file_prefix() + local_fs.temp_dir() + "query_error_dense";
+  create_temp_dir(local_fs.file_prefix() + local_fs.temp_dir());
 
   create_dense_array(array_name);
 
@@ -1841,16 +1659,17 @@ TEST_CASE_METHOD(
   tiledb_array_free(&array);
   tiledb_query_free(&query);
 
-  remove_temp_dir(FILE_URI_PREFIX + FILE_TEMP_DIR);
+  remove_temp_dir(local_fs.file_prefix() + local_fs.temp_dir());
 }
 
 TEST_CASE_METHOD(
     ArrayFx,
     "C API: Test query errors, dense reads in global order",
     "[capi][query][error][dense]") {
+  SupportedFsLocal local_fs;
   std::string array_name =
-      FILE_URI_PREFIX + FILE_TEMP_DIR + "query_error_dense";
-  create_temp_dir(FILE_URI_PREFIX + FILE_TEMP_DIR);
+      local_fs.file_prefix() + local_fs.temp_dir() + "query_error_dense";
+  create_temp_dir(local_fs.file_prefix() + local_fs.temp_dir());
 
   create_dense_array(array_name);
 
@@ -1892,5 +1711,5 @@ TEST_CASE_METHOD(
   tiledb_array_free(&array);
   tiledb_query_free(&query);
 
-  remove_temp_dir(FILE_URI_PREFIX + FILE_TEMP_DIR);
+  remove_temp_dir(local_fs.file_prefix() + local_fs.temp_dir());
 }
