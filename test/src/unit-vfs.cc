@@ -325,15 +325,12 @@ TEST_CASE("VFS: URI semantics", "[vfs][uri]") {
 
   for (const auto& fs : fs_vec) {
     std::string temp_dir = fs->temp_dir();
-    std::cerr << "TEMP DIR: " << temp_dir << std::endl;
-    URI temp_dir_uri = URI(temp_dir);
+    REQUIRE(vfs->create_dir(URI(temp_dir)).ok());
 
     std::string dir1 = temp_dir + "dir1";
-    std::cerr << "DIR1: " << dir1 << std::endl;
     REQUIRE(vfs->create_dir(URI(dir1)).ok());
 
     std::string dir2 = temp_dir + "dir1/dir2/";
-    std::cerr << "DIR2: " << dir2 << std::endl;
     REQUIRE(vfs->create_dir(URI(dir2)).ok());
 
     URI file1(temp_dir + "file1");
@@ -356,43 +353,37 @@ TEST_CASE("VFS: URI semantics", "[vfs][uri]") {
 
     std::vector<std::string> expected_uri_names = {"file1", "file2", "dir1"};
 
-    /*
-        for (const auto& dir : temp_dirs) {
-          // Ensure that the URIs do not contain a trailing backslash.
-          REQUIRE(dir.back() != '/');
+    for (const auto& dir : temp_dirs) {
+      // Ensure that the URIs do not contain a trailing backslash.
+      REQUIRE(dir.to_string().back() != '/');
 
-          // Get the trailing file/dir name.
-          const size_t idx = dir.find_last_of('/');
-          REQUIRE(idx != std::string::npos);
-          const std::string trailing_name =
-              dir.substr(idx + 1, dir.length());
+      // Get the trailing file/dir name.
+      const size_t idx = dir.to_string().find_last_of('/');
+      REQUIRE(idx != std::string::npos);
+      const std::string trailing_name =
+          dir.to_string().substr(idx + 1, dir.to_string().length());
 
-          // Verify we expected this file/dir name.
-          const auto iter = std::find(
-              expected_uri_names.begin(), expected_uri_names.end(),
-       trailing_name); REQUIRE(iter != expected_uri_names.end());
+      // Verify we expected this file/dir name.
+      const auto iter = std::find(
+          expected_uri_names.begin(), expected_uri_names.end(), trailing_name);
+      REQUIRE(iter != expected_uri_names.end());
 
-          // Erase it from the expected names vector to ensure
-          // we see each expected name exactly once.
-          REQUIRE(
-              std::count(
-                  expected_uri_names.begin(),
-                  expected_uri_names.end(),
-                  trailing_name) == 1);
-          expected_uri_names.erase(iter);
-        }
-        */
+      // Erase it from the expected names vector to ensure
+      // we see each expected name exactly once.
+      REQUIRE(
+          std::count(
+              expected_uri_names.begin(),
+              expected_uri_names.end(),
+              trailing_name) == 1);
+      expected_uri_names.erase(iter);
+    }
 
     // Verify we found all expected file/dir names.
-    // REQUIRE(expected_uri_names.empty());
+    REQUIRE(expected_uri_names.empty());
 
-    /*
-      if (root.is_s3() || root.is_azure()) {
-        REQUIRE(vfs.remove_bucket(root).ok());
-      } else {
-        REQUIRE(vfs.remove_dir(root).ok());
-      }
-      */
+    // Close vfs test
+    REQUIRE(vfs_test_close(fs_vec, ctx_, c_vfs).ok());
+
     vfs->terminate();
   }
 }
