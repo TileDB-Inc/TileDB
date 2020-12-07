@@ -449,6 +449,38 @@ uint64_t common_prefix_size(const std::string& a, const std::string& b) {
   return size;
 }
 
+std::string rest_components_from_url(const std::string& url) {
+  std::string path = URI::to_path(url);
+
+  std::string path_delimiter = "/";
+  std::vector<std::string> path_parts{};
+
+  size_t url_pos = 0;
+  size_t url_current_pos = 0;
+  while ((url_pos = path.find(path_delimiter)) != std::string::npos) {
+    path_parts.push_back(url.substr(url_current_pos, url_pos));
+    path = path.substr(url_pos + path_delimiter.length(), path.length());
+    url_current_pos = url_pos;
+  }
+
+  std::string array_ns;
+  std::string array_uri;
+  // Find rest components array_ns and array_uri
+  for (std::vector<std::string>::iterator part_it = path_parts.begin();
+       part_it != path_parts.end();
+       ++part_it) {
+    if (*part_it == "arrays") {
+      // Get the next two records that refer to array_ns and array_uri
+      // accordingly
+      array_ns = *(++part_it);
+      array_uri = *(++part_it);
+      break;
+    }
+  }
+  return (!array_ns.empty() && array_uri.empty()) ? array_ns + ":" + array_uri :
+                                                    std::string();
+}
+
 }  // namespace parse
 
 /* ****************************** */

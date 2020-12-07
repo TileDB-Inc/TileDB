@@ -280,10 +280,12 @@ class RestClient {
   /**
    * Helper function encapsulating the functionality of looking up for cached
    * redirected rest server addresses to avoid the redirection overhead
-   *
+   * @param array_ns Array namespace
+   * @param array_uri Array URI
    * @return Returns the redirection URI if exists and empty string otherwise
    */
-  std::string redirect_uri();
+  std::string redirect_uri(
+      const std::string& array_ns, const std::string& array_uri);
 };
 
 }  // namespace sm

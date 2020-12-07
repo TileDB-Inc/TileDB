@@ -106,8 +106,8 @@ Status RestClient::get_array_schema_from_rest(
       curlc.init(config_, extra_headers_, &redirect_meta_, &redirect_mtx_));
   std::string array_ns, array_uri;
   RETURN_NOT_OK(uri.get_rest_components(&array_ns, &array_uri));
-  std::string url = redirect_uri() + "/v1/arrays/" + array_ns + "/" +
-                    curlc.url_escape(array_uri);
+  std::string url = redirect_uri(array_ns, array_uri) + "/v1/arrays/" +
+                    array_ns + "/" + curlc.url_escape(array_uri);
 
   // Get the data
   Buffer returned_data;
@@ -135,8 +135,8 @@ Status RestClient::post_array_schema_to_rest(
       curlc.init(config_, extra_headers_, &redirect_meta_, &redirect_mtx_));
   std::string array_ns, array_uri;
   RETURN_NOT_OK(uri.get_rest_components(&array_ns, &array_uri));
-  auto deduced_url = redirect_uri() + "/v1/arrays/" + array_ns + "/" +
-                     curlc.url_escape(array_uri);
+  auto deduced_url = redirect_uri(array_ns, array_uri) + "/v1/arrays/" +
+                     array_ns + "/" + curlc.url_escape(array_uri);
   Buffer returned_data;
   Status sc = curlc.post_data(
       deduced_url, serialization_type_, &serialized, &returned_data);
@@ -150,8 +150,9 @@ Status RestClient::deregister_array_from_rest(const URI& uri) {
       curlc.init(config_, extra_headers_, &redirect_meta_, &redirect_mtx_));
   std::string array_ns, array_uri;
   RETURN_NOT_OK(uri.get_rest_components(&array_ns, &array_uri));
-  std::string url = redirect_uri() + "/v1/arrays/" + array_ns + "/" +
-                    curlc.url_escape(array_uri) + "/deregister";
+  std::string url = redirect_uri(array_ns, array_uri) + "/v1/arrays/" +
+                    array_ns + "/" + curlc.url_escape(array_uri) +
+                    "/deregister";
 
   Buffer returned_data;
   return curlc.delete_data(url, serialization_type_, &returned_data);
@@ -172,8 +173,8 @@ Status RestClient::get_array_non_empty_domain(
       curlc.init(config_, extra_headers_, &redirect_meta_, &redirect_mtx_));
   std::string array_ns, array_uri;
   RETURN_NOT_OK(array->array_uri().get_rest_components(&array_ns, &array_uri));
-  std::string url = redirect_uri() + "/v2/arrays/" + array_ns + "/" +
-                    curlc.url_escape(array_uri) +
+  std::string url = redirect_uri(array_ns, array_uri) + "/v2/arrays/" +
+                    array_ns + "/" + curlc.url_escape(array_uri) +
                     "/non_empty_domain?timestamp=" + std::to_string(timestamp);
 
   // Get the data
@@ -210,9 +211,9 @@ Status RestClient::get_array_max_buffer_sizes(
       curlc.init(config_, extra_headers_, &redirect_meta_, &redirect_mtx_));
   std::string array_ns, array_uri;
   RETURN_NOT_OK(uri.get_rest_components(&array_ns, &array_uri));
-  std::string url = redirect_uri() + "/v1/arrays/" + array_ns + "/" +
-                    curlc.url_escape(array_uri) + "/max_buffer_sizes" +
-                    subarray_query_param;
+  std::string url = redirect_uri(array_ns, array_uri) + "/v1/arrays/" +
+                    array_ns + "/" + curlc.url_escape(array_uri) +
+                    "/max_buffer_sizes" + subarray_query_param;
 
   // Get the data
   Buffer returned_data;
@@ -241,8 +242,8 @@ Status RestClient::get_array_metadata_from_rest(
       curlc.init(config_, extra_headers_, &redirect_meta_, &redirect_mtx_));
   std::string array_ns, array_uri;
   RETURN_NOT_OK(uri.get_rest_components(&array_ns, &array_uri));
-  std::string url = redirect_uri() + "/v1/arrays/" + array_ns + "/" +
-                    curlc.url_escape(array_uri) +
+  std::string url = redirect_uri(array_ns, array_uri) + "/v1/arrays/" +
+                    array_ns + "/" + curlc.url_escape(array_uri) +
                     "/array_metadata?timestamp=" + std::to_string(timestamp);
 
   // Get the data
@@ -274,8 +275,9 @@ Status RestClient::post_array_metadata_to_rest(const URI& uri, Array* array) {
       curlc.init(config_, extra_headers_, &redirect_meta_, &redirect_mtx_));
   std::string array_ns, array_uri;
   RETURN_NOT_OK(uri.get_rest_components(&array_ns, &array_uri));
-  std::string url = redirect_uri() + "/v1/arrays/" + array_ns + "/" +
-                    curlc.url_escape(array_uri) + "/array_metadata";
+  std::string url = redirect_uri(array_ns, array_uri) + "/v1/arrays/" +
+                    array_ns + "/" + curlc.url_escape(array_uri) +
+                    "/array_metadata";
 
   // Put the data
   Buffer returned_data;
@@ -317,8 +319,8 @@ Status RestClient::post_query_submit(
       curlc.init(config_, extra_headers_, &redirect_meta_, &redirect_mtx_));
   std::string array_ns, array_uri;
   RETURN_NOT_OK(uri.get_rest_components(&array_ns, &array_uri));
-  std::string url = redirect_uri() + "/v2/arrays/" + array_ns + "/" +
-                    curlc.url_escape(array_uri) +
+  std::string url = redirect_uri(array_ns, array_uri) + "/v2/arrays/" +
+                    array_ns + "/" + curlc.url_escape(array_uri) +
                     "/query/submit?type=" + query_type_str(query->type()) +
                     "&read_all=" + (resubmit_incomplete_ ? "true" : "false");
 
@@ -534,8 +536,8 @@ Status RestClient::finalize_query_to_rest(const URI& uri, Query* query) {
       curlc.init(config_, extra_headers_, &redirect_meta_, &redirect_mtx_));
   std::string array_ns, array_uri;
   RETURN_NOT_OK(uri.get_rest_components(&array_ns, &array_uri));
-  std::string url = redirect_uri() + "/v1/arrays/" + array_ns + "/" +
-                    curlc.url_escape(array_uri) +
+  std::string url = redirect_uri(array_ns, array_uri) + "/v1/arrays/" +
+                    array_ns + "/" + curlc.url_escape(array_uri) +
                     "/query/finalize?type=" + query_type_str(query->type());
   Buffer returned_data;
   RETURN_NOT_OK(
@@ -668,7 +670,7 @@ Status RestClient::get_query_est_result_sizes(const URI& uri, Query* query) {
   std::string array_ns, array_uri;
   RETURN_NOT_OK(uri.get_rest_components(&array_ns, &array_uri));
   std::string url =
-      redirect_uri() + "/v1/arrays/" + array_ns + "/" +
+      redirect_uri(array_ns, array_uri) + "/v1/arrays/" + array_ns + "/" +
       curlc.url_escape(array_uri) +
       "/query/est_result_sizes?type=" + query_type_str(query->type());
 
@@ -687,11 +689,14 @@ Status RestClient::get_query_est_result_sizes(const URI& uri, Query* query) {
   return serialization::query_est_result_size_deserialize(
       query, serialization_type_, true, returned_data);
 }
-std::string RestClient::redirect_uri() {
+
+std::string RestClient::redirect_uri(
+    const std::string& array_ns, const std::string& array_uri) {
+  const std::string redirect_key = array_ns + ":" + array_uri;
   std::unique_lock<std::mutex> rd_lck(redirect_mtx_);
-  std::unordered_map<std::string, std::string>::const_iterator got =
-      redirect_meta_.find(constants::redirection_header_key);
-  return (got == redirect_meta_.end()) ? rest_server_ : got->second;
+  std::unordered_map<std::string, std::string>::const_iterator cache_it =
+      redirect_meta_.find(redirect_key);
+  return (cache_it == redirect_meta_.end()) ? rest_server_ : cache_it->second;
 }
 
 #else

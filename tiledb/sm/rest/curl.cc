@@ -33,6 +33,7 @@
 #include "tiledb/sm/rest/curl.h"
 #include "tiledb/common/logger.h"
 #include "tiledb/sm/global_state/global_state.h"
+#include "tiledb/sm/misc/uri.h"
 #include "tiledb/sm/misc/utils.h"
 
 #include <cstring>
@@ -193,30 +194,31 @@ static int buffer_list_seek_callback(
  * @param userdata the userdata argument is set with CURLOPT_HEADERDATA
  * @return
  */
-size_t OnReceiveData(
+size_t write_header_callback(
     void* res_data, size_t size, size_t count, void* userdata) {
-  //  size_t length = size * count;
-  size_t index = size * count;
-  auto* buffer = static_cast<char*>(res_data);
-
-  //  while (index < length) {
-  //    char* temp = buffer + index;
-  //    if ((temp[0] == '\r') || (temp[0] == '\n'))
-  //      break;
-  //    index++;
-  //  }
-
-  std::string str(buffer, index);
-  size_t pos = str.find(": ");
+  size_t header_length = size * count;
+  auto* header_buffer = static_cast<char*>(res_data);
   auto* pmHeader = static_cast<HeaderCbData*>(userdata);
-  if (pos != std::string::npos) {
-    if (str.substr(0, pos) == constants::redirection_header_key) {
+
+  std::string header(header_buffer, header_length);
+  const size_t header_key_end_pos = header.find(": ");
+  if (header_key_end_pos != std::string::npos) {
+    std::string header_key = header.substr(0, header_key_end_pos);
+    std::transform(
+        header_key.begin(), header_key.end(), header_key.begin(), ::tolower);
+
+    if (header_key == constants::redirection_header_key) {
       std::unique_lock<std::mutex> rd_lck(*(pmHeader->redirect_uri_map_lock));
+
+      // Hardcoded substraction of 2 for trailing CRLF characters of header
+      // response `header_length`
+      const std::string header_value =
+          header.substr(header_key_end_pos + 2, header_length - 2);
       pmHeader->redirect_uri_map->insert(
-          std::make_pair(pmHeader->uri, str.substr(pos + 2, index - 1)));
+          std::make_pair(pmHeader->uri, header_value));
     }
   }
-  return count;
+  return size * count;
 }
 
 Curl::Curl()
@@ -254,21 +256,22 @@ Status Curl::init(
     return LOG_STATUS(Status::RestError(
         "Error initializing libcurl; failed to set CURLOPT_ERRORBUFFER"));
 
-  rc = curl_easy_setopt(curl_.get(), CURLOPT_HEADERFUNCTION, OnReceiveData);
+  rc = curl_easy_setopt(
+      curl_.get(), CURLOPT_HEADERFUNCTION, write_header_callback);
   if (rc != CURLE_OK)
     return LOG_STATUS(Status::RestError(
         "Error initializing libcurl; failed to set CURLOPT_HEADERFUNCTION"));
 
-  rc = curl_easy_setopt(curl_.get(), CURLOPT_HEADER, 1);
+  rc = curl_easy_setopt(curl_.get(), CURLOPT_HEADER, 0);
   if (rc != CURLE_OK)
     return LOG_STATUS(Status::RestError(
-        "Error initializing libcurl; failed to set CURLOPT_HEADERFUNCTION"));
+        "Error initializing libcurl; failed to set CURLOPT_HEADER"));
 
   /* set url to fetch */
   rc = curl_easy_setopt(curl_.get(), CURLOPT_HEADERDATA, &headerData);
   if (rc != CURLE_OK)
     return LOG_STATUS(Status::RestError(
-        "Error initializing libcurl; failed to set CURLOPT_HEADERFUNCTION"));
+        "Error initializing libcurl; failed to set CURLOPT_HEADERDATA"));
 
   // Ignore ssl validation if the user has set rest.ignore_ssl_validation = true
   const char* ignore_ssl_validation_str = nullptr;
@@ -287,7 +290,8 @@ Status Curl::init(
 
 #ifdef __linux__
   // Get CA Cert bundle file from global state. This is initialized and cached
-  // if detected. We have only had issues with finding the certificate path on
+  // if detected. We have only had issues with finding the certificate path
+  // on
   // Linux.
   const std::string cert_file =
       global_state::GlobalState::GetGlobalState().cert_file();
@@ -451,6 +455,9 @@ Status Curl::make_curl_request_common(
     /* set maximum allowed redirects */
     curl_easy_setopt(curl, CURLOPT_MAXREDIRS, 1);
 
+    /* enable forwarding auth to redirects */
+    curl_easy_setopt(curl, CURLOPT_UNRESTRICTED_AUTH, 1L);
+
     /* fetch the url */
     CURLcode tmp_curl_code = curl_easy_perform(curl);
     /* If Curl call was successful (not http status, but no socket error, etc)
@@ -538,7 +545,7 @@ Status Curl::post_data(
   RETURN_NOT_OK(post_data_common(serialization_type, data, &headers));
 
   CURLcode ret;
-  headerData.uri = url;
+  headerData.uri = utils::parse::rest_components_from_url(url);
   auto st = make_curl_request(url.c_str(), &ret, returned_data);
 
   curl_slist_free_all(headers);
@@ -559,7 +566,8 @@ Status Curl::post_data(
   RETURN_NOT_OK(post_data_common(serialization_type, data, &headers));
 
   CURLcode ret;
-  headerData.uri = url;
+  headerData.uri = utils::parse::rest_components_from_url(url);
+  ;
   auto st = make_curl_request(url.c_str(), &ret, std::move(cb));
   curl_slist_free_all(headers);
   RETURN_NOT_OK(st);
@@ -629,7 +637,8 @@ Status Curl::get_data(
   curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
 
   CURLcode ret;
-  headerData.uri = url;
+  headerData.uri = utils::parse::rest_components_from_url(url);
+  ;
   auto st = make_curl_request(url.c_str(), &ret, returned_data);
   curl_slist_free_all(headers);
   RETURN_NOT_OK(st);
@@ -663,7 +672,8 @@ Status Curl::delete_data(
   curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
 
   CURLcode ret;
-  headerData.uri = url;
+  headerData.uri = utils::parse::rest_components_from_url(url);
+  ;
   auto st = make_curl_request(url.c_str(), &ret, returned_data);
   curl_slist_free_all(headers);
   RETURN_NOT_OK(st);
