@@ -153,9 +153,22 @@ class SupportedFsS3 : public SupportedFs {
    * filesystem's configuration
    *
    * @param config Configuration parameters
+   * @param error Error parameter
    * @return Status OK if successful
    */
   virtual Status prepare_config(tiledb_config_t* config, tiledb_error_t* error);
+
+  /**
+   * Returns Status upon setting up the associated
+   * filesystem's number of threads
+   *
+   * @param config Configuration parameters
+   * @param error Error parameter
+   * @param num_threads Number of threads
+   * @return Status OK if successful
+   */
+  virtual Status prepare_threads(
+      tiledb_config_t* config, tiledb_error_t* error, unsigned num_threads);
 
   /**
    * Creates bucket if does not exist
@@ -181,6 +194,13 @@ class SupportedFsS3 : public SupportedFs {
    * @return string directory name
    */
   virtual std::string temp_dir();
+
+  /**
+   * Get the name of the filesystem's bucket
+   *
+   * @return string bucket name
+   */
+  virtual std::string bucket();
 
  private:
   /* ********************************* */
@@ -217,6 +237,7 @@ class SupportedFsHDFS : public SupportedFs {
    * No-op
    *
    * @param config Configuration parameters
+   * @param error Error parameter
    * @return Status OK if successful
    */
   virtual Status prepare_config(tiledb_config_t* config, tiledb_error_t* error);
@@ -278,6 +299,7 @@ class SupportedFsAzure : public SupportedFs {
    * filesystem's configuration
    *
    * @param config Configuration parameters
+   * @param error Error parameter
    * @return Status OK if successful
    */
   virtual Status prepare_config(tiledb_config_t* config, tiledb_error_t* error);
@@ -350,9 +372,22 @@ class SupportedFsLocal : public SupportedFs {
    * No-op
    *
    * @param config Configuration parameters
+   * @param error Error parameter
    * @return Status OK if successful
    */
   virtual Status prepare_config(tiledb_config_t* config, tiledb_error_t* error);
+
+  /**
+   * Returns Status upon setting up the associated
+   * filesystem's number of threads
+   *
+   * @param config Configuration parameters
+   * @param error Error parameter
+   * @param num_threads Number of threads
+   * @return Status OK if successful
+   */
+  virtual Status prepare_threads(
+      tiledb_config_t* config, tiledb_error_t* error, unsigned num_threads);
 
   /**
    * No-op
@@ -405,6 +440,66 @@ class SupportedFsLocal : public SupportedFs {
   /** The file prefix name of the Posix filesystem. */
   std::string file_prefix_;
 #endif
+};
+
+/**
+ * This class provides support for
+ * the Mem filesystem.
+ */
+class SupportedFsMem : public SupportedFs {
+ public:
+  SupportedFsMem()
+      : temp_dir_("mem://tiledb_test/") {
+  }
+
+  ~SupportedFsMem() = default;
+
+  /* ********************************* */
+  /*               API                 */
+  /* ********************************* */
+
+  /**
+   * Returns Status upon setting up the associated
+   * filesystem's configuration
+   *
+   * @param config Configuration parameters
+   * @param error Error parameter
+   * @return Status OK if successful
+   */
+  virtual Status prepare_config(tiledb_config_t* config, tiledb_error_t* error);
+
+  /**
+   * Creates container if does not exist
+   *
+   * @param ctx The TileDB context.
+   * @param vfs The VFS object.
+   * @return Status OK if successful
+   */
+  virtual Status init(tiledb_ctx_t* ctx, tiledb_vfs_t* vfs);
+
+  /**
+   * Removes container if exists
+   *
+   * @param ctx The TileDB context.
+   * @param vfs The VFS object.
+   * @return Status OK if successful
+   */
+  virtual Status close(tiledb_ctx_t* ctx, tiledb_vfs_t* vfs);
+
+  /**
+   * Get the name of the filesystem's directory
+   *
+   * @return string directory name
+   */
+  virtual std::string temp_dir();
+
+ private:
+  /* ********************************* */
+  /*           ATTRIBUTES              */
+  /* ********************************* */
+
+  /** The directory name of the Mem filesystem. */
+  std::string temp_dir_;
 };
 
 }  // End of namespace test
