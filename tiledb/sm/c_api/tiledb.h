@@ -983,6 +983,10 @@ TILEDB_EXPORT void tiledb_config_free(tiledb_config_t** config);
  *    The memory budget for tiles of var-sized attributes
  *    to be fetched during reads.<br>
  *    **Default**: 10GB
+ * - `sm.var_offsets.bitsize` <br>
+ *    The size of offsets in bits to be used for offset buffers of var-sized
+ *    attributes<br>
+ *    **Default**: 64
  * - `sm.var_offsets.extra_element` <br>
  *    Add an extra element to the end of the offsets buffer of var-sized
  *    attributes which will point to the end of the values buffer.<br>
