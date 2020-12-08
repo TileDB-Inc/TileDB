@@ -1,4 +1,4 @@
-/**
+/**      -*-C++-*-
  * vim: set ft=cpp:
  * @file   arrowio
  *
@@ -86,7 +86,7 @@ private:
   ArrowExporter* exporter_;
 };
 
-};  // end namespace arrow
-};  // end namespace tiledb
+}  // end namespace arrow
+}  // end namespace tiledb
 
 #include "arrow_io_impl.h"

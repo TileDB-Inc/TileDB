@@ -829,8 +829,8 @@ void query_set_buffer_arrow_array(
   importer.import_(name, arw_array, arw_schema);
 }
 
-};  // end namespace arrow
-};  // end namespace tiledb
+}  // end namespace arrow
+}  // end namespace tiledb
 
 /* End TileDB Arrow IO public API implementation */
 /* ************************************************************************ */
