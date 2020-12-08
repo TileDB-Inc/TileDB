@@ -165,6 +165,10 @@ Status SupportedFsS3::close(tiledb_ctx_t* ctx, tiledb_vfs_t* vfs) {
     CHECK(tiledb_vfs_remove_bucket(ctx, vfs, s3_bucket_.c_str()) == TILEDB_OK);
   }
 
+  rc = tiledb_vfs_is_bucket(ctx, vfs, s3_bucket_.c_str(), &is_bucket);
+  REQUIRE(rc == TILEDB_OK);
+  REQUIRE(!is_bucket);
+
   return Status::Ok();
 }
 
