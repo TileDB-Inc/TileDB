@@ -212,8 +212,9 @@ size_t write_header_callback(
 
       // Hardcoded substraction of 2 for trailing CRLF characters of header
       // response `header_length`
-      const std::string header_value =
-          header.substr(header_key_end_pos + 2, header_length - 2);
+      header.substr(
+          header_key_end_pos + 2, header_length - header_key_end_pos - 4) +
+          "\0";
       pmHeader->redirect_uri_map->insert(
           std::make_pair(pmHeader->uri, header_value));
     }
@@ -638,7 +639,6 @@ Status Curl::get_data(
 
   CURLcode ret;
   headerData.uri = utils::parse::rest_components_from_url(url);
-  ;
   auto st = make_curl_request(url.c_str(), &ret, returned_data);
   curl_slist_free_all(headers);
   RETURN_NOT_OK(st);
