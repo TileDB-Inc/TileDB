@@ -4314,6 +4314,61 @@ TILEDB_EXPORT int32_t tiledb_query_get_est_result_size_var(
     uint64_t* size_val);
 
 /**
+ * Retrieves the estimated result size for a fixed-sized, nullable attribute.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * uint64_t size_val;
+ * uint64_t size_validity;
+ * tiledb_query_get_est_result_size_nullable(ctx, query, "a", &size_val,
+ * &size_validity);
+ * @endcode
+ *
+ * @param ctx The TileDB context
+ * @param query The query.
+ * @param name The attribute name.
+ * @param size_val The size of the values (in bytes) to be retrieved.
+ * @param size_validity The size of the validity values (in bytes) to be
+ * retrieved.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_query_get_est_result_size_nullable(
+    tiledb_ctx_t* ctx,
+    const tiledb_query_t* query,
+    const char* name,
+    uint64_t* size_val,
+    uint64_t* size_validity);
+
+/**
+ * Retrieves the estimated result size for a var-sized, nullable attribute.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * uint64_t size_off, size_val, size_validity;
+ * tiledb_query_get_est_result_size_var_nullable(
+ *     ctx, query, "a", &size_off, &size_val, &size_validity);
+ * @endcode
+ *
+ * @param ctx The TileDB context
+ * @param query The query.
+ * @param name The attribute name.
+ * @param size_off The size of the offsets (in bytes) to be retrieved.
+ * @param size_val The size of the values (in bytes) to be retrieved.
+ * @param size_validity The size of the validity values (in bytes) to be
+ * retrieved.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_query_get_est_result_size_var_nullable(
+    tiledb_ctx_t* ctx,
+    const tiledb_query_t* query,
+    const char* name,
+    uint64_t* size_off,
+    uint64_t* size_val,
+    uint64_t* size_validity);
+
+/**
  * Retrieves the number of written fragments. Applicable only to WRITE
  * queries.
  *

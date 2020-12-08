@@ -153,6 +153,21 @@ Status Reader::get_est_result_size(
       name, size_off, size_val, storage_manager_->compute_tp());
 }
 
+Status Reader::get_est_result_size_nullable(
+    const char* name, uint64_t* size_val, uint64_t* size_validity) {
+  return subarray_.get_est_result_size_nullable(
+      name, size_val, size_validity, storage_manager_->compute_tp());
+}
+
+Status Reader::get_est_result_size_nullable(
+    const char* name,
+    uint64_t* size_off,
+    uint64_t* size_val,
+    uint64_t* size_validity) {
+  return subarray_.get_est_result_size_nullable(
+      name, size_off, size_val, size_validity, storage_manager_->compute_tp());
+}
+
 const ArraySchema* Reader::array_schema() const {
   return array_schema_;
 }
