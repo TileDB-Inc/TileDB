@@ -544,8 +544,8 @@ TEST_CASE(
     auto est_d = query.est_result_size("d");
     CHECK(est_d == 10 * sizeof(int32_t));
     CHECK(est_a1 == 10 * sizeof(int32_t));
-    CHECK(est_a2.first == 10);
-    CHECK(est_a2.second == 10 * sizeof(char));
+    CHECK(est_a2[0] == 80);
+    CHECK(est_a2[1] == 10 * sizeof(char));
     CHECK(est_a3 == 10 * 2 * sizeof(double));
   }
 
@@ -561,8 +561,8 @@ TEST_CASE(
     auto est_d = query.est_result_size("d");
     CHECK(est_d == 10 * sizeof(int32_t));
     CHECK(est_a1 == 10 * sizeof(int32_t));
-    CHECK(est_a2.first == 10);
-    CHECK(est_a2.second == 10 * 3 * sizeof(char));
+    CHECK(est_a2[0] == 80);
+    CHECK(est_a2[1] == 10 * 3 * sizeof(char));
     CHECK(est_a3 == 10 * 2 * sizeof(double));
   }
 
@@ -579,8 +579,8 @@ TEST_CASE(
     auto est_d = query.est_result_size("d");
     CHECK(est_d == 4 * sizeof(int32_t));
     CHECK(est_a1 == 4 * sizeof(int32_t));
-    CHECK(est_a2.first == 4);
-    CHECK(est_a2.second == 4 * sizeof(char));
+    CHECK(est_a2[0] == 32);
+    CHECK(est_a2[1] == 4 * sizeof(char));
     CHECK(est_a3 == 4 * 2 * sizeof(double));
   }
 
@@ -610,8 +610,8 @@ TEST_CASE(
     auto est_d = query.est_result_size("d");
     CHECK(est_d == 10 * sizeof(int32_t));
     CHECK(est_a1 == 10 * sizeof(int32_t));
-    CHECK(est_a2.first == 10);
-    CHECK(est_a2.second == 10 * sizeof(char));
+    CHECK(est_a2[0] == 80);
+    CHECK(est_a2[1] == 10 * sizeof(char));
     CHECK(est_a3 == 10 * 2 * sizeof(double));
   }
 
@@ -628,8 +628,8 @@ TEST_CASE(
     auto est_d = query.est_result_size("d");
     CHECK(est_d == 10 * sizeof(int32_t));
     CHECK(est_a1 == 10 * sizeof(int32_t));
-    CHECK(est_a2.first == 10);
-    CHECK(est_a2.second == 10 * 3 * sizeof(char));
+    CHECK(est_a2[0] == 80);
+    CHECK(est_a2[1] == 10 * 3 * sizeof(char));
     CHECK(est_a3 == 10 * 2 * sizeof(double));
   }
 
@@ -647,8 +647,8 @@ TEST_CASE(
     auto est_d = query.est_result_size("d");
     CHECK(est_d == 4 * sizeof(int32_t));
     CHECK(est_a1 == 4 * sizeof(int32_t));
-    CHECK(est_a2.first == 4);
-    CHECK(est_a2.second == 4 * sizeof(char));
+    CHECK(est_a2[0] == 32);
+    CHECK(est_a2[1] == 4 * sizeof(char));
     CHECK(est_a3 == 4 * 2 * sizeof(double));
   }
 

@@ -853,16 +853,16 @@ class Query {
    * **Example:**
    *
    * @code{.cpp}
-   * std::pair<uint64_t, uint64_t> est_size =
+   * std::array<uint64_t, 2> est_size =
    *     query.est_result_size_var("attr1");
    * @endcode
    *
    * @param attr_name The attribute name.
-   * @return A pair with first element containing the estimated number of
-   *    result offsets, and second element containing the estimated number of
-   *    result value bytes.
+   * @return A pair with first element containing the estimated size of
+   *    the result offsets in bytes, and second element containing the
+   *    estimated size of the result values in bytes.
    */
-  std::pair<uint64_t, uint64_t> est_result_size_var(
+  std::array<uint64_t, 2> est_result_size_var(
       const std::string& attr_name) const {
     auto& ctx = ctx_.get();
     uint64_t size_off = 0, size_val = 0;
@@ -872,7 +872,7 @@ class Query {
         attr_name.c_str(),
         &size_off,
         &size_val));
-    return std::make_pair(size_off / sizeof(uint64_t), size_val);
+    return {size_off, size_val};
   }
 
   /**
