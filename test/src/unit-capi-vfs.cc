@@ -89,14 +89,14 @@ void VFSFx::set_num_vfs_threads(unsigned num_threads) {
   if (ctx_ != nullptr)
     tiledb_ctx_free(&ctx_);
 
-  // Initialize vfs test
-  REQUIRE(vfs_test_init(fs_vec_, &ctx_, &vfs_).ok());
-
   // Create TileDB context
   tiledb_config_t* config = nullptr;
   tiledb_error_t* error = nullptr;
   REQUIRE(tiledb_config_alloc(&config, &error) == TILEDB_OK);
   REQUIRE(error == nullptr);
+
+  // Initialize vfs test
+  REQUIRE(vfs_test_init(fs_vec_, &ctx_, &vfs_, config).ok());
 
   SupportedFs* const fs = fs_vec_[0].get();
   if (dynamic_cast<SupportedFsS3*>(fs) != nullptr) {
@@ -117,15 +117,12 @@ void VFSFx::set_num_vfs_threads(unsigned num_threads) {
 void VFSFx::check_vfs(const std::string& path) {
   SupportedFs* const fs = fs_vec_[0].get();
   if (dynamic_cast<SupportedFsS3*>(fs) != nullptr) {
-    // Remove S3 bucket if exists
+    // Create S3 bucket
     SupportedFsS3 s3_fs;
     REQUIRE(s3_fs.init(ctx_, vfs_).ok());
 
     // Remove S3 bucket
     REQUIRE(s3_fs.close(ctx_, vfs_).ok());
-
-    // Create S3 bucket
-    REQUIRE(s3_fs.init(ctx_, vfs_).ok());
   }
 
   // Create directory, is directory, remove directory
