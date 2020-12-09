@@ -91,8 +91,6 @@ ReadCellSlabIterFx::ReadCellSlabIterFx()
   temp_dir_ = posix_fs.file_prefix() + posix_fs.temp_dir();
 #endif
 
-  // TODO: refactor for each supported FS.
-  temp_dir_ = fs_vec_[0]->temp_dir();
   create_dir(temp_dir_, ctx_, vfs_);
 
   array_name_ = temp_dir_ + ARRAY_NAME;

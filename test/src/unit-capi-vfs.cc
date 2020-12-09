@@ -121,7 +121,7 @@ void VFSFx::check_vfs(const std::string& path) {
     SupportedFsS3 s3_fs;
     REQUIRE(s3_fs.init(ctx_, vfs_).ok());
 
-    // Close S3 bucket
+    // Remove S3 bucket
     REQUIRE(s3_fs.close(ctx_, vfs_).ok());
   }
 
