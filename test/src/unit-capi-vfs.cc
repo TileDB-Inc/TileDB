@@ -117,15 +117,12 @@ void VFSFx::set_num_vfs_threads(unsigned num_threads) {
 void VFSFx::check_vfs(const std::string& path) {
   SupportedFs* const fs = fs_vec_[0].get();
   if (dynamic_cast<SupportedFsS3*>(fs) != nullptr) {
-    // Remove S3 bucket if exists
+    // Create S3 bucket
     SupportedFsS3 s3_fs;
     REQUIRE(s3_fs.init(ctx_, vfs_).ok());
 
     // Remove S3 bucket
     REQUIRE(s3_fs.close(ctx_, vfs_).ok());
-
-    // Create S3 bucket
-    REQUIRE(s3_fs.init(ctx_, vfs_).ok());
   }
 
   // Create directory, is directory, remove directory
