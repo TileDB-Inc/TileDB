@@ -478,6 +478,9 @@ class Writer {
   /** Allocated buffers that neeed to be cleaned upon destruction. */
   std::vector<void*> to_clean_;
 
+  /** The offset format used for variable-sized attributes. */
+  std::string offsets_format_mode_;
+
   /* ********************************* */
   /*           PRIVATE METHODS         */
   /* ********************************* */
@@ -791,6 +794,13 @@ class Writer {
   Status ordered_write();
 
   /**
+   * Process a buffer offset according to the configured options for
+   * variable-sized attributes (e.g. transform a byte offset to element offset)
+   */
+  uint64_t prepare_buffer_offset(
+      const uint64_t offset, const uint64_t datasize) const;
+
+  /**
    * Applicable only to write in global order. It prepares only full
    * tiles, storing the last potentially non-full tile in
    * `global_write_state->last_tiles_` as part of the state to be used in
@@ -1081,6 +1091,7 @@ class Writer {
    * @param buff_var The write buffer where the cell values will be copied from.
    * @param start The start element in the write buffer.
    * @param end The end element in the write buffer.
+   * @param attr_datatype_size The size of each attribute value in `buff_var`.
    * @param tile The tile offsets to write to.
    * @param tile_var The tile with the var-sized cells to write to.
    * @return Status
@@ -1090,6 +1101,7 @@ class Writer {
       ConstBuffer* buff_var,
       uint64_t start,
       uint64_t end,
+      uint64_t attr_datatype_size,
       Tile* tile,
       Tile* tile_var) const;
 
