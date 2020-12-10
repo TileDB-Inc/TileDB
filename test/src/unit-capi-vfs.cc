@@ -822,10 +822,25 @@ TEST_CASE_METHOD(VFSFx, "C API: Test virtual filesystem", "[capi], [vfs]") {
   tiledb_stats_enable();
   tiledb_stats_reset();
 
-  // TODO: refactor for each supported FS.
   SupportedFsLocal local_fs;
   std::string temp_dir = local_fs.file_prefix() + local_fs.temp_dir();
   check_vfs(temp_dir);
+
+  SupportedFs* const fs = fs_vec_[0].get();
+  if (dynamic_cast<SupportedFsS3*>(fs) != nullptr) {
+    SupportedFsS3 s3_fs;
+    check_vfs(s3_fs.temp_dir());
+  } else if (dynamic_cast<SupportedFsHDFS*>(fs) != nullptr) {
+    SupportedFsHDFS hdfs_fs;
+    check_vfs(hdfs_fs.temp_dir());
+  } else {
+    SupportedFsLocal local_fs;
+    check_vfs(local_fs.file_prefix() + local_fs.temp_dir());
+    if (dynamic_cast<SupportedFsMem*>(fs) != nullptr) {
+      SupportedFsMem mem_fs;
+      check_vfs(mem_fs.temp_dir());
+    }
+  }
 }
 
 TEST_CASE_METHOD(
@@ -883,8 +898,19 @@ TEST_CASE_METHOD(VFSFx, "C API: Test VFS parallel I/O", "[capi], [vfs]") {
   tiledb_stats_reset();
   set_num_vfs_threads(4);
 
-  // TODO: refactor for each supported FS.
-  SupportedFsLocal local_fs;
-  std::string temp_dir = local_fs.file_prefix() + local_fs.temp_dir();
-  check_vfs(temp_dir);
+  SupportedFs* const fs = fs_vec_[0].get();
+  if (dynamic_cast<SupportedFsS3*>(fs) != nullptr) {
+    SupportedFsS3 s3_fs;
+    check_vfs(s3_fs.temp_dir());
+  } else if (dynamic_cast<SupportedFsHDFS*>(fs) != nullptr) {
+    SupportedFsHDFS hdfs_fs;
+    check_vfs(hdfs_fs.temp_dir());
+  } else {
+    SupportedFsLocal local_fs;
+    check_vfs(local_fs.file_prefix() + local_fs.temp_dir());
+    if (dynamic_cast<SupportedFsMem*>(fs) != nullptr) {
+      SupportedFsMem mem_fs;
+      check_vfs(mem_fs.temp_dir());
+    }
+  }
 }
