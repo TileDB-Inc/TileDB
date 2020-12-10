@@ -182,6 +182,23 @@ class Reader {
       const char* name, uint64_t* size_off, uint64_t* size_val);
 
   /**
+   * Gets the estimated result size (in bytes) for the input fixed-sized,
+   * nullable attribute.
+   */
+  Status get_est_result_size_nullable(
+      const char* name, uint64_t* size_val, uint64_t* size_validity);
+
+  /**
+   * Gets the estimated result size (in bytes) for the input var-sized,
+   * nullable attribute.
+   */
+  Status get_est_result_size_nullable(
+      const char* name,
+      uint64_t* size_off,
+      uint64_t* size_val,
+      uint64_t* size_validity);
+
+  /**
    * Used by serialization to get the map of result sizes
    * @return
    */

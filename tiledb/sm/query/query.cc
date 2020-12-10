@@ -292,6 +292,12 @@ Status Query::get_est_result_size(const char* name, uint64_t* size) {
         "Cannot get estimated result size; Not applicable to zipped "
         "coordinates in arrays with domains with variable-sized dimensions"));
 
+  if (array_->array_schema()->is_nullable(name))
+    return LOG_STATUS(Status::WriterError(
+        std::string(
+            "Cannot get estimated result size; Input attribute/dimension '") +
+        name + "' is nullable"));
+
   if (array_->is_remote() && !reader_.est_result_size_computed()) {
     auto rest_client = storage_manager_->rest_client();
     if (rest_client == nullptr)
@@ -315,6 +321,12 @@ Status Query::get_est_result_size(
         "Cannot get estimated result size; Operation currently "
         "unsupported for write queries"));
 
+  if (array_->array_schema()->is_nullable(name))
+    return LOG_STATUS(Status::WriterError(
+        std::string(
+            "Cannot get estimated result size; Input attribute/dimension '") +
+        name + "' is nullable"));
+
   if (array_->is_remote() && !reader_.est_result_size_computed()) {
     auto rest_client = storage_manager_->rest_client();
     if (rest_client == nullptr)
@@ -329,6 +341,78 @@ Status Query::get_est_result_size(
   }
 
   return reader_.get_est_result_size(name, size_off, size_val);
+}
+
+Status Query::get_est_result_size_nullable(
+    const char* name, uint64_t* size_val, uint64_t* size_validity) {
+  if (type_ == QueryType::WRITE)
+    return LOG_STATUS(Status::QueryError(
+        "Cannot get estimated result size; Operation currently "
+        "unsupported for write queries"));
+
+  if (name == nullptr)
+    return LOG_STATUS(Status::QueryError(
+        "Cannot get estimated result size; Name cannot be null"));
+
+  if (!array_->array_schema()->attribute(name))
+    return LOG_STATUS(Status::QueryError(
+        "Cannot get estimated result size; Nullable API is only"
+        "applicable to attributes"));
+
+  if (!array_->array_schema()->is_nullable(name))
+    return LOG_STATUS(Status::WriterError(
+        std::string("Cannot get estimated result size; Input attribute '") +
+        name + "' is not nullable"));
+
+  if (array_->is_remote() && !reader_.est_result_size_computed()) {
+    auto rest_client = storage_manager_->rest_client();
+    if (rest_client == nullptr)
+      return LOG_STATUS(
+          Status::QueryError("Error in query estimate result size; remote "
+                             "array with no rest client."));
+
+    return LOG_STATUS(
+        Status::QueryError("Error in query estimate result size; unimplemented "
+                           "for nullable attributes in remote arrays."));
+  }
+
+  return reader_.get_est_result_size_nullable(name, size_val, size_validity);
+}
+
+Status Query::get_est_result_size_nullable(
+    const char* name,
+    uint64_t* size_off,
+    uint64_t* size_val,
+    uint64_t* size_validity) {
+  if (type_ == QueryType::WRITE)
+    return LOG_STATUS(Status::QueryError(
+        "Cannot get estimated result size; Operation currently "
+        "unsupported for write queries"));
+
+  if (!array_->array_schema()->attribute(name))
+    return LOG_STATUS(Status::QueryError(
+        "Cannot get estimated result size; Nullable API is only"
+        "applicable to attributes"));
+
+  if (!array_->array_schema()->is_nullable(name))
+    return LOG_STATUS(Status::WriterError(
+        std::string("Cannot get estimated result size; Input attribute '") +
+        name + "' is not nullable"));
+
+  if (array_->is_remote() && !reader_.est_result_size_computed()) {
+    auto rest_client = storage_manager_->rest_client();
+    if (rest_client == nullptr)
+      return LOG_STATUS(
+          Status::QueryError("Error in query estimate result size; remote "
+                             "array with no rest client."));
+
+    return LOG_STATUS(
+        Status::QueryError("Error in query estimate result size; unimplemented "
+                           "for nullable attributes in remote arrays."));
+  }
+
+  return reader_.get_est_result_size_nullable(
+      name, size_off, size_val, size_validity);
 }
 
 std::unordered_map<std::string, Subarray::ResultSize>

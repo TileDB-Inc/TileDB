@@ -544,8 +544,8 @@ TEST_CASE(
     auto est_d = query.est_result_size("d");
     CHECK(est_d == 10 * sizeof(int32_t));
     CHECK(est_a1 == 10 * sizeof(int32_t));
-    CHECK(est_a2.first == 10);
-    CHECK(est_a2.second == 10 * sizeof(char));
+    CHECK(est_a2[0] == 80);
+    CHECK(est_a2[1] == 10 * sizeof(char));
     CHECK(est_a3 == 10 * 2 * sizeof(double));
   }
 
@@ -561,8 +561,8 @@ TEST_CASE(
     auto est_d = query.est_result_size("d");
     CHECK(est_d == 10 * sizeof(int32_t));
     CHECK(est_a1 == 10 * sizeof(int32_t));
-    CHECK(est_a2.first == 10);
-    CHECK(est_a2.second == 10 * 3 * sizeof(char));
+    CHECK(est_a2[0] == 80);
+    CHECK(est_a2[1] == 10 * 3 * sizeof(char));
     CHECK(est_a3 == 10 * 2 * sizeof(double));
   }
 
@@ -579,8 +579,8 @@ TEST_CASE(
     auto est_d = query.est_result_size("d");
     CHECK(est_d == 4 * sizeof(int32_t));
     CHECK(est_a1 == 4 * sizeof(int32_t));
-    CHECK(est_a2.first == 4);
-    CHECK(est_a2.second == 4 * sizeof(char));
+    CHECK(est_a2[0] == 32);
+    CHECK(est_a2[1] == 4 * sizeof(char));
     CHECK(est_a3 == 4 * 2 * sizeof(double));
   }
 
@@ -610,8 +610,8 @@ TEST_CASE(
     auto est_d = query.est_result_size("d");
     CHECK(est_d == 10 * sizeof(int32_t));
     CHECK(est_a1 == 10 * sizeof(int32_t));
-    CHECK(est_a2.first == 10);
-    CHECK(est_a2.second == 10 * sizeof(char));
+    CHECK(est_a2[0] == 80);
+    CHECK(est_a2[1] == 10 * sizeof(char));
     CHECK(est_a3 == 10 * 2 * sizeof(double));
   }
 
@@ -628,8 +628,8 @@ TEST_CASE(
     auto est_d = query.est_result_size("d");
     CHECK(est_d == 10 * sizeof(int32_t));
     CHECK(est_a1 == 10 * sizeof(int32_t));
-    CHECK(est_a2.first == 10);
-    CHECK(est_a2.second == 10 * 3 * sizeof(char));
+    CHECK(est_a2[0] == 80);
+    CHECK(est_a2[1] == 10 * 3 * sizeof(char));
     CHECK(est_a3 == 10 * 2 * sizeof(double));
   }
 
@@ -647,8 +647,8 @@ TEST_CASE(
     auto est_d = query.est_result_size("d");
     CHECK(est_d == 4 * sizeof(int32_t));
     CHECK(est_a1 == 4 * sizeof(int32_t));
-    CHECK(est_a2.first == 4);
-    CHECK(est_a2.second == 4 * sizeof(char));
+    CHECK(est_a2[0] == 32);
+    CHECK(est_a2[1] == 4 * sizeof(char));
     CHECK(est_a3 == 4 * 2 * sizeof(double));
   }
 
@@ -676,6 +676,83 @@ TEST_CASE(
   create_array_1d(array_name, true, 0, s, {1.0, 2.0});
   write_array_1d_partial(array_name, true);
   read_array_1d_partial(array_name, true, 0, s, {1.0, 2.0});
+
+  CHECK_NOTHROW(vfs.remove_dir(array_name));
+}
+
+TEST_CASE(
+    "C++ API: Test result estimation, partial dense arrays, nullable",
+    "[cppapi][fill-values][partial][est-result][nullable]") {
+  Context ctx;
+  VFS vfs(ctx);
+  std::string array_name = "fill_values_est_result_partial_nullable";
+
+  // First test with default fill values
+  if (vfs.is_dir(array_name))
+    CHECK_NOTHROW(vfs.remove_dir(array_name));
+
+  SECTION("- Default fill values") {
+    create_array_1d(array_name, true);
+    write_array_1d_partial(array_name, true);
+
+    Array array(ctx, array_name, TILEDB_READ);
+    Query query(ctx, array, TILEDB_READ);
+    auto est_a1 = query.est_result_size_nullable("a1");
+    auto est_a2 = query.est_result_size_var_nullable("a2");
+    auto est_a3 = query.est_result_size_nullable("a3");
+    auto est_d = query.est_result_size("d");
+    CHECK(est_d == 10 * sizeof(int32_t));
+    CHECK(est_a1[0] == 10 * sizeof(int32_t));
+    CHECK(est_a1[1] == 10 * sizeof(uint8_t));
+    CHECK(est_a2[0] == 80);
+    CHECK(est_a2[1] == 10 * sizeof(char));
+    CHECK(est_a2[2] == 10 * sizeof(uint8_t));
+    CHECK(est_a3[0] == 10 * 2 * sizeof(double));
+    CHECK(est_a3[1] == 10 * sizeof(uint8_t));
+  }
+
+  SECTION("- Custom fill values") {
+    std::string s("abc");
+    create_array_1d(array_name, true, 0, s, {1.0, 2.0});
+    write_array_1d_partial(array_name, true);
+
+    Array array(ctx, array_name, TILEDB_READ);
+    Query query(ctx, array, TILEDB_READ);
+    auto est_a1 = query.est_result_size_nullable("a1");
+    auto est_a2 = query.est_result_size_var_nullable("a2");
+    auto est_a3 = query.est_result_size_nullable("a3");
+    auto est_d = query.est_result_size("d");
+    CHECK(est_d == 10 * sizeof(int32_t));
+    CHECK(est_a1[0] == 10 * sizeof(int32_t));
+    CHECK(est_a1[1] == 10 * sizeof(uint8_t));
+    CHECK(est_a2[0] == 80);
+    CHECK(est_a2[1] == 10 * 3 * sizeof(char));
+    CHECK(est_a2[2] == 10 * sizeof(uint8_t));
+    CHECK(est_a3[0] == 10 * 2 * sizeof(double));
+    CHECK(est_a3[1] == 10 * sizeof(uint8_t));
+  }
+
+  SECTION("- Default fill values, multi-range") {
+    create_array_1d(array_name, true);
+    write_array_1d_partial(array_name, true);
+
+    Array array(ctx, array_name, TILEDB_READ);
+    Query query(ctx, array, TILEDB_READ);
+    query.add_range<int32_t>(0, 2, 3);
+    query.add_range<int32_t>(0, 9, 10);
+    auto est_a1 = query.est_result_size_nullable("a1");
+    auto est_a2 = query.est_result_size_var_nullable("a2");
+    auto est_a3 = query.est_result_size_nullable("a3");
+    auto est_d = query.est_result_size("d");
+    CHECK(est_d == 4 * sizeof(int32_t));
+    CHECK(est_a1[0] == 4 * sizeof(int32_t));
+    CHECK(est_a1[1] == 4 * sizeof(uint8_t));
+    CHECK(est_a2[0] == 32);
+    CHECK(est_a2[1] == 4 * sizeof(char));
+    CHECK(est_a2[2] == 4 * sizeof(uint8_t));
+    CHECK(est_a3[0] == 4 * 2 * sizeof(double));
+    CHECK(est_a3[1] == 4 * sizeof(uint8_t));
+  }
 
   CHECK_NOTHROW(vfs.remove_dir(array_name));
 }
