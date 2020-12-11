@@ -692,8 +692,7 @@ std::string RestClient::redirect_uri(
   std::unique_lock<std::mutex> rd_lck(redirect_mtx_);
   std::unordered_map<std::string, std::string>::const_iterator cache_it =
       redirect_meta_.find(redirect_key);
-  return (cache_it == redirect_meta_.end()) ? rest_server_ :
-                                              "https://" + cache_it->second;
+  return (cache_it == redirect_meta_.end()) ? rest_server_ : cache_it->second;
 }
 
 #else
