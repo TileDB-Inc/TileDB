@@ -281,6 +281,10 @@ bool Writer::get_dedup_coords() const {
   return dedup_coords_;
 }
 
+std::string Writer::get_offsets_mode() const {
+  return offsets_format_mode_;
+}
+
 void Writer::set_check_coord_dups(bool b) {
   check_coord_dups_ = b;
 }
@@ -291,6 +295,12 @@ void Writer::set_check_coord_oob(bool b) {
 
 void Writer::set_dedup_coords(bool b) {
   dedup_coords_ = b;
+}
+
+Status Writer::set_offsets_mode(const std::string& offsets_mode) {
+  offsets_format_mode_ = offsets_mode;
+
+  return Status::Ok();
 }
 
 Status Writer::init(const Layout& layout) {

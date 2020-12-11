@@ -243,6 +243,9 @@ class Writer {
   /** Returns current setting of dedup_coords_ */
   bool get_dedup_coords() const;
 
+  /** Returns the configured offsets format mode. */
+  std::string get_offsets_mode() const;
+
   /** Initializes the writer with the subarray layout. */
   Status init(const Layout& layout);
 
@@ -336,6 +339,9 @@ class Writer {
 
   /** Sets current setting of dedup_coords_ */
   void set_dedup_coords(bool b);
+
+  /** Sets the offsets format mode. */
+  Status set_offsets_mode(const std::string& offsets_mode);
 
   /** Sets the fragment URI. Applicable only to write queries. */
   void set_fragment_uri(const URI& fragment_uri);

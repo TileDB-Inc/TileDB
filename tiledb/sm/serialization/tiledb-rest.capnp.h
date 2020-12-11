@@ -415,7 +415,7 @@ struct Writer {
   class Pipeline;
 
   struct _capnpPrivate {
-    CAPNP_DECLARE_STRUCT_HEADER(8ba60147a0e6735e, 1, 2)
+    CAPNP_DECLARE_STRUCT_HEADER(8ba60147a0e6735e, 1, 3)
 #if !CAPNP_LITE
     static constexpr ::capnp::_::RawBrandedSchema const* brand() {
       return &schema->defaultBrand;
@@ -3189,6 +3189,9 @@ class Writer::Reader {
   inline ::tiledb::sm::serialization::capnp::Subarray::Reader
   getSubarrayRanges() const;
 
+  inline bool hasVarOffsetsMode() const;
+  inline ::capnp::Text::Reader getVarOffsetsMode() const;
+
  private:
   ::capnp::_::StructReader _reader;
   template <typename, ::capnp::Kind>
@@ -3259,6 +3262,13 @@ class Writer::Builder {
       ::capnp::Orphan<::tiledb::sm::serialization::capnp::Subarray>&& value);
   inline ::capnp::Orphan<::tiledb::sm::serialization::capnp::Subarray>
   disownSubarrayRanges();
+
+  inline bool hasVarOffsetsMode();
+  inline ::capnp::Text::Builder getVarOffsetsMode();
+  inline void setVarOffsetsMode(::capnp::Text::Reader value);
+  inline ::capnp::Text::Builder initVarOffsetsMode(unsigned int size);
+  inline void adoptVarOffsetsMode(::capnp::Orphan<::capnp::Text>&& value);
+  inline ::capnp::Orphan<::capnp::Text> disownVarOffsetsMode();
 
  private:
   ::capnp::_::StructBuilder _builder;
@@ -8734,6 +8744,44 @@ Writer::Builder::disownSubarrayRanges() {
   return ::capnp::_::
       PointerHelpers<::tiledb::sm::serialization::capnp::Subarray>::disown(
           _builder.getPointerField(::capnp::bounded<1>() * ::capnp::POINTERS));
+}
+
+inline bool Writer::Reader::hasVarOffsetsMode() const {
+  return !_reader.getPointerField(::capnp::bounded<2>() * ::capnp::POINTERS)
+              .isNull();
+}
+inline bool Writer::Builder::hasVarOffsetsMode() {
+  return !_builder.getPointerField(::capnp::bounded<2>() * ::capnp::POINTERS)
+              .isNull();
+}
+inline ::capnp::Text::Reader Writer::Reader::getVarOffsetsMode() const {
+  return ::capnp::_::PointerHelpers<::capnp::Text>::get(
+      _reader.getPointerField(::capnp::bounded<2>() * ::capnp::POINTERS));
+}
+inline ::capnp::Text::Builder Writer::Builder::getVarOffsetsMode() {
+  return ::capnp::_::PointerHelpers<::capnp::Text>::get(
+      _builder.getPointerField(::capnp::bounded<2>() * ::capnp::POINTERS));
+}
+inline void Writer::Builder::setVarOffsetsMode(::capnp::Text::Reader value) {
+  ::capnp::_::PointerHelpers<::capnp::Text>::set(
+      _builder.getPointerField(::capnp::bounded<2>() * ::capnp::POINTERS),
+      value);
+}
+inline ::capnp::Text::Builder Writer::Builder::initVarOffsetsMode(
+    unsigned int size) {
+  return ::capnp::_::PointerHelpers<::capnp::Text>::init(
+      _builder.getPointerField(::capnp::bounded<2>() * ::capnp::POINTERS),
+      size);
+}
+inline void Writer::Builder::adoptVarOffsetsMode(
+    ::capnp::Orphan<::capnp::Text>&& value) {
+  ::capnp::_::PointerHelpers<::capnp::Text>::adopt(
+      _builder.getPointerField(::capnp::bounded<2>() * ::capnp::POINTERS),
+      kj::mv(value));
+}
+inline ::capnp::Orphan<::capnp::Text> Writer::Builder::disownVarOffsetsMode() {
+  return ::capnp::_::PointerHelpers<::capnp::Text>::disown(
+      _builder.getPointerField(::capnp::bounded<2>() * ::capnp::POINTERS));
 }
 
 inline bool SubarrayRanges::Reader::hasType() const {

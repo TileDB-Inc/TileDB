@@ -222,6 +222,9 @@ struct Writer {
 
   subarrayRanges @4 :Subarray;
   # The query subarray/ranges object, new style range object
+
+  varOffsetsMode @5 :Text;
+  # The offsets format (`bytes` or `elements`) to be used
 }
 
 struct SubarrayRanges {

@@ -484,6 +484,9 @@ Status writer_to_capnp(
         subarray_to_capnp(array_schema, subarray_ranges, &subarray_builder));
   }
 
+  // Offsets mode
+  writer_builder->setVarOffsetsMode(writer.get_offsets_mode());
+
   return Status::Ok();
 }
 
@@ -492,6 +495,11 @@ Status writer_from_capnp(
   writer->set_check_coord_dups(writer_reader.getCheckCoordDups());
   writer->set_check_coord_oob(writer_reader.getCheckCoordOOB());
   writer->set_dedup_coords(writer_reader.getDedupCoords());
+
+  // Offsets mode
+  if (writer_reader.hasVarOffsetsMode()) {
+    RETURN_NOT_OK(writer->set_offsets_mode(writer_reader.getVarOffsetsMode()));
+  }
 
   return Status::Ok();
 }
