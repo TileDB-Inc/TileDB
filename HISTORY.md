@@ -32,6 +32,7 @@
 
 ## Bug fixes
 
+* Fix tiledb_dimension_alloc returning a non-null pointer after error [#1959]((https://github.com/TileDB-Inc/TileDB/pull/1859)
 * Fix ArraySchema not write protecting fill values for only schema version 6 or newer [#1868](https://github.com/TileDB-Inc/TileDB/pull/1868)
 * Fix segfault that may occur in the VFS read-ahead cache [#1871](https://github.com/TileDB-Inc/TileDB/pull/1871)
 * The result size estimation routines will no longer return non-zero sizes that can not contain a single value. [#1849](https://github.com/TileDB-Inc/TileDB/pull/1849)
