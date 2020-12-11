@@ -261,10 +261,6 @@ class Config {
    *    Array schema cache size in bytes. Any `uint64_t` value is acceptable.
    *    <br>
    *    **Default**: 10,000,000
-   * - `sm.fragment_metadata_cache_size` <br>
-   *    The fragment metadata cache size in bytes. Any `uint64_t` value is
-   *    acceptable. <br>
-   *    **Default**: 10,000,000
    * - `sm.enable_signal_handlers` <br>
    *    Whether or not TileDB will install signal handlers. <br>
    *    **Default**: true
