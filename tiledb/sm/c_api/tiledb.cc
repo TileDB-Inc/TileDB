@@ -1784,6 +1784,7 @@ int32_t tiledb_dimension_alloc(
       tiledb::sm::Dimension(name, static_cast<tiledb::sm::Datatype>(type));
   if ((*dim)->dim_ == nullptr) {
     delete *dim;
+    *dim = nullptr;
     auto st = Status::Error("Failed to allocate TileDB dimension object");
     LOG_STATUS(st);
     save_error(ctx, st);
@@ -1794,6 +1795,7 @@ int32_t tiledb_dimension_alloc(
   if (SAVE_ERROR_CATCH(ctx, (*dim)->dim_->set_domain(dim_domain))) {
     delete (*dim)->dim_;
     delete *dim;
+    *dim = nullptr;
     return TILEDB_ERR;
   }
 
@@ -1801,6 +1803,7 @@ int32_t tiledb_dimension_alloc(
   if (SAVE_ERROR_CATCH(ctx, (*dim)->dim_->set_tile_extent(tile_extent))) {
     delete (*dim)->dim_;
     delete *dim;
+    *dim = nullptr;
     return TILEDB_ERR;
   }
 
