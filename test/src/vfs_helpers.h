@@ -159,18 +159,6 @@ class SupportedFsS3 : public SupportedFs {
   virtual Status prepare_config(tiledb_config_t* config, tiledb_error_t* error);
 
   /**
-   * Returns Status upon setting up the associated
-   * filesystem's number of threads
-   *
-   * @param config Configuration parameters
-   * @param error Error parameter
-   * @param num_threads Number of threads
-   * @return Status OK if successful
-   */
-  virtual Status prepare_threads(
-      tiledb_config_t* config, tiledb_error_t* error, unsigned num_threads);
-
-  /**
    * Creates bucket if does not exist
    *
    * @param ctx The TileDB context.
@@ -194,13 +182,6 @@ class SupportedFsS3 : public SupportedFs {
    * @return string directory name
    */
   virtual std::string temp_dir();
-
-  /**
-   * Get the name of the filesystem's bucket
-   *
-   * @return string bucket name
-   */
-  virtual std::string bucket();
 
  private:
   /* ********************************* */
@@ -376,18 +357,6 @@ class SupportedFsLocal : public SupportedFs {
    * @return Status OK if successful
    */
   virtual Status prepare_config(tiledb_config_t* config, tiledb_error_t* error);
-
-  /**
-   * Returns Status upon setting up the associated
-   * filesystem's number of threads
-   *
-   * @param config Configuration parameters
-   * @param error Error parameter
-   * @param num_threads Number of threads
-   * @return Status OK if successful
-   */
-  virtual Status prepare_threads(
-      tiledb_config_t* config, tiledb_error_t* error, unsigned num_threads);
 
   /**
    * No-op

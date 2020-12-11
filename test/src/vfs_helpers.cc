@@ -134,17 +134,6 @@ Status SupportedFsS3::prepare_config(
   return Status::Ok();
 }
 
-Status SupportedFsS3::prepare_threads(
-    tiledb_config_t* config, tiledb_error_t* error, unsigned num_threads) {
-  REQUIRE(
-      tiledb_config_set(
-          config,
-          "vfs.s3.max_parallel_ops",
-          std::to_string(num_threads).c_str(),
-          &error) == TILEDB_OK);
-  return Status::Ok();
-}
-
 Status SupportedFsS3::init(tiledb_ctx_t* ctx, tiledb_vfs_t* vfs) {
   int is_bucket = 0;
   int rc = tiledb_vfs_is_bucket(ctx, vfs, s3_bucket_.c_str(), &is_bucket);
@@ -178,10 +167,6 @@ Status SupportedFsS3::close(tiledb_ctx_t* ctx, tiledb_vfs_t* vfs) {
 
 std::string SupportedFsS3::temp_dir() {
   return temp_dir_;
-}
-
-std::string SupportedFsS3::bucket() {
-  return s3_bucket_;
 }
 
 Status SupportedFsHDFS::prepare_config(
@@ -265,25 +250,6 @@ Status SupportedFsLocal::prepare_config(
     tiledb_config_t* config, tiledb_error_t* error) {
   (void)config;
   (void)error;
-  return Status::Ok();
-}
-
-Status SupportedFsLocal::prepare_threads(
-    tiledb_config_t* config, tiledb_error_t* error, unsigned num_threads) {
-  REQUIRE(
-      tiledb_config_set(
-          config,
-          "vfs.file.max_parallel_ops",
-          std::to_string(num_threads).c_str(),
-          &error) == TILEDB_OK);
-  // Set very small parallelization threshold (ignored when there is only 1
-  // thread).
-  REQUIRE(
-      tiledb_config_set(
-          config, "vfs.min_parallel_size", std::to_string(1).c_str(), &error) ==
-      TILEDB_OK);
-  REQUIRE(error == nullptr);
-
   return Status::Ok();
 }
 
