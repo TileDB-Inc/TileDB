@@ -503,7 +503,7 @@ const unsigned watchdog_thread_sleep_ms = 1000;
 const unsigned concurrent_attr_reads = 2;
 
 /** The redirection header key in REST response. */
-extern const std::string redirection_header_key = "x-tiledb-full-region-domain";
+extern const std::string redirection_header_key = "location";
 
 const void* fill_value(Datatype type) {
   switch (type) {

@@ -204,19 +204,26 @@ size_t write_header_callback(
   const size_t header_key_end_pos = header.find(": ");
   if (header_key_end_pos != std::string::npos) {
     std::string header_key = header.substr(0, header_key_end_pos);
-    std::transform(
-        header_key.begin(), header_key.end(), header_key.begin(), ::tolower);
+    std::transform(header_key.begin(), header_key.end(), header_key.begin(), ::tolower);
 
     if (header_key == constants::redirection_header_key) {
-      std::unique_lock<std::mutex> rd_lck(*(pmHeader->redirect_uri_map_lock));
+      // Fetch the header value. Subtract 2 from the `header_length` to
+      // remove the trailing CR LF ("\r\n") and subtract another 2
+      // for the ": ". Ensure this ends with a null terminator.
+      const std::string header_value = header.substr(header_key_end_pos + 2,
+                                               header_length - header_key_end_pos - 4) + "\0";
 
-      // Hardcoded substraction of 2 for trailing CRLF characters of header
-      // response `header_length`
-      header.substr(
-          header_key_end_pos + 2, header_length - header_key_end_pos - 4) +
-          "\0";
-      pmHeader->redirect_uri_map->insert(
-          std::make_pair(pmHeader->uri, header_value));
+      //Find the http scheme
+      const size_t header_scheme_end_pos = header_value.find("://");
+      const std::string header_scheme = header_value.substr(0, header_scheme_end_pos);
+
+      //Find the domain
+      const std::string header_value_scheme_excl = header_value.substr(header_scheme_end_pos + 3, header_value.length());
+      const size_t header_domain_end_pos = header_value_scheme_excl.find("/");
+      const std::string header_value_domain = header_value_scheme_excl.substr(0, header_domain_end_pos);
+
+      std::unique_lock<std::mutex> rd_lck(*(pmHeader->redirect_uri_map_lock));
+      pmHeader->redirect_uri_map->insert(std::make_pair(pmHeader->uri, header_scheme + "://" + header_value_domain + "\0"));
     }
   }
   return size * count;
@@ -263,11 +270,6 @@ Status Curl::init(
     return LOG_STATUS(Status::RestError(
         "Error initializing libcurl; failed to set CURLOPT_HEADERFUNCTION"));
 
-  rc = curl_easy_setopt(curl_.get(), CURLOPT_HEADER, 0);
-  if (rc != CURLE_OK)
-    return LOG_STATUS(Status::RestError(
-        "Error initializing libcurl; failed to set CURLOPT_HEADER"));
-
   /* set url to fetch */
   rc = curl_easy_setopt(curl_.get(), CURLOPT_HEADERDATA, &headerData);
   if (rc != CURLE_OK)
@@ -291,8 +293,7 @@ Status Curl::init(
 
 #ifdef __linux__
   // Get CA Cert bundle file from global state. This is initialized and cached
-  // if detected. We have only had issues with finding the certificate path
-  // on
+  // if detected. We have only had issues with finding the certificate path on
   // Linux.
   const std::string cert_file =
       global_state::GlobalState::GetGlobalState().cert_file();
@@ -412,6 +413,7 @@ Status Curl::make_curl_request_common(
   for (uint8_t i = 0; i < CURL_MAX_RETRIES; i++) {
     WriteCbState write_cb_state;
     write_cb_state.arg = write_cb_arg;
+
     /* set url to fetch */
     curl_easy_setopt(curl, CURLOPT_URL, url);
 
@@ -548,7 +550,6 @@ Status Curl::post_data(
   CURLcode ret;
   headerData.uri = utils::parse::rest_components_from_url(url);
   auto st = make_curl_request(url.c_str(), &ret, returned_data);
-
   curl_slist_free_all(headers);
   RETURN_NOT_OK(st);
 
@@ -568,7 +569,6 @@ Status Curl::post_data(
 
   CURLcode ret;
   headerData.uri = utils::parse::rest_components_from_url(url);
-  ;
   auto st = make_curl_request(url.c_str(), &ret, std::move(cb));
   curl_slist_free_all(headers);
   RETURN_NOT_OK(st);
@@ -673,7 +673,6 @@ Status Curl::delete_data(
 
   CURLcode ret;
   headerData.uri = utils::parse::rest_components_from_url(url);
-  ;
   auto st = make_curl_request(url.c_str(), &ret, returned_data);
   curl_slist_free_all(headers);
   RETURN_NOT_OK(st);

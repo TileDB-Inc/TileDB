@@ -451,13 +451,13 @@ uint64_t common_prefix_size(const std::string& a, const std::string& b) {
 
 std::string rest_components_from_url(const std::string& url) {
   std::string path_delimiter = "/";
-  std::vector<std::string> path_parts{};
+  std::vector<std::string> path_parts;
   size_t start;
   size_t end = 0;
   while ((start = url.find_first_not_of(path_delimiter, end)) !=
          std::string::npos) {
     end = url.find(path_delimiter, start);
-    path_parts.push_back(url.substr(start, end - start));
+    path_parts.emplace_back(url.substr(start, end - start));
   }
 
   std::string array_ns;
@@ -469,11 +469,14 @@ std::string rest_components_from_url(const std::string& url) {
     if (*part_it == "arrays") {
       // Get the next two records that refer to array_ns and array_uri
       // accordingly
-      array_ns = *(++part_it);
-      array_uri = *(++part_it);
-      break;
+      if(++part_it != path_parts.end() && ++(++part_it) != path_parts.end()){
+        array_ns = *(++part_it);
+        array_uri = *(++part_it);
+        break;
+      }
     }
   }
+
   return (!array_ns.empty() && !array_uri.empty()) ?
              array_ns + ":" + array_uri :
              std::string();

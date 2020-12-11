@@ -138,8 +138,7 @@ Status RestClient::post_array_schema_to_rest(
   auto deduced_url = redirect_uri(array_ns, array_uri) + "/v1/arrays/" +
                      array_ns + "/" + curlc.url_escape(array_uri);
   Buffer returned_data;
-  Status sc = curlc.post_data(
-      deduced_url, serialization_type_, &serialized, &returned_data);
+  Status sc = curlc.post_data(deduced_url, serialization_type_, &serialized, &returned_data);
   return sc;
 }
 
@@ -179,8 +178,6 @@ Status RestClient::get_array_non_empty_domain(
 
   // Get the data
   Buffer returned_data;
-  std::unique_lock<std::mutex> rd_lck(redirect_mtx_);
-
   RETURN_NOT_OK(curlc.get_data(url, serialization_type_, &returned_data));
 
   if (returned_data.data() == nullptr || returned_data.size() == 0)
@@ -217,7 +214,6 @@ Status RestClient::get_array_max_buffer_sizes(
 
   // Get the data
   Buffer returned_data;
-
   RETURN_NOT_OK(curlc.get_data(url, serialization_type_, &returned_data));
 
   if (returned_data.data() == nullptr || returned_data.size() == 0)
@@ -694,7 +690,6 @@ std::string RestClient::redirect_uri(
     const std::string& array_ns, const std::string& array_uri) {
   const std::string redirect_key = array_ns + ":" + array_uri;
   std::unique_lock<std::mutex> rd_lck(redirect_mtx_);
-  std::cerr << "Redirected key:" << redirect_key << std::endl;
   std::unordered_map<std::string, std::string>::const_iterator cache_it =
       redirect_meta_.find(redirect_key);
   return (cache_it == redirect_meta_.end()) ? rest_server_ :

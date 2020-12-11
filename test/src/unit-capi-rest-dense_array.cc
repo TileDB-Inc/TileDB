@@ -761,7 +761,7 @@ void DenseArrayRESTFx::check_incomplete_reads(const std::string& path) {
   REQUIRE(num_incompletes > 1);
   REQUIRE(
       all_attr_values.size() ==
-      static_cast<unsigned long>(
+      static_cast<size_t>(
           (subarray[1] - subarray[0] + 1) * (subarray[3] - subarray[2] + 1)));
 
   // Check all attribute values from all queries.
