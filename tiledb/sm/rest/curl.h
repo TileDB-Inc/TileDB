@@ -64,7 +64,6 @@ namespace sm {
  * Wraps opaque user data to be invoked with a header callback.
  */
 struct HeaderCbData {
-
   /*The output of parse::rest_components from url -> array_ns:array_uri */
   std::string uri;
 
