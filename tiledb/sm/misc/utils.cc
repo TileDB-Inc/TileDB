@@ -469,7 +469,7 @@ std::string rest_components_from_url(const std::string& url) {
     if (*part_it == "arrays") {
       // Get the next two records that refer to array_ns and array_uri
       // accordingly
-      if(++part_it != path_parts.end() && ++(++part_it) != path_parts.end()){
+      if (++part_it != path_parts.end() && ++(++part_it) != path_parts.end()) {
         array_ns = *(++part_it);
         array_uri = *(++part_it);
         break;

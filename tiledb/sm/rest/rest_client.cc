@@ -138,7 +138,8 @@ Status RestClient::post_array_schema_to_rest(
   auto deduced_url = redirect_uri(array_ns, array_uri) + "/v1/arrays/" +
                      array_ns + "/" + curlc.url_escape(array_uri);
   Buffer returned_data;
-  Status sc = curlc.post_data(deduced_url, serialization_type_, &serialized, &returned_data);
+  Status sc = curlc.post_data(
+      deduced_url, serialization_type_, &serialized, &returned_data);
   return sc;
 }
 

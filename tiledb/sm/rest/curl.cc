@@ -204,26 +204,33 @@ size_t write_header_callback(
   const size_t header_key_end_pos = header.find(": ");
   if (header_key_end_pos != std::string::npos) {
     std::string header_key = header.substr(0, header_key_end_pos);
-    std::transform(header_key.begin(), header_key.end(), header_key.begin(), ::tolower);
+    std::transform(
+        header_key.begin(), header_key.end(), header_key.begin(), ::tolower);
 
     if (header_key == constants::redirection_header_key) {
       // Fetch the header value. Subtract 2 from the `header_length` to
       // remove the trailing CR LF ("\r\n") and subtract another 2
       // for the ": ". Ensure this ends with a null terminator.
-      const std::string header_value = header.substr(header_key_end_pos + 2,
-                                               header_length - header_key_end_pos - 4) + "\0";
+      const std::string header_value =
+          header.substr(
+              header_key_end_pos + 2, header_length - header_key_end_pos - 4) +
+          "\0";
 
-      //Find the http scheme
+      // Find the http scheme
       const size_t header_scheme_end_pos = header_value.find("://");
-      const std::string header_scheme = header_value.substr(0, header_scheme_end_pos);
+      const std::string header_scheme =
+          header_value.substr(0, header_scheme_end_pos);
 
-      //Find the domain
-      const std::string header_value_scheme_excl = header_value.substr(header_scheme_end_pos + 3, header_value.length());
+      // Find the domain
+      const std::string header_value_scheme_excl =
+          header_value.substr(header_scheme_end_pos + 3, header_value.length());
       const size_t header_domain_end_pos = header_value_scheme_excl.find("/");
-      const std::string header_value_domain = header_value_scheme_excl.substr(0, header_domain_end_pos);
+      const std::string header_value_domain =
+          header_value_scheme_excl.substr(0, header_domain_end_pos);
 
       std::unique_lock<std::mutex> rd_lck(*(pmHeader->redirect_uri_map_lock));
-      pmHeader->redirect_uri_map->insert(std::make_pair(pmHeader->uri, header_scheme + "://" + header_value_domain + "\0"));
+      pmHeader->redirect_uri_map->insert(std::make_pair(
+          pmHeader->uri, header_scheme + "://" + header_value_domain + "\0"));
     }
   }
   return size * count;
