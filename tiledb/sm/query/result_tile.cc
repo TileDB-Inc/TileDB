@@ -499,10 +499,139 @@ void ResultTile::compute_results_sparse<char>(
       coord_tile_str.chunked_buffer()->get_contiguous_unsafe());
   auto buff_str_size = coord_tile_str.size();
 
-  // Compute results
+  static const uint64_t coord_part_num = 6;
+  if (dim_idx == 0 && coords_num > coord_part_num) {
+    const uint64_t coord_part_size_div = coords_num / coord_part_num;
+    const uint64_t coord_part_size_rem = coords_num % coord_part_num;
+    for (uint64_t p = 0; p < coord_part_num; ++p) {
+      const uint64_t coord_part_size =
+        coord_part_size_div +
+        (p == (coord_part_num - 1) ? coord_part_size_rem : 0);
+
+      const uint64_t first_pos = p * coord_part_size_div;
+      const uint64_t first_offset = buff_off[first_pos];
+      const uint64_t first_str_size = buff_off[first_pos + 1] - first_offset;
+
+      const uint64_t last_pos = first_pos + coord_part_size - 1;
+      const uint64_t last_offset = buff_off[last_pos];
+      const uint64_t last_str_size =
+        (last_pos == coords_num - 1) ?
+          buff_str_size - last_offset :
+          buff_off[last_pos + 1] - last_offset;
+
+      const char* const first_coord = &buff_str[first_offset];
+      const char* const second_coord = &buff_str[last_offset];
+      if (first_str_size == last_str_size &&
+          strncmp(first_coord, second_coord, first_str_size) == 0) {
+
+        if (r_bitmap[first_pos] == 0)
+          continue;
+
+        // Test against start
+        bool geq_start = true;
+        bool all_chars_match = true;
+        uint64_t min_size = std::min(first_str_size, range_start_size);
+        for (uint64_t i = 0; i < min_size; ++i) {
+          if (buff_str[first_offset + i] < range_start[i]) {
+            geq_start = false;
+            all_chars_match = false;
+            break;
+          } else if (buff_str[first_offset + i] > range_start[i]) {
+            all_chars_match = false;
+            break;
+          }  // Else characters match
+        }
+        if (geq_start && all_chars_match && first_str_size < range_start_size) {
+          geq_start = false;
+        }
+
+        // Test against end
+        bool seq_end = false;
+        if (geq_start) {
+          seq_end = true;
+          all_chars_match = true;
+          min_size = std::min(first_str_size, range_end_size);
+          for (uint64_t i = 0; i < min_size; ++i) {
+            if (buff_str[first_offset + i] > range_end[i]) {
+              geq_start = false;
+              break;
+            } else if (buff_str[first_offset + i] < range_end[i]) {
+              all_chars_match = false;
+              break;
+            }  // Else characters match
+          }
+          if (seq_end && all_chars_match && first_str_size > range_end_size) {
+            seq_end = false;
+          }
+        }
+
+        // Set the result
+        if (!(geq_start && seq_end))
+          memset(&r_bitmap[first_pos], 0, coord_part_size);
+      } else {
+        // Compute results
+        uint64_t offset = 0, str_size = 0, min_size = 0;
+        bool geq_start = false, seq_end = false, all_chars_match = false;
+        for (uint64_t pos = first_pos; pos <= last_pos; ++pos) {
+          if (r_bitmap[pos] == 0)
+            continue;
+
+          offset = buff_off[pos];
+          str_size = (pos < last_pos) ? buff_off[pos + 1] - offset :
+                                        buff_str_size - offset;
+
+          // Test against start
+          geq_start = true;
+          all_chars_match = true;
+          min_size = std::min(str_size, range_start_size);
+          for (uint64_t i = 0; i < min_size; ++i) {
+            if (buff_str[offset + i] < range_start[i]) {
+              geq_start = false;
+              all_chars_match = false;
+              break;
+            } else if (buff_str[offset + i] > range_start[i]) {
+              all_chars_match = false;
+              break;
+            }  // Else characters match
+          }
+          if (geq_start && all_chars_match && str_size < range_start_size) {
+            geq_start = false;
+          }
+
+          // Test against end
+          if (geq_start) {
+            seq_end = true;
+            all_chars_match = true;
+            min_size = std::min(str_size, range_end_size);
+            for (uint64_t i = 0; i < min_size; ++i) {
+              if (buff_str[offset + i] > range_end[i]) {
+                geq_start = false;
+                break;
+              } else if (buff_str[offset + i] < range_end[i]) {
+                all_chars_match = false;
+                break;
+              }  // Else characters match
+            }
+            if (seq_end && all_chars_match && str_size > range_end_size) {
+              seq_end = false;
+            }
+          }
+
+          // Set the result
+          r_bitmap[pos] = geq_start && seq_end;
+        }
+      }
+    }
+
+    return;
+  }
+
   uint64_t offset = 0, pos = 0, str_size = 0, min_size = 0;
   bool geq_start = false, seq_end = false, all_chars_match = false;
   for (; pos < coords_num; ++pos) {
+    if (r_bitmap[pos] == 0)
+      continue;
+
     offset = buff_off[pos];
     str_size = (pos < coords_num - 1) ? buff_off[pos + 1] - offset :
                                         buff_str_size - offset;
@@ -545,8 +674,8 @@ void ResultTile::compute_results_sparse<char>(
     }
 
     // Set the result
-    r_bitmap[pos] &= (geq_start && seq_end);
-  }
+    r_bitmap[pos] = geq_start && seq_end;
+  }  
 }
 
 template <class T>
