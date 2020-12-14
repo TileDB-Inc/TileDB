@@ -460,26 +460,16 @@ std::string rest_components_from_url(const std::string& url) {
     path_parts.emplace_back(url.substr(start, end - start));
   }
 
-  std::string array_ns;
-  std::string array_uri;
-  // Find rest components array_ns and array_uri
-  for (std::vector<std::string>::iterator part_it = path_parts.begin();
-       part_it != path_parts.end();
-       ++part_it) {
-    if (*part_it == "arrays") {
-      // Get the next two records that refer to array_ns and array_uri
-      // accordingly
-      if (++part_it != path_parts.end() && ++(++part_it) != path_parts.end()) {
-        array_ns = *(++part_it);
-        array_uri = *(++part_it);
-        break;
+  for (size_t i = 0; i < path_parts.size(); ++i) {
+    if (path_parts[i] == "arrays") {
+      // Find rest components array_ns and array_uri
+      if (i + 2 < path_parts.size()) {
+        return path_parts[i + 1] + ":" + path_parts[i + 2];
       }
     }
   }
 
-  return (!array_ns.empty() && !array_uri.empty()) ?
-             array_ns + ":" + array_uri :
-             std::string();
+  return "";
 }
 
 }  // namespace parse

@@ -200,8 +200,20 @@ size_t write_header_callback(
   auto* header_buffer = static_cast<char*>(res_data);
   auto* pmHeader = static_cast<HeaderCbData*>(userdata);
 
+  if (pmHeader->uri.empty()) {
+    LOG_ERROR("Rest components as array_ns and array_uri cannot be empty");
+    return 0;
+  }
+
   std::string header(header_buffer, header_length);
   const size_t header_key_end_pos = header.find(": ");
+
+  if (header_key_end_pos == std::string::npos) {
+    LOG_ERROR(
+        "All response headers should be formatted as key:value elements.");
+    return 0;
+  }
+
   if (header_key_end_pos != std::string::npos) {
     std::string header_key = header.substr(0, header_key_end_pos);
     std::transform(
@@ -218,6 +230,14 @@ size_t write_header_callback(
 
       // Find the http scheme
       const size_t header_scheme_end_pos = header_value.find("://");
+
+      if (header_scheme_end_pos == std::string::npos) {
+        LOG_ERROR(
+            "The header `location` should have a value that includes the "
+            "scheme in the URI.");
+        return 0;
+      }
+
       const std::string header_scheme =
           header_value.substr(0, header_scheme_end_pos);
 
@@ -225,6 +245,14 @@ size_t write_header_callback(
       const std::string header_value_scheme_excl =
           header_value.substr(header_scheme_end_pos + 3, header_value.length());
       const size_t header_domain_end_pos = header_value_scheme_excl.find("/");
+
+      if (header_domain_end_pos == std::string::npos) {
+        LOG_ERROR(
+            "The header `location` should have a value that includes the "
+            "domain in the URI.");
+        return 0;
+      }
+
       const std::string header_value_domain =
           header_value_scheme_excl.substr(0, header_domain_end_pos);
 

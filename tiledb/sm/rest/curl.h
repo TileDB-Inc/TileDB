@@ -64,13 +64,13 @@ namespace sm {
  * Wraps opaque user data to be invoked with a header callback.
  */
 struct HeaderCbData {
-  /*The output of parse::rest_components from url -> array_ns:array_uri */
+  /** The output of parse::rest_components from url -> array_ns:array_uri */
   std::string uri;
 
-  /* A pointer to the map in REST client caching the redirections*/
+  /** A pointer to the map in REST client caching the redirections */
   std::unordered_map<std::string, std::string>* redirect_uri_map;
 
-  /*A pointer to the lock attached to the shared resource of the cache map*/
+  /** A pointer to the lock attached to the shared resource of the cache map */
   std::mutex* redirect_uri_map_lock;
 };
 
