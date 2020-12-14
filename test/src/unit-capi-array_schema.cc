@@ -569,6 +569,7 @@ void ArraySchemaFx::create_array(const std::string& path) {
       &tile_extent,
       &d3);
   REQUIRE(rc == TILEDB_ERR);
+  REQUIRE(d3 == nullptr);
 
   // Set up filters
   tiledb_filter_t* filter;
