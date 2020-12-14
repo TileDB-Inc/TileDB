@@ -73,6 +73,7 @@ Writer::Writer() {
   initialized_ = false;
   layout_ = Layout::ROW_MAJOR;
   storage_manager_ = nullptr;
+  offsets_bitsize_ = constants::cell_var_offset_size * 8;
 }
 
 Writer::~Writer() {
@@ -285,6 +286,14 @@ std::string Writer::get_offsets_mode() const {
   return offsets_format_mode_;
 }
 
+bool Writer::get_offsets_extra_element() const {
+  return offsets_extra_element_;
+}
+
+uint32_t Writer::get_offsets_bitsize() const {
+  return offsets_bitsize_;
+}
+
 void Writer::set_check_coord_dups(bool b) {
   check_coord_dups_ = b;
 }
@@ -300,6 +309,23 @@ void Writer::set_dedup_coords(bool b) {
 Status Writer::set_offsets_mode(const std::string& offsets_mode) {
   offsets_format_mode_ = offsets_mode;
 
+  return Status::Ok();
+}
+
+Status Writer::set_offsets_extra_element(bool add_extra_element) {
+  offsets_extra_element_ = add_extra_element;
+
+  return Status::Ok();
+}
+
+Status Writer::set_offsets_bitsize(const uint32_t bitsize) {
+  if (bitsize != 32 && bitsize != 64) {
+    return LOG_STATUS(Status::WriterError(
+        "Cannot set offset bitsize to " + std::to_string(bitsize) +
+        "; Only 32 and 64 are acceptable bitsize values"));
+  }
+
+  offsets_bitsize_ = bitsize;
   return Status::Ok();
 }
 
@@ -350,6 +376,17 @@ Status Writer::init(const Layout& layout) {
         Status::WriterError("Cannot initialize writer; Unsupported offsets "
                             "format in configuration"));
   }
+  RETURN_NOT_OK(config.get<bool>(
+      "sm.var_offsets.extra_element", &offsets_extra_element_, &found));
+  assert(found);
+  RETURN_NOT_OK(config.get<uint32_t>(
+      "sm.var_offsets.bitsize", &offsets_bitsize_, &found));
+  if (offsets_bitsize_ != 32 && offsets_bitsize_ != 64) {
+    return LOG_STATUS(
+        Status::WriterError("Cannot initialize writer; Unsupported offsets "
+                            "bitsize in configuration"));
+  }
+  assert(found);
   initialized_ = true;
 
   return Status::Ok();
@@ -2448,19 +2485,20 @@ Status Writer::prepare_full_tiles_var(
 
   uint64_t cell_idx = 0;
   if (!last_tile.empty()) {
-    do {
-      auto buff_offset =
-          prepare_buffer_offset(buffer[cell_idx], attr_datatype_size);
-      auto next_buff_offset =
-          prepare_buffer_offset(buffer[cell_idx + 1], attr_datatype_size);
-      if (coord_dups.empty()) {
+    if (coord_dups.empty()) {
+      do {
         // Write offset.
         offset = last_tile_var.size();
         RETURN_NOT_OK(last_tile.write(&offset, sizeof(offset)));
 
         // Write var-sized value(s).
-        var_size = (cell_idx == cell_num - 1) ? *buffer_var_size - buff_offset :
-                                                next_buff_offset - buff_offset;
+        auto buff_offset =
+            prepare_buffer_offset(buffer[cell_idx], attr_datatype_size);
+        var_size = (cell_idx == cell_num - 1) ?
+                       *buffer_var_size - buff_offset :
+                       prepare_buffer_offset(
+                           buffer[cell_idx + 1], attr_datatype_size) -
+                           buff_offset;
         RETURN_NOT_OK(last_tile_var.write(buffer_var + buff_offset, var_size));
 
         // Write validity value(s).
@@ -2471,16 +2509,22 @@ Status Writer::prepare_full_tiles_var(
               var_size / attr_datatype_size * constants::cell_validity_size));
 
         ++cell_idx;
-      } else {
+      } while (!last_tile.full() && cell_idx != cell_num);
+    } else {
+      do {
         if (coord_dups.find(cell_idx) == coord_dups.end()) {
           // Write offset.
           offset = last_tile_var.size();
           RETURN_NOT_OK(last_tile.write(&offset, sizeof(offset)));
 
           // Write var-sized value(s).
+          auto buff_offset =
+              prepare_buffer_offset(buffer[cell_idx], attr_datatype_size);
           var_size = (cell_idx == cell_num - 1) ?
                          *buffer_var_size - buff_offset :
-                         next_buff_offset - buff_offset;
+                         prepare_buffer_offset(
+                             buffer[cell_idx + 1], attr_datatype_size) -
+                             buff_offset;
           RETURN_NOT_OK(
               last_tile_var.write(buffer_var + buff_offset, var_size));
 
@@ -2493,8 +2537,8 @@ Status Writer::prepare_full_tiles_var(
         }
 
         ++cell_idx;
-      }
-    } while (!last_tile.full() && cell_idx != cell_num);
+      } while (!last_tile.full() && cell_idx != cell_num);
+    }
   }
 
   // Initialize full tiles and set previous last tile as first tile
@@ -2532,12 +2576,9 @@ Status Writer::prepare_full_tiles_var(
     }
 
     // Write all remaining cells one by one
-    for (uint64_t tile_idx = 0, i = 0; i < cell_num_to_write; ++cell_idx, ++i) {
-      auto buff_offset =
-          prepare_buffer_offset(buffer[cell_idx], attr_datatype_size);
-      auto next_buff_offset =
-          prepare_buffer_offset(buffer[cell_idx + 1], attr_datatype_size);
-      if (coord_dups.empty()) {
+    if (coord_dups.empty()) {
+      for (uint64_t tile_idx = 0, i = 0; i < cell_num_to_write;
+           ++cell_idx, ++i) {
         if ((*tiles)[tile_idx].full())
           tile_idx += t;
 
@@ -2546,8 +2587,13 @@ Status Writer::prepare_full_tiles_var(
         RETURN_NOT_OK((*tiles)[tile_idx].write(&offset, sizeof(offset)));
 
         // Write var-sized value(s).
-        var_size = (cell_idx == cell_num - 1) ? *buffer_var_size - buff_offset :
-                                                next_buff_offset - buff_offset;
+        auto buff_offset =
+            prepare_buffer_offset(buffer[cell_idx], attr_datatype_size);
+        var_size = (cell_idx == cell_num - 1) ?
+                       *buffer_var_size - buff_offset :
+                       prepare_buffer_offset(
+                           buffer[cell_idx + 1], attr_datatype_size) -
+                           buff_offset;
         RETURN_NOT_OK(
             (*tiles)[tile_idx + 1].write(buffer_var + buff_offset, var_size));
 
@@ -2557,7 +2603,10 @@ Status Writer::prepare_full_tiles_var(
               buffer_validity + (buff_offset / attr_datatype_size *
                                  constants::cell_validity_size),
               var_size / attr_datatype_size * constants::cell_validity_size));
-      } else {
+      }
+    } else {
+      for (uint64_t tile_idx = 0, i = 0; i < cell_num_to_write;
+           ++cell_idx, ++i) {
         if (coord_dups.find(cell_idx) == coord_dups.end()) {
           if ((*tiles)[tile_idx].full())
             tile_idx += t;
@@ -2567,9 +2616,13 @@ Status Writer::prepare_full_tiles_var(
           RETURN_NOT_OK((*tiles)[tile_idx].write(&offset, sizeof(offset)));
 
           // Write var-sized value(s).
+          auto buff_offset =
+              prepare_buffer_offset(buffer[cell_idx], attr_datatype_size);
           var_size = (cell_idx == cell_num - 1) ?
                          *buffer_var_size - buff_offset :
-                         next_buff_offset - buff_offset;
+                         prepare_buffer_offset(
+                             buffer[cell_idx + 1], attr_datatype_size) -
+                             buff_offset;
           RETURN_NOT_OK(
               (*tiles)[tile_idx + 1].write(buffer_var + buff_offset, var_size));
 
@@ -2586,19 +2639,20 @@ Status Writer::prepare_full_tiles_var(
 
   // Potentially fill the last tile
   assert(cell_num - cell_idx < cell_num_per_tile - last_tile.cell_num());
-  for (; cell_idx < cell_num; ++cell_idx) {
-    auto buff_offset =
-        prepare_buffer_offset(buffer[cell_idx], attr_datatype_size);
-    auto next_buff_offset =
-        prepare_buffer_offset(buffer[cell_idx + 1], attr_datatype_size);
-    if (coord_dups.empty()) {
+  if (coord_dups.empty()) {
+    for (; cell_idx < cell_num; ++cell_idx) {
       // Write offset.
       offset = last_tile_var.size();
       RETURN_NOT_OK(last_tile.write(&offset, sizeof(offset)));
 
       // Write var-sized value(s).
-      var_size = (cell_idx == cell_num - 1) ? *buffer_var_size - buff_offset :
-                                              next_buff_offset - buff_offset;
+      auto buff_offset =
+          prepare_buffer_offset(buffer[cell_idx], attr_datatype_size);
+      var_size =
+          (cell_idx == cell_num - 1) ?
+              *buffer_var_size - buff_offset :
+              prepare_buffer_offset(buffer[cell_idx + 1], attr_datatype_size) -
+                  buff_offset;
       RETURN_NOT_OK(last_tile_var.write(buffer_var + buff_offset, var_size));
 
       // Write validity value(s).
@@ -2607,15 +2661,20 @@ Status Writer::prepare_full_tiles_var(
             buffer_validity + (buff_offset / attr_datatype_size *
                                constants::cell_validity_size),
             var_size / attr_datatype_size * constants::cell_validity_size));
-    } else {
+    }
+  } else {
+    for (; cell_idx < cell_num; ++cell_idx) {
       if (coord_dups.find(cell_idx) == coord_dups.end()) {
         // Write offset.
         offset = last_tile_var.size();
         RETURN_NOT_OK(last_tile.write(&offset, sizeof(offset)));
 
         // Write var-sized value(s).
-        var_size = (cell_idx == cell_num - 1) ? *buffer_var_size - buff_offset :
-                                                next_buff_offset - buff_offset;
+        auto buff_offset =
+            prepare_buffer_offset(buffer[cell_idx], attr_datatype_size);
+        var_size = (cell_idx == cell_num - 1) ?
+                       *buffer_var_size - buff_offset :
+                       buffer[cell_idx + 1] - buff_offset;
         RETURN_NOT_OK(last_tile_var.write(buffer_var + buff_offset, var_size));
 
         // Write validity value(s).
@@ -2903,12 +2962,8 @@ Status Writer::prepare_tiles_var(
   }
 
   // Write all cells one by one
-  for (uint64_t i = 0, tile_idx = 0; i < cell_num; ++i) {
-    auto buff_offset =
-        prepare_buffer_offset(buffer[cell_pos[i]], attr_datatype_size);
-    auto next_buff_offset =
-        prepare_buffer_offset(buffer[cell_pos[i] + 1], attr_datatype_size);
-    if (dups_num == 0) {
+  if (dups_num == 0) {
+    for (uint64_t i = 0, tile_idx = 0; i < cell_num; ++i) {
       if ((*tiles)[tile_idx].full())
         tile_idx += t;
 
@@ -2917,9 +2972,13 @@ Status Writer::prepare_tiles_var(
       RETURN_NOT_OK((*tiles)[tile_idx].write(&offset, sizeof(offset)));
 
       // Write var-sized value(s).
+      auto buff_offset =
+          prepare_buffer_offset(buffer[cell_pos[i]], attr_datatype_size);
       var_size = (cell_pos[i] == cell_num - 1) ?
                      *buffer_var_size - buff_offset :
-                     next_buff_offset - buff_offset;
+                     prepare_buffer_offset(
+                         buffer[cell_pos[i] + 1], attr_datatype_size) -
+                         buff_offset;
       RETURN_NOT_OK(
           (*tiles)[tile_idx + 1].write(buffer_var + buff_offset, var_size));
 
@@ -2930,7 +2989,9 @@ Status Writer::prepare_tiles_var(
                                constants::cell_validity_size),
             var_size / attr_datatype_size * constants::cell_validity_size));
       }
-    } else {
+    }
+  } else {
+    for (uint64_t i = 0, tile_idx = 0; i < cell_num; ++i) {
       if (coord_dups.find(cell_pos[i]) != coord_dups.end())
         continue;
 
@@ -2942,9 +3003,13 @@ Status Writer::prepare_tiles_var(
       RETURN_NOT_OK((*tiles)[tile_idx].write(&offset, sizeof(offset)));
 
       // Write var-sized value(s).
+      auto buff_offset =
+          prepare_buffer_offset(buffer[cell_pos[i]], attr_datatype_size);
       var_size = (cell_pos[i] == cell_num - 1) ?
                      *buffer_var_size - buff_offset :
-                     next_buff_offset - buff_offset;
+                     prepare_buffer_offset(
+                         buffer[cell_pos[i] + 1], attr_datatype_size) -
+                         buff_offset;
       RETURN_NOT_OK(
           (*tiles)[tile_idx + 1].write(buffer_var + buff_offset, var_size));
 

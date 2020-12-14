@@ -246,6 +246,12 @@ class Writer {
   /** Returns the configured offsets format mode. */
   std::string get_offsets_mode() const;
 
+  /** Returns `True` if offsets are configured to have an extra element. */
+  bool get_offsets_extra_element() const;
+
+  /** Returns the configured offsets bitsize */
+  uint32_t get_offsets_bitsize() const;
+
   /** Initializes the writer with the subarray layout. */
   Status init(const Layout& layout);
 
@@ -342,6 +348,12 @@ class Writer {
 
   /** Sets the offsets format mode. */
   Status set_offsets_mode(const std::string& offsets_mode);
+
+  /** Sets if offsets are configured to have an extra element. */
+  Status set_offsets_extra_element(bool add_extra_element);
+
+  /** Sets the bitsize of offsets */
+  Status set_offsets_bitsize(const uint32_t bitsize);
 
   /** Sets the fragment URI. Applicable only to write queries. */
   void set_fragment_uri(const URI& fragment_uri);
@@ -486,6 +498,15 @@ class Writer {
 
   /** The offset format used for variable-sized attributes. */
   std::string offsets_format_mode_;
+
+  /**
+   * If `true`, an extra element that points to the end of the values buffer
+   * will be added in the end of the offsets buffer of var-sized attributes
+   */
+  bool offsets_extra_element_;
+
+  /** The offset bitsize used for variable-sized attributes. */
+  uint32_t offsets_bitsize_;
 
   /* ********************************* */
   /*           PRIVATE METHODS         */
