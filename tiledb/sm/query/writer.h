@@ -243,6 +243,15 @@ class Writer {
   /** Returns current setting of dedup_coords_ */
   bool get_dedup_coords() const;
 
+  /** Returns the configured offsets format mode. */
+  std::string get_offsets_mode() const;
+
+  /** Returns `True` if offsets are configured to have an extra element. */
+  bool get_offsets_extra_element() const;
+
+  /** Returns the configured offsets bitsize */
+  uint32_t get_offsets_bitsize() const;
+
   /** Initializes the writer with the subarray layout. */
   Status init(const Layout& layout);
 
@@ -336,6 +345,15 @@ class Writer {
 
   /** Sets current setting of dedup_coords_ */
   void set_dedup_coords(bool b);
+
+  /** Sets the offsets format mode. */
+  Status set_offsets_mode(const std::string& offsets_mode);
+
+  /** Sets if offsets are configured to have an extra element. */
+  Status set_offsets_extra_element(bool add_extra_element);
+
+  /** Sets the bitsize of offsets */
+  Status set_offsets_bitsize(const uint32_t bitsize);
 
   /** Sets the fragment URI. Applicable only to write queries. */
   void set_fragment_uri(const URI& fragment_uri);
@@ -477,6 +495,18 @@ class Writer {
 
   /** Allocated buffers that neeed to be cleaned upon destruction. */
   std::vector<void*> to_clean_;
+
+  /** The offset format used for variable-sized attributes. */
+  std::string offsets_format_mode_;
+
+  /**
+   * If `true`, an extra element that points to the end of the values buffer
+   * will be added in the end of the offsets buffer of var-sized attributes
+   */
+  bool offsets_extra_element_;
+
+  /** The offset bitsize used for variable-sized attributes. */
+  uint32_t offsets_bitsize_;
 
   /* ********************************* */
   /*           PRIVATE METHODS         */
@@ -791,6 +821,13 @@ class Writer {
   Status ordered_write();
 
   /**
+   * Process a buffer offset according to the configured options for
+   * variable-sized attributes (e.g. transform a byte offset to element offset)
+   */
+  uint64_t prepare_buffer_offset(
+      const uint64_t offset, const uint64_t datasize) const;
+
+  /**
    * Applicable only to write in global order. It prepares only full
    * tiles, storing the last potentially non-full tile in
    * `global_write_state->last_tiles_` as part of the state to be used in
@@ -1081,6 +1118,7 @@ class Writer {
    * @param buff_var The write buffer where the cell values will be copied from.
    * @param start The start element in the write buffer.
    * @param end The end element in the write buffer.
+   * @param attr_datatype_size The size of each attribute value in `buff_var`.
    * @param tile The tile offsets to write to.
    * @param tile_var The tile with the var-sized cells to write to.
    * @return Status
@@ -1090,6 +1128,7 @@ class Writer {
       ConstBuffer* buff_var,
       uint64_t start,
       uint64_t end,
+      uint64_t attr_datatype_size,
       Tile* tile,
       Tile* tile_var) const;
 

@@ -317,15 +317,6 @@ struct QueryReader {
 
   readState @2 :ReadState;
   # Read state of reader
-
-  varOffsetsMode @3 :Text;
-  # The offsets format (`bytes` or `elements`) to be used
-
-  varOffsetsAddExtraElement @4 :Bool;
-  # `True` if an extra element is to be added to the end of the offsets buffer
-
-  varOffsetsBitsize @5 :Int32;
-  # The offsets bitsize (`32` or `64`) to be used
 }
 
 struct Query {
@@ -358,6 +349,15 @@ struct Query {
 
     totalValidityBufferBytes @9: UInt64;
     # Total number of bytes in validity buffers
+
+    varOffsetsMode @10 :Text;
+    # The offsets format (`bytes` or `elements`) to be used
+
+    varOffsetsAddExtraElement @11 :Bool;
+    # `True` if an extra element is to be added to the end of the offsets buffer
+
+    varOffsetsBitsize @12 :Int32;
+    # The offsets bitsize (`32` or `64`) to be used
 }
 
 struct NonEmptyDomain {

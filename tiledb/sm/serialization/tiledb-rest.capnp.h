@@ -536,7 +536,7 @@ struct QueryReader {
   class Pipeline;
 
   struct _capnpPrivate {
-    CAPNP_DECLARE_STRUCT_HEADER(e19754f813ccf79c, 1, 4)
+    CAPNP_DECLARE_STRUCT_HEADER(e19754f813ccf79c, 0, 3)
 #if !CAPNP_LITE
     static constexpr ::capnp::_::RawBrandedSchema const* brand() {
       return &schema->defaultBrand;
@@ -553,7 +553,7 @@ struct Query {
   class Pipeline;
 
   struct _capnpPrivate {
-    CAPNP_DECLARE_STRUCT_HEADER(96ba49d0f8b23ccc, 3, 7)
+    CAPNP_DECLARE_STRUCT_HEADER(96ba49d0f8b23ccc, 4, 8)
 #if !CAPNP_LITE
     static constexpr ::capnp::_::RawBrandedSchema const* brand() {
       return &schema->defaultBrand;
@@ -4144,13 +4144,6 @@ class QueryReader::Reader {
   inline ::tiledb::sm::serialization::capnp::ReadState::Reader getReadState()
       const;
 
-  inline bool hasVarOffsetsMode() const;
-  inline ::capnp::Text::Reader getVarOffsetsMode() const;
-
-  inline bool getVarOffsetsAddExtraElement() const;
-
-  inline ::int32_t getVarOffsetsBitsize() const;
-
  private:
   ::capnp::_::StructReader _reader;
   template <typename, ::capnp::Kind>
@@ -4216,19 +4209,6 @@ class QueryReader::Builder {
       ::capnp::Orphan<::tiledb::sm::serialization::capnp::ReadState>&& value);
   inline ::capnp::Orphan<::tiledb::sm::serialization::capnp::ReadState>
   disownReadState();
-
-  inline bool hasVarOffsetsMode();
-  inline ::capnp::Text::Builder getVarOffsetsMode();
-  inline void setVarOffsetsMode(::capnp::Text::Reader value);
-  inline ::capnp::Text::Builder initVarOffsetsMode(unsigned int size);
-  inline void adoptVarOffsetsMode(::capnp::Orphan<::capnp::Text>&& value);
-  inline ::capnp::Orphan<::capnp::Text> disownVarOffsetsMode();
-
-  inline bool getVarOffsetsAddExtraElement();
-  inline void setVarOffsetsAddExtraElement(bool value);
-
-  inline ::int32_t getVarOffsetsBitsize();
-  inline void setVarOffsetsBitsize(::int32_t value);
 
  private:
   ::capnp::_::StructBuilder _builder;
@@ -4310,6 +4290,13 @@ class Query::Reader {
   inline ::uint64_t getTotalVarLenBufferBytes() const;
 
   inline ::uint64_t getTotalValidityBufferBytes() const;
+
+  inline bool hasVarOffsetsMode() const;
+  inline ::capnp::Text::Reader getVarOffsetsMode() const;
+
+  inline bool getVarOffsetsAddExtraElement() const;
+
+  inline ::int32_t getVarOffsetsBitsize() const;
 
  private:
   ::capnp::_::StructReader _reader;
@@ -4425,6 +4412,19 @@ class Query::Builder {
 
   inline ::uint64_t getTotalValidityBufferBytes();
   inline void setTotalValidityBufferBytes(::uint64_t value);
+
+  inline bool hasVarOffsetsMode();
+  inline ::capnp::Text::Builder getVarOffsetsMode();
+  inline void setVarOffsetsMode(::capnp::Text::Reader value);
+  inline ::capnp::Text::Builder initVarOffsetsMode(unsigned int size);
+  inline void adoptVarOffsetsMode(::capnp::Orphan<::capnp::Text>&& value);
+  inline ::capnp::Orphan<::capnp::Text> disownVarOffsetsMode();
+
+  inline bool getVarOffsetsAddExtraElement();
+  inline void setVarOffsetsAddExtraElement(bool value);
+
+  inline ::int32_t getVarOffsetsBitsize();
+  inline void setVarOffsetsBitsize(::int32_t value);
 
  private:
   ::capnp::_::StructBuilder _builder;
@@ -9756,71 +9756,6 @@ QueryReader::Builder::disownReadState() {
           _builder.getPointerField(::capnp::bounded<2>() * ::capnp::POINTERS));
 }
 
-inline bool QueryReader::Reader::hasVarOffsetsMode() const {
-  return !_reader.getPointerField(::capnp::bounded<3>() * ::capnp::POINTERS)
-              .isNull();
-}
-inline bool QueryReader::Builder::hasVarOffsetsMode() {
-  return !_builder.getPointerField(::capnp::bounded<3>() * ::capnp::POINTERS)
-              .isNull();
-}
-inline ::capnp::Text::Reader QueryReader::Reader::getVarOffsetsMode() const {
-  return ::capnp::_::PointerHelpers<::capnp::Text>::get(
-      _reader.getPointerField(::capnp::bounded<3>() * ::capnp::POINTERS));
-}
-inline ::capnp::Text::Builder QueryReader::Builder::getVarOffsetsMode() {
-  return ::capnp::_::PointerHelpers<::capnp::Text>::get(
-      _builder.getPointerField(::capnp::bounded<3>() * ::capnp::POINTERS));
-}
-inline void QueryReader::Builder::setVarOffsetsMode(
-    ::capnp::Text::Reader value) {
-  ::capnp::_::PointerHelpers<::capnp::Text>::set(
-      _builder.getPointerField(::capnp::bounded<3>() * ::capnp::POINTERS),
-      value);
-}
-inline ::capnp::Text::Builder QueryReader::Builder::initVarOffsetsMode(
-    unsigned int size) {
-  return ::capnp::_::PointerHelpers<::capnp::Text>::init(
-      _builder.getPointerField(::capnp::bounded<3>() * ::capnp::POINTERS),
-      size);
-}
-inline void QueryReader::Builder::adoptVarOffsetsMode(
-    ::capnp::Orphan<::capnp::Text>&& value) {
-  ::capnp::_::PointerHelpers<::capnp::Text>::adopt(
-      _builder.getPointerField(::capnp::bounded<3>() * ::capnp::POINTERS),
-      kj::mv(value));
-}
-inline ::capnp::Orphan<::capnp::Text>
-QueryReader::Builder::disownVarOffsetsMode() {
-  return ::capnp::_::PointerHelpers<::capnp::Text>::disown(
-      _builder.getPointerField(::capnp::bounded<3>() * ::capnp::POINTERS));
-}
-
-inline bool QueryReader::Reader::getVarOffsetsAddExtraElement() const {
-  return _reader.getDataField<bool>(::capnp::bounded<0>() * ::capnp::ELEMENTS);
-}
-
-inline bool QueryReader::Builder::getVarOffsetsAddExtraElement() {
-  return _builder.getDataField<bool>(::capnp::bounded<0>() * ::capnp::ELEMENTS);
-}
-inline void QueryReader::Builder::setVarOffsetsAddExtraElement(bool value) {
-  _builder.setDataField<bool>(::capnp::bounded<0>() * ::capnp::ELEMENTS, value);
-}
-
-inline ::int32_t QueryReader::Reader::getVarOffsetsBitsize() const {
-  return _reader.getDataField<::int32_t>(
-      ::capnp::bounded<1>() * ::capnp::ELEMENTS);
-}
-
-inline ::int32_t QueryReader::Builder::getVarOffsetsBitsize() {
-  return _builder.getDataField<::int32_t>(
-      ::capnp::bounded<1>() * ::capnp::ELEMENTS);
-}
-inline void QueryReader::Builder::setVarOffsetsBitsize(::int32_t value) {
-  _builder.setDataField<::int32_t>(
-      ::capnp::bounded<1>() * ::capnp::ELEMENTS, value);
-}
-
 inline bool Query::Reader::hasAttributeBufferHeaders() const {
   return !_reader.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS)
               .isNull();
@@ -10182,6 +10117,72 @@ inline ::uint64_t Query::Builder::getTotalValidityBufferBytes() {
 inline void Query::Builder::setTotalValidityBufferBytes(::uint64_t value) {
   _builder.setDataField<::uint64_t>(
       ::capnp::bounded<2>() * ::capnp::ELEMENTS, value);
+}
+
+inline bool Query::Reader::hasVarOffsetsMode() const {
+  return !_reader.getPointerField(::capnp::bounded<7>() * ::capnp::POINTERS)
+              .isNull();
+}
+inline bool Query::Builder::hasVarOffsetsMode() {
+  return !_builder.getPointerField(::capnp::bounded<7>() * ::capnp::POINTERS)
+              .isNull();
+}
+inline ::capnp::Text::Reader Query::Reader::getVarOffsetsMode() const {
+  return ::capnp::_::PointerHelpers<::capnp::Text>::get(
+      _reader.getPointerField(::capnp::bounded<7>() * ::capnp::POINTERS));
+}
+inline ::capnp::Text::Builder Query::Builder::getVarOffsetsMode() {
+  return ::capnp::_::PointerHelpers<::capnp::Text>::get(
+      _builder.getPointerField(::capnp::bounded<7>() * ::capnp::POINTERS));
+}
+inline void Query::Builder::setVarOffsetsMode(::capnp::Text::Reader value) {
+  ::capnp::_::PointerHelpers<::capnp::Text>::set(
+      _builder.getPointerField(::capnp::bounded<7>() * ::capnp::POINTERS),
+      value);
+}
+inline ::capnp::Text::Builder Query::Builder::initVarOffsetsMode(
+    unsigned int size) {
+  return ::capnp::_::PointerHelpers<::capnp::Text>::init(
+      _builder.getPointerField(::capnp::bounded<7>() * ::capnp::POINTERS),
+      size);
+}
+inline void Query::Builder::adoptVarOffsetsMode(
+    ::capnp::Orphan<::capnp::Text>&& value) {
+  ::capnp::_::PointerHelpers<::capnp::Text>::adopt(
+      _builder.getPointerField(::capnp::bounded<7>() * ::capnp::POINTERS),
+      kj::mv(value));
+}
+inline ::capnp::Orphan<::capnp::Text> Query::Builder::disownVarOffsetsMode() {
+  return ::capnp::_::PointerHelpers<::capnp::Text>::disown(
+      _builder.getPointerField(::capnp::bounded<7>() * ::capnp::POINTERS));
+}
+
+inline bool Query::Reader::getVarOffsetsAddExtraElement() const {
+  return _reader.getDataField<bool>(
+      ::capnp::bounded<192>() * ::capnp::ELEMENTS);
+}
+
+inline bool Query::Builder::getVarOffsetsAddExtraElement() {
+  return _builder.getDataField<bool>(
+      ::capnp::bounded<192>() * ::capnp::ELEMENTS);
+}
+inline void Query::Builder::setVarOffsetsAddExtraElement(bool value) {
+  _builder.setDataField<bool>(
+      ::capnp::bounded<192>() * ::capnp::ELEMENTS, value);
+}
+
+inline ::int32_t Query::Reader::getVarOffsetsBitsize() const {
+  return _reader.getDataField<::int32_t>(
+      ::capnp::bounded<7>() * ::capnp::ELEMENTS);
+}
+
+inline ::int32_t Query::Builder::getVarOffsetsBitsize() {
+  return _builder.getDataField<::int32_t>(
+      ::capnp::bounded<7>() * ::capnp::ELEMENTS);
+}
+inline void Query::Builder::setVarOffsetsBitsize(::int32_t value) {
+  _builder.setDataField<::int32_t>(
+      ::capnp::bounded<7>() * ::capnp::ELEMENTS, value);
 }
 
 inline bool NonEmptyDomain::Reader::hasNonEmptyDomain() const {

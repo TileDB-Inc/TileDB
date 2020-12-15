@@ -409,15 +409,6 @@ Status reader_to_capnp(
   // Read state
   RETURN_NOT_OK(read_state_to_capnp(array_schema, reader, reader_builder));
 
-  // Offsets mode
-  reader_builder->setVarOffsetsMode(reader.offsets_mode());
-
-  // Offsets extra element
-  reader_builder->setVarOffsetsAddExtraElement(reader.offsets_extra_element());
-
-  // Offsets bitsize
-  reader_builder->setVarOffsetsBitsize(reader.offsets_bitsize());
-
   return Status::Ok();
 }
 
@@ -442,21 +433,6 @@ Status reader_from_capnp(
   if (reader_reader.hasReadState())
     RETURN_NOT_OK(read_state_from_capnp(
         array, reader_reader.getReadState(), reader, compute_tp));
-
-  // Offsets mode
-  if (reader_reader.hasVarOffsetsMode()) {
-    RETURN_NOT_OK(reader->set_offsets_mode(reader_reader.getVarOffsetsMode()));
-  }
-
-  // Offsets extra element
-  RETURN_NOT_OK(reader->set_offsets_extra_element(
-      reader_reader.getVarOffsetsAddExtraElement()));
-
-  // Offsets bitsize
-  if (reader_reader.getVarOffsetsBitsize() > 0) {
-    RETURN_NOT_OK(
-        reader->set_offsets_bitsize(reader_reader.getVarOffsetsBitsize()));
-  }
 
   return Status::Ok();
 }
@@ -574,10 +550,20 @@ Status query_to_capnp(
   if (type == QueryType::READ) {
     auto builder = query_builder->initReader();
     auto reader = query.reader();
+
+    query_builder->setVarOffsetsMode(reader->offsets_mode());
+    query_builder->setVarOffsetsAddExtraElement(
+        reader->offsets_extra_element());
+    query_builder->setVarOffsetsBitsize(reader->offsets_bitsize());
     RETURN_NOT_OK(reader_to_capnp(*reader, &builder));
   } else {
     auto builder = query_builder->initWriter();
     auto writer = query.writer();
+
+    query_builder->setVarOffsetsMode(writer->get_offsets_mode());
+    query_builder->setVarOffsetsAddExtraElement(
+        writer->get_offsets_extra_element());
+    query_builder->setVarOffsetsBitsize(writer->get_offsets_bitsize());
     RETURN_NOT_OK(writer_to_capnp(*writer, &builder));
   }
 
@@ -948,11 +934,38 @@ Status query_from_capnp(
   // heterogeneous coordinate changes
   if (type == QueryType::READ) {
     auto reader_reader = query_reader.getReader();
-    RETURN_NOT_OK(
-        reader_from_capnp(reader_reader, query->reader(), compute_tp));
+    auto reader = query->reader();
+
+    if (query_reader.hasVarOffsetsMode()) {
+      RETURN_NOT_OK(reader->set_offsets_mode(query_reader.getVarOffsetsMode()));
+    }
+
+    RETURN_NOT_OK(reader->set_offsets_extra_element(
+        query_reader.getVarOffsetsAddExtraElement()));
+
+    if (query_reader.getVarOffsetsBitsize() > 0) {
+      RETURN_NOT_OK(
+          reader->set_offsets_bitsize(query_reader.getVarOffsetsBitsize()));
+    }
+
+    RETURN_NOT_OK(reader_from_capnp(reader_reader, reader, compute_tp));
   } else {
     auto writer_reader = query_reader.getWriter();
-    RETURN_NOT_OK(writer_from_capnp(writer_reader, query->writer()));
+    auto writer = query->writer();
+
+    if (query_reader.hasVarOffsetsMode()) {
+      RETURN_NOT_OK(writer->set_offsets_mode(query_reader.getVarOffsetsMode()));
+    }
+
+    RETURN_NOT_OK(writer->set_offsets_extra_element(
+        query_reader.getVarOffsetsAddExtraElement()));
+
+    if (query_reader.getVarOffsetsBitsize() > 0) {
+      RETURN_NOT_OK(
+          writer->set_offsets_bitsize(query_reader.getVarOffsetsBitsize()));
+    }
+
+    RETURN_NOT_OK(writer_from_capnp(writer_reader, writer));
 
     // For sparse writes we want to explicitly set subarray to nullptr.
     const bool sparse_write =
