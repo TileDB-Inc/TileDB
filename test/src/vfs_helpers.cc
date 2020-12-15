@@ -42,6 +42,7 @@ std::vector<std::unique_ptr<SupportedFs>> vfs_test_get_fs_vec() {
   bool supports_s3_ = false;
   bool supports_hdfs_ = false;
   bool supports_azure_ = false;
+  bool supports_memfs_ = false;
   get_supported_fs(&supports_s3_, &supports_hdfs_, &supports_azure_);
   if (supports_s3_) {
     SupportedFsS3* s3_fs = new SupportedFsS3();
@@ -60,6 +61,12 @@ std::vector<std::unique_ptr<SupportedFs>> vfs_test_get_fs_vec() {
 
   SupportedFsLocal* local_fs = new SupportedFsLocal();
   fs_vec.emplace_back(local_fs);
+
+  get_supported_memfs(&supports_memfs_);
+  if (supports_memfs_) {
+    SupportedFsMem* mem_fs = new SupportedFsMem();
+    fs_vec.emplace_back(mem_fs);
+  }
 
   return fs_vec;
 }
@@ -136,6 +143,10 @@ Status SupportedFsS3::init(tiledb_ctx_t* ctx, tiledb_vfs_t* vfs) {
     REQUIRE(rc == TILEDB_OK);
   }
 
+  rc = tiledb_vfs_is_bucket(ctx, vfs, s3_bucket_.c_str(), &is_bucket);
+  REQUIRE(rc == TILEDB_OK);
+  REQUIRE(is_bucket);
+
   return Status::Ok();
 }
 
@@ -146,6 +157,10 @@ Status SupportedFsS3::close(tiledb_ctx_t* ctx, tiledb_vfs_t* vfs) {
   if (is_bucket) {
     CHECK(tiledb_vfs_remove_bucket(ctx, vfs, s3_bucket_.c_str()) == TILEDB_OK);
   }
+
+  rc = tiledb_vfs_is_bucket(ctx, vfs, s3_bucket_.c_str(), &is_bucket);
+  REQUIRE(rc == TILEDB_OK);
+  REQUIRE(!is_bucket);
 
   return Status::Ok();
 }
@@ -271,6 +286,29 @@ std::string SupportedFsLocal::file_prefix() {
 }
 
 #endif
+
+Status SupportedFsMem::prepare_config(
+    tiledb_config_t* config, tiledb_error_t* error) {
+  (void)config;
+  (void)error;
+  return Status::Ok();
+}
+
+Status SupportedFsMem::init(tiledb_ctx_t* ctx, tiledb_vfs_t* vfs) {
+  (void)ctx;
+  (void)vfs;
+  return Status::Ok();
+}
+
+Status SupportedFsMem::close(tiledb_ctx_t* ctx, tiledb_vfs_t* vfs) {
+  (void)ctx;
+  (void)vfs;
+  return Status::Ok();
+}
+
+std::string SupportedFsMem::temp_dir() {
+  return temp_dir_;
+}
 
 }  // End of namespace test
 
