@@ -2125,7 +2125,7 @@ void SparseArrayFx::check_invalid_offsets(const std::string& array_name) {
       &a2_buffer_offset_size,
       buffers[1],
       &a2_buffer_size);
-  CHECK(rc == TILEDB_ERR);
+  CHECK(tiledb_query_submit(ctx_, query) == TILEDB_ERR);
 
   // Check non-ascending offsets error
   buffer_a2[0] = 0;
@@ -2139,7 +2139,7 @@ void SparseArrayFx::check_invalid_offsets(const std::string& array_name) {
       &buffer_sizes[0],
       buffers[1],
       &buffer_sizes[1]);
-  CHECK(rc == TILEDB_ERR);
+  CHECK(tiledb_query_submit(ctx_, query) == TILEDB_ERR);
 
   // Check out-of-bounds offsets error
   buffer_a2[0] = 0;
@@ -2153,7 +2153,7 @@ void SparseArrayFx::check_invalid_offsets(const std::string& array_name) {
       &buffer_sizes[0],
       buffers[1],
       &buffer_sizes[1]);
-  CHECK(rc == TILEDB_ERR);
+  CHECK(tiledb_query_submit(ctx_, query) == TILEDB_ERR);
 
   // Close array
   rc = tiledb_array_close(ctx_, array);
