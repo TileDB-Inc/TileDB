@@ -622,6 +622,7 @@ Status Reader::compute_range_result_coords(
     std::vector<ResultCoords>* result_coords) {
   auto coords_num = tile->cell_num();
   auto dim_num = array_schema_->dim_num();
+  auto cell_order = array_schema_->cell_order();
   auto range_coords = subarray->get_range_coords(range_idx);
 
   if (array_schema_->dense()) {
@@ -650,9 +651,13 @@ Status Reader::compute_range_result_coords(
 
     // Compute result and overwritten bitmap per dimension
     for (unsigned d = 0; d < dim_num; ++d) {
-      const auto& ranges = subarray->ranges_for_dim(d);
+      // For col-major cell ordering, iterate the dimensions
+      // in reverse.
+      const unsigned dim_idx =
+          cell_order == Layout::COL_MAJOR ? dim_num - d - 1 : d;
+      const auto& ranges = subarray->ranges_for_dim(dim_idx);
       RETURN_NOT_OK(tile->compute_results_sparse(
-          d, ranges[range_coords[d]], &result_bitmap));
+          dim_idx, ranges[range_coords[dim_idx]], &result_bitmap, cell_order));
     }
 
     // Gather results
