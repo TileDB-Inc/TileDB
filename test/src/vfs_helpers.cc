@@ -139,7 +139,16 @@ Status SupportedFsS3::init(tiledb_ctx_t* ctx, tiledb_vfs_t* vfs) {
   int rc = tiledb_vfs_is_bucket(ctx, vfs, s3_bucket_.c_str(), &is_bucket);
   REQUIRE(rc == TILEDB_OK);
   if (!is_bucket) {
-    rc = tiledb_vfs_create_bucket(ctx, vfs, s3_bucket_.c_str());
+    // In the CI, we've seen issues where the bucket create fails due to
+    // `BucketAlreadyOwnedByYou`. We will retry 5 times, sleeping 1 second
+    // between each retry if the bucket create fails here.
+    for (int i = 0; i < 5; ++i) {
+      rc = tiledb_vfs_create_bucket(ctx, vfs, s3_bucket_.c_str());
+      if (rc == TILEDB_OK)
+        break;
+      else
+        std::this_thread::sleep_for(std::chrono::seconds(1));
+    }
     REQUIRE(rc == TILEDB_OK);
   }
 
