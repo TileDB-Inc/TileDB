@@ -931,17 +931,17 @@ TEST_CASE(
     SECTION("Unordered write") {
       write_dense_array(
           ctx, array_name, data, data_byte_offsets, TILEDB_UNORDERED);
-      read_and_check_dense_array(ctx, array_name, data, data_byte_offsets);
+      read_and_check_dense_array(ctx, array_name, data, data_offsets_exp);
     }
     SECTION("Ordered write") {
       write_dense_array(
           ctx, array_name, data, data_byte_offsets, TILEDB_ROW_MAJOR);
-      read_and_check_dense_array(ctx, array_name, data, data_byte_offsets);
+      read_and_check_dense_array(ctx, array_name, data, data_offsets_exp);
     }
     SECTION("Global order write") {
       write_dense_array(
           ctx, array_name, data, data_byte_offsets, TILEDB_GLOBAL_ORDER);
-      read_and_check_dense_array(ctx, array_name, data, data_byte_offsets);
+      read_and_check_dense_array(ctx, array_name, data, data_offsets_exp);
     }
   }
 
