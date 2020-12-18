@@ -567,6 +567,13 @@ class Writer {
   Status check_subarray() const;
 
   /**
+   * Check the validity of the provided buffer offsets for a variable attribute.
+   *
+   * @return Status
+   */
+  Status check_var_attr_offsets() const;
+
+  /**
    * Cleans up the coordinate buffers. Applicable only if the coordinate
    * buffers were allocated by TileDB (not the user)
    */
@@ -821,11 +828,18 @@ class Writer {
   Status ordered_write();
 
   /**
-   * Process a buffer offset according to the configured options for
+   * Return an element of the offsets buffer at a certain position
+   * taking into account the configured bitsize
+   */
+  uint64_t get_offset_buffer_element(
+      const void* buffer, const uint64_t pos) const;
+
+  /**
+   * Return a buffer offset according to the configured options for
    * variable-sized attributes (e.g. transform a byte offset to element offset)
    */
   uint64_t prepare_buffer_offset(
-      const uint64_t offset, const uint64_t datasize) const;
+      const void* buffer, const uint64_t pos, const uint64_t datasize) const;
 
   /**
    * Applicable only to write in global order. It prepares only full

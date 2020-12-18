@@ -395,7 +395,8 @@ TEST_CASE(
     Query q(ctx, array, TILEDB_WRITE);
     q.set_layout(TILEDB_GLOBAL_ORDER);
     q.set_coordinates(coord);
-    REQUIRE_THROWS(q.set_buffer("a", a_offset, a));
+    q.set_buffer("a", a_offset, a);
+    REQUIRE_THROWS(q.submit());
   }
 
   // Test case of non-ascending offsets
@@ -405,7 +406,8 @@ TEST_CASE(
     Query q(ctx, array, TILEDB_WRITE);
     q.set_layout(TILEDB_GLOBAL_ORDER);
     q.set_coordinates(coord);
-    REQUIRE_THROWS(q.set_buffer("a", a_offset, a));
+    q.set_buffer("a", a_offset, a);
+    REQUIRE_THROWS(q.submit());
   }
 
   array.close();
