@@ -76,6 +76,8 @@ GCSFx::~GCSFx() {
 }
 
 void GCSFx::init_gcs(Config&& config) {
+  REQUIRE(config.set("vfs.gcs.project_id", "TODO").ok());
+
   REQUIRE(thread_pool_.init(2).ok());
   REQUIRE(gcs_.init(config, &thread_pool_).ok());
 

@@ -110,7 +110,9 @@ void VFSFx::set_supported_fs() {
   tiledb_ctx_t* ctx = nullptr;
   REQUIRE(tiledb_ctx_alloc(nullptr, &ctx) == TILEDB_OK);
 
-  get_supported_fs(&supports_s3_, &supports_hdfs_, &supports_azure_);
+  bool supports_gcs;  // unused
+  get_supported_fs(
+      &supports_s3_, &supports_hdfs_, &supports_azure_, &supports_gcs);
   get_supported_memfs(&supports_memfs_);
 
   tiledb_ctx_free(&ctx);
