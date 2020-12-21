@@ -44,6 +44,40 @@
 namespace tiledb {
 namespace test {
 
+// Forward declaration
+class SupportedFs;
+
+/**
+ * Create the vector of supported filesystems.
+ */
+std::vector<std::unique_ptr<SupportedFs>> vfs_test_get_fs_vec();
+
+/**
+ * Initialize the vfs test.
+ *
+ * @param fs_vec The vector of supported filesystems
+ * @param ctx The TileDB context.
+ * @param vfs The VFS object.
+ * @param config An optional configuration argument.
+ */
+Status vfs_test_init(
+    const std::vector<std::unique_ptr<SupportedFs>>& fs_vec,
+    tiledb_ctx_t** ctx,
+    tiledb_vfs_t** vfs,
+    tiledb_config_t* config = nullptr);
+
+/**
+ * Close the vfs test.
+ *
+ * @param fs_vec The vector of supported filesystems
+ * @param ctx The TileDB context.
+ * @param vfs The VFS object.
+ */
+Status vfs_test_close(
+    const std::vector<std::unique_ptr<SupportedFs>>& fs_vec,
+    tiledb_ctx_t* ctx,
+    tiledb_vfs_t* vfs);
+
 /**
  * This class defines and manipulates
  * a list of supported filesystems.
@@ -98,37 +132,6 @@ class SupportedFs {
    */
   virtual std::string temp_dir() = 0;
 };
-
-/**
- * Create the vector of supported filesystems.
- */
-std::vector<std::unique_ptr<SupportedFs>> vfs_test_get_fs_vec();
-
-/**
- * Initialize the vfs test.
- *
- * @param fs_vec The vector of supported filesystems
- * @param ctx The TileDB context.
- * @param vfs The VFS object.
- * @param config An optional configuration argument.
- */
-Status vfs_test_init(
-    const std::vector<std::unique_ptr<SupportedFs>>& fs_vec,
-    tiledb_ctx_t** ctx,
-    tiledb_vfs_t** vfs,
-    tiledb_config_t* config = nullptr);
-
-/**
- * Close the vfs test.
- *
- * @param fs_vec The vector of supported filesystems
- * @param ctx The TileDB context.
- * @param vfs The VFS object.
- */
-Status vfs_test_close(
-    const std::vector<std::unique_ptr<SupportedFs>>& fs_vec,
-    tiledb_ctx_t* ctx,
-    tiledb_vfs_t* vfs);
 
 /**
  * This class provides support for
@@ -265,8 +268,8 @@ class SupportedFsAzure : public SupportedFs {
  public:
   SupportedFsAzure()
       : azure_prefix_("azure://")
-      , container(azure_prefix_ + random_name("tiledb") + "/")
-      , temp_dir_(container + "tiledb_test/") {
+      , container_(azure_prefix_ + random_name("tiledb") + "/")
+      , temp_dir_(container_ + "tiledb_test/") {
   }
 
   ~SupportedFsAzure() = default;
@@ -319,9 +322,76 @@ class SupportedFsAzure : public SupportedFs {
   const std::string azure_prefix_;
 
   /** The container name for the Azure filesystem. */
-  const std::string container;
+  const std::string container_;
 
   /** The directory name of the Azure filesystem. */
+  std::string temp_dir_;
+};
+
+/**
+ * This class provides support for the GCS filesystem.
+ */
+class SupportedFsGCS : public SupportedFs {
+ public:
+  SupportedFsGCS()
+      : prefix_("gcs://")
+      , bucket_(prefix_ + random_name("tiledb") + "/")
+      , temp_dir_(bucket_ + "tiledb_test/") {
+  }
+
+  ~SupportedFsGCS() = default;
+
+  /* ********************************* */
+  /*               API                 */
+  /* ********************************* */
+
+  /**
+   * Returns Status upon setting up the associated
+   * filesystem's configuration
+   *
+   * @param config Configuration parameters
+   * @param error Error parameter
+   * @return Status OK if successful
+   */
+  virtual Status prepare_config(tiledb_config_t* config, tiledb_error_t* error);
+
+  /**
+   * Creates bucket if does not exist
+   *
+   * @param ctx The TileDB context.
+   * @param vfs The VFS object.
+   * @return Status OK if successful
+   */
+  virtual Status init(tiledb_ctx_t* ctx, tiledb_vfs_t* vfs);
+
+  /**
+   * Removes bucket if exists
+   *
+   * @param ctx The TileDB context.
+   * @param vfs The VFS object.
+   * @return Status OK if successful
+   */
+  virtual Status close(tiledb_ctx_t* ctx, tiledb_vfs_t* vfs);
+
+  /**
+   * Get the name of the filesystem's directory
+   *
+   * @return string directory name
+   */
+  virtual std::string temp_dir();
+
+ private:
+  /* ********************************* */
+  /*           ATTRIBUTES              */
+  /* ********************************* */
+
+  /** The directory prefix of the GCS filesystem. */
+  const std::string prefix_;
+
+  /** The bucket name for the GCS filesystem. */
+  const std::string bucket_;
+
+  /** The directory name of the GCS filesystem. */
   std::string temp_dir_;
 };
 
