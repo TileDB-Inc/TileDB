@@ -1008,17 +1008,17 @@ TEST_CASE(
 
     // Check the extra element is included in the offsets
     uint32_t data_size = static_cast<uint32_t>(sizeof(data[0]) * data.size());
-    std::vector<uint32_t> data_offsets_exp = {0, 4, 12, 20, data_size};
+    std::vector<uint32_t> data_byte_offsets = {0, 4, 12, 20, data_size};
 
     SECTION("Unordered write") {
       write_sparse_array(
           ctx, array_name, data, data_byte_offsets, TILEDB_UNORDERED);
-      read_and_check_sparse_array(ctx, array_name, data, data_offsets_exp);
+      read_and_check_sparse_array(ctx, array_name, data, data_byte_offsets);
     }
     SECTION("Global order write") {
       write_sparse_array(
           ctx, array_name, data, data_byte_offsets, TILEDB_GLOBAL_ORDER);
-      read_and_check_sparse_array(ctx, array_name, data, data_offsets_exp);
+      read_and_check_sparse_array(ctx, array_name, data, data_byte_offsets);
     }
   }
 
@@ -1098,22 +1098,22 @@ TEST_CASE(
 
     // Check the extra element is included in the offsets
     uint32_t data_size = static_cast<uint32_t>(sizeof(data[0]) * data.size());
-    std::vector<uint32_t> data_offsets_exp = {0, 4, 12, 20, data_size};
+    std::vector<uint32_t> data_byte_offsets = {0, 4, 12, 20, data_size};
 
     SECTION("Unordered write") {
       write_dense_array(
           ctx, array_name, data, data_byte_offsets, TILEDB_UNORDERED);
-      read_and_check_dense_array(ctx, array_name, data, data_offsets_exp);
+      read_and_check_dense_array(ctx, array_name, data, data_byte_offsets);
     }
     SECTION("Ordered write") {
       write_dense_array(
           ctx, array_name, data, data_byte_offsets, TILEDB_ROW_MAJOR);
-      read_and_check_dense_array(ctx, array_name, data, data_offsets_exp);
+      read_and_check_dense_array(ctx, array_name, data, data_byte_offsets);
     }
     SECTION("Global order write") {
       write_dense_array(
           ctx, array_name, data, data_byte_offsets, TILEDB_GLOBAL_ORDER);
-      read_and_check_dense_array(ctx, array_name, data, data_offsets_exp);
+      read_and_check_dense_array(ctx, array_name, data, data_byte_offsets);
     }
   }
 
