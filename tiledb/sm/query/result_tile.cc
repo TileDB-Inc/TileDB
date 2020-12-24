@@ -568,17 +568,17 @@ void ResultTile::compute_results_sparse<char>(
   // `r_bitmap` for each corresponding coordinate. If they do
   // not match, we must compare each coordinate in the partition.
   static const uint64_t c_partition_num = 6;
+  // We calculate the size of each partition by dividing the total
+  // number of coordinates by the number of partitions. If this
+  // does not evenly divide, we will append the remaining coordinates
+  // onto the last partition.
+  const uint64_t c_partition_size_div = coords_num / c_partition_num;
+  const uint64_t c_partition_size_rem = coords_num % c_partition_num;
   const bool is_sorted_dim =
       ((cell_order == Layout::ROW_MAJOR && dim_idx == 0) ||
        (cell_order == Layout::COL_MAJOR && dim_idx == dim_num - 1));
-  if (is_sorted_dim && coords_num > c_partition_num) {
-    // We calculate the size of each partition by dividing the total
-    // number of coordinates by the number of partitions. If this
-    // does not evenly divide, we will append the remaining coordinates
-    // onto the last partition.
-    const uint64_t c_partition_size_div = coords_num / c_partition_num;
-    const uint64_t c_partition_size_rem = coords_num % c_partition_num;
-
+  if (is_sorted_dim && c_partition_size_div > 1 &&
+      coords_num > c_partition_num) {
     // Loop over each coordinate partition.
     for (uint64_t p = 0; p < c_partition_num; ++p) {
       // Calculate the size of this partition.
@@ -590,6 +590,7 @@ void ResultTile::compute_results_sparse<char>(
       // in this partition.
       const uint64_t first_c_pos = p * c_partition_size_div;
       const uint64_t last_c_pos = first_c_pos + c_partition_size - 1;
+      assert(first_c_pos < last_c_pos);
 
       // The coordinate values are determined by their offset and size
       // within `buff_str`. Calculate the offset and size for the
