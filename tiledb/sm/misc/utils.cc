@@ -449,29 +449,6 @@ uint64_t common_prefix_size(const std::string& a, const std::string& b) {
   return size;
 }
 
-std::string rest_components_from_url(const std::string& url) {
-  std::string path_delimiter = "/";
-  std::vector<std::string> path_parts;
-  size_t start;
-  size_t end = 0;
-  while ((start = url.find_first_not_of(path_delimiter, end)) !=
-         std::string::npos) {
-    end = url.find(path_delimiter, start);
-    path_parts.emplace_back(url.substr(start, end - start));
-  }
-
-  for (size_t i = 0; i < path_parts.size(); ++i) {
-    if (path_parts[i] == "arrays") {
-      // Find rest components array_ns and array_uri
-      if (i + 2 < path_parts.size()) {
-        return path_parts[i + 1] + ":" + path_parts[i + 2];
-      }
-    }
-  }
-
-  return "";
-}
-
 }  // namespace parse
 
 /* ****************************** */

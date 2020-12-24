@@ -200,7 +200,7 @@ size_t write_header_callback(
   auto* header_buffer = static_cast<char*>(res_data);
   auto* pmHeader = static_cast<HeaderCbData*>(userdata);
 
-  if (pmHeader->uri.empty()) {
+  if (pmHeader->uri->empty()) {
     LOG_ERROR("Rest components as array_ns and array_uri cannot be empty");
     return 0;
   }
@@ -225,8 +225,7 @@ size_t write_header_callback(
       // for the ": ". Ensure this ends with a null terminator.
       const std::string header_value =
           header.substr(
-              header_key_end_pos + 2, header_length - header_key_end_pos - 4) +
-          "\0";
+              header_key_end_pos + 2, header_length - header_key_end_pos - 4);
 
       // Find the http scheme
       const size_t header_scheme_end_pos = header_value.find("://");
@@ -256,9 +255,15 @@ size_t write_header_callback(
       const std::string header_value_domain =
           header_value_scheme_excl.substr(0, header_domain_end_pos);
 
+      const std::string redirection_value = header_scheme + "://" + header_value_domain;
       std::unique_lock<std::mutex> rd_lck(*(pmHeader->redirect_uri_map_lock));
-      pmHeader->redirect_uri_map->insert(std::make_pair(
-          pmHeader->uri, header_scheme + "://" + header_value_domain + "\0"));
+      auto check_duplicate = pmHeader->redirect_uri_map->emplace(std::make_pair(
+          pmHeader->uri, redirection_value));
+
+      // If record for this key already exists then we update the value of redirection
+      if(!check_duplicate.second) {
+        check_duplicate.first->second = redirection_value;
+      }
     }
   }
   return size * count;
@@ -272,6 +277,7 @@ Curl::Curl()
 Status Curl::init(
     const Config* config,
     const std::unordered_map<std::string, std::string>& extra_headers,
+    std::string* const res_uri,
     std::unordered_map<std::string, std::string>* const res_headers,
     std::mutex* const res_mtx) {
   if (config == nullptr)
@@ -281,6 +287,7 @@ Status Curl::init(
   config_ = config;
   curl_.reset(curl_easy_init());
   extra_headers_ = extra_headers;
+  headerData.uri = res_uri;
   headerData.redirect_uri_map = res_headers;
   headerData.redirect_uri_map_lock = res_mtx;
 
@@ -583,7 +590,6 @@ Status Curl::post_data(
   RETURN_NOT_OK(post_data_common(serialization_type, data, &headers));
 
   CURLcode ret;
-  headerData.uri = utils::parse::rest_components_from_url(url);
   auto st = make_curl_request(url.c_str(), &ret, returned_data);
   curl_slist_free_all(headers);
   RETURN_NOT_OK(st);
@@ -603,7 +609,6 @@ Status Curl::post_data(
   RETURN_NOT_OK(post_data_common(serialization_type, data, &headers));
 
   CURLcode ret;
-  headerData.uri = utils::parse::rest_components_from_url(url);
   auto st = make_curl_request(url.c_str(), &ret, std::move(cb));
   curl_slist_free_all(headers);
   RETURN_NOT_OK(st);
@@ -673,7 +678,6 @@ Status Curl::get_data(
   curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
 
   CURLcode ret;
-  headerData.uri = utils::parse::rest_components_from_url(url);
   auto st = make_curl_request(url.c_str(), &ret, returned_data);
   curl_slist_free_all(headers);
   RETURN_NOT_OK(st);
@@ -707,8 +711,11 @@ Status Curl::delete_data(
   curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
 
   CURLcode ret;
-  headerData.uri = utils::parse::rest_components_from_url(url);
   auto st = make_curl_request(url.c_str(), &ret, returned_data);
+
+  //Erase record in case of de-registered array
+  std::unique_lock<std::mutex> rd_lck(*(headerData.redirect_uri_map_lock));
+  headerData.redirect_uri_map->erase(*(headerData.uri));
   curl_slist_free_all(headers);
   RETURN_NOT_OK(st);
 

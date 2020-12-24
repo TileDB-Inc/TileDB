@@ -156,20 +156,6 @@ std::string to_str(const void* value, Datatype type);
 /** Returns the size of the common prefix between `a` and `b`. */
 uint64_t common_prefix_size(const std::string& a, const std::string& b);
 
-/** Returns the rest components array_ns:array_uri out of a full url
- *
- * **Example:**
- * A full url can be e.g.
- *"http[s]://[domain]/[version]/arrays/array_ns/array_uri"
- * @code{.cpp}
- * std::string url = "https://[domain]/array_namespace/array_uri"
- * std::string rest_comp = rest_components_from_url(url);
- *
- * Will result to rest_comp having the value "array_namespace:array_uri"
- * @endcode
- **/
-std::string rest_components_from_url(const std::string& url);
-
 }  // namespace parse
 
 /* ********************************* */

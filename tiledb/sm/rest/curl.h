@@ -65,7 +65,7 @@ namespace sm {
  */
 struct HeaderCbData {
   /** The output of parse::rest_components from url -> array_ns:array_uri */
-  std::string uri;
+  std::string* uri;
 
   /** A pointer to the map in REST client caching the redirections */
   std::unordered_map<std::string, std::string>* redirect_uri_map;
@@ -84,11 +84,15 @@ class Curl {
    *
    * @param config TileDB config storing server/auth information
    * @param extra_headers Any additional headers to attach to each request.
+   * @param res_ns_uri Pointer to Array namespace : Array URI cache key
+   * @param res_headers Pointer to cache map
+   * @param res_mtx Pointer to mtx that handles the lock of the cache map
    * @return Status
    */
   Status init(
       const Config* config,
       const std::unordered_map<std::string, std::string>& extra_headers,
+      std::string* res_ns_uri,
       std::unordered_map<std::string, std::string>* res_headers,
       std::mutex* res_mtx);
 
