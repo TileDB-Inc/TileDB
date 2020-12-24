@@ -43,6 +43,7 @@
 * Fixed bug where a read on a sparse array may return duplicate values. [#1905](https://github.com/TileDB-Inc/TileDB/pull/1905)
 * Fixed bug where an array could not be opened if created with an array schema from an older version [#1889](https://github.com/TileDB-Inc/TileDB/pull/1889)
 * Fix compilation of TileDB Tools [#1926](https://github.com/TileDB-Inc/TileDB/pull/1926)
+* Fix segfault in optimized compute_results_sparse [#1969](https://github.com/TileDB-Inc/TileDB/pull/1969)
 
 ## API additions
 
