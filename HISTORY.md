@@ -16,6 +16,12 @@
 
 ## API additions
 
+# TileDB v2.1.5 Release Notes
+
+## Bug fixes
+
+* Fix segfault in optimized `compute_results_sparse<char>` [#1969](https://github.com/TileDB-Inc/TileDB/pull/1969)
+
 # TileDB v2.1.4 Release Notes
 
 ## Improvements
@@ -33,6 +39,7 @@ Optimize `ResultTile::compute_results_sparse<char>` resulting in significant per
 * Updated the AWS SDK to v1.8.84 to fix an uncaught exception when using S3 [#1899](https://github.com/TileDB-Inc/TileDB/pull/1899)[TileDB-Py #409](https://github.com/TileDB-Inc/TileDB-Py/issues/409)
 * Fixed bug where a read on a sparse array may return duplicate values. [#1905](https://github.com/TileDB-Inc/TileDB/pull/1905)
 * Fixed bug where an array could not be opened if created with an array schema from an older version [#1889](https://github.com/TileDB-Inc/TileDB/pull/1889)
+* Fix compilation of TileDB Tools [#1926](https://github.com/TileDB-Inc/TileDB/pull/1926)
 
 # TileDB v2.1.2 Release Notes
 
