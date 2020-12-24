@@ -223,9 +223,8 @@ size_t write_header_callback(
       // Fetch the header value. Subtract 2 from the `header_length` to
       // remove the trailing CR LF ("\r\n") and subtract another 2
       // for the ": ". Ensure this ends with a null terminator.
-      const std::string header_value =
-          header.substr(
-              header_key_end_pos + 2, header_length - header_key_end_pos - 4);
+      const std::string header_value = header.substr(
+          header_key_end_pos + 2, header_length - header_key_end_pos - 4);
 
       // Find the http scheme
       const size_t header_scheme_end_pos = header_value.find("://");
@@ -255,13 +254,15 @@ size_t write_header_callback(
       const std::string header_value_domain =
           header_value_scheme_excl.substr(0, header_domain_end_pos);
 
-      const std::string redirection_value = header_scheme + "://" + header_value_domain;
+      const std::string redirection_value =
+          header_scheme + "://" + header_value_domain;
       std::unique_lock<std::mutex> rd_lck(*(pmHeader->redirect_uri_map_lock));
-      auto check_duplicate = pmHeader->redirect_uri_map->emplace(std::make_pair(
-          pmHeader->uri, redirection_value));
+      auto check_duplicate = pmHeader->redirect_uri_map->emplace(
+          std::make_pair(pmHeader->uri, redirection_value));
 
-      // If record for this key already exists then we update the value of redirection
-      if(!check_duplicate.second) {
+      // If record for this key already exists then we update the value of
+      // redirection
+      if (!check_duplicate.second) {
         check_duplicate.first->second = redirection_value;
       }
     }
@@ -713,7 +714,7 @@ Status Curl::delete_data(
   CURLcode ret;
   auto st = make_curl_request(url.c_str(), &ret, returned_data);
 
-  //Erase record in case of de-registered array
+  // Erase record in case of de-registered array
   std::unique_lock<std::mutex> rd_lck(*(headerData.redirect_uri_map_lock));
   headerData.redirect_uri_map->erase(*(headerData.uri));
   curl_slist_free_all(headers);
