@@ -159,6 +159,12 @@ void read_and_check_sparse_array(
   array.close();
 }
 
+void reset_read_buffers(
+    std::vector<int32_t>& data, std::vector<uint64_t>& offsets) {
+  data.assign(data.size(), 0);
+  offsets.assign(offsets.size(), 0);
+}
+
 void partial_read_and_check_sparse_array(
     Context ctx,
     const std::string& array_name,
@@ -177,11 +183,15 @@ void partial_read_and_check_sparse_array(
 
   // Check that first partial read returns expected results
   CHECK_NOTHROW(query.submit());
+  Query::Status status = query.query_status();
+  CHECK(status == Query::Status::INCOMPLETE);
   CHECK(attr_val == exp_data_part1);
   CHECK(attr_off == exp_off_part1);
 
   // Check that second partial read returns expected results
   CHECK_NOTHROW(query.submit());
+  status = query.query_status();
+  CHECK(status == Query::Status::COMPLETE);
   CHECK(attr_val == exp_data_part2);
   CHECK(attr_off == exp_off_part2);
 
@@ -552,16 +562,32 @@ TEST_CASE(
         CHECK_NOTHROW(query_w.submit());
         array_w.close();
 
-        // Assume no size for the extra element
-        std::vector<int32_t> attr_val(data.size());
-        std::vector<uint64_t> attr_off(data_offsets.size() - 1);
-
         // Submit read query
         Array array_r(ctx, array_name, TILEDB_READ);
         Query query_r(ctx, array_r, TILEDB_READ);
+
+        // Assume no size for the extra element
+        std::vector<int32_t> attr_val(data.size());
+        std::vector<uint64_t> attr_off(data_offsets.size() - 1);
         query_r.set_buffer("attr", attr_off, attr_val);
-        // The query should fail
-        CHECK_THROWS(query_r.submit());
+
+        // First partial read because offsets don't fit
+        CHECK_NOTHROW(query_r.submit());
+        CHECK(query_r.query_status() == Query::Status::INCOMPLETE);
+        std::vector<int32_t> data_exp1 = {1, 2, 3, 0, 0, 0};
+        std::vector<uint64_t> data_off_exp1 = {0, 4, 12, 0};
+        CHECK(attr_val == data_exp1);
+        CHECK(attr_off == data_off_exp1);
+
+        // Second partial read
+        reset_read_buffers(attr_val, attr_off);
+        CHECK_NOTHROW(query_r.submit());
+        CHECK(query_r.query_status() == Query::Status::COMPLETE);
+        std::vector<int32_t> data_exp2 = {4, 5, 6, 0, 0, 0};
+        std::vector<uint64_t> data_off_exp2 = {0, 8, 12, 0};
+        CHECK(attr_val == data_exp2);
+        CHECK(attr_off == data_off_exp2);
+
         array_r.close();
       }
     }
@@ -672,16 +698,50 @@ TEST_CASE(
         write_sparse_array(
             ctx, array_name, data, data_offsets, TILEDB_UNORDERED);
 
-        // Assume no size for the extra element
-        std::vector<int32_t> attr_val(data_part1.size());
-        std::vector<uint64_t> attr_off(data_off_part1.size());
-
         // Submit read query
         Context ctx(config);
         Array array(ctx, array_name, TILEDB_READ);
         Query query(ctx, array, TILEDB_READ);
+
+        // Assume no size for the extra element
+        std::vector<int32_t> attr_val(data_part1.size());
+        std::vector<uint64_t> attr_off(data_off_part1.size());
         query.set_buffer("attr", attr_off, attr_val);
-        CHECK_THROWS(query.submit());
+
+        // First partial read
+        CHECK_NOTHROW(query.submit());
+        CHECK(query.query_status() == Query::Status::INCOMPLETE);
+        std::vector<int32_t> data_exp1 = {1, 0, 0};
+        std::vector<uint64_t> data_off_exp1 = {0, 4};
+        CHECK(attr_val == data_exp1);
+        CHECK(attr_off == data_off_exp1);
+
+        // Second partial read
+        reset_read_buffers(attr_val, attr_off);
+        CHECK_NOTHROW(query.submit());
+        CHECK(query.query_status() == Query::Status::INCOMPLETE);
+        std::vector<int32_t> data_exp2 = {2, 3, 0};
+        std::vector<uint64_t> data_off_exp2 = {0, 8};
+        CHECK(attr_val == data_exp2);
+        CHECK(attr_off == data_off_exp2);
+
+        // Third partial read
+        reset_read_buffers(attr_val, attr_off);
+        CHECK_NOTHROW(query.submit());
+        CHECK(query.query_status() == Query::Status::INCOMPLETE);
+        std::vector<int32_t> data_exp3 = {4, 5, 0};
+        std::vector<uint64_t> data_off_exp3 = {0, 8};
+        CHECK(attr_val == data_exp3);
+        CHECK(attr_off == data_off_exp3);
+
+        // Last partial read
+        reset_read_buffers(attr_val, attr_off);
+        CHECK_NOTHROW(query.submit());
+        CHECK(query.query_status() == Query::Status::COMPLETE);
+        std::vector<int32_t> data_exp4 = {6, 0, 0};
+        std::vector<uint64_t> data_off_exp4 = {0, 4};
+        CHECK(attr_val == data_exp4);
+        CHECK(attr_off == data_off_exp4);
 
         array.close();
       }
@@ -787,17 +847,33 @@ TEST_CASE(
         CHECK_NOTHROW(query_w.submit());
         array_w.close();
 
-        // Assume no size for the extra element
-        std::vector<int32_t> attr_val(data.size());
-        std::vector<uint64_t> attr_off(element_offsets.size() - 1);
-
         // Submit read query
         Array array_r(ctx, array_name, TILEDB_READ);
         Query query_r(ctx, array_r, TILEDB_READ);
+
+        // Assume no size for the extra element
+        std::vector<int32_t> attr_val(data.size());
+        std::vector<uint64_t> attr_off(element_offsets.size() - 1);
         query_r.set_buffer("attr", attr_off, attr_val);
         query_r.set_subarray<int64_t>({1, 2, 1, 2});
-        // The query should fail
-        CHECK_THROWS(query_r.submit());
+
+        // First partial read because offsets don't fit
+        CHECK_NOTHROW(query_r.submit());
+        CHECK(query_r.query_status() == Query::Status::INCOMPLETE);
+        std::vector<int32_t> data_exp1 = {1, 2, 3, 0, 0, 0};
+        std::vector<uint64_t> data_off_exp1 = {0, 1, 3, 0};
+        CHECK(attr_val == data_exp1);
+        CHECK(attr_off == data_off_exp1);
+
+        // Second partial read
+        reset_read_buffers(attr_val, attr_off);
+        CHECK_NOTHROW(query_r.submit());
+        CHECK(query_r.query_status() == Query::Status::COMPLETE);
+        std::vector<int32_t> data_exp2 = {4, 5, 6, 0, 0, 0};
+        std::vector<uint64_t> data_off_exp2 = {0, 2, 3, 0};
+        CHECK(attr_val == data_exp2);
+        CHECK(attr_off == data_off_exp2);
+
         array_r.close();
       }
     }
@@ -925,22 +1001,57 @@ TEST_CASE(
       }
 
       SECTION("User offsets buffer too small") {
+        Context ctx(config);
         // Write data with extra element
         data_offsets.push_back(sizeof(data[0]) * data.size());
-        write_sparse_array(
-            ctx, array_name, data, data_offsets, TILEDB_UNORDERED);
-
-        // Assume no size for the extra element
-        std::vector<int32_t> attr_val(data_part1.size());
-        std::vector<uint64_t> attr_off(data_off_part1.size());
+        write_dense_array(
+            ctx, array_name, data, data_offsets, TILEDB_ROW_MAJOR);
 
         // Submit read query
-        Context ctx(config);
         Array array(ctx, array_name, TILEDB_READ);
-        Query query_r(ctx, array, TILEDB_READ);
-        query_r.set_buffer("attr", attr_off, attr_val);
-        query_r.set_subarray<int64_t>({1, 2, 1, 2});
-        CHECK_THROWS(query_r.submit());
+        Query query(ctx, array, TILEDB_READ);
+
+        // Assume smaller offset buffer than data buffer
+        std::vector<int32_t> attr_val(data_part1.size());
+        std::vector<uint64_t> attr_off(data_off_part1.size());
+        query.set_buffer("attr", attr_off, attr_val);
+        query.set_subarray<int64_t>({1, 2, 1, 2});
+
+        // First partial read
+        CHECK_NOTHROW(query.submit());
+        CHECK(query.query_status() == Query::Status::INCOMPLETE);
+        std::vector<int32_t> data_exp1 = {1, 0, 0};
+        std::vector<uint64_t> data_off_exp1 = {0, 4};
+        CHECK(attr_val == data_exp1);
+        CHECK(attr_off == data_off_exp1);
+
+        // Second partial read
+        reset_read_buffers(attr_val, attr_off);
+        CHECK_NOTHROW(query.submit());
+        CHECK(query.query_status() == Query::Status::INCOMPLETE);
+        std::vector<int32_t> data_exp2 = {2, 3, 0};
+        std::vector<uint64_t> data_off_exp2 = {0, 8};
+        CHECK(attr_val == data_exp2);
+        CHECK(attr_off == data_off_exp2);
+
+        // Third partial read
+        reset_read_buffers(attr_val, attr_off);
+        CHECK_NOTHROW(query.submit());
+        CHECK(query.query_status() == Query::Status::INCOMPLETE);
+        std::vector<int32_t> data_exp3 = {4, 5, 0};
+        std::vector<uint64_t> data_off_exp3 = {0, 8};
+        CHECK(attr_val == data_exp3);
+        CHECK(attr_off == data_off_exp3);
+
+        // Last partial read
+        reset_read_buffers(attr_val, attr_off);
+        CHECK_NOTHROW(query.submit());
+        CHECK(query.query_status() == Query::Status::COMPLETE);
+        std::vector<int32_t> data_exp4 = {6, 0, 0};
+        std::vector<uint64_t> data_off_exp4 = {0, 4};
+        CHECK(attr_val == data_exp4);
+        CHECK(attr_off == data_off_exp4);
+
         array.close();
       }
     }
