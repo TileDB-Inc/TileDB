@@ -27,6 +27,7 @@
 * Added extra stats for consolidation. [#1880](https://github.com/TileDB-Inc/TileDB/pull/1880)
 * Disabled checking if cells are written in global order when consolidating, as it was redundant (the cells are already being read in global order during consolidation). [#1880](https://github.com/TileDB-Inc/TileDB/pull/1880) 
 * Add support for printing MBRs with string dimensions in TileDB Tools [#1926](https://github.com/TileDB-Inc/TileDB/pull/1926)
+* Optimize consolidated fragment metadata loading [#1975](https://github.com/TileDB-Inc/TileDB/pull/1975)
 
 ## Deprecations
 
