@@ -638,6 +638,11 @@ class Subarray {
   std::unordered_map<std::string, MemorySize> get_max_mem_size_map(
       ThreadPool* compute_tp);
 
+  /**
+   * Return relevant fragments as computed
+   */
+  std::vector<unsigned> relevant_fragments() const;
+
  private:
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */

@@ -2793,12 +2793,24 @@ Status Reader::init_tile_nullable(
 Status Reader::load_tile_offsets(const std::vector<std::string>& names) {
   const auto encryption_key = array_->encryption_key();
 
+  // Fetch relevant fragments so we load tile offsets only from intersecting
+  // fragments
+  auto relevant_fragments = subarray_.relevant_fragments();
+  // If there are no relevant fragments let's make sure the overlap was computed
+  // ideally we'd guarantee this before entering this function but this is a
+  // safety fallback. Worst case we'll compute an empty overlap a second time.
+  if (relevant_fragments.empty()) {
+    RETURN_NOT_OK(
+        subarray_.compute_tile_overlap(storage_manager_->compute_tp()));
+    relevant_fragments = subarray_.relevant_fragments();
+  }
+
   const auto statuses = parallel_for(
       storage_manager_->compute_tp(),
       0,
-      fragment_metadata_.size(),
+      relevant_fragments.size(),
       [&](const uint64_t i) {
-        auto& fragment = fragment_metadata_[i];
+        auto& fragment = fragment_metadata_[relevant_fragments[i]];
         const auto format_version = fragment->format_version();
 
         // Filter the 'names' for format-specific names.
