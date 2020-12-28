@@ -327,9 +327,21 @@ Status FragmentMetadata::fragment_size(uint64_t* size) const {
   for (const auto& file_var_size : file_var_sizes_)
     *size += file_var_size;
 
+  // The fragment metadata file size can be empty when we've loaded consolidated
+  // metadata
+  uint64_t meta_file_size = meta_file_size_;
+  if (meta_file_size == 0) {
+    auto meta_uri = fragment_uri_.join_path(
+        std::string(constants::fragment_metadata_filename));
+    RETURN_NOT_OK(
+        storage_manager_->vfs()->file_size(meta_uri, &meta_file_size));
+  }
+  // Validate that the meta_file_size is not zero, either preloaded or fetched
+  // above
+  assert(meta_file_size != 0);
+
   // Add fragment metadata file size
-  assert(meta_file_size_ != 0);  // The file size should be loaded
-  *size += meta_file_size_;
+  *size += meta_file_size;
 
   return Status::Ok();
 }
@@ -408,7 +420,11 @@ Status FragmentMetadata::load(
     uint32_t meta_version) {
   auto meta_uri = fragment_uri_.join_path(
       std::string(constants::fragment_metadata_filename));
-  RETURN_NOT_OK(storage_manager_->vfs()->file_size(meta_uri, &meta_file_size_));
+  // Load the metadata file size when we are not reading from consolidated
+  // buffer
+  if (f_buff == nullptr)
+    RETURN_NOT_OK(
+        storage_manager_->vfs()->file_size(meta_uri, &meta_file_size_));
 
   // Get fragment name version
   uint32_t f_version;

@@ -18,6 +18,10 @@
 
 # TileDB v2.1.5 Release Notes
 
+## Improvements
+
+* Optimize consolidated fragment metadata loading [#1975](https://github.com/TileDB-Inc/TileDB/pull/1975)
+
 ## Bug fixes
 
 * Fix segfault in optimized `compute_results_sparse<char>` [#1969](https://github.com/TileDB-Inc/TileDB/pull/1969)
@@ -27,7 +31,7 @@
 
 ## Improvements
 
-Optimize `ResultTile::compute_results_sparse<char>` resulting in significant performance increases in certain cases with string dimensions [#1963](https://github.com/TileDB-Inc/TileDB/pull/1963)
+* Optimize `ResultTile::compute_results_sparse<char>` resulting in significant performance increases in certain cases with string dimensions [#1963](https://github.com/TileDB-Inc/TileDB/pull/1963)
 
 # TileDB v2.1.3 Release Notes
 
