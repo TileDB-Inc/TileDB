@@ -55,10 +55,12 @@ if (NOT SPDLOG_FOUND)
       DOWNLOAD_NAME ep_spdlog.zip
       URL "https://github.com/gabime/spdlog/archive/v1.8.2.zip"
       URL_HASH SHA1=970d58ccd9ba0d2f86e3b5c405fedfcb82949906
+      CMAKE_ARGS
+        -DCMAKE_INSTALL_PREFIX=${TILEDB_EP_INSTALL_PREFIX}
       LOG_DOWNLOAD TRUE
       LOG_OUTPUT_ON_FAILURE ${TILEDB_LOG_OUTPUT_ON_FAILURE}
     )
-    list(APPEND EXTERNAL_PROJECTS ep_spdlog)
+    list(APPEND TILEDB_EXTERNAL_PROJECTS ep_spdlog)
     list(APPEND FORWARD_EP_CMAKE_ARGS
             -DTILEDB_SPDLOG_EP_BUILT=TRUE
             )
