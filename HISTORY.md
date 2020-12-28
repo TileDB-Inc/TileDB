@@ -21,6 +21,7 @@
 ## Bug fixes
 
 * Fix segfault in optimized `compute_results_sparse<char>` [#1969](https://github.com/TileDB-Inc/TileDB/pull/1969)
+* Fix GCS "Error:: Read object failed"[#1966](https://github.com/TileDB-Inc/TileDB/pull/1966)
 
 # TileDB v2.1.4 Release Notes
 
