@@ -34,6 +34,10 @@
 #include "tiledb/common/logger.h"
 
 #include <spdlog/fmt/ostr.h>
+#include <spdlog/sinks/stdout_sinks.h>
+#ifndef _WIN32
+#include <spdlog/sinks/stdout_color_sinks.h>
+#endif
 
 namespace tiledb::common {
 
