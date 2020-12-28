@@ -120,6 +120,7 @@ void read_and_check_sparse_array(
 
   std::vector<int32_t> attr_val(expected_data.size());
   std::vector<uint64_t> attr_off(expected_offsets.size());
+
   query.set_buffer("attr", attr_off, attr_val);
 
   CHECK_NOTHROW(query.submit());
@@ -154,6 +155,35 @@ void read_and_check_sparse_array(
   // Check the element offsets are properly returned
   CHECK(attr_val == expected_data);
   CHECK(attr_off == expected_offsets);
+
+  array.close();
+}
+
+void partial_read_and_check_sparse_array(
+    Context ctx,
+    const std::string& array_name,
+    std::vector<int32_t>& exp_data_part1,
+    std::vector<uint64_t>& exp_off_part1,
+    std::vector<int32_t>& exp_data_part2,
+    std::vector<uint64_t>& exp_off_part2) {
+  // The size of read buffers is smaller than the size
+  // of all the data, so we'll do partial reads
+  std::vector<int32_t> attr_val(exp_data_part1.size());
+  std::vector<uint64_t> attr_off(exp_off_part1.size());
+
+  Array array(ctx, array_name, TILEDB_READ);
+  Query query(ctx, array, TILEDB_READ);
+  query.set_buffer("attr", attr_off, attr_val);
+
+  // Check that first partial read returns expected results
+  CHECK_NOTHROW(query.submit());
+  CHECK(attr_val == exp_data_part1);
+  CHECK(attr_off == exp_off_part1);
+
+  // Check that second partial read returns expected results
+  CHECK_NOTHROW(query.submit());
+  CHECK(attr_val == exp_data_part2);
+  CHECK(attr_off == exp_off_part2);
 
   array.close();
 }
@@ -295,6 +325,36 @@ void read_and_check_dense_array(
   array.close();
 }
 
+void partial_read_and_check_dense_array(
+    Context ctx,
+    const std::string& array_name,
+    std::vector<int32_t>& exp_data_part1,
+    std::vector<uint64_t>& exp_off_part1,
+    std::vector<int32_t>& exp_data_part2,
+    std::vector<uint64_t>& exp_off_part2) {
+  // The size of read buffers is smaller than the size
+  // of all the data, so we'll do partial reads
+  std::vector<int32_t> attr_val(exp_data_part1.size());
+  std::vector<uint64_t> attr_off(exp_off_part1.size());
+
+  Array array(ctx, array_name, TILEDB_READ);
+  Query query(ctx, array, TILEDB_READ);
+  query.set_subarray<int64_t>({1, 2, 1, 2});
+  query.set_buffer("attr", attr_off, attr_val);
+
+  // Check that first partial read returns expected results
+  CHECK_NOTHROW(query.submit());
+  CHECK(attr_val == exp_data_part1);
+  CHECK(attr_off == exp_off_part1);
+
+  // Check that second partial read returns expected results
+  CHECK_NOTHROW(query.submit());
+  CHECK(attr_val == exp_data_part2);
+  CHECK(attr_off == exp_off_part2);
+
+  array.close();
+}
+
 TEST_CASE(
     "C++ API: Test element offsets : sparse array",
     "[var-offsets][element-offset]") {
@@ -414,174 +474,218 @@ TEST_CASE(
   std::string array_name = "test_extra_offset";
   create_sparse_array(array_name);
 
+  Context ctx;
   std::vector<int32_t> data = {1, 2, 3, 4, 5, 6};
   std::vector<uint64_t> data_offsets = {0, 4, 12, 20};
-  Context ctx;
-  write_sparse_array(ctx, array_name, data, data_offsets, TILEDB_UNORDERED);
+  std::vector<uint64_t> element_offsets = {0, 1, 3, 5};
 
   SECTION("Full read") {
     Config config;
-    Array array(ctx, array_name, TILEDB_READ);
-
-    // Buffers to store the read results
-    std::vector<int32_t> attr_val(data.size());
-    std::vector<uint64_t> attr_off(data_offsets.size());
 
     SECTION("No extra element (default case)") {
       config = ctx.config();
       CHECK((std::string)config["sm.var_offsets.extra_element"] == "false");
 
-      // Submit read query
-      Query query_r(ctx, array, TILEDB_READ);
-      query_r.set_buffer("attr", attr_off, attr_val);
-      CHECK_NOTHROW(query_r.submit());
-
-      // Check that bytes offsets are properly returned
-      CHECK(attr_val == data);
-      CHECK(attr_off == data_offsets);
+      write_sparse_array(ctx, array_name, data, data_offsets, TILEDB_UNORDERED);
+      read_and_check_sparse_array(ctx, array_name, data, data_offsets);
     }
 
     SECTION("Extra element") {
       config["sm.var_offsets.extra_element"] = "true";
-      // Extend offsets buffer to accomodate for the extra element
-      attr_off.resize(attr_off.size() + 1);
 
       SECTION("Byte offsets (default config)") {
         CHECK((std::string)config["sm.var_offsets.mode"] == "bytes");
         Context ctx(config);
 
-        // Submit read query
-        Query query_r(ctx, array, TILEDB_READ);
-        query_r.set_buffer("attr", attr_off, attr_val);
-        CHECK_NOTHROW(query_r.submit());
-
-        // Check the extra element is included in the offsets
+        // Write data with extra element indicating total number of bytes
         data_offsets.push_back(sizeof(data[0]) * data.size());
-        CHECK(attr_val == data);
-        CHECK(attr_off == data_offsets);
+
+        SECTION("Unordered write") {
+          write_sparse_array(
+              ctx, array_name, data, data_offsets, TILEDB_UNORDERED);
+          read_and_check_sparse_array(ctx, array_name, data, data_offsets);
+        }
+        SECTION("Global order write") {
+          write_sparse_array(
+              ctx, array_name, data, data_offsets, TILEDB_GLOBAL_ORDER);
+          read_and_check_sparse_array(ctx, array_name, data, data_offsets);
+        }
       }
 
       SECTION("Element offsets") {
         config["sm.var_offsets.mode"] = "elements";
         Context ctx(config);
 
-        // Submit read query
-        Query query_r(ctx, array, TILEDB_READ);
-        query_r.set_buffer("attr", attr_off, attr_val);
-        CHECK_NOTHROW(query_r.submit());
+        // Write data with extra element indicating the total number of elements
+        element_offsets.push_back(data.size());
 
-        // Check the extra element is included in the offsets
-        data_offsets = {0, 1, 3, 5, 6};
-        CHECK(attr_val == data);
-        CHECK(attr_off == data_offsets);
+        SECTION("Unordered write") {
+          write_sparse_array(
+              ctx, array_name, data, element_offsets, TILEDB_UNORDERED);
+          read_and_check_sparse_array(ctx, array_name, data, element_offsets);
+        }
+        SECTION("Global order write") {
+          write_sparse_array(
+              ctx, array_name, data, element_offsets, TILEDB_GLOBAL_ORDER);
+          read_and_check_sparse_array(ctx, array_name, data, element_offsets);
+        }
       }
 
       SECTION("User offsets buffer too small") {
+        Context ctx(config);
+
+        Array array_w(ctx, array_name, TILEDB_WRITE);
+        std::vector<int64_t> d1 = {1, 2, 3, 4};
+        std::vector<int64_t> d2 = {2, 1, 3, 4};
+        Query query_w(ctx, array_w, TILEDB_WRITE);
+        query_w.set_layout(TILEDB_UNORDERED)
+            .set_buffer("d1", d1)
+            .set_buffer("d2", d2);
+
+        // Try to write without allocating memory for the extra element
+        query_w.set_buffer("attr", data_offsets, data);
+        CHECK_THROWS(query_w.submit());
+
+        // Write data with extra element
+        data_offsets.push_back(sizeof(data[0]) * data.size());
+        query_w.set_buffer("attr", data_offsets, data);
+        CHECK_NOTHROW(query_w.submit());
+        array_w.close();
+
         // Assume no size for the extra element
-        attr_off.resize(attr_off.size() - 1);
+        std::vector<int32_t> attr_val(data.size());
+        std::vector<uint64_t> attr_off(data_offsets.size() - 1);
 
         // Submit read query
-        Context ctx(config);
-        Query query_r(ctx, array, TILEDB_READ);
+        Array array_r(ctx, array_name, TILEDB_READ);
+        Query query_r(ctx, array_r, TILEDB_READ);
         query_r.set_buffer("attr", attr_off, attr_val);
+        // The query should fail
         CHECK_THROWS(query_r.submit());
+        array_r.close();
       }
     }
-    array.close();
   }
 
   SECTION("Partial read") {
-    Array array(ctx, array_name, TILEDB_READ);
     Config config;
 
-    // Assume the user buffers can only store half the data
-    std::vector<int32_t> attr_val(data.size() / 2);
-    std::vector<uint64_t> attr_off(data_offsets.size() - 2);
-
-    // The expected buffers to be returned after 2 partial reads
+    // The expected buffers to be returned after 2 partial reads with
+    // read buffers of size data.size() / 2
     std::vector<int32_t> data_part1 = {1, 2, 3};
     std::vector<uint64_t> data_off_part1 = {0, 4};
+    std::vector<uint64_t> data_elem_off_part1 = {0, 1};
     std::vector<int32_t> data_part2 = {4, 5, 6};
     std::vector<uint64_t> data_off_part2 = {0, 8};
+    std::vector<uint64_t> data_elem_off_part2 = {0, 2};
 
     SECTION("No extra element (default case)") {
       config = ctx.config();
       CHECK((std::string)config["sm.var_offsets.extra_element"] == "false");
 
-      // Submit read query
-      Query query_r(ctx, array, TILEDB_READ);
-      query_r.set_buffer("attr", attr_off, attr_val);
-
-      // Check that first partial read returns expected results
-      CHECK_NOTHROW(query_r.submit());
-      CHECK(attr_val == data_part1);
-      CHECK(attr_off == data_off_part1);
-
-      // Check that second partial read returns expected results
-      CHECK_NOTHROW(query_r.submit());
-      CHECK(attr_val == data_part2);
-      CHECK(attr_off == data_off_part2);
+      write_sparse_array(ctx, array_name, data, data_offsets, TILEDB_UNORDERED);
+      partial_read_and_check_sparse_array(
+          ctx,
+          array_name,
+          data_part1,
+          data_off_part1,
+          data_part2,
+          data_off_part2);
     }
 
     SECTION("Extra element") {
       config["sm.var_offsets.extra_element"] = "true";
-      // Extend offsets buffer to accomodate for the extra element
-      attr_off.resize(attr_off.size() + 1);
 
       SECTION("Byte offsets (default config)") {
         CHECK((std::string)config["sm.var_offsets.mode"] == "bytes");
         Context ctx(config);
 
-        // Submit read query
-        Query query_r(ctx, array, TILEDB_READ);
-        query_r.set_buffer("attr", attr_off, attr_val);
+        // Write data with extra element indicating total number of bytes
+        data_offsets.push_back(sizeof(data[0]) * data.size());
 
-        // Check the extra element is included in the offsets part1
-        CHECK_NOTHROW(query_r.submit());
+        // Expect an extra element offset on each read
         data_off_part1.push_back(sizeof(data_part1[0]) * data_part1.size());
-        CHECK(attr_val == data_part1);
-        CHECK(attr_off == data_off_part1);
-
-        // Check the extra element is included in the offsets part2
-        CHECK_NOTHROW(query_r.submit());
         data_off_part2.push_back(sizeof(data_part2[0]) * data_part2.size());
-        CHECK(attr_val == data_part2);
-        CHECK(attr_off == data_off_part2);
+
+        SECTION("Unordered write") {
+          write_sparse_array(
+              ctx, array_name, data, data_offsets, TILEDB_UNORDERED);
+          partial_read_and_check_sparse_array(
+              ctx,
+              array_name,
+              data_part1,
+              data_off_part1,
+              data_part2,
+              data_off_part2);
+        }
+        SECTION("Global order write") {
+          write_sparse_array(
+              ctx, array_name, data, data_offsets, TILEDB_GLOBAL_ORDER);
+          partial_read_and_check_sparse_array(
+              ctx,
+              array_name,
+              data_part1,
+              data_off_part1,
+              data_part2,
+              data_off_part2);
+        }
       }
 
       SECTION("Element offsets") {
         config["sm.var_offsets.mode"] = "elements";
         Context ctx(config);
 
-        // Submit read query
-        Query query_r(ctx, array, TILEDB_READ);
-        query_r.set_buffer("attr", attr_off, attr_val);
+        // Write data with extra element indicating total number of elements
+        element_offsets.push_back(data.size());
 
-        // Check the extra element is included in the offsets part1
-        CHECK_NOTHROW(query_r.submit());
-        data_off_part1 = {0, 1, 3};
-        CHECK(attr_val == data_part1);
-        CHECK(attr_off == data_off_part1);
+        // Expect an extra element offset on each read
+        data_elem_off_part1.push_back(data_part1.size());
+        data_elem_off_part2.push_back(data_part2.size());
 
-        // Check the extra element is included in the offsets part2
-        CHECK_NOTHROW(query_r.submit());
-        data_off_part2 = {0, 2, 3};
-        CHECK(attr_val == data_part2);
-        CHECK(attr_off == data_off_part2);
+        SECTION("Unordered write") {
+          write_sparse_array(
+              ctx, array_name, data, element_offsets, TILEDB_UNORDERED);
+          partial_read_and_check_sparse_array(
+              ctx,
+              array_name,
+              data_part1,
+              data_elem_off_part1,
+              data_part2,
+              data_elem_off_part2);
+        }
+        SECTION("Global order write") {
+          write_sparse_array(
+              ctx, array_name, data, element_offsets, TILEDB_GLOBAL_ORDER);
+          partial_read_and_check_sparse_array(
+              ctx,
+              array_name,
+              data_part1,
+              data_elem_off_part1,
+              data_part2,
+              data_elem_off_part2);
+        }
       }
 
       SECTION("User offsets buffer too small") {
+        // Write data with extra element
+        data_offsets.push_back(sizeof(data[0]) * data.size());
+        write_sparse_array(
+            ctx, array_name, data, data_offsets, TILEDB_UNORDERED);
+
         // Assume no size for the extra element
-        attr_off.resize(attr_off.size() - 1);
+        std::vector<int32_t> attr_val(data_part1.size());
+        std::vector<uint64_t> attr_off(data_off_part1.size());
 
         // Submit read query
         Context ctx(config);
-        Query query_r(ctx, array, TILEDB_READ);
-        query_r.set_buffer("attr", attr_off, attr_val);
-        CHECK_THROWS(query_r.submit());
+        Array array(ctx, array_name, TILEDB_READ);
+        Query query(ctx, array, TILEDB_READ);
+        query.set_buffer("attr", attr_off, attr_val);
+        CHECK_THROWS(query.submit());
+
+        array.close();
       }
     }
-    array.close();
   }
 
   // Clean up
@@ -599,179 +703,247 @@ TEST_CASE(
   Context ctx;
   std::vector<int32_t> data = {1, 2, 3, 4, 5, 6};
   std::vector<uint64_t> data_offsets = {0, 4, 12, 20};
-  write_dense_array(ctx, array_name, data, data_offsets, TILEDB_ROW_MAJOR);
+  std::vector<uint64_t> element_offsets = {0, 1, 3, 5};
 
   SECTION("Full read") {
-    Array array(ctx, array_name, TILEDB_READ);
     Config config;
-
-    // Buffers to store the read results
-    std::vector<int32_t> attr_val(data.size());
-    std::vector<uint64_t> attr_off(data_offsets.size());
 
     SECTION("No extra element (default case)") {
       config = ctx.config();
       CHECK((std::string)config["sm.var_offsets.extra_element"] == "false");
 
-      // Submit read query
-      Query query_r(ctx, array, TILEDB_READ);
-      query_r.set_buffer("attr", attr_off, attr_val);
-      query_r.set_subarray<int64_t>({1, 2, 1, 2});
-      CHECK_NOTHROW(query_r.submit());
-
-      // Check that bytes offsets are properly returned
-      CHECK(attr_val == data);
-      CHECK(attr_off == data_offsets);
+      write_dense_array(ctx, array_name, data, data_offsets, TILEDB_ROW_MAJOR);
+      read_and_check_dense_array(ctx, array_name, data, data_offsets);
     }
 
     SECTION("Extra element") {
       config["sm.var_offsets.extra_element"] = "true";
-      // Extend offsets buffer to accomodate for the extra element
-      attr_off.resize(attr_off.size() + 1);
 
       SECTION("Byte offsets (default config)") {
         CHECK((std::string)config["sm.var_offsets.mode"] == "bytes");
         Context ctx(config);
 
-        // Submit read query
-        Query query_r(ctx, array, TILEDB_READ);
-        query_r.set_buffer("attr", attr_off, attr_val);
-        query_r.set_subarray<int64_t>({1, 2, 1, 2});
-        CHECK_NOTHROW(query_r.submit());
-
-        // Check the extra element is included in the offsets
+        // Write data with extra element indicating total number of bytes
         data_offsets.push_back(sizeof(data[0]) * data.size());
-        CHECK(attr_val == data);
-        CHECK(attr_off == data_offsets);
+
+        SECTION("Unordered write") {
+          write_dense_array(
+              ctx, array_name, data, data_offsets, TILEDB_UNORDERED);
+          read_and_check_dense_array(ctx, array_name, data, data_offsets);
+        }
+        SECTION("Ordered write") {
+          write_dense_array(
+              ctx, array_name, data, data_offsets, TILEDB_ROW_MAJOR);
+          read_and_check_dense_array(ctx, array_name, data, data_offsets);
+        }
+        SECTION("Global order write") {
+          write_dense_array(
+              ctx, array_name, data, data_offsets, TILEDB_GLOBAL_ORDER);
+          read_and_check_dense_array(ctx, array_name, data, data_offsets);
+        }
       }
 
       SECTION("Element offsets") {
         config["sm.var_offsets.mode"] = "elements";
         Context ctx(config);
 
-        // Submit read query
-        Query query_r(ctx, array, TILEDB_READ);
-        query_r.set_buffer("attr", attr_off, attr_val);
-        query_r.set_subarray<int64_t>({1, 2, 1, 2});
-        CHECK_NOTHROW(query_r.submit());
+        // Write data with extra element indicating the total number of elements
+        element_offsets.push_back(data.size());
 
-        // Check the extra element is included in the offsets
-        data_offsets = {0, 1, 3, 5, 6};
-        CHECK(attr_val == data);
-        CHECK(attr_off == data_offsets);
+        SECTION("Unordered write") {
+          write_dense_array(
+              ctx, array_name, data, element_offsets, TILEDB_UNORDERED);
+          read_and_check_dense_array(ctx, array_name, data, element_offsets);
+        }
+        SECTION("Ordered write") {
+          write_dense_array(
+              ctx, array_name, data, element_offsets, TILEDB_ROW_MAJOR);
+          read_and_check_dense_array(ctx, array_name, data, element_offsets);
+        }
+        SECTION("Global order write") {
+          write_dense_array(
+              ctx, array_name, data, element_offsets, TILEDB_GLOBAL_ORDER);
+          read_and_check_dense_array(ctx, array_name, data, element_offsets);
+        }
       }
 
       SECTION("User offsets buffer too small") {
+        // Use element offsets to cover this code path as well
+        config["sm.var_offsets.mode"] = "elements";
+        Context ctx(config);
+
+        Array array_w(ctx, array_name, TILEDB_WRITE);
+        Query query_w(ctx, array_w, TILEDB_WRITE);
+        query_w.set_layout(TILEDB_ROW_MAJOR)
+            .set_subarray<int64_t>({1, 2, 1, 2});
+
+        // Try to write without allocating memory for the extra element
+        query_w.set_buffer("attr", element_offsets, data);
+        CHECK_THROWS(query_w.submit());
+
+        // Write data with extra element
+        element_offsets.push_back(data.size());
+        query_w.set_buffer("attr", element_offsets, data);
+        CHECK_NOTHROW(query_w.submit());
+        array_w.close();
+
         // Assume no size for the extra element
-        attr_off.resize(attr_off.size() - 1);
+        std::vector<int32_t> attr_val(data.size());
+        std::vector<uint64_t> attr_off(element_offsets.size() - 1);
 
         // Submit read query
-        Context ctx(config);
-        Query query_r(ctx, array, TILEDB_READ);
+        Array array_r(ctx, array_name, TILEDB_READ);
+        Query query_r(ctx, array_r, TILEDB_READ);
         query_r.set_buffer("attr", attr_off, attr_val);
         query_r.set_subarray<int64_t>({1, 2, 1, 2});
+        // The query should fail
         CHECK_THROWS(query_r.submit());
+        array_r.close();
       }
     }
-    array.close();
   }
 
   SECTION("Partial read") {
-    Array array(ctx, array_name, TILEDB_READ);
     Config config;
 
-    // Assume the user buffers can only store half the data
-    std::vector<int32_t> attr_val(data.size() / 2);
-    std::vector<uint64_t> attr_off(data_offsets.size() - 2);
-
-    // The expected buffers to be returned after 2 partial reads
+    // The expected buffers to be returned after 2 partial reads with
+    // read buffers of size data.size() / 2
     std::vector<int32_t> data_part1 = {1, 2, 3};
     std::vector<uint64_t> data_off_part1 = {0, 4};
+    std::vector<uint64_t> data_elem_off_part1 = {0, 1};
     std::vector<int32_t> data_part2 = {4, 5, 6};
     std::vector<uint64_t> data_off_part2 = {0, 8};
+    std::vector<uint64_t> data_elem_off_part2 = {0, 2};
+
+    SECTION("No extra element (default case)") {
+      config = ctx.config();
+      CHECK((std::string)config["sm.var_offsets.extra_element"] == "false");
+
+      write_dense_array(ctx, array_name, data, data_offsets, TILEDB_UNORDERED);
+      partial_read_and_check_dense_array(
+          ctx,
+          array_name,
+          data_part1,
+          data_off_part1,
+          data_part2,
+          data_off_part2);
+    }
 
     SECTION("Extra element") {
       config["sm.var_offsets.extra_element"] = "true";
-      // Extend offsets buffer to accomodate for the extra element
-      attr_off.resize(attr_off.size() + 1);
 
       SECTION("Byte offsets (default config)") {
         CHECK((std::string)config["sm.var_offsets.mode"] == "bytes");
         Context ctx(config);
 
-        // Submit read query
-        Query query_r(ctx, array, TILEDB_READ);
-        query_r.set_buffer("attr", attr_off, attr_val);
-        query_r.set_subarray<int64_t>({1, 2, 1, 2});
+        // Write data with extra element indicating total number of bytes
+        data_offsets.push_back(sizeof(data[0]) * data.size());
 
-        // Check the extra element is included in the offsets part1
-        CHECK_NOTHROW(query_r.submit());
+        // Expect an extra element offset on each read
         data_off_part1.push_back(sizeof(data_part1[0]) * data_part1.size());
-        CHECK(attr_val == data_part1);
-        CHECK(attr_off == data_off_part1);
-
-        // Check the extra element is included in the offsets part2
-        CHECK_NOTHROW(query_r.submit());
         data_off_part2.push_back(sizeof(data_part2[0]) * data_part2.size());
-        CHECK(attr_val == data_part2);
-        CHECK(attr_off == data_off_part2);
+
+        SECTION("Unordered write") {
+          write_dense_array(
+              ctx, array_name, data, data_offsets, TILEDB_UNORDERED);
+          partial_read_and_check_dense_array(
+              ctx,
+              array_name,
+              data_part1,
+              data_off_part1,
+              data_part2,
+              data_off_part2);
+        }
+        SECTION("Ordered write") {
+          write_dense_array(
+              ctx, array_name, data, data_offsets, TILEDB_ROW_MAJOR);
+          partial_read_and_check_dense_array(
+              ctx,
+              array_name,
+              data_part1,
+              data_off_part1,
+              data_part2,
+              data_off_part2);
+        }
+        SECTION("Global order write") {
+          write_dense_array(
+              ctx, array_name, data, data_offsets, TILEDB_GLOBAL_ORDER);
+          partial_read_and_check_dense_array(
+              ctx,
+              array_name,
+              data_part1,
+              data_off_part1,
+              data_part2,
+              data_off_part2);
+        }
       }
 
       SECTION("Element offsets") {
         config["sm.var_offsets.mode"] = "elements";
         Context ctx(config);
 
-        // Submit read query
-        Query query_r(ctx, array, TILEDB_READ);
-        query_r.set_buffer("attr", attr_off, attr_val);
-        query_r.set_subarray<int64_t>({1, 2, 1, 2});
+        // Write data with extra element indicating total number of elements
+        element_offsets.push_back(data.size());
 
-        // Check the extra element is included in the offsets part1
-        CHECK_NOTHROW(query_r.submit());
-        data_off_part1 = {0, 1, 3};
-        CHECK(attr_val == data_part1);
-        CHECK(attr_off == data_off_part1);
+        // Expect an extra element offset on each read
+        data_elem_off_part1.push_back(data_part1.size());
+        data_elem_off_part2.push_back(data_part2.size());
 
-        // Check the extra element is included in the offsets part2
-        CHECK_NOTHROW(query_r.submit());
-        data_off_part2 = {0, 2, 3};
-        CHECK(attr_val == data_part2);
-        CHECK(attr_off == data_off_part2);
+        SECTION("Unordered write") {
+          write_dense_array(
+              ctx, array_name, data, element_offsets, TILEDB_UNORDERED);
+          partial_read_and_check_dense_array(
+              ctx,
+              array_name,
+              data_part1,
+              data_elem_off_part1,
+              data_part2,
+              data_elem_off_part2);
+        }
+        SECTION("Ordered write") {
+          write_dense_array(
+              ctx, array_name, data, element_offsets, TILEDB_ROW_MAJOR);
+          partial_read_and_check_dense_array(
+              ctx,
+              array_name,
+              data_part1,
+              data_elem_off_part1,
+              data_part2,
+              data_elem_off_part2);
+        }
+        SECTION("Global order write") {
+          write_dense_array(
+              ctx, array_name, data, element_offsets, TILEDB_GLOBAL_ORDER);
+          partial_read_and_check_dense_array(
+              ctx,
+              array_name,
+              data_part1,
+              data_elem_off_part1,
+              data_part2,
+              data_elem_off_part2);
+        }
       }
 
       SECTION("User offsets buffer too small") {
+        // Write data with extra element
+        data_offsets.push_back(sizeof(data[0]) * data.size());
+        write_sparse_array(
+            ctx, array_name, data, data_offsets, TILEDB_UNORDERED);
+
         // Assume no size for the extra element
-        attr_off.resize(attr_off.size() - 1);
+        std::vector<int32_t> attr_val(data_part1.size());
+        std::vector<uint64_t> attr_off(data_off_part1.size());
 
         // Submit read query
         Context ctx(config);
+        Array array(ctx, array_name, TILEDB_READ);
         Query query_r(ctx, array, TILEDB_READ);
         query_r.set_buffer("attr", attr_off, attr_val);
         query_r.set_subarray<int64_t>({1, 2, 1, 2});
         CHECK_THROWS(query_r.submit());
+        array.close();
       }
     }
-
-    SECTION("No extra element (default case)") {
-      config["sm.var_offsets.extra_element"] = "false";
-      Context ctx(config);
-
-      // Submit read query
-      Query query_r(ctx, array, TILEDB_READ);
-      query_r.set_buffer("attr", attr_off, attr_val);
-      query_r.set_subarray<int64_t>({1, 2, 1, 2});
-
-      // Check that first partial read returns expected results
-      CHECK_NOTHROW(query_r.submit());
-      CHECK(attr_val == data_part1);
-      CHECK(attr_off == data_off_part1);
-
-      // Check that second partial read returns expected results
-      CHECK_NOTHROW(query_r.submit());
-      CHECK(attr_val == data_part2);
-      CHECK(attr_off == data_off_part2);
-    }
-    array.close();
   }
 
   // Clean up
@@ -836,17 +1008,17 @@ TEST_CASE(
 
     // Check the extra element is included in the offsets
     uint32_t data_size = static_cast<uint32_t>(sizeof(data[0]) * data.size());
-    std::vector<uint32_t> data_offsets_exp = {0, 4, 12, 20, data_size};
+    std::vector<uint32_t> data_byte_offsets = {0, 4, 12, 20, data_size};
 
     SECTION("Unordered write") {
       write_sparse_array(
           ctx, array_name, data, data_byte_offsets, TILEDB_UNORDERED);
-      read_and_check_sparse_array(ctx, array_name, data, data_offsets_exp);
+      read_and_check_sparse_array(ctx, array_name, data, data_byte_offsets);
     }
     SECTION("Global order write") {
       write_sparse_array(
           ctx, array_name, data, data_byte_offsets, TILEDB_GLOBAL_ORDER);
-      read_and_check_sparse_array(ctx, array_name, data, data_offsets_exp);
+      read_and_check_sparse_array(ctx, array_name, data, data_byte_offsets);
     }
   }
 
@@ -926,22 +1098,22 @@ TEST_CASE(
 
     // Check the extra element is included in the offsets
     uint32_t data_size = static_cast<uint32_t>(sizeof(data[0]) * data.size());
-    std::vector<uint32_t> data_offsets_exp = {0, 4, 12, 20, data_size};
+    std::vector<uint32_t> data_byte_offsets = {0, 4, 12, 20, data_size};
 
     SECTION("Unordered write") {
       write_dense_array(
           ctx, array_name, data, data_byte_offsets, TILEDB_UNORDERED);
-      read_and_check_dense_array(ctx, array_name, data, data_offsets_exp);
+      read_and_check_dense_array(ctx, array_name, data, data_byte_offsets);
     }
     SECTION("Ordered write") {
       write_dense_array(
           ctx, array_name, data, data_byte_offsets, TILEDB_ROW_MAJOR);
-      read_and_check_dense_array(ctx, array_name, data, data_offsets_exp);
+      read_and_check_dense_array(ctx, array_name, data, data_byte_offsets);
     }
     SECTION("Global order write") {
       write_dense_array(
           ctx, array_name, data, data_byte_offsets, TILEDB_GLOBAL_ORDER);
-      read_and_check_dense_array(ctx, array_name, data, data_offsets_exp);
+      read_and_check_dense_array(ctx, array_name, data, data_byte_offsets);
     }
   }
 

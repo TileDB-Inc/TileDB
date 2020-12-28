@@ -411,19 +411,6 @@ Status Writer::init(const Layout& layout) {
     return LOG_STATUS(
         Status::WriterError("Cannot initialize query; Buffers not set"));
 
-  // Set a default subarray
-  if (!subarray_.is_set())
-    subarray_ = Subarray(array_, layout);
-
-  RETURN_NOT_OK(set_layout(layout));
-  RETURN_NOT_OK(check_subarray());
-  RETURN_NOT_OK(check_buffer_sizes());
-  RETURN_NOT_OK(check_buffer_names());
-  if (array_schema_->dense())
-    RETURN_NOT_OK(subarray_.to_byte_vec(&subarray_flat_));
-
-  optimize_layout_for_1D();
-
   // Get configuration parameters
   const char *check_coord_dups, *check_coord_oob, *check_global_order;
   const char* dedup_coords;
@@ -458,6 +445,20 @@ Status Writer::init(const Layout& layout) {
   }
   assert(found);
 
+  // Set a default subarray
+  if (!subarray_.is_set())
+    subarray_ = Subarray(array_, layout);
+
+  if (offsets_extra_element_)
+    RETURN_NOT_OK(check_extra_element());
+  RETURN_NOT_OK(set_layout(layout));
+  RETURN_NOT_OK(check_subarray());
+  RETURN_NOT_OK(check_buffer_sizes());
+  RETURN_NOT_OK(check_buffer_names());
+  if (array_schema_->dense())
+    RETURN_NOT_OK(subarray_.to_byte_vec(&subarray_flat_));
+
+  optimize_layout_for_1D();
   RETURN_NOT_OK(check_var_attr_offsets());
   initialized_ = true;
 
@@ -2195,6 +2196,38 @@ void Writer::optimize_layout_for_1D() {
   if (array_schema_->dim_num() == 1 && layout_ != Layout::GLOBAL_ORDER &&
       layout_ != Layout::UNORDERED)
     layout_ = array_schema_->cell_order();
+}
+
+Status Writer::check_extra_element() {
+  for (const auto& it : buffers_) {
+    const auto& attr = it.first;
+    if (!array_schema_->var_size(attr) || array_schema_->is_dim(attr))
+      continue;
+
+    const void* buffer_off = it.second.buffer_;
+    uint64_t* buffer_off_size = it.second.buffer_size_;
+    const auto num_offsets = *buffer_off_size / constants::cell_var_offset_size;
+    const uint64_t* buffer_val_size = it.second.buffer_var_size_;
+    const uint64_t attr_datatype_size =
+        datatype_size(array_schema_->type(attr));
+    const uint64_t max_offset = offsets_format_mode_ == "bytes" ?
+                                    *buffer_val_size :
+                                    *buffer_val_size / attr_datatype_size;
+    const uint64_t last_offset =
+        get_offset_buffer_element(buffer_off, num_offsets - 1);
+
+    if (last_offset != max_offset)
+      return LOG_STATUS(Status::WriterError(
+          "Invalid offsets for attribute " + attr +
+          "; the last offset: " + std::to_string(last_offset) +
+          " is not equal to the size of the data buffer: " +
+          std::to_string(max_offset)));
+
+    // Remove extra element, it's not needed
+    *buffer_off_size -= constants::cell_var_offset_size;
+  }
+
+  return Status::Ok();
 }
 
 Status Writer::ordered_write() {

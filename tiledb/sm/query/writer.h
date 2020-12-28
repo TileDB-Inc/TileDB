@@ -813,6 +813,12 @@ class Writer {
   void optimize_layout_for_1D();
 
   /**
+   * Checks the validity of the extra element from var-sized offsets of
+   * attributes and removes the extra element since tiledb does not need it
+   */
+  Status check_extra_element();
+
+  /**
    * Writes in an ordered layout (col- or row-major order). Applicable only
    * to dense arrays.
    */
