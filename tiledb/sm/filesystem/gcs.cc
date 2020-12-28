@@ -1080,11 +1080,6 @@ Status GCS::read(
   stream.read(static_cast<char*>(buffer), length + read_ahead_length);
   *length_returned = stream.gcount();
 
-  if (!stream) {
-    return LOG_STATUS(Status::GCSError(
-        std::string("Read object failed on: " + uri.to_string())));
-  }
-
   stream.Close();
 
   if (*length_returned < length) {

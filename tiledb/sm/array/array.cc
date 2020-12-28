@@ -864,7 +864,21 @@ Status Array::compute_non_empty_domain() {
     auto metadata_num = fragment_metadata_.size();
     for (size_t j = 1; j < metadata_num; ++j) {
       const auto& meta_dom = fragment_metadata_[j]->non_empty_domain();
-      array_schema_->domain()->expand_ndrange(meta_dom, &non_empty_domain_);
+      // Validate that this fragment's non-empty domain is set
+      // It should _always_ be set, however we've seen cases where disk
+      // corruption or other out-of-band activity can cause the fragment to be
+      // corrupt for these cases we want to check to prevent any segfaults
+      // later.
+      if (!meta_dom.empty())
+        array_schema_->domain()->expand_ndrange(meta_dom, &non_empty_domain_);
+      else {
+        // If the fragment's non-empty domain is indeed empty, lets log it so
+        // the user gets a message warning that this fragment might be corrupt
+        // Note: LOG_STATUS only prints if TileDB is built in verbose mode.
+        LOG_STATUS(Status::ArrayError(
+            "Non empty domain unexpectedly empty for fragment: " +
+            fragment_metadata_[j]->fragment_uri().to_string()));
+      }
     }
   }
   non_empty_domain_computed_ = true;

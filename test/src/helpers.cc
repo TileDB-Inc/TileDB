@@ -495,7 +495,10 @@ void create_subarray(
 }
 
 void get_supported_fs(
-    bool* s3_supported, bool* hdfs_supported, bool* azure_supported) {
+    bool* s3_supported,
+    bool* hdfs_supported,
+    bool* azure_supported,
+    bool* gcs_supported) {
   tiledb_ctx_t* ctx = nullptr;
   REQUIRE(tiledb_ctx_alloc(nullptr, &ctx) == TILEDB_OK);
 
@@ -509,35 +512,49 @@ void get_supported_fs(
   rc = tiledb_ctx_is_supported_fs(ctx, TILEDB_AZURE, &is_supported);
   REQUIRE(rc == TILEDB_OK);
   *azure_supported = (bool)is_supported;
+  rc = tiledb_ctx_is_supported_fs(ctx, TILEDB_GCS, &is_supported);
+  REQUIRE(rc == TILEDB_OK);
+  *gcs_supported = (bool)is_supported;
 
   // Override VFS support if the user used the '--vfs' command line argument.
   if (!g_vfs.empty()) {
     REQUIRE(
         (g_vfs == "native" || g_vfs == "s3" || g_vfs == "hdfs" ||
-         g_vfs == "azure"));
+         g_vfs == "azure" || g_vfs == "gcs"));
 
     if (g_vfs == "native") {
       *s3_supported = false;
       *hdfs_supported = false;
       *azure_supported = false;
+      *gcs_supported = false;
     }
 
     if (g_vfs == "s3") {
       *s3_supported = true;
       *hdfs_supported = false;
       *azure_supported = false;
+      *gcs_supported = false;
     }
 
     if (g_vfs == "hdfs") {
       *s3_supported = false;
       *hdfs_supported = true;
       *azure_supported = false;
+      *gcs_supported = false;
     }
 
     if (g_vfs == "azure") {
       *s3_supported = false;
       *hdfs_supported = false;
       *azure_supported = true;
+      *gcs_supported = false;
+    }
+
+    if (g_vfs == "gcs") {
+      *s3_supported = false;
+      *hdfs_supported = false;
+      *azure_supported = false;
+      *gcs_supported = true;
     }
   }
 
