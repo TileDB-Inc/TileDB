@@ -1127,6 +1127,10 @@ Status FragmentMetadata::load_tile_offsets(
   if (version_ <= 2)
     return Status::Ok();
 
+  // If the tile offset is already loaded, exit early to avoid the lock
+  if (loaded_metadata_.tile_offsets_[idx])
+    return Status::Ok();
+
   std::lock_guard<std::mutex> lock(mtx_);
 
   if (loaded_metadata_.tile_offsets_[idx])
@@ -1150,6 +1154,10 @@ Status FragmentMetadata::load_tile_offsets(
 Status FragmentMetadata::load_tile_var_offsets(
     const EncryptionKey& encryption_key, unsigned idx) {
   if (version_ <= 2)
+    return Status::Ok();
+
+  // If the tile var offset is already loaded, exit early to avoid the lock
+  if (loaded_metadata_.tile_var_offsets_[idx])
     return Status::Ok();
 
   std::lock_guard<std::mutex> lock(mtx_);
