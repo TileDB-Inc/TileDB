@@ -2217,6 +2217,10 @@ Status Subarray::load_relevant_fragment_tile_var_sizes(
   return Status::Ok();
 }
 
+std::vector<unsigned> Subarray::relevant_fragments() const {
+  return relevant_fragments_;
+}
+
 // Explicit instantiations
 template Status Subarray::compute_tile_coords<int8_t>();
 template Status Subarray::compute_tile_coords<uint8_t>();
