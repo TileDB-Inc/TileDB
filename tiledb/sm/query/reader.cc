@@ -1264,10 +1264,8 @@ Status Reader::copy_fixed_cells(
   // Update buffer offsets
   *(buffers_[name].buffer_size_) = buffer_offset;
   if (array_schema_->is_nullable(name)) {
-    const uint64_t attr_datatype_size =
-        datatype_size(array_schema_->type(name));
     *(buffers_[name].validity_vector_.buffer_size()) =
-        (buffer_offset / attr_datatype_size) * constants::cell_validity_size;
+        (buffer_offset / cell_size) * constants::cell_validity_size;
   }
 
   return Status::Ok();
@@ -1338,14 +1336,11 @@ Status Reader::copy_partitioned_fixed_cells(
       for (uint64_t j = 0; j < fill_num; ++j) {
         std::memcpy(buffer + offset, fill_value.data(), fill_value_size);
         if (nullable) {
-          const uint64_t attr_datatype_size =
-              datatype_size(array_schema_->type(*name));
           std::memset(
               buffer_validity +
-                  (offset / attr_datatype_size * constants::cell_validity_size),
+                  (offset / cell_size * constants::cell_validity_size),
               fill_value_validity,
-              fill_value_size / attr_datatype_size *
-                  constants::cell_validity_size);
+              constants::cell_validity_size);
         }
         offset += fill_value_size;
       }
@@ -1489,7 +1484,6 @@ Status Reader::compute_var_cell_destinations(
   if (array_schema_->is_attr(name))
     fill_value = array_schema_->attribute(name)->fill_value();
   auto fill_value_size = (uint64_t)fill_value.size();
-  auto attr_datatype_size = datatype_size(array_schema_->type(name));
 
   // Compute the destinations for all result cell slabs
   *total_offset_size = 0;
@@ -1544,8 +1538,7 @@ Status Reader::compute_var_cell_destinations(
       *total_offset_size += offset_size;
       *total_var_size += cell_var_size;
       if (nullable)
-        *total_validity_size +=
-            cell_var_size / attr_datatype_size * constants::cell_validity_size;
+        *total_validity_size += constants::cell_validity_size;
     }
 
     total_cs_length += cs.length_;
@@ -1624,16 +1617,16 @@ Status Reader::copy_partitioned_var_cells(
     stride = (stride == UINT64_MAX) ? 1 : stride;
     for (auto cell_idx = cs.start_; dest_vec_idx < cs.length_;
          cell_idx += stride, dest_vec_idx++) {
-      auto offset_dest =
-          buffer + (*offset_offsets_per_cs)[arr_offset + dest_vec_idx];
-      // offset_offsets[dest_vec_idx];
+      auto offset_offsets = (*offset_offsets_per_cs)[arr_offset + dest_vec_idx];
+      auto offset_dest = buffer + offset_offsets;
       auto var_offset = (*var_offsets_per_cs)[arr_offset + dest_vec_idx];
       auto var_dest = buffer_var + var_offset;
-      auto validity_dest = buffer_validity + (var_offset / attr_datatype_size);
+      auto validity_dest = buffer_validity + (offset_offsets / offset_size);
 
       if (offsets_format_mode_ == "elements") {
         var_offset = var_offset / attr_datatype_size;
       }
+
       // Copy offset
       std::memcpy(offset_dest, &var_offset, offset_size);
 
@@ -1644,8 +1637,7 @@ Status Reader::copy_partitioned_var_cells(
           std::memset(
               validity_dest,
               fill_value_validity,
-              fill_value_size / attr_datatype_size *
-                  constants::cell_validity_size);
+              constants::cell_validity_size);
       } else {
         const uint64_t cell_var_size =
             (cell_idx != tile_cell_num - 1) ?
@@ -1658,9 +1650,7 @@ Status Reader::copy_partitioned_var_cells(
 
         if (nullable)
           RETURN_NOT_OK(tile_validity->read(
-              validity_dest,
-              cell_var_size / attr_datatype_size,
-              tile_var_offset / attr_datatype_size));
+              validity_dest, constants::cell_validity_size, cell_idx));
       }
     }
 
