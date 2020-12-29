@@ -605,7 +605,7 @@ void ResultTile::compute_results_sparse<char>(
   // Often, a memory comparison for one byte is as quick as comparing
   // 4 or 8 bytes. We will only get a benefit if we successfully
   // find a `memcmp` on a much larger range.
-  static const uint64_t zeroed_size = coords_num < 256 ? coords_num : 256;
+  const uint64_t zeroed_size = coords_num < 256 ? coords_num : 256;
   for (uint64_t i = 0; i < coords_num; i += zeroed_size) {
     const uint64_t partition_size =
         (i < coords_num - zeroed_size) ? zeroed_size : coords_num - i;
