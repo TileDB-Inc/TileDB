@@ -425,12 +425,14 @@ Status FragmentMetadata::init(const NDRange& non_empty_domain) {
 
   // Initialize tile offsets
   tile_offsets_.resize(num);
+  tile_offsets_mtx_.resize(num);
   file_sizes_.resize(num);
   for (unsigned int i = 0; i < num; ++i)
     file_sizes_[i] = 0;
 
   // Initialize variable tile offsets
   tile_var_offsets_.resize(num);
+  tile_var_offsets_mtx_.resize(num);
   file_var_sizes_.resize(num);
   for (unsigned int i = 0; i < num; ++i)
     file_var_sizes_[i] = 0;
@@ -1131,7 +1133,7 @@ Status FragmentMetadata::load_tile_offsets(
   if (loaded_metadata_.tile_offsets_[idx])
     return Status::Ok();
 
-  std::lock_guard<std::mutex> lock(mtx_);
+  std::lock_guard<std::mutex> lock(tile_offsets_mtx_[idx]);
 
   if (loaded_metadata_.tile_offsets_[idx])
     return Status::Ok();
@@ -1160,7 +1162,7 @@ Status FragmentMetadata::load_tile_var_offsets(
   if (loaded_metadata_.tile_var_offsets_[idx])
     return Status::Ok();
 
-  std::lock_guard<std::mutex> lock(mtx_);
+  std::lock_guard<std::mutex> lock(tile_var_offsets_mtx_[idx]);
 
   if (loaded_metadata_.tile_var_offsets_[idx])
     return Status::Ok();
@@ -1522,6 +1524,7 @@ Status FragmentMetadata::load_tile_offsets(ConstBuffer* buff) {
 
   // Allocate tile offsets
   tile_offsets_.resize(attribute_num + 1);
+  tile_offsets_mtx_.resize(attribute_num + 1);
 
   // For all attributes, get the tile offsets
   for (unsigned int i = 0; i < attribute_num + 1; ++i) {
@@ -1592,6 +1595,7 @@ Status FragmentMetadata::load_tile_var_offsets(ConstBuffer* buff) {
 
   // Allocate tile offsets
   tile_var_offsets_.resize(attribute_num);
+  tile_var_offsets_mtx_.resize(attribute_num);
 
   // For all attributes, get the variable tile offsets
   for (unsigned int i = 0; i < attribute_num; ++i) {
@@ -1961,7 +1965,9 @@ Status FragmentMetadata::load_footer(
   num += (version >= 5) ? array_schema_->dim_num() : 0;
 
   tile_offsets_.resize(num);
+  tile_offsets_mtx_.resize(num);
   tile_var_offsets_.resize(num);
+  tile_var_offsets_mtx_.resize(num);
   tile_var_sizes_.resize(num);
   tile_validity_offsets_.resize(num);
 

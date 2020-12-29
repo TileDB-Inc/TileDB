@@ -625,6 +625,12 @@ class FragmentMetadata {
   /** Local mutex for thread-safety. */
   std::mutex mtx_;
 
+  /** Mutex per tile offset loading. */
+  std::deque<std::mutex> tile_offsets_mtx_;
+
+  /** Mutex per tile var offset loading. */
+  std::deque<std::mutex> tile_var_offsets_mtx_;
+
   /** The non-empty domain of the fragment. */
   NDRange non_empty_domain_;
 
