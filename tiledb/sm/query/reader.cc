@@ -3350,8 +3350,6 @@ Status Reader::add_extra_offset() {
       return LOG_STATUS(Status::ReaderError(
           "Cannot add extra offset to buffer; Unsupported offsets format"));
     }
-
-    *it.second.buffer_size_ += offsets_bytesize();
   }
 
   return Status::Ok();

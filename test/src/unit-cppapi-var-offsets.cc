@@ -574,18 +574,30 @@ TEST_CASE(
         // First partial read because offsets don't fit
         CHECK_NOTHROW(query_r.submit());
         CHECK(query_r.query_status() == Query::Status::INCOMPLETE);
+        // check returned data
+        auto data_num = query_r.result_buffer_elements()["attr"].second;
+        CHECK(data_num == 3);
         std::vector<int32_t> data_exp1 = {1, 2, 3, 0, 0, 0};
-        std::vector<uint64_t> data_off_exp1 = {0, 4, 12, 0};
         CHECK(attr_val == data_exp1);
+        // check returned offsets
+        auto offset_num = query_r.result_buffer_elements()["attr"].first;
+        CHECK(offset_num == 3);
+        std::vector<uint64_t> data_off_exp1 = {0, 4, 12, 0};
         CHECK(attr_off == data_off_exp1);
 
         // Second partial read
         reset_read_buffers(attr_val, attr_off);
         CHECK_NOTHROW(query_r.submit());
         CHECK(query_r.query_status() == Query::Status::COMPLETE);
+        // check returned data
+        data_num = query_r.result_buffer_elements()["attr"].second;
+        CHECK(data_num == 3);
         std::vector<int32_t> data_exp2 = {4, 5, 6, 0, 0, 0};
-        std::vector<uint64_t> data_off_exp2 = {0, 8, 12, 0};
         CHECK(attr_val == data_exp2);
+        // check returned offsets
+        offset_num = query_r.result_buffer_elements()["attr"].first;
+        CHECK(offset_num == 3);
+        std::vector<uint64_t> data_off_exp2 = {0, 8, 12, 0};
         CHECK(attr_off == data_off_exp2);
 
         array_r.close();
@@ -713,7 +725,13 @@ TEST_CASE(
         CHECK(query.query_status() == Query::Status::INCOMPLETE);
         std::vector<int32_t> data_exp1 = {1, 0, 0};
         std::vector<uint64_t> data_off_exp1 = {0, 4};
+        // check returned data
+        auto data_num = query.result_buffer_elements()["attr"].second;
+        CHECK(data_num == 1);
         CHECK(attr_val == data_exp1);
+        // check returned offsets
+        auto offset_num = query.result_buffer_elements()["attr"].first;
+        CHECK(offset_num == 2);
         CHECK(attr_off == data_off_exp1);
 
         // Second partial read
@@ -722,7 +740,13 @@ TEST_CASE(
         CHECK(query.query_status() == Query::Status::INCOMPLETE);
         std::vector<int32_t> data_exp2 = {2, 3, 0};
         std::vector<uint64_t> data_off_exp2 = {0, 8};
+        // check returned data
+        data_num = query.result_buffer_elements()["attr"].second;
+        CHECK(data_num == 2);
         CHECK(attr_val == data_exp2);
+        // check returned offsets
+        offset_num = query.result_buffer_elements()["attr"].first;
+        CHECK(offset_num == 2);
         CHECK(attr_off == data_off_exp2);
 
         // Third partial read
@@ -731,7 +755,13 @@ TEST_CASE(
         CHECK(query.query_status() == Query::Status::INCOMPLETE);
         std::vector<int32_t> data_exp3 = {4, 5, 0};
         std::vector<uint64_t> data_off_exp3 = {0, 8};
+        // check returned data
+        data_num = query.result_buffer_elements()["attr"].second;
+        CHECK(data_num == 2);
         CHECK(attr_val == data_exp3);
+        // check returned offsets
+        offset_num = query.result_buffer_elements()["attr"].first;
+        CHECK(offset_num == 2);
         CHECK(attr_off == data_off_exp3);
 
         // Last partial read
@@ -740,7 +770,13 @@ TEST_CASE(
         CHECK(query.query_status() == Query::Status::COMPLETE);
         std::vector<int32_t> data_exp4 = {6, 0, 0};
         std::vector<uint64_t> data_off_exp4 = {0, 4};
+        // check returned data
+        data_num = query.result_buffer_elements()["attr"].second;
+        CHECK(data_num == 1);
         CHECK(attr_val == data_exp4);
+        // check returned offsets
+        offset_num = query.result_buffer_elements()["attr"].first;
+        CHECK(offset_num == 2);
         CHECK(attr_off == data_off_exp4);
 
         array.close();
@@ -862,7 +898,13 @@ TEST_CASE(
         CHECK(query_r.query_status() == Query::Status::INCOMPLETE);
         std::vector<int32_t> data_exp1 = {1, 2, 3, 0, 0, 0};
         std::vector<uint64_t> data_off_exp1 = {0, 1, 3, 0};
+        // check returned data
+        auto data_num = query_r.result_buffer_elements()["attr"].second;
+        CHECK(data_num == 3);
         CHECK(attr_val == data_exp1);
+        // check returned offsets
+        auto offset_num = query_r.result_buffer_elements()["attr"].first;
+        CHECK(offset_num == 3);
         CHECK(attr_off == data_off_exp1);
 
         // Second partial read
@@ -871,7 +913,13 @@ TEST_CASE(
         CHECK(query_r.query_status() == Query::Status::COMPLETE);
         std::vector<int32_t> data_exp2 = {4, 5, 6, 0, 0, 0};
         std::vector<uint64_t> data_off_exp2 = {0, 2, 3, 0};
+        // check returned data
+        data_num = query_r.result_buffer_elements()["attr"].second;
+        CHECK(data_num == 3);
         CHECK(attr_val == data_exp2);
+        // check returned offsets
+        offset_num = query_r.result_buffer_elements()["attr"].first;
+        CHECK(offset_num == 3);
         CHECK(attr_off == data_off_exp2);
 
         array_r.close();
@@ -1022,7 +1070,13 @@ TEST_CASE(
         CHECK(query.query_status() == Query::Status::INCOMPLETE);
         std::vector<int32_t> data_exp1 = {1, 0, 0};
         std::vector<uint64_t> data_off_exp1 = {0, 4};
+        // check returned data
+        auto data_num = query.result_buffer_elements()["attr"].second;
+        CHECK(data_num == 1);
         CHECK(attr_val == data_exp1);
+        // check returned offsets
+        auto offset_num = query.result_buffer_elements()["attr"].first;
+        CHECK(offset_num == 2);
         CHECK(attr_off == data_off_exp1);
 
         // Second partial read
@@ -1031,7 +1085,13 @@ TEST_CASE(
         CHECK(query.query_status() == Query::Status::INCOMPLETE);
         std::vector<int32_t> data_exp2 = {2, 3, 0};
         std::vector<uint64_t> data_off_exp2 = {0, 8};
+        // check returned data
+        data_num = query.result_buffer_elements()["attr"].second;
+        CHECK(data_num == 2);
         CHECK(attr_val == data_exp2);
+        // check returned offsets
+        offset_num = query.result_buffer_elements()["attr"].first;
+        CHECK(offset_num == 2);
         CHECK(attr_off == data_off_exp2);
 
         // Third partial read
@@ -1040,7 +1100,13 @@ TEST_CASE(
         CHECK(query.query_status() == Query::Status::INCOMPLETE);
         std::vector<int32_t> data_exp3 = {4, 5, 0};
         std::vector<uint64_t> data_off_exp3 = {0, 8};
+        // check returned data
+        data_num = query.result_buffer_elements()["attr"].second;
+        CHECK(data_num == 2);
         CHECK(attr_val == data_exp3);
+        // check returned offsets
+        offset_num = query.result_buffer_elements()["attr"].first;
+        CHECK(offset_num == 2);
         CHECK(attr_off == data_off_exp3);
 
         // Last partial read
@@ -1049,7 +1115,13 @@ TEST_CASE(
         CHECK(query.query_status() == Query::Status::COMPLETE);
         std::vector<int32_t> data_exp4 = {6, 0, 0};
         std::vector<uint64_t> data_off_exp4 = {0, 4};
+        // check returned data
+        data_num = query.result_buffer_elements()["attr"].second;
+        CHECK(data_num == 1);
         CHECK(attr_val == data_exp4);
+        // check returned offsets
+        offset_num = query.result_buffer_elements()["attr"].first;
+        CHECK(offset_num == 2);
         CHECK(attr_off == data_off_exp4);
 
         array.close();
