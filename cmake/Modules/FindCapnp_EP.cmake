@@ -156,10 +156,13 @@ if (NOT CAPNP_FOUND)
           "-DCMAKE_CXX_FLAGS=${CXXFLAGS_DEF}"
           ${TILEDB_EP_BASE}/src/ep_capnp/c++
         UPDATE_COMMAND ""
+        PATCH_COMMAND
+          patch -d ${TILEDB_EP_BASE}/src/ep_capnp/ -N -p1 -i ${TILEDB_CMAKE_INPUTS_DIR}/patches/ep_capnp/libkj-invokable-const.patch
         LOG_DOWNLOAD TRUE
         LOG_CONFIGURE TRUE
         LOG_BUILD TRUE
         LOG_INSTALL TRUE
+        LOG_PATCH TRUE
         LOG_OUTPUT_ON_FAILURE ${TILEDB_LOG_OUTPUT_ON_FAILURE}
       )
     endif()
