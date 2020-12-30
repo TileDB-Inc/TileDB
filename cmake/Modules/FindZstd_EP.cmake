@@ -87,6 +87,8 @@ if (NOT ZSTD_FOUND)
 
     ExternalProject_Add(ep_zstd
       PREFIX "externals"
+      # Set download name to avoid collisions with only the version number in the filename
+      DOWNLOAD_NAME ep_zstd.zip
       URL "https://github.com/facebook/zstd/archive/v1.3.4.zip"
       URL_HASH SHA1=2f33cb8af3c964124be67ff4a50824a85b5e1907
       CONFIGURE_COMMAND

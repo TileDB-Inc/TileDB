@@ -144,6 +144,8 @@ if (NOT CAPNP_FOUND)
     else()
       ExternalProject_Add(ep_capnp
         PREFIX "externals"
+        # Set download name to avoid collisions with only the version number in the filename
+        DOWNLOAD_NAME ep_capnp.tar.gz
         URL "https://github.com/capnproto/capnproto/archive/v0.6.1.tar.gz"
         URL_HASH SHA1=2aec1f83cc4851ae58e1419c87f11f8aa63a9392
         CONFIGURE_COMMAND
