@@ -58,7 +58,9 @@ steps:
     $env:AWS_SECRET_ACCESS_KEY = "miniosecretkey"
 
     # Clone backwards compatibility test arrays
-    git clone https://github.com/TileDB-Inc/TileDB-Unit-Test-Arrays.git --branch 2.0.0-3 $env:BUILD_SOURCESDIRECTORY/test/inputs/arrays/read_compatibility_test
+    if ($env:BACKWARDS_COMPATIBILITY_ARRAYS -eq "ON") {
+      git clone https://github.com/TileDB-Inc/TileDB-Unit-Test-Arrays.git --branch 2.0.0-3 $env:BUILD_SOURCESDIRECTORY/test/inputs/arrays/read_compatibility_test
+    }
 
     if ($env:TILEDB_S3 -eq "ON") {
       # update CMake to disable S3 for the test configuration, see minio note above
