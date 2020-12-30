@@ -11,6 +11,8 @@ pr:
 stages:
   - stage: CI
     condition: and(not(startsWith(variables['Build.SourceBranch'], 'refs/tags')), not(startsWith(variables['Build.SourceBranchName'], 'build-')))
+    variables:
+      BACKWARDS_COMPATIBILITY_ARRAYS: OFF
     jobs:
     - job:
       strategy:
@@ -58,6 +60,7 @@ stages:
             TILEDB_SERIALIZATION: ON
             TILEDB_S3: ON
             CXX: g++
+            BACKWARDS_COMPATIBILITY_ARRAYS: ON
 
       pool:
         vmImage: $(imageName)
