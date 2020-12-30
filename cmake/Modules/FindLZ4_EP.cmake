@@ -83,6 +83,8 @@ if (NOT LZ4_FOUND)
     set(LZ4_CMAKE_DIR "${TILEDB_EP_SOURCE_DIR}/ep_lz4/contrib/cmake_unofficial")
     ExternalProject_Add(ep_lz4
       PREFIX "externals"
+      # Set download name to avoid collisions with only the version number in the filename
+      DOWNLOAD_NAME ep_lz4.zip
       URL "https://github.com/lz4/lz4/archive/v1.8.2.zip"
       URL_HASH SHA1=ebf6c227965318ecd73820ade8f5dbd83d48b3e8
       CONFIGURE_COMMAND

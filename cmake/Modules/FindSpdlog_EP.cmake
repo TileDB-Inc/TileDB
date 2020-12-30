@@ -50,6 +50,8 @@ if (NOT SPDLOG_FOUND AND TILEDB_SUPERBUILD)
   message(STATUS "Adding Spdlog as an external project")
   ExternalProject_Add(ep_spdlog
     PREFIX "externals"
+    # Set download name to avoid collisions with only the version number in the filename
+    DOWNLOAD_NAME ep_spdlog.zip
     URL "https://github.com/gabime/spdlog/archive/v0.16.3.zip"
     URL_HASH SHA1=00a732da1449c15b787491a924d63590c1649710
     CONFIGURE_COMMAND ""

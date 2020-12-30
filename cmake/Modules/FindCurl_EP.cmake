@@ -74,6 +74,8 @@ if (NOT CURL_FOUND AND TILEDB_SUPERBUILD)
     set(WITH_SSL "-DCMAKE_USE_WINSSL=ON")
     ExternalProject_Add(ep_curl
       PREFIX "externals"
+      # Set download name to avoid collisions with only the version number in the filename
+      DOWNLOAD_NAME ep_curl.tar.gz
       URL "https://curl.haxx.se/download/curl-7.71.1.tar.gz"
       URL_HASH SHA1=9c032e134c7684f34f98afaf9974f048da893930
       CMAKE_ARGS

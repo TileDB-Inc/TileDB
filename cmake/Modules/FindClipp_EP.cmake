@@ -53,6 +53,8 @@ if (NOT CLIPP_FOUND)
     message(STATUS "Adding Clipp as an external project")
     ExternalProject_Add(ep_clipp
       PREFIX "externals"
+      # Set download name to avoid collisions with only the version number in the filename
+      DOWNLOAD_NAME ep_clipp.zip
       URL "https://github.com/muellan/clipp/archive/v1.1.0.zip"
       URL_HASH SHA1=df30cf97426fead8c34899065181adea747981e2
       UPDATE_COMMAND ""
