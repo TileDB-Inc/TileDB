@@ -32,6 +32,8 @@
 
 #include <cassert>
 
+#include <iostream>
+
 #include "tiledb/common/logger.h"
 #include "tiledb/common/thread_pool.h"
 
@@ -67,6 +69,7 @@ Status ThreadPool::init(const uint64_t concurrency_level) {
   for (uint64_t i = 0; i < num_threads; i++) {
     try {
       threads_.emplace_back([this]() { worker(*this); });
+      exec_task_index_[threads_.back().get_id()] = nullptr;
     } catch (const std::exception& e) {
       st = Status::ThreadPoolError(
           "Error initializing thread pool of concurrency level " +
@@ -91,7 +94,10 @@ Status ThreadPool::init(const uint64_t concurrency_level) {
   return st;
 }
 
-ThreadPool::Task ThreadPool::execute(std::function<Status()>&& function) {
+ThreadPool::Task ThreadPool::execute(std::function<Status()>&& function, const bool debug) {
+  //if (debug)
+  //  std::cerr << "JOE execute debug " << std::endl;
+
   if (concurrency_level_ == 0) {
     Task invalid_future;
     LOG_ERROR("Cannot execute task; thread pool uninitialized.");
@@ -112,8 +118,21 @@ ThreadPool::Task ThreadPool::execute(std::function<Status()>&& function) {
     return invalid_future;
   }
 
-  PackagedTask task(std::move(function));
-  ThreadPool::Task future = task.get_future();
+  // Lookup the thread pool that this thread belongs to. If it
+  // does not belong to a thread pool, `lookup_tp` will return
+  // `nullptr`.
+  const std::thread::id tid = std::this_thread::get_id();
+  ThreadPool* const tp = lookup_tp(tid);
+
+  // Locate the parent task.
+  std::shared_ptr<PackagedTask> parent_task = nullptr;
+  if (tp != nullptr) {
+    parent_task = tp->lookup_task(tid);
+  }
+
+  std::shared_ptr<PackagedTask> task = std::make_shared<PackagedTask>(
+      std::move(function), std::move(parent_task));
+  ThreadPool::Task future = task->get_future();
 
   // When we have a concurrency level > 1, we will have at least
   // one thread available to pick up the task. For a concurrency
@@ -122,22 +141,23 @@ ThreadPool::Task ThreadPool::execute(std::function<Status()>&& function) {
   // thread.
   if (concurrency_level_ == 1) {
     ul.unlock();
-    task();
+    if (tp != nullptr)
+      tp->exec_task_index_[tid] = task;
+    (*task)();
+    if (tp != nullptr)
+      tp->exec_task_index_[tid] = parent_task;
   } else {
-    // Lookup the thread pool that this thread belongs to. If it
-    // does not belong to a thread pool, `lookup_tp` will return
-    // `nullptr`.
-    ThreadPool* const tp = lookup_tp();
-
     // As both an optimization and a means of breaking deadlock,
     // execute the task if this thread belongs to `this`. Otherwise,
     // queue it for a worker thread.
     if (tp == this && idle_threads_ == 0) {
       ul.unlock();
-      task();
+      exec_task_index_[tid] = task;
+      (*task)();
+      exec_task_index_[tid] = parent_task;
     } else {
       // Add `task` to the stack of pending tasks.
-      task_stack_.push(std::move(task));
+      task_stack_.emplace_back(std::move(task));
       task_stack_cv_.notify_one();
 
       // The `ul` protects both `task_stack_` and `idle_threads_`,
@@ -178,8 +198,8 @@ uint64_t ThreadPool::concurrency_level() const {
   return concurrency_level_;
 }
 
-Status ThreadPool::wait_all(std::vector<Task>& tasks) {
-  auto statuses = wait_all_status(tasks);
+Status ThreadPool::wait_all(std::vector<Task>& tasks, const bool debug) {
+  auto statuses = wait_all_status(tasks, debug);
   for (auto& st : statuses) {
     if (!st.ok()) {
       return st;
@@ -188,14 +208,14 @@ Status ThreadPool::wait_all(std::vector<Task>& tasks) {
   return Status::Ok();
 }
 
-std::vector<Status> ThreadPool::wait_all_status(std::vector<Task>& tasks) {
+std::vector<Status> ThreadPool::wait_all_status(std::vector<Task>& tasks, const bool debug) {
   std::vector<Status> statuses;
   for (auto& task : tasks) {
     if (!task.valid()) {
       LOG_ERROR("Waiting on invalid task future.");
       statuses.push_back(Status::ThreadPoolError("Invalid task future"));
     } else {
-      Status status = wait_or_work(std::move(task));
+      Status status = wait_or_work(std::move(task), debug);
       if (!status.ok()) {
         LOG_STATUS(status);
       }
@@ -205,7 +225,10 @@ std::vector<Status> ThreadPool::wait_all_status(std::vector<Task>& tasks) {
   return statuses;
 }
 
-Status ThreadPool::wait_or_work(Task&& task) {
+Status ThreadPool::wait_or_work(Task&& task, const bool debug) {
+  //if (debug)
+  //  std::cerr << "JOE wait_or_work debug " << std::endl;
+
   do {
     if (task.done())
       break;
@@ -213,13 +236,12 @@ Status ThreadPool::wait_or_work(Task&& task) {
     // Lookup the thread pool that this thread belongs to. If it
     // does not belong to a thread pool, `lookup_tp` will return
     // `nullptr`.
-    ThreadPool* tp = lookup_tp();
+    const std::thread::id tid = std::this_thread::get_id();
+    ThreadPool* const real_tp = lookup_tp(tid);
 
     // If the calling thread exists outside of a thread pool, it may
     // service pending tasks from this thread pool.
-    if (tp == nullptr) {
-      tp = this;
-    }
+    ThreadPool* const tp = real_tp == nullptr ? this : real_tp;
 
     // Lock the `tp->task_stack_` to receive the next task to work on.
     tp->task_stack_mutex_.lock();
@@ -265,16 +287,56 @@ Status ThreadPool::wait_or_work(Task&& task) {
     // check if it is still non-empty.
     if (!tp->task_stack_.empty()) {
       // Pull the next task off of the task stack. We specifically use a LIFO
-      // ordering to prevent overflowing the call stack.
-      PackagedTask inner_task = std::move(tp->task_stack_.top());
-      tp->task_stack_.pop();
+      // ordering to prevent overflowing the call stack. We will skip tasks
+      // that are not descendents of the task we are currently executing in.
+      std::shared_ptr<PackagedTask> current_task = tp->lookup_task(tid);
+      std::shared_ptr<PackagedTask> descendent_task = nullptr;
+      if (current_task == nullptr) {
+        // We are not executing in the context of a threadpool task, we do
+        // not have any restriction on which task we can execute. Select
+        // the next one.
+        descendent_task = tp->task_stack_.back();
+        tp->task_stack_.pop_back();
+      } else {
+        // Find the next pending task that is a descendent of `current_task`.
+        for (auto riter = tp->task_stack_.rbegin();
+             riter != tp->task_stack_.rend();
+             ++riter) {
+          // Determine if the task pointed to by `riter` is a descendent
+          // of `current_task`.
+          PackagedTask* tmp_task = riter->get();
+          while (tmp_task != nullptr) {
+            PackagedTask* const tmp_task_parent = tmp_task->get_parent();
+            if (tmp_task_parent == current_task.get()) {
+              descendent_task = *riter;
+              break;
+            }
+            tmp_task = tmp_task_parent;
+          }
+
+          // If we found a descendent task, erase it from the task stack
+          // and break.
+          if (descendent_task != nullptr) {
+            tp->task_stack_.erase(std::next(riter).base());
+            break;
+          }
+        }
+      }
 
       // We're done mutating `tp->task_stack_`.
       tp->task_stack_mutex_.unlock();
 
-      // Execute the inner task.
-      assert(inner_task.valid());
-      inner_task();
+      // Execute the inner task, if we found one.
+      if (descendent_task != nullptr) {
+        if (real_tp == nullptr) {
+          (*descendent_task)();
+        } else {
+          std::shared_ptr<PackagedTask> tmp_task = tp->exec_task_index_[tid];
+          tp->exec_task_index_[tid] = descendent_task;
+          (*descendent_task)();
+          tp->exec_task_index_[tid] = tmp_task;
+        }
+      }
     } else {
       // The task stack is now empty, retry.
       tp->task_stack_mutex_.unlock();
@@ -300,11 +362,18 @@ void ThreadPool::terminate() {
   }
 
   threads_.clear();
+
+  // Threads do not lock on `exec_task_index_`. We can
+  // not mutate (e.g. clear) it until all threads have
+  // stopped.
+  exec_task_index_.clear();
 }
 
 void ThreadPool::worker(ThreadPool& pool) {
+  const std::thread::id tid = std::this_thread::get_id();
+
   while (true) {
-    PackagedTask task;
+    std::shared_ptr<PackagedTask> task = nullptr;
 
     {
       // Wait until there's work to do.
@@ -315,24 +384,31 @@ void ThreadPool::worker(ThreadPool& pool) {
       });
 
       if (!pool.task_stack_.empty()) {
-        task = std::move(pool.task_stack_.top());
-        pool.task_stack_.pop();
+        task = std::move(pool.task_stack_.back());
+        pool.task_stack_.pop_back();
         --pool.idle_threads_;
       } else {
         // The task stack was empty, ensure `task` is invalid.
-        if (task.valid()) {
-          task.reset();
-          assert(!task.valid());
-        }
+        task = nullptr;
       }
     }
 
-    if (task.valid())
-      task();
+    if (task != nullptr) {
+      pool.exec_task_index_[tid] = task;
+      (*task)();
+      pool.exec_task_index_[tid] = nullptr;
+    }
 
     if (pool.should_terminate_)
       break;
   }
+}
+
+std::shared_ptr<ThreadPool::PackagedTask> ThreadPool::lookup_task(
+    const std::thread::id tid) {
+  if (exec_task_index_.count(tid) == 1)
+    return exec_task_index_[tid];
+  return nullptr;
 }
 
 void ThreadPool::add_tp_index() {
@@ -347,8 +423,7 @@ void ThreadPool::remove_tp_index() {
     tp_index_.erase(thread.get_id());
 }
 
-ThreadPool* ThreadPool::lookup_tp() {
-  const std::thread::id tid = std::this_thread::get_id();
+ThreadPool* ThreadPool::lookup_tp(const std::thread::id tid) {
   std::lock_guard<std::mutex> lock(tp_index_lock_);
   if (tp_index_.count(tid) == 1)
     return tp_index_[tid];

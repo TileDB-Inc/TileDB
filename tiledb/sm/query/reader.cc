@@ -2864,7 +2864,7 @@ Status Reader::read_tiles(
         storage_manager_->compute_tp(), 0, names.size(), [&](const uint64_t i) {
           RETURN_NOT_OK(read_tiles(names[i], result_tiles));
           return Status::Ok();
-        });
+        }, true);
 
     for (const auto& st : statuses)
       RETURN_NOT_OK(st);

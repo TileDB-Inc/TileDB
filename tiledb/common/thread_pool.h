@@ -161,7 +161,7 @@ class ThreadPool {
    * @param function Task function to execute.
    * @return Task for the return status of the task.
    */
-  Task execute(std::function<Status()>&& function);
+  Task execute(std::function<Status()>&& function, bool debug = false);
 
   /** Return the maximum level of concurrency. */
   uint64_t concurrency_level() const;
@@ -174,7 +174,7 @@ class ThreadPool {
    * @return Status::Ok if all tasks returned Status::Ok, otherwise the first
    * error status is returned
    */
-  Status wait_all(std::vector<Task>& tasks);
+  Status wait_all(std::vector<Task>& tasks, bool debug = false);
 
   /**
    * Wait on all the given tasks to complete, return a vector of their return
@@ -184,7 +184,7 @@ class ThreadPool {
    * @param tasks Task list to wait on
    * @return Vector of each task's Status.
    */
-  std::vector<Status> wait_all_status(std::vector<Task>& tasks);
+  std::vector<Status> wait_all_status(std::vector<Task>& tasks, bool debug = false);
 
  private:
   /* ********************************* */
@@ -222,32 +222,16 @@ class ThreadPool {
     /** Constructor. */
     PackagedTask()
         : fn_(nullptr)
-        , task_state_(nullptr) {
+        , task_state_(nullptr)
+        , parent_(nullptr) {
     }
 
     /** Value constructor. */
     template <class Fn_T>
-    explicit PackagedTask(Fn_T&& fn) {
+    explicit PackagedTask(Fn_T&& fn, std::shared_ptr<PackagedTask>&& parent) {
       fn_ = std::move(fn);
       task_state_ = std::make_shared<TaskState>();
-    }
-
-    /** Move constructor. */
-    PackagedTask(PackagedTask&& rhs) {
-      fn_ = std::move(rhs.fn_);
-      task_state_ = std::move(rhs.task_state_);
-    }
-
-    /** Move-assign operator. */
-    PackagedTask& operator=(PackagedTask&& rhs) {
-      fn_ = std::move(rhs.fn_);
-      task_state_ = std::move(rhs.task_state_);
-      return *this;
-    }
-
-    void reset() {
-      fn_ = std::function<Status()>();
-      task_state_ = nullptr;
+      parent_ = std::move(parent);
     }
 
     /** Function-call operator. */
@@ -260,7 +244,8 @@ class ThreadPool {
       }
       task_state_->cv_.notify_all();
 
-      reset();
+      fn_ = std::function<Status()>();
+      task_state_ = nullptr;
     }
 
     /** Returns the future associated with this task. */
@@ -268,19 +253,22 @@ class ThreadPool {
       return Task(task_state_);
     }
 
-    /** Returns true if this instance has a valid task. */
-    bool valid() const {
-      return fn_ && task_state_ != nullptr;
+    PackagedTask* get_parent() {
+      return parent_.get();
     }
 
    private:
     DISABLE_COPY_AND_COPY_ASSIGN(PackagedTask);
+    DISABLE_MOVE_AND_MOVE_ASSIGN(PackagedTask);
 
     /** The packaged function. */
     std::function<Status()> fn_;
 
     /** The task state to share with futures. */
     std::shared_ptr<TaskState> task_state_;
+
+    /** The parent task that executed this task. */
+    std::shared_ptr<PackagedTask> parent_;
   };
 
   /* ********************************* */
@@ -300,7 +288,7 @@ class ThreadPool {
   std::condition_variable task_stack_cv_;
 
   /** Pending tasks in LIFO ordering. */
-  std::stack<PackagedTask> task_stack_;
+  std::vector<std::shared_ptr<PackagedTask>> task_stack_;
 
   /**
    * The number of threads waiting for the `task_stack_` to
@@ -326,6 +314,14 @@ class ThreadPool {
   /** Protects `blocked_tasks_`. */
   std::mutex blocked_tasks_mutex_;
 
+  /**
+   * Indexes thread ids to the task they're currently executing. We do
+   * not concurrently access any of its thread-unsafe methods. There is
+   * no need for an associated lock.
+   */
+  std::unordered_map<std::thread::id, std::shared_ptr<PackagedTask>>
+      exec_task_index_;
+
   /** Indexes thread ids to the ThreadPool instance they belong to. */
   static std::unordered_map<std::thread::id, ThreadPool*> tp_index_;
 
@@ -342,7 +338,7 @@ class ThreadPool {
    * to perform work on this thread rather than waiting, the primary
    * motiviation is to prevent deadlock when tasks are enqueued recursively.
    */
-  Status wait_or_work(Task&& task);
+  Status wait_or_work(Task&& task, bool debug = false);
 
   /** Terminate the threads in the thread pool. */
   void terminate();
@@ -350,14 +346,17 @@ class ThreadPool {
   /** The worker thread routine. */
   static void worker(ThreadPool& pool);
 
+  // Lookup the task executing on `tid` within this instance.
+  std::shared_ptr<PackagedTask> lookup_task(std::thread::id tid);
+
   // Add indexes from each thread to this instance.
   void add_tp_index();
 
   // Remove indexes from each thread to this instance.
   void remove_tp_index();
 
-  // Lookup the thread pool instance from the calling thread.
-  ThreadPool* lookup_tp();
+  // Lookup the thread pool instance that contains `tid`.
+  static ThreadPool* lookup_tp(std::thread::id tid);
 };
 
 }  // namespace common

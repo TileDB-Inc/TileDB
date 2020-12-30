@@ -183,7 +183,7 @@ void parallel_sort(
  */
 template <typename FuncT>
 std::vector<Status> parallel_for(
-    ThreadPool* const tp, uint64_t begin, uint64_t end, const FuncT& F) {
+    ThreadPool* const tp, uint64_t begin, uint64_t end, const FuncT& F, bool debug = false) {
   assert(begin <= end);
 
   std::vector<Status> result;
@@ -248,13 +248,13 @@ std::vector<Status> parallel_for(
     const uint64_t subrange_end = begin + fn_iter + task_subrange_len;
     std::function<Status()> bound_fn =
         std::bind(execute_subrange, subrange_start, subrange_end);
-    tasks.emplace_back(tp->execute(std::move(bound_fn)));
+    tasks.emplace_back(tp->execute(std::move(bound_fn), debug));
 
     fn_iter += task_subrange_len;
   }
 
   // Wait for all instances of `execute_subrange` to complete.
-  tp->wait_all(tasks);
+  tp->wait_all(tasks, debug);
 
   // Store the final result.
   result.emplace_back(std::move(return_st));
