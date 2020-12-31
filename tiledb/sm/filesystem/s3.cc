@@ -118,7 +118,8 @@ S3::S3()
     , multipart_part_size_(0)
     , vfs_thread_pool_(nullptr)
     , use_virtual_addressing_(false)
-    , use_multipart_upload_(true) {
+    , use_multipart_upload_(true)
+    , request_payer_(Aws::S3::Model::RequestPayer::NOT_SET) {
 }
 
 S3::~S3() {
@@ -184,6 +185,14 @@ Status S3::init(const Config& config, ThreadPool* const thread_pool) {
   RETURN_NOT_OK(config.get<bool>(
       "vfs.s3.use_multipart_upload", &use_multipart_upload_, &found));
   assert(found);
+
+  bool request_payer;
+  RETURN_NOT_OK(
+      config.get<bool>("vfs.s3.requester_pays", &request_payer, &found));
+  assert(found);
+
+  if (request_payer)
+    request_payer_ = Aws::S3::Model::RequestPayer::requester;
 
   config_ = config;
 
@@ -386,6 +395,8 @@ S3::make_multipart_complete_request(const MultiPartUploadState& state) {
   complete_request.SetBucket(state.bucket);
   complete_request.SetKey(state.key);
   complete_request.SetUploadId(state.upload_id);
+  if (request_payer_ != Aws::S3::Model::RequestPayer::NOT_SET)
+    complete_request.SetRequestPayer(request_payer_);
   return complete_request.WithMultipartUpload(std::move(completed_upload));
 }
 
@@ -395,6 +406,8 @@ Aws::S3::Model::AbortMultipartUploadRequest S3::make_multipart_abort_request(
   abort_request.SetBucket(state.bucket);
   abort_request.SetKey(state.key);
   abort_request.SetUploadId(state.upload_id);
+  if (request_payer_ != Aws::S3::Model::RequestPayer::NOT_SET)
+    abort_request.SetRequestPayer(request_payer_);
   return abort_request;
 }
 
@@ -435,6 +448,8 @@ Status S3::is_empty_bucket(const URI& bucket, bool* is_empty) const {
   list_objects_request.SetBucket(aws_uri.GetAuthority());
   list_objects_request.SetPrefix("");
   list_objects_request.SetDelimiter("/");
+  if (request_payer_ != Aws::S3::Model::RequestPayer::NOT_SET)
+    list_objects_request.SetRequestPayer(request_payer_);
   auto list_objects_outcome = client_->ListObjects(list_objects_request);
 
   if (!list_objects_outcome.IsSuccess()) {
@@ -488,6 +503,8 @@ Status S3::is_object(
   Aws::S3::Model::HeadObjectRequest head_object_request;
   head_object_request.SetBucket(bucket_name);
   head_object_request.SetKey(object_key);
+  if (request_payer_ != Aws::S3::Model::RequestPayer::NOT_SET)
+    head_object_request.SetRequestPayer(request_payer_);
   auto head_object_outcome = client_->HeadObject(head_object_request);
   *exists = head_object_outcome.IsSuccess();
 
@@ -527,6 +544,8 @@ Status S3::ls(
   list_objects_request.SetBucket(aws_uri.GetAuthority());
   list_objects_request.SetPrefix(aws_prefix.c_str());
   list_objects_request.SetDelimiter(delimiter.c_str());
+  if (request_payer_ != Aws::S3::Model::RequestPayer::NOT_SET)
+    list_objects_request.SetRequestPayer(request_payer_);
   if (max_paths != -1)
     list_objects_request.SetMaxKeys(max_paths);
 
@@ -644,6 +663,8 @@ Status S3::object_size(const URI& uri, uint64_t* nbytes) const {
   Aws::S3::Model::HeadObjectRequest head_object_request;
   head_object_request.SetBucket(aws_uri.GetAuthority());
   head_object_request.SetKey(aws_path.c_str());
+  if (request_payer_ != Aws::S3::Model::RequestPayer::NOT_SET)
+    head_object_request.SetRequestPayer(request_payer_);
   auto head_object_outcome = client_->HeadObject(head_object_request);
 
   if (!head_object_outcome.IsSuccess())
@@ -685,6 +706,8 @@ Status S3::read(
         return Aws::New<Aws::IOStream>(
             constants::s3_allocation_tag.c_str(), streamBuf);
       });
+  if (request_payer_ != Aws::S3::Model::RequestPayer::NOT_SET)
+    get_object_request.SetRequestPayer(request_payer_);
 
   auto get_object_outcome = client_->GetObject(get_object_request);
   if (!get_object_outcome.IsSuccess()) {
@@ -715,6 +738,8 @@ Status S3::remove_object(const URI& uri) const {
   Aws::S3::Model::DeleteObjectRequest delete_object_request;
   delete_object_request.SetBucket(aws_uri.GetAuthority());
   delete_object_request.SetKey(aws_uri.GetPath());
+  if (request_payer_ != Aws::S3::Model::RequestPayer::NOT_SET)
+    delete_object_request.SetRequestPayer(request_payer_);
 
   auto delete_object_outcome = client_->DeleteObject(delete_object_request);
   if (!delete_object_outcome.IsSuccess()) {
@@ -766,6 +791,8 @@ Status S3::touch(const URI& uri) const {
   auto request_stream =
       Aws::MakeShared<Aws::StringStream>(constants::s3_allocation_tag.c_str());
   put_object_request.SetBody(request_stream);
+  if (request_payer_ != Aws::S3::Model::RequestPayer::NOT_SET)
+    put_object_request.SetRequestPayer(request_payer_);
 
   auto put_object_outcome = client_->PutObject(put_object_request);
   if (!put_object_outcome.IsSuccess()) {
@@ -1052,6 +1079,8 @@ Status S3::copy_object(const URI& old_uri, const URI& new_uri) {
           .c_str());
   copy_object_request.SetBucket(dst_uri.GetAuthority());
   copy_object_request.SetKey(dst_uri.GetPath());
+  if (request_payer_ != Aws::S3::Model::RequestPayer::NOT_SET)
+    copy_object_request.SetRequestPayer(request_payer_);
 
   auto copy_object_outcome = client_->CopyObject(copy_object_request);
   if (!copy_object_outcome.IsSuccess()) {
@@ -1133,6 +1162,8 @@ Status S3::initiate_multipart_request(Aws::Http::URI aws_uri) {
   multipart_upload_request.SetBucket(aws_uri.GetAuthority());
   multipart_upload_request.SetKey(path);
   multipart_upload_request.SetContentType("application/octet-stream");
+  if (request_payer_ != Aws::S3::Model::RequestPayer::NOT_SET)
+    multipart_upload_request.SetRequestPayer(request_payer_);
 
   auto multipart_upload_outcome =
       client_->CreateMultipartUpload(multipart_upload_request);
@@ -1252,6 +1283,8 @@ Status S3::flush_direct(const URI& uri) {
   put_object_request.SetContentType("application/octet-stream");
   put_object_request.SetBucket(aws_uri.GetAuthority());
   put_object_request.SetKey(aws_uri.GetPath());
+  if (request_payer_ != Aws::S3::Model::RequestPayer::NOT_SET)
+    put_object_request.SetRequestPayer(request_payer_);
 
   auto put_object_outcome = client_->PutObject(put_object_request);
   if (!put_object_outcome.IsSuccess()) {
@@ -1389,6 +1422,8 @@ S3::MakeUploadPartCtx S3::make_upload_part_req(
   upload_part_request.SetContentMD5(Aws::Utils::HashingUtils::Base64Encode(
       Aws::Utils::HashingUtils::CalculateMD5(*stream)));
   upload_part_request.SetContentLength(length);
+  if (request_payer_ != Aws::S3::Model::RequestPayer::NOT_SET)
+    upload_part_request.SetRequestPayer(request_payer_);
 
   auto upload_part_outcome_callable =
       client_->UploadPartCallable(upload_part_request);

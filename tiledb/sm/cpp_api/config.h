@@ -493,6 +493,9 @@ class Config {
    * - `vfs.s3.request_timeout_ms` <br>
    *    The request timeout in ms. Any `long` value is acceptable. <br>
    *    **Default**: 3000
+   * - `vfs.s3.requester_pays` <br>
+   *    The requester pays for the S3 access charges. <br>
+   *    **Default**: false
    * - `vfs.s3.proxy_host` <br>
    *    The proxy host. <br>
    *    **Default**: ""
