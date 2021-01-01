@@ -28,8 +28,9 @@
 * Disabled checking if cells are written in global order when consolidating, as it was redundant (the cells are already being read in global order during consolidation). [#1880](https://github.com/TileDB-Inc/TileDB/pull/1880) 
 * Add support for printing MBRs with string dimensions in TileDB Tools [#1926](https://github.com/TileDB-Inc/TileDB/pull/1926)
 * Optimize consolidated fragment metadata loading [#1975](https://github.com/TileDB-Inc/TileDB/pull/1975)
-* Optimize `Reader::load_tile_offsets` for loading only relevant fragments [#1976](https://github.com/TileDB-Inc/TileDB/pull/1976)
+* Optimize `Reader::load_tile_offsets` for loading only relevant fragments [#1976](https://github.com/TileDB-Inc/TileDB/pull/1976) [#1983](https://github.com/TileDB-Inc/TileDB/pull/1983)
 * Optimize locking in `FragmentMetadata::load_tile_offsets` and `FragmentMetadata::load_tile_var_offsets` [#1979](https://github.com/TileDB-Inc/TileDB/pull/1979)
+* Exit early in `Reader::copy_coordinates`/`Reader::copy_attribute_values` when no results [#1984](https://github.com/TileDB-Inc/TileDB/pull/1984)
 
 ## Deprecations
 
@@ -47,6 +48,7 @@
 * Fixed bug where an array could not be opened if created with an array schema from an older version [#1889](https://github.com/TileDB-Inc/TileDB/pull/1889)
 * Fix compilation of TileDB Tools [#1926](https://github.com/TileDB-Inc/TileDB/pull/1926)
 * Fix segfault in optimized compute_results_sparse [#1969](https://github.com/TileDB-Inc/TileDB/pull/1969)
+* Fix segfault in `ResultTile::str_coords_intersects` [#1981](https://github.com/TileDB-Inc/TileDB/pull/1981)
 
 ## API additions
 

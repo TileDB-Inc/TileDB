@@ -92,6 +92,8 @@ if (NOT AZURESDK_FOUND)
 
     ExternalProject_Add(ep_azuresdk
       PREFIX "externals"
+      # Set download name to avoid collisions with only the version number in the filename
+      DOWNLOAD_NAME ep_azuresdk.zip
       URL "https://github.com/Azure/azure-storage-cpplite/archive/v0.2.0.zip"
       URL_HASH SHA1=058975ccac9b60b522c9f7fd044a3d2aaec9f893
       CMAKE_ARGS

@@ -2801,15 +2801,8 @@ Status Reader::load_tile_offsets(const std::vector<std::string>& names) {
 
   // Fetch relevant fragments so we load tile offsets only from intersecting
   // fragments
-  auto relevant_fragments = subarray_.relevant_fragments();
-  // If there are no relevant fragments let's make sure the overlap was computed
-  // ideally we'd guarantee this before entering this function but this is a
-  // safety fallback. Worst case we'll compute an empty overlap a second time.
-  if (relevant_fragments.empty()) {
-    RETURN_NOT_OK(
-        subarray_.compute_tile_overlap(storage_manager_->compute_tp()));
-    relevant_fragments = subarray_.relevant_fragments();
-  }
+  const auto relevant_fragments =
+      read_state_.partitioner_.current().relevant_fragments();
 
   const auto statuses = parallel_for(
       storage_manager_->compute_tp(),
@@ -2864,6 +2857,10 @@ Status Reader::read_coordinate_tiles(
 Status Reader::read_tiles(
     const std::vector<std::string>& names,
     const std::vector<ResultTile*>& result_tiles) const {
+  // Shortcut for empty tile vec
+  if (result_tiles.empty())
+    return Status::Ok();
+
   // Reading tiles are thread safe. However, we will perform
   // them on this thread if there is only one read to perform.
   if (names.size() == 1) {
@@ -3164,6 +3161,11 @@ Status Reader::copy_coordinates(
     const std::vector<ResultCellSlab>& result_cell_slabs) {
   STATS_START_TIMER(stats::Stats::TimerType::READ_COPY_COORDS);
 
+  if (result_cell_slabs.empty() && result_tiles.empty()) {
+    zero_out_buffer_sizes();
+    return Status::Ok();
+  }
+
   const uint64_t stride = UINT64_MAX;
 
   // Build a lists of coordinate names to copy, separating them by
@@ -3217,6 +3219,11 @@ Status Reader::copy_attribute_values(
     const std::vector<ResultTile*>& result_tiles,
     const std::vector<ResultCellSlab>& result_cell_slabs) {
   STATS_START_TIMER(stats::Stats::TimerType::READ_COPY_ATTR_VALUES);
+
+  if (result_cell_slabs.empty() && result_tiles.empty()) {
+    zero_out_buffer_sizes();
+    return Status::Ok();
+  }
 
   // Build an association from the result tile to the cell slab ranges
   // that it contains.
