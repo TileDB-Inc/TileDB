@@ -919,27 +919,17 @@ Status Writer::check_buffer_sizes() const {
     }
 
     if (array_schema_->is_nullable(attr)) {
-      uint64_t attr_datatype_size = datatype_size(array_schema_->type(attr));
-      uint64_t expected_validity_cell_num;
-      if (is_var) {
-        const uint64_t buffer_var_size = *it.second.buffer_var_size_;
-        expected_validity_cell_num = buffer_var_size / attr_datatype_size;
-      } else {
-        expected_validity_cell_num = buffer_size / attr_datatype_size;
-      }
-
       const uint64_t buffer_validity_size =
           *it.second.validity_vector_.buffer_size();
       const uint64_t cell_validity_num =
           buffer_validity_size / constants::cell_validity_size;
 
-      if (expected_validity_cell_num != cell_validity_num) {
+      if (expected_cell_num != cell_validity_num) {
         std::stringstream ss;
         ss << "Buffer sizes check failed; Invalid number of validity cells "
               "given for ";
         ss << "attribute '" << attr << "'";
-        ss << " (" << expected_validity_cell_num << " != " << cell_validity_num
-           << ")";
+        ss << " (" << expected_cell_num << " != " << cell_validity_num << ")";
         return LOG_STATUS(Status::WriterError(ss.str()));
       }
     }
@@ -1670,7 +1660,6 @@ Status Writer::filter_tiles(
 
     if (nullable) {
       ++i;
-
       RETURN_NOT_OK(filter_tile(name, &(*tiles)[i], false, true));
     }
   }
@@ -1692,7 +1681,6 @@ Status Writer::filter_tile(
     filters = array_schema_->cell_var_offsets_filters();
   } else if (nullable) {
     filters = array_schema_->cell_validity_filters();
-    ;
   } else {
     filters = array_schema_->filters(name);
   }
@@ -2559,7 +2547,7 @@ Status Writer::prepare_full_tiles_var(
   auto nullable = array_schema_->is_nullable(name);
   auto buffer = (uint64_t*)it->second.buffer_;
   auto buffer_var = (unsigned char*)it->second.buffer_var_;
-  auto buffer_validity = (unsigned char*)it->second.validity_vector_.buffer();
+  auto buffer_validity = (uint8_t*)it->second.validity_vector_.buffer();
   auto buffer_size = it->second.buffer_size_;
   auto buffer_var_size = it->second.buffer_var_size_;
   auto capacity = array_schema_->capacity();
@@ -2578,10 +2566,6 @@ Status Writer::prepare_full_tiles_var(
   auto& last_tile = std::get<0>(last_tile_tuple);
   auto& last_tile_var = std::get<1>(last_tile_tuple);
   auto& last_tile_validity = std::get<2>(last_tile_tuple);
-
-  (void)last_tile_validity;
-  (void)nullable;
-  (void)buffer_validity;
 
   uint64_t cell_idx = 0;
   if (!last_tile.empty()) {
@@ -2604,9 +2588,7 @@ Status Writer::prepare_full_tiles_var(
         // Write validity value(s).
         if (nullable)
           RETURN_NOT_OK(last_tile_validity.write(
-              buffer_validity + (buff_offset / attr_datatype_size *
-                                 constants::cell_validity_size),
-              var_size / attr_datatype_size * constants::cell_validity_size));
+              buffer_validity + cell_idx, constants::cell_validity_size));
 
         ++cell_idx;
       } while (!last_tile.full() && cell_idx != cell_num);
@@ -2631,9 +2613,7 @@ Status Writer::prepare_full_tiles_var(
           // Write validity value(s).
           if (nullable)
             RETURN_NOT_OK(last_tile_validity.write(
-                buffer_validity + (buff_offset / attr_datatype_size *
-                                   constants::cell_validity_size),
-                var_size / attr_datatype_size * constants::cell_validity_size));
+                buffer_validity + cell_idx, constants::cell_validity_size));
         }
 
         ++cell_idx;
@@ -2700,9 +2680,7 @@ Status Writer::prepare_full_tiles_var(
         // Write validity value(s).
         if (nullable)
           RETURN_NOT_OK((*tiles)[tile_idx + 2].write(
-              buffer_validity + (buff_offset / attr_datatype_size *
-                                 constants::cell_validity_size),
-              var_size / attr_datatype_size * constants::cell_validity_size));
+              buffer_validity + cell_idx, constants::cell_validity_size));
       }
     } else {
       for (uint64_t tile_idx = 0, i = 0; i < cell_num_to_write;
@@ -2729,9 +2707,7 @@ Status Writer::prepare_full_tiles_var(
           // Write validity value(s).
           if (nullable)
             RETURN_NOT_OK((*tiles)[tile_idx + 2].write(
-                buffer_validity + (buff_offset / attr_datatype_size *
-                                   constants::cell_validity_size),
-                var_size / attr_datatype_size * constants::cell_validity_size));
+                buffer_validity + cell_idx, constants::cell_validity_size));
         }
       }
     }
@@ -2758,9 +2734,7 @@ Status Writer::prepare_full_tiles_var(
       // Write validity value(s).
       if (nullable)
         RETURN_NOT_OK(last_tile_validity.write(
-            buffer_validity + (buff_offset / attr_datatype_size *
-                               constants::cell_validity_size),
-            var_size / attr_datatype_size * constants::cell_validity_size));
+            buffer_validity + cell_idx, constants::cell_validity_size));
     }
   } else {
     for (; cell_idx < cell_num; ++cell_idx) {
@@ -2782,9 +2756,7 @@ Status Writer::prepare_full_tiles_var(
         // Write validity value(s).
         if (nullable)
           RETURN_NOT_OK(last_tile_validity.write(
-              buffer_validity + (buff_offset / attr_datatype_size *
-                                 constants::cell_validity_size),
-              var_size / attr_datatype_size * constants::cell_validity_size));
+              buffer_validity + cell_idx, constants::cell_validity_size));
       }
     }
   }
@@ -2848,12 +2820,13 @@ Status Writer::prepare_tiles(
         } else {
           if (nullable)
             RETURN_NOT_OK(write_empty_cell_range_to_tile_nullable(
-                (wcr.pos_ - pos) * cell_val_num,
+                (wcr.pos_ - pos),
+                cell_val_num,
                 &(*tiles)[t],
                 &(*tiles)[t + 1]));
           else
             RETURN_NOT_OK(write_empty_cell_range_to_tile(
-                (wcr.pos_ - pos) * cell_val_num, &(*tiles)[t]));
+                (wcr.pos_ - pos), cell_val_num, &(*tiles)[t]));
         }
         pos = wcr.pos_;
       }
@@ -2900,24 +2873,25 @@ Status Writer::prepare_tiles(
     // Write empty range
     if (pos <= end_pos) {
       if (var_size) {
-        if (nullable) {
+        if (nullable)
           RETURN_NOT_OK(write_empty_cell_range_to_tile_var_nullable(
               end_pos - pos + 1,
               &(*tiles)[t],
               &(*tiles)[t + 1],
               &(*tiles)[t + 2]));
-        } else
+        else
           RETURN_NOT_OK(write_empty_cell_range_to_tile_var(
               end_pos - pos + 1, &(*tiles)[t], &(*tiles)[t + 1]));
       } else {
         if (nullable)
           RETURN_NOT_OK(write_empty_cell_range_to_tile_nullable(
-              (end_pos - pos + 1) * cell_val_num,
+              (end_pos - pos + 1),
+              cell_val_num,
               &(*tiles)[t],
               &(*tiles)[t + 1]));
         else
           RETURN_NOT_OK(write_empty_cell_range_to_tile(
-              (end_pos - pos + 1) * cell_val_num, &(*tiles)[t]));
+              (end_pos - pos + 1), cell_val_num, &(*tiles)[t]));
       }
     }
   }
@@ -3041,7 +3015,7 @@ Status Writer::prepare_tiles_var(
   auto nullable = array_schema_->is_nullable(name);
   auto buffer = it->second.buffer_;
   auto buffer_var = (unsigned char*)it->second.buffer_var_;
-  auto buffer_validity = (unsigned char*)it->second.validity_vector_.buffer();
+  auto buffer_validity = (uint8_t*)it->second.validity_vector_.buffer();
   auto buffer_var_size = it->second.buffer_var_size_;
   auto cell_num = (uint64_t)cell_pos.size();
   auto capacity = array_schema_->capacity();
@@ -3087,9 +3061,7 @@ Status Writer::prepare_tiles_var(
       // Write validity value(s).
       if (nullable) {
         RETURN_NOT_OK((*tiles)[tile_idx + 2].write(
-            buffer_validity + (buff_offset / attr_datatype_size *
-                               constants::cell_validity_size),
-            var_size / attr_datatype_size * constants::cell_validity_size));
+            buffer_validity + cell_pos[i], constants::cell_validity_size));
       }
     }
   } else {
@@ -3118,9 +3090,7 @@ Status Writer::prepare_tiles_var(
       // Write validity value(s).
       if (nullable) {
         RETURN_NOT_OK((*tiles)[tile_idx + 2].write(
-            buffer_validity + (buff_offset / attr_datatype_size *
-                               constants::cell_validity_size),
-            var_size / attr_datatype_size * constants::cell_validity_size));
+            buffer_validity + cell_pos[i], constants::cell_validity_size));
       }
     }
   }
@@ -3295,31 +3265,43 @@ Status Writer::unordered_write() {
   return Status::Ok();
 }
 
-Status Writer::write_empty_cell_range_to_tile(uint64_t num, Tile* tile) const {
+Status Writer::write_empty_cell_range_to_tile(
+    const uint64_t cell_num,
+    const uint32_t cell_val_num,
+    Tile* const tile) const {
   auto type = tile->type();
   auto fill_size = datatype_size(type);
   auto fill_value = constants::fill_value(type);
   assert(fill_value != nullptr);
 
-  for (uint64_t i = 0; i < num; ++i)
-    RETURN_NOT_OK(tile->write(fill_value, fill_size));
+  for (uint64_t i = 0; i < cell_num; ++i) {
+    for (uint64_t j = 0; j < cell_val_num; ++j) {
+      RETURN_NOT_OK(tile->write(fill_value, fill_size));
+    }
+  }
 
   return Status::Ok();
 }
 
 Status Writer::write_empty_cell_range_to_tile_nullable(
-    uint64_t num, Tile* tile, Tile* tile_validity) const {
+    const uint64_t cell_num,
+    const uint32_t cell_val_num,
+    Tile* const tile,
+    Tile* const tile_validity) const {
   auto type = tile->type();
   auto fill_size = datatype_size(type);
   auto fill_value = constants::fill_value(type);
   assert(fill_value != nullptr);
 
-  for (uint64_t i = 0; i < num; ++i) {
-    RETURN_NOT_OK(tile->write(fill_value, fill_size));
+  for (uint64_t i = 0; i < cell_num; ++i) {
+    for (uint64_t j = 0; j < cell_val_num; ++j) {
+      RETURN_NOT_OK(tile->write(fill_value, fill_size));
+    }
 
-    // Write validity empty value
+    // Write validity empty value, one per cell.
     uint8_t empty_validity_value = 0;
-    RETURN_NOT_OK(tile_validity->write(&empty_validity_value, sizeof(uint8_t)));
+    RETURN_NOT_OK(tile_validity->write(
+        &empty_validity_value, constants::cell_validity_size));
   }
 
   return Status::Ok();
@@ -3361,7 +3343,8 @@ Status Writer::write_empty_cell_range_to_tile_var_nullable(
 
     // Write validity empty value
     uint8_t empty_validity_value = 0;
-    RETURN_NOT_OK(tile_validity->write(&empty_validity_value, sizeof(uint8_t)));
+    RETURN_NOT_OK(tile_validity->write(
+        &empty_validity_value, constants::cell_validity_size));
   }
 
   return Status::Ok();
@@ -3452,9 +3435,9 @@ Status Writer::write_cell_range_to_tile_var_nullable(
     RETURN_NOT_OK(tile_var->write(buff_var, cell_var_size));
 
     // Write the validity value(s).
-    buff_validity->set_offset(start_offset / attr_datatype_size);
-    RETURN_NOT_OK(tile_validity->write(
-        buff_validity, cell_var_size / attr_datatype_size));
+    buff_validity->set_offset(i * constants::cell_validity_size);
+    RETURN_NOT_OK(
+        tile_validity->write(buff_validity, constants::cell_validity_size));
   }
 
   return Status::Ok();
