@@ -1053,23 +1053,29 @@ class Writer {
    * Writes an empty cell range to the input tile.
    * Applicable to **fixed-sized** attributes.
    *
-   * @param num Number of empty values to write.
+   * @param cell_num Number of empty cells to write.
+   * @param cell_val_num Number of values per cell.
    * @param tile The tile to write to.
    * @return Status
    */
-  Status write_empty_cell_range_to_tile(uint64_t num, Tile* tile) const;
+  Status write_empty_cell_range_to_tile(
+      uint64_t num, uint32_t cell_val_num, Tile* tile) const;
 
   /**
    * Writes an empty cell range to the input tile.
    * Applicable to **fixed-sized** attributes.
    *
-   * @param num Number of empty values to write.
+   * @param cell_num Number of empty cells to write.
+   * @param cell_val_num Number of values per cell.
    * @param tile The tile to write to.
    * @param tile_validity The tile with the validity cells to write to.
    * @return Status
    */
   Status write_empty_cell_range_to_tile_nullable(
-      uint64_t num, Tile* tile, Tile* tile_validity) const;
+      uint64_t num,
+      uint32_t cell_val_num,
+      Tile* tile,
+      Tile* tile_validity) const;
 
   /**
    * Writes an empty cell range to the input tile.
