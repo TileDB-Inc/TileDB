@@ -111,7 +111,6 @@ set(TILEDB_TEST_SOURCES
   src/unit-capi-dense_array_2.cc
   src/unit-capi-dense_neg.cc
   src/unit-capi-dense_vector.cc
-  src/unit-capi-empty-var-length.cc
   src/unit-capi-enum_values.cc
   src/unit-capi-error.cc
   src/unit-capi-fill_values.cc
@@ -142,6 +141,7 @@ set(TILEDB_TEST_SOURCES
   src/unit-crypto.cc
   src/unit-ctx.cc
   src/unit-dimension.cc
+  src/unit-empty-var-length.cc
   src/unit-filter-buffer.cc
   src/unit-filter-pipeline.cc
   src/unit-gcs.cc
