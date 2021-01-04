@@ -181,29 +181,24 @@ Status ChunkedBuffer::init_fixed_size(
         "Cannot init chunk buffers; Chunk buffers non-empty."));
   }
 
-  if (total_size == 0) {
-    return LOG_STATUS(Status::ChunkedBufferError(
-        "Cannot init chunk buffers; Total size must be non-zero."));
-  }
-
-  if (chunk_size == 0) {
-    return LOG_STATUS(Status::ChunkedBufferError(
-        "Cannot init chunk buffers; Chunk size must be non-zero."));
-  }
-
   buffer_addressing_ = buffer_addressing;
   chunk_size_ = chunk_size;
 
   // Calculate the last chunk size.
-  last_chunk_size_ = total_size % chunk_size_;
+  if (total_size > 0) {
+    last_chunk_size_ = total_size % chunk_size_;
+  } else {
+    last_chunk_size_ = 0;
+  }
   if (last_chunk_size_ == 0) {
     last_chunk_size_ = chunk_size_;
   }
 
   // Calculate the number of chunks required.
-  const size_t nchunks = last_chunk_size_ == chunk_size_ ?
-                             total_size / chunk_size_ :
-                             total_size / chunk_size_ + 1;
+  const size_t nchunks = (total_size == 0) ? 0 :
+                                             (last_chunk_size_ == chunk_size_) ?
+                                             total_size / chunk_size_ :
+                                             total_size / chunk_size_ + 1;
 
   buffers_.resize(nchunks, nullptr);
 
@@ -322,7 +317,7 @@ Status ChunkedBuffer::get_contiguous(void** const buffer) const {
   if (buffer_addressing_ != BufferAddressing::CONTIGUOUS) {
     return LOG_STATUS(Status::ChunkedBufferError(
         "Cannot get contiguous internal chunk buffer; Chunk buffers are not "
-        "contigiouly allocated"));
+        "contiguously allocated"));
   }
 
   return internal_buffer(0, buffer);
@@ -407,6 +402,9 @@ Status ChunkedBuffer::internal_buffer_size(
 
 Status ChunkedBuffer::read(
     void* const buffer, const uint64_t nbytes, const uint64_t offset) {
+  if (nbytes == 0)
+    return Status::Ok();
+
   if ((offset + nbytes) > size()) {
     return LOG_STATUS(
         Status::ChunkedBufferError("Chunk read error; read out of bounds"));
