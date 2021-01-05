@@ -16,6 +16,12 @@
 
 ## API additions
 
+# TileDB v2.1.6 Release Notes
+
+## Bug fixes
+* Fix deadlock in `ThreadPool::wait_or_work` [#1994](https://github.com/TileDB-Inc/TileDB/pull/1994)
+* Fix "[TileDB::ChunkedBuffer] Error: Cannot init chunk buffers; Total size must be non-zero." in read path [#1992](https://github.com/TileDB-Inc/TileDB/pull/1992)
+
 # TileDB v2.1.5 Release Notes
 
 ## Improvements
