@@ -49,6 +49,8 @@ using namespace std;
 using namespace tiledb::sm;
 using namespace tiledb::test;
 
+static const char encryption_key[] = "unittestunittestunittestunittest";
+
 struct test_dim_t {
   test_dim_t(
       const string& name,
@@ -129,20 +131,22 @@ class DynamicArrayFx {
   ~DynamicArrayFx();
 
   /**
-   * Create, write and read attributes to a 1D dense array.
+   * Create, write and read attributes to a 1D array.
    *
    * @param test_attrs The nullable attributes to test.
    * @param array_type The type of the array (dense/sparse).
    * @param cell_order The cell order of the array.
    * @param tile_order The tile order of the array.
    * @param write_order The write layout.
+   * @param encryption_type The encryption type.
    */
-  void dense_1d_test(
+  void test_1d_array(
       const vector<test_attr_t>& test_attrs,
       tiledb_array_type_t array_type,
       tiledb_layout_t cell_order,
       tiledb_layout_t tile_order,
-      tiledb_layout_t write_order);
+      tiledb_layout_t write_order,
+      tiledb_encryption_type_t encryption_type);
 
  private:
   /** The C-API context object. */
@@ -174,6 +178,7 @@ class DynamicArrayFx {
    * @param test_attrs The attributes in the array.
    * @param cell_order The cell order of the array.
    * @param tile_order The tile order of the array.
+   * @param encryption_type The encryption type of the array.
    */
   void create_array(
       const string& array_name,
@@ -181,7 +186,8 @@ class DynamicArrayFx {
       const vector<test_dim_t>& test_dims,
       const vector<test_attr_t>& test_attrs,
       tiledb_layout_t cell_order,
-      tiledb_layout_t tile_order);
+      tiledb_layout_t tile_order,
+      tiledb_encryption_type_t encryption_type);
 
   /**
    * Creates and executes a single write query.
@@ -189,11 +195,13 @@ class DynamicArrayFx {
    * @param array_name The name of the array.
    * @param test_query_buffers The query buffers to write.
    * @param layout The write layout.
+   * @param encryption_type The encryption type of the array.
    */
   void write(
       const string& array_name,
       const vector<test_query_buffer_t>& test_query_buffers,
-      tiledb_layout_t layout);
+      tiledb_layout_t layout,
+      tiledb_encryption_type_t encryption_type);
 
   /**
    * Creates and executes a single read query.
@@ -201,11 +209,13 @@ class DynamicArrayFx {
    * @param array_name The name of the array.
    * @param test_query_buffers The query buffers to read.
    * @param subarray The subarray to read.
+   * @param encryption_type The encryption type of the array.
    */
   void read(
       const string& array_name,
       const vector<test_query_buffer_t>& test_query_buffers,
-      const void* subarray);
+      const void* subarray,
+      tiledb_encryption_type_t encryption_type);
 };
 
 DynamicArrayFx::DynamicArrayFx() {
@@ -246,7 +256,8 @@ void DynamicArrayFx::create_array(
     const vector<test_dim_t>& test_dims,
     const vector<test_attr_t>& test_attrs,
     tiledb_layout_t cell_order,
-    tiledb_layout_t tile_order) {
+    tiledb_layout_t tile_order,
+    tiledb_encryption_type_t encryption_type) {
   remove_dir(temp_dir_);
   create_dir(temp_dir_);
 
@@ -267,18 +278,6 @@ void DynamicArrayFx::create_array(
     dims.emplace_back(dim);
   }
 
-  /*
-  tiledb_ctx_alloc(NULL, &ctx_);
-  int dim_domain[] = {0, 1};
-  int tile_extent = 1;
-
-  // Create the dimensions
-  tiledb_dimension_t* dim;
-  int rc = tiledb_dimension_alloc(ctx_, "dim", TILEDB_INT32, &dim_domain[0],
-    &tile_extent, &dim);
-  REQUIRE(rc == TILEDB_OK);
-  */
-
   // Create the domain.
   tiledb_domain_t* domain;
   int rc = tiledb_domain_alloc(ctx_, &domain);
@@ -287,14 +286,6 @@ void DynamicArrayFx::create_array(
     rc = tiledb_domain_add_dimension(ctx_, domain, dim);
     REQUIRE(rc == TILEDB_OK);
   }
-
-  /*
-  // Create the domain
-  tiledb_domain_t* domain;
-  rc = tiledb_domain_alloc(ctx_, &domain);
-  REQUIRE(rc == TILEDB_OK);
-  tiledb_domain_add_dimension(ctx_, domain, dim);
-  */
 
   // Create attributes
   vector<tiledb_attribute_t*> attrs;
@@ -316,14 +307,6 @@ void DynamicArrayFx::create_array(
     attrs.emplace_back(attr);
   }
 
-  /*
-  // Create the attributes
-  tiledb_attribute_t* attr;
-  rc = tiledb_attribute_alloc(ctx_, "attr", TILEDB_INT32, &attr);
-  REQUIRE(rc == TILEDB_OK);
-  tiledb_attribute_set_cell_val_num(ctx_, attr, 1);
-  */
-
   // Create array schema
   tiledb_array_schema_t* array_schema;
   rc = tiledb_array_schema_alloc(ctx_, array_type, &array_schema);
@@ -339,22 +322,24 @@ void DynamicArrayFx::create_array(
     REQUIRE(rc == TILEDB_OK);
   }
 
-  /*
-  // Create array schema
-  tiledb_array_schema_t* schema;
-  tiledb_array_schema_alloc(ctx_, TILEDB_DENSE, &schema);
-  tiledb_array_schema_set_domain(ctx_, schema, domain);
-  tiledb_array_schema_add_attribute(ctx_, schema, attr);
-  */
-
   // Check array schema
   rc = tiledb_array_schema_check(ctx_, array_schema);
   REQUIRE(rc == TILEDB_OK);
 
-  // Create array
-  rc =
-      tiledb_array_create(ctx_, (temp_dir_ + array_name).c_str(), array_schema);
-  REQUIRE(rc == TILEDB_OK);
+  // Create the array with or without encryption
+  if (encryption_type == TILEDB_NO_ENCRYPTION) {
+    rc = tiledb_array_create(
+        ctx_, (temp_dir_ + array_name).c_str(), array_schema);
+    REQUIRE(rc == TILEDB_OK);
+  } else {
+    tiledb_array_create_with_key(
+        ctx_,
+        (temp_dir_ + array_name).c_str(),
+        array_schema,
+        encryption_type,
+        encryption_key,
+        (uint32_t)strlen(encryption_key));
+  }
 
   // Free attributes
   for (auto& attr : attrs) {
@@ -376,22 +361,25 @@ void DynamicArrayFx::create_array(
 void DynamicArrayFx::write(
     const string& array_name,
     const vector<test_query_buffer_t>& test_query_buffers,
-    tiledb_layout_t layout) {
-  // Open the array for writing.
+    tiledb_layout_t layout,
+    tiledb_encryption_type_t encryption_type) {
+  // Open the array for writing (with or without encryption).
   tiledb_array_t* array;
   int rc = tiledb_array_alloc(ctx_, (temp_dir_ + array_name).c_str(), &array);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_array_open(ctx_, array, TILEDB_WRITE);
-  REQUIRE(rc == TILEDB_OK);
-
-  /*
-  // Prepare some data for the array.
-  int data[] = {3};
-  unsigned long long data_size = sizeof(data);
-
-  // Set the subarray to write into.
-  int subarray[] = {0,0};
-  */
+  if (encryption_type == TILEDB_NO_ENCRYPTION) {
+    rc = tiledb_array_open(ctx_, array, TILEDB_WRITE);
+    REQUIRE(rc == TILEDB_OK);
+  } else {
+    rc = tiledb_array_open_with_key(
+        ctx_,
+        array,
+        TILEDB_WRITE,
+        encryption_type,
+        encryption_key,
+        sizeof(encryption_key));
+    REQUIRE(rc == TILEDB_OK);
+  }
 
   // Create the write query.
   tiledb_query_t* query;
@@ -455,17 +443,6 @@ void DynamicArrayFx::write(
     }
   }
 
-  /*
-  // Set the query subarray.
-  rc = tiledb_query_set_subarray(ctx_, query, subarray);
-  REQUIRE(rc == TILEDB_OK);
-
-
-  // Set the query buffer.
-  rc = tiledb_query_set_buffer(ctx_, query, "attr", data, &data_size);
-  REQUIRE(rc == TILEDB_OK);
-  */
-
   // Submit the query.
   rc = tiledb_query_submit(ctx_, query);
   REQUIRE(rc == TILEDB_OK);
@@ -484,34 +461,30 @@ void DynamicArrayFx::write(
 void DynamicArrayFx::read(
     const string& array_name,
     const vector<test_query_buffer_t>& test_query_buffers,
-    const void* subarray) {
-  // Open the array for reading.
+    const void* subarray,
+    tiledb_encryption_type_t encryption_type) {
+  // Open the array for reading (with or without encryption).
   tiledb_array_t* array;
   int rc = tiledb_array_alloc(ctx_, (temp_dir_ + array_name).c_str(), &array);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_array_open(ctx_, array, TILEDB_READ);
-  REQUIRE(rc == TILEDB_OK);
+  if (encryption_type == TILEDB_NO_ENCRYPTION) {
+    rc = tiledb_array_open(ctx_, array, TILEDB_READ);
+    REQUIRE(rc == TILEDB_OK);
+  } else {
+    rc = tiledb_array_open_with_key(
+        ctx_,
+        array,
+        TILEDB_READ,
+        encryption_type,
+        encryption_key,
+        sizeof(encryption_key));
+    REQUIRE(rc == TILEDB_OK);
+  }
 
   // Create the read query.
   tiledb_query_t* query;
   rc = tiledb_query_alloc(ctx_, array, TILEDB_READ, &query);
   REQUIRE(rc == TILEDB_OK);
-
-  /*
-  // Prepare read results
-  int subarray[] = {0,0};
-  int dim[1] = {0};
-  uint64_t dim_size = sizeof(dim);
-  int attr[6] = {0};
-  uint64_t attr_size = sizeof(attr);
-
-
-  // Set the query buffers
-  rc = tiledb_query_set_buffer(ctx_, query, "dim", dim, &dim_size);
-  REQUIRE(rc == TILEDB_OK);
-  tiledb_query_set_buffer(ctx_, query, "attr", attr, &attr_size);
-  REQUIRE(rc == TILEDB_OK);
-  */
 
   // Set the query buffers.
   for (size_t i = 0; i < test_query_buffers.size(); ++i) {
@@ -582,12 +555,13 @@ void DynamicArrayFx::read(
   tiledb_query_free(&query);
 }
 
-void DynamicArrayFx::dense_1d_test(
+void DynamicArrayFx::test_1d_array(
     const vector<test_attr_t>& test_attrs,
     tiledb_array_type_t array_type,
     tiledb_layout_t cell_order,
     tiledb_layout_t tile_order,
-    tiledb_layout_t write_order) {
+    tiledb_layout_t write_order,
+    tiledb_encryption_type_t encryption_type) {
   const string array_name = "1d_dense_array";
 
   // Define the dimensions.
@@ -598,35 +572,53 @@ void DynamicArrayFx::dense_1d_test(
 
   // Create the array.
   create_array(
-      array_name, array_type, test_dims, test_attrs, cell_order, tile_order);
+      array_name,
+      array_type,
+      test_dims,
+      test_attrs,
+      cell_order,
+      tile_order,
+      encryption_type);
 
   // Define the write query buffers for "a".
   vector<test_query_buffer_t> write_query_buffers;
   int a_write_buffer[1] = {0};
   uint64_t a_write_buffer_size = sizeof(a_write_buffer);
+
+  // Validity buffer is set only when the attribute is nullable.
   uint8_t a_write_buffer_validity[1] = {static_cast<uint8_t>(rand() % 2)};
-  // a_write_buffer_validity[0] = rand() % 2;
   uint64_t a_write_buffer_validity_size = sizeof(a_write_buffer_validity);
-  write_query_buffers.emplace_back(
-      "a",
-      a_write_buffer,
-      &a_write_buffer_size,
-      nullptr,
-      nullptr,
-      a_write_buffer_validity,
-      &a_write_buffer_validity_size);
+  const test_attr_t test_attr = test_attrs.front();
+  if (test_attr.nullable_) {
+    write_query_buffers.emplace_back(
+        "a",
+        a_write_buffer,
+        &a_write_buffer_size,
+        nullptr,
+        nullptr,
+        a_write_buffer_validity,
+        &a_write_buffer_validity_size);
+  } else {
+    write_query_buffers.emplace_back(
+        "a",
+        a_write_buffer,
+        &a_write_buffer_size,
+        nullptr,
+        nullptr,
+        nullptr,
+        nullptr);
+  }
 
   // Define dimension query buffers for either sparse arrays or dense arrays
   // with an unordered write order.
-  uint64_t d_write_buffer[2];
+  uint64_t d_write_buffer[1];
   uint64_t d_write_buffer_size;
   if (array_type == TILEDB_SPARSE || write_order == TILEDB_UNORDERED) {
     vector<uint64_t> d_write_vec;
     d_write_vec = {0, 1};
 
-    REQUIRE(d_write_vec.size() == 2);
+    REQUIRE(d_write_vec.size() == 1);
     d_write_buffer[0] = d_write_vec[0];
-    d_write_buffer[1] = d_write_vec[1];
     d_write_buffer_size = sizeof(d_write_buffer);
 
     write_query_buffers.emplace_back(
@@ -640,51 +632,74 @@ void DynamicArrayFx::dense_1d_test(
   }
 
   // Execute the write query.
-  write(array_name, write_query_buffers, write_order);
+  write(array_name, write_query_buffers, write_order, encryption_type);
 
   // Define the read query buffers for "a".
   vector<test_query_buffer_t> read_query_buffers;
   int a_read_buffer[1] = {0};
   uint64_t a_read_buffer_size = sizeof(a_read_buffer);
+
+  // Validity buffer is set only when the attribute is nullable.
   uint8_t a_read_buffer_validity[1] = {0};
   uint64_t a_read_buffer_validity_size = sizeof(a_read_buffer_validity);
-  read_query_buffers.emplace_back(
-      "a",
-      a_read_buffer,
-      &a_read_buffer_size,
-      nullptr,
-      nullptr,
-      a_read_buffer_validity,
-      &a_read_buffer_validity_size);
+  if (test_attr.nullable_) {
+    read_query_buffers.emplace_back(
+        "a",
+        a_read_buffer,
+        &a_read_buffer_size,
+        nullptr,
+        nullptr,
+        a_read_buffer_validity,
+        &a_read_buffer_validity_size);
+  } else {
+    read_query_buffers.emplace_back(
+        "a",
+        a_read_buffer,
+        &a_read_buffer_size,
+        nullptr,
+        nullptr,
+        nullptr,
+        nullptr);
+  }
 
   // Execute a read query over the entire domain.
   const uint64_t subarray_full[] = {0, 0};
-  read(array_name, read_query_buffers, subarray_full);
+  read(array_name, read_query_buffers, subarray_full, encryption_type);
 
   // Each value in `a_read_buffer` corresponds to its index in
   // the original `a_write_buffer`. Check that the ordering of
   // the validity buffer matches the ordering in the value buffer.
-  REQUIRE(a_read_buffer_size == a_write_buffer_size);
-  REQUIRE(a_read_buffer_validity_size == a_write_buffer_validity_size);
-  uint8_t expected_a_read_buffer_validity[1];
-  expected_a_read_buffer_validity[0] = a_write_buffer_validity[0];
-  REQUIRE(!memcmp(
-      a_read_buffer_validity,
-      expected_a_read_buffer_validity,
-      a_read_buffer_validity_size));
+  // Validity buffer is set only when the attribute is nullable.
+  if (test_attr.nullable_) {
+    REQUIRE(a_read_buffer_size == a_write_buffer_size);
+    REQUIRE(a_read_buffer_validity_size == a_write_buffer_validity_size);
+    uint8_t expected_a_read_buffer_validity[1];
+    expected_a_read_buffer_validity[0] = a_write_buffer_validity[0];
+    REQUIRE(!memcmp(
+        a_read_buffer_validity,
+        expected_a_read_buffer_validity,
+        a_read_buffer_validity_size));
+  } else {
+    REQUIRE(a_read_buffer_size == a_write_buffer_size);
+    uint8_t expected_a_read_buffer[1];
+    expected_a_read_buffer[0] = a_write_buffer[0];
+    REQUIRE(!memcmp(a_read_buffer, expected_a_read_buffer, a_read_buffer_size));
+  }
 }
 
 TEST_CASE_METHOD(
     DynamicArrayFx,
-    "C API: Test 1D dense array with 1 attribute",
-    "[capi][1d][dense]") {
+    "C API: Test a dynamic range of arrays",
+    "[capi][dynamic]") {
   vector<test_attr_t> attrs;
-  attrs.emplace_back("a", TILEDB_INT32, 1, true);
+  attrs.emplace_back("a", TILEDB_INT32, 1, false);
 
   tiledb_array_type_t array_type = TILEDB_DENSE;
   tiledb_layout_t cell_order = TILEDB_ROW_MAJOR;
   tiledb_layout_t tile_order = TILEDB_ROW_MAJOR;
-  tiledb_layout_t write_order = TILEDB_UNORDERED;
+  tiledb_layout_t write_order = TILEDB_ROW_MAJOR;
+  tiledb_encryption_type_t encryption_type = TILEDB_NO_ENCRYPTION;
 
-  dense_1d_test(attrs, array_type, cell_order, tile_order, write_order);
+  test_1d_array(
+      attrs, array_type, cell_order, tile_order, write_order, encryption_type);
 }
