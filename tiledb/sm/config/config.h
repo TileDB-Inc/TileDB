@@ -321,6 +321,9 @@ class Config {
   /** Request timeout in milliseconds. */
   static const std::string VFS_S3_REQUEST_TIMEOUT_MS;
 
+  /** Requester pays for the S3 access charges. */
+  static const std::string VFS_S3_REQUESTER_PAYS;
+
   /** S3 proxy scheme. */
   static const std::string VFS_S3_PROXY_SCHEME;
 

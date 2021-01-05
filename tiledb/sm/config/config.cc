@@ -129,6 +129,7 @@ const std::string Config::VFS_S3_CONNECT_TIMEOUT_MS = "3000";
 const std::string Config::VFS_S3_CONNECT_MAX_TRIES = "5";
 const std::string Config::VFS_S3_CONNECT_SCALE_FACTOR = "25";
 const std::string Config::VFS_S3_REQUEST_TIMEOUT_MS = "3000";
+const std::string Config::VFS_S3_REQUESTER_PAYS = "false";
 const std::string Config::VFS_S3_PROXY_SCHEME = "http";
 const std::string Config::VFS_S3_PROXY_HOST = "";
 const std::string Config::VFS_S3_PROXY_PORT = "0";
@@ -251,6 +252,7 @@ Config::Config() {
   param_values_["vfs.s3.connect_max_tries"] = VFS_S3_CONNECT_MAX_TRIES;
   param_values_["vfs.s3.connect_scale_factor"] = VFS_S3_CONNECT_SCALE_FACTOR;
   param_values_["vfs.s3.request_timeout_ms"] = VFS_S3_REQUEST_TIMEOUT_MS;
+  param_values_["vfs.s3.requester_pays"] = VFS_S3_REQUESTER_PAYS;
   param_values_["vfs.s3.proxy_scheme"] = VFS_S3_PROXY_SCHEME;
   param_values_["vfs.s3.proxy_host"] = VFS_S3_PROXY_HOST;
   param_values_["vfs.s3.proxy_port"] = VFS_S3_PROXY_PORT;
@@ -537,6 +539,8 @@ Status Config::unset(const std::string& param) {
     param_values_["vfs.s3.connect_scale_factor"] = VFS_S3_CONNECT_SCALE_FACTOR;
   } else if (param == "vfs.s3.request_timeout_ms") {
     param_values_["vfs.s3.request_timeout_ms"] = VFS_S3_REQUEST_TIMEOUT_MS;
+  } else if (param == "vfs.s3.requester_pays") {
+    param_values_["vfs.s3.requester_pays"] = VFS_S3_REQUESTER_PAYS;
   } else if (param == "vfs.s3.proxy_scheme") {
     param_values_["vfs.s3.proxy_scheme"] = VFS_S3_PROXY_SCHEME;
   } else if (param == "vfs.s3.proxy_host") {
@@ -686,6 +690,8 @@ Status Config::sanity_check(
     RETURN_NOT_OK(utils::parse::convert(value, &vint64));
   } else if (param == "vfs.s3.request_timeout_ms") {
     RETURN_NOT_OK(utils::parse::convert(value, &vint64));
+  } else if (param == "vfs.s3.requester_pays") {
+    RETURN_NOT_OK(utils::parse::convert(value, &v));
   } else if (param == "vfs.s3.proxy_port") {
     RETURN_NOT_OK(utils::parse::convert(value, &vint64));
   } else if (param == "vfs.s3.verify_ssl") {
