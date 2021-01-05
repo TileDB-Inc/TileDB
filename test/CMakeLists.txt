@@ -111,6 +111,7 @@ set(TILEDB_TEST_SOURCES
   src/unit-capi-dense_array_2.cc
   src/unit-capi-dense_neg.cc
   src/unit-capi-dense_vector.cc
+  src/unit-capi-dynamic.cc
   src/unit-capi-empty-var-length.cc
   src/unit-capi-enum_values.cc
   src/unit-capi-error.cc
