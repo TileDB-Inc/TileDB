@@ -539,6 +539,9 @@ class S3 {
   /** Config stored from init for lazy client_init. */
   Config config_;
 
+  /** Set the request payer for a s3 request. */
+  Aws::S3::Model::RequestPayer request_payer_;
+
   /* ********************************* */
   /*          PRIVATE METHODS          */
   /* ********************************* */
