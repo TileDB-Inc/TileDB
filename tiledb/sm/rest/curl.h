@@ -65,7 +65,7 @@ namespace sm {
  */
 struct HeaderCbData {
   /** The output of parse::rest_components from url -> array_ns:array_uri */
-  std::string* uri;
+  const std::string* uri;
 
   /** A pointer to the map in REST client caching the redirections */
   std::unordered_map<std::string, std::string>* redirect_uri_map;
@@ -92,7 +92,6 @@ class Curl {
   Status init(
       const Config* config,
       const std::unordered_map<std::string, std::string>& extra_headers,
-      std::string* res_ns_uri,
       std::unordered_map<std::string, std::string>* res_headers,
       std::mutex* res_mtx);
 
@@ -112,13 +111,15 @@ class Curl {
    * @param serialization_type Serialization type to use
    * @param data Encoded data buffer for posting
    * @param returned_data Buffer to store response data
+   * @param res_ns_uri Array Namespace and URI
    * @return Status
    */
   Status post_data(
       const std::string& url,
       SerializationType serialization_type,
       const BufferList* data,
-      Buffer* returned_data);
+      Buffer* returned_data,
+      const std::string& res_ns_uri);
 
   /**
    * Callback defined by the caller of the 'post_data' variant for
@@ -143,13 +144,15 @@ class Curl {
    * @param serialization_type Serialization type to use
    * @param data Encoded data buffer for posting
    * @param write_cb Invoked as response body buffers are received.
+   * @param res_ns_uri Array Namespace and URI
    * @return Status
    */
   Status post_data(
       const std::string& url,
       SerializationType serialization_type,
       const BufferList* data,
-      PostResponseCb&& write_cb);
+      PostResponseCb&& write_cb,
+      const std::string& res_ns_uri);
 
   /**
    * Common code shared between variants of 'post_data'.
@@ -172,12 +175,14 @@ class Curl {
    * @param url URL to get
    * @param serialization_type Serialization type to use
    * @param returned_data Buffer to store response data
+   * @param res_ns_uri Array Namespace and URI
    * @return Status
    */
   Status get_data(
       const std::string& url,
       SerializationType serialization_type,
-      Buffer* returned_data);
+      Buffer* returned_data,
+      const std::string& res_ns_uri);
 
   /**
    * Simple wrapper for sending delete requests to server
@@ -186,12 +191,14 @@ class Curl {
    * @param url URL to delete
    * @param serialization_type Serialization type to use
    * @param returned_data Buffer to store response data
+   * @param res_ns_uri Array Namespace and URI
    * @return Status
    */
   Status delete_data(
       const std::string& url,
       SerializationType serialization_type,
-      Buffer* returned_data);
+      Buffer* returned_data,
+      const std::string& res_ns_uri);
 
  private:
   /** TileDB config parameters. */

@@ -278,7 +278,6 @@ Curl::Curl()
 Status Curl::init(
     const Config* config,
     const std::unordered_map<std::string, std::string>& extra_headers,
-    std::string* const res_uri,
     std::unordered_map<std::string, std::string>* const res_headers,
     std::mutex* const res_mtx) {
   if (config == nullptr)
@@ -288,7 +287,6 @@ Status Curl::init(
   config_ = config;
   curl_.reset(curl_easy_init());
   extra_headers_ = extra_headers;
-  headerData.uri = res_uri;
   headerData.redirect_uri_map = res_headers;
   headerData.redirect_uri_map_lock = res_mtx;
 
@@ -586,11 +584,13 @@ Status Curl::post_data(
     const std::string& url,
     const SerializationType serialization_type,
     const BufferList* data,
-    Buffer* const returned_data) {
+    Buffer* const returned_data,
+    const std::string& res_uri) {
   struct curl_slist* headers;
   RETURN_NOT_OK(post_data_common(serialization_type, data, &headers));
 
   CURLcode ret;
+  headerData.uri = &res_uri;
   auto st = make_curl_request(url.c_str(), &ret, returned_data);
   curl_slist_free_all(headers);
   RETURN_NOT_OK(st);
@@ -605,11 +605,13 @@ Status Curl::post_data(
     const std::string& url,
     const SerializationType serialization_type,
     const BufferList* data,
-    PostResponseCb&& cb) {
+    PostResponseCb&& cb,
+    const std::string& res_uri) {
   struct curl_slist* headers;
   RETURN_NOT_OK(post_data_common(serialization_type, data, &headers));
 
   CURLcode ret;
+  headerData.uri = &res_uri;
   auto st = make_curl_request(url.c_str(), &ret, std::move(cb));
   curl_slist_free_all(headers);
   RETURN_NOT_OK(st);
@@ -662,7 +664,8 @@ Status Curl::post_data_common(
 Status Curl::get_data(
     const std::string& url,
     SerializationType serialization_type,
-    Buffer* returned_data) {
+    Buffer* returned_data,
+    const std::string& res_ns_uri) {
   CURL* curl = curl_.get();
   if (curl == nullptr)
     return LOG_STATUS(
@@ -679,6 +682,7 @@ Status Curl::get_data(
   curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
 
   CURLcode ret;
+  headerData.uri = &res_ns_uri;
   auto st = make_curl_request(url.c_str(), &ret, returned_data);
   curl_slist_free_all(headers);
   RETURN_NOT_OK(st);
@@ -692,7 +696,8 @@ Status Curl::get_data(
 Status Curl::delete_data(
     const std::string& url,
     SerializationType serialization_type,
-    Buffer* returned_data) {
+    Buffer* returned_data,
+    const std::string& res_uri) {
   CURL* curl = curl_.get();
   if (curl == nullptr)
     return LOG_STATUS(
@@ -712,6 +717,7 @@ Status Curl::delete_data(
   curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
 
   CURLcode ret;
+  headerData.uri = &res_uri;
   auto st = make_curl_request(url.c_str(), &ret, returned_data);
 
   // Erase record in case of de-registered array
