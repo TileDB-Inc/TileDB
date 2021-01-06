@@ -26,11 +26,25 @@ steps:
     # currently we do not run S3 tests on Windows because tests time out (minio+azure slow?)
     #& "$env:BUILD_SOURCESDIRECTORY\scripts\install-minio.ps1"
 
+    $bootstrapOptions = "-EnableVerbose -EnableStaticTileDB -EnableBuildDeps"
     if ($env:TILEDB_S3 -eq "ON") {
-      & "$env:BUILD_SOURCESDIRECTORY\bootstrap.ps1" -EnableS3 -EnableVerbose -EnableStaticTileDB -EnableBuildDeps
-    } else {
-      & "$env:BUILD_SOURCESDIRECTORY\bootstrap.ps1" -EnableVerbose -EnableStaticTileDB -EnableBuildDeps
+      $bootstrapOptions = "-EnableS3 " + $bootstrapOptions
     }
+    if ($env:TILEDB_AZURE -eq "ON") {
+      #delay install/run of azurite until actually needed before 'make
+      #check' rather than unnecessarily consuming time/resources it takes
+      #since other failures may occur prior.
+      #& "$env:BUILD_SOURCESDIRECTORY\scripts\install-run-azurite.ps1"
+      $bootstrapOptions = "-EnableAzure " + $bootstrapOptions
+    }
+    if ($env:TILEDB_GCS -eq "ON") {
+      $bootstrapOptions = "-EnableGCS " + $bootstrapOptions
+	  #NOTE: GCS simulator not yet actually in place.
+    }
+
+    $bootstrapExpression = "& $env:BUILD_SOURCESDIRECTORY\bootstrap.ps1 " + $bootstrapOptions
+    Invoke-Expression $bootstrapExpression
+
     if ($LastExitCode -ne 0) {
        Write-Host "Bootstrap failed."
        $host.SetShouldExit($LastExitCode)
@@ -70,6 +84,11 @@ steps:
     # CMake exits with non-0 status if there are any warnings during the build, so
     # build the unit test executable before running tests.
     cmake --build $env:AGENT_BUILDDIRECTORY\build\tiledb  -j $env:NUMBER_OF_PROCESSORS --target tiledb_unit --config Release -- /verbosity:minimal
+
+    #don't need azurite running until here...
+    if ($env:TILEDB_AZURE -eq "ON") {
+      & "$env:BUILD_SOURCESDIRECTORY\scripts\install-run-azurite.ps1"
+    }
 
     # Actually run tests
     cmake --build $env:AGENT_BUILDDIRECTORY\build\tiledb --target check --config Release -- /verbosity:minimal
