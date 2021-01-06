@@ -14,6 +14,7 @@
 * Support for nullable attributes. [#1895](https://github.com/TileDB-Inc/TileDB/pull/1895) [#1938](https://github.com/TileDB-Inc/TileDB/pull/1938) [#1948](https://github.com/TileDB-Inc/TileDB/pull/1948) [#1945](https://github.com/TileDB-Inc/TileDB/pull/1945)
 * Support for Hilbert order sorting for sparse arrays. [#1880](https://github.com/TileDB-Inc/TileDB/pull/1880)
 * Support for AWS S3 "AssumeRole" temporary credentials [#1882](https://github.com/TileDB-Inc/TileDB/pull/1882)
+* Support for zero-copy import/export with the Apache Arrow adapter [#2001](https://github.com/TileDB-Inc/TileDB/pull/2001)
 * Experimental support for an in-memory backend used with bootstrap option "--enable-memfs" [#1873](https://github.com/TileDB-Inc/TileDB/pull/1873)
 * Support for element offsets when reading var-sized attributes. [#1897] (https://github.com/TileDB-Inc/TileDB/pull/1897)
 * Support for an extra offset indicating the size of the returned data when reading var-sized attributes. [#1932] (https://github.com/TileDB-Inc/TileDB/pull/1932)
@@ -49,7 +50,7 @@
 * Fix compilation of TileDB Tools [#1926](https://github.com/TileDB-Inc/TileDB/pull/1926)
 * Fix segfault in optimized compute_results_sparse [#1969](https://github.com/TileDB-Inc/TileDB/pull/1969)
 * Fix segfault in `ResultTile::str_coords_intersects` [#1981](https://github.com/TileDB-Inc/TileDB/pull/1981)
-* Fix deadlock in `ThreadPool::wait_or_work` [#1981](https://github.com/TileDB-Inc/TileDB/pull/1994)
+* Fix deadlock in `ThreadPool::wait_or_work` [#1994](https://github.com/TileDB-Inc/TileDB/pull/1994)
 
 ## API additions
 

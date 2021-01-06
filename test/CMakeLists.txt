@@ -34,16 +34,16 @@ option(TILEDB_TESTS_ENABLE_REST "Enables REST tests (requires running REST serve
 
 # Arrow integration test config and dependencies
 # Override from environment if not set in cache
-if (NOT DEFINED $CACHE{TILEDB_TESTS_ENABLE_ARROW})
-  if ($ENV{TILEDB_TESTS_ENABLE_ARROW})
+if (NOT DEFINED $CACHE{TILEDB_ARROW_TESTS})
+  if ($ENV{TILEDB_ARROW_TESTS})
     message(STATUS "Enabling Apache Arrow integration test")
     # Technically this would be an "option", but we want conditional override from ENV
-    set(TILEDB_TESTS_ENABLE_ARROW ON CACHE BOOL "Enable Arrow tests (requires Python with pyarrow and numpy)")
-    mark_as_advanced(TILEDB_TESTS_ENABLE_ARROW)
+    set(TILEDB_ARROW_TESTS ON CACHE BOOL "Enable Arrow tests (requires Python with pyarrow and numpy)")
+    mark_as_advanced(TILEDB_ARROW_TESTS)
   endif()
 endif()
 
-if (${TILEDB_TESTS_ENABLE_ARROW})
+if (${TILEDB_ARROW_TESTS})
   # Reworked FindPython was introducted in 3.12 with features used below
   if (CMAKE_VERSION VERSION_LESS "3.12")
     message(FATAL_ERROR "CMake >= 3.12 is required for TileDB Arrow Tests. (found ${CMAKE_VERSION})")
@@ -210,7 +210,7 @@ if (TILEDB_TESTS_ENABLE_REST)
   )
 endif()
 
-if (TILEDB_TESTS_ENABLE_ARROW)
+if (TILEDB_ARROW_TESTS)
   list(APPEND TILEDB_TEST_SOURCES
     src/unit-arrow.cc
   )
@@ -284,7 +284,7 @@ if (TILEDB_SERIALIZATION)
   target_compile_definitions(tiledb_unit PRIVATE -DTILEDB_SERIALIZATION)
 endif()
 
-if (TILEDB_TESTS_ENABLE_ARROW)
+if (TILEDB_ARROW_TESTS)
   target_link_libraries(tiledb_unit PRIVATE pybind11::embed)
 
   # install the python helper next to the executable for import

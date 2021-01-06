@@ -17,7 +17,7 @@ steps:
 - bash: |
     set -e pipefail
     python -m pip install --upgrade pip virtualenv
-    if [[ "$TILEDB_TESTS_ENABLE_ARROW" == "ON" ]]; then
+    if [[ "$TILEDB_ARROW_TESTS" == "ON" ]]; then
       pip install pyarrow pybind11 numpy
     fi
 
