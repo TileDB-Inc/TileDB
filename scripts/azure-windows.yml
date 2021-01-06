@@ -39,7 +39,7 @@ steps:
     }
     if ($env:TILEDB_GCS -eq "ON") {
       $bootstrapOptions = "-EnableGCS " + $bootstrapOptions
-	  #NOTE: GCS simulator not yet actually in place.
+      #NOTE: GCS simulator not yet actually in place.
     }
 
     $bootstrapExpression = "& $env:BUILD_SOURCESDIRECTORY\bootstrap.ps1 " + $bootstrapOptions
