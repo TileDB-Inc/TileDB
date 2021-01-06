@@ -89,6 +89,7 @@ stages:
             imageName: 'vs2017-win2016'
             TILEDB_S3: ON
             TILEDB_TESTS_ENABLE_ARROW: ON
+            TILEDB_AZURE: ON
       pool:
         vmImage: $(imageName)
       steps:
