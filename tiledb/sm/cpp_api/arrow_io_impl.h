@@ -84,8 +84,6 @@ struct ArrowArray {
 
 #include <memory>
 
-#include "tiledb/sm/c_api/tiledb_struct_def.h"
-
 /* ****************************** */
 /*      Error context helper      */
 /* ****************************** */
