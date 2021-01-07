@@ -117,14 +117,12 @@ if (NOT AZURESDK_FOUND)
           -DBUILD_SAMPLES=OFF
           -DCMAKE_PREFIX_PATH=${TILEDB_EP_INSTALL_PREFIX}
           -DCMAKE_INSTALL_PREFIX=${TILEDB_EP_INSTALL_PREFIX}
-#          "-DCMAKE_CXX_FLAGS=-fPIC /EHsc -I${TILEDB_EP_INSTALL_PREFIX}/include /Dazure_storage_lite_EXPORTS /DCURL_STATICLIB=1 /DWIN32"
           -DCMAKE_CXX_FLAGS=${CXXFLAGS_DEF}
           -DCURL_INCLUDE_DIR=${TILEDB_EP_INSTALL_PREFIX}/include
           "-DCMAKE_C_FLAGS=-fPIC -I${TILEDB_EP_INSTALL_PREFIX}/include /Dazure_storage_lite_EXPORTS /DCURL_STATICLIB=1 /DWIN32"
         PATCH_COMMAND
           echo starting patching for azure &&
           cd ${CMAKE_SOURCE_DIR} &&
-          ${GIT_EXECUTABLE} apply -p1 --verbose --unsafe-paths --directory=${TILEDB_EP_SOURCE_DIR}/ep_azuresdk < ${TILEDB_CMAKE_INPUTS_DIR}/patches/ep_azuresdk/curlincludedir.4gitwin.patch &&
           ${GIT_EXECUTABLE} apply -p1 --unsafe-paths --verbose --directory=${TILEDB_EP_SOURCE_DIR}/ep_azuresdk < ${TILEDB_CMAKE_INPUTS_DIR}/patches/ep_azuresdk/azurite-support.patch &&
           ${GIT_EXECUTABLE} apply -p1 --unsafe-paths --check --apply --verbose --directory=${TILEDB_EP_SOURCE_DIR}/ep_azuresdk < ${TILEDB_CMAKE_INPUTS_DIR}/patches/ep_azuresdk/azure-storage-lite-base64.patch &&
           ${GIT_EXECUTABLE} apply -p1 --unsafe-paths --check --apply --verbose --directory=${TILEDB_EP_SOURCE_DIR}/ep_azuresdk < ${TILEDB_CMAKE_INPUTS_DIR}/patches/ep_azuresdk/azure-storage-lite-storage_url.patch &&
