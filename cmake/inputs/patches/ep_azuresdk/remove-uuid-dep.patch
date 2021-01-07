@@ -28,7 +28,7 @@ index f32bc44..3c94347 100644
 +#  endif()
  elseif(WIN32)
    list(APPEND EXTRA_LIBRARIES rpcrt4 bcrypt)
-   target_compile_definitions(azure-storage-lite PRIVATE azure_storage_lite_EXPORTS)
+ endif()
 diff --git a/src/utility.cpp b/src/utility.cpp
 index 95dcdfc..999669a 100644
 --- a/src/utility.cpp

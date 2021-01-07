@@ -42,6 +42,13 @@
 
 using namespace tiledb::common;
 
+#if _WIN32 && defined(min)
+#undef min
+#endif
+#if _WIN32 && defined(max)
+#undef max
+#endif
+
 namespace tiledb {
 namespace sm {
 
