@@ -352,9 +352,9 @@ inline uint64_t Writer::offsets_bytesize() const {
 }
 
 inline uint64_t Writer::get_offset_buffer_size(
-    const std::string& attr, uint64_t buffer_size) const {
+    const std::string& attr, const uint64_t buffer_size) const {
   return array_schema_->var_size(attr) && offsets_extra_element_ ?
-             buffer_size -= offsets_bytesize() :
+             buffer_size - constants::cell_var_offset_size :
              buffer_size;
 }
 
@@ -917,7 +917,7 @@ Status Writer::check_buffer_sizes() const {
   for (const auto& it : buffers_) {
     const auto& attr = it.first;
     const bool is_var = array_schema_->var_size(attr);
-    uint64_t buffer_size =
+    const uint64_t buffer_size =
         get_offset_buffer_size(attr, *it.second.buffer_size_);
     if (is_var) {
       expected_cell_num = buffer_size / constants::cell_var_offset_size;
@@ -2407,11 +2407,10 @@ Status Writer::prepare_full_tiles_fixed(
   auto it = buffers_.find(name);
   auto buffer = (unsigned char*)it->second.buffer_;
   auto buffer_validity = (unsigned char*)it->second.validity_vector_.buffer();
-  auto buffer_size =
-      get_offset_buffer_size(it->first, *it->second.buffer_size_);
+  auto buffer_size = it->second.buffer_size_;
   auto cell_size = array_schema_->cell_size(name);
   auto capacity = array_schema_->capacity();
-  auto cell_num = buffer_size / cell_size;
+  auto cell_num = *buffer_size / cell_size;
   auto domain = array_schema_->domain();
   auto cell_num_per_tile = has_coords_ ? capacity : domain->cell_num_per_tile();
 
