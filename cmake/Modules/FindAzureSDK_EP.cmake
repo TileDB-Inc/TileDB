@@ -34,6 +34,7 @@ include(TileDBCommon)
 find_library(AZURESDK_LIBRARIES
   NAMES
     libazure-storage-lite${CMAKE_STATIC_LIBRARY_SUFFIX}
+    azure-storage-lite${CMAKE_STATIC_LIBRARY_SUFFIX}
   PATHS ${TILEDB_EP_INSTALL_PREFIX}
   PATH_SUFFIXES lib
   NO_DEFAULT_PATH
@@ -52,7 +53,8 @@ elseif(NOT TILEDB_FORCE_ALL_DEPS)
   # Static EP not found, search in system paths.
   find_library(AZURESDK_LIBRARIES
     NAMES
-      libazure-storage-lite
+      libazure-storage-lite #*nix name
+      azure-storage-lite #windows name
     PATH_SUFFIXES lib bin
     ${TILEDB_DEPS_NO_DEFAULT_PATH}
   )
@@ -83,38 +85,90 @@ if (NOT AZURESDK_FOUND)
     endif()
 
     if (WIN32)
-      set(CFLAGS_DEF "${CMAKE_C_FLAGS}")
-      set(CXXFLAGS_DEF "${CMAKE_CXX_FLAGS}")
+      set(CFLAGS_DEF " /EHsc -I${TILEDB_EP_INSTALL_PREFIX}/include /Dazure_storage_lite_EXPORTS /DCURL_STATICLIB=1 /DWIN32 ${CMAKE_C_FLAGS}")
+      set(CXXFLAGS_DEF " /EHsc -I${TILEDB_EP_INSTALL_PREFIX}/include /Dazure_storage_lite_EXPORTS /DCURL_STATICLIB=1 /DWIN32 ${CMAKE_CXX_FLAGS}")
+      set(CURL_INCLUDE_DIR "${TILEDB_EP_INSTALL_PREFIX}/include")
     else()
-      set(CFLAGS_DEF "${CMAKE_C_FLAGS} -fPIC")
-      set(CXXFLAGS_DEF "${CMAKE_CXX_FLAGS} -fPIC")
+      #put our switch first in case other items are empty, leaving problematic blank space at beginning
+      set(CFLAGS_DEF "-fPIC ${CMAKE_C_FLAGS}")
+      set(CXXFLAGS_DEF "-fPIC ${CMAKE_CXX_FLAGS}")
     endif()
-
-    ExternalProject_Add(ep_azuresdk
-      PREFIX "externals"
-      # Set download name to avoid collisions with only the version number in the filename
-      DOWNLOAD_NAME ep_azuresdk.zip
-      URL "https://github.com/Azure/azure-storage-cpplite/archive/v0.2.0.zip"
-      URL_HASH SHA1=058975ccac9b60b522c9f7fd044a3d2aaec9f893
-      CMAKE_ARGS
-        -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
-        -DBUILD_SHARED_LIBS=OFF
-        -DBUILD_TESTS=OFF
-        -DBUILD_SAMPLES=OFF
-        -DCMAKE_PREFIX_PATH=${TILEDB_EP_INSTALL_PREFIX}
-        -DCMAKE_INSTALL_PREFIX=${TILEDB_EP_INSTALL_PREFIX}
-        -DCMAKE_CXX_FLAGS=-fPIC
-        -DCMAKE_C_FLAGS=-fPIC
-      PATCH_COMMAND
-        patch -N -p1 < ${TILEDB_CMAKE_INPUTS_DIR}/patches/ep_azuresdk/remove-uuid-dep.patch &&
-        patch -N -p1 < ${TILEDB_CMAKE_INPUTS_DIR}/patches/ep_azuresdk/azurite-support.patch
-      LOG_DOWNLOAD TRUE
-      LOG_CONFIGURE TRUE
-      LOG_BUILD TRUE
-      LOG_INSTALL TRUE
-      LOG_OUTPUT_ON_FAILURE ${TILEDB_LOG_OUTPUT_ON_FAILURE}
-      DEPENDS ${DEPENDS}
+    
+    if (WIN32)
+        # needed for applying patches on windows
+        find_package(Git REQUIRED)
+        #see comment on this answer - https://stackoverflow.com/a/45698220
+        #and this - https://stackoverflow.com/a/62967602 (same thread, different answer/comment)
+    else()
+        find_package(Git REQUIRED)
+    endif()
+    
+    if(WIN32)
+      ExternalProject_Add(ep_azuresdk
+        PREFIX "externals"
+        URL "https://github.com/Azure/azure-storage-cpplite/archive/v0.2.0.zip"
+        URL_HASH SHA1=058975ccac9b60b522c9f7fd044a3d2aaec9f893
+        CMAKE_ARGS
+          --verbose
+          -DVERBOSE=1
+          -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
+          -DBUILD_SHARED_LIBS=OFF
+          -DBUILD_TESTS=OFF
+          -DBUILD_SAMPLES=OFF
+          -DCMAKE_PREFIX_PATH=${TILEDB_EP_INSTALL_PREFIX}
+          -DCMAKE_INSTALL_PREFIX=${TILEDB_EP_INSTALL_PREFIX}
+#          "-DCMAKE_CXX_FLAGS=-fPIC /EHsc -I${TILEDB_EP_INSTALL_PREFIX}/include /Dazure_storage_lite_EXPORTS /DCURL_STATICLIB=1 /DWIN32"
+          -DCMAKE_CXX_FLAGS=${CXXFLAGS_DEF}
+          -DCURL_INCLUDE_DIR=${TILEDB_EP_INSTALL_PREFIX}/include
+          "-DCMAKE_C_FLAGS=-fPIC -I${TILEDB_EP_INSTALL_PREFIX}/include /Dazure_storage_lite_EXPORTS /DCURL_STATICLIB=1 /DWIN32"
+        PATCH_COMMAND
+          echo starting patching for azure &&
+          cd ${CMAKE_SOURCE_DIR} &&
+          ${GIT_EXECUTABLE} apply -p1 --verbose --unsafe-paths --directory=${TILEDB_EP_SOURCE_DIR}/ep_azuresdk < ${TILEDB_CMAKE_INPUTS_DIR}/patches/ep_azuresdk/curlincludedir.4gitwin.patch &&
+          ${GIT_EXECUTABLE} apply -p1 --unsafe-paths --verbose --directory=${TILEDB_EP_SOURCE_DIR}/ep_azuresdk < ${TILEDB_CMAKE_INPUTS_DIR}/patches/ep_azuresdk/azurite-support.patch &&
+          ${GIT_EXECUTABLE} apply -p1 --unsafe-paths --check --apply --verbose --directory=${TILEDB_EP_SOURCE_DIR}/ep_azuresdk < ${TILEDB_CMAKE_INPUTS_DIR}/patches/ep_azuresdk/azure-storage-lite-base64.patch &&
+          ${GIT_EXECUTABLE} apply -p1 --unsafe-paths --check --apply --verbose --directory=${TILEDB_EP_SOURCE_DIR}/ep_azuresdk < ${TILEDB_CMAKE_INPUTS_DIR}/patches/ep_azuresdk/azure-storage-lite-storage_url.patch &&
+          echo done patches for azure
+        LOG_DOWNLOAD TRUE
+        LOG_CONFIGURE TRUE
+        LOG_BUILD TRUE
+        LOG_INSTALL TRUE
+        LOG_OUTPUT_ON_FAILURE ${TILEDB_LOG_OUTPUT_ON_FAILURE}
+        DEPENDS ${DEPENDS}
     )
+    else()
+      ExternalProject_Add(ep_azuresdk
+        PREFIX "externals"
+        URL "https://github.com/Azure/azure-storage-cpplite/archive/v0.2.0.zip"
+        URL_HASH SHA1=058975ccac9b60b522c9f7fd044a3d2aaec9f893
+        CMAKE_ARGS
+          -DVERBOSE=1
+          -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
+          -DBUILD_SHARED_LIBS=OFF
+          -DBUILD_TESTS=OFF
+          -DBUILD_SAMPLES=OFF
+          -DCMAKE_PREFIX_PATH=${TILEDB_EP_INSTALL_PREFIX}
+          -DCMAKE_INSTALL_PREFIX=${TILEDB_EP_INSTALL_PREFIX}
+          -DCMAKE_CXX_FLAGS=${CXXFLAGS_DEF}
+          -DCURL_INCLUDE_DIR=${TILEDB_EP_INSTALL_PREFIX}/include
+          -DCMAKE_C_FLAGS=${CFLAGS_DEF}
+        PATCH_COMMAND
+          echo starting patching for azure &&
+          cd ${CMAKE_SOURCE_DIR} &&
+          ${GIT_EXECUTABLE} apply -p1 --verbose --unsafe-paths --directory=${TILEDB_EP_SOURCE_DIR}/ep_azuresdk < ${TILEDB_CMAKE_INPUTS_DIR}/patches/ep_azuresdk/curlincludedir.4gitwin.patch &&
+          ${GIT_EXECUTABLE} apply -p1 --unsafe-paths --verbose --directory=${TILEDB_EP_SOURCE_DIR}/ep_azuresdk < ${TILEDB_CMAKE_INPUTS_DIR}/patches/ep_azuresdk/remove-uuid-dep.patch &&
+          ${GIT_EXECUTABLE} apply -p1 --unsafe-paths --verbose --directory=${TILEDB_EP_SOURCE_DIR}/ep_azuresdk < ${TILEDB_CMAKE_INPUTS_DIR}/patches/ep_azuresdk/azurite-support.patch &&
+          ${GIT_EXECUTABLE} apply -p1 --unsafe-paths --check --apply --verbose --directory=${TILEDB_EP_SOURCE_DIR}/ep_azuresdk < ${TILEDB_CMAKE_INPUTS_DIR}/patches/ep_azuresdk/azure-storage-lite-base64.patch &&
+          ${GIT_EXECUTABLE} apply -p1 --unsafe-paths --check --apply --verbose --directory=${TILEDB_EP_SOURCE_DIR}/ep_azuresdk < ${TILEDB_CMAKE_INPUTS_DIR}/patches/ep_azuresdk/azure-storage-lite-storage_url.patch &&
+          echo done patches for azure
+        LOG_DOWNLOAD TRUE
+        LOG_CONFIGURE TRUE
+        LOG_BUILD TRUE
+        LOG_INSTALL TRUE
+        LOG_OUTPUT_ON_FAILURE ${TILEDB_LOG_OUTPUT_ON_FAILURE}
+        DEPENDS ${DEPENDS}
+      )
+    endif()
 
     list(APPEND TILEDB_EXTERNAL_PROJECTS ep_azuresdk)
     list(APPEND FORWARD_EP_CMAKE_ARGS
