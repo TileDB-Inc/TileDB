@@ -20,7 +20,7 @@
 
 ### C++ API
 
-# TileDB v2.2.0 Release Notes
+# TileDB v2.2.1 Release Notes
 
 ## Breaking behavior
 
@@ -67,6 +67,10 @@
 * Added function `Dimension::create` that allows not setting a space tile extent. [#1880](https://github.com/TileDB-Inc/TileDB/pull/1880)
 * Added APIs for getting and setting ranges of queries using a dimension name. [#1920](https://github.com/TileDB-Inc/TileDB/pull/1920)
 * Changed `std::pair<uint64_t, uint64_t> Query::est_result_size_var` to `std::array<uint64_t, 2> Query::est_result_size_var`. Additionally, the size estimate for the offsets have been changed from elements to bytes. [#1946](https://github.com/TileDB-Inc/TileDB/pull/1946)
+
+# TileDB v2.2.0 Release Notes
+
+* This release was skipped due to an erroneous `2.2.0` git tag. 
 
 # TileDB v2.1.6 Release Notes
 
