@@ -145,7 +145,7 @@ TEST_CASE_METHOD(AzureFx, "Test Azure filesystem, file management", "[azure]") {
   REQUIRE(is_empty);
 
   // Continue building the hierarchy
-  bool is_blob = false; 
+  bool is_blob = false;
   REQUIRE(azure_.touch(URI(file1)).ok());
   REQUIRE(azure_.is_blob(URI(file1), &is_blob).ok());
   REQUIRE(is_blob);
