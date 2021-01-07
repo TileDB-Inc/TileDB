@@ -113,7 +113,7 @@ Status RestClient::get_array_schema_from_rest(
   // Get the data
   Buffer returned_data;
   RETURN_NOT_OK(
-      curlc.get_data(url, serialization_type_, &returned_data, &cache_key));
+      curlc.get_data(url, serialization_type_, &returned_data, cache_key));
   if (returned_data.data() == nullptr || returned_data.size() == 0)
     return LOG_STATUS(Status::RestError(
         "Error getting array schema from REST; server returned no data."));
@@ -146,7 +146,7 @@ Status RestClient::post_array_schema_to_rest(
       serialization_type_,
       &serialized,
       &returned_data,
-      &cache_key);
+      cache_key);
   return sc;
 }
 
@@ -163,7 +163,7 @@ Status RestClient::deregister_array_from_rest(const URI& uri) {
 
   Buffer returned_data;
   return curlc.delete_data(
-      url, serialization_type_, &returned_data, &cache_key);
+      url, serialization_type_, &returned_data, cache_key);
 }
 
 Status RestClient::get_array_non_empty_domain(
@@ -190,7 +190,7 @@ Status RestClient::get_array_non_empty_domain(
   // Get the data
   Buffer returned_data;
   RETURN_NOT_OK(
-      curlc.get_data(url, serialization_type_, &returned_data, &cache_key));
+      curlc.get_data(url, serialization_type_, &returned_data, cache_key));
 
   if (returned_data.data() == nullptr || returned_data.size() == 0)
     return LOG_STATUS(
@@ -228,7 +228,7 @@ Status RestClient::get_array_max_buffer_sizes(
   // Get the data
   Buffer returned_data;
   RETURN_NOT_OK(
-      curlc.get_data(url, serialization_type_, &returned_data, &cache_key));
+      curlc.get_data(url, serialization_type_, &returned_data, cache_key));
 
   if (returned_data.data() == nullptr || returned_data.size() == 0)
     return LOG_STATUS(
@@ -261,7 +261,7 @@ Status RestClient::get_array_metadata_from_rest(
   // Get the data
   Buffer returned_data;
   RETURN_NOT_OK(
-      curlc.get_data(url, serialization_type_, &returned_data, &cache_key));
+      curlc.get_data(url, serialization_type_, &returned_data, cache_key));
   if (returned_data.data() == nullptr || returned_data.size() == 0)
     return LOG_STATUS(Status::RestError(
         "Error getting array metadata from REST; server returned no data."));
@@ -295,7 +295,7 @@ Status RestClient::post_array_metadata_to_rest(const URI& uri, Array* array) {
   // Put the data
   Buffer returned_data;
   return curlc.post_data(
-      url, serialization_type_, &serialized, &returned_data, &cache_key);
+      url, serialization_type_, &serialized, &returned_data, cache_key);
 }
 
 Status RestClient::submit_query_to_rest(const URI& uri, Query* query) {
@@ -334,7 +334,7 @@ Status RestClient::post_query_submit(
   const std::string cache_key = array_ns + ":" + array_uri;
   RETURN_NOT_OK(
       curlc.init(config_, extra_headers_, &redirect_meta_, &redirect_mtx_));
-  const std::string url =
+  std::string url =
       redirect_uri(cache_key) + "/v2/arrays/" + array_ns + "/" +
       curlc.url_escape(array_uri) +
       "/query/submit?type=" + query_type_str(query->type()) +
@@ -359,7 +359,7 @@ Status RestClient::post_query_submit(
       copy_state);
 
   const Status st = curlc.post_data(
-      url, serialization_type_, &serialized, std::move(write_cb), &cache_key);
+      url, serialization_type_, &serialized, std::move(write_cb), cache_key);
 
   if (!st.ok() && copy_state->empty()) {
     return LOG_STATUS(Status::RestError(
@@ -559,7 +559,7 @@ Status RestClient::finalize_query_to_rest(const URI& uri, Query* query) {
       "/query/finalize?type=" + query_type_str(query->type());
   Buffer returned_data;
   RETURN_NOT_OK(curlc.post_data(
-      url, serialization_type_, &serialized, &returned_data, &cache_key));
+      url, serialization_type_, &serialized, &returned_data, cache_key));
 
   if (returned_data.data() == nullptr || returned_data.size() == 0)
     return LOG_STATUS(
@@ -688,7 +688,7 @@ Status RestClient::get_query_est_result_sizes(const URI& uri, Query* query) {
   const std::string cache_key = array_ns + ":" + array_uri;
   RETURN_NOT_OK(
       curlc.init(config_, extra_headers_, &redirect_meta_, &redirect_mtx_));
-  const std::string url =
+  std::string url =
       redirect_uri(cache_key) + "/v1/arrays/" + array_ns + "/" +
       curlc.url_escape(array_uri) +
       "/query/est_result_sizes?type=" + query_type_str(query->type());
@@ -700,7 +700,7 @@ Status RestClient::get_query_est_result_sizes(const URI& uri, Query* query) {
   // Get the data
   Buffer returned_data;
   RETURN_NOT_OK(curlc.post_data(
-      url, serialization_type_, &serialized, &returned_data, &cache_key));
+      url, serialization_type_, &serialized, &returned_data, cache_key));
   if (returned_data.data() == nullptr || returned_data.size() == 0)
     return LOG_STATUS(Status::RestError(
         "Error getting array metadata from REST; server returned no data."));
