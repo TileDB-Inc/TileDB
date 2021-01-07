@@ -24,53 +24,32 @@
 # SOFTWARE.
 #
 
-# Installs dependencies for gcs.
+# Starts a GCS Emulator Server and exports credentials to the environment
+# ('source' this script instead of executing).
 
-die() {
-  echo "$@" 1>&2 ; popd 2>/dev/null; exit 1
+
+DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
+
+export_gcs_env(){
+  export CLOUD_STORAGE_EMULATOR_ENDPOINT=http://localhost:9000 # For JSON and XML API
+  export CLOUD_STORAGE_GRPC_ENDPOINT=localhost:8000 # For gRPC API
 }
 
-install_gcs(){
-    sudo git clone https://github.com/googleapis/google-cloud-cpp.git
-    sudo pip3 install -r google-cloud-cpp/google/cloud/storage/emulator/requirements.txt
-}
 
-install_apt_pkgs() {
-  sudo apt-get -y install python3-pip git
-  install_gcs
-}
-
-install_yum_pkgs() {
-  sudo yum update
-  sudo yum -y install python3 python3-pip git
-  install_gcs
-}
-
-install_brew_pkgs() {
-  brew install python3 git
-  install_gcs
-}
-
-install_deps() {
-  if [[ $OSTYPE == linux* ]]; then
-    if [ -n "$(command -v apt-get)" ]; then
-      install_apt_pkgs
-    elif [ -n "$(command -v yum)" ]; then
-      install_yum_pkgs
-    fi
-  elif [[ $OSTYPE == darwin* ]]; then
-    if [ -n "$(command -v brew)" ]; then
-      install_brew_pkgs
-    else
-      die "homebrew is not installed!"
-    fi
-  else
-    die "unsupported package management system"
-  fi
+# gRPC server will start listening at port 8000.
+run_gcs(){
+  gunicorn --bind "localhost:9000" --worker-class sync --threads 10 --access-logfile - --chdir google-cloud-cpp/google/cloud/storage/emulator "emulator:run()"
+  # if you want to use gRPC API.
+  curl "http://localhost:9000/start_grpc?port=8000"
 }
 
 run() {
-  install_deps
+  export_gcs_env
+
+  mkdir -p /tmp/gcs-data
+  cp -f -r $DIR/../test/inputs/test_certs /tmp/gcs-data
+
+  run_gcs
 }
 
 run
