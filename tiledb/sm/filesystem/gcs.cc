@@ -385,13 +385,9 @@ Status GCS::ls(
   google::cloud::storage::Prefix prefix_option(object_path);
   google::cloud::storage::Delimiter delimiter_option(delimiter);
 
-  google::cloud::storage::internal::PaginationRange<
-      google::cloud::storage::ObjectOrPrefix,
-      google::cloud::storage::internal::ListObjectsRequest,
-      google::cloud::storage::internal::ListObjectsResponse>
-      objects_reader = client_->ListObjectsAndPrefixes(
+  google::cloud::storage::ListObjectsAndPrefixesReader objects_reader =
+      client_->ListObjectsAndPrefixes(
           bucket_name, std::move(prefix_option), std::move(delimiter_option));
-
   for (const auto& object_metadata : objects_reader) {
     if (!object_metadata.ok()) {
       const google::cloud::Status status = object_metadata.status();
