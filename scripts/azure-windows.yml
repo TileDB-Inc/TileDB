@@ -59,8 +59,10 @@ steps:
     else {
       Write-Host "did not find c:\ProgramData\Git\config"
     }
+    #git version 2.23+, location changed... think vm image says 2.29.x installed...
     if(Test-Path "c:\Program Files\Git\etc\gitconfig"){
       c:\msys64\usr\bin\cat c:\Program Files\Git\etc\gitconfig
+      cacls c:\Program Files\Git\etc\gitconfig
     }
     else {
       Write-Host "did not find c:\Program Files\Git\etc\gitconfig"
