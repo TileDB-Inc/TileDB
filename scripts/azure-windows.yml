@@ -82,13 +82,32 @@ steps:
     #git clone -b dlh/explore-CI-buildissues http://github.com/TileDB-Inc/tiledb ./gh.tiledb.git
     #hmm, I suddenly recall, all of this be running in an already fetched commit from repository...
     
-    echo "about2: hexdump ./cmake/inputs/patches/ep_azuresdk/azure-storage-lite-base64.cpp"
-    hexdump -C ./cmake/inputs/patches/ep_azuresdk/azure-storage-lite-base64.cpp
-    echo "about2: hexdump ./cmake/inputs/patches/ep_azuresdk/azure-storage-lite-storage_url.cpp"
-    hexdump -C ./cmake/inputs/patches/ep_azuresdk/azure-storage-lite-storage_url.cpp
+    #where are we, and what's there?
+    echo "about2: dir"
+    dir
+    
+    echo "about2: hexdump ./cmake/inputs/patches/ep_azuresdk/azure-storage-lite-base64.patch"
+    hexdump -C ./cmake/inputs/patches/ep_azuresdk/azure-storage-lite-base64.patch
+    tr -d '\r' ./cmake/inputs/patches/ep_azuresdk/azure-storage-lite-base64.patch
+    echo "about2b: hexdump ./cmake/inputs/patches/ep_azuresdk/azure-storage-lite-base64.patch"
+    hexdump -C ./cmake/inputs/patches/ep_azuresdk/azure-storage-lite-base64.patch
+
+    echo "about2: hexdump ./cmake/inputs/patches/ep_azuresdk/azure-storage-lite-storage_url.patch"
+    hexdump -C ./cmake/inputs/patches/ep_azuresdk/azure-storage-lite-storage_url.patch
+    tr -d '\r' ./cmake/inputs/patches/ep_azuresdk/azure-storage-lite-storage_url.patch
+    echo "about2b: hexdump ./cmake/inputs/patches/ep_azuresdk/azure-storage-lite-storage_url.patch"
+    hexdump -C ./cmake/inputs/patches/ep_azuresdk/azure-storage-lite-storage_url.patch
+
     echo "about2: hexdump ./cmake/inputs/patches/ep_azuresdk/remove-uuid-dep.patch"
     hexdump -C ./cmake/inputs/patches/ep_azuresdk/remove-uuid-dep.patch
+    tr -d '\r' ./cmake/inputs/patches/ep_azuresdk/remove-uuid-dep.patch
+    echo "about2b: hexdump ./cmake/inputs/patches/ep_azuresdk/remove-uuid-dep.patch"
+    hexdump -C ./cmake/inputs/patches/ep_azuresdk/remove-uuid-dep.patch
+
     echo "about2: hexdump ./cmake/inputs/patches/ep_azuresdk/azurite-support.patch"
+    hexdump -C ./cmake/inputs/patches/ep_azuresdk/azurite-support.patch
+    tr -d '\r' ./cmake/inputs/patches/ep_azuresdk/azurite-support.patch
+    echo "about2b: hexdump ./cmake/inputs/patches/ep_azuresdk/azurite-support.patch"
     hexdump -C ./cmake/inputs/patches/ep_azuresdk/azurite-support.patch
     
     $host.SetShouldExit(-1)
