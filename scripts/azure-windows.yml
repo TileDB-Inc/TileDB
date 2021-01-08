@@ -24,16 +24,24 @@ steps:
     $env:Path += ";c:\msys64\usr\bin"
     #echo "about2: cat c:\ProgramData\Git\config"
     #cat c:\ProgramData\Git\config
-    echo "about2: which cat"
-    which cat
-    echo "about2: ls c:\ProgramData\Git\config"
-    ls c:\ProgramData\Git\config
+    #so,apparently powershell has a 'cat' of its own...
+    #echo "about2: which cat"
+    #which cat
+    #echo "about2: ls c:\ProgramData\Git\config"
+    #ls c:\ProgramData\Git\config
+    if(Test-Path "c:\ProgramData\Git\config"){
+      c:\msys64\usr\bin\cat c:\ProgramData\Git\config
+    }
+    else {
+      Write-Host "did not find c:\ProgramData\Git\config"
+    }
     hexdump --version
     hexdump --help
 
     mkdir $env:AGENT_BUILDDIRECTORY\build
     cd $env:AGENT_BUILDDIRECTORY\build
 
+    #should be windows version of git, we haven't installed one in msys2...
     git clone http://github.com/TileDB-Inc/tiledb ./gh.tiledb.git
     
     echo "about2: hexdump ./gh.tiledb.git/cmake/inputs/patches/ep_azuresdk/azure-storage-lite-base64.cpp"
