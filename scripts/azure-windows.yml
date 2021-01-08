@@ -7,7 +7,7 @@ steps:
 
 - bash: |
     set -e pipefail
-    if [[ "$TILEDB_TESTS_ENABLE_ARROW" == "ON" ]]; then
+    if [[ "$TILEDB_ARROW_TESTS" == "ON" ]]; then
       pip install pyarrow pybind11 numpy
     fi
 
@@ -59,7 +59,7 @@ steps:
 
     # Clone backwards compatibility test arrays
     if ($env:BACKWARDS_COMPATIBILITY_ARRAYS -eq "ON") {
-      git clone https://github.com/TileDB-Inc/TileDB-Unit-Test-Arrays.git --branch 2.0.0-3 $env:BUILD_SOURCESDIRECTORY/test/inputs/arrays/read_compatibility_test
+      git clone https://github.com/TileDB-Inc/TileDB-Unit-Test-Arrays.git --branch 2.2.0 $env:BUILD_SOURCESDIRECTORY/test/inputs/arrays/read_compatibility_test
     }
 
     if ($env:TILEDB_S3 -eq "ON") {

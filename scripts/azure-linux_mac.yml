@@ -17,7 +17,7 @@ steps:
 - bash: |
     set -e pipefail
     python -m pip install --upgrade pip virtualenv
-    if [[ "$TILEDB_TESTS_ENABLE_ARROW" == "ON" ]]; then
+    if [[ "$TILEDB_ARROW_TESTS" == "ON" ]]; then
       pip install pyarrow pybind11 numpy
     fi
 
@@ -63,7 +63,7 @@ steps:
     git config --global user.email 'no-reply@tiledb.io'
 
     if [[ "$BACKWARDS_COMPATIBILITY_ARRAYS" == "ON" ]]; then
-      git clone https://github.com/TileDB-Inc/TileDB-Unit-Test-Arrays.git --branch 2.0.0-3 test/inputs/arrays/read_compatibility_test
+      git clone https://github.com/TileDB-Inc/TileDB-Unit-Test-Arrays.git --branch 2.2.0 test/inputs/arrays/read_compatibility_test
     fi
     #   displayName: 'Clone Unit-Test-Arrays'
 

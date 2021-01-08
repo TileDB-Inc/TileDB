@@ -269,6 +269,7 @@ void check_save_to_file() {
   ss << "vfs.s3.proxy_scheme http\n";
   ss << "vfs.s3.region us-east-1\n";
   ss << "vfs.s3.request_timeout_ms 3000\n";
+  ss << "vfs.s3.requester_pays false\n";
   ss << "vfs.s3.scheme https\n";
   ss << "vfs.s3.use_multipart_upload true\n";
   ss << "vfs.s3.use_virtual_addressing true\n";
@@ -535,6 +536,7 @@ TEST_CASE("C API: Test config iter", "[capi], [config]") {
   all_param_values["vfs.s3.connect_scale_factor"] = "25";
   all_param_values["vfs.s3.logging_level"] = "Off";
   all_param_values["vfs.s3.request_timeout_ms"] = "3000";
+  all_param_values["vfs.s3.requester_pays"] = "false";
   all_param_values["vfs.s3.proxy_host"] = "";
   all_param_values["vfs.s3.proxy_password"] = "";
   all_param_values["vfs.s3.proxy_port"] = "0";
@@ -591,6 +593,7 @@ TEST_CASE("C API: Test config iter", "[capi], [config]") {
   vfs_param_values["s3.connect_scale_factor"] = "25";
   vfs_param_values["s3.logging_level"] = "Off";
   vfs_param_values["s3.request_timeout_ms"] = "3000";
+  vfs_param_values["s3.requester_pays"] = "false";
   vfs_param_values["s3.proxy_host"] = "";
   vfs_param_values["s3.proxy_password"] = "";
   vfs_param_values["s3.proxy_port"] = "0";
@@ -641,6 +644,7 @@ TEST_CASE("C API: Test config iter", "[capi], [config]") {
   s3_param_values["connect_scale_factor"] = "25";
   s3_param_values["logging_level"] = "Off";
   s3_param_values["request_timeout_ms"] = "3000";
+  s3_param_values["requester_pays"] = "false";
   s3_param_values["proxy_host"] = "";
   s3_param_values["proxy_password"] = "";
   s3_param_values["proxy_port"] = "0";

@@ -1,12 +1,12 @@
-From 9d8c327c0763229939c52fd7d3bf994f243c609f Mon Sep 17 00:00:00 2001
-From: Seth Shelnutt <Shelnutt2@gmail.com>
-Date: Sun, 7 Jun 2020 13:19:31 -0400
-Subject: [PATCH] GCS Build Patch for TileDB
+From b95493b781f372c0afbbfe0c1f8d1603513bd25a Mon Sep 17 00:00:00 2001
+From: Joe Maley <joe@tiledb.com>
+Date: Fri, 8 Jan 2021 10:51:53 -0500
+Subject: [PATCH] GCS build patch for TileDB
 
 ---
  CMakeLists.txt                  |  5 +++
- super/CMakeLists.txt            | 19 +++++++---
- super/external/abseil.cmake     |  5 ++-
+ super/CMakeLists.txt            | 13 +++++--
+ super/external/abseil.cmake     |  6 ++--
  super/external/c-ares.cmake     |  5 ++-
  super/external/crc32c.cmake     |  5 ++-
  super/external/curl.cmake       | 63 ---------------------------------
@@ -15,16 +15,16 @@ Subject: [PATCH] GCS Build Patch for TileDB
  super/external/protobuf.cmake   |  7 ++--
  super/external/ssl.cmake        | 26 --------------
  super/external/zlib.cmake       | 46 ------------------------
- 11 files changed, 52 insertions(+), 149 deletions(-)
+ 11 files changed, 47 insertions(+), 149 deletions(-)
  delete mode 100644 super/external/curl.cmake
  delete mode 100644 super/external/ssl.cmake
  delete mode 100644 super/external/zlib.cmake
 
 diff --git a/CMakeLists.txt b/CMakeLists.txt
-index 0dcf55c56..55074b7f2 100644
+index e0ffd4a75..cda631c40 100644
 --- a/CMakeLists.txt
 +++ b/CMakeLists.txt
-@@ -61,6 +61,11 @@ endif ()
+@@ -65,6 +65,11 @@ endif ()
  option(GOOGLE_CLOUD_CPP_ENABLE_MACOS_OPENSSL_CHECK
         "If enabled, check that the user has defined OPENSSL_ROOT_DIR on macOS"
         ON)
@@ -37,32 +37,26 @@ index 0dcf55c56..55074b7f2 100644
      # This is an easy mistake to make, and the error messages are very
      # confusing. Help our users by giving them some guidance.
 diff --git a/super/CMakeLists.txt b/super/CMakeLists.txt
-index 01b41dd3a..2c1de0078 100644
+index f5560a620..12ca348a2 100644
 --- a/super/CMakeLists.txt
 +++ b/super/CMakeLists.txt
-@@ -38,7 +38,6 @@ if ("${GOOGLE_CLOUD_CPP_ENABLE_CCACHE}")
- endif ()
+@@ -39,7 +39,6 @@ endif ()
  
  include(external/abseil)
+ include(external/benchmark)
 -include(external/curl)
  include(external/crc32c)
- include(external/grpc)
  include(external/googletest)
-@@ -51,8 +50,11 @@ set_external_project_build_parallel_level(PARALLEL)
- set_external_project_vars()
- 
+ include(external/grpc)
+@@ -55,7 +54,6 @@ set_external_project_vars()
  set(GOOGLE_CLOUD_CPP_DEPENDENCIES_LIST
--    abseil-cpp-project grpc-project curl-project crc32c-project
--    googletest-project benchmark-project)
-+    abseil-cpp-project
-+    grpc-project
-+    crc32c-project
-+    googletest-project
-+    benchmark-project)
- 
- include(ExternalProject)
- ExternalProject_Add(
-@@ -70,6 +72,14 @@ ExternalProject_Add(
+     abseil-cpp-project
+     grpc-project
+-    curl-project
+     crc32c-project
+     nlohmann-json-project
+     googletest-project
+@@ -77,6 +75,14 @@ ExternalProject_Add(
                 -DCMAKE_PREFIX_PATH=${GOOGLE_CLOUD_CPP_PREFIX_PATH}
                 -DCMAKE_INSTALL_RPATH=${GOOGLE_CLOUD_CPP_INSTALL_RPATH}
                 -DCMAKE_INSTALL_PREFIX=<INSTALL_DIR>
@@ -77,7 +71,7 @@ index 01b41dd3a..2c1de0078 100644
      BUILD_COMMAND ${CMAKE_COMMAND} --build <BINARY_DIR> ${PARALLEL}
      TEST_COMMAND
          ${CMAKE_CTEST_COMMAND}
-@@ -82,7 +92,8 @@ ExternalProject_Add(
+@@ -89,7 +95,8 @@ ExternalProject_Add(
      LOG_DOWNLOAD OFF
      LOG_CONFIGURE OFF
      LOG_BUILD OFF
@@ -88,20 +82,19 @@ index 01b41dd3a..2c1de0078 100644
  # This makes it easy to compile the dependencies before the code.
  add_custom_target(project-dependencies)
 diff --git a/super/external/abseil.cmake b/super/external/abseil.cmake
-index 10321e5e4..c0dbd3ce5 100644
+index 97d2c1551..0b71ee987 100644
 --- a/super/external/abseil.cmake
 +++ b/super/external/abseil.cmake
-@@ -45,6 +45,8 @@ if (NOT TARGET abseil-cpp-project)
+@@ -46,11 +46,13 @@ if (NOT TARGET abseil-cpp-project)
                     -DCMAKE_PREFIX_PATH=${GOOGLE_CLOUD_CPP_PREFIX_PATH}
                     -DCMAKE_INSTALL_RPATH=${GOOGLE_CLOUD_CPP_INSTALL_RPATH}
                     -DCMAKE_INSTALL_PREFIX=<INSTALL_DIR>
 +                   -DCMAKE_CXX_FLAGS=-fPIC
 +                   -DCMAKE_C_FLAGS=-fPIC
-         BUILD_COMMAND
-             ${CMAKE_COMMAND}
-             --build
-@@ -57,5 +59,6 @@ if (NOT TARGET abseil-cpp-project)
-         LOG_DOWNLOAD OFF
+         BUILD_COMMAND ${CMAKE_COMMAND} --build <BINARY_DIR> ${PARALLEL}
+         PATCH_COMMAND ${CMAKE_COMMAND} -P
+                       "${CMAKE_CURRENT_LIST_DIR}/abseil-patch.cmake"
+-        LOG_DOWNLOAD OFF
          LOG_CONFIGURE OFF
          LOG_BUILD ON
 -        LOG_INSTALL ON)
@@ -392,5 +385,5 @@ index f9df5e4cc..000000000
 -        LOG_INSTALL ON)
 -endif ()
 -- 
-2.28.0
+2.30.0
 

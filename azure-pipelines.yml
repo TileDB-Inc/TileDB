@@ -15,6 +15,7 @@ stages:
       BACKWARDS_COMPATIBILITY_ARRAYS: OFF
     jobs:
     - job:
+      timeoutInMinutes: 90
       strategy:
         matrix:
           linux_s3:
@@ -31,7 +32,7 @@ stages:
             imageName: 'ubuntu-16.04'
             TILEDB_AZURE: ON
             TILEDB_STATIC: OFF
-            TILEDB_TESTS_ENABLE_ARROW: ON
+            TILEDB_ARROW_TESTS: ON
             CXX: g++
           linux_gcs:
             imageName: 'ubuntu-16.04'
@@ -41,7 +42,7 @@ stages:
           macOS:
             imageName: 'macOS-10.14'
             TILEDB_S3: ON
-            TILEDB_TESTS_ENABLE_ARROW: ON
+            TILEDB_ARROW_TESTS: ON
             CXX: clang++
           macOS_azure:
             imageName: 'macOS-10.15'
@@ -87,7 +88,7 @@ stages:
           VS2017:
             imageName: 'vs2017-win2016'
             TILEDB_S3: ON
-            TILEDB_TESTS_ENABLE_ARROW: ON
+            TILEDB_ARROW_TESTS: ON
       pool:
         vmImage: $(imageName)
       steps:
