@@ -19,7 +19,14 @@ steps:
     git config --list
     #Seem to be two (2) core.autocrlf lines displayed for plain 'git config --list', will they both change???
     #(anything to do with the (two) include.path=... items?)
+    Set-PSDebug -Trace 1 
+    echo "about2: (before) git config core.autocrlf"
+    git config core.autocrlf
+    echo "about2: git config core.autocrlf false"
     git config core.autocrlf false
+    echo "about2: (after) git config core.autocrlf"
+    git config core.autocrlf
+    Set-PSDebug -Trace 0 
     echo "about2: (after) git config --list"
     git config --list
 
