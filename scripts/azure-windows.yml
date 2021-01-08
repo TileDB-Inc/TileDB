@@ -59,34 +59,38 @@ steps:
     else {
       Write-Host "did not find c:\ProgramData\Git\config"
     }
-    #git version 2.23+, location changed... think vm image says 2.29.x installed...
+    #git version 2.23+, location changed... think vm image says 2.29.x installed...#
     if(Test-Path "c:\Program Files\Git\etc\gitconfig"){
-      c:\msys64\usr\bin\cat c:\Program Files\Git\etc\gitconfig
-      cacls c:\Program Files\Git\etc\gitconfig
+      c:\msys64\usr\bin\cat "c:\Program Files\Git\etc\gitconfig"
+      cacls "c:\Program Files\Git\etc\gitconfig"
     }
     else {
       Write-Host "did not find c:\Program Files\Git\etc\gitconfig"
     }
     hexdump --version
     hexdump --help
-
-    mkdir $env:AGENT_BUILDDIRECTORY\build
-    cd $env:AGENT_BUILDDIRECTORY\build
+    
+    echo "about2: pip3 --version"
+    pip3 --version #is pip3 already available along with python3?
 
     #should be windows version of git, we haven't installed one in msys2...
-    git clone http://github.com/TileDB-Inc/tiledb ./gh.tiledb.git
+    #git clone -b dlh/explore-CI-buildissues http://github.com/TileDB-Inc/tiledb ./gh.tiledb.git
+    #hmm, I suddenly recall, all of this be running in an already fetched commit from repository...
     
-    echo "about2: hexdump ./gh.tiledb.git/cmake/inputs/patches/ep_azuresdk/azure-storage-lite-base64.cpp"
-    hexdump -C ./gh.tiledb.git/cmake/inputs/patches/ep_azuresdk/azure-storage-lite-base64.cpp
-    echo "about2: hexdump ./gh.tiledb.git/cmake/inputs/patches/ep_azuresdk/azure-storage-lite-storage_url.cpp"
-    hexdump -C ./gh.tiledb.git/cmake/inputs/patches/ep_azuresdk/azure-storage-lite-storage_url.cpp
-    echo "about2: hexdump ./gh.tiledb.git/cmake/inputs/patches/ep_azuresdk/remove-uuid-dep.patch"
-    hexdump -C ./gh.tiledb.git/cmake/inputs/patches/ep_azuresdk/remove-uuid-dep.patch
-    echo "about2: hexdump ./gh.tiledb.git/cmake/inputs/patches/ep_azuresdk/azurite-support.patch"
-    hexdump -C ./gh.tiledb.git/cmake/inputs/patches/ep_azuresdk/azurite-support.patch
+    echo "about2: hexdump ./cmake/inputs/patches/ep_azuresdk/azure-storage-lite-base64.cpp"
+    hexdump -C ./cmake/inputs/patches/ep_azuresdk/azure-storage-lite-base64.cpp
+    echo "about2: hexdump ./cmake/inputs/patches/ep_azuresdk/azure-storage-lite-storage_url.cpp"
+    hexdump -C ./cmake/inputs/patches/ep_azuresdk/azure-storage-lite-storage_url.cpp
+    echo "about2: hexdump ./cmake/inputs/patches/ep_azuresdk/remove-uuid-dep.patch"
+    hexdump -C ./cmake/inputs/patches/ep_azuresdk/remove-uuid-dep.patch
+    echo "about2: hexdump ./cmake/inputs/patches/ep_azuresdk/azurite-support.patch"
+    hexdump -C ./cmake/inputs/patches/ep_azuresdk/azurite-support.patch
     
     $host.SetShouldExit(-1)
     return -1
+
+    mkdir $env:AGENT_BUILDDIRECTORY\build
+    cd $env:AGENT_BUILDDIRECTORY\build
 
     if ($env:imageName -eq "vs2017-win2016") {
       $env:Path += ";C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin"
