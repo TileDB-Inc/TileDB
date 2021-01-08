@@ -22,8 +22,12 @@ steps:
     git config --system --list
     #docs say 'pre-installed', here's hoping they've invoked shell first time so we can just add to path and use...
     $env:Path += ";c:\msys64\usr\bin"
-    echo "about2: cat c:\ProgramData\Git\config"
-    cat c:\ProgramData\Git\config
+    #echo "about2: cat c:\ProgramData\Git\config"
+    #cat c:\ProgramData\Git\config
+    echo "about2: which cat"
+    which cat
+    echo "about2: ls c:\ProgramData\Git\config"
+    ls c:\ProgramData\Git\config
     hexdump --version
     hexdump --help
 
