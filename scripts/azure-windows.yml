@@ -36,8 +36,13 @@ steps:
     echo "about2: (before) git config --system --list"
     git config --system --list
     git config --system core.autocrlf false
+    git config --system core.autocrlf
     echo "about2: (after) git config --system --list"
     git config --system --list
+
+    echo "about2: (before2) git config --list"
+    #see if it's now clear here after being clear in 'system' above...
+    git config --list
 
     #docs say 'pre-installed', here's hoping they've invoked shell first time so we can just add to path and use...
     $env:Path += ";c:\msys64\usr\bin"
