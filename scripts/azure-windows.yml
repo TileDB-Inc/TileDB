@@ -59,6 +59,12 @@ steps:
     else {
       Write-Host "did not find c:\ProgramData\Git\config"
     }
+    if(Test-Path "c:\Program Files\Git\etc\gitconfig"){
+      c:\msys64\usr\bin\cat c:\Program Files\Git\etc\gitconfig
+    }
+    else {
+      Write-Host "did not find c:\Program Files\Git\etc\gitconfig"
+    }
     hexdump --version
     hexdump --help
 
