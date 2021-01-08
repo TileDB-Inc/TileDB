@@ -14,12 +14,24 @@ steps:
 - powershell: |
     echo "about2: git --version"
     git --version
-    echo "about2: git config --list"
+
+    echo "about2: (before) git config --list"
     git config --list
+    #Seem to be two (2) core.autocrlf lines displayed for plain 'git config --list', will they both change???
+    #(anything to do with the (two) include.path=... items?)
+    git config core.autocrlf false
+    echo "about2: (after) git config --list"
+    git config --list
+
     echo "about2: git config --global --list"
     git config --global --list
-    echo "about2: git config --system --list"
+
+    echo "about2: (before) git config --system --list"
     git config --system --list
+    git config --system core.autocrlf false
+    echo "about2: (after) git config --system --list"
+    git config --system --list
+
     #docs say 'pre-installed', here's hoping they've invoked shell first time so we can just add to path and use...
     $env:Path += ";c:\msys64\usr\bin"
     #echo "about2: cat c:\ProgramData\Git\config"
