@@ -125,21 +125,21 @@ steps:
     echo "about2: hexdump ./cmake/inputs/patches/ep_azuresdk/azure-storage-lite-storage_url.patch"
     hexdump -C ./cmake/inputs/patches/ep_azuresdk/azure-storage-lite-storage_url.patch
     #tr -d '\r' ./cmake/inputs/patches/ep_azuresdk/azure-storage-lite-storage_url.patch
-    deleteCR "./cmke/inputs/patches/ep_azuresdk" "azure-storage-lite-storage_url.patch"
+    deleteCR "./cmake/inputs/patches/ep_azuresdk" "azure-storage-lite-storage_url.patch"
     echo "about2b: hexdump ./cmake/inputs/patches/ep_azuresdk/azure-storage-lite-storage_url.patch"
     hexdump -C ./cmake/inputs/patches/ep_azuresdk/azure-storage-lite-storage_url.patch
 
     echo "about2: hexdump ./cmake/inputs/patches/ep_azuresdk/remove-uuid-dep.patch"
     hexdump -C ./cmake/inputs/patches/ep_azuresdk/remove-uuid-dep.patch
     #tr -d '\r' ./cmake/inputs/patches/ep_azuresdk/remove-uuid-dep.patch
-    deleteCR "./cmke/inputs/patches/ep_azuresdk" "remove-uuid-dep.patch"
+    deleteCR "./cmake/inputs/patches/ep_azuresdk" "remove-uuid-dep.patch"
     echo "about2b: hexdump ./cmake/inputs/patches/ep_azuresdk/remove-uuid-dep.patch"
     hexdump -C ./cmake/inputs/patches/ep_azuresdk/remove-uuid-dep.patch
 
     echo "about2: hexdump ./cmake/inputs/patches/ep_azuresdk/azurite-support.patch"
     hexdump -C ./cmake/inputs/patches/ep_azuresdk/azurite-support.patch
     #tr -d '\r' ./cmake/inputs/patches/ep_azuresdk/azurite-support.patch
-    deleteCR "./cmke/inputs/patches/ep_azuresdk" "azurite-support.patch"
+    deleteCR "./cmake/inputs/patches/ep_azuresdk" "azurite-support.patch"
     echo "about2b: hexdump ./cmake/inputs/patches/ep_azuresdk/azurite-support.patch"
     hexdump -C ./cmake/inputs/patches/ep_azuresdk/azurite-support.patch
     
