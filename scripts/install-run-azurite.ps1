@@ -60,16 +60,19 @@ function run-batchfile-modifying-path([string] $scriptPath) {
 function Install-azurite {
     $NodeJSRoot = (Join-Path $StagingDirectory "nodejs")
     Write-Host "nodeJSRoot: " + $NodeJSRoot
-    $azuriteDataPath= (Join-Path $InstallPrefix "azurite-data")
+    #$azuriteDataPath= (Join-Path $InstallPrefix "azurite-data")
+    $azuriteDataPath= (Join-Path $env:TEMP "azurite-data")
     Write-Host "azuriteDataPath: " + $azuriteDataPath
     if(!(Test-Path $azuriteDataPath)){
        New-Item -ItemType Directory -Path $azuriteDataPath
+	   #dir $azuriteDataPath
     }
     $DownloadNodeJSArchiveDest = (Join-Path $NodeJSRoot "")
     Write-Host "DownloadNodeJSArchiveDest: $DownloadNodeJSArchiveDest"
     $NodeJSVersion = "v14.15.4"
     if (!(Test-Path $NodeJSRoot)) {
        New-Item -ItemType Directory -Path $NodeJSRoot
+	   #dir $NodeJSRoot
     }
     #pieces based on paths in downloaded archive - good until they change paths
     $NodeJSVersionedInstalledPath = (Join-Path $InstallPrefix ("node-" + $NodeJSVersion + "-win-x64") )
@@ -131,11 +134,11 @@ function Install-azurite {
     $npxCmdPath = (Join-Path $NodeJSGenericInstalledPath "npx.cmd")
     #Write-Host "npxCmdPath: " + $npxCmdPath
     $azuriteDebugLog = (Join-Path $azuriteDataPath "Debug.Log")
-    #Write-Host "azuriteDebugLog: " + $azuriteDebugLog
+    Write-Host "azuriteDebugLog: " + $azuriteDebugLog
     #parameters for azurite-blob taken from those used in run-azurite.sh
     #seems that npx(/npm?) is causing desired window title to be overwritten (title shown is 'npm')...?
     #despite... https://stackoverflow.com/questions/30611803/how-to-set-the-title-of-a-windows-console-while-npm-is-running
-    $npxCmd = "start `"azurite host window`" " + $npxCmdPath + " azurite-blob" + " --silent --location " +$azuriteDataPath + " --debug " + $azuriteDebugLog + " --blobPort 10000 --blobHost 0.0.0.0 "
+    $npxCmd = "start `"azurite host window`" " + $npxCmdPath + " azurite-blob" + " --silent --location " + $azuriteDataPath + " --debug " + $azuriteDebugLog + " --blobPort 10000 --blobHost 0.0.0.0 "
     Write-Host "npxCmd: $npxCmd"
     #this will leave a command prompt window open with nodejs/azurite running in it.
     cmd /c $npxCmd

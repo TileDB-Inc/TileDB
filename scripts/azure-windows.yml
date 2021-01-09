@@ -12,37 +12,39 @@ steps:
     fi
 
 - powershell: |
-    echo "about2: git --version"
-    git --version
+    #so, changes to git config come too late, because fetch has already been made by time we're here...
+    #have to massage the files directly (if that even proves to be the solution...)
+    #~ echo "about2: git --version"
+    #~ git --version
 
-    echo "about2: (before) git config --list"
-    git config --list --show-origin
-    #Seem to be two (2) core.autocrlf lines displayed for plain 'git config --list', will they both change???
-    #(anything to do with the (two) include.path=... items?)
-    Set-PSDebug -Trace 1 
-    echo "about2: (before) git config core.autocrlf"
-    git config core.autocrlf
-    echo "about2: git config core.autocrlf false"
-    git config core.autocrlf false
-    echo "about2: (after) git config core.autocrlf"
-    git config core.autocrlf
-    Set-PSDebug -Trace 0 
-    echo "about2: (after) git config --list"
-    git config --list --show-origin
+    #~ echo "about2: (before) git config --list"
+    #~ git config --list --show-origin
+    #~ #Seem to be two (2) core.autocrlf lines displayed for plain 'git config --list', will they both change???
+    #~ #(anything to do with the (two) include.path=... items?)
+    #~ Set-PSDebug -Trace 1 
+    #~ echo "about2: (before) git config core.autocrlf"
+    #~ git config core.autocrlf
+    #~ echo "about2: git config core.autocrlf false"
+    #~ git config core.autocrlf false
+    #~ echo "about2: (after) git config core.autocrlf"
+    #~ git config core.autocrlf
+    #~ Set-PSDebug -Trace 0 
+    #~ echo "about2: (after) git config --list"
+    #~ git config --list --show-origin
 
-    echo "about2: git config --global --list"
-    git config --global --list
+    #~ echo "about2: git config --global --list"
+    #~ git config --global --list
 
-    echo "about2: (before) git config --system --list"
-    git config --system --list
-    git config --system core.autocrlf false
-    git config --system core.autocrlf
-    echo "about2: (after) git config --system --list"
-    git config --system --list
+    #~ echo "about2: (before) git config --system --list"
+    #~ git config --system --list
+    #~ git config --system core.autocrlf false
+    #~ git config --system core.autocrlf
+    #~ echo "about2: (after) git config --system --list"
+    #~ git config --system --list
 
-    echo "about2: (before2) git config --list"
-    #see if it's now clear here after being clear in 'system' above...
-    git config --list  --show-origin
+    #~ echo "about2: (before2) git config --list"
+    #~ #see if it's now clear here after being clear in 'system' above...
+    #~ git config --list  --show-origin
     
     #so, I suddenly realize the fetch has *already* occurred with those settings...
     #(altho, the clone I was doing, still seemed to have crlf line endings, but maybe that's how they are on patches already in 'dev' branch?)
@@ -226,6 +228,11 @@ steps:
     #don't need azurite running until here...
     if ($env:TILEDB_AZURE -eq "ON") {
       & "$env:BUILD_SOURCESDIRECTORY\scripts\install-run-azurite.ps1"
+      #present list of tasks to see if 'node' is running
+      echo "all tasks"
+      tasklist
+      echo "is 'node' present?"
+      tasklist | findstr /i node.exe
     }
 
     # Actually run tests
