@@ -173,11 +173,13 @@ steps:
     }
 
 #    $bootstrapExpression = "& $env:BUILD_SOURCESDIRECTORY\bootstrap.ps1 " + $bootstrapOptions
+#still have trouble,but some help at https://octopus.com/blog/powershell-pipe-escaping
 #    $bootstrapExpression = "`"&`" $env:BUILD_SOURCESDIRECTORY\bootstrap.ps1 " + $bootstrapOptions
 #    bootstrapExpression = "`"& $env:BUILD_SOURCESDIRECTORY\bootstrap.ps1 `"" + $bootstrapOptions
 #    bootstrapExpression = "'&' $env:BUILD_SOURCESDIRECTORY\bootstrap.ps1 " + $bootstrapOptions
 #    bootstrapExpression = '& $env:BUILD_SOURCESDIRECTORY\bootstrap.ps1 ' + $bootstrapOptions
-    $bootstrapExpression = '& $env:BUILD_SOURCESDIRECTORY\bootstrap.ps1 ' + $bootstrapOptions
+#    $bootstrapExpression = '& $env:BUILD_SOURCESDIRECTORY\bootstrap.ps1 ' + $bootstrapOptions
+    $bootstrapExpression = '"&" $env:BUILD_SOURCESDIRECTORY\bootstrap.ps1 ' + $bootstrapOptions
     write-host "bootstrapExpression: $bootstrapExpression"
     Invoke-Expression $bootstrapExpression
 
