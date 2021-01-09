@@ -106,8 +106,10 @@ steps:
       #think mingw rtl is trashing paths (the backslashes inter'd as escapes in string)...
       #bash -c "c:\msys64\usr\bin\tr -d '\r' < $infile > $outfile"
       if (Test-Path $outfile) {
+        dir $path
         remove-item -path $infile #(Join-Path $path $file)
         ren $outfile $file #(Join-Path $path $file ".nocr") (Join-Path $path $file)
+        dir $path
       }
     }
     
