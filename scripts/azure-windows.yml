@@ -87,33 +87,23 @@ steps:
     dir
     
     function deleteCR([string] $path, [string]$file){
-	  write-host "path: $path"
-	  write-host "file: $file"
+      write-host "path: $path"
+      write-host "file: $file"
       $infile = Join-Path $path $file
-	  write-host "infile: $infile"
+      write-host "infile: $infile"
       #$outfile = Join-Path $path $file ".nocr"
       #$outfile = (Join-Path $path ($file + ".nocr") )
-	  $outname = $file + ".nocr"
-	  write-host "outname: $outname"
+      $outname = $file + ".nocr"
+      write-host "outname: $outname"
       $outfile = (Join-Path $path $outname )
-	  write-host "outfile: $outfile"
+      write-host "outfile: $outfile"
       #c:\msys64\usr\bin\tr -d < (Join-Path $path $file) > (JoinPath $path $file ".nocr")
       cmd /c "c:\msys64\usr\bin\tr -d '\r' < $infile > $outfile"
-	  #think mingw rtl is trashing paths (the backslashes inter'd as escapes in string)...
+      #think mingw rtl is trashing paths (the backslashes inter'd as escapes in string)...
       #bash -c "c:\msys64\usr\bin\tr -d '\r'< $infile > $outfile"
       if (Test-Path $outfile) {
         remove-item -path $infile #(Join-Path $path $file)
         ren $outfile $infile #(Join-Path $path $file ".nocr") (Join-Path $path $file)
-      }
-    }
-    function deleteCR([string] $path, [string]$file){
-      $infile = Join-Path $path $file
-      $outfile = (Join-Path $path $file) + ".nocr"
-      #c:\msys64\usr\bin\tr -d < (Join-Path $path $file) > (JoinPath $path $file ".nocr")
-      cmd /c "c:\msys64\usr\bin\tr -d < $infile > $outfile"
-      if (Test-Path $outfile) {
-        del $infile #(Join-Path $path $file)
-        ren $outfile $infil #(Join-Path $path $file ".nocr") (Join-Path $path $file)
       }
     }
     
