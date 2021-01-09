@@ -85,6 +85,8 @@ steps:
     #where are we, and what's there?
     echo "about2: dir"
     dir
+    echo "what patches are here?
+    dir ".\cmake\inputs\patches\ep_azuresdk"
     
     function deleteCR([string] $path, [string]$file){
       write-host "path: $path"
@@ -110,7 +112,9 @@ steps:
     echo "about2: hexdump ./cmake/inputs/patches/ep_azuresdk/azure-storage-lite-base64.patch"
     hexdump -C ./cmake/inputs/patches/ep_azuresdk/azure-storage-lite-base64.patch
     #tr -d '\r' ./cmake/inputs/patches/ep_azuresdk/azure-storage-lite-base64.patch
+    Set-PSDebug -Trace 1 
     deleteCR "./cmke/inputs/patches/ep_azuresdk" "azure-storage-lite-base64.patch"
+    Set-PSDebug -Trace 0
     echo "about2b: hexdump ./cmake/inputs/patches/ep_azuresdk/azure-storage-lite-base64.patch"
     hexdump -C ./cmake/inputs/patches/ep_azuresdk/azure-storage-lite-base64.patch
 
