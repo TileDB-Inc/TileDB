@@ -100,7 +100,9 @@ steps:
       $outfile = (Join-Path $path $outname )
       write-host "outfile: $outfile"
       #c:\msys64\usr\bin\tr -d < (Join-Path $path $file) > (JoinPath $path $file ".nocr")
-      cmd /c "c:\msys64\usr\bin\tr -d '\r' '<' $infile '>' $outfile"
+      cmd /c "c:\msys64\usr\bin\tr -d '\r' < $infile > $outfile"
+      #cmd /c 'c:\msys64\usr\bin\tr -d "\r" < $infile > $outfile'
+      #cmd /c "c:\msys64\usr\bin\tr -d '\r' '<' $infile '>' $outfile"
       #think mingw rtl is trashing paths (the backslashes inter'd as escapes in string)...
       #bash -c "c:\msys64\usr\bin\tr -d '\r' < $infile > $outfile"
       if (Test-Path $outfile) {
@@ -139,8 +141,8 @@ steps:
     echo "about2b: hexdump ./cmake/inputs/patches/ep_azuresdk/azurite-support.patch"
     hexdump -C ./cmake/inputs/patches/ep_azuresdk/azurite-support.patch
     
-    #~ $host.SetShouldExit(-1)
-    #~ return -1
+    $host.SetShouldExit(-1)
+    return -1
 
     mkdir $env:AGENT_BUILDDIRECTORY\build
     cd $env:AGENT_BUILDDIRECTORY\build
