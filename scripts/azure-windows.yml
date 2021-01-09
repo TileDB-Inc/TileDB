@@ -86,7 +86,7 @@ steps:
     echo "about2: dir"
     dir
     echo "what patches are here?
-    dir ".\cmake\inputs\patches\ep_azuresdk"
+    dir .\cmake\inputs\patches\ep_azuresdk
     
     function deleteCR([string] $path, [string]$file){
       write-host "path: $path"
@@ -172,7 +172,8 @@ steps:
       #NOTE: GCS simulator not yet actually in place.
     }
 
-    $bootstrapExpression = "& $env:BUILD_SOURCESDIRECTORY\bootstrap.ps1 " + $bootstrapOptions
+#    $bootstrapExpression = "& $env:BUILD_SOURCESDIRECTORY\bootstrap.ps1 " + $bootstrapOptions
+    $bootstrapExpression = "`"&`" $env:BUILD_SOURCESDIRECTORY\bootstrap.ps1 " + $bootstrapOptions
     Invoke-Expression $bootstrapExpression
 
     if ($LastExitCode -ne 0) {
