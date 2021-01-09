@@ -142,9 +142,11 @@ steps:
     deleteCR "./cmake/inputs/patches/ep_azuresdk" "azurite-support.patch"
     echo "about2b: hexdump ./cmake/inputs/patches/ep_azuresdk/azurite-support.patch"
     hexdump -C ./cmake/inputs/patches/ep_azuresdk/azurite-support.patch
-    
-#    $host.SetShouldExit(-1)
-#    return -1
+
+    #Was YAML spec'd by a retired FortranIV programmer, or Grace Hopper of (pre-)cobol fame? (fixed indentation schemes)
+    #doesn't even allow comments out-of-indentation level, even python is that generous...    
+    #~ $host.SetShouldExit(-1)
+    #~ return -1
 
     mkdir $env:AGENT_BUILDDIRECTORY\build
     cd $env:AGENT_BUILDDIRECTORY\build
