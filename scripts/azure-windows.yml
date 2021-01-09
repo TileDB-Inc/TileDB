@@ -190,15 +190,15 @@ steps:
       #~ $host.SetShouldExit($LastExitCode)
     #~ }
 
-    cmake --build $env:AGENT_BUILDDIRECTORY\build --config Release -j $env:NUMBER_OF_PROCESSORS -- /verbosity:minimal
+    #~ cmake --build $env:AGENT_BUILDDIRECTORY\build --config Release -j $env:NUMBER_OF_PROCESSORS -- /verbosity:minimal
 
-    if ($LastExitCode -ne 0) {
-    #https://codematheus.wordpress.com/2020/01/21/yaml-error-did-not-find-expected-key-while-parsing-a-block-mapping/
-      Write-Host "Build failed. CMake exit status: " $LastExitCocde
-      $host.SetShouldExit($LastExitCode)
-    }
+    #~ if ($LastExitCode -ne 0) {
+    #~ #https://codematheus.wordpress.com/2020/01/21/yaml-error-did-not-find-expected-key-while-parsing-a-block-mapping/
+      #~ Write-Host "Build failed. CMake exit status: " $LastExitCocde
+      #~ $host.SetShouldExit($LastExitCode)
+    #~ }
 
-    cmake --build $env:AGENT_BUILDDIRECTORY\build  -j $env:NUMBER_OF_PROCESSORS --target install-tiledb --config Release
+    #~ cmake --build $env:AGENT_BUILDDIRECTORY\build  -j $env:NUMBER_OF_PROCESSORS --target install-tiledb --config Release
 
     if ($LastExitCode -ne 0) {
       Write-Host "Installation failed."
