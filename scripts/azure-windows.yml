@@ -85,8 +85,8 @@ steps:
     #where are we, and what's there?
     echo "about2: dir"
     dir
-    echo "what patches are here?"
-    dir .\cmake\inputs\patches\ep_azuresdk
+    #~ echo "what patches are here?"
+    #~ dir .\cmake\inputs\patches\ep_azuresdk
     
     #~ function deleteCR([string] $path, [string]$file){
       #~ write-host "path: $path"
