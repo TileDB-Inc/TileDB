@@ -100,7 +100,7 @@ steps:
       $outfile = (Join-Path $path $outname )
       write-host "outfile: $outfile"
       #c:\msys64\usr\bin\tr -d < (Join-Path $path $file) > (JoinPath $path $file ".nocr")
-      cmd /c "c:\msys64\usr\bin\tr -d '\r' < $infile > $outfile"
+      cmd /c "c:\msys64\usr\bin\tr -d '\r' '<' $infile '>' $outfile"
       #think mingw rtl is trashing paths (the backslashes inter'd as escapes in string)...
       #bash -c "c:\msys64\usr\bin\tr -d '\r'< $infile > $outfile"
       if (Test-Path $outfile) {
@@ -173,7 +173,10 @@ steps:
     }
 
 #    $bootstrapExpression = "& $env:BUILD_SOURCESDIRECTORY\bootstrap.ps1 " + $bootstrapOptions
-    $bootstrapExpression = "`"&`" $env:BUILD_SOURCESDIRECTORY\bootstrap.ps1 " + $bootstrapOptions
+#    $bootstrapExpression = "`"&`" $env:BUILD_SOURCESDIRECTORY\bootstrap.ps1 " + $bootstrapOptions
+#    bootstrapExpression = "`"& $env:BUILD_SOURCESDIRECTORY\bootstrap.ps1 `"" + $bootstrapOptions
+    bootstrapExpression = "'&' $env:BUILD_SOURCESDIRECTORY\bootstrap.ps1 " + $bootstrapOptions
+    write-host "bootstrapExpression: $bootstrapExpression"
     Invoke-Expression $bootstrapExpression
 
     if ($LastExitCode -ne 0) {
