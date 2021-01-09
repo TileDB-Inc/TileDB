@@ -15,190 +15,182 @@ steps:
     echo "about2: git --version"
     git --version
 
-    #~ echo "about2: (before) git config --list"
-    #~ git config --list --show-origin
-    #~ #Seem to be two (2) core.autocrlf lines displayed for plain 'git config --list', will they both change???
-    #~ #(anything to do with the (two) include.path=... items?)
-    #~ Set-PSDebug -Trace 1 
-    #~ echo "about2: (before) git config core.autocrlf"
-    #~ git config core.autocrlf
-    #~ echo "about2: git config core.autocrlf false"
-    #~ git config core.autocrlf false
-    #~ echo "about2: (after) git config core.autocrlf"
-    #~ git config core.autocrlf
-    #~ Set-PSDebug -Trace 0 
-    #~ echo "about2: (after) git config --list"
-    #~ git config --list --show-origin
+    echo "about2: (before) git config --list"
+    git config --list --show-origin
+    #Seem to be two (2) core.autocrlf lines displayed for plain 'git config --list', will they both change???
+    #(anything to do with the (two) include.path=... items?)
+    Set-PSDebug -Trace 1 
+    echo "about2: (before) git config core.autocrlf"
+    git config core.autocrlf
+    echo "about2: git config core.autocrlf false"
+    git config core.autocrlf false
+    echo "about2: (after) git config core.autocrlf"
+    git config core.autocrlf
+    Set-PSDebug -Trace 0 
+    echo "about2: (after) git config --list"
+    git config --list --show-origin
 
-    #~ echo "about2: git config --global --list"
-    #~ git config --global --list
+    echo "about2: git config --global --list"
+    git config --global --list
 
-    #~ echo "about2: (before) git config --system --list"
-    #~ git config --system --list
-    #~ git config --system core.autocrlf false
-    #~ git config --system core.autocrlf
-    #~ echo "about2: (after) git config --system --list"
-    #~ git config --system --list
+    echo "about2: (before) git config --system --list"
+    git config --system --list
+    git config --system core.autocrlf false
+    git config --system core.autocrlf
+    echo "about2: (after) git config --system --list"
+    git config --system --list
 
-    #~ echo "about2: (before2) git config --list"
-    #~ #see if it's now clear here after being clear in 'system' above...
-    #~ git config --list  --show-origin
+    echo "about2: (before2) git config --list"
+    #see if it's now clear here after being clear in 'system' above...
+    git config --list  --show-origin
     
-    #~ #so, I suddenly realize the fetch has *already* occurred with those settings...
-    #~ #(altho, the clone I was doing, still seemed to have crlf line endings, but maybe that's how they are on patches already in 'dev' branch?)
-    #~ #but, we may be able to 'renormalize' somehow, though probably not with a git add, as shown...
-    #~ #... here https://docs.github.com/es/github-ae@latest/github/using-git/configuring-git-to-handle-line-endings
+    #so, I suddenly realize the fetch has *already* occurred with those settings...
+    #(altho, the clone I was doing, still seemed to have crlf line endings, but maybe that's how they are on patches already in 'dev' branch?)
+    #but, we may be able to 'renormalize' somehow, though probably not with a git add, as shown...
+    #... here https://docs.github.com/es/github-ae@latest/github/using-git/configuring-git-to-handle-line-endings
 
-    #~ #docs say 'pre-installed', here's hoping they've invoked shell first time so we can just add to path and use...
-    #~ $env:Path += ";c:\msys64\usr\bin"
-    #~ #echo "about2: cat c:\ProgramData\Git\config"
-    #~ #cat c:\ProgramData\Git\config
-    #~ #so,apparently powershell has a 'cat' of its own...
-    #~ #echo "about2: which cat"
-    #~ #which cat
-    #~ #echo "about2: ls c:\ProgramData\Git\config"
-    #~ #ls c:\ProgramData\Git\config
-    #~ if(Test-Path "c:\ProgramData\Git\config"){
-      #~ c:\msys64\usr\bin\cat c:\ProgramData\Git\config
-    #~ }
-    #~ else {
-      #~ Write-Host "did not find c:\ProgramData\Git\config"
-    #~ }
-    #~ #git version 2.23+, location changed... think vm image says 2.29.x installed...#
-    #~ if(Test-Path "c:\Program Files\Git\etc\gitconfig"){
-      #~ c:\msys64\usr\bin\cat "c:\Program Files\Git\etc\gitconfig"
-      #~ cacls "c:\Program Files\Git\etc\gitconfig"
-    #~ }
-    #~ else {
-      #~ Write-Host "did not find c:\Program Files\Git\etc\gitconfig"
-    #~ }
-    #~ hexdump --version
-    #~ hexdump --help
+    #docs say 'pre-installed', here's hoping they've invoked shell first time so we can just add to path and use...
+    $env:Path += ";c:\msys64\usr\bin"
+    #echo "about2: cat c:\ProgramData\Git\config"
+    #cat c:\ProgramData\Git\config
+    #so,apparently powershell has a 'cat' of its own...
+    #echo "about2: which cat"
+    #which cat
+    #echo "about2: ls c:\ProgramData\Git\config"
+    #ls c:\ProgramData\Git\config
+    if(Test-Path "c:\ProgramData\Git\config"){
+      c:\msys64\usr\bin\cat c:\ProgramData\Git\config
+    }
+    else {
+      Write-Host "did not find c:\ProgramData\Git\config"
+    }
+    #git version 2.23+, location changed... think vm image says 2.29.x installed...#
+    if(Test-Path "c:\Program Files\Git\etc\gitconfig"){
+      c:\msys64\usr\bin\cat "c:\Program Files\Git\etc\gitconfig"
+      cacls "c:\Program Files\Git\etc\gitconfig"
+    }
+    else {
+      Write-Host "did not find c:\Program Files\Git\etc\gitconfig"
+    }
+    hexdump --version
+    hexdump --help
     
-    #~ echo "about2: pip3 --version"
-    #~ pip3 --version #is pip3 already available along with python3?
+    echo "about2: pip3 --version"
+    pip3 --version #is pip3 already available along with python3?
 
-    #~ #should be windows version of git, we haven't installed one in msys2...
-    #~ #git clone -b dlh/explore-CI-buildissues http://github.com/TileDB-Inc/tiledb ./gh.tiledb.git
-    #~ #hmm, I suddenly recall, all of this be running in an already fetched commit from repository...
+    #should be windows version of git, we haven't installed one in msys2...
+    #git clone -b dlh/explore-CI-buildissues http://github.com/TileDB-Inc/tiledb ./gh.tiledb.git
+    #hmm, I suddenly recall, all of this be running in an already fetched commit from repository...
     
-    #~ #where are we, and what's there?
-    #~ echo "about2: dir"
-    #~ dir
-    #~ echo "what patches are here?"
-    #~ dir .\cmake\inputs\patches\ep_azuresdk
+    #where are we, and what's there?
+    echo "about2: dir"
+    dir
+    echo "what patches are here?"
+    dir .\cmake\inputs\patches\ep_azuresdk
     
-    #~ function deleteCR([string] $path, [string]$file){
-      #~ write-host "path: $path"
-      #~ write-host "file: $file"
-      #~ $infile = Join-Path $path $file
-      #~ write-host "infile: $infile"
-      #~ #$outfile = Join-Path $path $file ".nocr"
-      #~ #$outfile = (Join-Path $path ($file + ".nocr") )
-      #~ $outname = $file + ".nocr"
-      #~ write-host "outname: $outname"
-      #~ $outfile = (Join-Path $path $outname )
-      #~ write-host "outfile: $outfile"
-      #~ #c:\msys64\usr\bin\tr -d < (Join-Path $path $file) > (JoinPath $path $file ".nocr")
-      #~ cmd /c "c:\msys64\usr\bin\tr -d '\r' '<' $infile '>' $outfile"
-      #~ #think mingw rtl is trashing paths (the backslashes inter'd as escapes in string)...
-      #~ #bash -c "c:\msys64\usr\bin\tr -d '\r'< $infile > $outfile"
-      #~ if (Test-Path $outfile) {
-        #~ remove-item -path $infile #(Join-Path $path $file)
-        #~ ren $outfile $infile #(Join-Path $path $file ".nocr") (Join-Path $path $file)
-      #~ }
-    #~ }
+    function deleteCR([string] $path, [string]$file){
+      write-host "path: $path"
+      write-host "file: $file"
+      $infile = Join-Path $path $file
+      write-host "infile: $infile"
+      #$outfile = Join-Path $path $file ".nocr"
+      #$outfile = (Join-Path $path ($file + ".nocr") )
+      $outname = $file + ".nocr"
+      write-host "outname: $outname"
+      $outfile = (Join-Path $path $outname )
+      write-host "outfile: $outfile"
+      #c:\msys64\usr\bin\tr -d < (Join-Path $path $file) > (JoinPath $path $file ".nocr")
+      cmd /c "c:\msys64\usr\bin\tr -d '\r' '<' $infile '>' $outfile"
+      #think mingw rtl is trashing paths (the backslashes inter'd as escapes in string)...
+      #bash -c "c:\msys64\usr\bin\tr -d '\r' < $infile > $outfile"
+      if (Test-Path $outfile) {
+        remove-item -path $infile #(Join-Path $path $file)
+        ren $outfile $infile #(Join-Path $path $file ".nocr") (Join-Path $path $file)
+      }
+    }
     
-    #~ echo "about2: hexdump ./cmake/inputs/patches/ep_azuresdk/azure-storage-lite-base64.patch"
-    #~ hexdump -C ./cmake/inputs/patches/ep_azuresdk/azure-storage-lite-base64.patch
-    #~ #tr -d '\r' ./cmake/inputs/patches/ep_azuresdk/azure-storage-lite-base64.patch
-    #~ Set-PSDebug -Trace 1 
-    #~ deleteCR "./cmake/inputs/patches/ep_azuresdk" "azure-storage-lite-base64.patch"
-    #~ Set-PSDebug -Trace 0
-    #~ echo "about2b: hexdump ./cmake/inputs/patches/ep_azuresdk/azure-storage-lite-base64.patch"
-    #~ hexdump -C ./cmake/inputs/patches/ep_azuresdk/azure-storage-lite-base64.patch
+    echo "about2: hexdump ./cmake/inputs/patches/ep_azuresdk/azure-storage-lite-base64.patch"
+    hexdump -C ./cmake/inputs/patches/ep_azuresdk/azure-storage-lite-base64.patch
+    #tr -d '\r' ./cmake/inputs/patches/ep_azuresdk/azure-storage-lite-base64.patch
+    Set-PSDebug -Trace 1 
+    deleteCR "./cmake/inputs/patches/ep_azuresdk" "azure-storage-lite-base64.patch"
+    Set-PSDebug -Trace 0
+    echo "about2b: hexdump ./cmake/inputs/patches/ep_azuresdk/azure-storage-lite-base64.patch"
+    hexdump -C ./cmake/inputs/patches/ep_azuresdk/azure-storage-lite-base64.patch
 
-    #~ echo "about2: hexdump ./cmake/inputs/patches/ep_azuresdk/azure-storage-lite-storage_url.patch"
-    #~ hexdump -C ./cmake/inputs/patches/ep_azuresdk/azure-storage-lite-storage_url.patch
-    #~ #tr -d '\r' ./cmake/inputs/patches/ep_azuresdk/azure-storage-lite-storage_url.patch
-    #~ deleteCR "./cmke/inputs/patches/ep_azuresdk" "azure-storage-lite-storage_url.patch"
-    #~ echo "about2b: hexdump ./cmake/inputs/patches/ep_azuresdk/azure-storage-lite-storage_url.patch"
-    #~ hexdump -C ./cmake/inputs/patches/ep_azuresdk/azure-storage-lite-storage_url.patch
+    echo "about2: hexdump ./cmake/inputs/patches/ep_azuresdk/azure-storage-lite-storage_url.patch"
+    hexdump -C ./cmake/inputs/patches/ep_azuresdk/azure-storage-lite-storage_url.patch
+    #tr -d '\r' ./cmake/inputs/patches/ep_azuresdk/azure-storage-lite-storage_url.patch
+    deleteCR "./cmke/inputs/patches/ep_azuresdk" "azure-storage-lite-storage_url.patch"
+    echo "about2b: hexdump ./cmake/inputs/patches/ep_azuresdk/azure-storage-lite-storage_url.patch"
+    hexdump -C ./cmake/inputs/patches/ep_azuresdk/azure-storage-lite-storage_url.patch
 
-    #~ echo "about2: hexdump ./cmake/inputs/patches/ep_azuresdk/remove-uuid-dep.patch"
-    #~ hexdump -C ./cmake/inputs/patches/ep_azuresdk/remove-uuid-dep.patch
-    #~ #tr -d '\r' ./cmake/inputs/patches/ep_azuresdk/remove-uuid-dep.patch
-    #~ deleteCR "./cmke/inputs/patches/ep_azuresdk" "remove-uuid-dep.patch"
-    #~ echo "about2b: hexdump ./cmake/inputs/patches/ep_azuresdk/remove-uuid-dep.patch"
-    #~ hexdump -C ./cmake/inputs/patches/ep_azuresdk/remove-uuid-dep.patch
+    echo "about2: hexdump ./cmake/inputs/patches/ep_azuresdk/remove-uuid-dep.patch"
+    hexdump -C ./cmake/inputs/patches/ep_azuresdk/remove-uuid-dep.patch
+    #tr -d '\r' ./cmake/inputs/patches/ep_azuresdk/remove-uuid-dep.patch
+    deleteCR "./cmke/inputs/patches/ep_azuresdk" "remove-uuid-dep.patch"
+    echo "about2b: hexdump ./cmake/inputs/patches/ep_azuresdk/remove-uuid-dep.patch"
+    hexdump -C ./cmake/inputs/patches/ep_azuresdk/remove-uuid-dep.patch
 
-    #~ echo "about2: hexdump ./cmake/inputs/patches/ep_azuresdk/azurite-support.patch"
-    #~ hexdump -C ./cmake/inputs/patches/ep_azuresdk/azurite-support.patch
-    #~ #tr -d '\r' ./cmake/inputs/patches/ep_azuresdk/azurite-support.patch
-    #~ deleteCR "./cmke/inputs/patches/ep_azuresdk" "azurite-support.patch"
-    #~ echo "about2b: hexdump ./cmake/inputs/patches/ep_azuresdk/azurite-support.patch"
-    #~ hexdump -C ./cmake/inputs/patches/ep_azuresdk/azurite-support.patch
+    echo "about2: hexdump ./cmake/inputs/patches/ep_azuresdk/azurite-support.patch"
+    hexdump -C ./cmake/inputs/patches/ep_azuresdk/azurite-support.patch
+    #tr -d '\r' ./cmake/inputs/patches/ep_azuresdk/azurite-support.patch
+    deleteCR "./cmke/inputs/patches/ep_azuresdk" "azurite-support.patch"
+    echo "about2b: hexdump ./cmake/inputs/patches/ep_azuresdk/azurite-support.patch"
+    hexdump -C ./cmake/inputs/patches/ep_azuresdk/azurite-support.patch
     
-    $host.SetShouldExit(-1)
-    return -1
+    #~ $host.SetShouldExit(-1)
+    #~ return -1
 
-    #~ mkdir $env:AGENT_BUILDDIRECTORY\build
-    #~ cd $env:AGENT_BUILDDIRECTORY\build
+    mkdir $env:AGENT_BUILDDIRECTORY\build
+    cd $env:AGENT_BUILDDIRECTORY\build
 
-    #~ if ($env:imageName -eq "vs2017-win2016") {
-      #~ $env:Path += ";C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin"
-    #~ } else {
-      #~ Write-Host "Unknown image name: '$($env:imageName)'"
-      #~ $host.SetShouldExit(1)
-    #~ }
+    if ($env:imageName -eq "vs2017-win2016") {
+      $env:Path += ";C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin"
+    } else {
+      Write-Host "Unknown image name: '$($env:imageName)'"
+      $host.SetShouldExit(1)
+    }
 
-    #~ # TODO DEBUG move this back in the TILEDB_S3 section
-    #~ # currently we do not run S3 tests on Windows because tests time out (minio+azure slow?)
-    #~ #& "$env:BUILD_SOURCESDIRECTORY\scripts\install-minio.ps1"
+    # TODO DEBUG move this back in the TILEDB_S3 section
+    # currently we do not run S3 tests on Windows because tests time out (minio+azure slow?)
+    #& "$env:BUILD_SOURCESDIRECTORY\scripts\install-minio.ps1"
 
-    #~ $bootstrapOptions = "-EnableVerbose -EnableStaticTileDB -EnableBuildDeps"
-    #~ if ($env:TILEDB_S3 -eq "ON") {
-      #~ $bootstrapOptions = "-EnableS3 " + $bootstrapOptions
-    #~ }
-    #~ if ($env:TILEDB_AZURE -eq "ON") {
-      #~ #delay install/run of azurite until actually needed before 'make
-      #~ #check' rather than unnecessarily consuming time/resources it takes
-      #~ #since other failures may occur prior.
-      #~ #& "$env:BUILD_SOURCESDIRECTORY\scripts\install-run-azurite.ps1"
-      #~ $bootstrapOptions = "-EnableAzure " + $bootstrapOptions
-    #~ }
-    #~ if ($env:TILEDB_GCS -eq "ON") {
-      #~ $bootstrapOptions = "-EnableGCS " + $bootstrapOptions
-      #~ #NOTE: GCS simulator not yet actually in place.
-    #~ }
+    $bootstrapOptions = "-EnableVerbose -EnableStaticTileDB -EnableBuildDeps"
+    if ($env:TILEDB_S3 -eq "ON") {
+      $bootstrapOptions = "-EnableS3 " + $bootstrapOptions
+    }
+    if ($env:TILEDB_AZURE -eq "ON") {
+      #delay install/run of azurite until actually needed before 'make
+      #check' rather than unnecessarily consuming time/resources it takes
+      #since other failures may occur prior.
+      #& "$env:BUILD_SOURCESDIRECTORY\scripts\install-run-azurite.ps1"
+      $bootstrapOptions = "-EnableAzure " + $bootstrapOptions
+    }
+    if ($env:TILEDB_GCS -eq "ON") {
+      $bootstrapOptions = "-EnableGCS " + $bootstrapOptions
+      #NOTE: GCS simulator not yet actually in place.
+    }
 
-#~ #    $bootstrapExpression = "& $env:BUILD_SOURCESDIRECTORY\bootstrap.ps1 " + $bootstrapOptions
-#~ #still have trouble,but some help at https://octopus.com/blog/powershell-pipe-escaping
-#~ #    $bootstrapExpression = "`"&`" $env:BUILD_SOURCESDIRECTORY\bootstrap.ps1 " + $bootstrapOptions
-#~ #    bootstrapExpression = "`"& $env:BUILD_SOURCESDIRECTORY\bootstrap.ps1 `"" + $bootstrapOptions
-#~ #    bootstrapExpression = "'&' $env:BUILD_SOURCESDIRECTORY\bootstrap.ps1 " + $bootstrapOptions
-#~ #    bootstrapExpression = '& $env:BUILD_SOURCESDIRECTORY\bootstrap.ps1 ' + $bootstrapOptions
-#~ #    $bootstrapExpression = '& $env:BUILD_SOURCESDIRECTORY\bootstrap.ps1 ' + $bootstrapOptions
-#~ #    $bootstrapExpression = '"&" $env:BUILD_SOURCESDIRECTORY\bootstrap.ps1 ' + $bootstrapOptions
-    #~ $bootstrapExpression = '"&" `$`env:BUILD_SOURCESDIRECTORY\bootstrap.ps1 ' + $bootstrapOptions
-    #~ write-host "bootstrapExpression: $bootstrapExpression"
-#~ #    Invoke-Expression $bootstrapExpression
-    #~ Invoke-Expression "$bootstrapExpression"
+    $bootstrapExpression = "& $env:BUILD_SOURCESDIRECTORY\bootstrap.ps1 " + $bootstrapOptions
+    Write-Host "bootstrapExpression: $bootstrapExpression"
+    Invoke-Expression $bootstrapExpression
+#    Invoke-Expression "$bootstrapExpression"
 
-    #~ if ($LastExitCode -ne 0) {
-      #~ Write-Host "Bootstrap failed."
-      #~ $host.SetShouldExit($LastExitCode)
-    #~ }
+    if ($LastExitCode -ne 0) {
+      Write-Host "Bootstrap failed."
+      $host.SetShouldExit($LastExitCode)
+    }
 
-    #~ cmake --build $env:AGENT_BUILDDIRECTORY\build --config Release -j $env:NUMBER_OF_PROCESSORS -- /verbosity:minimal
+    cmake --build $env:AGENT_BUILDDIRECTORY\build --config Release -j $env:NUMBER_OF_PROCESSORS -- /verbosity:minimal
 
-    #~ if ($LastExitCode -ne 0) {
-    #~ #https://codematheus.wordpress.com/2020/01/21/yaml-error-did-not-find-expected-key-while-parsing-a-block-mapping/
-      #~ Write-Host "Build failed. CMake exit status: " $LastExitCocde
-      #~ $host.SetShouldExit($LastExitCode)
-    #~ }
+    if ($LastExitCode -ne 0) {
+    #https://codematheus.wordpress.com/2020/01/21/yaml-error-did-not-find-expected-key-while-parsing-a-block-mapping/
+      Write-Host "Build failed. CMake exit status: " $LastExitCocde
+      $host.SetShouldExit($LastExitCode)
+    }
 
-    #~ cmake --build $env:AGENT_BUILDDIRECTORY\build  -j $env:NUMBER_OF_PROCESSORS --target install-tiledb --config Release
+    cmake --build $env:AGENT_BUILDDIRECTORY\build  -j $env:NUMBER_OF_PROCESSORS --target install-tiledb --config Release
 
     if ($LastExitCode -ne 0) {
       Write-Host "Installation failed."
