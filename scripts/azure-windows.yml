@@ -143,8 +143,8 @@ steps:
     echo "about2b: hexdump ./cmake/inputs/patches/ep_azuresdk/azurite-support.patch"
     hexdump -C ./cmake/inputs/patches/ep_azuresdk/azurite-support.patch
     
-    $host.SetShouldExit(-1)
-    return -1
+#    $host.SetShouldExit(-1)
+#    return -1
 
     mkdir $env:AGENT_BUILDDIRECTORY\build
     cd $env:AGENT_BUILDDIRECTORY\build
