@@ -175,7 +175,6 @@ steps:
     $bootstrapExpression = "& $env:BUILD_SOURCESDIRECTORY\bootstrap.ps1 " + $bootstrapOptions
     Write-Host "bootstrapExpression: $bootstrapExpression"
     Invoke-Expression $bootstrapExpression
-#    Invoke-Expression "$bootstrapExpression"
 
     if ($LastExitCode -ne 0) {
       Write-Host "Bootstrap failed."
