@@ -176,7 +176,8 @@ steps:
 #    $bootstrapExpression = "`"&`" $env:BUILD_SOURCESDIRECTORY\bootstrap.ps1 " + $bootstrapOptions
 #    bootstrapExpression = "`"& $env:BUILD_SOURCESDIRECTORY\bootstrap.ps1 `"" + $bootstrapOptions
 #    bootstrapExpression = "'&' $env:BUILD_SOURCESDIRECTORY\bootstrap.ps1 " + $bootstrapOptions
-    bootstrapExpression = '& $env:BUILD_SOURCESDIRECTORY\bootstrap.ps1 ' + $bootstrapOptions
+#    bootstrapExpression = '& $env:BUILD_SOURCESDIRECTORY\bootstrap.ps1 ' + $bootstrapOptions
+    $bootstrapExpression = '& $env:BUILD_SOURCESDIRECTORY\bootstrap.ps1 ' + $bootstrapOptions
     write-host "bootstrapExpression: $bootstrapExpression"
     Invoke-Expression $bootstrapExpression
 
