@@ -107,7 +107,7 @@ steps:
       #bash -c "c:\msys64\usr\bin\tr -d '\r' < $infile > $outfile"
       if (Test-Path $outfile) {
         remove-item -path $infile #(Join-Path $path $file)
-        ren $outfile $infile #(Join-Path $path $file ".nocr") (Join-Path $path $file)
+        ren $outfile $file #(Join-Path $path $file ".nocr") (Join-Path $path $file)
       }
     }
     
