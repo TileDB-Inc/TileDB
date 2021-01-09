@@ -85,7 +85,7 @@ steps:
     #where are we, and what's there?
     echo "about2: dir"
     dir
-    echo "what patches are here?
+    echo "what patches are here?"
     dir .\cmake\inputs\patches\ep_azuresdk
     
     function deleteCR([string] $path, [string]$file){
@@ -172,7 +172,7 @@ steps:
       #NOTE: GCS simulator not yet actually in place.
     }
 
-#    $bootstrapExpression = "& $env:BUILD_SOURCESDIRECTORY\bootstrap.ps1 " + $bootstrapOptions
+    $bootstrapExpression = "& $env:BUILD_SOURCESDIRECTORY\bootstrap.ps1 " + $bootstrapOptions
 #still have trouble,but some help at https://octopus.com/blog/powershell-pipe-escaping
 #    $bootstrapExpression = "`"&`" $env:BUILD_SOURCESDIRECTORY\bootstrap.ps1 " + $bootstrapOptions
 #    bootstrapExpression = "`"& $env:BUILD_SOURCESDIRECTORY\bootstrap.ps1 `"" + $bootstrapOptions
@@ -180,7 +180,7 @@ steps:
 #    bootstrapExpression = '& $env:BUILD_SOURCESDIRECTORY\bootstrap.ps1 ' + $bootstrapOptions
 #    $bootstrapExpression = '& $env:BUILD_SOURCESDIRECTORY\bootstrap.ps1 ' + $bootstrapOptions
 #    $bootstrapExpression = '"&" $env:BUILD_SOURCESDIRECTORY\bootstrap.ps1 ' + $bootstrapOptions
-    $bootstrapExpression = '"&" `$`env:BUILD_SOURCESDIRECTORY\bootstrap.ps1 ' + $bootstrapOptions
+#    $bootstrapExpression = '"&" `$`env:BUILD_SOURCESDIRECTORY\bootstrap.ps1 ' + $bootstrapOptions
     write-host "bootstrapExpression: $bootstrapExpression"
 #    Invoke-Expression $bootstrapExpression
     Invoke-Expression "$bootstrapExpression"
