@@ -1,0 +1,17 @@
+name: Build-Dockerfile
+
+on: push
+
+jobs:
+  build-dockerfile:
+    runs-on: ubuntu-20.04
+
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v2
+
+      - name: Build the Dockerfile
+        run: docker build -f Dockerfile/Dockerfile -t tiledb:dev .
+        
+      - name: Run the built docker image
+        run: docker run tiledb:dev
