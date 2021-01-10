@@ -78,7 +78,8 @@ steps:
     Write-Host "netstat -abo (after azurite)"
     netstat -abo #'b' requires elevation, s'posed to have it
     
-    Write-Host "contents of $azuriteDebugLog:"
+    #colon's apparently a no-no... Write-Host "contents of $azuriteDebugLog:"
+    Write-Host "contents of $azuriteDebugLog..."
     c:\msys64\usr\bin\cat $azuriteDebugLog
 
     #~ $host.SetShouldExit(-1)
@@ -288,7 +289,7 @@ steps:
     Write-Host "netstat -abo (after azurite)"
     netstat -abo #'b' requires elevation, s'posed to have it
     
-    Write-Host "contents of $azuriteDebugLog after --target check run:"
+    Write-Host "contents of $azuriteDebugLog after --target check run..."
     c:\msys64\usr\bin\cat $azuriteDebugLog
 
     # Build the examples
