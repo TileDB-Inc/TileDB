@@ -63,7 +63,9 @@ steps:
     $azuriteDataPath = (Join-Path $env:TEMP "azuriteData")
     New-Item -ItemType Directory -Path $azuriteDataPath
     $azuriteDebugLog = (Join-Path $env:TEMP "azuriteDebugLog.Log")
-    azurite-blob --silent --location $azuriteDataPath --debug $azuriteDebugLog --blobPort 10000 --blobHost 127.0.0.1
+    #azurite-blob --silent --location $azuriteDataPath --debug $azuriteDebugLog --blobPort 10000 --blobHost 127.0.0.1
+    #seems likely were just waiting for job to time-out after azurite-blob started, try separate window...
+    cmd /c "start `"azurite`" azurite-blob --silent --location $azuriteDataPath --debug $azuriteDebugLog --blobPort 10000 --blobHost 127.0.0.1"
 
     #present list of tasks to see if 'node' is running
     echo "all tasks"
