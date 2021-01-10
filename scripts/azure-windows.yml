@@ -58,8 +58,8 @@ steps:
     Write-Host "Is azurite-blob somewhere/findable before install?"
     c:\msys64\usr\bin\which azurite-blob
 
-    $host.SetShouldExit(-1)
-    return -1
+    #~ $host.SetShouldExit(-1)
+    #~ return -1
 
     if($false){ #how will powershell (and yaml parser be) with trying to do this...
       Write-Host "netstat b4 azurite..."
