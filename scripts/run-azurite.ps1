@@ -10,10 +10,10 @@ azurite.
 
 <#
 .SYNOPSIS
-This is a Powershell script to install nodejs/azurite on Windows.
+This is a Powershell script to run previously installed azurite on Windows.
 
 .DESCRIPTION
-This is a Powershell script to install the nodejs/azurite server on Windows.
+This is a Powershell script to run previously installed azurite server on Windows.
 
 .LINK
 https://github.com/TileDB-Inc/TileDB
@@ -191,6 +191,7 @@ function remove-preexisting() {
 #Set-PSDebug -Trace 1 
 #Set-PSDebug -Trace 2
 
-Install-All-Deps
+#Install-All-Deps
+run-azurite
 
 Write-Host "Finished."
