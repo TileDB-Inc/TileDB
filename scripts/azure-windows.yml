@@ -55,7 +55,7 @@ steps:
     #-----azurite related
     Write-Host "Is npm present, and where, before we install?" #vm list suggests so
     c:\msys64\usr\bin\which npm
-    Write-Host "Is azurite-blob somewhere/findable before install?
+    Write-Host "Is azurite-blob somewhere/findable before install?"
     c:\msys64\usr\bin\which azurite-blob
 
     $host.SetShouldExit(-1)
@@ -119,7 +119,7 @@ steps:
       
       Write-Host "Is npm present, and where, after we install?" #vm list suggests so
       c:\msys64\usr\bin\which npm
-      Write-Host "Is azurite-blob somewhere/findable before install?
+      Write-Host "Is azurite-blob somewhere/findable before install?"
       c:\msys64\usr\bin\which azurite-blob
 
       #colon's apparently a no-no, at least after $variablref:... Write-Host "contents of $azuriteDebugLog:"
@@ -322,7 +322,7 @@ steps:
     #---azurite related
     Write-Host "Is npm present, and where, before we install?" #vm list suggests so
     c:\msys64\usr\bin\which npm
-    Write-Host "Is azurite-blob somewhere/findable before install?
+    Write-Host "Is azurite-blob somewhere/findable before install?"
     c:\msys64\usr\bin\which azurite-blob
     Write-Host "netstat b4 azurite..."
     netstat -abo #'b' requires elevation, s'posed to have it
