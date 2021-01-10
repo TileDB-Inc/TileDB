@@ -60,7 +60,7 @@ steps:
     #$npxCmd = "start `"azurite host window`" " + $npxCmdPath + " azurite-blob" + " --silent --location " + $azuriteDataPath + " --debug " + $azuriteDebugLog + " --blobPort 10000 --blobHost 0.0.0.0 "
     #will this start in background, or does it need separate window???
     #azurite-blob --silent --location " + $azuriteDataPath + " --debug " + $azuriteDebugLog + " --blobPort 10000 --blobHost 127.0.0.1
-    $azuriteDataPath = (Join_Path $env:TEMP "azuriteData")
+    $azuriteDataPath = (Join-Path $env:TEMP "azuriteData")
     New-Item -Directory $azuriteDataPath
     $azuriteDebugLog = (Join-Path $env:TEMP "azuriteDebugLog.Log")
     azurite-blob --silent --location $azuriteDataPath --debug $azuriteDebugLog --blobPort 10000 --blobHost 127.0.0.1
