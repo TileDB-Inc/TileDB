@@ -51,16 +51,31 @@ steps:
     #but, we may be able to 'renormalize' somehow, though probably not with a git add, as shown...
     #... here https://docs.github.com/es/github-ae@latest/github/using-git/configuring-git-to-handle-line-endings
 
-    #~ & "$env:BUILD_SOURCESDIRECTORY\scripts\install-run-azurite.ps1"
-    #~ #present list of tasks to see if 'node' is running
-    #~ echo "all tasks"
-    #~ tasklist
-    #~ echo "is 'node' present?"
-    #~ tasklist | findstr /i node.exe
-    #~ Write-Host "netstat -abo"
+    Write-Host "Is npm present before we install?" #vm list suggests so
+    c:\msys64\usr\bin\which npm
+    
+    #& "$env:BUILD_SOURCESDIRECTORY\scripts\install-run-azurite.ps1"
+    #alternate:
+    npm install -g azurite
+    #$npxCmd = "start `"azurite host window`" " + $npxCmdPath + " azurite-blob" + " --silent --location " + $azuriteDataPath + " --debug " + $azuriteDebugLog + " --blobPort 10000 --blobHost 0.0.0.0 "
+    #will this start in background, or does it need separate window???
+    #azurite-blob --silent --location " + $azuriteDataPath + " --debug " + $azuriteDebugLog + " --blobPort 10000 --blobHost 127.0.0.1
+    $azuriteDataPath = (Join_Path $env:TEMP "azuriteData")
+    New-Item -Directory $azuriteDataPath
+    $azuriteDebugLog = (Join-Path $env:TEMP "azuriteDebugLog.Log")
+    azurite-blob --silent --location $azuriteDataPath --debug $azuriteDebugLog --blobPort 10000 --blobHost 127.0.0.1
 
-    #~ $host.SetShouldExit(-1)
-    #~ return -1
+    #present list of tasks to see if 'node' is running
+    echo "all tasks"
+    tasklist
+    echo "is 'node' present?"
+    tasklist | findstr /i node.exe
+    Write-Host "netstat -abo"
+    
+    c:\msys64\usr\bin\cat $azuriteDebugLog
+
+    $host.SetShouldExit(-1)
+    return -1
 
     #docs say 'pre-installed', here's hoping they've invoked shell first time so we can just add to path and use...
     $env:Path += ";c:\msys64\usr\bin"
