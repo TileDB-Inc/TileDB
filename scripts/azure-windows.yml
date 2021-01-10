@@ -53,6 +53,8 @@ steps:
 
     Write-Host "Is npm present before we install?" #vm list suggests so
     c:\msys64\usr\bin\which npm
+    Write-Host "netstat b4 azurite..."
+    netstat -abo #'b' requires elevation, s'posed to have it
     
     #& "$env:BUILD_SOURCESDIRECTORY\scripts\install-run-azurite.ps1"
     #alternate:
@@ -65,6 +67,7 @@ steps:
     $azuriteDebugLog = (Join-Path $env:TEMP "azuriteDebugLog.Log")
     #azurite-blob --silent --location $azuriteDataPath --debug $azuriteDebugLog --blobPort 10000 --blobHost 127.0.0.1
     #seems likely were just waiting for job to time-out after azurite-blob started, try separate window...
+    #TBD: could attempt to invoke 'azurite' be conflicting with something azurish already on node???
     cmd /c "start `"azurite`" azurite-blob --silent --location $azuriteDataPath --debug $azuriteDebugLog --blobPort 10000 --blobHost 127.0.0.1"
 
     #present list of tasks to see if 'node' is running
@@ -72,7 +75,8 @@ steps:
     tasklist
     echo "is 'node' present?"
     tasklist | findstr /i node.exe
-    Write-Host "netstat -abo"
+    Write-Host "netstat -abo (after azurite)"
+    netstat -abo #'b' requires elevation, s'posed to have it
     
     c:\msys64\usr\bin\cat $azuriteDebugLog
 
