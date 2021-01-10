@@ -72,7 +72,11 @@ steps:
       #azurite-blob --silent --location $azuriteDataPath --debug $azuriteDebugLog --blobPort 10000 --blobHost 127.0.0.1
       #seems likely were just waiting for job to time-out after azurite-blob started, try separate window...
       #TBD: could attempt to invoke 'azurite' be conflicting with something azurish already on node???
-      cmd /c "start `"azurite`" azurite-blob --silent --location $azuriteDataPath --debug $azuriteDebugLog --blobPort 10000 --blobHost 127.0.0.1"
+      #yep, for whatever reason, appears this is hanging...
+      #cmd /c "start `"azurite`" azurite-blob --silent --location $azuriteDataPath --debug $azuriteDebugLog --blobPort 10000 --blobHost 127.0.0.1"
+      $azuriteCmd = "start `"azurite`" azurite-blob --silent --location $azuriteDataPath --debug $azuriteDebugLog --blobPort 10000 --blobHost 127.0.0.1"
+      Write-Host "azuriteCmd: $azuriteCmd"
+      cmd /c $azuriteCmd
       Write-Host "after azurite secondary start attempt"
     }
     else { #using the node/npm already present in vm

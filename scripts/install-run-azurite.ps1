@@ -127,7 +127,8 @@ function Install-azurite {
     cd $NodeJSGenericInstalledPath
     write-host "installing azurite from:"
     Get-Location
-    cmd /c "$npmCmdPath install azurite" #install locally
+    #cmd /c "$npmCmdPath install azurite" #install locally
+    cmd /c "$npmCmdPath install -g azurite" #install globally
     Pop-Location
 
     #now actually run azurite
