@@ -56,8 +56,8 @@ steps:
     Write-Host "netstat b4 azurite..."
     netstat -abo #'b' requires elevation, s'posed to have it
     
-    $tryLocalNodeInstall = $True
-    if($useCustomNodeInstall) {
+    $useTileDBInstallNodeJS = $True
+    if($useTileDBInstallNodeJS) {
       & "$env:BUILD_SOURCESDIRECTORY\scripts\install-run-azurite.ps1"
     }
     else { #using the node/npm already present in vm
