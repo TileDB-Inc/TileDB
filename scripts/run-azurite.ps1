@@ -167,7 +167,9 @@ function run-azurite() {
     #parameters for azurite-blob taken from those used in run-azurite.sh
     #seems that npx(/npm?) is causing desired window title to be overwritten (title shown is 'npm')...?
     #despite... https://stackoverflow.com/questions/30611803/how-to-set-the-title-of-a-windows-console-while-npm-is-running
-    $npxCmd = "start `"azurite host window`" " + $npxCmdPath + " azurite-blob" + " --silent --location " + $azuriteDataPath + " --debug " + $azuriteDebugLog + " --blobPort 10000 --blobHost 0.0.0.0 "
+    #$npxCmd = "start `"azurite host window`" " + $npxCmdPath + " azurite-blob" + " --silent --location " + $azuriteDataPath + " --debug " + $azuriteDebugLog + " --blobPort 10000 --blobHost 0.0.0.0 "
+    #restrict addr to localhost for CI, see if CI will work (rather than wide-open 0.0.0.0)
+    $npxCmd = "start `"azurite host window`" " + $npxCmdPath + " azurite-blob" + " --silent --location " + $azuriteDataPath + " --debug " + $azuriteDebugLog + " --blobPort 10000 --blobHost 17.0.0.1 "
     Write-Host "npxCmd: $npxCmd"
     #this will leave a command prompt window open with nodejs/azurite running in it.
     cmd /c $npxCmd

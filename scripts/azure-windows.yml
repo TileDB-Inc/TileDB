@@ -51,12 +51,13 @@ steps:
     #but, we may be able to 'renormalize' somehow, though probably not with a git add, as shown...
     #... here https://docs.github.com/es/github-ae@latest/github/using-git/configuring-git-to-handle-line-endings
 
-    & "$env:BUILD_SOURCESDIRECTORY\scripts\run-azurite.ps1"
+    & "$env:BUILD_SOURCESDIRECTORY\scripts\install-run-azurite.ps1"
     #present list of tasks to see if 'node' is running
     echo "all tasks"
     tasklist
     echo "is 'node' present?"
     tasklist | findstr /i node.exe
+    Write-Host "netstat -abo"
 
     $host.SetShouldExit(-1)
     return -1
