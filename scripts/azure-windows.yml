@@ -51,66 +51,80 @@ steps:
     #but, we may be able to 'renormalize' somehow, though probably not with a git add, as shown...
     #... here https://docs.github.com/es/github-ae@latest/github/using-git/configuring-git-to-handle-line-endings
 
-    Write-Host "Is npm present before we install?" #vm list suggests so
-    c:\msys64\usr\bin\which npm
-    Write-Host "netstat b4 azurite..."
-    netstat -abo #'b' requires elevation, s'posed to have it
-    
-    $useTileDBInstallNodeJS = $True
-    if($useTileDBInstallNodeJS) {
-      #doesn't work with 'local' install, try now since -g'lobal' install in .ps1
-      & "$env:BUILD_SOURCESDIRECTORY\scripts\install-run-azurite.ps1"
-      #~ #The start of azurite in install-run-azurite.pas1 (above) with 'npx' is failing, 
-      #~ #see if the direct call withOUT npx, similar to one in 'else' branch will work...
-      #~ #(realizing that there could be artifacts from the attempt in the .ps1 causing conflicts also...)
+    #vvvvvvvvvvvvvvvvvvvvvv
+    #-----azurite related
+    if($false){ #how will powershell (and yaml parser be) with trying to do this...
+      Write-Host "Is npm present, and where, before we install?" #vm list suggests so
+      c:\msys64\usr\bin\which npm
+      Write-Host "Is azurite-blob somewhere/findable before install?
+      c:\msys64\usr\bin\which azurite-blob
+      Write-Host "netstat b4 azurite..."
+      netstat -abo #'b' requires elevation, s'posed to have it
+      
+      $useTileDBInstallNodeJS = $True
+      if($useTileDBInstallNodeJS) {
+        #doesn't work with 'local' install, try now since -g'lobal' install in .ps1
+        & "$env:BUILD_SOURCESDIRECTORY\scripts\install-run-azurite.ps1"
+        #~ #The start of azurite in install-run-azurite.pas1 (above) with 'npx' is failing, 
+        #~ #see if the direct call withOUT npx, similar to one in 'else' branch will work...
+        #~ #(realizing that there could be artifacts from the attempt in the .ps1 causing conflicts also...)
 
-      #~ #$npxCmd = "start `"azurite host window`" " + $npxCmdPath + " azurite-blob" + " --silent --location " + $azuriteDataPath + " --debug " + $azuriteDebugLog + " --blobPort 10000 --blobHost 0.0.0.0 "
-      #~ #will this start in background, or does it need separate window???
-      #~ #azurite-blob --silent --location " + $azuriteDataPath + " --debug " + $azuriteDebugLog + " --blobPort 10000 --blobHost 127.0.0.1
-      #~ $azuriteDataPath = (Join-Path $env:TEMP "azuriteData")
-      #~ New-Item -ItemType Directory -Path $azuriteDataPath
-      #~ $azuriteDebugLog = (Join-Path $env:TEMP "azuriteDebugLog.Log")
-      #~ #azurite-blob --silent --location $azuriteDataPath --debug $azuriteDebugLog --blobPort 10000 --blobHost 127.0.0.1
-      #~ #seems likely were just waiting for job to time-out after azurite-blob started, try separate window...
-      #~ #TBD: could attempt to invoke 'azurite' be conflicting with something azurish already on node???
-      #~ #yep, for whatever reason, appears this is hanging...
-      #~ #cmd /c "start `"azurite`" azurite-blob --silent --location $azuriteDataPath --debug $azuriteDebugLog --blobPort 10000 --blobHost 127.0.0.1"
-      #~ $azuriteCmd = "start `"azurite`" azurite-blob --silent --location $azuriteDataPath --debug $azuriteDebugLog --blobPort 10000 --blobHost 127.0.0.1"
-      #~ Write-Host "azuriteCmd: $azuriteCmd"
-      #~ cmd /c $azuriteCmd
-      #~ Write-Host "after azurite secondary start attempt"
-      #~ #ok, since changing .ps1 install to be '-g', need to see if 'start' in that command works...
-      #~ #altho, this install path takes longer since have to fetch/verify/expand node installation when
-      #~ #vm image already has one,
-      #~ #since we don't plan to support our azurite install for customers, maybe two different paths
-      #~ #for azurite install acceptable, one for dev and one for CI???
-    }
-    else { #using the node/npm already present in vm
-      #alternate:
-      npm install -g azurite
-      #$npxCmd = "start `"azurite host window`" " + $npxCmdPath + " azurite-blob" + " --silent --location " + $azuriteDataPath + " --debug " + $azuriteDebugLog + " --blobPort 10000 --blobHost 0.0.0.0 "
-      #will this start in background, or does it need separate window???
-      #azurite-blob --silent --location " + $azuriteDataPath + " --debug " + $azuriteDebugLog + " --blobPort 10000 --blobHost 127.0.0.1
-      $azuriteDataPath = (Join-Path $env:TEMP "azuriteData")
-      New-Item -ItemType Directory -Path $azuriteDataPath
-      $azuriteDebugLog = (Join-Path $env:TEMP "azuriteDebugLog.Log")
-      #azurite-blob --silent --location $azuriteDataPath --debug $azuriteDebugLog --blobPort 10000 --blobHost 127.0.0.1
-      #seems likely were just waiting for job to time-out after azurite-blob started, try separate window...
-      #TBD: could attempt to invoke 'azurite' be conflicting with something azurish already on node???
-      cmd /c "start `"azurite`" azurite-blob --silent --location $azuriteDataPath --debug $azuriteDebugLog --blobPort 10000 --blobHost 127.0.0.1"
-    }
+        #~ #$npxCmd = "start `"azurite host window`" " + $npxCmdPath + " azurite-blob" + " --silent --location " + $azuriteDataPath + " --debug " + $azuriteDebugLog + " --blobPort 10000 --blobHost 0.0.0.0 "
+        #~ #will this start in background, or does it need separate window???
+        #~ #azurite-blob --silent --location " + $azuriteDataPath + " --debug " + $azuriteDebugLog + " --blobPort 10000 --blobHost 127.0.0.1
+        #~ $azuriteDataPath = (Join-Path $env:TEMP "azuriteData")
+        #~ New-Item -ItemType Directory -Path $azuriteDataPath
+        #~ $azuriteDebugLog = (Join-Path $env:TEMP "azuriteDebugLog.Log")
+        #~ #azurite-blob --silent --location $azuriteDataPath --debug $azuriteDebugLog --blobPort 10000 --blobHost 127.0.0.1
+        #~ #seems likely were just waiting for job to time-out after azurite-blob started, try separate window...
+        #~ #TBD: could attempt to invoke 'azurite' be conflicting with something azurish already on node???
+        #~ #yep, for whatever reason, appears this is hanging...
+        #~ #cmd /c "start `"azurite`" azurite-blob --silent --location $azuriteDataPath --debug $azuriteDebugLog --blobPort 10000 --blobHost 127.0.0.1"
+        #~ $azuriteCmd = "start `"azurite`" azurite-blob --silent --location $azuriteDataPath --debug $azuriteDebugLog --blobPort 10000 --blobHost 127.0.0.1"
+        #~ Write-Host "azuriteCmd: $azuriteCmd"
+        #~ cmd /c $azuriteCmd
+        #~ Write-Host "after azurite secondary start attempt"
+        #~ #ok, since changing .ps1 install to be '-g', need to see if 'start' in that command works...
+        #~ #altho, this install path takes longer since have to fetch/verify/expand node installation when
+        #~ #vm image already has one,
+        #~ #since we don't plan to support our azurite install for customers, maybe two different paths
+        #~ #for azurite install acceptable, one for dev and one for CI???
+      }
+      else { #using the node/npm already present in vm
+        #alternate:
+        npm install -g azurite
+        #$npxCmd = "start `"azurite host window`" " + $npxCmdPath + " azurite-blob" + " --silent --location " + $azuriteDataPath + " --debug " + $azuriteDebugLog + " --blobPort 10000 --blobHost 0.0.0.0 "
+        #will this start in background, or does it need separate window???
+        #azurite-blob --silent --location " + $azuriteDataPath + " --debug " + $azuriteDebugLog + " --blobPort 10000 --blobHost 127.0.0.1
+        $azuriteDataPath = (Join-Path $env:TEMP "azuriteData")
+        New-Item -ItemType Directory -Path $azuriteDataPath
+        $azuriteDebugLog = (Join-Path $env:TEMP "azuriteDebugLog.Log")
+        #azurite-blob --silent --location $azuriteDataPath --debug $azuriteDebugLog --blobPort 10000 --blobHost 127.0.0.1
+        #seems likely were just waiting for job to time-out after azurite-blob started, try separate window...
+        #TBD: could attempt to invoke 'azurite' be conflicting with something azurish already on node???
+        cmd /c "start `"azurite`" azurite-blob --silent --location $azuriteDataPath --debug $azuriteDebugLog --blobPort 10000 --blobHost 127.0.0.1"
+      }
 
-    #present list of tasks to see if 'node' is running
-    echo "all tasks"
-    tasklist
-    echo "is 'node' present?"
-    tasklist | findstr /i node.exe
-    Write-Host "netstat -abo (after azurite)"
-    netstat -abo #'b' requires elevation, s'posed to have it
+      #present list of tasks to see if 'node' is running
+      echo "all tasks"
+      tasklist
+      echo "is 'node' present?"
+      tasklist | findstr /i node.exe
+      Write-Host "netstat -abo after azurite"
+      netstat -abo #'b' requires elevation, s'posed to have it
+      
+      Write-Host "Is npm present, and where, after we install?" #vm list suggests so
+      c:\msys64\usr\bin\which npm
+      Write-Host "Is azurite-blob somewhere/findable before install?
+      c:\msys64\usr\bin\which azurite-blob
+
+      #colon's apparently a no-no, at least after $variablref:... Write-Host "contents of $azuriteDebugLog:"
+      Write-Host "contents of $azuriteDebugLog..."
+      c:\msys64\usr\bin\cat $azuriteDebugLog
+    }
     
-    #colon's apparently a no-no... Write-Host "contents of $azuriteDebugLog:"
-    Write-Host "contents of $azuriteDebugLog..."
-    c:\msys64\usr\bin\cat $azuriteDebugLog
+    #-------end azurite related
+    #^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
     #~ $host.SetShouldExit(-1)
     #~ return -1
@@ -299,7 +313,79 @@ steps:
       #~ echo "is 'node' present?"
       #~ tasklist | findstr /i node.exe
     #~ }
+    
+    #vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+    #---azurite related
+    Write-Host "Is npm present, and where, before we install?" #vm list suggests so
+    c:\msys64\usr\bin\which npm
+    Write-Host "Is azurite-blob somewhere/findable before install?
+    c:\msys64\usr\bin\which azurite-blob
+    Write-Host "netstat b4 azurite..."
+    netstat -abo #'b' requires elevation, s'posed to have it
+    
+    $useTileDBInstallNodeJS = $True
+    if($useTileDBInstallNodeJS) {
+      #doesn't work with 'local' install, try now since -g'lobal' install in .ps1
+      & "$env:BUILD_SOURCESDIRECTORY\scripts\install-run-azurite.ps1"
+      #~ #The start of azurite in install-run-azurite.pas1 (above) with 'npx' is failing, 
+      #~ #see if the direct call withOUT npx, similar to one in 'else' branch will work...
+      #~ #(realizing that there could be artifacts from the attempt in the .ps1 causing conflicts also...)
 
+      #~ #$npxCmd = "start `"azurite host window`" " + $npxCmdPath + " azurite-blob" + " --silent --location " + $azuriteDataPath + " --debug " + $azuriteDebugLog + " --blobPort 10000 --blobHost 0.0.0.0 "
+      #~ #will this start in background, or does it need separate window???
+      #~ #azurite-blob --silent --location " + $azuriteDataPath + " --debug " + $azuriteDebugLog + " --blobPort 10000 --blobHost 127.0.0.1
+      #~ $azuriteDataPath = (Join-Path $env:TEMP "azuriteData")
+      #~ New-Item -ItemType Directory -Path $azuriteDataPath
+      #~ $azuriteDebugLog = (Join-Path $env:TEMP "azuriteDebugLog.Log")
+      #~ #azurite-blob --silent --location $azuriteDataPath --debug $azuriteDebugLog --blobPort 10000 --blobHost 127.0.0.1
+      #~ #seems likely were just waiting for job to time-out after azurite-blob started, try separate window...
+      #~ #TBD: could attempt to invoke 'azurite' be conflicting with something azurish already on node???
+      #~ #yep, for whatever reason, appears this is hanging...
+      #~ #cmd /c "start `"azurite`" azurite-blob --silent --location $azuriteDataPath --debug $azuriteDebugLog --blobPort 10000 --blobHost 127.0.0.1"
+      #~ $azuriteCmd = "start `"azurite`" azurite-blob --silent --location $azuriteDataPath --debug $azuriteDebugLog --blobPort 10000 --blobHost 127.0.0.1"
+      #~ Write-Host "azuriteCmd: $azuriteCmd"
+      #~ cmd /c $azuriteCmd
+      #~ Write-Host "after azurite secondary start attempt"
+      #~ #ok, since changing .ps1 install to be '-g', need to see if 'start' in that command works...
+      #~ #altho, this install path takes longer since have to fetch/verify/expand node installation when
+      #~ #vm image already has one,
+      #~ #since we don't plan to support our azurite install for customers, maybe two different paths
+      #~ #for azurite install acceptable, one for dev and one for CI???
+    }
+    else { #using the node/npm already present in vm
+      #alternate:
+      npm install -g azurite
+      #$npxCmd = "start `"azurite host window`" " + $npxCmdPath + " azurite-blob" + " --silent --location " + $azuriteDataPath + " --debug " + $azuriteDebugLog + " --blobPort 10000 --blobHost 0.0.0.0 "
+      #will this start in background, or does it need separate window???
+      #azurite-blob --silent --location " + $azuriteDataPath + " --debug " + $azuriteDebugLog + " --blobPort 10000 --blobHost 127.0.0.1
+      $azuriteDataPath = (Join-Path $env:TEMP "azuriteData")
+      New-Item -ItemType Directory -Path $azuriteDataPath
+      $azuriteDebugLog = (Join-Path $env:TEMP "azuriteDebugLog.Log")
+      #azurite-blob --silent --location $azuriteDataPath --debug $azuriteDebugLog --blobPort 10000 --blobHost 127.0.0.1
+      #seems likely were just waiting for job to time-out after azurite-blob started, try separate window...
+      #TBD: could attempt to invoke 'azurite' be conflicting with something azurish already on node???
+      cmd /c "start `"azurite`" azurite-blob --silent --location $azuriteDataPath --debug $azuriteDebugLog --blobPort 10000 --blobHost 127.0.0.1"
+    }
+
+    #present list of tasks to see if 'node' is running
+    echo "all tasks"
+    tasklist
+    echo "is 'node' present?"
+    tasklist | findstr /i node.exe
+    Write-Host "netstat -abo after azurite"
+    netstat -abo #'b' requires elevation, s'posed to have it
+    
+    Write-Host "Is npm present, and where, after we install?" #vm list suggests so
+    c:\msys64\usr\bin\which npm
+    Write-Host "Is azurite-blob somewhere/findable after install?
+    c:\msys64\usr\bin\which azurite-blob
+
+    #colon's apparently a no-no, at least after $variablref:... Write-Host "contents of $azuriteDebugLog:"
+    Write-Host "contents of $azuriteDebugLog..."
+    c:\msys64\usr\bin\cat $azuriteDebugLog
+    #--------end azurite related
+    #^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    
     # Actually run tests
     cmake --build $env:AGENT_BUILDDIRECTORY\build\tiledb --target check --config Release -- /verbosity:minimal
 
