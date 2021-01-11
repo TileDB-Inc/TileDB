@@ -122,7 +122,6 @@ steps:
       Write-Host "Is azurite-blob somewhere/findable before install?"
       c:\msys64\usr\bin\which azurite-blob
 
-      #colon's apparently a no-no, at least after $variablref:... Write-Host "contents of $azuriteDebugLog:"
       Write-Host "contents of $azuriteDebugLog..."
       c:\msys64\usr\bin\cat $azuriteDebugLog
     }
