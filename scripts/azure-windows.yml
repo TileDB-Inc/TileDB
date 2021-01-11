@@ -380,7 +380,7 @@ steps:
     
     Write-Host "Is npm present, and where, after we install?" #vm list suggests so
     c:\msys64\usr\bin\which npm
-    Write-Host "Is azurite-blob somewhere/findable after install?
+    Write-Host "Is azurite-blob somewhere/findable after install?"
     c:\msys64\usr\bin\which azurite-blob
 
     Write-Host "contents of $azuriteDebugLog..."
@@ -396,19 +396,21 @@ steps:
        $host.SetShouldExit($LastExitCode)
     }
 
-    $azuriteDataPath = (Join-Path $env:TEMP "azuriteData")
-    $azuriteDebugLog = (Join-Path $env:TEMP "azuriteDebugLog.Log")
+    if($true){
+      $azuriteDataPath = (Join-Path $env:TEMP "azuriteData")
+      $azuriteDebugLog = (Join-Path $env:TEMP "azuriteDebugLog.Log")
 
-    #present list of tasks to see if 'node' is running
-    echo "all tasks"
-    tasklist
-    echo "is 'node' present?"
-    tasklist | findstr /i node.exe
-    Write-Host "netstat -abo after azurite"
-    netstat -abo #'b' requires elevation, s'posed to have it
-    
-    Write-Host "contents of $azuriteDebugLog after --target check run..."
-    c:\msys64\usr\bin\cat $azuriteDebugLog
+      #present list of tasks to see if 'node' is running
+      echo "all tasks"
+      tasklist
+      echo "is 'node' present?"
+      tasklist | findstr /i node.exe
+      Write-Host "netstat -abo after azurite"
+      netstat -abo #'b' requires elevation, s'posed to have it
+      
+      Write-Host "contents of $azuriteDebugLog after --target check run..."
+      c:\msys64\usr\bin\cat $azuriteDebugLog
+    }
 
     # Build the examples
     cmake --build $env:AGENT_BUILDDIRECTORY\build --target examples --config Release -- /verbosity:minimal
