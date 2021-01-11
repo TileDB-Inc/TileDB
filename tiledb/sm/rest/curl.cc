@@ -257,14 +257,7 @@ size_t write_header_callback(
       const std::string redirection_value =
           header_scheme + "://" + header_value_domain;
       std::unique_lock<std::mutex> rd_lck(*(pmHeader->redirect_uri_map_lock));
-      auto check_duplicate = pmHeader->redirect_uri_map->emplace(
-          std::make_pair(*(pmHeader->uri), redirection_value));
-
-      // If record for this key already exists then we update the value of
-      // redirection
-      if (!check_duplicate.second) {
-        check_duplicate.first->second = redirection_value;
-      }
+      (*pmHeader->redirect_uri_map)[*pmHeader->uri] = redirection_value;
     }
   }
   return size * count;

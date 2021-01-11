@@ -74,6 +74,9 @@ struct HeaderCbData {
   std::mutex* redirect_uri_map_lock;
 };
 
+size_t write_header_callback(
+    void* res_data, size_t size, size_t count, void* userdata);
+
 class Curl {
  public:
   /** Constructor. */

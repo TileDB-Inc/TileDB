@@ -171,7 +171,7 @@ set(TILEDB_TEST_SOURCES
   src/unit-win-filesystem.cc
   src/unit.cc
   src/vfs_helpers.cc
-)
+  src/unit-curl.cc)
 
 if (TILEDB_CPP_API)
   list(APPEND TILEDB_TEST_SOURCES
