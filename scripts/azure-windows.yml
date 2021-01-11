@@ -326,8 +326,9 @@ steps:
     Write-Host "netstat b4 azurite..."
     netstat -abo #'b' requires elevation, s'posed to have it
     
-    $useTileDBInstallNodeJS = $True
+    $useTileDBInstallNodeJS = $False #$True
     if($useTileDBInstallNodeJS) {
+      #Has been observed to get through testing 'successfully', though some tests appeared to report failures (red highlighting)
       #doesn't work with 'local' install, try now since -g'lobal' install in .ps1
       & "$env:BUILD_SOURCESDIRECTORY\scripts\install-run-azurite.ps1"
       #~ #The start of azurite in install-run-azurite.pas1 (above) with 'npx' is failing, 
