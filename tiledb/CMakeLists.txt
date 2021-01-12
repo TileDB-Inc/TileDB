@@ -161,6 +161,7 @@ set(TILEDB_CORE_SOURCES
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/writer.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/write_cell_slab_iter.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/rest/rest_client.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/rest/curl.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/rtree/rtree.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/array_schema.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/query.cc
