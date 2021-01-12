@@ -131,18 +131,20 @@ class DynamicArrayFx {
   ~DynamicArrayFx();
 
   /**
-   * Create, write and read attributes to a 1D array.
+   * Create, write and read attributes to an array.
    *
    * @param test_attrs The nullable attributes to test.
    * @param array_type The type of the array (dense/sparse).
+   * @param num_dims The number of dimensions for the array.
    * @param cell_order The cell order of the array.
    * @param tile_order The tile order of the array.
    * @param write_order The write layout.
    * @param encryption_type The encryption type.
    */
-  void test_1d_array(
+  void test_dynamic_array(
       const vector<test_attr_t>& test_attrs,
       tiledb_array_type_t array_type,
+      const int num_dims,
       tiledb_layout_t cell_order,
       tiledb_layout_t tile_order,
       tiledb_layout_t write_order,
@@ -179,6 +181,7 @@ class DynamicArrayFx {
    * @param cell_order The cell order of the array.
    * @param tile_order The tile order of the array.
    * @param encryption_type The encryption type of the array.
+   *
    */
   void create_array(
       const string& array_name,
@@ -394,7 +397,6 @@ void DynamicArrayFx::write(
   for (const auto& test_query_buffer : test_query_buffers) {
     if (test_query_buffer.buffer_validity_size_ == nullptr) {
       if (test_query_buffer.buffer_var_ == nullptr) {
-        std::cerr << "CASE 1" << std::endl;
         rc = tiledb_query_set_buffer(
             ctx_,
             query,
@@ -403,7 +405,6 @@ void DynamicArrayFx::write(
             test_query_buffer.buffer_size_);
         REQUIRE(rc == TILEDB_OK);
       } else {
-        std::cerr << "CASE 2" << std::endl;
         rc = tiledb_query_set_buffer_var(
             ctx_,
             query,
@@ -416,7 +417,6 @@ void DynamicArrayFx::write(
       }
     } else {
       if (test_query_buffer.buffer_var_ == nullptr) {
-        std::cerr << "CASE 3" << std::endl;
         rc = tiledb_query_set_buffer_nullable(
             ctx_,
             query,
@@ -427,7 +427,6 @@ void DynamicArrayFx::write(
             test_query_buffer.buffer_validity_size_);
         REQUIRE(rc == TILEDB_OK);
       } else {
-        std::cerr << "CASE 4" << std::endl;
         rc = tiledb_query_set_buffer_var_nullable(
             ctx_,
             query,
@@ -555,20 +554,38 @@ void DynamicArrayFx::read(
   tiledb_query_free(&query);
 }
 
-void DynamicArrayFx::test_1d_array(
+void DynamicArrayFx::test_dynamic_array(
     const vector<test_attr_t>& test_attrs,
     tiledb_array_type_t array_type,
+    const int num_dims,
     tiledb_layout_t cell_order,
     tiledb_layout_t tile_order,
     tiledb_layout_t write_order,
     tiledb_encryption_type_t encryption_type) {
-  const string array_name = "1d_dense_array";
+  const string array_name = "dynamic_array";
+
+  // Skip row-major and col-major writes for sparse arrays.
+  if (array_type == TILEDB_SPARSE &&
+      (write_order == TILEDB_ROW_MAJOR || write_order == TILEDB_COL_MAJOR)) {
+    return;
+  }
 
   // Define the dimensions.
   vector<test_dim_t> test_dims;
-  const uint64_t d_domain[] = {0, 1};
-  const uint64_t d_tile_extent = 1;
-  test_dims.emplace_back("d", TILEDB_INT32, d_domain, d_tile_extent);
+  if (num_dims == 1) {
+    const uint64_t d1_domain[] = {0, 1};
+    const uint64_t d1_tile_extent = 1;
+    test_dims.emplace_back("d1", TILEDB_INT32, d1_domain, d1_tile_extent);
+  } else if (num_dims == 2) {
+    const uint64_t d1_domain[] = {1, 4};
+    const uint64_t d1_tile_extent = 2;
+    test_dims.emplace_back("d1", TILEDB_UINT64, d1_domain, d1_tile_extent);
+    const uint64_t d2_domain[] = {1, 4};
+    const uint64_t d2_tile_extent = 2;
+    test_dims.emplace_back("d2", TILEDB_UINT64, d2_domain, d2_tile_extent);
+  } else if (num_dims == 3) {
+    // Create 3rd dimension
+  }
 
   // Create the array.
   create_array(
@@ -582,53 +599,144 @@ void DynamicArrayFx::test_1d_array(
 
   // Define the write query buffers for "a".
   vector<test_query_buffer_t> write_query_buffers;
-  int a_write_buffer[1] = {0};
+  uint64_t a_write_buffer[1] = {0};
   uint64_t a_write_buffer_size = sizeof(a_write_buffer);
-
-  // Validity buffer is set only when the attribute is nullable.
   uint8_t a_write_buffer_validity[1] = {static_cast<uint8_t>(rand() % 2)};
   uint64_t a_write_buffer_validity_size = sizeof(a_write_buffer_validity);
-  const test_attr_t test_attr = test_attrs.front();
-  if (test_attr.nullable_) {
-    write_query_buffers.emplace_back(
-        "a",
-        a_write_buffer,
-        &a_write_buffer_size,
-        nullptr,
-        nullptr,
-        a_write_buffer_validity,
-        &a_write_buffer_validity_size);
-  } else {
-    write_query_buffers.emplace_back(
-        "a",
-        a_write_buffer,
-        &a_write_buffer_size,
-        nullptr,
-        nullptr,
-        nullptr,
-        nullptr);
+  int a_write_buffer_var[2] = {0, 1};
+  uint64_t a_write_buffer_var_size = sizeof(a_write_buffer_var);
+
+  // Validity buffer is set only when the attribute is nullable.
+  // Variable buffer is set only when the attribute is var-sized.
+  for (auto attr_iter = test_attrs.begin(); attr_iter != test_attrs.end();
+       attr_iter++) {
+    if (attr_iter->name_ == "a") {
+      if (attr_iter->nullable_) {
+        if (attr_iter->cell_val_num_ == TILEDB_VAR_NUM) {
+          write_query_buffers.emplace_back(
+              "a",
+              a_write_buffer,
+              &a_write_buffer_size,
+              a_write_buffer_var,
+              &a_write_buffer_var_size,
+              a_write_buffer_validity,
+              &a_write_buffer_validity_size);
+        } else {
+          write_query_buffers.emplace_back(
+              "a",
+              a_write_buffer,
+              &a_write_buffer_size,
+              nullptr,
+              nullptr,
+              a_write_buffer_validity,
+              &a_write_buffer_validity_size);
+        }
+
+      } else {
+        if (attr_iter->cell_val_num_ == TILEDB_VAR_NUM) {
+          write_query_buffers.emplace_back(
+              "a",
+              a_write_buffer,
+              &a_write_buffer_size,
+              a_write_buffer_var,
+              &a_write_buffer_var_size,
+              nullptr,
+              nullptr);
+        } else {
+          write_query_buffers.emplace_back(
+              "a",
+              a_write_buffer,
+              &a_write_buffer_size,
+              nullptr,
+              nullptr,
+              nullptr,
+              nullptr);
+        }
+      }
+    }
   }
 
   // Define dimension query buffers for either sparse arrays or dense arrays
   // with an unordered write order.
-  uint64_t d_write_buffer[1];
-  uint64_t d_write_buffer_size;
-  if (array_type == TILEDB_SPARSE || write_order == TILEDB_UNORDERED) {
-    vector<uint64_t> d_write_vec;
-    d_write_vec = {0, 1};
+  if (num_dims == 1) {
+    uint64_t d1_write_buffer[1];
+    uint64_t d1_write_buffer_size;
+    if (array_type == TILEDB_SPARSE || write_order == TILEDB_UNORDERED) {
+      vector<uint64_t> d1_write_vec;
+      d1_write_vec = {0, 1};
 
-    REQUIRE(d_write_vec.size() == 1);
-    d_write_buffer[0] = d_write_vec[0];
-    d_write_buffer_size = sizeof(d_write_buffer);
+      REQUIRE(d1_write_vec.size() == 1);
+      d1_write_buffer[0] = d1_write_vec[0];
+      d1_write_buffer_size = sizeof(d1_write_buffer);
 
-    write_query_buffers.emplace_back(
-        "d",
-        d_write_buffer,
-        &d_write_buffer_size,
-        nullptr,
-        nullptr,
-        nullptr,
-        nullptr);
+      write_query_buffers.emplace_back(
+          "d1",
+          d1_write_buffer,
+          &d1_write_buffer_size,
+          nullptr,
+          nullptr,
+          nullptr,
+          nullptr);
+    }
+  } else if (num_dims == 2) {
+    uint64_t d1_write_buffer[16];
+    uint64_t d2_write_buffer[16];
+    uint64_t d1_write_buffer_size;
+    uint64_t d2_write_buffer_size;
+    if (array_type == TILEDB_SPARSE || write_order == TILEDB_UNORDERED) {
+      vector<uint64_t> d1_write_vec;
+      vector<uint64_t> d2_write_vec;
+
+      // Coordinates for sparse arrays written in global order have unique
+      // ordering when either/both cell and tile ordering is col-major.
+      if (array_type == TILEDB_SPARSE && write_order == TILEDB_GLOBAL_ORDER &&
+          (cell_order == TILEDB_COL_MAJOR || tile_order == TILEDB_COL_MAJOR)) {
+        if (cell_order == TILEDB_ROW_MAJOR && tile_order == TILEDB_COL_MAJOR) {
+          d1_write_vec = {1, 1, 2, 2, 3, 3, 4, 4, 1, 1, 2, 2, 3, 3, 4, 4};
+          d2_write_vec = {1, 2, 1, 2, 1, 2, 1, 2, 3, 4, 3, 4, 3, 4, 3, 4};
+        } else if (
+            cell_order == TILEDB_COL_MAJOR && tile_order == TILEDB_ROW_MAJOR) {
+          d1_write_vec = {1, 2, 1, 2, 1, 2, 1, 2, 3, 4, 3, 4, 3, 4, 3, 4};
+          d2_write_vec = {1, 1, 2, 2, 3, 3, 4, 4, 1, 1, 2, 2, 3, 3, 4, 4};
+        } else {
+          REQUIRE(cell_order == TILEDB_COL_MAJOR);
+          REQUIRE(tile_order == TILEDB_COL_MAJOR);
+          d1_write_vec = {1, 2, 1, 2, 3, 4, 3, 4, 1, 2, 1, 2, 3, 4, 3, 4};
+          d2_write_vec = {1, 1, 2, 2, 1, 1, 2, 2, 3, 3, 4, 4, 3, 3, 4, 4};
+        }
+      } else {
+        d1_write_vec = {1, 1, 2, 2, 1, 1, 2, 2, 3, 3, 4, 4, 3, 3, 4, 4};
+        d2_write_vec = {1, 2, 1, 2, 3, 4, 3, 4, 1, 2, 1, 2, 3, 4, 3, 4};
+      }
+
+      REQUIRE(d1_write_vec.size() == 16);
+      for (size_t i = 0; i < 16; ++i)
+        d1_write_buffer[i] = d1_write_vec[i];
+      d1_write_buffer_size = sizeof(d1_write_buffer);
+      write_query_buffers.emplace_back(
+          "d1",
+          d1_write_buffer,
+          &d1_write_buffer_size,
+          nullptr,
+          nullptr,
+          nullptr,
+          nullptr);
+
+      REQUIRE(d2_write_vec.size() == 16);
+      for (size_t i = 0; i < 16; ++i)
+        d2_write_buffer[i] = d2_write_vec[i];
+      d2_write_buffer_size = sizeof(d2_write_buffer);
+      write_query_buffers.emplace_back(
+          "d2",
+          d2_write_buffer,
+          &d2_write_buffer_size,
+          nullptr,
+          nullptr,
+          nullptr,
+          nullptr);
+    }
+  } else if (num_dims == 3) {
+    // Define dimension query buffers for 3 dimensions
   }
 
   // Execute the write query.
@@ -636,54 +744,125 @@ void DynamicArrayFx::test_1d_array(
 
   // Define the read query buffers for "a".
   vector<test_query_buffer_t> read_query_buffers;
-  int a_read_buffer[1] = {0};
+  uint64_t a_read_buffer[1] = {0};
   uint64_t a_read_buffer_size = sizeof(a_read_buffer);
-
-  // Validity buffer is set only when the attribute is nullable.
   uint8_t a_read_buffer_validity[1] = {0};
   uint64_t a_read_buffer_validity_size = sizeof(a_read_buffer_validity);
-  if (test_attr.nullable_) {
-    read_query_buffers.emplace_back(
-        "a",
-        a_read_buffer,
-        &a_read_buffer_size,
-        nullptr,
-        nullptr,
-        a_read_buffer_validity,
-        &a_read_buffer_validity_size);
-  } else {
-    read_query_buffers.emplace_back(
-        "a",
-        a_read_buffer,
-        &a_read_buffer_size,
-        nullptr,
-        nullptr,
-        nullptr,
-        nullptr);
+  int a_read_buffer_var[2] = {0};
+  uint64_t a_read_buffer_var_size = sizeof(a_read_buffer);
+
+  // Validity buffer is set only when the attribute is nullable.
+  // Variable buffer is set only when the attribute is var-sized.
+  for (auto attr_iter = test_attrs.begin(); attr_iter != test_attrs.end();
+       attr_iter++) {
+    if (attr_iter->name_ == "a") {
+      if (attr_iter->nullable_) {
+        if (attr_iter->cell_val_num_ == TILEDB_VAR_NUM) {
+          read_query_buffers.emplace_back(
+              "a",
+              a_read_buffer,
+              &a_read_buffer_size,
+              a_read_buffer_var,
+              &a_read_buffer_var_size,
+              a_read_buffer_validity,
+              &a_read_buffer_validity_size);
+        } else {
+          read_query_buffers.emplace_back(
+              "a",
+              a_read_buffer,
+              &a_read_buffer_size,
+              nullptr,
+              nullptr,
+              a_read_buffer_validity,
+              &a_read_buffer_validity_size);
+        }
+
+      } else {
+        if (attr_iter->cell_val_num_ == TILEDB_VAR_NUM) {
+          read_query_buffers.emplace_back(
+              "a",
+              a_read_buffer,
+              &a_read_buffer_size,
+              a_read_buffer_var,
+              &a_read_buffer_var_size,
+              nullptr,
+              nullptr);
+        } else {
+          read_query_buffers.emplace_back(
+              "a",
+              a_read_buffer,
+              &a_read_buffer_size,
+              nullptr,
+              nullptr,
+              nullptr,
+              nullptr);
+        }
+      }
+    }
   }
 
   // Execute a read query over the entire domain.
-  const uint64_t subarray_full[] = {0, 0};
-  read(array_name, read_query_buffers, subarray_full, encryption_type);
+
+  if (num_dims == 1) {
+    const uint64_t subarray_full[] = {0, 0};
+    read(array_name, read_query_buffers, subarray_full, encryption_type);
+  } else if (num_dims == 2) {
+    const uint64_t subarray_full[] = {1, 4, 1, 4};
+    read(array_name, read_query_buffers, subarray_full, encryption_type);
+  } else if (num_dims == 3) {
+    // Create subarray for 3D
+    // read(array_name, read_query_buffers, subarray_full, encryption_type);
+  }
 
   // Each value in `a_read_buffer` corresponds to its index in
   // the original `a_write_buffer`. Check that the ordering of
   // the validity buffer matches the ordering in the value buffer.
   // Validity buffer is set only when the attribute is nullable.
-  if (test_attr.nullable_) {
-    REQUIRE(a_read_buffer_size == a_write_buffer_size);
-    REQUIRE(a_read_buffer_validity_size == a_write_buffer_validity_size);
-    uint8_t expected_a_read_buffer_validity[1];
-    expected_a_read_buffer_validity[0] = a_write_buffer_validity[0];
-    REQUIRE(!memcmp(
-        a_read_buffer_validity,
-        expected_a_read_buffer_validity,
-        a_read_buffer_validity_size));
-  } else {
-    REQUIRE(a_read_buffer_size == a_write_buffer_size);
-    uint8_t expected_a_read_buffer[1];
-    expected_a_read_buffer[0] = a_write_buffer[0];
-    REQUIRE(!memcmp(a_read_buffer, expected_a_read_buffer, a_read_buffer_size));
+  for (auto attr_iter = test_attrs.begin(); attr_iter != test_attrs.end();
+       attr_iter++) {
+    if (attr_iter->name_ == "a") {
+      if (attr_iter->nullable_) {
+        REQUIRE(a_read_buffer_size == a_write_buffer_size);
+        REQUIRE(a_read_buffer_validity_size == a_write_buffer_validity_size);
+        if (attr_iter->cell_val_num_ == TILEDB_VAR_NUM) {
+          uint8_t expected_a_read_buffer_validity[2];
+          REQUIRE(a_read_buffer_var_size == a_write_buffer_var_size);
+          for (int i = 0; i < 2; ++i) {
+            const uint64_t idx = a_read_buffer_var[i];
+            expected_a_read_buffer_validity[i] = a_write_buffer_validity[idx];
+          }
+          REQUIRE(!memcmp(
+              a_read_buffer_validity,
+              expected_a_read_buffer_validity,
+              a_read_buffer_validity_size));
+        } else {
+          uint8_t expected_a_read_buffer_validity[1];
+          expected_a_read_buffer_validity[0] = a_write_buffer_validity[0];
+          REQUIRE(!memcmp(
+              a_read_buffer_validity,
+              expected_a_read_buffer_validity,
+              a_read_buffer_validity_size));
+        }
+
+      } else {
+        REQUIRE(a_read_buffer_size == a_write_buffer_size);
+        if (attr_iter->cell_val_num_ == TILEDB_VAR_NUM) {
+          uint8_t expected_a_read_buffer[2];
+          REQUIRE(a_read_buffer_var_size == a_write_buffer_var_size);
+          for (int i = 0; i < 2; ++i) {
+            const uint64_t idx = a_read_buffer_var[i];
+            expected_a_read_buffer[i] = a_write_buffer[idx];
+          }
+          REQUIRE(!memcmp(
+              a_read_buffer, expected_a_read_buffer, a_read_buffer_size));
+        } else {
+          uint8_t expected_a_read_buffer[1];
+          expected_a_read_buffer[0] = a_write_buffer[0];
+          REQUIRE(!memcmp(
+              a_read_buffer, expected_a_read_buffer, a_read_buffer_size));
+        }
+      }
+    }
   }
 }
 
@@ -692,14 +871,45 @@ TEST_CASE_METHOD(
     "C API: Test a dynamic range of arrays",
     "[capi][dynamic]") {
   vector<test_attr_t> attrs;
-  attrs.emplace_back("a", TILEDB_INT32, 1, false);
 
-  tiledb_array_type_t array_type = TILEDB_DENSE;
-  tiledb_layout_t cell_order = TILEDB_ROW_MAJOR;
-  tiledb_layout_t tile_order = TILEDB_ROW_MAJOR;
-  tiledb_layout_t write_order = TILEDB_ROW_MAJOR;
+  /*
+  // Attribute types to check
+  vector<tiledb_datatype_t> attribute_types = {
+      TILEDB_INT8,           TILEDB_UINT8,         TILEDB_INT16,
+      TILEDB_UINT16,         TILEDB_INT32,         TILEDB_UINT32,
+      TILEDB_INT64,          TILEDB_UINT64,        TILEDB_FLOAT32,
+      TILEDB_FLOAT64,        TILEDB_CHAR,          TILEDB_STRING_ASCII,
+      TILEDB_STRING_UTF8,    TILEDB_STRING_UTF16,  TILEDB_STRING_UTF32,
+      TILEDB_STRING_UCS2,    TILEDB_STRING_UCS4,   TILEDB_DATETIME_YEAR,
+      TILEDB_DATETIME_MONTH, TILEDB_DATETIME_WEEK, TILEDB_DATETIME_DAY,
+      TILEDB_DATETIME_HR,    TILEDB_DATETIME_MIN,  TILEDB_DATETIME_SEC,
+      TILEDB_DATETIME_MS,    TILEDB_DATETIME_US,   TILEDB_DATETIME_NS,
+      TILEDB_DATETIME_PS,    TILEDB_DATETIME_FS,   TILEDB_DATETIME_AS};
+
+  vector<tiledb_datatype_t> sparse_attribute_types = {
+      TILEDB_FLOAT32, TILEDB_FLOAT64, TILEDB_STRING_ASCII};
+
+  for (size_t i = 0; i < attribute_types.size(); i++) {
+    attrs.emplace_back("a", attribute_types[i], 1, false);
+  }
+  */
+
+  // vector<test_attr_t> attrs;
+  attrs.emplace_back("a", TILEDB_INT32, TILEDB_VAR_NUM, false);
+
+  const tiledb_array_type_t array_type = TILEDB_DENSE;
+  int num_dims = 1;
+  const tiledb_layout_t cell_order = TILEDB_ROW_MAJOR;
+  const tiledb_layout_t tile_order = TILEDB_ROW_MAJOR;
+  const tiledb_layout_t write_order = TILEDB_ROW_MAJOR;
   tiledb_encryption_type_t encryption_type = TILEDB_NO_ENCRYPTION;
 
-  test_1d_array(
-      attrs, array_type, cell_order, tile_order, write_order, encryption_type);
+  test_dynamic_array(
+      attrs,
+      array_type,
+      num_dims,
+      cell_order,
+      tile_order,
+      write_order,
+      encryption_type);
 }
