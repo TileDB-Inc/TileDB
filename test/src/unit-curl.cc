@@ -32,7 +32,7 @@
  */
 
 #include <catch.hpp>
-#include <tiledb/sm/rest/curl.h>
+#include "tiledb/sm/rest/curl.h"
 
 #ifdef _WIN32
 #include "tiledb/sm/filesystem/win.h"
@@ -50,7 +50,7 @@ TEST_CASE("CURL: Test curl's header parsing callback", "[curl]") {
   size_t size = 50;
   size_t count = 50;
 
-  struct HeaderCbData userdata;
+  HeaderCbData userdata;
   std::string ns_array = "testns:test_arr";
   userdata.uri = &ns_array;
   std::mutex redirect_mtx_;
