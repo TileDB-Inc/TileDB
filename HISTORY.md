@@ -1,5 +1,4 @@
 # In Progress
-* Caching redirection URLs of TileDB Cloud Arrays minimizing redirection latency [#1919](https://github.com/TileDB-Inc/TileDB/pull/1919)
 
 ## Disk Format
 
@@ -8,6 +7,8 @@
 ## Breaking behavior
 
 ## New features
+
+* REST client support for caching redirects [#1919](https://github.com/TileDB-Inc/TileDB/pull/1919)
 
 ## Improvements
 

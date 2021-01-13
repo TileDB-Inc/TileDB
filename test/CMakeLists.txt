@@ -200,13 +200,13 @@ endif()
 if (TILEDB_SERIALIZATION)
   list(APPEND TILEDB_TEST_SOURCES
     src/unit-capi-serialized_queries.cc
+    src/unit-curl.cc
   )
 endif()
 
 if (TILEDB_TESTS_ENABLE_REST)
   list(APPEND TILEDB_TEST_SOURCES
     src/unit-capi-rest-dense_array.cc
-    src/unit-curl.cc
   )
 endif()
 

@@ -74,6 +74,19 @@ struct HeaderCbData {
   std::mutex* redirect_uri_map_lock;
 };
 
+/**
+ * This callback function gets called by libcurl as soon as a header has been
+ * received. libcurl buffers headers and delivers only "full" headers, one by
+ * one, to this callback. This callback should return the number of bytes
+ * actually taken care of if that number differs from the number passed to
+ * your callback function, it signals an error condition to the library
+ *
+ * @param res_data points to the delivered data
+ * @param size the size of that data is size multiplied with nmemb
+ * @param count number of bytes actually taken care of
+ * @param userdata the userdata argument is set with CURLOPT_HEADERDATA
+ * @return
+ */
 size_t write_header_callback(
     void* res_data, size_t size, size_t count, void* userdata);
 
