@@ -134,8 +134,8 @@ class DynamicArrayFx {
    * Create, write and read attributes to an array.
    *
    * @param test_attrs The nullable attributes to test.
+   * @param test_dims The dimensions to test.
    * @param array_type The type of the array (dense/sparse).
-   * @param num_dims The number of dimensions for the array.
    * @param cell_order The cell order of the array.
    * @param tile_order The tile order of the array.
    * @param write_order The write layout.
@@ -143,8 +143,8 @@ class DynamicArrayFx {
    */
   void test_dynamic_array(
       const vector<test_attr_t>& test_attrs,
+      const vector<test_dim_t>& test_dims,
       tiledb_array_type_t array_type,
-      const int num_dims,
       tiledb_layout_t cell_order,
       tiledb_layout_t tile_order,
       tiledb_layout_t write_order,
@@ -556,8 +556,8 @@ void DynamicArrayFx::read(
 
 void DynamicArrayFx::test_dynamic_array(
     const vector<test_attr_t>& test_attrs,
+    const vector<test_dim_t>& test_dims,
     tiledb_array_type_t array_type,
-    const int num_dims,
     tiledb_layout_t cell_order,
     tiledb_layout_t tile_order,
     tiledb_layout_t write_order,
@@ -570,32 +570,17 @@ void DynamicArrayFx::test_dynamic_array(
     return;
   }
 
-  // Define the dimensions.
-  vector<test_dim_t> test_dims;
-  if (num_dims == 1) {
-    const uint64_t d1_domain[] = {0, 1};
-    const uint64_t d1_tile_extent = 1;
-    test_dims.emplace_back("d1", TILEDB_INT32, d1_domain, d1_tile_extent);
-  } else if (num_dims == 2) {
-    const uint64_t d1_domain[] = {1, 4};
-    const uint64_t d1_tile_extent = 2;
-    test_dims.emplace_back("d1", TILEDB_UINT64, d1_domain, d1_tile_extent);
-    const uint64_t d2_domain[] = {1, 4};
-    const uint64_t d2_tile_extent = 2;
-    test_dims.emplace_back("d2", TILEDB_UINT64, d2_domain, d2_tile_extent);
-  } else if (num_dims == 3) {
-    // Create 3rd dimension
+  for (auto& test_dim : test_dims) {
+    // Create the array.
+    create_array(
+        array_name,
+        array_type,
+        test_dims,
+        test_attrs,
+        cell_order,
+        tile_order,
+        encryption_type);
   }
-
-  // Create the array.
-  create_array(
-      array_name,
-      array_type,
-      test_dims,
-      test_attrs,
-      cell_order,
-      tile_order,
-      encryption_type);
 
   // Define the write query buffers for "a".
   vector<test_query_buffer_t> write_query_buffers;
@@ -656,88 +641,138 @@ void DynamicArrayFx::test_dynamic_array(
     }
   }
 
+  // Calculate the write buffer sizes.
+  vector<uint64_t> buffer_sizes;
+  for (auto dims_iter = test_dims.begin(); dims_iter != test_dims.end();
+       ++dims_iter) {
+    const uint64_t max_range = ((uint64_t*)(dims_iter->domain_))[1];
+    const uint64_t min_range = ((uint64_t*)(dims_iter->domain_))[0];
+    const uint64_t buffer_size = max_range - min_range;
+    buffer_sizes.emplace_back(buffer_size);
+  }
+
+  // Create the write buffers.
+  vector<uint64_t> d_write_buffers;
+  for (auto buff_size_iter = buffer_sizes.begin();
+       buff_size_iter != buffer_sizes.end();
+       ++buff_size_iter) {
+    uint64_t write_buffer;
+    if (buff_size_iter == buffer_sizes.begin()) {
+      write_buffer = (uint64_t)malloc(*buff_size_iter * sizeof(uint64_t));
+    } else {
+      write_buffer = (uint64_t)malloc(
+          *buff_size_iter * (*buff_size_iter - 1) * sizeof(uint64_t));
+    }
+    d_write_buffers.emplace_back(write_buffer);
+  }
+
+  // Fill the write buffers with values.
+  // TODO: FIX- Currently causing the code to fail - maybe not tho??
+  // said child aborted at first but now working
+  for (auto write_buff_iter = d_write_buffers.begin();
+       write_buff_iter != d_write_buffers.end();
+       ++write_buff_iter) {
+    for (uint64_t i = 0; i < sizeof(write_buff_iter); i++) {
+      write_buff_iter[i] = i;
+    }
+  }
+
   // Define dimension query buffers for either sparse arrays or dense arrays
   // with an unordered write order.
-  if (num_dims == 1) {
-    uint64_t d1_write_buffer[1];
-    uint64_t d1_write_buffer_size;
-    if (array_type == TILEDB_SPARSE || write_order == TILEDB_UNORDERED) {
-      vector<uint64_t> d1_write_vec;
-      d1_write_vec = {0, 1};
-
-      REQUIRE(d1_write_vec.size() == 1);
-      d1_write_buffer[0] = d1_write_vec[0];
-      d1_write_buffer_size = sizeof(d1_write_buffer);
-
-      write_query_buffers.emplace_back(
-          "d1",
-          d1_write_buffer,
-          &d1_write_buffer_size,
-          nullptr,
-          nullptr,
-          nullptr,
-          nullptr);
+  if (array_type == TILEDB_SPARSE || write_order == TILEDB_UNORDERED) {
+    vector<uint64_t*> d_write_vecs;
+    for (auto dims_iter = test_dims.begin(); dims_iter != test_dims.end();
+         ++dims_iter) {
+      const uint64_t max_range = ((uint64_t*)(dims_iter->domain_))[1];
+      const uint64_t min_range = ((uint64_t*)(dims_iter->domain_))[0];
+      uint64_t coord[2] = {min_range, max_range};
+      d_write_vecs.emplace_back(coord);
     }
-  } else if (num_dims == 2) {
-    uint64_t d1_write_buffer[16];
-    uint64_t d2_write_buffer[16];
-    uint64_t d1_write_buffer_size;
-    uint64_t d2_write_buffer_size;
-    if (array_type == TILEDB_SPARSE || write_order == TILEDB_UNORDERED) {
-      vector<uint64_t> d1_write_vec;
-      vector<uint64_t> d2_write_vec;
-
-      // Coordinates for sparse arrays written in global order have unique
-      // ordering when either/both cell and tile ordering is col-major.
-      if (array_type == TILEDB_SPARSE && write_order == TILEDB_GLOBAL_ORDER &&
-          (cell_order == TILEDB_COL_MAJOR || tile_order == TILEDB_COL_MAJOR)) {
-        if (cell_order == TILEDB_ROW_MAJOR && tile_order == TILEDB_COL_MAJOR) {
-          d1_write_vec = {1, 1, 2, 2, 3, 3, 4, 4, 1, 1, 2, 2, 3, 3, 4, 4};
-          d2_write_vec = {1, 2, 1, 2, 1, 2, 1, 2, 3, 4, 3, 4, 3, 4, 3, 4};
-        } else if (
-            cell_order == TILEDB_COL_MAJOR && tile_order == TILEDB_ROW_MAJOR) {
-          d1_write_vec = {1, 2, 1, 2, 1, 2, 1, 2, 3, 4, 3, 4, 3, 4, 3, 4};
-          d2_write_vec = {1, 1, 2, 2, 3, 3, 4, 4, 1, 1, 2, 2, 3, 3, 4, 4};
-        } else {
-          REQUIRE(cell_order == TILEDB_COL_MAJOR);
-          REQUIRE(tile_order == TILEDB_COL_MAJOR);
-          d1_write_vec = {1, 2, 1, 2, 3, 4, 3, 4, 1, 2, 1, 2, 3, 4, 3, 4};
-          d2_write_vec = {1, 1, 2, 2, 1, 1, 2, 2, 3, 3, 4, 4, 3, 3, 4, 4};
-        }
-      } else {
-        d1_write_vec = {1, 1, 2, 2, 1, 1, 2, 2, 3, 3, 4, 4, 3, 3, 4, 4};
-        d2_write_vec = {1, 2, 1, 2, 3, 4, 3, 4, 1, 2, 1, 2, 3, 4, 3, 4};
-      }
-
-      REQUIRE(d1_write_vec.size() == 16);
-      for (size_t i = 0; i < 16; ++i)
-        d1_write_buffer[i] = d1_write_vec[i];
-      d1_write_buffer_size = sizeof(d1_write_buffer);
-      write_query_buffers.emplace_back(
-          "d1",
-          d1_write_buffer,
-          &d1_write_buffer_size,
-          nullptr,
-          nullptr,
-          nullptr,
-          nullptr);
-
-      REQUIRE(d2_write_vec.size() == 16);
-      for (size_t i = 0; i < 16; ++i)
-        d2_write_buffer[i] = d2_write_vec[i];
-      d2_write_buffer_size = sizeof(d2_write_buffer);
-      write_query_buffers.emplace_back(
-          "d2",
-          d2_write_buffer,
-          &d2_write_buffer_size,
-          nullptr,
-          nullptr,
-          nullptr,
-          nullptr);
-    }
-  } else if (num_dims == 3) {
-    // Define dimension query buffers for 3 dimensions
   }
+  /*
+    // Define dimension query buffers for either sparse arrays or dense arrays
+    // with an unordered write order.
+    if (num_dims == 1) {
+      uint64_t d1_write_buffer[1];
+      uint64_t d1_write_buffer_size;
+      if (array_type == TILEDB_SPARSE || write_order == TILEDB_UNORDERED) {
+        vector<uint64_t> d1_write_vec;
+        d1_write_vec = {0, 1};
+
+        REQUIRE(d1_write_vec.size() == 1);
+        d1_write_buffer[0] = d1_write_vec[0];
+        d1_write_buffer_size = sizeof(d1_write_buffer);
+
+        write_query_buffers.emplace_back(
+            "d1",
+            d1_write_buffer,
+            &d1_write_buffer_size,
+            nullptr,
+            nullptr,
+            nullptr,
+            nullptr);
+      }
+    } else if (num_dims == 2) {
+      uint64_t d1_write_buffer[16];
+      uint64_t d2_write_buffer[16];
+      uint64_t d1_write_buffer_size;
+      uint64_t d2_write_buffer_size;
+      if (array_type == TILEDB_SPARSE || write_order == TILEDB_UNORDERED) {
+        vector<uint64_t> d1_write_vec;
+        vector<uint64_t> d2_write_vec;
+
+        // Coordinates for sparse arrays written in global order have unique
+        // ordering when either/both cell and tile ordering is col-major.
+        if (array_type == TILEDB_SPARSE && write_order == TILEDB_GLOBAL_ORDER &&
+            (cell_order == TILEDB_COL_MAJOR || tile_order == TILEDB_COL_MAJOR))
+    { if (cell_order == TILEDB_ROW_MAJOR && tile_order == TILEDB_COL_MAJOR) {
+            d1_write_vec = {1, 1, 2, 2, 3, 3, 4, 4, 1, 1, 2, 2, 3, 3, 4, 4};
+            d2_write_vec = {1, 2, 1, 2, 1, 2, 1, 2, 3, 4, 3, 4, 3, 4, 3, 4};
+          } else if (
+              cell_order == TILEDB_COL_MAJOR && tile_order == TILEDB_ROW_MAJOR)
+    { d1_write_vec = {1, 2, 1, 2, 1, 2, 1, 2, 3, 4, 3, 4, 3, 4, 3, 4};
+            d2_write_vec = {1, 1, 2, 2, 3, 3, 4, 4, 1, 1, 2, 2, 3, 3, 4, 4};
+          } else {
+            REQUIRE(cell_order == TILEDB_COL_MAJOR);
+            REQUIRE(tile_order == TILEDB_COL_MAJOR);
+            d1_write_vec = {1, 2, 1, 2, 3, 4, 3, 4, 1, 2, 1, 2, 3, 4, 3, 4};
+            d2_write_vec = {1, 1, 2, 2, 1, 1, 2, 2, 3, 3, 4, 4, 3, 3, 4, 4};
+          }
+        } else {
+          d1_write_vec = {1, 1, 2, 2, 1, 1, 2, 2, 3, 3, 4, 4, 3, 3, 4, 4};
+          d2_write_vec = {1, 2, 1, 2, 3, 4, 3, 4, 1, 2, 1, 2, 3, 4, 3, 4};
+        }
+
+        REQUIRE(d1_write_vec.size() == 16);
+        for (size_t i = 0; i < 16; ++i)
+          d1_write_buffer[i] = d1_write_vec[i];
+        d1_write_buffer_size = sizeof(d1_write_buffer);
+        write_query_buffers.emplace_back(
+            "d1",
+            d1_write_buffer,
+            &d1_write_buffer_size,
+            nullptr,
+            nullptr,
+            nullptr,
+            nullptr);
+
+        REQUIRE(d2_write_vec.size() == 16);
+        for (size_t i = 0; i < 16; ++i)
+          d2_write_buffer[i] = d2_write_vec[i];
+        d2_write_buffer_size = sizeof(d2_write_buffer);
+        write_query_buffers.emplace_back(
+            "d2",
+            d2_write_buffer,
+            &d2_write_buffer_size,
+            nullptr,
+            nullptr,
+            nullptr,
+            nullptr);
+      }
+    } else if (num_dims == 3) {
+      // Define dimension query buffers for 3 dimensions
+    }
+    */
 
   // Execute the write query.
   write(array_name, write_query_buffers, write_order, encryption_type);
@@ -802,17 +837,18 @@ void DynamicArrayFx::test_dynamic_array(
   }
 
   // Execute a read query over the entire domain.
-
-  if (num_dims == 1) {
-    const uint64_t subarray_full[] = {0, 0};
-    read(array_name, read_query_buffers, subarray_full, encryption_type);
-  } else if (num_dims == 2) {
-    const uint64_t subarray_full[] = {1, 4, 1, 4};
-    read(array_name, read_query_buffers, subarray_full, encryption_type);
-  } else if (num_dims == 3) {
-    // Create subarray for 3D
-    // read(array_name, read_query_buffers, subarray_full, encryption_type);
-  }
+  /*
+    if (num_dims == 1) {
+      const uint64_t subarray_full[] = {0, 0};
+      read(array_name, read_query_buffers, subarray_full, encryption_type);
+    } else if (num_dims == 2) {
+      const uint64_t subarray_full[] = {1, 4, 1, 4};
+      read(array_name, read_query_buffers, subarray_full, encryption_type);
+    } else if (num_dims == 3) {
+      // Create subarray for 3D
+      // read(array_name, read_query_buffers, subarray_full, encryption_type);
+    }
+    */
 
   // Each value in `a_read_buffer` corresponds to its index in
   // the original `a_write_buffer`. Check that the ordering of
@@ -894,11 +930,16 @@ TEST_CASE_METHOD(
   }
   */
 
+  vector<test_dim_t> test_dims;
+  const uint64_t d1_domain[] = {0, 1};
+  const uint64_t d1_tile_extent = 1;
+  test_dims.emplace_back("d1", TILEDB_INT32, d1_domain, d1_tile_extent);
+
   // vector<test_attr_t> attrs;
   attrs.emplace_back("a", TILEDB_INT32, TILEDB_VAR_NUM, false);
 
   const tiledb_array_type_t array_type = TILEDB_DENSE;
-  int num_dims = 1;
+  // int num_dims = 1;
   const tiledb_layout_t cell_order = TILEDB_ROW_MAJOR;
   const tiledb_layout_t tile_order = TILEDB_ROW_MAJOR;
   const tiledb_layout_t write_order = TILEDB_ROW_MAJOR;
@@ -906,8 +947,8 @@ TEST_CASE_METHOD(
 
   test_dynamic_array(
       attrs,
+      test_dims,
       array_type,
-      num_dims,
       cell_order,
       tile_order,
       write_order,
