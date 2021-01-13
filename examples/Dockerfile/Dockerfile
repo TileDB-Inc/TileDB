@@ -1,4 +1,4 @@
-# Ubuntu Trusty Docker file for base TileDB Dependencies
+# Ubuntu Docker file for TileDB
 
 # This Dockerfile copies files from the parent directory, requiring a build
 # context from the parent directory. From `./../..`, execute the following to
@@ -13,12 +13,16 @@ FROM ubuntu:20.04
 # Optional components to enable (defaults to empty).
 ARG enable
 
-# Setup home environment
-RUN useradd tiledb
-RUN mkdir /home/tiledb && chown tiledb /home/tiledb
+# Setup home environment.
+RUN useradd tiledb \
+    && mkdir /home/tiledb \
+    && chown tiledb /home/tiledb
 ENV HOME /home/tiledb
 
-# Install dependencies, accepting prompts with their default value
+# Copy TileDB source files from the build context.
+COPY . /home/tiledb/TileDB
+
+# Install dependencies, accepting prompts with their default value.
 RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y \
     build-essential \
     wget \
@@ -33,10 +37,7 @@ RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y \
     && apt-get purge -y \
     && rm -rf /var/lib/apt/lists*
 
-# Copy TileDB source files from the build context.
-COPY . /home/tiledb/TileDB
-
-# Install TileDB
+# Build and install TileDB.
 RUN cd /home/tiledb/TileDB \
     && mkdir build \
     && cd build \
@@ -51,9 +52,10 @@ RUN cd /home/tiledb/TileDB \
     && make -j2 \
     && make -j2 examples \
     && make install-tiledb \
-    && ldconfig
-
-RUN chown -R tiledb: /home/tiledb
+# Update shared library links/cache.
+    && ldconfig \
+# Take recursive ownership of the home directory.
+    && chown -R tiledb: /home/tiledb
 
 USER tiledb
 WORKDIR /home/tiledb
