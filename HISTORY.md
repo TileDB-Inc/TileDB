@@ -1,4 +1,5 @@
 # In Progress
+* Caching redirection URLs of TileDB Cloud Arrays minimizing redirection latency [#1919](https://github.com/TileDB-Inc/TileDB/pull/1919)
 
 ## Disk Format
 
@@ -46,7 +47,6 @@
 * Added extra stats for consolidation. [#1880](https://github.com/TileDB-Inc/TileDB/pull/1880)
 * Disabled checking if cells are written in global order when consolidating, as it was redundant (the cells are already being read in global order during consolidation). [#1880](https://github.com/TileDB-Inc/TileDB/pull/1880) 
 * Optimize consolidated fragment metadata loading [#1975](https://github.com/TileDB-Inc/TileDB/pull/1975)
-* Caching redirection URLs of TileDB Cloud Arrays minimizing redirection latency [#1919](https://github.com/TileDB-Inc/TileDB/pull/1919)
 
 ## Bug fixes
 
