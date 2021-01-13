@@ -2244,7 +2244,7 @@ TILEDB_EXPORT int32_t tiledb_attribute_get_fill_value(
  * const char* value = "foo";
  * uint64_t size = strlen(value);
  * uint8_t valid = 1;
- * tiledb_attribute_set_fill_value(ctx, attr, value, size, valid);
+ * tiledb_attribute_set_fill_value_nullable(ctx, attr, value, size, valid);
  * @endcode
  *
  * @param ctx The TileDB context.
@@ -2286,13 +2286,13 @@ TILEDB_EXPORT int32_t tiledb_attribute_set_fill_value_nullable(
  * const int32_t* value;
  * uint64_t size;
  * uint8_t valid;
- * tiledb_attribute_get_fill_value(ctx, attr, &value, &size, &valid);
+ * tiledb_attribute_get_fill_value_nullable(ctx, attr, &value, &size, &valid);
  *
  * // Assuming a var char attribute
  * const char* value;
  * uint64_t size;
  * uint8_t valid;
- * tiledb_attribute_get_fill_value(ctx, attr, &value, &size, &valid);
+ * tiledb_attribute_get_fill_value_nullable(ctx, attr, &value, &size, &valid);
  * @endcode
  *
  * @param ctx The TileDB context.
@@ -3973,7 +3973,7 @@ TILEDB_EXPORT int32_t tiledb_query_add_range(
  * @note The stride is currently unsupported. Use `nullptr` as the
  *     stride argument.
  */
-int32_t tiledb_query_add_range_by_name(
+TILEDB_EXPORT int32_t tiledb_query_add_range_by_name(
     tiledb_ctx_t* ctx,
     tiledb_query_t* query,
     const char* dim_name,
