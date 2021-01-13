@@ -834,11 +834,6 @@ class Writer {
   Status ordered_write();
 
   /**
-   * Returns the configured bytesize for var-sized attribute offsets
-   */
-  uint64_t offsets_bytesize() const;
-
-  /**
    * Return an element of the offsets buffer at a certain position
    * taking into account the configured bitsize
    */
@@ -849,8 +844,7 @@ class Writer {
    * Return the size of an offsets buffer according to the configured
    * options for variable-sized attributes
    */
-  uint64_t get_offset_buffer_size(
-      const std::string& attr, uint64_t buffer_size) const;
+  inline uint64_t get_offset_buffer_size(const uint64_t buffer_size) const;
 
   /**
    * Return a buffer offset according to the configured options for

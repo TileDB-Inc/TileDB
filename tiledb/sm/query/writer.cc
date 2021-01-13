@@ -345,15 +345,9 @@ inline uint64_t Writer::prepare_buffer_offset(
   return offsets_format_mode_ == "elements" ? offset * datasize : offset;
 }
 
-inline uint64_t Writer::offsets_bytesize() const {
-  assert(offsets_bitsize_ == 32 || offsets_bitsize_ == 64);
-  return offsets_bitsize_ == 32 ? sizeof(uint32_t) :
-                                  constants::cell_var_offset_size;
-}
-
 inline uint64_t Writer::get_offset_buffer_size(
-    const std::string& attr, const uint64_t buffer_size) const {
-  return array_schema_->var_size(attr) && offsets_extra_element_ ?
+    const uint64_t buffer_size) const {
+  return offsets_extra_element_ ?
              buffer_size - constants::cell_var_offset_size :
              buffer_size;
 }
@@ -367,7 +361,7 @@ Status Writer::check_var_attr_offsets() const {
 
     const void* buffer_off = it.second.buffer_;
     const uint64_t buffer_off_size =
-        get_offset_buffer_size(attr, *it.second.buffer_size_);
+        get_offset_buffer_size(*it.second.buffer_size_);
     const uint64_t* buffer_val_size = it.second.buffer_var_size_;
     auto num_offsets = buffer_off_size / sizeof(uint64_t);
     if (num_offsets == 0)
@@ -918,7 +912,8 @@ Status Writer::check_buffer_sizes() const {
     const auto& attr = it.first;
     const bool is_var = array_schema_->var_size(attr);
     const uint64_t buffer_size =
-        get_offset_buffer_size(attr, *it.second.buffer_size_);
+        is_var ? get_offset_buffer_size(*it.second.buffer_size_) :
+                 *it.second.buffer_size_;
     if (is_var) {
       expected_cell_num = buffer_size / constants::cell_var_offset_size;
     } else {
@@ -2560,8 +2555,7 @@ Status Writer::prepare_full_tiles_var(
   auto buffer = (uint64_t*)it->second.buffer_;
   auto buffer_var = (unsigned char*)it->second.buffer_var_;
   auto buffer_validity = (uint8_t*)it->second.validity_vector_.buffer();
-  auto buffer_size =
-      get_offset_buffer_size(it->first, *it->second.buffer_size_);
+  auto buffer_size = get_offset_buffer_size(*it->second.buffer_size_);
   auto buffer_var_size = it->second.buffer_var_size_;
   auto capacity = array_schema_->capacity();
   auto cell_num = buffer_size / constants::cell_var_offset_size;
@@ -2795,8 +2789,9 @@ Status Writer::prepare_tiles(
   auto buffer = (uint64_t*)it->second.buffer_;
   auto buffer_var = (uint64_t*)it->second.buffer_var_;
   auto buffer_validity = (uint64_t*)it->second.validity_vector_.buffer();
-  auto buffer_size =
-      get_offset_buffer_size(attribute, *it->second.buffer_size_);
+  auto buffer_size = var_size ?
+                         get_offset_buffer_size(*it->second.buffer_size_) :
+                         *it->second.buffer_size_;
   auto buffer_var_size = it->second.buffer_var_size_;
   auto buffer_validity_size = it->second.validity_vector_.buffer_size();
   auto cell_val_num = array_schema_->cell_val_num(attribute);
