@@ -196,9 +196,9 @@ static int buffer_list_seek_callback(
  */
 size_t write_header_callback(
     void* res_data, size_t size, size_t count, void* userdata) {
-  size_t header_length = size * count;
-  auto* header_buffer = static_cast<char*>(res_data);
-  auto* pmHeader = static_cast<HeaderCbData*>(userdata);
+  const size_t header_length = size * count;
+  auto* const header_buffer = static_cast<char*>(res_data);
+  auto* const pmHeader = static_cast<HeaderCbData*>(userdata);
 
   if (pmHeader->uri->empty()) {
     LOG_ERROR("Rest components as array_ns and array_uri cannot be empty");
@@ -208,12 +208,6 @@ size_t write_header_callback(
   std::string header(header_buffer, header_length);
   const size_t header_key_end_pos = header.find(": ");
 
-  if (header_key_end_pos == std::string::npos) {
-    LOG_ERROR(
-        "All response headers should be formatted as key:value elements.");
-    return 0;
-  }
-
   if (header_key_end_pos != std::string::npos) {
     std::string header_key = header.substr(0, header_key_end_pos);
     std::transform(
@@ -222,7 +216,7 @@ size_t write_header_callback(
     if (header_key == constants::redirection_header_key) {
       // Fetch the header value. Subtract 2 from the `header_length` to
       // remove the trailing CR LF ("\r\n") and subtract another 2
-      // for the ": ". Ensure this ends with a null terminator.
+      // for the ": ".
       const std::string header_value = header.substr(
           header_key_end_pos + 2, header_length - header_key_end_pos - 4);
 
@@ -260,6 +254,7 @@ size_t write_header_callback(
       (*pmHeader->redirect_uri_map)[*pmHeader->uri] = redirection_value;
     }
   }
+
   return size * count;
 }
 

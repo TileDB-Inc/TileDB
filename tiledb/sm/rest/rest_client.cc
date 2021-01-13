@@ -707,6 +707,7 @@ std::string RestClient::redirect_uri(const std::string& cache_key) {
   std::unique_lock<std::mutex> rd_lck(redirect_mtx_);
   std::unordered_map<std::string, std::string>::const_iterator cache_it =
       redirect_meta_.find(cache_key);
+
   return (cache_it == redirect_meta_.end()) ? rest_server_ : cache_it->second;
 }
 
