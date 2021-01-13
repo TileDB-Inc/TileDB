@@ -127,12 +127,13 @@ struct TypeInfo {
 
 struct BufferInfo {
   TypeInfo tdbtype;
-  bool is_var;
-  uint64_t elem_num;    // element count
-  void* data;           // data pointer
-  uint64_t offset_num;  // # offsets, always uint64_t
-  uint64_t* offsets;
-  uint64_t elem_size;
+  bool is_var;               // is var-length
+  uint64_t data_num;         // number of data elements
+  void* data;                // data pointer
+  uint64_t data_elem_size;   // bytes per data element
+  uint64_t offsets_num;      // number of offsets
+  void* offsets;             // offsets pointer
+  size_t offsets_elem_size;  // bytes per offset element
 };
 
 /* ****************************** */
@@ -174,10 +175,6 @@ ArrowInfo tiledb_buffer_arrow_fmt(BufferInfo bufferinfo, bool use_list = true) {
 
   switch (typeinfo.type) {
     ////////////////////////////////////////////////////////////////////////
-    // NOTE: should export as arrow's "large utf8" because TileDB offsets
-    //       are natively uint64_t. However: our offset buffers are 1 elem
-    //       short of the expected length for an arrow offset buffer.
-    //       For now, we transform to int32_it in place and export "u"
     case TILEDB_STRING_ASCII:
     case TILEDB_STRING_UTF8:
       return ArrowInfo("u");
@@ -288,7 +285,6 @@ TypeInfo arrow_type_to_tiledb(ArrowSchema* arw_schema) {
 TypeInfo tiledb_dt_info(const ArraySchema& schema, const std::string& name) {
   if (schema.has_attribute(name)) {
     auto attr = schema.attribute(name);
-
     auto retval = TypeInfo();
     retval.type = attr.type(),
     retval.elem_size = tiledb::impl::type_size(attr.type()),
@@ -689,11 +685,12 @@ BufferInfo ArrowExporter::buffer_info(const std::string& name) {
   auto retval = BufferInfo();
   retval.tdbtype = typeinfo;
   retval.is_var = is_var;
-  retval.elem_num = data_nelem;
+  retval.data_num = data_nelem;
   retval.data = data;
-  retval.offset_num = (is_var ? offsets_nelem : 1);
+  retval.data_elem_size = elem_size;
+  retval.offsets_num = (is_var ? offsets_nelem : 1);
   retval.offsets = offsets;
-  retval.elem_size = elem_size;
+  retval.offsets_elem_size = offsets_elem_nbytes;
 
   return retval;
 }
@@ -711,11 +708,6 @@ int64_t flags_for_buffer(BufferInfo binfo) {
 void ArrowExporter::export_(
     const std::string& name, ArrowArray* array, ArrowSchema* schema) {
   auto bufferinfo = this->buffer_info(name);
-  // TODO add checks?:
-  // -  .elem_num < INT64_MAX
-  // - check that the length of a var-len element does not exceed INT32_MAX
-  //   currently we export as "u" and "b" (int32 offsets) rather than
-  //   "U and "B" (int64 offsets)
 
   if (schema == nullptr || array == nullptr) {
     throw tiledb::TileDBError(
@@ -742,8 +734,8 @@ void ArrowExporter::export_(
   cpp_schema->export_ptr(schema);
 
   auto cpp_arrow_array = new CPPArrowArray(
-      (bufferinfo.is_var ? bufferinfo.offset_num - 1 :
-                           bufferinfo.elem_num),  // elem_num
+      (bufferinfo.is_var ? bufferinfo.offsets_num - 1 :
+                           bufferinfo.data_num),  // elem_num
       0,                                          // null_num
       0,                                          // offset
       {},                                         // children
