@@ -170,8 +170,7 @@ set(TILEDB_TEST_SOURCES
   src/unit-vfs.cc
   src/unit-win-filesystem.cc
   src/unit.cc
-  src/vfs_helpers.cc
-)
+  src/vfs_helpers.cc)
 
 if (TILEDB_CPP_API)
   list(APPEND TILEDB_TEST_SOURCES
@@ -201,6 +200,7 @@ endif()
 if (TILEDB_SERIALIZATION)
   list(APPEND TILEDB_TEST_SOURCES
     src/unit-capi-serialized_queries.cc
+    src/unit-curl.cc
   )
 endif()
 

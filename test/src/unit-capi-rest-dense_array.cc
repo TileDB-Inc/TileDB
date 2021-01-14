@@ -219,7 +219,9 @@ DenseArrayRESTFx::~DenseArrayRESTFx() {
   config.set("rest.password", rest_server_password_);
 
   tiledb::sm::RestClient rest_client;
-  REQUIRE(rest_client.init(&config).ok());
+  ThreadPool tp;
+  REQUIRE(tp.init(4).ok());
+  REQUIRE(rest_client.init(&config, &tp).ok());
   for (const auto& uri : to_deregister_) {
     CHECK(rest_client.deregister_array_from_rest(tiledb::sm::URI(uri)).ok());
   }
@@ -759,7 +761,8 @@ void DenseArrayRESTFx::check_incomplete_reads(const std::string& path) {
   REQUIRE(num_incompletes > 1);
   REQUIRE(
       all_attr_values.size() ==
-      (subarray[1] - subarray[0] + 1) * (subarray[3] - subarray[2] + 1));
+      static_cast<size_t>(
+          (subarray[1] - subarray[0] + 1) * (subarray[3] - subarray[2] + 1)));
 
   // Check all attribute values from all queries.
   bool allok = true;
