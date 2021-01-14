@@ -38,7 +38,7 @@ export_gcs_env(){
 
 # gRPC server will start listening at port 8000.
 run_gcs(){
-  gunicorn --bind "localhost:9000" --worker-class sync --threads 10 --access-logfile - --chdir google-cloud-cpp/google/cloud/storage/emulator "emulator:run()"
+  gunicorn --bind "localhost:9000" --worker-class sync --threads 10 --access-logfile - --chdir /tmp/google-cloud-cpp/google/cloud/storage/emulator "emulator:run()"
   # if you want to use gRPC API.
   curl "http://localhost:9000/start_grpc?port=8000"
 }

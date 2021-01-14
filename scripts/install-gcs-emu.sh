@@ -31,24 +31,30 @@ die() {
 }
 
 install_gcs(){
-    sudo git clone https://github.com/googleapis/google-cloud-cpp.git
-    sudo pip3 install -r google-cloud-cpp/google/cloud/storage/emulator/requirements.txt
+    sudo git clone https://github.com/googleapis/google-cloud-cpp/ --branch v1.22.0 /tmp/google-cloud-cpp/
+    sudo pip3 install -r /tmp/google-cloud-cpp/google/cloud/storage/emulator/requirements.txt
 }
 
 install_apt_pkgs() {
-  sudo apt-get -y install python3-pip git
+  if [ -n "$(! command -v git)" ]; then
+    sudo apt-get -y install git
+  fi
   install_gcs
 }
 
 install_yum_pkgs() {
   sudo yum update
-  sudo yum -y install python3 python3-pip git
+  sudo yum -y install git
   install_gcs
 }
 
 install_brew_pkgs() {
-  brew install python3 git
-  install_gcs
+  if [ -n "$(command -v git)" ]; then
+    install_gcs
+  else
+    brew install git
+    install_gcs
+  fi
 }
 
 install_deps() {
