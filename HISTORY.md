@@ -8,6 +8,8 @@
 
 ## New features
 
+* REST client support for caching redirects [#1919](https://github.com/TileDB-Inc/TileDB/pull/1919)
+
 ## Improvements
 
 ## Deprecations
