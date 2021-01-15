@@ -1,10 +1,10 @@
 name: builds
 on:
   push:
-    branches:
-      - dev
-      - release-*
-      - refs/tags/*
+#    branches:
+#      - dev
+#      - release-*
+#      - refs/tags/*
   pull_request:
     branches:
       - '*'  # must quote since "*" is a YAML reserved character; we want a string
@@ -19,40 +19,41 @@ jobs:
     strategy:
       matrix:
           os: [ubuntu-16.04, macOS-10.14]
-          config: [S3, GCS, HDFS, AZURE, ASAN, SERIALIZATION]
-          exclude:
-            - {os: macOS-10.14, config: S3}
-            - {os: macOS-10.14, config: HDFS}
-            - {os: macOS-10.14, config: ASAN}
-            - {os: macOS-10.14, config: SERIALIZATION}
+          config: [S3]
+#          exclude:
+#            - {os: macOS-10.14, config: S3}
+#            - {os: macOS-10.14, config: AZURE}
+#            - {os: macOS-10.14, config: HDFS}
+#            - {os: macOS-10.14, config: ASAN}
+#            - {os: macOS-10.14, config: SERIALIZATION}
           include:
             - config: S3
               TILEDB_S3: ON
               TILEDB_STATIC: OFF
               TILEDB_TOOLS: ON
               CXX: g++
-            - config: GCS
-              TILEDB_GCS: ON
-              TILEDB_STATIC: OFF
-              CXX: g++
-            - config: HDFS
-              TILEDB_HDFS: ON
-              CXX: g++
-            - config: AZURE
-              TILEDB_AZURE: ON
-              TILEDB_STATIC: OFF
-              TILEDB_ARROW_TESTS: ON
-              CXX: g++
-            - config: ASAN
-              TILEDB_MEMFS: ON
-              TILEDB_CI_ASAN: ON
-              TILEDB_SERIALIZATION: ON
-              CXX: g++-7
-            - config: SERIALIZATION
-              TILEDB_SERIALIZATION: ON
-              TILEDB_S3: ON
-              CXX: g++
-              BACKWARDS_COMPATIBILITY_ARRAYS: ON
+#            - config: GCS
+#              TILEDB_GCS: ON
+#              TILEDB_STATIC: OFF
+#              CXX: g++
+#            - config: HDFS
+#              TILEDB_HDFS: ON
+#              CXX: g++
+#            - config: AZURE
+#              TILEDB_AZURE: ON
+#              TILEDB_STATIC: OFF
+#              TILEDB_ARROW_TESTS: ON
+#              CXX: g++
+#            - config: ASAN
+#              TILEDB_MEMFS: ON
+#              TILEDB_CI_ASAN: ON
+#              TILEDB_SERIALIZATION: ON
+#              CXX: g++-7
+#            - config: SERIALIZATION
+#              TILEDB_SERIALIZATION: ON
+#              TILEDB_S3: ON
+#              CXX: g++
+#              BACKWARDS_COMPATIBILITY_ARRAYS: ON
 
     name: Build - ${{ matrix.os }} - ${{ matrix.config }}
     steps:
@@ -76,7 +77,7 @@ jobs:
       - run: |
           set -e pipefail
           python -m pip install --upgrade pip virtualenv
-          if [[ "$TILEDB_ARROW_TESTS" == "ON" ]]; then
+          if [[ ${{ matrix.TILEDB_ARROW_TESTS == 'ON' }} ]]; then
             pip install pyarrow pybind11 numpy
           fi
         shell: bash
@@ -95,7 +96,7 @@ jobs:
           open /Library/Developer/CommandLineTools/Packages/macOS_SDK_headers_for_macOS_10.14.pkg
           sudo installer -pkg /Library/Developer/CommandLineTools/Packages/macOS_SDK_headers_for_macOS_10.14.pkg -allowUntrusted -target /
         shell: bash
-        if: ${{ runner.os == 'Darwin' && env.imageName == 'macOS-10.14' }}
+        if: ${{ runner.os == 'macOS' && env.imageName == 'macOS-10.14' }}
 
       - name: Check formatting (linux only)'
         run: |
@@ -112,6 +113,7 @@ jobs:
         if: ${{ runner.os == 'Linux' }}
 
       - name: 'Build and test libtiledb'
+        id: test
         run: |
           # Azure sets "SYSTEM=build" for unknown reasonas, which breaks the OpenSSL configure script
           #   - openssl configure uses ENV{SYSTEM} if available:
@@ -134,24 +136,24 @@ jobs:
 
           # - run: |
           # Start HDFS server if enabled
-          if [[ "$TILEDB_HDFS" == "ON" ]]; then
+          if [[ "${{ matrix.TILEDB_HDFS }}" == "ON" ]]; then
             # - ssh to localhost is required for HDFS launch...
             # - /home/vsts has permissions g+w and is owned by user 'docker'
             #   for VSTS purposes, so disable ssh strictness
-            sudo sed -i "s/StrictModes\ yes/StrictModes\ no/g" /etc/ssh/sshd_config
+            sudo sed -i.bak 's/StrictModes\ yes/StrictModes\ no/g' /etc/ssh/sshd_config
 
             source scripts/install-hadoop.sh
             source scripts/run-hadoop.sh
           fi
 
           # Start minio server if S3 is enabled
-          if [[ "$TILEDB_S3" == "ON" ]]; then
+          if [[ "${{ matrix.TILEDB_S3 }}" == "ON" ]]; then
             source scripts/install-minio.sh;
             source scripts/run-minio.sh;
           fi
 
           # Start Azurite if Azure is enabled
-          if [[ "$TILEDB_AZURE" == "ON" ]]; then
+          if [[ "${{ matrix.TILEDB_AZURE }}" == "ON" ]]; then
             source scripts/install-azurite.sh;
             source scripts/run-azurite.sh;
           fi
@@ -160,35 +162,35 @@ jobs:
           bootstrap_args="--enable=verbose";
 
           # Enable TILEDB_STATIC by default
-          [ "$TILEDB_STATIC" ] || TILEDB_STATIC=ON
-          if [[ "$TILEDB_STATIC" == "ON" ]]; then
+          [ ${{ matrix.TILEDB_STATIC }} ] || TILEDB_STATIC=ON
+          if [[ "${{ matrix.TILEDB_STATIC }}" == "ON" ]]; then
             bootstrap_args="${bootstrap_args} --enable-static-tiledb";
           fi
-          if [[ "$TILEDB_HDFS" == "ON" ]]; then
+          if [[ "${{ matrix.TILEDB_HDFS }}" == "ON" ]]; then
             bootstrap_args="${bootstrap_args} --enable-hdfs";
           fi;
-          if [[ "$TILEDB_S3" == "ON" ]]; then
+          if [[ "${{ matrix.TILEDB_S3 }}" == "ON" ]]; then
             bootstrap_args="${bootstrap_args} --enable-s3";
           fi;
-          if [[ "$TILEDB_AZURE" == "ON" ]]; then
+          if [[ "${{ matrix.TILEDB_AZURE }}" == "ON" ]]; then
             bootstrap_args="${bootstrap_args} --enable-azure";
           fi;
-          if [[ "$TILEDB_GCS" == "ON" ]]; then
+          if [[ "${{ matrix.TILEDB_GCS }}" == "ON" ]]; then
             bootstrap_args="${bootstrap_args} --enable-gcs";
           fi;
-          if [[ "$TILEDB_MEMFS" == "ON" ]]; then
+          if [[ "${{ matrix.TILEDB_MEMFS }}" == "ON" ]]; then
             bootstrap_args="${bootstrap_args} --enable-memfs";
           fi;
           if [[ "$TILEDB_TBB" == "OFF" ]]; then
             bootstrap_args="${bootstrap_args} --disable-tbb";
           fi
-          if [[ "$TILEDB_TOOLS" == "ON" ]]; then
+          if [[ "${{ matrix.TILEDB_TOOLS }}" == "ON" ]]; then
             bootstrap_args="${bootstrap_args} --enable-tools";
           fi
           if [[ "$TILEDB_DEBUG" == "ON" ]]; then
             bootstrap_args="${bootstrap_args} --enable-debug";
           fi
-          if [[ "$TILEDB_CI_ASAN" == "ON" ]]; then
+          if [[ "${{ matrix.TILEDB_CI_ASAN }}" == "ON" ]]; then
             # Add address sanitizer flag if necessary
             bootstrap_args="${bootstrap_args} --enable-sanitizer=address --enable-debug";
           fi
@@ -196,7 +198,7 @@ jobs:
             # Add thread sanitizer flag if necessary
             bootstrap_args="${bootstrap_args} --enable-sanitizer=thread --enable-debug";
           fi
-          if [[ "$TILEDB_SERIALIZATION" == "ON" ]]; then
+          if [[ "${{ matrix.TILEDB_SERIALIZATION }}" == "ON" ]]; then
             # Add serialization flag if necessary
             bootstrap_args="${bootstrap_args} --enable-serialization";
           fi
@@ -222,7 +224,7 @@ jobs:
           cd $GITHUB_WORKSPACE/build
           ls -la
 
-          if [[ ( "$AGENT_OS" == "Linux" && "$TILEDB_S3" == "ON" ) ]]; then
+          if [[ ( ${{ runner.os == 'Linux' }} && "${{ matrix.TILEDB_S3 }}" == "ON" ) ]]; then
             # make sure docker is still running...
             printenv
             docker ps -a
@@ -230,96 +232,39 @@ jobs:
 
           make -j4 -C tiledb tiledb_unit
 
-          if [[ "$TILEDB_CI_ASAN" == "ON" ]]; then
+          if [[ "${{ matrix.TILEDB_CI_ASAN }}" == "ON" ]]; then
             export ASAN_OPTIONS=detect_leaks=0 LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libasan.so.4
           fi
 
-          if [[ "$TILEDB_GCS" == "ON" ]]; then
+          if [[ ( "${{ runner.os }}" == "macOS" && "${{ matrix.TILEDB_GCS }}" == "ON" )]]; then
             # GCS unit tests are temporarily unsupported on CI. Fake success with
             # this echo.
-            echo "##vso[task.setvariable variable=TILEDB_CI_SUCCESS]1"
+            echo "::set-output name=TILEDB_CI_SUCCESS::1"
           else
             make check
+            echo "::set-output name=TILEDB_CI_SUCCESS::1"
           fi
-
+          echo "VAR OUTPUT IN GHA SHELL"
+          echo $TILEDB_CI_SUCCESS
+          echo "$TILEDB_CI_SUCCESS" >> $GITHUB_ENV
+          echo "TEST"
           # Kill the running Minio server, OSX only because Linux runs it within
           # docker.
-          if [[ ( "$AGENT_OS" == "Darwin" && "$TILEDB_S3" == "ON" ) ]]; then
-            kill -9 $MINIO_PID
+          if [[ ( "${{ runner.os }}" == "macOS" && "${{ matrix.TILEDB_S3 }}" == "ON" ) ]]; then
+            kill -n 9 $MINIO_PID
           fi
 
           # Kill the running Azurite server
-          if [[ "$TILEDB_AZURE" == "ON" ]]; then
-            kill -9 $AZURITE_PID
+          if [[ "${{ matrix.TILEDB_AZURE }}" == "ON" ]]; then
+            kill -n 9 $AZURITE_PID
           fi
-
-          # - run: |
-          if [[ "$TILEDB_GCS" != "ON" ]]; then
-            pushd $GITHUB_WORKSPACE/examples/cmake_project
-            mkdir build && cd build
-            cmake -DCMAKE_PREFIX_PATH=$GITHUB_WORKSPACE/dist .. && make
-            ./ExampleExe
-            if [[ "TILEDB_STATIC" == "ON" ]]; then
-              ./ExampleExe_static
-            fi
-            popd
-            # Build and run the PNG ingestion example.
-            if [[ "$AGENT_OS" == "Linux" ]]; then
-              # libpng (example dependency)
-              sudo apt-get install libpng-dev
-
-              pushd $GITHUB_WORKSPACE/examples/png_ingestion;
-              mkdir build && cd build;
-              cmake -DCMAKE_PREFIX_PATH=$GITHUB_WORKSPACE/dist .. && make;
-              ./tiledb_png $GITHUB_WORKSPACE/doc/source/figures/Scarlet-Macaw-small.png /tmp/pngarray output.png;
-              popd;
-            fi
-          fi
-
-          # Build the benchmarks (but do not run them).
-          pushd $GITHUB_WORKSPACE/test/benchmarking && \
-            mkdir build && cd build && \
-            cmake -DCMAKE_PREFIX_PATH=$GITHUB_WORKSPACE/dist ../src && make && \
-          popd
-
-          testfile=$(mktemp)
-          mv $testfile $testfile.cc
-          testfile=$testfile.cc
-          cat <<EOF > $testfile
-          #include <assert.h>
-          #include <tiledb/tiledb.h>
-          #include <tiledb/version.h>
-          int main(int argc, char **argv) {
-            int major = 0;
-            int minor = 0;
-            int patch = 0;
-            tiledb_version(&major,&minor,&patch);
-            auto version = tiledb::version();
-            assert(major == std::get<0>(version));
-            return 0;
-          }
-          EOF
-          export TESTFILE_LDFLAGS="-ltiledb"
-          if [[ "$AGENT_OS" == "Linux" ]]; then
-            export LD_LIBRARY_PATH=$GITHUB_WORKSPACE/dist/lib:/usr/local/lib:$LD_LIBRARY_PATH
-          else
-            export DYLD_LIBRARY_PATH=$GITHUB_WORKSPACE/dist/lib:/usr/local/lib:$DYLD_LIBRARY_PATH
-          fi
-          $CXX -std=c++11 -g -O0 -Wall -Werror -I$BUILD_REPOSITORY_LOCALPATH/dist/include -L$BUILD_REPOSITORY_LOCALPATH/dist/lib $testfile -o $testfile.exe $TESTFILE_LDFLAGS && \
-          $testfile.exe && \
-          rm -f $testfile $testfile.exe
-          # Export TILEDB_CI_SUCCESS env to $GITHUB_ENV for use in next jobs
-          echo "{TILEDB_CI_SUCCESS}={$TILEDB_CI_SUCCESS}" >> $GITHUB_ENV
-
-          ps -U $(whoami) -o comm= | sort | uniq
-          #  name: 'Build examples, PNG test, and benchmarks (build-only)'
 
       - name: 'Test status check'
         run: |
           # tiledb_unit is configured to set a job-level variable TILEDB_CI_SUCCESS=1
           # following the test run. If this variable is not set, the build should fail.
           # see https://github.com/TileDB-Inc/TileDB/pull/1400 (5f0623f4d3)
-          if [[ "$TILEDB_CI_SUCCESS" -ne 1 ]]; then
+          if [[ "${{ steps.test.outputs.TILEDB_CI_SUCCESS }}" -ne 1 ]]; then
             exit 1;
           fi
 #

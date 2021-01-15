@@ -66,8 +66,9 @@ run() {
 
   mkdir -p /tmp/minio-data
   cp -f -r $DIR/../test/inputs/test_certs /tmp/minio-data
-
-  if [[ "$AGENT_OS" == "Darwin" ]]; then
+  echo "OSTYPE"
+  echo $OSTYPE
+  if [[ $OSTYPE == darwin* ]]; then
     run_cask_minio
   else
     run_docker_minio
