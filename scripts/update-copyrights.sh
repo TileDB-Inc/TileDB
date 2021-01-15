@@ -3,7 +3,7 @@
 #
 # The MIT License (MIT)
 #
-# Copyright (c) 2019-2020 TileDB, Inc.
+# Copyright (c) 2019-2021 TileDB, Inc.
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -56,13 +56,14 @@ fi
 year="$1"
 srcdir="$2"
 
-search="@copyright Copyright \(c\) ([0-9]{4})(-[0-9]{4})? TileDB, Inc"
-replace="@copyright Copyright (c) \1-$year TileDB, Inc"
+search="Copyright \(c\) ([0-9]{4})(-[0-9]{4})? TileDB"
+replace="Copyright (c) \1-$year TileDB"
 
 # Avoid e.g. replacing 'Copyright (c) 2019' with 'Copyright (c) 2019-2019'
 except="Copyright \(c\) $year"
 
 # The sed command performs an in-place modification of the files (without
 # creating any backups).
-find "$srcdir" \( -name "*.h" -or -name "*.cc" -or -name "*.c" \) \
+find "$srcdir" \( -name "*.h" -or -name "*.cc" -or -name "*.c" \
+    -or -name "*.txt" -or -name "*.cmake" -or -name "*.sh" -or -name "*.dox" \) \
     -exec sed -E -e "/$except/! s/$search/$replace/" -i '' "{}" \;

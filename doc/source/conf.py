@@ -67,7 +67,7 @@ master_doc = 'index'
 
 # General information about the project.
 project = 'TileDB'
-copyright = '2020 TileDB, Inc'
+copyright = '2021 TileDB, Inc'
 author = 'TileDB, Inc.'
 
 # The short X.Y version.
