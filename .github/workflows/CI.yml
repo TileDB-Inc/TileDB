@@ -1,0 +1,53 @@
+name: CI
+on:
+  push:
+    branches:
+      - dev
+      - release-*
+      - refs/tags/*
+  pull_request:
+    branches:
+      - '*'  # must quote since "*" is a YAML reserved character; we want a string
+env:
+  BACKWARDS_COMPATIBILITY_ARRAYS: OFF
+
+jobs:
+  build:
+    runs-on: ${{ matrix.os }}
+    if: ${{ startsWith(github.ref , 'refs/tags') != true && startsWith(github.ref , 'build-') != true }}
+    timeout-minutes: 90
+    strategy:
+      matrix:
+          os: [ubuntu-16.04, macOS-10.14]
+          config: [S3, GCS, HDFS, AZURE, ASAN, SERIALIZATION]
+          include:
+            - config: S3
+              TILEDB_S3: ON
+              TILEDB_STATIC: OFF
+              TILEDB_TOOLS: ON
+              CXX: g++
+            - config: GCS
+              TILEDB_GCS: ON
+              TILEDB_STATIC: OFF
+              CXX: g++
+            - config: HDFS
+              TILEDB_HDFS: ON
+              CXX: g++
+            - config: AZURE
+              TILEDB_AZURE: ON
+              TILEDB_STATIC: OFF
+              TILEDB_ARROW_TESTS: ON
+              CXX: g++
+            - config: ASAN
+              TILEDB_MEMFS: ON
+              TILEDB_CI_ASAN: ON
+              TILEDB_SERIALIZATION: ON
+              CXX: g++-7
+            - config: SERIALIZATION
+              TILEDB_SERIALIZATION: ON
+              TILEDB_S3: ON
+              CXX: g++
+              BACKWARDS_COMPATIBILITY_ARRAYS: ON
+
+    name: Build - ${{ matrix.os }} - ${{ matrix.config }}
+    steps:
