@@ -91,7 +91,8 @@ class Stats {
   }
 
   /**
-   * Dump all raw statistics counters to some output (e.g., file or stdout).
+   * Dump all raw statistics counters to some output (e.g., file or stdout)
+   * as a JSON.
    *
    * @param out The output.
    */
