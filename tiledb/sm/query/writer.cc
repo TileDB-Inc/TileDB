@@ -345,6 +345,13 @@ inline uint64_t Writer::prepare_buffer_offset(
   return offsets_format_mode_ == "elements" ? offset * datasize : offset;
 }
 
+inline uint64_t Writer::get_offset_buffer_size(
+    const uint64_t buffer_size) const {
+  return offsets_extra_element_ ?
+             buffer_size - constants::cell_var_offset_size :
+             buffer_size;
+}
+
 Status Writer::check_var_attr_offsets() const {
   for (const auto& it : buffers_) {
     const auto& attr = it.first;
@@ -353,9 +360,10 @@ Status Writer::check_var_attr_offsets() const {
     }
 
     const void* buffer_off = it.second.buffer_;
-    const uint64_t* buffer_off_size = it.second.buffer_size_;
+    const uint64_t buffer_off_size =
+        get_offset_buffer_size(*it.second.buffer_size_);
     const uint64_t* buffer_val_size = it.second.buffer_var_size_;
-    auto num_offsets = *buffer_off_size / sizeof(uint64_t);
+    auto num_offsets = buffer_off_size / sizeof(uint64_t);
     if (num_offsets == 0)
       return Status::Ok();
 
@@ -903,7 +911,9 @@ Status Writer::check_buffer_sizes() const {
   for (const auto& it : buffers_) {
     const auto& attr = it.first;
     const bool is_var = array_schema_->var_size(attr);
-    const uint64_t buffer_size = *it.second.buffer_size_;
+    const uint64_t buffer_size =
+        is_var ? get_offset_buffer_size(*it.second.buffer_size_) :
+                 *it.second.buffer_size_;
     if (is_var) {
       expected_cell_num = buffer_size / constants::cell_var_offset_size;
     } else {
@@ -2210,9 +2220,6 @@ Status Writer::check_extra_element() {
           "; the last offset: " + std::to_string(last_offset) +
           " is not equal to the size of the data buffer: " +
           std::to_string(max_offset)));
-
-    // Remove extra element, it's not needed
-    *buffer_off_size -= constants::cell_var_offset_size;
   }
 
   return Status::Ok();
@@ -2548,10 +2555,10 @@ Status Writer::prepare_full_tiles_var(
   auto buffer = (uint64_t*)it->second.buffer_;
   auto buffer_var = (unsigned char*)it->second.buffer_var_;
   auto buffer_validity = (uint8_t*)it->second.validity_vector_.buffer();
-  auto buffer_size = it->second.buffer_size_;
+  auto buffer_size = get_offset_buffer_size(*it->second.buffer_size_);
   auto buffer_var_size = it->second.buffer_var_size_;
   auto capacity = array_schema_->capacity();
-  auto cell_num = *buffer_size / constants::cell_var_offset_size;
+  auto cell_num = buffer_size / constants::cell_var_offset_size;
   auto domain = array_schema_->domain();
   auto cell_num_per_tile = has_coords_ ? capacity : domain->cell_num_per_tile();
   auto attr_datatype_size = datatype_size(array_schema_->type(name));
@@ -2782,7 +2789,9 @@ Status Writer::prepare_tiles(
   auto buffer = (uint64_t*)it->second.buffer_;
   auto buffer_var = (uint64_t*)it->second.buffer_var_;
   auto buffer_validity = (uint64_t*)it->second.validity_vector_.buffer();
-  auto buffer_size = it->second.buffer_size_;
+  auto buffer_size = var_size ?
+                         get_offset_buffer_size(*it->second.buffer_size_) :
+                         *it->second.buffer_size_;
   auto buffer_var_size = it->second.buffer_var_size_;
   auto buffer_validity_size = it->second.validity_vector_.buffer_size();
   auto cell_val_num = array_schema_->cell_val_num(attribute);
@@ -2790,7 +2799,7 @@ Status Writer::prepare_tiles(
 
   // Initialize tiles and buffer
   RETURN_NOT_OK(init_tiles(attribute, tile_num, tiles));
-  auto buff = std::make_shared<ConstBuffer>(buffer, *buffer_size);
+  auto buff = std::make_shared<ConstBuffer>(buffer, buffer_size);
   auto buff_var =
       (!var_size) ? nullptr :
                     std::make_shared<ConstBuffer>(buffer_var, *buffer_var_size);

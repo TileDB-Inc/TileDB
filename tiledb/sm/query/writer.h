@@ -814,7 +814,7 @@ class Writer {
 
   /**
    * Checks the validity of the extra element from var-sized offsets of
-   * attributes and removes the extra element since tiledb does not need it
+   * attributes
    */
   Status check_extra_element();
 
@@ -839,6 +839,12 @@ class Writer {
    */
   uint64_t get_offset_buffer_element(
       const void* buffer, const uint64_t pos) const;
+
+  /**
+   * Return the size of an offsets buffer according to the configured
+   * options for variable-sized attributes
+   */
+  inline uint64_t get_offset_buffer_size(const uint64_t buffer_size) const;
 
   /**
    * Return a buffer offset according to the configured options for
