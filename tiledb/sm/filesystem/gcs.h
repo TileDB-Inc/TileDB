@@ -391,18 +391,6 @@ class GCS {
   /* ********************************* */
 
   /**
-   * Abstracting the client's initialization process.
-   * @param creds pointer to the GCS credential provider selected
-   * @param channel_options Describes the configuration for low-level connection features
-   * @return Status
-   */
-
-
-  Status __init_client(
-      std::shared_ptr<google::cloud::storage::oauth2::Credentials> creds,
-      google::cloud::storage::ChannelOptions& channel_options) const;
-
-  /**
    * Initializes the client, if it has not already been initialized.
    *
    * @return Status

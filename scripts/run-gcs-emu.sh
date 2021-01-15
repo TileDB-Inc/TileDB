@@ -3,7 +3,7 @@
 #
 # The MIT License (MIT)
 #
-# Copyright (c) 2019-2020 TileDB, Inc.
+# Copyright (c) 2021 TileDB, Inc.
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -26,21 +26,18 @@
 
 # Starts a GCS Emulator Server and exports credentials to the environment
 # ('source' this script instead of executing).
+# This script should be sourced from tiledb/build folder
 
 
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 
 export_gcs_env(){
   export CLOUD_STORAGE_EMULATOR_ENDPOINT=http://localhost:9000 # For JSON and XML API
-  export CLOUD_STORAGE_GRPC_ENDPOINT=localhost:8000 # For gRPC API
 }
 
 
-# gRPC server will start listening at port 8000.
 run_gcs(){
   gunicorn --bind "localhost:9000" --worker-class sync --threads 10 --access-logfile - --chdir /tmp/google-cloud-cpp/google/cloud/storage/emulator "emulator:run()"
-  # if you want to use gRPC API.
-  curl "http://localhost:9000/start_grpc?port=8000"
 }
 
 run() {

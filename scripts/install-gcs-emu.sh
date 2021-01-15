@@ -3,7 +3,7 @@
 #
 # The MIT License (MIT)
 #
-# Copyright (c) 2019-2020 TileDB, Inc.
+# Copyright (c) 2021 TileDB, Inc.
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -25,36 +25,27 @@
 #
 
 # Installs dependencies for gcs.
-
+# The gcs emulator requires system to support python3 and pip3 accordingly
 die() {
   echo "$@" 1>&2 ; popd 2>/dev/null; exit 1
 }
 
 install_gcs(){
-    sudo git clone https://github.com/googleapis/google-cloud-cpp/ --branch v1.22.0 /tmp/google-cloud-cpp/
-    sudo pip3 install -r /tmp/google-cloud-cpp/google/cloud/storage/emulator/requirements.txt
+    curl -L  https://github.com/googleapis/google-cloud-cpp/archive/v1.23.0.tar.gz > /tmp/google-cloud-cpp.tar.gz
+    tar -xf /tmp/google-cloud-cpp.tar.gz
+    sudo pip3 install -r /tmp/google-cloud-cpp-1.23.0/google/cloud/storage/emulator/requirements.txt
 }
 
 install_apt_pkgs() {
-  if [ -n "$(! command -v git)" ]; then
-    sudo apt-get -y install git
-  fi
   install_gcs
 }
 
 install_yum_pkgs() {
-  sudo yum update
-  sudo yum -y install git
   install_gcs
 }
 
 install_brew_pkgs() {
-  if [ -n "$(command -v git)" ]; then
     install_gcs
-  else
-    brew install git
-    install_gcs
-  fi
 }
 
 install_deps() {
