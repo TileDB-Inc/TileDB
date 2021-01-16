@@ -13,6 +13,7 @@
 ## Improvements
 
 * Add additional timer statistics for openning array for reads [#2027](https://github.com/TileDB-Inc/TileDB/pull/2027)
+* Add `rest.creation_access_credentials_name` configuration parameter [#2025](https://github.com/TileDB-Inc/TileDB/pull/2025)
 
 ## Deprecations
 

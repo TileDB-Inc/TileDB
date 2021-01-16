@@ -556,6 +556,10 @@ class Config {
    * - `rest.ignore_ssl_validation` <br>
    *    Have curl ignore ssl peer and host validation for REST server. <br>
    *    **Default**: false
+   * - `rest.creation_access_credentials_name` <br>
+   *    The name of the registered access key to use for creation of the REST
+   *    server. <br>
+   *    **Default**: no default set
    */
   Config& set(const std::string& param, const std::string& value) {
     tiledb_error_t* err;
