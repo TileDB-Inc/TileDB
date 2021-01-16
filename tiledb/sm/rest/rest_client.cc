@@ -131,6 +131,14 @@ Status RestClient::post_array_schema_to_rest(
   BufferList serialized;
   RETURN_NOT_OK(serialized.add_buffer(std::move(buff)));
 
+  bool found = false;
+  const std::string creation_access_credentials_name =
+      config_->get("rest.creation_access_credentials_name", &found);
+  if (found)
+    RETURN_NOT_OK(set_header(
+        "X-TILEDB-CLOUD-ACCESS-CREDENTIALS-NAME",
+        creation_access_credentials_name));
+
   // Init curl and form the URL
   Curl curlc;
   std::string array_ns, array_uri;
