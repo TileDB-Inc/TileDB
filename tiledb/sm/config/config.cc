@@ -94,19 +94,20 @@ const std::string Config::VFS_FILE_MAX_PARALLEL_OPS =
     Config::SM_IO_CONCURRENCY_LEVEL;
 const std::string Config::VFS_FILE_ENABLE_FILELOCKS = "true";
 const std::string Config::VFS_READ_AHEAD_SIZE = "102400";          // 100KiB
-const std::string Config::VFS_READ_AHEAD_CACHE_SIZE = "10485760";  // 10MiB;
+const std::string Config::VFS_READ_AHEAD_CACHE_SIZE = "10485760";  // 10MiB
 const std::string Config::VFS_AZURE_STORAGE_ACCOUNT_NAME = "";
 const std::string Config::VFS_AZURE_STORAGE_ACCOUNT_KEY = "";
 const std::string Config::VFS_AZURE_BLOB_ENDPOINT = "";
 const std::string Config::VFS_AZURE_USE_HTTPS = "true";
 const std::string Config::VFS_AZURE_MAX_PARALLEL_OPS =
     Config::SM_IO_CONCURRENCY_LEVEL;
-const std::string Config::VFS_AZURE_BLOCK_LIST_BLOCK_SIZE = "5242880";
+const std::string Config::VFS_AZURE_BLOCK_LIST_BLOCK_SIZE =
+    "10485760";  // 10 MiB
 const std::string Config::VFS_AZURE_USE_BLOCK_LIST_UPLOAD = "true";
 const std::string Config::VFS_GCS_PROJECT_ID = "";
 const std::string Config::VFS_GCS_MAX_PARALLEL_OPS =
     Config::SM_IO_CONCURRENCY_LEVEL;
-const std::string Config::VFS_GCS_MULTI_PART_SIZE = "5242880";
+const std::string Config::VFS_GCS_MULTI_PART_SIZE = "10485760";  // 10 MiB
 const std::string Config::VFS_GCS_USE_MULTI_PART_UPLOAD = "true";
 const std::string Config::VFS_S3_REGION = "us-east-1";
 const std::string Config::VFS_S3_AWS_ACCESS_KEY_ID = "";
@@ -122,7 +123,7 @@ const std::string Config::VFS_S3_USE_VIRTUAL_ADDRESSING = "true";
 const std::string Config::VFS_S3_USE_MULTIPART_UPLOAD = "true";
 const std::string Config::VFS_S3_MAX_PARALLEL_OPS =
     Config::SM_IO_CONCURRENCY_LEVEL;
-const std::string Config::VFS_S3_MULTIPART_PART_SIZE = "5242880";
+const std::string Config::VFS_S3_MULTIPART_PART_SIZE = "10485760";  // 10 MiB
 const std::string Config::VFS_S3_CA_FILE = "";
 const std::string Config::VFS_S3_CA_PATH = "";
 const std::string Config::VFS_S3_CONNECT_TIMEOUT_MS = "3000";
