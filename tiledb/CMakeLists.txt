@@ -165,6 +165,7 @@ set(TILEDB_CORE_SOURCES
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/array_schema.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/query.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/stats/stats.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/stats/timer_stat.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/storage_manager/context.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/storage_manager/consolidator.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/storage_manager/open_array.cc
