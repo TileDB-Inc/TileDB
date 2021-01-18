@@ -6211,7 +6211,7 @@ TILEDB_EXPORT int32_t tiledb_stats_dump_str(char** out);
 
 /**
  * Dump all raw internal statistics counters to some output (e.g.,
- * file or stdout).
+ * file or stdout) as a JSON.
  *
  * @param out The output.
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
@@ -6219,8 +6219,8 @@ TILEDB_EXPORT int32_t tiledb_stats_dump_str(char** out);
 TILEDB_EXPORT int32_t tiledb_stats_raw_dump(FILE* out);
 
 /**
- * Dump all raw internal statistics counters to an output string. The caller is
- * responsible for freeing the resulting string.
+ * Dump all raw internal statistics counters to a JSON-formatted output string.
+ * The caller is responsible for freeing the resulting string.
  *
  * **Example:**
  *
