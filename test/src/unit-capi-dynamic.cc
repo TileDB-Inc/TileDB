@@ -133,7 +133,7 @@ class DynamicArrayFx {
   /**
    * Create, write and read attributes to an array.
    *
-   * @param test_attrs The nullable attributes to test.
+   * @param test_attr The attribute to test.
    * @param test_dims The dimensions to test.
    * @param array_type The type of the array (dense/sparse).
    * @param cell_order The cell order of the array.
@@ -142,7 +142,7 @@ class DynamicArrayFx {
    * @param encryption_type The encryption type.
    */
   void test_dynamic_array(
-      const vector<test_attr_t>& test_attrs,
+      const test_attr_t test_attr,
       const vector<test_dim_t>& test_dims,
       tiledb_array_type_t array_type,
       tiledb_layout_t cell_order,
@@ -177,7 +177,7 @@ class DynamicArrayFx {
    * @param array_name The name of the array.
    * @param array_type The type of the array (dense/sparse).
    * @param test_dim The dimension in the array.
-   * @param test_attrs The attributes in the array.
+   * @param test_attr The attribute in the array.
    * @param cell_order The cell order of the array.
    * @param tile_order The tile order of the array.
    * @param encryption_type The encryption type of the array.
@@ -187,7 +187,7 @@ class DynamicArrayFx {
       const string& array_name,
       tiledb_array_type_t array_type,
       const test_dim_t& test_dim,
-      const vector<test_attr_t>& test_attrs,
+      const test_attr_t test_attr,
       tiledb_layout_t cell_order,
       tiledb_layout_t tile_order,
       tiledb_encryption_type_t encryption_type);
@@ -257,7 +257,7 @@ void DynamicArrayFx::create_array(
     const string& array_name,
     tiledb_array_type_t array_type,
     const test_dim_t& test_dim,
-    const vector<test_attr_t>& test_attrs,
+    const test_attr_t test_attr,
     tiledb_layout_t cell_order,
     tiledb_layout_t tile_order,
     tiledb_encryption_type_t encryption_type) {
@@ -287,25 +287,23 @@ void DynamicArrayFx::create_array(
     REQUIRE(rc == TILEDB_OK);
   }
 
-  // Create attributes
+  // Create attribute
   vector<tiledb_attribute_t*> attrs;
-  attrs.reserve(test_attrs.size());
-  for (const auto& test_attr : test_attrs) {
-    tiledb_attribute_t* attr;
-    rc = tiledb_attribute_alloc(
-        ctx_, test_attr.name_.c_str(), test_attr.type_, &attr);
+  attrs.reserve(sizeof(test_attr));
+  tiledb_attribute_t* attr;
+  rc = tiledb_attribute_alloc(
+      ctx_, test_attr.name_.c_str(), test_attr.type_, &attr);
+  REQUIRE(rc == TILEDB_OK);
+
+  rc = tiledb_attribute_set_cell_val_num(ctx_, attr, test_attr.cell_val_num_);
+  REQUIRE(rc == TILEDB_OK);
+
+  if (test_attr.nullable_) {
+    rc = tiledb_attribute_set_nullable(ctx_, attr, 1);
     REQUIRE(rc == TILEDB_OK);
-
-    rc = tiledb_attribute_set_cell_val_num(ctx_, attr, test_attr.cell_val_num_);
-    REQUIRE(rc == TILEDB_OK);
-
-    if (test_attr.nullable_) {
-      rc = tiledb_attribute_set_nullable(ctx_, attr, 1);
-      REQUIRE(rc == TILEDB_OK);
-    }
-
-    attrs.emplace_back(attr);
   }
+
+  attrs.emplace_back(attr);
 
   // Create array schema
   tiledb_array_schema_t* array_schema;
@@ -552,7 +550,7 @@ void DynamicArrayFx::read(
 }
 
 void DynamicArrayFx::test_dynamic_array(
-    const vector<test_attr_t>& test_attrs,
+    const test_attr_t test_attr,
     const vector<test_dim_t>& test_dims,
     tiledb_array_type_t array_type,
     tiledb_layout_t cell_order,
@@ -567,16 +565,51 @@ void DynamicArrayFx::test_dynamic_array(
     return;
   }
 
+  // String_ascii, float32, and float64 types can only be
+  // written to sparse arrays.
+  if (array_type == TILEDB_DENSE && (test_attr.type_ == TILEDB_STRING_ASCII ||
+                                     test_attr.type_ == TILEDB_FLOAT32 ||
+                                     test_attr.type_ == TILEDB_FLOAT64)) {
+    return;
+  }
+
   for (auto& test_dim : test_dims) {
     // Create the array.
     create_array(
         array_name,
         array_type,
         test_dim,
-        test_attrs,
+        test_attr,
         cell_order,
         tile_order,
         encryption_type);
+  }
+
+  // Calculate the write buffer sizes.
+  vector<uint64_t> buffer_sizes;
+  for (auto dims_iter = test_dims.begin(); dims_iter != test_dims.end();
+       ++dims_iter) {
+    const uint64_t max_range = ((uint64_t*)(dims_iter->domain_))[1];
+    const uint64_t min_range = ((uint64_t*)(dims_iter->domain_))[0];
+    const uint64_t buffer_size = (max_range - min_range) + 1;
+    buffer_sizes.emplace_back(buffer_size);
+  }
+
+  // Create the dimension write buffers.
+  // NOTE: if there is more than 1 dimension, the buffer shall be the previous
+  // buffer multiplied by the current range
+  vector<uint64_t*> d_write_buffers;
+  auto buff_size_iter = buffer_sizes.begin();
+  while (buff_size_iter != buffer_sizes.end()) {
+    uint64_t* write_buffer;
+    if (buff_size_iter == buffer_sizes.begin()) {
+      write_buffer = (uint64_t*)malloc(*buff_size_iter * sizeof(uint64_t*));
+    } else {
+      write_buffer = (uint64_t*)malloc(
+          *buff_size_iter * (*buff_size_iter - 1) * sizeof(uint64_t*));
+    }
+    d_write_buffers.emplace_back(write_buffer);
+    buff_size_iter = std::next(buff_size_iter, 1);
   }
 
   // Define the write query buffers for "a".
@@ -590,77 +623,54 @@ void DynamicArrayFx::test_dynamic_array(
 
   // Validity buffer is set only when the attribute is nullable.
   // Variable buffer is set only when the attribute is var-sized.
-  for (auto attr_iter = test_attrs.begin(); attr_iter != test_attrs.end();
-       attr_iter++) {
-    if (attr_iter->name_ == "a") {
-      if (attr_iter->nullable_) {
-        if (attr_iter->cell_val_num_ == TILEDB_VAR_NUM) {
-          write_query_buffers.emplace_back(
-              "a",
-              a_write_buffer,
-              &a_write_buffer_size,
-              a_write_buffer_var,
-              &a_write_buffer_var_size,
-              a_write_buffer_validity,
-              &a_write_buffer_validity_size);
-        } else {
-          write_query_buffers.emplace_back(
-              "a",
-              a_write_buffer,
-              &a_write_buffer_size,
-              nullptr,
-              nullptr,
-              a_write_buffer_validity,
-              &a_write_buffer_validity_size);
-        }
-
-      } else {
-        if (attr_iter->cell_val_num_ == TILEDB_VAR_NUM) {
-          write_query_buffers.emplace_back(
-              "a",
-              a_write_buffer,
-              &a_write_buffer_size,
-              a_write_buffer_var,
-              &a_write_buffer_var_size,
-              nullptr,
-              nullptr);
-        } else {
-          write_query_buffers.emplace_back(
-              "a",
-              a_write_buffer,
-              &a_write_buffer_size,
-              nullptr,
-              nullptr,
-              nullptr,
-              nullptr);
-        }
-      }
+  if (test_attr.nullable_) {
+    if (test_attr.cell_val_num_ == TILEDB_VAR_NUM) {
+      write_query_buffers.emplace_back(
+          test_attr.name_,
+          a_write_buffer,
+          &a_write_buffer_size,
+          a_write_buffer_var,
+          &a_write_buffer_var_size,
+          a_write_buffer_validity,
+          &a_write_buffer_validity_size);
+    } else {
+      write_query_buffers.emplace_back(
+          test_attr.name_,
+          a_write_buffer,
+          &a_write_buffer_size,
+          nullptr,
+          nullptr,
+          a_write_buffer_validity,
+          &a_write_buffer_validity_size);
     }
-  }
 
-  // Calculate the write buffer sizes.
-  vector<uint64_t> buffer_sizes;
-  for (auto dims_iter = test_dims.begin(); dims_iter != test_dims.end();
-       ++dims_iter) {
-    const uint64_t max_range = ((uint64_t*)(dims_iter->domain_))[1];
-    const uint64_t min_range = ((uint64_t*)(dims_iter->domain_))[0];
-    const uint64_t buffer_size = max_range - min_range;
-    buffer_sizes.emplace_back(buffer_size);
-  }
-
-  // Create the write buffers.
-  vector<uint64_t*> d_write_buffers;
-  for (auto buff_size_iter = buffer_sizes.begin();
-       buff_size_iter != buffer_sizes.end();
-       ++buff_size_iter) {
-    d_write_buffers.emplace_back(
-        (uint64_t*)malloc(*buff_size_iter * sizeof(uint64_t)));
+  } else {
+    if (test_attr.cell_val_num_ == TILEDB_VAR_NUM) {
+      write_query_buffers.emplace_back(
+          test_attr.name_,
+          a_write_buffer,
+          &a_write_buffer_size,
+          a_write_buffer_var,
+          &a_write_buffer_var_size,
+          nullptr,
+          nullptr);
+    } else {
+      write_query_buffers.emplace_back(
+          test_attr.name_,
+          a_write_buffer,
+          &a_write_buffer_size,
+          nullptr,
+          nullptr,
+          nullptr,
+          nullptr);
+    }
   }
 
   // Define dimension query write vectors for either sparse arrays
   // or dense arrays with an unordered write order.
   if (array_type == TILEDB_SPARSE || write_order == TILEDB_UNORDERED) {
     // Fill the write buffers with values.
+    auto dims_iter = test_dims.begin();
     for (auto write_buff_iter = d_write_buffers.begin();
          write_buff_iter != d_write_buffers.end();
          ++write_buff_iter) {
@@ -671,13 +681,15 @@ void DynamicArrayFx::test_dynamic_array(
       uint64_t write_buffer_size = sizeof(write_buff_iter);
 
       write_query_buffers.emplace_back(
-          "d",
+          dims_iter->name_,
           *write_buff_iter,
           &(write_buffer_size),
           nullptr,
           nullptr,
           nullptr,
           nullptr);
+
+      dims_iter = std::next(dims_iter, 1);
     }
   }
 
@@ -695,51 +707,46 @@ void DynamicArrayFx::test_dynamic_array(
 
   // Validity buffer is set only when the attribute is nullable.
   // Variable buffer is set only when the attribute is var-sized.
-  for (auto attr_iter = test_attrs.begin(); attr_iter != test_attrs.end();
-       attr_iter++) {
-    if (attr_iter->name_ == "a") {
-      if (attr_iter->nullable_) {
-        if (attr_iter->cell_val_num_ == TILEDB_VAR_NUM) {
-          read_query_buffers.emplace_back(
-              "a",
-              a_read_buffer,
-              &a_read_buffer_size,
-              a_read_buffer_var,
-              &a_read_buffer_var_size,
-              a_read_buffer_validity,
-              &a_read_buffer_validity_size);
-        } else {
-          read_query_buffers.emplace_back(
-              "a",
-              a_read_buffer,
-              &a_read_buffer_size,
-              nullptr,
-              nullptr,
-              a_read_buffer_validity,
-              &a_read_buffer_validity_size);
-        }
+  if (test_attr.nullable_) {
+    if (test_attr.cell_val_num_ == TILEDB_VAR_NUM) {
+      read_query_buffers.emplace_back(
+          test_attr.name_,
+          a_read_buffer,
+          &a_read_buffer_size,
+          a_read_buffer_var,
+          &a_read_buffer_var_size,
+          a_read_buffer_validity,
+          &a_read_buffer_validity_size);
+    } else {
+      read_query_buffers.emplace_back(
+          test_attr.name_,
+          a_read_buffer,
+          &a_read_buffer_size,
+          nullptr,
+          nullptr,
+          a_read_buffer_validity,
+          &a_read_buffer_validity_size);
+    }
 
-      } else {
-        if (attr_iter->cell_val_num_ == TILEDB_VAR_NUM) {
-          read_query_buffers.emplace_back(
-              "a",
-              a_read_buffer,
-              &a_read_buffer_size,
-              a_read_buffer_var,
-              &a_read_buffer_var_size,
-              nullptr,
-              nullptr);
-        } else {
-          read_query_buffers.emplace_back(
-              "a",
-              a_read_buffer,
-              &a_read_buffer_size,
-              nullptr,
-              nullptr,
-              nullptr,
-              nullptr);
-        }
-      }
+  } else {
+    if (test_attr.cell_val_num_ == TILEDB_VAR_NUM) {
+      read_query_buffers.emplace_back(
+          test_attr.name_,
+          a_read_buffer,
+          &a_read_buffer_size,
+          a_read_buffer_var,
+          &a_read_buffer_var_size,
+          nullptr,
+          nullptr);
+    } else {
+      read_query_buffers.emplace_back(
+          test_attr.name_,
+          a_read_buffer,
+          &a_read_buffer_size,
+          nullptr,
+          nullptr,
+          nullptr,
+          nullptr);
     }
   }
 
@@ -763,50 +770,45 @@ void DynamicArrayFx::test_dynamic_array(
   // the original `a_write_buffer`. Check that the ordering of
   // the validity buffer matches the ordering in the value buffer.
   // Validity buffer is set only when the attribute is nullable.
-  for (auto attr_iter = test_attrs.begin(); attr_iter != test_attrs.end();
-       attr_iter++) {
-    if (attr_iter->name_ == "a") {
-      if (attr_iter->nullable_) {
-        REQUIRE(a_read_buffer_size == a_write_buffer_size);
-        REQUIRE(a_read_buffer_validity_size == a_write_buffer_validity_size);
-        if (attr_iter->cell_val_num_ == TILEDB_VAR_NUM) {
-          uint8_t expected_a_read_buffer_validity[2];
-          REQUIRE(a_read_buffer_var_size == a_write_buffer_var_size);
-          for (int i = 0; i < 2; ++i) {
-            const uint64_t idx = a_read_buffer_var[i];
-            expected_a_read_buffer_validity[i] = a_write_buffer_validity[idx];
-          }
-          REQUIRE(!memcmp(
-              a_read_buffer_validity,
-              expected_a_read_buffer_validity,
-              a_read_buffer_validity_size));
-        } else {
-          uint8_t expected_a_read_buffer_validity[1];
-          expected_a_read_buffer_validity[0] = a_write_buffer_validity[0];
-          REQUIRE(!memcmp(
-              a_read_buffer_validity,
-              expected_a_read_buffer_validity,
-              a_read_buffer_validity_size));
-        }
-
-      } else {
-        REQUIRE(a_read_buffer_size == a_write_buffer_size);
-        if (attr_iter->cell_val_num_ == TILEDB_VAR_NUM) {
-          uint8_t expected_a_read_buffer[2];
-          REQUIRE(a_read_buffer_var_size == a_write_buffer_var_size);
-          for (int i = 0; i < 2; ++i) {
-            const uint64_t idx = a_read_buffer_var[i];
-            expected_a_read_buffer[i] = a_write_buffer[idx];
-          }
-          REQUIRE(!memcmp(
-              a_read_buffer, expected_a_read_buffer, a_read_buffer_size));
-        } else {
-          uint8_t expected_a_read_buffer[1];
-          expected_a_read_buffer[0] = a_write_buffer[0];
-          REQUIRE(!memcmp(
-              a_read_buffer, expected_a_read_buffer, a_read_buffer_size));
-        }
+  if (test_attr.nullable_) {
+    REQUIRE(a_read_buffer_size == a_write_buffer_size);
+    REQUIRE(a_read_buffer_validity_size == a_write_buffer_validity_size);
+    if (test_attr.cell_val_num_ == TILEDB_VAR_NUM) {
+      uint8_t expected_a_read_buffer_validity[2];
+      REQUIRE(a_read_buffer_var_size == a_write_buffer_var_size);
+      for (int i = 0; i < 2; ++i) {
+        const uint64_t idx = a_read_buffer_var[i];
+        expected_a_read_buffer_validity[i] = a_write_buffer_validity[idx];
       }
+      REQUIRE(!memcmp(
+          a_read_buffer_validity,
+          expected_a_read_buffer_validity,
+          a_read_buffer_validity_size));
+    } else {
+      uint8_t expected_a_read_buffer_validity[1];
+      expected_a_read_buffer_validity[0] = a_write_buffer_validity[0];
+      REQUIRE(!memcmp(
+          a_read_buffer_validity,
+          expected_a_read_buffer_validity,
+          a_read_buffer_validity_size));
+    }
+
+  } else {
+    REQUIRE(a_read_buffer_size == a_write_buffer_size);
+    if (test_attr.cell_val_num_ == TILEDB_VAR_NUM) {
+      uint8_t expected_a_read_buffer[2];
+      REQUIRE(a_read_buffer_var_size == a_write_buffer_var_size);
+      for (int i = 0; i < 2; ++i) {
+        const uint64_t idx = a_read_buffer_var[i];
+        expected_a_read_buffer[i] = a_write_buffer[idx];
+      }
+      REQUIRE(
+          !memcmp(a_read_buffer, expected_a_read_buffer, a_read_buffer_size));
+    } else {
+      uint8_t expected_a_read_buffer[1];
+      expected_a_read_buffer[0] = a_write_buffer[0];
+      REQUIRE(
+          !memcmp(a_read_buffer, expected_a_read_buffer, a_read_buffer_size));
     }
   }
 }
@@ -815,47 +817,21 @@ TEST_CASE_METHOD(
     DynamicArrayFx,
     "C API: Test a dynamic range of arrays",
     "[capi][dynamic]") {
-  vector<test_attr_t> attrs;
-
-  /*
-  // Attribute types to check
-  vector<tiledb_datatype_t> attribute_types = {
-      TILEDB_INT8,           TILEDB_UINT8,         TILEDB_INT16,
-      TILEDB_UINT16,         TILEDB_INT32,         TILEDB_UINT32,
-      TILEDB_INT64,          TILEDB_UINT64,        TILEDB_FLOAT32,
-      TILEDB_FLOAT64,        TILEDB_CHAR,          TILEDB_STRING_ASCII,
-      TILEDB_STRING_UTF8,    TILEDB_STRING_UTF16,  TILEDB_STRING_UTF32,
-      TILEDB_STRING_UCS2,    TILEDB_STRING_UCS4,   TILEDB_DATETIME_YEAR,
-      TILEDB_DATETIME_MONTH, TILEDB_DATETIME_WEEK, TILEDB_DATETIME_DAY,
-      TILEDB_DATETIME_HR,    TILEDB_DATETIME_MIN,  TILEDB_DATETIME_SEC,
-      TILEDB_DATETIME_MS,    TILEDB_DATETIME_US,   TILEDB_DATETIME_NS,
-      TILEDB_DATETIME_PS,    TILEDB_DATETIME_FS,   TILEDB_DATETIME_AS};
-
-  vector<tiledb_datatype_t> sparse_attribute_types = {
-      TILEDB_FLOAT32, TILEDB_FLOAT64, TILEDB_STRING_ASCII};
-
-  for (size_t i = 0; i < attribute_types.size(); i++) {
-    attrs.emplace_back("a", attribute_types[i], 1, false);
-  }
-  */
-
   vector<test_dim_t> test_dims;
   const uint64_t d1_domain[] = {0, 1};
   const uint64_t d1_tile_extent = 1;
   test_dims.emplace_back("d", TILEDB_INT32, d1_domain, d1_tile_extent);
 
-  // vector<test_attr_t> attrs;
-  attrs.emplace_back("a", TILEDB_INT32, TILEDB_VAR_NUM, false);
+  const test_attr_t attr("a", TILEDB_INT32, TILEDB_VAR_NUM, false);
 
   const tiledb_array_type_t array_type = TILEDB_DENSE;
-  // int num_dims = 1;
   const tiledb_layout_t cell_order = TILEDB_ROW_MAJOR;
   const tiledb_layout_t tile_order = TILEDB_ROW_MAJOR;
   const tiledb_layout_t write_order = TILEDB_ROW_MAJOR;
   tiledb_encryption_type_t encryption_type = TILEDB_NO_ENCRYPTION;
 
   test_dynamic_array(
-      attrs,
+      attr,
       test_dims,
       array_type,
       cell_order,
