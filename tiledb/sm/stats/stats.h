@@ -44,6 +44,8 @@
 #include <unordered_map>
 #include <vector>
 
+#include "tiledb/sm/stats/timer_stat.h"
+
 // Define an enum named <TypeName> and a comma-separated
 // string named <TypeName>Names_ containing the stat names.
 #define DEFINE_TILEDB_STATS(TypeName, ...)           \
@@ -203,8 +205,11 @@ class Stats {
   /*              API               */
   /* ****************************** */
 
-  /** Adds `count` to the input timer stat. */
-  void add_timer(TimerType stat, double count);
+  /** Starts a timer for the input timer stat. */
+  void start_timer(TimerType stat);
+
+  /** Ends a timer for the input timer stat. */
+  void end_timer(TimerType stat);
 
   /** Adds `count` to the input counter stat. */
   void add_counter(CounterType stat, uint64_t count);
@@ -250,8 +255,8 @@ class Stats {
   /** True if stats are being gathered. */
   bool enabled_;
 
-  /** A map of timer stats, measured in seconds. */
-  std::unordered_map<TimerType, double, EnumHasher> timer_stats_;
+  /** A map of timer stats types to TimerStat instances. */
+  std::unordered_map<TimerType, TimerStat, EnumHasher> timer_stats_;
 
   /** A map of counter stats. */
   std::unordered_map<CounterType, uint64_t, EnumHasher> counter_stats_;
@@ -371,21 +376,18 @@ extern Stats all_stats;
 
 /** Marks the beginning of a stats-enabled function. This should come before the
  * first statement where you want the function timer to start. */
-#define STATS_START_TIMER(stat)                             \
-  auto __start = std::chrono::high_resolution_clock::now(); \
+#define STATS_START_TIMER(stat)       \
+  stats::all_stats.start_timer(stat); \
   auto __retval = [&]() {
 /** Marks the end of a stats-enabled function. This should come after the last
  * statement in the function. Note that a function can have multiple exit paths
  * (i.e. multiple returns), but you should still put this macro after the very
  * last statement in the function. */
-#define STATS_END_TIMER(stat)                                \
-  }                                                          \
-  ();                                                        \
-  if (stats::all_stats.enabled()) {                          \
-    std::chrono::duration<double> __dur =                    \
-        std::chrono::high_resolution_clock::now() - __start; \
-    stats::all_stats.add_timer(stat, __dur.count());         \
-  }                                                          \
+#define STATS_END_TIMER(stat)         \
+  }                                   \
+  ();                                 \
+  if (stats::all_stats.enabled())     \
+    stats::all_stats.end_timer(stat); \
   return __retval;
 
 #define STATS_ADD_COUNTER(stat, c) \
