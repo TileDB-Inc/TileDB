@@ -37,6 +37,7 @@ install_gcs(){
 }
 
 install_apt_pkgs() {
+  sudo pip3 install --upgrade pip
   sudo apt-get -y install python3-setuptools
   install_gcs
 }
