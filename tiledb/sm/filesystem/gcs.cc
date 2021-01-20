@@ -141,7 +141,7 @@ Status GCS::init_client() const {
       auto status_or_creds =
           google::cloud::storage::oauth2::GoogleDefaultCredentials(
               channel_options);
-      if (status_or_creds) {
+      if (!status_or_creds) {
         return LOG_STATUS(Status::GCSError(
             "Failed to initialize GCS credentials: " +
             status_or_creds.status().message()));
