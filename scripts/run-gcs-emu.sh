@@ -39,6 +39,7 @@ export_gcs_env(){
 run_gcs(){
   gunicorn --bind "localhost:9000" --worker-class sync --threads 10 --access-logfile - --chdir /tmp/google-cloud-cpp/google/cloud/storage/emulator "emulator:run()" &
   export GCS_PID=$!
+  [[ "$?" -eq "0" ]] || die "could not run gcs server"
 }
 
 run() {
