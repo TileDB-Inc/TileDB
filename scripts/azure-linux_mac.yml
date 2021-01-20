@@ -176,11 +176,8 @@ steps:
     fi
 
     if [[ "$TILEDB_GCS" == "ON" ]]; then
-      # GCS unit tests are temporarily unsupported on CI. Fake success with
-      # this echo.
-      echo "##vso[task.setvariable variable=TILEDB_CI_SUCCESS]1"
-    else
-      make check	
+      # GCS unit tests are now unsupported on CI using the GCS Emulator.
+      make check
     fi
 
     # Kill the running Minio server, OSX only because Linux runs it within
