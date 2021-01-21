@@ -37,17 +37,20 @@ install_gcs(){
 }
 
 install_apt_pkgs() {
+  sudo apt-get -y install python3.8
   sudo pip3 install --upgrade pip
   sudo apt-get -y install python3-setuptools
   install_gcs
 }
 
 install_yum_pkgs() {
+  sudo yum -y install python3.8
   sudo yum -y install python3-setuptools
   install_gcs
 }
 
 install_brew_pkgs() {
+    brew upgrade python
     install_gcs
 }
 
