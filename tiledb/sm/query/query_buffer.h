@@ -34,8 +34,8 @@
 #define TILEDB_QUERY_BUFFER_H
 
 #include "tiledb/common/logger.h"
+#include "tiledb/common/macros.h"
 #include "tiledb/common/status.h"
-#include "tiledb/sm/misc/macros.h"
 #include "tiledb/sm/query/validity_vector.h"
 
 using namespace tiledb::common;

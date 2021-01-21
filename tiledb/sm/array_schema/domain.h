@@ -33,8 +33,8 @@
 #ifndef TILEDB_DOMAIN_H
 #define TILEDB_DOMAIN_H
 
+#include "tiledb/common/macros.h"
 #include "tiledb/common/status.h"
-#include "tiledb/sm/misc/macros.h"
 #include "tiledb/sm/misc/types.h"
 #include "tiledb/sm/query/query_buffer.h"
 #include "tiledb/sm/query/result_coords.h"
