@@ -48,6 +48,14 @@ run() {
   mkdir -p /tmp/gcs-data
   cp -f -r $DIR/../test/inputs/test_certs /tmp/gcs-data
 
+  echo `sudo python --version`
+  echo `python --version`
+  echo `sudo python3 --version`
+  echo `python3 --version`
+  echo `sudo pip --version`
+  echo `pip --version`
+  echo `sudo pip3 --version`
+  echo `pip3 --version`
   run_gcs
 }
 
