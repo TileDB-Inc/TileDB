@@ -58,7 +58,6 @@ steps:
     # azure bash does not treat intermediate failure as error
     # https://github.com/Microsoft/azure-pipelines-yaml/issues/135
     set -e pipefail
-    python -m pip install --upgrade pip virtualenv
 
     git config --global user.name 'Azure Pipeline'
     git config --global user.email 'no-reply@tiledb.io'

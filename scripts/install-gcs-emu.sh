@@ -33,11 +33,11 @@ die() {
 install_gcs(){
     curl -L  https://github.com/googleapis/google-cloud-cpp/archive/v1.23.0.tar.gz > /tmp/google-cloud-cpp.tar.gz
     tar -xf /tmp/google-cloud-cpp.tar.gz -C /tmp
-    sudo pip3 install -r /tmp/google-cloud-cpp-1.23.0/google/cloud/storage/emulator/requirements.txt
+    pip3 install -r /tmp/google-cloud-cpp-1.23.0/google/cloud/storage/emulator/requirements.txt
 }
 
 install_apt_pkgs() {
-  sudo pip3 install --upgrade pip
+  pip3 install --upgrade pip
   sudo apt-get -y install python3-setuptools
   install_gcs
 }
