@@ -389,10 +389,15 @@ std::string Stats::dump_read() const {
       timer_stats_.find(TimerType::READ_FILL_DENSE_COORDS)->second.duration();
   auto read_array_open =
       timer_stats_.find(TimerType::READ_ARRAY_OPEN)->second.duration();
+  auto read_array_open_without_fragments =
+      timer_stats_.find(TimerType::READ_ARRAY_OPEN_WITHOUT_FRAGMENTS)
+          ->second.duration();
   auto read_load_array_schema =
       timer_stats_.find(TimerType::READ_LOAD_ARRAY_SCHEMA)->second.duration();
   auto read_load_array_meta =
       timer_stats_.find(TimerType::READ_LOAD_ARRAY_META)->second.duration();
+  auto read_get_fragment_uris =
+      timer_stats_.find(TimerType::READ_GET_FRAGMENT_URIS)->second.duration();
   auto read_load_frag_meta =
       timer_stats_.find(TimerType::READ_LOAD_FRAG_META)->second.duration();
   auto read_load_consolidated_frag_meta =
@@ -603,7 +608,12 @@ std::string Stats::dump_read() const {
 
     if (read_array_open > 0) {
       write(&ss, "- Time to open array: ", read_array_open);
+      write(
+          &ss,
+          "  * Time to open array without fragments: ",
+          read_array_open_without_fragments);
       write(&ss, "  * Time to load array schema: ", read_load_array_schema);
+      write(&ss, "  * Time to list fragment uris: ", read_get_fragment_uris);
       write(
           &ss,
           "  * Time to load consolidated fragment metadata: ",

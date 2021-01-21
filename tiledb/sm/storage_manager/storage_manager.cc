@@ -1236,6 +1236,7 @@ Status StorageManager::get_fragment_uris(
     const URI& array_uri,
     std::vector<URI>* fragment_uris,
     URI* meta_uri) const {
+  STATS_START_TIMER(stats::Stats::TimerType::READ_GET_FRAGMENT_URIS)
   // Get all uris in the array directory
   std::vector<URI> uris;
   RETURN_NOT_OK(vfs_->ls(array_uri.add_trailing_slash(), &uris));
@@ -1274,6 +1275,8 @@ Status StorageManager::get_fragment_uris(
   RETURN_NOT_OK(get_consolidated_fragment_meta_uri(uris, meta_uri));
 
   return Status::Ok();
+
+  STATS_END_TIMER(stats::Stats::TimerType::READ_GET_FRAGMENT_URIS);
 }
 
 const std::unordered_map<std::string, std::string>& StorageManager::tags()
@@ -1977,6 +1980,7 @@ Status StorageManager::array_open_without_fragments(
     const URI& array_uri,
     const EncryptionKey& encryption_key,
     OpenArray** open_array) {
+  STATS_START_TIMER(stats::Stats::TimerType::READ_ARRAY_OPEN_WITHOUT_FRAGMENTS)
   if (!vfs_->supports_uri_scheme(array_uri))
     return LOG_STATUS(Status::StorageManagerError(
         "Cannot open array; URI scheme unsupported."));
@@ -2022,6 +2026,8 @@ Status StorageManager::array_open_without_fragments(
   }
 
   return Status::Ok();
+
+  STATS_END_TIMER(stats::Stats::TimerType::READ_ARRAY_OPEN_WITHOUT_FRAGMENTS)
 }
 
 Status StorageManager::get_array_metadata_uris(

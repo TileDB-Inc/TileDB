@@ -12,6 +12,8 @@
 
 ## Improvements
 
+* Add additional timer statistics for openning array for reads [#2027](https://github.com/TileDB-Inc/TileDB/pull/2027)
+
 ## Deprecations
 
 ## Bug fixes
