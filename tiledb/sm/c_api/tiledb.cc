@@ -4197,7 +4197,7 @@ int32_t tiledb_vfs_alloc(
   }
 
   // Create VFS object
-  (*vfs)->vfs_ = new tiledb::sm::VFS();
+  (*vfs)->vfs_ = new (std::nothrow) tiledb::sm::VFS();
   if ((*vfs)->vfs_ == nullptr) {
     auto st =
         Status::Error("Failed to allocate TileDB virtual filesystem object");
