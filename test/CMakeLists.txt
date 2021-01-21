@@ -111,7 +111,6 @@ set(TILEDB_TEST_SOURCES
   src/unit-capi-dense_array_2.cc
   src/unit-capi-dense_neg.cc
   src/unit-capi-dense_vector.cc
-  src/unit-capi-dynamic.cc
   src/unit-capi-empty-var-length.cc
   src/unit-capi-enum_values.cc
   src/unit-capi-error.cc
@@ -125,6 +124,7 @@ set(TILEDB_TEST_SOURCES
   src/unit-capi-object_mgmt.cc
   src/unit-capi-query.cc
   src/unit-capi-query_2.cc
+  src/unit-capi-smoke-test.cc
   src/unit-capi-sparse_array.cc
   src/unit-capi-sparse_heter.cc
   src/unit-capi-sparse_neg.cc

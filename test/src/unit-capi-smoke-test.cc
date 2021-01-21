@@ -1,11 +1,11 @@
 /**
- * @file unit-capi-dynamic.cc
+ * @file unit-capi-smoke-test.cc
  *
  * @section LICENSE
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2020 TileDB, Inc.
+ * @copyright Copyright (c) 2021 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -33,7 +33,6 @@
 
 #include "catch.hpp"
 #include "test/src/helpers.h"
-#include "test/src/vfs_helpers.h"
 #ifdef _WIN32
 #include "tiledb/sm/filesystem/win.h"
 #else
@@ -114,21 +113,23 @@ struct test_query_buffer_t {
   uint64_t* buffer_validity_size_;
 };
 
-class DynamicArrayFx {
+class SmokeTestFx {
  public:
 #ifdef _WIN32
-  SupportedFsLocal windows_fs;
-  const string temp_dir_ = windows_fs.temp_dir();
+  const string FILE_URI_PREFIX = "";
+  const string FILE_TEMP_DIR =
+      tiledb::sm::Win::current_dir() + "\\tiledb_test\\";
 #else
-  SupportedFsLocal posix_fs;
-  const string temp_dir_ = posix_fs.temp_dir();
+  const string FILE_URI_PREFIX = "file://";
+  const string FILE_TEMP_DIR =
+      tiledb::sm::Posix::current_dir() + "/tiledb_test/";
 #endif
 
   /** Constructor. */
-  DynamicArrayFx();
+  SmokeTestFx();
 
   /** Destructor. */
-  ~DynamicArrayFx();
+  ~SmokeTestFx();
 
   /**
    * Create, write and read attributes to an array.
@@ -141,7 +142,7 @@ class DynamicArrayFx {
    * @param write_order The write layout.
    * @param encryption_type The encryption type.
    */
-  void test_dynamic_array(
+  void smoke_test(
       const test_attr_t test_attr,
       const vector<test_dim_t>& test_dims,
       tiledb_array_type_t array_type,
@@ -176,7 +177,7 @@ class DynamicArrayFx {
    *
    * @param array_name The name of the array.
    * @param array_type The type of the array (dense/sparse).
-   * @param test_dim The dimension in the array.
+   * @param test_dims The dimensions in the array.
    * @param test_attr The attribute in the array.
    * @param cell_order The cell order of the array.
    * @param tile_order The tile order of the array.
@@ -186,7 +187,7 @@ class DynamicArrayFx {
   void create_array(
       const string& array_name,
       tiledb_array_type_t array_type,
-      const test_dim_t& test_dim,
+      const vector<test_dim_t>& test_dims,
       const test_attr_t test_attr,
       tiledb_layout_t cell_order,
       tiledb_layout_t tile_order,
@@ -221,7 +222,7 @@ class DynamicArrayFx {
       tiledb_encryption_type_t encryption_type);
 };
 
-DynamicArrayFx::DynamicArrayFx() {
+SmokeTestFx::SmokeTestFx() {
   // Create a config.
   tiledb_config_t* config = nullptr;
   tiledb_error_t* error = nullptr;
@@ -238,49 +239,51 @@ DynamicArrayFx::DynamicArrayFx() {
   tiledb_config_free(&config);
 }
 
-DynamicArrayFx::~DynamicArrayFx() {
-  remove_dir(temp_dir_);
+SmokeTestFx::~SmokeTestFx() {
+  remove_dir(FILE_TEMP_DIR);
 }
 
-void DynamicArrayFx::create_dir(const string& path) {
+void SmokeTestFx::create_dir(const string& path) {
   REQUIRE(tiledb_vfs_create_dir(ctx_, vfs_, path.c_str()) == TILEDB_OK);
 }
 
-void DynamicArrayFx::remove_dir(const string& path) {
+void SmokeTestFx::remove_dir(const string& path) {
   int is_dir = 0;
   REQUIRE(tiledb_vfs_is_dir(ctx_, vfs_, path.c_str(), &is_dir) == TILEDB_OK);
   if (is_dir)
     REQUIRE(tiledb_vfs_remove_dir(ctx_, vfs_, path.c_str()) == TILEDB_OK);
 }
 
-void DynamicArrayFx::create_array(
+void SmokeTestFx::create_array(
     const string& array_name,
     tiledb_array_type_t array_type,
-    const test_dim_t& test_dim,
+    const vector<test_dim_t>& test_dims,
     const test_attr_t test_attr,
     tiledb_layout_t cell_order,
     tiledb_layout_t tile_order,
     tiledb_encryption_type_t encryption_type) {
-  remove_dir(temp_dir_);
-  create_dir(temp_dir_);
+  remove_dir(FILE_TEMP_DIR);
+  create_dir(FILE_TEMP_DIR);
 
   // Create the dimensions.
   vector<tiledb_dimension_t*> dims;
-  dims.reserve(sizeof(test_dim));
-  tiledb_dimension_t* dim;
-  int rc = tiledb_dimension_alloc(
-      ctx_,
-      test_dim.name_.c_str(),
-      test_dim.type_,
-      test_dim.domain_,
-      &test_dim.tile_extent_,
-      &dim);
-  REQUIRE(rc == TILEDB_OK);
-  dims.emplace_back(dim);
+  dims.reserve(test_dims.size());
+  for (const auto& test_dim : test_dims) {
+    tiledb_dimension_t* dim;
+    const int rc = tiledb_dimension_alloc(
+        ctx_,
+        test_dim.name_.c_str(),
+        test_dim.type_,
+        test_dim.domain_,
+        &test_dim.tile_extent_,
+        &dim);
+    REQUIRE(rc == TILEDB_OK);
+    dims.emplace_back(dim);
+  }
 
   // Create the domain.
-  tiledb_domain_t* domain = (tiledb_domain_t*)test_dim.domain_;
-  rc = tiledb_domain_alloc(ctx_, &domain);
+  tiledb_domain_t* domain;
+  int rc = tiledb_domain_alloc(ctx_, &domain);
   REQUIRE(rc == TILEDB_OK);
   for (const auto& dim : dims) {
     rc = tiledb_domain_add_dimension(ctx_, domain, dim);
@@ -327,12 +330,12 @@ void DynamicArrayFx::create_array(
   // Create the array with or without encryption
   if (encryption_type == TILEDB_NO_ENCRYPTION) {
     rc = tiledb_array_create(
-        ctx_, (temp_dir_ + array_name).c_str(), array_schema);
+        ctx_, (FILE_TEMP_DIR + array_name).c_str(), array_schema);
     REQUIRE(rc == TILEDB_OK);
   } else {
     tiledb_array_create_with_key(
         ctx_,
-        (temp_dir_ + array_name).c_str(),
+        (FILE_TEMP_DIR + array_name).c_str(),
         array_schema,
         encryption_type,
         encryption_key,
@@ -356,14 +359,15 @@ void DynamicArrayFx::create_array(
   tiledb_array_schema_free(&array_schema);
 }
 
-void DynamicArrayFx::write(
+void SmokeTestFx::write(
     const string& array_name,
     const vector<test_query_buffer_t>& test_query_buffers,
     tiledb_layout_t layout,
     tiledb_encryption_type_t encryption_type) {
   // Open the array for writing (with or without encryption).
   tiledb_array_t* array;
-  int rc = tiledb_array_alloc(ctx_, (temp_dir_ + array_name).c_str(), &array);
+  int rc =
+      tiledb_array_alloc(ctx_, (FILE_TEMP_DIR + array_name).c_str(), &array);
   REQUIRE(rc == TILEDB_OK);
   if (encryption_type == TILEDB_NO_ENCRYPTION) {
     rc = tiledb_array_open(ctx_, array, TILEDB_WRITE);
@@ -452,14 +456,15 @@ void DynamicArrayFx::write(
   tiledb_query_free(&query);
 }
 
-void DynamicArrayFx::read(
+void SmokeTestFx::read(
     const string& array_name,
     const vector<test_query_buffer_t>& test_query_buffers,
     const void* subarray,
     tiledb_encryption_type_t encryption_type) {
   // Open the array for reading (with or without encryption).
   tiledb_array_t* array;
-  int rc = tiledb_array_alloc(ctx_, (temp_dir_ + array_name).c_str(), &array);
+  int rc =
+      tiledb_array_alloc(ctx_, (FILE_TEMP_DIR + array_name).c_str(), &array);
   REQUIRE(rc == TILEDB_OK);
   if (encryption_type == TILEDB_NO_ENCRYPTION) {
     rc = tiledb_array_open(ctx_, array, TILEDB_READ);
@@ -549,7 +554,7 @@ void DynamicArrayFx::read(
   tiledb_query_free(&query);
 }
 
-void DynamicArrayFx::test_dynamic_array(
+void SmokeTestFx::smoke_test(
     const test_attr_t test_attr,
     const vector<test_dim_t>& test_dims,
     tiledb_array_type_t array_type,
@@ -573,44 +578,15 @@ void DynamicArrayFx::test_dynamic_array(
     return;
   }
 
-  for (auto& test_dim : test_dims) {
-    // Create the array.
-    create_array(
-        array_name,
-        array_type,
-        test_dim,
-        test_attr,
-        cell_order,
-        tile_order,
-        encryption_type);
-  }
-
-  // Calculate the write buffer sizes.
-  vector<uint64_t> buffer_sizes;
-  for (auto dims_iter = test_dims.begin(); dims_iter != test_dims.end();
-       ++dims_iter) {
-    const uint64_t max_range = ((uint64_t*)(dims_iter->domain_))[1];
-    const uint64_t min_range = ((uint64_t*)(dims_iter->domain_))[0];
-    const uint64_t buffer_size = (max_range - min_range) + 1;
-    buffer_sizes.emplace_back(buffer_size);
-  }
-
-  // Create the dimension write buffers.
-  // NOTE: if there is more than 1 dimension, the buffer shall be the previous
-  // buffer multiplied by the current range
-  vector<uint64_t*> d_write_buffers;
-  auto buff_size_iter = buffer_sizes.begin();
-  while (buff_size_iter != buffer_sizes.end()) {
-    uint64_t* write_buffer;
-    if (buff_size_iter == buffer_sizes.begin()) {
-      write_buffer = (uint64_t*)malloc(*buff_size_iter * sizeof(uint64_t*));
-    } else {
-      write_buffer = (uint64_t*)malloc(
-          *buff_size_iter * (*buff_size_iter - 1) * sizeof(uint64_t*));
-    }
-    d_write_buffers.emplace_back(write_buffer);
-    buff_size_iter = std::next(buff_size_iter, 1);
-  }
+  // Create the array.
+  create_array(
+      array_name,
+      array_type,
+      test_dims,
+      test_attr,
+      cell_order,
+      tile_order,
+      encryption_type);
 
   // Define the write query buffers for "a".
   vector<test_query_buffer_t> write_query_buffers;
@@ -669,20 +645,42 @@ void DynamicArrayFx::test_dynamic_array(
   // Define dimension query write vectors for either sparse arrays
   // or dense arrays with an unordered write order.
   if (array_type == TILEDB_SPARSE || write_order == TILEDB_UNORDERED) {
+    // Calculate the write buffer sizes using the ranges of the dimensions.
+    vector<uint64_t> dimension_ranges;
+    for (auto dims_iter = test_dims.begin(); dims_iter != test_dims.end();
+         ++dims_iter) {
+      const uint64_t max_range = ((uint64_t*)(dims_iter->domain_))[1];
+      const uint64_t min_range = ((uint64_t*)(dims_iter->domain_))[0];
+      const uint64_t buffer_size = (max_range - min_range) + 1;
+      dimension_ranges.emplace_back(buffer_size);
+    }
+
+    // Create the dimension write buffers.
+    // NOTE: if there is more than 1 dimension, the buffer shall be the previous
+    // buffer multiplied by the current range
+    vector<uint64_t*> d_write_buffers;
+    for (const uint64_t range : dimension_ranges) {
+      uint64_t* write_buffer;
+      if (range == *dimension_ranges.begin()) {
+        write_buffer = (uint64_t*)malloc(range * sizeof(uint64_t*));
+      } else {
+        write_buffer =
+            (uint64_t*)malloc(range * (range - 1) * sizeof(uint64_t*));
+      }
+      d_write_buffers.emplace_back(write_buffer);
+    }
+
     // Fill the write buffers with values.
     auto dims_iter = test_dims.begin();
-    for (auto write_buff_iter = d_write_buffers.begin();
-         write_buff_iter != d_write_buffers.end();
-         ++write_buff_iter) {
-      for (uint64_t i = 0; i < sizeof(write_buff_iter); i++) {
-        *write_buff_iter[i] = i;
+    for (uint64_t* const d_write_buffer : d_write_buffers) {
+      for (uint64_t i = 0; i < dimension_ranges[i]; i++) {
+        d_write_buffer[i] = i;
       }
-
-      uint64_t write_buffer_size = sizeof(write_buff_iter);
+      uint64_t write_buffer_size = sizeof(d_write_buffer);
 
       write_query_buffers.emplace_back(
           dims_iter->name_,
-          *write_buff_iter,
+          d_write_buffer,
           &(write_buffer_size),
           nullptr,
           nullptr,
@@ -691,6 +689,9 @@ void DynamicArrayFx::test_dynamic_array(
 
       dims_iter = std::next(dims_iter, 1);
     }
+    // Free the dimension write buffers vector
+    d_write_buffers.clear();
+    d_write_buffers.shrink_to_fit();
   }
 
   // Execute the write query.
@@ -814,9 +815,9 @@ void DynamicArrayFx::test_dynamic_array(
 }
 
 TEST_CASE_METHOD(
-    DynamicArrayFx,
+    SmokeTestFx,
     "C API: Test a dynamic range of arrays",
-    "[capi][dynamic]") {
+    "[capi][smoke-test]") {
   vector<test_dim_t> test_dims;
   const uint64_t d1_domain[] = {0, 1};
   const uint64_t d1_tile_extent = 1;
@@ -830,7 +831,7 @@ TEST_CASE_METHOD(
   const tiledb_layout_t write_order = TILEDB_ROW_MAJOR;
   tiledb_encryption_type_t encryption_type = TILEDB_NO_ENCRYPTION;
 
-  test_dynamic_array(
+  smoke_test(
       attr,
       test_dims,
       array_type,
