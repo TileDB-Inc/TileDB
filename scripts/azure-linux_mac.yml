@@ -175,10 +175,7 @@ steps:
       export ASAN_OPTIONS=detect_leaks=0 LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libasan.so.4
     fi
 
-    if [[ "$TILEDB_GCS" == "ON" ]]; then
-      # GCS unit tests are now unsupported on CI using the GCS Emulator.
-      make check
-    fi
+    make check
 
     # Kill the running Minio server, OSX only because Linux runs it within
     # docker.
