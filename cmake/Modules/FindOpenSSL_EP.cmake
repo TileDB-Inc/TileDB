@@ -91,8 +91,8 @@ if (NOT OPENSSL_FOUND AND TILEDB_SUPERBUILD)
 
   ExternalProject_Add(ep_openssl
     PREFIX "externals"
-    URL "https://github.com/openssl/openssl/archive/OpenSSL_1_1_0h.zip"
-    URL_HASH SHA1=7558a4444480047759041df1424071041b91d065
+    URL "https://github.com/openssl/openssl/archive/OpenSSL_1_1_1i.zip"
+    URL_HASH SHA1=627938302f681dfac186a9225b65368516b4f484
     CONFIGURE_COMMAND
       ${TILEDB_EP_BASE}/src/ep_openssl/config
         --prefix=${TILEDB_EP_INSTALL_PREFIX}
