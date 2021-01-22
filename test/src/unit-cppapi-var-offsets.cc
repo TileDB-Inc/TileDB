@@ -226,12 +226,18 @@ void write_dense_array(
     const std::string& array_name,
     std::vector<int32_t>& data,
     std::vector<uint64_t>& data_offsets,
-    tiledb_layout_t layout) {
+    tiledb_layout_t layout,
+    std::shared_ptr<Config> config = nullptr) {
   std::vector<int64_t> d1 = {1, 1, 2, 2};
   std::vector<int64_t> d2 = {1, 2, 1, 2};
 
   Array array(ctx, array_name, TILEDB_WRITE);
   Query query(ctx, array, TILEDB_WRITE);
+
+  if (config != nullptr) {
+    query.set_config(*config);
+  }
+
   query.set_buffer("attr", data_offsets, data);
   query.set_layout(layout);
   if (layout == TILEDB_UNORDERED) {
@@ -255,12 +261,17 @@ void write_dense_array(
     const std::string& array_name,
     std::vector<int32_t>& data,
     std::vector<uint32_t>& data_offsets,
-    tiledb_layout_t layout) {
+    tiledb_layout_t layout,
+    std::shared_ptr<Config> config = nullptr) {
   std::vector<int64_t> d1 = {1, 1, 2, 2};
   std::vector<int64_t> d2 = {1, 2, 1, 2};
 
   Array array(ctx, array_name, TILEDB_WRITE);
   Query query(ctx, array, TILEDB_WRITE);
+
+  if (config != nullptr) {
+    query.set_config(*config);
+  }
 
   // Write using a 32-bit vector, but cast it to 64-bit pointer so that the API
   // accepts it
@@ -290,9 +301,14 @@ void read_and_check_dense_array(
     Context ctx,
     const std::string& array_name,
     std::vector<int32_t>& expected_data,
-    std::vector<uint64_t>& expected_offsets) {
+    std::vector<uint64_t>& expected_offsets,
+    std::shared_ptr<Config> config = nullptr) {
   Array array(ctx, array_name, TILEDB_READ);
   Query query(ctx, array, TILEDB_READ);
+
+  if (config != nullptr) {
+    query.set_config(*config);
+  }
 
   std::vector<int32_t> attr_val(expected_data.size());
   std::vector<uint64_t> attr_off(expected_offsets.size());
@@ -311,9 +327,14 @@ void read_and_check_dense_array(
     Context ctx,
     const std::string& array_name,
     std::vector<int32_t>& expected_data,
-    std::vector<uint32_t>& expected_offsets) {
+    std::vector<uint32_t>& expected_offsets,
+    std::shared_ptr<Config> config = nullptr) {
   Array array(ctx, array_name, TILEDB_READ);
   Query query(ctx, array, TILEDB_READ);
+
+  if (config != nullptr) {
+    query.set_config(*config);
+  }
 
   std::vector<int32_t> attr_val(expected_data.size());
   std::vector<uint32_t> attr_off(expected_offsets.size());
@@ -1297,6 +1318,28 @@ TEST_CASE(
       write_dense_array(
           ctx, array_name, data, data_byte_offsets, TILEDB_GLOBAL_ORDER);
       read_and_check_dense_array(ctx, array_name, data, data_byte_offsets);
+    }
+  }
+
+  SECTION("Test direct Query configuration") {
+    config["sm.var_offsets.extra_element"] = "true";
+    auto config_sp = std::make_shared<Config>(config);
+    Context ctx;
+
+    // Check the extra element is included in the offsets
+    uint32_t data_size = static_cast<uint32_t>(sizeof(data[0]) * data.size());
+    std::vector<uint32_t> data_byte_offsets = {0, 4, 12, 20, data_size};
+
+    SECTION("Unordered write") {
+      write_dense_array(
+          ctx,
+          array_name,
+          data,
+          data_byte_offsets,
+          TILEDB_UNORDERED,
+          config_sp);
+      read_and_check_dense_array(
+          ctx, array_name, data, data_byte_offsets, config_sp);
     }
   }
 

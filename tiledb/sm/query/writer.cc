@@ -294,6 +294,12 @@ uint32_t Writer::get_offsets_bitsize() const {
   return offsets_bitsize_;
 }
 
+Status Writer::set_config(const Config& config) {
+  config_ = config;
+
+  return Status::Ok();
+};
+
 void Writer::set_check_coord_dups(bool b) {
   check_coord_dups_ = b;
 }
@@ -422,11 +428,10 @@ Status Writer::init(const Layout& layout) {
   // Get configuration parameters
   const char *check_coord_dups, *check_coord_oob, *check_global_order;
   const char* dedup_coords;
-  auto config = storage_manager_->config();
-  RETURN_NOT_OK(config.get("sm.check_coord_dups", &check_coord_dups));
-  RETURN_NOT_OK(config.get("sm.check_coord_oob", &check_coord_oob));
-  RETURN_NOT_OK(config.get("sm.check_global_order", &check_global_order));
-  RETURN_NOT_OK(config.get("sm.dedup_coords", &dedup_coords));
+  RETURN_NOT_OK(config_.get("sm.check_coord_dups", &check_coord_dups));
+  RETURN_NOT_OK(config_.get("sm.check_coord_oob", &check_coord_oob));
+  RETURN_NOT_OK(config_.get("sm.check_global_order", &check_global_order));
+  RETURN_NOT_OK(config_.get("sm.dedup_coords", &dedup_coords));
   assert(check_coord_dups != nullptr && dedup_coords != nullptr);
   check_coord_dups_ = !strcmp(check_coord_dups, "true");
   check_coord_oob_ = !strcmp(check_coord_oob, "true");
@@ -434,17 +439,17 @@ Status Writer::init(const Layout& layout) {
       disable_check_global_order_ ? false : !strcmp(check_global_order, "true");
   dedup_coords_ = !strcmp(dedup_coords, "true");
   bool found = false;
-  offsets_format_mode_ = config.get("sm.var_offsets.mode", &found);
+  offsets_format_mode_ = config_.get("sm.var_offsets.mode", &found);
   assert(found);
   if (offsets_format_mode_ != "bytes" && offsets_format_mode_ != "elements") {
     return LOG_STATUS(
         Status::WriterError("Cannot initialize writer; Unsupported offsets "
                             "format in configuration"));
   }
-  RETURN_NOT_OK(config.get<bool>(
+  RETURN_NOT_OK(config_.get<bool>(
       "sm.var_offsets.extra_element", &offsets_extra_element_, &found));
   assert(found);
-  RETURN_NOT_OK(config.get<uint32_t>(
+  RETURN_NOT_OK(config_.get<uint32_t>(
       "sm.var_offsets.bitsize", &offsets_bitsize_, &found));
   if (offsets_bitsize_ != 32 && offsets_bitsize_ != 64) {
     return LOG_STATUS(
@@ -798,6 +803,7 @@ Status Writer::set_layout(Layout layout) {
 
 void Writer::set_storage_manager(StorageManager* storage_manager) {
   storage_manager_ = storage_manager;
+  set_config(storage_manager->config());
 }
 
 Status Writer::set_subarray(const Subarray& subarray) {

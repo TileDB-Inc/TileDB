@@ -440,6 +440,9 @@ class Reader {
   void set_fragment_metadata(
       const std::vector<FragmentMetadata*>& fragment_metadata);
 
+  /** Sets config for query-level parameters only. */
+  Status set_config(const Config& config);
+
   /**
    * Sets the cell layout of the query. The function will return an error
    * if the queried array is a key-value store (because it has its default
@@ -918,6 +921,9 @@ class Reader {
 
   /** The array schema. */
   const ArraySchema* array_schema_;
+
+  /** The config for query-level parameters only. */
+  Config config_;
 
   /**
    * Maps attribute/dimension names to their buffers.
