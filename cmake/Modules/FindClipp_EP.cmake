@@ -55,8 +55,8 @@ if (NOT CLIPP_FOUND)
       PREFIX "externals"
       # Set download name to avoid collisions with only the version number in the filename
       DOWNLOAD_NAME ep_clipp.zip
-      URL "https://github.com/muellan/clipp/archive/v1.1.0.zip"
-      URL_HASH SHA1=df30cf97426fead8c34899065181adea747981e2
+      URL "https://github.com/muellan/clipp/archive/v1.2.3.zip"
+      URL_HASH SHA1=5cb4255d29e1b47b5d5abf7481befe659ffc3ee1
       UPDATE_COMMAND ""
       CONFIGURE_COMMAND ""
       BUILD_COMMAND ""
