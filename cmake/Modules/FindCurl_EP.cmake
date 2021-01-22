@@ -71,7 +71,7 @@ endif()
 if (NOT CURL_FOUND AND TILEDB_SUPERBUILD)
   message(STATUS "Adding Curl as an external project")
   if (WIN32)
-    set(WITH_SSL "-DCMAKE_USE_WINSSL=ON")
+    set(WITH_SSL "-DCMAKE_USE_SCHANNEL=ON")
     ExternalProject_Add(ep_curl
       PREFIX "externals"
       # Set download name to avoid collisions with only the version number in the filename
