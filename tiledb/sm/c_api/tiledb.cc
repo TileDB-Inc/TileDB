@@ -1122,6 +1122,7 @@ int32_t tiledb_ctx_get_config(tiledb_ctx_t* ctx, tiledb_config_t** config) {
     return TILEDB_OOM;
   }
 
+  // this assignment is a copy
   *((*config)->config_) = ctx->ctx_->storage_manager()->config();
 
   return TILEDB_OK;
