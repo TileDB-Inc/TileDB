@@ -590,8 +590,31 @@ void SmokeTestFx::smoke_test(
 
   // Define the write query buffers for "a".
   vector<test_query_buffer_t> write_query_buffers;
-  uint64_t a_write_buffer[1] = {0};
+  uint64_t buffer_size = 1;
+  for (const auto& test_dim : test_dims) {
+    const uint64_t max_range = ((uint64_t*)(test_dim.domain_))[1];
+    const uint64_t min_range = ((uint64_t*)(test_dim.domain_))[0];
+    const uint64_t full_range = (max_range - min_range) + 1;
+    buffer_size *= full_range;
+  }
+  uint64_t* a_write_buffer = (uint64_t*)malloc(buffer_size / 2);
+  for (uint64_t i = 0; i < buffer_size / 2; i++) {
+    if (test_attr.cell_val_num_ == TILEDB_VAR_NUM) {
+      a_write_buffer[i] = i * sizeof(int) * 2;
+    } else {
+      a_write_buffer[i] = i;
+      std::cerr << "A_BUFFER: " << a_write_buffer[i] << std::endl;
+    }
+  }
+
   uint64_t a_write_buffer_size = sizeof(a_write_buffer);
+  std::cerr << "A_BUFFER_SIZE: " << a_write_buffer_size << std::endl;
+
+  uint64_t b_test_buff[1] = {0};
+  std::cerr << "B_BUFFER: " << b_test_buff[0] << std::endl;
+  uint64_t b_test_buff_size = sizeof(b_test_buff);
+  std::cerr << "B_BUFFER_SIZE: " << b_test_buff_size << std::endl;
+
   uint8_t a_write_buffer_validity[1] = {static_cast<uint8_t>(rand() % 2)};
   uint64_t a_write_buffer_validity_size = sizeof(a_write_buffer_validity);
   int a_write_buffer_var[2] = {0, 1};
@@ -699,8 +722,12 @@ void SmokeTestFx::smoke_test(
 
   // Define the read query buffers for "a".
   vector<test_query_buffer_t> read_query_buffers;
-  uint64_t a_read_buffer[1] = {0};
+  uint64_t* a_read_buffer = (uint64_t*)malloc(buffer_size);
+  for (uint64_t i = 0; i < buffer_size; i++) {
+    a_read_buffer[i] = 0;
+  }
   uint64_t a_read_buffer_size = sizeof(a_read_buffer);
+
   uint8_t a_read_buffer_validity[1] = {0};
   uint64_t a_read_buffer_validity_size = sizeof(a_read_buffer_validity);
   int a_read_buffer_var[2] = {0};
@@ -799,7 +826,7 @@ void SmokeTestFx::smoke_test(
     if (test_attr.cell_val_num_ == TILEDB_VAR_NUM) {
       uint8_t expected_a_read_buffer[2];
       REQUIRE(a_read_buffer_var_size == a_write_buffer_var_size);
-      for (int i = 0; i < 2; ++i) {
+      for (uint64_t i = 0; i < 2; ++i) {
         const uint64_t idx = a_read_buffer_var[i];
         expected_a_read_buffer[i] = a_write_buffer[idx];
       }
@@ -807,7 +834,10 @@ void SmokeTestFx::smoke_test(
           !memcmp(a_read_buffer, expected_a_read_buffer, a_read_buffer_size));
     } else {
       uint8_t expected_a_read_buffer[1];
-      expected_a_read_buffer[0] = a_write_buffer[0];
+      REQUIRE(a_read_buffer_var_size == a_write_buffer_var_size);
+      for (uint64_t i = 0; i < 1; i++) {
+        expected_a_read_buffer[i] = a_write_buffer[i];
+      }
       REQUIRE(
           !memcmp(a_read_buffer, expected_a_read_buffer, a_read_buffer_size));
     }
@@ -823,7 +853,7 @@ TEST_CASE_METHOD(
   const uint64_t d1_tile_extent = 1;
   test_dims.emplace_back("d", TILEDB_INT32, d1_domain, d1_tile_extent);
 
-  const test_attr_t attr("a", TILEDB_INT32, TILEDB_VAR_NUM, false);
+  const test_attr_t attr("a", TILEDB_INT32, 1, false);
 
   const tiledb_array_type_t array_type = TILEDB_DENSE;
   const tiledb_layout_t cell_order = TILEDB_ROW_MAJOR;
