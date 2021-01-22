@@ -93,8 +93,8 @@ steps:
 
     # Start GCS Emulator if GCS is enabled
     if [[ "$TILEDB_GCS" == "ON" ]]; then
-    source scripts/install-gcs-emu.sh;
-    source scripts/run-gcs-emu.sh;
+      source scripts/install-gcs-emu.sh;
+      source scripts/run-gcs-emu.sh;
     fi
 
     # Set up arguments for bootstrap.sh
