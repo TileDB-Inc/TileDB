@@ -412,6 +412,8 @@ Query
     :project: TileDB-C
 .. doxygenfunction:: tiledb_query_get_buffer_var_nullable
     :project: TileDB-C
+.. doxygenfunction:: tiledb_query_set_config
+    :project: TileDB-C
 .. doxygenfunction:: tiledb_query_set_layout
     :project: TileDB-C
 .. doxygenfunction:: tiledb_query_free
