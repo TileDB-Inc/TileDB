@@ -75,7 +75,7 @@ if (NOT GCSSDK_FOUND)
       # Set download name to avoid collisions with only the version number in the filename
       DOWNLOAD_NAME ep_gcssdk.zip
       URL "https://github.com/googleapis/google-cloud-cpp/archive/v1.23.0.zip"
-      URL_HASH SHA1=d4e14faef4095289b06f5ffe57d33a14574a7055
+      URL_HASH SHA1=b67b7eda581da59a8796bdf340bf9e6bf34a9dc3
       BUILD_IN_SOURCE 1
       PATCH_COMMAND
         patch -N -p1 < ${TILEDB_CMAKE_INPUTS_DIR}/patches/ep_gcssdk/build.patch &&
