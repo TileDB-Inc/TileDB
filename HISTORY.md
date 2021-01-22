@@ -16,6 +16,8 @@
 
 ## Bug fixes
 
+* Fixed ArrowAdapter export of string arrays with 64-bit offsets [#2037](https://github.com/TileDB-Inc/TileDB/pull/2037)
+
 ## API additions
 
 ### C API

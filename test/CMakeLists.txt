@@ -38,7 +38,7 @@ if (NOT DEFINED $CACHE{TILEDB_ARROW_TESTS})
   if ($ENV{TILEDB_ARROW_TESTS})
     message(STATUS "Enabling Apache Arrow integration test")
     # Technically this would be an "option", but we want conditional override from ENV
-    set(TILEDB_ARROW_TESTS ON CACHE BOOL "Enable Arrow tests (requires Python with pyarrow and numpy)")
+    set(TILEDB_ARROW_TESTS ON CACHE BOOL "Enable Arrow tests (requires Python with pyarrow and numpy)" FORCE)
     mark_as_advanced(TILEDB_ARROW_TESTS)
   endif()
 endif()
@@ -54,6 +54,8 @@ if (${TILEDB_ARROW_TESTS})
   set(Python_FIND_STRATEGY "LOCATION")
   find_package(Python COMPONENTS Interpreter Development REQUIRED)
   find_package(pybind11)
+
+  message(STATUS "Configuring Apache Arrow integration test with Python ${Python_VERSION} (${Python_EXECUTABLE})")
 
   # If we can't find the pybind11 cmake config (not available in pypi yet)
   # try to find with the current executable.
@@ -213,6 +215,7 @@ endif()
 if (TILEDB_ARROW_TESTS)
   list(APPEND TILEDB_TEST_SOURCES
     src/unit-arrow.cc
+    ${CMAKE_SOURCE_DIR}/tiledb/sm/cpp_api/arrow_io_impl.h
   )
 endif()
 
