@@ -311,12 +311,14 @@ TEST_CASE("Arrow IO integration tests", "[arrow]") {
   // However, there is an unexplained crash due to an early destructor
   // when both brace scopes are converted to SECTIONs.
   // SECTION("Test reading data back via ArrowAdapter into pyarrow arrays")
-  {
+
+  // test both bitsize read modes
+  for (auto bitsize : {32, 64}) {
     /*
      * Test read
      */
     Config config;
-    config["sm.var_offsets.bitsize"] = 32;
+    config["sm.var_offsets.bitsize"] = bitsize;
     config["sm.var_offsets.mode"] = "elements";
     config["sm.var_offsets.extra_element"] = "true";
     Context ctx(config);
