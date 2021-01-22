@@ -802,6 +802,15 @@ Status Query::check_set_fixed_buffer(const std::string& name) {
   return Status::Ok();
 }
 
+Status Query::set_config(const Config& config) {
+  if (type_ == QueryType::READ)
+    reader_.set_config(config);
+  else
+    writer_.set_config(config);
+
+  return Status::Ok();
+}
+
 Status Query::set_buffer(
     const std::string& name,
     void* const buffer,

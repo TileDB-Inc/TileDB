@@ -720,6 +720,7 @@ Status Reader::set_sparse_mode(bool sparse_mode) {
 
 void Reader::set_storage_manager(StorageManager* storage_manager) {
   storage_manager_ = storage_manager;
+  set_config(storage_manager->config());
 }
 
 Status Reader::set_subarray(const Subarray& subarray) {
@@ -1867,9 +1868,8 @@ Status Reader::compute_result_coords(
 
   // Fetch the sub partitioner's memory budget.
   bool found = false;
-  auto config = storage_manager_->config();
   uint64_t cfg_sub_memory_budget = 0;
-  RETURN_NOT_OK(config.get<uint64_t>(
+  RETURN_NOT_OK(config_.get<uint64_t>(
       "sm.sub_partitioner_memory_budget", &cfg_sub_memory_budget, &found));
   assert(found);
 
@@ -2487,15 +2487,12 @@ Status Reader::unfilter_tile(
   // Reverse the tile filters, but do not use selective
   // unfiltering for offset tiles.
   RETURN_NOT_OK(offset_filters.run_reverse(
-      tile,
-      storage_manager_->compute_tp(),
-      storage_manager_->config(),
-      nullptr));
+      tile, storage_manager_->compute_tp(), config_, nullptr));
   RETURN_NOT_OK(filters.run_reverse(
       tile,
       tile_var,
       storage_manager_->compute_tp(),
-      storage_manager_->config(),
+      config_,
       result_cell_slab_ranges));
 
   return Status::Ok();
@@ -2626,26 +2623,25 @@ Status Reader::init_read_state() {
 
   // Get config
   bool found = false;
-  auto config = storage_manager_->config();
   uint64_t memory_budget = 0;
   RETURN_NOT_OK(
-      config.get<uint64_t>("sm.memory_budget", &memory_budget, &found));
+      config_.get<uint64_t>("sm.memory_budget", &memory_budget, &found));
   assert(found);
   uint64_t memory_budget_var = 0;
-  RETURN_NOT_OK(
-      config.get<uint64_t>("sm.memory_budget_var", &memory_budget_var, &found));
+  RETURN_NOT_OK(config_.get<uint64_t>(
+      "sm.memory_budget_var", &memory_budget_var, &found));
   assert(found);
-  offsets_format_mode_ = config.get("sm.var_offsets.mode", &found);
+  offsets_format_mode_ = config_.get("sm.var_offsets.mode", &found);
   assert(found);
   if (offsets_format_mode_ != "bytes" && offsets_format_mode_ != "elements") {
     return LOG_STATUS(
         Status::ReaderError("Cannot initialize reader; Unsupported offsets "
                             "format in configuration"));
   }
-  RETURN_NOT_OK(config.get<bool>(
+  RETURN_NOT_OK(config_.get<bool>(
       "sm.var_offsets.extra_element", &offsets_extra_element_, &found));
   assert(found);
-  RETURN_NOT_OK(config.get<uint32_t>(
+  RETURN_NOT_OK(config_.get<uint32_t>(
       "sm.var_offsets.bitsize", &offsets_bitsize_, &found));
   if (offsets_bitsize_ != 32 && offsets_bitsize_ != 64) {
     return LOG_STATUS(
@@ -3436,6 +3432,12 @@ void Reader::get_result_tile_stats(
       cell_num += array_schema_->domain()->cell_num_per_tile();
   }
   STATS_ADD_COUNTER(stats::Stats::CounterType::READ_CELL_NUM, cell_num);
+}
+
+Status Reader::set_config(const Config& config) {
+  config_ = config;
+
+  return Status::Ok();
 }
 
 Status Reader::set_est_result_size(
