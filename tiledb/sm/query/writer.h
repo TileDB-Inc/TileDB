@@ -337,6 +337,9 @@ class Writer {
       uint64_t* buffer_val_size,
       ValidityVector&& validity_vector);
 
+  /** Sets config for query-level parameters only. */
+  Status set_config(const Config& config);
+
   /** Sets current setting of check_coord_dups_ */
   void set_check_coord_dups(bool b);
 
@@ -393,6 +396,9 @@ class Writer {
 
   /** The array schema. */
   const ArraySchema* array_schema_;
+
+  /** The config for query-level parameters only. */
+  Config config_;
 
   /** Maps attribute/dimensions names to their buffers. */
   std::unordered_map<std::string, QueryBuffer> buffers_;

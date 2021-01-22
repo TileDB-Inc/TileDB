@@ -482,6 +482,18 @@ class Query {
   Status disable_check_global_order();
 
   /**
+   * Sets the config for the Query
+   *
+   * This function overrides the config for Query-level parameters only.
+   * Semantically, the initial query config is copied from the context
+   * config upon initialization. Note that The context config is immutable
+   * at the C API level because tiledb_ctx_get_config always returns a copy.
+   *
+   * Config parameters set here will *only* be applied within the Query.
+   */
+  Status set_config(const Config& config);
+
+  /**
    * Sets the buffer for a fixed-sized attribute/dimension.
    *
    * @param name The attribute/dimension to set the buffer for.
