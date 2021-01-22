@@ -1543,7 +1543,10 @@ tiledb_ctx_alloc(tiledb_config_t* config, tiledb_ctx_t** ctx);
 TILEDB_EXPORT void tiledb_ctx_free(tiledb_ctx_t** ctx);
 
 /**
- * Retrieves the config from a TileDB context.
+ * Retrieves a copy of the config from a TileDB context.
+ * Modifying this config will not affect the initialized
+ * context configuration.
+ *
  *
  * **Example:**
  *
