@@ -76,8 +76,8 @@ if (NOT CURL_FOUND AND TILEDB_SUPERBUILD)
       PREFIX "externals"
       # Set download name to avoid collisions with only the version number in the filename
       DOWNLOAD_NAME ep_curl.tar.gz
-      URL "https://curl.haxx.se/download/curl-7.71.1.tar.gz"
-      URL_HASH SHA1=9c032e134c7684f34f98afaf9974f048da893930
+      URL "https://curl.se/download/curl-7.74.0.tar.gz"
+      URL_HASH SHA1=cd7239cf9223b39ade86a14eb37fe68f5656eae9
       CMAKE_ARGS
         -DCMAKE_INSTALL_PREFIX=${TILEDB_EP_INSTALL_PREFIX}
         -DCMAKE_BUILD_TYPE=Release
@@ -130,8 +130,8 @@ if (NOT CURL_FOUND AND TILEDB_SUPERBUILD)
 
     ExternalProject_Add(ep_curl
       PREFIX "externals"
-      URL "https://curl.haxx.se/download/curl-7.71.1.tar.gz"
-      URL_HASH SHA1=9c032e134c7684f34f98afaf9974f048da893930
+      URL "https://curl.se/download/curl-7.74.0.tar.gz"
+      URL_HASH SHA1=cd7239cf9223b39ade86a14eb37fe68f5656eae9
       CONFIGURE_COMMAND
         ${CMAKE_COMMAND} -E env PKG_CONFIG_PATH=${SSL_PKG_CONFIG_PATH} ${TILEDB_EP_BASE}/src/ep_curl/configure
           --prefix=${TILEDB_EP_INSTALL_PREFIX}
