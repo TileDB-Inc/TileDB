@@ -264,7 +264,7 @@ TEST_CASE_METHOD(
   v_type = (tiledb_datatype_t)std::numeric_limits<int32_t>::max();
   has_key = array.has_metadata("non-existent-key", &v_type);
   CHECK(has_key == false);
-  CHECK(v_type == std::numeric_limits<int32_t>::max());
+  CHECK(v_type == (tiledb_datatype_t)std::numeric_limits<int32_t>::max());
 
   // Close array
   array.close();
