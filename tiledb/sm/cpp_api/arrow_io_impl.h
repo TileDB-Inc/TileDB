@@ -177,7 +177,11 @@ ArrowInfo tiledb_buffer_arrow_fmt(BufferInfo bufferinfo, bool use_list = true) {
     ////////////////////////////////////////////////////////////////////////
     case TILEDB_STRING_ASCII:
     case TILEDB_STRING_UTF8:
-      return ArrowInfo("u");
+      if (bufferinfo.offsets_elem_size == 4) {
+        return ArrowInfo("u");
+      } else {
+        return ArrowInfo("U");
+      }
     case TILEDB_CHAR:
       return ArrowInfo("z");
     case TILEDB_INT32:
@@ -654,6 +658,9 @@ BufferInfo ArrowExporter::buffer_info(const std::string& name) {
     TDB_LERROR("No results found for attribute '" + name + "'");
   }
 
+  uint8_t offsets_elem_nbytes =
+      ctx_->config().get("sm.var_offsets.bitsize") == "32" ? 4 : 8;
+
   bool is_var = (result_elt_iter->second.first != 0);
 
   // NOTE: result sizes are in bytes
@@ -677,7 +684,7 @@ BufferInfo ArrowExporter::buffer_info(const std::string& name) {
         &offsets_nbytes,
         &data,
         &data_nbytes));
-    offsets_nelem = *offsets_nbytes / 4;
+    offsets_nelem = *offsets_nbytes / offsets_elem_nbytes;
   } else {
     query_->get_buffer(name, &data, &data_nelem, &elem_size);
   }
