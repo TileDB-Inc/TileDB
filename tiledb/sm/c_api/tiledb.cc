@@ -396,6 +396,17 @@ inline int32_t sanity_check(tiledb_config_t* config, tiledb_error_t** error) {
   return TILEDB_OK;
 }
 
+inline int32_t sanity_check(tiledb_ctx_t* ctx, tiledb_config_t* config) {
+  if (config == nullptr || config->config_ == nullptr) {
+    auto st = Status::Error("Cannot set config; Invalid config object");
+    LOG_STATUS(st);
+    save_error(ctx, st);
+    return TILEDB_ERR;
+  }
+
+  return TILEDB_OK;
+}
+
 inline int32_t sanity_check(
     tiledb_config_iter_t* config_iter, tiledb_error_t** error) {
   if (config_iter == nullptr || config_iter->config_iter_ == nullptr) {
@@ -1122,6 +1133,7 @@ int32_t tiledb_ctx_get_config(tiledb_ctx_t* ctx, tiledb_config_t** config) {
     return TILEDB_OOM;
   }
 
+  // this assignment is a copy
   *((*config)->config_) = ctx->ctx_->storage_manager()->config();
 
   return TILEDB_OK;
@@ -2622,6 +2634,20 @@ int32_t tiledb_query_alloc(
   }
 
   // Success
+  return TILEDB_OK;
+}
+
+int32_t tiledb_query_set_config(
+    tiledb_ctx_t* ctx, tiledb_query_t* query, tiledb_config_t* config) {
+  // Sanity check
+  if (sanity_check(ctx) == TILEDB_ERR ||
+      sanity_check(ctx, query) == TILEDB_ERR ||
+      sanity_check(ctx, config) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  if (SAVE_ERROR_CATCH(ctx, query->query_->set_config(*(config->config_))))
+    return TILEDB_ERR;
+
   return TILEDB_OK;
 }
 

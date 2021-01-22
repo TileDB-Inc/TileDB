@@ -19,8 +19,10 @@
 ## API additions
 
 ### C API
+* Add `tiledb_query_set_config` to apply a `tiledb_config_t` to query-level parameters [#2030](https://github.com/TileDB-Inc/TileDB/pull/2030)
 
 ### C++ API
+* Added `Query::set_config` to apply a `tiledb::Config` to query-level parameters [#2030](https://github.com/TileDB-Inc/TileDB/pull/2030)
 
 # TileDB v2.2.1 Release Notes
 

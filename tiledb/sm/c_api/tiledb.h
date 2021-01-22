@@ -1539,7 +1539,10 @@ tiledb_ctx_alloc(tiledb_config_t* config, tiledb_ctx_t** ctx);
 TILEDB_EXPORT void tiledb_ctx_free(tiledb_ctx_t** ctx);
 
 /**
- * Retrieves the config from a TileDB context.
+ * Retrieves a copy of the config from a TileDB context.
+ * Modifying this config will not affect the initialized
+ * context configuration.
+ *
  *
  * **Example:**
  *
@@ -3307,6 +3310,27 @@ TILEDB_EXPORT int32_t tiledb_query_alloc(
     tiledb_array_t* array,
     tiledb_query_type_t query_type,
     tiledb_query_t** query);
+
+/**
+ * Set the query config
+ *
+ * Setting the configuration with this function overrides the following
+ * Query-level parameters only:
+ *
+ * - `sm.memory_budget`
+ * - `sm.memory_budget_var`
+ * - `sm.sub_partitioner_memory_budget`
+ * - `sm.var_offsets.mode`
+ * - `sm.var_offsets.extra_element`
+ * - `sm.var_offsets.bitsize`
+ * - `sm.check_coord_dups`
+ * - `sm.check_coord_oob`
+ * - `sm.check_global_order`
+ * - `sm.dedup_coords`
+ */
+
+TILEDB_EXPORT int32_t tiledb_query_set_config(
+    tiledb_ctx_t* ctx, tiledb_query_t* query, tiledb_config_t* config);
 
 /**
  * Indicates that the query will write or read a subarray, and provides
