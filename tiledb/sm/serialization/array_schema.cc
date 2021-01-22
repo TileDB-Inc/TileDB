@@ -183,7 +183,12 @@ Status attribute_to_capnp(
   // Get the fill value from `attribute`.
   const void* fill_value;
   uint64_t fill_value_size;
-  RETURN_NOT_OK(attribute->get_fill_value(&fill_value, &fill_value_size));
+  uint8_t fill_validity = true;
+  if (!attribute->nullable())
+    RETURN_NOT_OK(attribute->get_fill_value(&fill_value, &fill_value_size));
+  else
+    RETURN_NOT_OK(attribute->get_fill_value(
+        &fill_value, &fill_value_size, &fill_validity));
 
   // Copy the fill value buffer into a capnp vector of bytes.
   auto capnpFillValue = kj::Vector<uint8_t>();
@@ -195,8 +200,7 @@ Status attribute_to_capnp(
   attribute_builder->setFillValue(capnpFillValue.asPtr());
 
   // Set the validity fill value.
-  attribute_builder->setFillValueValidity(
-      attribute->fill_value_validity() ? true : false);
+  attribute_builder->setFillValueValidity(fill_validity ? true : false);
 
   const auto& filters = attribute->filters();
   auto filter_pipeline_builder = attribute_builder->initFilterPipeline();
