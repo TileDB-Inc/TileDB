@@ -80,13 +80,13 @@ if (NOT LZ4_FOUND)
     if (WIN32)
       set(ARCH_SPEC -A X64)
     endif()
-    set(LZ4_CMAKE_DIR "${TILEDB_EP_SOURCE_DIR}/ep_lz4/contrib/cmake_unofficial")
+    set(LZ4_CMAKE_DIR "${TILEDB_EP_SOURCE_DIR}/ep_lz4/build/cmake/")
     ExternalProject_Add(ep_lz4
       PREFIX "externals"
       # Set download name to avoid collisions with only the version number in the filename
       DOWNLOAD_NAME ep_lz4.zip
-      URL "https://github.com/lz4/lz4/archive/v1.8.2.zip"
-      URL_HASH SHA1=ebf6c227965318ecd73820ade8f5dbd83d48b3e8
+      URL "https://github.com/lz4/lz4/archive/v1.9.3.zip"
+      URL_HASH SHA1=3e28f6691ee45c468b5aba3943bf26528b030a55
       CONFIGURE_COMMAND
         ${CMAKE_COMMAND}
           ${ARCH_SPEC}
@@ -112,6 +112,8 @@ if (NOT LZ4_FOUND)
     message(FATAL_ERROR "Unable to find LZ4")
   endif()
 endif()
+
+set(ignoreUnusedWarning "${TILEDB_LZ4_EP_BUILT}")
 
 if (LZ4_FOUND AND NOT TARGET LZ4::LZ4)
   add_library(LZ4::LZ4 UNKNOWN IMPORTED)
