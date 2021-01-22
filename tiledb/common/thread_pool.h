@@ -42,8 +42,8 @@
 #include <vector>
 
 #include "tiledb/common/logger.h"
+#include "tiledb/common/macros.h"
 #include "tiledb/common/status.h"
-#include "tiledb/sm/misc/macros.h"
 
 namespace tiledb {
 namespace common {

@@ -35,7 +35,7 @@
 
 #include <cassert>
 
-#include "tiledb/sm/misc/macros.h"
+#include "tiledb/common/macros.h"
 
 using namespace tiledb::common;
 
