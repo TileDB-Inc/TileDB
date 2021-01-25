@@ -35,7 +35,6 @@ export_gcs_env(){
   export CLOUD_STORAGE_EMULATOR_ENDPOINT=http://localhost:9000 # For JSON and XML API
 }
 
-
 run_gcs(){
   gunicorn --bind "localhost:9000" --worker-class sync --threads 10 --access-logfile - --chdir /tmp/google-cloud-cpp-1.23.0/google/cloud/storage/emulator "emulator:run()" &
   export GCS_PID=$!
@@ -47,15 +46,6 @@ run() {
 
   mkdir -p /tmp/gcs-data
   cp -f -r $DIR/../test/inputs/test_certs /tmp/gcs-data
-
-  echo `sudo python --version`
-  echo `python --version`
-  echo `sudo python3 --version`
-  echo `python3 --version`
-  echo `sudo pip --version`
-  echo `pip --version`
-  echo `sudo pip3 --version`
-  echo `pip3 --version`
   run_gcs
 }
 
