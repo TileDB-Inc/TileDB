@@ -32,6 +32,7 @@
  */
 
 #include "tiledb/sm/c_api/tiledb.h"
+#include "tiledb/common/heap_profiler.h"
 #include "tiledb/common/logger.h"
 #include "tiledb/sm/array/array.h"
 #include "tiledb/sm/array_schema/array_schema.h"
@@ -4757,6 +4758,23 @@ int32_t tiledb_stats_free_str(char** out) {
     std::free(*out);
     *out = nullptr;
   }
+  return TILEDB_OK;
+}
+
+/* ****************************** */
+/*          Heap Profiler         */
+/* ****************************** */
+
+int32_t tiledb_heap_profiler_enable(
+    const char* const file_name_prefix,
+    const uint64_t dump_interval_ms,
+    const uint64_t dump_interval_bytes,
+    const uint64_t dump_threshold_bytes) {
+  tiledb::common::heap_profiler.enable(
+      file_name_prefix ? std::string(file_name_prefix) : "",
+      dump_interval_ms,
+      dump_interval_bytes,
+      dump_threshold_bytes);
   return TILEDB_OK;
 }
 

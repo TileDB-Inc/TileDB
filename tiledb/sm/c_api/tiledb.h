@@ -6274,6 +6274,34 @@ TILEDB_EXPORT int32_t tiledb_stats_raw_dump_str(char** out);
 TILEDB_EXPORT int32_t tiledb_stats_free_str(char** out);
 
 /* ****************************** */
+/*          Heap Profiler         */
+/* ****************************** */
+
+/**
+ * Enable heap profiling.
+ *
+ * @param file_name_prefix If empty or null, stats are dumped
+ *   to stdout. If non-empty, this specifies the file_name prefix to
+ *   write to. For example, value "tiledb_mem_stats" will write
+ *   to "tiledb_mem_stats__1611170501", where the postfix is
+ *   determined by the current epoch.
+ * @param dump_interval_ms If non-zero, this spawns a dedicated
+ *   thread to dump on this time interval.
+ * @param dump_interval_bytes If non-zero, a dump will occur when
+ *   the total number of lifetime allocated bytes is increased by
+ *   more than this amount.
+ * @param dump_threshold_bytes If non-zero, labeled allocations with
+ *   a number of bytes lower than this threshold will not be reported
+ *   in the dump.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_heap_profiler_enable(
+    const char* file_name_prefix,
+    uint64_t dump_interval_ms,
+    uint64_t dump_interval_bytes,
+    uint64_t dump_threshold_bytes);
+
+/* ****************************** */
 /*          FRAGMENT INFO         */
 /* ****************************** */
 
