@@ -88,6 +88,7 @@ endif()
 
 # List of all core source files
 set(TILEDB_CORE_SOURCES
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/common/heap_memory.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/common/heap_profiler.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/common/logger.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/common/status.cc

@@ -26,6 +26,7 @@
 
 ### C API
 * Add `tiledb_query_set_config` to apply a `tiledb_config_t` to query-level parameters [#2030](https://github.com/TileDB-Inc/TileDB/pull/2030)
+* Add `tiledb_heap_profiler_enable` to enable heap memory profiling [#2035](https://github.com/TileDB-Inc/TileDB/pull/2035)
 
 ### C++ API
 * Added `Query::set_config` to apply a `tiledb::Config` to query-level parameters [#2030](https://github.com/TileDB-Inc/TileDB/pull/2030)

@@ -31,6 +31,7 @@
  */
 
 #include "tiledb/sm/buffer/buffer.h"
+#include "tiledb/common/heap_memory.h"
 #include "tiledb/common/logger.h"
 #include "tiledb/sm/buffer/const_buffer.h"
 
@@ -74,7 +75,7 @@ Buffer::Buffer(const Buffer& buff) {
     if (buff.data_ == nullptr) {
       data_ = nullptr;
     } else {
-      data_ = std::malloc(alloced_size_);
+      data_ = tdb_malloc(alloced_size_);
       assert(data_);
       std::memcpy(data_, buff.data_, buff.alloced_size_);
     }
@@ -111,7 +112,7 @@ uint64_t Buffer::alloced_size() const {
 
 void Buffer::clear() {
   if (data_ != nullptr && owns_data_)
-    std::free(data_);
+    tdb_free(data_);
 
   data_ = nullptr;
   offset_ = 0;
@@ -169,14 +170,14 @@ Status Buffer::realloc(const uint64_t nbytes) {
   }
 
   if (data_ == nullptr) {
-    data_ = std::malloc(nbytes);
+    data_ = tdb_malloc(nbytes);
     if (data_ == nullptr) {
       return LOG_STATUS(Status::BufferError(
           "Cannot allocate buffer; Memory allocation failed"));
     }
     alloced_size_ = nbytes;
   } else if (nbytes > alloced_size_) {
-    auto new_data = std::realloc(data_, nbytes);
+    auto new_data = tdb_realloc(data_, nbytes);
     if (new_data == nullptr) {
       return LOG_STATUS(Status::BufferError(
           "Cannot reallocate buffer; Memory allocation failed"));

@@ -32,6 +32,7 @@
 #ifdef _WIN32
 
 #include "tiledb/sm/filesystem/win.h"
+#include "tiledb/common/heap_memory.h"
 #include "tiledb/common/logger.h"
 #include "tiledb/sm/misc/constants.h"
 #include "tiledb/sm/misc/utils.h"
@@ -129,13 +130,13 @@ Status Win::touch(const std::string& filename) const {
 std::string Win::current_dir() {
   std::string dir;
   unsigned long length = GetCurrentDirectory(0, nullptr);
-  char* path = (char*)std::malloc(length * sizeof(char));
+  char* path = (char*)tdb_malloc(length * sizeof(char));
   if (path == nullptr || GetCurrentDirectory(length, path) == 0) {
     LOG_STATUS(
         Status::IOError(std::string("Failed to get current directory.")));
   }
   dir = path;
-  std::free(path);
+  tdb_free(path);
   return dir;
 }
 

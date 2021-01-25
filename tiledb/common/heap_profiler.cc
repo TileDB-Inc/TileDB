@@ -27,7 +27,7 @@
  *
  * @section DESCRIPTION
  *
- * This file contains definitions of statistics-related code.
+ * This file contains the implementation of the HeapProfiler class.
  */
 
 #include <fstream>
@@ -69,8 +69,6 @@ HeapProfiler::~HeapProfiler() {
     dump_interval_ms_ = 0;
     periodic_dump_thread_->join();
   }
-
-  // TODO free all labels
 }
 
 /* ****************************** */
@@ -84,10 +82,8 @@ void HeapProfiler::enable(
     const uint64_t dump_threshold_bytes) {
   std::unique_lock<std::mutex> ul(mutex_);
 
-  if (enabled()) {
-    std::cerr << "TileDB: HeapProfiler can not be reinitialized" << std::endl;
-    exit(EXIT_FAILURE);
-  }
+  if (enabled())
+    return;
 
   dump_interval_ms_ = dump_interval_ms;
   dump_interval_bytes_ = dump_interval_bytes;
@@ -114,10 +110,12 @@ void HeapProfiler::record_alloc(
 
   try {
     const uint64_t addr = static_cast<uint64_t>(reinterpret_cast<uintptr_t>(p));
-    assert(addr_to_alloc_.count(addr) > 1);
-    if (addr_to_alloc_.count(addr) > 1) {
-      std::cerr << "TileDB:: duplicate alloc on " << std::hex << addr
-                << std::endl;
+    // Until we have replaced all dynamic memory APIs, we will silently
+    // ignore mismatched `record_alloc` and `record_dealloc` calls.
+    // assert(addr_to_alloc_.count(addr) == 0);
+    if (addr_to_alloc_.count(addr) > 0) {
+      // std::cerr << "TileDB:: duplicate alloc on " << std::hex << addr
+      //          << std::endl;
       return;
     }
 
@@ -144,10 +142,13 @@ void HeapProfiler::record_dealloc(void* const p) {
 
   try {
     const uint64_t addr = static_cast<uint64_t>(reinterpret_cast<uintptr_t>(p));
-    assert(addr_to_alloc_.count(addr) == 0);
+
+    // Until we have replaced all dynamic memory APIs, we will silently
+    // ignore mismatched `record_alloc` and `record_dealloc` calls.
+    // assert(addr_to_alloc_.count(addr) > 0);
     if (addr_to_alloc_.count(addr) == 0) {
-      std::cerr << "TileDB:: unmatched dealloc on " << std::hex << addr
-                << std::endl;
+      // std::cerr << "TileDB:: unmatched dealloc on " << std::hex << addr
+      //          << std::endl;
       return;
     }
 
@@ -160,7 +161,6 @@ void HeapProfiler::record_dealloc(void* const p) {
     // Release the label to the `label_cache_`.
     release_label_ptr(addr_to_alloc_[addr].second);
     addr_to_alloc_.erase(addr);
-    ++num_deallocs_;
   } catch (const std::bad_alloc&) {
     dump_and_terminate_internal();
   }
@@ -324,7 +324,7 @@ void HeapProfiler::dump_internal() {
     const std::string* const label = kv.first;
     const uint64_t bytes = kv.second;
     if (dump_threshold_bytes_ == 0 || bytes >= dump_threshold_bytes_)
-      *out_stream << "[" << *label << "]"
+      *out_stream << "  [" << *label << "]"
                   << " " << bytes << std::endl;
   }
 

@@ -31,6 +31,7 @@
  */
 
 #include "tiledb/sm/serialization/array_schema.h"
+#include "tiledb/common/heap_memory.h"
 #include "tiledb/common/logger.h"
 #include "tiledb/sm/array/array.h"
 #include "tiledb/sm/array_schema/attribute.h"
@@ -758,7 +759,7 @@ Status nonempty_domain_deserialize(
           RETURN_NOT_OK(utils::deserialize_coords(
               reader.getNonEmptyDomain(), dimension, &subarray));
           std::memcpy(nonempty_domain, subarray, 2 * dimension->coord_size());
-          std::free(subarray);
+          tdb_free(subarray);
         }
 
         break;
@@ -778,7 +779,7 @@ Status nonempty_domain_deserialize(
           RETURN_NOT_OK(utils::deserialize_coords(
               reader.getNonEmptyDomain(), dimension, &subarray));
           std::memcpy(nonempty_domain, subarray, 2 * dimension->coord_size());
-          std::free(subarray);
+          tdb_free(subarray);
         }
 
         break;
@@ -909,7 +910,7 @@ Status nonempty_domain_deserialize(
               nonempty_domain,
               subarray,
               2 * schema->dimension(0)->coord_size());
-          std::free(subarray);
+          tdb_free(subarray);
         }
 
         break;
@@ -932,7 +933,7 @@ Status nonempty_domain_deserialize(
               nonempty_domain,
               subarray,
               2 * schema->dimension(0)->coord_size());
-          std::free(subarray);
+          tdb_free(subarray);
         }
 
         break;
