@@ -125,13 +125,11 @@ if (NOT AZURESDK_FOUND)
           -DCMAKE_CXX_FLAGS=${CXXFLAGS_DEF}
           -DCMAKE_C_FLAGS=${CFLAGS_DEF}
         PATCH_COMMAND
-          echo starting patching for azure &&
           cd ${CMAKE_SOURCE_DIR} &&
           ${GIT_EXECUTABLE} apply --ignore-whitespace -p1 --unsafe-paths --verbose --directory=${TILEDB_EP_SOURCE_DIR}/ep_azuresdk < ${TILEDB_CMAKE_INPUTS_DIR}/patches/ep_azuresdk/remove-uuid-dep.patch &&
           ${GIT_EXECUTABLE} apply --ignore-whitespace -p1 --unsafe-paths --verbose --directory=${TILEDB_EP_SOURCE_DIR}/ep_azuresdk < ${TILEDB_CMAKE_INPUTS_DIR}/patches/ep_azuresdk/azurite-support.patch &&
           ${GIT_EXECUTABLE} apply --ignore-whitespace -p1 --unsafe-paths --check --apply --verbose --directory=${TILEDB_EP_SOURCE_DIR}/ep_azuresdk < ${TILEDB_CMAKE_INPUTS_DIR}/patches/ep_azuresdk/azure-storage-lite-base64.patch &&
-          ${GIT_EXECUTABLE} apply --ignore-whitespace -p1 --unsafe-paths --check --apply --verbose --directory=${TILEDB_EP_SOURCE_DIR}/ep_azuresdk < ${TILEDB_CMAKE_INPUTS_DIR}/patches/ep_azuresdk/azure-storage-lite-storage_url.patch &&
-          echo done patches for azure
+          ${GIT_EXECUTABLE} apply --ignore-whitespace -p1 --unsafe-paths --check --apply --verbose --directory=${TILEDB_EP_SOURCE_DIR}/ep_azuresdk < ${TILEDB_CMAKE_INPUTS_DIR}/patches/ep_azuresdk/azure-storage-lite-storage_url.patch
         LOG_DOWNLOAD TRUE
         LOG_CONFIGURE TRUE
         LOG_BUILD TRUE

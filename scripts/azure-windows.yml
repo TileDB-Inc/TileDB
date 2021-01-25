@@ -13,9 +13,6 @@ steps:
 
 - powershell: |
 
-    echo "what patches are here?"
-    dir .\cmake\inputs\patches\ep_azuresdk
-    
     mkdir $env:AGENT_BUILDDIRECTORY\build
     cd $env:AGENT_BUILDDIRECTORY\build
 
