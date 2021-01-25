@@ -55,6 +55,9 @@ def rand_datetime64_array(size, start=None, stop=None, dtype=None):
 def rand_utf8(size=5):
     return u''.join([gen_chr(0xD7FF) for _ in range(0, size)])
 
+def rand_ascii_bytes(size=5, printable=False):
+    return b''.join([gen_chr(127, printable).encode('utf-8') for _ in range(0,size)])
+
 # ************************************************************************** #
 #           Test class                                                       #
 # ************************************************************************** #
@@ -85,6 +88,8 @@ class DataFactory():
         self.data[key] = np.random.rand(col_size).astype(dt)
 
     # var-len (strings)
+    self.data['tiledb_char'] = np.array([rand_ascii_bytes(np.random.randint(1,100))
+                                       for _ in range(col_size)])
     self.data['utf_string1'] = np.array([rand_utf8(np.random.randint(1, 100))
                                        for _ in range(col_size)])
 
