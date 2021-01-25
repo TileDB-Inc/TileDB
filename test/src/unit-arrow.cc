@@ -85,6 +85,11 @@ struct CPPArrayFx {
       str_attr.set_cell_val_num(TILEDB_VAR_NUM);
       attrs.push_back(str_attr);
     }
+    {
+      auto str_attr = Attribute(ctx, "tiledb_char", TILEDB_CHAR);
+      str_attr.set_cell_val_num(TILEDB_VAR_NUM);
+      attrs.push_back(str_attr);
+    }
 
     // must be constructed manually to get TILEDB_DATETIME_NS type
     auto datetimens_attr = Attribute(ctx, "datetime_ns", TILEDB_DATETIME_NS);
