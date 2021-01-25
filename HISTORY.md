@@ -20,6 +20,7 @@
 ## Bug fixes
 
 * Fixed ArrowAdapter export of string arrays with 64-bit offsets [#2037](https://github.com/TileDB-Inc/TileDB/pull/2037)
+* Fixed ArrowAdapter export of TILEDB_CHAR arrays with 64-bit offsets [#2039](https://github.com/TileDB-Inc/TileDB/pull/2039)
 
 ## API additions
 
