@@ -174,7 +174,7 @@ TEST_CASE(
     }
 
     REQUIRE(result == num_ok);
-    REQUIRE(num_cancelled == (tasks.size() - num_ok));
+    REQUIRE(num_cancelled == ((int64_t)tasks.size() - num_ok));
   }
 }
 
