@@ -183,8 +183,6 @@ steps:
       make check
     fi
 
-    make check
-
     # Kill the running Minio server, OSX only because Linux runs it within
     # docker.
     if [[ ( "$AGENT_OS" == "Darwin" && "$TILEDB_S3" == "ON" ) ]]; then
