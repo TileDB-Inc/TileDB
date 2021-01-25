@@ -183,7 +183,11 @@ ArrowInfo tiledb_buffer_arrow_fmt(BufferInfo bufferinfo, bool use_list = true) {
         return ArrowInfo("U");
       }
     case TILEDB_CHAR:
-      return ArrowInfo("z");
+      if (bufferinfo.offsets_elem_size == 4) {
+        return ArrowInfo("z");
+      } else {
+        return ArrowInfo("Z");
+      }
     case TILEDB_INT32:
       return ArrowInfo("i");
     case TILEDB_INT64:
