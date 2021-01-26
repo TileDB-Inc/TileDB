@@ -1308,14 +1308,29 @@ void Writer::clear_coord_buffers() {
 
 Status Writer::close_files(FragmentMetadata* meta) const {
   // Close attribute and dimension files
-  for (const auto& it : buffers_) {
-    const auto& name = it.first;
-    RETURN_NOT_OK(storage_manager_->close_file(meta->uri(name)));
+  const auto buffer_name = buffer_names();
+
+  std::vector<URI> file_uris;
+  file_uris.reserve(buffer_name.size() * 3);
+
+  for (const auto& name : buffer_name) {
+    file_uris.emplace_back(meta->uri(name));
     if (array_schema_->var_size(name))
-      RETURN_NOT_OK(storage_manager_->close_file(meta->var_uri(name)));
+      file_uris.emplace_back(meta->var_uri(name));
     if (array_schema_->is_nullable(name))
-      RETURN_NOT_OK(storage_manager_->close_file(meta->validity_uri(name)));
+      file_uris.emplace_back(meta->validity_uri(name));
   }
+
+  auto statuses = parallel_for(
+      storage_manager_->io_tp(), 0, file_uris.size(), [&](uint64_t i) {
+        const auto& file_ur = file_uris[i];
+        RETURN_NOT_OK(storage_manager_->close_file(file_ur));
+        return Status::Ok();
+      });
+
+  // Check all statuses
+  for (auto& st : statuses)
+    RETURN_NOT_OK(st);
 
   return Status::Ok();
 }
