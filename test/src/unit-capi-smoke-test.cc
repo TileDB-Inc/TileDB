@@ -592,13 +592,17 @@ void SmokeTestFx::smoke_test(
   vector<test_query_buffer_t> write_query_buffers;
   uint64_t buffer_len = 1;
   for (const auto& test_dim : test_dims) {
+    std::cerr << "DIM_NAME: " << test_dim.name_ << std::endl;
     const uint64_t max_range = ((uint64_t*)(test_dim.domain_))[1];
     const uint64_t min_range = ((uint64_t*)(test_dim.domain_))[0];
-    const uint64_t full_range = max_range - min_range;
+    const uint64_t full_range = max_range - min_range + 1;
     buffer_len *= full_range;
   }
-  uint64_t* a_write_buffer = (uint64_t*)malloc(buffer_len / 2);
-  for (uint64_t i = 0; i <= buffer_len / 2; i++) {
+
+  uint64_t a_write_buffer_size =
+      buffer_len * tiledb_datatype_size(test_attr.type_);
+  uint64_t* a_write_buffer = (uint64_t*)malloc(a_write_buffer_size);
+  for (uint64_t i = 0; i <= buffer_len; i++) {
     if (test_attr.cell_val_num_ == TILEDB_VAR_NUM) {
       a_write_buffer[i] = i * sizeof(int) * 2;
     } else {
@@ -606,8 +610,6 @@ void SmokeTestFx::smoke_test(
       std::cerr << "BUFFER: " << a_write_buffer[i] << std::endl;
     }
   }
-
-  uint64_t a_write_buffer_size = buffer_len * sizeof(uint64_t);
 
   std::cerr << "BUFFER_LEN: " << buffer_len << std::endl;
   std::cerr << "BUFFER_SIZE: " << a_write_buffer_size << std::endl;
@@ -671,6 +673,11 @@ void SmokeTestFx::smoke_test(
          ++dims_iter) {
       const uint64_t max_range = ((uint64_t*)(dims_iter->domain_))[1];
       const uint64_t min_range = ((uint64_t*)(dims_iter->domain_))[0];
+
+      // Domain {0, 1} is untested
+      if (min_range == 0 && max_range == 1)
+        return;
+
       const uint64_t buffer_size = (max_range - min_range) + 1;
       dimension_ranges.emplace_back(buffer_size);
     }
@@ -719,11 +726,12 @@ void SmokeTestFx::smoke_test(
 
   // Define the read query buffers for "a".
   vector<test_query_buffer_t> read_query_buffers;
-  uint64_t* a_read_buffer = (uint64_t*)malloc(buffer_len / 2);
-  for (uint64_t i = 0; i <= (buffer_len / 2); i++) {
+  uint64_t a_read_buffer_size =
+      buffer_len * tiledb_datatype_size(test_attr.type_);
+  uint64_t* a_read_buffer = (uint64_t*)malloc(a_read_buffer_size);
+  for (uint64_t i = 0; i <= buffer_len; i++) {
     a_read_buffer[i] = 0;
   }
-  uint64_t a_read_buffer_size = buffer_len * sizeof(uint64_t);
 
   uint8_t a_read_buffer_validity[1] = {0};
   uint64_t a_read_buffer_validity_size = sizeof(a_read_buffer_validity);
@@ -847,9 +855,12 @@ TEST_CASE_METHOD(
     "C API: Test a dynamic range of arrays",
     "[capi][smoke-test]") {
   vector<test_dim_t> test_dims;
-  const uint64_t d1_domain[] = {0, 2};
+  const uint64_t d1_domain[] = {1, 2};
   const uint64_t d1_tile_extent = 1;
-  test_dims.emplace_back("d", TILEDB_UINT64, d1_domain, d1_tile_extent);
+  test_dims.emplace_back("d1", TILEDB_UINT64, d1_domain, d1_tile_extent);
+  const uint64_t d2_domain[] = {1, 3};
+  const uint64_t d2_tile_extent = 1;
+  test_dims.emplace_back("d2", TILEDB_UINT64, d2_domain, d2_tile_extent);
 
   const test_attr_t attr("a", TILEDB_INT32, 1, false);
 
