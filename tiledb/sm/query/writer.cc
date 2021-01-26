@@ -3516,40 +3516,62 @@ Status Writer::write_tiles(
 
   // Write tiles
   auto tile_num = tiles->size();
+  std::vector<std::tuple<Tile*, uint64_t, uint8_t>> args;
   for (size_t i = 0, tile_id = 0; i < tile_num; ++i, ++tile_id) {
-    Tile* tile = &(*tiles)[i];
-    RETURN_NOT_OK(storage_manager_->write(uri, tile->filtered_buffer()));
-    frag_meta->set_tile_offset(name, tile_id, tile->filtered_buffer()->size());
-
-    if (var_size) {
-      ++i;
-
-      tile = &(*tiles)[i];
-      RETURN_NOT_OK(storage_manager_->write(var_uri, tile->filtered_buffer()));
-      frag_meta->set_tile_var_offset(
-          name, tile_id, tile->filtered_buffer()->size());
-      frag_meta->set_tile_var_size(name, tile_id, tile->pre_filtered_size());
-    }
-
-    if (nullable) {
-      ++i;
-
-      tile = &(*tiles)[i];
-      RETURN_NOT_OK(
-          storage_manager_->write(validity_uri, tile->filtered_buffer()));
-      frag_meta->set_tile_validity_offset(
-          name, tile_id, tile->filtered_buffer()->size());
-    }
+    args.emplace_back(&(*tiles)[i], i, 0);
+    if (var_size)
+      args.emplace_back(&(*tiles)[++i], i, 1);
+    if (nullable)
+      args.emplace_back(&(*tiles)[++i], i, 2);
   }
+
+  auto statuses =
+      parallel_for(storage_manager_->io_tp(), 0, args.size(), [&](uint64_t i) {
+        Tile* const tile = std::get<0>(args[i]);
+        const uint64_t tile_id = std::get<1>(args[i]);
+        const uint8_t type = std::get<2>(args[i]);
+        if (type == 0) {
+          RETURN_NOT_OK(storage_manager_->write(uri, tile->filtered_buffer()));
+          frag_meta->set_tile_offset(
+              name, tile_id, tile->filtered_buffer()->size());
+        } else if (type == 1) {
+          RETURN_NOT_OK(
+              storage_manager_->write(var_uri, tile->filtered_buffer()));
+          frag_meta->set_tile_var_offset(
+              name, tile_id, tile->filtered_buffer()->size());
+          frag_meta->set_tile_var_size(
+              name, tile_id, tile->pre_filtered_size());
+        } else {
+          assert(type == 2);
+          // nullable logic
+          RETURN_NOT_OK(
+              storage_manager_->write(validity_uri, tile->filtered_buffer()));
+          frag_meta->set_tile_validity_offset(
+              name, tile_id, tile->filtered_buffer()->size());
+        }
+
+        return Status::Ok();
+      });
+
+  // check all statuses
+  for (auto& st : statuses)
+    RETURN_NOT_OK(st);
 
   // Close files, except in the case of global order
   if (layout_ != Layout::GLOBAL_ORDER) {
-    RETURN_NOT_OK(storage_manager_->close_file(frag_meta->uri(name)));
-    if (var_size)
-      RETURN_NOT_OK(storage_manager_->close_file(frag_meta->var_uri(name)));
-    if (nullable)
-      RETURN_NOT_OK(
-          storage_manager_->close_file(frag_meta->validity_uri(name)));
+    std::vector<URI> file_uris = {frag_meta->uri(name)};
+    if (array_schema_->var_size(name))
+      file_uris.emplace_back(frag_meta->var_uri(name));
+    if (array_schema_->is_nullable(name))
+      file_uris.emplace_back(frag_meta->validity_uri(name));
+
+    auto statuses = parallel_for(
+        storage_manager_->io_tp(), 0, file_uris.size(), [&](uint64_t i) {
+          RETURN_NOT_OK(storage_manager_->close_file(file_uris[i]));
+          return Status::Ok();
+        });
+    for (auto& st : statuses)
+      RETURN_NOT_OK(st);
   }
 
   return Status::Ok();
