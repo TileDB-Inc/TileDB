@@ -10,6 +10,8 @@
 
 ## Improvements
 
+* Parallelize across attributes when closing a write [#2048](https://github.com/TileDB-Inc/TileDB/pull/2048)
+
 ## Deprecations
 
 ## Bug fixes
