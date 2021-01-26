@@ -32,6 +32,9 @@ Enable build with code coverage support.
 .PARAMETER EnableVerbose
 Enable verbose status messages.
 
+.PARAMETER EnableAzure
+Enables building with the Azure storage backend.
+
 .PARAMETER EnableS3
 Enables building with the S3 storage backend.
 
@@ -79,6 +82,7 @@ Param(
     [switch]$EnableReleaseSymbols,
     [switch]$EnableCoverage,
     [switch]$EnableVerbose,
+    [switch]$EnableAzure,
     [switch]$EnableS3,
     [switch]$EnableSerialization,
     [switch]$EnableStaticTileDB,
@@ -126,6 +130,12 @@ if ($EnableCoverage.IsPresent) {
 $Verbosity = "OFF"
 if ($EnableVerbose.IsPresent) {
     $Verbosity = "ON"
+}
+
+# Set TileDB Azure flag
+$UseAzure = "OFF"
+if ($EnableAzure.IsPresent) {
+    $UseAzure = "ON"
 }
 
 # Set TileDB S3 flag
@@ -212,7 +222,7 @@ if ($CMakeGenerator -eq $null) {
 
 # Run CMake.
 # We use Invoke-Expression so we can echo the command to the user.
-$CommandString = "cmake -A X64 -DCMAKE_BUILD_TYPE=$BuildType -DCMAKE_INSTALL_PREFIX=""$InstallPrefix"" -DCMAKE_PREFIX_PATH=""$DependencyDir"" -DMSVC_MP_FLAG=""/MP$BuildProcesses"" -DTILEDB_VERBOSE=$Verbosity -DTILEDB_S3=$UseS3 -DTILEDB_SERIALIZATION=$UseSerialization -DTILEDB_WERROR=$Werror -DTILEDB_CPP_API=$CppApi -DTILEDB_TESTS=$Tests -DTILEDB_TBB=$TBB -DTILEDB_TBB_SHARED=ON -DTILEDB_STATS=$Stats -DTILEDB_STATIC=$TileDBStatic -DTILEDB_FORCE_ALL_DEPS=$TileDBBuildDeps -DTILEDB_TOOLS=$TileDBTools $GeneratorFlag ""$SourceDirectory"""
+$CommandString = "cmake -A X64 -DCMAKE_BUILD_TYPE=$BuildType -DCMAKE_INSTALL_PREFIX=""$InstallPrefix"" -DCMAKE_PREFIX_PATH=""$DependencyDir"" -DMSVC_MP_FLAG=""/MP$BuildProcesses"" -DTILEDB_VERBOSE=$Verbosity -DTILEDB_AZURE=$UseAzure -DTILEDB_S3=$UseS3 -DTILEDB_SERIALIZATION=$UseSerialization -DTILEDB_WERROR=$Werror -DTILEDB_CPP_API=$CppApi -DTILEDB_TESTS=$Tests -DTILEDB_TBB=$TBB -DTILEDB_TBB_SHARED=ON -DTILEDB_STATS=$Stats -DTILEDB_STATIC=$TileDBStatic -DTILEDB_FORCE_ALL_DEPS=$TileDBBuildDeps -DTILEDB_TOOLS=$TileDBTools $GeneratorFlag ""$SourceDirectory"""
 Write-Host $CommandString
 Write-Host
 Invoke-Expression "$CommandString"

@@ -12,6 +12,7 @@ steps:
     fi
 
 - powershell: |
+
     mkdir $env:AGENT_BUILDDIRECTORY\build
     cd $env:AGENT_BUILDDIRECTORY\build
 
@@ -26,21 +27,32 @@ steps:
     # currently we do not run S3 tests on Windows because tests time out (minio+azure slow?)
     #& "$env:BUILD_SOURCESDIRECTORY\scripts\install-minio.ps1"
 
+    $bootstrapOptions = "-EnableVerbose -EnableStaticTileDB -EnableBuildDeps"
     if ($env:TILEDB_S3 -eq "ON") {
-      & "$env:BUILD_SOURCESDIRECTORY\bootstrap.ps1" -EnableS3 -EnableVerbose -EnableStaticTileDB -EnableBuildDeps
-    } else {
-      & "$env:BUILD_SOURCESDIRECTORY\bootstrap.ps1" -EnableVerbose -EnableStaticTileDB -EnableBuildDeps
+      $bootstrapOptions = "-EnableS3 " + $bootstrapOptions
     }
+    if ($env:TILEDB_AZURE -eq "ON") {
+      $bootstrapOptions = "-EnableAzure " + $bootstrapOptions
+    }
+    if ($env:TILEDB_GCS -eq "ON") {
+      $bootstrapOptions = "-EnableGCS " + $bootstrapOptions
+      #NOTE: GCS simulator not yet actually in place.
+    }
+
+    $bootstrapExpression = "& $env:BUILD_SOURCESDIRECTORY\bootstrap.ps1 " + $bootstrapOptions
+    Write-Host "bootstrapExpression: $bootstrapExpression"
+    Invoke-Expression $bootstrapExpression
+
     if ($LastExitCode -ne 0) {
-       Write-Host "Bootstrap failed."
-       $host.SetShouldExit($LastExitCode)
+      Write-Host "Bootstrap failed."
+      $host.SetShouldExit($LastExitCode)
     }
 
     cmake --build $env:AGENT_BUILDDIRECTORY\build --config Release -j $env:NUMBER_OF_PROCESSORS -- /verbosity:minimal
 
     if ($LastExitCode -ne 0) {
-       Write-Host "Build failed. CMake exit status: " $LastExitCocde
-       $host.SetShouldExit($LastExitCode)
+      Write-Host "Build failed. CMake exit status: " $LastExitCocde
+      $host.SetShouldExit($LastExitCode)
     }
 
     cmake --build $env:AGENT_BUILDDIRECTORY\build  -j $env:NUMBER_OF_PROCESSORS --target install-tiledb --config Release
@@ -70,6 +82,25 @@ steps:
     # CMake exits with non-0 status if there are any warnings during the build, so
     # build the unit test executable before running tests.
     cmake --build $env:AGENT_BUILDDIRECTORY\build\tiledb  -j $env:NUMBER_OF_PROCESSORS --target tiledb_unit --config Release -- /verbosity:minimal
+
+    if ($env:TILEDB_AZURE -eq "ON") {
+      $useTileDBInstallNodeJS = $False #$True
+      if($useTileDBInstallNodeJS) {
+        Write-Host "azurite: using custom install nodejs"
+        #in CI environ, doesn't work with 'local' install, works when -g'lobal' install used in the .ps1
+        & "$env:BUILD_SOURCESDIRECTORY\scripts\install-run-azurite.ps1"
+      }
+      else { #using the node/npm already present in vm
+        Write-Host "azurite: using vm install nodejs"
+        #this code path avoids overhead of download/expand/install of alternate nodejs/azurite.
+        npm install -g azurite
+        $azuriteDataPath = (Join-Path $env:TEMP "azuriteData")
+        New-Item -ItemType Directory -Path $azuriteDataPath
+        $azuriteDebugLog = (Join-Path $env:TEMP "azuriteDebugLog.Log")
+        cmd /c "start `"azurite`" azurite-blob --silent --location $azuriteDataPath --debug $azuriteDebugLog --blobPort 10000 --blobHost 127.0.0.1"
+      }
+      tasklist | findstr /i node.exe
+    }
 
     # Actually run tests
     cmake --build $env:AGENT_BUILDDIRECTORY\build\tiledb --target check --config Release -- /verbosity:minimal

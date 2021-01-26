@@ -32,6 +32,10 @@
 
 #ifdef HAVE_AZURE
 
+#if defined(_WIN32)
+#define NOMINMAX  // avoid min/max macros from windows headers
+#endif
+
 #include <put_block_list_request_base.h>
 #include <future>
 
