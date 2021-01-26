@@ -34,6 +34,7 @@
 
 #include <google/cloud/status.h>
 #include <google/cloud/storage/client_options.h>
+#include "google/cloud/storage/oauth2/credentials.h"
 #include "google/cloud/storage/oauth2/google_credentials.h"
 
 #include <sstream>
@@ -132,15 +133,23 @@ Status GCS::init_client() const {
   // Creates the client using the credentials file pointed to by the
   // env variable GOOGLE_APPLICATION_CREDENTIALS
   try {
-    auto creds = google::cloud::storage::oauth2::GoogleDefaultCredentials(
-        channel_options);
-    if (!creds) {
-      return LOG_STATUS(Status::GCSError(
-          "Failed to initialize GCS credentials: " + creds.status().message()));
+    std::shared_ptr<google::cloud::storage::oauth2::Credentials> creds =
+        nullptr;
+    if (getenv("CLOUD_STORAGE_EMULATOR_ENDPOINT")) {
+      creds = google::cloud::storage::oauth2::CreateAnonymousCredentials();
+    } else {
+      auto status_or_creds =
+          google::cloud::storage::oauth2::GoogleDefaultCredentials(
+              channel_options);
+      if (!status_or_creds) {
+        return LOG_STATUS(Status::GCSError(
+            "Failed to initialize GCS credentials: " +
+            status_or_creds.status().message()));
+      }
+      creds = *status_or_creds;
     }
-
     google::cloud::storage::ClientOptions client_options(
-        *creds, channel_options);
+        creds, channel_options);
     auto client = google::cloud::storage::Client(
         client_options, google::cloud::storage::StrictIdempotencyPolicy());
     client_ = google::cloud::StatusOr<google::cloud::storage::Client>(client);
