@@ -590,16 +590,61 @@ uint64_t FragmentMetadata::tile_num() const {
   return sparse_tile_num_;
 }
 
+std::string FragmentMetadata::encode_name(const std::string& name) const {
+  if (version_ <= 7)
+    return name;
+
+  static const std::unordered_map<char, std::string> percent_encoding{
+      // RFC 3986
+      {'!', "%21"},
+      {'#', "%23"},
+      {'$', "%24"},
+      {'%', "%25"},
+      {'&', "%26"},
+      {'\'', "%27"},
+      {'(', "%28"},
+      {')', "%29"},
+      {'*', "%2A"},
+      {'+', "%2B"},
+      {',', "%2C"},
+      {'/', "%2F"},
+      {':', "%3A"},
+      {';', "%3B"},
+      {'=', "%3D"},
+      {'?', "%3F"},
+      {'@', "%40"},
+      {'[', "%5B"},
+      {']', "%5D"},
+      // Extra encodings to cover illegal characters on Windows
+      {'\"', "%22"},
+      {'<', "%20"},
+      {'>', "%2D"},
+      {'\\', "%30"},
+      {'|', "%3C"}};
+
+  std::stringstream percent_encoded_name;
+  for (const char c : name) {
+    if (percent_encoding.count(c) == 0)
+      percent_encoded_name << c;
+    else
+      percent_encoded_name << percent_encoding.at(c);
+  }
+
+  return percent_encoded_name.str();
+}
+
 URI FragmentMetadata::uri(const std::string& name) const {
-  return fragment_uri_.join_path(name + constants::file_suffix);
+  return fragment_uri_.join_path(encode_name(name) + constants::file_suffix);
 }
 
 URI FragmentMetadata::var_uri(const std::string& name) const {
-  return fragment_uri_.join_path(name + "_var" + constants::file_suffix);
+  return fragment_uri_.join_path(
+      encode_name(name) + "_var" + constants::file_suffix);
 }
 
 URI FragmentMetadata::validity_uri(const std::string& name) const {
-  return fragment_uri_.join_path(name + "_validity" + constants::file_suffix);
+  return fragment_uri_.join_path(
+      encode_name(name) + "_validity" + constants::file_suffix);
 }
 
 Status FragmentMetadata::load_tile_offsets(
