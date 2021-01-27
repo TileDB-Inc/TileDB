@@ -493,13 +493,6 @@ Status FragmentMetadata::store(const EncryptionKey& encryption_key) {
   auto num = array_schema_->attribute_num() + array_schema_->dim_num() + 1;
   uint64_t offset = 0, nbytes;
 
-  // Do nothing if fragment directory does not exist. The fragment directory
-  // is created only when some attribute file is written
-  bool is_dir = false;
-  RETURN_NOT_OK(storage_manager_->is_dir(fragment_uri_, &is_dir));
-  if (!is_dir)
-    return Status::Ok();
-
   // Store R-Tree
   gt_offsets_.rtree_ = offset;
   RETURN_NOT_OK_ELSE(store_rtree(encryption_key, &nbytes), clean_up());
