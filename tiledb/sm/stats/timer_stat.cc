@@ -38,12 +38,6 @@ namespace tiledb {
 namespace sm {
 namespace stats {
 
-// Static member variable definitions.
-std::unordered_map<
-    std::thread::id,
-    std::chrono::high_resolution_clock::time_point>
-    TimerStat::start_times_;
-
 /* ****************************** */
 /*   CONSTRUCTORS & DESTRUCTORS   */
 /* ****************************** */
@@ -62,7 +56,7 @@ void TimerStat::start_timer(const std::thread::id tid) {
 
 void TimerStat::end_timer(const std::thread::id tid) {
   std::chrono::high_resolution_clock::time_point* const start_time =
-      &start_times_[tid];
+      &start_times_.at(tid);
 
   // Check for intersections with pending timers on other
   // threads.
