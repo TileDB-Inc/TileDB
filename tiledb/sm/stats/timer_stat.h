@@ -92,7 +92,7 @@ class TimerStat {
   double duration_;
 
   /** The start time for all pending timers. */
-  static std::unordered_map<
+  std::unordered_map<
       std::thread::id,
       std::chrono::high_resolution_clock::time_point>
       start_times_;
