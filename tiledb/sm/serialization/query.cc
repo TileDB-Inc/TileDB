@@ -541,8 +541,13 @@ Status query_to_capnp(
       attr_buffer_builder.setValidityLenBufferSizeInBytes(
           *buff.validity_vector_.buffer_size());
     }
+    std::cerr << "[DEBUG] query_to_capnp 1 " << name << " "
+      << total_fixed_len_bytes << " "
+      << total_var_len_bytes << " "
+      << total_validity_len_bytes << std::endl;
   }
 
+  
   query_builder->setTotalFixedLengthBufferBytes(total_fixed_len_bytes);
   query_builder->setTotalVarLenBufferBytes(total_var_len_bytes);
   query_builder->setTotalValidityBufferBytes(total_validity_len_bytes);
@@ -661,6 +666,14 @@ Status query_from_capnp(
             &existing_buffer_size,
             &existing_validity_buffer,
             &existing_validity_buffer_size));
+        std::cerr << "[DEBUG] query->get_buffer_vbytemap " << name << " "
+          << existing_offset_buffer_size << " "
+          << existing_buffer_size << " "
+          << existing_validity_buffer_size << std::endl;
+        std::cerr << "[DEBUG] query->get_buffer_vbytemap " << name << " "
+          << *existing_offset_buffer_size << " "
+          << *existing_buffer_size << " "
+          << *existing_validity_buffer_size << std::endl;
       }
     } else {
       if (!nullable) {
@@ -675,6 +688,10 @@ Status query_from_capnp(
             &existing_validity_buffer_size));
       }
     }
+    std::cerr << "[DEBUG] query_from_capnp " << name << " "
+      << "fixedlen_size " << fixedlen_size << " "
+      << "varlen_size " << varlen_size << " "
+      << "validitylen_size " << validitylen_size << std::endl;
 
     if (context == SerializationContext::CLIENT) {
       // For queries on the client side, we require that buffers have been
@@ -836,6 +853,10 @@ Status query_from_capnp(
                 nullptr,
                 &attr_state->validity_len_size,
                 false));
+            std::cerr << "[DEBUG] query->set_buffer_vbytemap " << name << " "
+              << attr_state->fixed_len_size << " "
+              << attr_state->var_len_size << " "
+              << attr_state->validity_len_size << std::endl;
           }
         } else {
           if (!nullable) {
@@ -891,6 +912,10 @@ Status query_from_capnp(
                 &attr_state->var_len_size,
                 validity,
                 &attr_state->validity_len_size));
+            std::cerr << "[DEBUG] query->set_buffer_vbytemap 2" << name << " "
+              << attr_state->fixed_len_size << " "
+              << attr_state->var_len_size << " "
+              << attr_state->validity_len_size << std::endl;
           }
         } else {
           auto* data = attribute_buffer_start;
