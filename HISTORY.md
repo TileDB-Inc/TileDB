@@ -13,6 +13,7 @@
 * Parallelize across attributes when closing a write [#2048](https://github.com/TileDB-Inc/TileDB/pull/2048)
 * Support for dimension/attribute names that contain commonly reserved filesystem characters [#2047](https://github.com/TileDB-Inc/TileDB/pull/2047)
 * Remove unnecessary `is_dir` in `FragmentMetadata::store`, this can increase performance for s3 writes [#2050](https://github.com/TileDB-Inc/TileDB/pull/2050)
+* Improve S3 multipart locking [#2055](https://github.com/TileDB-Inc/TileDB/pull/2055)
 
 ## Deprecations
 

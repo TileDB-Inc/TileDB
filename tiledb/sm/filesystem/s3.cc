@@ -53,6 +53,7 @@
 #endif
 
 #include "tiledb/sm/filesystem/s3.h"
+#include "tiledb/sm/misc/parallel_functions.h"
 
 namespace {
 
@@ -267,39 +268,48 @@ Status S3::disconnect() {
   if (multipart_upload_states_.size() > 0) {
     RETURN_NOT_OK(init_client());
 
-    // Parallelize this?
-    for (auto& kv : multipart_upload_states_) {
-      const MultiPartUploadState& state = kv.second;
+    std::vector<const MultiPartUploadState*> states;
+    states.reserve(multipart_upload_states_.size());
+    for (auto& kv : multipart_upload_states_)
+      states.emplace_back(&kv.second);
+    multipart_lck.unlock();
 
-      if (state.st().ok()) {
-        Aws::S3::Model::CompleteMultipartUploadRequest complete_request =
-            make_multipart_complete_request(state);
-        auto outcome = client_->CompleteMultipartUpload(complete_request);
-        if (!outcome.IsSuccess()) {
-          const Status st = LOG_STATUS(Status::S3Error(
-              std::string("Failed to disconnect and flush S3 objects. ") +
-              outcome_error_message(outcome)));
-          if (!st.ok()) {
-            ret_st = st;
+    auto statuses =
+        parallel_for(vfs_thread_pool_, 0, states.size(), [&](uint64_t i) {
+          const MultiPartUploadState* state = states[i];
+
+          if (state->st().ok()) {
+            Aws::S3::Model::CompleteMultipartUploadRequest complete_request =
+                make_multipart_complete_request(*state);
+            auto outcome = client_->CompleteMultipartUpload(complete_request);
+            if (!outcome.IsSuccess()) {
+              const Status st = LOG_STATUS(Status::S3Error(
+                  std::string("Failed to disconnect and flush S3 objects. ") +
+                  outcome_error_message(outcome)));
+              if (!st.ok()) {
+                ret_st = st;
+              }
+            }
+          } else {
+            Aws::S3::Model::AbortMultipartUploadRequest abort_request =
+                make_multipart_abort_request(*state);
+            auto outcome = client_->AbortMultipartUpload(abort_request);
+            if (!outcome.IsSuccess()) {
+              const Status st = LOG_STATUS(Status::S3Error(
+                  std::string("Failed to disconnect and flush S3 objects. ") +
+                  outcome_error_message(outcome)));
+              if (!st.ok()) {
+                ret_st = st;
+              }
+            }
           }
-        }
-      } else {
-        Aws::S3::Model::AbortMultipartUploadRequest abort_request =
-            make_multipart_abort_request(state);
-        auto outcome = client_->AbortMultipartUpload(abort_request);
-        if (!outcome.IsSuccess()) {
-          const Status st = LOG_STATUS(Status::S3Error(
-              std::string("Failed to disconnect and flush S3 objects. ") +
-              outcome_error_message(outcome)));
-          if (!st.ok()) {
-            ret_st = st;
-          }
-        }
-      }
-    }
+          return Status::Ok();
+        });
+
+    // check statuses
+    for (auto& st : statuses)
+      RETURN_NOT_OK(st);
   }
-
-  multipart_lck.unlock();
 
   if (options_.loggingOptions.logLevel != Aws::Utils::Logging::LogLevel::Off) {
     Aws::Utils::Logging::ShutdownAWSLogging();
