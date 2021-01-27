@@ -641,6 +641,9 @@ class S3 {
   /** Set the request payer for a s3 request. */
   Aws::S3::Model::RequestPayer request_payer_;
 
+  /** Protects file_buffers map */
+  std::mutex file_buffers_mtx_;
+
   /* ********************************* */
   /*          PRIVATE METHODS          */
   /* ********************************* */
