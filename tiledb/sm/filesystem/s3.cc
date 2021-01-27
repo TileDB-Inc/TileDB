@@ -351,6 +351,7 @@ Status S3::flush_object(const URI& uri) {
     RETURN_NOT_OK(flush_st);
     return Status::Ok();
   }
+  multipart_lck.unlock();
 
   const MultiPartUploadState& state = state_iter->second;
 
@@ -366,7 +367,6 @@ Status S3::flush_object(const URI& uri) {
 
     auto bucket = state.bucket;
     auto key = state.key;
-    multipart_lck.unlock();
 
     wait_for_object_to_propagate(move(bucket), move(key));
 

@@ -10,6 +10,8 @@
 
 ## Improvements
 
+* Unlock s3 multipart mutex early on flush [#2049](https://github.com/TileDB-Inc/TileDB/pull/2049)
+
 ## Deprecations
 
 ## Bug fixes
