@@ -1091,6 +1091,15 @@ class FragmentMetadata {
    * fragment metadata file and unlocks the array.
    */
   void clean_up();
+
+  /**
+   * Encodes a dimension/attribute name to use in a file name. The
+   * motiviation is to encode illegal/reserved file name characters.
+   *
+   * @param name The dimension/attribute name.
+   * return std::string The encoded dimension/attribute name.
+   */
+  std::string encode_name(const std::string& name) const;
 };
 
 }  // namespace sm

@@ -10,6 +10,9 @@
 
 ## Improvements
 
+* Parallelize across attributes when closing a write [#2048](https://github.com/TileDB-Inc/TileDB/pull/2048)
+* Support for dimension/attribute names that contain commonly reserved filesystem characters [#2047](https://github.com/TileDB-Inc/TileDB/pull/2047)
+
 ## Deprecations
 
 ## Bug fixes
