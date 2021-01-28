@@ -32,6 +32,7 @@
  */
 
 #include "tiledb/sm/fragment/fragment_metadata.h"
+#include "tiledb/common/heap_memory.h"
 #include "tiledb/common/logger.h"
 #include "tiledb/sm/array_schema/array_schema.h"
 #include "tiledb/sm/array_schema/attribute.h"
@@ -1043,11 +1044,11 @@ std::vector<uint64_t> FragmentMetadata::compute_overlapping_tile_ids(
     return tids;
 
   // Initialize subarray tile domain
-  auto subarray_tile_domain = new T[2 * dim_num];
+  auto subarray_tile_domain = tdb_new_array(T, 2 * dim_num);
   get_subarray_tile_domain(subarray, subarray_tile_domain);
 
   // Initialize tile coordinates
-  auto tile_coords = new T[dim_num];
+  auto tile_coords = tdb_new_array(T, dim_num);
   for (unsigned int i = 0; i < dim_num; ++i)
     tile_coords[i] = subarray_tile_domain[2 * i];
 
@@ -1062,8 +1063,8 @@ std::vector<uint64_t> FragmentMetadata::compute_overlapping_tile_ids(
       tile_coords, subarray_tile_domain, dim_num));
 
   // Clean up
-  delete[] subarray_tile_domain;
-  delete[] tile_coords;
+  tdb_delete_array(subarray_tile_domain);
+  tdb_delete_array(tile_coords);
 
   return tids;
 }
@@ -1091,16 +1092,16 @@ FragmentMetadata::compute_overlapping_tile_ids_cov(const T* subarray) const {
     return tids;
 
   // Initialize subarray tile domain
-  auto subarray_tile_domain = new T[2 * dim_num];
+  auto subarray_tile_domain = tdb_new_array(T, 2 * dim_num);
   get_subarray_tile_domain(subarray, subarray_tile_domain);
 
-  auto tile_subarray = new T[2 * dim_num];
-  auto tile_overlap = new T[2 * dim_num];
+  auto tile_subarray = tdb_new_array(T, 2 * dim_num);
+  auto tile_overlap = tdb_new_array(T, 2 * dim_num);
   bool overlap;
   double cov;
 
   // Initialize tile coordinates
-  auto tile_coords = new T[dim_num];
+  auto tile_coords = tdb_new_array(T, dim_num);
   for (unsigned int i = 0; i < dim_num; ++i)
     tile_coords[i] = subarray_tile_domain[2 * i];
 
@@ -1120,10 +1121,10 @@ FragmentMetadata::compute_overlapping_tile_ids_cov(const T* subarray) const {
       tile_coords, subarray_tile_domain, dim_num));
 
   // Clean up
-  delete[] subarray_tile_domain;
-  delete[] tile_coords;
-  delete[] tile_subarray;
-  delete[] tile_overlap;
+  tdb_delete_array(subarray_tile_domain);
+  tdb_delete_array(tile_coords);
+  tdb_delete_array(tile_subarray);
+  tdb_delete_array(tile_overlap);
 
   return tids;
 }
@@ -1928,11 +1929,11 @@ Status FragmentMetadata::load_v1_v2(const EncryptionKey& encryption_key) {
 
   auto chunked_buffer = tile->chunked_buffer();
   Buffer buff;
-  RETURN_NOT_OK_ELSE(buff.realloc(chunked_buffer->size()), delete tile);
+  RETURN_NOT_OK_ELSE(buff.realloc(chunked_buffer->size()), tdb_delete(tile));
   buff.set_size(chunked_buffer->size());
   RETURN_NOT_OK_ELSE(
-      chunked_buffer->read(buff.data(), buff.size(), 0), delete tile);
-  delete tile;
+      chunked_buffer->read(buff.data(), buff.size(), 0), tdb_delete(tile));
+  tdb_delete(tile);
 
   STATS_ADD_COUNTER(
       stats::Stats::CounterType::READ_FRAG_META_SIZE, buff.size());
@@ -1975,16 +1976,16 @@ Status FragmentMetadata::load_footer(
     return Status::Ok();
 
   Buffer buff;
-  std::shared_ptr<ConstBuffer> cbuff = nullptr;
+  tdb_shared_ptr<ConstBuffer> cbuff = nullptr;
   if (f_buff == nullptr) {
     has_consolidated_footer_ = false;
     RETURN_NOT_OK(read_file_footer(&buff, &footer_offset_, &footer_size_));
-    cbuff = std::make_shared<ConstBuffer>(&buff);
+    cbuff = tdb_make_shared(ConstBuffer, &buff);
   } else {
     footer_size_ = 0;
     footer_offset_ = offset;
     has_consolidated_footer_ = true;
-    cbuff = std::make_shared<ConstBuffer>(f_buff);
+    cbuff = tdb_make_shared(ConstBuffer, f_buff);
     cbuff->set_offset(offset);
   }
 
@@ -2234,8 +2235,8 @@ Status FragmentMetadata::read_generic_tile_from_file(
   buff->realloc(chunked_buffer->size());
   buff->set_size(chunked_buffer->size());
   RETURN_NOT_OK_ELSE(
-      chunked_buffer->read(buff->data(), buff->size(), 0), delete tile);
-  delete tile;
+      chunked_buffer->read(buff->data(), buff->size(), 0), tdb_delete(tile));
+  tdb_delete(tile);
 
   return Status::Ok();
 }
@@ -2263,11 +2264,11 @@ Status FragmentMetadata::write_generic_tile_to_file(
   URI fragment_metadata_uri = fragment_uri_.join_path(
       std::string(constants::fragment_metadata_filename));
 
-  ChunkedBuffer* const chunked_buffer = new ChunkedBuffer();
+  ChunkedBuffer* const chunked_buffer = tdb_new(ChunkedBuffer);
   RETURN_NOT_OK_ELSE(
       Tile::buffer_to_contiguous_fixed_chunks(
           buff, 0, constants::generic_tile_cell_size, chunked_buffer),
-      delete chunked_buffer);
+      tdb_delete(chunked_buffer));
   buff.disown_data();
 
   Tile tile(

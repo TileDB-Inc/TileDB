@@ -49,7 +49,7 @@ namespace sm {
 namespace global_state {
 
 /** The TBB scheduler, used for controlling the number of TBB threads. */
-static std::unique_ptr<tbb::task_scheduler_init> tbb_scheduler_;
+static tdb_unique_ptr<tbb::task_scheduler_init> tbb_scheduler_;
 
 /** The number of TBB threads the scheduler was configured with **/
 int tbb_nthreads_;
@@ -77,7 +77,7 @@ Status init_tbb(const Config* config) {
     // initialize scheduler in process for a custom number of threads (upon
     // first thread calling init_tbb)
     try {
-      tbb_scheduler_ = std::unique_ptr<tbb::task_scheduler_init>(
+      tbb_scheduler_ = tdb_unique_ptr<tbb::task_scheduler_init>(
           new tbb::task_scheduler_init(nthreads));
       tbb_nthreads_ = nthreads;
     } catch (std::exception& err) {

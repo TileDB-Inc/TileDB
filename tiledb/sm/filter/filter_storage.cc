@@ -31,6 +31,7 @@
  */
 
 #include "tiledb/sm/filter/filter_storage.h"
+#include "tiledb/common/heap_memory.h"
 #include "tiledb/sm/buffer/buffer.h"
 
 using namespace tiledb::common;
@@ -38,11 +39,11 @@ using namespace tiledb::common;
 namespace tiledb {
 namespace sm {
 
-std::shared_ptr<Buffer> FilterStorage::get_buffer() {
+tdb_shared_ptr<Buffer> FilterStorage::get_buffer() {
   if (available_.empty())
-    available_.emplace_back(new Buffer());
+    available_.emplace_back(tdb_new(Buffer));
 
-  std::shared_ptr<Buffer> buf = std::move(available_.front());
+  tdb_shared_ptr<Buffer> buf = std::move(available_.front());
   Buffer* buf_ptr = buf.get();
   available_.pop_front();
   in_use_.push_back(std::move(buf));
@@ -73,7 +74,7 @@ Status FilterStorage::reclaim(Buffer* buffer) {
     buffer->reset_size();
 
     auto list_node = it->second;
-    std::shared_ptr<Buffer> ptr = std::move(*list_node);
+    tdb_shared_ptr<Buffer> ptr = std::move(*list_node);
     in_use_.erase(list_node);
     in_use_list_map_.erase(it);
     available_.push_front(std::move(ptr));

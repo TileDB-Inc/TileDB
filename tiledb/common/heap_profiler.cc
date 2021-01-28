@@ -137,7 +137,7 @@ void HeapProfiler::record_alloc(
   }
 }
 
-void HeapProfiler::record_dealloc(void* const p) {
+void HeapProfiler::record_dealloc(const void* const p) {
   std::unique_lock<std::mutex> ul(mutex_);
 
   try {

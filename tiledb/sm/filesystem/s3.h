@@ -308,7 +308,7 @@ class S3 {
    * - `s3://some_bucket/foo/bar2/bar3
    * - `s3://some_bucket/foo/bar4
    *
-   * In contrast, `remove("s3://some_bucket/foo2")` will not delete anything;
+   * In contrast, `remove("s3://some_bucket/foo2")` will not delete anything,
    * the function internally appends `/` to the end of the URI, and therefore
    * there is not object with prefix "s3://some_bucket/foo2/" in this example.
    *
@@ -519,7 +519,7 @@ class S3 {
    * The lazily-initialized S3 client. This is mutable so that nominally const
    * functions can call init_client().
    */
-  mutable std::shared_ptr<Aws::S3::S3Client> client_;
+  mutable tdb_shared_ptr<Aws::S3::S3Client> client_;
 
   /**
    * Mutex protecting client initialization. This is mutable so that nominally
@@ -528,14 +528,10 @@ class S3 {
   mutable std::mutex client_init_mtx_;
 
   /** Configuration object used to initialize the client. */
-  mutable std::unique_ptr<Aws::Client::ClientConfiguration> client_config_;
+  mutable tdb_unique_ptr<Aws::Client::ClientConfiguration> client_config_;
 
-  /** The executor  used by 'client_'. */
+  /** The executor used by 'client_'. */
   mutable std::shared_ptr<S3ThreadPoolExecutor> s3_tp_executor_;
-
-  /** Credentials provider object used to initialize the client. */
-  mutable std::shared_ptr<Aws::Auth::AWSCredentialsProvider>
-      credentials_provider_;
 
   /** The size of the file buffers used in multipart uploads. */
   uint64_t file_buffer_size_;

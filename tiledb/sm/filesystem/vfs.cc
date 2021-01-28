@@ -31,6 +31,7 @@
  */
 
 #include "tiledb/sm/filesystem/vfs.h"
+#include "tiledb/common/heap_memory.h"
 #include "tiledb/common/logger.h"
 #include "tiledb/sm/buffer/buffer.h"
 #include "tiledb/sm/enums/filesystem.h"
@@ -935,8 +936,8 @@ Status VFS::init(
   RETURN_NOT_OK(config_.get<uint64_t>(
       "vfs.read_ahead_cache_size", &read_ahead_cache_size, &found));
   assert(found);
-  read_ahead_cache_ = std::unique_ptr<ReadAheadCache>(
-      new ReadAheadCache(read_ahead_cache_size));
+  read_ahead_cache_ = tdb_unique_ptr<ReadAheadCache>(
+      tdb_new(ReadAheadCache, read_ahead_cache_size));
 
   // Store the read-ahead size.
   RETURN_NOT_OK(
@@ -944,10 +945,7 @@ Status VFS::init(
   assert(found);
 
 #ifdef HAVE_HDFS
-  hdfs_ = std::unique_ptr<hdfs::HDFS>(new (std::nothrow) hdfs::HDFS());
-  if (hdfs_.get() == nullptr) {
-    return LOG_STATUS(Status::VFSError("Could not create VFS HDFS backend"));
-  }
+  hdfs_ = tdb_unique_ptr<hdfs::HDFS>(tdb_new(hdfs::HDFS));
   RETURN_NOT_OK(hdfs_->init(config_));
 #endif
 

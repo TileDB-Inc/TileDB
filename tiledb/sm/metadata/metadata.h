@@ -38,6 +38,7 @@
 #include <mutex>
 #include <vector>
 
+#include "tiledb/common/heap_memory.h"
 #include "tiledb/common/status.h"
 #include "tiledb/sm/misc/uri.h"
 
@@ -109,8 +110,7 @@ class Metadata {
    * assummed to be sorted on time. The function will take care of any
    * deleted or overwritten metadata items considering the order.
    */
-  Status deserialize(
-      const std::vector<std::shared_ptr<Buffer>>& metadata_buffs);
+  Status deserialize(const std::vector<tdb_shared_ptr<Buffer>>& metadata_buffs);
 
   /** Serializes all key-value metadata items into the input buffer. */
   Status serialize(Buffer* buff) const;

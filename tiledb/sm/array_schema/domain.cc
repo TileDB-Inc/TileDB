@@ -31,6 +31,7 @@
  */
 
 #include "tiledb/sm/array_schema/domain.h"
+#include "tiledb/common/heap_memory.h"
 #include "tiledb/common/logger.h"
 #include "tiledb/sm/array_schema/dimension.h"
 #include "tiledb/sm/buffer/buffer.h"
@@ -70,7 +71,7 @@ Domain::Domain(const Domain* domain) {
 
   dimensions_.reserve(domain->dimensions_.size());
   for (const auto& dim : domain->dimensions_)
-    dimensions_.emplace_back(new Dimension(dim.get()));
+    dimensions_.emplace_back(tdb_new(Dimension, dim.get()));
 
   tile_order_ = domain->tile_order_;
   tile_offsets_col_ = domain->tile_offsets_col_;
@@ -118,7 +119,7 @@ Layout Domain::tile_order() const {
 }
 
 Status Domain::add_dimension(const Dimension* dim) {
-  dimensions_.emplace_back(new Dimension(dim));
+  dimensions_.emplace_back(tdb_new(Dimension, dim));
   ++dim_num_;
 
   return Status::Ok();
@@ -314,7 +315,7 @@ Status Domain::deserialize(ConstBuffer* buff, uint32_t version) {
   // Load dimensions
   RETURN_NOT_OK(buff->read(&dim_num_, sizeof(uint32_t)));
   for (uint32_t i = 0; i < dim_num_; ++i) {
-    auto dim = new Dimension();
+    auto dim = tdb_new(Dimension);
     dim->deserialize(buff, version, type);
     dimensions_.emplace_back(dim);
   }

@@ -33,6 +33,7 @@
 #ifdef _WIN32
 
 #include "tiledb/sm/crypto/crypto_win32.h"
+#include "tiledb/common/heap_memory.h"
 #include "tiledb/common/logger.h"
 #include "tiledb/sm/buffer/buffer.h"
 #include "tiledb/sm/buffer/const_buffer.h"
@@ -334,7 +335,7 @@ Status Win32CNG::hash_bytes(
   }
 
   // allocate the hash object on the heap
-  std::unique_ptr<Buffer> hash_obj = std::unique_ptr<Buffer>(new Buffer());
+  tdb_unique_ptr<Buffer> hash_obj = tdb_unique_ptr<Buffer>(tdb_new(Buffer));
   hash_obj->realloc(hash_size);
 
   // create a hash

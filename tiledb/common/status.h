@@ -55,6 +55,8 @@
 #include <cstring>
 #include <string>
 
+#include "tiledb/common/heap_memory.h"
+
 namespace tiledb {
 namespace common {
 
@@ -147,7 +149,7 @@ class Status {
 
   /** Destructor. */
   ~Status() {
-    delete[] state_;
+    tdb_delete_array(state_);
   }
 
   /** Copy the specified status. */
@@ -481,7 +483,7 @@ inline void Status::operator=(const Status& s) {
   // The following condition catches both aliasing (when this == &s),
   // and when both s and *this are ok.
   if (state_ != s.state_) {
-    delete[] state_;
+    tdb_delete_array(state_);
     state_ = (s.state_ == nullptr) ? nullptr : copy_state(s.state_);
   }
 }

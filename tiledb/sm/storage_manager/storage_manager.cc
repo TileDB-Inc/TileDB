@@ -36,6 +36,7 @@
 #include <iostream>
 #include <sstream>
 
+#include "tiledb/common/heap_memory.h"
 #include "tiledb/common/logger.h"
 #include "tiledb/sm/array/array.h"
 #include "tiledb/sm/array_schema/array_schema.h"
@@ -89,12 +90,12 @@ StorageManager::~StorageManager() {
   // Release all filelocks and delete all opened arrays for reads
   for (auto& open_array_it : open_arrays_for_reads_) {
     open_array_it.second->file_unlock(vfs_);
-    delete open_array_it.second;
+    tdb_delete(open_array_it.second);
   }
 
   // Delete all opened arrays for writes
   for (auto& open_array_it : open_arrays_for_writes_)
-    delete open_array_it.second;
+    tdb_delete(open_array_it.second);
 
   for (auto& fl_it : xfilelocks_) {
     auto filelock = fl_it.second;
@@ -109,7 +110,7 @@ StorageManager::~StorageManager() {
       LOG_STATUS(Status::StorageManagerError("Failed to terminate VFS."));
     }
 
-    delete vfs_;
+    tdb_delete(vfs_);
   }
 }
 
@@ -146,7 +147,7 @@ Status StorageManager::array_close_for_reads(const URI& array_uri) {
     }
     // Remove open array entry
     open_array->mtx_unlock();
-    delete open_array;
+    tdb_delete(open_array);
     open_arrays_for_reads_.erase(it);
   } else {  // Just unlock the array mutex
     open_array->mtx_unlock();
@@ -186,7 +187,7 @@ Status StorageManager::array_close_for_writes(
   // Close the array if the counter reaches 0
   if (open_array->cnt() == 0) {
     open_array->mtx_unlock();
-    delete open_array;
+    tdb_delete(open_array);
     open_arrays_for_writes_.erase(it);
   } else {  // Just unlock the array mutex
     open_array->mtx_unlock();
@@ -360,9 +361,10 @@ Status StorageManager::array_open_for_writes(
       RETURN_NOT_OK(it->second->set_encryption_key(encryption_key));
       open_array = it->second;
     } else {  // Create a new entry
-      open_array = new OpenArray(array_uri, QueryType::WRITE);
+      open_array = tdb_new(OpenArray, array_uri, QueryType::WRITE);
       RETURN_NOT_OK_ELSE(
-          open_array->set_encryption_key(encryption_key), delete open_array);
+          open_array->set_encryption_key(encryption_key),
+          tdb_delete(open_array));
       open_arrays_for_writes_[array_uri.to_string()] = open_array;
     }
 
@@ -1408,14 +1410,14 @@ Status StorageManager::init(const Config* config) {
   assert(found);
 
   tile_cache_ =
-      std::unique_ptr<BufferLRUCache>(new BufferLRUCache(tile_cache_size));
+      tdb_unique_ptr<BufferLRUCache>(tdb_new(BufferLRUCache, tile_cache_size));
 
   // GlobalState must be initialized before `vfs->init` because S3::init calls
   // GetGlobalState
   auto& global_state = global_state::GlobalState::GetGlobalState();
   RETURN_NOT_OK(global_state.init(config));
 
-  vfs_ = new VFS();
+  vfs_ = tdb_new(VFS);
   RETURN_NOT_OK(vfs_->init(compute_tp_, io_tp_, &config_, nullptr));
 #ifdef TILEDB_SERIALIZATION
   RETURN_NOT_OK(init_rest_client());
@@ -1524,19 +1526,19 @@ Status StorageManager::load_array_schema(
   buff.realloc(chunked_buffer->size());
   buff.set_size(chunked_buffer->size());
   RETURN_NOT_OK_ELSE(
-      chunked_buffer->read(buff.data(), buff.size(), 0), delete tile);
-  delete tile;
+      chunked_buffer->read(buff.data(), buff.size(), 0), tdb_delete(tile));
+  tdb_delete(tile);
 
   STATS_ADD_COUNTER(
       stats::Stats::CounterType::READ_ARRAY_SCHEMA_SIZE, buff.size());
 
   // Deserialize
   ConstBuffer cbuff(&buff);
-  *array_schema = new ArraySchema();
+  *array_schema = tdb_new(ArraySchema);
   (*array_schema)->set_array_uri(array_uri);
   Status st = (*array_schema)->deserialize(&cbuff);
   if (!st.ok()) {
-    delete *array_schema;
+    tdb_delete(*array_schema);
     *array_schema = nullptr;
   }
 
@@ -1642,14 +1644,14 @@ Status StorageManager::object_iter_begin(
   RETURN_NOT_OK(vfs_->ls(path_uri, &uris));
 
   // Create a new object iterator
-  *obj_iter = new ObjectIter();
+  *obj_iter = tdb_new(ObjectIter);
   (*obj_iter)->order_ = order;
   (*obj_iter)->recursive_ = true;
 
   // Include the uris that are TileDB objects in the iterator state
   ObjectType obj_type;
   for (auto& uri : uris) {
-    RETURN_NOT_OK_ELSE(object_type(uri, &obj_type), delete *obj_iter);
+    RETURN_NOT_OK_ELSE(object_type(uri, &obj_type), tdb_delete(*obj_iter));
     if (obj_type != ObjectType::INVALID) {
       (*obj_iter)->objs_.push_back(uri);
       if (order == WalkOrder::POSTORDER)
@@ -1674,7 +1676,7 @@ Status StorageManager::object_iter_begin(
   RETURN_NOT_OK(vfs_->ls(path_uri, &uris));
 
   // Create a new object iterator
-  *obj_iter = new ObjectIter();
+  *obj_iter = tdb_new(ObjectIter);
   (*obj_iter)->order_ = WalkOrder::PREORDER;
   (*obj_iter)->recursive_ = false;
 
@@ -1690,7 +1692,7 @@ Status StorageManager::object_iter_begin(
 }
 
 void StorageManager::object_iter_free(ObjectIter* obj_iter) {
-  delete obj_iter;
+  tdb_delete(obj_iter);
 }
 
 Status StorageManager::object_iter_next(
@@ -1905,11 +1907,11 @@ Status StorageManager::store_array_metadata(
   URI array_metadata_uri;
   RETURN_NOT_OK(array_metadata->get_uri(array_uri, &array_metadata_uri));
 
-  ChunkedBuffer* const chunked_buffer = new ChunkedBuffer();
+  ChunkedBuffer* const chunked_buffer = tdb_new(ChunkedBuffer);
   RETURN_NOT_OK_ELSE(
       Tile::buffer_to_contiguous_fixed_chunks(
           metadata_buff, 0, constants::generic_tile_cell_size, chunked_buffer),
-      delete chunked_buffer);
+      tdb_delete(chunked_buffer));
   metadata_buff.disown_data();
 
   Tile tile(
@@ -1955,7 +1957,7 @@ Status StorageManager::init_rest_client() {
   const char* server_address;
   RETURN_NOT_OK(config_.get("rest.server_address", &server_address));
   if (server_address != nullptr) {
-    rest_client_.reset(new RestClient);
+    rest_client_.reset(tdb_new(RestClient));
     RETURN_NOT_OK(rest_client_->init(&config_, compute_tp_));
   }
 
@@ -2016,10 +2018,10 @@ Status StorageManager::array_open_without_fragments(
       RETURN_NOT_OK(it->second->set_encryption_key(encryption_key));
       *open_array = it->second;
     } else {  // Create a new entry
-      *open_array = new OpenArray(array_uri, QueryType::READ);
+      *open_array = tdb_new(OpenArray, array_uri, QueryType::READ);
       RETURN_NOT_OK_ELSE(
           (*open_array)->set_encryption_key(encryption_key),
-          delete *open_array);
+          tdb_delete(*open_array));
       open_arrays_for_reads_[array_uri.to_string()] = *open_array;
     }
     // Lock the array and increment counter
@@ -2102,7 +2104,7 @@ Status StorageManager::load_array_metadata(
     return Status::Ok();
 
   auto metadata_num = array_metadata_to_load.size();
-  std::vector<std::shared_ptr<Buffer>> metadata_buffs;
+  std::vector<tdb_shared_ptr<Buffer>> metadata_buffs;
   metadata_buffs.resize(metadata_num);
   auto statuses = parallel_for(compute_tp_, 0, metadata_num, [&](size_t m) {
     const auto& uri = array_metadata_to_load[m].uri_;
@@ -2113,13 +2115,13 @@ Status StorageManager::load_array_metadata(
       RETURN_NOT_OK(tile_io.read_generic(&tile, 0, encryption_key, config_));
 
       auto chunked_buffer = tile->chunked_buffer();
-      metadata_buff = std::make_shared<Buffer>();
+      metadata_buff = tdb_make_shared(Buffer);
       RETURN_NOT_OK(metadata_buff->realloc(chunked_buffer->size()));
       metadata_buff->set_size(chunked_buffer->size());
       RETURN_NOT_OK_ELSE(
           chunked_buffer->read(metadata_buff->data(), metadata_buff->size(), 0),
-          delete tile);
-      delete tile;
+          tdb_delete(tile));
+      tdb_delete(tile);
 
       open_array->insert_array_metadata(uri, metadata_buff);
     }
@@ -2175,11 +2177,16 @@ Status StorageManager::load_fragment_metadata(
       if (f_version == 1) {  // This is equivalent to format version <=2
         bool sparse;
         RETURN_NOT_OK(vfs_->is_file(coords_uri, &sparse));
-        metadata = new FragmentMetadata(
-            this, array_schema, sf.uri_, sf.timestamp_range_, !sparse);
+        metadata = tdb_new(
+            FragmentMetadata,
+            this,
+            array_schema,
+            sf.uri_,
+            sf.timestamp_range_,
+            !sparse);
       } else {  // Format version > 2
-        metadata = new FragmentMetadata(
-            this, array_schema, sf.uri_, sf.timestamp_range_);
+        metadata = tdb_new(
+            FragmentMetadata, this, array_schema, sf.uri_, sf.timestamp_range_);
       }
 
       // Potentially find the basic fragment metadata in the consolidated
@@ -2195,7 +2202,7 @@ Status StorageManager::load_fragment_metadata(
       // Load fragment metadata
       RETURN_NOT_OK_ELSE(
           metadata->load(encryption_key, f_buff, offset, meta_version),
-          delete metadata);
+          tdb_delete(metadata));
       open_array->insert_fragment_metadata(metadata);
     }
     (*fragment_metadata)[f] = metadata;
@@ -2231,8 +2238,9 @@ Status StorageManager::load_consolidated_fragment_meta(
   f_buff->realloc(chunked_buffer->size());
   f_buff->set_size(chunked_buffer->size());
   RETURN_NOT_OK_ELSE(
-      chunked_buffer->read(f_buff->data(), f_buff->size(), 0), delete tile);
-  delete tile;
+      chunked_buffer->read(f_buff->data(), f_buff->size(), 0),
+      tdb_delete(tile));
+  tdb_delete(tile);
 
   STATS_ADD_COUNTER(
       stats::Stats::CounterType::CONSOLIDATED_FRAG_META_SIZE, f_buff->size());

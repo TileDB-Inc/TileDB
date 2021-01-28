@@ -1633,7 +1633,7 @@ Status Writer::compute_write_cell_ranges(
 }
 
 Status Writer::create_fragment(
-    bool dense, std::shared_ptr<FragmentMetadata>* frag_meta) const {
+    bool dense, tdb_shared_ptr<FragmentMetadata>* frag_meta) const {
   URI uri;
   uint64_t timestamp = array_->timestamp();
   if (!fragment_uri_.to_string().empty()) {
@@ -1644,8 +1644,13 @@ Status Writer::create_fragment(
     uri = array_schema_->array_uri().join_path(new_fragment_str);
   }
   auto timestamp_range = std::pair<uint64_t, uint64_t>(timestamp, timestamp);
-  *frag_meta = std::make_shared<FragmentMetadata>(
-      storage_manager_, array_schema_, uri, timestamp_range, dense);
+  *frag_meta = tdb_make_shared(
+      FragmentMetadata,
+      storage_manager_,
+      array_schema_,
+      uri,
+      timestamp_range,
+      dense);
 
   RETURN_NOT_OK((*frag_meta)->init(subarray_.ndrange(0)));
   return storage_manager_->create_dir(uri);
@@ -2295,7 +2300,7 @@ Status Writer::ordered_write() {
 template <class T>
 Status Writer::ordered_write() {
   // Create new fragment
-  std::shared_ptr<FragmentMetadata> frag_meta;
+  tdb_shared_ptr<FragmentMetadata> frag_meta;
   RETURN_CANCEL_OR_ERROR(create_fragment(true, &frag_meta));
   const auto& uri = frag_meta->fragment_uri();
 
@@ -2821,14 +2826,14 @@ Status Writer::prepare_tiles(
 
   // Initialize tiles and buffer
   RETURN_NOT_OK(init_tiles(attribute, tile_num, tiles));
-  auto buff = std::make_shared<ConstBuffer>(buffer, buffer_size);
+  auto buff = tdb_make_shared(ConstBuffer, buffer, buffer_size);
   auto buff_var =
       (!var_size) ? nullptr :
-                    std::make_shared<ConstBuffer>(buffer_var, *buffer_var_size);
+                    tdb_make_shared(ConstBuffer, buffer_var, *buffer_var_size);
   auto buff_validity =
       (!nullable) ?
           nullptr :
-          std::make_shared<ConstBuffer>(buffer_validity, *buffer_validity_size);
+          tdb_make_shared(ConstBuffer, buffer_validity, *buffer_validity_size);
 
   // Populate each tile with the write cell ranges
   const uint64_t end_pos = array_schema_->domain()->cell_num_per_tile() - 1;
@@ -3243,7 +3248,7 @@ Status Writer::unordered_write() {
     RETURN_CANCEL_OR_ERROR(compute_coord_dups(cell_pos, &coord_dups));
 
   // Create new fragment
-  std::shared_ptr<FragmentMetadata> frag_meta;
+  tdb_shared_ptr<FragmentMetadata> frag_meta;
   RETURN_CANCEL_OR_ERROR(create_fragment(false, &frag_meta));
   const auto& uri = frag_meta->fragment_uri();
 

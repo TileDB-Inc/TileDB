@@ -31,6 +31,7 @@
  */
 
 #include "tiledb/sm/filter/checksum_md5_filter.h"
+#include "tiledb/common/heap_memory.h"
 #include "tiledb/common/logger.h"
 #include "tiledb/sm/buffer/preallocated_buffer.h"
 #include "tiledb/sm/crypto/crypto.h"
@@ -49,7 +50,7 @@ ChecksumMD5Filter::ChecksumMD5Filter()
 }
 
 ChecksumMD5Filter* ChecksumMD5Filter::clone_impl() const {
-  return new ChecksumMD5Filter;
+  return tdb_new(ChecksumMD5Filter);
 }
 
 void ChecksumMD5Filter::dump(FILE* out) const {
@@ -192,7 +193,8 @@ Status ChecksumMD5Filter::run_reverse(
 Status ChecksumMD5Filter::checksum_part(
     ConstBuffer* part, FilterBuffer* output_metadata) const {
   // Allocate an initial output buffer.
-  std::unique_ptr<Buffer> computed_hash = std::unique_ptr<Buffer>(new Buffer());
+  tdb_unique_ptr<Buffer> computed_hash =
+      tdb_unique_ptr<Buffer>(tdb_new(Buffer));
   computed_hash->realloc(Crypto::MD5_DIGEST_BYTES);
   RETURN_NOT_OK(Crypto::md5(part, computed_hash.get()));
 
@@ -207,10 +209,10 @@ Status ChecksumMD5Filter::checksum_part(
 
 Status ChecksumMD5Filter::compare_checksum_part(
     FilterBuffer* part, uint64_t bytes_to_compare, void* checksum) const {
-  std::unique_ptr<Buffer> byte_buffer_to_compare =
-      std::unique_ptr<Buffer>(new Buffer());
-  std::unique_ptr<ConstBuffer> buffer_to_compare = std::unique_ptr<ConstBuffer>(
-      new ConstBuffer(byte_buffer_to_compare.get()));
+  tdb_unique_ptr<Buffer> byte_buffer_to_compare =
+      tdb_unique_ptr<Buffer>(tdb_new(Buffer));
+  tdb_unique_ptr<ConstBuffer> buffer_to_compare = tdb_unique_ptr<ConstBuffer>(
+      tdb_new(ConstBuffer, byte_buffer_to_compare.get()));
 
   // First we try to get a view on the bytes we need without copying
   // This might fail if the bytes we need to compare are contained in multiple
@@ -221,8 +223,8 @@ Status ChecksumMD5Filter::compare_checksum_part(
     byte_buffer_to_compare->realloc(bytes_to_compare);
     RETURN_NOT_OK(part->read(byte_buffer_to_compare->data(), bytes_to_compare));
     // Set the buffer back
-    buffer_to_compare = std::unique_ptr<ConstBuffer>(
-        new ConstBuffer(byte_buffer_to_compare.get()));
+    buffer_to_compare = tdb_unique_ptr<ConstBuffer>(
+        tdb_new(ConstBuffer, byte_buffer_to_compare.get()));
   } else {
     // Move offset location if we used a view so next checksum will read
     // subsequent bytes
@@ -230,7 +232,8 @@ Status ChecksumMD5Filter::compare_checksum_part(
   }
 
   // Buffer to store the newly computed hash value for comparison
-  std::unique_ptr<Buffer> computed_hash = std::unique_ptr<Buffer>(new Buffer());
+  tdb_unique_ptr<Buffer> computed_hash =
+      tdb_unique_ptr<Buffer>(tdb_new(Buffer));
   computed_hash->realloc(Crypto::MD5_DIGEST_BYTES);
 
   RETURN_NOT_OK(Crypto::md5(

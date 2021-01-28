@@ -147,11 +147,16 @@ Status Azure::init(const Config& config, ThreadPool* const thread_pool) {
   // Linux.
   const std::string cert_file =
       global_state::GlobalState::GetGlobalState().cert_file();
-  client_ = std::make_shared<azure::storage_lite::blob_client>(
-      account, thread_pool_->concurrency_level(), cert_file);
+  client_ = tdb_make_shared(
+      azure::storage_lite::blob_client,
+      account,
+      thread_pool_->concurrency_level(),
+      cert_file);
 #else
-  client_ = std::make_shared<azure::storage_lite::blob_client>(
-      account, thread_pool_->concurrency_level());
+  client_ = tdb_make_shared(
+      azure::storage_lite::blob_client,
+      account,
+      thread_pool_->concurrency_level());
 #endif
 
   // The Azure SDK does not provide a way to configure the retry

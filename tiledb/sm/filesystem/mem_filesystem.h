@@ -195,7 +195,7 @@ class MemFilesystem {
   /* ********************************* */
 
   /* The node that represents the root of the directory tree. */
-  std::unique_ptr<FSNode> root_;
+  tdb_unique_ptr<FSNode> root_;
 
   /* ********************************* */
   /*          PRIVATE METHODS          */

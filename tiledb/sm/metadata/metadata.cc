@@ -91,7 +91,7 @@ Status Metadata::generate_uri(const URI& array_uri) {
 }
 
 Status Metadata::deserialize(
-    const std::vector<std::shared_ptr<Buffer>>& metadata_buffs) {
+    const std::vector<tdb_shared_ptr<Buffer>>& metadata_buffs) {
   clear();
 
   if (metadata_buffs.empty())

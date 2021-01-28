@@ -56,9 +56,9 @@ OpenArray::OpenArray(const URI& array_uri, QueryType query_type)
 }
 
 OpenArray::~OpenArray() {
-  delete array_schema_;
+  tdb_delete(array_schema_);
   for (auto& fragment : fragment_metadata_)
-    delete fragment;
+    delete (fragment);
 }
 
 /* ****************************** */
@@ -118,7 +118,7 @@ FragmentMetadata* OpenArray::fragment_metadata(const URI& uri) const {
   return (it == fragment_metadata_set_.end()) ? nullptr : it->second;
 }
 
-std::shared_ptr<Buffer> OpenArray::array_metadata(const URI& uri) const {
+tdb_shared_ptr<Buffer> OpenArray::array_metadata(const URI& uri) const {
   std::lock_guard<std::mutex> lock(local_mtx_);
   auto it = array_metadata_.find(uri.to_string());
   return (it == array_metadata_.end()) ? nullptr : it->second;
@@ -148,7 +148,7 @@ void OpenArray::insert_fragment_metadata(FragmentMetadata* metadata) {
 }
 
 void OpenArray::insert_array_metadata(
-    const URI& uri, const std::shared_ptr<Buffer>& metadata) {
+    const URI& uri, const tdb_shared_ptr<Buffer>& metadata) {
   std::lock_guard<std::mutex> lock(local_mtx_);
   assert(metadata != nullptr);
   array_metadata_[uri.to_string()] = metadata;

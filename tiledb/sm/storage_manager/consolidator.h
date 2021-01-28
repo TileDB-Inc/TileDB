@@ -33,6 +33,7 @@
 #ifndef TILEDB_CONSOLIDATOR_H
 #define TILEDB_CONSOLIDATOR_H
 
+#include "tiledb/common/heap_memory.h"
 #include "tiledb/common/status.h"
 #include "tiledb/sm/array/array.h"
 #include "tiledb/sm/filesystem/filelock.h"
@@ -295,7 +296,7 @@ class Consolidator {
 
   /**
    * Copies the array by reading from the fragments to be consolidated
-   * (with `query_r`) and writing to the new fragment (with `query_w`).
+   * with `query_r` and writing to the new fragment with `query_w`.
    * It also appropriately sets the query buffers.
    *
    * @param query_r The read query.
