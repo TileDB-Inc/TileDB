@@ -211,6 +211,10 @@ void check_save_to_file() {
   std::stringstream ss;
   ss << "config.env_var_prefix TILEDB_\n";
   ss << "rest.http_compressor any\n";
+  ss << "rest.retry_count 3\n";
+  ss << "rest.retry_delay_factor 1.25\n";
+  ss << "rest.retry_http_codes 503\n";
+  ss << "rest.retry_initial_delay_ms 500\n";
   ss << "rest.server_address https://api.tiledb.com\n";
   ss << "rest.server_serialization_format CAPNP\n";
   ss << "sm.check_coord_dups true\n";
@@ -462,6 +466,10 @@ TEST_CASE("C API: Test config iter", "[capi], [config]") {
   all_param_values["rest.server_address"] = "https://api.tiledb.com";
   all_param_values["rest.server_serialization_format"] = "CAPNP";
   all_param_values["rest.http_compressor"] = "any";
+  all_param_values["rest.retry_count"] = "3";
+  all_param_values["rest.retry_delay_factor"] = "1.25";
+  all_param_values["rest.retry_initial_delay_ms"] = "500";
+  all_param_values["rest.retry_http_codes"] = "503";
   all_param_values["sm.dedup_coords"] = "false";
   all_param_values["sm.check_coord_dups"] = "true";
   all_param_values["sm.check_coord_oob"] = "true";

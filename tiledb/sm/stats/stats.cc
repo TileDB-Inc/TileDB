@@ -473,6 +473,13 @@ std::string Stats::dump_read() const {
   auto read_cell_num = counter_stats_.find(CounterType::READ_CELL_NUM)->second;
   auto read_ops_num = counter_stats_.find(CounterType::READ_OPS_NUM)->second;
 
+  auto rest_http_retries =
+      counter_stats_.find(CounterType::REST_HTTP_RETRIES)->second;
+  // Treat this count as a double since we record the retry time in
+  // milliseconds. Divide by 1000 to get seconds
+  double rest_http_retry_time =
+      counter_stats_.find(CounterType::REST_HTTP_RETRY_TIME)->second / 1000.0f;
+
   // Derived counters.
   auto read_dim_num =
       read_dim_var_num + read_dim_fixed_num + read_dim_zipped_num;
@@ -547,6 +554,11 @@ std::string Stats::dump_read() const {
         read_unfiltered_byte_num,
         read_byte_num);
     ss << "\n";
+
+    if (rest_http_retries > 0) {
+      write(&ss, "- Number of REST HTTP retries: ", rest_http_retries);
+      write(&ss, "- Time spend in REST HTTP retries: ", rest_http_retry_time);
+    }
 
     if (read_compute_est_result_size != 0) {
       write(

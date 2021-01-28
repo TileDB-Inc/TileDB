@@ -232,6 +232,18 @@ class Curl {
   /** Response headers attached to each response. */
   HeaderCbData headerData;
 
+  /** Number of times to attempt retry. */
+  uint64_t retry_count_;
+
+  /** Retry backoff factor. */
+  double retry_delay_factor_;
+
+  /** Initial delay in milliseconds before attempting retry. */
+  uint64_t retry_initial_delay_ms_;
+
+  /** List of http status codes to retry. */
+  std::vector<uint32_t> retry_http_codes_;
+
   /**
    * Populates the curl slist with authorization (token or username+password),
    * and any extra headers.
@@ -312,6 +324,14 @@ class Curl {
    * @return Possibly empty error message string
    */
   std::string get_curl_errstr(CURLcode curl_code) const;
+
+  /**
+   * Checks the curl http status code to see if it matches a list of http
+   * requests to retry
+   * @param retry true if the http code matches the retry list
+   * @return Status
+   */
+  Status should_retry(bool* retry) const;
 };
 
 }  // namespace sm

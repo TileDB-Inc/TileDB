@@ -576,6 +576,8 @@ const std::array<std::string, 6> cert_files_linux = {
     "/etc/ssl/cert.pem"                                   // Alpine Linux
 };
 #endif
+
+const std::string config_delimiter = ",";
 }  // namespace constants
 
 }  // namespace sm
