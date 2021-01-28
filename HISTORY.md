@@ -8,6 +8,8 @@
 
 ## New features
 
+* Add support for retrying REST requests that fail with certain http status code such as 503 [#2060](https://github.com/TileDB-Inc/TileDB/pull/2060)
+
 ## Improvements
 
 * Parallelize across attributes when closing a write [#2048](https://github.com/TileDB-Inc/TileDB/pull/2048)

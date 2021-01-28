@@ -35,12 +35,11 @@
 #include "tiledb/sm/global_state/global_state.h"
 #include "tiledb/sm/misc/uri.h"
 #include "tiledb/sm/misc/utils.h"
+#include "tiledb/sm/stats/stats.h"
 
 #include <cstring>
 #include <iostream>
 #include <sstream>
-// TODO: replace this with config option
-#define CURL_MAX_RETRIES 3
 
 using namespace tiledb::common;
 
@@ -247,7 +246,10 @@ size_t write_header_callback(
 
 Curl::Curl()
     : config_(nullptr)
-    , curl_(nullptr, curl_easy_cleanup) {
+    , curl_(nullptr, curl_easy_cleanup)
+    , retry_count_(0)
+    , retry_delay_factor_(0)
+    , retry_initial_delay_ms_(0) {
 }
 
 Status Curl::init(
@@ -318,6 +320,23 @@ Status Curl::init(
     curl_easy_setopt(curl_.get(), CURLOPT_CAINFO, cert_file.c_str());
   }
 #endif
+
+  bool found;
+  RETURN_NOT_OK(
+      config_->get<uint64_t>("rest.retry_count", &retry_count_, &found));
+  assert(found);
+
+  RETURN_NOT_OK(config_->get<double>(
+      "rest.retry_delay_factor", &retry_delay_factor_, &found));
+  assert(found);
+
+  RETURN_NOT_OK(config_->get<uint64_t>(
+      "rest.retry_initial_delay_ms", &retry_initial_delay_ms_, &found));
+  assert(found);
+
+  RETURN_NOT_OK(config_->get_vector<uint32_t>(
+      "rest.retry_http_codes", &retry_http_codes_, &found));
+  assert(found);
 
   return Status::Ok();
 }
@@ -426,7 +445,9 @@ Status Curl::make_curl_request_common(
         Status::RestError("Cannot make curl request; curl instance is null."));
 
   *curl_code = CURLE_OK;
-  for (uint8_t i = 0; i < CURL_MAX_RETRIES; i++) {
+  uint64_t retry_delay = retry_initial_delay_ms_;
+  // <= because the 0ths retry is actually the initial request
+  for (uint8_t i = 0; i <= retry_count_; i++) {
     WriteCbState write_cb_state;
     write_cb_state.arg = write_cb_arg;
 
@@ -479,9 +500,12 @@ Status Curl::make_curl_request_common(
 
     /* fetch the url */
     CURLcode tmp_curl_code = curl_easy_perform(curl);
+
+    bool retry;
+    RETURN_NOT_OK(should_retry(&retry));
     /* If Curl call was successful (not http status, but no socket error, etc)
      * break */
-    if (tmp_curl_code == CURLE_OK) {
+    if (tmp_curl_code == CURLE_OK && !retry) {
       break;
     }
 
@@ -494,6 +518,56 @@ Status Curl::make_curl_request_common(
     /* Retry on curl errors, unless the write callback has elected
      * to skip it. */
     if (write_cb_state.skip_retries) {
+      break;
+    }
+
+    // Only sleep if this isn't the last failed request allowed
+    if (i < retry_count_ - 1) {
+      long http_code = 0;
+      if (curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &http_code) !=
+          CURLE_OK)
+        return LOG_STATUS(Status::RestError(
+            "Error checking curl error; could not get HTTP code."));
+
+      global_logger().debug(
+          "Request to {} failed with http response code {}, will sleep {}ms, "
+          "retry count {}",
+          url,
+          http_code,
+          retry_delay,
+          i);
+      // Increment counter for number of retries
+      STATS_ADD_COUNTER(stats::Stats::CounterType::REST_HTTP_RETRIES, 1);
+      STATS_ADD_COUNTER(
+          stats::Stats::CounterType::REST_HTTP_RETRY_TIME, retry_delay)
+      // Sleep for retry delay
+      std::this_thread::sleep_for(std::chrono::milliseconds(retry_delay));
+      // Increment retry delay, cast to uint64_t and we can ignore any rounding
+      retry_delay = static_cast<uint64_t>(retry_delay * retry_delay_factor_);
+    }
+  }
+
+  return Status::Ok();
+}
+
+Status Curl::should_retry(bool* retry) const {
+  // Set retry to false in case we get any errors from curl api calls
+  *retry = false;
+
+  CURL* curl = curl_.get();
+  if (curl == nullptr)
+    return LOG_STATUS(
+        Status::RestError("Error checking curl error; curl instance is null."));
+
+  long http_code = 0;
+  if (curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &http_code) != CURLE_OK)
+    return LOG_STATUS(Status::RestError(
+        "Error checking curl error; could not get HTTP code."));
+
+  // Check http code for list of retries
+  for (const auto& retry_code : retry_http_codes_) {
+    if (http_code == retry_code) {
+      *retry = true;
       break;
     }
   }

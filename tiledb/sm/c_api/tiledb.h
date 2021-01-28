@@ -1219,6 +1219,20 @@ TILEDB_EXPORT void tiledb_config_free(tiledb_config_t** config);
  *    The name of the registered access key to use for creation of the REST
  *    server. <br>
  *    **Default**: no default set
+ * -  `rest.retry_http_codes` <br>
+ *     CSV list of http status codes to automatically retry a REST request for
+ * <br>
+ *     **Default**: "503"
+ * -  `rest.retry_count` <br>
+ *     Number of times to retry failed REST requests <br>
+ *     **Default**: 3
+ * -  `rest.retry_initial_delay_ms` <br>
+ *     Initial delay in milliseconds to wait until retrying a REST request <br>
+ *     **Default**: 500
+ * -  `rest.retry_delay_factor` <br>
+ *     The delay factor to exponentially wait until further retries of a failed
+ * REST request <br>
+ *     **Default**: 1.25
  *
  * **Example:**
  *
