@@ -35,6 +35,7 @@
 
 #ifdef HAVE_S3
 #include "tiledb/common/logger.h"
+#include "tiledb/common/rwlock.h"
 #include "tiledb/common/status.h"
 #include "tiledb/common/thread_pool.h"
 #include "tiledb/sm/buffer/buffer.h"
@@ -439,6 +440,9 @@ class S3 {
 
   /** Contains all state associated with a multipart upload transaction. */
   struct MultiPartUploadState {
+    MultiPartUploadState()
+        : part_number(0)
+        , st(Status::Ok()){};
     /** Constructor. */
     MultiPartUploadState(
         const int in_part_number,
@@ -451,11 +455,9 @@ class S3 {
         , key(std::move(in_key))
         , upload_id(std::move(in_upload_id))
         , completed_parts(std::move(in_completed_parts))
-        , st(Status::Ok())
-        , mtx(){};
+        , st(Status::Ok()){};
 
     MultiPartUploadState(MultiPartUploadState&& other) noexcept {
-      std::lock_guard<std::mutex> lck(other.mtx);
       this->part_number = other.part_number;
       this->bucket = std::move(other.bucket);
       this->key = std::move(other.key);
@@ -472,6 +474,16 @@ class S3 {
       this->upload_id = other.upload_id;
       this->completed_parts = other.completed_parts;
       this->st = other.st;
+    }
+
+    MultiPartUploadState& operator=(const MultiPartUploadState& other) {
+      this->part_number = other.part_number;
+      this->bucket = other.bucket;
+      this->key = other.key;
+      this->upload_id = other.upload_id;
+      this->completed_parts = other.completed_parts;
+      this->st = other.st;
+      return *this;
     }
 
     /** The current part number. */
@@ -536,7 +548,7 @@ class S3 {
       multipart_upload_states_;
 
   /** Protects 'multipart_upload_states_'. */
-  std::mutex multipart_upload_mtx_;
+  RWLock multipart_upload_rwlock_;
 
   /** The maximum number of parallel operations issued. */
   uint64_t max_parallel_ops_;
@@ -649,7 +661,8 @@ class S3 {
    * Initiates a new multipart upload request for the input URI. Note: the
    * caller must hold the multipart data structure mutex.
    */
-  Status initiate_multipart_request(Aws::Http::URI aws_uri);
+  Status initiate_multipart_request(
+      Aws::Http::URI aws_uri, MultiPartUploadState* state);
 
   /**
    * Return the given authority and path strings joined with a '/'
