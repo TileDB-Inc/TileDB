@@ -31,6 +31,7 @@
  */
 
 #include "tiledb/sm/query/writer.h"
+#include "tiledb/common/heap_memory.h"
 #include "tiledb/common/logger.h"
 #include "tiledb/sm/array/array.h"
 #include "tiledb/sm/array_schema/array_schema.h"
@@ -1301,7 +1302,7 @@ void Writer::clear_coord_buffers() {
   // Applicable only if the coordinate buffers have been allocated by
   // TileDB, which happens only when the zipped coordinates buffer is set
   for (auto b : to_clean_)
-    std::free(b);
+    tdb_free(b);
   to_clean_.clear();
   coord_buffer_sizes_.clear();
 }
@@ -3199,7 +3200,7 @@ Status Writer::split_coords_buffer() {
     auto it = coord_buffer_sizes_.emplace(dim_name, coord_buffer_size);
     QueryBuffer buff;
     buff.buffer_size_ = &(it.first->second);
-    buff.buffer_ = std::malloc(coord_buffer_size);
+    buff.buffer_ = tdb_malloc(coord_buffer_size);
     to_clean_.push_back(buff.buffer_);
     if (buff.buffer_ == nullptr)
       RETURN_NOT_OK(Status::WriterError(

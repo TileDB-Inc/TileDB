@@ -31,6 +31,7 @@
  */
 
 #include "tiledb/sm/tile/tile.h"
+#include "tiledb/common/heap_memory.h"
 #include "tiledb/common/logger.h"
 #include "tiledb/sm/enums/datatype.h"
 
@@ -421,7 +422,7 @@ Status Tile::zip_coordinates() {
   char* const tile_c = static_cast<char*>(buffer);
 
   // Create a tile clone
-  char* const tile_tmp = static_cast<char*>(std::malloc(tile_size));
+  char* const tile_tmp = static_cast<char*>(tdb_malloc(tile_size));
   assert(tile_tmp);
   std::memcpy(tile_tmp, tile_c, tile_size);
 
@@ -437,7 +438,7 @@ Status Tile::zip_coordinates() {
   }
 
   // Clean up
-  std::free((void*)tile_tmp);
+  tdb_free((void*)tile_tmp);
 
   return Status::Ok();
 }

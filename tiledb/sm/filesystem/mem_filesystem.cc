@@ -34,6 +34,7 @@
 #include <sstream>
 #include <unordered_set>
 
+#include "tiledb/common/heap_memory.h"
 #include "tiledb/common/logger.h"
 #include "tiledb/sm/filesystem/mem_filesystem.h"
 #include "tiledb/sm/misc/utils.h"
@@ -129,7 +130,7 @@ class MemFilesystem::File : public MemFilesystem::FSNode {
   /** Destructor. */
   ~File() {
     if (data_) {
-      free(data_);
+      tdb_free(data_);
     }
   }
 
@@ -206,7 +207,7 @@ class MemFilesystem::File : public MemFilesystem::FSNode {
     }
 
     if (data_ == nullptr) {
-      data_ = malloc(nbytes);
+      data_ = tdb_malloc(nbytes);
       if (data_ == nullptr) {
         return LOG_STATUS(Status::MemFSError(
             std::string("Out of memory, cannot write to file")));
@@ -215,7 +216,7 @@ class MemFilesystem::File : public MemFilesystem::FSNode {
       size_ = nbytes;
     } else {
       void* new_data;
-      new_data = realloc(data_, size_ + nbytes);
+      new_data = tdb_realloc(data_, size_ + nbytes);
 
       if (new_data == nullptr) {
         return LOG_STATUS(Status::MemFSError(

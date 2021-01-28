@@ -31,6 +31,7 @@
  */
 
 #include "tiledb/sm/tile/chunked_buffer.h"
+#include "tiledb/common/heap_memory.h"
 #include "tiledb/sm/misc/utils.h"
 
 #include <cstdlib>
@@ -77,7 +78,7 @@ void ChunkedBuffer::deep_copy(const ChunkedBuffer& rhs) {
         buffers_.emplace_back(nullptr);
       } else {
         const uint32_t buffer_size = rhs.get_chunk_capacity(i);
-        void* const buffer_copy = std::malloc(buffer_size);
+        void* const buffer_copy = tdb_malloc(buffer_size);
         std::memcpy(buffer_copy, buffer, buffer_size);
         buffers_[i] = buffer_copy;
       }
@@ -85,7 +86,7 @@ void ChunkedBuffer::deep_copy(const ChunkedBuffer& rhs) {
   } else {
     assert(rhs.buffer_addressing_ == BufferAddressing::CONTIGUOUS);
     if (rhs.buffers_.size() > 0 && rhs.buffers_[0] != nullptr) {
-      void* const buffer_copy = std::malloc(rhs.capacity_);
+      void* const buffer_copy = tdb_malloc(rhs.capacity_);
       std::memcpy(buffer_copy, rhs.buffers_[0], rhs.capacity_);
       set_contiguous_internal(buffer_copy);
     }
@@ -251,7 +252,7 @@ Status ChunkedBuffer::alloc_discrete(
         "Cannot alloc internal chunk buffer; Chunk index out of bounds"));
   }
 
-  buffers_[chunk_idx] = std::malloc(get_chunk_capacity(chunk_idx));
+  buffers_[chunk_idx] = tdb_malloc(get_chunk_capacity(chunk_idx));
   if (!buffers_[chunk_idx]) {
     return LOG_STATUS(Status::ChunkedBufferError(
         "Cannot alloc internal chunk buffer; malloc failed"));
@@ -276,9 +277,7 @@ Status ChunkedBuffer::free_discrete(const size_t chunk_idx) {
         "Cannot free internal chunk buffer; Chunk index out of bounds"));
   }
 
-  // Use the global scope operator to disambiguate the c-api `free` from
-  // `this->free`.
-  ::free(buffers_[chunk_idx]);
+  tdb_free(buffers_[chunk_idx]);
 
   return Status::Ok();
 }
@@ -330,10 +329,7 @@ Status ChunkedBuffer::free_contiguous() {
         "buffer is unallocated"));
   }
 
-  // This asssumes buffers set with the set_contiguous interface
-  // were allocated with malloc(). Use the global scope operator
-  // to disambiguate the c-api `free` from `this->free`.
-  ::free(buffers_[0]);
+  tdb_free(buffers_[0]);
 
   return Status::Ok();
 }
@@ -482,9 +478,8 @@ Status ChunkedBuffer::ensure_capacity(const uint64_t requested_capacity) {
       uint64_t realloc_size = capacity_;
       while (realloc_size < requested_capacity)
         realloc_size *= 2;
-      void* const realloced_buffer = buffer ?
-                                         std::realloc(buffer, realloc_size) :
-                                         std::malloc(realloc_size);
+      void* const realloced_buffer =
+          buffer ? tdb_realloc(buffer, realloc_size) : tdb_malloc(realloc_size);
       if (!realloced_buffer) {
         return LOG_STATUS(Status::ChunkedBufferError(
             "Ensure capacity failed; re/alloc() failed."));
@@ -505,10 +500,10 @@ Status ChunkedBuffer::ensure_capacity(const uint64_t requested_capacity) {
         void* buffer;
         RETURN_NOT_OK(internal_buffer(last_chunk_idx, &buffer));
         if (buffer) {
-          void* const realloced_buffer = std::realloc(buffer, realloc_size);
+          void* const realloced_buffer = tdb_realloc(buffer, realloc_size);
           if (!realloced_buffer) {
             return LOG_STATUS(Status::ChunkedBufferError(
-                "Ensure capacity failed; realloc() failed."));
+                "Ensure capacity failed; tdb_realloc() failed."));
           }
           buffers_[last_chunk_idx] = realloced_buffer;
         }
@@ -544,10 +539,10 @@ Status ChunkedBuffer::write(
   if (buffer_addressing_ == BufferAddressing::CONTIGUOUS) {
     void* chunk_buffer = get_contiguous_unsafe();
     if (!chunk_buffer) {
-      chunk_buffer = std::malloc(capacity_);
+      chunk_buffer = tdb_malloc(capacity_);
       if (!chunk_buffer) {
-        return LOG_STATUS(
-            Status::ChunkedBufferError("Chunk write error; malloc() failed"));
+        return LOG_STATUS(Status::ChunkedBufferError(
+            "Chunk write error; tdb_malloc() failed"));
       }
 
       set_contiguous_internal(chunk_buffer);
@@ -576,10 +571,10 @@ Status ChunkedBuffer::write(
     void* chunk_buffer = buffers_[chunk_idx];
     if (!chunk_buffer) {
       if (buffer_addressing_ == BufferAddressing::CONTIGUOUS) {
-        void* const contiguous_buffer = std::malloc(capacity_);
+        void* const contiguous_buffer = tdb_malloc(capacity_);
         if (!contiguous_buffer) {
-          return LOG_STATUS(
-              Status::ChunkedBufferError("Chunk write error; malloc() failed"));
+          return LOG_STATUS(Status::ChunkedBufferError(
+              "Chunk write error; tdb_malloc() failed"));
         }
         RETURN_NOT_OK(set_contiguous(contiguous_buffer));
         RETURN_NOT_OK(get_contiguous(&chunk_buffer));

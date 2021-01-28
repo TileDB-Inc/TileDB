@@ -31,6 +31,7 @@
  */
 
 #include "tiledb/sm/filter/filter_pipeline.h"
+#include "tiledb/common/heap_memory.h"
 #include "tiledb/common/logger.h"
 #include "tiledb/sm/crypto/encryption_key.h"
 #include "tiledb/sm/enums/encryption_type.h"
@@ -295,9 +296,9 @@ Status FilterPipeline::filter_chunks_reverse(
   // We will perform lazy allocation for discrete chunk buffers. For contiguous
   // chunk buffers, we will allocate the buffer now.
   if (buffer_addressing == ChunkedBuffer::BufferAddressing::CONTIGUOUS) {
-    void* buffer = malloc(total_size);
+    void* buffer = tdb_malloc(total_size);
     if (buffer == nullptr) {
-      return LOG_STATUS(Status::FilterError("malloc() failed"));
+      return LOG_STATUS(Status::FilterError("tdb_malloc() failed"));
     }
     output->set_contiguous(buffer);
   }
