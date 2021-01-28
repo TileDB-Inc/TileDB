@@ -38,10 +38,12 @@
 #endif
 
 #include "tiledb/common/status.h"
+#include "tiledb/sm/misc/utils.h"
 
 #include <map>
 #include <set>
 #include <string>
+#include <vector>
 
 using namespace tiledb::common;
 
@@ -67,6 +69,18 @@ class Config {
 
   /** The default compressor for http requests with the rest server. */
   static const std::string REST_SERVER_DEFAULT_HTTP_COMPRESSOR;
+
+  /** The default http codes to automatically retry requests on. */
+  static const std::string REST_RETRY_HTTP_CODES;
+
+  /** The default number of attempts to retry a http request. */
+  static const std::string REST_RETRY_COUNT;
+
+  /** The default initial delay for retrying a http request in milliseconds. */
+  static const std::string REST_RETRY_INITIAL_DELAY_MS;
+
+  /** The default exponential delay factor for retrying a http request. */
+  static const std::string REST_RETRY_DELAY_FACTOR;
 
   /** The prefix to use for checking for parameter environmental variables. */
   static const std::string CONFIG_ENVIRONMENT_VARIABLE_PREFIX;
@@ -396,6 +410,22 @@ class Config {
    */
   template <class T>
   Status get(const std::string& param, T* value, bool* found) const;
+
+  /**
+   * Retrieves the value of the given parameter in the templated type.
+   * Sets `found` to `true` if found and `false` otherwise.
+   */
+  template <class T>
+  Status get_vector(
+      const std::string& param, std::vector<T>* value, bool* found) const {
+    // Check if parameter exists
+    const char* val = get_from_config_or_env(param, found);
+    if (!*found)
+      return Status::Ok();
+
+    // Parameter found, retrieve value
+    return utils::parse::convert<T>(val, value);
+  }
 
   /** Returns the param -> value map. */
   const std::map<std::string, std::string>& param_values() const;
