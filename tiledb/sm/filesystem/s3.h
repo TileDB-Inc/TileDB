@@ -446,130 +446,54 @@ class S3 {
         Aws::String&& in_key,
         Aws::String&& in_upload_id,
         std::map<int, Aws::S3::Model::CompletedPart>&& in_completed_parts)
-        : part_number_(in_part_number)
-        , bucket_(std::move(in_bucket))
-        , key_(std::move(in_key))
-        , upload_id_(std::move(in_upload_id))
-        , completed_parts_(std::move(in_completed_parts))
-        , st_(Status::Ok())
-        , mtx_(){};
+        : part_number(in_part_number)
+        , bucket(std::move(in_bucket))
+        , key(std::move(in_key))
+        , upload_id(std::move(in_upload_id))
+        , completed_parts(std::move(in_completed_parts))
+        , st(Status::Ok())
+        , mtx(){};
 
-    MultiPartUploadState(MultiPartUploadState&& other) {
-      std::lock_guard<std::mutex> lck(other.mtx_);
-      this->part_number_ = other.part_number_;
-      this->bucket_ = std::move(other.bucket_);
-      this->key_ = std::move(other.key_);
-      this->upload_id_ = std::move(other.upload_id_);
-      this->completed_parts_ = std::move(other.completed_parts_);
-      this->st_ = other.st_;
+    MultiPartUploadState(MultiPartUploadState&& other) noexcept {
+      std::lock_guard<std::mutex> lck(other.mtx);
+      this->part_number = other.part_number;
+      this->bucket = std::move(other.bucket);
+      this->key = std::move(other.key);
+      this->upload_id = std::move(other.upload_id);
+      this->completed_parts = std::move(other.completed_parts);
+      this->st = other.st;
     }
 
     // Copy initialization
     MultiPartUploadState(const MultiPartUploadState& other) {
-      this->part_number_ = other.part_number_;
-      this->bucket_ = other.bucket_;
-      this->key_ = other.key_;
-      this->upload_id_ = other.upload_id_;
-      this->completed_parts_ = other.completed_parts_;
-      this->st_ = other.st_;
+      this->part_number = other.part_number;
+      this->bucket = other.bucket;
+      this->key = other.key;
+      this->upload_id = other.upload_id;
+      this->completed_parts = other.completed_parts;
+      this->st = other.st;
     }
 
     /** The current part number. */
-    uint64_t part_number_;
+    uint64_t part_number;
 
     /** The AWS bucket. */
-    Aws::String bucket_;
+    Aws::String bucket;
 
     /** The AWS key. */
-    Aws::String key_;
+    Aws::String key;
 
     /** The AWS upload id. */
-    Aws::String upload_id_;
+    Aws::String upload_id;
 
     /** Maps each part number to its completed part state. */
-    std::map<int, Aws::S3::Model::CompletedPart> completed_parts_;
+    std::map<int, Aws::S3::Model::CompletedPart> completed_parts;
 
     /** The overall status of the multipart request. */
-    Status st_;
+    Status st;
 
     /** Mutex for thread safety */
-    mutable std::mutex mtx_;
-
-    /**
-     * Get part number thead safe
-     * @return part_number
-     */
-    uint64_t part_number() const;
-
-    /**
-     * Set part number thread safet
-     * @param part_number to set
-     */
-    void part_number(const uint64_t& part_number);
-
-    /**
-     * Get bucket name thread safe
-     * @return bucket name
-     */
-    Aws::String bucket() const;
-
-    /**
-     * Set the bucket name thead safe
-     * @param bucket name
-     */
-    void bucket(const Aws::String& bucket);
-
-    /**
-     * Get key prefix thread safet
-     * @return key prefix
-     */
-    Aws::String key() const;
-
-    /**
-     * Set key prefix thread safe
-     * @param key
-     */
-    void key(const Aws::String& key);
-
-    /**
-     * Get upload id thread safet
-     * @return upload id
-     */
-    Aws::String upload_id() const;
-
-    /**
-     * Set upload id thread safet
-     *
-     * @param upload_id
-     */
-    void upload_id(const Aws::String& upload_id);
-
-    /**
-     * Get a copy of the completed parts map, thread safe
-     * @return copy of completed_parts map
-     */
-    std::map<int, Aws::S3::Model::CompletedPart> completed_parts() const;
-
-    /**
-     * Emplace a part onto the completed parts map thead safe
-     * @param part_num
-     * @param part
-     * @return
-     */
-    void completed_parts_emplace(
-        const int& part_num, const Aws::S3::Model::CompletedPart& part);
-
-    /**
-     * Get status thread safet
-     * @return
-     */
-    Status st() const;
-
-    /**
-     * Set status thread safe
-     * @param st
-     */
-    void st(const Status& st);
+    mutable std::mutex mtx;
   };
 
   /* ********************************* */
