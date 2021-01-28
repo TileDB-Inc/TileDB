@@ -187,7 +187,9 @@ class Stats {
       WRITE_ARRAY_META_SIZE,
       WRITE_OPS_NUM,
       CONSOLIDATE_STEP_NUM,
-      VFS_S3_SLOW_DOWN_RETRIES);
+      VFS_S3_SLOW_DOWN_RETRIES,
+      REST_HTTP_RETRIES,
+      REST_HTTP_RETRY_TIME);
 
   /* ****************************** */
   /*   CONSTRUCTORS & DESTRUCTORS   */
