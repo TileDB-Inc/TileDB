@@ -14,6 +14,7 @@
 * Support for dimension/attribute names that contain commonly reserved filesystem characters [#2047](https://github.com/TileDB-Inc/TileDB/pull/2047)
 * Remove unnecessary `is_dir` in `FragmentMetadata::store`, this can increase performance for s3 writes [#2050](https://github.com/TileDB-Inc/TileDB/pull/2050)
 * Improve S3 multipart locking [#2055](https://github.com/TileDB-Inc/TileDB/pull/2055)
+* Parallize loading fragments and array schema [#2061](https://github.com/TileDB-Inc/TileDB/pull/2061)
 
 ## Deprecations
 
