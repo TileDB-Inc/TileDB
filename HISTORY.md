@@ -8,15 +8,7 @@
 
 ## New features
 
-* Add support for retrying REST requests that fail with certain http status code such as 503 [#2060](https://github.com/TileDB-Inc/TileDB/pull/2060)
-
 ## Improvements
-
-* Parallelize across attributes when closing a write [#2048](https://github.com/TileDB-Inc/TileDB/pull/2048)
-* Support for dimension/attribute names that contain commonly reserved filesystem characters [#2047](https://github.com/TileDB-Inc/TileDB/pull/2047)
-* Remove unnecessary `is_dir` in `FragmentMetadata::store`, this can increase performance for s3 writes [#2050](https://github.com/TileDB-Inc/TileDB/pull/2050)
-* Improve S3 multipart locking [#2055](https://github.com/TileDB-Inc/TileDB/pull/2055)
-* Parallize loading fragments and array schema [#2061](https://github.com/TileDB-Inc/TileDB/pull/2061)
 
 ## Deprecations
 
@@ -27,6 +19,20 @@
 ### C API
 
 ### C++ API
+
+# TileDB v2.2.3 Release Notes
+
+## New features
+
+* Add support for retrying REST requests that fail with certain http status code such as 503 [#2060](https://github.com/TileDB-Inc/TileDB/pull/2060)
+
+## Improvements
+
+* Parallelize across attributes when closing a write [#2048](https://github.com/TileDB-Inc/TileDB/pull/2048)
+* Support for dimension/attribute names that contain commonly reserved filesystem characters [#2047](https://github.com/TileDB-Inc/TileDB/pull/2047)
+* Remove unnecessary `is_dir` in `FragmentMetadata::store`, this can increase performance for s3 writes [#2050](https://github.com/TileDB-Inc/TileDB/pull/2050)
+* Improve S3 multipart locking [#2055](https://github.com/TileDB-Inc/TileDB/pull/2055)
+* Parallize loading fragments and array schema [#2061](https://github.com/TileDB-Inc/TileDB/pull/2061)
 
 # TileDB v2.2.2 Release Notes
 
