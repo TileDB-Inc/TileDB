@@ -203,14 +203,18 @@ Status StorageManager::array_open_for_reads(
     std::vector<FragmentMetadata*>* fragment_metadata) {
   STATS_START_TIMER(stats::Stats::TimerType::READ_ARRAY_OPEN)
 
-  // Open array without fragments
+  // Open array without fragments async. This loads the array schema which
+  // is not needed in this function, so it can safely be loaded in parallel
+  // to listing of the fragment metadata and loading the consolidated fragment
+  // metadata file
   auto open_array = (OpenArray*)nullptr;
-  RETURN_NOT_OK_ELSE(
-      array_open_without_fragments(array_uri, enc_key, &open_array),
-      *array_schema = nullptr);
-
-  // Retrieve array schema
-  *array_schema = open_array->array_schema();
+  std::vector<ThreadPool::Task> load_array_schema_task;
+  load_array_schema_task.emplace_back(io_tp_->execute([&, this]() {
+    RETURN_NOT_OK_ELSE(
+        array_open_without_fragments(array_uri, enc_key, &open_array),
+        *array_schema = nullptr);
+    return Status::Ok();
+  }));
 
   // Determine which fragments to load
   std::vector<TimestampedURI> fragments_to_load;
@@ -225,6 +229,12 @@ Status StorageManager::array_open_for_reads(
   uint32_t meta_version = 0;
   RETURN_NOT_OK(load_consolidated_fragment_meta(
       meta_uri, enc_key, &f_buff, &offsets, &meta_version));
+
+  // Wait for array schema to be loaded
+  RETURN_NOT_OK(io_tp_->wait_all(load_array_schema_task));
+
+  // Retrieve array schema
+  *array_schema = open_array->array_schema();
 
   // Get fragment metadata in the case of reads, if not fetched already
   Status st = load_fragment_metadata(
@@ -259,14 +269,18 @@ Status StorageManager::array_open_for_reads(
     std::vector<FragmentMetadata*>* fragment_metadata) {
   STATS_START_TIMER(stats::Stats::TimerType::READ_ARRAY_OPEN)
 
-  // Open array without fragments
+  // Open array without fragments async. This loads the array schema which
+  // is not needed in this function, so it can safely be loaded in parallel
+  // to listing of the fragment metadata and loading the consolidated fragment
+  // metadata file
   auto open_array = (OpenArray*)nullptr;
-  RETURN_NOT_OK_ELSE(
-      array_open_without_fragments(array_uri, enc_key, &open_array),
-      *array_schema = nullptr);
-
-  // Retrieve array schema
-  *array_schema = open_array->array_schema();
+  std::vector<ThreadPool::Task> load_array_schema_task;
+  load_array_schema_task.emplace_back(io_tp_->execute([&, this]() {
+    RETURN_NOT_OK_ELSE(
+        array_open_without_fragments(array_uri, enc_key, &open_array),
+        *array_schema = nullptr);
+    return Status::Ok();
+  }));
 
   // Determine which fragments to load
   std::vector<TimestampedURI> fragments_to_load;
@@ -286,6 +300,12 @@ Status StorageManager::array_open_for_reads(
   uint32_t meta_version = 0;
   RETURN_NOT_OK(load_consolidated_fragment_meta(
       meta_uri, enc_key, &f_buff, &offsets, &meta_version));
+
+  // Wait for array schema to be loaded
+  RETURN_NOT_OK(io_tp_->wait_all(load_array_schema_task));
+
+  // Retrieve array schema
+  *array_schema = open_array->array_schema();
 
   // Get fragment metadata in the case of reads, if not fetched already
   Status st = load_fragment_metadata(
