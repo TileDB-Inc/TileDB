@@ -1448,7 +1448,8 @@ class Query {
    * query.set_buffer("a1", data_a1, 4, validity_bytemap, 4);
    * @endcode
    *
-   * @note set_buffer(std::string, std::vector) is preferred as it is safer.
+   * @note set_buffer_nullable(std::string, std::vector, std::vector)
+   * is preferred as it is safer.
    *
    * @tparam T Attribute value type
    * @param name Attribute name
