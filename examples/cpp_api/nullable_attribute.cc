@@ -38,7 +38,7 @@
 using namespace tiledb;
 
 // Name of array.
-std::string array_name("nullable_atrributes_array");
+std::string array_name("nullable_attributes_array");
 
 void create_array() {
   // Create a TileDB context
@@ -87,7 +87,7 @@ void write_array() {
 
   // Specify the validity buffer for each attribute
   std::vector<uint8_t> a1_validity_buf = {1, 0, 0, 1};
-  std::vector<uint8_t> a2_validity_buf = {0, 1, 1, 1, 0, 0, 1, 1};
+  std::vector<uint8_t> a2_validity_buf = {0, 1, 1, 0};
 
   // Set the query buffers specifying the validity for each data
   query.set_buffer_nullable("a1", a1_data, a1_validity_buf)
@@ -110,7 +110,7 @@ void read_array() {
 
   std::vector<int> a2_data(8);
   std::vector<uint64_t> a2_off(4);
-  std::vector<uint8_t> a2_validity_buf(a2_data.size());
+  std::vector<uint8_t> a2_validity_buf(a2_off.size());
 
   // Prepare and submit the query, and close the array
   Query query(ctx, array);
@@ -136,8 +136,16 @@ void read_array() {
   std::cout << std::endl;
 
   std::cout << "a2: " << std::endl;
-  for (i = 0; i < 8; ++i) {
-    std::cout << (a2_validity_buf[i] > 0 ? std::to_string(a2_data[i]) : "NULL");
+  for (i = 0; i < 4; ++i) {
+    if (a2_validity_buf[i] > 0) {
+      std::cout << "{ ";
+      std::cout << std::to_string(a2_data[i * 2]);
+      std::cout << ", ";
+      std::cout << std::to_string(a2_data[i * 2 + 1]);
+      std::cout << " }";
+    } else {
+      std::cout << "{ NULL }";
+    }
     std::cout << " ";
   }
   std::cout << std::endl;
