@@ -48,7 +48,13 @@ steps:
   displayName: 'Check formatting (linux only)'
 
 - bash: |
-    # Azure sets "SYSTEM=build" for unknown reasonas, which breaks the OpenSSL configure script
+    # enable core dumps
+    ulimit -c               # should output 0 if disabled
+    ulimit -c unlimited     # Enable core dumps to be captured (must be in same run block)
+    ulimit -c               # should output 'unlimited' now
+    sudo chmod 1777 /cores
+
+    # Azure sets "SYSTEM=build" for unknown reasons, which breaks the OpenSSL configure script
     #   - openssl configure uses ENV{SYSTEM} if available:
     #     https://github.com/openssl/openssl/blob/6d745d740d37d680ff696486218b650512bbbbc6/config#L56
     #   - error description:
@@ -145,6 +151,10 @@ steps:
       # Add superbuild flag
       bootstrap_args="${bootstrap_args} --force-build-all-deps";
     fi
+    if [[ "$AGENT_OS" == "Darwin" ]]; then
+      # We want to be able to print a stack trace when a core dump occurs
+      bootstrap_args="${bootstrap_args} --enable-release-symbols";
+    fi
 
     # displayName: 'Install dependencies'
 
@@ -180,7 +190,9 @@ steps:
       # this echo.
       echo "##vso[task.setvariable variable=TILEDB_CI_SUCCESS]1"
     else
-      make check
+      # cmake catches the segfault and blocks the core dump
+      # make check
+      ./tiledb/test/tiledb_unit
     fi
 
     # Kill the running Minio server, OSX only because Linux runs it within
@@ -260,6 +272,31 @@ steps:
     #  displayName: 'Build examples, PNG test, and benchmarks (build-only)'
   displayName: 'Build and test libtiledb'
 
+- bash: |
+    ls -la /cores
+    mkdir $BUILD_REPOSITORY_LOCALPATH/build/core
+    mv /cores/core.* $BUILD_REPOSITORY_LOCALPATH/build/core/core.1
+    ls -la $BUILD_REPOSITORY_LOCALPATH/build/core
+    lldb -c $BUILD_REPOSITORY_LOCALPATH/build/core/core.1 --batch -o 'bt all' -o 'quit'
+  condition: and(failed(), eq(variables['Agent.OS'], 'Darwin')) # only run this job if the build step failed
+  displayName: 'Print stack trace'
+
+- task: ArchiveFiles@2
+  inputs:
+    rootFolderOrFile: '$(Build.Repository.LocalPath)'
+    includeRootFolder: false
+    archiveType: 'tar'
+    tarCompression: 'gz'
+    archiveFile: '$(Build.ArtifactStagingDirectory)/$(ARTIFACT_OS)-build-dir.tar.gz'
+    replaceExistingArchive: true
+    verbose: true
+  condition: and(failed(), eq(variables['Agent.OS'], 'Darwin')) # only run this job if the build step failed
+
+- task: PublishBuildArtifacts@1
+  inputs:
+    pathtoPublish: '$(Build.ArtifactStagingDirectory)/$(ARTIFACT_OS)-build-dir.tar.gz'
+    artifactName: 'build-dirs'
+  condition: and(failed(), eq(variables['Agent.OS'], 'Darwin')) # only run this job if the build step failed
 
 - bash: |
     # tiledb_unit is configured to set a job-level variable TILEDB_CI_SUCCESS=1

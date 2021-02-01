@@ -44,16 +44,19 @@ stages:
             TILEDB_S3: ON
             TILEDB_ARROW_TESTS: ON
             CXX: clang++
+            ARTIFACT_OS: macOS
           macOS_azure:
             imageName: 'macOS-10.15'
             TILEDB_AZURE: ON
             TILEDB_SERIALIZATION: ON
             CXX: clang++
+            ARTIFACT_OS: macOS_azure
           macOS_gcs:
             imageName: 'macOS-10.14'
             TILEDB_GCS: ON
             TILEDB_MEMFS: ON
             CXX: clang++
+            ARTIFACT_OS: macOS_gcs
           linux_asan:
             imageName: 'ubuntu-16.04'
             TILEDB_MEMFS: ON
