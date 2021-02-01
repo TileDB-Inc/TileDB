@@ -594,9 +594,12 @@ void SmokeTestFx::smoke_test(
 
   // Define dimension query write vectors for either sparse arrays
   // or dense arrays with an unordered write order.
+  vector<uint64_t*> d_write_buffers;
+  uint64_t write_buffer_size = 0;
   if (array_type == TILEDB_SPARSE || write_order == TILEDB_UNORDERED) {
-    // Calculate the write buffer sizes using the ranges of the dimensions.
+    // Calculate the write buffer lengths using the ranges of the dimensions.
     vector<uint64_t> dimension_ranges;
+    uint64_t dim_buffer_len = 0;
     for (auto dims_iter = test_dims.begin(); dims_iter != test_dims.end();
          ++dims_iter) {
       const uint64_t max_range = ((uint64_t*)(dims_iter->domain_))[1];
@@ -606,14 +609,14 @@ void SmokeTestFx::smoke_test(
       if (min_range == 0 && max_range == 1)
         return;
 
-      const uint64_t buffer_size = (max_range - min_range) + 1;
-      dimension_ranges.emplace_back(buffer_size);
+      dim_buffer_len = (max_range - min_range) + 1;
+      dimension_ranges.emplace_back(dim_buffer_len);
     }
 
     // Create the dimension write buffers.
     // NOTE: if there is more than 1 dimension, the buffer shall be the previous
     // buffer multiplied by the current range
-    vector<uint64_t*> d_write_buffers;
+    // vector<uint64_t*> d_write_buffers;
     for (const uint64_t range : dimension_ranges) {
       uint64_t* write_buffer;
       if (range == *dimension_ranges.begin()) {
@@ -627,11 +630,13 @@ void SmokeTestFx::smoke_test(
 
     // Fill the write buffers with values.
     auto dims_iter = test_dims.begin();
+    // uint64_t dim_buffer_len = 0;
     for (uint64_t* const d_write_buffer : d_write_buffers) {
       for (uint64_t i = 0; i < dimension_ranges[i]; i++) {
         d_write_buffer[i] = i;
+        // dim_buffer_len++;
       }
-      uint64_t write_buffer_size = sizeof(d_write_buffer);
+      write_buffer_size = dim_buffer_len * sizeof(uint64_t);
 
       write_query_buffers.emplace_back(
           dims_iter->name_,
