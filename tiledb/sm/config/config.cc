@@ -50,6 +50,11 @@ namespace sm {
 /* ****************************** */
 
 const std::string Config::CONFIG_ENVIRONMENT_VARIABLE_PREFIX = "TILEDB_";
+#ifdef TILEDB_VERBOSE
+const std::string Config::CONFIG_LOGGING_VERBOSE = "true";
+#else
+const std::string Config::CONFIG_LOGGING_VERBOSE = "false";
+#endif
 const std::string Config::REST_SERVER_DEFAULT_ADDRESS =
     "https://api.tiledb.com";
 const std::string Config::REST_SERIALIZATION_DEFAULT_FORMAT = "CAPNP";
@@ -183,6 +188,7 @@ Config::Config() {
   param_values_["rest.retry_initial_delay_ms"] = REST_RETRY_INITIAL_DELAY_MS;
   param_values_["rest.retry_delay_factor"] = REST_RETRY_DELAY_FACTOR;
   param_values_["config.env_var_prefix"] = CONFIG_ENVIRONMENT_VARIABLE_PREFIX;
+  param_values_["config.logging.verbose"] = CONFIG_LOGGING_VERBOSE;
   param_values_["sm.dedup_coords"] = SM_DEDUP_COORDS;
   param_values_["sm.check_coord_dups"] = SM_CHECK_COORD_DUPS;
   param_values_["sm.check_coord_oob"] = SM_CHECK_COORD_OOB;
@@ -411,6 +417,8 @@ Status Config::unset(const std::string& param) {
     param_values_["rest.retry_delay_factor"] = REST_RETRY_DELAY_FACTOR;
   } else if (param == "config.env_var_prefix") {
     param_values_["config.env_var_prefix"] = CONFIG_ENVIRONMENT_VARIABLE_PREFIX;
+  } else if (param == "config.logging.verbose") {
+    param_values_["config.logging.verbose"] = CONFIG_LOGGING_VERBOSE;
   } else if (param == "sm.dedup_coords") {
     param_values_["sm.dedup_coords"] = SM_DEDUP_COORDS;
   } else if (param == "sm.check_coord_dups") {
@@ -624,6 +632,8 @@ Status Config::sanity_check(
   if (param == "rest.server_serialization_format") {
     SerializationType serialization_type;
     RETURN_NOT_OK(serialization_type_enum(value, &serialization_type));
+  } else if (param == "config.logging.verbose") {
+    RETURN_NOT_OK(utils::parse::convert(value, &v));
   } else if (param == "sm.dedup_coords") {
     RETURN_NOT_OK(utils::parse::convert(value, &v));
   } else if (param == "sm.check_coord_dups") {

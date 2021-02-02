@@ -210,6 +210,11 @@ void check_save_to_file() {
 
   std::stringstream ss;
   ss << "config.env_var_prefix TILEDB_\n";
+#ifdef TILEDB_VERBOSE
+  ss << "config.logging.verbose true\n";
+#else
+  ss << "config.logging.verbose false\n";
+#endif
   ss << "rest.http_compressor any\n";
   ss << "rest.retry_count 3\n";
   ss << "rest.retry_delay_factor 1.25\n";
@@ -440,6 +445,9 @@ TEST_CASE("C API: Test config iter", "[capi], [config]") {
   rc = tiledb_config_alloc(&config, &error);
   REQUIRE(rc == TILEDB_OK);
   CHECK(error == nullptr);
+  rc = tiledb_config_set(config, "config.logging.verbose", "true", &error);
+  CHECK(rc == TILEDB_OK);
+  CHECK(error == nullptr);
   rc = tiledb_config_set(config, "sm.tile_cache_size", "100", &error);
   CHECK(rc == TILEDB_OK);
   CHECK(error == nullptr);
@@ -463,6 +471,7 @@ TEST_CASE("C API: Test config iter", "[capi], [config]") {
   // Prepare maps
   std::map<std::string, std::string> all_param_values;
   all_param_values["config.env_var_prefix"] = "TILEDB_";
+  all_param_values["config.logging.verbose"] = "true";
   all_param_values["rest.server_address"] = "https://api.tiledb.com";
   all_param_values["rest.server_serialization_format"] = "CAPNP";
   all_param_values["rest.http_compressor"] = "any";

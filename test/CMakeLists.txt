@@ -220,6 +220,10 @@ if (TILEDB_ARROW_TESTS)
   )
 endif()
 
+if (TILEDB_VERBOSE)
+  add_definitions(-DTILEDB_VERBOSE)
+endif()
+
 # unit test executable
 add_executable(
   tiledb_unit EXCLUDE_FROM_ALL
