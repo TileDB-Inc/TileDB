@@ -52,7 +52,6 @@ steps:
     ulimit -c               # should output 0 if disabled
     ulimit -c unlimited     # Enable core dumps to be captured (must be in same run block)
     ulimit -c               # should output 'unlimited' now
-    sudo chmod 1777 /cores
 
     # Azure sets "SYSTEM=build" for unknown reasons, which breaks the OpenSSL configure script
     #   - openssl configure uses ENV{SYSTEM} if available:
@@ -153,6 +152,7 @@ steps:
     fi
     if [[ "$AGENT_OS" == "Darwin" ]]; then
       # We want to be able to print a stack trace when a core dump occurs
+      sudo chmod 1777 /cores
       bootstrap_args="${bootstrap_args} --enable-release-symbols";
     fi
 
@@ -190,8 +190,8 @@ steps:
       # this echo.
       echo "##vso[task.setvariable variable=TILEDB_CI_SUCCESS]1"
     else
-      # cmake catches the segfault and blocks the core dump
-      # make check
+      # run directly the executable, cmake catches the segfault and blocks
+      # the core dump
       ./tiledb/test/tiledb_unit
     fi
 
