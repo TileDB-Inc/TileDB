@@ -611,7 +611,7 @@ void ResultTile::compute_results_sparse<char>(
       // string value.
       if (first_c_size == last_c_size &&
           strncmp(first_c_coord, second_coord, first_c_size) == 0) {
-        assert(r_bitmap[0] == 1);
+        assert(r_bitmap[first_c_pos] == 1);
         const uint8_t intersects = str_coord_intersects(
             first_c_offset, first_c_size, buff_str, range_start, range_end);
         memset(&r_bitmap[first_c_pos], intersects, c_partition_size);
