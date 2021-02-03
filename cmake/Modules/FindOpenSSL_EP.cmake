@@ -47,6 +47,7 @@ endif()
 set(OPENSSL_ROOT_DIR ${OPENSSL_PATHS})
 if (NOT TILEDB_FORCE_ALL_DEPS)
   find_package(OpenSSL
+    1.1.0
     ${TILEDB_DEPS_NO_DEFAULT_PATH})
 endif()
 
