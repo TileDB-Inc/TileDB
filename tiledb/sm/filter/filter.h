@@ -51,7 +51,7 @@ enum class FilterType : uint8_t;
 
 /**
  * A Filter processes or modifies a byte region, modifying it in place, or
- * producing output in new buffer(s).
+ * producing output in new buffers.
  *
  * Every filter implements both forward direction (used during write queries)
  * and a reverse direction (for reads).

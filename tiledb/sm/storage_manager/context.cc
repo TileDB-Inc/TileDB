@@ -51,7 +51,7 @@ Context::~Context() {
   // Delete the `storage_manager_` to ensure it is destructed
   // before the `compute_tp_` and `io_tp_` objects that it
   // references.
-  delete storage_manager_;
+  tdb_delete(storage_manager_);
 }
 
 /* ****************************** */

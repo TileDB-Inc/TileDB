@@ -93,7 +93,7 @@ class ThreadPool {
 
    private:
     /** Value constructor. */
-    Task(const std::shared_ptr<TaskState>& task_state)
+    Task(const tdb_shared_ptr<TaskState>& task_state)
         : task_state_(std::move(task_state)) {
     }
 
@@ -124,7 +124,7 @@ class ThreadPool {
     }
 
     /** The shared task state between futures and their associated task. */
-    std::shared_ptr<TaskState> task_state_;
+    tdb_shared_ptr<TaskState> task_state_;
 
     friend ThreadPool;
     friend PackagedTask;
@@ -228,9 +228,9 @@ class ThreadPool {
 
     /** Value constructor. */
     template <class Fn_T>
-    explicit PackagedTask(Fn_T&& fn, std::shared_ptr<PackagedTask>&& parent) {
+    explicit PackagedTask(Fn_T&& fn, tdb_shared_ptr<PackagedTask>&& parent) {
       fn_ = std::move(fn);
-      task_state_ = std::make_shared<TaskState>();
+      task_state_ = tdb_make_shared(TaskState);
       parent_ = std::move(parent);
     }
 
@@ -265,10 +265,10 @@ class ThreadPool {
     std::function<Status()> fn_;
 
     /** The task state to share with futures. */
-    std::shared_ptr<TaskState> task_state_;
+    tdb_shared_ptr<TaskState> task_state_;
 
     /** The parent task that executed this task. */
-    std::shared_ptr<PackagedTask> parent_;
+    tdb_shared_ptr<PackagedTask> parent_;
   };
 
   /* ********************************* */
@@ -288,7 +288,7 @@ class ThreadPool {
   std::condition_variable task_stack_cv_;
 
   /** Pending tasks in LIFO ordering. */
-  std::vector<std::shared_ptr<PackagedTask>> task_stack_;
+  std::vector<tdb_shared_ptr<PackagedTask>> task_stack_;
 
   /*
    * A logical, monotonically increasing clock that is incremented
@@ -312,11 +312,11 @@ class ThreadPool {
 
   /** All tasks that threads in this instance are waiting on. */
   struct BlockedTasksHasher {
-    size_t operator()(const std::shared_ptr<TaskState>& task) const {
+    size_t operator()(const tdb_shared_ptr<TaskState>& task) const {
       return reinterpret_cast<size_t>(task.get());
     }
   };
-  std::unordered_set<std::shared_ptr<TaskState>, BlockedTasksHasher>
+  std::unordered_set<tdb_shared_ptr<TaskState>, BlockedTasksHasher>
       blocked_tasks_;
 
   /** Protects `blocked_tasks_`. */
@@ -329,7 +329,7 @@ class ThreadPool {
   static std::mutex tp_index_lock_;
 
   /** Indexes thread ids to the task it is currently executing. */
-  static std::unordered_map<std::thread::id, std::shared_ptr<PackagedTask>>
+  static std::unordered_map<std::thread::id, tdb_shared_ptr<PackagedTask>>
       task_index_;
 
   /** Protects 'task_index_'. */
@@ -369,10 +369,10 @@ class ThreadPool {
   void remove_task_index();
 
   // Lookup the task executing on `tid`.
-  static std::shared_ptr<PackagedTask> lookup_task(std::thread::id tid);
+  static tdb_shared_ptr<PackagedTask> lookup_task(std::thread::id tid);
 
   // Wrapper to update `task_index_` and execute `task`.
-  static void exec_packaged_task(std::shared_ptr<PackagedTask> task);
+  static void exec_packaged_task(tdb_shared_ptr<PackagedTask> task);
 };
 
 }  // namespace common

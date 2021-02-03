@@ -48,6 +48,7 @@
 #include <tbb/task_scheduler_init.h>
 #endif
 
+#include "tiledb/common/heap_memory.h"
 #include "tiledb/common/status.h"
 #include "tiledb/common/thread_pool.h"
 #include "tiledb/sm/config/config.h"
@@ -993,7 +994,7 @@ class StorageManager {
   std::unordered_map<std::string, std::string> tags_;
 
   /** A tile cache. */
-  std::unique_ptr<BufferLRUCache> tile_cache_;
+  tdb_unique_ptr<BufferLRUCache> tile_cache_;
 
   /**
    * Virtual filesystem handler. It directs queries to the appropriate
@@ -1002,7 +1003,7 @@ class StorageManager {
   VFS* vfs_;
 
   /** The rest client (may be null if none was configured). */
-  std::unique_ptr<RestClient> rest_client_;
+  tdb_unique_ptr<RestClient> rest_client_;
 
   /* ********************************* */
   /*         PRIVATE METHODS           */

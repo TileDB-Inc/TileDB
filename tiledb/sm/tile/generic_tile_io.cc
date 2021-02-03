@@ -31,6 +31,7 @@
  */
 
 #include "tiledb/sm/tile/generic_tile_io.h"
+#include "tiledb/common/heap_memory.h"
 #include "tiledb/common/logger.h"
 #include "tiledb/sm/crypto/encryption_key.h"
 #include "tiledb/sm/filesystem/vfs.h"
@@ -81,31 +82,32 @@ Status GenericTileIO::read_generic(
       GenericTileHeader::BASE_SIZE + header.filter_pipeline_size;
 
   assert(tile);
-  *tile = new Tile();
+  *tile = tdb_new(Tile);
   RETURN_NOT_OK_ELSE(
       (*tile)->init_filtered(
           header.version_number,
           (Datatype)header.datatype,
           header.cell_size,
           0),
-      delete *tile);
+      tdb_delete(*tile));
 
   // Read the tile.
   RETURN_NOT_OK_ELSE(
-      (*tile)->filtered_buffer()->realloc(header.persisted_size), delete *tile);
+      (*tile)->filtered_buffer()->realloc(header.persisted_size),
+      tdb_delete(*tile));
   RETURN_NOT_OK_ELSE(
       storage_manager_->read(
           uri_,
           file_offset + tile_data_offset,
           (*tile)->filtered_buffer(),
           header.persisted_size),
-      delete *tile);
+      tdb_delete(*tile));
 
   // Unfilter
   assert((*tile)->filtered());
   RETURN_NOT_OK_ELSE(
       header.filters.run_reverse(*tile, storage_manager_->compute_tp(), config),
-      delete *tile);
+      tdb_delete(*tile));
   assert(!(*tile)->filtered());
 
   return Status::Ok();
@@ -117,7 +119,7 @@ Status GenericTileIO::read_generic_tile_header(
     uint64_t file_offset,
     GenericTileHeader* header) {
   // Read the fixed-sized part of the header from file
-  std::unique_ptr<Buffer> header_buff(new Buffer());
+  tdb_unique_ptr<Buffer> header_buff(tdb_new(Buffer));
   RETURN_NOT_OK(sm->read(
       uri, file_offset, header_buff.get(), GenericTileHeader::BASE_SIZE));
 
@@ -172,29 +174,29 @@ Status GenericTileIO::write_generic(
 
 Status GenericTileIO::write_generic_tile_header(GenericTileHeader* header) {
   // Write to buffer
-  auto buff = new Buffer();
+  auto buff = tdb_new(Buffer);
   RETURN_NOT_OK_ELSE(
-      buff->write(&header->version_number, sizeof(uint32_t)), delete buff);
+      buff->write(&header->version_number, sizeof(uint32_t)), tdb_delete(buff));
   RETURN_NOT_OK_ELSE(
-      buff->write(&header->persisted_size, sizeof(uint64_t)), delete buff);
+      buff->write(&header->persisted_size, sizeof(uint64_t)), tdb_delete(buff));
   RETURN_NOT_OK_ELSE(
-      buff->write(&header->tile_size, sizeof(uint64_t)), delete buff);
+      buff->write(&header->tile_size, sizeof(uint64_t)), tdb_delete(buff));
   RETURN_NOT_OK_ELSE(
-      buff->write(&header->datatype, sizeof(uint8_t)), delete buff);
+      buff->write(&header->datatype, sizeof(uint8_t)), tdb_delete(buff));
   RETURN_NOT_OK_ELSE(
-      buff->write(&header->cell_size, sizeof(uint64_t)), delete buff);
+      buff->write(&header->cell_size, sizeof(uint64_t)), tdb_delete(buff));
   RETURN_NOT_OK_ELSE(
-      buff->write(&header->encryption_type, sizeof(uint8_t)), delete buff);
+      buff->write(&header->encryption_type, sizeof(uint8_t)), tdb_delete(buff));
 
   // Write placeholder value for pipeline size.
   uint64_t pipeline_size_offset = buff->offset();
   RETURN_NOT_OK_ELSE(
       buff->write(&header->filter_pipeline_size, sizeof(uint32_t)),
-      delete buff);
+      tdb_delete(buff));
 
   // Write pipeline to buffer
   auto orig_size = buff->size();
-  RETURN_NOT_OK_ELSE(header->filters.serialize(buff), delete buff);
+  RETURN_NOT_OK_ELSE(header->filters.serialize(buff), tdb_delete(buff));
 
   // Write actual pipeline size over placeholder.
   header->filter_pipeline_size =
@@ -205,7 +207,7 @@ Status GenericTileIO::write_generic_tile_header(GenericTileHeader* header) {
   // Write buffer to file
   Status st = storage_manager_->write(uri_, buff);
 
-  delete buff;
+  tdb_delete(buff);
 
   return st;
 }

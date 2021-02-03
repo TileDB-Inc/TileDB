@@ -606,7 +606,7 @@ class Domain {
   Layout cell_order_;
 
   /** The domain dimensions. */
-  std::vector<std::unique_ptr<Dimension>> dimensions_;
+  std::vector<tdb_unique_ptr<Dimension>> dimensions_;
 
   /** The number of dimensions. */
   unsigned dim_num_;

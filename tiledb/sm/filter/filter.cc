@@ -31,6 +31,7 @@
  */
 
 #include "tiledb/sm/filter/filter.h"
+#include "tiledb/common/heap_memory.h"
 #include "tiledb/common/logger.h"
 #include "tiledb/sm/buffer/buffer.h"
 #include "tiledb/sm/enums/filter_type.h"
@@ -65,28 +66,28 @@ Filter* Filter::clone() const {
 Filter* Filter::create(FilterType type) {
   switch (type) {
     case FilterType::FILTER_NONE:
-      return new (std::nothrow) NoopFilter;
+      return tdb_new(NoopFilter);
     case FilterType::FILTER_GZIP:
     case FilterType::FILTER_ZSTD:
     case FilterType::FILTER_LZ4:
     case FilterType::FILTER_RLE:
     case FilterType::FILTER_BZIP2:
     case FilterType::FILTER_DOUBLE_DELTA:
-      return new (std::nothrow) CompressionFilter(type, -1);
+      return tdb_new(CompressionFilter, type, -1);
     case FilterType::FILTER_BIT_WIDTH_REDUCTION:
-      return new (std::nothrow) BitWidthReductionFilter();
+      return tdb_new(BitWidthReductionFilter);
     case FilterType::FILTER_BITSHUFFLE:
-      return new (std::nothrow) BitshuffleFilter();
+      return tdb_new(BitshuffleFilter);
     case FilterType::FILTER_BYTESHUFFLE:
-      return new (std::nothrow) ByteshuffleFilter();
+      return tdb_new(ByteshuffleFilter);
     case FilterType::FILTER_POSITIVE_DELTA:
-      return new (std::nothrow) PositiveDeltaFilter();
+      return tdb_new(PositiveDeltaFilter);
     case FilterType::INTERNAL_FILTER_AES_256_GCM:
-      return new (std::nothrow) EncryptionAES256GCMFilter();
+      return tdb_new(EncryptionAES256GCMFilter);
     case FilterType::FILTER_CHECKSUM_MD5:
-      return new (std::nothrow) ChecksumMD5Filter();
+      return tdb_new(ChecksumMD5Filter);
     case FilterType::FILTER_CHECKSUM_SHA256:
-      return new (std::nothrow) ChecksumSHA256Filter();
+      return tdb_new(ChecksumSHA256Filter);
     default:
       assert(false);
       return nullptr;
@@ -116,10 +117,10 @@ Status Filter::deserialize(ConstBuffer* buff, Filter** filter) {
     return LOG_STATUS(Status::FilterError("Deserialization error."));
 
   auto offset = buff->offset();
-  RETURN_NOT_OK_ELSE(f->deserialize_impl(buff), delete f);
+  RETURN_NOT_OK_ELSE(f->deserialize_impl(buff), tdb_delete(f));
 
   if (buff->offset() - offset != filter_metadata_len) {
-    delete f;
+    tdb_delete(f);
     return LOG_STATUS(Status::FilterError(
         "Deserialization error; unexpected metadata length"));
   }

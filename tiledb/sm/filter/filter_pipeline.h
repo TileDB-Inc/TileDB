@@ -272,7 +272,7 @@ class FilterPipeline {
   typedef std::pair<FilterBuffer, FilterBuffer> FilterBufferPair;
 
   /** The ordered list of filters comprising the pipeline. */
-  std::vector<std::unique_ptr<Filter>> filters_;
+  std::vector<tdb_unique_ptr<Filter>> filters_;
 
   /**
    * The current tile being processed by run()/run_reverse(). This is mutable

@@ -621,7 +621,7 @@ class VFS {
 #endif
 
 #ifdef HAVE_HDFS
-  std::unique_ptr<hdfs::HDFS> hdfs_;
+  tdb_unique_ptr<hdfs::HDFS> hdfs_;
 #endif
 
   /** The in-memory filesystem which is always supported */
@@ -649,7 +649,7 @@ class VFS {
   CancelableTasks cancelable_tasks_;
 
   /** The read-ahead cache. */
-  std::unique_ptr<ReadAheadCache> read_ahead_cache_;
+  tdb_unique_ptr<ReadAheadCache> read_ahead_cache_;
 
   /* ********************************* */
   /*          PRIVATE METHODS          */

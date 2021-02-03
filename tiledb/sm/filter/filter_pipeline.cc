@@ -81,7 +81,7 @@ FilterPipeline& FilterPipeline::operator=(FilterPipeline&& other) {
 }
 
 Status FilterPipeline::add_filter(const Filter& filter) {
-  std::unique_ptr<Filter> copy(filter.clone());
+  tdb_unique_ptr<Filter> copy(filter.clone());
   copy->set_pipeline(this);
   filters_.push_back(std::move(copy));
   return Status::Ok();
@@ -163,9 +163,10 @@ Status FilterPipeline::filter_chunks_forward(
 
         // Save the finished chunk (last stage's output). This is safe to do
         // because when the local FilterStorage goes out of scope, it will not
-        // free the buffers saved here as their shared_ptr counters will not be
-        // zero. However, as the output may have been a view on the input, we do
-        // need to save both here to prevent the input buffer from being freed.
+        // free the buffers saved here as their tdb_shared_ptr counters will not
+        // be zero. However, as the output may have been a view on the input, we
+        // do need to save both here to prevent the input buffer from being
+        // freed.
         auto& io = final_stage_io[i];
         auto& io_input = io.first;
         auto& io_output = io.second;
@@ -755,7 +756,7 @@ Status FilterPipeline::serialize(Buffer* buff) const {
     // as a no-op filter instead.
     auto as_compression = dynamic_cast<CompressionFilter*>(f.get());
     if (as_compression != nullptr && f->type() == FilterType::FILTER_NONE) {
-      auto noop = std::unique_ptr<NoopFilter>(new NoopFilter);
+      auto noop = tdb_unique_ptr<NoopFilter>(new NoopFilter);
       RETURN_NOT_OK(noop->serialize(buff));
     } else {
       RETURN_NOT_OK(f->serialize(buff));
@@ -776,8 +777,8 @@ Status FilterPipeline::deserialize(ConstBuffer* buff) {
   for (uint32_t i = 0; i < num_filters; i++) {
     Filter* filter;
     RETURN_NOT_OK(Filter::deserialize(buff, &filter));
-    RETURN_NOT_OK_ELSE(add_filter(*filter), delete filter);
-    delete filter;
+    RETURN_NOT_OK_ELSE(add_filter(*filter), tdb_delete(filter));
+    tdb_delete(filter);
   }
 
   return Status::Ok();

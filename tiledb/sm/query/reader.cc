@@ -1228,7 +1228,7 @@ Status Reader::copy_fixed_cells(
 
   // Precompute the cell range destination offsets in the buffer.
   uint64_t buffer_offset = 0;
-  std::unique_ptr<std::vector<uint64_t>> cs_offsets =
+  tdb_unique_ptr<std::vector<uint64_t>> cs_offsets =
       ctx_cache->get_cs_offsets();
   for (uint64_t i = 0; i < cs_offsets->size(); i++) {
     const auto& cs = result_cell_slabs[i];
@@ -1395,9 +1395,9 @@ Status Reader::copy_var_cells(
 
   // Compute the destinations of offsets and var-len data in the buffers.
   uint64_t total_offset_size, total_var_size, total_validity_size;
-  std::unique_ptr<std::vector<uint64_t>> offset_offsets_per_cs =
+  tdb_unique_ptr<std::vector<uint64_t>> offset_offsets_per_cs =
       ctx_cache->get_offset_offsets_per_cs();
-  std::unique_ptr<std::vector<uint64_t>> var_offsets_per_cs =
+  tdb_unique_ptr<std::vector<uint64_t>> var_offsets_per_cs =
       ctx_cache->get_var_offsets_per_cs();
   RETURN_NOT_OK(compute_var_cell_destinations(
       name,

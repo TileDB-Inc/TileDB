@@ -67,7 +67,7 @@ namespace global_state {
     ((OPENSSL_VERSION_NUMBER & 0x00ff0000) >> 16 < 0x10)
 
 /** Vector of lock objects for use by OpenSSL. */
-static std::vector<std::unique_ptr<std::mutex>> openssl_locks;
+static std::vector<tdb_unique_ptr<std::mutex>> openssl_locks;
 
 /**
  * Lock callback provided for OpenSSL.
@@ -90,7 +90,7 @@ static void openssl_lock_cb(int mode, int n, const char* file, int line) {
 Status init_openssl() {
   int num_locks = CRYPTO_num_locks();
   for (int i = 0; i < num_locks; i++) {
-    openssl_locks.push_back(std::unique_ptr<std::mutex>(new std::mutex()));
+    openssl_locks.push_back(tdb_unique_ptr<std::mutex>(new std::mutex()));
   }
 
   CRYPTO_set_locking_callback(openssl_lock_cb);

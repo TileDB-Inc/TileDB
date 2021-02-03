@@ -128,7 +128,7 @@ S3::S3()
 S3::~S3() {
   assert(state_ == State::DISCONNECTED);
   for (auto& buff : file_buffers_)
-    delete buff.second;
+    tdb_delete(buff.second);
 }
 
 /* ********************************* */
@@ -446,7 +446,7 @@ Status S3::finish_flush_object(
   std::unique_lock<std::mutex> file_buffers_lck(file_buffers_mtx_);
   file_buffers_.erase(uri.to_string());
   file_buffers_lck.unlock();
-  delete buff;
+  tdb_delete(buff);
 
   if (!outcome.IsSuccess()) {
     return LOG_STATUS(Status::S3Error(
@@ -907,8 +907,8 @@ Status S3::init_client() const {
   // check for client configuration on create, which can be slow if aws is not
   // configured on a users systems due to ec2 metadata check
 
-  client_config_ = std::unique_ptr<Aws::Client::ClientConfiguration>(
-      new Aws::Client::ClientConfiguration);
+  client_config_ = tdb_unique_ptr<Aws::Client::ClientConfiguration>(
+      tdb_new(Aws::Client::ClientConfiguration));
 
   s3_tp_executor_ = std::make_shared<S3ThreadPoolExecutor>(vfs_thread_pool_);
 
@@ -1029,11 +1029,12 @@ Status S3::init_client() const {
   }
 #endif
 
+  std::shared_ptr<Aws::Auth::AWSCredentialsProvider> credentials_provider =
+      nullptr;
   switch ((!aws_access_key_id.empty() ? 1 : 0) +
           (!aws_secret_access_key.empty() ? 2 : 0) +
           (!aws_role_arn.empty() ? 4 : 0)) {
     case 0:
-      credentials_provider_ = nullptr;
       break;
     case 1:
     case 2:
@@ -1045,7 +1046,7 @@ Status S3::init_client() const {
       Aws::String secret_access_key(aws_secret_access_key.c_str());
       Aws::String session_token(
           !aws_session_token.empty() ? aws_session_token.c_str() : "");
-      credentials_provider_ =
+      credentials_provider =
           std::make_shared<Aws::Auth::SimpleAWSCredentialsProvider>(
               access_key_id, secret_access_key, session_token);
       break;
@@ -1062,7 +1063,7 @@ Status S3::init_client() const {
               Aws::Auth::DEFAULT_CREDS_LOAD_FREQ_SECONDS);
       Aws::String session_name(
           !aws_session_name.empty() ? aws_session_name.c_str() : "");
-      credentials_provider_ =
+      credentials_provider =
           std::make_shared<Aws::Auth::STSAssumeRoleCredentialsProvider>(
               role_arn, session_name, external_id, load_frequency, nullptr);
       break;
@@ -1072,16 +1073,16 @@ Status S3::init_client() const {
           "Ambiguous authentication credentials; both permanent and temporary "
           "authentication credentials are configured");
   }
-  if (credentials_provider_ == nullptr) {
-    client_ = Aws::MakeShared<Aws::S3::S3Client>(
-        constants::s3_allocation_tag.c_str(),
+  if (credentials_provider == nullptr) {
+    client_ = tdb_make_shared(
+        Aws::S3::S3Client,
         *client_config_,
         Aws::Client::AWSAuthV4Signer::PayloadSigningPolicy::Never,
         use_virtual_addressing_);
   } else {
-    client_ = Aws::MakeShared<Aws::S3::S3Client>(
-        constants::s3_allocation_tag.c_str(),
-        credentials_provider_,
+    client_ = tdb_make_shared(
+        Aws::S3::S3Client,
+        credentials_provider,
         *client_config_,
         Aws::Client::AWSAuthV4Signer::PayloadSigningPolicy::Never,
         use_virtual_addressing_);
@@ -1167,7 +1168,7 @@ Status S3::get_file_buffer(const URI& uri, Buffer** buff) {
   auto uri_str = uri.to_string();
   auto it = file_buffers_.find(uri_str);
   if (it == file_buffers_.end()) {
-    auto new_buff = new Buffer();
+    auto new_buff = tdb_new(Buffer);
     file_buffers_[uri_str] = new_buff;
     *buff = new_buff;
   } else {

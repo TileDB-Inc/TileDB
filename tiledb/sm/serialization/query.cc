@@ -1188,10 +1188,10 @@ Status query_deserialize(
   original_buffer->reset_offset();
 
   // Similarly, we must create a copy of 'copy_state'.
-  std::unique_ptr<CopyState> original_copy_state = nullptr;
+  tdb_unique_ptr<CopyState> original_copy_state = nullptr;
   if (copy_state) {
     original_copy_state =
-        std::unique_ptr<CopyState>(new CopyState(*copy_state));
+        tdb_unique_ptr<CopyState>(tdb_new(CopyState, *copy_state));
   }
 
   // Deserialize 'serialized_buffer'.

@@ -56,7 +56,7 @@ Status::Status(StatusCode code, const std::string& msg, int16_t posix_code) {
   size_t msg_size = msg.size();
   // assert(msg_size < std::numeric_limits<uint32_t>::max());
   auto size = static_cast<uint32_t>(msg_size);
-  auto result = new char[size + 7];
+  auto result = tdb_new_array(char, size + 7);
   memcpy(result, &size, sizeof(size));
   result[4] = static_cast<char>(code);
   memcpy(result + 5, &posix_code, sizeof(posix_code));
@@ -67,7 +67,7 @@ Status::Status(StatusCode code, const std::string& msg, int16_t posix_code) {
 const char* Status::copy_state(const char* state) {
   uint32_t size;
   memcpy(&size, state, sizeof(size));
-  auto result = new char[size + 7];
+  auto result = tdb_new_array(char, size + 7);
   memcpy(result, state, size + 7);
   return result;
 }

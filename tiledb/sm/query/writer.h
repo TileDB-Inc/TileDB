@@ -84,7 +84,7 @@ class Writer {
     std::unordered_map<std::string, uint64_t> cells_written_;
 
     /** The fragment metadata. */
-    std::shared_ptr<FragmentMetadata> frag_meta_;
+    tdb_shared_ptr<FragmentMetadata> frag_meta_;
   };
 
   /** Cell range to be written. */
@@ -467,7 +467,7 @@ class Writer {
   URI fragment_uri_;
 
   /** The state associated with global writes. */
-  std::unique_ptr<GlobalWriteState> global_write_state_;
+  tdb_unique_ptr<GlobalWriteState> global_write_state_;
 
   /** True if the writer has been initialized. */
   bool initialized_;
@@ -655,7 +655,7 @@ class Writer {
    * @return Status
    */
   Status create_fragment(
-      bool dense, std::shared_ptr<FragmentMetadata>* frag_meta) const;
+      bool dense, tdb_shared_ptr<FragmentMetadata>* frag_meta) const;
 
   /**
    * Runs the input coordinate and attribute tiles through their

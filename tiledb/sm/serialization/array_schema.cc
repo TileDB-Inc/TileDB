@@ -119,8 +119,8 @@ Status filter_pipeline_to_capnp(
 
 Status filter_pipeline_from_capnp(
     const capnp::FilterPipeline::Reader& filter_pipeline_reader,
-    std::unique_ptr<FilterPipeline>* filter_pipeline) {
-  filter_pipeline->reset(new FilterPipeline);
+    tdb_unique_ptr<FilterPipeline>* filter_pipeline) {
+  filter_pipeline->reset(tdb_new(FilterPipeline));
   if (!filter_pipeline_reader.hasFilters())
     return Status::Ok();
 
@@ -128,7 +128,7 @@ Status filter_pipeline_from_capnp(
   for (auto filter_reader : filter_list_reader) {
     FilterType type = FilterType::FILTER_NONE;
     RETURN_NOT_OK(filter_type_enum(filter_reader.getType().cStr(), &type));
-    std::unique_ptr<Filter> filter(Filter::create(type));
+    tdb_unique_ptr<Filter> filter(Filter::create(type));
     if (filter == nullptr)
       return LOG_STATUS(Status::SerializationError(
           "Error deserializing filter pipeline; failed to create filter."));
@@ -212,11 +212,11 @@ Status attribute_to_capnp(
 
 Status attribute_from_capnp(
     const capnp::Attribute::Reader& attribute_reader,
-    std::unique_ptr<Attribute>* attribute) {
+    tdb_unique_ptr<Attribute>* attribute) {
   Datatype datatype = Datatype::ANY;
   RETURN_NOT_OK(datatype_enum(attribute_reader.getType(), &datatype));
 
-  attribute->reset(new Attribute(attribute_reader.getName(), datatype));
+  attribute->reset(tdb_new(Attribute, attribute_reader.getName(), datatype));
   RETURN_NOT_OK(
       (*attribute)->set_cell_val_num(attribute_reader.getCellValNum()));
 
@@ -242,7 +242,7 @@ Status attribute_from_capnp(
   // Set filter pipelines.
   if (attribute_reader.hasFilterPipeline()) {
     auto filter_pipeline_reader = attribute_reader.getFilterPipeline();
-    std::unique_ptr<FilterPipeline> filters;
+    tdb_unique_ptr<FilterPipeline> filters;
     RETURN_NOT_OK(filter_pipeline_from_capnp(filter_pipeline_reader, &filters));
     RETURN_NOT_OK((*attribute)->set_filter_pipeline(filters.get()));
   }
@@ -290,10 +290,10 @@ Status dimension_to_capnp(
 
 Status dimension_from_capnp(
     const capnp::Dimension::Reader& dimension_reader,
-    std::unique_ptr<Dimension>* dimension) {
+    tdb_unique_ptr<Dimension>* dimension) {
   Datatype dim_type = Datatype::ANY;
   RETURN_NOT_OK(datatype_enum(dimension_reader.getType().cStr(), &dim_type));
-  dimension->reset(new Dimension(dimension_reader.getName(), dim_type));
+  dimension->reset(tdb_new(Dimension, dimension_reader.getName(), dim_type));
 
   if (dimension_reader.hasDomain()) {
     auto domain_reader = dimension_reader.getDomain();
@@ -305,7 +305,7 @@ Status dimension_from_capnp(
 
   if (dimension_reader.hasFilterPipeline()) {
     auto reader = dimension_reader.getFilterPipeline();
-    std::unique_ptr<FilterPipeline> filters;
+    tdb_unique_ptr<FilterPipeline> filters;
     RETURN_NOT_OK(filter_pipeline_from_capnp(reader, &filters));
     RETURN_NOT_OK((*dimension)->set_filter_pipeline(filters.get()));
   }
@@ -407,14 +407,14 @@ Status domain_to_capnp(
 
 Status domain_from_capnp(
     const capnp::Domain::Reader& domain_reader,
-    std::unique_ptr<Domain>* domain) {
+    tdb_unique_ptr<Domain>* domain) {
   Datatype datatype = Datatype::ANY;
   RETURN_NOT_OK(datatype_enum(domain_reader.getType(), &datatype));
-  domain->reset(new Domain());
+  domain->reset(tdb_new(Domain));
 
   auto dimensions = domain_reader.getDimensions();
   for (auto dimension : dimensions) {
-    std::unique_ptr<Dimension> dim;
+    tdb_unique_ptr<Dimension> dim;
     RETURN_NOT_OK(dimension_from_capnp(dimension, &dim));
     RETURN_NOT_OK((*domain)->add_dimension(dim.get()));
   }
@@ -484,10 +484,10 @@ Status array_schema_to_capnp(
 
 Status array_schema_from_capnp(
     const capnp::ArraySchema::Reader& schema_reader,
-    std::unique_ptr<ArraySchema>* array_schema) {
+    tdb_unique_ptr<ArraySchema>* array_schema) {
   ArrayType array_type = ArrayType::DENSE;
   RETURN_NOT_OK(array_type_enum(schema_reader.getArrayType(), &array_type));
-  array_schema->reset(new ArraySchema(array_type));
+  array_schema->reset(tdb_new(ArraySchema, array_type));
 
   Layout layout = Layout::ROW_MAJOR;
   RETURN_NOT_OK(layout_enum(schema_reader.getTileOrder().cStr(), &layout));
@@ -508,14 +508,14 @@ Status array_schema_from_capnp(
   }
 
   auto domain_reader = schema_reader.getDomain();
-  std::unique_ptr<Domain> domain;
+  tdb_unique_ptr<Domain> domain;
   RETURN_NOT_OK(domain_from_capnp(domain_reader, &domain));
   RETURN_NOT_OK((*array_schema)->set_domain(domain.get()));
 
   // Set coords filter pipelines
   if (schema_reader.hasCoordsFilterPipeline()) {
     auto reader = schema_reader.getCoordsFilterPipeline();
-    std::unique_ptr<FilterPipeline> filters;
+    tdb_unique_ptr<FilterPipeline> filters;
     RETURN_NOT_OK(filter_pipeline_from_capnp(reader, &filters));
     RETURN_NOT_OK((*array_schema)->set_coords_filter_pipeline(filters.get()));
   }
@@ -523,7 +523,7 @@ Status array_schema_from_capnp(
   // Set offsets filter pipelines
   if (schema_reader.hasOffsetFilterPipeline()) {
     auto reader = schema_reader.getOffsetFilterPipeline();
-    std::unique_ptr<FilterPipeline> filters;
+    tdb_unique_ptr<FilterPipeline> filters;
     RETURN_NOT_OK(filter_pipeline_from_capnp(reader, &filters));
     RETURN_NOT_OK(
         (*array_schema)->set_cell_var_offsets_filter_pipeline(filters.get()));
@@ -532,7 +532,7 @@ Status array_schema_from_capnp(
   // Set validity filter pipelines
   if (schema_reader.hasValidityFilterPipeline()) {
     auto reader = schema_reader.getValidityFilterPipeline();
-    std::unique_ptr<FilterPipeline> filters;
+    tdb_unique_ptr<FilterPipeline> filters;
     RETURN_NOT_OK(filter_pipeline_from_capnp(reader, &filters));
     RETURN_NOT_OK(
         (*array_schema)->set_cell_validity_filter_pipeline(filters.get()));
@@ -541,7 +541,7 @@ Status array_schema_from_capnp(
   // Set attributes
   auto attributes_reader = schema_reader.getAttributes();
   for (auto attr_reader : attributes_reader) {
-    std::unique_ptr<Attribute> attribute;
+    tdb_unique_ptr<Attribute> attribute;
     RETURN_NOT_OK(attribute_from_capnp(attr_reader, &attribute));
     RETURN_NOT_OK((*array_schema)->add_attribute(attribute.get(), false));
   }
@@ -611,7 +611,7 @@ Status array_schema_deserialize(
     SerializationType serialize_type,
     const Buffer& serialized_buffer) {
   try {
-    std::unique_ptr<ArraySchema> decoded_array_schema = nullptr;
+    tdb_unique_ptr<ArraySchema> decoded_array_schema = nullptr;
 
     switch (serialize_type) {
       case SerializationType::JSON: {

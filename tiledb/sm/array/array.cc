@@ -270,7 +270,7 @@ Status Array::close() {
     }
 
     // Storage manager does not own the array schema for remote arrays.
-    delete array_schema_;
+    tdb_delete(array_schema_);
     array_schema_ = nullptr;
   } else {
     array_schema_ = nullptr;
@@ -516,18 +516,18 @@ Status Array::delete_metadata(const char* key) {
   // Check if array is open
   if (!is_open_)
     return LOG_STATUS(
-        Status::ArrayError("Cannot delete metadata; Array is not open"));
+        Status::ArrayError("Cannot delete metadata. Array is not open"));
 
   // Check mode
   if (query_type_ != QueryType::WRITE)
     return LOG_STATUS(
-        Status::ArrayError("Cannot delete metadata; Array was "
+        Status::ArrayError("Cannot delete metadata. Array was "
                            "not opened in write mode"));
 
   // Check if key is null
   if (key == nullptr)
     return LOG_STATUS(
-        Status::ArrayError("Cannot delete metadata; Key cannot be null"));
+        Status::ArrayError("Cannot delete metadata. Key cannot be null"));
 
   RETURN_NOT_OK(metadata_.del(key));
 
