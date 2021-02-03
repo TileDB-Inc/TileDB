@@ -88,26 +88,20 @@ struct test_query_buffer_t {
       const string& name,
       void* const buffer,
       uint64_t* const buffer_size,
-      void* const buffer_var,
-      uint64_t* const buffer_var_size)  //,
-      // uint8_t* const buffer_validity,
-      // uint64_t* const buffer_validity_size)
+      void* const buffer_offset,
+      uint64_t* const buffer_offset_size)
       : name_(name)
       , buffer_(buffer)
       , buffer_size_(buffer_size)
-      , buffer_var_(buffer_var)
-      , buffer_var_size_(buffer_var_size) {
-    //, buffer_validity_(buffer_validity)
-    //, buffer_validity_size_(buffer_validity_size) {
+      , buffer_offset_(buffer_offset)
+      , buffer_offset_size_(buffer_offset_size) {
   }
 
   string name_;
   void* buffer_;
   uint64_t* buffer_size_;
-  void* buffer_var_;
-  uint64_t* buffer_var_size_;
-  // uint8_t* buffer_validity_;
-  // uint64_t* buffer_validity_size_;
+  void* buffer_offset_;
+  uint64_t* buffer_offset_size_;
 };
 
 class SmokeTestFx {
@@ -386,7 +380,7 @@ void SmokeTestFx::write(
 
   // Set the query buffers.
   for (const auto& test_query_buffer : test_query_buffers) {
-    if (test_query_buffer.buffer_var_ == nullptr) {
+    if (test_query_buffer.buffer_offset_ == nullptr) {
       rc = tiledb_query_set_buffer(
           ctx_,
           query,
@@ -401,8 +395,8 @@ void SmokeTestFx::write(
           test_query_buffer.name_.c_str(),
           static_cast<uint64_t*>(test_query_buffer.buffer_),
           test_query_buffer.buffer_size_,
-          test_query_buffer.buffer_var_,
-          test_query_buffer.buffer_var_size_);
+          test_query_buffer.buffer_offset_,
+          test_query_buffer.buffer_offset_size_);
       REQUIRE(rc == TILEDB_OK);
     }
   }
@@ -454,7 +448,7 @@ void SmokeTestFx::read(
   // Set the query buffers.
   for (size_t i = 0; i < test_query_buffers.size(); ++i) {
     const test_query_buffer_t& test_query_buffer = test_query_buffers[i];
-    if (test_query_buffer.buffer_var_ == nullptr) {
+    if (test_query_buffer.buffer_offset_ == nullptr) {
       rc = tiledb_query_set_buffer(
           ctx_,
           query,
@@ -469,8 +463,8 @@ void SmokeTestFx::read(
           test_query_buffer.name_.c_str(),
           static_cast<uint64_t*>(test_query_buffer.buffer_),
           test_query_buffer.buffer_size_,
-          test_query_buffer.buffer_var_,
-          test_query_buffer.buffer_var_size_);
+          test_query_buffer.buffer_offset_,
+          test_query_buffer.buffer_offset_size_);
       REQUIRE(rc == TILEDB_OK);
     }
   }
@@ -482,13 +476,6 @@ void SmokeTestFx::read(
   // Submit the query.
   rc = tiledb_query_submit(ctx_, query);
   REQUIRE(rc == TILEDB_OK);
-
-  // Get status of query
-  tiledb_query_status_t status;
-  tiledb_query_get_status(ctx_, query, &status);
-  if (status == TILEDB_INCOMPLETE) {
-    std::cerr << "status == TILEDB_INCOMPLETE" << std::endl;
-  }
 
   // Finalize the query, a no-op for non-global writes.
   rc = tiledb_query_finalize(ctx_, query);
@@ -537,65 +524,62 @@ void SmokeTestFx::smoke_test(
 
   // Define the write query buffers for "a".
   vector<test_query_buffer_t> write_query_buffers;
-  uint64_t buffer_len = 1;
+  uint64_t total_cells = 1;
   for (const auto& test_dim : test_dims) {
     const uint64_t max_range = ((uint64_t*)(test_dim.domain_))[1];
     const uint64_t min_range = ((uint64_t*)(test_dim.domain_))[0];
     const uint64_t full_range = max_range - min_range + 1;
-    buffer_len *= full_range;
+    total_cells *= full_range;
   }
 
   uint64_t a_write_buffer_size;
-  uint64_t* a_write_buffer = nullptr;
+  int32_t* a_write_buffer = nullptr;
 
   if (test_attr.cell_val_num_ == TILEDB_VAR_NUM) {
-    a_write_buffer_size = buffer_len * sizeof(uint64_t);
-    a_write_buffer = (uint64_t*)malloc(a_write_buffer_size);
-    for (uint64_t i = 0; i < a_write_buffer_size; i++) {
-      a_write_buffer[i] = i * sizeof(int) * 2;
+    a_write_buffer_size =
+        total_cells * 2 * tiledb_datatype_size(test_attr.type_);
+    a_write_buffer = (int32_t*)malloc(a_write_buffer_size);
+    for (uint64_t i = 0; i < (total_cells * 2); i++) {
+      a_write_buffer[i] = i;
     }
   } else {
-    a_write_buffer_size = buffer_len * tiledb_datatype_size(test_attr.type_);
-    a_write_buffer = (uint64_t*)malloc(a_write_buffer_size);
-    for (uint64_t i = 0; i < buffer_len; i++) {
+    a_write_buffer_size = total_cells * tiledb_datatype_size(test_attr.type_);
+    a_write_buffer = (int32_t*)malloc(a_write_buffer_size);
+    for (uint64_t i = 0; i < total_cells; i++) {
       a_write_buffer[i] = i;
     }
   }
 
-  uint64_t a_write_buffer_var_size =
-      2 * buffer_len * tiledb_datatype_size(test_attr.type_);
-  uint64_t a_write_buffer_var_len = (uint64_t)(
-      a_write_buffer_var_size / tiledb_datatype_size(test_attr.type_));
-  uint64_t* a_write_buffer_var = (uint64_t*)malloc(a_write_buffer_var_size);
-  for (uint64_t i = 0; i < a_write_buffer_var_len; i++) {
-    a_write_buffer_var[i] = i;
+  uint64_t a_write_buffer_offset_size = total_cells * sizeof(uint64_t);
+  uint64_t* a_write_buffer_offset =
+      (uint64_t*)malloc(a_write_buffer_offset_size);
+  for (uint64_t i = 0; i < total_cells; i++) {
+    a_write_buffer_offset[i] =
+        i * sizeof(tiledb_datatype_size(test_attr.type_)) * 2;
   }
 
   // Variable buffer is set only when the attribute is var-sized.
   if (test_attr.cell_val_num_ == TILEDB_VAR_NUM) {
     write_query_buffers.emplace_back(
         test_attr.name_,
+        a_write_buffer_offset,
+        &a_write_buffer_offset_size,
         a_write_buffer,
-        &a_write_buffer_size,
-        a_write_buffer_var,
-        &a_write_buffer_var_size);  //,
-                                    // nullptr,
-    // nullptr);
+        &a_write_buffer_size);
   } else {
     write_query_buffers.emplace_back(
         test_attr.name_,
         a_write_buffer,
         &a_write_buffer_size,
         nullptr,
-        nullptr);  //,
-                   // nullptr,
-    // nullptr);
+        nullptr);
   }
 
   // Define dimension query write vectors for either sparse arrays
   // or dense arrays with an unordered write order.
-  vector<uint64_t*> d_write_buffers;
+  // vector<uint64_t*> d_write_buffers;
   uint64_t write_buffer_size = 0;
+  // uint64_t* write_buffer = nullptr;
   if (array_type == TILEDB_SPARSE || write_order == TILEDB_UNORDERED) {
     // Calculate the write buffer lengths using the ranges of the dimensions.
     vector<uint64_t> dimension_ranges;
@@ -616,7 +600,7 @@ void SmokeTestFx::smoke_test(
     // Create the dimension write buffers.
     // NOTE: if there is more than 1 dimension, the buffer shall be the previous
     // buffer multiplied by the current range
-    // vector<uint64_t*> d_write_buffers;
+    vector<uint64_t*> d_write_buffers;
     for (const uint64_t range : dimension_ranges) {
       uint64_t* write_buffer;
       if (range == *dimension_ranges.begin()) {
@@ -643,14 +627,17 @@ void SmokeTestFx::smoke_test(
           d_write_buffer,
           &(write_buffer_size),
           nullptr,
-          nullptr);  //,
-                     // nullptr,
-      // nullptr);
-
+          nullptr);
       dims_iter = std::next(dims_iter, 1);
     }
-  }
 
+    // Execute the write query.
+    write(array_name, write_query_buffers, write_order, encryption_type);
+
+    // Free the dimension write buffers vector
+    // d_write_buffers.clear();
+    // d_write_buffers.shrink_to_fit();
+  }
   // Execute the write query.
   write(array_name, write_query_buffers, write_order, encryption_type);
 
@@ -658,50 +645,40 @@ void SmokeTestFx::smoke_test(
   vector<test_query_buffer_t> read_query_buffers;
 
   uint64_t a_read_buffer_size;
-  uint64_t* a_read_buffer = nullptr;
+  int32_t* a_read_buffer = nullptr;
 
   if (test_attr.cell_val_num_ == TILEDB_VAR_NUM) {
-    a_read_buffer_size = buffer_len * sizeof(uint64_t);
-    a_read_buffer = (uint64_t*)malloc(a_read_buffer_size);
-    for (uint64_t i = 0; i < a_read_buffer_size; i++) {
+    a_read_buffer_size =
+        total_cells * 2 * tiledb_datatype_size(test_attr.type_);
+    a_read_buffer = (int32_t*)malloc(a_read_buffer_size);
+    for (uint64_t i = 0; i < total_cells * 2; i++) {
       a_read_buffer[i] = 0;
     }
   } else {
-    a_read_buffer_size = buffer_len * tiledb_datatype_size(test_attr.type_);
-    a_read_buffer = (uint64_t*)malloc(a_read_buffer_size);
-    for (uint64_t i = 0; i < buffer_len; i++) {
+    a_read_buffer_size = total_cells * tiledb_datatype_size(test_attr.type_);
+    a_read_buffer = (int32_t*)malloc(a_read_buffer_size);
+    for (uint64_t i = 0; i < total_cells; i++) {
       a_read_buffer[i] = 0;
     }
   }
 
-  uint64_t a_read_buffer_var_size =
-      2 * buffer_len * tiledb_datatype_size(test_attr.type_);
-  uint64_t a_read_buffer_var_len = (uint64_t)(
-      a_read_buffer_var_size / tiledb_datatype_size(test_attr.type_));
-  uint64_t* a_read_buffer_var = (uint64_t*)malloc(a_read_buffer_var_size);
-  for (uint64_t i = 0; i < a_read_buffer_var_len; i++) {
-    a_read_buffer_var[i] = i;
+  uint64_t a_read_buffer_offset_size = total_cells * sizeof(uint64_t);
+  uint64_t* a_read_buffer_offset = (uint64_t*)malloc(a_read_buffer_offset_size);
+  for (uint64_t i = 0; i < total_cells; i++) {
+    a_read_buffer_offset[i] = 0;
   }
 
   // Variable buffer is set only when the attribute is var-sized.
   if (test_attr.cell_val_num_ == TILEDB_VAR_NUM) {
     read_query_buffers.emplace_back(
         test_attr.name_,
+        a_read_buffer_offset,
+        &a_read_buffer_offset_size,
         a_read_buffer,
-        &a_read_buffer_size,
-        a_read_buffer_var,
-        &a_read_buffer_var_size);  //,
-                                   // nullptr,
-    // nullptr);
+        &a_read_buffer_size);
   } else {
     read_query_buffers.emplace_back(
-        test_attr.name_,
-        a_read_buffer,
-        &a_read_buffer_size,
-        nullptr,
-        nullptr);  //,
-                   // nullptr,
-    // nullptr);
+        test_attr.name_, a_read_buffer, &a_read_buffer_size, nullptr, nullptr);
   }
 
   uint64_t subarray_len = 2 * test_dims.size();
@@ -716,32 +693,9 @@ void SmokeTestFx::smoke_test(
 
   read(array_name, read_query_buffers, subarray_full, encryption_type);
 
-  // Each value in `a_read_buffer` corresponds to its index in
+  // Ensure that each value in `a_read_buffer` corresponds to its index in
   // the original `a_write_buffer`.
-  uint64_t expected_a_read_buffer_size =
-      buffer_len * tiledb_datatype_size(test_attr.type_);
-  uint64_t* expected_a_read_buffer =
-      (uint64_t*)malloc(expected_a_read_buffer_size);
-
-  REQUIRE(a_read_buffer_size == a_write_buffer_size);
-  if (test_attr.cell_val_num_ == TILEDB_VAR_NUM) {
-    expected_a_read_buffer = (uint64_t*)realloc(
-        expected_a_read_buffer, 2 * expected_a_read_buffer_size);
-    REQUIRE(a_read_buffer_var_size == a_write_buffer_var_size);
-    for (uint64_t i = 0; i < (2 * buffer_len); ++i) {
-      const uint64_t idx = a_read_buffer_var[i];
-      expected_a_read_buffer[i] = a_write_buffer[idx];
-    }
-    REQUIRE(!memcmp(a_read_buffer, expected_a_read_buffer, a_read_buffer_size));
-  } else {
-    for (uint64_t i = 0; i < expected_a_read_buffer_size; i++) {
-      expected_a_read_buffer[i] = a_write_buffer[i];
-    }
-    REQUIRE(!memcmp(a_read_buffer, expected_a_read_buffer, a_read_buffer_size));
-  }
-
-  // Free the expected buffer
-  free(expected_a_read_buffer);
+  REQUIRE(!memcmp(a_read_buffer, a_write_buffer, a_read_buffer_size));
 
   // Free the write buffers vector
   write_query_buffers.clear();
