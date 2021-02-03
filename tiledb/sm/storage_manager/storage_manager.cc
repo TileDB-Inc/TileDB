@@ -1402,6 +1402,14 @@ Status StorageManager::init(const Config* config) {
 
   // Get config params
   bool found = false;
+  bool verbose = false;
+  RETURN_NOT_OK(config_.get<bool>("config.logging.verbose", &verbose, &found));
+  assert(found);
+
+  // set logging level
+  Logger::Level level = verbose ? Logger::Level::VERBOSE : Logger::Level::ERR;
+  global_logger().set_level(level);
+
   uint64_t tile_cache_size = 0;
   RETURN_NOT_OK(
       config_.get<uint64_t>("sm.tile_cache_size", &tile_cache_size, &found));

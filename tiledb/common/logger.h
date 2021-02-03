@@ -45,12 +45,6 @@ namespace common {
 
 /** Definition of class Logger. */
 class Logger {
-  /** Verbosity level. */
-  enum class Level : char {
-    VERBOSE,
-    ERR,
-  };
-
  public:
   /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */
@@ -107,8 +101,15 @@ class Logger {
    */
   template <typename Arg1, typename... Args>
   void error(const char* fmt, const Arg1& arg1, const Args&... args) {
-    logger_->error(fmt, arg1, args...);
+    if (logger_->level() == spdlog::level::err)
+      logger_->error(fmt, arg1, args...);
   }
+
+  /** Verbosity level. */
+  enum class Level : char {
+    VERBOSE,
+    ERR,
+  };
 
   /**
    * Set the logger level.
@@ -119,10 +120,10 @@ class Logger {
   void set_level(Logger::Level lvl) {
     switch (lvl) {
       case Logger::Level::VERBOSE:
-        logger_->set_level(spdlog::level::debug);
+        logger_->set_level(spdlog::level::err);
         break;
       case Logger::Level::ERR:
-        logger_->set_level(spdlog::level::err);
+        logger_->set_level(spdlog::level::critical);
         break;
     }
   }
@@ -138,9 +139,9 @@ class Logger {
   bool should_log(Logger::Level lvl) {
     switch (lvl) {
       case Logger::Level::VERBOSE:
-        return logger_->should_log(spdlog::level::debug);
-      case Logger::Level::ERR:
         return logger_->should_log(spdlog::level::err);
+      case Logger::Level::ERR:
+        return logger_->should_log(spdlog::level::critical);
     }
   }
 
@@ -160,7 +161,6 @@ class Logger {
 /** Global logger function. */
 Logger& global_logger();
 
-#ifdef TILEDB_VERBOSE
 /** Logs an error. */
 inline void LOG_ERROR(const std::string& msg) {
   global_logger().error(msg.c_str());
@@ -171,18 +171,6 @@ inline Status LOG_STATUS(const Status& st) {
   global_logger().error(st.to_string().c_str());
   return st;
 }
-#else
-/** Logs an error. */
-inline void LOG_ERROR(const std::string& msg) {
-  (void)msg;
-  return;
-}
-
-/** Logs a status. */
-inline Status LOG_STATUS(const Status& st) {
-  return st;
-}
-#endif
 
 /** Logs an error and exits with a non-zero status. */
 inline void LOG_FATAL(const std::string& msg) {
