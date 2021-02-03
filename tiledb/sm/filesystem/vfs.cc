@@ -86,9 +86,7 @@ VFS::VFS()
 #ifdef HAVE_S3
   supported_fs_.insert(Filesystem::S3);
 #endif
-#ifdef HAVE_MEMFS
   supported_fs_.insert(Filesystem::MEMFS);
-#endif
 }
 
 /* ********************************* */

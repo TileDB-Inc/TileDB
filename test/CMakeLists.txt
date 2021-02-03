@@ -280,10 +280,6 @@ if (TILEDB_GCS)
   target_compile_definitions(tiledb_unit PRIVATE -DHAVE_GCS)
 endif()
 
-if (TILEDB_MEMFS)
-  target_compile_definitions(tiledb_unit PRIVATE -DHAVE_MEMFS)
-endif()
-
 if (TILEDB_TBB)
   target_compile_definitions(tiledb_unit PRIVATE -DHAVE_TBB -DTBB_SUPPRESS_DEPRECATED_MESSAGES)
 endif()

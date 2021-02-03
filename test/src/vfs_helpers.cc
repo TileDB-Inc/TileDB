@@ -42,7 +42,6 @@ std::vector<std::unique_ptr<SupportedFs>> vfs_test_get_fs_vec() {
   bool supports_s3 = false;
   bool supports_hdfs = false;
   bool supports_azure = false;
-  bool supports_memfs = false;
   bool supports_gcs = false;
   get_supported_fs(
       &supports_s3, &supports_hdfs, &supports_azure, &supports_gcs);
@@ -69,11 +68,8 @@ std::vector<std::unique_ptr<SupportedFs>> vfs_test_get_fs_vec() {
   SupportedFsLocal* local_fs = new SupportedFsLocal();
   fs_vec.emplace_back(local_fs);
 
-  get_supported_memfs(&supports_memfs);
-  if (supports_memfs) {
-    SupportedFsMem* mem_fs = new SupportedFsMem();
-    fs_vec.emplace_back(mem_fs);
-  }
+  SupportedFsMem* mem_fs = new SupportedFsMem();
+  fs_vec.emplace_back(mem_fs);
 
   return fs_vec;
 }

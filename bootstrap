@@ -55,7 +55,6 @@ Configuration:
     --enable-s3                     enables the s3 storage backend
     --enable-azure                  enables the azure storage backend
     --enable-gcs                    enables the gcs storage backend
-    --enable-memfs                  enables the in-memory backend
     --enable-serialization          enables query serialization support
     --enable-tools                  enables TileDB CLI tools (experimental)
     --enable-ccache                 enables use of ccache (if present)
@@ -88,7 +87,6 @@ tiledb_hdfs="OFF"
 tiledb_s3="OFF"
 tiledb_azure="OFF"
 tiledb_gcs="OFF"
-tiledb_memfs="OFF"
 tiledb_werror="ON"
 tiledb_tests="ON"
 tiledb_cpp_api="ON"
@@ -126,7 +124,6 @@ while test $# != 0; do
     --enable-s3) tiledb_s3="ON";;
     --enable-azure) tiledb_azure="ON";;
     --enable-gcs) tiledb_gcs="ON";;
-    --enable-memfs) tiledb_memfs="ON";;
     --enable-serialization) tiledb_serialization="ON";;
     --enable-tools) tiledb_tools="ON";;
     --enable-ccache) tiledb_ccache="ON";;
@@ -150,7 +147,6 @@ for en in "${enables[@]}"; do
     s3) tiledb_s3="ON";;
     azure) tiledb_azure="ON";;
     gcs) tiledb_gcs="ON";;
-    memfs) tiledb_memfs="ON";;
     serialization) tiledb_serialization="ON";;
     tools) tiledb_tools="ON";;
     ccache) tiledb_ccache="ON";;
@@ -201,7 +197,6 @@ ${cmake} -DCMAKE_BUILD_TYPE=${build_type} \
     -DTILEDB_S3=${tiledb_s3} \
     -DTILEDB_AZURE=${tiledb_azure} \
     -DTILEDB_GCS=${tiledb_gcs} \
-    -DTILEDB_MEMFS=${tiledb_memfs} \
     -DTILEDB_SERIALIZATION=${tiledb_serialization} \
     -DTILEDB_TOOLS=${tiledb_tools} \
     -DTILEDB_WERROR=${tiledb_werror} \

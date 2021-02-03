@@ -54,12 +54,10 @@ stages:
           macOS_gcs:
             imageName: 'macOS-10.14'
             TILEDB_GCS: ON
-            TILEDB_MEMFS: ON
             CXX: clang++
             ARTIFACT_OS: macOS_gcs
           linux_asan:
             imageName: 'ubuntu-16.04'
-            TILEDB_MEMFS: ON
             TILEDB_CI_ASAN: ON
             TILEDB_SERIALIZATION: ON
             CXX: g++-7

@@ -312,13 +312,6 @@ void get_supported_fs(
     bool* gcs_supported);
 
 /**
- * Helper function to check if in-memory filesystem is supported
- *
- * @param memfs_supported Set to `true` if MEMFS is supported.
- */
-void get_supported_memfs(bool* memfs_supported);
-
-/**
  * Opens an array.
  *
  * @param ctx The TileDB context.
