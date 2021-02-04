@@ -197,7 +197,7 @@ class tiledb_shared_ptr {
   }
 
   explicit operator bool() const noexcept {
-    return sp_;
+    return sp_ ? true : false;
   }
 
   long int use_count() const noexcept {
