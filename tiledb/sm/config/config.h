@@ -85,11 +85,11 @@ class Config {
   /** The prefix to use for checking for parameter environmental variables. */
   static const std::string CONFIG_ENVIRONMENT_VARIABLE_PREFIX;
 
-  /** The default logging verbosity. It can be:
-   * - `true` if bootstrap flag --enalbe-verbose is given
-   * - `false` if this bootstrap flag is missing
+  /** The default logging level. It can be:
+   * - `1` i.e. `error` if bootstrap flag --enalbe-verbose is given
+   * - `0` i.e. `fatal` if this bootstrap flag is missing
    */
-  static const std::string CONFIG_LOGGING_VERBOSE;
+  static const std::string CONFIG_LOGGING_LEVEL;
 
   /** If `true`, this will deduplicate coordinates upon sparse writes. */
   static const std::string SM_DEDUP_COORDS;

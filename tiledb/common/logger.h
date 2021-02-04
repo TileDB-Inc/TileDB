@@ -101,14 +101,17 @@ class Logger {
    */
   template <typename Arg1, typename... Args>
   void error(const char* fmt, const Arg1& arg1, const Args&... args) {
-    if (logger_->level() == spdlog::level::err)
-      logger_->error(fmt, arg1, args...);
+    logger_->error(fmt, arg1, args...);
   }
 
   /** Verbosity level. */
   enum class Level : char {
-    VERBOSE,
+    FATAL,
     ERR,
+    WARN,
+    INFO,
+    DBG,
+    TRACE,
   };
 
   /**
@@ -119,29 +122,24 @@ class Logger {
    */
   void set_level(Logger::Level lvl) {
     switch (lvl) {
-      case Logger::Level::VERBOSE:
-        logger_->set_level(spdlog::level::err);
-        break;
-      case Logger::Level::ERR:
+      case Logger::Level::FATAL:
         logger_->set_level(spdlog::level::critical);
         break;
-    }
-  }
-
-  /**
-   * Returns whether the logger should log a message given the currently set
-   * log level.
-   *
-   * @param lvl The Logger::Level to test
-   * @return bool true, if the logger will log the given Logger::Level, false
-   *     otherwise.
-   */
-  bool should_log(Logger::Level lvl) {
-    switch (lvl) {
-      case Logger::Level::VERBOSE:
-        return logger_->should_log(spdlog::level::err);
       case Logger::Level::ERR:
-        return logger_->should_log(spdlog::level::critical);
+        logger_->set_level(spdlog::level::err);
+        break;
+      case Logger::Level::WARN:
+        logger_->set_level(spdlog::level::warn);
+        break;
+      case Logger::Level::INFO:
+        logger_->set_level(spdlog::level::info);
+        break;
+      case Logger::Level::DBG:
+        logger_->set_level(spdlog::level::debug);
+        break;
+      case Logger::Level::TRACE:
+        logger_->set_level(spdlog::level::trace);
+        break;
     }
   }
 

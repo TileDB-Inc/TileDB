@@ -1188,10 +1188,11 @@ TILEDB_EXPORT void tiledb_config_free(tiledb_config_t** config);
  *    Prefix of environmental variables for reading configuration
  *    parameters. <br>
  *    **Default**: "TILEDB_"
- * - `config.logging.verbose` <br>
- *    Verbose logging level enabled. <br>
- *    **Default**: true if --enable-verbose bootstrap flag is provided, false
- * otherwise
+ * - `config.logging_level` <br>
+ *    The logging level configured, possible values: "0": fatal, "1": error,
+ *    "2": warn, "3": info "4": debug, "5": trace <br>
+ *    **Default**: "1" if --enable-verbose bootstrap flag is provided,
+ *    "0" otherwise
  *
  * <br>
  *
