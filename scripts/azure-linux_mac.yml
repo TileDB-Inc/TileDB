@@ -159,7 +159,7 @@ steps:
     if [[ "$AGENT_OS" == "Darwin" ]]; then
       # We want to be able to print a stack trace when a core dump occurs
       sudo chmod 1777 /cores
-      bootstrap_args="${bootstrap_args} --enable-release-symbols";
+      bootstrap_args="${bootstrap_args} --enable-debug";
     fi
 
     # displayName: 'Install dependencies'
