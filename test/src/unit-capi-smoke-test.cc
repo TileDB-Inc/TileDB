@@ -578,7 +578,6 @@ void SmokeTestFx::smoke_test(
   // or dense arrays with an unordered write order.
   vector<uint64_t*> d_write_buffers;
   uint64_t write_buffer_size = 0;
-  // uint64_t* write_buffer = nullptr;
   if (array_type == TILEDB_SPARSE || write_order == TILEDB_UNORDERED) {
     // Calculate the write buffer lengths using the ranges of the dimensions.
     vector<uint64_t> dimension_ranges;
@@ -710,31 +709,45 @@ TEST_CASE_METHOD(
     SmokeTestFx,
     "C API: Test a dynamic range of arrays",
     "[capi][smoke-test]") {
-  vector<test_dim_t> test_dims;
+  vector<test_attr_t> attrs;
+  attrs.emplace_back("a1", TILEDB_INT32, 1);
+  // attrs.emplace_back("a2", TILEDB_INT32, TILEDB_VAR_NUM);
+
+  vector<test_dim_t> dims;
   const uint64_t d1_domain[] = {1, 2};
   const uint64_t d1_tile_extent = 1;
-  test_dims.emplace_back("d1", TILEDB_UINT64, d1_domain, d1_tile_extent);
-  // const uint64_t d2_domain[] = {1, 2};
-  // const uint64_t d2_tile_extent = 1;
-  // test_dims.emplace_back("d2", TILEDB_UINT64, d2_domain, d2_tile_extent);
-  // const uint64_t d3_domain[] = {1, 2};
+  dims.emplace_back("d1", TILEDB_UINT64, d1_domain, d1_tile_extent);
+  const uint64_t d2_domain[] = {1, 2};
+  const uint64_t d2_tile_extent = 1;
+  dims.emplace_back("d2", TILEDB_UINT64, d2_domain, d2_tile_extent);
+  // const uint64_t d3_domain[] = {1, 3};
   // const uint64_t d3_tile_extent = 1;
-  // test_dims.emplace_back("d3", TILEDB_UINT64, d3_domain, d3_tile_extent);
-
-  const test_attr_t attr("a", TILEDB_INT32, 1);
+  // dims.emplace_back("d3", TILEDB_UINT64, d3_domain, d3_tile_extent);
 
   const tiledb_array_type_t array_type = TILEDB_DENSE;
-  const tiledb_layout_t cell_order = TILEDB_ROW_MAJOR;
+  const tiledb_layout_t cell_order = TILEDB_COL_MAJOR;
   const tiledb_layout_t tile_order = TILEDB_ROW_MAJOR;
   const tiledb_layout_t write_order = TILEDB_ROW_MAJOR;
-  tiledb_encryption_type_t encryption_type = TILEDB_NO_ENCRYPTION;
+  tiledb_encryption_type_t encryption_type = TILEDB_AES_256_GCM;
 
-  smoke_test(
-      attr,
-      test_dims,
-      array_type,
-      cell_order,
-      tile_order,
-      write_order,
-      encryption_type);
+  vector<test_dim_t> test_dims;
+  int count = 1;
+
+  for (test_attr_t const attr : attrs) {
+    for (test_dim_t const dim : dims) {
+      test_dims.emplace_back(dim);
+
+      smoke_test(
+          attr,
+          test_dims,
+          array_type,
+          cell_order,
+          tile_order,
+          write_order,
+          encryption_type);
+
+      std::cerr << "COUNT: " << count << std::endl;
+      count++;
+    }
+  }
 }
