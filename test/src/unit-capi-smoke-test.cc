@@ -365,7 +365,7 @@ void SmokeTestFx::write(
         TILEDB_WRITE,
         encryption_type,
         encryption_key,
-        sizeof(encryption_key));
+        (uint32_t)strlen(encryption_key));
     REQUIRE(rc == TILEDB_OK);
   }
 
@@ -436,7 +436,7 @@ void SmokeTestFx::read(
         TILEDB_READ,
         encryption_type,
         encryption_key,
-        sizeof(encryption_key));
+        (uint32_t)strlen(encryption_key));
     REQUIRE(rc == TILEDB_OK);
   }
 
@@ -554,8 +554,7 @@ void SmokeTestFx::smoke_test(
   uint64_t* a_write_buffer_offset =
       (uint64_t*)malloc(a_write_buffer_offset_size);
   for (uint64_t i = 0; i < total_cells; i++) {
-    a_write_buffer_offset[i] =
-        i * sizeof(tiledb_datatype_size(test_attr.type_)) * 2;
+    a_write_buffer_offset[i] = i * tiledb_datatype_size(test_attr.type_) * 2;
   }
 
   // Variable buffer is set only when the attribute is var-sized.
@@ -577,7 +576,7 @@ void SmokeTestFx::smoke_test(
 
   // Define dimension query write vectors for either sparse arrays
   // or dense arrays with an unordered write order.
-  // vector<uint64_t*> d_write_buffers;
+  vector<uint64_t*> d_write_buffers;
   uint64_t write_buffer_size = 0;
   // uint64_t* write_buffer = nullptr;
   if (array_type == TILEDB_SPARSE || write_order == TILEDB_UNORDERED) {
@@ -600,7 +599,6 @@ void SmokeTestFx::smoke_test(
     // Create the dimension write buffers.
     // NOTE: if there is more than 1 dimension, the buffer shall be the previous
     // buffer multiplied by the current range
-    vector<uint64_t*> d_write_buffers;
     for (const uint64_t range : dimension_ranges) {
       uint64_t* write_buffer;
       if (range == *dimension_ranges.begin()) {
@@ -614,11 +612,9 @@ void SmokeTestFx::smoke_test(
 
     // Fill the write buffers with values.
     auto dims_iter = test_dims.begin();
-    // uint64_t dim_buffer_len = 0;
     for (uint64_t* const d_write_buffer : d_write_buffers) {
       for (uint64_t i = 0; i < dimension_ranges[i]; i++) {
         d_write_buffer[i] = i;
-        // dim_buffer_len++;
       }
       write_buffer_size = dim_buffer_len * sizeof(uint64_t);
 
@@ -635,11 +631,12 @@ void SmokeTestFx::smoke_test(
     write(array_name, write_query_buffers, write_order, encryption_type);
 
     // Free the dimension write buffers vector
-    // d_write_buffers.clear();
-    // d_write_buffers.shrink_to_fit();
+    d_write_buffers.clear();
+    d_write_buffers.shrink_to_fit();
+  } else {
+    // Execute the write query.
+    write(array_name, write_query_buffers, write_order, encryption_type);
   }
-  // Execute the write query.
-  write(array_name, write_query_buffers, write_order, encryption_type);
 
   // Define the read query buffers for "a".
   vector<test_query_buffer_t> read_query_buffers;
@@ -700,6 +697,13 @@ void SmokeTestFx::smoke_test(
   // Free the write buffers vector
   write_query_buffers.clear();
   write_query_buffers.shrink_to_fit();
+
+  // Free the read buffers vector
+  read_query_buffers.clear();
+  read_query_buffers.shrink_to_fit();
+
+  // Free the subarray_full
+  free(subarray_full);
 }
 
 TEST_CASE_METHOD(
