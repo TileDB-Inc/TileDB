@@ -310,7 +310,7 @@ Status Buffer::ensure_alloced_size(const uint64_t nbytes) {
   while (new_alloc_size < nbytes)
     new_alloc_size *= 2;
 
-  return realloc(new_alloc_size);
+  return this->realloc(new_alloc_size);
 }
 
 /* ****************************** */
