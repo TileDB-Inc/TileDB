@@ -191,6 +191,7 @@ if (TILEDB_CPP_API)
     src/unit-cppapi-nullable.cc
     src/unit-cppapi-query.cc
     src/unit-cppapi-schema.cc
+    src/unit-cppapi-string-dims.cc
     src/unit-cppapi-subarray.cc
     src/unit-cppapi-type.cc
     src/unit-cppapi-updates.cc

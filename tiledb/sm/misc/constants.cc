@@ -472,6 +472,12 @@ const uint32_t format_version = 8;
 /** The maximum size of a tile chunk (unit of compression) in bytes. */
 const uint64_t max_tile_chunk_size = 64 * 1024;
 
+/**
+ * Maximum splitting depth on a string dimension. For a maximum depth
+ * of D, the maximum number of splits is 2^D.
+ */
+const uint64_t max_string_dim_split_depth = 7;
+
 /** Maximum number of attempts to wait for an S3 response. */
 const unsigned int s3_max_attempts = 100;
 
