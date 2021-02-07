@@ -20,6 +20,8 @@
 
 ### C++ API
 
+* Add new Config constructors for converting from STL map types [#2081](https://github.com/TileDB-Inc/TileDB/pull/2081)
+
 # TileDB v2.2.3 Release Notes
 
 ## New features
