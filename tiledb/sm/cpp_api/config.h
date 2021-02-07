@@ -38,8 +38,10 @@
 #include "tiledb.h"
 #include "utils.h"
 
+#include <map>
 #include <memory>
 #include <string>
+#include <unordered_map>
 
 namespace tiledb {
 
@@ -194,6 +196,31 @@ class Config {
     if (config) {
       config_ = std::shared_ptr<tiledb_config_t>(*config, Config::free);
       *config = nullptr;
+    }
+  }
+
+  /**
+   * Constructor that takes as input a STL map that stores the config parameters
+   *
+   * @param config
+   */
+  explicit Config(const std::map<std::string, std::string>& config) {
+    create_config();
+    for (const auto& kv : config) {
+      set(kv.first, kv.second);
+    }
+  }
+
+  /**
+   * Constructor that takes as input a STL unordered_map that stores the config
+   * parameters
+   *
+   * @param config
+   */
+  explicit Config(const std::unordered_map<std::string, std::string>& config) {
+    create_config();
+    for (const auto& kv : config) {
+      set(kv.first, kv.second);
     }
   }
 
