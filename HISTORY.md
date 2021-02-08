@@ -13,6 +13,7 @@
 ## Deprecations
 
 ## Bug fixes
+* Fix mutex locking bugs on Windows due to unlocking on different thread and missing task join [#2077](https://github.com/TileDB-Inc/TileDB/pull/2077)
 
 ## API additions
 
