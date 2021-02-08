@@ -726,7 +726,7 @@ TEST_CASE_METHOD(
 
   const tiledb_layout_t write_order = TILEDB_ROW_MAJOR;
 
-  for (test_attr_t const attr : attrs) {
+  for (const test_attr_t& attr : attrs) {
     for (const tiledb_array_type_t array_type : {TILEDB_DENSE, TILEDB_SPARSE}) {
       for (const tiledb_layout_t cell_order :
            {TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR}) {
@@ -735,7 +735,7 @@ TEST_CASE_METHOD(
           for (const tiledb_encryption_type_t encryption_type :
                {TILEDB_NO_ENCRYPTION, TILEDB_AES_256_GCM}) {
             vector<test_dim_t> test_dims;
-            for (test_dim_t const dim : dims) {
+            for (const test_dim_t& dim : dims) {
               test_dims.emplace_back(dim);
 
               smoke_test(
