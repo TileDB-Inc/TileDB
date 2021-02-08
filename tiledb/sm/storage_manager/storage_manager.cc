@@ -204,41 +204,62 @@ Status StorageManager::array_open_for_reads(
     std::vector<FragmentMetadata*>* fragment_metadata) {
   STATS_START_TIMER(stats::Stats::TimerType::READ_ARRAY_OPEN)
 
-  // Open array without fragments async. This loads the array schema which
-  // is not needed in this function, so it can safely be loaded in parallel
-  // to listing of the fragment metadata and loading the consolidated fragment
-  // metadata file
-  auto open_array = (OpenArray*)nullptr;
-  std::vector<ThreadPool::Task> load_array_schema_task;
-  load_array_schema_task.emplace_back(io_tp_->execute([&, this]() {
-    RETURN_NOT_OK_ELSE(
-        array_open_without_fragments(array_uri, enc_key, &open_array),
-        *array_schema = nullptr);
-    return Status::Ok();
-  }));
-
-  // Determine which fragments to load
+  /* NOTE: these variables may be modified on a different thread
+           in the load_array_fragments_task below.
+  */
   std::vector<TimestampedURI> fragments_to_load;
   std::vector<URI> fragment_uris;
   URI meta_uri;
-  RETURN_NOT_OK(get_fragment_uris(array_uri, &fragment_uris, &meta_uri));
-  RETURN_NOT_OK(get_sorted_uris(fragment_uris, timestamp, &fragments_to_load));
-
-  // Get the consolidated fragment metadata
   Buffer f_buff;
   std::unordered_map<std::string, uint64_t> offsets;
   uint32_t meta_version = 0;
-  RETURN_NOT_OK(load_consolidated_fragment_meta(
-      meta_uri, enc_key, &f_buff, &offsets, &meta_version));
 
-  // Wait for array schema to be loaded
-  RETURN_NOT_OK(io_tp_->wait_all(load_array_schema_task));
+  // Fetch array fragments async
+  std::vector<ThreadPool::Task> load_array_fragments_task;
+  load_array_fragments_task.emplace_back(io_tp_->execute([array_uri,
+                                                          &enc_key,
+                                                          &f_buff,
+                                                          &fragments_to_load,
+                                                          &fragment_uris,
+                                                          &meta_uri,
+                                                          &meta_version,
+                                                          &offsets,
+                                                          &timestamp,
+                                                          this]() {
+    // Determine which fragments to load
+    RETURN_NOT_OK(get_fragment_uris(array_uri, &fragment_uris, &meta_uri));
+    RETURN_NOT_OK(
+        get_sorted_uris(fragment_uris, timestamp, &fragments_to_load));
+    // Get the consolidated fragment metadata
+    RETURN_NOT_OK(load_consolidated_fragment_meta(
+        meta_uri, enc_key, &f_buff, &offsets, &meta_version));
+    return Status::Ok();
+  }));
+
+  auto open_array = (OpenArray*)nullptr;
+  Status st = array_open_without_fragments(array_uri, enc_key, &open_array);
+
+  if (!st.ok()) {
+    io_tp_->wait_all(load_array_fragments_task);
+    *array_schema = nullptr;
+    return st;
+  }
+
+  // Wait for array fragments to be loaded
+  st = io_tp_->wait_all(load_array_fragments_task);
+
+  if (!st.ok()) {
+    open_array->mtx_unlock();
+    array_close_for_reads(array_uri);
+    *array_schema = nullptr;
+    return st;
+  }
 
   // Retrieve array schema
   *array_schema = open_array->array_schema();
 
   // Get fragment metadata in the case of reads, if not fetched already
-  Status st = load_fragment_metadata(
+  st = load_fragment_metadata(
       open_array,
       enc_key,
       fragments_to_load,
@@ -246,6 +267,7 @@ Status StorageManager::array_open_for_reads(
       offsets,
       meta_version,
       fragment_metadata);
+
   if (!st.ok()) {
     open_array->mtx_unlock();
     array_close_for_reads(array_uri);
@@ -270,46 +292,61 @@ Status StorageManager::array_open_for_reads(
     std::vector<FragmentMetadata*>* fragment_metadata) {
   STATS_START_TIMER(stats::Stats::TimerType::READ_ARRAY_OPEN)
 
-  // Open array without fragments async. This loads the array schema which
-  // is not needed in this function, so it can safely be loaded in parallel
-  // to listing of the fragment metadata and loading the consolidated fragment
-  // metadata file
-  auto open_array = (OpenArray*)nullptr;
-  std::vector<ThreadPool::Task> load_array_schema_task;
-  load_array_schema_task.emplace_back(io_tp_->execute([&, this]() {
-    RETURN_NOT_OK_ELSE(
-        array_open_without_fragments(array_uri, enc_key, &open_array),
-        *array_schema = nullptr);
-    return Status::Ok();
-  }));
-
   // Determine which fragments to load
   std::vector<TimestampedURI> fragments_to_load;
   const auto& fragments = fragment_info.fragments();
   for (const auto& fragment : fragments)
     fragments_to_load.emplace_back(fragment.uri(), fragment.timestamp_range());
 
-  // Get the consolidated fragment metadata URI
+  /* NOTE: these variables may be modified on a different thread
+           in the load_array_fragments_task below.
+  */
   URI meta_uri;
   std::vector<URI> uris;
-  RETURN_NOT_OK(vfs_->ls(array_uri.add_trailing_slash(), &uris));
-  RETURN_NOT_OK(get_consolidated_fragment_meta_uri(uris, &meta_uri));
-
-  // Get the consolidated fragment metadata
   Buffer f_buff;
   std::unordered_map<std::string, uint64_t> offsets;
   uint32_t meta_version = 0;
-  RETURN_NOT_OK(load_consolidated_fragment_meta(
-      meta_uri, enc_key, &f_buff, &offsets, &meta_version));
+
+  std::vector<ThreadPool::Task> load_array_fragments_task;
+  load_array_fragments_task.emplace_back(io_tp_->execute([array_uri,
+                                                          &enc_key,
+                                                          &f_buff,
+                                                          &meta_uri,
+                                                          &meta_version,
+                                                          &offsets,
+                                                          &uris,
+                                                          this]() {
+    RETURN_NOT_OK(this->vfs_->ls(array_uri.add_trailing_slash(), &uris));
+    // Get the consolidated fragment metadata URI
+    RETURN_NOT_OK(get_consolidated_fragment_meta_uri(uris, &meta_uri));
+    // Get the consolidated fragment metadata
+    RETURN_NOT_OK(load_consolidated_fragment_meta(
+        meta_uri, enc_key, &f_buff, &offsets, &meta_version));
+    return Status::Ok();
+  }));
+
+  auto open_array = (OpenArray*)nullptr;
+  Status st = array_open_without_fragments(array_uri, enc_key, &open_array);
+  if (!st.ok()) {
+    io_tp_->wait_all(load_array_fragments_task);
+    *array_schema = nullptr;
+    return st;
+  }
 
   // Wait for array schema to be loaded
-  RETURN_NOT_OK(io_tp_->wait_all(load_array_schema_task));
+  st = io_tp_->wait_all(load_array_fragments_task);
+  if (!st.ok()) {
+    open_array->mtx_unlock();
+    array_close_for_reads(array_uri);
+    *array_schema = nullptr;
+    return st;
+  }
 
-  // Retrieve array schema
+  // Assign array schema
   *array_schema = open_array->array_schema();
 
   // Get fragment metadata in the case of reads, if not fetched already
-  Status st = load_fragment_metadata(
+  st = load_fragment_metadata(
       open_array,
       enc_key,
       fragments_to_load,
@@ -317,6 +354,7 @@ Status StorageManager::array_open_for_reads(
       offsets,
       meta_version,
       fragment_metadata);
+
   if (!st.ok()) {
     open_array->mtx_unlock();
     array_close_for_reads(array_uri);
