@@ -198,7 +198,7 @@ steps:
     else
       # run directly the executable, cmake catches the segfault and blocks
       # the core dump
-      ./tiledb/test/tiledb_unit
+      ./tiledb/test/tiledb_unit -d yes
     fi
 
     # Kill the running Minio server, OSX only because Linux runs it within
