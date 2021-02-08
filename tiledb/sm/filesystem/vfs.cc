@@ -1390,7 +1390,7 @@ Status VFS::read(
     const uint64_t offset,
     void* const buffer,
     const uint64_t nbytes,
-    const bool use_read_ahead) {
+    bool use_read_ahead) {
   STATS_ADD_COUNTER(stats::Stats::CounterType::READ_BYTE_NUM, nbytes);
 
   if (!init_)
@@ -1414,6 +1414,8 @@ Status VFS::read(
   if (num_ops == 1) {
     return read_impl(uri, offset, buffer, nbytes, use_read_ahead);
   } else {
+    // we don't want read-ahead when performing random access reads
+    use_read_ahead = false;
     std::vector<ThreadPool::Task> results;
     uint64_t thread_read_nbytes = utils::math::ceil(nbytes, num_ops);
 
