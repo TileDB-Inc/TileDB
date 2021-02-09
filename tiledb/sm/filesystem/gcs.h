@@ -37,6 +37,7 @@
 
 #include <google/cloud/storage/client.h>
 
+#include "tiledb/common/rwlock.h"
 #include "tiledb/common/status.h"
 #include "tiledb/common/thread_pool.h"
 #include "tiledb/sm/buffer/buffer.h"
@@ -299,6 +300,29 @@ class GCS {
         , st_(Status::Ok()) {
     }
 
+    MultiPartUploadState(MultiPartUploadState&& other) noexcept {
+      this->object_path_ = std::move(other.object_path_);
+      this->next_part_id_ = other.next_part_id_;
+      this->part_paths_ = std::move(other.part_paths_);
+      this->st_ = other.st_;
+    }
+
+    // Copy initialization
+    MultiPartUploadState(const MultiPartUploadState& other) {
+      this->object_path_ = other.object_path_;
+      this->next_part_id_ = other.next_part_id_;
+      this->part_paths_ = other.part_paths_;
+      this->st_ = other.st_;
+    }
+
+    MultiPartUploadState& operator=(const MultiPartUploadState& other) {
+      this->object_path_ = other.object_path_;
+      this->next_part_id_ = other.next_part_id_;
+      this->part_paths_ = other.part_paths_;
+      this->st_ = other.st_;
+      return *this;
+    }
+
     /* Generates the next part path. */
     std::string next_part_path() {
       const uint64_t part_id = next_part_id_++;
@@ -324,6 +348,9 @@ class GCS {
         st_ = st;
       }
     }
+
+    /** Mutex for thread safety */
+    mutable std::mutex mtx_;
 
    private:
     // The object path for the final composed object.
@@ -383,8 +410,8 @@ class GCS {
   std::unordered_map<std::string, MultiPartUploadState>
       multi_part_upload_states_;
 
-  /** Protects 'multi_part_upload_states_'. */
-  std::mutex multi_part_upload_states_lock_;
+  /** Protects 'multipart_upload_states_'. */
+  RWLock multipart_upload_rwlock_;
 
   /* ********************************* */
   /*          PRIVATE METHODS          */

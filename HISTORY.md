@@ -10,6 +10,8 @@
 
 ## Improvements
 
+* Improve GCS multipart locking [#2087](https://github.com/TileDB-Inc/TileDB/pull/2087)
+
 ## Deprecations
 
 ## Bug fixes

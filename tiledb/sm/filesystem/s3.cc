@@ -1376,7 +1376,7 @@ Status S3::write_multipart(
 
     // Since we switched locks we need to once again check to make sure another
     // thread didn't create the state
-    auto state_iter = multipart_upload_states_.find(uri_path);
+    state_iter = multipart_upload_states_.find(uri_path);
     if (state_iter == multipart_upload_states_.end()) {
       auto& path = aws_uri.GetPath();
       std::string path_str = path.c_str();
