@@ -1440,8 +1440,20 @@ Status StorageManager::init(const Config* config) {
   if (config != nullptr)
     config_ = *config;
 
-  // Get config params
+  // set logging level from config
   bool found = false;
+  uint32_t level = static_cast<unsigned int>(Logger::Level::ERR);
+  RETURN_NOT_OK(config_.get<uint32_t>("config.logging_level", &level, &found));
+  assert(found);
+  if (level > static_cast<unsigned int>(Logger::Level::TRACE)) {
+    return LOG_STATUS(Status::StorageManagerError(
+        "Cannot set logger level; Unsupported level:" + std::to_string(level) +
+        "set in configuration"));
+  }
+
+  global_logger().set_level(static_cast<Logger::Level>(level));
+
+  // Get config params
   uint64_t tile_cache_size = 0;
   RETURN_NOT_OK(
       config_.get<uint64_t>("sm.tile_cache_size", &tile_cache_size, &found));
