@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2020 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2021 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -467,7 +467,7 @@ const int32_t library_version[3] = {
     TILEDB_VERSION_MAJOR, TILEDB_VERSION_MINOR, TILEDB_VERSION_PATCH};
 
 /** The TileDB serialization format version number. */
-const uint32_t format_version = 7;
+const uint32_t format_version = 8;
 
 /** The maximum size of a tile chunk (unit of compression) in bytes. */
 const uint64_t max_tile_chunk_size = 64 * 1024;
@@ -501,6 +501,9 @@ const unsigned watchdog_thread_sleep_ms = 1000;
 
 /** Maximum number of concurrent attribute reads. */
 const unsigned concurrent_attr_reads = 2;
+
+/** The redirection header key in REST response. */
+extern const std::string redirection_header_key = "location";
 
 const void* fill_value(Datatype type) {
   switch (type) {
@@ -573,6 +576,8 @@ const std::array<std::string, 6> cert_files_linux = {
     "/etc/ssl/cert.pem"                                   // Alpine Linux
 };
 #endif
+
+const std::string config_delimiter = ",";
 }  // namespace constants
 
 }  // namespace sm

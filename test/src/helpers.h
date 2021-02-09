@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2020 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2021 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -303,9 +303,13 @@ void create_ctx_and_vfs(
  * @param s3_supported Set to `true` if S3 is supported.
  * @param hdfs_supported Set to `true` if HDFS is supported.
  * @param azure_supported Set to `true` if Azure is supported.
+ * @param gcs_supported Set to `true` if GCS is supported.
  */
 void get_supported_fs(
-    bool* s3_supported, bool* hdfs_supported, bool* azure_supported);
+    bool* s3_supported,
+    bool* hdfs_supported,
+    bool* azure_supported,
+    bool* gcs_supported);
 
 /**
  * Helper function to check if in-memory filesystem is supported

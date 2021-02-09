@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2020 TileDB Inc.
+ * @copyright Copyright (c) 2020-2021 TileDB Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -85,6 +85,11 @@ struct CPPArrayFx {
       str_attr.set_cell_val_num(TILEDB_VAR_NUM);
       attrs.push_back(str_attr);
     }
+    {
+      auto str_attr = Attribute(ctx, "tiledb_char", TILEDB_CHAR);
+      str_attr.set_cell_val_num(TILEDB_VAR_NUM);
+      attrs.push_back(str_attr);
+    }
 
     // must be constructed manually to get TILEDB_DATETIME_NS type
     auto datetimens_attr = Attribute(ctx, "datetime_ns", TILEDB_DATETIME_NS);
@@ -117,7 +122,7 @@ struct CPPArrayFx {
   std::string uri;
 };
 
-void free_query_buffers(std::shared_ptr<tiledb::Query> query) {
+void free_query_buffers(tiledb::Query* const query) {
   auto schema = query->array().schema();
   void* data = nullptr;
   uint64_t data_nelem = 0;
@@ -155,7 +160,7 @@ void free_query_buffers(std::shared_ptr<tiledb::Query> query) {
   }
 }
 
-void allocate_query_buffers(std::shared_ptr<tiledb::Query> query) {
+void allocate_query_buffers(tiledb::Query* const query) {
   auto schema = query->array().schema();
 
   bool has_ranges = false;
@@ -258,12 +263,15 @@ TEST_CASE("Arrow IO integration tests", "[arrow]") {
     /*
      * Test write
      */
-
-    Context ctx;
+    Config config;
+    config["sm.var_offsets.bitsize"] = 32;
+    config["sm.var_offsets.mode"] = "elements";
+    config["sm.var_offsets.extra_element"] = "true";
+    Context ctx(config);
     Array array(ctx, uri, TILEDB_WRITE);
-    std::shared_ptr<Query> query(new Query(ctx, array));
-    query->set_layout(TILEDB_COL_MAJOR);
-    query->add_range(0, (int32_t)0, (int32_t)(col_size - 1));
+    Query query(ctx, array);
+    query.set_layout(TILEDB_COL_MAJOR);
+    query.add_range(0, (int32_t)0, (int32_t)(col_size - 1));
 
     std::vector<ArrowArray*> vec_array;
     std::vector<ArrowSchema*> vec_schema;
@@ -276,7 +284,7 @@ TEST_CASE("Arrow IO integration tests", "[arrow]") {
           static_cast<ArrowSchema*>(std::malloc(sizeof(ArrowSchema)));
     }
 
-    tiledb::arrow::ArrowAdapter adapter(query);
+    tiledb::arrow::ArrowAdapter adapter(&ctx, &query);
 
     for (size_t i = 0; i < data_len; i++) {
       auto py_i = py::int_(i);
@@ -295,8 +303,8 @@ TEST_CASE("Arrow IO integration tests", "[arrow]") {
           static_cast<void*>(vec_array.at(i)),
           static_cast<void*>(vec_schema.at(i)));
     }
-    query->submit();
-    CHECK(query->query_status() == Query::Status::COMPLETE);
+    query.submit();
+    CHECK(query.query_status() == Query::Status::COMPLETE);
 
     for (size_t i = 0; i < data_len; i++) {
       std::free(vec_array[i]);
@@ -308,23 +316,26 @@ TEST_CASE("Arrow IO integration tests", "[arrow]") {
   // However, there is an unexplained crash due to an early destructor
   // when both brace scopes are converted to SECTIONs.
   // SECTION("Test reading data back via ArrowAdapter into pyarrow arrays")
-  {
+
+  // test both bitsize read modes
+  for (auto bitsize : {32, 64}) {
     /*
      * Test read
      */
-    Context ctx;
+    Config config;
+    config["sm.var_offsets.bitsize"] = bitsize;
+    config["sm.var_offsets.mode"] = "elements";
+    config["sm.var_offsets.extra_element"] = "true";
+    Context ctx(config);
     Array array(ctx, uri, TILEDB_READ);
-    std::shared_ptr<Query> query(new Query(ctx, array));
-    query->set_layout(TILEDB_COL_MAJOR);
-    query->add_range(
+    Query query(ctx, array);
+    query.set_layout(TILEDB_COL_MAJOR);
+    query.add_range(
         0, static_cast<int32_t>(0), static_cast<int32_t>(col_size - 1));
 
-    std::vector<void*> data_buffers;
-    std::vector<uint64_t*> offset_buffers;
-
-    allocate_query_buffers(query);
-    query->submit();
-    assert(query->query_status() == Query::Status::COMPLETE);
+    allocate_query_buffers(&query);
+    query.submit();
+    assert(query.query_status() == Query::Status::COMPLETE);
 
     std::vector<ArrowArray*> vec_array;
     std::vector<ArrowSchema*> vec_schema;
@@ -337,7 +348,7 @@ TEST_CASE("Arrow IO integration tests", "[arrow]") {
           static_cast<ArrowSchema*>(std::malloc(sizeof(ArrowSchema)));
     }
 
-    tiledb::arrow::ArrowAdapter adapter(query);
+    tiledb::arrow::ArrowAdapter adapter(&ctx, &query);
 
     for (size_t i = 0; i < data_len; i++) {
       auto py_i = py::int_(i);
@@ -373,6 +384,6 @@ TEST_CASE("Arrow IO integration tests", "[arrow]") {
     for (auto schema_p : vec_schema)
       std::free(schema_p);
 
-    free_query_buffers(query);
+    free_query_buffers(&query);
   }
 }

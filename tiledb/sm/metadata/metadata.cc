@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2020 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2021 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -91,7 +91,7 @@ Status Metadata::generate_uri(const URI& array_uri) {
 }
 
 Status Metadata::deserialize(
-    const std::vector<std::shared_ptr<Buffer>>& metadata_buffs) {
+    const std::vector<tdb_shared_ptr<Buffer>>& metadata_buffs) {
   clear();
 
   if (metadata_buffs.empty())

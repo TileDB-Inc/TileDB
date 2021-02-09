@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2020 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2021 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -39,6 +39,7 @@
 #include <string>
 #include <vector>
 
+#include "tiledb/common/macros.h"
 #include "tiledb/common/status.h"
 #include "tiledb/common/thread_pool.h"
 #include "tiledb/sm/buffer/buffer.h"
@@ -47,7 +48,6 @@
 #include "tiledb/sm/filesystem/filelock.h"
 #include "tiledb/sm/filesystem/mem_filesystem.h"
 #include "tiledb/sm/misc/cancelable_tasks.h"
-#include "tiledb/sm/misc/macros.h"
 #include "tiledb/sm/misc/uri.h"
 
 #ifdef _WIN32
@@ -621,7 +621,7 @@ class VFS {
 #endif
 
 #ifdef HAVE_HDFS
-  std::unique_ptr<hdfs::HDFS> hdfs_;
+  tdb_unique_ptr<hdfs::HDFS> hdfs_;
 #endif
 
   /** The in-memory filesystem which is always supported */
@@ -649,7 +649,7 @@ class VFS {
   CancelableTasks cancelable_tasks_;
 
   /** The read-ahead cache. */
-  std::unique_ptr<ReadAheadCache> read_ahead_cache_;
+  tdb_unique_ptr<ReadAheadCache> read_ahead_cache_;
 
   /* ********************************* */
   /*          PRIVATE METHODS          */

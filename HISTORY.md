@@ -6,6 +6,69 @@
 
 ## Breaking behavior
 
+## New features
+
+## Improvements
+* Adds a Github Action to automate the HISTORY.md [#2075](https://github.com/TileDB-Inc/TileDB/pull/2075)
+
+* Improve GCS multipart locking [#2087](https://github.com/TileDB-Inc/TileDB/pull/2087)
+
+## Deprecations
+
+## Bug fixes
+* Fix mutex locking bugs on Windows due to unlocking on different thread and missing task join [#2077](https://github.com/TileDB-Inc/TileDB/pull/2077)
+
+## API additions
+
+### C API
+
+### C++ API
+
+* Add new Config constructors for converting from STL map types [#2081](https://github.com/TileDB-Inc/TileDB/pull/2081)
+
+# TileDB v2.2.3 Release Notes
+
+## New features
+
+* Add support for retrying REST requests that fail with certain http status code such as 503 [#2060](https://github.com/TileDB-Inc/TileDB/pull/2060)
+
+## Improvements
+
+* Parallelize across attributes when closing a write [#2048](https://github.com/TileDB-Inc/TileDB/pull/2048)
+* Support for dimension/attribute names that contain commonly reserved filesystem characters [#2047](https://github.com/TileDB-Inc/TileDB/pull/2047)
+* Remove unnecessary `is_dir` in `FragmentMetadata::store`, this can increase performance for s3 writes [#2050](https://github.com/TileDB-Inc/TileDB/pull/2050)
+* Improve S3 multipart locking [#2055](https://github.com/TileDB-Inc/TileDB/pull/2055)
+* Parallize loading fragments and array schema [#2061](https://github.com/TileDB-Inc/TileDB/pull/2061)
+
+# TileDB v2.2.2 Release Notes
+
+## New features
+
+* REST client support for caching redirects [#1919](https://github.com/TileDB-Inc/TileDB/pull/1919)
+
+## Improvements
+
+* Add additional timer statistics for openning array for reads [#2027](https://github.com/TileDB-Inc/TileDB/pull/2027)
+* Add `rest.creation_access_credentials_name` configuration parameter [#2025](https://github.com/TileDB-Inc/TileDB/pull/2025)
+
+## Bug fixes
+
+* Fixed ArrowAdapter export of string arrays with 64-bit offsets [#2037](https://github.com/TileDB-Inc/TileDB/pull/2037)
+* Fixed ArrowAdapter export of TILEDB_CHAR arrays with 64-bit offsets [#2039](https://github.com/TileDB-Inc/TileDB/pull/2039)
+
+## API additions
+
+### C API
+* Add `tiledb_query_set_config` to apply a `tiledb_config_t` to query-level parameters [#2030](https://github.com/TileDB-Inc/TileDB/pull/2030)
+* Add `tiledb_heap_profiler_enable` to enable heap memory profiling [#2035](https://github.com/TileDB-Inc/TileDB/pull/2035)
+
+### C++ API
+* Added `Query::set_config` to apply a `tiledb::Config` to query-level parameters [#2030](https://github.com/TileDB-Inc/TileDB/pull/2030)
+
+# TileDB v2.2.1 Release Notes
+
+## Breaking behavior
+
 * The tile extent can now be set to null, in which case internally TileDB sets the extent to the dimension domain range. [#1880](https://github.com/TileDB-Inc/TileDB/pull/1880)
 * The C++ API `std::pair<uint64_t, uint64_t> Query::est_result_size_var` has been changed to 1) a return type of `std::array<uint64_t, 2>` and 2) returns the offsets as a size in bytes rather than elements. [#1946](https://github.com/TileDB-Inc/TileDB/pull/1946)
 
@@ -14,6 +77,7 @@
 * Support for nullable attributes. [#1895](https://github.com/TileDB-Inc/TileDB/pull/1895) [#1938](https://github.com/TileDB-Inc/TileDB/pull/1938) [#1948](https://github.com/TileDB-Inc/TileDB/pull/1948) [#1945](https://github.com/TileDB-Inc/TileDB/pull/1945)
 * Support for Hilbert order sorting for sparse arrays. [#1880](https://github.com/TileDB-Inc/TileDB/pull/1880)
 * Support for AWS S3 "AssumeRole" temporary credentials [#1882](https://github.com/TileDB-Inc/TileDB/pull/1882)
+* Support for zero-copy import/export with the Apache Arrow adapter [#2001](https://github.com/TileDB-Inc/TileDB/pull/2001)
 * Experimental support for an in-memory backend used with bootstrap option "--enable-memfs" [#1873](https://github.com/TileDB-Inc/TileDB/pull/1873)
 * Support for element offsets when reading var-sized attributes. [#1897] (https://github.com/TileDB-Inc/TileDB/pull/1897)
 * Support for an extra offset indicating the size of the returned data when reading var-sized attributes. [#1932] (https://github.com/TileDB-Inc/TileDB/pull/1932)
@@ -26,23 +90,14 @@
 * Prevented unnecessary sorting when (1) there is a single fragment and (i) either the query layout is global order, or (ii) the number of dimensions is 1, and (2) when there is a single range for which the result coordinates have already been sorted. [#1880](https://github.com/TileDB-Inc/TileDB/pull/1880)
 * Added extra stats for consolidation. [#1880](https://github.com/TileDB-Inc/TileDB/pull/1880)
 * Disabled checking if cells are written in global order when consolidating, as it was redundant (the cells are already being read in global order during consolidation). [#1880](https://github.com/TileDB-Inc/TileDB/pull/1880) 
-* Add support for printing MBRs with string dimensions in TileDB Tools [#1926](https://github.com/TileDB-Inc/TileDB/pull/1926)
-
-## Deprecations
+* Optimize consolidated fragment metadata loading [#1975](https://github.com/TileDB-Inc/TileDB/pull/1975)
 
 ## Bug fixes
 
 * Fix tiledb_dimension_alloc returning a non-null pointer after error [#1959]((https://github.com/TileDB-Inc/TileDB/pull/1859)
-* Fix ArraySchema not write protecting fill values for only schema version 6 or newer [#1868](https://github.com/TileDB-Inc/TileDB/pull/1868)
-* Fix segfault that may occur in the VFS read-ahead cache [#1871](https://github.com/TileDB-Inc/TileDB/pull/1871)
-* The result size estimation routines will no longer return non-zero sizes that can not contain a single value. [#1849](https://github.com/TileDB-Inc/TileDB/pull/1849)
 * Fixed issue with string dimensions and non-set subarray (which implies spanning the whole domain). There was an assertion being triggered. Now it works properly.
 * Fixed bug when checking the dimension domain for infinity or NaN values. [#1880](https://github.com/TileDB-Inc/TileDB/pull/1880)
 * Fixed bug with string dimension partitioning. [#1880](https://github.com/TileDB-Inc/TileDB/pull/1880)
-* Updated the AWS SDK to v1.8.84 to fix an uncaught exception when using S3 [#1899](https://github.com/TileDB-Inc/TileDB/pull/1899)[TileDB-Py #409](https://github.com/TileDB-Inc/TileDB-Py/issues/409)
-* Fixed bug where a read on a sparse array may return duplicate values. [#1905](https://github.com/TileDB-Inc/TileDB/pull/1905)
-* Fixed bug where an array could not be opened if created with an array schema from an older version [#1889](https://github.com/TileDB-Inc/TileDB/pull/1889)
-* Fix compilation of TileDB Tools [#1926](https://github.com/TileDB-Inc/TileDB/pull/1926)
 
 ## API additions
 
@@ -58,7 +113,60 @@
 * Added APIs for getting and setting ranges of queries using a dimension name. [#1920](https://github.com/TileDB-Inc/TileDB/pull/1920)
 * Changed `std::pair<uint64_t, uint64_t> Query::est_result_size_var` to `std::array<uint64_t, 2> Query::est_result_size_var`. Additionally, the size estimate for the offsets have been changed from elements to bytes. [#1946](https://github.com/TileDB-Inc/TileDB/pull/1946)
 
-# TileDB v2.1.0 Release Notes
+# TileDB v2.2.0 Release Notes
+
+* This release was skipped due to an erroneous `2.2.0` git tag. 
+
+# TileDB v2.1.6 Release Notes
+
+## Bug fixes
+* Fix deadlock in `ThreadPool::wait_or_work` [#1994](https://github.com/TileDB-Inc/TileDB/pull/1994)
+* Fix "[TileDB::ChunkedBuffer] Error: Cannot init chunk buffers; Total size must be non-zero." in read path [#1992](https://github.com/TileDB-Inc/TileDB/pull/1992)
+
+# TileDB v2.1.5 Release Notes
+
+## Improvements
+
+* Optimize consolidated fragment metadata loading [#1975](https://github.com/TileDB-Inc/TileDB/pull/1975)
+* Optimize `Reader::load_tile_offsets` for loading only relevant fragments [#1976](https://github.com/TileDB-Inc/TileDB/pull/1976) [#1983](https://github.com/TileDB-Inc/TileDB/pull/1983)
+* Optimize locking in `FragmentMetadata::load_tile_offsets` and `FragmentMetadata::load_tile_var_offsets` [#1979](https://github.com/TileDB-Inc/TileDB/pull/1979)
+* Exit early in `Reader::copy_coordinates`/`Reader::copy_attribute_values` when no results [#1984](https://github.com/TileDB-Inc/TileDB/pull/1984)
+
+## Bug fixes
+
+* Fix segfault in optimized `compute_results_sparse<char>` [#1969](https://github.com/TileDB-Inc/TileDB/pull/1969)
+* Fix GCS "Error:: Read object failed"[#1966](https://github.com/TileDB-Inc/TileDB/pull/1966)
+* Fix segfault in `ResultTile::str_coords_intersects` [#1981](https://github.com/TileDB-Inc/TileDB/pull/1981)
+
+# TileDB v2.1.4 Release Notes
+
+## Improvements
+
+* Optimize `ResultTile::compute_results_sparse<char>` resulting in significant performance increases in certain cases with string dimensions [#1963](https://github.com/TileDB-Inc/TileDB/pull/1963)
+
+# TileDB v2.1.3 Release Notes
+
+## Improvements
+
+* Optimized string dimension performance. [#1922](https://github.com/TileDB-Inc/TileDB/pull/1922)
+
+## Bug fixes
+
+* Updated the AWS SDK to v1.8.84 to fix an uncaught exception when using S3 [#1899](https://github.com/TileDB-Inc/TileDB/pull/1899)[TileDB-Py #409](https://github.com/TileDB-Inc/TileDB-Py/issues/409)
+* Fixed bug where a read on a sparse array may return duplicate values. [#1905](https://github.com/TileDB-Inc/TileDB/pull/1905)
+* Fixed bug where an array could not be opened if created with an array schema from an older version [#1889](https://github.com/TileDB-Inc/TileDB/pull/1889)
+* Fix compilation of TileDB Tools [#1926](https://github.com/TileDB-Inc/TileDB/pull/1926)
+
+# TileDB v2.1.2 Release Notes
+
+## Bug fixes
+
+* Fix ArraySchema not write protecting fill values for only schema version 6 or newer [#1868](https://github.com/TileDB-Inc/TileDB/pull/1868)
+* Fix segfault that may occur in the VFS read-ahead cache [#1871](https://github.com/TileDB-Inc/TileDB/pull/1871)
+
+# TileDB v2.1.1 Release Notes
+
+## Bug fixes
 
 * The result size estimatation routines will no longer return non-zero sizes that can not contain a single value. [#1849](https://github.com/TileDB-Inc/TileDB/pull/1849)
 * Fix serialization of dense writes that use ranges [#1860](https://github.com/TileDB-Inc/TileDB/pull/1860)

@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2020 TileDB Inc.
+ * @copyright Copyright (c) 2017-2021 TileDB Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -90,7 +90,6 @@ struct SerializationFx {
     for (unsigned i = 0; i < ncells; i++) {
       a1.push_back(i);
       a2.push_back(i);
-      a2_nullable.push_back(a2.back() % 5 == 0 ? 0 : 1);
       a2.push_back(2 * i);
       a2_nullable.push_back(a2.back() % 5 == 0 ? 0 : 1);
 
@@ -132,7 +131,6 @@ struct SerializationFx {
     for (unsigned i = 0; i < ncells; i++) {
       a1.push_back(i);
       a2.push_back(i);
-      a2_nullable.push_back(a2.back() % 5 == 0 ? 0 : 1);
       a2.push_back(2 * i);
       a2_nullable.push_back(a2.back() % 5 == 0 ? 0 : 1);
 
@@ -175,7 +173,6 @@ struct SerializationFx {
     for (unsigned i = 0; i < ncells; i++) {
       a1.push_back(i);
       a2.push_back(i);
-      a2_nullable.push_back(a2.back() % 5 == 0 ? 0 : 1);
       a2.push_back(2 * i);
       a2_nullable.push_back(a2.back() % 5 == 0 ? 0 : 1);
 
@@ -220,7 +217,6 @@ struct SerializationFx {
     for (unsigned i = 0; i < ncells; i++) {
       a1.push_back(i);
       a2.push_back(i);
-      a2_nullable.push_back(a2.back() % 5 == 0 ? 0 : 1);
       a2.push_back(2 * i);
       a2_nullable.push_back(a2.back() % 5 == 0 ? 0 : 1);
 
@@ -438,7 +434,7 @@ TEST_CASE_METHOD(
     Query query(ctx, array);
     std::vector<uint32_t> a1(1000);
     std::vector<uint32_t> a2(1000);
-    std::vector<uint8_t> a2_nullable(1000);
+    std::vector<uint8_t> a2_nullable(500);
     std::vector<char> a3_data(1000 * 100);
     std::vector<uint64_t> a3_offsets(1000);
     std::vector<int32_t> subarray = {1, 10, 1, 10};
@@ -469,7 +465,7 @@ TEST_CASE_METHOD(
     auto result_el = query.result_buffer_elements_nullable();
     REQUIRE(std::get<1>(result_el["a1"]) == 100);
     REQUIRE(std::get<1>(result_el["a2"]) == 200);
-    REQUIRE(std::get<2>(result_el["a2"]) == 200);
+    REQUIRE(std::get<2>(result_el["a2"]) == 100);
     REQUIRE(std::get<0>(result_el["a3"]) == 100);
     REQUIRE(std::get<1>(result_el["a3"]) == 5050);
 
@@ -481,7 +477,7 @@ TEST_CASE_METHOD(
     Array array(ctx, array_uri, TILEDB_READ);
     Query query(ctx, array);
     std::vector<uint32_t> a1(1000);
-    std::vector<uint32_t> a2(1000);
+    std::vector<uint32_t> a2(500);
     std::vector<uint8_t> a2_nullable(1000);
     std::vector<char> a3_data(1000 * 100);
     std::vector<uint64_t> a3_offsets(1000);
@@ -513,7 +509,7 @@ TEST_CASE_METHOD(
     auto result_el = query.result_buffer_elements_nullable();
     REQUIRE(std::get<1>(result_el["a1"]) == 4);
     REQUIRE(std::get<1>(result_el["a2"]) == 8);
-    REQUIRE(std::get<2>(result_el["a2"]) == 8);
+    REQUIRE(std::get<2>(result_el["a2"]) == 4);
     REQUIRE(std::get<0>(result_el["a3"]) == 4);
     REQUIRE(std::get<1>(result_el["a3"]) == 114);
 
@@ -568,7 +564,7 @@ TEST_CASE_METHOD(
     auto result_el = query.result_buffer_elements_nullable();
     REQUIRE(std::get<1>(result_el["a1"]) == 2);
     REQUIRE(std::get<1>(result_el["a2"]) == 4);
-    REQUIRE(std::get<2>(result_el["a2"]) == 4);
+    REQUIRE(std::get<2>(result_el["a2"]) == 2);
     REQUIRE(std::get<0>(result_el["a3"]) == 2);
     REQUIRE(std::get<1>(result_el["a3"]) == 47);
 
@@ -580,7 +576,7 @@ TEST_CASE_METHOD(
     result_el = query.result_buffer_elements_nullable();
     REQUIRE(std::get<1>(result_el["a1"]) == 1);
     REQUIRE(std::get<1>(result_el["a2"]) == 2);
-    REQUIRE(std::get<2>(result_el["a2"]) == 2);
+    REQUIRE(std::get<2>(result_el["a2"]) == 1);
     REQUIRE(std::get<0>(result_el["a3"]) == 1);
     REQUIRE(std::get<1>(result_el["a3"]) == 33);
 
@@ -592,7 +588,7 @@ TEST_CASE_METHOD(
     result_el = query.result_buffer_elements_nullable();
     REQUIRE(std::get<1>(result_el["a1"]) == 1);
     REQUIRE(std::get<1>(result_el["a2"]) == 2);
-    REQUIRE(std::get<2>(result_el["a2"]) == 2);
+    REQUIRE(std::get<2>(result_el["a2"]) == 1);
     REQUIRE(std::get<0>(result_el["a3"]) == 1);
     REQUIRE(std::get<1>(result_el["a3"]) == 34);
   }
@@ -639,7 +635,7 @@ TEST_CASE_METHOD(
     auto result_el = query.result_buffer_elements_nullable();
     REQUIRE(std::get<1>(result_el["a1"]) == 10);
     REQUIRE(std::get<1>(result_el["a2"]) == 20);
-    REQUIRE(std::get<2>(result_el["a2"]) == 20);
+    REQUIRE(std::get<2>(result_el["a2"]) == 10);
     REQUIRE(std::get<0>(result_el["a3"]) == 10);
     REQUIRE(std::get<1>(result_el["a3"]) == 55);
 
@@ -690,7 +686,7 @@ TEST_CASE_METHOD(
     REQUIRE(std::get<1>(result_el[TILEDB_COORDS]) == 20);
     REQUIRE(std::get<1>(result_el["a1"]) == 10);
     REQUIRE(std::get<1>(result_el["a2"]) == 20);
-    REQUIRE(std::get<2>(result_el["a2"]) == 20);
+    REQUIRE(std::get<2>(result_el["a2"]) == 10);
     REQUIRE(std::get<0>(result_el["a3"]) == 10);
     REQUIRE(std::get<1>(result_el["a3"]) == 55);
 
@@ -743,7 +739,7 @@ TEST_CASE_METHOD(
     auto result_el = query.result_buffer_elements_nullable();
     REQUIRE(std::get<1>(result_el["a1"]) == 100);
     REQUIRE(std::get<1>(result_el["a2"]) == 200);
-    REQUIRE(std::get<2>(result_el["a2"]) == 200);
+    REQUIRE(std::get<2>(result_el["a2"]) == 100);
     REQUIRE(std::get<0>(result_el["a3"]) == 100);
     REQUIRE(std::get<1>(result_el["a3"]) == 5050);
 
@@ -788,7 +784,7 @@ TEST_CASE_METHOD(
     auto result_el = query.result_buffer_elements_nullable();
     REQUIRE(std::get<1>(result_el["a1"]) == 4);
     REQUIRE(std::get<1>(result_el["a2"]) == 8);
-    REQUIRE(std::get<2>(result_el["a2"]) == 8);
+    REQUIRE(std::get<2>(result_el["a2"]) == 4);
     REQUIRE(std::get<0>(result_el["a3"]) == 4);
     REQUIRE(std::get<1>(result_el["a3"]) == 114);
 
@@ -844,7 +840,7 @@ TEST_CASE_METHOD(
     auto result_el = query.result_buffer_elements_nullable();
     REQUIRE(std::get<1>(result_el["a1"]) == 2);
     REQUIRE(std::get<1>(result_el["a2"]) == 4);
-    REQUIRE(std::get<2>(result_el["a2"]) == 4);
+    REQUIRE(std::get<2>(result_el["a2"]) == 2);
     REQUIRE(std::get<0>(result_el["a3"]) == 2);
     REQUIRE(std::get<1>(result_el["a3"]) == 47);
 
@@ -856,7 +852,7 @@ TEST_CASE_METHOD(
     result_el = query.result_buffer_elements_nullable();
     REQUIRE(std::get<1>(result_el["a1"]) == 1);
     REQUIRE(std::get<1>(result_el["a2"]) == 2);
-    REQUIRE(std::get<2>(result_el["a2"]) == 2);
+    REQUIRE(std::get<2>(result_el["a2"]) == 1);
     REQUIRE(std::get<0>(result_el["a3"]) == 1);
     REQUIRE(std::get<1>(result_el["a3"]) == 33);
 
@@ -868,7 +864,7 @@ TEST_CASE_METHOD(
     result_el = query.result_buffer_elements_nullable();
     REQUIRE(std::get<1>(result_el["a1"]) == 1);
     REQUIRE(std::get<1>(result_el["a2"]) == 2);
-    REQUIRE(std::get<2>(result_el["a2"]) == 2);
+    REQUIRE(std::get<2>(result_el["a2"]) == 1);
     REQUIRE(std::get<0>(result_el["a3"]) == 1);
     REQUIRE(std::get<1>(result_el["a3"]) == 34);
   }

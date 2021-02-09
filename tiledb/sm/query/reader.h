@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2020 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2021 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -440,6 +440,9 @@ class Reader {
   void set_fragment_metadata(
       const std::vector<FragmentMetadata*>& fragment_metadata);
 
+  /** Sets config for query-level parameters only. */
+  Status set_config(const Config& config);
+
   /**
    * Sets the cell layout of the query. The function will return an error
    * if the queried array is a key-value store (because it has its default
@@ -688,19 +691,19 @@ class Reader {
     }
 
     /** Returns a pre-sized vector to store cell slab offsets. */
-    std::unique_ptr<std::vector<uint64_t>> get_cs_offsets() {
+    tdb_unique_ptr<std::vector<uint64_t>> get_cs_offsets() {
       std::lock_guard<std::mutex> lg(mutex_);
 
       // Re-use a vector in the `cs_offsets_cache_` if possible,
       // otherwise create a new vector of size `num_cs_`.
-      std::unique_ptr<std::vector<uint64_t>> cs_offsets;
+      tdb_unique_ptr<std::vector<uint64_t>> cs_offsets;
       if (!cs_offsets_cache_.empty()) {
         cs_offsets = std::move(cs_offsets_cache_.front());
         assert(cs_offsets->size() == num_cs_);
         cs_offsets_cache_.pop();
       } else {
         cs_offsets =
-            std::unique_ptr<std::vector<uint64_t>>(new std::vector<uint64_t>());
+            tdb_unique_ptr<std::vector<uint64_t>>(new std::vector<uint64_t>());
         cs_offsets->resize(num_cs_);
       }
 
@@ -708,7 +711,7 @@ class Reader {
     }
 
     /** Returns a vector fetched from `get_cs_offsets`. */
-    void cache_cs_offsets(std::unique_ptr<std::vector<uint64_t>>&& cs_offsets) {
+    void cache_cs_offsets(tdb_unique_ptr<std::vector<uint64_t>>&& cs_offsets) {
       assert(cs_offsets->size() == num_cs_);
       std::lock_guard<std::mutex> lg(mutex_);
       cs_offsets_cache_.push(std::move(cs_offsets));
@@ -734,7 +737,7 @@ class Reader {
      * A pool of vectors that maps the index of each cell slab
      * to its offset in the output buffer.
      */
-    std::queue<std::unique_ptr<std::vector<uint64_t>>> cs_offsets_cache_;
+    std::queue<tdb_unique_ptr<std::vector<uint64_t>>> cs_offsets_cache_;
   };
 
   class CopyVarCellsContextCache {
@@ -821,19 +824,19 @@ class Reader {
     }
 
     /** Returns a pre-sized vector to store offset-offsets per cell slab. */
-    std::unique_ptr<std::vector<uint64_t>> get_offset_offsets_per_cs() {
+    tdb_unique_ptr<std::vector<uint64_t>> get_offset_offsets_per_cs() {
       std::lock_guard<std::mutex> lg(mutex_);
 
       // Re-use a vector in the `offset_offsets_per_cs_cache_` if possible,
       // otherwise create a new vector of size `total_cs_length_`.
-      std::unique_ptr<std::vector<uint64_t>> offset_offsets_per_cs;
+      tdb_unique_ptr<std::vector<uint64_t>> offset_offsets_per_cs;
       if (!offset_offsets_per_cs_cache_.empty()) {
         offset_offsets_per_cs = std::move(offset_offsets_per_cs_cache_.front());
         assert(offset_offsets_per_cs->size() == total_cs_length_);
         offset_offsets_per_cs_cache_.pop();
       } else {
         offset_offsets_per_cs =
-            std::unique_ptr<std::vector<uint64_t>>(new std::vector<uint64_t>());
+            tdb_unique_ptr<std::vector<uint64_t>>(new std::vector<uint64_t>());
         offset_offsets_per_cs->resize(total_cs_length_);
       }
 
@@ -842,26 +845,26 @@ class Reader {
 
     /** Returns a vector fetched from `get_offset_offsets_per_cs`. */
     void cache_offset_offsets_per_cs(
-        std::unique_ptr<std::vector<uint64_t>>&& offset_offsets_per_cs) {
+        tdb_unique_ptr<std::vector<uint64_t>>&& offset_offsets_per_cs) {
       assert(offset_offsets_per_cs->size() == total_cs_length_);
       std::lock_guard<std::mutex> lg(mutex_);
       offset_offsets_per_cs_cache_.push(std::move(offset_offsets_per_cs));
     }
 
     /** Returns a pre-sized vector to store var-offsets per cell slab. */
-    std::unique_ptr<std::vector<uint64_t>> get_var_offsets_per_cs() {
+    tdb_unique_ptr<std::vector<uint64_t>> get_var_offsets_per_cs() {
       std::lock_guard<std::mutex> lg(mutex_);
 
       // Re-use a vector in the `var_offsets_per_cs_cache_` if possible,
       // otherwise create a new vector of size `total_cs_length_`.
-      std::unique_ptr<std::vector<uint64_t>> var_offsets_per_cs;
+      tdb_unique_ptr<std::vector<uint64_t>> var_offsets_per_cs;
       if (!var_offsets_per_cs_cache_.empty()) {
         var_offsets_per_cs = std::move(var_offsets_per_cs_cache_.front());
         assert(var_offsets_per_cs->size() == total_cs_length_);
         var_offsets_per_cs_cache_.pop();
       } else {
         var_offsets_per_cs =
-            std::unique_ptr<std::vector<uint64_t>>(new std::vector<uint64_t>());
+            tdb_unique_ptr<std::vector<uint64_t>>(new std::vector<uint64_t>());
         var_offsets_per_cs->resize(total_cs_length_);
       }
 
@@ -870,7 +873,7 @@ class Reader {
 
     /** Returns a vector fetched from `get_var_offsets_per_cs`. */
     void cache_var_offsets_per_cs(
-        std::unique_ptr<std::vector<uint64_t>>&& var_offsets_per_cs) {
+        tdb_unique_ptr<std::vector<uint64_t>>&& var_offsets_per_cs) {
       assert(var_offsets_per_cs->size() == total_cs_length_);
       std::lock_guard<std::mutex> lg(mutex_);
       var_offsets_per_cs_cache_.push(std::move(var_offsets_per_cs));
@@ -898,15 +901,14 @@ class Reader {
      * A pool of vectors that maps each cell slab to its offset
      * for its attribute offsets.
      */
-    std::queue<std::unique_ptr<std::vector<uint64_t>>>
+    std::queue<tdb_unique_ptr<std::vector<uint64_t>>>
         offset_offsets_per_cs_cache_;
 
     /**
      * A pool of vectors that maps each cell slab to its offset
      * for its variable-length data.
      */
-    std::queue<std::unique_ptr<std::vector<uint64_t>>>
-        var_offsets_per_cs_cache_;
+    std::queue<tdb_unique_ptr<std::vector<uint64_t>>> var_offsets_per_cs_cache_;
   };
 
   /* ********************************* */
@@ -918,6 +920,9 @@ class Reader {
 
   /** The array schema. */
   const ArraySchema* array_schema_;
+
+  /** The config for query-level parameters only. */
+  Config config_;
 
   /**
    * Maps attribute/dimension names to their buffers.

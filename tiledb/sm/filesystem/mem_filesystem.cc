@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2020 TileDB, Inc.
+ * @copyright Copyright (c) 2020-2021 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -34,9 +34,9 @@
 #include <sstream>
 #include <unordered_set>
 
+#include "tiledb/common/heap_memory.h"
 #include "tiledb/common/logger.h"
 #include "tiledb/sm/filesystem/mem_filesystem.h"
-#include "tiledb/sm/misc/macros.h"
 #include "tiledb/sm/misc/utils.h"
 
 using namespace tiledb::common;
@@ -105,7 +105,7 @@ class MemFilesystem::FSNode {
   mutable std::mutex mutex_;
 
   /** A hashtable of all the next-level subnodes of this node*/
-  std::unordered_map<std::string, std::unique_ptr<FSNode>> children_;
+  std::unordered_map<std::string, tdb_unique_ptr<FSNode>> children_;
 };
 
 class MemFilesystem::File : public MemFilesystem::FSNode {
@@ -130,7 +130,7 @@ class MemFilesystem::File : public MemFilesystem::FSNode {
   /** Destructor. */
   ~File() {
     if (data_) {
-      free(data_);
+      tdb_free(data_);
     }
   }
 
@@ -207,7 +207,7 @@ class MemFilesystem::File : public MemFilesystem::FSNode {
     }
 
     if (data_ == nullptr) {
-      data_ = malloc(nbytes);
+      data_ = tdb_malloc(nbytes);
       if (data_ == nullptr) {
         return LOG_STATUS(Status::MemFSError(
             std::string("Out of memory, cannot write to file")));
@@ -216,7 +216,7 @@ class MemFilesystem::File : public MemFilesystem::FSNode {
       size_ = nbytes;
     } else {
       void* new_data;
-      new_data = realloc(data_, size_ + nbytes);
+      new_data = tdb_realloc(data_, size_ + nbytes);
 
       if (new_data == nullptr) {
         return LOG_STATUS(Status::MemFSError(
@@ -337,7 +337,7 @@ class MemFilesystem::Directory : public MemFilesystem::FSNode {
 };
 
 MemFilesystem::MemFilesystem()
-    : root_(std::unique_ptr<Directory>(new Directory())) {
+    : root_(tdb_unique_ptr<FSNode>(tdb_new(Directory))) {
   assert(root_);
 }
 
@@ -433,7 +433,7 @@ Status MemFilesystem::move(
     return LOG_STATUS(Status::MemFSError(
         std::string("Move failed, file not found: " + old_path)));
   }
-  std::unique_ptr<FSNode> old_node_ptr =
+  tdb_unique_ptr<FSNode> old_node_ptr =
       std::move(old_node_parent->children_[old_path_last_token]);
   old_node_parent->children_.erase(old_path_last_token);
   old_node_parent_lock.unlock();
@@ -542,7 +542,7 @@ Status MemFilesystem::create_dir_internal(
     assert(cur_lock.mutex() == &cur->mutex_);
 
     if (!cur->has_child(token)) {
-      cur->children_[token] = std::unique_ptr<Directory>(new Directory());
+      cur->children_[token] = tdb_unique_ptr<FSNode>(tdb_new(Directory));
     } else if (!cur->is_dir()) {
       return LOG_STATUS(Status::MemFSError(std::string(
           "Cannot create directory, a file with that name exists already: " +
@@ -596,7 +596,7 @@ Status MemFilesystem::touch_internal(
   }
 
   const std::string& filename = tokens[tokens.size() - 1];
-  cur->children_[filename] = std::unique_ptr<File>(new File());
+  cur->children_[filename] = tdb_unique_ptr<FSNode>(tdb_new(File));
 
   // Save the output argument, `node`, if requested.
   if (node != nullptr) {

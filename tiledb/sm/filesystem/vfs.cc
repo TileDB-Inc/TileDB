@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2020 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2021 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -31,6 +31,7 @@
  */
 
 #include "tiledb/sm/filesystem/vfs.h"
+#include "tiledb/common/heap_memory.h"
 #include "tiledb/common/logger.h"
 #include "tiledb/sm/buffer/buffer.h"
 #include "tiledb/sm/enums/filesystem.h"
@@ -935,8 +936,8 @@ Status VFS::init(
   RETURN_NOT_OK(config_.get<uint64_t>(
       "vfs.read_ahead_cache_size", &read_ahead_cache_size, &found));
   assert(found);
-  read_ahead_cache_ = std::unique_ptr<ReadAheadCache>(
-      new ReadAheadCache(read_ahead_cache_size));
+  read_ahead_cache_ = tdb_unique_ptr<ReadAheadCache>(
+      tdb_new(ReadAheadCache, read_ahead_cache_size));
 
   // Store the read-ahead size.
   RETURN_NOT_OK(
@@ -944,10 +945,7 @@ Status VFS::init(
   assert(found);
 
 #ifdef HAVE_HDFS
-  hdfs_ = std::unique_ptr<hdfs::HDFS>(new (std::nothrow) hdfs::HDFS());
-  if (hdfs_.get() == nullptr) {
-    return LOG_STATUS(Status::VFSError("Could not create VFS HDFS backend"));
-  }
+  hdfs_ = tdb_unique_ptr<hdfs::HDFS>(tdb_new(hdfs::HDFS));
   RETURN_NOT_OK(hdfs_->init(config_));
 #endif
 
@@ -1392,7 +1390,7 @@ Status VFS::read(
     const uint64_t offset,
     void* const buffer,
     const uint64_t nbytes,
-    const bool use_read_ahead) {
+    bool use_read_ahead) {
   STATS_ADD_COUNTER(stats::Stats::CounterType::READ_BYTE_NUM, nbytes);
 
   if (!init_)
@@ -1416,6 +1414,8 @@ Status VFS::read(
   if (num_ops == 1) {
     return read_impl(uri, offset, buffer, nbytes, use_read_ahead);
   } else {
+    // we don't want read-ahead when performing random access reads
+    use_read_ahead = false;
     std::vector<ThreadPool::Task> results;
     uint64_t thread_read_nbytes = utils::math::ceil(nbytes, num_ops);
 

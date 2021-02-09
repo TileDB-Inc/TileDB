@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2020 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2021 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -76,6 +76,8 @@ GCSFx::~GCSFx() {
 }
 
 void GCSFx::init_gcs(Config&& config) {
+  REQUIRE(config.set("vfs.gcs.project_id", "TODO").ok());
+
   REQUIRE(thread_pool_.init(2).ok());
   REQUIRE(gcs_.init(config, &thread_pool_).ok());
 

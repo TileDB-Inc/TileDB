@@ -4,7 +4,7 @@
 #
 # The MIT License
 #
-# Copyright (c) 2018-2020 TileDB, Inc.
+# Copyright (c) 2018-2021 TileDB, Inc.
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -39,6 +39,9 @@ function(get_imported_location RESULT_VAR LIB_TARGET)
     # Try several methods to find the imported location.
     get_target_property(TMP ${LIB_TARGET} IMPORTED_IMPLIB)
     if (TMP MATCHES "NOTFOUND")
+      get_target_property(TMP ${LIB_TARGET} IMPORTED_IMPLIB_RELWITHDEBINFO)
+    endif()
+    if (TMP MATCHES "NOTFOUND")
       get_target_property(TMP ${LIB_TARGET} IMPORTED_IMPLIB_RELEASE)
     endif()
     if (TMP MATCHES "NOTFOUND")
@@ -48,6 +51,9 @@ function(get_imported_location RESULT_VAR LIB_TARGET)
   # Try several methods to find the imported location.
   if (TMP MATCHES "NOTFOUND" OR NOT WIN32)
     get_target_property(TMP ${LIB_TARGET} IMPORTED_LOCATION)
+  endif()
+  if (TMP MATCHES "NOTFOUND")
+    get_target_property(TMP ${LIB_TARGET} IMPORTED_LOCATION_RELWITHDEBINFO)
   endif()
   if (TMP MATCHES "NOTFOUND")
     get_target_property(TMP ${LIB_TARGET} IMPORTED_LOCATION_RELEASE)

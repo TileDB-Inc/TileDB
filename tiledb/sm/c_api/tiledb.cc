@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2020 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2021 TileDB, Inc.
  * @copyright Copyright (c) 2016 MIT and Intel Corporation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -32,6 +32,7 @@
  */
 
 #include "tiledb/sm/c_api/tiledb.h"
+#include "tiledb/common/heap_profiler.h"
 #include "tiledb/common/logger.h"
 #include "tiledb/sm/array/array.h"
 #include "tiledb/sm/array_schema/array_schema.h"
@@ -393,6 +394,17 @@ inline int32_t sanity_check(tiledb_config_t* config, tiledb_error_t** error) {
   }
 
   *error = nullptr;
+  return TILEDB_OK;
+}
+
+inline int32_t sanity_check(tiledb_ctx_t* ctx, tiledb_config_t* config) {
+  if (config == nullptr || config->config_ == nullptr) {
+    auto st = Status::Error("Cannot set config; Invalid config object");
+    LOG_STATUS(st);
+    save_error(ctx, st);
+    return TILEDB_ERR;
+  }
+
   return TILEDB_OK;
 }
 
@@ -1122,6 +1134,7 @@ int32_t tiledb_ctx_get_config(tiledb_ctx_t* ctx, tiledb_config_t** config) {
     return TILEDB_OOM;
   }
 
+  // this assignment is a copy
   *((*config)->config_) = ctx->ctx_->storage_manager()->config();
 
   return TILEDB_OK;
@@ -2625,6 +2638,20 @@ int32_t tiledb_query_alloc(
   return TILEDB_OK;
 }
 
+int32_t tiledb_query_set_config(
+    tiledb_ctx_t* ctx, tiledb_query_t* query, tiledb_config_t* config) {
+  // Sanity check
+  if (sanity_check(ctx) == TILEDB_ERR ||
+      sanity_check(ctx, query) == TILEDB_ERR ||
+      sanity_check(ctx, config) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  if (SAVE_ERROR_CATCH(ctx, query->query_->set_config(*(config->config_))))
+    return TILEDB_ERR;
+
+  return TILEDB_OK;
+}
+
 int32_t tiledb_query_set_subarray(
     tiledb_ctx_t* ctx, tiledb_query_t* query, const void* subarray) {
   // Sanity check
@@ -2666,14 +2693,6 @@ int32_t tiledb_query_set_buffer_var(
     uint64_t* buffer_val_size) {
   // Sanity check
   if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, query) == TILEDB_ERR)
-    return TILEDB_ERR;
-
-  // On writes, check the provided offsets for validity.
-  if (query->query_->type() == tiledb::sm::QueryType::WRITE &&
-      save_error(
-          ctx,
-          tiledb::sm::Query::check_var_attr_offsets(
-              buffer_off, buffer_off_size, buffer_val_size)))
     return TILEDB_ERR;
 
   // Set attribute buffers
@@ -2724,14 +2743,6 @@ int32_t tiledb_query_set_buffer_var_nullable(
     uint64_t* buffer_validity_bytemap_size) {
   // Sanity check
   if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, query) == TILEDB_ERR)
-    return TILEDB_ERR;
-
-  // On writes, check the provided offsets for validity.
-  if (query->query_->type() == tiledb::sm::QueryType::WRITE &&
-      save_error(
-          ctx,
-          tiledb::sm::Query::check_var_attr_offsets(
-              buffer_off, buffer_off_size, buffer_val_size)))
     return TILEDB_ERR;
 
   // Set attribute buffers
@@ -4213,7 +4224,7 @@ int32_t tiledb_vfs_alloc(
   }
 
   // Create VFS object
-  (*vfs)->vfs_ = new tiledb::sm::VFS();
+  (*vfs)->vfs_ = new (std::nothrow) tiledb::sm::VFS();
   if ((*vfs)->vfs_ == nullptr) {
     auto st =
         Status::Error("Failed to allocate TileDB virtual filesystem object");
@@ -4747,6 +4758,23 @@ int32_t tiledb_stats_free_str(char** out) {
     std::free(*out);
     *out = nullptr;
   }
+  return TILEDB_OK;
+}
+
+/* ****************************** */
+/*          Heap Profiler         */
+/* ****************************** */
+
+int32_t tiledb_heap_profiler_enable(
+    const char* const file_name_prefix,
+    const uint64_t dump_interval_ms,
+    const uint64_t dump_interval_bytes,
+    const uint64_t dump_threshold_bytes) {
+  tiledb::common::heap_profiler.enable(
+      file_name_prefix ? std::string(file_name_prefix) : "",
+      dump_interval_ms,
+      dump_interval_bytes,
+      dump_threshold_bytes);
   return TILEDB_OK;
 }
 

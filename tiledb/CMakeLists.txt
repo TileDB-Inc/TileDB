@@ -4,7 +4,7 @@
 #
 # The MIT License
 #
-# Copyright (c) 2017-2020 TileDB, Inc.
+# Copyright (c) 2017-2021 TileDB, Inc.
 # Copyright (c) 2016 MIT and Intel Corporation
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -88,6 +88,8 @@ endif()
 
 # List of all core source files
 set(TILEDB_CORE_SOURCES
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/common/heap_memory.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/common/heap_profiler.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/common/logger.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/common/status.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/common/thread_pool.cc
@@ -165,6 +167,7 @@ set(TILEDB_CORE_SOURCES
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/array_schema.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/query.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/stats/stats.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/stats/timer_stat.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/storage_manager/context.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/storage_manager/consolidator.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/storage_manager/open_array.cc
@@ -317,6 +320,14 @@ if (TILEDB_AZURE)
       AzureSDK::AzureSDK
   )
   add_definitions(-DHAVE_AZURE)
+
+  if(MSVC)
+    if (TILEDB_CURL_EP_BUILT)
+      target_compile_definitions(TILEDB_CORE_OBJECTS PRIVATE -DCURL_STATICLIB=1 -Dazure_storage_lite_EXPORTS)
+    else()
+      target_compile_definitions(TILEDB_CORE_OBJECTS PRIVATE                    -Dazure_storage_lite_EXPORTS)
+    endif()
+  endif()
 endif()
 
 # GCS dependencies
@@ -351,6 +362,12 @@ endif()
 # Libcurl
 if (TILEDB_S3 OR TILEDB_AZURE OR TILEDB_GCS OR TILEDB_SERIALIZATION)
   if (NOT WIN32)
+    find_package(Curl_EP REQUIRED)
+    target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
+      INTERFACE
+        CURL::libcurl
+    )
+  elseif (WIN32 AND TILEDB_AZURE)
     find_package(Curl_EP REQUIRED)
     target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
       INTERFACE
@@ -433,6 +450,10 @@ endif()
 # Win32 specific libraries
 if (WIN32)
   set(WIN32_LIBS shlwapi rpcrt4 bcrypt)
+  if(TILEDB_AZURE)
+    #ws2_32.lib, crypt32.lib needed to satisfy curl dependencies
+    set(WIN32_LIBS ${WIN32_LIBS} ws2_32 crypt32)
+  endif()
 
   if (TILEDB_S3)
     list(APPEND WIN32_LIBS "${AWS_EXTRA_LIBS}")
@@ -699,8 +720,8 @@ set(TILEDB_EXPORT_HEADER_DIR "${CMAKE_CURRENT_BINARY_DIR}" PARENT_SCOPE)
 set(TILEDB_EXPORT_HEADER "${CMAKE_CURRENT_BINARY_DIR}/tiledb_export.h")
 set(TILEDB_EXPORT_HEADER "${TILEDB_EXPORT_HEADER}" PARENT_SCOPE)
 
-# Set related compiler settings
 target_compile_definitions(TILEDB_CORE_OBJECTS PRIVATE -DTILEDB_CORE_OBJECTS_EXPORTS)
+
 target_include_directories(TILEDB_CORE_OBJECTS PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
 
 # Add the generated header to the public headers list

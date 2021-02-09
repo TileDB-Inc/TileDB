@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2020 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2021 TileDB, Inc.
  * @copyright Copyright (c) 2016 MIT and Intel Corporation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -1152,6 +1152,9 @@ TILEDB_EXPORT void tiledb_config_free(tiledb_config_t** config);
  * - `vfs.s3.request_timeout_ms` <br>
  *    The request timeout in ms. Any `long` value is acceptable. <br>
  *    **Default**: 3000
+ * - `vfs.s3.requester_pays` <br>
+ *    The requester pays for the S3 access charges. <br>
+ *    **Default**: false
  * - `vfs.s3.proxy_host` <br>
  *    The S3 proxy host. <br>
  *    **Default**: ""
@@ -1212,6 +1215,24 @@ TILEDB_EXPORT void tiledb_config_free(tiledb_config_t** config);
  * - `rest.ignore_ssl_validation` <br>
  *    Have curl ignore ssl peer and host validation for REST server. <br>
  *    **Default**: false
+ * - `rest.creation_access_credentials_name` <br>
+ *    The name of the registered access key to use for creation of the REST
+ *    server. <br>
+ *    **Default**: no default set
+ * -  `rest.retry_http_codes` <br>
+ *     CSV list of http status codes to automatically retry a REST request for
+ * <br>
+ *     **Default**: "503"
+ * -  `rest.retry_count` <br>
+ *     Number of times to retry failed REST requests <br>
+ *     **Default**: 3
+ * -  `rest.retry_initial_delay_ms` <br>
+ *     Initial delay in milliseconds to wait until retrying a REST request <br>
+ *     **Default**: 500
+ * -  `rest.retry_delay_factor` <br>
+ *     The delay factor to exponentially wait until further retries of a failed
+ * REST request <br>
+ *     **Default**: 1.25
  *
  * **Example:**
  *
@@ -1536,7 +1557,10 @@ tiledb_ctx_alloc(tiledb_config_t* config, tiledb_ctx_t** ctx);
 TILEDB_EXPORT void tiledb_ctx_free(tiledb_ctx_t** ctx);
 
 /**
- * Retrieves the config from a TileDB context.
+ * Retrieves a copy of the config from a TileDB context.
+ * Modifying this config will not affect the initialized
+ * context configuration.
+ *
  *
  * **Example:**
  *
@@ -2241,7 +2265,7 @@ TILEDB_EXPORT int32_t tiledb_attribute_get_fill_value(
  * const char* value = "foo";
  * uint64_t size = strlen(value);
  * uint8_t valid = 1;
- * tiledb_attribute_set_fill_value(ctx, attr, value, size, valid);
+ * tiledb_attribute_set_fill_value_nullable(ctx, attr, value, size, valid);
  * @endcode
  *
  * @param ctx The TileDB context.
@@ -2283,13 +2307,13 @@ TILEDB_EXPORT int32_t tiledb_attribute_set_fill_value_nullable(
  * const int32_t* value;
  * uint64_t size;
  * uint8_t valid;
- * tiledb_attribute_get_fill_value(ctx, attr, &value, &size, &valid);
+ * tiledb_attribute_get_fill_value_nullable(ctx, attr, &value, &size, &valid);
  *
  * // Assuming a var char attribute
  * const char* value;
  * uint64_t size;
  * uint8_t valid;
- * tiledb_attribute_get_fill_value(ctx, attr, &value, &size, &valid);
+ * tiledb_attribute_get_fill_value_nullable(ctx, attr, &value, &size, &valid);
  * @endcode
  *
  * @param ctx The TileDB context.
@@ -3306,6 +3330,27 @@ TILEDB_EXPORT int32_t tiledb_query_alloc(
     tiledb_query_t** query);
 
 /**
+ * Set the query config
+ *
+ * Setting the configuration with this function overrides the following
+ * Query-level parameters only:
+ *
+ * - `sm.memory_budget`
+ * - `sm.memory_budget_var`
+ * - `sm.sub_partitioner_memory_budget`
+ * - `sm.var_offsets.mode`
+ * - `sm.var_offsets.extra_element`
+ * - `sm.var_offsets.bitsize`
+ * - `sm.check_coord_dups`
+ * - `sm.check_coord_oob`
+ * - `sm.check_global_order`
+ * - `sm.dedup_coords`
+ */
+
+TILEDB_EXPORT int32_t tiledb_query_set_config(
+    tiledb_ctx_t* ctx, tiledb_query_t* query, tiledb_config_t* config);
+
+/**
  * Indicates that the query will write or read a subarray, and provides
  * the appropriate information.
  *
@@ -3970,7 +4015,7 @@ TILEDB_EXPORT int32_t tiledb_query_add_range(
  * @note The stride is currently unsupported. Use `nullptr` as the
  *     stride argument.
  */
-int32_t tiledb_query_add_range_by_name(
+TILEDB_EXPORT int32_t tiledb_query_add_range_by_name(
     tiledb_ctx_t* ctx,
     tiledb_query_t* query,
     const char* dim_name,
@@ -6208,7 +6253,7 @@ TILEDB_EXPORT int32_t tiledb_stats_dump_str(char** out);
 
 /**
  * Dump all raw internal statistics counters to some output (e.g.,
- * file or stdout).
+ * file or stdout) as a JSON.
  *
  * @param out The output.
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
@@ -6216,8 +6261,8 @@ TILEDB_EXPORT int32_t tiledb_stats_dump_str(char** out);
 TILEDB_EXPORT int32_t tiledb_stats_raw_dump(FILE* out);
 
 /**
- * Dump all raw internal statistics counters to an output string. The caller is
- * responsible for freeing the resulting string.
+ * Dump all raw internal statistics counters to a JSON-formatted output string.
+ * The caller is responsible for freeing the resulting string.
  *
  * **Example:**
  *
@@ -6241,6 +6286,34 @@ TILEDB_EXPORT int32_t tiledb_stats_raw_dump_str(char** out);
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
 TILEDB_EXPORT int32_t tiledb_stats_free_str(char** out);
+
+/* ****************************** */
+/*          Heap Profiler         */
+/* ****************************** */
+
+/**
+ * Enable heap profiling.
+ *
+ * @param file_name_prefix If empty or null, stats are dumped
+ *   to stdout. If non-empty, this specifies the file_name prefix to
+ *   write to. For example, value "tiledb_mem_stats" will write
+ *   to "tiledb_mem_stats__1611170501", where the postfix is
+ *   determined by the current epoch.
+ * @param dump_interval_ms If non-zero, this spawns a dedicated
+ *   thread to dump on this time interval.
+ * @param dump_interval_bytes If non-zero, a dump will occur when
+ *   the total number of lifetime allocated bytes is increased by
+ *   more than this amount.
+ * @param dump_threshold_bytes If non-zero, labeled allocations with
+ *   a number of bytes lower than this threshold will not be reported
+ *   in the dump.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_heap_profiler_enable(
+    const char* file_name_prefix,
+    uint64_t dump_interval_ms,
+    uint64_t dump_interval_bytes,
+    uint64_t dump_threshold_bytes);
 
 /* ****************************** */
 /*          FRAGMENT INFO         */

@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2018-2020 TileDB, Inc.
+ * @copyright Copyright (c) 2018-2021 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -54,18 +54,29 @@ Stats::Stats() {
 /*              API               */
 /* ****************************** */
 
-void Stats::add_counter(CounterType stat, uint64_t count) {
+void Stats::add_counter(const CounterType stat, uint64_t count) {
   std::unique_lock<std::mutex> lck(mtx_);
   auto it = counter_stats_.find(stat);
   assert(it != counter_stats_.end());
   it->second += count;
 }
 
-void Stats::add_timer(TimerType stat, double count) {
+void Stats::start_timer(const TimerType stat) {
+  const std::thread::id tid = std::this_thread::get_id();
+
   std::unique_lock<std::mutex> lck(mtx_);
   auto it = timer_stats_.find(stat);
   assert(it != timer_stats_.end());
-  it->second += count;
+  it->second.start_timer(tid);
+}
+
+void Stats::end_timer(const TimerType stat) {
+  const std::thread::id tid = std::this_thread::get_id();
+
+  std::unique_lock<std::mutex> lck(mtx_);
+  auto it = timer_stats_.find(stat);
+  assert(it != timer_stats_.end());
+  it->second.end_timer(tid);
 }
 
 bool Stats::enabled() const {
@@ -77,7 +88,7 @@ void Stats::reset() {
 
   timer_stats_.clear();
   for (uint64_t i = 0; i != static_cast<uint64_t>(TimerType::__SIZE); ++i)
-    timer_stats_[static_cast<TimerType>(i)] = 0;
+    timer_stats_[static_cast<TimerType>(i)].reset();
 
   counter_stats_.clear();
   for (uint64_t i = 0; i != static_cast<uint64_t>(CounterType::__SIZE); ++i)
@@ -103,7 +114,7 @@ void Stats::dump(std::string* out) const {
   ss << "\n";
   ss << dump_vfs();
 
-  auto dbg_secs = timer_stats_.find(TimerType::DBG)->second;
+  auto dbg_secs = timer_stats_.at(TimerType::DBG).duration();
   if (dbg_secs != 0)
     ss << "\nDebugging time: " << dbg_secs << " secs\n";
 
@@ -132,10 +143,10 @@ void Stats::raw_dump(std::string* out) const {
     // to the end of the previous stat.
     if (i == 0) {
       ss << "  \"" << timer_names[i]
-         << "\": " << timer_stats_.find(static_cast<TimerType>(i))->second;
+         << "\": " << timer_stats_.at(static_cast<TimerType>(i)).duration();
     } else {
       ss << ",\n  \"" << timer_names[i]
-         << "\": " << timer_stats_.find(static_cast<TimerType>(i))->second;
+         << "\": " << timer_stats_.at(static_cast<TimerType>(i)).duration();
     }
   }
 
@@ -178,37 +189,41 @@ void Stats::set_enabled(bool enabled) {
 /* ****************************** */
 
 std::string Stats::dump_write() const {
-  auto write_time = timer_stats_.find(TimerType::WRITE)->second;
+  auto write_time = timer_stats_.find(TimerType::WRITE)->second.duration();
   auto write_split_coords_buff =
-      timer_stats_.find(TimerType::WRITE_SPLIT_COORDS_BUFF)->second;
+      timer_stats_.find(TimerType::WRITE_SPLIT_COORDS_BUFF)->second.duration();
   auto write_check_coord_oob =
-      timer_stats_.find(TimerType::WRITE_CHECK_COORD_OOB)->second;
+      timer_stats_.find(TimerType::WRITE_CHECK_COORD_OOB)->second.duration();
   auto write_sort_coords =
-      timer_stats_.find(TimerType::WRITE_SORT_COORDS)->second;
+      timer_stats_.find(TimerType::WRITE_SORT_COORDS)->second.duration();
   auto write_check_coord_dups =
-      timer_stats_.find(TimerType::WRITE_CHECK_COORD_DUPS)->second;
+      timer_stats_.find(TimerType::WRITE_CHECK_COORD_DUPS)->second.duration();
   auto write_compute_coord_dups =
-      timer_stats_.find(TimerType::WRITE_COMPUTE_COORD_DUPS)->second;
+      timer_stats_.find(TimerType::WRITE_COMPUTE_COORD_DUPS)->second.duration();
   auto write_prepare_tiles =
-      timer_stats_.find(TimerType::WRITE_PREPARE_TILES)->second;
+      timer_stats_.find(TimerType::WRITE_PREPARE_TILES)->second.duration();
   auto write_compute_coord_meta =
-      timer_stats_.find(TimerType::WRITE_COMPUTE_COORD_META)->second;
+      timer_stats_.find(TimerType::WRITE_COMPUTE_COORD_META)->second.duration();
   auto write_filter_tiles =
-      timer_stats_.find(TimerType::WRITE_FILTER_TILES)->second;
-  auto write_tiles = timer_stats_.find(TimerType::WRITE_TILES)->second;
+      timer_stats_.find(TimerType::WRITE_FILTER_TILES)->second.duration();
+  auto write_tiles =
+      timer_stats_.find(TimerType::WRITE_TILES)->second.duration();
   auto write_store_frag_meta =
-      timer_stats_.find(TimerType::WRITE_STORE_FRAG_META)->second;
-  auto write_finalize = timer_stats_.find(TimerType::WRITE_FINALIZE)->second;
+      timer_stats_.find(TimerType::WRITE_STORE_FRAG_META)->second.duration();
+  auto write_finalize =
+      timer_stats_.find(TimerType::WRITE_FINALIZE)->second.duration();
   auto write_check_global_order =
-      timer_stats_.find(TimerType::WRITE_CHECK_GLOBAL_ORDER)->second;
+      timer_stats_.find(TimerType::WRITE_CHECK_GLOBAL_ORDER)->second.duration();
   auto write_init_tile_its =
-      timer_stats_.find(TimerType::WRITE_INIT_TILE_ITS)->second;
+      timer_stats_.find(TimerType::WRITE_INIT_TILE_ITS)->second.duration();
   auto write_compute_cell_ranges =
-      timer_stats_.find(TimerType::WRITE_COMPUTE_CELL_RANGES)->second;
+      timer_stats_.find(TimerType::WRITE_COMPUTE_CELL_RANGES)
+          ->second.duration();
   auto write_prepare_and_filter_tiles =
-      timer_stats_.find(TimerType::WRITE_PREPARE_AND_FILTER_TILES)->second;
+      timer_stats_.find(TimerType::WRITE_PREPARE_AND_FILTER_TILES)
+          ->second.duration();
   auto write_array_meta =
-      timer_stats_.find(TimerType::WRITE_ARRAY_META)->second;
+      timer_stats_.find(TimerType::WRITE_ARRAY_META)->second.duration();
   auto write_num = counter_stats_.find(CounterType::WRITE_NUM)->second;
   auto write_attr_num =
       counter_stats_.find(CounterType::WRITE_ATTR_NUM)->second;
@@ -369,68 +384,89 @@ std::string Stats::dump_write() const {
 }
 
 std::string Stats::dump_read() const {
-  auto read_time = timer_stats_.find(TimerType::READ)->second;
+  auto read_time = timer_stats_.find(TimerType::READ)->second.duration();
   auto read_fill_dense_coords =
-      timer_stats_.find(TimerType::READ_FILL_DENSE_COORDS)->second;
-  auto read_array_open = timer_stats_.find(TimerType::READ_ARRAY_OPEN)->second;
+      timer_stats_.find(TimerType::READ_FILL_DENSE_COORDS)->second.duration();
+  auto read_array_open =
+      timer_stats_.find(TimerType::READ_ARRAY_OPEN)->second.duration();
+  auto read_array_open_without_fragments =
+      timer_stats_.find(TimerType::READ_ARRAY_OPEN_WITHOUT_FRAGMENTS)
+          ->second.duration();
   auto read_load_array_schema =
-      timer_stats_.find(TimerType::READ_LOAD_ARRAY_SCHEMA)->second;
+      timer_stats_.find(TimerType::READ_LOAD_ARRAY_SCHEMA)->second.duration();
   auto read_load_array_meta =
-      timer_stats_.find(TimerType::READ_LOAD_ARRAY_META)->second;
+      timer_stats_.find(TimerType::READ_LOAD_ARRAY_META)->second.duration();
+  auto read_get_fragment_uris =
+      timer_stats_.find(TimerType::READ_GET_FRAGMENT_URIS)->second.duration();
   auto read_load_frag_meta =
-      timer_stats_.find(TimerType::READ_LOAD_FRAG_META)->second;
+      timer_stats_.find(TimerType::READ_LOAD_FRAG_META)->second.duration();
   auto read_load_consolidated_frag_meta =
-      timer_stats_.find(TimerType::READ_LOAD_CONSOLIDATED_FRAG_META)->second;
-  auto read_init_state = timer_stats_.find(TimerType::READ_INIT_STATE)->second;
+      timer_stats_.find(TimerType::READ_LOAD_CONSOLIDATED_FRAG_META)
+          ->second.duration();
+  auto read_init_state =
+      timer_stats_.find(TimerType::READ_INIT_STATE)->second.duration();
   auto total_read_time = read_time + read_init_state;
   auto read_compute_est_result_size =
-      timer_stats_.find(TimerType::READ_COMPUTE_EST_RESULT_SIZE)->second;
+      timer_stats_.find(TimerType::READ_COMPUTE_EST_RESULT_SIZE)
+          ->second.duration();
   auto read_compute_tile_overlap =
-      timer_stats_.find(TimerType::READ_COMPUTE_TILE_OVERLAP)->second;
+      timer_stats_.find(TimerType::READ_COMPUTE_TILE_OVERLAP)
+          ->second.duration();
   auto read_compute_tile_coords =
-      timer_stats_.find(TimerType::READ_COMPUTE_TILE_COORDS)->second;
+      timer_stats_.find(TimerType::READ_COMPUTE_TILE_COORDS)->second.duration();
   auto read_compute_next_partition =
-      timer_stats_.find(TimerType::READ_NEXT_PARTITION)->second;
+      timer_stats_.find(TimerType::READ_NEXT_PARTITION)->second.duration();
   auto read_split_current_partition =
-      timer_stats_.find(TimerType::READ_SPLIT_CURRENT_PARTITION)->second;
+      timer_stats_.find(TimerType::READ_SPLIT_CURRENT_PARTITION)
+          ->second.duration();
   auto read_compute_result_coords =
-      timer_stats_.find(TimerType::READ_COMPUTE_RESULT_COORDS)->second;
+      timer_stats_.find(TimerType::READ_COMPUTE_RESULT_COORDS)
+          ->second.duration();
   auto read_compute_range_coords =
-      timer_stats_.find(TimerType::READ_COMPUTE_RANGE_RESULT_COORDS)->second;
+      timer_stats_.find(TimerType::READ_COMPUTE_RANGE_RESULT_COORDS)
+          ->second.duration();
   auto read_compute_sparse_result_tiles =
-      timer_stats_.find(TimerType::READ_COMPUTE_SPARSE_RESULT_TILES)->second;
+      timer_stats_.find(TimerType::READ_COMPUTE_SPARSE_RESULT_TILES)
+          ->second.duration();
   auto read_compute_sparse_result_cell_slabs_sparse =
       timer_stats_
           .find(TimerType::READ_COMPUTE_SPARSE_RESULT_CELL_SLABS_SPARSE)
-          ->second;
+          ->second.duration();
   auto read_compute_sparse_result_cell_slabs_dense =
       timer_stats_.find(TimerType::READ_COMPUTE_SPARSE_RESULT_CELL_SLABS_DENSE)
-          ->second;
+          ->second.duration();
   auto read_copy_attr_values =
-      timer_stats_.find(TimerType::READ_COPY_ATTR_VALUES)->second;
+      timer_stats_.find(TimerType::READ_COPY_ATTR_VALUES)->second.duration();
   auto read_copy_coords =
-      timer_stats_.find(TimerType::READ_COPY_COORDS)->second;
+      timer_stats_.find(TimerType::READ_COPY_COORDS)->second.duration();
   auto read_copy_fixed_attr_values =
-      timer_stats_.find(TimerType::READ_COPY_FIXED_ATTR_VALUES)->second;
+      timer_stats_.find(TimerType::READ_COPY_FIXED_ATTR_VALUES)
+          ->second.duration();
   auto read_copy_fixed_coords =
-      timer_stats_.find(TimerType::READ_COPY_FIXED_COORDS)->second;
+      timer_stats_.find(TimerType::READ_COPY_FIXED_COORDS)->second.duration();
   auto read_copy_var_attr_values =
-      timer_stats_.find(TimerType::READ_COPY_VAR_ATTR_VALUES)->second;
+      timer_stats_.find(TimerType::READ_COPY_VAR_ATTR_VALUES)
+          ->second.duration();
   auto read_copy_var_coords =
-      timer_stats_.find(TimerType::READ_COPY_VAR_COORDS)->second;
-  auto read_attr_tiles = timer_stats_.find(TimerType::READ_ATTR_TILES)->second;
+      timer_stats_.find(TimerType::READ_COPY_VAR_COORDS)->second.duration();
+  auto read_attr_tiles =
+      timer_stats_.find(TimerType::READ_ATTR_TILES)->second.duration();
   auto read_coord_tiles =
-      timer_stats_.find(TimerType::READ_COORD_TILES)->second;
+      timer_stats_.find(TimerType::READ_COORD_TILES)->second.duration();
   auto read_unfilter_attr_tiles =
-      timer_stats_.find(TimerType::READ_UNFILTER_ATTR_TILES)->second;
+      timer_stats_.find(TimerType::READ_UNFILTER_ATTR_TILES)->second.duration();
   auto read_unfilter_coord_tiles =
-      timer_stats_.find(TimerType::READ_UNFILTER_COORD_TILES)->second;
+      timer_stats_.find(TimerType::READ_UNFILTER_COORD_TILES)
+          ->second.duration();
   auto read_compute_relevant_tile_overlap =
-      timer_stats_.find(TimerType::READ_COMPUTE_RELEVANT_TILE_OVERLAP)->second;
+      timer_stats_.find(TimerType::READ_COMPUTE_RELEVANT_TILE_OVERLAP)
+          ->second.duration();
   auto read_load_relevant_rtrees =
-      timer_stats_.find(TimerType::READ_LOAD_RELEVANT_RTREES)->second;
+      timer_stats_.find(TimerType::READ_LOAD_RELEVANT_RTREES)
+          ->second.duration();
   auto read_compute_relevant_frags =
-      timer_stats_.find(TimerType::READ_COMPUTE_RELEVANT_FRAGS)->second;
+      timer_stats_.find(TimerType::READ_COMPUTE_RELEVANT_FRAGS)
+          ->second.duration();
 
   auto array_schema_size =
       counter_stats_.find(CounterType::READ_ARRAY_SCHEMA_SIZE)->second;
@@ -472,6 +508,13 @@ std::string Stats::dump_read() const {
       counter_stats_.find(CounterType::READ_RESULT_NUM)->second;
   auto read_cell_num = counter_stats_.find(CounterType::READ_CELL_NUM)->second;
   auto read_ops_num = counter_stats_.find(CounterType::READ_OPS_NUM)->second;
+
+  auto rest_http_retries =
+      counter_stats_.find(CounterType::REST_HTTP_RETRIES)->second;
+  // Treat this count as a double since we record the retry time in
+  // milliseconds. Divide by 1000 to get seconds
+  double rest_http_retry_time =
+      counter_stats_.find(CounterType::REST_HTTP_RETRY_TIME)->second / 1000.0f;
 
   // Derived counters.
   auto read_dim_num =
@@ -548,6 +591,11 @@ std::string Stats::dump_read() const {
         read_byte_num);
     ss << "\n";
 
+    if (rest_http_retries > 0) {
+      write(&ss, "- Number of REST HTTP retries: ", rest_http_retries);
+      write(&ss, "- Time spend in REST HTTP retries: ", rest_http_retry_time);
+    }
+
     if (read_compute_est_result_size != 0) {
       write(
           &ss,
@@ -572,7 +620,12 @@ std::string Stats::dump_read() const {
 
     if (read_array_open > 0) {
       write(&ss, "- Time to open array: ", read_array_open);
+      write(
+          &ss,
+          "  * Time to open array without fragments: ",
+          read_array_open_without_fragments);
       write(&ss, "  * Time to load array schema: ", read_load_array_schema);
+      write(&ss, "  * Time to list fragment uris: ", read_get_fragment_uris);
       write(
           &ss,
           "  * Time to load consolidated fragment metadata: ",
@@ -688,21 +741,23 @@ std::string Stats::dump_consolidate() const {
   auto consolidate_steps =
       counter_stats_.find(CounterType::CONSOLIDATE_STEP_NUM)->second;
   auto consolidate_frags =
-      timer_stats_.find(TimerType::CONSOLIDATE_FRAGS)->second;
+      timer_stats_.find(TimerType::CONSOLIDATE_FRAGS)->second.duration();
   auto consolidate_main =
-      timer_stats_.find(TimerType::CONSOLIDATE_MAIN)->second;
+      timer_stats_.find(TimerType::CONSOLIDATE_MAIN)->second.duration();
   auto consolidate_compute_next =
-      timer_stats_.find(TimerType::CONSOLIDATE_COMPUTE_NEXT)->second;
+      timer_stats_.find(TimerType::CONSOLIDATE_COMPUTE_NEXT)->second.duration();
   auto consolidate_array_meta =
-      timer_stats_.find(TimerType::CONSOLIDATE_ARRAY_META)->second;
+      timer_stats_.find(TimerType::CONSOLIDATE_ARRAY_META)->second.duration();
   auto consolidate_frag_meta =
-      timer_stats_.find(TimerType::CONSOLIDATE_FRAG_META)->second;
+      timer_stats_.find(TimerType::CONSOLIDATE_FRAG_META)->second.duration();
   auto consolidate_create_buffers =
-      timer_stats_.find(TimerType::CONSOLIDATE_CREATE_BUFFERS)->second;
+      timer_stats_.find(TimerType::CONSOLIDATE_CREATE_BUFFERS)
+          ->second.duration();
   auto consolidate_create_queries =
-      timer_stats_.find(TimerType::CONSOLIDATE_CREATE_QUERIES)->second;
+      timer_stats_.find(TimerType::CONSOLIDATE_CREATE_QUERIES)
+          ->second.duration();
   auto consolidate_copy_array =
-      timer_stats_.find(TimerType::CONSOLIDATE_COPY_ARRAY)->second;
+      timer_stats_.find(TimerType::CONSOLIDATE_COPY_ARRAY)->second.duration();
   std::stringstream ss;
 
   auto consolidate =

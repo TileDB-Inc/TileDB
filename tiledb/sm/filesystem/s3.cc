@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2020 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2021 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -41,7 +41,9 @@
 #include <boost/interprocess/streams/bufferstream.hpp>
 #include <fstream>
 #include <iostream>
+
 #include "tiledb/common/logger.h"
+#include "tiledb/common/unique_rwlock.h"
 #include "tiledb/sm/global_state/global_state.h"
 #include "tiledb/sm/global_state/unit_test_config.h"
 #include "tiledb/sm/misc/utils.h"
@@ -53,6 +55,7 @@
 #endif
 
 #include "tiledb/sm/filesystem/s3.h"
+#include "tiledb/sm/misc/parallel_functions.h"
 
 namespace {
 
@@ -118,13 +121,14 @@ S3::S3()
     , multipart_part_size_(0)
     , vfs_thread_pool_(nullptr)
     , use_virtual_addressing_(false)
-    , use_multipart_upload_(true) {
+    , use_multipart_upload_(true)
+    , request_payer_(Aws::S3::Model::RequestPayer::NOT_SET) {
 }
 
 S3::~S3() {
   assert(state_ == State::DISCONNECTED);
   for (auto& buff : file_buffers_)
-    delete buff.second;
+    tdb_delete(buff.second);
 }
 
 /* ********************************* */
@@ -184,6 +188,14 @@ Status S3::init(const Config& config, ThreadPool* const thread_pool) {
   RETURN_NOT_OK(config.get<bool>(
       "vfs.s3.use_multipart_upload", &use_multipart_upload_, &found));
   assert(found);
+
+  bool request_payer;
+  RETURN_NOT_OK(
+      config.get<bool>("vfs.s3.requester_pays", &request_payer, &found));
+  assert(found);
+
+  if (request_payer)
+    request_payer_ = Aws::S3::Model::RequestPayer::requester;
 
   config_ = config;
 
@@ -252,44 +264,57 @@ Status S3::disconnect() {
     return ret_st;
   }
 
-  // Take a lock protecting 'multipart_upload_states_'.
-  std::unique_lock<std::mutex> multipart_lck(multipart_upload_mtx_);
+  // Read-lock 'multipart_upload_states_'.
+  UniqueReadLock unique_rl(&multipart_upload_rwlock_);
 
   if (multipart_upload_states_.size() > 0) {
     RETURN_NOT_OK(init_client());
 
-    for (auto& kv : multipart_upload_states_) {
-      const MultiPartUploadState& state = kv.second;
+    std::vector<const MultiPartUploadState*> states;
+    states.reserve(multipart_upload_states_.size());
+    for (auto& kv : multipart_upload_states_)
+      states.emplace_back(&kv.second);
 
-      if (state.st.ok()) {
-        Aws::S3::Model::CompleteMultipartUploadRequest complete_request =
-            make_multipart_complete_request(state);
-        auto outcome = client_->CompleteMultipartUpload(complete_request);
-        if (!outcome.IsSuccess()) {
-          const Status st = LOG_STATUS(Status::S3Error(
-              std::string("Failed to disconnect and flush S3 objects. ") +
-              outcome_error_message(outcome)));
-          if (!st.ok()) {
-            ret_st = st;
+    auto statuses =
+        parallel_for(vfs_thread_pool_, 0, states.size(), [&](uint64_t i) {
+          const MultiPartUploadState* state = states[i];
+          // Lock multipart state
+          std::unique_lock<std::mutex> state_lck(state->mtx);
+
+          if (state->st.ok()) {
+            Aws::S3::Model::CompleteMultipartUploadRequest complete_request =
+                make_multipart_complete_request(*state);
+            auto outcome = client_->CompleteMultipartUpload(complete_request);
+            if (!outcome.IsSuccess()) {
+              const Status st = LOG_STATUS(Status::S3Error(
+                  std::string("Failed to disconnect and flush S3 objects. ") +
+                  outcome_error_message(outcome)));
+              if (!st.ok()) {
+                ret_st = st;
+              }
+            }
+          } else {
+            Aws::S3::Model::AbortMultipartUploadRequest abort_request =
+                make_multipart_abort_request(*state);
+            auto outcome = client_->AbortMultipartUpload(abort_request);
+            if (!outcome.IsSuccess()) {
+              const Status st = LOG_STATUS(Status::S3Error(
+                  std::string("Failed to disconnect and flush S3 objects. ") +
+                  outcome_error_message(outcome)));
+              if (!st.ok()) {
+                ret_st = st;
+              }
+            }
           }
-        }
-      } else {
-        Aws::S3::Model::AbortMultipartUploadRequest abort_request =
-            make_multipart_abort_request(state);
-        auto outcome = client_->AbortMultipartUpload(abort_request);
-        if (!outcome.IsSuccess()) {
-          const Status st = LOG_STATUS(Status::S3Error(
-              std::string("Failed to disconnect and flush S3 objects. ") +
-              outcome_error_message(outcome)));
-          if (!st.ok()) {
-            ret_st = st;
-          }
-        }
-      }
-    }
+          return Status::Ok();
+        });
+
+    // check statuses
+    for (auto& st : statuses)
+      RETURN_NOT_OK(st);
   }
 
-  multipart_lck.unlock();
+  unique_rl.unlock();
 
   if (options_.loggingOptions.logLevel != Aws::Utils::Logging::LogLevel::Off) {
     Aws::Utils::Logging::ShutdownAWSLogging();
@@ -334,7 +359,7 @@ Status S3::flush_object(const URI& uri) {
   std::string path_c_str = aws_uri.GetPath().c_str();
 
   // Take a lock protecting 'multipart_upload_states_'.
-  std::unique_lock<std::mutex> multipart_lck(multipart_upload_mtx_);
+  UniqueReadLock unique_rl(&multipart_upload_rwlock_);
 
   // Do nothing - empty object
   auto state_iter = multipart_upload_states_.find(path_c_str);
@@ -343,11 +368,14 @@ Status S3::flush_object(const URI& uri) {
     return Status::Ok();
   }
 
-  const MultiPartUploadState& state = state_iter->second;
+  const MultiPartUploadState* state = &multipart_upload_states_.at(path_c_str);
+  // Lock multipart state
+  std::unique_lock<std::mutex> state_lck(state->mtx);
+  unique_rl.unlock();
 
-  if (state.st.ok()) {
+  if (state->st.ok()) {
     Aws::S3::Model::CompleteMultipartUploadRequest complete_request =
-        make_multipart_complete_request(state);
+        make_multipart_complete_request(*state);
     auto outcome = client_->CompleteMultipartUpload(complete_request);
     if (!outcome.IsSuccess()) {
       return LOG_STATUS(Status::S3Error(
@@ -355,19 +383,21 @@ Status S3::flush_object(const URI& uri) {
           outcome_error_message(outcome)));
     }
 
-    auto bucket = state.bucket;
-    auto key = state.key;
-    multipart_lck.unlock();
+    auto bucket = state->bucket;
+    auto key = state->key;
+    // It is safe to unlock the state here
+    state_lck.unlock();
 
     wait_for_object_to_propagate(move(bucket), move(key));
 
     return finish_flush_object(std::move(outcome), uri, buff);
   } else {
     Aws::S3::Model::AbortMultipartUploadRequest abort_request =
-        make_multipart_abort_request(state);
+        make_multipart_abort_request(*state);
+
     auto outcome = client_->AbortMultipartUpload(abort_request);
 
-    multipart_lck.unlock();
+    state_lck.unlock();
 
     return finish_flush_object(std::move(outcome), uri, buff);
   }
@@ -386,6 +416,8 @@ S3::make_multipart_complete_request(const MultiPartUploadState& state) {
   complete_request.SetBucket(state.bucket);
   complete_request.SetKey(state.key);
   complete_request.SetUploadId(state.upload_id);
+  if (request_payer_ != Aws::S3::Model::RequestPayer::NOT_SET)
+    complete_request.SetRequestPayer(request_payer_);
   return complete_request.WithMultipartUpload(std::move(completed_upload));
 }
 
@@ -395,6 +427,8 @@ Aws::S3::Model::AbortMultipartUploadRequest S3::make_multipart_abort_request(
   abort_request.SetBucket(state.bucket);
   abort_request.SetKey(state.key);
   abort_request.SetUploadId(state.upload_id);
+  if (request_payer_ != Aws::S3::Model::RequestPayer::NOT_SET)
+    abort_request.SetRequestPayer(request_payer_);
   return abort_request;
 }
 
@@ -405,12 +439,14 @@ Status S3::finish_flush_object(
     Buffer* const buff) {
   Aws::Http::URI aws_uri = uri.c_str();
 
-  std::unique_lock<std::mutex> multipart_lck(multipart_upload_mtx_);
+  UniqueWriteLock unique_wl(&multipart_upload_rwlock_);
   multipart_upload_states_.erase(aws_uri.GetPath().c_str());
-  multipart_lck.unlock();
+  unique_wl.unlock();
 
+  std::unique_lock<std::mutex> file_buffers_lck(file_buffers_mtx_);
   file_buffers_.erase(uri.to_string());
-  delete buff;
+  file_buffers_lck.unlock();
+  tdb_delete(buff);
 
   if (!outcome.IsSuccess()) {
     return LOG_STATUS(Status::S3Error(
@@ -435,6 +471,8 @@ Status S3::is_empty_bucket(const URI& bucket, bool* is_empty) const {
   list_objects_request.SetBucket(aws_uri.GetAuthority());
   list_objects_request.SetPrefix("");
   list_objects_request.SetDelimiter("/");
+  if (request_payer_ != Aws::S3::Model::RequestPayer::NOT_SET)
+    list_objects_request.SetRequestPayer(request_payer_);
   auto list_objects_outcome = client_->ListObjects(list_objects_request);
 
   if (!list_objects_outcome.IsSuccess()) {
@@ -488,6 +526,8 @@ Status S3::is_object(
   Aws::S3::Model::HeadObjectRequest head_object_request;
   head_object_request.SetBucket(bucket_name);
   head_object_request.SetKey(object_key);
+  if (request_payer_ != Aws::S3::Model::RequestPayer::NOT_SET)
+    head_object_request.SetRequestPayer(request_payer_);
   auto head_object_outcome = client_->HeadObject(head_object_request);
   *exists = head_object_outcome.IsSuccess();
 
@@ -527,6 +567,8 @@ Status S3::ls(
   list_objects_request.SetBucket(aws_uri.GetAuthority());
   list_objects_request.SetPrefix(aws_prefix.c_str());
   list_objects_request.SetDelimiter(delimiter.c_str());
+  if (request_payer_ != Aws::S3::Model::RequestPayer::NOT_SET)
+    list_objects_request.SetRequestPayer(request_payer_);
   if (max_paths != -1)
     list_objects_request.SetMaxKeys(max_paths);
 
@@ -644,6 +686,8 @@ Status S3::object_size(const URI& uri, uint64_t* nbytes) const {
   Aws::S3::Model::HeadObjectRequest head_object_request;
   head_object_request.SetBucket(aws_uri.GetAuthority());
   head_object_request.SetKey(aws_path.c_str());
+  if (request_payer_ != Aws::S3::Model::RequestPayer::NOT_SET)
+    head_object_request.SetRequestPayer(request_payer_);
   auto head_object_outcome = client_->HeadObject(head_object_request);
 
   if (!head_object_outcome.IsSuccess())
@@ -685,6 +729,8 @@ Status S3::read(
         return Aws::New<Aws::IOStream>(
             constants::s3_allocation_tag.c_str(), streamBuf);
       });
+  if (request_payer_ != Aws::S3::Model::RequestPayer::NOT_SET)
+    get_object_request.SetRequestPayer(request_payer_);
 
   auto get_object_outcome = client_->GetObject(get_object_request);
   if (!get_object_outcome.IsSuccess()) {
@@ -715,6 +761,8 @@ Status S3::remove_object(const URI& uri) const {
   Aws::S3::Model::DeleteObjectRequest delete_object_request;
   delete_object_request.SetBucket(aws_uri.GetAuthority());
   delete_object_request.SetKey(aws_uri.GetPath());
+  if (request_payer_ != Aws::S3::Model::RequestPayer::NOT_SET)
+    delete_object_request.SetRequestPayer(request_payer_);
 
   auto delete_object_outcome = client_->DeleteObject(delete_object_request);
   if (!delete_object_outcome.IsSuccess()) {
@@ -766,6 +814,8 @@ Status S3::touch(const URI& uri) const {
   auto request_stream =
       Aws::MakeShared<Aws::StringStream>(constants::s3_allocation_tag.c_str());
   put_object_request.SetBody(request_stream);
+  if (request_payer_ != Aws::S3::Model::RequestPayer::NOT_SET)
+    put_object_request.SetRequestPayer(request_payer_);
 
   auto put_object_outcome = client_->PutObject(put_object_request);
   if (!put_object_outcome.IsSuccess()) {
@@ -857,8 +907,8 @@ Status S3::init_client() const {
   // check for client configuration on create, which can be slow if aws is not
   // configured on a users systems due to ec2 metadata check
 
-  client_config_ = std::unique_ptr<Aws::Client::ClientConfiguration>(
-      new Aws::Client::ClientConfiguration);
+  client_config_ = tdb_unique_ptr<Aws::Client::ClientConfiguration>(
+      tdb_new(Aws::Client::ClientConfiguration));
 
   s3_tp_executor_ = std::make_shared<S3ThreadPoolExecutor>(vfs_thread_pool_);
 
@@ -979,11 +1029,12 @@ Status S3::init_client() const {
   }
 #endif
 
+  std::shared_ptr<Aws::Auth::AWSCredentialsProvider> credentials_provider =
+      nullptr;
   switch ((!aws_access_key_id.empty() ? 1 : 0) +
           (!aws_secret_access_key.empty() ? 2 : 0) +
           (!aws_role_arn.empty() ? 4 : 0)) {
     case 0:
-      credentials_provider_ = nullptr;
       break;
     case 1:
     case 2:
@@ -995,7 +1046,7 @@ Status S3::init_client() const {
       Aws::String secret_access_key(aws_secret_access_key.c_str());
       Aws::String session_token(
           !aws_session_token.empty() ? aws_session_token.c_str() : "");
-      credentials_provider_ =
+      credentials_provider =
           std::make_shared<Aws::Auth::SimpleAWSCredentialsProvider>(
               access_key_id, secret_access_key, session_token);
       break;
@@ -1012,7 +1063,7 @@ Status S3::init_client() const {
               Aws::Auth::DEFAULT_CREDS_LOAD_FREQ_SECONDS);
       Aws::String session_name(
           !aws_session_name.empty() ? aws_session_name.c_str() : "");
-      credentials_provider_ =
+      credentials_provider =
           std::make_shared<Aws::Auth::STSAssumeRoleCredentialsProvider>(
               role_arn, session_name, external_id, load_frequency, nullptr);
       break;
@@ -1022,16 +1073,16 @@ Status S3::init_client() const {
           "Ambiguous authentication credentials; both permanent and temporary "
           "authentication credentials are configured");
   }
-  if (credentials_provider_ == nullptr) {
-    client_ = Aws::MakeShared<Aws::S3::S3Client>(
-        constants::s3_allocation_tag.c_str(),
+  if (credentials_provider == nullptr) {
+    client_ = tdb_make_shared(
+        Aws::S3::S3Client,
         *client_config_,
         Aws::Client::AWSAuthV4Signer::PayloadSigningPolicy::Never,
         use_virtual_addressing_);
   } else {
-    client_ = Aws::MakeShared<Aws::S3::S3Client>(
-        constants::s3_allocation_tag.c_str(),
-        credentials_provider_,
+    client_ = tdb_make_shared(
+        Aws::S3::S3Client,
+        credentials_provider,
         *client_config_,
         Aws::Client::AWSAuthV4Signer::PayloadSigningPolicy::Never,
         use_virtual_addressing_);
@@ -1052,6 +1103,8 @@ Status S3::copy_object(const URI& old_uri, const URI& new_uri) {
           .c_str());
   copy_object_request.SetBucket(dst_uri.GetAuthority());
   copy_object_request.SetKey(dst_uri.GetPath());
+  if (request_payer_ != Aws::S3::Model::RequestPayer::NOT_SET)
+    copy_object_request.SetRequestPayer(request_payer_);
 
   auto copy_object_outcome = client_->CopyObject(copy_object_request);
   if (!copy_object_outcome.IsSuccess()) {
@@ -1109,12 +1162,13 @@ Status S3::flush_file_buffer(const URI& uri, Buffer* buff, bool last_part) {
 }
 
 Status S3::get_file_buffer(const URI& uri, Buffer** buff) {
-  std::unique_lock<std::mutex> lck(multipart_upload_mtx_);
+  // TODO: remove this?
+  std::unique_lock<std::mutex> lck(file_buffers_mtx_);
 
   auto uri_str = uri.to_string();
   auto it = file_buffers_.find(uri_str);
   if (it == file_buffers_.end()) {
-    auto new_buff = new Buffer();
+    auto new_buff = tdb_new(Buffer);
     file_buffers_[uri_str] = new_buff;
     *buff = new_buff;
   } else {
@@ -1124,7 +1178,8 @@ Status S3::get_file_buffer(const URI& uri, Buffer** buff) {
   return Status::Ok();
 }
 
-Status S3::initiate_multipart_request(Aws::Http::URI aws_uri) {
+Status S3::initiate_multipart_request(
+    Aws::Http::URI aws_uri, MultiPartUploadState* state) {
   RETURN_NOT_OK(init_client());
 
   auto& path = aws_uri.GetPath();
@@ -1133,6 +1188,8 @@ Status S3::initiate_multipart_request(Aws::Http::URI aws_uri) {
   multipart_upload_request.SetBucket(aws_uri.GetAuthority());
   multipart_upload_request.SetKey(path);
   multipart_upload_request.SetContentType("application/octet-stream");
+  if (request_payer_ != Aws::S3::Model::RequestPayer::NOT_SET)
+    multipart_upload_request.SetRequestPayer(request_payer_);
 
   auto multipart_upload_outcome =
       client_->CreateMultipartUpload(multipart_upload_request);
@@ -1142,15 +1199,18 @@ Status S3::initiate_multipart_request(Aws::Http::URI aws_uri) {
         path_c_str + outcome_error_message(multipart_upload_outcome)));
   }
 
-  MultiPartUploadState state(
+  state->part_number = 1;
+  state->bucket = aws_uri.GetAuthority();
+  state->key = path;
+  state->upload_id = multipart_upload_outcome.GetResult().GetUploadId();
+  state->completed_parts = std::map<int, Aws::S3::Model::CompletedPart>();
+
+  *state = MultiPartUploadState(
       1,
       Aws::String(aws_uri.GetAuthority()),
       Aws::String(path),
       Aws::String(multipart_upload_outcome.GetResult().GetUploadId()),
       std::map<int, Aws::S3::Model::CompletedPart>());
-
-  assert(multipart_upload_states_.count(path_c_str) == 0);
-  multipart_upload_states_.emplace(std::move(path_c_str), std::move(state));
 
   return Status::Ok();
 }
@@ -1252,6 +1312,8 @@ Status S3::flush_direct(const URI& uri) {
   put_object_request.SetContentType("application/octet-stream");
   put_object_request.SetBucket(aws_uri.GetAuthority());
   put_object_request.SetKey(aws_uri.GetPath());
+  if (request_payer_ != Aws::S3::Model::RequestPayer::NOT_SET)
+    put_object_request.SetRequestPayer(request_payer_);
 
   auto put_object_outcome = client_->PutObject(put_object_request);
   if (!put_object_outcome.IsSuccess()) {
@@ -1298,28 +1360,63 @@ Status S3::write_multipart(
   const Aws::Http::URI aws_uri(uri.c_str());
   const std::string uri_path(aws_uri.GetPath().c_str());
 
+  MultiPartUploadState* state;
+  std::unique_lock<std::mutex> state_lck;
+
   // Take a lock protecting the shared multipart data structures
-  std::unique_lock<std::mutex> multipart_lck(multipart_upload_mtx_);
+  // Read lock to see if it exists
+  UniqueReadLock unique_rl(&multipart_upload_rwlock_);
 
   auto state_iter = multipart_upload_states_.find(uri_path);
   if (state_iter == multipart_upload_states_.end()) {
-    // Delete file if it exists (overwrite) and initiate multipart request
-    bool exists;
-    RETURN_NOT_OK(is_object(uri, &exists));
-    if (exists) {
-      RETURN_NOT_OK(remove_object(uri));
-    }
+    // If the state is new, we must grab write lock, so unlock from read and
+    // grab write
+    unique_rl.unlock();
+    UniqueWriteLock unique_wl(&multipart_upload_rwlock_);
 
-    const Status st = initiate_multipart_request(aws_uri);
-    if (!st.ok()) {
-      return st;
-    }
-
+    // Since we switched locks we need to once again check to make sure another
+    // thread didn't create the state
     state_iter = multipart_upload_states_.find(uri_path);
-    assert(state_iter != multipart_upload_states_.end());
-  }
+    if (state_iter == multipart_upload_states_.end()) {
+      auto& path = aws_uri.GetPath();
+      std::string path_str = path.c_str();
+      MultiPartUploadState new_state;
 
-  MultiPartUploadState* const state = &state_iter->second;
+      assert(multipart_upload_states_.count(path_str) == 0);
+      multipart_upload_states_.emplace(
+          std::move(path_str), std::move(new_state));
+      state = &multipart_upload_states_.at(uri_path);
+      state_lck = std::unique_lock<std::mutex>(state->mtx);
+      // Downgrade to read lock, expected below outside the create
+      unique_wl.unlock();
+
+      // Delete file if it exists (overwrite) and initiate multipart request
+      bool exists;
+      RETURN_NOT_OK(is_object(uri, &exists));
+      if (exists) {
+        RETURN_NOT_OK(remove_object(uri));
+      }
+
+      const Status st = initiate_multipart_request(aws_uri, state);
+      if (!st.ok()) {
+        return st;
+      }
+    } else {
+      // If another thread switched state, switch back to a read lock
+      state = &multipart_upload_states_.at(uri_path);
+
+      // Lock multipart state
+      state_lck = std::unique_lock<std::mutex>(state->mtx);
+    }
+  } else {
+    state = &multipart_upload_states_.at(uri_path);
+
+    // Lock multipart state
+    state_lck = std::unique_lock<std::mutex>(state->mtx);
+
+    // Unlock, as make_upload_part_req will reaquire as necessary.
+    unique_rl.unlock();
+  }
 
   // Get the upload ID
   const auto upload_id = state->upload_id;
@@ -1327,9 +1424,7 @@ Status S3::write_multipart(
   // Assign the part number(s), and make the write request.
   if (num_ops == 1) {
     const int part_num = state->part_number++;
-
-    // Unlock, as make_upload_part_req will reaquire as necessary.
-    multipart_lck.unlock();
+    state_lck.unlock();
 
     auto ctx =
         make_upload_part_req(aws_uri, buffer, length, upload_id, part_num);
@@ -1350,9 +1445,7 @@ Status S3::write_multipart(
       ctx_vec.emplace_back(std::move(ctx));
     }
     state->part_number += num_ops;
-
-    // Unlock, so the threads can take the lock as necessary.
-    multipart_lck.unlock();
+    state_lck.unlock();
 
     Status aggregate_st = Status::Ok();
     for (auto& ctx : ctx_vec) {
@@ -1389,6 +1482,8 @@ S3::MakeUploadPartCtx S3::make_upload_part_req(
   upload_part_request.SetContentMD5(Aws::Utils::HashingUtils::Base64Encode(
       Aws::Utils::HashingUtils::CalculateMD5(*stream)));
   upload_part_request.SetContentLength(length);
+  if (request_payer_ != Aws::S3::Model::RequestPayer::NOT_SET)
+    upload_part_request.SetRequestPayer(request_payer_);
 
   auto upload_part_outcome_callable =
       client_->UploadPartCallable(upload_part_request);
@@ -1414,24 +1509,30 @@ Status S3::get_make_upload_part_req(
   }
 
   if (!success) {
-    std::unique_lock<std::mutex> lck(multipart_upload_mtx_);
-    auto state_iter = multipart_upload_states_.find(uri_path);
-    state_iter->second.st = Status::S3Error(
+    UniqueReadLock unique_rl(&multipart_upload_rwlock_);
+    auto state = &multipart_upload_states_.at(uri_path);
+    Status st = Status::S3Error(
         std::string("Failed to upload part of S3 object '") + uri.c_str() +
         outcome_error_message(upload_part_outcome));
-    return LOG_STATUS(state_iter->second.st);
+    // Lock multipart state
+    std::unique_lock<std::mutex> state_lck(state->mtx);
+    unique_rl.unlock();
+    state->st = st;
+    return LOG_STATUS(st);
   }
 
   Aws::S3::Model::CompletedPart completed_part;
   completed_part.SetETag(upload_part_outcome.GetResult().GetETag());
   completed_part.SetPartNumber(ctx.upload_part_num);
 
-  {
-    std::unique_lock<std::mutex> lck(multipart_upload_mtx_);
-    auto state_iter = multipart_upload_states_.find(uri_path);
-    state_iter->second.completed_parts.emplace(
-        ctx.upload_part_num, std::move(completed_part));
-  }
+  UniqueReadLock unique_rl(&multipart_upload_rwlock_);
+  auto state = &multipart_upload_states_.at(uri_path);
+  // Lock multipart state
+  std::unique_lock<std::mutex> state_lck(state->mtx);
+  unique_rl.unlock();
+  state->completed_parts.emplace(
+      ctx.upload_part_num, std::move(completed_part));
+  state_lck.unlock();
 
   return Status::Ok();
 }

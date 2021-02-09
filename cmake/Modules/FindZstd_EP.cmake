@@ -4,7 +4,7 @@
 #
 # The MIT License
 #
-# Copyright (c) 2017-2020 TileDB, Inc.
+# Copyright (c) 2017-2021 TileDB, Inc.
 # Copyright (c) 2016 MIT and Intel Corporation
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -87,8 +87,10 @@ if (NOT ZSTD_FOUND)
 
     ExternalProject_Add(ep_zstd
       PREFIX "externals"
-      URL "https://github.com/facebook/zstd/archive/v1.3.4.zip"
-      URL_HASH SHA1=2f33cb8af3c964124be67ff4a50824a85b5e1907
+      # Set download name to avoid collisions with only the version number in the filename
+      DOWNLOAD_NAME ep_zstd.zip
+      URL "https://github.com/facebook/zstd/archive/v1.4.8.zip"
+      URL_HASH SHA1=8323c212a779ada25f5d587349326e84b047b536
       CONFIGURE_COMMAND
         ${CMAKE_COMMAND}
         ${ARCH_SPEC}

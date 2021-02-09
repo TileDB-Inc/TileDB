@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2020 TileDB Inc.
+ * @copyright Copyright (c) 2017-2021 TileDB Inc.
  * @copyright Copyright (c) 2016 MIT and Intel Corporation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -109,9 +109,9 @@ void write_array_1d_partial(
   std::vector<uint8_t> a1_validity = {1, 0};
   std::vector<char> a2_val = {'3', '3', '4', '4', '4'};
   std::vector<uint64_t> a2_off = {0, 2};
-  std::vector<uint8_t> a2_validity = {1, 0, 0, 0, 1};
+  std::vector<uint8_t> a2_validity = {1, 0};
   std::vector<double> a3 = {3.1, 3.2, 4.1, 4.2};
-  std::vector<uint8_t> a3_validity = {1, 0, 1, 0};
+  std::vector<uint8_t> a3_validity = {0, 1};
 
   Array array(ctx, array_name, TILEDB_WRITE);
   Query query(ctx, array, TILEDB_WRITE);
@@ -144,9 +144,9 @@ void read_array_1d_partial(
   std::vector<uint8_t> a1_validity(10);
   std::vector<char> a2_val(100);
   std::vector<uint64_t> a2_off(20);
-  std::vector<uint8_t> a2_validity(100);
+  std::vector<uint8_t> a2_validity(20);
   std::vector<double> a3(20);
-  std::vector<uint8_t> a3_validity(20);
+  std::vector<uint8_t> a3_validity(10);
 
   Array array(ctx, array_name, TILEDB_READ);
   Query query(ctx, array, TILEDB_READ);
@@ -170,9 +170,12 @@ void read_array_1d_partial(
   REQUIRE(std::get<1>(res["a3"]) == 20);
   if (nullable_attributes) {
     REQUIRE(std::get<2>(res["a1"]) == 10);
-    REQUIRE(std::get<2>(res["a2"]) == 5 + 8 * fill_char.size());
-    REQUIRE(std::get<2>(res["a3"]) == 20);
+    REQUIRE(std::get<2>(res["a2"]) == 10);
+    REQUIRE(std::get<2>(res["a3"]) == 10);
   }
+
+  const uint8_t fill_null = 0;
+  const uint8_t fill_valid = 1;
 
   uint64_t off = 0;
   for (size_t i = 0; i < 2; ++i) {
@@ -184,7 +187,14 @@ void read_array_1d_partial(
     }
     CHECK(!std::memcmp(&a3[2 * i], &fill_double[0], sizeof(double)));
     CHECK(!std::memcmp(&a3[2 * i + 1], &fill_double[1], sizeof(double)));
+
+    if (nullable_attributes) {
+      CHECK(!std::memcmp(&a1_validity[i], &fill_valid, sizeof(uint8_t)));
+      CHECK(!std::memcmp(&a2_validity[i], &fill_null, sizeof(uint8_t)));
+      CHECK(!std::memcmp(&a3_validity[i], &fill_valid, sizeof(uint8_t)));
+    }
   }
+
   CHECK(a1[2] == 3);
   if (nullable_attributes)
     CHECK(a1_validity[2] == 1);
@@ -195,29 +205,22 @@ void read_array_1d_partial(
   CHECK(a2_val[off] == '3');
   CHECK(a2_val[off + 1] == '3');
   if (nullable_attributes) {
-    CHECK(a2_validity[off] == 1);
-    CHECK(a2_validity[off + 1] == 0);
+    CHECK(a2_validity[2] == 1);
+    CHECK(a2_validity[3] == 0);
   }
   off += 2;
   CHECK(a2_off[3] == off);
   CHECK(a2_val[off] == '4');
   CHECK(a2_val[off + 1] == '4');
   CHECK(a2_val[off + 2] == '4');
-  if (nullable_attributes) {
-    CHECK(a2_validity[off] == 0);
-    CHECK(a2_validity[off + 1] == 0);
-    CHECK(a2_validity[off + 2] == 1);
-  }
   off += 3;
   CHECK(a3[4] == 3.1);
   CHECK(a3[5] == 3.2);
   CHECK(a3[6] == 4.1);
   CHECK(a3[7] == 4.2);
   if (nullable_attributes) {
-    CHECK(a3_validity[4] == 0);
-    CHECK(a3_validity[5] == 0);
-    CHECK(a3_validity[6] == 0);
-    CHECK(a3_validity[7] == 0);
+    CHECK(a3_validity[2] == 0);
+    CHECK(a3_validity[3] == 1);
   }
   for (size_t i = 4; i < 10; ++i) {
     CHECK(a1[i] == fill_int32);
@@ -227,16 +230,15 @@ void read_array_1d_partial(
     CHECK(a2_off[i] == off);
     for (size_t c = 0; c < fill_char.size(); ++c) {
       CHECK(a2_val[off] == fill_char[c]);
-      if (nullable_attributes) {
-        CHECK(a2_validity[off] == 0);
-      }
       ++off;
     }
     CHECK(!std::memcmp(&a3[2 * i], &fill_double[0], sizeof(double)));
     CHECK(!std::memcmp(&a3[2 * i + 1], &fill_double[1], sizeof(double)));
+
     if (nullable_attributes) {
-      CHECK(a3_validity[2 * i] == 1);
-      CHECK(a3_validity[2 * i + 1] == 1);
+      CHECK(!std::memcmp(&a1_validity[i], &fill_valid, sizeof(uint8_t)));
+      CHECK(!std::memcmp(&a2_validity[i], &fill_null, sizeof(uint8_t)));
+      CHECK(!std::memcmp(&a3_validity[i], &fill_valid, sizeof(uint8_t)));
     }
   }
 

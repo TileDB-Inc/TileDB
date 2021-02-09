@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2020 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2021 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -31,6 +31,7 @@
  */
 
 #include "tiledb/sm/filter/compression_filter.h"
+#include "tiledb/common/heap_memory.h"
 #include "tiledb/common/logger.h"
 #include "tiledb/sm/buffer/preallocated_buffer.h"
 #include "tiledb/sm/compressors/bzip_compressor.h"
@@ -107,7 +108,7 @@ void CompressionFilter::dump(FILE* out) const {
 }
 
 CompressionFilter* CompressionFilter::clone_impl() const {
-  return new CompressionFilter(compressor_, level_);
+  return tdb_new(CompressionFilter, compressor_, level_);
 }
 
 void CompressionFilter::set_compressor(Compressor compressor) {

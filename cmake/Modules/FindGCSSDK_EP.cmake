@@ -4,7 +4,7 @@
 #
 # The MIT License
 #
-# Copyright (c) 2018-2020 TileDB, Inc.
+# Copyright (c) 2018-2021 TileDB, Inc.
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -72,8 +72,10 @@ if (NOT GCSSDK_FOUND)
 
     ExternalProject_Add(ep_gcssdk
       PREFIX "externals"
-      URL "https://github.com/googleapis/google-cloud-cpp/archive/v1.16.0.zip"
-      URL_HASH SHA1=562ae055ebd6304b7fdf58a7b18c867b870bac95
+      # Set download name to avoid collisions with only the version number in the filename
+      DOWNLOAD_NAME ep_gcssdk.zip
+      URL "https://github.com/googleapis/google-cloud-cpp/archive/v1.22.0.zip"
+      URL_HASH SHA1=d4e14faef4095289b06f5ffe57d33a14574a7055
       BUILD_IN_SOURCE 1
       PATCH_COMMAND
         patch -N -p1 < ${TILEDB_CMAKE_INPUTS_DIR}/patches/ep_gcssdk/build.patch &&

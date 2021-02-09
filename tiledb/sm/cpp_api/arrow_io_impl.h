@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2020 TileDB, Inc.
+ * @copyright Copyright (c) 2020-2021 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -127,12 +127,13 @@ struct TypeInfo {
 
 struct BufferInfo {
   TypeInfo tdbtype;
-  bool is_var;
-  uint64_t elem_num;    // element count
-  void* data;           // data pointer
-  uint64_t offset_num;  // # offsets, always uint64_t
-  uint64_t* offsets;
-  uint64_t elem_size;
+  bool is_var;               // is var-length
+  uint64_t data_num;         // number of data elements
+  void* data;                // data pointer
+  uint64_t data_elem_size;   // bytes per data element
+  uint64_t offsets_num;      // number of offsets
+  void* offsets;             // offsets pointer
+  size_t offsets_elem_size;  // bytes per offset element
 };
 
 /* ****************************** */
@@ -174,15 +175,19 @@ ArrowInfo tiledb_buffer_arrow_fmt(BufferInfo bufferinfo, bool use_list = true) {
 
   switch (typeinfo.type) {
     ////////////////////////////////////////////////////////////////////////
-    // NOTE: should export as arrow's "large utf8" because TileDB offsets
-    //       are natively uint64_t. However: our offset buffers are 1 elem
-    //       short of the expected length for an arrow offset buffer.
-    //       For now, we transform to int32_it in place and export "u"
     case TILEDB_STRING_ASCII:
     case TILEDB_STRING_UTF8:
-      return ArrowInfo("u");
+      if (bufferinfo.offsets_elem_size == 4) {
+        return ArrowInfo("u");
+      } else {
+        return ArrowInfo("U");
+      }
     case TILEDB_CHAR:
-      return ArrowInfo("z");
+      if (bufferinfo.offsets_elem_size == 4) {
+        return ArrowInfo("z");
+      } else {
+        return ArrowInfo("Z");
+      }
     case TILEDB_INT32:
       return ArrowInfo("i");
     case TILEDB_INT64:
@@ -285,11 +290,9 @@ TypeInfo arrow_type_to_tiledb(ArrowSchema* arw_schema) {
         "'");
 }
 
-TypeInfo tiledb_dt_info(
-    const tiledb::ArraySchema& schema, const std::string& name) {
+TypeInfo tiledb_dt_info(const ArraySchema& schema, const std::string& name) {
   if (schema.has_attribute(name)) {
     auto attr = schema.attribute(name);
-
     auto retval = TypeInfo();
     retval.type = attr.type(),
     retval.elem_size = tiledb::impl::type_size(attr.type()),
@@ -313,29 +316,6 @@ TypeInfo tiledb_dt_info(
 /* ****************************** */
 /*        Helper functions        */
 /* ****************************** */
-
-// Reorder offsets into Arrow-compatible format
-// NOTE: this currently hard-codes an inplace conversion from
-//       uint64 (TileDB) to int32 ("arrow small") only
-void offsets_to_arrow(const BufferInfo& binfo) {
-  size_t elem_size = binfo.elem_size;
-
-  uint64_t* offsets = binfo.offsets;
-  int32_t* offsets_i32 = reinterpret_cast<int32_t*>(binfo.offsets);
-
-  uint64_t idx = 1;  // important: don't divide by 0
-  while (idx < binfo.offset_num) {
-    // we must check for zeros here to handle a run of empty
-    // values (zero-length) at the start of the buffer
-    // note that given the i32 conversion, we can simply
-    // skip the assignment because
-    //   offsets[idx] == 0 => offsets_i32[i:i+1] == 0
-    if (offsets[idx] != 0)
-      offsets_i32[idx] = static_cast<int32_t>(offsets[idx] / elem_size);
-    ++idx;
-  }
-  offsets_i32[idx] = binfo.elem_num;
-}
 
 void check_arrow_schema(const ArrowSchema* arw_schema) {
   if (arw_schema == nullptr)
@@ -583,19 +563,19 @@ struct CPPArrowArray {
 
 class ArrowImporter {
  public:
-  ArrowImporter(std::shared_ptr<tiledb::Query> query);
+  ArrowImporter(Query* const query);
   ~ArrowImporter();
 
   void import_(std::string name, ArrowArray* array, ArrowSchema* schema);
 
  private:
-  std::shared_ptr<tiledb::Query> query_;
+  Query* const query_;
   std::vector<void*> offset_buffers_;
 
 };  // class ArrowExporter
 
-ArrowImporter::ArrowImporter(std::shared_ptr<tiledb::Query> query) {
-  query_ = query;
+ArrowImporter::ArrowImporter(Query* const query)
+    : query_(query) {
 }
 
 ArrowImporter::~ArrowImporter() {
@@ -613,35 +593,25 @@ void ArrowImporter::import_(
   if (typeinfo.cell_val_num == TILEDB_VAR_NUM) {
     assert(arw_array->n_buffers == 3);
 
-    void* p_offsets_arw = const_cast<void*>(arw_array->buffers[1]);
+    void* p_offsets = const_cast<void*>(arw_array->buffers[1]);
     void* p_data = const_cast<void*>(arw_array->buffers[2]);
-    uint64_t data_num = arw_array->length;  // <- number of elements
+    const uint64_t num_offsets = arw_array->length;
     uint64_t data_nbytes = 0;
-
-    uint64_t* p_offsets = static_cast<uint64_t*>(
-        std::malloc(arw_array->length * sizeof(uint64_t)));
-    offset_buffers_.push_back(static_cast<void*>(p_offsets));
-
     if (typeinfo.arrow_large) {
-      int64_t* p_offsets_int64 = static_cast<int64_t*>(p_offsets_arw);
-      // the Arrow offsets buffer has length+1 elements
-      for (size_t i = 0; i < static_cast<size_t>(data_num); i++) {
-        p_offsets[i] = p_offsets_int64[i] * typeinfo.elem_size;
-      }
-      data_nbytes = p_offsets_int64[data_num] * typeinfo.elem_size;
+      data_nbytes =
+          static_cast<uint64_t*>(p_offsets)[num_offsets] * typeinfo.elem_size;
     } else {
-      int32_t* p_offsets_int32 = static_cast<int32_t*>(p_offsets_arw);
-      // the Arrow offsets buffer has length+1 elements
-      for (size_t i = 0; i < static_cast<size_t>(data_num); i++) {
-        p_offsets[i] = p_offsets_int32[i] * typeinfo.elem_size;
-      }
-      data_nbytes = p_offsets_int32[data_num] * typeinfo.elem_size;
+      data_nbytes =
+          static_cast<uint32_t*>(p_offsets)[num_offsets] * typeinfo.elem_size;
     }
+
+    // Set the TileDB buffer, adding `1` to `num_offsets` to account for
+    // the expected, extra offset.
     query_->set_buffer(
         name,
-        const_cast<uint64_t*>(p_offsets),
-        data_num,
-        const_cast<void*>(p_data),
+        static_cast<uint64_t*>(p_offsets),
+        num_offsets + 1,
+        p_data,
         data_nbytes);
   } else {
     // fixed-size attribute (not TILEDB_VAR_NUM)
@@ -660,19 +630,21 @@ void ArrowImporter::import_(
 
 class ArrowExporter {
  public:
-  ArrowExporter(std::shared_ptr<tiledb::Query> query);
+  ArrowExporter(Context* const ctx, Query* const query);
 
   void export_(const std::string& name, ArrowArray* array, ArrowSchema* schema);
 
   BufferInfo buffer_info(const std::string& name);
 
  private:
-  std::shared_ptr<tiledb::Query> query_;
+  Context* const ctx_;
+  Query* const query_;
 };
 
 // ArrowExporter implementation
-ArrowExporter::ArrowExporter(std::shared_ptr<tiledb::Query> query) {
-  query_ = query;
+ArrowExporter::ArrowExporter(Context* const ctx, Query* const query)
+    : ctx_(ctx)
+    , query_(query) {
 }
 
 BufferInfo ArrowExporter::buffer_info(const std::string& name) {
@@ -690,12 +662,33 @@ BufferInfo ArrowExporter::buffer_info(const std::string& name) {
     TDB_LERROR("No results found for attribute '" + name + "'");
   }
 
+  uint8_t offsets_elem_nbytes =
+      ctx_->config().get("sm.var_offsets.bitsize") == "32" ? 4 : 8;
+
   bool is_var = (result_elt_iter->second.first != 0);
 
   // NOTE: result sizes are in bytes
   if (is_var) {
     query_->get_buffer(
         name, &offsets, &offsets_nelem, &data, &data_nelem, &elem_size);
+
+    // The C++ API Query::get_buffer returns an incorrect `offsets_nelemn`
+    // when we read 32-bit offsets from the core. As a work-around, we will
+    // invoke the C-API to get the byte size of the offsets buffer and
+    // divide by 4 to get the correct number of offset elements. Note that
+    // the C API does not fetch the data element size, so we ignore
+    // `data_nbytes` below and leave `elem_size` untouched.
+    uint64_t* offsets_nbytes = nullptr;
+    uint64_t* data_nbytes = nullptr;
+    ctx_->handle_error(tiledb_query_get_buffer_var(
+        ctx_->ptr().get(),
+        query_->ptr().get(),
+        name.c_str(),
+        &offsets,
+        &offsets_nbytes,
+        &data,
+        &data_nbytes));
+    offsets_nelem = *offsets_nbytes / offsets_elem_nbytes;
   } else {
     query_->get_buffer(name, &data, &data_nelem, &elem_size);
   }
@@ -703,11 +696,12 @@ BufferInfo ArrowExporter::buffer_info(const std::string& name) {
   auto retval = BufferInfo();
   retval.tdbtype = typeinfo;
   retval.is_var = is_var;
-  retval.elem_num = data_nelem;
+  retval.data_num = data_nelem;
   retval.data = data;
-  retval.offset_num = (is_var ? offsets_nelem : 1);
+  retval.data_elem_size = elem_size;
+  retval.offsets_num = (is_var ? offsets_nelem : 1);
   retval.offsets = offsets;
-  retval.elem_size = elem_size;
+  retval.offsets_elem_size = offsets_elem_nbytes;
 
   return retval;
 }
@@ -725,11 +719,6 @@ int64_t flags_for_buffer(BufferInfo binfo) {
 void ArrowExporter::export_(
     const std::string& name, ArrowArray* array, ArrowSchema* schema) {
   auto bufferinfo = this->buffer_info(name);
-  // TODO add checks?:
-  // -  .elem_num < INT64_MAX
-  // - check that the length of a var-len element does not exceed INT32_MAX
-  //   currently we export as "u" and "b" (int32 offsets) rather than
-  //   "U and "B" (int64 offsets)
 
   if (schema == nullptr || array == nullptr) {
     throw tiledb::TileDBError(
@@ -747,7 +736,6 @@ void ArrowExporter::export_(
 
   std::vector<void*> buffers;
   if (bufferinfo.is_var) {
-    offsets_to_arrow(bufferinfo);  // convert in-place
     buffers = {nullptr, bufferinfo.offsets, bufferinfo.data};
   } else {
     cpp_schema =
@@ -757,8 +745,8 @@ void ArrowExporter::export_(
   cpp_schema->export_ptr(schema);
 
   auto cpp_arrow_array = new CPPArrowArray(
-      (bufferinfo.is_var ? bufferinfo.offset_num :
-                           bufferinfo.elem_num),  // elem_num
+      (bufferinfo.is_var ? bufferinfo.offsets_num - 1 :
+                           bufferinfo.data_num),  // elem_num
       0,                                          // null_num
       0,                                          // offset
       {},                                         // children
@@ -772,7 +760,7 @@ void ArrowExporter::export_(
 /* ************************************************************************ */
 /* Begin TileDB Arrow IO public API implementation */
 
-ArrowAdapter::ArrowAdapter(std::shared_ptr<tiledb::Query> query)
+ArrowAdapter::ArrowAdapter(Context* const ctx, Query* const query)
     : importer_(nullptr)
     , exporter_(nullptr) {
   importer_ = new ArrowImporter(query);
@@ -780,7 +768,7 @@ ArrowAdapter::ArrowAdapter(std::shared_ptr<tiledb::Query> query)
     throw tiledb::TileDBError(
         "[TileDB-Arrow] Failed to allocate ArrowImporter!");
   }
-  exporter_ = new ArrowExporter(query);
+  exporter_ = new ArrowExporter(ctx, query);
   if (!exporter_) {
     throw tiledb::TileDBError(
         "[TileDB-Arrow] Failed to allocate ArrowImporter!");
@@ -807,17 +795,18 @@ ArrowAdapter::~ArrowAdapter() {
 }
 
 void query_get_buffer_arrow_array(
-    std::shared_ptr<Query> query,
+    Context* const ctx,
+    Query* const query,
     std::string name,
     void* v_arw_array,
     void* v_arw_schema) {
-  ArrowExporter exporter(query);
+  ArrowExporter exporter(ctx, query);
 
   exporter.export_(name, (ArrowArray*)v_arw_array, (ArrowSchema*)v_arw_schema);
 }
 
 void query_set_buffer_arrow_array(
-    std::shared_ptr<Query> query,
+    Query* const query,
     std::string name,
     void* v_arw_array,
     void* v_arw_schema) {

@@ -7,7 +7,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2020 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2021 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -38,8 +38,10 @@
 #include "tiledb.h"
 #include "utils.h"
 
+#include <map>
 #include <memory>
 #include <string>
+#include <unordered_map>
 
 namespace tiledb {
 
@@ -194,6 +196,31 @@ class Config {
     if (config) {
       config_ = std::shared_ptr<tiledb_config_t>(*config, Config::free);
       *config = nullptr;
+    }
+  }
+
+  /**
+   * Constructor that takes as input a STL map that stores the config parameters
+   *
+   * @param config
+   */
+  explicit Config(const std::map<std::string, std::string>& config) {
+    create_config();
+    for (const auto& kv : config) {
+      set(kv.first, kv.second);
+    }
+  }
+
+  /**
+   * Constructor that takes as input a STL unordered_map that stores the config
+   * parameters
+   *
+   * @param config
+   */
+  explicit Config(const std::unordered_map<std::string, std::string>& config) {
+    create_config();
+    for (const auto& kv : config) {
+      set(kv.first, kv.second);
     }
   }
 
@@ -493,6 +520,9 @@ class Config {
    * - `vfs.s3.request_timeout_ms` <br>
    *    The request timeout in ms. Any `long` value is acceptable. <br>
    *    **Default**: 3000
+   * - `vfs.s3.requester_pays` <br>
+   *    The requester pays for the S3 access charges. <br>
+   *    **Default**: false
    * - `vfs.s3.proxy_host` <br>
    *    The proxy host. <br>
    *    **Default**: ""
@@ -553,6 +583,25 @@ class Config {
    * - `rest.ignore_ssl_validation` <br>
    *    Have curl ignore ssl peer and host validation for REST server. <br>
    *    **Default**: false
+   * - `rest.creation_access_credentials_name` <br>
+   *    The name of the registered access key to use for creation of the REST
+   *    server. <br>
+   *    **Default**: no default set
+   * -  `rest.retry_http_codes` <br>
+   *     CSV list of http status codes to automatically retry a REST request for
+   * <br>
+   *     **Default**: "503"
+   * -  `rest.retry_count` <br>
+   *     Number of times to retry failed REST requests <br>
+   *     **Default**: 3
+   * -  `rest.retry_initial_delay_ms` <br>
+   *     Initial delay in milliseconds to wait until retrying a REST request
+   * <br>
+   *     **Default**: 500
+   * -  `rest.retry_delay_factor` <br>
+   *     The delay factor to exponentially wait until further retries of a
+   * failed REST request <br>
+   *     **Default**: 1.25
    */
   Config& set(const std::string& param, const std::string& value) {
     tiledb_error_t* err;

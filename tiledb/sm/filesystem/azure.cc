@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2020 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2021 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -31,6 +31,10 @@
  */
 
 #ifdef HAVE_AZURE
+
+#if defined(_WIN32)
+#define NOMINMAX  // avoid min/max macros from windows headers
+#endif
 
 #include <put_block_list_request_base.h>
 #include <future>
@@ -143,11 +147,16 @@ Status Azure::init(const Config& config, ThreadPool* const thread_pool) {
   // Linux.
   const std::string cert_file =
       global_state::GlobalState::GetGlobalState().cert_file();
-  client_ = std::make_shared<azure::storage_lite::blob_client>(
-      account, thread_pool_->concurrency_level(), cert_file);
+  client_ = tdb_make_shared(
+      azure::storage_lite::blob_client,
+      account,
+      thread_pool_->concurrency_level(),
+      cert_file);
 #else
-  client_ = std::make_shared<azure::storage_lite::blob_client>(
-      account, thread_pool_->concurrency_level());
+  client_ = tdb_make_shared(
+      azure::storage_lite::blob_client,
+      account,
+      thread_pool_->concurrency_level());
 #endif
 
   // The Azure SDK does not provide a way to configure the retry

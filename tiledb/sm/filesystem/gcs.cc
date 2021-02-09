@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2020 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2021 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -34,12 +34,14 @@
 
 #include <google/cloud/status.h>
 #include <google/cloud/storage/client_options.h>
+#include "google/cloud/storage/oauth2/credentials.h"
 #include "google/cloud/storage/oauth2/google_credentials.h"
 
 #include <sstream>
 #include <unordered_set>
 
 #include "tiledb/common/logger.h"
+#include "tiledb/common/unique_rwlock.h"
 #include "tiledb/sm/filesystem/gcs.h"
 #include "tiledb/sm/global_state/global_state.h"
 #include "tiledb/sm/misc/utils.h"
@@ -132,15 +134,23 @@ Status GCS::init_client() const {
   // Creates the client using the credentials file pointed to by the
   // env variable GOOGLE_APPLICATION_CREDENTIALS
   try {
-    auto creds = google::cloud::storage::oauth2::GoogleDefaultCredentials(
-        channel_options);
-    if (!creds) {
-      return LOG_STATUS(Status::GCSError(
-          "Failed to initialize GCS credentials: " + creds.status().message()));
+    std::shared_ptr<google::cloud::storage::oauth2::Credentials> creds =
+        nullptr;
+    if (getenv("CLOUD_STORAGE_EMULATOR_ENDPOINT")) {
+      creds = google::cloud::storage::oauth2::CreateAnonymousCredentials();
+    } else {
+      auto status_or_creds =
+          google::cloud::storage::oauth2::GoogleDefaultCredentials(
+              channel_options);
+      if (!status_or_creds) {
+        return LOG_STATUS(Status::GCSError(
+            "Failed to initialize GCS credentials: " +
+            status_or_creds.status().message()));
+      }
+      creds = *status_or_creds;
     }
-
     google::cloud::storage::ClientOptions client_options(
-        *creds, channel_options);
+        creds, channel_options);
     auto client = google::cloud::storage::Client(
         client_options, google::cloud::storage::StrictIdempotencyPolicy());
     client_ = google::cloud::StatusOr<google::cloud::storage::Client>(client);
@@ -385,13 +395,9 @@ Status GCS::ls(
   google::cloud::storage::Prefix prefix_option(object_path);
   google::cloud::storage::Delimiter delimiter_option(delimiter);
 
-  google::cloud::storage::internal::PaginationRange<
-      google::cloud::storage::ObjectOrPrefix,
-      google::cloud::storage::internal::ListObjectsRequest,
-      google::cloud::storage::internal::ListObjectsResponse>
-      objects_reader = client_->ListObjectsAndPrefixes(
+  google::cloud::storage::ListObjectsAndPrefixesReader objects_reader =
+      client_->ListObjectsAndPrefixes(
           bucket_name, std::move(prefix_option), std::move(delimiter_option));
-
   for (const auto& object_metadata : objects_reader) {
     if (!object_metadata.ok()) {
       const google::cloud::Status status = object_metadata.status();
@@ -785,37 +791,56 @@ Status GCS::write_parts(
   std::string object_path;
   RETURN_NOT_OK(parse_gcs_uri(uri, &bucket_name, &object_path));
 
-  // Protect 'multi_part_upload_states_' from concurrent read and writes.
-  std::unique_lock<std::mutex> states_lock(multi_part_upload_states_lock_);
+  MultiPartUploadState* state;
+  std::unique_lock<std::mutex> state_lck;
+
+  // Take a lock protecting the shared multipart data structures
+  // Read lock to see if it exists
+  UniqueReadLock unique_rl(&multipart_upload_rwlock_);
 
   auto state_iter = multi_part_upload_states_.find(uri.to_string());
   if (state_iter == multi_part_upload_states_.end()) {
-    // Delete file if it exists (overwrite).
-    bool exists;
-    RETURN_NOT_OK(is_object(uri, &exists));
-    if (exists) {
-      RETURN_NOT_OK(remove_object(uri));
+    // If the state is new, we must grab write lock, so unlock from read and
+    // grab write
+    unique_rl.unlock();
+    UniqueWriteLock unique_wl(&multipart_upload_rwlock_);
+    // Since we switched locks we need to once again check to make sure another
+    // thread didn't create the state
+    state_iter = multi_part_upload_states_.find(uri.to_string());
+    if (state_iter == multi_part_upload_states_.end()) {
+      // Instantiate the new state.
+      MultiPartUploadState new_state(object_path);
+
+      // Store the new state.
+      multi_part_upload_states_.emplace(uri.to_string(), std::move(new_state));
+      state = &multi_part_upload_states_.at(uri.to_string());
+      state_lck = std::unique_lock<std::mutex>(state->mtx_);
+
+      // Downgrade to read lock, expected below outside the create
+      unique_wl.unlock();
+
+      // Delete file if it exists (overwrite).
+      bool exists;
+      RETURN_NOT_OK(is_object(uri, &exists));
+      if (exists) {
+        RETURN_NOT_OK(remove_object(uri));
+      }
+    } else {
+      // If another thread switched state, switch back to a read lock
+      state = &multi_part_upload_states_.at(uri.to_string());
+
+      // Lock multipart state
+      state_lck = std::unique_lock<std::mutex>(state->mtx_);
     }
+  } else {
+    state = &multi_part_upload_states_.at(uri.to_string());
 
-    // Instantiate the new state.
-    MultiPartUploadState state(object_path);
+    // Lock multipart state
+    state_lck = std::unique_lock<std::mutex>(state->mtx_);
 
-    // Store the new state.
-    const std::pair<
-        std::unordered_map<std::string, MultiPartUploadState>::iterator,
-        bool>
-        emplaced = multi_part_upload_states_.emplace(
-            uri.to_string(), std::move(state));
-    assert(emplaced.second);
-    state_iter = emplaced.first;
+    // Unlock, as make_upload_part_req will reaquire as necessary.
+    unique_rl.unlock();
   }
-
-  MultiPartUploadState* const state = &state_iter->second;
-
-  // We're done reading and writing from 'multi_part_upload_states_'. Mutating
-  // the 'state' element does not affect the thread-safety of
-  // 'multi_part_upload_states_'.
-  states_lock.unlock();
 
   if (num_ops == 1) {
     const std::string object_part_path = state->next_part_path();
@@ -823,6 +848,7 @@ Status GCS::write_parts(
     const Status st =
         upload_part(bucket_name, object_part_path, buffer, length);
     state->update_st(st);
+    state_lck.unlock();
     return st;
   } else {
     std::vector<ThreadPool::Task> tasks;
@@ -849,6 +875,7 @@ Status GCS::write_parts(
 
     const Status st = thread_pool_->wait_all(tasks);
     state->update_st(st);
+    state_lck.unlock();
     return st;
   }
 
@@ -895,7 +922,8 @@ Status GCS::flush_object(const URI& uri) {
   const Status flush_write_cache_st =
       flush_write_cache(uri, write_cache_buffer, true);
 
-  std::unique_lock<std::mutex> states_lock(multi_part_upload_states_lock_);
+  // Take a lock protecting 'multipart_upload_states_'.
+  UniqueReadLock unique_rl(&multipart_upload_rwlock_);
 
   if (multi_part_upload_states_.count(uri.to_string()) == 0) {
     return flush_write_cache_st;
@@ -904,7 +932,9 @@ Status GCS::flush_object(const URI& uri) {
   MultiPartUploadState* const state =
       &multi_part_upload_states_.at(uri.to_string());
 
-  states_lock.unlock();
+  // Lock multipart state
+  std::unique_lock<std::mutex> state_lck(state->mtx_);
+  unique_rl.unlock();
 
   const std::vector<std::string> part_paths = state->get_part_paths();
 
@@ -917,8 +947,9 @@ Status GCS::flush_object(const URI& uri) {
   std::string last_part_path = part_paths.back();
   const Status st = wait_for_object_to_propagate(bucket_name, last_part_path);
   state->update_st(st);
+  state_lck.unlock();
 
-  if (!state->st().ok()) {
+  if (!st.ok()) {
     // Delete all outstanding part objects.
     delete_parts(bucket_name, part_paths);
 
@@ -1005,9 +1036,9 @@ Status GCS::delete_part(
 
 void GCS::finish_multi_part_upload(const URI& uri) {
   // Protect 'multi_part_upload_states_' from multiple writers.
-  std::unique_lock<std::mutex> states_lock(multi_part_upload_states_lock_);
+  UniqueWriteLock unique_wl(&multipart_upload_rwlock_);
   multi_part_upload_states_.erase(uri.to_string());
-  states_lock.unlock();
+  unique_wl.unlock();
 
   // Protect 'write_cache_map_' from multiple writers.
   std::unique_lock<std::mutex> cache_lock(write_cache_map_lock_);
@@ -1079,11 +1110,6 @@ Status GCS::read(
 
   stream.read(static_cast<char*>(buffer), length + read_ahead_length);
   *length_returned = stream.gcount();
-
-  if (!stream) {
-    return LOG_STATUS(Status::GCSError(
-        std::string("Read object failed on: " + uri.to_string())));
-  }
 
   stream.Close();
 

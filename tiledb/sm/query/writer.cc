@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2020 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2021 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -31,6 +31,7 @@
  */
 
 #include "tiledb/sm/query/writer.h"
+#include "tiledb/common/heap_memory.h"
 #include "tiledb/common/logger.h"
 #include "tiledb/sm/array/array.h"
 #include "tiledb/sm/array_schema/array_schema.h"
@@ -294,6 +295,12 @@ uint32_t Writer::get_offsets_bitsize() const {
   return offsets_bitsize_;
 }
 
+Status Writer::set_config(const Config& config) {
+  config_ = config;
+
+  return Status::Ok();
+};
+
 void Writer::set_check_coord_dups(bool b) {
   check_coord_dups_ = b;
 }
@@ -329,6 +336,84 @@ Status Writer::set_offsets_bitsize(const uint32_t bitsize) {
   return Status::Ok();
 }
 
+inline uint64_t Writer::get_offset_buffer_element(
+    const void* buffer, const uint64_t pos) const {
+  if (offsets_bitsize_ == 32) {
+    const uint32_t* buffer_32bit = reinterpret_cast<const uint32_t*>(buffer);
+    return static_cast<uint64_t>(buffer_32bit[pos]);
+  } else {
+    return reinterpret_cast<const uint64_t*>(buffer)[pos];
+  }
+}
+
+inline uint64_t Writer::prepare_buffer_offset(
+    const void* buffer, const uint64_t pos, const uint64_t datasize) const {
+  uint64_t offset = get_offset_buffer_element(buffer, pos);
+  return offsets_format_mode_ == "elements" ? offset * datasize : offset;
+}
+
+inline uint64_t Writer::get_offset_buffer_size(
+    const uint64_t buffer_size) const {
+  return offsets_extra_element_ ?
+             buffer_size - constants::cell_var_offset_size :
+             buffer_size;
+}
+
+Status Writer::check_var_attr_offsets() const {
+  for (const auto& it : buffers_) {
+    const auto& attr = it.first;
+    if (!array_schema_->var_size(attr)) {
+      continue;
+    }
+
+    const void* buffer_off = it.second.buffer_;
+    const uint64_t buffer_off_size =
+        get_offset_buffer_size(*it.second.buffer_size_);
+    const uint64_t* buffer_val_size = it.second.buffer_var_size_;
+    auto num_offsets = buffer_off_size / sizeof(uint64_t);
+    if (num_offsets == 0)
+      return Status::Ok();
+
+    uint64_t prev_offset = get_offset_buffer_element(buffer_off, 0);
+    // Allow the initial offset to be equal to the size, this indicates
+    // the first and only value in the buffer is to be empty
+    if (prev_offset > *buffer_val_size)
+      return LOG_STATUS(Status::WriterError(
+          "Invalid offsets for attribute " + attr + "; offset " +
+          std::to_string(prev_offset) + " specified for buffer of size " +
+          std::to_string(*buffer_val_size)));
+    else if (prev_offset == *buffer_val_size)
+      return LOG_STATUS(Status::WriterError(
+          "Invalid offsets for attribute " + attr +
+          "; zero length single cell writes are not supported"));
+
+    for (uint64_t i = 1; i < num_offsets; i++) {
+      uint64_t cur_offset = get_offset_buffer_element(buffer_off, i);
+      if (cur_offset < prev_offset)
+        return LOG_STATUS(Status::WriterError(
+            "Invalid offsets for attribute " + attr +
+            "; offsets must be given in "
+            "strictly ascending order."));
+
+      // Allow the last offset(s) to be equal to the size, this indicates the
+      // last value(s) are to be empty
+      if (cur_offset > *buffer_val_size ||
+          (cur_offset == *buffer_val_size &&
+           get_offset_buffer_element(
+               buffer_off, (i < num_offsets - 1 ? i + 1 : i)) !=
+               *buffer_val_size))
+        return LOG_STATUS(Status::WriterError(
+            "Invalid offsets for attribute " + attr + "; offset " +
+            std::to_string(cur_offset) + " specified for buffer of size " +
+            std::to_string(*buffer_val_size)));
+
+      prev_offset = cur_offset;
+    }
+  }
+
+  return Status::Ok();
+}
+
 Status Writer::init(const Layout& layout) {
   // Sanity checks
   if (storage_manager_ == nullptr)
@@ -341,10 +426,45 @@ Status Writer::init(const Layout& layout) {
     return LOG_STATUS(
         Status::WriterError("Cannot initialize query; Buffers not set"));
 
+  // Get configuration parameters
+  const char *check_coord_dups, *check_coord_oob, *check_global_order;
+  const char* dedup_coords;
+  RETURN_NOT_OK(config_.get("sm.check_coord_dups", &check_coord_dups));
+  RETURN_NOT_OK(config_.get("sm.check_coord_oob", &check_coord_oob));
+  RETURN_NOT_OK(config_.get("sm.check_global_order", &check_global_order));
+  RETURN_NOT_OK(config_.get("sm.dedup_coords", &dedup_coords));
+  assert(check_coord_dups != nullptr && dedup_coords != nullptr);
+  check_coord_dups_ = !strcmp(check_coord_dups, "true");
+  check_coord_oob_ = !strcmp(check_coord_oob, "true");
+  check_global_order_ =
+      disable_check_global_order_ ? false : !strcmp(check_global_order, "true");
+  dedup_coords_ = !strcmp(dedup_coords, "true");
+  bool found = false;
+  offsets_format_mode_ = config_.get("sm.var_offsets.mode", &found);
+  assert(found);
+  if (offsets_format_mode_ != "bytes" && offsets_format_mode_ != "elements") {
+    return LOG_STATUS(
+        Status::WriterError("Cannot initialize writer; Unsupported offsets "
+                            "format in configuration"));
+  }
+  RETURN_NOT_OK(config_.get<bool>(
+      "sm.var_offsets.extra_element", &offsets_extra_element_, &found));
+  assert(found);
+  RETURN_NOT_OK(config_.get<uint32_t>(
+      "sm.var_offsets.bitsize", &offsets_bitsize_, &found));
+  if (offsets_bitsize_ != 32 && offsets_bitsize_ != 64) {
+    return LOG_STATUS(
+        Status::WriterError("Cannot initialize writer; Unsupported offsets "
+                            "bitsize in configuration"));
+  }
+  assert(found);
+
   // Set a default subarray
   if (!subarray_.is_set())
     subarray_ = Subarray(array_, layout);
 
+  if (offsets_extra_element_)
+    RETURN_NOT_OK(check_extra_element());
   RETURN_NOT_OK(set_layout(layout));
   RETURN_NOT_OK(check_subarray());
   RETURN_NOT_OK(check_buffer_sizes());
@@ -353,40 +473,7 @@ Status Writer::init(const Layout& layout) {
     RETURN_NOT_OK(subarray_.to_byte_vec(&subarray_flat_));
 
   optimize_layout_for_1D();
-
-  // Get configuration parameters
-  const char *check_coord_dups, *check_coord_oob, *check_global_order;
-  const char* dedup_coords;
-  auto config = storage_manager_->config();
-  RETURN_NOT_OK(config.get("sm.check_coord_dups", &check_coord_dups));
-  RETURN_NOT_OK(config.get("sm.check_coord_oob", &check_coord_oob));
-  RETURN_NOT_OK(config.get("sm.check_global_order", &check_global_order));
-  RETURN_NOT_OK(config.get("sm.dedup_coords", &dedup_coords));
-  assert(check_coord_dups != nullptr && dedup_coords != nullptr);
-  check_coord_dups_ = !strcmp(check_coord_dups, "true");
-  check_coord_oob_ = !strcmp(check_coord_oob, "true");
-  check_global_order_ =
-      disable_check_global_order_ ? false : !strcmp(check_global_order, "true");
-  dedup_coords_ = !strcmp(dedup_coords, "true");
-  bool found = false;
-  offsets_format_mode_ = config.get("sm.var_offsets.mode", &found);
-  assert(found);
-  if (offsets_format_mode_ != "bytes" && offsets_format_mode_ != "elements") {
-    return LOG_STATUS(
-        Status::WriterError("Cannot initialize writer; Unsupported offsets "
-                            "format in configuration"));
-  }
-  RETURN_NOT_OK(config.get<bool>(
-      "sm.var_offsets.extra_element", &offsets_extra_element_, &found));
-  assert(found);
-  RETURN_NOT_OK(config.get<uint32_t>(
-      "sm.var_offsets.bitsize", &offsets_bitsize_, &found));
-  if (offsets_bitsize_ != 32 && offsets_bitsize_ != 64) {
-    return LOG_STATUS(
-        Status::WriterError("Cannot initialize writer; Unsupported offsets "
-                            "bitsize in configuration"));
-  }
-  assert(found);
+  RETURN_NOT_OK(check_var_attr_offsets());
   initialized_ = true;
 
   return Status::Ok();
@@ -717,6 +804,7 @@ Status Writer::set_layout(Layout layout) {
 
 void Writer::set_storage_manager(StorageManager* storage_manager) {
   storage_manager_ = storage_manager;
+  set_config(storage_manager->config());
 }
 
 Status Writer::set_subarray(const Subarray& subarray) {
@@ -830,7 +918,9 @@ Status Writer::check_buffer_sizes() const {
   for (const auto& it : buffers_) {
     const auto& attr = it.first;
     const bool is_var = array_schema_->var_size(attr);
-    const uint64_t buffer_size = *it.second.buffer_size_;
+    const uint64_t buffer_size =
+        is_var ? get_offset_buffer_size(*it.second.buffer_size_) :
+                 *it.second.buffer_size_;
     if (is_var) {
       expected_cell_num = buffer_size / constants::cell_var_offset_size;
     } else {
@@ -846,27 +936,17 @@ Status Writer::check_buffer_sizes() const {
     }
 
     if (array_schema_->is_nullable(attr)) {
-      uint64_t attr_datatype_size = datatype_size(array_schema_->type(attr));
-      uint64_t expected_validity_cell_num;
-      if (is_var) {
-        const uint64_t buffer_var_size = *it.second.buffer_var_size_;
-        expected_validity_cell_num = buffer_var_size / attr_datatype_size;
-      } else {
-        expected_validity_cell_num = buffer_size / attr_datatype_size;
-      }
-
       const uint64_t buffer_validity_size =
           *it.second.validity_vector_.buffer_size();
       const uint64_t cell_validity_num =
           buffer_validity_size / constants::cell_validity_size;
 
-      if (expected_validity_cell_num != cell_validity_num) {
+      if (expected_cell_num != cell_validity_num) {
         std::stringstream ss;
         ss << "Buffer sizes check failed; Invalid number of validity cells "
               "given for ";
         ss << "attribute '" << attr << "'";
-        ss << " (" << expected_validity_cell_num << " != " << cell_validity_num
-           << ")";
+        ss << " (" << expected_cell_num << " != " << cell_validity_num << ")";
         return LOG_STATUS(Status::WriterError(ss.str()));
       }
     }
@@ -1222,21 +1302,36 @@ void Writer::clear_coord_buffers() {
   // Applicable only if the coordinate buffers have been allocated by
   // TileDB, which happens only when the zipped coordinates buffer is set
   for (auto b : to_clean_)
-    std::free(b);
+    tdb_free(b);
   to_clean_.clear();
   coord_buffer_sizes_.clear();
 }
 
 Status Writer::close_files(FragmentMetadata* meta) const {
   // Close attribute and dimension files
-  for (const auto& it : buffers_) {
-    const auto& name = it.first;
-    RETURN_NOT_OK(storage_manager_->close_file(meta->uri(name)));
+  const auto buffer_name = buffer_names();
+
+  std::vector<URI> file_uris;
+  file_uris.reserve(buffer_name.size() * 3);
+
+  for (const auto& name : buffer_name) {
+    file_uris.emplace_back(meta->uri(name));
     if (array_schema_->var_size(name))
-      RETURN_NOT_OK(storage_manager_->close_file(meta->var_uri(name)));
+      file_uris.emplace_back(meta->var_uri(name));
     if (array_schema_->is_nullable(name))
-      RETURN_NOT_OK(storage_manager_->close_file(meta->validity_uri(name)));
+      file_uris.emplace_back(meta->validity_uri(name));
   }
+
+  auto statuses = parallel_for(
+      storage_manager_->io_tp(), 0, file_uris.size(), [&](uint64_t i) {
+        const auto& file_ur = file_uris[i];
+        RETURN_NOT_OK(storage_manager_->close_file(file_ur));
+        return Status::Ok();
+      });
+
+  // Check all statuses
+  for (auto& st : statuses)
+    RETURN_NOT_OK(st);
 
   return Status::Ok();
 }
@@ -1538,7 +1633,7 @@ Status Writer::compute_write_cell_ranges(
 }
 
 Status Writer::create_fragment(
-    bool dense, std::shared_ptr<FragmentMetadata>* frag_meta) const {
+    bool dense, tdb_shared_ptr<FragmentMetadata>* frag_meta) const {
   URI uri;
   uint64_t timestamp = array_->timestamp();
   if (!fragment_uri_.to_string().empty()) {
@@ -1549,8 +1644,13 @@ Status Writer::create_fragment(
     uri = array_schema_->array_uri().join_path(new_fragment_str);
   }
   auto timestamp_range = std::pair<uint64_t, uint64_t>(timestamp, timestamp);
-  *frag_meta = std::make_shared<FragmentMetadata>(
-      storage_manager_, array_schema_, uri, timestamp_range, dense);
+  *frag_meta = tdb_make_shared(
+      FragmentMetadata,
+      storage_manager_,
+      array_schema_,
+      uri,
+      timestamp_range,
+      dense);
 
   RETURN_NOT_OK((*frag_meta)->init(subarray_.ndrange(0)));
   return storage_manager_->create_dir(uri);
@@ -1597,7 +1697,6 @@ Status Writer::filter_tiles(
 
     if (nullable) {
       ++i;
-
       RETURN_NOT_OK(filter_tile(name, &(*tiles)[i], false, true));
     }
   }
@@ -1619,7 +1718,6 @@ Status Writer::filter_tile(
     filters = array_schema_->cell_var_offsets_filters();
   } else if (nullable) {
     filters = array_schema_->cell_validity_filters();
-    ;
   } else {
     filters = array_schema_->filters(name);
   }
@@ -2125,6 +2223,35 @@ void Writer::optimize_layout_for_1D() {
     layout_ = array_schema_->cell_order();
 }
 
+Status Writer::check_extra_element() {
+  for (const auto& it : buffers_) {
+    const auto& attr = it.first;
+    if (!array_schema_->var_size(attr) || array_schema_->is_dim(attr))
+      continue;
+
+    const void* buffer_off = it.second.buffer_;
+    uint64_t* buffer_off_size = it.second.buffer_size_;
+    const auto num_offsets = *buffer_off_size / constants::cell_var_offset_size;
+    const uint64_t* buffer_val_size = it.second.buffer_var_size_;
+    const uint64_t attr_datatype_size =
+        datatype_size(array_schema_->type(attr));
+    const uint64_t max_offset = offsets_format_mode_ == "bytes" ?
+                                    *buffer_val_size :
+                                    *buffer_val_size / attr_datatype_size;
+    const uint64_t last_offset =
+        get_offset_buffer_element(buffer_off, num_offsets - 1);
+
+    if (last_offset != max_offset)
+      return LOG_STATUS(Status::WriterError(
+          "Invalid offsets for attribute " + attr +
+          "; the last offset: " + std::to_string(last_offset) +
+          " is not equal to the size of the data buffer: " +
+          std::to_string(max_offset)));
+  }
+
+  return Status::Ok();
+}
+
 Status Writer::ordered_write() {
   // Applicable only to ordered write on dense arrays
   assert(layout_ == Layout::ROW_MAJOR || layout_ == Layout::COL_MAJOR);
@@ -2173,7 +2300,7 @@ Status Writer::ordered_write() {
 template <class T>
 Status Writer::ordered_write() {
   // Create new fragment
-  std::shared_ptr<FragmentMetadata> frag_meta;
+  tdb_shared_ptr<FragmentMetadata> frag_meta;
   RETURN_CANCEL_OR_ERROR(create_fragment(true, &frag_meta));
   const auto& uri = frag_meta->fragment_uri();
 
@@ -2223,11 +2350,6 @@ Status Writer::ordered_write() {
   RETURN_NOT_OK_ELSE(storage_manager_->vfs()->touch(ok_uri), clean_up(uri));
 
   return Status::Ok();
-}
-
-inline uint64_t Writer::prepare_buffer_offset(
-    const uint64_t offset, const uint64_t datasize) const {
-  return offsets_format_mode_ == "elements" ? offset * datasize : offset;
 }
 
 Status Writer::prepare_and_filter_attr_tiles(
@@ -2459,11 +2581,11 @@ Status Writer::prepare_full_tiles_var(
   auto nullable = array_schema_->is_nullable(name);
   auto buffer = (uint64_t*)it->second.buffer_;
   auto buffer_var = (unsigned char*)it->second.buffer_var_;
-  auto buffer_validity = (unsigned char*)it->second.validity_vector_.buffer();
-  auto buffer_size = it->second.buffer_size_;
+  auto buffer_validity = (uint8_t*)it->second.validity_vector_.buffer();
+  auto buffer_size = get_offset_buffer_size(*it->second.buffer_size_);
   auto buffer_var_size = it->second.buffer_var_size_;
   auto capacity = array_schema_->capacity();
-  auto cell_num = *buffer_size / constants::cell_var_offset_size;
+  auto cell_num = buffer_size / constants::cell_var_offset_size;
   auto domain = array_schema_->domain();
   auto cell_num_per_tile = has_coords_ ? capacity : domain->cell_num_per_tile();
   auto attr_datatype_size = datatype_size(array_schema_->type(name));
@@ -2479,10 +2601,6 @@ Status Writer::prepare_full_tiles_var(
   auto& last_tile_var = std::get<1>(last_tile_tuple);
   auto& last_tile_validity = std::get<2>(last_tile_tuple);
 
-  (void)last_tile_validity;
-  (void)nullable;
-  (void)buffer_validity;
-
   uint64_t cell_idx = 0;
   if (!last_tile.empty()) {
     if (coord_dups.empty()) {
@@ -2493,20 +2611,18 @@ Status Writer::prepare_full_tiles_var(
 
         // Write var-sized value(s).
         auto buff_offset =
-            prepare_buffer_offset(buffer[cell_idx], attr_datatype_size);
+            prepare_buffer_offset(buffer, cell_idx, attr_datatype_size);
         var_size = (cell_idx == cell_num - 1) ?
                        *buffer_var_size - buff_offset :
                        prepare_buffer_offset(
-                           buffer[cell_idx + 1], attr_datatype_size) -
+                           buffer, cell_idx + 1, attr_datatype_size) -
                            buff_offset;
         RETURN_NOT_OK(last_tile_var.write(buffer_var + buff_offset, var_size));
 
         // Write validity value(s).
         if (nullable)
           RETURN_NOT_OK(last_tile_validity.write(
-              buffer_validity + (buff_offset / attr_datatype_size *
-                                 constants::cell_validity_size),
-              var_size / attr_datatype_size * constants::cell_validity_size));
+              buffer_validity + cell_idx, constants::cell_validity_size));
 
         ++cell_idx;
       } while (!last_tile.full() && cell_idx != cell_num);
@@ -2519,11 +2635,11 @@ Status Writer::prepare_full_tiles_var(
 
           // Write var-sized value(s).
           auto buff_offset =
-              prepare_buffer_offset(buffer[cell_idx], attr_datatype_size);
+              prepare_buffer_offset(buffer, cell_idx, attr_datatype_size);
           var_size = (cell_idx == cell_num - 1) ?
                          *buffer_var_size - buff_offset :
                          prepare_buffer_offset(
-                             buffer[cell_idx + 1], attr_datatype_size) -
+                             buffer, cell_idx + 1, attr_datatype_size) -
                              buff_offset;
           RETURN_NOT_OK(
               last_tile_var.write(buffer_var + buff_offset, var_size));
@@ -2531,9 +2647,7 @@ Status Writer::prepare_full_tiles_var(
           // Write validity value(s).
           if (nullable)
             RETURN_NOT_OK(last_tile_validity.write(
-                buffer_validity + (buff_offset / attr_datatype_size *
-                                   constants::cell_validity_size),
-                var_size / attr_datatype_size * constants::cell_validity_size));
+                buffer_validity + cell_idx, constants::cell_validity_size));
         }
 
         ++cell_idx;
@@ -2588,11 +2702,11 @@ Status Writer::prepare_full_tiles_var(
 
         // Write var-sized value(s).
         auto buff_offset =
-            prepare_buffer_offset(buffer[cell_idx], attr_datatype_size);
+            prepare_buffer_offset(buffer, cell_idx, attr_datatype_size);
         var_size = (cell_idx == cell_num - 1) ?
                        *buffer_var_size - buff_offset :
                        prepare_buffer_offset(
-                           buffer[cell_idx + 1], attr_datatype_size) -
+                           buffer, cell_idx + 1, attr_datatype_size) -
                            buff_offset;
         RETURN_NOT_OK(
             (*tiles)[tile_idx + 1].write(buffer_var + buff_offset, var_size));
@@ -2600,9 +2714,7 @@ Status Writer::prepare_full_tiles_var(
         // Write validity value(s).
         if (nullable)
           RETURN_NOT_OK((*tiles)[tile_idx + 2].write(
-              buffer_validity + (buff_offset / attr_datatype_size *
-                                 constants::cell_validity_size),
-              var_size / attr_datatype_size * constants::cell_validity_size));
+              buffer_validity + cell_idx, constants::cell_validity_size));
       }
     } else {
       for (uint64_t tile_idx = 0, i = 0; i < cell_num_to_write;
@@ -2617,11 +2729,11 @@ Status Writer::prepare_full_tiles_var(
 
           // Write var-sized value(s).
           auto buff_offset =
-              prepare_buffer_offset(buffer[cell_idx], attr_datatype_size);
+              prepare_buffer_offset(buffer, cell_idx, attr_datatype_size);
           var_size = (cell_idx == cell_num - 1) ?
                          *buffer_var_size - buff_offset :
                          prepare_buffer_offset(
-                             buffer[cell_idx + 1], attr_datatype_size) -
+                             buffer, cell_idx + 1, attr_datatype_size) -
                              buff_offset;
           RETURN_NOT_OK(
               (*tiles)[tile_idx + 1].write(buffer_var + buff_offset, var_size));
@@ -2629,9 +2741,7 @@ Status Writer::prepare_full_tiles_var(
           // Write validity value(s).
           if (nullable)
             RETURN_NOT_OK((*tiles)[tile_idx + 2].write(
-                buffer_validity + (buff_offset / attr_datatype_size *
-                                   constants::cell_validity_size),
-                var_size / attr_datatype_size * constants::cell_validity_size));
+                buffer_validity + cell_idx, constants::cell_validity_size));
         }
       }
     }
@@ -2647,20 +2757,18 @@ Status Writer::prepare_full_tiles_var(
 
       // Write var-sized value(s).
       auto buff_offset =
-          prepare_buffer_offset(buffer[cell_idx], attr_datatype_size);
+          prepare_buffer_offset(buffer, cell_idx, attr_datatype_size);
       var_size =
           (cell_idx == cell_num - 1) ?
               *buffer_var_size - buff_offset :
-              prepare_buffer_offset(buffer[cell_idx + 1], attr_datatype_size) -
+              prepare_buffer_offset(buffer, cell_idx + 1, attr_datatype_size) -
                   buff_offset;
       RETURN_NOT_OK(last_tile_var.write(buffer_var + buff_offset, var_size));
 
       // Write validity value(s).
       if (nullable)
         RETURN_NOT_OK(last_tile_validity.write(
-            buffer_validity + (buff_offset / attr_datatype_size *
-                               constants::cell_validity_size),
-            var_size / attr_datatype_size * constants::cell_validity_size));
+            buffer_validity + cell_idx, constants::cell_validity_size));
     }
   } else {
     for (; cell_idx < cell_num; ++cell_idx) {
@@ -2671,18 +2779,18 @@ Status Writer::prepare_full_tiles_var(
 
         // Write var-sized value(s).
         auto buff_offset =
-            prepare_buffer_offset(buffer[cell_idx], attr_datatype_size);
+            prepare_buffer_offset(buffer, cell_idx, attr_datatype_size);
         var_size = (cell_idx == cell_num - 1) ?
                        *buffer_var_size - buff_offset :
-                       buffer[cell_idx + 1] - buff_offset;
+                       prepare_buffer_offset(
+                           buffer, cell_idx + 1, attr_datatype_size) -
+                           buff_offset;
         RETURN_NOT_OK(last_tile_var.write(buffer_var + buff_offset, var_size));
 
         // Write validity value(s).
         if (nullable)
           RETURN_NOT_OK(last_tile_validity.write(
-              buffer_validity + (buff_offset / attr_datatype_size *
-                                 constants::cell_validity_size),
-              var_size / attr_datatype_size * constants::cell_validity_size));
+              buffer_validity + cell_idx, constants::cell_validity_size));
       }
     }
   }
@@ -2708,7 +2816,9 @@ Status Writer::prepare_tiles(
   auto buffer = (uint64_t*)it->second.buffer_;
   auto buffer_var = (uint64_t*)it->second.buffer_var_;
   auto buffer_validity = (uint64_t*)it->second.validity_vector_.buffer();
-  auto buffer_size = it->second.buffer_size_;
+  auto buffer_size = var_size ?
+                         get_offset_buffer_size(*it->second.buffer_size_) :
+                         *it->second.buffer_size_;
   auto buffer_var_size = it->second.buffer_var_size_;
   auto buffer_validity_size = it->second.validity_vector_.buffer_size();
   auto cell_val_num = array_schema_->cell_val_num(attribute);
@@ -2716,14 +2826,14 @@ Status Writer::prepare_tiles(
 
   // Initialize tiles and buffer
   RETURN_NOT_OK(init_tiles(attribute, tile_num, tiles));
-  auto buff = std::make_shared<ConstBuffer>(buffer, *buffer_size);
+  auto buff = tdb_make_shared(ConstBuffer, buffer, buffer_size);
   auto buff_var =
       (!var_size) ? nullptr :
-                    std::make_shared<ConstBuffer>(buffer_var, *buffer_var_size);
+                    tdb_make_shared(ConstBuffer, buffer_var, *buffer_var_size);
   auto buff_validity =
       (!nullable) ?
           nullptr :
-          std::make_shared<ConstBuffer>(buffer_validity, *buffer_validity_size);
+          tdb_make_shared(ConstBuffer, buffer_validity, *buffer_validity_size);
 
   // Populate each tile with the write cell ranges
   const uint64_t end_pos = array_schema_->domain()->cell_num_per_tile() - 1;
@@ -2746,12 +2856,13 @@ Status Writer::prepare_tiles(
         } else {
           if (nullable)
             RETURN_NOT_OK(write_empty_cell_range_to_tile_nullable(
-                (wcr.pos_ - pos) * cell_val_num,
+                (wcr.pos_ - pos),
+                cell_val_num,
                 &(*tiles)[t],
                 &(*tiles)[t + 1]));
           else
             RETURN_NOT_OK(write_empty_cell_range_to_tile(
-                (wcr.pos_ - pos) * cell_val_num, &(*tiles)[t]));
+                (wcr.pos_ - pos), cell_val_num, &(*tiles)[t]));
         }
         pos = wcr.pos_;
       }
@@ -2798,24 +2909,25 @@ Status Writer::prepare_tiles(
     // Write empty range
     if (pos <= end_pos) {
       if (var_size) {
-        if (nullable) {
+        if (nullable)
           RETURN_NOT_OK(write_empty_cell_range_to_tile_var_nullable(
               end_pos - pos + 1,
               &(*tiles)[t],
               &(*tiles)[t + 1],
               &(*tiles)[t + 2]));
-        } else
+        else
           RETURN_NOT_OK(write_empty_cell_range_to_tile_var(
               end_pos - pos + 1, &(*tiles)[t], &(*tiles)[t + 1]));
       } else {
         if (nullable)
           RETURN_NOT_OK(write_empty_cell_range_to_tile_nullable(
-              (end_pos - pos + 1) * cell_val_num,
+              (end_pos - pos + 1),
+              cell_val_num,
               &(*tiles)[t],
               &(*tiles)[t + 1]));
         else
           RETURN_NOT_OK(write_empty_cell_range_to_tile(
-              (end_pos - pos + 1) * cell_val_num, &(*tiles)[t]));
+              (end_pos - pos + 1), cell_val_num, &(*tiles)[t]));
       }
     }
   }
@@ -2937,9 +3049,9 @@ Status Writer::prepare_tiles_var(
   // For easy reference
   auto it = buffers_.find(name);
   auto nullable = array_schema_->is_nullable(name);
-  auto buffer = (uint64_t*)it->second.buffer_;
+  auto buffer = it->second.buffer_;
   auto buffer_var = (unsigned char*)it->second.buffer_var_;
-  auto buffer_validity = (unsigned char*)it->second.validity_vector_.buffer();
+  auto buffer_validity = (uint8_t*)it->second.validity_vector_.buffer();
   auto buffer_var_size = it->second.buffer_var_size_;
   auto cell_num = (uint64_t)cell_pos.size();
   auto capacity = array_schema_->capacity();
@@ -2973,11 +3085,11 @@ Status Writer::prepare_tiles_var(
 
       // Write var-sized value(s).
       auto buff_offset =
-          prepare_buffer_offset(buffer[cell_pos[i]], attr_datatype_size);
+          prepare_buffer_offset(buffer, cell_pos[i], attr_datatype_size);
       var_size = (cell_pos[i] == cell_num - 1) ?
                      *buffer_var_size - buff_offset :
                      prepare_buffer_offset(
-                         buffer[cell_pos[i] + 1], attr_datatype_size) -
+                         buffer, cell_pos[i] + 1, attr_datatype_size) -
                          buff_offset;
       RETURN_NOT_OK(
           (*tiles)[tile_idx + 1].write(buffer_var + buff_offset, var_size));
@@ -2985,9 +3097,7 @@ Status Writer::prepare_tiles_var(
       // Write validity value(s).
       if (nullable) {
         RETURN_NOT_OK((*tiles)[tile_idx + 2].write(
-            buffer_validity + (buff_offset / attr_datatype_size *
-                               constants::cell_validity_size),
-            var_size / attr_datatype_size * constants::cell_validity_size));
+            buffer_validity + cell_pos[i], constants::cell_validity_size));
       }
     }
   } else {
@@ -3004,11 +3114,11 @@ Status Writer::prepare_tiles_var(
 
       // Write var-sized value(s).
       auto buff_offset =
-          prepare_buffer_offset(buffer[cell_pos[i]], attr_datatype_size);
+          prepare_buffer_offset(buffer, cell_pos[i], attr_datatype_size);
       var_size = (cell_pos[i] == cell_num - 1) ?
                      *buffer_var_size - buff_offset :
                      prepare_buffer_offset(
-                         buffer[cell_pos[i] + 1], attr_datatype_size) -
+                         buffer, cell_pos[i] + 1, attr_datatype_size) -
                          buff_offset;
       RETURN_NOT_OK(
           (*tiles)[tile_idx + 1].write(buffer_var + buff_offset, var_size));
@@ -3016,9 +3126,7 @@ Status Writer::prepare_tiles_var(
       // Write validity value(s).
       if (nullable) {
         RETURN_NOT_OK((*tiles)[tile_idx + 2].write(
-            buffer_validity + (buff_offset / attr_datatype_size *
-                               constants::cell_validity_size),
-            var_size / attr_datatype_size * constants::cell_validity_size));
+            buffer_validity + cell_pos[i], constants::cell_validity_size));
       }
     }
   }
@@ -3097,7 +3205,7 @@ Status Writer::split_coords_buffer() {
     auto it = coord_buffer_sizes_.emplace(dim_name, coord_buffer_size);
     QueryBuffer buff;
     buff.buffer_size_ = &(it.first->second);
-    buff.buffer_ = std::malloc(coord_buffer_size);
+    buff.buffer_ = tdb_malloc(coord_buffer_size);
     to_clean_.push_back(buff.buffer_);
     if (buff.buffer_ == nullptr)
       RETURN_NOT_OK(Status::WriterError(
@@ -3140,7 +3248,7 @@ Status Writer::unordered_write() {
     RETURN_CANCEL_OR_ERROR(compute_coord_dups(cell_pos, &coord_dups));
 
   // Create new fragment
-  std::shared_ptr<FragmentMetadata> frag_meta;
+  tdb_shared_ptr<FragmentMetadata> frag_meta;
   RETURN_CANCEL_OR_ERROR(create_fragment(false, &frag_meta));
   const auto& uri = frag_meta->fragment_uri();
 
@@ -3193,31 +3301,43 @@ Status Writer::unordered_write() {
   return Status::Ok();
 }
 
-Status Writer::write_empty_cell_range_to_tile(uint64_t num, Tile* tile) const {
+Status Writer::write_empty_cell_range_to_tile(
+    const uint64_t cell_num,
+    const uint32_t cell_val_num,
+    Tile* const tile) const {
   auto type = tile->type();
   auto fill_size = datatype_size(type);
   auto fill_value = constants::fill_value(type);
   assert(fill_value != nullptr);
 
-  for (uint64_t i = 0; i < num; ++i)
-    RETURN_NOT_OK(tile->write(fill_value, fill_size));
+  for (uint64_t i = 0; i < cell_num; ++i) {
+    for (uint64_t j = 0; j < cell_val_num; ++j) {
+      RETURN_NOT_OK(tile->write(fill_value, fill_size));
+    }
+  }
 
   return Status::Ok();
 }
 
 Status Writer::write_empty_cell_range_to_tile_nullable(
-    uint64_t num, Tile* tile, Tile* tile_validity) const {
+    const uint64_t cell_num,
+    const uint32_t cell_val_num,
+    Tile* const tile,
+    Tile* const tile_validity) const {
   auto type = tile->type();
   auto fill_size = datatype_size(type);
   auto fill_value = constants::fill_value(type);
   assert(fill_value != nullptr);
 
-  for (uint64_t i = 0; i < num; ++i) {
-    RETURN_NOT_OK(tile->write(fill_value, fill_size));
+  for (uint64_t i = 0; i < cell_num; ++i) {
+    for (uint64_t j = 0; j < cell_val_num; ++j) {
+      RETURN_NOT_OK(tile->write(fill_value, fill_size));
+    }
 
-    // Write validity empty value
+    // Write validity empty value, one per cell.
     uint8_t empty_validity_value = 0;
-    RETURN_NOT_OK(tile_validity->write(&empty_validity_value, sizeof(uint8_t)));
+    RETURN_NOT_OK(tile_validity->write(
+        &empty_validity_value, constants::cell_validity_size));
   }
 
   return Status::Ok();
@@ -3259,7 +3379,8 @@ Status Writer::write_empty_cell_range_to_tile_var_nullable(
 
     // Write validity empty value
     uint8_t empty_validity_value = 0;
-    RETURN_NOT_OK(tile_validity->write(&empty_validity_value, sizeof(uint8_t)));
+    RETURN_NOT_OK(tile_validity->write(
+        &empty_validity_value, constants::cell_validity_size));
   }
 
   return Status::Ok();
@@ -3308,13 +3429,11 @@ Status Writer::write_cell_range_to_tile_var(
 
     // Write variable-sized value
     auto last_cell = (i == buff_cell_num - 1);
-    auto start_offset = prepare_buffer_offset(
-        buff->value<uint64_t>(i * sizeof(uint64_t)), attr_datatype_size);
-    auto end_offset = last_cell ?
-                          buff_var->size() :
-                          prepare_buffer_offset(
-                              buff->value<uint64_t>((i + 1) * sizeof(uint64_t)),
-                              attr_datatype_size);
+    auto start_offset =
+        prepare_buffer_offset(buff->data(), i, attr_datatype_size);
+    auto end_offset = last_cell ? buff_var->size() :
+                                  prepare_buffer_offset(
+                                      buff->data(), i + 1, attr_datatype_size);
     auto cell_var_size = end_offset - start_offset;
     buff_var->set_offset(start_offset);
     RETURN_NOT_OK(tile_var->write(buff_var, cell_var_size));
@@ -3342,21 +3461,19 @@ Status Writer::write_cell_range_to_tile_var_nullable(
 
     // Write variable-sized value(s).
     auto last_cell = (i == buff_cell_num - 1);
-    auto start_offset = prepare_buffer_offset(
-        buff->value<uint64_t>(i * sizeof(uint64_t)), attr_datatype_size);
-    auto end_offset = last_cell ?
-                          buff_var->size() :
-                          prepare_buffer_offset(
-                              buff->value<uint64_t>((i + 1) * sizeof(uint64_t)),
-                              attr_datatype_size);
+    auto start_offset =
+        prepare_buffer_offset(buff->data(), i, attr_datatype_size);
+    auto end_offset = last_cell ? buff_var->size() :
+                                  prepare_buffer_offset(
+                                      buff->data(), i + 1, attr_datatype_size);
     auto cell_var_size = end_offset - start_offset;
     buff_var->set_offset(start_offset);
     RETURN_NOT_OK(tile_var->write(buff_var, cell_var_size));
 
     // Write the validity value(s).
-    buff_validity->set_offset(start_offset / attr_datatype_size);
-    RETURN_NOT_OK(tile_validity->write(
-        buff_validity, cell_var_size / attr_datatype_size));
+    buff_validity->set_offset(i * constants::cell_validity_size);
+    RETURN_NOT_OK(
+        tile_validity->write(buff_validity, constants::cell_validity_size));
   }
 
   return Status::Ok();

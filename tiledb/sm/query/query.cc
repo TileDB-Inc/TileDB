@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2020 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2021 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -31,6 +31,7 @@
  */
 
 #include "tiledb/sm/query/query.h"
+#include "tiledb/common/heap_memory.h"
 #include "tiledb/common/logger.h"
 #include "tiledb/sm/array/array.h"
 #include "tiledb/sm/enums/query_status.h"
@@ -727,50 +728,6 @@ Status Query::cancel() {
   return Status::Ok();
 }
 
-Status Query::check_var_attr_offsets(
-    const uint64_t* buffer_off,
-    const uint64_t* buffer_off_size,
-    const uint64_t* buffer_val_size) {
-  if (buffer_off == nullptr || buffer_off_size == nullptr ||
-      buffer_val_size == nullptr)
-    return LOG_STATUS(Status::QueryError("Cannot use null offset buffers."));
-
-  auto num_offsets = *buffer_off_size / sizeof(uint64_t);
-  if (num_offsets == 0)
-    return Status::Ok();
-
-  uint64_t prev_offset = buffer_off[0];
-  // Allow the initial offset to be equal to the size, this indicates
-  // the first and only value in the buffer is to be empty
-  if (prev_offset > *buffer_val_size)
-    return LOG_STATUS(Status::QueryError(
-        "Invalid offsets; offset " + std::to_string(prev_offset) +
-        " specified for buffer of size " + std::to_string(*buffer_val_size)));
-  else if (prev_offset == *buffer_val_size)
-    return LOG_STATUS(Status::QueryError(
-        "Invalid offsets; zero length single cell writes are not supported"));
-
-  for (uint64_t i = 1; i < num_offsets; i++) {
-    if (buffer_off[i] < prev_offset)
-      return LOG_STATUS(
-          Status::QueryError("Invalid offsets; offsets must be given in "
-                             "strictly ascending order."));
-
-    // Allow the last offset(s) to be equal to the size, this indicates the last
-    // value(s) are to be empty
-    if (buffer_off[i] > *buffer_val_size ||
-        (buffer_off[i] == *buffer_val_size &&
-         buffer_off[(i < num_offsets - 1 ? i + 1 : i)] != *buffer_val_size))
-      return LOG_STATUS(Status::QueryError(
-          "Invalid offsets; offset " + std::to_string(buffer_off[i]) +
-          " specified for buffer of size " + std::to_string(*buffer_val_size)));
-
-    prev_offset = buffer_off[i];
-  }
-
-  return Status::Ok();
-}
-
 Status Query::process() {
   if (status_ == QueryStatus::UNINITIALIZED)
     return LOG_STATUS(
@@ -842,6 +799,15 @@ Status Query::check_set_fixed_buffer(const std::string& name) {
     return LOG_STATUS(Status::QueryError(
         "Cannot set buffer; Setting a buffer for zipped coordinates is not "
         "applicable to domains with variable-sized dimensions"));
+
+  return Status::Ok();
+}
+
+Status Query::set_config(const Config& config) {
+  if (type_ == QueryType::READ)
+    reader_.set_config(config);
+  else
+    writer_.set_config(config);
 
   return Status::Ok();
 }

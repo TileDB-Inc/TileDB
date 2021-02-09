@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2019-2020 TileDB, Inc.
+ * @copyright Copyright (c) 2019-2021 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -35,6 +35,7 @@
 
 #ifdef TILEDB_SERIALIZATION
 
+#include "tiledb/common/heap_memory.h"
 #include "tiledb/common/status.h"
 #include "tiledb/sm/array_schema/array_schema.h"
 #include "tiledb/sm/buffer/buffer.h"
@@ -489,7 +490,7 @@ Status deserialize_subarray(
   if (subarray_buff.size() == 0) {
     *subarray = nullptr;
   } else {
-    *subarray = std::malloc(subarray_size);
+    *subarray = tdb_malloc(subarray_size);
     std::memcpy(*subarray, subarray_buff.data(), subarray_size);
   }
 
@@ -537,7 +538,7 @@ Status deserialize_coords(
   if (subarray_buff.size() == 0) {
     *subarray = nullptr;
   } else {
-    *subarray = std::malloc(subarray_size);
+    *subarray = tdb_malloc(subarray_size);
     std::memcpy(*subarray, subarray_buff.data(), subarray_size);
   }
 

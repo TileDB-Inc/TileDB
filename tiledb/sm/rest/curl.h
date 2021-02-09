@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2018-2020 TileDB, Inc.
+ * @copyright Copyright (c) 2018-2021 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -39,9 +39,9 @@
 #include <cstdlib>
 #include <functional>
 #include <memory>
+#include <mutex>
 #include <string>
 #include <unordered_map>
-
 #include "tiledb/sm/buffer/buffer.h"
 #include "tiledb/sm/buffer/buffer_list.h"
 #include "tiledb/sm/config/config.h"
@@ -59,6 +59,37 @@ namespace sm {
  * presented by this class is not threadsafe either. See
  * https://curl.haxx.se/libcurl/c/threadsafe.html
  */
+
+/**
+ * Wraps opaque user data to be invoked with a header callback.
+ */
+struct HeaderCbData {
+  /** The output of parse::rest_components from url -> array_ns:array_uri */
+  const std::string* uri;
+
+  /** A pointer to the map in REST client caching the redirections */
+  std::unordered_map<std::string, std::string>* redirect_uri_map;
+
+  /** A pointer to the lock attached to the shared resource of the cache map */
+  std::mutex* redirect_uri_map_lock;
+};
+
+/**
+ * This callback function gets called by libcurl as soon as a header has been
+ * received. libcurl buffers headers and delivers only "full" headers, one by
+ * one, to this callback. This callback should return the number of bytes
+ * actually taken care of if that number differs from the number passed to
+ * your callback function, it signals an error condition to the library
+ *
+ * @param res_data points to the delivered data
+ * @param size the size of that data is size multiplied with nmemb
+ * @param count number of bytes actually taken care of
+ * @param userdata the userdata argument is set with CURLOPT_HEADERDATA
+ * @return
+ */
+size_t write_header_callback(
+    void* res_data, size_t size, size_t count, void* userdata);
+
 class Curl {
  public:
   /** Constructor. */
@@ -69,11 +100,16 @@ class Curl {
    *
    * @param config TileDB config storing server/auth information
    * @param extra_headers Any additional headers to attach to each request.
+   * @param res_ns_uri Pointer to Array namespace : Array URI cache key
+   * @param res_headers Pointer to cache map
+   * @param res_mtx Pointer to mtx that handles the lock of the cache map
    * @return Status
    */
   Status init(
       const Config* config,
-      const std::unordered_map<std::string, std::string>& extra_headers);
+      const std::unordered_map<std::string, std::string>& extra_headers,
+      std::unordered_map<std::string, std::string>* res_headers,
+      std::mutex* res_mtx);
 
   /**
    * Escapes the given URL.
@@ -91,13 +127,15 @@ class Curl {
    * @param serialization_type Serialization type to use
    * @param data Encoded data buffer for posting
    * @param returned_data Buffer to store response data
+   * @param res_ns_uri Array Namespace and URI
    * @return Status
    */
   Status post_data(
       const std::string& url,
       SerializationType serialization_type,
       const BufferList* data,
-      Buffer* returned_data);
+      Buffer* returned_data,
+      const std::string& res_ns_uri);
 
   /**
    * Callback defined by the caller of the 'post_data' variant for
@@ -122,13 +160,15 @@ class Curl {
    * @param serialization_type Serialization type to use
    * @param data Encoded data buffer for posting
    * @param write_cb Invoked as response body buffers are received.
+   * @param res_ns_uri Array Namespace and URI
    * @return Status
    */
   Status post_data(
       const std::string& url,
       SerializationType serialization_type,
       const BufferList* data,
-      PostResponseCb&& write_cb);
+      PostResponseCb&& write_cb,
+      const std::string& res_ns_uri);
 
   /**
    * Common code shared between variants of 'post_data'.
@@ -151,12 +191,14 @@ class Curl {
    * @param url URL to get
    * @param serialization_type Serialization type to use
    * @param returned_data Buffer to store response data
+   * @param res_ns_uri Array Namespace and URI
    * @return Status
    */
   Status get_data(
       const std::string& url,
       SerializationType serialization_type,
-      Buffer* returned_data);
+      Buffer* returned_data,
+      const std::string& res_ns_uri);
 
   /**
    * Simple wrapper for sending delete requests to server
@@ -165,12 +207,14 @@ class Curl {
    * @param url URL to delete
    * @param serialization_type Serialization type to use
    * @param returned_data Buffer to store response data
+   * @param res_ns_uri Array Namespace and URI
    * @return Status
    */
   Status delete_data(
       const std::string& url,
       SerializationType serialization_type,
-      Buffer* returned_data);
+      Buffer* returned_data,
+      const std::string& res_ns_uri);
 
  private:
   /** TileDB config parameters. */
@@ -184,6 +228,21 @@ class Curl {
 
   /** Extra headers to attach to each request. */
   std::unordered_map<std::string, std::string> extra_headers_;
+
+  /** Response headers attached to each response. */
+  HeaderCbData headerData;
+
+  /** Number of times to attempt retry. */
+  uint64_t retry_count_;
+
+  /** Retry backoff factor. */
+  double retry_delay_factor_;
+
+  /** Initial delay in milliseconds before attempting retry. */
+  uint64_t retry_initial_delay_ms_;
+
+  /** List of http status codes to retry. */
+  std::vector<uint32_t> retry_http_codes_;
 
   /**
    * Populates the curl slist with authorization (token or username+password),
@@ -265,6 +324,14 @@ class Curl {
    * @return Possibly empty error message string
    */
   std::string get_curl_errstr(CURLcode curl_code) const;
+
+  /**
+   * Checks the curl http status code to see if it matches a list of http
+   * requests to retry
+   * @param retry true if the http code matches the retry list
+   * @return Status
+   */
+  Status should_retry(bool* retry) const;
 };
 
 }  // namespace sm

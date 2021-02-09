@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2020 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2021 TileDB, Inc.
  * @copyright Copyright (c) 2016 MIT and Intel Corporation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -32,6 +32,7 @@
  */
 
 #include "tiledb/sm/fragment/fragment_metadata.h"
+#include "tiledb/common/heap_memory.h"
 #include "tiledb/common/logger.h"
 #include "tiledb/sm/array_schema/array_schema.h"
 #include "tiledb/sm/array_schema/attribute.h"
@@ -355,9 +356,21 @@ Status FragmentMetadata::fragment_size(uint64_t* size) const {
   for (const auto& file_validity_size : file_validity_sizes_)
     *size += file_validity_size;
 
+  // The fragment metadata file size can be empty when we've loaded consolidated
+  // metadata
+  uint64_t meta_file_size = meta_file_size_;
+  if (meta_file_size == 0) {
+    auto meta_uri = fragment_uri_.join_path(
+        std::string(constants::fragment_metadata_filename));
+    RETURN_NOT_OK(
+        storage_manager_->vfs()->file_size(meta_uri, &meta_file_size));
+  }
+  // Validate that the meta_file_size is not zero, either preloaded or fetched
+  // above
+  assert(meta_file_size != 0);
+
   // Add fragment metadata file size
-  assert(meta_file_size_ != 0);  // The file size should be loaded
-  *size += meta_file_size_;
+  *size += meta_file_size;
 
   return Status::Ok();
 }
@@ -413,12 +426,14 @@ Status FragmentMetadata::init(const NDRange& non_empty_domain) {
 
   // Initialize tile offsets
   tile_offsets_.resize(num);
+  tile_offsets_mtx_.resize(num);
   file_sizes_.resize(num);
   for (unsigned int i = 0; i < num; ++i)
     file_sizes_[i] = 0;
 
   // Initialize variable tile offsets
   tile_var_offsets_.resize(num);
+  tile_var_offsets_mtx_.resize(num);
   file_var_sizes_.resize(num);
   for (unsigned int i = 0; i < num; ++i)
     file_var_sizes_[i] = 0;
@@ -446,7 +461,11 @@ Status FragmentMetadata::load(
     uint32_t meta_version) {
   auto meta_uri = fragment_uri_.join_path(
       std::string(constants::fragment_metadata_filename));
-  RETURN_NOT_OK(storage_manager_->vfs()->file_size(meta_uri, &meta_file_size_));
+  // Load the metadata file size when we are not reading from consolidated
+  // buffer
+  if (f_buff == nullptr)
+    RETURN_NOT_OK(
+        storage_manager_->vfs()->file_size(meta_uri, &meta_file_size_));
 
   // Get fragment name version
   uint32_t f_version;
@@ -474,13 +493,6 @@ Status FragmentMetadata::store(const EncryptionKey& encryption_key) {
       fragment_uri_.join_path(constants::fragment_metadata_filename);
   auto num = array_schema_->attribute_num() + array_schema_->dim_num() + 1;
   uint64_t offset = 0, nbytes;
-
-  // Do nothing if fragment directory does not exist. The fragment directory
-  // is created only when some attribute file is written
-  bool is_dir = false;
-  RETURN_NOT_OK(storage_manager_->is_dir(fragment_uri_, &is_dir));
-  if (!is_dir)
-    return Status::Ok();
 
   // Store R-Tree
   gt_offsets_.rtree_ = offset;
@@ -572,16 +584,61 @@ uint64_t FragmentMetadata::tile_num() const {
   return sparse_tile_num_;
 }
 
+std::string FragmentMetadata::encode_name(const std::string& name) const {
+  if (version_ <= 7)
+    return name;
+
+  static const std::unordered_map<char, std::string> percent_encoding{
+      // RFC 3986
+      {'!', "%21"},
+      {'#', "%23"},
+      {'$', "%24"},
+      {'%', "%25"},
+      {'&', "%26"},
+      {'\'', "%27"},
+      {'(', "%28"},
+      {')', "%29"},
+      {'*', "%2A"},
+      {'+', "%2B"},
+      {',', "%2C"},
+      {'/', "%2F"},
+      {':', "%3A"},
+      {';', "%3B"},
+      {'=', "%3D"},
+      {'?', "%3F"},
+      {'@', "%40"},
+      {'[', "%5B"},
+      {']', "%5D"},
+      // Extra encodings to cover illegal characters on Windows
+      {'\"', "%22"},
+      {'<', "%20"},
+      {'>', "%2D"},
+      {'\\', "%30"},
+      {'|', "%3C"}};
+
+  std::stringstream percent_encoded_name;
+  for (const char c : name) {
+    if (percent_encoding.count(c) == 0)
+      percent_encoded_name << c;
+    else
+      percent_encoded_name << percent_encoding.at(c);
+  }
+
+  return percent_encoded_name.str();
+}
+
 URI FragmentMetadata::uri(const std::string& name) const {
-  return fragment_uri_.join_path(name + constants::file_suffix);
+  return fragment_uri_.join_path(encode_name(name) + constants::file_suffix);
 }
 
 URI FragmentMetadata::var_uri(const std::string& name) const {
-  return fragment_uri_.join_path(name + "_var" + constants::file_suffix);
+  return fragment_uri_.join_path(
+      encode_name(name) + "_var" + constants::file_suffix);
 }
 
 URI FragmentMetadata::validity_uri(const std::string& name) const {
-  return fragment_uri_.join_path(name + "_validity" + constants::file_suffix);
+  return fragment_uri_.join_path(
+      encode_name(name) + "_validity" + constants::file_suffix);
 }
 
 Status FragmentMetadata::load_tile_offsets(
@@ -987,11 +1044,11 @@ std::vector<uint64_t> FragmentMetadata::compute_overlapping_tile_ids(
     return tids;
 
   // Initialize subarray tile domain
-  auto subarray_tile_domain = new T[2 * dim_num];
+  auto subarray_tile_domain = tdb_new_array(T, 2 * dim_num);
   get_subarray_tile_domain(subarray, subarray_tile_domain);
 
   // Initialize tile coordinates
-  auto tile_coords = new T[dim_num];
+  auto tile_coords = tdb_new_array(T, dim_num);
   for (unsigned int i = 0; i < dim_num; ++i)
     tile_coords[i] = subarray_tile_domain[2 * i];
 
@@ -1006,8 +1063,8 @@ std::vector<uint64_t> FragmentMetadata::compute_overlapping_tile_ids(
       tile_coords, subarray_tile_domain, dim_num));
 
   // Clean up
-  delete[] subarray_tile_domain;
-  delete[] tile_coords;
+  tdb_delete_array(subarray_tile_domain);
+  tdb_delete_array(tile_coords);
 
   return tids;
 }
@@ -1035,16 +1092,16 @@ FragmentMetadata::compute_overlapping_tile_ids_cov(const T* subarray) const {
     return tids;
 
   // Initialize subarray tile domain
-  auto subarray_tile_domain = new T[2 * dim_num];
+  auto subarray_tile_domain = tdb_new_array(T, 2 * dim_num);
   get_subarray_tile_domain(subarray, subarray_tile_domain);
 
-  auto tile_subarray = new T[2 * dim_num];
-  auto tile_overlap = new T[2 * dim_num];
+  auto tile_subarray = tdb_new_array(T, 2 * dim_num);
+  auto tile_overlap = tdb_new_array(T, 2 * dim_num);
   bool overlap;
   double cov;
 
   // Initialize tile coordinates
-  auto tile_coords = new T[dim_num];
+  auto tile_coords = tdb_new_array(T, dim_num);
   for (unsigned int i = 0; i < dim_num; ++i)
     tile_coords[i] = subarray_tile_domain[2 * i];
 
@@ -1064,10 +1121,10 @@ FragmentMetadata::compute_overlapping_tile_ids_cov(const T* subarray) const {
       tile_coords, subarray_tile_domain, dim_num));
 
   // Clean up
-  delete[] subarray_tile_domain;
-  delete[] tile_coords;
-  delete[] tile_subarray;
-  delete[] tile_overlap;
+  tdb_delete_array(subarray_tile_domain);
+  tdb_delete_array(tile_coords);
+  tdb_delete_array(tile_subarray);
+  tdb_delete_array(tile_overlap);
 
   return tids;
 }
@@ -1111,7 +1168,11 @@ Status FragmentMetadata::load_tile_offsets(
   if (version_ <= 2)
     return Status::Ok();
 
-  std::lock_guard<std::mutex> lock(mtx_);
+  // If the tile offset is already loaded, exit early to avoid the lock
+  if (loaded_metadata_.tile_offsets_[idx])
+    return Status::Ok();
+
+  std::lock_guard<std::mutex> lock(tile_offsets_mtx_[idx]);
 
   if (loaded_metadata_.tile_offsets_[idx])
     return Status::Ok();
@@ -1136,7 +1197,11 @@ Status FragmentMetadata::load_tile_var_offsets(
   if (version_ <= 2)
     return Status::Ok();
 
-  std::lock_guard<std::mutex> lock(mtx_);
+  // If the tile var offset is already loaded, exit early to avoid the lock
+  if (loaded_metadata_.tile_var_offsets_[idx])
+    return Status::Ok();
+
+  std::lock_guard<std::mutex> lock(tile_var_offsets_mtx_[idx]);
 
   if (loaded_metadata_.tile_var_offsets_[idx])
     return Status::Ok();
@@ -1498,6 +1563,7 @@ Status FragmentMetadata::load_tile_offsets(ConstBuffer* buff) {
 
   // Allocate tile offsets
   tile_offsets_.resize(attribute_num + 1);
+  tile_offsets_mtx_.resize(attribute_num + 1);
 
   // For all attributes, get the tile offsets
   for (unsigned int i = 0; i < attribute_num + 1; ++i) {
@@ -1568,6 +1634,7 @@ Status FragmentMetadata::load_tile_var_offsets(ConstBuffer* buff) {
 
   // Allocate tile offsets
   tile_var_offsets_.resize(attribute_num);
+  tile_var_offsets_mtx_.resize(attribute_num);
 
   // For all attributes, get the variable tile offsets
   for (unsigned int i = 0; i < attribute_num; ++i) {
@@ -1862,11 +1929,11 @@ Status FragmentMetadata::load_v1_v2(const EncryptionKey& encryption_key) {
 
   auto chunked_buffer = tile->chunked_buffer();
   Buffer buff;
-  RETURN_NOT_OK_ELSE(buff.realloc(chunked_buffer->size()), delete tile);
+  RETURN_NOT_OK_ELSE(buff.realloc(chunked_buffer->size()), tdb_delete(tile));
   buff.set_size(chunked_buffer->size());
   RETURN_NOT_OK_ELSE(
-      chunked_buffer->read(buff.data(), buff.size(), 0), delete tile);
-  delete tile;
+      chunked_buffer->read(buff.data(), buff.size(), 0), tdb_delete(tile));
+  tdb_delete(tile);
 
   STATS_ADD_COUNTER(
       stats::Stats::CounterType::READ_FRAG_META_SIZE, buff.size());
@@ -1909,16 +1976,16 @@ Status FragmentMetadata::load_footer(
     return Status::Ok();
 
   Buffer buff;
-  std::shared_ptr<ConstBuffer> cbuff = nullptr;
+  tdb_shared_ptr<ConstBuffer> cbuff = nullptr;
   if (f_buff == nullptr) {
     has_consolidated_footer_ = false;
     RETURN_NOT_OK(read_file_footer(&buff, &footer_offset_, &footer_size_));
-    cbuff = std::make_shared<ConstBuffer>(&buff);
+    cbuff = tdb_make_shared(ConstBuffer, &buff);
   } else {
     footer_size_ = 0;
     footer_offset_ = offset;
     has_consolidated_footer_ = true;
-    cbuff = std::make_shared<ConstBuffer>(f_buff);
+    cbuff = tdb_make_shared(ConstBuffer, f_buff);
     cbuff->set_offset(offset);
   }
 
@@ -1937,7 +2004,9 @@ Status FragmentMetadata::load_footer(
   num += (version >= 5) ? array_schema_->dim_num() : 0;
 
   tile_offsets_.resize(num);
+  tile_offsets_mtx_.resize(num);
   tile_var_offsets_.resize(num);
+  tile_var_offsets_mtx_.resize(num);
   tile_var_sizes_.resize(num);
   tile_validity_offsets_.resize(num);
 
@@ -2166,8 +2235,8 @@ Status FragmentMetadata::read_generic_tile_from_file(
   buff->realloc(chunked_buffer->size());
   buff->set_size(chunked_buffer->size());
   RETURN_NOT_OK_ELSE(
-      chunked_buffer->read(buff->data(), buff->size(), 0), delete tile);
-  delete tile;
+      chunked_buffer->read(buff->data(), buff->size(), 0), tdb_delete(tile));
+  tdb_delete(tile);
 
   return Status::Ok();
 }
@@ -2195,11 +2264,11 @@ Status FragmentMetadata::write_generic_tile_to_file(
   URI fragment_metadata_uri = fragment_uri_.join_path(
       std::string(constants::fragment_metadata_filename));
 
-  ChunkedBuffer* const chunked_buffer = new ChunkedBuffer();
+  ChunkedBuffer* const chunked_buffer = tdb_new(ChunkedBuffer);
   RETURN_NOT_OK_ELSE(
       Tile::buffer_to_contiguous_fixed_chunks(
           buff, 0, constants::generic_tile_cell_size, chunked_buffer),
-      delete chunked_buffer);
+      tdb_delete(chunked_buffer));
   buff.disown_data();
 
   Tile tile(

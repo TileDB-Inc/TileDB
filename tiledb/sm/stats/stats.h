@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2018-2020 TileDB, Inc.
+ * @copyright Copyright (c) 2018-2021 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -43,6 +43,8 @@
 #include <thread>
 #include <unordered_map>
 #include <vector>
+
+#include "tiledb/sm/stats/timer_stat.h"
 
 // Define an enum named <TypeName> and a comma-separated
 // string named <TypeName>Names_ containing the stat names.
@@ -89,7 +91,9 @@ class Stats {
       CONSOLIDATE_ARRAY_META,
       CONSOLIDATE_FRAG_META,
       READ_ARRAY_OPEN,
+      READ_ARRAY_OPEN_WITHOUT_FRAGMENTS,
       READ_FILL_DENSE_COORDS,
+      READ_GET_FRAGMENT_URIS,
       READ_LOAD_ARRAY_SCHEMA,
       READ_LOAD_ARRAY_META,
       READ_LOAD_FRAG_META,
@@ -187,7 +191,9 @@ class Stats {
       WRITE_ARRAY_META_SIZE,
       WRITE_OPS_NUM,
       CONSOLIDATE_STEP_NUM,
-      VFS_S3_SLOW_DOWN_RETRIES);
+      VFS_S3_SLOW_DOWN_RETRIES,
+      REST_HTTP_RETRIES,
+      REST_HTTP_RETRY_TIME);
 
   /* ****************************** */
   /*   CONSTRUCTORS & DESTRUCTORS   */
@@ -203,8 +209,11 @@ class Stats {
   /*              API               */
   /* ****************************** */
 
-  /** Adds `count` to the input timer stat. */
-  void add_timer(TimerType stat, double count);
+  /** Starts a timer for the input timer stat. */
+  void start_timer(TimerType stat);
+
+  /** Ends a timer for the input timer stat. */
+  void end_timer(TimerType stat);
 
   /** Adds `count` to the input counter stat. */
   void add_counter(CounterType stat, uint64_t count);
@@ -250,8 +259,8 @@ class Stats {
   /** True if stats are being gathered. */
   bool enabled_;
 
-  /** A map of timer stats, measured in seconds. */
-  std::unordered_map<TimerType, double, EnumHasher> timer_stats_;
+  /** A map of timer stats types to TimerStat instances. */
+  std::unordered_map<TimerType, TimerStat, EnumHasher> timer_stats_;
 
   /** A map of counter stats. */
   std::unordered_map<CounterType, uint64_t, EnumHasher> counter_stats_;
@@ -371,21 +380,18 @@ extern Stats all_stats;
 
 /** Marks the beginning of a stats-enabled function. This should come before the
  * first statement where you want the function timer to start. */
-#define STATS_START_TIMER(stat)                             \
-  auto __start = std::chrono::high_resolution_clock::now(); \
+#define STATS_START_TIMER(stat)       \
+  stats::all_stats.start_timer(stat); \
   auto __retval = [&]() {
 /** Marks the end of a stats-enabled function. This should come after the last
  * statement in the function. Note that a function can have multiple exit paths
  * (i.e. multiple returns), but you should still put this macro after the very
  * last statement in the function. */
-#define STATS_END_TIMER(stat)                                \
-  }                                                          \
-  ();                                                        \
-  if (stats::all_stats.enabled()) {                          \
-    std::chrono::duration<double> __dur =                    \
-        std::chrono::high_resolution_clock::now() - __start; \
-    stats::all_stats.add_timer(stat, __dur.count());         \
-  }                                                          \
+#define STATS_END_TIMER(stat)         \
+  }                                   \
+  ();                                 \
+  if (stats::all_stats.enabled())     \
+    stats::all_stats.end_timer(stat); \
   return __retval;
 
 #define STATS_ADD_COUNTER(stat, c) \

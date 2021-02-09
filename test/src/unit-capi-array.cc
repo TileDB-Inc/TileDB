@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2020 TileDB Inc.
+ * @copyright Copyright (c) 2017-2021 TileDB Inc.
  * @copyright Copyright (c) 2016 MIT and Intel Corporation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -371,6 +371,21 @@ TEST_CASE_METHOD(
   tiledb_array_t* array;
   int rc = tiledb_array_alloc(ctx_, nullptr, &array);
   CHECK(rc == TILEDB_ERR);
+}
+
+TEST_CASE_METHOD(
+    ArrayFx, "C API: Set invalid URI", "[capi], [array], [array-invalid-uri]") {
+  std::string array_name = "this_is_not_a_valid_array_uri";
+  tiledb_array_t* array;
+  int rc = tiledb_array_alloc(ctx_, array_name.c_str(), &array);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_array_open(ctx_, array, TILEDB_READ);
+  CHECK(rc == TILEDB_ERR);
+  int is_open;
+  rc = tiledb_array_is_open(ctx_, array, &is_open);
+  REQUIRE(rc == TILEDB_OK);
+  REQUIRE(is_open == 0);
+  tiledb_array_free(&array);
 }
 
 TEST_CASE_METHOD(

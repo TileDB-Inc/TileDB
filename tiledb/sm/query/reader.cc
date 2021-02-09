@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2020 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2021 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -720,6 +720,7 @@ Status Reader::set_sparse_mode(bool sparse_mode) {
 
 void Reader::set_storage_manager(StorageManager* storage_manager) {
   storage_manager_ = storage_manager;
+  set_config(storage_manager->config());
 }
 
 Status Reader::set_subarray(const Subarray& subarray) {
@@ -900,6 +901,7 @@ Status Reader::compute_range_result_coords(
     std::vector<ResultCoords>* result_coords) {
   auto coords_num = tile->cell_num();
   auto dim_num = array_schema_->dim_num();
+  auto cell_order = array_schema_->cell_order();
   auto range_coords = subarray->get_range_coords(range_idx);
 
   if (array_schema_->dense()) {
@@ -928,9 +930,13 @@ Status Reader::compute_range_result_coords(
 
     // Compute result and overwritten bitmap per dimension
     for (unsigned d = 0; d < dim_num; ++d) {
-      const auto& ranges = subarray->ranges_for_dim(d);
+      // For col-major cell ordering, iterate the dimensions
+      // in reverse.
+      const unsigned dim_idx =
+          cell_order == Layout::COL_MAJOR ? dim_num - d - 1 : d;
+      const auto& ranges = subarray->ranges_for_dim(dim_idx);
       RETURN_NOT_OK(tile->compute_results_sparse(
-          d, ranges[range_coords[d]], &result_bitmap));
+          dim_idx, ranges[range_coords[dim_idx]], &result_bitmap, cell_order));
     }
 
     // Gather results
@@ -1222,7 +1228,7 @@ Status Reader::copy_fixed_cells(
 
   // Precompute the cell range destination offsets in the buffer.
   uint64_t buffer_offset = 0;
-  std::unique_ptr<std::vector<uint64_t>> cs_offsets =
+  tdb_unique_ptr<std::vector<uint64_t>> cs_offsets =
       ctx_cache->get_cs_offsets();
   for (uint64_t i = 0; i < cs_offsets->size(); i++) {
     const auto& cs = result_cell_slabs[i];
@@ -1259,10 +1265,8 @@ Status Reader::copy_fixed_cells(
   // Update buffer offsets
   *(buffers_[name].buffer_size_) = buffer_offset;
   if (array_schema_->is_nullable(name)) {
-    const uint64_t attr_datatype_size =
-        datatype_size(array_schema_->type(name));
     *(buffers_[name].validity_vector_.buffer_size()) =
-        (buffer_offset / attr_datatype_size) * constants::cell_validity_size;
+        (buffer_offset / cell_size) * constants::cell_validity_size;
   }
 
   return Status::Ok();
@@ -1333,14 +1337,11 @@ Status Reader::copy_partitioned_fixed_cells(
       for (uint64_t j = 0; j < fill_num; ++j) {
         std::memcpy(buffer + offset, fill_value.data(), fill_value_size);
         if (nullable) {
-          const uint64_t attr_datatype_size =
-              datatype_size(array_schema_->type(*name));
           std::memset(
               buffer_validity +
-                  (offset / attr_datatype_size * constants::cell_validity_size),
+                  (offset / cell_size * constants::cell_validity_size),
               fill_value_validity,
-              fill_value_size / attr_datatype_size *
-                  constants::cell_validity_size);
+              constants::cell_validity_size);
         }
         offset += fill_value_size;
       }
@@ -1394,9 +1395,9 @@ Status Reader::copy_var_cells(
 
   // Compute the destinations of offsets and var-len data in the buffers.
   uint64_t total_offset_size, total_var_size, total_validity_size;
-  std::unique_ptr<std::vector<uint64_t>> offset_offsets_per_cs =
+  tdb_unique_ptr<std::vector<uint64_t>> offset_offsets_per_cs =
       ctx_cache->get_offset_offsets_per_cs();
-  std::unique_ptr<std::vector<uint64_t>> var_offsets_per_cs =
+  tdb_unique_ptr<std::vector<uint64_t>> var_offsets_per_cs =
       ctx_cache->get_var_offsets_per_cs();
   RETURN_NOT_OK(compute_var_cell_destinations(
       name,
@@ -1484,7 +1485,6 @@ Status Reader::compute_var_cell_destinations(
   if (array_schema_->is_attr(name))
     fill_value = array_schema_->attribute(name)->fill_value();
   auto fill_value_size = (uint64_t)fill_value.size();
-  auto attr_datatype_size = datatype_size(array_schema_->type(name));
 
   // Compute the destinations for all result cell slabs
   *total_offset_size = 0;
@@ -1539,12 +1539,17 @@ Status Reader::compute_var_cell_destinations(
       *total_offset_size += offset_size;
       *total_var_size += cell_var_size;
       if (nullable)
-        *total_validity_size +=
-            cell_var_size / attr_datatype_size * constants::cell_validity_size;
+        *total_validity_size += constants::cell_validity_size;
     }
 
     total_cs_length += cs.length_;
   }
+
+  // In case an extra offset is configured, we need to account memory for it on
+  // each read
+  *total_offset_size = offsets_extra_element_ ?
+                           *total_offset_size + offset_size :
+                           *total_offset_size;
 
   return Status::Ok();
 }
@@ -1619,16 +1624,16 @@ Status Reader::copy_partitioned_var_cells(
     stride = (stride == UINT64_MAX) ? 1 : stride;
     for (auto cell_idx = cs.start_; dest_vec_idx < cs.length_;
          cell_idx += stride, dest_vec_idx++) {
-      auto offset_dest =
-          buffer + (*offset_offsets_per_cs)[arr_offset + dest_vec_idx];
-      // offset_offsets[dest_vec_idx];
+      auto offset_offsets = (*offset_offsets_per_cs)[arr_offset + dest_vec_idx];
+      auto offset_dest = buffer + offset_offsets;
       auto var_offset = (*var_offsets_per_cs)[arr_offset + dest_vec_idx];
       auto var_dest = buffer_var + var_offset;
-      auto validity_dest = buffer_validity + (var_offset / attr_datatype_size);
+      auto validity_dest = buffer_validity + (offset_offsets / offset_size);
 
       if (offsets_format_mode_ == "elements") {
         var_offset = var_offset / attr_datatype_size;
       }
+
       // Copy offset
       std::memcpy(offset_dest, &var_offset, offset_size);
 
@@ -1639,8 +1644,7 @@ Status Reader::copy_partitioned_var_cells(
           std::memset(
               validity_dest,
               fill_value_validity,
-              fill_value_size / attr_datatype_size *
-                  constants::cell_validity_size);
+              constants::cell_validity_size);
       } else {
         const uint64_t cell_var_size =
             (cell_idx != tile_cell_num - 1) ?
@@ -1653,9 +1657,7 @@ Status Reader::copy_partitioned_var_cells(
 
         if (nullable)
           RETURN_NOT_OK(tile_validity->read(
-              validity_dest,
-              cell_var_size / attr_datatype_size,
-              tile_var_offset / attr_datatype_size));
+              validity_dest, constants::cell_validity_size, cell_idx));
       }
     }
 
@@ -1866,9 +1868,8 @@ Status Reader::compute_result_coords(
 
   // Fetch the sub partitioner's memory budget.
   bool found = false;
-  auto config = storage_manager_->config();
   uint64_t cfg_sub_memory_budget = 0;
-  RETURN_NOT_OK(config.get<uint64_t>(
+  RETURN_NOT_OK(config_.get<uint64_t>(
       "sm.sub_partitioner_memory_budget", &cfg_sub_memory_budget, &found));
   assert(found);
 
@@ -2486,15 +2487,12 @@ Status Reader::unfilter_tile(
   // Reverse the tile filters, but do not use selective
   // unfiltering for offset tiles.
   RETURN_NOT_OK(offset_filters.run_reverse(
-      tile,
-      storage_manager_->compute_tp(),
-      storage_manager_->config(),
-      nullptr));
+      tile, storage_manager_->compute_tp(), config_, nullptr));
   RETURN_NOT_OK(filters.run_reverse(
       tile,
       tile_var,
       storage_manager_->compute_tp(),
-      storage_manager_->config(),
+      config_,
       result_cell_slab_ranges));
 
   return Status::Ok();
@@ -2625,26 +2623,25 @@ Status Reader::init_read_state() {
 
   // Get config
   bool found = false;
-  auto config = storage_manager_->config();
   uint64_t memory_budget = 0;
   RETURN_NOT_OK(
-      config.get<uint64_t>("sm.memory_budget", &memory_budget, &found));
+      config_.get<uint64_t>("sm.memory_budget", &memory_budget, &found));
   assert(found);
   uint64_t memory_budget_var = 0;
-  RETURN_NOT_OK(
-      config.get<uint64_t>("sm.memory_budget_var", &memory_budget_var, &found));
+  RETURN_NOT_OK(config_.get<uint64_t>(
+      "sm.memory_budget_var", &memory_budget_var, &found));
   assert(found);
-  offsets_format_mode_ = config.get("sm.var_offsets.mode", &found);
+  offsets_format_mode_ = config_.get("sm.var_offsets.mode", &found);
   assert(found);
   if (offsets_format_mode_ != "bytes" && offsets_format_mode_ != "elements") {
     return LOG_STATUS(
         Status::ReaderError("Cannot initialize reader; Unsupported offsets "
                             "format in configuration"));
   }
-  RETURN_NOT_OK(config.get<bool>(
+  RETURN_NOT_OK(config_.get<bool>(
       "sm.var_offsets.extra_element", &offsets_extra_element_, &found));
   assert(found);
-  RETURN_NOT_OK(config.get<uint32_t>(
+  RETURN_NOT_OK(config_.get<uint32_t>(
       "sm.var_offsets.bitsize", &offsets_bitsize_, &found));
   if (offsets_bitsize_ != 32 && offsets_bitsize_ != 64) {
     return LOG_STATUS(
@@ -2788,12 +2785,17 @@ Status Reader::init_tile_nullable(
 Status Reader::load_tile_offsets(const std::vector<std::string>& names) {
   const auto encryption_key = array_->encryption_key();
 
+  // Fetch relevant fragments so we load tile offsets only from intersecting
+  // fragments
+  const auto relevant_fragments =
+      read_state_.partitioner_.current().relevant_fragments();
+
   const auto statuses = parallel_for(
       storage_manager_->compute_tp(),
       0,
-      fragment_metadata_.size(),
+      relevant_fragments.size(),
       [&](const uint64_t i) {
-        auto& fragment = fragment_metadata_[i];
+        auto& fragment = fragment_metadata_[relevant_fragments[i]];
         const auto format_version = fragment->format_version();
 
         // Filter the 'names' for format-specific names.
@@ -2841,6 +2843,10 @@ Status Reader::read_coordinate_tiles(
 Status Reader::read_tiles(
     const std::vector<std::string>& names,
     const std::vector<ResultTile*>& result_tiles) const {
+  // Shortcut for empty tile vec
+  if (result_tiles.empty())
+    return Status::Ok();
+
   // Reading tiles are thread safe. However, we will perform
   // them on this thread if there is only one read to perform.
   if (names.size() == 1) {
@@ -3141,6 +3147,11 @@ Status Reader::copy_coordinates(
     const std::vector<ResultCellSlab>& result_cell_slabs) {
   STATS_START_TIMER(stats::Stats::TimerType::READ_COPY_COORDS);
 
+  if (result_cell_slabs.empty() && result_tiles.empty()) {
+    zero_out_buffer_sizes();
+    return Status::Ok();
+  }
+
   const uint64_t stride = UINT64_MAX;
 
   // Build a lists of coordinate names to copy, separating them by
@@ -3194,6 +3205,11 @@ Status Reader::copy_attribute_values(
     const std::vector<ResultTile*>& result_tiles,
     const std::vector<ResultCellSlab>& result_cell_slabs) {
   STATS_START_TIMER(stats::Stats::TimerType::READ_COPY_ATTR_VALUES);
+
+  if (result_cell_slabs.empty() && result_tiles.empty()) {
+    zero_out_buffer_sizes();
+    return Status::Ok();
+  }
 
   // Build an association from the result tile to the cell slab ranges
   // that it contains.
@@ -3310,32 +3326,23 @@ Status Reader::add_extra_offset() {
     if (!array_schema_->is_attr(name) || !array_schema_->var_size(name))
       continue;
 
-    if (*it.second.buffer_size_ + constants::cell_var_offset_size >
-        it.second.original_buffer_size_) {
-      // Error out for now
-      return LOG_STATUS(Status::ReaderError(
-          "Not enough memory in user buffer for extra element"));
-    }
-
     auto buffer = static_cast<unsigned char*>(it.second.buffer_);
     if (offsets_format_mode_ == "bytes") {
       memcpy(
-          buffer + *it.second.buffer_size_,
+          buffer + *it.second.buffer_size_ - offsets_bytesize(),
           it.second.buffer_var_size_,
-          constants::cell_var_offset_size);
+          offsets_bytesize());
     } else if (offsets_format_mode_ == "elements") {
       auto elements = *it.second.buffer_var_size_ /
                       datatype_size(array_schema_->type(name));
       memcpy(
-          buffer + *it.second.buffer_size_,
+          buffer + *it.second.buffer_size_ - offsets_bytesize(),
           &elements,
-          constants::cell_var_offset_size);
+          offsets_bytesize());
     } else {
       return LOG_STATUS(Status::ReaderError(
           "Cannot add extra offset to buffer; Unsupported offsets format"));
     }
-
-    *it.second.buffer_size_ += constants::cell_var_offset_size;
   }
 
   return Status::Ok();
@@ -3425,6 +3432,12 @@ void Reader::get_result_tile_stats(
       cell_num += array_schema_->domain()->cell_num_per_tile();
   }
   STATS_ADD_COUNTER(stats::Stats::CounterType::READ_CELL_NUM, cell_num);
+}
+
+Status Reader::set_config(const Config& config) {
+  config_ = config;
+
+  return Status::Ok();
 }
 
 Status Reader::set_est_result_size(

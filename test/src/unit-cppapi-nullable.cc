@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2020 TileDB, Inc.
+ * @copyright Copyright (c) 2020-2021 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -403,12 +403,12 @@ void NullableArrayCppFx::do_2d_nullable_test(
   // Define the write query buffers for "a3".
   vector<uint64_t> a3_write_buffer;
   for (uint64_t i = 0; i < 16; ++i)
-    a3_write_buffer.emplace_back(i * sizeof(int) * 2);
+    a3_write_buffer.emplace_back(i * sizeof(ATTR_T) * 2);
   vector<ATTR_T> a3_write_buffer_var;
   for (int i = 0; i < 32; ++i)
     a3_write_buffer_var.emplace_back(i);
   vector<uint8_t> a3_write_buffer_validity;
-  for (int i = 0; i < 32; ++i)
+  for (int i = 0; i < 16; ++i)
     a3_write_buffer_validity.emplace_back(rand() % 2);
   if (test_attrs.size() >= 3) {
     write_query_buffers.emplace_back(
@@ -470,7 +470,7 @@ void NullableArrayCppFx::do_2d_nullable_test(
   // Define the read query buffers for "a3".
   vector<uint64_t> a3_read_buffer(16);
   vector<ATTR_T> a3_read_buffer_var(32);
-  vector<uint8_t> a3_read_buffer_validity(32);
+  vector<uint8_t> a3_read_buffer_validity(16);
   if (test_attrs.size() >= 3) {
     read_query_buffers.emplace_back(
         "a3", &a3_read_buffer, &a3_read_buffer_var, &a3_read_buffer_validity);
@@ -519,11 +519,12 @@ void NullableArrayCppFx::do_2d_nullable_test(
     REQUIRE(a3_read_buffer.size() == a3_write_buffer.size());
     REQUIRE(a3_read_buffer_var.size() == a3_write_buffer_var.size());
     REQUIRE(a3_read_buffer_validity.size() == a3_write_buffer_validity.size());
-    vector<uint8_t> expected_a3_read_buffer_validity(32);
-    for (int i = 0; i < 32; ++i) {
-      const uint64_t idx = a3_read_buffer_var[i];
+    vector<uint8_t> expected_a3_read_buffer_validity(16);
+    for (int i = 0; i < 16; ++i) {
+      const uint64_t idx = a3_read_buffer_var[i * 2] / 2;
       expected_a3_read_buffer_validity[i] = a3_write_buffer_validity[idx];
     }
+
     REQUIRE(!memcmp(
         a3_read_buffer_validity.data(),
         expected_a3_read_buffer_validity.data(),

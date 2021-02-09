@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2018-2020 TileDB, Inc.
+ * @copyright Copyright (c) 2018-2021 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -42,8 +42,8 @@
 #include <vector>
 
 #include "tiledb/common/logger.h"
+#include "tiledb/common/macros.h"
 #include "tiledb/common/status.h"
-#include "tiledb/sm/misc/macros.h"
 
 namespace tiledb {
 namespace common {
@@ -93,7 +93,7 @@ class ThreadPool {
 
    private:
     /** Value constructor. */
-    Task(const std::shared_ptr<TaskState>& task_state)
+    Task(const tdb_shared_ptr<TaskState>& task_state)
         : task_state_(std::move(task_state)) {
     }
 
@@ -124,7 +124,7 @@ class ThreadPool {
     }
 
     /** The shared task state between futures and their associated task. */
-    std::shared_ptr<TaskState> task_state_;
+    tdb_shared_ptr<TaskState> task_state_;
 
     friend ThreadPool;
     friend PackagedTask;
@@ -222,32 +222,16 @@ class ThreadPool {
     /** Constructor. */
     PackagedTask()
         : fn_(nullptr)
-        , task_state_(nullptr) {
+        , task_state_(nullptr)
+        , parent_(nullptr) {
     }
 
     /** Value constructor. */
     template <class Fn_T>
-    explicit PackagedTask(Fn_T&& fn) {
+    explicit PackagedTask(Fn_T&& fn, tdb_shared_ptr<PackagedTask>&& parent) {
       fn_ = std::move(fn);
-      task_state_ = std::make_shared<TaskState>();
-    }
-
-    /** Move constructor. */
-    PackagedTask(PackagedTask&& rhs) {
-      fn_ = std::move(rhs.fn_);
-      task_state_ = std::move(rhs.task_state_);
-    }
-
-    /** Move-assign operator. */
-    PackagedTask& operator=(PackagedTask&& rhs) {
-      fn_ = std::move(rhs.fn_);
-      task_state_ = std::move(rhs.task_state_);
-      return *this;
-    }
-
-    void reset() {
-      fn_ = std::function<Status()>();
-      task_state_ = nullptr;
+      task_state_ = tdb_make_shared(TaskState);
+      parent_ = std::move(parent);
     }
 
     /** Function-call operator. */
@@ -260,27 +244,31 @@ class ThreadPool {
       }
       task_state_->cv_.notify_all();
 
-      reset();
+      fn_ = std::function<Status()>();
+      task_state_ = nullptr;
     }
 
     /** Returns the future associated with this task. */
-    ThreadPool::Task get_future() {
+    ThreadPool::Task get_future() const {
       return Task(task_state_);
     }
 
-    /** Returns true if this instance has a valid task. */
-    bool valid() const {
-      return fn_ && task_state_ != nullptr;
+    PackagedTask* get_parent() const {
+      return parent_.get();
     }
 
    private:
     DISABLE_COPY_AND_COPY_ASSIGN(PackagedTask);
+    DISABLE_MOVE_AND_MOVE_ASSIGN(PackagedTask);
 
     /** The packaged function. */
     std::function<Status()> fn_;
 
     /** The task state to share with futures. */
-    std::shared_ptr<TaskState> task_state_;
+    tdb_shared_ptr<TaskState> task_state_;
+
+    /** The parent task that executed this task. */
+    tdb_shared_ptr<PackagedTask> parent_;
   };
 
   /* ********************************* */
@@ -293,14 +281,22 @@ class ThreadPool {
    */
   uint64_t concurrency_level_;
 
-  /** Protects `task_stack_` and `idle_threads_`. */
+  /** Protects `task_stack_`, `idle_threads_`, and `task_stack_clock_`. */
   std::mutex task_stack_mutex_;
 
   /** Notifies work threads to check `task_stack_` for work. */
   std::condition_variable task_stack_cv_;
 
   /** Pending tasks in LIFO ordering. */
-  std::stack<PackagedTask> task_stack_;
+  std::vector<tdb_shared_ptr<PackagedTask>> task_stack_;
+
+  /*
+   * A logical, monotonically increasing clock that is incremented
+   * when a task is either added or removed from `task_stack_`. This
+   * is used by threads to determine if `task_stack_` has been modified
+   * between two points in time.
+   */
+  uint64_t task_stack_clock_;
 
   /**
    * The number of threads waiting for the `task_stack_` to
@@ -316,11 +312,11 @@ class ThreadPool {
 
   /** All tasks that threads in this instance are waiting on. */
   struct BlockedTasksHasher {
-    size_t operator()(const std::shared_ptr<TaskState>& task) const {
+    size_t operator()(const tdb_shared_ptr<TaskState>& task) const {
       return reinterpret_cast<size_t>(task.get());
     }
   };
-  std::unordered_set<std::shared_ptr<TaskState>, BlockedTasksHasher>
+  std::unordered_set<tdb_shared_ptr<TaskState>, BlockedTasksHasher>
       blocked_tasks_;
 
   /** Protects `blocked_tasks_`. */
@@ -331,6 +327,13 @@ class ThreadPool {
 
   /** Protects 'tp_index_'. */
   static std::mutex tp_index_lock_;
+
+  /** Indexes thread ids to the task it is currently executing. */
+  static std::unordered_map<std::thread::id, tdb_shared_ptr<PackagedTask>>
+      task_index_;
+
+  /** Protects 'task_index_'. */
+  static std::mutex task_index_lock_;
 
   /* ********************************* */
   /*          PRIVATE METHODS          */
@@ -356,8 +359,20 @@ class ThreadPool {
   // Remove indexes from each thread to this instance.
   void remove_tp_index();
 
-  // Lookup the thread pool instance from the calling thread.
-  ThreadPool* lookup_tp();
+  // Lookup the thread pool instance that contains `tid`.
+  static ThreadPool* lookup_tp(std::thread::id tid);
+
+  // Add indexes for each thread on the `task_index_`.
+  void add_task_index();
+
+  // Remove indexes for each thread on the `task_index_`.
+  void remove_task_index();
+
+  // Lookup the task executing on `tid`.
+  static tdb_shared_ptr<PackagedTask> lookup_task(std::thread::id tid);
+
+  // Wrapper to update `task_index_` and execute `task`.
+  static void exec_packaged_task(tdb_shared_ptr<PackagedTask> task);
 };
 
 }  // namespace common

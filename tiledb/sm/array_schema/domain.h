@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2020 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2021 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -33,8 +33,8 @@
 #ifndef TILEDB_DOMAIN_H
 #define TILEDB_DOMAIN_H
 
+#include "tiledb/common/macros.h"
 #include "tiledb/common/status.h"
-#include "tiledb/sm/misc/macros.h"
 #include "tiledb/sm/misc/types.h"
 #include "tiledb/sm/query/query_buffer.h"
 #include "tiledb/sm/query/result_coords.h"
@@ -606,7 +606,7 @@ class Domain {
   Layout cell_order_;
 
   /** The domain dimensions. */
-  std::vector<std::unique_ptr<Dimension>> dimensions_;
+  std::vector<tdb_unique_ptr<Dimension>> dimensions_;
 
   /** The number of dimensions. */
   unsigned dim_num_;

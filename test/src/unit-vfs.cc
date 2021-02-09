@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2018-2020 TileDB, Inc.
+ * @copyright Copyright (c) 2018-2021 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -312,8 +312,9 @@ TEST_CASE("VFS: URI semantics", "[vfs][uri]") {
   bool s3_supported = false;
   bool hdfs_supported = false;
   bool azure_supported = false;
+  bool gcs_supported = false;
   tiledb::test::get_supported_fs(
-      &s3_supported, &hdfs_supported, &azure_supported);
+      &s3_supported, &hdfs_supported, &azure_supported, &gcs_supported);
 
   std::vector<std::pair<URI, Config>> root_pairs;
   if (s3_supported) {

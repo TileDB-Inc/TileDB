@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2020 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2021 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -270,7 +270,7 @@ Status Array::close() {
     }
 
     // Storage manager does not own the array schema for remote arrays.
-    delete array_schema_;
+    tdb_delete(array_schema_);
     array_schema_ = nullptr;
   } else {
     array_schema_ = nullptr;
@@ -516,18 +516,18 @@ Status Array::delete_metadata(const char* key) {
   // Check if array is open
   if (!is_open_)
     return LOG_STATUS(
-        Status::ArrayError("Cannot delete metadata; Array is not open"));
+        Status::ArrayError("Cannot delete metadata. Array is not open"));
 
   // Check mode
   if (query_type_ != QueryType::WRITE)
     return LOG_STATUS(
-        Status::ArrayError("Cannot delete metadata; Array was "
+        Status::ArrayError("Cannot delete metadata. Array was "
                            "not opened in write mode"));
 
   // Check if key is null
   if (key == nullptr)
     return LOG_STATUS(
-        Status::ArrayError("Cannot delete metadata; Key cannot be null"));
+        Status::ArrayError("Cannot delete metadata. Key cannot be null"));
 
   RETURN_NOT_OK(metadata_.del(key));
 
@@ -864,7 +864,21 @@ Status Array::compute_non_empty_domain() {
     auto metadata_num = fragment_metadata_.size();
     for (size_t j = 1; j < metadata_num; ++j) {
       const auto& meta_dom = fragment_metadata_[j]->non_empty_domain();
-      array_schema_->domain()->expand_ndrange(meta_dom, &non_empty_domain_);
+      // Validate that this fragment's non-empty domain is set
+      // It should _always_ be set, however we've seen cases where disk
+      // corruption or other out-of-band activity can cause the fragment to be
+      // corrupt for these cases we want to check to prevent any segfaults
+      // later.
+      if (!meta_dom.empty())
+        array_schema_->domain()->expand_ndrange(meta_dom, &non_empty_domain_);
+      else {
+        // If the fragment's non-empty domain is indeed empty, lets log it so
+        // the user gets a message warning that this fragment might be corrupt
+        // Note: LOG_STATUS only prints if TileDB is built in verbose mode.
+        LOG_STATUS(Status::ArrayError(
+            "Non empty domain unexpectedly empty for fragment: " +
+            fragment_metadata_[j]->fragment_uri().to_string()));
+      }
     }
   }
   non_empty_domain_computed_ = true;

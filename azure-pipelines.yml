@@ -11,8 +11,11 @@ pr:
 stages:
   - stage: CI
     condition: and(not(startsWith(variables['Build.SourceBranch'], 'refs/tags')), not(startsWith(variables['Build.SourceBranchName'], 'build-')))
+    variables:
+      BACKWARDS_COMPATIBILITY_ARRAYS: OFF
     jobs:
     - job:
+      timeoutInMinutes: 90
       strategy:
         matrix:
           linux_s3:
@@ -29,7 +32,7 @@ stages:
             imageName: 'ubuntu-16.04'
             TILEDB_AZURE: ON
             TILEDB_STATIC: OFF
-            TILEDB_TESTS_ENABLE_ARROW: ON
+            TILEDB_ARROW_TESTS: ON
             CXX: g++
           linux_gcs:
             imageName: 'ubuntu-16.04'
@@ -39,18 +42,21 @@ stages:
           macOS:
             imageName: 'macOS-10.14'
             TILEDB_S3: ON
-            TILEDB_TESTS_ENABLE_ARROW: ON
+            TILEDB_ARROW_TESTS: ON
             CXX: clang++
+            ARTIFACT_OS: macOS
           macOS_azure:
             imageName: 'macOS-10.15'
             TILEDB_AZURE: ON
             TILEDB_SERIALIZATION: ON
             CXX: clang++
+            ARTIFACT_OS: macOS_azure
           macOS_gcs:
             imageName: 'macOS-10.14'
             TILEDB_GCS: ON
             TILEDB_MEMFS: ON
             CXX: clang++
+            ARTIFACT_OS: macOS_gcs
           linux_asan:
             imageName: 'ubuntu-16.04'
             TILEDB_MEMFS: ON
@@ -62,6 +68,7 @@ stages:
             TILEDB_SERIALIZATION: ON
             TILEDB_S3: ON
             CXX: g++
+            BACKWARDS_COMPATIBILITY_ARRAYS: ON
 
       pool:
         vmImage: $(imageName)
@@ -84,7 +91,11 @@ stages:
           VS2017:
             imageName: 'vs2017-win2016'
             TILEDB_S3: ON
-            TILEDB_TESTS_ENABLE_ARROW: ON
+            TILEDB_ARROW_TESTS: ON
+          VS2017_azure:
+            imageName: 'vs2017-win2016'
+            TILEDB_AZURE: ON
+            TILEDB_ARROW_TESTS: ON
       pool:
         vmImage: $(imageName)
       steps:

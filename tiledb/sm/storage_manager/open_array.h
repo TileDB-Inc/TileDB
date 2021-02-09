@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2020 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2021 TileDB, Inc.
  * @copyright Copyright (c) 2016 MIT and Intel Corporation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -129,7 +129,7 @@ class OpenArray {
    * Returns the constant buffer storing the serialized array metadata
    * of the input URI, or `nullptr` if the array metadata do not exist.
    */
-  std::shared_ptr<Buffer> array_metadata(const URI& uri) const;
+  tdb_shared_ptr<Buffer> array_metadata(const URI& uri) const;
 
   /** Locks the array mutex. */
   void mtx_lock();
@@ -152,7 +152,7 @@ class OpenArray {
    * buffer) with the input URI.
    */
   void insert_array_metadata(
-      const URI& uri, const std::shared_ptr<Buffer>& metadata);
+      const URI& uri, const tdb_shared_ptr<Buffer>& metadata);
 
   /** Sets an array schema. */
   void set_array_schema(ArraySchema* array_schema);
@@ -202,7 +202,7 @@ class OpenArray {
    * A map of URI strings to array metadata. The map stores the serialized
    * (decompressed, decrypted) array metadata into constant buffers.
    */
-  std::unordered_map<std::string, std::shared_ptr<Buffer>> array_metadata_;
+  std::unordered_map<std::string, tdb_shared_ptr<Buffer>> array_metadata_;
 
   /**
    * A mutex used to lock the array for thread-safe open/close of the array

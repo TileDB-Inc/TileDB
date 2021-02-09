@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2020 TileDB Inc.
+ * @copyright Copyright (c) 2017-2021 TileDB Inc.
  * @copyright Copyright (c) 2016 MIT and Intel Corporation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -140,6 +140,43 @@ TEST_CASE(
   }
 }
 
+template <typename T>
+void set_buffer_wrapper(
+    Query* const query,
+    const std::string& attribute_name,
+    const bool var_sized,
+    const bool nullable,
+    uint64_t* const offsets,
+    void* const values,
+    uint8_t* const validity,
+    std::unordered_map<
+        std::string,
+        std::tuple<uint64_t*, void*, uint8_t*>>* const buffers) {
+  if (var_sized) {
+    if (!nullable) {
+      query->set_buffer(attribute_name, offsets, 1, static_cast<T*>(values), 1);
+      buffers->emplace(
+          attribute_name, std::make_tuple(offsets, values, nullptr));
+    } else {
+      query->set_buffer_nullable(
+          attribute_name, offsets, 1, static_cast<T*>(values), 1, validity, 1);
+      buffers->emplace(
+          attribute_name, std::make_tuple(offsets, values, validity));
+    }
+  } else {
+    if (!nullable) {
+      query->set_buffer(attribute_name, static_cast<T*>(values), 1);
+      buffers->emplace(
+          attribute_name, std::make_tuple(nullptr, values, nullptr));
+    } else {
+      query->set_buffer_nullable(
+          attribute_name, static_cast<T*>(values), 1, validity, 1);
+      buffers->emplace(
+          attribute_name, std::make_tuple(nullptr, values, validity));
+    }
+  }
+}
+
 TEST_CASE(
     "Backwards compatibility: Test reading 1.4.0 array with non-split coords",
     "[backwards-compat][non-split-coords]") {
@@ -216,127 +253,135 @@ TEST_CASE(
 
       Query query(ctx, *array);
 
-      std::unordered_map<std::string, std::pair<uint64_t*, void*>> buffers;
+      std::unordered_map<std::string, std::tuple<uint64_t*, void*, uint8_t*>>
+          buffers;
       for (auto attr : array->schema().attributes()) {
         std::string attribute_name = attr.first;
+        const bool var_sized = attr.second.variable_sized();
+        const bool nullable = attr.second.nullable();
         uint64_t* offsets = static_cast<uint64_t*>(malloc(sizeof(uint64_t)));
         void* values = malloc(tiledb_datatype_size(attr.second.type()));
-        if (attr.second.variable_sized()) {
-          buffers.emplace(attribute_name, std::make_pair(offsets, values));
-        } else {
-          buffers.emplace(attribute_name, std::make_pair(nullptr, values));
-        }
+        uint8_t* validity = static_cast<uint8_t*>(malloc(sizeof(uint8_t)));
 
         switch (attr.second.type()) {
           case TILEDB_INT8: {
-            if (attr.second.variable_sized()) {
-              query.set_buffer(
-                  attribute_name, offsets, 1, static_cast<int8_t*>(values), 1);
-              buffers.emplace(attribute_name, std::make_pair(offsets, values));
-            } else {
-              query.set_buffer(attribute_name, static_cast<int8_t*>(values), 1);
-              buffers.emplace(attribute_name, std::make_pair(nullptr, values));
-            }
+            set_buffer_wrapper<int8_t>(
+                &query,
+                attribute_name,
+                var_sized,
+                nullable,
+                offsets,
+                values,
+                validity,
+                &buffers);
             break;
           }
           case TILEDB_UINT8: {
-            if (attr.second.variable_sized()) {
-              query.set_buffer(
-                  attribute_name, offsets, 1, static_cast<uint8_t*>(values), 1);
-            } else {
-              query.set_buffer(
-                  attribute_name, static_cast<uint8_t*>(values), 1);
-            }
+            set_buffer_wrapper<uint8_t>(
+                &query,
+                attribute_name,
+                var_sized,
+                nullable,
+                offsets,
+                values,
+                validity,
+                &buffers);
             break;
           }
           case TILEDB_INT16: {
-            if (attr.second.variable_sized()) {
-              query.set_buffer(
-                  attribute_name, offsets, 1, static_cast<int16_t*>(values), 1);
-            } else {
-              query.set_buffer(
-                  attribute_name, static_cast<int16_t*>(values), 1);
-            }
+            set_buffer_wrapper<int16_t>(
+                &query,
+                attribute_name,
+                var_sized,
+                nullable,
+                offsets,
+                values,
+                validity,
+                &buffers);
             break;
           }
           case TILEDB_UINT16: {
-            if (attr.second.variable_sized()) {
-              query.set_buffer(
-                  attribute_name,
-                  offsets,
-                  1,
-                  static_cast<uint16_t*>(values),
-                  1);
-            } else {
-              query.set_buffer(
-                  attribute_name, static_cast<uint16_t*>(values), 1);
-            }
+            set_buffer_wrapper<uint16_t>(
+                &query,
+                attribute_name,
+                var_sized,
+                nullable,
+                offsets,
+                values,
+                validity,
+                &buffers);
             break;
           }
           case TILEDB_INT32: {
-            if (attr.second.variable_sized()) {
-              query.set_buffer(
-                  attribute_name, offsets, 1, static_cast<int32_t*>(values), 1);
-            } else {
-              query.set_buffer(
-                  attribute_name, static_cast<int32_t*>(values), 1);
-            }
+            set_buffer_wrapper<int32_t>(
+                &query,
+                attribute_name,
+                var_sized,
+                nullable,
+                offsets,
+                values,
+                validity,
+                &buffers);
             break;
           }
           case TILEDB_UINT32: {
-            if (attr.second.variable_sized()) {
-              query.set_buffer(
-                  attribute_name,
-                  offsets,
-                  1,
-                  static_cast<uint32_t*>(values),
-                  1);
-            } else {
-              query.set_buffer(
-                  attribute_name, static_cast<uint32_t*>(values), 1);
-            }
+            set_buffer_wrapper<uint32_t>(
+                &query,
+                attribute_name,
+                var_sized,
+                nullable,
+                offsets,
+                values,
+                validity,
+                &buffers);
             break;
           }
           case TILEDB_INT64: {
-            if (attr.second.variable_sized()) {
-              query.set_buffer(
-                  attribute_name, offsets, 1, static_cast<int64_t*>(values), 1);
-            } else {
-              query.set_buffer(
-                  attribute_name, static_cast<int64_t*>(values), 1);
-            }
+            set_buffer_wrapper<int64_t>(
+                &query,
+                attribute_name,
+                var_sized,
+                nullable,
+                offsets,
+                values,
+                validity,
+                &buffers);
             break;
           }
           case TILEDB_UINT64: {
-            if (attr.second.variable_sized()) {
-              query.set_buffer(
-                  attribute_name,
-                  offsets,
-                  1,
-                  static_cast<uint64_t*>(values),
-                  1);
-            } else {
-              query.set_buffer(
-                  attribute_name, static_cast<uint64_t*>(values), 1);
-            }
+            set_buffer_wrapper<uint64_t>(
+                &query,
+                attribute_name,
+                var_sized,
+                nullable,
+                offsets,
+                values,
+                validity,
+                &buffers);
             break;
           }
           case TILEDB_FLOAT32: {
-            if (attr.second.variable_sized()) {
-              query.set_buffer(
-                  attribute_name, offsets, 1, static_cast<float*>(values), 1);
-            } else {
-              query.set_buffer(attribute_name, static_cast<float*>(values), 1);
-            }
+            set_buffer_wrapper<float>(
+                &query,
+                attribute_name,
+                var_sized,
+                nullable,
+                offsets,
+                values,
+                validity,
+                &buffers);
             break;
           }
           case TILEDB_FLOAT64: {
-            if (attr.second.variable_sized()) {
-              query.set_buffer(
-                  attribute_name, offsets, 1, static_cast<double*>(values), 1);
-            } else {
-              query.set_buffer(attribute_name, static_cast<double*>(values), 1);
-            }
+            set_buffer_wrapper<double>(
+                &query,
+                attribute_name,
+                var_sized,
+                nullable,
+                offsets,
+                values,
+                validity,
+                &buffers);
             break;
           }
           case TILEDB_DATETIME_YEAR:
@@ -352,55 +397,56 @@ TEST_CASE(
           case TILEDB_DATETIME_PS:
           case TILEDB_DATETIME_FS:
           case TILEDB_DATETIME_AS: {
-            if (attr.second.variable_sized()) {
-              query.set_buffer(
-                  attribute_name, offsets, 1, static_cast<int64_t*>(values), 1);
-            } else {
-              query.set_buffer(
-                  attribute_name, static_cast<int64_t*>(values), 1);
-            }
+            set_buffer_wrapper<int64_t>(
+                &query,
+                attribute_name,
+                var_sized,
+                nullable,
+                offsets,
+                values,
+                validity,
+                &buffers);
             break;
           }
           case TILEDB_CHAR:
           case TILEDB_STRING_ASCII:
           case TILEDB_STRING_UTF8:
           case TILEDB_ANY: {
-            if (attr.second.variable_sized()) {
-              query.set_buffer(
-                  attribute_name, offsets, 1, static_cast<char*>(values), 1);
-            } else {
-              query.set_buffer(attribute_name, static_cast<char*>(values), 1);
-            }
+            set_buffer_wrapper<char>(
+                &query,
+                attribute_name,
+                var_sized,
+                nullable,
+                offsets,
+                values,
+                validity,
+                &buffers);
             break;
           }
           case TILEDB_STRING_UTF16:
           case TILEDB_STRING_UCS2: {
-            if (attr.second.variable_sized()) {
-              query.set_buffer(
-                  attribute_name,
-                  offsets,
-                  1,
-                  static_cast<char16_t*>(values),
-                  1);
-            } else {
-              query.set_buffer(
-                  attribute_name, static_cast<char16_t*>(values), 1);
-            }
+            set_buffer_wrapper<char16_t>(
+                &query,
+                attribute_name,
+                var_sized,
+                nullable,
+                offsets,
+                values,
+                validity,
+                &buffers);
             break;
           }
           case TILEDB_STRING_UTF32:
           case TILEDB_STRING_UCS4: {
-            if (attr.second.variable_sized()) {
-              query.set_buffer(
-                  attribute_name,
-                  offsets,
-                  1,
-                  static_cast<char32_t*>(values),
-                  1);
-            } else {
-              query.set_buffer(
-                  attribute_name, static_cast<char32_t*>(values), 1);
-            }
+            set_buffer_wrapper<char32_t>(
+                &query,
+                attribute_name,
+                var_sized,
+                nullable,
+                offsets,
+                values,
+                validity,
+                &buffers);
             break;
           }
         }
@@ -481,51 +527,51 @@ TEST_CASE(
 
       // Check the results to make sure all values are set to 1
       for (auto buff : buffers) {
-        std::pair<uint64_t*, void*> buffer = buff.second;
-        if (buffer.first != nullptr) {
-          REQUIRE(buffer.first[0] == 0);
+        std::tuple<uint64_t*, void*, uint8_t*> buffer = buff.second;
+        if (std::get<0>(buffer) != nullptr) {
+          REQUIRE(std::get<0>(buffer)[0] == 0);
         }
 
         Attribute attribute = array->schema().attribute(buff.first);
         switch (attribute.type()) {
           case TILEDB_INT8: {
-            REQUIRE(static_cast<int8_t*>(buffer.second)[0] == 1);
+            REQUIRE(static_cast<int8_t*>(std::get<1>(buffer))[0] == 1);
             break;
           }
           case TILEDB_UINT8: {
-            REQUIRE(static_cast<uint8_t*>(buffer.second)[0] == 1);
+            REQUIRE(static_cast<uint8_t*>(std::get<1>(buffer))[0] == 1);
             break;
           }
           case TILEDB_INT16: {
-            REQUIRE(static_cast<int16_t*>(buffer.second)[0] == 1);
+            REQUIRE(static_cast<int16_t*>(std::get<1>(buffer))[0] == 1);
             break;
           }
           case TILEDB_UINT16: {
-            REQUIRE(static_cast<uint16_t*>(buffer.second)[0] == 1);
+            REQUIRE(static_cast<uint16_t*>(std::get<1>(buffer))[0] == 1);
             break;
           }
           case TILEDB_INT32: {
-            REQUIRE(static_cast<int32_t*>(buffer.second)[0] == 1);
+            REQUIRE(static_cast<int32_t*>(std::get<1>(buffer))[0] == 1);
             break;
           }
           case TILEDB_UINT32: {
-            REQUIRE(static_cast<uint32_t*>(buffer.second)[0] == 1);
+            REQUIRE(static_cast<uint32_t*>(std::get<1>(buffer))[0] == 1);
             break;
           }
           case TILEDB_INT64: {
-            REQUIRE(static_cast<int64_t*>(buffer.second)[0] == 1);
+            REQUIRE(static_cast<int64_t*>(std::get<1>(buffer))[0] == 1);
             break;
           }
           case TILEDB_UINT64: {
-            REQUIRE(static_cast<uint64_t*>(buffer.second)[0] == 1);
+            REQUIRE(static_cast<uint64_t*>(std::get<1>(buffer))[0] == 1);
             break;
           }
           case TILEDB_FLOAT32: {
-            REQUIRE(static_cast<float*>(buffer.second)[0] == 1);
+            REQUIRE(static_cast<float*>(std::get<1>(buffer))[0] == 1);
             break;
           }
           case TILEDB_FLOAT64: {
-            REQUIRE(static_cast<double*>(buffer.second)[0] == 1);
+            REQUIRE(static_cast<double*>(std::get<1>(buffer))[0] == 1);
             break;
           }
           case TILEDB_DATETIME_YEAR:
@@ -541,34 +587,34 @@ TEST_CASE(
           case TILEDB_DATETIME_PS:
           case TILEDB_DATETIME_FS:
           case TILEDB_DATETIME_AS: {
-            REQUIRE(static_cast<int64_t*>(buffer.second)[0] == 1);
+            REQUIRE(static_cast<int64_t*>(std::get<1>(buffer))[0] == 1);
             break;
           }
           case TILEDB_CHAR:
           case TILEDB_STRING_ASCII:
           case TILEDB_STRING_UTF8:
           case TILEDB_ANY: {
-            REQUIRE(static_cast<char*>(buffer.second)[0] == '1');
+            REQUIRE(static_cast<char*>(std::get<1>(buffer))[0] == '1');
             break;
           }
           case TILEDB_STRING_UTF16:
           case TILEDB_STRING_UCS2: {
-            REQUIRE(static_cast<char16_t*>(buffer.second)[0] == u'1');
+            REQUIRE(static_cast<char16_t*>(std::get<1>(buffer))[0] == u'1');
             break;
           }
           case TILEDB_STRING_UTF32:
           case TILEDB_STRING_UCS4: {
-            REQUIRE(static_cast<char32_t*>(buffer.second)[0] == U'1');
+            REQUIRE(static_cast<char32_t*>(std::get<1>(buffer))[0] == U'1');
             break;
           }
         }
 
         // Free buffers
-        if (buffer.first != nullptr) {
-          free(buffer.first);
+        if (std::get<0>(buffer) != nullptr) {
+          free(std::get<0>(buffer));
         }
-        if (buffer.second != nullptr) {
-          free(buffer.second);
+        if (std::get<1>(buffer) != nullptr) {
+          free(std::get<1>(buffer));
         }
       }
       delete array;
@@ -632,7 +678,6 @@ TEST_CASE(
   std::string compat_folder(arrays_dir + "/read_compatibility_test");
   if (Object::object(ctx, compat_folder).type() != Object::Type::Group)
     return;
-
   std::string encryption_key = "unittestunittestunittestunittest";
 
   tiledb::ObjectIter versions_iter(ctx, compat_folder);
@@ -656,127 +701,133 @@ TEST_CASE(
 
       Query query(ctx, *array);
 
-      std::unordered_map<std::string, std::pair<uint64_t*, void*>> buffers;
+      std::unordered_map<std::string, std::tuple<uint64_t*, void*, uint8_t*>>
+          buffers;
       for (auto attr : array->schema().attributes()) {
         std::string attribute_name = attr.first;
         uint64_t* offsets = static_cast<uint64_t*>(malloc(sizeof(uint64_t)));
         void* values = malloc(tiledb_datatype_size(attr.second.type()));
-        if (attr.second.variable_sized()) {
-          buffers.emplace(attribute_name, std::make_pair(offsets, values));
-        } else {
-          buffers.emplace(attribute_name, std::make_pair(nullptr, values));
-        }
+        uint8_t* validity = static_cast<uint8_t*>(malloc(sizeof(uint8_t)));
 
         switch (attr.second.type()) {
           case TILEDB_INT8: {
-            if (attr.second.variable_sized()) {
-              query.set_buffer(
-                  attribute_name, offsets, 1, static_cast<int8_t*>(values), 1);
-              buffers.emplace(attribute_name, std::make_pair(offsets, values));
-            } else {
-              query.set_buffer(attribute_name, static_cast<int8_t*>(values), 1);
-              buffers.emplace(attribute_name, std::make_pair(nullptr, values));
-            }
+            set_buffer_wrapper<int8_t>(
+                &query,
+                attribute_name,
+                attr.second.variable_sized(),
+                attr.second.nullable(),
+                offsets,
+                values,
+                validity,
+                &buffers);
             break;
           }
           case TILEDB_UINT8: {
-            if (attr.second.variable_sized()) {
-              query.set_buffer(
-                  attribute_name, offsets, 1, static_cast<uint8_t*>(values), 1);
-            } else {
-              query.set_buffer(
-                  attribute_name, static_cast<uint8_t*>(values), 1);
-            }
+            set_buffer_wrapper<uint8_t>(
+                &query,
+                attribute_name,
+                attr.second.variable_sized(),
+                attr.second.nullable(),
+                offsets,
+                values,
+                validity,
+                &buffers);
             break;
           }
           case TILEDB_INT16: {
-            if (attr.second.variable_sized()) {
-              query.set_buffer(
-                  attribute_name, offsets, 1, static_cast<int16_t*>(values), 1);
-            } else {
-              query.set_buffer(
-                  attribute_name, static_cast<int16_t*>(values), 1);
-            }
+            set_buffer_wrapper<int16_t>(
+                &query,
+                attribute_name,
+                attr.second.variable_sized(),
+                attr.second.nullable(),
+                offsets,
+                values,
+                validity,
+                &buffers);
             break;
           }
           case TILEDB_UINT16: {
-            if (attr.second.variable_sized()) {
-              query.set_buffer(
-                  attribute_name,
-                  offsets,
-                  1,
-                  static_cast<uint16_t*>(values),
-                  1);
-            } else {
-              query.set_buffer(
-                  attribute_name, static_cast<uint16_t*>(values), 1);
-            }
+            set_buffer_wrapper<uint16_t>(
+                &query,
+                attribute_name,
+                attr.second.variable_sized(),
+                attr.second.nullable(),
+                offsets,
+                values,
+                validity,
+                &buffers);
             break;
           }
           case TILEDB_INT32: {
-            if (attr.second.variable_sized()) {
-              query.set_buffer(
-                  attribute_name, offsets, 1, static_cast<int32_t*>(values), 1);
-            } else {
-              query.set_buffer(
-                  attribute_name, static_cast<int32_t*>(values), 1);
-            }
+            set_buffer_wrapper<int32_t>(
+                &query,
+                attribute_name,
+                attr.second.variable_sized(),
+                attr.second.nullable(),
+                offsets,
+                values,
+                validity,
+                &buffers);
             break;
           }
           case TILEDB_UINT32: {
-            if (attr.second.variable_sized()) {
-              query.set_buffer(
-                  attribute_name,
-                  offsets,
-                  1,
-                  static_cast<uint32_t*>(values),
-                  1);
-            } else {
-              query.set_buffer(
-                  attribute_name, static_cast<uint32_t*>(values), 1);
-            }
+            set_buffer_wrapper<uint32_t>(
+                &query,
+                attribute_name,
+                attr.second.variable_sized(),
+                attr.second.nullable(),
+                offsets,
+                values,
+                validity,
+                &buffers);
             break;
           }
           case TILEDB_INT64: {
-            if (attr.second.variable_sized()) {
-              query.set_buffer(
-                  attribute_name, offsets, 1, static_cast<int64_t*>(values), 1);
-            } else {
-              query.set_buffer(
-                  attribute_name, static_cast<int64_t*>(values), 1);
-            }
+            set_buffer_wrapper<int64_t>(
+                &query,
+                attribute_name,
+                attr.second.variable_sized(),
+                attr.second.nullable(),
+                offsets,
+                values,
+                validity,
+                &buffers);
             break;
           }
           case TILEDB_UINT64: {
-            if (attr.second.variable_sized()) {
-              query.set_buffer(
-                  attribute_name,
-                  offsets,
-                  1,
-                  static_cast<uint64_t*>(values),
-                  1);
-            } else {
-              query.set_buffer(
-                  attribute_name, static_cast<uint64_t*>(values), 1);
-            }
+            set_buffer_wrapper<uint64_t>(
+                &query,
+                attribute_name,
+                attr.second.variable_sized(),
+                attr.second.nullable(),
+                offsets,
+                values,
+                validity,
+                &buffers);
             break;
           }
           case TILEDB_FLOAT32: {
-            if (attr.second.variable_sized()) {
-              query.set_buffer(
-                  attribute_name, offsets, 1, static_cast<float*>(values), 1);
-            } else {
-              query.set_buffer(attribute_name, static_cast<float*>(values), 1);
-            }
+            set_buffer_wrapper<float>(
+                &query,
+                attribute_name,
+                attr.second.variable_sized(),
+                attr.second.nullable(),
+                offsets,
+                values,
+                validity,
+                &buffers);
             break;
           }
           case TILEDB_FLOAT64: {
-            if (attr.second.variable_sized()) {
-              query.set_buffer(
-                  attribute_name, offsets, 1, static_cast<double*>(values), 1);
-            } else {
-              query.set_buffer(attribute_name, static_cast<double*>(values), 1);
-            }
+            set_buffer_wrapper<double>(
+                &query,
+                attribute_name,
+                attr.second.variable_sized(),
+                attr.second.nullable(),
+                offsets,
+                values,
+                validity,
+                &buffers);
             break;
           }
           case TILEDB_DATETIME_YEAR:
@@ -792,13 +843,15 @@ TEST_CASE(
           case TILEDB_DATETIME_PS:
           case TILEDB_DATETIME_FS:
           case TILEDB_DATETIME_AS: {
-            if (attr.second.variable_sized()) {
-              query.set_buffer(
-                  attribute_name, offsets, 1, static_cast<int64_t*>(values), 1);
-            } else {
-              query.set_buffer(
-                  attribute_name, static_cast<int64_t*>(values), 1);
-            }
+            set_buffer_wrapper<int64_t>(
+                &query,
+                attribute_name,
+                attr.second.variable_sized(),
+                attr.second.nullable(),
+                offsets,
+                values,
+                validity,
+                &buffers);
             break;
           }
 
@@ -806,42 +859,41 @@ TEST_CASE(
           case TILEDB_STRING_ASCII:
           case TILEDB_STRING_UTF8:
           case TILEDB_ANY: {
-            if (attr.second.variable_sized()) {
-              query.set_buffer(
-                  attribute_name, offsets, 1, static_cast<char*>(values), 1);
-            } else {
-              query.set_buffer(attribute_name, static_cast<char*>(values), 1);
-            }
+            set_buffer_wrapper<char>(
+                &query,
+                attribute_name,
+                attr.second.variable_sized(),
+                attr.second.nullable(),
+                offsets,
+                values,
+                validity,
+                &buffers);
             break;
           }
           case TILEDB_STRING_UTF16:
           case TILEDB_STRING_UCS2: {
-            if (attr.second.variable_sized()) {
-              query.set_buffer(
-                  attribute_name,
-                  offsets,
-                  1,
-                  static_cast<char16_t*>(values),
-                  1);
-            } else {
-              query.set_buffer(
-                  attribute_name, static_cast<char16_t*>(values), 1);
-            }
+            set_buffer_wrapper<char16_t>(
+                &query,
+                attribute_name,
+                attr.second.variable_sized(),
+                attr.second.nullable(),
+                offsets,
+                values,
+                validity,
+                &buffers);
             break;
           }
           case TILEDB_STRING_UTF32:
           case TILEDB_STRING_UCS4: {
-            if (attr.second.variable_sized()) {
-              query.set_buffer(
-                  attribute_name,
-                  offsets,
-                  1,
-                  static_cast<char32_t*>(values),
-                  1);
-            } else {
-              query.set_buffer(
-                  attribute_name, static_cast<char32_t*>(values), 1);
-            }
+            set_buffer_wrapper<char32_t>(
+                &query,
+                attribute_name,
+                attr.second.variable_sized(),
+                attr.second.nullable(),
+                offsets,
+                values,
+                validity,
+                &buffers);
             break;
           }
         }
@@ -957,51 +1009,51 @@ TEST_CASE(
 
       // Check the results to make sure all values are set to 1
       for (auto buff : buffers) {
-        std::pair<uint64_t*, void*> buffer = buff.second;
-        if (buffer.first != nullptr) {
-          REQUIRE(buffer.first[0] == 0);
+        std::tuple<uint64_t*, void*, uint8_t*> buffer = buff.second;
+        if (std::get<0>(buffer) != nullptr) {
+          REQUIRE(std::get<0>(buffer)[0] == 0);
         }
 
         Attribute attribute = array->schema().attribute(buff.first);
         switch (attribute.type()) {
           case TILEDB_INT8: {
-            REQUIRE(static_cast<int8_t*>(buffer.second)[0] == 1);
+            REQUIRE(static_cast<int8_t*>(std::get<1>(buffer))[0] == 1);
             break;
           }
           case TILEDB_UINT8: {
-            REQUIRE(static_cast<uint8_t*>(buffer.second)[0] == 1);
+            REQUIRE(static_cast<uint8_t*>(std::get<1>(buffer))[0] == 1);
             break;
           }
           case TILEDB_INT16: {
-            REQUIRE(static_cast<int16_t*>(buffer.second)[0] == 1);
+            REQUIRE(static_cast<int16_t*>(std::get<1>(buffer))[0] == 1);
             break;
           }
           case TILEDB_UINT16: {
-            REQUIRE(static_cast<uint16_t*>(buffer.second)[0] == 1);
+            REQUIRE(static_cast<uint16_t*>(std::get<1>(buffer))[0] == 1);
             break;
           }
           case TILEDB_INT32: {
-            REQUIRE(static_cast<int32_t*>(buffer.second)[0] == 1);
+            REQUIRE(static_cast<int32_t*>(std::get<1>(buffer))[0] == 1);
             break;
           }
           case TILEDB_UINT32: {
-            REQUIRE(static_cast<uint32_t*>(buffer.second)[0] == 1);
+            REQUIRE(static_cast<uint32_t*>(std::get<1>(buffer))[0] == 1);
             break;
           }
           case TILEDB_INT64: {
-            REQUIRE(static_cast<int64_t*>(buffer.second)[0] == 1);
+            REQUIRE(static_cast<int64_t*>(std::get<1>(buffer))[0] == 1);
             break;
           }
           case TILEDB_UINT64: {
-            REQUIRE(static_cast<uint64_t*>(buffer.second)[0] == 1);
+            REQUIRE(static_cast<uint64_t*>(std::get<1>(buffer))[0] == 1);
             break;
           }
           case TILEDB_FLOAT32: {
-            REQUIRE(static_cast<float*>(buffer.second)[0] == 1);
+            REQUIRE(static_cast<float*>(std::get<1>(buffer))[0] == 1);
             break;
           }
           case TILEDB_FLOAT64: {
-            REQUIRE(static_cast<double*>(buffer.second)[0] == 1);
+            REQUIRE(static_cast<double*>(std::get<1>(buffer))[0] == 1);
             break;
           }
           case TILEDB_DATETIME_YEAR:
@@ -1017,34 +1069,41 @@ TEST_CASE(
           case TILEDB_DATETIME_PS:
           case TILEDB_DATETIME_FS:
           case TILEDB_DATETIME_AS: {
-            REQUIRE(static_cast<int64_t*>(buffer.second)[0] == 1);
+            REQUIRE(static_cast<int64_t*>(std::get<1>(buffer))[0] == 1);
             break;
           }
           case TILEDB_CHAR:
           case TILEDB_STRING_ASCII:
           case TILEDB_STRING_UTF8:
           case TILEDB_ANY: {
-            REQUIRE(static_cast<char*>(buffer.second)[0] == '1');
+            REQUIRE(static_cast<char*>(std::get<1>(buffer))[0] == '1');
             break;
           }
           case TILEDB_STRING_UTF16:
           case TILEDB_STRING_UCS2: {
-            REQUIRE(static_cast<char16_t*>(buffer.second)[0] == u'1');
+            REQUIRE(static_cast<char16_t*>(std::get<1>(buffer))[0] == u'1');
             break;
           }
           case TILEDB_STRING_UTF32:
           case TILEDB_STRING_UCS4: {
-            REQUIRE(static_cast<char32_t*>(buffer.second)[0] == U'1');
+            REQUIRE(static_cast<char32_t*>(std::get<1>(buffer))[0] == U'1');
             break;
           }
         }
 
-        // Free buffers
-        if (buffer.first != nullptr) {
-          free(buffer.first);
+        if (std::get<2>(buffer) != nullptr) {
+          REQUIRE(std::get<2>(buffer)[0] == 1);
         }
-        if (buffer.second != nullptr) {
-          free(buffer.second);
+
+        // Free buffers
+        if (std::get<0>(buffer) != nullptr) {
+          free(std::get<0>(buffer));
+        }
+        if (std::get<1>(buffer) != nullptr) {
+          free(std::get<1>(buffer));
+        }
+        if (std::get<2>(buffer) != nullptr) {
+          free(std::get<2>(buffer));
         }
       }
       delete array;

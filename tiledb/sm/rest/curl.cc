@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2018-2020 TileDB, Inc.
+ * @copyright Copyright (c) 2018-2021 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -33,13 +33,13 @@
 #include "tiledb/sm/rest/curl.h"
 #include "tiledb/common/logger.h"
 #include "tiledb/sm/global_state/global_state.h"
+#include "tiledb/sm/misc/uri.h"
 #include "tiledb/sm/misc/utils.h"
+#include "tiledb/sm/stats/stats.h"
 
 #include <cstring>
+#include <iostream>
 #include <sstream>
-
-// TODO: replace this with config option
-#define CURL_MAX_RETRIES 3
 
 using namespace tiledb::common;
 
@@ -180,14 +180,83 @@ static int buffer_list_seek_callback(
   return CURL_SEEKFUNC_FAIL;
 }
 
+size_t write_header_callback(
+    void* res_data, size_t size, size_t count, void* userdata) {
+  const size_t header_length = size * count;
+  auto* const header_buffer = static_cast<char*>(res_data);
+  auto* const pmHeader = static_cast<HeaderCbData*>(userdata);
+
+  if (pmHeader->uri->empty()) {
+    LOG_ERROR("Rest components as array_ns and array_uri cannot be empty");
+    return 0;
+  }
+
+  std::string header(header_buffer, header_length);
+  const size_t header_key_end_pos = header.find(": ");
+
+  if (header_key_end_pos != std::string::npos) {
+    std::string header_key = header.substr(0, header_key_end_pos);
+    std::transform(
+        header_key.begin(), header_key.end(), header_key.begin(), ::tolower);
+
+    if (header_key == constants::redirection_header_key) {
+      // Fetch the header value. Subtract 2 from the `header_length` to
+      // remove the trailing CR LF ("\r\n") and subtract another 2
+      // for the ": ".
+      const std::string header_value = header.substr(
+          header_key_end_pos + 2, header_length - header_key_end_pos - 4);
+
+      // Find the http scheme
+      const size_t header_scheme_end_pos = header_value.find("://");
+
+      if (header_scheme_end_pos == std::string::npos) {
+        LOG_ERROR(
+            "The header `location` should have a value that includes the "
+            "scheme in the URI.");
+        return 0;
+      }
+
+      const std::string header_scheme =
+          header_value.substr(0, header_scheme_end_pos);
+
+      // Find the domain
+      const std::string header_value_scheme_excl =
+          header_value.substr(header_scheme_end_pos + 3, header_value.length());
+      const size_t header_domain_end_pos = header_value_scheme_excl.find("/");
+
+      if (header_domain_end_pos == std::string::npos) {
+        LOG_ERROR(
+            "The header `location` should have a value that includes the "
+            "domain in the URI.");
+        return 0;
+      }
+
+      const std::string header_value_domain =
+          header_value_scheme_excl.substr(0, header_domain_end_pos);
+
+      const std::string redirection_value =
+          header_scheme + "://" + header_value_domain;
+      std::unique_lock<std::mutex> rd_lck(*(pmHeader->redirect_uri_map_lock));
+      (*pmHeader->redirect_uri_map)[*pmHeader->uri] = redirection_value;
+    }
+  }
+
+  return size * count;
+}
+
 Curl::Curl()
     : config_(nullptr)
-    , curl_(nullptr, curl_easy_cleanup) {
+    , curl_(nullptr, curl_easy_cleanup)
+    , retry_count_(0)
+    , retry_delay_factor_(0)
+    , retry_initial_delay_ms_(0) {
 }
 
 Status Curl::init(
     const Config* config,
-    const std::unordered_map<std::string, std::string>& extra_headers) {
+    const std::unordered_map<std::string, std::string>& extra_headers,
+    std::unordered_map<std::string, std::string>* const res_headers,
+    std::mutex* const res_mtx) {
   if (config == nullptr)
     return LOG_STATUS(
         Status::RestError("Error initializing libcurl; config is null."));
@@ -195,6 +264,8 @@ Status Curl::init(
   config_ = config;
   curl_.reset(curl_easy_init());
   extra_headers_ = extra_headers;
+  headerData.redirect_uri_map = res_headers;
+  headerData.redirect_uri_map_lock = res_mtx;
 
   // See https://curl.haxx.se/libcurl/c/threadsafe.html
   CURLcode rc = curl_easy_setopt(curl_.get(), CURLOPT_NOSIGNAL, 1);
@@ -210,6 +281,18 @@ Status Curl::init(
   if (rc != CURLE_OK)
     return LOG_STATUS(Status::RestError(
         "Error initializing libcurl; failed to set CURLOPT_ERRORBUFFER"));
+
+  rc = curl_easy_setopt(
+      curl_.get(), CURLOPT_HEADERFUNCTION, write_header_callback);
+  if (rc != CURLE_OK)
+    return LOG_STATUS(Status::RestError(
+        "Error initializing libcurl; failed to set CURLOPT_HEADERFUNCTION"));
+
+  /* set url to fetch */
+  rc = curl_easy_setopt(curl_.get(), CURLOPT_HEADERDATA, &headerData);
+  if (rc != CURLE_OK)
+    return LOG_STATUS(Status::RestError(
+        "Error initializing libcurl; failed to set CURLOPT_HEADERDATA"));
 
   // Ignore ssl validation if the user has set rest.ignore_ssl_validation = true
   const char* ignore_ssl_validation_str = nullptr;
@@ -237,6 +320,23 @@ Status Curl::init(
     curl_easy_setopt(curl_.get(), CURLOPT_CAINFO, cert_file.c_str());
   }
 #endif
+
+  bool found;
+  RETURN_NOT_OK(
+      config_->get<uint64_t>("rest.retry_count", &retry_count_, &found));
+  assert(found);
+
+  RETURN_NOT_OK(config_->get<double>(
+      "rest.retry_delay_factor", &retry_delay_factor_, &found));
+  assert(found);
+
+  RETURN_NOT_OK(config_->get<uint64_t>(
+      "rest.retry_initial_delay_ms", &retry_initial_delay_ms_, &found));
+  assert(found);
+
+  RETURN_NOT_OK(config_->get_vector<uint32_t>(
+      "rest.retry_http_codes", &retry_http_codes_, &found));
+  assert(found);
 
   return Status::Ok();
 }
@@ -345,7 +445,9 @@ Status Curl::make_curl_request_common(
         Status::RestError("Cannot make curl request; curl instance is null."));
 
   *curl_code = CURLE_OK;
-  for (uint8_t i = 0; i < CURL_MAX_RETRIES; i++) {
+  uint64_t retry_delay = retry_initial_delay_ms_;
+  // <= because the 0ths retry is actually the initial request
+  for (uint8_t i = 0; i <= retry_count_; i++) {
     WriteCbState write_cb_state;
     write_cb_state.arg = write_cb_arg;
 
@@ -393,11 +495,17 @@ Status Curl::make_curl_request_common(
     /* set maximum allowed redirects */
     curl_easy_setopt(curl, CURLOPT_MAXREDIRS, 1);
 
+    /* enable forwarding auth to redirects */
+    curl_easy_setopt(curl, CURLOPT_UNRESTRICTED_AUTH, 1L);
+
     /* fetch the url */
     CURLcode tmp_curl_code = curl_easy_perform(curl);
+
+    bool retry;
+    RETURN_NOT_OK(should_retry(&retry));
     /* If Curl call was successful (not http status, but no socket error, etc)
      * break */
-    if (tmp_curl_code == CURLE_OK) {
+    if (tmp_curl_code == CURLE_OK && !retry) {
       break;
     }
 
@@ -410,6 +518,56 @@ Status Curl::make_curl_request_common(
     /* Retry on curl errors, unless the write callback has elected
      * to skip it. */
     if (write_cb_state.skip_retries) {
+      break;
+    }
+
+    // Only sleep if this isn't the last failed request allowed
+    if (i < retry_count_ - 1) {
+      long http_code = 0;
+      if (curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &http_code) !=
+          CURLE_OK)
+        return LOG_STATUS(Status::RestError(
+            "Error checking curl error; could not get HTTP code."));
+
+      global_logger().debug(
+          "Request to {} failed with http response code {}, will sleep {}ms, "
+          "retry count {}",
+          url,
+          http_code,
+          retry_delay,
+          i);
+      // Increment counter for number of retries
+      STATS_ADD_COUNTER(stats::Stats::CounterType::REST_HTTP_RETRIES, 1);
+      STATS_ADD_COUNTER(
+          stats::Stats::CounterType::REST_HTTP_RETRY_TIME, retry_delay)
+      // Sleep for retry delay
+      std::this_thread::sleep_for(std::chrono::milliseconds(retry_delay));
+      // Increment retry delay, cast to uint64_t and we can ignore any rounding
+      retry_delay = static_cast<uint64_t>(retry_delay * retry_delay_factor_);
+    }
+  }
+
+  return Status::Ok();
+}
+
+Status Curl::should_retry(bool* retry) const {
+  // Set retry to false in case we get any errors from curl api calls
+  *retry = false;
+
+  CURL* curl = curl_.get();
+  if (curl == nullptr)
+    return LOG_STATUS(
+        Status::RestError("Error checking curl error; curl instance is null."));
+
+  long http_code = 0;
+  if (curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &http_code) != CURLE_OK)
+    return LOG_STATUS(Status::RestError(
+        "Error checking curl error; could not get HTTP code."));
+
+  // Check http code for list of retries
+  for (const auto& retry_code : retry_http_codes_) {
+    if (http_code == retry_code) {
+      *retry = true;
       break;
     }
   }
@@ -475,11 +633,13 @@ Status Curl::post_data(
     const std::string& url,
     const SerializationType serialization_type,
     const BufferList* data,
-    Buffer* const returned_data) {
+    Buffer* const returned_data,
+    const std::string& res_uri) {
   struct curl_slist* headers;
   RETURN_NOT_OK(post_data_common(serialization_type, data, &headers));
 
   CURLcode ret;
+  headerData.uri = &res_uri;
   auto st = make_curl_request(url.c_str(), &ret, returned_data);
   curl_slist_free_all(headers);
   RETURN_NOT_OK(st);
@@ -494,11 +654,13 @@ Status Curl::post_data(
     const std::string& url,
     const SerializationType serialization_type,
     const BufferList* data,
-    PostResponseCb&& cb) {
+    PostResponseCb&& cb,
+    const std::string& res_uri) {
   struct curl_slist* headers;
   RETURN_NOT_OK(post_data_common(serialization_type, data, &headers));
 
   CURLcode ret;
+  headerData.uri = &res_uri;
   auto st = make_curl_request(url.c_str(), &ret, std::move(cb));
   curl_slist_free_all(headers);
   RETURN_NOT_OK(st);
@@ -551,7 +713,8 @@ Status Curl::post_data_common(
 Status Curl::get_data(
     const std::string& url,
     SerializationType serialization_type,
-    Buffer* returned_data) {
+    Buffer* returned_data,
+    const std::string& res_ns_uri) {
   CURL* curl = curl_.get();
   if (curl == nullptr)
     return LOG_STATUS(
@@ -568,6 +731,7 @@ Status Curl::get_data(
   curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
 
   CURLcode ret;
+  headerData.uri = &res_ns_uri;
   auto st = make_curl_request(url.c_str(), &ret, returned_data);
   curl_slist_free_all(headers);
   RETURN_NOT_OK(st);
@@ -581,7 +745,8 @@ Status Curl::get_data(
 Status Curl::delete_data(
     const std::string& url,
     SerializationType serialization_type,
-    Buffer* returned_data) {
+    Buffer* returned_data,
+    const std::string& res_uri) {
   CURL* curl = curl_.get();
   if (curl == nullptr)
     return LOG_STATUS(
@@ -601,7 +766,12 @@ Status Curl::delete_data(
   curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
 
   CURLcode ret;
+  headerData.uri = &res_uri;
   auto st = make_curl_request(url.c_str(), &ret, returned_data);
+
+  // Erase record in case of de-registered array
+  std::unique_lock<std::mutex> rd_lck(*(headerData.redirect_uri_map_lock));
+  headerData.redirect_uri_map->erase(*(headerData.uri));
   curl_slist_free_all(headers);
   RETURN_NOT_OK(st);
 

@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2020 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2021 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -196,9 +196,9 @@ Status Consolidator::consolidate_fragments(
   // Consolidate fragments
   RETURN_NOT_OK_ELSE(
       consolidate(array_schema, encryption_type, encryption_key, key_length),
-      delete array_schema);
+      tdb_delete(array_schema));
 
-  delete array_schema;
+  tdb_delete(array_schema);
 
   return Status::Ok();
 
@@ -371,8 +371,8 @@ Status Consolidator::consolidate(
   if (!st.ok()) {
     array_for_reads.close();
     array_for_writes.close();
-    delete query_r;
-    delete query_w;
+    tdb_delete(query_r);
+    tdb_delete(query_w);
     return st;
   }
 
@@ -381,8 +381,8 @@ Status Consolidator::consolidate(
   if (!st.ok()) {
     array_for_reads.close();
     array_for_writes.close();
-    delete query_r;
-    delete query_w;
+    tdb_delete(query_r);
+    tdb_delete(query_w);
     return st;
   }
 
@@ -391,8 +391,8 @@ Status Consolidator::consolidate(
   if (!st.ok()) {
     array_for_writes.close();
     storage_manager_->vfs()->remove_dir(*new_fragment_uri);
-    delete query_r;
-    delete query_w;
+    tdb_delete(query_r);
+    tdb_delete(query_w);
     return st;
   }
 
@@ -400,8 +400,8 @@ Status Consolidator::consolidate(
   st = query_w->finalize();
   if (!st.ok()) {
     array_for_writes.close();
-    delete query_r;
-    delete query_w;
+    tdb_delete(query_r);
+    tdb_delete(query_w);
     bool is_dir = false;
     auto st2 = storage_manager_->vfs()->is_dir(*new_fragment_uri, &is_dir);
     (void)st2;  // Perhaps report this once we support an error stack
@@ -413,8 +413,8 @@ Status Consolidator::consolidate(
   // Close array
   st = array_for_writes.close();
   if (!st.ok()) {
-    delete query_r;
-    delete query_w;
+    tdb_delete(query_r);
+    tdb_delete(query_w);
     bool is_dir = false;
     auto st2 = storage_manager_->vfs()->is_dir(*new_fragment_uri, &is_dir);
     (void)st2;  // Perhaps report this once we support an error stack
@@ -426,8 +426,8 @@ Status Consolidator::consolidate(
   // Write vacuum file
   st = write_vacuum_file(*new_fragment_uri, to_consolidate);
   if (!st.ok()) {
-    delete query_r;
-    delete query_w;
+    tdb_delete(query_r);
+    tdb_delete(query_w);
     bool is_dir = false;
     storage_manager_->vfs()->is_dir(*new_fragment_uri, &is_dir);
     if (is_dir)
@@ -436,8 +436,8 @@ Status Consolidator::consolidate(
   }
 
   // Clean up
-  delete query_r;
-  delete query_w;
+  tdb_delete(query_r);
+  tdb_delete(query_w);
 
   return st;
 
@@ -638,7 +638,7 @@ Status Consolidator::create_queries(
   // is not a user input prone to errors).
 
   // Create read query
-  *query_r = new Query(storage_manager_, array_for_reads);
+  *query_r = tdb_new(Query, storage_manager_, array_for_reads);
   RETURN_NOT_OK((*query_r)->set_layout(Layout::GLOBAL_ORDER));
   RETURN_NOT_OK((*query_r)->set_subarray_unsafe(subarray));
   if (array_for_reads->array_schema()->dense() && sparse_mode)
@@ -650,7 +650,8 @@ Status Consolidator::create_queries(
   RETURN_NOT_OK(compute_new_fragment_uri(first, last, new_fragment_uri));
 
   // Create write query
-  *query_w = new Query(storage_manager_, array_for_writes, *new_fragment_uri);
+  *query_w =
+      tdb_new(Query, storage_manager_, array_for_writes, *new_fragment_uri);
   RETURN_NOT_OK((*query_w)->set_layout(Layout::GLOBAL_ORDER));
   RETURN_NOT_OK((*query_w)->disable_check_global_order());
   if (array_for_reads->array_schema()->dense())

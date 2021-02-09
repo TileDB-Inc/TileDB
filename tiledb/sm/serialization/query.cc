@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2020 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2021 TileDB, Inc.
  * @copyright Copyright (c) 2016 MIT and Intel Corporation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -32,6 +32,7 @@
  */
 
 #include "tiledb/sm/serialization/query.h"
+#include "tiledb/common/heap_memory.h"
 #include "tiledb/common/logger.h"
 #include "tiledb/sm/array/array.h"
 #include "tiledb/sm/buffer/buffer_list.h"
@@ -976,8 +977,8 @@ Status query_from_capnp(
         void* subarray = nullptr;
         RETURN_NOT_OK(
             utils::deserialize_subarray(subarray_reader, schema, &subarray));
-        RETURN_NOT_OK_ELSE(query->set_subarray(subarray), std::free(subarray));
-        std::free(subarray);
+        RETURN_NOT_OK_ELSE(query->set_subarray(subarray), tdb_free(subarray));
+        tdb_free(subarray);
       }
 
       // Subarray
@@ -1187,10 +1188,10 @@ Status query_deserialize(
   original_buffer->reset_offset();
 
   // Similarly, we must create a copy of 'copy_state'.
-  std::unique_ptr<CopyState> original_copy_state = nullptr;
+  tdb_unique_ptr<CopyState> original_copy_state = nullptr;
   if (copy_state) {
     original_copy_state =
-        std::unique_ptr<CopyState>(new CopyState(*copy_state));
+        tdb_unique_ptr<CopyState>(tdb_new(CopyState, *copy_state));
   }
 
   // Deserialize 'serialized_buffer'.

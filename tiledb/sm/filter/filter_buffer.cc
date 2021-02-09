@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2020 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2021 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -31,6 +31,7 @@
  */
 
 #include "tiledb/sm/filter/filter_buffer.h"
+#include "tiledb/common/heap_memory.h"
 #include "tiledb/common/logger.h"
 #include "tiledb/sm/filter/filter_storage.h"
 
@@ -39,18 +40,17 @@ using namespace tiledb::common;
 namespace tiledb {
 namespace sm {
 
-FilterBuffer::BufferOrView::BufferOrView(
-    const std::shared_ptr<Buffer>& buffer) {
+FilterBuffer::BufferOrView::BufferOrView(const tdb_shared_ptr<Buffer>& buffer) {
   underlying_buffer_ = buffer;
   is_view_ = false;
 }
 
 FilterBuffer::BufferOrView::BufferOrView(
-    const std::shared_ptr<Buffer>& buffer, uint64_t offset, uint64_t nbytes) {
+    const tdb_shared_ptr<Buffer>& buffer, uint64_t offset, uint64_t nbytes) {
   is_view_ = true;
   underlying_buffer_ = buffer;
-  view_ = std::unique_ptr<Buffer>(
-      new Buffer((char*)buffer->data() + offset, nbytes));
+  view_ = tdb_unique_ptr<Buffer>(
+      tdb_new(Buffer, (char*)buffer->data() + offset, nbytes));
 }
 
 FilterBuffer::BufferOrView::BufferOrView(BufferOrView&& other) {
@@ -63,7 +63,7 @@ Buffer* FilterBuffer::BufferOrView::buffer() const {
   return is_view_ ? view_.get() : underlying_buffer_.get();
 }
 
-std::shared_ptr<Buffer> FilterBuffer::BufferOrView::underlying_buffer() const {
+tdb_shared_ptr<Buffer> FilterBuffer::BufferOrView::underlying_buffer() const {
   return underlying_buffer_;
 }
 
@@ -76,8 +76,8 @@ FilterBuffer::BufferOrView FilterBuffer::BufferOrView::get_view(
   if (is_view_) {
     BufferOrView new_view(underlying_buffer_);
     new_view.is_view_ = true;
-    new_view.view_ = std::unique_ptr<Buffer>(
-        new Buffer((char*)view_->data() + offset, nbytes));
+    new_view.view_ = tdb_unique_ptr<Buffer>(
+        tdb_new(Buffer, (char*)view_->data() + offset, nbytes));
     return new_view;
   } else {
     return BufferOrView(underlying_buffer_, offset, nbytes);
@@ -126,7 +126,7 @@ Status FilterBuffer::init(void* data, uint64_t nbytes) {
     return LOG_STATUS(Status::FilterError(
         "FilterBuffer error; cannot init buffer: read-only."));
 
-  std::shared_ptr<Buffer> buffer(new Buffer(data, nbytes));
+  tdb_shared_ptr<Buffer> buffer(tdb_new(Buffer, data, nbytes));
   offset_ = 0;
   buffers_.emplace_back(buffer);
   current_relative_offset_ = 0;

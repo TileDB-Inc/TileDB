@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2020 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2021 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -51,7 +51,7 @@ Context::~Context() {
   // Delete the `storage_manager_` to ensure it is destructed
   // before the `compute_tp_` and `io_tp_` objects that it
   // references.
-  delete storage_manager_;
+  tdb_delete(storage_manager_);
 }
 
 /* ****************************** */

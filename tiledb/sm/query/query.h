@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2020 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2021 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -341,19 +341,6 @@ class Query {
   Status cancel();
 
   /**
-   * Check the validity of the provided buffer offsets for a variable attribute.
-   *
-   * @param buffer_off Offset buffer
-   * @param buffer_off_size Pointer to size of offset buffer
-   * @param buffer_val_size Pointer to size of data buffer
-   * @return Status
-   */
-  static Status check_var_attr_offsets(
-      const uint64_t* buffer_off,
-      const uint64_t* buffer_off_size,
-      const uint64_t* buffer_val_size);
-
-  /**
    * Finalizes the query, flushing all internal state. Applicable only to global
    * layout writes. It has no effect for any other query type.
    */
@@ -493,6 +480,18 @@ class Query {
    * This option will supercede the config.
    */
   Status disable_check_global_order();
+
+  /**
+   * Sets the config for the Query
+   *
+   * This function overrides the config for Query-level parameters only.
+   * Semantically, the initial query config is copied from the context
+   * config upon initialization. Note that The context config is immutable
+   * at the C API level because tiledb_ctx_get_config always returns a copy.
+   *
+   * Config parameters set here will *only* be applied within the Query.
+   */
+  Status set_config(const Config& config);
 
   /**
    * Sets the buffer for a fixed-sized attribute/dimension.

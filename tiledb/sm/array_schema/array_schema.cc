@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2020 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2021 TileDB, Inc.
  * @copyright Copyright (c) 2016 MIT and Intel Corporation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -32,6 +32,7 @@
  */
 
 #include "tiledb/sm/array_schema/array_schema.h"
+#include "tiledb/common/heap_memory.h"
 #include "tiledb/common/logger.h"
 #include "tiledb/sm/array_schema/attribute.h"
 #include "tiledb/sm/array_schema/dimension.h"
@@ -490,7 +491,7 @@ Status ArraySchema::add_attribute(const Attribute* attr, bool check_special) {
   }
 
   // Create new attribute and potentially set a default name
-  auto new_attr = new Attribute(attr);
+  auto new_attr = tdb_new(Attribute, attr);
   attributes_.emplace_back(new_attr);
   attribute_map_[new_attr->name()] = new_attr;
 
@@ -534,15 +535,15 @@ Status ArraySchema::deserialize(ConstBuffer* buff) {
     RETURN_NOT_OK(cell_validity_filters_.deserialize(buff));
 
   // Load domain
-  domain_ = new Domain();
+  domain_ = tdb_new(Domain);
   RETURN_NOT_OK(domain_->deserialize(buff, version_));
 
   // Load attributes
   uint32_t attribute_num;
   RETURN_NOT_OK(buff->read(&attribute_num, sizeof(uint32_t)));
   for (uint32_t i = 0; i < attribute_num; ++i) {
-    auto attr = new Attribute();
-    RETURN_NOT_OK_ELSE(attr->deserialize(buff, version_), delete attr);
+    auto attr = tdb_new(Attribute);
+    RETURN_NOT_OK_ELSE(attr->deserialize(buff, version_), tdb_delete(attr));
     attributes_.emplace_back(attr);
     attribute_map_[attr->name()] = attr;
   }
@@ -647,8 +648,8 @@ Status ArraySchema::set_domain(Domain* domain) {
   RETURN_NOT_OK(domain->set_null_tile_extents_to_range());
 
   // Set domain
-  delete domain_;
-  domain_ = new Domain(domain);
+  tdb_delete(domain_);
+  domain_ = tdb_new(Domain, domain);
 
   // Create dimension map
   dim_map_.clear();
@@ -731,10 +732,10 @@ void ArraySchema::clear() {
   tile_order_ = Layout::ROW_MAJOR;
 
   for (auto& attr : attributes_)
-    delete attr;
+    tdb_delete(attr);
   attributes_.clear();
 
-  delete domain_;
+  tdb_delete(domain_);
   domain_ = nullptr;
 }
 

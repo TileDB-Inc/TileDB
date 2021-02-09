@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2020 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2021 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -81,9 +81,9 @@ TEST_CASE("Test HDFS filesystem", "[hdfs]") {
   st = hdfs.touch(URI("hdfs:///tiledb_test/tiledb_test_file"));
   CHECK(st.ok());
 
-  tSize buffer_size = 100000;
+  uint64_t buffer_size = 100000;
   auto write_buffer = new char[buffer_size];
-  for (int i = 0; i < buffer_size; i++) {
+  for (uint64_t i = 0; i < buffer_size; i++) {
     write_buffer[i] = 'a' + (i % 26);
   }
   st = hdfs.write(

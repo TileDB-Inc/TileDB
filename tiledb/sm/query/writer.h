@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2020 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2021 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -84,7 +84,7 @@ class Writer {
     std::unordered_map<std::string, uint64_t> cells_written_;
 
     /** The fragment metadata. */
-    std::shared_ptr<FragmentMetadata> frag_meta_;
+    tdb_shared_ptr<FragmentMetadata> frag_meta_;
   };
 
   /** Cell range to be written. */
@@ -337,6 +337,9 @@ class Writer {
       uint64_t* buffer_val_size,
       ValidityVector&& validity_vector);
 
+  /** Sets config for query-level parameters only. */
+  Status set_config(const Config& config);
+
   /** Sets current setting of check_coord_dups_ */
   void set_check_coord_dups(bool b);
 
@@ -393,6 +396,9 @@ class Writer {
 
   /** The array schema. */
   const ArraySchema* array_schema_;
+
+  /** The config for query-level parameters only. */
+  Config config_;
 
   /** Maps attribute/dimensions names to their buffers. */
   std::unordered_map<std::string, QueryBuffer> buffers_;
@@ -461,7 +467,7 @@ class Writer {
   URI fragment_uri_;
 
   /** The state associated with global writes. */
-  std::unique_ptr<GlobalWriteState> global_write_state_;
+  tdb_unique_ptr<GlobalWriteState> global_write_state_;
 
   /** True if the writer has been initialized. */
   bool initialized_;
@@ -567,6 +573,13 @@ class Writer {
   Status check_subarray() const;
 
   /**
+   * Check the validity of the provided buffer offsets for a variable attribute.
+   *
+   * @return Status
+   */
+  Status check_var_attr_offsets() const;
+
+  /**
    * Cleans up the coordinate buffers. Applicable only if the coordinate
    * buffers were allocated by TileDB (not the user)
    */
@@ -642,7 +655,7 @@ class Writer {
    * @return Status
    */
   Status create_fragment(
-      bool dense, std::shared_ptr<FragmentMetadata>* frag_meta) const;
+      bool dense, tdb_shared_ptr<FragmentMetadata>* frag_meta) const;
 
   /**
    * Runs the input coordinate and attribute tiles through their
@@ -806,6 +819,12 @@ class Writer {
   void optimize_layout_for_1D();
 
   /**
+   * Checks the validity of the extra element from var-sized offsets of
+   * attributes
+   */
+  Status check_extra_element();
+
+  /**
    * Writes in an ordered layout (col- or row-major order). Applicable only
    * to dense arrays.
    */
@@ -821,11 +840,24 @@ class Writer {
   Status ordered_write();
 
   /**
-   * Process a buffer offset according to the configured options for
+   * Return an element of the offsets buffer at a certain position
+   * taking into account the configured bitsize
+   */
+  uint64_t get_offset_buffer_element(
+      const void* buffer, const uint64_t pos) const;
+
+  /**
+   * Return the size of an offsets buffer according to the configured
+   * options for variable-sized attributes
+   */
+  inline uint64_t get_offset_buffer_size(const uint64_t buffer_size) const;
+
+  /**
+   * Return a buffer offset according to the configured options for
    * variable-sized attributes (e.g. transform a byte offset to element offset)
    */
   uint64_t prepare_buffer_offset(
-      const uint64_t offset, const uint64_t datasize) const;
+      const void* buffer, const uint64_t pos, const uint64_t datasize) const;
 
   /**
    * Applicable only to write in global order. It prepares only full
@@ -1033,23 +1065,29 @@ class Writer {
    * Writes an empty cell range to the input tile.
    * Applicable to **fixed-sized** attributes.
    *
-   * @param num Number of empty values to write.
+   * @param cell_num Number of empty cells to write.
+   * @param cell_val_num Number of values per cell.
    * @param tile The tile to write to.
    * @return Status
    */
-  Status write_empty_cell_range_to_tile(uint64_t num, Tile* tile) const;
+  Status write_empty_cell_range_to_tile(
+      uint64_t num, uint32_t cell_val_num, Tile* tile) const;
 
   /**
    * Writes an empty cell range to the input tile.
    * Applicable to **fixed-sized** attributes.
    *
-   * @param num Number of empty values to write.
+   * @param cell_num Number of empty cells to write.
+   * @param cell_val_num Number of values per cell.
    * @param tile The tile to write to.
    * @param tile_validity The tile with the validity cells to write to.
    * @return Status
    */
   Status write_empty_cell_range_to_tile_nullable(
-      uint64_t num, Tile* tile, Tile* tile_validity) const;
+      uint64_t num,
+      uint32_t cell_val_num,
+      Tile* tile,
+      Tile* tile_validity) const;
 
   /**
    * Writes an empty cell range to the input tile.

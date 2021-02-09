@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2020 TileDB, Inc.
+ * @copyright Copyright (c) 2020-2021 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -37,7 +37,7 @@
 #include <tiledb/tiledb.h>
 
 // Name of array.
-const char* array_name = "nullable_attribute_array";
+const char* array_name = "nullable_attributes_array";
 
 void create_array() {
   // Create TileDB context
@@ -123,7 +123,7 @@ void write_array() {
   // Specify the validity buffer for each attribute
   uint8_t a1_validity_buf[] = {1, 0, 0, 1};
   uint64_t a1_validity_buf_size = sizeof(a1_validity_buf);
-  uint8_t a2_validity_buf[] = {0, 1, 1, 1, 0, 0, 1, 1};
+  uint8_t a2_validity_buf[] = {0, 1, 1, 0};
   uint64_t a2_validity_buf_size = sizeof(a2_validity_buf);
 
   // Set the query buffers specifying the validity for each data
@@ -173,11 +173,11 @@ void read_array() {
 
   // Set maximum buffer sizes
   uint64_t a1_data_size = 16;
-  uint64_t a1_validity_buf_size = a1_data_size;
+  uint64_t a1_validity_buf_size = 4;
 
   uint64_t a2_data_size = 32;
   uint64_t a2_off_size = 32;
-  uint64_t a2_validity_buf_size = a2_data_size;
+  uint64_t a2_validity_buf_size = 4;
 
   // Prepare the vector that will hold the result
   int* a1_data = (int*)malloc(a1_data_size);
@@ -229,8 +229,16 @@ void read_array() {
   printf("\n");
 
   printf("a2: \n");
-  for (i = 0; i < 8; ++i) {
-    (a2_validity_buf[i] > 0) ? printf("%d ", a2_data[i]) : printf("NULL ");
+  for (i = 0; i < 4; ++i) {
+    if (a2_validity_buf[i] > 0) {
+      printf("{ ");
+      printf("%d", a2_data[i * 2]);
+      printf(", ");
+      printf("%d", a2_data[i * 2 + 1]);
+      printf(" }");
+    } else {
+      printf("{ NULL }");
+    }
   }
   printf("\n");
 

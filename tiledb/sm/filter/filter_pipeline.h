@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2020 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2021 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -272,7 +272,7 @@ class FilterPipeline {
   typedef std::pair<FilterBuffer, FilterBuffer> FilterBufferPair;
 
   /** The ordered list of filters comprising the pipeline. */
-  std::vector<std::unique_ptr<Filter>> filters_;
+  std::vector<tdb_unique_ptr<Filter>> filters_;
 
   /**
    * The current tile being processed by run()/run_reverse(). This is mutable

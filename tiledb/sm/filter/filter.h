@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2020 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2021 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -51,7 +51,7 @@ enum class FilterType : uint8_t;
 
 /**
  * A Filter processes or modifies a byte region, modifying it in place, or
- * producing output in new buffer(s).
+ * producing output in new buffers.
  *
  * Every filter implements both forward direction (used during write queries)
  * and a reverse direction (for reads).

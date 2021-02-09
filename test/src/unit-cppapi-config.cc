@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2020 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2021 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -60,7 +60,7 @@ TEST_CASE("C++ API: Config iterator", "[cppapi], [cppapi-config]") {
     names.push_back(it->first);
   }
   // Check number of VFS params in default config object.
-  CHECK(names.size() == 50);
+  CHECK(names.size() == 51);
 }
 
 TEST_CASE(
@@ -120,9 +120,11 @@ TEST_CASE("C++ API: Config Equality", "[cppapi], [cppapi-config]") {
   config1["foo"] = "bar";
   tiledb::Config config2;
   config2["foo"] = "bar";
-  CHECK(config1 == config2);
+  bool config_equal = config1 == config2;
+  CHECK(config_equal);
 
   // Check for inequality
   config2["foo"] = "bar2";
-  CHECK(config1 != config2);
+  bool config_not_equal = config1 != config2;
+  CHECK(config_not_equal);
 }

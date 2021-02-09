@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2020 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2021 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -31,6 +31,7 @@
  */
 
 #include "tiledb/sm/tile/tile.h"
+#include "tiledb/common/heap_memory.h"
 #include "tiledb/common/logger.h"
 #include "tiledb/sm/enums/datatype.h"
 
@@ -165,7 +166,7 @@ Tile::Tile(Tile&& tile)
 Tile::~Tile() {
   if (owns_chunked_buffer_ && chunked_buffer_ != nullptr) {
     chunked_buffer_->free();
-    delete chunked_buffer_;
+    tdb_delete(chunked_buffer_);
   }
 }
 
@@ -174,7 +175,7 @@ Tile& Tile::operator=(const Tile& tile) {
   if (owns_chunked_buffer_) {
     if (chunked_buffer_) {
       chunked_buffer_->free();
-      delete chunked_buffer_;
+      tdb_delete(chunked_buffer_);
       chunked_buffer_ = nullptr;
     }
     owns_chunked_buffer_ = false;
@@ -214,7 +215,7 @@ Status Tile::init_unfiltered(
   type_ = type;
   format_version_ = format_version;
 
-  chunked_buffer_ = new ChunkedBuffer();
+  chunked_buffer_ = tdb_new(ChunkedBuffer);
   if (chunked_buffer_ == nullptr)
     return LOG_STATUS(Status::TileError(
         "Cannot initialize tile; ChunkedBuffer allocation failed"));
@@ -239,7 +240,7 @@ Status Tile::init_filtered(
   type_ = type;
   format_version_ = format_version;
 
-  chunked_buffer_ = new ChunkedBuffer();
+  chunked_buffer_ = tdb_new(ChunkedBuffer);
   if (chunked_buffer_ == nullptr)
     return LOG_STATUS(Status::TileError(
         "Cannot initialize tile; ChunkedBuffer allocation failed"));
@@ -268,7 +269,7 @@ Tile Tile::clone(bool deep_copy) const {
   if (deep_copy) {
     clone.owns_chunked_buffer_ = owns_chunked_buffer_;
     if (owns_chunked_buffer_ && chunked_buffer_ != nullptr) {
-      clone.chunked_buffer_ = new ChunkedBuffer();
+      clone.chunked_buffer_ = tdb_new(ChunkedBuffer);
       // Calls ChunkedBuffer copy-assign, which performs a deep copy.
       *clone.chunked_buffer_ = *chunked_buffer_;
     } else {
@@ -421,7 +422,7 @@ Status Tile::zip_coordinates() {
   char* const tile_c = static_cast<char*>(buffer);
 
   // Create a tile clone
-  char* const tile_tmp = static_cast<char*>(std::malloc(tile_size));
+  char* const tile_tmp = static_cast<char*>(tdb_malloc(tile_size));
   assert(tile_tmp);
   std::memcpy(tile_tmp, tile_c, tile_size);
 
@@ -437,7 +438,7 @@ Status Tile::zip_coordinates() {
   }
 
   // Clean up
-  std::free((void*)tile_tmp);
+  tdb_free((void*)tile_tmp);
 
   return Status::Ok();
 }

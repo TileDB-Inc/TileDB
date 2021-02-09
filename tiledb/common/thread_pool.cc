@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2018-2020 TileDB, Inc.
+ * @copyright Copyright (c) 2018-2021 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -41,9 +41,13 @@ namespace common {
 // Define the static ThreadPool member variables.
 std::unordered_map<std::thread::id, ThreadPool*> ThreadPool::tp_index_;
 std::mutex ThreadPool::tp_index_lock_;
+std::unordered_map<std::thread::id, tdb_shared_ptr<ThreadPool::PackagedTask>>
+    ThreadPool::task_index_;
+std::mutex ThreadPool::task_index_lock_;
 
 ThreadPool::ThreadPool()
     : concurrency_level_(0)
+    , task_stack_clock_(0)
     , idle_threads_(0)
     , should_terminate_(false) {
 }
@@ -85,8 +89,11 @@ Status ThreadPool::init(const uint64_t concurrency_level) {
   // Save the concurrency level.
   concurrency_level_ = concurrency_level;
 
-  // Index this ThreadPool instance from all of its thread ids.
+  // Add indexes from this ThreadPool instance from all of its thread ids.
   add_tp_index();
+
+  // Add task indexes for each thread in this thread pool.
+  add_task_index();
 
   return st;
 }
@@ -112,8 +119,16 @@ ThreadPool::Task ThreadPool::execute(std::function<Status()>&& function) {
     return invalid_future;
   }
 
-  PackagedTask task(std::move(function));
-  ThreadPool::Task future = task.get_future();
+  // Locate the currently executing task, which may be null.
+  const std::thread::id tid = std::this_thread::get_id();
+  tdb_shared_ptr<PackagedTask> parent_task = lookup_task(tid);
+
+  // Create the packaged task.
+  tdb_shared_ptr<PackagedTask> task = tdb_make_shared(
+      PackagedTask, std::move(function), std::move(parent_task));
+
+  // Fetch the future from the packaged task.
+  ThreadPool::Task future = task->get_future();
 
   // When we have a concurrency level > 1, we will have at least
   // one thread available to pick up the task. For a concurrency
@@ -122,26 +137,31 @@ ThreadPool::Task ThreadPool::execute(std::function<Status()>&& function) {
   // thread.
   if (concurrency_level_ == 1) {
     ul.unlock();
-    task();
+    exec_packaged_task(task);
   } else {
     // Lookup the thread pool that this thread belongs to. If it
     // does not belong to a thread pool, `lookup_tp` will return
     // `nullptr`.
-    ThreadPool* const tp = lookup_tp();
+    ThreadPool* const tp = lookup_tp(tid);
 
     // As both an optimization and a means of breaking deadlock,
     // execute the task if this thread belongs to `this`. Otherwise,
     // queue it for a worker thread.
     if (tp == this && idle_threads_ == 0) {
       ul.unlock();
-      task();
+      exec_packaged_task(task);
     } else {
       // Add `task` to the stack of pending tasks.
-      task_stack_.push(std::move(task));
+      task_stack_.emplace_back(std::move(task));
       task_stack_cv_.notify_one();
 
-      // The `ul` protects both `task_stack_` and `idle_threads_`,
-      // save a copy of `idle_threads_` before releasing the lock.
+      // Increment the logical clock to indicate that the
+      // `task_stack_` has been modified.
+      ++task_stack_clock_;
+
+      // The `ul` protects `task_stack_`, `task_stack_clock_`, and
+      // `idle_threads_`. Save a copy of `idle_threads_` before releasing
+      // the lock.
       const uint64_t idle_threads_cp = idle_threads_;
       ul.unlock();
 
@@ -157,7 +177,7 @@ ThreadPool::Task ThreadPool::execute(std::function<Status()>&& function) {
         if (!blocked_tasks_.empty()) {
           // Signal the first blocked task to wake up and check the task
           // stack for a task to execute.
-          std::shared_ptr<TaskState> blocked_task = *blocked_tasks_.begin();
+          tdb_shared_ptr<TaskState> blocked_task = *blocked_tasks_.begin();
           {
             std::lock_guard<std::mutex> lg(blocked_task->return_st_mutex_);
             blocked_task->check_task_stack_ = true;
@@ -206,43 +226,46 @@ std::vector<Status> ThreadPool::wait_all_status(std::vector<Task>& tasks) {
 }
 
 Status ThreadPool::wait_or_work(Task&& task) {
+  // Records the last read value from `task_stack_clock_`.
+  uint64_t last_task_stack_clock = 0;
+
   do {
     if (task.done())
       break;
 
-    // Lookup the thread pool that this thread belongs to. If it
-    // does not belong to a thread pool, `lookup_tp` will return
-    // `nullptr`.
-    ThreadPool* tp = lookup_tp();
+    // Lock the `task_stack_` to receive the next task to work on.
+    task_stack_mutex_.lock();
 
-    // If the calling thread exists outside of a thread pool, it may
-    // service pending tasks from this thread pool.
-    if (tp == nullptr) {
-      tp = this;
-    }
+    // Determine if `task_stack_` has been modified since our
+    // last loop. This is always true for the first iteration
+    // in this loop. Note that `task_stack_clock_` may overflow,
+    // producing a false-positive. In that scenario, we will
+    // perform one spurious loop but will not affect the
+    // correctness of this routine.
+    const bool task_stack_modified = last_task_stack_clock == 0 ||
+                                     last_task_stack_clock != task_stack_clock_;
 
-    // Lock the `tp->task_stack_` to receive the next task to work on.
-    tp->task_stack_mutex_.lock();
-
-    // If there are no pending tasks, we will wait for `task` to complete.
-    if (tp->task_stack_.empty()) {
-      tp->task_stack_mutex_.unlock();
+    // If there are no pending tasks or the stack of pending tasks has
+    // not changed since our last inspection, we will wait for `task`
+    // to complete.
+    if (task_stack_.empty() || !task_stack_modified) {
+      task_stack_mutex_.unlock();
 
       // Add `task` to `blocked_tasks_` so that the `execute()` path can
       // signal it when a new pending task is available.
-      tp->blocked_tasks_mutex_.lock();
-      tp->blocked_tasks_.insert(task.task_state_);
-      tp->blocked_tasks_mutex_.unlock();
+      blocked_tasks_mutex_.lock();
+      blocked_tasks_.insert(task.task_state_);
+      blocked_tasks_mutex_.unlock();
 
       // Block until the task is signaled. It will be signaled when it
       // has completed or when there is new work to execute on `task_stack_`.
       task.wait();
 
       // Remove `task` from `blocked_tasks_`.
-      tp->blocked_tasks_mutex_.lock();
-      if (tp->blocked_tasks_.count(task.task_state_) > 0)
-        tp->blocked_tasks_.erase(task.task_state_);
-      tp->blocked_tasks_mutex_.unlock();
+      blocked_tasks_mutex_.lock();
+      if (blocked_tasks_.count(task.task_state_) > 0)
+        blocked_tasks_.erase(task.task_state_);
+      blocked_tasks_mutex_.unlock();
 
       // After the task has been woken up, check to see if it has completed.
       if (task.done()) {
@@ -258,26 +281,67 @@ Status ThreadPool::wait_or_work(Task&& task) {
       }
 
       // Lock the `task_stack_` again before checking for the next pending task.
-      tp->task_stack_mutex_.lock();
+      task_stack_mutex_.lock();
     }
 
     // We may have released and re-aquired the `task_stack_mutex_`. We must
     // check if it is still non-empty.
-    if (!tp->task_stack_.empty()) {
+    if (!task_stack_.empty()) {
       // Pull the next task off of the task stack. We specifically use a LIFO
-      // ordering to prevent overflowing the call stack.
-      PackagedTask inner_task = std::move(tp->task_stack_.top());
-      tp->task_stack_.pop();
+      // ordering to prevent overflowing the call stack. We will skip tasks
+      // that are not descendents of the task we are currently executing in.
+      const std::thread::id tid = std::this_thread::get_id();
+      tdb_shared_ptr<PackagedTask> current_task = lookup_task(tid);
+      tdb_shared_ptr<PackagedTask> descendent_task = nullptr;
+      if (current_task == nullptr) {
+        // We are not executing in the context of a threadpool task, we do
+        // not have any restriction on which task we can execute. Select
+        // the next one.
+        descendent_task = task_stack_.back();
+        task_stack_.pop_back();
+      } else {
+        // Find the next pending task that is a descendent of `current_task`.
+        for (auto riter = task_stack_.rbegin(); riter != task_stack_.rend();
+             ++riter) {
+          // Determine if the task pointed to by `riter` is a descendent
+          // of `current_task`.
+          const PackagedTask* tmp_task = riter->get();
+          while (tmp_task != nullptr) {
+            const PackagedTask* const tmp_task_parent = tmp_task->get_parent();
+            if (tmp_task_parent == current_task.get()) {
+              descendent_task = *riter;
+              break;
+            }
+            tmp_task = tmp_task_parent;
+          }
 
-      // We're done mutating `tp->task_stack_`.
-      tp->task_stack_mutex_.unlock();
+          // If we found a descendent task, erase it from the task stack
+          // and break.
+          if (descendent_task != nullptr) {
+            task_stack_.erase(std::next(riter).base());
+            break;
+          }
+        }
+      }
 
-      // Execute the inner task.
-      assert(inner_task.valid());
-      inner_task();
+      // Save the current state of `task_stack_clock_`. We may mutate it below.
+      last_task_stack_clock = task_stack_clock_;
+
+      // If `descendent_task` is non-null, we must have removed it from
+      // the `task_stack_`. In this scenario, increment the logical clock
+      // to indicate that the `task_stack_` has been modified.
+      if (descendent_task != nullptr)
+        ++task_stack_clock_;
+
+      // We're done mutating `task_stack_` and `task_stack_clock_`.
+      task_stack_mutex_.unlock();
+
+      // Execute the descendent task if we found one.
+      if (descendent_task != nullptr)
+        exec_packaged_task(descendent_task);
     } else {
       // The task stack is now empty, retry.
-      tp->task_stack_mutex_.unlock();
+      task_stack_mutex_.unlock();
     }
   } while (true);
 
@@ -299,12 +363,14 @@ void ThreadPool::terminate() {
     t.join();
   }
 
+  remove_task_index();
+
   threads_.clear();
 }
 
 void ThreadPool::worker(ThreadPool& pool) {
   while (true) {
-    PackagedTask task;
+    tdb_shared_ptr<PackagedTask> task = nullptr;
 
     {
       // Wait until there's work to do.
@@ -315,20 +381,17 @@ void ThreadPool::worker(ThreadPool& pool) {
       });
 
       if (!pool.task_stack_.empty()) {
-        task = std::move(pool.task_stack_.top());
-        pool.task_stack_.pop();
+        task = std::move(pool.task_stack_.back());
+        pool.task_stack_.pop_back();
         --pool.idle_threads_;
       } else {
         // The task stack was empty, ensure `task` is invalid.
-        if (task.valid()) {
-          task.reset();
-          assert(!task.valid());
-        }
+        task = nullptr;
       }
     }
 
-    if (task.valid())
-      task();
+    if (task != nullptr)
+      exec_packaged_task(task);
 
     if (pool.should_terminate_)
       break;
@@ -347,12 +410,56 @@ void ThreadPool::remove_tp_index() {
     tp_index_.erase(thread.get_id());
 }
 
-ThreadPool* ThreadPool::lookup_tp() {
-  const std::thread::id tid = std::this_thread::get_id();
+ThreadPool* ThreadPool::lookup_tp(const std::thread::id tid) {
   std::lock_guard<std::mutex> lock(tp_index_lock_);
   if (tp_index_.count(tid) == 1)
     return tp_index_[tid];
   return nullptr;
+}
+
+void ThreadPool::add_task_index() {
+  std::lock_guard<std::mutex> lock(task_index_lock_);
+  for (const auto& thread : threads_)
+    task_index_[thread.get_id()] = nullptr;
+}
+
+void ThreadPool::remove_task_index() {
+  std::lock_guard<std::mutex> lock(task_index_lock_);
+  for (const auto& thread : threads_)
+    task_index_.erase(thread.get_id());
+}
+
+tdb_shared_ptr<ThreadPool::PackagedTask> ThreadPool::lookup_task(
+    const std::thread::id tid) {
+  std::lock_guard<std::mutex> lock(task_index_lock_);
+  if (task_index_.count(tid) == 1)
+    return task_index_[tid];
+  return nullptr;
+}
+
+void ThreadPool::exec_packaged_task(tdb_shared_ptr<PackagedTask> const task) {
+  const std::thread::id tid = std::this_thread::get_id();
+
+  // Before we execute `task`, we must update `task_index_` to map
+  // this thread-id to the executing task. Note that we only lock
+  // `task_index_` to protect the container itself. The elements
+  // on the map are only ever accessed by the thread that the
+  // element is keyed on, making it implicitly safe.
+  tdb_shared_ptr<PackagedTask> tmp_task = nullptr;
+  std::unique_lock<std::mutex> ul(task_index_lock_);
+  if (task_index_.count(tid) == 1)
+    tmp_task = task_index_[tid];
+  task_index_[tid] = task;
+  ul.unlock();
+
+  // Execute `task`.
+  (*task)();
+
+  // Restore `task_index_` to the task that it was previously
+  // executing, which may be null.
+  ul.lock();
+  task_index_[tid] = tmp_task;
+  ul.unlock();
 }
 
 }  // namespace common

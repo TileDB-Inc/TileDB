@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2020 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2021 TileDB, Inc.
  * @copyright Copyright (c) 2016 MIT and Intel Corporation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -625,6 +625,12 @@ class FragmentMetadata {
   /** Local mutex for thread-safety. */
   std::mutex mtx_;
 
+  /** Mutex per tile offset loading. */
+  std::deque<std::mutex> tile_offsets_mtx_;
+
+  /** Mutex per tile var offset loading. */
+  std::deque<std::mutex> tile_var_offsets_mtx_;
+
   /** The non-empty domain of the fragment. */
   NDRange non_empty_domain_;
 
@@ -1085,6 +1091,15 @@ class FragmentMetadata {
    * fragment metadata file and unlocks the array.
    */
   void clean_up();
+
+  /**
+   * Encodes a dimension/attribute name to use in a file name. The
+   * motiviation is to encode illegal/reserved file name characters.
+   *
+   * @param name The dimension/attribute name.
+   * return std::string The encoded dimension/attribute name.
+   */
+  std::string encode_name(const std::string& name) const;
 };
 
 }  // namespace sm

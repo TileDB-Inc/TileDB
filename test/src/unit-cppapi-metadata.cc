@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2020 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2021 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -264,7 +264,7 @@ TEST_CASE_METHOD(
   v_type = (tiledb_datatype_t)std::numeric_limits<int32_t>::max();
   has_key = array.has_metadata("non-existent-key", &v_type);
   CHECK(has_key == false);
-  CHECK(v_type == std::numeric_limits<int32_t>::max());
+  CHECK(v_type == (tiledb_datatype_t)std::numeric_limits<int32_t>::max());
 
   // Close array
   array.close();

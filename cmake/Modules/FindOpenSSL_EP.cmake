@@ -4,7 +4,7 @@
 #
 # The MIT License
 #
-# Copyright (c) 2018-2020 TileDB, Inc.
+# Copyright (c) 2018-2021 TileDB, Inc.
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -47,6 +47,7 @@ endif()
 set(OPENSSL_ROOT_DIR ${OPENSSL_PATHS})
 if (NOT TILEDB_FORCE_ALL_DEPS)
   find_package(OpenSSL
+    1.1.0
     ${TILEDB_DEPS_NO_DEFAULT_PATH})
 endif()
 
@@ -91,8 +92,8 @@ if (NOT OPENSSL_FOUND AND TILEDB_SUPERBUILD)
 
   ExternalProject_Add(ep_openssl
     PREFIX "externals"
-    URL "https://github.com/openssl/openssl/archive/OpenSSL_1_1_0h.zip"
-    URL_HASH SHA1=7558a4444480047759041df1424071041b91d065
+    URL "https://github.com/openssl/openssl/archive/OpenSSL_1_1_1i.zip"
+    URL_HASH SHA1=627938302f681dfac186a9225b65368516b4f484
     CONFIGURE_COMMAND
       ${TILEDB_EP_BASE}/src/ep_openssl/config
         --prefix=${TILEDB_EP_INSTALL_PREFIX}

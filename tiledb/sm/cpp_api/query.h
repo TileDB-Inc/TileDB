@@ -7,7 +7,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2020 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2021 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -1077,6 +1077,32 @@ class Query {
   }
 
   /**
+   * Set the query config.
+   *
+   * Setting configuration with this function overrides the following
+   * Query-level parameters only:
+   *
+   * - `sm.memory_budget`
+   * - `sm.memory_budget_var`
+   * - `sm.sub_partitioner_memory_budget`
+   * - `sm.var_offsets.mode`
+   * - `sm.var_offsets.extra_element`
+   * - `sm.var_offsets.bitsize`
+   * - `sm.check_coord_dups`
+   * - `sm.check_coord_oob`
+   * - `sm.check_global_order`
+   * - `sm.dedup_coords`
+   */
+  Query& set_config(const Config& config) {
+    auto ctx = ctx_.get();
+
+    ctx.handle_error(tiledb_query_set_config(
+        ctx.ptr().get(), query_.get(), config.ptr().get()));
+
+    return *this;
+  }
+
+  /**
    * Set the coordinate buffer.
    *
    * The coordinate buffer has been deprecated. Set the coordinates for
@@ -1422,7 +1448,8 @@ class Query {
    * query.set_buffer("a1", data_a1, 4, validity_bytemap, 4);
    * @endcode
    *
-   * @note set_buffer(std::string, std::vector) is preferred as it is safer.
+   * @note set_buffer_nullable(std::string, std::vector, std::vector)
+   * is preferred as it is safer.
    *
    * @tparam T Attribute value type
    * @param name Attribute name

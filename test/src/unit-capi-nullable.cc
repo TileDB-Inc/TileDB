@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2020 TileDB, Inc.
+ * @copyright Copyright (c) 2020-2021 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -583,8 +583,8 @@ void NullableArrayFx::do_2d_nullable_test(
   for (int i = 0; i < 32; ++i)
     a3_write_buffer_var[i] = i;
   uint64_t a3_write_buffer_var_size = sizeof(a3_write_buffer_var);
-  uint8_t a3_write_buffer_validity[32];
-  for (int i = 0; i < 32; ++i)
+  uint8_t a3_write_buffer_validity[16];
+  for (int i = 0; i < 16; ++i)
     a3_write_buffer_validity[i] = rand() % 2;
   uint64_t a3_write_buffer_validity_size = sizeof(a3_write_buffer_validity);
   if (test_attrs.size() >= 3) {
@@ -696,7 +696,7 @@ void NullableArrayFx::do_2d_nullable_test(
   uint64_t a3_read_buffer_size = sizeof(a3_read_buffer);
   int a3_read_buffer_var[32] = {0};
   uint64_t a3_read_buffer_var_size = sizeof(a3_read_buffer);
-  uint8_t a3_read_buffer_validity[32] = {0};
+  uint8_t a3_read_buffer_validity[16] = {0};
   uint64_t a3_read_buffer_validity_size = sizeof(a3_read_buffer_validity);
   if (test_attrs.size() >= 3) {
     read_query_buffers.emplace_back(
@@ -723,6 +723,7 @@ void NullableArrayFx::do_2d_nullable_test(
     const uint64_t idx = a1_read_buffer[i];
     expected_a1_read_buffer_validity[i] = a1_write_buffer_validity[idx];
   }
+
   REQUIRE(!memcmp(
       a1_read_buffer_validity,
       expected_a1_read_buffer_validity,
@@ -752,9 +753,9 @@ void NullableArrayFx::do_2d_nullable_test(
     REQUIRE(a3_read_buffer_size == a3_write_buffer_size);
     REQUIRE(a3_read_buffer_var_size == a3_write_buffer_var_size);
     REQUIRE(a3_read_buffer_validity_size == a3_write_buffer_validity_size);
-    uint8_t expected_a3_read_buffer_validity[32];
-    for (int i = 0; i < 32; ++i) {
-      const uint64_t idx = a3_read_buffer_var[i];
+    uint8_t expected_a3_read_buffer_validity[16];
+    for (int i = 0; i < 16; ++i) {
+      const uint64_t idx = a3_read_buffer_var[i * 2] / 2;
       expected_a3_read_buffer_validity[i] = a3_write_buffer_validity[idx];
     }
     REQUIRE(!memcmp(
@@ -805,11 +806,12 @@ void NullableArrayFx::do_2d_nullable_test(
     REQUIRE(a3_read_buffer_size == a3_write_buffer_size / 4);
     REQUIRE(a3_read_buffer_var_size == a3_write_buffer_var_size / 4);
     REQUIRE(a3_read_buffer_validity_size == a3_write_buffer_validity_size / 4);
-    uint8_t expected_a3_read_buffer_validity[32];
-    for (int i = 0; i < 8; ++i) {
-      const uint64_t idx = a3_read_buffer_var[i];
+    uint8_t expected_a3_read_buffer_validity[4];
+    for (int i = 0; i < 4; ++i) {
+      const uint64_t idx = a3_read_buffer_var[i * 2] / 2;
       expected_a3_read_buffer_validity[i] = a3_write_buffer_validity[idx];
     }
+
     REQUIRE(!memcmp(
         a3_read_buffer_validity,
         expected_a3_read_buffer_validity,

@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2020 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2021 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -418,7 +418,7 @@ class Azure {
   ThreadPool* thread_pool_;
 
   /** The Azure blob storage client. */
-  std::shared_ptr<azure::storage_lite::blob_client> client_;
+  tdb_shared_ptr<azure::storage_lite::blob_client> client_;
 
   /** Maps a blob URI to an write cache buffer. */
   std::unordered_map<std::string, Buffer> write_cache_map_;

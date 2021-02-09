@@ -4,7 +4,7 @@
 #
 # The MIT License
 #
-# Copyright (c) 2017-2020 TileDB, Inc.
+# Copyright (c) 2017-2021 TileDB, Inc.
 # Copyright (c) 2016 MIT and Intel Corporation
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -123,6 +123,7 @@ option(TILEDB_TESTS "If true, enables building the TileDB unit test suite" ON)
 option(TILEDB_TOOLS "If true, enables building the TileDB tools" OFF)
 option(TILEDB_SERIALIZATION "If true, enables building with support for query serialization" OFF)
 option(TILEDB_CCACHE "If true, enables use of 'ccache' (if present)" OFF)
+option(TILEDB_ARROW_TESTS "If true, enables building the arrow adapter unit tests" OFF)
 option(TILEDB_LOG_OUTPUT_ON_FAILURE "If true, print error logs if dependency sub-project build fails" ON)
 
 set(TILEDB_INSTALL_LIBDIR "" CACHE STRING "If non-empty, install TileDB library to this directory instead of CMAKE_INSTALL_LIBDIR.")

@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2020 TileDB Inc.
+ * @copyright Copyright (c) 2020-2021 TileDB Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -33,6 +33,7 @@
 #include "catch.hpp"
 #include "test/src/helpers.h"
 #include "tiledb/sm/c_api/tiledb.h"
+#include "tiledb/sm/cpp_api/tiledb"
 
 #include <cstring>
 #include <iostream>
@@ -476,6 +477,109 @@ void StringEmptyFx::delete_array(const std::string& array_name) {
 TEST_CASE_METHOD(
     StringEmptyFx, "C API: Test empty support", "[capi][empty-var-length]") {
   std::string array_name = "empty_string";
+  delete_array(array_name);
+  create_array(array_name);
+  write_array(array_name);
+  read_array(array_name);
+  delete_array(array_name);
+}
+
+struct StringEmptyFx2 {
+  void create_array(const std::string& array_name);
+  void write_array(const std::string& array_name);
+  void read_array(const std::string& array_name);
+  void delete_array(const std::string& array_name);
+
+  std::vector<uint64_t> offsets = {
+      0, 4, 8, 11, 13, 14, 14, 17, 21, 24, 24, 24, 27, 32, 35, 38};
+  std::vector<char> data = {
+      '%',    '-', '9',    '\x1e', '\x16', '[', 'q',    '\x1c', '&',    'Y',
+      '@',    '>', 'z',    'a',    'P',    '&', '\x19', 'T',    '\x19', 'y',
+      '\x0b', 'k', '\x03', '2',    '5',    '|', '4',    't',    '.',    'd',
+      '$',    'e', '1',    '\x17', ' ',    '1', '\x14', '('};
+};
+
+void StringEmptyFx2::create_array(const std::string& array_name) {
+  using namespace tiledb;
+  Context ctx;
+
+  Domain domain(ctx);
+  domain.add_dimension(Dimension::create<uint64_t>(ctx, "__dim_0", {0, 3}, 1));
+  domain.add_dimension(Dimension::create<uint64_t>(ctx, "__dim_1", {0, 3}, 1));
+
+  ArraySchema schema(ctx, TILEDB_DENSE);
+  schema.set_domain(domain).set_order({TILEDB_ROW_MAJOR});
+
+  auto attr = Attribute(ctx, "", TILEDB_STRING_UTF8);
+  attr.set_cell_val_num(TILEDB_VAR_NUM);
+  schema.add_attribute(attr);
+
+  VFS vfs(ctx);
+  if (vfs.is_dir(array_name)) {
+    vfs.remove_dir(array_name);
+  }
+  Array::create(array_name, schema);
+}
+
+void StringEmptyFx2::write_array(const std::string& array_name) {
+  using namespace tiledb;
+
+  auto cfg = tiledb::Config();
+  auto ctx = tiledb::Context(cfg);
+
+  auto array = tiledb::Array(ctx, array_name, TILEDB_WRITE);
+
+  Query query(ctx, array, TILEDB_WRITE);
+  query.set_buffer(
+      "",
+      StringEmptyFx2::offsets.data(),
+      StringEmptyFx2::offsets.size(),
+      (char*)StringEmptyFx2::data.data(),
+      StringEmptyFx2::data.size());
+
+  query.submit();
+
+  REQUIRE(query.query_status() == tiledb::Query::Status::COMPLETE);
+}
+
+void StringEmptyFx2::read_array(const std::string& array_name) {
+  using namespace tiledb;
+
+  auto cfg = tiledb::Config();
+  auto ctx = tiledb::Context(cfg);
+
+  std::vector<uint64_t> r_offsets(16);
+  std::vector<char> r_data(38);
+
+  auto array = tiledb::Array(ctx, array_name, TILEDB_READ);
+  Query query(ctx, array, TILEDB_READ);
+  query.set_buffer("", r_offsets, r_data);
+
+  query.add_range(0, (uint64_t)0, (uint64_t)3);
+  query.add_range(1, (uint64_t)0, (uint64_t)3);
+
+  query.submit();
+
+  REQUIRE(r_offsets == StringEmptyFx2::offsets);
+  REQUIRE(r_data == StringEmptyFx2::data);
+}
+
+void StringEmptyFx2::delete_array(const std::string& array_name) {
+  using namespace tiledb;
+
+  auto cfg = tiledb::Config();
+  auto ctx = tiledb::Context(cfg);
+
+  if (Object::object(ctx, array_name).type() == Object::Type::Array) {
+    Object::remove(ctx, array_name);
+  }
+}
+
+TEST_CASE_METHOD(
+    StringEmptyFx2,
+    "C++ API: Test empty support",
+    "[cppapi][empty-var-length]") {
+  std::string array_name = "empty_string2";
   delete_array(array_name);
   create_array(array_name);
   write_array(array_name);

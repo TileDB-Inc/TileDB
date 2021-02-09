@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2020 TileDB Inc.
+ * @copyright Copyright (c) 2017-2021 TileDB Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -2988,6 +2988,135 @@ TEST_CASE_METHOD(
   CHECK(array == nullptr);
   tiledb_query_free(&query);
   CHECK(query == nullptr);
+
+  remove_array(array_name);
+}
+
+TEST_CASE_METHOD(
+    Query2Fx, "C API: Test query set config", "[capi][config][query]") {
+  std::string array_name = "query_set_config";
+  remove_array(array_name);
+
+  // Create array
+  int32_t dom[] = {1, 6};
+  int32_t extent = 2;
+  create_array(
+      ctx_,
+      array_name,
+      TILEDB_DENSE,
+      {"d1"},
+      {TILEDB_INT32},
+      {dom},
+      {&extent},
+      {"a"},
+      {TILEDB_INT32},
+      {TILEDB_VAR_NUM},
+      {tiledb::test::Compressor(TILEDB_FILTER_NONE, -1)},
+      TILEDB_ROW_MAJOR,
+      TILEDB_ROW_MAJOR,
+      2,
+      false,
+      false);
+
+  // Open array
+  tiledb_array_t* array = nullptr;
+  int rc = tiledb_array_alloc(ctx_, array_name.c_str(), &array);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_array_open(ctx_, array, TILEDB_WRITE);
+  CHECK(rc == TILEDB_OK);
+
+  // Create query
+  tiledb_query_t* query = nullptr;
+  rc = tiledb_query_alloc(ctx_, array, TILEDB_WRITE, &query);
+  CHECK(rc == TILEDB_OK);
+
+  // Create config
+  tiledb_error_t* err;
+  tiledb_config_t* config = nullptr;
+  rc = tiledb_config_alloc(&config, &err);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_config_set(config, "sm.var_offsets.bitsize", "32", &err);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_config_set(config, "sm.var_offsets.extra_element", "true", &err);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_config_set(config, "sm.var_offsets.mode", "elements", &err);
+  CHECK(rc == TILEDB_OK);
+
+  // Test setting config
+  rc = tiledb_query_set_config(ctx_, query, config);
+  CHECK(rc == TILEDB_OK);
+
+  // Test modified behavior
+  std::vector<uint32_t> offsets = {0, 1, 2, 4, 7, 9, 10};
+  // even in elements mode, we need to pass offsets size as if uint64
+  uint64_t offsets_size = offsets.size() * sizeof(uint64_t);
+  std::vector<int32_t> data = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9};
+  uint64_t data_size = data.size() * sizeof(int32_t);
+
+  rc = tiledb_query_set_buffer_var(
+      ctx_,
+      query,
+      "a",
+      (uint64_t*)offsets.data(),
+      &offsets_size,
+      data.data(),
+      &data_size);
+  CHECK(rc == TILEDB_OK);
+
+  rc = tiledb_query_submit(ctx_, query);
+  CHECK(rc == TILEDB_OK);
+
+  rc = tiledb_query_finalize(ctx_, query);
+  CHECK(rc == TILEDB_OK);
+
+  // Clean up
+  rc = tiledb_array_close(ctx_, array);
+  CHECK(rc == TILEDB_OK);
+  tiledb_query_free(&query);
+
+  // Create read query
+  rc = tiledb_array_open(ctx_, array, TILEDB_READ);
+  CHECK(rc == TILEDB_OK);
+
+  tiledb_query_t* query2 = nullptr;
+  rc = tiledb_query_alloc(ctx_, array, TILEDB_READ, &query2);
+  CHECK(rc == TILEDB_OK);
+
+  // Set override config
+  rc = tiledb_query_set_config(ctx_, query2, config);
+  CHECK(rc == TILEDB_OK);
+
+  std::vector<int32_t> data2;
+  std::vector<uint32_t> offsets2;
+  data2.resize(data.size());
+  offsets2.resize(offsets.size());
+
+  rc = tiledb_query_set_buffer_var(
+      ctx_,
+      query2,
+      "a",
+      (uint64_t*)offsets2.data(),
+      &offsets_size,
+      data2.data(),
+      &data_size);
+  CHECK(rc == TILEDB_OK);
+
+  rc = tiledb_query_set_subarray(ctx_, query2, &dom);
+  CHECK(rc == TILEDB_OK);
+
+  rc = tiledb_query_submit(ctx_, query2);
+  CHECK(rc == TILEDB_OK);
+
+  CHECK(data == data2);
+  CHECK(offsets == offsets2);
+
+  // Clean up
+  rc = tiledb_array_close(ctx_, array);
+  CHECK(rc == TILEDB_OK);
+  tiledb_query_free(&query2);
+  CHECK(query2 == nullptr);
+  tiledb_array_free(&array);
+  CHECK(array == nullptr);
 
   remove_array(array_name);
 }

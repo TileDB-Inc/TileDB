@@ -4,7 +4,7 @@
 #
 # The MIT License
 #
-# Copyright (c) 2018-2020 TileDB, Inc.
+# Copyright (c) 2018-2021 TileDB, Inc.
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -96,6 +96,8 @@ if (NOT AWSSDK_FOUND)
 
     ExternalProject_Add(ep_awssdk
       PREFIX "externals"
+      # Set download name to avoid collisions with only the version number in the filename
+      DOWNLOAD_NAME ep_awssdk.zip
       URL "https://github.com/aws/aws-sdk-cpp/archive/1.8.84.zip"
       URL_HASH SHA1=e32a53a01c75ca7fdfe9feed9c5bbcedd98708e3
       CMAKE_ARGS

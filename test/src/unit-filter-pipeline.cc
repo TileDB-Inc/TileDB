@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2020 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2021 TileDB, Inc.
  * @copyright Copyright (c) 2016 MIT and Intel Corporation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -1716,7 +1716,7 @@ TEST_CASE("Filter: Test bit width reduction", "[filter]") {
       uint64_t elt = 0;
       CHECK(chunked_buffer.read(&elt, sizeof(uint64_t), (i * sizeof(uint64_t)))
                 .ok());
-      CHECK(elt == rng(gen_copy));
+      CHECK((int64_t)elt == rng(gen_copy));
     }
   }
 

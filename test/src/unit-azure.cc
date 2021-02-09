@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2020 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2021 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -145,7 +145,7 @@ TEST_CASE_METHOD(AzureFx, "Test Azure filesystem, file management", "[azure]") {
   REQUIRE(is_empty);
 
   // Continue building the hierarchy
-  bool is_blob;
+  bool is_blob = false;
   REQUIRE(azure_.touch(URI(file1)).ok());
   REQUIRE(azure_.is_blob(URI(file1), &is_blob).ok());
   REQUIRE(is_blob);
@@ -264,7 +264,7 @@ TEST_CASE_METHOD(
       azure_.write(URI(smallfile), write_buffer_small, buffer_size_small).ok());
 
   // Before flushing, the files do not exist
-  bool is_blob;
+  bool is_blob = false;
   REQUIRE(azure_.is_blob(URI(largefile), &is_blob).ok());
   REQUIRE(!is_blob);
   REQUIRE(azure_.is_blob(URI(smallfile), &is_blob).ok());
@@ -367,7 +367,7 @@ TEST_CASE_METHOD(
   REQUIRE(!azure_.write(URI(oob_file), oob_write_buffer, oob_buffer_size).ok());
 
   // Before flushing, the files do not exist
-  bool is_blob;
+  bool is_blob = false;
   REQUIRE(azure_.is_blob(URI(large_file), &is_blob).ok());
   REQUIRE(!is_blob);
   REQUIRE(azure_.is_blob(URI(small_file_1), &is_blob).ok());

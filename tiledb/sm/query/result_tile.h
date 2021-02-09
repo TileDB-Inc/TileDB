@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2020 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2021 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -38,6 +38,7 @@
 #include <unordered_map>
 #include <vector>
 
+#include "tiledb/sm/enums/layout.h"
 #include "tiledb/sm/misc/constants.h"
 #include "tiledb/sm/misc/types.h"
 #include "tiledb/sm/tile/tile.h"
@@ -219,7 +220,8 @@ class ResultTile {
       const ResultTile* result_tile,
       unsigned dim_idx,
       const Range& range,
-      std::vector<uint8_t>* result_bitmap);
+      std::vector<uint8_t>* result_bitmap,
+      const Layout& cell_order);
 
   /**
    * Applicable only to sparse tiles of dense arrays.
@@ -249,7 +251,8 @@ class ResultTile {
   Status compute_results_sparse(
       unsigned dim_idx,
       const Range& range,
-      std::vector<uint8_t>* result_bitmap) const;
+      std::vector<uint8_t>* result_bitmap,
+      const Layout& cell_order) const;
 
  private:
   /* ********************************* */
@@ -303,7 +306,11 @@ class ResultTile {
    * for each dimension, based on the dimension datatype.
    */
   std::vector<std::function<void(
-      const ResultTile*, unsigned, const Range&, std::vector<uint8_t>*)>>
+      const ResultTile*,
+      unsigned,
+      const Range&,
+      std::vector<uint8_t>*,
+      const Layout&)>>
       compute_results_sparse_func_;
 
   /* ********************************* */
@@ -318,6 +325,27 @@ class ResultTile {
 
   /** Implements coord() for unzipped coordinates. */
   const void* unzipped_coord(uint64_t pos, unsigned dim_idx) const;
+
+  /**
+   * A helper routine used in `compute_results_sparse<char>` to
+   * determine if a given string-valued coordinate intersects
+   * the given start and end range.
+   *
+   * @param c_offset The offset of the coordinate value
+   *    within `buff_str`.
+   * @param c_cize The size of the coordinate value.
+   * @param buff_str The buffer containing the coordinate value
+   *    at `c_offset`.
+   * @param range_start The starting range value.
+   * @param range_end The ending range value.
+   * @return uint8_t 0 for no intersection, 1 for instersection.
+   */
+  static uint8_t str_coord_intersects(
+      const uint64_t c_offset,
+      const uint64_t c_size,
+      const char* const buff_str,
+      const std::string& range_start,
+      const std::string& range_end);
 };
 
 }  // namespace sm

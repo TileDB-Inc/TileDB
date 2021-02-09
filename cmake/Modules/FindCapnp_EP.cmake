@@ -4,7 +4,7 @@
 #
 # The MIT License
 #
-# Copyright (c) 2018-2020 TileDB, Inc.
+# Copyright (c) 2018-2021 TileDB, Inc.
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -144,6 +144,8 @@ if (NOT CAPNP_FOUND)
     else()
       ExternalProject_Add(ep_capnp
         PREFIX "externals"
+        # Set download name to avoid collisions with only the version number in the filename
+        DOWNLOAD_NAME ep_capnp.tar.gz
         URL "https://github.com/capnproto/capnproto/archive/v0.6.1.tar.gz"
         URL_HASH SHA1=2aec1f83cc4851ae58e1419c87f11f8aa63a9392
         CONFIGURE_COMMAND
@@ -156,10 +158,13 @@ if (NOT CAPNP_FOUND)
           "-DCMAKE_CXX_FLAGS=${CXXFLAGS_DEF}"
           ${TILEDB_EP_BASE}/src/ep_capnp/c++
         UPDATE_COMMAND ""
+        PATCH_COMMAND
+          patch -d ${TILEDB_EP_BASE}/src/ep_capnp/ -N -p1 -i ${TILEDB_CMAKE_INPUTS_DIR}/patches/ep_capnp/libkj-invokable-const.patch
         LOG_DOWNLOAD TRUE
         LOG_CONFIGURE TRUE
         LOG_BUILD TRUE
         LOG_INSTALL TRUE
+        LOG_PATCH TRUE
         LOG_OUTPUT_ON_FAILURE ${TILEDB_LOG_OUTPUT_ON_FAILURE}
       )
     endif()

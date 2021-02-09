@@ -80,4 +80,4 @@ TileDB is also integrated with several popular databases and data science tools:
 
 TileDB Embedded is an open-source project and welcomes all forms of contributions. Contributors to the project should read over the [contribution docs](https://github.com/TileDB-Inc/TileDB/blob/dev/CONTRIBUTING.md) for more information.
 
-We'd love to hear from you. Drop us a line at [hello@tiledb.com](mailto:hello@tiledb.com), visit our [forum](https://forum.tiledb.com/) or [contact form](https://tiledb.com/contact-us), or [follow us on Twitter](https://twitter.com/tiledb) to stay informed of updates and news.
+We'd love to hear from you. Drop us a line at [hello@tiledb.com](mailto:hello@tiledb.com), visit our [forum](https://forum.tiledb.com/) or [contact form](https://tiledb.com/contact), or [follow us on Twitter](https://twitter.com/tiledb) to stay informed of updates and news.

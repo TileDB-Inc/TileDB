@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2020 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2021 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -49,11 +49,15 @@ namespace sm {
 /*        CONFIG DEFAULTS         */
 /* ****************************** */
 
+const std::string Config::CONFIG_ENVIRONMENT_VARIABLE_PREFIX = "TILEDB_";
 const std::string Config::REST_SERVER_DEFAULT_ADDRESS =
     "https://api.tiledb.com";
 const std::string Config::REST_SERIALIZATION_DEFAULT_FORMAT = "CAPNP";
 const std::string Config::REST_SERVER_DEFAULT_HTTP_COMPRESSOR = "any";
-const std::string Config::CONFIG_ENVIRONMENT_VARIABLE_PREFIX = "TILEDB_";
+const std::string Config::REST_RETRY_HTTP_CODES = "503";
+const std::string Config::REST_RETRY_COUNT = "3";
+const std::string Config::REST_RETRY_INITIAL_DELAY_MS = "500";
+const std::string Config::REST_RETRY_DELAY_FACTOR = "1.25";
 const std::string Config::SM_DEDUP_COORDS = "false";
 const std::string Config::SM_CHECK_COORD_DUPS = "true";
 const std::string Config::SM_CHECK_COORD_OOB = "true";
@@ -129,6 +133,7 @@ const std::string Config::VFS_S3_CONNECT_TIMEOUT_MS = "3000";
 const std::string Config::VFS_S3_CONNECT_MAX_TRIES = "5";
 const std::string Config::VFS_S3_CONNECT_SCALE_FACTOR = "25";
 const std::string Config::VFS_S3_REQUEST_TIMEOUT_MS = "3000";
+const std::string Config::VFS_S3_REQUESTER_PAYS = "false";
 const std::string Config::VFS_S3_PROXY_SCHEME = "http";
 const std::string Config::VFS_S3_PROXY_HOST = "";
 const std::string Config::VFS_S3_PROXY_PORT = "0";
@@ -173,6 +178,10 @@ Config::Config() {
   param_values_["rest.server_serialization_format"] =
       REST_SERIALIZATION_DEFAULT_FORMAT;
   param_values_["rest.http_compressor"] = REST_SERVER_DEFAULT_HTTP_COMPRESSOR;
+  param_values_["rest.retry_http_codes"] = REST_RETRY_HTTP_CODES;
+  param_values_["rest.retry_count"] = REST_RETRY_COUNT;
+  param_values_["rest.retry_initial_delay_ms"] = REST_RETRY_INITIAL_DELAY_MS;
+  param_values_["rest.retry_delay_factor"] = REST_RETRY_DELAY_FACTOR;
   param_values_["config.env_var_prefix"] = CONFIG_ENVIRONMENT_VARIABLE_PREFIX;
   param_values_["sm.dedup_coords"] = SM_DEDUP_COORDS;
   param_values_["sm.check_coord_dups"] = SM_CHECK_COORD_DUPS;
@@ -251,6 +260,7 @@ Config::Config() {
   param_values_["vfs.s3.connect_max_tries"] = VFS_S3_CONNECT_MAX_TRIES;
   param_values_["vfs.s3.connect_scale_factor"] = VFS_S3_CONNECT_SCALE_FACTOR;
   param_values_["vfs.s3.request_timeout_ms"] = VFS_S3_REQUEST_TIMEOUT_MS;
+  param_values_["vfs.s3.requester_pays"] = VFS_S3_REQUESTER_PAYS;
   param_values_["vfs.s3.proxy_scheme"] = VFS_S3_PROXY_SCHEME;
   param_values_["vfs.s3.proxy_host"] = VFS_S3_PROXY_HOST;
   param_values_["vfs.s3.proxy_port"] = VFS_S3_PROXY_PORT;
@@ -391,6 +401,14 @@ Status Config::unset(const std::string& param) {
         REST_SERIALIZATION_DEFAULT_FORMAT;
   } else if (param == "rest.http_compressor") {
     param_values_["rest.http_compressor"] = REST_SERVER_DEFAULT_HTTP_COMPRESSOR;
+  } else if (param == "rest.retry_http_codes") {
+    param_values_["rest.retry_http_codes"] = REST_RETRY_HTTP_CODES;
+  } else if (param == "rest.retry_count") {
+    param_values_["rest.retry_count"] = REST_RETRY_COUNT;
+  } else if (param == "rest.retry_initial_delay_ms") {
+    param_values_["rest.retry_initial_delay_ms"] = REST_RETRY_INITIAL_DELAY_MS;
+  } else if (param == "rest.retry_delay_factor") {
+    param_values_["rest.retry_delay_factor"] = REST_RETRY_DELAY_FACTOR;
   } else if (param == "config.env_var_prefix") {
     param_values_["config.env_var_prefix"] = CONFIG_ENVIRONMENT_VARIABLE_PREFIX;
   } else if (param == "sm.dedup_coords") {
@@ -537,6 +555,8 @@ Status Config::unset(const std::string& param) {
     param_values_["vfs.s3.connect_scale_factor"] = VFS_S3_CONNECT_SCALE_FACTOR;
   } else if (param == "vfs.s3.request_timeout_ms") {
     param_values_["vfs.s3.request_timeout_ms"] = VFS_S3_REQUEST_TIMEOUT_MS;
+  } else if (param == "vfs.s3.requester_pays") {
+    param_values_["vfs.s3.requester_pays"] = VFS_S3_REQUESTER_PAYS;
   } else if (param == "vfs.s3.proxy_scheme") {
     param_values_["vfs.s3.proxy_scheme"] = VFS_S3_PROXY_SCHEME;
   } else if (param == "vfs.s3.proxy_host") {
@@ -686,6 +706,8 @@ Status Config::sanity_check(
     RETURN_NOT_OK(utils::parse::convert(value, &vint64));
   } else if (param == "vfs.s3.request_timeout_ms") {
     RETURN_NOT_OK(utils::parse::convert(value, &vint64));
+  } else if (param == "vfs.s3.requester_pays") {
+    RETURN_NOT_OK(utils::parse::convert(value, &v));
   } else if (param == "vfs.s3.proxy_port") {
     RETURN_NOT_OK(utils::parse::convert(value, &vint64));
   } else if (param == "vfs.s3.verify_ssl") {

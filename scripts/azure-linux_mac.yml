@@ -17,7 +17,7 @@ steps:
 - bash: |
     set -e pipefail
     python -m pip install --upgrade pip virtualenv
-    if [[ "$TILEDB_TESTS_ENABLE_ARROW" == "ON" ]]; then
+    if [[ "$TILEDB_ARROW_TESTS" == "ON" ]]; then
       pip install pyarrow pybind11 numpy
     fi
 
@@ -48,7 +48,18 @@ steps:
   displayName: 'Check formatting (linux only)'
 
 - bash: |
-    # Azure sets "SYSTEM=build" for unknown reasonas, which breaks the OpenSSL configure script
+    set -e pipefail
+    python scripts/find_heap_api_violations.py tiledb
+  condition: eq(variables['Agent.OS'], 'Linux')
+  displayName: 'Check heap memory API violations (linux only)'
+
+- bash: |
+    # enable core dumps
+    ulimit -c               # should output 0 if disabled
+    ulimit -c unlimited     # Enable core dumps to be captured (must be in same run block)
+    ulimit -c               # should output 'unlimited' now
+
+    # Azure sets "SYSTEM=build" for unknown reasons, which breaks the OpenSSL configure script
     #   - openssl configure uses ENV{SYSTEM} if available:
     #     https://github.com/openssl/openssl/blob/6d745d740d37d680ff696486218b650512bbbbc6/config#L56
     #   - error description:
@@ -62,7 +73,9 @@ steps:
     git config --global user.name 'Azure Pipeline'
     git config --global user.email 'no-reply@tiledb.io'
 
-    git clone https://github.com/TileDB-Inc/TileDB-Unit-Test-Arrays.git --branch 2.0.0-3 test/inputs/arrays/read_compatibility_test
+    if [[ "$BACKWARDS_COMPATIBILITY_ARRAYS" == "ON" ]]; then
+      git clone https://github.com/TileDB-Inc/TileDB-Unit-Test-Arrays.git --branch 2.2.0 test/inputs/arrays/read_compatibility_test
+    fi
     #   displayName: 'Clone Unit-Test-Arrays'
 
     # - bash: |
@@ -87,6 +100,12 @@ steps:
     if [[ "$TILEDB_AZURE" == "ON" ]]; then
       source scripts/install-azurite.sh;
       source scripts/run-azurite.sh;
+    fi
+
+    # Start GCS Emulator if GCS is enabled
+    if [[ "$TILEDB_GCS" == "ON" ]]; then
+      source scripts/install-gcs-emu.sh;
+      source scripts/run-gcs-emu.sh;
     fi
 
     # Set up arguments for bootstrap.sh
@@ -137,6 +156,11 @@ steps:
       # Add superbuild flag
       bootstrap_args="${bootstrap_args} --force-build-all-deps";
     fi
+    if [[ "$AGENT_OS" == "Darwin" ]]; then
+      # We want to be able to print a stack trace when a core dump occurs
+      sudo chmod 1777 /cores
+      bootstrap_args="${bootstrap_args} --enable-debug";
+    fi
 
     # displayName: 'Install dependencies'
 
@@ -167,12 +191,14 @@ steps:
       export ASAN_OPTIONS=detect_leaks=0 LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libasan.so.4
     fi
 
-    if [[ "$TILEDB_GCS" == "ON" ]]; then
-      # GCS unit tests are temporarily unsupported on CI. Fake success with
+    if [[ "$AGENT_OS" == "Darwin" && "$TILEDB_GCS" == "ON" ]]; then
+      # GCS unit tests are temporarily unsupported on CI for MACOS. Fake success with
       # this echo.
       echo "##vso[task.setvariable variable=TILEDB_CI_SUCCESS]1"
     else
-      make check	
+      # run directly the executable, cmake catches the segfault and blocks
+      # the core dump
+      ./tiledb/test/tiledb_unit -d yes
     fi
 
     # Kill the running Minio server, OSX only because Linux runs it within
@@ -184,6 +210,12 @@ steps:
     # Kill the running Azurite server
     if [[ "$TILEDB_AZURE" == "ON" ]]; then
       kill -9 $AZURITE_PID
+    fi
+
+    # Kill the running GCS emulator server Linux only because OSX does not
+    # run the emulator
+    if [[ "$AGENT_OS" != "Darwin" && "$TILEDB_GCS" == "ON" ]]; then
+      kill -9 $GCS_PID
     fi
 
     # - bash: |
@@ -246,6 +278,31 @@ steps:
     #  displayName: 'Build examples, PNG test, and benchmarks (build-only)'
   displayName: 'Build and test libtiledb'
 
+- bash: |
+    ls -la /cores
+    mkdir $BUILD_REPOSITORY_LOCALPATH/build/core
+    mv /cores/core.* $BUILD_REPOSITORY_LOCALPATH/build/core/core.1
+    ls -la $BUILD_REPOSITORY_LOCALPATH/build/core
+    lldb -c $BUILD_REPOSITORY_LOCALPATH/build/core/core.1 --batch -o 'bt all' -o 'quit'
+  condition: and(failed(), eq(variables['Agent.OS'], 'Darwin')) # only run this job if the build step failed
+  displayName: 'Print stack trace'
+
+- task: ArchiveFiles@2
+  inputs:
+    rootFolderOrFile: '$(Build.Repository.LocalPath)'
+    includeRootFolder: false
+    archiveType: 'tar'
+    tarCompression: 'gz'
+    archiveFile: '$(Build.ArtifactStagingDirectory)/$(ARTIFACT_OS)-build-dir.tar.gz'
+    replaceExistingArchive: true
+    verbose: true
+  condition: and(failed(), eq(variables['Agent.OS'], 'Darwin')) # only run this job if the build step failed
+
+- task: PublishBuildArtifacts@1
+  inputs:
+    pathtoPublish: '$(Build.ArtifactStagingDirectory)/$(ARTIFACT_OS)-build-dir.tar.gz'
+    artifactName: 'build-dirs'
+  condition: and(failed(), eq(variables['Agent.OS'], 'Darwin')) # only run this job if the build step failed
 
 - bash: |
     # tiledb_unit is configured to set a job-level variable TILEDB_CI_SUCCESS=1

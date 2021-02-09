@@ -4,7 +4,7 @@
 #
 # The MIT License
 #
-# Copyright (c) 2017-2020 TileDB, Inc.
+# Copyright (c) 2017-2021 TileDB, Inc.
 # Copyright (c) 2016 MIT and Intel Corporation
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -34,16 +34,16 @@ option(TILEDB_TESTS_ENABLE_REST "Enables REST tests (requires running REST serve
 
 # Arrow integration test config and dependencies
 # Override from environment if not set in cache
-if (NOT DEFINED $CACHE{TILEDB_TESTS_ENABLE_ARROW})
-  if ($ENV{TILEDB_TESTS_ENABLE_ARROW})
+if (NOT DEFINED $CACHE{TILEDB_ARROW_TESTS})
+  if ($ENV{TILEDB_ARROW_TESTS})
     message(STATUS "Enabling Apache Arrow integration test")
     # Technically this would be an "option", but we want conditional override from ENV
-    set(TILEDB_TESTS_ENABLE_ARROW ON CACHE BOOL "Enable Arrow tests (requires Python with pyarrow and numpy)")
-    mark_as_advanced(TILEDB_TESTS_ENABLE_ARROW)
+    set(TILEDB_ARROW_TESTS ON CACHE BOOL "Enable Arrow tests (requires Python with pyarrow and numpy)" FORCE)
+    mark_as_advanced(TILEDB_ARROW_TESTS)
   endif()
 endif()
 
-if (${TILEDB_TESTS_ENABLE_ARROW})
+if (${TILEDB_ARROW_TESTS})
   # Reworked FindPython was introducted in 3.12 with features used below
   if (CMAKE_VERSION VERSION_LESS "3.12")
     message(FATAL_ERROR "CMake >= 3.12 is required for TileDB Arrow Tests. (found ${CMAKE_VERSION})")
@@ -54,6 +54,8 @@ if (${TILEDB_TESTS_ENABLE_ARROW})
   set(Python_FIND_STRATEGY "LOCATION")
   find_package(Python COMPONENTS Interpreter Development REQUIRED)
   find_package(pybind11)
+
+  message(STATUS "Configuring Apache Arrow integration test with Python ${Python_VERSION} (${Python_EXECUTABLE})")
 
   # If we can't find the pybind11 cmake config (not available in pypi yet)
   # try to find with the current executable.
@@ -104,6 +106,7 @@ set(TILEDB_TEST_SOURCES
   src/unit-capi-array.cc
   src/unit-capi-array_schema.cc
   src/unit-capi-async.cc
+  src/unit-capi-attributes.cc
   src/unit-capi-buffer.cc
   src/unit-capi-config.cc
   src/unit-capi-consolidation.cc
@@ -111,7 +114,6 @@ set(TILEDB_TEST_SOURCES
   src/unit-capi-dense_array_2.cc
   src/unit-capi-dense_neg.cc
   src/unit-capi-dense_vector.cc
-  src/unit-capi-empty-var-length.cc
   src/unit-capi-enum_values.cc
   src/unit-capi-error.cc
   src/unit-capi-fill_values.cc
@@ -143,6 +145,7 @@ set(TILEDB_TEST_SOURCES
   src/unit-crypto.cc
   src/unit-ctx.cc
   src/unit-dimension.cc
+  src/unit-empty-var-length.cc
   src/unit-filter-buffer.cc
   src/unit-filter-pipeline.cc
   src/unit-gcs.cc
@@ -171,8 +174,7 @@ set(TILEDB_TEST_SOURCES
   src/unit-vfs.cc
   src/unit-win-filesystem.cc
   src/unit.cc
-  src/vfs_helpers.cc
-)
+  src/vfs_helpers.cc)
 
 if (TILEDB_CPP_API)
   list(APPEND TILEDB_TEST_SOURCES
@@ -202,6 +204,7 @@ endif()
 if (TILEDB_SERIALIZATION)
   list(APPEND TILEDB_TEST_SOURCES
     src/unit-capi-serialized_queries.cc
+    src/unit-curl.cc
   )
 endif()
 
@@ -211,9 +214,10 @@ if (TILEDB_TESTS_ENABLE_REST)
   )
 endif()
 
-if (TILEDB_TESTS_ENABLE_ARROW)
+if (TILEDB_ARROW_TESTS)
   list(APPEND TILEDB_TEST_SOURCES
     src/unit-arrow.cc
+    ${CMAKE_SOURCE_DIR}/tiledb/sm/cpp_api/arrow_io_impl.h
   )
 endif()
 
@@ -285,7 +289,7 @@ if (TILEDB_SERIALIZATION)
   target_compile_definitions(tiledb_unit PRIVATE -DTILEDB_SERIALIZATION)
 endif()
 
-if (TILEDB_TESTS_ENABLE_ARROW)
+if (TILEDB_ARROW_TESTS)
   target_link_libraries(tiledb_unit PRIVATE pybind11::embed)
 
   # install the python helper next to the executable for import

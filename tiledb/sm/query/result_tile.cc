@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2020 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2021 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -466,18 +466,70 @@ void ResultTile::compute_results_dense(
   }
 }
 
+inline uint8_t ResultTile::str_coord_intersects(
+    const uint64_t c_offset,
+    const uint64_t c_size,
+    const char* const buff_str,
+    const std::string& range_start,
+    const std::string& range_end) {
+  // Test against start
+  bool geq_start = true;
+  bool all_chars_match = true;
+  uint64_t min_size = std::min<uint64_t>(c_size, range_start.size());
+  for (uint64_t i = 0; i < min_size; ++i) {
+    if (buff_str[c_offset + i] < range_start[i]) {
+      geq_start = false;
+      all_chars_match = false;
+      break;
+    } else if (buff_str[c_offset + i] > range_start[i]) {
+      all_chars_match = false;
+      break;
+    }  // Else characters match
+  }
+  if (geq_start && all_chars_match && c_size < range_start.size()) {
+    geq_start = false;
+  }
+
+  // Test against end
+  bool seq_end = false;
+  if (geq_start) {
+    seq_end = true;
+    all_chars_match = true;
+    min_size = std::min<uint64_t>(c_size, range_end.size());
+    for (uint64_t i = 0; i < min_size; ++i) {
+      if (buff_str[c_offset + i] > range_end[i]) {
+        geq_start = false;
+        break;
+      } else if (buff_str[c_offset + i] < range_end[i]) {
+        all_chars_match = false;
+        break;
+      }  // Else characters match
+    }
+    if (seq_end && all_chars_match && c_size > range_end.size()) {
+      seq_end = false;
+    }
+  }
+
+  return geq_start && seq_end;
+}
+
 template <>
 void ResultTile::compute_results_sparse<char>(
     const ResultTile* result_tile,
     unsigned dim_idx,
     const Range& range,
-    std::vector<uint8_t>* result_bitmap) {
+    std::vector<uint8_t>* result_bitmap,
+    const Layout& cell_order) {
   auto coords_num = result_tile->cell_num();
+  auto dim_num = result_tile->domain()->dim_num();
   auto range_start = range.start_str();
-  auto range_start_size = (uint64_t)range_start.size();
   auto range_end = range.end_str();
-  auto range_end_size = (uint64_t)range_end.size();
   auto& r_bitmap = (*result_bitmap);
+
+  // Sanity check.
+  assert(coords_num != 0);
+  if (coords_num == 0)
+    return;
 
   // Get coordinate tile
   const auto& coord_tile = result_tile->coord_tile(dim_idx);
@@ -499,53 +551,126 @@ void ResultTile::compute_results_sparse<char>(
       coord_tile_str.chunked_buffer()->get_contiguous_unsafe());
   auto buff_str_size = coord_tile_str.size();
 
-  // Compute results
-  uint64_t offset = 0, pos = 0, str_size = 0, min_size = 0;
-  bool geq_start = false, seq_end = false, all_chars_match = false;
-  for (; pos < coords_num; ++pos) {
-    offset = buff_off[pos];
-    str_size = (pos < coords_num - 1) ? buff_off[pos + 1] - offset :
-                                        buff_str_size - offset;
+  // For row-major cell orders, the first dimension is sorted.
+  // For col-major cell orders, the last dimension is sorted.
+  // If the coordinate value at index 0 is equivalent to the
+  // coordinate value at index 100, we know that  all coordinates
+  // between them are also equivalent. In this scenario where
+  // coordinate value i=0 matches the coordinate value at i=100,
+  // we can calculate `r_bitmap[0]` and apply assign its value to
+  // `r_bitmap[i]` where i in the range [1, 100].
+  //
+  // Calculating `r_bitmap[i]` is expensive for strings because
+  // it invokes a string comparison. We partition the coordinates
+  // into a fixed number of ranges. For each partition, we will
+  // compare the start and ending coordinate values to see if
+  // they are equivalent. If so, we save the expense of computing
+  // `r_bitmap` for each corresponding coordinate. If they do
+  // not match, we must compare each coordinate in the partition.
+  static const uint64_t c_partition_num = 6;
+  // We calculate the size of each partition by dividing the total
+  // number of coordinates by the number of partitions. If this
+  // does not evenly divide, we will append the remaining coordinates
+  // onto the last partition.
+  const uint64_t c_partition_size_div = coords_num / c_partition_num;
+  const uint64_t c_partition_size_rem = coords_num % c_partition_num;
+  const bool is_sorted_dim =
+      ((cell_order == Layout::ROW_MAJOR && dim_idx == 0) ||
+       (cell_order == Layout::COL_MAJOR && dim_idx == dim_num - 1));
+  if (is_sorted_dim && c_partition_size_div > 1 &&
+      coords_num > c_partition_num) {
+    // Loop over each coordinate partition.
+    for (uint64_t p = 0; p < c_partition_num; ++p) {
+      // Calculate the size of this partition.
+      const uint64_t c_partition_size =
+          c_partition_size_div +
+          (p == (c_partition_num - 1) ? c_partition_size_rem : 0);
 
-    // Test against start
-    geq_start = true;
-    all_chars_match = true;
-    min_size = std::min(str_size, range_start_size);
-    for (uint64_t i = 0; i < min_size; ++i) {
-      if (buff_str[offset + i] < range_start[i]) {
-        geq_start = false;
-        all_chars_match = false;
-        break;
-      } else if (buff_str[offset + i] > range_start[i]) {
-        all_chars_match = false;
-        break;
-      }  // Else characters match
-    }
-    if (geq_start && all_chars_match && str_size < range_start_size) {
-      geq_start = false;
-    }
+      // Calculate the position of the first and last coordinates
+      // in this partition.
+      const uint64_t first_c_pos = p * c_partition_size_div;
+      const uint64_t last_c_pos = first_c_pos + c_partition_size - 1;
+      assert(first_c_pos < last_c_pos);
 
-    // Test against end
-    if (geq_start) {
-      seq_end = true;
-      all_chars_match = true;
-      min_size = std::min(str_size, range_end_size);
-      for (uint64_t i = 0; i < min_size; ++i) {
-        if (buff_str[offset + i] > range_end[i]) {
-          geq_start = false;
-          break;
-        } else if (buff_str[offset + i] < range_end[i]) {
-          all_chars_match = false;
-          break;
-        }  // Else characters match
+      // The coordinate values are determined by their offset and size
+      // within `buff_str`. Calculate the offset and size for the
+      // first and last coordinates in this partition.
+      const uint64_t first_c_offset = buff_off[first_c_pos];
+      const uint64_t last_c_offset = buff_off[last_c_pos];
+      const uint64_t first_c_size = buff_off[first_c_pos + 1] - first_c_offset;
+      const uint64_t last_c_size = (last_c_pos == coords_num - 1) ?
+                                       buff_str_size - last_c_offset :
+                                       buff_off[last_c_pos + 1] - last_c_offset;
+
+      // Fetch the coordinate values for the first and last coordinates
+      // in this partition.
+      const char* const first_c_coord = &buff_str[first_c_offset];
+      const char* const second_coord = &buff_str[last_c_offset];
+
+      // Check if the first and last coordinates have an identical
+      // string value.
+      if (first_c_size == last_c_size &&
+          strncmp(first_c_coord, second_coord, first_c_size) == 0) {
+        assert(r_bitmap[first_c_pos] == 1);
+        const uint8_t intersects = str_coord_intersects(
+            first_c_offset, first_c_size, buff_str, range_start, range_end);
+        memset(&r_bitmap[first_c_pos], intersects, c_partition_size);
+      } else {
+        // Compute results
+        uint64_t c_offset = 0, c_size = 0;
+        for (uint64_t pos = first_c_pos; pos <= last_c_pos; ++pos) {
+          c_offset = buff_off[pos];
+          c_size = (pos < last_c_pos) ? buff_off[pos + 1] - c_offset :
+                                        buff_str_size - c_offset;
+          r_bitmap[pos] = str_coord_intersects(
+              c_offset, c_size, buff_str, range_start, range_end);
+        }
       }
-      if (seq_end && all_chars_match && str_size > range_end_size) {
-        seq_end = false;
-      }
     }
 
-    // Set the result
-    r_bitmap[pos] &= (geq_start && seq_end);
+    // We've calculated `r_bitmap` for all coordinate values in
+    // the sorted dimension.
+    return;
+  }
+
+  // Here, we're computing on all other dimensions. After the first
+  // dimension, it is possible that coordinates have already been determined
+  // to not intersect with the range in an earlier dimension. For example,
+  // if `dim_idx` is 2 for a row-major cell order, we have already checked
+  // this coordinate for an intersection in dimension-0 and dimension-1. If
+  // either did not intersect a coordindate, its associated value in
+  // `r_bitmap` will be zero. To optimize for the scenario where there are
+  // many contiguous zeroes, we can `memcmp` a large range of `r_bitmap`
+  // values to avoid a comparison on each individual element.
+  //
+  // Often, a memory comparison for one byte is as quick as comparing
+  // 4 or 8 bytes. We will only get a benefit if we successfully
+  // find a `memcmp` on a much larger range.
+  const uint64_t zeroed_size = coords_num < 256 ? coords_num : 256;
+  for (uint64_t i = 0; i < coords_num; i += zeroed_size) {
+    const uint64_t partition_size =
+        (i < coords_num - zeroed_size) ? zeroed_size : coords_num - i;
+
+    // Check if all `r_bitmap` values are zero between `i` and
+    // `partition_size`.
+    if (r_bitmap[i] == 0 &&
+        memcmp(&r_bitmap[i], &r_bitmap[i + 1], partition_size - 1) == 0)
+      continue;
+
+    // Here, we know that there is at least one `1` value within
+    // the `r_bitmap` values within this partition. We must check
+    // each value for an intersection.
+    uint64_t c_offset = 0, c_size = 0;
+    for (uint64_t pos = i; pos < i + partition_size; ++pos) {
+      if (r_bitmap[pos] == 0)
+        continue;
+
+      c_offset = buff_off[pos];
+      c_size = (pos < coords_num - 1) ? buff_off[pos + 1] - c_offset :
+                                        buff_str_size - c_offset;
+      r_bitmap[pos] = str_coord_intersects(
+          c_offset, c_size, buff_str, range_start, range_end);
+    }
   }
 }
 
@@ -554,13 +679,22 @@ void ResultTile::compute_results_sparse(
     const ResultTile* result_tile,
     unsigned dim_idx,
     const Range& range,
-    std::vector<uint8_t>* result_bitmap) {
+    std::vector<uint8_t>* result_bitmap,
+    const Layout& cell_order) {
+  // We do not use `cell_order` for this template type.
+  (void)cell_order;
+
+  // For easy reference.
   auto coords_num = result_tile->cell_num();
   auto r = (const T*)range.data();
   auto stores_zipped_coords = result_tile->stores_zipped_coords();
   auto dim_num = result_tile->domain()->dim_num();
   auto& r_bitmap = (*result_bitmap);
+
+  // Variables for the loop over `coords_num`.
   T c;
+  const T& r0 = r[0];
+  const T& r1 = r[1];
 
   // Handle separate coordinate tiles
   if (!stores_zipped_coords) {
@@ -573,8 +707,9 @@ void ResultTile::compute_results_sparse(
         static_cast<const T*>(chunked_buffer->get_contiguous_unsafe());
     for (uint64_t pos = 0; pos < coords_num; ++pos) {
       c = coords[pos];
-      r_bitmap[pos] &= (uint8_t)(c >= r[0] && c <= r[1]);
+      r_bitmap[pos] &= (uint8_t)(c >= r0 && c <= r1);
     }
+
     return;
   }
 
@@ -589,7 +724,7 @@ void ResultTile::compute_results_sparse(
       static_cast<const T*>(chunked_buffer->get_contiguous_unsafe());
   for (uint64_t pos = 0; pos < coords_num; ++pos) {
     c = coords[pos * dim_num + dim_idx];
-    r_bitmap[pos] &= (uint8_t)(c >= r[0] && c <= r[1]);
+    r_bitmap[pos] &= (uint8_t)(c >= r0 && c <= r1);
   }
 }
 
@@ -615,9 +750,11 @@ Status ResultTile::compute_results_dense(
 Status ResultTile::compute_results_sparse(
     unsigned dim_idx,
     const Range& range,
-    std::vector<uint8_t>* result_bitmap) const {
+    std::vector<uint8_t>* result_bitmap,
+    const Layout& cell_order) const {
   assert(compute_results_sparse_func_[dim_idx] != nullptr);
-  compute_results_sparse_func_[dim_idx](this, dim_idx, range, result_bitmap);
+  compute_results_sparse_func_[dim_idx](
+      this, dim_idx, range, result_bitmap, cell_order);
   return Status::Ok();
 }
 

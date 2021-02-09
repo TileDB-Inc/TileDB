@@ -4,7 +4,7 @@
 #
 # The MIT License
 #
-# Copyright (c) 2018-2020 TileDB, Inc.
+# Copyright (c) 2018-2021 TileDB, Inc.
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -232,6 +232,8 @@ else()
       # On Windows we download pre-built binaries.
       ExternalProject_Add(ep_tbb
         PREFIX "externals"
+        # Set download name to avoid collisions with only the version number in the filename
+        DOWNLOAD_NAME ep_tbb.zip
         URL "https://github.com/intel/tbb/releases/download/v2020.1/tbb-2020.1-win.zip"
         URL_HASH SHA1=fdcdba2026f4c11f1cb3cbc36ff45d828219e580
         CONFIGURE_COMMAND ""
@@ -247,6 +249,8 @@ else()
     else()
       ExternalProject_Add(ep_tbb
         PREFIX "externals"
+        # Set download name to avoid collisions with only the version number in the filename
+        DOWNLOAD_NAME ep_tbb.tar.gz
         URL "https://github.com/intel/tbb/archive/v2020.1.tar.gz"
         URL_HASH SHA1=c42a33b5fc42aedeba75c204a5367593e28a6977
         CONFIGURE_COMMAND ""

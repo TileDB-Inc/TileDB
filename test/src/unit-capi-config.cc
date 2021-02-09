@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2020 TileDB Inc.
+ * @copyright Copyright (c) 2017-2021 TileDB Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -211,6 +211,10 @@ void check_save_to_file() {
   std::stringstream ss;
   ss << "config.env_var_prefix TILEDB_\n";
   ss << "rest.http_compressor any\n";
+  ss << "rest.retry_count 3\n";
+  ss << "rest.retry_delay_factor 1.25\n";
+  ss << "rest.retry_http_codes 503\n";
+  ss << "rest.retry_initial_delay_ms 500\n";
   ss << "rest.server_address https://api.tiledb.com\n";
   ss << "rest.server_serialization_format CAPNP\n";
   ss << "sm.check_coord_dups true\n";
@@ -269,6 +273,7 @@ void check_save_to_file() {
   ss << "vfs.s3.proxy_scheme http\n";
   ss << "vfs.s3.region us-east-1\n";
   ss << "vfs.s3.request_timeout_ms 3000\n";
+  ss << "vfs.s3.requester_pays false\n";
   ss << "vfs.s3.scheme https\n";
   ss << "vfs.s3.use_multipart_upload true\n";
   ss << "vfs.s3.use_virtual_addressing true\n";
@@ -461,6 +466,10 @@ TEST_CASE("C API: Test config iter", "[capi], [config]") {
   all_param_values["rest.server_address"] = "https://api.tiledb.com";
   all_param_values["rest.server_serialization_format"] = "CAPNP";
   all_param_values["rest.http_compressor"] = "any";
+  all_param_values["rest.retry_count"] = "3";
+  all_param_values["rest.retry_delay_factor"] = "1.25";
+  all_param_values["rest.retry_initial_delay_ms"] = "500";
+  all_param_values["rest.retry_http_codes"] = "503";
   all_param_values["sm.dedup_coords"] = "false";
   all_param_values["sm.check_coord_dups"] = "true";
   all_param_values["sm.check_coord_oob"] = "true";
@@ -535,6 +544,7 @@ TEST_CASE("C API: Test config iter", "[capi], [config]") {
   all_param_values["vfs.s3.connect_scale_factor"] = "25";
   all_param_values["vfs.s3.logging_level"] = "Off";
   all_param_values["vfs.s3.request_timeout_ms"] = "3000";
+  all_param_values["vfs.s3.requester_pays"] = "false";
   all_param_values["vfs.s3.proxy_host"] = "";
   all_param_values["vfs.s3.proxy_password"] = "";
   all_param_values["vfs.s3.proxy_port"] = "0";
@@ -591,6 +601,7 @@ TEST_CASE("C API: Test config iter", "[capi], [config]") {
   vfs_param_values["s3.connect_scale_factor"] = "25";
   vfs_param_values["s3.logging_level"] = "Off";
   vfs_param_values["s3.request_timeout_ms"] = "3000";
+  vfs_param_values["s3.requester_pays"] = "false";
   vfs_param_values["s3.proxy_host"] = "";
   vfs_param_values["s3.proxy_password"] = "";
   vfs_param_values["s3.proxy_port"] = "0";
@@ -641,6 +652,7 @@ TEST_CASE("C API: Test config iter", "[capi], [config]") {
   s3_param_values["connect_scale_factor"] = "25";
   s3_param_values["logging_level"] = "Off";
   s3_param_values["request_timeout_ms"] = "3000";
+  s3_param_values["requester_pays"] = "false";
   s3_param_values["proxy_host"] = "";
   s3_param_values["proxy_password"] = "";
   s3_param_values["proxy_port"] = "0";
