@@ -11,6 +11,8 @@
 ## Improvements
 * Adds a Github Action to automate the HISTORY.md [#2075](https://github.com/TileDB-Inc/TileDB/pull/2075)
 
+* Improve GCS multipart locking [#2087](https://github.com/TileDB-Inc/TileDB/pull/2087)
+
 ## Deprecations
 
 ## Bug fixes
