@@ -9,6 +9,7 @@
 ## New features
 
 ## Improvements
+* Adds a Github Action to automate the HISTORY.md [#2075](https://github.com/TileDB-Inc/TileDB/pull/2075)
 
 ## Deprecations
 
