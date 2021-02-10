@@ -1701,16 +1701,13 @@ class Query {
     else
       impl::type_check<char>(schema_.attribute(name).type());
 
-    // Compute element size (in bytes).
-    size_t element_size = tiledb_datatype_size(schema_.attribute(name).type());
-
     return set_buffer_nullable(
         name,
         offsets.data(),
         offsets.size(),
         &data[0],
         data.size(),
-        element_size,
+        sizeof(char),
         validity_bytemap.data(),
         validity_bytemap.size());
   }
