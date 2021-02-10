@@ -23,6 +23,7 @@
 ### C API
 
 ### C++ API
+* Add support for a string-typed, variable-sized, nullable attribute in the C++ API. [#2090](https://github.com/TileDB-Inc/TileDB/pull/2090)
 
 # TileDB v2.2.3 Release Notes
 

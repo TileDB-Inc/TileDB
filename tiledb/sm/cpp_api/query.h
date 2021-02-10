@@ -1223,7 +1223,7 @@ class Query {
    * is assumed to be the correct type, and the size of an element in the given
    * buffer is assumed to be the size of the datatype of the attribute.
    *
-   * @param nam Attribute/Dimension name
+   * @param name Attribute/Dimension name
    * @param buff Buffer array pointer with elements of the attribute type.
    * @param nelements Number of array elements in buffer
    **/
@@ -1524,7 +1524,7 @@ class Query {
    * is assumed to be the correct type, and the size of an element in the given
    * buffer is assumed to be the size of the datatype of the attribute.
    *
-   * @param nam Attribute name
+   * @param name Attribute name
    * @param data Buffer array pointer with elements of the attribute type.
    * @param data_nelements Number of array elements in buffer
    * @param validity_bytemap The validity bytemap buffer.
@@ -1675,6 +1675,40 @@ class Query {
 
     return set_buffer_nullable(
         name, std::get<0>(buf), std::get<1>(buf), std::get<2>(buf));
+  }
+
+  /**
+   * Sets a buffer for a string-typed variable-sized, nullable attribute.
+   *
+   * @param name Attribute name
+   * @param offsets Offsets where a new element begins in the data buffer.
+   * @param data Pre-allocated string buffer.
+   * @param validity_bytemap Buffer vector with elements of the attribute
+   *     validity values.
+   **/
+  Query& set_buffer_nullable(
+      const std::string& name,
+      std::vector<uint64_t>& offsets,
+      std::string& data,
+      std::vector<uint8_t>& validity_bytemap) {
+    // Checks
+    auto is_attr = schema_.has_attribute(name);
+    if (!is_attr)
+      throw TileDBError(
+          std::string("Cannot set buffer; Attribute '") + name +
+          "' does not exist");
+    else
+      impl::type_check<char>(schema_.attribute(name).type());
+
+    return set_buffer_nullable(
+        name,
+        offsets.data(),
+        offsets.size(),
+        &data[0],
+        data.size(),
+        sizeof(char),
+        validity_bytemap.data(),
+        validity_bytemap.size());
   }
 
   /**
