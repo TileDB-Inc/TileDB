@@ -791,6 +791,11 @@ void Dimension::split_range<char>(
   assert(new_r2_start > new_r1_end);
   assert(new_r2_start <= new_r2_end);
   r2->set_str_range(new_r2_start, new_r2_end);
+
+  // Set the depth of the split ranges to +1 the depth of
+  // the range they were split from.
+  r1->set_partition_depth(r.partition_depth() + 1);
+  r2->set_partition_depth(r.partition_depth() + 1);
 }
 
 template <class T>
@@ -815,6 +820,11 @@ void Dimension::split_range(
   ret[0] = int_domain ? (v_t + 1) : static_cast<T>(std::nextafter(v_t, max));
   ret[1] = r_t[1];
   r2->set_range(ret, sizeof(ret));
+
+  // Set the depth of the split ranges to +1 the depth of
+  // the range they were split from.
+  r1->set_partition_depth(r.partition_depth() + 1);
+  r2->set_partition_depth(r.partition_depth() + 1);
 }
 
 void Dimension::split_range(
@@ -842,6 +852,14 @@ void Dimension::splitting_value<char>(
   auto start = r.start_str();
   auto end = r.end_str();
   auto pref_size = utils::parse::common_prefix_size(start, end);
+
+  // String ranges are infinitely splittable. We define a fixed
+  // limit on how deep we will split a user-given range. If we
+  // reach this limit, we will treat the range as unsplittable.
+  if (r.partition_depth() >= constants::max_string_dim_split_depth) {
+    *unsplittable = true;
+    return;
+  }
 
   // Check unsplittable
   if (!end.empty() && end[pref_size] == 0) {
