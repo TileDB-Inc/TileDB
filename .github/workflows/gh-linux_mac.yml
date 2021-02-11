@@ -18,7 +18,7 @@ jobs:
     timeout-minutes: 90
     strategy:
       matrix:
-          os: [ubuntu-16.04, macOS-10.14]
+          os: [ubuntu-16.04]
           config: [S3]
 #          exclude:
 #            - {os: macOS-10.14, config: S3}
@@ -239,10 +239,9 @@ jobs:
           if [[ ( "${{ runner.os }}" == "macOS" && "${{ matrix.TILEDB_GCS }}" == "ON" )]]; then
             # GCS unit tests are temporarily unsupported on CI. Fake success with
             # this echo.
-            echo "::set-output name=TILEDB_CI_SUCCESS::1"
+            echo ::set-output name=TILEDB_CI_SUCCESS::1
           else
-            make check
-            echo "::set-output name=TILEDB_CI_SUCCESS::1"
+            make check | awk '/1: ::set-env/{sub(/.*1: /, ""); print; next} 1'
           fi
           echo "VAR OUTPUT IN GHA SHELL"
           echo $TILEDB_CI_SUCCESS
