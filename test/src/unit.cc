@@ -71,7 +71,6 @@ struct CICompletionStatusListener : Catch::TestEventListenerBase {
   void testRunEnded(Catch::TestRunStats const& testRunStats) override {
     if (std::getenv("GITHUB_RUN_ID") != nullptr) {
       if (testRunStats.totals.testCases.allOk() == 1) {
-        std::cout << "I SET THE OUTPUT HERE" << std::endl;
         // set TILEDB_CI_SUCCESS job-level variable in azure pipelines
         // note: this variable is only set in subsequest tasks.
         std::cout << "::set-output name=TILEDB_CI_SUCCESS::1" << std::endl;
