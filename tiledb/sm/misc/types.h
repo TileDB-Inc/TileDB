@@ -59,7 +59,8 @@ class Range {
  public:
   /** Default constructor. */
   Range()
-      : range_start_size_(0) {
+      : range_start_size_(0)
+      , partition_depth_(0) {
   }
 
   /** Constructor setting a range. */
@@ -227,14 +228,32 @@ class Range {
     return range_start_size_ != 0;
   }
 
+  /** Sets the partition depth. */
+  void set_partition_depth(uint64_t partition_depth) {
+    partition_depth_ = partition_depth;
+  }
+
+  /** Returns the partition depth. */
+  uint64_t partition_depth() const {
+    return partition_depth_;
+  }
+
  private:
   /** The range as a flat byte vector.*/
   std::vector<uint8_t> range_;
+
   /**
    * Non-zero only for var-sized ranges. It is the size of the
    * start of `range_`.
    */
   uint64_t range_start_size_;
+
+  /**
+   * The ranges in a query's initial subarray have a depth of 0.
+   * When a range is split, the depth on the split ranges are
+   * set to +1 the depth of the original range.
+   */
+  uint64_t partition_depth_;
 };
 
 /** An N-dimensional range, consisting of a vector of 1D ranges. */
