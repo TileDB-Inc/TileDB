@@ -113,7 +113,6 @@ void VFSFx::set_supported_fs() {
   bool supports_gcs;  // unused
   get_supported_fs(
       &supports_s3_, &supports_hdfs_, &supports_azure_, &supports_gcs);
-  get_supported_memfs(&supports_memfs_);
 
   tiledb_ctx_free(&ctx);
 }

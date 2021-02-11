@@ -561,18 +561,6 @@ void get_supported_fs(
   tiledb_ctx_free(&ctx);
 }
 
-void get_supported_memfs(bool* memfs_supported) {
-  tiledb_ctx_t* ctx = nullptr;
-  REQUIRE(tiledb_ctx_alloc(nullptr, &ctx) == TILEDB_OK);
-
-  int is_supported = 0;
-  int rc = tiledb_ctx_is_supported_fs(ctx, TILEDB_MEMFS, &is_supported);
-  REQUIRE(rc == TILEDB_OK);
-  *memfs_supported = (bool)is_supported;
-
-  tiledb_ctx_free(&ctx);
-}
-
 void open_array(
     tiledb_ctx_t* ctx, tiledb_array_t* array, tiledb_query_type_t query_type) {
   int rc = tiledb_array_open(ctx, array, query_type);

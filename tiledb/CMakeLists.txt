@@ -353,12 +353,6 @@ if (TILEDB_GCS)
   endif()
 endif()
 
-# MEMFS dependencies
-if (TILEDB_MEMFS)
-    message(STATUS "The TileDB library is compiled with in-memory flesystem support.")
-    add_definitions(-DHAVE_MEMFS)
-endif()
-
 # Libcurl
 if (TILEDB_S3 OR TILEDB_AZURE OR TILEDB_GCS OR TILEDB_SERIALIZATION)
   if (NOT WIN32)

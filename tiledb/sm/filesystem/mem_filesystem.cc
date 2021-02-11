@@ -517,6 +517,8 @@ Status MemFilesystem::remove(const std::string& path, const bool is_dir) const {
         Status::MemFSError(std::string("Remove failed, wrong file type")));
   }
 
+  cur_lock.unlock();
+
   if (parent) {
     parent->children_.erase(tokens.back());
   }
