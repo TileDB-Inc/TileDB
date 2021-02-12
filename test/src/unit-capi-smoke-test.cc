@@ -50,60 +50,6 @@ using namespace tiledb::test;
 
 static const char encryption_key[] = "unittestunittestunittestunittest";
 
-struct test_dim_t {
-  test_dim_t(
-      const string& name,
-      const tiledb_datatype_t type,
-      const void* const domain,
-      const uint64_t tile_extent)
-      : name_(name)
-      , type_(type)
-      , domain_(domain)
-      , tile_extent_(tile_extent) {
-  }
-
-  string name_;
-  tiledb_datatype_t type_;
-  const void* domain_;
-  uint64_t tile_extent_;
-};
-
-struct test_attr_t {
-  test_attr_t(
-      const string& name,
-      const tiledb_datatype_t type,
-      const uint32_t cell_val_num)
-      : name_(name)
-      , type_(type)
-      , cell_val_num_(cell_val_num) {
-  }
-
-  string name_;
-  tiledb_datatype_t type_;
-  uint32_t cell_val_num_;
-};
-
-struct test_query_buffer_t {
-  test_query_buffer_t(
-      const string& name,
-      void* const buffer,
-      uint64_t* const buffer_size,
-      void* const buffer_offset,
-      uint64_t* const buffer_offset_size)
-      : name_(name)
-      , buffer_(buffer)
-      , buffer_size_(buffer_size)
-      , buffer_offset_(buffer_offset)
-      , buffer_offset_size_(buffer_offset_size) {
-  }
-
-  string name_;
-  void* buffer_;
-  uint64_t* buffer_size_;
-  void* buffer_offset_;
-  uint64_t* buffer_offset_size_;
-};
-
 class SmokeTestFx {
  public:
 #ifdef _WIN32
@@ -115,6 +61,60 @@ class SmokeTestFx {
   const string FILE_TEMP_DIR =
       tiledb::sm::Posix::current_dir() + "/tiledb_test/";
 #endif
+
+  struct test_dim_t {
+    test_dim_t(
+        const string& name,
+        const tiledb_datatype_t type,
+        const void* const domain,
+        const uint64_t tile_extent)
+        : name_(name)
+        , type_(type)
+        , domain_(domain)
+        , tile_extent_(tile_extent) {
+    }
+
+    string name_;
+    tiledb_datatype_t type_;
+    const void* domain_;
+    uint64_t tile_extent_;
+  };
+
+  struct test_attr_t {
+    test_attr_t(
+        const string& name,
+        const tiledb_datatype_t type,
+        const uint32_t cell_val_num)
+        : name_(name)
+        , type_(type)
+        , cell_val_num_(cell_val_num) {
+    }
+
+    string name_;
+    tiledb_datatype_t type_;
+    uint32_t cell_val_num_;
+  };
+
+  struct test_query_buffer_t {
+    test_query_buffer_t(
+        const string& name,
+        void* const buffer,
+        uint64_t* const buffer_size,
+        void* const buffer_offset,
+        uint64_t* const buffer_offset_size)
+        : name_(name)
+        , buffer_(buffer)
+        , buffer_size_(buffer_size)
+        , buffer_offset_(buffer_offset)
+        , buffer_offset_size_(buffer_offset_size) {
+    }
+
+    string name_;
+    void* buffer_;
+    uint64_t* buffer_size_;
+    void* buffer_offset_;
+    uint64_t* buffer_offset_size_;
+  };
 
   /** Constructor. */
   SmokeTestFx();
@@ -583,7 +583,6 @@ void SmokeTestFx::smoke_test(
   // Define dimension query write vectors for either sparse arrays
   // or dense arrays with an unordered write order.
   vector<uint64_t*> d_write_buffers;
-  uint64_t write_buffer_size = 0;
   if (array_type == TILEDB_SPARSE || write_order == TILEDB_UNORDERED) {
     // Calculate the write buffer lengths using the ranges of the dimensions.
     vector<uint64_t> dimension_ranges;
@@ -608,7 +607,7 @@ void SmokeTestFx::smoke_test(
       for (uint64_t i = 0; i < dimension_ranges[i]; i++) {
         d_write_buffer[i] = i;
       }
-      write_buffer_size =
+      uint64_t write_buffer_size =
           dim_buffer_len * tiledb_datatype_size(dims_iter->type_);
 
       write_query_buffers.emplace_back(
@@ -665,30 +664,14 @@ void SmokeTestFx::smoke_test(
   }
 
   // This logic assumes that all dimensions are of type TILEDB_UINT64.
-  uint64_t subarray_len = 2 * test_dims.size();
-  uint64_t subarray_size = subarray_len * sizeof(uint64_t);
+  uint64_t subarray_size = 2 * test_dims.size() * sizeof(uint64_t);
   uint64_t* subarray_full = (uint64_t*)malloc(subarray_size);
-  for (uint64_t i = 0; i < subarray_len; i += 2) {
-    const uint64_t min_range = ((uint64_t*)(test_dims[i / 2].domain_))[0];
-    const uint64_t max_range = ((uint64_t*)(test_dims[i / 2].domain_))[1];
-    subarray_full[i] = min_range;
-    subarray_full[i + 1] = max_range;
+  for (uint64_t i = 0; i < test_dims.size(); ++i) {
+    const uint64_t min_range = ((uint64_t*)(test_dims[i].domain_))[0];
+    const uint64_t max_range = ((uint64_t*)(test_dims[i].domain_))[1];
+    subarray_full[(i * 2)] = min_range;
+    subarray_full[(i * 2) + 1] = max_range;
   }
-  /*
-   uint64_t subarray_len = 2 * test_dims.size();
-   std::cerr<<"subarray_len: " <<subarray_len<<std::endl;
-   uint64_t subarray_size = subarray_len * sizeof(uint64_t);
-   std::cerr<<"subarray_size: " <<subarray_size<<std::endl;
-   uint64_t* subarray_full = (uint64_t*)malloc(subarray_size);
-   for (uint64_t i = 0; i < subarray_len; ++i) {
-     const uint64_t min_range = ((uint64_t*)(test_dims[i].domain_))[0];
-     const uint64_t max_range = ((uint64_t*)(test_dims[i].domain_))[1];
-     subarray_full[(i * 2)] = min_range;
-     std::cerr<<"subarray_full[(i * 2)] " <<subarray_full[(i * 2)]<<std::endl;
-     subarray_full[(i * 2) + 1] = max_range;
-     std::cerr<<"subarray_full[(i * 2) + 1] " <<subarray_full[(i * 2) +
-   1]<<std::endl;
-   } */
 
   read(array_name, read_query_buffers, subarray_full, encryption_type);
 

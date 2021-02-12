@@ -47,69 +47,6 @@ using namespace std;
 using namespace tiledb::sm;
 using namespace tiledb::test;
 
-struct test_dim_t {
-  test_dim_t(
-      const string& name,
-      const tiledb_datatype_t type,
-      const void* const domain,
-      const uint64_t tile_extent)
-      : name_(name)
-      , type_(type)
-      , domain_(domain)
-      , tile_extent_(tile_extent) {
-  }
-
-  string name_;
-  tiledb_datatype_t type_;
-  const void* domain_;
-  uint64_t tile_extent_;
-};
-
-struct test_attr_t {
-  test_attr_t(
-      const string& name,
-      const tiledb_datatype_t type,
-      const uint32_t cell_val_num,
-      const bool nullable)
-      : name_(name)
-      , type_(type)
-      , cell_val_num_(cell_val_num)
-      , nullable_(nullable) {
-  }
-
-  string name_;
-  tiledb_datatype_t type_;
-  uint32_t cell_val_num_;
-  bool nullable_;
-};
-
-struct test_query_buffer_t {
-  test_query_buffer_t(
-      const string& name,
-      void* const buffer,
-      uint64_t* const buffer_size,
-      void* const buffer_var,
-      uint64_t* const buffer_var_size,
-      uint8_t* const buffer_validity,
-      uint64_t* const buffer_validity_size)
-      : name_(name)
-      , buffer_(buffer)
-      , buffer_size_(buffer_size)
-      , buffer_var_(buffer_var)
-      , buffer_var_size_(buffer_var_size)
-      , buffer_validity_(buffer_validity)
-      , buffer_validity_size_(buffer_validity_size) {
-  }
-
-  string name_;
-  void* buffer_;
-  uint64_t* buffer_size_;
-  void* buffer_var_;
-  uint64_t* buffer_var_size_;
-  uint8_t* buffer_validity_;
-  uint64_t* buffer_validity_size_;
-};
-
 class NullableArrayFx {
  public:
 #ifdef _WIN32
@@ -121,6 +58,69 @@ class NullableArrayFx {
   const string FILE_TEMP_DIR =
       tiledb::sm::Posix::current_dir() + "/tiledb_test/";
 #endif
+
+  struct test_dim_t {
+    test_dim_t(
+        const string& name,
+        const tiledb_datatype_t type,
+        const void* const domain,
+        const uint64_t tile_extent)
+        : name_(name)
+        , type_(type)
+        , domain_(domain)
+        , tile_extent_(tile_extent) {
+    }
+
+    string name_;
+    tiledb_datatype_t type_;
+    const void* domain_;
+    uint64_t tile_extent_;
+  };
+
+  struct test_attr_t {
+    test_attr_t(
+        const string& name,
+        const tiledb_datatype_t type,
+        const uint32_t cell_val_num,
+        const bool nullable)
+        : name_(name)
+        , type_(type)
+        , cell_val_num_(cell_val_num)
+        , nullable_(nullable) {
+    }
+
+    string name_;
+    tiledb_datatype_t type_;
+    uint32_t cell_val_num_;
+    bool nullable_;
+  };
+
+  struct test_query_buffer_t {
+    test_query_buffer_t(
+        const string& name,
+        void* const buffer,
+        uint64_t* const buffer_size,
+        void* const buffer_var,
+        uint64_t* const buffer_var_size,
+        uint8_t* const buffer_validity,
+        uint64_t* const buffer_validity_size)
+        : name_(name)
+        , buffer_(buffer)
+        , buffer_size_(buffer_size)
+        , buffer_var_(buffer_var)
+        , buffer_var_size_(buffer_var_size)
+        , buffer_validity_(buffer_validity)
+        , buffer_validity_size_(buffer_validity_size) {
+    }
+
+    string name_;
+    void* buffer_;
+    uint64_t* buffer_size_;
+    void* buffer_var_;
+    uint64_t* buffer_var_size_;
+    uint8_t* buffer_validity_;
+    uint64_t* buffer_validity_size_;
+  };
 
   /** Constructor. */
   NullableArrayFx();
