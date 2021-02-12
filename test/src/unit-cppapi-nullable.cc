@@ -42,71 +42,73 @@ using namespace std;
 using namespace tiledb;
 using namespace tiledb::test;
 
-template <typename T>
-struct test_dim_t {
-  test_dim_t(
-      const string& name, const array<T, 2>& domain, const uint64_t tile_extent)
-      : name_(name)
-      , domain_(domain)
-      , tile_extent_(tile_extent) {
-  }
-
-  string name_;
-  array<T, 2> domain_;
-  uint64_t tile_extent_;
-};
-
-template <typename T>
-struct test_attr_t {
-  test_attr_t(const string& name, const bool var, const bool nullable)
-      : name_(name)
-      , var_(var)
-      , nullable_(nullable) {
-  }
-
-  string name_;
-  bool var_;
-  bool nullable_;
-};
-
-template <typename T>
-struct test_query_buffer_t {
-  test_query_buffer_t(const string& name, vector<T>* const data)
-      : name_(name)
-      , offsets_(nullptr)
-      , data_(data)
-      , validity_bytemap_(nullptr) {
-  }
-
-  test_query_buffer_t(
-      const string& name,
-      vector<T>* const data,
-      vector<uint8_t>* const validity_bytemap)
-      : name_(name)
-      , offsets_(nullptr)
-      , data_(data)
-      , validity_bytemap_(std::move(validity_bytemap)) {
-  }
-
-  test_query_buffer_t(
-      const string& name,
-      vector<uint64_t>* const offsets,
-      vector<T>* const data,
-      vector<uint8_t>* const validity_bytemap)
-      : name_(name)
-      , offsets_(offsets)
-      , data_(data)
-      , validity_bytemap_(validity_bytemap) {
-  }
-
-  string name_;
-  vector<uint64_t>* offsets_;
-  vector<T>* data_;
-  vector<uint8_t>* validity_bytemap_;
-};
-
 class NullableArrayCppFx {
  public:
+  template <typename T>
+  struct test_dim_t {
+    test_dim_t(
+        const string& name,
+        const array<T, 2>& domain,
+        const uint64_t tile_extent)
+        : name_(name)
+        , domain_(domain)
+        , tile_extent_(tile_extent) {
+    }
+
+    string name_;
+    array<T, 2> domain_;
+    uint64_t tile_extent_;
+  };
+
+  template <typename T>
+  struct test_attr_t {
+    test_attr_t(const string& name, const bool var, const bool nullable)
+        : name_(name)
+        , var_(var)
+        , nullable_(nullable) {
+    }
+
+    string name_;
+    bool var_;
+    bool nullable_;
+  };
+
+  template <typename T>
+  struct test_query_buffer_t {
+    test_query_buffer_t(const string& name, vector<T>* const data)
+        : name_(name)
+        , offsets_(nullptr)
+        , data_(data)
+        , validity_bytemap_(nullptr) {
+    }
+
+    test_query_buffer_t(
+        const string& name,
+        vector<T>* const data,
+        vector<uint8_t>* const validity_bytemap)
+        : name_(name)
+        , offsets_(nullptr)
+        , data_(data)
+        , validity_bytemap_(std::move(validity_bytemap)) {
+    }
+
+    test_query_buffer_t(
+        const string& name,
+        vector<uint64_t>* const offsets,
+        vector<T>* const data,
+        vector<uint8_t>* const validity_bytemap)
+        : name_(name)
+        , offsets_(offsets)
+        , data_(data)
+        , validity_bytemap_(validity_bytemap) {
+    }
+
+    string name_;
+    vector<uint64_t>* offsets_;
+    vector<T>* data_;
+    vector<uint8_t>* validity_bytemap_;
+  };
+
   /** Constructor. */
   NullableArrayCppFx();
 
