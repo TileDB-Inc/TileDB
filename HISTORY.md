@@ -10,6 +10,7 @@
 
 ## Improvements
 
+* Add additional stats printing to breakdown read state initialization timings [#2095](https://github.com/TileDB-Inc/TileDB/pull/2095)
 * Improve GCS multipart locking [#2087](https://github.com/TileDB-Inc/TileDB/pull/2087)
 
 ## Deprecations
