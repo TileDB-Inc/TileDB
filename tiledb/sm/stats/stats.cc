@@ -659,6 +659,19 @@ std::string Stats::dump_read() const {
     }
 
     write(&ss, "- Time to initialize the read state: ", read_init_state);
+    write(&ss, "  * Time to compute tile overlap: ", read_compute_tile_overlap);
+    write(
+        &ss,
+        "    > Time to compute relevant fragments: ",
+        read_compute_relevant_frags);
+    write(
+        &ss,
+        "    > Time to load relevant fragment R-trees: ",
+        read_load_relevant_rtrees);
+    write(
+        &ss,
+        "    > Time to compute relevant fragment tile overlap: ",
+        read_compute_relevant_tile_overlap);
     ss << "\n";
 
     write(&ss, "- Read time: ", read_time);
