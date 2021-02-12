@@ -46,12 +46,6 @@ namespace common {
 
 /** Definition of class Logger. */
 class Logger {
-  /** Verbosity level. */
-  enum class Level : char {
-    VERBOSE,
-    ERR,
-  };
-
  public:
   /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */
@@ -111,6 +105,16 @@ class Logger {
     logger_->error(fmt, arg1, args...);
   }
 
+  /** Verbosity level. */
+  enum class Level : char {
+    FATAL,
+    ERR,
+    WARN,
+    INFO,
+    DBG,
+    TRACE,
+  };
+
   /**
    * Set the logger level.
    *
@@ -119,29 +123,24 @@ class Logger {
    */
   void set_level(Logger::Level lvl) {
     switch (lvl) {
-      case Logger::Level::VERBOSE:
-        logger_->set_level(spdlog::level::debug);
+      case Logger::Level::FATAL:
+        logger_->set_level(spdlog::level::critical);
         break;
       case Logger::Level::ERR:
         logger_->set_level(spdlog::level::err);
         break;
-    }
-  }
-
-  /**
-   * Returns whether the logger should log a message given the currently set
-   * log level.
-   *
-   * @param lvl The Logger::Level to test
-   * @return bool true, if the logger will log the given Logger::Level, false
-   *     otherwise.
-   */
-  bool should_log(Logger::Level lvl) {
-    switch (lvl) {
-      case Logger::Level::VERBOSE:
-        return logger_->should_log(spdlog::level::debug);
-      case Logger::Level::ERR:
-        return logger_->should_log(spdlog::level::err);
+      case Logger::Level::WARN:
+        logger_->set_level(spdlog::level::warn);
+        break;
+      case Logger::Level::INFO:
+        logger_->set_level(spdlog::level::info);
+        break;
+      case Logger::Level::DBG:
+        logger_->set_level(spdlog::level::debug);
+        break;
+      case Logger::Level::TRACE:
+        logger_->set_level(spdlog::level::trace);
+        break;
     }
   }
 
@@ -161,7 +160,6 @@ class Logger {
 /** Global logger function. */
 Logger& global_logger();
 
-#ifdef TILEDB_VERBOSE
 /** Logs an error. */
 inline void LOG_ERROR(const std::string& msg) {
   global_logger().error(msg.c_str());
@@ -172,18 +170,6 @@ inline Status LOG_STATUS(const Status& st) {
   global_logger().error(st.to_string().c_str());
   return st;
 }
-#else
-/** Logs an error. */
-inline void LOG_ERROR(const std::string& msg) {
-  (void)msg;
-  return;
-}
-
-/** Logs a status. */
-inline Status LOG_STATUS(const Status& st) {
-  return st;
-}
-#endif
 
 /** Logs an error and exits with a non-zero status. */
 inline void LOG_FATAL(const std::string& msg) {

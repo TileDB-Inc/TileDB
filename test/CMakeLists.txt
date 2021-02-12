@@ -192,6 +192,7 @@ if (TILEDB_CPP_API)
     src/unit-cppapi-nullable.cc
     src/unit-cppapi-query.cc
     src/unit-cppapi-schema.cc
+    src/unit-cppapi-string-dims.cc
     src/unit-cppapi-subarray.cc
     src/unit-cppapi-type.cc
     src/unit-cppapi-updates.cc
@@ -219,6 +220,10 @@ if (TILEDB_ARROW_TESTS)
     src/unit-arrow.cc
     ${CMAKE_SOURCE_DIR}/tiledb/sm/cpp_api/arrow_io_impl.h
   )
+endif()
+
+if (TILEDB_VERBOSE)
+  add_definitions(-DTILEDB_VERBOSE)
 endif()
 
 # unit test executable
@@ -275,10 +280,6 @@ endif()
 
 if (TILEDB_GCS)
   target_compile_definitions(tiledb_unit PRIVATE -DHAVE_GCS)
-endif()
-
-if (TILEDB_MEMFS)
-  target_compile_definitions(tiledb_unit PRIVATE -DHAVE_MEMFS)
 endif()
 
 if (TILEDB_TBB)

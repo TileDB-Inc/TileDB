@@ -155,12 +155,7 @@ bool URI::is_gcs() const {
 }
 
 bool URI::is_memfs(const std::string& path) {
-#ifdef HAVE_MEMFS
   return utils::parse::starts_with(path, "mem://");
-#else
-  (const std::string) path;  // suppress unused parameter warning
-  return false;
-#endif
 }
 
 bool URI::is_memfs() const {

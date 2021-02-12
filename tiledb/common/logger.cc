@@ -59,12 +59,7 @@ Logger::Logger() {
   // text to log...
   logger_->set_pattern(
       "[%Y-%m-%d %H:%M:%S.%e] [%n] [Process: %P] [Thread: %t] [%l] %v");
-
-#ifdef TILEDB_VERBOSE
-  logger_->set_level(spdlog::level::err);
-#else
   logger_->set_level(spdlog::level::critical);
-#endif
 }
 
 Logger::~Logger() {

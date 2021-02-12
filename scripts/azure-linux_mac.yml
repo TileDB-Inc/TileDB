@@ -128,9 +128,6 @@ steps:
     if [[ "$TILEDB_GCS" == "ON" ]]; then
       bootstrap_args="${bootstrap_args} --enable-gcs";
     fi;
-    if [[ "$TILEDB_MEMFS" == "ON" ]]; then
-      bootstrap_args="${bootstrap_args} --enable-memfs";
-    fi;
     if [[ "$TILEDB_TBB" == "OFF" ]]; then
       bootstrap_args="${bootstrap_args} --disable-tbb";
     fi

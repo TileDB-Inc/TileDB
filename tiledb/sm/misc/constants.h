@@ -459,6 +459,12 @@ extern const uint32_t format_version;
 /** The maximum size of a tile chunk (unit of compression) in bytes. */
 extern const uint64_t max_tile_chunk_size;
 
+/**
+ * Maximum splitting depth on a string dimension. For a maximum depth
+ * of D, the maximum number of splits is 2^D.
+ */
+extern const uint64_t max_string_dim_split_depth;
+
 /** Maximum number of attempts to wait for an S3 response. */
 extern const unsigned int s3_max_attempts;
 

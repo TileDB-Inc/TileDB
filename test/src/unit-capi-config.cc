@@ -210,6 +210,11 @@ void check_save_to_file() {
 
   std::stringstream ss;
   ss << "config.env_var_prefix TILEDB_\n";
+#ifdef TILEDB_VERBOSE
+  ss << "config.logging_level 1\n";
+#else
+  ss << "config.logging_level 0\n";
+#endif
   ss << "rest.http_compressor any\n";
   ss << "rest.retry_count 3\n";
   ss << "rest.retry_delay_factor 1.25\n";
@@ -264,7 +269,7 @@ void check_save_to_file() {
   ss << "vfs.read_ahead_size 102400\n";
   ss << "vfs.s3.connect_max_tries 5\n";
   ss << "vfs.s3.connect_scale_factor 25\n";
-  ss << "vfs.s3.connect_timeout_ms 3000\n";
+  ss << "vfs.s3.connect_timeout_ms 10800\n";
   ss << "vfs.s3.logging_level Off\n";
   ss << "vfs.s3.max_parallel_ops " << std::thread::hardware_concurrency()
      << "\n";
@@ -440,6 +445,9 @@ TEST_CASE("C API: Test config iter", "[capi], [config]") {
   rc = tiledb_config_alloc(&config, &error);
   REQUIRE(rc == TILEDB_OK);
   CHECK(error == nullptr);
+  rc = tiledb_config_set(config, "config.logging_level", "2", &error);
+  CHECK(rc == TILEDB_OK);
+  CHECK(error == nullptr);
   rc = tiledb_config_set(config, "sm.tile_cache_size", "100", &error);
   CHECK(rc == TILEDB_OK);
   CHECK(error == nullptr);
@@ -463,6 +471,7 @@ TEST_CASE("C API: Test config iter", "[capi], [config]") {
   // Prepare maps
   std::map<std::string, std::string> all_param_values;
   all_param_values["config.env_var_prefix"] = "TILEDB_";
+  all_param_values["config.logging_level"] = "2";
   all_param_values["rest.server_address"] = "https://api.tiledb.com";
   all_param_values["rest.server_serialization_format"] = "CAPNP";
   all_param_values["rest.http_compressor"] = "any";
@@ -539,7 +548,7 @@ TEST_CASE("C API: Test config iter", "[capi], [config]") {
   all_param_values["vfs.s3.multipart_part_size"] = "5242880";
   all_param_values["vfs.s3.ca_file"] = "";
   all_param_values["vfs.s3.ca_path"] = "";
-  all_param_values["vfs.s3.connect_timeout_ms"] = "3000";
+  all_param_values["vfs.s3.connect_timeout_ms"] = "10800";
   all_param_values["vfs.s3.connect_max_tries"] = "5";
   all_param_values["vfs.s3.connect_scale_factor"] = "25";
   all_param_values["vfs.s3.logging_level"] = "Off";
@@ -596,7 +605,7 @@ TEST_CASE("C API: Test config iter", "[capi], [config]") {
   vfs_param_values["s3.multipart_part_size"] = "5242880";
   vfs_param_values["s3.ca_file"] = "";
   vfs_param_values["s3.ca_path"] = "";
-  vfs_param_values["s3.connect_timeout_ms"] = "3000";
+  vfs_param_values["s3.connect_timeout_ms"] = "10800";
   vfs_param_values["s3.connect_max_tries"] = "5";
   vfs_param_values["s3.connect_scale_factor"] = "25";
   vfs_param_values["s3.logging_level"] = "Off";
@@ -647,7 +656,7 @@ TEST_CASE("C API: Test config iter", "[capi], [config]") {
   s3_param_values["multipart_part_size"] = "5242880";
   s3_param_values["ca_file"] = "";
   s3_param_values["ca_path"] = "";
-  s3_param_values["connect_timeout_ms"] = "3000";
+  s3_param_values["connect_timeout_ms"] = "10800";
   s3_param_values["connect_max_tries"] = "5";
   s3_param_values["connect_scale_factor"] = "25";
   s3_param_values["logging_level"] = "Off";
