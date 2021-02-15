@@ -45,7 +45,6 @@ jobs:
               TILEDB_ARROW_TESTS: ON
               CXX: g++
             - config: ASAN
-              TILEDB_MEMFS: ON
               TILEDB_CI_ASAN: ON
               TILEDB_SERIALIZATION: ON
               CXX: g++-7
