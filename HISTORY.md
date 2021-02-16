@@ -25,10 +25,10 @@
 ## API additions
 
 ### C API
-* Removes non-default parameter in . [#2099](https://github.com/TileDB-Inc/TileDB/pull/2099)
+* Removes non-default parameter in tiledb_config_unset. [#2099](https://github.com/TileDB-Inc/TileDB/pull/2099)
 
 ### C++ API
-* Removes non-default parameter in . [#2099](https://github.com/TileDB-Inc/TileDB/pull/2099)
+* Removes non-default parameter in Config::unset. [#2099](https://github.com/TileDB-Inc/TileDB/pull/2099)
 * Add support for a string-typed, variable-sized, nullable attribute in the C++ API. [#2090](https://github.com/TileDB-Inc/TileDB/pull/2090)
 
 * Add new Config constructors for converting from STL map types [#2081](https://github.com/TileDB-Inc/TileDB/pull/2081)
