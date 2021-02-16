@@ -399,6 +399,42 @@ TEST_CASE("C API: Test config", "[capi], [config]") {
   CHECK(error == nullptr);
   CHECK(!strcmp(value, "10000000"));
 
+  // Set valid, defaulting parameter
+  rc = tiledb_config_set(config, "vfs.s3.region", "pluto", &error);
+  CHECK(rc == TILEDB_OK);
+  CHECK(error == nullptr);
+  rc = tiledb_config_get(config, "vfs.s3.region", &value, &error);
+  CHECK(rc == TILEDB_OK);
+  CHECK(error == nullptr);
+  CHECK(!strcmp(value, "pluto"));
+
+  // Unset valid, defaulting parameter
+  rc = tiledb_config_unset(config, "vfs.s3.region", &error);
+  CHECK(rc == TILEDB_OK);
+  CHECK(error == nullptr);
+  rc = tiledb_config_get(config, "vfs.s3.region", &value, &error);
+  CHECK(rc == TILEDB_OK);
+  CHECK(error == nullptr);
+  CHECK(!strcmp(value, "us-east-1"));
+
+  // Set valid, non-defaulting parameter
+  rc = tiledb_config_set(config, "foo", "123", &error);
+  CHECK(rc == TILEDB_OK);
+  CHECK(error == nullptr);
+  rc = tiledb_config_get(config, "foo", &value, &error);
+  CHECK(rc == TILEDB_OK);
+  CHECK(error == nullptr);
+  CHECK(!strcmp(value, "123"));
+
+  // Unset valid, non-defaulting parameter
+  rc = tiledb_config_unset(config, "foo", &error);
+  CHECK(rc == TILEDB_OK);
+  CHECK(error == nullptr);
+  rc = tiledb_config_get(config, "foo", &value, &error);
+  CHECK(rc == TILEDB_OK);
+  CHECK(error == nullptr);
+  CHECK(value == nullptr);
+
   // Check out of range argument for correct parameter
   rc = tiledb_config_set(
       config, "sm.tile_cache_size", "100000000000000000000", &error);

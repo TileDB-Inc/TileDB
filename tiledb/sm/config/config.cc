@@ -584,10 +584,9 @@ Status Config::unset(const std::string& param) {
   } else if (param == "vfs.hdfs.kerb_ticket_cache_path") {
     param_values_["vfs.hdfs.kerb_ticket_cache_path"] =
         VFS_HDFS_KERB_TICKET_CACHE_PATH;
+  } else {
+    param_values_.erase(param);
   }
-
-  // Remove from the set parameters
-  set_params_.erase(param);
 
   return Status::Ok();
 }
