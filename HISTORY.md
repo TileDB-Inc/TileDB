@@ -25,6 +25,7 @@
 ## API additions
 
 ### C API
+* Remove non-default parameter in tiledb_config_unset. [#2099](https://github.com/TileDB-Inc/TileDB/pull/2099)
 
 ### C++ API
 * Add support for a string-typed, variable-sized, nullable attribute in the C++ API. [#2090](https://github.com/TileDB-Inc/TileDB/pull/2090)
