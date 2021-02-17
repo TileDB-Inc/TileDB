@@ -44,6 +44,7 @@
 #include "tiledb/sm/array_schema/dimension.h"
 #include "tiledb/sm/array_schema/domain.h"
 #include "tiledb/sm/misc/utils.h"
+#include "tiledb/sm/query/query_condition.h"
 #include "tiledb/sm/query/reader.h"
 #include "tiledb/sm/query/validity_vector.h"
 #include "tiledb/sm/query/writer.h"
@@ -632,6 +633,14 @@ class Query {
    * layout for both reads and writes.
    */
   Status set_layout(Layout layout);
+
+  /**
+   * Sets the condition for filtering results in a read query.
+   *
+   * @param condition The condition object.
+   * @return Status
+   */
+  Status set_condition(const QueryCondition& condition);
 
   /**
    * This is applicable only to dense arrays (errors out for sparse arrays),

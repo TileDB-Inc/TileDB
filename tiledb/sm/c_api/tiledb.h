@@ -78,6 +78,22 @@ typedef enum {
 #undef TILEDB_QUERY_STATUS_ENUM
 } tiledb_query_status_t;
 
+/** Query condition operator. */
+typedef enum {
+/** Helper macro for defining query condition operator enums. */
+#define TILEDB_QUERY_CONDITION_OP_ENUM(id) TILEDB_##id
+#include "tiledb_enum.h"
+#undef TILEDB_QUERY_CONDITION_OP_ENUM
+} tiledb_query_condition_op_t;
+
+/** Query condition combination operator. */
+typedef enum {
+/** Helper macro for defining query condition combination operator enums. */
+#define TILEDB_QUERY_CONDITION_COMBINATION_OP_ENUM(id) TILEDB_##id
+#include "tiledb_enum.h"
+#undef TILEDB_QUERY_CONDITION_COMBINATION_OP_ENUM
+} tiledb_query_condition_combination_op_t;
+
 /** Filesystem type. */
 typedef enum {
 /** Helper macro for defining filesystem enums. */
@@ -516,6 +532,9 @@ typedef struct tiledb_filter_list_t tiledb_filter_list_t;
 
 /** A TileDB query. */
 typedef struct tiledb_query_t tiledb_query_t;
+
+/** A TileDB query condition object. */
+typedef struct tiledb_query_condition_t tiledb_query_condition_t;
 
 /** A virtual filesystem object. */
 typedef struct tiledb_vfs_t tiledb_vfs_t;
@@ -3762,6 +3781,28 @@ TILEDB_EXPORT int32_t tiledb_query_set_layout(
     tiledb_ctx_t* ctx, tiledb_query_t* query, tiledb_layout_t layout);
 
 /**
+ * Sets the query condition to be applied on a read.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * uint32_t value = 5;
+ * tiledb_query_condition_t* query_condition;
+ * tiledb_query_condition_alloc(
+ *   ctx, "longitude", &value, sizeof(value), TILEDB_LT, &query_condition);
+ * tiledb_query_set_condition(ctx, query, query_condition);
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param query The TileDB query.
+ * @param cond The TileDB query condition.
+ */
+TILEDB_EXPORT int32_t tiledb_query_set_condition(
+    tiledb_ctx_t* ctx,
+    tiledb_query_t* query,
+    const tiledb_query_condition_t* cond);
+
+/**
  * Flushes all internal state of a query object and finalizes the query.
  * This is applicable only to global layout writes. It has no effect for
  * any other query type.
@@ -4492,6 +4533,99 @@ TILEDB_EXPORT int32_t tiledb_query_get_fragment_timestamp_range(
     uint64_t idx,
     uint64_t* t1,
     uint64_t* t2);
+
+/* ****************************** */
+/*          QUERY CONDITION       */
+/* ****************************** */
+
+/**
+ * Allocates a TileDB query condition object.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * uint32_t value = 5;
+ * tiledb_query_condition_t* query_condition;
+ * tiledb_query_condition_alloc(
+ *   ctx, "longitude", &value, sizeof(value), TILEDB_LT, &query_condition);
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param attribute_name The attribute name.
+ * @param condition_value The value to compare against an attribute value.
+ * @param condition_value_size The byte size of `condition_value`.
+ * @param op The comparison operator.
+ * @param cond The allocated query condition object.
+ * @return `TILEDB_OK` for success and `TILEDB_OOM` or `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_query_condition_alloc(
+    tiledb_ctx_t* ctx,
+    const char* attribute_name,
+    const void* condition_value,
+    uint64_t condition_value_size,
+    tiledb_query_condition_op_t op,
+    tiledb_query_condition_t** cond);
+
+/**
+ * Frees a TileDB query condition object.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * uint32_t value = 5;
+ * tiledb_query_condition_t* query_condition;
+ * tiledb_query_condition_alloc(
+ *   ctx, "longitude", &value, sizeof(value), TILEDB_LT, &query_condition);
+ * tiledb_query_set_condition(ctx, query, query_condition);
+ * tiledb_query_submit(ctx, query);
+ * tiledb_query_condition_free(&query_condition);
+ * @endcode
+ *
+ * @param cond The query condition object to be freed.
+ */
+TILEDB_EXPORT void tiledb_query_condition_free(tiledb_query_condition_t** cond);
+
+/**
+ * Combines two query condition objects into a newly allocated
+ * condition. Does not mutate or free the input condition objects.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * uint32_t value_1 = 5;
+ * tiledb_query_condition_t* query_condition_1;
+ * tiledb_query_condition_alloc(
+ *   ctx, "longitude", &value_1, sizeof(value_1), TILEDB_LT,
+ * &query_condition_1); uint32_t value_2 = 20; tiledb_query_condition_t*
+ * query_condition_2; tiledb_query_condition_alloc( ctx, "latitude", &value_2,
+ * sizeof(value_2), TILEDB_GE, &query_condition_2);
+ *
+ * tiledb_query_condition_t* query_condition_3;
+ * tiledb_query_condition_combine(
+ *   ctx, query_condition_1, query_condition_2, TILEDB_AND, &query_condition_3);
+ *
+ * tiledb_query_condition_free(&query_condition_1);
+ * tiledb_query_condition_free(&query_condition_2);
+ *
+ * tiledb_query_set_condition(ctx, query, query_condition_3);
+ * tiledb_query_submit(ctx, query);
+ * tiledb_query_condition_free(&query_condition_3);
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param attribute_name The attribute name.
+ * @param condition_value The value to compare against an attribute value.
+ * @param condition_value_size The byte size of `condition_value`.
+ * @param op The comparison operator.
+ * @param cond The allocated query condition object.
+ * @return `TILEDB_OK` for success and `TILEDB_OOM` or `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_query_condition_combine(
+    tiledb_ctx_t* ctx,
+    const tiledb_query_condition_t* left_cond,
+    const tiledb_query_condition_t* right_cond,
+    tiledb_query_condition_combination_op_t combination_op,
+    tiledb_query_condition_t** combined_cond);
 
 /* ********************************* */
 /*               ARRAY               */

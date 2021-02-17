@@ -157,6 +157,7 @@ set(TILEDB_CORE_SOURCES
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/misc/win_constants.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/misc/work_arounds.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/query.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/query_condition.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/reader.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/result_tile.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/read_cell_slab_iter.cc

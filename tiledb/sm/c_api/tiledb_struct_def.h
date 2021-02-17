@@ -44,6 +44,7 @@
 #include "tiledb/sm/filter/filter_pipeline.h"
 #include "tiledb/sm/fragment/fragment_info.h"
 #include "tiledb/sm/query/query.h"
+#include "tiledb/sm/query/query_condition.h"
 #include "tiledb/sm/storage_manager/context.h"
 #include "tiledb/sm/subarray/subarray.h"
 #include "tiledb/sm/subarray/subarray_partitioner.h"
@@ -103,6 +104,10 @@ struct tiledb_filter_list_t {
 
 struct tiledb_query_t {
   tiledb::sm::Query* query_ = nullptr;
+};
+
+struct tiledb_query_condition_t {
+  tiledb::sm::QueryCondition* query_condition_ = nullptr;
 };
 
 struct tiledb_vfs_t {

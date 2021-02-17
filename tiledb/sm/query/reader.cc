@@ -340,6 +340,9 @@ Status Reader::complete_read_loop() {
 }
 
 Status Reader::read() {
+  // Check that the query condition is valid.
+  RETURN_NOT_OK(condition_.check(array_schema_));
+
   get_dim_attr_stats();
 
   STATS_START_TIMER(stats::Stats::TimerType::READ)
@@ -692,6 +695,12 @@ void Reader::set_fragment_metadata(
 Status Reader::set_layout(Layout layout) {
   layout_ = layout;
   subarray_.set_layout(layout);
+
+  return Status::Ok();
+}
+
+Status Reader::set_condition(const QueryCondition& condition) {
+  condition_ = condition;
 
   return Status::Ok();
 }
@@ -2092,6 +2101,9 @@ Status Reader::dense_read() {
       &result_tiles,
       &result_cell_slabs));
 
+  auto stride = array_schema_->domain()->stride<T>(subarray.layout());
+  apply_query_condition(&result_cell_slabs, result_tiles, stride);
+
   get_result_tile_stats(result_tiles);
   get_result_cell_stats(result_cell_slabs);
 
@@ -2099,7 +2111,6 @@ Status Reader::dense_read() {
   erase_coord_tiles(&sparse_result_tiles);
 
   // Needed when copying the cells
-  auto stride = array_schema_->domain()->stride<T>(subarray.layout());
   RETURN_NOT_OK(copy_attribute_values(stride, result_tiles, result_cell_slabs));
 
   // Fill coordinates if the user requested them
@@ -3132,6 +3143,8 @@ Status Reader::sparse_read() {
       compute_result_cell_slabs(result_coords, &result_cell_slabs));
   result_coords.clear();
 
+  apply_query_condition(&result_cell_slabs, result_tiles);
+
   get_result_tile_stats(result_tiles);
   get_result_cell_stats(result_cell_slabs);
 
@@ -3200,30 +3213,175 @@ Status Reader::copy_coordinates(
   STATS_END_TIMER(stats::Stats::TimerType::READ_COPY_COORDS);
 }
 
-Status Reader::copy_attribute_values(
-    const uint64_t stride,
+Status Reader::apply_query_condition(
+    std::vector<ResultCellSlab>* const result_cell_slabs,
     const std::vector<ResultTile*>& result_tiles,
-    const std::vector<ResultCellSlab>& result_cell_slabs) {
-  STATS_START_TIMER(stats::Stats::TimerType::READ_COPY_ATTR_VALUES);
-
-  if (result_cell_slabs.empty() && result_tiles.empty()) {
-    zero_out_buffer_sizes();
+    uint64_t stride) {
+  if (condition_.empty() || result_cell_slabs->empty())
     return Status::Ok();
+
+  // To evaluate the query condition, we need to read tiles for the
+  // attributes used in the query condition. Build a map of attribute
+  // names to read.
+  const std::unordered_set<std::string>& condition_names =
+      condition_.field_names();
+  std::unordered_map<std::string, ProcessTileFlags> names;
+  for (const auto& condition_name : condition_names) {
+    names[condition_name] = ProcessTileFlag::READ;
   }
 
+  // Each element in `names` has been flagged with `ProcessTileFlag::READ`.
+  // This will read the tiles, but will not copy them into the user buffers.
+  process_tiles(names, result_tiles, *result_cell_slabs, stride);
+
+  // The `UINT64_MAX` is a sentinel value to indicate that we do not
+  // use a stride in the cell index calculation. To simplify our logic,
+  // assign this to `1`.
+  if (stride == UINT64_MAX)
+    stride = 1;
+
+  // We will iterate through each cell in `result_cell_slabs` to determine
+  // which cells need to be filtered. If we are omitting a cell, we will split
+  // the range it resides in to create two ranges that skip the omitted cell.
+  // We will store the new cell slabs ranges on `rcs_partitions`. We process
+  // the cells concurrently. To avoid contention on a single vector of
+  // `ResultCellSlab` instances, we will assign a vector to each thread in the
+  // thread pool.
+  const size_t num_rcs_partitions =
+      global_state::GlobalState::GetGlobalState().tbb_threads() > 0 ?
+          global_state::GlobalState::GetGlobalState().tbb_threads() :
+          storage_manager_->compute_tp()->concurrency_level();
+  assert(num_rcs_partitions > 0);
+
+  std::vector<std::vector<ResultCellSlab>> rcs_partitions;
+  rcs_partitions.resize(num_rcs_partitions);
+  const size_t rcs_partition_size =
+      result_cell_slabs->size() / num_rcs_partitions;
+  for (auto& rcs_partition : rcs_partitions) {
+    rcs_partition.reserve(rcs_partition_size);
+  }
+
+  // Apply the query condition to each result cell slab partition.
+  const auto statuses = parallel_for(
+      storage_manager_->compute_tp(),
+      0,
+      num_rcs_partitions,
+      [this, &rcs_partitions, rcs_partition_size, result_cell_slabs, stride](
+          const uint64_t p) {
+        std::vector<ResultCellSlab>* const rcs_partition = &rcs_partitions[p];
+
+        const size_t partition_start = p * rcs_partition_size;
+        const size_t partition_end = (p == (rcs_partitions.size() - 1)) ?
+                                         result_cell_slabs->size() :
+                                         partition_start + rcs_partition_size;
+
+        return apply_query_condition_partition(
+            rcs_partition,
+            partition_start,
+            partition_end,
+            *result_cell_slabs,
+            stride);
+      });
+
+  for (const auto& st : statuses)
+    RETURN_NOT_OK(st);
+
+  // Calculate the total number of result cell slabs.
+  uint64_t num_rcs = 0;
+  for (const auto& rcs_partition : rcs_partitions) {
+    num_rcs += rcs_partition.size();
+  }
+
+  // Concatenate all of the result cell slabs in the partitions
+  // into `result_cell_slabs`.
+  *result_cell_slabs = std::move(rcs_partitions[0]);
+  result_cell_slabs->reserve(num_rcs);
+  for (size_t p = 1; p < rcs_partitions.size(); ++p) {
+    std::vector<ResultCellSlab>* const rcs_partition = &rcs_partitions[p];
+    result_cell_slabs->insert(
+        result_cell_slabs->end(),
+        std::make_move_iterator(rcs_partition->begin()),
+        std::make_move_iterator(rcs_partition->end()));
+  }
+
+  return Status::Ok();
+}
+
+Status Reader::apply_query_condition_partition(
+    std::vector<ResultCellSlab>* const rcs_partition,
+    const size_t partition_start,
+    const size_t partition_end,
+    const std::vector<ResultCellSlab>& result_cell_slabs,
+    const uint64_t stride) {
+  // TODO handle tile == nullptr (empty range)
+
+  for (size_t r = partition_start; r < partition_end; ++r) {
+    const ResultCellSlab& rcs = result_cell_slabs.at(r);
+    ResultTile* const tile = rcs.tile_;
+    const uint64_t start = rcs.start_;
+    const uint64_t length = rcs.length_;
+
+    // Handle an empty range.
+    if (tile == nullptr) {
+      bool cmp;
+      condition_.cmp_cell_fill_value(array_schema_, &cmp);
+      if (cmp) {
+        rcs_partition->emplace_back(tile, start, length);
+      }
+    } else {
+      // Start the pending result cell slab at the start position
+      // of the current result cell slab.
+      uint64_t pending_start = start;
+
+      // Iterate through each cell in this slab.
+      uint64_t c;
+      for (c = 0; c < length; ++c) {
+        bool cmp;
+        RETURN_NOT_OK(condition_.cmp_cell(
+            array_schema_, tile, start + (stride * c), &cmp));
+
+        if (!cmp) {
+          // Create a result cell slab if there are pending cells.
+          if (pending_start != start + c) {
+            const uint64_t rcs_start =
+                start + ((pending_start - start) * stride);
+            const uint64_t rcs_length = c - (pending_start - start);
+            rcs_partition->emplace_back(tile, rcs_start, rcs_length);
+          }
+
+          // Set the start of the pending result cell slab.
+          pending_start = start + c + 1;
+        }
+      }
+
+      // Create the final result cell slab if there are pending cells.
+      if (pending_start != start + c) {
+        const uint64_t rcs_start = start + ((pending_start - start) * stride);
+        const uint64_t rcs_length = c - (pending_start - start);
+        rcs_partition->emplace_back(tile, rcs_start, rcs_length);
+      }
+    }
+  }
+
+  return Status::Ok();
+}
+
+std::unordered_map<ResultTile*, std::vector<std::pair<uint64_t, uint64_t>>>
+Reader::compute_rcs_ranges(
+    const std::vector<ResultCellSlab>& result_cell_slabs) const {
   // Build an association from the result tile to the cell slab ranges
   // that it contains.
   std::unordered_map<ResultTile*, std::vector<std::pair<uint64_t, uint64_t>>>
-      cs_ranges;
+      rcs_ranges;
   std::vector<ResultCellSlab>::const_iterator it = result_cell_slabs.cbegin();
   while (it != result_cell_slabs.cend()) {
     std::pair<uint64_t, uint64_t> range =
         std::make_pair(it->start_, it->start_ + it->length_);
-    if (cs_ranges.find(it->tile_) == cs_ranges.end()) {
+    if (rcs_ranges.find(it->tile_) == rcs_ranges.end()) {
       std::vector<std::pair<uint64_t, uint64_t>> ranges(1, std::move(range));
-      cs_ranges.insert(std::make_pair(it->tile_, std::move(ranges)));
+      rcs_ranges.insert(std::make_pair(it->tile_, std::move(ranges)));
     } else {
-      cs_ranges[it->tile_].emplace_back(std::move(range));
+      rcs_ranges[it->tile_].emplace_back(std::move(range));
     }
     ++it;
   }
@@ -3242,7 +3400,7 @@ Status Reader::copy_attribute_values(
     };
 
     // Sort each range, per tile.
-    for (auto& kv : cs_ranges) {
+    for (auto& kv : rcs_ranges) {
       parallel_sort(
           storage_manager_->compute_tp(),
           kv.second.begin(),
@@ -3251,25 +3409,35 @@ Status Reader::copy_attribute_values(
     }
   }
 
-  // Build a list of attribute names to copy.
-  std::vector<std::string> names;
-  for (const auto& it : buffers_) {
-    const auto& name = it.first;
-    if (read_state_.overflowed_)
-      break;
-    if (name == constants::coords || array_schema_->is_dim(name))
-      continue;
+  return rcs_ranges;
+}
 
-    names.emplace_back(name);
+Status Reader::process_tiles(
+    const std::unordered_map<std::string, ProcessTileFlags>& names,
+    const std::vector<ResultTile*>& result_tiles,
+    const std::vector<ResultCellSlab>& result_cell_slabs,
+    const uint64_t stride) {
+  // If a name needs to be read, we put it on `read_names` vector (it may
+  // contain other flags). Otherwise, we put the name on the `copy_names`
+  // vector if it needs to be copied back to the user buffer.
+  // We can benefit from concurrent reads by processing `read_names`
+  // separately from `copy_names`.
+  std::vector<std::string> read_names;
+  std::vector<std::string> copy_names;
+  read_names.reserve(names.size());
+  for (const auto& name_pair : names) {
+    const std::string name = name_pair.first;
+    const ProcessTileFlags flags = name_pair.second;
+    if (flags & ProcessTileFlag::READ) {
+      read_names.push_back(name);
+    } else if (flags & ProcessTileFlag::COPY) {
+      copy_names.push_back(name);
+    }
   }
 
-  // Pre-load all attribute offsets into memory.
-  load_tile_offsets(names);
-
-  // Instantiate context caches for copying fixed and variable
-  // cells.
-  CopyFixedCellsContextCache fixed_ctx_cache;
-  CopyVarCellsContextCache var_ctx_cache;
+  // Pre-load all attribute offsets into memory for attributes
+  // to be read.
+  load_tile_offsets(read_names);
 
   // Get the maximum number of attribute to read and unfilter in parallel.
   // Each attribute requires additional memory to buffer reads into
@@ -3280,18 +3448,41 @@ Status Reader::copy_attribute_values(
   // this number will have diminishing returns on performance.
   const uint64_t concurrent_reads = constants::concurrent_attr_reads;
 
+  // Instantiate context caches for copying fixed and variable
+  // cells.
+  CopyFixedCellsContextCache fixed_ctx_cache;
+  CopyVarCellsContextCache var_ctx_cache;
+
+  // TODO comment
+  for (const auto& copy_name : copy_names) {
+    // TODO refactor to separate function
+    if (!array_schema_->var_size(copy_name))
+      RETURN_CANCEL_OR_ERROR(copy_fixed_cells(
+          copy_name, stride, result_cell_slabs, &fixed_ctx_cache));
+    else
+      RETURN_CANCEL_OR_ERROR(
+          copy_var_cells(copy_name, stride, result_cell_slabs, &var_ctx_cache));
+    clear_tiles(copy_name, result_tiles);
+  }
+
+  // If there are no
+  if (read_names.empty())
+    return Status::Ok();
+
+  const auto rcs_ranges = compute_rcs_ranges(result_cell_slabs);
+
   // Iterate through all of the attribute names. This loop
   // will read, unfilter, and copy tiles back into the `buffers_`.
-  uint64_t names_idx = 0;
-  while (names_idx < names.size()) {
+  uint64_t idx = 0;
+  while (idx < read_names.size()) {
     // We will perform `concurrent_reads` unless we have a smaller
     // number of remaining attributes to process.
     const uint64_t num_reads =
-        std::min(concurrent_reads, names.size() - names_idx);
+        std::min(concurrent_reads, read_names.size() - idx);
 
     // Build a vector of the attribute names to process.
     std::vector<std::string> inner_names(
-        names.begin() + names_idx, names.begin() + names_idx + num_reads);
+        read_names.begin() + idx, read_names.begin() + idx + num_reads);
 
     // Read the tiles for the names in `inner_names`. Each attribute
     // name will be read concurrently.
@@ -3303,18 +3494,67 @@ Status Reader::copy_attribute_values(
     // separate threads.
     for (const auto& inner_name : inner_names) {
       RETURN_CANCEL_OR_ERROR(
-          unfilter_tiles(inner_name, result_tiles, &cs_ranges));
-      if (!array_schema_->var_size(inner_name))
-        RETURN_CANCEL_OR_ERROR(copy_fixed_cells(
-            inner_name, stride, result_cell_slabs, &fixed_ctx_cache));
-      else
-        RETURN_CANCEL_OR_ERROR(copy_var_cells(
-            inner_name, stride, result_cell_slabs, &var_ctx_cache));
-      clear_tiles(inner_name, result_tiles);
+          unfilter_tiles(inner_name, result_tiles, &rcs_ranges));
+
+      const ProcessTileFlags flags = names.at(inner_name);
+      if (flags & ProcessTileFlag::COPY) {
+        // TODO refactor to separate function
+        if (!array_schema_->var_size(inner_name)) {
+          RETURN_CANCEL_OR_ERROR(copy_fixed_cells(
+              inner_name, stride, result_cell_slabs, &fixed_ctx_cache));
+        } else {
+          RETURN_CANCEL_OR_ERROR(copy_var_cells(
+              inner_name, stride, result_cell_slabs, &var_ctx_cache));
+        }
+        clear_tiles(inner_name, result_tiles);
+      }
     }
 
-    names_idx += inner_names.size();
+    idx += inner_names.size();
   }
+
+  return Status::Ok();
+}
+
+Status Reader::copy_attribute_values(
+    const uint64_t stride,
+    const std::vector<ResultTile*>& result_tiles,
+    const std::vector<ResultCellSlab>& result_cell_slabs) {
+  STATS_START_TIMER(stats::Stats::TimerType::READ_COPY_ATTR_VALUES);
+
+  if (result_cell_slabs.empty() && result_tiles.empty()) {
+    zero_out_buffer_sizes();
+    return Status::Ok();
+  }
+
+  const std::unordered_set<std::string>& condition_names =
+      condition_.field_names();
+
+  // Build a set of attribute names to process.
+  std::unordered_map<std::string, ProcessTileFlags> names;
+  for (const auto& it : buffers_) {
+    const auto& name = it.first;
+
+    if (read_state_.overflowed_) {
+      break;
+    }
+
+    if (name == constants::coords || array_schema_->is_dim(name)) {
+      continue;
+    }
+
+    // If the query condition has a clause for `name`, we will only
+    // flag it to copy because we have already preloaded the offsets
+    // and read the tiles in `apply_query_condition`.
+    ProcessTileFlags flags = ProcessTileFlag::COPY;
+    if (condition_names.count(name) == 0) {
+      flags |= ProcessTileFlag::READ;
+    }
+
+    names[name] = flags;
+  }
+
+  RETURN_NOT_OK(process_tiles(names, result_tiles, result_cell_slabs, stride));
 
   return Status::Ok();
   STATS_END_TIMER(stats::Stats::TimerType::READ_COPY_ATTR_VALUES);
