@@ -10,18 +10,26 @@
 
 ## Improvements
 
-* Add additional stats printing to breakdown read state initialization timings [#2095](https://github.com/TileDB-Inc/TileDB/pull/2095)
-* Improve GCS multipart locking [#2087](https://github.com/TileDB-Inc/TileDB/pull/2087)
-
 ## Deprecations
 
 ## Bug fixes
-* Fix an edge-case where a read query may hang on array with string dimensions [#2089](https://github.com/TileDB-Inc/TileDB/pull/2089)
-* Fix mutex locking bugs on Windows due to unlocking on different thread and missing task join [#2077](https://github.com/TileDB-Inc/TileDB/pull/2077)
 
 ## API additions
 
 ### C API
+
+### C++ API
+
+# TileDB v2.2.4 Release Notes
+
+## Improvements
+
+* Add additional stats printing to breakdown read state initialization timings [#2095](https://github.com/TileDB-Inc/TileDB/pull/2095)
+* Improve GCS multipart locking [#2087](https://github.com/TileDB-Inc/TileDB/pull/2087)
+
+## Bug fixes
+* Fix an edge-case where a read query may hang on array with string dimensions [#2089](https://github.com/TileDB-Inc/TileDB/pull/2089)
+* Fix mutex locking bugs on Windows due to unlocking on different thread and missing task join [#2077](https://github.com/TileDB-Inc/TileDB/pull/2077)
 
 ### C++ API
 * Add support for a string-typed, variable-sized, nullable attribute in the C++ API. [#2090](https://github.com/TileDB-Inc/TileDB/pull/2090)
