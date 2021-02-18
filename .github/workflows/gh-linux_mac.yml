@@ -20,11 +20,10 @@ jobs:
       fail-fast: false
       matrix:
           os: [ubuntu-16.04, macOS-10.14]
-          config: [S3, GCS, AZURE, HDFS, ASAN, SERIALIZATION]
+          config: [S3, GCS, AZURE, HDFS, SERIALIZATION]
           exclude:
             - {os: macOS-10.14, config: AZURE}
             - {os: macOS-10.14, config: HDFS}
-            - {os: macOS-10.14, config: ASAN}
             - {os: macOS-10.14, config: SERIALIZATION}
           include:
             - config: S3
@@ -44,10 +43,10 @@ jobs:
               TILEDB_STATIC: OFF
               TILEDB_ARROW_TESTS: ON
               CXX: g++
-            - config: ASAN
-              TILEDB_CI_ASAN: ON
-              TILEDB_SERIALIZATION: ON
-              CXX: g++-7
+#            - config: ASAN
+#              TILEDB_CI_ASAN: ON
+#              TILEDB_SERIALIZATION: ON
+#              CXX: g++-7
             - config: SERIALIZATION
               TILEDB_SERIALIZATION: ON
               TILEDB_S3: ON
@@ -81,6 +80,20 @@ jobs:
           fi
         shell: bash
 
+      - name: Check formatting (linux only)'
+        run: |
+            set -e pipefail
+            # Install clang-format (v5.0)
+            ls -la
+            sudo ./scripts/install-clangformat.sh
+            src=$GITHUB_WORKSPACE
+            cd $src
+            $src/scripts/run-clang-format.sh $src clang-format-5.0 0 \
+              $(find $src/tiledb $src/test/src $src/examples $src/tools \
+               -name "*.cc" -or -name "*.c" -or -name "*.h")
+        shell: bash
+        if: ${{ runner.os == 'Linux' }}
+
       - name: 'Install doxygen (linux only)'
         run: |
           set -e pipefail
@@ -96,20 +109,6 @@ jobs:
           sudo installer -pkg /Library/Developer/CommandLineTools/Packages/macOS_SDK_headers_for_macOS_10.14.pkg -allowUntrusted -target /
         shell: bash
         if: ${{ runner.os == 'macOS' && env.imageName == 'macOS-10.14' }}
-
-      - name: Check formatting (linux only)'
-        run: |
-          set -e pipefail
-          # Install clang-format (v5.0)
-          ls -la
-          sudo ./scripts/install-clangformat.sh
-          src=$GITHUB_WORKSPACE
-          cd $src
-          $src/scripts/run-clang-format.sh $src clang-format-5.0 0 \
-            $(find $src/tiledb $src/test/src $src/examples $src/tools \
-             -name "*.cc" -or -name "*.c" -or -name "*.h")
-        shell: bash
-        if: ${{ runner.os == 'Linux' }}
 
       - name: 'Build and test libtiledb'
         id: test
@@ -268,9 +267,9 @@ jobs:
 
           # - bash: |
           if [[ "${{ matrix.TILEDB_GCS }}" != "ON" ]]; then
-            pushd $BUILD_REPOSITORY_LOCALPATH/examples/cmake_project
+            pushd $GITHUB_WORKSPACE/examples/cmake_project
             mkdir build && cd build
-            cmake -DCMAKE_PREFIX_PATH=$BUILD_REPOSITORY_LOCALPATH/dist .. && make
+            cmake -DCMAKE_PREFIX_PATH=$GITHUB_WORKSPACE/dist .. && make
             ./ExampleExe
             if [[ "${{ matrix.TILEDB_STATIC }}" == "ON" ]]; then
               ./ExampleExe_static
