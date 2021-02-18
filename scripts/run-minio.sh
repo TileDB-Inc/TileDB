@@ -66,8 +66,6 @@ run() {
 
   mkdir -p /tmp/minio-data
   cp -f -r $DIR/../test/inputs/test_certs /tmp/minio-data
-  echo "OSTYPE"
-  echo $OSTYPE
   if [[ $OSTYPE == darwin* ]]; then
     run_cask_minio
   else
