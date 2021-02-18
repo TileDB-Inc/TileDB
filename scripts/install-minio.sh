@@ -51,8 +51,6 @@ install_brew_pkgs() {
 }
 
 install_deps() {
-  echo "OSTYPE"
-  echo $OSTYPE
   if [[ $OSTYPE == linux* ]]; then
     if [ -n "$(command -v apt-get)" ]; then
       install_apt_pkgs
