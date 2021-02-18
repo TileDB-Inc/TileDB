@@ -1,10 +1,10 @@
 name: builds
 on:
   push:
-#    branches:
-#      - dev
-#      - release-*
-#      - refs/tags/*
+    branches:
+      - dev
+      - release-*
+      - refs/tags/*
   pull_request:
     branches:
       - '*'  # must quote since "*" is a YAML reserved character; we want a string
