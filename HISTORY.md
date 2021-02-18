@@ -10,7 +10,7 @@
 * Smoke Test, remove nullable structs from global namespace. [#2078](https://github.com/TileDB-Inc/TileDB/pull/2078)
 
 ## Improvements
-* This PR concerns the migration of CI Azure Pipelines in GA described [here](https://app.clubhouse.io/tiledb-inc/story/4844/migrate-ci-to-github-actions) [#2022](https://github.com/TileDB-Inc/TileDB/pull/2022)
+* Migrating CI AZP in GA described [here](https://app.clubhouse.io/tiledb-inc/story/4844/migrate-ci-to-github-actions) [#2022](https://github.com/TileDB-Inc/TileDB/pull/2022)
 * Add additional stats printing to breakdown read state initialization timings [#2095](https://github.com/TileDB-Inc/TileDB/pull/2095)
 * Places the in-memory filesystem under unit test [#1961](https://github.com/TileDB-Inc/TileDB/pull/1961)
 * Adds a Github Action to automate the HISTORY.md [#2075](https://github.com/TileDB-Inc/TileDB/pull/2075)
