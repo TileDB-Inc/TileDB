@@ -246,7 +246,8 @@ jobs:
             echo ::set-output name=TILEDB_CI_SUCCESS::1
           else
             # Bypass Catch2 Framework stdout interception with awk on test output
-            make check | awk '/1: ::set-output/{sub(/.*1: /, ""); print; next} 1'
+            # make check | awk '/1: ::set-output/{sub(/.*1: /, ""); print; next} 1'
+            ./tiledb_unit -d yes | awk '/1: ::set-output/{sub(/.*1: /, ""); print; next} 1'
           fi
           # Kill the running Minio server, OSX only because Linux runs it within
           # docker.
