@@ -478,6 +478,9 @@ TILEDB_EXPORT void tiledb_version(int32_t* major, int32_t* minor, int32_t* rev);
 /** An array object. */
 typedef struct tiledb_array_t tiledb_array_t;
 
+/** A subarray object. */
+typedef struct tiledb_subarray_t tiledb_subarray_t;
+
 /** A generic buffer object. */
 typedef struct tiledb_buffer_t tiledb_buffer_t;
 
@@ -3393,8 +3396,50 @@ TILEDB_EXPORT int32_t tiledb_query_set_config(
  *     if the user sets the layout to `TILEDB_UNORDERED` **after**
  *     the subarray has been set, the subarray will simply be ignored.
  */
-TILEDB_EXPORT int32_t tiledb_query_set_subarray(
+TILEDB_DEPRECATED TILEDB_EXPORT int32_t tiledb_query_set_subarray(
     tiledb_ctx_t* ctx, tiledb_query_t* query, const void* subarray);
+
+/**
+ * Indicates that the query will write or read a subarray, and provides
+ * the appropriate information.
+ *
+ * **Example:**
+ *
+ * //...The following sets a 2D subarray [0,10], [20, 30] to the query.
+ *
+ * @code{.c}
+ * //...uint64_t subarray[] = { 0, 10, 20, 30};
+ * tiledb_subarray_t *subarray; // already alloc'd/init'd
+ * tiledb_query_set_subarray(ctx, query, subarray);
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param query The TileDB query.
+ * @param subarray The subarray by which the array read/write will be
+ *     constrained. It should be a sequence of [low, high] pairs (one
+ *     pair per dimension). For the case of writes, this is meaningful only
+ *     for dense arrays, and specifically dense writes. Note that `subarray`
+ *     must have the same type as the domain.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ *
+ * @note If you set the subarray of a completed, incomplete or in-progress
+ *     query, this function will clear the internal state and render it
+ *     as uninitialized. However, the potentially set layout and attribute
+ *     buffers will be retained. This is useful when the user wishes to
+ *     fix the attributes and layout, but explore different subarrays with
+ *     the same `tiledb_query_t` object (i.e., without having to create
+ *     a new object).
+ *
+ * @note Setting the subarray in sparse writes is meaningless and, thus,
+ *     this function will error in the following two cases, provided that
+ *     this is a write query:
+ *     (i) the array is sparse, and (ii) the array is dense and the
+ *     layout has been set to `TILEDB_UNORDERED`. In the second case,
+ *     if the user sets the layout to `TILEDB_UNORDERED` **after**
+ *     the subarray has been set, the subarray will simply be ignored.
+ */
+TILEDB_EXPORT int32_t tiledb_query_set_subarray_v2(
+    tiledb_ctx_t* ctx, tiledb_query_t* query, tiledb_subarray_t* const subarray);
 
 /**
  * Sets the buffer for a fixed-sized attribute/dimension to a query, which will
@@ -3987,9 +4032,44 @@ TILEDB_EXPORT int32_t tiledb_query_get_array(
  * @note The stride is currently unsupported. Use `nullptr` as the
  *     stride argument.
  */
-TILEDB_EXPORT int32_t tiledb_query_add_range(
+TILEDB_DEPRECATED_EXPORT 
+/*TILEDB_EXPORT*/ int32_t tiledb_query_add_range(
     tiledb_ctx_t* ctx,
     tiledb_query_t* query,
+    uint32_t dim_idx,
+    const void* start,
+    const void* end,
+    const void* stride);
+
+/**
+ * Adds a 1D range along a subarray dimension index, which is in the form
+ * (start, end, stride). The datatype of the range components
+ * must be the same as the type of the domain of the array in the query.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+   tiledb_subarray_t **subarray; // be sure already allocated/init'd
+ * uint32_t dim_idx = 2;
+ * int64_t start = 10;
+ * int64_t end = 20;
+ * tiledb_subarray_add_range(ctx, subarray, dim_idx, &start, &end, nullptr);
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param query The subarray to add the range to.
+ * @param dim_idx The index of the dimension to add the range to.
+ * @param start The range start.
+ * @param end The range end.
+ * @param stride The range stride.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ *
+ * @note The stride is currently unsupported. Use `nullptr` as the
+ *     stride argument.
+ */
+TILEDB_EXPORT int32_t tiledb_subarray_add_range(
+    tiledb_ctx_t* ctx,
+    tiledb_subarray_t* subarray,
     uint32_t dim_idx,
     const void* start,
     const void* end,
@@ -4029,6 +4109,39 @@ TILEDB_EXPORT int32_t tiledb_query_add_range_by_name(
     const void* stride);
 
 /**
+ * Adds a 1D range along a subarray dimension name, which is in the form
+ * (start, end, stride). The datatype of the range components
+ * must be the same as the type of the domain of the array in the query.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * uint32_t dim_name = "rows";
+ * int64_t start = 10;
+ * int64_t end = 20;
+ * tiledb_subarray_add_range_by_name(ctx, subarray, dim_name, &start, &end, nullptr);
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param subarray The subarray to add the range to.
+ * @param dim_name The name of the dimension to add the range to.
+ * @param start The range start.
+ * @param end The range end.
+ * @param stride The range stride.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ *
+ * @note The stride is currently unsupported. Use `nullptr` as the
+ *     stride argument.
+ */
+TILEDB_EXPORT int32_t tiledb_subarray_add_range_by_name(
+    tiledb_ctx_t* ctx,
+    tiledb_subarray_t* subarray,
+    const char* dim_name,
+    const void* start,
+    const void* end,
+    const void* stride);
+
+/**
  * Adds a 1D variable-sized range along a subarray dimension index, which is in
  * the form (start, end). Applicable only to variable-sized dimensions.
  *
@@ -4053,6 +4166,37 @@ TILEDB_EXPORT int32_t tiledb_query_add_range_by_name(
 TILEDB_EXPORT int32_t tiledb_query_add_range_var(
     tiledb_ctx_t* ctx,
     tiledb_query_t* query,
+    uint32_t dim_idx,
+    const void* start,
+    uint64_t start_size,
+    const void* end,
+    uint64_t end_size);
+
+/**
+ * Adds a 1D variable-sized range along a subarray dimension index, which is in
+ * the form (start, end). Applicable only to variable-sized dimensions.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * uint32_t dim_idx = 2;
+ * char start[] = "a";
+ * char end[] = "bb";
+ * tiledb_subarray_add_range_var(ctx, subarray, dim_idx, start, 1, end, 2);
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param subarray The subarray to add the range to.
+ * @param dim_idx The index of the dimension to add the range to.
+ * @param start The range start.
+ * @param start_size The size of the range start in bytes.
+ * @param end The range end.
+ * @param end_size The size of the range end in bytes.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_subarray_add_range_var(
+    tiledb_ctx_t* ctx,
+    tiledb_subarray_t* subarray,
     uint32_t dim_idx,
     const void* start,
     uint64_t start_size,
@@ -4091,6 +4235,37 @@ TILEDB_EXPORT int32_t tiledb_query_add_range_var_by_name(
     uint64_t end_size);
 
 /**
+ * Adds a 1D variable-sized range along a subarray dimension name, which is in
+ * the form (start, end). Applicable only to variable-sized dimensions.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * uint32_t dim_name = "rows";
+ * char start[] = "a";
+ * char end[] = "bb";
+ * tiledb_subarray_add_range_var_by_name(ctx, subarray, dim_name, start, 1, end, 2);
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param subarray The subarray to add the range to.
+ * @param dim_name The name of the dimension to add the range to.
+ * @param start The range start.
+ * @param start_size The size of the range start in bytes.
+ * @param end The range end.
+ * @param end_size The size of the range end in bytes.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_subarray_add_range_var_by_name(
+    tiledb_ctx_t* ctx,
+    tiledb_subarray_t* subarray,
+    const char* dim_name,
+    const void* start,
+    uint64_t start_size,
+    const void* end,
+    uint64_t end_size);
+
+/**
  * Retrieves the number of ranges of the query subarray along a given dimension
  * index.
  *
@@ -4115,6 +4290,29 @@ TILEDB_EXPORT int32_t tiledb_query_get_range_num(
 
 /**
  * Retrieves the number of ranges of the query subarray along a given dimension
+ * index.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * uint64_t range_num;
+ * tiledb_subarray_get_range_num(ctx, subarray, dim_idx, &range_num);
+ * @endcode
+ *
+ * @param ctx The TileDB context
+ * @param subarray The subarray.
+ * @param dim_idx The index of the dimension whose range number to retrieve.
+ * @param range_num The number of ranges to retrieve.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_subarray_get_range_num(
+    tiledb_ctx_t* ctx,
+    const tiledb_subarray_t* subarray,
+    uint32_t dim_idx,
+    uint64_t* range_num);
+
+/**
+ * Retrieves the number of ranges of the query subarray along a given dimension
  * name.
  *
  * **Example:**
@@ -4133,6 +4331,29 @@ TILEDB_EXPORT int32_t tiledb_query_get_range_num(
 TILEDB_EXPORT int32_t tiledb_query_get_range_num_from_name(
     tiledb_ctx_t* ctx,
     const tiledb_query_t* query,
+    const char* dim_name,
+    uint64_t* range_num);
+
+/**
+ * Retrieves the number of ranges of the query subarray along a given dimension
+ * name.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * uint64_t range_num;
+ * tiledb_query_get_range_num_from_name(ctx, query, dim_name, &range_num);
+ * @endcode
+ *
+ * @param ctx The TileDB context
+ * @param query The query.
+ * @param dim_name The name of the dimension whose range number to retrieve.
+ * @param range_num The number of ranges to retrieve.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_subarray_get_range_num_from_name(
+    tiledb_ctx_t* ctx,
+    const tiledb_subarray_t* subarray,
     const char* dim_name,
     uint64_t* range_num);
 
@@ -4162,6 +4383,38 @@ TILEDB_EXPORT int32_t tiledb_query_get_range_num_from_name(
 TILEDB_EXPORT int32_t tiledb_query_get_range(
     tiledb_ctx_t* ctx,
     const tiledb_query_t* query,
+    uint32_t dim_idx,
+    uint64_t range_idx,
+    const void** start,
+    const void** end,
+    const void** stride);
+
+/**
+ * Retrieves a specific range of the query subarray along a given dimension
+ * index.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * const void* start;
+ * const void* end;
+ * const void* stride;
+ * tiledb_subarray_get_range(
+ *     ctx, subarray, dim_idx, range_idx, &start, &end, &stride);
+ * @endcode
+ *
+ * @param ctx The TileDB context
+ * @param subarray The subarray.
+ * @param dim_idx The index of the dimension to retrieve the range from.
+ * @param range_idx The index of the range to retrieve.
+ * @param start The range start to retrieve.
+ * @param end The range end to retrieve.
+ * @param stride The range stride to retrieve.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_subarray_get_range(
+    tiledb_ctx_t* ctx,
+    const tiledb_subarray_t* subarray,
     uint32_t dim_idx,
     uint64_t range_idx,
     const void** start,
@@ -4201,6 +4454,38 @@ TILEDB_EXPORT int32_t tiledb_query_get_range_from_name(
     const void** stride);
 
 /**
+ * Retrieves a specific range of the query subarray along a given dimension
+ * name.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * const void* start;
+ * const void* end;
+ * const void* stride;
+ * tiledb_query_get_range_from_name(
+ *     ctx, query, dim_name, range_idx, &start, &end, &stride);
+ * @endcode
+ *
+ * @param ctx The TileDB context
+ * @param subarray The subarray.
+ * @param dim_name The name of the dimension to retrieve the range from.
+ * @param range_idx The index of the range to retrieve.
+ * @param start The range start to retrieve.
+ * @param end The range end to retrieve.
+ * @param stride The range stride to retrieve.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_subarray_get_range_from_name(
+    tiledb_ctx_t* ctx,
+    const tiledb_subarray_t* subarray,
+    const char* dim_name,
+    uint64_t range_idx,
+    const void** start,
+    const void** end,
+    const void** stride);
+
+/**
  * Retrieves a range's start and end size for a given variable-length
  * dimension index at a given range index.
  *
@@ -4231,6 +4516,35 @@ TILEDB_EXPORT int32_t tiledb_query_get_range_var_size(
 
 /**
  * Retrieves a range's start and end size for a given variable-length
+ * dimension index at a given range index.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * uint64_t start_size;
+ * uint64_t end_size;
+ * tiledb_subarray_get_range_var_size(
+ *     ctx, subarray, dim_idx, range_idx, &start_size, &end_size);
+ * @endcode
+ *
+ * @param ctx The TileDB context
+ * @param subarray The subarray.
+ * @param dim_idx The index of the dimension to retrieve the range from.
+ * @param range_idx The index of the range to retrieve.
+ * @param start_size range start size in bytes
+ * @param end_size range end size in bytes
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_subarray_get_range_var_size(
+    tiledb_ctx_t* ctx,
+    const tiledb_subarray_t* subarray,
+    uint32_t dim_idx,
+    uint64_t range_idx,
+    uint64_t* start_size,
+    uint64_t* end_size);
+
+/**
+ * Retrieves a range's start and end size for a given variable-length
  * dimension name at a given range index.
  *
  * **Example:**
@@ -4253,6 +4567,35 @@ TILEDB_EXPORT int32_t tiledb_query_get_range_var_size(
 TILEDB_EXPORT int32_t tiledb_query_get_range_var_size_from_name(
     tiledb_ctx_t* ctx,
     const tiledb_query_t* query,
+    const char* dim_name,
+    uint64_t range_idx,
+    uint64_t* start_size,
+    uint64_t* end_size);
+
+/**
+ * Retrieves a range's start and end size for a given variable-length
+ * dimension name at a given range index.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * uint64_t start_size;
+ * uint64_t end_size;
+ * tiledb_subarray_get_range_var_size_from_name(
+ *     ctx, subarray, dim_name, range_idx, &start_size, &end_size);
+ * @endcode
+ *
+ * @param ctx The TileDB context
+ * @param subarray The subarray.
+ * @param dim_name The name of the dimension to retrieve the range from.
+ * @param range_idx The index of the range to retrieve.
+ * @param start_size range start size in bytes
+ * @param end_size range end size in bytes
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_subarray_get_range_var_size_from_name(
+    tiledb_ctx_t* ctx,
+    const tiledb_subarray_t* subarray,
     const char* dim_name,
     uint64_t range_idx,
     uint64_t* start_size,
@@ -4289,6 +4632,35 @@ TILEDB_EXPORT int32_t tiledb_query_get_range_var(
 
 /**
  * Retrieves a specific range of the query subarray along a given
+ * variable-length dimension index.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * const void* start;
+ * const void* end;
+ * tiledb_subarray_get_range_var(
+ *     ctx, subarray, dim_idx, range_idx, &start, &end);
+ * @endcode
+ *
+ * @param ctx The TileDB context
+ * @param subarray The subarray.
+ * @param dim_idx The index of the dimension to retrieve the range from.
+ * @param range_idx The index of the range to retrieve.
+ * @param start The range start to retrieve.
+ * @param end The range end to retrieve.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_subarray_get_range_var(
+    tiledb_ctx_t* ctx,
+    const tiledb_subarray_t* subarray,
+    uint32_t dim_idx,
+    uint64_t range_idx,
+    void* start,
+    void* end);
+
+/**
+ * Retrieves a specific range of the query subarray along a given
  * variable-length dimension name.
  *
  * **Example:**
@@ -4317,6 +4689,35 @@ TILEDB_EXPORT int32_t tiledb_query_get_range_var_from_name(
     void* end);
 
 /**
+ * Retrieves a specific range of the subarray along a given
+ * variable-length dimension name.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * const void* start;
+ * const void* end;
+ * tiledb_subarray_get_range_var_from_name(
+ *     ctx, subarray, dim_name, range_idx, &start, &end);
+ * @endcode
+ *
+ * @param ctx The TileDB context
+ * @param subarray The subarray.
+ * @param dim_name The name of the dimension to retrieve the range from.
+ * @param range_idx The index of the range to retrieve.
+ * @param start The range start to retrieve.
+ * @param end The range end to retrieve.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_subarray_get_range_var_from_name(
+    tiledb_ctx_t* ctx,
+    const tiledb_subarray_t* subarray,
+    const char* dim_name,
+    uint64_t range_idx,
+    void* start,
+    void* end);
+
+/**
  * Retrieves the estimated result size for a fixed-sized attribute/dimension.
  *
  * **Example:**
@@ -4335,6 +4736,28 @@ TILEDB_EXPORT int32_t tiledb_query_get_range_var_from_name(
 TILEDB_EXPORT int32_t tiledb_query_get_est_result_size(
     tiledb_ctx_t* ctx,
     const tiledb_query_t* query,
+    const char* name,
+    uint64_t* size);
+
+/**
+ * Retrieves the estimated result size for a fixed-sized attribute/dimension.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * uint64_t size;
+ * tiledb_subarray_get_est_result_size(ctx, subarray, "a", &size);
+ * @endcode
+ *
+ * @param ctx The TileDB context
+ * @param subarray The subarray.
+ * @param name The attribute/dimension name.
+ * @param size The size (in bytes) to be retrieved.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_subarray_get_est_result_size(
+    tiledb_ctx_t* ctx,
+    const tiledb_subarray_t* subarray,
     const char* name,
     uint64_t* size);
 
@@ -4364,6 +4787,31 @@ TILEDB_EXPORT int32_t tiledb_query_get_est_result_size_var(
     uint64_t* size_val);
 
 /**
+ * Retrieves the estimated result size for a var-sized attribute/dimension.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * uint64_t size_off, size_val;
+ * tiledb_subarray_get_est_result_size_var(
+ *     ctx, subarray, "a", &size_off, &size_val);
+ * @endcode
+ *
+ * @param ctx The TileDB context
+ * @param query The query.
+ * @param name The attribute/dimension name.
+ * @param size_off The size of the offsets (in bytes) to be retrieved.
+ * @param size_val The size of the values (in bytes) to be retrieved.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_subarray_get_est_result_size_var(
+    tiledb_ctx_t* ctx,
+    const tiledb_subarray_t* subarray,
+    const char* name,
+    uint64_t* size_off,
+    uint64_t* size_val);
+
+/**
  * Retrieves the estimated result size for a fixed-sized, nullable attribute.
  *
  * **Example:**
@@ -4386,6 +4834,33 @@ TILEDB_EXPORT int32_t tiledb_query_get_est_result_size_var(
 TILEDB_EXPORT int32_t tiledb_query_get_est_result_size_nullable(
     tiledb_ctx_t* ctx,
     const tiledb_query_t* query,
+    const char* name,
+    uint64_t* size_val,
+    uint64_t* size_validity);
+
+/**
+ * Retrieves the estimated result size for a fixed-sized, nullable attribute.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * uint64_t size_val;
+ * uint64_t size_validity;
+ * tiledb_subarray_get_est_result_size_nullable(ctx, subarray, "a", &size_val,
+ * &size_validity);
+ * @endcode
+ *
+ * @param ctx The TileDB context
+ * @param subarray The subarray.
+ * @param name The attribute name.
+ * @param size_val The size of the values (in bytes) to be retrieved.
+ * @param size_validity The size of the validity values (in bytes) to be
+ * retrieved.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_subarray_get_est_result_size_nullable(
+    tiledb_ctx_t* ctx,
+    const tiledb_subarray_t* subarray,
     const char* name,
     uint64_t* size_val,
     uint64_t* size_validity);
@@ -4419,6 +4894,34 @@ TILEDB_EXPORT int32_t tiledb_query_get_est_result_size_var_nullable(
     uint64_t* size_validity);
 
 /**
+ * Retrieves the estimated result size for a var-sized, nullable attribute.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * uint64_t size_off, size_val, size_validity;
+ * tiledb_subarray_get_est_result_size_var_nullable(
+ *     ctx, subarray, "a", &size_off, &size_val, &size_validity);
+ * @endcode
+ *
+ * @param ctx The TileDB context
+ * @param subarray The subarray.
+ * @param name The attribute name.
+ * @param size_off The size of the offsets (in bytes) to be retrieved.
+ * @param size_val The size of the values (in bytes) to be retrieved.
+ * @param size_validity The size of the validity values (in bytes) to be
+ * retrieved.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_subarray_get_est_result_size_var_nullable(
+    tiledb_ctx_t* ctx,
+    const tiledb_subarray_t* subarray,
+    const char* name,
+    uint64_t* size_off,
+    uint64_t* size_val,
+    uint64_t* size_validity);
+
+/**
  * Retrieves the number of written fragments. Applicable only to WRITE
  * queries.
  *
@@ -4436,6 +4939,25 @@ TILEDB_EXPORT int32_t tiledb_query_get_est_result_size_var_nullable(
  */
 TILEDB_EXPORT int32_t tiledb_query_get_fragment_num(
     tiledb_ctx_t* ctx, const tiledb_query_t* query, uint32_t* num);
+
+/**
+ * Retrieves the number of written fragments. Applicable only to WRITE
+ * queries.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * uint32_t num;
+ * tiledb_subarray_get_fragment_num(ctx, query, &num);
+ * @endcode
+ *
+ * @param ctx The TileDB context
+ * @param subarray The subarray.
+ * @param num The number of written fragments to be retrieved.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_subarray_get_fragment_num(
+    tiledb_ctx_t* ctx, const tiledb_subarray_t* subarray, uint32_t* num);
 
 /**
  * Retrieves the URI of the written fragment with the input index. Applicable
@@ -4514,6 +5036,26 @@ TILEDB_EXPORT int32_t tiledb_query_get_fragment_timestamp_range(
  */
 TILEDB_EXPORT int32_t tiledb_array_alloc(
     tiledb_ctx_t* ctx, const char* array_uri, tiledb_array_t** array);
+
+/**
+ * Allocates a TileDB array object.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * tiledb_subarray_t* subarray;
+ * tiledb_subarray_alloc(ctx, array, &subarray);
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param array An open array object.
+ * @param subarray The subarray object to be created.
+ * @return `TILEDB_OK` for success and `TILEDB_OOM` or `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_subarray_alloc(
+    tiledb_ctx_t* ctx, 
+    const tiledb_array_t *array, 
+    tiledb_subarray_t** subarray);
 
 /**
  * Opens a TileDB array. The array is opened using a query type as input.
@@ -4786,6 +5328,23 @@ tiledb_array_close(tiledb_ctx_t* ctx, tiledb_array_t* array);
  * @param array The array object to be freed.
  */
 TILEDB_EXPORT void tiledb_array_free(tiledb_array_t** array);
+
+/**
+ * Frees a TileDB subarray object.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * tiledb_subarray_t* subarray;
+ * tiledb_subarray_alloc(ctx, array, &subarray);
+ * ??tiledb_array_open(ctx, array, TILEDB_READ);
+ * ??tiledb_array_close(ctx, array);
+ * tiledb_subarray_free(&subarray);
+ * @endcode
+ *
+ * @param subarray The subarray object to be freed.
+ */
+TILEDB_EXPORT void tiledb_subarray_free(tiledb_subarray_t** subarray);
 
 /**
  * Retrieves the schema of an array.

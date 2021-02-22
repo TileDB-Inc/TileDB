@@ -52,6 +52,10 @@ struct tiledb_array_t {
   tiledb::sm::Array* array_ = nullptr;
 };
 
+struct tiledb_subarray_t {
+  tiledb::sm::Subarray* subarray_ = nullptr;
+};
+
 struct tiledb_buffer_t {
   tiledb::sm::Datatype datatype_ = tiledb::sm::Datatype::UINT8;
   tiledb::sm::Buffer* buffer_ = nullptr;
@@ -103,6 +107,10 @@ struct tiledb_filter_list_t {
 
 struct tiledb_query_t {
   tiledb::sm::Query* query_ = nullptr;
+  //tiledb::sm::Subarray* subarray_ = nullptr;
+  tiledb_subarray_t* subarray_ = nullptr;
+  tiledb_subarray_t* wsubarray_ = nullptr;
+  tiledb_subarray_t* rsubarray_ = nullptr;
 };
 
 struct tiledb_vfs_t {

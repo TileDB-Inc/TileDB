@@ -893,8 +893,10 @@ void DenseArrayFx::write_dense_subarray_2D(
   // Submit query
   rc = submit_query_wrapper(array_name, query);
   REQUIRE_SAFE(rc == TILEDB_OK);
-  rc = tiledb_query_finalize(ctx_, query);
-  REQUIRE_SAFE(rc == TILEDB_OK);
+  if (rc == TILEDB_OK) {
+    rc = tiledb_query_finalize(ctx_, query);
+    REQUIRE_SAFE(rc == TILEDB_OK);
+  }
 
   // Close array
   rc = tiledb_array_close(ctx_, array);

@@ -131,6 +131,9 @@ class Query {
    * The range components must be of the same type as the domain type of the
    * underlying array.
    */
+  //TBD: Is this to be deprecated (with changes to subarray/partitioning), or
+  //will it still be needed/wanted internally?
+  //TILEDB_DEPRECATED
   Status add_range(
       unsigned dim_idx, const void* start, const void* end, const void* stride);
 
@@ -664,13 +667,26 @@ class Query {
    *     when performing unordered (sparse) writes, has no effect
    *     (will be ingnored).
    */
-  Status set_subarray(const void* subarray);
+  //TBD: TILEDB_DEPRECATED not available here? how to get?
+  /*TILEDB_DEPRECATED*/ Status set_subarray(const void* subarray);
+
+  /**
+   * Sets the query subarray.
+   *
+   * @param subarray The subarray to be set.
+   * @return Status
+   *
+   * @note Setting a subarray for sparse arrays, or for dense arrays
+   *     when performing unordered (sparse) writes, has no effect
+   *     (will be ingnored).
+   */
+  Status set_subarray(const tiledb::sm::Subarray* subarray);
 
   /** Sets the query subarray, without performing any checks. */
   Status set_subarray_unsafe(const NDRange& subarray);
 
   /** Submits the query to the storage manager. */
-  Status submit();
+  Status submit(/*Subarray *subarray = nullptr*/);
 
   /**
    * Submits the query to the storage manager. The query will be
@@ -678,7 +694,7 @@ class Query {
    * Once the query is completed, the input callback function will
    * be executed using the input callback data.
    */
-  Status submit_async(std::function<void(void*)> callback, void* callback_data);
+  Status submit_async(std::function<void(void*)> callback, void* callback_data/*, Subarray *subarray=nullptr*/);
 
   /** Returns the query status. */
   QueryStatus status() const;

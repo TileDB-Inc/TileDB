@@ -135,6 +135,12 @@ class Query {
     ctx.handle_error(
         tiledb_query_alloc(ctx.ptr().get(), array.ptr().get(), type, &q));
     query_ = std::shared_ptr<tiledb_query_t>(q, deleter_);
+
+//    tiledb_subarray_t* subarray;
+//    ctx.handle_error(
+//        tiledb_subarray_alloc(ctx.ptr().get(), array.ptr().get(), &subarray));
+//        
+//    subarray_ = std::shared_ptr<tiledb_subarray_t>(subarray, deleter_);
   }
 
   /**
@@ -163,6 +169,11 @@ class Query {
    * @param array Open Array object
    */
   Query(const Context& ctx, const Array& array)
+#if 01
+//TBD: Is there a circumstance where this will *not* produce the same as the alternate verbose code?
+	  : Query(ctx, array, array.query_type()) {
+  }
+#else
       : ctx_(ctx)
       , array_(array)
       , schema_(array.schema()) {
@@ -172,6 +183,7 @@ class Query {
         tiledb_query_alloc(ctx.ptr().get(), array.ptr().get(), type, &q));
     query_ = std::shared_ptr<tiledb_query_t>(q, deleter_);
   }
+#endif
 
   Query(const Query&) = default;
   Query(Query&&) = default;
@@ -187,6 +199,11 @@ class Query {
     return query_;
   }
 
+  /** Returns a shared pointer to the C TileDB subarray object associated with this query. */
+//  std::shared_ptr<tiledb_subarray_t> ptr_to_subarray() const {
+//    return subarray_;
+//  }
+  
   /** Returns the query type (read or write). */
   tiledb_query_type_t query_type() const {
     auto& ctx = ctx_.get();
@@ -280,6 +297,23 @@ class Query {
    */
   Status submit() {
     auto& ctx = ctx_.get();
+#if 0
+	//TBD: verify, appears this, 'inside', handles whether set to reader_/writer_ of actuall cpp core query...
+    //ctx.handle_error(tiledb_query_set_subarray_v2(ctx.ptr().get(),query_.get(),subarray_.get()));
+#if 01
+    if (query_->subarray_->subarray_->is_set()) {
+      //      if (TILEDB_OK !=
+      //          tiledb_query_set_subarray_v2(ctx, query, query->subarray_))
+      //        return TILEDB_ERR;
+      ctx.handle_error(
+          tiledb_query_set_subarray_v2(ctx.ptr().get(), query_.get(), nullptr));
+    }
+#else
+    ctx.handle_error(
+        tiledb_query_set_subarray_v2(
+        ctx.ptr().get(), query_.get(), nullptr));
+#endif
+#endif
     ctx.handle_error(tiledb_query_submit(ctx.ptr().get(), query_.get()));
     return query_status();
   }
@@ -301,8 +335,12 @@ class Query {
    */
   template <typename Fn>
   void submit_async(const Fn& callback) {
-    std::function<void(void*)> wrapper = [&](void*) { callback(); };
     auto& ctx = ctx_.get();
+#if 01
+	//TBD: verify, appears this, 'inside', handles whether set to reader_/writer_ of actuall cpp core query...
+    ctx.handle_error(tiledb_query_set_subarray_v2(ctx.ptr().get(),query_.get(),nullptr));
+#endif
+    std::function<void(void*)> wrapper = [&](void*) { callback(); };
     ctx.handle_error(tiledb::impl::tiledb_query_submit_async_func(
         ctx.ptr().get(), query_.get(), &wrapper, nullptr));
   }
@@ -509,6 +547,16 @@ class Query {
   Query& add_range(uint32_t dim_idx, T start, T end, T stride = 0) {
     impl::type_check<T>(schema_.domain().dimension(dim_idx).type());
     auto& ctx = ctx_.get();
+#if 0
+    ctx.handle_error(tiledb_subarray_add_range(
+        ctx.ptr().get(),
+        subarray_.get(), //query_.get(),
+        dim_idx,
+        &start,
+        &end,
+        (stride == 0) ? nullptr : &stride));
+
+#else
     ctx.handle_error(tiledb_query_add_range(
         ctx.ptr().get(),
         query_.get(),
@@ -516,6 +564,7 @@ class Query {
         &start,
         &end,
         (stride == 0) ? nullptr : &stride));
+#endif
     return *this;
   }
 
@@ -973,6 +1022,11 @@ class Query {
   }
 
   /**
+   * The query set_subarray function has been deprecated. 
+   * See the documentation for Subarray::set_subarray(), or use other
+   * Subarray provided APIs.
+   * Consult the current documentation for more information.
+   * 
    * Sets a subarray, defined in the order dimensions were added.
    * Coordinates are inclusive. For the case of writes, this is meaningful only
    * for dense arrays, and specifically dense writes.
@@ -993,8 +1047,11 @@ class Query {
    * per dimension.
    * @param size The number of subarray elements.
    */
+#if 01
+//TBD: Is anything tiledb-core/example wise actually calling this currently?
+//hmm, apparently, at least, several other 'set_subarray' methods of this 'Query' class.
   template <typename T = uint64_t>
-  Query& set_subarray(const T* pairs, uint64_t size) {
+  TILEDB_DEPRECATED Query& set_subarray(const T* pairs, uint64_t size) {
     impl::type_check<T>(schema_.domain().type());
     auto& ctx = ctx_.get();
     if (size != schema_.domain().ndim() * 2) {
@@ -1010,6 +1067,7 @@ class Query {
     }
     return *this;
   }
+#endif
 
   /**
    * Sets a subarray, defined in the order dimensions were added.
@@ -1965,6 +2023,8 @@ class Query {
 
   /** Number of cells set by `set_subarray`, influences `resize_buffer`. */
   uint64_t subarray_cell_num_ = 0;
+  
+//  std::shared_ptr<tiledb_subarray_t> subarray_;
 
   /* ********************************* */
   /*          PRIVATE METHODS          */

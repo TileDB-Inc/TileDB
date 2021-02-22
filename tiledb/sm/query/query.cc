@@ -994,6 +994,29 @@ Status Query::set_subarray(const void* subarray) {
   return Status::Ok();
 }
 
+Status Query::set_subarray(const tiledb::sm::Subarray* subarray) {
+  //TBD: Write me.
+  if (!array_->array_schema()->domain()->all_dims_same_type())
+    return LOG_STATUS(
+        Status::QueryError("Cannot set subarray; Function not applicable to "
+                           "heterogeneous domains"));
+
+  if (!array_->array_schema()->domain()->all_dims_fixed())
+    return LOG_STATUS(
+        Status::QueryError("Cannot set subarray; Function not applicable to "
+                           "domains with variable-sized dimensions"));
+
+  if (type_ == QueryType::WRITE) {
+    RETURN_NOT_OK(writer_.set_subarray(*subarray));
+  } else if (type_ == QueryType::READ) {
+    RETURN_NOT_OK(reader_.set_subarray(*subarray));
+  }
+
+  status_ = QueryStatus::UNINITIALIZED;
+
+  return Status::Ok();
+}
+
 Status Query::set_subarray_unsafe(const NDRange& subarray) {
   // Prepare a subarray object
   Subarray sub(array_, layout_);
@@ -1014,11 +1037,23 @@ Status Query::set_subarray_unsafe(const NDRange& subarray) {
   return Status::Ok();
 }
 
-Status Query::submit() {
+Status Query::submit(/*Subarray *subarray*/) {
   // Do not resubmit completed reads.
   if (type_ == QueryType::READ && status_ == QueryStatus::COMPLETED) {
     return Status::Ok();
   }
+
+#if 0
+  if(subarray){
+	  if (type_ == QueryType::READ) {
+		  reader_.set_subarray(*subarray);
+	  }
+	  else {
+		  writer_.set_subarray(*subarray);
+	  }
+  }
+#endif
+
   if (array_->is_remote()) {
     auto rest_client = storage_manager_->rest_client();
     if (rest_client == nullptr)
@@ -1034,7 +1069,7 @@ Status Query::submit() {
 }
 
 Status Query::submit_async(
-    std::function<void(void*)> callback, void* callback_data) {
+    std::function<void(void*)> callback, void* callback_data/*, Subarray *subarray*/) {
   // Do not resubmit completed reads.
   if (type_ == QueryType::READ && status_ == QueryStatus::COMPLETED) {
     callback(callback_data);
@@ -1045,6 +1080,16 @@ Status Query::submit_async(
     return LOG_STATUS(
         Status::QueryError("Error in async query submission; async queries not "
                            "supported for remote arrays."));
+
+#if 0
+  if (subarray) {
+    if (type_ == QueryType::READ) {
+      reader_.set_subarray(*subarray);
+    } else {
+      writer_.set_subarray(*subarray);
+    }
+  }
+#endif
 
   callback_ = callback;
   callback_data_ = callback_data;

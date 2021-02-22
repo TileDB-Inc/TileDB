@@ -412,16 +412,18 @@ void AsyncFx::write_sparse_async() {
   rc = tiledb_query_submit_async(ctx_, query, callback, &callback_made);
   CHECK(rc == TILEDB_OK);
 
-  // Wait for query to complete
-  tiledb_query_status_t status;
-  do {
-    rc = tiledb_query_get_status(ctx_, query, &status);
-    CHECK(rc == TILEDB_OK);
-  } while (status != TILEDB_COMPLETED);
+  if (rc == TILEDB_OK) {
+    // Wait for query to complete
+    tiledb_query_status_t status;
+    do {
+      rc = tiledb_query_get_status(ctx_, query, &status);
+      CHECK(rc == TILEDB_OK);
+    } while (status != TILEDB_COMPLETED);
 
-  // Finalize query
-  rc = tiledb_query_finalize(ctx_, query);
-  CHECK(rc == TILEDB_OK);
+    // Finalize query
+    rc = tiledb_query_finalize(ctx_, query);
+    CHECK(rc == TILEDB_OK);
+  }
 
   // Close array
   rc = tiledb_array_close(ctx_, array);
@@ -512,38 +514,52 @@ void AsyncFx::write_sparse_async_cancelled() {
   rc = tiledb_query_submit_async(ctx_, query, callback, &callback_made);
   CHECK(rc == TILEDB_OK);
 
-  // Cancel it immediately, which sometimes in this test is fast enough to
-  // cancel it and sometimes not.
-  rc = tiledb_ctx_cancel_tasks(ctx_);
-  CHECK(rc == TILEDB_OK);
-
-  // Check query status
-  tiledb_query_status_t status;
-  do {
-    rc = tiledb_query_get_status(ctx_, query, &status);
+  bool query_submitted_ok;
+  tiledb_query_status_t status = TILEDB_FAILED;
+  if (rc == TILEDB_OK) {
+    query_submitted_ok = true;
+    // Cancel it immediately, which sometimes in this test is fast enough to
+    // cancel it and sometimes not.
+    rc = tiledb_ctx_cancel_tasks(ctx_);
     CHECK(rc == TILEDB_OK);
-  } while (status != TILEDB_COMPLETED && status != TILEDB_FAILED);
-  CHECK((status == TILEDB_COMPLETED || status == TILEDB_FAILED));
 
-  // If the query completed, check the callback was made.
-  CHECK(callback_made == (status == TILEDB_COMPLETED ? 1 : 0));
+    // Check query status
+    do {
+      rc = tiledb_query_get_status(ctx_, query, &status);
+      CHECK(rc == TILEDB_OK);
+    } while (status != TILEDB_COMPLETED && status != TILEDB_FAILED);
+    CHECK((status == TILEDB_COMPLETED || status == TILEDB_FAILED));
+
+    // If the query completed, check the callback was made.
+    CHECK(callback_made == (status == TILEDB_COMPLETED ? 1 : 0));
+  } else {
+    query_submitted_ok = false;
+  }
 
   // If it failed, run it again.
   if (status == TILEDB_FAILED) {
     rc = tiledb_query_submit_async(ctx_, query, callback, &callback_made);
     CHECK(rc == TILEDB_OK);
-    do {
-      rc = tiledb_query_get_status(ctx_, query, &status);
-      CHECK(rc == TILEDB_OK);
-    } while (status != TILEDB_COMPLETED && status != TILEDB_FAILED);
+    if (rc == TILEDB_OK) {
+      query_submitted_ok = true;
+      do {
+        rc = tiledb_query_get_status(ctx_, query, &status);
+        CHECK(rc == TILEDB_OK);
+      } while (status != TILEDB_COMPLETED && status != TILEDB_FAILED);
+    }
+  } else {
+    query_submitted_ok = false;
   }
 
   CHECK(status == TILEDB_COMPLETED);
   CHECK(callback_made == 1);
 
-  // Finalize query
-  rc = tiledb_query_finalize(ctx_, query);
-  CHECK(rc == TILEDB_OK);
+  //TBD: Can we still safely finalize if query wasn't even submitted successfully above?
+  if (query_submitted_ok) {
+    // Finalize query
+    rc = tiledb_query_finalize(ctx_, query);
+    CHECK(rc == TILEDB_OK);
+  }
 
   // Close array
   rc = tiledb_array_close(ctx_, array);
@@ -602,18 +618,20 @@ void AsyncFx::read_dense_async() {
   rc = tiledb_query_submit_async(ctx_, query, callback, &callback_made);
   CHECK(rc == TILEDB_OK);
 
-  // Wait for the query to complete
-  tiledb_query_status_t status;
-  do {
-    tiledb_query_get_status(ctx_, query, &status);
-  } while (status != TILEDB_COMPLETED);
+  if (rc == TILEDB_OK) {
+    // Wait for the query to complete
+    tiledb_query_status_t status;
+    do {
+      tiledb_query_get_status(ctx_, query, &status);
+    } while (status != TILEDB_COMPLETED);
 
-  // Finalize query
-  rc = tiledb_query_finalize(ctx_, query);
-  CHECK(rc == TILEDB_OK);
+    // Finalize query
+    rc = tiledb_query_finalize(ctx_, query);
+    CHECK(rc == TILEDB_OK);
 
-  // Check correct execution of callback
-  CHECK(callback_made == 1);
+    // Check correct execution of callback
+    CHECK(callback_made == 1);
+  }
 
   // Correct buffers
   int c_buffer_a1[] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15};

@@ -158,6 +158,216 @@ Status Subarray::add_range_unsafe(uint32_t dim_idx, const Range& range) {
   return Status::Ok();
 }
 
+//equivalent for older Query::set_subarray(const void *subarray);
+Status Subarray::set_subarray(const void* subarray) {
+  if (!array_->array_schema()->domain()->all_dims_same_type())
+    return LOG_STATUS(
+        Status::QueryError("Cannot set subarray; Function not applicable to "
+                           "heterogeneous domains"));
+
+  if (!array_->array_schema()->domain()->all_dims_fixed())
+    return LOG_STATUS(
+        Status::QueryError("Cannot set subarray; Function not applicable to "
+                           "domains with variable-sized dimensions"));
+
+  if (subarray != nullptr) {
+    auto dim_num = array_->array_schema()->dim_num();
+    auto s_ptr = (const unsigned char*)subarray;
+    uint64_t offset = 0;
+    for (unsigned d = 0; d < dim_num; ++d) {
+      auto r_size = 2 * array_->array_schema()->dimension(d)->coord_size();
+      RETURN_NOT_OK(this->add_range(d, Range(&s_ptr[offset], r_size)));
+      offset += r_size;
+    }
+  } else {
+	  //TBD: Is this perhaps equivalent to private method add_default_ranges() ?
+    Subarray sub(array_, layout_);
+    *this = std::move(sub);
+  }
+
+  return Status::Ok();
+}
+
+Status Subarray::add_range(
+    unsigned dim_idx, const void* start, const void* end, const void* stride) {
+  if (dim_idx >= this->array_->array_schema()->dim_num())
+    return LOG_STATUS(
+        Status::QueryError("Cannot add range; Invalid dimension index"));
+
+  if (start == nullptr || end == nullptr)
+    return LOG_STATUS(Status::QueryError("Cannot add range; Invalid range"));
+
+  if (stride != nullptr)
+    return LOG_STATUS(Status::QueryError(
+        "Cannot add range; Setting range stride is currently unsupported"));
+
+  if (this->array_->array_schema()->domain()->dimension(dim_idx)->var_size())
+    return LOG_STATUS(
+        Status::QueryError("Cannot add range; Range must be fixed-sized"));
+
+  // Prepare a temp range
+  std::vector<uint8_t> range;
+  uint8_t coord_size = this->array_->array_schema()->dimension(dim_idx)->coord_size();
+  range.resize(2 * coord_size);
+  std::memcpy(&range[0], start, coord_size);
+  std::memcpy(&range[coord_size], end, coord_size);
+
+  // Add range
+  return this->add_range(dim_idx, Range(&range[0], 2 * coord_size));
+  // TBD: Something like the following will likely be needed in
+  // forthcoming tiledb_query_set_subarray_v2()
+  //if (type_ == QueryType::WRITE)
+  //  return writer_.add_range(dim_idx, Range(&range[0], 2 * coord_size));
+  //return reader_.add_range(dim_idx, Range(&range[0], 2 * coord_size));
+}
+
+Status Subarray::add_range_by_name(
+    const std::string& dim_name,
+    const void* start,
+    const void* end,
+    const void* stride) {
+  unsigned dim_idx;
+  RETURN_NOT_OK(array_->array_schema()->domain()->get_dimension_index(
+      dim_name, &dim_idx));
+
+  return add_range(dim_idx, start, end, stride);
+}
+
+Status Subarray::add_range_var(
+    unsigned dim_idx,
+    const void* start,
+    uint64_t start_size,
+    const void* end,
+    uint64_t end_size) {
+  if (dim_idx >= array_->array_schema()->dim_num())
+    return LOG_STATUS(
+        Status::QueryError("Cannot add range; Invalid dimension index"));
+
+  if (start == nullptr || end == nullptr)
+    return LOG_STATUS(Status::QueryError("Cannot add range; Invalid range"));
+
+  if (start_size == 0 || end_size == 0)
+    return LOG_STATUS(Status::QueryError(
+        "Cannot add range; Range start/end cannot have zero length"));
+
+  if (!array_->array_schema()->domain()->dimension(dim_idx)->var_size())
+    return LOG_STATUS(
+        Status::QueryError("Cannot add range; Range must be variable-sized"));
+
+//TBD: subarray/other equivalent functionality needed some-/else- where ???
+//  if (type_ == QueryType::WRITE)
+//    return LOG_STATUS(Status::QueryError(
+//        "Cannot add range; Function applicable only to reads"));
+
+  // Add range
+  Range r;
+  r.set_range_var(start, start_size, end, end_size);
+  return this->add_range(dim_idx, r);
+}
+
+Status Subarray::add_range_var_by_name(
+    const std::string& dim_name,
+    const void* start,
+    uint64_t start_size,
+    const void* end,
+    uint64_t end_size) {
+  unsigned dim_idx;
+  RETURN_NOT_OK(array_->array_schema()->domain()->get_dimension_index(
+      dim_name, &dim_idx));
+
+  return add_range_var(dim_idx, start, start_size, end, end_size);
+}
+
+  /** Retrieves the number of ranges of the subarray for the given dimension. */
+//Status get_range_num(unsigned dim_idx, uint64_t* range_num) const
+//{
+//
+//}
+
+Status Subarray::get_range_var(
+    unsigned dim_idx, uint64_t range_idx, void* start, void* end) const {
+//TBD: equiv functionality somewhere, or ???
+//  if (type_ == QueryType::WRITE)
+//    return LOG_STATUS(Status::WriterError(
+//        "Getting a var range from a write query is not applicable"));
+
+  uint64_t start_size = 0;
+  uint64_t end_size = 0;
+  this->get_range_var_size(dim_idx, range_idx, &start_size, &end_size);
+
+  const void* range_start;
+  const void* range_end;
+  const void* stride;
+  RETURN_NOT_OK(
+      get_range(dim_idx, range_idx, &range_start, &range_end, &stride));
+
+  std::memcpy(start, range_start, start_size);
+  std::memcpy(end, range_end, end_size);
+
+  return Status::Ok();
+}
+
+Status Subarray::get_range_num_from_name(
+    const std::string& dim_name, uint64_t* range_num) const {
+  unsigned dim_idx;
+  RETURN_NOT_OK(array_->array_schema()->domain()->get_dimension_index(
+      dim_name, &dim_idx));
+
+  return get_range_num(dim_idx, range_num);
+}
+
+Status Subarray::get_range(
+    unsigned dim_idx,
+    uint64_t range_idx,
+    const void** start,
+    const void** end,
+    const void** stride) const {
+//TBD: equiv functionality needed anywhere?
+//  if (type_ == QueryType::WRITE)
+//    return writer_.get_range(dim_idx, range_idx, start, end, stride);
+//  return reader_.get_range(dim_idx, range_idx, start, end, stride);
+  //reader equiv version, does 'writer' also null out *stride? Yes.
+  //TBD: 'writer' get_range audits for array_schema dense/sparse, errors on !dense...
+  *stride = nullptr;
+  return this->get_range(dim_idx, range_idx, start, end);
+}
+
+Status Subarray::get_range_from_name(
+    const std::string& dim_name,
+    uint64_t range_idx,
+    const void** start,
+    const void** end,
+    const void** stride) const {
+  unsigned dim_idx;
+  RETURN_NOT_OK(array_->array_schema()->domain()->get_dimension_index(
+      dim_name, &dim_idx));
+
+  return get_range(dim_idx, range_idx, start, end, stride);
+}
+
+Status Subarray::get_range_var_size_from_name(
+    const std::string& dim_name,
+    uint64_t range_idx,
+    uint64_t* start_size,
+    uint64_t* end_size) const {
+  unsigned dim_idx;
+  RETURN_NOT_OK(array_->array_schema()->domain()->get_dimension_index(
+      dim_name, &dim_idx));
+
+  return get_range_var_size(dim_idx, range_idx, start_size, end_size);
+}
+
+Status Subarray::get_range_var_from_name(
+    const std::string& dim_name,
+    uint64_t range_idx,
+    void* start,
+    void* end) const {
+  unsigned dim_idx;
+  RETURN_NOT_OK(array_->array_schema()->domain()->get_dimension_index(
+      dim_name, &dim_idx));
+
+  return get_range_var(dim_idx, range_idx, start, end);
+}
 const Array* Subarray::array() const {
   return array_;
 }
@@ -396,10 +606,14 @@ Status Subarray::get_range_var_size(
 
 Status Subarray::get_range_num(uint32_t dim_idx, uint64_t* range_num) const {
   auto dim_num = array_->array_schema()->dim_num();
-  if (dim_idx >= dim_num)
+  if (dim_idx >= dim_num) {
+    std::stringstream msg;
+    msg << "Cannot get number of ranges for a dimension; "
+           "Invalid dimension index "
+        << dim_idx << " requested, " << dim_num - 1 << " max avail.";
     return LOG_STATUS(
-        Status::SubarrayError("Cannot get number of ranges for a dimension; "
-                              "Invalid dimension index"));
+        Status::SubarrayError(msg.str()));
+  }
 
   *range_num = ranges_[dim_idx].size();
 
