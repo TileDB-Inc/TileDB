@@ -630,8 +630,6 @@ std::string FragmentMetadata::encode_name(const std::string& name) const {
   }
 
   assert(version_ > 8);
-  std::string encoded_name;
-
   const auto iter = idx_map_.find(name);
   if (iter == idx_map_.end())
     LOG_FATAL("Name " + name + " not in idx_map_");
@@ -659,7 +657,7 @@ std::string FragmentMetadata::encode_name(const std::string& name) const {
   }
 
   LOG_FATAL("Unable to locate dimension/attribute " + name);
-  return NULL;
+  return "";
 }
 
 URI FragmentMetadata::uri(const std::string& name) const {
