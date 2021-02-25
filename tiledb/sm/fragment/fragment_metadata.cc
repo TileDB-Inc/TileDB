@@ -629,30 +629,37 @@ std::string FragmentMetadata::encode_name(const std::string& name) const {
     return percent_encoded_name.str();
   }
 
-  // version_ > 8
+  assert(version_ > 8);
   std::string encoded_name;
 
-  auto iter = idx_map_.find(name);
+  const auto iter = idx_map_.find(name);
   if (iter == idx_map_.end())
     LOG_FATAL("Name " + name + " not in idx_map_");
-  unsigned idx = iter->second;
+  const unsigned idx = iter->second;
 
-  auto attributes = array_schema_->attributes();
+  const std::vector<tiledb::sm::Attribute*> attributes =
+      array_schema_->attributes();
   for (unsigned i = 0; i < attributes.size(); ++i) {
-    auto attr_name = attributes[i]->name();
+    const std::string attr_name = attributes[i]->name();
     if (attr_name == name) {
-      encoded_name = "a" + std::to_string(idx);
+      return "a" + std::to_string(idx);
     }
   }
 
   for (unsigned i = 0; i < array_schema_->dim_num(); ++i) {
-    auto dim_name = array_schema_->dimension(i)->name();
+    const std::string dim_name = array_schema_->dimension(i)->name();
     if (dim_name == name) {
-      idx = idx - array_schema_->attribute_num() - 1;
-      encoded_name = "d" + std::to_string(idx);
+      const unsigned dim_idx = idx - array_schema_->attribute_num() - 1;
+      return "d" + std::to_string(dim_idx);
     }
   }
-  return encoded_name;
+
+  if (name == constants::coords) {
+    return name;
+  }
+
+  LOG_FATAL("Unable to locate dimension/attribute " + name);
+  return NULL;
 }
 
 URI FragmentMetadata::uri(const std::string& name) const {

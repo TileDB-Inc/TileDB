@@ -1311,36 +1311,16 @@ TEST_CASE(
   rc = tiledb_vfs_is_dir(ctx, vfs, frag_uri, &is_dir);
   REQUIRE(rc == TILEDB_OK);
 
-  const char* file1 = "/a0.tdb";
-  const char* file2 = "/a1.tdb";
-  const char* file3 = "/d0.tdb";
-  const char* file4 = "/d1.tdb";
+  std::vector<std::string> expected_files = {
+      "/a0.tdb", "/a1.tdb", "/d0.tdb", "/d1.tdb"};
 
-  std::string file_name;
-  file_name += frag_uri;
-  file_name += file1;
-
-  int is_file = 0;
-  rc = tiledb_vfs_is_file(ctx, vfs, file_name.c_str(), &is_file);
-  REQUIRE(rc == TILEDB_OK);
-
-  file_name.clear();
-  file_name += frag_uri;
-  file_name += file2;
-  rc = tiledb_vfs_is_file(ctx, vfs, file_name.c_str(), &is_file);
-  REQUIRE(rc == TILEDB_OK);
-
-  file_name.clear();
-  file_name += frag_uri;
-  file_name += file3;
-  rc = tiledb_vfs_is_file(ctx, vfs, file_name.c_str(), &is_file);
-  REQUIRE(rc == TILEDB_OK);
-
-  file_name.clear();
-  file_name += frag_uri;
-  file_name += file4;
-  rc = tiledb_vfs_is_file(ctx, vfs, file_name.c_str(), &is_file);
-  REQUIRE(rc == TILEDB_OK);
+  for (const std::string& expected_file : expected_files) {
+    std::string file_name = frag_uri + expected_file;
+    int is_file = 0;
+    rc = tiledb_vfs_is_file(ctx, vfs, file_name.c_str(), &is_file);
+    REQUIRE(rc == TILEDB_OK);
+    REQUIRE(is_file > 0);
+  }
 
   // Clean up
   remove_dir(array_name, ctx, vfs);
