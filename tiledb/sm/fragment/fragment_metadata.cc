@@ -49,6 +49,7 @@
 
 #include <cassert>
 #include <iostream>
+#include <string>
 
 using namespace tiledb::common;
 
@@ -588,43 +589,70 @@ std::string FragmentMetadata::encode_name(const std::string& name) const {
   if (version_ <= 7)
     return name;
 
-  static const std::unordered_map<char, std::string> percent_encoding{
-      // RFC 3986
-      {'!', "%21"},
-      {'#', "%23"},
-      {'$', "%24"},
-      {'%', "%25"},
-      {'&', "%26"},
-      {'\'', "%27"},
-      {'(', "%28"},
-      {')', "%29"},
-      {'*', "%2A"},
-      {'+', "%2B"},
-      {',', "%2C"},
-      {'/', "%2F"},
-      {':', "%3A"},
-      {';', "%3B"},
-      {'=', "%3D"},
-      {'?', "%3F"},
-      {'@', "%40"},
-      {'[', "%5B"},
-      {']', "%5D"},
-      // Extra encodings to cover illegal characters on Windows
-      {'\"', "%22"},
-      {'<', "%20"},
-      {'>', "%2D"},
-      {'\\', "%30"},
-      {'|', "%3C"}};
+  if (version_ == 8) {
+    static const std::unordered_map<char, std::string> percent_encoding{
+        // RFC 3986
+        {'!', "%21"},
+        {'#', "%23"},
+        {'$', "%24"},
+        {'%', "%25"},
+        {'&', "%26"},
+        {'\'', "%27"},
+        {'(', "%28"},
+        {')', "%29"},
+        {'*', "%2A"},
+        {'+', "%2B"},
+        {',', "%2C"},
+        {'/', "%2F"},
+        {':', "%3A"},
+        {';', "%3B"},
+        {'=', "%3D"},
+        {'?', "%3F"},
+        {'@', "%40"},
+        {'[', "%5B"},
+        {']', "%5D"},
+        // Extra encodings to cover illegal characters on Windows
+        {'\"', "%22"},
+        {'<', "%20"},
+        {'>', "%2D"},
+        {'\\', "%30"},
+        {'|', "%3C"}};
 
-  std::stringstream percent_encoded_name;
-  for (const char c : name) {
-    if (percent_encoding.count(c) == 0)
-      percent_encoded_name << c;
-    else
-      percent_encoded_name << percent_encoding.at(c);
+    std::stringstream percent_encoded_name;
+    for (const char c : name) {
+      if (percent_encoding.count(c) == 0)
+        percent_encoded_name << c;
+      else
+        percent_encoded_name << percent_encoding.at(c);
+    }
+
+    return percent_encoded_name.str();
   }
 
-  return percent_encoded_name.str();
+  // version_ > 8
+  std::string encoded_name;
+
+  auto iter = idx_map_.find(name);
+  if (iter == idx_map_.end())
+    LOG_FATAL("Name " + name + " not in idx_map_");
+  unsigned idx = iter->second;
+
+  auto attributes = array_schema_->attributes();
+  for (unsigned i = 0; i < attributes.size(); ++i) {
+    auto attr_name = attributes[i]->name();
+    if (attr_name == name) {
+      encoded_name = "a" + std::to_string(idx);
+    }
+  }
+
+  for (unsigned i = 0; i < array_schema_->dim_num(); ++i) {
+    auto dim_name = array_schema_->dimension(i)->name();
+    if (dim_name == name) {
+      idx = idx - array_schema_->attribute_num() - 1;
+      encoded_name = "d" + std::to_string(idx);
+    }
+  }
+  return encoded_name;
 }
 
 URI FragmentMetadata::uri(const std::string& name) const {
