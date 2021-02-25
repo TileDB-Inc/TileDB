@@ -10,6 +10,8 @@
 
 ## Improvements
 
+* Cache non_empty_domain for REST arrays like all other arrays [#2105](https://github.com/TileDB-Inc/TileDB/pull/2105)
+
 ## Deprecations
 
 ## Bug fixes
