@@ -1,6 +1,7 @@
 # In Progress
 
 ## Disk Format
+* Change the format version on the format spec and update the information about the data files based on the recent changes that name  files according to their order the array schema. [#2108](https://github.com/TileDB-Inc/TileDB/pull/2108)
 
 ## Breaking C API changes
 
