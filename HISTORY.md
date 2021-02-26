@@ -7,6 +7,7 @@
 ## Breaking behavior
 
 ## New features
+* Name attribute/dimension files by index. This is fragment-specific and updates the format version to version 9. [#2107](https://github.com/TileDB-Inc/TileDB/pull/2107)
 * Smoke Test, remove nullable structs from global namespace. [#2078](https://github.com/TileDB-Inc/TileDB/pull/2078)
 
 ## Improvements
