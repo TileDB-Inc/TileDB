@@ -136,11 +136,12 @@ class Query {
         tiledb_query_alloc(ctx.ptr().get(), array.ptr().get(), type, &q));
     query_ = std::shared_ptr<tiledb_query_t>(q, deleter_);
 
-//    tiledb_subarray_t* subarray;
-//    ctx.handle_error(
-//        tiledb_subarray_alloc(ctx.ptr().get(), array.ptr().get(), &subarray));
-//        
-//    subarray_ = std::shared_ptr<tiledb_subarray_t>(subarray, deleter_);
+    //    tiledb_subarray_t* subarray;
+    //    ctx.handle_error(
+    //        tiledb_subarray_alloc(ctx.ptr().get(), array.ptr().get(),
+    //        &subarray));
+    //
+    //    subarray_ = std::shared_ptr<tiledb_subarray_t>(subarray, deleter_);
   }
 
   /**
@@ -170,8 +171,10 @@ class Query {
    */
   Query(const Context& ctx, const Array& array)
 #if 01
-//TBD: Is there a circumstance where this will *not* produce the same as the alternate verbose code?
-	  : Query(ctx, array, array.query_type()) {
+      // TBD: Is there a circumstance where this will *not* produce the same as
+      // the alternate verbose code? (seems to pass all unit tests with this
+      // active)
+      : Query(ctx, array, array.query_type()) {
   }
 #else
       : ctx_(ctx)
@@ -199,11 +202,12 @@ class Query {
     return query_;
   }
 
-  /** Returns a shared pointer to the C TileDB subarray object associated with this query. */
-//  std::shared_ptr<tiledb_subarray_t> ptr_to_subarray() const {
-//    return subarray_;
-//  }
-  
+  /** Returns a shared pointer to the C TileDB subarray object associated with
+   * this query. */
+  //  std::shared_ptr<tiledb_subarray_t> ptr_to_subarray() const {
+  //    return subarray_;
+  //  }
+
   /** Returns the query type (read or write). */
   tiledb_query_type_t query_type() const {
     auto& ctx = ctx_.get();
@@ -297,17 +301,25 @@ class Query {
    */
   Status submit() {
     auto& ctx = ctx_.get();
-#if 0
-	//TBD: verify, appears this, 'inside', handles whether set to reader_/writer_ of actuall cpp core query...
+#if 01
+	//TBD: verify, appears this, 'inside', handles whether set to reader_/writer_ of actual cpp core query...
     //ctx.handle_error(tiledb_query_set_subarray_v2(ctx.ptr().get(),query_.get(),subarray_.get()));
 #if 01
-    if (query_->subarray_->subarray_->is_set()) {
+    tiledb_subarray_t* subarray;
+    ctx.handle_error(
+        tiledb_query_subarray(ctx.ptr().get(), query_.get(), &subarray));
+    // if (1) {
+    
+    //if (subarray->subarray_->is_set()) {
       //      if (TILEDB_OK !=
       //          tiledb_query_set_subarray_v2(ctx, query, query->subarray_))
       //        return TILEDB_ERR;
-      ctx.handle_error(
-          tiledb_query_set_subarray_v2(ctx.ptr().get(), query_.get(), nullptr));
-    }
+    //hmm, "[TileDB::Writer] Error: Setting a subarray is not supported in sparse writes", etc...
+//      ctx.handle_error(
+//          tiledb_query_set_subarray_v2(ctx.ptr().get(), query_.get(), subarray));
+    //}
+    ctx.handle_error(tiledb_query_submit_with_subarray(ctx.ptr().get(), query_.get(), subarray));
+    return query_status();
 #else
     ctx.handle_error(
         tiledb_query_set_subarray_v2(
@@ -337,8 +349,10 @@ class Query {
   void submit_async(const Fn& callback) {
     auto& ctx = ctx_.get();
 #if 01
-	//TBD: verify, appears this, 'inside', handles whether set to reader_/writer_ of actuall cpp core query...
-    ctx.handle_error(tiledb_query_set_subarray_v2(ctx.ptr().get(),query_.get(),nullptr));
+    // TBD: verify, appears this, 'inside', handles whether set to
+    // reader_/writer_ of actual cpp core query...
+    ctx.handle_error(
+        tiledb_query_set_subarray_v2(ctx.ptr().get(), query_.get(), nullptr));
 #endif
     std::function<void(void*)> wrapper = [&](void*) { callback(); };
     ctx.handle_error(tiledb::impl::tiledb_query_submit_async_func(
@@ -544,13 +558,18 @@ class Query {
    * @return Reference to this Query
    */
   template <class T>
-  Query& add_range(uint32_t dim_idx, T start, T end, T stride = 0) {
+  TILEDB_DEPRECATED  // Or maybe shouldnot be???
+      Query&
+      add_range(uint32_t dim_idx, T start, T end, T stride = 0) {
     impl::type_check<T>(schema_.domain().dimension(dim_idx).type());
     auto& ctx = ctx_.get();
-#if 0
+#if 01
+    tiledb_subarray_t* subarray;
+    ctx.handle_error(
+        tiledb_query_subarray(ctx.ptr().get(), query_.get(), &subarray));
     ctx.handle_error(tiledb_subarray_add_range(
         ctx.ptr().get(),
-        subarray_.get(), //query_.get(),
+        subarray,
         dim_idx,
         &start,
         &end,
@@ -592,9 +611,22 @@ class Query {
    * @return Reference to this Query
    */
   template <class T>
-  Query& add_range(const std::string& dim_name, T start, T end, T stride = 0) {
+  TILEDB_DEPRECATED Query& add_range(
+      const std::string& dim_name, T start, T end, T stride = 0) {
     impl::type_check<T>(schema_.domain().dimension(dim_name).type());
     auto& ctx = ctx_.get();
+#if 01
+    tiledb_subarray_t* subarray;
+    ctx.handle_error(
+        tiledb_query_subarray(ctx.ptr().get(), query_.get(), &subarray));
+    ctx.handle_error(tiledb_subarray_add_range_by_name(
+        ctx.ptr().get(),
+        subarray,
+        dim_name.c_str(),
+        &start,
+        &end,
+        (stride == 0) ? nullptr : &stride));
+#else
     ctx.handle_error(tiledb_query_add_range_by_name(
         ctx.ptr().get(),
         query_.get(),
@@ -602,6 +634,7 @@ class Query {
         &start,
         &end,
         (stride == 0) ? nullptr : &stride));
+#endif
     return *this;
   }
 
@@ -625,10 +658,24 @@ class Query {
    * @param end The range end to add.
    * @return Reference to this Query
    */
+  TILEDB_DEPRECATED
   Query& add_range(
       uint32_t dim_idx, const std::string& start, const std::string& end) {
     impl::type_check<char>(schema_.domain().dimension(dim_idx).type());
     auto& ctx = ctx_.get();
+#if 01
+    tiledb_subarray_t* subarray;
+    ctx.handle_error(
+        tiledb_query_subarray(ctx.ptr().get(), query_.get(), &subarray));
+    ctx.handle_error(tiledb_subarray_add_range_var(
+        ctx.ptr().get(),
+        subarray,
+        dim_idx,
+        start.c_str(),
+        start.size(),
+        end.c_str(),
+        end.size()));
+#else
     ctx.handle_error(tiledb_query_add_range_var(
         ctx.ptr().get(),
         query_.get(),
@@ -637,6 +684,7 @@ class Query {
         start.size(),
         end.c_str(),
         end.size()));
+#endif
     return *this;
   }
 
@@ -661,12 +709,26 @@ class Query {
    * @param end The range end to add.
    * @return Reference to this Query
    */
+  TILEDB_DEPRECATED
   Query& add_range(
       const std::string& dim_name,
       const std::string& start,
       const std::string& end) {
     impl::type_check<char>(schema_.domain().dimension(dim_name).type());
     auto& ctx = ctx_.get();
+#if 01
+    tiledb_subarray_t* subarray;
+    ctx.handle_error(
+        tiledb_query_subarray(ctx.ptr().get(), query_.get(), &subarray));
+    ctx.handle_error(tiledb_subarray_add_range_var_by_name(
+        ctx.ptr().get(),
+        subarray,
+        dim_name.c_str(),
+        start.c_str(),
+        start.size(),
+        end.c_str(),
+        end.size()));
+#else
     ctx.handle_error(tiledb_query_add_range_var_by_name(
         ctx.ptr().get(),
         query_.get(),
@@ -675,6 +737,7 @@ class Query {
         start.size(),
         end.c_str(),
         end.size()));
+#endif
     return *this;
   }
 
@@ -694,8 +757,16 @@ class Query {
   uint64_t range_num(unsigned dim_idx) const {
     auto& ctx = ctx_.get();
     uint64_t range_num;
+#if 01
+    tiledb_subarray_t* subarray;
+    ctx.handle_error(
+        tiledb_query_subarray(ctx.ptr().get(), query_.get(), &subarray));
+    ctx.handle_error(tiledb_subarray_get_range_num(
+        ctx.ptr().get(), subarray, dim_idx, &range_num));
+#else
     ctx.handle_error(tiledb_query_get_range_num(
         ctx.ptr().get(), query_.get(), dim_idx, &range_num));
+#endif
     return range_num;
   }
 
@@ -715,8 +786,19 @@ class Query {
   uint64_t range_num(const std::string& dim_name) const {
     auto& ctx = ctx_.get();
     uint64_t range_num;
+#if 01
+    tiledb_subarray_t* subarray;
+    ctx.handle_error(
+        tiledb_query_subarray(ctx.ptr().get(), query_.get(), &subarray));
+    ctx.handle_error(tiledb_subarray_get_range_num_from_name(
+        ctx.ptr().get(),
+        subarray,
+        dim_name.c_str(),
+        &range_num));
+#else
     ctx.handle_error(tiledb_query_get_range_num_from_name(
         ctx.ptr().get(), query_.get(), dim_name.c_str(), &range_num));
+#endif
     return range_num;
   }
 
@@ -743,6 +825,19 @@ class Query {
     impl::type_check<T>(schema_.domain().dimension(dim_idx).type());
     auto& ctx = ctx_.get();
     const void *start, *end, *stride;
+#if 01
+    tiledb_subarray_t* subarray;
+    ctx.handle_error(
+        tiledb_query_subarray(ctx.ptr().get(), query_.get(), &subarray));
+    ctx.handle_error(tiledb_subarray_get_range(
+        ctx.ptr().get(),
+        subarray,
+        dim_idx,
+        range_idx,
+        &start,
+        &end,
+        &stride));
+#else
     ctx.handle_error(tiledb_query_get_range(
         ctx.ptr().get(),
         query_.get(),
@@ -751,6 +846,7 @@ class Query {
         &start,
         &end,
         &stride));
+#endif
     std::array<T, 3> ret = {{*(const T*)start,
                              *(const T*)end,
                              (stride == nullptr) ? 0 : *(const T*)stride}};
@@ -780,6 +876,19 @@ class Query {
     impl::type_check<T>(schema_.domain().dimension(dim_name).type());
     auto& ctx = ctx_.get();
     const void *start, *end, *stride;
+#if 01
+    tiledb_subarray_t* subarray;
+    ctx.handle_error(
+        tiledb_query_subarray(ctx.ptr().get(), query_.get(), &subarray));
+    ctx.handle_error(tiledb_subarray_get_range_from_name(
+        ctx.ptr().get(),
+        subarray,
+        dim_name.c_str(),
+        range_idx,
+        &start,
+        &end,
+        &stride));
+#else
     ctx.handle_error(tiledb_query_get_range_from_name(
         ctx.ptr().get(),
         query_.get(),
@@ -788,6 +897,7 @@ class Query {
         &start,
         &end,
         &stride));
+#endif
     std::array<T, 3> ret = {{*(const T*)start,
                              *(const T*)end,
                              (stride == nullptr) ? 0 : *(const T*)stride}};
@@ -814,6 +924,18 @@ class Query {
     impl::type_check<char>(schema_.domain().dimension(dim_idx).type());
     auto& ctx = ctx_.get();
     uint64_t start_size, end_size;
+#if 01
+    tiledb_subarray_t* subarray;
+    ctx.handle_error(
+        tiledb_query_subarray(ctx.ptr().get(), query_.get(), &subarray));
+    ctx.handle_error(tiledb_subarray_get_range_var_size(
+        ctx.ptr().get(),
+        subarray,
+        dim_idx,
+        range_idx,
+        &start_size,
+        &end_size));
+#else
     ctx.handle_error(tiledb_query_get_range_var_size(
         ctx.ptr().get(),
         query_.get(),
@@ -821,13 +943,24 @@ class Query {
         range_idx,
         &start_size,
         &end_size));
+#endif
 
     std::string start;
     start.resize(start_size);
     std::string end;
     end.resize(end_size);
+#if 01
+    ctx.handle_error(tiledb_subarray_get_range_var(
+        ctx.ptr().get(),
+        subarray,
+        dim_idx,
+        range_idx,
+        &start[0],
+        &end[0]));
+#else
     ctx.handle_error(tiledb_query_get_range_var(
         ctx.ptr().get(), query_.get(), dim_idx, range_idx, &start[0], &end[0]));
+#endif
     std::array<std::string, 2> ret = {{std::move(start), std::move(end)}};
     return ret;
   }
@@ -853,6 +986,18 @@ class Query {
     impl::type_check<char>(schema_.domain().dimension(dim_name).type());
     auto& ctx = ctx_.get();
     uint64_t start_size, end_size;
+#if 01
+    tiledb_subarray_t* subarray;
+    ctx.handle_error(
+        tiledb_query_subarray(ctx.ptr().get(), query_.get(), &subarray));
+    ctx.handle_error(tiledb_subarray_get_range_var_size_from_name(
+        ctx.ptr().get(),
+        subarray,
+        dim_name.c_str(),
+        range_idx,
+        &start_size,
+        &end_size));
+#else
     ctx.handle_error(tiledb_query_get_range_var_size_from_name(
         ctx.ptr().get(),
         query_.get(),
@@ -860,11 +1005,21 @@ class Query {
         range_idx,
         &start_size,
         &end_size));
+#endif
 
     std::string start;
     start.resize(start_size);
     std::string end;
     end.resize(end_size);
+#if 01
+    ctx.handle_error(tiledb_subarray_get_range_var_from_name(
+        ctx.ptr().get(),
+        subarray,
+        dim_name.c_str(),
+        range_idx,
+        &start[0],
+        &end[0]));
+#else
     ctx.handle_error(tiledb_query_get_range_var_from_name(
         ctx.ptr().get(),
         query_.get(),
@@ -872,6 +1027,7 @@ class Query {
         range_idx,
         &start[0],
         &end[0]));
+#endif
     std::array<std::string, 2> ret = {{std::move(start), std::move(end)}};
     return ret;
   }
@@ -891,8 +1047,16 @@ class Query {
   uint64_t est_result_size(const std::string& attr_name) const {
     auto& ctx = ctx_.get();
     uint64_t size = 0;
+#if 01
+    tiledb_subarray_t* subarray;
+    ctx.handle_error(
+        tiledb_query_subarray(ctx.ptr().get(), query_.get(), &subarray));
+    ctx.handle_error(tiledb_subarray_get_est_result_size(
+        ctx.ptr().get(), subarray, attr_name.c_str(), &size));
+#else
     ctx.handle_error(tiledb_query_get_est_result_size(
         ctx.ptr().get(), query_.get(), attr_name.c_str(), &size));
+#endif
     return size;
   }
 
@@ -915,12 +1079,24 @@ class Query {
       const std::string& attr_name) const {
     auto& ctx = ctx_.get();
     uint64_t size_off = 0, size_val = 0;
+#if 01
+    tiledb_subarray_t* subarray;
+    ctx.handle_error(
+        tiledb_query_subarray(ctx.ptr().get(), query_.get(), &subarray));
+    ctx.handle_error(tiledb_subarray_get_est_result_size_var(
+        ctx.ptr().get(),
+        subarray,
+        attr_name.c_str(),
+        &size_off,
+        &size_val));
+#else
     ctx.handle_error(tiledb_query_get_est_result_size_var(
         ctx.ptr().get(),
         query_.get(),
         attr_name.c_str(),
         &size_off,
         &size_val));
+#endif
     return {size_off, size_val};
   }
 
@@ -944,12 +1120,24 @@ class Query {
     auto& ctx = ctx_.get();
     uint64_t size_val = 0;
     uint64_t size_validity = 0;
+#if 01
+    tiledb_subarray_t* subarray;
+    ctx.handle_error(
+        tiledb_query_subarray(ctx.ptr().get(), query_.get(), &subarray));
+    ctx.handle_error(tiledb_subarray_get_est_result_size_nullable(
+        ctx.ptr().get(),
+        subarray,
+        attr_name.c_str(),
+        &size_val,
+        &size_validity));
+#else
     ctx.handle_error(tiledb_query_get_est_result_size_nullable(
         ctx.ptr().get(),
         query_.get(),
         attr_name.c_str(),
         &size_val,
         &size_validity));
+#endif
     return {size_val, size_validity};
   }
 
@@ -976,6 +1164,18 @@ class Query {
     uint64_t size_off = 0;
     uint64_t size_val = 0;
     uint64_t size_validity = 0;
+#if 01
+    tiledb_subarray_t* subarray;
+    ctx.handle_error(
+        tiledb_query_subarray(ctx.ptr().get(), query_.get(), &subarray));
+    ctx.handle_error(tiledb_subarray_get_est_result_size_var_nullable(
+        ctx.ptr().get(),
+        subarray,
+        attr_name.c_str(),
+        &size_off,
+        &size_val,
+        &size_validity));
+#else
     ctx.handle_error(tiledb_query_get_est_result_size_var_nullable(
         ctx.ptr().get(),
         query_.get(),
@@ -983,6 +1183,7 @@ class Query {
         &size_off,
         &size_val,
         &size_validity));
+#endif
     return {size_off, size_val, size_validity};
   }
 
@@ -1022,11 +1223,11 @@ class Query {
   }
 
   /**
-   * The query set_subarray function has been deprecated. 
+   * The query set_subarray function has been deprecated.
    * See the documentation for Subarray::set_subarray(), or use other
    * Subarray provided APIs.
    * Consult the current documentation for more information.
-   * 
+   *
    * Sets a subarray, defined in the order dimensions were added.
    * Coordinates are inclusive. For the case of writes, this is meaningful only
    * for dense arrays, and specifically dense writes.
@@ -1048,8 +1249,9 @@ class Query {
    * @param size The number of subarray elements.
    */
 #if 01
-//TBD: Is anything tiledb-core/example wise actually calling this currently?
-//hmm, apparently, at least, several other 'set_subarray' methods of this 'Query' class.
+  // TBD: Is anything tiledb-core/example wise actually calling this currently?
+  // hmm, apparently, at least, several other 'set_subarray' methods of this
+  // 'Query' class.
   template <typename T = uint64_t>
   TILEDB_DEPRECATED Query& set_subarray(const T* pairs, uint64_t size) {
     impl::type_check<T>(schema_.domain().type());
@@ -1059,8 +1261,16 @@ class Query {
           "Subarray should have num_dims * 2 values: (low, high) for each "
           "dimension.");
     }
+#if 01
+    tiledb_subarray_t* subarray;
+    ctx.handle_error(
+        tiledb_query_subarray(ctx.ptr().get(), query_.get(), &subarray));
+    ctx.handle_error(
+        tiledb_subarray_set_subarray(ctx.ptr().get(), subarray, pairs));
+#else
     ctx.handle_error(
         tiledb_query_set_subarray(ctx.ptr().get(), query_.get(), pairs));
+#endif
     subarray_cell_num_ = pairs[1] - pairs[0] + 1;
     for (unsigned i = 2; i < size - 1; i += 2) {
       subarray_cell_num_ *= (pairs[i + 1] - pairs[i] + 1);
@@ -2023,8 +2233,8 @@ class Query {
 
   /** Number of cells set by `set_subarray`, influences `resize_buffer`. */
   uint64_t subarray_cell_num_ = 0;
-  
-//  std::shared_ptr<tiledb_subarray_t> subarray_;
+
+  //  std::shared_ptr<tiledb_subarray_t> subarray_;
 
   /* ********************************* */
   /*          PRIVATE METHODS          */

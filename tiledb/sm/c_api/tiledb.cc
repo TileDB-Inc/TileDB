@@ -1,4 +1,4 @@
-#define cppTILEDB_COND_SUB_SUBARRAY_FOR_QUERY 1
+//#define cppTILEDB_COND_SUB_SUBARRAY_FOR_QUERY 1
 
 /**
  * @file   tiledb.cc
@@ -2649,7 +2649,7 @@ int32_t tiledb_query_alloc(
   }
 
   // Create assoc'd subarray
-#if 01 && cppTILEDB_COND_SUB_SUBARRAY_FOR_QUERY
+#if 01  //&& cppTILEDB_COND_SUB_SUBARRAY_FOR_QUERY
   if (TILEDB_OK != tiledb_subarray_alloc(ctx, array, &(*query)->subarray_)) {
     auto st = Status::Error(
         "Failed to allocate TileDB query subarray object; Memory allocation "
@@ -2687,6 +2687,7 @@ int32_t tiledb_query_alloc(
     return TILEDB_OOM;
   }
 #else
+#if 0
   bool want_coalesce_ranges =
       true;  // TBD: What do we want for default?  'true' is Subarray()s default
              // in default constructor...
@@ -2703,6 +2704,7 @@ int32_t tiledb_query_alloc(
     save_error(ctx, st);
     return TILEDB_OOM;
   }
+#endif
 #endif
 
   // Success
@@ -2744,19 +2746,18 @@ int32_t tiledb_query_set_subarray(
 // TBD: is this to be deprecated/eliminated/disabled?
 //(as a set of the subarray that is being populated 'externally' to query will
 // occur at submit, if the 'external' subarray '.is_set()')
-#if 0 //not yet sure if this wanted in this routine... && cppTILEDB_COND_SUB_SUBARRAY_FOR_QUERY
-  auto & which_subarray =
+#if 01  // not yet sure if this wanted in this routine... &&
+        // cppTILEDB_COND_SUB_SUBARRAY_FOR_QUERY
+  auto& which_subarray =
       (query->query_->type() == tiledb::sm::QueryType::WRITE) ?
           query->wsubarray_ :
           query->rsubarray_;
   if (sanity_check(ctx, which_subarray) == TILEDB_ERR)
     return TILEDB_ERR;
   if (query->query_->type() == tiledb::sm::QueryType::WRITE) {
-
-    
-    if(!query->query_->array_schema()->dense()) {
+    if (!query->query_->array_schema()->dense()) {
       LOG_STATUS(Status::WriterError(
-        "Setting a subarray is not supported in sparse writes"));
+          "Setting a subarray is not supported in sparse writes"));
       return TILEDB_ERR;
     }
 
@@ -2767,16 +2768,29 @@ int32_t tiledb_query_set_subarray(
                               "are not supported"));
       return TILEDB_ERR;
     }
-  }
-
-  if (query->query_->type() == tiledb::sm::QueryType::WRITE) {
     // Reset the writer (this will nuke the global write state)
-    //TBD: !!!***??? anything, somewhere, to mimic following ...
+    // TBD: !!!***??? anything, somewhere, to mimic following ...
     //... [Writer::]reset();
+    //__debugbreak();  // yeah, do get here, what to do...
   }
-  //appears 'READ' does not require any sort of 'reset()'.
 
-  return tiledb_subarray_set_subarray(ctx, which_subarray, subarray);
+  //  if (query->query_->type() == tiledb::sm::QueryType::WRITE) {
+  //    // Reset the writer (this will nuke the global write state)
+  //    // TBD: !!!***??? anything, somewhere, to mimic following ...
+  //    //... [Writer::]reset();
+  //    __debugbreak(); //yeah, do get here, what to do...
+  //  }
+  // appears 'READ' does not require any sort of 'reset()'.
+
+  which_subarray->subarray_->set_layout(query->query_->layout());
+  // return
+  if (tiledb_subarray_set_subarray(ctx, which_subarray, subarray) == TILEDB_ERR)
+    return TILEDB_ERR;
+  if (SAVE_ERROR_CATCH(
+          ctx, query->query_->set_subarray(which_subarray->subarray_)))
+    return TILEDB_ERR;
+  return TILEDB_OK;
+
 #endif
 
   // Set subarray
@@ -2790,16 +2804,50 @@ int32_t tiledb_query_set_subarray_v2(
     tiledb_ctx_t* ctx,
     tiledb_query_t* query,
     tiledb_subarray_t* const p_subarray) {
-  auto subarray = p_subarray ? p_subarray : query->subarray_;
+// auto subarray = p_subarray ? p_subarray : query->subarray_;
+#if 01
+#if defined(_WIN32)
+  if (p_subarray == nullptr)
+    __debugbreak();
+#endif
+#endif
+  auto subarray = p_subarray;
   // Sanity check
   if (sanity_check(ctx) == TILEDB_ERR ||
       sanity_check(ctx, query) == TILEDB_ERR ||
       sanity_check(ctx, subarray) == TILEDB_ERR)
     return TILEDB_ERR;
 
+  //TBD: whether to perform test, accept/reject validity...
+  //if(p_subarray->subarray_->is_set()) ...
+
+#if 01
+  auto query_status = query->query_->status();
+  if (query_status != tiledb::sm::QueryStatus::UNINITIALIZED &&
+      query_status != tiledb::sm::QueryStatus::COMPLETED) {
+    //Sssoooo, attempts to 'auto'-set_v2 from submit()s result in this
+    //situation for, minimally, any incomplete reads.
+    //But, failing to support/allow, would mean cannot be used, as might
+    //currently be the case with earlier APIs (tiledb_query_set_subarray, to 
+    //'re-set' an inprogress query to starting state...
+#if defined(_WIN32)
+    __debugbreak(); //TBD: anyone trying to do this ATM?
+#endif
+    return TILEDB_ERR;
+    // if (TILEDB_OK != tiledb_query_set_subarray_v2(ctx, query, subarray))
+    //  return TILEDB_ERR;
+  }
+#endif
+
   // Set subarray
   // NOTE: 'subarray' matches a prototype, but *not* the one we want!!!
   // wrong... if (SAVE_ERROR_CATCH(ctx, query->query_->set_subarray(subarray)))
+  // hence call desired method using subarray->subarray_ !!!
+  // Note: ...query_->set_subarray 'splits' and assigns to subarray of either
+  // Reader or Writer!
+  if (!subarray->subarray_->is_set())
+    return TILEDB_OK;
+
   if (SAVE_ERROR_CATCH(ctx, query->query_->set_subarray(subarray->subarray_)))
     return TILEDB_ERR;
 
@@ -3045,22 +3093,92 @@ int32_t tiledb_query_submit(tiledb_ctx_t* ctx, tiledb_query_t* query) {
   if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, query) == TILEDB_ERR)
     return TILEDB_ERR;
 
-#if 01 && cppTILEDB_COND_SUB_SUBARRAY_FOR_QUERY
-  auto& which_subarray =
-      (query->query_->type() == tiledb::sm::QueryType::WRITE) ?
-          query->wsubarray_ :
-          query->rsubarray_;
-  if (sanity_check(ctx, which_subarray) == TILEDB_ERR)
+#if 01  //&& cppTILEDB_COND_SUB_SUBARRAY_FOR_QUERY
+  auto query_status = query->query_->status();
+  // TBD: do we only want to do this on UNINITIALIZED, or do we maybe want to do
+  // it anytime != INPROGRESS ???
+  if (query_status == tiledb::sm::QueryStatus::UNINITIALIZED) {
+    auto& which_subarray =
+        (query->query_->type() == tiledb::sm::QueryType::WRITE) ?
+            query->wsubarray_ :
+            query->rsubarray_;
+    if (sanity_check(ctx, which_subarray) == TILEDB_ERR)
+      return TILEDB_ERR;
+    if (which_subarray->subarray_->is_set()) {
+      // presence causes test failure,    "C API: Test query errors, dense reads
+      // in global order", what does absence cause, anywhere? hmm, err same
+      // test, maybe different location...?
+      //...
+      // For, queries that are inprogress/incomplete, this results in
+      // (RE-)setting status to UNINITIALIZED, which results in (actual)
+      // re-initting, and thus interferes with continuation of query in
+      // progress!!! results in failure in unit-capi-incomplete.c,
+      // 'IncompleteFx::check_dense_until_complete()'...
+      if (TILEDB_OK != tiledb_query_set_subarray_v2(ctx, query, which_subarray))
+        return TILEDB_ERR;
+    }
+    // else {//should we try this???
+    //  if (TILEDB_OK != tiledb_query_set_subarray_v2(ctx, query,
+    //  query->subarray_))
+    //    return TILEDB_ERR;
+    //
+    //}
+  }
+#endif
+
+  if (SAVE_ERROR_CATCH(ctx, query->query_->submit()))
     return TILEDB_ERR;
-  if (which_subarray->subarray_->is_set()) {
-    if (TILEDB_OK != tiledb_query_set_subarray_v2(ctx, query, which_subarray))
+
+  return TILEDB_OK;
+}
+
+int32_t tiledb_query_submit_with_subarray(
+    tiledb_ctx_t* ctx, tiledb_query_t* query, tiledb_subarray_t* subarray) {
+  // Sanity checks
+  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, query) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  if (sanity_check(ctx, subarray) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  auto query_status = query->query_->status();
+  if (query_status == tiledb::sm::QueryStatus::UNINITIALIZED ||
+      query_status == tiledb::sm::QueryStatus::COMPLETED) {
+    if (TILEDB_OK != tiledb_query_set_subarray_v2(ctx, query, subarray))
       return TILEDB_ERR;
   }
-  //else {//should we try this???
-  //  if (TILEDB_OK != tiledb_query_set_subarray_v2(ctx, query, query->subarray_))
-  //    return TILEDB_ERR;
-  //
-  //}
+
+#if 0  //&& cppTILEDB_COND_SUB_SUBARRAY_FOR_QUERY
+  auto query_status = query->query_->status();
+  // TBD: do we only want to do this on UNINITIALIZED, or do we maybe want to do
+  // it anytime != INPROGRESS ???
+  if (query_status == tiledb::sm::QueryStatus::UNINITIALIZED) {
+    auto& which_subarray =
+        (query->query_->type() == tiledb::sm::QueryType::WRITE) ?
+            query->wsubarray_ :
+            query->rsubarray_;
+    if (sanity_check(ctx, which_subarray) == TILEDB_ERR)
+      return TILEDB_ERR;
+    if (which_subarray->subarray_->is_set()) {
+      // presence causes test failure,    "C API: Test query errors, dense reads
+      // in global order", what does absence cause, anywhere? hmm, err same
+      // test, maybe different location...?
+      //...
+      // For, queries that are inprogress/incomplete, this results in
+      // (RE-)setting status to UNINITIALIZED, which results in (actual)
+      // re-initting, and thus interferes with continuation of query in
+      // progress!!! results in failure in unit-capi-incomplete.c,
+      // 'IncompleteFx::check_dense_until_complete()'...
+      if (TILEDB_OK != tiledb_query_set_subarray_v2(ctx, query, which_subarray))
+        return TILEDB_ERR;
+    }
+    // else {//should we try this???
+    //  if (TILEDB_OK != tiledb_query_set_subarray_v2(ctx, query,
+    //  query->subarray_))
+    //    return TILEDB_ERR;
+    //
+    //}
+  }
 #endif
 
   if (SAVE_ERROR_CATCH(ctx, query->query_->submit()))
@@ -3077,6 +3195,7 @@ int32_t tiledb_query_submit_async(
   // Sanity checks
   if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, query) == TILEDB_ERR)
     return TILEDB_ERR;
+    // TBD: Should this be enabled now?
 #if 0 && cppTILEDB_COND_SUB_SUBARRAY_FOR_QUERY
   auto& which_subarray =
       (query->query_->type() == tiledb::sm::QueryType::WRITE) ?
@@ -3162,7 +3281,7 @@ int32_t tiledb_query_add_range(
   if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, query) == TILEDB_ERR)
     return TILEDB_ERR;
 
-#if 0 && cppTILEDB_COND_SUB_SUBARRAY_FOR_QUERY
+#if 01  // && cppTILEDB_COND_SUB_SUBARRAY_FOR_QUERY
   auto& which_subarray =
       (query->query_->type() == tiledb::sm::QueryType::WRITE) ?
           query->wsubarray_ :
@@ -3232,7 +3351,7 @@ int32_t tiledb_query_add_range_by_name(
   if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, query) == TILEDB_ERR)
     return TILEDB_ERR;
 
-#if 0 && cppTILEDB_COND_SUB_SUBARRAY_FOR_QUERY
+#if 01  // && cppTILEDB_COND_SUB_SUBARRAY_FOR_QUERY
   auto& which_subarray =
       (query->query_->type() == tiledb::sm::QueryType::WRITE) ?
           query->wsubarray_ :
@@ -3280,7 +3399,7 @@ int32_t tiledb_query_add_range_var(
     uint64_t end_size) {
   if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, query) == TILEDB_ERR)
     return TILEDB_ERR;
-#if 0 && cppTILEDB_COND_SUB_SUBARRAY_FOR_QUERY
+#if 01  //&& cppTILEDB_COND_SUB_SUBARRAY_FOR_QUERY
   auto& which_subarray =
       (query->query_->type() == tiledb::sm::QueryType::WRITE) ?
           query->wsubarray_ :
@@ -3332,7 +3451,7 @@ int32_t tiledb_query_add_range_var_by_name(
   if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, query) == TILEDB_ERR)
     return TILEDB_ERR;
 
-#if 0 && cppTILEDB_COND_SUB_SUBARRAY_FOR_QUERY
+#if 01  // && cppTILEDB_COND_SUB_SUBARRAY_FOR_QUERY
   auto& which_subarray =
       (query->query_->type() == tiledb::sm::QueryType::WRITE) ?
           query->wsubarray_ :
@@ -3395,7 +3514,7 @@ int32_t tiledb_query_get_range_num(
   if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, query) == TILEDB_ERR)
     return TILEDB_ERR;
 
-#if 0 && cppTILEDB_COND_SUB_SUBARRAY_FOR_QUERY
+#if 01  // && cppTILEDB_COND_SUB_SUBARRAY_FOR_QUERY
   auto& which_subarray =
       (query->query_->type() == tiledb::sm::QueryType::WRITE) ?
           query->wsubarray_ :
@@ -3495,7 +3614,7 @@ int32_t tiledb_query_get_range(
   if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, query) == TILEDB_ERR)
     return TILEDB_ERR;
 
-#if 0 && cppTILEDB_COND_SUB_SUBARRAY_FOR_QUERY
+#if 01  // && cppTILEDB_COND_SUB_SUBARRAY_FOR_QUERY
   auto& which_subarray =
       (query->query_->type() == tiledb::sm::QueryType::WRITE) ?
           query->wsubarray_ :
@@ -3552,7 +3671,7 @@ int32_t tiledb_query_get_range_from_name(
   if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, query) == TILEDB_ERR)
     return TILEDB_ERR;
 
-#if 0 && cppTILEDB_COND_SUB_SUBARRAY_FOR_QUERY
+#if 01  // && cppTILEDB_COND_SUB_SUBARRAY_FOR_QUERY
   auto& which_subarray =
       (query->query_->type() == tiledb::sm::QueryType::WRITE) ?
           query->wsubarray_ :
@@ -3602,7 +3721,7 @@ int32_t tiledb_query_get_range_var_size(
   if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, query) == TILEDB_ERR)
     return TILEDB_ERR;
 
-#if 0 && cppTILEDB_COND_SUB_SUBARRAY_FOR_QUERY
+#if 01  // && cppTILEDB_COND_SUB_SUBARRAY_FOR_QUERY
   auto& which_subarray =
       (query->query_->type() == tiledb::sm::QueryType::WRITE) ?
           query->wsubarray_ :
@@ -3651,7 +3770,7 @@ int32_t tiledb_query_get_range_var_size_from_name(
   if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, query) == TILEDB_ERR)
     return TILEDB_ERR;
 
-#if 0 && cppTILEDB_COND_SUB_SUBARRAY_FOR_QUERY
+#if 01  // && cppTILEDB_COND_SUB_SUBARRAY_FOR_QUERY
   auto& which_subarray =
       (query->query_->type() == tiledb::sm::QueryType::WRITE) ?
           query->wsubarray_ :
@@ -3700,7 +3819,7 @@ int32_t tiledb_query_get_range_var(
   if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, query) == TILEDB_ERR)
     return TILEDB_ERR;
 
-#if 0 && cppTILEDB_COND_SUB_SUBARRAY_FOR_QUERY
+#if 01  //&& cppTILEDB_COND_SUB_SUBARRAY_FOR_QUERY
   auto& which_subarray =
       (query->query_->type() == tiledb::sm::QueryType::WRITE) ?
           query->wsubarray_ :
@@ -3746,7 +3865,7 @@ int32_t tiledb_query_get_range_var_from_name(
   if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, query) == TILEDB_ERR)
     return TILEDB_ERR;
 
-#if 0 && cppTILEDB_COND_SUB_SUBARRAY_FOR_QUERY
+#if 01  // && cppTILEDB_COND_SUB_SUBARRAY_FOR_QUERY
   auto& which_subarray =
       (query->query_->type() == tiledb::sm::QueryType::WRITE) ?
           query->wsubarray_ :
@@ -3793,7 +3912,7 @@ int32_t tiledb_query_get_est_result_size(
   if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, query) == TILEDB_ERR)
     return TILEDB_ERR;
 
-#if 0 && cppTILEDB_COND_SUB_SUBARRAY_FOR_QUERY
+#if 01  // && cppTILEDB_COND_SUB_SUBARRAY_FOR_QUERY
   auto& which_subarray =
       (query->query_->type() == tiledb::sm::QueryType::WRITE) ?
           query->wsubarray_ :
@@ -3812,9 +3931,83 @@ int32_t tiledb_subarray_get_est_result_size(
     const tiledb_subarray_t* subarray,
     const char* name,
     uint64_t* size) {
+  // TBD: The tiledb_query_get_est_result_size() ->
+  // query->query_->get_est_result_size() considers the query type and bails for
+  // 'WRITE' requests with the operation 'currently unsupported'.
   if (sanity_check(ctx) == TILEDB_ERR ||
       sanity_check(ctx, subarray) == TILEDB_ERR)
     return TILEDB_ERR;
+#if 01
+  // audits from Query::get_est_result_size(...) for query type QueryType::READ
+  if (name == nullptr) {
+    // return
+    LOG_STATUS(Status::QueryError(
+        "Cannot get estimated result size; Name cannot be null"));
+    return TILEDB_ERR;
+  }
+
+  auto array_ = subarray->subarray_->array();
+  //note: TILEDB_COORDS deprecated, any 'current' way to achieve this?
+  if (name == TILEDB_COORDS &&
+      !array_->array_schema()->domain()->all_dims_same_type()) {
+    // return
+    LOG_STATUS(Status::QueryError(
+        "Cannot get estimated result size; Not applicable to zipped "
+        "coordinates in arrays with heterogeneous domain"));
+    return TILEDB_ERR;
+  }
+
+  // note: TILEDB_COORDS deprecated, any 'current' way to achieve this?
+  if (name == TILEDB_COORDS &&
+      !array_->array_schema()->domain()->all_dims_fixed()) {
+    // return
+    LOG_STATUS(Status::QueryError(
+        "Cannot get estimated result size; Not applicable to zipped "
+        "coordinates in arrays with domains with variable-sized dimensions"));
+    return TILEDB_ERR;
+  }
+
+  if (array_->array_schema()->is_nullable(name)) {
+    // return
+    LOG_STATUS(Status::WriterError(
+        std::string(
+            "Cannot get estimated result size; Input attribute/dimension '") +
+        name + "' is nullable"));
+    return TILEDB_ERR;
+  }
+
+#if 01
+  // TBD: How to achieve this, stuff inside a Query entity don't think we have
+  // access to here... simplest solution might be to require a 'query' be
+  // available for this routine (parameter ?)
+  if (array_->is_remote() && !subarray->subarray_->est_result_size_computed()) {
+    auto rest_client = ctx->ctx_->storage_manager()->rest_client();
+    if (rest_client == nullptr) {
+      // return
+      LOG_STATUS(
+          Status::QueryError("Error in query estimate result size; remote "
+                             "array with no rest client."));
+      return TILEDB_ERR;
+    }
+
+    array_->array_schema()->set_array_uri(array_->array_uri());
+
+#if 0
+    //TBD: rest client not going to work properly 'til this is implemented somehow.
+    //RETURN_NOT_OK(
+    //    rest_client->get_query_est_result_sizes(array_->array_uri(), this));
+    if (SAVE_ERROR_CATCH(
+          ctx,
+      //hmm, 'this' is to be of 'Query *', but, again, we don't currently have access to a query,
+      //and it's going to set it on the 'reader_' of that Query* anyway, which isn't going to 
+      //be beneficial for the subarray->subarray_ we're handling in this routine...
+          rest_client->get_query_est_result_sizes(array_->array_uri(), this)))
+      return TILEDB_ERR;
+#endif
+  }
+
+#endif
+#endif
 
   if (SAVE_ERROR_CATCH(
           ctx,
@@ -3834,7 +4027,7 @@ int32_t tiledb_query_get_est_result_size_var(
   if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, query) == TILEDB_ERR)
     return TILEDB_ERR;
 
-#if 0 && cppTILEDB_COND_SUB_SUBARRAY_FOR_QUERY
+#if 01  // && cppTILEDB_COND_SUB_SUBARRAY_FOR_QUERY
   auto& which_subarray =
       (query->query_->type() == tiledb::sm::QueryType::WRITE) ?
           query->wsubarray_ :
@@ -3882,7 +4075,7 @@ int32_t tiledb_query_get_est_result_size_nullable(
   if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, query) == TILEDB_ERR)
     return TILEDB_ERR;
 
-#if 0 && cppTILEDB_COND_SUB_SUBARRAY_FOR_QUERY
+#if 01  // && cppTILEDB_COND_SUB_SUBARRAY_FOR_QUERY
   auto& which_subarray =
       (query->query_->type() == tiledb::sm::QueryType::WRITE) ?
           query->wsubarray_ :
@@ -3933,7 +4126,7 @@ int32_t tiledb_query_get_est_result_size_var_nullable(
   if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, query) == TILEDB_ERR)
     return TILEDB_ERR;
 
-#if 0 && cppTILEDB_COND_SUB_SUBARRAY_FOR_QUERY
+#if 01  // && cppTILEDB_COND_SUB_SUBARRAY_FOR_QUERY
   auto& which_subarray =
       (query->query_->type() == tiledb::sm::QueryType::WRITE) ?
           query->wsubarray_ :
@@ -3981,7 +4174,7 @@ int32_t tiledb_query_get_fragment_num(
   if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, query) == TILEDB_ERR)
     return TILEDB_ERR;
 
-#if 0 // && cppTILEDB_COND_SUB_SUBARRAY_FOR_QUERY
+#if 0  // && cppTILEDB_COND_SUB_SUBARRAY_FOR_QUERY
   auto& which_subarray =
       (query->query_->type() == tiledb::sm::QueryType::WRITE) ?
           query->wsubarray_ :
@@ -3996,7 +4189,7 @@ int32_t tiledb_query_get_fragment_num(
   return TILEDB_OK;
 }
 
-#if 0 // && cppTILEDB_COND_SUB_SUBARRAY_FOR_QUERY
+#if 0  // && cppTILEDB_COND_SUB_SUBARRAY_FOR_QUERY
 int32_t tiledb_subarray_get_fragment_num(
     tiledb_ctx_t* ctx, const tiledb_subarray_t* subarray, uint32_t* num) {
   if (sanity_check(ctx) == TILEDB_ERR ||
@@ -4798,6 +4991,19 @@ int32_t tiledb_array_consolidate_metadata_with_key(
 /* ****************************** */
 /*         SUBARRAY               */
 /* ****************************** */
+
+int32_t tiledb_query_subarray(
+    tiledb_ctx_t* ctx,
+    const tiledb_query_t* query,
+    tiledb_subarray_t** subarray) {
+  // Sanity check
+  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, query) == TILEDB_ERR)
+    return TILEDB_ERR;
+  if (sanity_check(ctx, query->subarray_) == TILEDB_ERR)
+    return TILEDB_ERR;
+  *subarray = query->subarray_;
+  return TILEDB_OK;
+}
 
 int32_t tiledb_subarray_alloc(
     tiledb_ctx_t* ctx,

@@ -996,15 +996,29 @@ Status Query::set_subarray(const void* subarray) {
 
 Status Query::set_subarray(const tiledb::sm::Subarray* subarray) {
   //TBD: Write me.
+#if 0
+  //test catches/fails call from SparseHeterFx::check_read_sparse_array_float_int64
   if (!array_->array_schema()->domain()->all_dims_same_type())
     return LOG_STATUS(
         Status::QueryError("Cannot set subarray; Function not applicable to "
                            "heterogeneous domains"));
+#endif
 
+#if 0
+  //This check maybe predicated on previous one... hmm...
+  //TBD: Does some check of this sort need to be made, after disabling above check,
+  //this one causing failure unit-capi-stringdims.cc, tiledb_query_submit_wrapper() called
+  //from void StringDimsFx::read_array_2d()
   if (!array_->array_schema()->domain()->all_dims_fixed())
     return LOG_STATUS(
         Status::QueryError("Cannot set subarray; Function not applicable to "
                            "domains with variable-sized dimensions"));
+#endif
+
+  //TBD: something to be done if/for remote? see Query::submit()... appears
+  //that will still be taken care of in that method, nothing to do here...?
+  
+  //RETURN_NOT_OK(init());
 
   if (type_ == QueryType::WRITE) {
     RETURN_NOT_OK(writer_.set_subarray(*subarray));

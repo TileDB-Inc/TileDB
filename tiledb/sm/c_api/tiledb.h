@@ -3400,6 +3400,48 @@ TILEDB_DEPRECATED TILEDB_EXPORT int32_t tiledb_query_set_subarray(
     tiledb_ctx_t* ctx, tiledb_query_t* query, const void* subarray);
 
 /**
+ * Populates a subarray with specific indicies.
+ *
+ * **Example:**
+ *
+ * The following sets a 2D subarray [0,10], [20, 30] to the subarray.
+ *
+ * @code{.c}
+ * tiledb_subarray_t *subarray;
+ * uint64_t subarray_a[] = { 0, 10, 20, 30};
+ * tiledb_subarray_set_subarray(ctx, subarray, subarray_a);
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param subarray The TileDB subarray object.
+ * @param subarray_a The subarray which can be used to constrain the array read/write.
+ *     It should be a sequence of [low, high] pairs (one
+ *     pair per dimension). For the case of writes, this is meaningful only
+ *     for dense arrays, and specifically dense writes. Note that `subarray_a`
+ *     must have the same type as the domain.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ *
+ x* @note If you set the subarray of a completed, incomplete or in-progress
+ x*     query, this function will clear the internal state and render it
+ x*     as uninitialized. However, the potentially set layout and attribute
+ x*     buffers will be retained. This is useful when the user wishes to
+ x*     fix the attributes and layout, but explore different subarrays with
+ x*     the same `tiledb_query_t` object (i.e., without having to create
+ x*     a new object).
+ *
+ x* @note Setting the subarray in sparse writes is meaningless and, thus,
+ x*     this function will error in the following two cases, provided that
+ x*     this is a write query:
+ x*     (i) the array is sparse, and (ii) the array is dense and the
+ x*     layout has been set to `TILEDB_UNORDERED`. In the second case,
+ x*     if the user sets the layout to `TILEDB_UNORDERED` **after**
+ x*     the subarray has been set, the subarray will simply be ignored.
+ */
+TILEDB_EXPORT
+int32_t tiledb_subarray_set_subarray(
+    tiledb_ctx_t* ctx, tiledb_subarray_t* subarray_s, const void* subarray_v);
+
+/**
  * Indicates that the query will write or read a subarray, and provides
  * the appropriate information.
  *
@@ -3869,6 +3911,38 @@ TILEDB_EXPORT void tiledb_query_free(tiledb_query_t** query);
  */
 TILEDB_EXPORT int32_t
 tiledb_query_submit(tiledb_ctx_t* ctx, tiledb_query_t* query);
+
+/**
+ * Submits a TileDB query after setting the provided subarray if query either previously completed or uninitialized.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * tiledb_query_submit(ctx, query, subarray);
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param query The query to be submitted.
+ * @param subarray The subarray to be used by the query.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ *
+ * @note `tiledb_query_finalize` must be invoked after finish writing in
+ *     global layout (via repeated invocations of `tiledb_query_submit`),
+ *     in order to flush any internal state.
+ *
+ * @note For the case of reads, if the returned status is `TILEDB_INCOMPLETE`,
+ *    TileDB could not fit the entire result in the user's buffers. In this
+ *    case, the user should consume the read results (if any), optionally
+ *    reset the buffers with `tiledb_query_set_buffer`, and then resubmit the
+ *    query until the status becomes `TILEDB_COMPLETED`. If all buffer sizes
+ *    after the termination of this function become 0, then this means that
+ *    **no** useful data was read into the buffers, implying that larger
+ *    buffers are needed for the query to proceed. In this case, the users
+ *    must reallocate their buffers (increasing their size), reset the buffers
+ *    with `tiledb_query_set_buffer`, and resubmit the query.
+ */
+TILEDB_EXPORT int32_t tiledb_query_submit_with_subarray(
+    tiledb_ctx_t* ctx, tiledb_query_t* query, tiledb_subarray_t* subarray);
 
 /**
  * Submits a TileDB query in asynchronous mode.
@@ -5055,6 +5129,27 @@ TILEDB_EXPORT int32_t tiledb_array_alloc(
 TILEDB_EXPORT int32_t tiledb_subarray_alloc(
     tiledb_ctx_t* ctx, 
     const tiledb_array_t *array, 
+    tiledb_subarray_t** subarray);
+
+/**
+ * return a TileDB subarray object for the given array.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * tiledb_subarray_t* subarray;
+ * tiledb_query_subarray(array, &subarray);
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param array An open array object.
+ * @param subarray The retrieved subarray object if available.
+ * @return `TILEDB_OK` for success and `TILEDB_OOM` or `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT 
+int32_t tiledb_query_subarray(
+    tiledb_ctx_t* ctx,
+    const tiledb_query_t* query,
     tiledb_subarray_t** subarray);
 
 /**

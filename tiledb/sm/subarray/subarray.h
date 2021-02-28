@@ -489,6 +489,9 @@ class Subarray {
   /** Returns `true` if at least one dimension has non-default ranges set. */
   bool is_set() const;
 
+  /** Returns number of non-default (set) ranges */
+  int32_t count_set() const;
+
   /** Returns `true` if the input dimension has non-default range set. */
   bool is_set(unsigned dim_idx) const;
 
