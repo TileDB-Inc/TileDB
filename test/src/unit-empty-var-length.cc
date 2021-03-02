@@ -695,10 +695,10 @@ TEST_CASE_METHOD(
     std::vector<uint64_t> q2_result_offsets = {0, 0, 0, 0};
     REQUIRE(r_offsets == q2_result_offsets);
     REQUIRE(r_data[0] == StringEmptyFx3::data[0]);
+  }
 
-    VFS vfs(ctx);
-    if (vfs.is_dir(array_name)) {
-      vfs.remove_dir(array_name);
-    }
+  Context ctx;
+  if (Object::object(ctx, array_name).type() == Object::Type::Array) {
+    Object::remove(ctx, array_name);
   }
 }
