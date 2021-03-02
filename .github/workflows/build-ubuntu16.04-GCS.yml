@@ -1,4 +1,4 @@
-name: build-ubuntu-16.04-S3
+name: build-ubuntu-16.04-GCS
 on:
   push:
 #    branches:
@@ -10,9 +10,8 @@ on:
       - '*'  # must quote since "*" is a YAML reserved character; we want a string
 env:
   BACKWARDS_COMPATIBILITY_ARRAYS: OFF
-  TILEDB_S3: ON
+  TILEDB_GCS: ON
   TILEDB_STATIC: OFF
-  TILEDB_TOOLS: ON
   CXX: g++
 
 jobs:
@@ -73,16 +72,15 @@ jobs:
         id: test
         run: |
 
-          # Start minio server if S3 is enabled
-          if [[ "${{ matrix.TILEDB_S3 }}" == "ON" ]]; then
-            source scripts/install-minio.sh;
-            source scripts/run-minio.sh;
+          # Start GCS Emulator if GCS is enabled
+          if [[ "${{ matrix.TILEDB_GCS }}" == "ON" ]]; then
+            source scripts/install-gcs-emu.sh;
+            source scripts/run-gcs-emu.sh;
           fi
 
           # Set up arguments for bootstrap.sh
           bootstrap_args="--enable=verbose";
-          bootstrap_args="${bootstrap_args} --enable-s3";
-          bootstrap_args="${bootstrap_args} --enable-tools";
+          bootstrap_args="${bootstrap_args} --enable-gcs";
 
           # name: 'Install dependencies'
 
@@ -99,30 +97,19 @@ jobs:
 
           #- run: |
           cd $GITHUB_WORKSPACE/build
-          # make sure docker is still running...
-          printenv
-          docker ps -a
+          ls -la
 
           make -j4 -C tiledb tiledb_unit
+
+          # Bypass Catch2 Framework stdout interception with awk on test output
+          # make check | awk '/1: ::set-output/{sub(/.*1: /, ""); print; next} 1'
           ./tiledb/test/tiledb_unit -d yes | awk '/1: ::set-output/{sub(/.*1: /, ""); print; next} 1'
 
-          pushd $GITHUB_WORKSPACE/examples/cmake_project
-          mkdir build && cd build
-          cmake -DCMAKE_PREFIX_PATH=$GITHUB_WORKSPACE/dist .. && make
-          ./ExampleExe
-          if [[ "${{ matrix.TILEDB_STATIC }}" == "ON" ]]; then
-            ./ExampleExe_static
+          # Kill the running GCS emulator server Linux only because OSX does not
+          # run the emulator
+          if [[ ( "${{ runner.os }}" == "Linux" && "${{ matrix.TILEDB_GCS }}" == "ON" ) ]]; then
+            kill -9 $GCS_PID
           fi
-          popd
-          # Build and run the PNG ingestion example.
-          # libpng (example dependency)
-          sudo apt-get install libpng-dev
-
-          pushd $GITHUB_WORKSPACE/examples/png_ingestion;
-          mkdir build && cd build;
-          cmake -DCMAKE_PREFIX_PATH=$GITHUB_WORKSPACE/dist .. && make;
-          ./tiledb_png $GITHUB_WORKSPACE/doc/source/figures/Scarlet-Macaw-small.png /tmp/pngarray output.png;
-          popd;
 
           # Build the benchmarks (but do not run them).
           pushd $GITHUB_WORKSPACE/test/benchmarking && \
@@ -148,7 +135,11 @@ jobs:
           }
           EOF
           export TESTFILE_LDFLAGS="-ltiledb"
-          export LD_LIBRARY_PATH=$GITHUB_WORKSPACE/dist/lib:/usr/local/lib:$LD_LIBRARY_PATH
+          if [[ "${{ runner.os }}" == "Linux" ]]; then
+            export LD_LIBRARY_PATH=$GITHUB_WORKSPACE/dist/lib:/usr/local/lib:$LD_LIBRARY_PATH
+          else
+            export DYLD_LIBRARY_PATH=$GITHUB_WORKSPACE/dist/lib:/usr/local/lib:$DYLD_LIBRARY_PATH
+          fi
           $CXX -std=c++11 -g -O0 -Wall -Werror -I$GITHUB_WORKSPACE/dist/include -L$GITHUB_WORKSPACE/dist/lib $testfile -o $testfile.exe $TESTFILE_LDFLAGS && \
           $testfile.exe && \
           rm -f $testfile $testfile.exe
@@ -164,6 +155,7 @@ jobs:
           if [[ "${{ steps.test.outputs.TILEDB_CI_SUCCESS }}" -ne 1 ]]; then
             exit 1;
           fi
+      #
       - name: "Print log files (failed build only)"
         run: |
           set -e pipefail

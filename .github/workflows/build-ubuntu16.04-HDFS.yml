@@ -1,4 +1,4 @@
-name: build-ubuntu-16.04-S3
+name: build-ubuntu-16.04-HDFS
 on:
   push:
 #    branches:
@@ -10,9 +10,7 @@ on:
       - '*'  # must quote since "*" is a YAML reserved character; we want a string
 env:
   BACKWARDS_COMPATIBILITY_ARRAYS: OFF
-  TILEDB_S3: ON
-  TILEDB_STATIC: OFF
-  TILEDB_TOOLS: ON
+  TILEDB_HDFS: ON
   CXX: g++
 
 jobs:
@@ -42,11 +40,7 @@ jobs:
       - run: |
           set -e pipefail
           python -m pip install --upgrade pip virtualenv
-          if [[ ${{ matrix.TILEDB_ARROW_TESTS == 'ON' }} ]]; then
-            pip install pyarrow pybind11 numpy
-          fi
         shell: bash
-
       - name: Check formatting (linux only)'
         run: |
           set -e pipefail
@@ -68,21 +62,25 @@ jobs:
           sudo apt-get install doxygen
         shell: bash
         if: ${{ runner.os == 'Linux' }}
-
       - name: 'Build and test libtiledb'
         id: test
         run: |
 
-          # Start minio server if S3 is enabled
-          if [[ "${{ matrix.TILEDB_S3 }}" == "ON" ]]; then
-            source scripts/install-minio.sh;
-            source scripts/run-minio.sh;
+          # - run: |
+          # Start HDFS server if enabled
+          if [[ "${{ matrix.TILEDB_HDFS }}" == "ON" ]]; then
+            # - ssh to localhost is required for HDFS launch...
+            # - /home/vsts has permissions g+w and is owned by user 'docker'
+            #   for VSTS purposes, so disable ssh strictness
+            sudo sed -i.bak 's/StrictModes\ yes/StrictModes\ no/g' /etc/ssh/sshd_config
+
+            source scripts/install-hadoop.sh
+            source scripts/run-hadoop.sh
           fi
 
           # Set up arguments for bootstrap.sh
           bootstrap_args="--enable=verbose";
-          bootstrap_args="${bootstrap_args} --enable-s3";
-          bootstrap_args="${bootstrap_args} --enable-tools";
+          bootstrap_args="${bootstrap_args} --enable-hdfs";
 
           # name: 'Install dependencies'
 
@@ -99,11 +97,12 @@ jobs:
 
           #- run: |
           cd $GITHUB_WORKSPACE/build
-          # make sure docker is still running...
-          printenv
-          docker ps -a
+          ls -la
 
           make -j4 -C tiledb tiledb_unit
+
+          # Bypass Catch2 Framework stdout interception with awk on test output
+          # make check | awk '/1: ::set-output/{sub(/.*1: /, ""); print; next} 1'
           ./tiledb/test/tiledb_unit -d yes | awk '/1: ::set-output/{sub(/.*1: /, ""); print; next} 1'
 
           pushd $GITHUB_WORKSPACE/examples/cmake_project
@@ -164,6 +163,7 @@ jobs:
           if [[ "${{ steps.test.outputs.TILEDB_CI_SUCCESS }}" -ne 1 ]]; then
             exit 1;
           fi
+      #
       - name: "Print log files (failed build only)"
         run: |
           set -e pipefail

@@ -1,4 +1,4 @@
-name: build-ubuntu-16.04-S3
+name: build-ubuntu-16.04-AZURE
 on:
   push:
 #    branches:
@@ -10,9 +10,9 @@ on:
       - '*'  # must quote since "*" is a YAML reserved character; we want a string
 env:
   BACKWARDS_COMPATIBILITY_ARRAYS: OFF
-  TILEDB_S3: ON
+  TILEDB_AZURE: ON
   TILEDB_STATIC: OFF
-  TILEDB_TOOLS: ON
+  TILEDB_ARROW_TESTS: ON
   CXX: g++
 
 jobs:
@@ -72,17 +72,27 @@ jobs:
       - name: 'Build and test libtiledb'
         id: test
         run: |
+          # Azure sets "SYSTEM=build" for unknown reasonas, which breaks the OpenSSL configure script
+          #   - openssl configure uses ENV{SYSTEM} if available:
+          #     https://github.com/openssl/openssl/blob/6d745d740d37d680ff696486218b650512bbbbc6/config#L56
+          #   - error description:
+          #     https://developercommunity.visualstudio.com/content/problem/602584/openssl-build-error-when-using-pipelines.htm
+          unset SYSTEM
 
-          # Start minio server if S3 is enabled
-          if [[ "${{ matrix.TILEDB_S3 }}" == "ON" ]]; then
-            source scripts/install-minio.sh;
-            source scripts/run-minio.sh;
-          fi
+          # azure run does not treat intermediate failure as error
+          # https://github.com/Microsoft/azure-pipelines-yaml/issues/135
+          set -e pipefail
+
+          git config --global user.name 'Azure Pipeline'
+          git config --global user.email 'no-reply@tiledb.io'
+
+          # Start Azurite - Azure is enabled
+          source scripts/install-azurite.sh;
+          source scripts/run-azurite.sh;
 
           # Set up arguments for bootstrap.sh
           bootstrap_args="--enable=verbose";
-          bootstrap_args="${bootstrap_args} --enable-s3";
-          bootstrap_args="${bootstrap_args} --enable-tools";
+          bootstrap_args="${bootstrap_args} --enable-azure";
 
           # name: 'Install dependencies'
 
@@ -99,13 +109,20 @@ jobs:
 
           #- run: |
           cd $GITHUB_WORKSPACE/build
-          # make sure docker is still running...
-          printenv
-          docker ps -a
+          ls -la
 
           make -j4 -C tiledb tiledb_unit
+
+          # Bypass Catch2 Framework stdout interception with awk on test output
+          # make check | awk '/1: ::set-output/{sub(/.*1: /, ""); print; next} 1'
           ./tiledb/test/tiledb_unit -d yes | awk '/1: ::set-output/{sub(/.*1: /, ""); print; next} 1'
 
+          # Kill the running Azurite server
+          if [[ "${{ matrix.TILEDB_AZURE }}" == "ON" ]]; then
+            kill -n 9 $AZURITE_PID
+          fi
+
+          # - bash: |
           pushd $GITHUB_WORKSPACE/examples/cmake_project
           mkdir build && cd build
           cmake -DCMAKE_PREFIX_PATH=$GITHUB_WORKSPACE/dist .. && make
@@ -164,6 +181,7 @@ jobs:
           if [[ "${{ steps.test.outputs.TILEDB_CI_SUCCESS }}" -ne 1 ]]; then
             exit 1;
           fi
+      #
       - name: "Print log files (failed build only)"
         run: |
           set -e pipefail

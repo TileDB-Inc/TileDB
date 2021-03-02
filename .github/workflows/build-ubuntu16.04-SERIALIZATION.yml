@@ -1,4 +1,4 @@
-name: build-ubuntu-16.04-S3
+name: build-ubuntu-16.04-SERIALIZATION
 on:
   push:
 #    branches:
@@ -9,11 +9,10 @@ on:
     branches:
       - '*'  # must quote since "*" is a YAML reserved character; we want a string
 env:
-  BACKWARDS_COMPATIBILITY_ARRAYS: OFF
+  TILEDB_SERIALIZATION: ON
   TILEDB_S3: ON
-  TILEDB_STATIC: OFF
-  TILEDB_TOOLS: ON
   CXX: g++
+  BACKWARDS_COMPATIBILITY_ARRAYS: ON
 
 jobs:
   build:
@@ -38,13 +37,9 @@ jobs:
       - uses: actions/setup-python@v2
         with:
           python-version: '3.8'
-
       - run: |
           set -e pipefail
           python -m pip install --upgrade pip virtualenv
-          if [[ ${{ matrix.TILEDB_ARROW_TESTS == 'ON' }} ]]; then
-            pip install pyarrow pybind11 numpy
-          fi
         shell: bash
 
       - name: Check formatting (linux only)'
@@ -73,16 +68,15 @@ jobs:
         id: test
         run: |
 
-          # Start minio server if S3 is enabled
-          if [[ "${{ matrix.TILEDB_S3 }}" == "ON" ]]; then
-            source scripts/install-minio.sh;
-            source scripts/run-minio.sh;
-          fi
+          git clone https://github.com/TileDB-Inc/TileDB-Unit-Test-Arrays.git --branch 2.2.0 test/inputs/arrays/read_compatibility_test
+
+          #   name: 'Clone Unit-Test-Arrays'
 
           # Set up arguments for bootstrap.sh
           bootstrap_args="--enable=verbose";
-          bootstrap_args="${bootstrap_args} --enable-s3";
-          bootstrap_args="${bootstrap_args} --enable-tools";
+          # Add serialization flag if necessary
+          bootstrap_args="${bootstrap_args} --enable-serialization";
+
 
           # name: 'Install dependencies'
 
@@ -99,13 +93,16 @@ jobs:
 
           #- run: |
           cd $GITHUB_WORKSPACE/build
-          # make sure docker is still running...
-          printenv
-          docker ps -a
+          ls -la
 
           make -j4 -C tiledb tiledb_unit
+
+          # Bypass Catch2 Framework stdout interception with awk on test output
+          # make check | awk '/1: ::set-output/{sub(/.*1: /, ""); print; next} 1'
           ./tiledb/test/tiledb_unit -d yes | awk '/1: ::set-output/{sub(/.*1: /, ""); print; next} 1'
 
+
+          # - bash: |
           pushd $GITHUB_WORKSPACE/examples/cmake_project
           mkdir build && cd build
           cmake -DCMAKE_PREFIX_PATH=$GITHUB_WORKSPACE/dist .. && make
@@ -164,6 +161,7 @@ jobs:
           if [[ "${{ steps.test.outputs.TILEDB_CI_SUCCESS }}" -ne 1 ]]; then
             exit 1;
           fi
+      #
       - name: "Print log files (failed build only)"
         run: |
           set -e pipefail
