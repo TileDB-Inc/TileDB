@@ -42,9 +42,7 @@ jobs:
       - run: |
           set -e pipefail
           python -m pip install --upgrade pip virtualenv
-          if [[ ${{ matrix.TILEDB_ARROW_TESTS == 'ON' }} ]]; then
-            pip install pyarrow pybind11 numpy
-          fi
+          pip install pyarrow pybind11 numpy
         shell: bash
 
       - name: Check formatting (linux only)'
@@ -118,18 +116,14 @@ jobs:
           ./tiledb/test/tiledb_unit -d yes | awk '/1: ::set-output/{sub(/.*1: /, ""); print; next} 1'
 
           # Kill the running Azurite server
-          if [[ "${{ matrix.TILEDB_AZURE }}" == "ON" ]]; then
-            kill -n 9 $AZURITE_PID
-          fi
+          kill -n 9 $AZURITE_PID
 
           # - bash: |
           pushd $GITHUB_WORKSPACE/examples/cmake_project
           mkdir build && cd build
           cmake -DCMAKE_PREFIX_PATH=$GITHUB_WORKSPACE/dist .. && make
           ./ExampleExe
-          if [[ "${{ matrix.TILEDB_STATIC }}" == "ON" ]]; then
-            ./ExampleExe_static
-          fi
+
           popd
           # Build and run the PNG ingestion example.
           # libpng (example dependency)

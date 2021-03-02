@@ -107,9 +107,6 @@ jobs:
           mkdir build && cd build
           cmake -DCMAKE_PREFIX_PATH=$GITHUB_WORKSPACE/dist .. && make
           ./ExampleExe
-          if [[ "${{ matrix.TILEDB_STATIC }}" == "ON" ]]; then
-            ./ExampleExe_static
-          fi
           popd
           # Build and run the PNG ingestion example.
           # libpng (example dependency)

@@ -41,19 +41,15 @@ jobs:
       - run: |
           set -e pipefail
           python -m pip install --upgrade pip virtualenv
-          if [[ ${{ matrix.TILEDB_ARROW_TESTS == 'ON' }} ]]; then
-            pip install pyarrow pybind11 numpy
-          fi
+          pip install pyarrow pybind11 numpy
         shell: bash
 
       - name: 'Build and test libtiledb'
         id: test
         run: |
           # Start GCS Emulator if GCS is enabled
-          if [[ "${{ matrix.TILEDB_GCS }}" == "ON" ]]; then
-            source scripts/install-gcs-emu.sh;
-            source scripts/run-gcs-emu.sh;
-          fi
+          source scripts/install-gcs-emu.sh;
+          source scripts/run-gcs-emu.sh;
 
           # Set up arguments for bootstrap.sh
           bootstrap_args="--enable=verbose";

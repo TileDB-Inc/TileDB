@@ -10,7 +10,6 @@ on:
       - '*'  # must quote since "*" is a YAML reserved character; we want a string
 env:
   BACKWARDS_COMPATIBILITY_ARRAYS: OFF
-  TILEDB_S3: ON
   TILEDB_STATIC: OFF
   TILEDB_TOOLS: ON
   CXX: g++
@@ -42,9 +41,6 @@ jobs:
       - run: |
           set -e pipefail
           python -m pip install --upgrade pip virtualenv
-          if [[ ${{ matrix.TILEDB_ARROW_TESTS == 'ON' }} ]]; then
-            pip install pyarrow pybind11 numpy
-          fi
         shell: bash
 
       - name: Check formatting (linux only)'
@@ -74,10 +70,8 @@ jobs:
         run: |
 
           # Start minio server if S3 is enabled
-          if [[ "${{ matrix.TILEDB_S3 }}" == "ON" ]]; then
-            source scripts/install-minio.sh;
-            source scripts/run-minio.sh;
-          fi
+          source scripts/install-minio.sh;
+          source scripts/run-minio.sh;
 
           # Set up arguments for bootstrap.sh
           bootstrap_args="--enable=verbose";
@@ -110,9 +104,6 @@ jobs:
           mkdir build && cd build
           cmake -DCMAKE_PREFIX_PATH=$GITHUB_WORKSPACE/dist .. && make
           ./ExampleExe
-          if [[ "${{ matrix.TILEDB_STATIC }}" == "ON" ]]; then
-            ./ExampleExe_static
-          fi
           popd
           # Build and run the PNG ingestion example.
           # libpng (example dependency)

@@ -68,15 +68,13 @@ jobs:
 
           # - run: |
           # Start HDFS server if enabled
-          if [[ "${{ matrix.TILEDB_HDFS }}" == "ON" ]]; then
-            # - ssh to localhost is required for HDFS launch...
-            # - /home/vsts has permissions g+w and is owned by user 'docker'
-            #   for VSTS purposes, so disable ssh strictness
-            sudo sed -i.bak 's/StrictModes\ yes/StrictModes\ no/g' /etc/ssh/sshd_config
+          # - ssh to localhost is required for HDFS launch...
+          # - /home/vsts has permissions g+w and is owned by user 'docker'
+          #   for VSTS purposes, so disable ssh strictness
+          sudo sed -i.bak 's/StrictModes\ yes/StrictModes\ no/g' /etc/ssh/sshd_config
 
-            source scripts/install-hadoop.sh
-            source scripts/run-hadoop.sh
-          fi
+          source scripts/install-hadoop.sh
+          source scripts/run-hadoop.sh
 
           # Set up arguments for bootstrap.sh
           bootstrap_args="--enable=verbose";
@@ -109,9 +107,6 @@ jobs:
           mkdir build && cd build
           cmake -DCMAKE_PREFIX_PATH=$GITHUB_WORKSPACE/dist .. && make
           ./ExampleExe
-          if [[ "${{ matrix.TILEDB_STATIC }}" == "ON" ]]; then
-            ./ExampleExe_static
-          fi
           popd
           # Build and run the PNG ingestion example.
           # libpng (example dependency)

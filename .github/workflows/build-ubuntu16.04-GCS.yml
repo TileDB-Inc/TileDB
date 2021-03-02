@@ -41,9 +41,7 @@ jobs:
       - run: |
           set -e pipefail
           python -m pip install --upgrade pip virtualenv
-          if [[ ${{ matrix.TILEDB_ARROW_TESTS == 'ON' }} ]]; then
-            pip install pyarrow pybind11 numpy
-          fi
+          pip install pyarrow pybind11 numpy
         shell: bash
 
       - name: Check formatting (linux only)'
@@ -73,10 +71,8 @@ jobs:
         run: |
 
           # Start GCS Emulator if GCS is enabled
-          if [[ "${{ matrix.TILEDB_GCS }}" == "ON" ]]; then
-            source scripts/install-gcs-emu.sh;
-            source scripts/run-gcs-emu.sh;
-          fi
+          source scripts/install-gcs-emu.sh;
+          source scripts/run-gcs-emu.sh;
 
           # Set up arguments for bootstrap.sh
           bootstrap_args="--enable=verbose";
@@ -107,9 +103,7 @@ jobs:
 
           # Kill the running GCS emulator server Linux only because OSX does not
           # run the emulator
-          if [[ ( "${{ runner.os }}" == "Linux" && "${{ matrix.TILEDB_GCS }}" == "ON" ) ]]; then
-            kill -9 $GCS_PID
-          fi
+          kill -9 $GCS_PID
 
           # Build the benchmarks (but do not run them).
           pushd $GITHUB_WORKSPACE/test/benchmarking && \
