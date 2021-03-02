@@ -1,6 +1,7 @@
 # In Progress
 
 ## Disk Format
+* Format version incremented to 9. [#2108](https://github.com/TileDB-Inc/TileDB/pull/2108)
 
 ## Breaking C API changes
 
