@@ -93,15 +93,6 @@ jobs:
           ./ExampleExe
 
           popd
-          # Build and run the PNG ingestion example.
-          # libpng (example dependency)
-          sudo apt-get install libpng-dev
-
-          pushd $GITHUB_WORKSPACE/examples/png_ingestion;
-          mkdir build && cd build;
-          cmake -DCMAKE_PREFIX_PATH=$GITHUB_WORKSPACE/dist .. && make;
-          ./tiledb_png $GITHUB_WORKSPACE/doc/source/figures/Scarlet-Macaw-small.png /tmp/pngarray output.png;
-          popd;
 
           # Build the benchmarks (but do not run them).
           pushd $GITHUB_WORKSPACE/test/benchmarking && \
