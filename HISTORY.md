@@ -1,6 +1,7 @@
 # In Progress
 
 ## Disk Format
+* Format version incremented to 9. [#2108](https://github.com/TileDB-Inc/TileDB/pull/2108)
 
 ## Breaking C API changes
 
@@ -11,6 +12,7 @@
 * Smoke Test, remove nullable structs from global namespace. [#2078](https://github.com/TileDB-Inc/TileDB/pull/2078)
 
 ## Improvements
+* Migrating CI AZP in GA described [here](https://app.clubhouse.io/tiledb-inc/story/4844/migrate-ci-to-github-actions) [#2111](https://github.com/TileDB-Inc/TileDB/pull/2111)
 * Cache non_empty_domain for REST arrays like all other arrays [#2105](https://github.com/TileDB-Inc/TileDB/pull/2105)
 * Add additional stats printing to breakdown read state initialization timings [#2095](https://github.com/TileDB-Inc/TileDB/pull/2095)
 * Places the in-memory filesystem under unit test [#1961](https://github.com/TileDB-Inc/TileDB/pull/1961)
