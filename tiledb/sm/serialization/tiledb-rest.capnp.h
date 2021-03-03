@@ -135,7 +135,7 @@ struct AttributeBufferHeader {
   class Pipeline;
 
   struct _capnpPrivate {
-    CAPNP_DECLARE_STRUCT_HEADER(d20a578112fa92a2, 3, 1)
+    CAPNP_DECLARE_STRUCT_HEADER(d20a578112fa92a2, 6, 1)
 #if !CAPNP_LITE
     static constexpr ::capnp::_::RawBrandedSchema const* brand() {
       return &schema->defaultBrand;
@@ -1449,6 +1449,12 @@ class AttributeBufferHeader::Reader {
 
   inline ::uint64_t getValidityLenBufferSizeInBytes() const;
 
+  inline ::uint64_t getOriginalFixedLenBufferSizeInBytes() const;
+
+  inline ::uint64_t getOriginalVarLenBufferSizeInBytes() const;
+
+  inline ::uint64_t getOriginalValidityLenBufferSizeInBytes() const;
+
  private:
   ::capnp::_::StructReader _reader;
   template <typename, ::capnp::Kind>
@@ -1503,6 +1509,15 @@ class AttributeBufferHeader::Builder {
 
   inline ::uint64_t getValidityLenBufferSizeInBytes();
   inline void setValidityLenBufferSizeInBytes(::uint64_t value);
+
+  inline ::uint64_t getOriginalFixedLenBufferSizeInBytes();
+  inline void setOriginalFixedLenBufferSizeInBytes(::uint64_t value);
+
+  inline ::uint64_t getOriginalVarLenBufferSizeInBytes();
+  inline void setOriginalVarLenBufferSizeInBytes(::uint64_t value);
+
+  inline ::uint64_t getOriginalValidityLenBufferSizeInBytes();
+  inline void setOriginalValidityLenBufferSizeInBytes(::uint64_t value);
 
  private:
   ::capnp::_::StructBuilder _builder;
@@ -6864,6 +6879,59 @@ inline void AttributeBufferHeader::Builder::setValidityLenBufferSizeInBytes(
     ::uint64_t value) {
   _builder.setDataField<::uint64_t>(
       ::capnp::bounded<2>() * ::capnp::ELEMENTS, value);
+}
+
+inline ::uint64_t
+AttributeBufferHeader::Reader::getOriginalFixedLenBufferSizeInBytes() const {
+  return _reader.getDataField<::uint64_t>(
+      ::capnp::bounded<3>() * ::capnp::ELEMENTS);
+}
+
+inline ::uint64_t
+AttributeBufferHeader::Builder::getOriginalFixedLenBufferSizeInBytes() {
+  return _builder.getDataField<::uint64_t>(
+      ::capnp::bounded<3>() * ::capnp::ELEMENTS);
+}
+inline void
+AttributeBufferHeader::Builder::setOriginalFixedLenBufferSizeInBytes(
+    ::uint64_t value) {
+  _builder.setDataField<::uint64_t>(
+      ::capnp::bounded<3>() * ::capnp::ELEMENTS, value);
+}
+
+inline ::uint64_t
+AttributeBufferHeader::Reader::getOriginalVarLenBufferSizeInBytes() const {
+  return _reader.getDataField<::uint64_t>(
+      ::capnp::bounded<4>() * ::capnp::ELEMENTS);
+}
+
+inline ::uint64_t
+AttributeBufferHeader::Builder::getOriginalVarLenBufferSizeInBytes() {
+  return _builder.getDataField<::uint64_t>(
+      ::capnp::bounded<4>() * ::capnp::ELEMENTS);
+}
+inline void AttributeBufferHeader::Builder::setOriginalVarLenBufferSizeInBytes(
+    ::uint64_t value) {
+  _builder.setDataField<::uint64_t>(
+      ::capnp::bounded<4>() * ::capnp::ELEMENTS, value);
+}
+
+inline ::uint64_t
+AttributeBufferHeader::Reader::getOriginalValidityLenBufferSizeInBytes() const {
+  return _reader.getDataField<::uint64_t>(
+      ::capnp::bounded<5>() * ::capnp::ELEMENTS);
+}
+
+inline ::uint64_t
+AttributeBufferHeader::Builder::getOriginalValidityLenBufferSizeInBytes() {
+  return _builder.getDataField<::uint64_t>(
+      ::capnp::bounded<5>() * ::capnp::ELEMENTS);
+}
+inline void
+AttributeBufferHeader::Builder::setOriginalValidityLenBufferSizeInBytes(
+    ::uint64_t value) {
+  _builder.setDataField<::uint64_t>(
+      ::capnp::bounded<5>() * ::capnp::ELEMENTS, value);
 }
 
 inline bool Dimension::Reader::hasName() const {
