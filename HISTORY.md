@@ -12,6 +12,7 @@
 * Smoke Test, remove nullable structs from global namespace. [#2078](https://github.com/TileDB-Inc/TileDB/pull/2078)
 
 ## Improvements
+* Migrating AZP CI to GA [#2111](https://github.com/TileDB-Inc/TileDB/pull/2111)
 * Cache non_empty_domain for REST arrays like all other arrays [#2105](https://github.com/TileDB-Inc/TileDB/pull/2105)
 * Add additional stats printing to breakdown read state initialization timings [#2095](https://github.com/TileDB-Inc/TileDB/pull/2095)
 * Places the in-memory filesystem under unit test [#1961](https://github.com/TileDB-Inc/TileDB/pull/1961)
