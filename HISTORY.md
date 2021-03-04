@@ -16,6 +16,8 @@
 
 ## Bug fixes
 
+* Always use original buffer size in serialized read queries serverside. [#2115](https://github.com/TileDB-Inc/TileDB/pull/2115)
+
 ## API additions
 
 ### C API
