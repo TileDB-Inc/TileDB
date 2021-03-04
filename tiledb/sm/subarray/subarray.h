@@ -579,7 +579,19 @@ class Subarray {
   const T* tile_coords_ptr(
       const std::vector<T>& tile_coords, std::vector<uint8_t>* aux) const;
 
-  /** Returns the tile overlap of the subarray. */
+  /**
+   * Returns the tile overlap of the subarray.
+   *
+   * The outer vector is indexed by fragment ids and the inner vector is
+   * indexed by range indexes.
+   *
+   * As an optimization, the underlying data structure is shared between
+   * `Subarray` instances and their partitioned `Subarray` instances created
+   * by the `SubarrayPartitioner`. The indexes in the inner vector are
+   * indexed by the ranges in the original/parent `Subarray` instance. For
+   * the partitioned/child `Subarray` instances, the caller must access the
+   * ranges by their index in the parent.
+   */
   const std::vector<std::vector<TileOverlap>>& tile_overlap() const;
 
   /**
@@ -699,14 +711,11 @@ class Subarray {
    * of all array fragments. Each element is a vector corresponding
    * to a single range of the subarray. These vectors/ranges are sorted
    * according to ``layout_``.
+   *
+   * This is shared between a `Subarray` and all of its `Subarray` partitions
+   * created by the `SubarrayPartitioner`.
    */
-  std::vector<std::vector<TileOverlap>> tile_overlap_;
-
-  /**
-   * ``True`` if the tile overlap for the ranges of the subarray has
-   *  been computed.
-   */
-  bool tile_overlap_computed_;
+  tdb_shared_ptr<std::vector<std::vector<TileOverlap>>> tile_overlap_;
 
   /**
    * ``True`` if ranges should attempt to be coalesced as they are added.
