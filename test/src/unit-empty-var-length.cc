@@ -696,4 +696,9 @@ TEST_CASE_METHOD(
     REQUIRE(r_offsets == q2_result_offsets);
     REQUIRE(r_data[0] == StringEmptyFx3::data[0]);
   }
+
+  Context ctx;
+  if (Object::object(ctx, array_name).type() == Object::Type::Array) {
+    Object::remove(ctx, array_name);
+  }
 }
