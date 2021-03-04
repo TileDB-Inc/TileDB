@@ -451,7 +451,7 @@ class Query {
    */
   bool has_results() const;
 
-  /** Initializes the query. */
+  /** Initializes the query (on submission, called from submit() et al.). */
   Status init();
 
   /** Returns the first fragment uri. */
@@ -667,8 +667,16 @@ class Query {
    *     when performing unordered (sparse) writes, has no effect
    *     (will be ingnored).
    */
-  //TBD: TILEDB_DEPRECATED not available here? how to get?
-  /*TILEDB_DEPRECATED*/ Status set_subarray(const void* subarray);
+  Status set_subarray(const void* subarray);
+
+  /**
+   * Validate the subarray's appropriateness to use for query. 
+   * If provided subarray is null, then the internal/default subarray will be validated.
+   *
+   * @param subarray The subarray to be validated or nullptr.
+   * @return Status
+   */
+  Status check_subarray(const tiledb::sm::Subarray* subarray);
 
   /**
    * Sets the query subarray.
@@ -681,12 +689,28 @@ class Query {
    *     (will be ingnored).
    */
   Status set_subarray(const tiledb::sm::Subarray* subarray);
+  
+  
+  /**
+   * Sets the query subarray for initialization.
+   *
+   * @param subarray The subarray to be set.
+   * @return Status
+   *
+   * @note Setting a subarray for sparse arrays, or for dense arrays
+   *     when performing unordered (sparse) writes, has no effect
+   *     (will be ingnored).
+   */
+  Status set_initialization_subarray(const tiledb::sm::Subarray* subarray);
 
   /** Sets the query subarray, without performing any checks. */
   Status set_subarray_unsafe(const NDRange& subarray);
 
+  /** Reference current Reader/Writer subarray according to query type */
+  const Subarray & subarray() const ;
+	
   /** Submits the query to the storage manager. */
-  Status submit(/*Subarray *subarray = nullptr*/);
+  Status submit();
 
   /**
    * Submits the query to the storage manager. The query will be
@@ -736,6 +760,12 @@ class Query {
 
   /** The current serialization state. */
   SerializationState serialization_state_;
+
+  /** Whether a query initialization subarray has been provided. */
+  bool have_initialization_subarray_;
+  
+  /** The initialization subarray data to use for query initialization if one has been provided. */
+  tiledb::sm::Subarray initialization_subarray_;
 
   /* ********************************* */
   /*           PRIVATE METHODS         */

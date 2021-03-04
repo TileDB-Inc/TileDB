@@ -107,10 +107,11 @@ struct tiledb_filter_list_t {
 
 struct tiledb_query_t {
   tiledb::sm::Query* query_ = nullptr;
-  //tiledb::sm::Subarray* subarray_ = nullptr;
+#if 01
   tiledb_subarray_t* subarray_ = nullptr;
   tiledb_subarray_t* wsubarray_ = nullptr;
   tiledb_subarray_t* rsubarray_ = nullptr;
+#endif
 };
 
 struct tiledb_vfs_t {

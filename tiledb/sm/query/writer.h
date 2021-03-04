@@ -253,7 +253,7 @@ class Writer {
   uint32_t get_offsets_bitsize() const;
 
   /** Initializes the writer with the subarray layout. */
-  Status init(const Layout& layout);
+  Status init(const Layout& layout, const Subarray *initialization_subarray = nullptr);
 
   /** Returns the cell layout. */
   Layout layout() const;
@@ -373,6 +373,9 @@ class Writer {
 
   /** Sets the query subarray. */
   Status set_subarray(const Subarray& subarray);
+
+  /** Correctness checks for `subarray_`. */
+  Status check_subarray(const Subarray* subarray = nullptr) const;
 
   /* Return the subarray. */
   const void* subarray() const;
@@ -568,9 +571,6 @@ class Writer {
    * @return Status
    */
   Status check_global_order_hilbert() const;
-
-  /** Correctness checks for `subarray_`. */
-  Status check_subarray() const;
 
   /**
    * Check the validity of the provided buffer offsets for a variable attribute.

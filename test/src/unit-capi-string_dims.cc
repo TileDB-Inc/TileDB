@@ -40,7 +40,10 @@
 #endif
 #include "tiledb/sm/c_api/tiledb.h"
 #include "tiledb/sm/c_api/tiledb_serialization.h"
+#include "tiledb/sm/c_api/tiledb_struct_def.h"
 #include "tiledb/sm/enums/serialization_type.h"
+#include "tiledb/sm/enums/query_status.h"
+#include "tiledb/sm/enums/query_type.h"
 #include "tiledb/sm/misc/utils.h"
 
 #include <chrono>
@@ -352,6 +355,41 @@ int StringDimsFx::tiledb_query_submit_wrapper(
 
   // Serialize the query (client-side).
   tiledb_buffer_list_t* buff_list1;
+#if 01  //&& cppTILEDB_COND_SUB_SUBARRAY_FOR_QUERY
+  REQUIRE(tiledb_query_set_relevant_subarray(ctx, query) == TILEDB_OK);
+#else
+  auto query_status = query->query_->status();
+  // TBD: do we only want to do this on UNINITIALIZED, or do we maybe want to do
+  // it anytime != INPROGRESS ???
+  if (query_status == tiledb::sm::QueryStatus::UNINITIALIZED) {
+    auto& which_subarray =
+        (query->query_->type() == tiledb::sm::QueryType::WRITE) ?
+            query->wsubarray_ :
+            query->rsubarray_;
+//will forego these since they're def'd inline in tiledb.cc...
+//    if (sanity_check(ctx, which_subarray) == TILEDB_ERR)
+//      return TILEDB_ERR;
+    if (which_subarray->subarray_->is_set()) {
+      // presence causes test failure,    "C API: Test query errors, dense reads
+      // in global order", what does absence cause, anywhere? hmm, err same
+      // test, maybe different location...?
+      //...
+      // For, queries that are inprogress/incomplete, this results in
+      // (RE-)setting status to UNINITIALIZED, which results in (actual)
+      // re-initting, and thus interferes with continuation of query in
+      // progress!!! results in failure in unit-capi-incomplete.c,
+      // 'IncompleteFx::check_dense_until_complete()'...
+      if (TILEDB_OK != tiledb_query_set_subarray_v2(ctx, query, which_subarray))
+        return TILEDB_ERR;
+    }
+    // else {//should we try this???
+    //  if (TILEDB_OK != tiledb_query_set_subarray_v2(ctx, query,
+    //  query->subarray_))
+    //    return TILEDB_ERR;
+    //
+    //}
+  }
+#endif
   int rc = tiledb_serialize_query(ctx, query, TILEDB_CAPNP, 1, &buff_list1);
 
   // Global order writes are not (yet) supported for serialization. Just

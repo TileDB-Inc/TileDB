@@ -307,7 +307,7 @@ class Query {
 #if 01
     tiledb_subarray_t* subarray;
     ctx.handle_error(
-        tiledb_query_subarray(ctx.ptr().get(), query_.get(), &subarray));
+        tiledb_query_ref_relevant_subarray(ctx.ptr().get(), query_.get(), &subarray));
     // if (1) {
     
     //if (subarray->subarray_->is_set()) {
@@ -566,7 +566,7 @@ class Query {
 #if 01
     tiledb_subarray_t* subarray;
     ctx.handle_error(
-        tiledb_query_subarray(ctx.ptr().get(), query_.get(), &subarray));
+        tiledb_query_ref_relevant_subarray(ctx.ptr().get(), query_.get(), &subarray));
     ctx.handle_error(tiledb_subarray_add_range(
         ctx.ptr().get(),
         subarray,
@@ -618,7 +618,7 @@ class Query {
 #if 01
     tiledb_subarray_t* subarray;
     ctx.handle_error(
-        tiledb_query_subarray(ctx.ptr().get(), query_.get(), &subarray));
+        tiledb_query_ref_relevant_subarray(ctx.ptr().get(), query_.get(), &subarray));
     ctx.handle_error(tiledb_subarray_add_range_by_name(
         ctx.ptr().get(),
         subarray,
@@ -666,7 +666,7 @@ class Query {
 #if 01
     tiledb_subarray_t* subarray;
     ctx.handle_error(
-        tiledb_query_subarray(ctx.ptr().get(), query_.get(), &subarray));
+        tiledb_query_ref_relevant_subarray(ctx.ptr().get(), query_.get(), &subarray));
     ctx.handle_error(tiledb_subarray_add_range_var(
         ctx.ptr().get(),
         subarray,
@@ -719,7 +719,7 @@ class Query {
 #if 01
     tiledb_subarray_t* subarray;
     ctx.handle_error(
-        tiledb_query_subarray(ctx.ptr().get(), query_.get(), &subarray));
+        tiledb_query_ref_relevant_subarray(ctx.ptr().get(), query_.get(), &subarray));
     ctx.handle_error(tiledb_subarray_add_range_var_by_name(
         ctx.ptr().get(),
         subarray,
@@ -760,7 +760,7 @@ class Query {
 #if 01
     tiledb_subarray_t* subarray;
     ctx.handle_error(
-        tiledb_query_subarray(ctx.ptr().get(), query_.get(), &subarray));
+        tiledb_query_ref_relevant_subarray(ctx.ptr().get(), query_.get(), &subarray));
     ctx.handle_error(tiledb_subarray_get_range_num(
         ctx.ptr().get(), subarray, dim_idx, &range_num));
 #else
@@ -789,7 +789,7 @@ class Query {
 #if 01
     tiledb_subarray_t* subarray;
     ctx.handle_error(
-        tiledb_query_subarray(ctx.ptr().get(), query_.get(), &subarray));
+        tiledb_query_ref_relevant_subarray(ctx.ptr().get(), query_.get(), &subarray));
     ctx.handle_error(tiledb_subarray_get_range_num_from_name(
         ctx.ptr().get(),
         subarray,
@@ -828,7 +828,7 @@ class Query {
 #if 01
     tiledb_subarray_t* subarray;
     ctx.handle_error(
-        tiledb_query_subarray(ctx.ptr().get(), query_.get(), &subarray));
+        tiledb_query_ref_relevant_subarray(ctx.ptr().get(), query_.get(), &subarray));
     ctx.handle_error(tiledb_subarray_get_range(
         ctx.ptr().get(),
         subarray,
@@ -879,7 +879,7 @@ class Query {
 #if 01
     tiledb_subarray_t* subarray;
     ctx.handle_error(
-        tiledb_query_subarray(ctx.ptr().get(), query_.get(), &subarray));
+        tiledb_query_ref_relevant_subarray(ctx.ptr().get(), query_.get(), &subarray));
     ctx.handle_error(tiledb_subarray_get_range_from_name(
         ctx.ptr().get(),
         subarray,
@@ -927,7 +927,7 @@ class Query {
 #if 01
     tiledb_subarray_t* subarray;
     ctx.handle_error(
-        tiledb_query_subarray(ctx.ptr().get(), query_.get(), &subarray));
+        tiledb_query_ref_relevant_subarray(ctx.ptr().get(), query_.get(), &subarray));
     ctx.handle_error(tiledb_subarray_get_range_var_size(
         ctx.ptr().get(),
         subarray,
@@ -989,7 +989,7 @@ class Query {
 #if 01
     tiledb_subarray_t* subarray;
     ctx.handle_error(
-        tiledb_query_subarray(ctx.ptr().get(), query_.get(), &subarray));
+        tiledb_query_ref_relevant_subarray(ctx.ptr().get(), query_.get(), &subarray));
     ctx.handle_error(tiledb_subarray_get_range_var_size_from_name(
         ctx.ptr().get(),
         subarray,
@@ -1050,7 +1050,7 @@ class Query {
 #if 01
     tiledb_subarray_t* subarray;
     ctx.handle_error(
-        tiledb_query_subarray(ctx.ptr().get(), query_.get(), &subarray));
+        tiledb_query_ref_relevant_subarray(ctx.ptr().get(), query_.get(), &subarray));
     ctx.handle_error(tiledb_subarray_get_est_result_size(
         ctx.ptr().get(), subarray, attr_name.c_str(), &size));
 #else
@@ -1082,7 +1082,7 @@ class Query {
 #if 01
     tiledb_subarray_t* subarray;
     ctx.handle_error(
-        tiledb_query_subarray(ctx.ptr().get(), query_.get(), &subarray));
+        tiledb_query_ref_relevant_subarray(ctx.ptr().get(), query_.get(), &subarray));
     ctx.handle_error(tiledb_subarray_get_est_result_size_var(
         ctx.ptr().get(),
         subarray,
@@ -1123,7 +1123,7 @@ class Query {
 #if 01
     tiledb_subarray_t* subarray;
     ctx.handle_error(
-        tiledb_query_subarray(ctx.ptr().get(), query_.get(), &subarray));
+        tiledb_query_ref_relevant_subarray(ctx.ptr().get(), query_.get(), &subarray));
     ctx.handle_error(tiledb_subarray_get_est_result_size_nullable(
         ctx.ptr().get(),
         subarray,
@@ -1167,7 +1167,7 @@ class Query {
 #if 01
     tiledb_subarray_t* subarray;
     ctx.handle_error(
-        tiledb_query_subarray(ctx.ptr().get(), query_.get(), &subarray));
+        tiledb_query_ref_relevant_subarray(ctx.ptr().get(), query_.get(), &subarray));
     ctx.handle_error(tiledb_subarray_get_est_result_size_var_nullable(
         ctx.ptr().get(),
         subarray,
@@ -1264,7 +1264,7 @@ class Query {
 #if 01
     tiledb_subarray_t* subarray;
     ctx.handle_error(
-        tiledb_query_subarray(ctx.ptr().get(), query_.get(), &subarray));
+        tiledb_query_ref_relevant_subarray(ctx.ptr().get(), query_.get(), &subarray));
     ctx.handle_error(
         tiledb_subarray_set_subarray(ctx.ptr().get(), subarray, pairs));
 #else

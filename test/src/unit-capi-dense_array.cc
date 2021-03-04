@@ -900,7 +900,7 @@ void DenseArrayFx::write_dense_subarray_2D(
 
   // Close array
   rc = tiledb_array_close(ctx_, array);
-  CHECK(rc == TILEDB_OK);
+  CHECK_SAFE(rc == TILEDB_OK);
 
   // Clean up
   tiledb_array_free(&array);
@@ -2904,11 +2904,16 @@ int DenseArrayFx::submit_query_wrapper(
   if (!serialize_query_)
     return tiledb_query_submit(ctx_, query);
 
+// REQUIRE()/CHECK() actions here now all _SAFEized? (SIGSEGV failure has been
+// observed on line below 'REQUIRE(tiledb_query_get_layout(ctx_, query, &layout) == TILEDB_OK);')
+// (submit_query_wrapper() is being called via check_simultaneous_writes() which means these
+// catch framework tests need thread protection.)
+
   // Get the query type and layout
   tiledb_query_type_t query_type;
   tiledb_layout_t layout;
-  REQUIRE(tiledb_query_get_type(ctx_, query, &query_type) == TILEDB_OK);
-  REQUIRE(tiledb_query_get_layout(ctx_, query, &layout) == TILEDB_OK);
+  REQUIRE_SAFE(tiledb_query_get_type(ctx_, query, &query_type) == TILEDB_OK);
+  REQUIRE_SAFE(tiledb_query_get_layout(ctx_, query, &layout) == TILEDB_OK);
 
   // Serialize the query (client-side).
   tiledb_buffer_list_t* buff_list1;
@@ -2917,41 +2922,41 @@ int DenseArrayFx::submit_query_wrapper(
   // Global order writes are not (yet) supported for serialization. Just
   // check that serialization is an error, and then execute the regular query.
   if (layout == TILEDB_GLOBAL_ORDER && query_type == TILEDB_WRITE) {
-    REQUIRE(rc == TILEDB_ERR);
+    REQUIRE_SAFE(rc == TILEDB_ERR);
     tiledb_buffer_list_free(&buff_list1);
     return tiledb_query_submit(ctx_, query);
   } else {
-    REQUIRE(rc == TILEDB_OK);
+    REQUIRE_SAFE(rc == TILEDB_OK);
   }
 
   // Copy the data to a temporary memory region ("send over the network").
   tiledb_buffer_t* buff1;
-  REQUIRE(tiledb_buffer_list_flatten(ctx_, buff_list1, &buff1) == TILEDB_OK);
+  REQUIRE_SAFE(tiledb_buffer_list_flatten(ctx_, buff_list1, &buff1) == TILEDB_OK);
   uint64_t buff1_size;
   void* buff1_data;
-  REQUIRE(
+  REQUIRE_SAFE(
       tiledb_buffer_get_data(ctx_, buff1, &buff1_data, &buff1_size) ==
       TILEDB_OK);
   void* buff1_copy = std::malloc(buff1_size);
-  REQUIRE(buff1_copy != nullptr);
+  REQUIRE_SAFE(buff1_copy != nullptr);
   std::memcpy(buff1_copy, buff1_data, buff1_size);
   tiledb_buffer_free(&buff1);
 
   // Create a new buffer that wraps the data from the temporary buffer.
   // This mimics what the REST server side would do.
   tiledb_buffer_t* buff2;
-  REQUIRE(tiledb_buffer_alloc(ctx_, &buff2) == TILEDB_OK);
-  REQUIRE(
+  REQUIRE_SAFE(tiledb_buffer_alloc(ctx_, &buff2) == TILEDB_OK);
+  REQUIRE_SAFE(
       tiledb_buffer_set_data(ctx_, buff2, buff1_copy, buff1_size) == TILEDB_OK);
 
   // Open a new array instance.
   tiledb_array_t* new_array = nullptr;
-  REQUIRE(tiledb_array_alloc(ctx_, array_uri.c_str(), &new_array) == TILEDB_OK);
-  REQUIRE(tiledb_array_open(ctx_, new_array, query_type) == TILEDB_OK);
+  REQUIRE_SAFE(tiledb_array_alloc(ctx_, array_uri.c_str(), &new_array) == TILEDB_OK);
+  REQUIRE_SAFE(tiledb_array_open(ctx_, new_array, query_type) == TILEDB_OK);
 
   // Create a new query and deserialize from the buffer (server-side)
   tiledb_query_t* new_query = nullptr;
-  REQUIRE(
+  REQUIRE_SAFE(
       tiledb_query_alloc(ctx_, new_array, query_type, &new_query) == TILEDB_OK);
   REQUIRE(
       tiledb_deserialize_query(ctx_, buff2, TILEDB_CAPNP, 0, new_query) ==
@@ -2961,20 +2966,20 @@ int DenseArrayFx::submit_query_wrapper(
   std::vector<void*> to_free;
   if (query_type == TILEDB_READ) {
     tiledb_array_schema_t* schema;
-    REQUIRE(tiledb_array_get_schema(ctx_, new_array, &schema) == TILEDB_OK);
+    REQUIRE_SAFE(tiledb_array_get_schema(ctx_, new_array, &schema) == TILEDB_OK);
     uint32_t num_attributes;
-    REQUIRE(
+    REQUIRE_SAFE(
         tiledb_array_schema_get_attribute_num(ctx_, schema, &num_attributes) ==
         TILEDB_OK);
     for (uint32_t i = 0; i < num_attributes; i++) {
       tiledb_attribute_t* attr;
-      REQUIRE(
+      REQUIRE_SAFE(
           tiledb_array_schema_get_attribute_from_index(
               ctx_, schema, i, &attr) == TILEDB_OK);
       const char* name;
-      REQUIRE(tiledb_attribute_get_name(ctx_, attr, &name) == TILEDB_OK);
+      REQUIRE_SAFE(tiledb_attribute_get_name(ctx_, attr, &name) == TILEDB_OK);
       uint32_t cell_num;
-      REQUIRE(
+      REQUIRE_SAFE(
           tiledb_attribute_get_cell_val_num(ctx_, attr, &cell_num) ==
           TILEDB_OK);
       bool var_len = cell_num == TILEDB_VAR_NUM;
@@ -2984,7 +2989,7 @@ int DenseArrayFx::submit_query_wrapper(
         uint64_t* buff_size;
         uint64_t* offset_buff;
         uint64_t* offset_buff_size;
-        REQUIRE(
+        REQUIRE_SAFE(
             tiledb_query_get_buffer_var(
                 ctx_,
                 new_query,
@@ -2994,8 +2999,8 @@ int DenseArrayFx::submit_query_wrapper(
                 &buff,
                 &buff_size) == TILEDB_OK);
         // Buffers will always be null after deserialization on server side
-        REQUIRE(buff == nullptr);
-        REQUIRE(offset_buff == nullptr);
+        REQUIRE_SAFE(buff == nullptr);
+        REQUIRE_SAFE(offset_buff == nullptr);
         if (buff_size != nullptr) {
           // Buffer size was set for the attribute; allocate one of the
           // appropriate size.
@@ -3004,7 +3009,7 @@ int DenseArrayFx::submit_query_wrapper(
           to_free.push_back(buff);
           to_free.push_back(offset_buff);
 
-          REQUIRE(
+          REQUIRE_SAFE(
               tiledb_query_set_buffer_var(
                   ctx_,
                   new_query,
@@ -3017,17 +3022,17 @@ int DenseArrayFx::submit_query_wrapper(
       } else {
         void* buff;
         uint64_t* buff_size;
-        REQUIRE(
+        REQUIRE_SAFE(
             tiledb_query_get_buffer(ctx_, new_query, name, &buff, &buff_size) ==
             TILEDB_OK);
         // Buffers will always be null after deserialization on server side
-        REQUIRE(buff == nullptr);
+        REQUIRE_SAFE(buff == nullptr);
         if (buff_size != nullptr) {
           // Buffer size was set for the attribute; allocate one of the
           // appropriate size.
           buff = std::malloc(*buff_size);
           to_free.push_back(buff);
-          REQUIRE(
+          REQUIRE_SAFE(
               tiledb_query_set_buffer(ctx_, new_query, name, buff, buff_size) ==
               TILEDB_OK);
         }
@@ -3039,13 +3044,13 @@ int DenseArrayFx::submit_query_wrapper(
     // Repeat for coords
     void* buff;
     uint64_t* buff_size;
-    REQUIRE(
+    REQUIRE_SAFE(
         tiledb_query_get_buffer(
             ctx_, new_query, TILEDB_COORDS, &buff, &buff_size) == TILEDB_OK);
     if (buff_size != nullptr) {
       buff = std::malloc(*buff_size);
       to_free.push_back(buff);
-      REQUIRE(
+      REQUIRE_SAFE(
           tiledb_query_set_buffer(
               ctx_, new_query, TILEDB_COORDS, buff, buff_size) == TILEDB_OK);
     }
@@ -3053,30 +3058,30 @@ int DenseArrayFx::submit_query_wrapper(
     // Repeat for split dimensions, if they are set we will set the buffer
     uint32_t num_dimension;
     tiledb_domain_t* domain;
-    REQUIRE(tiledb_array_schema_get_domain(ctx_, schema, &domain) == TILEDB_OK);
-    REQUIRE(tiledb_domain_get_ndim(ctx_, domain, &num_dimension) == TILEDB_OK);
+    REQUIRE_SAFE(tiledb_array_schema_get_domain(ctx_, schema, &domain) == TILEDB_OK);
+    REQUIRE_SAFE(tiledb_domain_get_ndim(ctx_, domain, &num_dimension) == TILEDB_OK);
 
     for (uint32_t i = 0; i < num_dimension; i++) {
       tiledb_dimension_t* dim;
-      REQUIRE(
+      REQUIRE_SAFE(
           tiledb_domain_get_dimension_from_index(ctx_, domain, i, &dim) ==
           TILEDB_OK);
       const char* name;
-      REQUIRE(tiledb_dimension_get_name(ctx_, dim, &name) == TILEDB_OK);
+      REQUIRE_SAFE(tiledb_dimension_get_name(ctx_, dim, &name) == TILEDB_OK);
 
       void* buff;
       uint64_t* buff_size;
-      REQUIRE(
+      REQUIRE_SAFE(
           tiledb_query_get_buffer(ctx_, new_query, name, &buff, &buff_size) ==
           TILEDB_OK);
       // Buffers will always be null after deserialization on server side
-      REQUIRE(buff == nullptr);
+      REQUIRE_SAFE(buff == nullptr);
       if (buff_size != nullptr) {
         // Buffer size was set for the attribute; allocate one of the
         // appropriate size.
         buff = std::malloc(*buff_size);
         to_free.push_back(buff);
-        REQUIRE(
+        REQUIRE_SAFE(
             tiledb_query_set_buffer(ctx_, new_query, name, buff, buff_size) ==
             TILEDB_OK);
       }
@@ -3092,35 +3097,35 @@ int DenseArrayFx::submit_query_wrapper(
 
   // Serialize the new query and "send it over the network" (server-side)
   tiledb_buffer_list_t* buff_list2;
-  REQUIRE(
+  REQUIRE_SAFE(
       tiledb_serialize_query(ctx_, new_query, TILEDB_CAPNP, 0, &buff_list2) ==
       TILEDB_OK);
   tiledb_buffer_t* buff3;
-  REQUIRE(tiledb_buffer_list_flatten(ctx_, buff_list2, &buff3) == TILEDB_OK);
+  REQUIRE_SAFE(tiledb_buffer_list_flatten(ctx_, buff_list2, &buff3) == TILEDB_OK);
   uint64_t buff3_size;
   void* buff3_data;
-  REQUIRE(
+  REQUIRE_SAFE(
       tiledb_buffer_get_data(ctx_, buff3, &buff3_data, &buff3_size) ==
       TILEDB_OK);
   void* buff3_copy = std::malloc(buff3_size);
-  REQUIRE(buff3_copy != nullptr);
+  REQUIRE_SAFE(buff3_copy != nullptr);
   std::memcpy(buff3_copy, buff3_data, buff3_size);
   tiledb_buffer_free(&buff2);
   tiledb_buffer_free(&buff3);
 
   // Create a new buffer that wraps the data from the temporary buffer.
   tiledb_buffer_t* buff4;
-  REQUIRE(tiledb_buffer_alloc(ctx_, &buff4) == TILEDB_OK);
-  REQUIRE(
+  REQUIRE_SAFE(tiledb_buffer_alloc(ctx_, &buff4) == TILEDB_OK);
+  REQUIRE_SAFE(
       tiledb_buffer_set_data(ctx_, buff4, buff3_copy, buff3_size) == TILEDB_OK);
 
   // Deserialize into the original query. Client-side
-  REQUIRE(
+  REQUIRE_SAFE(
       tiledb_deserialize_query(ctx_, buff4, TILEDB_CAPNP, 1, query) ==
       TILEDB_OK);
 
   // Clean up.
-  REQUIRE(tiledb_array_close(ctx_, new_array) == TILEDB_OK);
+  REQUIRE_SAFE(tiledb_array_close(ctx_, new_array) == TILEDB_OK);
   tiledb_query_free(&new_query);
   tiledb_array_free(&new_array);
   tiledb_buffer_free(&buff4);

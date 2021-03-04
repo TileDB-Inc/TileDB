@@ -268,6 +268,14 @@ struct SerializationFx {
       bool clientside) {
     // Serialize
     tiledb_buffer_list_t* buff_list;
+    tiledb_subarray_t* subarray;
+    ctx.handle_error(
+        tiledb_query_ref_relevant_subarray(ctx.ptr().get(), query.ptr().get(), &subarray));
+    ctx.handle_error(
+        //    tiledb_query_set_subarray(ctx.ptr().get(), query.ptr().get(),
+        //    subarray));
+        tiledb_query_set_subarray_v2(
+            ctx.ptr().get(), query.ptr().get(), subarray));
     ctx.handle_error(tiledb_serialize_query(
         ctx.ptr().get(),
         query.ptr().get(),
@@ -559,8 +567,8 @@ TEST_CASE_METHOD(
     // Submit initial query.
     set_buffers(query);
     serialize_and_submit(query);
-    REQUIRE(query.query_status() == Query::Status::INCOMPLETE);
 
+    REQUIRE(query.query_status() == Query::Status::INCOMPLETE);
     auto result_el = query.result_buffer_elements_nullable();
     REQUIRE(std::get<1>(result_el["a1"]) == 2);
     REQUIRE(std::get<1>(result_el["a2"]) == 4);

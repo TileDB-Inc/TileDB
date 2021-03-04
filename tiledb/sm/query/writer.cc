@@ -414,7 +414,7 @@ Status Writer::check_var_attr_offsets() const {
   return Status::Ok();
 }
 
-Status Writer::init(const Layout& layout) {
+Status Writer::init(const Layout& layout, const Subarray *initialization_subarray) {
   // Sanity checks
   if (storage_manager_ == nullptr)
     return LOG_STATUS(Status::WriterError(
@@ -458,6 +458,9 @@ Status Writer::init(const Layout& layout) {
                             "bitsize in configuration"));
   }
   assert(found);
+
+  if(initialization_subarray)
+    subarray_ = *initialization_subarray;
 
   // Set a default subarray
   if (!subarray_.is_set())
@@ -1278,15 +1281,16 @@ void Writer::disable_check_global_order() {
   disable_check_global_order_ = true;
 }
 
-Status Writer::check_subarray() const {
+Status Writer::check_subarray(const Subarray* subarray) const {
   if (array_schema_ == nullptr)
     return LOG_STATUS(
         Status::WriterError("Cannot check subarray; Array schema not set"));
 
+  auto &which_subarray = subarray ? *subarray : subarray_;
   if (array_schema_->dense()) {
 #if 01
     //TBD: maybe this is sufficiently trapped by Writer::set_subarray(), ?
-    if (subarray_.range_num() != 1)
+    if (which_subarray.range_num() != 1)
       return LOG_STATUS(
           Status::WriterError("Multi-range dense writes "
                               "are not supported"));
@@ -1297,7 +1301,7 @@ Status Writer::check_subarray() const {
     // Writer::init() has *set*
     // a subarray when it found !.is_set()...
     // if (subarray_.count_set() > 1) // zero (all default) or one allowed.
-    if (!subarray_.is_unary())
+    if (!which_subarray.is_unary())
       // Note: previously handled in Writer::add_range(), semantics of checking
       // this here will be different from those using original tiledb_query...()
       // actions.
@@ -1306,17 +1310,18 @@ Status Writer::check_subarray() const {
                               "are not supported"));
 #endif
 
-    if (layout_ == Layout::GLOBAL_ORDER && !subarray_.coincides_with_tiles())
+    //TBD: how does 'subarray' know which/where tiles to check for coincidence?
+    if (layout_ == Layout::GLOBAL_ORDER && !which_subarray.coincides_with_tiles())
       return LOG_STATUS(
           Status::WriterError("Cannot initialize query; In global writes for "
                               "dense arrays, the subarray "
                               "must coincide with the tile bounds"));
-    if (layout_ == Layout::UNORDERED && subarray_.is_set())
+    if (layout_ == Layout::UNORDERED && which_subarray.is_set())
       return LOG_STATUS(Status::WriterError(
           "Cannot initialize query; Setting a subarray in unordered writes for "
           "dense arrays is inapplicable"));
   } else {  // !array_schema_->dense()
-    if (subarray_.is_set())
+    if (which_subarray.is_set())
       // Note: previously handled in Writer::add_range()
       return LOG_STATUS(
           Status::WriterError("subarray range for a write query is not "

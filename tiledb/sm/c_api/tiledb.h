@@ -3484,6 +3484,13 @@ TILEDB_EXPORT int32_t tiledb_query_set_subarray_v2(
     tiledb_ctx_t* ctx, tiledb_query_t* query, tiledb_subarray_t* const subarray);
 
 /**
+* currently temporary, aid development/shim'ming...
+*/
+TILEDB_EXPORT int32_t
+tiledb_query_set_relevant_subarray(
+    tiledb_ctx_t* ctx, tiledb_query_t* query);
+
+  /**
  * Sets the buffer for a fixed-sized attribute/dimension to a query, which will
  * either hold the values to be written (if it is a write query), or will hold
  * the results from a read query.
@@ -5146,11 +5153,19 @@ TILEDB_EXPORT int32_t tiledb_subarray_alloc(
  * @param subarray The retrieved subarray object if available.
  * @return `TILEDB_OK` for success and `TILEDB_OOM` or `TILEDB_ERR` for error.
  */
+//TILEDB_EXPORT 
+//int32_t tiledb_query_subarray(
+//    tiledb_ctx_t* ctx,
+//   const tiledb_query_t* query,
+//    tiledb_subarray_t** subarray);
+
+//temporary, or to be privately used by cppapi query object
+//is there another place to declare for use by that?
 TILEDB_EXPORT 
-int32_t tiledb_query_subarray(
+int32_t tiledb_query_ref_relevant_subarray(
     tiledb_ctx_t* ctx,
-    const tiledb_query_t* query,
-    tiledb_subarray_t** subarray);
+    tiledb_query_t* query,
+    tiledb_subarray_t **subarray);
 
 /**
  * Opens a TileDB array. The array is opened using a query type as input.
