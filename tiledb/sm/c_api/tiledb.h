@@ -3999,6 +3999,16 @@ TILEDB_EXPORT int32_t tiledb_query_submit_async(
     void (*callback)(void*),
     void* callback_data);
 
+#if 01
+//TBD: needed or not?
+TILEDB_EXPORT int32_t tiledb_query_submit_async_with_subarray(
+    tiledb_ctx_t* ctx,
+    tiledb_query_t* query,
+    void (*callback)(void*),
+    void* callback_data,
+    tiledb_subarray_t *subarray);
+#endif
+
 /**
  * Checks if the query has returned any results. Applicable only to
  * read queries; it sets `has_results` to `0 in the case of writes.
@@ -5155,28 +5165,11 @@ TILEDB_EXPORT int32_t tiledb_subarray_alloc(
  * @param subarray The retrieved subarray object if available.
  * @return `TILEDB_OK` for success and `TILEDB_OOM` or `TILEDB_ERR` for error.
  */
-#if 01
 TILEDB_EXPORT 
 int32_t tiledb_query_subarray(
     tiledb_ctx_t* ctx,
    const tiledb_query_t* query,
     tiledb_subarray_t** subarray);
-#endif
-
-#if 0
-//temporary, or to be privately used by cppapi query object
-//is there another place to declare for use by that?
-TILEDB_EXPORT 
-int32_t tiledb_query_ref_relevant_subarray(
-    tiledb_ctx_t* ctx,
-    tiledb_query_t* query,
-    tiledb_subarray_t **subarray);
-#endif
-
-//TBD: keep, remove, or ???
-//TILEDB_EXPORT
-//int32_t tiledb_query_populate_nonalloc_tiledb_subarray(
-//    tiledb_ctx_t* ctx, tiledb_query_t* query, tiledb_subarray_t* subarray);
 
   /**
  * Opens a TileDB array. The array is opened using a query type as input.
