@@ -62,7 +62,6 @@ Subarray::Subarray() {
   layout_ = Layout::UNORDERED;
   cell_order_ = Layout::ROW_MAJOR;
   est_result_size_computed_ = false;
-  tile_overlap_computed_ = false;
   coalesce_ranges_ = true;
 }
 
@@ -75,7 +74,6 @@ Subarray::Subarray(const Array* array, Layout layout, bool coalesce_ranges)
     , layout_(layout)
     , coalesce_ranges_(coalesce_ranges) {
   est_result_size_computed_ = false;
-  tile_overlap_computed_ = false;
   cell_order_ = array_->array_schema()->cell_order();
   add_default_ranges();
   set_add_or_coalesce_range_func();
@@ -123,7 +121,7 @@ Status Subarray::add_range(uint32_t dim_idx, const Range& range) {
 
   // Must reset the result size and tile overlap
   est_result_size_computed_ = false;
-  tile_overlap_computed_ = false;
+  tile_overlap_ = nullptr;
 
   // Remove the default range
   if (is_default_[dim_idx]) {
@@ -144,7 +142,7 @@ Status Subarray::add_range(uint32_t dim_idx, const Range& range) {
 Status Subarray::add_range_unsafe(uint32_t dim_idx, const Range& range) {
   // Must reset the result size and tile overlap
   est_result_size_computed_ = false;
-  tile_overlap_computed_ = false;
+  tile_overlap_ = nullptr;
 
   // Remove the default range
   if (is_default_[dim_idx]) {
@@ -256,9 +254,8 @@ uint64_t Subarray::cell_num(const std::vector<uint64_t>& range_coords) const {
 void Subarray::clear() {
   ranges_.clear();
   range_offsets_.clear();
-  tile_overlap_.clear();
   est_result_size_computed_ = false;
-  tile_overlap_computed_ = false;
+  tile_overlap_ = nullptr;
   add_or_coalesce_range_func_.clear();
 }
 
@@ -419,14 +416,10 @@ Subarray Subarray::get_subarray(uint64_t start, uint64_t end) const {
     }
   }
 
-  // Set tile overlap
-  auto fragment_num = tile_overlap_.size();
-  ret.tile_overlap_.resize(fragment_num);
-  for (unsigned i = 0; i < fragment_num; ++i) {
-    for (uint64_t r = start; r <= end; ++r) {
-      ret.tile_overlap_[i].push_back(tile_overlap_[i][r]);
-    }
-  }
+  // The `tile_overlap_` is a shared pointer that is shared between
+  // subarray and its partitions. This is an optimization to prevent
+  // duplicate memory among subarray instances.
+  ret.tile_overlap_ = tile_overlap_;
 
   // Compute range offsets
   ret.compute_range_offsets();
@@ -1133,7 +1126,8 @@ const std::vector<std::vector<uint8_t>>& Subarray::tile_coords() const {
 }
 
 const std::vector<std::vector<TileOverlap>>& Subarray::tile_overlap() const {
-  return tile_overlap_;
+  assert(tile_overlap_ != nullptr);
+  return *tile_overlap_;
 }
 
 template <class T>
@@ -1668,7 +1662,7 @@ Status Subarray::compute_relevant_fragment_est_result_sizes(
   auto fragment_num = (unsigned)relevant_fragments_.size();
   for (unsigned i = 0; i < fragment_num; ++i) {
     auto f = relevant_fragments_[i];
-    const auto& overlap = tile_overlap_[f][range_idx];
+    const auto& overlap = (*tile_overlap_)[f][range_idx];
     auto meta = fragment_meta[f];
 
     // Parse tile ranges
@@ -1904,19 +1898,20 @@ Status Subarray::compute_tile_coords_row() {
 Status Subarray::compute_tile_overlap(ThreadPool* const compute_tp) {
   STATS_START_TIMER(stats::Stats::TimerType::READ_COMPUTE_TILE_OVERLAP)
 
-  if (tile_overlap_computed_)
+  const bool tile_overlap_computed = tile_overlap_ != nullptr;
+  if (tile_overlap_computed)
     return Status::Ok();
 
   compute_range_offsets();
 
   // Initialization
-  tile_overlap_.clear();
+  tile_overlap_ = tdb_make_shared(std::vector<std::vector<TileOverlap>>);
   auto meta = array_->fragment_metadata();
   auto fragment_num = meta.size();
-  tile_overlap_.resize(fragment_num);
+  tile_overlap_->resize(fragment_num);
   auto range_num = this->range_num();
   for (unsigned i = 0; i < fragment_num; ++i)
-    tile_overlap_[i].resize(range_num);
+    (*tile_overlap_)[i].resize(range_num);
 
   // Compute relevant fragments to the subarray
   RETURN_NOT_OK(compute_relevant_fragments(compute_tp));
@@ -1924,8 +1919,6 @@ Status Subarray::compute_tile_overlap(ThreadPool* const compute_tp) {
   // Load the R-Trees and compute tile overlap only for relevant fragments
   RETURN_NOT_OK(load_relevant_fragment_rtrees(compute_tp));
   RETURN_NOT_OK(compute_relevant_fragment_tile_overlap(compute_tp));
-
-  tile_overlap_computed_ = true;
 
   return Status::Ok();
 
@@ -1942,7 +1935,6 @@ Subarray Subarray::clone() const {
   clone.range_offsets_ = range_offsets_;
   clone.tile_overlap_ = tile_overlap_;
   clone.est_result_size_computed_ = est_result_size_computed_;
-  clone.tile_overlap_computed_ = tile_overlap_computed_;
   clone.coalesce_ranges_ = coalesce_ranges_;
   clone.add_or_coalesce_range_func_ = add_or_coalesce_range_func_;
   clone.est_result_size_ = est_result_size_;
@@ -2076,7 +2068,6 @@ void Subarray::swap(Subarray& subarray) {
   std::swap(range_offsets_, subarray.range_offsets_);
   std::swap(tile_overlap_, subarray.tile_overlap_);
   std::swap(est_result_size_computed_, subarray.est_result_size_computed_);
-  std::swap(tile_overlap_computed_, subarray.tile_overlap_computed_);
   std::swap(coalesce_ranges_, subarray.coalesce_ranges_);
   std::swap(add_or_coalesce_range_func_, subarray.add_or_coalesce_range_func_);
   std::swap(est_result_size_, subarray.est_result_size_);
@@ -2168,11 +2159,11 @@ Status Subarray::compute_relevant_fragment_tile_overlap(
     auto r_end = std::min((t + 1) * ranges_per_thread - 1, range_num - 1);
     for (uint64_t r = r_start; r <= r_end; ++r) {
       if (dense) {  // Dense fragment
-        tile_overlap_[frag_idx][r] = get_tile_overlap(r, frag_idx);
+        (*tile_overlap_)[frag_idx][r] = get_tile_overlap(r, frag_idx);
       } else {  // Sparse fragment
         const auto& range = this->ndrange(r);
         RETURN_NOT_OK(
-            meta->get_tile_overlap(range, &(tile_overlap_[frag_idx][r])));
+            meta->get_tile_overlap(range, &((*tile_overlap_)[frag_idx][r])));
       }
     }
 

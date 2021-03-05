@@ -1009,10 +1009,16 @@ Status Reader::compute_range_result_coords(
   if (fragment_metadata_[fragment_idx]->dense())
     return Status::Ok();
 
-  auto tr = overlap[fragment_idx][range_idx].tile_ranges_.begin();
-  auto tr_end = overlap[fragment_idx][range_idx].tile_ranges_.end();
-  auto t = overlap[fragment_idx][range_idx].tiles_.begin();
-  auto t_end = overlap[fragment_idx][range_idx].tiles_.end();
+  const uint64_t overlap_range_offset =
+      read_state_.partitioner_.current_partition_info()->start_;
+  auto tr = overlap[fragment_idx][range_idx + overlap_range_offset]
+                .tile_ranges_.begin();
+  auto tr_end = overlap[fragment_idx][range_idx + overlap_range_offset]
+                    .tile_ranges_.end();
+  auto t =
+      overlap[fragment_idx][range_idx + overlap_range_offset].tiles_.begin();
+  auto t_end =
+      overlap[fragment_idx][range_idx + overlap_range_offset].tiles_.end();
 
   while (tr != tr_end || t != t_end) {
     // Handle tile range
@@ -1139,8 +1145,11 @@ Status Reader::compute_sparse_result_tiles(
 
   // For easy reference
   auto domain = array_schema_->domain();
-  const auto& subarray = read_state_.partitioner_.current();
+  auto& partitioner = read_state_.partitioner_;
+  const auto& subarray = partitioner.current();
   const auto& overlap = subarray.tile_overlap();
+  const uint64_t overlap_range_offset =
+      partitioner.current_partition_info()->start_;
   auto range_num = subarray.range_num();
   auto fragment_num = fragment_metadata_.size();
   std::vector<unsigned> first_fragment;
@@ -1160,7 +1169,8 @@ Status Reader::compute_sparse_result_tiles(
 
     for (uint64_t r = 0; r < range_num; ++r) {
       // Handle range of tiles (full overlap)
-      const auto& tile_ranges = overlap[f][r].tile_ranges_;
+      const auto& tile_ranges =
+          overlap[f][r + overlap_range_offset].tile_ranges_;
       for (const auto& tr : tile_ranges) {
         for (uint64_t t = tr.first; t <= tr.second; ++t) {
           auto pair = std::pair<unsigned, uint64_t>(f, t);
@@ -1178,7 +1188,7 @@ Status Reader::compute_sparse_result_tiles(
       }
 
       // Handle single tiles
-      const auto& o_tiles = overlap[f][r].tiles_;
+      const auto& o_tiles = overlap[f][r + overlap_range_offset].tiles_;
       for (const auto& o_tile : o_tiles) {
         auto t = o_tile.first;
         auto pair = std::pair<unsigned, uint64_t>(f, t);
