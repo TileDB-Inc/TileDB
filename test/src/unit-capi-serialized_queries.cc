@@ -268,6 +268,8 @@ struct SerializationFx {
       bool clientside) {
     // Serialize
     tiledb_buffer_list_t* buff_list;
+
+#if 0
     tiledb_subarray_t* subarray;
     ctx.handle_error(
         tiledb_query_ref_relevant_subarray(ctx.ptr().get(), query.ptr().get(), &subarray));
@@ -276,6 +278,7 @@ struct SerializationFx {
         //    subarray));
         tiledb_query_set_subarray_v2(
             ctx.ptr().get(), query.ptr().get(), subarray));
+#endif
     ctx.handle_error(tiledb_serialize_query(
         ctx.ptr().get(),
         query.ptr().get(),

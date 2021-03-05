@@ -356,7 +356,7 @@ int StringDimsFx::tiledb_query_submit_wrapper(
   // Serialize the query (client-side).
   tiledb_buffer_list_t* buff_list1;
 #if 01  //&& cppTILEDB_COND_SUB_SUBARRAY_FOR_QUERY
-  REQUIRE(tiledb_query_set_relevant_subarray(ctx, query) == TILEDB_OK);
+//unnecessary now?  REQUIRE(tiledb_query_set_relevant_subarray(ctx, query) == TILEDB_OK);
 #else
   auto query_status = query->query_->status();
   // TBD: do we only want to do this on UNINITIALIZED, or do we maybe want to do

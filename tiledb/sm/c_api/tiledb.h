@@ -3481,14 +3481,16 @@ int32_t tiledb_subarray_set_subarray(
  *     the subarray has been set, the subarray will simply be ignored.
  */
 TILEDB_EXPORT int32_t tiledb_query_set_subarray_v2(
-    tiledb_ctx_t* ctx, tiledb_query_t* query, tiledb_subarray_t* const subarray);
+    tiledb_ctx_t* ctx, tiledb_query_t* query, const tiledb_subarray_t* subarray);
 
+#if 0
 /**
 * currently temporary, aid development/shim'ming...
 */
 TILEDB_EXPORT int32_t
 tiledb_query_set_relevant_subarray(
     tiledb_ctx_t* ctx, tiledb_query_t* query);
+#endif
 
   /**
  * Sets the buffer for a fixed-sized attribute/dimension to a query, which will
@@ -3949,7 +3951,7 @@ tiledb_query_submit(tiledb_ctx_t* ctx, tiledb_query_t* query);
  *    with `tiledb_query_set_buffer`, and resubmit the query.
  */
 TILEDB_EXPORT int32_t tiledb_query_submit_with_subarray(
-    tiledb_ctx_t* ctx, tiledb_query_t* query, tiledb_subarray_t* subarray);
+    tiledb_ctx_t* ctx, tiledb_query_t* query, const tiledb_subarray_t* subarray);
 
 /**
  * Submits a TileDB query in asynchronous mode.
@@ -5153,12 +5155,15 @@ TILEDB_EXPORT int32_t tiledb_subarray_alloc(
  * @param subarray The retrieved subarray object if available.
  * @return `TILEDB_OK` for success and `TILEDB_OOM` or `TILEDB_ERR` for error.
  */
-//TILEDB_EXPORT 
-//int32_t tiledb_query_subarray(
-//    tiledb_ctx_t* ctx,
-//   const tiledb_query_t* query,
-//    tiledb_subarray_t** subarray);
+#if 01
+TILEDB_EXPORT 
+int32_t tiledb_query_subarray(
+    tiledb_ctx_t* ctx,
+   const tiledb_query_t* query,
+    tiledb_subarray_t** subarray);
+#endif
 
+#if 0
 //temporary, or to be privately used by cppapi query object
 //is there another place to declare for use by that?
 TILEDB_EXPORT 
@@ -5166,8 +5171,14 @@ int32_t tiledb_query_ref_relevant_subarray(
     tiledb_ctx_t* ctx,
     tiledb_query_t* query,
     tiledb_subarray_t **subarray);
+#endif
 
-/**
+//TBD: keep, remove, or ???
+//TILEDB_EXPORT
+//int32_t tiledb_query_populate_nonalloc_tiledb_subarray(
+//    tiledb_ctx_t* ctx, tiledb_query_t* query, tiledb_subarray_t* subarray);
+
+  /**
  * Opens a TileDB array. The array is opened using a query type as input.
  * This is to indicate that queries created for this `tiledb_array_t`
  * object will inherit the query type. In other words, `tiledb_array_t`
