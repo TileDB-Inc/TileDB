@@ -25,6 +25,7 @@
 ## Deprecations
 
 ## Bug fixes
+* Fix segfault in serialized queries when partition is unsplittable [#2120](https://github.com/TileDB-Inc/TileDB/pull/2120)
 * Always use original buffer size in serialized read queries serverside. [#2115](https://github.com/TileDB-Inc/TileDB/pull/2115)
 * Fix an edge-case where a read query may hang on array with string dimensions [#2089](https://github.com/TileDB-Inc/TileDB/pull/2089)
 * Fix mutex locking bugs on Windows due to unlocking on different thread and missing task join [#2077](https://github.com/TileDB-Inc/TileDB/pull/2077)
