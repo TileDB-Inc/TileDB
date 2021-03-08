@@ -678,8 +678,8 @@ void Subarray2Fx::write_sparse_array(
   // Submit query
   rc = tiledb_query_submit(ctx_, query);
   // following errs in Writer::set_subarray(), "Setting a subarray is not
-  // supported in sparse writes"; and, we haven't placed anything in the subarray
-  // anyway...)
+  // supported in sparse writes"; and, we haven't placed anything in the
+  // subarray anyway...)
   //  rc = tiledb_query_submit_with_subarray(ctx_, query, subarray);
   CHECK(rc == TILEDB_OK);
 

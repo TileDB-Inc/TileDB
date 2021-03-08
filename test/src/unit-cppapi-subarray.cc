@@ -473,8 +473,8 @@ TEST_CASE(
     Query query(ctx, array);
     query.set_subarray(subarray);
     // TBD: CHECK()s below in this block succeed whether or not previous
-    // query.set_subarray() occurred, what's a test that will fail if not set but
-    // succeed if set, so can be sure actually testing the .set_subarray()
+    // query.set_subarray() occurred, what's a test that will fail if not set
+    // but succeed if set, so can be sure actually testing the .set_subarray()
     // functionality?
     Subarray retrieved_query_subarray(query);
     // Test range num
