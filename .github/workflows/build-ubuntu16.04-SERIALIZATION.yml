@@ -8,7 +8,7 @@ on:
       - rd/gha_workflow_cleanup
   pull_request:
     branches:
-      #- '*'  # must quote since "*" is a YAML reserved character; we want a string
+      - '*'  # must quote since "*" is a YAML reserved character; we want a string
 env:
   TILEDB_SERIALIZATION: ON
   TILEDB_S3: ON
@@ -119,7 +119,31 @@ jobs:
           ./tiledb_png $GITHUB_WORKSPACE/doc/source/figures/Scarlet-Macaw-small.png /tmp/pngarray output.png;
           popd;
 
-          source $src/scripts/ci_build.sh;
+          # Build the benchmarks (but do not run them).
+          source $GITHUB_WORKSPACE/scripts/build_benchmarks.sh
+
+      - name: 'Test status check'
+        run: |
+          # tiledb_unit is configured to set a job-level variable TILEDB_CI_SUCCESS=1
+          # following the test run. If this variable is not set, the build should fail.
+          # see https://github.com/TileDB-Inc/TileDB/pull/1400 (5f0623f4d3)
+          if [[ "${{ steps.test.outputs.TILEDB_CI_SUCCESS }}" -ne 1 ]]; then
+            exit 1;
+          fi
+      #
+      - name: "Print log files (failed build only)"
+        run: |
+          set -e pipefail
+          # Display log files if the build failed
+          echo "Dumping log files for failed build"
+          echo "----------------------------------"
+          for f in $(find $GITHUB_WORKSPACE/build -name *.log);
+            do echo "------"
+               echo $f
+               echo "======"
+               cat $f
+            done;
+        if: ${{ failure() }} # only run this job if the build step failed
 
       - name: 'Build docs (no deployment)'
         run: |

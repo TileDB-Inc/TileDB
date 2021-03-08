@@ -62,36 +62,10 @@ function build_deps {
 
   ps -U $(whoami) -o comm= | sort | uniq
   #  displayName: 'Build examples, PNG test, and benchmarks (build-only)'
-
-  - name: 'Test status check'
-  run: |
-  # tiledb_unit is configured to set a job-level variable TILEDB_CI_SUCCESS=1
-  # following the test run. If this variable is not set, the build should fail.
-  # see https://github.com/TileDB-Inc/TileDB/pull/1400 (5f0623f4d3)
-  if [[ "${{ steps.test.outputs.TILEDB_CI_SUCCESS }}" -ne 1 ]]; then
-    exit 1;
-  fi
-}
-
-function print_logs {
-  - name: "Print log files (failed build only)"
-  run: |
-  set -e pipefail
-  # Display log files if the build failed
-  echo "Dumping log files for failed build"
-  echo "----------------------------------"
-  for f in $(find $GITHUB_WORKSPACE/build -name *.log);
-    do echo "------"
-        echo $f
-        echo "======"
-        cat $f
-    done;
-  if: ${{ failure() }} # only run this job if the build step failed
 }
 
 function run {
   build_deps
-  print_logs
 }
 
 run
