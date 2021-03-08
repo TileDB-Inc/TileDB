@@ -11,6 +11,7 @@
 ## Improvements
 
 * Cache non_empty_domain for REST arrays like all other arrays [#2105](https://github.com/TileDB-Inc/TileDB/pull/2105)
+* Add additional timer statistics for openning array for reads [#2027](https://github.com/TileDB-Inc/TileDB/pull/2027)
 
 ## Deprecations
 
@@ -60,7 +61,6 @@
 
 ## Improvements
 
-* Add additional timer statistics for openning array for reads [#2027](https://github.com/TileDB-Inc/TileDB/pull/2027)
 * Add `rest.creation_access_credentials_name` configuration parameter [#2025](https://github.com/TileDB-Inc/TileDB/pull/2025)
 
 ## Bug fixes
