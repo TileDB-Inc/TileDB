@@ -131,9 +131,9 @@ class Query {
    * The range components must be of the same type as the domain type of the
    * underlying array.
    */
-  //TBD: Is this to be deprecated (with changes to subarray/partitioning), or
-  //will it still be needed/wanted internally?
-  //TILEDB_DEPRECATED
+  // TBD: Is this to be deprecated (with changes to subarray/partitioning), or
+  // will it still be needed/wanted internally?
+  // TILEDB_DEPRECATED
   Status add_range(
       unsigned dim_idx, const void* start, const void* end, const void* stride);
 
@@ -670,8 +670,9 @@ class Query {
   Status set_subarray(const void* subarray);
 
   /**
-   * Validate the subarray's appropriateness to use for query. 
-   * If provided subarray is null, then the internal/default subarray will be validated.
+   * Validate the subarray's appropriateness to use for query.
+   * If provided subarray is null, then the internal/default subarray will be
+   * validated.
    *
    * @param subarray The subarray to be validated or nullptr.
    * @return Status
@@ -689,8 +690,7 @@ class Query {
    *     (will be ingnored).
    */
   Status set_subarray(const tiledb::sm::Subarray* subarray);
-  
-  
+
   /**
    * Sets the query subarray for initialization.
    *
@@ -707,9 +707,9 @@ class Query {
   Status set_subarray_unsafe(const NDRange& subarray);
 
   /** Reference current Reader/Writer subarray according to query type */
-  const Subarray & subarray() const ;
-  Subarray * subarray() ;
-	
+  const Subarray& subarray() const;
+  Subarray* subarray();
+
   /** Submits the query to the storage manager. */
   Status submit();
 
@@ -719,7 +719,9 @@ class Query {
    * Once the query is completed, the input callback function will
    * be executed using the input callback data.
    */
-  Status submit_async(std::function<void(void*)> callback, void* callback_data/*, Subarray *subarray=nullptr*/);
+  Status submit_async(
+      std::function<void(void*)> callback,
+      void* callback_data /*, Subarray *subarray=nullptr*/);
 
   /** Returns the query status. */
   QueryStatus status() const;
@@ -764,8 +766,9 @@ class Query {
 
   /** Whether a query initialization subarray has been provided. */
   bool have_initialization_subarray_;
-  
-  /** The initialization subarray data to use for query initialization if one has been provided. */
+
+  /** The initialization subarray data to use for query initialization if one
+   * has been provided. */
   tiledb::sm::Subarray initialization_subarray_;
 
   /* ********************************* */

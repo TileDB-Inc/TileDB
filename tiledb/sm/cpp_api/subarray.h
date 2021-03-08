@@ -58,16 +58,16 @@
 #include <vector>
 
 namespace tiledb {
-  
+
 class Query;
 
 /**
- * Construct and support manipulation of a possibly multiple-range subarray for optional
- * use with Query object operations.
- * 
+ * Construct and support manipulation of a possibly multiple-range subarray for
+ * optional use with Query object operations.
+ *
  * @details
  * See examples for more usage details.
- * 
+ *
  * **Example:**
  * @code{.cpp}
  * // Open the array for writing
@@ -86,31 +86,29 @@ class Query;
  * @endcode
  */
 class Subarray {
-public:
-    
-  Subarray(const tiledb::Context& ctx, const tiledb::Array& array) 
-	    : ctx_(ctx)
+ public:
+  Subarray(const tiledb::Context& ctx, const tiledb::Array& array)
+      : ctx_(ctx)
       , array_(array)
       , schema_(array.schema()) {
     tiledb_subarray_t* capi_subarray;
-    ctx.handle_error(tiledb_subarray_alloc(ctx.ptr().get(), array.ptr().get(), &capi_subarray));
+    ctx.handle_error(tiledb_subarray_alloc(
+        ctx.ptr().get(), array.ptr().get(), &capi_subarray));
     subarray_ = std::shared_ptr<tiledb_subarray_t>(capi_subarray, deleter_);
   }
 
   Subarray(const tiledb::Query& query);
-  #if 0
+#if 0
       : ctx_(query.ctx())
       , array_(query.array()) 
       , schema(query.array().schema()) {
       tiledb_subarray_t *loc_subarray;
     ctx.handle(tiledb_subarray_alloc(ctx_.ptr().get(), array_.ptr().get(), &loc_subarray));
   }
-  #endif
-  
+#endif
+
   int32_t tiledb_subarray_set_subarray(
-      tiledb_ctx_t* ctx,
-      tiledb_subarray_t* subarray_s,
-      const void* subarray_v);
+      tiledb_ctx_t* ctx, tiledb_subarray_t* subarray_s, const void* subarray_v);
 
   /**
    * Adds a 1D range along a subarray dimension index, in the form
@@ -268,20 +266,19 @@ public:
     return subarray_.get();
   }
 
-
   /**
-    * Retrieves the number of ranges for a given dimension index.
-    *
-    * **Example:**
-    *
-    * @code{.cpp}
-    * unsigned dim_idx = 0;
-    * uint64_t range_num = query.range_num(dim_idx);
-    * @endcode
-    *
-    * @param dim_idx The dimension index.
-    * @return The number of ranges.
-    */
+   * Retrieves the number of ranges for a given dimension index.
+   *
+   * **Example:**
+   *
+   * @code{.cpp}
+   * unsigned dim_idx = 0;
+   * uint64_t range_num = query.range_num(dim_idx);
+   * @endcode
+   *
+   * @param dim_idx The dimension index.
+   * @return The number of ranges.
+   */
   uint64_t range_num(unsigned dim_idx) const {
     auto& ctx = ctx_.get();
     uint64_t range_num;
@@ -307,10 +304,7 @@ public:
     auto& ctx = ctx_.get();
     uint64_t range_num;
     ctx.handle_error(tiledb_subarray_get_range_num_from_name(
-        ctx.ptr().get(),
-        subarray_.get(),
-        dim_name.c_str(),
-        &range_num));
+        ctx.ptr().get(), subarray_.get(), dim_name.c_str(), &range_num));
     return range_num;
   }
 
@@ -497,7 +491,7 @@ public:
     return size;
   }
 
-   /**
+  /**
    * Retrieves the estimated result size for a variable-size attribute.
    *
    * **Example:**

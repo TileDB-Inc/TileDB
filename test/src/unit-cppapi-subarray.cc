@@ -469,12 +469,13 @@ TEST_CASE(
   std::vector<int> coords(4);
   query.set_coordinates(coords).set_buffer("a", data);
 
-  { 
+  {
     Query query(ctx, array);
     query.set_subarray(subarray);
-//TBD: CHECK()s below in this block succeed whether or not previous query.set_subarray() 
-//occurred, what's a test that will fail if not set but succeed if set, so can be sure
-//actually testing the .set_subarray() functionality?
+    // TBD: CHECK()s below in this block succeed whether or not previous
+    // query.set_subarray() occurred, what's a test that will fail if not set but
+    // succeed if set, so can be sure actually testing the .set_subarray()
+    // functionality?
     Subarray retrieved_query_subarray(query);
     // Test range num
     auto range_num = retrieved_query_subarray.range_num(0);
@@ -503,8 +504,9 @@ TEST_CASE(
   }
 
   // Resubmit
-  //TBD: cppapi - what happens with this resubmit???
-  //TBD: maybe these *should not* be _with_subarray(), have to evaluate functionality/apis...
+  // TBD: cppapi - what happens with this resubmit???
+  // TBD: maybe these *should not* be _with_subarray(), have to evaluate
+  // functionality/apis...
   st = query.submit_with_subarray(subarray);
   REQUIRE(st == Query::Status::INCOMPLETE);
   result_elts = query.result_buffer_elements();

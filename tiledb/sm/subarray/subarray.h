@@ -210,8 +210,8 @@ class Subarray {
 
   // 'equivalent' for older Query::set_subarray(const void *subarray);
   Status set_subarray(const void* subarray);
-  //TBD: Do we want/need some sort of 'add_subarray/range'() variety of to append
-  //rather than setting/replacing everything prior?
+  // TBD: Do we want/need some sort of 'add_subarray/range'() variety of to
+  // append rather than setting/replacing everything prior?
 
   /** Adds a range along the dimension with the given index. */
   Status add_range(uint32_t dim_idx, const Range& range);

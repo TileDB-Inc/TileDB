@@ -3414,7 +3414,8 @@ TILEDB_DEPRECATED TILEDB_EXPORT int32_t tiledb_query_set_subarray(
  *
  * @param ctx The TileDB context.
  * @param subarray The TileDB subarray object.
- * @param subarray_a The subarray which can be used to constrain the array read/write.
+ * @param subarray_a The subarray which can be used to constrain the array
+ read/write.
  *     It should be a sequence of [low, high] pairs (one
  *     pair per dimension). For the case of writes, this is meaningful only
  *     for dense arrays, and specifically dense writes. Note that `subarray_a`
@@ -3481,7 +3482,9 @@ int32_t tiledb_subarray_set_subarray(
  *     the subarray has been set, the subarray will simply be ignored.
  */
 TILEDB_EXPORT int32_t tiledb_query_set_subarray_v2(
-    tiledb_ctx_t* ctx, tiledb_query_t* query, const tiledb_subarray_t* subarray);
+    tiledb_ctx_t* ctx,
+    tiledb_query_t* query,
+    const tiledb_subarray_t* subarray);
 
 #if 0
 /**
@@ -3492,7 +3495,7 @@ tiledb_query_set_relevant_subarray(
     tiledb_ctx_t* ctx, tiledb_query_t* query);
 #endif
 
-  /**
+/**
  * Sets the buffer for a fixed-sized attribute/dimension to a query, which will
  * either hold the values to be written (if it is a write query), or will hold
  * the results from a read query.
@@ -3922,7 +3925,8 @@ TILEDB_EXPORT int32_t
 tiledb_query_submit(tiledb_ctx_t* ctx, tiledb_query_t* query);
 
 /**
- * Submits a TileDB query after setting the provided subarray if query either previously completed or uninitialized.
+ * Submits a TileDB query after setting the provided subarray if query either
+ * previously completed or uninitialized.
  *
  * **Example:**
  *
@@ -3951,7 +3955,9 @@ tiledb_query_submit(tiledb_ctx_t* ctx, tiledb_query_t* query);
  *    with `tiledb_query_set_buffer`, and resubmit the query.
  */
 TILEDB_EXPORT int32_t tiledb_query_submit_with_subarray(
-    tiledb_ctx_t* ctx, tiledb_query_t* query, const tiledb_subarray_t* subarray);
+    tiledb_ctx_t* ctx,
+    tiledb_query_t* query,
+    const tiledb_subarray_t* subarray);
 
 /**
  * Submits a TileDB query in asynchronous mode.
@@ -4000,13 +4006,13 @@ TILEDB_EXPORT int32_t tiledb_query_submit_async(
     void* callback_data);
 
 #if 01
-//TBD: needed or not?
+// TBD: needed or not?
 TILEDB_EXPORT int32_t tiledb_query_submit_async_with_subarray(
     tiledb_ctx_t* ctx,
     tiledb_query_t* query,
     void (*callback)(void*),
     void* callback_data,
-    tiledb_subarray_t *subarray);
+    tiledb_subarray_t* subarray);
 #endif
 
 /**
@@ -4125,7 +4131,7 @@ TILEDB_EXPORT int32_t tiledb_query_get_array(
  * @note The stride is currently unsupported. Use `nullptr` as the
  *     stride argument.
  */
-TILEDB_DEPRECATED_EXPORT 
+TILEDB_DEPRECATED_EXPORT
 /*TILEDB_EXPORT*/ int32_t tiledb_query_add_range(
     tiledb_ctx_t* ctx,
     tiledb_query_t* query,
@@ -4212,7 +4218,8 @@ TILEDB_EXPORT int32_t tiledb_query_add_range_by_name(
  * uint32_t dim_name = "rows";
  * int64_t start = 10;
  * int64_t end = 20;
- * tiledb_subarray_add_range_by_name(ctx, subarray, dim_name, &start, &end, nullptr);
+ * tiledb_subarray_add_range_by_name(ctx, subarray, dim_name, &start, &end,
+ * nullptr);
  * @endcode
  *
  * @param ctx The TileDB context.
@@ -4337,7 +4344,8 @@ TILEDB_EXPORT int32_t tiledb_query_add_range_var_by_name(
  * uint32_t dim_name = "rows";
  * char start[] = "a";
  * char end[] = "bb";
- * tiledb_subarray_add_range_var_by_name(ctx, subarray, dim_name, start, 1, end, 2);
+ * tiledb_subarray_add_range_var_by_name(ctx, subarray, dim_name, start, 1, end,
+ * 2);
  * @endcode
  *
  * @param ctx The TileDB context.
@@ -5146,8 +5154,8 @@ TILEDB_EXPORT int32_t tiledb_array_alloc(
  * @return `TILEDB_OK` for success and `TILEDB_OOM` or `TILEDB_ERR` for error.
  */
 TILEDB_EXPORT int32_t tiledb_subarray_alloc(
-    tiledb_ctx_t* ctx, 
-    const tiledb_array_t *array, 
+    tiledb_ctx_t* ctx,
+    const tiledb_array_t* array,
     tiledb_subarray_t** subarray);
 
 /**
@@ -5165,13 +5173,13 @@ TILEDB_EXPORT int32_t tiledb_subarray_alloc(
  * @param subarray The retrieved subarray object if available.
  * @return `TILEDB_OK` for success and `TILEDB_OOM` or `TILEDB_ERR` for error.
  */
-TILEDB_EXPORT 
+TILEDB_EXPORT
 int32_t tiledb_query_subarray(
     tiledb_ctx_t* ctx,
     const tiledb_query_t* query,
     tiledb_subarray_t** subarray);
 
-  /**
+/**
  * Opens a TileDB array. The array is opened using a query type as input.
  * This is to indicate that queries created for this `tiledb_array_t`
  * object will inherit the query type. In other words, `tiledb_array_t`

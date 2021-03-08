@@ -272,7 +272,8 @@ Status Reader::get_buffer_nullable(
   return Status::Ok();
 }
 
-Status Reader::init(const Layout& layout, const Subarray *initialization_subarray) {
+Status Reader::init(
+    const Layout& layout, const Subarray* initialization_subarray) {
   // Sanity checks
   if (storage_manager_ == nullptr)
     return LOG_STATUS(Status::ReaderError(
@@ -286,8 +287,8 @@ Status Reader::init(const Layout& layout, const Subarray *initialization_subarra
   if (array_schema_->dense() && !sparse_mode_ && !subarray_.is_set())
     return LOG_STATUS(Status::ReaderError(
         "Cannot initialize reader; Dense reads must have a subarray set"));
-        
-  if(initialization_subarray)
+
+  if (initialization_subarray)
     subarray_ = *initialization_subarray;
 
   // Set layout
@@ -835,8 +836,9 @@ void Reader::compute_result_space_tiles(
 /* ****************************** */
 
 Status Reader::check_subarray(const Subarray* subarray) const {
-  auto &subarray_to_check = subarray ? *subarray : subarray_;
-  if (subarray_.layout() == Layout::GLOBAL_ORDER && subarray_to_check.range_num() != 1)
+  auto& subarray_to_check = subarray ? *subarray : subarray_;
+  if (subarray_.layout() == Layout::GLOBAL_ORDER &&
+      subarray_to_check.range_num() != 1)
     return LOG_STATUS(Status::ReaderError(
         "Cannot initialize reader; Multi-range subarrays with "
         "global order layout are not supported"));
