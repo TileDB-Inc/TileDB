@@ -8,7 +8,7 @@ on:
       - rd/gha_workflow_cleanup
   pull_request:
     branches:
-      - '*'  # must quote since "*" is a YAML reserved character; we want a string
+      #- '*'  # must quote since "*" is a YAML reserved character; we want a string
 env:
   TILEDB_SERIALIZATION: ON
   TILEDB_S3: ON
@@ -119,7 +119,7 @@ jobs:
           ./tiledb_png $GITHUB_WORKSPACE/doc/source/figures/Scarlet-Macaw-small.png /tmp/pngarray output.png;
           popd;
 
-          source scripts/ci_build.sh;
+          source $src/scripts/ci_build.sh;
 
       - name: 'Build docs (no deployment)'
         run: |

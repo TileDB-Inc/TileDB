@@ -26,57 +26,74 @@
 
 # Builds CI benchmarks and checks test status
 
+die() {
+  echo "$@" 1>&2 ; popd 2>/dev/null; exit 1
+}
+
 # Build the benchmarks (but do not run them).
-pushd $GITHUB_WORKSPACE/test/benchmarking && \
+function build_deps {
+  pushd $GITHUB_WORKSPACE/test/benchmarking && \
   mkdir build && cd build && \
   cmake -DCMAKE_PREFIX_PATH=$GITHUB_WORKSPACE/dist ../src && make && \
-popd
+  popd
 
-testfile=$(mktemp)
-mv $testfile $testfile.cc
-testfile=$testfile.cc
-cat <<EOF > $testfile
-#include <assert.h>
-#include <tiledb/tiledb.h>
-#include <tiledb/version.h>
-int main(int argc, char **argv) {
-  int major = 0;
-  int minor = 0;
-  int patch = 0;
-  tiledb_version(&major,&minor,&patch);
-  auto version = tiledb::version();
-  assert(major == std::get<0>(version));
-  return 0;
+  testfile=$(mktemp)
+  mv $testfile $testfile.cc
+  testfile=$testfile.cc
+  cat << EOF > $testfile
+  #include <assert.h>
+  #include <tiledb/tiledb.h>
+  #include <tiledb/version.h>
+  int main(int argc, char **argv) {
+    int major = 0;
+    int minor = 0;
+    int patch = 0;
+    tiledb_version(&major,&minor,&patch);
+    auto version = tiledb::version();
+    assert(major == std::get<0>(version));
+    return 0;
+  }
+  EOF
+  export TESTFILE_LDFLAGS="-ltiledb"
+  export LD_LIBRARY_PATH=$GITHUB_WORKSPACE/dist/lib:/usr/local/lib:$LD_LIBRARY_PATH
+  $CXX -std=c++11 -g -O0 -Wall -Werror -I$GITHUB_WORKSPACE/dist/include -L$GITHUB_WORKSPACE/dist/lib $testfile -o $testfile.exe $TESTFILE_LDFLAGS && \
+  $testfile.exe && \
+  rm -f $testfile $testfile.exe
+
+  ps -U $(whoami) -o comm= | sort | uniq
+  #  displayName: 'Build examples, PNG test, and benchmarks (build-only)'
+
+  - name: 'Test status check'
+  run: |
+  # tiledb_unit is configured to set a job-level variable TILEDB_CI_SUCCESS=1
+  # following the test run. If this variable is not set, the build should fail.
+  # see https://github.com/TileDB-Inc/TileDB/pull/1400 (5f0623f4d3)
+  if [[ "${{ steps.test.outputs.TILEDB_CI_SUCCESS }}" -ne 1 ]]; then
+    exit 1;
+  fi
 }
-EOF
-export TESTFILE_LDFLAGS="-ltiledb"
-export LD_LIBRARY_PATH=$GITHUB_WORKSPACE/dist/lib:/usr/local/lib:$LD_LIBRARY_PATH
-$CXX -std=c++11 -g -O0 -Wall -Werror -I$GITHUB_WORKSPACE/dist/include -L$GITHUB_WORKSPACE/dist/lib $testfile -o $testfile.exe $TESTFILE_LDFLAGS && \
-$testfile.exe && \
-rm -f $testfile $testfile.exe
 
-ps -U $(whoami) -o comm= | sort | uniq
-#  displayName: 'Build examples, PNG test, and benchmarks (build-only)'
+function print_logs {
+  - name: "Print log files (failed build only)"
+  run: |
+  set -e pipefail
+  # Display log files if the build failed
+  echo "Dumping log files for failed build"
+  echo "----------------------------------"
+  for f in $(find $GITHUB_WORKSPACE/build -name *.log);
+    do echo "------"
+        echo $f
+        echo "======"
+        cat $f
+    done;
+  if: ${{ failure() }} # only run this job if the build step failed
+}
 
-- name: 'Test status check'
-run: |
-# tiledb_unit is configured to set a job-level variable TILEDB_CI_SUCCESS=1
-# following the test run. If this variable is not set, the build should fail.
-# see https://github.com/TileDB-Inc/TileDB/pull/1400 (5f0623f4d3)
-if [[ "${{ steps.test.outputs.TILEDB_CI_SUCCESS }}" -ne 1 ]]; then
-  exit 1;
-fi
-#
-- name: "Print log files (failed build only)"
-run: |
-set -e pipefail
-# Display log files if the build failed
-echo "Dumping log files for failed build"
-echo "----------------------------------"
-for f in $(find $GITHUB_WORKSPACE/build -name *.log);
-  do echo "------"
-      echo $f
-      echo "======"
-      cat $f
-  done;
-if: ${{ failure() }} # only run this job if the build step failed
+function run {
+  build_deps
+  print_logs
+}
+
+run
+# sleep to make sure the ssh service restart is done because systemd
+sleep 2
