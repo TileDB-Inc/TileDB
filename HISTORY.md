@@ -18,6 +18,7 @@
 ## Bug fixes
 
 * Always use original buffer size in serialized read queries serverside. [#2115](https://github.com/TileDB-Inc/TileDB/pull/2115)
+* Fix segfault in serialized queries when partition is unsplittable [#2120](https://github.com/TileDB-Inc/TileDB/pull/2120)
 
 ## API additions
 
