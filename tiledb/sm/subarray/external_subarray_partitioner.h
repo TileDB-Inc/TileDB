@@ -240,7 +240,7 @@ class ExternalSubarrayPartitioner {
    * Returns a pointer to mapping containing all attribute/dimension result
    * budgets that have been set.
    */
-  const std::unordered_map<std::string, ResultBudget>* get_result_budgets()
+  const std::unordered_map<std::string, SubarrayPartitioner::ResultBudget>* get_result_budgets()
       const;
 
   /**

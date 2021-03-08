@@ -117,7 +117,7 @@ ExternalSubarrayPartitioner& ExternalSubarrayPartitioner::operator=(
 
 Subarray& ExternalSubarrayPartitioner::current() {
   //return current_.partition_;
-  return subarray_partitioner_.current_partition_info()->partion();
+  return subarray_partitioner_.current_partition_info()->partition_;
 }
 
 const SubarrayPartitioner::PartitionInfo*
@@ -368,7 +368,7 @@ Status ExternalSubarrayPartitioner::get_result_budget_nullable(
 #endif
 }
 
-const std::unordered_map<std::string, ExternalSubarrayPartitioner::ResultBudget>*
+const std::unordered_map<std::string, SubarrayPartitioner::ResultBudget>*
 ExternalSubarrayPartitioner::get_result_budgets() const {
   return subarray_partitioner_.get_result_budgets();
 //  return &budget_;
@@ -798,8 +798,9 @@ void ExternalSubarrayPartitioner::calibrate_current_start_end(bool* must_split_s
 
 #if 01
 ExternalSubarrayPartitioner ExternalSubarrayPartitioner::clone() const {
-  ExternalSubarrayPartitioner clone;
-  clone.subarray_partitioner_.swap(SubarrayPartitioner(subarray_partitioner_));
+  ExternalSubarrayPartitioner clone(*this);
+  return clone;
+  //clone.subarray_partitioner_.swap(SubarrayPartitioner(subarray_partitioner_));
 #if 0
   clone.subarray_ = subarray_;
   clone.budget_ = budget_;
@@ -1341,7 +1342,8 @@ Status ExternalSubarrayPartitioner::split_top_multi_range(bool* unsplittable) {
 
 void ExternalSubarrayPartitioner::swap(ExternalSubarrayPartitioner& partitioner) {
 
-  subarray_partitioner_.swap(partitioner.subarray_partitioner_);
+  //subarray_partitioner_.swap(partitioner.subarray_partitioner_);
+  std::swap(*this, partitioner);
 
 #if 0
   std::swap(subarray_, partitioner.subarray_);

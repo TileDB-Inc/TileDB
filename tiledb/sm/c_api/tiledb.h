@@ -5168,7 +5168,7 @@ TILEDB_EXPORT int32_t tiledb_subarray_alloc(
 TILEDB_EXPORT 
 int32_t tiledb_query_subarray(
     tiledb_ctx_t* ctx,
-   const tiledb_query_t* query,
+    const tiledb_query_t* query,
     tiledb_subarray_t** subarray);
 
   /**

@@ -708,6 +708,7 @@ class Query {
 
   /** Reference current Reader/Writer subarray according to query type */
   const Subarray & subarray() const ;
+  Subarray * subarray() ;
 	
   /** Submits the query to the storage manager. */
   Status submit();

@@ -1075,7 +1075,7 @@ Status Query::set_subarray_unsafe(const NDRange& subarray) {
   return Status::Ok();
 }
 
-const Subarray & Query::subarray() const 
+const Subarray & Query::subarray() const
 {
   //TBD: 
   //Should this err/throw if query not initialized?
@@ -1084,6 +1084,17 @@ const Subarray & Query::subarray() const
   if (type_ == QueryType::WRITE)
     return *writer_.subarray_ranges();
   return *reader_.subarray();
+}
+
+Subarray * Query::subarray()
+{
+  //TBD: 
+  //Should this err/throw if query not initialized?
+  //Should it try to use initialization_subarray_ if have and
+  //query is in UNINITIALIZED state?
+  if (type_ == QueryType::WRITE)
+    return const_cast<Subarray *>(writer_.subarray_ranges());
+  return const_cast<Subarray*>(reader_.subarray());
 }
 
 Status Query::submit(/*Subarray *subarray*/) {
