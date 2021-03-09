@@ -44,7 +44,7 @@ jobs:
 
       - name: Check formatting (linux only)'
         run: |
-          source $GITHUB_WORKSPACE/scripts/check_formatting_linux.sh
+          source $GITHUB_WORKSPACE/scripts/ci/check_formatting_linux.sh
         shell: bash
         if: ${{ runner.os == 'Linux' }}
 
@@ -65,7 +65,7 @@ jobs:
           #   name: 'Clone Unit-Test-Arrays'
 
           bootstrap_args="${bootstrap_args} --enable-serialization";
-          source $GITHUB_WORKSPACE/scripts/build_libtiledb.sh
+          source $GITHUB_WORKSPACE/scripts/ci/build_libtiledb.sh
 
           # Bypass Catch2 Framework stdout interception with awk on test output
           # make check | awk '/1: ::set-output/{sub(/.*1: /, ""); print; next} 1'
@@ -88,7 +88,7 @@ jobs:
           ./tiledb_png $GITHUB_WORKSPACE/doc/source/figures/Scarlet-Macaw-small.png /tmp/pngarray output.png;
           popd;
 
-          source $GITHUB_WORKSPACE/scripts/build_benchmarks.sh
+          source $GITHUB_WORKSPACE/scripts/ci/build_benchmarks.sh
 
       - name: 'Test status check'
         run: |
@@ -101,10 +101,10 @@ jobs:
       #
       - name: "Print log files (failed build only)"
         run: |
-          source $GITHUB_WORKSPACE/scripts/print_logs.sh
+          source $GITHUB_WORKSPACE/scripts/ci/print_logs.sh
         if: ${{ failure() }} # only run this job if the build step failed
 
       - name: 'Build docs (no deployment)'
         run: |
-          source $GITHUB_WORKSPACE/scripts/build_docs.sh
+          source $GITHUB_WORKSPACE/scripts/ci/build_docs.sh
         if: ${{ runner.os == 'Linux' }}

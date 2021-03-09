@@ -52,13 +52,13 @@ jobs:
           source scripts/run-gcs-emu.sh;
 
           bootstrap_args="${bootstrap_args} --enable-gcs";
-          source $GITHUB_WORKSPACE/scripts/build_libtiledb.sh
+          source $GITHUB_WORKSPACE/scripts/ci/build_libtiledb.sh
 
           # GCS unit tests are temporarily unsupported on CI for MacOS. Fake success with
           # this echo.
           echo ::set-output name=TILEDB_CI_SUCCESS::1
 
-          source $GITHUB_WORKSPACE/scripts/build_benchmarks.sh
+          source $GITHUB_WORKSPACE/scripts/ci/build_benchmarks.sh
 
       - name: 'Test status check'
         run: |
@@ -71,5 +71,5 @@ jobs:
       #
       - name: "Print log files (failed build only)"
         run: |
-          source $GITHUB_WORKSPACE/scripts/print_logs.sh
+          source $GITHUB_WORKSPACE/scripts/ci/print_logs.sh
         if: ${{ failure() }} # only run this job if the build step failed

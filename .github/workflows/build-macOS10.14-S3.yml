@@ -63,7 +63,7 @@ jobs:
           bootstrap_args="${bootstrap_args} --enable-s3";
           bootstrap_args="${bootstrap_args} --enable-tools";
           
-          source $GITHUB_WORKSPACE/scripts/build_libtiledb.sh
+          source $GITHUB_WORKSPACE/scripts/ci/build_libtiledb.sh
 
           ./tiledb/test/tiledb_unit -d yes | awk '/1: ::set-output/{sub(/.*1: /, ""); print; next} 1'
 
@@ -78,7 +78,7 @@ jobs:
 
           popd
 
-          source $GITHUB_WORKSPACE/scripts/build_benchmarks.sh
+          source $GITHUB_WORKSPACE/scripts/ci/build_benchmarks.sh
 
       - name: 'Test status check'
         run: |
@@ -90,5 +90,5 @@ jobs:
           fi
       - name: "Print log files (failed build only)"
         run: |
-          source $GITHUB_WORKSPACE/scripts/print_logs.sh
+          source $GITHUB_WORKSPACE/scripts/ci/print_logs.sh
         if: ${{ failure() }} # only run this job if the build step failed
