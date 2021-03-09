@@ -73,30 +73,7 @@ jobs:
 
           #   name: 'Clone Unit-Test-Arrays'
 
-          # Set up arguments for bootstrap.sh
-          bootstrap_args="--enable=verbose";
-          # Add serialization flag if necessary
-          bootstrap_args="${bootstrap_args} --enable-serialization";
-
-
-          # name: 'Install dependencies'
-
-          mkdir -p $GITHUB_WORKSPACE/build
-          cd $GITHUB_WORKSPACE/build
-
-          # Configure and build TileDB
-          echo "Bootstrapping with '$bootstrap_args'"
-          $GITHUB_WORKSPACE/bootstrap $bootstrap_args
-
-          make -j4
-          make examples -j4
-          make -C tiledb install
-
-          #- run: |
-          cd $GITHUB_WORKSPACE/build
-          ls -la
-
-          make -j4 -C tiledb tiledb_unit
+          source $GITHUB_WORKSPACE/scripts/build_libtiledb.sh
 
           # Bypass Catch2 Framework stdout interception with awk on test output
           # make check | awk '/1: ::set-output/{sub(/.*1: /, ""); print; next} 1'
@@ -133,17 +110,7 @@ jobs:
       #
       - name: "Print log files (failed build only)"
         run: |
-          set -e pipefail
-          # Display log files if the build failed
-          echo "Dumping log files for failed build"
-          echo "----------------------------------"
-          for f in $(find $GITHUB_WORKSPACE/build -name *.log);
-            do echo "------"
-               echo $f
-               echo "======"
-               cat $f
-            done;
-        if: ${{ failure() }} # only run this job if the build step failed
+          source $GITHUB_WORKSPACE/scripts/print_logs.sh
 
       - name: 'Build docs (no deployment)'
         run: |
