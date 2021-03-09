@@ -111,6 +111,7 @@ jobs:
       - name: "Print log files (failed build only)"
         run: |
           source $GITHUB_WORKSPACE/scripts/print_logs.sh
+        if: ${{ failure() }} # only run this job if the build step failed
 
       - name: 'Build docs (no deployment)'
         run: |

@@ -35,4 +35,4 @@ for f in $(find $GITHUB_WORKSPACE/build -name *.log);
       echo "======"
       cat $f
   done;
-if: ${{ failure() }} # only run this job if the build step failed
+
