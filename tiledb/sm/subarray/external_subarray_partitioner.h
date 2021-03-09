@@ -61,101 +61,8 @@ class ExternalSubarrayPartitioner {
   /*           TYPE DEFINITIONS        */
   /* ********************************* */
 
-#if 0
-  /**
-   * Result budget (in bytes) for an attribute/dimension used for
-   * partitioning.
-   */
-  struct ResultBudget {
-    /**
-     * Size for fixed-sized attributes/dimensions or offsets of var-sized
-     * attributes/dimensions.
-     */
-    uint64_t size_fixed_;
+  //TBD: ???
 
-    /** Size of values for var-sized attributes/dimensions. */
-    uint64_t size_var_;
-
-    /** Size of validity for nullable attributes. */
-    uint64_t size_validity_;
-  };
-#endif
-
-#if 0
-  /**
-   * Stores information about the current partition. A partition is
-   * always a ``Subarray`` object. In addition to that object, this
-   * struct contains also some information about the interval of
-   * ranges from the original subarray that the partition has
-   * been constructed from. This interval ``[start_, end_]`` refers
-   * to the indices of the ranges from the original subarray in
-   * their flattened 1D order as specified by the layout of the
-   * subarray. This additional information helps to potentially
-   * further split the current partition, if the read query
-   * deems it necessary (i.e., this will be used to update the
-   * partitioner state as well).
-   */
-  struct PartitionInfo {
-    /** The current partition. */
-    Subarray partition_;
-    /**
-     * The start range index from the original subarray that the
-     * current partition has been constructed from.
-     */
-    uint64_t start_;
-    /**
-     * The end range index from the original subarray that the
-     * current partition has been constructed from.
-     */
-    uint64_t end_;
-    /**
-     * ``true`` if the partition came from splitting a multi-range
-     * subarray that was put into ``state_.multi_range_``.
-     */
-    bool split_multi_range_ = false;
-  };
-#endif
-
-#if 0
-  /**
-   * Stores the current state of the partitioner, which will be
-   * used to derive the next partition when requested. This involves
-   * the range interval from the original subarray that the next
-   * partition will be constructed from, as well as a list of
-   * single-range subarrays. The latter is used in the case where
-   * a partition was computed on a single-range subarray that
-   * had to be split further. The list contains all the subarrays
-   * that resulted throughout this splitting process and are
-   * next in line to produce the next partition.
-   */
-  struct State {
-    /**
-     * The start range index from the original subarray that the
-     * next partition will be constructed from.
-     */
-    uint64_t start_;
-    /**
-     * The end range index from the original subarray that the
-     * next partition will be constructed from.
-     */
-    uint64_t end_;
-    /**
-     * This is a list of subarrays that resulted from splitting a
-     * single-range subarray to produce the current partition. The
-     * list stores the remaining single-range subarray as a set
-     * of single-range partitions that need to be explored next.
-     */
-    std::list<Subarray> single_range_;
-    /**
-     * This is a list of subarrays that resulted from splitting a
-     * multi-range subarray "slab" to produce the current partition
-     * (applicable only to ROW_MAJOR and COL_MAJOR layouts).
-     * The list stores the remaining multi-range subarray slab as a
-     * set of multi-range partitions that need to be explored next.
-     */
-    std::list<Subarray> multi_range_;
-  };
-#endif
 
   /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */
@@ -332,37 +239,6 @@ class ExternalSubarrayPartitioner {
   /*         PRIVATE ATTRIBUTES        */
   /* ********************************* */
 
-#if 0
-  /** The subarray the partitioner will iterate on to produce partitions. */
-  Subarray subarray_;
-
-  /** Result size budget (in bytes) for all attributes/dimensions. */
-  std::unordered_map<std::string, ResultBudget> budget_;
-
-  /** The current partition info. */
-  PartitionInfo current_;
-
-  /** The state information for the remaining partitions to be produced. */
-  State state_;
-#endif
-
-#if 0
-  /**
-   * The memory budget for the fixed-sized attributes and the offsets
-   * of the var-sized attributes.
-   */
-  uint64_t memory_budget_;
-
-  /** The memory budget for the var-sized attributes. */
-  uint64_t memory_budget_var_;
-
-  /** The memory budget for the validity vectors. */
-  uint64_t memory_budget_validity_;
-
-  /** The thread pool for compute-bound tasks. */
-  ThreadPool* compute_tp_;
-#endif
-
   /** */
   SubarrayPartitioner subarray_partitioner_;
 
@@ -370,130 +246,8 @@ class ExternalSubarrayPartitioner {
   /*           PRIVATE METHODS         */
   /* ********************************* */
 
-#if 0
-  /**
-   * After computation of the ``[current_.start_, current_.end_]`` interval
-   * of ranges (in the 1D flattened order) of the subarray that fit in the
-   * budget, this function must calibrate ``current_.end_`` so that the
-   * interval corresponds to either (i) a full slab of ranges, i.e.,
-   * full rows or columns (depending on the layout) of ranges, or (ii) a
-   * single partial row or column (applicable only to UNORDERED layout) of
-   * the ranges. The reason is that the next partition to be stored in
-   * ``current_.partition_`` must always have a proper ``Subarray`` structure,
-   * consisting of a set of 1D ranges per dimension, that all together form
-   * a set of multiple ND ranges (produced by the cross produce of the 1D
-   * ranges).
-   *
-   * For ROW_MAJOR and COL_MAJOR layouts, this function may set
-   * ``must_split_slab`` to ``true`` if after calibrating the range interval
-   * to form a "slab", that slab does not entirely fit in the result budget
-   * and needs splitting along the splitting dimension (that depends on
-   * the layout).
-   */
-  void calibrate_current_start_end(bool* must_split_slab);
-#endif
-
   /** Returns a deep copy of this ExternalSubarrayPartitioner. */
   ExternalSubarrayPartitioner clone() const;
-
-#if 0
-  /**
-   * Computes the range interval ``[current_.start_, current_.end_]``
-   * needed to compute the next partition to set to ``current_.partition_``.
-   *
-   * If the interval is a single range, which does not fit in the budget,
-   * then the function sets ``found`` to ``false`` and ``true`` otherwise.
-   */
-  Status compute_current_start_end(bool* found);
-
-  /**
-   * Applicable only when the `range` layout is GLOBAL_ORDER.
-   * Computes the splitting value and dimension for the input range.
-   * If `range` is whithin a single space tile, then `unsplittable`
-   * is set to `true`.
-   */
-  void compute_splitting_value_on_tiles(
-      const Subarray& range,
-      unsigned* splitting_dim,
-      ByteVecValue* splitting_value,
-      bool* unsplittable);
-
-  /**
-   * Computes the splitting value and dimension for the input range.
-   * In case of real domains, if this function may not be able to find a
-   * splitting value and set ``unsplittable`` to ``true``. Value
-   * `normal_order` is `true` if after the split, the first range
-   * precedes the second in the query layout. Otherwise, it is
-   * the reverse order (this is used in global order reads when
-   * the cell order is Hilbert).
-   */
-  void compute_splitting_value_single_range(
-      const Subarray& range,
-      unsigned* splitting_dim,
-      ByteVecValue* splitting_value,
-      bool* normal_order,
-      bool* unsplittable);
-
-  /**
-   * Same as `compute_splitting_value_single_range` but this is applicable
-   * only to global order reads when the cell order is Hilbert.
-   */
-  void compute_splitting_value_single_range_hilbert(
-      const Subarray& range,
-      unsigned* splitting_dim,
-      ByteVecValue* splitting_value,
-      bool* normal_order,
-      bool* unsplittable);
-
-  /**
-   * Computes the splitting value and dimension for
-   * ``state_.multi_range_.front()``. In case of real domains, if this
-   * function may not be able to find a splitting value and set
-   * ``unsplittable`` to ``true``. Value
-   * `normal_order` is `true` if after the split, the first range
-   * precedes the second in the query layout. Otherwise, it is
-   * the reverse order (this is used in global order reads when
-   * the cell order is Hilbert).
-   */
-  void compute_splitting_value_multi_range(
-      unsigned* splitting_dim,
-      uint64_t* splitting_range,
-      ByteVecValue* splitting_value,
-      bool* normal_order,
-      bool* unsplittable);
-
-  /** Returns ``true`` if the input partition must be split. */
-  bool must_split(Subarray* partition);
-
-  /**
-   * It computes the next partition from a multi-range subarray, which may
-   * need to be split and added to the list of multi-range subarray
-   * partitions. If the next partition cannot be produced,
-   * ``unsplittable`` is set to ``true``.
-   */
-  Status next_from_multi_range(bool* unsplittable);
-
-  /**
-   * It handles the case where ``state_.single_range_`` is non-empty, which
-   * means that the next partition must be produced from the remaining
-   * single-range subarray represented by ``state_.single_range_``.
-   * If the next partition cannot be produced, ``unsplittable`` is set
-   * to ``true``.
-   */
-  Status next_from_single_range(bool* unsplittable);
-
-  /**
-   * Splits the top single range, or sets ``unsplittable`` to ``true``
-   * if that is not possible.
-   */
-  Status split_top_single_range(bool* unsplittable);
-
-  /**
-   * Splits the top multi-range, or sets ``unsplittable`` to ``true``
-   * if that is not possible.
-   */
-  Status split_top_multi_range(bool* unsplittable);
-#endif
 
   /**
    * Swaps the contents (all field values) of this subarray partitioner with
@@ -501,44 +255,6 @@ class ExternalSubarrayPartitioner {
    */
   void swap(ExternalSubarrayPartitioner& partitioner);
 
-#if 0
-  /**
-   * Maps the input `range` to `range_uint64` that uses only
-   * uint64 values, with the number of bits calculated by
-   * the Hilbert order on the array dimensions. These values
-   * will be used as coordinates to calculate Hilbert values.
-   *
-   * @param range The input ND range.
-   * @param range_uint64 The mapped ND range to be calculated.
-   * @param unsplittable Set to `true` if the mapped ND `range_uint64`
-   *     is unary and `false` otherwise.
-   * @return void
-   */
-  void compute_range_uint64(
-      const Subarray& range,
-      std::vector<std::array<uint64_t, 2>>* range_uint64,
-      bool* unsplittable) const;
-
-  /**
-   * Calculates the splitting dimension for Hilbert cell order,
-   * based on the mapped uint64 range.
-   */
-  void compute_splitting_dim_hilbert(
-      const std::vector<std::array<uint64_t, 2>>& range_uint64,
-      uint32_t* splitting_dim) const;
-
-  /**
-   * Given the input mapped `range_uint64` on the splitting
-   * dimension, it calcuates the real spliting value
-   * for the original range (i.e., in the original dimension domain,
-   * not the mapped uint64 domain).
-   */
-  void compute_splitting_value_hilbert(
-      const std::array<uint64_t, 2>& range_uint64,
-      uint32_t splitting_dim,
-      ByteVecValue* splitting_value) const;
-#endif
-	
 };
 
 }  // namespace sm

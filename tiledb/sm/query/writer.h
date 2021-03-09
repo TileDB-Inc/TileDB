@@ -253,7 +253,8 @@ class Writer {
   uint32_t get_offsets_bitsize() const;
 
   /** Initializes the writer with the subarray layout. */
-  Status init(const Layout& layout, const Subarray *initialization_subarray = nullptr);
+  Status init(
+      const Layout& layout, const Subarray* initialization_subarray = nullptr);
 
   /** Returns the cell layout. */
   Layout layout() const;

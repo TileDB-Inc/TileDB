@@ -310,7 +310,6 @@ void AsyncFx::write_dense_async() {
   CHECK(rc == TILEDB_OK);
 
   if (!use_external_subarray_) {
-  
     // Submit query asynchronously
     int callback_made = 0;
     rc = tiledb_query_submit_async(ctx_, query, callback, &callback_made);
@@ -330,7 +329,7 @@ void AsyncFx::write_dense_async() {
     // Check correct execution of callback
     CHECK(callback_made == 1);
   } else {
-    tiledb_subarray_t *query_subarray;
+    tiledb_subarray_t* query_subarray;
     tiledb_query_subarray(ctx_, query, &query_subarray);
     // Submit query asynchronously
     int callback_made = 0;
@@ -459,7 +458,8 @@ void AsyncFx::write_sparse_async() {
     tiledb_query_subarray(ctx_, query, &query_subarray);
     // Submit query asynchronously
     int callback_made = 0;
-    rc = tiledb_query_submit_async_with_subarray(ctx_, query, callback, &callback_made, query_subarray);
+    rc = tiledb_query_submit_async_with_subarray(
+        ctx_, query, callback, &callback_made, query_subarray);
     CHECK(rc == TILEDB_OK);
 
     if (rc == TILEDB_OK) {
@@ -483,8 +483,8 @@ void AsyncFx::write_sparse_async() {
   rc = tiledb_array_close(ctx_, array);
   CHECK(rc == TILEDB_OK);
 
-//  // Check correct execution of callback
-//  CHECK(callback_made == 1);
+  //  // Check correct execution of callback
+  //  CHECK(callback_made == 1);
 
   // Clean up
   tiledb_array_free(&array);
@@ -609,7 +609,8 @@ void AsyncFx::write_sparse_async_cancelled() {
     CHECK(status == TILEDB_COMPLETED);
     CHECK(callback_made == 1);
 
-    //TBD: Can we still safely finalize if query wasn't even submitted successfully above?
+    // TBD: Can we still safely finalize if query wasn't even submitted
+    // successfully above?
     if (query_submitted_ok) {
       // Finalize query
       rc = tiledb_query_finalize(ctx_, query);
@@ -728,7 +729,6 @@ void AsyncFx::read_dense_async() {
   CHECK(rc == TILEDB_OK);
 
   if (!use_external_subarray_) {
-
     // Submit query with callback
     int callback_made = 0;
     rc = tiledb_query_submit_async(ctx_, query, callback, &callback_made);
@@ -771,53 +771,52 @@ void AsyncFx::read_dense_async() {
     CHECK(!memcmp(buffer_a2_val, c_buffer_a2_val, sizeof(c_buffer_a2_val) - 1));
     CHECK(!memcmp(buffer_a3, c_buffer_a3, sizeof(c_buffer_a3)));
   } else {
-      tiledb_subarray_t* query_subarray;
-      tiledb_query_subarray(ctx_, query, &query_subarray);
+    tiledb_subarray_t* query_subarray;
+    tiledb_query_subarray(ctx_, query, &query_subarray);
 
     // Submit query with callback
-      int callback_made = 0;
-      rc = tiledb_query_submit_async_with_subarray(ctx_, query, callback, &callback_made, query_subarray);
+    int callback_made = 0;
+    rc = tiledb_query_submit_async_with_subarray(
+        ctx_, query, callback, &callback_made, query_subarray);
+    CHECK(rc == TILEDB_OK);
+
+    if (rc == TILEDB_OK) {
+      // Wait for the query to complete
+      tiledb_query_status_t status;
+      do {
+        tiledb_query_get_status(ctx_, query, &status);
+      } while (status != TILEDB_COMPLETED);
+
+      // Finalize query
+      rc = tiledb_query_finalize(ctx_, query);
       CHECK(rc == TILEDB_OK);
 
-      if (rc == TILEDB_OK) {
-        // Wait for the query to complete
-        tiledb_query_status_t status;
-        do {
-          tiledb_query_get_status(ctx_, query, &status);
-        } while (status != TILEDB_COMPLETED);
+      // Check correct execution of callback
+      CHECK(callback_made == 1);
+    }
 
-        // Finalize query
-        rc = tiledb_query_finalize(ctx_, query);
-        CHECK(rc == TILEDB_OK);
+    // Correct buffers
+    int c_buffer_a1[] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15};
+    uint64_t c_buffer_a2_off[] = {
+        0, 1, 3, 6, 10, 11, 13, 16, 20, 21, 23, 26, 30, 31, 33, 36};
+    char c_buffer_a2_val[] =
+        "abbcccdddd"
+        "effggghhhh"
+        "ijjkkkllll"
+        "mnnooopppp";
+    float c_buffer_a3[] = {
+        0.1f,  0.2f,  1.1f,  1.2f,  2.1f,  2.2f,  3.1f,  3.2f,
+        4.1f,  4.2f,  5.1f,  5.2f,  6.1f,  6.2f,  7.1f,  7.2f,
+        8.1f,  8.2f,  9.1f,  9.2f,  10.1f, 10.2f, 11.1f, 11.2f,
+        12.1f, 12.2f, 13.1f, 13.2f, 14.1f, 14.2f, 15.1f, 15.2f,
+    };
 
-        // Check correct execution of callback
-        CHECK(callback_made == 1);
-      }
-
-      // Correct buffers
-      int c_buffer_a1[] = {
-          0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15};
-      uint64_t c_buffer_a2_off[] = {
-          0, 1, 3, 6, 10, 11, 13, 16, 20, 21, 23, 26, 30, 31, 33, 36};
-      char c_buffer_a2_val[] =
-          "abbcccdddd"
-          "effggghhhh"
-          "ijjkkkllll"
-          "mnnooopppp";
-      float c_buffer_a3[] = {
-          0.1f,  0.2f,  1.1f,  1.2f,  2.1f,  2.2f,  3.1f,  3.2f,
-          4.1f,  4.2f,  5.1f,  5.2f,  6.1f,  6.2f,  7.1f,  7.2f,
-          8.1f,  8.2f,  9.1f,  9.2f,  10.1f, 10.2f, 11.1f, 11.2f,
-          12.1f, 12.2f, 13.1f, 13.2f, 14.1f, 14.2f, 15.1f, 15.2f,
-      };
-
-      // Check buffers
-      CHECK(!memcmp(buffer_a1, c_buffer_a1, sizeof(c_buffer_a1)));
-      CHECK(!memcmp(buffer_a2_off, c_buffer_a2_off, sizeof(c_buffer_a2_off)));
-      CHECK(
-          !memcmp(buffer_a2_val, c_buffer_a2_val, sizeof(c_buffer_a2_val) - 1));
-      CHECK(!memcmp(buffer_a3, c_buffer_a3, sizeof(c_buffer_a3)));
-      tiledb_subarray_free(&query_subarray);
+    // Check buffers
+    CHECK(!memcmp(buffer_a1, c_buffer_a1, sizeof(c_buffer_a1)));
+    CHECK(!memcmp(buffer_a2_off, c_buffer_a2_off, sizeof(c_buffer_a2_off)));
+    CHECK(!memcmp(buffer_a2_val, c_buffer_a2_val, sizeof(c_buffer_a2_val) - 1));
+    CHECK(!memcmp(buffer_a3, c_buffer_a3, sizeof(c_buffer_a3)));
+    tiledb_subarray_free(&query_subarray);
   }
   // Close array
   rc = tiledb_array_close(ctx_, array);
@@ -926,16 +925,21 @@ void AsyncFx::read_sparse_async() {
     CHECK(!memcmp(buffer_a2_val, c_buffer_a2_val, sizeof(c_buffer_a2_val) - 1));
     CHECK(!memcmp(buffer_a3, c_buffer_a3, sizeof(c_buffer_a3)));
     CHECK(!memcmp(
-        buffer_coords_dim1, c_buffer_coords_dim1, sizeof(c_buffer_coords_dim1)));
+        buffer_coords_dim1,
+        c_buffer_coords_dim1,
+        sizeof(c_buffer_coords_dim1)));
     CHECK(!memcmp(
-        buffer_coords_dim2, c_buffer_coords_dim2, sizeof(c_buffer_coords_dim2)));
+        buffer_coords_dim2,
+        c_buffer_coords_dim2,
+        sizeof(c_buffer_coords_dim2)));
   } else {
     tiledb_subarray_t* query_subarray;
     tiledb_query_subarray(ctx_, query, &query_subarray);
 
     // Submit query with callback
     int callback_made = 0;
-    rc = tiledb_query_submit_async_with_subarray(ctx_, query, callback, &callback_made, query_subarray);
+    rc = tiledb_query_submit_async_with_subarray(
+        ctx_, query, callback, &callback_made, query_subarray);
     CHECK(rc == TILEDB_OK);
 
     // Wait for the query to complete

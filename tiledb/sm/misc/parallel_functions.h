@@ -405,7 +405,7 @@ std::vector<Status> parallel_for_2d(
 #else
       bound_fn();
 #endif
-}
+    }
   }
 
   // Wait for all instances of `execute_subrange` to complete.

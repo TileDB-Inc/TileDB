@@ -942,7 +942,8 @@ void DenseArrayFx::write_dense_subarray_2D_with_cancel(
 
   if (!use_external_subarray_) {
     // Submit the same query several times, some may be duplicates, some may
-    // be cancelled, it doesn't matter since it's all the same data being written.
+    // be cancelled, it doesn't matter since it's all the same data being
+    // written.
     // TODO: this doesn't trigger the cancelled path very often.
     for (unsigned i = 0; i < num_writes; i++) {
       rc = tiledb_query_submit_async(ctx_, query, NULL, NULL);
@@ -982,8 +983,10 @@ void DenseArrayFx::write_dense_subarray_2D_with_cancel(
     // written.
     // TODO: this doesn't trigger the cancelled path very often.
     for (unsigned i = 0; i < num_writes; i++) {
-      //TBD: state/handling of query/_with_subarray on first/subsequent _submit_async_()s correct?
-      rc = tiledb_query_submit_async_with_subarray(ctx_, query, NULL, NULL, query_subarray);
+      // TBD: state/handling of query/_with_subarray on first/subsequent
+      // _submit_async_()s correct?
+      rc = tiledb_query_submit_async_with_subarray(
+          ctx_, query, NULL, NULL, query_subarray);
       REQUIRE(rc == TILEDB_OK);
       // Cancel it immediately.
       if (i < num_writes - 1) {
@@ -2948,10 +2951,11 @@ int DenseArrayFx::submit_query_wrapper(
   if (!serialize_query_)
     return tiledb_query_submit(ctx_, query);
 
-// REQUIRE()/CHECK() actions here now all _SAFEized? (SIGSEGV failure has been
-// observed on line below 'REQUIRE(tiledb_query_get_layout(ctx_, query, &layout) == TILEDB_OK);')
-// (submit_query_wrapper() is being called via check_simultaneous_writes() which means these
-// catch framework tests need thread protection.)
+  // REQUIRE()/CHECK() actions here now all _SAFEized? (SIGSEGV failure has been
+  // observed on line below 'REQUIRE(tiledb_query_get_layout(ctx_, query,
+  // &layout) == TILEDB_OK);') (submit_query_wrapper() is being called via
+  // check_simultaneous_writes() which means these catch framework tests need
+  // thread protection.)
 
   // Get the query type and layout
   tiledb_query_type_t query_type;
@@ -2975,7 +2979,8 @@ int DenseArrayFx::submit_query_wrapper(
 
   // Copy the data to a temporary memory region ("send over the network").
   tiledb_buffer_t* buff1;
-  REQUIRE_SAFE(tiledb_buffer_list_flatten(ctx_, buff_list1, &buff1) == TILEDB_OK);
+  REQUIRE_SAFE(
+      tiledb_buffer_list_flatten(ctx_, buff_list1, &buff1) == TILEDB_OK);
   uint64_t buff1_size;
   void* buff1_data;
   REQUIRE_SAFE(
@@ -2995,7 +3000,8 @@ int DenseArrayFx::submit_query_wrapper(
 
   // Open a new array instance.
   tiledb_array_t* new_array = nullptr;
-  REQUIRE_SAFE(tiledb_array_alloc(ctx_, array_uri.c_str(), &new_array) == TILEDB_OK);
+  REQUIRE_SAFE(
+      tiledb_array_alloc(ctx_, array_uri.c_str(), &new_array) == TILEDB_OK);
   REQUIRE_SAFE(tiledb_array_open(ctx_, new_array, query_type) == TILEDB_OK);
 
   // Create a new query and deserialize from the buffer (server-side)
@@ -3010,7 +3016,8 @@ int DenseArrayFx::submit_query_wrapper(
   std::vector<void*> to_free;
   if (query_type == TILEDB_READ) {
     tiledb_array_schema_t* schema;
-    REQUIRE_SAFE(tiledb_array_get_schema(ctx_, new_array, &schema) == TILEDB_OK);
+    REQUIRE_SAFE(
+        tiledb_array_get_schema(ctx_, new_array, &schema) == TILEDB_OK);
     uint32_t num_attributes;
     REQUIRE_SAFE(
         tiledb_array_schema_get_attribute_num(ctx_, schema, &num_attributes) ==
@@ -3102,8 +3109,10 @@ int DenseArrayFx::submit_query_wrapper(
     // Repeat for split dimensions, if they are set we will set the buffer
     uint32_t num_dimension;
     tiledb_domain_t* domain;
-    REQUIRE_SAFE(tiledb_array_schema_get_domain(ctx_, schema, &domain) == TILEDB_OK);
-    REQUIRE_SAFE(tiledb_domain_get_ndim(ctx_, domain, &num_dimension) == TILEDB_OK);
+    REQUIRE_SAFE(
+        tiledb_array_schema_get_domain(ctx_, schema, &domain) == TILEDB_OK);
+    REQUIRE_SAFE(
+        tiledb_domain_get_ndim(ctx_, domain, &num_dimension) == TILEDB_OK);
 
     for (uint32_t i = 0; i < num_dimension; i++) {
       tiledb_dimension_t* dim;
@@ -3145,7 +3154,8 @@ int DenseArrayFx::submit_query_wrapper(
       tiledb_serialize_query(ctx_, new_query, TILEDB_CAPNP, 0, &buff_list2) ==
       TILEDB_OK);
   tiledb_buffer_t* buff3;
-  REQUIRE_SAFE(tiledb_buffer_list_flatten(ctx_, buff_list2, &buff3) == TILEDB_OK);
+  REQUIRE_SAFE(
+      tiledb_buffer_list_flatten(ctx_, buff_list2, &buff3) == TILEDB_OK);
   uint64_t buff3_size;
   void* buff3_data;
   REQUIRE_SAFE(

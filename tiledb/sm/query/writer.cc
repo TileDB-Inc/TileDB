@@ -414,7 +414,8 @@ Status Writer::check_var_attr_offsets() const {
   return Status::Ok();
 }
 
-Status Writer::init(const Layout& layout, const Subarray *initialization_subarray) {
+Status Writer::init(
+    const Layout& layout, const Subarray* initialization_subarray) {
   // Sanity checks
   if (storage_manager_ == nullptr)
     return LOG_STATUS(Status::WriterError(
@@ -459,7 +460,7 @@ Status Writer::init(const Layout& layout, const Subarray *initialization_subarra
   }
   assert(found);
 
-  if(initialization_subarray)
+  if (initialization_subarray)
     subarray_ = *initialization_subarray;
 
   // Set a default subarray
@@ -1286,10 +1287,10 @@ Status Writer::check_subarray(const Subarray* subarray) const {
     return LOG_STATUS(
         Status::WriterError("Cannot check subarray; Array schema not set"));
 
-  auto &which_subarray = subarray ? *subarray : subarray_;
+  auto& which_subarray = subarray ? *subarray : subarray_;
   if (array_schema_->dense()) {
 #if 01
-    //TBD: maybe this is sufficiently trapped by Writer::set_subarray(), ?
+    // TBD: maybe this is sufficiently trapped by Writer::set_subarray(), ?
     if (which_subarray.range_num() != 1)
       return LOG_STATUS(
           Status::WriterError("Multi-range dense writes "
@@ -1310,8 +1311,9 @@ Status Writer::check_subarray(const Subarray* subarray) const {
                               "are not supported"));
 #endif
 
-    //TBD: how does 'subarray' know which/where tiles to check for coincidence?
-    if (layout_ == Layout::GLOBAL_ORDER && !which_subarray.coincides_with_tiles())
+    // TBD: how does 'subarray' know which/where tiles to check for coincidence?
+    if (layout_ == Layout::GLOBAL_ORDER &&
+        !which_subarray.coincides_with_tiles())
       return LOG_STATUS(
           Status::WriterError("Cannot initialize query; In global writes for "
                               "dense arrays, the subarray "

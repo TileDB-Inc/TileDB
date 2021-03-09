@@ -1717,54 +1717,68 @@ void Subarray::add_or_coalesce_range(  // TBD: effectively coalesces only
   }
 #elif 01
   //    const bool contiguous_before_or_overlapping_encompassing =
-//      *static_cast<const T*>(range.start()) < *static_cast<const T*>(last_range.start())
-//      //nope, appears tiledb actually allows negatives of signed types... && *static_cast<const T*>(last_range.start()) > 0
-//      && *static_cast<const T*>(range.end()) >= *static_cast<const T*>(last_range.start())-1
-//      //&& range.end() could also be *beyond* last_range.end(), in which case this 'new' range
-//      //would be totally encompassing the old one
-//      ;
-    assert(*static_cast<const T*>(range.start()) <= *static_cast<const T*>(range.end()));
-    auto combinable =
-      ! ( //not_combinable =
-      *static_cast<const T*>(range.start()) > *static_cast<const T*>(last_range.end())  // new range beyond previous
-      || *static_cast<const T*>(range.end()) < *static_cast<const T*>(last_range.start())-1 //new range too far before previous
-        )
-      ;
-      auto combinable2 = 
-      *static_cast<const T*>(range.end()) >= *static_cast<const T*>(last_range.start())-1
-      && *static_cast<const T*>(range.start()) <= *static_cast<const T*>(last_range.end())
-      ;
-    assert(combinable == combinable2);
-    if(combinable != combinable2)
-      __debugbreak();
-    if (combinable) {
-      const T *start, *end;
-      //auto start = std::min(range.start(), last_range.start());
-      if(*static_cast<const T*>(range.start()) < *static_cast<const T*>(last_range.start()))
-        start = static_cast<const T*>(range.start());
-      else
-        start = static_cast<const T*>(last_range.start());
-      //auto end = std::max(range.end(), last_range.end());
-      if(*static_cast<const T*>(range.end()) > *static_cast<const T*>(last_range.end()))
-        end = static_cast<const T*>(range.end());
-      else
-        end = static_cast<const T*>(last_range.end());
-      last_range.set_start(start);
-      last_range.set_end(end);
-    } else {
-      ranges->emplace_back(range);
-    }
+  //      *static_cast<const T*>(range.start()) < *static_cast<const
+  //      T*>(last_range.start())
+  //      //nope, appears tiledb actually allows negatives of signed types... &&
+  //      *static_cast<const T*>(last_range.start()) > 0
+  //      && *static_cast<const T*>(range.end()) >= *static_cast<const
+  //      T*>(last_range.start())-1
+  //      //&& range.end() could also be *beyond* last_range.end(), in which
+  //      case this 'new' range
+  //      //would be totally encompassing the old one
+  //      ;
+  assert(
+      *static_cast<const T*>(range.start()) <=
+      *static_cast<const T*>(range.end()));
+  auto combinable = !(  // not_combinable =
+      *static_cast<const T*>(range.start()) >
+          *static_cast<const T*>(last_range.end())  // new range beyond previous
+      || *static_cast<const T*>(range.end()) <
+             *static_cast<const T*>(last_range.start()) -
+                 1  // new range too far before previous
+  );
+  auto combinable2 = *static_cast<const T*>(range.end()) >=
+                         *static_cast<const T*>(last_range.start()) - 1 &&
+                     *static_cast<const T*>(range.start()) <=
+                         *static_cast<const T*>(last_range.end());
+  assert(combinable == combinable2);
+  if (combinable != combinable2)
+    __debugbreak();
+  if (combinable) {
+    const T *start, *end;
+    // auto start = std::min(range.start(), last_range.start());
+    if (*static_cast<const T*>(range.start()) <
+        *static_cast<const T*>(last_range.start()))
+      start = static_cast<const T*>(range.start());
+    else
+      start = static_cast<const T*>(last_range.start());
+    // auto end = std::max(range.end(), last_range.end());
+    if (*static_cast<const T*>(range.end()) >
+        *static_cast<const T*>(last_range.end()))
+      end = static_cast<const T*>(range.end());
+    else
+      end = static_cast<const T*>(last_range.end());
+    last_range.set_start(start);
+    last_range.set_end(end);
+  } else {
+    ranges->emplace_back(range);
+  }
 //    auto need_to_add = true;
-//    if (*static_cast<const T*>(range.start()) < *static_cast<const T*>(last_range.start())) {
+//    if (*static_cast<const T*>(range.start()) < *static_cast<const
+//    T*>(last_range.start())) {
 //      //start of incoming range falls before last_range.start()
-//      if (*static_cast<const T*>(last_range.start()) > 0 //last_range.start() was not first absolute possibility
-//        && *static_cast<const T*>(range.end()) >= *static_cast<const T*>(last_range.start()) - 1) {
+//      if (*static_cast<const T*>(last_range.start()) > 0 //last_range.start()
+//      was not first absolute possibility
+//        && *static_cast<const T*>(range.end()) >= *static_cast<const
+//        T*>(last_range.start()) - 1) {
 //        //range.end() is somewhere beyond last_range.start()-1
 //        //so know can use incoming range_start()
 //        last_range.set_start(range.start()); //prepend additional range area
 //        need_to_add = false;
-//        if(*static_cast<const T*>(range.end()) > *static_cast<const T*>(last_range.end()))
-//          //incoming range_end() is actually *beyond* original last_range.end(), so can
+//        if(*static_cast<const T*>(range.end()) > *static_cast<const
+//        T*>(last_range.end()))
+//          //incoming range_end() is actually *beyond* original
+//          last_range.end(), so can
 //          //subsume entire previous last_range.
 //          last_range.set_end(range.end()); //append additional range area
 //      }

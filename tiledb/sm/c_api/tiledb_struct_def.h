@@ -47,6 +47,7 @@
 #include "tiledb/sm/storage_manager/context.h"
 #include "tiledb/sm/subarray/subarray.h"
 #include "tiledb/sm/subarray/subarray_partitioner.h"
+#include "tiledb/sm/subarray/external_subarray_partitioner.h"
 
 struct tiledb_array_t {
   tiledb::sm::Array* array_ = nullptr;
@@ -54,6 +55,10 @@ struct tiledb_array_t {
 
 struct tiledb_subarray_t {
   tiledb::sm::Subarray* subarray_ = nullptr;
+};
+
+struct tiledb_subarray_partitioner_t {
+  tiledb::sm::ExternalSubarrayPartitioner* partitioner_ = nullptr;
 };
 
 struct tiledb_buffer_t {

@@ -41,9 +41,9 @@
 #include "tiledb/sm/c_api/tiledb.h"
 #include "tiledb/sm/c_api/tiledb_serialization.h"
 #include "tiledb/sm/c_api/tiledb_struct_def.h"
-#include "tiledb/sm/enums/serialization_type.h"
 #include "tiledb/sm/enums/query_status.h"
 #include "tiledb/sm/enums/query_type.h"
+#include "tiledb/sm/enums/serialization_type.h"
 #include "tiledb/sm/misc/utils.h"
 
 #include <chrono>
@@ -356,7 +356,8 @@ int StringDimsFx::tiledb_query_submit_wrapper(
   // Serialize the query (client-side).
   tiledb_buffer_list_t* buff_list1;
 #if 01  //&& cppTILEDB_COND_SUB_SUBARRAY_FOR_QUERY
-//unnecessary now?  REQUIRE(tiledb_query_set_relevant_subarray(ctx, query) == TILEDB_OK);
+// unnecessary now?  REQUIRE(tiledb_query_set_relevant_subarray(ctx, query) ==
+// TILEDB_OK);
 #else
   auto query_status = query->query_->status();
   // TBD: do we only want to do this on UNINITIALIZED, or do we maybe want to do
@@ -366,9 +367,9 @@ int StringDimsFx::tiledb_query_submit_wrapper(
         (query->query_->type() == tiledb::sm::QueryType::WRITE) ?
             query->wsubarray_ :
             query->rsubarray_;
-//will forego these since they're def'd inline in tiledb.cc...
-//    if (sanity_check(ctx, which_subarray) == TILEDB_ERR)
-//      return TILEDB_ERR;
+    // will forego these since they're def'd inline in tiledb.cc...
+    //    if (sanity_check(ctx, which_subarray) == TILEDB_ERR)
+    //      return TILEDB_ERR;
     if (which_subarray->subarray_->is_set()) {
       // presence causes test failure,    "C API: Test query errors, dense reads
       // in global order", what does absence cause, anywhere? hmm, err same
