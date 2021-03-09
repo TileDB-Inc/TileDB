@@ -71,6 +71,10 @@ const std::string Config::SM_TILE_CACHE_SIZE = "10000000";
 const std::string Config::SM_MEMORY_BUDGET = "5368709120";       // 5GB
 const std::string Config::SM_MEMORY_BUDGET_VAR = "10737418240";  // 10GB;
 const std::string Config::SM_SUB_PARTITIONER_MEMORY_BUDGET = "0";
+const std::string Config::SP_SUBARRAY_PARTITIONER_MODE = "count";
+const std::string Config::SP_SUBARRAY_PARTITIONER_RESULT_COUNT = "0";
+const std::string Config::SP_SUBARRAY_PARTITIONER_MEMORY_SIZE = "0";
+const std::string Config::SP_SUBARRAY_PARTITIONER_COUNT = "0";
 const std::string Config::SM_ENABLE_SIGNAL_HANDLERS = "true";
 const std::string Config::SM_COMPUTE_CONCURRENCY_LEVEL =
     utils::parse::to_str(std::thread::hardware_concurrency());

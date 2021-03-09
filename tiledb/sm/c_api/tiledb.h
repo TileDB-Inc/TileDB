@@ -928,6 +928,15 @@ TILEDB_EXPORT void tiledb_config_free(tiledb_config_t** config);
  * - `sm.tile_cache_size` <br>
  *    The tile cache size in bytes. Any `uint64_t` value is acceptable. <br>
  *    **Default**: 10,000,000
+ * - `sp.partition_mode` <br>
+ *    TBD: explain me
+ * - `sp.partition_result_count` <br>
+ *    TBD: explain me
+ * - `sp.partition_memory_size` <br>
+ *    TBD: explain me
+ * - `sp.partition_count` <br>
+ *    TBD: explain me
+ * 
  * - `sm.enable_signal_handlers` <br>
  *    Determines whether or not TileDB will install signal handlers. <br>
  *    **Default**: true

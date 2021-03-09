@@ -136,6 +136,24 @@ class Config {
    * is used for fixed, var-sized, and validity vector budgets.
    */
   static const std::string SM_SUB_PARTITIONER_MEMORY_BUDGET;
+  
+  /**
+   * The maximum count of partitions to be generated via CAPI subarray 
+   * partitioning.
+   */
+  static const std::string SP_SUBARRAY_PARTITIONER_RESULT_COUNT;
+  /**
+   * TBD: explain me
+   */
+  static const std::string SP_SUBARRAY_PARTITIONER_MODE;
+  /**
+   * TBD: explain me
+   */
+  static const std::string SP_SUBARRAY_PARTITIONER_MEMORY_SIZE;
+  /**
+   * TBD: explain me
+   */
+  static const std::string SP_SUBARRAY_PARTITIONER_COUNT;
 
   /** Whether or not the signal handlers are installed. */
   static const std::string SM_ENABLE_SIGNAL_HANDLERS;
