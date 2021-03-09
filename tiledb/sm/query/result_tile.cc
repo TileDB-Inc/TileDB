@@ -620,7 +620,7 @@ void ResultTile::compute_results_sparse<char>(
         uint64_t c_offset = 0, c_size = 0;
         for (uint64_t pos = first_c_pos; pos <= last_c_pos; ++pos) {
           c_offset = buff_off[pos];
-          c_size = (pos < last_c_pos) ? buff_off[pos + 1] - c_offset :
+          c_size = (pos < coords_num) ? buff_off[pos + 1] - c_offset :
                                         buff_str_size - c_offset;
           r_bitmap[pos] = str_coord_intersects(
               c_offset, c_size, buff_str, range_start, range_end);
