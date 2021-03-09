@@ -24,26 +24,13 @@
 # SOFTWARE.
 #
 
-# Build and test libtiledb
-
-# Set up arguments for bootstrap.sh
-bootstrap_args="--enable=verbose";
-
-# name: 'Install dependencies'
-
-mkdir -p $GITHUB_WORKSPACE/build
-cd $GITHUB_WORKSPACE/build
-
-# Configure and build TileDB
-echo "Bootstrapping with '$bootstrap_args'"
-$GITHUB_WORKSPACE/bootstrap $bootstrap_args
-
-make -j4
-make examples -j4
-make -C tiledb install
-
-#- run: |
-cd $GITHUB_WORKSPACE/build
+# Check test formatting - linux ONLY
+set -e pipefail
+# Install clang-format (v5.0)
 ls -la
-
-make -j4 -C tiledb tiledb_unit
+sudo ./scripts/install-clangformat.sh
+src=$GITHUB_WORKSPACE
+cd $src
+$src/scripts/run-clang-format.sh $src clang-format-5.0 0 \
+  $(find $src/tiledb $src/test/src $src/examples $src/tools \
+    -name "*.cc" -or -name "*.c" -or -name "*.h")

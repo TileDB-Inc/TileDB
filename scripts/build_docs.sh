@@ -24,26 +24,11 @@
 # SOFTWARE.
 #
 
-# Build and test libtiledb
+# Build test docs (no deployment)
+set -e pipefail
+python -m pip install --upgrade pip virtualenv
 
-# Set up arguments for bootstrap.sh
-bootstrap_args="--enable=verbose";
-
-# name: 'Install dependencies'
-
-mkdir -p $GITHUB_WORKSPACE/build
-cd $GITHUB_WORKSPACE/build
-
-# Configure and build TileDB
-echo "Bootstrapping with '$bootstrap_args'"
-$GITHUB_WORKSPACE/bootstrap $bootstrap_args
-
-make -j4
-make examples -j4
-make -C tiledb install
-
-#- run: |
-cd $GITHUB_WORKSPACE/build
-ls -la
-
-make -j4 -C tiledb tiledb_unit
+# Build the documentation (this does not deploy to RTD).
+pushd $GITHUB_WORKSPACE/doc;
+./local-build.sh;
+popd;
