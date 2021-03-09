@@ -26,40 +26,26 @@
 
 # Build and test libtiledb
 
-die() {
-  echo "$@" 1>&2 ; popd 2>/dev/null; exit 1
-}
+# Set up arguments for bootstrap.sh
+bootstrap_args="--enable=verbose";
+# Add serialization flag if necessary
+bootstrap_args="${bootstrap_args} --enable-serialization";
 
-function build_libtiledb {
-  # Set up arguments for bootstrap.sh
-  bootstrap_args="--enable=verbose";
-  # Add serialization flag if necessary
-  bootstrap_args="${bootstrap_args} --enable-serialization";
+# name: 'Install dependencies'
 
-  # name: 'Install dependencies'
+mkdir -p $GITHUB_WORKSPACE/build
+cd $GITHUB_WORKSPACE/build
 
-  mkdir -p $GITHUB_WORKSPACE/build
-  cd $GITHUB_WORKSPACE/build
+# Configure and build TileDB
+echo "Bootstrapping with '$bootstrap_args'"
+$GITHUB_WORKSPACE/bootstrap $bootstrap_args
 
-  # Configure and build TileDB
-  echo "Bootstrapping with '$bootstrap_args'"
-  $GITHUB_WORKSPACE/bootstrap $bootstrap_args
+make -j4
+make examples -j4
+make -C tiledb install
 
-  make -j4
-  make examples -j4
-  make -C tiledb install
+#- run: |
+cd $GITHUB_WORKSPACE/build
+ls -la
 
-  #- run: |
-  cd $GITHUB_WORKSPACE/build
-  ls -la
-
-  make -j4 -C tiledb tiledb_unit
-}
-
-function run {
-  build_libtiledb
-}
-
-run
-# sleep to make sure the ssh service restart is done because systemd
-sleep 2
+make -j4 -C tiledb tiledb_unit

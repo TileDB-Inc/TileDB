@@ -25,29 +25,14 @@
 #
 
 # Prints log files (failed build only)
-
-die() {
-  echo "$@" 1>&2 ; popd 2>/dev/null; exit 1
-}
-
-function print_logs {
-  set -e pipefail
-  # Display log files if the build failed
-  echo "Dumping log files for failed build"
-  echo "----------------------------------"
-  for f in $(find $GITHUB_WORKSPACE/build -name *.log);
-    do echo "------"
-        echo $f
-        echo "======"
-        cat $f
-    done;
-  if: ${{ failure() }} # only run this job if the build step failed
-}
-
-function run {
-  print_logs
-}
-
-run
-# sleep to make sure the ssh service restart is done because systemd
-sleep 2
+set -e pipefail
+# Display log files if the build failed
+echo "Dumping log files for failed build"
+echo "----------------------------------"
+for f in $(find $GITHUB_WORKSPACE/build -name *.log);
+  do echo "------"
+      echo $f
+      echo "======"
+      cat $f
+  done;
+if: ${{ failure() }} # only run this job if the build step failed
