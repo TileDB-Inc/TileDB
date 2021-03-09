@@ -4930,6 +4930,20 @@ TILEDB_EXPORT int32_t tiledb_subarray_partitioner_set_custom_layout(
   // TBD: Does a 'CUSTOM' enum need to be added to tiledb_enum.h/#ifdef
   // TILEDB_LAYOUT_ENUM ???
 
+  //array has array_schema has domain has dimensions...
+  //partitioner has subarray, subarray has array it 'descends'(?) from
+  auto array = partitioner->partitioner_->subarray()->array();
+  auto domain = array->array_schema()->domain();
+
+  std::vector<const tiledb::sm::Dimension*> dimensions;
+  for (decltype(ordered_dim_names_length) i = 0; i < ordered_dim_names_length;
+       ++i) {
+    const tiledb::sm::Dimension * dimension = domain->dimension(std::string(ordered_dim_names[i]));
+    if (dimension != nullptr) {
+      dimensions.emplace_back(dimension);
+    }
+  }
+
   // TBD:
   // how many names common?
   // how long total names?
