@@ -45,15 +45,7 @@ jobs:
 
       - name: Check formatting (linux only)'
         run: |
-          set -e pipefail
-          # Install clang-format (v5.0)
-          ls -la
-          sudo ./scripts/install-clangformat.sh
-          src=$GITHUB_WORKSPACE
-          cd $src
-          $src/scripts/run-clang-format.sh $src clang-format-5.0 0 \
-            $(find $src/tiledb $src/test/src $src/examples $src/tools \
-             -name "*.cc" -or -name "*.c" -or -name "*.h")
+          source $GITHUB_WORKSPACE/scripts/check_formatting_linux.sh
         shell: bash
         if: ${{ runner.os == 'Linux' }}
 
@@ -73,6 +65,7 @@ jobs:
 
           #   name: 'Clone Unit-Test-Arrays'
 
+          bootstrap_args="${bootstrap_args} --enable-serialization";
           source $GITHUB_WORKSPACE/scripts/build_libtiledb.sh
 
           # Bypass Catch2 Framework stdout interception with awk on test output
@@ -96,7 +89,6 @@ jobs:
           ./tiledb_png $GITHUB_WORKSPACE/doc/source/figures/Scarlet-Macaw-small.png /tmp/pngarray output.png;
           popd;
 
-          # Build the benchmarks (but do not run them).
           source $GITHUB_WORKSPACE/scripts/build_benchmarks.sh
 
       - name: 'Test status check'
@@ -115,11 +107,5 @@ jobs:
 
       - name: 'Build docs (no deployment)'
         run: |
-          set -e pipefail
-          python -m pip install --upgrade pip virtualenv
-
-          # Build the documentation (this does not deploy to RTD).
-          pushd $GITHUB_WORKSPACE/doc;
-          ./local-build.sh;
-          popd;
+          source $GITHUB_WORKSPACE/scripts/build_docs.sh
         if: ${{ runner.os == 'Linux' }}
