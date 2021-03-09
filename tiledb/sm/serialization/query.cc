@@ -245,7 +245,8 @@ Status subarray_partitioner_from_capnp(
     const Array* array,
     const capnp::SubarrayPartitioner::Reader& reader,
     SubarrayPartitioner* partitioner,
-    ThreadPool* compute_tp) {
+    ThreadPool* compute_tp,
+    const bool& compute_current_tile_overlap) {
   // Get memory budget
   uint64_t memory_budget = 0;
   RETURN_NOT_OK(tiledb::sm::utils::parse::convert(
@@ -319,6 +320,10 @@ Status subarray_partitioner_from_capnp(
     partition_info->partition_ = Subarray(array, layout, false);
     RETURN_NOT_OK(subarray_from_capnp(
         partition_info_reader.getSubarray(), &partition_info->partition_));
+
+    if (compute_current_tile_overlap) {
+      partition_info->partition_.compute_tile_overlap(compute_tp);
+    }
   }
 
   // Partitioner state
@@ -388,7 +393,11 @@ Status read_state_from_capnp(
         array,
         read_state_reader.getSubarrayPartitioner(),
         &read_state->partitioner_,
-        compute_tp));
+        compute_tp,
+        // If the current partition is unsplittable, this means we need to make
+        // sure the tile_overlap for the current is computed because we won't go
+        // to the next partition
+        read_state->unsplittable_));
   }
 
   return Status::Ok();
