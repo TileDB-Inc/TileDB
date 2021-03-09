@@ -5,7 +5,6 @@ on:
       - dev
       - release-*
       - refs/tags/*
-      - rd/gha_workflow_cleanup
   pull_request:
     branches:
       - '*'  # must quote since "*" is a YAML reserved character; we want a string
