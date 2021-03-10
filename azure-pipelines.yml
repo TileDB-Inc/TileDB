@@ -94,6 +94,9 @@ stages:
             imageName: 'vs2017-win2016'
             TILEDB_AZURE: ON
             TILEDB_ARROW_TESTS: ON
+          VS2017_serialization:
+            imageName: 'vs2017-win2016'
+            TILEDB_SERIALIZATION: ON
       pool:
         vmImage: $(imageName)
       steps:

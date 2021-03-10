@@ -133,10 +133,6 @@ if (MSVC AND NOT TILEDB_TBB_SHARED)
   set(TILEDB_TBB_SHARED ON)
 endif()
 
-if (MSVC AND TILEDB_SERIALIZATION)
-  message(FATAL_ERROR "Serialization support not yet supported on Windows.")
-endif()
-
 ############################################################
 # Superbuild setup
 ############################################################

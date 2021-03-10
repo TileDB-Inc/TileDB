@@ -41,6 +41,10 @@
 #include <iostream>
 #include <sstream>
 
+#ifdef _WIN32
+#include <locale>  //provides needed visibility of two-argument tolower() prototype for win32
+#endif
+
 using namespace tiledb::common;
 
 namespace tiledb {
@@ -345,7 +349,8 @@ std::string Curl::url_escape(const std::string& url) const {
   if (curl_.get() == nullptr)
     return "";
 
-  char* escaped_c = curl_easy_escape(curl_.get(), url.c_str(), url.length());
+  char* escaped_c =
+      curl_easy_escape(curl_.get(), url.c_str(), (int)url.length());
   std::string escaped(escaped_c);
   curl_free(escaped_c);
   return escaped;
@@ -566,7 +571,7 @@ Status Curl::should_retry(bool* retry) const {
 
   // Check http code for list of retries
   for (const auto& retry_code : retry_http_codes_) {
-    if (http_code == retry_code) {
+    if (http_code == (decltype(http_code))retry_code) {
       *retry = true;
       break;
     }
