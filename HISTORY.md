@@ -12,6 +12,7 @@
 * Smoke Test, remove nullable structs from global namespace. [#2078](https://github.com/TileDB-Inc/TileDB/pull/2078)
 
 ## Improvements
+* Cleanup the GHA CI scripts - put common code into external shell scripts. [#2124](https://github.com/TileDB-Inc/TileDB/pull/2124)
 * Reduced memory consumption in the read path for multi-range reads. [#2118](https://github.com/TileDB-Inc/TileDB/pull/2118)
 * The latest version of  was leaving behind a . This ensures that the directory is removed when  is run. [#2113](https://github.com/TileDB-Inc/TileDB/pull/2113)
 * Migrating AZP CI to GA [#2111](https://github.com/TileDB-Inc/TileDB/pull/2111)
