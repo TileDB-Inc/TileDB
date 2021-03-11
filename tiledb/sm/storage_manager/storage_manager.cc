@@ -198,10 +198,15 @@ Status StorageManager::array_close_for_writes(
 
 Status StorageManager::array_open_for_reads(
     const URI& array_uri,
-    uint64_t timestamp,
     const EncryptionKey& enc_key,
     ArraySchema** array_schema,
-    std::vector<FragmentMetadata*>* fragment_metadata) {
+    std::vector<FragmentMetadata*>* fragment_metadata,
+    uint64_t timestamp1,
+    uint64_t timestamp2) {
+  // Default timestamp2 to equal timestamp1 if no value is given.
+  if (timestamp2 == 0)
+    timestamp2 = timestamp1;
+
   STATS_START_TIMER(stats::Stats::TimerType::READ_ARRAY_OPEN)
 
   /* NOTE: these variables may be modified on a different thread
@@ -224,12 +229,13 @@ Status StorageManager::array_open_for_reads(
                                                           &meta_uri,
                                                           &meta_version,
                                                           &offsets,
-                                                          &timestamp,
+                                                          &timestamp1,
+                                                          &timestamp2,
                                                           this]() {
     // Determine which fragments to load
     RETURN_NOT_OK(get_fragment_uris(array_uri, &fragment_uris, &meta_uri));
-    RETURN_NOT_OK(
-        get_sorted_uris(fragment_uris, timestamp, &fragments_to_load));
+    RETURN_NOT_OK(get_sorted_uris(
+        fragment_uris, &fragments_to_load, timestamp1, timestamp2));
     // Get the consolidated fragment metadata
     RETURN_NOT_OK(load_consolidated_fragment_meta(
         meta_uri, enc_key, &f_buff, &offsets, &meta_version));
@@ -478,7 +484,7 @@ Status StorageManager::array_reopen(
   std::vector<URI> fragment_uris;
   URI meta_uri;
   RETURN_NOT_OK(get_fragment_uris(array_uri, &fragment_uris, &meta_uri));
-  RETURN_NOT_OK(get_sorted_uris(fragment_uris, timestamp, &fragments_to_load));
+  RETURN_NOT_OK(get_sorted_uris(fragment_uris, &fragments_to_load, timestamp));
 
   // Get the consolidated fragment metadata
   Buffer f_buff;
@@ -1226,7 +1232,7 @@ Status StorageManager::get_fragment_info(
   auto array_schema = (ArraySchema*)nullptr;
   std::vector<FragmentMetadata*> fragment_metadata;
   RETURN_NOT_OK(array_open_for_reads(
-      array_uri, timestamp, encryption_key, &array_schema, &fragment_metadata));
+      array_uri, encryption_key, &array_schema, &fragment_metadata, timestamp));
 
   fragment_info->set_dim_info(
       array_schema->dim_names(), array_schema->dim_types());
@@ -1625,7 +1631,7 @@ Status StorageManager::load_array_metadata(
       get_array_metadata_uris(array_uri, &array_metadata_uris),
       open_array->mtx_unlock());
   RETURN_NOT_OK_ELSE(
-      get_sorted_uris(array_metadata_uris, timestamp, &array_metadata_to_load),
+      get_sorted_uris(array_metadata_uris, &array_metadata_to_load, timestamp),
       open_array->mtx_unlock());
 
   // Get the array metadata
@@ -2339,15 +2345,20 @@ Status StorageManager::get_consolidated_fragment_meta_uri(
 
 Status StorageManager::get_sorted_uris(
     const std::vector<URI>& uris,
-    uint64_t timestamp,
-    std::vector<TimestampedURI>* sorted_uris) const {
+    std::vector<TimestampedURI>* sorted_uris,
+    uint64_t timestamp1,
+    uint64_t timestamp2) const {
+  // Default timestamp2 to equal timestamp1 if no value is given.
+  if (timestamp2 == 0)
+    timestamp2 = timestamp1;
+
   // Do nothing if there are not enough URIs
   if (uris.empty())
     return Status::Ok();
 
   // Get the URIs that must be ignored
   std::vector<URI> vac_uris, to_ignore;
-  RETURN_NOT_OK(get_uris_to_vacuum(uris, timestamp, &to_ignore, &vac_uris));
+  RETURN_NOT_OK(get_uris_to_vacuum(uris, timestamp1, &to_ignore, &vac_uris));
   std::set<URI> to_ignore_set;
   for (const auto& uri : to_ignore)
     to_ignore_set.emplace(uri);
@@ -2367,8 +2378,13 @@ Status StorageManager::get_sorted_uris(
     std::pair<uint64_t, uint64_t> timestamp_range;
     RETURN_NOT_OK(utils::parse::get_timestamp_range(uri, &timestamp_range));
     auto t = timestamp_range.second;
-    if (t <= timestamp)
-      sorted_uris->emplace_back(uri, timestamp_range);
+    if (timestamp1 == timestamp2) {
+      if (t <= timestamp1)
+        sorted_uris->emplace_back(uri, timestamp_range);
+    } else {
+      if (t >= timestamp1 && t <= timestamp2)
+        sorted_uris->emplace_back(uri, timestamp_range);
+    }
   }
 
   // Sort the names based on the timestamps

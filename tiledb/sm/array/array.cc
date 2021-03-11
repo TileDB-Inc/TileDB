@@ -123,10 +123,10 @@ Status Array::open(
   } else if (query_type == QueryType::READ) {
     RETURN_NOT_OK(storage_manager_->array_open_for_reads(
         array_uri_,
-        timestamp_,
         encryption_key_,
         &array_schema_,
-        &fragment_metadata_));
+        &fragment_metadata_,
+        timestamp_));
   } else {
     RETURN_NOT_OK(storage_manager_->array_open_for_writes(
         array_uri_, encryption_key_, &array_schema_));
@@ -227,10 +227,10 @@ Status Array::open(
   } else if (query_type == QueryType::READ) {
     RETURN_NOT_OK(storage_manager_->array_open_for_reads(
         array_uri_,
-        timestamp_,
         encryption_key_,
         &array_schema_,
-        &fragment_metadata_));
+        &fragment_metadata_,
+        timestamp_));
   } else {
     RETURN_NOT_OK(storage_manager_->array_open_for_writes(
         array_uri_, encryption_key_, &array_schema_));
