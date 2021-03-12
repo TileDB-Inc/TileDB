@@ -38,6 +38,7 @@
 #include "tiledb/sm/enums/layout.h"
 #include "tiledb/sm/enums/serialization_type.h"
 #include "tiledb/sm/subarray/subarray.h"
+#include "tiledb/sm/cpp_api/tiledb"
 #include "tiledb_serialization.h"
 
 #include <mutex>
@@ -115,6 +116,23 @@ void check_partitions(
     bool last_unsplittable);
 
 /**
+ * Checks that the capi input partitioner produces the input partitions
+ * (i.e., subarrays).
+ *
+ * @tparam T The datatype of the subarray of the partitioner.
+ * @param partitioner The capi partitioner.
+ * @param partitions The ranges to be checked.
+ * @param last_unsplittable Whether the last partition is unsplittable.
+ */
+template <class T>
+void check_partitions(
+    tiledb_ctx_t* ctx,
+    tiledb_subarray_partitioner_t* partitioner,
+    const std::vector<SubarrayRanges<T>>& partitions,
+    bool last_unsplittable,
+    tiledb_subarray_t* retrieve_partition_subarray);
+
+  /**
  * Checks if the input subarray has the input subarray ranges.
  *
  * @tparam T The subarray domain datatype

@@ -6,6 +6,9 @@
 #include <string>
 #include <vector>
 
+#include <tiledb/sm/misc/types.h>
+#include <tiledb/sm/subarray/subarray_partitioner.h>
+
 namespace tiledb {
 namespace test {
 
@@ -61,7 +64,44 @@ int main(const int argc, char** const argv) {
   if (rc != 0)
     return rc;
 
-  return session.run();
+  //return session.run();
+  auto rv = session.run();
+
+  std::cout 
+    << "cntopeqbyteseq_ " << tiledb::sm::Range::cntopeqbyteseq_  << std::endl
+    << "cntopeqbytesneq_ " << tiledb::sm::Range::cntopeqbytesneq_ << std::endl
+    << "cntopeqstrtsizeeq_ " << tiledb::sm::Range::cntopeqstrtsizeeq_ << std::endl
+    << "cntopeqbothvarsize_ " << tiledb::sm::Range::cntopeqbothvarsize_ << std::endl
+    << "cntopeqbothfixedsize_ " << tiledb::sm::Range::cntopeqbothfixedsize_ << std::endl
+    << "cntopeqonefixedonevar_ " << tiledb::sm::Range::cntopeqonefixedonevar_ << std::endl
+    << "cntopeqcalls_ " << tiledb::sm::Range::cntopeqcalls_ << std::endl
+    ;
+  
+  std::cout 
+    << std::endl
+    << "cntnextcurrentemptybefordone_ "
+    << tiledb::sm::SubarrayPartitioner::cntnextcurrentemptybefordone_ << std::endl
+    << "cntnextcurrentemptyafterdone_ "
+    << tiledb::sm::SubarrayPartitioner::cntnextcurrentemptyafterdone_
+    << std::endl
+    << "cntnextcallswhendone_ "
+    << tiledb::sm::SubarrayPartitioner::cntnextcallswhendone_
+    << std::endl 
+    << "cntnextcallsemptyonentrywhendone_ "
+    << tiledb::sm::SubarrayPartitioner::cntnextcallsemptyonentrywhendone_
+    << std::endl
+    << "cntnextcallsnotemptyonentrywhendone_ "
+    << tiledb::sm::SubarrayPartitioner::cntnextcallsnotemptyonentrywhendone_
+    << std::endl 
+    << "cntnextcurrentemptyb4next_ "
+    << tiledb::sm::SubarrayPartitioner::cntnextcurrentemptyb4next_
+    << std::endl
+    << "cntnextcurrentnotemptyb4next_ "
+    << tiledb::sm::SubarrayPartitioner::cntnextcurrentnotemptyb4next_
+    << std::endl
+  ;
+
+  return rv;
 }
 
 struct CICompletionStatusListener : Catch::TestEventListenerBase {

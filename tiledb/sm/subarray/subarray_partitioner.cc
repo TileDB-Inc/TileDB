@@ -55,6 +55,26 @@ using namespace tiledb;
 using namespace tiledb::common;
 using namespace tiledb::sm;
 
+uint64_t SubarrayPartitioner::cntnextcurrentemptybefordone_ = 0;
+uint64_t SubarrayPartitioner::cntnextcurrentemptyafterdone_ = 0;
+uint64_t SubarrayPartitioner::cntnextcurrentemptyb4next_;
+uint64_t SubarrayPartitioner::cntnextcurrentnotemptyb4next_;
+uint64_t SubarrayPartitioner::cntnextcallswhendone_ = 0;
+uint64_t SubarrayPartitioner::cntnextcallsemptyonentrywhendone_ = 0;
+uint64_t SubarrayPartitioner::cntnextcallsnotemptyonentrywhendone_ = 0;
+
+//=============================
+// devdiag, some stats
+uint64_t Range::cntopeqbyteseq_ = 0;
+uint64_t Range::cntopeqbytesneq_ = 0;
+uint64_t Range::cntopeqstrtsizeeq_ = 0;
+uint64_t Range::cntopeqbothvarsize_ = 0;
+uint64_t Range::cntopeqbothfixedsize_ = 0;
+uint64_t Range::cntopeqonefixedonevar_ = 0;
+uint64_t Range::cntopeqcalls_ = 0;
+//=============================
+
+
 /* ****************************** */
 /*   CONSTRUCTORS & DESTRUCTORS   */
 /* ****************************** */
@@ -350,13 +370,177 @@ Status SubarrayPartitioner::get_memory_budget(
   return Status::Ok();
 }
 
+uint64_t SubarrayPartitioner::partition_series_num() {
+  return partitions_series_.size();
+}
+
+/** Retrieve pointer to internal instance of specific computed subarray.
+ *
+ * Note: This will only remain valid while the partitioner remains valid and the
+ * partition series is not re-computed or otherwise released.
+ */
+Status SubarrayPartitioner::subarray_from_partition_series(
+    uint64_t part_idx, Subarray** subarray) {
+  if (part_idx >= partitions_series_.size()) {
+    std::stringstream msg;
+    //TBD: is part_idx going to be zero-based?
+    msg << "Requested partition index " << part_idx
+        << " greater than last (" << partitions_series_.size()-1 <<  ") computed partition.";
+    return LOG_STATUS(Status::SubarrayPartitionerError(msg.str()));
+  }
+  //*subarray = &partitions_series_[part_idx].partition_;
+  **subarray = partitions_series_[part_idx].partition_;
+  return Status::Ok();
+}
+
+Status SubarrayPartitioner::compute_partition_series(
+    std::vector<PartitionInfo>* partitions_series) {
+  std::vector<PartitionInfo> partitions_local;
+  std::vector<PartitionInfo>& partitions = partitions_series == nullptr ? partitions_series_ : partitions_local;
+
+  bool unsplittable = false;
+  int countseqempties = 0;
+
+  partitions.clear();
+
+  //TBD: Which, if any, of the following three sections is a correct approach to computing/retrieving all partitions?
+  //my current bet is on the first one, but...
+#if 01
+  //TBD: is it possible that any data could be 'done()' before initial 'next()'?
+  //1)If initial 'subarray_' is empty(), then done() will be true, initial next() will return Ok()...
+  //- but then are there any partitions, or empty partitions would be correct?
+  if (!done()) {
+    while (next(&unsplittable).ok()) {
+      if (current_.partition_.empty()) //TBD: Apparently next() could be '.ok()' with initially empty subarray_
+        __debugbreak();
+      //following .empty() check requires 'current_.partition_.clear()' change early in next() 
+      //to function reliably for purpose here
+      //if (current_.partition_.empty())  // TBD: Apparently next() could be
+      //  break;                         // '.ok()' with initially empty subarray_
+      partitions.emplace_back(current_);
+      //checking unsplittable and breaking avoids failure in a unit test where 6 partitions are produced without
+      //checking this, but only one when checking it.
+      if (unsplittable)
+        break;
+      if (done())
+        break;
+    }
+  }
+#endif
+
+#if 0
+  while (!done()) {
+    //TBD: what, if anything, makes sure 'current_' is 'invalid'/empty on 'terminating' next() call, as
+    //appears 'next()' itself will return 'Ok' when it thinks 'done()' without touching possibly previously
+    //populated 'current_'... ?
+    auto s = next(&unsplittable);
+    if (!current_.partition_.empty())
+      partitions.emplace_back(current_);
+    if (!s.ok())
+      return s;
+
+  }
+#endif
+
+#if 0
+  while (1) {
+    auto s = next(&unsplittable);
+
+    if (!s.ok())
+      return s;
+    //TBD: When is done() done?  Not understanding yet whether done() (immediately) after last successful partition, or
+    //from 'next_from_single_range()', appears that *is* possible to have 'done()==true' after last successful *next()* as
+    //that routine in one path can set a current partition and then bump state_.start_++; which could thus meet
+    //condition of .start_ being > .end_ - I think...
+    if (!done()) {
+      partitions.emplace_back(current_);
+      countseqempties = 0;
+    } else {
+      break;
+    }
+  }
+#endif
+
+  return Status::Ok();
+}
+
 Status SubarrayPartitioner::next(bool* unsplittable) {
   STATS_START_TIMER(stats::Stats::TimerType::READ_NEXT_PARTITION)
 
   *unsplittable = false;
 
-  if (done())
+/*
+cntopeqbyteseq_ 41
+cntopeqbytesneq_ 0
+cntopeqstrtsizeeq_ 41
+cntopeqbothvarsize_ 0
+cntopeqbothfixedsize_ 41
+cntopeqonefixedonevar_ 0
+cntopeqcalls_ 41
+
+cntnextcurrentemptybefordone_ 1405
+cntnextcurrentemptyafterdone_ 1405
+cntnextcallswhendone_ 235
+cntnextcallsemptyonentrywhendone_ 0
+cntnextcallsnotemptyonentrywhendone_ 235
+cntnextcurrentemptyb4next_ 1405
+cntnextcurrentnotemptyb4next_ 1108
+//------------------------------
+//clearing on entry to next()...
+cntopeqbyteseq_ 41
+cntopeqbytesneq_ 0
+cntopeqstrtsizeeq_ 41
+cntopeqbothvarsize_ 0
+cntopeqbothfixedsize_ 41
+cntopeqonefixedonevar_ 0
+cntopeqcalls_ 41
+
+cntnextcurrentemptybefordone_ 2748
+cntnextcurrentemptyafterdone_ 2513
+cntnextcallswhendone_ 235
+cntnextcallsemptyonentrywhendone_ 235
+cntnextcallsnotemptyonentrywhendone_ 0
+cntnextcurrentemptyb4next_ 2513
+cntnextcurrentnotemptyb4next_ 0
+//------------------------------------
+//clearing after done() check before hunting actual next()...
+cntopeqbyteseq_ 41
+cntopeqbytesneq_ 0
+cntopeqstrtsizeeq_ 41
+cntopeqbothvarsize_ 0
+cntopeqbothfixedsize_ 41
+cntopeqonefixedonevar_ 0
+cntopeqcalls_ 41
+
+cntnextcurrentemptybefordone_ 1405
+cntnextcurrentemptyafterdone_ 1405
+cntnextcallswhendone_ 235
+cntnextcallsemptyonentrywhendone_ 0
+cntnextcallsnotemptyonentrywhendone_ 235
+cntnextcurrentemptyb4next_ 1405
+cntnextcurrentnotemptyb4next_ 1108
+*/
+  //TBD: does anything break if we intentionally "clear" current_.partitioner_ ?
+//  current_.partition_.clear();
+
+  if(current_.partition_.empty())
+    ++cntnextcurrentemptybefordone_;
+
+  if (done()) {
+    ++cntnextcallswhendone_;
+    if (current_.partition_.empty())
+      ++cntnextcallsemptyonentrywhendone_;
+    else
+      ++cntnextcallsnotemptyonentrywhendone_;
     return Status::Ok();
+  }
+
+  if (current_.partition_.empty())
+    ++cntnextcurrentemptyafterdone_, ++cntnextcurrentemptyb4next_;
+  else
+    ++cntnextcurrentnotemptyb4next_;
+
+  current_.partition_.clear();
 
   // Handle single range partitions, remaining from previous iteration
   if (!state_.single_range_.empty())

@@ -204,8 +204,32 @@ class Range {
     return range_.size();
   }
 
+  static uint64_t cntopeqbyteseq_;
+  static uint64_t cntopeqbytesneq_;
+  static uint64_t cntopeqstrtsizeeq_;
+  static uint64_t cntopeqbothvarsize_;
+  static uint64_t cntopeqbothfixedsize_;
+  static uint64_t cntopeqonefixedonevar_;
+  static uint64_t cntopeqcalls_;
   /** Equality operator. */
   bool operator==(const Range& r) const {
+    //=============================
+    //devdiag, some stats
+    ++cntopeqcalls_;
+    if (range_start_size_ && r.range_start_size_)
+      ++cntopeqbothvarsize_;
+    else if (range_start_size_ || r.range_start_size_)
+      ++cntopeqonefixedonevar_;
+    else 
+      ++cntopeqbothfixedsize_;
+    if (range_start_size_ == r.range_start_size_)
+      ++cntopeqstrtsizeeq_;
+    if (range_ == r.range_)
+      ++cntopeqbyteseq_;
+    else
+      ++cntopeqbytesneq_;
+    //=============================
+
     return range_ == r.range_ && range_start_size_ == r.range_start_size_;
   }
 

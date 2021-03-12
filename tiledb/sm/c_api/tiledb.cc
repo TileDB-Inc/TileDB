@@ -48,6 +48,7 @@
 #include "tiledb/sm/enums/filesystem.h"
 #include "tiledb/sm/enums/filter_option.h"
 #include "tiledb/sm/enums/filter_type.h"
+#include "tiledb/sm/enums/layout.h"
 #include "tiledb/sm/enums/object_type.h"
 #include "tiledb/sm/enums/query_status.h"
 #include "tiledb/sm/enums/query_type.h"
@@ -4832,6 +4833,19 @@ void tiledb_subarray_free(tiledb_subarray_t** subarray) {
   }
 }
 
+int32_t tiledb_subarray_set_coalesce_ranges(
+    tiledb_ctx_t* ctx,
+    tiledb_subarray_t* subarray,
+    bool coalesce_ranges) {
+  // Sanity check
+  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, subarray) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  subarray->subarray_->set_coalesce_ranges(coalesce_ranges);
+
+  return TILEDB_OK;
+}
+
 /* ****************************** */
 /*      SUBARRAY PARTITIONER      */
 /* ****************************** */
@@ -4864,15 +4878,15 @@ int32_t tiledb_subarray_partitioner_alloc(
   // Create a new subarray object
   try {
     (*subarray_partitioner)->partitioner_ =
-        new (std::nothrow) tiledb::sm::ExternalSubarrayPartitioner(
+        new (std::nothrow) tiledb::sm::SubarrayPartitioner(
             *subarray->subarray_,
             memory_budget,
             memory_budget_var,
             memory_budget_validity,
             ctx->ctx_->storage_manager()->compute_tp());
-  } catch (...) {  // in case Subarray constructor (or involved sub-members)
-                   // should throw.
-    //->subarray_ already nullptr from above.
+  } catch (...) {  
+    // in case Subarray constructor (or involved sub-members) should throw.
+    //->partitioner_ already nullptr from above.
   }
   if ((*subarray_partitioner)->partitioner_ == nullptr) {
     delete *subarray_partitioner;
@@ -4881,6 +4895,15 @@ int32_t tiledb_subarray_partitioner_alloc(
     save_error(ctx, st);
     return TILEDB_OOM;
   }
+
+  //TBD: guidance suggested 'if not set should probably be UNORDERED', however
+  //this would be over-ridign whatever client may have already spec'd in Array
+  //used by the 'tiledb_subarray_t' that was used to create the subarray_partitioner...
+  //so, do we really want to over-ride that?
+  //Or is there some other means/value to determine 'not set'?
+  //(*subarray_partitioner)
+  //    ->partitioner_->subarray()
+  //    ->set_layout(tiledb::sm::Layout::UNORDERED);
 
   // Success
   return TILEDB_OK;
@@ -4896,7 +4919,7 @@ void tiledb_subarray_partitioner_free(
 }
 
 // If not set, the default layout should probably be UNORDERED
-TILEDB_EXPORT int32_t tiledb_subarray_partitioner_set_layout(
+int32_t tiledb_subarray_partitioner_set_layout(
     tiledb_ctx_t* ctx,
     tiledb_layout_t layout,
     tiledb_subarray_partitioner_t* partitioner) {
@@ -4915,7 +4938,7 @@ TILEDB_EXPORT int32_t tiledb_subarray_partitioner_set_layout(
 // This sets a custom layout, determining the order in
 // which the dimensions should be considered for splitting.
 // Various error checks and default behavior will be discussed.
-TILEDB_EXPORT int32_t tiledb_subarray_partitioner_set_custom_layout(
+int32_t tiledb_subarray_partitioner_set_custom_layout(
     tiledb_ctx_t* ctx,
     const char** ordered_dim_names,
     uint32_t ordered_dim_names_length,
@@ -4930,6 +4953,7 @@ TILEDB_EXPORT int32_t tiledb_subarray_partitioner_set_custom_layout(
   // TBD: Does a 'CUSTOM' enum need to be added to tiledb_enum.h/#ifdef
   // TILEDB_LAYOUT_ENUM ???
 
+  #if 0
   //array has array_schema has domain has dimensions...
   //partitioner has subarray, subarray has array it 'descends'(?) from
   auto array = partitioner->partitioner_->subarray()->array();
@@ -4961,19 +4985,27 @@ TILEDB_EXPORT int32_t tiledb_subarray_partitioner_set_custom_layout(
     ordered_dim_names_lengths.emplace_back(
         concatenated_names.length() - ordered_dim_names_start_ofs.back());
   }
+  #endif
 
   return TILEDB_ERR;
 }
 
 // Computes all partitions/subarrays, which are stored internally
 // to the object.
-TILEDB_EXPORT int32_t tiledb_subarray_partitioner_compute(
+int32_t tiledb_subarray_partitioner_compute(
     tiledb_ctx_t* ctx, tiledb_subarray_partitioner_t* partitioner) {
   // Sanity check
   if (sanity_check(ctx) == TILEDB_ERR ||
       sanity_check(ctx, partitioner) == TILEDB_ERR)
     return TILEDB_ERR;
 
+  if (SAVE_ERROR_CATCH(
+          ctx,
+          partitioner->partitioner_->compute_partition_series( )))
+    return TILEDB_ERR;
+  return TILEDB_OK;
+
+#if 0
   // TBD: config to use comes from where? Or should it have been set in
   // '...alloc'?
   //const 
@@ -5033,42 +5065,92 @@ TILEDB_EXPORT int32_t tiledb_subarray_partitioner_compute(
       return TILEDB_ERR;
     }
   }
+#endif
 
-  // TBD: possibly calls ->next() and subsequent, iterating/accumulating until
-  // done, storing
-  // retrieved items into an internal data entity? TBD: FIXME! TBD:
-  // FIXME! implement me!
   return TILEDB_ERR;
 }
 
 // Gets number of partitions.
-TILEDB_EXPORT int32_t tiledb_subarray_partitioner_get_partition_num(
+int32_t tiledb_subarray_partitioner_get_partition_num(
     tiledb_ctx_t* ctx,
-    tiledb_subarray_partitioner_t* partitioner,
-    uint64_t* num) {
+    uint64_t* num,
+    tiledb_subarray_partitioner_t* partitioner) {
   // Sanity check
   if (sanity_check(ctx) == TILEDB_ERR ||
       sanity_check(ctx, partitioner) == TILEDB_ERR)
     return TILEDB_ERR;
 
-  // TBD: FIXME! implement me!
-  return TILEDB_ERR;
+  *num = partitioner->partitioner_->partition_series_num();
+  return TILEDB_OK;
 }
 
 // Gets the pid-th partition/subarray. This allocates a
 // new subarray object that needs to be freed by the user.
-TILEDB_EXPORT int32_t tiledb_subarray_partitioner_get_partition(
+int32_t tiledb_subarray_partitioner_get_partition(
     tiledb_ctx_t* ctx,
     tiledb_subarray_partitioner_t* partitioner,
     uint64_t part_id,
-    tiledb_subarray_t** subarray) {
+    tiledb_subarray_t* subarray) {
   // Sanity check
+  if (sanity_check(ctx) == TILEDB_ERR ||
+      sanity_check(ctx, partitioner) == TILEDB_ERR ||
+      sanity_check(ctx, subarray) == TILEDB_ERR
+      )
+    return TILEDB_ERR;
+
+  if (SAVE_ERROR_CATCH(
+    ctx, partitioner->partitioner_->subarray_from_partition_series(part_id, &subarray->subarray_)))
+    return TILEDB_ERR;
+  return TILEDB_OK;
+}
+
+int32_t tiledb_subarray_partitioner_set_result_budget(
+    tiledb_ctx_t* ctx,
+    const char *attrname,
+    uint64_t budget,
+    tiledb_subarray_partitioner_t* partitioner) {
   if (sanity_check(ctx) == TILEDB_ERR ||
       sanity_check(ctx, partitioner) == TILEDB_ERR)
     return TILEDB_ERR;
 
-  // TBD: FIXME! implement me!
-  return TILEDB_ERR;
+  if (SAVE_ERROR_CATCH(ctx, partitioner->partitioner_->set_result_budget(attrname, budget)))
+    return TILEDB_ERR;
+
+  return TILEDB_OK;
+}
+  
+int32_t tiledb_subarray_partitioner_set_result_budget_var_attr(
+    tiledb_ctx_t* ctx,
+    const char* attrname,
+    uint64_t budget_off,
+    uint64_t budget_val,
+    tiledb_subarray_partitioner_t* partitioner) {
+  if (sanity_check(ctx) == TILEDB_ERR ||
+      sanity_check(ctx, partitioner) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  if (SAVE_ERROR_CATCH(
+          ctx, partitioner->partitioner_->set_result_budget(attrname, budget_off, budget_val)))
+    return TILEDB_ERR;
+
+  return TILEDB_OK;
+}
+
+int32_t tiledb_subarray_partitioner_set_memory_budget(
+    tiledb_ctx_t* ctx,
+    uint64_t budget,
+    uint64_t budget_var,
+    uint64_t budget_validity,
+    tiledb_subarray_partitioner_t* partitioner) {
+  if (sanity_check(ctx) == TILEDB_ERR ||
+      sanity_check(ctx, partitioner) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  if (SAVE_ERROR_CATCH(
+          ctx, partitioner->partitioner_->set_memory_budget(budget, budget_var, budget_validity)))
+    return TILEDB_ERR;
+
+  return TILEDB_OK;
 }
 
 /* ****************************** */

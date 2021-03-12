@@ -150,6 +150,14 @@ class SubarrayPartitioner {
     std::list<Subarray> multi_range_;
   };
 
+  static uint64_t cntnextcurrentemptybefordone_;
+  static uint64_t cntnextcurrentemptyafterdone_;
+  static uint64_t cntnextcurrentemptyb4next_;
+  static uint64_t cntnextcurrentnotemptyb4next_;
+  static uint64_t cntnextcallswhendone_;
+  static uint64_t cntnextcallsemptyonentrywhendone_;
+  static uint64_t cntnextcallsnotemptyonentrywhendone_;
+
   /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
@@ -193,6 +201,23 @@ class SubarrayPartitioner {
   /** Returns the current partition info. */
   PartitionInfo* current_partition_info();
 
+  /** compute the entire series of partitions and optionally return series to caller.
+  * If caller requests return of series, it is not retained within the partitioner.
+  */
+  Status compute_partition_series(std::vector<PartitionInfo>* result_partitions = nullptr);
+
+  /** The total number of computed partitions in the series. */
+  uint64_t partition_series_num();
+
+  /** Retrieve pointer to internal instance of specific computed subarray.
+  * 
+  * Note: This will only remain valid while the partitioner remains valid and the
+  * partition series is not re-computed or otherwise released.
+  */
+  Status subarray_from_partition_series(uint64_t part_idx, Subarray **subarray);
+
+  /** */
+    
   /**
    * Returns ``true`` if there are no more partitions, i.e., if the
    * partitioner iterator is done.
@@ -351,6 +376,9 @@ class SubarrayPartitioner {
 
   /** The thread pool for compute-bound tasks. */
   ThreadPool* compute_tp_;
+
+  /** The entire series of computed (sub-)partitions. */
+  std::vector<PartitionInfo> partitions_series_;
 
   /* ********************************* */
   /*           PRIVATE METHODS         */

@@ -5193,7 +5193,35 @@ TILEDB_EXPORT int32_t tiledb_subarray_partitioner_alloc(
     uint64_t memory_budget_var,
     uint64_t memory_budget_validity);
 
-// If not set, the default layout should probably be UNORDERED
+/**
+ * Frees a TileDB subarray partitioner object.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * tiledb_subarray_t* subarray; //initialized prior to call
+ * tiledb_subarray_partitioner_t *subarray_partitioner;
+ * tiledb_subarray_partitioner_alloc(ctx, subarray, &subarray_partitioner);
+ * tiledb_subarray_partitioner_free(&subarray_partitioner);
+ * @endcode
+ *
+ * @param subarray_partitioner The subarray partitioner object to be freed.
+ */
+TILEDB_EXPORT void tiledb_subarray_partitioner_free(tiledb_subarray_partitioner_t** subarray_partitioner);
+
+/**
+ * Set the layout of the subarray used by a subarray partitioner object.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * tiledb_subarray_t* subarray; //initialized
+ * tiledb_subarray_partitioner_t *subarray_partitioner; //inititalized prior to call
+ * tiledb_subarray_partitioner_set_layout(ctx, layout, subarray_partitioner);
+ * @endcode
+ *
+ * @param layout The layout to set into the subarray partioner object's subarray.
+ */
 TILEDB_EXPORT int32_t tiledb_subarray_partitioner_set_layout(
     tiledb_ctx_t* ctx,
     tiledb_layout_t layout,
@@ -5208,25 +5236,143 @@ TILEDB_EXPORT int32_t tiledb_subarray_partitioner_set_custom_layout(
     uint32_t ordered_dim_names_length,
     tiledb_subarray_partitioner_t* partitioner);
 
-// Computes all partitions/subarrays, which are stored internally
-// to the object.
+/**
+ * Compute the complete series of partitions/subarrays leaving them stored internally
+ * in the object.
+ *
+ * These partitions can then be retrieved via 
+ * tiledb_subarray_partitioner_get_partition().
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * tiledb_subarray_partitioner_t *subarray_partitioner; //inititalized prior to call
+ * tiledb_subarray_partitioner_compute(ctx, subarray_partitioner);
+ * @endcode
+ *
+ * @param layout The layout to set into the subarray partioner object's
+ * subarray.
+ */
 TILEDB_EXPORT int32_t tiledb_subarray_partitioner_compute(
     tiledb_ctx_t* ctx, tiledb_subarray_partitioner_t* partitioner);
 
-// Gets number of partitions.
+/**
+ * Gets number of computed partitions available to be retrieved via
+ * tiledb_subarray_partitioner_get_partition().
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * tiledb_subarray_partitioner_t *subarray_partitioner; //inititalized prior to call
+ * tiledb_subarray_partitioner_compute(ctx, subarray_partitioner);
+ * @endcode
+ *
+ * @param layout The layout to set into the subarray partioner object's
+ * subarray.
+ */
 TILEDB_EXPORT int32_t tiledb_subarray_partitioner_get_partition_num(
     tiledb_ctx_t* ctx,
-    tiledb_subarray_partitioner_t* partitioner,
-    uint64_t* num);
+    uint64_t* num,
+    tiledb_subarray_partitioner_t* partitioner);
 
 // Gets the pid-th partition/subarray. This allocates a
 // new subarray object that needs to be freed by the user.
+/**
+ * Retrieve a partition subarray from the partitioner's computed subarray partitions.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * uint64_t partition_id; //# of partition to retrieve, must be less than # computed partitions
+ * tiledb_subarray_t *retrieved_subarray; //initialized prior to call
+ * tiledb_subarray_partitioner_t *subarray_partitioner; //inititalized prior to call
+ * tiledb_subarray_partitioner_get_partition(ctx, subarray_partitioner, partition_id, retrieved_subarray);
+ * @endcode
+ *
+ * @param layout The layout to set into the subarray partioner object's
+ * subarray.
+ */
 TILEDB_EXPORT int32_t tiledb_subarray_partitioner_get_partition(
     tiledb_ctx_t* ctx,
     tiledb_subarray_partitioner_t* partitioner,
     uint64_t part_id,
-    tiledb_subarray_t** subarray); 
-        
+    tiledb_subarray_t* subarray);
+
+/**
+ * TBD: Explain me.
+ * 
+ * Set partitioning budget for fixed attribute.
+ * 
+ * **Example:**
+ * 
+ * @code{.c}
+ * tiledb_subarray_partitioner_t *partitioner; //prior init'd
+ * tiledb_ctx_t *ctx; //prior init'd
+ * uint64_t budget; //
+ * char *attrname; //valid attr name for the array of the subarray used to create partitioner
+ * tiledb_subarray_partitioner_set_result_budget(ctx, attrname, budget, partitioner);
+ * @endcode
+ * 
+ * @param budget - TBD: To Be explained
+ */
+TILEDB_EXPORT int32_t tiledb_subarray_partitioner_set_result_budget(
+    tiledb_ctx_t* ctx,
+    const char *attrname,
+    uint64_t budget,
+    tiledb_subarray_partitioner_t* partitioner);
+	
+/**
+ * TBD: Explain me.
+ * 
+ * Set partitioning budget for var sized attribute.
+ * 
+ * **Example:**
+ * 
+ * @code{.c}
+ * tiledb_subarray_partitioner_t *partitioner; //prior init'd
+ * tiledb_ctx_t *ctx; //prior init'd
+ * uint64_t budget_ofs; // 
+ * uint64_t budget_val; //
+ * char *attrname; //valid attr name for the array of the subarray used to create partitioner
+ * tiledb_subarray_partitioner_set_result_budget_var(ctx, attrname, budget_off, budget_val, partitioner);
+ * @endcode
+ * 
+ * @param budget - TBD: To Be explained
+ */
+TILEDB_EXPORT int32_t tiledb_subarray_partitioner_set_result_budget_var_attr(
+    tiledb_ctx_t* ctx,
+    const char* attrname,
+    uint64_t budget_off,
+    uint64_t budget_val,
+    tiledb_subarray_partitioner_t* partitioner);
+
+
+/**
+ * TBD: Explain me.
+ * 
+ * Set partitioning budget values for a partitioner.
+ * 
+ * **Example:**
+ * 
+ * @code{.c}
+ * tiledb_subarray_partitioner_t *partitioner; //prior init'd
+ * tiledb_ctx_t *ctx; //prior init'd
+ * uint64_t budget; //
+ * uint64_t budget_var; //
+ * uint64_t budget_validity; //
+ * tiledb_subarray_partitioner_set_memory_budget
+ *     (ctx, budget, budget_var, budget_validity, partitioner);
+ * @endcode
+ * 
+ * @param budget - TBD: To Be explained
+ */
+TILEDB_EXPORT int32_t tiledb_subarray_partitioner_set_memory_budget(
+    tiledb_ctx_t* ctx,
+    uint64_t budget,
+    uint64_t budget_var,
+    uint64_t budget_validity,
+    tiledb_subarray_partitioner_t* partitioner);
+
 /**
  * return a TileDB subarray object for the given array.
  *

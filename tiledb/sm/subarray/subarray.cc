@@ -703,6 +703,10 @@ void Subarray::set_layout(Layout layout) {
   layout_ = layout;
 }
 
+void Subarray::set_coalesce_ranges(bool coalesce_ranges) {
+  coalesce_ranges_ = coalesce_ranges;
+}
+
 Status Subarray::to_byte_vec(std::vector<uint8_t>* byte_vec) const {
   if (range_num() != 1)
     return LOG_STATUS(Status::SubarrayError(

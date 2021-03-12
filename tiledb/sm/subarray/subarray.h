@@ -622,8 +622,14 @@ class Subarray {
    */
   void set_is_default(uint32_t dim_index, bool is_default);
 
-  /** Sets the array layout. */
+  /** Sets the subarray layout. */
   void set_layout(Layout layout);
+
+  /** Sets coalesc-ranges flag, intended for use by CAPI, to alloc matching 
+  * default coalesc-ranges=true semantics of internal class constructor, but giving
+  * capi clients ability to turn off if desired.
+  */
+  void set_coalesce_ranges(bool coalesce_ranges = true);
 
   /**
    * Flattens the subarray ranges in a byte vector. Errors out
