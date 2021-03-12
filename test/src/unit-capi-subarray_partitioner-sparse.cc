@@ -342,23 +342,11 @@ void CAPISubarrayPartitionerSparseFx::test_subarray_partitioner(
   Subarray subarray;
   create_subarray(array_->array_, ranges, subarray_layout, &subarray);
 
-#if 0
-  ThreadPool tp;
-  CHECK(tp.init(4).ok());
-  SubarrayPartitioner subarray_partitioner(
-      subarray, memory_budget_, memory_budget_var_, 0, &tp);
-  auto st = subarray_partitioner.set_result_budget(attr.c_str(), budget);
-  CHECK(st.ok());
-
-  check_partitions(subarray_partitioner, partitions, unsplittable);
-#endif
-
-  tiledb_subarray_partitioner_t* subarray_partitioner;
   int32_t rc;
 
-  // tiledb::Context ctx;
   tiledb_subarray_t tdb_subarray;
   tdb_subarray.subarray_ = &subarray;
+  tiledb_subarray_partitioner_t* subarray_partitioner;
   rc = tiledb_subarray_partitioner_alloc(
       ctx_,
       &tdb_subarray,
@@ -397,27 +385,17 @@ void CAPISubarrayPartitionerSparseFx::test_subarray_partitioner(
   Subarray subarray;
   create_subarray(array_->array_, ranges, subarray_layout, &subarray);
 
-#if 0
-  ThreadPool tp;
-  CHECK(tp.init(4).ok());
-  SubarrayPartitioner subarray_partitioner(
-      subarray, memory_budget, memory_budget_var, 0, &tp);
-  auto st = subarray_partitioner.set_result_budget(attr.c_str(), result_budget);
-  CHECK(st.ok());
-#endif
-
-  tiledb_subarray_partitioner_t* subarray_partitioner;
   int32_t rc;
 
-  // tiledb::Context ctx;
   tiledb_subarray_t tdb_subarray;
   tdb_subarray.subarray_ = &subarray;
+  tiledb_subarray_partitioner_t* subarray_partitioner;
   rc = tiledb_subarray_partitioner_alloc(
       ctx_,
       &tdb_subarray,
       &subarray_partitioner,
-      memory_budget_,
-      memory_budget_var_,
+      memory_budget,
+      memory_budget_var,
       0);
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_subarray_partitioner_set_result_budget(
@@ -428,7 +406,6 @@ void CAPISubarrayPartitionerSparseFx::test_subarray_partitioner(
   Subarray retrieve_subarray(subarray);
   tdb_retrieve_partition_subarray.subarray_ = &retrieve_subarray;
 
-//  check_partitions(subarray_partitioner, partitions, unsplittable);
   check_partitions(
       ctx_,
       subarray_partitioner,
@@ -450,19 +427,11 @@ void CAPISubarrayPartitionerSparseFx::test_subarray_partitioner(
   Subarray subarray;
   create_subarray(array_->array_, ranges, subarray_layout, &subarray);
 
-#if 0
-  ThreadPool tp;
-  CHECK(tp.init(4).ok());
-  SubarrayPartitioner subarray_partitioner(
-      subarray, memory_budget_, memory_budget_var_, 0, &tp);
-#endif
-
-  tiledb_subarray_partitioner_t* subarray_partitioner;
   int32_t rc;
 
-  // tiledb::Context ctx;
   tiledb_subarray_t tdb_subarray;
   tdb_subarray.subarray_ = &subarray;
+  tiledb_subarray_partitioner_t* subarray_partitioner;
   rc = tiledb_subarray_partitioner_alloc(
       ctx_,
       &tdb_subarray,
@@ -471,9 +440,6 @@ void CAPISubarrayPartitionerSparseFx::test_subarray_partitioner(
       memory_budget_var_,
       0);
   REQUIRE(rc == TILEDB_OK);
-  //  rc = tiledb_subarray_partitioner_set_result_budget(
-  //      ctx_, attr.c_str(), budget, subarray_partitioner);
-  //  REQUIRE(rc == TILEDB_OK);
 
   tiledb_subarray_t tdb_retrieve_partition_subarray;
   Subarray retrieve_subarray(subarray);
@@ -482,29 +448,21 @@ void CAPISubarrayPartitionerSparseFx::test_subarray_partitioner(
   // Note: this is necessary, otherwise the subarray partitioner does
   // not check if the memory budget is exceeded for attributes whose
   // result budget is not set.
-//  auto st = subarray_partitioner.set_result_budget(TILEDB_COORDS, 1000000);
-//  CHECK(st.ok());
   rc = tiledb_subarray_partitioner_set_result_budget(
       ctx_, TILEDB_COORDS, 1000000, subarray_partitioner);
   REQUIRE(rc == TILEDB_OK);
-//  st = subarray_partitioner.set_result_budget("a", 1000000);
-//  CHECK(st.ok());
   rc = tiledb_subarray_partitioner_set_result_budget(
       ctx_, "a", 1000000, subarray_partitioner);
   REQUIRE(rc == TILEDB_OK);
-  //  st = subarray_partitioner.set_result_budget("b", 1000000, 1000000);
-  //  CHECK(st.ok());
   rc = tiledb_subarray_partitioner_set_result_budget_var_attr(
       ctx_, "b", 1000000, 1000000, subarray_partitioner);
   REQUIRE(rc == TILEDB_OK);
 
-//  st = subarray_partitioner.set_memory_budget(budget, budget_var, 0);
-//  CHECK(st.ok());
   rc = tiledb_subarray_partitioner_set_memory_budget(
       ctx_, budget, budget_var, 0, subarray_partitioner);
   REQUIRE(rc == TILEDB_OK);
 
-  check_partitions(  // subarray_partitioner, partitions, unsplittable);
+  check_partitions(
       ctx_,
       subarray_partitioner,
       partitions,

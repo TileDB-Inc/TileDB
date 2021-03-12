@@ -64,34 +64,7 @@ int main(const int argc, char** const argv) {
   if (rc != 0)
     return rc;
 
-  //return session.run();
-  auto rv = session.run();
-
-  std::cout 
-    << std::endl
-    << "cntnextcurrentemptybefordone_ "
-    << tiledb::sm::SubarrayPartitioner::cntnextcurrentemptybefordone_ << std::endl
-    << "cntnextcurrentemptyafterdone_ "
-    << tiledb::sm::SubarrayPartitioner::cntnextcurrentemptyafterdone_
-    << std::endl
-    << "cntnextcallswhendone_ "
-    << tiledb::sm::SubarrayPartitioner::cntnextcallswhendone_
-    << std::endl 
-    << "cntnextcallsemptyonentrywhendone_ "
-    << tiledb::sm::SubarrayPartitioner::cntnextcallsemptyonentrywhendone_
-    << std::endl
-    << "cntnextcallsnotemptyonentrywhendone_ "
-    << tiledb::sm::SubarrayPartitioner::cntnextcallsnotemptyonentrywhendone_
-    << std::endl 
-    << "cntnextcurrentemptyb4next_ "
-    << tiledb::sm::SubarrayPartitioner::cntnextcurrentemptyb4next_
-    << std::endl
-    << "cntnextcurrentnotemptyb4next_ "
-    << tiledb::sm::SubarrayPartitioner::cntnextcurrentnotemptyb4next_
-    << std::endl
-  ;
-
-  return rv;
+  return session.run();
 }
 
 struct CICompletionStatusListener : Catch::TestEventListenerBase {

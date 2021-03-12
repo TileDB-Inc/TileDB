@@ -4953,39 +4953,10 @@ int32_t tiledb_subarray_partitioner_set_custom_layout(
   // TBD: Does a 'CUSTOM' enum need to be added to tiledb_enum.h/#ifdef
   // TILEDB_LAYOUT_ENUM ???
 
-  #if 0
-  //array has array_schema has domain has dimensions...
-  //partitioner has subarray, subarray has array it 'descends'(?) from
-  auto array = partitioner->partitioner_->subarray()->array();
-  auto domain = array->array_schema()->domain();
-
-  std::vector<const tiledb::sm::Dimension*> dimensions;
-  for (decltype(ordered_dim_names_length) i = 0; i < ordered_dim_names_length;
-       ++i) {
-    const tiledb::sm::Dimension * dimension = domain->dimension(std::string(ordered_dim_names[i]));
-    if (dimension != nullptr) {
-      dimensions.emplace_back(dimension);
-    }
-  }
-
-  // TBD:
-  // how many names common?
-  // how long total names?
-  // should they be indexable, mappable?
-
-  // guessing at something possibly related/useful...
-  std::string concatenated_names;
-  std::vector<uint16_t> ordered_dim_names_lengths;
-  std::vector<uint16_t> ordered_dim_names_start_ofs;
-  for (decltype(ordered_dim_names_length) i = 0; i < ordered_dim_names_length;
-       ++i) {
-    ordered_dim_names_start_ofs.emplace_back(concatenated_names.length());
-    concatenated_names.append(
-        ordered_dim_names[i], strlen(ordered_dim_names[i]) + 1);
-    ordered_dim_names_lengths.emplace_back(
-        concatenated_names.length() - ordered_dim_names_start_ofs.back());
-  }
-  #endif
+  if (SAVE_ERROR_CATCH(
+          ctx, partitioner->partitioner_->set_custom_layout(ordered_dim_names, ordered_dim_names_length)))
+    return TILEDB_ERR;
+  return TILEDB_OK;
 
   return TILEDB_ERR;
 }

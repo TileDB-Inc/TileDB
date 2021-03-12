@@ -150,14 +150,6 @@ class SubarrayPartitioner {
     std::list<Subarray> multi_range_;
   };
 
-  static uint64_t cntnextcurrentemptybefordone_;
-  static uint64_t cntnextcurrentemptyafterdone_;
-  static uint64_t cntnextcurrentemptyb4next_;
-  static uint64_t cntnextcurrentnotemptyb4next_;
-  static uint64_t cntnextcallswhendone_;
-  static uint64_t cntnextcallsemptyonentrywhendone_;
-  static uint64_t cntnextcallsnotemptyonentrywhendone_;
-
   /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
@@ -216,8 +208,6 @@ class SubarrayPartitioner {
   */
   Status subarray_from_partition_series(uint64_t part_idx, Subarray **subarray);
 
-  /** */
-    
   /**
    * Returns ``true`` if there are no more partitions, i.e., if the
    * partitioner iterator is done.
@@ -333,6 +323,12 @@ class SubarrayPartitioner {
    */
   Status split_current(bool* unsplittable);
 
+  /**
+   * Retain ordered list of dimensions to direct layout order for partitioning
+   */
+  Status set_custom_layout(
+      const char** ordered_dim_names, uint32_t ordered_dim_names_length);
+
   /** Returns the state. */
   const State* state() const;
 
@@ -379,6 +375,8 @@ class SubarrayPartitioner {
 
   /** The entire series of computed (sub-)partitions. */
   std::vector<PartitionInfo> partitions_series_;
+
+  std::vector<uint32_t> ordered_dims_;
 
   /* ********************************* */
   /*           PRIVATE METHODS         */

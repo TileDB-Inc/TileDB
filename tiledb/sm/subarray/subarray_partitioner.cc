@@ -55,14 +55,6 @@ using namespace tiledb;
 using namespace tiledb::common;
 using namespace tiledb::sm;
 
-uint64_t SubarrayPartitioner::cntnextcurrentemptybefordone_ = 0;
-uint64_t SubarrayPartitioner::cntnextcurrentemptyafterdone_ = 0;
-uint64_t SubarrayPartitioner::cntnextcurrentemptyb4next_;
-uint64_t SubarrayPartitioner::cntnextcurrentnotemptyb4next_;
-uint64_t SubarrayPartitioner::cntnextcallswhendone_ = 0;
-uint64_t SubarrayPartitioner::cntnextcallsemptyonentrywhendone_ = 0;
-uint64_t SubarrayPartitioner::cntnextcallsnotemptyonentrywhendone_ = 0;
-
 /* ****************************** */
 /*   CONSTRUCTORS & DESTRUCTORS   */
 /* ****************************** */
@@ -358,6 +350,48 @@ Status SubarrayPartitioner::get_memory_budget(
   return Status::Ok();
 }
 
+Status SubarrayPartitioner::set_custom_layout(
+  const char** ordered_dim_names, uint32_t ordered_dim_names_length) {
+
+  auto array = subarray_.array();
+  auto domain = array->array_schema()->domain();
+  auto num_domain_dims = domain->dim_num();
+
+  ordered_dims_.clear();
+
+  //TBD: What validation for number of names passed versus number of dimensions, 
+  //are they to be the same, or can number of names provided be less than number of dimensions?
+
+  for (auto ui = 0u; ui < ordered_dim_names_length; ++ui) {
+    const tiledb::sm::Dimension* dim_from_name =
+        domain->dimension(std::string(ordered_dim_names[ui]));
+    if (dim_from_name == nullptr) {
+      std::stringstream msg;
+      msg << "dimension " << ordered_dim_names[ui] << " not found, unable to set custom layout.";
+      return LOG_STATUS(Status::SubarrayPartitionerError(msg.str()));
+    }
+    uint32_t ui2;
+    for (ui2 = 0u; ui2 < num_domain_dims; ++ui2) {
+      const tiledb::sm::Dimension* dim_from_idx =
+          domain->dimension(ui2);
+      if (dim_from_idx == dim_from_name) {
+        ordered_dims_.emplace_back(ui2);
+        break;
+      }
+    }
+    if (ui2 >= num_domain_dims) {
+      std::stringstream msg;
+      //likely an *internal* logic error
+      msg << "dimension " << ordered_dim_names[ui]
+          << " positional order could not be determined, unable to set custom layout.";
+      return LOG_STATUS(Status::SubarrayPartitionerError(msg.str()));
+
+    }
+  }
+  
+  return Status::Ok();
+}
+
 uint64_t SubarrayPartitioner::partition_series_num() {
   return partitions_series_.size();
 }
@@ -419,78 +453,14 @@ Status SubarrayPartitioner::next(bool* unsplittable) {
 
   *unsplittable = false;
 
-/*
-cntopeqbyteseq_ 41
-cntopeqbytesneq_ 0
-cntopeqstrtsizeeq_ 41
-cntopeqbothvarsize_ 0
-cntopeqbothfixedsize_ 41
-cntopeqonefixedonevar_ 0
-cntopeqcalls_ 41
-
-cntnextcurrentemptybefordone_ 1405
-cntnextcurrentemptyafterdone_ 1405
-cntnextcallswhendone_ 235
-cntnextcallsemptyonentrywhendone_ 0
-cntnextcallsnotemptyonentrywhendone_ 235
-cntnextcurrentemptyb4next_ 1405
-cntnextcurrentnotemptyb4next_ 1108
-//------------------------------
-//clearing on entry to next()...
-cntopeqbyteseq_ 41
-cntopeqbytesneq_ 0
-cntopeqstrtsizeeq_ 41
-cntopeqbothvarsize_ 0
-cntopeqbothfixedsize_ 41
-cntopeqonefixedonevar_ 0
-cntopeqcalls_ 41
-
-cntnextcurrentemptybefordone_ 2748
-cntnextcurrentemptyafterdone_ 2513
-cntnextcallswhendone_ 235
-cntnextcallsemptyonentrywhendone_ 235
-cntnextcallsnotemptyonentrywhendone_ 0
-cntnextcurrentemptyb4next_ 2513
-cntnextcurrentnotemptyb4next_ 0
-//------------------------------------
-//clearing after done() check before hunting actual next()...
-cntopeqbyteseq_ 41
-cntopeqbytesneq_ 0
-cntopeqstrtsizeeq_ 41
-cntopeqbothvarsize_ 0
-cntopeqbothfixedsize_ 41
-cntopeqonefixedonevar_ 0
-cntopeqcalls_ 41
-
-cntnextcurrentemptybefordone_ 1405
-cntnextcurrentemptyafterdone_ 1405
-cntnextcallswhendone_ 235
-cntnextcallsemptyonentrywhendone_ 0
-cntnextcallsnotemptyonentrywhendone_ 235
-cntnextcurrentemptyb4next_ 1405
-cntnextcurrentnotemptyb4next_ 1108
-*/
   //TBD: does anything break if we intentionally "clear" current_.partitioner_ ?
-//  current_.partition_.clear();
-
-  if(current_.partition_.empty())
-    ++cntnextcurrentemptybefordone_;
+  current_.partition_.clear();
 
   if (done()) {
-    ++cntnextcallswhendone_;
-    if (current_.partition_.empty())
-      ++cntnextcallsemptyonentrywhendone_;
-    else
-      ++cntnextcallsnotemptyonentrywhendone_;
     return Status::Ok();
   }
 
-  if (current_.partition_.empty())
-    ++cntnextcurrentemptyafterdone_, ++cntnextcurrentemptyb4next_;
-  else
-    ++cntnextcurrentnotemptyb4next_;
-
-  current_.partition_.clear();
+//  current_.partition_.clear();
 
   // Handle single range partitions, remaining from previous iteration
   if (!state_.single_range_.empty())
@@ -783,9 +753,24 @@ void SubarrayPartitioner::calibrate_current_start_end(bool* must_split_slab) {
   std::vector<uint64_t> range_num;
   auto dim_num = subarray_.dim_num();
   uint64_t num;
-  for (unsigned i = 0; i < dim_num; ++i) {
-    subarray_.get_range_num(i, &num);
-    range_num.push_back(num);
+#if 0 //TBD: useful here or not?
+  if (ordered_dims_.size()) {
+    if (dim_num != ordered_dims_.size()) {
+      //TBD: throw something?
+    }
+    auto ordered_dim_num = ordered_dims_.size();
+    range_num.reserve(ordered_dim_num);
+    for (unsigned ui = 0 ; ui < ordered_dim_num ; ++ui) {
+      subarray_.get_range_num(ordered_dims_[ui], &num);
+      range_num.emplace_back(num);
+    }
+  } else
+#endif
+  {
+    for (unsigned i = 0; i < dim_num; ++i) {
+      subarray_.get_range_num(i, &num);
+      range_num.push_back(num);
+    }
   }
 
   auto layout = subarray_.layout();
@@ -961,7 +946,17 @@ void SubarrayPartitioner::compute_splitting_value_on_tiles(
   *splitting_dim = UINT32_MAX;
 
   std::vector<unsigned> dims;
-  if (layout == Layout::ROW_MAJOR) {
+  //TBD: Should ordered dims be used here?
+  if (ordered_dims_.size()) {
+    if (dim_num < ordered_dims_.size()) {
+      // TBD: throw something?
+    }
+    auto ordered_dim_num = ordered_dims_.size();
+    dims.reserve(ordered_dim_num);
+    for (unsigned ui = 0; ui < ordered_dim_num; ++ui) {
+      dims.emplace_back(ordered_dims_[ui]);
+    }
+  } else if (layout == Layout::ROW_MAJOR) {
     for (unsigned i = 0; i < dim_num; ++i)
       dims.push_back(i);
   } else {
@@ -1030,7 +1025,17 @@ void SubarrayPartitioner::compute_splitting_value_single_range(
   assert(cell_order == Layout::ROW_MAJOR || cell_order == Layout::COL_MAJOR);
 
   std::vector<unsigned> dims;
-  if (layout == Layout::ROW_MAJOR) {
+  // TBD: Should ordered dims be used here?
+  if (ordered_dims_.size()) {
+    if (dim_num < ordered_dims_.size()) {
+      // TBD: throw something?
+    }
+    auto ordered_dim_num = ordered_dims_.size();
+    dims.reserve(ordered_dim_num);
+    for (unsigned ui = 0; ui < ordered_dim_num; ++ui) {
+      dims.emplace_back(ordered_dims_[ui]);
+    }
+  } else if (layout == Layout::ROW_MAJOR) {
     for (unsigned d = 0; d < dim_num; ++d)
       dims.push_back(d);
   } else {
@@ -1134,7 +1139,17 @@ void SubarrayPartitioner::compute_splitting_value_multi_range(
   uint64_t range_num;
 
   std::vector<unsigned> dims;
-  if (layout == Layout::ROW_MAJOR) {
+  // TBD: Should ordered dims be used here?
+  if (ordered_dims_.size()) {
+    if (dim_num < ordered_dims_.size()) {
+      // TBD: throw something?
+    }
+    auto ordered_dim_num = ordered_dims_.size();
+    dims.reserve(ordered_dim_num);
+    for (unsigned ui = 0; ui < ordered_dim_num; ++ui) {
+      dims.emplace_back(ordered_dims_[ui]);
+    }
+  } else if (layout == Layout::ROW_MAJOR) {
     for (unsigned d = 0; d < dim_num; ++d)
       dims.push_back(d);
   } else {
@@ -1404,6 +1419,8 @@ void SubarrayPartitioner::compute_range_uint64(
 
   // Default values for empty range start/end
   auto max_string = std::string("\x7F\x7F\x7F\x7F\x7F\x7F\x7F\x7F", 8);
+
+  //TBD: no consideration of layout here, no ref to ordered_dims_ needed?
 
   // Calculate mapped range
   bool empty_start, empty_end;

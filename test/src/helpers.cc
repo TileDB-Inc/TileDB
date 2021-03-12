@@ -105,7 +105,9 @@ void check_partitions(
     const std::vector<SubarrayRanges<T>>& partitions,
     bool last_unsplittable,
     tiledb_subarray_t *retrieve_partition_subarray) {
-  bool unsplittable = false;
+
+  (void)last_unsplittable; //TBD: Anyway to incorporate this similar to internal core SubarrayPartitioner tests?
+  //bool unsplittable = false;
 
   int32_t rc;
 
