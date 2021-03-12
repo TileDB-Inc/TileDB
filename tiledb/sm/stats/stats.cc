@@ -497,7 +497,7 @@ std::string Stats::dump_read() const {
       read_overlap_tile_num * read_attr_nullable_num;
 
   std::stringstream ss;
-  if (read_num != 0) {
+  if (read_num != 0 || read_array_open > 0) {
     ss << "==== READ ====\n\n";
     write(&ss, "- Number of read queries: ", read_num);
     write(&ss, "- Number of attempts until results are found: ", read_loop_num);
