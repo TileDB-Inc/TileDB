@@ -338,6 +338,9 @@ class Config {
   /** Connect scale factor for exponential backoff. */
   static const std::string VFS_S3_CONNECT_SCALE_FACTOR;
 
+  /** S3 server-side encryption algorithm. */
+  static const std::string VFS_S3_SSE;
+
   /** Request timeout in milliseconds. */
   static const std::string VFS_S3_REQUEST_TIMEOUT_MS;
 
