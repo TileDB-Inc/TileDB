@@ -679,7 +679,7 @@ Status query_from_capnp(
       // We use the query_buffer directly in order to get the original buffer
       // sizes This avoid a problem where an incomplete query will change the
       // users buffer size to the smaller results and we end up not being able
-      // to correctly calcuate if the new results can fit into the users buffer
+      // to correctly calculate if the new results can fit into the users buffer
       if (var_size) {
         if (!nullable) {
           existing_offset_buffer = static_cast<uint64_t*>(query_buffer.buffer_);
@@ -708,7 +708,7 @@ Status query_from_capnp(
         }
       }
     } else {
-      // For writes we need to use get_buffer
+      // For writes we need to use get_buffer and clientside
       if (var_size) {
         if (!nullable) {
           RETURN_NOT_OK(query->get_buffer(
@@ -905,12 +905,30 @@ Status query_from_capnp(
         // submit's result size not the original user set buffer size. To work
         // around this we revert the server to always use the full original user
         // requested buffer sizes.
-        attr_state->fixed_len_size =
-            buffer_header.getOriginalFixedLenBufferSizeInBytes();
-        attr_state->var_len_size =
-            buffer_header.getOriginalVarLenBufferSizeInBytes();
-        attr_state->validity_len_size =
-            buffer_header.getOriginalValidityLenBufferSizeInBytes();
+        // We check for > 0 for fallback for clients older than 2.2.5
+        if (buffer_header.getOriginalFixedLenBufferSizeInBytes() > 0) {
+          attr_state->fixed_len_size =
+              buffer_header.getOriginalFixedLenBufferSizeInBytes();
+        } else {
+          attr_state->fixed_len_size =
+              buffer_header.getFixedLenBufferSizeInBytes();
+        }
+
+        if (buffer_header.getOriginalVarLenBufferSizeInBytes() > 0) {
+          attr_state->var_len_size =
+              buffer_header.getOriginalVarLenBufferSizeInBytes();
+        } else {
+          attr_state->var_len_size = buffer_header.getVarLenBufferSizeInBytes();
+        }
+
+        if (buffer_header.getOriginalValidityLenBufferSizeInBytes() > 0) {
+          attr_state->validity_len_size =
+              buffer_header.getOriginalValidityLenBufferSizeInBytes();
+        } else {
+          attr_state->validity_len_size =
+              buffer_header.getValidityLenBufferSizeInBytes();
+        }
+
         attr_state->fixed_len_data.swap(offsets_buff);
         attr_state->var_len_data.swap(varlen_buff);
         attr_state->validity_len_data.swap(validitylen_buff);
