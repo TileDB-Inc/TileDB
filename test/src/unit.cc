@@ -68,16 +68,6 @@ int main(const int argc, char** const argv) {
   auto rv = session.run();
 
   std::cout 
-    << "cntopeqbyteseq_ " << tiledb::sm::Range::cntopeqbyteseq_  << std::endl
-    << "cntopeqbytesneq_ " << tiledb::sm::Range::cntopeqbytesneq_ << std::endl
-    << "cntopeqstrtsizeeq_ " << tiledb::sm::Range::cntopeqstrtsizeeq_ << std::endl
-    << "cntopeqbothvarsize_ " << tiledb::sm::Range::cntopeqbothvarsize_ << std::endl
-    << "cntopeqbothfixedsize_ " << tiledb::sm::Range::cntopeqbothfixedsize_ << std::endl
-    << "cntopeqonefixedonevar_ " << tiledb::sm::Range::cntopeqonefixedonevar_ << std::endl
-    << "cntopeqcalls_ " << tiledb::sm::Range::cntopeqcalls_ << std::endl
-    ;
-  
-  std::cout 
     << std::endl
     << "cntnextcurrentemptybefordone_ "
     << tiledb::sm::SubarrayPartitioner::cntnextcurrentemptybefordone_ << std::endl

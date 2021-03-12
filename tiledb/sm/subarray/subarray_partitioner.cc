@@ -63,18 +63,6 @@ uint64_t SubarrayPartitioner::cntnextcallswhendone_ = 0;
 uint64_t SubarrayPartitioner::cntnextcallsemptyonentrywhendone_ = 0;
 uint64_t SubarrayPartitioner::cntnextcallsnotemptyonentrywhendone_ = 0;
 
-//=============================
-// devdiag, some stats
-uint64_t Range::cntopeqbyteseq_ = 0;
-uint64_t Range::cntopeqbytesneq_ = 0;
-uint64_t Range::cntopeqstrtsizeeq_ = 0;
-uint64_t Range::cntopeqbothvarsize_ = 0;
-uint64_t Range::cntopeqbothfixedsize_ = 0;
-uint64_t Range::cntopeqonefixedonevar_ = 0;
-uint64_t Range::cntopeqcalls_ = 0;
-//=============================
-
-
 /* ****************************** */
 /*   CONSTRUCTORS & DESTRUCTORS   */
 /* ****************************** */
@@ -403,10 +391,6 @@ Status SubarrayPartitioner::compute_partition_series(
 
   partitions.clear();
 
-  //TBD: Which, if any, of the following three sections is a correct approach to computing/retrieving all partitions?
-  //my current bet is on the first one, but...
-#if 01
-  //TBD: is it possible that any data could be 'done()' before initial 'next()'?
   //1)If initial 'subarray_' is empty(), then done() will be true, initial next() will return Ok()...
   //- but then are there any partitions, or empty partitions would be correct?
   if (!done()) {
@@ -426,40 +410,6 @@ Status SubarrayPartitioner::compute_partition_series(
         break;
     }
   }
-#endif
-
-#if 0
-  while (!done()) {
-    //TBD: what, if anything, makes sure 'current_' is 'invalid'/empty on 'terminating' next() call, as
-    //appears 'next()' itself will return 'Ok' when it thinks 'done()' without touching possibly previously
-    //populated 'current_'... ?
-    auto s = next(&unsplittable);
-    if (!current_.partition_.empty())
-      partitions.emplace_back(current_);
-    if (!s.ok())
-      return s;
-
-  }
-#endif
-
-#if 0
-  while (1) {
-    auto s = next(&unsplittable);
-
-    if (!s.ok())
-      return s;
-    //TBD: When is done() done?  Not understanding yet whether done() (immediately) after last successful partition, or
-    //from 'next_from_single_range()', appears that *is* possible to have 'done()==true' after last successful *next()* as
-    //that routine in one path can set a current partition and then bump state_.start_++; which could thus meet
-    //condition of .start_ being > .end_ - I think...
-    if (!done()) {
-      partitions.emplace_back(current_);
-      countseqempties = 0;
-    } else {
-      break;
-    }
-  }
-#endif
 
   return Status::Ok();
 }
