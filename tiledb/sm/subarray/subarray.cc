@@ -1905,7 +1905,7 @@ Status Subarray::compute_tile_overlap(ThreadPool* const compute_tp) {
   compute_range_offsets();
 
   // Initialization
-  tile_overlap_ = tdb_make_shared(std::vector<std::vector<TileOverlap>>);
+  tile_overlap_ = std::make_shared<std::vector<std::vector<TileOverlap>>>();
   auto meta = array_->fragment_metadata();
   auto fragment_num = meta.size();
   tile_overlap_->resize(fragment_num);

@@ -715,7 +715,7 @@ class Subarray {
    * This is shared between a `Subarray` and all of its `Subarray` partitions
    * created by the `SubarrayPartitioner`.
    */
-  tdb_shared_ptr<std::vector<std::vector<TileOverlap>>> tile_overlap_;
+  std::shared_ptr<std::vector<std::vector<TileOverlap>>> tile_overlap_;
 
   /**
    * ``True`` if ranges should attempt to be coalesced as they are added.
