@@ -576,6 +576,9 @@ class S3 {
   /** The server-side encryption algorithm. */
   Aws::S3::Model::ServerSideEncryption sse_;
 
+  /** The server-side encryption kms key. */
+  std::string sse_kms_key_id_;
+
   /** Protects file_buffers map */
   std::mutex file_buffers_mtx_;
 
