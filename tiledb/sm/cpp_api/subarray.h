@@ -1,7 +1,7 @@
 /**
  * @file   query.h
  *
- * @author Ravi Gaddipati
+ * @author David Hoke
  *
  * @section LICENSE
  *
@@ -29,7 +29,7 @@
  *
  * @section DESCRIPTION
  *
- * This file declares the C++ API for the TileDB Query object.
+ * This file declares the C++ API for the TileDB Subarray object.
  */
 
 #ifndef TILEDB_CPP_API_SUBARRAY_H
@@ -41,7 +41,6 @@
 #include "core_interface.h"
 #include "deleter.h"
 #include "exception.h"
-//#include "query.h"
 #include "tiledb.h"
 #include "type.h"
 #include "utils.h"
@@ -87,20 +86,18 @@ class Query;
  */
 class Subarray {
  public:
-  Subarray(const tiledb::Context& ctx, const tiledb::Array& array)
+  Subarray(const tiledb::Context& ctx, const tiledb::Array& array, bool coalesce_ranges = true)
       : ctx_(ctx)
       , array_(array)
       , schema_(array.schema()) {
     tiledb_subarray_t* capi_subarray;
     ctx.handle_error(tiledb_subarray_alloc(
         ctx.ptr().get(), array.ptr().get(), &capi_subarray));
+    tiledb_subarray_set_coalesce_ranges(ctx.ptr().get(), capi_subarray, coalesce_ranges);
     subarray_ = std::shared_ptr<tiledb_subarray_t>(capi_subarray, deleter_);
   }
 
   Subarray(const tiledb::Query& query);
-
-  int32_t tiledb_subarray_set_subarray(
-      tiledb_ctx_t* ctx, tiledb_subarray_t* subarray_s, const void* subarray_v);
 
   /**
    * Adds a 1D range along a subarray dimension index, in the form

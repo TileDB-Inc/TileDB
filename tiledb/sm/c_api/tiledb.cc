@@ -4825,6 +4825,20 @@ int32_t tiledb_subarray_alloc(
   return TILEDB_OK;
 }
 
+int32_t tiledb_subarray_set_layout(
+    tiledb_ctx_t* ctx, tiledb_subarray_t* subarray, tiledb_layout_t layout) {
+  // Sanity check
+  if (sanity_check(ctx) == TILEDB_ERR ||
+      sanity_check(ctx, subarray) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  // Set layout
+  subarray->subarray_->set_layout(
+              static_cast<tiledb::sm::Layout>(layout));
+
+  return TILEDB_OK;
+}
+
 void tiledb_subarray_free(tiledb_subarray_t** subarray) {
   if (subarray != nullptr && *subarray != nullptr) {
     delete (*subarray)->subarray_;
@@ -4836,12 +4850,14 @@ void tiledb_subarray_free(tiledb_subarray_t** subarray) {
 int32_t tiledb_subarray_set_coalesce_ranges(
     tiledb_ctx_t* ctx,
     tiledb_subarray_t* subarray,
-    bool coalesce_ranges) {
+    int coalesce_ranges) {
   // Sanity check
   if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, subarray) == TILEDB_ERR)
     return TILEDB_ERR;
 
-  subarray->subarray_->set_coalesce_ranges(coalesce_ranges);
+  if (SAVE_ERROR_CATCH(
+          ctx, subarray->subarray_->set_coalesce_ranges(coalesce_ranges != 0)))
+    return TILEDB_ERR;
 
   return TILEDB_OK;
 }

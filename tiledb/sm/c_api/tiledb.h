@@ -5171,13 +5171,73 @@ TILEDB_EXPORT int32_t tiledb_subarray_alloc(
     tiledb_subarray_t** subarray);
 
 /**
+ * Sets the layout of the cells to be written or read.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * tiledb_subarray_set_layout(ctx, subarray, TILEDB_ROW_MAJOR);
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param subarray The TileDB subarray.
+ * @param layout For a write query, this specifies the order of the cells
+ *     provided by the user in the buffers. For a read query, this specifies
+ *     the order of the cells that will be retrieved as results and stored
+ *     in the user buffers. The layout can be one of the following:
+ *    - `TILEDB_COL_MAJOR`:
+ *      This means column-major order with respect to the subarray.
+ *    - `TILEDB_ROW_MAJOR`:
+ *      This means row-major order with respect to the subarray.
+ *    - `TILEDB_GLOBAL_ORDER`:
+ *      This means that cells are stored or retrieved in the array global
+ *      cell order.
+ *    - `TILEDB_UNORDERED`:
+ *      This is applicable only to reads and writes for sparse arrays, or for
+ *      sparse writes to dense arrays. For writes, it specifies that the cells
+ *      are unordered and, hence, TileDB must sort the cells in the global cell
+ *      order prior to writing. For reads, TileDB will return the cells without
+ *      any particular order, which will often lead to better performance.
+ * * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_subarray_set_layout(
+    tiledb_ctx_t* ctx, tiledb_subarray_t* subarray, tiledb_layout_t layout);
+
+
+/**
+ * Set coalesce_ranges property on a TileDB subarray object.
+ * Intended to be used just after tiledb_subarray_alloc() to replace
+ * the initial coalesce_ranges = true 
+ * with coalesce_ranges = false if 
+ * needed.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * tiledb_subarray_t* subarray;
+ * tiledb_subarray_alloc(ctx, array, &subarray);
+ * bool coalesce_ranges = false;
+ * tiledb_subarray_set_coalesce_ranges(ctx, &subarray, coalesce_ranges);
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param subarray The subarray object to be created.
+ * @param coalesce_ranges The true/false value to be set
+ * @return `TILEDB_OK` for success and `TILEDB_OOM` or `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_subarray_set_coalesce_ranges(
+    tiledb_ctx_t* ctx,
+    tiledb_subarray_t* subarray,
+    int coalesce_ranges);
+
+/**
  * Allocates a TileDB subarray partitioner object.
  *
  * **Example:**
  *
  * @code{.c}
  * tiledb_subarray_partitioner_t* subarray_partitioner;
- * tiledb_subarray_alloc(ctx, array, &subarray_partitioner);
+ * tiledb_subarray_partitioner_alloc(ctx, array, &subarray_partitioner);
  * @endcode
  *
  * @param ctx The TileDB context.

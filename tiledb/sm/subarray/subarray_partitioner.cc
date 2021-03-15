@@ -421,7 +421,6 @@ Status SubarrayPartitioner::compute_partition_series(
   std::vector<PartitionInfo>& partitions = partitions_series == nullptr ? partitions_series_ : partitions_local;
 
   bool unsplittable = false;
-  int countseqempties = 0;
 
   partitions.clear();
 
@@ -429,8 +428,8 @@ Status SubarrayPartitioner::compute_partition_series(
   //- but then are there any partitions, or empty partitions would be correct?
   if (!done()) {
     while (next(&unsplittable).ok()) {
-      if (current_.partition_.empty()) //TBD: Apparently next() could be '.ok()' with initially empty subarray_
-        __debugbreak();
+//      if (current_.partition_.empty()) //TBD: Apparently next() could be '.ok()' with initially empty subarray_
+//        __debugbreak();
       //following .empty() check requires 'current_.partition_.clear()' change early in next() 
       //to function reliably for purpose here
       //if (current_.partition_.empty())  // TBD: Apparently next() could be

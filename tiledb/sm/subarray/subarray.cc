@@ -703,8 +703,16 @@ void Subarray::set_layout(Layout layout) {
   layout_ = layout;
 }
 
-void Subarray::set_coalesce_ranges(bool coalesce_ranges) {
+Status Subarray::set_coalesce_ranges(bool coalesce_ranges) {
+  if (count_set())
+    return LOG_STATUS(Status::SubarrayError(
+        "non-default ranges have been set, cannot change coalesce_ranges setting!"));
+  //trying to mimic conditions at ctor()
   coalesce_ranges_ = coalesce_ranges;
+  ranges_.clear();
+  add_default_ranges();
+  set_add_or_coalesce_range_func();
+  return Status::Ok();
 }
 
 Status Subarray::to_byte_vec(std::vector<uint8_t>* byte_vec) const {

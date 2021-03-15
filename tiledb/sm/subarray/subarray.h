@@ -629,7 +629,7 @@ class Subarray {
   * default coalesc-ranges=true semantics of internal class constructor, but giving
   * capi clients ability to turn off if desired.
   */
-  void set_coalesce_ranges(bool coalesce_ranges = true);
+  Status set_coalesce_ranges(bool coalesce_ranges = true);
 
   /**
    * Flattens the subarray ranges in a byte vector. Errors out

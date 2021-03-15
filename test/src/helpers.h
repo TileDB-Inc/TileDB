@@ -143,6 +143,10 @@ template <class T>
 void check_subarray(
     tiledb::sm::Subarray& subarray, const SubarrayRanges<T>& ranges);
 
+template <class T>
+void check_subarray_equiv(
+    tiledb::sm::Subarray& subarray1, tiledb::sm::Subarray& subarray2);
+
 /**
  * Closes an array.
  *
@@ -302,6 +306,25 @@ void create_subarray(
     bool coalesce_ranges = false);
 
 /**
+ * Creates a capi subarray for the input array.
+ *
+ * @tparam T The datatype of the subarray domain.
+ * @param array The input array.
+ * @param ranges The ranges of the subarray to be created.
+ * @param layout The layout of the subarray.
+ * @param subarray The subarray to be set.
+ * @param coalesce_ranges Whether the subarray should coalesce ranges.
+ */
+template <class T>
+void create_subarray(
+    tiledb_ctx_t* ctx,
+    tiledb::sm::Array* array,
+    const SubarrayRanges<T>& ranges,
+    tiledb::sm::Layout layout,
+    tiledb_subarray_t** subarray,
+    bool coalesce_ranges = false);
+
+  /**
  * Helper method that creates a TileDB context and a VFS object.
  *
  * @param s3_supported Indicates whether S3 is supported or not.

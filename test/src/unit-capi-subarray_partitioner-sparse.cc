@@ -339,17 +339,20 @@ void CAPISubarrayPartitionerSparseFx::test_subarray_partitioner(
     const std::string& attr,
     uint64_t budget,
     bool unsplittable) {
-  Subarray subarray;
-  create_subarray(array_->array_, ranges, subarray_layout, &subarray);
+  Subarray coresubarray;
+  create_subarray(array_->array_, ranges, subarray_layout, &coresubarray);
 
   int32_t rc;
 
-  tiledb_subarray_t tdb_subarray;
-  tdb_subarray.subarray_ = &subarray;
+  tiledb_subarray_t* tdb_subarray;
+  create_subarray(
+      ctx_, array_->array_, ranges, subarray_layout, &tdb_subarray);
+  check_subarray_equiv<T>(coresubarray, *tdb_subarray->subarray_);
+
   tiledb_subarray_partitioner_t* subarray_partitioner;
   rc = tiledb_subarray_partitioner_alloc(
       ctx_,
-      &tdb_subarray,
+      tdb_subarray,
       &subarray_partitioner,
       memory_budget_,
       memory_budget_var_,
@@ -359,15 +362,24 @@ void CAPISubarrayPartitionerSparseFx::test_subarray_partitioner(
       ctx_, attr.c_str(), budget, subarray_partitioner);
   REQUIRE(rc == TILEDB_OK);
 
-  tiledb_subarray_t tdb_retrieve_partition_subarray;
-  Subarray retrieve_subarray(subarray);
-  tdb_retrieve_partition_subarray.subarray_ = &retrieve_subarray;
+  tiledb_subarray_t* tdb_retrieve_partition_subarray;
+  create_subarray(
+      ctx_,
+      array_->array_,
+      ranges,
+      subarray_layout,
+      &tdb_retrieve_partition_subarray);
+  check_subarray_equiv<T>(
+      coresubarray, *tdb_retrieve_partition_subarray->subarray_);
   check_partitions(
       ctx_,
       subarray_partitioner,
       partitions,
       unsplittable,
-      &tdb_retrieve_partition_subarray);
+      tdb_retrieve_partition_subarray);
+
+  tiledb_subarray_free(&tdb_retrieve_partition_subarray);
+  tiledb_subarray_free(&tdb_subarray);
 
   tiledb_subarray_partitioner_free(&subarray_partitioner);
 }
@@ -382,17 +394,20 @@ void CAPISubarrayPartitionerSparseFx::test_subarray_partitioner(
     uint64_t memory_budget,
     uint64_t memory_budget_var,
     bool unsplittable) {
-  Subarray subarray;
-  create_subarray(array_->array_, ranges, subarray_layout, &subarray);
+  Subarray coresubarray;
+  create_subarray(array_->array_, ranges, subarray_layout, &coresubarray);
 
   int32_t rc;
 
-  tiledb_subarray_t tdb_subarray;
-  tdb_subarray.subarray_ = &subarray;
+  tiledb_subarray_t* tdb_subarray;
+  create_subarray(
+      ctx_, array_->array_, ranges, subarray_layout, &tdb_subarray);
+  check_subarray_equiv<T>(coresubarray, *tdb_subarray->subarray_);
+
   tiledb_subarray_partitioner_t* subarray_partitioner;
   rc = tiledb_subarray_partitioner_alloc(
       ctx_,
-      &tdb_subarray,
+      tdb_subarray,
       &subarray_partitioner,
       memory_budget,
       memory_budget_var,
@@ -402,16 +417,25 @@ void CAPISubarrayPartitionerSparseFx::test_subarray_partitioner(
       ctx_, attr.c_str(), result_budget, subarray_partitioner);
   REQUIRE(rc == TILEDB_OK);
 
-  tiledb_subarray_t tdb_retrieve_partition_subarray;
-  Subarray retrieve_subarray(subarray);
-  tdb_retrieve_partition_subarray.subarray_ = &retrieve_subarray;
+  tiledb_subarray_t* tdb_retrieve_partition_subarray;
+  create_subarray(
+      ctx_,
+      array_->array_,
+      ranges,
+      subarray_layout,
+      &tdb_retrieve_partition_subarray);
+  check_subarray_equiv<T>(
+      coresubarray, *tdb_retrieve_partition_subarray->subarray_);
 
   check_partitions(
       ctx_,
       subarray_partitioner,
       partitions,
       unsplittable,
-      &tdb_retrieve_partition_subarray);
+      tdb_retrieve_partition_subarray);
+
+  tiledb_subarray_free(&tdb_retrieve_partition_subarray);
+  tiledb_subarray_free(&tdb_subarray);
 
   tiledb_subarray_partitioner_free(&subarray_partitioner);
 }
@@ -424,26 +448,25 @@ void CAPISubarrayPartitionerSparseFx::test_subarray_partitioner(
     uint64_t budget,
     uint64_t budget_var,
     bool unsplittable) {
-  Subarray subarray;
-  create_subarray(array_->array_, ranges, subarray_layout, &subarray);
+  Subarray coresubarray;
+  create_subarray(array_->array_, ranges, subarray_layout, &coresubarray);
 
   int32_t rc;
 
-  tiledb_subarray_t tdb_subarray;
-  tdb_subarray.subarray_ = &subarray;
+  tiledb_subarray_t* tdb_subarray;
+  create_subarray(
+      ctx_, array_->array_, ranges, subarray_layout, &tdb_subarray);
+  check_subarray_equiv<T>(coresubarray, *tdb_subarray->subarray_);
+
   tiledb_subarray_partitioner_t* subarray_partitioner;
   rc = tiledb_subarray_partitioner_alloc(
       ctx_,
-      &tdb_subarray,
+      tdb_subarray,
       &subarray_partitioner,
       memory_budget_,
       memory_budget_var_,
       0);
   REQUIRE(rc == TILEDB_OK);
-
-  tiledb_subarray_t tdb_retrieve_partition_subarray;
-  Subarray retrieve_subarray(subarray);
-  tdb_retrieve_partition_subarray.subarray_ = &retrieve_subarray;
 
   // Note: this is necessary, otherwise the subarray partitioner does
   // not check if the memory budget is exceeded for attributes whose
@@ -462,12 +485,27 @@ void CAPISubarrayPartitionerSparseFx::test_subarray_partitioner(
       ctx_, budget, budget_var, 0, subarray_partitioner);
   REQUIRE(rc == TILEDB_OK);
 
+  tiledb_subarray_t* tdb_retrieve_partition_subarray;
+  create_subarray(
+      ctx_,
+      array_->array_,
+      ranges,
+      subarray_layout,
+      &tdb_retrieve_partition_subarray);
+  check_subarray_equiv<T>(
+      coresubarray, *tdb_retrieve_partition_subarray->subarray_);
+
   check_partitions(
       ctx_,
       subarray_partitioner,
       partitions,
       unsplittable,
-      &tdb_retrieve_partition_subarray);
+      tdb_retrieve_partition_subarray);
+
+  tiledb_subarray_free(&tdb_retrieve_partition_subarray);
+  tiledb_subarray_free(&tdb_subarray);
+
+  tiledb_subarray_partitioner_free(&subarray_partitioner);
 }
 
 /* ********************************* */
