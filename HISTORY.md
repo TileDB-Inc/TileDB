@@ -22,6 +22,10 @@
 
 # TileDB v2.2.5 Release Notes
 
+## New features
+
+* Config option vfs.s3.sse for S3 server-side encryption support [#2130](https://github.com/TileDB-Inc/TileDB/pull/2130)
+
 ## Improvements
 
 * Cache non_empty_domain for REST arrays like all other arrays [#2105](https://github.com/TileDB-Inc/TileDB/pull/2105)
