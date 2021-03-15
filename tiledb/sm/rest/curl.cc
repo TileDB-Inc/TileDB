@@ -35,7 +35,7 @@
 #include "tiledb/sm/global_state/global_state.h"
 #include "tiledb/sm/misc/uri.h"
 #include "tiledb/sm/misc/utils.h"
-#include "tiledb/sm/stats/stats.h"
+#include "tiledb/sm/stats/global_stats.h"
 
 #include <cstring>
 #include <iostream>
@@ -542,9 +542,9 @@ Status Curl::make_curl_request_common(
           retry_delay,
           i);
       // Increment counter for number of retries
-      STATS_ADD_COUNTER(stats::Stats::CounterType::REST_HTTP_RETRIES, 1);
+      STATS_ADD_COUNTER(stats::GlobalStats::CounterType::REST_HTTP_RETRIES, 1);
       STATS_ADD_COUNTER(
-          stats::Stats::CounterType::REST_HTTP_RETRY_TIME, retry_delay)
+          stats::GlobalStats::CounterType::REST_HTTP_RETRY_TIME, retry_delay)
       // Sleep for retry delay
       std::this_thread::sleep_for(std::chrono::milliseconds(retry_delay));
       // Increment retry delay, cast to uint64_t and we can ignore any rounding

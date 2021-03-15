@@ -231,6 +231,9 @@ std::string Status::code_to_string() const {
     case StatusCode::FragmentInfoError:
       type = "[TileDB::FragmentInfo] Error";
       break;
+    case StatusCode::DenseTilerError:
+      type = "[TileDB::DenseTiler] Error";
+      break;
     default:
       type = "[TileDB::?] Error:";
   }

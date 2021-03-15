@@ -144,6 +144,7 @@ set(TILEDB_TEST_SOURCES
   src/unit-compression-rle.cc
   src/unit-crypto.cc
   src/unit-ctx.cc
+  src/unit-DenseTiler.cc
   src/unit-dimension.cc
   src/unit-empty-var-length.cc
   src/unit-filter-buffer.cc

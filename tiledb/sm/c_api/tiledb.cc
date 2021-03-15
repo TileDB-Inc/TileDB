@@ -61,7 +61,7 @@
 #include "tiledb/sm/serialization/array_schema.h"
 #include "tiledb/sm/serialization/config.h"
 #include "tiledb/sm/serialization/query.h"
-#include "tiledb/sm/stats/stats.h"
+#include "tiledb/sm/stats/global_stats.h"
 #include "tiledb/sm/storage_manager/context.h"
 #include "tiledb/sm/subarray/subarray.h"
 #include "tiledb/sm/subarray/subarray_partitioner.h"

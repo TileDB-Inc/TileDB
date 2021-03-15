@@ -42,7 +42,7 @@
 #include "tiledb/sm/filter/filter_storage.h"
 #include "tiledb/sm/filter/noop_filter.h"
 #include "tiledb/sm/misc/parallel_functions.h"
-#include "tiledb/sm/stats/stats.h"
+#include "tiledb/sm/stats/global_stats.h"
 #include "tiledb/sm/tile/tile.h"
 
 using namespace tiledb::common;
@@ -405,16 +405,14 @@ Status FilterPipeline::run_forward(
   current_tile_ = tile;
 
   STATS_ADD_COUNTER(
-      stats::Stats::CounterType::WRITE_FILTERED_BYTE_NUM, tile->size());
+      stats::GlobalStats::CounterType::WRITE_FILTERED_BYTE_NUM, tile->size());
 
   // Run the filters over all the chunks and store the result in
   // 'filtered_buffer_chunks'.
-  const Status st = filter_chunks_forward(
-      *tile->chunked_buffer(), tile->filtered_buffer(), compute_tp);
-  if (!st.ok()) {
-    tile->filtered_buffer()->clear();
-    return st;
-  }
+  RETURN_NOT_OK_ELSE(
+      filter_chunks_forward(
+          *tile->chunked_buffer(), tile->filtered_buffer(), compute_tp),
+      tile->filtered_buffer()->clear());
 
   // The contents of 'chunked_buffer' have been filtered and stored
   // in 'filtered_buffer'. We can safely free 'chunked_buffer'.
@@ -695,7 +693,8 @@ Status FilterPipeline::run_reverse_internal(
   assert(filtered_buffer->offset() == filtered_buffer->size());
 
   STATS_ADD_COUNTER(
-      stats::Stats::CounterType::READ_UNFILTERED_BYTE_NUM, total_orig_size);
+      stats::GlobalStats::CounterType::READ_UNFILTERED_BYTE_NUM,
+      total_orig_size);
 
   const Status st = filter_chunks_reverse(
       filtered_chunks,

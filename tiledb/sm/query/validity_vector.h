@@ -56,6 +56,12 @@ class ValidityVector {
       , buffer_size_(nullptr) {
   }
 
+  /** Constructor. */
+  ValidityVector(uint8_t* buffer, uint64_t* buffer_size)
+      : buffer_(buffer)
+      , buffer_size_(buffer_size) {
+  }
+
   /** Copy constructor. */
   ValidityVector(const ValidityVector& rhs)
       : buffer_(rhs.buffer_)

@@ -209,7 +209,8 @@ Status Tile::init_unfiltered(
     Datatype type,
     uint64_t tile_size,
     uint64_t cell_size,
-    unsigned int dim_num) {
+    unsigned int dim_num,
+    bool fill_with_zeros) {
   cell_size_ = cell_size;
   dim_num_ = dim_num;
   type_ = type;
@@ -226,6 +227,12 @@ Status Tile::init_unfiltered(
 
   RETURN_NOT_OK(chunked_buffer_->init_fixed_size(
       ChunkedBuffer::BufferAddressing::CONTIGUOUS, tile_size, chunk_size));
+
+  if (fill_with_zeros && tile_size > 0) {
+    RETURN_NOT_OK(chunked_buffer_->set_contiguous(
+        tdb_calloc(tile_size, sizeof(uint8_t))));
+    RETURN_NOT_OK(chunked_buffer_->set_size(tile_size));
+  }
 
   return Status::Ok();
 }
@@ -399,6 +406,15 @@ Status Tile::write(const void* data, uint64_t nbytes) {
   assert(!filtered());
   RETURN_NOT_OK(chunked_buffer_->write(data, nbytes, offset_));
   offset_ += nbytes;
+
+  return Status::Ok();
+}
+
+Status Tile::write(const void* data, uint64_t offset, uint64_t nbytes) {
+  assert(!filtered());
+  auto buff = (uint8_t*)chunked_buffer_->get_contiguous_unsafe();
+  assert(buff != nullptr);
+  std::memcpy(buff + offset, data, nbytes);
 
   return Status::Ok();
 }
