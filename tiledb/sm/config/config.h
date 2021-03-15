@@ -332,6 +332,12 @@ class Config {
   /** Connect scale factor for exponential backoff. */
   static const std::string VFS_S3_CONNECT_SCALE_FACTOR;
 
+  /** S3 server-side encryption algorithm. */
+  static const std::string VFS_S3_SSE;
+
+  /** The S3 KMS key id for KMS server-side-encryption. */
+  static const std::string VFS_S3_SSE_KMS_KEY_ID;
+
   /** Request timeout in milliseconds. */
   static const std::string VFS_S3_REQUEST_TIMEOUT_MS;
 
