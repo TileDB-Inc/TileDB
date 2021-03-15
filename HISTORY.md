@@ -8,6 +8,7 @@
 ## Breaking behavior
 
 ## New features
+* Config option vfs.s3.sse for S3 server-side encryption support [#2130](https://github.com/TileDB-Inc/TileDB/pull/2130)
 * Name attribute/dimension files by index. This is fragment-specific and updates the format version to version 9. [#2107](https://github.com/TileDB-Inc/TileDB/pull/2107)
 * Smoke Test, remove nullable structs from global namespace. [#2078](https://github.com/TileDB-Inc/TileDB/pull/2078)
 
