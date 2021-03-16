@@ -230,14 +230,10 @@ class FragmentMetadata {
 
   /**
    * Loads the basic metadata from storage or `f_buff` for later
-   * versions if it is not `nullptr`. `meta_version` is the
-   * version of the consolidated metadata file.
+   * versions if it is not `nullptr`.
    */
   Status load(
-      const EncryptionKey& encryption_key,
-      Buffer* f_buff,
-      uint64_t offset,
-      uint32_t meta_version);
+      const EncryptionKey& encryption_key, Buffer* f_buff, uint64_t offset);
 
   /** Stores all the metadata to storage. */
   Status store(const EncryptionKey& encryption_key);
@@ -761,7 +757,7 @@ class FragmentMetadata {
       const EncryptionKey& encryption_key, unsigned idx);
 
   /** Loads the generic tile offsets from the buffer. */
-  Status load_generic_tile_offsets(ConstBuffer* buff, uint32_t version);
+  Status load_generic_tile_offsets(ConstBuffer* buff);
 
   /**
    * Loads the generic tile offsets from the buffer. Applicable to
@@ -790,7 +786,7 @@ class FragmentMetadata {
   Status load_bounding_coords(ConstBuffer* buff);
 
   /** Loads the sizes of each attribute or dimension file from the buffer. */
-  Status load_file_sizes(ConstBuffer* buff, uint32_t version);
+  Status load_file_sizes(ConstBuffer* buff);
 
   /**
    * Loads the sizes of each attribute or dimension file from the buffer.
@@ -808,7 +804,7 @@ class FragmentMetadata {
    * Loads the sizes of each variable attribute or dimension file from the
    * buffer.
    */
-  Status load_file_var_sizes(ConstBuffer* buff, uint32_t version);
+  Status load_file_var_sizes(ConstBuffer* buff);
 
   /**
    * Loads the sizes of each variable attribute or dimension file from the
@@ -823,7 +819,7 @@ class FragmentMetadata {
   Status load_file_var_sizes_v5_or_higher(ConstBuffer* buff);
 
   /** Loads the sizes of each attribute validity file from the buffer. */
-  Status load_file_validity_sizes(ConstBuffer* buff, uint32_t version);
+  Status load_file_validity_sizes(ConstBuffer* buff);
 
   /**
    * Loads the cell number of the last tile from the fragment metadata buffer.
@@ -842,7 +838,7 @@ class FragmentMetadata {
   Status load_mbrs(ConstBuffer* buff);
 
   /** Loads the non-empty domain from the input buffer. */
-  Status load_non_empty_domain(ConstBuffer* buff, uint32_t version);
+  Status load_non_empty_domain(ConstBuffer* buff);
 
   /**
    * Loads the non-empty domain from the input buffer,
@@ -918,10 +914,7 @@ class FragmentMetadata {
    * it is not `nullptr` (version 3 or after).
    */
   Status load_v3_or_higher(
-      const EncryptionKey& encryption_key,
-      Buffer* f_buff,
-      uint64_t offset,
-      uint32_t meta_version);
+      const EncryptionKey& encryption_key, Buffer* f_buff, uint64_t offset);
 
   /**
    * Loads the footer of the metadata file, which contains
@@ -930,10 +923,7 @@ class FragmentMetadata {
    * will be loaded from `f_buff`.
    */
   Status load_footer(
-      const EncryptionKey& encryption_key,
-      Buffer* f_buff,
-      uint64_t offset,
-      uint32_t meta_version);
+      const EncryptionKey& encryption_key, Buffer* f_buff, uint64_t offset);
 
   /** Writes the sizes of each attribute file to the buffer. */
   Status write_file_sizes(Buffer* buff) const;
