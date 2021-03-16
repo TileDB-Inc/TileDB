@@ -4973,8 +4973,6 @@ int32_t tiledb_subarray_partitioner_set_custom_layout(
           ctx, partitioner->partitioner_->set_custom_layout(ordered_dim_names, ordered_dim_names_length)))
     return TILEDB_ERR;
   return TILEDB_OK;
-
-  return TILEDB_ERR;
 }
 
 // Computes all partitions/subarrays, which are stored internally
@@ -5077,16 +5075,16 @@ int32_t tiledb_subarray_partitioner_get_partition(
     tiledb_ctx_t* ctx,
     tiledb_subarray_partitioner_t* partitioner,
     uint64_t part_id,
-    tiledb_subarray_t* subarray) {
+    tiledb_subarray_t* retrieved_subarray) {
   // Sanity check
   if (sanity_check(ctx) == TILEDB_ERR ||
       sanity_check(ctx, partitioner) == TILEDB_ERR ||
-      sanity_check(ctx, subarray) == TILEDB_ERR
+      sanity_check(ctx, retrieved_subarray) == TILEDB_ERR
       )
     return TILEDB_ERR;
 
   if (SAVE_ERROR_CATCH(
-    ctx, partitioner->partitioner_->subarray_from_partition_series(part_id, &subarray->subarray_)))
+    ctx, partitioner->partitioner_->subarray_from_partition_series(part_id, &retrieved_subarray->subarray_)))
     return TILEDB_ERR;
   return TILEDB_OK;
 }

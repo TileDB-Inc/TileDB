@@ -78,6 +78,10 @@ class Deleter {
     tiledb_subarray_free(&p);
   }
 
+  void operator()(tiledb_subarray_partitioner_t* p) const {
+    tiledb_subarray_partitioner_free(&p);
+  }
+
   void operator()(tiledb_query_t* p) const {
     tiledb_query_free(&p);
   }

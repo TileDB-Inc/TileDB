@@ -132,7 +132,13 @@ void check_partitions(
     bool last_unsplittable,
     tiledb_subarray_t* retrieve_partition_subarray);
 
-  /**
+template <class T> void check_partitions(
+    const tiledb::Context* ctx,
+    tiledb::SubarrayPartitioner* partitioner,
+    const std::vector<SubarrayRanges<T>>& partitions,
+    bool last_unsplittable,
+    tiledb::Subarray* retrieve_partition_subarray);
+/**
  * Checks if the input subarray has the input subarray ranges.
  *
  * @tparam T The subarray domain datatype
@@ -142,6 +148,10 @@ void check_partitions(
 template <class T>
 void check_subarray(
     tiledb::sm::Subarray& subarray, const SubarrayRanges<T>& ranges);
+
+template <class T>
+void check_subarray(
+    tiledb::Subarray& subarray, const SubarrayRanges<T>& ranges);
 
 template <class T>
 void check_subarray_equiv(
@@ -324,7 +334,26 @@ void create_subarray(
     tiledb_subarray_t** subarray,
     bool coalesce_ranges = false);
 
-  /**
+/**
+ * Creates a c++ api subarray for the input array.
+ *
+ * @tparam T The datatype of the subarray domain.
+ * @param array The input array.
+ * @param ranges The ranges of the subarray to be created.
+ * @param layout The layout of the subarray.
+ * @param subarray The subarray to be set.
+ * @param coalesce_ranges Whether the subarray should coalesce ranges.
+ */
+template <class T>
+void create_subarray(
+    const tiledb::Context* ctx,
+    const tiledb::Array* array,
+    const SubarrayRanges<T>& ranges,
+    tiledb::sm::Layout layout,
+    tiledb::Subarray** subarray,
+    bool coalesce_ranges = false);
+
+/**
  * Helper method that creates a TileDB context and a VFS object.
  *
  * @param s3_supported Indicates whether S3 is supported or not.

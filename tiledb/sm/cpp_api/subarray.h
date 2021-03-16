@@ -97,7 +97,18 @@ class Subarray {
     subarray_ = std::shared_ptr<tiledb_subarray_t>(capi_subarray, deleter_);
   }
 
-  Subarray(const tiledb::Query& query);
+  Subarray(const tiledb::Query& query); //defined in cppapi Query.h
+
+  /** Set the layout for the subarray. */
+  void set_layout(tiledb_layout_t layout) {
+    ctx_.get().handle_error(tiledb_subarray_set_layout(ctx_.get().ptr().get(), subarray_.get(), layout));
+  }
+
+  /** Set the layout for the subarray. */
+  void set_coalesce_ranges(bool coalesce_ranges) {
+    ctx_.get().handle_error(tiledb_subarray_set_coalesce_ranges(
+        ctx_.get().ptr().get(), subarray_.get(), coalesce_ranges));
+  }
 
   /**
    * Adds a 1D range along a subarray dimension index, in the form
@@ -262,7 +273,7 @@ class Subarray {
    *
    * @code{.cpp}
    * unsigned dim_idx = 0;
-   * uint64_t range_num = query.range_num(dim_idx);
+   * uint64_t range_num = subarray.range_num(dim_idx);
    * @endcode
    *
    * @param dim_idx The dimension index.
@@ -283,7 +294,7 @@ class Subarray {
    *
    * @code{.cpp}
    * unsigned dim_name = "rows";
-   * uint64_t range_num = query.range_num(dim_name);
+   * uint64_t range_num = subarray.range_num(dim_name);
    * @endcode
    *
    * @param dim_name The dimension name.
@@ -307,7 +318,7 @@ class Subarray {
    * @code{.cpp}
    * unsigned dim_idx = 0;
    * unsigned range_idx = 0;
-   * auto range = query.range<int32_t>(dim_idx, range_idx);
+   * auto range = subarray.range<int32_t>(dim_idx, range_idx);
    * @endcode
    *
    * @tparam T The dimension datatype.
@@ -344,7 +355,7 @@ class Subarray {
    * @code{.cpp}
    * unsigned dim_name = "rows";
    * unsigned range_idx = 0;
-   * auto range = query.range<int32_t>(dim_name, range_idx);
+   * auto range = subarray.range<int32_t>(dim_name, range_idx);
    * @endcode
    *
    * @tparam T The dimension datatype.
@@ -380,7 +391,7 @@ class Subarray {
    * @code{.cpp}
    * unsigned dim_idx = 0;
    * unsigned range_idx = 0;
-   * std::array<std::string, 2> range = query.range(dim_idx, range_idx);
+   * std::array<std::string, 2> range = subarray.range(dim_idx, range_idx);
    * @endcode
    *
    * @param dim_idx The dimension index.
@@ -424,7 +435,7 @@ class Subarray {
    * @code{.cpp}
    * unsigned dim_name = "rows";
    * unsigned range_idx = 0;
-   * std::array<std::string, 2> range = query.range(dim_name, range_idx);
+   * std::array<std::string, 2> range = subarray.range(dim_name, range_idx);
    * @endcode
    *
    * @param dim_name The dimension name.
@@ -466,7 +477,7 @@ class Subarray {
    * **Example:**
    *
    * @code{.cpp}
-   * uint64_t est_size = query.est_result_size("attr1");
+   * uint64_t est_size = subarray.est_result_size("attr1");
    * @endcode
    *
    * @param attr_name The attribute name.
@@ -487,7 +498,7 @@ class Subarray {
    *
    * @code{.cpp}
    * std::array<uint64_t, 2> est_size =
-   *     query.est_result_size_var("attr1");
+   *     subarray.est_result_size_var("attr1");
    * @endcode
    *
    * @param attr_name The attribute name.
@@ -508,6 +519,15 @@ class Subarray {
     return {size_off, size_val};
   }
 
+  /** Returns the C TileDB subarray object. */
+  std::shared_ptr<tiledb_subarray_t> ptr() const {
+    return subarray_;
+  }
+
+  const Array& array() const {
+    return array_.get();
+  }
+
  private:
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
@@ -519,6 +539,7 @@ class Subarray {
   /** The TileDB array. */
   std::reference_wrapper<const Array> array_;
 
+  /** The subarray entity itself.  */
   std::shared_ptr<tiledb_subarray_t> subarray_;
 
   /** Deleter wrapper. */
