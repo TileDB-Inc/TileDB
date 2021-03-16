@@ -396,7 +396,16 @@ TEST_CASE(
           case TILEDB_DATETIME_NS:
           case TILEDB_DATETIME_PS:
           case TILEDB_DATETIME_FS:
-          case TILEDB_DATETIME_AS: {
+          case TILEDB_DATETIME_AS:
+          case TILEDB_TIME_HR:
+          case TILEDB_TIME_MIN:
+          case TILEDB_TIME_SEC:
+          case TILEDB_TIME_MS:
+          case TILEDB_TIME_US:
+          case TILEDB_TIME_NS:
+          case TILEDB_TIME_PS:
+          case TILEDB_TIME_FS:
+          case TILEDB_TIME_AS: {
             set_buffer_wrapper<int64_t>(
                 &query,
                 attribute_name,
@@ -511,6 +520,15 @@ TEST_CASE(
         case TILEDB_DATETIME_PS:
         case TILEDB_DATETIME_FS:
         case TILEDB_DATETIME_AS:
+        case TILEDB_TIME_HR:
+        case TILEDB_TIME_MIN:
+        case TILEDB_TIME_SEC:
+        case TILEDB_TIME_MS:
+        case TILEDB_TIME_US:
+        case TILEDB_TIME_NS:
+        case TILEDB_TIME_PS:
+        case TILEDB_TIME_FS:
+        case TILEDB_TIME_AS:
           set_query_coords<int64_t>(
               domain, &query, &coordinates, &expected_coordinates);
           break;
@@ -586,7 +604,16 @@ TEST_CASE(
           case TILEDB_DATETIME_NS:
           case TILEDB_DATETIME_PS:
           case TILEDB_DATETIME_FS:
-          case TILEDB_DATETIME_AS: {
+          case TILEDB_DATETIME_AS:
+          case TILEDB_TIME_HR:
+          case TILEDB_TIME_MIN:
+          case TILEDB_TIME_SEC:
+          case TILEDB_TIME_MS:
+          case TILEDB_TIME_US:
+          case TILEDB_TIME_NS:
+          case TILEDB_TIME_PS:
+          case TILEDB_TIME_FS:
+          case TILEDB_TIME_AS: {
             REQUIRE(static_cast<int64_t*>(std::get<1>(buffer))[0] == 1);
             break;
           }
@@ -842,7 +869,16 @@ TEST_CASE(
           case TILEDB_DATETIME_NS:
           case TILEDB_DATETIME_PS:
           case TILEDB_DATETIME_FS:
-          case TILEDB_DATETIME_AS: {
+          case TILEDB_DATETIME_AS:
+          case TILEDB_TIME_HR:
+          case TILEDB_TIME_MIN:
+          case TILEDB_TIME_SEC:
+          case TILEDB_TIME_MS:
+          case TILEDB_TIME_US:
+          case TILEDB_TIME_NS:
+          case TILEDB_TIME_PS:
+          case TILEDB_TIME_FS:
+          case TILEDB_TIME_AS: {
             set_buffer_wrapper<int64_t>(
                 &query,
                 attribute_name,
@@ -967,6 +1003,15 @@ TEST_CASE(
           case TILEDB_DATETIME_PS:
           case TILEDB_DATETIME_FS:
           case TILEDB_DATETIME_AS:
+          case TILEDB_TIME_HR:
+          case TILEDB_TIME_MIN:
+          case TILEDB_TIME_SEC:
+          case TILEDB_TIME_MS:
+          case TILEDB_TIME_US:
+          case TILEDB_TIME_NS:
+          case TILEDB_TIME_PS:
+          case TILEDB_TIME_FS:
+          case TILEDB_TIME_AS:
             set_query_dimension_buffer<int64_t>(
                 domain, i, &query, &buffer, &expected_results);
             break;
@@ -1068,7 +1113,16 @@ TEST_CASE(
           case TILEDB_DATETIME_NS:
           case TILEDB_DATETIME_PS:
           case TILEDB_DATETIME_FS:
-          case TILEDB_DATETIME_AS: {
+          case TILEDB_DATETIME_AS:
+          case TILEDB_TIME_HR:
+          case TILEDB_TIME_MIN:
+          case TILEDB_TIME_SEC:
+          case TILEDB_TIME_MS:
+          case TILEDB_TIME_US:
+          case TILEDB_TIME_NS:
+          case TILEDB_TIME_PS:
+          case TILEDB_TIME_FS:
+          case TILEDB_TIME_AS: {
             REQUIRE(static_cast<int64_t*>(std::get<1>(buffer))[0] == 1);
             break;
           }
