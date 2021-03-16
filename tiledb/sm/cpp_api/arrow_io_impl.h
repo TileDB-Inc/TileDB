@@ -287,7 +287,6 @@ TypeInfo arrow_type_to_tiledb(ArrowSchema* arw_schema) {
   // technically 'tsn:' is timezone-specific, which we don't support
   // however, the blank (no suffix) base is interconvertible w/ np.datetime64
   else if (fmt == "tsn:")
-    //TODO: CHECK THAT IN THE END
     return {TILEDB_DATETIME_NS, 8, 1, large};
   else if (fmt == "z" || fmt == "Z")
     return {TILEDB_CHAR, 1, TILEDB_VAR_NUM, fmt == "Z"};

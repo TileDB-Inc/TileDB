@@ -334,10 +334,10 @@ inline bool datatype_is_datetime(Datatype type) {
 inline bool datatype_is_time(Datatype type) {
   return (
       type == Datatype::TIME_HR || type == Datatype::TIME_MIN ||
-          type == Datatype::TIME_SEC || type == Datatype::TIME_MS ||
-          type == Datatype::TIME_US || type == Datatype::TIME_NS ||
-          type == Datatype::TIME_PS || type == Datatype::TIME_FS ||
-          type == Datatype::TIME_AS);
+      type == Datatype::TIME_SEC || type == Datatype::TIME_MS ||
+      type == Datatype::TIME_US || type == Datatype::TIME_NS ||
+      type == Datatype::TIME_PS || type == Datatype::TIME_FS ||
+      type == Datatype::TIME_AS);
 }
 
 }  // namespace sm

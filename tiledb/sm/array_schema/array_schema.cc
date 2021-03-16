@@ -637,7 +637,8 @@ Status ArraySchema::set_domain(Domain* domain) {
                                    "dimensions must have the same datatype"));
 
     auto type = domain->dimension(0)->type();
-    if (!datatype_is_integer(type) && !datatype_is_datetime(type) && !datatype_is_time(type)) {
+    if (!datatype_is_integer(type) && !datatype_is_datetime(type) &&
+        !datatype_is_time(type)) {
       return LOG_STATUS(Status::ArraySchemaError(
           std::string("Cannot set domain; Dense arrays "
                       "do not support dimension datatype '") +
