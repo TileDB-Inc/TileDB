@@ -103,6 +103,15 @@ inline uint64_t datatype_size(Datatype type) {
     case Datatype::DATETIME_PS:
     case Datatype::DATETIME_FS:
     case Datatype::DATETIME_AS:
+    case Datatype::TIME_HR:
+    case Datatype::TIME_MIN:
+    case Datatype::TIME_SEC:
+    case Datatype::TIME_MS:
+    case Datatype::TIME_US:
+    case Datatype::TIME_NS:
+    case Datatype::TIME_PS:
+    case Datatype::TIME_FS:
+    case Datatype::TIME_AS:
       return sizeof(int64_t);
   }
 
@@ -175,6 +184,24 @@ inline const std::string& datatype_str(Datatype type) {
       return constants::datetime_fs_str;
     case Datatype::DATETIME_AS:
       return constants::datetime_as_str;
+    case Datatype::TIME_HR:
+      return constants::time_hr_str;
+    case Datatype::TIME_MIN:
+      return constants::time_min_str;
+    case Datatype::TIME_SEC:
+      return constants::time_sec_str;
+    case Datatype::TIME_MS:
+      return constants::time_ms_str;
+    case Datatype::TIME_US:
+      return constants::time_us_str;
+    case Datatype::TIME_NS:
+      return constants::time_ns_str;
+    case Datatype::TIME_PS:
+      return constants::time_ps_str;
+    case Datatype::TIME_FS:
+      return constants::time_fs_str;
+    case Datatype::TIME_AS:
+      return constants::time_as_str;
     default:
       return constants::empty_str;
   }
@@ -245,6 +272,24 @@ inline Status datatype_enum(
     *datatype = Datatype::DATETIME_FS;
   else if (datatype_str == constants::datetime_as_str)
     *datatype = Datatype::DATETIME_AS;
+  else if (datatype_str == constants::time_hr_str)
+    *datatype = Datatype::TIME_HR;
+  else if (datatype_str == constants::time_min_str)
+    *datatype = Datatype::TIME_MIN;
+  else if (datatype_str == constants::time_sec_str)
+    *datatype = Datatype::TIME_SEC;
+  else if (datatype_str == constants::time_ms_str)
+    *datatype = Datatype::TIME_MS;
+  else if (datatype_str == constants::time_us_str)
+    *datatype = Datatype::TIME_US;
+  else if (datatype_str == constants::time_ns_str)
+    *datatype = Datatype::TIME_NS;
+  else if (datatype_str == constants::time_ps_str)
+    *datatype = Datatype::TIME_PS;
+  else if (datatype_str == constants::time_fs_str)
+    *datatype = Datatype::TIME_FS;
+  else if (datatype_str == constants::time_as_str)
+    *datatype = Datatype::TIME_AS;
   else {
     return Status::Error("Invalid Datatype " + datatype_str);
   }
@@ -283,6 +328,16 @@ inline bool datatype_is_datetime(Datatype type) {
       type == Datatype::DATETIME_US || type == Datatype::DATETIME_NS ||
       type == Datatype::DATETIME_PS || type == Datatype::DATETIME_FS ||
       type == Datatype::DATETIME_AS);
+}
+
+/** Returns true if the input datatype is a time type. */
+inline bool datatype_is_time(Datatype type) {
+  return (
+      type == Datatype::TIME_HR || type == Datatype::TIME_MIN ||
+          type == Datatype::TIME_SEC || type == Datatype::TIME_MS ||
+          type == Datatype::TIME_US || type == Datatype::TIME_NS ||
+          type == Datatype::TIME_PS || type == Datatype::TIME_FS ||
+          type == Datatype::TIME_AS);
 }
 
 }  // namespace sm

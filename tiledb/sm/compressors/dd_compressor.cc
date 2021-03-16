@@ -88,6 +88,15 @@ Status DoubleDelta::compress(
     case Datatype::DATETIME_PS:
     case Datatype::DATETIME_FS:
     case Datatype::DATETIME_AS:
+    case Datatype::TIME_HR:
+    case Datatype::TIME_MIN:
+    case Datatype::TIME_SEC:
+    case Datatype::TIME_MS:
+    case Datatype::TIME_US:
+    case Datatype::TIME_NS:
+    case Datatype::TIME_PS:
+    case Datatype::TIME_FS:
+    case Datatype::TIME_AS:
       return DoubleDelta::compress<int64_t>(input_buffer, output_buffer);
     case Datatype::STRING_ASCII:
     case Datatype::STRING_UTF8:
@@ -145,6 +154,15 @@ Status DoubleDelta::decompress(
     case Datatype::DATETIME_PS:
     case Datatype::DATETIME_FS:
     case Datatype::DATETIME_AS:
+    case Datatype::TIME_HR:
+    case Datatype::TIME_MIN:
+    case Datatype::TIME_SEC:
+    case Datatype::TIME_MS:
+    case Datatype::TIME_US:
+    case Datatype::TIME_NS:
+    case Datatype::TIME_PS:
+    case Datatype::TIME_FS:
+    case Datatype::TIME_AS:
       return DoubleDelta::decompress<int64_t>(input_buffer, output_buffer);
     case Datatype::STRING_ASCII:
     case Datatype::STRING_UTF8:

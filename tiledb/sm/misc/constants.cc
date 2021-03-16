@@ -399,6 +399,33 @@ const std::string datetime_fs_str = "DATETIME_FS";
 /** The string representation for type DATETIME_AS. */
 const std::string datetime_as_str = "DATETIME_AS";
 
+/** The string representation for type TIME_HR. */
+const std::string time_hr_str = "TIME_HR";
+
+/** The string representation for type TIME_MIN. */
+const std::string time_min_str = "TIME_MIN";
+
+/** The string representation for type TIME_SEC. */
+const std::string time_sec_str = "TIME_SEC";
+
+/** The string representation for type TIME_MS. */
+const std::string time_ms_str = "TIME_MS";
+
+/** The string representation for type TIME_US. */
+const std::string time_us_str = "TIME_US";
+
+/** The string representation for type TIME_NS. */
+const std::string time_ns_str = "TIME_NS";
+
+/** The string representation for type TIME_PS. */
+const std::string time_ps_str = "TIME_PS";
+
+/** The string representation for type TIME_FS. */
+const std::string time_fs_str = "TIME_FS";
+
+/** The string representation for type TIME_AS. */
+const std::string time_as_str = "TIME_AS";
+
 /** The string representation for the dense array type. */
 const std::string dense_str = "dense";
 
@@ -562,6 +589,15 @@ const void* fill_value(Datatype type) {
     case Datatype::DATETIME_PS:
     case Datatype::DATETIME_FS:
     case Datatype::DATETIME_AS:
+    case Datatype::TIME_HR:
+    case Datatype::TIME_MIN:
+    case Datatype::TIME_SEC:
+    case Datatype::TIME_MS:
+    case Datatype::TIME_US:
+    case Datatype::TIME_NS:
+    case Datatype::TIME_PS:
+    case Datatype::TIME_FS:
+    case Datatype::TIME_AS:
       return &constants::empty_int64;
   }
 

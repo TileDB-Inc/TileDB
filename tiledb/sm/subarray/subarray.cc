@@ -1440,6 +1440,15 @@ void Subarray::set_add_or_coalesce_range_func() {
       case Datatype::DATETIME_PS:
       case Datatype::DATETIME_FS:
       case Datatype::DATETIME_AS:
+      case Datatype::TIME_HR:
+      case Datatype::TIME_MIN:
+      case Datatype::TIME_SEC:
+      case Datatype::TIME_MS:
+      case Datatype::TIME_US:
+      case Datatype::TIME_NS:
+      case Datatype::TIME_PS:
+      case Datatype::TIME_FS:
+      case Datatype::TIME_AS:
         add_or_coalesce_range_func_[dim_idx] = std::bind(
             &Subarray::add_or_coalesce_range<int64_t>,
             std::placeholders::_1,
@@ -2079,6 +2088,15 @@ TileOverlap Subarray::compute_tile_overlap(
     case Datatype::DATETIME_PS:
     case Datatype::DATETIME_FS:
     case Datatype::DATETIME_AS:
+    case Datatype::TIME_HR:
+    case Datatype::TIME_MIN:
+    case Datatype::TIME_SEC:
+    case Datatype::TIME_MS:
+    case Datatype::TIME_US:
+    case Datatype::TIME_NS:
+    case Datatype::TIME_PS:
+    case Datatype::TIME_FS:
+    case Datatype::TIME_AS:
       return compute_tile_overlap<int64_t>(range_idx, fid);
     default:
       assert(false);

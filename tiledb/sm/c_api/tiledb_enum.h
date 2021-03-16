@@ -119,6 +119,24 @@
     TILEDB_DATATYPE_ENUM(DATETIME_FS) = 29,
     /** Datetime with attosecond resolution */
     TILEDB_DATATYPE_ENUM(DATETIME_AS) = 30,
+    /** Time with hour resolution */
+    TILEDB_DATATYPE_ENUM(TIME_HR) = 31,
+    /** Time with minute resolution */
+    TILEDB_DATATYPE_ENUM(TIME_MIN) = 32,
+    /** Time with second resolution */
+    TILEDB_DATATYPE_ENUM(TIME_SEC) = 33,
+    /** Time with millisecond resolution */
+    TILEDB_DATATYPE_ENUM(TIME_MS) = 34,
+    /** Time with microsecond resolution */
+    TILEDB_DATATYPE_ENUM(TIME_US) = 35,
+    /** Time with nanosecond resolution */
+    TILEDB_DATATYPE_ENUM(TIME_NS) = 36,
+    /** Time with picosecond resolution */
+    TILEDB_DATATYPE_ENUM(TIME_PS) = 37,
+    /** Time with femtosecond resolution */
+    TILEDB_DATATYPE_ENUM(TIME_FS) = 38,
+    /** Time with attosecond resolution */
+    TILEDB_DATATYPE_ENUM(TIME_AS) = 39,
 #endif
 
 #ifdef TILEDB_ARRAY_TYPE_ENUM

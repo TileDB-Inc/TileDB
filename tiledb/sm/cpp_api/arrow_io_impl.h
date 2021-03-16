@@ -211,8 +211,10 @@ ArrowInfo tiledb_buffer_arrow_fmt(BufferInfo bufferinfo, bool use_list = true) {
 
     // make sure this matches below
     case TILEDB_DATETIME_NS:
+    case TILEDB_TIME_NS:
       return ArrowInfo("tsn:");
     case TILEDB_DATETIME_MS:
+    case TILEDB_TIME_MS:
       return ArrowInfo("tdm");
 
     // TODO: these could potentially be rep'd w/ additional
@@ -228,6 +230,12 @@ ArrowInfo tiledb_buffer_arrow_fmt(BufferInfo bufferinfo, bool use_list = true) {
     case TILEDB_DATETIME_PS:
     case TILEDB_DATETIME_FS:
     case TILEDB_DATETIME_AS:
+    case TILEDB_TIME_MIN:
+    case TILEDB_TIME_SEC:
+    case TILEDB_TIME_US:
+    case TILEDB_TIME_PS:
+    case TILEDB_TIME_FS:
+    case TILEDB_TIME_AS:
     case TILEDB_STRING_UTF16:
     case TILEDB_STRING_UTF32:
     case TILEDB_STRING_UCS2:
@@ -279,6 +287,7 @@ TypeInfo arrow_type_to_tiledb(ArrowSchema* arw_schema) {
   // technically 'tsn:' is timezone-specific, which we don't support
   // however, the blank (no suffix) base is interconvertible w/ np.datetime64
   else if (fmt == "tsn:")
+    //TODO: CHECK THAT IN THE END
     return {TILEDB_DATETIME_NS, 8, 1, large};
   else if (fmt == "z" || fmt == "Z")
     return {TILEDB_CHAR, 1, TILEDB_VAR_NUM, fmt == "Z"};
