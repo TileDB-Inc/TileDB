@@ -28,6 +28,7 @@
 ## Deprecations
 
 ## Bug fixes
+* Fixes a potential crash when opening an array with consolidated fragment metadata [#2135](https://github.com/TileDB-Inc/TileDB/pull/2135)
 * Corrected a bug where sparse cells may be incorrectly returned using string dimensions. [#2125](https://github.com/TileDB-Inc/TileDB/pull/2125)
 * Fix segfault in serialized queries when partition is unsplittable [#2120](https://github.com/TileDB-Inc/TileDB/pull/2120)
 * Always use original buffer size in serialized read queries serverside. [#2115](https://github.com/TileDB-Inc/TileDB/pull/2115)
