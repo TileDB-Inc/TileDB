@@ -4743,7 +4743,7 @@ int32_t tiledb_array_consolidate_metadata_with_key(
 /*         SUBARRAY               */
 /* ****************************** */
 
-int32_t tiledb_query_subarray(
+int32_t tiledb_query_get_subarray(
     tiledb_ctx_t* ctx,
     const tiledb_query_t* query,
     tiledb_subarray_t** subarray) {
