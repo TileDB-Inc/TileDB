@@ -5171,6 +5171,66 @@ TILEDB_EXPORT int32_t tiledb_subarray_alloc(
     tiledb_subarray_t** subarray);
 
 /**
+ * Sets the layout of the cells to be written or read.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * tiledb_subarray_set_layout(ctx, subarray, TILEDB_ROW_MAJOR);
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param subarray The TileDB subarray.
+ * @param layout For a write query, this specifies the order of the cells
+ *     provided by the user in the buffers. For a read query, this specifies
+ *     the order of the cells that will be retrieved as results and stored
+ *     in the user buffers. The layout can be one of the following:
+ *    - `TILEDB_COL_MAJOR`:
+ *      This means column-major order with respect to the subarray.
+ *    - `TILEDB_ROW_MAJOR`:
+ *      This means row-major order with respect to the subarray.
+ *    - `TILEDB_GLOBAL_ORDER`:
+ *      This means that cells are stored or retrieved in the array global
+ *      cell order.
+ *    - `TILEDB_UNORDERED`:
+ *      This is applicable only to reads and writes for sparse arrays, or for
+ *      sparse writes to dense arrays. For writes, it specifies that the cells
+ *      are unordered and, hence, TileDB must sort the cells in the global cell
+ *      order prior to writing. For reads, TileDB will return the cells without
+ *      any particular order, which will often lead to better performance.
+ * * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_subarray_set_layout(
+    tiledb_ctx_t* ctx, tiledb_subarray_t* subarray, tiledb_layout_t layout);
+
+
+/**
+ * Set coalesce_ranges property on a TileDB subarray object.
+ * Intended to be used just after tiledb_subarray_alloc() to replace
+ * the initial coalesce_ranges = true 
+ * with coalesce_ranges = false if 
+ * needed.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * tiledb_subarray_t* subarray;
+ * tiledb_subarray_alloc(ctx, array, &subarray);
+ * bool coalesce_ranges = false;
+ * tiledb_subarray_set_coalesce_ranges(ctx, &subarray, coalesce_ranges);
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param subarray The subarray object to be created.
+ * @param coalesce_ranges The true/false value to be set
+ * @return `TILEDB_OK` for success and `TILEDB_OOM` or `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_subarray_set_coalesce_ranges(
+    tiledb_ctx_t* ctx,
+    tiledb_subarray_t* subarray,
+    int coalesce_ranges);
+
+/**
  * Frees a TileDB subarray object.
  *
  * **Example:**
@@ -5186,6 +5246,214 @@ TILEDB_EXPORT int32_t tiledb_subarray_alloc(
  * @param subarray The subarray object to be freed.
  */
 TILEDB_EXPORT void tiledb_subarray_free(tiledb_subarray_t** subarray);
+
+/* ********************************* */
+/*        SUBARRAY PARTITIONER       */
+/* ********************************* */
+
+/**
+ * Allocates a TileDB subarray partitioner object.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * tiledb_subarray_partitioner_t* subarray_partitioner;
+ * tiledb_subarray_alloc(ctx, array, &subarray_partitioner);
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param array An open array object.
+ * @param subarray The subarray_partitioner object to be created.
+ * @return `TILEDB_OK` for success and `TILEDB_OOM` or `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_subarray_partitioner_alloc(
+    tiledb_ctx_t* ctx,
+    const tiledb_subarray_t* subarray,
+    tiledb_subarray_partitioner_t** subarray_partitioner,
+    uint64_t memory_budget,
+    uint64_t memory_budget_var,
+    uint64_t memory_budget_validity);
+
+/**
+ * Frees a TileDB subarray partitioner object.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * tiledb_subarray_t* subarray; //initialized prior to call
+ * tiledb_subarray_partitioner_t *subarray_partitioner;
+ * tiledb_subarray_partitioner_alloc(ctx, subarray, &subarray_partitioner);
+ * tiledb_subarray_partitioner_free(&subarray_partitioner);
+ * @endcode
+ *
+ * @param subarray_partitioner The subarray partitioner object to be freed.
+ */
+TILEDB_EXPORT void tiledb_subarray_partitioner_free(tiledb_subarray_partitioner_t** subarray_partitioner);
+
+/**
+ * Set the layout of the subarray used by a subarray partitioner object.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * tiledb_subarray_t* subarray; //initialized
+ * tiledb_subarray_partitioner_t *subarray_partitioner; //inititalized prior to call
+ * tiledb_subarray_partitioner_set_layout(ctx, layout, subarray_partitioner);
+ * @endcode
+ *
+ * @param layout The layout to set into the subarray partioner object's subarray.
+ */
+TILEDB_EXPORT int32_t tiledb_subarray_partitioner_set_layout(
+    tiledb_ctx_t* ctx,
+    tiledb_layout_t layout,
+    tiledb_subarray_partitioner_t* partitioner);
+
+// This sets a custom layout, determining the order in
+// which the dimensions should be considered for splitting.
+// Various error checks and default behavior will be discussed.
+TILEDB_EXPORT int32_t tiledb_subarray_partitioner_set_custom_layout(
+    tiledb_ctx_t* ctx,
+    const char** ordered_dim_names,
+    uint32_t ordered_dim_names_length,
+    tiledb_subarray_partitioner_t* partitioner);
+
+/**
+ * Compute the complete series of partitions/subarrays leaving them stored internally
+ * in the object.
+ *
+ * These partitions can then be retrieved via 
+ * tiledb_subarray_partitioner_get_partition().
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * tiledb_subarray_partitioner_t *subarray_partitioner; //inititalized prior to call
+ * tiledb_subarray_partitioner_compute(ctx, subarray_partitioner);
+ * @endcode
+ *
+ * @param layout The layout to set into the subarray partioner object's
+ * subarray.
+ */
+TILEDB_EXPORT int32_t tiledb_subarray_partitioner_compute(
+    tiledb_ctx_t* ctx, tiledb_subarray_partitioner_t* partitioner);
+
+/**
+ * Gets number of computed partitions available to be retrieved via
+ * tiledb_subarray_partitioner_get_partition().
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * tiledb_subarray_partitioner_t *subarray_partitioner; //inititalized prior to call
+ * tiledb_subarray_partitioner_compute(ctx, subarray_partitioner);
+ * @endcode
+ *
+ * @param layout The layout to set into the subarray partioner object's
+ * subarray.
+ */
+TILEDB_EXPORT int32_t tiledb_subarray_partitioner_get_partition_num(
+    tiledb_ctx_t* ctx,
+    uint64_t* num,
+    tiledb_subarray_partitioner_t* partitioner);
+
+// Gets the pid-th partition/subarray. This allocates a
+// new subarray object that needs to be freed by the user.
+/**
+ * Retrieve a partition subarray from the partitioner's computed subarray partitions.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * uint64_t partition_id; //# of partition to retrieve, must be less than # computed partitions
+ * tiledb_subarray_t *retrieved_subarray; //initialized prior to call
+ * tiledb_subarray_partitioner_t *subarray_partitioner; //inititalized prior to call
+ * tiledb_subarray_partitioner_get_partition(ctx, subarray_partitioner, partition_id, retrieved_subarray);
+ * @endcode
+ *
+ * @param layout The layout to set into the subarray partioner object's
+ * subarray.
+ */
+TILEDB_EXPORT int32_t tiledb_subarray_partitioner_get_partition(
+    tiledb_ctx_t* ctx,
+    tiledb_subarray_partitioner_t* partitioner,
+    uint64_t part_id,
+    tiledb_subarray_t* subarray);
+
+/**
+ * TBD: Explain me.
+ * 
+ * Set partitioning budget for fixed attribute.
+ * 
+ * **Example:**
+ * 
+ * @code{.c}
+ * tiledb_subarray_partitioner_t *partitioner; //prior init'd
+ * tiledb_ctx_t *ctx; //prior init'd
+ * uint64_t budget; //
+ * char *attrname; //valid attr name for the array of the subarray used to create partitioner
+ * tiledb_subarray_partitioner_set_result_budget(ctx, attrname, budget, partitioner);
+ * @endcode
+ * 
+ * @param budget - TBD: To Be explained
+ */
+TILEDB_EXPORT int32_t tiledb_subarray_partitioner_set_result_budget(
+    tiledb_ctx_t* ctx,
+    const char *attrname,
+    uint64_t budget,
+    tiledb_subarray_partitioner_t* partitioner);
+	
+/**
+ * TBD: Explain me.
+ * 
+ * Set partitioning budget for var sized attribute.
+ * 
+ * **Example:**
+ * 
+ * @code{.c}
+ * tiledb_subarray_partitioner_t *partitioner; //prior init'd
+ * tiledb_ctx_t *ctx; //prior init'd
+ * uint64_t budget_ofs; // 
+ * uint64_t budget_val; //
+ * char *attrname; //valid attr name for the array of the subarray used to create partitioner
+ * tiledb_subarray_partitioner_set_result_budget_var(ctx, attrname, budget_off, budget_val, partitioner);
+ * @endcode
+ * 
+ * @param budget - TBD: To Be explained
+ */
+TILEDB_EXPORT int32_t tiledb_subarray_partitioner_set_result_budget_var_attr(
+    tiledb_ctx_t* ctx,
+    const char* attrname,
+    uint64_t budget_off,
+    uint64_t budget_val,
+    tiledb_subarray_partitioner_t* partitioner);
+
+
+/**
+ * TBD: Explain me.
+ * 
+ * Set partitioning budget values for a partitioner.
+ * 
+ * **Example:**
+ * 
+ * @code{.c}
+ * tiledb_subarray_partitioner_t *partitioner; //prior init'd
+ * tiledb_ctx_t *ctx; //prior init'd
+ * uint64_t budget; //
+ * uint64_t budget_var; //
+ * uint64_t budget_validity; //
+ * tiledb_subarray_partitioner_set_memory_budget
+ *     (ctx, budget, budget_var, budget_validity, partitioner);
+ * @endcode
+ * 
+ * @param budget - TBD: To Be explained
+ */
+TILEDB_EXPORT int32_t tiledb_subarray_partitioner_set_memory_budget(
+    tiledb_ctx_t* ctx,
+    uint64_t budget,
+    uint64_t budget_var,
+    uint64_t budget_validity,
+    tiledb_subarray_partitioner_t* partitioner);
+
 
 /* ********************************* */
 /*               ARRAY               */
