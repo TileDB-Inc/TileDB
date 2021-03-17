@@ -120,7 +120,6 @@ enum class StatusCode : char {
   Array,
   VFSFileHandleError,
   ContextError,
-  ExternalSubarrayPartitionerError,
   SubarrayError,
   SubarrayPartitionerError,
   RTreeError,
@@ -379,12 +378,6 @@ class Status {
   /** Return a SubarrayError error class Status with a given message **/
   static Status SubarrayError(const std::string& msg) {
     return Status(StatusCode::SubarrayError, msg, -1);
-  }
-
-  /** Return a SubarrayPartitionerError error class Status with a given message
-   * **/
-  static Status ExternalSubarrayPartitionerError(const std::string& msg) {
-    return Status(StatusCode::ExternalSubarrayPartitionerError, msg, -1);
   }
 
   /** Return a SubarrayPartitionerError error class Status with a given message
