@@ -54,8 +54,7 @@ namespace sm {
 
 Query::Query(StorageManager* storage_manager, Array* array, URI fragment_uri)
     : array_(array)
-    , storage_manager_(storage_manager)
-    , have_initialization_subarray_(false) {
+    , storage_manager_(storage_manager){
   assert(array != nullptr && array->is_open());
 
   callback_ = nullptr;
@@ -696,12 +695,10 @@ Status Query::init() {
       return LOG_STATUS(Status::QueryError(errmsg.str()));
     }
 
-    auto* initialization_subarray_if_any =
-        have_initialization_subarray_ ? &initialization_subarray_ : nullptr;
     if (type_ == QueryType::READ) {
-      RETURN_NOT_OK(reader_.init(layout_, initialization_subarray_if_any));
+      RETURN_NOT_OK(reader_.init(layout_));
     } else {  // Write
-      RETURN_NOT_OK(writer_.init(layout_, initialization_subarray_if_any));
+      RETURN_NOT_OK(writer_.init(layout_));
     }
   }
 
@@ -992,7 +989,6 @@ Status Query::set_subarray(const void* subarray) {
     RETURN_NOT_OK(reader_.set_subarray(sub));
   }
 
-  have_initialization_subarray_ = false;
   status_ = QueryStatus::UNINITIALIZED;
 
   return Status::Ok();
@@ -1007,8 +1003,6 @@ Status Query::check_subarray(const tiledb::sm::Subarray* subarray) {
   return Status::Ok();
 }
 
-// TBD: with set_initialization_subarray, is this needed?
-//...currently being called by spec'd new API, tiledb_query_set_subarray_v2()...
 Status Query::set_subarray(const tiledb::sm::Subarray* subarray) {
   // TBD: Write me.
 #if 0  // 1 //try again, see if still a problem from 'there'...
@@ -1039,20 +1033,8 @@ Status Query::set_subarray(const tiledb::sm::Subarray* subarray) {
     RETURN_NOT_OK(reader_.set_subarray(*subarray));
   }
 
-  have_initialization_subarray_ = false;
   status_ = QueryStatus::UNINITIALIZED;
 
-  return Status::Ok();
-}
-
-Status Query::set_initialization_subarray(
-    const tiledb::sm::Subarray* subarray) {
-  /* No auditing of the initialization subarray is done here,
-   * that is left for the point of initialization as read/writer
-   * initializations vary in their requirements.
-   */
-  initialization_subarray_ = Subarray(*subarray);
-  have_initialization_subarray_ = true;
   return Status::Ok();
 }
 
@@ -1079,8 +1061,6 @@ Status Query::set_subarray_unsafe(const NDRange& subarray) {
 const Subarray& Query::subarray() const {
   // TBD:
   // Should this err/throw if query not initialized?
-  // Should it try to use initialization_subarray_ if have and
-  // query is in UNINITIALIZED state?
   if (type_ == QueryType::WRITE)
     return *writer_.subarray_ranges();
   return *reader_.subarray();
@@ -1089,8 +1069,6 @@ const Subarray& Query::subarray() const {
 Subarray* Query::subarray() {
   // TBD:
   // Should this err/throw if query not initialized?
-  // Should it try to use initialization_subarray_ if have and
-  // query is in UNINITIALIZED state?
   if (type_ == QueryType::WRITE)
     return const_cast<Subarray*>(writer_.subarray_ranges());
   return const_cast<Subarray*>(reader_.subarray());

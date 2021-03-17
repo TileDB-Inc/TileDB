@@ -273,7 +273,7 @@ Status Reader::get_buffer_nullable(
 }
 
 Status Reader::init(
-    const Layout& layout, const Subarray* initialization_subarray) {
+    const Layout& layout) {
   // Sanity checks
   if (storage_manager_ == nullptr)
     return LOG_STATUS(Status::ReaderError(
@@ -287,9 +287,6 @@ Status Reader::init(
   if (array_schema_->dense() && !sparse_mode_ && !subarray_.is_set())
     return LOG_STATUS(Status::ReaderError(
         "Cannot initialize reader; Dense reads must have a subarray set"));
-
-  if (initialization_subarray)
-    subarray_ = *initialization_subarray;
 
   // Set layout
   RETURN_NOT_OK(set_layout(layout));

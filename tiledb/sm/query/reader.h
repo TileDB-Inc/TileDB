@@ -314,8 +314,7 @@ class Reader {
   URI last_fragment_uri() const;
 
   /** Initializes the reader with the subarray layout. */
-  Status init(
-      const Layout& layout, const Subarray* initialization_subarray = nullptr);
+  Status init(const Layout& layout);
 
   /** Returns the cell layout. */
   Layout layout() const;

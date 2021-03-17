@@ -414,8 +414,7 @@ Status Writer::check_var_attr_offsets() const {
   return Status::Ok();
 }
 
-Status Writer::init(
-    const Layout& layout, const Subarray* initialization_subarray) {
+Status Writer::init(const Layout& layout) {
   // Sanity checks
   if (storage_manager_ == nullptr)
     return LOG_STATUS(Status::WriterError(
@@ -459,9 +458,6 @@ Status Writer::init(
                             "bitsize in configuration"));
   }
   assert(found);
-
-  if (initialization_subarray)
-    subarray_ = *initialization_subarray;
 
   // Set a default subarray
   if (!subarray_.is_set())
