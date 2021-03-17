@@ -27,7 +27,9 @@
  *
  * @section DESCRIPTION
  *
- * Tests the C API for subarray.
+ * Tests the C API for subarray. 
+ * (cloned from unit-capi-query_2.cc and modified to prepare subarray's outside
+ *  of a query, so changes here may suggest similar changes needed there as well)
  */
 
 #include "catch.hpp"

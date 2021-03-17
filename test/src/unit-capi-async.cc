@@ -330,7 +330,7 @@ void AsyncFx::write_dense_async() {
     CHECK(callback_made == 1);
   } else {
     tiledb_subarray_t* query_subarray;
-    tiledb_query_subarray(ctx_, query, &query_subarray);
+    tiledb_query_get_subarray(ctx_, query, &query_subarray);
     // Submit query asynchronously
     int callback_made = 0;
     rc = tiledb_query_submit_async_with_subarray(
@@ -455,7 +455,7 @@ void AsyncFx::write_sparse_async() {
     }
   } else {
     tiledb_subarray_t* query_subarray;
-    tiledb_query_subarray(ctx_, query, &query_subarray);
+    tiledb_query_get_subarray(ctx_, query, &query_subarray);
     // Submit query asynchronously
     int callback_made = 0;
     rc = tiledb_query_submit_async_with_subarray(
@@ -618,7 +618,7 @@ void AsyncFx::write_sparse_async_cancelled() {
     }
   } else {
     tiledb_subarray_t* query_subarray;
-    tiledb_query_subarray(ctx_, query, &query_subarray);
+    tiledb_query_get_subarray(ctx_, query, &query_subarray);
 
     // Submit query asynchronously
     int callback_made = 0;
@@ -772,7 +772,7 @@ void AsyncFx::read_dense_async() {
     CHECK(!memcmp(buffer_a3, c_buffer_a3, sizeof(c_buffer_a3)));
   } else {
     tiledb_subarray_t* query_subarray;
-    tiledb_query_subarray(ctx_, query, &query_subarray);
+    tiledb_query_get_subarray(ctx_, query, &query_subarray);
 
     // Submit query with callback
     int callback_made = 0;
@@ -934,7 +934,7 @@ void AsyncFx::read_sparse_async() {
         sizeof(c_buffer_coords_dim2)));
   } else {
     tiledb_subarray_t* query_subarray;
-    tiledb_query_subarray(ctx_, query, &query_subarray);
+    tiledb_query_get_subarray(ctx_, query, &query_subarray);
 
     // Submit query with callback
     int callback_made = 0;
