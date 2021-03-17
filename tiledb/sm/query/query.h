@@ -691,18 +691,6 @@ class Query {
    */
   Status set_subarray(const tiledb::sm::Subarray* subarray);
 
-  /**
-   * Sets the query subarray for initialization.
-   *
-   * @param subarray The subarray to be set.
-   * @return Status
-   *
-   * @note Setting a subarray for sparse arrays, or for dense arrays
-   *     when performing unordered (sparse) writes, has no effect
-   *     (will be ingnored).
-   */
-  Status set_initialization_subarray(const tiledb::sm::Subarray* subarray);
-
   /** Sets the query subarray, without performing any checks. */
   Status set_subarray_unsafe(const NDRange& subarray);
 
@@ -763,13 +751,6 @@ class Query {
 
   /** The current serialization state. */
   SerializationState serialization_state_;
-
-  /** Whether a query initialization subarray has been provided. */
-  bool have_initialization_subarray_;
-
-  /** The initialization subarray data to use for query initialization if one
-   * has been provided. */
-  tiledb::sm::Subarray initialization_subarray_;
 
   /* ********************************* */
   /*           PRIVATE METHODS         */

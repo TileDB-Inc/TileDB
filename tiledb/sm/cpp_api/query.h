@@ -81,7 +81,7 @@ namespace tiledb {
  * @endcode
  */
 class Query {
-  friend Subarray::Subarray(const tiledb::Query& query);
+//  friend Subarray::Subarray(const tiledb::Query& query);
 
  public:
   /* ********************************* */
@@ -166,9 +166,6 @@ class Query {
    * @param array Open Array object
    */
   Query(const Context& ctx, const Array& array)
-      // TBD: Is there a circumstance where this will *not* produce the same as
-      // the alternate verbose code? (seems to pass all unit tests with this
-      // active)
       : Query(ctx, array, array.query_type()) {
   }
 
@@ -1028,9 +1025,6 @@ class Query {
    * per dimension.
    * @param size The number of subarray elements.
    */
-  // TBD: Is anything tiledb-core/example wise actually calling this currently?
-  // hmm, apparently, at least, several other 'set_subarray' methods of this
-  // 'Query' class.
   template <typename T = uint64_t>
   TILEDB_DEPRECATED  // TBD: or not?
       Query&
@@ -1975,6 +1969,15 @@ class Query {
     }
     return "";  // silence error
   }
+   
+  const Context& ctx() const {
+    return ctx_.get();
+  }
+   
+  const Array& array() const {
+    return array_.get();
+  }
+   
 
  private:
   /* ********************************* */
@@ -2190,11 +2193,11 @@ inline std::ostream& operator<<(std::ostream& os, const Query::Status& stat) {
 }
 
 // Note: defined here because definition of Query not visible to placement in
-// cpp_api/Subarray.h, and making use of friendship of cppapi Query class.
+// cpp_api/Subarray.h.
 inline Subarray::Subarray(const tiledb::Query& query)
-    : ctx_(query.ctx_)
-    , array_(query.array_)
-    , schema_(query.array_.get().schema()) {
+    : ctx_(query.ctx())
+    , array_(query.array())
+    , schema_(query.array().schema()) {
   tiledb_subarray_t* loc_subarray;
   auto& ctx = ctx_.get();
   ctx.handle_error(tiledb_subarray_alloc(
