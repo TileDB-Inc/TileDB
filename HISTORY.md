@@ -14,6 +14,8 @@
 
 ## Bug fixes
 
+* Fixes a potential crash when retrying incomplete reads [#2137](https://github.com/TileDB-Inc/TileDB/pull/2137)
+
 ## API additions
 
 ### C API
@@ -38,6 +40,7 @@
 * Corrected a bug where sparse cells may be incorrectly returned using string dimensions. [#2125](https://github.com/TileDB-Inc/TileDB/pull/2125)
 * Always use original buffer size in serialized read queries serverside. [#2115](https://github.com/TileDB-Inc/TileDB/pull/2115)
 * Fix segfault in serialized queries when partition is unsplittable [#2120](https://github.com/TileDB-Inc/TileDB/pull/2120)
+
 
 # TileDB v2.2.4 Release Notes
 
