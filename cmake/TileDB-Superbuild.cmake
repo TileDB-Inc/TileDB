@@ -169,7 +169,14 @@ endif()
 set(SCRIPTS_DIR "${CMAKE_CURRENT_SOURCE_DIR}/scripts")
 
 find_package(ClangTools)
+if (NOT ${CLANG_FORMAT_FOUND})
+  find_program(CLANG_FORMAT_BIN NAMES clang-format clang-format-5.0 clang-format-6.0 clang-format-7 clang-format-8 clang-format-9 clang-format-10 clang-format-11)
+  if(CLANG_FORMAT_BIN)
+    set(CLANG_FORMAT_FOUND TRUE)
+  endif()
+endif()
 if (${CLANG_FORMAT_FOUND})
+  message(STATUS "clang hunt, found ${CLANG_FORMAT_BIN}")
   # runs clang format and updates files in place.
   add_custom_target(format ${SCRIPTS_DIR}/run-clang-format.sh ${CMAKE_CURRENT_SOURCE_DIR} ${CLANG_FORMAT_BIN} 1
     `find ${CMAKE_CURRENT_SOURCE_DIR}/tiledb
@@ -185,6 +192,8 @@ if (${CLANG_FORMAT_FOUND})
     ${CMAKE_CURRENT_SOURCE_DIR}/examples
     ${CMAKE_CURRENT_SOURCE_DIR}/tools
     -name \\*.cc -or -name \\*.c -or -name \\*.h`)
+else()
+  message(STATUS "was unable to find clang-format")
 endif()
 
 ###########################################################
