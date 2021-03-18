@@ -55,10 +55,10 @@ using namespace tiledb::test;
 struct CPPAPISubarrayPartitionerDenseFx {
   tiledb_ctx_t* ctx_;
   tiledb_vfs_t* vfs_;
+  const std::vector<std::unique_ptr<SupportedFs>> fs_vec_;
   tiledb::Context cppctx_;
   tiledb::Config cppconfig_;
   tiledb::VFS cppvfs_;
-  const std::vector<std::unique_ptr<SupportedFs>> fs_vec_;
   std::string temp_dir_;
   std::string array_name_;
   const char* ARRAY_NAME = "subarray_partitioner_dense";
@@ -260,8 +260,6 @@ void CPPAPISubarrayPartitionerDenseFx::test_subarray_partitioner(
   cpparray_ = new tiledb::Array(
      cppctx_, array_, false, true);  // was forcing closed...??? true);
 
-   int32_t rc;
-
    tiledb::Subarray* tdb_subarray;
    create_subarray(
        &cppvfs_.context(), cpparray_, ranges, subarray_layout, &tdb_subarray);
@@ -288,7 +286,6 @@ void CPPAPISubarrayPartitionerDenseFx::test_subarray_partitioner(
       coresubarray,
       *(tdb_retrieve_partition_subarray->capi_subarray()->subarray_));
   check_partitions(
-      &cppvfs_.context(),
       &subarray_partitioner,
       partitions,
       unsplittable,
@@ -315,9 +312,7 @@ void CPPAPISubarrayPartitionerDenseFx::test_subarray_partitioner(
   cpparray_ = new tiledb::Array(
       cppctx_, array_, false, true);  // was forcing closed...??? true);
 
-  int32_t rc;
-
-  tiledb::Subarray* tdb_subarray;
+ tiledb::Subarray* tdb_subarray;
   create_subarray(
       &cppvfs_.context(), cpparray_, ranges, subarray_layout, &tdb_subarray);
   tdb_subarray->set_layout((tiledb_layout_t)subarray_layout);
@@ -353,7 +348,6 @@ void CPPAPISubarrayPartitionerDenseFx::test_subarray_partitioner(
   subarray_partitioner.set_memory_budget(budget, budget_var, 0);
 
   check_partitions(
-      &cppvfs_.context(),
       &subarray_partitioner,
       partitions,
       unsplittable,

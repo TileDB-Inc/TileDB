@@ -341,7 +341,7 @@ class Subarray {
         &stride));
     std::array<T, 3> ret = {{*(const T*)start,
                              *(const T*)end,
-                             (stride == nullptr) ? 0 : *(const T*)stride}};
+                             (stride == nullptr) ? (const T)0 : *(const T*)stride}};
     return ret;
   }
 
