@@ -14,13 +14,17 @@
 
 ## Bug fixes
 
-* Fixes a potential crash when retrying incomplete reads [#2137](https://github.com/TileDB-Inc/TileDB/pull/2137)
-
 ## API additions
 
 ### C API
 
 ### C++ API
+
+# TileDB v2.2.6 Release Notes
+
+## Bug fixes
+
+* Fixes a potential crash when retrying incomplete reads [#2137](https://github.com/TileDB-Inc/TileDB/pull/2137)
 
 # TileDB v2.2.5 Release Notes
 
