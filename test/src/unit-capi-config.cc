@@ -399,6 +399,42 @@ TEST_CASE("C API: Test config", "[capi], [config]") {
   CHECK(error == nullptr);
   CHECK(!strcmp(value, "10000000"));
 
+  // Set valid, defaulting parameter
+  rc = tiledb_config_set(config, "vfs.s3.region", "pluto", &error);
+  CHECK(rc == TILEDB_OK);
+  CHECK(error == nullptr);
+  rc = tiledb_config_get(config, "vfs.s3.region", &value, &error);
+  CHECK(rc == TILEDB_OK);
+  CHECK(error == nullptr);
+  CHECK(!strcmp(value, "pluto"));
+
+  // Unset valid, defaulting parameter
+  rc = tiledb_config_unset(config, "vfs.s3.region", &error);
+  CHECK(rc == TILEDB_OK);
+  CHECK(error == nullptr);
+  rc = tiledb_config_get(config, "vfs.s3.region", &value, &error);
+  CHECK(rc == TILEDB_OK);
+  CHECK(error == nullptr);
+  CHECK(!strcmp(value, "us-east-1"));
+
+  // Set valid, non-defaulting parameter
+  rc = tiledb_config_set(config, "foo", "123", &error);
+  CHECK(rc == TILEDB_OK);
+  CHECK(error == nullptr);
+  rc = tiledb_config_get(config, "foo", &value, &error);
+  CHECK(rc == TILEDB_OK);
+  CHECK(error == nullptr);
+  CHECK(!strcmp(value, "123"));
+
+  // Unset valid, non-defaulting parameter
+  rc = tiledb_config_unset(config, "foo", &error);
+  CHECK(rc == TILEDB_OK);
+  CHECK(error == nullptr);
+  rc = tiledb_config_get(config, "foo", &value, &error);
+  CHECK(rc == TILEDB_OK);
+  CHECK(error == nullptr);
+  CHECK(value == nullptr);
+
   // Check out of range argument for correct parameter
   rc = tiledb_config_set(
       config, "sm.tile_cache_size", "100000000000000000000", &error);
@@ -551,6 +587,8 @@ TEST_CASE("C API: Test config iter", "[capi], [config]") {
   all_param_values["vfs.s3.connect_timeout_ms"] = "10800";
   all_param_values["vfs.s3.connect_max_tries"] = "5";
   all_param_values["vfs.s3.connect_scale_factor"] = "25";
+  all_param_values["vfs.s3.sse"] = "";
+  all_param_values["vfs.s3.sse_kms_key_id"] = "";
   all_param_values["vfs.s3.logging_level"] = "Off";
   all_param_values["vfs.s3.request_timeout_ms"] = "3000";
   all_param_values["vfs.s3.requester_pays"] = "false";
@@ -608,6 +646,8 @@ TEST_CASE("C API: Test config iter", "[capi], [config]") {
   vfs_param_values["s3.connect_timeout_ms"] = "10800";
   vfs_param_values["s3.connect_max_tries"] = "5";
   vfs_param_values["s3.connect_scale_factor"] = "25";
+  vfs_param_values["s3.sse"] = "";
+  vfs_param_values["s3.sse_kms_key_id"] = "";
   vfs_param_values["s3.logging_level"] = "Off";
   vfs_param_values["s3.request_timeout_ms"] = "3000";
   vfs_param_values["s3.requester_pays"] = "false";
@@ -659,6 +699,8 @@ TEST_CASE("C API: Test config iter", "[capi], [config]") {
   s3_param_values["connect_timeout_ms"] = "10800";
   s3_param_values["connect_max_tries"] = "5";
   s3_param_values["connect_scale_factor"] = "25";
+  s3_param_values["sse"] = "";
+  s3_param_values["sse_kms_key_id"] = "";
   s3_param_values["logging_level"] = "Off";
   s3_param_values["request_timeout_ms"] = "3000";
   s3_param_values["requester_pays"] = "false";

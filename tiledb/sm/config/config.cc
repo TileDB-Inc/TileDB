@@ -137,6 +137,8 @@ const std::string Config::VFS_S3_CA_PATH = "";
 const std::string Config::VFS_S3_CONNECT_TIMEOUT_MS = "10800";
 const std::string Config::VFS_S3_CONNECT_MAX_TRIES = "5";
 const std::string Config::VFS_S3_CONNECT_SCALE_FACTOR = "25";
+const std::string Config::VFS_S3_SSE = "";
+const std::string Config::VFS_S3_SSE_KMS_KEY_ID = "";
 const std::string Config::VFS_S3_REQUEST_TIMEOUT_MS = "3000";
 const std::string Config::VFS_S3_REQUESTER_PAYS = "false";
 const std::string Config::VFS_S3_PROXY_SCHEME = "http";
@@ -265,6 +267,8 @@ Config::Config() {
   param_values_["vfs.s3.connect_timeout_ms"] = VFS_S3_CONNECT_TIMEOUT_MS;
   param_values_["vfs.s3.connect_max_tries"] = VFS_S3_CONNECT_MAX_TRIES;
   param_values_["vfs.s3.connect_scale_factor"] = VFS_S3_CONNECT_SCALE_FACTOR;
+  param_values_["vfs.s3.sse"] = VFS_S3_SSE;
+  param_values_["vfs.s3.sse_kms_key_id"] = VFS_S3_SSE_KMS_KEY_ID;
   param_values_["vfs.s3.request_timeout_ms"] = VFS_S3_REQUEST_TIMEOUT_MS;
   param_values_["vfs.s3.requester_pays"] = VFS_S3_REQUESTER_PAYS;
   param_values_["vfs.s3.proxy_scheme"] = VFS_S3_PROXY_SCHEME;
@@ -561,6 +565,10 @@ Status Config::unset(const std::string& param) {
     param_values_["vfs.s3.connect_max_tries"] = VFS_S3_CONNECT_MAX_TRIES;
   } else if (param == "vfs.s3.connect_scale_factor") {
     param_values_["vfs.s3.connect_scale_factor"] = VFS_S3_CONNECT_SCALE_FACTOR;
+  } else if (param == "vfs.s3.sse") {
+    param_values_["vfs.s3.sse"] = VFS_S3_SSE;
+  } else if (param == "vfs.s3.sse_kms_key_id") {
+    param_values_["vfs.s3.sse_kms_key_id"] = VFS_S3_SSE_KMS_KEY_ID;
   } else if (param == "vfs.s3.request_timeout_ms") {
     param_values_["vfs.s3.request_timeout_ms"] = VFS_S3_REQUEST_TIMEOUT_MS;
   } else if (param == "vfs.s3.requester_pays") {
@@ -584,10 +592,9 @@ Status Config::unset(const std::string& param) {
   } else if (param == "vfs.hdfs.kerb_ticket_cache_path") {
     param_values_["vfs.hdfs.kerb_ticket_cache_path"] =
         VFS_HDFS_KERB_TICKET_CACHE_PATH;
+  } else {
+    param_values_.erase(param);
   }
-
-  // Remove from the set parameters
-  set_params_.erase(param);
 
   return Status::Ok();
 }

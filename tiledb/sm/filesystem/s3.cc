@@ -122,7 +122,8 @@ S3::S3()
     , vfs_thread_pool_(nullptr)
     , use_virtual_addressing_(false)
     , use_multipart_upload_(true)
-    , request_payer_(Aws::S3::Model::RequestPayer::NOT_SET) {
+    , request_payer_(Aws::S3::Model::RequestPayer::NOT_SET)
+    , sse_(Aws::S3::Model::ServerSideEncryption::NOT_SET) {
 }
 
 S3::~S3() {
@@ -196,6 +197,38 @@ Status S3::init(const Config& config, ThreadPool* const thread_pool) {
 
   if (request_payer)
     request_payer_ = Aws::S3::Model::RequestPayer::requester;
+
+  auto sse = config.get("vfs.s3.sse", &found);
+  assert(found);
+
+  auto sse_kms_key_id = config.get("vfs.s3.sse_kms_key_id", &found);
+  assert(found);
+
+  if (!sse.empty()) {
+    if (sse == "aes256") {
+      sse_ = Aws::S3::Model::ServerSideEncryption::AES256;
+    } else if (sse == "kms") {
+      sse_ = Aws::S3::Model::ServerSideEncryption::aws_kms;
+      sse_kms_key_id_ = sse_kms_key_id;
+      if (sse_kms_key_id_.empty()) {
+        return Status::S3Error(
+            "Config parameter 'vfs.s3.sse_kms_key_id' must be set "
+            "for kms server-side encryption.");
+      }
+    } else {
+      return Status::S3Error(
+          "Unknown 'vfs.s3.sse' config value " + sse +
+          "; supported values are 'aes256' and 'kms'.");
+    }
+  }
+
+  // Ensure `sse_kms_key_id` was only set for kms encryption.
+  if (!sse_kms_key_id.empty() &&
+      sse_ != Aws::S3::Model::ServerSideEncryption::aws_kms) {
+    return Status::S3Error(
+        "Config parameter 'vfs.s3.sse_kms_key_id' may only be "
+        "set for 'vfs.s3.sse' == 'kms'.");
+  }
 
   config_ = config;
 
@@ -816,6 +849,10 @@ Status S3::touch(const URI& uri) const {
   put_object_request.SetBody(request_stream);
   if (request_payer_ != Aws::S3::Model::RequestPayer::NOT_SET)
     put_object_request.SetRequestPayer(request_payer_);
+  if (sse_ != Aws::S3::Model::ServerSideEncryption::NOT_SET)
+    put_object_request.SetServerSideEncryption(sse_);
+  if (!sse_kms_key_id_.empty())
+    put_object_request.SetSSEKMSKeyId(Aws::String(sse_kms_key_id_.c_str()));
 
   auto put_object_outcome = client_->PutObject(put_object_request);
   if (!put_object_outcome.IsSuccess()) {
@@ -1105,6 +1142,10 @@ Status S3::copy_object(const URI& old_uri, const URI& new_uri) {
   copy_object_request.SetKey(dst_uri.GetPath());
   if (request_payer_ != Aws::S3::Model::RequestPayer::NOT_SET)
     copy_object_request.SetRequestPayer(request_payer_);
+  if (sse_ != Aws::S3::Model::ServerSideEncryption::NOT_SET)
+    copy_object_request.SetServerSideEncryption(sse_);
+  if (!sse_kms_key_id_.empty())
+    copy_object_request.SetSSEKMSKeyId(Aws::String(sse_kms_key_id_.c_str()));
 
   auto copy_object_outcome = client_->CopyObject(copy_object_request);
   if (!copy_object_outcome.IsSuccess()) {
@@ -1190,6 +1231,11 @@ Status S3::initiate_multipart_request(
   multipart_upload_request.SetContentType("application/octet-stream");
   if (request_payer_ != Aws::S3::Model::RequestPayer::NOT_SET)
     multipart_upload_request.SetRequestPayer(request_payer_);
+  if (sse_ != Aws::S3::Model::ServerSideEncryption::NOT_SET)
+    multipart_upload_request.SetServerSideEncryption(sse_);
+  if (!sse_kms_key_id_.empty())
+    multipart_upload_request.SetSSEKMSKeyId(
+        Aws::String(sse_kms_key_id_.c_str()));
 
   auto multipart_upload_outcome =
       client_->CreateMultipartUpload(multipart_upload_request);
@@ -1314,6 +1360,10 @@ Status S3::flush_direct(const URI& uri) {
   put_object_request.SetKey(aws_uri.GetPath());
   if (request_payer_ != Aws::S3::Model::RequestPayer::NOT_SET)
     put_object_request.SetRequestPayer(request_payer_);
+  if (sse_ != Aws::S3::Model::ServerSideEncryption::NOT_SET)
+    put_object_request.SetServerSideEncryption(sse_);
+  if (!sse_kms_key_id_.empty())
+    put_object_request.SetSSEKMSKeyId(Aws::String(sse_kms_key_id_.c_str()));
 
   auto put_object_outcome = client_->PutObject(put_object_request);
   if (!put_object_outcome.IsSuccess()) {

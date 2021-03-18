@@ -5495,3 +5495,74 @@ TEST_CASE_METHOD(
   tiledb_config_free(&config);
   remove_sparse_string_array();
 }
+
+TEST_CASE_METHOD(
+    ConsolidationFx,
+    "C API: Test consolidating fragment metadata, sparse string, pass only "
+    "context",
+    "[capi][consolidation][fragment-meta][sparse][string]") {
+  remove_sparse_string_array();
+  create_sparse_string_array();
+  write_sparse_string_full();
+  write_sparse_string_unordered();
+
+  // Validate read
+  read_sparse_string_full_unordered();
+
+  // Configuration for consolidating fragment metadata
+  tiledb_config_t* config = nullptr;
+  tiledb_error_t* error = nullptr;
+  REQUIRE(tiledb_config_alloc(&config, &error) == TILEDB_OK);
+  REQUIRE(error == nullptr);
+  int rc = tiledb_config_set(
+      config, "sm.consolidation.mode", "fragment_meta", &error);
+  REQUIRE(rc == TILEDB_OK);
+  REQUIRE(error == nullptr);
+
+  tiledb_ctx_t* ctx = nullptr;
+  REQUIRE(tiledb_ctx_alloc(config, &ctx) == TILEDB_OK);
+
+  // Consolidate - this will consolidate only the fragment metadata
+  rc = tiledb_array_consolidate(ctx, SPARSE_STRING_ARRAY_NAME, nullptr);
+  CHECK(rc == TILEDB_OK);
+
+  // Check number of fragments
+  get_num_struct data = {ctx, vfs_, 0};
+  rc = tiledb_vfs_ls(ctx, vfs_, SPARSE_STRING_ARRAY_NAME, &get_dir_num, &data);
+  CHECK(rc == TILEDB_OK);
+  CHECK(data.num == 2);
+
+  // Check number of consolidated metadata files
+  data = {ctx, vfs_, 0};
+  rc = tiledb_vfs_ls(ctx, vfs_, SPARSE_STRING_ARRAY_NAME, &get_meta_num, &data);
+  CHECK(rc == TILEDB_OK);
+  CHECK(data.num == 1);
+
+  // Validate read
+  read_sparse_string_full_unordered();
+
+  // Vacuum consolidated fragment metadata
+  rc = tiledb_config_set(config, "sm.vacuum.mode", "fragment_meta", &error);
+  REQUIRE(rc == TILEDB_OK);
+  REQUIRE(error == nullptr);
+
+  // Create new context
+  tiledb_ctx_free(&ctx);
+  REQUIRE(tiledb_ctx_alloc(config, &ctx) == TILEDB_OK);
+
+  rc = tiledb_array_vacuum(ctx, SPARSE_STRING_ARRAY_NAME, nullptr);
+  CHECK(rc == TILEDB_OK);
+
+  // Check number of consolidated metadata files
+  data = {ctx, vfs_, 0};
+  rc = tiledb_vfs_ls(ctx, vfs_, SPARSE_STRING_ARRAY_NAME, &get_meta_num, &data);
+  CHECK(rc == TILEDB_OK);
+  CHECK(data.num == 1);
+
+  // Validate read
+  read_sparse_string_full_unordered();
+
+  tiledb_ctx_free(&ctx);
+  tiledb_config_free(&config);
+  remove_sparse_string_array();
+}

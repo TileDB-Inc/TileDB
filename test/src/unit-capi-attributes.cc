@@ -163,20 +163,6 @@ TEST_CASE_METHOD(
 
   for (const auto& attr_name : attr_names) {
     for (const auto& fs : fs_vec_) {
-      // Skip this test for Azure and Windows because they are broken for
-      // certain characters. The path to handle illegal characters is a
-      // temporary fix. We will get this working on Azure and Windows in the
-      // future.
-      bool skip = false;
-      if (dynamic_cast<SupportedFsAzure*>(fs.get()) != nullptr)
-        skip = true;
-#ifdef _WIN32
-      if (dynamic_cast<SupportedFsLocal*>(fs.get()) != nullptr)
-        skip = true;
-#endif
-      if (skip)
-        continue;
-
       std::string temp_dir = fs->temp_dir();
       std::string array_name = temp_dir + "array-illegal-char";
 

@@ -125,7 +125,7 @@ class SmokeTestFx {
   /**
    * Create, write and read attributes to an array.
    *
-   * @param test_attr The attribute to test.
+   * @param test_attrs The attributes to test.
    * @param test_dims The dimensions to test.
    * @param array_type The type of the array (dense/sparse).
    * @param cell_order The cell order of the array.
@@ -134,7 +134,7 @@ class SmokeTestFx {
    * @param encryption_type The encryption type.
    */
   void smoke_test(
-      const test_attr_t test_attr,
+      const vector<test_attr_t>& test_attrs,
       const vector<test_dim_t>& test_dims,
       tiledb_array_type_t array_type,
       tiledb_layout_t cell_order,
@@ -179,7 +179,7 @@ class SmokeTestFx {
       const string& array_name,
       tiledb_array_type_t array_type,
       const vector<test_dim_t>& test_dims,
-      const test_attr_t test_attr,
+      const vector<test_attr_t>& test_attrs,
       tiledb_layout_t cell_order,
       tiledb_layout_t tile_order,
       tiledb_encryption_type_t encryption_type);
@@ -251,7 +251,7 @@ void SmokeTestFx::create_array(
     const string& array_name,
     tiledb_array_type_t array_type,
     const vector<test_dim_t>& test_dims,
-    const test_attr_t test_attr,
+    const vector<test_attr_t>& test_attrs,
     tiledb_layout_t cell_order,
     tiledb_layout_t tile_order,
     tiledb_encryption_type_t encryption_type) {
@@ -283,14 +283,20 @@ void SmokeTestFx::create_array(
     REQUIRE(rc == TILEDB_OK);
   }
 
-  // Create attribute
-  tiledb_attribute_t* attr;
-  rc = tiledb_attribute_alloc(
-      ctx_, test_attr.name_.c_str(), test_attr.type_, &attr);
-  REQUIRE(rc == TILEDB_OK);
+  // Create attributes
+  vector<tiledb_attribute_t*> attrs;
+  attrs.reserve(test_attrs.size());
+  for (const auto& test_attr : test_attrs) {
+    tiledb_attribute_t* attr;
+    rc = tiledb_attribute_alloc(
+        ctx_, test_attr.name_.c_str(), test_attr.type_, &attr);
+    REQUIRE(rc == TILEDB_OK);
 
-  rc = tiledb_attribute_set_cell_val_num(ctx_, attr, test_attr.cell_val_num_);
-  REQUIRE(rc == TILEDB_OK);
+    rc = tiledb_attribute_set_cell_val_num(ctx_, attr, test_attr.cell_val_num_);
+    REQUIRE(rc == TILEDB_OK);
+
+    attrs.emplace_back(attr);
+  }
 
   // Create array schema
   tiledb_array_schema_t* array_schema;
@@ -302,8 +308,10 @@ void SmokeTestFx::create_array(
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_array_schema_set_domain(ctx_, array_schema, domain);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_array_schema_add_attribute(ctx_, array_schema, attr);
-  REQUIRE(rc == TILEDB_OK);
+  for (const auto& attr : attrs) {
+    rc = tiledb_array_schema_add_attribute(ctx_, array_schema, attr);
+    REQUIRE(rc == TILEDB_OK);
+  }
 
   // Check array schema
   rc = tiledb_array_schema_check(ctx_, array_schema);
@@ -324,8 +332,10 @@ void SmokeTestFx::create_array(
         (uint32_t)strlen(encryption_key));
   }
 
-  // Free attribute
-  tiledb_attribute_free(&attr);
+  // Free attributes.
+  for (auto& attr : attrs) {
+    tiledb_attribute_free(&attr);
+  }
 
   // Free dimensions
   for (auto& dim : dims) {
@@ -495,7 +505,7 @@ void SmokeTestFx::read(
 }
 
 void SmokeTestFx::smoke_test(
-    const test_attr_t test_attr,
+    const vector<test_attr_t>& test_attrs,
     const vector<test_dim_t>& test_dims,
     tiledb_array_type_t array_type,
     tiledb_layout_t cell_order,
@@ -512,10 +522,14 @@ void SmokeTestFx::smoke_test(
 
   // String_ascii, float32, and float64 types can only be
   // written to sparse arrays.
-  if (array_type == TILEDB_DENSE && (test_attr.type_ == TILEDB_STRING_ASCII ||
-                                     test_attr.type_ == TILEDB_FLOAT32 ||
-                                     test_attr.type_ == TILEDB_FLOAT64)) {
-    return;
+  if (array_type == TILEDB_DENSE) {
+    for (const auto& test_attr : test_attrs) {
+      if (test_attr.type_ == TILEDB_STRING_ASCII ||
+          test_attr.type_ == TILEDB_FLOAT32 ||
+          test_attr.type_ == TILEDB_FLOAT64) {
+        return;
+      }
+    }
   }
 
   // Create the array.
@@ -523,13 +537,12 @@ void SmokeTestFx::smoke_test(
       array_name,
       array_type,
       test_dims,
-      test_attr,
+      test_attrs,
       cell_order,
       tile_order,
       encryption_type);
 
-  // Define the write query buffers for "a".
-  vector<test_query_buffer_t> write_query_buffers;
+  // Calculate the total cells in the array.
   uint64_t total_cells = 1;
   for (const auto& test_dim : test_dims) {
     const uint64_t max_range = ((uint64_t*)(test_dim.domain_))[1];
@@ -538,46 +551,50 @@ void SmokeTestFx::smoke_test(
     total_cells *= full_range;
   }
 
-  uint64_t a_write_buffer_size;
-  int32_t* a_write_buffer = nullptr;
+  vector<test_query_buffer_t> write_query_buffers;
 
-  if (test_attr.cell_val_num_ == TILEDB_VAR_NUM) {
-    a_write_buffer_size =
-        total_cells * 2 * tiledb_datatype_size(test_attr.type_);
-    a_write_buffer = (int32_t*)malloc(a_write_buffer_size);
-    for (uint64_t i = 0; i < (total_cells * 2); i++) {
-      a_write_buffer[i] = i;
-    }
-  } else {
-    a_write_buffer_size = total_cells * tiledb_datatype_size(test_attr.type_);
-    a_write_buffer = (int32_t*)malloc(a_write_buffer_size);
-    for (uint64_t i = 0; i < total_cells; i++) {
-      a_write_buffer[i] = i;
-    }
-  }
-
-  uint64_t a_write_buffer_offset_size = total_cells * sizeof(uint64_t);
-  uint64_t* a_write_buffer_offset =
-      (uint64_t*)malloc(a_write_buffer_offset_size);
+  // Create the write buffer for attribute "a".
+  REQUIRE(test_attrs[0].name_ == "a");
+  uint64_t a_write_buffer_size =
+      total_cells * tiledb_datatype_size(test_attrs[0].type_);
+  int32_t* a_write_buffer = (int32_t*)malloc(a_write_buffer_size);
   for (uint64_t i = 0; i < total_cells; i++) {
-    a_write_buffer_offset[i] = i * tiledb_datatype_size(test_attr.type_) * 2;
+    a_write_buffer[i] = i;
   }
+  write_query_buffers.emplace_back(
+      test_attrs[0].name_,
+      a_write_buffer,
+      &a_write_buffer_size,
+      nullptr,
+      nullptr);
 
-  // Variable buffer is set only when the attribute is var-sized.
-  if (test_attr.cell_val_num_ == TILEDB_VAR_NUM) {
+  // Create the write buffers for attribute "b".
+  uint64_t b_write_buffer_size = 0;
+  int32_t* b_write_buffer = nullptr;
+  uint64_t b_write_buffer_offset_size = 0;
+  uint64_t* b_write_buffer_offset = nullptr;
+  if (test_attrs.size() >= 2) {
+    REQUIRE(test_attrs[1].name_ == "b");
+    b_write_buffer_size =
+        total_cells * 2 * tiledb_datatype_size(test_attrs[1].type_);
+    b_write_buffer = (int32_t*)malloc(b_write_buffer_size);
+    for (uint64_t i = 0; i < (total_cells * 2); i++) {
+      b_write_buffer[i] = i;
+    }
+
+    b_write_buffer_offset_size = total_cells * sizeof(uint64_t);
+    b_write_buffer_offset = (uint64_t*)malloc(b_write_buffer_offset_size);
+    for (uint64_t i = 0; i < total_cells; i++) {
+      b_write_buffer_offset[i] =
+          i * tiledb_datatype_size(test_attrs[1].type_) * 2;
+    }
+
     write_query_buffers.emplace_back(
-        test_attr.name_,
-        a_write_buffer,
-        &a_write_buffer_size,
-        a_write_buffer_offset,
-        &a_write_buffer_offset_size);
-  } else {
-    write_query_buffers.emplace_back(
-        test_attr.name_,
-        a_write_buffer,
-        &a_write_buffer_size,
-        nullptr,
-        nullptr);
+        test_attrs[1].name_,
+        b_write_buffer,
+        &b_write_buffer_size,
+        b_write_buffer_offset,
+        &b_write_buffer_offset_size);
   }
 
   // Define dimension query write vectors for either sparse arrays
@@ -626,41 +643,44 @@ void SmokeTestFx::smoke_test(
   // Define the read query buffers for "a".
   vector<test_query_buffer_t> read_query_buffers;
 
-  uint64_t a_read_buffer_size;
-  int32_t* a_read_buffer = nullptr;
-
-  if (test_attr.cell_val_num_ == TILEDB_VAR_NUM) {
-    a_read_buffer_size =
-        total_cells * 2 * tiledb_datatype_size(test_attr.type_);
-    a_read_buffer = (int32_t*)malloc(a_read_buffer_size);
-    for (uint64_t i = 0; i < total_cells * 2; i++) {
-      a_read_buffer[i] = 0;
-    }
-  } else {
-    a_read_buffer_size = total_cells * tiledb_datatype_size(test_attr.type_);
-    a_read_buffer = (int32_t*)malloc(a_read_buffer_size);
-    for (uint64_t i = 0; i < total_cells; i++) {
-      a_read_buffer[i] = 0;
-    }
-  }
-
-  uint64_t a_read_buffer_offset_size = total_cells * sizeof(uint64_t);
-  uint64_t* a_read_buffer_offset = (uint64_t*)malloc(a_read_buffer_offset_size);
+  // Create the read buffer for attribute "a".
+  uint64_t a_read_buffer_size =
+      total_cells * tiledb_datatype_size(test_attrs[0].type_);
+  int32_t* a_read_buffer = (int32_t*)malloc(a_read_buffer_size);
   for (uint64_t i = 0; i < total_cells; i++) {
-    a_read_buffer_offset[i] = 0;
+    a_read_buffer[i] = 0;
   }
+  read_query_buffers.emplace_back(
+      test_attrs[0].name_,
+      a_read_buffer,
+      &a_read_buffer_size,
+      nullptr,
+      nullptr);
 
-  // Variable buffer is set only when the attribute is var-sized.
-  if (test_attr.cell_val_num_ == TILEDB_VAR_NUM) {
+  // Create the read buffers for attribute "b".
+  uint64_t b_read_buffer_size = 0;
+  int32_t* b_read_buffer = nullptr;
+  uint64_t b_read_buffer_offset_size = 0;
+  uint64_t* b_read_buffer_offset = nullptr;
+  if (test_attrs.size() >= 2) {
+    b_read_buffer_size =
+        total_cells * 2 * tiledb_datatype_size(test_attrs[1].type_);
+    b_read_buffer = (int32_t*)malloc(b_read_buffer_size);
+    for (uint64_t i = 0; i < total_cells * 2; i++) {
+      b_read_buffer[i] = 0;
+    }
+
+    b_read_buffer_offset_size = total_cells * sizeof(uint64_t);
+    b_read_buffer_offset = (uint64_t*)malloc(b_read_buffer_offset_size);
+    for (uint64_t i = 0; i < total_cells; i++) {
+      b_read_buffer_offset[i] = 0;
+    }
     read_query_buffers.emplace_back(
-        test_attr.name_,
-        a_read_buffer,
-        &a_read_buffer_size,
-        a_read_buffer_offset,
-        &a_read_buffer_offset_size);
-  } else {
-    read_query_buffers.emplace_back(
-        test_attr.name_, a_read_buffer, &a_read_buffer_size, nullptr, nullptr);
+        test_attrs[1].name_,
+        b_read_buffer,
+        &b_read_buffer_size,
+        b_read_buffer_offset,
+        &b_read_buffer_offset_size);
   }
 
   // This logic assumes that all dimensions are of type TILEDB_UINT64.
@@ -675,44 +695,73 @@ void SmokeTestFx::smoke_test(
 
   read(array_name, read_query_buffers, subarray_full, encryption_type);
 
-  // Ensure that each value in `a_read_buffer` corresponds to its index in
-  // the original `a_write_buffer`.
-  REQUIRE(!memcmp(a_read_buffer, a_write_buffer, a_read_buffer_size));
+  // Check the read on "a"
+  assert(a_read_buffer_size == a_write_buffer_size);
+  const uint64_t buffer_len =
+      a_read_buffer_size / tiledb_datatype_size(test_attrs[0].type_);
+  for (size_t i = 0; i < buffer_len; ++i) {
+    assert(((int32_t*)a_read_buffer)[i] == ((int32_t*)a_write_buffer)[i]);
+  }
+
+  // Check the read on "b".
+  if (test_attrs.size() >= 2) {
+    assert(b_read_buffer_size == b_write_buffer_size);
+    const uint64_t buffer_len =
+        b_read_buffer_size / tiledb_datatype_size(test_attrs[1].type_);
+    for (size_t i = 0; i < buffer_len; ++i) {
+      assert(((int32_t*)b_read_buffer)[i] == ((int32_t*)b_write_buffer)[i]);
+    }
+
+    assert(b_read_buffer_offset_size == b_write_buffer_offset_size);
+    const uint64_t buffer_offset_len =
+        b_read_buffer_offset_size / sizeof(uint64_t);
+    for (size_t i = 0; i < buffer_offset_len; ++i) {
+      assert(b_read_buffer_offset[i] == b_write_buffer_offset[i]);
+    }
+  }
 
   // Free the write buffers.
-  free(a_write_buffer);
-  free(a_write_buffer_offset);
+  if (a_write_buffer != nullptr)
+    free(a_write_buffer);
+  if (b_write_buffer != nullptr)
+    free(b_write_buffer);
+  if (b_write_buffer_offset != nullptr)
+    free(b_write_buffer_offset);
 
   // Free the read buffers.
-  free(a_read_buffer);
-  free(a_read_buffer_offset);
+  if (a_read_buffer != nullptr)
+    free(a_read_buffer);
+  if (b_read_buffer != nullptr)
+    free(b_read_buffer);
+  if (b_read_buffer_offset != nullptr)
+    free(b_read_buffer_offset);
 
   // Free the subarray_full.
   free(subarray_full);
 }
 
 TEST_CASE_METHOD(
-    SmokeTestFx,
-    "C API: Test a dynamic range of arrays",
-    "[capi][smoke-test]") {
+    SmokeTestFx, "C API: Test a dynamic range of arrays", "[capi][smoke]") {
   vector<test_attr_t> attrs;
-  attrs.emplace_back("a1", TILEDB_INT32, 1);
-  attrs.emplace_back("a2", TILEDB_INT32, TILEDB_VAR_NUM);
+  attrs.emplace_back("a", TILEDB_INT32, 1);
+  attrs.emplace_back("b", TILEDB_INT32, TILEDB_VAR_NUM);
 
   vector<test_dim_t> dims;
-  const uint64_t d1_domain[] = {1, 2};
+  const uint64_t d1_domain[] = {1, 10};
   const uint64_t d1_tile_extent = 1;
   dims.emplace_back("d1", TILEDB_UINT64, d1_domain, d1_tile_extent);
-  const uint64_t d2_domain[] = {1, 2};
-  const uint64_t d2_tile_extent = 1;
+  const uint64_t d2_domain[] = {1, 20};
+  const uint64_t d2_tile_extent = 5;
   dims.emplace_back("d2", TILEDB_UINT64, d2_domain, d2_tile_extent);
-  const uint64_t d3_domain[] = {1, 3};
-  const uint64_t d3_tile_extent = 1;
+  const uint64_t d3_domain[] = {1, 30};
+  const uint64_t d3_tile_extent = 10;
   dims.emplace_back("d3", TILEDB_UINT64, d3_domain, d3_tile_extent);
 
   const tiledb_layout_t write_order = TILEDB_ROW_MAJOR;
 
-  for (const test_attr_t& attr : attrs) {
+  for (auto attr_iter = attrs.begin(); attr_iter != attrs.end(); ++attr_iter) {
+    vector<test_attr_t> test_attrs(attrs.begin(), attr_iter + 1);
+
     for (const tiledb_array_type_t array_type : {TILEDB_DENSE, TILEDB_SPARSE}) {
       for (const tiledb_layout_t cell_order :
            {TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR}) {
@@ -725,7 +774,7 @@ TEST_CASE_METHOD(
               test_dims.emplace_back(dim);
 
               smoke_test(
-                  attr,
+                  test_attrs,
                   test_dims,
                   array_type,
                   cell_order,

@@ -586,3 +586,119 @@ TEST_CASE_METHOD(
   read_array(array_name);
   delete_array(array_name);
 }
+
+struct StringEmptyFx3 {
+  std::vector<uint64_t> offsets = {
+      0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+  std::vector<char> data = {'\0'};
+};
+
+TEST_CASE_METHOD(
+    StringEmptyFx3,
+    "C++ API: Test var-length string only empty",
+    "[cppapi][empty-var-length]") {
+  using namespace tiledb;
+
+  std::string array_name = "empty_string3";
+
+  // create
+  {
+    Context ctx;
+
+    Domain domain(ctx);
+    domain.add_dimension(
+        Dimension::create<uint64_t>(ctx, "__dim_0", {0, 3}, 1));
+    domain.add_dimension(
+        Dimension::create<uint64_t>(ctx, "__dim_1", {0, 3}, 1));
+
+    ArraySchema schema(ctx, TILEDB_DENSE);
+    schema.set_domain(domain).set_order({TILEDB_ROW_MAJOR});
+
+    auto attr = Attribute(ctx, "", TILEDB_STRING_UTF8);
+    attr.set_cell_val_num(TILEDB_VAR_NUM);
+    schema.add_attribute(attr);
+
+    VFS vfs(ctx);
+    if (vfs.is_dir(array_name)) {
+      vfs.remove_dir(array_name);
+    }
+    Array::create(array_name, schema);
+  }
+
+  // write
+  {
+    auto cfg = tiledb::Config();
+    auto ctx = tiledb::Context(cfg);
+
+    auto array = tiledb::Array(ctx, array_name, TILEDB_WRITE);
+
+    Query query(ctx, array, TILEDB_WRITE);
+    query.set_buffer(
+        "",
+        StringEmptyFx3::offsets.data(),
+        StringEmptyFx3::offsets.size(),
+        (char*)StringEmptyFx3::data.data(),
+        StringEmptyFx3::data.size());
+
+    query.submit();
+  }
+
+  // read whole array
+  {
+    auto cfg = tiledb::Config();
+    auto ctx = tiledb::Context(cfg);
+
+    std::vector<uint64_t> r_offsets(16);
+    std::vector<char> r_data(16);
+
+    auto array = tiledb::Array(ctx, array_name, TILEDB_READ);
+    Query query(ctx, array, TILEDB_READ);
+    query.set_buffer("", r_offsets, r_data);
+
+    query.add_range(0, (uint64_t)0, (uint64_t)3);
+    query.add_range(1, (uint64_t)0, (uint64_t)3);
+
+    query.submit();
+
+    auto result_els = query.result_buffer_elements();
+
+    REQUIRE(result_els[""].first == 16);
+    REQUIRE(result_els[""].second == 1);
+    REQUIRE(r_offsets == StringEmptyFx3::offsets);
+    REQUIRE(r_data[0] == StringEmptyFx3::data[0]);
+  }
+
+  // read subset of array: note that the offsets are sequentially
+  // 0s and the data buffer is empty in this case because all of
+  // the queried cells are empty.
+  {
+    auto cfg = tiledb::Config();
+    auto ctx = tiledb::Context(cfg);
+
+    std::vector<uint64_t> r_offsets(4);
+    std::vector<char> r_data(4);
+
+    auto array = tiledb::Array(ctx, array_name, TILEDB_READ);
+    Query query(ctx, array, TILEDB_READ);
+    query.set_buffer("", r_offsets, r_data);
+
+    query.add_range(0, (uint64_t)0, (uint64_t)1);
+    query.add_range(1, (uint64_t)1, (uint64_t)2);
+
+    query.submit();
+
+    auto result_els = query.result_buffer_elements();
+
+    REQUIRE(result_els[""].first == 4);
+    REQUIRE(result_els[""].second == 0);
+
+    std::vector<uint64_t> q2_result_offsets = {0, 0, 0, 0};
+    REQUIRE(r_offsets == q2_result_offsets);
+    REQUIRE(r_data[0] == StringEmptyFx3::data[0]);
+  }
+
+  Context ctx;
+  if (Object::object(ctx, array_name).type() == Object::Type::Array) {
+    Object::remove(ctx, array_name);
+  }
+}
