@@ -57,6 +57,7 @@ class Array;
 class ArraySchema;
 class EncryptionKey;
 class FragmentMetadata;
+class StorageManager;
 
 enum class Layout : uint8_t;
 enum class QueryType : uint8_t;
@@ -514,6 +515,16 @@ class Subarray {
    */
   Status get_est_result_size(
       const char* name, uint64_t* size, ThreadPool* compute_tp);
+
+  /**
+   * Gets the estimated result size (in bytes) for the input fixed-sized
+   * attribute/dimension if audit passes.
+   */
+  Status get_est_result_size_querytype_audited(
+      const char* name,
+      uint64_t* size,
+      StorageManager* storage_manager);
+      //ThreadPool* compute_tp);
 
   /**
    * Gets the estimated result size (in bytes) for the input var-sized

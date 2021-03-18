@@ -133,7 +133,6 @@ void check_partitions(
     tiledb_subarray_t* retrieve_partition_subarray);
 
 template <class T> void check_partitions(
-    const tiledb::Context* ctx,
     tiledb::SubarrayPartitioner* partitioner,
     const std::vector<SubarrayRanges<T>>& partitions,
     bool last_unsplittable,

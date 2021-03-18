@@ -55,10 +55,10 @@ using namespace tiledb::test;
 struct CPPAPISubarrayPartitionerSparseFx {
   tiledb_ctx_t* ctx_;
   tiledb_vfs_t* vfs_;
+  const std::vector<std::unique_ptr<SupportedFs>> fs_vec_;
   tiledb::Context cppctx_;
   tiledb::Config cppconfig_;
   tiledb::VFS cppvfs_;
-  const std::vector<std::unique_ptr<SupportedFs>> fs_vec_;
   std::string temp_dir_;
   std::string array_name_;
   const char* ARRAY_NAME = "subarray_partitioner_sparse";
@@ -356,8 +356,6 @@ void CPPAPISubarrayPartitionerSparseFx::test_subarray_partitioner(
   //note: tentatively changed Array() locally to notclose if !own...
   cpparray_ = new tiledb::Array(cppctx_, array_, false, true); //was forcing closed...??? true);
 
-  int32_t rc;
-
   tiledb::Subarray *tdb_subarray;
   create_subarray(&cppvfs_.context(), cpparray_, ranges, subarray_layout, &tdb_subarray);
   tdb_subarray->set_layout((tiledb_layout_t)subarray_layout);
@@ -374,7 +372,6 @@ void CPPAPISubarrayPartitionerSparseFx::test_subarray_partitioner(
       subarray_layout,
       &tdb_retrieve_partition_subarray);
   check_partitions<T>(
-      &cppvfs_.context(),
       &subarray_partitioner,
       partitions,
       unsplittable,
@@ -403,8 +400,6 @@ void CPPAPISubarrayPartitionerSparseFx::test_subarray_partitioner(
   cpparray_ = new tiledb::Array(
       cppctx_, array_, false, true);  // was forcing closed...??? true);
 
-  int32_t rc;
-
   tiledb::Subarray* tdb_subarray;
   create_subarray(
       &cppvfs_.context(), cpparray_, ranges, subarray_layout, &tdb_subarray);
@@ -415,8 +410,8 @@ void CPPAPISubarrayPartitionerSparseFx::test_subarray_partitioner(
   tiledb::SubarrayPartitioner subarray_partitioner(
       cppvfs_.context(),
       *tdb_subarray,
-      memory_budget_,
-      memory_budget_var_,
+      memory_budget,
+      memory_budget_var,
       0);
   subarray_partitioner.set_result_budget(attr.c_str(), result_budget);
 
@@ -433,7 +428,6 @@ void CPPAPISubarrayPartitionerSparseFx::test_subarray_partitioner(
             ->subarray_));
 
   check_partitions(
-      &cppvfs_.context(),
       &subarray_partitioner,
       partitions,
       unsplittable,
@@ -459,8 +453,6 @@ void CPPAPISubarrayPartitionerSparseFx::test_subarray_partitioner(
 
   cpparray_ = new tiledb::Array(
       cppctx_, array_, false, true);  // was forcing closed...??? true);
-
-  int32_t rc;
 
   tiledb::Subarray* tdb_subarray;
   create_subarray(
@@ -498,7 +490,6 @@ void CPPAPISubarrayPartitionerSparseFx::test_subarray_partitioner(
       *(tdb_subarray->capi_subarray()->subarray_));
 
   check_partitions(
-      &cppvfs_.context(),
       &subarray_partitioner,
       partitions,
       unsplittable,

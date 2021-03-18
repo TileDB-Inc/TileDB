@@ -42,6 +42,9 @@
 #include "tiledb/sm/misc/utils.h"
 #include "tiledb/sm/rtree/rtree.h"
 #include "tiledb/sm/stats/stats.h"
+#include "tiledb/sm/enums/query_type.h"
+#include "tiledb/sm/query/query.h"
+#include "tiledb/sm/rest/rest_client.h"
 
 #include <algorithm>
 #include <iomanip>
@@ -780,6 +783,89 @@ Status Subarray::get_est_result_size(
     *size = cell_size;
 
   return Status::Ok();
+}
+
+Status Subarray::get_est_result_size_querytype_audited(
+    const char* name,
+    uint64_t* size,
+    StorageManager* storage_manager) { //ThreadPool* const compute_tp) {
+
+  QueryType type;
+  //Note: various items below expect array open, get_query_type() providing that audit.
+  RETURN_NOT_OK(array_->get_query_type(&type));
+
+  if (type == QueryType::WRITE)
+    return LOG_STATUS(Status::QueryError(
+        "Cannot get estimated result size; Operation currently "
+        "unsupported for write queries"));
+
+  if (name == nullptr)
+    return LOG_STATUS(Status::QueryError(
+        "Cannot get estimated result size; Name cannot be null"));
+
+  if (name == constants::coords &&
+      !array_->array_schema()->domain()->all_dims_same_type())
+    return LOG_STATUS(Status::QueryError(
+        "Cannot get estimated result size; Not applicable to zipped "
+        "coordinates in arrays with heterogeneous domain"));
+
+  if (name == constants::coords &&
+      !array_->array_schema()->domain()->all_dims_fixed())
+    return LOG_STATUS(Status::QueryError(
+        "Cannot get estimated result size; Not applicable to zipped "
+        "coordinates in arrays with domains with variable-sized dimensions"));
+
+  if (array_->array_schema()->is_nullable(name))
+    return LOG_STATUS(Status::WriterError(
+        std::string(
+            "Cannot get estimated result size; Input attribute/dimension '") +
+        name + "' is nullable"));
+
+#if 01
+// TBD: How to deal with this in subarray, we have no 'reader'???
+// and, we're not yet technically working with a 'query', which the rest_client-> call below
+// presupposes... and where code cloned from 'this' was a core 'Query' class entity...
+  if (array_->is_remote()) { // && !reader_.est_result_size_computed()) {
+    // Trying approach of temporary query (and dup array due to 'const'ness of
+    // array_ not being liked to define query)
+    // TBD: will it work even if messy?
+    auto rest_client = storage_manager->rest_client();
+    if (rest_client == nullptr)
+      return LOG_STATUS(
+          Status::QueryError("Error in query estimate result size; remote "
+                             "array with no rest client."));
+
+    // TBD: Can an array be opened twice? or maybe just some circumstances?
+    Array tmp_array(array_->array_uri(), storage_manager);
+    // tmp_array.open(type, 0, array_->encryption_key(), ?);)
+    auto enc_key_const_buff = array_->encryption_key()->key();
+    uint64_t time_stamp = 0;
+    tmp_array.open(
+        type,
+        time_stamp,
+        array_->encryption_key()->encryption_type(),
+        enc_key_const_buff.data(),
+        enc_key_const_buff.nbytes_left_to_read());
+    Query tmp_query(storage_manager, &tmp_array);
+
+    array_->array_schema()->set_array_uri(array_->array_uri());
+
+    //RETURN_NOT_OK(
+    //    rest_client->get_query_est_result_sizes(array_->array_uri(), &tmp_query));
+    auto ret_rest_response = rest_client->get_query_est_result_sizes(array_->array_uri(), &tmp_query);
+    Status ret_get_est_result_size;
+    if (ret_rest_response.ok())
+      ret_get_est_result_size =
+          tmp_query
+              .get_est_result_size(name, size);
+    tmp_array.close();
+    RETURN_NOT_OK(ret_rest_response);
+    return ret_get_est_result_size;
+  }
+#endif
+
+  return get_est_result_size(name, size, storage_manager->compute_tp() ); //compute_tp);
+
 }
 
 Status Subarray::get_est_result_size(

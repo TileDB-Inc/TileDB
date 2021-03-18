@@ -3871,87 +3871,13 @@ int32_t tiledb_subarray_get_est_result_size(
   if (sanity_check(ctx) == TILEDB_ERR ||
       sanity_check(ctx, subarray) == TILEDB_ERR)
     return TILEDB_ERR;
-#if 01
-  // audits from Query::get_est_result_size(...) for query type QueryType::READ
-  if (name == nullptr) {
-    // return
-    LOG_STATUS(Status::QueryError(
-        "Cannot get estimated result size; Name cannot be null"));
-    return TILEDB_ERR;
-  }
-
-  auto array_ = subarray->subarray_->array();
-  // note: TILEDB_COORDS deprecated, any 'current' way to achieve this?
-  if (name == TILEDB_COORDS &&
-      !array_->array_schema()->domain()->all_dims_same_type()) {
-    // return
-    LOG_STATUS(Status::QueryError(
-        "Cannot get estimated result size; Not applicable to zipped "
-        "coordinates in arrays with heterogeneous domain"));
-    return TILEDB_ERR;
-  }
-
-  // note: TILEDB_COORDS deprecated, any 'current' way to achieve this?
-  if (name == TILEDB_COORDS &&
-      !array_->array_schema()->domain()->all_dims_fixed()) {
-    // return
-    LOG_STATUS(Status::QueryError(
-        "Cannot get estimated result size; Not applicable to zipped "
-        "coordinates in arrays with domains with variable-sized dimensions"));
-    return TILEDB_ERR;
-  }
-
-  if (array_->array_schema()->is_nullable(name)) {
-    // return
-    LOG_STATUS(Status::WriterError(
-        std::string(
-            "Cannot get estimated result size; Input attribute/dimension '") +
-        name + "' is nullable"));
-    return TILEDB_ERR;
-  }
-
-#if 01
-  // TBD: How to achieve this, subarray missing items inside a Query entity
-  // needed for following functionality with REST/remote ... simplest
-  // solution might be to require a 'query' be
-  // available for this routine (parameter ?)
-  if (array_->is_remote() && !subarray->subarray_->est_result_size_computed()) {
-    auto rest_client = ctx->ctx_->storage_manager()->rest_client();
-    if (rest_client == nullptr) {
-      // return
-      LOG_STATUS(
-          Status::QueryError("Error in query estimate result size; remote "
-                             "array with no rest client."));
-      return TILEDB_ERR;
-    }
-
-    array_->array_schema()->set_array_uri(array_->array_uri());
-
-#if 0
-    //TBD: rest client not going to work properly 'til this is implemented somehow.
-    //... apparently no unit tests currently cover this possibility, as no 
-    //failures occurring with this functionality missing
-    //RETURN_NOT_OK(
-    //    rest_client->get_query_est_result_sizes(array_->array_uri(), this));
-    if (SAVE_ERROR_CATCH(
-          ctx,
-      //hmm, 'this' is to be of 'Query *', but, again, we don't currently have access to a query,
-      //and it's going to set it on the 'reader_' of that Query* anyway, which isn't going to 
-      //be beneficial for the subarray->subarray_ we're handling in this routine...
-          rest_client->get_query_est_result_sizes(array_->array_uri(), this)))
-      return TILEDB_ERR;
-#endif
-  }
-
-#endif
-#endif
-
   if (SAVE_ERROR_CATCH(
           ctx,
-          subarray->subarray_->get_est_result_size(
-              name, size, ctx->ctx_->storage_manager()->compute_tp())))
+          subarray->subarray_->get_est_result_size_querytype_audited(
+              name,
+              size,
+              ctx->ctx_->storage_manager())))
     return TILEDB_ERR;
-
   return TILEDB_OK;
 }
 
