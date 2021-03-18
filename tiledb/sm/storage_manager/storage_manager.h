@@ -1087,7 +1087,6 @@ class StorageManager {
    *     where the basic metadata can be found. If the offset cannot be
    *     found, then the metadata of that fragment will be loaded from
    *     storage instead.
-   * @param meta_version The version of the consolidated fragment metadata.
    * @param fragment_metadata The fragment metadata retrieved in a
    *     vector.
    * @return Status
@@ -1098,7 +1097,6 @@ class StorageManager {
       const std::vector<TimestampedURI>& fragments_to_load,
       Buffer* meta_buff,
       const std::unordered_map<std::string, uint64_t>& offsets,
-      uint32_t meta_version,
       std::vector<FragmentMetadata*>* fragment_metadata);
 
   /**
@@ -1109,15 +1107,13 @@ class StorageManager {
    * @param f_buff The buffer to hold the consolidated fragment metadata.
    * @param offsets A map from the fragment name to the offset in `f_buff` where
    *     the basic fragment metadata starts.
-   * @param meta_version The version of the consolidated metadata file.
    * @return Status
    */
   Status load_consolidated_fragment_meta(
       const URI& uri,
       const EncryptionKey& enc_key,
       Buffer* f_buff,
-      std::unordered_map<std::string, uint64_t>* offsets,
-      uint32_t* meta_version);
+      std::unordered_map<std::string, uint64_t>* offsets);
 
   /**
    * Retrieves the URI of the latest consolidated fragment metadata,

@@ -1001,16 +1001,16 @@ TEST_CASE("C API: Test fragment info, dump", "[capi][fragment_info][dump]") {
       "- Fragment #1:\n" + "  > URI: " + written_frag_uri_1 + "\n" +
       "  > Type: dense\n" + "  > Non-empty domain: [1, 6]\n" +
       "  > Size: 1584\n" + "  > Cell num: 10\n" +
-      "  > Timestamp range: [1, 1]\n" + "  > Format version: 8\n" +
+      "  > Timestamp range: [1, 1]\n" + "  > Format version: 9\n" +
       "  > Has consolidated metadata: no\n" + "- Fragment #2:\n" +
       "  > URI: " + written_frag_uri_2 + "\n" + "  > Type: sparse\n" +
       "  > Non-empty domain: [1, 7]\n" + "  > Size: 1708\n" +
       "  > Cell num: 4\n" + "  > Timestamp range: [2, 2]\n" +
-      "  > Format version: 8\n" + "  > Has consolidated metadata: no\n" +
+      "  > Format version: 9\n" + "  > Has consolidated metadata: no\n" +
       "- Fragment #3:\n" + "  > URI: " + written_frag_uri_3 + "\n" +
       "  > Type: sparse\n" + "  > Non-empty domain: [2, 9]\n" +
       "  > Size: 1696\n" + "  > Cell num: 3\n" +
-      "  > Timestamp range: [3, 3]\n" + "  > Format version: 8\n" +
+      "  > Timestamp range: [3, 3]\n" + "  > Format version: 9\n" +
       "  > Has consolidated metadata: no\n";
   FILE* gold_fout = fopen("gold_fout.txt", "w");
   const char* dump = dump_str.c_str();
@@ -1130,7 +1130,7 @@ TEST_CASE(
       "- Fragment #1:\n" + "  > URI: " + uri + "\n" + "  > Type: dense\n" +
       "  > Non-empty domain: [1, 10]\n" + "  > Size: 1584\n" +
       "  > Cell num: 10\n" + "  > Timestamp range: [1, 3]\n" +
-      "  > Format version: 8\n" + "  > Has consolidated metadata: no\n";
+      "  > Format version: 9\n" + "  > Has consolidated metadata: no\n";
   FILE* gold_fout = fopen("gold_fout.txt", "w");
   const char* dump = dump_str.c_str();
   fwrite(dump, sizeof(char), strlen(dump), gold_fout);
@@ -1212,7 +1212,7 @@ TEST_CASE(
       "- Fragment #1:\n" + "  > URI: " + written_frag_uri + "\n" +
       "  > Type: sparse\n" + "  > Non-empty domain: [a, ddd]\n" +
       "  > Size: 1833\n" + "  > Cell num: 4\n" +
-      "  > Timestamp range: [1, 1]\n" + "  > Format version: 8\n" +
+      "  > Timestamp range: [1, 1]\n" + "  > Format version: 9\n" +
       "  > Has consolidated metadata: no\n";
   FILE* gold_fout = fopen("gold_fout.txt", "w");
   const char* dump = dump_str.c_str();
@@ -1228,6 +1228,99 @@ TEST_CASE(
 #endif
   CHECK(tiledb_vfs_remove_file(ctx, vfs, "gold_fout.txt") == TILEDB_OK);
   CHECK(tiledb_vfs_remove_file(ctx, vfs, "fout.txt") == TILEDB_OK);
+
+  // Clean up
+  remove_dir(array_name, ctx, vfs);
+  tiledb_ctx_free(&ctx);
+  tiledb_vfs_free(&vfs);
+  tiledb_fragment_info_free(&fragment_info);
+}
+
+TEST_CASE(
+    "C API: Test fragment info, naming by index",
+    "[capi][fragment_info][index-naming]") {
+  // Create TileDB context
+  tiledb_ctx_t* ctx = nullptr;
+  int rc = tiledb_ctx_alloc(nullptr, &ctx);
+  REQUIRE(rc == TILEDB_OK);
+  tiledb_vfs_t* vfs = nullptr;
+  rc = tiledb_vfs_alloc(ctx, nullptr, &vfs);
+  REQUIRE(rc == TILEDB_OK);
+
+  // Create array
+  remove_dir(array_name, ctx, vfs);
+  uint64_t domain[] = {1, 4, 1, 4};
+  uint64_t tile_extent = 1;
+  create_array(
+      ctx,
+      array_name,
+      TILEDB_DENSE,
+      {"dimOne", "dimTwo"},
+      {TILEDB_UINT64, TILEDB_UINT64},
+      {&domain[0], &domain[2]},
+      {&tile_extent, &tile_extent},
+      {"foo", "bar"},
+      {TILEDB_INT32, TILEDB_INT32},
+      {1, 1},
+      {tiledb::test::Compressor(TILEDB_FILTER_NONE, -1),
+       tiledb::test::Compressor(TILEDB_FILTER_NONE, -1)},
+      TILEDB_ROW_MAJOR,
+      TILEDB_ROW_MAJOR,
+      2);
+
+  // Write a sparse fragment
+  QueryBuffers buffers;
+  std::vector<int32_t> foo = {
+      1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16};
+  uint64_t foo_size = foo.size() * sizeof(int32_t);
+  buffers["foo"] = tiledb::test::QueryBuffer({&foo[0], foo_size, nullptr, 0});
+  std::vector<int32_t> bar = {
+      1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16};
+  uint64_t bar_size = foo.size() * sizeof(int32_t);
+  buffers["bar"] = tiledb::test::QueryBuffer({&bar[0], bar_size, nullptr, 0});
+
+  std::vector<uint64_t> dimOne = {1, 1, 2, 3};
+  uint64_t dimOne_size = dimOne.size() * sizeof(uint64_t);
+  std::vector<uint64_t> dimTwo = {2, 3, 1, 1};
+  uint64_t dimTwo_size = dimTwo.size() * sizeof(uint64_t);
+  buffers["dimOne"] =
+      tiledb::test::QueryBuffer({&dimOne[0], dimOne_size, nullptr, 0});
+  buffers["dimTwo"] =
+      tiledb::test::QueryBuffer({&dimTwo[0], dimTwo_size, nullptr, 0});
+
+  std::string written_frag_uri_1;
+  write_array(
+      ctx, array_name, 2, TILEDB_UNORDERED, buffers, &written_frag_uri_1);
+
+  // Create fragment info object
+  tiledb_fragment_info_t* fragment_info = nullptr;
+  rc = tiledb_fragment_info_alloc(ctx, array_name.c_str(), &fragment_info);
+  CHECK(rc == TILEDB_OK);
+
+  // Load fragment info
+  rc = tiledb_fragment_info_load(ctx, fragment_info);
+  CHECK(rc == TILEDB_OK);
+
+  // Get fragment URI
+  const char* frag_uri;
+  rc = tiledb_fragment_info_get_fragment_uri(ctx, fragment_info, 0, &frag_uri);
+  CHECK(rc == TILEDB_OK);
+
+  // Ensure that the fragment files are properly named after encoding
+  int is_dir = 0;
+  rc = tiledb_vfs_is_dir(ctx, vfs, frag_uri, &is_dir);
+  REQUIRE(rc == TILEDB_OK);
+
+  std::vector<std::string> expected_files = {
+      "/a0.tdb", "/a1.tdb", "/d0.tdb", "/d1.tdb"};
+
+  for (const std::string& expected_file : expected_files) {
+    std::string file_name = frag_uri + expected_file;
+    int is_file = 0;
+    rc = tiledb_vfs_is_file(ctx, vfs, file_name.c_str(), &is_file);
+    REQUIRE(rc == TILEDB_OK);
+    REQUIRE(is_file > 0);
+  }
 
   // Clean up
   remove_dir(array_name, ctx, vfs);

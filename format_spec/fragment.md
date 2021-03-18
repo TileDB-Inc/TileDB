@@ -9,13 +9,13 @@ my_array                              # array folder
    |  ...
    |_ <timestamped_name>              # fragment folder
    |      |_ __fragment_metadata.tdb  # fragment metadata
-   |      |_ a1.tdb                   # fixed-sized attribute 
-   |      |_ a2.tdb                   # var-sized attribute (offsets) 
-   |      |_ a2_var.tdb               # var-sized attribute (values)
+   |      |_ a0.tdb                   # fixed-sized attribute 
+   |      |_ a1.tdb                   # var-sized attribute (offsets) 
+   |      |_ a1_var.tdb               # var-sized attribute (values)
    |      |_ ...      
-   |      |_ d1.tdb                   # fixed-sized dimension 
-   |      |_ d2.tdb                   # var-sized dimension (offsets) 
-   |      |_ d2_var.tdb               # var-sized dimension (values)
+   |      |_ d0.tdb                   # fixed-sized dimension 
+   |      |_ d1.tdb                   # var-sized dimension (offsets) 
+   |      |_ d1_var.tdb               # var-sized dimension (values)
    |      |_ ...      
    |_ ...  
 ```
@@ -27,7 +27,8 @@ my_array                              # array folder
 
 There can be any number of fragments in an array. The fragment folder contains:
 * A single [fragment metadata file](#fragment-metadata-file) named `__fragment_metadata.tdb`. 
-* Any number of [data files](#data-file). For each fixed-sized attribute `a1` (or dimension `d1`), there is a single data file `a1.tdb` (`d1.tdb`) containing the values along this attribute (dimension). For every var-sized attribute `a2` (or dimensions `d2`), there are two data files; `a2_var.tdb` (`d2_var.tdb`) containing the var-sized values of the attribute (dimension) and `a2.tdb` (`d2.tdb`) containing the starting offsets of each value in `a2_var.tdb` (`d2_var.rdb`). Both fixed-sized and var-sized attributes can be nullable. A nullable attribute, `a3`, will have an additional file `a3_validity.tdb` that contains its validity vector.
+* Any number of [data files](#data-file). For each fixed-sized attribute `foo1` (or dimension `bar1`), there is a single data file `a0.tdb` (`d0.tdb`) containing the values along this attribute (dimension). For every var-sized attribute `foo2` (or dimensions `bar2`), there are two data files; `a1_var.tdb` (`d1_var.tdb`) containing the var-sized values of the attribute (dimension) and `a1.tdb` (`d1.tdb`) containing the starting offsets of each value in `a1_var.tdb` (`d1_var.rdb`). Both fixed-sized and var-sized attributes can be nullable. A nullable attribute, `foo3`, will have an additional file `a2_validity.tdb` that contains its validity vector.
+* The names of the data files are not dependent on the names of the attributes/dimensions. The file names are determined by the order of the attributes and dimensions in the array schema.
 
 ## Fragment Metadata File 
 

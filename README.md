@@ -36,7 +36,7 @@ $ brew install tiledb-inc/stable/tiledb
 $ conda install -c conda-forge tiledb
 ```
 
-Alterantively, you can use the Docker image we provide:
+Alternatively, you can use the Docker image we provide:
 
 ```bash
 $ docker pull tiledb/tiledb
@@ -51,6 +51,11 @@ We include several [examples](https://github.com/TileDB-Inc/TileDB/tree/dev/exam
 ## Documentation
 
 You can find the detailed TileDB documentation at [https://docs.tiledb.com](https://docs.tiledb.com).
+
+## Building from source
+
+Please see [building from source](https://docs.tiledb.com/main/solutions/tiledb-embedded/installation/building-from-source) in
+the documentation.
 
 ## Format Specification
 

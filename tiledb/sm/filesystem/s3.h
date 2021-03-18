@@ -573,6 +573,12 @@ class S3 {
   /** Set the request payer for a s3 request. */
   Aws::S3::Model::RequestPayer request_payer_;
 
+  /** The server-side encryption algorithm. */
+  Aws::S3::Model::ServerSideEncryption sse_;
+
+  /** The server-side encryption kms key. */
+  std::string sse_kms_key_id_;
+
   /** Protects file_buffers map */
   std::mutex file_buffers_mtx_;
 
