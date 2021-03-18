@@ -5,7 +5,7 @@ on:
     types: [edited, opened, synchronize, reopened]
 
 jobs:
-  my_job_1:
+  add_history_commit:
     runs-on: ubuntu-20.04
 
     steps:

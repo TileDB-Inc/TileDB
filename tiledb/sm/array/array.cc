@@ -849,6 +849,7 @@ Status Array::load_remote_non_empty_domain() {
       return LOG_STATUS(Status::ArrayError(
           "Cannot load metadata; remote array with no REST client."));
     RETURN_NOT_OK(rest_client->get_array_non_empty_domain(this, timestamp_));
+    non_empty_domain_computed_ = true;
   }
   return Status::Ok();
 }

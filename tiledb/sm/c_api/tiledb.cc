@@ -4660,7 +4660,8 @@ int32_t tiledb_array_consolidate_with_key(
               static_cast<tiledb::sm::EncryptionType>(encryption_type),
               encryption_key,
               key_length,
-              (config == nullptr) ? nullptr : config->config_)))
+              (config == nullptr) ? &ctx->ctx_->storage_manager()->config() :
+                                    config->config_)))
     return TILEDB_ERR;
 
   return TILEDB_OK;
@@ -4675,7 +4676,9 @@ int32_t tiledb_array_vacuum(
   if (SAVE_ERROR_CATCH(
           ctx,
           ctx->ctx_->storage_manager()->array_vacuum(
-              array_uri, (config == nullptr) ? nullptr : config->config_)))
+              array_uri,
+              (config == nullptr) ? &ctx->ctx_->storage_manager()->config() :
+                                    config->config_)))
     return TILEDB_ERR;
 
   return TILEDB_OK;
@@ -5034,7 +5037,8 @@ int32_t tiledb_array_consolidate_metadata(
               static_cast<tiledb::sm::EncryptionType>(TILEDB_NO_ENCRYPTION),
               nullptr,
               0,
-              (config == nullptr) ? nullptr : config->config_)))
+              (config == nullptr) ? &ctx->ctx_->storage_manager()->config() :
+                                    config->config_)))
     return TILEDB_ERR;
 
   return TILEDB_OK;
@@ -5058,7 +5062,8 @@ int32_t tiledb_array_consolidate_metadata_with_key(
               static_cast<tiledb::sm::EncryptionType>(encryption_type),
               encryption_key,
               key_length,
-              (config == nullptr) ? nullptr : config->config_)))
+              (config == nullptr) ? &ctx->ctx_->storage_manager()->config() :
+                                    config->config_)))
     return TILEDB_ERR;
 
   return TILEDB_OK;

@@ -105,6 +105,15 @@ struct AttributeBufferHeader {
 
     validityLenBufferSizeInBytes @3 :UInt64;
     # Number of bytes in the validity data buffer
+
+    originalFixedLenBufferSizeInBytes @4 :UInt64;
+    # Original user set number of bytes in the fixed-length attribute data buffer
+
+    originalVarLenBufferSizeInBytes @5 :UInt64;
+    # Original user set number of bytes in the var-length attribute data buffer
+
+    originalValidityLenBufferSizeInBytes @6 :UInt64;
+    # Original user set number of bytes in the validity data buffer
 }
 
 struct Dimension {

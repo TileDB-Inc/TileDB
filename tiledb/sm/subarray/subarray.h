@@ -730,8 +730,28 @@ class Subarray {
   const T* tile_coords_ptr(
       const std::vector<T>& tile_coords, std::vector<uint8_t>* aux) const;
 
-  /** Returns the tile overlap of the subarray. */
+  /**
+   * Returns the tile overlap of the subarray.
+   *
+   * The outer vector is indexed by fragment ids and the inner vector is
+   * indexed by range indexes.
+   *
+   * As an optimization, the underlying data structure may be shared between
+   * `Subarray` instances and their partitioned `Subarray` instances created
+   * by the `SubarrayPartitioner`. The caller must use the
+   * `Subarray::overlap_range_offset` to determine the range index that points
+   * to the starting range of this `Subarray` instance.
+   */
   const std::vector<std::vector<TileOverlap>>& tile_overlap() const;
+
+  /**
+   * The `Subarray::tile_overlap` returns a data structure where the
+   * outter vector is indexed by fragment ids and the inner vector
+   * is indexed by range ids. This API returns the offset into the
+   * inner vector that points to the first range used by this
+   * `Subarray` instance.
+   */
+  uint64_t overlap_range_offset() const;
 
   /**
    * Compute `tile_coords_` and `tile_coords_map_`. The coordinates will
@@ -850,14 +870,19 @@ class Subarray {
    * of all array fragments. Each element is a vector corresponding
    * to a single range of the subarray. These vectors/ranges are sorted
    * according to ``layout_``.
+   *
+   * This is shared between a `Subarray` and all of its `Subarray` partitions
+   * created with the `Subarray::get_subarray` API.
    */
-  std::vector<std::vector<TileOverlap>> tile_overlap_;
+  tdb_shared_ptr<std::vector<std::vector<TileOverlap>>> tile_overlap_;
 
   /**
-   * ``True`` if the tile overlap for the ranges of the subarray has
-   *  been computed.
+   * The first index in `tile_overlap_` corresponds to a fragment
+   * index. The second index corresponds to a range index. This
+   * variable stores the range index for the first range in
+   * this instance.
    */
-  bool tile_overlap_computed_;
+  uint64_t tile_overlap_range_offset_;
 
   /**
    * ``True`` if ranges should attempt to be coalesced as they are added.
@@ -960,7 +985,9 @@ class Subarray {
   Status load_relevant_fragment_rtrees(ThreadPool* compute_tp) const;
 
   /** Computes the tile overlap for each range and relevant fragment. */
-  Status compute_relevant_fragment_tile_overlap(ThreadPool* compute_tp);
+  Status compute_relevant_fragment_tile_overlap(
+      ThreadPool* compute_tp,
+      std::vector<std::vector<TileOverlap>>* tile_overlap);
 
   /**
    * Computes the tile overlap for all ranges on the given relevant fragment.
@@ -970,6 +997,7 @@ class Subarray {
    * @param dense Whether the fragment is dense or sparse.
    * @param range_num The number of ranges.
    * @param compute_tp The thread pool for compute-bound tasks.
+   * @param tile_overlap Mutated to store the computed tile overlap.
    * @return Status
    */
   Status compute_relevant_fragment_tile_overlap(
@@ -977,7 +1005,8 @@ class Subarray {
       unsigned frag_idx,
       bool dense,
       uint64_t range_num,
-      ThreadPool* compute_tp);
+      ThreadPool* compute_tp,
+      std::vector<std::vector<TileOverlap>>* tile_overlap);
 
   /**
    * Load the var-sized tile sizes for the input names and from the
