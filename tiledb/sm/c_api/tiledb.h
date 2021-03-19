@@ -900,6 +900,14 @@ TILEDB_EXPORT void tiledb_config_free(tiledb_config_t** config);
  *
  * **Parameters**
  *
+ * - `sm.array_timestamp_start` <br>
+ *    When set, an array will be opened betwen this value and
+ *    `sm.array_timestamp_end` upon a read query. <br>
+ *    **Default**: UINT64_MAX
+ * - `sm.array_timestamp_end` <br>
+ *    When set, an array will be opened betwen `sm.array_timestamp_start` and
+ *    this value upon a read query. <br>
+ *    **Default**: UINT64_MAX
  * - `sm.dedup_coords` <br>
  *    If `true`, cells with duplicate coordinates will be removed during sparse
  *    fragment writes. Note that ties during deduplication are broken
@@ -4567,6 +4575,7 @@ TILEDB_EXPORT int32_t tiledb_array_open(
     tiledb_ctx_t* ctx, tiledb_array_t* array, tiledb_query_type_t query_type);
 
 /**
+ * This is a deprecated API.
  * Similar to `tiledb_array_open`, but this function takes as input a
  * timestamp, representing time in milliseconds ellapsed since
  * 1970-01-01 00:00:00 +0000 (UTC). Opening the array at a
@@ -4636,6 +4645,7 @@ TILEDB_EXPORT int32_t tiledb_array_open_with_key(
     uint32_t key_length);
 
 /**
+ * This is a deprecated API.
  * Similar to `tiledb_array_open_with_key`, but this function takes as
  * input a timestamp, representing time in milliseconds ellapsed since
  * 1970-01-01 00:00:00 +0000 (UTC). Opening the array at a
@@ -4720,6 +4730,7 @@ TILEDB_EXPORT int32_t
 tiledb_array_reopen(tiledb_ctx_t* ctx, tiledb_array_t* array);
 
 /**
+ * This is a deprecated API.
  * Reopens a TileDB array (the array must be already open) at a specific
  * timestamp.
  *
@@ -4770,6 +4781,31 @@ TILEDB_EXPORT int32_t tiledb_array_reopen_at(
  */
 TILEDB_EXPORT int32_t tiledb_array_get_timestamp(
     tiledb_ctx_t* ctx, tiledb_array_t* array, uint64_t* timestamp);
+
+/**
+ * Sets the array config.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * tiledb_array_t* array;
+ * tiledb_array_alloc(ctx, "s3://tiledb_bucket/my_array", &array);
+ * tiledb_array_open(ctx, array, TILEDB_READ);
+ * // Set the config for the given array.
+ * tiledb_config_t* config;
+ * tiledb_array_set_config(ctx, array, config);
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param array The array to set the config for.
+ * @param config The config to be set.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ *
+ * @note The array does not need to be opened via `tiledb_array_open_at` to use
+ *      this function.
+ */
+TILEDB_EXPORT int32_t tiledb_array_set_config(
+    tiledb_ctx_t* ctx, tiledb_array_t* array, tiledb_config_t* config);
 
 /**
  * Closes a TileDB array.

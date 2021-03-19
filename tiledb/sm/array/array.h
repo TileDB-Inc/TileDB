@@ -82,7 +82,8 @@ class Array {
   const URI& array_uri() const;
 
   /**
-   * Opens the array for reading/writing.
+   * Opens the array for reading at a timstamp retrived from the config
+   * or for writing.
    *
    * @param query_type The mode in which the array is opened.
    * @param encryption_type The encryption type of the array
@@ -122,7 +123,8 @@ class Array {
       uint32_t key_length);
 
   /**
-   * Opens the array for reading at a given timestamp.
+   * This is a deprecated API.
+   * Opens the array for reading at a timestamp retrieved from the config.
    *
    * @param query_type The query type. This should always be READ. It
    *    is here only for sanity check.
@@ -217,6 +219,9 @@ class Array {
 
   /** Directly set the timestamp value. */
   Status set_timestamp(uint64_t timestamp);
+
+  /** Directly set the array config. */
+  Status set_config(const Config& config);
 
   /** Directly set the array URI. */
   Status set_uri(const std::string& uri);
@@ -327,6 +332,9 @@ class Array {
 
   /** The array URI. */
   URI array_uri_;
+
+  /** The array config. */
+  Config config_;
 
   /**
    * The private encryption key used to encrypt the array.

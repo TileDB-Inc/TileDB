@@ -598,6 +598,13 @@ class Array {
     return timestamp;
   }
 
+  /** Sets the array config. */
+  void set_config(const Config& config) const {
+    auto& ctx = ctx_.get();
+    ctx.handle_error(tiledb_array_set_config(
+        ctx.ptr().get(), array_.get(), config.ptr().get()));
+  }
+
   /**
    * Closes the array. The destructor calls this automatically.
    *

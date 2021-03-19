@@ -776,15 +776,29 @@ void write_array(
     tiledb_layout_t layout,
     const QueryBuffers& buffers,
     std::string* uri) {
-  // Open array
+  // Set array configuration
   tiledb_array_t* array;
   int rc = tiledb_array_alloc(ctx, array_name.c_str(), &array);
   CHECK(rc == TILEDB_OK);
+  tiledb_config_t* cfg_;
+  tiledb_error_t* err_ = nullptr;
+  REQUIRE(tiledb_config_alloc(&cfg_, &err_) == TILEDB_OK);
+  REQUIRE(err_ == nullptr);
+  rc = tiledb_config_set(
+      cfg_,
+      "sm.array_timestamp_start",
+      std::to_string(timestamp).c_str(),
+      &err_);
+  REQUIRE(rc == TILEDB_OK);
+  REQUIRE(err_ == nullptr);
+  rc = tiledb_array_set_config(ctx, array, cfg_);
+  REQUIRE(rc == TILEDB_OK);
+  // Open array
   if (encryption_type == TILEDB_NO_ENCRYPTION)
-    rc = tiledb_array_open_at(ctx, array, TILEDB_WRITE, timestamp);
+    rc = tiledb_array_open(ctx, array, TILEDB_WRITE);
   else
-    rc = tiledb_array_open_at_with_key(
-        ctx, array, TILEDB_WRITE, encryption_type, key, key_len, timestamp);
+    rc = tiledb_array_open_with_key(
+        ctx, array, TILEDB_WRITE, encryption_type, key, key_len);
   CHECK(rc == TILEDB_OK);
 
   // Create query
@@ -842,6 +856,7 @@ void write_array(
   // Clean up
   tiledb_array_free(&array);
   tiledb_query_free(&query);
+  tiledb_config_free(&cfg_);
 }
 
 template <class T>
