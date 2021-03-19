@@ -1,4 +1,5 @@
 //#define cppTILEDB_COND_SUB_SUBARRAY_FOR_QUERY 1
+#define DEVING_SUBARRAY_PARTITIONER 1
 
 /**
  * @file   tiledb.cc
@@ -379,6 +380,7 @@ inline int32_t sanity_check(
   return TILEDB_OK;
 }
 
+#if DEVING_SUBARRAY_PARTITIONER
 inline int32_t sanity_check(
     tiledb_ctx_t* ctx,
     const tiledb_subarray_partitioner_t* subarray_partitioner) {
@@ -391,6 +393,7 @@ inline int32_t sanity_check(
   }
   return TILEDB_OK;
 }
+#endif
 
 inline int32_t sanity_check(tiledb_ctx_t* ctx, const tiledb_buffer_t* buffer) {
   if (buffer == nullptr || buffer->buffer_ == nullptr) {
@@ -2720,39 +2723,11 @@ int32_t tiledb_query_set_subarray_v2(
       sanity_check(ctx, subarray) == TILEDB_ERR)
     return TILEDB_ERR;
 
-    // TBD:
-    // a (-useful-) Subarray was init'd with an Array;
-    // a (-useful-) Query was init'd with an Array;
-    // Should the Query.array() and Subarray.array() be validated for
-    // equivalence and this request rejected if not equivalent?
-
-#if 01
-  auto query_status = query->query_->status();
-  if (query_status != tiledb::sm::QueryStatus::UNINITIALIZED &&
-      query_status != tiledb::sm::QueryStatus::COMPLETED) {
-    // Sssoooo, attempts to 'auto'-set_v2 from submit()s result in this
-    // situation for, minimally, any incomplete reads.
-    // But, failing to support/allow, would mean cannot be used, as might
-    // currently be the case with earlier APIs (tiledb_query_set_subarray, to
-    //'re-set' an inprogress query to starting state...
-#if defined(_WIN32)
-    __debugbreak();  // TBD: anyone trying to do this ATM?
-#endif
-    // 1)
-    // Can be in this initialized state when query has been de-serialized
-    // server-side and are trying to perform local submit...
-    return TILEDB_OK;
-    // return TILEDB_ERR;
-    // if (TILEDB_OK != tiledb_query_set_subarray_v2(ctx, query, subarray))
-    //  return TILEDB_ERR;
-  }
-#endif
-
-  // Set subarray
-  if (!subarray->subarray_->is_set())
-    // Nothing useful to set here, will leave query->query_ with its current
-    // settings.
-    return TILEDB_OK;
+  // TBD:
+  // a (-useful-) Subarray was init'd with an Array;
+  // a (-useful-) Query was init'd with an Array;
+  // Should the Query.array() and Subarray.array() be validated for
+  // equivalence and this request rejected if not equivalent?
 
   // Note: call *correct* ->set_subarray(), with *correct* parameter.
   // Incorrect... query_->set_subarray 'splits' and assigns to subarray of
@@ -3017,6 +2992,10 @@ int32_t tiledb_query_submit_with_subarray(
   if (sanity_check(ctx, subarray) == TILEDB_ERR)
     return TILEDB_ERR;
 
+#if 01
+  if (SAVE_ERROR_CATCH(ctx, query->query_->submit_with_subarray(subarray->subarray_)))
+    return TILEDB_ERR;
+#else
   auto query_status = query->query_->status();
   if (query_status == tiledb::sm::QueryStatus::UNINITIALIZED ||
       query_status == tiledb::sm::QueryStatus::COMPLETED) {
@@ -3026,6 +3005,7 @@ int32_t tiledb_query_submit_with_subarray(
 
   if (SAVE_ERROR_CATCH(ctx, query->query_->submit()))
     return TILEDB_ERR;
+#endif
 
   return TILEDB_OK;
 }
@@ -3065,7 +3045,7 @@ int32_t tiledb_query_submit_async_with_subarray(
   // Sanity checks
   if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, query) == TILEDB_ERR)
     return TILEDB_ERR;
-    // TBD: Should this be enabled now?
+  // TBD: Should this be enabled now?
 #if 01  // && cppTILEDB_COND_SUB_SUBARRAY_FOR_QUERY
   if (sanity_check(ctx, subarray) == TILEDB_ERR)
     return TILEDB_ERR;
@@ -3865,9 +3845,6 @@ int32_t tiledb_subarray_get_est_result_size(
     const tiledb_subarray_t* subarray,
     const char* name,
     uint64_t* size) {
-  // TBD: The tiledb_query_get_est_result_size() ->
-  // query->query_->get_est_result_size() considers the query type and bails for
-  // 'WRITE' requests with the operation 'currently unsupported'.
   if (sanity_check(ctx) == TILEDB_ERR ||
       sanity_check(ctx, subarray) == TILEDB_ERR)
     return TILEDB_ERR;
@@ -4034,6 +4011,7 @@ int32_t tiledb_subarray_set_coalesce_ranges(
   return TILEDB_OK;
 }
 
+#if DEVING_SUBARRAY_PARTITIONER
 /* ****************************** */
 /*      SUBARRAY PARTITIONER      */
 /* ****************************** */
@@ -4084,14 +4062,16 @@ int32_t tiledb_subarray_partitioner_alloc(
     return TILEDB_OOM;
   }
 
-  //TBD: guidance suggested 'if not set should probably be UNORDERED', however
-  //this would be over-ridign whatever client may have already spec'd in Array
-  //used by the 'tiledb_subarray_t' that was used to create the subarray_partitioner...
-  //so, do we really want to over-ride that?
-  //Or is there some other means/value to determine 'not set'?
-  //(*subarray_partitioner)
-  //    ->partitioner_->subarray()
-  //    ->set_layout(tiledb::sm::Layout::UNORDERED);
+  // TBD: guidance around tiledb_subarray_partitioner_set_layout suggested 
+  // 'if [layout] not set should probably be UNORDERED', however
+  // this would be over-riding whatever client may have already spec'd in Array
+  // used by the 'tiledb_subarray_t' that was used to create the subarray_partitioner...
+  // so, do we really want to over-ride that?
+  // or, do we want to audit against it?
+  // Or is there some other means/value to determine 'not set'?
+  // (*subarray_partitioner)
+  //     ->partitioner_->subarray()
+  //     ->set_layout(tiledb::sm::Layout::UNORDERED);
 
   // Success
   return TILEDB_OK;
@@ -4241,8 +4221,7 @@ int32_t tiledb_subarray_partitioner_get_partition_num(
   return TILEDB_OK;
 }
 
-// Gets the pid-th partition/subarray. This allocates a
-// new subarray object that needs to be freed by the user.
+// Gets the part_id-th partition/subarray.
 int32_t tiledb_subarray_partitioner_get_partition(
     tiledb_ctx_t* ctx,
     tiledb_subarray_partitioner_t* partitioner,
@@ -4309,6 +4288,8 @@ int32_t tiledb_subarray_partitioner_set_memory_budget(
 
   return TILEDB_OK;
 }
+
+#endif
 
 /* ****************************** */
 /*              ARRAY             */

@@ -1,3 +1,4 @@
+//#define DEVING_SUBARRAY_PARTITIONER
 /**
  * @file   helpers.cc
  *
@@ -97,6 +98,7 @@ void check_partitions(
   }
 }
 
+#if DEVING_SUBARRAY_PARTITIONER
 template <class T>
 void check_partitions(
     tiledb_ctx_t *ctx,
@@ -172,6 +174,7 @@ void check_partitions(
     //check_subarray<T>(retrsa, p);
   }
 }
+#endif
 
 template <class T>
 void check_subarray(

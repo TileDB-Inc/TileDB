@@ -267,6 +267,115 @@ class Subarray {
   }
 
   /**
+   *
+   * Sets a subarray, defined in the order dimensions were added.
+   * Coordinates are inclusive. For the case of writes, this is meaningful only
+   * for dense arrays, and specifically dense writes.
+   *
+   * @note `set_subarray(std::vector<T>)` is preferred as it is safer.
+   *
+   * **Example:**
+   * @code{.cpp}
+   * tiledb::Context ctx;
+   * tiledb::Array array(ctx, array_name, TILEDB_READ);
+   * int subarray_vals[] = {0, 3, 0, 3};
+   * Subarray subarray(ctx, array);
+   * subarray.set_subarray(subarray_vals, 4);
+   * @endcode
+   *
+   * @tparam T Type of array domain.
+   * @param pairs Subarray pointer defined as an array of [start, stop] values
+   * per dimension.
+   * @param size The number of subarray elements.
+   */
+  template <typename T = uint64_t>
+      Subarray&
+      set_subarray(const T* pairs, uint64_t size) {
+    impl::type_check<T>(schema_.domain().type());
+    auto& ctx = ctx_.get();
+    if (size != schema_.domain().ndim() * 2) {
+      throw SchemaMismatch(
+          "Subarray should have num_dims * 2 values: (low, high) for each "
+          "dimension.");
+    }
+    ctx.handle_error(
+        tiledb_subarray_set_subarray(ctx.ptr().get(), subarray_.get(), pairs));
+#if 0
+//TBD: from query,   /** Number of cells set by `set_subarray`, influences `resize_buffer`. */
+    subarray_cell_num_ = pairs[1] - pairs[0] + 1;
+    for (unsigned i = 2; i < size - 1; i += 2) {
+      subarray_cell_num_ *= (pairs[i + 1] - pairs[i] + 1);
+    }
+#endif
+    return *this;
+  }
+
+  /**
+   * Sets a subarray, defined in the order dimensions were added.
+   * Coordinates are inclusive. For the case of writes, this is meaningful only
+   * for dense arrays, and specifically dense writes.
+   *
+   * **Example:**
+   * @code{.cpp}
+   * tiledb::Context ctx;
+   * tiledb::Array array(ctx, array_name, TILEDB_READ);
+   * std::vector<int> subarray_vals = {0, 3, 0, 3};
+   * Subarray subarray(ctx, array);
+   * subarray.set_subarray(subarray_vals, 4);
+   * @endcode
+   *
+   * @tparam Vec Vector datatype. Should always be a vector of the domain type.
+   * @param pairs The subarray defined as a vector of [start, stop] coordinates
+   * per dimension.
+   */
+  template <typename Vec>
+  Subarray& set_subarray(const Vec& pairs) {
+    return set_subarray(pairs.data(), pairs.size());
+  }
+
+  /**
+   * Sets a subarray, defined in the order dimensions were added.
+   * Coordinates are inclusive. For the case of writes, this is meaningful only
+   * for dense arrays, and specifically dense writes.
+   *
+   * **Example:**
+   * @code{.cpp}
+   * tiledb::Context ctx;
+   * tiledb::Array array(ctx, array_name, TILEDB_READ);
+   * Subarray subarray(ctx, array);
+   * subarray.set_subarray({0, 3, 0, 3});
+   * @endcode
+   *
+   * @tparam T Type of array domain.
+   * @param pairs List of [start, stop] coordinates per dimension.
+   */
+  template <typename T = uint64_t>
+  Subarray& set_subarray(const std::initializer_list<T>& l) {
+    return set_subarray(std::vector<T>(l));
+  }
+
+  /**
+   * Sets a subarray, defined in the order dimensions were added.
+   * Coordinates are inclusive.
+   *
+   * @note set_subarray(std::vector) is preferred and avoids an extra copy.
+   *
+   * @tparam T Type of array domain.
+   * @param pairs The subarray defined as pairs of [start, stop] per dimension.
+   */
+  template <typename T = uint64_t>
+  Subarray& set_subarray(const std::vector<std::array<T, 2>>& pairs) {
+    std::vector<T> buf;
+    buf.reserve(pairs.size() * 2);
+    std::for_each(
+        pairs.begin(), pairs.end(), [&buf](const std::array<T, 2>& p) {
+          buf.push_back(p[0]);
+          buf.push_back(p[1]);
+        });
+    return set_subarray(buf);
+  }
+
+  /**
    * Retrieves the number of ranges for a given dimension index.
    *
    * **Example:**
