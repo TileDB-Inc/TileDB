@@ -14,6 +14,7 @@
 * Smoke Test, remove nullable structs from global namespace. [#2078](https://github.com/TileDB-Inc/TileDB/pull/2078)
 
 ## Improvements
+* Improve fragment info loading by parallelizing fragment_size requests [#2143](https://github.com/TileDB-Inc/TileDB/pull/2143)
 * Allow open array stats to be printed without read query [#2131](https://github.com/TileDB-Inc/TileDB/pull/2131)
 * Cleanup the GHA CI scripts - put common code into external shell scripts. [#2124](https://github.com/TileDB-Inc/TileDB/pull/2124)
 * Reduced memory consumption in the read path for multi-range reads. [#2118](https://github.com/TileDB-Inc/TileDB/pull/2118)
