@@ -1222,15 +1222,30 @@ Status StorageManager::get_fragment_info(
   if (fragment_metadata.empty())
     return array_close_for_reads(array_uri);
 
-  for (auto meta : fragment_metadata) {
+  std::vector<uint64_t> sizes(fragment_metadata.size());
+
+  auto statuses = parallel_for(
+      this->compute_tp_,
+      0,
+      fragment_metadata.size(),
+      [&fragment_metadata, &sizes](uint64_t i) {
+        const auto meta = fragment_metadata[i];
+
+        // Get fragment size
+        uint64_t size;
+        RETURN_NOT_OK(meta->fragment_size(&size));
+        sizes[i] = size;
+
+        return Status::Ok();
+      });
+
+  for (const auto& st : statuses)
+    RETURN_NOT_OK_ELSE(st, array_close_for_reads(array_uri));
+
+  for (uint64_t i = 0; i < fragment_metadata.size(); i++) {
+    const auto meta = fragment_metadata[i];
     const auto& uri = meta->fragment_uri();
     bool sparse = !meta->dense();
-
-    // Get fragment size
-    uint64_t size;
-    RETURN_NOT_OK_ELSE(
-        meta->fragment_size(&size), array_close_for_reads(array_uri));
-
     // Get non-empty domain, and compute expanded non-empty domain
     // (only for dense fragments)
     const auto& non_empty_domain = meta->non_empty_domain();
@@ -1245,7 +1260,7 @@ Status StorageManager::get_fragment_info(
         sparse,
         meta->timestamp_range(),
         meta->cell_num(),
-        size,
+        sizes[i],
         meta->has_consolidated_footer(),
         non_empty_domain,
         expanded_non_empty_domain));
