@@ -1,7 +1,7 @@
 /**
  * @file   query.h
  *
- * @author Ravi Gaddipati
+ * @author David Hoke
  *
  * @section LICENSE
  *
@@ -29,7 +29,7 @@
  *
  * @section DESCRIPTION
  *
- * This file declares the C++ API for the TileDB Query object.
+ * This file declares the C++ API for the TileDB Subarray object.
  */
 
 #ifndef TILEDB_CPP_API_SUBARRAY_H
@@ -41,7 +41,6 @@
 #include "core_interface.h"
 #include "deleter.h"
 #include "exception.h"
-//#include "query.h"
 #include "tiledb.h"
 #include "type.h"
 #include "utils.h"
@@ -87,28 +86,29 @@ class Query;
  */
 class Subarray {
  public:
-  Subarray(const tiledb::Context& ctx, const tiledb::Array& array)
+  Subarray(const tiledb::Context& ctx, const tiledb::Array& array, bool coalesce_ranges = true)
       : ctx_(ctx)
       , array_(array)
       , schema_(array.schema()) {
     tiledb_subarray_t* capi_subarray;
     ctx.handle_error(tiledb_subarray_alloc(
         ctx.ptr().get(), array.ptr().get(), &capi_subarray));
+    tiledb_subarray_set_coalesce_ranges(ctx.ptr().get(), capi_subarray, coalesce_ranges);
     subarray_ = std::shared_ptr<tiledb_subarray_t>(capi_subarray, deleter_);
   }
 
-  Subarray(const tiledb::Query& query);
-#if 0
-      : ctx_(query.ctx())
-      , array_(query.array()) 
-      , schema(query.array().schema()) {
-      tiledb_subarray_t *loc_subarray;
-    ctx.handle(tiledb_subarray_alloc(ctx_.ptr().get(), array_.ptr().get(), &loc_subarray));
-  }
-#endif
+  Subarray(const tiledb::Query& query); //defined in cppapi Query.h
 
-  int32_t tiledb_subarray_set_subarray(
-      tiledb_ctx_t* ctx, tiledb_subarray_t* subarray_s, const void* subarray_v);
+  /** Set the layout for the subarray. */
+  void set_layout(tiledb_layout_t layout) {
+    ctx_.get().handle_error(tiledb_subarray_set_layout(ctx_.get().ptr().get(), subarray_.get(), layout));
+  }
+
+  /** Set the layout for the subarray. */
+  void set_coalesce_ranges(bool coalesce_ranges) {
+    ctx_.get().handle_error(tiledb_subarray_set_coalesce_ranges(
+        ctx_.get().ptr().get(), subarray_.get(), coalesce_ranges));
+  }
 
   /**
    * Adds a 1D range along a subarray dimension index, in the form
@@ -267,13 +267,122 @@ class Subarray {
   }
 
   /**
+   *
+   * Sets a subarray, defined in the order dimensions were added.
+   * Coordinates are inclusive. For the case of writes, this is meaningful only
+   * for dense arrays, and specifically dense writes.
+   *
+   * @note `set_subarray(std::vector<T>)` is preferred as it is safer.
+   *
+   * **Example:**
+   * @code{.cpp}
+   * tiledb::Context ctx;
+   * tiledb::Array array(ctx, array_name, TILEDB_READ);
+   * int subarray_vals[] = {0, 3, 0, 3};
+   * Subarray subarray(ctx, array);
+   * subarray.set_subarray(subarray_vals, 4);
+   * @endcode
+   *
+   * @tparam T Type of array domain.
+   * @param pairs Subarray pointer defined as an array of [start, stop] values
+   * per dimension.
+   * @param size The number of subarray elements.
+   */
+  template <typename T = uint64_t>
+      Subarray&
+      set_subarray(const T* pairs, uint64_t size) {
+    impl::type_check<T>(schema_.domain().type());
+    auto& ctx = ctx_.get();
+    if (size != schema_.domain().ndim() * 2) {
+      throw SchemaMismatch(
+          "Subarray should have num_dims * 2 values: (low, high) for each "
+          "dimension.");
+    }
+    ctx.handle_error(
+        tiledb_subarray_set_subarray(ctx.ptr().get(), subarray_.get(), pairs));
+#if 0
+//TBD: from query,   /** Number of cells set by `set_subarray`, influences `resize_buffer`. */
+    subarray_cell_num_ = pairs[1] - pairs[0] + 1;
+    for (unsigned i = 2; i < size - 1; i += 2) {
+      subarray_cell_num_ *= (pairs[i + 1] - pairs[i] + 1);
+    }
+#endif
+    return *this;
+  }
+
+  /**
+   * Sets a subarray, defined in the order dimensions were added.
+   * Coordinates are inclusive. For the case of writes, this is meaningful only
+   * for dense arrays, and specifically dense writes.
+   *
+   * **Example:**
+   * @code{.cpp}
+   * tiledb::Context ctx;
+   * tiledb::Array array(ctx, array_name, TILEDB_READ);
+   * std::vector<int> subarray_vals = {0, 3, 0, 3};
+   * Subarray subarray(ctx, array);
+   * subarray.set_subarray(subarray_vals, 4);
+   * @endcode
+   *
+   * @tparam Vec Vector datatype. Should always be a vector of the domain type.
+   * @param pairs The subarray defined as a vector of [start, stop] coordinates
+   * per dimension.
+   */
+  template <typename Vec>
+  Subarray& set_subarray(const Vec& pairs) {
+    return set_subarray(pairs.data(), pairs.size());
+  }
+
+  /**
+   * Sets a subarray, defined in the order dimensions were added.
+   * Coordinates are inclusive. For the case of writes, this is meaningful only
+   * for dense arrays, and specifically dense writes.
+   *
+   * **Example:**
+   * @code{.cpp}
+   * tiledb::Context ctx;
+   * tiledb::Array array(ctx, array_name, TILEDB_READ);
+   * Subarray subarray(ctx, array);
+   * subarray.set_subarray({0, 3, 0, 3});
+   * @endcode
+   *
+   * @tparam T Type of array domain.
+   * @param pairs List of [start, stop] coordinates per dimension.
+   */
+  template <typename T = uint64_t>
+  Subarray& set_subarray(const std::initializer_list<T>& l) {
+    return set_subarray(std::vector<T>(l));
+  }
+
+  /**
+   * Sets a subarray, defined in the order dimensions were added.
+   * Coordinates are inclusive.
+   *
+   * @note set_subarray(std::vector) is preferred and avoids an extra copy.
+   *
+   * @tparam T Type of array domain.
+   * @param pairs The subarray defined as pairs of [start, stop] per dimension.
+   */
+  template <typename T = uint64_t>
+  Subarray& set_subarray(const std::vector<std::array<T, 2>>& pairs) {
+    std::vector<T> buf;
+    buf.reserve(pairs.size() * 2);
+    std::for_each(
+        pairs.begin(), pairs.end(), [&buf](const std::array<T, 2>& p) {
+          buf.push_back(p[0]);
+          buf.push_back(p[1]);
+        });
+    return set_subarray(buf);
+  }
+
+  /**
    * Retrieves the number of ranges for a given dimension index.
    *
    * **Example:**
    *
    * @code{.cpp}
    * unsigned dim_idx = 0;
-   * uint64_t range_num = query.range_num(dim_idx);
+   * uint64_t range_num = subarray.range_num(dim_idx);
    * @endcode
    *
    * @param dim_idx The dimension index.
@@ -294,7 +403,7 @@ class Subarray {
    *
    * @code{.cpp}
    * unsigned dim_name = "rows";
-   * uint64_t range_num = query.range_num(dim_name);
+   * uint64_t range_num = subarray.range_num(dim_name);
    * @endcode
    *
    * @param dim_name The dimension name.
@@ -318,7 +427,7 @@ class Subarray {
    * @code{.cpp}
    * unsigned dim_idx = 0;
    * unsigned range_idx = 0;
-   * auto range = query.range<int32_t>(dim_idx, range_idx);
+   * auto range = subarray.range<int32_t>(dim_idx, range_idx);
    * @endcode
    *
    * @tparam T The dimension datatype.
@@ -341,7 +450,7 @@ class Subarray {
         &stride));
     std::array<T, 3> ret = {{*(const T*)start,
                              *(const T*)end,
-                             (stride == nullptr) ? 0 : *(const T*)stride}};
+                             (stride == nullptr) ? (const T)0 : *(const T*)stride}};
     return ret;
   }
 
@@ -355,7 +464,7 @@ class Subarray {
    * @code{.cpp}
    * unsigned dim_name = "rows";
    * unsigned range_idx = 0;
-   * auto range = query.range<int32_t>(dim_name, range_idx);
+   * auto range = subarray.range<int32_t>(dim_name, range_idx);
    * @endcode
    *
    * @tparam T The dimension datatype.
@@ -391,7 +500,7 @@ class Subarray {
    * @code{.cpp}
    * unsigned dim_idx = 0;
    * unsigned range_idx = 0;
-   * std::array<std::string, 2> range = query.range(dim_idx, range_idx);
+   * std::array<std::string, 2> range = subarray.range(dim_idx, range_idx);
    * @endcode
    *
    * @param dim_idx The dimension index.
@@ -435,7 +544,7 @@ class Subarray {
    * @code{.cpp}
    * unsigned dim_name = "rows";
    * unsigned range_idx = 0;
-   * std::array<std::string, 2> range = query.range(dim_name, range_idx);
+   * std::array<std::string, 2> range = subarray.range(dim_name, range_idx);
    * @endcode
    *
    * @param dim_name The dimension name.
@@ -477,7 +586,7 @@ class Subarray {
    * **Example:**
    *
    * @code{.cpp}
-   * uint64_t est_size = query.est_result_size("attr1");
+   * uint64_t est_size = subarray.est_result_size("attr1");
    * @endcode
    *
    * @param attr_name The attribute name.
@@ -498,7 +607,7 @@ class Subarray {
    *
    * @code{.cpp}
    * std::array<uint64_t, 2> est_size =
-   *     query.est_result_size_var("attr1");
+   *     subarray.est_result_size_var("attr1");
    * @endcode
    *
    * @param attr_name The attribute name.
@@ -519,6 +628,15 @@ class Subarray {
     return {size_off, size_val};
   }
 
+  /** Returns the C TileDB subarray object. */
+  std::shared_ptr<tiledb_subarray_t> ptr() const {
+    return subarray_;
+  }
+
+  const Array& array() const {
+    return array_.get();
+  }
+
  private:
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
@@ -530,6 +648,7 @@ class Subarray {
   /** The TileDB array. */
   std::reference_wrapper<const Array> array_;
 
+  /** The subarray entity itself.  */
   std::shared_ptr<tiledb_subarray_t> subarray_;
 
   /** Deleter wrapper. */

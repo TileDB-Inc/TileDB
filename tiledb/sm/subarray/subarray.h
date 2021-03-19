@@ -57,6 +57,7 @@ class Array;
 class ArraySchema;
 class EncryptionKey;
 class FragmentMetadata;
+class StorageManager;
 
 enum class Layout : uint8_t;
 enum class QueryType : uint8_t;
@@ -516,6 +517,16 @@ class Subarray {
       const char* name, uint64_t* size, ThreadPool* compute_tp);
 
   /**
+   * Gets the estimated result size (in bytes) for the input fixed-sized
+   * attribute/dimension if audit passes.
+   */
+  Status get_est_result_size_querytype_audited(
+      const char* name,
+      uint64_t* size,
+      StorageManager* storage_manager);
+      //ThreadPool* compute_tp);
+
+  /**
    * Gets the estimated result size (in bytes) for the input var-sized
    * attribute/dimension.
    */
@@ -622,8 +633,14 @@ class Subarray {
    */
   void set_is_default(uint32_t dim_index, bool is_default);
 
-  /** Sets the array layout. */
+  /** Sets the subarray layout. */
   void set_layout(Layout layout);
+
+  /** Sets coalesc-ranges flag, intended for use by CAPI, to alloc matching 
+  * default coalesc-ranges=true semantics of internal class constructor, but giving
+  * capi clients ability to turn off if desired.
+  */
+  Status set_coalesce_ranges(bool coalesce_ranges = true);
 
   /**
    * Flattens the subarray ranges in a byte vector. Errors out

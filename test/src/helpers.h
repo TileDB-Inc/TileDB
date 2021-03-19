@@ -1,3 +1,4 @@
+//#define DEVING_SUBARRAY_PARTITIONER
 /**
  * @file   helpers.h
  *
@@ -38,6 +39,7 @@
 #include "tiledb/sm/enums/layout.h"
 #include "tiledb/sm/enums/serialization_type.h"
 #include "tiledb/sm/subarray/subarray.h"
+#include "tiledb/sm/cpp_api/tiledb"
 #include "tiledb_serialization.h"
 
 #include <mutex>
@@ -114,6 +116,31 @@ void check_partitions(
     const std::vector<SubarrayRanges<T>>& partitions,
     bool last_unsplittable);
 
+#if DEVING_SUBARRAY_PARTITIONER
+/**
+ * Checks that the capi input partitioner produces the input partitions
+ * (i.e., subarrays).
+ *
+ * @tparam T The datatype of the subarray of the partitioner.
+ * @param partitioner The capi partitioner.
+ * @param partitions The ranges to be checked.
+ * @param last_unsplittable Whether the last partition is unsplittable.
+ */
+template <class T>
+void check_partitions(
+    tiledb_ctx_t* ctx,
+    tiledb_subarray_partitioner_t* partitioner,
+    const std::vector<SubarrayRanges<T>>& partitions,
+    bool last_unsplittable,
+    tiledb_subarray_t* retrieve_partition_subarray);
+
+template <class T> void check_partitions(
+    tiledb::SubarrayPartitioner* partitioner,
+    const std::vector<SubarrayRanges<T>>& partitions,
+    bool last_unsplittable,
+    tiledb::Subarray* retrieve_partition_subarray);
+#endif
+
 /**
  * Checks if the input subarray has the input subarray ranges.
  *
@@ -124,6 +151,14 @@ void check_partitions(
 template <class T>
 void check_subarray(
     tiledb::sm::Subarray& subarray, const SubarrayRanges<T>& ranges);
+
+template <class T>
+void check_subarray(
+    tiledb::Subarray& subarray, const SubarrayRanges<T>& ranges);
+
+template <class T>
+void check_subarray_equiv(
+    tiledb::sm::Subarray& subarray1, tiledb::sm::Subarray& subarray2);
 
 /**
  * Closes an array.
@@ -281,6 +316,44 @@ void create_subarray(
     const SubarrayRanges<T>& ranges,
     tiledb::sm::Layout layout,
     tiledb::sm::Subarray* subarray,
+    bool coalesce_ranges = false);
+
+/**
+ * Creates a capi subarray for the input array.
+ *
+ * @tparam T The datatype of the subarray domain.
+ * @param array The input array.
+ * @param ranges The ranges of the subarray to be created.
+ * @param layout The layout of the subarray.
+ * @param subarray The subarray to be set.
+ * @param coalesce_ranges Whether the subarray should coalesce ranges.
+ */
+template <class T>
+void create_subarray(
+    tiledb_ctx_t* ctx,
+    tiledb::sm::Array* array,
+    const SubarrayRanges<T>& ranges,
+    tiledb::sm::Layout layout,
+    tiledb_subarray_t** subarray,
+    bool coalesce_ranges = false);
+
+/**
+ * Creates a c++ api subarray for the input array.
+ *
+ * @tparam T The datatype of the subarray domain.
+ * @param array The input array.
+ * @param ranges The ranges of the subarray to be created.
+ * @param layout The layout of the subarray.
+ * @param subarray The subarray to be set.
+ * @param coalesce_ranges Whether the subarray should coalesce ranges.
+ */
+template <class T>
+void create_subarray(
+    const tiledb::Context* ctx,
+    const tiledb::Array* array,
+    const SubarrayRanges<T>& ranges,
+    tiledb::sm::Layout layout,
+    tiledb::Subarray** subarray,
     bool coalesce_ranges = false);
 
 /**

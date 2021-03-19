@@ -1115,9 +1115,6 @@ class Query {
    */
   Query& set_subarray(const Subarray& subarray) {
     auto& ctx = ctx_.get();
-    //    ctx.handle_error(
-    //        tiledb_subarray_set_subarray(ctx.ptr().get(), subarray.get(),
-    //        pairs));
     ctx.handle_error(tiledb_query_set_subarray_v2(
         ctx.ptr().get(), query_.get(), subarray.capi_subarray()));
 
@@ -2022,8 +2019,6 @@ class Query {
 
   /** Number of cells set by `set_subarray`, influences `resize_buffer`. */
   uint64_t subarray_cell_num_ = 0;
-
-  //  std::shared_ptr<tiledb_subarray_t> subarray_;
 
   /* ********************************* */
   /*          PRIVATE METHODS          */
