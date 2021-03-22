@@ -105,7 +105,6 @@ const EncryptionKey* Array::encryption_key() const {
   return encryption_key_.get();
 }
 
-/* This is a deprecated API. */
 Status Array::open(
     QueryType query_type,
     uint64_t timestamp,
@@ -237,7 +236,7 @@ Status Array::open(
   bool found = false;
   uint64_t timestamp_cfg = 0;
   RETURN_NOT_OK(config_.get<uint64_t>(
-      "sm.array_timestamp_start", &timestamp_cfg, &found));
+      "sm.array.open_timestamp_start", &timestamp_cfg, &found));
   assert(found);
 
   if (query_type == QueryType::READ) {
@@ -246,7 +245,6 @@ Status Array::open(
     } else {
       timestamp_ = timestamp_cfg;
     }
-
   } else {
     assert(query_type == QueryType::WRITE);
     if (timestamp_cfg == UINT64_MAX) {
@@ -492,29 +490,10 @@ const EncryptionKey& Array::get_encryption_key() const {
 }
 
 Status Array::reopen() {
-  std::unique_lock<std::mutex> lck(mtx_);
-
-  if (!is_open_)
-    return LOG_STATUS(
-        Status::ArrayError("Cannot reopen array; Array is not open"));
-
-  if (query_type_ != QueryType::READ)
-    return LOG_STATUS(
-        Status::ArrayError("Cannot reopen array; Array was "
-                           "not opened in read mode"));
-
-  clear_last_max_buffer_sizes();
-
-  fragment_metadata_.clear();
-  metadata_.clear();
-  metadata_loaded_ = false;
-  non_empty_domain_.clear();
-  non_empty_domain_computed_ = false;
-
   bool found = false;
   uint64_t timestamp_cfg = 0;
   RETURN_NOT_OK(config_.get<uint64_t>(
-      "sm.array_timestamp_start", &timestamp_cfg, &found));
+      "sm.array.open_timestamp_start", &timestamp_cfg, &found));
   assert(found);
 
   if (timestamp_cfg == UINT64_MAX) {
@@ -522,26 +501,9 @@ Status Array::reopen() {
   } else {
     timestamp_ = timestamp_cfg;
   }
-
-  if (remote_) {
-    return open(
-        query_type_,
-        encryption_key_.encryption_type(),
-        encryption_key_.key().data(),
-        encryption_key_.key().size());
-  }
-
-  RETURN_NOT_OK(storage_manager_->array_reopen(
-      array_uri_,
-      timestamp_,
-      encryption_key_,
-      &array_schema_,
-      &fragment_metadata_));
-
-  return Status::Ok();
+  return reopen(timestamp_);
 }
 
-/* This is a deprecated API. */
 Status Array::reopen(uint64_t timestamp) {
   std::unique_lock<std::mutex> lck(mtx_);
 

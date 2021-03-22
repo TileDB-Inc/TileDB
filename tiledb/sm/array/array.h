@@ -123,7 +123,6 @@ class Array {
       uint32_t key_length);
 
   /**
-   * This is a deprecated API.
    * Opens the array for reading at a timestamp retrieved from the config.
    *
    * @param query_type The query type. This should always be READ. It

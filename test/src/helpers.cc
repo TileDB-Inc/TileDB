@@ -780,18 +780,18 @@ void write_array(
   tiledb_array_t* array;
   int rc = tiledb_array_alloc(ctx, array_name.c_str(), &array);
   CHECK(rc == TILEDB_OK);
-  tiledb_config_t* cfg_;
-  tiledb_error_t* err_ = nullptr;
-  REQUIRE(tiledb_config_alloc(&cfg_, &err_) == TILEDB_OK);
-  REQUIRE(err_ == nullptr);
+  tiledb_config_t* cfg;
+  tiledb_error_t* err = nullptr;
+  REQUIRE(tiledb_config_alloc(&cfg, &err) == TILEDB_OK);
+  REQUIRE(err == nullptr);
   rc = tiledb_config_set(
-      cfg_,
-      "sm.array_timestamp_start",
+      cfg,
+      "sm.array.open_timestamp_start",
       std::to_string(timestamp).c_str(),
-      &err_);
+      &err);
   REQUIRE(rc == TILEDB_OK);
-  REQUIRE(err_ == nullptr);
-  rc = tiledb_array_set_config(ctx, array, cfg_);
+  REQUIRE(err == nullptr);
+  rc = tiledb_array_set_config(ctx, array, cfg);
   REQUIRE(rc == TILEDB_OK);
   // Open array
   if (encryption_type == TILEDB_NO_ENCRYPTION)
@@ -856,7 +856,7 @@ void write_array(
   // Clean up
   tiledb_array_free(&array);
   tiledb_query_free(&query);
-  tiledb_config_free(&cfg_);
+  tiledb_config_free(&cfg);
 }
 
 template <class T>

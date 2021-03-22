@@ -900,13 +900,13 @@ TILEDB_EXPORT void tiledb_config_free(tiledb_config_t** config);
  *
  * **Parameters**
  *
- * - `sm.array_timestamp_start` <br>
+ * - `sm.array.open_timestamp_start` <br>
  *    When set, an array will be opened betwen this value and
- *    `sm.array_timestamp_end` upon a read query. <br>
+ *    `sm.array.open_timestamp_end` upon a read query. <br>
  *    **Default**: UINT64_MAX
- * - `sm.array_timestamp_end` <br>
- *    When set, an array will be opened betwen `sm.array_timestamp_start` and
- *    this value upon a read query. <br>
+ * - `sm.array.open_timestamp_end` <br>
+ *    When set, an array will be opened betwen `sm.array.open_timestamp_start`
+ *    and this value upon a read query. <br>
  *    **Default**: UINT64_MAX
  * - `sm.dedup_coords` <br>
  *    If `true`, cells with duplicate coordinates will be removed during sparse
@@ -4576,6 +4576,7 @@ TILEDB_EXPORT int32_t tiledb_array_open(
 
 /**
  * This is a deprecated API.
+ *
  * Similar to `tiledb_array_open`, but this function takes as input a
  * timestamp, representing time in milliseconds ellapsed since
  * 1970-01-01 00:00:00 +0000 (UTC). Opening the array at a
@@ -4646,6 +4647,7 @@ TILEDB_EXPORT int32_t tiledb_array_open_with_key(
 
 /**
  * This is a deprecated API.
+ *
  * Similar to `tiledb_array_open_with_key`, but this function takes as
  * input a timestamp, representing time in milliseconds ellapsed since
  * 1970-01-01 00:00:00 +0000 (UTC). Opening the array at a
@@ -4731,6 +4733,7 @@ tiledb_array_reopen(tiledb_ctx_t* ctx, tiledb_array_t* array);
 
 /**
  * This is a deprecated API.
+ *
  * Reopens a TileDB array (the array must be already open) at a specific
  * timestamp.
  *

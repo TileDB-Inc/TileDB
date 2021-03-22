@@ -3431,7 +3431,6 @@ int32_t tiledb_array_open(
   return TILEDB_OK;
 }
 
-/* This is a deprecated API */
 int32_t tiledb_array_open_at(
     tiledb_ctx_t* ctx,
     tiledb_array_t* array,
@@ -3477,7 +3476,6 @@ int32_t tiledb_array_open_with_key(
   return TILEDB_OK;
 }
 
-/* This is a deprecated API. */
 int32_t tiledb_array_open_at_with_key(
     tiledb_ctx_t* ctx,
     tiledb_array_t* array,
