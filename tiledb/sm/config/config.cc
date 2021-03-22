@@ -117,6 +117,7 @@ const std::string Config::VFS_GCS_MAX_PARALLEL_OPS =
     Config::SM_IO_CONCURRENCY_LEVEL;
 const std::string Config::VFS_GCS_MULTI_PART_SIZE = "5242880";
 const std::string Config::VFS_GCS_USE_MULTI_PART_UPLOAD = "true";
+const std::string Config::VFS_GCS_REQUEST_TIMEOUT_MS = "3000";
 const std::string Config::VFS_S3_REGION = "us-east-1";
 const std::string Config::VFS_S3_AWS_ACCESS_KEY_ID = "";
 const std::string Config::VFS_S3_AWS_SECRET_ACCESS_KEY = "";
@@ -247,6 +248,7 @@ Config::Config() {
   param_values_["vfs.gcs.multi_part_size"] = VFS_GCS_MULTI_PART_SIZE;
   param_values_["vfs.gcs.use_multi_part_upload"] =
       VFS_GCS_USE_MULTI_PART_UPLOAD;
+  param_values_["vfs.gcs.request_timeout_ms"] = VFS_GCS_REQUEST_TIMEOUT_MS;
   param_values_["vfs.s3.region"] = VFS_S3_REGION;
   param_values_["vfs.s3.aws_access_key_id"] = VFS_S3_AWS_ACCESS_KEY_ID;
   param_values_["vfs.s3.aws_secret_access_key"] = VFS_S3_AWS_SECRET_ACCESS_KEY;
@@ -523,6 +525,8 @@ Status Config::unset(const std::string& param) {
   } else if (param == "vfs.gcs.use_multi_part_upload") {
     param_values_["vfs.gcs.use_multi_part_upload"] =
         VFS_GCS_USE_MULTI_PART_UPLOAD;
+  } else if (param == "vfs.gcs.request_timeout_ms") {
+    param_values_["vfs.gcs.request_timeout_ms"] = VFS_GCS_REQUEST_TIMEOUT_MS;
   } else if (param == "vfs.s3.region") {
     param_values_["vfs.s3.region"] = VFS_S3_REGION;
   } else if (param == "vfs.s3.aws_access_key_id") {
