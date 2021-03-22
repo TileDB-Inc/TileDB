@@ -1,3 +1,5 @@
+#define DEVING_SUBARRAY_PARTITIONER 1
+
 /**
  * @file   tiledb.h
  *
@@ -481,8 +483,10 @@ typedef struct tiledb_array_t tiledb_array_t;
 /** A subarray object. */
 typedef struct tiledb_subarray_t tiledb_subarray_t;
 
+#if DEVING_SUBARRAY_PARTITIONER
 /** A subarray partitioner object. */
 typedef struct tiledb_subarray_partitioner_t tiledb_subarray_partitioner_t;
+#endif
 
 /** A generic buffer object. */
 typedef struct tiledb_buffer_t tiledb_buffer_t;
@@ -5251,6 +5255,7 @@ TILEDB_EXPORT int32_t tiledb_subarray_set_coalesce_ranges(
  */
 TILEDB_EXPORT void tiledb_subarray_free(tiledb_subarray_t** subarray);
 
+#if DEVING_SUBARRAY_PARTITIONER
 /* ********************************* */
 /*        SUBARRAY PARTITIONER       */
 /* ********************************* */
@@ -5368,14 +5373,14 @@ TILEDB_EXPORT int32_t tiledb_subarray_partitioner_get_partition_num(
  * **Example:**
  *
  * @code{.c}
- * uint64_t partition_id; //# of partition to retrieve, must be less than # computed partitions
+ * uint64_t part_id; //# of partition to retrieve, must be less than # computed partitions
  * tiledb_subarray_t *retrieved_subarray; //initialized prior to call
  * tiledb_subarray_partitioner_t *subarray_partitioner; //inititalized prior to call
  * tiledb_subarray_partitioner_get_partition(ctx, subarray_partitioner, partition_id, retrieved_subarray);
  * @endcode
  *
- * @param layout The layout to set into the subarray partioner object's
- * subarray.
+ * @param part_id The index of a partition to retrieve from a prior
+ * tiledb_subarray_partitioner_compute().
  */
 TILEDB_EXPORT int32_t tiledb_subarray_partitioner_get_partition(
     tiledb_ctx_t* ctx,
@@ -5458,6 +5463,7 @@ TILEDB_EXPORT int32_t tiledb_subarray_partitioner_set_memory_budget(
     uint64_t budget_validity,
     tiledb_subarray_partitioner_t* partitioner);
 
+#endif
 
 /* ********************************* */
 /*               ARRAY               */

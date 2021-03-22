@@ -699,7 +699,21 @@ class Query {
   Subarray* subarray();
 
   /** Submits the query to the storage manager. */
+  //TBD: paramter of 'Subarray *subarray=nullptr' could be added to
+  //'submit()' and functionality of submit_with_subarray(...) merged in
+  //to the very start of the method.
   Status submit();
+
+  /** 
+   * Audits appropriateness of query/subarray relationship,
+   * if passes sets the subarray into the query and 
+   * submits the query to the storage manager. 
+   */
+  //TBD: basic 'submit()' prototype could change thus
+  //submit(Subarray *subarray=nullptr);
+  //and this functionality folded into it basied on whether
+  //actual subarray 'nullptr' or not.
+  Status submit_with_subarray(Subarray* subarray);
 
   /**
    * Submits the query to the storage manager. The query will be
