@@ -10,6 +10,8 @@
 
 ## Improvements
 
+* Improve fragment info loading by parallelizing fragment_size requests [#2143](https://github.com/TileDB-Inc/TileDB/pull/2143)
+
 ## Deprecations
 
 ## Bug fixes
