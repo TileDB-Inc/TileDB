@@ -3334,7 +3334,7 @@ Status Reader::copy_attribute_values(
 Status Reader::add_extra_offset() {
   for (const auto& it : buffers_) {
     const auto& name = it.first;
-    if (!array_schema_->is_attr(name) || !array_schema_->var_size(name))
+    if (!array_schema_->var_size(name))
       continue;
 
     auto buffer = static_cast<unsigned char*>(it.second.buffer_);
