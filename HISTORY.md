@@ -10,6 +10,7 @@
 
 ## Improvements
 
+* Added config option vfs.gcs.request_timeout_ms [#2148](https://github.com/TileDB-Inc/TileDB/pull/2148)
 * Improve fragment info loading by parallelizing fragment_size requests [#2143](https://github.com/TileDB-Inc/TileDB/pull/2143)
 
 ## Deprecations

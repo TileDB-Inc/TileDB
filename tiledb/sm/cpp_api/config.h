@@ -413,6 +413,9 @@ class Config {
    * - `vfs.gcs.use_multi_part_upload` <br>
    *    Determines if the GCS backend can use chunked part uploads. <br>
    *    **Default**: "true"
+   * - `vfs.gcs.request_timeout_ms` <br>
+   *    The maximum amount of time to retry network requests to GCS. <br>
+   *    **Default**: "3000"
    * - `vfs.s3.region` <br>
    *    The S3 region, if S3 is enabled. <br>
    *    **Default**: us-east-1
