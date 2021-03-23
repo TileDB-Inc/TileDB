@@ -1352,3 +1352,79 @@ TEST_CASE(
   if (vfs.is_dir(array_name))
     vfs.remove_dir(array_name);
 }
+
+TEST_CASE(
+    "C++ API: Test 32-bit offsets: sparse array with string dimension",
+    "[var-offsets-dim][32bit-offset]") {
+  std::string array_name = "test_32bit_offset_string_dim";
+
+  /*
+    Write an array with string dimension and make sure we get back
+    proper offsets along with extra element in read.
+  */
+
+  // Create data buffer to use
+  std::string data = "aabbbcdddd";
+  // Create 32 bit offsets byte buffer to use
+  std::vector<uint64_t> data_elem_offsets = {0, 2, 5, 6};
+
+  // Create and write array
+  {
+    Context ctx;
+    Domain domain(ctx);
+    domain.add_dimension(
+        Dimension::create(ctx, "dim1", TILEDB_STRING_ASCII, nullptr, nullptr));
+
+    ArraySchema schema(ctx, TILEDB_SPARSE);
+    schema.set_domain(domain);
+
+    tiledb::Array::create(array_name, schema);
+
+    auto array = tiledb::Array(ctx, array_name, TILEDB_WRITE);
+    Query query(ctx, array, TILEDB_WRITE);
+    query.set_buffer(
+        "dim1",
+        data_elem_offsets.data(),
+        data_elem_offsets.size(),
+        (char*)data.data(),
+        data.size());
+
+    query.set_layout(TILEDB_UNORDERED);
+    query.submit();
+    query.finalize();
+    array.close();
+  }
+
+  {
+    Config config;
+    // Change config of offsets bitsize from 64 to 32
+    config["sm.var_offsets.bitsize"] = 32;
+    // Add extra element
+    config["sm.var_offsets.extra_element"] = "true";
+    Context ctx(config);
+
+    std::vector<uint32_t> offsets_back(5);
+    std::string data_back;
+    data_back.resize(data.size());
+
+    auto array = tiledb::Array(ctx, array_name, TILEDB_READ);
+    Query query(ctx, array, TILEDB_READ);
+    query.add_range(0, std::string("aa"), std::string("dddd"));
+    query.set_buffer(
+        "dim1",
+        (uint64_t*)offsets_back.data(),
+        offsets_back.size(),
+        (char*)data_back.data(),
+        data_back.size());
+
+    query.submit();
+
+    CHECK(query.query_status() == Query::Status::COMPLETE);
+    CHECK(offsets_back[4] == data.size());
+  }
+
+  Context ctx;
+  VFS vfs(ctx);
+  if (vfs.is_dir(array_name))
+    vfs.remove_dir(array_name);
+}
