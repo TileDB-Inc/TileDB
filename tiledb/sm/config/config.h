@@ -299,6 +299,9 @@ class Config {
   /** GCS use multi part upload. */
   static const std::string VFS_GCS_USE_MULTI_PART_UPLOAD;
 
+  /** GCS request timeout in milliseconds. */
+  static const std::string VFS_GCS_REQUEST_TIMEOUT_MS;
+
   /** S3 region. */
   static const std::string VFS_S3_REGION;
 
