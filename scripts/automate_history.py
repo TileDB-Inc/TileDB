@@ -67,10 +67,18 @@ def format_history_line(pr_number, h_description):
 
 # Updates the HISTORY.md file.
 def update_history(pr_number, h_types, h_descriptions):
+
+  print("pr_number: " + pr_number)
+  print("h_types: " + str(h_types))
+  print("h_descriptions: " + str(h_descriptions))
+
   # Read `HISTORY.md` into memory.
   lines = ""
   with open("HISTORY.md") as f:
     lines = f.read().rstrip("\n").split("\n")
+
+  for line in lines:
+    print("INPUT LINE: " + line)
 
   # Take the MD5 of `lines` so that we can determine
   # if this routine has modified `HISTORY.md`.
@@ -88,12 +96,17 @@ def update_history(pr_number, h_types, h_descriptions):
     history_header = parse_type(h_type)
     history_line = format_history_line(pr_number, h_description)
 
+    print("history_line: " + history_line)
+
     # The HISTORY.md always starts with in-progress changes first.
     # We will locate the first line that starts with `history_header`
     for j in range(len(lines)):
       if lines[j].strip().startswith(history_header):
         lines = lines[0:j+1] + [history_line] + lines[j+1:]
         break
+
+  for line in lines:
+    print("OUTPUT LINE: " + line)
 
   # Take the new MD5 of `lines` so that we can determine
   # if this routine has modified `HISTORY.md`.
