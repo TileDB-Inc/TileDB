@@ -422,13 +422,13 @@ tiledb_vfs_mode_from_str(const char* str, tiledb_vfs_mode_t* vfs_mode);
  * each individual dimension with the `set_buffer` API. Consult the current
  * documentation for more information.
  */
-TILEDB_DEPRECATED_EXPORT const char* tiledb_coords();
+TILEDB_DEPRECATED_EXPORT const char* tiledb_coords(void);
 
 /** Returns a special value indicating a variable number of elements. */
-TILEDB_EXPORT uint32_t tiledb_var_num();
+TILEDB_EXPORT uint32_t tiledb_var_num(void);
 
 /** Returns the maximum path length on the current platform. */
-TILEDB_EXPORT uint32_t tiledb_max_path();
+TILEDB_EXPORT uint32_t tiledb_max_path(void);
 
 /** Returns the input datatype size. */
 TILEDB_EXPORT uint64_t tiledb_datatype_size(tiledb_datatype_t type);
@@ -437,10 +437,10 @@ TILEDB_EXPORT uint64_t tiledb_datatype_size(tiledb_datatype_t type);
  * Returns the size (in bytes) of an offset (used in variable-sized
  * attributes).
  */
-TILEDB_EXPORT uint64_t tiledb_offset_size();
+TILEDB_EXPORT uint64_t tiledb_offset_size(void);
 
 /** Returns the current time in milliseconds. */
-TILEDB_EXPORT uint64_t tiledb_timestamp_now_ms();
+TILEDB_EXPORT uint64_t tiledb_timestamp_now_ms(void);
 
 /**
  * @name Constants wrapping special functions
@@ -6220,21 +6220,21 @@ TILEDB_EXPORT int32_t tiledb_uri_to_path(
  *
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
-TILEDB_EXPORT int32_t tiledb_stats_enable();
+TILEDB_EXPORT int32_t tiledb_stats_enable(void);
 
 /**
  * Disable internal statistics gathering.
  *
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
-TILEDB_EXPORT int32_t tiledb_stats_disable();
+TILEDB_EXPORT int32_t tiledb_stats_disable(void);
 
 /**
  * Reset all internal statistics counters to 0.
  *
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
-TILEDB_EXPORT int32_t tiledb_stats_reset();
+TILEDB_EXPORT int32_t tiledb_stats_reset(void);
 
 /**
  * Dump all internal statistics counters to some output (e.g.,
