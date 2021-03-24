@@ -256,6 +256,7 @@ void check_save_to_file() {
   ss << "vfs.gcs.max_parallel_ops " << std::thread::hardware_concurrency()
      << "\n";
   ss << "vfs.gcs.multi_part_size 5242880\n";
+  ss << "vfs.gcs.request_timeout_ms 3000\n";
   ss << "vfs.gcs.use_multi_part_upload true\n";
   ss << "vfs.min_batch_gap 512000\n";
   ss << "vfs.min_batch_size 20971520\n";
@@ -509,6 +510,7 @@ TEST_CASE("C API: Test config iter", "[capi], [config]") {
       std::to_string(std::thread::hardware_concurrency());
   all_param_values["vfs.gcs.multi_part_size"] = "5242880";
   all_param_values["vfs.gcs.use_multi_part_upload"] = "true";
+  all_param_values["vfs.gcs.request_timeout_ms"] = "3000";
   all_param_values["vfs.azure.storage_account_name"] = "";
   all_param_values["vfs.azure.storage_account_key"] = "";
   all_param_values["vfs.azure.blob_endpoint"] = "";
@@ -568,6 +570,7 @@ TEST_CASE("C API: Test config iter", "[capi], [config]") {
       std::to_string(std::thread::hardware_concurrency());
   vfs_param_values["gcs.multi_part_size"] = "5242880";
   vfs_param_values["gcs.use_multi_part_upload"] = "true";
+  vfs_param_values["gcs.request_timeout_ms"] = "3000";
   vfs_param_values["azure.storage_account_name"] = "";
   vfs_param_values["azure.storage_account_key"] = "";
   vfs_param_values["azure.blob_endpoint"] = "";
@@ -622,6 +625,7 @@ TEST_CASE("C API: Test config iter", "[capi], [config]") {
       std::to_string(std::thread::hardware_concurrency());
   gcs_param_values["multi_part_size"] = "5242880";
   gcs_param_values["use_multi_part_upload"] = "true";
+  gcs_param_values["request_timeout_ms"] = "3000";
 
   std::map<std::string, std::string> azure_param_values;
   azure_param_values["storage_account_name"] = "";
