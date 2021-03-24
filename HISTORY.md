@@ -12,6 +12,7 @@
 
 * Added config option vfs.gcs.request_timeout_ms [#2148](https://github.com/TileDB-Inc/TileDB/pull/2148)
 * Improve fragment info loading by parallelizing fragment_size requests [#2143](https://github.com/TileDB-Inc/TileDB/pull/2143)
+* Apply 'var_offsets.extra_element' mode to string dimension offsets too [#2145](https://github.com/TileDB-Inc/TileDB/pull/2145)
 
 ## Deprecations
 
@@ -47,7 +48,6 @@
 * Corrected a bug where sparse cells may be incorrectly returned using string dimensions. [#2125](https://github.com/TileDB-Inc/TileDB/pull/2125)
 * Always use original buffer size in serialized read queries serverside. [#2115](https://github.com/TileDB-Inc/TileDB/pull/2115)
 * Fix segfault in serialized queries when partition is unsplittable [#2120](https://github.com/TileDB-Inc/TileDB/pull/2120)
-
 
 # TileDB v2.2.4 Release Notes
 
