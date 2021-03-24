@@ -603,29 +603,46 @@ TEST_CASE_METHOD(
   write_default_1d_array();
   open_array(ctx_, array_, TILEDB_READ);
 
-  Subarray subarray;
+  tiledb_subarray_t *subarray;
   SubarrayRanges<uint64_t> ranges = {{2, 6}};
   Layout subarray_layout = Layout::GLOBAL_ORDER;
   std::vector<SubarrayRanges<uint64_t>> partitions = {{{2, 2}}};
   std::vector<SubarrayRanges<uint64_t>> partitions_after = {{{3, 6}}};
 
-  create_subarray(array_->array_, ranges, subarray_layout, &subarray);
+  create_subarray(ctx_, array_->array_, ranges, subarray_layout, &subarray);
 
   ThreadPool tp;
   CHECK(tp.init(4).ok());
-  SubarrayPartitioner subarray_partitioner(
-      subarray, memory_budget_, memory_budget_var_, 0, &tp);
-  auto st = subarray_partitioner.set_result_budget("a", 100 * sizeof(int));
-  CHECK(st.ok());
-  st = subarray_partitioner.set_result_budget("b", 1, 1);
-  CHECK(st.ok());
+  tiledb_subarray_partitioner_t* subarray_partitioner;
+  int32_t rc;
+  rc = tiledb_subarray_partitioner_alloc(
+      ctx_,
+      subarray,
+      &subarray_partitioner,
+      memory_budget_,
+      memory_budget_var_,
+      0);
+  REQUIRE(TILEDB_OK == rc);
+  rc = tiledb_subarray_partitioner_set_result_budget(ctx_, "a", 100 * sizeof(int), subarray_partitioner);
+  CHECK(TILEDB_OK == rc);
+  rc = tiledb_subarray_partitioner_set_result_budget_var_attr(
+      ctx_, "b", 1, 1, subarray_partitioner);
+  REQUIRE(TILEDB_OK == rc);
 
-  check_partitions(subarray_partitioner, partitions, true);
+  tiledb_subarray_t* retrieved_subarray;
+  rc = tiledb_subarray_alloc(ctx_, array_, &retrieved_subarray);
+  CHECK(TILEDB_OK == rc);
+  check_partitions(ctx_, subarray_partitioner, partitions, true, retrieved_subarray);
 
-  st = subarray_partitioner.set_result_budget("b", 100, 100);
-  CHECK(st.ok());
+  rc = tiledb_subarray_partitioner_set_result_budget_var_attr(ctx_, "b", 100, 100, subarray_partitioner);
+  REQUIRE(TILEDB_OK == rc);
 
-  check_partitions(subarray_partitioner, partitions_after, false);
+  check_partitions(
+      ctx_, subarray_partitioner, partitions_after, false, retrieved_subarray);
+
+  tiledb_subarray_free(&retrieved_subarray);
+  tiledb_subarray_partitioner_free(&subarray_partitioner);
+  tiledb_subarray_free(&subarray);
 
   close_array(ctx_, array_);
 }

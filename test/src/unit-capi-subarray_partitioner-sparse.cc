@@ -2324,6 +2324,8 @@ TEST_CASE_METHOD(
   rc = tiledb_array_close(ctx_, array);
   CHECK(rc == TILEDB_OK);
 
+  //TBD: Leaking the previous array, replacing it below? If so, do we care?
+
   // #### PARTITIONER ####
 
   // Open array
@@ -2551,6 +2553,8 @@ TEST_CASE_METHOD(
   CHECK(rc == TILEDB_OK);
 
   // #### PARTITIONER ####
+
+  //TBD: leaking array between above and next tiledb_array_alloc()? If so, do we care?
 
   // Open array
   rc = tiledb_array_alloc(ctx_, array_name_.c_str(), &array);
