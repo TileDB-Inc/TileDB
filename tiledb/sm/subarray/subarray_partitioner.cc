@@ -405,9 +405,9 @@ Status SubarrayPartitioner::subarray_from_partition_series(
     uint64_t part_idx, Subarray** subarray) {
   if (part_idx >= partitions_series_.size()) {
     std::stringstream msg;
-    //TBD: is part_idx going to be zero-based?
-    msg << "Requested partition index " << part_idx
-        << " greater than last (" << partitions_series_.size()-1 <<  ") computed partition.";
+    // assumes part_idx to be zero-based
+    msg << "Requested partition index " << part_idx << " greater than last ("
+        << partitions_series_.size() - 1 << ") computed partition.";
     return LOG_STATUS(Status::SubarrayPartitionerError(msg.str()));
   }
   //*subarray = &partitions_series_[part_idx].partition_;
@@ -418,7 +418,8 @@ Status SubarrayPartitioner::subarray_from_partition_series(
 Status SubarrayPartitioner::compute_partition_series(
     std::vector<PartitionInfo>* partitions_series) {
   std::vector<PartitionInfo> partitions_local;
-  std::vector<PartitionInfo>& partitions = partitions_series == nullptr ? partitions_series_ : partitions_local;
+  std::vector<PartitionInfo>& partitions =
+      partitions_series == nullptr ? partitions_series_ : partitions_local;
 
   bool unsplittable = false;
 
@@ -428,15 +429,10 @@ Status SubarrayPartitioner::compute_partition_series(
   //- but then are there any partitions, or empty partitions would be correct?
   if (!done()) {
     while (next(&unsplittable).ok()) {
-//      if (current_.partition_.empty()) //TBD: Apparently next() could be '.ok()' with initially empty subarray_
-//        __debugbreak();
-      //following .empty() check requires 'current_.partition_.clear()' change early in next() 
-      //to function reliably for purpose here
-      //if (current_.partition_.empty())  // TBD: Apparently next() could be
-      //  break;                         // '.ok()' with initially empty subarray_
       partitions.emplace_back(current_);
-      //checking unsplittable and breaking avoids failure in a unit test where 6 partitions are produced without
-      //checking this, but only one when checking it.
+      // checking unsplittable and breaking avoids failure in a unit test where
+      // 6 partitions are produced without checking this, but only one when
+      // checking it.
       if (unsplittable)
         break;
       if (done())
@@ -452,14 +448,11 @@ Status SubarrayPartitioner::next(bool* unsplittable) {
 
   *unsplittable = false;
 
-  //TBD: does anything break if we intentionally "clear" current_.partitioner_ ?
   current_.partition_.clear();
 
   if (done()) {
     return Status::Ok();
   }
-
-//  current_.partition_.clear();
 
   // Handle single range partitions, remaining from previous iteration
   if (!state_.single_range_.empty())
@@ -752,24 +745,9 @@ void SubarrayPartitioner::calibrate_current_start_end(bool* must_split_slab) {
   std::vector<uint64_t> range_num;
   auto dim_num = subarray_.dim_num();
   uint64_t num;
-#if 0 //TBD: useful here or not?
-  if (ordered_dims_.size()) {
-    if (dim_num != ordered_dims_.size()) {
-      //TBD: throw something?
-    }
-    auto ordered_dim_num = ordered_dims_.size();
-    range_num.reserve(ordered_dim_num);
-    for (unsigned ui = 0 ; ui < ordered_dim_num ; ++ui) {
-      subarray_.get_range_num(ordered_dims_[ui], &num);
-      range_num.emplace_back(num);
-    }
-  } else
-#endif
-  {
-    for (unsigned i = 0; i < dim_num; ++i) {
-      subarray_.get_range_num(i, &num);
-      range_num.push_back(num);
-    }
+  for (unsigned i = 0; i < dim_num; ++i) {
+    subarray_.get_range_num(i, &num);
+    range_num.push_back(num);
   }
 
   auto layout = subarray_.layout();
@@ -945,17 +923,7 @@ void SubarrayPartitioner::compute_splitting_value_on_tiles(
   *splitting_dim = UINT32_MAX;
 
   std::vector<unsigned> dims;
-  //TBD: Should ordered dims be used here?
-  if (ordered_dims_.size()) {
-    if (dim_num < ordered_dims_.size()) {
-      // TBD: throw something?
-    }
-    auto ordered_dim_num = ordered_dims_.size();
-    dims.reserve(ordered_dim_num);
-    for (unsigned ui = 0; ui < ordered_dim_num; ++ui) {
-      dims.emplace_back(ordered_dims_[ui]);
-    }
-  } else if (layout == Layout::ROW_MAJOR) {
+ if (layout == Layout::ROW_MAJOR) {
     for (unsigned i = 0; i < dim_num; ++i)
       dims.push_back(i);
   } else {
@@ -1024,17 +992,7 @@ void SubarrayPartitioner::compute_splitting_value_single_range(
   assert(cell_order == Layout::ROW_MAJOR || cell_order == Layout::COL_MAJOR);
 
   std::vector<unsigned> dims;
-  // TBD: Should ordered dims be used here?
-  if (ordered_dims_.size()) {
-    if (dim_num < ordered_dims_.size()) {
-      // TBD: throw something?
-    }
-    auto ordered_dim_num = ordered_dims_.size();
-    dims.reserve(ordered_dim_num);
-    for (unsigned ui = 0; ui < ordered_dim_num; ++ui) {
-      dims.emplace_back(ordered_dims_[ui]);
-    }
-  } else if (layout == Layout::ROW_MAJOR) {
+ if (layout == Layout::ROW_MAJOR) {
     for (unsigned d = 0; d < dim_num; ++d)
       dims.push_back(d);
   } else {
@@ -1139,16 +1097,7 @@ void SubarrayPartitioner::compute_splitting_value_multi_range(
 
   std::vector<unsigned> dims;
   // TBD: Should ordered dims be used here?
-  if (ordered_dims_.size()) {
-    if (dim_num < ordered_dims_.size()) {
-      // TBD: throw something?
-    }
-    auto ordered_dim_num = ordered_dims_.size();
-    dims.reserve(ordered_dim_num);
-    for (unsigned ui = 0; ui < ordered_dim_num; ++ui) {
-      dims.emplace_back(ordered_dims_[ui]);
-    }
-  } else if (layout == Layout::ROW_MAJOR) {
+ if (layout == Layout::ROW_MAJOR) {
     for (unsigned d = 0; d < dim_num; ++d)
       dims.push_back(d);
   } else {
@@ -1418,8 +1367,6 @@ void SubarrayPartitioner::compute_range_uint64(
 
   // Default values for empty range start/end
   auto max_string = std::string("\x7F\x7F\x7F\x7F\x7F\x7F\x7F\x7F", 8);
-
-  //TBD: no consideration of layout here, no ref to ordered_dims_ needed?
 
   // Calculate mapped range
   bool empty_start, empty_end;

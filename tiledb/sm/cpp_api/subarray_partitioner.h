@@ -180,6 +180,32 @@ class SubarrayPartitioner {
     return subarray_partitioner_;
   }
 
+  /**
+   * Gets result size budget (in bytes) for the input fixed-sized
+   * attribute/dimension.
+   */
+  void get_result_budget(const char* name, uint64_t* budget) const {
+    //return subarray_partitioner_->partitioner_->get_result_budget(name, budget);
+    ctx_.get().handle_error(
+        tiledb_subarray_partitioner_get_result_budget1(ctx_.get().ptr().get(), name, budget, subarray_partitioner_.get()));
+  }
+
+  /**
+   * Gets result size budget (in bytes) for the input var-sized
+   * attribute/dimension.
+   */
+  void get_result_budget(
+      const char* name, uint64_t* budget_off, uint64_t* budget_val) const {
+    //return subarray_partitioner_->partitioner_->get_result_budget(
+    //    name, budget_off, budget_val);
+    ctx_.get().handle_error(tiledb_subarray_partitioner_get_result_budget2(
+        ctx_.get().ptr().get(),
+        name,
+        budget_off,
+        budget_val,
+        subarray_partitioner_.get()));
+  }
+
 #if 0
 //TBD: internally available core SubarrayPartitioner() methods, do we need to support any more not 
 //currently in capi?

@@ -5411,6 +5411,19 @@ TILEDB_EXPORT int32_t tiledb_subarray_partitioner_set_result_budget(
     uint64_t budget,
     tiledb_subarray_partitioner_t* partitioner);
 	
+TILEDB_EXPORT int32_t tiledb_subarray_partitioner_get_result_budget1(
+    tiledb_ctx_t* ctx,
+    const char* attrname,
+    uint64_t* budget,
+    tiledb_subarray_partitioner_t* partitioner);
+
+TILEDB_EXPORT int32_t tiledb_subarray_partitioner_get_result_budget2(
+    tiledb_ctx_t* ctx,
+    const char* name,
+    uint64_t* budget_off,
+    uint64_t* budget_val,
+    tiledb_subarray_partitioner_t* partitioner);
+
 /**
  * TBD: Explain me.
  * 
