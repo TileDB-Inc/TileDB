@@ -10,10 +10,6 @@
 
 ## Improvements
 
-* Added config option vfs.gcs.request_timeout_ms [#2148](https://github.com/TileDB-Inc/TileDB/pull/2148)
-* Improve fragment info loading by parallelizing fragment_size requests [#2143](https://github.com/TileDB-Inc/TileDB/pull/2143)
-* Apply 'var_offsets.extra_element' mode to string dimension offsets too [#2145](https://github.com/TileDB-Inc/TileDB/pull/2145)
-
 ## Deprecations
 
 ## Bug fixes
@@ -23,6 +19,14 @@
 ### C API
 
 ### C++ API
+
+# TileDB v2.2.7 Release Notes
+
+## Improvements
+
+* Added config option vfs.gcs.request_timeout_ms [#2148](https://github.com/TileDB-Inc/TileDB/pull/2148)
+* Improve fragment info loading by parallelizing fragment_size requests [#2143](https://github.com/TileDB-Inc/TileDB/pull/2143)
+* Apply 'var_offsets.extra_element' mode to string dimension offsets too [#2145](https://github.com/TileDB-Inc/TileDB/pull/2145)
 
 # TileDB v2.2.6 Release Notes
 
