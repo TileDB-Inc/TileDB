@@ -1361,7 +1361,7 @@ TILEDB_EXPORT int32_t tiledb_config_save_to_file(
  * @endcode
  *
  * @param lhs The left-hand side config object.
- * @param lhs The right-hand side config object.
+ * @param rhs The right-hand side config object.
  * @param equal Integer of equality comparison
  *      1 = true, 0 = false
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
@@ -2284,7 +2284,7 @@ TILEDB_EXPORT int32_t tiledb_attribute_get_fill_value(
  * @param attr The target attribute.
  * @param value The fill value to set.
  * @param size The fill value size in bytes.
- * @param valid The validity fill value, zero for a null value and
+ * @param validity The validity fill value, zero for a null value and
  *     non-zero for a valid attribute.
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  *
