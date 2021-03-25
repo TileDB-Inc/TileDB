@@ -350,48 +350,6 @@ Status SubarrayPartitioner::get_memory_budget(
   return Status::Ok();
 }
 
-Status SubarrayPartitioner::set_custom_layout(
-  const char** ordered_dim_names, uint32_t ordered_dim_names_length) {
-
-  auto array = subarray_.array();
-  auto domain = array->array_schema()->domain();
-  auto num_domain_dims = domain->dim_num();
-
-  ordered_dims_.clear();
-
-  //TBD: What validation for number of names passed versus number of dimensions, 
-  //are they to be the same, or can number of names provided be less than number of dimensions?
-
-  for (auto ui = 0u; ui < ordered_dim_names_length; ++ui) {
-    const tiledb::sm::Dimension* dim_from_name =
-        domain->dimension(std::string(ordered_dim_names[ui]));
-    if (dim_from_name == nullptr) {
-      std::stringstream msg;
-      msg << "dimension " << ordered_dim_names[ui] << " not found, unable to set custom layout.";
-      return LOG_STATUS(Status::SubarrayPartitionerError(msg.str()));
-    }
-    uint32_t ui2;
-    for (ui2 = 0u; ui2 < num_domain_dims; ++ui2) {
-      const tiledb::sm::Dimension* dim_from_idx =
-          domain->dimension(ui2);
-      if (dim_from_idx == dim_from_name) {
-        ordered_dims_.emplace_back(ui2);
-        break;
-      }
-    }
-    if (ui2 >= num_domain_dims) {
-      std::stringstream msg;
-      //likely an *internal* logic error
-      msg << "dimension " << ordered_dim_names[ui]
-          << " positional order could not be determined, unable to set custom layout.";
-      return LOG_STATUS(Status::SubarrayPartitionerError(msg.str()));
-
-    }
-  }
-  
-  return Status::Ok();
-}
-
 uint64_t SubarrayPartitioner::partition_series_num() {
   return partitions_series_.size();
 }

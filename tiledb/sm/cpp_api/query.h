@@ -321,7 +321,7 @@ class Query {
   void submit_async_with_subarray(const Fn& callback, Subarray& subarray) {
     auto& ctx = ctx_.get();
 #if 01
-    ctx.handle_error(tiledb_query_set_subarray_v2(
+    ctx.handle_error(tiledb_query_set_subarray_t(
         ctx.ptr().get(), query_.get(), subarray.capi_subarray()));
 #endif
     std::function<void(void*)> wrapper = [&](void*) { callback(); };
@@ -1115,7 +1115,7 @@ class Query {
    */
   Query& set_subarray(const Subarray& subarray) {
     auto& ctx = ctx_.get();
-    ctx.handle_error(tiledb_query_set_subarray_v2(
+    ctx.handle_error(tiledb_query_set_subarray_t(
         ctx.ptr().get(), query_.get(), subarray.capi_subarray()));
 
     return *this;

@@ -129,7 +129,6 @@ struct SerializationFx {
     Query query(ctx, array);
     Subarray cppapi_subarray(ctx, array);
     cppapi_subarray.set_subarray(subarray);
-    // query.set_subarray(subarray);
     query.set_subarray(cppapi_subarray);
     query.set_buffer("a1", a1);
     query.set_buffer_nullable("a2", a2, a2_nullable);
@@ -171,10 +170,7 @@ struct SerializationFx {
 
     Array array(ctx, array_uri, TILEDB_WRITE);
     Query query(ctx, array);
-    //query.add_range(0, subarray[0], subarray[1]);
-    //query.add_range(1, subarray[2], subarray[3]);
     Subarray cppapi_subarray(ctx, array);
-    //cppapi_subarray.set_subarray(subarray);
     cppapi_subarray.add_range(0, subarray[0], subarray[1]);
     cppapi_subarray.add_range(1, subarray[2], subarray[3]);
     query.set_subarray(cppapi_subarray);
@@ -302,16 +298,6 @@ struct SerializationFx {
     // Serialize
     tiledb_buffer_list_t* buff_list;
 
-#if 0
-    tiledb_subarray_t* subarray;
-    ctx.handle_error(
-        tiledb_query_ref_relevant_subarray(ctx.ptr().get(), query.ptr().get(), &subarray));
-    ctx.handle_error(
-        //    tiledb_query_set_subarray(ctx.ptr().get(), query.ptr().get(),
-        //    subarray));
-        tiledb_query_set_subarray_v2(
-            ctx.ptr().get(), query.ptr().get(), subarray));
-#endif
     ctx.handle_error(tiledb_serialize_query(
         ctx.ptr().get(),
         query.ptr().get(),
@@ -484,7 +470,6 @@ TEST_CASE_METHOD(
     std::vector<uint64_t> a3_offsets(1000);
     std::vector<int32_t> subarray = {1, 10, 1, 10};
 
-    //query.set_subarray(subarray);
     Subarray cppapi_subarray(ctx, array);
     cppapi_subarray.set_subarray(subarray);
     query.set_subarray(cppapi_subarray);
@@ -531,7 +516,6 @@ TEST_CASE_METHOD(
     std::vector<uint64_t> a3_offsets(1000);
     std::vector<int32_t> subarray = {3, 4, 3, 4};
 
-    //query.set_subarray(subarray);
     Subarray cppapi_subarray(ctx, array);
     cppapi_subarray.set_subarray(subarray);
     query.set_subarray(cppapi_subarray);
@@ -577,7 +561,6 @@ TEST_CASE_METHOD(
     std::vector<char> a3_data(60);
     std::vector<uint64_t> a3_offsets(4);
     std::vector<int32_t> subarray = {3, 4, 3, 4};
-    //query.set_subarray(subarray);
     Subarray cppapi_subarray(ctx, array);
     cppapi_subarray.set_subarray(subarray);
     query.set_subarray(cppapi_subarray);
@@ -666,7 +649,6 @@ TEST_CASE_METHOD(
     std::vector<uint64_t> a3_offsets(1000);
     std::vector<int32_t> subarray = {1, 10, 1, 10};
 
-    //query.set_subarray(subarray);
     Subarray cppapi_subarray(ctx, array);
     cppapi_subarray.set_subarray(subarray);
     query.set_subarray(cppapi_subarray);
@@ -720,7 +702,6 @@ TEST_CASE_METHOD(
     std::vector<uint64_t> a3_offsets(1000);
     std::vector<int32_t> subarray = {1, 10, 1, 10};
 
-    //query.set_subarray(subarray);
     Subarray cppapi_subarray(ctx, array);
     cppapi_subarray.set_subarray(subarray);
     query.set_subarray(cppapi_subarray);
@@ -773,8 +754,6 @@ TEST_CASE_METHOD(
     std::vector<uint64_t> a3_offsets(1000);
     std::vector<int32_t> subarray = {1, 10, 1, 10};
 
-    //query.add_range(0, subarray[0], subarray[1]);
-    //query.add_range(1, subarray[2], subarray[3]);
     Subarray cppapi_subarray(ctx, array);
     cppapi_subarray.add_range(0, subarray[0], subarray[1]);
     cppapi_subarray.add_range(1, subarray[2], subarray[3]);
@@ -822,8 +801,6 @@ TEST_CASE_METHOD(
     std::vector<uint64_t> a3_offsets(1000);
     std::vector<int32_t> subarray = {3, 4, 3, 4};
 
-    //query.add_range(0, subarray[0], subarray[1]);
-    //query.add_range(1, subarray[2], subarray[3]);
     Subarray cppapi_subarray(ctx, array);
     cppapi_subarray.add_range(0, subarray[0], subarray[1]);
     cppapi_subarray.add_range(1, subarray[2], subarray[3]);
@@ -870,8 +847,6 @@ TEST_CASE_METHOD(
     std::vector<char> a3_data(60);
     std::vector<uint64_t> a3_offsets(4);
     std::vector<int32_t> subarray = {3, 4, 3, 4};
-    //query.add_range(0, subarray[0], subarray[1]);
-    //query.add_range(1, subarray[2], subarray[3]);
     Subarray cppapi_subarray(ctx, array);
     cppapi_subarray.add_range(0, subarray[0], subarray[1]);
     cppapi_subarray.add_range(1, subarray[2], subarray[3]);

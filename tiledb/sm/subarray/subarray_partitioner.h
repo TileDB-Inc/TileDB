@@ -323,12 +323,6 @@ class SubarrayPartitioner {
    */
   Status split_current(bool* unsplittable);
 
-  /**
-   * Retain ordered list of dimensions to direct layout order for partitioning
-   */
-  Status set_custom_layout(
-      const char** ordered_dim_names, uint32_t ordered_dim_names_length);
-
   /** Returns the state. */
   const State* state() const;
 

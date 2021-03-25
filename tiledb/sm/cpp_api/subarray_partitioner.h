@@ -33,13 +33,6 @@
 #ifndef TILEDB_CPP_API_SUBARRAY_PARTITIONER_H
 #define TILEDB_CPP_API_SUBARRAY_PARTITIONER_H
 
-//#include <list>
-
-//#include <unordered_map>
-//#include "tiledb/common/thread_pool.h"
-//#include "tiledb/sm/misc/constants.h"
-//#include "tiledb/sm/subarray/subarray_partitioner.h"
-
 #include "array.h"
 #include "context.h"
 #include "core_interface.h"
@@ -83,8 +76,7 @@ class SubarrayPartitioner {
       const Subarray& subarray,
       uint64_t memory_budget,
       uint64_t memory_budget_var,
-      uint64_t memory_budget_validity)//;,
-      //ThreadPool* compute_tp);
+      uint64_t memory_budget_validity)
       : ctx_(ctx) 
       , subarray_(subarray) {
     tiledb_subarray_partitioner_t* capi_subarray_partitioner;
@@ -94,42 +86,52 @@ class SubarrayPartitioner {
         capi_subarray_partitioner, deleter_);
   }
 
-  /** Copy constructor. This performs a deep copy. */
-//  SubarrayPartitioner(const SubarrayPartitioner& partitioner);
-
-  /** Move constructor. */
-//  SubarrayPartitioner(SubarrayPartitioner&& partitioner) noexcept;
-
-  /** Copy-assign operator. This performs a deep copy. */
-//  SubarrayPartitioner& operator=(const SubarrayPartitioner& partitioner);
-
-  /** Move-assign operator. */
-//  SubarrayPartitioner& operator=(SubarrayPartitioner&& partitioner) noexcept;
-
   /* ********************************* */
   /*                 API               */
   /* ********************************* */
 
-  /** Set the subarray layout. */
-  void set_layout(tiledb_layout_t layout){
+  /**
+   * Sets the layout of the associated subarray.
+   *
+   * @param layout When used with a write query, this specifies the order of the cells
+   *     provided by the user in the buffers. For a read query, this specifies
+   *     the order of the cells that will be retrieved as results and stored
+   *     in the user buffers. The layout can be one of the following:
+   *    - `TILEDB_COL_MAJOR`:
+   *      This means column-major order with respect to the subarray.
+   *    - `TILEDB_ROW_MAJOR`:
+   *      This means row-major order with respect to the subarray.
+   *    - `TILEDB_GLOBAL_ORDER`:
+   *      This means that cells are stored or retrieved in the array global
+   *      cell order.
+   *    - `TILEDB_UNORDERED`:
+   *      This is applicable only to writes for sparse arrays, or for sparse
+   *      writes to dense arrays. It specifies that the cells are unordered and,
+   *      hence, TileDB must sort the cells in the global cell order prior to
+   *      writing.
+   * @return Reference to this Subarray
+   */
+  SubarrayPartitioner& set_layout(tiledb_layout_t layout) {
     ctx_.get().handle_error(tiledb_subarray_partitioner_set_layout(ctx_.get().ptr().get(),
         layout, subarray_partitioner_.get()));
+    return *this;
   }
 
-  /** Set a custom layout */
-  void set_custom_layout(
-      const char** ordered_dim_names, uint32_t ordered_dim_names_length) {
-    ctx_.get().handle_error(
-        tiledb_subarray_partitioner_set_custom_layout(ctx_.get().ptr().get(), ordered_dim_names, ordered_dim_names_length, subarray_partitioner_.get()));
-  }
-
-  /** Compute the entire series of subarray partitions. */
-  void compute() {
+  /** 
+   * Compute a complete series of subarray partitions, retained to be accessed
+   * with get_partition().
+   */
+  SubarrayPartitioner& compute() {
     ctx_.get().handle_error(tiledb_subarray_partitioner_compute(
         ctx_.get().ptr().get(), subarray_partitioner_.get()));
+    return *this;
   }
 
-  /** Get the number of partitions in the currently computed series. */
+  /** 
+   * Get the number of partitions in the currently computed series. 
+   *
+   * @return the number of partitions available
+   */
   int32_t get_partition_num() {
     uint64_t num;
     ctx_.get().handle_error(tiledb_subarray_partitioner_get_partition_num(
@@ -137,33 +139,55 @@ class SubarrayPartitioner {
     return num;
   }
 
-  /** Retrieve a partition (subarray) from within the currently comptued series. */
-  void get_partition(uint64_t part_id, Subarray& retrieved_subarray) {
-  //TBD: how to handle...
+  /** 
+   * Retrieve a (subarray) partition from within the currently computed series. 
+   */
+  SubarrayPartitioner& get_partition(
+      uint64_t part_id, Subarray& retrieved_subarray) {
     ctx_.get().handle_error(tiledb_subarray_partitioner_get_partition(
       ctx_.get().ptr().get(),
         subarray_partitioner_.get(),
         part_id,
         retrieved_subarray.capi_subarray()));
+    return *this;
   }
 
-  void set_result_budget(const char* attrname, uint64_t budget) {
+  /**
+   * Sets result size budget (in bytes) for the input fixed-sized
+   * attribute/dimension.
+   */
+  SubarrayPartitioner& set_result_budget(
+      const char* attrname, uint64_t budget) {
     ctx_.get().handle_error(tiledb_subarray_partitioner_set_result_budget(
       ctx_.get().ptr().get(),
       attrname,
       budget,
       subarray_partitioner_.get()));
+    return *this;
   }
 
-  void set_result_budget_var_attr(
+  /**
+   * Sets result size budget (in bytes) for the input var-sized
+   * attribute/dimension.
+   */
+  SubarrayPartitioner& set_result_budget_var_attr(
       const char* attrname,
       uint64_t budget_off,
       uint64_t budget_val) {
     ctx_.get().handle_error(tiledb_subarray_partitioner_set_result_budget_var_attr(
         ctx_.get().ptr().get(), attrname, budget_off, budget_val, subarray_partitioner_.get()));
+    return *this;
   }
 
-  void set_memory_budget(
+  /**
+   * Sets the memory budget (in bytes).
+   *
+   * @param budget The budget for the fixed-sized attributes and the
+   *     offsets of the var-sized attributes.
+   * @param budget_var The budget for the var-sized attributes.
+   * @param budget_validity The budget for validity vectors.
+   */
+  SubarrayPartitioner& set_memory_budget(
       uint64_t budget,
       uint64_t budget_var,
       uint64_t budget_validity) {
@@ -173,9 +197,12 @@ class SubarrayPartitioner {
         budget_var,
         budget_validity,
         subarray_partitioner_.get()));
+    return *this;
   }
 
-  /** Returns the C TileDB subarray object. */
+  /** 
+   * Returns the associated C TileDB subarray object. 
+   */
   std::shared_ptr<tiledb_subarray_partitioner_t> ptr() const {
     return subarray_partitioner_;
   }
@@ -184,26 +211,102 @@ class SubarrayPartitioner {
    * Gets result size budget (in bytes) for the input fixed-sized
    * attribute/dimension.
    */
-  void get_result_budget(const char* name, uint64_t* budget) const {
-    //return subarray_partitioner_->partitioner_->get_result_budget(name, budget);
+  const SubarrayPartitioner& get_result_budget_fixed(
+      const char* name, uint64_t* budget) const {
     ctx_.get().handle_error(
-        tiledb_subarray_partitioner_get_result_budget1(ctx_.get().ptr().get(), name, budget, subarray_partitioner_.get()));
+        tiledb_subarray_partitioner_get_result_budget_fixed(ctx_.get().ptr().get(), name, budget, subarray_partitioner_.get()));
+    return *this;
   }
 
   /**
    * Gets result size budget (in bytes) for the input var-sized
    * attribute/dimension.
    */
-  void get_result_budget(
+  /**
+   * Gets result size budget (in bytes) for the input var-sized
+   * attribute/dimension.
+   */
+  const SubarrayPartitioner& get_result_budget_var(
       const char* name, uint64_t* budget_off, uint64_t* budget_val) const {
-    //return subarray_partitioner_->partitioner_->get_result_budget(
-    //    name, budget_off, budget_val);
-    ctx_.get().handle_error(tiledb_subarray_partitioner_get_result_budget2(
+    ctx_.get().handle_error(tiledb_subarray_partitioner_get_result_budget_var(
         ctx_.get().ptr().get(),
         name,
         budget_off,
         budget_val,
         subarray_partitioner_.get()));
+    return *this;
+  }
+
+  /**
+   * Gets result size budget (in bytes) for the input fixed-sized
+   * nullable attribute.
+   */
+  const SubarrayPartitioner& get_result_budget_nullable_fixed(
+      const char* name, uint64_t* budget, uint64_t* budget_validity) const {
+    ctx_.get().handle_error(
+        tiledb_subarray_partitioner_get_result_budget_nullable_fixed(
+            ctx_.get().ptr().get(),
+            name,
+            budget,
+            budget_validity,
+            subarray_partitioner_.get()));
+    return *this;
+  }
+
+  /**
+   * Gets result size budget (in bytes) for the input var-sized
+   * nullable attribute.
+   */
+  const SubarrayPartitioner& get_result_budget_nullable_var(
+      const char* name,
+      uint64_t* budget_off,
+      uint64_t* budget_val,
+      uint64_t* budget_validity) const {
+    ctx_.get().handle_error(
+        tiledb_subarray_partitioner_get_result_budget_nullable_var(
+            ctx_.get().ptr().get(),
+            name,
+            budget_off,
+            budget_val,
+            budget_validity,
+            subarray_partitioner_.get()));
+    return *this;
+  }
+
+  /**
+   * Sets result size budget (in bytes) for the input fixed-sized,
+   * nullable attribute.
+   */
+  SubarrayPartitioner& set_result_budget_nullable_fixed(
+      const char* name, uint64_t budget, uint64_t budget_validity) {
+    ctx_.get().handle_error(
+        tiledb_subarray_partitioner_set_result_budget_nullable_fixed(
+            ctx_.get().ptr().get(),
+            name,
+            budget,
+            budget_validity,
+            subarray_partitioner_.get()));
+    return *this;
+  }
+
+  /**
+   * Sets result size budget (in bytes) for the input var-sized
+   * nullable attribute.
+   */
+  SubarrayPartitioner& set_result_budget_nullable_var(
+      const char* name,
+      uint64_t budget_off,
+      uint64_t budget_val,
+      uint64_t budget_validity) {
+    ctx_.get().handle_error(
+        tiledb_subarray_partitioner_set_result_budget_nullable_var(
+            ctx_.get().ptr().get(),
+            name,
+            budget_off,
+            budget_val,
+            budget_validity,
+            subarray_partitioner_.get()));
+    return *this;
   }
 
 #if 0
@@ -234,47 +337,6 @@ class SubarrayPartitioner {
 //  bool done() const {
 //    return subarray_partitioner_->partitioner_->done();
 //  }
-
-  /**
-   * Gets result size budget (in bytes) for the input fixed-sized
-   * attribute/dimension.
-   */
-  Status get_result_budget(const char* name, uint64_t* budget) const {
-    return subarray_partitioner_->partitioner_->get_result_budget(name, budget);
-  }
-
-  /**
-   * Gets result size budget (in bytes) for the input var-sized
-   * attribute/dimension.
-   */
-  Status get_result_budget(
-      const char* name, uint64_t* budget_off, uint64_t* budget_val) const {
-    return subarray_partitioner_->partitioner_->get_result_budget(
-        name, budget_off, budget_val);
-  }
-
-  /**
-   * Gets result size budget (in bytes) for the input fixed-sized
-   * nullable attribute.
-   */
-  Status get_result_budget_nullable(
-      const char* name, uint64_t* budget, uint64_t* budget_validity) const {
-    return subarray_partitioner_->partitioner_->get_result_budget_nullable(
-        name, budget, budget_validity);
-  }
-
-  /**
-   * Gets result size budget (in bytes) for the input var-sized
-   * nullable attribute.
-   */
-  Status get_result_budget_nullable(
-      const char* name,
-      uint64_t* budget_off,
-      uint64_t* budget_val,
-      uint64_t* budget_validity) const {
-    return subarray_partitioner_->partitioner_->get_result_budget_nullable(
-        name, budget_off, budget_val, budget_validity);
-  }
 
   /**
    * Returns a pointer to mapping containing all attribute/dimension result
@@ -308,63 +370,6 @@ class SubarrayPartitioner {
    */
   Status next(bool* unsplittable) {
     return subarray_partitioner_->partitioner_->next();
-  }
-
-  /**
-   * Sets the memory budget (in bytes).
-   *
-   * @param budget The budget for the fixed-sized attributes and the
-   *     offsets of the var-sized attributes.
-   * @param budget_var The budget for the var-sized attributes.
-   * @param budget_validity The budget for validity vectors.
-   * @return Status
-   */
-  Status set_memory_budget(
-      uint64_t budget, uint64_t budget_var, uint64_t budget_validity) {
-    return subarray_partitioner_->partitioner_->set_memory_budget(
-        budget, budget_var, budget_validity);
-  }
-
-  /**
-   * Sets result size budget (in bytes) for the input fixed-sized
-   * attribute/dimension.
-   */
-  Status set_result_budget(const char* name, uint64_t budget) {
-    return subarray_partitioner_->partitioner_->set_result_budget(
-        name, budget);
-  }
-
-  /**
-   * Sets result size budget (in bytes) for the input var-sized
-   * attribute/dimension.
-   */
-  Status set_result_budget(
-      const char* name, uint64_t budget_off, uint64_t budget_val) {
-    return subarray_partitioner_->partitioner_->set_result_budget(
-        name, budget_off, budget_valy);
-  }
-
-  /**
-   * Sets result size budget (in bytes) for the input fixed-sized,
-   * nullable attribute.
-   */
-  Status set_result_budget_nullable(
-      const char* name, uint64_t budget, uint64_t budget_validity) {
-    return subarray_partitioner_->partitioner_->set_result_budget_nullable(
-        name, budget, budget_validity);
-  }
-
-  /**
-   * Sets result size budget (in bytes) for the input var-sized
-   * nullable attribute.
-   */
-  Status set_result_budget_nullable(
-      const char* name,
-      uint64_t budget_off,
-      uint64_t budget_val,
-      uint64_t budget_validity) {
-    return subarray_partitioner_->partitioner_->set_result_budget_nullabe(
-        name, budget_off, budget_val, budget_validity);
   }
 
   /**

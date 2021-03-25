@@ -932,15 +932,6 @@ TILEDB_EXPORT void tiledb_config_free(tiledb_config_t** config);
  * - `sm.tile_cache_size` <br>
  *    The tile cache size in bytes. Any `uint64_t` value is acceptable. <br>
  *    **Default**: 10,000,000
- * - `sp.partition_mode` <br>
- *    TBD: explain me
- * - `sp.partition_result_count` <br>
- *    TBD: explain me
- * - `sp.partition_memory_size` <br>
- *    TBD: explain me
- * - `sp.partition_count` <br>
- *    TBD: explain me
- * 
  * - `sm.enable_signal_handlers` <br>
  *    Determines whether or not TileDB will install signal handlers. <br>
  *    **Default**: true
@@ -3398,7 +3389,7 @@ TILEDB_EXPORT int32_t tiledb_query_set_config(
  *     pair per dimension). For the case of writes, this is meaningful only
  *     for dense arrays, and specifically dense writes. Note that `subarray`
  *     must have the same type as the domain.
- * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ * @return `TILEDB_OK` for success or `TILEDB_ERR` for error.
  *
  * @note If you set the subarray of a completed, incomplete or in-progress
  *     query, this function will clear the internal state and render it
@@ -3460,7 +3451,7 @@ TILEDB_EXPORT int32_t tiledb_query_set_subarray(
  *     if the user sets the layout to `TILEDB_UNORDERED` **after**
  *     the subarray has been set, the subarray will simply be ignored.
  */
-TILEDB_EXPORT int32_t tiledb_query_set_subarray_v2(
+TILEDB_EXPORT int32_t tiledb_query_set_subarray_t(
     tiledb_ctx_t* ctx,
     tiledb_query_t* query,
     const tiledb_subarray_t* subarray);
@@ -4120,7 +4111,7 @@ TILEDB_EXPORT int32_t tiledb_query_add_range(
  * **Example:**
  *
  * @code{.c}
- * uint32_t dim_name = "rows";
+ * char* dim_name = "rows";
  * int64_t start = 10;
  * int64_t end = 20;
  * tiledb_query_add_range_by_name(ctx, query, dim_name, &start, &end, nullptr);
@@ -4183,7 +4174,7 @@ TILEDB_EXPORT int32_t tiledb_query_add_range_var(
  * **Example:**
  *
  * @code{.c}
- * uint32_t dim_name = "rows";
+ * char* dim_name = "rows";
  * char start[] = "a";
  * char end[] = "bb";
  * tiledb_query_add_range_var_by_name(ctx, query, dim_name, start, 1, end, 2);
@@ -4611,7 +4602,7 @@ TILEDB_EXPORT int32_t tiledb_query_get_fragment_timestamp_range(
     uint64_t* t2);
 
 /**
- * return a TileDB subarray object for the given array.
+ * return a TileDB subarray object from the given query.
  *
  * **Example:**
  *
@@ -4623,7 +4614,7 @@ TILEDB_EXPORT int32_t tiledb_query_get_fragment_timestamp_range(
  * @param ctx The TileDB context.
  * @param array An open array object.
  * @param subarray The retrieved subarray object if available.
- * @return `TILEDB_OK` for success and `TILEDB_OOM` or `TILEDB_ERR` for error.
+ * @return `TILEDB_OK` for success or `TILEDB_OOM` or `TILEDB_ERR` for error.
  */
 TILEDB_EXPORT
 int32_t tiledb_query_get_subarray(
@@ -4636,6 +4627,100 @@ int32_t tiledb_query_get_subarray(
 /* ********************************* */
 
 /**
+ * Allocates a TileDB subarray object.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * tiledb_subarray_t* subarray;
+ * tiledb_subarray_alloc(ctx, array, &subarray);
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param array An open array object.
+ * @param subarray The subarray object to be created.
+ * @return `TILEDB_OK` for success or `TILEDB_OOM` or `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_subarray_alloc(
+    tiledb_ctx_t* ctx,
+    const tiledb_array_t* array,
+    tiledb_subarray_t** subarray);
+
+/**
+ * Frees a TileDB subarray object.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * tiledb_subarray_t* subarray;
+ * tiledb_subarray_alloc(ctx, array, &subarray);
+ * tiledb_array_open(ctx, array, TILEDB_READ);
+ * tiledb_array_close(ctx, array);
+ * tiledb_subarray_free(&subarray);
+ * @endcode
+ *
+ * @param subarray The subarray object to be freed.
+ */
+TILEDB_EXPORT void tiledb_subarray_free(tiledb_subarray_t** subarray);
+
+/**
+ * Sets the layout of the cells to be written or read.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * tiledb_subarray_set_layout(ctx, subarray, TILEDB_ROW_MAJOR);
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param subarray The TileDB subarray.
+ * @param layout For a write query, this specifies the order of the cells
+ *     provided by the user in the buffers. For a read query, this specifies
+ *     the order of the cells that will be retrieved as results and stored
+ *     in the user buffers. The layout can be one of the following:
+ *    - `TILEDB_COL_MAJOR`:
+ *      This means column-major order with respect to the subarray.
+ *    - `TILEDB_ROW_MAJOR`:
+ *      This means row-major order with respect to the subarray.
+ *    - `TILEDB_GLOBAL_ORDER`:
+ *      This means that cells are stored or retrieved in the array global
+ *      cell order.
+ *    - `TILEDB_UNORDERED`:
+ *      This is applicable only to reads and writes for sparse arrays, or for
+ *      sparse writes to dense arrays. For writes, it specifies that the cells
+ *      are unordered and, hence, TileDB must sort the cells in the global cell
+ *      order prior to writing. For reads, TileDB will return the cells without
+ *      any particular order, which will often lead to better performance.
+ * * @return `TILEDB_OK` for success or `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_subarray_set_layout(
+    tiledb_ctx_t* ctx, tiledb_subarray_t* subarray, tiledb_layout_t layout);
+
+/**
+ * Set coalesce_ranges property on a TileDB subarray object.
+ * Intended to be used just after tiledb_subarray_alloc() to replace
+ * the initial coalesce_ranges = true
+ * with coalesce_ranges = false if
+ * needed.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * tiledb_subarray_t* subarray;
+ * tiledb_subarray_alloc(ctx, array, &subarray);
+ * bool coalesce_ranges = false;
+ * tiledb_subarray_set_coalesce_ranges(ctx, subarray, coalesce_ranges);
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param subarray The subarray object to be created.
+ * @param coalesce_ranges The true/false value to be set
+ * @return `TILEDB_OK` for success or `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_subarray_set_coalesce_ranges(
+    tiledb_ctx_t* ctx, tiledb_subarray_t* subarray, int coalesce_ranges);
+
+/**
  * Populates a subarray with specific indicies.
  *
  * **Example:**
@@ -4644,38 +4729,21 @@ int32_t tiledb_query_get_subarray(
  *
  * @code{.c}
  * tiledb_subarray_t *subarray;
- * uint64_t subarray_a[] = { 0, 10, 20, 30};
- * tiledb_subarray_set_subarray(ctx, subarray, subarray_a);
+ * uint64_t subarray_v[] = { 0, 10, 20, 30};
+ * tiledb_subarray_set_subarray(ctx, subarray, subarray_v);
  * @endcode
  *
  * @param ctx The TileDB context.
  * @param subarray The TileDB subarray object.
- * @param subarray_a The subarray which can be used to constrain the array
- read/write.
- *     It should be a sequence of [low, high] pairs (one
- *     pair per dimension). For the case of writes, this is meaningful only
+ * @param subarray_v The subarray values which can be used to limit the subarray
+ * read/write.
+ *     It should be a sequence of [low, high] pairs (one pair per dimension).
+ *     When the subarray is used for writes, this is meaningful only
  *     for dense arrays, and specifically dense writes. Note that `subarray_a`
- *     must have the same type as the domain.
- * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ *     must have the same type as the domain of the subarray's associated
+ *     array.
+ * @return `TILEDB_OK` for success or `TILEDB_ERR` for error.
  *
- * TBD: These notes (related to query functionality) 
- * perhaps become incorporated into those for
- * tiledb_query_set_subarray_v2(), modified as needed???
- x* @note If you set the subarray of a completed, incomplete or in-progress
- x*     query, this function will clear the internal state and render it
- x*     as uninitialized. However, the potentially set layout and attribute
- x*     buffers will be retained. This is useful when the user wishes to
- x*     fix the attributes and layout, but explore different subarrays with
- x*     the same `tiledb_query_t` object (i.e., without having to create
- x*     a new object).
- *
- x* @note Setting the subarray in sparse writes is meaningless and, thus,
- x*     this function will error in the following two cases, provided that
- x*     this is a write query:
- x*     (i) the array is sparse, and (ii) the array is dense and the
- x*     layout has been set to `TILEDB_UNORDERED`. In the second case,
- x*     if the user sets the layout to `TILEDB_UNORDERED` **after**
- x*     the subarray has been set, the subarray will simply be ignored.
  */
 TILEDB_EXPORT
 int32_t tiledb_subarray_set_subarray(
@@ -4701,7 +4769,7 @@ int32_t tiledb_subarray_set_subarray(
  * @param start The range start.
  * @param end The range end.
  * @param stride The range stride.
- * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ * @return `TILEDB_OK` for success or `TILEDB_ERR` for error.
  *
  * @note The stride is currently unsupported. Use `nullptr` as the
  *     stride argument.
@@ -4722,7 +4790,7 @@ TILEDB_EXPORT int32_t tiledb_subarray_add_range(
  * **Example:**
  *
  * @code{.c}
- * uint32_t dim_name = "rows";
+ * char* dim_name = "rows";
  * int64_t start = 10;
  * int64_t end = 20;
  * tiledb_subarray_add_range_by_name(ctx, subarray, dim_name, &start, &end,
@@ -4735,7 +4803,7 @@ TILEDB_EXPORT int32_t tiledb_subarray_add_range(
  * @param start The range start.
  * @param end The range end.
  * @param stride The range stride.
- * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ * @return `TILEDB_OK` for success or `TILEDB_ERR` for error.
  *
  * @note The stride is currently unsupported. Use `nullptr` as the
  *     stride argument.
@@ -4768,7 +4836,7 @@ TILEDB_EXPORT int32_t tiledb_subarray_add_range_by_name(
  * @param start_size The size of the range start in bytes.
  * @param end The range end.
  * @param end_size The size of the range end in bytes.
- * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ * @return `TILEDB_OK` for success or `TILEDB_ERR` for error.
  */
 TILEDB_EXPORT int32_t tiledb_subarray_add_range_var(
     tiledb_ctx_t* ctx,
@@ -4786,7 +4854,7 @@ TILEDB_EXPORT int32_t tiledb_subarray_add_range_var(
  * **Example:**
  *
  * @code{.c}
- * uint32_t dim_name = "rows";
+ * char* dim_name = "rows";
  * char start[] = "a";
  * char end[] = "bb";
  * tiledb_subarray_add_range_var_by_name(ctx, subarray, dim_name, start, 1, end,
@@ -4800,7 +4868,7 @@ TILEDB_EXPORT int32_t tiledb_subarray_add_range_var(
  * @param start_size The size of the range start in bytes.
  * @param end The range end.
  * @param end_size The size of the range end in bytes.
- * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ * @return `TILEDB_OK` for success or `TILEDB_ERR` for error.
  */
 TILEDB_EXPORT int32_t tiledb_subarray_add_range_var_by_name(
     tiledb_ctx_t* ctx,
@@ -4826,7 +4894,7 @@ TILEDB_EXPORT int32_t tiledb_subarray_add_range_var_by_name(
  * @param subarray The subarray.
  * @param dim_idx The index of the dimension whose range number to retrieve.
  * @param range_num The number of ranges to retrieve.
- * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ * @return `TILEDB_OK` for success or `TILEDB_ERR` for error.
  */
 TILEDB_EXPORT int32_t tiledb_subarray_get_range_num(
     tiledb_ctx_t* ctx,
@@ -4849,7 +4917,7 @@ TILEDB_EXPORT int32_t tiledb_subarray_get_range_num(
  * @param query The query.
  * @param dim_name The name of the dimension whose range number to retrieve.
  * @param range_num The number of ranges to retrieve.
- * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ * @return `TILEDB_OK` for success or `TILEDB_ERR` for error.
  */
 TILEDB_EXPORT int32_t tiledb_subarray_get_range_num_from_name(
     tiledb_ctx_t* ctx,
@@ -4878,7 +4946,7 @@ TILEDB_EXPORT int32_t tiledb_subarray_get_range_num_from_name(
  * @param start The range start to retrieve.
  * @param end The range end to retrieve.
  * @param stride The range stride to retrieve.
- * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ * @return `TILEDB_OK` for success or `TILEDB_ERR` for error.
  */
 TILEDB_EXPORT int32_t tiledb_subarray_get_range(
     tiledb_ctx_t* ctx,
@@ -4910,7 +4978,7 @@ TILEDB_EXPORT int32_t tiledb_subarray_get_range(
  * @param start The range start to retrieve.
  * @param end The range end to retrieve.
  * @param stride The range stride to retrieve.
- * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ * @return `TILEDB_OK` for success or `TILEDB_ERR` for error.
  */
 TILEDB_EXPORT int32_t tiledb_subarray_get_range_from_name(
     tiledb_ctx_t* ctx,
@@ -4940,7 +5008,7 @@ TILEDB_EXPORT int32_t tiledb_subarray_get_range_from_name(
  * @param range_idx The index of the range to retrieve.
  * @param start_size range start size in bytes
  * @param end_size range end size in bytes
- * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ * @return `TILEDB_OK` for success or `TILEDB_ERR` for error.
  */
 TILEDB_EXPORT int32_t tiledb_subarray_get_range_var_size(
     tiledb_ctx_t* ctx,
@@ -4969,7 +5037,7 @@ TILEDB_EXPORT int32_t tiledb_subarray_get_range_var_size(
  * @param range_idx The index of the range to retrieve.
  * @param start_size range start size in bytes
  * @param end_size range end size in bytes
- * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ * @return `TILEDB_OK` for success or `TILEDB_ERR` for error.
  */
 TILEDB_EXPORT int32_t tiledb_subarray_get_range_var_size_from_name(
     tiledb_ctx_t* ctx,
@@ -4998,7 +5066,7 @@ TILEDB_EXPORT int32_t tiledb_subarray_get_range_var_size_from_name(
  * @param range_idx The index of the range to retrieve.
  * @param start The range start to retrieve.
  * @param end The range end to retrieve.
- * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ * @return `TILEDB_OK` for success or `TILEDB_ERR` for error.
  */
 TILEDB_EXPORT int32_t tiledb_subarray_get_range_var(
     tiledb_ctx_t* ctx,
@@ -5027,7 +5095,7 @@ TILEDB_EXPORT int32_t tiledb_subarray_get_range_var(
  * @param range_idx The index of the range to retrieve.
  * @param start The range start to retrieve.
  * @param end The range end to retrieve.
- * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ * @return `TILEDB_OK` for success or `TILEDB_ERR` for error.
  */
 TILEDB_EXPORT int32_t tiledb_subarray_get_range_var_from_name(
     tiledb_ctx_t* ctx,
@@ -5051,7 +5119,7 @@ TILEDB_EXPORT int32_t tiledb_subarray_get_range_var_from_name(
  * @param subarray The subarray.
  * @param name The attribute/dimension name.
  * @param size The size (in bytes) to be retrieved.
- * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ * @return `TILEDB_OK` for success or `TILEDB_ERR` for error.
  */
 TILEDB_EXPORT int32_t tiledb_subarray_get_est_result_size(
     tiledb_ctx_t* ctx,
@@ -5075,7 +5143,7 @@ TILEDB_EXPORT int32_t tiledb_subarray_get_est_result_size(
  * @param name The attribute/dimension name.
  * @param size_off The size of the offsets (in bytes) to be retrieved.
  * @param size_val The size of the values (in bytes) to be retrieved.
- * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ * @return `TILEDB_OK` for success or `TILEDB_ERR` for error.
  */
 TILEDB_EXPORT int32_t tiledb_subarray_get_est_result_size_var(
     tiledb_ctx_t* ctx,
@@ -5102,7 +5170,7 @@ TILEDB_EXPORT int32_t tiledb_subarray_get_est_result_size_var(
  * @param size_val The size of the values (in bytes) to be retrieved.
  * @param size_validity The size of the validity values (in bytes) to be
  * retrieved.
- * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ * @return `TILEDB_OK` for success or `TILEDB_ERR` for error.
  */
 TILEDB_EXPORT int32_t tiledb_subarray_get_est_result_size_nullable(
     tiledb_ctx_t* ctx,
@@ -5129,7 +5197,7 @@ TILEDB_EXPORT int32_t tiledb_subarray_get_est_result_size_nullable(
  * @param size_val The size of the values (in bytes) to be retrieved.
  * @param size_validity The size of the validity values (in bytes) to be
  * retrieved.
- * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ * @return `TILEDB_OK` for success or `TILEDB_ERR` for error.
  */
 TILEDB_EXPORT int32_t tiledb_subarray_get_est_result_size_var_nullable(
     tiledb_ctx_t* ctx,
@@ -5153,107 +5221,10 @@ TILEDB_EXPORT int32_t tiledb_subarray_get_est_result_size_var_nullable(
  * @param ctx The TileDB context
  * @param subarray The subarray.
  * @param num The number of written fragments to be retrieved.
- * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ * @return `TILEDB_OK` for success or `TILEDB_ERR` for error.
  */
 TILEDB_EXPORT int32_t tiledb_subarray_get_fragment_num(
     tiledb_ctx_t* ctx, const tiledb_subarray_t* subarray, uint32_t* num);
-
-/**
- * Allocates a TileDB subarray object.
- *
- * **Example:**
- *
- * @code{.c}
- * tiledb_subarray_t* subarray;
- * tiledb_subarray_alloc(ctx, array, &subarray);
- * @endcode
- *
- * @param ctx The TileDB context.
- * @param array An open array object.
- * @param subarray The subarray object to be created.
- * @return `TILEDB_OK` for success and `TILEDB_OOM` or `TILEDB_ERR` for error.
- */
-TILEDB_EXPORT int32_t tiledb_subarray_alloc(
-    tiledb_ctx_t* ctx,
-    const tiledb_array_t* array,
-    tiledb_subarray_t** subarray);
-
-/**
- * Sets the layout of the cells to be written or read.
- *
- * **Example:**
- *
- * @code{.c}
- * tiledb_subarray_set_layout(ctx, subarray, TILEDB_ROW_MAJOR);
- * @endcode
- *
- * @param ctx The TileDB context.
- * @param subarray The TileDB subarray.
- * @param layout For a write query, this specifies the order of the cells
- *     provided by the user in the buffers. For a read query, this specifies
- *     the order of the cells that will be retrieved as results and stored
- *     in the user buffers. The layout can be one of the following:
- *    - `TILEDB_COL_MAJOR`:
- *      This means column-major order with respect to the subarray.
- *    - `TILEDB_ROW_MAJOR`:
- *      This means row-major order with respect to the subarray.
- *    - `TILEDB_GLOBAL_ORDER`:
- *      This means that cells are stored or retrieved in the array global
- *      cell order.
- *    - `TILEDB_UNORDERED`:
- *      This is applicable only to reads and writes for sparse arrays, or for
- *      sparse writes to dense arrays. For writes, it specifies that the cells
- *      are unordered and, hence, TileDB must sort the cells in the global cell
- *      order prior to writing. For reads, TileDB will return the cells without
- *      any particular order, which will often lead to better performance.
- * * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
- */
-TILEDB_EXPORT int32_t tiledb_subarray_set_layout(
-    tiledb_ctx_t* ctx, tiledb_subarray_t* subarray, tiledb_layout_t layout);
-
-
-/**
- * Set coalesce_ranges property on a TileDB subarray object.
- * Intended to be used just after tiledb_subarray_alloc() to replace
- * the initial coalesce_ranges = true 
- * with coalesce_ranges = false if 
- * needed.
- *
- * **Example:**
- *
- * @code{.c}
- * tiledb_subarray_t* subarray;
- * tiledb_subarray_alloc(ctx, array, &subarray);
- * bool coalesce_ranges = false;
- * tiledb_subarray_set_coalesce_ranges(ctx, &subarray, coalesce_ranges);
- * @endcode
- *
- * @param ctx The TileDB context.
- * @param subarray The subarray object to be created.
- * @param coalesce_ranges The true/false value to be set
- * @return `TILEDB_OK` for success and `TILEDB_OOM` or `TILEDB_ERR` for error.
- */
-TILEDB_EXPORT int32_t tiledb_subarray_set_coalesce_ranges(
-    tiledb_ctx_t* ctx,
-    tiledb_subarray_t* subarray,
-    int coalesce_ranges);
-
-/**
- * Frees a TileDB subarray object.
- *
- * **Example:**
- *
- * @code{.c}
- * tiledb_subarray_t* subarray;
- * tiledb_subarray_alloc(ctx, array, &subarray);
- * tiledb_array_open(ctx, array, TILEDB_READ);
- * tiledb_array_close(ctx, array);
- * tiledb_subarray_free(&subarray);
- * @endcode
- *
- * @param subarray The subarray object to be freed.
- */
-TILEDB_EXPORT void tiledb_subarray_free(tiledb_subarray_t** subarray);
 
 #if DEVING_SUBARRAY_PARTITIONER
 /* ********************************* */
@@ -5289,7 +5260,7 @@ TILEDB_EXPORT int32_t tiledb_subarray_partitioner_alloc(
  * **Example:**
  *
  * @code{.c}
- * tiledb_subarray_t* subarray; //initialized prior to call
+ * tiledb_subarray_t* subarray;
  * tiledb_subarray_partitioner_t *subarray_partitioner;
  * tiledb_subarray_partitioner_alloc(ctx, subarray, &subarray_partitioner);
  * tiledb_subarray_partitioner_free(&subarray_partitioner);
@@ -5300,30 +5271,35 @@ TILEDB_EXPORT int32_t tiledb_subarray_partitioner_alloc(
 TILEDB_EXPORT void tiledb_subarray_partitioner_free(tiledb_subarray_partitioner_t** subarray_partitioner);
 
 /**
- * Set the layout of the subarray used by a subarray partitioner object.
+ * Set the layout of the subarray associated with a subarray partitioner object.
  *
  * **Example:**
  *
  * @code{.c}
- * tiledb_subarray_t* subarray; //initialized
- * tiledb_subarray_partitioner_t *subarray_partitioner; //inititalized prior to call
+ * tiledb_subarray_t* subarray;
+ * tiledb_subarray_partitioner_t *subarray_partitioner;
  * tiledb_subarray_partitioner_set_layout(ctx, layout, subarray_partitioner);
  * @endcode
  *
  * @param layout The layout to set into the subarray partioner object's subarray.
- */
+ *    - `TILEDB_COL_MAJOR`:
+ *      This means column-major order with respect to the subarray.
+ *    - `TILEDB_ROW_MAJOR`:
+ *      This means row-major order with respect to the subarray.
+ *    - `TILEDB_GLOBAL_ORDER`:
+ *      This means that cells are stored or retrieved in the array global
+ *      cell order.
+ *    - `TILEDB_UNORDERED`:
+ *      This is applicable only to reads and writes for sparse arrays, or for
+ *      sparse writes to dense arrays. For writes, it specifies that the cells
+ *      are unordered and, hence, TileDB must sort the cells in the global cell
+ *      order prior to writing. For reads, TileDB will return the cells without
+ *      any particular order, which will often lead to better performance.
+ * * @return `TILEDB_OK` for success or `TILEDB_ERR` for error.
+*/
 TILEDB_EXPORT int32_t tiledb_subarray_partitioner_set_layout(
     tiledb_ctx_t* ctx,
     tiledb_layout_t layout,
-    tiledb_subarray_partitioner_t* partitioner);
-
-// This sets a custom layout, determining the order in
-// which the dimensions should be considered for splitting.
-// Various error checks and default behavior will be discussed.
-TILEDB_EXPORT int32_t tiledb_subarray_partitioner_set_custom_layout(
-    tiledb_ctx_t* ctx,
-    const char** ordered_dim_names,
-    uint32_t ordered_dim_names_length,
     tiledb_subarray_partitioner_t* partitioner);
 
 /**
@@ -5336,12 +5312,12 @@ TILEDB_EXPORT int32_t tiledb_subarray_partitioner_set_custom_layout(
  * **Example:**
  *
  * @code{.c}
- * tiledb_subarray_partitioner_t *subarray_partitioner; //inititalized prior to call
+ * tiledb_subarray_partitioner_t *subarray_partitioner;
  * tiledb_subarray_partitioner_compute(ctx, subarray_partitioner);
  * @endcode
  *
- * @param layout The layout to set into the subarray partioner object's
- * subarray.
+ * @param The partitioner for which to compute the complete series of (sub) partitions
+ * @return `TILEDB_OK` for success or `TILEDB_ERR` for error.
  */
 TILEDB_EXPORT int32_t tiledb_subarray_partitioner_compute(
     tiledb_ctx_t* ctx, tiledb_subarray_partitioner_t* partitioner);
@@ -5353,34 +5329,38 @@ TILEDB_EXPORT int32_t tiledb_subarray_partitioner_compute(
  * **Example:**
  *
  * @code{.c}
- * tiledb_subarray_partitioner_t *subarray_partitioner; //inititalized prior to call
+ * tiledb_subarray_partitioner_t *subarray_partitioner;
  * tiledb_subarray_partitioner_compute(ctx, subarray_partitioner);
  * @endcode
  *
  * @param layout The layout to set into the subarray partioner object's
  * subarray.
+ * @return `TILEDB_OK` for success or `TILEDB_ERR` for error.
  */
 TILEDB_EXPORT int32_t tiledb_subarray_partitioner_get_partition_num(
     tiledb_ctx_t* ctx,
     uint64_t* num,
     tiledb_subarray_partitioner_t* partitioner);
 
-// Gets the pid-th partition/subarray. This allocates a
-// new subarray object that needs to be freed by the user.
 /**
- * Retrieve a partition subarray from the partitioner's computed subarray partitions.
+ * Retrieve the part-id(th) partition subarray from the partitioner's computed subarray partitions.
  *
  * **Example:**
  *
  * @code{.c}
  * uint64_t part_id; //# of partition to retrieve, must be less than # computed partitions
- * tiledb_subarray_t *retrieved_subarray; //initialized prior to call
- * tiledb_subarray_partitioner_t *subarray_partitioner; //inititalized prior to call
+ * tiledb_subarray_t *retrieved_subarray;
+ * tiledb_subarray_partitioner_t *subarray_partitioner;
  * tiledb_subarray_partitioner_get_partition(ctx, subarray_partitioner, partition_id, retrieved_subarray);
  * @endcode
  *
  * @param part_id The index of a partition to retrieve from a prior
- * tiledb_subarray_partitioner_compute().
+ * tiledb_subarray_partitioner_compute(), must be less than the number 
+ * of computed partitions.
+ * @return `TILEDB_OK` for success or `TILEDB_ERR` for error.
+ * 
+ * @note Any returned subarray object was allocated within this call and is to
+ * be freed by the caller.
  */
 TILEDB_EXPORT int32_t tiledb_subarray_partitioner_get_partition(
     tiledb_ctx_t* ctx,
@@ -5389,21 +5369,20 @@ TILEDB_EXPORT int32_t tiledb_subarray_partitioner_get_partition(
     tiledb_subarray_t* subarray);
 
 /**
- * TBD: Explain me.
- * 
- * Set partitioning budget for fixed attribute.
+ * Set memory partitioning budget (in bytes) for fixed size attribute/dimension.
  * 
  * **Example:**
  * 
  * @code{.c}
- * tiledb_subarray_partitioner_t *partitioner; //prior init'd
- * tiledb_ctx_t *ctx; //prior init'd
- * uint64_t budget; //
- * char *attrname; //valid attr name for the array of the subarray used to create partitioner
+ * tiledb_subarray_partitioner_t *partitioner;
+ * tiledb_ctx_t *ctx;
+ * uint64_t budget;
+ * char* attrname;
  * tiledb_subarray_partitioner_set_result_budget(ctx, attrname, budget, partitioner);
  * @endcode
  * 
- * @param budget - TBD: To Be explained
+ * @param budget - byte count specifying memory budget for the specified attribute.
+ * @return `TILEDB_OK` for success or `TILEDB_ERR` for error.
  */
 TILEDB_EXPORT int32_t tiledb_subarray_partitioner_set_result_budget(
     tiledb_ctx_t* ctx,
@@ -5411,13 +5390,49 @@ TILEDB_EXPORT int32_t tiledb_subarray_partitioner_set_result_budget(
     uint64_t budget,
     tiledb_subarray_partitioner_t* partitioner);
 	
-TILEDB_EXPORT int32_t tiledb_subarray_partitioner_get_result_budget1(
+/**
+ * Gets result size budget (in bytes) for the input fixed-sized
+ * attribute/dimension.
+ * 
+ * **Example:**
+ * 
+ * @code{.c}
+ * tiledb_subarray_partitioner_t *partitioner;
+ * tiledb_ctx_t *ctx;
+ * uint64_t *budget;
+ * char *attrname;
+ * tiledb_subarray_partitioner_get_result_budget_fixed(ctx, attrname, budget, partitioner);
+ * @endcode
+ * 
+ * @param budget - byte count memory budget for the specified attribute.
+ * @return `TILEDB_OK` for success or `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_subarray_partitioner_get_result_budget_fixed(
     tiledb_ctx_t* ctx,
     const char* attrname,
     uint64_t* budget,
     tiledb_subarray_partitioner_t* partitioner);
 
-TILEDB_EXPORT int32_t tiledb_subarray_partitioner_get_result_budget2(
+/**
+ * Gets result size budget (in bytes) for the input var-sized
+ * attribute/dimension.
+ * 
+ * **Example:**
+ * 
+ * @code{.c}
+ * tiledb_subarray_partitioner_t *partitioner;
+ * tiledb_ctx_t *ctx;
+ * uint64_t *budget_off;
+ * uint64_t *budget_val;
+ * char *attrname;
+ * tiledb_subarray_partitioner_get_result_budget_var(ctx, attrname, budget_off, budget_val, partitioner);
+ * @endcode
+ * 
+ * @param budget_off - The budget in bytes for offsets of var attributes
+ * @param budget_val - The budget in bytes for var sized attribute values
+ * @return `TILEDB_OK` for success or `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_subarray_partitioner_get_result_budget_var(
     tiledb_ctx_t* ctx,
     const char* name,
     uint64_t* budget_off,
@@ -5425,22 +5440,137 @@ TILEDB_EXPORT int32_t tiledb_subarray_partitioner_get_result_budget2(
     tiledb_subarray_partitioner_t* partitioner);
 
 /**
- * TBD: Explain me.
- * 
- * Set partitioning budget for var sized attribute.
+ * Sets result size budget (in bytes) for the input fixed-sized
+ * nullable attribute.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * tiledb_subarray_partitioner_t *partitioner;
+ * tiledb_ctx_t *ctx;
+ * uint64_t budget;
+ * uint64_t budget_validity
+ * char *attrname;
+ * tiledb_subarray_partitioner_get_result_budget_nullable(ctx, attrname, budget,
+ * budget_validity, partitioner);
+ * @endcode
+ *
+ * @param budget The budget in bytes for the (fixed size) nullable attribute's
+ * values
+ * @param budget_validity The budget in bytes for validity vectors for the attr
+ * @return `TILEDB_OK` for success or `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t
+tiledb_subarray_partitioner_set_result_budget_nullable_fixed(
+    tiledb_ctx_t* ctx,
+    const char* name,
+    uint64_t budget,
+    uint64_t budget_validity,
+    tiledb_subarray_partitioner_t* partitioner);
+
+/**
+ * Sets result size budget (in bytes) for the input var-sized
+ * nullable attribute.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * tiledb_subarray_partitioner_t *partitioner;
+ * tiledb_ctx_t *ctx;
+ * uint64_t budget_off;
+ * uint64_t budget_val;
+ * uint64_t budget_validity;
+ * char *attrname;
+ * tiledb_subarray_partitioner_set_result_budget_nullable(ctx, attrname,
+ * budget_off, budget_val, budget_validity, partitioner);
+ * @endcode
+ *
+ * @param budget_off - The budget in bytes for offsets of var attributes
+ * @param budget_val - The budget in bytes for var sized attribute values
+ * @param budget_validity The budget in bytes for validity vectors.
+ * @return `TILEDB_OK` for success or `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t
+tiledb_subarray_partitioner_set_result_budget_nullable_var(
+    tiledb_ctx_t* ctx,
+    const char* name,
+    uint64_t budget_off,
+    uint64_t budget_val,
+    uint64_t budget_validity,
+    tiledb_subarray_partitioner_t* partitioner);
+
+/**
+ * Gets result size budget (in bytes) for the input fixed-sized
+ * nullable attribute.
  * 
  * **Example:**
  * 
  * @code{.c}
+ * tiledb_subarray_partitioner_t *partitioner;
+ * tiledb_ctx_t *ctx;
+ * uint64_t *budget;
+ * uint64_t *budget_validity;
+ * char *attrname;
+ * tiledb_subarray_partitioner_get_result_budget_nullable(ctx, attrname, budget, budget_validity, partitioner);
+ * @endcode
+ * 
+ * @param budget The budget in bytes for the (fixed size) nullable attribute's values
+ * @param budget_validity The budget in bytes for validity vectors for the attr
+ * @return `TILEDB_OK` for success or `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_subarray_partitioner_get_result_budget_nullable_fixed(
+    tiledb_ctx_t* ctx,
+    const char* name,
+    uint64_t* budget,
+    uint64_t* budget_validity,
+    tiledb_subarray_partitioner_t* partitioner);
+
+/**
+ * Gets result size budget (in bytes) for the input var-sized
+ * nullable attribute.
+ * 
+ * **Example:**
+ * 
+ * @code{.c}
+ * tiledb_subarray_partitioner_t *partitioner;
+ * tiledb_ctx_t *ctx;
+ * uint64_t *budget_off;
+ * uint64_t *budget_val;
+ * uint64_t *budget_validity;
+ * char *attrname;
+ * tiledb_subarray_partitioner_get_result_budget_nullable(ctx, attrname, budget_off, budget_val, budget_validity, partitioner);
+ * @endcode
+ * 
+ * @param budget_off - The budget in bytes for offsets of var attributes
+ * @param budget_val - The budget in bytes for var sized attribute values
+ * @param budget_validity The budget in bytes for validity vectors.
+ * @return `TILEDB_OK` for success or `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_subarray_partitioner_get_result_budget_nullable_var(
+    tiledb_ctx_t* ctx,
+    const char* name,
+    uint64_t* budget_off,
+    uint64_t* budget_val,
+    uint64_t* budget_validity,
+    tiledb_subarray_partitioner_t* partitioner);
+
+/**
+ * Set partitioning budget for var sized attribute.
+ * 
+ * **Example:**
+o * 
+ * @code{.c}
  * tiledb_subarray_partitioner_t *partitioner; //prior init'd
  * tiledb_ctx_t *ctx; //prior init'd
- * uint64_t budget_ofs; // 
+ * uint64_t budget_off; // 
  * uint64_t budget_val; //
  * char *attrname; //valid attr name for the array of the subarray used to create partitioner
  * tiledb_subarray_partitioner_set_result_budget_var(ctx, attrname, budget_off, budget_val, partitioner);
  * @endcode
  * 
- * @param budget - TBD: To Be explained
+ * @param budget_off The budget in bytes for offsets
+ * @param budget_val The budget for validity vectors
+ * @return `TILEDB_OK` for success or `TILEDB_ERR` for error.
  */
 TILEDB_EXPORT int32_t tiledb_subarray_partitioner_set_result_budget_var_attr(
     tiledb_ctx_t* ctx,
@@ -5451,29 +5581,59 @@ TILEDB_EXPORT int32_t tiledb_subarray_partitioner_set_result_budget_var_attr(
 
 
 /**
- * TBD: Explain me.
- * 
- * Set partitioning budget values for a partitioner.
+ * Set partitioning memory budget values (in bytes).
  * 
  * **Example:**
  * 
  * @code{.c}
- * tiledb_subarray_partitioner_t *partitioner; //prior init'd
- * tiledb_ctx_t *ctx; //prior init'd
- * uint64_t budget; //
- * uint64_t budget_var; //
- * uint64_t budget_validity; //
+ * tiledb_subarray_partitioner_t *partitioner;
+ * tiledb_ctx_t *ctx;
+ * uint64_t budget;
+ * uint64_t budget_var;
+ * uint64_t budget_validity;
  * tiledb_subarray_partitioner_set_memory_budget
  *     (ctx, budget, budget_var, budget_validity, partitioner);
  * @endcode
  * 
- * @param budget - TBD: To Be explained
+ * @param budget The budget for the fixed-sized attributes and the
+ *     offsets of the var-sized attributes.
+ * @param budget_var The budget for the var-sized attributes.
+ * @param budget_validity The budget for validity vectors.
+ * @return `TILEDB_OK` for success or `TILEDB_ERR` for error.
  */
 TILEDB_EXPORT int32_t tiledb_subarray_partitioner_set_memory_budget(
     tiledb_ctx_t* ctx,
     uint64_t budget,
     uint64_t budget_var,
     uint64_t budget_validity,
+    tiledb_subarray_partitioner_t* partitioner);
+
+/**
+ * Get partitioning memory budget values (in bytes).
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * tiledb_subarray_partitioner_t *partitioner;
+ * tiledb_ctx_t *ctx;
+ * uint64_t budget;
+ * uint64_t budget_var;
+ * uint64_t budget_validity;
+ * tiledb_subarray_partitioner_set_memory_budget
+ *     (ctx, &budget, &budget_var, &budget_validity, partitioner);
+ * @endcode
+ *
+ * @param budget The budget for the fixed-sized attributes and the
+ *     offsets of the var-sized attributes.
+ * @param budget_var The budget for the var-sized attributes.
+ * @param budget_validity The budget for validity vectors.
+ * @return `TILEDB_OK` for success or `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_subarray_partitioner_get_memory_budget(
+    tiledb_ctx_t* ctx,
+    uint64_t *budget,
+    uint64_t *budget_var,
+    uint64_t *budget_validity,
     tiledb_subarray_partitioner_t* partitioner);
 
 #endif
