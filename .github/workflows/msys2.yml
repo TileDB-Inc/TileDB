@@ -32,8 +32,8 @@ jobs:
           MINGW_INSTALLS: ${{ matrix.msystem }}
           PKGEXT: ".pkg.tar.xz"
         shell: msys2 {0}
-      - name: "Upload binaries"
-        uses: actions/upload-artifact@v2
-        with:
-          name: mingw-w64-${{ matrix.arch }}-tiledb
-          path: .github/workflows/mingw-w64-tiledb/*.pkg.tar.*
+      #- name: "Upload binaries"
+      #  uses: actions/upload-artifact@v2
+      #  with:
+      #    name: mingw-w64-${{ matrix.arch }}-tiledb
+      #    path: .github/workflows/mingw-w64-tiledb/*.pkg.tar.*
