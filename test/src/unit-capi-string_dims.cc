@@ -40,6 +40,9 @@
 #endif
 #include "tiledb/sm/c_api/tiledb.h"
 #include "tiledb/sm/c_api/tiledb_serialization.h"
+#include "tiledb/sm/c_api/tiledb_struct_def.h"
+#include "tiledb/sm/enums/query_status.h"
+#include "tiledb/sm/enums/query_type.h"
 #include "tiledb/sm/enums/serialization_type.h"
 #include "tiledb/sm/misc/utils.h"
 

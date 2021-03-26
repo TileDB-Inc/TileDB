@@ -1,5 +1,5 @@
 /**
- * @file   unit-capi-serialized_queries.cc
+ * @file   unit-capi-serialized_queries_using_subarray.cc
  *
  * @section LICENSE
  *
@@ -27,7 +27,10 @@
  *
  * @section DESCRIPTION
  *
- * Tests for query serialization/deserialization.
+ * Tests for query serialization/deserialization using separate subarray.
+ *
+ * @note This module tests the capi by using the cppapi entities which are built
+ * on the capi functionality.
  */
 
 #include "catch.hpp"
@@ -124,7 +127,9 @@ struct SerializationFx {
 
     Array array(ctx, array_uri, TILEDB_WRITE);
     Query query(ctx, array);
-    query.set_subarray(subarray);
+    Subarray cppapi_subarray(ctx, array);
+    cppapi_subarray.set_subarray(subarray);
+    query.set_subarray(cppapi_subarray);
     query.set_buffer("a1", a1);
     query.set_buffer_nullable("a2", a2, a2_nullable);
     query.set_buffer("a3", a3_offsets, a3_data);
@@ -165,8 +170,10 @@ struct SerializationFx {
 
     Array array(ctx, array_uri, TILEDB_WRITE);
     Query query(ctx, array);
-    query.add_range(0, subarray[0], subarray[1]);
-    query.add_range(1, subarray[2], subarray[3]);
+    Subarray cppapi_subarray(ctx, array);
+    cppapi_subarray.add_range(0, subarray[0], subarray[1]);
+    cppapi_subarray.add_range(1, subarray[2], subarray[3]);
+    query.set_subarray(cppapi_subarray);
     query.set_buffer("a1", a1);
     query.set_buffer_nullable("a2", a2, a2_nullable);
     query.set_buffer("a3", a3_offsets, a3_data);
@@ -448,7 +455,7 @@ struct SerializationFx {
 
 TEST_CASE_METHOD(
     SerializationFx,
-    "Query serialization, dense",
+    "subarray - Query serialization, dense",
     "[query][dense][serialization]") {
   create_array(TILEDB_DENSE);
   write_dense_array();
@@ -463,7 +470,9 @@ TEST_CASE_METHOD(
     std::vector<uint64_t> a3_offsets(1000);
     std::vector<int32_t> subarray = {1, 10, 1, 10};
 
-    query.set_subarray(subarray);
+    Subarray cppapi_subarray(ctx, array);
+    cppapi_subarray.set_subarray(subarray);
+    query.set_subarray(cppapi_subarray);
     query.set_buffer("a1", a1);
     query.set_buffer_nullable("a2", a2, a2_nullable);
     query.set_buffer("a3", a3_offsets, a3_data);
@@ -507,7 +516,9 @@ TEST_CASE_METHOD(
     std::vector<uint64_t> a3_offsets(1000);
     std::vector<int32_t> subarray = {3, 4, 3, 4};
 
-    query.set_subarray(subarray);
+    Subarray cppapi_subarray(ctx, array);
+    cppapi_subarray.set_subarray(subarray);
+    query.set_subarray(cppapi_subarray);
     query.set_buffer("a1", a1);
     query.set_buffer_nullable("a2", a2, a2_nullable);
     query.set_buffer("a3", a3_offsets, a3_data);
@@ -550,7 +561,9 @@ TEST_CASE_METHOD(
     std::vector<char> a3_data(60);
     std::vector<uint64_t> a3_offsets(4);
     std::vector<int32_t> subarray = {3, 4, 3, 4};
-    query.set_subarray(subarray);
+    Subarray cppapi_subarray(ctx, array);
+    cppapi_subarray.set_subarray(subarray);
+    query.set_subarray(cppapi_subarray);
 
     auto set_buffers = [&](Query& q) {
       q.set_buffer("a1", a1);
@@ -620,7 +633,7 @@ TEST_CASE_METHOD(
 
 TEST_CASE_METHOD(
     SerializationFx,
-    "Query serialization, sparse",
+    "subarray - Query serialization, sparse",
     "[query][sparse][serialization]") {
   create_array(TILEDB_SPARSE);
   write_sparse_array();
@@ -636,7 +649,10 @@ TEST_CASE_METHOD(
     std::vector<uint64_t> a3_offsets(1000);
     std::vector<int32_t> subarray = {1, 10, 1, 10};
 
-    query.set_subarray(subarray);
+    Subarray cppapi_subarray(ctx, array);
+    cppapi_subarray.set_subarray(subarray);
+    query.set_subarray(cppapi_subarray);
+
     query.set_coordinates(coords);
     query.set_buffer("a1", a1);
     query.set_buffer_nullable("a2", a2, a2_nullable);
@@ -670,7 +686,7 @@ TEST_CASE_METHOD(
 
 TEST_CASE_METHOD(
     SerializationFx,
-    "Query serialization, split coords, sparse",
+    "subarray - Query serialization, split coords, sparse",
     "[query][sparse][serialization][split-coords]") {
   create_array(TILEDB_SPARSE);
   write_sparse_array_split_coords();
@@ -686,7 +702,9 @@ TEST_CASE_METHOD(
     std::vector<uint64_t> a3_offsets(1000);
     std::vector<int32_t> subarray = {1, 10, 1, 10};
 
-    query.set_subarray(subarray);
+    Subarray cppapi_subarray(ctx, array);
+    cppapi_subarray.set_subarray(subarray);
+    query.set_subarray(cppapi_subarray);
     query.set_coordinates(coords);
     query.set_buffer("a1", a1);
     query.set_buffer_nullable("a2", a2, a2_nullable);
@@ -721,7 +739,7 @@ TEST_CASE_METHOD(
 
 TEST_CASE_METHOD(
     SerializationFx,
-    "Query serialization, dense ranges",
+    "subarray - Query serialization, dense ranges",
     "[query][dense][serialization]") {
   create_array(TILEDB_DENSE);
   write_dense_array_ranges();
@@ -736,8 +754,10 @@ TEST_CASE_METHOD(
     std::vector<uint64_t> a3_offsets(1000);
     std::vector<int32_t> subarray = {1, 10, 1, 10};
 
-    query.add_range(0, subarray[0], subarray[1]);
-    query.add_range(1, subarray[2], subarray[3]);
+    Subarray cppapi_subarray(ctx, array);
+    cppapi_subarray.add_range(0, subarray[0], subarray[1]);
+    cppapi_subarray.add_range(1, subarray[2], subarray[3]);
+    query.set_subarray(cppapi_subarray);
     query.set_buffer("a1", a1);
     query.set_buffer_nullable("a2", a2, a2_nullable);
     query.set_buffer("a3", a3_offsets, a3_data);
@@ -781,8 +801,10 @@ TEST_CASE_METHOD(
     std::vector<uint64_t> a3_offsets(1000);
     std::vector<int32_t> subarray = {3, 4, 3, 4};
 
-    query.add_range(0, subarray[0], subarray[1]);
-    query.add_range(1, subarray[2], subarray[3]);
+    Subarray cppapi_subarray(ctx, array);
+    cppapi_subarray.add_range(0, subarray[0], subarray[1]);
+    cppapi_subarray.add_range(1, subarray[2], subarray[3]);
+    query.set_subarray(cppapi_subarray);
     query.set_buffer("a1", a1);
     query.set_buffer_nullable("a2", a2, a2_nullable);
     query.set_buffer("a3", a3_offsets, a3_data);
@@ -825,8 +847,10 @@ TEST_CASE_METHOD(
     std::vector<char> a3_data(60);
     std::vector<uint64_t> a3_offsets(4);
     std::vector<int32_t> subarray = {3, 4, 3, 4};
-    query.add_range(0, subarray[0], subarray[1]);
-    query.add_range(1, subarray[2], subarray[3]);
+    Subarray cppapi_subarray(ctx, array);
+    cppapi_subarray.add_range(0, subarray[0], subarray[1]);
+    cppapi_subarray.add_range(1, subarray[2], subarray[3]);
+    query.set_subarray(cppapi_subarray);
 
     auto set_buffers = [&](Query& q) {
       q.set_buffer("a1", a1);

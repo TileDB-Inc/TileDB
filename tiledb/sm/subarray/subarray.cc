@@ -42,6 +42,9 @@
 #include "tiledb/sm/misc/utils.h"
 #include "tiledb/sm/rtree/rtree.h"
 #include "tiledb/sm/stats/stats.h"
+#include "tiledb/sm/enums/query_type.h"
+#include "tiledb/sm/query/query.h"
+#include "tiledb/sm/rest/rest_client.h"
 
 #include <algorithm>
 #include <iomanip>
@@ -160,6 +163,232 @@ Status Subarray::add_range_unsafe(uint32_t dim_idx, const Range& range) {
   return Status::Ok();
 }
 
+// equivalent for older Query::set_subarray(const void *subarray);
+Status Subarray::set_subarray(const void* subarray) {
+  if (!array_->array_schema()->domain()->all_dims_same_type())
+    return LOG_STATUS(
+        Status::QueryError("Cannot set subarray; Function not applicable to "
+                           "heterogeneous domains"));
+
+  if (!array_->array_schema()->domain()->all_dims_fixed())
+    return LOG_STATUS(
+        Status::QueryError("Cannot set subarray; Function not applicable to "
+                           "domains with variable-sized dimensions"));
+
+  Subarray sub(array_, layout_);
+  if (subarray != nullptr) {
+    auto dim_num = array_->array_schema()->dim_num();
+    auto s_ptr = (const unsigned char*)subarray;
+    uint64_t offset = 0;
+    for (unsigned d = 0; d < dim_num; ++d) {
+      auto r_size = 2 * array_->array_schema()->dimension(d)->coord_size();
+      RETURN_NOT_OK(sub.add_range(d, Range(&s_ptr[offset], r_size)));
+      offset += r_size;
+    }
+  }
+  *this = std::move(sub);
+
+  return Status::Ok();
+}
+
+Status Subarray::add_range(
+    unsigned dim_idx, const void* start, const void* end, const void* stride) {
+  if (dim_idx >= this->array_->array_schema()->dim_num())
+    return LOG_STATUS(
+        Status::SubarrayError("Cannot add range; Invalid dimension index"));
+
+  // vvvvvvvvvvvvvvvvvvv
+  // logic previously handled in query::writer_'s add_range_var()
+  // well no, because writer has no add_range_var()...
+  QueryType array_query_type;
+  RETURN_NOT_OK(array_->get_query_type(&array_query_type));
+  if (array_query_type == tiledb::sm::QueryType::WRITE) {
+    //    array->array_schema();
+    if (!array_->array_schema()->dense()) {
+      return LOG_STATUS(
+          Status::QueryError("Adding a subarray range to a write query is not "
+                             "supported in sparse arrays"));
+    }
+    // unsigned dim_idx;
+    // RETURN_NOT_OK(array_->array_schema()->domain()->get_dimension_index(
+    //    dim_name, &dim_idx));
+    if (this->is_set(dim_idx))
+      return LOG_STATUS(
+          Status::QueryError("Cannot add range; Multi-range dense writes "
+                             "are not supported"));
+  }
+  //^^^^^^^^^^^^^^^^^^^^
+
+  if (start == nullptr || end == nullptr)
+    return LOG_STATUS(Status::SubarrayError("Cannot add range; Invalid range"));
+
+  if (stride != nullptr)
+    return LOG_STATUS(Status::SubarrayError(
+        "Cannot add range; Setting range stride is currently unsupported"));
+
+  if (this->array_->array_schema()->domain()->dimension(dim_idx)->var_size())
+    return LOG_STATUS(
+        Status::SubarrayError("Cannot add range; Range must be fixed-sized"));
+
+  // Prepare a temp range
+  std::vector<uint8_t> range;
+  uint8_t coord_size =
+      this->array_->array_schema()->dimension(dim_idx)->coord_size();
+  range.resize(2 * coord_size);
+  std::memcpy(&range[0], start, coord_size);
+  std::memcpy(&range[coord_size], end, coord_size);
+
+  // Add range
+  return this->add_range(dim_idx, Range(&range[0], 2 * coord_size));
+}
+
+Status Subarray::add_range_by_name(
+    const std::string& dim_name,
+    const void* start,
+    const void* end,
+    const void* stride) {
+  unsigned dim_idx;
+  RETURN_NOT_OK(array_->array_schema()->domain()->get_dimension_index(
+      dim_name, &dim_idx));
+
+  return add_range(dim_idx, start, end, stride);
+}
+
+Status Subarray::add_range_var(
+    unsigned dim_idx,
+    const void* start,
+    uint64_t start_size,
+    const void* end,
+    uint64_t end_size) {
+  if (dim_idx >= array_->array_schema()->dim_num())
+    return LOG_STATUS(
+        Status::QueryError("Cannot add range; Invalid dimension index"));
+
+  if (start == nullptr || end == nullptr)
+    return LOG_STATUS(Status::QueryError("Cannot add range; Invalid range"));
+
+  if (start_size == 0 || end_size == 0)
+    return LOG_STATUS(Status::QueryError(
+        "Cannot add range; Range start/end cannot have zero length"));
+
+  if (!array_->array_schema()->domain()->dimension(dim_idx)->var_size())
+    return LOG_STATUS(
+        Status::QueryError("Cannot add range; Range must be variable-sized"));
+
+  //... was in Status Query::add_range_var()...
+  QueryType array_query_type;
+  RETURN_NOT_OK(array_->get_query_type(&array_query_type));
+  if (array_query_type == tiledb::sm::QueryType::WRITE)
+    return LOG_STATUS(Status::QueryError(
+        "Cannot add range; Function applicable only to reads"));
+
+  // Add range
+  Range r;
+  r.set_range_var(start, start_size, end, end_size);
+  return this->add_range(dim_idx, r);
+}
+
+Status Subarray::add_range_var_by_name(
+    const std::string& dim_name,
+    const void* start,
+    uint64_t start_size,
+    const void* end,
+    uint64_t end_size) {
+  unsigned dim_idx;
+  RETURN_NOT_OK(array_->array_schema()->domain()->get_dimension_index(
+      dim_name, &dim_idx));
+
+  return add_range_var(dim_idx, start, start_size, end, end_size);
+}
+
+Status Subarray::get_range_var(
+    unsigned dim_idx, uint64_t range_idx, void* start, void* end) const {
+  QueryType array_query_type;
+  RETURN_NOT_OK(array_->get_query_type(&array_query_type));
+  if (array_query_type == tiledb::sm::QueryType::WRITE)
+    return LOG_STATUS(Status::QueryError(
+        "Getting a var range for a write query is not applicable"));
+
+  uint64_t start_size = 0;
+  uint64_t end_size = 0;
+  this->get_range_var_size(dim_idx, range_idx, &start_size, &end_size);
+
+  const void* range_start;
+  const void* range_end;
+  const void* stride;
+  RETURN_NOT_OK(
+      get_range(dim_idx, range_idx, &range_start, &range_end, &stride));
+
+  std::memcpy(start, range_start, start_size);
+  std::memcpy(end, range_end, end_size);
+
+  return Status::Ok();
+}
+
+Status Subarray::get_range_num_from_name(
+    const std::string& dim_name, uint64_t* range_num) const {
+  unsigned dim_idx;
+  RETURN_NOT_OK(array_->array_schema()->domain()->get_dimension_index(
+      dim_name, &dim_idx));
+
+  return get_range_num(dim_idx, range_num);
+}
+
+Status Subarray::get_range(
+    unsigned dim_idx,
+    uint64_t range_idx,
+    const void** start,
+    const void** end,
+    const void** stride) const {
+  QueryType array_query_type;
+  RETURN_NOT_OK(array_->get_query_type(&array_query_type));
+  if (array_query_type == tiledb::sm::QueryType::WRITE) {
+    if (!array_->array_schema()->dense())
+      return LOG_STATUS(
+          Status::QueryError("Getting a range from a write query is not "
+                            "applicable to sparse arrays"));
+  }
+
+  *stride = nullptr;
+  return this->get_range(dim_idx, range_idx, start, end);
+}
+
+Status Subarray::get_range_from_name(
+    const std::string& dim_name,
+    uint64_t range_idx,
+    const void** start,
+    const void** end,
+    const void** stride) const {
+  unsigned dim_idx;
+  RETURN_NOT_OK(array_->array_schema()->domain()->get_dimension_index(
+      dim_name, &dim_idx));
+
+  return get_range(dim_idx, range_idx, start, end, stride);
+}
+
+Status Subarray::get_range_var_size_from_name(
+    const std::string& dim_name,
+    uint64_t range_idx,
+    uint64_t* start_size,
+    uint64_t* end_size) const {
+  unsigned dim_idx;
+  RETURN_NOT_OK(array_->array_schema()->domain()->get_dimension_index(
+      dim_name, &dim_idx));
+
+  return get_range_var_size(dim_idx, range_idx, start_size, end_size);
+}
+
+Status Subarray::get_range_var_from_name(
+    const std::string& dim_name,
+    uint64_t range_idx,
+    void* start,
+    void* end) const {
+  unsigned dim_idx;
+  RETURN_NOT_OK(array_->array_schema()->domain()->get_dimension_index(
+      dim_name, &dim_idx));
+
+  return get_range_var(dim_idx, range_idx, start, end);
+}
 const Array* Subarray::array() const {
   return array_;
 }
@@ -398,10 +627,22 @@ Status Subarray::get_range_var_size(
 
 Status Subarray::get_range_num(uint32_t dim_idx, uint64_t* range_num) const {
   auto dim_num = array_->array_schema()->dim_num();
-  if (dim_idx >= dim_num)
+  if (dim_idx >= dim_num) {
+    std::stringstream msg;
+    msg << "Cannot get number of ranges for a dimension; "
+           "Invalid dimension index "
+        << dim_idx << " requested, " << dim_num - 1 << " max avail.";
+    return LOG_STATUS(Status::SubarrayError(msg.str()));
+  }
+
+  QueryType array_query_type;
+  RETURN_NOT_OK(array_->get_query_type(&array_query_type));
+  if (array_query_type == tiledb::sm::QueryType::WRITE &&
+      !array_->array_schema()->dense()) {
     return LOG_STATUS(
-        Status::SubarrayError("Cannot get number of ranges for a dimension; "
-                              "Invalid dimension index"));
+        Status::QueryError("Getting the number of ranges from a write query "
+                            "is not applicable to sparse arrays"));
+  }
 
   *range_num = ranges_[dim_idx].size();
 
@@ -444,6 +685,14 @@ bool Subarray::is_set() const {
   return false;
 }
 
+int32_t Subarray::count_set() const {
+  int32_t num_set = 0;
+  for (auto d : is_default_)
+    if (d == false)
+      ++num_set;
+  return num_set;
+}
+
 bool Subarray::is_set(unsigned dim_idx) const {
   assert(dim_idx < dim_num());
   return !is_default_[dim_idx];
@@ -479,6 +728,18 @@ void Subarray::set_is_default(uint32_t dim_index, bool is_default) {
 
 void Subarray::set_layout(Layout layout) {
   layout_ = layout;
+}
+
+Status Subarray::set_coalesce_ranges(bool coalesce_ranges) {
+  if (count_set())
+    return LOG_STATUS(Status::SubarrayError(
+        "non-default ranges have been set, cannot change coalesce_ranges setting!"));
+  //trying to mimic conditions at ctor()
+  coalesce_ranges_ = coalesce_ranges;
+  ranges_.clear();
+  add_default_ranges();
+  set_add_or_coalesce_range_func();
+  return Status::Ok();
 }
 
 Status Subarray::to_byte_vec(std::vector<uint8_t>* byte_vec) const {
@@ -546,6 +807,87 @@ Status Subarray::get_est_result_size(
     *size = cell_size;
 
   return Status::Ok();
+}
+
+Status Subarray::get_est_result_size_querytype_audited(
+    const char* name,
+    uint64_t* size,
+    StorageManager* storage_manager) {
+
+  QueryType type;
+  // Note: various items below expect array open, get_query_type() providing
+  // that audit.
+  RETURN_NOT_OK(array_->get_query_type(&type));
+
+  if (type == QueryType::WRITE)
+    return LOG_STATUS(Status::QueryError(
+        "Cannot get estimated result size; Operation currently "
+        "unsupported for write queries"));
+
+  if (name == nullptr)
+    return LOG_STATUS(Status::QueryError(
+        "Cannot get estimated result size; Name cannot be null"));
+
+  if (name == constants::coords &&
+      !array_->array_schema()->domain()->all_dims_same_type())
+    return LOG_STATUS(Status::QueryError(
+        "Cannot get estimated result size; Not applicable to zipped "
+        "coordinates in arrays with heterogeneous domain"));
+
+  if (name == constants::coords &&
+      !array_->array_schema()->domain()->all_dims_fixed())
+    return LOG_STATUS(Status::QueryError(
+        "Cannot get estimated result size; Not applicable to zipped "
+        "coordinates in arrays with domains with variable-sized dimensions"));
+
+  if (array_->array_schema()->is_nullable(name))
+    return LOG_STATUS(Status::WriterError(
+        std::string(
+            "Cannot get estimated result size; Input attribute/dimension '") +
+        name + "' is nullable"));
+
+#if 01
+  //TBD: Figure out what does/can exercise the following code!!!
+  if (array_->is_remote()) {
+    //TBD: Should we somewhere (where?) try to remember if the remote call has
+    // already been done?
+    // Trying approach of temporary query (and dup array due to 'const'ness of
+    // array_ not being liked to define query)
+    // TBD: will it work even if messy?
+    auto rest_client = storage_manager->rest_client();
+    if (rest_client == nullptr)
+      return LOG_STATUS(
+          Status::QueryError("Error in query estimate result size; remote "
+                             "array with no rest client."));
+
+    // TBD: Can an array be opened twice? or maybe just some circumstances?
+    Array tmp_array(array_->array_uri(), storage_manager);
+    // tmp_array.open(type, 0, array_->encryption_key(), ?);)
+    auto enc_key_const_buff = array_->encryption_key()->key();
+    uint64_t time_stamp = 0;
+    tmp_array.open(
+        type,
+        time_stamp,
+        array_->encryption_key()->encryption_type(),
+        enc_key_const_buff.data(),
+        enc_key_const_buff.nbytes_left_to_read());
+    Query tmp_query(storage_manager, &tmp_array);
+
+    array_->array_schema()->set_array_uri(array_->array_uri());
+
+    auto ret_rest_response = rest_client->get_query_est_result_sizes(
+        array_->array_uri(), &tmp_query);
+    Status ret_get_est_result_size;
+    if (ret_rest_response.ok())
+      ret_get_est_result_size = tmp_query.get_est_result_size(name, size);
+    tmp_array.close();
+    RETURN_NOT_OK(ret_rest_response);
+    return ret_get_est_result_size;
+  }
+#endif
+
+  return get_est_result_size(name, size, storage_manager->compute_tp() );
+
 }
 
 Status Subarray::get_est_result_size(
@@ -1473,7 +1815,8 @@ void Subarray::add_range_without_coalesce(
 
 template <class T>
 void Subarray::add_or_coalesce_range(
-    const uint32_t dim_idx, const Range& range) {
+    const uint32_t dim_idx,
+    const Range& range) {
   std::vector<Range>* const ranges = &ranges_[dim_idx];
 
   // If `ranges` is empty, there is not an existing range to coalesce with.
@@ -1482,19 +1825,20 @@ void Subarray::add_or_coalesce_range(
     return;
   }
 
-  // If the start index of `range` immediately proceeds the end of the
+  // If the start index of `range` immediately follows the end of the
   // last range on `ranges`, they are contiguous and will be coalesced.
   Range& last_range = ranges->back();
-  const bool contiguous = *static_cast<const T*>(last_range.end()) !=
-                              std::numeric_limits<T>::max() &&
-                          *static_cast<const T*>(last_range.end()) + 1 ==
-                              *static_cast<const T*>(range.start());
+  const bool contiguous_after = *static_cast<const T*>(last_range.end()) !=
+                                    std::numeric_limits<T>::max() &&
+                                *static_cast<const T*>(last_range.end()) + 1 ==
+                                    *static_cast<const T*>(range.start());
 
   // Coalesce `range` with `last_range` if they are contiguous.
-  if (contiguous)
+  if (contiguous_after)
     last_range.set_end(range.end());
-  else
+  else {
     ranges->emplace_back(range);
+  }
 }
 
 /* ****************************** */
