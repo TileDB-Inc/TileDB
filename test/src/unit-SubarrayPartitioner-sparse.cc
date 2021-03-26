@@ -2253,7 +2253,7 @@ TEST_CASE_METHOD(
   tiledb::sm::Subarray subarray(array->array_, layout);
   tiledb::sm::Range r;
   r.set_str_range("bb", "bb");
-  subarray.add_range(0, r);
+  subarray.add_range(0, std::move(r), true);
   ThreadPool tp;
   CHECK(tp.init(4).ok());
   SubarrayPartitioner partitioner(
@@ -2282,7 +2282,7 @@ TEST_CASE_METHOD(
   // Check full
   tiledb::sm::Subarray subarray_full(array->array_, layout);
   r.set_str_range("a", "bb");
-  subarray_full.add_range(0, r);
+  subarray_full.add_range(0, std::move(r), true);
   SubarrayPartitioner partitioner_full(
       subarray_full, memory_budget_, memory_budget_var_, 0, &tp);
   st = partitioner_full.set_result_budget("d", 16, 4);
@@ -2302,7 +2302,7 @@ TEST_CASE_METHOD(
   // Check split
   tiledb::sm::Subarray subarray_split(array->array_, layout);
   r.set_str_range("a", "bb");
-  subarray_split.add_range(0, r);
+  subarray_split.add_range(0, std::move(r), true);
   SubarrayPartitioner partitioner_split(
       subarray_split, memory_budget_, memory_budget_var_, 0, &tp);
   st = partitioner_split.set_result_budget("d", 10, 4);
@@ -2332,7 +2332,7 @@ TEST_CASE_METHOD(
   // Check no split 2 MBRs
   tiledb::sm::Subarray subarray_no_split(array->array_, layout);
   r.set_str_range("bb", "cc");
-  subarray_no_split.add_range(0, r);
+  subarray_no_split.add_range(0, std::move(r), true);
   SubarrayPartitioner partitioner_no_split(
       subarray_no_split, memory_budget_, memory_budget_var_, 0, &tp);
   st = partitioner_no_split.set_result_budget("d", 16, 10);
@@ -2354,7 +2354,7 @@ TEST_CASE_METHOD(
   // Check split 2 MBRs
   tiledb::sm::Subarray subarray_split_2(array->array_, layout);
   r.set_str_range("bb", "cc");
-  subarray_split_2.add_range(0, r);
+  subarray_split_2.add_range(0, std::move(r), true);
   SubarrayPartitioner partitioner_split_2(
       subarray_split_2, memory_budget_, memory_budget_var_, 0, &tp);
   st = partitioner_split_2.set_result_budget("d", 8, 10);
@@ -2482,7 +2482,7 @@ TEST_CASE_METHOD(
   tiledb::sm::Subarray subarray(array->array_, layout);
   tiledb::sm::Range r;
   r.set_str_range("cc", "ccd");
-  subarray.add_range(0, r);
+  subarray.add_range(0, std::move(r), true);
   ThreadPool tp;
   CHECK(tp.init(4).ok());
   SubarrayPartitioner partitioner(

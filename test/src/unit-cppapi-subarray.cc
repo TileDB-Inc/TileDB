@@ -38,7 +38,9 @@ using namespace tiledb;
 
 TEST_CASE("C++ API: Test subarray", "[cppapi][sparse][subarray]") {
   const std::string array_name = "cpp_unit_array";
-  Context ctx;
+  Config cfg;
+  cfg.set("config.logging_level", "3");
+  Context ctx(cfg);
   VFS vfs(ctx);
 
   if (vfs.is_dir(array_name))
@@ -156,6 +158,39 @@ TEST_CASE("C++ API: Test subarray", "[cppapi][sparse][subarray]") {
     REQUIRE(data[1] == 2);
     REQUIRE(data[2] == 3);
     REQUIRE(data[3] == 4);
+  }
+
+  SECTION("- Read ranges oob") {
+    Array array(ctx, array_name, TILEDB_READ);
+    Query query(ctx, array);
+    int range[] = {1, 4};
+    int range2[] = {-1, 3};
+    REQUIRE_THROWS(query.add_range(0, range[0], range[1]));
+    REQUIRE_THROWS(query.add_range(1, range2[0], range2[1]));
+  }
+
+  SECTION("- Read ranges oob") {
+    Array array(ctx, array_name, TILEDB_READ);
+    Query query(ctx, array);
+    Config config;
+    config.set("sm.read_range_oob", "warn");
+    query.set_config(config);
+    int range[] = {1, 4};
+    int range2[] = {-1, 3};
+    query.add_range(0, range[0], range[1]);
+    query.add_range(1, range2[0], range2[1]);
+
+    auto est_size = query.est_result_size("a");
+    REQUIRE(est_size == 12);
+    std::array<uint64_t, 2> est_size_var;
+    CHECK_THROWS(est_size_var = query.est_result_size_var("a"));
+
+    std::vector<int> data(est_size);
+    query.set_layout(TILEDB_ROW_MAJOR).set_buffer("a", data);
+    query.submit();
+    REQUIRE(query.result_buffer_elements()["a"].second == 3);
+    REQUIRE(data[0] == 2);
+    REQUIRE(data[1] == 3);
   }
 
   if (vfs.is_dir(array_name))
