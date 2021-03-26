@@ -1699,19 +1699,31 @@ Status Writer::filter_tiles(
 
   // Filter all tiles
   auto tile_num = tiles->size();
-  for (size_t i = 0; i < tile_num; ++i) {
-    RETURN_NOT_OK(filter_tile(name, &(*tiles)[i], var_size, false));
 
-    if (var_size) {
-      ++i;
-      RETURN_NOT_OK(filter_tile(name, &(*tiles)[i], false, false));
-    }
+  std::vector<std::tuple<Tile*, bool, bool>> args;
+  args.reserve(tile_num);
 
-    if (nullable) {
-      ++i;
-      RETURN_NOT_OK(filter_tile(name, &(*tiles)[i], false, true));
-    }
+  size_t i = 0;
+  while (i < tile_num) {
+    args.emplace_back(&(*tiles)[i++], var_size, false);
+    if (var_size)
+      args.emplace_back(&(*tiles)[i++], false, false);
+    if (nullable)
+      args.emplace_back(&(*tiles)[i++], false, true);
   }
+
+  auto statuses = parallel_for(
+      storage_manager_->compute_tp(), 0, tile_num, [&](uint64_t i) {
+        RETURN_NOT_OK(filter_tile(
+            name,
+            std::get<0>(args[i]),
+            std::get<1>(args[i]),
+            std::get<2>(args[i])));
+        return Status::Ok();
+      });
+
+  for (auto& st : statuses)
+    RETURN_NOT_OK(st);
 
   return Status::Ok();
 }
