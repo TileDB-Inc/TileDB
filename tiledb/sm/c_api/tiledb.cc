@@ -2652,6 +2652,29 @@ int32_t tiledb_query_set_config(
   return TILEDB_OK;
 }
 
+int32_t tiledb_query_get_config(
+    tiledb_ctx_t* ctx, tiledb_query_t* query, tiledb_config_t** config) {
+  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, query) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  // Create a new config struct
+  *config = new (std::nothrow) tiledb_config_t;
+  if (*config == nullptr)
+    return TILEDB_OOM;
+
+  // Create storage manager
+  (*config)->config_ = new (std::nothrow) tiledb::sm::Config();
+  if ((*config)->config_ == nullptr) {
+    delete (*config);
+    return TILEDB_OOM;
+  }
+
+  *((*config)->config_) = query->query_->config();
+
+  // Success
+  return TILEDB_OK;
+}
+
 int32_t tiledb_query_set_subarray(
     tiledb_ctx_t* ctx, tiledb_query_t* query, const void* subarray) {
   // Sanity check

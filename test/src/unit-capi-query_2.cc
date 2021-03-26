@@ -3046,6 +3046,16 @@ TEST_CASE_METHOD(
   rc = tiledb_query_set_config(ctx_, query, config);
   CHECK(rc == TILEDB_OK);
 
+  // Test getting config, it should be identical
+  tiledb_config_t* config2;
+  rc = tiledb_query_get_config(ctx_, query, &config2);
+  CHECK(rc == TILEDB_OK);
+
+  uint8_t equal;
+  rc = tiledb_config_compare(config, config2, &equal);
+  CHECK(rc == TILEDB_OK);
+  CHECK(equal == 1);
+
   // Test modified behavior
   std::vector<uint32_t> offsets = {0, 1, 2, 4, 7, 9, 10};
   // even in elements mode, we need to pass offsets size as if uint64
