@@ -677,7 +677,7 @@ class Query {
    * @param subarray The subarray to be validated or nullptr.
    * @return Status
    */
-  Status check_subarray(const tiledb::sm::Subarray* subarray);
+//  Status check_subarray(const tiledb::sm::Subarray* subarray);
 
   /**
    * Sets the query subarray.
@@ -699,9 +699,6 @@ class Query {
   Subarray* subarray();
 
   /** Submits the query to the storage manager. */
-  //TBD: paramter of 'Subarray *subarray=nullptr' could be added to
-  //'submit()' and functionality of submit_with_subarray(...) merged in
-  //to the very start of the method.
   Status submit();
 
   /** 
@@ -709,10 +706,6 @@ class Query {
    * if passes sets the subarray into the query and 
    * submits the query to the storage manager. 
    */
-  //TBD: basic 'submit()' prototype could change thus
-  //submit(Subarray *subarray=nullptr);
-  //and this functionality folded into it basied on whether
-  //actual subarray 'nullptr' or not.
   Status submit_with_subarray(Subarray* subarray);
 
   /**

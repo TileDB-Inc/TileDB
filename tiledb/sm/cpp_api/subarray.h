@@ -1,5 +1,5 @@
 /**
- * @file   query.h
+ * @file   subarray.h
  *
  * @author David Hoke
  *
@@ -100,14 +100,16 @@ class Subarray {
   Subarray(const tiledb::Query& query); //defined in cppapi Query.h
 
   /** Set the layout for the subarray. */
-  void set_layout(tiledb_layout_t layout) {
+  Subarray& set_layout(tiledb_layout_t layout) {
     ctx_.get().handle_error(tiledb_subarray_set_layout(ctx_.get().ptr().get(), subarray_.get(), layout));
+    return *this;
   }
 
-  /** Set the layout for the subarray. */
-  void set_coalesce_ranges(bool coalesce_ranges) {
+  /** Set the coalesce_ranges flag for the subarray. */
+  Subarray& set_coalesce_ranges(bool coalesce_ranges) {
     ctx_.get().handle_error(tiledb_subarray_set_coalesce_ranges(
         ctx_.get().ptr().get(), subarray_.get(), coalesce_ranges));
+    return *this;
   }
 
   /**
@@ -300,13 +302,6 @@ class Subarray {
     }
     ctx.handle_error(
         tiledb_subarray_set_subarray(ctx.ptr().get(), subarray_.get(), pairs));
-#if 0
-//TBD: from query,   /** Number of cells set by `set_subarray`, influences `resize_buffer`. */
-    subarray_cell_num_ = pairs[1] - pairs[0] + 1;
-    for (unsigned i = 2; i < size - 1; i += 2) {
-      subarray_cell_num_ *= (pairs[i + 1] - pairs[i] + 1);
-    }
-#endif
     return *this;
   }
 

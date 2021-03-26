@@ -81,8 +81,6 @@ namespace tiledb {
  * @endcode
  */
 class Query {
-//  friend Subarray::Subarray(const tiledb::Query& query);
-
  public:
   /* ********************************* */
   /*           TYPE DEFINITIONS        */
@@ -182,12 +180,6 @@ class Query {
   std::shared_ptr<tiledb_query_t> ptr() const {
     return query_;
   }
-
-  /** Returns a shared pointer to the C TileDB subarray object associated with
-   * this query. */
-  //  std::shared_ptr<tiledb_subarray_t> ptr_to_subarray() const {
-  //    return subarray_;
-  //  }
 
   /** Returns the query type (read or write). */
   tiledb_query_type_t query_type() const {
@@ -310,8 +302,8 @@ class Query {
    */
   template <typename Fn>
   void submit_async(const Fn& callback) {
-    auto& ctx = ctx_.get();
     std::function<void(void*)> wrapper = [&](void*) { callback(); };
+    auto& ctx = ctx_.get();
     ctx.handle_error(tiledb::impl::tiledb_query_submit_async_func(
         ctx.ptr().get(), query_.get(), &wrapper, nullptr));
   }
@@ -321,7 +313,7 @@ class Query {
   void submit_async_with_subarray(const Fn& callback, Subarray& subarray) {
     auto& ctx = ctx_.get();
 #if 01
-    ctx.handle_error(tiledb_query_set_subarray_v2(
+    ctx.handle_error(tiledb_query_set_subarray_t(
         ctx.ptr().get(), query_.get(), subarray.capi_subarray()));
 #endif
     std::function<void(void*)> wrapper = [&](void*) { callback(); };
@@ -1026,7 +1018,7 @@ class Query {
    * @param size The number of subarray elements.
    */
   template <typename T = uint64_t>
-  TILEDB_DEPRECATED  // TBD: or not?
+  TILEDB_DEPRECATED
       Query&
       set_subarray(const T* pairs, uint64_t size) {
     impl::type_check<T>(schema_.domain().type());
@@ -1038,10 +1030,10 @@ class Query {
     }
     ctx.handle_error(
         tiledb_query_set_subarray(ctx.ptr().get(), query_.get(), pairs));
-    subarray_cell_num_ = pairs[1] - pairs[0] + 1;
-    for (unsigned i = 2; i < size - 1; i += 2) {
-      subarray_cell_num_ *= (pairs[i + 1] - pairs[i] + 1);
-    }
+//    subarray_cell_num_ = pairs[1] - pairs[0] + 1;
+//    for (unsigned i = 2; i < size - 1; i += 2) {
+//      subarray_cell_num_ *= (pairs[i + 1] - pairs[i] + 1);
+//    }
     return *this;
   }
 
@@ -1111,11 +1103,13 @@ class Query {
   }
 
   /**
+   * Prepare a query with the contents of a subarray.
    *
+   * @param subarray The subarray to be used to prepare the query.
    */
   Query& set_subarray(const Subarray& subarray) {
     auto& ctx = ctx_.get();
-    ctx.handle_error(tiledb_query_set_subarray_v2(
+    ctx.handle_error(tiledb_query_set_subarray_t(
         ctx.ptr().get(), query_.get(), subarray.capi_subarray()));
 
     return *this;
@@ -2018,7 +2012,7 @@ class Query {
   ArraySchema schema_;
 
   /** Number of cells set by `set_subarray`, influences `resize_buffer`. */
-  uint64_t subarray_cell_num_ = 0;
+//nothing seems to usefully access inside class, how could it be an influence?  uint64_t subarray_cell_num_ = 0;
 
   /* ********************************* */
   /*          PRIVATE METHODS          */
@@ -2200,8 +2194,8 @@ inline Subarray::Subarray(const tiledb::Query& query)
     , schema_(query.array().schema()) {
   tiledb_subarray_t* loc_subarray;
   auto& ctx = ctx_.get();
-  ctx.handle_error(tiledb_subarray_alloc(
-      ctx.ptr().get(), &*array_.get().ptr(), &loc_subarray));
+  ctx.handle_error(
+      tiledb_query_get_subarray(ctx_.get().ptr().get(), query.ptr().get(), &loc_subarray));
   subarray_ = std::shared_ptr<tiledb_subarray_t>(loc_subarray, deleter_);
 }
 
