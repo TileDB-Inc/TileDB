@@ -443,11 +443,8 @@ class Reader {
   /** Sets config for query-level parameters only. */
   Status set_config(const Config& config);
 
-  /**
-   * Get the config of the writer
-   * @return Config
-   */
-  const Config& config() const;
+  /** Returns the internal config. */
+  const Config* config() const;
 
   /**
    * Sets the cell layout of the query. The function will return an error

@@ -99,11 +99,14 @@ class SubarrayPartitioner {
      * current partition has been constructed from.
      */
     uint64_t start_;
+
     /**
      * The end range index from the original subarray that the
-     * current partition has been constructed from.
+     * current partition has been constructed from. This is an
+     * inclusive index.
      */
     uint64_t end_;
+
     /**
      * ``true`` if the partition came from splitting a multi-range
      * subarray that was put into ``state_.multi_range_``.
@@ -159,6 +162,7 @@ class SubarrayPartitioner {
 
   /** Constructor. */
   SubarrayPartitioner(
+      const Config* config,
       const Subarray& subarray,
       uint64_t memory_budget,
       uint64_t memory_budget_var,
@@ -324,6 +328,9 @@ class SubarrayPartitioner {
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
   /* ********************************* */
+
+  /** The config. */
+  const Config* config_;
 
   /** The subarray the partitioner will iterate on to produce partitions. */
   Subarray subarray_;

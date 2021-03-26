@@ -226,6 +226,11 @@ class Config {
    */
   static const std::string SM_OFFSETS_FORMAT_MODE;
 
+  /**
+   * The maximum estimated size of the internal tile overlap structure.
+   */
+  static const std::string SM_MAX_TILE_OVERLAP_SIZE;
+
   /** The default minimum number of bytes in a parallel VFS operation. */
   static const std::string VFS_MIN_PARALLEL_SIZE;
 

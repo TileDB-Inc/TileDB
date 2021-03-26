@@ -344,7 +344,7 @@ class Writer {
    * Get the config of the writer
    * @return Config
    */
-  const Config& config() const;
+  const Config* config() const;
 
   /** Sets current setting of check_coord_dups_ */
   void set_check_coord_dups(bool b);
