@@ -100,14 +100,16 @@ class Subarray {
   Subarray(const tiledb::Query& query); //defined in cppapi Query.h
 
   /** Set the layout for the subarray. */
-  void set_layout(tiledb_layout_t layout) {
+  Subarray& set_layout(tiledb_layout_t layout) {
     ctx_.get().handle_error(tiledb_subarray_set_layout(ctx_.get().ptr().get(), subarray_.get(), layout));
+    return *this;
   }
 
   /** Set the layout for the subarray. */
-  void set_coalesce_ranges(bool coalesce_ranges) {
+  Subarray& set_coalesce_ranges(bool coalesce_ranges) {
     ctx_.get().handle_error(tiledb_subarray_set_coalesce_ranges(
         ctx_.get().ptr().get(), subarray_.get(), coalesce_ranges));
+    return *this;
   }
 
   /**

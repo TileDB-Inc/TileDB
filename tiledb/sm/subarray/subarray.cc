@@ -787,10 +787,11 @@ Status Subarray::get_est_result_size(
 Status Subarray::get_est_result_size_querytype_audited(
     const char* name,
     uint64_t* size,
-    StorageManager* storage_manager) { //ThreadPool* const compute_tp) {
+    StorageManager* storage_manager) {
 
   QueryType type;
-  //Note: various items below expect array open, get_query_type() providing that audit.
+  // Note: various items below expect array open, get_query_type() providing
+  // that audit.
   RETURN_NOT_OK(array_->get_query_type(&type));
 
   if (type == QueryType::WRITE)
@@ -821,10 +822,9 @@ Status Subarray::get_est_result_size_querytype_audited(
         name + "' is nullable"));
 
 #if 01
-// TBD: How to deal with this in subarray, we have no 'reader'???
-// and, we're not yet technically working with a 'query', which the rest_client-> call below
-// presupposes... and where code cloned from 'this' was a core 'Query' class entity...
-  if (array_->is_remote()) { // && !reader_.est_result_size_computed()) {
+  if (array_->is_remote()) {
+    //TBD: Should we somewhere (where?) try to remember if the remote call has
+    // already been done?
     // Trying approach of temporary query (and dup array due to 'const'ness of
     // array_ not being liked to define query)
     // TBD: will it work even if messy?
@@ -849,21 +849,18 @@ Status Subarray::get_est_result_size_querytype_audited(
 
     array_->array_schema()->set_array_uri(array_->array_uri());
 
-    //RETURN_NOT_OK(
-    //    rest_client->get_query_est_result_sizes(array_->array_uri(), &tmp_query));
-    auto ret_rest_response = rest_client->get_query_est_result_sizes(array_->array_uri(), &tmp_query);
+    auto ret_rest_response = rest_client->get_query_est_result_sizes(
+        array_->array_uri(), &tmp_query);
     Status ret_get_est_result_size;
     if (ret_rest_response.ok())
-      ret_get_est_result_size =
-          tmp_query
-              .get_est_result_size(name, size);
+      ret_get_est_result_size = tmp_query.get_est_result_size(name, size);
     tmp_array.close();
     RETURN_NOT_OK(ret_rest_response);
     return ret_get_est_result_size;
   }
 #endif
 
-  return get_est_result_size(name, size, storage_manager->compute_tp() ); //compute_tp);
+  return get_est_result_size(name, size, storage_manager->compute_tp() );
 
 }
 

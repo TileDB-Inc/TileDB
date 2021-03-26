@@ -1,4 +1,4 @@
-//#define DEVING_SUBARRAY_PARTITIONER
+#define DEVING_SUBARRAY_PARTITIONER_STORY5342 0
 /**
  * @file   helpers.cc
  *
@@ -37,7 +37,7 @@
 #include "tiledb/sm/misc/constants.h"
 #include "tiledb/sm/misc/uri.h"
 #include "tiledb/sm/misc/tile_overlap.h"
-#if DEVING_SUBARRAY_PARTITIONER
+#if DEVING_SUBARRAY_PARTITIONER_STORY5342
 #include "tiledb/sm/subarray/subarray_partitioner.h"
 #endif
 #include "tiledb/sm/c_api/tiledb_struct_def.h"
@@ -70,13 +70,35 @@ void check_partitions(
   }
 
   // Non-empty partitions
+  //TBD: The correctness of this routine (seems in doubt).
+  //A) 
+  //All current tests (build configuration with -EnableSerialization)
+  //calling this routine with last_unsplittable==false pass one fewer
+  //partitions than the number of 'next()' calls made.  The final
+  //'next()' call made returns Ok(), but the 'current()' partition
+  //available after that last call is the same as the 'current()' partition
+  //that was available after the 'next()' call prior to the last one (i.e.
+  //'current()' partition is the same for the last two 'next()' calls made.
+  //This can be demonstrated by adding a check for 'done()' before that last 
+  //'next()' in the else clause and seeing that flow is 'done()' before that
+  //'next()' call.
+  //B)
+  //If a caller passes one -fewer- partitions
+  //than are available by next()ing (with last_unsplittable==false), and 
+  //'splitability' is maintained through all next() calls, the presence of 
+  //the 'extra' (via /next()ing) partition will not be
+  //detected, as in the else{} below, that final 'next()' will return '.ok()
+  //whether there was an additional partition or whether 'done()' occurred in the 
+  //previous 'next()' call made (done in the last loop iteration).
+  //Can demonstrate this failure in test  
+  //"SubarrayPartitioner (Dense): 1D, single-range, memory budget",
+  //by eliminating the last partition element from both assignments, and observe
+  //that the test(s) still pass.
+  //C)
+  //
   for (const auto& p : partitions) {
     CHECK(!partitioner.done());
     CHECK(!unsplittable);
-    //TBD: *if* previous loop iteration next() happened to finish, following (next loop iteration) ...ok() will still return true,
-    //(as Status::Ok() is returned from top when already 'done()' on entry to next())
-    //tho suppose that partition check following (for actual data partition data) should fail, assuming the two last partition entries
-    //aren't the same - can the same partition information be returned more than once???
     CHECK(partitioner.next(&unsplittable).ok());
     auto partition = partitioner.current();
     check_subarray<T>(partition, p);
@@ -86,21 +108,26 @@ void check_partitions(
   if (last_unsplittable) { //Was last partition/next() in prior expected to be unsplittable?
     CHECK(unsplittable);
   } else {
-    //TBD: but expectation here is that we did *not* pass all possible partitions in 'partitions', and hence
-    //there is one more - or is the 'unsplittable' return value an indication that that last 'next()' done
-    //above did *not* succeed... but then, how is the following one different from last on ein loop above that 
-    //it *would* succeed? altho, since .next() returns Ok() when already done(), and after having set
-    //unsplittable 'false', guess all could have been present and following will still be valid, tho
-    //not sure of intent (seems next() really *shouldn't* return ok, current may still have legal tho
-    //invalid data, nothing new is generated in that situation... - but next() does, so...)
     CHECK(!unsplittable);
+#if 0 //&& DIAGNOSING
+    // TBD: 
+    //For all tests tried, are always already 'done()' at this point,
+    //before the following, 'next()' call is made and returns 'Ok()' (as
+    //it finds 'done()' close to entry and returns 'Ok()'.)
+    if (partitioner.done())
+      std::cout << "***already done, why are we about to call next()?"
+                << std::endl;
+    else
+      std::cout << "***NOT already done, call next() reasonable?"
+                << std::endl;
+#endif
     CHECK(partitioner.next(&unsplittable).ok());
     CHECK(!unsplittable);
     CHECK(partitioner.done());
   }
 }
 
-#if DEVING_SUBARRAY_PARTITIONER
+#if DEVING_SUBARRAY_PARTITIONER_STORY5342
 template <class T>
 void check_partitions(
     tiledb_ctx_t *ctx,
@@ -1474,7 +1501,7 @@ template void check_partitions<double>(
     const std::vector<SubarrayRanges<double>>& partitions,
     bool last_unsplittable);
 
-#if DEVING_SUBARRAY_PARTITIONER
+#if DEVING_SUBARRAY_PARTITIONER_STORY5342
 template void check_partitions<int8_t>(
     tiledb_ctx_t* ctx,
     tiledb_subarray_partitioner_t* partitioner,

@@ -755,7 +755,7 @@ TEST_CASE_METHOD(
       {{3, 4}},
       {{5, 6}},
       {{7, 8}},
-      {{9, 10}},
+//      {{9, 10}},
   };
   test_subarray_partitioner(
       subarray_layout, ranges, partitions, budget, budget_var, unsplittable);
@@ -770,7 +770,7 @@ TEST_CASE_METHOD(
       {{6, 6}},
       {{7, 7}},
       {{8, 8}},
-      {{9, 10}},
+//      {{9, 10}},
   };
   test_subarray_partitioner(
       subarray_layout, ranges, partitions, budget, budget_var, unsplittable);
