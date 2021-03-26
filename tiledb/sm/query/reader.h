@@ -443,6 +443,9 @@ class Reader {
   /** Sets config for query-level parameters only. */
   Status set_config(const Config& config);
 
+  /** Returns the internal config. */
+  const Config* config() const;
+
   /**
    * Sets the cell layout of the query. The function will return an error
    * if the queried array is a key-value store (because it has its default

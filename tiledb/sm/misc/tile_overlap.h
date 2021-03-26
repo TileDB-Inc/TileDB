@@ -53,8 +53,22 @@ struct TileOverlap {
    * indicates full overlap and 0.0 no overlap at all.
    */
   std::vector<std::pair<uint64_t, double>> tiles_;
+
   /** Ranges of tile ids that lie completely inside the subarray range. */
   std::vector<std::pair<uint64_t, uint64_t>> tile_ranges_;
+
+  /**
+   * Returns the estimated byte size of an instance.
+   *
+   * @param num_tiles The number of `tiles_` elements to estimate for.
+   * @param num_tile_ranges The number of `tile_ranges_` elements to estimate
+   * for.
+   */
+  static size_t est_byte_size(uint64_t num_tiles, uint64_t num_tile_ranges) {
+    return sizeof(TileOverlap) +
+           (num_tiles * sizeof(std::pair<uint64_t, double>)) +
+           (num_tile_ranges * sizeof(std::pair<uint64_t, uint64_t>));
+  }
 };
 
 }  // namespace sm

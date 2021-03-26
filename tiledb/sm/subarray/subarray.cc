@@ -63,7 +63,6 @@ Subarray::Subarray() {
   cell_order_ = Layout::ROW_MAJOR;
   est_result_size_computed_ = false;
   coalesce_ranges_ = true;
-  tile_overlap_range_offset_ = 0;
 }
 
 Subarray::Subarray(const Array* array, bool coalesce_ranges)
@@ -74,7 +73,6 @@ Subarray::Subarray(const Array* array, Layout layout, bool coalesce_ranges)
     : array_(array)
     , layout_(layout)
     , coalesce_ranges_(coalesce_ranges) {
-  tile_overlap_range_offset_ = 0;
   est_result_size_computed_ = false;
   cell_order_ = array_->array_schema()->cell_order();
   add_default_ranges();
@@ -123,8 +121,7 @@ Status Subarray::add_range(uint32_t dim_idx, const Range& range) {
 
   // Must reset the result size and tile overlap
   est_result_size_computed_ = false;
-  tile_overlap_ = nullptr;
-  tile_overlap_range_offset_ = 0;
+  tile_overlap_.clear();
 
   // Remove the default range
   if (is_default_[dim_idx]) {
@@ -145,8 +142,7 @@ Status Subarray::add_range(uint32_t dim_idx, const Range& range) {
 Status Subarray::add_range_unsafe(uint32_t dim_idx, const Range& range) {
   // Must reset the result size and tile overlap
   est_result_size_computed_ = false;
-  tile_overlap_ = nullptr;
-  tile_overlap_range_offset_ = 0;
+  tile_overlap_.clear();
 
   // Remove the default range
   if (is_default_[dim_idx]) {
@@ -259,8 +255,7 @@ void Subarray::clear() {
   ranges_.clear();
   range_offsets_.clear();
   est_result_size_computed_ = false;
-  tile_overlap_ = nullptr;
-  tile_overlap_range_offset_ = 0;
+  tile_overlap_.clear();
   add_or_coalesce_range_func_.clear();
 }
 
@@ -421,11 +416,8 @@ Subarray Subarray::get_subarray(uint64_t start, uint64_t end) const {
     }
   }
 
-  // The `tile_overlap_` is a shared pointer that is shared between
-  // subarray and its partitions. This is an optimization to prevent
-  // duplicate memory among subarray instances.
   ret.tile_overlap_ = tile_overlap_;
-  ret.tile_overlap_range_offset_ = start;
+  ret.tile_overlap_.update_range(start, end);
 
   // Compute range offsets
   ret.compute_range_offsets();
@@ -500,7 +492,10 @@ Layout Subarray::layout() const {
 }
 
 Status Subarray::get_est_result_size(
-    const char* name, uint64_t* size, ThreadPool* const compute_tp) {
+    const char* name,
+    uint64_t* size,
+    const Config* const config,
+    ThreadPool* const compute_tp) {
   // Check attribute/dimension name
   if (name == nullptr)
     return LOG_STATUS(
@@ -536,7 +531,7 @@ Status Subarray::get_est_result_size(
                               "Attribute/Dimension must not be nullable"));
 
   // Compute tile overlap for each fragment
-  RETURN_NOT_OK(compute_est_result_size(compute_tp));
+  RETURN_NOT_OK(compute_est_result_size(config, compute_tp));
   *size = static_cast<uint64_t>(ceil(est_result_size_[name].size_fixed_));
 
   // If the size is non-zero, ensure it is large enough to
@@ -552,6 +547,7 @@ Status Subarray::get_est_result_size(
     const char* name,
     uint64_t* size_off,
     uint64_t* size_val,
+    const Config* const config,
     ThreadPool* const compute_tp) {
   // Check attribute/dimension name
   if (name == nullptr)
@@ -588,7 +584,7 @@ Status Subarray::get_est_result_size(
                               "Attribute/Dimension must not be nullable"));
 
   // Compute tile overlap for each fragment
-  RETURN_NOT_OK(compute_est_result_size(compute_tp));
+  RETURN_NOT_OK(compute_est_result_size(config, compute_tp));
   *size_off = static_cast<uint64_t>(ceil(est_result_size_[name].size_fixed_));
   *size_val = static_cast<uint64_t>(ceil(est_result_size_[name].size_var_));
 
@@ -614,6 +610,7 @@ Status Subarray::get_est_result_size_nullable(
     const char* name,
     uint64_t* size,
     uint64_t* size_validity,
+    const Config* const config,
     ThreadPool* const compute_tp) {
   // Check attribute/dimension name
   if (name == nullptr)
@@ -649,7 +646,7 @@ Status Subarray::get_est_result_size_nullable(
                               "Attribute must be nullable"));
 
   // Compute tile overlap for each fragment
-  RETURN_NOT_OK(compute_est_result_size(compute_tp));
+  RETURN_NOT_OK(compute_est_result_size(config, compute_tp));
   *size = static_cast<uint64_t>(ceil(est_result_size_[name].size_fixed_));
   *size_validity =
       static_cast<uint64_t>(ceil(est_result_size_[name].size_validity_));
@@ -670,6 +667,7 @@ Status Subarray::get_est_result_size_nullable(
     uint64_t* size_off,
     uint64_t* size_val,
     uint64_t* size_validity,
+    const Config* const config,
     ThreadPool* const compute_tp) {
   // Check attribute/dimension name
   if (name == nullptr)
@@ -705,7 +703,7 @@ Status Subarray::get_est_result_size_nullable(
                               "Attribute must be nullable"));
 
   // Compute tile overlap for each fragment
-  RETURN_NOT_OK(compute_est_result_size(compute_tp));
+  RETURN_NOT_OK(compute_est_result_size(config, compute_tp));
   *size_off = static_cast<uint64_t>(ceil(est_result_size_[name].size_fixed_));
   *size_val = static_cast<uint64_t>(ceil(est_result_size_[name].size_var_));
   *size_validity =
@@ -735,7 +733,10 @@ Status Subarray::get_est_result_size_nullable(
 }
 
 Status Subarray::get_max_memory_size(
-    const char* name, uint64_t* size, ThreadPool* const compute_tp) {
+    const char* name,
+    uint64_t* size,
+    const Config* const config,
+    ThreadPool* const compute_tp) {
   // Check attribute/dimension name
   if (name == nullptr)
     return LOG_STATUS(Status::SubarrayError(
@@ -769,7 +770,7 @@ Status Subarray::get_max_memory_size(
                               "Attribute/Dimension must not be nullable"));
 
   // Compute tile overlap for each fragment
-  compute_est_result_size(compute_tp);
+  compute_est_result_size(config, compute_tp);
   *size = max_mem_size_[name].size_fixed_;
 
   return Status::Ok();
@@ -779,6 +780,7 @@ Status Subarray::get_max_memory_size(
     const char* name,
     uint64_t* size_off,
     uint64_t* size_val,
+    const Config* const config,
     ThreadPool* const compute_tp) {
   // Check attribute/dimension name
   if (name == nullptr)
@@ -813,7 +815,7 @@ Status Subarray::get_max_memory_size(
                               "Attribute/Dimension must not be nullable"));
 
   // Compute tile overlap for each fragment
-  compute_est_result_size(compute_tp);
+  compute_est_result_size(config, compute_tp);
   *size_off = max_mem_size_[name].size_fixed_;
   *size_val = max_mem_size_[name].size_var_;
 
@@ -824,6 +826,7 @@ Status Subarray::get_max_memory_size_nullable(
     const char* name,
     uint64_t* size,
     uint64_t* size_validity,
+    const Config* const config,
     ThreadPool* const compute_tp) {
   // Check attribute name
   if (name == nullptr)
@@ -857,7 +860,7 @@ Status Subarray::get_max_memory_size_nullable(
                               "Attribute must be nullable"));
 
   // Compute tile overlap for each fragment
-  compute_est_result_size(compute_tp);
+  compute_est_result_size(config, compute_tp);
   *size = max_mem_size_[name].size_fixed_;
   *size_validity = max_mem_size_[name].size_validity_;
 
@@ -869,6 +872,7 @@ Status Subarray::get_max_memory_size_nullable(
     uint64_t* size_off,
     uint64_t* size_val,
     uint64_t* size_validity,
+    const Config* const config,
     ThreadPool* const compute_tp) {
   // Check attribute/dimension name
   if (name == nullptr)
@@ -902,7 +906,7 @@ Status Subarray::get_max_memory_size_nullable(
                               "Attribute must be nullable"));
 
   // Compute tile overlap for each fragment
-  compute_est_result_size(compute_tp);
+  compute_est_result_size(config, compute_tp);
   *size_off = max_mem_size_[name].size_fixed_;
   *size_val = max_mem_size_[name].size_var_;
   *size_validity = max_mem_size_[name].size_validity_;
@@ -981,8 +985,9 @@ uint64_t Subarray::range_num() const {
     return 0;
 
   uint64_t ret = 1;
-  for (const auto& r : ranges_)
+  for (const auto& r : ranges_) {
     ret *= r.size();
+  }
 
   return ret;
 }
@@ -1131,16 +1136,6 @@ const std::vector<std::vector<uint8_t>>& Subarray::tile_coords() const {
   return tile_coords_;
 }
 
-const std::vector<std::vector<TileOverlap>>& Subarray::tile_overlap() const {
-  assert(tile_overlap_ != nullptr);
-  return *tile_overlap_;
-}
-
-uint64_t Subarray::overlap_range_offset() const {
-  assert(tile_overlap_ != nullptr);
-  return tile_overlap_range_offset_;
-}
-
 template <class T>
 Status Subarray::compute_tile_coords() {
   STATS_START_TIMER(stats::Stats::TimerType::READ_COMPUTE_TILE_COORDS)
@@ -1163,6 +1158,10 @@ const T* Subarray::tile_coords_ptr(
   if (it == tile_coords_map_.end())
     return nullptr;
   return (const T*)&(tile_coords_[it->second][0]);
+}
+
+const SubarrayTileOverlap* Subarray::subarray_tile_overlap() const {
+  return &tile_overlap_;
 }
 
 Status Subarray::compute_relevant_fragment_est_result_sizes(
@@ -1288,19 +1287,21 @@ Status Subarray::compute_relevant_fragment_est_result_sizes(
 }
 
 std::unordered_map<std::string, Subarray::ResultSize>
-Subarray::get_est_result_size_map(ThreadPool* const compute_tp) {
+Subarray::get_est_result_size_map(
+    const Config* const config, ThreadPool* const compute_tp) {
   // If the result sizes have not been computed, compute them first
   if (!est_result_size_computed_)
-    compute_est_result_size(compute_tp);
+    compute_est_result_size(config, compute_tp);
 
   return est_result_size_;
 }
 
 std::unordered_map<std::string, Subarray::MemorySize>
-Subarray::get_max_mem_size_map(ThreadPool* const compute_tp) {
+Subarray::get_max_mem_size_map(
+    const Config* const config, ThreadPool* const compute_tp) {
   // If the result sizes have not been computed, compute them first
   if (!est_result_size_computed_)
-    compute_est_result_size(compute_tp);
+    compute_est_result_size(config, compute_tp);
 
   return max_mem_size_;
 }
@@ -1546,13 +1547,18 @@ void Subarray::compute_range_offsets() {
   }
 }
 
-Status Subarray::compute_est_result_size(ThreadPool* const compute_tp) {
+Status Subarray::compute_est_result_size(
+    const Config* const config, ThreadPool* const compute_tp) {
   STATS_START_TIMER(stats::Stats::TimerType::READ_COMPUTE_EST_RESULT_SIZE)
 
   if (est_result_size_computed_)
     return Status::Ok();
 
-  RETURN_NOT_OK(compute_tile_overlap(compute_tp));
+  // TODO: This routine is used in the path for the C APIs that estimate
+  // result sizes. We need to refactor this routine to handle the scenario
+  // where `tile_overlap_` may be truncated to fit the memory budget.
+  RETURN_NOT_OK(
+      precompute_tile_overlap(0, range_num() - 1, config, compute_tp, true));
 
   // Prepare estimated result size vector for all
   // attributes/dimension and zipped coords
@@ -1669,16 +1675,20 @@ Status Subarray::compute_relevant_fragment_est_result_sizes(
     std::set<std::pair<unsigned, uint64_t>>* frag_tiles) {
   result_sizes->resize(names.size(), {0.0, 0.0, 0.0});
 
+  const uint64_t translated_range_idx =
+      range_idx - tile_overlap_.range_idx_start();
+
   // Compute estimated result
   auto fragment_num = (unsigned)relevant_fragments_.size();
   for (unsigned i = 0; i < fragment_num; ++i) {
     auto f = relevant_fragments_[i];
-    const auto& overlap = (*tile_overlap_)[f][range_idx];
+    const TileOverlap* const overlap =
+        tile_overlap_.at(f, translated_range_idx);
     auto meta = fragment_meta[f];
 
     // Parse tile ranges
     uint64_t tile_size = 0, tile_var_size = 0;
-    for (const auto& tr : overlap.tile_ranges_) {
+    for (const auto& tr : overlap->tile_ranges_) {
       for (uint64_t tid = tr.first; tid <= tr.second; ++tid) {
         for (size_t n = 0; n < names.size(); ++n) {
           // Zipped coords applicable only in homogeneous domains
@@ -1709,7 +1719,7 @@ Status Subarray::compute_relevant_fragment_est_result_sizes(
     }
 
     // Parse individual tiles
-    for (const auto& t : overlap.tiles_) {
+    for (const auto& t : overlap->tiles_) {
       auto tid = t.first;
       auto ratio = t.second;
       for (size_t n = 0; n < names.size(); ++n) {
@@ -1906,34 +1916,76 @@ Status Subarray::compute_tile_coords_row() {
   return Status::Ok();
 }
 
-Status Subarray::compute_tile_overlap(ThreadPool* const compute_tp) {
+Status Subarray::precompute_tile_overlap(
+    const uint64_t start_range_idx,
+    const uint64_t end_range_idx,
+    const Config* config,
+    ThreadPool* const compute_tp,
+    const bool override_memory_constraint) {
   STATS_START_TIMER(stats::Stats::TimerType::READ_COMPUTE_TILE_OVERLAP)
 
-  const bool tile_overlap_computed = tile_overlap_ != nullptr;
-  if (tile_overlap_computed)
+  // If the `tile_overlap_` has already been precomputed and contains
+  // the given range, re-use it with new range.
+  const bool tile_overlap_computed =
+      tile_overlap_.contains_range(start_range_idx, end_range_idx);
+  if (tile_overlap_computed) {
+    tile_overlap_.update_range(start_range_idx, end_range_idx);
     return Status::Ok();
+  }
 
   compute_range_offsets();
 
-  // Initialization
-  auto tile_overlap = tdb_make_shared(std::vector<std::vector<TileOverlap>>);
   auto meta = array_->fragment_metadata();
   auto fragment_num = meta.size();
-  tile_overlap->resize(fragment_num);
-  auto range_num = this->range_num();
-  for (unsigned i = 0; i < fragment_num; ++i)
-    (*tile_overlap)[i].resize(range_num);
+
+  uint64_t tile_overlap_start = start_range_idx;
+  uint64_t tile_overlap_end = end_range_idx;
+
+  // Currently, we allow the caller to override the memory constraint
+  // imposed by `constants::max_tile_overlap_size`. This is temporary
+  // until we refactor for all callers to become aware that `tile_overlap_`
+  // may be truncated.
+  if (!override_memory_constraint && fragment_num > 0) {
+    // The size of each `TileOverlap` instance is variable. We estimate each
+    // instance size as if they have `1` tile and `1` range.
+    const uint64_t est_tile_overlap_size = TileOverlap::est_byte_size(1, 1);
+
+    bool found = false;
+    uint64_t max_tile_overlap_size = 0;
+    RETURN_NOT_OK(config->get<uint64_t>(
+        "sm.max_tile_overlap_size", &max_tile_overlap_size, &found));
+    assert(found);
+
+    // Calculate the maximum number of ranges that we compute tile
+    // overlap for without exceeding `constants::max_tile_overlap_size`.
+    // We will compute for at least one range if there is at least one
+    // fragment, even if it exceeds this budget.
+    uint64_t max_range_num =
+        max_tile_overlap_size / (fragment_num * est_tile_overlap_size);
+    max_range_num = std::max<uint64_t>(1, max_range_num);
+
+    // If the number of requested ranges exceeds the maximum supported
+    // by the memory budget, shrink the range by the end index. Note
+    // that this is an inclusive index.
+    const uint64_t num_ranges = end_range_idx - start_range_idx + 1;
+    tile_overlap_start = start_range_idx;
+    tile_overlap_end = (num_ranges > max_range_num) ?
+                           (start_range_idx + max_range_num - 1) :
+                           end_range_idx;
+  }
+
+  SubarrayTileOverlap tile_overlap(
+      fragment_num, tile_overlap_start, tile_overlap_end);
 
   // Compute relevant fragments to the subarray
-  RETURN_NOT_OK(compute_relevant_fragments(compute_tp));
+  RETURN_NOT_OK(compute_relevant_fragments(compute_tp, &tile_overlap));
 
   // Load the R-Trees and compute tile overlap only for relevant fragments
   RETURN_NOT_OK(load_relevant_fragment_rtrees(compute_tp));
   RETURN_NOT_OK(
-      compute_relevant_fragment_tile_overlap(compute_tp, tile_overlap.get()));
+      compute_relevant_fragment_tile_overlap(compute_tp, &tile_overlap));
 
   tile_overlap_ = std::move(tile_overlap);
-  tile_overlap_range_offset_ = 0;
 
   return Status::Ok();
 
@@ -1949,7 +2001,6 @@ Subarray Subarray::clone() const {
   clone.is_default_ = is_default_;
   clone.range_offsets_ = range_offsets_;
   clone.tile_overlap_ = tile_overlap_;
-  clone.tile_overlap_range_offset_ = tile_overlap_range_offset_;
   clone.est_result_size_computed_ = est_result_size_computed_;
   clone.coalesce_ranges_ = coalesce_ranges_;
   clone.add_or_coalesce_range_func_ = add_or_coalesce_range_func_;
@@ -1960,30 +2011,31 @@ Subarray Subarray::clone() const {
   return clone;
 }
 
-TileOverlap Subarray::get_tile_overlap(uint64_t range_idx, unsigned fid) const {
+TileOverlap Subarray::compute_tile_overlap(
+    uint64_t range_idx, unsigned fid) const {
   assert(array_->array_schema()->dense());
   auto type = array_->array_schema()->dimension(0)->type();
   switch (type) {
     case Datatype::INT8:
-      return get_tile_overlap<int8_t>(range_idx, fid);
+      return compute_tile_overlap<int8_t>(range_idx, fid);
     case Datatype::UINT8:
-      return get_tile_overlap<uint8_t>(range_idx, fid);
+      return compute_tile_overlap<uint8_t>(range_idx, fid);
     case Datatype::INT16:
-      return get_tile_overlap<int16_t>(range_idx, fid);
+      return compute_tile_overlap<int16_t>(range_idx, fid);
     case Datatype::UINT16:
-      return get_tile_overlap<uint16_t>(range_idx, fid);
+      return compute_tile_overlap<uint16_t>(range_idx, fid);
     case Datatype::INT32:
-      return get_tile_overlap<int32_t>(range_idx, fid);
+      return compute_tile_overlap<int32_t>(range_idx, fid);
     case Datatype::UINT32:
-      return get_tile_overlap<uint32_t>(range_idx, fid);
+      return compute_tile_overlap<uint32_t>(range_idx, fid);
     case Datatype::INT64:
-      return get_tile_overlap<int64_t>(range_idx, fid);
+      return compute_tile_overlap<int64_t>(range_idx, fid);
     case Datatype::UINT64:
-      return get_tile_overlap<uint64_t>(range_idx, fid);
+      return compute_tile_overlap<uint64_t>(range_idx, fid);
     case Datatype::FLOAT32:
-      return get_tile_overlap<float>(range_idx, fid);
+      return compute_tile_overlap<float>(range_idx, fid);
     case Datatype::FLOAT64:
-      return get_tile_overlap<double>(range_idx, fid);
+      return compute_tile_overlap<double>(range_idx, fid);
     case Datatype::DATETIME_YEAR:
     case Datatype::DATETIME_MONTH:
     case Datatype::DATETIME_WEEK:
@@ -1997,7 +2049,7 @@ TileOverlap Subarray::get_tile_overlap(uint64_t range_idx, unsigned fid) const {
     case Datatype::DATETIME_PS:
     case Datatype::DATETIME_FS:
     case Datatype::DATETIME_AS:
-      return get_tile_overlap<int64_t>(range_idx, fid);
+      return compute_tile_overlap<int64_t>(range_idx, fid);
     default:
       assert(false);
   }
@@ -2005,7 +2057,8 @@ TileOverlap Subarray::get_tile_overlap(uint64_t range_idx, unsigned fid) const {
 }
 
 template <class T>
-TileOverlap Subarray::get_tile_overlap(uint64_t range_idx, unsigned fid) const {
+TileOverlap Subarray::compute_tile_overlap(
+    uint64_t range_idx, unsigned fid) const {
   assert(array_->array_schema()->dense());
   TileOverlap ret;
   auto ndrange = this->ndrange(range_idx);
@@ -2083,7 +2136,6 @@ void Subarray::swap(Subarray& subarray) {
   std::swap(is_default_, subarray.is_default_);
   std::swap(range_offsets_, subarray.range_offsets_);
   std::swap(tile_overlap_, subarray.tile_overlap_);
-  std::swap(tile_overlap_range_offset_, subarray.tile_overlap_range_offset_);
   std::swap(est_result_size_computed_, subarray.est_result_size_computed_);
   std::swap(coalesce_ranges_, subarray.coalesce_ranges_);
   std::swap(add_or_coalesce_range_func_, subarray.add_or_coalesce_range_func_);
@@ -2092,24 +2144,32 @@ void Subarray::swap(Subarray& subarray) {
   std::swap(relevant_fragments_, subarray.relevant_fragments_);
 }
 
-Status Subarray::compute_relevant_fragments(ThreadPool* const compute_tp) {
+Status Subarray::compute_relevant_fragments(
+    ThreadPool* const compute_tp,
+    const SubarrayTileOverlap* const tile_overlap) {
   STATS_START_TIMER(stats::Stats::TimerType::READ_COMPUTE_RELEVANT_FRAGS)
 
   auto meta = array_->fragment_metadata();
   auto fragment_num = meta.size();
-  auto range_num = this->range_num();
   std::vector<uint8_t> frag_bitmap(fragment_num, 0);
 
   // Compute the relevant fragments
   auto statuses = parallel_for_2d(
-      compute_tp, 0, fragment_num, 0, range_num, [&](unsigned f, uint64_t r) {
+      compute_tp,
+      0,
+      fragment_num,
+      0,
+      tile_overlap->range_num(),
+      [&](unsigned f, uint64_t r) {
+        const uint64_t translated_r = r + tile_overlap->range_idx_start();
         if (frag_bitmap[f] == 0 &&
-            meta[f]->overlaps_non_empty_domain(this->ndrange(r)))
+            meta[f]->overlaps_non_empty_domain(this->ndrange(translated_r)))
           frag_bitmap[f] = 1;
         return Status::Ok();
       });
 
   // Copy to the result
+  relevant_fragments_.clear();
   relevant_fragments_.reserve(fragment_num);
   for (unsigned f = 0; f < fragment_num; ++f) {
     if (frag_bitmap[f])
@@ -2142,19 +2202,17 @@ Status Subarray::load_relevant_fragment_rtrees(
 }
 
 Status Subarray::compute_relevant_fragment_tile_overlap(
-    ThreadPool* const compute_tp,
-    std::vector<std::vector<TileOverlap>>* const tile_overlap) {
+    ThreadPool* const compute_tp, SubarrayTileOverlap* const tile_overlap) {
   STATS_START_TIMER(stats::Stats::TimerType::READ_COMPUTE_RELEVANT_TILE_OVERLAP)
 
   const auto& meta = array_->fragment_metadata();
-  auto range_num = this->range_num();
 
   auto statuses =
       parallel_for(compute_tp, 0, relevant_fragments_.size(), [&](uint64_t i) {
         auto f = relevant_fragments_[i];
         auto dense = meta[f]->dense();
         return compute_relevant_fragment_tile_overlap(
-            meta[f], f, dense, range_num, compute_tp, tile_overlap);
+            meta[f], f, dense, compute_tp, tile_overlap);
       });
   for (const auto& st : statuses)
     RETURN_NOT_OK(st);
@@ -2168,21 +2226,23 @@ Status Subarray::compute_relevant_fragment_tile_overlap(
     FragmentMetadata* meta,
     unsigned frag_idx,
     bool dense,
-    uint64_t range_num,
     ThreadPool* const compute_tp,
-    std::vector<std::vector<TileOverlap>>* const tile_overlap) {
+    SubarrayTileOverlap* const tile_overlap) {
   auto num_threads = compute_tp->concurrency_level();
+  auto range_num = tile_overlap->range_num();
+
   auto ranges_per_thread = (uint64_t)ceil((double)range_num / num_threads);
   auto statuses = parallel_for(compute_tp, 0, num_threads, [&](uint64_t t) {
     auto r_start = t * ranges_per_thread;
     auto r_end = std::min((t + 1) * ranges_per_thread - 1, range_num - 1);
     for (uint64_t r = r_start; r <= r_end; ++r) {
       if (dense) {  // Dense fragment
-        (*tile_overlap)[frag_idx][r] = get_tile_overlap(r, frag_idx);
+        *tile_overlap->at(frag_idx, r) =
+            compute_tile_overlap(r + tile_overlap->range_idx_start(), frag_idx);
       } else {  // Sparse fragment
-        const auto& range = this->ndrange(r);
+        const auto& range = this->ndrange(r + tile_overlap->range_idx_start());
         RETURN_NOT_OK(
-            meta->get_tile_overlap(range, &((*tile_overlap)[frag_idx][r])));
+            meta->get_tile_overlap(range, tile_overlap->at(frag_idx, r)));
       }
     }
 

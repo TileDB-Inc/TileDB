@@ -131,8 +131,9 @@ TEST_CASE_METHOD(
   create_subarray(array_->array_, ranges, subarray_layout, &subarray);
   ThreadPool tp;
   CHECK(tp.init(4).ok());
+  Config config;
   SubarrayPartitioner subarray_partitioner(
-      subarray, memory_budget_, memory_budget_var_, 0, &tp);
+      &config, subarray, memory_budget_, memory_budget_var_, 0, &tp);
   uint64_t budget, budget_off, budget_val;
 
   auto st = subarray_partitioner.get_result_budget("a", &budget);

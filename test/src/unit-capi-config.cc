@@ -238,6 +238,7 @@ void check_save_to_file() {
   ss << "sm.enable_signal_handlers true\n";
   ss << "sm.io_concurrency_level " << std::thread::hardware_concurrency()
      << "\n";
+  ss << "sm.max_tile_overlap_size 536870912\n";
   ss << "sm.memory_budget 5368709120\n";
   ss << "sm.memory_budget_var 10737418240\n";
   ss << "sm.num_tbb_threads -1\n";
@@ -544,6 +545,7 @@ TEST_CASE("C API: Test config iter", "[capi], [config]") {
   all_param_values["sm.var_offsets.bitsize"] = "32";
   all_param_values["sm.var_offsets.extra_element"] = "true";
   all_param_values["sm.var_offsets.mode"] = "elements";
+  all_param_values["sm.max_tile_overlap_size"] = "536870912";
 
   all_param_values["vfs.min_batch_gap"] = "512000";
   all_param_values["vfs.min_batch_size"] = "20971520";
