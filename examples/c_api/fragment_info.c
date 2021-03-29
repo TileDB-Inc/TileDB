@@ -127,69 +127,70 @@ void get_fragment_info() {
   // Create fragment info object
   tiledb_fragment_info_t* fragment_info;
   tiledb_fragment_info_alloc(ctx, array_name, &fragment_info);
-  
+
   // Load fragment
   tiledb_fragment_info_load(ctx, fragment_info);
-  
+
   // Get number of written fragments.
   uint32_t num;
   tiledb_fragment_info_get_fragment_num(ctx, fragment_info, &num);
-  printf( "The number of written fragments is %d.\n", num);
+  printf("The number of written fragments is %d.\n", num);
 
   // Get fragment URI
   const char* uri;
   tiledb_fragment_info_get_fragment_uri(ctx, fragment_info, 0, &uri);
-  printf( "The fragment URI is %s.\n", uri); 
+  printf("The fragment URI is %s.\n", uri);
 
   // Get fragment size
   uint64_t size;
   tiledb_fragment_info_get_fragment_size(ctx, fragment_info, 0, &size);
-  printf( "The fragment size is %llu.\n", size);
+  printf("The fragment size is %llu.\n", size);
 
   // Check if the fragment is dense or sparse.
   int32_t dense;
   tiledb_fragment_info_get_dense(ctx, fragment_info, 0, &dense);
   if (dense == 1)
-    printf( "The fragment is dense.\n");
-  else 
-    printf( "The fragment is sparse.\n");
+    printf("The fragment is dense.\n");
+  else
+    printf("The fragment is sparse.\n");
 
   // Get the fragment timestamp range
   uint64_t start;
   uint64_t end;
   tiledb_fragment_info_get_timestamp_range(ctx, fragment_info, 0, &start, &end);
-  printf( "The fragment's timestamp range is {%llu, %llu}.\n", start, end);
+  printf("The fragment's timestamp range is {%llu, %llu}.\n", start, end);
 
   // Get the number of cells written to the fragment.
   uint64_t cell_num;
   tiledb_fragment_info_get_cell_num(ctx, fragment_info, 0, &cell_num);
-  printf( "The number of cells written to the fragment is %llu.\n", cell_num);
+  printf("The number of cells written to the fragment is %llu.\n", cell_num);
 
   // Get the format version of the fragment.
   uint32_t version;
   tiledb_fragment_info_get_version(ctx, fragment_info, 0, &version);
-  printf( "The fragment's format version is %d.\n", version);
+  printf("The fragment's format version is %d.\n", version);
 
   // Check if fragment has consolidated metadata.
-  // If not, get the number of fragments with unconsolidated metadata 
-  //  in the fragment info object. 
+  // If not, get the number of fragments with unconsolidated metadata
+  //  in the fragment info object.
   int32_t consolidated;
-  tiledb_fragment_info_has_consolidated_metadata
-    (ctx, fragment_info, 0, &consolidated);
+  tiledb_fragment_info_has_consolidated_metadata(
+      ctx, fragment_info, 0, &consolidated);
   if (consolidated != 0) {
-    printf( "The fragment has consolidated metadata.\n");
-  } else  {
+    printf("The fragment has consolidated metadata.\n");
+  } else {
     uint32_t unconsolidated;
-    tiledb_fragment_info_get_unconsolidated_metadata_num
-      (ctx, fragment_info, &unconsolidated);
-    printf( "The fragment has %d unconsolidated metadata fragments.\n", 
-      unconsolidated);
+    tiledb_fragment_info_get_unconsolidated_metadata_num(
+        ctx, fragment_info, &unconsolidated);
+    printf(
+        "The fragment has %d unconsolidated metadata fragments.\n",
+        unconsolidated);
   }
-    
+
   // Get non-empty domain from index
   uint64_t non_empty_dom[2];
   tiledb_fragment_info_get_non_empty_domain_from_index(
-    ctx, fragment_info, 0, 0, &non_empty_dom[0]);
+      ctx, fragment_info, 0, 0, &non_empty_dom[0]);
 
   // Clean up
   tiledb_ctx_free(&ctx);
