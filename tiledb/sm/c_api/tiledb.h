@@ -5562,7 +5562,7 @@ TILEDB_EXPORT int32_t tiledb_subarray_partitioner_get_result_budget_nullable_var
     tiledb_subarray_partitioner_t* partitioner);
 
 /**
- * Set partitioning budget for var sized attribute.
+ * Get partitioning budget for fixed sized attribute.
  * 
  * @code{.c}
  * tiledb_subarray_partitioner_t *partitioner;
@@ -5582,7 +5582,7 @@ TILEDB_EXPORT int32_t tiledb_subarray_partitioner_get_result_budget_fixed(
     tiledb_subarray_partitioner_t* partitioner);
 
 /**
- * Gets result size budget (in bytes) for the input var-sized
+ * Sets result size budget (in bytes) for the input var-sized
  * attribute/dimension.
  * 
  * **Example:**
