@@ -1185,11 +1185,6 @@ TEST_CASE_METHOD(
   CHECK(rc == TILEDB_OK);
 
   // Check timestamp
-  /*
-  uint64_t timestamp_get;
-  rc = tiledb_array_get_timestamp(ctx_, array, &timestamp_get);
-  CHECK(rc == TILEDB_OK);
-  CHECK(timestamp_get == 0);*/
   rc = tiledb_config_get(
       cfg, "sm.array.open_timestamp_start", &timestamp_get, &err);
   CHECK(rc == TILEDB_OK);
