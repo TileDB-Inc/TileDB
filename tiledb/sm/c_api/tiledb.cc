@@ -59,6 +59,7 @@
 #include "tiledb/sm/query/query.h"
 #include "tiledb/sm/rest/rest_client.h"
 #include "tiledb/sm/serialization/array_schema.h"
+#include "tiledb/sm/serialization/config.h"
 #include "tiledb/sm/serialization/query.h"
 #include "tiledb/sm/stats/stats.h"
 #include "tiledb/sm/storage_manager/context.h"
@@ -398,6 +399,17 @@ inline int32_t sanity_check(tiledb_config_t* config, tiledb_error_t** error) {
 }
 
 inline int32_t sanity_check(tiledb_ctx_t* ctx, tiledb_config_t* config) {
+  if (config == nullptr || config->config_ == nullptr) {
+    auto st = Status::Error("Cannot set config; Invalid config object");
+    LOG_STATUS(st);
+    save_error(ctx, st);
+    return TILEDB_ERR;
+  }
+
+  return TILEDB_OK;
+}
+
+inline int32_t sanity_check(tiledb_ctx_t* ctx, const tiledb_config_t* config) {
   if (config == nullptr || config->config_ == nullptr) {
     auto st = Status::Error("Cannot set config; Invalid config object");
     LOG_STATUS(st);
@@ -4832,8 +4844,10 @@ int32_t tiledb_serialize_array_schema(
               array_schema->array_schema_,
               (tiledb::sm::SerializationType)serialize_type,
               (*buffer)->buffer_,
-              client_side)))
+              client_side))) {
+    tiledb_buffer_free(buffer);
     return TILEDB_ERR;
+  }
 
   return TILEDB_OK;
 }
@@ -4895,8 +4909,10 @@ int32_t tiledb_serialize_query(
               query->query_,
               (tiledb::sm::SerializationType)serialize_type,
               client_side == 1,
-              (*buffer_list)->buffer_list_)))
+              (*buffer_list)->buffer_list_))) {
+    tiledb_buffer_list_free(buffer_list);
     return TILEDB_ERR;
+  }
 
   return TILEDB_OK;
 }
@@ -4954,8 +4970,10 @@ int32_t tiledb_serialize_array_nonempty_domain(
               nonempty_domain,
               is_empty,
               (tiledb::sm::SerializationType)serialize_type,
-              (*buffer)->buffer_)))
+              (*buffer)->buffer_))) {
+    tiledb_buffer_free(buffer);
     return TILEDB_ERR;
+  }
 
   return TILEDB_OK;
 }
@@ -5016,8 +5034,10 @@ int32_t tiledb_serialize_array_non_empty_domain_all_dimensions(
           tiledb::sm::serialization::nonempty_domain_serialize(
               array->array_,
               (tiledb::sm::SerializationType)serialize_type,
-              (*buffer)->buffer_)))
+              (*buffer)->buffer_))) {
+    tiledb_buffer_free(buffer);
     return TILEDB_ERR;
+  }
 
   return TILEDB_OK;
 }
@@ -5151,8 +5171,10 @@ int32_t tiledb_serialize_query_est_result_sizes(
               query->query_,
               (tiledb::sm::SerializationType)serialize_type,
               client_side == 1,
-              (*buffer)->buffer_)))
+              (*buffer)->buffer_))) {
+    tiledb_buffer_free(buffer);
     return TILEDB_ERR;
+  }
 
   return TILEDB_OK;
 }
@@ -5177,6 +5199,72 @@ int32_t tiledb_deserialize_query_est_result_sizes(
               client_side == 1,
               *buffer->buffer_)))
     return TILEDB_ERR;
+
+  return TILEDB_OK;
+}
+
+int32_t tiledb_serialize_config(
+    tiledb_ctx_t* ctx,
+    const tiledb_config_t* config,
+    tiledb_serialization_type_t serialize_type,
+    int32_t client_side,
+    tiledb_buffer_t** buffer) {
+  // Sanity check
+  if (sanity_check(ctx) == TILEDB_ERR ||
+      sanity_check(ctx, config) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  // Create buffer
+  if (tiledb_buffer_alloc(ctx, buffer) != TILEDB_OK ||
+      sanity_check(ctx, *buffer) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  if (SAVE_ERROR_CATCH(
+          ctx,
+          tiledb::sm::serialization::config_serialize(
+              config->config_,
+              (tiledb::sm::SerializationType)serialize_type,
+              (*buffer)->buffer_,
+              client_side))) {
+    tiledb_buffer_free(buffer);
+    return TILEDB_ERR;
+  }
+
+  return TILEDB_OK;
+}
+
+int32_t tiledb_deserialize_config(
+    tiledb_ctx_t* ctx,
+    const tiledb_buffer_t* buffer,
+    tiledb_serialization_type_t serialize_type,
+    int32_t client_side,
+    tiledb_config_t** config) {
+  // Currently unused:
+  (void)client_side;
+
+  // Sanity check
+  if (sanity_check(ctx) == TILEDB_ERR ||
+      sanity_check(ctx, buffer) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  // Create array schema struct
+  *config = new (std::nothrow) tiledb_config_t;
+  if (*config == nullptr) {
+    auto st = Status::Error("Failed to allocate TileDB config object");
+    LOG_STATUS(st);
+    save_error(ctx, st);
+    return TILEDB_OOM;
+  }
+
+  if (SAVE_ERROR_CATCH(
+          ctx,
+          tiledb::sm::serialization::config_deserialize(
+              &((*config)->config_),
+              (tiledb::sm::SerializationType)serialize_type,
+              *buffer->buffer_))) {
+    delete *config;
+    return TILEDB_ERR;
+  }
 
   return TILEDB_OK;
 }

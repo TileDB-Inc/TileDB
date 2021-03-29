@@ -38,6 +38,7 @@
 #include "tiledb/common/heap_memory.h"
 #include "tiledb/common/status.h"
 #include "tiledb/sm/array_schema/array_schema.h"
+#include "tiledb/sm/array_schema/dimension.h"
 #include "tiledb/sm/buffer/buffer.h"
 #include "tiledb/sm/enums/datatype.h"
 #include "tiledb/sm/serialization/tiledb-rest.capnp.h"
@@ -46,6 +47,7 @@ using namespace tiledb::common;
 
 namespace tiledb {
 namespace sm {
+class Dimension;
 namespace serialization {
 namespace utils {
 

@@ -16,6 +16,17 @@ struct DomainArray {
   float64 @9 :List(Float64);
 }
 
+struct KV {
+  key @0 :Text;
+  value @1 :Text;
+}
+
+struct Config {
+# Represents a config object
+  entries @0 :List(KV);
+  # list of key-value settings
+}
+
 struct Array {
   timestamp @0 :UInt64;
   # timestamp array was opened
