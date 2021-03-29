@@ -75,7 +75,8 @@ struct DenseArrayFx {
    */
   bool serialize_query_ = false;
 
-  bool use_external_subarray_ = false;
+  bool use_outside_subarray_ =
+      false;  // as in separate subarray prepared 'outside' of a query
 
   // TileDB context and VFS
   tiledb_ctx_t* ctx_;
@@ -895,10 +896,8 @@ void DenseArrayFx::write_dense_subarray_2D(
   // Submit query
   rc = submit_query_wrapper(array_name, query);
   REQUIRE_SAFE(rc == TILEDB_OK);
-  if (rc == TILEDB_OK) {
-    rc = tiledb_query_finalize(ctx_, query);
-    REQUIRE_SAFE(rc == TILEDB_OK);
-  }
+  rc = tiledb_query_finalize(ctx_, query);
+  REQUIRE_SAFE(rc == TILEDB_OK);
 
   // Close array
   rc = tiledb_array_close(ctx_, array);
@@ -940,7 +939,7 @@ void DenseArrayFx::write_dense_subarray_2D_with_cancel(
   rc = tiledb_query_set_layout(ctx_, query, query_layout);
   REQUIRE(rc == TILEDB_OK);
 
-  if (!use_external_subarray_) {
+  if (!use_outside_subarray_) {
     // Submit the same query several times, some may be duplicates, some may
     // be cancelled, it doesn't matter since it's all the same data being
     // written.
@@ -2951,11 +2950,9 @@ int DenseArrayFx::submit_query_wrapper(
   if (!serialize_query_)
     return tiledb_query_submit(ctx_, query);
 
-  // REQUIRE()/CHECK() actions here now all _SAFEized? (SIGSEGV failure has been
-  // observed on line below 'REQUIRE(tiledb_query_get_layout(ctx_, query,
-  // &layout) == TILEDB_OK);') (submit_query_wrapper() is being called via
+  // submit_query_wrapper() is being called via
   // check_simultaneous_writes() which means these catch framework tests need
-  // thread protection.)
+  // thread protection as 'simultaneous' involves multiple threads.
 
   // Get the query type and layout
   tiledb_query_type_t query_type;
@@ -3292,22 +3289,22 @@ TEST_CASE_METHOD(
     DenseArrayFx,
     "C API: Test dense array, cancel and retry writes",
     "[capi], [dense], [async], [cancel]") {
-  SECTION("- No serialization nor external subarray") {
+  SECTION("- No serialization nor outisde subarray") {
     serialize_query_ = false;
-    use_external_subarray_ = false;
+    use_outside_subarray_ = false;
   }
-  SECTION("- Serialization, no external subarray") {
+  SECTION("- Serialization, no outside subarray") {
     serialize_query_ = true;
-    use_external_subarray_ = false;
+    use_outside_subarray_ = false;
   }
 
-  SECTION("- no serialization, with external subarray") {
+  SECTION("- no serialization, with outside subarray") {
     serialize_query_ = false;
-    use_external_subarray_ = true;
+    use_outside_subarray_ = true;
   }
-  SECTION("- Serialization, with external subarray") {
+  SECTION("- Serialization, with outside subarray") {
     serialize_query_ = true;
-    use_external_subarray_ = true;
+    use_outside_subarray_ = true;
   }
 
   // TODO: refactor for each supported FS.

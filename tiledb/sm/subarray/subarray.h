@@ -211,8 +211,6 @@ class Subarray {
 
   // 'equivalent' for older Query::set_subarray(const void *subarray);
   Status set_subarray(const void* subarray);
-  // TBD: Do we want/need some sort of 'add_subarray/range'() variety of to
-  // append rather than setting/replacing everything prior?
 
   /** Adds a range along the dimension with the given index. */
   Status add_range(uint32_t dim_idx, const Range& range);
@@ -636,7 +634,7 @@ class Subarray {
   /** Sets the subarray layout. */
   void set_layout(Layout layout);
 
-  /** Sets coalesc-ranges flag, intended for use by CAPI, to alloc matching 
+  /** Sets coalesce_ranges flag, intended for use by CAPI, to alloc matching 
   * default coalesc-ranges=true semantics of internal class constructor, but giving
   * capi clients ability to turn off if desired.
   */

@@ -2619,6 +2619,10 @@ int32_t tiledb_array_schema_has_attribute(
 int32_t tiledb_query_alloc(
     tiledb_ctx_t* ctx,
     tiledb_array_t* array,
+    //note - 'query_type' parameter is *only* used to audit and fail
+    //call to this routine if it does not match query type of the array
+    //parameter above, it will not result in an allocated query with a type
+    //different from that of the array nor changing that of the array.
     tiledb_query_type_t query_type,
     tiledb_query_t** query) {
   // Sanity check
@@ -2634,7 +2638,7 @@ int32_t tiledb_query_alloc(
     return TILEDB_ERR;
   }
 
-  // Error is the query type and array query type do not match
+  // Error if the query type and array query type do not match
   tiledb::sm::QueryType array_query_type;
   if (SAVE_ERROR_CATCH(ctx, array->array_->get_query_type(&array_query_type)))
     return TILEDB_ERR;
@@ -2729,10 +2733,9 @@ int32_t tiledb_query_set_subarray_t(
   // Should the Query.array() and Subarray.array() be validated for
   // equivalence and this request rejected if not equivalent?
 
-  // Note: call *correct* ->set_subarray(), with *correct* parameter.
-  // Incorrect... query_->set_subarray 'splits' and assigns to subarray of
-  // either Correct... following: (Note: ...query_->set_subarray 'splits' and
-  // assigns to subarray of either Reader or Writer!)
+  //Changing this area?  
+  //Be careful that the correct ->set_subarray() is called, it's
+  //easy to incorrectly call the one accepting a 'void *' parameter.
   if (SAVE_ERROR_CATCH(ctx, query->query_->set_subarray(subarray->subarray_)))
     return TILEDB_ERR;
 
@@ -3018,17 +3021,6 @@ int32_t tiledb_query_submit_async(
   // Sanity checks
   if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, query) == TILEDB_ERR)
     return TILEDB_ERR;
-    // TBD: Should this be enabled now?
-#if 0 && cppTILEDB_COND_SUB_SUBARRAY_FOR_QUERY
-  auto& which_subarray =
-      (query->query_->type() == tiledb::sm::QueryType::WRITE) ?
-          query->wsubarray_ :
-          query->rsubarray_;
-  if (sanity_check(ctx, which_subarray) == TILEDB_ERR)
-    return TILEDB_ERR;
-  if (TILEDB_OK != tiledb_query_set_subarray_t(ctx, query, which_subarray))
-    return TILEDB_ERR;
-#endif
   if (SAVE_ERROR_CATCH(
           ctx, query->query_->submit_async(callback, callback_data)))
     return TILEDB_ERR;
@@ -3045,7 +3037,6 @@ int32_t tiledb_query_submit_async_with_subarray(
   // Sanity checks
   if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, query) == TILEDB_ERR)
     return TILEDB_ERR;
-  // TBD: Should this be enabled now?
 #if 01  // && cppTILEDB_COND_SUB_SUBARRAY_FOR_QUERY
   if (sanity_check(ctx, subarray) == TILEDB_ERR)
     return TILEDB_ERR;
@@ -3215,21 +3206,6 @@ int32_t tiledb_query_add_range_var_by_name(
 
 #if 01  // && cppTILEDB_COND_SUB_SUBARRAY_FOR_QUERY
   tiledb_subarray_transient_local_t query_subarray(query);
-  if (query->query_->type() == tiledb::sm::QueryType::WRITE) {
-    if (!query->query_->array_schema()->dense()) {
-      LOG_STATUS(
-          Status::WriterError("Adding a subarray range to a write query is not "
-                              "supported in sparse arrays"));
-      return TILEDB_ERR;
-    }
-#if 0
-    //TBD: we don't have the dim-Idx here... do we need to do something to compensate?
-    if (which_subarray->subarray_.is_set(dim_idx))
-      return LOG_STATUS(
-          Status::WriterError("Cannot add range; Multi-range dense writes "
-                              "are not supported"));
-#endif
-  }
   return tiledb_subarray_add_range_var_by_name(
       ctx, &query_subarray, dim_name, start, start_size, end, end_size);
 #endif
@@ -3252,13 +3228,6 @@ int32_t tiledb_query_get_range_num(
 
 #if 01  // && cppTILEDB_COND_SUB_SUBARRAY_FOR_QUERY
   tiledb_subarray_transient_local_t query_subarray(query);
-  if (query->query_->type() == tiledb::sm::QueryType::WRITE &&
-      !query->query_->array_schema()->dense()) {
-    LOG_STATUS(
-        Status::WriterError("Getting the number of ranges from a write query "
-                            "is not applicable to sparse arrays"));
-    return TILEDB_ERR;
-  }
 
   return tiledb_subarray_get_range_num(
       ctx, &query_subarray, dim_idx, range_num);
@@ -3303,13 +3272,6 @@ int32_t tiledb_query_get_range(
 
 #if 01  // && cppTILEDB_COND_SUB_SUBARRAY_FOR_QUERY
   tiledb_subarray_transient_local_t query_subarray(query);
-  if (query->query_->type() == tiledb::sm::QueryType::WRITE &&
-      !query->query_->array_schema()->dense()) {
-    LOG_STATUS(
-        Status::WriterError("Getting a range from a write query is not "
-                            "applicable to sparse arrays"));
-    return TILEDB_ERR;
-  }
   return tiledb_subarray_get_range(
       ctx, &query_subarray, dim_idx, range_idx, start, end, stride);
 #endif
@@ -3584,6 +3546,14 @@ int32_t tiledb_query_get_subarray(
   if (tiledb_subarray_alloc(ctx, &tdb_array, subarray) != TILEDB_OK) {
     return TILEDB_ERR;
   }
+  //note: This leaves the returned subarray with references to everything
+  //that was an active part of the query's 'inside' subarray, 
+  //currently this consists of a raw pointer to an internal core entity,
+  //(const tiledb::sm::Array* array_; )
+  //so the receiving client should keep those alive as long as the 
+  //returned subarray is alive, possibly most easily tracked by keeping
+  //the source query and its dependencies alive.
+  //Any changes to this situation should be noted in the api notes as well.
   *(*subarray)->subarray_ = *query->query_->subarray();
   return TILEDB_OK;
 }

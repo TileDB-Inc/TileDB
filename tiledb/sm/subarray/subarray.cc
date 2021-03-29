@@ -197,6 +197,24 @@ Status Subarray::add_range(
     return LOG_STATUS(
         Status::SubarrayError("Cannot add range; Invalid dimension index"));
 
+  QueryType array_query_type;
+  RETURN_NOT_OK(array_->get_query_type(&array_query_type));
+  if (array_query_type == tiledb::sm::QueryType::WRITE) {
+    //    array->array_schema();
+    if (!array_->array_schema()->dense()) {
+      return LOG_STATUS(
+          Status::QueryError("Adding a subarray range to a write query is not "
+                             "supported in sparse arrays"));
+    }
+    // unsigned dim_idx;
+    // RETURN_NOT_OK(array_->array_schema()->domain()->get_dimension_index(
+    //    dim_name, &dim_idx));
+    if (this->is_set(dim_idx))
+      return LOG_STATUS(
+          Status::QueryError("Cannot add range; Multi-range dense writes "
+                             "are not supported"));
+  }
+
   if (start == nullptr || end == nullptr)
     return LOG_STATUS(Status::SubarrayError("Cannot add range; Invalid range"));
 
@@ -218,11 +236,6 @@ Status Subarray::add_range(
 
   // Add range
   return this->add_range(dim_idx, Range(&range[0], 2 * coord_size));
-  // TBD: Something like the following will likely be needed in
-  // forthcoming tiledb_query_set_subarray_v2()
-  // if (type_ == QueryType::WRITE)
-  //  return writer_.add_range(dim_idx, Range(&range[0], 2 * coord_size));
-  // return reader_.add_range(dim_idx, Range(&range[0], 2 * coord_size));
 }
 
 Status Subarray::add_range_by_name(
@@ -258,10 +271,12 @@ Status Subarray::add_range_var(
     return LOG_STATUS(
         Status::QueryError("Cannot add range; Range must be variable-sized"));
 
-  // TBD: subarray/other equivalent functionality needed some-/else- where ???
-  //  if (type_ == QueryType::WRITE)
-  //    return LOG_STATUS(Status::QueryError(
-  //        "Cannot add range; Function applicable only to reads"));
+  //... was in Status Query::add_range_var()...
+  QueryType array_query_type;
+  RETURN_NOT_OK(array_->get_query_type(&array_query_type));
+  if (array_query_type == tiledb::sm::QueryType::WRITE)
+    return LOG_STATUS(Status::QueryError(
+        "Cannot add range; Function applicable only to reads"));
 
   // Add range
   Range r;
@@ -282,18 +297,13 @@ Status Subarray::add_range_var_by_name(
   return add_range_var(dim_idx, start, start_size, end, end_size);
 }
 
-/** Retrieves the number of ranges of the subarray for the given dimension. */
-// Status get_range_num(unsigned dim_idx, uint64_t* range_num) const
-//{
-//
-//}
-
 Status Subarray::get_range_var(
     unsigned dim_idx, uint64_t range_idx, void* start, void* end) const {
-  // TBD: equiv functionality somewhere, or ???
-  //  if (type_ == QueryType::WRITE)
-  //    return LOG_STATUS(Status::WriterError(
-  //        "Getting a var range from a write query is not applicable"));
+  QueryType array_query_type;
+  RETURN_NOT_OK(array_->get_query_type(&array_query_type));
+  if (array_query_type == tiledb::sm::QueryType::WRITE)
+    return LOG_STATUS(Status::QueryError(
+        "Getting a var range for a write query is not applicable"));
 
   uint64_t start_size = 0;
   uint64_t end_size = 0;
@@ -326,13 +336,15 @@ Status Subarray::get_range(
     const void** start,
     const void** end,
     const void** stride) const {
-  // TBD: equiv functionality needed anywhere?
-  //  if (type_ == QueryType::WRITE)
-  //    return writer_.get_range(dim_idx, range_idx, start, end, stride);
-  //  return reader_.get_range(dim_idx, range_idx, start, end, stride);
-  // reader equiv version, does 'writer' also null out *stride? Yes.
-  // TBD: 'writer' get_range audits for array_schema dense/sparse, errors on
-  // !dense...
+  QueryType array_query_type;
+  RETURN_NOT_OK(array_->get_query_type(&array_query_type));
+  if (array_query_type == tiledb::sm::QueryType::WRITE) {
+    if (!array_->array_schema()->dense())
+      return LOG_STATUS(
+          Status::QueryError("Getting a range from a write query is not "
+                            "applicable to sparse arrays"));
+  }
+
   *stride = nullptr;
   return this->get_range(dim_idx, range_idx, start, end);
 }
@@ -619,6 +631,15 @@ Status Subarray::get_range_num(uint32_t dim_idx, uint64_t* range_num) const {
     return LOG_STATUS(Status::SubarrayError(msg.str()));
   }
 
+  QueryType array_query_type;
+  RETURN_NOT_OK(array_->get_query_type(&array_query_type));
+  if (array_query_type == tiledb::sm::QueryType::WRITE &&
+      !array_->array_schema()->dense()) {
+    return LOG_STATUS(
+        Status::QueryError("Getting the number of ranges from a write query "
+                            "is not applicable to sparse arrays"));
+  }
+
   *range_num = ranges_[dim_idx].size();
 
   return Status::Ok();
@@ -822,7 +843,10 @@ Status Subarray::get_est_result_size_querytype_audited(
         name + "' is nullable"));
 
 #if 01
-  if (array_->is_remote()) {  // && !reader_.est_result_size_computed()) {
+  //TBD: Figure out what does/can exercise the following code!!!
+  if (array_->is_remote()) {
+    //TBD: Should we somewhere (where?) try to remember if the remote call has
+    // already been done?
     // Trying approach of temporary query (and dup array due to 'const'ness of
     // array_ not being liked to define query)
     // TBD: will it work even if messy?
@@ -1786,8 +1810,7 @@ void Subarray::add_range_without_coalesce(
 }
 
 template <class T>
-void Subarray::add_or_coalesce_range(  // TBD: effectively coalesces only
-                                       // '[u]int types'?
+void Subarray::add_or_coalesce_range(
     const uint32_t dim_idx,
     const Range& range) {
   std::vector<Range>* const ranges = &ranges_[dim_idx];
@@ -1801,7 +1824,6 @@ void Subarray::add_or_coalesce_range(  // TBD: effectively coalesces only
   // If the start index of `range` immediately follows the end of the
   // last range on `ranges`, they are contiguous and will be coalesced.
   Range& last_range = ranges->back();
-#if 01
   const bool contiguous_after = *static_cast<const T*>(last_range.end()) !=
                                     std::numeric_limits<T>::max() &&
                                 *static_cast<const T*>(last_range.end()) + 1 ==
@@ -1813,76 +1835,6 @@ void Subarray::add_or_coalesce_range(  // TBD: effectively coalesces only
   else {
     ranges->emplace_back(range);
   }
-#elif 01
-  //    const bool contiguous_before_or_overlapping_encompassing =
-  //      *static_cast<const T*>(range.start()) < *static_cast<const
-  //      T*>(last_range.start())
-  //      //nope, appears tiledb actually allows negatives of signed types... &&
-  //      *static_cast<const T*>(last_range.start()) > 0
-  //      && *static_cast<const T*>(range.end()) >= *static_cast<const
-  //      T*>(last_range.start())-1
-  //      //&& range.end() could also be *beyond* last_range.end(), in which
-  //      case this 'new' range
-  //      //would be totally encompassing the old one
-  //      ;
-  assert(
-      *static_cast<const T*>(range.start()) <=
-      *static_cast<const T*>(range.end()));
-  auto combinable = !(  // not_combinable =
-      *static_cast<const T*>(range.start()) >
-          *static_cast<const T*>(last_range.end())  // new range beyond previous
-      || *static_cast<const T*>(range.end()) <
-             *static_cast<const T*>(last_range.start()) -
-                 1  // new range too far before previous
-  );
-  auto combinable2 = *static_cast<const T*>(range.end()) >=
-                         *static_cast<const T*>(last_range.start()) - 1 &&
-                     *static_cast<const T*>(range.start()) <=
-                         *static_cast<const T*>(last_range.end());
-  assert(combinable == combinable2);
-  if (combinable != combinable2)
-    __debugbreak();
-  if (combinable) {
-    const T *start, *end;
-    // auto start = std::min(range.start(), last_range.start());
-    if (*static_cast<const T*>(range.start()) <
-        *static_cast<const T*>(last_range.start()))
-      start = static_cast<const T*>(range.start());
-    else
-      start = static_cast<const T*>(last_range.start());
-    // auto end = std::max(range.end(), last_range.end());
-    if (*static_cast<const T*>(range.end()) >
-        *static_cast<const T*>(last_range.end()))
-      end = static_cast<const T*>(range.end());
-    else
-      end = static_cast<const T*>(last_range.end());
-    last_range.set_start(start);
-    last_range.set_end(end);
-  } else {
-    ranges->emplace_back(range);
-  }
-//    auto need_to_add = true;
-//    if (*static_cast<const T*>(range.start()) < *static_cast<const
-//    T*>(last_range.start())) {
-//      //start of incoming range falls before last_range.start()
-//      if (*static_cast<const T*>(last_range.start()) > 0 //last_range.start()
-//      was not first absolute possibility
-//        && *static_cast<const T*>(range.end()) >= *static_cast<const
-//        T*>(last_range.start()) - 1) {
-//        //range.end() is somewhere beyond last_range.start()-1
-//        //so know can use incoming range_start()
-//        last_range.set_start(range.start()); //prepend additional range area
-//        need_to_add = false;
-//        if(*static_cast<const T*>(range.end()) > *static_cast<const
-//        T*>(last_range.end()))
-//          //incoming range_end() is actually *beyond* original
-//          last_range.end(), so can
-//          //subsume entire previous last_range.
-//          last_range.set_end(range.end()); //append additional range area
-//      }
-//    }
-//    if(need_to_add) ...
-#endif
 }
 
 /* ****************************** */

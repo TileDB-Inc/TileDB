@@ -4615,6 +4615,14 @@ TILEDB_EXPORT int32_t tiledb_query_get_fragment_timestamp_range(
  * @param array An open array object.
  * @param subarray The retrieved subarray object if available.
  * @return `TILEDB_OK` for success or `TILEDB_OOM` or `TILEDB_ERR` for error.
+ *
+ * @note The returned subarray will have references to everything
+ * that was an active part of the query's contained subarray,
+ * currently this consists of a raw pointer to an internal core entity,
+ * (const tiledb::sm::Array* array_; )
+ * so the receiving client should keep those alive as long as the
+ * returned subarray is alive, possibly most easily tracked by keeping
+ * the source query and its dependencies alive.
  */
 TILEDB_EXPORT
 int32_t tiledb_query_get_subarray(
@@ -4743,7 +4751,6 @@ TILEDB_EXPORT int32_t tiledb_subarray_set_coalesce_ranges(
  *     must have the same type as the domain of the subarray's associated
  *     array.
  * @return `TILEDB_OK` for success or `TILEDB_ERR` for error.
- *
  */
 TILEDB_EXPORT
 int32_t tiledb_subarray_set_subarray(
@@ -5557,14 +5564,35 @@ TILEDB_EXPORT int32_t tiledb_subarray_partitioner_get_result_budget_nullable_var
 /**
  * Set partitioning budget for var sized attribute.
  * 
- * **Example:**
-o * 
  * @code{.c}
- * tiledb_subarray_partitioner_t *partitioner; //prior init'd
- * tiledb_ctx_t *ctx; //prior init'd
- * uint64_t budget_off; // 
- * uint64_t budget_val; //
- * char *attrname; //valid attr name for the array of the subarray used to create partitioner
+ * tiledb_subarray_partitioner_t *partitioner;
+ * tiledb_ctx_t *ctx;
+ * uint64_t *budget;
+ * char *attrname;
+ * tiledb_subarray_partitioner_get_result_budget_fixed(ctx, attrname, budget, partitioner);
+ * @endcode
+ * 
+ * @param budget - byte count memory budget for the specified attribute.
+ * @return `TILEDB_OK` for success or `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_subarray_partitioner_get_result_budget_fixed(
+    tiledb_ctx_t* ctx,
+    const char* attrname,
+    uint64_t* budget,
+    tiledb_subarray_partitioner_t* partitioner);
+
+/**
+ * Gets result size budget (in bytes) for the input var-sized
+ * attribute/dimension.
+ * 
+ * **Example:**
+ * 
+ * @code{.c}
+ * tiledb_subarray_partitioner_t *partitioner;
+ * tiledb_ctx_t *ctx;
+ * uint64_t budget_off;
+ * uint64_t budget_val;
+ * char *attrname;
  * tiledb_subarray_partitioner_set_result_budget_var(ctx, attrname, budget_off, budget_val, partitioner);
  * @endcode
  * 

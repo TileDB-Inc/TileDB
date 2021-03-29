@@ -200,8 +200,8 @@ TEST_CASE(
   // Note: If you encounter a failure here, in particular with a_read[0] == 100
   // (instead of 1), be sure non_split_coords_v1_4_0 has not become 'corrupt',
   // possibly from a previous aborted run, as there is also a test elsewhere
-  // which expects a_read[0] == 100, can refresh that to correct initial state
-  // from repository if corrupt.
+  // which expects a_read[0] == 100, can refresh non_split_coords_v1_4_0
+  // from repository to correct initial state from repository if corrupt.
   for (int i = 0; i < 4; i++)
     REQUIRE(a_read[i] == i + 1);
 }

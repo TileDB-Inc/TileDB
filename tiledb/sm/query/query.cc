@@ -994,66 +994,22 @@ Status Query::set_subarray(const void* subarray) {
   return Status::Ok();
 }
 
-Status Query::check_subarray(const tiledb::sm::Subarray* subarray) {
-  if (type_ == QueryType::WRITE) {
-    RETURN_NOT_OK(writer_.check_subarray(subarray));
-  } else if (type_ == QueryType::READ) {
-    RETURN_NOT_OK(reader_.check_subarray(subarray));
-  }
-  return Status::Ok();
-}
-
 Status Query::set_subarray(const tiledb::sm::Subarray* subarray) {
-  // TBD: Write me.
-#if 0  // 1 //try again, see if still a problem from 'there'...
-  //test catches/fails call from SparseHeterFx::check_read_sparse_array_float_int64
-  if (!array_->array_schema()->domain()->all_dims_same_type())
-    return LOG_STATUS(
-        Status::QueryError("Cannot set subarray; Function not applicable to "
-                           "heterogeneous domains"));
-#endif
-
-#if 0  // 1 //try again, see if still a problem from 'there'...
-  //This check maybe predicated on previous one... hmm...
-  //TBD: Does some check of this sort need to be made, after disabling above check,
-  //this one causing failure unit-capi-stringdims.cc, tiledb_query_submit_wrapper() called
-  //from void StringDimsFx::read_array_2d()
-  if (!array_->array_schema()->domain()->all_dims_fixed())
-    return LOG_STATUS(
-        Status::QueryError("Cannot set subarray; Function not applicable to "
-                           "domains with variable-sized dimensions"));
-#endif
 
   auto query_status = status();
   if (query_status != tiledb::sm::QueryStatus::UNINITIALIZED &&
       query_status != tiledb::sm::QueryStatus::COMPLETED) {
-    // Sssoooo, attempts to 'auto'-set_v2 from submit()s result in this
-    // situation for, minimally, any incomplete reads.
-    // But, failing to support/allow, would mean cannot be used, as might
-    // currently be the case with earlier APIs (tiledb_query_set_subarray, to
-    //'re-set' an inprogress query to starting state...
-#if 0 && defined(_WIN32)
-    __debugbreak();  // TBD: anyone trying to do this ATM?
-#endif
-    // 1)
+    // note:
     // Can be in this initialized state when query has been de-serialized
     // server-side and are trying to perform local submit...
-    //return TILEDB_OK;
+    // Don't change anything and return indication of success.
     return Status::Ok();
-    // return TILEDB_ERR;
-    // if (TILEDB_OK != tiledb_query_set_subarray_v2(ctx, query, subarray))
-    //  return TILEDB_ERR;
   }
 
   // Set subarray
   if (!subarray->is_set())
-    // Nothing useful to set here, will leave query->query_ with its current
-    // settings.
-    // TBD: Current passes unit tests (cloned/modified from prior internal subarray testing),
-    // but can envision circumstances where *might* want to do this to re-init as with
-    // other set_subarray()s - but think when weren't
-    // bailing in this state some tests were failing...
-    //return TILEDB_OK;
+    // Nothing useful to set here, will leave query with its current
+    // settings and consider successful.
     return Status::Ok();
 
   if (type_ == QueryType::WRITE) {
@@ -1088,16 +1044,12 @@ Status Query::set_subarray_unsafe(const NDRange& subarray) {
 }
 
 const Subarray& Query::subarray() const {
-  // TBD:
-  // Should this err/throw if query not initialized?
   if (type_ == QueryType::WRITE)
     return *writer_.subarray_ranges();
   return *reader_.subarray();
 }
 
 Subarray* Query::subarray() {
-  // TBD:
-  // Should this err/throw if query not initialized?
   if (type_ == QueryType::WRITE)
     return const_cast<Subarray*>(writer_.subarray_ranges());
   return const_cast<Subarray*>(reader_.subarray());
@@ -1113,18 +1065,6 @@ Status Query::submit(/*Subarray *subarray*/) {
   if (type_ == QueryType::READ && status_ == QueryStatus::COMPLETED) {
     return Status::Ok();
   }
-
-#if 0
-  if(subarray){
-	  if (type_ == QueryType::READ) {
-		  reader_.set_subarray(*subarray);
-	  }
-	  else {
-		  writer_.set_subarray(*subarray);
-	  }
-  }
-#endif
-
   if (array_->is_remote()) {
     auto rest_client = storage_manager_->rest_client();
     if (rest_client == nullptr)
@@ -1141,7 +1081,7 @@ Status Query::submit(/*Subarray *subarray*/) {
 
 Status Query::submit_async(
     std::function<void(void*)> callback,
-    void* callback_data /*, Subarray *subarray*/) {
+    void* callback_data) {
   // Do not resubmit completed reads.
   if (type_ == QueryType::READ && status_ == QueryStatus::COMPLETED) {
     callback(callback_data);
@@ -1152,16 +1092,6 @@ Status Query::submit_async(
     return LOG_STATUS(
         Status::QueryError("Error in async query submission; async queries not "
                            "supported for remote arrays."));
-
-#if 0
-  if (subarray) {
-    if (type_ == QueryType::READ) {
-      reader_.set_subarray(*subarray);
-    } else {
-      writer_.set_subarray(*subarray);
-    }
-  }
-#endif
 
   callback_ = callback;
   callback_data_ = callback_data;

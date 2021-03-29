@@ -33,8 +33,12 @@
 #include "catch.hpp"
 #include "tiledb/sm/cpp_api/tiledb"
 #include "tiledb/sm/misc/utils.h"
+#include "tiledb/sm/c_api/tiledb_struct_def.h"
+#include "helpers.h"
 
 using namespace tiledb;
+
+using namespace tiledb::test; //for visibility of items in 'helpers.<h,cc>'
 
 TEST_CASE("C++ API: Test subarray", "[cppapi][sparse][subarray]") {
   const std::string array_name = "cpp_unit_array";
@@ -57,7 +61,7 @@ TEST_CASE("C++ API: Test subarray", "[cppapi][sparse][subarray]") {
   std::vector<int> data_w = {1, 2, 3, 4};
   std::vector<int> coords_w = {0, 0, 1, 1, 2, 2, 3, 3};
   Array array_w(ctx, array_name, TILEDB_WRITE);
-  Query query_w(ctx, array_w);
+  tiledb::Query query_w(ctx, array_w);
   query_w.set_coordinates(coords_w)
       .set_layout(TILEDB_UNORDERED)
       .set_buffer("a", data_w);
@@ -66,8 +70,8 @@ TEST_CASE("C++ API: Test subarray", "[cppapi][sparse][subarray]") {
   array_w.close();
 
   SECTION("- Read single cell - Subarray-internal") {
-    Array array(ctx, array_name, TILEDB_READ);
-    Query query(ctx, array);
+    tiledb::Array array(ctx, array_name, TILEDB_READ);
+    tiledb::Query query(ctx, array);
     int range[] = {0, 0};
     query.add_range(0, range[0], range[1]);
     query.add_range(1, range[0], range[1]);
@@ -83,9 +87,9 @@ TEST_CASE("C++ API: Test subarray", "[cppapi][sparse][subarray]") {
   }
 
   SECTION("- Read single cell - Subarray-cppapi") {
-    Array array(ctx, array_name, TILEDB_READ);
-    Query query(ctx, array);
-    Subarray subarray(ctx, array);
+    tiledb::Array array(ctx, array_name, TILEDB_READ);
+    tiledb::Query query(ctx, array);
+    tiledb::Subarray subarray(ctx, array);
     int range[] = {0, 0};
     subarray.add_range(0, range[0], range[1]);
     subarray.add_range(1, range[0], range[1]);
@@ -101,8 +105,8 @@ TEST_CASE("C++ API: Test subarray", "[cppapi][sparse][subarray]") {
   }
 
   SECTION("- Read single range - Subarray-internal") {
-    Array array(ctx, array_name, TILEDB_READ);
-    Query query(ctx, array);
+    tiledb::Array array(ctx, array_name, TILEDB_READ);
+    tiledb::Query query(ctx, array);
     int range[] = {1, 2};
     query.add_range(0, range[0], range[1]).add_range(1, range[0], range[1]);
 
@@ -120,9 +124,9 @@ TEST_CASE("C++ API: Test subarray", "[cppapi][sparse][subarray]") {
   }
 
   SECTION("- Read single range - Subarray-cppapi") {
-    Array array(ctx, array_name, TILEDB_READ);
-    Query query(ctx, array);
-    Subarray subarray(ctx, array);
+    tiledb::Array array(ctx, array_name, TILEDB_READ);
+    tiledb::Query query(ctx, array);
+    tiledb::Subarray subarray(ctx, array);
     int range[] = {1, 2};
     subarray.add_range(0, range[0], range[1]).add_range(1, range[0], range[1]);
 
@@ -140,8 +144,8 @@ TEST_CASE("C++ API: Test subarray", "[cppapi][sparse][subarray]") {
   }
 
   SECTION("- Read two cells - Subarray-internal") {
-    Array array(ctx, array_name, TILEDB_READ);
-    Query query(ctx, array);
+    tiledb::Array array(ctx, array_name, TILEDB_READ);
+    tiledb::Query query(ctx, array);
     int range0[] = {0, 0}, range1[] = {2, 2};
     query.add_range(0, range0[0], range0[1]);
     query.add_range(1, range0[0], range0[1]);
@@ -177,9 +181,9 @@ TEST_CASE("C++ API: Test subarray", "[cppapi][sparse][subarray]") {
   }
 
   SECTION("- Read two cells - Subarray-cppapi") {
-    Array array(ctx, array_name, TILEDB_READ);
-    Query query(ctx, array);
-    Subarray subarray(ctx, array);
+    tiledb::Array array(ctx, array_name, TILEDB_READ);
+    tiledb::Query query(ctx, array);
+    tiledb::Subarray subarray(ctx, array);
     int range0[] = {0, 0}, range1[] = {2, 2};
     subarray.add_range(0, range0[0], range0[1]);
     subarray.add_range(1, range0[0], range0[1]);
@@ -215,8 +219,8 @@ TEST_CASE("C++ API: Test subarray", "[cppapi][sparse][subarray]") {
   }
 
   SECTION("- Read two regions - Subarray-internal") {
-    Array array(ctx, array_name, TILEDB_READ);
-    Query query(ctx, array);
+    tiledb::Array array(ctx, array_name, TILEDB_READ);
+    tiledb::Query query(ctx, array);
     int range0[] = {0, 1}, range1[] = {2, 3};
     query.add_range(0, range0[0], range0[1]);
     query.add_range(1, range0[0], range0[1]);
@@ -235,9 +239,9 @@ TEST_CASE("C++ API: Test subarray", "[cppapi][sparse][subarray]") {
   }
 
   SECTION("- Read two regions - Subarray-cppapi") {
-    Array array(ctx, array_name, TILEDB_READ);
-    Query query(ctx, array);
-    Subarray subarray(ctx, array);
+    tiledb::Array array(ctx, array_name, TILEDB_READ);
+    tiledb::Query query(ctx, array);
+    tiledb::Subarray subarray(ctx, array);
     int range0[] = {0, 1}, range1[] = {2, 3};
     subarray.add_range(0, range0[0], range0[1]);
     subarray.add_range(1, range0[0], range0[1]);
@@ -287,8 +291,8 @@ TEST_CASE(
   std::vector<int> coords_w = {0, 12277, 0, 12771, 0, 13374, 0, 13395, 0, 13413,
                                0, 13451, 0, 13519, 0, 13544, 0, 13689, 0, 17479,
                                0, 17486, 1, 12277, 1, 12771, 1, 13389};
-  Array array_w(ctx, array_name, TILEDB_WRITE);
-  Query query_w(ctx, array_w);
+  tiledb::Array array_w(ctx, array_name, TILEDB_WRITE);
+  tiledb::Query query_w(ctx, array_w);
   query_w.set_coordinates(coords_w)
       .set_layout(TILEDB_UNORDERED)
       .set_buffer("a", data_w);
@@ -297,8 +301,8 @@ TEST_CASE(
   array_w.close();
 
   // Open array for reading
-  Array array(ctx, array_name, TILEDB_READ);
-  Query query(ctx, array);
+  tiledb::Array array(ctx, array_name, TILEDB_READ);
+  tiledb::Query query(ctx, array);
   query.set_layout(TILEDB_UNORDERED);
 
   // Set up subarray for read
@@ -433,9 +437,9 @@ TEST_CASE(
   std::vector<int> coords_w = {0, 12277, 0, 12771, 0, 13374, 0, 13395, 0, 13413,
                                0, 13451, 0, 13519, 0, 13544, 0, 13689, 0, 17479,
                                0, 17486, 1, 12277, 1, 12771, 1, 13389};
-  Array array_w(ctx, array_name, TILEDB_WRITE);
-  Query query_w(ctx, array_w);
-  Subarray subarray_w(ctx, array_w);
+  tiledb::Array array_w(ctx, array_name, TILEDB_WRITE);
+  tiledb::Query query_w(ctx, array_w);
+  tiledb::Subarray subarray_w(ctx, array_w);
   query_w.set_coordinates(coords_w)
       .set_layout(TILEDB_UNORDERED)
       .set_buffer("a", data_w);
@@ -444,9 +448,9 @@ TEST_CASE(
   array_w.close();
 
   // Open array for reading
-  Array array(ctx, array_name, TILEDB_READ);
-  Query query(ctx, array);
-  Subarray subarray(ctx, array);
+  tiledb::Array array(ctx, array_name, TILEDB_READ);
+  tiledb::Query query(ctx, array);
+  tiledb::Subarray subarray(ctx, array);
   query.set_layout(TILEDB_UNORDERED);
 
   // Set up subarray for read
@@ -463,6 +467,15 @@ TEST_CASE(
   range_num = subarray.range_num(1);
   // Ranges `col_range0` and `col_range1` are coalesced.
   CHECK(range_num == 1);
+  //const void *start, *end, *stride;
+  const int *start, *end, *stride;
+  std::array<int, 3> rng = subarray.range<int>(0, 0);
+  CHECK(rng[0] == row_range[0]);
+  CHECK(rng[1] == row_range[1]);
+  rng = subarray.range<int>(1, 0);
+  //...0 and ...1 were coalesced, hence ...0[0], ...1[1] checks
+  CHECK(rng[0] == col_range0[0]);
+  CHECK(rng[1] == col_range1[1]);
 
   // Allocate buffers large enough to hold 2 cells at a time.
   std::vector<char> data(2, '\0');
@@ -470,13 +483,20 @@ TEST_CASE(
   query.set_coordinates(coords).set_buffer("a", data);
 
   {
-    Query query(ctx, array);
+    tiledb::Query query(ctx, array);
+    tiledb::Subarray default_subarray_from_query(query);
+    //Check against 'default' subarray here and non-default subarray below to
+    //verify that we've actually made a difference by the query.set_subarray()
+    //since the other CHECKS(range_num == 1) succeed whether or not the
+    //.set_subarray() was done (accidental discovery.)
+    CHECK(!subarray_equiv<int>(
+        *default_subarray_from_query.capi_subarray()->subarray_,
+        *subarray.capi_subarray()->subarray_));
     query.set_subarray(subarray);
-    // TBD: CHECK()s below in this block succeed whether or not previous
-    // query.set_subarray() occurred, what's a test that will fail if not set
-    // but succeed if set, so can be sure actually testing the .set_subarray()
-    // functionality?
-    Subarray retrieved_query_subarray(query);
+    tiledb::Subarray retrieved_query_subarray(query);
+    CHECK(subarray_equiv<int>(
+        *retrieved_query_subarray.capi_subarray()->subarray_,
+        *subarray.capi_subarray()->subarray_));
     // Test range num
     auto range_num = retrieved_query_subarray.range_num(0);
     CHECK(range_num == 1);
@@ -495,7 +515,7 @@ TEST_CASE(
   REQUIRE(data[1] == 'l');
 
   {
-    Subarray query_subarray(query);
+    tiledb::Subarray query_subarray(query);
     auto range_num = subarray.range_num(0);
     CHECK(range_num == 1);
     range_num = subarray.range_num(1);
@@ -504,9 +524,6 @@ TEST_CASE(
   }
 
   // Resubmit
-  // TBD: cppapi - what happens with this resubmit???
-  // TBD: maybe these *should not* be _with_subarray(), have to evaluate
-  // functionality/apis...
   st = query.submit_with_subarray(subarray);
   REQUIRE(st == Query::Status::INCOMPLETE);
   result_elts = query.result_buffer_elements();
@@ -609,8 +626,8 @@ TEST_CASE(
   std::vector<int> coords_w = {0, 12277, 0, 12771, 0, 13374, 0, 13395, 0, 13413,
                                0, 13451, 0, 13519, 0, 13544, 0, 13689, 0, 17479,
                                0, 17486, 1, 12277, 1, 12771, 1, 13389};
-  Array array_w(ctx, array_name, TILEDB_WRITE);
-  Query query_w(ctx, array_w);
+  tiledb::Array array_w(ctx, array_name, TILEDB_WRITE);
+  tiledb::Query query_w(ctx, array_w);
   query_w.set_coordinates(coords_w)
       .set_layout(TILEDB_UNORDERED)
       .set_buffer("a", data_w);
@@ -619,8 +636,8 @@ TEST_CASE(
   array_w.close();
 
   // Open array for reading
-  Array array(ctx, array_name, TILEDB_READ);
-  Query query(ctx, array);
+  tiledb::Array array(ctx, array_name, TILEDB_READ);
+  tiledb::Query query(ctx, array);
 
   // Set up subarray for read
   int row_range[] = {1, 1};
@@ -687,9 +704,9 @@ TEST_CASE(
   std::vector<int> coords_w = {0, 12277, 0, 12771, 0, 13374, 0, 13395, 0, 13413,
                                0, 13451, 0, 13519, 0, 13544, 0, 13689, 0, 17479,
                                0, 17486, 1, 12277, 1, 12771, 1, 13389};
-  Array array_w(ctx, array_name, TILEDB_WRITE);
-  Query query_w(ctx, array_w);
-  Subarray subarray_w(ctx, array_w);
+  tiledb::Array array_w(ctx, array_name, TILEDB_WRITE);
+  tiledb::Query query_w(ctx, array_w);
+  tiledb::Subarray subarray_w(ctx, array_w);
   query_w.set_coordinates(coords_w)
       .set_layout(TILEDB_UNORDERED)
       .set_buffer("a", data_w);
@@ -698,9 +715,9 @@ TEST_CASE(
   array_w.close();
 
   // Open array for reading
-  Array array(ctx, array_name, TILEDB_READ);
-  Query query(ctx, array);
-  Subarray subarray(ctx, array);
+  tiledb::Array array(ctx, array_name, TILEDB_READ);
+  tiledb::Query query(ctx, array);
+  tiledb::Subarray subarray(ctx, array);
 
   // Set up subarray for read
   int row_range[] = {1, 1};

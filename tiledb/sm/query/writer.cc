@@ -1285,29 +1285,11 @@ Status Writer::check_subarray(const Subarray* subarray) const {
 
   auto& which_subarray = subarray ? *subarray : subarray_;
   if (array_schema_->dense()) {
-#if 01
-    // TBD: maybe this is sufficiently trapped by Writer::set_subarray(), ?
     if (which_subarray.range_num() != 1)
       return LOG_STATUS(
           Status::WriterError("Multi-range dense writes "
                               "are not supported"));
-#endif
-#if 0
-    // TBD: FIXME: This comes *too late) in writer::init() process *after*
-    //TBD: What is *correct* means to match original check/conditions in add_range()?
-    // Writer::init() has *set*
-    // a subarray when it found !.is_set()...
-    // if (subarray_.count_set() > 1) // zero (all default) or one allowed.
-    if (!which_subarray.is_unary())
-      // Note: previously handled in Writer::add_range(), semantics of checking
-      // this here will be different from those using original tiledb_query...()
-      // actions.
-      return LOG_STATUS(
-          Status::WriterError("Multi-range dense writes "
-                              "are not supported"));
-#endif
 
-    // TBD: how does 'subarray' know which/where tiles to check for coincidence?
     if (layout_ == Layout::GLOBAL_ORDER &&
         !which_subarray.coincides_with_tiles())
       return LOG_STATUS(
@@ -1318,7 +1300,7 @@ Status Writer::check_subarray(const Subarray* subarray) const {
       return LOG_STATUS(Status::WriterError(
           "Cannot initialize query; Setting a subarray in unordered writes for "
           "dense arrays is inapplicable"));
-  } else {  // !array_schema_->dense()
+  } else {  // state is !array_schema_->dense()
     if (which_subarray.is_set())
       // Note: previously handled in Writer::add_range()
       return LOG_STATUS(
