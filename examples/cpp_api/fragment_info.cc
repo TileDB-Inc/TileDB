@@ -127,9 +127,9 @@ void get_fragment_info() {
   // If not, get the number of fragments with unconsolidated metadata
   //  in the fragment info object.
   bool consolidated = fragment_info.has_consolidated_metadata(0);
-  if (consolidated != 0)
+  if (consolidated != 0) {
     printf("The fragment has consolidated metadata.\n");
-  else {
+  } else {
     uint32_t unconsolidated = fragment_info.unconsolidated_metadata_num();
     printf(
         "The fragment has %d unconsolidated metadata fragments.\n",

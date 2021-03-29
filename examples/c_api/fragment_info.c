@@ -176,9 +176,9 @@ void get_fragment_info() {
   int32_t consolidated;
   tiledb_fragment_info_has_consolidated_metadata
     (ctx, fragment_info, 0, &consolidated);
-  if (consolidated != 0)
+  if (consolidated != 0) {
     printf( "The fragment has consolidated metadata.\n");
-  else  {
+  } else  {
     uint32_t unconsolidated;
     tiledb_fragment_info_get_unconsolidated_metadata_num
       (ctx, fragment_info, &unconsolidated);
