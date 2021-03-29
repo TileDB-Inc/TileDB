@@ -62,6 +62,28 @@ class Logger {
   /* ********************************* */
 
   /**
+   * Log a trace statement with no message formatting.
+   *
+   * @param msg The string to log.
+   */
+  void trace(const char* msg) {
+    logger_->trace(msg);
+  }
+
+  /**
+   * A formatted trace statment.
+   *
+   * @param fmt A fmtlib format string, see http://fmtlib.net/latest/ for
+   *     details.
+   * @param arg positional argument to format.
+   * @param args optional additional positional arguments to format.
+   */
+  template <typename Arg1, typename... Args>
+  void trace(const char* fmt, const Arg1& arg1, const Args&... args) {
+    logger_->trace(fmt, arg1, args...);
+  }
+
+  /**
    * Log a debug statement with no message formatting.
    *
    * @param msg The string to log.
@@ -77,11 +99,54 @@ class Logger {
    *     details.
    * @param arg positional argument to format.
    * @param args optional additional positional arguments to format.
-   * @return void
    */
   template <typename Arg1, typename... Args>
   void debug(const char* fmt, const Arg1& arg1, const Args&... args) {
     logger_->debug(fmt, arg1, args...);
+  }
+
+  /**
+   * Log an info statement with no message formatting.
+   *
+   * @param msg The string to log.
+   */
+  void info(const char* msg) {
+    logger_->info(msg);
+  }
+
+  /**
+   * A formatted info statment.
+   *
+   * @param fmt A fmtlib format string, see http://fmtlib.net/latest/ for
+   *     details.
+   * @param arg positional argument to format.
+   * @param args optional additional positional arguments to format.
+   */
+  template <typename Arg1, typename... Args>
+  void info(const char* fmt, const Arg1& arg1, const Args&... args) {
+    logger_->info(fmt, arg1, args...);
+  }
+
+  /**
+   * Log a warn statement with no message formatting.
+   *
+   * @param msg The string to log.
+   */
+  void warn(const char* msg) {
+    logger_->warn(msg);
+  }
+
+  /**
+   * A formatted warn statment.
+   *
+   * @param fmt A fmtlib format string, see http://fmtlib.net/latest/ for
+   *     details.
+   * @param arg positional argument to format.
+   * @param args optional additional positional arguments to format.
+   */
+  template <typename Arg1, typename... Args>
+  void warn(const char* fmt, const Arg1& arg1, const Args&... args) {
+    logger_->warn(fmt, arg1, args...);
   }
 
   /**
@@ -103,6 +168,28 @@ class Logger {
   template <typename Arg1, typename... Args>
   void error(const char* fmt, const Arg1& arg1, const Args&... args) {
     logger_->error(fmt, arg1, args...);
+  }
+
+  /**
+   * Log a critical statement with no message formatting.
+   *
+   * @param msg The string to log.
+   */
+  void critical(const char* msg) {
+    logger_->critical(msg);
+  }
+
+  /**
+   * A formatted critical statment.
+   *
+   * @param fmt A fmtlib format string, see http://fmtlib.net/latest/ for
+   *     details.
+   * @param arg positional argument to format.
+   * @param args optional additional positional arguments to format.
+   */
+  template <typename Arg1, typename... Args>
+  void critical(const char* fmt, const Arg1& arg1, const Args&... args) {
+    logger_->critical(fmt, arg1, args...);
   }
 
   /** Verbosity level. */
@@ -161,6 +248,26 @@ class Logger {
 Logger& global_logger();
 
 /** Logs an error. */
+inline void LOG_TRACE(const std::string& msg) {
+  global_logger().trace(msg.c_str());
+}
+
+/** Logs an error. */
+inline void LOG_DEBUG(const std::string& msg) {
+  global_logger().debug(msg.c_str());
+}
+
+/** Logs an error. */
+inline void LOG_INFO(const std::string& msg) {
+  global_logger().info(msg.c_str());
+}
+
+/** Logs an error. */
+inline void LOG_WARN(const std::string& msg) {
+  global_logger().warn(msg.c_str());
+}
+
+/** Logs an error. */
 inline void LOG_ERROR(const std::string& msg) {
   global_logger().error(msg.c_str());
 }
@@ -168,6 +275,31 @@ inline void LOG_ERROR(const std::string& msg) {
 /** Logs a status. */
 inline Status LOG_STATUS(const Status& st) {
   global_logger().error(st.to_string().c_str());
+  return st;
+}
+
+/** Logs a status. */
+inline Status LOG_STATUS(const Status& st, Logger::Level level) {
+  switch (level) {
+    case Logger::Level::FATAL:
+      global_logger().critical(st.to_string().c_str());
+      break;
+    case Logger::Level::ERR:
+      global_logger().error(st.to_string().c_str());
+      break;
+    case Logger::Level::WARN:
+      global_logger().warn(st.to_string().c_str());
+      break;
+    case Logger::Level::INFO:
+      global_logger().info(st.to_string().c_str());
+      break;
+    case Logger::Level::DBG:
+      global_logger().debug(st.to_string().c_str());
+      break;
+    case Logger::Level::TRACE:
+      global_logger().trace(st.to_string().c_str());
+      break;
+  }
   return st;
 }
 
