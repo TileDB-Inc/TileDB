@@ -37,14 +37,33 @@
 #include "tiledb/sm/cpp_api/tiledb"
 #include "tiledb/sm/serialization/query.h"
 
+#ifdef _WIN32
+#include "tiledb/sm/filesystem/win.h"
+#else
+#include "tiledb/sm/filesystem/posix.h"
+#endif
+
 using namespace tiledb;
 
 namespace {
 
+#ifdef _WIN32
+static const char PATH_SEPARATOR = '\\';
+static std::string current_dir() {
+  return sm::Win::current_dir();
+}
+#else
+static const char PATH_SEPARATOR = '/';
+static std::string current_dir() {
+  return sm::Posix::current_dir();
+}
+#endif
+
 struct SerializationFx {
   const std::string tmpdir = "serialization_test_dir";
   const std::string array_name = "testarray";
-  const std::string array_uri = tmpdir + "/" + array_name;
+  const std::string array_uri =
+      current_dir() + PATH_SEPARATOR + tmpdir + "/" + array_name;
 
   Context ctx;
   VFS vfs;
@@ -54,6 +73,9 @@ struct SerializationFx {
     if (vfs.is_dir(tmpdir))
       vfs.remove_dir(tmpdir);
     vfs.create_dir(tmpdir);
+    if (!vfs.is_dir(tmpdir))
+      std::cerr << "'created' but not finding dir '" << tmpdir << "'"
+                << std::endl;
   }
 
   ~SerializationFx() {
@@ -338,6 +360,7 @@ struct SerializationFx {
    */
   static std::vector<void*> allocate_query_buffers(
       const Context& ctx, const Array& array, Query* query) {
+    (void)array;
     std::vector<void*> to_free;
     void* unused1;
     uint64_t* unused2;

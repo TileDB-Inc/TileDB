@@ -35,6 +35,20 @@ include(TileDBCommon)
 # If the EP was built, it will install the CapnProtoConfig.cmake file, which we
 # can use with find_package.
 
+if(WIN32)
+  set(TILEDB_CAPNPROTO_VERSION 0.8.0)
+  set(TILEDB_CAPNPROTO_GITTAG "v0.8.0")
+  set(TILEDB_CAPNPROTO_HASH_SPEC "SHA1=6910b8872602c46c8b0e9692dc2889c1808a5950")
+  set(TILEDB_CAPNPROTO_URL "https://github.com/capnproto/capnproto/archive/v0.8.0.tar.gz")
+else()
+  set(TILEDB_CAPNPROTO_VERSION 0.6.1)
+  set(TILEDB_CAPNPROTO_GITTAG "v0.6.1")
+  set(TILEDB_CAPNPROTO_URL "https://github.com/capnproto/capnproto/archive/v0.6.1.tar.gz")
+  set(TILEDB_CAPNPROTO_HASH_SPEC "SHA1=2aec1f83cc4851ae58e1419c87f11f8aa63a9392")
+endif()
+
+message(STATUS "TILEDB_CAPNPROTO_URL: ${TILEDB_CAPNPROTO_URL}")
+
 # First try the CMake find module.
 if (NOT TILEDB_FORCE_ALL_DEPS OR TILEDB_CAPNP_EP_BUILT)
   if (TILEDB_CAPNP_EP_BUILT)
@@ -45,7 +59,7 @@ if (NOT TILEDB_FORCE_ALL_DEPS OR TILEDB_CAPNP_EP_BUILT)
   endif()
 
   find_package(CapnProto
-    0.6.1 EXACT
+    ${TILEDB_CAPNPROTO_VERSION} EXACT
     PATHS ${TILEDB_EP_INSTALL_PREFIX}
     ${TILEDB_CAPNP_NO_DEFAULT_PATH}
     )
@@ -54,7 +68,7 @@ endif()
 
 # We handle the found case first because ubuntu's install of capnproto is missing libcapnp-json
 # so we must first make sure the found case has all the appropriate libs, else we will build from source
-if (CAPNP_FOUND)
+if (CAPNP_FOUND AND NOT WIN32)
   # List of all required Capnp libraries.
   set(CAPNP_LIB_NAMES capnp kj capnp-json)
   foreach(LIB ${CAPNP_LIB_NAMES})
@@ -112,17 +126,17 @@ if (NOT CAPNP_FOUND)
     endif()
 
     if (WIN32)
-      # needed for cherry-pick on windows
+
+      # needed for patching on windows
       find_package(Git REQUIRED)
 
-      # we cherry-pick fdbf035619 to fix installation on windowsa
-      #   https://github.com/capnproto/capnproto/commit/fdbf035619ab2f9e25173bb7361e7e19a52e0fa1
       ExternalProject_Add(ep_capnp
         PREFIX "externals"
         #URL "https://github.com/capnproto/capnproto/archive/v0.6.1.tar.gz"
         #URL_HASH SHA1=2aec1f83cc4851ae58e1419c87f11f8aa63a9392
-        GIT_REPOSITORY "https://github.com/capnproto/capnproto.git"
-        GIT_TAG "v0.6.1"
+        DOWNLOAD_NAME ep_capnp.${TILEDB_CAPNPROTO_VERSION}.tar.gz
+        URL ${TILEDB_CAPNPROTO_URL}
+        URL_HASH ${TILEDB_CAPNPROTO_HASH_SPEC} #SHA1=2aec1f83cc4851ae58e1419c87f11f8aa63a9392
         CONFIGURE_COMMAND
           ${CMAKE_COMMAND}
           ${ARCH_SPEC}
@@ -133,7 +147,10 @@ if (NOT CAPNP_FOUND)
           "-DCMAKE_CXX_FLAGS=${CXXFLAGS_DEF}"
           ${TILEDB_EP_BASE}/src/ep_capnp/c++
         PATCH_COMMAND
-          ${GIT_EXECUTABLE} cherry-pick fdbf035619
+          echo starting patching for CapnProto &&
+          cd ${CMAKE_SOURCE_DIR} &&
+          ${GIT_EXECUTABLE} apply --ignore-whitespace -p1 --unsafe-paths --verbose --directory=${TILEDB_EP_SOURCE_DIR}/ep_capnp < ${TILEDB_CMAKE_INPUTS_DIR}/patches/ep_capnp/capnp_CMakeLists.txt.patch &&
+          echo end patching for CapnProto
         UPDATE_COMMAND ""
         LOG_DOWNLOAD TRUE
         LOG_CONFIGURE TRUE
@@ -145,9 +162,9 @@ if (NOT CAPNP_FOUND)
       ExternalProject_Add(ep_capnp
         PREFIX "externals"
         # Set download name to avoid collisions with only the version number in the filename
-        DOWNLOAD_NAME ep_capnp.tar.gz
-        URL "https://github.com/capnproto/capnproto/archive/v0.6.1.tar.gz"
-        URL_HASH SHA1=2aec1f83cc4851ae58e1419c87f11f8aa63a9392
+        DOWNLOAD_NAME ep_capnp.${TILEDB_CAPNPROTO_VERSION}.tar.gz
+        URL ${TILEDB_CAPNPROTO_URL}
+        URL_HASH ${TILEDB_CAPNPROTO_HASH_SPEC} #SHA1=2aec1f83cc4851ae58e1419c87f11f8aa63a9392
         CONFIGURE_COMMAND
           ${CMAKE_COMMAND}
           ${ARCH_SPEC}
@@ -156,10 +173,14 @@ if (NOT CAPNP_FOUND)
           -DBUILD_TESTING=OFF
           "-DCMAKE_C_FLAGS=${CFLAGS_DEF}"
           "-DCMAKE_CXX_FLAGS=${CXXFLAGS_DEF}"
+          "-DCMAKE_CXX_STANDARD=14" #capnproto v0.8.0 requires c++14
           ${TILEDB_EP_BASE}/src/ep_capnp/c++
         UPDATE_COMMAND ""
         PATCH_COMMAND
+#These 'const' patches seem to be part of v0.8.0 already.
+#(The items being patched seemed to be in a different file now too, but const' is present there.
           patch -d ${TILEDB_EP_BASE}/src/ep_capnp/ -N -p1 -i ${TILEDB_CMAKE_INPUTS_DIR}/patches/ep_capnp/libkj-invokable-const.patch
+#          patch -d ${TILEDB_EP_BASE}/src/ep_capnp/ -N -p1 -i ${TILEDB_CMAKE_INPUTS_DIR}/patches/ep_capnp/capnp_CMakeLists.txt.patch
         LOG_DOWNLOAD TRUE
         LOG_CONFIGURE TRUE
         LOG_BUILD TRUE
@@ -167,6 +188,12 @@ if (NOT CAPNP_FOUND)
         LOG_PATCH TRUE
         LOG_OUTPUT_ON_FAILURE ${TILEDB_LOG_OUTPUT_ON_FAILURE}
       )
+    endif()
+    
+    if(WIN32)
+      set(TILEDB_CAPNPEXEC_PATH "${TILEDB_EP_BASE}/externals/bin/capnp.exe")
+    else()
+      set(TILEDB_CAPNPEXEC_PATH "${TILEDB_EP_BASE}/externals/bin/capnp")
     endif()
 
     list(APPEND TILEDB_EXTERNAL_PROJECTS ep_capnp)
@@ -176,4 +203,7 @@ if (NOT CAPNP_FOUND)
   else()
     message(FATAL_ERROR "Unable to find Capnp")
   endif()
+else()
+  add_definitions(${CAPNP_DEFINITIONS})
+  set(TILEDB_CAPNPEXEC_PATH "${CAPNP_EXECUTABLE}")
 endif()

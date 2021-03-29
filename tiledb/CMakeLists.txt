@@ -183,8 +183,42 @@ set(TILEDB_CORE_SOURCES
 if (TILEDB_SERIALIZATION)
   list(APPEND TILEDB_CORE_SOURCES
     ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/rest/curl.cc
-    ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/tiledb-rest.capnp.c++
   )
+
+  #NOTE: These properties are being set possibly *before* tiledb-rest.capnp.c++ has been generated.
+  if(NOT WIN32)
+    if($false)  #section will be needed when mov *n*x to v0.8.0
+    #capnproto v0.8.0 requires at least c++14, msvc2017 seems ok, gcc 7.5 is not by default
+    set_source_files_properties(
+      ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/rest/rest_client.cc
+      ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/array_schema.cc
+      ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/query.cc
+      ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/tiledb-rest.capnp.c++
+      PROPERTIES
+      #eventually, not yet in cmake 3.3, added in 3.11 - COMPILE_OPTIONS "-std=c++14"
+      #   C4267: 'argument': conversion from 'size_t' to '<various-lesser-types>', possible loss of data
+      #   C4100 '<some-name>' unreferenced format parameter
+        COMPILE_FLAGS "-std=c++14"
+    )
+    endif()
+  endif()
+  if(MSVC)
+    set_source_files_properties(
+      ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/rest/rest_client.cc
+      ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/array_schema.cc
+      ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/query.cc
+      ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/tiledb-rest.capnp.c++
+      PROPERTIES
+      #eventually, not yet in cmake 3.3, added in 3.11 - COMPILE_OPTIONS "/wd4267 /wd4100"
+      #   C4267: 'argument': conversion from 'size_t' to '<various-lesser-types>', possible loss of data
+      #   C4100 '<some-name>' unreferenced format parameter
+      #vs2017/19 std:c++14 or greater by default
+      #vs2015, is not so specify it (std:c++14, std::c++latest not avail vs2015 til *update 3*)
+      #TBD: would std:c++latest be better choice?
+        COMPILE_FLAGS "/wd4267 /wd4100 /std:c++14"
+    )
+  endif()
+
 endif()
 
 # 'External' source files included in the source tree.
@@ -220,6 +254,8 @@ target_include_directories(TILEDB_CORE_OBJECTS
     "${TILEDB_CORE_INCLUDE_DIR}"
     "${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/c_api"
     "${TILEDB_EXTERNALS_INCLUDE_DIRS}"
+	# to pickup <build_dir>/tiledb for capnp gen'd files
+    "${CMAKE_CURRENT_BINARY_DIR}/.." 
 )
 
 # Build a separate copy of the object library for use with static TileDB
@@ -279,6 +315,14 @@ endif()
 if (TILEDB_SERIALIZATION)
   add_definitions(-DTILEDB_SERIALIZATION)
   message(STATUS "The TileDB library is compiled with query serialization enabled.")
+
+  if(MSVC)
+    if (TILEDB_CURL_EP_BUILT)
+      target_compile_definitions(TILEDB_CORE_OBJECTS PRIVATE -DCURL_STATICLIB=1)
+    else()
+      target_compile_definitions(TILEDB_CORE_OBJECTS PRIVATE                   )
+    endif()
+  endif()
 endif()
 
 ############################################################
@@ -361,7 +405,7 @@ if (TILEDB_S3 OR TILEDB_AZURE OR TILEDB_GCS OR TILEDB_SERIALIZATION)
       INTERFACE
         CURL::libcurl
     )
-  elseif (WIN32 AND TILEDB_AZURE)
+  elseif (WIN32 AND (TILEDB_AZURE OR TILEDB_SERIALIZATION))
     find_package(Curl_EP REQUIRED)
     target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
       INTERFACE
@@ -444,7 +488,7 @@ endif()
 # Win32 specific libraries
 if (WIN32)
   set(WIN32_LIBS shlwapi rpcrt4 bcrypt)
-  if(TILEDB_AZURE)
+  if(TILEDB_AZURE OR TILEDB_SERIALIZATION)
     #ws2_32.lib, crypt32.lib needed to satisfy curl dependencies
     set(WIN32_LIBS ${WIN32_LIBS} ws2_32 crypt32)
   endif()
@@ -560,6 +604,71 @@ if (CURL_APPEND_LIBS)
     INTERFACE
     ${CURL_APPEND_LIBS})
 endif()
+
+############################################################
+# capnproto file generation
+############################################################
+
+if(TILEDB_SERIALIZATION)
+  if(TILEDB_CAPNP_EP_BUILT)
+    set(TILEDB_CAPNPROTOEXEPATH "${TILEDB_CAPNPEXEC_PATH}")
+  else()
+    find_package(CapnProto 0.6.1 #*not* EXACT since windows/*n*x using 0.8.0, 0.6.1 respectively
+      PATHS  ${TILEDB_EP_INSTALL_PREFIX} ${TILEDB_DEPS_NO_DEFAULT_PATH}
+    )
+    set(TILEDB_CAPNPROTOEXEPATH "${CAPNP_EXECUTABLE}")
+  endif()
+
+  #make files 'known' via add_custom_command() so ("tiledb-rest.capnp.c++") can be added to TILEDB_CORE_OBJECTS (further below)
+  if(WIN32)
+    add_custom_command(
+	  DEPENDS ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/tiledb-rest.capnp
+      OUTPUT #BYPRODUCTS
+        #i.e. <builddir>/tiledb/tiledb/sm/serialization/...
+        ${CMAKE_CURRENT_BINARY_DIR}/sm/serialization/tiledb-rest.capnp.c++
+        ${CMAKE_CURRENT_BINARY_DIR}/sm/serialization/tiledb-rest.capnp.h
+      COMMAND
+        powershell "${CMAKE_CURRENT_SOURCE_DIR}/../scripts/capnpupdate.ps1 ${CMAKE_CURRENT_BINARY_DIR}/sm/serialization ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization"
+      WORKING_DIRECTORY
+        ${TILEDB_EP_BASE}/..
+
+      COMMENT "(re-)generate tiledb-rest.capnp.<h,c++>"
+    )
+  else()
+    add_custom_command(
+	  DEPENDS ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/tiledb-rest.capnp
+      OUTPUT #BYPRODUCTS
+        ${CMAKE_CURRENT_BINARY_DIR}/sm/serialization/tiledb-rest.capnp.c++
+        ${CMAKE_CURRENT_BINARY_DIR}/sm/serialization/tiledb-rest.capnp.h
+      COMMAND
+        bash -c "${CMAKE_CURRENT_SOURCE_DIR}/../scripts/capnpupdate.sh ${CMAKE_CURRENT_BINARY_DIR}/sm/serialization ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization"
+      WORKING_DIRECTORY
+        ${TILEDB_EP_BASE}/..
+      COMMENT "(re-)generate tiledb-rest.capnp.<h,c++>"
+    )
+  endif()
+  
+  set_source_files_properties(
+    "${CMAKE_CURRENT_BINARY_DIR}/sm/serialization/tiledb-rest.capnp.c++"
+    "${CMAKE_CURRENT_BINARY_DIR}/sm/serialization/tiledb-rest.capnp.h"
+    PROPERTIES GENERATED TRUE
+    )
+	
+  set_property(SOURCE 
+    ${CMAKE_CURRENT_BINARY_DIR}/sm/serialization/tiledb-rest.capnp.c++
+	APPEND PROPERTY OBJECT_DEPENDS ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/tiledb-rest.capnp
+	)
+  set_property(SOURCE 
+    ${CMAKE_CURRENT_BINARY_DIR}/sm/serialization/tiledb-rest.capnp.h
+	APPEND PROPERTY OBJECT_DEPENDS ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/tiledb-rest.capnp
+	)
+
+  target_sources(TILEDB_CORE_OBJECTS PUBLIC
+    ${CMAKE_CURRENT_BINARY_DIR}/sm/serialization/tiledb-rest.capnp.c++
+  )
+
+endif()
+
 
 ############################################################
 # Generated dependency information (for installation)

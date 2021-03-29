@@ -63,6 +63,7 @@ Subarray::Subarray() {
   cell_order_ = Layout::ROW_MAJOR;
   est_result_size_computed_ = false;
   coalesce_ranges_ = true;
+  tile_overlap_range_offset_ = 0;
 }
 
 Subarray::Subarray(const Array* array, bool coalesce_ranges)
@@ -73,6 +74,7 @@ Subarray::Subarray(const Array* array, Layout layout, bool coalesce_ranges)
     : array_(array)
     , layout_(layout)
     , coalesce_ranges_(coalesce_ranges) {
+  tile_overlap_range_offset_ = 0;
   est_result_size_computed_ = false;
   cell_order_ = array_->array_schema()->cell_order();
   add_default_ranges();
@@ -122,6 +124,7 @@ Status Subarray::add_range(uint32_t dim_idx, const Range& range) {
   // Must reset the result size and tile overlap
   est_result_size_computed_ = false;
   tile_overlap_ = nullptr;
+  tile_overlap_range_offset_ = 0;
 
   // Remove the default range
   if (is_default_[dim_idx]) {
@@ -143,6 +146,7 @@ Status Subarray::add_range_unsafe(uint32_t dim_idx, const Range& range) {
   // Must reset the result size and tile overlap
   est_result_size_computed_ = false;
   tile_overlap_ = nullptr;
+  tile_overlap_range_offset_ = 0;
 
   // Remove the default range
   if (is_default_[dim_idx]) {
@@ -256,6 +260,7 @@ void Subarray::clear() {
   range_offsets_.clear();
   est_result_size_computed_ = false;
   tile_overlap_ = nullptr;
+  tile_overlap_range_offset_ = 0;
   add_or_coalesce_range_func_.clear();
 }
 
@@ -420,6 +425,7 @@ Subarray Subarray::get_subarray(uint64_t start, uint64_t end) const {
   // subarray and its partitions. This is an optimization to prevent
   // duplicate memory among subarray instances.
   ret.tile_overlap_ = tile_overlap_;
+  ret.tile_overlap_range_offset_ = start;
 
   // Compute range offsets
   ret.compute_range_offsets();
@@ -1128,6 +1134,11 @@ const std::vector<std::vector<uint8_t>>& Subarray::tile_coords() const {
 const std::vector<std::vector<TileOverlap>>& Subarray::tile_overlap() const {
   assert(tile_overlap_ != nullptr);
   return *tile_overlap_;
+}
+
+uint64_t Subarray::overlap_range_offset() const {
+  assert(tile_overlap_ != nullptr);
+  return tile_overlap_range_offset_;
 }
 
 template <class T>
@@ -1905,20 +1916,24 @@ Status Subarray::compute_tile_overlap(ThreadPool* const compute_tp) {
   compute_range_offsets();
 
   // Initialization
-  tile_overlap_ = tdb_make_shared(std::vector<std::vector<TileOverlap>>);
+  auto tile_overlap = tdb_make_shared(std::vector<std::vector<TileOverlap>>);
   auto meta = array_->fragment_metadata();
   auto fragment_num = meta.size();
-  tile_overlap_->resize(fragment_num);
+  tile_overlap->resize(fragment_num);
   auto range_num = this->range_num();
   for (unsigned i = 0; i < fragment_num; ++i)
-    (*tile_overlap_)[i].resize(range_num);
+    (*tile_overlap)[i].resize(range_num);
 
   // Compute relevant fragments to the subarray
   RETURN_NOT_OK(compute_relevant_fragments(compute_tp));
 
   // Load the R-Trees and compute tile overlap only for relevant fragments
   RETURN_NOT_OK(load_relevant_fragment_rtrees(compute_tp));
-  RETURN_NOT_OK(compute_relevant_fragment_tile_overlap(compute_tp));
+  RETURN_NOT_OK(
+      compute_relevant_fragment_tile_overlap(compute_tp, tile_overlap.get()));
+
+  tile_overlap_ = std::move(tile_overlap);
+  tile_overlap_range_offset_ = 0;
 
   return Status::Ok();
 
@@ -1934,6 +1949,7 @@ Subarray Subarray::clone() const {
   clone.is_default_ = is_default_;
   clone.range_offsets_ = range_offsets_;
   clone.tile_overlap_ = tile_overlap_;
+  clone.tile_overlap_range_offset_ = tile_overlap_range_offset_;
   clone.est_result_size_computed_ = est_result_size_computed_;
   clone.coalesce_ranges_ = coalesce_ranges_;
   clone.add_or_coalesce_range_func_ = add_or_coalesce_range_func_;
@@ -2067,6 +2083,7 @@ void Subarray::swap(Subarray& subarray) {
   std::swap(is_default_, subarray.is_default_);
   std::swap(range_offsets_, subarray.range_offsets_);
   std::swap(tile_overlap_, subarray.tile_overlap_);
+  std::swap(tile_overlap_range_offset_, subarray.tile_overlap_range_offset_);
   std::swap(est_result_size_computed_, subarray.est_result_size_computed_);
   std::swap(coalesce_ranges_, subarray.coalesce_ranges_);
   std::swap(add_or_coalesce_range_func_, subarray.add_or_coalesce_range_func_);
@@ -2125,7 +2142,8 @@ Status Subarray::load_relevant_fragment_rtrees(
 }
 
 Status Subarray::compute_relevant_fragment_tile_overlap(
-    ThreadPool* const compute_tp) {
+    ThreadPool* const compute_tp,
+    std::vector<std::vector<TileOverlap>>* const tile_overlap) {
   STATS_START_TIMER(stats::Stats::TimerType::READ_COMPUTE_RELEVANT_TILE_OVERLAP)
 
   const auto& meta = array_->fragment_metadata();
@@ -2136,7 +2154,7 @@ Status Subarray::compute_relevant_fragment_tile_overlap(
         auto f = relevant_fragments_[i];
         auto dense = meta[f]->dense();
         return compute_relevant_fragment_tile_overlap(
-            meta[f], f, dense, range_num, compute_tp);
+            meta[f], f, dense, range_num, compute_tp, tile_overlap);
       });
   for (const auto& st : statuses)
     RETURN_NOT_OK(st);
@@ -2151,7 +2169,8 @@ Status Subarray::compute_relevant_fragment_tile_overlap(
     unsigned frag_idx,
     bool dense,
     uint64_t range_num,
-    ThreadPool* const compute_tp) {
+    ThreadPool* const compute_tp,
+    std::vector<std::vector<TileOverlap>>* const tile_overlap) {
   auto num_threads = compute_tp->concurrency_level();
   auto ranges_per_thread = (uint64_t)ceil((double)range_num / num_threads);
   auto statuses = parallel_for(compute_tp, 0, num_threads, [&](uint64_t t) {
@@ -2159,11 +2178,11 @@ Status Subarray::compute_relevant_fragment_tile_overlap(
     auto r_end = std::min((t + 1) * ranges_per_thread - 1, range_num - 1);
     for (uint64_t r = r_start; r <= r_end; ++r) {
       if (dense) {  // Dense fragment
-        (*tile_overlap_)[frag_idx][r] = get_tile_overlap(r, frag_idx);
+        (*tile_overlap)[frag_idx][r] = get_tile_overlap(r, frag_idx);
       } else {  // Sparse fragment
         const auto& range = this->ndrange(r);
         RETURN_NOT_OK(
-            meta->get_tile_overlap(range, &((*tile_overlap_)[frag_idx][r])));
+            meta->get_tile_overlap(range, &((*tile_overlap)[frag_idx][r])));
       }
     }
 

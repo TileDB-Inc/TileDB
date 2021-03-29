@@ -1009,8 +1009,7 @@ Status Reader::compute_range_result_coords(
   if (fragment_metadata_[fragment_idx]->dense())
     return Status::Ok();
 
-  const uint64_t overlap_range_offset =
-      read_state_.partitioner_.current_partition_info()->start_;
+  const uint64_t overlap_range_offset = subarray->overlap_range_offset();
   auto tr = overlap[fragment_idx][range_idx + overlap_range_offset]
                 .tile_ranges_.begin();
   auto tr_end = overlap[fragment_idx][range_idx + overlap_range_offset]
@@ -1148,8 +1147,7 @@ Status Reader::compute_sparse_result_tiles(
   auto& partitioner = read_state_.partitioner_;
   const auto& subarray = partitioner.current();
   const auto& overlap = subarray.tile_overlap();
-  const uint64_t overlap_range_offset =
-      partitioner.current_partition_info()->start_;
+  const uint64_t overlap_range_offset = subarray.overlap_range_offset();
   auto range_num = subarray.range_num();
   auto fragment_num = fragment_metadata_.size();
   std::vector<unsigned> first_fragment;
@@ -3333,7 +3331,7 @@ Status Reader::copy_attribute_values(
 Status Reader::add_extra_offset() {
   for (const auto& it : buffers_) {
     const auto& name = it.first;
-    if (!array_schema_->is_attr(name) || !array_schema_->var_size(name))
+    if (!array_schema_->var_size(name))
       continue;
 
     auto buffer = static_cast<unsigned char*>(it.second.buffer_);

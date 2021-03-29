@@ -456,10 +456,7 @@ uint64_t FragmentMetadata::last_tile_cell_num() const {
 }
 
 Status FragmentMetadata::load(
-    const EncryptionKey& encryption_key,
-    Buffer* f_buff,
-    uint64_t offset,
-    uint32_t meta_version) {
+    const EncryptionKey& encryption_key, Buffer* f_buff, uint64_t offset) {
   auto meta_uri = fragment_uri_.join_path(
       std::string(constants::fragment_metadata_filename));
   // Load the metadata file size when we are not reading from consolidated
@@ -483,7 +480,7 @@ Status FragmentMetadata::load(
   //    * __t1_t2_uuid_version
   if (f_version == 1)
     return load_v1_v2(encryption_key);
-  return load_v3_or_higher(encryption_key, f_buff, offset, meta_version);
+  return load_v3_or_higher(encryption_key, f_buff, offset);
 }
 
 Status FragmentMetadata::store(const EncryptionKey& encryption_key) {
@@ -1326,8 +1323,8 @@ Status FragmentMetadata::load_bounding_coords(ConstBuffer* buff) {
   return Status::Ok();
 }
 
-Status FragmentMetadata::load_file_sizes(ConstBuffer* buff, uint32_t version) {
-  if (version < 5)
+Status FragmentMetadata::load_file_sizes(ConstBuffer* buff) {
+  if (version_ < 5)
     return load_file_sizes_v1_v4(buff);
   else
     return load_file_sizes_v5_or_higher(buff);
@@ -1368,9 +1365,8 @@ Status FragmentMetadata::load_file_sizes_v5_or_higher(ConstBuffer* buff) {
   return Status::Ok();
 }
 
-Status FragmentMetadata::load_file_var_sizes(
-    ConstBuffer* buff, uint32_t version) {
-  if (version < 5)
+Status FragmentMetadata::load_file_var_sizes(ConstBuffer* buff) {
+  if (version_ < 5)
     return load_file_var_sizes_v1_v4(buff);
   else
     return load_file_var_sizes_v5_or_higher(buff);
@@ -1410,9 +1406,8 @@ Status FragmentMetadata::load_file_var_sizes_v5_or_higher(ConstBuffer* buff) {
   return Status::Ok();
 }
 
-Status FragmentMetadata::load_file_validity_sizes(
-    ConstBuffer* buff, uint32_t version) {
-  if (version <= 6)
+Status FragmentMetadata::load_file_validity_sizes(ConstBuffer* buff) {
+  if (version_ <= 6)
     return Status::Ok();
 
   auto num = array_schema_->attribute_num() + array_schema_->dim_num() + 1;
@@ -1474,11 +1469,10 @@ Status FragmentMetadata::load_mbrs(ConstBuffer* buff) {
   return Status::Ok();
 }
 
-Status FragmentMetadata::load_non_empty_domain(
-    ConstBuffer* buff, uint32_t version) {
-  if (version <= 2)
+Status FragmentMetadata::load_non_empty_domain(ConstBuffer* buff) {
+  if (version_ <= 2)
     return load_non_empty_domain_v1_v2(buff);
-  else if (version == 3 || version == 4)
+  else if (version_ == 3 || version_ == 4)
     return load_non_empty_domain_v3_v4(buff);
   return load_non_empty_domain_v5_or_higher(buff);
 }
@@ -1844,13 +1838,12 @@ Status FragmentMetadata::load_sparse_tile_num(ConstBuffer* buff) {
   return Status::Ok();
 }
 
-Status FragmentMetadata::load_generic_tile_offsets(
-    ConstBuffer* buff, uint32_t version) {
-  if (version == 3 || version == 4)
+Status FragmentMetadata::load_generic_tile_offsets(ConstBuffer* buff) {
+  if (version_ == 3 || version_ == 4)
     return load_generic_tile_offsets_v3_v4(buff);
-  else if (version >= 5 && version < 7)
+  else if (version_ >= 5 && version_ < 7)
     return load_generic_tile_offsets_v5_v6(buff);
-  else if (version >= 7)
+  else if (version_ >= 7)
     return load_generic_tile_offsets_v7_or_higher(buff);
 
   assert(false);
@@ -1974,34 +1967,28 @@ Status FragmentMetadata::load_v1_v2(const EncryptionKey& encryption_key) {
   // Deserialize
   ConstBuffer cbuff(&buff);
   RETURN_NOT_OK(load_version(&cbuff));
-  RETURN_NOT_OK(load_non_empty_domain(&cbuff, version_));
+  RETURN_NOT_OK(load_non_empty_domain(&cbuff));
   RETURN_NOT_OK(load_mbrs(&cbuff));
   RETURN_NOT_OK(load_bounding_coords(&cbuff));
   RETURN_NOT_OK(load_tile_offsets(&cbuff));
   RETURN_NOT_OK(load_tile_var_offsets(&cbuff));
   RETURN_NOT_OK(load_tile_var_sizes(&cbuff));
   RETURN_NOT_OK(load_last_tile_cell_num(&cbuff));
-  RETURN_NOT_OK(load_file_sizes(&cbuff, version_));
-  RETURN_NOT_OK(load_file_var_sizes(&cbuff, version_));
-  RETURN_NOT_OK(load_file_validity_sizes(&cbuff, version_));
+  RETURN_NOT_OK(load_file_sizes(&cbuff));
+  RETURN_NOT_OK(load_file_var_sizes(&cbuff));
+  RETURN_NOT_OK(load_file_validity_sizes(&cbuff));
 
   return Status::Ok();
 }
 
 Status FragmentMetadata::load_v3_or_higher(
-    const EncryptionKey& encryption_key,
-    Buffer* f_buff,
-    uint64_t offset,
-    uint32_t meta_version) {
-  RETURN_NOT_OK(load_footer(encryption_key, f_buff, offset, meta_version));
+    const EncryptionKey& encryption_key, Buffer* f_buff, uint64_t offset) {
+  RETURN_NOT_OK(load_footer(encryption_key, f_buff, offset));
   return Status::Ok();
 }
 
 Status FragmentMetadata::load_footer(
-    const EncryptionKey& encryption_key,
-    Buffer* f_buff,
-    uint64_t offset,
-    uint32_t meta_version) {
+    const EncryptionKey& encryption_key, Buffer* f_buff, uint64_t offset) {
   (void)encryption_key;  // Not used for now, perhaps in the future
   std::lock_guard<std::mutex> lock(mtx_);
 
@@ -2023,18 +2010,16 @@ Status FragmentMetadata::load_footer(
   }
 
   RETURN_NOT_OK(load_version(cbuff.get()));
-  uint32_t version = (f_buff == nullptr) ? version_ : meta_version;
-
   RETURN_NOT_OK(load_dense(cbuff.get()));
-  RETURN_NOT_OK(load_non_empty_domain(cbuff.get(), version));
+  RETURN_NOT_OK(load_non_empty_domain(cbuff.get()));
   RETURN_NOT_OK(load_sparse_tile_num(cbuff.get()));
   RETURN_NOT_OK(load_last_tile_cell_num(cbuff.get()));
-  RETURN_NOT_OK(load_file_sizes(cbuff.get(), version));
-  RETURN_NOT_OK(load_file_var_sizes(cbuff.get(), version));
-  RETURN_NOT_OK(load_file_validity_sizes(cbuff.get(), version));
+  RETURN_NOT_OK(load_file_sizes(cbuff.get()));
+  RETURN_NOT_OK(load_file_var_sizes(cbuff.get()));
+  RETURN_NOT_OK(load_file_validity_sizes(cbuff.get()));
 
   unsigned num = array_schema_->attribute_num() + 1;
-  num += (version >= 5) ? array_schema_->dim_num() : 0;
+  num += (version_ >= 5) ? array_schema_->dim_num() : 0;
 
   tile_offsets_.resize(num);
   tile_offsets_mtx_.resize(num);
@@ -2048,7 +2033,7 @@ Status FragmentMetadata::load_footer(
   loaded_metadata_.tile_var_sizes_.resize(num, false);
   loaded_metadata_.tile_validity_offsets_.resize(num, false);
 
-  RETURN_NOT_OK(load_generic_tile_offsets(cbuff.get(), version));
+  RETURN_NOT_OK(load_generic_tile_offsets(cbuff.get()));
 
   loaded_metadata_.footer_ = true;
 

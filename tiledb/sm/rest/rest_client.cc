@@ -40,6 +40,11 @@
 #include "tiledb/sm/query/query.h"
 #include "tiledb/sm/rest/rest_client.h"
 #include "tiledb/sm/serialization/array_schema.h"
+
+#ifdef _WIN32
+#include "tiledb/sm/serialization/meet-capnproto-win32-include-expectations.h"
+#endif
+
 #include "tiledb/sm/serialization/capnp_utils.h"
 #include "tiledb/sm/serialization/query.h"
 
