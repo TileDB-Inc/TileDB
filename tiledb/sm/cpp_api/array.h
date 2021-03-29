@@ -303,7 +303,7 @@ class Array {
     ctx.handle_error(tiledb_array_get_schema(c_ctx, carray, &array_schema));
     schema_ = ArraySchema(ctx, array_schema);
 
-    dontclose_ = dontclose; //!own; //if Array doesn't own this one, don't close it either.
+    dontclose_ = dontclose;
     array_ = std::shared_ptr<tiledb_array_t>(carray, [own](tiledb_array_t* p) {
       if (own) {
         tiledb_array_free(&p);

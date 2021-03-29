@@ -47,7 +47,8 @@ struct AsyncFx {
   // TileDB context
   tiledb_ctx_t* ctx_;
 
-  bool use_external_subarray_ = false;
+  bool use_outside_subarray_ = 
+      false; //as in separate subarray prepared 'outside' of a query
 
   // Constructors/destructors
   AsyncFx();
@@ -309,7 +310,7 @@ void AsyncFx::write_dense_async() {
       ctx_, query, attributes[2], buffers[3], &buffer_sizes[3]);
   CHECK(rc == TILEDB_OK);
 
-  if (!use_external_subarray_) {
+  if (!use_outside_subarray_) {
     // Submit query asynchronously
     int callback_made = 0;
     rc = tiledb_query_submit_async(ctx_, query, callback, &callback_made);
@@ -433,7 +434,7 @@ void AsyncFx::write_sparse_async() {
       ctx_, query, attributes[4], buffers[5], &buffer_sizes[4]);
   CHECK(rc == TILEDB_OK);
 
-  if (!use_external_subarray_) {
+  if (!use_outside_subarray_) {
     // Submit query asynchronously
     int callback_made = 0;
     rc = tiledb_query_submit_async(ctx_, query, callback, &callback_made);
@@ -482,9 +483,6 @@ void AsyncFx::write_sparse_async() {
   // Close array
   rc = tiledb_array_close(ctx_, array);
   CHECK(rc == TILEDB_OK);
-
-  //  // Check correct execution of callback
-  //  CHECK(callback_made == 1);
 
   // Clean up
   tiledb_array_free(&array);
@@ -563,7 +561,7 @@ void AsyncFx::write_sparse_async_cancelled() {
       ctx_, query, attributes[4], buffers[5], &buffer_sizes[4]);
   CHECK(rc == TILEDB_OK);
 
-  if (!use_external_subarray_) {
+  if (!use_outside_subarray_) {
     // Submit query asynchronously
     int callback_made = 0;
     rc = tiledb_query_submit_async(ctx_, query, callback, &callback_made);
@@ -665,8 +663,6 @@ void AsyncFx::write_sparse_async_cancelled() {
     CHECK(status == TILEDB_COMPLETED);
     CHECK(callback_made == 1);
 
-    // TBD: Can we still safely finalize if query wasn't even submitted
-    // successfully above?
     if (query_submitted_ok) {
       // Finalize query
       rc = tiledb_query_finalize(ctx_, query);
@@ -728,7 +724,7 @@ void AsyncFx::read_dense_async() {
   rc = tiledb_query_set_buffer(ctx_, query, "a3", buffer_a3, &buffer_a3_size);
   CHECK(rc == TILEDB_OK);
 
-  if (!use_external_subarray_) {
+  if (!use_outside_subarray_) {
     // Submit query with callback
     int callback_made = 0;
     rc = tiledb_query_submit_async(ctx_, query, callback, &callback_made);
@@ -877,7 +873,7 @@ void AsyncFx::read_sparse_async() {
       ctx_, query, "d2", buffer_coords_dim2, &buffer_coords_dim2_size);
   CHECK(rc == TILEDB_OK);
 
-  if (!use_external_subarray_) {
+  if (!use_outside_subarray_) {
     // Submit query with callback
     int callback_made = 0;
     rc = tiledb_query_submit_async(ctx_, query, callback, &callback_made);
@@ -1032,11 +1028,11 @@ bool AsyncFx::is_array(const std::string& array_name) {
 
 TEST_CASE_METHOD(
     AsyncFx, "C API: Test dense async", "[capi], [async], [dense-async]") {
-  SECTION("- No external subarray") {
-    use_external_subarray_ = false;
+  SECTION("- No outside subarray") {
+    use_outside_subarray_ = false;
   }
-  SECTION("- external subarray") {
-    use_external_subarray_ = true;
+  SECTION("- outside subarray") {
+    use_outside_subarray_ = true;
   }
   remove_dense_array();
   create_dense_array();
@@ -1047,11 +1043,11 @@ TEST_CASE_METHOD(
 
 TEST_CASE_METHOD(
     AsyncFx, "C API: Test sparse async", "[capi], [async], [sparse-async]") {
-  SECTION("- No external subarray") {
-    use_external_subarray_ = false;
+  SECTION("- No outside subarray") {
+    use_outside_subarray_ = false;
   }
-  SECTION("- external subarray") {
-    use_external_subarray_ = true;
+  SECTION("- outside subarray") {
+    use_outside_subarray_ = true;
   }
   remove_sparse_array();
   create_sparse_array();
@@ -1062,11 +1058,11 @@ TEST_CASE_METHOD(
 
 TEST_CASE_METHOD(
     AsyncFx, "C API: Test async cancellation", "[capi], [async], [cancel]") {
-  SECTION("- No external subarray") {
-    use_external_subarray_ = false;
+  SECTION("- No outside subarray") {
+    use_outside_subarray_ = false;
   }
-  SECTION("- external subarray") {
-    use_external_subarray_ = true;
+  SECTION("- outside subarray") {
+    use_outside_subarray_ = true;
   }
   remove_sparse_array();
   create_sparse_array();
