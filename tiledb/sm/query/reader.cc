@@ -272,8 +272,7 @@ Status Reader::get_buffer_nullable(
   return Status::Ok();
 }
 
-Status Reader::init(
-    const Layout& layout) {
+Status Reader::init(const Layout& layout) {
   // Sanity checks
   if (storage_manager_ == nullptr)
     return LOG_STATUS(Status::ReaderError(
@@ -832,10 +831,8 @@ void Reader::compute_result_space_tiles(
 /*          PRIVATE METHODS       */
 /* ****************************** */
 
-Status Reader::check_subarray(const Subarray* subarray) const {
-  auto& subarray_to_check = subarray ? *subarray : subarray_;
-  if (subarray_.layout() == Layout::GLOBAL_ORDER &&
-      subarray_to_check.range_num() != 1)
+Status Reader::check_subarray() const {
+  if (subarray_.layout() == Layout::GLOBAL_ORDER && subarray_.range_num() != 1)
     return LOG_STATUS(Status::ReaderError(
         "Cannot initialize reader; Multi-range subarrays with "
         "global order layout are not supported"));
@@ -3334,7 +3331,7 @@ Status Reader::copy_attribute_values(
 Status Reader::add_extra_offset() {
   for (const auto& it : buffers_) {
     const auto& name = it.first;
-    if (!array_schema_->is_attr(name) || !array_schema_->var_size(name))
+    if (!array_schema_->var_size(name))
       continue;
 
     auto buffer = static_cast<unsigned char*>(it.second.buffer_);

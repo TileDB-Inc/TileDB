@@ -1278,30 +1278,29 @@ void Writer::disable_check_global_order() {
   disable_check_global_order_ = true;
 }
 
-Status Writer::check_subarray(const Subarray* subarray) const {
+Status Writer::check_subarray() const {
   if (array_schema_ == nullptr)
     return LOG_STATUS(
         Status::WriterError("Cannot check subarray; Array schema not set"));
 
-  auto& which_subarray = subarray ? *subarray : subarray_;
   if (array_schema_->dense()) {
-    if (which_subarray.range_num() != 1)
+    if (subarray_.range_num() != 1)
       return LOG_STATUS(
           Status::WriterError("Multi-range dense writes "
                               "are not supported"));
 
     if (layout_ == Layout::GLOBAL_ORDER &&
-        !which_subarray.coincides_with_tiles())
+        !subarray_.coincides_with_tiles())
       return LOG_STATUS(
           Status::WriterError("Cannot initialize query; In global writes for "
                               "dense arrays, the subarray "
                               "must coincide with the tile bounds"));
-    if (layout_ == Layout::UNORDERED && which_subarray.is_set())
+    if (layout_ == Layout::UNORDERED && subarray_.is_set())
       return LOG_STATUS(Status::WriterError(
           "Cannot initialize query; Setting a subarray in unordered writes for "
           "dense arrays is inapplicable"));
   } else {  // state is !array_schema_->dense()
-    if (which_subarray.is_set())
+    if (subarray_.is_set())
       // Note: previously handled in Writer::add_range()
       return LOG_STATUS(
           Status::WriterError("subarray range for a write query is not "
@@ -1699,19 +1698,31 @@ Status Writer::filter_tiles(
 
   // Filter all tiles
   auto tile_num = tiles->size();
-  for (size_t i = 0; i < tile_num; ++i) {
-    RETURN_NOT_OK(filter_tile(name, &(*tiles)[i], var_size, false));
 
-    if (var_size) {
-      ++i;
-      RETURN_NOT_OK(filter_tile(name, &(*tiles)[i], false, false));
-    }
+  std::vector<std::tuple<Tile*, bool, bool>> args;
+  args.reserve(tile_num);
 
-    if (nullable) {
-      ++i;
-      RETURN_NOT_OK(filter_tile(name, &(*tiles)[i], false, true));
-    }
+  size_t i = 0;
+  while (i < tile_num) {
+    args.emplace_back(&(*tiles)[i++], var_size, false);
+    if (var_size)
+      args.emplace_back(&(*tiles)[i++], false, false);
+    if (nullable)
+      args.emplace_back(&(*tiles)[i++], false, true);
   }
+
+  auto statuses = parallel_for(
+      storage_manager_->compute_tp(), 0, tile_num, [&](uint64_t i) {
+        RETURN_NOT_OK(filter_tile(
+            name,
+            std::get<0>(args[i]),
+            std::get<1>(args[i]),
+            std::get<2>(args[i])));
+        return Status::Ok();
+      });
+
+  for (auto& st : statuses)
+    RETURN_NOT_OK(st);
 
   return Status::Ok();
 }

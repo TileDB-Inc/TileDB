@@ -54,7 +54,7 @@ namespace sm {
 
 Query::Query(StorageManager* storage_manager, Array* array, URI fragment_uri)
     : array_(array)
-    , storage_manager_(storage_manager){
+    , storage_manager_(storage_manager) {
   assert(array != nullptr && array->is_open());
 
   callback_ = nullptr;
@@ -994,17 +994,6 @@ Status Query::set_subarray(const void* subarray) {
   return Status::Ok();
 }
 
-#if 0
-Status Query::check_subarray(const tiledb::sm::Subarray* subarray) {
-  if (type_ == QueryType::WRITE) {
-    RETURN_NOT_OK(writer_.check_subarray(subarray));
-  } else if (type_ == QueryType::READ) {
-    RETURN_NOT_OK(reader_.check_subarray(subarray));
-  }
-  return Status::Ok();
-}
-#endif
-
 Status Query::set_subarray(const tiledb::sm::Subarray* subarray) {
 
   auto query_status = status();
@@ -1091,8 +1080,7 @@ Status Query::submit(/*Subarray *subarray*/) {
 }
 
 Status Query::submit_async(
-    std::function<void(void*)> callback,
-    void* callback_data) {
+    std::function<void(void*)> callback, void* callback_data) {
   // Do not resubmit completed reads.
   if (type_ == QueryType::READ && status_ == QueryStatus::COMPLETED) {
     callback(callback_data);

@@ -73,10 +73,10 @@ class Query;
  * tiledb::Context ctx;
  * tiledb::Array array(ctx, "my_dense_array", TILEDB_WRITE);
  * Query query(ctx, array);
- * query.set_layout(TILEDB_GLOBAL_ORDER);
  * std::vector a1_data = {1, 2, 3};
  * query.set_buffer("a1", a1_data);
  * tiledb::Subarray subarray(ctx, array);
+ * subarray.set_layout(TILEDB_GLOBAL_ORDER);
  * std::vector<int32_t> subarray_indices = {1, 2};
  * subarray.add_range(0, subarray_indices[0], subarray_indices[1]);
  * query.submit_with_subarray(subarray);
@@ -289,6 +289,11 @@ class Subarray {
    * @param pairs Subarray pointer defined as an array of [start, stop] values
    * per dimension.
    * @param size The number of subarray elements.
+   *
+   * @note The number of pairs passed should equal number of dimensions 
+   *       of the array associated with the subarray, or the
+   *       number of elements in subarray_vals should equal that number of 
+   *       dimensions * 2.
    */
   template <typename T = uint64_t>
       Subarray&
@@ -316,7 +321,7 @@ class Subarray {
    * tiledb::Array array(ctx, array_name, TILEDB_READ);
    * std::vector<int> subarray_vals = {0, 3, 0, 3};
    * Subarray subarray(ctx, array);
-   * subarray.set_subarray(subarray_vals, 4);
+   * subarray.set_subarray(subarray_vals);
    * @endcode
    *
    * @tparam Vec Vector datatype. Should always be a vector of the domain type.

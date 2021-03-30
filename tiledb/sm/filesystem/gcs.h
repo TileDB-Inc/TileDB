@@ -406,6 +406,9 @@ class GCS {
   /** Whether or not to use part list upload. */
   bool use_multi_part_upload_;
 
+  /** The timeout for network requests. */
+  uint64_t request_timeout_ms_;
+
   /** Maps a object URI to its part list upload state. */
   std::unordered_map<std::string, MultiPartUploadState>
       multi_part_upload_states_;

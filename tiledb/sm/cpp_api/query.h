@@ -1030,10 +1030,6 @@ class Query {
     }
     ctx.handle_error(
         tiledb_query_set_subarray(ctx.ptr().get(), query_.get(), pairs));
-//    subarray_cell_num_ = pairs[1] - pairs[0] + 1;
-//    for (unsigned i = 2; i < size - 1; i += 2) {
-//      subarray_cell_num_ *= (pairs[i + 1] - pairs[i] + 1);
-//    }
     return *this;
   }
 
@@ -2010,9 +2006,6 @@ class Query {
 
   /** The schema of the array the query targets at. */
   ArraySchema schema_;
-
-  /** Number of cells set by `set_subarray`, influences `resize_buffer`. */
-//nothing seems to usefully access inside class, how could it be an influence?  uint64_t subarray_cell_num_ = 0;
 
   /* ********************************* */
   /*          PRIVATE METHODS          */

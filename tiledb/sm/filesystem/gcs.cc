@@ -60,7 +60,8 @@ GCS::GCS()
     , write_cache_max_size_(0)
     , max_parallel_ops_(1)
     , multi_part_part_size_(0)
-    , use_multi_part_upload_(true) {
+    , use_multi_part_upload_(true)
+    , request_timeout_ms_(0) {
 }
 
 GCS::~GCS() {
@@ -91,6 +92,9 @@ Status GCS::init(const Config& config, ThreadPool* const thread_pool) {
   assert(found);
   RETURN_NOT_OK(config.get<uint64_t>(
       "vfs.gcs.multi_part_size", &multi_part_part_size_, &found));
+  assert(found);
+  RETURN_NOT_OK(config.get<uint64_t>(
+      "vfs.gcs.request_timeout_ms", &request_timeout_ms_, &found));
   assert(found);
 
   write_cache_max_size_ = max_parallel_ops_ * multi_part_part_size_;
@@ -152,7 +156,9 @@ Status GCS::init_client() const {
     google::cloud::storage::ClientOptions client_options(
         creds, channel_options);
     auto client = google::cloud::storage::Client(
-        client_options, google::cloud::storage::StrictIdempotencyPolicy());
+        client_options,
+        google::cloud::storage::LimitedTimeRetryPolicy(
+            std::chrono::milliseconds(request_timeout_ms_)));
     client_ = google::cloud::StatusOr<google::cloud::storage::Client>(client);
     if (!client_) {
       return LOG_STATUS(Status::GCSError(

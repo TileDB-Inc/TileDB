@@ -583,8 +583,8 @@ TEST_CASE_METHOD(
     // Submit initial query.
     set_buffers(query);
     serialize_and_submit(query);
-
     REQUIRE(query.query_status() == Query::Status::INCOMPLETE);
+
     auto result_el = query.result_buffer_elements_nullable();
     REQUIRE(std::get<1>(result_el["a1"]) == 2);
     REQUIRE(std::get<1>(result_el["a2"]) == 4);
