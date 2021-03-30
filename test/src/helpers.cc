@@ -1,3 +1,4 @@
+#define DEVING_SUBARRAY_PARTITIONER_STORY5342 0
 /**
  * @file   helpers.cc
  *
@@ -35,7 +36,11 @@
 #include "tiledb/sm/cpp_api/tiledb"
 #include "tiledb/sm/misc/constants.h"
 #include "tiledb/sm/misc/uri.h"
+#include "tiledb/sm/misc/tile_overlap.h"
+#if DEVING_SUBARRAY_PARTITIONER_STORY5342
 #include "tiledb/sm/subarray/subarray_partitioner.h"
+#endif
+#include "tiledb/sm/c_api/tiledb_struct_def.h"
 
 std::mutex catch2_macro_mutex;
 
@@ -65,6 +70,30 @@ void check_partitions(
   }
 
   // Non-empty partitions
+  //TBD: The correctness of this routine (seems in doubt).
+  //A) 
+  //All current tests (build configuration with -EnableSerialization)
+  //calling this routine with last_unsplittable==false pass one fewer
+  //partitions than the number of 'next()' calls made.  The final
+  //'next()' call made returns Ok(), but the 'current()' partition
+  //available after that last call is the same as the 'current()' partition
+  //that was available after the 'next()' call prior to the last one (i.e.
+  //'current()' partition is the same for the last two 'next()' calls made.)
+  //This can be demonstrated by adding a check for 'done()' before that last 
+  //'next()' in the else clause and seeing that flow is 'done()' before that
+  //'next()' call.
+  //B)
+  //If a caller passes one -fewer- partitions
+  //than are available by next()ing (with last_unsplittable==false), and 
+  //'splitability' is maintained through all next() calls, the presence of 
+  //the 'extra' (via /next()ing) partition will not be
+  //detected, as in the else{} below, that final 'next()' will return '.ok()
+  //whether there was an additional partition or whether 'done()' occurred in the 
+  //previous 'next()' call made (done in the last loop iteration).
+  //Can demonstrate this (uncaught) failure in test  
+  //"SubarrayPartitioner (Dense): 1D, single-range, memory budget",
+  //by eliminating the last partition element from both assignments, and observe
+  //that the test(s) still pass.
   for (const auto& p : partitions) {
     CHECK(!partitioner.done());
     CHECK(!unsplittable);
@@ -78,11 +107,94 @@ void check_partitions(
     CHECK(unsplittable);
   } else {
     CHECK(!unsplittable);
+#if 0 //&& DIAGNOSING
+    // TBD: 
+    //For all tests tried, are always already 'done()' at this point,
+    //before the following, 'next()' call is made and returns 'Ok()' (as
+    //it finds 'done()' close to entry and returns 'Ok()'.)
+    if (partitioner.done())
+      std::cout << "***already done, why are we about to call next()?"
+                << std::endl;
+    else
+      std::cout << "***NOT already done, call next() reasonable?"
+                << std::endl;
+#endif
     CHECK(partitioner.next(&unsplittable).ok());
     CHECK(!unsplittable);
     CHECK(partitioner.done());
   }
 }
+
+#if DEVING_SUBARRAY_PARTITIONER_STORY5342
+template <class T>
+void check_partitions(
+    tiledb_ctx_t *ctx,
+    tiledb_subarray_partitioner_t* partitioner,
+    const std::vector<SubarrayRanges<T>>& partitions,
+    bool last_unsplittable) {
+
+  tiledb_subarray_t yretrieve_partition_subarray,
+      *retrieve_partition_subarray = &yretrieve_partition_subarray;
+  yretrieve_partition_subarray.subarray_ = nullptr;
+  (void)last_unsplittable; //TBD: Anyway to verify this similar to internal core SubarrayPartitioner tests?
+
+  int32_t rc;
+
+  tiledb_subarray_partitioner_compute(ctx, partitioner);
+
+  uint64_t partition_num = 0;
+  rc = tiledb_subarray_partitioner_get_partition_num(
+      ctx, &partition_num, partitioner);
+  CHECK(rc == TILEDB_OK);
+  CHECK(partition_num == partitions.size());
+
+  // Special case for empty partitions
+  if (partitions.empty()) {
+    CHECK(partition_num == 0);
+    return;
+  }
+
+  int32_t part_id = -1;
+  // Non-empty partitions
+  for (const auto& p : partitions) {
+    rc = tiledb_subarray_partitioner_get_partition(
+        ctx, partitioner, ++part_id, retrieve_partition_subarray);
+    REQUIRE(rc == TILEDB_OK);
+    check_subarray<T>(*retrieve_partition_subarray->subarray_, p);
+  }
+
+}
+
+template <class T>
+void check_partitions(
+    tiledb::SubarrayPartitioner* partitioner,
+    const std::vector<SubarrayRanges<T>>& partitions,
+    bool last_unsplittable) {
+  (void)last_unsplittable;  // TBD: Anyway to verify this similar to
+                            // internal core SubarrayPartitioner tests?
+
+  tiledb::Subarray yretrieve_partition_subarray,
+      *retrieve_partition_subarray = &yretrieve_partition_subarray;
+  partitioner->compute();
+
+  uint64_t partition_num = 0;
+  partition_num = partitioner->get_partition_num();
+  CHECK(partition_num == partitions.size());
+
+  // Special case for empty partitions
+  if (partitions.empty()) {
+    CHECK(partition_num == 0);
+    return;
+  }
+
+  int32_t part_id = -1;
+  // Non-empty partitions
+  for (const auto& p : partitions) {
+    partitioner->get_partition(++part_id, *retrieve_partition_subarray);
+    check_subarray<T>(*retrieve_partition_subarray, p);
+  }
+}
+#endif
 
 template <class T>
 void check_subarray(
@@ -116,6 +228,149 @@ void check_subarray(
       CHECK(r[1] == ranges[i][2 * j + 1]);
     }
   }
+}
+
+template <class T>
+void check_subarray(
+    tiledb::Subarray& subarray, const SubarrayRanges<T>& ranges) {
+
+  auto as = subarray.array().schema();
+  auto dom = as.domain();
+  auto ndims = dom.ndim();
+  uint64_t nranges = 1;
+  for (auto ui = 0u; ui < ndims; ++ui) {
+    auto range_num_dim = subarray.range_num(ui);
+    nranges *= range_num_dim;
+  }
+  // Check empty subarray
+  auto subarray_range_num = nranges;
+  if (ranges.empty()) {
+    CHECK(subarray_range_num == 0);
+    return;
+  }
+  uint64_t range_num = 1;
+  for (const auto& dim_ranges : ranges)
+    range_num *= dim_ranges.size() / 2;
+  CHECK(subarray_range_num == range_num);
+
+  // Check dim num
+  auto dim_num = ndims;
+  CHECK(dim_num == ranges.size());
+
+  // Check ranges
+  uint64_t dim_range_num = 0;
+  for (unsigned di = 0; di < dim_num; ++di) {
+    dim_range_num =
+        subarray.range_num(di);
+    CHECK(dim_range_num == ranges[di].size() / 2);
+    for (uint64_t ri = 0; ri < dim_range_num; ++ri) {
+      auto r = subarray.range<T>(di, ri);
+
+      CHECK(r[0] == ranges[di][2 * ri]);
+      CHECK(r[1] == ranges[di][2 * ri + 1]);
+    }
+  }
+}
+
+template <class T>
+void check_subarray_equiv(
+    tiledb::sm::Subarray& subarray1,
+    tiledb::sm::Subarray& subarray2) {
+  CHECK(subarray1.range_num() == subarray2.range_num());
+  CHECK(subarray1.layout() == subarray2.layout());
+  // Check dim num
+  auto dim_num1 = subarray1.dim_num();
+  auto dim_num2 = subarray2.dim_num();
+  CHECK(dim_num1 == dim_num2);
+
+  tiledb::sm::ByteVec sa1bytes, sa2bytes;
+  //.to_byte_vect() only valid when range_num() == 1, but should be same for both and
+  //resulting bytes, empty or otherwise, should be the same as well.
+  CHECK(subarray1.to_byte_vec(&sa1bytes).ok() == subarray2.to_byte_vec(&sa2bytes).ok() );
+  CHECK(sa1bytes == sa2bytes);
+
+  const std::vector<std::vector<uint8_t>> sa1tilecoords =
+      subarray1.tile_coords();
+  const std::vector<std::vector<uint8_t>> sa2tilecoords =
+      subarray2.tile_coords();
+  CHECK(sa1tilecoords == sa2tilecoords);
+
+  // Check ranges
+  uint64_t dim_range_num1 = 0;
+  const sm::Range* range1;
+  uint64_t dim_range_num2 = 0;
+  const sm::Range* range2;
+  if (dim_num1 == dim_num2) {
+    for (unsigned i = 0; i < dim_num1; ++i) {
+      CHECK(subarray1.get_range_num(i, &dim_range_num1).ok());
+      CHECK(subarray2.get_range_num(i, &dim_range_num2).ok());
+      CHECK(dim_range_num1 == dim_range_num2);
+      if (dim_range_num1 == dim_range_num2) {
+        for (uint64_t j = 0; j < dim_range_num1; ++j) {
+          subarray1.get_range(i, j, &range1);
+          subarray2.get_range(i, j, &range2);
+          auto r1 = (const T*)range1->data();
+          auto r2 = (const T*)range2->data();
+          CHECK(r1[0] == r2[0]);
+          CHECK(r1[1] == r2[1]);
+        }
+      }
+    }
+  }
+}
+
+template <class T>
+bool subarray_equiv(
+    tiledb::sm::Subarray& subarray1, tiledb::sm::Subarray& subarray2) {
+
+  bool equiv_state = 1;  // assume true
+
+  equiv_state &= (subarray1.range_num() == subarray2.range_num());
+  equiv_state &= (subarray1.layout() == subarray2.layout());
+  // Check dim num
+  auto dim_num1 = subarray1.dim_num();
+  auto dim_num2 = subarray2.dim_num();
+  equiv_state &= (dim_num1 == dim_num2);
+
+  tiledb::sm::ByteVec sa1bytes, sa2bytes;
+  //.to_byte_vect() only valid when range_num() == 1, but should be same for
+  //both and resulting bytes, empty or otherwise, should be the same as well.
+  equiv_state &=
+      (
+      subarray1.to_byte_vec(&sa1bytes).ok() ==
+      subarray2.to_byte_vec(&sa2bytes).ok());
+  equiv_state &= (sa1bytes == sa2bytes);
+
+  const std::vector<std::vector<uint8_t>> sa1tilecoords =
+      subarray1.tile_coords();
+  const std::vector<std::vector<uint8_t>> sa2tilecoords =
+      subarray2.tile_coords();
+  CHECK(sa1tilecoords == sa2tilecoords);
+
+  // Check ranges
+  uint64_t dim_range_num1 = 0;
+  const sm::Range* range1;
+  uint64_t dim_range_num2 = 0;
+  const sm::Range* range2;
+  if (dim_num1 == dim_num2) {
+    for (unsigned i = 0; i < dim_num1; ++i) {
+      equiv_state &= (subarray1.get_range_num(i, &dim_range_num1).ok());
+      equiv_state &= (subarray2.get_range_num(i, &dim_range_num2).ok());
+      equiv_state &= (dim_range_num1 == dim_range_num2);
+      if (dim_range_num1 == dim_range_num2) {
+        for (uint64_t j = 0; j < dim_range_num1; ++j) {
+          subarray1.get_range(i, j, &range1);
+          subarray2.get_range(i, j, &range2);
+          auto r1 = (const T*)range1->data();
+          auto r2 = (const T*)range2->data();
+          equiv_state &= (r1[0] == r2[0]);
+          equiv_state &= (r1[1] == r2[1]);
+        }
+      }
+    }
+  }
+
+  return equiv_state;
 }
 
 void close_array(tiledb_ctx_t* ctx, tiledb_array_t* array) {
@@ -492,6 +747,67 @@ void create_subarray(
   }
 
   *subarray = ret;
+}
+
+template <class T>
+void create_subarray(
+    tiledb_ctx_t *ctx,
+    tiledb::sm::Array* array,
+    const SubarrayRanges<T>& ranges,
+    tiledb::sm::Layout layout,
+    tiledb_subarray_t** subarray,
+    bool coalesce_ranges) {
+  int32_t rc;
+  tiledb_array_t tdb_array;
+  tdb_array.array_ = array;
+  rc = tiledb_subarray_alloc(ctx, &tdb_array, subarray);
+  REQUIRE(rc == TILEDB_OK);
+  if (rc == TILEDB_OK) {
+    rc = tiledb_subarray_set_layout(ctx, *subarray, (tiledb_layout_t)layout);
+    REQUIRE(rc == TILEDB_OK);
+    rc = tiledb_subarray_set_coalesce_ranges(ctx, *subarray, coalesce_ranges);
+    REQUIRE(rc == TILEDB_OK);
+
+    auto dim_num = (unsigned)ranges.size();
+    for (unsigned d = 0; d < dim_num; ++d) {
+      auto dim_range_num = ranges[d].size() / 2;
+      for (size_t j = 0; j < dim_range_num; ++j) {
+        rc = tiledb_subarray_add_range(
+            ctx,
+            *subarray,
+            d,
+            &ranges[d][2 * j],
+            &ranges[d][2 * j + 1],
+            0);
+        REQUIRE(rc == TILEDB_OK);
+      }
+    }
+  }
+}
+
+template <class T>
+void create_subarray(
+    const tiledb::Context* ctx,
+    const tiledb::Array* array,
+    const SubarrayRanges<T>& ranges,
+    tiledb::sm::Layout layout,
+    tiledb::Subarray ** returned_subarray,
+    bool coalesce_ranges) {
+  tiledb::Subarray* psubarray =
+      new tiledb::Subarray(*ctx, *array, coalesce_ranges);
+  tiledb::Subarray& subarray = *psubarray;
+
+  subarray.set_layout((tiledb_layout_t)layout);
+  subarray.set_coalesce_ranges(coalesce_ranges);
+
+  auto dim_num = (unsigned)ranges.size();
+  for (unsigned d = 0; d < dim_num; ++d) {
+    auto dim_range_num = ranges[d].size() / 2;
+    for (size_t j = 0; j < dim_range_num; ++j) {
+      subarray.add_range<T>(d, ranges[d][2 * j], ranges[d][2 * j + 1], 0);
+    }
+  }
+  *returned_subarray = psubarray;
 }
 
 void get_supported_fs(
@@ -944,6 +1260,50 @@ template void check_subarray<float>(
 template void check_subarray<double>(
     tiledb::sm::Subarray& subarray, const SubarrayRanges<double>& ranges);
 
+template void check_subarray_equiv<int8_t>(
+    tiledb::sm::Subarray& subarray1, tiledb::sm::Subarray& subarray2);
+template void check_subarray_equiv<uint8_t>(
+    tiledb::sm::Subarray& subarray1, tiledb::sm::Subarray& subarray2);
+template void check_subarray_equiv<int16_t>(
+    tiledb::sm::Subarray& subarray1, tiledb::sm::Subarray& subarray2);
+template void check_subarray_equiv<uint16_t>(
+    tiledb::sm::Subarray& subarray1, tiledb::sm::Subarray& subarray2);
+template void check_subarray_equiv<int32_t>(
+    tiledb::sm::Subarray& subarray1, tiledb::sm::Subarray& subarray2);
+template void check_subarray_equiv<uint32_t>(
+    tiledb::sm::Subarray& subarray1, tiledb::sm::Subarray& subarray2);
+template void check_subarray_equiv<int64_t>(
+    tiledb::sm::Subarray& subarray1, tiledb::sm::Subarray& subarray2);
+template void check_subarray_equiv<uint64_t>(
+    tiledb::sm::Subarray& subarray1, tiledb::sm::Subarray& subarray2);
+template void check_subarray_equiv<float>(
+    tiledb::sm::Subarray& subarray1, tiledb::sm::Subarray& subarray2);
+template void check_subarray_equiv<double>(
+    tiledb::sm::Subarray& subarray1, tiledb::sm::Subarray& subarray2);
+
+template bool subarray_equiv<int8_t>(
+    tiledb::sm::Subarray& subarray1, tiledb::sm::Subarray& subarray2);
+template bool subarray_equiv<uint8_t>(
+    tiledb::sm::Subarray& subarray1, tiledb::sm::Subarray& subarray2);
+template bool subarray_equiv<int16_t>(
+    tiledb::sm::Subarray& subarray1, tiledb::sm::Subarray& subarray2);
+template bool subarray_equiv<uint16_t>(
+    tiledb::sm::Subarray& subarray1, tiledb::sm::Subarray& subarray2);
+template bool subarray_equiv<int32_t>(
+    tiledb::sm::Subarray& subarray1, tiledb::sm::Subarray& subarray2);
+template bool subarray_equiv<int>(
+    tiledb::sm::Subarray& subarray1, tiledb::sm::Subarray& subarray2);
+template bool subarray_equiv<uint32_t>(
+    tiledb::sm::Subarray& subarray1, tiledb::sm::Subarray& subarray2);
+template bool subarray_equiv<int64_t>(
+    tiledb::sm::Subarray& subarray1, tiledb::sm::Subarray& subarray2);
+template bool subarray_equiv<uint64_t>(
+    tiledb::sm::Subarray& subarray1, tiledb::sm::Subarray& subarray2);
+template bool subarray_equiv<float>(
+    tiledb::sm::Subarray& subarray1, tiledb::sm::Subarray& subarray2);
+template bool subarray_equiv<double>(
+    tiledb::sm::Subarray& subarray1, tiledb::sm::Subarray& subarray2);
+
 template void create_subarray<int8_t>(
     tiledb::sm::Array* array,
     const SubarrayRanges<int8_t>& ranges,
@@ -1005,6 +1365,148 @@ template void create_subarray<double>(
     tiledb::sm::Subarray* subarray,
     bool coalesce_ranges);
 
+template void create_subarray<int8_t>(
+    tiledb_ctx_t* ctx,
+    tiledb::sm::Array* array,
+    const SubarrayRanges<int8_t>& ranges,
+    tiledb::sm::Layout layout,
+    tiledb_subarray_t** subarray,
+    bool coalesce_ranges);
+template void create_subarray<uint8_t>(
+    tiledb_ctx_t* ctx,
+    tiledb::sm::Array* array,
+    const SubarrayRanges<uint8_t>& ranges,
+    tiledb::sm::Layout layout,
+    tiledb_subarray_t** subarray,
+    bool coalesce_ranges);
+template void create_subarray<int16_t>(
+    tiledb_ctx_t* ctx,
+    tiledb::sm::Array* array,
+    const SubarrayRanges<int16_t>& ranges,
+    tiledb::sm::Layout layout,
+    tiledb_subarray_t** subarray,
+    bool coalesce_ranges);
+template void create_subarray<uint16_t>(
+    tiledb_ctx_t* ctx,
+    tiledb::sm::Array* array,
+    const SubarrayRanges<uint16_t>& ranges,
+    tiledb::sm::Layout layout,
+    tiledb_subarray_t** subarray,
+    bool coalesce_ranges);
+template void create_subarray<int32_t>(
+    tiledb_ctx_t* ctx,
+    tiledb::sm::Array* array,
+    const SubarrayRanges<int32_t>& ranges,
+    tiledb::sm::Layout layout,
+    tiledb_subarray_t** subarray,
+    bool coalesce_ranges);
+template void create_subarray<uint32_t>(
+    tiledb_ctx_t* ctx,
+    tiledb::sm::Array* array,
+    const SubarrayRanges<uint32_t>& ranges,
+    tiledb::sm::Layout layout,
+    tiledb_subarray_t** subarray,
+    bool coalesce_ranges);
+template void create_subarray<int64_t>(
+    tiledb_ctx_t* ctx,
+    tiledb::sm::Array* array,
+    const SubarrayRanges<int64_t>& ranges,
+    tiledb::sm::Layout layout,
+    tiledb_subarray_t** subarray,
+    bool coalesce_ranges);
+template void create_subarray<uint64_t>(
+    tiledb_ctx_t* ctx,
+    tiledb::sm::Array* array,
+    const SubarrayRanges<uint64_t>& ranges,
+    tiledb::sm::Layout layout,
+    tiledb_subarray_t** subarray,
+    bool coalesce_ranges);
+template void create_subarray<float>(
+    tiledb_ctx_t* ctx,
+    tiledb::sm::Array* array,
+    const SubarrayRanges<float>& ranges,
+    tiledb::sm::Layout layout,
+    tiledb_subarray_t** subarray,
+    bool coalesce_ranges);
+template void create_subarray<double>(
+    tiledb_ctx_t* ctx,
+    tiledb::sm::Array* array,
+    const SubarrayRanges<double>& ranges,
+    tiledb::sm::Layout layout,
+    tiledb_subarray_t** subarray,
+    bool coalesce_ranges);
+
+template void create_subarray<int8_t>(
+    const tiledb::Context* ctx,
+    const tiledb::Array* array,
+    const SubarrayRanges<int8_t>& ranges,
+    tiledb::sm::Layout layout,
+    tiledb::Subarray** subarray,
+    bool coalesce_ranges);
+template void create_subarray<uint8_t>(
+    const tiledb::Context* ctx,
+    const tiledb::Array* array,
+    const SubarrayRanges<uint8_t>& ranges,
+    tiledb::sm::Layout layout,
+    tiledb::Subarray** subarray,
+    bool coalesce_ranges);
+template void create_subarray<int16_t>(
+    const tiledb::Context* ctx,
+    const tiledb::Array* array,
+    const SubarrayRanges<int16_t>& ranges,
+    tiledb::sm::Layout layout,
+    tiledb::Subarray** subarray,
+    bool coalesce_ranges);
+template void create_subarray<uint16_t>(
+    const tiledb::Context* ctx,
+    const tiledb::Array* array,
+    const SubarrayRanges<uint16_t>& ranges,
+    tiledb::sm::Layout layout,
+    tiledb::Subarray** subarray,
+    bool coalesce_ranges);
+template void create_subarray<int32_t>(
+    const tiledb::Context* ctx,
+    const tiledb::Array* array,
+    const SubarrayRanges<int32_t>& ranges,
+    tiledb::sm::Layout layout,
+    tiledb::Subarray** subarray,
+    bool coalesce_ranges);
+template void create_subarray<uint32_t>(
+    const tiledb::Context* ctx,
+    const tiledb::Array* array,
+    const SubarrayRanges<uint32_t>& ranges,
+    tiledb::sm::Layout layout,
+    tiledb::Subarray** subarray,
+    bool coalesce_ranges);
+template void create_subarray<int64_t>(
+    const tiledb::Context* ctx,
+    const tiledb::Array* array,
+    const SubarrayRanges<int64_t>& ranges,
+    tiledb::sm::Layout layout,
+    tiledb::Subarray** subarray,
+    bool coalesce_ranges);
+template void create_subarray<uint64_t>(
+    const tiledb::Context* ctx,
+    const tiledb::Array* array,
+    const SubarrayRanges<uint64_t>& ranges,
+    tiledb::sm::Layout layout,
+    tiledb::Subarray** subarray,
+    bool coalesce_ranges);
+template void create_subarray<float>(
+    const tiledb::Context* ctx,
+    const tiledb::Array* array,
+    const SubarrayRanges<float>& ranges,
+    tiledb::sm::Layout layout,
+    tiledb::Subarray** subarray,
+    bool coalesce_ranges);
+template void create_subarray<double>(
+    const tiledb::Context* ctx,
+    const tiledb::Array* array,
+    const SubarrayRanges<double>& ranges,
+    tiledb::sm::Layout layout,
+    tiledb::Subarray** subarray,
+    bool coalesce_ranges);
+
 template void check_partitions<int8_t>(
     tiledb::sm::SubarrayPartitioner& partitioner,
     const std::vector<SubarrayRanges<int8_t>>& partitions,
@@ -1045,6 +1547,120 @@ template void check_partitions<double>(
     tiledb::sm::SubarrayPartitioner& partitioner,
     const std::vector<SubarrayRanges<double>>& partitions,
     bool last_unsplittable);
+
+#if DEVING_SUBARRAY_PARTITIONER_STORY5342
+template void check_partitions<int8_t>(
+    tiledb_ctx_t* ctx,
+    tiledb_subarray_partitioner_t* partitioner,
+    const std::vector<SubarrayRanges<int8_t>>& partitions,
+    bool last_unsplittable,
+    tiledb_subarray_t* retrieve_partition_subarray);
+template void check_partitions<uint8_t>(
+    tiledb_ctx_t* ctx,
+    tiledb_subarray_partitioner_t* partitioner,
+    const std::vector<SubarrayRanges<uint8_t>>& partitions,
+    bool last_unsplittable,
+    tiledb_subarray_t* retrieve_partition_subarray);
+template void check_partitions<int16_t>(
+    tiledb_ctx_t* ctx,
+    tiledb_subarray_partitioner_t* partitioner,
+    const std::vector<SubarrayRanges<int16_t>>& partitions,
+    bool last_unsplittable,
+    tiledb_subarray_t* retrieve_partition_subarray);
+template void check_partitions<uint16_t>(
+    tiledb_ctx_t* ctx,
+    tiledb_subarray_partitioner_t* partitioner,
+    const std::vector<SubarrayRanges<uint16_t>>& partitions,
+    bool last_unsplittable,
+    tiledb_subarray_t* retrieve_partition_subarray);
+template void check_partitions<int32_t>(
+    tiledb_ctx_t* ctx,
+    tiledb_subarray_partitioner_t* partitioner,
+    const std::vector<SubarrayRanges<int32_t>>& partitions,
+    bool last_unsplittable,
+    tiledb_subarray_t* retrieve_partition_subarray);
+template void check_partitions<uint32_t>(
+    tiledb_ctx_t* ctx,
+    tiledb_subarray_partitioner_t* partitioner,
+    const std::vector<SubarrayRanges<uint32_t>>& partitions,
+    bool last_unsplittable,
+    tiledb_subarray_t* retrieve_partition_subarray);
+template void check_partitions<int64_t>(
+    tiledb_ctx_t* ctx,
+    tiledb_subarray_partitioner_t* partitioner,
+    const std::vector<SubarrayRanges<int64_t>>& partitions,
+    bool last_unsplittable,
+    tiledb_subarray_t* retrieve_partition_subarray);
+template void check_partitions<uint64_t>(
+    tiledb_ctx_t* ctx,
+    tiledb_subarray_partitioner_t* partitioner,
+    const std::vector<SubarrayRanges<uint64_t>>& partitions,
+    bool last_unsplittable,
+    tiledb_subarray_t* retrieve_partition_subarray);
+template void check_partitions<float>(
+    tiledb_ctx_t* ctx,
+    tiledb_subarray_partitioner_t* partitioner,
+    const std::vector<SubarrayRanges<float>>& partitions,
+    bool last_unsplittable,
+    tiledb_subarray_t* retrieve_partition_subarray);
+template void check_partitions<double>(
+    tiledb_ctx_t* ctx,
+    tiledb_subarray_partitioner_t* partitioner,
+    const std::vector<SubarrayRanges<double>>& partitions,
+    bool last_unsplittable,
+    tiledb_subarray_t* retrieve_partition_subarray);
+
+template void check_partitions<int8_t>(
+    tiledb::SubarrayPartitioner* partitioner,
+    const std::vector<SubarrayRanges<int8_t>>& partitions,
+    bool last_unsplittable,
+    tiledb::Subarray* retrieve_partition_subarray);
+template void check_partitions<uint8_t>(
+    tiledb::SubarrayPartitioner* partitioner,
+    const std::vector<SubarrayRanges<uint8_t>>& partitions,
+    bool last_unsplittable,
+    tiledb::Subarray* retrieve_partition_subarray);
+template void check_partitions<int16_t>(
+    tiledb::SubarrayPartitioner* partitioner,
+    const std::vector<SubarrayRanges<int16_t>>& partitions,
+    bool last_unsplittable,
+    tiledb::Subarray* retrieve_partition_subarray);
+template void check_partitions<uint16_t>(
+    tiledb::SubarrayPartitioner* partitioner,
+    const std::vector<SubarrayRanges<uint16_t>>& partitions,
+    bool last_unsplittable,
+    tiledb::Subarray* retrieve_partition_subarray);
+template void check_partitions<int32_t>(
+    tiledb::SubarrayPartitioner* partitioner,
+    const std::vector<SubarrayRanges<int32_t>>& partitions,
+    bool last_unsplittable,
+    tiledb::Subarray* retrieve_partition_subarray);
+template void check_partitions<uint32_t>(
+    tiledb::SubarrayPartitioner* partitioner,
+    const std::vector<SubarrayRanges<uint32_t>>& partitions,
+    bool last_unsplittable,
+    tiledb::Subarray* retrieve_partition_subarray);
+template void check_partitions<int64_t>(
+    tiledb::SubarrayPartitioner* partitioner,
+    const std::vector<SubarrayRanges<int64_t>>& partitions,
+    bool last_unsplittable,
+    tiledb::Subarray* retrieve_partition_subarray);
+template void check_partitions<uint64_t>(
+    tiledb::SubarrayPartitioner* partitioner,
+    const std::vector<SubarrayRanges<uint64_t>>& partitions,
+    bool last_unsplittable,
+    tiledb::Subarray* retrieve_partition_subarray);
+template void check_partitions<float>(
+    tiledb::SubarrayPartitioner* partitioner,
+    const std::vector<SubarrayRanges<float>>& partitions,
+    bool last_unsplittable,
+    tiledb::Subarray* retrieve_partition_subarray);
+template void check_partitions<double>(
+    tiledb::SubarrayPartitioner* partitioner,
+    const std::vector<SubarrayRanges<double>>& partitions,
+    bool last_unsplittable,
+    tiledb::Subarray* retrieve_partition_subarray);
+#endif
 
 template void read_array<int8_t>(
     tiledb_ctx_t* ctx,

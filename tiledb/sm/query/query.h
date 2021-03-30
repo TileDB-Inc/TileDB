@@ -448,7 +448,7 @@ class Query {
    */
   bool has_results() const;
 
-  /** Initializes the query. */
+  /** Initializes the query (on submission, called from submit() et al.). */
   Status init();
 
   /** Returns the first fragment uri. */
@@ -666,11 +666,34 @@ class Query {
    */
   Status set_subarray(const void* subarray);
 
+  /**
+   * Sets the query subarray.
+   *
+   * @param subarray The subarray to be set.
+   * @return Status
+   *
+   * @note Setting a subarray for sparse arrays, or for dense arrays
+   *     when performing unordered (sparse) writes, has no effect
+   *     (will be ingnored).
+   */
+  Status set_subarray(const tiledb::sm::Subarray* subarray);
+
   /** Sets the query subarray, without performing any checks. */
   Status set_subarray_unsafe(const NDRange& subarray);
 
+  /** Reference current Reader/Writer subarray according to query type */
+  const Subarray& subarray() const;
+  Subarray* subarray();
+
   /** Submits the query to the storage manager. */
   Status submit();
+
+  /** 
+   * Audits appropriateness of query/subarray relationship,
+   * if passes sets the subarray into the query and 
+   * submits the query to the storage manager. 
+   */
+  Status submit_with_subarray(Subarray* subarray);
 
   /**
    * Submits the query to the storage manager. The query will be
@@ -678,7 +701,9 @@ class Query {
    * Once the query is completed, the input callback function will
    * be executed using the input callback data.
    */
-  Status submit_async(std::function<void(void*)> callback, void* callback_data);
+  Status submit_async(
+      std::function<void(void*)> callback,
+      void* callback_data);
 
   /** Returns the query status. */
   QueryStatus status() const;

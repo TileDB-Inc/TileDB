@@ -57,6 +57,7 @@ class Array;
 class ArraySchema;
 class EncryptionKey;
 class FragmentMetadata;
+class StorageManager;
 
 enum class Layout : uint8_t;
 enum class QueryType : uint8_t;
@@ -208,14 +209,113 @@ class Subarray {
   /*                 API               */
   /* ********************************* */
 
+  // 'equivalent' for older Query::set_subarray(const void *subarray);
+  Status set_subarray(const void* subarray);
+
   /** Adds a range along the dimension with the given index. */
   Status add_range(uint32_t dim_idx, const Range& range);
+
+  /**
+   * Adds a range to the subarray on the input dimension by index,
+   * in the form of (start, end, stride).
+   * The range components must be of the same type as the domain type of the
+   * underlying array.
+   */
+  Status add_range(
+      unsigned dim_idx, const void* start, const void* end, const void* stride);
+
+  /**
+   * Adds a variable-sized range to the (read/write) query on the input
+   * dimension by index, in the form of (start, end).
+   */
+  Status add_range_var(
+      unsigned dim_idx,
+      const void* start,
+      uint64_t start_size,
+      const void* end,
+      uint64_t end_size);
 
   /**
    * Adds a range along the dimension with the given index, without
    * performing any error checks.
    */
   Status add_range_unsafe(uint32_t dim_idx, const Range& range);
+
+  /**
+   * Adds a range to the (read/write) query on the input dimension by name,
+   * in the form of (start, end, stride).
+   * The range components must be of the same type as the domain type of the
+   * underlying array.
+   */
+  Status add_range_by_name(
+      const std::string& dim_name,
+      const void* start,
+      const void* end,
+      const void* stride);
+
+  /**
+   * Adds a variable-sized range to the (read/write) query on the input
+   * dimension by name, in the form of (start, end).
+   */
+  Status add_range_var_by_name(
+      const std::string& dim_name,
+      const void* start,
+      uint64_t start_size,
+      const void* end,
+      uint64_t end_size);
+
+  /** Retrieves the number of ranges of the subarray for the given dimension
+   * name. */
+  Status get_range_num_from_name(
+      const std::string& dim_name, uint64_t* range_num) const;
+
+  /**
+   * Retrieves a range from a dimension name in the form (start, end, stride).
+   *
+   * @param dim_name The dimension to retrieve the range from.
+   * @param range_idx The id of the range to retrieve.
+   * @param start The range start to retrieve.
+   * @param end The range end to retrieve.
+   * @param stride The range stride to retrieve.
+   * @return Status
+   */
+  Status get_range_from_name(
+      const std::string& dim_name,
+      uint64_t range_idx,
+      const void** start,
+      const void** end,
+      const void** stride) const;
+
+  /**
+   * Retrieves a range's sizes for a variable-length dimension name
+   *
+   * @param dim_name The dimension name to retrieve the range from.
+   * @param range_idx The id of the range to retrieve.
+   * @param start_size range start size in bytes
+   * @param end_size range end size in bytes
+   * @return Status
+   */
+  Status get_range_var_size_from_name(
+      const std::string& dim_name,
+      uint64_t range_idx,
+      uint64_t* start_size,
+      uint64_t* end_size) const;
+
+  /**
+   * Retrieves a range from a variable-length dimension name in the form (start,
+   * end).
+   *
+   * @param dim_name The dimension name to retrieve the range from.
+   * @param range_idx The id of the range to retrieve.
+   * @param start The range start to retrieve.
+   * @param end The range end to retrieve.
+   * @return Status
+   */
+  Status get_range_var_from_name(
+      const std::string& dim_name,
+      uint64_t range_idx,
+      void* start,
+      void* end) const;
 
   /** Returns the array the subarray is associated with. */
   const Array* array() const;
@@ -345,8 +445,38 @@ class Subarray {
       uint64_t* start_size,
       uint64_t* end_size) const;
 
+  /**
+   * Retrieves a range from a variable-length dimension index in the form
+   * (start, end).
+   *
+   * @param dim_idx The dimension to retrieve the range from.
+   * @param range_idx The id of the range to retrieve.
+   * @param start The range start to retrieve.
+   * @param end The range end to retrieve.
+   * @return Status
+   */
+  Status get_range_var(
+      unsigned dim_idx, uint64_t range_idx, void* start, void* end) const;
+
   /** Retrieves the number of ranges on the given dimension index. */
   Status get_range_num(uint32_t dim_idx, uint64_t* range_num) const;
+
+  /**
+   * Retrieves a range from a dimension index in the form (start, end, stride).
+   *
+   * @param dim_idx The dimension to retrieve the range from.
+   * @param range_idx The id of the range to retrieve.
+   * @param start The range start to retrieve.
+   * @param end The range end to retrieve.
+   * @param stride The range stride to retrieve.
+   * @return Status
+   */
+  Status get_range(
+      unsigned dim_idx,
+      uint64_t range_idx,
+      const void** start,
+      const void** end,
+      const void** stride) const;
 
   /**
    *
@@ -357,6 +487,9 @@ class Subarray {
 
   /** Returns `true` if at least one dimension has non-default ranges set. */
   bool is_set() const;
+
+  /** Returns number of non-default (set) ranges */
+  int32_t count_set() const;
 
   /** Returns `true` if the input dimension has non-default range set. */
   bool is_set(unsigned dim_idx) const;
@@ -380,6 +513,15 @@ class Subarray {
    */
   Status get_est_result_size(
       const char* name, uint64_t* size, ThreadPool* compute_tp);
+
+  /**
+   * Gets the estimated result size (in bytes) for the input fixed-sized
+   * attribute/dimension if audit passes.
+   */
+  Status get_est_result_size_querytype_audited(
+      const char* name,
+      uint64_t* size,
+      StorageManager* storage_manager);
 
   /**
    * Gets the estimated result size (in bytes) for the input var-sized
@@ -488,8 +630,14 @@ class Subarray {
    */
   void set_is_default(uint32_t dim_index, bool is_default);
 
-  /** Sets the array layout. */
+  /** Sets the subarray layout. */
   void set_layout(Layout layout);
+
+  /** Sets coalesce_ranges flag, intended for use by CAPI, to alloc matching 
+  * default coalesc-ranges=true semantics of internal class constructor, but giving
+  * capi clients ability to turn off if desired.
+  */
+  Status set_coalesce_ranges(bool coalesce_ranges = true);
 
   /**
    * Flattens the subarray ranges in a byte vector. Errors out
@@ -754,7 +902,7 @@ class Subarray {
    */
   std::vector<std::vector<uint8_t>> tile_coords_;
 
-  /** A map (tile coords) -> (vector element poistion in `tile_coords_`). */
+  /** A map (tile coords) -> (vector element position in `tile_coords_`). */
   std::map<std::vector<uint8_t>, size_t> tile_coords_map_;
 
   /* ********************************* */

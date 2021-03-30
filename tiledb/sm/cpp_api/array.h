@@ -290,7 +290,7 @@ class Array {
    * @param own=true If false, disables underlying cleanup upon destruction.
    * @throws TileDBError if construction fails
    */
-  Array(const Context& ctx, tiledb_array_t* carray, bool own = true)
+  Array(const Context& ctx, tiledb_array_t* carray, bool own = true, bool dontclose=false)
       : ctx_(ctx)
       , schema_(ArraySchema(ctx, (tiledb_array_schema_t*)nullptr)) {
     if (carray == nullptr)
@@ -303,6 +303,7 @@ class Array {
     ctx.handle_error(tiledb_array_get_schema(c_ctx, carray, &array_schema));
     schema_ = ArraySchema(ctx, array_schema);
 
+    dontclose_ = dontclose;
     array_ = std::shared_ptr<tiledb_array_t>(carray, [own](tiledb_array_t* p) {
       if (own) {
         tiledb_array_free(&p);
@@ -317,7 +318,8 @@ class Array {
 
   /** Destructor; calls `close()`. */
   ~Array() {
-    close();
+    if (!dontclose_)
+        close();
   }
 
   /** Checks if the array is open. */
@@ -1458,6 +1460,8 @@ class Array {
 
   /** The array schema. */
   ArraySchema schema_;
+
+  bool dontclose_ = false;
 
   /* ********************************* */
   /*          PRIVATE METHODS          */
