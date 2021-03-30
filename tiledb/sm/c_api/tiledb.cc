@@ -3117,21 +3117,6 @@ int32_t tiledb_query_add_range(
 
 #if 01  // && cppTILEDB_COND_SUB_SUBARRAY_FOR_QUERY
   tiledb_subarray_transient_local_t query_subarray(query);
-  if (query->query_->type() == tiledb::sm::QueryType::WRITE) {
-    if (!query->query_->array_schema()->dense()) {
-      LOG_STATUS(
-          Status::WriterError("Adding a subarray range to a write query is not "
-                              "supported in sparse arrays"));
-      return TILEDB_ERR;
-    }
-
-    if (query_subarray.subarray_->is_set(dim_idx)) {
-      LOG_STATUS(
-          Status::WriterError("Cannot add range; Multi-range dense writes "
-                              "are not supported"));
-      return TILEDB_ERR;
-    }
-  }
   return tiledb_subarray_add_range(
       ctx, &query_subarray, dim_idx, start, end, stride);
 #endif
@@ -3224,7 +3209,6 @@ int32_t tiledb_query_get_range_num(
 
 #if 01  // && cppTILEDB_COND_SUB_SUBARRAY_FOR_QUERY
   tiledb_subarray_transient_local_t query_subarray(query);
-
   return tiledb_subarray_get_range_num(
       ctx, &query_subarray, dim_idx, range_num);
 #endif
