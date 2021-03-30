@@ -197,9 +197,6 @@ Status Subarray::add_range(
     return LOG_STATUS(
         Status::SubarrayError("Cannot add range; Invalid dimension index"));
 
-  // vvvvvvvvvvvvvvvvvvv
-  // logic previously handled in query::writer_'s add_range_var()
-  // well no, because writer has no add_range_var()...
   QueryType array_query_type;
   RETURN_NOT_OK(array_->get_query_type(&array_query_type));
   if (array_query_type == tiledb::sm::QueryType::WRITE) {
@@ -217,7 +214,6 @@ Status Subarray::add_range(
           Status::QueryError("Cannot add range; Multi-range dense writes "
                              "are not supported"));
   }
-  //^^^^^^^^^^^^^^^^^^^^
 
   if (start == nullptr || end == nullptr)
     return LOG_STATUS(Status::SubarrayError("Cannot add range; Invalid range"));

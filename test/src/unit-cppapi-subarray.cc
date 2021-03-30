@@ -38,7 +38,7 @@
 
 using namespace tiledb;
 
-using namespace tiledb::test;
+using namespace tiledb::test; //for visibility of items in 'helpers.<h,cc>'
 
 TEST_CASE("C++ API: Test subarray", "[cppapi][sparse][subarray]") {
   const std::string array_name = "cpp_unit_array";

@@ -4986,9 +4986,9 @@ TILEDB_EXPORT int32_t tiledb_subarray_get_range(
  * @param subarray The subarray.
  * @param dim_name The name of the dimension to retrieve the range from.
  * @param range_idx The index of the range to retrieve.
- * @param start Receives the retrieved range start to retrieve.
- * @param end Receives the retrieved range end to retrieve.
- * @param stride Receives the retrieved range stride to retrieve.
+ * @param start Receives the retrieved range start.
+ * @param end Receives the retrieved range end.
+ * @param stride Receives the retrieved range stride.
  * @return `TILEDB_OK` for success or `TILEDB_ERR` for error.
  */
 TILEDB_EXPORT int32_t tiledb_subarray_get_range_from_name(
@@ -5129,7 +5129,7 @@ TILEDB_EXPORT int32_t tiledb_subarray_get_range_var_from_name(
  * @param ctx The TileDB context
  * @param subarray The subarray.
  * @param name The attribute/dimension name.
- * @param size Receives the retrieved the size (in bytes).
+ * @param size Receives the retrieved size (in bytes).
  * @return `TILEDB_OK` for success or `TILEDB_ERR` for error.
  */
 TILEDB_EXPORT int32_t tiledb_subarray_get_est_result_size(
@@ -5152,8 +5152,8 @@ TILEDB_EXPORT int32_t tiledb_subarray_get_est_result_size(
  * @param ctx The TileDB context
  * @param query The query.
  * @param name The attribute/dimension name.
- * @param size_off Receives the retrieved the size of the offsets (in bytes).
- * @param size_val Receives the retrieved the size of the values (in bytes).
+ * @param size_off Receives the retrieved size of the offsets (in bytes).
+ * @param size_val Receives the retrieved size of the values (in bytes).
  * @return `TILEDB_OK` for success or `TILEDB_ERR` for error.
  */
 TILEDB_EXPORT int32_t tiledb_subarray_get_est_result_size_var(
@@ -5178,8 +5178,8 @@ TILEDB_EXPORT int32_t tiledb_subarray_get_est_result_size_var(
  * @param ctx The TileDB context
  * @param subarray The subarray.
  * @param name The attribute name.
- * @param size_val Receives the retrieved the size of the values (in bytes).
- * @param size_validity Receives the retrieved the size of the validity values (in bytes).
+ * @param size_val Receives the retrieved size of the values (in bytes).
+ * @param size_validity Receives the retrieved size of the validity values (in bytes).
  * @return `TILEDB_OK` for success or `TILEDB_ERR` for error.
  */
 TILEDB_EXPORT int32_t tiledb_subarray_get_est_result_size_nullable(
@@ -5203,9 +5203,9 @@ TILEDB_EXPORT int32_t tiledb_subarray_get_est_result_size_nullable(
  * @param ctx The TileDB context
  * @param subarray The subarray.
  * @param name The attribute name.
- * @param size_off Receives the retrieved the size of the offsets (in bytes).
- * @param size_val Receives the retrieved the size of the values (in bytes).
- * @param size_validity Receives the retrieved the size of the validity values (in bytes).
+ * @param size_off Receives the retrieved size of the offsets (in bytes).
+ * @param size_val Receives the retrieved size of the values (in bytes).
+ * @param size_validity Receives the retrieved size of the validity values (in bytes).
  * @return `TILEDB_OK` for success or `TILEDB_ERR` for error.
  */
 TILEDB_EXPORT int32_t tiledb_subarray_get_est_result_size_var_nullable(

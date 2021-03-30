@@ -3201,34 +3201,6 @@ int32_t tiledb_query_add_range_var_by_name(
     return TILEDB_ERR;
 
 #if 01  // && cppTILEDB_COND_SUB_SUBARRAY_FOR_QUERY
-  //Tolerating core logic here (orig from Query::/Writer::/add_range()) since
-  //this is just shimming code trying to mimic original semantics but passing
-  //through new code path (which does not have/support same semantics, as the
-  //subarray... 
-  //TBD: hmm, am I back to the 'array' assoc'd with the 'subarray', and
-  //is that where the query_type in a 'query' comes from anyway?
-  //well yes/no, core 'Query' does retrieve from array, but a query_type is
-  //also passed into tiledb_query_alloc in -addition- to an array... What's
-  //that about?
-#if 0
-  if (query->query_->type() == tiledb::sm::QueryType::WRITE) {
-    if (!query->query_->array_schema()->dense()) {
-      LOG_STATUS(
-          Status::WriterError("Adding a subarray range to a write query is not "
-                              "supported in sparse arrays"));
-      return TILEDB_ERR;
-    }
-    unsigned dim_idx;
-    if (SAVE_ERROR_CATCH(
-          ctx,array_->array_schema()->domain()->get_dimension_index(
-        dim_name, &dim_idx)))
-      return TILEDB_ERR;
-    if (which_subarray->subarray_.is_set(dim_idx))
-      return LOG_STATUS(
-          Status::WriterError("Cannot add range; Multi-range dense writes "
-                              "are not supported"));
-  }
-#endif
   tiledb_subarray_transient_local_t query_subarray(query);
   return tiledb_subarray_add_range_var_by_name(
       ctx, &query_subarray, dim_name, start, start_size, end, end_size);
@@ -3251,15 +3223,6 @@ int32_t tiledb_query_get_range_num(
     return TILEDB_ERR;
 
 #if 01  // && cppTILEDB_COND_SUB_SUBARRAY_FOR_QUERY
-#if 0
-  if (query->query_->type() == tiledb::sm::QueryType::WRITE &&
-      !query->query_->array_schema()->dense()) {
-    LOG_STATUS(
-        Status::WriterError("Getting the number of ranges from a write query "
-                            "is not applicable to sparse arrays"));
-    return TILEDB_ERR;
-  }
-#endif
   tiledb_subarray_transient_local_t query_subarray(query);
 
   return tiledb_subarray_get_range_num(
@@ -3304,15 +3267,6 @@ int32_t tiledb_query_get_range(
     return TILEDB_ERR;
 
 #if 01  // && cppTILEDB_COND_SUB_SUBARRAY_FOR_QUERY
-#if 0
-  if (query->query_->type() == tiledb::sm::QueryType::WRITE &&
-      !query->query_->array_schema()->dense()) {
-    LOG_STATUS(
-        Status::WriterError("Getting a range from a write query is not "
-                            "applicable to sparse arrays"));
-    return TILEDB_ERR;
-  }
-#endif
   tiledb_subarray_transient_local_t query_subarray(query);
   return tiledb_subarray_get_range(
       ctx, &query_subarray, dim_idx, range_idx, start, end, stride);
