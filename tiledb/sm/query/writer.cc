@@ -1278,30 +1278,29 @@ void Writer::disable_check_global_order() {
   disable_check_global_order_ = true;
 }
 
-Status Writer::check_subarray(const Subarray* subarray) const {
+Status Writer::check_subarray() const {
   if (array_schema_ == nullptr)
     return LOG_STATUS(
         Status::WriterError("Cannot check subarray; Array schema not set"));
 
-  auto& which_subarray = subarray ? *subarray : subarray_;
   if (array_schema_->dense()) {
-    if (which_subarray.range_num() != 1)
+    if (subarray_.range_num() != 1)
       return LOG_STATUS(
           Status::WriterError("Multi-range dense writes "
                               "are not supported"));
 
     if (layout_ == Layout::GLOBAL_ORDER &&
-        !which_subarray.coincides_with_tiles())
+        !subarray_.coincides_with_tiles())
       return LOG_STATUS(
           Status::WriterError("Cannot initialize query; In global writes for "
                               "dense arrays, the subarray "
                               "must coincide with the tile bounds"));
-    if (layout_ == Layout::UNORDERED && which_subarray.is_set())
+    if (layout_ == Layout::UNORDERED && subarray_.is_set())
       return LOG_STATUS(Status::WriterError(
           "Cannot initialize query; Setting a subarray in unordered writes for "
           "dense arrays is inapplicable"));
   } else {  // state is !array_schema_->dense()
-    if (which_subarray.is_set())
+    if (subarray_.is_set())
       // Note: previously handled in Writer::add_range()
       return LOG_STATUS(
           Status::WriterError("subarray range for a write query is not "

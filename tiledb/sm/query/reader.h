@@ -475,11 +475,6 @@ class Reader {
   /** Sets the query subarray. */
   Status set_subarray(const Subarray& subarray);
 
-  //TBD: Is (added) parameter being used, or can it be removed and this returned
-  //to 'private' area below?
-  /** Correctness checks for `subarray_`. */
-  Status check_subarray(const Subarray* subarray = nullptr) const;
-
   /** Returns the query subarray. */
   const Subarray* subarray() const;
 
@@ -976,6 +971,9 @@ class Reader {
   /* ********************************* */
   /*           PRIVATE METHODS         */
   /* ********************************* */
+
+  /** Correctness checks for `subarray_`. */
+  Status check_subarray() const;
 
   /**
    * Deletes the tiles on the input attribute/dimension from the result tiles.

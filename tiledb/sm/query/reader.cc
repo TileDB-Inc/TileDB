@@ -831,11 +831,8 @@ void Reader::compute_result_space_tiles(
 /*          PRIVATE METHODS       */
 /* ****************************** */
 
-//TBD: Is (the added) parameter actually being used anywhere?
-Status Reader::check_subarray(const Subarray* subarray) const {
-  auto& subarray_to_check = subarray ? *subarray : subarray_;
-  if (subarray_.layout() == Layout::GLOBAL_ORDER &&
-      subarray_to_check.range_num() != 1)
+Status Reader::check_subarray() const {
+  if (subarray_.layout() == Layout::GLOBAL_ORDER && subarray_.range_num() != 1)
     return LOG_STATUS(Status::ReaderError(
         "Cannot initialize reader; Multi-range subarrays with "
         "global order layout are not supported"));
