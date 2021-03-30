@@ -725,7 +725,7 @@ Status query_from_capnp(
 
           if (existing_offset_buffer_size_ptr != nullptr)
             existing_offset_buffer_size = *existing_offset_buffer_size_ptr;
-          if (existing_offset_buffer_size_ptr != nullptr)
+          if (existing_buffer_size_ptr != nullptr)
             existing_buffer_size = *existing_buffer_size_ptr;
         } else {
           RETURN_NOT_OK(query->get_buffer_vbytemap(
