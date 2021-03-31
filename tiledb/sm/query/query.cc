@@ -1055,12 +1055,7 @@ Subarray* Query::subarray() {
   return const_cast<Subarray*>(reader_.subarray());
 }
 
-Status Query::submit_with_subarray(Subarray* subarray){
-  RETURN_NOT_OK(set_subarray(subarray));
-  return submit();
-}
-
-Status Query::submit(/*Subarray *subarray*/) {
+Status Query::submit() {
   // Do not resubmit completed reads.
   if (type_ == QueryType::READ && status_ == QueryStatus::COMPLETED) {
     return Status::Ok();

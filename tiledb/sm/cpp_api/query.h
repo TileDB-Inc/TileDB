@@ -278,13 +278,6 @@ class Query {
     return query_status();
   }
 
-  Status submit_with_subarray(const tiledb::Subarray& cppapi_subarray) {
-    auto& ctx = ctx_.get();
-    ctx.handle_error(tiledb_query_submit_with_subarray(
-        ctx.ptr().get(), query_.get(), cppapi_subarray.capi_subarray()));
-    return query_status();
-  }
-
   /**
    * Submit an async query, with callback. Call returns immediately.
    *
@@ -304,19 +297,6 @@ class Query {
   void submit_async(const Fn& callback) {
     std::function<void(void*)> wrapper = [&](void*) { callback(); };
     auto& ctx = ctx_.get();
-    ctx.handle_error(tiledb::impl::tiledb_query_submit_async_func(
-        ctx.ptr().get(), query_.get(), &wrapper, nullptr));
-  }
-
-  // TBD: find what/where testing sub_async and augment to test _with_subarray.
-  template <typename Fn>
-  void submit_async_with_subarray(const Fn& callback, Subarray& subarray) {
-    auto& ctx = ctx_.get();
-#if 01
-    ctx.handle_error(tiledb_query_set_subarray_t(
-        ctx.ptr().get(), query_.get(), subarray.capi_subarray()));
-#endif
-    std::function<void(void*)> wrapper = [&](void*) { callback(); };
     ctx.handle_error(tiledb::impl::tiledb_query_submit_async_func(
         ctx.ptr().get(), query_.get(), &wrapper, nullptr));
   }

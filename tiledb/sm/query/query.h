@@ -688,13 +688,6 @@ class Query {
   /** Submits the query to the storage manager. */
   Status submit();
 
-  /** 
-   * Audits appropriateness of query/subarray relationship,
-   * if passes sets the subarray into the query and 
-   * submits the query to the storage manager. 
-   */
-  Status submit_with_subarray(Subarray* subarray);
-
   /**
    * Submits the query to the storage manager. The query will be
    * processed asynchronously (i.e., in a non-blocking manner).

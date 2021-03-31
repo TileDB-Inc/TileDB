@@ -334,8 +334,9 @@ void AsyncFx::write_dense_async() {
     tiledb_query_get_subarray(ctx_, query, &query_subarray);
     // Submit query asynchronously
     int callback_made = 0;
-    rc = tiledb_query_submit_async_with_subarray(
-        ctx_, query, callback, &callback_made, query_subarray);
+    rc = tiledb_query_set_subarray_t(ctx_, query, query_subarray);
+    CHECK(rc == TILEDB_OK);
+    rc = tiledb_query_submit_async(ctx_, query, callback, &callback_made);
     CHECK(rc == TILEDB_OK);
 
     // Wait for query to complete
@@ -459,8 +460,9 @@ void AsyncFx::write_sparse_async() {
     tiledb_query_get_subarray(ctx_, query, &query_subarray);
     // Submit query asynchronously
     int callback_made = 0;
-    rc = tiledb_query_submit_async_with_subarray(
-        ctx_, query, callback, &callback_made, query_subarray);
+    rc = tiledb_query_set_subarray_t(ctx_, query, query_subarray);
+    CHECK(rc == TILEDB_OK);
+    rc = tiledb_query_submit_async(ctx_, query, callback, &callback_made);
     CHECK(rc == TILEDB_OK);
 
     if (rc == TILEDB_OK) {
@@ -772,8 +774,9 @@ void AsyncFx::read_dense_async() {
 
     // Submit query with callback
     int callback_made = 0;
-    rc = tiledb_query_submit_async_with_subarray(
-        ctx_, query, callback, &callback_made, query_subarray);
+    rc = tiledb_query_set_subarray_t(ctx_, query, query_subarray);
+    CHECK(rc == TILEDB_OK);
+    rc = tiledb_query_submit_async(ctx_, query, callback, &callback_made);
     CHECK(rc == TILEDB_OK);
 
     if (rc == TILEDB_OK) {
@@ -934,8 +937,9 @@ void AsyncFx::read_sparse_async() {
 
     // Submit query with callback
     int callback_made = 0;
-    rc = tiledb_query_submit_async_with_subarray(
-        ctx_, query, callback, &callback_made, query_subarray);
+    rc = tiledb_query_set_subarray_t(ctx_, query, query_subarray);
+    CHECK(rc == TILEDB_OK);
+    rc = tiledb_query_submit_async(ctx_, query, callback, &callback_made);
     CHECK(rc == TILEDB_OK);
 
     // Wait for the query to complete

@@ -163,7 +163,6 @@ Status Subarray::add_range_unsafe(uint32_t dim_idx, const Range& range) {
   return Status::Ok();
 }
 
-// equivalent for older Query::set_subarray(const void *subarray);
 Status Subarray::set_subarray(const void* subarray) {
   if (!array_->array_schema()->domain()->all_dims_same_type())
     return LOG_STATUS(
