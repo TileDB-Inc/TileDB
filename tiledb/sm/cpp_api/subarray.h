@@ -79,7 +79,8 @@ class Query;
  * subarray.set_layout(TILEDB_GLOBAL_ORDER);
  * std::vector<int32_t> subarray_indices = {1, 2};
  * subarray.add_range(0, subarray_indices[0], subarray_indices[1]);
- * query.submit_with_subarray(subarray);
+ * query.set_subarray(subarray);
+ * query.submit();
  * query.finalize();
  * array.close();
  * @endcode
