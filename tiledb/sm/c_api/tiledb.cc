@@ -2984,35 +2984,6 @@ int32_t tiledb_query_submit(tiledb_ctx_t* ctx, tiledb_query_t* query) {
   return TILEDB_OK;
 }
 
-int32_t tiledb_query_submit_with_subarray(
-    tiledb_ctx_t* ctx,
-    tiledb_query_t* query,
-    const tiledb_subarray_t* subarray) {
-  // Sanity checks
-  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, query) == TILEDB_ERR)
-    return TILEDB_ERR;
-
-  if (sanity_check(ctx, subarray) == TILEDB_ERR)
-    return TILEDB_ERR;
-
-#if 01
-  if (SAVE_ERROR_CATCH(ctx, query->query_->submit_with_subarray(subarray->subarray_)))
-    return TILEDB_ERR;
-#else
-  auto query_status = query->query_->status();
-  if (query_status == tiledb::sm::QueryStatus::UNINITIALIZED ||
-      query_status == tiledb::sm::QueryStatus::COMPLETED) {
-    if (TILEDB_OK != tiledb_query_set_subarray_t(ctx, query, subarray))
-      return TILEDB_ERR;
-  }
-
-  if (SAVE_ERROR_CATCH(ctx, query->query_->submit()))
-    return TILEDB_ERR;
-#endif
-
-  return TILEDB_OK;
-}
-
 int32_t tiledb_query_submit_async(
     tiledb_ctx_t* ctx,
     tiledb_query_t* query,
@@ -3021,28 +2992,6 @@ int32_t tiledb_query_submit_async(
   // Sanity checks
   if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, query) == TILEDB_ERR)
     return TILEDB_ERR;
-  if (SAVE_ERROR_CATCH(
-          ctx, query->query_->submit_async(callback, callback_data)))
-    return TILEDB_ERR;
-
-  return TILEDB_OK;
-}
-
-int32_t tiledb_query_submit_async_with_subarray(
-    tiledb_ctx_t* ctx,
-    tiledb_query_t* query,
-    void (*callback)(void*),
-    void* callback_data,
-    tiledb_subarray_t* subarray) {
-  // Sanity checks
-  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, query) == TILEDB_ERR)
-    return TILEDB_ERR;
-#if 01  // && cppTILEDB_COND_SUB_SUBARRAY_FOR_QUERY
-  if (sanity_check(ctx, subarray) == TILEDB_ERR)
-    return TILEDB_ERR;
-  if (TILEDB_OK != tiledb_query_set_subarray_t(ctx, query, subarray))
-    return TILEDB_ERR;
-#endif
   if (SAVE_ERROR_CATCH(
           ctx, query->query_->submit_async(callback, callback_data)))
     return TILEDB_ERR;

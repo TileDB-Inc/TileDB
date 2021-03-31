@@ -3889,41 +3889,6 @@ TILEDB_EXPORT int32_t
 tiledb_query_submit(tiledb_ctx_t* ctx, tiledb_query_t* query);
 
 /**
- * Submits a TileDB query after setting the provided subarray if query either
- * previously completed or uninitialized.
- *
- * **Example:**
- *
- * @code{.c}
- * tiledb_query_submit_with_subarray(ctx, query, subarray);
- * @endcode
- *
- * @param ctx The TileDB context.
- * @param query The query to be submitted.
- * @param subarray The subarray to be used by the query.
- * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
- *
- * @note `tiledb_query_finalize` must be invoked after finish writing in
- *     global layout (via repeated invocations of `tiledb_query_submit`),
- *     in order to flush any internal state.
- *
- * @note For the case of reads, if the returned status is `TILEDB_INCOMPLETE`,
- *    TileDB could not fit the entire result in the user's buffers. In this
- *    case, the user should consume the read results (if any), optionally
- *    reset the buffers with `tiledb_query_set_buffer`, and then resubmit the
- *    query until the status becomes `TILEDB_COMPLETED`. If all buffer sizes
- *    after the termination of this function become 0, then this means that
- *    **no** useful data was read into the buffers, implying that larger
- *    buffers are needed for the query to proceed. In this case, the users
- *    must reallocate their buffers (increasing their size), reset the buffers
- *    with `tiledb_query_set_buffer`, and resubmit the query.
- */
-TILEDB_EXPORT int32_t tiledb_query_submit_with_subarray(
-    tiledb_ctx_t* ctx,
-    tiledb_query_t* query,
-    const tiledb_subarray_t* subarray);
-
-/**
  * Submits a TileDB query in asynchronous mode.
  *
  * **Examples:**
@@ -3968,16 +3933,6 @@ TILEDB_EXPORT int32_t tiledb_query_submit_async(
     tiledb_query_t* query,
     void (*callback)(void*),
     void* callback_data);
-
-#if 01
-// TBD: needed or not?
-TILEDB_EXPORT int32_t tiledb_query_submit_async_with_subarray(
-    tiledb_ctx_t* ctx,
-    tiledb_query_t* query,
-    void (*callback)(void*),
-    void* callback_data,
-    tiledb_subarray_t* subarray);
-#endif
 
 /**
  * Checks if the query has returned any results. Applicable only to
@@ -4095,7 +4050,7 @@ TILEDB_EXPORT int32_t tiledb_query_get_array(
  * @note The stride is currently unsupported. Use `nullptr` as the
  *     stride argument.
  * 
- * @note This is a TILEDB_DEPRECATED_EXPORT api.
+ * @note This is a TILEDB_DEPRECATED api.
  */
 
 TILEDB_EXPORT int32_t tiledb_query_add_range(
@@ -4130,6 +4085,8 @@ TILEDB_EXPORT int32_t tiledb_query_add_range(
  *
  * @note The stride is currently unsupported. Use `nullptr` as the
  *     stride argument.
+ *
+ * @note This is a TILEDB_DEPRECATED api.
  */
 TILEDB_EXPORT int32_t tiledb_query_add_range_by_name(
     tiledb_ctx_t* ctx,
@@ -4160,6 +4117,8 @@ TILEDB_EXPORT int32_t tiledb_query_add_range_by_name(
  * @param end The range end.
  * @param end_size The size of the range end in bytes.
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ *
+ * @note This is a TILEDB_DEPRECATED api.
  */
 TILEDB_EXPORT int32_t tiledb_query_add_range_var(
     tiledb_ctx_t* ctx,
@@ -4191,6 +4150,8 @@ TILEDB_EXPORT int32_t tiledb_query_add_range_var(
  * @param end The range end.
  * @param end_size The size of the range end in bytes.
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ *
+ * @note This is a TILEDB_DEPRECATED api.
  */
 TILEDB_EXPORT int32_t tiledb_query_add_range_var_by_name(
     tiledb_ctx_t* ctx,
@@ -4755,9 +4716,15 @@ TILEDB_EXPORT int32_t tiledb_subarray_set_coalesce_ranges(
  *     array.
  * @return `TILEDB_OK` for success or `TILEDB_ERR` for error.
  */
+#if 01
+//REMOVEME: OR REINSTATEME:
+//Checking feasability removing this API... compare
+//prob. also search for cousin tiledb_query_set_subarray() to see pain imposed on
+//our code and users that you may wish to move to new 'outside' subarray usage...
 TILEDB_EXPORT
 int32_t tiledb_subarray_set_subarray(
     tiledb_ctx_t* ctx, tiledb_subarray_t* subarray_s, const void* subarray_v);
+#endif
 
 /**
  * Adds a 1D range along a subarray dimension index, which is in the form

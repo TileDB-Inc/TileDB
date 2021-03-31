@@ -1552,107 +1552,93 @@ template void check_partitions<int8_t>(
     tiledb_ctx_t* ctx,
     tiledb_subarray_partitioner_t* partitioner,
     const std::vector<SubarrayRanges<int8_t>>& partitions,
-    bool last_unsplittable,
-    tiledb_subarray_t* retrieve_partition_subarray);
+    bool last_unsplittable);
 template void check_partitions<uint8_t>(
     tiledb_ctx_t* ctx,
     tiledb_subarray_partitioner_t* partitioner,
     const std::vector<SubarrayRanges<uint8_t>>& partitions,
-    bool last_unsplittable,
-    tiledb_subarray_t* retrieve_partition_subarray);
+    bool last_unsplittable);
 template void check_partitions<int16_t>(
     tiledb_ctx_t* ctx,
     tiledb_subarray_partitioner_t* partitioner,
     const std::vector<SubarrayRanges<int16_t>>& partitions,
-    bool last_unsplittable,
-    tiledb_subarray_t* retrieve_partition_subarray);
+    bool last_unsplittable);
 template void check_partitions<uint16_t>(
     tiledb_ctx_t* ctx,
     tiledb_subarray_partitioner_t* partitioner,
     const std::vector<SubarrayRanges<uint16_t>>& partitions,
-    bool last_unsplittable,
-    tiledb_subarray_t* retrieve_partition_subarray);
+    bool last_unsplittable);
 template void check_partitions<int32_t>(
     tiledb_ctx_t* ctx,
     tiledb_subarray_partitioner_t* partitioner,
     const std::vector<SubarrayRanges<int32_t>>& partitions,
-    bool last_unsplittable,
-    tiledb_subarray_t* retrieve_partition_subarray);
+    bool last_unsplittable);
 template void check_partitions<uint32_t>(
     tiledb_ctx_t* ctx,
     tiledb_subarray_partitioner_t* partitioner,
     const std::vector<SubarrayRanges<uint32_t>>& partitions,
-    bool last_unsplittable,
-    tiledb_subarray_t* retrieve_partition_subarray);
+    bool last_unsplittable);
 template void check_partitions<int64_t>(
     tiledb_ctx_t* ctx,
     tiledb_subarray_partitioner_t* partitioner,
     const std::vector<SubarrayRanges<int64_t>>& partitions,
-    bool last_unsplittable,
-    tiledb_subarray_t* retrieve_partition_subarray);
+    bool last_unsplittable);
 template void check_partitions<uint64_t>(
     tiledb_ctx_t* ctx,
     tiledb_subarray_partitioner_t* partitioner,
     const std::vector<SubarrayRanges<uint64_t>>& partitions,
-    bool last_unsplittable,
-    tiledb_subarray_t* retrieve_partition_subarray);
+    bool last_unsplittable);
 template void check_partitions<float>(
     tiledb_ctx_t* ctx,
     tiledb_subarray_partitioner_t* partitioner,
     const std::vector<SubarrayRanges<float>>& partitions,
-    bool last_unsplittable,
-    tiledb_subarray_t* retrieve_partition_subarray);
+    bool last_unsplittable);
+template void check_partitions<double>(
+    tiledb_ctx_t* ctx,
+    tiledb_subarray_partitioner_t* partitioner,
+    const std::vector<SubarrayRanges<double>>& partitions,
+    bool last_unsplittable);
 
 template void check_partitions<int8_t>(
     tiledb::SubarrayPartitioner* partitioner,
     const std::vector<SubarrayRanges<int8_t>>& partitions,
-    bool last_unsplittable,
-    tiledb::Subarray* retrieve_partition_subarray);
+    bool last_unsplittable);
 template void check_partitions<uint8_t>(
     tiledb::SubarrayPartitioner* partitioner,
     const std::vector<SubarrayRanges<uint8_t>>& partitions,
-    bool last_unsplittable,
-    tiledb::Subarray* retrieve_partition_subarray);
+    bool last_unsplittable);
 template void check_partitions<int16_t>(
     tiledb::SubarrayPartitioner* partitioner,
     const std::vector<SubarrayRanges<int16_t>>& partitions,
-    bool last_unsplittable,
-    tiledb::Subarray* retrieve_partition_subarray);
+    bool last_unsplittable);
 template void check_partitions<uint16_t>(
     tiledb::SubarrayPartitioner* partitioner,
     const std::vector<SubarrayRanges<uint16_t>>& partitions,
-    bool last_unsplittable,
-    tiledb::Subarray* retrieve_partition_subarray);
+    bool last_unsplittable);
 template void check_partitions<int32_t>(
     tiledb::SubarrayPartitioner* partitioner,
     const std::vector<SubarrayRanges<int32_t>>& partitions,
-    bool last_unsplittable,
-    tiledb::Subarray* retrieve_partition_subarray);
+    bool last_unsplittable);
 template void check_partitions<uint32_t>(
     tiledb::SubarrayPartitioner* partitioner,
     const std::vector<SubarrayRanges<uint32_t>>& partitions,
-    bool last_unsplittable,
-    tiledb::Subarray* retrieve_partition_subarray);
+    bool last_unsplittable);
 template void check_partitions<int64_t>(
     tiledb::SubarrayPartitioner* partitioner,
     const std::vector<SubarrayRanges<int64_t>>& partitions,
-    bool last_unsplittable,
-    tiledb::Subarray* retrieve_partition_subarray);
+    bool last_unsplittable);
 template void check_partitions<uint64_t>(
     tiledb::SubarrayPartitioner* partitioner,
     const std::vector<SubarrayRanges<uint64_t>>& partitions,
-    bool last_unsplittable,
-    tiledb::Subarray* retrieve_partition_subarray);
+    bool last_unsplittable);
 template void check_partitions<float>(
     tiledb::SubarrayPartitioner* partitioner,
     const std::vector<SubarrayRanges<float>>& partitions,
-    bool last_unsplittable,
-    tiledb::Subarray* retrieve_partition_subarray);
+    bool last_unsplittable);
 template void check_partitions<double>(
     tiledb::SubarrayPartitioner* partitioner,
     const std::vector<SubarrayRanges<double>>& partitions,
-    bool last_unsplittable,
-    tiledb::Subarray* retrieve_partition_subarray);
+    bool last_unsplittable);
 #endif
 
 template void read_array<int8_t>(

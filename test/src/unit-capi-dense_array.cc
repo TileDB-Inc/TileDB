@@ -982,10 +982,9 @@ void DenseArrayFx::write_dense_subarray_2D_with_cancel(
     // written.
     // TODO: this doesn't trigger the cancelled path very often.
     for (unsigned i = 0; i < num_writes; i++) {
-      // TBD: state/handling of query/_with_subarray on first/subsequent
-      // _submit_async_()s correct?
-      rc = tiledb_query_submit_async_with_subarray(
-          ctx_, query, NULL, NULL, query_subarray);
+      rc = tiledb_query_set_subarray_t(ctx_, query, query_subarray);
+      CHECK(rc == TILEDB_OK);
+      rc = tiledb_query_submit_async(ctx_, query, NULL, NULL);
       REQUIRE(rc == TILEDB_OK);
       // Cancel it immediately.
       if (i < num_writes - 1) {
