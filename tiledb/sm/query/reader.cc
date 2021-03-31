@@ -272,8 +272,7 @@ Status Reader::get_buffer_nullable(
   return Status::Ok();
 }
 
-Status Reader::init(
-    const Layout& layout) {
+Status Reader::init(const Layout& layout) {
   // Sanity checks
   if (storage_manager_ == nullptr)
     return LOG_STATUS(Status::ReaderError(

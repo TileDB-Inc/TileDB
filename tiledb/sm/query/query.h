@@ -131,9 +131,6 @@ class Query {
    * The range components must be of the same type as the domain type of the
    * underlying array.
    */
-  // TBD: Is this to be deprecated (with changes to subarray/partitioning), or
-  // will it still be needed/wanted internally?
-  // TILEDB_DEPRECATED
   Status add_range(
       unsigned dim_idx, const void* start, const void* end, const void* stride);
 

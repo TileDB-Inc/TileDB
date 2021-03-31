@@ -54,7 +54,7 @@ namespace sm {
 
 Query::Query(StorageManager* storage_manager, Array* array, URI fragment_uri)
     : array_(array)
-    , storage_manager_(storage_manager){
+    , storage_manager_(storage_manager) {
   assert(array != nullptr && array->is_open());
 
   callback_ = nullptr;
@@ -1075,8 +1075,7 @@ Status Query::submit() {
 }
 
 Status Query::submit_async(
-    std::function<void(void*)> callback,
-    void* callback_data) {
+    std::function<void(void*)> callback, void* callback_data) {
   // Do not resubmit completed reads.
   if (type_ == QueryType::READ && status_ == QueryStatus::COMPLETED) {
     callback(callback_data);

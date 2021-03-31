@@ -2619,10 +2619,6 @@ int32_t tiledb_array_schema_has_attribute(
 int32_t tiledb_query_alloc(
     tiledb_ctx_t* ctx,
     tiledb_array_t* array,
-    //note - 'query_type' parameter is *only* used to audit and fail
-    //call to this routine if it does not match query type of the array
-    //parameter above, it will not result in an allocated query with a type
-    //different from that of the array nor changing that of the array.
     tiledb_query_type_t query_type,
     tiledb_query_t** query) {
   // Sanity check
@@ -3526,7 +3522,7 @@ int32_t tiledb_subarray_alloc(
   // Create a new subarray object
   try {
     (*subarray)->subarray_ =
-        new (std::nothrow) tiledb::sm::Subarray(array->array_);
+        new (std::nothrow) tiledb::sm::Subarray(array->array_, /*coalesce_ranges = */true);
   } catch (...) {  // in case Subarray constructor (or involved sub-members)
                    // should throw.
     //->subarray_ already nullptr from above.
