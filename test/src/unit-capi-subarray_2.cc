@@ -83,23 +83,19 @@ struct Subarray2Fx {
       const std::vector<int>& b_val);
   void remove_array(const std::string& array_name);
   bool is_array(const std::string& array_name);
-#if 01
-  // TBD: What to do with these, would still seem to make most sense against a
-  // 'query', but... not sure...
   int32_t tiledb_subarray_get_est_result_size_wrapper(
       tiledb_ctx_t* ctx,
-      tiledb_subarray_t* subarray,  // tiledb_query_t* query,
+      tiledb_subarray_t* subarray,
       const char* name,
       uint64_t* size,
       tiledb_query_t* serialization_query);
   int32_t tiledb_subarray_get_est_result_size_var_wrapper(
       tiledb_ctx_t* ctx,
-      tiledb_subarray_t* subarray,  // tiledb_query_t* query,
+      tiledb_subarray_t* subarray,
       const char* name,
       uint64_t* size_off,
       uint64_t* size_val,
       tiledb_query_t* serialization_query);
-#endif
 };
 
 Subarray2Fx::Subarray2Fx() {
@@ -127,14 +123,11 @@ void Subarray2Fx::remove_array(const std::string& array_name) {
 
 int32_t Subarray2Fx::tiledb_subarray_get_est_result_size_wrapper(
     tiledb_ctx_t* ctx,
-    tiledb_subarray_t* subarray,  // tiledb_query_t* query,
+    tiledb_subarray_t* subarray,
     const char* name,
     uint64_t* size,
     tiledb_query_t* serialization_query) {
   int ret = tiledb_subarray_get_est_result_size(ctx, subarray, name, size);
-#if 0
-  return ret;
-#else
 #ifndef TILEDB_SERIALIZATION
   return ret;
 #endif
@@ -167,12 +160,11 @@ int32_t Subarray2Fx::tiledb_subarray_get_est_result_size_wrapper(
 
   tiledb_buffer_free(&buff);
   return tiledb_query_get_est_result_size(ctx, serialization_query, name, size);
-#endif
 }
 
 int32_t Subarray2Fx::tiledb_subarray_get_est_result_size_var_wrapper(
     tiledb_ctx_t* ctx,
-    tiledb_subarray_t* subarray,  // tiledb_query_t* query,
+    tiledb_subarray_t* subarray,
     const char* name,
     uint64_t* size_off,
     uint64_t* size_val,
@@ -185,9 +177,6 @@ int32_t Subarray2Fx::tiledb_subarray_get_est_result_size_var_wrapper(
 
   if (ret != TILEDB_OK || !serialize_)
     return ret;
-
-  // TBD: serialization not handled!
-  //*(char *)0 = 0;
 
   REQUIRE(
       tiledb_query_set_subarray_t(ctx, serialization_query, subarray) ==
@@ -593,7 +582,6 @@ void Subarray2Fx::write_dense_array(
   tiledb_subarray_t* subarray;
   rc = tiledb_subarray_alloc(ctx_, array, &subarray);
   CHECK(rc == TILEDB_OK);
-  // rc = tiledb_query_set_subarray(ctx_, query, &domain[0]);
   rc = tiledb_subarray_set_subarray(ctx_, subarray, &domain[0]);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_layout(ctx_, query, TILEDB_ROW_MAJOR);
@@ -611,7 +599,9 @@ void Subarray2Fx::write_dense_array(
   CHECK(rc == TILEDB_OK);
 
   // Submit query
-  rc = tiledb_query_submit_with_subarray(ctx_, query, subarray);
+  rc = tiledb_query_set_subarray_t(ctx_, query, subarray);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_submit(ctx_, query);
   CHECK(rc == TILEDB_OK);
 
   // Finalize query
@@ -650,9 +640,6 @@ void Subarray2Fx::write_sparse_array(
   tiledb_query_t* query;
   rc = tiledb_query_alloc(ctx_, array, TILEDB_WRITE, &query);
   CHECK(rc == TILEDB_OK);
-  //  tiledb_subarray_t* subarray;
-  //  rc = tiledb_subarray_alloc(ctx_, array, &subarray);
-  //  CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_layout(ctx_, query, TILEDB_UNORDERED);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_buffer(ctx_, query, "a", (void*)a.data(), &a_size);
@@ -672,10 +659,6 @@ void Subarray2Fx::write_sparse_array(
 
   // Submit query
   rc = tiledb_query_submit(ctx_, query);
-  // following errs in Writer::set_subarray(), "Setting a subarray is not
-  // supported in sparse writes"; and, we haven't placed anything in the
-  // subarray anyway...)
-  //  rc = tiledb_query_submit_with_subarray(ctx_, query, subarray);
   CHECK(rc == TILEDB_OK);
 
   // Finalize query
@@ -688,7 +671,6 @@ void Subarray2Fx::write_sparse_array(
 
   // Clean up
   tiledb_query_free(&query);
-  //  tiledb_subarray_free(&subarray);
   tiledb_array_free(&array);
 }
 
@@ -2112,7 +2094,6 @@ TEST_CASE_METHOD(
       CHECK(rc == TILEDB_OK);
       rc = tiledb_subarray_get_est_result_size_wrapper(
           ctx_, subarray, TILEDB_COORDS, &size, query);
-      // xxxxxxx left off manual here, trying replace ...
       CHECK(rc == TILEDB_OK);
       CHECK(size == 6 * 2 * sizeof(uint64_t));
       rc = tiledb_subarray_get_est_result_size_wrapper(
@@ -3143,7 +3124,9 @@ TEST_CASE_METHOD(
   CHECK(rc == TILEDB_ERR);
 
   // Submit query
-  rc = tiledb_query_submit_with_subarray(ctx_, query, subarray);
+  rc = tiledb_query_set_subarray_t(ctx_, query, subarray);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_submit(ctx_, query);
   CHECK(rc == TILEDB_OK);
 
   // Finalize query
@@ -3327,10 +3310,6 @@ TEST_CASE_METHOD(
   rc = tiledb_query_alloc(ctx_, array, TILEDB_WRITE, &query);
   CHECK(rc == TILEDB_OK);
 
-  tiledb_subarray_t* subarray;
-  rc = tiledb_subarray_alloc(ctx_, array, &subarray);
-  CHECK(rc == TILEDB_OK);
-
   // Create config
   tiledb_error_t* err;
   tiledb_config_t* config = nullptr;
@@ -3383,6 +3362,10 @@ TEST_CASE_METHOD(
   rc = tiledb_query_alloc(ctx_, array, TILEDB_READ, &query2);
   CHECK(rc == TILEDB_OK);
 
+  tiledb_subarray_t* subarray;
+  rc = tiledb_subarray_alloc(ctx_, array, &subarray);
+  CHECK(rc == TILEDB_OK);
+
   // Set override config
   rc = tiledb_query_set_config(ctx_, query2, config);
   CHECK(rc == TILEDB_OK);
@@ -3405,7 +3388,9 @@ TEST_CASE_METHOD(
   rc = tiledb_subarray_set_subarray(ctx_, subarray, &dom);
   CHECK(rc == TILEDB_OK);
 
-  rc = tiledb_query_submit_with_subarray(ctx_, query2, subarray);
+  rc = tiledb_query_set_subarray_t(ctx_, query2, subarray);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_submit(ctx_, query2);
   CHECK(rc == TILEDB_OK);
 
   CHECK(data == data2);

@@ -131,9 +131,6 @@ class Query {
    * The range components must be of the same type as the domain type of the
    * underlying array.
    */
-  // TBD: Is this to be deprecated (with changes to subarray/partitioning), or
-  // will it still be needed/wanted internally?
-  // TILEDB_DEPRECATED
   Status add_range(
       unsigned dim_idx, const void* start, const void* end, const void* stride);
 
@@ -690,13 +687,6 @@ class Query {
 
   /** Submits the query to the storage manager. */
   Status submit();
-
-  /** 
-   * Audits appropriateness of query/subarray relationship,
-   * if passes sets the subarray into the query and 
-   * submits the query to the storage manager. 
-   */
-  Status submit_with_subarray(Subarray* subarray);
 
   /**
    * Submits the query to the storage manager. The query will be

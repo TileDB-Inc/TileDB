@@ -99,7 +99,8 @@ TEST_CASE("C++ API: Test subarray", "[cppapi][sparse][subarray]") {
 
     std::vector<int> data(est_size);
     query.set_layout(TILEDB_ROW_MAJOR).set_buffer("a", data);
-    query.submit_with_subarray(subarray);
+    query.set_subarray(subarray);
+    query.submit();
     REQUIRE(query.result_buffer_elements()["a"].second == 1);
     REQUIRE(data[0] == 1);
   }
@@ -137,7 +138,8 @@ TEST_CASE("C++ API: Test subarray", "[cppapi][sparse][subarray]") {
 
     std::vector<int> data(est_size);
     query.set_layout(TILEDB_ROW_MAJOR).set_buffer("a", data);
-    query.submit_with_subarray(subarray);
+    query.set_subarray(subarray);
+    query.submit();
     REQUIRE(query.result_buffer_elements()["a"].second == 2);
     REQUIRE(data[0] == 2);
     REQUIRE(data[1] == 3);
@@ -212,7 +214,8 @@ TEST_CASE("C++ API: Test subarray", "[cppapi][sparse][subarray]") {
 
     std::vector<int> data(est_size);
     query.set_layout(TILEDB_UNORDERED).set_buffer("a", data);
-    query.submit_with_subarray(subarray);
+    query.set_subarray(subarray);
+    query.submit();
     REQUIRE(query.result_buffer_elements()["a"].second == 2);
     REQUIRE(data[0] == 1);
     REQUIRE(data[1] == 3);
@@ -251,7 +254,8 @@ TEST_CASE("C++ API: Test subarray", "[cppapi][sparse][subarray]") {
     auto est_size = subarray.est_result_size("a");
     std::vector<int> data(est_size);
     query.set_layout(TILEDB_UNORDERED).set_buffer("a", data);
-    query.submit_with_subarray(subarray);
+    query.set_subarray(subarray);
+    query.submit();
     REQUIRE(query.result_buffer_elements()["a"].second == 4);
     REQUIRE(data[0] == 1);
     REQUIRE(data[1] == 2);
@@ -443,7 +447,8 @@ TEST_CASE(
   query_w.set_coordinates(coords_w)
       .set_layout(TILEDB_UNORDERED)
       .set_buffer("a", data_w);
-  query_w.submit_with_subarray(subarray_w);
+  query_w.set_subarray(subarray_w);
+  query_w.submit();
   query_w.finalize();
   array_w.close();
 
@@ -506,7 +511,8 @@ TEST_CASE(
   }
 
   // Submit query
-  auto st = query.submit_with_subarray(subarray);
+  query.set_subarray(subarray);
+  auto st = query.submit();
   REQUIRE(st == Query::Status::INCOMPLETE);
   auto result_elts = query.result_buffer_elements();
   auto result_num = result_elts[TILEDB_COORDS].second / 2;
@@ -524,7 +530,8 @@ TEST_CASE(
   }
 
   // Resubmit
-  st = query.submit_with_subarray(subarray);
+  query.set_subarray(subarray);
+  st = query.submit();
   REQUIRE(st == Query::Status::INCOMPLETE);
   result_elts = query.result_buffer_elements();
   result_num = result_elts[TILEDB_COORDS].second / 2;
@@ -533,7 +540,8 @@ TEST_CASE(
   REQUIRE(data[1] == 'm');
 
   // Resubmit
-  st = query.submit_with_subarray(subarray);
+  query.set_subarray(subarray);
+  st = query.submit();
   REQUIRE(st == Query::Status::INCOMPLETE);
   result_elts = query.result_buffer_elements();
   result_num = result_elts[TILEDB_COORDS].second / 2;
@@ -541,7 +549,8 @@ TEST_CASE(
   REQUIRE(data[0] == 'c');
 
   // Resubmit
-  st = query.submit_with_subarray(subarray);
+  query.set_subarray(subarray);
+  st = query.submit();
   REQUIRE(st == Query::Status::INCOMPLETE);
   result_elts = query.result_buffer_elements();
   result_num = result_elts[TILEDB_COORDS].second / 2;
@@ -550,7 +559,8 @@ TEST_CASE(
   REQUIRE(data[1] == 'd');
 
   // Resubmit
-  st = query.submit_with_subarray(subarray);
+  query.set_subarray(subarray);
+  st = query.submit();
   REQUIRE(st == Query::Status::INCOMPLETE);
   result_elts = query.result_buffer_elements();
   result_num = result_elts[TILEDB_COORDS].second / 2;
@@ -558,7 +568,8 @@ TEST_CASE(
   REQUIRE(data[0] == 'e');
 
   // Resubmit
-  st = query.submit_with_subarray(subarray);
+  query.set_subarray(subarray);
+  st = query.submit();
   REQUIRE(st == Query::Status::INCOMPLETE);
   result_elts = query.result_buffer_elements();
   result_num = result_elts[TILEDB_COORDS].second / 2;
@@ -566,7 +577,8 @@ TEST_CASE(
   REQUIRE(data[0] == 'f');
 
   // Resubmit
-  st = query.submit_with_subarray(subarray);
+  query.set_subarray(subarray);
+  st = query.submit();
   REQUIRE(st == Query::Status::INCOMPLETE);
   result_elts = query.result_buffer_elements();
   result_num = result_elts[TILEDB_COORDS].second / 2;
@@ -575,7 +587,8 @@ TEST_CASE(
   REQUIRE(data[1] == 'h');
 
   // Resubmit
-  st = query.submit_with_subarray(subarray);
+  query.set_subarray(subarray);
+  st = query.submit();
   REQUIRE(st == Query::Status::INCOMPLETE);
   result_elts = query.result_buffer_elements();
   result_num = result_elts[TILEDB_COORDS].second / 2;
@@ -583,7 +596,8 @@ TEST_CASE(
   REQUIRE(data[0] == 'i');
 
   // Resubmit
-  st = query.submit_with_subarray(subarray);
+  query.set_subarray(subarray);
+  st = query.submit();
   REQUIRE(st == Query::Status::COMPLETE);
   result_elts = query.result_buffer_elements();
   result_num = result_elts[TILEDB_COORDS].second / 2;
@@ -710,7 +724,8 @@ TEST_CASE(
   query_w.set_coordinates(coords_w)
       .set_layout(TILEDB_UNORDERED)
       .set_buffer("a", data_w);
-  query_w.submit_with_subarray(subarray_w);
+  query_w.set_subarray(subarray_w);
+  query_w.submit();
   query_w.finalize();
   array_w.close();
 
@@ -734,14 +749,16 @@ TEST_CASE(
   query.set_coordinates(coords).set_buffer("a", data);
 
   // Submit query
-  auto st = query.submit_with_subarray(subarray);
+  query.set_subarray(subarray);
+  auto st = query.submit();
   REQUIRE(st == Query::Status::INCOMPLETE);
   auto result_elts = query.result_buffer_elements();
   auto result_num = result_elts[TILEDB_COORDS].second / 2;
   REQUIRE(result_num == 1);
   REQUIRE(data[0] == 'l');
 
-  st = query.submit_with_subarray(subarray);
+  query.set_subarray(subarray);
+  st = query.submit();
   REQUIRE(st == Query::Status::COMPLETE);
   result_elts = query.result_buffer_elements();
   result_num = result_elts[TILEDB_COORDS].second / 2;

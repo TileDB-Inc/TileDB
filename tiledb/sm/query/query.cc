@@ -54,7 +54,7 @@ namespace sm {
 
 Query::Query(StorageManager* storage_manager, Array* array, URI fragment_uri)
     : array_(array)
-    , storage_manager_(storage_manager){
+    , storage_manager_(storage_manager) {
   assert(array != nullptr && array->is_open());
 
   callback_ = nullptr;
@@ -1055,12 +1055,7 @@ Subarray* Query::subarray() {
   return const_cast<Subarray*>(reader_.subarray());
 }
 
-Status Query::submit_with_subarray(Subarray* subarray){
-  RETURN_NOT_OK(set_subarray(subarray));
-  return submit();
-}
-
-Status Query::submit(/*Subarray *subarray*/) {
+Status Query::submit() {
   // Do not resubmit completed reads.
   if (type_ == QueryType::READ && status_ == QueryStatus::COMPLETED) {
     return Status::Ok();
@@ -1080,8 +1075,7 @@ Status Query::submit(/*Subarray *subarray*/) {
 }
 
 Status Query::submit_async(
-    std::function<void(void*)> callback,
-    void* callback_data) {
+    std::function<void(void*)> callback, void* callback_data) {
   // Do not resubmit completed reads.
   if (type_ == QueryType::READ && status_ == QueryStatus::COMPLETED) {
     callback(callback_data);

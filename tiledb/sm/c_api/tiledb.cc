@@ -2619,10 +2619,6 @@ int32_t tiledb_array_schema_has_attribute(
 int32_t tiledb_query_alloc(
     tiledb_ctx_t* ctx,
     tiledb_array_t* array,
-    //note - 'query_type' parameter is *only* used to audit and fail
-    //call to this routine if it does not match query type of the array
-    //parameter above, it will not result in an allocated query with a type
-    //different from that of the array nor changing that of the array.
     tiledb_query_type_t query_type,
     tiledb_query_t** query) {
   // Sanity check
@@ -2984,35 +2980,6 @@ int32_t tiledb_query_submit(tiledb_ctx_t* ctx, tiledb_query_t* query) {
   return TILEDB_OK;
 }
 
-int32_t tiledb_query_submit_with_subarray(
-    tiledb_ctx_t* ctx,
-    tiledb_query_t* query,
-    const tiledb_subarray_t* subarray) {
-  // Sanity checks
-  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, query) == TILEDB_ERR)
-    return TILEDB_ERR;
-
-  if (sanity_check(ctx, subarray) == TILEDB_ERR)
-    return TILEDB_ERR;
-
-#if 01
-  if (SAVE_ERROR_CATCH(ctx, query->query_->submit_with_subarray(subarray->subarray_)))
-    return TILEDB_ERR;
-#else
-  auto query_status = query->query_->status();
-  if (query_status == tiledb::sm::QueryStatus::UNINITIALIZED ||
-      query_status == tiledb::sm::QueryStatus::COMPLETED) {
-    if (TILEDB_OK != tiledb_query_set_subarray_t(ctx, query, subarray))
-      return TILEDB_ERR;
-  }
-
-  if (SAVE_ERROR_CATCH(ctx, query->query_->submit()))
-    return TILEDB_ERR;
-#endif
-
-  return TILEDB_OK;
-}
-
 int32_t tiledb_query_submit_async(
     tiledb_ctx_t* ctx,
     tiledb_query_t* query,
@@ -3021,28 +2988,6 @@ int32_t tiledb_query_submit_async(
   // Sanity checks
   if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, query) == TILEDB_ERR)
     return TILEDB_ERR;
-  if (SAVE_ERROR_CATCH(
-          ctx, query->query_->submit_async(callback, callback_data)))
-    return TILEDB_ERR;
-
-  return TILEDB_OK;
-}
-
-int32_t tiledb_query_submit_async_with_subarray(
-    tiledb_ctx_t* ctx,
-    tiledb_query_t* query,
-    void (*callback)(void*),
-    void* callback_data,
-    tiledb_subarray_t* subarray) {
-  // Sanity checks
-  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, query) == TILEDB_ERR)
-    return TILEDB_ERR;
-#if 01  // && cppTILEDB_COND_SUB_SUBARRAY_FOR_QUERY
-  if (sanity_check(ctx, subarray) == TILEDB_ERR)
-    return TILEDB_ERR;
-  if (TILEDB_OK != tiledb_query_set_subarray_t(ctx, query, subarray))
-    return TILEDB_ERR;
-#endif
   if (SAVE_ERROR_CATCH(
           ctx, query->query_->submit_async(callback, callback_data)))
     return TILEDB_ERR;
@@ -3121,21 +3066,6 @@ int32_t tiledb_query_add_range(
 
 #if 01  // && cppTILEDB_COND_SUB_SUBARRAY_FOR_QUERY
   tiledb_subarray_transient_local_t query_subarray(query);
-  if (query->query_->type() == tiledb::sm::QueryType::WRITE) {
-    if (!query->query_->array_schema()->dense()) {
-      LOG_STATUS(
-          Status::WriterError("Adding a subarray range to a write query is not "
-                              "supported in sparse arrays"));
-      return TILEDB_ERR;
-    }
-
-    if (query_subarray.subarray_->is_set(dim_idx)) {
-      LOG_STATUS(
-          Status::WriterError("Cannot add range; Multi-range dense writes "
-                              "are not supported"));
-      return TILEDB_ERR;
-    }
-  }
   return tiledb_subarray_add_range(
       ctx, &query_subarray, dim_idx, start, end, stride);
 #endif
@@ -3228,7 +3158,6 @@ int32_t tiledb_query_get_range_num(
 
 #if 01  // && cppTILEDB_COND_SUB_SUBARRAY_FOR_QUERY
   tiledb_subarray_transient_local_t query_subarray(query);
-
   return tiledb_subarray_get_range_num(
       ctx, &query_subarray, dim_idx, range_num);
 #endif
@@ -3593,7 +3522,7 @@ int32_t tiledb_subarray_alloc(
   // Create a new subarray object
   try {
     (*subarray)->subarray_ =
-        new (std::nothrow) tiledb::sm::Subarray(array->array_);
+        new (std::nothrow) tiledb::sm::Subarray(array->array_, /*coalesce_ranges = */true);
   } catch (...) {  // in case Subarray constructor (or involved sub-members)
                    // should throw.
     //->subarray_ already nullptr from above.

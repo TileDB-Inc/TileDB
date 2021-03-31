@@ -522,7 +522,6 @@ class Subarray {
       const char* name,
       uint64_t* size,
       StorageManager* storage_manager);
-      //ThreadPool* compute_tp);
 
   /**
    * Gets the estimated result size (in bytes) for the input var-sized

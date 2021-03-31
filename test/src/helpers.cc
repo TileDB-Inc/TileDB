@@ -78,7 +78,7 @@ void check_partitions(
   //'next()' call made returns Ok(), but the 'current()' partition
   //available after that last call is the same as the 'current()' partition
   //that was available after the 'next()' call prior to the last one (i.e.
-  //'current()' partition is the same for the last two 'next()' calls made.
+  //'current()' partition is the same for the last two 'next()' calls made.)
   //This can be demonstrated by adding a check for 'done()' before that last 
   //'next()' in the else clause and seeing that flow is 'done()' before that
   //'next()' call.
@@ -90,12 +90,10 @@ void check_partitions(
   //detected, as in the else{} below, that final 'next()' will return '.ok()
   //whether there was an additional partition or whether 'done()' occurred in the 
   //previous 'next()' call made (done in the last loop iteration).
-  //Can demonstrate this failure in test  
+  //Can demonstrate this (uncaught) failure in test  
   //"SubarrayPartitioner (Dense): 1D, single-range, memory budget",
   //by eliminating the last partition element from both assignments, and observe
   //that the test(s) still pass.
-  //C)
-  //
   for (const auto& p : partitions) {
     CHECK(!partitioner.done());
     CHECK(!unsplittable);
@@ -134,9 +132,9 @@ void check_partitions(
     tiledb_subarray_partitioner_t* partitioner,
     const std::vector<SubarrayRanges<T>>& partitions,
     bool last_unsplittable,
-    tiledb_subarray_t *retrieve_partition_subarray) {
-
-  (void)last_unsplittable; //TBD: Anyway to incorporate this similar to internal core SubarrayPartitioner tests?
+    tiledb_subarray_t* retrieve_partition_subarray) {
+  (void)last_unsplittable;  // TBD: Anyway to verify this similar to internal
+                            // core SubarrayPartitioner tests?
 
   int32_t rc;
 
@@ -1600,6 +1598,12 @@ template void check_partitions<float>(
     tiledb_ctx_t* ctx,
     tiledb_subarray_partitioner_t* partitioner,
     const std::vector<SubarrayRanges<float>>& partitions,
+    bool last_unsplittable,
+    tiledb_subarray_t* retrieve_partition_subarray);
+template void check_partitions<double>(
+    tiledb_ctx_t* ctx,
+    tiledb_subarray_partitioner_t* partitioner,
+    const std::vector<SubarrayRanges<double>>& partitions,
     bool last_unsplittable,
     tiledb_subarray_t* retrieve_partition_subarray);
 
