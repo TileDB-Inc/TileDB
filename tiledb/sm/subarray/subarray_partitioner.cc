@@ -408,7 +408,7 @@ Status SubarrayPartitioner::next(bool* unsplittable) {
 
   //TBD: ??? do this or not???
   //having makes done()ness a bit less ambiguous, but might break existing code
-  //if they depend on that ambiguity (last 'current()' remaining valid)
+  //if they depend on that ambiguity (last 'current()' remaining last obtained)
   //note: no basic config build unit tests fail when .clear() is done.
   //current_.partition_.clear();
 
