@@ -91,7 +91,7 @@ void check_partitions(
   // whether there was an additional partition or whether 'done()' occurred in
   // the previous 'next()' call made (done in the last loop iteration). Can
   // demonstrate this (uncaught) failure in test "SubarrayPartitioner (Dense):
-  //1D, single-range, memory budget", by eliminating the last partition element
+  // 1D, single-range, memory budget", by eliminating the last partition element
   // from both assignments, and observe that the test(s) still pass.
   for (const auto& p : partitions) {
     CHECK(!partitioner.done());
@@ -280,7 +280,7 @@ void check_subarray_equiv(
 
   tiledb::sm::ByteVec sa1bytes, sa2bytes;
   //.to_byte_vect() only valid when range_num() == 1, but should be same for
-  //both and resulting bytes, empty or otherwise, should be the same as well.
+  // both and resulting bytes, empty or otherwise, should be the same as well.
   CHECK(
       subarray1.to_byte_vec(&sa1bytes).ok() ==
       subarray2.to_byte_vec(&sa2bytes).ok());
