@@ -47,8 +47,8 @@ struct AsyncFx {
   // TileDB context
   tiledb_ctx_t* ctx_;
 
-  bool use_outside_subarray_ = 
-      false; //as in separate subarray prepared 'outside' of a query
+  bool use_outside_subarray_ =
+      false;  // as in separate subarray prepared 'outside' of a query
 
   // Constructors/destructors
   AsyncFx();

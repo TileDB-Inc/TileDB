@@ -995,7 +995,6 @@ Status Query::set_subarray(const void* subarray) {
 }
 
 Status Query::set_subarray(const tiledb::sm::Subarray* subarray) {
-
   auto query_status = status();
   if (query_status != tiledb::sm::QueryStatus::UNINITIALIZED &&
       query_status != tiledb::sm::QueryStatus::COMPLETED) {

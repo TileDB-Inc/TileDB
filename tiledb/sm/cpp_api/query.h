@@ -998,9 +998,7 @@ class Query {
    * @param size The number of subarray elements.
    */
   template <typename T = uint64_t>
-  TILEDB_DEPRECATED
-      Query&
-      set_subarray(const T* pairs, uint64_t size) {
+  TILEDB_DEPRECATED Query& set_subarray(const T* pairs, uint64_t size) {
     impl::type_check<T>(schema_.domain().type());
     auto& ctx = ctx_.get();
     if (size != schema_.domain().ndim() * 2) {
@@ -1939,15 +1937,14 @@ class Query {
     }
     return "";  // silence error
   }
-   
+
   const Context& ctx() const {
     return ctx_.get();
   }
-   
+
   const Array& array() const {
     return array_.get();
   }
-   
 
  private:
   /* ********************************* */
@@ -2167,8 +2164,8 @@ inline Subarray::Subarray(const tiledb::Query& query)
     , schema_(query.array().schema()) {
   tiledb_subarray_t* loc_subarray;
   auto& ctx = ctx_.get();
-  ctx.handle_error(
-      tiledb_query_get_subarray(ctx_.get().ptr().get(), query.ptr().get(), &loc_subarray));
+  ctx.handle_error(tiledb_query_get_subarray(
+      ctx_.get().ptr().get(), query.ptr().get(), &loc_subarray));
   subarray_ = std::shared_ptr<tiledb_subarray_t>(loc_subarray, deleter_);
 }
 

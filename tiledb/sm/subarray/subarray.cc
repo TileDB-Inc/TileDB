@@ -37,14 +37,14 @@
 #include "tiledb/sm/array_schema/dimension.h"
 #include "tiledb/sm/array_schema/domain.h"
 #include "tiledb/sm/enums/layout.h"
+#include "tiledb/sm/enums/query_type.h"
 #include "tiledb/sm/fragment/fragment_metadata.h"
 #include "tiledb/sm/misc/parallel_functions.h"
 #include "tiledb/sm/misc/utils.h"
-#include "tiledb/sm/rtree/rtree.h"
-#include "tiledb/sm/stats/stats.h"
-#include "tiledb/sm/enums/query_type.h"
 #include "tiledb/sm/query/query.h"
 #include "tiledb/sm/rest/rest_client.h"
+#include "tiledb/sm/rtree/rtree.h"
+#include "tiledb/sm/stats/stats.h"
 
 #include <algorithm>
 #include <iomanip>
@@ -341,7 +341,7 @@ Status Subarray::get_range(
     if (!array_->array_schema()->dense())
       return LOG_STATUS(
           Status::QueryError("Getting a range from a write query is not "
-                            "applicable to sparse arrays"));
+                             "applicable to sparse arrays"));
   }
 
   *stride = nullptr;
@@ -636,7 +636,7 @@ Status Subarray::get_range_num(uint32_t dim_idx, uint64_t* range_num) const {
       !array_->array_schema()->dense()) {
     return LOG_STATUS(
         Status::QueryError("Getting the number of ranges from a write query "
-                            "is not applicable to sparse arrays"));
+                           "is not applicable to sparse arrays"));
   }
 
   *range_num = ranges_[dim_idx].size();
@@ -727,9 +727,10 @@ void Subarray::set_layout(Layout layout) {
 
 Status Subarray::set_coalesce_ranges(bool coalesce_ranges) {
   if (count_set())
-    return LOG_STATUS(Status::SubarrayError(
-        "non-default ranges have been set, cannot change coalesce_ranges setting!"));
-  //trying to mimic conditions at ctor()
+    return LOG_STATUS(
+        Status::SubarrayError("non-default ranges have been set, cannot change "
+                              "coalesce_ranges setting!"));
+  // trying to mimic conditions at ctor()
   coalesce_ranges_ = coalesce_ranges;
   ranges_.clear();
   add_default_ranges();
@@ -805,10 +806,7 @@ Status Subarray::get_est_result_size(
 }
 
 Status Subarray::get_est_result_size_querytype_audited(
-    const char* name,
-    uint64_t* size,
-    StorageManager* storage_manager) {
-
+    const char* name, uint64_t* size, StorageManager* storage_manager) {
   QueryType type;
   // Note: various items below expect array open, get_query_type() providing
   // that audit.
@@ -842,9 +840,9 @@ Status Subarray::get_est_result_size_querytype_audited(
         name + "' is nullable"));
 
 #if 01
-  //TBD: Figure out what does/can exercise the following code!!!
+  // TBD: Figure out what does/can exercise the following code!!!
   if (array_->is_remote()) {
-    //TBD: Should we somewhere (where?) try to remember if the remote call has
+    // TBD: Should we somewhere (where?) try to remember if the remote call has
     // already been done?
     // Trying approach of temporary query (and dup array due to 'const'ness of
     // array_ not being liked to define query)
@@ -881,8 +879,7 @@ Status Subarray::get_est_result_size_querytype_audited(
   }
 #endif
 
-  return get_est_result_size(name, size, storage_manager->compute_tp() );
-
+  return get_est_result_size(name, size, storage_manager->compute_tp());
 }
 
 Status Subarray::get_est_result_size(
@@ -1810,8 +1807,7 @@ void Subarray::add_range_without_coalesce(
 
 template <class T>
 void Subarray::add_or_coalesce_range(
-    const uint32_t dim_idx,
-    const Range& range) {
+    const uint32_t dim_idx, const Range& range) {
   std::vector<Range>* const ranges = &ranges_[dim_idx];
 
   // If `ranges` is empty, there is not an existing range to coalesce with.

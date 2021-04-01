@@ -2729,9 +2729,9 @@ int32_t tiledb_query_set_subarray_t(
   // Should the Query.array() and Subarray.array() be validated for
   // equivalence and this request rejected if not equivalent?
 
-  //Changing this area?  
-  //Be careful that the correct ->set_subarray() is called, it's
-  //easy to incorrectly call the one accepting a 'void *' parameter.
+  // Changing this area?
+  // Be careful that the correct ->set_subarray() is called, it's
+  // easy to incorrectly call the one accepting a 'void *' parameter.
   if (SAVE_ERROR_CATCH(ctx, query->query_->set_subarray(subarray->subarray_)))
     return TILEDB_ERR;
 
@@ -3475,14 +3475,14 @@ int32_t tiledb_query_get_subarray(
   if (tiledb_subarray_alloc(ctx, &tdb_array, subarray) != TILEDB_OK) {
     return TILEDB_ERR;
   }
-  //note: This leaves the returned subarray with references to everything
-  //that was an active part of the query's 'inside' subarray, 
-  //currently this consists of a raw pointer to an internal core entity,
+  // note: This leaves the returned subarray with references to everything
+  // that was an active part of the query's 'inside' subarray,
+  // currently this consists of a raw pointer to an internal core entity,
   //(const tiledb::sm::Array* array_; )
-  //so the receiving client should keep those alive as long as the 
-  //returned subarray is alive, possibly most easily tracked by keeping
-  //the source query and its dependencies alive.
-  //Any changes to this situation should be noted in the api notes as well.
+  // so the receiving client should keep those alive as long as the
+  // returned subarray is alive, possibly most easily tracked by keeping
+  // the source query and its dependencies alive.
+  // Any changes to this situation should be noted in the api notes as well.
   *(*subarray)->subarray_ = *query->query_->subarray();
   return TILEDB_OK;
 }
@@ -3521,8 +3521,8 @@ int32_t tiledb_subarray_alloc(
 
   // Create a new subarray object
   try {
-    (*subarray)->subarray_ =
-        new (std::nothrow) tiledb::sm::Subarray(array->array_, /*coalesce_ranges = */true);
+    (*subarray)->subarray_ = new (std::nothrow)
+        tiledb::sm::Subarray(array->array_, /*coalesce_ranges = */ true);
   } catch (...) {  // in case Subarray constructor (or involved sub-members)
                    // should throw.
     //->subarray_ already nullptr from above.
@@ -3833,9 +3833,7 @@ int32_t tiledb_subarray_get_est_result_size(
   if (SAVE_ERROR_CATCH(
           ctx,
           subarray->subarray_->get_est_result_size_querytype_audited(
-              name,
-              size,
-              ctx->ctx_->storage_manager())))
+              name, size, ctx->ctx_->storage_manager())))
     return TILEDB_ERR;
   return TILEDB_OK;
 }
@@ -3947,7 +3945,7 @@ int32_t tiledb_subarray_partitioner_alloc(
             memory_budget_var,
             memory_budget_validity,
             ctx->ctx_->storage_manager()->compute_tp());
-  } catch (...) {  
+  } catch (...) {
     // in case Subarray constructor (or involved sub-members) should throw.
     //->partitioner_ already nullptr from above.
   }
@@ -3996,8 +3994,7 @@ int32_t tiledb_subarray_partitioner_compute(
     return TILEDB_ERR;
 
   if (SAVE_ERROR_CATCH(
-          ctx,
-          partitioner->partitioner_->compute_partition_series( )))
+          ctx, partitioner->partitioner_->compute_partition_series()))
     return TILEDB_ERR;
 
   return TILEDB_OK;
@@ -4024,12 +4021,13 @@ int32_t tiledb_subarray_partitioner_get_partition(
   // Sanity check
   if (sanity_check(ctx) == TILEDB_ERR ||
       sanity_check(ctx, partitioner) == TILEDB_ERR ||
-      sanity_check(ctx, retrieved_subarray) == TILEDB_ERR
-      )
+      sanity_check(ctx, retrieved_subarray) == TILEDB_ERR)
     return TILEDB_ERR;
 
   if (SAVE_ERROR_CATCH(
-    ctx, partitioner->partitioner_->subarray_from_partition_series(part_id, &retrieved_subarray->subarray_)))
+          ctx,
+          partitioner->partitioner_->subarray_from_partition_series(
+              part_id, &retrieved_subarray->subarray_)))
     return TILEDB_ERR;
   return TILEDB_OK;
 }
@@ -4044,12 +4042,13 @@ int32_t tiledb_subarray_partitioner_set_result_budget(
       sanity_check(ctx, partitioner) == TILEDB_ERR)
     return TILEDB_ERR;
 
-  if (SAVE_ERROR_CATCH(ctx, partitioner->partitioner_->set_result_budget(attrname, budget)))
+  if (SAVE_ERROR_CATCH(
+          ctx, partitioner->partitioner_->set_result_budget(attrname, budget)))
     return TILEDB_ERR;
 
   return TILEDB_OK;
 }
-  
+
 int32_t tiledb_subarray_partitioner_set_result_budget_var_attr(
     tiledb_ctx_t* ctx,
     const char* attrname,
@@ -4062,7 +4061,9 @@ int32_t tiledb_subarray_partitioner_set_result_budget_var_attr(
     return TILEDB_ERR;
 
   if (SAVE_ERROR_CATCH(
-          ctx, partitioner->partitioner_->set_result_budget(attrname, budget_off, budget_val)))
+          ctx,
+          partitioner->partitioner_->set_result_budget(
+              attrname, budget_off, budget_val)))
     return TILEDB_ERR;
 
   return TILEDB_OK;
@@ -4080,7 +4081,9 @@ int32_t tiledb_subarray_partitioner_set_memory_budget(
     return TILEDB_ERR;
 
   if (SAVE_ERROR_CATCH(
-          ctx, partitioner->partitioner_->set_memory_budget(budget, budget_var, budget_validity)))
+          ctx,
+          partitioner->partitioner_->set_memory_budget(
+              budget, budget_var, budget_validity)))
     return TILEDB_ERR;
 
   return TILEDB_OK;
@@ -4088,9 +4091,9 @@ int32_t tiledb_subarray_partitioner_set_memory_budget(
 
 int32_t tiledb_subarray_partitioner_get_memory_budget(
     tiledb_ctx_t* ctx,
-    uint64_t *budget,
-    uint64_t *budget_var,
-    uint64_t *budget_validity,
+    uint64_t* budget,
+    uint64_t* budget_var,
+    uint64_t* budget_validity,
     tiledb_subarray_partitioner_t* partitioner) {
   // Sanity check
   if (sanity_check(ctx) == TILEDB_ERR ||
@@ -4109,7 +4112,7 @@ int32_t tiledb_subarray_partitioner_get_memory_budget(
 int32_t tiledb_subarray_partitioner_get_result_budget_fixed(
     tiledb_ctx_t* ctx,
     const char* name,
-    uint64_t *budget,
+    uint64_t* budget,
     tiledb_subarray_partitioner_t* partitioner) {
   // Sanity check
   if (sanity_check(ctx) == TILEDB_ERR ||
@@ -4135,7 +4138,9 @@ int32_t tiledb_subarray_partitioner_get_result_budget_var(
     return TILEDB_ERR;
 
   if (SAVE_ERROR_CATCH(
-          ctx, partitioner->partitioner_->get_result_budget(name, budget_off, budget_val)))
+          ctx,
+          partitioner->partitioner_->get_result_budget(
+              name, budget_off, budget_val)))
     return TILEDB_ERR;
 
   return TILEDB_OK;
@@ -4194,7 +4199,9 @@ int32_t tiledb_subarray_partitioner_set_result_budget_nullable_fixed(
     return TILEDB_ERR;
 
   if (SAVE_ERROR_CATCH(
-          ctx, partitioner->partitioner_->set_result_budget_nullable(name, budget, budget_validity)))
+          ctx,
+          partitioner->partitioner_->set_result_budget_nullable(
+              name, budget, budget_validity)))
     return TILEDB_ERR;
 
   return TILEDB_OK;
@@ -4213,13 +4220,13 @@ int32_t tiledb_subarray_partitioner_get_result_budget_nullable_var(
     return TILEDB_ERR;
 
   if (SAVE_ERROR_CATCH(
-          ctx, partitioner->partitioner_->get_result_budget_nullable(name, budget_off, budget_val, budget_validity)))
+          ctx,
+          partitioner->partitioner_->get_result_budget_nullable(
+              name, budget_off, budget_val, budget_validity)))
     return TILEDB_ERR;
 
   return TILEDB_OK;
 }
-
-
 
 #endif
 

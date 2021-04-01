@@ -1289,8 +1289,7 @@ Status Writer::check_subarray() const {
           Status::WriterError("Multi-range dense writes "
                               "are not supported"));
 
-    if (layout_ == Layout::GLOBAL_ORDER &&
-        !subarray_.coincides_with_tiles())
+    if (layout_ == Layout::GLOBAL_ORDER && !subarray_.coincides_with_tiles())
       return LOG_STATUS(
           Status::WriterError("Cannot initialize query; In global writes for "
                               "dense arrays, the subarray "

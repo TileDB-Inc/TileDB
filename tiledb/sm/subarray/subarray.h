@@ -519,9 +519,7 @@ class Subarray {
    * attribute/dimension if audit passes.
    */
   Status get_est_result_size_querytype_audited(
-      const char* name,
-      uint64_t* size,
-      StorageManager* storage_manager);
+      const char* name, uint64_t* size, StorageManager* storage_manager);
 
   /**
    * Gets the estimated result size (in bytes) for the input var-sized
@@ -633,10 +631,10 @@ class Subarray {
   /** Sets the subarray layout. */
   void set_layout(Layout layout);
 
-  /** Sets coalesce_ranges flag, intended for use by CAPI, to alloc matching 
-  * default coalesc-ranges=true semantics of internal class constructor, but giving
-  * capi clients ability to turn off if desired.
-  */
+  /** Sets coalesce_ranges flag, intended for use by CAPI, to alloc matching
+   * default coalesc-ranges=true semantics of internal class constructor, but
+   * giving capi clients ability to turn off if desired.
+   */
   Status set_coalesce_ranges(bool coalesce_ranges = true);
 
   /**
