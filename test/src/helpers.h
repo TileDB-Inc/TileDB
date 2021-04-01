@@ -151,32 +151,6 @@ void check_partitions(
     tiledb::Subarray* retrieve_partition_subarray);
 #endif
 
-#if 0
-//TBD: think these are dups of the one's just above, foul from merge effort...
-/**
- * Checks that the capi input partitioner produces the input partitions
- * (i.e., subarrays).
- *
- * @tparam T The datatype of the subarray of the partitioner.
- * @param partitioner The capi partitioner.
- * @param partitions The ranges to be checked.
- * @param last_unsplittable Whether the last partition is unsplittable.
- */
-template <class T>
-void check_partitions(
-    tiledb_ctx_t* ctx,
-    tiledb_subarray_partitioner_t* partitioner,
-    const std::vector<SubarrayRanges<T>>& partitions,
-    bool last_unsplittable,
-    tiledb_subarray_t* retrieve_partition_subarray);
-
-template <class T> void check_partitions(
-    tiledb::SubarrayPartitioner* partitioner,
-    const std::vector<SubarrayRanges<T>>& partitions,
-    bool last_unsplittable,
-    tiledb::Subarray* retrieve_partition_subarray);
-#endif
-
 /**
  * Checks if the input subarray has the input subarray ranges.
  *
