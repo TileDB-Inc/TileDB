@@ -193,20 +193,22 @@ class SubarrayPartitioner {
   /** Returns the current partition info. */
   PartitionInfo* current_partition_info();
 
-  /** compute the entire series of partitions and optionally return series to caller.
-  * If caller requests return of series, it is not retained within the partitioner.
-  */
-  Status compute_partition_series(std::vector<PartitionInfo>* result_partitions = nullptr);
+  /** compute the entire series of partitions and optionally return series to
+   * caller. If caller requests return of series, it is not retained within the
+   * partitioner.
+   */
+  Status compute_partition_series(
+      std::vector<PartitionInfo>* result_partitions = nullptr);
 
   /** The total number of computed partitions in the series. */
   uint64_t partition_series_num();
 
   /** Retrieve pointer to internal instance of specific computed subarray.
-  * 
-  * Note: This will only remain valid while the partitioner remains valid and the
-  * partition series is not re-computed or otherwise released.
-  */
-  Status subarray_from_partition_series(uint64_t part_idx, Subarray **subarray);
+   *
+   * Note: This will only remain valid while the partitioner remains valid and
+   * the partition series is not re-computed or otherwise released.
+   */
+  Status subarray_from_partition_series(uint64_t part_idx, Subarray** subarray);
 
   /**
    * Returns ``true`` if there are no more partitions, i.e., if the

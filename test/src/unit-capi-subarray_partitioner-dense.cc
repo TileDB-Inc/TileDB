@@ -240,7 +240,6 @@ void CAPISubarrayPartitionerDenseFx::write_default_2d_array() {
   write_array(ctx_, array_name_, TILEDB_GLOBAL_ORDER, buffers);
 }
 
-
 template <class T>
 void CAPISubarrayPartitionerDenseFx::test_subarray_partitioner(
     Layout subarray_layout,
@@ -249,14 +248,13 @@ void CAPISubarrayPartitionerDenseFx::test_subarray_partitioner(
     const std::string& attr,
     uint64_t budget,
     bool unsplittable) {
- Subarray coresubarray;
- create_subarray(array_->array_, ranges, subarray_layout, &coresubarray);
+  Subarray coresubarray;
+  create_subarray(array_->array_, ranges, subarray_layout, &coresubarray);
 
   int32_t rc;
 
   tiledb_subarray_t* tdb_subarray;
-  create_subarray(
-      ctx_, array_->array_, ranges, subarray_layout, &tdb_subarray);
+  create_subarray(ctx_, array_->array_, ranges, subarray_layout, &tdb_subarray);
   check_subarray_equiv<T>(coresubarray, *tdb_subarray->subarray_);
 
   tiledb_subarray_partitioner_t* subarray_partitioner;
@@ -279,7 +277,8 @@ void CAPISubarrayPartitionerDenseFx::test_subarray_partitioner(
       ranges,
       subarray_layout,
       &tdb_retrieve_partition_subarray);
-  check_subarray_equiv<T>(coresubarray, *tdb_retrieve_partition_subarray->subarray_);
+  check_subarray_equiv<T>(
+      coresubarray, *tdb_retrieve_partition_subarray->subarray_);
   check_partitions(
       ctx_,
       subarray_partitioner,
@@ -307,8 +306,7 @@ void CAPISubarrayPartitionerDenseFx::test_subarray_partitioner(
   int32_t rc;
 
   tiledb_subarray_t* tdb_subarray;
-  create_subarray(
-      ctx_, array_->array_, ranges, subarray_layout, &tdb_subarray);
+  create_subarray(ctx_, array_->array_, ranges, subarray_layout, &tdb_subarray);
   check_subarray_equiv<T>(coresubarray, *tdb_subarray->subarray_);
 
   tiledb_subarray_partitioner_t* subarray_partitioner;
@@ -344,13 +342,16 @@ void CAPISubarrayPartitionerDenseFx::test_subarray_partitioner(
       ctx_, "b", 1000000, 1000000, subarray_partitioner);
   REQUIRE(rc == TILEDB_OK);
 
-
   rc = tiledb_subarray_partitioner_set_memory_budget(
       ctx_, budget, budget_var, 0, subarray_partitioner);
   REQUIRE(rc == TILEDB_OK);
 
   check_partitions(
-      ctx_, subarray_partitioner, partitions, unsplittable, tdb_retrieve_partition_subarray);
+      ctx_,
+      subarray_partitioner,
+      partitions,
+      unsplittable,
+      tdb_retrieve_partition_subarray);
 
   tiledb_subarray_free(&tdb_retrieve_partition_subarray);
   tiledb_subarray_free(&tdb_subarray);
@@ -596,14 +597,15 @@ TEST_CASE_METHOD(
 
 TEST_CASE_METHOD(
     CAPISubarrayPartitionerDenseFx,
-    "C API SubarrayPartitioner (Dense): 1D, single-range, unsplittable but ok after "
+    "C API SubarrayPartitioner (Dense): 1D, single-range, unsplittable but ok "
+    "after "
     "budget reset",
     "[SubarrayPartitioner][dense][1D][1R][unsplittable_but_then_ok]") {
   create_default_1d_array(TILEDB_ROW_MAJOR, TILEDB_ROW_MAJOR);
   write_default_1d_array();
   open_array(ctx_, array_, TILEDB_READ);
 
-  tiledb_subarray_t *subarray;
+  tiledb_subarray_t* subarray;
   SubarrayRanges<uint64_t> ranges = {{2, 6}};
   Layout subarray_layout = Layout::GLOBAL_ORDER;
   std::vector<SubarrayRanges<uint64_t>> partitions = {{{2, 2}}};
@@ -623,7 +625,8 @@ TEST_CASE_METHOD(
       memory_budget_var_,
       0);
   REQUIRE(TILEDB_OK == rc);
-  rc = tiledb_subarray_partitioner_set_result_budget(ctx_, "a", 100 * sizeof(int), subarray_partitioner);
+  rc = tiledb_subarray_partitioner_set_result_budget(
+      ctx_, "a", 100 * sizeof(int), subarray_partitioner);
   CHECK(TILEDB_OK == rc);
   rc = tiledb_subarray_partitioner_set_result_budget_var_attr(
       ctx_, "b", 1, 1, subarray_partitioner);
@@ -632,9 +635,11 @@ TEST_CASE_METHOD(
   tiledb_subarray_t* retrieved_subarray;
   rc = tiledb_subarray_alloc(ctx_, array_, &retrieved_subarray);
   CHECK(TILEDB_OK == rc);
-  check_partitions(ctx_, subarray_partitioner, partitions, true, retrieved_subarray);
+  check_partitions(
+      ctx_, subarray_partitioner, partitions, true, retrieved_subarray);
 
-  rc = tiledb_subarray_partitioner_set_result_budget_var_attr(ctx_, "b", 100, 100, subarray_partitioner);
+  rc = tiledb_subarray_partitioner_set_result_budget_var_attr(
+      ctx_, "b", 100, 100, subarray_partitioner);
   REQUIRE(TILEDB_OK == rc);
 
   check_partitions(

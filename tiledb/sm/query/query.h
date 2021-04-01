@@ -694,9 +694,7 @@ class Query {
    * Once the query is completed, the input callback function will
    * be executed using the input callback data.
    */
-  Status submit_async(
-      std::function<void(void*)> callback,
-      void* callback_data);
+  Status submit_async(std::function<void(void*)> callback, void* callback_data);
 
   /** Returns the query status. */
   QueryStatus status() const;

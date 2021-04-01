@@ -345,8 +345,7 @@ void CAPISubarrayPartitionerSparseFx::test_subarray_partitioner(
   int32_t rc;
 
   tiledb_subarray_t* tdb_subarray;
-  create_subarray(
-      ctx_, array_->array_, ranges, subarray_layout, &tdb_subarray);
+  create_subarray(ctx_, array_->array_, ranges, subarray_layout, &tdb_subarray);
   check_subarray_equiv<T>(coresubarray, *tdb_subarray->subarray_);
 
   tiledb_subarray_partitioner_t* subarray_partitioner;
@@ -400,8 +399,7 @@ void CAPISubarrayPartitionerSparseFx::test_subarray_partitioner(
   int32_t rc;
 
   tiledb_subarray_t* tdb_subarray;
-  create_subarray(
-      ctx_, array_->array_, ranges, subarray_layout, &tdb_subarray);
+  create_subarray(ctx_, array_->array_, ranges, subarray_layout, &tdb_subarray);
   check_subarray_equiv<T>(coresubarray, *tdb_subarray->subarray_);
 
   tiledb_subarray_partitioner_t* subarray_partitioner;
@@ -454,8 +452,7 @@ void CAPISubarrayPartitionerSparseFx::test_subarray_partitioner(
   int32_t rc;
 
   tiledb_subarray_t* tdb_subarray;
-  create_subarray(
-      ctx_, array_->array_, ranges, subarray_layout, &tdb_subarray);
+  create_subarray(ctx_, array_->array_, ranges, subarray_layout, &tdb_subarray);
   check_subarray_equiv<T>(coresubarray, *tdb_subarray->subarray_);
 
   tiledb_subarray_partitioner_t* subarray_partitioner;
@@ -629,7 +626,8 @@ TEST_CASE_METHOD(
 
 TEST_CASE_METHOD(
     CAPISubarrayPartitionerSparseFx,
-    "C API SubarrayPartitioner (Sparse): 1D, single-range, unsplittable at once",
+    "C API SubarrayPartitioner (Sparse): 1D, single-range, unsplittable at "
+    "once",
     "[SubarrayPartitioner][sparse][1D][1R][unsplittable_at_once]") {
   Layout subarray_layout;
   SubarrayRanges<uint64_t> ranges = {{4, 4}};
@@ -745,7 +743,8 @@ TEST_CASE_METHOD(
 
 TEST_CASE_METHOD(
     CAPISubarrayPartitionerSparseFx,
-    "C API SubarrayPartitioner (Sparse): 1D, single-range, unsplittable but ok after "
+    "C API SubarrayPartitioner (Sparse): 1D, single-range, unsplittable but ok "
+    "after "
     "budget reset",
     "[SubarrayPartitioner][sparse][1D][1R][unsplittable_but_then_ok]") {
   create_default_1d_array(TILEDB_ROW_MAJOR, TILEDB_ROW_MAJOR);
@@ -782,7 +781,8 @@ TEST_CASE_METHOD(
 
 TEST_CASE_METHOD(
     CAPISubarrayPartitionerSparseFx,
-    "C API SubarrayPartitioner (Sparse): 1D, single-range, float, split multiple",
+    "C API SubarrayPartitioner (Sparse): 1D, single-range, float, split "
+    "multiple",
     "[SubarrayPartitioner][sparse][1D][1R][float][split_multiple]") {
   Layout subarray_layout;
   auto max = std::numeric_limits<float>::max();
@@ -825,7 +825,8 @@ TEST_CASE_METHOD(
 
 TEST_CASE_METHOD(
     CAPISubarrayPartitionerSparseFx,
-    "C API SubarrayPartitioner (Sparse): 1D, single-range, float, unsplittable after "
+    "C API SubarrayPartitioner (Sparse): 1D, single-range, float, unsplittable "
+    "after "
     "multiple",
     "[SubarrayPartitioner][sparse][1D][1R][float][unsplittable_after_"
     "multiple]") {
@@ -865,7 +866,8 @@ TEST_CASE_METHOD(
 
 TEST_CASE_METHOD(
     CAPISubarrayPartitionerSparseFx,
-    "C API SubarrayPartitioner (Sparse): 1D, single-range, float, whole subarray "
+    "C API SubarrayPartitioner (Sparse): 1D, single-range, float, whole "
+    "subarray "
     "fits",
     "[SubarrayPartitioner][sparse][1D][1R][float][whole_subarray_fits]") {
   Layout subarray_layout;
@@ -2324,7 +2326,7 @@ TEST_CASE_METHOD(
   rc = tiledb_array_close(ctx_, array);
   CHECK(rc == TILEDB_OK);
 
-  //TBD: Leaking the previous array, replacing it below? If so, do we care?
+  // TBD: Leaking the previous array, replacing it below? If so, do we care?
 
   // #### PARTITIONER ####
 
@@ -2496,7 +2498,8 @@ TEST_CASE_METHOD(
 
 TEST_CASE_METHOD(
     CAPISubarrayPartitionerSparseFx,
-    "C API SubarrayPartitioner (Sparse): 1D, single-range, string dimension, edge "
+    "C API SubarrayPartitioner (Sparse): 1D, single-range, string dimension, "
+    "edge "
     "split",
     "[SubarrayPartitioner][sparse][1D][SR][string-dims][edge-split]") {
   // Create array
@@ -2554,7 +2557,8 @@ TEST_CASE_METHOD(
 
   // #### PARTITIONER ####
 
-  //TBD: leaking array between above and next tiledb_array_alloc()? If so, do we care?
+  // TBD: leaking array between above and next tiledb_array_alloc()? If so, do
+  // we care?
 
   // Open array
   rc = tiledb_array_alloc(ctx_, array_name_.c_str(), &array);

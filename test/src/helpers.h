@@ -36,10 +36,10 @@
 
 #include "tiledb.h"
 #include "tiledb/sm/array/array.h"
+#include "tiledb/sm/cpp_api/tiledb"
 #include "tiledb/sm/enums/layout.h"
 #include "tiledb/sm/enums/serialization_type.h"
 #include "tiledb/sm/subarray/subarray.h"
-#include "tiledb/sm/cpp_api/tiledb"
 #include "tiledb_serialization.h"
 
 #include <mutex>

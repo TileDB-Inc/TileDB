@@ -87,22 +87,27 @@ class Query;
  */
 class Subarray {
  public:
-  Subarray(const tiledb::Context& ctx, const tiledb::Array& array, bool coalesce_ranges = true)
+  Subarray(
+      const tiledb::Context& ctx,
+      const tiledb::Array& array,
+      bool coalesce_ranges = true)
       : ctx_(ctx)
       , array_(array)
       , schema_(array.schema()) {
     tiledb_subarray_t* capi_subarray;
     ctx.handle_error(tiledb_subarray_alloc(
         ctx.ptr().get(), array.ptr().get(), &capi_subarray));
-    tiledb_subarray_set_coalesce_ranges(ctx.ptr().get(), capi_subarray, coalesce_ranges);
+    tiledb_subarray_set_coalesce_ranges(
+        ctx.ptr().get(), capi_subarray, coalesce_ranges);
     subarray_ = std::shared_ptr<tiledb_subarray_t>(capi_subarray, deleter_);
   }
 
-  Subarray(const tiledb::Query& query); //defined in cppapi Query.h
+  Subarray(const tiledb::Query& query);  // defined in cppapi Query.h
 
   /** Set the layout for the subarray. */
   Subarray& set_layout(tiledb_layout_t layout) {
-    ctx_.get().handle_error(tiledb_subarray_set_layout(ctx_.get().ptr().get(), subarray_.get(), layout));
+    ctx_.get().handle_error(tiledb_subarray_set_layout(
+        ctx_.get().ptr().get(), subarray_.get(), layout));
     return *this;
   }
 
@@ -291,14 +296,13 @@ class Subarray {
    * per dimension.
    * @param size The number of subarray elements.
    *
-   * @note The number of pairs passed should equal number of dimensions 
+   * @note The number of pairs passed should equal number of dimensions
    *       of the array associated with the subarray, or the
-   *       number of elements in subarray_vals should equal that number of 
+   *       number of elements in subarray_vals should equal that number of
    *       dimensions * 2.
    */
   template <typename T = uint64_t>
-      Subarray&
-      set_subarray(const T* pairs, uint64_t size) {
+  Subarray& set_subarray(const T* pairs, uint64_t size) {
     impl::type_check<T>(schema_.domain().type());
     auto& ctx = ctx_.get();
     if (size != schema_.domain().ndim() * 2) {
@@ -449,9 +453,10 @@ class Subarray {
         &start,
         &end,
         &stride));
-    std::array<T, 3> ret = {{*(const T*)start,
-                             *(const T*)end,
-                             (stride == nullptr) ? (const T)0 : *(const T*)stride}};
+    std::array<T, 3> ret = {
+        {*(const T*)start,
+         *(const T*)end,
+         (stride == nullptr) ? (const T)0 : *(const T*)stride}};
     return ret;
   }
 

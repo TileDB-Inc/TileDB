@@ -63,7 +63,7 @@ struct CPPAPISubarrayPartitionerSparseFx {
   std::string array_name_;
   const char* ARRAY_NAME = "subarray_partitioner_sparse";
   tiledb_array_t* array_ = nullptr;
-  tiledb::Array *cpparray_ {nullptr};
+  tiledb::Array* cpparray_{nullptr};
   uint64_t memory_budget_ = 1024 * 1024 * 1024;
   uint64_t memory_budget_var_ = 1024 * 1024 * 1024;
 
@@ -145,7 +145,7 @@ struct CPPAPISubarrayPartitionerSparseFx {
 };
 
 CPPAPISubarrayPartitionerSparseFx::CPPAPISubarrayPartitionerSparseFx()
-    : fs_vec_(vfs_test_get_fs_vec()) 
+    : fs_vec_(vfs_test_get_fs_vec())
     , cppvfs_(cppctx_) {
   // Initialize vfs test
   REQUIRE(vfs_test_init(fs_vec_, &ctx_, &vfs_).ok());
@@ -165,9 +165,9 @@ CPPAPISubarrayPartitionerSparseFx::CPPAPISubarrayPartitionerSparseFx()
   int rc = tiledb_array_alloc(ctx_, array_name_.c_str(), &array_);
   CHECK(rc == TILEDB_OK);
 
-  //TBD: The only constructor that doesn't require a querytype? We need to both read/write, correct?
-  //but, turns out it expects the array passed to be open...
-  //cpparray_ = new tiledb::Array(cppctx_, array_, true);
+  // TBD: The only constructor that doesn't require a querytype? We need to both
+  // read/write, correct? but, turns out it expects the array passed to be
+  // open... cpparray_ = new tiledb::Array(cppctx_, array_, true);
 }
 
 CPPAPISubarrayPartitionerSparseFx::~CPPAPISubarrayPartitionerSparseFx() {
@@ -351,20 +351,25 @@ void CPPAPISubarrayPartitionerSparseFx::test_subarray_partitioner(
   Subarray coresubarray;
   create_subarray(array_->array_, ranges, subarray_layout, &coresubarray);
 
-  //TBD: <sigh>, delete does 'close()' even if we tell it don't own...
-  //and, had passed it open (had to be for schema to be retrieved during construction)...
-  //note: tentatively changed Array() locally to notclose if !own...
-  cpparray_ = new tiledb::Array(cppctx_, array_, false, true); //was forcing closed...??? true);
+  // TBD: <sigh>, delete does 'close()' even if we tell it don't own...
+  // and, had passed it open (had to be for schema to be retrieved during
+  // construction)... note: tentatively changed Array() locally to notclose if
+  // !own...
+  cpparray_ = new tiledb::Array(
+      cppctx_, array_, false, true);  // was forcing closed...??? true);
 
-  tiledb::Subarray *tdb_subarray;
-  create_subarray(&cppvfs_.context(), cpparray_, ranges, subarray_layout, &tdb_subarray);
+  tiledb::Subarray* tdb_subarray;
+  create_subarray(
+      &cppvfs_.context(), cpparray_, ranges, subarray_layout, &tdb_subarray);
   tdb_subarray->set_layout((tiledb_layout_t)subarray_layout);
-  check_subarray_equiv<T>(coresubarray, *(tdb_subarray->capi_subarray()->subarray_));
+  check_subarray_equiv<T>(
+      coresubarray, *(tdb_subarray->capi_subarray()->subarray_));
 
-  tiledb::SubarrayPartitioner subarray_partitioner(cppvfs_.context(), *tdb_subarray, memory_budget_, memory_budget_var_, 0);
+  tiledb::SubarrayPartitioner subarray_partitioner(
+      cppvfs_.context(), *tdb_subarray, memory_budget_, memory_budget_var_, 0);
   subarray_partitioner.set_result_budget(attr.c_str(), budget);
 
-  tiledb::Subarray * tdb_retrieve_partition_subarray;
+  tiledb::Subarray* tdb_retrieve_partition_subarray;
   create_subarray<T>(
       &cppvfs_.context(),
       cpparray_,
@@ -408,11 +413,7 @@ void CPPAPISubarrayPartitionerSparseFx::test_subarray_partitioner(
       coresubarray, *(tdb_subarray->capi_subarray()->subarray_));
 
   tiledb::SubarrayPartitioner subarray_partitioner(
-      cppvfs_.context(),
-      *tdb_subarray,
-      memory_budget,
-      memory_budget_var,
-      0);
+      cppvfs_.context(), *tdb_subarray, memory_budget, memory_budget_var, 0);
   subarray_partitioner.set_result_budget(attr.c_str(), result_budget);
 
   tiledb::Subarray* tdb_retrieve_partition_subarray;
@@ -424,8 +425,7 @@ void CPPAPISubarrayPartitionerSparseFx::test_subarray_partitioner(
       &tdb_retrieve_partition_subarray);
   check_subarray_equiv<T>(
       coresubarray,
-      *(tdb_retrieve_partition_subarray->capi_subarray()
-            ->subarray_));
+      *(tdb_retrieve_partition_subarray->capi_subarray()->subarray_));
 
   check_partitions(
       &subarray_partitioner,
@@ -472,11 +472,9 @@ void CPPAPISubarrayPartitionerSparseFx::test_subarray_partitioner(
   // result budget is not set.
   subarray_partitioner.set_result_budget(TILEDB_COORDS, 1000000);
   subarray_partitioner.set_result_budget("a", 1000000);
-  subarray_partitioner.set_result_budget_var_attr(
-      "b", 1000000, 1000000);
+  subarray_partitioner.set_result_budget_var_attr("b", 1000000, 1000000);
 
-  subarray_partitioner.set_memory_budget(
-      budget, budget_var, 0);
+  subarray_partitioner.set_memory_budget(budget, budget_var, 0);
 
   tiledb::Subarray* tdb_retrieve_partition_subarray;
   create_subarray(
@@ -486,8 +484,7 @@ void CPPAPISubarrayPartitionerSparseFx::test_subarray_partitioner(
       subarray_layout,
       &tdb_retrieve_partition_subarray);
   check_subarray_equiv<T>(
-      coresubarray,
-      *(tdb_subarray->capi_subarray()->subarray_));
+      coresubarray, *(tdb_subarray->capi_subarray()->subarray_));
 
   check_partitions(
       &subarray_partitioner,
@@ -545,7 +542,8 @@ TEST_CASE_METHOD(
 
 TEST_CASE_METHOD(
     CPPAPISubarrayPartitionerSparseFx,
-    "CPP API SubarrayPartitioner (Sparse): 1D, single-range, whole subarray fits",
+    "CPP API SubarrayPartitioner (Sparse): 1D, single-range, whole subarray "
+    "fits",
     "[SubarrayPartitioner][sparse][1D][1R][whole_subarray_fits]") {
   Layout subarray_layout;
   SubarrayRanges<uint64_t> ranges = {};
@@ -623,7 +621,8 @@ TEST_CASE_METHOD(
 
 TEST_CASE_METHOD(
     CPPAPISubarrayPartitionerSparseFx,
-    "CPP API SubarrayPartitioner (Sparse): 1D, single-range, unsplittable at once",
+    "CPP API SubarrayPartitioner (Sparse): 1D, single-range, unsplittable at "
+    "once",
     "[SubarrayPartitioner][sparse][1D][1R][unsplittable_at_once]") {
   Layout subarray_layout;
   SubarrayRanges<uint64_t> ranges = {{4, 4}};
@@ -700,7 +699,8 @@ TEST_CASE_METHOD(
 
 TEST_CASE_METHOD(
     CPPAPISubarrayPartitionerSparseFx,
-    "CPP API SubarrayPartitioner (Sparse): 1D, single-range, unsplittable after "
+    "CPP API SubarrayPartitioner (Sparse): 1D, single-range, unsplittable "
+    "after "
     "multiple",
     "[SubarrayPartitioner][sparse][1D][1R][unsplittable_after_multiple]") {
   Layout subarray_layout;
@@ -739,7 +739,8 @@ TEST_CASE_METHOD(
 
 TEST_CASE_METHOD(
     CPPAPISubarrayPartitionerSparseFx,
-    "CPP API SubarrayPartitioner (Sparse): 1D, single-range, unsplittable but ok after "
+    "CPP API SubarrayPartitioner (Sparse): 1D, single-range, unsplittable but "
+    "ok after "
     "budget reset",
     "[SubarrayPartitioner][sparse][1D][1R][unsplittable_but_then_ok]") {
   create_default_1d_array(TILEDB_ROW_MAJOR, TILEDB_ROW_MAJOR);
@@ -776,7 +777,8 @@ TEST_CASE_METHOD(
 
 TEST_CASE_METHOD(
     CPPAPISubarrayPartitionerSparseFx,
-    "CPP API SubarrayPartitioner (Sparse): 1D, single-range, float, split multiple",
+    "CPP API SubarrayPartitioner (Sparse): 1D, single-range, float, split "
+    "multiple",
     "[SubarrayPartitioner][sparse][1D][1R][float][split_multiple]") {
   Layout subarray_layout;
   auto max = std::numeric_limits<float>::max();
@@ -819,7 +821,8 @@ TEST_CASE_METHOD(
 
 TEST_CASE_METHOD(
     CPPAPISubarrayPartitionerSparseFx,
-    "CPP API SubarrayPartitioner (Sparse): 1D, single-range, float, unsplittable after "
+    "CPP API SubarrayPartitioner (Sparse): 1D, single-range, float, "
+    "unsplittable after "
     "multiple",
     "[SubarrayPartitioner][sparse][1D][1R][float][unsplittable_after_"
     "multiple]") {
@@ -859,7 +862,8 @@ TEST_CASE_METHOD(
 
 TEST_CASE_METHOD(
     CPPAPISubarrayPartitionerSparseFx,
-    "CPP API SubarrayPartitioner (Sparse): 1D, single-range, float, whole subarray "
+    "CPP API SubarrayPartitioner (Sparse): 1D, single-range, float, whole "
+    "subarray "
     "fits",
     "[SubarrayPartitioner][sparse][1D][1R][float][whole_subarray_fits]") {
   Layout subarray_layout;
@@ -958,7 +962,8 @@ TEST_CASE_METHOD(
 
 TEST_CASE_METHOD(
     CPPAPISubarrayPartitionerSparseFx,
-    "CPP API SubarrayPartitioner (Sparse): 1D, multi-range, whole subarray fits",
+    "CPP API SubarrayPartitioner (Sparse): 1D, multi-range, whole subarray "
+    "fits",
     "[SubarrayPartitioner][sparse][1D][MR][whole_subarray_fits]") {
   Layout subarray_layout;
   SubarrayRanges<uint64_t> ranges = {{5, 10, 25, 27, 33, 50}};
@@ -1060,7 +1065,8 @@ TEST_CASE_METHOD(
 
 TEST_CASE_METHOD(
     CPPAPISubarrayPartitionerSparseFx,
-    "CPP API SubarrayPartitioner (Sparse): 1D, multi-range, split multiple finer",
+    "CPP API SubarrayPartitioner (Sparse): 1D, multi-range, split multiple "
+    "finer",
     "[SubarrayPartitioner][sparse][1D][MR][split_multiple_finer]") {
   Layout subarray_layout;
   SubarrayRanges<uint64_t> ranges = {{5, 10, 25, 27, 33, 40}};
@@ -1133,7 +1139,8 @@ TEST_CASE_METHOD(
 
 TEST_CASE_METHOD(
     CPPAPISubarrayPartitionerSparseFx,
-    "CPP API SubarrayPartitioner (Sparse): 2D, single-range, whole subarray fits",
+    "CPP API SubarrayPartitioner (Sparse): 2D, single-range, whole subarray "
+    "fits",
     "[SubarrayPartitioner][sparse][2D][1R][whole_subarray_fits]") {
   Layout subarray_layout;
   SubarrayRanges<uint64_t> ranges = {{2, 10}, {2, 10}};
@@ -1610,7 +1617,8 @@ TEST_CASE_METHOD(
 
 TEST_CASE_METHOD(
     CPPAPISubarrayPartitionerSparseFx,
-    "CPP API SubarrayPartitioner (Sparse): 2D, multi-range, whole subarray fits",
+    "CPP API SubarrayPartitioner (Sparse): 2D, multi-range, whole subarray "
+    "fits",
     "[SubarrayPartitioner][sparse][2D][MR][whole_subarray_fits]") {
   Layout subarray_layout;
   SubarrayRanges<uint64_t> ranges = {{1, 2, 3, 3, 4, 4}, {2, 3, 4, 5}};
@@ -2053,7 +2061,8 @@ TEST_CASE_METHOD(
 
 TEST_CASE_METHOD(
     CPPAPISubarrayPartitionerSparseFx,
-    "CPP API SubarrayPartitioner (Sparse): 2D, multi-range, split multiple finer",
+    "CPP API SubarrayPartitioner (Sparse): 2D, multi-range, split multiple "
+    "finer",
     "[SubarrayPartitioner][sparse][2D][MR][split_multiple_finer]") {
   Layout subarray_layout;
   std::vector<SubarrayRanges<uint64_t>> partitions = {};
@@ -2488,7 +2497,8 @@ TEST_CASE_METHOD(
 
 TEST_CASE_METHOD(
     CPPAPISubarrayPartitionerSparseFx,
-    "CPP API SubarrayPartitioner (Sparse): 1D, single-range, string dimension, edge "
+    "CPP API SubarrayPartitioner (Sparse): 1D, single-range, string dimension, "
+    "edge "
     "split",
     "[SubarrayPartitioner][sparse][1D][SR][string-dims][edge-split]") {
   // Create array

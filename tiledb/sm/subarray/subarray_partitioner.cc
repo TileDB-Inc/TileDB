@@ -383,7 +383,8 @@ Status SubarrayPartitioner::compute_partition_series(
 
   partitions.clear();
 
-  //1)If initial 'subarray_' is empty(), then done() will be true, initial next() will return Ok()...
+  // 1)If initial 'subarray_' is empty(), then done() will be true, initial
+  // next() will return Ok()...
   //- but then are there any partitions, or empty partitions would be correct?
   if (!done()) {
     while (next(&unsplittable).ok()) {
@@ -406,11 +407,11 @@ Status SubarrayPartitioner::next(bool* unsplittable) {
 
   *unsplittable = false;
 
-  //TBD: ??? do this or not???
-  //having makes done()ness a bit less ambiguous, but might break existing code
-  //if they depend on that ambiguity (last 'current()' remaining last obtained)
-  //note: no basic config build unit tests fail when .clear() is done.
-  //current_.partition_.clear();
+  // TBD: ??? do this or not???
+  // having makes done()ness a bit less ambiguous, but might break existing code
+  // if they depend on that ambiguity (last 'current()' remaining last obtained)
+  // note: no basic config build unit tests fail when .clear() is done.
+  // current_.partition_.clear();
 
   if (done()) {
     return Status::Ok();
@@ -885,7 +886,7 @@ void SubarrayPartitioner::compute_splitting_value_on_tiles(
   *splitting_dim = UINT32_MAX;
 
   std::vector<unsigned> dims;
- if (layout == Layout::ROW_MAJOR) {
+  if (layout == Layout::ROW_MAJOR) {
     for (unsigned i = 0; i < dim_num; ++i)
       dims.push_back(i);
   } else {
@@ -954,7 +955,7 @@ void SubarrayPartitioner::compute_splitting_value_single_range(
   assert(cell_order == Layout::ROW_MAJOR || cell_order == Layout::COL_MAJOR);
 
   std::vector<unsigned> dims;
- if (layout == Layout::ROW_MAJOR) {
+  if (layout == Layout::ROW_MAJOR) {
     for (unsigned d = 0; d < dim_num; ++d)
       dims.push_back(d);
   } else {
@@ -1059,7 +1060,7 @@ void SubarrayPartitioner::compute_splitting_value_multi_range(
 
   std::vector<unsigned> dims;
   // TBD: Should ordered dims be used here?
- if (layout == Layout::ROW_MAJOR) {
+  if (layout == Layout::ROW_MAJOR) {
     for (unsigned d = 0; d < dim_num; ++d)
       dims.push_back(d);
   } else {

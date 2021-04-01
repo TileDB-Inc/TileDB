@@ -28,7 +28,7 @@
  * @section DESCRIPTION
  *
  * Tests the C API for subarray.
- * 
+ *
  * If changes made here, unit-capi-subarray_2.cc cloned from here should
  * be checked for need of possibly similar changes.
  */

@@ -35,8 +35,8 @@
 #include "catch.hpp"
 #include "tiledb/sm/cpp_api/tiledb"
 #include "tiledb/sm/misc/constants.h"
-#include "tiledb/sm/misc/uri.h"
 #include "tiledb/sm/misc/tile_overlap.h"
+#include "tiledb/sm/misc/uri.h"
 #if DEVING_SUBARRAY_PARTITIONER_STORY5342
 #include "tiledb/sm/subarray/subarray_partitioner.h"
 #endif
@@ -70,30 +70,29 @@ void check_partitions(
   }
 
   // Non-empty partitions
-  //TBD: The correctness of this routine (seems in doubt).
-  //A) 
-  //All current tests (build configuration with -EnableSerialization)
-  //calling this routine with last_unsplittable==false pass one fewer
-  //partitions than the number of 'next()' calls made.  The final
+  // TBD: The correctness of this routine (seems in doubt).
+  // A)
+  // All current tests (build configuration with -EnableSerialization)
+  // calling this routine with last_unsplittable==false pass one fewer
+  // partitions than the number of 'next()' calls made.  The final
   //'next()' call made returns Ok(), but the 'current()' partition
-  //available after that last call is the same as the 'current()' partition
-  //that was available after the 'next()' call prior to the last one (i.e.
+  // available after that last call is the same as the 'current()' partition
+  // that was available after the 'next()' call prior to the last one (i.e.
   //'current()' partition is the same for the last two 'next()' calls made.)
-  //This can be demonstrated by adding a check for 'done()' before that last 
+  // This can be demonstrated by adding a check for 'done()' before that last
   //'next()' in the else clause and seeing that flow is 'done()' before that
   //'next()' call.
-  //B)
-  //If a caller passes one -fewer- partitions
-  //than are available by next()ing (with last_unsplittable==false), and 
-  //'splitability' is maintained through all next() calls, the presence of 
-  //the 'extra' (via /next()ing) partition will not be
-  //detected, as in the else{} below, that final 'next()' will return '.ok()
-  //whether there was an additional partition or whether 'done()' occurred in the 
-  //previous 'next()' call made (done in the last loop iteration).
-  //Can demonstrate this (uncaught) failure in test  
-  //"SubarrayPartitioner (Dense): 1D, single-range, memory budget",
-  //by eliminating the last partition element from both assignments, and observe
-  //that the test(s) still pass.
+  // B)
+  // If a caller passes one -fewer- partitions
+  // than are available by next()ing (with last_unsplittable==false), and
+  //'splitability' is maintained through all next() calls, the presence of
+  // the 'extra' (via /next()ing) partition will not be
+  // detected, as in the else{} below, that final 'next()' will return '.ok()
+  // whether there was an additional partition or whether 'done()' occurred in
+  // the previous 'next()' call made (done in the last loop iteration). Can
+  // demonstrate this (uncaught) failure in test "SubarrayPartitioner (Dense):
+  // 1D, single-range, memory budget", by eliminating the last partition element
+  // from both assignments, and observe that the test(s) still pass.
   for (const auto& p : partitions) {
     CHECK(!partitioner.done());
     CHECK(!unsplittable);
@@ -107,7 +106,7 @@ void check_partitions(
     CHECK(unsplittable);
   } else {
     CHECK(!unsplittable);
-#if 0 //&& DIAGNOSING
+#if 0  //&& DIAGNOSING
     // TBD: 
     //For all tests tried, are always already 'done()' at this point,
     //before the following, 'next()' call is made and returns 'Ok()' (as
@@ -128,7 +127,7 @@ void check_partitions(
 #if DEVING_SUBARRAY_PARTITIONER_STORY5342
 template <class T>
 void check_partitions(
-    tiledb_ctx_t *ctx,
+    tiledb_ctx_t* ctx,
     tiledb_subarray_partitioner_t* partitioner,
     const std::vector<SubarrayRanges<T>>& partitions,
     bool last_unsplittable,
@@ -160,7 +159,6 @@ void check_partitions(
     REQUIRE(rc == TILEDB_OK);
     check_subarray<T>(*retrieve_partition_subarray->subarray_, p);
   }
-
 }
 
 template <class T>
@@ -230,7 +228,6 @@ void check_subarray(
 template <class T>
 void check_subarray(
     tiledb::Subarray& subarray, const SubarrayRanges<T>& ranges) {
-
   auto as = subarray.array().schema();
   auto dom = as.domain();
   auto ndims = dom.ndim();
@@ -257,8 +254,7 @@ void check_subarray(
   // Check ranges
   uint64_t dim_range_num = 0;
   for (unsigned di = 0; di < dim_num; ++di) {
-    dim_range_num =
-        subarray.range_num(di);
+    dim_range_num = subarray.range_num(di);
     CHECK(dim_range_num == ranges[di].size() / 2);
     for (uint64_t ri = 0; ri < dim_range_num; ++ri) {
       auto r = subarray.range<T>(di, ri);
@@ -271,8 +267,7 @@ void check_subarray(
 
 template <class T>
 void check_subarray_equiv(
-    tiledb::sm::Subarray& subarray1,
-    tiledb::sm::Subarray& subarray2) {
+    tiledb::sm::Subarray& subarray1, tiledb::sm::Subarray& subarray2) {
   CHECK(subarray1.range_num() == subarray2.range_num());
   CHECK(subarray1.layout() == subarray2.layout());
   // Check dim num
@@ -281,9 +276,11 @@ void check_subarray_equiv(
   CHECK(dim_num1 == dim_num2);
 
   tiledb::sm::ByteVec sa1bytes, sa2bytes;
-  //.to_byte_vect() only valid when range_num() == 1, but should be same for both and
-  //resulting bytes, empty or otherwise, should be the same as well.
-  CHECK(subarray1.to_byte_vec(&sa1bytes).ok() == subarray2.to_byte_vec(&sa2bytes).ok() );
+  //.to_byte_vect() only valid when range_num() == 1, but should be same for
+  // both and resulting bytes, empty or otherwise, should be the same as well.
+  CHECK(
+      subarray1.to_byte_vec(&sa1bytes).ok() ==
+      subarray2.to_byte_vec(&sa2bytes).ok());
   CHECK(sa1bytes == sa2bytes);
 
   const std::vector<std::vector<uint8_t>> sa1tilecoords =
@@ -319,7 +316,6 @@ void check_subarray_equiv(
 template <class T>
 bool subarray_equiv(
     tiledb::sm::Subarray& subarray1, tiledb::sm::Subarray& subarray2) {
-
   bool equiv_state = 1;  // assume true
 
   equiv_state &= (subarray1.range_num() == subarray2.range_num());
@@ -331,11 +327,10 @@ bool subarray_equiv(
 
   tiledb::sm::ByteVec sa1bytes, sa2bytes;
   //.to_byte_vect() only valid when range_num() == 1, but should be same for
-  //both and resulting bytes, empty or otherwise, should be the same as well.
+  // both and resulting bytes, empty or otherwise, should be the same as well.
   equiv_state &=
-      (
-      subarray1.to_byte_vec(&sa1bytes).ok() ==
-      subarray2.to_byte_vec(&sa2bytes).ok());
+      (subarray1.to_byte_vec(&sa1bytes).ok() ==
+       subarray2.to_byte_vec(&sa2bytes).ok());
   equiv_state &= (sa1bytes == sa2bytes);
 
   const std::vector<std::vector<uint8_t>> sa1tilecoords =
@@ -748,7 +743,7 @@ void create_subarray(
 
 template <class T>
 void create_subarray(
-    tiledb_ctx_t *ctx,
+    tiledb_ctx_t* ctx,
     tiledb::sm::Array* array,
     const SubarrayRanges<T>& ranges,
     tiledb::sm::Layout layout,
@@ -770,12 +765,7 @@ void create_subarray(
       auto dim_range_num = ranges[d].size() / 2;
       for (size_t j = 0; j < dim_range_num; ++j) {
         rc = tiledb_subarray_add_range(
-            ctx,
-            *subarray,
-            d,
-            &ranges[d][2 * j],
-            &ranges[d][2 * j + 1],
-            0);
+            ctx, *subarray, d, &ranges[d][2 * j], &ranges[d][2 * j + 1], 0);
         REQUIRE(rc == TILEDB_OK);
       }
     }
@@ -788,7 +778,7 @@ void create_subarray(
     const tiledb::Array* array,
     const SubarrayRanges<T>& ranges,
     tiledb::sm::Layout layout,
-    tiledb::Subarray ** returned_subarray,
+    tiledb::Subarray** returned_subarray,
     bool coalesce_ranges) {
   tiledb::Subarray* psubarray =
       new tiledb::Subarray(*ctx, *array, coalesce_ranges);

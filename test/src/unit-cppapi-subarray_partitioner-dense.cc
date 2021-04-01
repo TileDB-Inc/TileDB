@@ -245,7 +245,6 @@ void CPPAPISubarrayPartitionerDenseFx::write_default_2d_array() {
   write_array(ctx_, array_name_, TILEDB_GLOBAL_ORDER, buffers);
 }
 
-
 template <class T>
 void CPPAPISubarrayPartitionerDenseFx::test_subarray_partitioner(
     Layout subarray_layout,
@@ -254,25 +253,21 @@ void CPPAPISubarrayPartitionerDenseFx::test_subarray_partitioner(
     const std::string& attr,
     uint64_t budget,
     bool unsplittable) {
-   Subarray coresubarray;
-   create_subarray(array_->array_, ranges, subarray_layout, &coresubarray);
+  Subarray coresubarray;
+  create_subarray(array_->array_, ranges, subarray_layout, &coresubarray);
 
   cpparray_ = new tiledb::Array(
-     cppctx_, array_, false, true);  // was forcing closed...??? true);
+      cppctx_, array_, false, true);  // was forcing closed...??? true);
 
-   tiledb::Subarray* tdb_subarray;
-   create_subarray(
-       &cppvfs_.context(), cpparray_, ranges, subarray_layout, &tdb_subarray);
-   tdb_subarray->set_layout((tiledb_layout_t)subarray_layout);
-   check_subarray_equiv<T>(
-       coresubarray, *(tdb_subarray->capi_subarray()->subarray_));
+  tiledb::Subarray* tdb_subarray;
+  create_subarray(
+      &cppvfs_.context(), cpparray_, ranges, subarray_layout, &tdb_subarray);
+  tdb_subarray->set_layout((tiledb_layout_t)subarray_layout);
+  check_subarray_equiv<T>(
+      coresubarray, *(tdb_subarray->capi_subarray()->subarray_));
 
   tiledb::SubarrayPartitioner subarray_partitioner(
-      cppvfs_.context(),
-      *tdb_subarray,
-      memory_budget_,
-      memory_budget_var_,
-      0);
+      cppvfs_.context(), *tdb_subarray, memory_budget_, memory_budget_var_, 0);
   subarray_partitioner.set_result_budget(attr.c_str(), budget);
 
   tiledb::Subarray* tdb_retrieve_partition_subarray;
@@ -312,7 +307,7 @@ void CPPAPISubarrayPartitionerDenseFx::test_subarray_partitioner(
   cpparray_ = new tiledb::Array(
       cppctx_, array_, false, true);  // was forcing closed...??? true);
 
- tiledb::Subarray* tdb_subarray;
+  tiledb::Subarray* tdb_subarray;
   create_subarray(
       &cppvfs_.context(), cpparray_, ranges, subarray_layout, &tdb_subarray);
   tdb_subarray->set_layout((tiledb_layout_t)subarray_layout);
@@ -320,13 +315,9 @@ void CPPAPISubarrayPartitionerDenseFx::test_subarray_partitioner(
       coresubarray, *(tdb_subarray->capi_subarray()->subarray_));
 
   tiledb::SubarrayPartitioner subarray_partitioner(
-      cppvfs_.context(),
-      *tdb_subarray,
-      memory_budget_,
-      memory_budget_var_,
-      0);
+      cppvfs_.context(), *tdb_subarray, memory_budget_, memory_budget_var_, 0);
 
-  tiledb::Subarray* tdb_retrieve_partition_subarray; 
+  tiledb::Subarray* tdb_retrieve_partition_subarray;
   create_subarray<T>(
       &cppvfs_.context(),
       cpparray_,
@@ -343,7 +334,6 @@ void CPPAPISubarrayPartitionerDenseFx::test_subarray_partitioner(
   subarray_partitioner.set_result_budget(TILEDB_COORDS, 1000000);
   subarray_partitioner.set_result_budget("a", 1000000);
   subarray_partitioner.set_result_budget_var_attr("b", 1000000, 1000000);
-
 
   subarray_partitioner.set_memory_budget(budget, budget_var, 0);
 
@@ -403,7 +393,8 @@ TEST_CASE_METHOD(
 
 TEST_CASE_METHOD(
     CPPAPISubarrayPartitionerDenseFx,
-    "CPP API SubarrayPartitioner (Dense): 1D, single-range, whole subarray fits",
+    "CPP API SubarrayPartitioner (Dense): 1D, single-range, whole subarray "
+    "fits",
     "[SubarrayPartitioner][dense][1D][1R][whole_subarray_fits]") {
   Layout subarray_layout;
   SubarrayRanges<uint64_t> ranges = {};
@@ -481,7 +472,8 @@ TEST_CASE_METHOD(
 
 TEST_CASE_METHOD(
     CPPAPISubarrayPartitionerDenseFx,
-    "CPP API SubarrayPartitioner (Dense): 1D, single-range, unsplittable at once",
+    "CPP API SubarrayPartitioner (Dense): 1D, single-range, unsplittable at "
+    "once",
     "[SubarrayPartitioner][dense][1D][1R][unsplittable_at_once]") {
   Layout subarray_layout;
   SubarrayRanges<uint64_t> ranges = {{4, 4}};
@@ -598,7 +590,8 @@ TEST_CASE_METHOD(
 
 TEST_CASE_METHOD(
     CPPAPISubarrayPartitionerDenseFx,
-    "CPP API SubarrayPartitioner (Dense): 1D, single-range, unsplittable but ok after "
+    "CPP API SubarrayPartitioner (Dense): 1D, single-range, unsplittable but "
+    "ok after "
     "budget reset",
     "[SubarrayPartitioner][dense][1D][1R][unsplittable_but_then_ok]") {
   create_default_1d_array(TILEDB_ROW_MAJOR, TILEDB_ROW_MAJOR);
@@ -735,7 +728,8 @@ TEST_CASE_METHOD(
 
 TEST_CASE_METHOD(
     CPPAPISubarrayPartitionerDenseFx,
-    "CPP API SubarrayPartitioner (Dense): 1D, multi-range, split multiple finer",
+    "CPP API SubarrayPartitioner (Dense): 1D, multi-range, split multiple "
+    "finer",
     "[SubarrayPartitioner][dense][1D][MR][split_multiple_finer]") {
   Layout subarray_layout;
   SubarrayRanges<uint64_t> ranges = {{2, 3, 5, 8, 9, 10}};
@@ -857,7 +851,8 @@ TEST_CASE_METHOD(
 
 TEST_CASE_METHOD(
     CPPAPISubarrayPartitionerDenseFx,
-    "CPP API SubarrayPartitioner (Dense): 2D, single-range, whole subarray fits",
+    "CPP API SubarrayPartitioner (Dense): 2D, single-range, whole subarray "
+    "fits",
     "[SubarrayPartitioner][dense][2D][1R][whole_subarray_fits]") {
   Layout subarray_layout;
   SubarrayRanges<uint64_t> ranges = {{1, 4}, {1, 4}};
@@ -1776,7 +1771,8 @@ TEST_CASE_METHOD(
 
 TEST_CASE_METHOD(
     CPPAPISubarrayPartitionerDenseFx,
-    "CPP API SubarrayPartitioner (Dense): 2D, multi-range, split multiple finer",
+    "CPP API SubarrayPartitioner (Dense): 2D, multi-range, split multiple "
+    "finer",
     "[SubarrayPartitioner][dense][2D][MR][split_multiple_finer]") {
   Layout subarray_layout;
   SubarrayRanges<uint64_t> ranges;

@@ -31,14 +31,14 @@
  */
 
 #include "catch.hpp"
+#include "helpers.h"
+#include "tiledb/sm/c_api/tiledb_struct_def.h"
 #include "tiledb/sm/cpp_api/tiledb"
 #include "tiledb/sm/misc/utils.h"
-#include "tiledb/sm/c_api/tiledb_struct_def.h"
-#include "helpers.h"
 
 using namespace tiledb;
 
-using namespace tiledb::test; //for visibility of items in 'helpers.<h,cc>'
+using namespace tiledb::test;  // for visibility of items in 'helpers.<h,cc>'
 
 TEST_CASE("C++ API: Test subarray", "[cppapi][sparse][subarray]") {
   const std::string array_name = "cpp_unit_array";
@@ -472,7 +472,7 @@ TEST_CASE(
   range_num = subarray.range_num(1);
   // Ranges `col_range0` and `col_range1` are coalesced.
   CHECK(range_num == 1);
-  //const void *start, *end, *stride;
+  // const void *start, *end, *stride;
   const int *start, *end, *stride;
   std::array<int, 3> rng = subarray.range<int>(0, 0);
   CHECK(rng[0] == row_range[0]);
@@ -490,9 +490,9 @@ TEST_CASE(
   {
     tiledb::Query query(ctx, array);
     tiledb::Subarray default_subarray_from_query(query);
-    //Check against 'default' subarray here and non-default subarray below to
-    //verify that we've actually made a difference by the query.set_subarray()
-    //since the other CHECKS(range_num == 1) succeed whether or not the
+    // Check against 'default' subarray here and non-default subarray below to
+    // verify that we've actually made a difference by the query.set_subarray()
+    // since the other CHECKS(range_num == 1) succeed whether or not the
     //.set_subarray() was done (accidental discovery.)
     CHECK(!subarray_equiv<int>(
         *default_subarray_from_query.capi_subarray()->subarray_,

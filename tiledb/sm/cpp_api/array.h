@@ -290,7 +290,11 @@ class Array {
    * @param own=true If false, disables underlying cleanup upon destruction.
    * @throws TileDBError if construction fails
    */
-  Array(const Context& ctx, tiledb_array_t* carray, bool own = true, bool dontclose=false)
+  Array(
+      const Context& ctx,
+      tiledb_array_t* carray,
+      bool own = true,
+      bool dontclose = false)
       : ctx_(ctx)
       , schema_(ArraySchema(ctx, (tiledb_array_schema_t*)nullptr)) {
     if (carray == nullptr)
@@ -319,7 +323,7 @@ class Array {
   /** Destructor; calls `close()`. */
   ~Array() {
     if (!dontclose_)
-        close();
+      close();
   }
 
   /** Checks if the array is open. */

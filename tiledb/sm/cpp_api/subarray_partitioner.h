@@ -60,8 +60,7 @@ class SubarrayPartitioner {
   /*           TYPE DEFINITIONS        */
   /* ********************************* */
 
-  //TBD: ???
-
+  // TBD: ???
 
   /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */
@@ -72,16 +71,21 @@ class SubarrayPartitioner {
 
   /** Constructor. */
   SubarrayPartitioner(
-      const Context &ctx,
+      const Context& ctx,
       const Subarray& subarray,
       uint64_t memory_budget,
       uint64_t memory_budget_var,
       uint64_t memory_budget_validity)
-      : ctx_(ctx) 
+      : ctx_(ctx)
       , subarray_(subarray) {
     tiledb_subarray_partitioner_t* capi_subarray_partitioner;
     ctx.handle_error(tiledb_subarray_partitioner_alloc(
-        ctx.ptr().get(), subarray.ptr().get(), &capi_subarray_partitioner, memory_budget, memory_budget_var, memory_budget_validity));
+        ctx.ptr().get(),
+        subarray.ptr().get(),
+        &capi_subarray_partitioner,
+        memory_budget,
+        memory_budget_var,
+        memory_budget_validity));
     subarray_partitioner_ = std::shared_ptr<tiledb_subarray_partitioner_t>(
         capi_subarray_partitioner, deleter_);
   }
@@ -93,8 +97,8 @@ class SubarrayPartitioner {
   /**
    * Sets the layout of the associated subarray.
    *
-   * @param layout When used with a write query, this specifies the order of the cells
-   *     provided by the user in the buffers. For a read query, this specifies
+   * @param layout When used with a write query, this specifies the order of the
+   * cells provided by the user in the buffers. For a read query, this specifies
    *     the order of the cells that will be retrieved as results and stored
    *     in the user buffers. The layout can be one of the following:
    *    - `TILEDB_COL_MAJOR`:
@@ -112,12 +116,12 @@ class SubarrayPartitioner {
    * @return Reference to this Subarray
    */
   SubarrayPartitioner& set_layout(tiledb_layout_t layout) {
-    ctx_.get().handle_error(tiledb_subarray_partitioner_set_layout(ctx_.get().ptr().get(),
-        layout, subarray_partitioner_.get()));
+    ctx_.get().handle_error(tiledb_subarray_partitioner_set_layout(
+        ctx_.get().ptr().get(), layout, subarray_partitioner_.get()));
     return *this;
   }
 
-  /** 
+  /**
    * Compute a complete series of subarray partitions, retained to be accessed
    * with get_partition().
    */
@@ -127,8 +131,8 @@ class SubarrayPartitioner {
     return *this;
   }
 
-  /** 
-   * Get the number of partitions in the currently computed series. 
+  /**
+   * Get the number of partitions in the currently computed series.
    *
    * @return the number of partitions available
    */
@@ -139,13 +143,13 @@ class SubarrayPartitioner {
     return num;
   }
 
-  /** 
-   * Retrieve a (subarray) partition from within the currently computed series. 
+  /**
+   * Retrieve a (subarray) partition from within the currently computed series.
    */
   SubarrayPartitioner& get_partition(
       uint64_t part_id, Subarray& retrieved_subarray) {
     ctx_.get().handle_error(tiledb_subarray_partitioner_get_partition(
-      ctx_.get().ptr().get(),
+        ctx_.get().ptr().get(),
         subarray_partitioner_.get(),
         part_id,
         retrieved_subarray.capi_subarray()));
@@ -159,10 +163,7 @@ class SubarrayPartitioner {
   SubarrayPartitioner& set_result_budget(
       const char* attrname, uint64_t budget) {
     ctx_.get().handle_error(tiledb_subarray_partitioner_set_result_budget(
-      ctx_.get().ptr().get(),
-      attrname,
-      budget,
-      subarray_partitioner_.get()));
+        ctx_.get().ptr().get(), attrname, budget, subarray_partitioner_.get()));
     return *this;
   }
 
@@ -171,11 +172,14 @@ class SubarrayPartitioner {
    * attribute/dimension.
    */
   SubarrayPartitioner& set_result_budget_var_attr(
-      const char* attrname,
-      uint64_t budget_off,
-      uint64_t budget_val) {
-    ctx_.get().handle_error(tiledb_subarray_partitioner_set_result_budget_var_attr(
-        ctx_.get().ptr().get(), attrname, budget_off, budget_val, subarray_partitioner_.get()));
+      const char* attrname, uint64_t budget_off, uint64_t budget_val) {
+    ctx_.get().handle_error(
+        tiledb_subarray_partitioner_set_result_budget_var_attr(
+            ctx_.get().ptr().get(),
+            attrname,
+            budget_off,
+            budget_val,
+            subarray_partitioner_.get()));
     return *this;
   }
 
@@ -188,9 +192,7 @@ class SubarrayPartitioner {
    * @param budget_validity The budget for validity vectors.
    */
   SubarrayPartitioner& set_memory_budget(
-      uint64_t budget,
-      uint64_t budget_var,
-      uint64_t budget_validity) {
+      uint64_t budget, uint64_t budget_var, uint64_t budget_validity) {
     ctx_.get().handle_error(tiledb_subarray_partitioner_set_memory_budget(
         ctx_.get().ptr().get(),
         budget,
@@ -200,8 +202,8 @@ class SubarrayPartitioner {
     return *this;
   }
 
-  /** 
-   * Returns the associated C TileDB subarray object. 
+  /**
+   * Returns the associated C TileDB subarray object.
    */
   std::shared_ptr<tiledb_subarray_partitioner_t> ptr() const {
     return subarray_partitioner_;
@@ -213,8 +215,8 @@ class SubarrayPartitioner {
    */
   const SubarrayPartitioner& get_result_budget_fixed(
       const char* name, uint64_t* budget) const {
-    ctx_.get().handle_error(
-        tiledb_subarray_partitioner_get_result_budget_fixed(ctx_.get().ptr().get(), name, budget, subarray_partitioner_.get()));
+    ctx_.get().handle_error(tiledb_subarray_partitioner_get_result_budget_fixed(
+        ctx_.get().ptr().get(), name, budget, subarray_partitioner_.get()));
     return *this;
   }
 
@@ -393,8 +395,7 @@ class SubarrayPartitioner {
     return subarray_partitioner_->partitioner_->state()
   }
 
-
-#endif 
+#endif
 
  private:
   /* ********************************* */
@@ -406,7 +407,7 @@ class SubarrayPartitioner {
   std::reference_wrapper<const Context> ctx_;
 
   /** The TileDB array. */
-//  std::reference_wrapper<const Array> array_;
+  //  std::reference_wrapper<const Array> array_;
 
   /** Deleter wrapper. */
   impl::Deleter deleter_;
@@ -429,7 +430,6 @@ class SubarrayPartitioner {
    * the given partitioner.
    */
   void swap(SubarrayPartitioner& partitioner);
-
 };
 
 }  // namespace tiledb
