@@ -472,8 +472,6 @@ TEST_CASE(
   range_num = subarray.range_num(1);
   // Ranges `col_range0` and `col_range1` are coalesced.
   CHECK(range_num == 1);
-  // const void *start, *end, *stride;
-  const int *start, *end, *stride;
   std::array<int, 3> rng = subarray.range<int>(0, 0);
   CHECK(rng[0] == row_range[0]);
   CHECK(rng[1] == row_range[1]);

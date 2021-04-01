@@ -1278,8 +1278,6 @@ template bool subarray_equiv<uint16_t>(
     tiledb::sm::Subarray& subarray1, tiledb::sm::Subarray& subarray2);
 template bool subarray_equiv<int32_t>(
     tiledb::sm::Subarray& subarray1, tiledb::sm::Subarray& subarray2);
-template bool subarray_equiv<int>(
-    tiledb::sm::Subarray& subarray1, tiledb::sm::Subarray& subarray2);
 template bool subarray_equiv<uint32_t>(
     tiledb::sm::Subarray& subarray1, tiledb::sm::Subarray& subarray2);
 template bool subarray_equiv<int64_t>(
