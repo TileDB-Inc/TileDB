@@ -1924,6 +1924,10 @@ Status Subarray::precompute_tile_overlap(
     const bool override_memory_constraint) {
   STATS_START_TIMER(stats::Stats::TimerType::READ_COMPUTE_TILE_OVERLAP)
 
+  std::cerr << "[DEBUG] precompute_tile_overlap " << start_range_idx << ", "
+            << end_range_idx << std::endl;
+
+#if 0
   // If the `tile_overlap_` has already been precomputed and contains
   // the given range, re-use it with new range.
   const bool tile_overlap_computed =
@@ -1932,6 +1936,7 @@ Status Subarray::precompute_tile_overlap(
     tile_overlap_.update_range(start_range_idx, end_range_idx);
     return Status::Ok();
   }
+#endif
 
   compute_range_offsets();
 
@@ -1986,6 +1991,9 @@ Status Subarray::precompute_tile_overlap(
       compute_relevant_fragment_tile_overlap(compute_tp, &tile_overlap));
 
   tile_overlap_ = std::move(tile_overlap);
+
+  std::cerr << "[DEBUG] precomputed tile overlap of size "
+            << tile_overlap_.size() << std::endl;
 
   return Status::Ok();
 

@@ -164,6 +164,18 @@ class SubarrayTileOverlap final {
    */
   void clear();
 
+  size_t size() {
+    // TODO DEBUG
+    size_t tile_overlap_size = 0;
+    for (size_t f = 0; f < tile_overlap_idx_->size(); ++f) {
+      for (size_t r = 0; r < (*tile_overlap_idx_)[f].size(); ++r) {
+        tile_overlap_size += (*tile_overlap_idx_)[f][r].size();
+      }
+    }
+
+    return tile_overlap_size;
+  }
+
  private:
   /* ********************************* */
   /*      PRIVATE DATA STRUCTURES      */

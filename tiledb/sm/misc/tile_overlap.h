@@ -69,6 +69,12 @@ struct TileOverlap {
            (num_tiles * sizeof(std::pair<uint64_t, double>)) +
            (num_tile_ranges * sizeof(std::pair<uint64_t, uint64_t>));
   }
+
+  size_t size() {
+    return sizeof(TileOverlap) +
+           (tiles_.size() * sizeof(std::pair<uint64_t, double>)) +
+           (tile_ranges_.size() * sizeof(std::pair<uint64_t, uint64_t>));
+  }
 };
 
 }  // namespace sm
