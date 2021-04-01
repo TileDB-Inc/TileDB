@@ -131,7 +131,8 @@ void check_partitions(
     tiledb_ctx_t* ctx,
     tiledb_subarray_partitioner_t* partitioner,
     const std::vector<SubarrayRanges<T>>& partitions,
-    bool last_unsplittable);
+    bool last_unsplittable,
+    tiledb_subarray_t* retrieve_partition_subarray);
 
 /**
  * Checks that the c++api input partitioner produces the input partitions
@@ -146,7 +147,8 @@ template <class T>
 void check_partitions(
     tiledb::SubarrayPartitioner* partitioner,
     const std::vector<SubarrayRanges<T>>& partitions,
-    bool last_unsplittable);
+    bool last_unsplittable,
+    tiledb::Subarray* retrieve_partition_subarray);
 #endif
 
 /**
