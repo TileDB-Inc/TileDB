@@ -51,6 +51,7 @@
 #include "object.h"
 #include "object_iter.h"
 #include "query.h"
+#include "query_condition.h"
 #include "schema_base.h"
 #include "stats.h"
 #include "tiledb.h"

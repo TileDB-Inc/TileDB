@@ -225,6 +225,7 @@ const std::string query_type_read_str = "READ";
 
 /** TILEDB_WRITE Query String **/
 const std::string query_type_write_str = "WRITE";
+
 /** TILEDB_FAILED Query String **/
 const std::string query_status_failed_str = "FAILED";
 
@@ -239,6 +240,33 @@ const std::string query_status_incomplete_str = "INCOMPLETE";
 
 /** TILEDB_UNINITIALIZED Query String **/
 const std::string query_status_uninitialized_str = "UNINITIALIZED";
+
+/** TILEDB_LT Query Condition Op String **/
+const std::string query_condition_op_lt_str = "LT";
+
+/** TILEDB_LE Query Condition Op String **/
+const std::string query_condition_op_le_str = "LE";
+
+/** TILEDB_GT Query Condition Op String **/
+const std::string query_condition_op_gt_str = "GT";
+
+/** TILEDB_GE Query Condition Op String **/
+const std::string query_condition_op_ge_str = "GE";
+
+/** TILEDB_EQ Query Condition Op String **/
+const std::string query_condition_op_eq_str = "EQ";
+
+/** TILEDB_NE Query Condition Op String **/
+const std::string query_condition_op_ne_str = "NE";
+
+/** TILEDB_AND Query Condition Combination Op String **/
+const std::string query_condition_combination_op_and_str = "AND";
+
+/** TILEDB_OR Query Condition Combination Op String **/
+const std::string query_condition_combination_op_or_str = "OR";
+
+/** TILEDB_NOT Query Condition Combination Op String **/
+const std::string query_condition_combination_op_not_str = "NOT";
 
 /** TILEDB_COMPRESSION Filter type string */
 const std::string filter_type_compression_str = "COMPRESSION";

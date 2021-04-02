@@ -58,6 +58,7 @@ add_library(benchmark_core OBJECT
 
 # List of benchmarks
 set(BENCHMARKS
+  bench_dense_attribute_filtering
   bench_dense_read_large_tile
   bench_dense_read_small_tile
   bench_dense_tile_cache
