@@ -36,6 +36,7 @@
 #include "tiledb/sm/array/array.h"
 #include "tiledb/sm/enums/query_status.h"
 #include "tiledb/sm/enums/query_type.h"
+#include "tiledb/sm/query/query_condition.h"
 #include "tiledb/sm/rest/rest_client.h"
 #include "tiledb/sm/storage_manager/storage_manager.h"
 
@@ -945,6 +946,14 @@ Status Query::set_layout(Layout layout) {
 
   layout_ = layout;
   return Status::Ok();
+}
+
+Status Query::set_condition(const QueryCondition& condition) {
+  if (type_ == QueryType::WRITE)
+    return LOG_STATUS(Status::QueryError(
+        "Cannot set query condition; Operation only applicable "
+        "to read queries"));
+  return reader_.set_condition(condition);
 }
 
 Status Query::set_sparse_mode(bool sparse_mode) {

@@ -230,6 +230,33 @@ extern const std::string query_status_incomplete_str;
 /** TILEDB_UNINITIALIZED Query String **/
 extern const std::string query_status_uninitialized_str;
 
+/** TILEDB_LT Query Condition Op String **/
+extern const std::string query_condition_op_lt_str;
+
+/** TILEDB_LE Query Condition Op String **/
+extern const std::string query_condition_op_le_str;
+
+/** TILEDB_GT Query Condition Op String **/
+extern const std::string query_condition_op_gt_str;
+
+/** TILEDB_GE Query Condition Op String **/
+extern const std::string query_condition_op_ge_str;
+
+/** TILEDB_EQ Query Condition Op String **/
+extern const std::string query_condition_op_eq_str;
+
+/** TILEDB_NE Query Condition Op String **/
+extern const std::string query_condition_op_ne_str;
+
+/** TILEDB_AND Query Condition Combination Op String **/
+extern const std::string query_condition_combination_op_and_str;
+
+/** TILEDB_OR Query Condition Combination Op String **/
+extern const std::string query_condition_combination_op_or_str;
+
+/** TILEDB_NOT Query Condition Combination Op String **/
+extern const std::string query_condition_combination_op_not_str;
+
 /** TILEDB_COMPRESSION Filter type string */
 extern const std::string filter_type_compression_str;
 

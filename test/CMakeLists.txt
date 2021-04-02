@@ -138,13 +138,14 @@ set(TILEDB_TEST_SOURCES
   src/unit-capi-uri.cc
   src/unit-capi-version.cc
   src/unit-capi-vfs.cc
-  src/unit-duplicates.cc
   src/unit-CellSlabIter.cc
+  src/unit-ChunkedBuffer.cc
   src/unit-compression-dd.cc
   src/unit-compression-rle.cc
   src/unit-crypto.cc
   src/unit-ctx.cc
   src/unit-dimension.cc
+  src/unit-duplicates.cc
   src/unit-empty-var-length.cc
   src/unit-filter-buffer.cc
   src/unit-filter-pipeline.cc
@@ -152,13 +153,13 @@ set(TILEDB_TEST_SOURCES
   src/unit-hdfs-filesystem.cc
   src/unit-hilbert.cc
   src/unit-lru_cache.cc
-  src/unit-Reader.cc
+  src/unit-QueryCondition.cc
   src/unit-ReadCellSlabIter.cc
+  src/unit-Reader.cc
   src/unit-rtree.cc
-  src/unit-s3.cc
   src/unit-s3-no-multipart.cc
+  src/unit-s3.cc
   src/unit-status.cc
-  src/unit-ChunkedBuffer.cc
   src/unit-Subarray.cc
   src/unit-SubarrayPartitioner-dense.cc
   src/unit-SubarrayPartitioner-error.cc

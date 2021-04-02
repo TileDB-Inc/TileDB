@@ -200,6 +200,30 @@
     TILEDB_QUERY_STATUS_ENUM(UNINITIALIZED) = 4,
 #endif
 
+#ifdef TILEDB_QUERY_CONDITION_OP_ENUM
+    /** Less-than operator */
+    TILEDB_QUERY_CONDITION_OP_ENUM(LT) = 0,
+    /** Less-than-or-equal operator */
+    TILEDB_QUERY_CONDITION_OP_ENUM(LE) = 1,
+    /** Greater-than operator */
+    TILEDB_QUERY_CONDITION_OP_ENUM(GT) = 2,
+    /** Greater-than-or-equal operator */
+    TILEDB_QUERY_CONDITION_OP_ENUM(GE) = 3,
+    /** Equal operator */
+    TILEDB_QUERY_CONDITION_OP_ENUM(EQ) = 4,
+    /** Not-equal operator */
+    TILEDB_QUERY_CONDITION_OP_ENUM(NE) = 5,
+#endif
+
+#ifdef TILEDB_QUERY_CONDITION_COMBINATION_OP_ENUM
+    /**'And' operator */
+    TILEDB_QUERY_CONDITION_COMBINATION_OP_ENUM(AND) = 0,
+    /** 'Or' operator */
+    TILEDB_QUERY_CONDITION_COMBINATION_OP_ENUM(OR) = 1,
+    /** 'Not' operator */
+    TILEDB_QUERY_CONDITION_COMBINATION_OP_ENUM(NOT) = 2,
+#endif
+
 #ifdef TILEDB_SERIALIZATION_TYPE_ENUM
     /** Serialize to json */
     TILEDB_SERIALIZATION_TYPE_ENUM(JSON),
