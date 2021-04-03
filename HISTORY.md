@@ -18,7 +18,11 @@
 
 ### C API
 
+* Add new api,`tiledb_query_get_config` to get a query's config. [#2167](https://github.com/TileDB-Inc/TileDB/pull/2167)
+
 ### C++ API
+
+* Add new api, `Query.config()`  to get a query's config. [#2167](https://github.com/TileDB-Inc/TileDB/pull/2167)
 
 # TileDB v2.2.7 Release Notes
 

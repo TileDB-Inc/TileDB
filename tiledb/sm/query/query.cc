@@ -1058,6 +1058,13 @@ QueryType Query::type() const {
   return type_;
 }
 
+const Config& Query::config() const {
+  if (type_ == QueryType::READ)
+    return reader_.config();
+  else
+    return writer_.config();
+}
+
 /* ****************************** */
 /*          PRIVATE METHODS       */
 /* ****************************** */
