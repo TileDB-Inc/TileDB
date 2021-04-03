@@ -3363,6 +3363,24 @@ TILEDB_EXPORT int32_t tiledb_query_set_config(
     tiledb_ctx_t* ctx, tiledb_query_t* query, tiledb_config_t* config);
 
 /**
+ * Retrieves the config from a Query.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * tiledb_config_t* config;
+ * tiledb_query_get_config(ctx, vfs, &config);
+ * // Make sure to free the retrieved config
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param query The query object.
+ * @param config The config to be retrieved.
+ * @return `TILEDB_OK` for success and `TILEDB_OOM` or `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_query_get_config(
+    tiledb_ctx_t* ctx, tiledb_query_t* query, tiledb_config_t** config);
+/**
  * Indicates that the query will write or read a subarray, and provides
  * the appropriate information.
  *
