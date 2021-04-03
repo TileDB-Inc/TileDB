@@ -33,9 +33,11 @@
 ## API additions
 
 ### C API
+* Add new api,  to get a query's config. [#2167](https://github.com/TileDB-Inc/TileDB/pull/2167)
 * Removes non-default parameter in tiledb_config_unset. [#2099](https://github.com/TileDB-Inc/TileDB/pull/2099)
 
 ### C++ API
+* Add new api,  to get a query's config. [#2167](https://github.com/TileDB-Inc/TileDB/pull/2167)
 * Removes non-default parameter in Config::unset. [#2099](https://github.com/TileDB-Inc/TileDB/pull/2099)
 
 * Add new Config constructors for converting from STL map types [#2081](https://github.com/TileDB-Inc/TileDB/pull/2081)
