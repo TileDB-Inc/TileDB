@@ -61,6 +61,7 @@ const std::string Config::REST_RETRY_DELAY_FACTOR = "1.25";
 const std::string Config::SM_DEDUP_COORDS = "false";
 const std::string Config::SM_CHECK_COORD_DUPS = "true";
 const std::string Config::SM_CHECK_COORD_OOB = "true";
+const std::string Config::SM_READ_RANGE_OOB = "error";
 const std::string Config::SM_CHECK_GLOBAL_ORDER = "true";
 const std::string Config::SM_TILE_CACHE_SIZE = "10000000";
 const std::string Config::SM_MEMORY_BUDGET = "5368709120";       // 5GB
@@ -189,6 +190,7 @@ Config::Config() {
   param_values_["sm.dedup_coords"] = SM_DEDUP_COORDS;
   param_values_["sm.check_coord_dups"] = SM_CHECK_COORD_DUPS;
   param_values_["sm.check_coord_oob"] = SM_CHECK_COORD_OOB;
+  param_values_["sm.read_range_oob"] = SM_READ_RANGE_OOB;
   param_values_["sm.check_global_order"] = SM_CHECK_GLOBAL_ORDER;
   param_values_["sm.tile_cache_size"] = SM_TILE_CACHE_SIZE;
   param_values_["sm.memory_budget"] = SM_MEMORY_BUDGET;
@@ -423,6 +425,8 @@ Status Config::unset(const std::string& param) {
     param_values_["sm.check_coord_dups"] = SM_CHECK_COORD_DUPS;
   } else if (param == "sm.check_coord_oob") {
     param_values_["sm.check_coord_oob"] = SM_CHECK_COORD_OOB;
+  } else if (param == "sm.read_range_oob") {
+    param_values_["sm.read_range_oob"] = SM_READ_RANGE_OOB;
   } else if (param == "sm.check_global_order") {
     param_values_["sm.check_global_order"] = SM_CHECK_GLOBAL_ORDER;
   } else if (param == "sm.tile_cache_size") {

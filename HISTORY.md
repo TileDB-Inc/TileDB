@@ -12,6 +12,8 @@
 
 ## Improvements
 
+* Add config option `sm.read_range_oob` to toggle bounding read ranges to domain or erroring [#2162](https://github.com/TileDB-Inc/TileDB/pull/2162)
+
 ## Deprecations
 
 ## Bug fixes

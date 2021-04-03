@@ -236,6 +236,7 @@ void check_save_to_file() {
   ss << "sm.memory_budget 5368709120\n";
   ss << "sm.memory_budget_var 10737418240\n";
   ss << "sm.num_tbb_threads -1\n";
+  ss << "sm.read_range_oob error\n";
   ss << "sm.skip_checksum_validation false\n";
   ss << "sm.sub_partitioner_memory_budget 0\n";
   ss << "sm.tile_cache_size 10000000\n";
@@ -495,6 +496,7 @@ TEST_CASE("C API: Test config iter", "[capi], [config]") {
   all_param_values["sm.consolidation.buffer_size"] = "50000000";
   all_param_values["sm.consolidation.step_size_ratio"] = "0.0";
   all_param_values["sm.consolidation.mode"] = "fragments";
+  all_param_values["sm.read_range_oob"] = "error";
   all_param_values["sm.vacuum.mode"] = "fragments";
   all_param_values["sm.var_offsets.bitsize"] = "32";
   all_param_values["sm.var_offsets.extra_element"] = "true";

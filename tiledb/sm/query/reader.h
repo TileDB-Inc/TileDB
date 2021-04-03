@@ -131,7 +131,7 @@ class Reader {
   const Array* array() const;
 
   /** Adds a range to the subarray on the input dimension. */
-  Status add_range(unsigned dim_idx, const Range& range);
+  Status add_range(unsigned dim_idx, Range&& range);
 
   /** Retrieves the number of ranges of the subarray for the given dimension. */
   Status get_range_num(unsigned dim_idx, uint64_t* range_num) const;

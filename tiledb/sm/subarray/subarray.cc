@@ -115,7 +115,8 @@ Subarray& Subarray::operator=(Subarray&& subarray) noexcept {
 /*               API              */
 /* ****************************** */
 
-Status Subarray::add_range(uint32_t dim_idx, const Range& range) {
+Status Subarray::add_range(
+    uint32_t dim_idx, Range&& range, const bool& read_range_oob_error) {
   auto dim_num = array_->array_schema()->dim_num();
   if (dim_idx >= dim_num)
     return LOG_STATUS(Status::SubarrayError(
@@ -134,6 +135,8 @@ Status Subarray::add_range(uint32_t dim_idx, const Range& range) {
 
   // Correctness checks
   auto dim = array_->array_schema()->dimension(dim_idx);
+  if (!read_range_oob_error)
+    RETURN_NOT_OK(dim->adjust_range_oob(&range));
   RETURN_NOT_OK(dim->check_range(range));
 
   // Add the range

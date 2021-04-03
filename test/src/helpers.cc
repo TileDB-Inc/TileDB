@@ -487,7 +487,8 @@ void create_subarray(
   for (unsigned d = 0; d < dim_num; ++d) {
     auto dim_range_num = ranges[d].size() / 2;
     for (size_t j = 0; j < dim_range_num; ++j) {
-      ret.add_range(d, sm::Range(&ranges[d][2 * j], 2 * sizeof(T)));
+      sm::Range range(&ranges[d][2 * j], 2 * sizeof(T));
+      ret.add_range(d, std::move(range), true);
     }
   }
 
