@@ -8,6 +8,7 @@
 ## Breaking behavior
 
 ## New features
+* Add support for serialization of config objects [#2164](https://github.com/TileDB-Inc/TileDB/pull/2164)
 * Add C and C++ examples to the  directory for the  APIs. [#2160](https://github.com/TileDB-Inc/TileDB/pull/2160)
 * supporting serialization (using capnproto) build on windows [#2100](https://github.com/TileDB-Inc/TileDB/pull/2100)
 * Config option vfs.s3.sse for S3 server-side encryption support [#2130](https://github.com/TileDB-Inc/TileDB/pull/2130)
@@ -33,6 +34,7 @@
 ## API additions
 
 ### C API
+* Added `tiledb_serialize_config` and `tiledb_deserialize_config` [#2164](https://github.com/TileDB-Inc/TileDB/pull/2164)
 * Add new api,  to get a query's config. [#2167](https://github.com/TileDB-Inc/TileDB/pull/2167)
 * Removes non-default parameter in tiledb_config_unset. [#2099](https://github.com/TileDB-Inc/TileDB/pull/2099)
 
