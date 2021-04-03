@@ -112,9 +112,10 @@ Status Query::add_range(
   std::memcpy(&range[coord_size], end, coord_size);
 
   // Add range
+  Range r(&range[0], 2 * coord_size);
   if (type_ == QueryType::WRITE)
-    return writer_.add_range(dim_idx, Range(&range[0], 2 * coord_size));
-  return reader_.add_range(dim_idx, Range(&range[0], 2 * coord_size));
+    return writer_.add_range(dim_idx, std::move(r));
+  return reader_.add_range(dim_idx, std::move(r));
 }
 
 Status Query::add_range_var(
@@ -145,7 +146,7 @@ Status Query::add_range_var(
   // Add range
   Range r;
   r.set_range_var(start, start_size, end, end_size);
-  return reader_.add_range(dim_idx, r);
+  return reader_.add_range(dim_idx, std::move(r));
 }
 
 Status Query::get_range_num(unsigned dim_idx, uint64_t* range_num) const {
@@ -975,9 +976,21 @@ Status Query::set_subarray(const void* subarray) {
     auto dim_num = array_->array_schema()->dim_num();
     auto s_ptr = (const unsigned char*)subarray;
     uint64_t offset = 0;
+
+    // Get read_range_oob config setting
+    bool found = false;
+    std::string read_range_oob = config().get("sm.read_range_oob", &found);
+    assert(found);
+    if (read_range_oob != "error" && read_range_oob != "warn")
+      return LOG_STATUS(Status::QueryError(
+          "Invalid value " + read_range_oob +
+          " for sm.read_range_obb. Acceptable values are 'error' or 'warn'."));
+
     for (unsigned d = 0; d < dim_num; ++d) {
       auto r_size = 2 * array_->array_schema()->dimension(d)->coord_size();
-      RETURN_NOT_OK(sub.add_range(d, Range(&s_ptr[offset], r_size)));
+      Range range(&s_ptr[offset], r_size);
+      RETURN_NOT_OK(
+          sub.add_range(d, std::move(range), read_range_oob == "error"));
       offset += r_size;
     }
   }

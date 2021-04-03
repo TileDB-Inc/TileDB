@@ -88,7 +88,7 @@ const Array* Writer::array() const {
   return array_;
 }
 
-Status Writer::add_range(unsigned dim_idx, const Range& range) {
+Status Writer::add_range(unsigned dim_idx, Range&& range) {
   if (!array_schema_->dense())
     return LOG_STATUS(
         Status::WriterError("Adding a subarray range to a write query is not "
@@ -99,7 +99,7 @@ Status Writer::add_range(unsigned dim_idx, const Range& range) {
         Status::WriterError("Cannot add range; Multi-range dense writes "
                             "are not supported"));
 
-  return subarray_.add_range(dim_idx, range);
+  return subarray_.add_range(dim_idx, std::move(range), true);
 }
 
 Status Writer::get_range_num(unsigned dim_idx, uint64_t* range_num) const {

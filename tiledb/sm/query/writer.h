@@ -125,7 +125,7 @@ class Writer {
   const Array* array() const;
 
   /** Adds a range to the subarray on the input dimension. */
-  Status add_range(unsigned dim_idx, const Range& range);
+  Status add_range(unsigned dim_idx, Range&& range);
 
   /**
    * Disables checking the global order. Applicable only to writes.

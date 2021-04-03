@@ -101,6 +101,13 @@ class Config {
   static const std::string SM_CHECK_COORD_OOB;
 
   /**
+   * If `true`, this will check ranges for read with out-of-bounds on the
+   * dimension domain's. If `false`, the ranges will be capped at the
+   * dimension's domain and a warning logged
+   */
+  static const std::string SM_READ_RANGE_OOB;
+
+  /**
    * If `true`, this will check if the cells upon writes in global order
    * are indeed provided in global order.
    */
