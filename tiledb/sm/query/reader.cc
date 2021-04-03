@@ -116,8 +116,19 @@ const Array* Reader::array() const {
   return array_;
 }
 
-Status Reader::add_range(unsigned dim_idx, const Range& range) {
-  return subarray_.add_range(dim_idx, range);
+Status Reader::add_range(unsigned dim_idx, Range&& range) {
+  // Get read_range_oob config setting
+  bool found = false;
+  std::string read_range_oob = config().get("sm.read_range_oob", &found);
+  assert(found);
+
+  if (read_range_oob != "error" && read_range_oob != "warn")
+    return LOG_STATUS(Status::ReaderError(
+        "Invalid value " + read_range_oob +
+        " for sm.read_range_obb. Acceptable values are 'error' or 'warn'."));
+
+  return subarray_.add_range(
+      dim_idx, std::move(range), read_range_oob == "error");
 }
 
 Status Reader::get_range_num(unsigned dim_idx, uint64_t* range_num) const {
