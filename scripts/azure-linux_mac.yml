@@ -166,7 +166,7 @@ steps:
     make -j4 -C tiledb tiledb_unit
 
     if [[ "$TILEDB_CI_ASAN" == "ON" ]]; then
-      export ASAN_OPTIONS=detect_leaks=0 LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libasan.so.4
+      export ASAN_OPTIONS=detect_leaks=0 LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libasan.so.5
     fi
 
     if [[ "$TILEDB_GCS" == "ON" ]]; then
