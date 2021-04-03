@@ -3544,5 +3544,9 @@ bool Reader::belong_to_single_fragment(
   return true;
 }
 
+const Config& Reader::config() const {
+  return config_;
+}
+
 }  // namespace sm
 }  // namespace tiledb

@@ -236,6 +236,11 @@ void write_dense_array(
 
   if (config != nullptr) {
     query.set_config(*config);
+
+    // Validate we can retrieve set config
+    Config config2 = query.config();
+    bool same = *config == config2;
+    CHECK(same == true);
   }
 
   query.set_buffer("attr", data_offsets, data);
@@ -271,6 +276,11 @@ void write_dense_array(
 
   if (config != nullptr) {
     query.set_config(*config);
+
+    // Validate we can retrieve set config
+    Config config2 = query.config();
+    bool same = *config == config2;
+    CHECK(same == true);
   }
 
   // Write using a 32-bit vector, but cast it to 64-bit pointer so that the API
@@ -308,6 +318,11 @@ void read_and_check_dense_array(
 
   if (config != nullptr) {
     query.set_config(*config);
+
+    // Validate we can retrieve set config
+    Config config2 = query.config();
+    bool same = *config == config2;
+    CHECK(same == true);
   }
 
   std::vector<int32_t> attr_val(expected_data.size());
@@ -334,6 +349,11 @@ void read_and_check_dense_array(
 
   if (config != nullptr) {
     query.set_config(*config);
+
+    // Validate we can retrieve set config
+    Config config2 = query.config();
+    bool same = *config == config2;
+    CHECK(same == true);
   }
 
   std::vector<int32_t> attr_val(expected_data.size());
