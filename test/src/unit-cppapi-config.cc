@@ -33,6 +33,7 @@
 #include <thread>
 
 #include "catch.hpp"
+#include "tiledb/sm/c_api/tiledb_serialization.h"
 #include "tiledb/sm/cpp_api/tiledb"
 
 int setenv_local(const char* __name, const char* __value) {
@@ -128,3 +129,43 @@ TEST_CASE("C++ API: Config Equality", "[cppapi], [cppapi-config]") {
   bool config_not_equal = config1 != config2;
   CHECK(config_not_equal);
 }
+
+#ifdef TILEDB_SERIALIZATION
+TEST_CASE(
+    "C++ API: Config Serialization",
+    "[cppapi], [cppapi-config], [serialization]") {
+  tiledb_serialization_type_t format;
+  SECTION("- json") {
+    format = tiledb_serialization_type_t::TILEDB_JSON;
+  }
+
+  SECTION("- capnp") {
+    format = tiledb_serialization_type_t::TILEDB_CAPNP;
+  }
+  // Check for equality
+  tiledb::Config config1;
+  config1["foo"] = "bar";
+
+  tiledb::Context ctx;
+
+  // Serialize the query (client-side).
+  tiledb_buffer_t* buff1;
+  int32_t rc = tiledb_serialize_config(
+      ctx.ptr().get(), config1.ptr().get(), format, 1, &buff1);
+  CHECK(rc == TILEDB_OK);
+
+  tiledb_config_t* config2_ptr;
+  rc = tiledb_deserialize_config(
+      ctx.ptr().get(), buff1, format, 0, &config2_ptr);
+  CHECK(rc == TILEDB_OK);
+  tiledb::Config config2(&config2_ptr);
+
+  bool config_equal = config1 == config2;
+  CHECK(config_equal);
+
+  // Check for inequality
+  CHECK(config2.get("foo") == std::string("bar"));
+
+  tiledb_buffer_free(&buff1);
+}
+#endif  // TILEDB_SERIALIZATION
