@@ -1716,7 +1716,7 @@ TEST_CASE("Filter: Test bit width reduction", "[filter]") {
       uint64_t elt = 0;
       CHECK(chunked_buffer.read(&elt, sizeof(uint64_t), (i * sizeof(uint64_t)))
                 .ok());
-      CHECK(elt == rng(gen_copy));
+      CHECK((int64_t)elt == rng(gen_copy));
     }
   }
 

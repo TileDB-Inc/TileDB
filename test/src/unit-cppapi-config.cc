@@ -120,9 +120,11 @@ TEST_CASE("C++ API: Config Equality", "[cppapi], [cppapi-config]") {
   config1["foo"] = "bar";
   tiledb::Config config2;
   config2["foo"] = "bar";
-  CHECK(config1 == config2);
+  bool config_equal = config1 == config2;
+  CHECK(config_equal);
 
   // Check for inequality
   config2["foo"] = "bar2";
-  CHECK(config1 != config2);
+  bool config_not_equal = config1 != config2;
+  CHECK(config_not_equal);
 }
