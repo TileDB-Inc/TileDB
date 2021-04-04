@@ -8,6 +8,8 @@
 
 ## New features
 
+* Add support for serialization of config objects [#2164](https://github.com/TileDB-Inc/TileDB/pull/2164)
+
 ## Improvements
 
 ## Deprecations
@@ -19,6 +21,7 @@
 ### C API
 
 * Add new api,`tiledb_query_get_config` to get a query's config. [#2167](https://github.com/TileDB-Inc/TileDB/pull/2167)
+* Added `tiledb_serialize_config` and `tiledb_deserialize_config` [#2164](https://github.com/TileDB-Inc/TileDB/pull/2164)
 
 ### C++ API
 

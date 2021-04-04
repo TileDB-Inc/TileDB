@@ -163,6 +163,7 @@ set(TILEDB_CORE_SOURCES
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/rest/rest_client.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/rtree/rtree.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/array_schema.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/config.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/query.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/stats/stats.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/storage_manager/context.cc
