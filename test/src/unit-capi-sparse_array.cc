@@ -338,6 +338,8 @@ void SparseArrayFx::create_sparse_array_2D(
   REQUIRE(rc == TILEDB_OK);
 
   // Clean up
+  tiledb_filter_free(&filter);
+  tiledb_filter_list_free(&list);
   tiledb_attribute_free(&a);
   tiledb_dimension_free(&d1);
   tiledb_dimension_free(&d2);

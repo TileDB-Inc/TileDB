@@ -3055,6 +3055,7 @@ TEST_CASE_METHOD(
   rc = tiledb_config_compare(config, config2, &equal);
   CHECK(rc == TILEDB_OK);
   CHECK(equal == 1);
+  tiledb_config_free(&config2);
 
   // Test modified behavior
   std::vector<uint32_t> offsets = {0, 1, 2, 4, 7, 9, 10};

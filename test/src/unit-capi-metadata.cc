@@ -1087,6 +1087,8 @@ TEST_CASE_METHOD(
   CHECK(*((int32_t*)vback_ptr) == 20);
   rc = tiledb_array_close(ctx_, array);
   CHECK(rc == TILEDB_OK);
+
+  tiledb_array_free(&array);
 }
 
 TEST_CASE_METHOD(

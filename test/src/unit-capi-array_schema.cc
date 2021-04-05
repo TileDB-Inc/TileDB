@@ -1026,6 +1026,7 @@ TEST_CASE_METHOD(
   rc = tiledb_dimension_get_tile_extent(ctx_, d1, &extent);
   CHECK(rc == TILEDB_OK);
   CHECK(extent == nullptr);
+  tiledb_dimension_free(&d1);
 
   // Create dimension with huge range and tile extent - error
   tiledb_dimension_t* d2;
@@ -1229,6 +1230,8 @@ TEST_CASE_METHOD(
   REQUIRE(rc == TILEDB_OK);
 
   // Clean up
+  tiledb_filter_free(&filter);
+  tiledb_filter_list_free(&filter_list);
   tiledb_attribute_free(&attr1);
   tiledb_dimension_free(&d1);
   tiledb_domain_free(&domain);
@@ -1856,11 +1859,13 @@ TEST_CASE_METHOD(
   REQUIRE(rc == TILEDB_OK);
 
   // Clean up
+  tiledb_attribute_free(&a);
   tiledb_dimension_free(&d1);
   tiledb_dimension_free(&d2);
   tiledb_dimension_free(&r_d1);
   tiledb_dimension_free(&r_d2);
   tiledb_domain_free(&domain);
+  tiledb_domain_free(&read_dom);
   tiledb_array_free(&array);
   tiledb_query_free(&query);
   tiledb_array_schema_free(&array_schema);

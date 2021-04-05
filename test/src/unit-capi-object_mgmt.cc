@@ -130,7 +130,12 @@ void ObjectMgmtFx::create_array(const std::string& path) {
 
   // Create array
   REQUIRE(tiledb_array_create(ctx_, path.c_str(), array_schema) == TILEDB_OK);
+
+  // Free objects
+  tiledb_attribute_free(&a1);
   tiledb_dimension_free(&d1);
+  tiledb_domain_free(&domain);
+  tiledb_array_schema_free(&array_schema);
 }
 
 void ObjectMgmtFx::check_object_type(const std::string& path) {
