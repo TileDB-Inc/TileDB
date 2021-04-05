@@ -36,8 +36,6 @@
 #include <cinttypes>
 #include <vector>
 
-using namespace tiledb::common;
-
 namespace tiledb {
 namespace sm {
 
@@ -53,8 +51,19 @@ struct TileOverlap {
    * indicates full overlap and 0.0 no overlap at all.
    */
   std::vector<std::pair<uint64_t, double>> tiles_;
+
   /** Ranges of tile ids that lie completely inside the subarray range. */
   std::vector<std::pair<uint64_t, uint64_t>> tile_ranges_;
+
+  /** Returns the current byte size of an instance. */
+  size_t byte_size() const {
+    static const uint64_t tiles_element_size =
+        sizeof(std::pair<uint64_t, double>);
+    static const uint64_t tile_ranges_element_size =
+        sizeof(std::pair<uint64_t, uint64_t>);
+    return sizeof(TileOverlap) + (tiles_.size() * tiles_element_size) +
+           (tile_ranges_.size() * tile_ranges_element_size);
+  }
 };
 
 }  // namespace sm

@@ -498,7 +498,7 @@ class Query {
    *
    * @return Config from query
    */
-  const Config& config() const;
+  const Config* config() const;
 
   /**
    * Sets the buffer for a fixed-sized attribute/dimension.
