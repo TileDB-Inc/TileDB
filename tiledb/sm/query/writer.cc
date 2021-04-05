@@ -3650,8 +3650,8 @@ Status Writer::calculate_hilbert_values(
   return Status::Ok();
 }
 
-const Config& Writer::config() const {
-  return config_;
+const Config* Writer::config() const {
+  return &config_;
 }
 }  // namespace sm
 }  // namespace tiledb
