@@ -295,6 +295,8 @@ void check_save_to_file() {
 
   CHECK(ss.str() == ss_file.str());
   remove_file("test_config.txt");
+
+  tiledb_config_free(&config);
 }
 
 TEST_CASE("C API: Test config", "[capi], [config]") {
@@ -932,6 +934,7 @@ TEST_CASE("C API: Test VFS config inheritance", "[capi][config][vfs-inherit]") {
 
   tiledb_config_free(&config);
   tiledb_config_free(&vfs_config);
+  tiledb_config_free(&vfs_config_get);
   tiledb_vfs_free(&vfs);
   tiledb_ctx_free(&ctx);
 }

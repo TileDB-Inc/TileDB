@@ -122,6 +122,8 @@ TEST_CASE("BufferList: Test read", "[buffer][bufferlist]") {
   buffer_list.reset_offset();
   REQUIRE(buffer_list.read_at_most(data, 0, &num_read).ok());
   REQUIRE(num_read == 0);
+
+  std::free(data);
 }
 
 TEST_CASE("C API: Test empty BufferList", "[capi][buffer][bufferlist]") {

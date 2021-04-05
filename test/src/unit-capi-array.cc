@@ -159,6 +159,7 @@ void ArrayFx::create_sparse_vector(const std::string& path) {
   REQUIRE(rc == TILEDB_OK);
   tiledb_attribute_free(&attr);
   tiledb_dimension_free(&dim);
+  tiledb_domain_free(&domain);
   tiledb_array_schema_free(&array_schema);
 }
 
@@ -211,6 +212,7 @@ void ArrayFx::create_sparse_array(const std::string& path) {
   tiledb_attribute_free(&attr);
   tiledb_dimension_free(&dim_1);
   tiledb_dimension_free(&dim_2);
+  tiledb_domain_free(&domain);
   tiledb_array_schema_free(&array_schema);
 }
 
@@ -266,6 +268,7 @@ void ArrayFx::create_dense_vector(const std::string& path) {
   REQUIRE(rc == TILEDB_OK);
   tiledb_attribute_free(&attr);
   tiledb_dimension_free(&dim);
+  tiledb_domain_free(&domain);
   tiledb_array_schema_free(&array_schema);
 }
 
@@ -318,6 +321,7 @@ void ArrayFx::create_dense_array(const std::string& path) {
   tiledb_attribute_free(&attr);
   tiledb_dimension_free(&dim_1);
   tiledb_dimension_free(&dim_2);
+  tiledb_domain_free(&domain);
   tiledb_array_schema_free(&array_schema);
 }
 

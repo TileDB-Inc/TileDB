@@ -160,6 +160,8 @@ void SparseRealFx::create_sparse_array(const std::string& path) {
   CHECK(rc == TILEDB_OK);
 
   // Clean up
+  tiledb_filter_free(&filter);
+  tiledb_filter_list_free(&list);
   tiledb_attribute_free(&a);
   tiledb_dimension_free(&d1);
   tiledb_dimension_free(&d2);
@@ -400,6 +402,8 @@ void SparseRealFx::create_sparse_array_double(const std::string& path) {
   CHECK(rc == TILEDB_OK);
 
   // Clean up
+  tiledb_filter_free(&filter);
+  tiledb_filter_list_free(&list);
   tiledb_attribute_free(&a);
   tiledb_dimension_free(&d1);
   tiledb_dimension_free(&d2);

@@ -2226,6 +2226,7 @@ TEST_CASE_METHOD(
   // Close array
   rc = tiledb_array_close(ctx_, array);
   CHECK(rc == TILEDB_OK);
+  tiledb_array_free(&array);
 
   // #### PARTITIONER ####
 
@@ -2453,6 +2454,9 @@ TEST_CASE_METHOD(
   // Close array
   rc = tiledb_array_close(ctx_, array);
   CHECK(rc == TILEDB_OK);
+
+  // Free array
+  tiledb_array_free(&array);
 
   // #### PARTITIONER ####
 
