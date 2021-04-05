@@ -466,6 +466,17 @@ TEST_CASE_METHOD(
   rc = tiledb_query_alloc(ctx_, array, TILEDB_READ, &query);
   REQUIRE(rc == TILEDB_OK);
 
+  // Set config for `sm.read_range_oob` = `error`
+  tiledb_config_t* config = nullptr;
+  tiledb_error_t* error = nullptr;
+  REQUIRE(tiledb_config_alloc(&config, &error) == TILEDB_OK);
+  REQUIRE(error == nullptr);
+  rc = tiledb_config_set(config, "sm.read_range_oob", "error", &error);
+  REQUIRE(rc == TILEDB_OK);
+  REQUIRE(error == nullptr);
+  rc = tiledb_query_set_config(ctx_, query, config);
+  REQUIRE(rc == TILEDB_OK);
+
   // Check Nan
   float subarray[] = {
       -180.0f, std::numeric_limits<float>::quiet_NaN(), -90.0f, 90.0f};
