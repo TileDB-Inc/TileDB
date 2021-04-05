@@ -119,7 +119,7 @@ const Array* Reader::array() const {
 Status Reader::add_range(unsigned dim_idx, Range&& range) {
   // Get read_range_oob config setting
   bool found = false;
-  std::string read_range_oob = config().get("sm.read_range_oob", &found);
+  std::string read_range_oob = config_.get("sm.read_range_oob", &found);
   assert(found);
 
   if (read_range_oob != "error" && read_range_oob != "warn")
@@ -155,19 +155,19 @@ Status Reader::get_range_var_size(
 
 Status Reader::get_est_result_size(const char* name, uint64_t* size) {
   return subarray_.get_est_result_size(
-      name, size, storage_manager_->compute_tp());
+      name, size, &config_, storage_manager_->compute_tp());
 }
 
 Status Reader::get_est_result_size(
     const char* name, uint64_t* size_off, uint64_t* size_val) {
   return subarray_.get_est_result_size(
-      name, size_off, size_val, storage_manager_->compute_tp());
+      name, size_off, size_val, &config_, storage_manager_->compute_tp());
 }
 
 Status Reader::get_est_result_size_nullable(
     const char* name, uint64_t* size_val, uint64_t* size_validity) {
   return subarray_.get_est_result_size_nullable(
-      name, size_val, size_validity, storage_manager_->compute_tp());
+      name, size_val, size_validity, &config_, storage_manager_->compute_tp());
 }
 
 Status Reader::get_est_result_size_nullable(
@@ -176,7 +176,12 @@ Status Reader::get_est_result_size_nullable(
     uint64_t* size_val,
     uint64_t* size_validity) {
   return subarray_.get_est_result_size_nullable(
-      name, size_off, size_val, size_validity, storage_manager_->compute_tp());
+      name,
+      size_off,
+      size_val,
+      size_validity,
+      &config_,
+      storage_manager_->compute_tp());
 }
 
 const ArraySchema* Reader::array_schema() const {
@@ -1014,21 +1019,16 @@ Status Reader::compute_range_result_coords(
     const std::map<std::pair<unsigned, uint64_t>, size_t>& result_tile_map,
     std::vector<ResultTile>* result_tiles,
     std::vector<ResultCoords>* range_result_coords) {
-  const auto& overlap = subarray->tile_overlap();
-
   // Skip dense fragments
   if (fragment_metadata_[fragment_idx]->dense())
     return Status::Ok();
 
-  const uint64_t overlap_range_offset = subarray->overlap_range_offset();
-  auto tr = overlap[fragment_idx][range_idx + overlap_range_offset]
-                .tile_ranges_.begin();
-  auto tr_end = overlap[fragment_idx][range_idx + overlap_range_offset]
-                    .tile_ranges_.end();
-  auto t =
-      overlap[fragment_idx][range_idx + overlap_range_offset].tiles_.begin();
-  auto t_end =
-      overlap[fragment_idx][range_idx + overlap_range_offset].tiles_.end();
+  auto tr =
+      subarray->tile_overlap(fragment_idx, range_idx)->tile_ranges_.begin();
+  auto tr_end =
+      subarray->tile_overlap(fragment_idx, range_idx)->tile_ranges_.end();
+  auto t = subarray->tile_overlap(fragment_idx, range_idx)->tiles_.begin();
+  auto t_end = subarray->tile_overlap(fragment_idx, range_idx)->tiles_.end();
 
   while (tr != tr_end || t != t_end) {
     // Handle tile range
@@ -1157,8 +1157,6 @@ Status Reader::compute_sparse_result_tiles(
   auto domain = array_schema_->domain();
   auto& partitioner = read_state_.partitioner_;
   const auto& subarray = partitioner.current();
-  const auto& overlap = subarray.tile_overlap();
-  const uint64_t overlap_range_offset = subarray.overlap_range_offset();
   auto range_num = subarray.range_num();
   auto fragment_num = fragment_metadata_.size();
   std::vector<unsigned> first_fragment;
@@ -1178,8 +1176,7 @@ Status Reader::compute_sparse_result_tiles(
 
     for (uint64_t r = 0; r < range_num; ++r) {
       // Handle range of tiles (full overlap)
-      const auto& tile_ranges =
-          overlap[f][r + overlap_range_offset].tile_ranges_;
+      const auto& tile_ranges = subarray.tile_overlap(f, r)->tile_ranges_;
       for (const auto& tr : tile_ranges) {
         for (uint64_t t = tr.first; t <= tr.second; ++t) {
           auto pair = std::pair<unsigned, uint64_t>(f, t);
@@ -1197,7 +1194,7 @@ Status Reader::compute_sparse_result_tiles(
       }
 
       // Handle single tiles
-      const auto& o_tiles = overlap[f][r + overlap_range_offset].tiles_;
+      const auto& o_tiles = subarray.tile_overlap(f, r)->tiles_;
       for (const auto& o_tile : o_tiles) {
         auto t = o_tile.first;
         auto pair = std::pair<unsigned, uint64_t>(f, t);
@@ -1925,6 +1922,7 @@ Status Reader::compute_result_coords(
     // time complexity of O(N*log(N)).
     SubarrayPartitioner* const partitioner = &read_state_.partitioner_;
     SubarrayPartitioner sub_partitioner(
+        &config_,
         partitioner->current(),
         sub_partitioner_memory_budget,
         sub_partitioner_memory_budget_var,
@@ -2676,6 +2674,7 @@ Status Reader::init_read_state() {
 
   // Create read state
   read_state_.partitioner_ = SubarrayPartitioner(
+      &config_,
       subarray_,
       memory_budget,
       memory_budget_var,
@@ -3459,6 +3458,10 @@ Status Reader::set_config(const Config& config) {
   return Status::Ok();
 }
 
+const Config* Reader::config() const {
+  return &config_;
+}
+
 Status Reader::set_est_result_size(
     std::unordered_map<std::string, Subarray::ResultSize>& est_result_size,
     std::unordered_map<std::string, Subarray::MemorySize>& max_mem_size) {
@@ -3467,7 +3470,8 @@ Status Reader::set_est_result_size(
 
 std::unordered_map<std::string, Subarray::ResultSize>
 Reader::get_est_result_size_map() {
-  return subarray_.get_est_result_size_map(storage_manager_->compute_tp());
+  return subarray_.get_est_result_size_map(
+      &config_, storage_manager_->compute_tp());
 }
 
 bool Reader::est_result_size_computed() {
@@ -3476,7 +3480,8 @@ bool Reader::est_result_size_computed() {
 
 std::unordered_map<std::string, Subarray::MemorySize>
 Reader::get_max_mem_size_map() {
-  return subarray_.get_max_mem_size_map(storage_manager_->compute_tp());
+  return subarray_.get_max_mem_size_map(
+      &config_, storage_manager_->compute_tp());
 }
 
 Status Reader::calculate_hilbert_values(
@@ -3553,10 +3558,6 @@ bool Reader::belong_to_single_fragment(
   }
 
   return true;
-}
-
-const Config& Reader::config() const {
-  return config_;
 }
 
 }  // namespace sm
