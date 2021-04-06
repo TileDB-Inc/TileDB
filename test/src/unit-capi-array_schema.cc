@@ -1373,6 +1373,7 @@ TEST_CASE_METHOD(
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_vfs_close(ctx_, fh);
   REQUIRE(rc == TILEDB_OK);
+  tiledb_vfs_fh_free(&fh);
 
   // Check for failure opening the array.
   tiledb_array_t* array;

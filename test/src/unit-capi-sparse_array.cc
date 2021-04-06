@@ -2805,6 +2805,8 @@ TEST_CASE_METHOD(
   free(a2_off);
   free(a2);
   free(a3);
+  free(coords_dim1);
+  free(coords_dim2);
   tiledb_query_free(&empty_query);
 
   // ---- Second READ query (non-empty)
@@ -2875,6 +2877,8 @@ TEST_CASE_METHOD(
   free(a2_off);
   free(a2);
   free(a3);
+  free(coords_dim1);
+  free(coords_dim2);
   tiledb_query_free(&query);
 
   // Clean up
