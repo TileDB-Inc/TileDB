@@ -33,6 +33,7 @@
 ## Deprecations
 
 ## Bug fixes
+* Fixes a potential memory leak in the filter pipeline [#2185](https://github.com/TileDB-Inc/TileDB/pull/2185)
 
 ## API additions
 
