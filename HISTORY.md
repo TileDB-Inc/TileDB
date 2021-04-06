@@ -6,6 +6,7 @@
 ## Breaking C API changes
 
 ## Breaking behavior
+* Removes TBB as an optional dependency [#2181](https://github.com/TileDB-Inc/TileDB/pull/2181)
 
 ## New features
 * Add support for serialization of config objects [#2164](https://github.com/TileDB-Inc/TileDB/pull/2164)
