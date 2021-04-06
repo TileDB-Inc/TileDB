@@ -34,7 +34,6 @@
 #include "tiledb/sm/global_state/libcurl_state.h"
 #include "tiledb/sm/global_state/openssl_state.h"
 #include "tiledb/sm/global_state/signal_handlers.h"
-#include "tiledb/sm/global_state/tbb_state.h"
 #include "tiledb/sm/global_state/watchdog.h"
 #include "tiledb/sm/misc/constants.h"
 
@@ -51,10 +50,6 @@ using namespace tiledb::common;
 namespace tiledb {
 namespace sm {
 namespace global_state {
-
-#ifdef HAVE_TBB
-extern int tbb_nthreads_;
-#endif
 
 GlobalState& GlobalState::GetGlobalState() {
   // This is thread-safe in C++11.
@@ -75,9 +70,6 @@ Status GlobalState::init(const Config* config) {
   RETURN_NOT_OK(config_.get<bool>(
       "sm.enable_signal_handlers", &enable_signal_handlers, &found));
   assert(found);
-
-  // initialize tbb with configured number of threads
-  RETURN_NOT_OK(init_tbb(config));
 
   // run these operations once
   if (!initialized_) {
@@ -125,17 +117,6 @@ std::set<StorageManager*> GlobalState::storage_managers() {
 
 const std::string& GlobalState::cert_file() {
   return cert_file_;
-}
-
-int GlobalState::tbb_threads() {
-  if (!initialized_)
-    return 0;
-
-#ifdef HAVE_TBB
-  return tbb_nthreads_;
-#else
-  return 0;
-#endif
 }
 
 }  // namespace global_state

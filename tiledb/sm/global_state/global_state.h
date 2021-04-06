@@ -94,13 +94,6 @@ class GlobalState {
    */
   const std::string& cert_file();
 
-  /**
-   * Gets the number of threads that TBB was initialized with. Returns
-   * 0 if the global state has not been initialized.
-   * @return the number of configured TBB threads.
-   */
-  int tbb_threads();
-
  private:
   /** The TileDB configuration parameters. */
   Config config_;

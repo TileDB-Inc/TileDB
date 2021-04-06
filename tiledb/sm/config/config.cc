@@ -77,12 +77,6 @@ const std::string Config::SM_COMPUTE_CONCURRENCY_LEVEL =
     utils::parse::to_str(std::thread::hardware_concurrency());
 const std::string Config::SM_IO_CONCURRENCY_LEVEL =
     utils::parse::to_str(std::thread::hardware_concurrency());
-#ifdef HAVE_TBB
-const std::string Config::SM_NUM_TBB_THREADS =
-    utils::parse::to_str((int)tbb::task_scheduler_init::automatic);
-#else
-const std::string Config::SM_NUM_TBB_THREADS = "-1";
-#endif
 const std::string Config::SM_SKIP_CHECKSUM_VALIDATION = "false";
 const std::string Config::SM_CONSOLIDATION_AMPLIFICATION = "1.0";
 const std::string Config::SM_CONSOLIDATION_BUFFER_SIZE = "50000000";
@@ -207,7 +201,6 @@ Config::Config() {
   param_values_["sm.enable_signal_handlers"] = SM_ENABLE_SIGNAL_HANDLERS;
   param_values_["sm.compute_concurrency_level"] = SM_COMPUTE_CONCURRENCY_LEVEL;
   param_values_["sm.io_concurrency_level"] = SM_IO_CONCURRENCY_LEVEL;
-  param_values_["sm.num_tbb_threads"] = SM_NUM_TBB_THREADS;
   param_values_["sm.skip_checksum_validation"] = SM_SKIP_CHECKSUM_VALIDATION;
   param_values_["sm.consolidation.amplification"] =
       SM_CONSOLIDATION_AMPLIFICATION;
@@ -455,8 +448,6 @@ Status Config::unset(const std::string& param) {
         SM_COMPUTE_CONCURRENCY_LEVEL;
   } else if (param == "sm.io_concurrency_level") {
     param_values_["sm.io_concurrency_level"] = SM_IO_CONCURRENCY_LEVEL;
-  } else if (param == "sm.num_tbb_threads") {
-    param_values_["sm.num_tbb_threads"] = SM_NUM_TBB_THREADS;
   } else if (param == "sm.consolidation.amplification") {
     param_values_["sm.consolidation.amplification"] =
         SM_CONSOLIDATION_AMPLIFICATION;
@@ -646,7 +637,6 @@ Status Config::sanity_check(
   uint32_t v32 = 0;
   float vf = 0.0f;
   int64_t vint64 = 0;
-  int vint = 0;
 
   if (param == "rest.server_serialization_format") {
     SerializationType serialization_type;
@@ -675,8 +665,6 @@ Status Config::sanity_check(
     RETURN_NOT_OK(utils::parse::convert(value, &vuint64));
   } else if (param == "sm.io_concurrency_level") {
     RETURN_NOT_OK(utils::parse::convert(value, &vuint64));
-  } else if (param == "sm.num_tbb_threads") {
-    RETURN_NOT_OK(utils::parse::convert(value, &vint));
   } else if (param == "sm.consolidation.amplification") {
     RETURN_NOT_OK(utils::parse::convert(value, &vf));
   } else if (param == "sm.consolidation.buffer_size") {

@@ -146,7 +146,6 @@ set(TILEDB_CORE_SOURCES
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/global_state/libcurl_state.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/global_state/openssl_state.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/global_state/signal_handlers.cc
-  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/global_state/tbb_state.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/global_state/watchdog.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/metadata/metadata.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/misc/cancelable_tasks.cc
@@ -426,16 +425,6 @@ if (TILEDB_HDFS)
   endif()
 endif()
 
-# TBB dependency
-if (TILEDB_TBB)
-  find_package(TBB_EP REQUIRED)
-  target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
-    INTERFACE
-      TBB::tbb
-  )
-  add_definitions(-DHAVE_TBB -DTBB_SUPPRESS_DEPRECATED_MESSAGES)
-endif()
-
 # Serialization
 if (TILEDB_SERIALIZATION)
   find_package(Capnp_EP REQUIRED)
@@ -520,7 +509,7 @@ if(APPLE)
 endif()
 
 # On Linux, must explicitly link -lpthread -ldl in order for static linking
-# to libzstd and tbb.
+# to libzstd.
 if (NOT WIN32)
   target_link_libraries(TILEDB_CORE_OBJECTS_ILIB INTERFACE pthread dl)
 endif()
@@ -709,7 +698,6 @@ if (TILEDB_STATIC)
 
   append_dep_lib(Bzip2::Bzip2)
   append_dep_lib(LZ4::LZ4)
-  append_dep_lib(TBB::tbb)
   append_dep_lib(Zlib::Zlib)
   append_dep_lib(ZLIB::ZLIB)
   append_dep_lib(Zstd::Zstd)

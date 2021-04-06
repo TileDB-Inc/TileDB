@@ -34,7 +34,6 @@ build() {
     -DBUILD_SHARED_LIBS=OFF \
     -DCMAKE_BUILD_TYPE=Release \
     -DTILEDB_STATIC=ON \
-    -DTILEDB_TBB=OFF \
     -DTILEDB_S3=ON \
     ..
   make

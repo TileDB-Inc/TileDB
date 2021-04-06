@@ -165,22 +165,16 @@ Status Context::init_thread_pools(Config* const config) {
       "sm.io_concurrency_level", &io_concurrency_level, &found));
   assert(found);
 
-#ifndef HAVE_TBB
-  // The "sm.num_tbb_threads" has been deprecated when TBB is disabled.
-  // Now that TBB is disabled by default, users may still be setting this
-  // configuration parameter larger than the default value. In this scenario,
-  // we will override the compute and io concurrency levels if the configured
-  // tbb threads are greater. We will do this silently because the
-  // "sm.num_tbb_threads" still has a default value in the config. When we
-  // remove TBB, we will also remove this configuration parameter.
+  // The "sm.num_tbb_threads" has been deprecated. Users may still be setting
+  // this configuration parameter. In this scenario, we will override the
+  // compute and io concurrency levels if the configured tbb threads are
+  // greater.
   int num_tbb_threads = 0;
   RETURN_NOT_OK(
       tmp_config.get<int>("sm.num_tbb_threads", &num_tbb_threads, &found));
-  assert(found);
-  if (num_tbb_threads > 0)
+  if (found && num_tbb_threads > 0)
     max_thread_count =
         std::max(max_thread_count, static_cast<uint64_t>(num_tbb_threads));
-#endif
 
   // If 'max_thread_count' is larger than the compute or io concurrency levels,
   // use that instead.
