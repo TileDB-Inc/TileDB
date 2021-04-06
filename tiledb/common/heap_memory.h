@@ -44,7 +44,7 @@
 namespace tiledb {
 namespace common {
 
-extern std::mutex __tdb_heap_mem_lock;
+extern std::recursive_mutex __tdb_heap_mem_lock;
 
 /** TileDB variant of `malloc`. */
 void* tiledb_malloc(size_t size, const std::string& label);
@@ -65,7 +65,7 @@ T* tiledb_new(const std::string& label, Args&&... args) {
     return new T(std::forward<Args>(args)...);
   }
 
-  std::unique_lock<std::mutex> ul(__tdb_heap_mem_lock);
+  std::unique_lock<std::recursive_mutex> ul(__tdb_heap_mem_lock);
 
   T* const p = new T(std::forward<Args>(args)...);
 
@@ -85,7 +85,7 @@ void tiledb_delete(T* const p) {
     return;
   }
 
-  std::unique_lock<std::mutex> ul(__tdb_heap_mem_lock);
+  std::unique_lock<std::recursive_mutex> ul(__tdb_heap_mem_lock);
 
   delete p;
   heap_profiler.record_dealloc(p);
@@ -98,7 +98,7 @@ T* tiledb_new_array(const std::size_t size, const std::string& label) {
     return new T[size];
   }
 
-  std::unique_lock<std::mutex> ul(__tdb_heap_mem_lock);
+  std::unique_lock<std::recursive_mutex> ul(__tdb_heap_mem_lock);
 
   T* const p = new T[size];
 
@@ -118,7 +118,7 @@ void tiledb_delete_array(T* const p) {
     return;
   }
 
-  std::unique_lock<std::mutex> ul(__tdb_heap_mem_lock);
+  std::unique_lock<std::recursive_mutex> ul(__tdb_heap_mem_lock);
 
   delete[] p;
   heap_profiler.record_dealloc(p);
