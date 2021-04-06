@@ -88,6 +88,9 @@ class Metadata {
   /** Constructor. */
   Metadata();
 
+  /** Copy constructor. */
+  Metadata(const Metadata& rhs);
+
   /** Destructor. */
   ~Metadata();
 
@@ -262,9 +265,8 @@ class Metadata {
 
   /**
    * Build the metadata index vector from the metadata map
-   * @return Status
    */
-  Status build_metadata_index();
+  void build_metadata_index();
 };
 
 }  // namespace sm

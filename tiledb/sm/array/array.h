@@ -65,6 +65,9 @@ class Array {
   /** Constructor. */
   Array(const URI& array_uri, StorageManager* storage_manager);
 
+  /** Copy constructor. */
+  Array(const Array& rhs);
+
   /** Destructor. */
   ~Array() = default;
 
@@ -332,7 +335,7 @@ class Array {
    * should be stored. Wherever a key is needed, a pointer to this memory region
    * should be passed instead of a copy of the bytes.
    */
-  EncryptionKey encryption_key_;
+  std::shared_ptr<EncryptionKey> encryption_key_;
 
   /** The metadata of the fragments the array was opened with. */
   std::vector<FragmentMetadata*> fragment_metadata_;
