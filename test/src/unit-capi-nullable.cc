@@ -227,6 +227,8 @@ NullableArrayFx::NullableArrayFx() {
 
 NullableArrayFx::~NullableArrayFx() {
   remove_dir(FILE_TEMP_DIR);
+  tiledb_ctx_free(&ctx_);
+  tiledb_vfs_free(&vfs_);
 }
 
 void NullableArrayFx::create_dir(const string& path) {

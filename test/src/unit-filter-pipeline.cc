@@ -1471,10 +1471,12 @@ TEST_CASE("Filter: Test random pipeline", "[filter]") {
         auto idx = (unsigned)rng_constructors_first(gen);
         Filter* filter = constructors_first[idx]();
         CHECK(pipeline.add_filter(*filter).ok());
+        delete filter;
       } else {
         auto idx = (unsigned)rng_constructors(gen);
         Filter* filter = constructors[idx]();
         CHECK(pipeline.add_filter(*filter).ok());
+        delete filter;
       }
     }
 
