@@ -533,5 +533,7 @@ TEST_CASE_METHOD(
   tiledb_array_schema_free(&rschema);
   tiledb_query_free(&query);
   tiledb_array_free(&array);
+  // TODO: this cause a segfault
+//  tiledb_array_free(&rarray);
   remove_temp_dir(temp_dir);
 }

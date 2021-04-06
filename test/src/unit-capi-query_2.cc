@@ -3129,5 +3129,7 @@ TEST_CASE_METHOD(
   tiledb_array_free(&array);
   CHECK(array == nullptr);
 
+  tiledb_config_free(&config);
+
   remove_array(array_name);
 }

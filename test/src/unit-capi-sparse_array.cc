@@ -2228,6 +2228,7 @@ void SparseArrayFx::check_sparse_array_no_results(
   // Clean up
   tiledb_array_free(&array);
   tiledb_query_free(&query);
+  delete[] buffer;
 }
 
 void SparseArrayFx::write_partial_sparse_array(const std::string& array_name) {

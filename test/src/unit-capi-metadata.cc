@@ -649,6 +649,7 @@ TEST_CASE_METHOD(
   rc = tiledb_array_consolidate(ctx_, array_name_.c_str(), config);
   CHECK(rc == TILEDB_OK);
   tiledb_config_free(&config);
+  tiledb_array_free(&array);
 
   // Open the array in read mode
   rc = tiledb_array_alloc(ctx_, array_name_.c_str(), &array);
@@ -947,6 +948,7 @@ TEST_CASE_METHOD(
       ctx_, array_name_.c_str(), enc_type_, key_, key_len_, config);
   CHECK(rc == TILEDB_OK);
   tiledb_config_free(&config);
+  tiledb_array_free(&array);
 
   // Open the array in read mode
   rc = tiledb_array_alloc(ctx_, array_name_.c_str(), &array);
@@ -994,6 +996,7 @@ TEST_CASE_METHOD(
       ctx_, array_name_.c_str(), enc_type_, key_, key_len_, config);
   CHECK(rc == TILEDB_OK);
   tiledb_config_free(&config);
+  tiledb_array_free(&array);
 
   // Open the array in read mode
   rc = tiledb_array_alloc(ctx_, array_name_.c_str(), &array);
@@ -1062,6 +1065,7 @@ TEST_CASE_METHOD(
   CHECK(*((int32_t*)vback_ptr) == 10);
   rc = tiledb_array_close(ctx_, array);
   CHECK(rc == TILEDB_OK);
+  tiledb_array_free(&array);
 
   // Prevent array metadata filename/timestamp conflicts
   std::this_thread::sleep_for(std::chrono::milliseconds(1));
