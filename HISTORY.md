@@ -33,6 +33,7 @@
 ## Deprecations
 
 ## Bug fixes
+* Fix memory leak of `tiledb_config_t` in error path of `tiledb_config_alloc`. [#2178](https://github.com/TileDB-Inc/TileDB/pull/2178)
 
 ## API additions
 
