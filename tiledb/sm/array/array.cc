@@ -60,6 +60,7 @@ namespace sm {
 
 Array::Array(const URI& array_uri, StorageManager* storage_manager)
     : array_uri_(array_uri)
+    , encryption_key_(tdb_make_shared(EncryptionKey))
     , storage_manager_(storage_manager) {
   is_open_ = false;
   array_schema_ = nullptr;
@@ -68,6 +69,23 @@ Array::Array(const URI& array_uri, StorageManager* storage_manager)
   metadata_loaded_ = false;
   non_empty_domain_computed_ = false;
 };
+
+Array::Array(const Array& rhs)
+    : array_schema_(rhs.array_schema_)
+    , array_uri_(rhs.array_uri_)
+    , encryption_key_(rhs.encryption_key_)
+    , fragment_metadata_(rhs.fragment_metadata_)
+    , is_open_(rhs.is_open_.load())
+    , query_type_(rhs.query_type_)
+    , timestamp_(rhs.timestamp_)
+    , storage_manager_(rhs.storage_manager_)
+    , last_max_buffer_sizes_(rhs.last_max_buffer_sizes_)
+    , remote_(rhs.remote_)
+    , metadata_(rhs.metadata_)
+    , metadata_loaded_(rhs.metadata_loaded_)
+    , non_empty_domain_computed_(rhs.non_empty_domain_computed_)
+    , non_empty_domain_(rhs.non_empty_domain_) {
+}
 
 /* ********************************* */
 /*                API                */
@@ -84,7 +102,7 @@ const URI& Array::array_uri() const {
 }
 
 const EncryptionKey* Array::encryption_key() const {
-  return &encryption_key_;
+  return encryption_key_.get();
 }
 
 Status Array::open(
@@ -105,7 +123,7 @@ Status Array::open(
 
   // Copy the key bytes.
   RETURN_NOT_OK(
-      encryption_key_.set_key(encryption_type, encryption_key, key_length));
+      encryption_key_->set_key(encryption_type, encryption_key, key_length));
 
   timestamp_ = timestamp;
   metadata_.clear();
@@ -124,12 +142,12 @@ Status Array::open(
     RETURN_NOT_OK(storage_manager_->array_open_for_reads(
         array_uri_,
         timestamp_,
-        encryption_key_,
+        *encryption_key_,
         &array_schema_,
         &fragment_metadata_));
   } else {
     RETURN_NOT_OK(storage_manager_->array_open_for_writes(
-        array_uri_, encryption_key_, &array_schema_));
+        array_uri_, *encryption_key_, &array_schema_));
     metadata_.reset(timestamp_);
   }
 
@@ -162,7 +180,7 @@ Status Array::open(
 
   // Copy the key bytes.
   RETURN_NOT_OK(
-      encryption_key_.set_key(encryption_type, encryption_key, key_length));
+      encryption_key_->set_key(encryption_type, encryption_key, key_length));
 
   timestamp_ = utils::time::timestamp_now_ms();
   metadata_.clear();
@@ -182,7 +200,7 @@ Status Array::open(
     RETURN_NOT_OK(storage_manager_->array_open_for_reads(
         array_uri_,
         fragment_info,
-        encryption_key_,
+        *encryption_key_,
         &array_schema_,
         &fragment_metadata_));
   }
@@ -209,7 +227,7 @@ Status Array::open(
 
   // Copy the key bytes.
   RETURN_NOT_OK(
-      encryption_key_.set_key(encryption_type, encryption_key, key_length));
+      encryption_key_->set_key(encryption_type, encryption_key, key_length));
 
   timestamp_ =
       (query_type == QueryType::READ) ? utils::time::timestamp_now_ms() : 0;
@@ -228,12 +246,12 @@ Status Array::open(
     RETURN_NOT_OK(storage_manager_->array_open_for_reads(
         array_uri_,
         timestamp_,
-        encryption_key_,
+        *encryption_key_,
         &array_schema_,
         &fragment_metadata_));
   } else {
     RETURN_NOT_OK(storage_manager_->array_open_for_writes(
-        array_uri_, encryption_key_, &array_schema_));
+        array_uri_, *encryption_key_, &array_schema_));
     metadata_.reset(timestamp_);
   }
 
@@ -278,7 +296,7 @@ Status Array::close() {
       RETURN_NOT_OK(storage_manager_->array_close_for_reads(array_uri_));
     } else {
       RETURN_NOT_OK(storage_manager_->array_close_for_writes(
-          array_uri_, encryption_key_, &metadata_));
+          array_uri_, *encryption_key_, &metadata_));
     }
   }
 
@@ -449,7 +467,7 @@ Status Array::get_max_buffer_size(
 
 const EncryptionKey& Array::get_encryption_key() const {
   std::unique_lock<std::mutex> lck(mtx_);
-  return encryption_key_;
+  return *encryption_key_;
 }
 
 Status Array::reopen() {
@@ -480,15 +498,15 @@ Status Array::reopen(uint64_t timestamp) {
   if (remote_) {
     return open(
         query_type_,
-        encryption_key_.encryption_type(),
-        encryption_key_.key().data(),
-        encryption_key_.key().size());
+        encryption_key_->encryption_type(),
+        encryption_key_->key().data(),
+        encryption_key_->key().size());
   }
 
   RETURN_NOT_OK(storage_manager_->array_reopen(
       array_uri_,
       timestamp_,
-      encryption_key_,
+      *encryption_key_,
       &array_schema_,
       &fragment_metadata_));
 
@@ -770,7 +788,7 @@ Status Array::compute_max_buffer_sizes(
   // non-empty regions of the subarray.
   for (auto& meta : fragment_metadata_)
     RETURN_NOT_OK(
-        meta->add_max_buffer_sizes(encryption_key_, subarray, buffer_sizes));
+        meta->add_max_buffer_sizes(*encryption_key_, subarray, buffer_sizes));
 
   // Prepare an NDRange for the subarray
   auto dim_num = array_schema_->dim_num();
@@ -836,7 +854,7 @@ Status Array::load_metadata() {
         array_uri_, timestamp_, this));
   } else {
     RETURN_NOT_OK(storage_manager_->load_array_metadata(
-        array_uri_, encryption_key_, timestamp_, &metadata_));
+        array_uri_, *encryption_key_, timestamp_, &metadata_));
   }
   metadata_loaded_ = true;
   return Status::Ok();
