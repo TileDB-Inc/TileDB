@@ -33,10 +33,6 @@
 #ifndef TILEDB_CONFIG_H
 #define TILEDB_CONFIG_H
 
-#ifdef HAVE_TBB
-#include <tbb/task_scheduler_init.h>
-#endif
-
 #include "tiledb/common/status.h"
 #include "tiledb/sm/misc/utils.h"
 
@@ -152,9 +148,6 @@ class Config {
 
   /** The maximum concurrency level for io-bound operations. */
   static const std::string SM_IO_CONCURRENCY_LEVEL;
-
-  /** The number of threads allocated for TBB. */
-  static const std::string SM_NUM_TBB_THREADS;
 
   /** If `true`, checksum validation will be skipped on reads. */
   static const std::string SM_SKIP_CHECKSUM_VALIDATION;

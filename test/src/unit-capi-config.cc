@@ -241,7 +241,6 @@ void check_save_to_file() {
   ss << "sm.max_tile_overlap_size 314572800\n";
   ss << "sm.memory_budget 5368709120\n";
   ss << "sm.memory_budget_var 10737418240\n";
-  ss << "sm.num_tbb_threads -1\n";
   ss << "sm.read_range_oob error\n";
   ss << "sm.skip_checksum_validation false\n";
   ss << "sm.sub_partitioner_memory_budget 0\n";
@@ -295,6 +294,8 @@ void check_save_to_file() {
 
   CHECK(ss.str() == ss_file.str());
   remove_file("test_config.txt");
+
+  tiledb_config_free(&config);
 }
 
 TEST_CASE("C API: Test config", "[capi], [config]") {
@@ -529,11 +530,8 @@ TEST_CASE("C API: Test config iter", "[capi], [config]") {
   all_param_values["sm.enable_signal_handlers"] = "true";
   all_param_values["sm.compute_concurrency_level"] =
       std::to_string(std::thread::hardware_concurrency());
-  ;
   all_param_values["sm.io_concurrency_level"] =
       std::to_string(std::thread::hardware_concurrency());
-  ;
-  all_param_values["sm.num_tbb_threads"] = "-1";
   all_param_values["sm.skip_checksum_validation"] = "false";
   all_param_values["sm.consolidation.amplification"] = "1.0";
   all_param_values["sm.consolidation.steps"] = "4294967295";
@@ -932,6 +930,7 @@ TEST_CASE("C API: Test VFS config inheritance", "[capi][config][vfs-inherit]") {
 
   tiledb_config_free(&config);
   tiledb_config_free(&vfs_config);
+  tiledb_config_free(&vfs_config_get);
   tiledb_vfs_free(&vfs);
   tiledb_ctx_free(&ctx);
 }

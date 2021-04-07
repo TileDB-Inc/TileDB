@@ -147,6 +147,7 @@ void DenseNegFx::create_dense_vector(const std::string& path) {
   REQUIRE(rc == TILEDB_OK);
   tiledb_attribute_free(&attr);
   tiledb_dimension_free(&dim);
+  tiledb_domain_free(&domain);
   tiledb_array_schema_free(&array_schema);
 }
 

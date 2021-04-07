@@ -580,34 +580,30 @@ Status StorageManager::array_vacuum_fragments(const char* array_name) {
 
   // Delete the ok files
   RETURN_NOT_OK(array_xlock(array_uri));
-  auto statuses =
+  auto status =
       parallel_for(compute_tp_, 0, to_vacuum.size(), [&, this](size_t i) {
         auto uri = URI(to_vacuum[i].to_string() + constants::ok_file_suffix);
         RETURN_NOT_OK(vfs_->remove_file(uri));
 
         return Status::Ok();
       });
-  for (const auto& st : statuses)
-    RETURN_NOT_OK_ELSE(st, array_xunlock(array_uri));
+  RETURN_NOT_OK_ELSE(status, array_xunlock(array_uri));
   RETURN_NOT_OK(array_xunlock(array_uri));
 
   // Delete fragment directories
-  statuses =
-      parallel_for(compute_tp_, 0, to_vacuum.size(), [&, this](size_t i) {
-        RETURN_NOT_OK(vfs_->remove_dir(to_vacuum[i]));
+  status = parallel_for(compute_tp_, 0, to_vacuum.size(), [&, this](size_t i) {
+    RETURN_NOT_OK(vfs_->remove_dir(to_vacuum[i]));
 
-        return Status::Ok();
-      });
-  for (const auto& st : statuses)
-    RETURN_NOT_OK(st);
+    return Status::Ok();
+  });
+  RETURN_NOT_OK(status);
 
   // Delete vacuum files
-  statuses = parallel_for(compute_tp_, 0, vac_uris.size(), [&, this](size_t i) {
+  status = parallel_for(compute_tp_, 0, vac_uris.size(), [&, this](size_t i) {
     RETURN_NOT_OK(vfs_->remove_file(vac_uris[i]));
     return Status::Ok();
   });
-  for (const auto& st : statuses)
-    RETURN_NOT_OK(st);
+  RETURN_NOT_OK(status);
 
   return Status::Ok();
 }
@@ -633,13 +629,12 @@ Status StorageManager::array_vacuum_fragment_meta(const char* array_name) {
 
   // Vacuum after exclusively locking the array
   RETURN_NOT_OK(array_xlock(array_uri));
-  auto statuses =
+  auto status =
       parallel_for(compute_tp_, 0, to_vacuum.size(), [&, this](size_t i) {
         RETURN_NOT_OK(vfs_->remove_file(to_vacuum[i]));
         return Status::Ok();
       });
-  for (const auto& st : statuses)
-    RETURN_NOT_OK_ELSE(st, array_xunlock(array_uri));
+  RETURN_NOT_OK_ELSE(status, array_xunlock(array_uri));
   RETURN_NOT_OK(array_xunlock(array_uri));
 
   return Status::Ok();
@@ -663,23 +658,21 @@ Status StorageManager::array_vacuum_array_meta(const char* array_name) {
 
   // Delete the array metadata files
   RETURN_NOT_OK(array_xlock(array_uri));
-  auto statuses =
+  auto status =
       parallel_for(compute_tp_, 0, to_vacuum.size(), [&, this](size_t i) {
         RETURN_NOT_OK(vfs_->remove_file(to_vacuum[i]));
 
         return Status::Ok();
       });
-  for (const auto& st : statuses)
-    RETURN_NOT_OK_ELSE(st, array_xunlock(array_uri));
+  RETURN_NOT_OK_ELSE(status, array_xunlock(array_uri));
   RETURN_NOT_OK(array_xunlock(array_uri));
 
   // Delete vacuum files
-  statuses = parallel_for(compute_tp_, 0, vac_uris.size(), [&, this](size_t i) {
+  status = parallel_for(compute_tp_, 0, vac_uris.size(), [&, this](size_t i) {
     RETURN_NOT_OK(vfs_->remove_file(vac_uris[i]));
     return Status::Ok();
   });
-  for (const auto& st : statuses)
-    RETURN_NOT_OK(st);
+  RETURN_NOT_OK(status);
 
   return Status::Ok();
 }
@@ -1224,7 +1217,7 @@ Status StorageManager::get_fragment_info(
 
   std::vector<uint64_t> sizes(fragment_metadata.size());
 
-  auto statuses = parallel_for(
+  auto status = parallel_for(
       this->compute_tp_,
       0,
       fragment_metadata.size(),
@@ -1239,8 +1232,7 @@ Status StorageManager::get_fragment_info(
         return Status::Ok();
       });
 
-  for (const auto& st : statuses)
-    RETURN_NOT_OK_ELSE(st, array_close_for_reads(array_uri));
+  RETURN_NOT_OK_ELSE(status, array_close_for_reads(array_uri));
 
   for (uint64_t i = 0; i < fragment_metadata.size(); i++) {
     const auto meta = fragment_metadata[i];
@@ -1317,14 +1309,13 @@ Status StorageManager::get_fragment_uris(
 
   // Get only the committed fragment uris
   std::vector<int> is_fragment(uris.size(), 0);
-  auto statuses = parallel_for(compute_tp_, 0, uris.size(), [&](size_t i) {
+  auto status = parallel_for(compute_tp_, 0, uris.size(), [&](size_t i) {
     if (utils::parse::starts_with(uris[i].last_path_part(), "."))
       return Status::Ok();
     RETURN_NOT_OK(this->is_fragment(uris[i], ok_uris, &is_fragment[i]));
     return Status::Ok();
   });
-  for (const auto& st : statuses)
-    RETURN_NOT_OK(st);
+  RETURN_NOT_OK(status);
 
   for (size_t i = 0; i < uris.size(); ++i) {
     if (is_fragment[i])
@@ -2158,7 +2149,7 @@ Status StorageManager::load_array_metadata(
   auto metadata_num = array_metadata_to_load.size();
   std::vector<tdb_shared_ptr<Buffer>> metadata_buffs;
   metadata_buffs.resize(metadata_num);
-  auto statuses = parallel_for(compute_tp_, 0, metadata_num, [&](size_t m) {
+  auto status = parallel_for(compute_tp_, 0, metadata_num, [&](size_t m) {
     const auto& uri = array_metadata_to_load[m].uri_;
     auto metadata_buff = open_array->array_metadata(uri);
     if (metadata_buff == nullptr) {  // Array metadata does not exist - load it
@@ -2180,8 +2171,7 @@ Status StorageManager::load_array_metadata(
     metadata_buffs[m] = metadata_buff;
     return Status::Ok();
   });
-  for (auto st : statuses)
-    RETURN_NOT_OK(st);
+  RETURN_NOT_OK(status);
 
   // Compute array metadata size for the statistics
   uint64_t meta_size = 0;
@@ -2210,7 +2200,7 @@ Status StorageManager::load_fragment_metadata(
   // Load the metadata for each fragment, only if they are not already loaded
   auto fragment_num = fragments_to_load.size();
   fragment_metadata->resize(fragment_num);
-  auto statuses = parallel_for(compute_tp_, 0, fragment_num, [&](size_t f) {
+  auto status = parallel_for(compute_tp_, 0, fragment_num, [&](size_t f) {
     const auto& sf = fragments_to_load[f];
     auto array_schema = open_array->array_schema();
     auto metadata = open_array->fragment_metadata(sf.uri_);
@@ -2258,8 +2248,7 @@ Status StorageManager::load_fragment_metadata(
     (*fragment_metadata)[f] = metadata;
     return Status::Ok();
   });
-  for (auto st : statuses)
-    RETURN_NOT_OK(st);
+  RETURN_NOT_OK(status);
 
   return Status::Ok();
 
@@ -2389,7 +2378,7 @@ Status StorageManager::get_uris_to_vacuum(
 
   // Compute fragment URIs to vacuum as a bitmap vector
   std::vector<int32_t> to_vacuum_vec(uris.size(), 0);
-  auto statuses =
+  auto status =
       parallel_for(compute_tp_, 0, vac_uris->size(), [&, this](size_t i) {
         uint64_t size = 0;
         RETURN_NOT_OK(vfs_->file_size((*vac_uris)[i], &size));
@@ -2405,8 +2394,7 @@ Status StorageManager::get_uris_to_vacuum(
 
         return Status::Ok();
       });
-  for (const auto& st : statuses)
-    RETURN_NOT_OK(st);
+  RETURN_NOT_OK(status);
 
   // Compute the URIs to vacuum
   to_vacuum->clear();

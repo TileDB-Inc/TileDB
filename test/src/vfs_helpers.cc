@@ -93,7 +93,7 @@ Status vfs_test_init(
 
   REQUIRE(tiledb_ctx_alloc(config_tmp, ctx) == TILEDB_OK);
   REQUIRE(tiledb_vfs_alloc(*ctx, config_tmp, vfs) == TILEDB_OK);
-  if (config_tmp == nullptr) {
+  if (config == nullptr) {
     tiledb_config_free(&config_tmp);
   }
 

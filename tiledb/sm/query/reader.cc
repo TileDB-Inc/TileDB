@@ -979,7 +979,7 @@ Status Reader::compute_range_result_coords(
   Layout layout = (layout_ == Layout::UNORDERED) ? cell_order : layout_;
   auto allows_dups = array_schema_->allows_dups();
 
-  auto statuses = parallel_for(
+  auto status = parallel_for(
       storage_manager_->compute_tp(), 0, range_num, [&](uint64_t r) {
         // Compute overlapping coordinates per range
         RETURN_NOT_OK(compute_range_result_coords(
@@ -1004,8 +1004,7 @@ Status Reader::compute_range_result_coords(
         return Status::Ok();
       });
 
-  for (auto st : statuses)
-    RETURN_NOT_OK(st);
+  RETURN_NOT_OK(status);
 
   return Status::Ok();
 
@@ -1078,7 +1077,7 @@ Status Reader::compute_range_result_coords(
   // Gather result range coordinates per fragment
   auto fragment_num = fragment_metadata_.size();
   std::vector<std::vector<ResultCoords>> range_result_coords_vec(fragment_num);
-  auto statuses = parallel_for(
+  auto status = parallel_for(
       storage_manager_->compute_tp(), 0, fragment_num, [&](uint32_t f) {
         return compute_range_result_coords(
             subarray,
@@ -1088,8 +1087,7 @@ Status Reader::compute_range_result_coords(
             result_tiles,
             &range_result_coords_vec[f]);
       });
-  for (const auto& st : statuses)
-    RETURN_NOT_OK(st);
+  RETURN_NOT_OK(status);
 
   // Consolidate the result coordinates in the single result vector
   for (const auto& vec : range_result_coords_vec) {
@@ -1269,14 +1267,13 @@ Status Reader::copy_fixed_cells(
       &result_cell_slabs,
       *cs_offsets,
       *ctx_cache->cs_partitions());
-  auto statuses = parallel_for(
+  auto status = parallel_for(
       storage_manager_->compute_tp(),
       0,
       ctx_cache->cs_partitions()->size(),
       std::move(copy_fn));
 
-  for (auto st : statuses)
-    RETURN_NOT_OK(st);
+  RETURN_NOT_OK(status);
 
   // Update buffer offsets
   *(buffers_[name].buffer_size_) = buffer_offset;
@@ -1293,13 +1290,8 @@ Status Reader::copy_fixed_cells(
 void Reader::populate_cfc_ctx_cache(
     const std::vector<ResultCellSlab>& result_cell_slabs,
     CopyFixedCellsContextCache* const ctx_cache) {
-  // Fetch the number that we will use for copying. When TBB
-  // is enabled, it is the number of TBB threads. Otherwise, it
-  // is the concurrency level of the compute threadpool.
   const int num_copy_threads =
-      global_state::GlobalState::GetGlobalState().tbb_threads() > 0 ?
-          global_state::GlobalState::GetGlobalState().tbb_threads() :
-          storage_manager_->compute_tp()->concurrency_level();
+      storage_manager_->compute_tp()->concurrency_level();
 
   // Initialize the context cache. This is a no-op if already initialized.
   ctx_cache->initialize(result_cell_slabs, num_copy_threads);
@@ -1448,15 +1440,13 @@ Status Reader::copy_var_cells(
       offset_offsets_per_cs.get(),
       var_offsets_per_cs.get(),
       ctx_cache->cs_partitions());
-  auto statuses = parallel_for(
+  auto status = parallel_for(
       storage_manager_->compute_tp(),
       0,
       ctx_cache->cs_partitions()->size(),
       copy_fn);
 
-  // Check all statuses
-  for (auto st : statuses)
-    RETURN_NOT_OK(st);
+  RETURN_NOT_OK(status);
 
   // Update buffer offsets
   *(buffers_[name].buffer_size_) = total_offset_size;
@@ -1472,13 +1462,8 @@ Status Reader::copy_var_cells(
 void Reader::populate_cvc_ctx_cache(
     const std::vector<ResultCellSlab>& result_cell_slabs,
     CopyVarCellsContextCache* const ctx_cache) {
-  // Fetch the number that we will use for copying. When TBB
-  // is enabled, it is the number of TBB threads. Otherwise, it
-  // is the concurrency level of the compute threadpool.
   const int num_copy_threads =
-      global_state::GlobalState::GetGlobalState().tbb_threads() > 0 ?
-          global_state::GlobalState::GetGlobalState().tbb_threads() :
-          storage_manager_->compute_tp()->concurrency_level();
+      storage_manager_->compute_tp()->concurrency_level();
 
   // Initialize the context cache. This is a no-op if already initialized.
   ctx_cache->initialize(result_cell_slabs, num_copy_threads);
@@ -2346,7 +2331,7 @@ Status Reader::unfilter_tiles(
   auto num_tiles = static_cast<uint64_t>(result_tiles.size());
   auto encryption_key = array_->encryption_key();
 
-  auto statuses = parallel_for(
+  auto status = parallel_for(
       storage_manager_->compute_tp(), 0, num_tiles, [&, this](uint64_t i) {
         ResultTile* const tile = result_tiles[i];
 
@@ -2447,8 +2432,7 @@ Status Reader::unfilter_tiles(
         return Status::Ok();
       });
 
-  for (const auto& st : statuses)
-    RETURN_CANCEL_OR_ERROR(st);
+  RETURN_CANCEL_OR_ERROR(status);
 
   return Status::Ok();
 
@@ -2808,7 +2792,7 @@ Status Reader::load_tile_offsets(const std::vector<std::string>& names) {
   const auto relevant_fragments =
       read_state_.partitioner_.current().relevant_fragments();
 
-  const auto statuses = parallel_for(
+  const auto status = parallel_for(
       storage_manager_->compute_tp(),
       0,
       relevant_fragments.size(),
@@ -2836,8 +2820,7 @@ Status Reader::load_tile_offsets(const std::vector<std::string>& names) {
         return Status::Ok();
       });
 
-  for (const auto& st : statuses)
-    RETURN_NOT_OK(st);
+  RETURN_NOT_OK(status);
 
   return Status::Ok();
 }
@@ -2870,14 +2853,13 @@ Status Reader::read_tiles(
   if (names.size() == 1) {
     RETURN_NOT_OK(read_tiles(names[0], result_tiles));
   } else {
-    const auto statuses = parallel_for(
+    const auto status = parallel_for(
         storage_manager_->compute_tp(), 0, names.size(), [&](const uint64_t i) {
           RETURN_NOT_OK(read_tiles(names[i], result_tiles));
           return Status::Ok();
         });
 
-    for (const auto& st : statuses)
-      RETURN_NOT_OK(st);
+    RETURN_NOT_OK(status);
   }
 
   return Status::Ok();
@@ -3494,7 +3476,7 @@ Status Reader::calculate_hilbert_values(
   auto coords_num = (uint64_t)hilbert_values->size();
 
   // Calculate Hilbert values in parallel
-  auto statuses = parallel_for(
+  auto status = parallel_for(
       storage_manager_->compute_tp(), 0, coords_num, [&](uint64_t c) {
         std::vector<uint64_t> coords(dim_num);
         for (uint32_t d = 0; d < dim_num; ++d) {
@@ -3507,9 +3489,7 @@ Status Reader::calculate_hilbert_values(
         return Status::Ok();
       });
 
-  // Check all statuses
-  for (auto& st : statuses)
-    RETURN_NOT_OK_ELSE(st, LOG_STATUS(st));
+  RETURN_NOT_OK_ELSE(status, LOG_STATUS(status));
 
   return Status::Ok();
 }
