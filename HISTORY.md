@@ -39,6 +39,7 @@
 ## API additions
 
 ### C API
+* tiledb_query_get_array now returns a deep-copy [#2184](https://github.com/TileDB-Inc/TileDB/pull/2184)
 * Added `tiledb_serialize_config` and `tiledb_deserialize_config` [#2164](https://github.com/TileDB-Inc/TileDB/pull/2164)
 * Add new api,  to get a query's config. [#2167](https://github.com/TileDB-Inc/TileDB/pull/2167)
 * Removes non-default parameter in tiledb_config_unset. [#2099](https://github.com/TileDB-Inc/TileDB/pull/2099)
