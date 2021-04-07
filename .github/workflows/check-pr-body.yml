@@ -1,0 +1,14 @@
+name: Check PR body
+
+on:
+  pull_request:
+    types: [opened, edited]
+
+jobs:
+  check_pr_body:
+    runs-on: ubuntu-20.04
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v2
+      - name: Run PR body checker
+        run: python ./scripts/automate_history.py --check-only ${{ github.event.pull_request.number }} "${{ github.event.pull_request.body }}"
