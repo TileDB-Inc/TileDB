@@ -68,9 +68,6 @@ steps:
     if [[ "$TILEDB_GCS" == "ON" ]]; then
       bootstrap_args="${bootstrap_args} --enable-gcs";
     fi;
-    if [[ "$TILEDB_TBB" == "OFF" ]]; then
-      bootstrap_args="${bootstrap_args} --disable-tbb";
-    fi
     if [[ "$TILEDB_TOOLS" == "ON" ]]; then
       bootstrap_args="${bootstrap_args} --enable-tools";
     fi

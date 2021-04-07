@@ -308,7 +308,7 @@ Status S3::disconnect() {
     for (auto& kv : multipart_upload_states_)
       states.emplace_back(&kv.second);
 
-    auto statuses =
+    auto status =
         parallel_for(vfs_thread_pool_, 0, states.size(), [&](uint64_t i) {
           const MultiPartUploadState* state = states[i];
           // Lock multipart state
@@ -342,9 +342,7 @@ Status S3::disconnect() {
           return Status::Ok();
         });
 
-    // check statuses
-    for (auto& st : statuses)
-      RETURN_NOT_OK(st);
+    RETURN_NOT_OK(status);
   }
 
   unique_rl.unlock();

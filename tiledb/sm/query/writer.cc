@@ -986,7 +986,7 @@ Status Writer::check_coord_dups(const std::vector<uint64_t>& cell_pos) const {
     buffs_var_sizes[d] = buffers_.find(dim_name)->second.buffer_var_size_;
   }
 
-  auto statuses = parallel_for(
+  auto status = parallel_for(
       storage_manager_->compute_tp(), 1, coords_num_, [&](uint64_t i) {
         // Check for duplicate in adjacent cells
         bool found_dup = true;
@@ -1041,9 +1041,7 @@ Status Writer::check_coord_dups(const std::vector<uint64_t>& cell_pos) const {
         return Status::Ok();
       });
 
-  // Check all statuses
-  for (auto& st : statuses)
-    RETURN_NOT_OK_ELSE(st, LOG_STATUS(st));
+  RETURN_NOT_OK_ELSE(status, LOG_STATUS(status));
 
   return Status::Ok();
 
@@ -1081,7 +1079,7 @@ Status Writer::check_coord_dups() const {
     buffs_var_sizes[d] = buffers_.find(dim_name)->second.buffer_var_size_;
   }
 
-  auto statuses = parallel_for(
+  auto status = parallel_for(
       storage_manager_->compute_tp(), 1, coords_num_, [&](uint64_t i) {
         // Check for duplicate in adjacent cells
         bool found_dup = true;
@@ -1130,9 +1128,7 @@ Status Writer::check_coord_dups() const {
         return Status::Ok();
       });
 
-  // Check all statuses
-  for (auto& st : statuses)
-    RETURN_NOT_OK_ELSE(st, LOG_STATUS(st));
+  RETURN_NOT_OK(status);
 
   return Status::Ok();
 
@@ -1165,7 +1161,7 @@ Status Writer::check_coord_oob() const {
   }
 
   // Check if all coordinates fall in the domain in parallel
-  auto statuses = parallel_for_2d(
+  auto status = parallel_for_2d(
       storage_manager_->compute_tp(),
       0,
       coords_num_,
@@ -1178,9 +1174,7 @@ Status Writer::check_coord_oob() const {
         return dim->oob(buffs[d] + c * coord_sizes[d]);
       });
 
-  // Check all statuses
-  for (auto& st : statuses)
-    RETURN_NOT_OK_ELSE(st, LOG_STATUS(st));
+  RETURN_NOT_OK(status);
 
   // Success
   return Status::Ok();
@@ -1213,7 +1207,7 @@ Status Writer::check_global_order() const {
 
   // Check if all coordinates fall in the domain in parallel
   auto domain = array_schema_->domain();
-  auto statuses = parallel_for(
+  auto status = parallel_for(
       storage_manager_->compute_tp(), 0, coords_num_ - 1, [&](uint64_t i) {
         auto tile_cmp = domain->tile_order_cmp(buffs, i, i + 1);
         auto fail =
@@ -1232,9 +1226,7 @@ Status Writer::check_global_order() const {
         return Status::Ok();
       });
 
-  // Check all statuses
-  for (auto& st : statuses)
-    RETURN_NOT_OK_ELSE(st, LOG_STATUS(st));
+  RETURN_NOT_OK(status);
 
   return Status::Ok();
 
@@ -1255,7 +1247,7 @@ Status Writer::check_global_order_hilbert() const {
   RETURN_NOT_OK(calculate_hilbert_values(buffs, &hilbert_values));
 
   // Check if all coordinates fall in the domain in parallel
-  auto statuses = parallel_for(
+  auto status = parallel_for(
       storage_manager_->compute_tp(), 0, coords_num_ - 1, [&](uint64_t i) {
         if (hilbert_values[i] > hilbert_values[i + 1]) {
           std::stringstream ss;
@@ -1267,9 +1259,7 @@ Status Writer::check_global_order_hilbert() const {
         return Status::Ok();
       });
 
-  // Check all statuses
-  for (auto& st : statuses)
-    RETURN_NOT_OK_ELSE(st, LOG_STATUS(st));
+  RETURN_NOT_OK(status);
 
   return Status::Ok();
 }
@@ -1322,16 +1312,14 @@ Status Writer::close_files(FragmentMetadata* meta) const {
       file_uris.emplace_back(meta->validity_uri(name));
   }
 
-  auto statuses = parallel_for(
+  auto status = parallel_for(
       storage_manager_->io_tp(), 0, file_uris.size(), [&](uint64_t i) {
         const auto& file_ur = file_uris[i];
         RETURN_NOT_OK(storage_manager_->close_file(file_ur));
         return Status::Ok();
       });
 
-  // Check all statuses
-  for (auto& st : statuses)
-    RETURN_NOT_OK(st);
+  RETURN_NOT_OK(status);
 
   return Status::Ok();
 }
@@ -1366,7 +1354,7 @@ Status Writer::compute_coord_dups(
   }
 
   std::mutex mtx;
-  auto statuses = parallel_for(
+  auto status = parallel_for(
       storage_manager_->compute_tp(), 1, coords_num_, [&](uint64_t i) {
         // Check for duplicate in adjacent cells
         bool found_dup = true;
@@ -1419,9 +1407,7 @@ Status Writer::compute_coord_dups(
         return Status::Ok();
       });
 
-  // Check all statuses
-  for (auto& st : statuses)
-    RETURN_NOT_OK(st);
+  RETURN_NOT_OK(status);
 
   return Status::Ok();
 
@@ -1456,7 +1442,7 @@ Status Writer::compute_coord_dups(std::set<uint64_t>* coord_dups) const {
   }
 
   std::mutex mtx;
-  auto statuses = parallel_for(
+  auto status = parallel_for(
       storage_manager_->compute_tp(), 1, coords_num_, [&](uint64_t i) {
         // Check for duplicate in adjacent cells
         bool found_dup = true;
@@ -1503,11 +1489,7 @@ Status Writer::compute_coord_dups(std::set<uint64_t>* coord_dups) const {
         return Status::Ok();
       });
 
-  // Check all statuses
-  for (auto& st : statuses) {
-    if (!st.ok())
-      return st;
-  }
+  RETURN_NOT_OK(status);
 
   return Status::Ok();
 
@@ -1536,7 +1518,7 @@ Status Writer::compute_coords_metadata(
   auto dim_num = array_schema_->dim_num();
 
   // Compute MBRs
-  auto statuses = parallel_for(
+  auto status = parallel_for(
       storage_manager_->compute_tp(), 0, tile_num, [&](uint64_t i) {
         NDRange mbr(dim_num);
         std::vector<const void*> data(dim_num);
@@ -1556,9 +1538,7 @@ Status Writer::compute_coords_metadata(
         return Status::Ok();
       });
 
-  // Check all statuses
-  for (auto& st : statuses)
-    RETURN_NOT_OK(st);
+  RETURN_NOT_OK(status);
 
   // Set last tile cell number
   auto dim_0 = array_schema_->dimension(0);
@@ -1662,7 +1642,7 @@ Status Writer::filter_tiles(
 
   // Coordinates
   auto num = buffers_.size();
-  auto statuses =
+  auto status =
       parallel_for(storage_manager_->compute_tp(), 0, num, [&](uint64_t i) {
         auto buff_it = buffers_.begin();
         std::advance(buff_it, i);
@@ -1671,9 +1651,7 @@ Status Writer::filter_tiles(
         return Status::Ok();
       });
 
-  // Check all statuses
-  for (auto& st : statuses)
-    RETURN_NOT_OK(st);
+  RETURN_NOT_OK(status);
 
   return Status::Ok();
 
@@ -1700,7 +1678,7 @@ Status Writer::filter_tiles(
       args.emplace_back(&(*tiles)[i++], false, true);
   }
 
-  auto statuses = parallel_for(
+  auto status = parallel_for(
       storage_manager_->compute_tp(), 0, tile_num, [&](uint64_t i) {
         RETURN_NOT_OK(filter_tile(
             name,
@@ -1710,8 +1688,7 @@ Status Writer::filter_tiles(
         return Status::Ok();
       });
 
-  for (auto& st : statuses)
-    RETURN_NOT_OK(st);
+  RETURN_NOT_OK(status);
 
   return Status::Ok();
 }
@@ -1913,7 +1890,7 @@ Status Writer::filter_last_tiles(
 
   // Prepare the tiles first
   uint64_t num = buffers_.size();
-  auto statuses =
+  auto status =
       parallel_for(storage_manager_->compute_tp(), 0, num, [&](uint64_t i) {
         auto buff_it = buffers_.begin();
         std::advance(buff_it, i);
@@ -1938,9 +1915,7 @@ Status Writer::filter_last_tiles(
         return Status::Ok();
       });
 
-  // Check statuses
-  for (auto& st : statuses)
-    RETURN_NOT_OK(st);
+  RETURN_NOT_OK(status);
 
   // Compute coordinates metadata
   auto meta = global_write_state_->frag_meta_.get();
@@ -2374,7 +2349,7 @@ Status Writer::prepare_and_filter_attr_tiles(
     (*attr_tiles)[it.first] = std::vector<Tile>();
 
   uint64_t attr_num = buffers_.size();
-  auto statuses = parallel_for(
+  auto status = parallel_for(
       storage_manager_->compute_tp(), 0, attr_num, [&](uint64_t i) {
         auto buff_it = buffers_.begin();
         std::advance(buff_it, i);
@@ -2385,9 +2360,7 @@ Status Writer::prepare_and_filter_attr_tiles(
         return Status::Ok();
       });
 
-  // Check all statuses
-  for (auto& st : statuses)
-    RETURN_NOT_OK(st);
+  RETURN_NOT_OK(status);
 
   return Status::Ok();
 
@@ -2404,7 +2377,7 @@ Status Writer::prepare_full_tiles(
     (*tiles)[it.first] = std::vector<Tile>();
 
   auto num = buffers_.size();
-  auto statuses =
+  auto status =
       parallel_for(storage_manager_->compute_tp(), 0, num, [&](uint64_t i) {
         auto buff_it = buffers_.begin();
         std::advance(buff_it, i);
@@ -2414,9 +2387,7 @@ Status Writer::prepare_full_tiles(
         return Status::Ok();
       });
 
-  // Check all statuses
-  for (auto& st : statuses)
-    RETURN_NOT_OK(st);
+  RETURN_NOT_OK(status);
 
   return Status::Ok();
 
@@ -2960,7 +2931,7 @@ Status Writer::prepare_tiles(
 
   // Prepare tiles for all attributes and coordinates
   auto buffer_num = buffers_.size();
-  auto statuses = parallel_for(
+  auto status = parallel_for(
       storage_manager_->compute_tp(), 0, buffer_num, [&](uint64_t i) {
         auto buff_it = buffers_.begin();
         std::advance(buff_it, i);
@@ -2970,9 +2941,7 @@ Status Writer::prepare_tiles(
         return Status::Ok();
       });
 
-  // Check all statuses
-  for (auto& st : statuses)
-    RETURN_NOT_OK(st);
+  RETURN_NOT_OK(status);
 
   return Status::Ok();
 
@@ -3648,7 +3617,7 @@ Status Writer::calculate_hilbert_values(
 
   // Calculate Hilbert values in parallel
   assert(hilbert_values->size() >= coords_num_);
-  auto statuses = parallel_for(
+  auto status = parallel_for(
       storage_manager_->compute_tp(), 0, coords_num_, [&](uint64_t c) {
         std::vector<uint64_t> coords(dim_num);
         for (uint32_t d = 0; d < dim_num; ++d) {
@@ -3661,9 +3630,7 @@ Status Writer::calculate_hilbert_values(
         return Status::Ok();
       });
 
-  // Check all statuses
-  for (auto& st : statuses)
-    RETURN_NOT_OK_ELSE(st, LOG_STATUS(st));
+  RETURN_NOT_OK_ELSE(status, LOG_STATUS(status));
 
   return Status::Ok();
 }
