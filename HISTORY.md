@@ -6,6 +6,7 @@
 ## Breaking C API changes
 
 ## Breaking behavior
+* Removes TBB as an optional dependency [#2181](https://github.com/TileDB-Inc/TileDB/pull/2181)
 
 ## New features
 * Add support for serialization of config objects [#2164](https://github.com/TileDB-Inc/TileDB/pull/2164)
@@ -34,6 +35,7 @@
 
 ## Bug fixes
 * Fixes a potential memory leak in the filter pipeline [#2185](https://github.com/TileDB-Inc/TileDB/pull/2185)
+* Fix memory leak of `tiledb_config_t` in error path of `tiledb_config_alloc`. [#2178](https://github.com/TileDB-Inc/TileDB/pull/2178)
 
 ## API additions
 

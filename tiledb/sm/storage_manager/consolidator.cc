@@ -509,13 +509,12 @@ Status Consolidator::consolidate_fragment_meta(
 
   // Serialize all fragment metadata footers in parallel
   std::vector<Buffer> buffs(meta.size());
-  auto statuses = parallel_for(
+  auto status = parallel_for(
       storage_manager_->compute_tp(), 0, buffs.size(), [&](size_t i) {
         RETURN_NOT_OK(meta[i]->write_footer(&buffs[i]));
         return Status::Ok();
       });
-  for (const auto& st : statuses)
-    RETURN_NOT_OK(st);
+  RETURN_NOT_OK(status);
 
   // Combine serialized fragment metadata footers into a single buffer
   for (const auto& b : buffs)

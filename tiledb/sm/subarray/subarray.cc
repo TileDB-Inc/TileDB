@@ -1204,7 +1204,7 @@ Status Subarray::compute_relevant_fragment_est_result_sizes(
   auto all_dims_fixed = array_schema->domain()->all_dims_fixed();
   auto num_threads = compute_tp->concurrency_level();
   auto ranges_per_thread = (uint64_t)ceil((double)range_num / num_threads);
-  auto statuses = parallel_for(compute_tp, 0, num_threads, [&](uint64_t t) {
+  auto status = parallel_for(compute_tp, 0, num_threads, [&](uint64_t t) {
     auto r_start = range_start + t * ranges_per_thread;
     auto r_end =
         std::min(range_start + (t + 1) * ranges_per_thread - 1, range_end);
@@ -1248,8 +1248,7 @@ Status Subarray::compute_relevant_fragment_est_result_sizes(
 
     return Status::Ok();
   });
-  for (auto st : statuses)
-    RETURN_NOT_OK(st);
+  RETURN_NOT_OK(status);
 
   // Compute the mem sizes vector
   mem_sizes->resize(range_num);
@@ -2180,7 +2179,7 @@ Status Subarray::compute_relevant_fragments(
   fn_ctx->range_num_ = range_num;
 
   // Compute the relevant fragments
-  auto statuses = parallel_for_2d(
+  auto status = parallel_for_2d(
       compute_tp,
       0,
       fragment_num,
@@ -2215,12 +2214,11 @@ Status Subarray::load_relevant_fragment_rtrees(
   auto meta = array_->fragment_metadata();
   auto encryption_key = array_->encryption_key();
 
-  auto statuses =
+  auto status =
       parallel_for(compute_tp, 0, relevant_fragments_.size(), [&](uint64_t f) {
         return meta[relevant_fragments_[f]]->load_rtree(*encryption_key);
       });
-  for (auto st : statuses)
-    RETURN_NOT_OK(st);
+  RETURN_NOT_OK(status);
 
   return Status::Ok();
 
@@ -2239,15 +2237,14 @@ Status Subarray::compute_relevant_fragment_tile_overlap(
 
   const auto& meta = array_->fragment_metadata();
 
-  auto statuses =
+  auto status =
       parallel_for(compute_tp, 0, relevant_fragments_.size(), [&](uint64_t i) {
         const auto f = relevant_fragments_[i];
         const auto dense = meta[f]->dense();
         return compute_relevant_fragment_tile_overlap(
             meta[f], f, dense, compute_tp, tile_overlap, fn_ctx);
       });
-  for (const auto& st : statuses)
-    RETURN_NOT_OK(st);
+  RETURN_NOT_OK(status);
 
   return Status::Ok();
 
@@ -2266,29 +2263,24 @@ Status Subarray::compute_relevant_fragment_tile_overlap(
 
   const auto ranges_per_thread =
       (uint64_t)ceil((double)range_num / num_threads);
-  const auto statuses =
-      parallel_for(compute_tp, 0, num_threads, [&](uint64_t t) {
-        const auto r_start =
-            fn_ctx->range_idx_offset_ + (t * ranges_per_thread);
-        const auto r_end =
-            fn_ctx->range_idx_offset_ +
-            std::min((t + 1) * ranges_per_thread - 1, range_num - 1);
-        for (uint64_t r = r_start; r <= r_end; ++r) {
-          if (dense) {  // Dense fragment
-            *tile_overlap->at(frag_idx, r) = compute_tile_overlap(
-                r + tile_overlap->range_idx_start(), frag_idx);
-          } else {  // Sparse fragment
-            const auto& range =
-                this->ndrange(r + tile_overlap->range_idx_start());
-            RETURN_NOT_OK(
-                meta->get_tile_overlap(range, tile_overlap->at(frag_idx, r)));
-          }
-        }
+  const auto status = parallel_for(compute_tp, 0, num_threads, [&](uint64_t t) {
+    const auto r_start = fn_ctx->range_idx_offset_ + (t * ranges_per_thread);
+    const auto r_end = fn_ctx->range_idx_offset_ +
+                       std::min((t + 1) * ranges_per_thread - 1, range_num - 1);
+    for (uint64_t r = r_start; r <= r_end; ++r) {
+      if (dense) {  // Dense fragment
+        *tile_overlap->at(frag_idx, r) =
+            compute_tile_overlap(r + tile_overlap->range_idx_start(), frag_idx);
+      } else {  // Sparse fragment
+        const auto& range = this->ndrange(r + tile_overlap->range_idx_start());
+        RETURN_NOT_OK(
+            meta->get_tile_overlap(range, tile_overlap->at(frag_idx, r)));
+      }
+    }
 
-        return Status::Ok();
-      });
-  for (const auto& st : statuses)
-    RETURN_NOT_OK(st);
+    return Status::Ok();
+  });
+  RETURN_NOT_OK(status);
 
   return Status::Ok();
 }
@@ -2313,14 +2305,13 @@ Status Subarray::load_relevant_fragment_tile_var_sizes(
 
   // Load all metadata for tile var sizes among fragments.
   for (const auto& var_name : var_names) {
-    const auto statuses = parallel_for(
+    const auto status = parallel_for(
         compute_tp, 0, relevant_fragments_.size(), [&](const size_t i) {
           auto f = relevant_fragments_[i];
           return meta[f]->load_tile_var_sizes(*encryption_key, var_name);
         });
 
-    for (const auto& st : statuses)
-      RETURN_NOT_OK(st);
+    RETURN_NOT_OK(status);
   }
 
   return Status::Ok();

@@ -122,64 +122,60 @@ Status FilterPipeline::filter_chunks_forward(
       populated_nchunks);
 
   // Run each chunk through the entire pipeline.
-  auto statuses =
-      parallel_for(compute_tp, 0, populated_nchunks, [&](uint64_t i) {
-        // TODO(ttd): can we instead allocate one FilterStorage per thread?
-        // or make it threadsafe?
-        FilterStorage storage;
-        FilterBuffer input_data(&storage), output_data(&storage);
-        FilterBuffer input_metadata(&storage), output_metadata(&storage);
+  auto status = parallel_for(compute_tp, 0, populated_nchunks, [&](uint64_t i) {
+    // TODO(ttd): can we instead allocate one FilterStorage per thread?
+    // or make it threadsafe?
+    FilterStorage storage;
+    FilterBuffer input_data(&storage), output_data(&storage);
+    FilterBuffer input_metadata(&storage), output_metadata(&storage);
 
-        // First filter's input is the original chunk.
-        void* chunk_buffer = nullptr;
-        RETURN_NOT_OK(input.internal_buffer(i, &chunk_buffer));
-        uint32_t chunk_buffer_size;
-        RETURN_NOT_OK(input.internal_buffer_size(i, &chunk_buffer_size));
-        RETURN_NOT_OK(input_data.init(chunk_buffer, chunk_buffer_size));
+    // First filter's input is the original chunk.
+    void* chunk_buffer = nullptr;
+    RETURN_NOT_OK(input.internal_buffer(i, &chunk_buffer));
+    uint32_t chunk_buffer_size;
+    RETURN_NOT_OK(input.internal_buffer_size(i, &chunk_buffer_size));
+    RETURN_NOT_OK(input_data.init(chunk_buffer, chunk_buffer_size));
 
-        // Apply the filters sequentially.
-        for (auto it = filters_.begin(), ite = filters_.end(); it != ite;
-             ++it) {
-          auto& f = *it;
+    // Apply the filters sequentially.
+    for (auto it = filters_.begin(), ite = filters_.end(); it != ite; ++it) {
+      auto& f = *it;
 
-          // Clear and reset I/O buffers
-          input_data.reset_offset();
-          input_data.set_read_only(true);
-          input_metadata.reset_offset();
-          input_metadata.set_read_only(true);
+      // Clear and reset I/O buffers
+      input_data.reset_offset();
+      input_data.set_read_only(true);
+      input_metadata.reset_offset();
+      input_metadata.set_read_only(true);
 
-          output_data.clear();
-          output_metadata.clear();
+      output_data.clear();
+      output_metadata.clear();
 
-          RETURN_NOT_OK(f->run_forward(
-              &input_metadata, &input_data, &output_metadata, &output_data));
+      RETURN_NOT_OK(f->run_forward(
+          &input_metadata, &input_data, &output_metadata, &output_data));
 
-          input_data.set_read_only(false);
-          input_data.swap(output_data);
-          input_metadata.set_read_only(false);
-          input_metadata.swap(output_metadata);
-          // Next input (input_buffers) now stores this output (output_buffers).
-        }
+      input_data.set_read_only(false);
+      input_data.swap(output_data);
+      input_metadata.set_read_only(false);
+      input_metadata.swap(output_metadata);
+      // Next input (input_buffers) now stores this output (output_buffers).
+    }
 
-        // Save the finished chunk (last stage's output). This is safe to do
-        // because when the local FilterStorage goes out of scope, it will not
-        // free the buffers saved here as their tdb_shared_ptr counters will not
-        // be zero. However, as the output may have been a view on the input, we
-        // do need to save both here to prevent the input buffer from being
-        // freed.
-        auto& io = final_stage_io[i];
-        auto& io_input = io.first;
-        auto& io_output = io.second;
-        io_input.first.swap(input_metadata);
-        io_input.second.swap(input_data);
-        io_output.first.swap(output_metadata);
-        io_output.second.swap(output_data);
-        return Status::Ok();
-      });
+    // Save the finished chunk (last stage's output). This is safe to do
+    // because when the local FilterStorage goes out of scope, it will not
+    // free the buffers saved here as their tdb_shared_ptr counters will not
+    // be zero. However, as the output may have been a view on the input, we
+    // do need to save both here to prevent the input buffer from being
+    // freed.
+    auto& io = final_stage_io[i];
+    auto& io_input = io.first;
+    auto& io_output = io.second;
+    io_input.first.swap(input_metadata);
+    io_input.second.swap(input_data);
+    io_output.first.swap(output_metadata);
+    io_output.second.swap(output_data);
+    return Status::Ok();
+  });
 
-  // Check statuses
-  for (auto st : statuses)
-    RETURN_NOT_OK(st);
+  RETURN_NOT_OK(status);
 
   uint64_t total_processed_size = 0;
   std::vector<uint32_t> var_chunk_sizes(final_stage_io.size());
@@ -215,42 +211,35 @@ Status FilterPipeline::filter_chunks_forward(
   RETURN_NOT_OK(output->write(&populated_nchunks, sizeof(uint64_t)));
 
   // Concatenate all processed chunks into the final output buffer.
-  statuses =
-      parallel_for(compute_tp, 0, final_stage_io.size(), [&](uint64_t i) {
-        auto& final_stage_output_metadata = final_stage_io[i].first.first;
-        auto& final_stage_output_data = final_stage_io[i].first.second;
-        auto filtered_size = (uint32_t)final_stage_output_data.size();
-        uint32_t orig_chunk_size;
-        RETURN_NOT_OK(input.internal_buffer_size(i, &orig_chunk_size));
-        auto metadata_size = (uint32_t)final_stage_output_metadata.size();
-        void* dest = output->data(offsets[i]);
-        uint64_t dest_offset = 0;
+  status = parallel_for(compute_tp, 0, final_stage_io.size(), [&](uint64_t i) {
+    auto& final_stage_output_metadata = final_stage_io[i].first.first;
+    auto& final_stage_output_data = final_stage_io[i].first.second;
+    auto filtered_size = (uint32_t)final_stage_output_data.size();
+    uint32_t orig_chunk_size;
+    RETURN_NOT_OK(input.internal_buffer_size(i, &orig_chunk_size));
+    auto metadata_size = (uint32_t)final_stage_output_metadata.size();
+    void* dest = output->data(offsets[i]);
+    uint64_t dest_offset = 0;
 
-        // Write the original (unfiltered) chunk size
-        std::memcpy(
-            (char*)dest + dest_offset, &orig_chunk_size, sizeof(uint32_t));
-        dest_offset += sizeof(uint32_t);
-        // Write the filtered chunk size
-        std::memcpy(
-            (char*)dest + dest_offset, &filtered_size, sizeof(uint32_t));
-        dest_offset += sizeof(uint32_t);
-        // Write the metadata size
-        std::memcpy(
-            (char*)dest + dest_offset, &metadata_size, sizeof(uint32_t));
-        dest_offset += sizeof(uint32_t);
-        // Write the chunk metadata
-        RETURN_NOT_OK(
-            final_stage_output_metadata.copy_to((char*)dest + dest_offset));
-        dest_offset += metadata_size;
-        // Write the chunk data
-        RETURN_NOT_OK(
-            final_stage_output_data.copy_to((char*)dest + dest_offset));
-        return Status::Ok();
-      });
+    // Write the original (unfiltered) chunk size
+    std::memcpy((char*)dest + dest_offset, &orig_chunk_size, sizeof(uint32_t));
+    dest_offset += sizeof(uint32_t);
+    // Write the filtered chunk size
+    std::memcpy((char*)dest + dest_offset, &filtered_size, sizeof(uint32_t));
+    dest_offset += sizeof(uint32_t);
+    // Write the metadata size
+    std::memcpy((char*)dest + dest_offset, &metadata_size, sizeof(uint32_t));
+    dest_offset += sizeof(uint32_t);
+    // Write the chunk metadata
+    RETURN_NOT_OK(
+        final_stage_output_metadata.copy_to((char*)dest + dest_offset));
+    dest_offset += metadata_size;
+    // Write the chunk data
+    RETURN_NOT_OK(final_stage_output_data.copy_to((char*)dest + dest_offset));
+    return Status::Ok();
+  });
 
-  // Check statuses
-  for (auto st : statuses)
-    RETURN_NOT_OK(st);
+  RETURN_NOT_OK(status);
 
   // Ensure the final size is set to the concatenated size.
   output->advance_offset(total_processed_size);
@@ -309,7 +298,7 @@ Status FilterPipeline::filter_chunks_reverse(
   }
 
   // Run each chunk through the entire pipeline.
-  auto statuses = parallel_for(compute_tp, 0, input.size(), [&](uint64_t i) {
+  auto status = parallel_for(compute_tp, 0, input.size(), [&](uint64_t i) {
     const auto& chunk_input = input[i];
 
     // Skip chunks that do not interect the query.
@@ -394,9 +383,7 @@ Status FilterPipeline::filter_chunks_reverse(
     return Status::Ok();
   });
 
-  // Check statuses
-  for (auto st : statuses)
-    RETURN_NOT_OK(st);
+  RETURN_NOT_OK(status);
 
   // Since we did not use the 'write' interface above, the 'output' size
   // will still be 0. We wrote the entire capacity of the output buffer,
