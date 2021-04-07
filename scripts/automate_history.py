@@ -1,6 +1,8 @@
 import argparse
+import itertools as it
 import sys
 from collections import defaultdict
+from operator import itemgetter
 from typing import Mapping, Sequence, Tuple
 
 
@@ -19,7 +21,7 @@ _type_mapping = {
 
 def parse_pr_body(
     body: str, type_tag: str = "TYPE:", description_tag: str = "DESC:"
-) -> Tuple[Sequence[str], Sequence[str]]:
+) -> Mapping[str, Sequence[str]]:
     headers = []
     descriptions = []
     for line in body.strip().split("\n"):
@@ -43,14 +45,18 @@ def parse_pr_body(
     if len(headers) != len(descriptions):
         raise ValueError("Mismatched number of history types and descriptions")
 
-    return headers, descriptions
+    get_header, get_description = itemgetter(0), itemgetter(1)
+    header_descriptions = sorted(zip(headers, descriptions), key=get_header)
+    return {
+        header: list(map(get_description, group))
+        for header, group in it.groupby(header_descriptions, key=get_header)
+    }
 
 
 # Updates the HISTORY.md file.
 def update_history(
     pr_number: int,
-    headers: Sequence[str],
-    descriptions: Sequence[str],
+    header_descriptions: Mapping[str, Sequence[str]],
 ) -> Mapping[str, Sequence[str]]:
     # Read `HISTORY.md` into memory.
     with open("HISTORY.md") as f:
@@ -61,14 +67,15 @@ def update_history(
     new_lines = [line for line in lines if pull_url not in line]
 
     additions = defaultdict(list)
-    for header, description in zip(headers, descriptions):
+    for header, descriptions in header_descriptions.items():
         # The HISTORY.md always starts with in-progress changes first.
         # We will locate the first line that starts with `header`
         for i, line in enumerate(new_lines):
             if line.strip().startswith(header):
-                new_line = f"* {description} [#{pr_number}]({pull_url})"
-                new_lines.insert(i + 1, new_line)
-                additions[header].append(new_line)
+                added_lines = [f"* {description} [#{pr_number}]({pull_url})"
+                               for description in descriptions]
+                new_lines[i + 1: i + 1] = added_lines
+                additions[header].extend(added_lines)
                 break
 
     if lines == new_lines:
@@ -101,20 +108,20 @@ def main():
         return
 
     try:
-        headers, descriptions = parse_pr_body(args.body)
+        header_descriptions = parse_pr_body(args.body)
     except ValueError as ex:
         sys.exit(ex)
 
     if args.check_only:
         return
 
-    additions = update_history(args.number, headers, descriptions)
+    additions = update_history(args.number, header_descriptions)
     if additions:
         print("Updated HISTORY.md with the following additions:")
         for header, lines in additions.items():
             print()
             print(header)
-            for line in reversed(lines):
+            for line in lines:
                 print(line)
 
 
