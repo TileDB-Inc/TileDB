@@ -875,6 +875,8 @@ int32_t tiledb_config_alloc(tiledb_config_t** config, tiledb_error_t** error) {
         Status::Error("Cannot create config object; Memory allocation failed");
     LOG_STATUS(st);
     create_error(error, st);
+    if (*config != nullptr)
+      delete *config;
     return TILEDB_OOM;
   }
 
