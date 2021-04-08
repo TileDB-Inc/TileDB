@@ -629,6 +629,20 @@ double coverage(const T* a, const T* b, unsigned dim_num) {
   return c;
 }
 
+template <class T>
+std::vector<std::array<T, 2>> intersection(
+    const std::vector<std::array<T, 2>>& r1,
+    const std::vector<std::array<T, 2>>& r2) {
+  auto dim_num = r1.size();
+  assert(r2.size() == dim_num);
+
+  std::vector<std::array<T, 2>> ret(dim_num);
+  for (size_t d = 0; d < dim_num; ++d)
+    ret[d] = {std::max(r1[d][0], r2[d][0]), std::min(r1[d][1], r2[d][1])};
+
+  return ret;
+}
+
 }  // namespace geometry
 
 /* ********************************* */
@@ -868,6 +882,31 @@ template double coverage<float>(
     const float* a, const float* b, unsigned dim_num);
 template double coverage<double>(
     const double* a, const double* b, unsigned dim_num);
+
+template std::vector<std::array<int8_t, 2>> intersection<int8_t>(
+    const std::vector<std::array<int8_t, 2>>& r1,
+    const std::vector<std::array<int8_t, 2>>& r2);
+template std::vector<std::array<uint8_t, 2>> intersection<uint8_t>(
+    const std::vector<std::array<uint8_t, 2>>& r1,
+    const std::vector<std::array<uint8_t, 2>>& r2);
+template std::vector<std::array<int16_t, 2>> intersection<int16_t>(
+    const std::vector<std::array<int16_t, 2>>& r1,
+    const std::vector<std::array<int16_t, 2>>& r2);
+template std::vector<std::array<uint16_t, 2>> intersection<uint16_t>(
+    const std::vector<std::array<uint16_t, 2>>& r1,
+    const std::vector<std::array<uint16_t, 2>>& r2);
+template std::vector<std::array<int32_t, 2>> intersection<int32_t>(
+    const std::vector<std::array<int32_t, 2>>& r1,
+    const std::vector<std::array<int32_t, 2>>& r2);
+template std::vector<std::array<uint32_t, 2>> intersection<uint32_t>(
+    const std::vector<std::array<uint32_t, 2>>& r1,
+    const std::vector<std::array<uint32_t, 2>>& r2);
+template std::vector<std::array<int64_t, 2>> intersection<int64_t>(
+    const std::vector<std::array<int64_t, 2>>& r1,
+    const std::vector<std::array<int64_t, 2>>& r2);
+template std::vector<std::array<uint64_t, 2>> intersection<uint64_t>(
+    const std::vector<std::array<uint64_t, 2>>& r1,
+    const std::vector<std::array<uint64_t, 2>>& r2);
 
 }  // namespace geometry
 

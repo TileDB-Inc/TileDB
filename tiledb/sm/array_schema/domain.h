@@ -358,18 +358,6 @@ class Domain {
    * domain. Applicable only to **dense** arrays.
    *
    * @tparam T The domain type.
-   * @param tile_coords The tile coordinates.
-   * @return The tile position of *tile_coords* along the tile order of the
-   *     array inside the array domain.
-   */
-  template <class T>
-  uint64_t get_tile_pos(const T* tile_coords) const;
-
-  /**
-   * Returns the tile position along the array tile order within the input
-   * domain. Applicable only to **dense** arrays.
-   *
-   * @tparam T The domain type.
    * @param domain The input domain, which is a cell domain partitioned into
    *     regular tiles in the same manner as that of the array domain (however
    *     *domain* may be a sub-domain of the array domain).
@@ -468,7 +456,7 @@ class Domain {
   std::vector<ByteVecValue> tile_extents() const;
 
   /**
-   * Returns the number of tiles contained in the input ND range.
+   * Returns the number of tiles intersecting the input ND range.
    * Returns 0 if even a single dimension has non-integral type.
    */
   uint64_t tile_num(const NDRange& ndrange) const;
@@ -477,7 +465,7 @@ class Domain {
    * Returns the number of cells in the input range.
    * If there is an overflow, then the function returns MAX_UINT64.
    * If at least one dimension had a non-integer domain, the
-   * functuon returns MAX_UINT64.
+   * function returns MAX_UINT64.
    */
   uint64_t cell_num(const NDRange& ndrange) const;
 
@@ -611,18 +599,6 @@ class Domain {
   /** The number of dimensions. */
   unsigned dim_num_;
 
-  /**
-   * Offsets for calculating tile positions and ids for the column-major
-   * tile order.
-   */
-  std::vector<uint64_t> tile_offsets_col_;
-
-  /**
-   * Offsets for calculating tile positions and ids for the row-major
-   * tile order.
-   */
-  std::vector<uint64_t> tile_offsets_row_;
-
   /** The tile order of the array the domain belongs to. */
   Layout tile_order_;
 
@@ -676,9 +652,6 @@ class Domain {
 
   /** Prepares the comparator functions for each dimension. */
   void set_tile_cell_order_cmp_funcs();
-
-  /** Computes tile offsets neccessary when computing tile positions and ids. */
-  void compute_tile_offsets();
 
   /**
    * Retrieves the next tile coordinates along the array tile order within a
@@ -746,19 +719,6 @@ class Domain {
    * **column-major** tile order.
    *
    * @tparam T The domain type.
-   * @param tile_coords The tile coordinates.
-   * @return The tile position of *tile_coords* along the tile order of the
-   *     array inside the array domain.
-   */
-  template <class T>
-  uint64_t get_tile_pos_col(const T* tile_coords) const;
-
-  /**
-   * Returns the tile position along the array tile order within the input
-   * domain. Applicable only to **dense** arrays, and focusing on the
-   * **column-major** tile order.
-   *
-   * @tparam T The domain type.
    * @param domain The input domain, which is a cell domain partitioned into
    *     regular tiles in the same manner as that of the array domain
    *     (however *domain* may be a sub-domain of the array domain).
@@ -768,19 +728,6 @@ class Domain {
    */
   template <class T>
   uint64_t get_tile_pos_col(const T* domain, const T* tile_coords) const;
-
-  /**
-   * Returns the tile position along the array tile order within the input
-   * domain. Applicable only to **dense** arrays, and focusing on the
-   * **row-major** tile order.
-   *
-   * @tparam T The domain type.
-   * @param tile_coords The tile coordinates.
-   * @return The tile position of *tile_coords* along the tile order of the
-   *     array inside the array domain.
-   */
-  template <class T>
-  uint64_t get_tile_pos_row(const T* tile_coords) const;
 
   /**
    * Returns the tile position along the array tile order within the input

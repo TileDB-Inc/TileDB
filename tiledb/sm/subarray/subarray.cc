@@ -41,7 +41,7 @@
 #include "tiledb/sm/misc/parallel_functions.h"
 #include "tiledb/sm/misc/utils.h"
 #include "tiledb/sm/rtree/rtree.h"
-#include "tiledb/sm/stats/stats.h"
+#include "tiledb/sm/stats/global_stats.h"
 
 #include <algorithm>
 #include <iomanip>
@@ -114,7 +114,7 @@ Subarray& Subarray::operator=(Subarray&& subarray) noexcept {
 /* ****************************** */
 
 Status Subarray::add_range(
-    uint32_t dim_idx, Range&& range, const bool& read_range_oob_error) {
+    uint32_t dim_idx, Range&& range, const bool read_range_oob_error) {
   auto dim_num = array_->array_schema()->dim_num();
   if (dim_idx >= dim_num)
     return LOG_STATUS(Status::SubarrayError(
@@ -1141,13 +1141,13 @@ const std::vector<std::vector<uint8_t>>& Subarray::tile_coords() const {
 
 template <class T>
 Status Subarray::compute_tile_coords() {
-  STATS_START_TIMER(stats::Stats::TimerType::READ_COMPUTE_TILE_COORDS)
+  STATS_START_TIMER(stats::GlobalStats::TimerType::READ_COMPUTE_TILE_COORDS)
 
   if (array_->array_schema()->tile_order() == Layout::ROW_MAJOR)
     return compute_tile_coords_row<T>();
   return compute_tile_coords_col<T>();
 
-  STATS_END_TIMER(stats::Stats::TimerType::READ_COMPUTE_TILE_COORDS)
+  STATS_END_TIMER(stats::GlobalStats::TimerType::READ_COMPUTE_TILE_COORDS)
 }
 
 template <class T>
@@ -1551,8 +1551,7 @@ void Subarray::compute_range_offsets() {
 
 Status Subarray::compute_est_result_size(
     const Config* const config, ThreadPool* const compute_tp) {
-  STATS_START_TIMER(stats::Stats::TimerType::READ_COMPUTE_EST_RESULT_SIZE)
-
+  STATS_START_TIMER(stats::GlobalStats::TimerType::READ_COMPUTE_EST_RESULT_SIZE)
   if (est_result_size_computed_)
     return Status::Ok();
 
@@ -1655,7 +1654,7 @@ Status Subarray::compute_est_result_size(
 
   return Status::Ok();
 
-  STATS_END_TIMER(stats::Stats::TimerType::READ_COMPUTE_EST_RESULT_SIZE)
+  STATS_END_TIMER(stats::GlobalStats::TimerType::READ_COMPUTE_EST_RESULT_SIZE)
 }
 
 bool Subarray::est_result_size_computed() {
@@ -1924,7 +1923,7 @@ Status Subarray::precompute_tile_overlap(
     const Config* config,
     ThreadPool* const compute_tp,
     const bool override_memory_constraint) {
-  STATS_START_TIMER(stats::Stats::TimerType::READ_COMPUTE_TILE_OVERLAP)
+  STATS_START_TIMER(stats::GlobalStats::TimerType::READ_COMPUTE_TILE_OVERLAP)
 
   // If the `tile_overlap_` has already been precomputed and contains
   // the given range, re-use it with new range.
@@ -1992,7 +1991,7 @@ Status Subarray::precompute_tile_overlap(
 
   return Status::Ok();
 
-  STATS_END_TIMER(stats::Stats::TimerType::READ_COMPUTE_TILE_OVERLAP)
+  STATS_END_TIMER(stats::GlobalStats::TimerType::READ_COMPUTE_TILE_OVERLAP)
 }
 
 Subarray Subarray::clone() const {
@@ -2151,7 +2150,7 @@ Status Subarray::compute_relevant_fragments(
     ThreadPool* const compute_tp,
     const SubarrayTileOverlap* const tile_overlap,
     ComputeRelevantFragmentsCtx* const fn_ctx) {
-  STATS_START_TIMER(stats::Stats::TimerType::READ_COMPUTE_RELEVANT_FRAGS)
+  STATS_START_TIMER(stats::GlobalStats::TimerType::READ_COMPUTE_RELEVANT_FRAGS)
 
   auto meta = array_->fragment_metadata();
   auto fragment_num = meta.size();
@@ -2204,12 +2203,12 @@ Status Subarray::compute_relevant_fragments(
 
   return Status::Ok();
 
-  STATS_END_TIMER(stats::Stats::TimerType::READ_COMPUTE_RELEVANT_FRAGS)
+  STATS_END_TIMER(stats::GlobalStats::TimerType::READ_COMPUTE_RELEVANT_FRAGS)
 }
 
 Status Subarray::load_relevant_fragment_rtrees(
     ThreadPool* const compute_tp) const {
-  STATS_START_TIMER(stats::Stats::TimerType::READ_LOAD_RELEVANT_RTREES)
+  STATS_START_TIMER(stats::GlobalStats::TimerType::READ_LOAD_RELEVANT_RTREES)
 
   auto meta = array_->fragment_metadata();
   auto encryption_key = array_->encryption_key();
@@ -2222,14 +2221,15 @@ Status Subarray::load_relevant_fragment_rtrees(
 
   return Status::Ok();
 
-  STATS_END_TIMER(stats::Stats::TimerType::READ_LOAD_RELEVANT_RTREES)
+  STATS_END_TIMER(stats::GlobalStats::TimerType::READ_LOAD_RELEVANT_RTREES)
 }
 
 Status Subarray::compute_relevant_fragment_tile_overlap(
     ThreadPool* const compute_tp,
     SubarrayTileOverlap* const tile_overlap,
     ComputeRelevantTileOverlapCtx* const fn_ctx) {
-  STATS_START_TIMER(stats::Stats::TimerType::READ_COMPUTE_RELEVANT_TILE_OVERLAP)
+  STATS_START_TIMER(
+      stats::GlobalStats::TimerType::READ_COMPUTE_RELEVANT_TILE_OVERLAP)
 
   const auto range_num = tile_overlap->range_num();
   fn_ctx->range_idx_offset_ = fn_ctx->range_idx_offset_ + fn_ctx->range_len_;
@@ -2248,7 +2248,8 @@ Status Subarray::compute_relevant_fragment_tile_overlap(
 
   return Status::Ok();
 
-  STATS_END_TIMER(stats::Stats::TimerType::READ_COMPUTE_RELEVANT_TILE_OVERLAP)
+  STATS_END_TIMER(
+      stats::GlobalStats::TimerType::READ_COMPUTE_RELEVANT_TILE_OVERLAP)
 }
 
 Status Subarray::compute_relevant_fragment_tile_overlap(

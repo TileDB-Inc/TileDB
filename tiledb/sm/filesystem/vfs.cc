@@ -39,7 +39,7 @@
 #include "tiledb/sm/filesystem/hdfs_filesystem.h"
 #include "tiledb/sm/misc/parallel_functions.h"
 #include "tiledb/sm/misc/utils.h"
-#include "tiledb/sm/stats/stats.h"
+#include "tiledb/sm/stats/global_stats.h"
 
 #include <iostream>
 #include <list>
@@ -1389,7 +1389,7 @@ Status VFS::read(
     void* const buffer,
     const uint64_t nbytes,
     bool use_read_ahead) {
-  STATS_ADD_COUNTER(stats::Stats::CounterType::READ_BYTE_NUM, nbytes);
+  STATS_ADD_COUNTER(stats::GlobalStats::CounterType::READ_BYTE_NUM, nbytes);
 
   if (!init_)
     return LOG_STATUS(Status::VFSError("Cannot read; VFS not initialized"));
@@ -1457,7 +1457,7 @@ Status VFS::read_impl(
     void* const buffer,
     const uint64_t nbytes,
     const bool use_read_ahead) {
-  STATS_ADD_COUNTER(stats::Stats::CounterType::READ_OPS_NUM, 1);
+  STATS_ADD_COUNTER(stats::GlobalStats::CounterType::READ_OPS_NUM, 1);
 
   // We only check to use the read-ahead cache for cloud-storage
   // backends. No-op the `use_read_ahead` to prevent the unused
@@ -1878,8 +1878,9 @@ Status VFS::close_file(const URI& uri) {
 }
 
 Status VFS::write(const URI& uri, const void* buffer, uint64_t buffer_size) {
-  STATS_ADD_COUNTER(stats::Stats::CounterType::WRITE_BYTE_NUM, buffer_size);
-  STATS_ADD_COUNTER(stats::Stats::CounterType::WRITE_OPS_NUM, 1);
+  STATS_ADD_COUNTER(
+      stats::GlobalStats::CounterType::WRITE_BYTE_NUM, buffer_size);
+  STATS_ADD_COUNTER(stats::GlobalStats::CounterType::WRITE_OPS_NUM, 1);
 
   if (!init_)
     return LOG_STATUS(Status::VFSError("Cannot write; VFS not initialized"));

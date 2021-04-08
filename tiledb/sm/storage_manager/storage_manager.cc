@@ -52,7 +52,7 @@
 #include "tiledb/sm/misc/uuid.h"
 #include "tiledb/sm/query/query.h"
 #include "tiledb/sm/rest/rest_client.h"
-#include "tiledb/sm/stats/stats.h"
+#include "tiledb/sm/stats/global_stats.h"
 #include "tiledb/sm/storage_manager/consolidator.h"
 #include "tiledb/sm/storage_manager/open_array.h"
 #include "tiledb/sm/storage_manager/storage_manager.h"
@@ -202,7 +202,7 @@ Status StorageManager::array_open_for_reads(
     const EncryptionKey& enc_key,
     ArraySchema** array_schema,
     std::vector<FragmentMetadata*>* fragment_metadata) {
-  STATS_START_TIMER(stats::Stats::TimerType::READ_ARRAY_OPEN)
+  STATS_START_TIMER(stats::GlobalStats::TimerType::READ_ARRAY_OPEN)
 
   /* NOTE: these variables may be modified on a different thread
            in the load_array_fragments_task below.
@@ -278,7 +278,7 @@ Status StorageManager::array_open_for_reads(
   // Note that we retain the (shared) lock on the array filelock
   return Status::Ok();
 
-  STATS_END_TIMER(stats::Stats::TimerType::READ_ARRAY_OPEN)
+  STATS_END_TIMER(stats::GlobalStats::TimerType::READ_ARRAY_OPEN)
 }
 
 Status StorageManager::array_open_for_reads(
@@ -287,7 +287,7 @@ Status StorageManager::array_open_for_reads(
     const EncryptionKey& enc_key,
     ArraySchema** array_schema,
     std::vector<FragmentMetadata*>* fragment_metadata) {
-  STATS_START_TIMER(stats::Stats::TimerType::READ_ARRAY_OPEN)
+  STATS_START_TIMER(stats::GlobalStats::TimerType::READ_ARRAY_OPEN)
 
   // Determine which fragments to load
   std::vector<TimestampedURI> fragments_to_load;
@@ -357,7 +357,7 @@ Status StorageManager::array_open_for_reads(
   // Note that we retain the (shared) lock on the array filelock
   return Status::Ok();
 
-  STATS_END_TIMER(stats::Stats::TimerType::READ_ARRAY_OPEN)
+  STATS_END_TIMER(stats::GlobalStats::TimerType::READ_ARRAY_OPEN)
 }
 
 Status StorageManager::array_open_for_writes(
@@ -440,7 +440,7 @@ Status StorageManager::array_reopen(
     const EncryptionKey& enc_key,
     ArraySchema** array_schema,
     std::vector<FragmentMetadata*>* fragment_metadata) {
-  STATS_START_TIMER(stats::Stats::TimerType::READ_ARRAY_OPEN)
+  STATS_START_TIMER(stats::GlobalStats::TimerType::READ_ARRAY_OPEN)
 
   auto open_array = (OpenArray*)nullptr;
 
@@ -498,7 +498,7 @@ Status StorageManager::array_reopen(
 
   return st;
 
-  STATS_END_TIMER(stats::Stats::TimerType::READ_ARRAY_OPEN)
+  STATS_END_TIMER(stats::GlobalStats::TimerType::READ_ARRAY_OPEN)
 }
 
 Status StorageManager::array_consolidate(
@@ -1290,7 +1290,7 @@ Status StorageManager::get_fragment_uris(
     const URI& array_uri,
     std::vector<URI>* fragment_uris,
     URI* meta_uri) const {
-  STATS_START_TIMER(stats::Stats::TimerType::READ_GET_FRAGMENT_URIS)
+  STATS_START_TIMER(stats::GlobalStats::TimerType::READ_GET_FRAGMENT_URIS)
   // Get all uris in the array directory
   std::vector<URI> uris;
   RETURN_NOT_OK(vfs_->ls(array_uri.add_trailing_slash(), &uris));
@@ -1329,7 +1329,7 @@ Status StorageManager::get_fragment_uris(
 
   return Status::Ok();
 
-  STATS_END_TIMER(stats::Stats::TimerType::READ_GET_FRAGMENT_URIS);
+  STATS_END_TIMER(stats::GlobalStats::TimerType::READ_GET_FRAGMENT_URIS);
 }
 
 const std::unordered_map<std::string, std::string>& StorageManager::tags()
@@ -1552,7 +1552,7 @@ Status StorageManager::load_array_schema(
     const URI& array_uri,
     const EncryptionKey& encryption_key,
     ArraySchema** array_schema) {
-  STATS_START_TIMER(stats::Stats::TimerType::READ_LOAD_ARRAY_SCHEMA)
+  STATS_START_TIMER(stats::GlobalStats::TimerType::READ_LOAD_ARRAY_SCHEMA)
 
   if (array_uri.is_invalid())
     return LOG_STATUS(Status::StorageManagerError(
@@ -1573,7 +1573,7 @@ Status StorageManager::load_array_schema(
   tdb_delete(tile);
 
   STATS_ADD_COUNTER(
-      stats::Stats::CounterType::READ_ARRAY_SCHEMA_SIZE, buff.size());
+      stats::GlobalStats::CounterType::READ_ARRAY_SCHEMA_SIZE, buff.size());
 
   // Deserialize
   ConstBuffer cbuff(&buff);
@@ -1587,7 +1587,7 @@ Status StorageManager::load_array_schema(
 
   return st;
 
-  STATS_END_TIMER(stats::Stats::TimerType::READ_LOAD_ARRAY_SCHEMA)
+  STATS_END_TIMER(stats::GlobalStats::TimerType::READ_LOAD_ARRAY_SCHEMA)
 }
 
 Status StorageManager::load_array_metadata(
@@ -1595,7 +1595,7 @@ Status StorageManager::load_array_metadata(
     const EncryptionKey& encryption_key,
     uint64_t timestamp,
     Metadata* metadata) {
-  STATS_START_TIMER(stats::Stats::TimerType::READ_LOAD_ARRAY_META)
+  STATS_START_TIMER(stats::GlobalStats::TimerType::READ_LOAD_ARRAY_META)
 
   OpenArray* open_array;
   // Lock mutex
@@ -1632,7 +1632,7 @@ Status StorageManager::load_array_metadata(
 
   return Status::Ok();
 
-  STATS_END_TIMER(stats::Stats::TimerType::READ_LOAD_ARRAY_META)
+  STATS_END_TIMER(stats::GlobalStats::TimerType::READ_LOAD_ARRAY_META)
 }
 
 Status StorageManager::object_type(const URI& uri, ObjectType* type) const {
@@ -1893,7 +1893,7 @@ Status StorageManager::store_array_schema(
   RETURN_NOT_OK(array_schema->serialize(&buff));
 
   STATS_ADD_COUNTER(
-      stats::Stats::CounterType::WRITE_ARRAY_SCHEMA_SIZE, buff.size());
+      stats::GlobalStats::CounterType::WRITE_ARRAY_SCHEMA_SIZE, buff.size());
 
   // Delete file if it exists already
   bool exists;
@@ -1929,7 +1929,7 @@ Status StorageManager::store_array_metadata(
     const URI& array_uri,
     const EncryptionKey& encryption_key,
     Metadata* array_metadata) {
-  STATS_START_TIMER(stats::Stats::TimerType::WRITE_ARRAY_META)
+  STATS_START_TIMER(stats::GlobalStats::TimerType::WRITE_ARRAY_META)
 
   // Trivial case
   if (array_metadata == nullptr)
@@ -1944,7 +1944,8 @@ Status StorageManager::store_array_metadata(
     return Status::Ok();
 
   STATS_ADD_COUNTER(
-      stats::Stats::CounterType::WRITE_ARRAY_META_SIZE, metadata_buff.size());
+      stats::GlobalStats::CounterType::WRITE_ARRAY_META_SIZE,
+      metadata_buff.size());
 
   // Create a metadata file name
   URI array_metadata_uri;
@@ -1975,7 +1976,7 @@ Status StorageManager::store_array_metadata(
 
   return st;
 
-  STATS_END_TIMER(stats::Stats::TimerType::WRITE_ARRAY_META)
+  STATS_END_TIMER(stats::GlobalStats::TimerType::WRITE_ARRAY_META)
 }
 
 Status StorageManager::close_file(const URI& uri) {
@@ -2045,7 +2046,8 @@ Status StorageManager::array_open_without_fragments(
     const URI& array_uri,
     const EncryptionKey& encryption_key,
     OpenArray** open_array) {
-  STATS_START_TIMER(stats::Stats::TimerType::READ_ARRAY_OPEN_WITHOUT_FRAGMENTS)
+  STATS_START_TIMER(
+      stats::GlobalStats::TimerType::READ_ARRAY_OPEN_WITHOUT_FRAGMENTS)
   if (!vfs_->supports_uri_scheme(array_uri))
     return LOG_STATUS(Status::StorageManagerError(
         "Cannot open array; URI scheme unsupported."));
@@ -2092,7 +2094,8 @@ Status StorageManager::array_open_without_fragments(
 
   return Status::Ok();
 
-  STATS_END_TIMER(stats::Stats::TimerType::READ_ARRAY_OPEN_WITHOUT_FRAGMENTS)
+  STATS_END_TIMER(
+      stats::GlobalStats::TimerType::READ_ARRAY_OPEN_WITHOUT_FRAGMENTS)
 }
 
 Status StorageManager::get_array_metadata_uris(
@@ -2177,7 +2180,8 @@ Status StorageManager::load_array_metadata(
   uint64_t meta_size = 0;
   for (const auto& b : metadata_buffs)
     meta_size += b->size();
-  STATS_ADD_COUNTER(stats::Stats::CounterType::READ_ARRAY_META_SIZE, meta_size);
+  STATS_ADD_COUNTER(
+      stats::GlobalStats::CounterType::READ_ARRAY_META_SIZE, meta_size);
 
   // Deserialize metadata buffers
   metadata->deserialize(metadata_buffs);
@@ -2195,7 +2199,7 @@ Status StorageManager::load_fragment_metadata(
     Buffer* meta_buff,
     const std::unordered_map<std::string, uint64_t>& offsets,
     std::vector<FragmentMetadata*>* fragment_metadata) {
-  STATS_START_TIMER(stats::Stats::TimerType::READ_LOAD_FRAG_META)
+  STATS_START_TIMER(stats::GlobalStats::TimerType::READ_LOAD_FRAG_META)
 
   // Load the metadata for each fragment, only if they are not already loaded
   auto fragment_num = fragments_to_load.size();
@@ -2252,7 +2256,7 @@ Status StorageManager::load_fragment_metadata(
 
   return Status::Ok();
 
-  STATS_END_TIMER(stats::Stats::TimerType::READ_LOAD_FRAG_META)
+  STATS_END_TIMER(stats::GlobalStats::TimerType::READ_LOAD_FRAG_META)
 }
 
 Status StorageManager::load_consolidated_fragment_meta(
@@ -2260,7 +2264,8 @@ Status StorageManager::load_consolidated_fragment_meta(
     const EncryptionKey& enc_key,
     Buffer* f_buff,
     std::unordered_map<std::string, uint64_t>* offsets) {
-  STATS_START_TIMER(stats::Stats::TimerType::READ_LOAD_CONSOLIDATED_FRAG_META)
+  STATS_START_TIMER(
+      stats::GlobalStats::TimerType::READ_LOAD_CONSOLIDATED_FRAG_META)
 
   // No consolidated fragment metadata file
   if (uri.to_string().empty())
@@ -2279,7 +2284,8 @@ Status StorageManager::load_consolidated_fragment_meta(
   tdb_delete(tile);
 
   STATS_ADD_COUNTER(
-      stats::Stats::CounterType::CONSOLIDATED_FRAG_META_SIZE, f_buff->size());
+      stats::GlobalStats::CounterType::CONSOLIDATED_FRAG_META_SIZE,
+      f_buff->size());
 
   uint32_t fragment_num;
   f_buff->reset_offset();
@@ -2297,7 +2303,8 @@ Status StorageManager::load_consolidated_fragment_meta(
 
   return Status::Ok();
 
-  STATS_END_TIMER(stats::Stats::TimerType::READ_LOAD_CONSOLIDATED_FRAG_META)
+  STATS_END_TIMER(
+      stats::GlobalStats::TimerType::READ_LOAD_CONSOLIDATED_FRAG_META)
 }
 
 Status StorageManager::get_consolidated_fragment_meta_uri(
