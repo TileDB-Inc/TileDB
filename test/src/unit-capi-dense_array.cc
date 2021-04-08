@@ -3509,10 +3509,7 @@ TEST_CASE_METHOD(
   REQUIRE(tiledb_config_alloc(&cfg, &err) == TILEDB_OK);
   REQUIRE(err == nullptr);
   rc = tiledb_config_set(
-      cfg,
-      "sm.array.open_timestamp_start",
-      std::to_string(timestamp).c_str(),
-      &err);
+      cfg, "sm.array.timestamp_end", std::to_string(timestamp).c_str(), &err);
   REQUIRE(rc == TILEDB_OK);
   REQUIRE(err == nullptr);
   rc = tiledb_array_set_config(ctx_, array, cfg);
@@ -3541,11 +3538,7 @@ TEST_CASE_METHOD(
   CHECK(a1_buffer[0] == 13);
 
   // Reopen the array to see the new fragment
-  tiledb_config_free(&cfg);
-  err = nullptr;
-  REQUIRE(tiledb_config_alloc(&cfg, &err) == TILEDB_OK);
-  REQUIRE(err == nullptr);
-  rc = tiledb_array_set_config(ctx_, array, cfg);
+  rc = tiledb_array_set_config_default(ctx_, array);
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_array_reopen(ctx_, array);
   CHECK(rc == TILEDB_OK);

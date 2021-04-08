@@ -475,7 +475,7 @@ TEST_CASE_METHOD(
   tiledb_error_t* err = nullptr;
   REQUIRE(tiledb_config_alloc(&cfg, &err) == TILEDB_OK);
   REQUIRE(err == nullptr);
-  rc = tiledb_config_set(cfg, "sm.array.open_timestamp_start", "1", &err);
+  rc = tiledb_config_set(cfg, "sm.array.timestamp_end", "1", &err);
   REQUIRE(rc == TILEDB_OK);
   REQUIRE(err == nullptr);
   rc = tiledb_array_set_config(ctx_, array, cfg);
@@ -503,7 +503,7 @@ TEST_CASE_METHOD(
   err = nullptr;
   REQUIRE(tiledb_config_alloc(&cfg, &err) == TILEDB_OK);
   REQUIRE(err == nullptr);
-  rc = tiledb_config_set(cfg, "sm.array.open_timestamp_start", "2", &err);
+  rc = tiledb_config_set(cfg, "sm.array.timestamp_end", "2", &err);
   REQUIRE(rc == TILEDB_OK);
   REQUIRE(err == nullptr);
   rc = tiledb_array_set_config(ctx_, array, cfg);
@@ -599,7 +599,7 @@ TEST_CASE_METHOD(
   err = nullptr;
   REQUIRE(tiledb_config_alloc(&cfg, &err) == TILEDB_OK);
   REQUIRE(err == nullptr);
-  rc = tiledb_config_set(cfg, "sm.array.open_timestamp_start", "1", &err);
+  rc = tiledb_config_set(cfg, "sm.array.timestamp_end", "1", &err);
   REQUIRE(rc == TILEDB_OK);
   REQUIRE(err == nullptr);
   rc = tiledb_array_set_config(ctx_, array, cfg);
@@ -756,10 +756,7 @@ TEST_CASE_METHOD(
   REQUIRE(tiledb_config_alloc(&cfg, &err) == TILEDB_OK);
   REQUIRE(err == nullptr);
   rc = tiledb_config_set(
-      cfg,
-      "sm.array.open_timestamp_start",
-      std::to_string(timestamp).c_str(),
-      &err);
+      cfg, "sm.array.timestamp_end", std::to_string(timestamp).c_str(), &err);
   REQUIRE(rc == TILEDB_OK);
   REQUIRE(err == nullptr);
   rc = tiledb_array_set_config(ctx_, array, cfg);
@@ -837,17 +834,13 @@ TEST_CASE_METHOD(
   REQUIRE(tiledb_config_alloc(&cfg, &err) == TILEDB_OK);
   REQUIRE(err == nullptr);
   rc = tiledb_config_set(
-      cfg,
-      "sm.array.open_timestamp_start",
-      std::to_string(timestamp).c_str(),
-      &err);
+      cfg, "sm.array.timestamp_end", std::to_string(timestamp).c_str(), &err);
   REQUIRE(rc == TILEDB_OK);
   REQUIRE(err == nullptr);
   rc = tiledb_array_set_config(ctx_, array, cfg);
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_array_open(ctx_, array, TILEDB_READ);
   REQUIRE(rc == TILEDB_OK);
-  tiledb_config_free(&cfg);
 
   // Read
   const void* v_r;
@@ -865,10 +858,7 @@ TEST_CASE_METHOD(
   CHECK(num == 2);
 
   // Reopen
-  err = nullptr;
-  REQUIRE(tiledb_config_alloc(&cfg, &err) == TILEDB_OK);
-  REQUIRE(err == nullptr);
-  rc = tiledb_array_set_config(ctx_, array, cfg);
+  rc = tiledb_array_set_config_default(ctx_, array);
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_array_reopen(ctx_, array);
   CHECK(rc == TILEDB_OK);

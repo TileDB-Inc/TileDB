@@ -785,10 +785,7 @@ void write_array(
   REQUIRE(tiledb_config_alloc(&cfg, &err) == TILEDB_OK);
   REQUIRE(err == nullptr);
   rc = tiledb_config_set(
-      cfg,
-      "sm.array.open_timestamp_start",
-      std::to_string(timestamp).c_str(),
-      &err);
+      cfg, "sm.array.timestamp_end", std::to_string(timestamp).c_str(), &err);
   REQUIRE(rc == TILEDB_OK);
   REQUIRE(err == nullptr);
   rc = tiledb_array_set_config(ctx, array, cfg);

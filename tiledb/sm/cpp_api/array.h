@@ -439,6 +439,7 @@ class Array {
   }
 
   /**
+   * This is a deprecated API.
    * @brief Opens the array for a query type, at the given timestamp.
    *
    * This function takes as input a
@@ -469,6 +470,7 @@ class Array {
   }
 
   /**
+   * This is a deprecated API.
    * @copybrief Array::open(tiledb_query_type_t,uint64_t)
    *
    * Same as @ref Array::open(tiledb_query_type_t,uint64_t) "Array::open"
@@ -517,6 +519,7 @@ class Array {
 
   // clang-format off
   /**
+   * This is a deprecated API.
    * @copybrief Array::open(tiledb_query_type_t,tiledb_encryption_type_t,const void*,uint32_t,uint64_t)
    *
    * See @ref Array::open(tiledb_query_type_t,tiledb_encryption_type_t,const void*,uint32_t,uint64_t) "Array::open"
@@ -566,6 +569,7 @@ class Array {
   }
 
   /**
+   * This is a deprecated API.
    * Reopens the array at a specific timestamp.
    *
    * **Example:**
@@ -603,6 +607,15 @@ class Array {
     auto& ctx = ctx_.get();
     ctx.handle_error(tiledb_array_set_config(
         ctx.ptr().get(), array_.get(), config.ptr().get()));
+  }
+
+  /** Retrieves the array config. */
+  tiledb_config_t* get_config() const {
+    auto& ctx = ctx_.get();
+    tiledb_config_t* config = nullptr;
+    ctx.handle_error(
+        tiledb_array_get_config(ctx.ptr().get(), array_.get(), &config));
+    return config;
   }
 
   /**

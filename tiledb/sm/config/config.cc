@@ -63,10 +63,8 @@ const std::string Config::REST_RETRY_HTTP_CODES = "503";
 const std::string Config::REST_RETRY_COUNT = "3";
 const std::string Config::REST_RETRY_INITIAL_DELAY_MS = "500";
 const std::string Config::REST_RETRY_DELAY_FACTOR = "1.25";
-const std::string Config::SM_ARRAY_OPEN_TIMESTAMP_START =
-    std::to_string(UINT64_MAX);
-const std::string Config::SM_ARRAY_OPEN_TIMESTAMP_END =
-    std::to_string(UINT64_MAX);
+const std::string Config::SM_ARRAY_TIMESTAMP_START = "0";
+const std::string Config::SM_ARRAY_TIMESTAMP_END = std::to_string(UINT64_MAX);
 const std::string Config::SM_DEDUP_COORDS = "false";
 const std::string Config::SM_CHECK_COORD_DUPS = "true";
 const std::string Config::SM_CHECK_COORD_OOB = "true";
@@ -192,9 +190,8 @@ Config::Config() {
   param_values_["rest.retry_delay_factor"] = REST_RETRY_DELAY_FACTOR;
   param_values_["config.env_var_prefix"] = CONFIG_ENVIRONMENT_VARIABLE_PREFIX;
   param_values_["config.logging_level"] = CONFIG_LOGGING_LEVEL;
-  param_values_["sm.array.open_timestamp_start"] =
-      SM_ARRAY_OPEN_TIMESTAMP_START;
-  param_values_["sm.array.open_timestamp_end"] = SM_ARRAY_OPEN_TIMESTAMP_END;
+  param_values_["sm.array.timestamp_start"] = SM_ARRAY_TIMESTAMP_START;
+  param_values_["sm.array.timestamp_end"] = SM_ARRAY_TIMESTAMP_END;
   param_values_["sm.dedup_coords"] = SM_DEDUP_COORDS;
   param_values_["sm.check_coord_dups"] = SM_CHECK_COORD_DUPS;
   param_values_["sm.check_coord_oob"] = SM_CHECK_COORD_OOB;
@@ -429,11 +426,10 @@ Status Config::unset(const std::string& param) {
     param_values_["config.env_var_prefix"] = CONFIG_ENVIRONMENT_VARIABLE_PREFIX;
   } else if (param == "config.logging_level") {
     param_values_["config.logging_level"] = CONFIG_LOGGING_LEVEL;
-  } else if (param == "sm.array.open_timestamp_start") {
-    param_values_["sm.array.open_timestamp_start"] =
-        SM_ARRAY_OPEN_TIMESTAMP_START;
-  } else if (param == "sm.array.open_timestamp_end") {
-    param_values_["sm.array.open_timestamp_end"] = SM_ARRAY_OPEN_TIMESTAMP_END;
+  } else if (param == "sm.array.timestamp_start") {
+    param_values_["sm.array.timestamp_start"] = SM_ARRAY_TIMESTAMP_START;
+  } else if (param == "sm.array.timestamp_end") {
+    param_values_["sm.array.timestamp_end"] = SM_ARRAY_TIMESTAMP_END;
   } else if (param == "sm.dedup_coords") {
     param_values_["sm.dedup_coords"] = SM_DEDUP_COORDS;
   } else if (param == "sm.check_coord_dups") {
@@ -655,9 +651,9 @@ Status Config::sanity_check(
     RETURN_NOT_OK(serialization_type_enum(value, &serialization_type));
   } else if (param == "config.logging_level") {
     RETURN_NOT_OK(utils::parse::convert(value, &v32));
-  } else if (param == "sm.array.open_timestamp_start") {
+  } else if (param == "sm.array.timestamp_start") {
     RETURN_NOT_OK(utils::parse::convert(value, &vuint64));
-  } else if (param == "sm.array.open_timestamp_end") {
+  } else if (param == "sm.array.timestamp_end") {
     RETURN_NOT_OK(utils::parse::convert(value, &vuint64));
   } else if (param == "sm.dedup_coords") {
     RETURN_NOT_OK(utils::parse::convert(value, &v));

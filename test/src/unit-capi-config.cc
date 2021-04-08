@@ -222,8 +222,8 @@ void check_save_to_file() {
   ss << "rest.retry_initial_delay_ms 500\n";
   ss << "rest.server_address https://api.tiledb.com\n";
   ss << "rest.server_serialization_format CAPNP\n";
-  ss << "sm.array.open_timestamp_end " << std::to_string(UINT64_MAX) << "\n";
-  ss << "sm.array.open_timestamp_start " << std::to_string(UINT64_MAX) << "\n";
+  ss << "sm.array.timestamp_end " << std::to_string(UINT64_MAX) << "\n";
+  ss << "sm.array.timestamp_start 0\n";
   ss << "sm.check_coord_dups true\n";
   ss << "sm.check_coord_oob true\n";
   ss << "sm.check_global_order true\n";
@@ -521,9 +521,8 @@ TEST_CASE("C API: Test config iter", "[capi], [config]") {
   all_param_values["rest.retry_delay_factor"] = "1.25";
   all_param_values["rest.retry_initial_delay_ms"] = "500";
   all_param_values["rest.retry_http_codes"] = "503";
-  all_param_values["sm.array.open_timestamp_start"] =
-      std::to_string(UINT64_MAX);
-  all_param_values["sm.array.open_timestamp_end"] = std::to_string(UINT64_MAX);
+  all_param_values["sm.array.timestamp_start"] = "0";
+  all_param_values["sm.array.timestamp_end"] = std::to_string(UINT64_MAX);
   all_param_values["sm.dedup_coords"] = "false";
   all_param_values["sm.check_coord_dups"] = "true";
   all_param_values["sm.check_coord_oob"] = "true";

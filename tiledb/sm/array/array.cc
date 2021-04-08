@@ -64,7 +64,7 @@ Array::Array(const URI& array_uri, StorageManager* storage_manager)
     , storage_manager_(storage_manager) {
   is_open_ = false;
   array_schema_ = nullptr;
-  timestamp_ = 0;
+  timestamp_end_ = 0;
   remote_ = array_uri.is_tiledb();
   metadata_loaded_ = false;
   non_empty_domain_computed_ = false;
@@ -125,7 +125,7 @@ Status Array::open(
   RETURN_NOT_OK(
       encryption_key_->set_key(encryption_type, encryption_key, key_length));
 
-  timestamp_ = timestamp;
+  timestamp_end_ = timestamp;
   metadata_.clear();
   metadata_loaded_ = false;
   non_empty_domain_computed_ = false;
@@ -141,14 +141,14 @@ Status Array::open(
   } else if (query_type == QueryType::READ) {
     RETURN_NOT_OK(storage_manager_->array_open_for_reads(
         array_uri_,
-        timestamp_,
-        *encryption_key_,
+        timestamp_end_,
+        encryption_key_,
         &array_schema_,
         &fragment_metadata_));
   } else {
     RETURN_NOT_OK(storage_manager_->array_open_for_writes(
-        array_uri_, *encryption_key_, &array_schema_));
-    metadata_.reset(timestamp_);
+        array_uri_, encryption_key_, &array_schema_));
+    metadata_.reset(timestamp_end_);
   }
 
   is_open_ = true;
@@ -182,7 +182,7 @@ Status Array::open(
   RETURN_NOT_OK(
       encryption_key_->set_key(encryption_type, encryption_key, key_length));
 
-  timestamp_ = utils::time::timestamp_now_ms();
+  timestamp_end_ = utils::time::timestamp_now_ms();
   metadata_.clear();
   metadata_loaded_ = false;
   non_empty_domain_computed_ = false;
@@ -234,23 +234,23 @@ Status Array::open(
   non_empty_domain_computed_ = false;
 
   bool found = false;
-  uint64_t timestamp_cfg = 0;
-  RETURN_NOT_OK(config_.get<uint64_t>(
-      "sm.array.open_timestamp_start", &timestamp_cfg, &found));
+  uint64_t timestamp_end = 0;
+  RETURN_NOT_OK(
+      config_.get<uint64_t>("sm.array.timestamp_end", &timestamp_end, &found));
   assert(found);
 
   if (query_type == QueryType::READ) {
-    if (timestamp_cfg == UINT64_MAX) {
-      timestamp_ = utils::time::timestamp_now_ms();
+    if (timestamp_end == UINT64_MAX) {
+      timestamp_end_ = utils::time::timestamp_now_ms();
     } else {
-      timestamp_ = timestamp_cfg;
+      timestamp_end_ = timestamp_end;
     }
   } else {
     assert(query_type == QueryType::WRITE);
-    if (timestamp_cfg == UINT64_MAX) {
-      timestamp_ = 0;
+    if (timestamp_end == UINT64_MAX) {
+      timestamp_end_ = 0;
     } else {
-      timestamp_ = timestamp_cfg;
+      timestamp_end_ = timestamp_end;
     }
   }
 
@@ -264,14 +264,14 @@ Status Array::open(
   } else if (query_type == QueryType::READ) {
     RETURN_NOT_OK(storage_manager_->array_open_for_reads(
         array_uri_,
-        timestamp_,
-        *encryption_key_,
+        timestamp_end_,
+        encryption_key_,
         &array_schema_,
         &fragment_metadata_));
   } else {
     RETURN_NOT_OK(storage_manager_->array_open_for_writes(
-        array_uri_, *encryption_key_, &array_schema_));
-    metadata_.reset(timestamp_);
+        array_uri_, encryption_key_, &array_schema_));
+    metadata_.reset(timestamp_end_);
   }
 
   query_type_ = query_type;
@@ -491,17 +491,17 @@ const EncryptionKey& Array::get_encryption_key() const {
 
 Status Array::reopen() {
   bool found = false;
-  uint64_t timestamp_cfg = 0;
-  RETURN_NOT_OK(config_.get<uint64_t>(
-      "sm.array.open_timestamp_start", &timestamp_cfg, &found));
+  uint64_t timestamp_end = 0;
+  RETURN_NOT_OK(
+      config_.get<uint64_t>("sm.array.timestamp_end", &timestamp_end, &found));
   assert(found);
 
-  if (timestamp_cfg == UINT64_MAX) {
-    timestamp_ = utils::time::timestamp_now_ms();
+  if (timestamp_end == UINT64_MAX) {
+    timestamp_end_ = utils::time::timestamp_now_ms();
   } else {
-    timestamp_ = timestamp_cfg;
+    timestamp_end_ = timestamp_end;
   }
-  return reopen(timestamp_);
+  return reopen(timestamp_end_);
 }
 
 Status Array::reopen(uint64_t timestamp) {
@@ -518,7 +518,7 @@ Status Array::reopen(uint64_t timestamp) {
 
   clear_last_max_buffer_sizes();
 
-  timestamp_ = timestamp;
+  timestamp_end_ = timestamp;
   fragment_metadata_.clear();
   metadata_.clear();
   metadata_loaded_ = false;
@@ -535,8 +535,8 @@ Status Array::reopen(uint64_t timestamp) {
 
   RETURN_NOT_OK(storage_manager_->array_reopen(
       array_uri_,
-      timestamp_,
-      *encryption_key_,
+      timestamp_end_,
+      encryption_key_,
       &array_schema_,
       &fragment_metadata_));
 
@@ -545,18 +545,27 @@ Status Array::reopen(uint64_t timestamp) {
 
 uint64_t Array::timestamp() const {
   std::unique_lock<std::mutex> lck(mtx_);
-  return timestamp_;
+  return timestamp_end_;
 }
 
 Status Array::set_timestamp(uint64_t timestamp) {
   std::unique_lock<std::mutex> lck(mtx_);
-  timestamp_ = timestamp;
+  timestamp_end_ = timestamp;
   return Status::Ok();
 }
 
-Status Array::set_config(const Config& config) {
-  config_ = config;
+Status Array::set_config() {
+  config_ = storage_manager_->config();
   return Status::Ok();
+}
+
+Status Array::set_config(Config config) {
+  config_.inherit(config);
+  return Status::Ok();
+}
+
+Config Array::get_config() const {
+  return config_;
 }
 
 Status Array::set_uri(const std::string& uri) {
@@ -886,10 +895,10 @@ Status Array::load_metadata() {
       return LOG_STATUS(Status::ArrayError(
           "Cannot load metadata; remote array with no REST client."));
     RETURN_NOT_OK(rest_client->get_array_metadata_from_rest(
-        array_uri_, timestamp_, this));
+        array_uri_, timestamp_end_, this));
   } else {
     RETURN_NOT_OK(storage_manager_->load_array_metadata(
-        array_uri_, *encryption_key_, timestamp_, &metadata_));
+        array_uri_, encryption_key_, timestamp_end_, &metadata_));
   }
   metadata_loaded_ = true;
   return Status::Ok();
@@ -901,7 +910,8 @@ Status Array::load_remote_non_empty_domain() {
     if (rest_client == nullptr)
       return LOG_STATUS(Status::ArrayError(
           "Cannot load metadata; remote array with no REST client."));
-    RETURN_NOT_OK(rest_client->get_array_non_empty_domain(this, timestamp_));
+    RETURN_NOT_OK(
+        rest_client->get_array_non_empty_domain(this, timestamp_end_));
     non_empty_domain_computed_ = true;
   }
   return Status::Ok();

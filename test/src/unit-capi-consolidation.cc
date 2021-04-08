@@ -598,7 +598,7 @@ void ConsolidationFx::write_dense_vector_4_fragments(uint64_t timestamp) {
   REQUIRE(err == nullptr);
   rc = tiledb_config_set(
       cfg,
-      "sm.array.open_timestamp_start",
+      "sm.array.timestamp_end",
       std::to_string(timestamp + 1).c_str(),
       &err);
   REQUIRE(rc == TILEDB_OK);
@@ -643,7 +643,7 @@ void ConsolidationFx::write_dense_vector_4_fragments(uint64_t timestamp) {
   REQUIRE(err == nullptr);
   rc = tiledb_config_set(
       cfg,
-      "sm.array.open_timestamp_start",
+      "sm.array.timestamp_end",
       std::to_string(timestamp + 2).c_str(),
       &err);
   REQUIRE(rc == TILEDB_OK);
@@ -688,7 +688,7 @@ void ConsolidationFx::write_dense_vector_4_fragments(uint64_t timestamp) {
   REQUIRE(err == nullptr);
   rc = tiledb_config_set(
       cfg,
-      "sm.array.open_timestamp_start",
+      "sm.array.timestamp_end",
       std::to_string(timestamp + 3).c_str(),
       &err);
   REQUIRE(rc == TILEDB_OK);
@@ -732,7 +732,7 @@ void ConsolidationFx::write_dense_vector_4_fragments(uint64_t timestamp) {
   REQUIRE(err == nullptr);
   rc = tiledb_config_set(
       cfg,
-      "sm.array.open_timestamp_start",
+      "sm.array.timestamp_end",
       std::to_string(timestamp + 4).c_str(),
       &err);
   REQUIRE(rc == TILEDB_OK);
@@ -2395,10 +2395,7 @@ void ConsolidationFx::read_dense_vector(uint64_t timestamp) {
   REQUIRE(tiledb_config_alloc(&cfg, &err) == TILEDB_OK);
   REQUIRE(err == nullptr);
   rc = tiledb_config_set(
-      cfg,
-      "sm.array.open_timestamp_start",
-      std::to_string(timestamp).c_str(),
-      &err);
+      cfg, "sm.array.timestamp_end", std::to_string(timestamp).c_str(), &err);
   REQUIRE(rc == TILEDB_OK);
   REQUIRE(err == nullptr);
   rc = tiledb_array_set_config(ctx_, array, cfg);
@@ -5267,7 +5264,7 @@ TEST_CASE_METHOD(
   tiledb_error_t* err = nullptr;
   REQUIRE(tiledb_config_alloc(&cfg, &err) == TILEDB_OK);
   REQUIRE(err == nullptr);
-  rc = tiledb_config_set(cfg, "sm.array.open_timestamp_start", "1", &err);
+  rc = tiledb_config_set(cfg, "sm.array.timestamp_end", "1", &err);
   REQUIRE(rc == TILEDB_OK);
   REQUIRE(err == nullptr);
   rc = tiledb_array_set_config(ctx_, array, cfg);

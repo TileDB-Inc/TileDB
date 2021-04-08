@@ -82,7 +82,7 @@ class Array {
   const URI& array_uri() const;
 
   /**
-   * Opens the array for reading at a timstamp retrived from the config
+   * Opens the array for reading at a timestamp retrieved from the config
    * or for writing.
    *
    * @param query_type The mode in which the array is opened.
@@ -219,8 +219,14 @@ class Array {
   /** Directly set the timestamp value. */
   Status set_timestamp(uint64_t timestamp);
 
+  /** Directly set the array config with default parameters. */
+  Status set_config();
+
   /** Directly set the array config. */
-  Status set_config(const Config& config);
+  Status set_config(Config config);
+
+  /** Retrieves a reference to the array config. */
+  Config get_config() const;
 
   /** Directly set the array URI. */
   Status set_uri(const std::string& uri);
@@ -332,9 +338,6 @@ class Array {
   /** The array URI. */
   URI array_uri_;
 
-  /** The array config. */
-  Config config_;
-
   /**
    * The private encryption key used to encrypt the array.
    *
@@ -357,10 +360,13 @@ class Array {
    * The timestamp at which the `open_array_` got opened. In TileDB,
    * timestamps are in ms elapsed since 1970-01-01 00:00:00 +0000 (UTC).
    */
-  uint64_t timestamp_;
+  uint64_t timestamp_end_;
 
   /** TileDB storage manager. */
   StorageManager* storage_manager_;
+
+  /** The array config. */
+  Config config_ = storage_manager_->config();
 
   /** Stores the max buffer sizes requested last time by the user .*/
   std::unordered_map<std::string, std::pair<uint64_t, uint64_t>>
