@@ -438,15 +438,15 @@ TEST_CASE(
   }
   CHECK(buffer.size() == tile_size);
 
-  ChunkedBuffer chunked_buffer;
+  ChunkedBuffer* const chunked_buffer = new ChunkedBuffer();
   CHECK(Tile::buffer_to_contiguous_fixed_chunks(
-            buffer, dim_num, cell_size, &chunked_buffer)
+            buffer, dim_num, cell_size, chunked_buffer)
             .ok());
 
   // Instantiate the first test tile that does NOT own 'chunked_buffer'.
   bool owns_buff = false;
   std::unique_ptr<Tile> tile1(
-      new Tile(data_type, cell_size, dim_num, &chunked_buffer, owns_buff));
+      new Tile(data_type, cell_size, dim_num, chunked_buffer, owns_buff));
   CHECK(tile1);
   CHECK(tile1->size() == tile_size);
   CHECK(!tile1->full());
@@ -492,13 +492,13 @@ TEST_CASE(
   // Free tile1 and ensure that buffer is still valid.
   uint32_t* const buffer_copy = static_cast<uint32_t*>(malloc(tile_size));
   memcpy(buffer_copy, buffer.data(), tile_size);
-  tile1.release();
+  tile1.reset();
   CHECK(memcmp(buffer_copy, buffer.data(), tile_size) == 0);
 
   // Instantiate the second test tile that does own 'chunked_buffer'.
   owns_buff = true;
   std::unique_ptr<Tile> tile2(
-      new Tile(data_type, cell_size, dim_num, &chunked_buffer, owns_buff));
+      new Tile(data_type, cell_size, dim_num, chunked_buffer, owns_buff));
   CHECK(tile2);
   CHECK(!tile2->empty());
   CHECK(!tile2->full());
@@ -531,7 +531,7 @@ TEST_CASE(
 
   // Disown 'buffer' because the destructor of 'tile2' will delete it.
   buffer.disown_data();
-  tile2.release();
+  tile2.reset();
 
   free(buffer_copy);
   free(read_buffer);
