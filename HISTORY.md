@@ -37,6 +37,7 @@
 ## Deprecations
 
 ## Bug fixes
+* Fixes a potential memory leak in the filter pipeline [#2185](https://github.com/TileDB-Inc/TileDB/pull/2185)
 * Fixes misc memory leaks in the unit tests [#2183](https://github.com/TileDB-Inc/TileDB/pull/2183)
 * Fix memory leak of `tiledb_config_t` in error path of `tiledb_config_alloc`. [#2178](https://github.com/TileDB-Inc/TileDB/pull/2178)
 
