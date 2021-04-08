@@ -457,7 +457,7 @@ Status Reader::set_buffer(
 
   // Must not be nullable
   if (array_schema_->is_nullable(name))
-    return LOG_STATUS(Status::WriterError(
+    return LOG_STATUS(Status::ReaderError(
         std::string("Cannot set buffer; Input attribute/dimension '") + name +
         "' is nullable"));
 
@@ -533,7 +533,7 @@ Status Reader::set_buffer(
 
   // Must not be nullable
   if (array_schema_->is_nullable(name))
-    return LOG_STATUS(Status::WriterError(
+    return LOG_STATUS(Status::ReaderError(
         std::string("Cannot set buffer; Input attribute/dimension '") + name +
         "' is nullable"));
 
@@ -590,19 +590,19 @@ Status Reader::set_buffer(
 
   // Must be an attribute
   if (!array_schema_->is_attr(name))
-    return LOG_STATUS(Status::WriterError(
+    return LOG_STATUS(Status::ReaderError(
         std::string("Cannot set buffer; Buffer name '") + name +
         "' is not an attribute"));
 
   // Must be fixed-size
   if (array_schema_->var_size(name))
-    return LOG_STATUS(Status::WriterError(
+    return LOG_STATUS(Status::ReaderError(
         std::string("Cannot set buffer; Input attribute '") + name +
         "' is var-sized"));
 
   // Must be nullable
   if (!array_schema_->is_nullable(name))
-    return LOG_STATUS(Status::WriterError(
+    return LOG_STATUS(Status::ReaderError(
         std::string("Cannot set buffer; Input attribute '") + name +
         "' is not nullable"));
 
@@ -666,19 +666,19 @@ Status Reader::set_buffer(
 
   // Must be an attribute
   if (!array_schema_->is_attr(name))
-    return LOG_STATUS(Status::WriterError(
+    return LOG_STATUS(Status::ReaderError(
         std::string("Cannot set buffer; Buffer name '") + name +
         "' is not an attribute"));
 
   // Must be fixed-size
   if (!array_schema_->var_size(name))
-    return LOG_STATUS(Status::WriterError(
+    return LOG_STATUS(Status::ReaderError(
         std::string("Cannot set buffer; Input attribute '") + name +
         "' is fixed-sized"));
 
   // Must be nullable
   if (!array_schema_->is_nullable(name))
-    return LOG_STATUS(Status::WriterError(
+    return LOG_STATUS(Status::ReaderError(
         std::string("Cannot set buffer; Input attribute '") + name +
         "' is not nullable"));
 
