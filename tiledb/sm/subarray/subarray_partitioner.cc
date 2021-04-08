@@ -1114,10 +1114,44 @@ bool SubarrayPartitioner::must_split(Subarray* partition) {
     }
 
     // Check for budget overflow
-    if (size_fixed > b.second.size_fixed_ || size_var > b.second.size_var_ ||
-        size_validity > b.second.size_validity_ ||
-        mem_size_fixed > memory_budget_ || mem_size_var > memory_budget_var_ ||
-        mem_size_validity > memory_budget_validity_) {
+    if ((size_fixed <= mem_size_fixed && size_fixed > b.second.size_fixed_)) {
+      std::cout << name << " must split because size_fixed - " << size_fixed
+                << " <= " << mem_size_fixed << " && " << size_fixed << " > "
+                << b.second.size_fixed_ << std::endl;
+      must_split = true;
+      break;
+    }
+    if (size_var <= mem_size_var && size_var > b.second.size_var_) {
+      std::cout << name << " must split because size_var - " << size_var
+                << " <= " << mem_size_var << " && " << size_var << " > "
+                << b.second.size_var_ << std::endl;
+      must_split = true;
+      break;
+    }
+    if (size_validity <= mem_size_validity &&
+        size_validity > b.second.size_validity_) {
+      std::cout << name << " must split because size_validity - " << size_validity
+                << " <= " << mem_size_validity << " && " << size_validity
+                << " > " << b.second.size_validity_ << std::endl;
+      must_split = true;
+      break;
+    }
+    if (mem_size_fixed > memory_budget_) {
+      std::cout << name << " must split because mem_size_fixed - " << mem_size_fixed
+                << " > " << memory_budget_ << std::endl;
+      must_split = true;
+      break;
+    }
+    if (mem_size_var > memory_budget_var_) {
+      std::cout << name << " must split because mem_size_var - " << mem_size_var << " > "
+                << memory_budget_var_ << std::endl;
+      must_split = true;
+      break;
+    }
+    if (mem_size_validity > memory_budget_validity_) {
+      std::cout << name << " must split because mem_size_validity - "
+                << mem_size_validity << " > " << memory_budget_validity_
+                << std::endl;
       must_split = true;
       break;
     }
