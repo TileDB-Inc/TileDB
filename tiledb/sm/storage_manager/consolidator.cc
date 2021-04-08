@@ -600,8 +600,10 @@ Status Consolidator::create_buffers(
 
   // Calculate number of buffers
   size_t buffer_num = 0;
-  for (unsigned i = 0; i < attribute_num; ++i)
+  for (unsigned i = 0; i < attribute_num; ++i) {
     buffer_num += (array_schema->attributes()[i]->var_size()) ? 2 : 1;
+    buffer_num += (array_schema->attributes()[i]->nullable()) ? 1 : 0;
+  }
   if (sparse) {
     for (unsigned i = 0; i < dim_num; ++i)
       buffer_num += (domain->dimension(i)->var_size()) ? 2 : 1;
@@ -813,17 +815,39 @@ Status Consolidator::set_query_buffers(
   unsigned bid = 0;
   for (const auto& attr : attributes) {
     if (!attr->var_size()) {
-      RETURN_NOT_OK(query->set_buffer(
-          attr->name(), (void*)&(*buffers)[bid][0], &(*buffer_sizes)[bid]));
-      ++bid;
+      if (!attr->nullable()) {
+        RETURN_NOT_OK(query->set_buffer(
+            attr->name(), (void*)&(*buffers)[bid][0], &(*buffer_sizes)[bid]));
+        ++bid;
+      } else {
+        RETURN_NOT_OK(query->set_buffer_vbytemap(
+            attr->name(),
+            (void*)&(*buffers)[bid][0],
+            &(*buffer_sizes)[bid],
+            (uint8_t*)&(*buffers)[bid + 1][0],
+            &(*buffer_sizes)[bid + 1]));
+        bid += 2;
+      }
     } else {
-      RETURN_NOT_OK(query->set_buffer(
-          attr->name(),
-          (uint64_t*)&(*buffers)[bid][0],
-          &(*buffer_sizes)[bid],
-          (void*)&(*buffers)[bid + 1][0],
-          &(*buffer_sizes)[bid + 1]));
-      bid += 2;
+      if (!attr->nullable()) {
+        RETURN_NOT_OK(query->set_buffer(
+            attr->name(),
+            (uint64_t*)&(*buffers)[bid][0],
+            &(*buffer_sizes)[bid],
+            (void*)&(*buffers)[bid + 1][0],
+            &(*buffer_sizes)[bid + 1]));
+        bid += 2;
+      } else {
+        RETURN_NOT_OK(query->set_buffer_vbytemap(
+            attr->name(),
+            (uint64_t*)&(*buffers)[bid][0],
+            &(*buffer_sizes)[bid],
+            (void*)&(*buffers)[bid + 1][0],
+            &(*buffer_sizes)[bid + 1],
+            (uint8_t*)&(*buffers)[bid + 2][0],
+            &(*buffer_sizes)[bid + 2]));
+        bid += 3;
+      }
     }
   }
   if (!dense || sparse_mode) {

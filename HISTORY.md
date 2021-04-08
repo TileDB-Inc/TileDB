@@ -17,6 +17,7 @@
 * Smoke Test, remove nullable structs from global namespace. [#2078](https://github.com/TileDB-Inc/TileDB/pull/2078)
 
 ## Improvements
+* Consolidation support for nullable attributes [#2196](https://github.com/TileDB-Inc/TileDB/pull/2196)
 * Adjust unit tests to reduce memory leaks inside the tests. [#2179](https://github.com/TileDB-Inc/TileDB/pull/2179)
 * Reduces memory usage in multi-range range reads [#2165](https://github.com/TileDB-Inc/TileDB/pull/2165)
 * Add config option `sm.read_range_oob` to toggle bounding read ranges to domain or erroring [#2162](https://github.com/TileDB-Inc/TileDB/pull/2162)
