@@ -793,12 +793,74 @@ Status SubarrayPartitioner::compute_current_start_end(bool* found) {
       mem_size.size_fixed_ += memory_sizes[r][i].size_fixed_;
       mem_size.size_var_ += memory_sizes[r][i].size_var_;
       mem_size.size_validity_ += memory_sizes[r][i].size_validity_;
+
+      if (cur_size.size_fixed_ > mem_size.size_fixed_) {
+        std::cout << "caping cur_size.size_fixed to " << cur_size.size_fixed_
+                  << " because " << mem_size.size_fixed_ << " > "
+                  << mem_size.size_fixed_ << std::endl;
+        cur_size.size_fixed_ = mem_size.size_fixed_;
+      }
+      if (cur_size.size_var_ > mem_size.size_var_) {
+        std::cout << "caping cur_size.size_var_ to " << cur_size.size_var_
+                  << " because " << mem_size.size_var_ << " > "
+                  << mem_size.size_var_ << std::endl;
+        cur_size.size_var_ = mem_size.size_var_;
+      }
+      if (cur_size.size_validity_ > mem_size.size_validity_) {
+        std::cout << "caping cur_size.size_validity_ to "
+                  << cur_size.size_validity_ << " because "
+                  << mem_size.size_validity_ << " > " << mem_size.size_validity_
+                  << std::endl;
+        cur_size.size_validity_ = mem_size.size_validity_;
+      }
+
       if (cur_size.size_fixed_ > budget.size_fixed_ ||
           cur_size.size_var_ > budget.size_var_ ||
           cur_size.size_validity_ > budget.size_validity_ ||
           mem_size.size_fixed_ > memory_budget_ ||
           mem_size.size_var_ > memory_budget_var_ ||
           mem_size.size_validity_ > memory_budget_validity_) {
+        if (cur_size.size_fixed_ > budget.size_fixed_) {
+          std::cout << names[i]
+                    << " found is false cause cur_size.size_fixed_: "
+                    << cur_size.size_fixed_ << " > " << budget.size_fixed_
+                    << std::endl;
+        }
+
+        if (cur_size.size_var_ > budget.size_var_) {
+          std::cout << names[i] << " found is false cause cur_size.size_var_: "
+                    << cur_size.size_var_ << " > " << budget.size_var_
+                    << std::endl;
+        }
+
+        if (cur_size.size_validity_ > budget.size_validity_) {
+          std::cout << names[i]
+                    << " found is false cause cur_size.size_validity_: "
+                    << cur_size.size_validity_ << " > " << budget.size_validity_
+                    << std::endl;
+        }
+
+        if (mem_size.size_fixed_ > memory_budget_) {
+          std::cout << names[i]
+                    << " found is false cause cur_size.mem_size.size_fixed_: "
+                    << mem_size.size_fixed_ << " > " << memory_budget_
+                    << std::endl;
+        }
+
+        if (mem_size.size_var_ > memory_budget_var_) {
+          std::cout << names[i]
+                    << " found is false cause cur_size.mem_size.size_var_: "
+                    << mem_size.size_var_ << " > " << memory_budget_var_
+                    << std::endl;
+        }
+
+        if (mem_size.size_validity_ > memory_budget_validity_) {
+          std::cout << names[i]
+                    << " found is false cause  mem_size.size_validity_: "
+                    << mem_size.size_validity_ << " > "
+                    << memory_budget_validity_ << std::endl;
+        }
+
         // Cannot find range that fits in the buffer
         if (current_.end_ == current_.start_) {
           *found = false;
@@ -1130,21 +1192,22 @@ bool SubarrayPartitioner::must_split(Subarray* partition) {
     }
     if (size_validity <= mem_size_validity &&
         size_validity > b.second.size_validity_) {
-      std::cout << name << " must split because size_validity - " << size_validity
-                << " <= " << mem_size_validity << " && " << size_validity
-                << " > " << b.second.size_validity_ << std::endl;
+      std::cout << name << " must split because size_validity - "
+                << size_validity << " <= " << mem_size_validity << " && "
+                << size_validity << " > " << b.second.size_validity_
+                << std::endl;
       must_split = true;
       break;
     }
     if (mem_size_fixed > memory_budget_) {
-      std::cout << name << " must split because mem_size_fixed - " << mem_size_fixed
-                << " > " << memory_budget_ << std::endl;
+      std::cout << name << " must split because mem_size_fixed - "
+                << mem_size_fixed << " > " << memory_budget_ << std::endl;
       must_split = true;
       break;
     }
     if (mem_size_var > memory_budget_var_) {
-      std::cout << name << " must split because mem_size_var - " << mem_size_var << " > "
-                << memory_budget_var_ << std::endl;
+      std::cout << name << " must split because mem_size_var - " << mem_size_var
+                << " > " << memory_budget_var_ << std::endl;
       must_split = true;
       break;
     }
