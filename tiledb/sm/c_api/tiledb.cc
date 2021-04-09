@@ -3558,18 +3558,6 @@ int32_t tiledb_array_set_config(
   return TILEDB_OK;
 }
 
-int32_t tiledb_array_set_config_default(
-    tiledb_ctx_t* ctx, tiledb_array_t* array) {
-  // Sanity check
-  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, array) == TILEDB_ERR)
-    return TILEDB_ERR;
-
-  if (SAVE_ERROR_CATCH(ctx, array->array_->set_config()))
-    return TILEDB_ERR;
-
-  return TILEDB_OK;
-}
-
 int32_t tiledb_array_get_config(
     tiledb_ctx_t* ctx, tiledb_array_t* array, tiledb_config_t** config) {
   // Sanity check

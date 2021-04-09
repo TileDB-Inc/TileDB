@@ -4817,29 +4817,6 @@ TILEDB_EXPORT int32_t tiledb_array_set_config(
     tiledb_ctx_t* ctx, tiledb_array_t* array, tiledb_config_t* config);
 
 /**
- * Sets the array config to the default config.
- *
- * **Example:**
- *
- * @code{.c}
- * tiledb_array_t* array;
- * tiledb_array_alloc(ctx, "s3://tiledb_bucket/my_array", &array);
- * tiledb_array_open(ctx, array, TILEDB_READ);
- * // Set the config for the given array.
- * tiledb_array_set_config_default(ctx, array);
- * @endcode
- *
- * @param ctx The TileDB context.
- * @param array The array to set the config for.
- * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
- *
- * @note The array does not need to be opened via `tiledb_array_open_at` to use
- *      this function.
- */
-TILEDB_EXPORT int32_t
-tiledb_array_set_config_default(tiledb_ctx_t* ctx, tiledb_array_t* array);
-
-/**
  * Gets the array config.
  *
  * **Example:**

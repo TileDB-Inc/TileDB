@@ -65,9 +65,11 @@ Array::Array(const URI& array_uri, StorageManager* storage_manager)
   is_open_ = false;
   array_schema_ = nullptr;
   timestamp_end_ = 0;
+  timestamp_start_ = 0;
   remote_ = array_uri.is_tiledb();
   metadata_loaded_ = false;
   non_empty_domain_computed_ = false;
+  config_ = storage_manager_->config();
 };
 
 Array::Array(const Array& rhs)
@@ -141,10 +143,10 @@ Status Array::open(
   } else if (query_type == QueryType::READ) {
     RETURN_NOT_OK(storage_manager_->array_open_for_reads(
         array_uri_,
-        timestamp_end_,
         encryption_key_,
         &array_schema_,
-        &fragment_metadata_));
+        &fragment_metadata_,
+        timestamp_end_));
   } else {
     RETURN_NOT_OK(storage_manager_->array_open_for_writes(
         array_uri_, encryption_key_, &array_schema_));
@@ -238,6 +240,10 @@ Status Array::open(
   RETURN_NOT_OK(
       config_.get<uint64_t>("sm.array.timestamp_end", &timestamp_end, &found));
   assert(found);
+  uint64_t timestamp_start = 0;
+  RETURN_NOT_OK(config_.get<uint64_t>(
+      "sm.array.timestamp_start", &timestamp_start, &found));
+  assert(found);
 
   if (query_type == QueryType::READ) {
     if (timestamp_end == UINT64_MAX) {
@@ -245,6 +251,7 @@ Status Array::open(
     } else {
       timestamp_end_ = timestamp_end;
     }
+    timestamp_start_ = timestamp_start;
   } else {
     assert(query_type == QueryType::WRITE);
     if (timestamp_end == UINT64_MAX) {
@@ -252,6 +259,7 @@ Status Array::open(
     } else {
       timestamp_end_ = timestamp_end;
     }
+    timestamp_start_ = timestamp_start;
   }
 
   if (remote_) {
@@ -264,10 +272,11 @@ Status Array::open(
   } else if (query_type == QueryType::READ) {
     RETURN_NOT_OK(storage_manager_->array_open_for_reads(
         array_uri_,
-        timestamp_end_,
         encryption_key_,
         &array_schema_,
-        &fragment_metadata_));
+        &fragment_metadata_,
+        timestamp_end_,
+        timestamp_start_));
   } else {
     RETURN_NOT_OK(storage_manager_->array_open_for_writes(
         array_uri_, encryption_key_, &array_schema_));
@@ -495,16 +504,21 @@ Status Array::reopen() {
   RETURN_NOT_OK(
       config_.get<uint64_t>("sm.array.timestamp_end", &timestamp_end, &found));
   assert(found);
+  uint64_t timestamp_start = 0;
+  RETURN_NOT_OK(config_.get<uint64_t>(
+      "sm.array.timestamp_start", &timestamp_start, &found));
+  assert(found);
 
   if (timestamp_end == UINT64_MAX) {
     timestamp_end_ = utils::time::timestamp_now_ms();
   } else {
     timestamp_end_ = timestamp_end;
   }
-  return reopen(timestamp_end_);
+  timestamp_start_ = timestamp_start;
+  return reopen(timestamp_end_, timestamp_start_);
 }
 
-Status Array::reopen(uint64_t timestamp) {
+Status Array::reopen(uint64_t timestamp_end, uint64_t timestamp_start) {
   std::unique_lock<std::mutex> lck(mtx_);
 
   if (!is_open_)
@@ -518,7 +532,8 @@ Status Array::reopen(uint64_t timestamp) {
 
   clear_last_max_buffer_sizes();
 
-  timestamp_end_ = timestamp;
+  timestamp_end_ = timestamp_end;
+  timestamp_start_ = timestamp_start;
   fragment_metadata_.clear();
   metadata_.clear();
   metadata_loaded_ = false;
@@ -535,10 +550,11 @@ Status Array::reopen(uint64_t timestamp) {
 
   RETURN_NOT_OK(storage_manager_->array_reopen(
       array_uri_,
-      timestamp_end_,
       encryption_key_,
       &array_schema_,
-      &fragment_metadata_));
+      &fragment_metadata_,
+      timestamp_end_,
+      timestamp_start_));
 
   return Status::Ok();
 }
@@ -551,11 +567,6 @@ uint64_t Array::timestamp() const {
 Status Array::set_timestamp(uint64_t timestamp) {
   std::unique_lock<std::mutex> lck(mtx_);
   timestamp_end_ = timestamp;
-  return Status::Ok();
-}
-
-Status Array::set_config() {
-  config_ = storage_manager_->config();
   return Status::Ok();
 }
 

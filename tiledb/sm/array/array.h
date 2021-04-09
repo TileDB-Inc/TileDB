@@ -206,21 +206,19 @@ class Array {
   Status reopen();
 
   /**
-   * Re-opens the array at a specific timestamp.
+   * Re-opens the array at a specific timestamp. If `timestamp_start` is
+   * provided, this will re-open the array between the two timestamps.
    *
    * @note Applicable only for reads, it errors if the array was opened
    *     for writes.
    */
-  Status reopen(uint64_t timestamp);
+  Status reopen(uint64_t timestamp_end, uint64_t timestamp_start = 0);
 
   /** Returns the timestamp at which the array was opened. */
   uint64_t timestamp() const;
 
   /** Directly set the timestamp value. */
   Status set_timestamp(uint64_t timestamp);
-
-  /** Directly set the array config with default parameters. */
-  Status set_config();
 
   /** Directly set the array config. */
   Status set_config(Config config);
@@ -362,11 +360,16 @@ class Array {
    */
   uint64_t timestamp_end_;
 
+  /**
+   * The optional timestamp between which the `open_array_` got opened.
+   */
+  uint64_t timestamp_start_;
+
   /** TileDB storage manager. */
   StorageManager* storage_manager_;
 
   /** The array config. */
-  Config config_ = storage_manager_->config();
+  Config config_;
 
   /** Stores the max buffer sizes requested last time by the user .*/
   std::unordered_map<std::string, std::pair<uint64_t, uint64_t>>

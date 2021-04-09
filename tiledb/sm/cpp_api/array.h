@@ -162,15 +162,16 @@ class Array {
   }
 
   /**
+   * This is a deprecated constructor.
    * @brief Constructor. This opens the array for the given query type at the
-   * given timestamp. The destructor calls the `close()` method.
+   * given timestamp_end. The destructor calls the `close()` method.
    *
    * This constructor takes as input a
-   * timestamp, representing time in milliseconds ellapsed since
+   * timestamp_end, representing time in milliseconds ellapsed since
    * 1970-01-01 00:00:00 +0000 (UTC). Opening the array at a
-   * timestamp provides a view of the array with all writes/updates that
-   * happened at or before `timestamp` (i.e., excluding those that
-   * occurred after `timestamp`). This is useful to ensure
+   * timestamp_end provides a view of the array with all writes/updates that
+   * happened at or before `timestamp_end` (i.e., excluding those that
+   * occurred after `timestamp_end`). This is useful to ensure
    * consistency at a potential distributed setting, where machines
    * need to operate on the same view of the array.
    *
@@ -179,21 +180,21 @@ class Array {
    * @code{.cpp}
    * // Open the array for reading
    * tiledb::Context ctx;
-   * // Get some `timestamp` here in milliseconds
+   * // Get some `timestamp_end` here in milliseconds
    * tiledb::Array array(
-   *     ctx, "s3://bucket-name/array-name", TILEDB_READ, timestamp);
+   *     ctx, "s3://bucket-name/array-name", TILEDB_READ, timestamp_end);
    * @endcode
    *
    * @param ctx TileDB context.
    * @param array_uri The array URI.
    * @param query_type Query type to open the array for.
-   * @param timestamp The timestamp to open the array at.
+   * @param timestamp_end The timestamp_end to open the array at.
    */
   Array(
       const Context& ctx,
       const std::string& array_uri,
       tiledb_query_type_t query_type,
-      uint64_t timestamp)
+      uint64_t timestamp_end)
       : Array(
             ctx,
             array_uri,
@@ -201,11 +202,12 @@ class Array {
             TILEDB_NO_ENCRYPTION,
             nullptr,
             0,
-            timestamp) {
+            timestamp_end) {
   }
 
   // clang-format off
   /**
+   * This is a deprecated constructor.
    * @copybrief Array::Array(const Context&,const std::string&,tiledb_query_type_t,uint64_t)
    *
    * Same as @ref Array::Array(const Context&,const std::string&,tiledb_query_type_t,uint64_t) "Array::Array"
@@ -218,9 +220,9 @@ class Array {
    * tiledb::Context ctx;
    * // Load AES-256 key from disk, environment variable, etc.
    * uint8_t key[32] = ...;
-   * // Get some `timestamp` here in milliseconds
+   * // Get some `timestamp_end` here in milliseconds
    * tiledb::Array array(ctx, "s3://bucket-name/array-name", TILEDB_READ,
-   *    TILEDB_AES_256_GCM, key, sizeof(key), timestamp);
+   *    TILEDB_AES_256_GCM, key, sizeof(key), timestamp_end);
    * @endcode
    *
    * @param ctx TileDB context.
@@ -229,7 +231,7 @@ class Array {
    * @param encryption_type The encryption type to use.
    * @param encryption_key The encryption key to use.
    * @param key_length Length in bytes of the encryption key.
-   * @param timestamp The timestamp to open the array at.
+   * @param timestamp_end The timestamp_end to open the array at.
    */
   // clang-format on
   Array(
@@ -239,7 +241,7 @@ class Array {
       tiledb_encryption_type_t encryption_type,
       const void* encryption_key,
       uint32_t key_length,
-      uint64_t timestamp)
+      uint64_t timestamp_end)
       : ctx_(ctx)
       , schema_(ArraySchema(ctx, (tiledb_array_schema_t*)nullptr)) {
     tiledb_ctx_t* c_ctx = ctx.ptr().get();
@@ -253,7 +255,7 @@ class Array {
         encryption_type,
         encryption_key,
         key_length,
-        timestamp));
+        timestamp_end));
 
     tiledb_array_schema_t* array_schema;
     ctx.handle_error(tiledb_array_get_schema(c_ctx, array, &array_schema));
@@ -262,6 +264,7 @@ class Array {
 
   // clang-format off
   /**
+   * This is a deprecated constructor.
    * @copybrief Array::Array(const Context&,const std::string&,tiledb_query_type_t,tiledb_encryption_type_t,const void*,uint32_t,uint64_t)
    *
    * See @ref Array::Array(const Context&,const std::string&,tiledb_query_type_t,tiledb_encryption_type_t,const void*,uint32_t,uint64_t) "Array::Array"
@@ -273,7 +276,7 @@ class Array {
       tiledb_query_type_t query_type,
       tiledb_encryption_type_t encryption_type,
       const std::string& encryption_key,
-      uint64_t timestamp)
+      uint64_t timestamp_end)
       : Array(
             ctx,
             array_uri,
@@ -281,7 +284,28 @@ class Array {
             encryption_type,
             encryption_key.data(),
             (uint32_t)encryption_key.size(),
-            timestamp) {
+            timestamp_end) {
+  }
+
+  /**
+   * @brief Constructor. This sets the array config.
+   *
+   * **Example:**
+   *
+   * @code{.cpp}
+   * tiledb::Context ctx;
+   * tiledb_config_t* config;
+   * @endcode
+   *
+   * @param ctx TileDB context.
+   * @param carray The array.
+   * @param config The array's config.
+   */
+  Array(const Context& ctx, tiledb_array_t* carray, tiledb_config_t* config)
+      : ctx_(ctx)
+      , schema_(ArraySchema(ctx, (tiledb_array_schema_t*)nullptr)) {
+    tiledb_ctx_t* c_ctx = ctx.ptr().get();
+    ctx.handle_error(tiledb_array_set_config(c_ctx, carray, config));
   }
 
   /**
@@ -440,14 +464,14 @@ class Array {
 
   /**
    * This is a deprecated API.
-   * @brief Opens the array for a query type, at the given timestamp.
+   * @brief Opens the array for a query type, at the given timestamp_end.
    *
    * This function takes as input a
-   * timestamp, representing time in milliseconds ellapsed since
+   * timestamp_end, representing time in milliseconds ellapsed since
    * 1970-01-01 00:00:00 +0000 (UTC). Opening the array at a
-   * timestamp provides a view of the array with all writes/updates that
-   * happened at or before `timestamp` (i.e., excluding those that
-   * occurred after `timestamp`). This is useful to ensure
+   * timestamp_end provides a view of the array with all writes/updates that
+   * happened at or before `timestamp_end` (i.e., excluding those that
+   * occurred after `timestamp_end`). This is useful to ensure
    * consistency at a potential distributed setting, where machines
    * need to operate on the same view of the array.
    *
@@ -457,16 +481,16 @@ class Array {
    * tiledb::Array array(ctx, "s3://bucket-name/array-name", TILEDB_WRITE);
    * // Close and open again for reading.
    * array.close();
-   * // Get some `timestamp` in milliseconds here
-   * array.open(TILEDB_READ, timestamp);
+   * // Get some `timestamp_end` in milliseconds here
+   * array.open(TILEDB_READ, timestamp_end);
    * @endcode
    *
    * @param query_type The type of queries the array object will be receiving.
-   * @param timestamp The timestamp to open the array at.
+   * @param timestamp_end The timestamp_end to open the array at.
    * @throws TileDBError if the array is already open or other error occurred.
    */
-  void open(tiledb_query_type_t query_type, uint64_t timestamp) {
-    open(query_type, TILEDB_NO_ENCRYPTION, nullptr, 0, timestamp);
+  void open(tiledb_query_type_t query_type, uint64_t timestamp_end) {
+    open(query_type, TILEDB_NO_ENCRYPTION, nullptr, 0, timestamp_end);
   }
 
   /**
@@ -485,22 +509,23 @@ class Array {
    *    TILEDB_AES_256_GCM, key, sizeof(key));
    * // Close and open again for reading.
    * array.close();
-   * // Get some `timestamp` in milliseconds here
-   * array.open(TILEDB_READ, TILEDB_AES_256_GCM, key, sizeof(key), timestamp);
+   * // Get some `timestamp_end` in milliseconds here
+   * array.open(TILEDB_READ, TILEDB_AES_256_GCM, key, sizeof(key),
+   * timestamp_end);
    * @endcode
    *
    * @param query_type The type of queries the array object will be receiving.
    * @param encryption_type The encryption type to use.
    * @param encryption_key The encryption key to use.
    * @param key_length Length in bytes of the encryption key.
-   * @param timestamp The timestamp to open the array at.
+   * @param timestamp_end The timestamp_end to open the array at.
    */
   void open(
       tiledb_query_type_t query_type,
       tiledb_encryption_type_t encryption_type,
       const void* encryption_key,
       uint32_t key_length,
-      uint64_t timestamp) {
+      uint64_t timestamp_end) {
     auto& ctx = ctx_.get();
     tiledb_ctx_t* c_ctx = ctx.ptr().get();
     ctx.handle_error(tiledb_array_open_at_with_key(
@@ -510,7 +535,7 @@ class Array {
         encryption_type,
         encryption_key,
         key_length,
-        timestamp));
+        timestamp_end));
     tiledb_array_schema_t* array_schema;
     ctx.handle_error(
         tiledb_array_get_schema(c_ctx, array_.get(), &array_schema));
@@ -529,13 +554,13 @@ class Array {
       tiledb_query_type_t query_type,
       tiledb_encryption_type_t encryption_type,
       const std::string& encryption_key,
-      uint64_t timestamp) {
+      uint64_t timestamp_end) {
     open(
         query_type,
         encryption_type,
         encryption_key.data(),
         (uint32_t)encryption_key.size(),
-        timestamp);
+        timestamp_end);
   }
 
   /**
@@ -570,23 +595,24 @@ class Array {
 
   /**
    * This is a deprecated API.
-   * Reopens the array at a specific timestamp.
+   * Reopens the array at a specific timestamp_end.
    *
    * **Example:**
    * @code{.cpp}
    * // Open the array for reading
    * tiledb::Array array(ctx, "s3://bucket-name/array-name", TILEDB_READ);
-   * uint64_t timestamp = tiledb_timestamp_now_ms();
-   * array.reopen_at(timestamp);
+   * uint64_t timestamp_end = tiledb_timestamp_now_ms();
+   * array.reopen_at(timestamp_end);
    * @endcode
    *
    * @throws TileDBError if the array was not already open or other error
    * occurred.
    */
-  void reopen_at(uint64_t timestamp) {
+  void reopen_at(uint64_t timestamp_end) {
     auto& ctx = ctx_.get();
     tiledb_ctx_t* c_ctx = ctx.ptr().get();
-    ctx.handle_error(tiledb_array_reopen_at(c_ctx, array_.get(), timestamp));
+    ctx.handle_error(
+        tiledb_array_reopen_at(c_ctx, array_.get(), timestamp_end));
     tiledb_array_schema_t* array_schema;
     ctx.handle_error(
         tiledb_array_get_schema(c_ctx, array_.get(), &array_schema));
@@ -610,12 +636,12 @@ class Array {
   }
 
   /** Retrieves the array config. */
-  tiledb_config_t* get_config() const {
+  Config get_config() const {
     auto& ctx = ctx_.get();
     tiledb_config_t* config = nullptr;
     ctx.handle_error(
         tiledb_array_get_config(ctx.ptr().get(), array_.get(), &config));
-    return config;
+    return Config(&config);
   }
 
   /**
