@@ -264,6 +264,10 @@ Status FilterPipeline::filter_chunks_reverse(
     ThreadPool* const compute_tp,
     const bool unfiltering_all,
     const Config& config) const {
+  if (input.empty()) {
+    return Status::Ok();
+  }
+
   // Precompute the sizes of the final output chunks.
   int64_t chunk_size = 0;
   uint64_t total_size = 0;
@@ -295,11 +299,11 @@ Status FilterPipeline::filter_chunks_reverse(
   // We will perform lazy allocation for discrete chunk buffers. For contiguous
   // chunk buffers, we will allocate the buffer now.
   if (buffer_addressing == ChunkedBuffer::BufferAddressing::CONTIGUOUS) {
-    void* buffer = malloc(total_size);
+    void* buffer = std::malloc(total_size);
     if (buffer == nullptr) {
       return LOG_STATUS(Status::FilterError("malloc() failed"));
     }
-    output->set_contiguous(buffer);
+    RETURN_NOT_OK_ELSE(output->set_contiguous(buffer), std::free(buffer));
   }
 
   // Run each chunk through the entire pipeline.
