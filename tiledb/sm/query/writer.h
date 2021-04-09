@@ -48,7 +48,6 @@
 #include "tiledb/sm/tile/tile.h"
 
 using namespace tiledb::common;
-using namespace tiledb::sm::stats;
 
 namespace tiledb {
 namespace sm {
@@ -368,6 +367,9 @@ class Writer {
   /** Returns the query subarray object. */
   const Subarray* subarray_ranges() const;
 
+  /** Returns `stats_`. */
+  stats::Stats* stats();
+
   /** Performs a write query using its set members. */
   Status write();
 
@@ -378,6 +380,9 @@ class Writer {
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
   /* ********************************* */
+
+  /** The class stats. */
+  tdb_shared_ptr<stats::Stats> stats_;
 
   /** The array. */
   const Array* array_;
@@ -501,9 +506,6 @@ class Writer {
 
   /** The offset bitsize used for variable-sized attributes. */
   uint32_t offsets_bitsize_;
-
-  /** The stats for the writer. */
-  Stats stats_;
 
   /* ********************************* */
   /*           PRIVATE METHODS         */

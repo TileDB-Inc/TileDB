@@ -45,8 +45,8 @@ GlobalStats all_stats;
 /*   CONSTRUCTORS & DESTRUCTORS   */
 /* ****************************** */
 
-GlobalStats::GlobalStats() {
-  enabled_ = false;
+GlobalStats::GlobalStats()
+    : enabled_(false) {
   reset();
 }
 
@@ -114,7 +114,7 @@ void GlobalStats::dump(std::string* out) const {
   ss << "\n";
   ss << dump_vfs();
   ss << "\n";
-  ss << stats_.dump();
+  ss << dump_registered_stats();
 
   auto dbg_secs = timer_stats_.at(TimerType::DBG).duration();
   if (dbg_secs != 0)
@@ -186,8 +186,8 @@ void GlobalStats::set_enabled(bool enabled) {
   enabled_ = enabled;
 }
 
-void GlobalStats::set_stats(const Stats& stats) {
-  stats_ = stats;
+void GlobalStats::register_stats(const tdb_shared_ptr<Stats>& stats) {
+  registered_stats_.emplace_back(stats);
 }
 
 /* ****************************** */
@@ -798,6 +798,18 @@ std::string GlobalStats::dump_vfs() const {
   if (s3_slow_down_retries > 0) {
     ss << "==== VFS ====\n\n";
     write(&ss, "- S3 SLOW_DOWN retries: ", s3_slow_down_retries);
+  }
+
+  return ss.str();
+}
+
+std::string GlobalStats::dump_registered_stats() const {
+  std::stringstream ss;
+
+  for (const auto& stats : registered_stats_) {
+    const std::string stats_dump = stats->dump();
+    if (!stats_dump.empty())
+      ss << stats_dump;
   }
 
   return ss.str();

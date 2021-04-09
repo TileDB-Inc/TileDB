@@ -33,10 +33,13 @@
 #ifndef TILEDB_STATS_H
 #define TILEDB_STATS_H
 
+#include "tiledb/common/scoped_executor.h"
+
 #include <inttypes.h>
 #include <chrono>
 #include <iomanip>
 #include <iostream>
+#include <list>
 #include <map>
 #include <mutex>
 #include <sstream>
@@ -57,36 +60,26 @@ class Stats {
   /*   CONSTRUCTORS & DESTRUCTORS   */
   /* ****************************** */
 
-  /** Constructor. */
-  Stats();
-
-  /** Constructor. */
+  /**
+   * Value constructor.
+   *
+   * @param prefix The stat name prefix.
+   * @param parent If non-null, stats will be added to this instance.
+   */
   Stats(const std::string& prefix);
 
   /** Destructor. */
   ~Stats() = default;
 
-  /** Copy constructor. */
-  Stats(const Stats& stats);
-
-  /** Move constructor. */
-  Stats(Stats&& stats);
-
-  /** Copy-assign operator. */
-  Stats& operator=(const Stats& stats);
-
-  /** Move-assign operator. */
-  Stats& operator=(Stats&& stats);
-
   /* ****************************** */
   /*              API               */
   /* ****************************** */
 
-  /** Starts a timer for the input timer stat. */
-  void start_timer(const std::string& stat);
-
-  /** Ends a timer for the input timer stat. */
-  void end_timer(const std::string& stat);
+  /**
+   * Starts a timer for the input timer stat. The timer
+   * ends when the returned `ScopedExecutor` object is destroyed.
+   */
+  common::ScopedExecutor start_timer(const std::string& stat);
 
   /** Adds `count` to the input counter stat. */
   void add_counter(const std::string& stat, uint64_t count);
@@ -97,14 +90,14 @@ class Stats {
   /** Enable or disable statistics gathering. */
   void set_enabled(bool enabled);
 
-  /** Reset all counters to zero. */
-  void reset();
-
-  /** Dumps the stats in ASCII format. */
+  /** Dumps the stats for this instance and all children in ASCII format. */
   std::string dump() const;
 
-  /** Appends the input stats to the object stats. */
-  void append(const Stats& stats);
+  /** Returns the parent that manages this instance. */
+  Stats* parent();
+
+  /** Creates a child instance, managed by this instance. */
+  Stats* create_child(const std::string& prefix);
 
  private:
   /* ****************************** */
@@ -112,16 +105,16 @@ class Stats {
   /* ****************************** */
 
   /** Mutex. */
-  std::mutex mtx_;
+  mutable std::mutex mtx_;
 
   /** True if stats are being gathered. */
   bool enabled_;
 
   /** A map of timer stats measuring time in seconds. */
-  std::map<std::string, double> timers_;
+  std::unordered_map<std::string, double> timers_;
 
   /** A map of counter stats. */
-  std::map<std::string, uint64_t> counters_;
+  std::unordered_map<std::string, uint64_t> counters_;
 
   typedef std::unordered_map<
       std::thread::id,
@@ -129,21 +122,40 @@ class Stats {
       ThreadTimer;
 
   /** The start time for all pending timers. */
-  std::map<std::string, ThreadTimer> start_times_;
+  std::unordered_map<std::string, ThreadTimer> start_times_;
 
   /** Prefix used for the various timers and counters. */
-  std::string prefix_;
+  const std::string prefix_;
+
+  /**
+   * A pointer to the parent instance that manages this
+   * lifetime of this instance.
+   */
+  Stats* parent_;
+
+  /** All child instances created with the `create_child` API. */
+  std::list<Stats> children_;
 
   /* ****************************** */
   /*       PRIVATE FUNCTIONS        */
   /* ****************************** */
 
-  /** Clones the object and returns it. */
-  Stats clone() const;
+  /** Ends a timer for the input timer stat. */
+  void end_timer(const std::string& stat);
 
-  /** Swaps the contents (all field values) of this object with the given
-   * object. */
-  void swap(Stats& stats);
+  /**
+   * Populates the input stats with the instance stats. This is a
+   * recursive work routine that `dump()` uses to aggregate all stats
+   * from the children instances. The `mtx_` must be unlocked when
+   * entering this routine.
+   *
+   * @param flattened_timers Timers to append to.
+   * @param flattened_counters Counters to append to.
+   */
+  void populate_flattened_stats(
+      std::unordered_map<std::string, double>* const flattened_timers,
+      std::unordered_map<std::string, uint64_t>* const flattened_counters)
+      const;
 };
 
 }  // namespace stats

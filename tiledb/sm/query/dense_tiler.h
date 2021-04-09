@@ -145,6 +145,7 @@ class DenseTiler {
   DenseTiler(
       const std::unordered_map<std::string, QueryBuffer>* buffers,
       const Subarray* subarray,
+      stats::Stats* const parent_stats,
       const std::string& offsets_format_mode = "bytes",
       uint64_t offsets_bitsize = 64,
       bool offsets_extra_element = false);
@@ -231,13 +232,13 @@ class DenseTiler {
   /** Returns the coordinates of the first tile intersecting the subarray. */
   const std::vector<uint64_t>& first_sub_tile_coords() const;
 
-  /** Returns the dense tiler stats. */
-  const stats::Stats& stats() const;
-
  private:
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
   /* ********************************* */
+
+  /** The stats for the dense tiler. */
+  stats::Stats* stats_;
 
   /** The array schema. */
   const ArraySchema* array_schema_;
@@ -289,9 +290,6 @@ class DenseTiler {
    * will be added in the end of the offsets buffer of var-sized attributes
    */
   bool offsets_extra_element_;
-
-  /** The stats for the dense tiler. */
-  stats::Stats stats_;
 
   /* ********************************* */
   /*           PRIVATE METHODS         */

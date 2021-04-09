@@ -40,6 +40,7 @@
 #include "tiledb/sm/enums/datatype.h"
 #include "tiledb/sm/misc/tile_overlap.h"
 #include "tiledb/sm/misc/types.h"
+#include "tiledb/sm/stats/stats.h"
 #include "tiledb/sm/subarray/subarray_tile_overlap.h"
 
 #include <cmath>
@@ -171,7 +172,10 @@ class Subarray {
    * @param coalesce_ranges When enabled, ranges will attempt to coalesce
    *     with existing ranges as they are added.
    */
-  Subarray(const Array* array, bool coalesce_ranges = true);
+  Subarray(
+      const Array* array,
+      stats::Stats* parent_stats,
+      bool coalesce_ranges = true);
 
   /**
    * Constructor.
@@ -183,7 +187,11 @@ class Subarray {
    * @param coalesce_ranges When enabled, ranges will attempt to coalesce
    *     with existing ranges as they are added.
    */
-  Subarray(const Array* array, Layout layout, bool coalesce_ranges = true);
+  Subarray(
+      const Array* array,
+      Layout layout,
+      stats::Stats* parent_stats,
+      bool coalesce_ranges = true);
 
   /**
    * Copy constructor. This performs a deep copy (including memcpy of
@@ -744,6 +752,9 @@ class Subarray {
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
   /* ********************************* */
+
+  /** The class stats. */
+  stats::Stats* stats_;
 
   /** The array the subarray object is associated with. */
   const Array* array_;

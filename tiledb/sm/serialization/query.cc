@@ -61,6 +61,7 @@
 #endif
 
 using namespace tiledb::common;
+using namespace tiledb::sm::stats;
 
 namespace tiledb {
 namespace sm {
@@ -247,6 +248,7 @@ Status subarray_partitioner_to_capnp(
 }
 
 Status subarray_partitioner_from_capnp(
+    Stats* reader_stats,
     const Config* config,
     const Array* array,
     const capnp::SubarrayPartitioner::Reader& reader,
@@ -268,7 +270,7 @@ Status subarray_partitioner_from_capnp(
   RETURN_NOT_OK(layout_enum(subarray_reader.getLayout(), &layout));
 
   // Subarray, which is used to initialize the partitioner.
-  Subarray subarray(array, layout, false);
+  Subarray subarray(array, layout, reader_stats, false);
   RETURN_NOT_OK(subarray_from_capnp(reader.getSubarray(), &subarray));
   *partitioner = SubarrayPartitioner(
       config,
@@ -276,7 +278,8 @@ Status subarray_partitioner_from_capnp(
       memory_budget,
       memory_budget_var,
       memory_budget_validity,
-      compute_tp);
+      compute_tp,
+      reader_stats);
 
   // Per-attr mem budgets
   if (reader.hasBudget()) {
@@ -324,7 +327,7 @@ Status subarray_partitioner_from_capnp(
     partition_info->end_ = partition_info_reader.getEnd();
     partition_info->split_multi_range_ =
         partition_info_reader.getSplitMultiRange();
-    partition_info->partition_ = Subarray(array, layout, false);
+    partition_info->partition_ = Subarray(array, layout, reader_stats, false);
     RETURN_NOT_OK(subarray_from_capnp(
         partition_info_reader.getSubarray(), &partition_info->partition_));
 
@@ -347,7 +350,7 @@ Status subarray_partitioner_from_capnp(
   const unsigned num_sr = sr_reader.size();
   for (unsigned i = 0; i < num_sr; i++) {
     auto subarray_reader_ = sr_reader[i];
-    state->single_range_.emplace_back(array, layout, false);
+    state->single_range_.emplace_back(array, layout, reader_stats, false);
     Subarray& subarray_ = state->single_range_.back();
     RETURN_NOT_OK(subarray_from_capnp(subarray_reader_, &subarray_));
   }
@@ -355,7 +358,7 @@ Status subarray_partitioner_from_capnp(
   const unsigned num_m = m_reader.size();
   for (unsigned i = 0; i < num_m; i++) {
     auto subarray_reader_ = m_reader[i];
-    state->multi_range_.emplace_back(array, layout, false);
+    state->multi_range_.emplace_back(array, layout, reader_stats, false);
     Subarray& subarray_ = state->multi_range_.back();
     RETURN_NOT_OK(subarray_from_capnp(subarray_reader_, &subarray_));
   }
@@ -402,6 +405,7 @@ Status read_state_from_capnp(
   // Subarray partitioner
   if (read_state_reader.hasSubarrayPartitioner()) {
     RETURN_NOT_OK(subarray_partitioner_from_capnp(
+        reader->stats(),
         reader->config(),
         array,
         read_state_reader.getSubarrayPartitioner(),
@@ -447,7 +451,7 @@ Status reader_from_capnp(
   RETURN_NOT_OK(reader->set_layout(layout));
 
   // Subarray
-  Subarray subarray(array, layout, false);
+  Subarray subarray(array, layout, reader->stats(), false);
   auto subarray_reader = reader_reader.getSubarray();
   RETURN_NOT_OK(subarray_from_capnp(subarray_reader, &subarray));
   RETURN_NOT_OK(reader->set_subarray(subarray));
@@ -1110,7 +1114,7 @@ Status query_from_capnp(
 
       // Subarray
       if (writer_reader.hasSubarrayRanges()) {
-        Subarray subarray(array, layout, false);
+        Subarray subarray(array, layout, query->writer()->stats(), false);
         auto subarray_reader = writer_reader.getSubarrayRanges();
         RETURN_NOT_OK(subarray_from_capnp(subarray_reader, &subarray));
         RETURN_NOT_OK(query->writer()->set_subarray(subarray));

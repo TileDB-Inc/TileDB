@@ -53,6 +53,7 @@
 
 using namespace tiledb;
 using namespace tiledb::common;
+using namespace tiledb::sm::stats;
 
 namespace tiledb {
 namespace sm {
@@ -61,21 +62,26 @@ namespace sm {
 /*   CONSTRUCTORS & DESTRUCTORS   */
 /* ****************************** */
 
-Writer::Writer() {
-  array_ = nullptr;
-  array_schema_ = nullptr;
-  coords_buffer_ = nullptr;
-  coords_buffer_size_ = nullptr;
-  coords_num_ = 0;
-  disable_check_global_order_ = false;
-  has_coords_ = false;
-  coord_buffer_is_set_ = false;
-  global_write_state_.reset(nullptr);
-  initialized_ = false;
-  layout_ = Layout::ROW_MAJOR;
-  storage_manager_ = nullptr;
-  offsets_bitsize_ = constants::cell_var_offset_size * 8;
-  stats_ = stats::Stats("stats.Writer");
+Writer::Writer()
+    : stats_(tdb_make_shared(Stats, "Writer"))
+    , array_(nullptr)
+    , array_schema_(nullptr)
+    , coords_buffer_(nullptr)
+    , coords_buffer_size_(nullptr)
+    , coord_buffer_is_set_(false)
+    , coords_num_(0)
+    , disable_check_global_order_(false)
+    , has_coords_(false)
+    , check_coord_dups_(false)
+    , check_coord_oob_(false)
+    , check_global_order_(false)
+    , dedup_coords_(false)
+    , initialized_(false)
+    , layout_(Layout::ROW_MAJOR)
+    , storage_manager_(nullptr)
+    , offsets_extra_element_(false)
+    , offsets_bitsize_(constants::cell_var_offset_size * 8) {
+  stats::all_stats.register_stats(stats_);
 }
 
 Writer::~Writer() {
@@ -473,7 +479,7 @@ Status Writer::init(const Layout& layout) {
 
   // Set a default subarray
   if (!subarray_.is_set())
-    subarray_ = Subarray(array_, layout);
+    subarray_ = Subarray(array_, layout, stats_.get());
 
   if (offsets_extra_element_)
     RETURN_NOT_OK(check_extra_element());
@@ -497,7 +503,7 @@ Layout Writer::layout() const {
 
 void Writer::set_array(const Array* array) {
   array_ = array;
-  subarray_ = Subarray(array);
+  subarray_ = Subarray(array, stats_.get());
 }
 
 void Writer::set_array_schema(const ArraySchema* array_schema) {
@@ -854,6 +860,10 @@ const Subarray* Writer::subarray_ranges() const {
   return &subarray_;
 }
 
+Stats* Writer::stats() {
+  return stats_.get();
+}
+
 Status Writer::write() {
   get_dim_attr_stats();
 
@@ -875,10 +885,6 @@ Status Writer::write() {
   } else {
     assert(false);
   }
-
-  // Set to global stats.
-  // Note: This will be refactored soon.
-  stats::all_stats.set_stats(stats_);
 
   return Status::Ok();
 
@@ -1653,8 +1659,8 @@ Status Writer::filter_tile(
     Tile* const tile,
     const bool offsets,
     const bool nullable) {
-  stats_.start_timer(std::string(__func__) + ".sec");
-  stats_.add_counter(std::string(__func__) + ".count", 1);
+  auto timer_se = stats_->start_timer("filter_tile.sec");
+  stats_->add_counter("filter_tile.count", 1);
 
   const auto orig_size = tile->chunked_buffer()->size();
 
@@ -1679,7 +1685,6 @@ Status Writer::filter_tile(
 
   tile->set_pre_filtered_size(orig_size);
 
-  stats_.end_timer(std::string(__func__) + ".sec");
   return Status::Ok();
 }
 
@@ -2186,8 +2191,8 @@ Status Writer::ordered_write() {
 
 template <class T>
 Status Writer::ordered_write() {
-  stats_.start_timer(std::string(__func__) + ".sec");
-  stats_.add_counter(std::string(__func__) + ".count", 1);
+  auto timer_se = stats_->start_timer("filter_tile.sec");
+  stats_->add_counter("filter_tile.count", 1);
 
   // Create new fragment
   tdb_shared_ptr<FragmentMetadata> frag_meta;
@@ -2198,6 +2203,7 @@ Status Writer::ordered_write() {
   DenseTiler<T> dense_tiler(
       &buffers_,
       &subarray_,
+      stats_.get(),
       offsets_format_mode_,
       offsets_bitsize_,
       offsets_extra_element_);
@@ -2210,7 +2216,6 @@ Status Writer::ordered_write() {
   auto attr_num = buffers_.size();
   auto compute_tp = storage_manager_->compute_tp();
   auto thread_num = compute_tp->concurrency_level();
-  stats::Stats stats;
   if (attr_num > tile_num) {  // Parallelize over attributes
     auto st = parallel_for(compute_tp, 0, attr_num, [&](uint64_t i) {
       auto buff_it = buffers_.begin();
@@ -2232,9 +2237,6 @@ Status Writer::ordered_write() {
     }
   }
 
-  // Append the dense tiler stats
-  stats_.append(dense_tiler.stats());
-
   // Write the fragment metadata
   RETURN_CANCEL_OR_ERROR_ELSE(
       frag_meta->store(array_->get_encryption_key()),
@@ -2251,7 +2253,6 @@ Status Writer::ordered_write() {
       storage_manager_->vfs()->touch(ok_uri),
       storage_manager_->vfs()->remove_dir(uri));
 
-  stats_.end_timer(std::string(__func__) + ".sec");
   return Status::Ok();
 }
 
@@ -3245,8 +3246,8 @@ Status Writer::write_tiles(
     uint64_t start_tile_id,
     std::vector<Tile>* const tiles,
     bool close_files) {
-  stats_.start_timer(std::string(__func__) + ".sec");
-  stats_.add_counter(std::string(__func__) + ".count", 1);
+  auto timer_se = stats_->start_timer("write_tiles.sec");
+  stats_->add_counter("write_tiles.count", 1);
 
   // Handle zero tiles
   if (tiles->empty())
@@ -3297,7 +3298,6 @@ Status Writer::write_tiles(
           storage_manager_->close_file(frag_meta->validity_uri(name)));
   }
 
-  stats_.end_timer(std::string(__func__) + ".sec");
   return Status::Ok();
 }
 
@@ -3410,8 +3410,8 @@ Status Writer::prepare_filter_and_write_tiles(
     FragmentMetadata* frag_meta,
     DenseTiler<T>* dense_tiler,
     uint64_t thread_num) {
-  stats_.start_timer(std::string(__func__) + ".sec");
-  stats_.add_counter(std::string(__func__) + ".count", 1);
+  auto timer_se = stats_->start_timer("prepare_filter_and_write_tiles.sec");
+  stats_->add_counter("prepare_filter_and_write_tiles.count", 1);
 
   // For easy reference
   const bool var = array_schema_->var_size(name);
@@ -3432,7 +3432,6 @@ Status Writer::prepare_filter_and_write_tiles(
     auto batch_size = (b == batch_num - 1) ? last_batch_size : thread_num;
     assert(batch_size > 0);
     std::vector<Tile> tiles(batch_size * (1 + var + nullable));
-    std::vector<Stats> sub_stats(batch_size);
     auto st = parallel_for(
         storage_manager_->compute_tp(), 0, batch_size, [&](uint64_t i) {
           // Prepare and filter tiles
@@ -3469,7 +3468,6 @@ Status Writer::prepare_filter_and_write_tiles(
     frag_tile_id += batch_size;
   }
 
-  stats_.end_timer(std::string(__func__) + ".sec");
   return Status::Ok();
 }
 

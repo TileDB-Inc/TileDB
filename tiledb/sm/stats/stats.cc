@@ -35,6 +35,7 @@
 
 #include <cassert>
 #include <sstream>
+#include <vector>
 
 namespace tiledb {
 namespace sm {
@@ -44,37 +45,10 @@ namespace stats {
 /*   CONSTRUCTORS & DESTRUCTORS   */
 /* ****************************** */
 
-Stats::Stats() {
-  enabled_ = true;
-}
-
 Stats::Stats(const std::string& prefix)
-    : Stats() {
-  prefix_ = prefix;
-}
-
-Stats::Stats(const Stats& stats)
-    : Stats() {
-  auto clone = stats.clone();
-  swap(clone);
-}
-
-Stats::Stats(Stats&& stats)
-    : Stats() {
-  swap(stats);
-}
-
-Stats& Stats::operator=(const Stats& stats) {
-  auto clone = stats.clone();
-  swap(clone);
-
-  return *this;
-}
-
-Stats& Stats::operator=(Stats&& stats) {
-  swap(stats);
-
-  return *this;
+    : enabled_(true)
+    , prefix_(prefix + ".")
+    , parent_(nullptr) {
 }
 
 /* ****************************** */
@@ -85,26 +59,54 @@ bool Stats::enabled() const {
   return enabled_;
 }
 
-void Stats::reset() {
-  timers_.clear();
-  counters_.clear();
-  start_times_.clear();
-}
-
 void Stats::set_enabled(bool enabled) {
   enabled_ = enabled;
 }
 
 std::string Stats::dump() const {
+  std::unordered_map<std::string, double> flattened_timers;
+  std::unordered_map<std::string, uint64_t> flattened_counters;
+
+  // Recursively populate the flattened stats with the stats from
+  // this instance and all of its children.
+  populate_flattened_stats(&flattened_timers, &flattened_counters);
+
+  // Return an empty string if there are no stats.
+  if (flattened_timers.empty() && flattened_counters.empty()) {
+    return "";
+  }
+
+  // We store timers and counters on an `unordered_map` for quicker
+  // access times. However, we want to sort the keys before dumping
+  // them. Copy the elements into `vector` objects and sort them.
+  std::vector<std::pair<std::string, double>> sorted_timers(
+      flattened_timers.begin(), flattened_timers.end());
+  std::vector<std::pair<std::string, uint64_t>> sorted_counters(
+      flattened_counters.begin(), flattened_counters.end());
+  std::sort(
+      sorted_timers.begin(),
+      sorted_timers.end(),
+      [](const std::pair<std::string, double>& a,
+         const std::pair<std::string, double>& b) -> bool {
+        return a.first > b.first;
+      });
+  std::sort(
+      sorted_counters.begin(),
+      sorted_counters.end(),
+      [](const std::pair<std::string, uint64_t>& a,
+         const std::pair<std::string, uint64_t>& b) -> bool {
+        return a.first > b.first;
+      });
+
   std::stringstream ss;
   ss << "--- Timers ---\n\n";
-  for (const auto& timer : timers_) {
+  for (const auto& timer : sorted_timers) {
     ss << timer.first << ": " << timer.second << "\n";
     if (utils::parse::ends_with(timer.first, ".sum")) {
       auto stat = timer.first.substr(
           0, timer.first.size() - std::string(".sec.sum").size());
-      auto it = counters_.find(stat + ".count");
-      assert(it != counters_.end());
+      auto it = flattened_counters.find(stat + ".count");
+      assert(it != flattened_counters.end());
       auto avg = timer.second / it->second;
       ss << stat + ".sec.avg"
          << ": " << avg << "\n";
@@ -112,7 +114,7 @@ std::string Stats::dump() const {
   }
   ss << "\n";
   ss << "--- Counters ---\n\n";
-  for (const auto& counter : counters_)
+  for (const auto& counter : sorted_counters)
     ss << counter.first << ": " << counter.second << "\n";
   ss << "\n";
 
@@ -125,7 +127,7 @@ void Stats::add_counter(const std::string& stat, uint64_t count) {
   if (!enabled_)
     return;
 
-  std::string new_stat = prefix_ + "." + stat;
+  std::string new_stat = prefix_ + stat;
   std::unique_lock<std::mutex> lck(mtx_);
   auto it = counters_.find(new_stat);
   if (it == counters_.end()) {  // Counter not found
@@ -135,21 +137,24 @@ void Stats::add_counter(const std::string& stat, uint64_t count) {
   }
 }
 
-void Stats::start_timer(const std::string& stat) {
+ScopedExecutor Stats::start_timer(const std::string& stat) {
   if (!enabled_)
-    return;
+    return ScopedExecutor();
 
-  std::string new_stat = prefix_ + "." + stat;
+  std::string new_stat = prefix_ + stat;
   std::unique_lock<std::mutex> lck(mtx_);
   const std::thread::id tid = std::this_thread::get_id();
   start_times_[new_stat][tid] = std::chrono::high_resolution_clock::now();
+
+  std::function<void()> end_timer_fn = std::bind(&Stats::end_timer, this, stat);
+  return ScopedExecutor(std::move(end_timer_fn));
 }
 
 void Stats::end_timer(const std::string& stat) {
   if (!enabled_)
     return;
 
-  std::string new_stat = prefix_ + "." + stat;
+  std::string new_stat = prefix_ + stat;
   std::unique_lock<std::mutex> lck(mtx_);
 
   // Calculate duration
@@ -197,33 +202,35 @@ void Stats::end_timer(const std::string& stat) {
 
 #endif
 
-void Stats::append(const Stats& stats) {
-  for (const auto& timer : stats.timers_)
-    timers_[timer.first] = timer.second;
-  for (const auto& counter : stats.counters_)
-    counters_[counter.first] = counter.second;
+Stats* Stats::parent() {
+  return parent_;
 }
 
-/* ****************************** */
-/*       PRIVATE FUNCTIONS        */
-/* ****************************** */
-
-Stats Stats::clone() const {
-  Stats clone;
-  clone.prefix_ = prefix_;
-  clone.enabled_ = enabled_;
-  clone.timers_ = timers_;
-  clone.counters_ = counters_;
-  clone.start_times_ = start_times_;
-  return clone;
+Stats* Stats::create_child(const std::string& prefix) {
+  std::unique_lock<std::mutex> lck(mtx_);
+  children_.emplace_back(prefix_ + prefix);
+  Stats* const child = &children_.back();
+  child->parent_ = this;
+  return child;
 }
 
-void Stats::swap(Stats& stats) {
-  std::swap(prefix_, stats.prefix_);
-  std::swap(enabled_, stats.enabled_);
-  std::swap(timers_, stats.timers_);
-  std::swap(counters_, stats.counters_);
-  std::swap(start_times_, stats.start_times_);
+void Stats::populate_flattened_stats(
+    std::unordered_map<std::string, double>* const flattened_timers,
+    std::unordered_map<std::string, uint64_t>* const flattened_counters) const {
+  // We will acquire the locks top-down in the tree and hold
+  // until the recursion terminates.
+  std::unique_lock<std::mutex> lck(mtx_);
+
+  // Append the stats from this instance.
+  for (const auto& timer : timers_)
+    (*flattened_timers)[timer.first] += timer.second;
+  for (const auto& counter : counters_)
+    (*flattened_counters)[counter.first] += counter.second;
+
+  // Populate the stats from all of the children.
+  for (const auto& child : children_) {
+    child.populate_flattened_stats(flattened_timers, flattened_counters);
+  }
 }
 
 }  // namespace stats

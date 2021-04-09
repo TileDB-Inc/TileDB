@@ -49,6 +49,7 @@
 #include <unordered_set>
 
 using namespace tiledb::common;
+using namespace tiledb::sm::stats;
 
 namespace tiledb {
 namespace sm {
@@ -57,24 +58,31 @@ namespace sm {
 /*   CONSTRUCTORS & DESTRUCTORS   */
 /* ****************************** */
 
-Subarray::Subarray() {
-  array_ = nullptr;
-  layout_ = Layout::UNORDERED;
-  cell_order_ = Layout::ROW_MAJOR;
-  est_result_size_computed_ = false;
-  coalesce_ranges_ = true;
+Subarray::Subarray()
+    : stats_(nullptr)
+    , array_(nullptr)
+    , layout_(Layout::UNORDERED)
+    , cell_order_(Layout::ROW_MAJOR)
+    , est_result_size_computed_(false)
+    , coalesce_ranges_(true) {
 }
 
-Subarray::Subarray(const Array* array, bool coalesce_ranges)
-    : Subarray(array, Layout::UNORDERED, coalesce_ranges) {
+Subarray::Subarray(
+    const Array* array, Stats* const parent_stats, const bool coalesce_ranges)
+    : Subarray(array, Layout::UNORDERED, parent_stats, coalesce_ranges) {
 }
 
-Subarray::Subarray(const Array* array, Layout layout, bool coalesce_ranges)
-    : array_(array)
+Subarray::Subarray(
+    const Array* const array,
+    const Layout layout,
+    Stats* const parent_stats,
+    const bool coalesce_ranges)
+    : stats_(parent_stats->create_child("Subarray"))
+    , array_(array)
     , layout_(layout)
+    , cell_order_(array_->array_schema()->cell_order())
+    , est_result_size_computed_(false)
     , coalesce_ranges_(coalesce_ranges) {
-  est_result_size_computed_ = false;
-  cell_order_ = array_->array_schema()->cell_order();
   add_default_ranges();
   set_add_or_coalesce_range_func();
 }
@@ -278,7 +286,7 @@ bool Subarray::coincides_with_tiles() const {
 
 template <class T>
 Subarray Subarray::crop_to_tile(const T* tile_coords, Layout layout) const {
-  Subarray ret(array_, layout, coalesce_ranges_);
+  Subarray ret(array_, layout, stats_->parent(), coalesce_ranges_);
 
   T new_range[2];
   bool overlaps;
@@ -407,7 +415,7 @@ Status Subarray::get_range_num(uint32_t dim_idx, uint64_t* range_num) const {
 }
 
 Subarray Subarray::get_subarray(uint64_t start, uint64_t end) const {
-  Subarray ret(array_, layout_, coalesce_ranges_);
+  Subarray ret(array_, layout_, stats_->parent(), coalesce_ranges_);
 
   auto start_coords = get_range_coords(start);
   auto end_coords = get_range_coords(end);
@@ -1065,8 +1073,8 @@ Status Subarray::split(
     Subarray* r2) const {
   assert(r1 != nullptr);
   assert(r2 != nullptr);
-  *r1 = Subarray(array_, layout_, coalesce_ranges_);
-  *r2 = Subarray(array_, layout_, coalesce_ranges_);
+  *r1 = Subarray(array_, layout_, stats_->parent(), coalesce_ranges_);
+  *r2 = Subarray(array_, layout_, stats_->parent(), coalesce_ranges_);
 
   auto dim_num = array_->array_schema()->dim_num();
 
@@ -1095,8 +1103,8 @@ Status Subarray::split(
     Subarray* r2) const {
   assert(r1 != nullptr);
   assert(r2 != nullptr);
-  *r1 = Subarray(array_, layout_, coalesce_ranges_);
-  *r2 = Subarray(array_, layout_, coalesce_ranges_);
+  *r1 = Subarray(array_, layout_, stats_->parent(), coalesce_ranges_);
+  *r2 = Subarray(array_, layout_, stats_->parent(), coalesce_ranges_);
 
   // For easy reference
   auto array_schema = array_->array_schema();
@@ -1924,15 +1932,21 @@ Status Subarray::precompute_tile_overlap(
     ThreadPool* const compute_tp,
     const bool override_memory_constraint) {
   STATS_START_TIMER(stats::GlobalStats::TimerType::READ_COMPUTE_TILE_OVERLAP)
+  stats_->add_counter("precompute_tile_overlap.count", 1);
 
   // If the `tile_overlap_` has already been precomputed and contains
   // the given range, re-use it with new range.
   const bool tile_overlap_computed =
       tile_overlap_.contains_range(start_range_idx, end_range_idx);
   if (tile_overlap_computed) {
+    stats_->add_counter("precompute_tile_overlap.tile_overlap_cache_hit", 1);
     tile_overlap_.update_range(start_range_idx, end_range_idx);
     return Status::Ok();
   }
+
+  stats_->add_counter(
+      "precompute_tile_overlap.ranges_requested",
+      end_range_idx - start_range_idx + 1);
 
   compute_range_offsets();
 
@@ -1989,6 +2003,17 @@ Status Subarray::precompute_tile_overlap(
     tile_overlap.expand(tmp_tile_overlap_end);
   } while (true);
 
+  stats_->add_counter("precompute_tile_overlap.fragment_num", fragment_num);
+  stats_->add_counter(
+      "precompute_tile_overlap.relevant_fragment_num",
+      relevant_fragments_.size());
+  stats_->add_counter(
+      "precompute_tile_overlap.tile_overlap_byte_size",
+      tile_overlap_.byte_size());
+  stats_->add_counter(
+      "precompute_tile_overlap.ranges_computed",
+      tile_overlap_.range_idx_end() - tile_overlap_.range_idx_start() + 1);
+
   return Status::Ok();
 
   STATS_END_TIMER(stats::GlobalStats::TimerType::READ_COMPUTE_TILE_OVERLAP)
@@ -1996,6 +2021,7 @@ Status Subarray::precompute_tile_overlap(
 
 Subarray Subarray::clone() const {
   Subarray clone;
+  clone.stats_ = stats_;
   clone.array_ = array_;
   clone.layout_ = layout_;
   clone.cell_order_ = cell_order_;
@@ -2131,6 +2157,7 @@ TileOverlap Subarray::compute_tile_overlap(
 }
 
 void Subarray::swap(Subarray& subarray) {
+  std::swap(stats_, subarray.stats_);
   std::swap(array_, subarray.array_);
   std::swap(layout_, subarray.layout_);
   std::swap(cell_order_, subarray.cell_order_);

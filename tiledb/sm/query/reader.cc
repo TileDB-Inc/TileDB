@@ -55,6 +55,7 @@
 
 using namespace tiledb;
 using namespace tiledb::common;
+using namespace tiledb::sm::stats;
 
 namespace tiledb {
 namespace sm {
@@ -96,17 +97,20 @@ inline IterT skip_invalid_elements(IterT it, const IterT& end) {
 /*   CONSTRUCTORS & DESTRUCTORS   */
 /* ****************************** */
 
-Reader::Reader() {
-  array_ = nullptr;
-  array_schema_ = nullptr;
-  storage_manager_ = nullptr;
-  layout_ = Layout::ROW_MAJOR;
-  sparse_mode_ = false;
-  read_state_.initialized_ = false;
-  offsets_bitsize_ = constants::cell_var_offset_size * 8;
+Reader::Reader()
+    : stats_(tdb_make_shared(Stats, "Reader"))
+    , array_(nullptr)
+    , array_schema_(nullptr)
+    , layout_(Layout::ROW_MAJOR)
+    , sparse_mode_(false)
+    , storage_manager_(nullptr)
+    , offsets_extra_element_(false)
+    , offsets_bitsize_(constants::cell_var_offset_size * 8) {
+  stats::all_stats.register_stats(stats_);
 }
 
-Reader::~Reader() = default;
+Reader::~Reader() {
+}
 
 /* ****************************** */
 /*               API              */
@@ -418,7 +422,7 @@ Status Reader::read() {
 
 void Reader::set_array(const Array* array) {
   array_ = array;
-  subarray_ = Subarray(array, Layout::ROW_MAJOR);
+  subarray_ = Subarray(array, Layout::ROW_MAJOR, stats_.get());
 }
 
 void Reader::set_array_schema(const ArraySchema* array_schema) {
@@ -783,6 +787,10 @@ Status Reader::set_offsets_bitsize(const uint32_t bitsize) {
 
   offsets_bitsize_ = bitsize;
   return Status::Ok();
+}
+
+Stats* Reader::stats() {
+  return stats_.get();
 }
 
 /* ********************************* */
@@ -1918,7 +1926,8 @@ Status Reader::compute_result_coords(
         sub_partitioner_memory_budget,
         sub_partitioner_memory_budget_var,
         sub_partitioner_memory_budget_validity,
-        storage_manager_->compute_tp());
+        storage_manager_->compute_tp(),
+        stats_.get());
 
     // Set the individual attribute budgets in the sub-partitioner
     // to the same values as in the parent partitioner.
@@ -2669,7 +2678,8 @@ Status Reader::init_read_state() {
       memory_budget,
       memory_budget_var,
       memory_budget_validity,
-      storage_manager_->compute_tp());
+      storage_manager_->compute_tp(),
+      stats_.get());
   read_state_.overflowed_ = false;
   read_state_.unsplittable_ = false;
 

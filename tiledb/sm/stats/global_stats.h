@@ -38,12 +38,14 @@
 #include <chrono>
 #include <iomanip>
 #include <iostream>
+#include <list>
 #include <mutex>
 #include <sstream>
 #include <thread>
 #include <unordered_map>
 #include <vector>
 
+#include "tiledb/common/heap_memory.h"
 #include "tiledb/sm/stats/stats.h"
 #include "tiledb/sm/stats/timer_stat.h"
 
@@ -222,8 +224,12 @@ class GlobalStats {
   /** Enable or disable statistics gathering. */
   void set_enabled(bool enabled);
 
-  /** Sets the new stats. */
-  void set_stats(const Stats& stats);
+  /**
+   * Registers a `Stats` instance. Stats in this instance
+   * will be aggregated and dumped with the other registered
+   * stats.
+   */
+  void register_stats(const tdb_shared_ptr<Stats>& stats);
 
   /** Reset all counters to zero. */
   void reset();
@@ -269,12 +275,8 @@ class GlobalStats {
   /** Mutex to protext in multi-threading scenarios. */
   std::mutex mtx_;
 
-  /**
-   * The new stats.
-   *
-   * @note This will be refactored soon.
-   */
-  Stats stats_;
+  /** The aggregated stats. */
+  std::list<tdb_shared_ptr<stats::Stats>> registered_stats_;
 
   /* ****************************** */
   /*       PRIVATE FUNCTIONS        */
@@ -291,6 +293,9 @@ class GlobalStats {
 
   /** Dump the current vfs stats. */
   std::string dump_vfs() const;
+
+  /** Dump the current registered stats. */
+  std::string dump_registered_stats() const;
 
   /** Parse a comma-separated string of enum names. */
   std::vector<std::string> parse_enum_names(
