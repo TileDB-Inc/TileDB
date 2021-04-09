@@ -478,7 +478,8 @@ Status Consolidator::consolidate_fragment_meta(
   URI uri;
   auto first = meta.front()->fragment_uri();
   auto last = meta.back()->fragment_uri();
-  RETURN_NOT_OK(compute_new_fragment_uri(first, last, &uri));
+  RETURN_NOT_OK(compute_new_fragment_uri(
+      first, last, array.array_schema()->write_version(), &uri));
   uri = URI(uri.to_string() + constants::meta_file_suffix);
 
   // Get the consolidated fragment metadata version
@@ -658,7 +659,12 @@ Status Consolidator::create_queries(
   // Get last fragment URI, which will be the URI of the consolidated fragment
   auto first = (*query_r)->first_fragment_uri();
   auto last = (*query_r)->last_fragment_uri();
-  RETURN_NOT_OK(compute_new_fragment_uri(first, last, new_fragment_uri));
+
+  RETURN_NOT_OK(compute_new_fragment_uri(
+      first,
+      last,
+      array_for_reads->array_schema()->write_version(),
+      new_fragment_uri));
 
   // Create write query
   *query_w =
@@ -790,7 +796,10 @@ Status Consolidator::compute_next_to_consolidate(
 }
 
 Status Consolidator::compute_new_fragment_uri(
-    const URI& first, const URI& last, URI* new_uri) const {
+    const URI& first,
+    const URI& last,
+    uint32_t format_version,
+    URI* new_uri) const {
   // Get uuid
   std::string uuid;
   RETURN_NOT_OK(uuid::generate_uuid(&uuid, false));
@@ -805,7 +814,7 @@ Status Consolidator::compute_new_fragment_uri(
   // Create new URI
   std::stringstream ss;
   ss << first.parent().to_string() << "/__" << t_first.first << "_"
-     << t_last.second << "_" << uuid << "_" << constants::format_version;
+     << t_last.second << "_" << uuid << "_" << format_version;
 
   *new_uri = URI(ss.str());
 

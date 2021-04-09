@@ -74,7 +74,7 @@ FragmentMetadata::FragmentMetadata(
   has_consolidated_footer_ = false;
   rtree_ = RTree(array_schema_->domain(), constants::rtree_fanout);
   meta_file_size_ = 0;
-  version_ = constants::format_version;
+  version_ = array_schema_->write_version();
   tile_index_base_ = 0;
   sparse_tile_num_ = 0;
   footer_size_ = 0;
