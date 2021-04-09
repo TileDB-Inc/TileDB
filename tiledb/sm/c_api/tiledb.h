@@ -3192,6 +3192,26 @@ TILEDB_EXPORT int32_t tiledb_array_schema_get_tile_order(
     tiledb_layout_t* tile_order);
 
 /**
+ * Retrieves the array format version.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * uint32_t version;
+ * tiledb_array_schema_get_version(ctx, array_schema, &version);
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param array_schema The array schema.
+ * @param version The version to be retrieved.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_array_schema_get_version(
+    tiledb_ctx_t* ctx,
+    const tiledb_array_schema_t* array_schema,
+    uint32_t* version);
+
+/**
  * Retrieves the number of array attributes.
  *
  * **Example:**
@@ -4898,6 +4918,51 @@ TILEDB_EXPORT int32_t tiledb_array_create_with_key(
     tiledb_ctx_t* ctx,
     const char* array_uri,
     const tiledb_array_schema_t* array_schema,
+    tiledb_encryption_type_t encryption_type,
+    const void* encryption_key,
+    uint32_t key_length);
+
+/**
+ * Updates the array format version to the latest one.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * tiledb_array_update_version(
+ *     ctx, "hdfs:///tiledb_arrays/my_array");
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param array_uri The name of the TileDB array to update.
+ *
+ * @return `TILEDB_OK` on success, and `TILEDB_ERR` on error.
+ */
+TILEDB_EXPORT int32_t
+tiledb_array_update_version(tiledb_ctx_t* ctx, const char* array_uri);
+
+/**
+ * Updates the array format version to the latest one.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * uint8_t key[32] = ...;
+ * tiledb_array_update_version_with_key(
+ *     ctx, "hdfs:///tiledb_arrays/my_array",
+ *     TILEDB_AES_256_GCM, key, sizeof(key));
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param array_uri The name of the TileDB array to update.
+ * @param encryption_type The encryption type to use.
+ * @param encryption_key The encryption key to use.
+ * @param key_length Length in bytes of the encryption key.
+ *
+ * @return `TILEDB_OK` on success, and `TILEDB_ERR` on error.
+ */
+TILEDB_EXPORT int32_t tiledb_array_update_version_with_key(
+    tiledb_ctx_t* ctx,
+    const char* array_uri,
     tiledb_encryption_type_t encryption_type,
     const void* encryption_key,
     uint32_t key_length);

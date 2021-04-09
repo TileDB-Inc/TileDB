@@ -206,7 +206,7 @@ class ArraySchema {
    * @param buff The buffer the array schema is serialized into.
    * @return Status
    */
-  Status serialize(Buffer* buff) const;
+  Status serialize(Buffer* buff);
 
   /** Returns the tile order. */
   Layout tile_order() const;

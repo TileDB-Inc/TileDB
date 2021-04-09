@@ -377,7 +377,10 @@ class Consolidator {
    * as `__<first_URI_timestamp>_<last_URI_timestamp>_<uuid>`.
    */
   Status compute_new_fragment_uri(
-      const URI& first, const URI& last, URI* new_uri) const;
+      const URI& first,
+      const URI& last,
+      uint32_t format_version,
+      URI* new_uri) const;
 
   /** Checks and sets the input configuration parameters. */
   Status set_config(const Config* config);

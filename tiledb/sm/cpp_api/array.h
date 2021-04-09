@@ -613,6 +613,56 @@ class Array {
   }
 
   /**
+   * @brief Updates the array format version to the latest one.
+   *
+   * **Example:**
+   * @code{.cpp}
+   * tiledb::Array::update_version(ctx, "s3://bucket-name/array-name");
+   * @endcode
+   *
+   * @param ctx TileDB context
+   * @param array_uri The URI of the TileDB array to update.
+   */
+  static void update_version(const Context& ctx, const std::string& uri) {
+    update_version(ctx, uri, TILEDB_NO_ENCRYPTION, nullptr, 0);
+  }
+
+  /**
+   * @brief Updates the array format version to the latest one.
+   *
+   * **Example:**
+   * @code{.cpp}
+   * // Load AES-256 key from disk, environment variable, etc.
+   * uint8_t key[32] = ...;
+   * tiledb::Array::update_version(
+   *     ctx,
+   *     "s3://bucket-name/array-name",
+   *     TILEDB_AES_256_GCM,
+   *     key,
+   *     sizeof(key));
+   * @endcode
+   *
+   * @param ctx TileDB context
+   * @param array_uri The URI of the TileDB array to be consolidated.
+   * @param encryption_type The encryption type to use.
+   * @param encryption_key The encryption key to use.
+   * @param key_length Length in bytes of the encryption key.
+   */
+  static void update_version(
+      const Context& ctx,
+      const std::string& uri,
+      tiledb_encryption_type_t encryption_type,
+      const void* encryption_key,
+      uint32_t key_length) {
+    ctx.handle_error(tiledb_array_update_version_with_key(
+        ctx.ptr().get(),
+        uri.c_str(),
+        encryption_type,
+        encryption_key,
+        key_length));
+  }
+
+  /**
    * @brief Consolidates the fragments of an array into a single fragment.
    *
    * You must first finalize all queries to the array before consolidation can

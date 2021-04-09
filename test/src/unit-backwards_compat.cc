@@ -32,6 +32,7 @@
  */
 
 #include "catch.hpp"
+#include "test/src/helpers.h"
 #include "tiledb/sm/cpp_api/tiledb"
 
 #include <chrono>
@@ -622,6 +623,7 @@ TEST_CASE(
   }
 }
 
+#ifndef _WIN32
 TEST_CASE(
     "Backwards compatibility: Write to an array of older version",
     "[backwards-compat][write-to-older-version]") {
@@ -630,8 +632,12 @@ TEST_CASE(
   std::string fragment_uri;
 
   try {
+    VFS vfs(ctx);
+    std::string old_array_name_copy = old_array_name + "_copy";
+    vfs.copy_dir(old_array_name, old_array_name_copy);
+
     // Write
-    Array old_array(ctx, old_array_name, TILEDB_WRITE);
+    Array old_array(ctx, old_array_name_copy, TILEDB_WRITE);
     std::vector<int> a_write = {100};
     std::vector<int> coords_write = {1, 10};
     Query query_w(ctx, old_array);
@@ -647,7 +653,7 @@ TEST_CASE(
     std::vector<int> a_read(50);
     std::vector<int> coords_read(50);
 
-    Array array(ctx, old_array_name, TILEDB_READ);
+    Array array(ctx, old_array_name_copy, TILEDB_READ);
     Query query_r(ctx, array);
     query_r.set_subarray(subarray)
         .set_layout(TILEDB_ROW_MAJOR)
@@ -656,10 +662,14 @@ TEST_CASE(
     query_r.submit();
     array.close();
 
-    // Remove created fragment and ok file
-    VFS vfs(ctx);
-    vfs.remove_dir(fragment_uri);
-    vfs.remove_file(fragment_uri + ".ok");
+    ArraySchema schema = array.load_schema(ctx, old_array_name_copy);
+    uint32_t format_version = schema.version();
+
+    // Remove array copy
+    vfs.remove_dir(old_array_name_copy);
+    REQUIRE(format_version == tiledb::sm::constants::format_version);
+
+    REQUIRE(a_read[0] == 100);
 
     REQUIRE(a_read[0] == 100);
     for (int i = 1; i < 4; i++) {
@@ -669,6 +679,33 @@ TEST_CASE(
     CHECK(false);
   }
 }
+
+TEST_CASE(
+    "Backwards compatibility: Update array version",
+    "[backwards-compat][update-array-version]") {
+  std::string old_array_name(arrays_dir + "/non_split_coords_v1_4_0");
+  Context ctx;
+
+  try {
+    VFS vfs(ctx);
+    std::string old_array_name_copy = old_array_name + "_copy";
+    vfs.copy_dir(old_array_name, old_array_name_copy);
+
+    Array::update_version(ctx, old_array_name_copy);
+
+    // Read version
+    Array array(ctx, old_array_name_copy, TILEDB_READ);
+    ArraySchema schema = array.load_schema(ctx, old_array_name_copy);
+    uint32_t format_version = schema.version();
+
+    // Remove array copy
+    vfs.remove_dir(old_array_name_copy);
+    REQUIRE(format_version == tiledb::sm::constants::format_version);
+  } catch (const std::exception& e) {
+    CHECK(false);
+  }
+}
+#endif
 
 TEST_CASE(
     "Backwards compatibility: Test reading arrays written with previous "

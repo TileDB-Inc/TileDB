@@ -321,6 +321,7 @@ void ArraySchema::dump(FILE* out) const {
     out = stdout;
 
   std::stringstream ss;
+  ss << "- Array version: " << version_ << "\n";
   ss << "- Array type: " << array_type_str(array_type_) << "\n";
   ss << "- Cell order: " << layout_str(cell_order_) << "\n";
   ss << "- Tile order: " << layout_str(tile_order_) << "\n";
@@ -393,12 +394,11 @@ bool ArraySchema::is_nullable(const std::string& name) const {
 //   attribute #1
 //   attribute #2
 //   ...
-Status ArraySchema::serialize(Buffer* buff) const {
-  // Write version, which is always the current version. Despite
-  // the in-memory `version_`, we will serialize every array schema
-  // as the latest version.
-  const uint32_t version = constants::format_version;
-  RETURN_NOT_OK(buff->write(&version, sizeof(uint32_t)));
+Status ArraySchema::serialize(Buffer* buff) {
+  // Write version, which is always the current version
+  // and update the in-memory `version_`
+  version_ = constants::format_version;
+  RETURN_NOT_OK(buff->write(&version_, sizeof(uint32_t)));
 
   // Write allows_dups
   RETURN_NOT_OK(buff->write(&allows_dups_, sizeof(bool)));
@@ -426,13 +426,13 @@ Status ArraySchema::serialize(Buffer* buff) const {
   RETURN_NOT_OK(cell_validity_filters_.serialize(buff));
 
   // Write domain
-  RETURN_NOT_OK(domain_->serialize(buff, version));
+  RETURN_NOT_OK(domain_->serialize(buff, version_));
 
   // Write attributes
   auto attribute_num = (uint32_t)attributes_.size();
   RETURN_NOT_OK(buff->write(&attribute_num, sizeof(uint32_t)));
   for (auto& attr : attributes_)
-    RETURN_NOT_OK(attr->serialize(buff, version));
+    RETURN_NOT_OK(attr->serialize(buff, version_));
 
   return Status::Ok();
 }

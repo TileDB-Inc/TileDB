@@ -2448,6 +2448,17 @@ int32_t tiledb_array_schema_get_tile_order(
   return TILEDB_OK;
 }
 
+int32_t tiledb_array_schema_get_version(
+    tiledb_ctx_t* ctx,
+    const tiledb_array_schema_t* array_schema,
+    uint32_t* version) {
+  if (sanity_check(ctx) == TILEDB_ERR ||
+      sanity_check(ctx, array_schema) == TILEDB_ERR)
+    return TILEDB_ERR;
+  *version = array_schema->array_schema_->version();
+  return TILEDB_OK;
+}
+
 int32_t tiledb_array_schema_get_attribute_num(
     tiledb_ctx_t* ctx,
     const tiledb_array_schema_t* array_schema,
@@ -3684,6 +3695,33 @@ int32_t tiledb_array_create_with_key(
                 uri, array_schema->array_schema_, key)))
       return TILEDB_ERR;
   }
+  return TILEDB_OK;
+}
+
+int32_t tiledb_array_update_version(tiledb_ctx_t* ctx, const char* array_uri) {
+  return tiledb_array_update_version_with_key(
+      ctx, array_uri, TILEDB_NO_ENCRYPTION, nullptr, 0);
+}
+
+int32_t tiledb_array_update_version_with_key(
+    tiledb_ctx_t* ctx,
+    const char* array_uri,
+    tiledb_encryption_type_t encryption_type,
+    const void* encryption_key,
+    uint32_t key_length) {
+  // Sanity checks
+  if (sanity_check(ctx) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  if (SAVE_ERROR_CATCH(
+          ctx,
+          ctx->ctx_->storage_manager()->array_update_version(
+              array_uri,
+              static_cast<tiledb::sm::EncryptionType>(encryption_type),
+              encryption_key,
+              key_length)))
+    return TILEDB_ERR;
+
   return TILEDB_OK;
 }
 

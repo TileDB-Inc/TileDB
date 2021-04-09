@@ -767,7 +767,8 @@ class Writer {
    * @param frag_uri Will store the new special fragment name
    * @return Status
    */
-  Status new_fragment_name(uint64_t timestamp, std::string* frag_uri) const;
+  Status new_fragment_name(
+      uint64_t timestamp, uint32_t format_version, std::string* frag_uri) const;
 
   /**
    * This deletes the global write state and deletes the potentially

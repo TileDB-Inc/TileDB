@@ -229,6 +229,10 @@ Array
     :project: TileDB-C
 .. doxygenfunction:: tiledb_array_create_with_key
     :project: TileDB-C
+.. doxygenfunction:: tiledb_array_update_version
+    :project: TileDB-C
+.. doxygenfunction:: tiledb_array_update_version_with_key
+    :project: TileDB-C
 .. doxygenfunction:: tiledb_array_consolidate
     :project: TileDB-C
 .. doxygenfunction:: tiledb_array_consolidate_with_key
@@ -301,6 +305,8 @@ Array Schema
 .. doxygenfunction:: tiledb_array_schema_get_domain
     :project: TileDB-C
 .. doxygenfunction:: tiledb_array_schema_get_tile_order
+    :project: TileDB-C
+.. doxygenfunction:: tiledb_array_schema_get_version
     :project: TileDB-C
 .. doxygenfunction:: tiledb_array_schema_get_attribute_num
     :project: TileDB-C

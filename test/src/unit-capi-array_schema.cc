@@ -684,6 +684,12 @@ void ArraySchemaFx::load_and_check_array_schema(const std::string& path) {
   REQUIRE(rc == TILEDB_OK);
   CHECK(tile_order == TILE_ORDER);
 
+  // Check version
+  uint32_t format_version;
+  rc = tiledb_array_schema_get_version(ctx_, array_schema, &format_version);
+  REQUIRE(rc == TILEDB_OK);
+  CHECK(format_version == tiledb::sm::constants::format_version);
+
   // Check array_schema type
   tiledb_array_type_t type;
   rc = tiledb_array_schema_get_array_type(ctx_, array_schema, &type);
@@ -846,7 +852,9 @@ void ArraySchemaFx::load_and_check_array_schema(const std::string& path) {
 
   // Check dump
   std::string dump_str =
-      std::string("- Array type: ") + ARRAY_TYPE_STR + "\n" +
+      std::string("- Array version: ") +
+      std::to_string(tiledb::sm::constants::format_version) + "\n" +
+      "- Array type: " + ARRAY_TYPE_STR + "\n" +
       "- Cell order: " + CELL_ORDER_STR + "\n" +
       "- Tile order: " + TILE_ORDER_STR + "\n" + "- Capacity: " + CAPACITY_STR +
       "\n"

@@ -456,6 +456,9 @@ extern const int32_t library_version[3];
 /** The TileDB serialization format version number. */
 extern const uint32_t format_version;
 
+/** The lowest version supported for back compat writes. */
+extern const uint32_t back_compat_writes_min_format_version;
+
 /** The maximum size of a tile chunk (unit of compression) in bytes. */
 extern const uint64_t max_tile_chunk_size;
 

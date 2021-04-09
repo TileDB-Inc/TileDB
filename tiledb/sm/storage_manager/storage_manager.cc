@@ -501,6 +501,34 @@ Status StorageManager::array_reopen(
   STATS_END_TIMER(stats::GlobalStats::TimerType::READ_ARRAY_OPEN)
 }
 
+Status StorageManager::array_update_version(
+    const char* array_name,
+    EncryptionType encryption_type,
+    const void* encryption_key,
+    uint32_t key_length) {
+  // Check array URI
+  URI array_uri(array_name);
+  if (array_uri.is_invalid()) {
+    return LOG_STATUS(
+        Status::StorageManagerError("Cannot consolidate array; Invalid URI"));
+  }
+  // Check if array exists
+  ObjectType obj_type;
+  RETURN_NOT_OK(object_type(array_uri, &obj_type));
+
+  if (obj_type != ObjectType::ARRAY) {
+    return LOG_STATUS(Status::StorageManagerError(
+        "Cannot consolidate array; Array does not exist"));
+  }
+
+  EncryptionKey enc_key;
+  RETURN_NOT_OK(enc_key.set_key(encryption_type, encryption_key, key_length));
+  auto array_schema = (ArraySchema*)nullptr;
+  RETURN_NOT_OK(load_array_schema(array_uri, enc_key, &array_schema));
+
+  return store_array_schema(array_schema, enc_key);
+}
+
 Status StorageManager::array_consolidate(
     const char* array_name,
     EncryptionType encryption_type,

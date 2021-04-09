@@ -219,6 +219,22 @@ class StorageManager {
       std::vector<FragmentMetadata*>* fragment_metadata);
 
   /**
+   * Updates the array version to the latest one.
+   *
+   * @param array_name The name of the array to update.
+   * @param encryption_type The encryption type of the array
+   * @param encryption_key If the array is encrypted, the private encryption
+   *    key. For unencrypted arrays, pass `nullptr`.
+   * @param key_length The length in bytes of the encryption key.
+   * @return Status
+   */
+  Status array_update_version(
+      const char* array_name,
+      EncryptionType encryption_type,
+      const void* encryption_key,
+      uint32_t key_length);
+
+  /**
    * Consolidates the fragments of an array into a single one.
    *
    * @param array_name The name of the array to be consolidated.
