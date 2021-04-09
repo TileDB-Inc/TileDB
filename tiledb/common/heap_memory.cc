@@ -40,14 +40,14 @@ namespace common {
 
 // Protects against races between memory management APIs
 // and the HeapProfiler API.
-std::mutex __tdb_heap_mem_lock;
+std::recursive_mutex __tdb_heap_mem_lock;
 
 void* tiledb_malloc(const size_t size, const std::string& label) {
   if (!heap_profiler.enabled()) {
     return std::malloc(size);
   }
 
-  std::unique_lock<std::mutex> ul(__tdb_heap_mem_lock);
+  std::unique_lock<std::recursive_mutex> ul(__tdb_heap_mem_lock);
 
   void* const p = std::malloc(size);
 
@@ -65,7 +65,7 @@ void* tiledb_calloc(
     return std::calloc(num, size);
   }
 
-  std::unique_lock<std::mutex> ul(__tdb_heap_mem_lock);
+  std::unique_lock<std::recursive_mutex> ul(__tdb_heap_mem_lock);
 
   void* const p = std::calloc(num, size);
 
@@ -83,7 +83,7 @@ void* tiledb_realloc(
     return std::realloc(p, size);
   }
 
-  std::unique_lock<std::mutex> ul(__tdb_heap_mem_lock);
+  std::unique_lock<std::recursive_mutex> ul(__tdb_heap_mem_lock);
 
   void* const p_realloc = std::realloc(p, size);
 
@@ -102,7 +102,7 @@ void tiledb_free(void* const p) {
     return;
   }
 
-  std::unique_lock<std::mutex> ul(__tdb_heap_mem_lock);
+  std::unique_lock<std::recursive_mutex> ul(__tdb_heap_mem_lock);
 
   free(p);
   heap_profiler.record_dealloc(p);
