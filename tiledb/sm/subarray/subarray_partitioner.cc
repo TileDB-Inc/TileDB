@@ -795,22 +795,26 @@ Status SubarrayPartitioner::compute_current_start_end(bool* found) {
       mem_size.size_validity_ += memory_sizes[r][i].size_validity_;
 
       if (cur_size.size_fixed_ > mem_size.size_fixed_) {
-        std::cout << "caping cur_size.size_fixed to " << cur_size.size_fixed_
-                  << " because " << mem_size.size_fixed_ << " > "
-                  << mem_size.size_fixed_ << std::endl;
+        //        std::cout << names[i] << "- caping cur_size.size_fixed to " <<
+        //        mem_size.size_fixed_
+        //                  << " because " << cur_size.size_fixed_ << " > "
+        //                  << mem_size.size_fixed_ << std::endl;
         cur_size.size_fixed_ = mem_size.size_fixed_;
       }
       if (cur_size.size_var_ > mem_size.size_var_) {
-        std::cout << "caping cur_size.size_var_ to " << cur_size.size_var_
-                  << " because " << mem_size.size_var_ << " > "
-                  << mem_size.size_var_ << std::endl;
+        //        std::cout << names[i] << "- caping cur_size.size_var_ to " <<
+        //        mem_size.size_var_
+        //                  << " because " << cur_size.size_var_ << " > "
+        //                  << mem_size.size_var_ << std::endl;
         cur_size.size_var_ = mem_size.size_var_;
       }
       if (cur_size.size_validity_ > mem_size.size_validity_) {
-        std::cout << "caping cur_size.size_validity_ to "
-                  << cur_size.size_validity_ << " because "
-                  << mem_size.size_validity_ << " > " << mem_size.size_validity_
-                  << std::endl;
+        //        std::cout << names[i] << "- caping cur_size.size_validity_ to
+        //        "
+        //                  << mem_size.size_validity_ << " because "
+        //                  << cur_size.size_validity_ << " > " <<
+        //                  mem_size.size_validity_
+        //                  << std::endl;
         cur_size.size_validity_ = mem_size.size_validity_;
       }
 
