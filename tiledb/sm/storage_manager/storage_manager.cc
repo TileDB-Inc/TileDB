@@ -203,7 +203,7 @@ Status StorageManager::array_open_for_reads(
     std::vector<FragmentMetadata*>* fragment_metadata,
     uint64_t timestamp_end,
     uint64_t timestamp_start) {
-  STATS_START_TIMER(stats::Stats::TimerType::READ_ARRAY_OPEN)
+  STATS_START_TIMER(stats::GlobalStats::TimerType::READ_ARRAY_OPEN)
 
   /* NOTE: these variables may be modified on a different thread
            in the load_array_fragments_task below.
@@ -443,7 +443,7 @@ Status StorageManager::array_reopen(
     std::vector<FragmentMetadata*>* fragment_metadata,
     uint64_t timestamp_end,
     uint64_t timestamp_start) {
-  STATS_START_TIMER(stats::Stats::TimerType::READ_ARRAY_OPEN)
+  STATS_START_TIMER(stats::GlobalStats::TimerType::READ_ARRAY_OPEN)
 
   auto open_array = (OpenArray*)nullptr;
 

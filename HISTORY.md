@@ -57,7 +57,6 @@
 * Add new api,  to get a query's config. [#2167](https://github.com/TileDB-Inc/TileDB/pull/2167)
 * Addition of  to directly assign a config to an array. [#2142](https://github.com/TileDB-Inc/TileDB/pull/2142)
 * Addition of tiledb_array_set_config to directly assign a config to an array. [#2142](https://github.com/TileDB-Inc/TileDB/pull/2142)
->>>>>>> Troubleshoot reopen in unit tests
 * Removes non-default parameter in tiledb_config_unset. [#2099](https://github.com/TileDB-Inc/TileDB/pull/2099)
 
 ### C++ API

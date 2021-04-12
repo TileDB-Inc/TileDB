@@ -79,7 +79,8 @@ Array::Array(const Array& rhs)
     , fragment_metadata_(rhs.fragment_metadata_)
     , is_open_(rhs.is_open_.load())
     , query_type_(rhs.query_type_)
-    , timestamp_(rhs.timestamp_)
+    , timestamp_end_(rhs.timestamp_end_)
+    , timestamp_start_(rhs.timestamp_start_)
     , storage_manager_(rhs.storage_manager_)
     , last_max_buffer_sizes_(rhs.last_max_buffer_sizes_)
     , remote_(rhs.remote_)
@@ -143,13 +144,13 @@ Status Array::open(
   } else if (query_type == QueryType::READ) {
     RETURN_NOT_OK(storage_manager_->array_open_for_reads(
         array_uri_,
-        encryption_key_,
+        *encryption_key_,
         &array_schema_,
         &fragment_metadata_,
         timestamp_end_));
   } else {
     RETURN_NOT_OK(storage_manager_->array_open_for_writes(
-        array_uri_, encryption_key_, &array_schema_));
+        array_uri_, *encryption_key_, &array_schema_));
     metadata_.reset(timestamp_end_);
   }
 
@@ -272,14 +273,14 @@ Status Array::open(
   } else if (query_type == QueryType::READ) {
     RETURN_NOT_OK(storage_manager_->array_open_for_reads(
         array_uri_,
-        encryption_key_,
+        *encryption_key_,
         &array_schema_,
         &fragment_metadata_,
         timestamp_end_,
         timestamp_start_));
   } else {
     RETURN_NOT_OK(storage_manager_->array_open_for_writes(
-        array_uri_, encryption_key_, &array_schema_));
+        array_uri_, *encryption_key_, &array_schema_));
     metadata_.reset(timestamp_end_);
   }
 
@@ -550,7 +551,7 @@ Status Array::reopen(uint64_t timestamp_end, uint64_t timestamp_start) {
 
   RETURN_NOT_OK(storage_manager_->array_reopen(
       array_uri_,
-      encryption_key_,
+      *encryption_key_,
       &array_schema_,
       &fragment_metadata_,
       timestamp_end_,
@@ -909,7 +910,7 @@ Status Array::load_metadata() {
         array_uri_, timestamp_end_, this));
   } else {
     RETURN_NOT_OK(storage_manager_->load_array_metadata(
-        array_uri_, encryption_key_, timestamp_end_, &metadata_));
+        array_uri_, *encryption_key_, timestamp_end_, &metadata_));
   }
   metadata_loaded_ = true;
   return Status::Ok();
