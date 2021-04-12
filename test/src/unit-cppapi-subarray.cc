@@ -160,16 +160,19 @@ TEST_CASE("C++ API: Test subarray", "[cppapi][sparse][subarray]") {
     REQUIRE(data[3] == 4);
   }
 
-  SECTION("- Read ranges oob") {
+  SECTION("- Read ranges oob error") {
     Array array(ctx, array_name, TILEDB_READ);
     Query query(ctx, array);
+    Config config;
+    config.set("sm.read_range_oob", "error");
+    query.set_config(config);
     int range[] = {1, 4};
     int range2[] = {-1, 3};
     REQUIRE_THROWS(query.add_range(0, range[0], range[1]));
     REQUIRE_THROWS(query.add_range(1, range2[0], range2[1]));
   }
 
-  SECTION("- Read ranges oob") {
+  SECTION("- Read ranges oob warn") {
     Array array(ctx, array_name, TILEDB_READ);
     Query query(ctx, array);
     Config config;

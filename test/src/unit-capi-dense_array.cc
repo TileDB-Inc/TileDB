@@ -1076,6 +1076,19 @@ void DenseArrayFx::check_sorted_reads(const std::string& path) {
   tiledb_query_t* query;
   rc = tiledb_query_alloc(ctx_, array, TILEDB_READ, &query);
   REQUIRE(rc == TILEDB_OK);
+
+  // Set config for `sm.read_range_oob` = `error`
+  tiledb_config_t* config = nullptr;
+  tiledb_error_t* error = nullptr;
+  REQUIRE(tiledb_config_alloc(&config, &error) == TILEDB_OK);
+  REQUIRE(error == nullptr);
+  rc = tiledb_config_set(config, "sm.read_range_oob", "error", &error);
+  REQUIRE(rc == TILEDB_OK);
+  REQUIRE(error == nullptr);
+  rc = tiledb_query_set_config(ctx_, query, config);
+  REQUIRE(rc == TILEDB_OK);
+
+  REQUIRE(rc == TILEDB_OK);
   int64_t subarray_1[] = {-1, 5, 10, 10};
   rc = tiledb_query_set_subarray(ctx_, query, subarray_1);
   CHECK(rc == TILEDB_ERR);

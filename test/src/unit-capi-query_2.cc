@@ -682,6 +682,17 @@ TEST_CASE_METHOD(
   rc = tiledb_query_alloc(ctx_, array, TILEDB_READ, &query);
   CHECK(rc == TILEDB_OK);
 
+  // Set config for `sm.read_range_oob` = `error`
+  tiledb_config_t* config = nullptr;
+  tiledb_error_t* error = nullptr;
+  REQUIRE(tiledb_config_alloc(&config, &error) == TILEDB_OK);
+  REQUIRE(error == nullptr);
+  rc = tiledb_config_set(config, "sm.read_range_oob", "error", &error);
+  REQUIRE(rc == TILEDB_OK);
+  REQUIRE(error == nullptr);
+  rc = tiledb_query_set_config(ctx_, query, config);
+  REQUIRE(rc == TILEDB_OK);
+
   // Set/Get layout
   rc = tiledb_query_set_layout(ctx_, query, TILEDB_UNORDERED);
   CHECK(rc == TILEDB_OK);

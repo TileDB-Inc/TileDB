@@ -919,7 +919,7 @@ TILEDB_EXPORT void tiledb_config_free(tiledb_config_t** config);
  *    If `error`, this will check ranges for read with out-of-bounds on the
  *    dimension domain's. If `warn`, the ranges will be capped at the
  *    dimension's domain and a warning logged. <br>
- *    **Default**: true
+ *    **Default**: warn
  * - `sm.check_global_order` <br>
  *    Checks if the coordinates obey the global array order. Applicable only
  *    to sparse writes in global order.
