@@ -359,7 +359,26 @@ class Reader {
    * @param buffer_size This initially contains the allocated
    *     size of `buffer`, but after the termination of the function
    *     it will contain the size of the useful (read) data in `buffer`.
-   * @param check_null_buffers If true (default), null buffers are not allowed.
+   * @param check_null_buffers If true (default), null buffers are not
+   * allowed.
+   * @return Status
+   */
+  Status set_buffer_agnostic(
+      const std::string& name,
+      void* const buffer,
+      uint64_t* const buffer_size,
+      const bool check_null_buffers);
+
+  /**
+   * Sets the buffer for a fixed-sized attribute/dimension.
+   *
+   * @param name The attribute/dimension to set the buffer for.
+   * @param buffer The buffer that will hold the data to be read.
+   * @param buffer_size This initially contains the allocated
+   *     size of `buffer`, but after the termination of the function
+   *     it will contain the size of the useful (read) data in `buffer`.
+   * @param check_null_buffers If true (default), null buffers are not
+   * allowed.
    * @return Status
    */
   Status set_buffer(

@@ -259,6 +259,17 @@ class Writer {
    * @param buffer_size The size of `buffer` in bytes.
    * @return Status
    */
+  Status set_buffer_agnostic(
+      const std::string& name, void* const buffer, uint64_t* const buffer_size);
+
+  /**
+   * Sets the buffer for a fixed-sized attribute/dimension.
+   *
+   * @param name The attribute/dimension to set the buffer for.
+   * @param buffer The buffer that has the input data to be written.
+   * @param buffer_size The size of `buffer` in bytes.
+   * @return Status
+   */
   Status set_buffer(
       const std::string& name, void* buffer, uint64_t* buffer_size);
 

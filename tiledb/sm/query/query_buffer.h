@@ -147,6 +147,32 @@ class QueryBuffer {
     return *this;
   }
 
+  /** Move-assignment Operator. */
+  QueryBuffer& operator+=(QueryBuffer&& rhs) {
+    if (&rhs == this)
+      return *this;
+    if (rhs.buffer_ != nullptr)
+      std::swap(buffer_, rhs.buffer_);
+    if (rhs.buffer_var_ != nullptr)
+      std::swap(buffer_var_, rhs.buffer_var_);
+    if (rhs.buffer_size_ != nullptr)
+      std::swap(buffer_size_, rhs.buffer_size_);
+    if (rhs.buffer_var_size_ != nullptr)
+      std::swap(buffer_var_size_, rhs.buffer_var_size_);
+    if (rhs.original_buffer_size_ != 0)
+      std::swap(original_buffer_size_, rhs.original_buffer_size_);
+    if (rhs.original_buffer_var_size_ != 0)
+      std::swap(original_buffer_var_size_, rhs.original_buffer_var_size_);
+    if (rhs.original_validity_vector_size_ != 0)
+      std::swap(
+          original_validity_vector_size_, rhs.original_validity_vector_size_);
+    if (rhs.validity_vector_.buffer() != nullptr &&
+        rhs.validity_vector_.buffer_size() != nullptr)
+      validity_vector_ = std::move(rhs.validity_vector_);
+
+    return *this;
+  }
+
   DISABLE_COPY_ASSIGN(QueryBuffer);
 
   /* ********************************* */
