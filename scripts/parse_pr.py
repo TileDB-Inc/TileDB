@@ -1,4 +1,5 @@
-import argparse
+#!/usr/bin/env python3
+
 import itertools as it
 import sys
 from operator import itemgetter
@@ -47,16 +48,17 @@ def parse_pr_body(
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Check PR description")
-    parser.add_argument("body", help="The PR text description body")
-    args = parser.parse_args()
+    if len(sys.argv) > 1:
+        body = sys.argv[1]
+    else:
+        body = sys.stdin.read()
 
     # If the reserved keyword "NO_HISTORY" is included anywhere in the PR body,
     # do not check it for validity or modify the history
-    if "NO_HISTORY" in args.body:
+    if "NO_HISTORY" in body:
         return
 
-    header_descriptions = parse_pr_body(args.body)
+    header_descriptions = parse_pr_body(body)
     if not header_descriptions:
         raise ValueError(f"Unable to locate history annotation in PR body")
 

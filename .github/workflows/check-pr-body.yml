@@ -11,4 +11,7 @@ jobs:
       - name: Check out the repository
         uses: actions/checkout@v2
       - name: Run PR body checker
-        run: python ./scripts/parse_pr.py "${{ github.event.pull_request.body }}"
+        run: |
+          cat <<'EOF' | scripts/parse_pr.py
+          ${{ github.event.pull_request.body }}
+          EOF
