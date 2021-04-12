@@ -4533,7 +4533,7 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     DenseArrayFx,
     "C API: Test dense vector, set_subarray sequential usage",
-    "[capi][dense][subarray]") {
+    "[capi][dense][subarray][query_multiple_set_subarray") {
   std::string path = SupportedFsLocal().temp_dir();
 
   std::string array_name = path + "test_dense_mixed";
@@ -4601,8 +4601,6 @@ TEST_CASE_METHOD(
     tiledb_array_schema_free(&array_schema);
   };
 
-  //------------------------------------------------------
-
   auto write_array_1_2 = [&](bool separate) {
     // note: call with separate == false is the situation (below) implementing a
     // set_subarray call sequence that was broken.
@@ -4631,18 +4629,14 @@ TEST_CASE_METHOD(
     rc = tiledb_query_set_buffer(ctx, query, "a", data1, &data1_size);
     CHECK(rc == TILEDB_OK);
 
-    // clang format-off
     /*
-
     ...data being written...
      x  1  2  3  4
      1  1  2
      2  3  4
      3
      4
-
      */
-    // clang format-on
 
     // Submit query
     rc = tiledb_query_submit(ctx, query);
@@ -4680,18 +4674,14 @@ TEST_CASE_METHOD(
     rc = tiledb_query_set_buffer(ctx, query, "a", data2, &data2_size);
     CHECK(rc == TILEDB_OK);
 
-    // clang format-off
     /*
     ...data being written...
-
      x  1  2  3  4
      1
      2  5  6  7  8
      3  9 10 11 12
      4
-
      */
-    // clang format-on
 
     // Submit query
     rc = tiledb_query_submit(ctx, query);
