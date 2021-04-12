@@ -3646,6 +3646,101 @@ TILEDB_EXPORT int32_t tiledb_query_set_buffer_var_nullable(
     uint64_t* buffer_validity_bytemap_size);
 
 /**
+ * Sets the buffer for a fixed-sized attribute/dimension to a query, which will
+ * either hold the values to be written (if it is a write query), or will hold
+ * the results from a read query.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * int32_t a1[100];
+ * uint64_t a1_size = sizeof(a1);
+ * tiledb_query_set_data_buffer(ctx, query, "a1", a1, &a1_size);
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param query The TileDB query.
+ * @param name The attribute/dimension to set the buffer for. Note that
+ *     zipped coordinates have special name `TILEDB_COORDS`.
+ * @param buffer The buffer that either have the input data to be written,
+ *     or will hold the data to be read.
+ * @param buffer_size In the case of writes, this is the size of `buffer`
+ *     in bytes. In the case of reads, this initially contains the allocated
+ *     size of `buffer`, but after the termination of the query
+ *     it will contain the size of the useful (read) data in `buffer`.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_query_set_data_buffer(
+    tiledb_ctx_t* ctx,
+    tiledb_query_t* query,
+    const char* name,
+    void* buffer,
+    uint64_t* buffer_size);
+/**
+ * Sets the buffer for a fixed-sized attribute/dimension to a query, which will
+ * either hold the values to be written (if it is a write query), or will hold
+ * the results from a read query.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * int32_t a1[100];
+ * uint64_t a1_size = sizeof(a1);
+ * tiledb_query_set_data_buffer(ctx, query, "a1", a1, &a1_size);
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param query The TileDB query.
+ * @param name The attribute/dimension to set the buffer for. Note that
+ *     zipped coordinates have special name `TILEDB_COORDS`.
+ * @param buffer The buffer that either have the input data to be written,
+ *     or will hold the data to be read.
+ * @param buffer_size In the case of writes, this is the size of `buffer`
+ *     in bytes. In the case of reads, this initially contains the allocated
+ *     size of `buffer`, but after the termination of the query
+ *     it will contain the size of the useful (read) data in `buffer`.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_query_set_offsets_buffer(
+    tiledb_ctx_t* ctx,
+    tiledb_query_t* query,
+    const char* name,
+    void* buffer,
+    uint64_t* buffer_size);
+
+/**
+ * Sets the buffer for a fixed-sized attribute/dimension to a query, which will
+ * either hold the values to be written (if it is a write query), or will hold
+ * the results from a read query.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * int32_t a1[100];
+ * uint64_t a1_size = sizeof(a1);
+ * tiledb_query_set_data_buffer(ctx, query, "a1", a1, &a1_size);
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param query The TileDB query.
+ * @param name The attribute/dimension to set the buffer for. Note that
+ *     zipped coordinates have special name `TILEDB_COORDS`.
+ * @param buffer The buffer that either have the input data to be written,
+ *     or will hold the data to be read.
+ * @param buffer_size In the case of writes, this is the size of `buffer`
+ *     in bytes. In the case of reads, this initially contains the allocated
+ *     size of `buffer`, but after the termination of the query
+ *     it will contain the size of the useful (read) data in `buffer`.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_query_set_validity_buffer(
+    tiledb_ctx_t* ctx,
+    tiledb_query_t* query,
+    const char* name,
+    void* buffer,
+    uint64_t* buffer_size);
+
+/**
  * Gets the buffer of a fixed-sized attribute/dimension from a query. If the
  * buffer has not been set, then `buffer` is set to `nullptr`.
  *
@@ -3797,6 +3892,93 @@ TILEDB_EXPORT int32_t tiledb_query_get_buffer_var_nullable(
     uint64_t** buffer_val_size,
     uint8_t** buffer_validity_bytemap,
     uint64_t** buffer_validity_bytemap_size);
+
+/**
+ * Gets the buffer of a fixed-sized attribute/dimension from a query. If the
+ * buffer has not been set, then `buffer` is set to `nullptr`.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * int* a1;
+ * uint64_t* a1_size;
+ * tiledb_query_get_buffer(ctx, query, "a1", &a1, &a1_size);
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param query The TileDB query.
+ * @param name The attribute/dimension to get the buffer for. Note that the
+ *     zipped coordinates have special name `TILEDB_COORDS`.
+ * @param buffer The buffer to retrieve.
+ * @param buffer_size A pointer to the size of the buffer. Note that this is
+ *     a double pointer and returns the original variable address from
+ *     `set_buffer`.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_query_get_data_buffer(
+    tiledb_ctx_t* ctx,
+    tiledb_query_t* query,
+    const char* name,
+    void** buffer,
+    uint64_t** buffer_size);
+
+/**
+ * Gets the buffer of a fixed-sized attribute/dimension from a query. If the
+ * buffer has not been set, then `buffer` is set to `nullptr`.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * int* a1;
+ * uint64_t* a1_size;
+ * tiledb_query_get_buffer(ctx, query, "a1", &a1, &a1_size);
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param query The TileDB query.
+ * @param name The attribute/dimension to get the buffer for. Note that the
+ *     zipped coordinates have special name `TILEDB_COORDS`.
+ * @param buffer The buffer to retrieve.
+ * @param buffer_size A pointer to the size of the buffer. Note that this is
+ *     a double pointer and returns the original variable address from
+ *     `set_buffer`.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_query_get_offset_buffer(
+    tiledb_ctx_t* ctx,
+    tiledb_query_t* query,
+    const char* name,
+    void** buffer,
+    uint64_t** buffer_size);
+
+/**
+ * Gets the buffer of a fixed-sized attribute/dimension from a query. If the
+ * buffer has not been set, then `buffer` is set to `nullptr`.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * int* a1;
+ * uint64_t* a1_size;
+ * tiledb_query_get_buffer(ctx, query, "a1", &a1, &a1_size);
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param query The TileDB query.
+ * @param name The attribute/dimension to get the buffer for. Note that the
+ *     zipped coordinates have special name `TILEDB_COORDS`.
+ * @param buffer The buffer to retrieve.
+ * @param buffer_size A pointer to the size of the buffer. Note that this is
+ *     a double pointer and returns the original variable address from
+ *     `set_buffer`.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_query_get_validity_buffer(
+    tiledb_ctx_t* ctx,
+    tiledb_query_t* query,
+    const char* name,
+    void** buffer,
+    uint64_t** buffer_size);
 
 /**
  * Sets the layout of the cells to be written or read.

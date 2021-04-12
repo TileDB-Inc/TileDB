@@ -510,6 +510,102 @@ void Writer::set_array_schema(const ArraySchema* array_schema) {
   array_schema_ = array_schema;
 }
 
+Status Writer::set_buffer_agnostic(
+    const std::string& name, void* const buffer, uint64_t* const buffer_size) {
+  // Check buffer
+  if (buffer == nullptr)
+    return LOG_STATUS(
+        Status::WriterError("Cannot set buffer; " + name + " buffer is null"));
+
+  // Check buffer size
+  if (buffer_size == nullptr)
+    return LOG_STATUS(Status::WriterError(
+        "Cannot set buffer; " + name + " buffer size is null"));
+
+  // Array schema must exist
+  if (array_schema_ == nullptr)
+    return LOG_STATUS(
+        Status::WriterError("Cannot set buffer; Array schema not set"));
+
+  // Set special function for zipped coordinates buffer
+  if (name == constants::coords)
+    return set_coords_buffer(buffer, buffer_size);
+
+  // For easy reference
+  const bool is_dim = array_schema_->is_dim(name);
+  const bool is_attr = array_schema_->is_attr(name);
+
+  // Neither a dimension nor an attribute
+  if (!is_dim && !is_attr)
+    return LOG_STATUS(Status::WriterError(
+        std::string("Cannot set buffer; Invalid buffer name '") + name +
+        "' (it should be an attribute or dimension)"));
+
+  bool exists = buffers_.find(name) != buffers_.end();
+  if (initialized_ && !exists)
+    return LOG_STATUS(Status::WriterError(
+        std::string("Cannot set buffer for new attribute/dimension '") + name +
+        "' after initialization"));
+
+  if (is_dim && coords_buffer_ != nullptr)
+    return LOG_STATUS(Status::WriterError(
+        std::string("Cannot set separate coordinate buffers after "
+                    "having set the zipped coordinates buffer")));
+
+  if (is_dim) {
+    // Check number of coordinates
+    uint64_t coords_num = *buffer_size / array_schema_->cell_size(name);
+    if (coord_buffer_is_set_ && coords_num != coords_num_)
+      return LOG_STATUS(Status::WriterError(
+          std::string("Cannot set buffer; Input buffer for dimension '") +
+          name +
+          "' has a different number of coordinates than previously "
+          "set coordinate buffers"));
+
+    coords_num_ = coords_num;
+    coord_buffer_is_set_ = true;
+    has_coords_ = true;
+  }
+
+  // If is fixed-size
+  if (!array_schema_->var_size(name)) {
+    if (!exists)
+      // Set attribute/dimension data buffer
+      buffers_[name] = QueryBuffer(buffer, nullptr, buffer_size, nullptr);
+    else {
+      // Add attribute/dimension data buffer to the existing
+      buffers_[name] += QueryBuffer(buffer, nullptr, buffer_size, nullptr);
+    }
+  }
+  // If is var-sized
+  if (array_schema_->var_size(name)) {
+    if (!exists)
+      // Set attribute/dimension offset buffer
+      buffers_[name] = QueryBuffer(nullptr, buffer, nullptr, buffer_size);
+    else {
+      // Add attribute/dimension offset buffer to the existing
+      buffers_[name] += QueryBuffer(nullptr, buffer, nullptr, buffer_size);
+    }
+  }
+  // If is nullable
+  if (array_schema_->is_nullable(name)) {
+    // Convert the bytemap into a ValidityVector.
+    ValidityVector vv;
+    RETURN_NOT_OK(vv.init_bytemap(static_cast<uint8_t*>(buffer), buffer_size));
+    if (!exists)
+      // Set attribute/dimension offset buffer
+      buffers_[name] =
+          QueryBuffer(nullptr, nullptr, nullptr, nullptr, std::move(vv));
+    else {
+      // Add attribute/dimension offset buffer to the existing
+      buffers_[name] +=
+          QueryBuffer(nullptr, nullptr, nullptr, nullptr, std::move(vv));
+    }
+  }
+
+  return Status::Ok();
+}
+
 Status Writer::set_buffer(
     const std::string& name, void* const buffer, uint64_t* const buffer_size) {
   // Check buffer

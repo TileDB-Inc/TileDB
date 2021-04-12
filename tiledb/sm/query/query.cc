@@ -823,10 +823,12 @@ Status Query::set_buffer(
   RETURN_NOT_OK(check_set_fixed_buffer(name));
 
   if (type_ == QueryType::WRITE)
-    return writer_.set_buffer(name, buffer, buffer_size);
-  return reader_.set_buffer(name, buffer, buffer_size, check_null_buffers);
+    return writer_.set_buffer_agnostic(name, buffer, buffer_size);
+  return reader_.set_buffer_agnostic(
+      name, buffer, buffer_size, check_null_buffers);
 }
 
+// DEPRECATED ON OFFSET
 Status Query::set_buffer(
     const std::string& name,
     uint64_t* const buffer_off,
