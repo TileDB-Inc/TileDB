@@ -37,12 +37,6 @@
 
 #include "tiledb/common/status.h"
 
-#ifdef TILEDB_SERIALIZATION
-#include <capnp/compat/json.h>
-#include <capnp/serialize.h>
-#include "tiledb/sm/serialization/tiledb-rest.capnp.h"
-#endif
-
 using namespace tiledb::common;
 
 namespace tiledb {
@@ -53,26 +47,6 @@ class Buffer;
 enum class SerializationType : uint8_t;
 
 namespace serialization {
-
-#ifdef TILEDB_SERIALIZATION
-/**
- * Serialize a config into a cap'n proto class
- * @param config config to serialize
- * @param config_builder cap'n proto message class
- * @return Status
- */
-Status config_to_capnp(
-    const Config* config, capnp::Config::Builder* config_builder);
-
-/**
- * Create a config object from a cap'n proto class
- * @param config_reader cap'n proto message class
- * @param config config to deserialize into
- * @return Status
- */
-Status config_from_capnp(
-    const capnp::Config::Reader& config_reader, tdb_unique_ptr<Config>* config);
-#endif
 
 /**
  * Serialize a config via Cap'n Prto

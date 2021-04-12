@@ -31,7 +31,13 @@
  * This file defines serialization for the Query class
  */
 
-#include "tiledb/sm/serialization/query.h"
+#ifdef TILEDB_SERIALIZATION
+#include <capnp/compat/json.h>
+#include <capnp/message.h>
+#include <capnp/serialize.h>
+#include "tiledb/sm/serialization/capnp_utils.h"
+#endif
+
 #include "tiledb/common/heap_memory.h"
 #include "tiledb/common/logger.h"
 #include "tiledb/sm/array/array.h"
@@ -46,20 +52,9 @@
 #include "tiledb/sm/query/reader.h"
 #include "tiledb/sm/query/writer.h"
 #include "tiledb/sm/serialization/config.h"
-
-#ifdef _WIN32
-#include "tiledb/sm/serialization/meet-capnproto-win32-include-expectations.h"
-#endif
-
-#include "tiledb/sm/serialization/capnp_utils.h"
+#include "tiledb/sm/serialization/query.h"
 #include "tiledb/sm/subarray/subarray.h"
 #include "tiledb/sm/subarray/subarray_partitioner.h"
-
-#ifdef TILEDB_SERIALIZATION
-#include <capnp/compat/json.h>
-#include <capnp/message.h>
-#include <capnp/serialize.h>
-#endif
 
 using namespace tiledb::common;
 using namespace tiledb::sm::stats;
