@@ -125,10 +125,10 @@ TEST_CASE_METHOD(CPPArrayFx, "C++ API: Arrays", "[cppapi][basic]") {
     tiledb::Config cfg;
     cfg["a"] = "1";
     cfg["b"] = "10";
-    Context ctx(cfg);
+    Context ctx1(cfg);
 
     // Create an array with ctx
-    Array array(ctx, "cpp_unit_array", TILEDB_READ);
+    Array array(ctx1, "cpp_unit_array", TILEDB_READ);
 
     // Check that the config values are correct
     CHECK((std::string)array.get_config()["a"] == "1");
